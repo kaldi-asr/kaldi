@@ -18,7 +18,7 @@ wsj1=
 eval2000=
 rt03=
 
-
+set -e
 # check for kaldi_lm
 which get_word_map.pl > /dev/null
 if [ $? -ne 0 ]; then
@@ -38,7 +38,8 @@ case $(hostname -d) in
     wsj1=/export/corpora5/LDC/LDC94S13B
     eval2000="/export/corpora/LDC/LDC2002S09/hub5e_00 /export/corpora/LDC/LDC2002T43"
     rt03="/export/corpora/LDC/LDC2007S10"
-    hub4_en="/export/corpora/LDC/LDC97S44 /export/corpora/LDC/LDC97T22"
+    hub4_en_96="/export/corpora/LDC/LDC97T22/hub4_eng_train_trans /export/corpora/LDC/LDC97S44/data"
+    hub4_en_97="/export/corpora/LDC/LDC98T28/hub4e97_trans_980217 /export/corpora/LDC/LDC98S71/97_eng_bns_hub4"
     ;;
 esac
 
@@ -50,14 +51,25 @@ srilm_opts="-subset -prune-lowprobs -unk -tolower -order 3"
 
 . utils/parse_options.sh
 
-# prepare corpora data
+# Prepare the basic dictionary (a combination of swbd+CMU+tedlium lexicons) in data/local/dict_combined.
+# and train a G2P model using the combined lexicon
+# in data/local/dict_combined
 if [ $stage -le 1 ]; then
+  # We prepare the basic dictionary in data/local/dict_combined.
+  local/prepare_dict.sh $swbd $tedlium2
+  (
+   local/g2p/train_g2p.sh --stage 0 --silence-phones \
+     "data/local/dict_combined/silence_phones.txt" data/local/dict_combined exp/g2p
+  ) &
+fi
+
+# Prepare corpora data
+if [ $stage -le 2 ]; then
   mkdir -p data/local
   # fisher
   local/fisher_data_prep.sh $fisher
   utils/fix_data_dir.sh data/fisher/train
   # swbd
-  local/swbd1_data_download.sh $swbd
   local/swbd1_data_prep.sh $swbd
   utils/fix_data_dir.sh data/swbd/train
   # librispeech
@@ -71,20 +83,13 @@ if [ $stage -le 1 ]; then
   local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?
   local/wsj_format_data.sh
   utils/copy_data_dir.sh --spk_prefix wsj_ --utt_prefix wsj_ data/wsj/train_si284 data/wsj/train
-  rm -rf data/wsj/train_si284
+  rm -r data/wsj/train_si284 2>/dev/null
   # hub4_en
-  local/hub4_data_prep.py --noise-word="[NOISE]" \
-    --spoken-noise-word="[VOCALIZED-NOISE]" \
-    $hub4_en data/hub4_en/train
-fi
-
-# prepare standalone eval data
-if [ $stage -le 2 ]; then
-  mkdir -p data/local
-  # eval2000
+  local/hub4_en_data_prep.sh $hub4_en_96 $hub4_en_97
+  # eval2000 (test)
   local/eval2000_data_prep.sh $eval2000
   utils/fix_data_dir.sh data/eval2000/test
-  # rt03
+  # rt03 (test)
   local/rt03_data_prep.sh $rt03
   utils/fix_data_dir.sh data/rt03/test
 fi
@@ -98,17 +103,15 @@ if [ $stage -le 3 ]; then
   done
 fi
 
-# Prepare the dictionary and train G2P model using the combined (CMUDict+Tedlium+swbd) lexicon
-# in data/local/dict_combined, and then synthesize pronounciations for all OOV words 
-# across all training transcripts.
+# Synthesize pronounciations for OOV words across all training transcripts and produce the final lexicon.
 if [ $stage -le 4 ]; then
-  # We prepare the dictionary in data/local/dict_combined.
-  local/prepare_dict.sh $swbd $tedlium2
-  local/g2p/train_g2p.sh --stage 0 --silence-phones "data/local/dict_combined/silence_phones.txt" data/local/dict_combined exp/g2p
+  wait
   dict_dir=data/local/dict_nosp
   mkdir -p $dict_dir
+  rm $dict_dir/lexiconp.txt 2>/dev/null
   cp data/local/dict_combined/{extra_questions,nonsilence_phones,silence_phones,optional_silence}.txt $dict_dir
-  local/g2p/apply_g2p.sh --var-counts 1 exp/g2p/model.fst data/local/g2p_phonetisarus data/local/dict_combined/lexicon.txt $dict_dir/lexicon.txt
+  local/g2p/apply_g2p.sh --var-counts 1 exp/g2p/model.fst data/local/g2p_phonetisarus \
+    data/local/dict_combined/lexicon.txt $dict_dir/lexicon.txt
 fi
 
 # We'll do multiple iterations of pron/sil-prob estimation. So the structure of
@@ -137,19 +140,22 @@ if [ $stage -le 7 ]; then
   mfccdir=mfcc
   corpora="hub4_en fisher librispeech_100 librispeech_360 librispeech_500 swbd tedlium wsj"
   for c in $corpora; do
-    data=data/$c/train
-    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
-      --cmd "$train_cmd" --nj 40 \
-      $data exp/make_mfcc/$c/train || exit 1;
-    steps/compute_cmvn_stats.sh \
-      $data exp/make_mfcc/$c/train || exit 1;
+    (
+     data=data/$c/train
+     steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
+       --cmd "$train_cmd" --nj 40 \
+       $data exp/make_mfcc/$c/train || exit 1;
+     steps/compute_cmvn_stats.sh \
+       $data exp/make_mfcc/$c/train || exit 1;
+    ) &
   done
+  wait
 fi
 
 # fix and validate training data directories
 if [ $stage -le 8 ]; then
   # get rid of spk2gender files because not all corpora have them
-  rm -f data/*/train/spk2gender
+  rm data/*/train/spk2gender 2>/dev/null
   # create reco2channel_and_file files for wsj and librispeech
   for c in wsj librispeech_100 librispeech_360 librispeech_500; do
     awk '{print $1, $1, "A"}' data/$c/train/wav.scp > data/$c/train/reco2file_and_channel;

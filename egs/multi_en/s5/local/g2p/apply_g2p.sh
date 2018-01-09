@@ -33,7 +33,7 @@ cat data/*/train/text | \
   perl -ape 's/\s/\n/g;' | \
   sort | uniq > $workdir/missing.txt
 cat $workdir/missing.txt | \
-  grep "^[a-z0-9.'_-]*$"  > $workdir/missing_onlywords.txt
+  grep "^[a-z]*$"  > $workdir/missing_onlywords.txt
 
 echo 'Synthesizing pronunciations for missing words...'
 phonetisaurus-apply --nbest $var_counts --model $model --thresh 5 --accumulate --word_list $workdir/missing_onlywords.txt > $workdir/missing_g2p_${var_counts}.txt 
