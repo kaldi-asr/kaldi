@@ -5,19 +5,23 @@
 #           2017  Ke Li
 
 # rnnlm/train_rnnlm.sh: best iteration (out of 10) was 3, linking it to final iteration.
-# rnnlm/train_rnnlm.sh: train/dev perplexity was 69.4 / 183.1.
-# Train objf: -333.60 -4.98 -4.54 -4.24 -3.98 -3.76 -3.56 -3.39 -3.25 -3.13
-# Dev objf:   -10.07 -5.53 -5.23 -5.21 -5.27 -5.37 -5.47 -5.57 -5.68 -5.77
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 44.7 / 152.8.
+# Train objf: -310.30 -4.70 -4.24 -3.89 -3.58 -3.30 -3.06 -2.86 -2.69 -2.56 
+# Dev objf:   -10.07 -5.28 -5.04 -5.03 -5.08 -5.14 -5.26 -5.34 -5.43 -5.52 
 
 # Begin configuration section.
-cmd=run.pl
-dir=exp/rnnlm_lstm_a
+dir=exp/rnnlm_lstm_tdnn
 embedding_dim=800
+embedding_l2=0.005 # embedding layer l2 regularize
+comp_l2=0.005 # component-level l2 regularize
+output_l2=0.005 # output-layer l2 regularize
 epochs=160
 stage=-10
 train_stage=-10
 
-. utils/parse_options.sh
+. ./cmd.sh
+. ./utils/parse_options.sh
+[ -z "$cmd" ] && cmd=$train_cmd
 
 
 text=data/train/text
@@ -64,11 +68,16 @@ EOF
                            --special-words='<s>,</s>,<brk>,<unk>' \
                            $dir/config/words.txt > $dir/config/features.txt
 
+lstm_opts="l2-regularize=$comp_l2"
+tdnn_opts="l2-regularize=$comp_l2"
+output_opts="l2-regularize=$output_l2"
+
   cat >$dir/config/xconfig <<EOF
 input dim=$embedding_dim name=input
-lstm-layer name=lstm1 cell-dim=$embedding_dim
-lstm-layer name=lstm2 cell-dim=$embedding_dim
-output-layer name=output include-log-softmax=false dim=$embedding_dim
+lstm-layer name=lstm1 cell-dim=$embedding_dim $lstm_opts
+relu-renorm-layer name=tdnn dim=$embedding_dim $tdnn_opts input=Append(0, IfDefined(-1))
+lstm-layer name=lstm2 cell-dim=$embedding_dim $lstm_opts
+output-layer name=output $output_opts include-log-softmax=false dim=$embedding_dim
 EOF
   rnnlm/validate_config_dir.sh $text_dir $dir/config
 fi
@@ -82,8 +91,9 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  rnnlm/train_rnnlm.sh --stage $train_stage \
-                       --num-epochs $epochs --cmd "queue.pl" $dir
+  rnnlm/train_rnnlm.sh --embedding_l2 $embedding_l2 \
+                       --stage $train_stage \
+                       --num-epochs $epochs --cmd "$cmd" $dir
 fi
 
 exit 0

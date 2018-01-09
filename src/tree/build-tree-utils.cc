@@ -860,7 +860,95 @@ EventMap *ClusterEventMapRestrictedByMap(const EventMap &e_in,
   return ans;
 }
 
+EventMap *ClusterEventMapToNClustersRestrictedByMap(
+    const EventMap &e_in,
+    const BuildTreeStatsType &stats,
+    int32 num_clusters,
+    const EventMap &e_restrict,
+    int32 *num_removed_ptr) {
+  std::vector<BuildTreeStatsType> split_stats;
+  SplitStatsByMap(stats, e_restrict, &split_stats);
+  
+  if (num_clusters < split_stats.size()) {
+    KALDI_WARN << "num-clusters is less than size of map. Not doing anything.";
+    if (num_removed_ptr) *num_removed_ptr = 0;
+    return e_in.Copy();
+  }
 
+  std::vector<std::vector<int32> > indexes(split_stats.size());
+  std::vector<std::vector<Clusterable*> > summed_stats_contiguous(split_stats.size());
+
+  BaseFloat normalizer = 0.0;
+
+  size_t max_index = 0;
+
+  for (size_t i = 0; i < split_stats.size(); i++) {
+    if (!split_stats[i].empty()) {
+      std::vector<BuildTreeStatsType> split_stats_i;
+      SplitStatsByMap(split_stats[i], e_in, &split_stats_i);
+      std::vector<Clusterable*> summed_stats_i;
+      SumStatsVec(split_stats_i, &summed_stats_i);
+
+      for (size_t j = 0; j < summed_stats_i.size(); j++) {
+        if (summed_stats_i[j] != NULL) {
+          indexes[i].push_back(j);
+          summed_stats_contiguous[i].push_back(summed_stats_i[j]);
+          if (j > max_index) max_index = j;
+        }
+      }
+      
+      normalizer += SumClusterableNormalizer(summed_stats_contiguous[i]);
+    }
+  }
+
+  std::vector<std::vector<int32> > assignments;
+  BaseFloat change = ClusterBottomUpCompartmentalized(
+      summed_stats_contiguous,
+      std::numeric_limits<BaseFloat>::infinity(),
+      num_clusters,  
+      NULL,  // don't need clusters out.
+      &assignments);  // this algorithm is quadratic, so might be quite slow.
+
+  KALDI_ASSERT(assignments.size() == split_stats.size());
+
+  int32 num_combined = 0;
+  for (size_t i = 0; i < split_stats.size(); i++) {
+    KALDI_ASSERT(assignments[i].size() == summed_stats_contiguous[i].size());
+    if (assignments[i].size() == 0) continue;
+    size_t num_clust_i = *std::max_element(assignments[i].begin(),
+                                           assignments[i].end()) + 1;
+    num_combined += summed_stats_contiguous[i].size() - num_clust_i;
+  }
+
+  KALDI_VLOG(2) << "ClusterBottomUpCompartmentalized combined " << num_combined
+                << "leaves and gave a likelihood change of " << change
+                << ", normalized = " << (change / normalizer)
+                << ", normalizer = " << normalizer;
+  KALDI_ASSERT(change < 0.0001);  // should be negative or zero.
+
+  std::vector<EventMap*> leaf_mapping(max_index + 1, NULL);
+
+  for (size_t i = 0; i < split_stats.size(); i++) {
+    for (size_t j = 0; j < summed_stats_contiguous[i].size(); j++) {
+      size_t index = indexes[i][j];
+      size_t new_index = indexes[i][assignments[i][j]];
+      // index assigned by clusterig-- map to existing indices in the map,
+      // that we clustered from, so we don't conflict with indices in other parts
+      // of the tree.
+      KALDI_ASSERT(leaf_mapping[index] == NULL || "Error: Cluster seems to have been "
+                   "called for different parts of the tree with overlapping sets of "
+                   "indices.");
+      leaf_mapping[index] = new ConstantEventMap(new_index);
+    }
+    DeletePointers(&summed_stats_contiguous[i]);
+  }
+
+  if (num_removed_ptr) *num_removed_ptr = num_combined;
+
+  EventMap *ans = e_in.Copy(leaf_mapping);
+  DeletePointers(&leaf_mapping);
+  return ans;
+}
 
 EventMap *GetStubMap(int32 P,
                      const std::vector<std::vector<int32> > &phone_sets,

@@ -5,8 +5,7 @@
 #           2017  Ke Li
 
 # Begin configuration section.
-cmd=run.pl
-dir=exp/rnnlm_lstm_tdnn_a
+dir=exp/rnnlm_lstm_tdnn_1a
 embedding_dim=800
 lstm_rpd=200
 lstm_nrpd=200
@@ -14,8 +13,9 @@ epochs=20
 stage=-10
 train_stage=-10
 
-. utils/parse_options.sh
-
+. ./cmd.sh
+. ./utils/parse_options.sh
+[ -z "$cmd" ] && cmd=$train_cmd
 
 text=data/local/dict_nosp_larger/cleaned.gz
 wordlist=data/lang_nosp/words.txt
@@ -85,7 +85,7 @@ fi
 
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 3 \
-                       --stage $train_stage --num-epochs $epochs --cmd "queue.pl" $dir
+                       --stage $train_stage --num-epochs $epochs --cmd "$cmd" $dir
 fi
 
 exit 0

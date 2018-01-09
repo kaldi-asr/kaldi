@@ -117,9 +117,15 @@ class RnnlmComputeState {
   /// given the previous history determined by the sequence of calls to AddWord()
   /// (implicitly starting with the BOS symbol).
   BaseFloat LogProbOfWord(int32 word_index) const;
- private:
+
+  // This function computes logprobs of all words and set it to output Matrix
+  // Note: (*output)(0, 0) corresponds to <eps> symbol and it should NEVER be
+  // used in any computation by the caller. To avoid causing unexpected issues,
+  // we here set it to a very small number
+  void GetLogProbOfWords(CuMatrixBase<BaseFloat>* output) const;
   /// Advance the state of the RNNLM by appending this word to the word sequence.
   void AddWord(int32 word_index);
+ private:
   /// This function does the computation for the next chunk.
   void AdvanceChunk();
 
