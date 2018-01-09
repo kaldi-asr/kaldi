@@ -1,0 +1,1 @@
+tuning/run_tdnn_50k_1a.sh

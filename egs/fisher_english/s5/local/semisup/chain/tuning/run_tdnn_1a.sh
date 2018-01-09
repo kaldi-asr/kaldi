@@ -1,35 +1,48 @@
 #!/bin/bash
-set -e
 
-# Based on run_tdnn_7b.sh in the fisher swbd recipe
+# Copyright 2017  Vimal Manohar
+# Apache 2.0
+
+set -e
+set -o pipefail
+
+# This is fisher chain recipe for training a model on a subset of around 
+# 100-300 hours of supervised data.
+# This system uses phone LM to model UNK.
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7b_oracle
 train_stage=-10
 get_egs_stage=-10
-decode_iter=
-train_set=train_sup11k
-ivector_train_set=semisup11k_250k
-tree_affix=
-nnet3_affix=_semi11k_250k
-chain_affix=_semi11k_250k
-exp=exp/semisup_11k
-gmm=tri3
+exp=exp/semisup_100k
+
+tdnn_affix=1a
+train_set=train_sup
+ivector_train_set=   # dataset for training i-vector extractor
+
+nnet3_affix=  # affix for nnet3 dir -- relates to i-vector used
+chain_affix=  # affix for chain dir
+tree_affix=bi_a
+gmm=tri4a  # Expect GMM model in $exp/$gmm for alignment
+
+# Neural network opts
 xent_regularize=0.1
 hidden_dim=725
 
 # training options
 num_epochs=4
+
 remove_egs=false
-common_egs_dir=
-minibatch_size=128
+common_egs_dir=   # if provided, will skip egs generation
+common_treedir=   # if provided, will skip the tree building stage
+
+decode_iter=
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
 . ./cmd.sh
-. ./path.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
@@ -42,27 +55,27 @@ fi
 
 gmm_dir=$exp/$gmm   # used to get training lattices (for chain supervision)
 treedir=$exp/chain${chain_affix}/tree_${tree_affix}
-lat_dir=$exp/chain${chain_affix}/$(basename $gmm_dir)_${train_set}_sp_lats  # training lattices directory
+lat_dir=$exp/chain${chain_affix}/${gmm}_${train_set}_sp_unk_lats  # training lattices directory
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
-train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set}_sp_hires
-lang=data/lang_chain
+train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
+lang=data/lang_chain_unk
 
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
-
 local/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
                                   --speed-perturb true \
                                   --train-set $train_set \
-                                  --ivector-train-set $ivector_train_set \
+                                  --ivector-train-set "$ivector_train_set" \
                                   --nnet3-affix "$nnet3_affix" || exit 1
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" data/${train_set}_sp \
-    data/lang $gmm_dir $lat_dir || exit 1;
+  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" \
+    --generate-ali-from-lats true data/${train_set}_sp \
+    data/lang_unk $gmm_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -71,7 +84,7 @@ if [ $stage -le 10 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   rm -rf $lang
-  cp -r data/lang $lang
+  cp -r data/lang_unk $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
   # Use our special topology... note that later on may have to tune this
@@ -79,15 +92,16 @@ if [ $stage -le 10 ]; then
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
-ali_dir=${gmm_dir}_ali_${train_set}
-if [ $stage -le 11 ]; then
-  steps/align_fmllr.sh --cmd "$train_cmd" --nj 40 \
-    data/${train_set} data/lang $gmm_dir $ali_dir || exit 1
-
-  # Build a tree using our new topology.
-  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 11000 data/${train_set} $lang $ali_dir $treedir || exit 1
+if [ -z "$common_treedir" ]; then
+  if [ $stage -le 11 ]; then
+    # Build a tree using our new topology.
+    steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
+        --leftmost-questions-truncate -1 \
+        --context-opts "--context-width=2 --central-position=1" \
+        --cmd "$train_cmd" 7000 data/${train_set}_sp $lang $lat_dir $treedir || exit 1
+  fi
+else
+  treedir=$common_treedir
 fi
 
 if [ $stage -le 12 ]; then
@@ -154,9 +168,9 @@ if [ $stage -le 13 ]; then
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.stage $get_egs_stage \
-    --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
+    --egs.opts "--frames-overlap-per-eg 0 --generate-egs-scp true" \
+    --egs.chunk-width 160,140,110,80 \
+    --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial 3 \
@@ -171,12 +185,12 @@ if [ $stage -le 13 ]; then
     --dir $dir  || exit 1;
 fi
 
-graph_dir=$dir/graph
+graph_dir=$dir/graph_poco_unk
 if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test $dir $graph_dir
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_poco_test_unk $dir $graph_dir
 fi
 
 decode_suff=
@@ -191,7 +205,7 @@ if [ $stage -le 15 ]; then
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
           --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
-          $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
+          $graph_dir data/${decode_set}_hires $dir/decode_poco_unk_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
       ) &
   done
 fi

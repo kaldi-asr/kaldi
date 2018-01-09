@@ -10,7 +10,7 @@ set -e
 
 # configs for 'chain'
 stage=0
-tdnn_affix=7a
+tdnn_affix=1a
 train_stage=-10
 get_egs_stage=-10
 train_set=train_sup

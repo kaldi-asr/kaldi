@@ -9,8 +9,8 @@
 # We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
 # unsupervised data to create LM for decoding. Rescoring is done with 
 # a larger 4-gram LM.
-# This script builds a new tree using stats from both supervised and
-# unsupervised data.
+# This script uses phone LM to model UNK.
+# This script uses the same tree as that for the seed model.
 
 # Unsupervised set: train_unsup100k_250k
 # unsup_frames_per_eg=150
@@ -37,7 +37,8 @@ semisup_train_set=semisup15k_100k_250k
 # Seed model options
 nnet3_affix=_semi15k_100k_250k    # affix for nnet3 dir -- relates to i-vector used
 chain_affix=_semi15k_100k_250k    # affix for chain dir
-tdnn_affix=7j  # affix for the supervised chain-model directory
+tdnn_affix=1a  # affix for the supervised chain-model directory
+tree_affix=bi_a  # affix for the tree of the supervised model
 train_supervised_opts="--stage -10 --train-stage -10"
 gmm=tri3  # GMM model to get supervision for supervised data
 
@@ -54,7 +55,7 @@ rescore_unsup_lattices=true  # const ARPA rescoring with a bigger LM
 unsup_rescoring_affix=big   # affix for const ARPA lang dir
 
 # Semi-supervised options
-comb_affix=comb1am  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+comb_affix=comb1a  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,1.0   # Weights for supervised, unsupervised data egs
 lm_weights=5,2   # Weights on phone counts from supervised, unsupervised data for denominator FST creation
 
@@ -90,21 +91,21 @@ fi
 
 if [ $stage -le -1 ]; then
   echo "$0: chain training on the supervised subset data/${supervised_set}"
-  local/semisup/chain/tuning/run_tdnn_15k_j.sh $train_supervised_opts \
+  local/semisup/chain/run_tdnn_15k.sh $train_supervised_opts \
                           --train-set $supervised_set \
                           --unsup-train-set $unsupervised_set \
                           --semisup-train-set $semisup_train_set \
                           --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" \
-                          --gmm $gmm --exp $exp || exit 1
+                          --tree-affix "$tree_affix" --gmm $gmm --exp $exp || exit 1
 fi
 
-lang=data/lang_chain
-unsup_decode_lang=data/lang_poco_test_ex250k
+lang=data/lang_chain_unk
+unsup_decode_lang=data/lang_poco_test_ex250k_unk
 unsup_rescore_lang=${unsup_decode_lang}${unsup_rescoring_affix}
-unsup_decode_graph_affix=_poco_ex250k
+unsup_decode_graph_affix=_poco_ex250k_unk
 
-test_lang=data/lang_poco_test
-test_graph_affix=_poco
+test_lang=data/lang_poco_test_unk
+test_graph_affix=_poco_unk
 
 supervised_set=${supervised_set}_sp
 
@@ -199,32 +200,21 @@ if [ -f $chaindir/frame_subsampling_factor ]; then
 fi
 cmvn_opts=`cat $chaindir/cmvn_opts` || exit 1
 
-tree_affix=bi${decode_affix}
 treedir=$exp/chain${chain_affix}/tree_${tree_affix}
-if [ -f $treedir/final.mdl ]; then
-  echo "$0: $treedir/final.mdl exists. Remove it and run again."
+if [ ! -f $treedir/final.mdl ]; then
+  echo "$0: $treedir/final.mdl does not exist."
   exit 1
 fi
+
+diff $treedir/tree $chaindir/tree || { echo "$0: $treedir/tree and $chaindir/tree differ"; exit 1; }
+
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
 
-if [ $stage -le 9 ]; then
-  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
-
-  # Build a new tree using stats from both supervised and unsupervised data
-  steps/nnet3/chain/build_tree_multiple_sources.sh \
-    --use-fmllr false --context-opts "--context-width=2 --central-position=1" \
-    --frame-subsampling-factor 3 \
-    7000 $lang \
-    data/${supervised_set} \
-    ${sup_ali_dir} \
-    data/${unsupervised_set} \
-    $chaindir/best_path_${unsupervised_set}${decode_affix} \
-    $treedir || exit 1
-fi
 
 # Train denominator FST using phone alignments from 
 # supervised and unsupervised data
 if [ $stage -le 10 ]; then
+  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
     ${treedir} ${chaindir}/best_path_${unsupervised_set}${decode_affix} \
     $dir

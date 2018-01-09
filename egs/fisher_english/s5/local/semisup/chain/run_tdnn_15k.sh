@@ -1,0 +1,1 @@
+tuning/run_tdnn_15k_1a.sh

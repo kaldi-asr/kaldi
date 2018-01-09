@@ -3,20 +3,19 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
-# This script is semi-supervised recipe with 15 hours of supervised data
-# and 250 hours unsupervised data with naive splitting. 
-# We use the combined data for i-vector extractor training.
+# This script is semi-supervised recipe with 100 hours of supervised data
+# and 250 hours unsupervised data with naive splitting.
+# We use only the supervised data for i-vector extractor training.
 # We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
 # unsupervised data to create LM for decoding. Rescoring is done with 
 # a larger 4-gram LM.
 # This script uses the same tree as that for the seed model.
-# This script uses phone LM to model UNK.
 
 # Unsupervised set: train_unsup100k_250k
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
-# Weights for phone LM (supervised, unsupervised): 5,2
+# Weights for phone LM (supervised, unsupervised): 3,2
 # LM for decoding unsupervised data: 4gram
 # Supervision: Naive split lattices
 
@@ -26,21 +25,20 @@ stage=0   # Start from -1 for supervised seed system training
 train_stage=-100
 nj=40
 decode_nj=40
-exp=exp/semisup_15k
+exp=exp/semisup_100k
 
 # Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be 
 # present
 unsupervised_set=train_unsup100k_250k  # set this to your choice of unsupervised data
-supervised_set=train_sup15k
-semisup_train_set=semisup15k_100k_250k
+supervised_set=train_sup
 
 # Seed model options
-nnet3_affix=_semi15k_100k_250k    # affix for nnet3 dir -- relates to i-vector used
-chain_affix=_semi15k_100k_250k    # affix for chain dir
-tdnn_affix=7i  # affix for the supervised chain-model directory
-tree_affix=bi_i  # affix for the tree of the supervised model
+nnet3_affix=    # affix for nnet3 dir -- relates to i-vector used
+chain_affix=    # affix for chain dir
+tdnn_affix=1a  # affix for the supervised chain-model directory
+tree_affix=bi_a  # affix for the tree of the supervised model
 train_supervised_opts="--stage -10 --train-stage -10"
-gmm=tri3  # GMM model to get supervision for supervised data
+gmm=tri4a  # GMM model to get supervision for supervised data
 
 # Unsupervised options
 decode_affix=   # affix for decoded lattices
@@ -51,13 +49,13 @@ lattice_prune_beam=4.0  # If supplied, will prune the lattices prior to getting 
 tolerance=1   # frame-tolerance for chain training
 phone_insertion_penalty=
 
-rescore_unsup_lattices=true  # const ARPA rescoring with a bigger LM
+rescore_unsup_lattices=false  # const ARPA rescoring with a bigger LM -- false here because we have only LM text from 100 hours of data
 unsup_rescoring_affix=big   # affix for const ARPA lang dir
 
 # Semi-supervised options
-comb_affix=comb1ao  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+comb_affix=comb250k_1a  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,1.0   # Weights for supervised, unsupervised data egs
-lm_weights=5,2   # Weights on phone counts from supervised, unsupervised data for denominator FST creation
+lm_weights=3,2  # Weights on phone counts from supervised, unsupervised data for denominator FST creation
 
 sup_egs_dir=   # Supply this to skip supervised egs creation
 unsup_egs_dir=  # Supply this to skip unsupervised egs creation
@@ -73,8 +71,8 @@ decode_iter=  # Iteration to decode with
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
-. ./path.sh
+. ./cmd.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 egs_affix=${egs_affix}_prun${lattice_prune_beam}_lmwt${lattice_lm_scale}_tol${tolerance}
@@ -91,21 +89,19 @@ fi
 
 if [ $stage -le -1 ]; then
   echo "$0: chain training on the supervised subset data/${supervised_set}"
-  local/semisup/chain/tuning/run_tdnn_15k_i.sh $train_supervised_opts \
+  local/semisup/chain/run_tdnn_100k.sh $train_supervised_opts \
                           --train-set $supervised_set \
-                          --unsup-train-set $unsupervised_set \
-                          --semisup-train-set $semisup_train_set \
                           --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" \
                           --tree-affix "$tree_affix" --gmm $gmm --exp $exp || exit 1
 fi
 
-lang=data/lang_chain_unk
-unsup_decode_lang=data/lang_poco_test_ex250k_unk
+lang=data/lang_chain
+unsup_decode_lang=data/lang_poco_test_ex250k
 unsup_rescore_lang=${unsup_decode_lang}${unsup_rescoring_affix}
-unsup_decode_graph_affix=_poco_ex250k_unk
+unsup_decode_graph_affix=_poco_ex250k
 
-test_lang=data/lang_poco_test_unk
-test_graph_affix=_poco_unk
+test_lang=data/lang_poco_test
+test_graph_affix=_poco
 
 supervised_set=${supervised_set}_sp
 
@@ -144,27 +140,44 @@ fi
 unsupervised_set=${unsupervised_set}_n10k
 
 for dset in $unsupervised_set; do
-  if [ ! -f data/${dset}_sp_hires/feats.scp ]; then
-    echo "$0: Could not find data/${dset}_sp_hires/feats.scp."
-    echo "$0: Expected this to be created in stage -1."
-    exit 1
+  if [ $stage -le 3 ]; then
+    if [ -f data/${dset}_sp_hires/feats.scp ]; then
+      echo "$0: data/${dset}_sp_hires/feats.scp exists. Remove it or re-run from next stage"
+      exit 1
+    fi
+
+    utils/data/perturb_data_dir_speed_3way.sh data/$dset data/${dset}_sp_hires
+    utils/data/perturb_data_dir_volume.sh data/${dset}_sp_hires
+
+    steps/make_mfcc.sh --nj $decode_nj --cmd "$train_cmd" \
+      --mfcc-config conf/mfcc_hires.conf data/${dset}_sp_hires || exit 1
+  fi
+
+  # Extract i-vectors for the unsupervised data
+  if [ $stage -le 4 ]; then
+    steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 \
+      data/${dset}_sp_hires data/${dset}_sp_max2_hires
+
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $decode_nj \
+      data/${dset}_sp_max2_hires $exp/nnet3${nnet3_affix}/extractor \
+      $exp/nnet3${nnet3_affix}/ivectors_${dset}_sp_hires || exit 1
   fi
 
   # Decode unsupervised data and write lattices in non-compact 
   # undeterminized format
   # Set --skip-scoring to false in order to score the unsupervised data
-  if [ $stage -le 4 ]; then
+  if [ $stage -le 5 ]; then
     echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $chaindir"
     steps/nnet3/decode.sh --num-threads 4 --nj $decode_nj --cmd "$decode_cmd" \
               --acwt 1.0 --post-decode-acwt 10.0 --write-compact false --skip-scoring true \
-              --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${semisup_train_set}_sp_hires \
+              --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${dset}_sp_hires \
               --scoring-opts "--min-lmwt 10 --max-lmwt 10" --word-determinize false \
               $graphdir data/${dset}_sp_hires $chaindir/decode_${dset}_sp${decode_affix}
   fi
 
   # Rescore undeterminized lattices with larger LM
   if $rescore_unsup_lattices; then
-    if [ $stage -le 5 ]; then
+    if [ $stage -le 6 ]; then
       steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
         --acwt 0.1 --beam 8.0  --skip-scoring true \
         $unsup_decode_lang $unsup_rescore_lang \
@@ -184,7 +197,6 @@ if $rescore_unsup_lattices; then
 fi
 
 unsupervised_set=${unsupervised_set}_sp
-semisup_train_set=${semisup_train_set}_sp
 
 # Get lattice posterior of best path alignment
 if [ $stage -le 8 ]; then
@@ -209,7 +221,6 @@ fi
 diff $treedir/tree $chaindir/tree || { echo "$0: $treedir/tree and $chaindir/tree differ"; exit 1; }
 
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
-
 
 # Train denominator FST using phone alignments from 
 # supervised and unsupervised data
@@ -306,7 +317,7 @@ if [ -z "$sup_egs_dir" ]; then
                --frames-per-eg $frames_per_eg \
                --frames-per-iter 1500000 \
                --cmvn-opts "$cmvn_opts" \
-               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${semisup_train_set}_hires \
+               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${supervised_set}_hires \
                --generate-egs-scp true \
                data/${supervised_set}_hires $dir \
                $sup_lat_dir $sup_egs_dir
@@ -340,7 +351,7 @@ if [ -z "$unsup_egs_dir" ]; then
                --lattice-prune-beam "$lattice_prune_beam" \
                --phone-insertion-penalty "$phone_insertion_penalty" \
                --deriv-weights-scp $chaindir/best_path_${unsupervised_set}${decode_affix}/weights.scp \
-               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${semisup_train_set}_hires \
+               --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${unsupervised_set}_hires \
                --generate-egs-scp true $unsup_egs_opts \
                data/${unsupervised_set}_hires $dir \
                $unsup_lat_dir $unsup_egs_dir
@@ -365,7 +376,7 @@ if [ $stage -le 15 ]; then
   steps/nnet3/chain/train.py --stage $train_stage \
     --egs.dir "$comb_egs_dir" \
     --cmd "$decode_cmd" \
-    --feat.online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${semisup_train_set}_hires \
+    --feat.online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${supervised_set}_hires \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \

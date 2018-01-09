@@ -3,14 +3,15 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
-# This script is semi-supervised recipe with 50 hours of supervised data
-# and 250 hours unsupervised data with naive splitting.
+# This script is semi-supervised recipe with 15 hours of supervised data
+# and 250 hours unsupervised data with naive splitting. 
 # We use the combined data for i-vector extractor training.
 # We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
 # unsupervised data to create LM for decoding. Rescoring is done with 
 # a larger 4-gram LM.
-# This script uses the same tree as that for the seed model.
 # This script uses phone LM to model UNK.
+# This script builds a new tree using stats from both supervised and
+# unsupervised data.
 
 # Unsupervised set: train_unsup100k_250k
 # unsup_frames_per_eg=150
@@ -26,21 +27,20 @@ stage=0   # Start from -1 for supervised seed system training
 train_stage=-100
 nj=40
 decode_nj=40
-exp=exp/semisup_50k
+exp=exp/semisup_15k
 
 # Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be 
 # present
 unsupervised_set=train_unsup100k_250k  # set this to your choice of unsupervised data
-supervised_set=train_sup50k
-semisup_train_set=semisup50k_100k_250k
+supervised_set=train_sup15k
+semisup_train_set=semisup15k_100k_250k
 
 # Seed model options
-nnet3_affix=_semi50k_100k_250k    # affix for nnet3 dir -- relates to i-vector used
-chain_affix=_semi50k_100k_250k    # affix for chain dir
-tdnn_affix=7d  # affix for the supervised chain-model directory
-tree_affix=bi_d  # affix for the tree of the supervised model
+nnet3_affix=_semi15k_100k_250k    # affix for nnet3 dir -- relates to i-vector used
+chain_affix=_semi15k_100k_250k    # affix for chain dir
+tdnn_affix=1b  # affix for the supervised chain-model directory
 train_supervised_opts="--stage -10 --train-stage -10"
-gmm=tri4a  # GMM model to get supervision for supervised data
+gmm=tri3  # GMM model to get supervision for supervised data
 
 # Unsupervised options
 decode_affix=   # affix for decoded lattices
@@ -55,9 +55,9 @@ rescore_unsup_lattices=true  # const ARPA rescoring with a bigger LM
 unsup_rescoring_affix=big   # affix for const ARPA lang dir
 
 # Semi-supervised options
-comb_affix=comb1m  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
+comb_affix=comb1b  # affix for new chain-model directory trained on the combined supervised+unsupervised subsets
 supervision_weights=1.0,1.0   # Weights for supervised, unsupervised data egs
-lm_weights=3,2  # Weights on phone counts from supervised, unsupervised data for denominator FST creation
+lm_weights=5,2   # Weights on phone counts from supervised, unsupervised data for denominator FST creation
 
 sup_egs_dir=   # Supply this to skip supervised egs creation
 unsup_egs_dir=  # Supply this to skip unsupervised egs creation
@@ -73,8 +73,8 @@ decode_iter=  # Iteration to decode with
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. ./cmd.sh
-if [ -f ./path.sh ]; then . ./path.sh; fi
+. cmd.sh
+. ./path.sh
 . ./utils/parse_options.sh
 
 egs_affix=${egs_affix}_prun${lattice_prune_beam}_lmwt${lattice_lm_scale}_tol${tolerance}
@@ -91,12 +91,12 @@ fi
 
 if [ $stage -le -1 ]; then
   echo "$0: chain training on the supervised subset data/${supervised_set}"
-  local/semisup/chain/tuning/run_tdnn_50k_d.sh $train_supervised_opts \
+  local/semisup/chain/run_tdnn_15k.sh $train_supervised_opts \
                           --train-set $supervised_set \
                           --unsup-train-set $unsupervised_set \
                           --semisup-train-set $semisup_train_set \
                           --nnet3-affix "$nnet3_affix" --tdnn-affix "$tdnn_affix" \
-                          --tree-affix "$tree_affix" --gmm $gmm --exp $exp || exit 1
+                          --tree-affix "bi_a" --gmm $gmm --exp $exp || exit 1
 fi
 
 lang=data/lang_chain_unk
@@ -200,20 +200,32 @@ if [ -f $chaindir/frame_subsampling_factor ]; then
 fi
 cmvn_opts=`cat $chaindir/cmvn_opts` || exit 1
 
+tree_affix=bi${decode_affix}
 treedir=$exp/chain${chain_affix}/tree_${tree_affix}
-if [ ! -f $treedir/final.mdl ]; then
-  echo "$0: $treedir/final.mdl does not exist."
+if [ -f $treedir/final.mdl ]; then
+  echo "$0: $treedir/final.mdl exists. Remove it and run again."
   exit 1
 fi
-
-diff $treedir/tree $chaindir/tree || { echo "$0: $treedir/tree and $chaindir/tree differ"; exit 1; }
-
 dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}${decode_affix}${egs_affix}${comb_affix:+_$comb_affix}
+
+if [ $stage -le 9 ]; then
+  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
+
+  # Build a new tree using stats from both supervised and unsupervised data
+  steps/nnet3/chain/build_tree_multiple_sources.sh \
+    --use-fmllr false --context-opts "--context-width=2 --central-position=1" \
+    --frame-subsampling-factor 3 \
+    7000 $lang \
+    data/${supervised_set} \
+    ${sup_ali_dir} \
+    data/${unsupervised_set} \
+    $chaindir/best_path_${unsupervised_set}${decode_affix} \
+    $treedir || exit 1
+fi
 
 # Train denominator FST using phone alignments from 
 # supervised and unsupervised data
 if [ $stage -le 10 ]; then
-  echo $frame_subsampling_factor > $chaindir/best_path_${unsupervised_set}${decode_affix}/frame_subsampling_factor
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
     ${treedir} ${chaindir}/best_path_${unsupervised_set}${decode_affix} \
     $dir
@@ -314,7 +326,7 @@ else
   frames_per_eg=$(cat $sup_egs_dir/info/frames_per_eg)
 fi
 
-unsup_lat_dir=${chaindir}/decode_${unsupervised_set}${decode_affix} 
+unsup_lat_dir=${chaindir}/decode_${unsupervised_set}${decode_affix}
 if [ -z "$unsup_egs_dir" ]; then
   [ -z $unsup_frames_per_eg ] && [ ! -z "$frames_per_eg" ] && unsup_frames_per_eg=$frames_per_eg
   unsup_egs_dir=$dir/egs_${unsupervised_set}${decode_affix}${egs_affix}
