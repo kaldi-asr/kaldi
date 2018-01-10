@@ -5,10 +5,7 @@ set -e -o pipefail
 stage=0
 nj=30
 train=noisy
-enhan=$1
-mdir=$2
 train_set=tr05_multi_${train}
-test_sets="dt05_real_$enhan dt05_simu_$enhan et05_real_$enhan et05_simu_$enhan"
 gmm=tri3b_tr05_multi_${train} # this is the source gmm-dir that we'll use for alignments; it
                               # should have alignments for the specified training data.
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
@@ -35,6 +32,9 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
+enhan=$1
+mdir=$2
+test_sets="dt05_real_$enhan dt05_simu_$enhan et05_real_$enhan et05_simu_$enhan"
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
