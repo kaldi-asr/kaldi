@@ -78,7 +78,7 @@ case $baseline in
 esac
 
 if [ "$flatstart" = false ]; then
-  for d in $modeldir $modeldir/data/{lang,lang_test_tgpr_5k,lang_test_5gkn_5k,lang_test_rnnlm_5k_h300,local} \
+  for d in $modeldir $modeldir/data/{lang,lang_test_tgpr_5k,local} \
     $modeldir/exp/{tri3b_tr05_multi_noisy,tri4a_dnn_tr05_multi_noisy,tri4a_dnn_tr05_multi_noisy_smbr_i1lats}; do
     [ ! -d $d ] && echo "$0: no such directory $d. specify models correctly" && \
     echo " or execute './run.sh --baseline advanced --flatstart true' first" && exit 1;
