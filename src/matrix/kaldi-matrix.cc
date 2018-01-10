@@ -28,6 +28,9 @@
 #include "matrix/compressed-matrix.h"
 #include "matrix/sparse-matrix.h"
 
+static_assert(int(kaldi::kNoTrans) == int(CblasNoTrans) && int(kaldi::kTrans) == int(CblasTrans), 
+    "kaldi::kNoTrans and kaldi::kTrans must be equal to the appropriate CBLAS library constants!");
+
 namespace kaldi {
 
 template<typename Real>
