@@ -1,1 +1,0 @@
-tuning/run_tdnn_100k_1a.sh

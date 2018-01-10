@@ -6,15 +6,12 @@
 . cmd.sh
 . path.sh 
 
-stage=-1
-train_stage=-10
-
 . utils/parse_options.sh
 
 set -o pipefail
 exp=exp/semisup_15k
 
-for f in data/train_sup/utt2spk data/train_unsup250k/utt2spk ]; do
+for f in data/train_sup/utt2spk data/train_unsup100k_250k/utt2spk; do
   if [ ! -f $f ]; then
     echo "$0: Could not find $f"
     exit 1
@@ -60,11 +57,12 @@ steps/train_sat.sh --cmd "$train_cmd" \
    $exp/tri3/graph data/dev $exp/tri3/decode_dev
 )&
 
-utils/combine_data.sh data/semisup15k_250k data/train_sup15k data/train_unsup250k || exit 1
+utils/combine_data.sh data/semisup15k_100k_250k \
+  data/train_sup15k data/train_unsup100k_250k || exit 1
 
 mkdir -p data/local/pocolm_ex250k
 
-utils/filter_scp.pl --exclude data/train_unsup250k/utt2spk \
+utils/filter_scp.pl --exclude data/train_unsup100k_250k/utt2spk \
   data/train/text > data/local/pocolm_ex250k/text.tmp
 
 if [ ! -f data/lang_test_poco_ex250k_big/G.carpa ]; then
@@ -83,7 +81,7 @@ fi
 
 local/run_unk_model.sh || exit 1
 
-for lang_dir in "data/lang_test_poco_ex250k_big data/lang_test_poco_ex250k"; do
+for lang_dir in data/lang_test_poco_ex250k_big data/lang_test_poco_ex250k; do
   rm -r ${lang_dir}_unk 2>/dev/null || true
   mkdir -p ${lang_dir}_unk
   cp -r data/lang_unk ${lang_dir}_unk
@@ -91,19 +89,29 @@ for lang_dir in "data/lang_test_poco_ex250k_big data/lang_test_poco_ex250k"; do
   if [ -f ${lang_dir}/G.carpa ]; then cp ${lang_dir}/G.carpa ${lang_dir}_unk/G.carpa; fi
 done
 
-local/semisup/chain/tuning/run_tdnn_15k_a.sh \
+local/semisup/chain/run_tdnn.sh \
   --train-set train_sup15k \
-  --nnet3-affix _semi15k_250k \
-  --chain-affix _semi15k_250k \
-  --stage $stage --train-stage $train_stage \
-  --exp $exp \
-  --unsup-train-set train_unsup250k \
-  --semisup-train-set semisup15k_250k || exit 1
+  --ivector-train-set semisup15k_100k_250k \
+  --nnet3-affix _semi15k_100k_250k \
+  --chain-affix _semi15k_100k_250k \
+  --tdnn-affix 1a --tree-affix bi_a \
+  --hidden-dim 500 \
+  --gmm tri3 --exp $exp || exit 1
 
-local/semisup/chain/tuning/run_tdnn_oracle.sh \
-  --train-set semisup15k_250k \
-  --nnet3-affix _semi15k_250k \
-  --chain-affix _semi15k_250k_oracle \
-  --gmm tri3 \
-  --stage 9 --train-stage $train_stage \
-  --exp $exp || exit 1
+local/semisup/chain/run_tdnn_50k_semisupervised.sh \
+  --supervised-set train_sup15k \
+  --unsupervised-set train_unsup100k_250k \
+  --semisup-train-set semisup15k_100k_250k \
+  --nnet3-affix _semi15k_100k_250k \
+  --chain-affix _semi15k_100k_250k \
+  --tdnn-affix 1a --tree-affix bi_a \
+  --gmm tri3 --exp $exp --stage 0 || exit 1
+
+local/semisup/chain/run_tdnn.sh \
+  --train-set semisup15k_100k_250k \
+  --nnet3-affix _semi15k_100k_250k \
+  --chain-affix _semi15k_100k_250k \
+  --common-treedir exp/chain_semi15k_100k_250k/tree_bi_a \
+  --tdnn-affix 1a_oracle \
+  --gmm tri3 --exp $exp \
+  --stage 9 || exit 1

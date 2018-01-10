@@ -14,10 +14,12 @@ train_stage=-10
 set -o pipefail
 exp=exp/semisup_100k
 
-if [ ! -f data/train_sup/utt2spk ]; then
-  echo "$0: Could not find data/train_sup/utt2spk"
-  exit 1
-fi
+for f in data/train_sup/utt2spk data/train_unsup100k_250k/utt2spk; do
+  if [ ! -f $f ]; then
+    echo "$0: Could not find $f"
+    exit 1
+  fi
+done
 
 utils/subset_data_dir.sh --shortest data/train_sup 100000 data/train_sup_100kshort
 utils/subset_data_dir.sh  data/train_sup_100kshort 10000 data/train_sup_10k
@@ -72,23 +74,22 @@ steps/train_sat.sh --cmd "$train_cmd" \
    $exp/tri4a/graph data/dev $exp/tri4a/decode_dev
 )&
 
-utils/copy_data_dir.sh data/train_unsup250k data/train_unsup100k_250k
-utils/combine_data.sh data/semisup100k_250k data/train_sup \
-  data/train_unsup100k_250k || exit 1
+utils/combine_data.sh data/semisup100k_250k \
+  data/train_sup data/train_unsup100k_250k || exit 1
 
-if [ ! -f data/lang_test_poco_sup100k/G.fst ]; then
+if [ ! -f data/lang_poco_test_sup100k/G.fst ]; then
   local/fisher_train_lms_pocolm.sh \
     --text data/train_sup/text \
     --dir data/local/lm_sup100k
 
   local/fisher_create_test_lang.sh \
     --arpa-lm data/local/pocolm_sup100k/data/arpa/4gram_small.arpa.gz \
-    --dir data/lang_test_poco_sup100k
+    --dir data/lang_poco_test_sup100k
 fi
 
 local/run_unk_model.sh || exit 1
 
-for lang_dir in data/lang_test_poco_sup100k; do
+for lang_dir in data/lang_poco_test_sup100k; do
   rm -r ${lang_dir}_unk 2>/dev/null || true
   mkdir -p ${lang_dir}_unk
   cp -r data/lang_unk ${lang_dir}_unk
@@ -96,17 +97,25 @@ for lang_dir in data/lang_test_poco_sup100k; do
   if [ -f ${lang_dir}/G.carpa ]; then cp ${lang_dir}/G.carpa ${lang_dir}_unk/G.carpa; fi
 done
 
-local/semisup/chain/tuning/run_tdnn_100k_a.sh \
+local/semisup/chain/run_tdnn.sh \
   --train-set train_sup \
-  --stage $stage --train-stage $train_stage \
-  --exp $exp \
-  --ivector-train-set "" || exit 1
+  --ivector-train-set "" \
+  --nnet3-affix "" --chain-affix "" \
+  --tdnn-affix 1a --tree-affix bi_a \
+  --gmm tri4a --exp $exp || exit 1
 
-local/semisup/chain/tuning/run_tdnn_100k_a_oracle.sh \
-  --train-set train_sup \
-  --nnet3-affix \
-  --chain-affix \
-  --gmm tri4a \
-  --stage 9 --train-stage $train_stage \
-  --exp $exp \
-  --ivector-train-set "" || exit 1
+local/semisup/chain/run_tdnn_100k_semisupervised.sh \
+  --supervised-set train_sup \
+  --unsupervised-set train_unsup100k_250k \
+  --semisup-train-set semisup100k_250k \
+  --nnet3-affix "" --chain-affix "" \
+  --tdnn-affix 1a --tree-affix bi_a \
+  --gmm tri4a --exp $exp --stage 0 || exit 1
+
+local/semisup/chain/run_tdnn.sh \
+  --train-set semisup100k_250k \
+  --nnet3-affix "" --chain-affix "" \
+  --common-treedir exp/chain/tree_bi_a \
+  --tdnn-affix 1a_oracle \
+  --gmm tri4a --exp $exp \
+  --stage 9 || exit 1
