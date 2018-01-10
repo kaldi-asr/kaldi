@@ -125,7 +125,7 @@ if [ $stage -le 2 ]; then
   if [ ! -d $chime4_rir_data ]; then
     echo "$chime4_rir_dir does not exist. Please run "blstm_gev" enhancement method first';" && exit 1;
   fi
-  local/compute_PESQ.sh $enhancement $enhancement_data $chime4_rir_data
+  local/compute_PESQ.sh $enhancement $enhancement_data $chime4_rir_data $modeldir
   local/compute_stoi_estoi_sdr.sh $enhancement $enhancement_data $chime4_rir_data
 fi
 

@@ -11,7 +11,7 @@ cmd=run.pl
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
-   echo "Wrong #arguments ($#, expected 2)"
+   echo "Wrong #arguments ($#, expected 4)"
    echo "Usage: local/run_beamform_blstm_gev_6ch_track.sh [options] <chime4-dir> <chime3-dir> <wav-out-dir> <enhancement-type>"
    echo "main options (for others, see top of script file)"
    echo "  --nj <nj>                                # number of parallel jobs"
@@ -38,13 +38,20 @@ if [ ! -d $miniconda_dir ]; then
 fi
 
 # check if chainer is installed
-$HOME/miniconda3/bin/python -c "\
+result=`$HOME/miniconda3/bin/python -c "\
 try:
-    import chainer 
+    import chainer
+    print('1')
 except ImportError:
-    print('\nChainer is not installed. Please run ../../../tools/extras/install_chainer.sh')
-    print('\nFor chainer install, you have to use cudnn <= 5.1.')
-    print('\nIn the CLSP cluster, $HOME/miniconda3/bin/python -m pip uninstall chainer; . /home/asubraman/.bash_profile_cuda_path; $HOME/miniconda3/bin/python -m pip install chainer==1.16.0 -vvvv --no-cache')"
+    print('0')"`
+
+if [ "$result" == "1" ]; then
+    echo "Chainer is installed"
+else
+    echo "Chainer is not installed. Please run ../../../tools/extras/install_chainer.sh"
+    echo "For chainer install, you have to use cudnn <= 5.1."
+    echo "In the CLSP cluster, $HOME/miniconda3/bin/python -m pip uninstall chainer; . /home/asubraman/.bash_profile_cuda_path; $HOME/miniconda3/bin/python -m pip install chainer==1.16.0 -vvvv --no-cache" && exit 1;   
+fi
 
 if [ ! -d local/nn-gev ]; then
     cd local/

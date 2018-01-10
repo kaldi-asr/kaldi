@@ -6,7 +6,7 @@
 . ./path.sh
 
 if [ $# != 3 ]; then
-   echo "Wrong #arguments ($#, expected 2)"
+   echo "Wrong #arguments ($#, expected 3)"
    echo "Usage: local/run_nn-gev.sh <wav-in-dir> <wav-out-dir> <enhancement-type>"
    exit 1;
 fi
