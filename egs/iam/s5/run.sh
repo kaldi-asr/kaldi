@@ -33,7 +33,7 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
-  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
+  local/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
                         data/local/dict "<unk>" data/lang/temp data/lang
 fi
 
