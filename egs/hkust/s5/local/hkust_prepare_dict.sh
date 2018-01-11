@@ -20,7 +20,7 @@ mkdir -p $dict_dir/lexicon-{en,ch}
 
 # extract full vocabulary
 cat $train_dir/text $dev_dir/text | awk '{for (i = 2; i <= NF; i++) print $i}' |\
-  sed -e 's/ /\n/g' | sort -u | grep -v '\[LAUGHTER\]' | grep -v '\[NOISE\]' |\
+  perl -ape 's/ /\n/g;' | sort -u | grep -v '\[LAUGHTER\]' | grep -v '\[NOISE\]' |\
   grep -v '\[VOCALIZED-NOISE\]' > $dict_dir/words.txt || exit 1;
 
 # split into English and Chinese
@@ -201,7 +201,7 @@ cat $dict_dir/cedict/ch-dict-1.txt | awk '{print $1}' |\
 # extract individual pinyins
 cat $dict_dir/cedict/ch-dict-1.txt |\
   awk '{for(i=2; i<=NF; i++) print $i}' |\
-  sed -e 's/ /\n/g' > $dict_dir/lexicon-ch/ch-char-pinyin.txt || exit 1;
+  perl -ape 's/ /\n/g;' > $dict_dir/lexicon-ch/ch-char-pinyin.txt || exit 1;
 
 # first make sure number of characters and pinyins
 # are equal, so that a char-based dictionary can

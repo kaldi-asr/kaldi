@@ -170,7 +170,8 @@ void OnlinePreconditionerSimple::PreconditionDirectionsCpu(
   Z_t.Eig(&c_t, &U_t);
   SortSvd(&c_t, &U_t);
   double c_t_floor = pow(rho_t_ * (1.0 - eta), 2);
-  int32 nf = c_t.ApplyFloor(c_t_floor);
+  int32 nf;
+  c_t.ApplyFloor(c_t_floor, &nf);
   if (nf > 0) {
     KALDI_WARN << "Floored " << nf << " elements of c_t.";
   }
@@ -198,7 +199,7 @@ void OnlinePreconditionerSimple::PreconditionDirectionsCpu(
     KALDI_WARN << "flooring rho_{t+1} to " << floor_val << ", was " << rho_t1;
     rho_t1 = floor_val;
   }
-  nf = d_t1.ApplyFloor(floor_val);
+  d_t1.ApplyFloor(floor_val, &nf);
   if (nf > 0) {
     KALDI_VLOG(3) << "d_t1 was " << d_t1;
     KALDI_WARN << "Floored " << nf << " elements of d_{t+1}.";

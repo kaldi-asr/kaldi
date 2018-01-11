@@ -11,12 +11,12 @@ in_dir=$1
 data_dir=$2
 use_vocals='Y'
 
-rm -rf local/musan.tmp
-mkdir local/musan.tmp
+mkdir -p local/musan.tmp
 
 echo "Preparing ${data_dir}/musan..."
 mkdir -p ${data_dir}/musan
 local/make_musan.py ${in_dir} ${data_dir}/musan ${use_vocals}
+
 utils/fix_data_dir.sh ${data_dir}/musan
 
 grep "music" ${data_dir}/musan/utt2spk > local/musan.tmp/utt2spk_music

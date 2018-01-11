@@ -10,7 +10,7 @@
 
 # for example /mnt/matylda2/data/SWITCHBOARD_1R2
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 [ $# != 0 ] && echo "Usage: local/swbd_p1_prepare_dict.sh" && exit 1;

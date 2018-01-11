@@ -147,7 +147,7 @@ min_segment_length=8 # min length in seconds, for combining data.
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

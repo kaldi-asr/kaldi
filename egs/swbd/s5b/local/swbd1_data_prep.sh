@@ -17,7 +17,7 @@
 ## will be using "find" to locate this file so we don't make any assumptions
 ## on the directory structure. (Peng Qi, Aug 2014)
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 if [ $# != 1 -a $# != 2 ]; then

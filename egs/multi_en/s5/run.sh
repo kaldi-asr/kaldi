@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2016  Allen Guo
+#           2017  Xiaohui Zhang
 # Apache 2.0
 
 . ./cmd.sh
@@ -16,6 +17,7 @@ wsj0=
 wsj1=
 eval2000=
 rt03=
+
 
 # check for kaldi_lm
 which get_word_map.pl > /dev/null
@@ -36,11 +38,13 @@ case $(hostname -d) in
     wsj1=/export/corpora5/LDC/LDC94S13B
     eval2000="/export/corpora/LDC/LDC2002S09/hub5e_00 /export/corpora/LDC/LDC2002T43"
     rt03="/export/corpora/LDC/LDC2007S10"
+    hub4_en="/export/corpora/LDC/LDC97S44 /export/corpora/LDC/LDC97T22"
     ;;
 esac
 
 # general options
 stage=1
+cleanup_stage=1
 multi=multi_a  # This defines the "variant" we're using; see README.md
 srilm_opts="-subset -prune-lowprobs -unk -tolower -order 3"
 
@@ -49,10 +53,6 @@ srilm_opts="-subset -prune-lowprobs -unk -tolower -order 3"
 # prepare corpora data
 if [ $stage -le 1 ]; then
   mkdir -p data/local
-  # ami
-  local/ami_text_prep.sh data/local/ami/downloads
-  local/ami_ihm_data_prep.sh $ami
-  local/ami_sdm_data_prep.sh $ami 1
   # fisher
   local/fisher_data_prep.sh $fisher
   utils/fix_data_dir.sh data/fisher/train
@@ -72,6 +72,10 @@ if [ $stage -le 1 ]; then
   local/wsj_format_data.sh
   utils/copy_data_dir.sh --spk_prefix wsj_ --utt_prefix wsj_ data/wsj/train_si284 data/wsj/train
   rm -rf data/wsj/train_si284
+  # hub4_en
+  local/hub4_data_prep.py --noise-word="[NOISE]" \
+    --spoken-noise-word="[VOCALIZED-NOISE]" \
+    $hub4_en data/hub4_en/train
 fi
 
 # prepare standalone eval data
@@ -85,9 +89,8 @@ if [ $stage -le 2 ]; then
   utils/fix_data_dir.sh data/rt03/test
 fi
 
-# prepare initial CMUDict-based dict directory and normalize transcripts
+# Normalize transcripts
 if [ $stage -le 3 ]; then
-  local/prepare_dict.sh $tedlium2
   for f in data/*/{train,test}/text; do
     echo Normalizing $f
     cp $f $f.orig
@@ -95,19 +98,28 @@ if [ $stage -le 3 ]; then
   done
 fi
 
-# train G2P model using existing lexicon
-# then synthesize pronounciations for all words (that do not include special characters)
-# across all training transcripts that are not in the existing lexicon
+# Prepare the dictionary and train G2P model using the combined (CMUDict+Tedlium+swbd) lexicon
+# in data/local/dict_combined, and then synthesize pronounciations for all OOV words 
+# across all training transcripts.
 if [ $stage -le 4 ]; then
-  # will skip training if fifth-order model file already exists
-  local/g2p/train_g2p.sh data/local/dict_nosp/lexicon2.txt data/local/g2p_model
-  local/g2p/apply_g2p.sh data/local/g2p_model/model-5 data/local/g2p_tmp data/local/dict_nosp/lexicon.txt
+  # We prepare the dictionary in data/local/dict_combined.
+  local/prepare_dict.sh $swbd $tedlium2
+  local/g2p/train_g2p.sh --stage 0 --silence-phones "data/local/dict_combined/silence_phones.txt" data/local/dict_combined exp/g2p
+  dict_dir=data/local/dict_nosp
+  mkdir -p $dict_dir
+  cp data/local/dict_combined/{extra_questions,nonsilence_phones,silence_phones,optional_silence}.txt $dict_dir
+  local/g2p/apply_g2p.sh --var-counts 1 exp/g2p/model.fst data/local/g2p_phonetisarus data/local/dict_combined/lexicon.txt $dict_dir/lexicon.txt
 fi
+
+# We'll do multiple iterations of pron/sil-prob estimation. So the structure of
+# the dict/lang dirs are designed as ${dict/lang_root}_${dict_affix}, where dict_affix
+# is "nosp" or the name of the acoustic model we use to estimate pron/sil-probs.
+dict_root=data/local/dict
+lang_root=data/lang
 
 # prepare (and validate) lang directory
 if [ $stage -le 5 ]; then
-  rm -f data/local/dict_nosp/lexiconp.txt  # will be created
-  utils/prepare_lang.sh data/local/dict_nosp "<unk>" data/local/tmp/lang_nosp data/lang_nosp
+  utils/prepare_lang.sh ${dict_root}_nosp "<unk>" data/local/tmp/lang_nosp ${lang_root}_nosp
 fi
 
 # prepare LM and test lang directory
@@ -116,14 +128,14 @@ if [ $stage -le 6 ]; then
   cat data/{fisher,swbd}/train/text > data/local/lm/text
   local/train_lms.sh  # creates data/local/lm/3gram-mincount/lm_unpruned.gz
   utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
-    data/lang_nosp data/local/lm/3gram-mincount/lm_unpruned.gz \
-    data/local/dict_nosp/lexicon.txt data/lang_nosp_fsh_sw1_tg
+    ${lang_root}_nosp data/local/lm/3gram-mincount/lm_unpruned.gz \
+    ${dict_root}_nosp/lexicon.txt ${lang_root}_nosp_fsh_sw1_tg
 fi
 
 # make training features
 if [ $stage -le 7 ]; then
   mfccdir=mfcc
-  corpora="ami_ihm ami_sdm1 fisher librispeech_100 librispeech_360 librispeech_500 swbd tedlium wsj"
+  corpora="hub4_en fisher librispeech_100 librispeech_360 librispeech_500 swbd tedlium wsj"
   for c in $corpora; do
     data=data/$c/train
     steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
@@ -136,19 +148,6 @@ fi
 
 # fix and validate training data directories
 if [ $stage -le 8 ]; then
-  # create segments file for wsj
-  awk '{print $1, $1, 0, -1}' data/wsj/train/utt2spk > data/wsj/train/segments
-  for f in `awk '{print $5}' data/wsj/train/wav.scp`; do
-    head -c 1024 $f | grep sample_count | awk '{print $3/16000}'
-  done > wsj_durations
-  paste -d' ' <(cut -d' ' -f1-3 data/wsj/train/segments) wsj_durations > wsj_segments
-  mv data/wsj/train/segments{,.bkp}
-  mv wsj_segments data/wsj/train/segments
-  rm -f wsj_segments wsj_durations
-  # create segments files for librispeech
-  for c in librispeech_100 librispeech_360 librispeech_500; do
-    awk '{print $1, $1, 0, $2}' data/$c/train/utt2dur > data/$c/train/segments;
-  done
   # get rid of spk2gender files because not all corpora have them
   rm -f data/*/train/spk2gender
   # create reco2channel_and_file files for wsj and librispeech
@@ -184,101 +183,268 @@ if [ $stage -le 10 ]; then
   done
 fi
 
-# train mono (monophone system)
+# train mono on swbd 10k short (nodup)
 if [ $stage -le 11 ]; then
-  local/make_partitions.sh --multi $multi --stage 1 || exit 1;
-  steps/train_mono.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
-    data/$multi/mono data/lang_nosp exp/$multi/mono || exit 1;
+ local/make_partitions.sh --multi $multi --stage 1 || exit 1;
+ steps/train_mono.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
+   data/$multi/mono ${lang_root}_nosp exp/$multi/mono || exit 1;
 fi
 
-# train tri1 (first triphone pass)
+# train tri1a and tri1b (first and second triphone passes) on swbd 30k (nodup)
 if [ $stage -le 12 ]; then
   local/make_partitions.sh --multi $multi --stage 2 || exit 1;
   steps/align_si.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
-    data/$multi/mono_ali data/lang_nosp exp/$multi/mono exp/$multi/mono_ali || exit 1;
-  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 2000 10000 \
-    data/$multi/tri1 data/lang_nosp exp/$multi/mono_ali exp/$multi/tri1 || exit 1;
-fi
+    data/$multi/mono_ali ${lang_root}_nosp exp/$multi/mono exp/$multi/mono_ali || exit 1;
+  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 3200 30000 \
+    data/$multi/tri1a ${lang_root}_nosp exp/$multi/mono_ali exp/$multi/tri1a || exit 1;
 
-# train tri2 (LDA+MLLT)
-if [ $stage -le 13 ]; then
-  local/make_partitions.sh --multi $multi --stage 3 || exit 1;
   steps/align_si.sh --boost-silence 1.25 --nj 20 --cmd "$train_cmd" \
-    data/$multi/tri1_ali data/lang_nosp exp/$multi/tri1 exp/$multi/tri1_ali || exit 1;
-  steps/train_lda_mllt.sh --cmd "$train_cmd" \
-    --splice-opts "--left-context=3 --right-context=3" 3500 30000 \
-    data/$multi/tri2 data/lang_nosp exp/$multi/tri1_ali exp/$multi/tri2 || exit 1;
+    data/$multi/tri1a_ali ${lang_root}_nosp exp/$multi/tri1a exp/$multi/tri1a_ali || exit 1;
+  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 3200 30000 \
+    data/$multi/tri1b ${lang_root}_nosp exp/$multi/tri1a_ali exp/$multi/tri1b || exit 1;
+  # decode
+  (  
+    gmm=tri1b
+    graph_dir=exp/$multi/$gmm/graph_tg
+    utils/mkgraph.sh ${lang_root}_nosp_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_$e || exit 1;
+    done
+  )&
 fi
 
-# train tri3 (LDA+MLLT on more data)
+# train tri2 (third triphone pass) on swbd 100k (nodup)
+if [ $stage -le 13 ]; then
+ local/make_partitions.sh --multi $multi --stage 3 || exit 1;
+ steps/align_si.sh --boost-silence 1.25 --nj 50 --cmd "$train_cmd" \
+   data/$multi/tri1b_ali ${lang_root}_nosp exp/$multi/tri1b exp/$multi/tri1b_ali || exit 1;
+ steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 5500 90000 \
+   data/$multi/tri2 ${lang_root}_nosp exp/$multi/tri1b_ali exp/$multi/tri2 || exit 1;
+fi
+
+# train tri3a (4th triphone pass) on whole swbd
 if [ $stage -le 14 ]; then
   local/make_partitions.sh --multi $multi --stage 4 || exit 1;
-  steps/align_si.sh --cmd "$train_cmd" --nj 30 \
-    data/$multi/tri2_ali data/lang_nosp \
-    exp/$multi/tri2 exp/$multi/tri2_ali  || exit 1;
-  steps/train_lda_mllt.sh --cmd "$train_cmd" 8000 200000 \
-    data/$multi/tri3 data/lang_nosp exp/$multi/tri2_ali exp/$multi/tri3 || exit 1;
+  steps/align_si.sh --boost-silence 1.25 --nj 100 --cmd "$train_cmd" \
+    data/$multi/tri2_ali ${lang_root}_nosp exp/$multi/tri2 exp/$multi/tri2_ali || exit 1;
+  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" 11500 200000 \
+    data/$multi/tri3a ${lang_root}_nosp exp/$multi/tri2_ali exp/$multi/tri3a || exit 1;
+  # decode
+  (  
+    gmm=tri3a
+    graph_dir=exp/$multi/$gmm/graph_tg
+    utils/mkgraph.sh ${lang_root}_nosp_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_$e || exit 1;
+    done
+  )&
 fi
 
-# reestimate LM with silprobs
+# train tri3b (LDA+MLLT) on whole fisher + swbd (nodup)
 if [ $stage -le 15 ]; then
-  steps/get_prons.sh --cmd "$train_cmd" data/$multi/tri3 data/lang_nosp exp/$multi/tri3
-  utils/dict_dir_add_pronprobs.sh --max-normalize true \
-    data/local/dict_nosp exp/$multi/tri3/pron_counts_nowb.txt \
-    exp/$multi/tri3/sil_counts_nowb.txt exp/$multi/tri3/pron_bigram_counts_nowb.txt data/local/dict
-  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
-  utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
-    data/lang data/local/lm/3gram-mincount/lm_unpruned.gz \
-    data/local/dict/lexicon.txt data/lang_fsh_sw1_tg
-fi
-
-# train tri4 (SAT on almost all data)
-if [ $stage -le 16 ]; then
   local/make_partitions.sh --multi $multi --stage 5 || exit 1;
-  steps/align_fmllr.sh --cmd "$train_cmd" --nj 60 \
-    data/$multi/tri3_ali data/lang \
-    exp/$multi/tri3 exp/$multi/tri3_ali || exit 1;
-  steps/train_sat.sh --cmd "$train_cmd" 11500 800000 \
-    data/$multi/tri4 data/lang exp/$multi/tri3_ali exp/$multi/tri4 || exit 1;
+  steps/align_si.sh --boost-silence 1.25 --nj 100 --cmd "$train_cmd" \
+    data/$multi/tri3a_ali ${lang_root}_nosp exp/$multi/tri3a exp/$multi/tri3a_ali || exit 1;
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
+    --splice-opts "--left-context=3 --right-context=3" 11500 400000 \
+    data/$multi/tri3b ${lang_root}_nosp exp/$multi/tri3a_ali exp/$multi/tri3b || exit 1;
+  # decode
+  (  
+    gmm=tri3b
+    graph_dir=exp/$multi/$gmm/graph_tg
+    utils/mkgraph.sh ${lang_root}_nosp_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_$e || exit 1;
+    done
+  )&
 fi
 
-# decode
+# reestimate pron & sil-probs
+dict_affix=${multi}_tri3b
+if [ $stage -le 16 ]; then
+  gmm=tri3b
+  steps/get_prons.sh --cmd "$train_cmd" data/$multi/$gmm ${lang_root}_nosp exp/$multi/$gmm
+  utils/dict_dir_add_pronprobs.sh --max-normalize true \
+    ${dict_root}_nosp exp/$multi/$gmm/pron_counts_nowb.txt \
+    exp/$multi/$gmm/sil_counts_nowb.txt exp/$multi/$gmm/pron_bigram_counts_nowb.txt ${dict_root}_${dict_affix}
+  utils/prepare_lang.sh ${dict_root}_${dict_affix} "<unk>" data/local/lang_${dict_affix} ${lang_root}_${dict_affix}
+  utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
+    ${lang_root}_${dict_affix} data/local/lm/3gram-mincount/lm_unpruned.gz \
+    ${dict_root}_${dict_affix}/lexicon.txt ${lang_root}_${dict_affix}_fsh_sw1_tg
+  # decode
+  (  
+    gmm=tri3b
+    graph_dir=exp/$multi/$gmm/graph_tg_sp
+    utils/mkgraph.sh ${lang_root}_${dict_affix}_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_sp_$e || exit 1;
+    done
+  )&
+fi
+
+lang=${lang_root}_${dict_affix}
 if [ $stage -le 17 ]; then
-  graph_dir=exp/$multi/tri4/graph_tg
-  utils/mkgraph.sh data/lang_fsh_sw1_tg \
-    exp/$multi/tri4 $graph_dir || exit 1;
-  for e in eval2000 rt03 librispeech; do
-    steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
-      data/$e/test exp/$multi/tri4/decode_tg_$e || exit 1;
-  done
+  # This does the actual data cleanup.
+  steps/cleanup/clean_and_segment_data.sh --stage $cleanup_stage --nj 100 --cmd "$train_cmd" \
+  data/tedlium/train $lang exp/$multi/tri3b exp/$multi/tri3b_tedlium_cleaning_work data/$multi/tedlium_cleaned/train
 fi
 
-# train tri5 (SAT on all data but ami_sdm)
+# train tri4 on fisher + swbd + tedlium (nodup)
 if [ $stage -le 18 ]; then
   local/make_partitions.sh --multi $multi --stage 6 || exit 1;
   steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \
-    data/$multi/tri4_ali data/lang \
-    exp/$multi/tri4 exp/$multi/tri4_ali || exit 1;
-  steps/train_sat.sh --cmd "$train_cmd" 11500 2000000 \
-    data/$multi/tri5 data/lang exp/$multi/tri4_ali exp/$multi/tri5 || exit 1;
+    data/$multi/tri3b_ali $lang \
+    exp/$multi/tri3b exp/$multi/tri3b_ali || exit 1;
+  steps/train_sat.sh --cmd "$train_cmd" 11500 800000 \
+    data/$multi/tri4 $lang exp/$multi/tri3b_ali exp/$multi/tri4 || exit 1;
+  (  
+    gmm=tri4
+    graph_dir=exp/$multi/$gmm/graph_tg
+    utils/mkgraph.sh ${lang}_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_$e || exit 1;
+    done
+  )&
 fi
 
-# decode
+# train tri5a on fisher + swbd + tedlium + wsj + hub4_en (nodup)
 if [ $stage -le 19 ]; then
-  graph_dir=exp/$multi/tri5/graph_tg
-  utils/mkgraph.sh data/lang_fsh_sw1_tg \
-    exp/$multi/tri5 $graph_dir || exit 1;
-  for e in eval2000 rt03 librispeech; do
-    steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
-      data/$e/test exp/$multi/tri5/decode_tg_$e || exit 1;
-  done
-fi
-
-# train tdnn
-if [ $stage -le 20 ]; then
   local/make_partitions.sh --multi $multi --stage 7 || exit 1;
   steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \
-    data/$multi/tri5_ali data/lang \
-    exp/$multi/tri5 exp/$multi/tri5_ali || exit 1;
-  local/nnet3/run_tdnn.sh --multi $multi
+    data/$multi/tri4_ali $lang \
+    exp/$multi/tri4 exp/$multi/tri4_ali || exit 1;
+  steps/train_sat.sh --cmd "$train_cmd" 11500 1600000 \
+    data/$multi/tri5a $lang exp/$multi/tri4_ali exp/$multi/tri5a || exit 1;
+  (  
+    gmm=tri5a
+    graph_dir=exp/$multi/$gmm/graph_tg
+    utils/mkgraph.sh ${lang}_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_$e || exit 1;
+    done
+  )&
+fi
+
+# reestimate pron & sil-probs
+dict_affix=${multi}_tri5a
+if [ $stage -le 20 ]; then
+  gmm=tri5a
+  steps/get_prons.sh --cmd "$train_cmd" data/$multi/$gmm ${lang_root}_nosp exp/$multi/$gmm
+  utils/dict_dir_add_pronprobs.sh --max-normalize true \
+    ${dict_root}_nosp exp/$multi/$gmm/pron_counts_nowb.txt \
+    exp/$multi/$gmm/sil_counts_nowb.txt exp/$multi/$gmm/pron_bigram_counts_nowb.txt ${dict_root}_${dict_affix}
+  utils/prepare_lang.sh ${dict_root}_${dict_affix} "<unk>" data/local/lang_${dict_affix} ${lang_root}_${dict_affix}
+  utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
+    ${lang_root}_${dict_affix} data/local/lm/3gram-mincount/lm_unpruned.gz \
+    ${dict_root}_${dict_affix}/lexicon.txt ${lang_root}_${dict_affix}_fsh_sw1_tg
+  # re-decode after re-estimating sil & pron-probs
+  (  
+    gmm=tri5a
+    graph_dir=exp/$multi/$gmm/graph_tg_sp
+    utils/mkgraph.sh ${lang_root}_${dict_affix}_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_sp_$e || exit 1;
+    done
+  )&
+fi
+
+lang=${lang_root}_${dict_affix}
+# train tri5b on fisher + swbd + tedlium + wsj + hub4_en + librispeeh460 (nodup)
+if [ $stage -le 21 ]; then
+  local/make_partitions.sh --multi $multi --stage 8 || exit 1;
+  steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \
+    data/$multi/tri5a_ali $lang \
+    exp/$multi/tri5a exp/$multi/tri5a_ali || exit 1;
+  steps/train_sat.sh --cmd "$train_cmd" 11500 2000000 \
+    data/$multi/tri5b $lang exp/$multi/tri5a_ali exp/$multi/tri5b || exit 1;
+  (  
+    gmm=tri5b
+    graph_dir=exp/$multi/$gmm/graph_tg
+    utils/mkgraph.sh ${lang}_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_$e || exit 1;
+    done
+  )&
+fi
+
+# train tri6a on fisher + swbd + tedlium + wsj + hub4_en + librispeeh960 (nodup)
+if [ $stage -le 22 ]; then
+  local/make_partitions.sh --multi $multi --stage 9 || exit 1;
+  steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \
+    data/$multi/tri5b_ali $lang \
+    exp/$multi/tri5b exp/$multi/tri5b_ali || exit 1;
+
+  steps/train_sat.sh --cmd "$train_cmd" 14000 2400000 \
+    data/$multi/tri6a $lang exp/$multi/tri5b_ali exp/$multi/tri6a || exit 1;
+  (  
+    gmm=tri6a
+    graph_dir=exp/$multi/$gmm/graph_tg
+    utils/mkgraph.sh ${lang}_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_$e || exit 1;
+    done
+  )&
+fi
+
+# reestimate LM with silprobs
+dict_affix=${multi}_tri6a
+if [ $stage -le 23 ]; then
+  gmm=tri6a
+  steps/get_prons.sh --cmd "$train_cmd" data/$multi/$gmm ${lang_root}_nosp exp/$multi/$gmm
+  utils/dict_dir_add_pronprobs.sh --max-normalize true \
+    ${dict_root}_nosp exp/$multi/$gmm/pron_counts_nowb.txt \
+    exp/$multi/$gmm/sil_counts_nowb.txt exp/$multi/$gmm/pron_bigram_counts_nowb.txt ${dict_root}_${dict_affix}
+  utils/prepare_lang.sh ${dict_root}_${dict_affix} "<unk>" data/local/lang_${dict_affix} ${lang_root}_${dict_affix}
+  utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
+    ${lang_root}_${dict_affix} data/local/lm/3gram-mincount/lm_unpruned.gz \
+    ${dict_root}_${dict_affix}/lexicon.txt ${lang_root}_${dict_affix}_fsh_sw1_tg
+  # re-decode after re-estimating sil & pron-probs
+  (  
+    gmm=tri6a
+    graph_dir=exp/$multi/$gmm/graph_tg_sp
+    utils/mkgraph.sh ${lang_root}_${dict_affix}_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_sp_$e || exit 1;
+    done
+  )&
+fi
+
+# Re-train with the updated lexicon using the same data.
+lang=${lang_root}_${dict_affix}
+if [ $stage -le 24 ]; then
+  steps/align_fmllr.sh --cmd "$train_cmd" --nj 100 \
+    data/$multi/tri6a_ali $lang \
+    exp/$multi/tri6a exp/$multi/tri6a_ali || exit 1;
+  steps/train_sat.sh --cmd "$train_cmd" 14000 2400000 \
+    data/$multi/tri6b $lang exp/$multi/tri6a_ali exp/$multi/tri6b || exit 1;
+  (  
+    gmm=tri6b
+    graph_dir=exp/$multi/$gmm/graph_tg
+    utils/mkgraph.sh ${lang}_fsh_sw1_tg \
+      exp/$multi/$gmm $graph_dir || exit 1;
+    for e in eval2000 rt03; do
+      steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config $graph_dir \
+        data/$e/test exp/$multi/$gmm/decode_tg_$e || exit 1;
+    done
+  )&
 fi

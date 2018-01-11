@@ -65,7 +65,7 @@ class DistributeComponent: public Component {
   // use the default Info() function.
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "DistributeComponent"; }
-  virtual int32 Properties() const { return kLinearInInput; }
+  virtual int32 Properties() const { return 0; }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
@@ -281,7 +281,7 @@ class StatisticsExtractionComponentPrecomputedIndexes:
   // element is a (start, end) range of inputs, that is summed over.
   CuArray<Int32Pair> forward_indexes;
 
-  // this vector stores the number of inputs for each output.  Normally this will be
+  // This vector stores the number of inputs for each output.  Normally this will be
   // the same as the component's output_period_ / input_period_, but could be less
   // due to edge effects at the utterance boundary.
   CuVector<BaseFloat> counts;
@@ -475,7 +475,7 @@ class BackpropTruncationComponent: public Component {
   virtual std::string Type() const { return "BackpropTruncationComponent"; }
 
   virtual int32 Properties() const {
-    return kLinearInInput|kPropagateInPlace|kBackpropInPlace;
+    return kPropagateInPlace|kBackpropInPlace;
   }
 
   virtual void ZeroStats();
@@ -587,12 +587,31 @@ class BackpropTruncationComponentPrecomputedIndexes:
 };
 
 
-// ConstantComponent returns a constant value for all requested
-// indexes, and it has no dependencies on any input.
-// It's like a ConstantFunctionComponent, but done the "right"
-// way without requiring an unnecessary input.
-// It is optionally trainable, and optionally you can use natural
-// gradient.
+/*
+   ConstantComponent returns a constant value for all requested
+   indexes, and it has no dependencies on any input.
+   It's like a ConstantFunctionComponent, but done the "right"
+   way without requiring an unnecessary input.
+   It is optionally trainable, and optionally you can use natural
+   gradient.
+
+   Configuration values accepted by this component, with defaults if
+   applicable:
+
+      output-dim              Dimension that this component outputs.
+      is-updatable=true       True if you want this to be updatable.
+      use-natural-gradient=true  True if you want the update to use natural gradient.
+      output-mean=0.0         Mean of the parameters at initialization (the parameters
+                              are what it outputs).
+      output-stddev=0.0       Standard deviation of the parameters at initialization.
+
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
+*/
 class ConstantComponent: public UpdatableComponent {
  public:
   // actually this component requires no inputs; this value
@@ -615,7 +634,7 @@ class ConstantComponent: public UpdatableComponent {
   virtual std::string Type() const { return "ConstantComponent"; }
   virtual int32 Properties() const {
     return
-        (is_updatable_ ? kUpdatableComponent|kLinearInParameters : 0);
+        (is_updatable_ ? kUpdatableComponent : 0);
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
