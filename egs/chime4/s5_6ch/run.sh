@@ -26,9 +26,9 @@ stage=0 # resume training with --stage N
 
 baseline=advanced
 flatstart=false
-tdnn=true
+tdnn=false
 tdnn_lstm=false
-run_lstm_rescore=false
+run_lstm_rescore=true
 
 . utils/parse_options.sh || exit 1;
 
@@ -159,7 +159,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ] && $run_lstm_rescore; then
-  local/rnnlm/tuning/run_lstm_1a.sh $enhancement_method
+  local/rnnlm/run_lstm.sh $enhancement_method
 fi
 
 echo "Done."
