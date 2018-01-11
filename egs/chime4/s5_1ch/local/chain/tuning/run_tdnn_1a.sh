@@ -55,7 +55,7 @@ chunk_right_context=0
 
 # training options
 srand=0
-remove_egs=false
+remove_egs=true
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
