@@ -48,6 +48,7 @@ if [ $# -ne 2 ]; then
   printf "\nUSAGE: %s <enhancement method> <model dir>\n\n" `basename $0`
   echo "First argument specifies a unique name for different enhancement method"
   echo "Second argument specifies acoustic and language model directory"
+  echo "e.g. local/chain/run_tdnn_lstm_recog.sh beamformit_5mics kaldi/egs/chime4/s5_6ch"
   exit 1;
 fi
 
