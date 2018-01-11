@@ -31,8 +31,8 @@ nj=100
 decode_nj=16
 decode_num_threads=4
 
-. ./path.sh
 . ./cmd.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . utils/parse_options.sh
 
 cleaned_data=${data}_${cleanup_affix}

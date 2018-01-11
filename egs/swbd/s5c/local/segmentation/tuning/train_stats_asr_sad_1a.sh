@@ -9,7 +9,7 @@
 set -o pipefail
 set -u
 
-. cmd.sh
+. ./cmd.sh
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
@@ -49,8 +49,7 @@ affix=1a2
 data_dir=exp/segmentation_1a/train_whole_hires_bp
 targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
 
-. cmd.sh
-. ./path.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 if [ -z "$dir" ]; then

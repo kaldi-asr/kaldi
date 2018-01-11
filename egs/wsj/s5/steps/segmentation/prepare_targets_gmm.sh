@@ -1,6 +1,7 @@
 #! /bin/bash
 
 # Copyright 2017  Vimal Manohar
+#           2017  Nagendra Kumar Goel
 # Apache 2.0
   
 # This script prepares targets for training neural network for 

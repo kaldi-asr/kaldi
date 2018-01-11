@@ -4,9 +4,8 @@
 #            2017  Vimal Manohar
 # Apache 2.0
 
-# We assume the run-1-main.sh (because we are using model directories like
-# exp/tri4) and later we assumme run-4-anydecode.sh was run to prepare
-# data/dev10h.pem
+# We assume the run.sh has been executed (because we are using model
+# directories like exp/tri4)
 
 lang=data/lang   # Must match the one used to train the models
 lang_test=data/lang_nosp_sw1_tg  # Lang directory for decoding.
@@ -42,8 +41,8 @@ affix=_1a
 stage=-1
 nj=80
 
-. path.sh
-. cmd.sh 
+. ./cmd.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 
 set -e -u -o pipefail
 . utils/parse_options.sh 
