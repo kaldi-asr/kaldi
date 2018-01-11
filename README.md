@@ -2,9 +2,12 @@
 cASeR
 =====
 
-ASR cases for speech handbook at CSLT-THU, based on Kaldi toolkit.
-Most cases conducted on THCHS30, in egs/cslt_cases.
+ASR cases for speech handbook at CSLT-THU, based on Kaldi toolkit and Thchs30 database, in egs/cslt_cases.  
+@ Center for Speech and Language Technologies, Tsinghua University.
 
+Below is the introduction of Kaldi from its github repository. You may follow that to install Kaldi in this branch. 
+
+<br/>
 
 Kaldi speech recognition toolkit
 --------------------------------
