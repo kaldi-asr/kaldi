@@ -1,0 +1,27 @@
+%WER 75.78 [ 6983 / 9215, 1377 ins, 507 del, 5099 sub ] exp/tri3b/decode_nonnative.si/wer_17_1.0
+%WER 74.25 [ 5680 / 7650, 1187 ins, 431 del, 4062 sub ] exp/tri3b/decode_devtest.si/wer_16_1.0
+%WER 73.85 [ 6805 / 9215, 517 ins, 1653 del, 4635 sub ] exp/chain/tdnn1c_sp/decode_nonnative/wer_7_1.0
+%WER 73.76 [ 12328 / 16713, 2541 ins, 804 del, 8983 sub ] exp/tri3b/decode_test.si/wer_17_1.0
+%WER 73.20 [ 6745 / 9215, 518 ins, 1566 del, 4661 sub ] exp/chain/tdnn1c_sp_online/decode_nonnative/wer_7_1.0
+%WER 71.86 [ 5497 / 7650, 530 ins, 959 del, 4008 sub ] exp/mono/decode_devtest/wer_7_1.0
+%WER 71.64 [ 6602 / 9215, 646 ins, 939 del, 5017 sub ] exp/mono/decode_nonnative/wer_7_1.0
+%WER 71.26 [ 5343 / 7498, 1159 ins, 293 del, 3891 sub ] exp/tri3b/decode_native.si/wer_17_1.0
+%WER 69.84 [ 11673 / 16713, 986 ins, 2523 del, 8164 sub ] exp/chain/tdnn1c_sp/decode_test/wer_7_1.0
+%WER 69.59 [ 11630 / 16713, 1153 ins, 1643 del, 8834 sub ] exp/mono/decode_test/wer_7_1.0
+%WER 69.10 [ 11548 / 16713, 976 ins, 2402 del, 8170 sub ] exp/chain/tdnn1c_sp_online/decode_test/wer_7_1.0
+%WER 67.09 [ 6182 / 9215, 907 ins, 626 del, 4649 sub ] exp/tri1/decode_nonnative/wer_14_1.0
+%WER 66.98 [ 5022 / 7498, 503 ins, 700 del, 3819 sub ] exp/mono/decode_native/wer_7_1.0
+%WER 66.78 [ 6154 / 9215, 1048 ins, 537 del, 4569 sub ] exp/tri2b/decode_nonnative/wer_15_1.0
+%WER 66.64 [ 6141 / 9215, 1226 ins, 425 del, 4490 sub ] exp/tri3b/decode_nonnative/wer_16_1.0
+%WER 66.33 [ 5074 / 7650, 921 ins, 481 del, 3672 sub ] exp/tri1/decode_devtest/wer_11_1.0
+%WER 66.30 [ 5072 / 7650, 1198 ins, 328 del, 3546 sub ] exp/tri3b/decode_devtest/wer_11_1.0
+%WER 65.88 [ 5040 / 7650, 985 ins, 450 del, 3605 sub ] exp/tri2b/decode_devtest/wer_13_1.0
+%WER 65.05 [ 10872 / 16713, 1725 ins, 959 del, 8188 sub ] exp/tri1/decode_test/wer_13_1.0
+%WER 64.76 [ 4856 / 7498, 461 ins, 862 del, 3533 sub ] exp/chain/tdnn1c_sp/decode_native/wer_7_1.0
+%WER 64.45 [ 10772 / 16713, 2261 ins, 698 del, 7813 sub ] exp/tri3b/decode_test/wer_16_1.0
+%WER 64.33 [ 10751 / 16713, 1955 ins, 845 del, 7951 sub ] exp/tri2b/decode_test/wer_14_1.0
+%WER 64.03 [ 4801 / 7498, 463 ins, 825 del, 3513 sub ] exp/chain/tdnn1c_sp_online/decode_native/wer_7_1.0
+%WER 62.54 [ 4689 / 7498, 781 ins, 379 del, 3529 sub ] exp/tri1/decode_native/wer_13_1.0
+%WER 61.66 [ 4623 / 7498, 1038 ins, 267 del, 3318 sub ] exp/tri3b/decode_native/wer_15_1.0
+%WER 61.28 [ 4595 / 7498, 899 ins, 309 del, 3387 sub ] exp/tri2b/decode_native/wer_13_1.0
+john@A-TEAM19054:~/work/kaldi/egs/heroico/s5$ 
