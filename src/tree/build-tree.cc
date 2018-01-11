@@ -219,7 +219,6 @@ EventMap *BuildTree(Questions &qopts,
     if (round_num_leaves) {
       // Round the number of leaves to a multiple of 8 by clustering the leaves
       // and merging them within each cluster.
-      // The final number of leaves will be 'num_leaves_required'.
       int32 num_leaves_required = ((num_leaves - num_removed) / 8) * 8;
       std::vector<EventMap*> leaf_mapping;
 
@@ -228,6 +227,10 @@ EventMap *BuildTree(Questions &qopts,
           *tree_clustered, stats, num_leaves_required, *tree_stub,
           &num_removed_in_rounding);
 
+      if (num_removed_in_rounding > 0)
+        KALDI_LOG <<  "BuildTree: Rounded num leaves to multiple of 8 by"
+                  << " removing " << num_removed_in_rounding << " leaves.";
+
       if (num_leaves - num_removed - num_removed_in_rounding !=
           num_leaves_required) {
         KALDI_WARN << "Did not get expected number of leaves: "
@@ -235,9 +238,6 @@ EventMap *BuildTree(Questions &qopts,
                    << num_removed_in_rounding
                    << " != " << num_leaves_required;
       }
-
-      KALDI_LOG <<  "BuildTree: Rounded num leaves to multiple of 8 by"
-                << " removing " << num_removed_in_rounding << " leaves.";
 
       tree_renumbered = RenumberEventMap(*tree_rounded, &num_leaves_out);
 
@@ -280,8 +280,9 @@ EventMap *BuildTree(Questions &qopts,
           *tree_split, stats, num_leaves_required, *tree_stub,
           &num_removed_in_rounding);
 
-      KALDI_LOG <<  "BuildTree: Rounded num leaves to multiple of 8 by"
-                << " removing " << num_removed_in_rounding << " leaves.";
+      if (num_removed_in_rounding > 0)
+        KALDI_LOG <<  "BuildTree: Rounded num leaves to multiple of 8 by"
+                  << " removing " << num_removed_in_rounding << " leaves.";
 
       KALDI_ASSERT(num_removed_in_rounding < 8);
 
