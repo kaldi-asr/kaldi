@@ -471,6 +471,8 @@ class XconfigOutputLayer(XconfigLayerBase):
         self.config = {'input': '[-1]',
                        'dim': -1,
                        'bottleneck-dim': -1,
+                       'orthonormal-constraint': 1.0,
+                            # orthonormal-constraint only matters if bottleneck-dim is set.
                        'include-log-softmax': True,
                             # this would be false for chain models
                        'objective-type': 'linear',
@@ -582,9 +584,11 @@ class XconfigOutputLayer(XconfigLayerBase):
 
             # note: by default the LinearComponent uses natural gradient.
             line = ('component name={0}.linear type=LinearComponent '
-                    'orthonormal-constraint=1.0 input-dim={1} output-dim={2} '
-                    'max-change=0.75 {3}'
-                    ''.format(self.name, input_dim, bottleneck_dim, linear_options))
+                    'orthonormal-constraint={1} param-stddev={2} '
+                    'input-dim={3} output-dim={4} max-change=0.75 {5}'
+                    ''.format(self.name, self.config['orthonormal-constraint'],
+                              self.config['orthonormal-constraint'] / math.sqrt(input_dim),
+                              input_dim, bottleneck_dim, linear_options))
             configs.append(line)
             line = ('component-node name={0}.linear component={0}.linear input={1}'
                     ''.format(self.name, cur_node))
