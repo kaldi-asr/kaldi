@@ -211,7 +211,7 @@ if [ $stage -le 5 ]; then
   # the speech / silence decisions, not the exact word sequences.
   steps/decode.sh --cmd "$decode_cmd --mem 2G" --nj $nj \
     --max-active 1000 --beam 10.0 \
-    --decode-extra-opts "--word-determinize=false" --skip-scoring true \
+    --skip-scoring true \
     $graph_dir $uniform_seg_data_dir $decode_dir
 fi
 
