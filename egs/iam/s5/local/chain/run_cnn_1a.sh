@@ -8,8 +8,8 @@
 # exp/chain/cnn_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.021->-0.015 xent:train/valid[13,20,final]=(-1.05,-0.701,-0.591/-1.30,-1.08,-1.00) logprob:train/valid[13,20,final]=(-0.061,-0.034,-0.030/-0.107,-0.101,-0.098)
 
 # cat exp/chain/cnn_1a/decode_test/scoring_kaldi/best_*
-# %WER 5.94 [ 3913 / 65921, 645 ins, 1466 del, 1802 sub ] exp/chain/cnn_1a/decode_test//cer_11_0.0
-# %WER 9.13 [ 1692 / 18542, 162 ins, 487 del, 1043 sub ] exp/chain/cnn_1a/decode_test/wer_11_0.0
+# %WER 4.49 [ 2962 / 65921, 592 ins, 859 del, 1511 sub ] exp/chain/cnn_1a/decode_test/cer_12_0.5
+# %WER 7.37 [ 1366 / 18542, 137 ins, 375 del, 854 sub ] exp/chain/cnn_1a/decode_test/wer_12_1.0
 
 set -e -o pipefail
 

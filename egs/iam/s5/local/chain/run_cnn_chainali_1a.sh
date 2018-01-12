@@ -4,18 +4,18 @@
 
 # ./local/chain/compare_wer.sh exp/chain/cnn_chainali_1a/ exp/chain/cnn_1a/
 # System                      cnn_chainali_1a    cnn_1a
-# WER                             6.69     9.13
-# Final train prob              -0.0128   -0.0297
-# Final valid prob              -0.0447   -0.0975
-# Final train prob (xent)       -0.6448   -0.5915
-# Final valid prob (xent)       -0.9924   -1.0022
+# WER                              6.03      7.37
+# Final train prob              -0.0168   -0.0263
+# Final valid prob              -0.0478   -0.0979
+# Final train prob (xent)       -0.5755   -0.5389
+# Final valid prob (xent)       -0.9091   -0.9414
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_chainali_1a/
 # exp/chain/cnn_chainali_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.002->0.000 xent:train/valid[13,20,final]=(-0.929,-0.711,-0.645/-1.16,-1.04,-0.992) logprob:train/valid[13,20,final]=(-0.029,-0.016,-0.013/-0.051,-0.047,-0.045)
 
 # cat exp/chain/cnn_chainali_1a/decode_test/scoring_kaldi/best_*
-# %WER 3.94 [ 2600 / 65921, 549 ins, 837 del, 1214 sub ] exp/chain/cnn_chainali_1a/decode_test/cer_15_0.0
-# %WER 6.69 [ 1241 / 18542, 135 ins, 358 del, 748 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_15_0.5
+# %WER 3.44 [ 2266 / 65921, 530 ins, 599 del, 1137 sub ] exp/chain/cnn_chainali_1a/decode_test/cer_14_0.0
+# %WER 6.03 [ 1118 / 18542, 150 ins, 256 del, 712 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_13_0.5
 
 set -e -o pipefail
 
