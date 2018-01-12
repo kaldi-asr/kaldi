@@ -15,7 +15,7 @@ if (@ARGV != 4) {
 
 ( $num_nonsil_states >= 1 && $num_nonsil_states <= 100 ) ||
   die "Unexpected number of nonsilence-model states $num_nonsil_states\n";
-(( $num_sil_states == 1 || $num_sil_states >= 2) && $num_sil_states <= 100 ) ||
+(( $num_sil_states == 1 || $num_sil_states >= 3) && $num_sil_states <= 100 ) ||
   die "Unexpected number of silence-model states $num_sil_states\n";
 
 $nonsil_phones =~ s/:/ /g;

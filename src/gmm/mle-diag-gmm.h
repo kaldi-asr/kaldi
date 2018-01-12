@@ -49,8 +49,6 @@ struct MleDiagGmmOptions {
   /// It is in double since the variance is computed in double precision.
   double min_variance;
   bool remove_low_count_gaussians;
-  double variance_floor_value;
-  int VFV_dim;
   MleDiagGmmOptions() {
     // don't set var floor vector by default.
     min_gaussian_weight     = 1.0e-05;

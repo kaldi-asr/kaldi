@@ -63,12 +63,14 @@ int main(int argc, char *argv[]) {
                 "occupation counts to.");
     tcfg.Register(&po);
     gmm_opts.Register(&po);
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
+
     kaldi::GmmFlagsType update_flags =
         StringToGmmFlags(update_flags_str);
 
