@@ -37,6 +37,8 @@
 #        # addition of the the --android-includes flag because the toolchains
 #        # produced by the Android NDK don't always include the C++ stdlib
 #        # headers in the normal cross compile include path.
+# --host=aarch64-linux-android 
+#        # support for 64bit ARMv8(AArch64) architecture in Android.
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
@@ -1023,11 +1025,11 @@ if is_set $HOST; then
   IFS='-' read -ra PARTS <<< "$HOST"
   # The first field in the PARTS list is the target architecture.
   TARGET_ARCH="$PARTS"
-  if [[ "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && "$TARGET_ARCH" != x86* ]] ; then
-    # We currently only support building for x86[_64], arm*, and ppc64le.
+  if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && "$TARGET_ARCH" != x86* ]] ; then
+    # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
     # If TARGET_ARCH was read from the HOST variable, it must be one of these.
     failure "$TARGET_ARCH is not a supported architecture.
-             Supported architectures: x86[_64], arm*, ppc64le."
+             Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
   fi
 else
   TARGET_ARCH="`uname -m`"
