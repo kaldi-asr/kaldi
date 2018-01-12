@@ -517,3 +517,5 @@ fi
 
 echo "$(basename $0): validating output directory"
 ! utils/validate_lang.pl $dir && echo "$(basename $0): error validating output" &&  exit 1;
+
+exit 0;
