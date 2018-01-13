@@ -829,6 +829,7 @@ class XconfigLstmbLayer(XconfigLayerBase):
                         'clipping-threshold': 30.0,
                         'zeroing-interval': 20,
                         'zeroing-threshold': 15.0,
+                        'orthonormal-constraint': 1.0,
                         'delay' : -1,
                         'lstm-nonlinearity-options' : ' max-change=0.75',
                         # the recurrence scale is the scale on m_trunc, used in the
@@ -921,9 +922,10 @@ class XconfigLstmbLayer(XconfigLayerBase):
         # constraint, it's meaningless.
         configs.append("### Begin LTSM layer '{0}'".format(name))
         configs.append("component name={0}.W_all_a type=LinearComponent input-dim={1} "
-                       "orthonormal-constraint=1.0 output-dim={2} {3}".format(
-                           name, input_dim + cell_dim, bottleneck_dim,
-                           affine_str))
+                       "orthonormal-constraint={2} output-dim={3} {4}".format(
+                           name, input_dim + cell_dim,
+                           self.config['orthonormal-constraint'],
+                           bottleneck_dim, affine_str))
 
         configs.append("component name={0}.W_all_b type=LinearComponent input-dim={1} "
                        "output-dim={2} {3} {4}".format(name, bottleneck_dim, cell_dim * 4,
