@@ -58,7 +58,7 @@ if [ $stage -le 1 ]; then
     done
   fi
 
-  cat $dir/config/words.txt | rnnlm/get_special_symbol_opts.py > $dir/special_symbol_opts.txt
+  rnnlm/get_special_symbol_opts.py < $dir/config/words.txt > $dir/special_symbol_opts.txt
 fi
 
 if [ $stage -le 2 ]; then
