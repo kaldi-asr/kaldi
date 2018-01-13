@@ -68,6 +68,7 @@ config_to_layer = {
         'opgru-layer' : xlayers.XconfigOpgruLayer,
         'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
         'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
+        'factorized-layer': xlayers.XconfigFactorizedLayer,
         'renorm-component': xlayers.XconfigRenormComponent,
         'no-op-component': xlayers.XconfigNoOpComponent
 }
