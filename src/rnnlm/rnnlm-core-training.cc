@@ -239,11 +239,6 @@ void RnnlmCoreTrainer::TrainBackstitch(
     word_embedding_deriv->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
                                      input_deriv, 1.0);
   }
-  // If relevant, add in the part of the gradient that comes from L2 
-  // regularization.
-  ApplyL2Regularization(*nnet_,
-                        minibatch.num_chunks * config_.l2_regularize_factor,
-                        delta_nnet_);
 
   BaseFloat max_change_scale, scale_adding;
   if (is_backstitch_step1) {
@@ -257,6 +252,12 @@ void RnnlmCoreTrainer::TrainBackstitch(
     max_change_scale = 1.0 + config_.backstitch_training_scale;
     scale_adding = 1.0 + config_.backstitch_training_scale;
     num_minibatches_processed_++;
+    // If relevant, add in the part of the gradient that comes from L2
+    // regularization.
+    ApplyL2Regularization(*nnet_,
+                          1.0 / scale_adding *
+                          minibatch.num_chunks * config_.l2_regularize_factor,
+                          delta_nnet_);
   }
   
   UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,

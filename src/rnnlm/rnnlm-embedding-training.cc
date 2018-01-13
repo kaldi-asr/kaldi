@@ -124,18 +124,18 @@ void RnnlmEmbeddingTrainer::TrainBackstitch(
   // "embedding_deriv += - 2 * l2_regularize * embedding_mat_"
   // This is an approximate to the regular l2 regularization (add l2 regularization
   // to the objective function).
-  if (config_.l2_regularize > 0.0) {
+  if (config_.l2_regularize > 0.0 && !is_backstitch_step1) {
     BaseFloat l2_term = -2 * config_.l2_regularize;
     if (l2_term != 0.0) {
-      embedding_deriv->AddMat(l2_term, *embedding_mat_);
+      embedding_deriv->AddMat(1.0 / (1.0 + config_.backstitch_training_scale) *
+          l2_term, *embedding_mat_);
     }
   } 
 
   BaseFloat scale = 1.0;
   if (config_.use_natural_gradient) {
     if (is_backstitch_step1) preconditioner_.Freeze(true);
-    preconditioner_.PreconditionDirections(embedding_deriv, NULL,
-                                           &scale);
+    preconditioner_.PreconditionDirections(embedding_deriv, &scale);
   }
   scale *= config_.learning_rate;
   num_minibatches_++;
@@ -226,17 +226,17 @@ void RnnlmEmbeddingTrainer::TrainBackstitch(
   // "embedding_deriv += - 2 * l2_regularize * embedding_mat_"
   // This is an approximate to the regular l2 regularization (add l2 regularization
   // to the objective function).
-  if (config_.l2_regularize > 0.0) {
+  if (config_.l2_regularize > 0.0 && !is_backstitch_step1) {
     BaseFloat l2_term = -2 * config_.l2_regularize;
     if (l2_term != 0.0) {
-      embedding_deriv->AddMat(l2_term, *embedding_mat_);
+      embedding_deriv->AddMat(1.0 / (1.0 + config_.backstitch_training_scale) *
+          l2_term, *embedding_mat_);
     }
   } 
   BaseFloat scale = 1.0;
   if (config_.use_natural_gradient) {
     if (is_backstitch_step1) preconditioner_.Freeze(true);
-    preconditioner_.PreconditionDirections(embedding_deriv, NULL,
-                                           &scale);
+    preconditioner_.PreconditionDirections(embedding_deriv, &scale);
   }
   scale *= config_.learning_rate;
   if (config_.max_param_change > 0.0) {
