@@ -9,6 +9,9 @@
 # Handbook
 /egs/cslt_cases/speech_book/
 
+# mac store file
+.DS_Store
+
 # Compiled Object files and python ciles
 *.slo
 *.lo
