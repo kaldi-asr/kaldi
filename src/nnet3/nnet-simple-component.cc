@@ -3050,7 +3050,7 @@ std::string LinearComponent::Info() const {
   stream << ", use-natural-gradient="
          << (use_natural_gradient_ ? "true" : "false")
          << ", rank-in=" << preconditioner_in_.GetRank()
-         << ", rank-out=" << preconditioner_in_.GetRank()
+         << ", rank-out=" << preconditioner_out_.GetRank()
          << ", num-samples-history="
          << preconditioner_in_.GetNumSamplesHistory()
          << ", update-period=" << preconditioner_in_.GetUpdatePeriod()
