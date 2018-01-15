@@ -390,10 +390,11 @@ class AffineComponent: public UpdatableComponent {
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
+  BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
 
-  AffineComponent() { } // use Init to really initialize.
+  AffineComponent(): orthonormal_constraint_(0.0) { } // use Init to really initialize.
   virtual std::string Type() const { return "AffineComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|
@@ -434,6 +435,7 @@ class AffineComponent: public UpdatableComponent {
                          const CuMatrixBase<BaseFloat> &linear);
   const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
+  CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit AffineComponent(const AffineComponent &other);
   // The next constructor is used in converting from nnet1.
   AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
@@ -466,6 +468,7 @@ class AffineComponent: public UpdatableComponent {
   const AffineComponent &operator = (const AffineComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
+  BaseFloat orthonormal_constraint_;
 };
 
 class RepeatedAffineComponent;
@@ -754,6 +757,19 @@ class LogSoftmaxComponent: public NonlinearComponent {
                            bias-stddev, bias-mean) to initialize the parameters.
                            Dimension is output-dim by (input-dim + 1), last
                            column is interpreted as the bias.
+
+   Other options:
+    orthonormal-constraint=0.0   If you set this to 1.0, then
+                           the linear_params_ matrix will be (approximately)
+                           constrained during training to have orthonormal rows
+                           (or columns, whichever is fewer).  You can choose a
+                           positive nonzero value different than 1.0 to have a
+                           scaled orthonormal matrix, i.e. with singular values
+                           at the selected value (e.g. 0.5, or 2.0).  This is
+                           not enforced inside the component itself; you have to
+                           call ConstrainOrthonormal() from the training code to
+                           do this.  All this component does is return the
+                           OrthonormalConstraint() value.
 
    Options to the natural gradient (you won't normally have to set these,
    the defaults are suitable):

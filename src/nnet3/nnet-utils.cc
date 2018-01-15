@@ -907,30 +907,48 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
 /**
    This function, to be called after processing every minibatch, is responsible
    for enforcing the orthogonality constraint for any components of type
-   LinearComponent that have the "orthonormal_constraint" value set.
+   LinearComponent or inheriting from AffineComponent that have the
+   "orthonormal_constraint" value set.
  */
 void ConstrainOrthonormal(Nnet *nnet) {
+
   for (int32 c = 0; c < nnet->NumComponents(); c++) {
     Component *component = nnet->GetComponent(c);
     LinearComponent *lc = dynamic_cast<LinearComponent*>(component);
-    if (lc == NULL || lc->OrthonormalConstraint() == 0.0)
-      continue;
-    if (RandInt(0, 3) != 0)
-      continue;  // For efficiency, only do this every 4 minibatches-- it won't
-                 // stray far.
+    if (lc != NULL && lc->OrthonormalConstraint() != 0.0) {
+      if (RandInt(0, 3) != 0)
+        continue;  // For efficiency, only do this every 4 minibatches-- it won't
+                   // stray far.
+      BaseFloat scale = lc->OrthonormalConstraint();
+      KALDI_ASSERT(scale > 0.0);
 
+      CuMatrixBase<BaseFloat> &params = lc->Params();
+      int32 rows = params.NumRows(), cols = params.NumCols();
+      if (rows <= cols) {
+        ConstrainOrthonormalInternal(scale, &params);
+      } else {
+        CuMatrix<BaseFloat> params_trans(params, kTrans);
+        ConstrainOrthonormalInternal(scale, &params_trans);
+        params.CopyFromMat(params_trans, kTrans);
+      }
+    }
 
-    BaseFloat scale = lc->OrthonormalConstraint();
-    KALDI_ASSERT(scale > 0.0);
-
-    CuMatrixBase<BaseFloat> &params = lc->Params();
-    int32 rows = params.NumRows(), cols = params.NumCols();
-    if (rows <= cols) {
-      ConstrainOrthonormalInternal(scale, &params);
-    } else {
-      CuMatrix<BaseFloat> params_trans(params, kTrans);
-      ConstrainOrthonormalInternal(scale, &params_trans);
-      params.CopyFromMat(params_trans, kTrans);
+    AffineComponent *ac = dynamic_cast<AffineComponent*>(component);
+    if (ac != NULL && ac->OrthonormalConstraint() != 0.0) {
+      if (RandInt(0, 3) != 0)
+        continue;  // For efficiency, only do this every 4 minibatches-- it won't
+                   // stray far.
+      BaseFloat scale = ac->OrthonormalConstraint();
+      KALDI_ASSERT(scale > 0.0);
+      CuMatrixBase<BaseFloat> &params = ac->LinearParams();
+      int32 rows = params.NumRows(), cols = params.NumCols();
+      if (rows <= cols) {
+        ConstrainOrthonormalInternal(scale, &params);
+      } else {
+        CuMatrix<BaseFloat> params_trans(params, kTrans);
+        ConstrainOrthonormalInternal(scale, &params_trans);
+        params.CopyFromMat(params_trans, kTrans);
+      }
     }
   }
 }

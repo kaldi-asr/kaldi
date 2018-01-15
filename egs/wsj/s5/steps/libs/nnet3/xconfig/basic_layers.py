@@ -655,7 +655,15 @@ class XconfigBasicLayer(XconfigLayerBase):
 
     Parameters of the class, and their defaults:
       input='[-1]'             [Descriptor giving the input of the layer.]
-      dim=None                   [Output dimension of layer, e.g. 1024]
+      dim=-1                   [Output dimension of layer, e.g. 1024]
+      bottleneck-dim=-1        [If you set this, a linear bottleneck is added, so
+                                we project to first bottleneck-dim then to dim.  One
+                                of the two matrices is constrained to be orthonormal;
+                                see 'second-matrix-orthonormal'.]
+      second-matrix-orthonormal=False   [Only makes a difference if bottleneck-dim>0.
+                                  You can set this to true if you want the orthormal-rows
+                                  constraint to be applied to the 2nd, not the first, of
+                                  the two marices.]
       self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
       learning-rate-factor=1.0   [This can be used to make the affine component
                                   train faster or slower].
@@ -676,6 +684,7 @@ class XconfigBasicLayer(XconfigLayerBase):
         self.config = {'input': '[-1]',
                        'dim': -1,
                        'bottleneck-dim': -1,
+                       'second-matrix-orthonormal': False,
                        'self-repair-scale': 1.0e-05,
                        'target-rms': 1.0,
                        'ng-affine-options': '',
@@ -790,10 +799,12 @@ class XconfigBasicLayer(XconfigLayerBase):
                 value = self.config[opt_name]
                 if value != '':
                     linear_options += ' {0}={1}'.format(opt_name, value)
+            if not self.config['second-matrix-orthonormal']:
+                linear_options += ' orthonormal-constraint=1.0'
             bottleneck_dim = self.config['bottleneck-dim']
             # note: by default the LinearComponent uses natural gradient.
             line = ('component name={0}.linear type=LinearComponent '
-                    'orthonormal-constraint=1.0 input-dim={1} output-dim={2} {3}'
+                    'input-dim={1} output-dim={2} {3}'
                     ''.format(self.name, input_dim, bottleneck_dim, linear_options))
             configs.append(line)
             line = ('component-node name={0}.linear component={0}.linear input={1}'
@@ -802,6 +813,13 @@ class XconfigBasicLayer(XconfigLayerBase):
             cur_node = '{0}.linear'.format(self.name)
             cur_dim = bottleneck_dim
 
+
+        if self.config['second-matrix-orthonormal']:
+            assert self.config['bottleneck-dim'] > 0
+            # we have to mess with the range of the parameters so they are within
+            # the circle of convergence...
+            affine_options += ' orthonormal-constraint=1.0 param-stddev={0}'.format(
+                math.sqrt(1.0 / output_dim))
 
         line = ('component name={0}.affine type=NaturalGradientAffineComponent'
                 ' input-dim={1} output-dim={2} {3}'

@@ -1031,13 +1031,15 @@ void AffineComponent::Add(BaseFloat alpha, const Component &other_in) {
 AffineComponent::AffineComponent(const AffineComponent &component):
     UpdatableComponent(component),
     linear_params_(component.linear_params_),
-    bias_params_(component.bias_params_) { }
+    bias_params_(component.bias_params_),
+    orthonormal_constraint_(component.orthonormal_constraint_) { }
 
 AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                                  const CuVectorBase<BaseFloat> &bias_params,
                                  BaseFloat learning_rate):
     linear_params_(linear_params),
-    bias_params_(bias_params) {
+    bias_params_(bias_params),
+    orthonormal_constraint_(0.0) {
   SetUnderlyingLearningRate(learning_rate);
   KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
                bias_params.Dim() != 0);
@@ -1063,6 +1065,8 @@ void AffineComponent::PerturbParams(BaseFloat stddev) {
 std::string AffineComponent::Info() const {
   std::ostringstream stream;
   stream << UpdatableComponent::Info();
+  if (orthonormal_constraint_ != 0.0)
+    stream << ", orthonormal-constraint=" << orthonormal_constraint_;
   PrintParameterStats(stream, "linear-params", linear_params_,
                       false, // include_mean
                       true, // include_row_norms
@@ -1129,6 +1133,8 @@ void AffineComponent::InitFromConfig(ConfigLine *cfl) {
     Init(input_dim, output_dim,
          param_stddev, bias_stddev);
   }
+  cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
+
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
@@ -1197,6 +1203,12 @@ void AffineComponent::Read(std::istream &is, bool binary) {
     ExpectToken(is, binary, "<IsGradient>");
     ReadBasicType(is, binary, &is_gradient_);
   }
+  if (PeekToken(is, binary) == 'O') {
+    ExpectToken(is, binary, "<OrthonormalConstraint>");
+    ReadBasicType(is, binary, &orthonormal_constraint_);
+  } else {
+    orthonormal_constraint_ = 0.0;
+  }
   ExpectToken(is, binary, "</AffineComponent>");
 }
 
@@ -1206,6 +1218,10 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
+  if (orthonormal_constraint_ != 0.0) {
+    WriteToken(os, binary, "<OrthonormalConstraint>");
+    WriteBasicType(os, binary, orthonormal_constraint_);
+  }
   WriteToken(os, binary, "</AffineComponent>");
 }
 
@@ -2664,6 +2680,12 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &rank_in);
   ExpectToken(is, binary, "<RankOut>");
   ReadBasicType(is, binary, &rank_out);
+  if (PeekToken(is, binary) == 'O') {
+    ExpectToken(is, binary, "<OrthonormalConstraint>");
+    ReadBasicType(is, binary, &orthonormal_constraint_);
+  } else {
+    orthonormal_constraint_ = 0.0;
+  }
   ExpectToken(is, binary, "<UpdatePeriod>");
   ReadBasicType(is, binary, &update_period);
   ExpectToken(is, binary, "<NumSamplesHistory>");
@@ -2770,6 +2792,9 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
     bias_params_.Add(bias_mean);
   }
 
+  orthonormal_constraint_ = 0.0;
+  cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
+
   // Set natural-gradient configs.
   BaseFloat num_samples_history = 2000.0,
       alpha = 4.0;
@@ -2807,6 +2832,10 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
   WriteBasicType(os, binary, preconditioner_in_.GetRank());
   WriteToken(os, binary, "<RankOut>");
   WriteBasicType(os, binary, preconditioner_out_.GetRank());
+  if (orthonormal_constraint_ != 0.0) {
+    WriteToken(os, binary, "<OrthonormalConstraint>");
+    WriteBasicType(os, binary, orthonormal_constraint_);
+  }
   WriteToken(os, binary, "<UpdatePeriod>");
   WriteBasicType(os, binary, preconditioner_in_.GetUpdatePeriod());
   WriteToken(os, binary, "<NumSamplesHistory>");
