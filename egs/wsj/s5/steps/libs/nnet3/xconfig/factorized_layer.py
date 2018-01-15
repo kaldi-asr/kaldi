@@ -57,10 +57,14 @@ class XconfigFactorizedLayer(XconfigLayerBase):
                        'bottleneck-dim': -1,
                        'self-repair-scale': 1.0e-05,
                        'target-rms': 1.0,
+                       'extra-relu': False,
                        'splicing': '0',
                        'bypass-scale': 1.0,
                        'ng-affine-options': '',
                        'ng-linear-options': '',
+                       # if second-matrix-orthonormal, the 2nd matrix
+                       # has the orthonormal constraint.
+                       'second-matrix-orthonormal': False,
                        # The following are passed through to components.
                        'bias-stddev': '',
                        'l2-regularize': '',
@@ -132,6 +136,8 @@ class XconfigFactorizedLayer(XconfigLayerBase):
         spliced_input_desc = 'Append({0})'.format(
             ', '.join([ 'Offset({0}, {1})'.format(input_desc, offset)
                         for offset in splicing_array ]))
+        extra_relu = self.config['extra-relu']
+
         # e.g. spliced_input_desc =
         #   'Append(Offset(tdnn2, -1), Offset(tdnn2, 0), Offset(tdnn2, 1))'
 
@@ -150,12 +156,20 @@ class XconfigFactorizedLayer(XconfigLayerBase):
             if value != '':
                 linear_options += ' {0}={1}'.format(opt_name, value)
 
+        if self.config['second-matrix-orthonormal']:
+            # we have to mess with the range of the parameters so they are within
+            # the circle of convergence...
+            affine_options += ' orthonormal-constraint=1.0 param-stddev={0}'.format(
+                math.sqrt(1.0 / output_dim))
+        else:
+            linear_options += ' orthonormal-constraint=1.0'
+
         configs = []
 
         # First the linear component that goes to the bottleneck dim.
         # note: by default the LinearComponent uses natural gradient.
         line = ('component name={0}.linear type=LinearComponent '
-                'orthonormal-constraint=1.0 input-dim={1} output-dim={2} {3}'
+                'input-dim={1} output-dim={2} {3}'
                 ''.format(self.name, spliced_input_dim, bottleneck_dim,
                           linear_options))
         configs.append(line)
@@ -163,13 +177,24 @@ class XconfigFactorizedLayer(XconfigLayerBase):
                 ''.format(self.name, spliced_input_desc))
         configs.append(line)
 
+        if extra_relu:
+            # add a relu between the linear and the affine.
+            line = ('component name={0}.relu0 type=RectifiedLinearComponent dim={1}'
+                    ' self-repair-scale={2}'
+                    ''.format(self.name, bottleneck_dim, self_repair_scale))
+            configs.append(line)
+            line = ('component-node name={0}.relu0 component={0}.relu0 '
+                    'input={0}.linear'.format(self.name))
+            configs.append(line)
+
+
         # Now the affine component
         line = ('component name={0}.affine type=NaturalGradientAffineComponent'
                 ' input-dim={1} output-dim={2} {3}'
                 ''.format(self.name, bottleneck_dim, output_dim, affine_options))
         configs.append(line)
-        line = ('component-node name={0}.affine component={0}.affine input={0}.linear'
-                ''.format(self.name))
+        line = ('component-node name={0}.affine component={0}.affine input={0}.{1}'
+                ''.format(self.name, ('relu0' if extra_relu else 'linear')))
         configs.append(line)
 
         # now the ReLU.  Its input is the output of the affine component plus
