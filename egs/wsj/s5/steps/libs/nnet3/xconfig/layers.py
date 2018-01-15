@@ -10,4 +10,3 @@ from lstm import *
 from gru import *
 from stats_layer import *
 from trivial_layers import *
-from factorized_layer import *
