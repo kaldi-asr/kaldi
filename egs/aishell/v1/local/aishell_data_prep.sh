@@ -38,7 +38,7 @@ n=`cat $train_dir/wav.flist $dev_dir/wav.flist $test_dir/wav.flist | wc -l`
   echo Warning: expected 141925 data data files, found $n
 
 # Transcriptions preparation
-for dir in $train_dir $dev_dir $test_dir; do
+for dir in $train_dir $test_dir; do
   echo Preparing $dir transcriptions
   sed -e 's/\.wav//' $dir/wav.flist | awk -F '/' '{print $NF}' |\
     sort > $dir/utt.list
@@ -53,10 +53,9 @@ for dir in $train_dir $dev_dir $test_dir; do
   utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
 done
 
-mkdir -p data/train data/dev data/test
+mkdir -p data/train data/test
 for f in spk2utt utt2spk wav.scp text; do
   cp $train_dir/$f data/train/$f || exit 1;
-  cp $dev_dir/$f data/dev/$f || exit 1;
   cp $test_dir/$f data/test/$f || exit 1;
 done
 

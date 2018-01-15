@@ -1,23 +1,35 @@
-#!/usr/bin/env python
-
+#!/usr/bin/env python3
 # Copyright 2017 Bengu Wu
 # Apache 2.0.
 
+# This script generate trials file.
+# Trial file is formatted as:
+# uttid spkid target|nontarget
+
+# If uttid belong to spkid, it is marked 'target',
+# otherwise is 'nontarget'.
+# input: match set uttspk file
+# output: trial file
+
 import sys
 
+fnutt = sys.argv[1]
+ftrial = open(sys.argv[2], 'w')
+
 dictutt = {}
-for eachline in open(sys.argv[1]):
-    line = eachline.rstrip('\r\t\n ')
-    spk = line.split(' ')[1]
+for line in open(fnutt):
+  utt2spk = line.rstrip('\r\t\n ')
+  spk = utt2spk.split(' ')[1]
+  if spk not in dictutt:
     dictutt[spk] = spk
 
-trailfile = open(sys.argv[3], 'w')
-for each2 in open(sys.argv[2]):
-    line2 = each2.rstrip('\r\t\n ')
-    utt2, spk2 = line2.split(' ')
-    for spk3 in dictutt:
-        if spk3 == spk2:
-            trial = utt2 + ' ' + spk3 + ' ' + 'target'
-        else:
-            trial = utt2 + ' ' + spk3 + ' ' + 'nontarget'
-        trailfile.write(trial+'\n')
+for line in open(fnutt):
+  utt2spk = line.rstrip('\r\t\n ')
+  utt, spk = utt2spk.split(' ')
+  for target in dictutt:
+    if target == spk:
+      trial = utt + ' ' + target + ' target'
+    else:
+      trial = utt + ' ' + target + ' nontarget'
+    ftrial.write(trial + '\n')
+ftrial.close()

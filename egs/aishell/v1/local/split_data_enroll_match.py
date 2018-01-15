@@ -1,34 +1,37 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2017 Bengu Wu
 # Apache 2.0.
+
+# This script splits the test set utt2spk into enroll set and match set
+# For each speaker, 3 utterances are randomly selected as enroll samples,
+# and the others are used as match samples for evaluation
+# input: test utt2spk
+# output: enroll utt2spk, match utt2spk
 
 import sys,random
 
 dictutt = {}
 
-for eachline in open(sys.argv[1]):
-    line = eachline.rstrip('\r\t\n ')
-    utt,spk = line.split(' ')
-    if spk not in dictutt:
-        dictutt[spk] = []
-        dictutt[spk].append(utt)
-    else:
-        dictutt[spk].append(utt)
+for line in open(sys.argv[1]):
+  line = line.rstrip('\r\t\n ')
+  utt, spk = line.split(' ')
+  if spk not in dictutt:
+    dictutt[spk] = []
+  dictutt[spk].append(utt)
 
-enrollfile = open(sys.argv[2], 'w')
-matchfile = open(sys.argv[3], 'w')
+fenroll = open(sys.argv[2], 'w')
+fmatch = open(sys.argv[3], 'w')
 
 for key in dictutt:
-    listutt = dictutt[key]
-    random.shuffle(listutt)
-    for i in range(0, len(listutt)):
-        if(i < 3):
-            enrollstr = listutt[i] + ' ' + key
-            enrollfile.write(enrollstr + '\n')
-        else:
-            matchstr = listutt[i] + ' ' + key
-            matchfile.write(matchstr + '\n')
+  utts = dictutt[key]
+  random.shuffle(utts)
+  for i in range(0, len(utts)):
+    line = utts[i] + ' ' + key
+    if(i < 3):
+      fenroll.write(line + '\n')
+    else:
+      fmatch.write(line + '\n')
 
-enrollfile.close()
-matchfile.close()
+fenroll.close()
+fmatch.close()
