@@ -9,7 +9,7 @@
 set -o pipefail
 set -u
 
-. cmd.sh
+. ./cmd.sh
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
@@ -30,7 +30,7 @@ extra_right_context=21
 relu_dim=256
 
 # training options
-num_epochs=2
+num_epochs=1
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_jobs_initial=1
@@ -46,7 +46,7 @@ config_dir=
 dir=
 affix=1a2
 
-data_dir=exp/segmentation_1a/train_whole_hires_bp
+data_dir=exp/segmentation_1a/train_whole_rvb_hires
 targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
 
 . cmd.sh
@@ -132,10 +132,12 @@ if [ $stage -le 6 ]; then
     --targets-scp="$targets_dir/targets.scp" \
     --egs.opts="--frame-subsampling-factor 3 --num-utts-subset $num_utts_subset" \
     --dir=$dir || exit 1
+fi
 
-  copy-feats scp:$targets_dir/targets.scp ark:- | \
+if [ $stage -le 7 ]; then
+    copy-feats scp:$targets_dir/targets.scp ark:- | \
     matrix-sum-rows ark:- ark:- | vector-sum --binary=false ark:- - | \
-    awk '{print " [ "$2" "$3" ]"}' > $dir/post_output.vec
+    awk '{print " [ "$2" "$3" "$4" ]"}' > $dir/post_output.vec
 
   echo 3 > $dir/frame_subsampling_factor
 fi

@@ -36,7 +36,7 @@ prepare_targets_stage=-10
 nstage=-10
 train_stage=-10
 test_stage=-10
-num_data_reps=1
+num_data_reps=2
 base_rirs=simulated
 affix=_1a
 stage=-1
@@ -164,7 +164,7 @@ fi
 
 if [ $stage -le 5 ]; then
   utils/copy_data_dir.sh ${rvb_data_dir} ${rvb_data_dir}_hires
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 40 \
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 10 \
     ${rvb_data_dir}_hires
   steps/compute_cmvn_stats.sh ${rvb_data_dir}_hires
 fi
@@ -206,23 +206,23 @@ fi
 
 if [ $stage -le 8 ]; then
   # Do some diagnostics
-  steps/segmentation/evalute_segmentation.pl data/dev10h.pem/segments \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/dev10h_seg/segments &> \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/dev10h_seg/evalutate_segmentation.log
+  steps/segmentation/evaluate_segmentation.pl data/eval2000/segments \
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/segments &> \
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/evalutate_segmentation.log
   
   steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/dev10h_seg/utt2spk \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/dev10h_seg/segments \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/dev10h_seg/sys.rttm
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/utt2spk \
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/segments \
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/sys.rttm
 
-  export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
-  md-eval.pl -c 0.25 -r $dev10h_rttm_file \
-    -s exp/segmentation_1a/tdnn_stats_asr_sad_1a2/dev10h_seg/sys.rttm > \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/dev10h_seg/md_eval.log
+#  export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
+#  md-eval.pl -c 0.25 -r $eval2000_rttm_file \
+#    -s exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/sys.rttm > \
+#    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/md_eval.log
 fi
 
 if [ $stage -le 9 ]; then
-  utils/copy_data_dir.sh exp/segmentation_1a/tdnn_stats_asr_sad_1a2/dev10h_seg \
-    data/dev10h.seg_asr_sad_1a
+  utils/copy_data_dir.sh exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg \
+    data/eval2000.seg_asr_sad_1a
 fi
   
