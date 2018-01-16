@@ -27,6 +27,7 @@ decode_nj=30
 train_set=train
 test_sets=dev
 gmm=tri3
+language=swahili
 nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
@@ -76,20 +77,21 @@ fi
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
                                   --gmm $gmm \
+                                  --language $language \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
 # Problem: We have removed the "train_" prefix of our training set in
 # the alignment directory names! Bad!
-gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp
-tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
-lang=data/lang_chain
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_affix}/tdnn_lstm${tlstm_affix}_sp
+gmm_dir=exp/$language/$gmm
+ali_dir=exp/$language/${gmm}_ali_${train_set}_sp
+tree_dir=exp/$language/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
+lang=data/$language/lang_chain
+lat_dir=exp/$language/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/$language/chain${nnet3_affix}/tdnn_lstm${tlstm_affix}_sp
 if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
-train_data_dir=data/${train_set}_sp_hires
-lores_train_data_dir=data/${train_set}_sp
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
+train_data_dir=data/$language/${train_set}_sp_hires
+lores_train_data_dir=data/$language/${train_set}_sp
+train_ivector_dir=exp/$language/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
     $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do
@@ -102,15 +104,15 @@ if [ $stage -le 10 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   if [ -d $lang ]; then
-    if [ $lang/L.fst -nt data/lang_test/L.fst ]; then
+    if [ $lang/L.fst -nt data/$language/lang_test/L.fst ]; then
       echo "$0: $lang already exists, not overwriting it; continuing"
     else
-      echo "$0: $lang already exists and seems to be older than data/lang..."
+      echo "$0: $lang already exists and seems to be older than data/$language/lang..."
       echo " ... not sure what to do.  Exiting."
       exit 1;
     fi
   else
-    cp -r data/lang_test $lang
+    cp -r data/$language/lang_test $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
@@ -123,7 +125,7 @@ if [ $stage -le 11 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
-    data/lang_test $gmm_dir $lat_dir
+    data/$language/lang_test $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -244,7 +246,7 @@ if [ $stage -le 15 ]; then
   # Note: it's not important to give mkgraph.sh the lang directory with the
   # matched topology (since it gets the topology file from the model).
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test \
+    --self-loop-scale 1.0 data/$language/lang_test \
     $tree_dir $tree_dir/graph || exit 1;
 fi
 
@@ -263,8 +265,8 @@ if [ $stage -le 16 ]; then
           --extra-right-context-final 0 \
           --frames-per-chunk $frames_per_chunk \
           --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
-          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-          $tree_dir/graph data/${data}_hires ${dir}/decode_${data} || exit 1
+          --online-ivector-dir exp/$language/nnet3${nnet3_affix}/ivectors_${data}_hires \
+          $tree_dir/graph data/$language/${data}_hires ${dir}/decode_${data} || exit 1
     ) || touch $dir/.error &
   done
   wait
