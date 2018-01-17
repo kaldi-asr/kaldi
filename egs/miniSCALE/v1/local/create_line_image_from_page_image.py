@@ -97,7 +97,8 @@ def set_line_image_data(image, line_id, image_file_name):
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_0' + line_id
     line_image_file_name = base_name + line_id + '.tif'
-    image.save(os.path.join(data_path, 'lines', line_image_file_name))
+    imgray = image.convert('L')
+    imgray.save(os.path.join(data_path, 'lines', line_image_file_name))
 
 ### main ###
 
