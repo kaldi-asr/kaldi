@@ -32,9 +32,7 @@ set -e -o pipefail
 stage=1
 nj=30
 train=noisy
-enhan=$1
 train_set=tr05_multi_${train}
-test_sets="dt05_real_$enhan dt05_simu_$enhan et05_real_$enhan et05_simu_$enhan"
 gmm=tri3b_tr05_multi_${train} # this is the source gmm-dir that we'll use for alignments; it
                               # should have alignments for the specified training data.
 num_threads_ubm=32
@@ -57,7 +55,7 @@ chunk_right_context=0
 
 # training options
 srand=0
-remove_egs=false
+remove_egs=true
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
@@ -70,6 +68,8 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
+enhan=$1
+test_sets="dt05_real_$enhan dt05_simu_$enhan et05_real_$enhan et05_simu_$enhan"
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
