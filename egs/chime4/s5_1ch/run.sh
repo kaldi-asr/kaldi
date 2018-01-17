@@ -67,7 +67,7 @@ enhancement_data=$chime4_data/data/audio/16kHz/$enhancement_method
 #if [ $stage -le 1 ]; then
 #  enhancement_method=single_BLSTMmask
 #  enhancement_data=`pwd`/enhan/$enhancement
-#  local/run_beamform_blstm_gev_1ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 5 
+#  local/run_masking_blstm_1ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 5 
 #fi
 
 # Compute PESQ, STOI, eSTOI, and SDR scores
