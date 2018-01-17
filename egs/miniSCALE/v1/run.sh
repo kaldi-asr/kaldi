@@ -26,16 +26,16 @@ if [ $stage -le 0 ]; then
 fi
 mkdir -p data/{train,test}/data
 
-#if [ $stage -le 1 ]; then
-#  echo "$0: Preparing the test and train feature files..."
-#  for dataset in train test; do
-#    local/make_features.py data/$dataset --feat-dim 40 | \
-#      copy-feats --compress=true --compression-method=7 \
-#                 ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
-#    steps/compute_cmvn_stats.sh data/$dataset
-#  done
-#fi
-#
+if [ $stage -le 1 ]; then
+  echo "$0: Preparing the test and train feature files..."
+  for dataset in train test; do
+    local/make_features.py data/$dataset --feat-dim 40 | \
+      copy-feats --compress=true --compression-method=7 \
+                 ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
+    steps/compute_cmvn_stats.sh data/$dataset
+  done
+fi
+
 #if [ $stage -le 2 ]; then
 #  echo "$0: Preparing dictionary and lang..."
 #  local/prepare_dict.sh
