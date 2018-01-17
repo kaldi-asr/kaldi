@@ -24,7 +24,6 @@
 
 # Config:
 stage=0 # resume training with --stage N
-flatstart=false
 enhancement=blstm_gev #### or your method 
 
 . utils/parse_options.sh || exit 1;
@@ -55,20 +54,14 @@ if [ ! -d $chime4_data ]; then
 fi
 # Set a model directory for the CHiME4 data.
 modeldir=`pwd`
-if [ "$flatstart" = false ]; then
-  for d in $modeldir $modeldir/data/{lang,lang_test_tgpr_5k,lang_test_5gkn_5k,lang_test_rnnlm_5k_h300,local} \
-    $modeldir/exp/tri3b_tr05_multi_noisy; do
-    [ ! -d $d ] && echo "$0: no such directory $d. specify models correctly" && \
-    echo " or execute './run.sh --flatstart true' first" && exit 1;
-  done
-fi
+
 #####check data and model paths finished#######
 
 
 #####main program start################
 # You can execute run_init.sh only "once"
 # This creates 3-gram LM, FSTs, and basic task files
-if [ $stage -le 0 ] && $flatstart; then
+if [ $stage -le 0 ]; then
   local/run_init.sh $chime4_data
 fi
 
@@ -101,7 +94,7 @@ if [ $stage -le 2 ]; then
   fi
   chime4_rir_data=local/nn-gev/data/audio/16kHz/isolated_ext
   if [ ! -d $chime4_rir_data ]; then
-    echo "$chime4_rir_dir does not exist. Please run "blstm_gev" enhancement method first';" && exit 1;
+    echo "$chime4_rir_dir does not exist. Please run 'blstm_gev' enhancement method first;" && exit 1;
   fi
   local/compute_PESQ.sh $enhancement $enhancement_data $chime4_rir_data $modeldir
   local/compute_stoi_estoi_sdr.sh $enhancement $enhancement_data $chime4_rir_data
@@ -112,32 +105,20 @@ fi
 # run_gmm_recog.sh can be done every time when you change a speech enhancement technique.
 # The directory structure and audio files must follow the attached baseline enhancement directory
 if [ $stage -le 3 ]; then
-  if $flatstart; then
-    local/run_gmm.sh $enhancement $enhancement_data $chime4_data
-  else
-    local/run_gmm_recog.sh $enhancement $enhancement_data $modeldir
-  fi
+  local/run_gmm.sh $enhancement $enhancement_data $chime4_data
 fi
 
 # DNN based ASR experiment
 # Since it takes time to evaluate DNN, we make the GMM and DNN scripts separately.
 # You may execute it after you would have promising results using GMM-based ASR experiments
 if [ $stage -le 4 ]; then
-  if $flatstart; then
-    local/chain/run_tdnn.sh $enhancement
-  else
-    local/chain/run_tdnn_recog.sh $enhancement $modeldir
-  fi
+  local/chain/run_tdnn.sh $enhancement
 fi
 
 # LM-rescoring experiment with 5-gram and RNN LMs
 # It takes a few days to train a RNNLM.
 if [ $stage -le 5 ]; then
-  if $flatstart; then
-    local/run_lmrescore_tdnn.sh $chime4_data $enhancement
-  else
-    local/run_lmrescore_tdnn_recog.sh $enhancement $modeldir
-  fi
+  local/run_lmrescore_tdnn.sh $chime4_data $enhancement
 fi
 
 echo "Done."
