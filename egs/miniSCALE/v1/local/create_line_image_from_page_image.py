@@ -93,17 +93,15 @@ def get_line_images_from_page_image(image_file_name, gedi_file_path):
 
 
 def set_line_image_data(image, line_id, image_file_name):
-    #image.show()
+    base_name = os.path.splitext(os.path.basename(image_file_name))[0]
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_0' + line_id
-    #print line_id
-    line_image_file_name = image_file_name_wo_tif + line_id + '.tif'
-    #print line_image_file_name
-    image.save(line_image_file_name)
+    line_image_file_name = base_name + line_id + '.tif'
+    image.save(os.path.join(data_path, 'lines', line_image_file_name))
 
 ### main ###
 
-data_path = os.path.join(args.database_path, 'madcat_sample')
+data_path = args.database_path
 height_buffer = int(args.height_buffer)
 width_buffer = int(args.width_buffer)
 char_width_buffer = int(args.char_width_buffer)

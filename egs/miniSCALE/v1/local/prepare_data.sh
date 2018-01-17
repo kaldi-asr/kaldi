@@ -33,10 +33,14 @@ if [[ ! -d $download_dir ]]; then
   echo ""
 fi
 
-if [ $stage -le 0 ]; then
-  local/process_data.py $download_dir data/train --dataset train || exit 1
-  local/process_data.py $download_dir data/test --dataset test || exit 1
-  local/process_data.py $download_dir data/val --dataset validation || exit 1
+mkdir -p data/{train,test,val}
+mkdir -p $download_dir/lines
+if [ $stage -le 1 ]; then
+  local/create_line_image_from_page_image.py $download_dir
+
+  local/process_data.py $download_dir data/train || exit 1
+  local/process_data.py $download_dir data/test || exit 1
+  local/process_data.py $download_dir data/val || exit 1
 
   utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
   utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt

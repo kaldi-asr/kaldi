@@ -23,17 +23,14 @@ parser.add_argument('database_path', type=str,
                     help='Path to the downloaded (and extracted) IAM data')
 parser.add_argument('out_dir', type=str,
                     help='Where to write output files.')
-parser.add_argument('--dataset', type=str, default='train',
-                    choices=['train', 'test','validation'],
-                    help='Subset of data to process.')
 args = parser.parse_args()
 
-text_file = os.path.join(args.out_dir + '/', 'text')
-text_fh = open(text_file, 'w')
-utt2spk_file = os.path.join(args.out_dir + '/', 'utt2spk')
-utt2spk_fh = open(utt2spk_file, 'w')
-image_file = os.path.join(args.out_dir + '/', 'images.scp')
-image_fh = open(image_file, 'w')
+text_file = os.path.join(args.out_dir, 'text')
+text_fh = open(text_file, 'w', encoding='utf-8')
+utt2spk_file = os.path.join(args.out_dir, 'utt2spk')
+utt2spk_fh = open(utt2spk_file, 'w', encoding='utf-8')
+image_file = os.path.join(args.out_dir, 'images.scp')
+image_fh = open(image_file, 'w', encoding='utf-8')
 
 for f in sorted(os.listdir(args.database_path)):
     if f.endswith('.gedi.xml'):
@@ -47,7 +44,7 @@ for f in sorted(os.listdir(args.database_path)):
         writer_id = writer[0].getAttribute('id')
         dl_page = gedi_doc.getElementsByTagName('DL_PAGE')
         for page in dl_page:
-            image_file_path = base_name + '.tiff'
+            image_file_path = base_name + '.tif'
             dl_zone = page.getElementsByTagName('DL_ZONE')
             lines = []
             for zone in dl_zone:
@@ -59,29 +56,10 @@ for f in sorted(os.listdir(args.database_path)):
                         lines.append([])
                     lines[lineID - 1].append(contents)
             for lineID, line in enumerate(lines, start=1):
+                image_file_name = os.path.basename(base_name) + '_0' + str(lineID) +'.tif'
+                image_file_path = os.path.join(args.database_path, 'lines', image_file_name)
                 text = ''.join(line)
-                utt_id = writer_id + '_' + base_name + '_' + str(lineID)
+                utt_id = writer_id + '_' + os.path.basename(base_name) + '_' + str(lineID)
                 text_fh.write(utt_id + ' ' + text + '\n')
                 utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
                 image_fh.write(utt_id + ' ' + image_file_path + '\n')
-
-#with open(dataset_path) as f:
-#  for line in f:
-#    line = line.strip()
-#    line_vect = line.split('-')
-#    xml_file = line_vect[0] + '-' + line_vect[1]
-#    xml_path = os.path.join(args.database_path, 'xml', xml_file + '.xml')
-#    img_num = line[-3:]
-#    doc = minidom.parse(xml_path)
-#
-#    form_elements = doc.getElementsByTagName('form')[0]
-#    writer_id = form_elements.getAttribute('writer-id')
-#    outerfolder = form_elements.getAttribute('id')[0:3]
-#    innerfolder = form_elements.getAttribute('id')
-#    lines_path = os.path.join(args.database_path, 'lines', outerfolder, innerfolder, innerfolder)
-#    image_file_path = lines_path + img_num + '.png'
-#    text =  text_dict[line]
-#    utt_id = writer_id + '_' + line
-#    text_fh.write(utt_id + ' ' + text + '\n')
-#    utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
-#    image_fh.write(utt_id + ' ' + image_file_path + '\n')
