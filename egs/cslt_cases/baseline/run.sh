@@ -41,7 +41,7 @@ grep -v '<s>' | grep -v '</s>' | sort -u > data/dict/lexicon.txt || exit 1;
 mkdir -p data/lang;
 utils/prepare_lang.sh --position_dependent_phones false data/dict "<SPOKEN_NOISE>" data/local/lang data/lang || exit 1;
 
-# format language model to G.fst
+# format trained or provided language model to G.fst
 # prepare things for graph making in local/thchs-30_decode.sh, not necessary for training
 (
   mkdir -p data/graph;
