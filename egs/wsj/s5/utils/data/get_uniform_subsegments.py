@@ -69,7 +69,7 @@ def run(args):
             end = start + args.max_segment_duration
             start_relative = start - start_time
             end_relative = end - start_time
-            new_utt = "{utt_id}-{s:06d}-{e:06d}".format(
+            new_utt = "{utt_id}-{s:08d}-{e:08d}".format(
                 utt_id=utt_id, s=int(100 * start_relative),
                 e=int(100 * end_relative))
             print ("{new_utt} {utt_id} {s} {e}".format(
@@ -86,7 +86,7 @@ def run(args):
             end = min(start + args.max_segment_duration, end_time)
         else:
             end = end_time
-        new_utt = "{utt_id}-{s:06d}-{e:06d}".format(
+        new_utt = "{utt_id}-{s:08d}-{e:08d}".format(
             utt_id=utt_id, s=int(100 * (start - start_time)),
             e=int(100 * (end - start_time)))
         print ("{new_utt} {utt_id} {s} {e}".format(
