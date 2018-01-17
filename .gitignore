@@ -7,7 +7,11 @@
 !/src/*/README
 
 # Handbook
-/egs/cslt_cases/speech_book/
+/egs/cslt_cases/speech_book
+
+# output
+/egs/cslt_cases/*/data
+/egs/cslt_cases/*/exp
 
 # mac store file
 .DS_Store

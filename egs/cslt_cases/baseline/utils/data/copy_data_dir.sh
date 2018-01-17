@@ -1,1 +1,0 @@
-../copy_data_dir.sh

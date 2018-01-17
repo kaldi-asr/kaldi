@@ -1,1 +1,0 @@
-tuning/run_tdnn_lstm_lfr_1a.sh

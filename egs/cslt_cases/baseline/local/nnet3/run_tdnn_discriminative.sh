@@ -19,19 +19,25 @@ use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
 
+# Objective options
+criterion=smbr
+one_silence_class=true
+
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
-srcdir=exp/nnet3/nnet_ms_a
-train_data_dir=data/train_si284_hires
-online_ivector_dir=exp/nnet3/ivectors_train_si284
+
+if [ $# != 2 ]; then
+  echo "Usage: $0 [opts] <nnet-dir> <data-dir>"
+  exit 1;
+fi
+
+srcdir=$1
+train_data_dir=$2
+online_ivector_dir=
 degs_dir=                     # If provided, will skip the degs directory creation
 lats_dir=                     # If provided, will skip denlats creation
-
-## Objective options
-criterion=smbr
-one_silence_class=true
 
 dir=${srcdir}_${criterion}
 
@@ -142,25 +148,7 @@ if [ $stage -le 4 ]; then
     ${degs_dir} $dir
 fi
 
-if [ $stage -le 5 ]; then
-  for x in `seq $decode_start_epoch $num_epochs`; do
-    iter=epoch${x}_adj
-    for lm_suffix in tgpr bd_tgpr; do
-      graph_dir=exp/tri4b/graph_${lm_suffix}
-      # use already-built graphs.
-      for year in eval92 dev93; do
-        (
-          steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" --iter $iter \
-            --online-ivector-dir exp/nnet3/ivectors_test_$year \
-            $graph_dir data/test_${year}_hires $dir/decode_${lm_suffix}_${year}_$iter ;
-        ) &
-      done
-    done
-  done
-fi
-wait;
-
-if [ $stage -le 6 ] && $cleanup; then
+if [ $stage -le 5 ] && $cleanup; then
   # if you run with "--cleanup true --stage 6" you can clean up.
   rm ${lats_dir}/lat.*.gz || true
   rm ${srcdir}_ali/ali.*.gz || true
