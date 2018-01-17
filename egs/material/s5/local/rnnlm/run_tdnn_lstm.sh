@@ -5,17 +5,19 @@
 
 # This script trains LMs on the swbd LM-training data.
 
-# rnnlm/train_rnnlm.sh: best iteration (out of 10) was 3, linking it to final iteration.
-# rnnlm/train_rnnlm.sh: train/dev perplexity was 105.1 / 223.6.
-# Train objf: -5.72 -5.28 -4.92 -4.64 -4.36 -4.09 -3.85 -3.62 -3.40 -3.23 
-# Dev objf:   -9.99 -5.71 -5.43 -5.41 -5.52 -5.69 -5.86 -6.09 -6.29 -6.49 
 
-# %WER 39.14 [ 24322 / 62144, 3199 ins, 6127 del, 14996 sub ] exp/chain/tdnn_lstm1a_tree6000_sp_ld5/decode_dev/wer_10_0.0
-# %WER 37.60 [ 23367 / 62144, 3129 ins, 5918 del, 14320 sub ] exp/chain/tdnn_lstm1a_tree6000_sp_ld5/decode_dev_rnnlm_1a/wer_9_0.5
+# [for swahili]
+# rnnlm/train_rnnlm.sh: best iteration (out of 10) was 3, linking it to final iteration.
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 113.6 / 222.1.                   
+# Train objf: -5.79 -5.37 -5.00 -4.72 -4.47 -4.18 -3.92 -3.68 -3.48 -3.28         
+# Dev objf:   -9.99 -5.79 -5.47 -5.40 -5.46 -5.62 -5.82 -6.01 -6.22 -6.42  
+
+# %WER 39.27 [ 24406 / 62144, 2835 ins, 6472 del, 15099 sub ] exp/swahili/chain/tdnn_lstm1a_sp_ld5/decode_dev/wer_9_1.0
+# %WER 37.67 [ 23408 / 62144, 3238 ins, 5998 del, 14172 sub ] exp/swahili/chain/tdnn_lstm1a_sp_ld5/decode_dev_rnnlm_1a/wer_10_0.0
 
 # Begin configuration section.
+language=swahili
 
-dir=exp/rnnlm_lstm_1a
 embedding_dim=512
 lstm_rpd=128
 lstm_nrpd=128
@@ -24,20 +26,22 @@ train_stage=-10
 
 # variables for lattice rescoring
 run_rescore=true
-ac_model_dir=exp/chain/tdnn_lstm1a_sp_ld5
 decode_dir_suffix=rnnlm_1a
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
               # exploding exponentially
 pruned_rescore=true
+language=swahili
 
 . ./cmd.sh
 . ./utils/parse_options.sh
 
-text=data/train/text
-lexicon=data/local/dict_nosp/lexiconp.txt
-text_dir=data/rnnlm/text_nosp_1e
+ac_model_dir=exp/$language/chain/tdnn_lstm1a_sp_ld5
+dir=exp/$language/rnnlm_lstm_1a
+text=data/$language/train/text
+lexicon=data/$language/local/dict_nosp/lexiconp.txt
+text_dir=data/$language/rnnlm/text_nosp_1e
 mkdir -p $dir/config
 set -e
 
@@ -112,8 +116,8 @@ if [ $stage -le 4 ] && $run_rescore; then
     rnnlm/lmrescore$pruned.sh \
       --cmd "$decode_cmd --mem 4G" \
       --weight 0.5 --max-ngram-order $ngram_order \
-      data/lang_$LM $dir \
-      data/${decode_set}_hires ${decode_dir} \
+      data/$language/lang_$LM $dir \
+      data/$language/${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix}
   done
 fi
