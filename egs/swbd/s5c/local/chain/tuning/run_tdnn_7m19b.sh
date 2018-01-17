@@ -1,22 +1,21 @@
 #!/bin/bash
-# Note: before merging to master, this will be renamed.
+# TODO: this will be moved before merging to master.
 
-# 7m19c is as 7m19b but with one more layer (and moving the bypass connections up).
-#   Effect is unclear.
+# 7m19b is as 7m19 but with some bypass connections.  Helpful.
 
-# local/chain/compare_wer_general.sh --rt03 tdnn7m19_sp tdnn7m19b_sp tdnn7m19c_sp
-# System                tdnn7m19_sp tdnn7m19b_sp tdnn7m19c_sp
-# WER on train_dev(tg)      13.09     12.93     12.86
-# WER on train_dev(fg)      12.12     11.87     11.82
-# WER on eval2000(tg)        15.8      15.6      15.4
-# WER on eval2000(fg)        14.3      14.0      13.8
-# WER on rt03(tg)            19.1      19.0      19.1
-# WER on rt03(fg)            16.6      16.4      16.6
-# Final train prob         -0.096    -0.096    -0.094
-# Final valid prob         -0.106    -0.106    -0.103
-# Final train prob (xent)        -1.198    -1.188    -1.117
-# Final valid prob (xent)       -1.2070   -1.1980   -1.1223
-# Num-parameters               15528996  16512036  17824036
+# local/chain/compare_wer_general.sh --rt03 tdnn7m19_sp tdnn7m19b_sp
+# System                tdnn7m19_sp tdnn7m19b_sp
+# WER on train_dev(tg)      13.09     12.93
+# WER on train_dev(fg)      12.12     11.87
+# WER on eval2000(tg)        15.8      15.6
+# WER on eval2000(fg)        14.3      14.0
+# WER on rt03(tg)            19.1      19.0
+# WER on rt03(fg)            16.6      16.4
+# Final train prob         -0.096    -0.096
+# Final valid prob         -0.106    -0.106
+# Final train prob (xent)        -1.198    -1.188
+# Final valid prob (xent)       -1.2070   -1.1980
+# Num-parameters               15528996  16512036
 
 
 # 7m19 is as 7m16 but adding an extra -3,0,3 layer.
@@ -143,7 +142,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=7m19c
+affix=7m19b
 suffix=
 $speed_perturb && suffix=_sp
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
@@ -248,17 +247,16 @@ if [ $stage -le 12 ]; then
   relu-batchnorm-layer name=tdnn3 $opts dim=1280 bottleneck-dim=192
   relu-batchnorm-layer name=tdnn4 $opts input=Append(-1,0,1) dim=1280 bottleneck-dim=256
   relu-batchnorm-layer name=tdnn5 $opts dim=1280 bottleneck-dim=192
-  relu-batchnorm-layer name=tdnn6 $opts input=Append(-3,0,3) dim=1280 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn7 $opts input=Append(-3,0,3,tdnn5) dim=1280 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn8 $opts input=Append(-3,0,3) dim=1280 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn9 $opts input=Append(-3,0,3,tdnn7) dim=1280 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn10 $opts input=Append(-3,0,3) dim=1280 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn11 $opts input=Append(-3,0,3,tdnn9) dim=1280 bottleneck-dim=256
+  relu-batchnorm-layer name=tdnn6 $opts input=Append(-3,0,3,tdnn4) dim=1280 bottleneck-dim=256
+  relu-batchnorm-layer name=tdnn7 $opts input=Append(-3,0,3) dim=1280 bottleneck-dim=256
+  relu-batchnorm-layer name=tdnn8 $opts input=Append(-3,0,3,tdnn6) dim=1280 bottleneck-dim=256
+  relu-batchnorm-layer name=tdnn9 $opts input=Append(-3,0,3) dim=1280 bottleneck-dim=256
+  relu-batchnorm-layer name=tdnn10 $opts input=Append(-3,0,3,tdnn8) dim=1280 bottleneck-dim=256
 
-  relu-batchnorm-layer name=prefinal-chain input=tdnn11 $opts dim=1280 bottleneck-dim=256
+  relu-batchnorm-layer name=prefinal-chain input=tdnn10 $opts dim=1280 bottleneck-dim=256
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  relu-batchnorm-layer name=prefinal-xent input=tdnn11 $opts dim=1280 bottleneck-dim=256
+  relu-batchnorm-layer name=prefinal-xent input=tdnn10 $opts dim=1280 bottleneck-dim=256
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/

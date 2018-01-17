@@ -132,7 +132,7 @@ if $include_rt03; then
   echo -n "# WER on rt03(tg)      "
   for x in $*; do
     set_names $x
-    wer=$(grep Sum $dirname/decode_rt03*sw1_tg$epoch_suffix/score*/*ys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+    wer=$(grep Sum $dirname/decode_rt03*sw1_tg$epoch_suffix/score*/rt03_hires.ctm.filt.sys | utils/best_wer.sh | awk '{print $2}')
     printf "% 10s" $wer
   done
   echo
@@ -141,7 +141,7 @@ if $include_rt03; then
     echo -n "#           [looped:]  "
     for x in $*; do
       set_names $x
-      wer=$(grep Sum $dirname/decode_rt03*sw1_tg${epoch_suffix}_looped/score*/*ys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+      wer=$(grep Sum $dirname/decode_rt03*sw1_tg${epoch_suffix}_looped/score*/rt03_hires.ctm.filt.sys | utils/best_wer.sh | awk '{print $2}')
       printf "% 10s" $wer
     done
     echo
@@ -150,7 +150,7 @@ if $include_rt03; then
   echo -n "# WER on rt03(fg)      "
   for x in $*; do
     set_names $x
-    wer=$(grep Sum $dirname/decode_rt03*sw1_fsh_fg$epoch_suffix/score*/*ys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+    wer=$(grep Sum $dirname/decode_rt03*sw1_fsh_fg$epoch_suffix/score*/rt03_hires.ctm.filt.sys | utils/best_wer.sh | awk '{print $2}')
     printf "% 10s" $wer
   done
   echo
