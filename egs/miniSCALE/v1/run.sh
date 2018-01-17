@@ -28,6 +28,7 @@ mkdir -p data/{train,test}/data
 
 if [ $stage -le 1 ]; then
   echo "$0: Preparing the test and train feature files..."
+  local/create_line_image_from_page_image.py data/download
   for dataset in train test; do
     local/make_features.py data/$dataset --feat-dim 40 | \
       copy-feats --compress=true --compression-method=7 \
