@@ -8,8 +8,6 @@
 n=8 # parallel jobs
 
 
-
-
 ###### Bookmark: data preparation ######
 
 # corpus and trans directory
@@ -26,8 +24,6 @@ thchs=/nfs/public/materials/data/thchs30-openslr
 local/thchs-30_data_prep.sh $thchs/data_thchs30 || exit 1;
 
 
-
-
 ###### Bookmark: language preparation ######
 
 # prepare lexicon.txt, extra_questions.txt, nonsilence_phones.txt, optional_silence.txt, silence_phones.txt
@@ -38,6 +34,7 @@ cat $thchs/resource/dict/lexicon.txt $thchs/data_thchs30/lm_word/lexicon.txt | \
 grep -v '<s>' | grep -v '</s>' | sort -u > data/dict/lexicon.txt || exit 1;
 
 # generate language stuff used for training
+# also lexicon to L_disambig.fst for graph making in local/thchs-30_decode.sh
 mkdir -p data/lang;
 utils/prepare_lang.sh --position_dependent_phones false data/dict "<SPOKEN_NOISE>" data/local/lang data/lang || exit 1;
 
@@ -48,8 +45,6 @@ utils/prepare_lang.sh --position_dependent_phones false data/dict "<SPOKEN_NOISE
   gzip -c $thchs/data_thchs30/lm_word/word.3gram.lm > data/graph/word.3gram.lm.gz || exit 1;
   utils/format_lm.sh data/lang data/graph/word.3gram.lm.gz $thchs/data_thchs30/lm_word/lexicon.txt data/graph/lang || exit 1;
 )
-
-
 
 
 ###### Bookmark: feature extraction ######
@@ -65,8 +60,6 @@ for x in train test; do
    steps/compute_cmvn_stats.sh data/mfcc/$x || exit 1;
    steps/compute_cmvn_stats.sh data/fbank/$x || exit 1;
 done
-
-
 
 
 ###### Bookmark: GMM training & decoding ######
@@ -107,8 +100,6 @@ local/thchs-30_decode.sh --nj $n "steps/decode_fmllr.sh" exp/tri4b data/mfcc &
 steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/tri4b exp/tri4b_ali || exit 1;
 
 
-
-
 ###### Bookmark: DNN training and decoding ######
 
 # train tdnn model
@@ -118,8 +109,6 @@ local/nnet3/run_tdnn.sh data/fbank/train exp/tri4b_ali $tdnn_dir || exit 1;
 # decoding
 graph_dir=exp/tri4b/graph_word # the same as gmm
 steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" $graph_dir data/fbank/test $tdnn_dir/decode_test_word || exit 1;
-
-
 
 
 ###### Bookmark: discriminative training and decoding ######
@@ -132,3 +121,4 @@ local/nnet3/run_tdnn_discriminative.sh --criterion $criterion $tdnn_dir data/fba
 steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" $graph_dir data/fbank/test ${tdnn_dir}_$criterion/decode_test_word || exit 1;
 
 
+exit 0;

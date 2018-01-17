@@ -39,7 +39,6 @@ for f in $train_data_dir/feats.scp $ali_dir/ali.1.gz $ali_dir/tree $ali_dir/fina
 done
 
 
-
 ###### Bookmark: nnet3 config ######
 if [ $stage -le 1 ]; then
   mkdir -p $dir
@@ -66,7 +65,6 @@ if [ $stage -le 1 ]; then
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
-
 
 
 ###### Bookmark: nnet3 training ######
