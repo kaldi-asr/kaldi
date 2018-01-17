@@ -12,14 +12,9 @@
 . ./cmd.sh
 #####Baseline settings#####
 # Usage: 
-# 1. For using original baseline, execute './run.sh --baseline chime4_official'. 
-# We don't provide the function to train original baseline models anymore. Instead, we provided the
-# trained original baseline models in tools/ASR_models for directly using.
-#
-# 2. For using advanced baseline, first execute './run.sh --baseline advanced --flatstart true' to
-# get the models. If you want to use TDNN instead of DNN, add option "--tdnn true". If you want to
-# use TDNN-LSTM instead of DNN, add option "--tdnn-lstm true".
-# Then execute './run.sh --baseline advanced' for your experiments.
+# Execute './run.sh' to get the models.
+# We provide three kinds of beamform methods. Add option --enhancement blstm_gev, or --enhancement beamformit_5mics
+# or --enhancement single5_BLSTMmask to use them. i.g. './run.sh --enhancement blstm_gev'
 
 # Config:
 stage=0 # resume training with --stage N
