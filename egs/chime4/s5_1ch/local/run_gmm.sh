@@ -86,10 +86,9 @@ fi
 # Note that we are combining enhanced training data with noisy training data
 if [ $stage -le 3 ]; then
   utils/combine_data.sh data/tr05_multi_${train} data/tr05_simu_${train} data/tr05_real_${train} data/tr05_simu_$enhan data/tr05_real_$enhan
-  #utils/combine_data.sh data/tr05_multi_${train} data/tr05_simu_${train} data/tr05_real_${train}
   utils/combine_data.sh data/dt05_multi_${train} data/dt05_simu_${train} data/dt05_real_${train}
   if $eval_flag; then
-  utils/combine_data.sh data/et05_multi_${train} data/et05_simu_${train} data/et05_real_${train}
+    utils/combine_data.sh data/et05_multi_${train} data/et05_simu_${train} data/et05_real_${train}
   fi
 fi
 

@@ -11,11 +11,15 @@
 
 . ./path.sh
 . ./cmd.sh
+
 #####Baseline settings#####
 # Usage: 
 # Execute './run.sh' to get the models.
 # We provide three kinds of beamform methods. Add option --enhancement blstm_gev, or --enhancement beamformit_5mics
 # or --enhancement single5_BLSTMmask to use them. i.g. './run.sh --enhancement blstm_gev'
+#
+# We stopped to support the old CHiME-3/4 baseline. If you want to reproduce the old results
+# Please use the old version of Kaldi, e.g., git checkout 9e8ff73648917836d0870c8f6fdd2ff4bdde384f
 
 # Config:
 stage=0 # resume training with --stage N
@@ -47,11 +51,9 @@ esac
 if [ ! -d $chime4_data ]; then
   echo "$chime4_data does not exist. Please specify chime4 data root correctly" && exit 1;
 fi
-# Set a model directory for the CHiME4 data.
-modeldir=`pwd`
-
-#####check data and model paths finished#######
-
+if [ ! -d $chime3_data ]; then
+  echo "$chime3_data does not exist. Please specify chime4 data root correctly" && exit 1;
+fi
 
 #####main program start################
 # You can execute run_init.sh only "once"
@@ -61,9 +63,7 @@ if [ $stage -le 0 ]; then
 fi
 
 # Using Beamformit or mask-based beamformer
-# See Hori et al, "The MERL/SRI system for the 3rd CHiME challenge using beamforming,
-# robust feature extraction, and advanced speech recognition," in Proc. ASRU'15
-# note that beamformed wav files are generated in the following directory
+# note that beamformed WAV files are generated in the following directory
 enhancement_data=`pwd`/enhan/$enhancement
 if [ $stage -le 1 ]; then
    case $enhancement in
@@ -82,22 +82,22 @@ if [ $stage -le 1 ]; then
    esac
 fi
 
-# Compute PESQ, STOI, eSTOI scores
+# Compute PESQ, STOI, eSTOI, and SDR scores
 if [ $stage -le 2 ]; then
   if [ ! -f local/bss_eval_sources.m ] || [ ! -f local/stoi.m ] || [ ! -f local/estoi.m ] || [ ! -f local/PESQ ]; then
+    # download and install speech enhancement evaluation tools
     local/download_se_eval_tool.sh
   fi
   chime4_rir_data=local/nn-gev/data/audio/16kHz/isolated_ext
   if [ ! -d $chime4_rir_data ]; then
     echo "$chime4_rir_dir does not exist. Please run 'blstm_gev' enhancement method first;" && exit 1;
   fi
-  local/compute_PESQ.sh $enhancement $enhancement_data $chime4_rir_data $modeldir
+  local/compute_PESQ.sh $enhancement $enhancement_data $chime4_rir_data $PWD
   local/compute_stoi_estoi_sdr.sh $enhancement $enhancement_data $chime4_rir_data
 fi
 
-# GMM based ASR experiment without "retraining"
+# GMM based ASR experiment
 # Please set a directory of your speech enhancement method.
-# run_gmm_recog.sh can be done every time when you change a speech enhancement technique.
 # The directory structure and audio files must follow the attached baseline enhancement directory
 if [ $stage -le 3 ]; then
   local/run_gmm.sh $enhancement $enhancement_data $chime4_data
