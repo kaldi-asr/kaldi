@@ -25,7 +25,7 @@ if [ $stage -le 0 ]; then
   local/prepare_data.sh --download-dir "$madcat_database"
 fi
 mkdir -p data/{train,test}/data
-
+mkdir -p data/download/madcat_sample_1
 if [ $stage -le 1 ]; then
   echo "$0: Preparing the test and train feature files..."
   local/create_line_image_from_page_image.py data/download

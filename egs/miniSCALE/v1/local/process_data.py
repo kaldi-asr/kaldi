@@ -47,7 +47,7 @@ for f in sorted(os.listdir(args.database_path)):
         writer_id = writer[0].getAttribute('id')
         dl_page = gedi_doc.getElementsByTagName('DL_PAGE')
         for page in dl_page:
-            image_file_path = base_name + '.tiff'
+            image_file_path = base_name + '.tif'
             dl_zone = page.getElementsByTagName('DL_ZONE')
             lines = []
             for zone in dl_zone:
