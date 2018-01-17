@@ -40,6 +40,7 @@ done
 
 
 ###### Bookmark: nnet3 config ######
+
 if [ $stage -le 1 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
@@ -68,6 +69,7 @@ fi
 
 
 ###### Bookmark: nnet3 training ######
+
 if [ $stage -le 2 ]; then
   steps/nnet3/train_dnn.py --stage=$train_stage \
     --cmd="$cuda_cmd" \

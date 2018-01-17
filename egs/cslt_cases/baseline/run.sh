@@ -8,7 +8,7 @@
 n=8 # parallel jobs
 
 
-###### Bookmark: data preparation ######
+###### Bookmark: basic preparation ######
 
 # corpus and trans directory
 thchs=/nfs/public/materials/data/thchs30-openslr
@@ -32,6 +32,9 @@ mkdir -p data/dict;
 cp $thchs/resource/dict/{extra_questions.txt,nonsilence_phones.txt,optional_silence.txt,silence_phones.txt} data/dict && \
 cat $thchs/resource/dict/lexicon.txt $thchs/data_thchs30/lm_word/lexicon.txt | \
 grep -v '<s>' | grep -v '</s>' | sort -u > data/dict/lexicon.txt || exit 1;
+
+
+###### Bookmark: language processing ######
 
 # generate language stuff used for training
 # also lexicon to L_disambig.fst for graph making in local/thchs-30_decode.sh
