@@ -29,7 +29,7 @@ parser.add_argument('--dataset', type=str, default='train',
 args = parser.parse_args()
 
 text_file = os.path.join(args.out_dir + '/', 'text')
-text_fh = open(text_file, 'w')
+text_fh = open(text_file, 'wb')
 utt2spk_file = os.path.join(args.out_dir + '/', 'utt2spk')
 utt2spk_fh = open(utt2spk_file, 'w')
 image_file = os.path.join(args.out_dir + '/', 'images.scp')
@@ -61,7 +61,7 @@ for f in sorted(os.listdir(args.database_path)):
             for lineID, line in enumerate(lines, start=1):
                 text = ''.join(line)
                 utt_id = writer_id + '_' + base_name + '_' + str(lineID)
-                text_fh.write(utt_id + ' ' + text + '\n')
+                text_fh.write((utt_id + ' ' + text + '\n').encode('utf-8'))
                 utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
                 image_fh.write(utt_id + ' ' + image_file_path + '\n')
 
