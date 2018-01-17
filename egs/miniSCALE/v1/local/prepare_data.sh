@@ -33,6 +33,7 @@ if [[ ! -d $download_dir ]]; then
   echo ""
 fi
 
+mkdir -p data/{train,test,val}
 if [ $stage -le 0 ]; then
   local/process_data.py $download_dir data/train --dataset train || exit 1
   local/process_data.py $download_dir data/test --dataset test || exit 1
