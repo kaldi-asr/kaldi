@@ -16,7 +16,7 @@
 # Usage: 
 # Execute './run.sh' to get the models.
 # We provide three kinds of beamform methods. Add option --enhancement blstm_gev, or --enhancement beamformit_5mics
-# or --enhancement single5_BLSTMmask to use them. i.g. './run.sh --enhancement blstm_gev'
+# or --enhancement single_BLSTMmask to use them. i.g. './run.sh --enhancement blstm_gev'
 #
 # We stopped to support the old CHiME-3/4 baseline. If you want to reproduce the old results
 # Please use the old version of Kaldi, e.g., git checkout 9e8ff73648917836d0870c8f6fdd2ff4bdde384f
@@ -73,11 +73,11 @@ if [ $stage -le 1 ]; then
     blstm_gev)
         local/run_beamform_blstm_gev_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 0
         ;;
-    single5_BLSTMmask)
+    single_BLSTMmask)
         local/run_beamform_blstm_gev_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 5 
         ;;
     *)
-        echo "Usage: --enhancement blstm_gev, or --enhancement beamformit_5mics , or --enhancement single5_BLSTMmask" 
+        echo "Usage: --enhancement blstm_gev, or --enhancement beamformit_5mics , or --enhancement single_BLSTMmask" 
         exit 1;
    esac
 fi
