@@ -647,9 +647,10 @@ void ComputationChecker::CheckComputationMatrixAccesses() const {
       KALDI_ERR << "Matrix m" << matrix_index << " is accessed before "
           "it is initialized";
     }
-    if (accesses.accesses.size() == 1) {
+    if (accesses.accesses.size() == 1 && config_.check_unused_variables) {
       int32 first_access_command = accesses.accesses[0].command_index;
       if (computation_.commands[first_access_command].command_type == kSetConst) {
+        if (!config_.check_unused_variables)
         KALDI_ERR << "Matrix m" << matrix_index << " is only set to a constant "
                   << "value, but then never accessed.";
       }
@@ -1076,6 +1077,23 @@ int32 ComputationAnalysis::FirstNontrivialAccess(int32 s) const {
         break;  // break from access_iter loop (an optimization)
       }
     }
+  }
+  return ans;
+}
+
+
+int32 ComputationAnalysis::FirstAccess(int32 s) const {
+  KALDI_ASSERT(static_cast<size_t>(s) < computation_.submatrices.size() && s>0);
+  int32 ans = computation_.commands.size();
+  std::vector<int32> variable_indexes;
+  analyzer_.variables.AppendVariablesForSubmatrix(s, &variable_indexes);
+  std::vector<int32>::const_iterator iter = variable_indexes.begin(),
+          end = variable_indexes.end();
+  for (; iter != end; ++iter) {
+    int32 v = *iter;
+    const std::vector<Access> &accesses = analyzer_.variable_accesses[v];
+    if (!accesses.empty())
+      ans = std::min(ans, accesses[0].command_index);
   }
   return ans;
 }

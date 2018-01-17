@@ -3464,13 +3464,12 @@ class ComputationLoopedOptimizer {
   /// expected to be command indexes of the kNoOperationMarker at segment
   /// boundaries, this function outputs for each of these command indexes a list
   /// of matrices which are 'active' at that point in time.  By 'active' we mean
-  /// that the matrix has been written to before that time (note, we don't count
-  /// initialization with zeros as being written to); and will be read after
-  /// that time.  These is the list of matrices that 'need to be in scope'
-  /// at those points in time.  '*active_matrices' is indexed by the
-  /// same index as 'splice_point_commands', and is then a list of active
-  /// matrices, in numerical order of matrix index.
-  /// Note: for each i, (*active_matrices)[i] will be sorted and unique.
+  /// that the matrix has been written to before that time (including zeroing),
+  /// and will be read after that time.  These is the list of matrices that
+  /// 'need to be in scope' at those points in time.  '*active_matrices' is
+  /// indexed by the same index as 'splice_point_commands', and is then a list
+  /// of active matrices, in numerical order of matrix index.  Note: for each i,
+  /// (*active_matrices)[i] will be sorted and unique.
   static void FindActiveMatrices(const NnetComputation &computation,
                                  const Analyzer &analyzer,
                                  const std::vector<int32> &splice_point_commands,

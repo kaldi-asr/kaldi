@@ -1,23 +1,25 @@
 #!/bin/bash
 
 # 1f is as 1e but a re-tuned model with fewer parameters and a bottleneck at the
-# end.
+# end, and no chain l2-regularize
+#[note: was 1e12e.]
 
-# local/chain/compare_wer.sh exp/chain/tdnn1e10_sp exp/chain/tdnn1f_sp
-# System                tdnn1e10_sp tdnn1f_sp
+# local/chain/compare_wer.sh exp/chain/tdnn1e10_sp exp/chain/tdnn1e12e_sp
+# System                tdnn1e10_sp tdnn1e12e_sp
 #WER dev93 (tgpr)                7.29      7.20
-#WER dev93 (tg)                  7.08      7.00
-#WER dev93 (big-dict,tgpr)       5.15      5.08
-#WER dev93 (big-dict,fg)         4.52      4.65
-#WER eval92 (tgpr)               5.12      4.93
-#WER eval92 (tg)                 4.91      4.66
-#WER eval92 (big-dict,tgpr)      2.94      2.87
-#WER eval92 (big-dict,fg)        2.57      2.39
-# Final train prob        -0.0545   -0.0512
-# Final valid prob        -0.0650   -0.0641
-# Final train prob (xent)   -0.9696   -0.9105
-# Final valid prob (xent)   -0.9917   -0.9523
+#WER dev93 (tg)                  7.08      6.81
+#WER dev93 (big-dict,tgpr)       5.15      5.04
+#WER dev93 (big-dict,fg)         4.52      4.42
+#WER eval92 (tgpr)               5.12      4.80
+#WER eval92 (tg)                 4.91      4.54
+#WER eval92 (big-dict,tgpr)      2.94      2.76
+#WER eval92 (big-dict,fg)        2.57      2.30
+# Final train prob        -0.0545   -0.0455
+# Final valid prob        -0.0650   -0.0599
+# Final train prob (xent)   -0.9696   -0.9060
+# Final valid prob (xent)   -0.9917   -0.9448
 # Num-params                 8067660   6071244
+
 
 # exp/chain/tdnn1e_sp: num-iters=72 nj=2..8 num-params=8.1M dim=40+100->2854 combine=-0.064->-0.063 (over 3) xent:train/valid[47,71,final]=(-1.07,-0.973,-0.970/-1.08,-0.992,-0.992) logprob:train/valid[47,71,final]=(-0.064,-0.056,-0.054/-0.072,-0.066,-0.065)
 # exp/chain/tdnn1f_sp: num-iters=72 nj=2..8 num-params=6.1M dim=40+100->2854 combine=-0.061->-0.061 (over 2) xent:train/valid[47,71,final]=(-1.04,-0.911,-0.910/-1.06,-0.953,-0.952) logprob:train/valid[47,71,final]=(-0.063,-0.052,-0.051/-0.071,-0.064,-0.064)
@@ -216,7 +218,7 @@ if [ $stage -le 16 ]; then
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.00005 \
+    --chain.l2-regularize=0.0 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.srand=$srand \

@@ -321,6 +321,13 @@ class ComputationAnalysis {
   /// s must be >0 (i.e. not the empty submatrix).
   int32 FirstNontrivialAccess(int32 s) const;
 
+  /// Returns the first command (read or write) that accesses any part of 's',
+  /// including possibly zeroing it.  [note: kAllocMatrix, kSwapMatrix and
+  /// kDeallocMatrix do not count as read or write operations].  If there is no
+  /// such command, it returns num_commands.  s must be >0 (i.e. not the empty
+  /// submatrix).
+  int32 FirstAccess(int32 s) const;
+
   /// Returns the last non-deallocation command that accesses any part of
   /// submatrix 's'; if there is no such command it returns -1.
   /// s must be >0 (i.e. not the empty submatrix).
@@ -385,7 +392,7 @@ struct CheckComputationOptions {
   // legitimately fail after optimization.  see code for details.
   bool check_rewrite;
   // If 'check_unused_variables' is true, it checks for unused variables
-  // (e.g. unused partsof matrices).  We only set it false for online
+  // (e.g. unused parts of matrices).  We only set it false for online
   // computations, where there can be instances where a part of a matrix is
   // apparently never accessed (until we consider that the matrix is swapped
   // with another).

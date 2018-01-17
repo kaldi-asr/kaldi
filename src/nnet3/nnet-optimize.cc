@@ -543,7 +543,9 @@ void Optimize(const NnetOptimizeOptions &config,
       CheckComputation(nnet, *computation, false);
   }
 
-  if (config.optimize && config.move_sizing_commands) {
+
+  if ((config.optimize && config.move_sizing_commands) ||
+      config.optimize_looped_computation) {
     MoveSizingCommands(nnet, computation);
     if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, false);
