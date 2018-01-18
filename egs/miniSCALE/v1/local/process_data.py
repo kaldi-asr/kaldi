@@ -32,11 +32,11 @@ utt2spk_fh = open(utt2spk_file, 'w', encoding='utf-8')
 image_file = os.path.join(args.out_dir, 'images.scp')
 image_fh = open(image_file, 'w', encoding='utf-8')
 
-for f in sorted(os.listdir(args.database_path)):
+for f in sorted(os.listdir(os.path.join(args.database_path, 'gedi'))):
     if f.endswith('.gedi.xml'):
         gedi_xml_path = os.path.join(args.database_path, f)
-        base_name = os.path.splitext(os.path.splitext(gedi_xml_path)[0])[0]
-        madcat_xml_path = base_name + '.madcat.xml'
+        base_name = os.path.splitext(os.path.splitext(f)[0])[0]
+        madcat_xml_path = os.path.join(args.database_path, 'madcat', base_name + '.madcat.xml')
         madcat_doc = minidom.parse(madcat_xml_path)
         gedi_doc = minidom.parse(gedi_xml_path)
 
@@ -44,7 +44,6 @@ for f in sorted(os.listdir(args.database_path)):
         writer_id = writer[0].getAttribute('id')
         dl_page = gedi_doc.getElementsByTagName('DL_PAGE')
         for page in dl_page:
-            image_file_path = base_name + '.tif'
             dl_zone = page.getElementsByTagName('DL_ZONE')
             lines = []
             for zone in dl_zone:
@@ -56,10 +55,10 @@ for f in sorted(os.listdir(args.database_path)):
                         lines.append([])
                     lines[lineID - 1].append(contents)
             for lineID, line in enumerate(lines, start=1):
-                image_file_name = os.path.basename(base_name) + '_0' + str(lineID) +'.tif'
+                image_file_name = base_name + '_0' + str(lineID) +'.tif'
                 image_file_path = os.path.join(args.database_path, 'lines', image_file_name)
                 text = ''.join(line)
-                utt_id = writer_id + '_' + os.path.basename(base_name) + '_' + str(lineID)
+                utt_id = writer_id + '_' + base_name + '_' + str(lineID)
                 text_fh.write(utt_id + ' ' + text + '\n')
                 utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
                 image_fh.write(utt_id + ' ' + image_file_path + '\n')

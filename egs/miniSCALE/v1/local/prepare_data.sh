@@ -17,7 +17,7 @@
 #      spk2utt file: 000 000_a01-000u-00 000_a01-000u-01 000_a01-000u-02 000_a01-000u-03
 
 stage=0
-download_dir=data/download/madcat_sample
+download_dir=data/download/tmp
 username=
 password=       # username and password for downloading the IAM database
                 # if you have not already downloaded the database, please
@@ -36,7 +36,7 @@ fi
 mkdir -p data/{train,test,val}
 mkdir -p $download_dir/lines
 if [ $stage -le 1 ]; then
-  local/create_line_image_from_page_image.py $download_dir
+  local/create_line_image_from_page_image.py $download_dir/LDC2014T13/data
 
   local/process_data.py $download_dir data/train || exit 1
   local/process_data.py $download_dir data/test || exit 1

@@ -108,8 +108,9 @@ width_buffer = int(args.width_buffer)
 char_width_buffer = int(args.char_width_buffer)
 char_height_buffer = int(args.char_height_buffer)
 
-for file in os.listdir(data_path):
+for file in os.listdir(os.path.join(data_path, 'images')):
     if file.endswith(".tif"):
-        image_path = os.path.join(data_path, file)
-        gedi_file_path = image_path.replace(".tif", ".gedi.xml")
+        image_path = os.path.join(data_path, 'images', file)
+        gedi_file_path = os.path.join(data_path, 'gedi', file)
+        gedi_file_path = gedi_file_path.replace(".tif", ".gedi.xml")
         get_line_images_from_page_image(image_path, gedi_file_path)
