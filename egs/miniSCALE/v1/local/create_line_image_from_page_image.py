@@ -8,6 +8,8 @@ from PIL import Image
 parser = argparse.ArgumentParser(description="""Creates line images from page image.""")
 parser.add_argument('database_path', type=str,
                     help='Path to the downloaded (and extracted) mdacat data')
+parser.add_argument('data_splits', type=str,
+                    help='Path to file that contains the train/test/dev split information')
 parser.add_argument('--width_buffer', type=int, default=10,
                     help='width buffer across annotate character')
 parser.add_argument('--height_buffer', type=int, default=10,
@@ -108,9 +110,9 @@ width_buffer = int(args.width_buffer)
 char_width_buffer = int(args.char_width_buffer)
 char_height_buffer = int(args.char_height_buffer)
 
-for file in os.listdir(os.path.join(data_path, 'images')):
-    if file.endswith(".tif"):
-        image_path = os.path.join(data_path, 'images', file)
-        gedi_file_path = os.path.join(data_path, 'gedi', file)
-        gedi_file_path = gedi_file_path.replace(".tif", ".gedi.xml")
-        get_line_images_from_page_image(image_path, gedi_file_path)
+with open(args.data_splits) as f:
+    for line in f:
+        base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
+        gedi_file_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
+        image_file_path = os.path.join(args.database_path, 'images', base_name + '.tif')
+        get_line_images_from_page_image(image_file_path, gedi_file_path)
