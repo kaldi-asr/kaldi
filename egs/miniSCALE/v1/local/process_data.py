@@ -21,6 +21,8 @@ import xml.dom.minidom as minidom
 parser = argparse.ArgumentParser(description="""Creates text, utt2spk and images.scp files.""")
 parser.add_argument('database_path', type=str,
                     help='Path to the downloaded (and extracted) IAM data')
+parser.add_argument('data_splits', type=str,
+                    help='Path to file that contains the train/test/dev split information')
 parser.add_argument('out_dir', type=str,
                     help='Where to write output files.')
 args = parser.parse_args()
@@ -32,11 +34,11 @@ utt2spk_fh = open(utt2spk_file, 'w', encoding='utf-8')
 image_file = os.path.join(args.out_dir, 'images.scp')
 image_fh = open(image_file, 'w', encoding='utf-8')
 
-for f in sorted(os.listdir(os.path.join(args.database_path, 'gedi'))):
-    if f.endswith('.gedi.xml'):
-        gedi_xml_path = os.path.join(args.database_path, f)
-        base_name = os.path.splitext(os.path.splitext(f)[0])[0]
-        madcat_xml_path = os.path.join(args.database_path, 'madcat', base_name + '.madcat.xml')
+with open(args.data_splits) as f:
+    for line in f:
+        base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
+        gedi_xml_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
+        madcat_xml_path = os.path.join(args.database_path, 'madcat', line.split(' ')[0])
         madcat_doc = minidom.parse(madcat_xml_path)
         gedi_doc = minidom.parse(gedi_xml_path)
 
