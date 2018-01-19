@@ -17,12 +17,10 @@
 #      spk2utt file: 000 000_a01-000u-00 000_a01-000u-01 000_a01-000u-02 000_a01-000u-03
 
 stage=0
-download_dir=data/download/tmp
-username=
-password=       # username and password for downloading the IAM database
-                # if you have not already downloaded the database, please
-                # register at http://www.fki.inf.unibe.ch/databases/iam-handwriting-database
-                # and provide this script with your username and password.
+download_dir=data/download/tmp/LDC2014T13/data
+train_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.train.raw.lineid
+test_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.test.raw.lineid
+dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.dev.raw.lineid
 
 . ./cmd.sh
 . ./path.sh
@@ -33,15 +31,18 @@ if [[ ! -d $download_dir ]]; then
   echo ""
 fi
 
-mkdir -p data/{train,test,val}
+mkdir -p data/{train,test,dev}
 mkdir -p $download_dir/lines
 if [ $stage -le 1 ]; then
-  local/create_line_image_from_page_image.py $download_dir/LDC2014T13/data
+  #local/create_line_image_from_page_image.py $download_dir $train_split_file || exit 1
+  #local/create_line_image_from_page_image.py $download_dir $test_split_file || exit 1
+  #local/create_line_image_from_page_image.py $download_dir $dev_split_file || exit 1
 
-  local/process_data.py $download_dir data/train || exit 1
-  local/process_data.py $download_dir data/test || exit 1
-  local/process_data.py $download_dir data/val || exit 1
+  local/process_data.py $download_dir $train_split_file data/train || exit 1
+  local/process_data.py $download_dir $test_split_file data/test || exit 1
+  local/process_data.py $download_dir $dev_split_file data/dev || exit 1
 
   utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
   utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
+  utils/utt2spk_to_spk2utt.pl data/dev/utt2spk > data/dev/spk2utt
 fi
