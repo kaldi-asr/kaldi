@@ -30,7 +30,7 @@ for x in train test; do
       echo $uttid $spkid >> utt2spk
       echo $uttid `sed -n 1p $corpus_dir/data/$nn.wav.trn` >> word.txt
   done 
-  cp word.txt text
+  mv word.txt text
   sort wav.scp -o wav.scp
   sort utt2spk -o utt2spk
   sort text -o text
