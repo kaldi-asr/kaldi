@@ -1,21 +1,11 @@
 #!/bin/bash
 
-# 1e is as 1d but instead of the --proportional-shrink option, using
-#  the newly added xconfig-layer-specific 'l2-regularize' options.
+# tdnn-lstm recipe
+# cat exp/swahili/chain/tdnn_lstm1a_sp_ld5/decode_dev/scoring_kaldi/best_wer
+# %WER 39.27 [ 24406 / 62144, 2835 ins, 6472 del, 15099 sub ] exp/swahili/chain/tdnn_lstm1a_sp_ld5/decode_dev/wer_9_1.0
 
-# local/chain/compare_wer.sh exp/chain/tdnn1d_sp exp/chain/tdnn1e_sp
-# System                tdnn1d_sp tdnn1e_sp
-#WER dev_clean_2 (tgsmall)      14.21     13.43
-#WER dev_clean_2 (tglarge)      10.41      9.76
-# Final train prob        -0.0473   -0.0510
-# Final valid prob        -0.0893   -0.0889
-# Final train prob (xent)   -1.0757   -1.4148
-# Final valid prob (xent)   -1.4222   -1.6640
-
-
-# steps/info/chain_dir_info.pl exp/chain/tdnn1{d,e}_sp
-# exp/chain/tdnn1d_sp: num-iters=17 nj=2..5 num-params=7.5M dim=40+100->2309 combine=-0.063->-0.052 xent:train/valid[10,16,final]=(-1.65,-1.23,-1.08/-1.91,-1.55,-1.42) logprob:train/valid[10,16,final]=(-0.084,-0.057,-0.047/-0.125,-0.100,-0.089)
-# exp/chain/tdnn1e_sp: num-iters=17 nj=2..5 num-params=7.5M dim=40+100->2309 combine=-0.061->-0.056 xent:train/valid[10,16,final]=(-1.69,-1.41,-1.41/-1.91,-1.67,-1.66) logprob:train/valid[10,16,final]=(-0.065,-0.055,-0.051/-0.104,-0.095,-0.089)
+# steps/info/chain_dir_info.pl exp/swahili/chain/tdnn_lstm1a_sp_ld5
+# exp/swahili/chain/tdnn_lstm1a_sp_ld5: num-iters=70 nj=2..12 num-params=10.9M dim=40+100->1792 combine=-0.175->-0.170 (over 3) xent:train/valid[45,69,final]=(-1.73,-1.51,-1.49/-1.89,-1.76,-1.74) logprob:train/valid[45,69,final]=(-0.187,-0.159,-0.158/-0.219,-0.210,-0.209)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -98,7 +88,7 @@ for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 7 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
@@ -121,7 +111,7 @@ if [ $stage -le 10 ]; then
   fi
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 8 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
@@ -129,7 +119,7 @@ if [ $stage -le 11 ]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 9 ]; then
   # Build a tree using our new topology.  We know we have alignments for the
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
@@ -145,7 +135,7 @@ if [ $stage -le 12 ]; then
     $lang $ali_dir $tree_dir
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 10 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
 
@@ -199,7 +189,7 @@ EOF
 fi
 
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 11 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/material-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
@@ -242,7 +232,7 @@ if [ $stage -le 14 ]; then
     --dir=$dir  || exit 1;
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 12 ]; then
   # Note: it's not important to give mkgraph.sh the lang directory with the
   # matched topology (since it gets the topology file from the model).
   utils/mkgraph.sh \
@@ -250,7 +240,7 @@ if [ $stage -le 15 ]; then
     $tree_dir $tree_dir/graph || exit 1;
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 13 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
 
