@@ -142,17 +142,17 @@ if [ $stage -le 17 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=512
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=512
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=512
+  relu-batchnorm-layer name=tdnn1 dim=512
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=512
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=512
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
   fast-lstmp-layer name=fastlstm1 cell-dim=512 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=512
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=512
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=512
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=512
   fast-lstmp-layer name=fastlstm2 cell-dim=512 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=512
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=512
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=512
+  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=512
   fast-lstmp-layer name=fastlstm3 cell-dim=512 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
