@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 
-# Copyright 2017 (Author: Chun Chieh Chang)
+# Copyright       2017  Chun Chieh Chang
 
-# This script goes through the downloaded dataset and creates the text, utt2spk, image.scp
-# text - matches the labels with the image name
-# utt2spk - matches the image names with the speaker/writer names
-# image.scp - matches the image names with the actual image file
+# This script goes through the downloaded UW3 dataset and creates data files "text",
+# "utt2spk", and "images.scp" for the train and test subsets in data/train and data/test.
+
+# text - matches the transcriptions with the image id
+# utt2spk - matches the image id's with the speaker/writer names
+# images.scp - matches the image is's with the actual image file
 
 import argparse
 import os
-import sys
-import numpy as np
 import random
-from scipy import misc
 
-parser = argparse.ArgumentParser(description="""Create text utt2spk image.scp""")
-parser.add_argument('database_path', type=str, help='path to downloaded data')
-parser.add_argument('out_dir', type=str, help='where to write output files')
-parser.add_argument('--model_type', type=str, default='word',
-                    choices=['word', 'character'],
-                    help='word model or character model')
+parser = argparse.ArgumentParser(description="""Creates data/train and data/test.""")
+parser.add_argument('database_path', type=str, help='path to downloaded (and extracted) UW3 corpus')
+parser.add_argument('out_dir', type=str, default='data',
+                    help='where to create the train and test data directories')
 args = parser.parse_args()
 
 ### main ###
@@ -50,7 +47,7 @@ for page in sorted(os.listdir(args.database_path)):
       utt_id = page + '_' + image_name
       gt_fh = open(text_path, 'r')
       text = gt_fh.readlines()[0].strip()
-      
+
       # The UW3 dataset doesn't have established training and testing splits
       # The dataset is randomly split train 95% and test 5%
       coin = random.randint(0, 20)

@@ -35,6 +35,8 @@ struct ImageAugmentationConfig {
   BaseFloat horizontal_flip_prob;
   BaseFloat horizontal_shift;
   BaseFloat vertical_shift;
+  BaseFloat rotation_degree;
+  BaseFloat rotation_prob;
   std::string fill_mode_string;
 
   ImageAugmentationConfig():
@@ -42,6 +44,8 @@ struct ImageAugmentationConfig {
       horizontal_flip_prob(0.0),
       horizontal_shift(0.0),
       vertical_shift(0.0),
+      rotation_degree(0.0),
+      rotation_prob(0.0),
       fill_mode_string("nearest") { }
 
 
@@ -57,6 +61,10 @@ struct ImageAugmentationConfig {
     po->Register("vertical-shift", &vertical_shift,
                  "Maximum allowed vertical shift as proportion of image "
                  "height.  Padding is with closest pixel.");
+    po->Register("rotation-degree", &rotation_degree,
+                 "Maximum allowed degree to rotate the image");
+    po->Register("rotation-prob", &rotation_prob,
+                 "Probability of doing rotation");
     po->Register("fill-mode", &fill_mode_string, "Mode for dealing with "
 		 "points outside the image boundary when applying transformation. "
 		 "Choices = {nearest, reflect}");
@@ -68,6 +76,8 @@ struct ImageAugmentationConfig {
                  horizontal_flip_prob <= 1);
     KALDI_ASSERT(horizontal_shift >= 0 && horizontal_shift <= 1);
     KALDI_ASSERT(vertical_shift >= 0 && vertical_shift <= 1);
+    KALDI_ASSERT(rotation_degree >=0 && rotation_degree <= 180);
+    KALDI_ASSERT(rotation_prob >=0 && rotation_prob <= 1);
     KALDI_ASSERT(fill_mode_string == "nearest" || fill_mode_string == "reflect");
   }
 
@@ -231,6 +241,14 @@ void PerturbImage(const ImageAugmentationConfig &config,
   // [ cos(theta)  -sin(theta)  0
   //   sin(theta)  cos(theta)   0
   //   0           0            1 ]
+  if (RandUniform() <= config.rotation_prob) {
+    BaseFloat theta = (2 * config.rotation_degree * RandUniform() -
+		       config.rotation_degree) / 180.0 * M_PI;
+    rotation_mat(0, 0) = cos(theta);
+    rotation_mat(0, 1) = -sin(theta);
+    rotation_mat(1, 0) = sin(theta);
+    rotation_mat(1, 1) = cos(theta);
+  }
 
   Matrix<BaseFloat> shear_mat(3, 3, kUndefined);
   shear_mat.SetUnit();
@@ -366,7 +384,7 @@ int main(int argc, char *argv[]) {
       PerturbImageInNnetExample(config, &eg);
       example_writer.Write(key, eg);
     }
-    KALDI_LOG << "Perturbed" << num_done << " neural-network training images.";
+    KALDI_LOG << "Perturbed " << num_done << " neural-network training images.";
     return (num_done == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

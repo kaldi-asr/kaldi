@@ -63,10 +63,11 @@ SumDescriptor *GenRandSumDescriptor(
     else
       return new SimpleSumDescriptor(GenRandForwardingDescriptor(num_nodes));
   } else {
-    return new BinarySumDescriptor((Rand() % 2 == 0 ? BinarySumDescriptor::kSum:
-                                    BinarySumDescriptor::kFailover),
-                                   GenRandSumDescriptor(num_nodes),
-                                   GenRandSumDescriptor(num_nodes));
+    return new BinarySumDescriptor(
+        (Rand() % 2 == 0 ? BinarySumDescriptor::kSumOperation:
+         BinarySumDescriptor::kFailoverOperation),
+        GenRandSumDescriptor(num_nodes),
+        GenRandSumDescriptor(num_nodes));
   }
 }
 
@@ -203,7 +204,12 @@ void UnitTestGeneralDescriptorSpecial() {
   names.push_back("c");
   names.push_back("d");
   KALDI_ASSERT(NormalizeTextDescriptor(names, "a") == "a");
-  KALDI_ASSERT(NormalizeTextDescriptor(names, "Offset(Offset(a, 3, 5), 2, 1)") == "Offset(a, 5, 6)");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Scale(-1.0, a)") == "Scale(-1, a)");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Const(1.0, 512)") == "Const(1, 512)");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Sum(Const(1.0, 512), Scale(-1.0, a))") ==
+               "Sum(Const(1, 512), Scale(-1, a))");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Offset(Offset(a, 3, 5), 2, 1)")
+               == "Offset(a, 5, 6)");
 
   KALDI_ASSERT(NormalizeTextDescriptor(names, "Offset(Sum(a, b), 2, 1)") ==
                "Sum(Offset(a, 2, 1), Offset(b, 2, 1))");

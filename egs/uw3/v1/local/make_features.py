@@ -1,11 +1,20 @@
 #!/usr/bin/env python3
 
-# Copyright 2017 (Author: Chun Chieh Chang)
+# Copyright      2017  Chun Chieh Chang
+
+""" This script converts images to Kaldi-format feature matrices. The input to
+    this script is the path to a data directory, e.g. "data/train". This script
+    reads the images listed in images.scp and writes them to standard output
+    (by default) as Kaldi-formatted matrices (in text form). It also scales the
+    images so they have the same height (via --feat-dim). It can optionally pad
+    the images (on left/right sides) with white pixels.
+
+    eg. local/make_features.py data/train --feat-dim 40
+"""
 
 import argparse
 import os
 import sys
-import scipy.io as sio
 import numpy as np
 from scipy import misc
 from scipy import ndimage
@@ -13,12 +22,13 @@ from scipy import ndimage
 from signal import signal, SIGPIPE, SIG_DFL
 signal(SIGPIPE,SIG_DFL)
 
-parser = argparse.ArgumentParser(description="""Generates and saves the feature vectors""")
-parser.add_argument('dir', type=str, help='directory of images.scp and is also output directory')
-parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file')
-parser.add_argument('--scale-size', type=int, default=40, help='size to scale the height of all images')
-parser.add_argument('--color', type=int, default=3, help='number of color channels for image')
-parser.add_argument('--pad', type=bool, default=False, help='pad the left and right of image with zeros')
+parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images.scp) to features and
+                                                writes them to standard output in text format.""")
+parser.add_argument('dir', type=str, help='data directory (should contain images.scp)')
+parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file.')
+parser.add_argument('--feat-dim', type=int, default=40,
+                    help='size to scale the height of all images (i.e. the dimension of the resulting features)')
+parser.add_argument('--pad', type=bool, default=False, help='pad the left and right of the images with 10 white pixels.')
 
 args = parser.parse_args()
 
@@ -39,7 +49,7 @@ def write_kaldi_matrix(file_handle, matrix, key):
     file_handle.write(" ]\n")
 
 def get_scaled_image(im):
-    scale_size = args.scale_size
+    scale_size = args.feat_dim
     sx = im.shape[1]
     sy = im.shape[0]
     # Some Images are rotated
@@ -77,7 +87,7 @@ with open(data_list_path) as f:
         im_scale = get_scaled_image(im)
 
         if args.pad:
-            pad = np.ones((args.scale_size, 10)) * 255
+            pad = np.ones((args.feat_dim, 10)) * 255
             im_data = np.hstack((pad, im_scale, pad))
         else:
             im_data = im_scale

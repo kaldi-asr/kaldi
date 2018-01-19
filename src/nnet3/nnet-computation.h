@@ -169,16 +169,15 @@ struct ComputationRequest {
    optimization; but these submatrix indexes must refer to the whole of
    a matrix.
 
-   - kAllocMatrixUndefined: Allocate a matrix.  arg1 = submatrix index.
-   - kAllocMatrixZeroed: Allocate and zero a matrix.  arg1 = submatrix index.
+   - kAllocMatrix.  Allocate a matrix (its values will be undefined).
+                    arg1 = submatrix index, which must refer to a whole matrix.
    - kDeallocMatrix: Deallocate a matrix.  arg1 = submatrix index.
-   - kAllocMatrixFromOther: initialize matrix with submatrix index arg1 using memory
-     from matrix with submatrix index arg2 (using shallow swap).  Note: the
-     code relating to the 'looped' computation relies on the fact that this is
-     a swap, so kSwapMatrix might be a better name, but we're keeping the old name.
-   - kAllocMatrixFromOtherZeroed: initialize matrix with submatrix index arg1 using memory
-     from matrix with submatrix index arg2 (using shallow swap), then zero the matrix
-     we just allocated.
+   - kSwapMatrix: initialize matrix with submatrix index arg1 using memory
+      from matrix with submatrix index arg2 (using shallow swap).  Both
+      submatrices must refer to whole matrices.  The expectation is that
+      prior to the swap, arg1 was empty and arg2 was nonempty, but the
+      execution code does not enforce this.
+   - kSetConst: set all elements of submatrix index 'arg1' to the value 'alpha'.
    - kPropagate: Forward computation of neural net, see Component::Propagate()
      - arg1 is is component-index in neural net
      - arg2 is index into ComponentPrecomputedIndexes (0 if NULL; always 0
@@ -203,22 +202,36 @@ struct ComputationRequest {
    - kBackpropNoModelUpdate: as kBackprop, but does not set the
      'to_update' argument to the Backprop call, even if the model  is updatable,
      so it skips the model-update phase of backprop.
-   - kMatrixCopy: Copy contents of sub-matrix arg2 to sub-matrix arg1
-   - kMatrixAdd: Add contents of sub-matrix arg2 to sub-matrix arg1
+   - kMatrixCopy: Copy (alpha times contents of sub-matrix arg2)
+                  to sub-matrix arg1, currently implemented as copy then scale.
+                  Note: to implement scaling a matrix, you can use kMatrixCopy
+                  with arg1 == arg2 and it won't do any redundant copying.
+   - kMatrixAdd: Add (alpha times contents of sub-matrix arg2)
+                 to sub-matrix arg1
    - kCopyRows: call \ref CuMatrix::CopyRows() "CopyRows()" on sub-matrix arg1
-     with sub-matrix arg2 and indexes[arg3] as arguments.
+                with sub-matrix arg2 and indexes[arg3] as arguments,
+                then if alpha != 1.0, scale sub-matrix arg1 by alpha.
    - kAddRows: call \ref CuMatrix::AddRows() "AddRows()" on sub-matrix arg1
-     with sub-matrix arg2 and indexes[arg3] as arguments.
+               with alpha, sub-matrix arg2 and indexes[arg3] as arguments.
    - kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti:
-     Call the corresponding function in class CuMatrix.
-     - arg1 is sub-matrix index of *this matrix in operation
-     - arg2 is index into "indexes_multi", of which each pair is
-     (sub-matrix index, row index) (or (-1,-1) for NULL marker), which
-     is turned into a vector of BaseFloat* (pointers to matrix rows)
-     before being given as the argument to the function.
+       Call the corresponding function in class CuMatrix (Actually the
+       names do not have 'Multi' in them, but they are the ones that accept
+       a vector of 'Real*'.
+        - arg1 is sub-matrix index of *this matrix in operation
+        - arg2 is index into "indexes_multi", of which each pair is
+      (sub-matrix index, row index) (or (-1,-1) for NULL marker), which
+      is turned into a vector of BaseFloat* (pointers to matrix rows)
+      before being given as the argument to the function.
+      In the 'Add' functions 'alpha' is provided as an argument; for
+      the 'Copy' functions, we scale the destination by 'alpha' after
+      the copy, if alpha != 1.0.  (However, for implementation reasons,
+      kCopyToRowsMulti does not currently support alpha != 1.0 and will
+      crash, so we avoid generating this code).
    - kAddRowRanges: call \ref CuMatrix::AddRowRanges() "AddRowRanges()"
      on sub-matrix arg1, with arg2 as source sub-matrix, and indexes given
-     indexes_ranges[arg3].
+     indexes_ranges[arg3].  We use the "alpha" as if AddRowRanges()
+     accepted that argument, even though it doesn't (we fake it using other
+     calls, if alpha != 1.0).
    - kAcceptInput: accepts a matrix of input from the user, which may be either
      features, or derivatives w.r.t. the output.  arg1 is the submatrix index of
      a whole matrix that the input goes to, and arg2 is the index of the network
@@ -239,15 +252,14 @@ struct ComputationRequest {
      of commands (like forward commands).
    - kNoOperationLabel: does nothing, but is the destination for
      the kGotoLabel command.
-   - kGotoLabel: jumps to the kNoOperationLabel command.  arg1 must
-     be set to the location of that command.  Since there are no
-     conditionals, this should be the last command, as remaining
-     commands will be unreachable.
+   - kGotoLabel: jumps to the kNoOperationLabel command.  arg1 must be set to
+     the location of that command.  Since there are no conditionals, the
+     kGotoLabel command should be the last command, as remaining commands will
+     be unreachable.
 
 */
 enum CommandType {
-  kAllocMatrixUndefined, kAllocMatrixZeroed,
-  kDeallocMatrix, kAllocMatrixFromOther, kAllocMatrixFromOtherZeroed,
+  kAllocMatrix, kDeallocMatrix, kSwapMatrix, kSetConst,
   kPropagate, kBackprop, kBackpropNoModelUpdate,
   kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
   kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
@@ -297,6 +309,7 @@ struct NnetComputation {
   };
   struct Command {
     CommandType command_type;
+    BaseFloat alpha;
     int32 arg1;
     int32 arg2;
     int32 arg3;
@@ -304,11 +317,21 @@ struct NnetComputation {
     int32 arg5;
     int32 arg6;
     int32 arg7;
+    // Constructor where alpha is not specified;
+    // This constructor may become deprecated.
     Command(CommandType command_type = kNoOperationMarker,
             int32 arg1 = -1, int32 arg2 = -1, int32 arg3 = -1, int32 arg4 = -1,
             int32 arg5 = -1, int32 arg6 = -1, int32 arg7 = -1):
-        command_type(command_type), arg1(arg1), arg2(arg2), arg3(arg3),
-        arg4(arg4), arg5(arg5), arg6(arg6), arg7(arg7) { }
+        command_type(command_type), alpha(1.0),
+        arg1(arg1), arg2(arg2), arg3(arg3), arg4(arg4), arg5(arg5), arg6(arg6),
+        arg7(arg7) { }
+    // Constructor where you can specify alpha.
+    Command(BaseFloat alpha, CommandType command_type = kNoOperationMarker,
+            int32 arg1 = -1, int32 arg2 = -1, int32 arg3 = -1, int32 arg4 = -1,
+            int32 arg5 = -1, int32 arg6 = -1, int32 arg7 = -1):
+        command_type(command_type), alpha(alpha),
+        arg1(arg1), arg2(arg2), arg3(arg3), arg4(arg4), arg5(arg5), arg6(arg6),
+        arg7(arg7) { }
     void Read(std::istream &istream, bool binary);
     void Write(std::ostream &ostream, bool binary) const;
   };

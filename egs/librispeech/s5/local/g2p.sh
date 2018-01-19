@@ -5,7 +5,7 @@
 
 # Auto-generates pronunciations using Sequitur G2P
 
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 [ -z "$PYTHON" ] && PYTHON=python2.7 
 

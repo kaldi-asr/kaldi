@@ -17,13 +17,17 @@
 # trained original baseline models in tools/ASR_models for directly using.
 #
 # 2. For using advanced baseline, first execute './run.sh --baseline advanced --flatstart true' to
-# get the models.
+# get the models. If you want to use TDNN instead of DNN, add option "--tdnn true". If you want to
+# use TDNN-LSTM instead of DNN, add option "--tdnn-lstm true".
 # Then execute './run.sh --baseline advanced' for your experiments. 
 
 # Config:
-stage=0 # resume training with --stage=N
+stage=0 # resume training with --stage N
+
 baseline=advanced
 flatstart=false
+tdnn=true
+tdnn_lstm=false
 
 . utils/parse_options.sh || exit 1;
 
@@ -110,20 +114,46 @@ fi
 # Since it takes time to evaluate DNN, we make the GMM and DNN scripts separately.
 # You may execute it after you would have promising results using GMM-based ASR experiments
 if [ $stage -le 3 ]; then
-  if $flatstart; then
-    local/run_dnn.sh $enhancement_method
+  if $tdnn; then
+    if $flatstart; then
+      local/chain/run_tdnn.sh $enhancement_method
+    else
+      local/chain/run_tdnn_recog.sh $enhancement_method $modeldir
+    fi
+  elif $tdnn_lstm; then
+    if $flatstart; then
+      local/chain/run_tdnn_lstm.sh $enhancement_method
+    else
+      local/chain/run_tdnn_lstm_recog.sh $enhancement_method $modeldir
+    fi
   else
-    local/run_dnn_recog.sh $enhancement_method $modeldir
+    if $flatstart; then
+      local/run_dnn.sh $enhancement_method
+    else
+      local/run_dnn_recog.sh $enhancement_method $modeldir
+    fi
   fi
 fi
-
+flatstart=false
 # LM-rescoring experiment with 5-gram and RNN LMs
 # It takes a few days to train a RNNLM.
 if [ $stage -le 4 ]; then
   if $flatstart; then
-    local/run_lmrescore.sh $chime4_data $enhancement_method
+    if $tdnn; then
+      local/run_lmrescore_tdnn.sh $chime4_data $enhancement_method
+    elif $tdnn_lstm; then
+      local/run_lmrescore_tdnn_lstm.sh $chime4_data $enhancement_method
+    else
+      local/run_lmrescore.sh $chime4_data $enhancement_method
+    fi
   else
-    local/run_lmrescore_recog.sh $enhancement_method $modeldir
+    if $tdnn; then
+      local/run_lmrescore_tdnn_recog.sh $enhancement_method $modeldir
+    elif $tdnn_lstm; then
+      local/run_lmrescore_tdnn_lstm_recog.sh $enhancement_method $modeldir
+    else
+      local/run_lmrescore_recog.sh $enhancement_method $modeldir
+    fi
   fi
 fi
 

@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
-# Copyright 2017 (Author: Ashish Arora)
+# Copyright     2017  Ashish Arora
 
 import argparse
-import os
 import sys
-import numpy as np
-from scipy import misc
+
 parser = argparse.ArgumentParser(description="""uses phones to convert unk to word""")
 parser.add_argument('phones', type=str, help='phones and phonesID')
 parser.add_argument('words', type=str, help='word and wordID')

@@ -20,12 +20,20 @@
 set -e # exit on error
 
 #check existing directories
-if [ $# != 1 ]; then
-  echo "Usage: csj_data_prep.sh <csj-data dir>"
+if [ $# -ne 1 ] && [ $# -ne 2 ]; then
+  echo "Usage: csj_data_prep.sh <csj-data dir> [<mode_number>]"
+  echo " mode_number can be 0, 1, 2, 3, (0=default using academic lecture and other data, 1=using academic lecture data,"
+  echo "                                 2=using all data except for dialog data, 3=using all data)"
   exit 1;
 fi
 
 CSJ=$1
+mode=0
+
+if [ $# -eq 2 ]; then
+  mode=$2
+fi
+
 
 dir=data/local/train
 mkdir -p $dir
@@ -40,11 +48,20 @@ fi
 [ ! -f $dir/lexicon.txt ] && cp $CSJ/lexicon/lexicon.txt $dir || exit 1;
 
 ### Config of using wav data that relates with acoustic model training ###
-#cat $CSJ/*/*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data
-#cat $CSJ/*/{A*,M*,R*,S*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data except for "dialog" data
-#cat $CSJ/*/{A*,M*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" and "other" data
-#cat $CSJ/*/A*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" data
-cat $CSJ/*/{A,M}*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" and "other" data
+if [ $mode -eq 3 ]
+then
+  cat $CSJ/*/*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data
+elif [ $mode -eq 2 ]
+then
+  cat $CSJ/*/{A*,M*,R*,S*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using All data except for "dialog" data
+elif [ $mode -eq 1 ]
+then 
+  cat $CSJ/*/A*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" data
+else
+  # cat $CSJ/*/{A*,M*}/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" and "other" data
+  cat $CSJ/*/{A,M}*/*-wav.list 2>/dev/null | sort > $dir/wav.flist # Using "Academic lecture" and "other" data
+fi
+
 
 n=`cat $dir/wav.flist | wc -l`
 

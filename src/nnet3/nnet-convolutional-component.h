@@ -96,6 +96,11 @@ namespace nnet3 {
                       in the network you'll see time-offsets like "-2,0,2" or
                       "-4,0,4".  Subsampling on the time axis is not explicitly
                       specified but is implicit based on tracking dependencies.
+     offsets          Setting 'offsets' is an alternative to setting both
+                      height-offsets and time-offsets, that is useful for
+                      configurations with less regularity.  It is a semicolon-
+                      separated list of pairs (time-offset,height-offset) that
+                      might look like: -1,1;-1,0;-1,1;0,1;....;1,1
      required-time-offsets E.g. required-time-offsets=0 (defaults to the same
                       value as time-offsets).  This is a set of time offsets,
                       which if specified must be a nonempty subset of
@@ -220,9 +225,8 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "TimeHeightConvolutionComponent"; }
   virtual int32 Properties() const {
-    return kUpdatableComponent|kLinearInParameters|
-        kReordersIndexes|kBackpropAdds|kBackpropNeedsInput|
-        kInputContiguous|kOutputContiguous;
+    return kUpdatableComponent|kReordersIndexes|kBackpropAdds|
+        kBackpropNeedsInput|kInputContiguous|kOutputContiguous;
   }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
@@ -354,11 +358,6 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   // UpdatableComponent base class) is true, we'll do the 'simple'
   // update that doesn't include natural gradient.
   bool use_natural_gradient_;
-
-  // Apart from use_natural_gradient_, this is the only natural-gradient
-  // config-line configuration variable that we store directly; the others are
-  // stored inside the preconditioner_in_ and preconditioner_out_ objects.
-  BaseFloat num_minibatches_history_;
 
   // Preconditioner for the input space, of dimension linear_params_.NumCols() +
   // 1 (the 1 is for the bias).  As with other natural-gradient objects, it's

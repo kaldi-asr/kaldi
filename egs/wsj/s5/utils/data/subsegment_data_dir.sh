@@ -141,7 +141,11 @@ if [ -f $srcdir/feats.scp ]; then
   # We want to avoid recomputing the features.   We'll use sub-matrices of the
   # original feature matrices, using the [] notation that is available for
   # matrices in Kaldi.
-  frame_shift=$(utils/data/get_frame_shift.sh $srcdir) || exit 1
+  if [ ! -s $srcdir/frame_shift ]; then
+    frame_shift=$(utils/data/get_frame_shift.sh $srcdir) || exit 1
+  else
+    frame_shift=$(cat $srcdir/frame_shift)
+  fi
   echo "$0: note: frame shift is $frame_shift [affects feats.scp]"
   
   # The subsegments format is <new-utt-id> <old-utt-id> <start-time> <end-time>.

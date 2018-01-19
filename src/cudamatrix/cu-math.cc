@@ -205,6 +205,40 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
   }
 }
 
+template <typename Real>
+void EnsureNonzero(const CuMatrixBase<Real> &src,
+                   Real epsilon,
+                   CuMatrixBase<Real> *dest) {
+  KALDI_ASSERT(SameDim(*dest, src) && epsilon > 0.0);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(src.NumRows(), src.NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_ensure_nonzero(dimGrid, dimBlock, src.Data(), src.Dim(),
+                        epsilon, dest->Stride(), dest->Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    int32 num_rows = src.NumRows(), num_cols = src.NumCols();
+    for (int32 r = 0; r < num_rows; r++) {
+      const Real *src_data = src.RowData(r);
+      Real *dest_data = dest->RowData(r);
+      for (int32 c = 0; c < num_cols; c++) {
+        Real x = src_data[c], y;
+        if (x <= -epsilon || x >= epsilon) y = x;
+        else if (x >= 0.0) y = epsilon;
+        else y = -epsilon;
+        dest_data[c] = y;
+      }
+    }
+  }
+}
+
+
 // instantiate the templates.
 template
 void RegularizeL1(CuMatrixBase<float> *weight, CuMatrixBase<float> *grad, float l1, float lr);
@@ -877,6 +911,38 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                                 &(self_repair_sum_out->Mat()));
   }
 }
+
+template <typename Real>
+void EnsureNonzero(const CuVectorBase<Real> &src,
+                   Real epsilon,
+                   CuVectorBase<Real> *dest) {
+  KALDI_ASSERT(src.Dim() == dest->Dim());
+  int32 dim = src.Dim();
+  // fake it with a 1-row matrix.
+  CuSubMatrix<Real> src_mat(src.Data(), 1,  dim, dim),
+      dest_mat(dest->Data(), 1, dim, dim);
+  EnsureNonzero(src_mat, epsilon, &dest_mat);
+}
+
+// Instantiate the templates we defined above.
+
+template
+void EnsureNonzero(const CuMatrixBase<float> &src,
+                   float epsilon,
+                   CuMatrixBase<float> *dest);
+template
+void EnsureNonzero(const CuMatrixBase<double> &src,
+                   double epsilon,
+                   CuMatrixBase<double> *dest);
+
+template
+void EnsureNonzero(const CuVectorBase<float> &src,
+                   float epsilon,
+                   CuVectorBase<float> *dest);
+template
+void EnsureNonzero(const CuVectorBase<double> &src,
+                   double epsilon,
+                   CuVectorBase<double> *dest);
 
 template
 void CpuBackpropLstmNonlinearity(const MatrixBase<float> &input,

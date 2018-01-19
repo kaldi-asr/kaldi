@@ -4,7 +4,7 @@
 
 # This script produces CTM files from a decoding directory that has lattices
 # present.
-# This is similar to get_ctm.sh, but gets the 
+# This is similar to get_ctm.sh, but gets the
 # CTM at the utterance-level.
 
 
@@ -70,12 +70,9 @@ if [ $stage -le 0 ]; then
       lattice-1best ark:- ark:- \| \
       nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \
-      '>' $dir/score_LMWT/${name}.ctm.JOB || exit 1;
+      '>' $dir/score_${lmwt}/${name}.ctm.JOB || exit 1;
   else
     echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
     exit 1;
   fi
 fi
-
-
-

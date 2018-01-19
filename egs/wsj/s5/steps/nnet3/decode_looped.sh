@@ -167,8 +167,8 @@ if [ $stage -le 3 ]; then
     [ ! -x local/score.sh ] && \
       echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
     echo "score best paths"
-    [ "$iter" != "final" ] && iter_opt="--iter $iter"
-    local/score.sh $iter_opt $scoring_opts --cmd "$cmd" $data $graphdir $dir
+    [ "$iter" != "final" ]
+    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
     echo "score confidence and timing with sclite"
   fi
 fi

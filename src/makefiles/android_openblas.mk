@@ -30,8 +30,8 @@ CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
            -Wno-deprecated-declarations -Winit-self -Wno-mismatched-tags \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_CXXABI_H -DHAVE_OPENBLAS -DANDROID_BUILD \
-           -I$(OPENBLASINC) -I$(ANDROIDINC) -ftree-vectorize -mfloat-abi=hard \
-           -mfpu=neon -mhard-float -D_NDK_MATH_NO_SOFTFP=1 -pthread \
+           -I$(OPENBLASINC) -I$(ANDROIDINC) -ftree-vectorize -mfloat-abi=softfp \
+           -mfpu=neon -pthread \
            -g # -O0 -DKALDI_PARANOID
 
 ifeq ($(KALDI_FLAVOR), dynamic)
@@ -39,4 +39,4 @@ CXXFLAGS += -fPIC
 endif
 
 LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -Wl,--no-warn-mismatch -pie
-LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm_hard -ldl
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm -ldl
