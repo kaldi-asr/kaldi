@@ -8,9 +8,9 @@ from PIL import Image
 parser = argparse.ArgumentParser(description="""Creates line images from page image.""")
 parser.add_argument('database_path', type=str,
                     help='Path to the downloaded (and extracted) mdacat data')
-parser.add_argument('--width_buffer', type=int, default=10,
+parser.add_argument('--width_buffer', type=int, default=0,
                     help='width buffer across annotate character')
-parser.add_argument('--height_buffer', type=int, default=10,
+parser.add_argument('--height_buffer', type=int, default=0,
                     help='height buffer across annotate character')
 parser.add_argument('--char_width_buffer', type=int, default=10,
                     help='white space between two characters')
@@ -40,6 +40,7 @@ def merge_characters_into_line_image(region_list, offset_list):
 
 
 def get_line_images_from_page_image(image_file_name, gedi_file_path):
+    print(image_file_name)
     height_offset_list = list()
     region_list = list()
     first_image_top_loc = -1
@@ -63,7 +64,6 @@ def get_line_images_from_page_image(image_file_name, gedi_file_path):
             height_offset_list = list()
 
         if previous_line_id != line_id:
-            #print previous_line_id
             image = merge_characters_into_line_image(region_list, height_offset_list)
             set_line_image_data(image, previous_line_id, image_file_name)
 
@@ -93,12 +93,16 @@ def get_line_images_from_page_image(image_file_name, gedi_file_path):
 
 
 def set_line_image_data(image, line_id, image_file_name):
+    if line_id=="-1":
+        print("Error: lineID missing line_id: {0} is image file name: {1} ".format(line_id, image_file_name))
+        return
     base_name = os.path.splitext(os.path.basename(image_file_name))[0]
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_0' + line_id
     line_image_file_name = base_name + line_id + '.tif'
     imgray = image.convert('L')
-    imgray.save(os.path.join(data_path, 'lines', line_image_file_name))
+    image_path=os.path.join(data_path, 'lines', line_image_file_name)
+    imgray.save(image_path)
 
 ### main ###
 
@@ -113,4 +117,4 @@ for file in os.listdir(os.path.join(data_path, 'images')):
         image_path = os.path.join(data_path, 'images', file)
         gedi_file_path = os.path.join(data_path, 'gedi', file)
         gedi_file_path = gedi_file_path.replace(".tif", ".gedi.xml")
-        get_line_images_from_page_image(image_path, gedi_file_path)
+        get_line_images_from_page_image(image_path, gedi_file_path) 

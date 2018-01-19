@@ -12,7 +12,7 @@ nj=20
 # already downloaded the database you can set it to a local directory
 # like "data/download" and follow the instructions
 # in "local/prepare_data.sh" to download the database:
-madcat_database=data/download/madcat_sample
+madcat_database=data/download/tmp
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -27,7 +27,6 @@ fi
 mkdir -p data/{train,test}/data
 if [ $stage -le 1 ]; then
   echo "$0: Preparing the test and train feature files..."
-  local/create_line_image_from_page_image.py data/download
   for dataset in train test; do
     local/make_features.py data/$dataset --feat-dim 40 | \
       copy-feats --compress=true --compression-method=7 \
