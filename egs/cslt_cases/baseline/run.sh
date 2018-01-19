@@ -65,7 +65,7 @@ for x in train test; do
 done
 
 
-###### Bookmark: GMM training & decoding ######
+###### Bookmark: GMM-HMM training & decoding ######
 
 # monophone
 steps/train_mono.sh --boost-silence 1.25 --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/mono || exit 1;
