@@ -5,4 +5,4 @@ For more details, please visit:
 http://www.aishelltech.com/kysjcp
 
 We use the training set to train model,
-and split the test set into enroll and match.
+and split the test set into enroll and eval.

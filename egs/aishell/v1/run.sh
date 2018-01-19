@@ -30,7 +30,6 @@ local/aishell_data_prep.sh $data/data_aishell/wav $data/data_aishell/transcript 
 mfccdir=mfcc
 for x in train test; do
   steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/$x exp/make_mfcc/$x $mfccdir || exit 1;
-  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
   sid/compute_vad_decision.sh --nj 10 --cmd "$train_cmd" data/$x exp/make_mfcc/$x $mfccdir
   utils/fix_data_dir.sh data/$x || exit 1;
 done
@@ -58,29 +57,29 @@ $train_cmd exp/ivector_train_1024/log/plda.log \
   'ark:ivector-normalize-length scp:exp/ivector_train_1024/ivector.scp  ark:- |' \
   exp/ivector_train_1024/plda || exit 1;
 
-#split the test to enroll and match
-mkdir -p data/test/enroll data/test/match
+#split the test to enroll and eval
+mkdir -p data/test/enroll data/test/eval
 cp data/test/{spk2utt,feats.scp,vad.scp} data/test/enroll
-cp data/test/{spk2utt,feats.scp,vad.scp} data/test/match
-local/split_data_enroll_match.py data/test/utt2spk  data/test/enroll/utt2spk  data/test/match/utt2spk
+cp data/test/{spk2utt,feats.scp,vad.scp} data/test/eval
+local/split_data_enroll_eval.py data/test/utt2spk  data/test/enroll/utt2spk  data/test/eval/utt2spk
 trials=data/test/aishell_speaker_ver.lst
-local/produce_trials.py data/test/match/utt2spk $trials
+local/produce_trials.py data/test/eval/utt2spk $trials
 utils/fix_data_dir.sh data/test/enroll
-utils/fix_data_dir.sh data/test/match
+utils/fix_data_dir.sh data/test/eval
 
 #extract enroll ivector
 sid/extract_ivectors.sh --cmd "$train_cmd" --nj 10 \
   exp/extractor_1024 data/test/enroll  exp/ivector_enroll_1024
-#extract match ivector
+#extract eval ivector
 sid/extract_ivectors.sh --cmd "$train_cmd" --nj 10 \
-  exp/extractor_1024 data/test/match  exp/ivector_match_1024
+  exp/extractor_1024 data/test/eval  exp/ivector_eval_1024
 
 #compute plda score
-$train_cmd exp/ivector_match_1024/log/plda_score.log \
+$train_cmd exp/ivector_eval_1024/log/plda_score.log \
   ivector-plda-scoring --num-utts=ark:exp/ivector_enroll_1024/num_utts.ark \
   exp/ivector_train_1024/plda \
   ark:exp/ivector_enroll_1024/spk_ivector.ark \
-  "ark:ivector-normalize-length scp:exp/ivector_match_1024/ivector.scp ark:- |" \
+  "ark:ivector-normalize-length scp:exp/ivector_eval_1024/ivector.scp ark:- |" \
   "cat '$trials' | awk '{print \\\$2, \\\$1}' |" exp/trials_out || exit 1
 
 #compute eer

@@ -8,7 +8,7 @@
 
 # If uttid belong to spkid, it is marked 'target',
 # otherwise is 'nontarget'.
-# input: match set uttspk file
+# input: eval set uttspk file
 # output: trial file
 
 import sys

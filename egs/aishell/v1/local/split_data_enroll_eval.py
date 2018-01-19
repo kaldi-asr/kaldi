@@ -3,11 +3,11 @@
 # Copyright 2017 Bengu Wu
 # Apache 2.0.
 
-# This script splits the test set utt2spk into enroll set and match set
+# This script splits the test set utt2spk into enroll set and eval set
 # For each speaker, 3 utterances are randomly selected as enroll samples,
-# and the others are used as match samples for evaluation
+# and the others are used as eval samples for evaluation
 # input: test utt2spk
-# output: enroll utt2spk, match utt2spk
+# output: enroll utt2spk, eval utt2spk
 
 import sys,random
 
@@ -21,7 +21,7 @@ for line in open(sys.argv[1]):
   dictutt[spk].append(utt)
 
 fenroll = open(sys.argv[2], 'w')
-fmatch = open(sys.argv[3], 'w')
+feval = open(sys.argv[3], 'w')
 
 for key in dictutt:
   utts = dictutt[key]
@@ -31,7 +31,7 @@ for key in dictutt:
     if(i < 3):
       fenroll.write(line + '\n')
     else:
-      fmatch.write(line + '\n')
+      feval.write(line + '\n')
 
 fenroll.close()
-fmatch.close()
+feval.close()
