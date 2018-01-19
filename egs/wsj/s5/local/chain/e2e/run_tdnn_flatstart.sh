@@ -100,10 +100,10 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  steps/nnet3/chain/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
-                                   --shared-phones true \
-                                   --scale-opts "$num_scale_opts" \
-                                   data/$train_set $lang $treedir
+  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
+                                       --shared-phones true \
+                                       --scale-opts "$num_scale_opts" \
+                                       data/$train_set $lang $treedir
   cp exp/chain/e2e_base/phone_lm.fst $treedir/
 fi
 
@@ -138,7 +138,7 @@ if [ $stage -le 3 ]; then
   # no need to store the egs in a shared storage because we always
   # remove them. Anyway, it takes only 5 minutes to generate them.
 
-  steps/nnet3/chain/train_e2e.py --stage $train_stage \
+  steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$decode_cmd" \
     --feat.cmvn-opts "$cmvn_opts" \
     --chain.leaky-hmm-coefficient $leaky_hmm_coeff \

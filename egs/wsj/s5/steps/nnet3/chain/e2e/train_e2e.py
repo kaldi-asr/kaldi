@@ -5,7 +5,8 @@
 #           2017    Hossein Hadian
 # Apache 2.0.
 
-""" This script is based on steps/nnet3/chain/train.py
+""" This script does flat-start chain training and is based on
+    steps/nnet3/chain/train.py.
 """
 
 import argparse
@@ -96,15 +97,7 @@ def get_args():
                         dest='left_deriv_truncate',
                         default=None,
                         help="Deprecated. Kept for back compatibility")
-    parser.add_argument("--chain.apply-deriv-weights", type=str,
-                        dest='apply_deriv_weights', default=True,
-                        action=common_lib.StrToBoolAction,
-                        choices=["true", "false"],
-                        help="")
-    parser.add_argument("--chain.frame-subsampling-factor", type=int,
-                        dest='frame_subsampling_factor', default=3,
-                        help="ratio of frames-per-second of features we "
-                        "train on, to chain model's output")
+
 
     # trainer options
     parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
@@ -265,8 +258,6 @@ def train(args, run_opts):
 
     num_jobs = common_lib.get_number_of_jobs(args.tree_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
-    if args.egs_opts.find('add-deltas true') != -1:
-      feat_dim *= 3
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
     ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
     logger.info("feat-dim: {}, iv_dim: {}".format(feat_dim, ivector_dim))

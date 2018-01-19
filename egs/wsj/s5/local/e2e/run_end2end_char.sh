@@ -107,5 +107,5 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
-  local/chain/run_tdnn_lstm_flatstart.sh
+  local/chain/e2e/run_tdnn_lstm_flatstart.sh
 fi
