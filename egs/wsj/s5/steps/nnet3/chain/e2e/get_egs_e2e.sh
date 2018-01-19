@@ -1,9 +1,14 @@
 #!/bin/bash
 
 # Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey)
-# Copyright 2017 Johns Hopkins University (Author: Hossein Hadian)
+# Copyright   2017  Hossein Hadian
 # Apache 2.0.
 #
+
+
+# This is simlilar to chain/get_egs.sh except it
+# uses training FSTs (instead of lattices) to generate end2end egs.
+# It calls nnet3-chain-e2e-get-egs binary
 
 
 # Begin configuration section.
@@ -44,7 +49,6 @@ online_ivector_dir=  # can be used if we are including speaker information as iV
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
-add_deltas=false
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -184,13 +188,6 @@ if [ -f $dir/trans.scp ]; then
   train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
 fi
 
-if $add_deltas; then
-  feats="$feats add-deltas ark:- ark:- |"
-  valid_feats="$valid_feats add-deltas ark:- ark:- |"
-  train_subset_feats="$train_subset_feats add-deltas ark:- ark:- |"
-fi
-
-# TODO(hhadian): genereate ivectors in prepare_e2e.sh or ...
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
   echo $ivector_dim > $dir/info/ivector_dim
