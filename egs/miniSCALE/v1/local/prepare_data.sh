@@ -34,9 +34,9 @@ fi
 mkdir -p data/{train,test,dev}
 mkdir -p $download_dir/lines
 if [ $stage -le 1 ]; then
-  #local/create_line_image_from_page_image.py $download_dir $train_split_file || exit 1
-  #local/create_line_image_from_page_image.py $download_dir $test_split_file || exit 1
-  #local/create_line_image_from_page_image.py $download_dir $dev_split_file || exit 1
+  local/create_line_image_from_page_image.py $download_dir $train_split_file || exit 1
+  local/create_line_image_from_page_image.py $download_dir $test_split_file || exit 1
+  local/create_line_image_from_page_image.py $download_dir $dev_split_file || exit 1
 
   local/process_data.py $download_dir $train_split_file data/train || exit 1
   local/process_data.py $download_dir $test_split_file data/test || exit 1
