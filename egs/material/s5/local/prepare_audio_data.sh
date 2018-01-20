@@ -10,13 +10,12 @@ echo "$0 " "$@"
 
 if [ $# -ne 2 ] ; then
   echo "Invalid number of script parameters. "
-  echo "  $0 <path-to-material-corpus> <language-name>"
+  echo "  $0 <path-to-material-corpus>"
   echo "e.g."
-  echo "  $0 /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/ swahili"
+  echo "  $0 /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/"
   exit
 fi
 data=$1
-language=$2
 
 conversational_train=$data/conversational/training/
 audio=$conversational_train/audio/
@@ -24,7 +23,7 @@ audio=$conversational_train/audio/
   echo "The directory $audio does not exist!" && exit 1
 
 find $audio -type f \( -name "*.wav" -o -name "*.sph" \) | \
-  local/audio2wav_scp.pl > data/$language/train/wav.scp
+  local/audio2wav_scp.pl > data/train/wav.scp
 
 
 conversational_dev=$data/conversational/dev
@@ -33,5 +32,5 @@ audio=$conversational_dev/audio/
   echo "The directory $audio does not exist!" && exit 1
 
 find $audio -type f \( -name "*.wav" -o -name "*.sph" \) | \
-  local/audio2wav_scp.pl > data/$language/dev/wav.scp
+  local/audio2wav_scp.pl > data/dev/wav.scp
 
