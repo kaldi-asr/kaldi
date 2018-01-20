@@ -16,7 +16,6 @@
 # %WER 37.67 [ 23408 / 62144, 3238 ins, 5998 del, 14172 sub ] exp/swahili/chain/tdnn_lstm1a_sp_ld5/decode_dev_rnnlm_1a/wer_10_0.0
 
 # Begin configuration section.
-language=swahili
 
 embedding_dim=512
 lstm_rpd=128
@@ -32,16 +31,15 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
               # the same ngram history and this prevents the lattice from 
               # exploding exponentially
 pruned_rescore=true
-language=swahili
 
 . ./cmd.sh
 . ./utils/parse_options.sh
 
-ac_model_dir=exp/$language/chain/tdnn_lstm1a_sp_ld5
-dir=exp/$language/rnnlm_lstm_1a
-text=data/$language/train/text
-lexicon=data/$language/local/dict_nosp/lexiconp.txt
-text_dir=data/$language/rnnlm/text_nosp_1e
+ac_model_dir=exp/chain/tdnn_lstm1a_sp_ld5
+dir=exp/rnnlm_lstm_1a
+text=data/train/text
+lexicon=data/local/dict_nosp/lexiconp.txt
+text_dir=data/rnnlm/text_nosp_1e
 mkdir -p $dir/config
 set -e
 
@@ -116,8 +114,8 @@ if [ $stage -le 4 ] && $run_rescore; then
     rnnlm/lmrescore$pruned.sh \
       --cmd "$decode_cmd --mem 4G" \
       --weight 0.5 --max-ngram-order $ngram_order \
-      data/$language/lang_$LM $dir \
-      data/$language/${decode_set}_hires ${decode_dir} \
+      data/lang_$LM $dir \
+      data/${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix}
   done
 fi

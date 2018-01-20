@@ -10,34 +10,33 @@ echo "$0 " "$@"
 
 if [ $# -ne 2 ] ; then
   echo "Invalid number of script parameters. "
-  echo "  $0 <path-to-material-corpus> <language-name>"
+  echo "  $0 <path-to-material-corpus>"
   echo "e.g."
-  echo "  $0 /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/ swahili"
+  echo "  $0 /export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A-BUILD_v1.0/"
   exit
 fi
 data=$1;
-language=$2
 conversational_train=$data/conversational/training/
-mkdir -p data/$language/train/
+mkdir -p data/train/
 for file in $conversational_train/transcription/*txt ; do
   ./local/parse_transcripts.pl $file
-done  > data/$language/train/transcripts.txt
+done  > data/train/transcripts.txt
 
 
 conversational_dev=$data/conversational/dev/
-mkdir -p data/$language/dev
+mkdir -p data/dev
 for file in $conversational_dev/transcription/*txt ; do
   ./local/parse_transcripts.pl $file
-done > data/$language/dev/transcripts.txt
+done > data/dev/transcripts.txt
 
 
-cat data/$language/train/transcripts.txt | \
+cat data/train/transcripts.txt | \
   local/cleanup_transcripts.pl | \
-  local/create_datafiles.pl data/$language/train/
+  local/create_datafiles.pl data/train/
 
-cat data/$language/dev/transcripts.txt | \
+cat data/dev/transcripts.txt | \
   local/cleanup_transcripts.pl | \
-  local/create_datafiles.pl data/$language/dev/
+  local/create_datafiles.pl data/dev/
 
 
 
