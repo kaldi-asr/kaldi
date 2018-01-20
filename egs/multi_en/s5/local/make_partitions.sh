@@ -95,11 +95,10 @@ if [ $stage -eq 9 ]; then
   utils/data/remove_dup_utts.sh 300 $data_dir/fisher_swbd_tedlium_wsj_hub4_libri960 $data_dir/tri5b_ali
   ln -nfs tri5b_ali $data_dir/tri6a
   ln -nfs tri5b_ali $data_dir/tri6a_ali
-  ln -nfs tri5b_ali $data_dir/tri6b
 fi
 
+# sampled data for ivector extractor training,.etc
 if [ $stage -eq 10 ]; then
-  ln -nfs tri6a $data_dir/tr6b_ali
   ln -nfs tri6a $data_dir/tdnn
   utils/subset_data_dir.sh $data_dir/tdnn \
     100000 $data_dir/tdnn_100k
