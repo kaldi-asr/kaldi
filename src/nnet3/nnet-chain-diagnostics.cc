@@ -208,27 +208,6 @@ bool NnetChainComputeProb::PrintTotalStats() const {
 }
 
 
-std::pair<BaseFloat, BaseFloat> NnetChainComputeProb::GetTotalObjective() const {
-  unordered_map<std::string, ChainObjectiveInfo, StringHasher>::const_iterator
-      iter, end;
-  iter = objf_info_.begin();
-  end = objf_info_.end();
-  BaseFloat tot_objf = 0.0, tot_weight = 0.0;
-  for (; iter != end; ++iter) {
-    const std::string &name = iter->first;
-    int32 node_index = nnet_.GetNodeIndex(name);
-    KALDI_ASSERT(node_index >= 0);
-    const ChainObjectiveInfo &info = iter->second;
-    BaseFloat like = (info.tot_like / info.tot_weight);
-    ObjectiveValues aux_objfs(info.tot_aux_objfs);
-    aux_objfs.Scale(info.tot_weight);
-    tot_objf += like + aux_objfs.Sum();
-    tot_weight += info.tot_weight;
-  }
-  return std::make_pair(tot_objf, tot_weight);
-}
-
-
 const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
     const std::string &output_name) const {
   unordered_map<std::string, ChainObjectiveInfo, StringHasher>::const_iterator
