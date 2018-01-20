@@ -11,10 +11,10 @@
 
 dir=exp/rnnlm_lstm_1a
 enhan=$1
-embedding_dim=1024
-lstm_rpd=256
-lstm_nrpd=256
-stage=5
+embedding_dim=2048
+lstm_rpd=512
+lstm_nrpd=512
+stage=-10
 train_stage=-10
 
 # variables for lattice rescoring
@@ -31,49 +31,48 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 . cmd.sh
 . utils/parse_options.sh
 
-text=data/tr05_multi_noisy/text
-#fisher_text=data/local/lm/fisher/text1.gz
+tgtdir=data/local/local_lm
+fisher_text=data/local/lm/fisher/text1.gz
 lexicon=data/local/dict/lexiconp.txt
 text_dir=data/rnnlm/text_nosp_1a
 mkdir -p $dir/config
 set -e
 
-for f in $text $lexicon; do
+for f in $lexicon; do
   [ ! -f $f ] && \
     echo "$0: expected file $f to exist; search for local/wsj_extend_dict.sh in run.sh" && exit 1
 done
 
+#prepare training and dev data
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
-  echo -n >$text_dir/dev.txt
-  # hold out one in every 50 lines as dev data.
-  cat $text | uniq | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/chime4.txt
-  #zcat $fisher_text > $text_dir/fisher.txt
+  cp $tgtdir/train.rnn $text_dir/chime4.txt
+  cp $tgtdir/valid.rnn $text_dir/dev.txt
+  zcat $fisher_text > $text_dir/fisher.txt
 fi
 
 if [ $stage -le 1 ]; then
-  cp data/lang/words.txt $dir/config/
+  cat $tgtdir/vocab_5k.rnn | awk '{printf("%s %d\n", $1, NR)}' | sed '1s/^/<eps> 0\n/' > $dir/config/words.txt
   n=`cat $dir/config/words.txt | wc -l`
   echo "<brk> $n" >> $dir/config/words.txt
-  n=`cat $dir/config/words.txt | wc -l`
-  echo "[laughter] $n" >> $dir/config/words.txt
   # words that are not present in words.txt but are in the training or dev data, will be
   # mapped to <SPOKEN_NOISE> during training.
-  echo "<UNK>" >$dir/config/oov.txt
+  echo "<RNN_UNK>" >$dir/config/oov.txt
 
   cat > $dir/config/data_weights.txt <<EOF
 chime4   3   1.0
+fisher 1   1.0
 EOF
 
   rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
-                             --unk-word="<UNK>" \
+                             --unk-word="<RNN_UNK>" \
                              --data-weights-file=$dir/config/data_weights.txt \
                              $text_dir | awk 'NF==2' >$dir/config/unigram_probs.txt
 
   # choose features
   rnnlm/choose_features.py --unigram-probs=$dir/config/unigram_probs.txt \
                            --use-constant-feature=true \
-                           --special-words='<s>,</s>,<brk>,<UNK>,<NOISE>,[laughter]' \
+                           --special-words='<s>,</s>,<RNN_UNK>,<brk>' \
                            $dir/config/words.txt > $dir/config/features.txt
 
   cat >$dir/config/xconfig <<EOF
@@ -93,7 +92,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 1 \
+  rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 3 \
                   --stage $train_stage --num-epochs 10 --cmd "$train_cmd" $dir
 fi
 

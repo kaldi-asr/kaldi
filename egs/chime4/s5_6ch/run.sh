@@ -118,7 +118,7 @@ fi
 
 # LM-rescoring experiment with LSTM LMs
 if [ $stage -le 6 ]; then
-  local/rnnlm/run_lstm.sh $enhancement_method
+  local/rnnlm/run_lstm.sh $enhancement
 fi
 
 echo "Done."
