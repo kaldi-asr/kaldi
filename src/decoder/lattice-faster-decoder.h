@@ -339,12 +339,18 @@ class LatticeFasterDecoder {
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
   /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
+  template <class Fst>
   BaseFloat ProcessEmitting(DecodableInterface *decodable);
+
+  BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.  Called after
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
+  template <class Fst>
   void ProcessNonemitting(BaseFloat cost_cutoff);
+
+  void ProcessNonemittingWrapper(BaseFloat cost_cutoff);
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
