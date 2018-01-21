@@ -4,7 +4,7 @@
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
 //                2014  IMSL, PKU-HKUST (author: Wei Shi)
-//                2017  SJTU (author: Zhehuai Chen)
+//                2018  SJTU Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
