@@ -339,16 +339,14 @@ class LatticeFasterDecoder {
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
   /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
-  template <class Fst>
-  BaseFloat ProcessEmitting(DecodableInterface *decodable);
+  template <typename Fst> BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
   BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.  Called after
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
-  template <class Fst>
-  void ProcessNonemitting(BaseFloat cost_cutoff);
+  template <typename Fst> void ProcessNonemitting(BaseFloat cost_cutoff);
 
   void ProcessNonemittingWrapper(BaseFloat cost_cutoff);
 
