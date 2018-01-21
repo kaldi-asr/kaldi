@@ -1090,22 +1090,26 @@ fi
 echo "OPENFSTINC = $FSTROOT/include" >> kaldi.mk
 if $static_fst ; then
   OPENFSTLIBS="$FSTROOT/lib/libfst.a"
+  OPENFSTSCRIPTLIBS="$FSTROOT/lib/libfstscript.a"
 else
   if [ "`uname`" == "Darwin"  ]; then
     OPENFSTLIBS="$FSTROOT/lib/libfst.dylib"
     OPENFSTLDFLAGS="-Wl,-rpath -Wl,${FSTROOT}/lib"
+    OPENFSTSCRIPTLIBS="$FSTROOT/lib/libfstscript.dylib"
   elif [ "`uname`" == "Linux" ]; then
     OPENFSTLIBS="$FSTROOT/lib/libfst.so"
     OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
+    OPENFSTSCRIPTLIBS="$FSTROOT/lib/libfstscript.so"
   else
     failure "Dynamic libraries are not supported on this platform.
              Run configure with --static --static-fst flag."
   fi
 fi
-if [ ! -f "$OPENFSTLIBS" ]; then
+if [ ! -f "$OPENFSTLIBS" ] || [ ! -f "$OPENFSTSCRIPTLIBS" ]; then
   failure "Static=[$static_fst] OpenFST library not found:  See ../tools/INSTALL"
 fi
 echo "OPENFSTLIBS = $OPENFSTLIBS" >> kaldi.mk
+echo "OPENFSTLIBS += $OPENFSTSCRIPTLIBS" >> kaldi.mk
 echo "OPENFSTLDFLAGS = $OPENFSTLDFLAGS" >> kaldi.mk
 echo >> kaldi.mk
 
