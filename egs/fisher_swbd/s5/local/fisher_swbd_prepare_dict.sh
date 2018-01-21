@@ -112,8 +112,12 @@ srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 # assume swbd_p1_data_prep.sh was done already.
 [ ! -f "$srcdict" ] && echo "No such file $srcdict" && exit 1;
 
+rm $dir/lexicon0.txt 2>/dev/null
 cp $srcdict $dir/lexicon0.txt || exit 1;
-patch <local/dict.patch $dir/lexicon0.txt || exit 1;
+chmod +w $srcdict $dir/lexicon0.txt
+
+# Use absolute path in case patch reports the "Invalid file name" error (a bug with patch)
+patch <local/dict.patch `pwd`/$dir/lexicon0.txt || exit 1;
 
 #(2a) Dictionary preparation:
 # Pre-processing (remove comments)

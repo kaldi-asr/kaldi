@@ -41,7 +41,7 @@ weights_file=$3
 [ ! -f $weight ] && \
   echo "$0: expected weights file in $weight" 1>&2 && exit 1;
 
-rnnlm/ensure_counts_present.sh $text
+rnnlm/ensure_counts_present.sh $text 1>&2
 
 
 set -e -o pipefail -u
