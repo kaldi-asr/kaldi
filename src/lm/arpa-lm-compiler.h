@@ -38,8 +38,8 @@ class ArpaLmCompiler : public ArpaFileParser {
   }
   ~ArpaLmCompiler();
 
-  const fst::StdVectorFst& Fst() const { return fst_; }
-  fst::StdVectorFst* MutableFst() { return &fst_; }
+  const fst::StdVectorFst& Fst() const { CheckFstInvariants(); return fst_; }
+  fst::StdVectorFst* MutableFst() { CheckFstInvariants(); return &fst_; }
 
  protected:
   // ArpaFileParser overrides.
@@ -52,6 +52,7 @@ class ArpaLmCompiler : public ArpaFileParser {
   // this function removes states that only have a backoff arc coming
   // out of them.
   void RemoveRedundantStates();
+  void CheckFstInvariants() const;
 
   int sub_eps_;
   ArpaLmCompilerImplInterface* impl_;  // Owned.
