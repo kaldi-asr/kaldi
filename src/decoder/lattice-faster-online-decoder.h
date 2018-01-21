@@ -337,14 +337,16 @@ class LatticeFasterOnlineDecoder {
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
   /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
-  template <typename Fst> BaseFloat ProcessEmitting(DecodableInterface *decodable);
+  /// To reduce vtable lookup cost in openfst based graph search, make ProcessEmitting() and ProcessNonemitting() be templated on the FstType, and create wrapper functions, ProcessEmittingWrapper(), which will check the actual FstType; if it's ConstFst or VectorFst, it will call ProcessEmitting() with one of those two types explicitly; otherwise it will call it with the regular Fst interface (to cover the other cases).
+  template <typename FstType> BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
   BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.  Called after
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
-  template <typename Fst> void ProcessNonemitting(BaseFloat cost_cutoff);
+  /// the templated design is similar to ProcessEmitting()
+  template <typename FstType> void ProcessNonemitting(BaseFloat cost_cutoff);
 
   void ProcessNonemittingWrapper(BaseFloat cost_cutoff);
 
@@ -365,7 +367,7 @@ class LatticeFasterOnlineDecoder {
   // make it class member to avoid internal new/delete.
   const fst::Fst<fst::StdArc> &fst_;
   bool delete_fst_;
-  std::vector<BaseFloat> cost_offsets_;  // This contains, for each
+  std::vector<BaseFloat> cost_offsets_; // This contains, for each
   // frame, an offset that was added to the acoustic log-likelihoods on that
   // frame in order to keep everything in a nice dynamic range i.e.  close to
   // zero, to reduce roundoff errors.

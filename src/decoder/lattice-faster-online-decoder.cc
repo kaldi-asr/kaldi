@@ -862,7 +862,7 @@ BaseFloat LatticeFasterOnlineDecoder::GetCutoff(Elem *list_head, size_t *tok_cou
 }
 
 
-template <typename Fst>
+template <typename FstType>
 BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
     DecodableInterface *decodable) {
   KALDI_ASSERT(active_toks_.size() > 0);
@@ -885,6 +885,7 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
 
   BaseFloat cost_offset = 0.0; // Used to keep probabilities in a good
   // dynamic range.
+  FstType &fst = dynamic_cast<FstType&>(const_cast<fst::Fst<Arc> &>(fst_));
 
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.  The only
@@ -893,7 +894,7 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
     StateId state = best_elem->key;
     Token *tok = best_elem->val;
     cost_offset = - tok->tot_cost;
-    for (fst::ArcIterator<Fst > aiter(dynamic_cast<Fst &>(const_cast<fst::Fst<Arc> &>(fst_)), state);
+    for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
       Arc arc = aiter.Value();
@@ -922,7 +923,7 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
     StateId state = e->key;
     Token *tok = e->val;
     if (tok->tot_cost <= cur_cutoff) {
-      for (fst::ArcIterator<Fst > aiter(dynamic_cast<Fst &>(const_cast<fst::Fst<Arc> &>(fst_)), state);
+      for (fst::ArcIterator<FstType> aiter(fst, state);
            !aiter.Done();
            aiter.Next()) {
         const Arc &arc = aiter.Value();
@@ -967,12 +968,14 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmittingWrapper(DecodableInterface 
   }
 }
 
-template <typename Fst> void LatticeFasterOnlineDecoder::ProcessNonemitting(BaseFloat cutoff) {
+template <typename FstType> 
+void LatticeFasterOnlineDecoder::ProcessNonemitting(BaseFloat cutoff) {
   KALDI_ASSERT(!active_toks_.empty());
   int32 frame = static_cast<int32>(active_toks_.size()) - 2;
   // Note: "frame" is the time-index we just processed, or -1 if
   // we are processing the nonemitting transitions before the
   // first frame (called from InitDecoding()).
+  FstType &fst = dynamic_cast<FstType&>(const_cast<fst::Fst<Arc> &>(fst_));
 
   // Processes nonemitting arcs for one frame.  Propagates within toks_.
   // Note-- this queue structure is is not very optimal as
@@ -1004,7 +1007,7 @@ template <typename Fst> void LatticeFasterOnlineDecoder::ProcessNonemitting(Base
     // but since most states are emitting it's not a huge issue.
     tok->DeleteForwardLinks(); // necessary when re-visiting
     tok->links = NULL;
-    for (fst::ArcIterator<Fst > aiter(dynamic_cast<Fst &>(const_cast<fst::Fst<Arc> &>(fst_)), state);
+    for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
       const Arc &arc = aiter.Value();
