@@ -18,20 +18,22 @@ data_url=www.openslr.org/resources/33
 . ./cmd.sh
 . ./path.sh
 
-local/download_and_untar.sh $data $data_url data_aishell || exit 1;
-local/download_and_untar.sh $data $data_url resource_aishell || exit 1;
+set -e # exit on error
+
+local/download_and_untar.sh $data $data_url data_aishell
+local/download_and_untar.sh $data $data_url resource_aishell
 
 # Data Preparation
-local/aishell_data_prep.sh $data/data_aishell/wav $data/data_aishell/transcript || exit 1;
+local/aishell_data_prep.sh $data/data_aishell/wav $data/data_aishell/transcript
 
 # Now make MFCC  features.
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
 mfccdir=mfcc
 for x in train test; do
-  steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/$x exp/make_mfcc/$x $mfccdir || exit 1;
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/$x exp/make_mfcc/$x $mfccdir
   sid/compute_vad_decision.sh --nj 10 --cmd "$train_cmd" data/$x exp/make_mfcc/$x $mfccdir
-  utils/fix_data_dir.sh data/$x || exit 1;
+  utils/fix_data_dir.sh data/$x
 done
 
 # train diag ubm
@@ -55,7 +57,7 @@ sid/extract_ivectors.sh --cmd "$train_cmd" --nj 10 \
 $train_cmd exp/ivector_train_1024/log/plda.log \
   ivector-compute-plda ark:data/train/spk2utt \
   'ark:ivector-normalize-length scp:exp/ivector_train_1024/ivector.scp  ark:- |' \
-  exp/ivector_train_1024/plda || exit 1;
+  exp/ivector_train_1024/plda
 
 #split the test to enroll and eval
 mkdir -p data/test/enroll data/test/eval
@@ -80,7 +82,7 @@ $train_cmd exp/ivector_eval_1024/log/plda_score.log \
   exp/ivector_train_1024/plda \
   ark:exp/ivector_enroll_1024/spk_ivector.ark \
   "ark:ivector-normalize-length scp:exp/ivector_eval_1024/ivector.scp ark:- |" \
-  "cat '$trials' | awk '{print \\\$2, \\\$1}' |" exp/trials_out || exit 1
+  "cat '$trials' | awk '{print \\\$2, \\\$1}' |" exp/trials_out
 
 #compute eer
 awk '{print $3}' exp/trials_out | paste - $trials | awk '{print $1, $4}' | compute-eer -
