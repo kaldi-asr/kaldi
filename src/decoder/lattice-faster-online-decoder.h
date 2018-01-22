@@ -3,6 +3,7 @@
 // Copyright 2009-2013  Microsoft Corporation;  Mirko Hannemann;
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
+//                2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -337,7 +338,12 @@ class LatticeFasterOnlineDecoder {
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
   /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
-  /// To reduce vtable lookup cost in openfst based graph search, make ProcessEmitting() and ProcessNonemitting() be templated on the FstType, and create wrapper functions, ProcessEmittingWrapper(), which will check the actual FstType; if it's ConstFst or VectorFst, it will call ProcessEmitting() with one of those two types explicitly; otherwise it will call it with the regular Fst interface (to cover the other cases).
+  /// To reduce vtable lookup cost in openfst based graph search, 
+  //make ProcessEmitting() and ProcessNonemitting() be templated on the FstType,
+  //and create wrapper functions, ProcessEmittingWrapper(), which will check 
+  //the actual FstType; if it's ConstFst or VectorFst, it will call 
+  //ProcessEmitting() with one of those two types explicitly; otherwise it 
+  //will call it with the regular Fst interface (to cover the other cases).
   template <typename FstType> BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
   BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
