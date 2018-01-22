@@ -60,7 +60,7 @@ if [ $stage -le 0 ]; then
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
 
-  cat data/val/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  cat data/dev/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
 
   # use the training data as an additional data source.
   # we can later fold the dev data into this.
