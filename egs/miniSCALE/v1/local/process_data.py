@@ -34,6 +34,30 @@ utt2spk_fh = open(utt2spk_file, 'w', encoding='utf-8')
 image_file = os.path.join(args.out_dir, 'images.scp')
 image_fh = open(image_file, 'w', encoding='utf-8')
 
+def remove_corrupt_xml_files(gedi_file_path):
+    doc = minidom.parse(gedi_file_path)
+    line_id_list = list()
+    unique_lineid = list()
+    DL_ZONE = doc.getElementsByTagName('DL_ZONE')
+    for node in DL_ZONE:
+        line_id = node.getAttribute('lineID')
+        if line_id == "":
+            continue
+        line_id_list.append(int(line_id))
+        unique_lineid = list(set(line_id_list))
+        unique_lineid.sort()
+
+    #check if the lineID is empty
+    if len(line_id_list) == 0:
+        return False
+
+    # check if list contain consequtive entries
+    if len(sorted(unique_lineid)) != len(range(min(unique_lineid), max(unique_lineid)+1)):
+        return False
+
+    # process the file
+    return True
+
 image_num = 0
 with open(args.data_splits) as f:
     prev_base_name = ''
@@ -42,31 +66,32 @@ with open(args.data_splits) as f:
         if prev_base_name != base_name:
             prev_base_name = base_name
             gedi_xml_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
-            madcat_xml_path = os.path.join(args.database_path, 'madcat', line.split(' ')[0])
-            madcat_doc = minidom.parse(madcat_xml_path)
-            gedi_doc = minidom.parse(gedi_xml_path)
+            if remove_corrupt_xml_files(gedi_xml_path):
+                madcat_xml_path = os.path.join(args.database_path, 'madcat', line.split(' ')[0])
+                madcat_doc = minidom.parse(madcat_xml_path)
+                gedi_doc = minidom.parse(gedi_xml_path)
 
-            writer = madcat_doc.getElementsByTagName('writer')
-            writer_id = writer[0].getAttribute('id')
-            dl_page = gedi_doc.getElementsByTagName('DL_PAGE')
-            for page in dl_page:
-                dl_zone = page.getElementsByTagName('DL_ZONE')
-                lines = []
-                for zone in dl_zone:
-                    contents = zone.getAttribute('contents')
-                    lineID = zone.getAttribute('lineID')
-                    if lineID != '':
-                        lineID = int(lineID)
-                        while len(lines) < lineID:
-                            lines.append([])
-                        lines[lineID - 1].append(contents)
-                for lineID, line in enumerate(lines, start=1):
-                    if line:
-                        image_file_name = base_name + '_' + str(lineID).zfill(3) +'.tif'
-                        image_file_path = os.path.join(args.database_path, 'lines', image_file_name)
-                        text = ''.join(line)
-                        utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_name + '_' + str(lineID).zfill(3)
-                        text_fh.write(utt_id + ' ' + text + '\n')
-                        utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
-                        image_fh.write(utt_id + ' ' + image_file_path + '\n')
-                        image_num = image_num + 1
+                writer = madcat_doc.getElementsByTagName('writer')
+                writer_id = writer[0].getAttribute('id')
+                dl_page = gedi_doc.getElementsByTagName('DL_PAGE')
+                for page in dl_page:
+                    dl_zone = page.getElementsByTagName('DL_ZONE')
+                    lines = []
+                    for zone in dl_zone:
+                        contents = zone.getAttribute('contents')
+                        lineID = zone.getAttribute('lineID')
+                        if lineID != '':
+                            lineID = int(lineID)
+                            while len(lines) < lineID:
+                                lines.append([])
+                            lines[lineID - 1].append(contents)
+                    for lineID, line in enumerate(lines, start=1):
+                        if line:
+                            image_file_name = base_name + '_' + str(lineID).zfill(3) +'.tif'
+                            image_file_path = os.path.join(args.database_path, 'lines', image_file_name)
+                            text = ''.join(line)
+                            utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_name + '_' + str(lineID).zfill(3)
+                            text_fh.write(utt_id + ' ' + text + '\n')
+                            utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
+                            image_fh.write(utt_id + ' ' + image_file_path + '\n')
+                            image_num = image_num + 1

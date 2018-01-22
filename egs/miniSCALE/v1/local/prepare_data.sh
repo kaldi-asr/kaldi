@@ -42,19 +42,15 @@ if [ $stage -le 1 ]; then
   local/process_data.py $download_dir $test_split_file data/test || exit 1
   local/process_data.py $download_dir $dev_split_file data/dev || exit 1
 
-  cp data/train/utt2spk data/train/utt2spk_tmp
-  cp data/test/utt2spk data/test/utt2spk_tmp
-  cp data/dev/utt2spk data/dev/utt2spk_tmp
-  sort data/train/utt2spk_tmp > data/train/utt2spk
-  sort data/test/utt2spk_tmp > data/test/utt2spk
-  sort data/dev/utt2spk_tmp > data/dev/utt2spk
-
-  cp data/train/text data/train/text_tmp
-  cp data/test/text data/test/text_tmp
-  cp data/dev/text data/dev/text_tmp
-  sort data/train/text_tmp > data/train/text
-  sort data/test/text_tmp > data/test/text
-  sort data/dev/text_tmp > data/dev/text
+  for dataset in train test dev; do
+    cp data/$dataset/utt2spk data/$dataset/utt2spk_tmp
+    cp data/$dataset/text data/$dataset/text_tmp
+    cp data/$dataset/images.scp data/$dataset/images_tmp.scp
+    sort data/$dataset/utt2spk_tmp > data/$dataset/utt2spk
+    sort data/$dataset/text_tmp > data/$dataset/text
+    sort data/$dataset/images_tmp.scp > data/$dataset/images.scp
+    rm data/$dataset/utt2spk_tmp data/$dataset/text_tmp data/$dataset/images_tmp.scp
+  done
 
   utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
   utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
