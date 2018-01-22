@@ -34,6 +34,7 @@ utt2spk_fh = open(utt2spk_file, 'w', encoding='utf-8')
 image_file = os.path.join(args.out_dir, 'images.scp')
 image_fh = open(image_file, 'w', encoding='utf-8')
 
+image_num = 0
 with open(args.data_splits) as f:
     prev_base_name = ''
     for line in f:
@@ -60,10 +61,11 @@ with open(args.data_splits) as f:
                             lines.append([])
                         lines[lineID - 1].append(contents)
                 for lineID, line in enumerate(lines, start=1):
-                    image_file_name = base_name + '_0' + str(lineID) +'.tif'
+                    image_file_name = base_name + '_' + str(lineID).zfill(3) +'.tif'
                     image_file_path = os.path.join(args.database_path, 'lines', image_file_name)
                     text = ''.join(line)
-                    utt_id = writer_id + '_' + base_name + '_' + str(lineID)
+                    utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_name + '_' + str(lineID).zfill(3)
                     text_fh.write(utt_id + ' ' + text + '\n')
                     utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
                     image_fh.write(utt_id + ' ' + image_file_path + '\n')
+                    image_num = image_num + 1

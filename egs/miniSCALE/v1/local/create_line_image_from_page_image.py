@@ -99,7 +99,7 @@ def set_line_image_data(image, line_id, image_file_name):
         return
     base_name = os.path.splitext(os.path.basename(image_file_name))[0]
     image_file_name_wo_tif, b = image_file_name.split('.tif')
-    line_id = '_0' + line_id
+    line_id = '_' + line_id.zfill(3)
     line_image_file_name = base_name + line_id + '.tif'
     imgray = image.convert('L')
     image_path=os.path.join(data_path, 'lines', line_image_file_name)
