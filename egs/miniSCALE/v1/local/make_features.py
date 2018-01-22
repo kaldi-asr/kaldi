@@ -85,3 +85,5 @@ with open(data_list_path) as f:
             data = np.transpose(im_scale, (1, 0))
             data = np.divide(data, 255.0)
             write_kaldi_matrix(out_fh, data, image_id)
+        else:
+            print("Error: image file missiong, image file name: {0} ".format(image_path))
