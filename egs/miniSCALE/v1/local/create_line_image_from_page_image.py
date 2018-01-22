@@ -125,8 +125,9 @@ def remove_corrupt_xml_files(gedi_file_path):
     # check if list contain consequtive entries
     if sorted(unique_lineid) != range(min(unique_lineid), max(unique_lineid) + 1):
         return False
-    else:
-        return True
+
+    # process the file
+    return True
 ### main ###
 
 data_path = args.database_path
