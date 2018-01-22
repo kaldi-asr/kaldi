@@ -46,8 +46,8 @@ done
 #prepare training and dev data
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
-  cp $tgtdir/train.rnn $text_dir/chime4.txt
-  cp $tgtdir/valid.rnn $text_dir/dev.txt
+  cat $tgtdir/train.rnn | uniq >$text_dir/chime4.txt
+  cat $tgtdir/valid.rnn | uniq >$text_dir/dev.txt
   zcat $fisher_text > $text_dir/fisher.txt
 fi
 

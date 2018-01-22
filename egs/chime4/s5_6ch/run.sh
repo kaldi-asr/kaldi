@@ -90,7 +90,7 @@ if [ $stage -le 2 ]; then
   fi
   chime4_rir_data=local/nn-gev/data/audio/16kHz/isolated_ext
   if [ ! -d $chime4_rir_data ]; then
-    echo "$chime4_rir_dir does not exist. Please run 'blstm_gev' enhancement method first;" && exit 1;
+    echo "$chime4_rir_data does not exist. Please run 'blstm_gev' enhancement method first;" && exit 1;
   fi
   local/compute_PESQ.sh $enhancement $enhancement_data $chime4_rir_data $PWD
   local/compute_stoi_estoi_sdr.sh $enhancement $enhancement_data $chime4_rir_data
