@@ -105,6 +105,28 @@ def set_line_image_data(image, line_id, image_file_name):
     image_path=os.path.join(data_path, 'lines', line_image_file_name)
     imgray.save(image_path)
 
+def remove_corrupt_xml_files(gedi_file_path):
+    doc = minidom.parse(gedi_file_path)
+    line_id_list = list()
+    unique_lineid = list()
+    DL_ZONE = doc.getElementsByTagName('DL_ZONE')
+    for node in DL_ZONE:
+        line_id = node.getAttribute('lineID')
+        if line_id == "":
+            continue
+        line_id_list.append(int(line_id))
+        unique_lineid = list(set(line_id_list))
+        unique_lineid.sort()
+
+    #check if the lineID is empty
+    if len(unique_lineid) == 0:
+        return False
+
+    # check if list contain consequtive entries
+    if sorted(unique_lineid) != range(min(unique_lineid), max(unique_lineid) + 1):
+        return False
+    else:
+        return True
 ### main ###
 
 data_path = args.database_path
@@ -121,4 +143,5 @@ with open(args.data_splits) as f:
             prev_base_name = base_name
             gedi_file_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
             image_file_path = os.path.join(args.database_path, 'images', base_name + '.tif')
-            get_line_images_from_page_image(image_file_path, gedi_file_path)
+            if remove_corrupt_xml_files(gedi_file_path):
+                get_line_images_from_page_image(image_path, gedi_file_path)
