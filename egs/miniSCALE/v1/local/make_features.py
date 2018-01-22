@@ -78,9 +78,10 @@ with open(data_list_path) as f:
         line_vect = line.split(' ')
         image_id = line_vect[0]
         image_path = line_vect[1]
-        im = misc.imread(image_path)
-        im_scale = get_scaled_image(im)
+        if os.path.isfile(image_path):
+            im = misc.imread(image_path)
+            im_scale = get_scaled_image(im)
 
-        data = np.transpose(im_scale, (1, 0))
-        data = np.divide(data, 255.0)
-        write_kaldi_matrix(out_fh, data, image_id)
+            data = np.transpose(im_scale, (1, 0))
+            data = np.divide(data, 255.0)
+            write_kaldi_matrix(out_fh, data, image_id)
