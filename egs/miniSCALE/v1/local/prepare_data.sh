@@ -21,6 +21,7 @@ download_dir=data/download/tmp/LDC2014T13/data
 train_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.train.raw.lineid
 test_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.test.raw.lineid
 dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.dev.raw.lineid
+word_segmented_chinese_data=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.train.tok.zh
 
 . ./cmd.sh
 . ./path.sh

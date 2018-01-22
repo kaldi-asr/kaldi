@@ -119,11 +119,11 @@ def remove_corrupt_xml_files(gedi_file_path):
         unique_lineid.sort()
 
     #check if the lineID is empty
-    if len(unique_lineid) == 0:
+    if len(line_id_list) == 0:
         return False
 
     # check if list contain consequtive entries
-    if sorted(unique_lineid) != range(min(unique_lineid), max(unique_lineid) + 1):
+    if len(sorted(unique_lineid)) != len(range(min(unique_lineid), max(unique_lineid)+1)):
         return False
 
     # process the file
@@ -145,4 +145,4 @@ with open(args.data_splits) as f:
             gedi_file_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
             image_file_path = os.path.join(args.database_path, 'images', base_name + '.tif')
             if remove_corrupt_xml_files(gedi_file_path):
-                get_line_images_from_page_image(image_path, gedi_file_path)
+                get_line_images_from_page_image(image_file_path, gedi_file_path)
