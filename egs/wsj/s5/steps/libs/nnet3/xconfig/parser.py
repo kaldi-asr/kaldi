@@ -69,7 +69,8 @@ config_to_layer = {
         'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
         'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
         'renorm-component': xlayers.XconfigRenormComponent,
-        'no-op-component': xlayers.XconfigNoOpComponent
+        'no-op-component': xlayers.XconfigNoOpComponent,
+        'linear-component': xlayers.XconfigLinearComponent
 }
 
 # Turn a config line and a list of previous layers into
