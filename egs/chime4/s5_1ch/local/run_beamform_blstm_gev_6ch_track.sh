@@ -67,8 +67,14 @@ else
 fi
 
 mkdir -p $odir
-nIsolatedDirs=`ls local/nn-gev/data/audio/16kHz/isolated/ 2>/dev/null | wc -l`
-nIsolatedExtDirs=`ls local/nn-gev/data/audio/16kHz/isolated_ext/ 2>/dev/null | wc -l`
+
+if [[ -d local/nn-gev/data/audio/16kHz/isolated && -d local/nn-gev/data/audio/16kHz/isolated_ext ]];then
+   nIsolatedDirs=`ls local/nn-gev/data/audio/16kHz/isolated/ | wc -l`
+   nIsolatedExtDirs=`ls local/nn-gev/data/audio/16kHz/isolated_ext/ | wc -l`
+else
+   nIsolatedDirs=0
+   nIsolatedExtDirs=0
+fi
 if [[ "$nIsolatedDirs" -ne 12 || "$nIsolatedExtDirs" -ne 12 ]];then
    echo "generating simulation data and storing in local/nn-gev/data"
    $cmd $odir/simulation.log matlab -nodisplay -nosplash -r "addpath('local'); CHiME3_simulate_data_patched_parallel(1,$nj,'$sdir','$chime3_dir');exit"
