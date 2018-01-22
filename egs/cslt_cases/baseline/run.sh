@@ -56,12 +56,12 @@ utils/prepare_lang.sh --position_dependent_phones false data/dict "<SPOKEN_NOISE
 rm -rf data/mfcc && mkdir -p data/mfcc && cp -r data/{train,test} data/mfcc || exit 1;
 rm -rf data/fbank && mkdir -p data/fbank && cp -r data/{train,test} data/fbank || exit 1;
 for x in train test; do
-   # make mfcc and fbank
-   steps/make_mfcc.sh --nj $n --cmd "$train_cmd" data/mfcc/$x || exit 1;
-   steps/make_fbank.sh --nj $n --cmd "$train_cmd" data/fbank/$x || exit 1;
-   # compute cmvn
-   steps/compute_cmvn_stats.sh data/mfcc/$x || exit 1;
-   steps/compute_cmvn_stats.sh data/fbank/$x || exit 1;
+  # make mfcc and fbank
+  steps/make_mfcc.sh --nj $n --cmd "$train_cmd" data/mfcc/$x || exit 1;
+  steps/make_fbank.sh --nj $n --cmd "$train_cmd" data/fbank/$x || exit 1;
+  # compute cmvn
+  steps/compute_cmvn_stats.sh data/mfcc/$x || exit 1;
+  steps/compute_cmvn_stats.sh data/fbank/$x || exit 1;
 done
 
 
@@ -116,8 +116,8 @@ steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" $graph_dir data/fbank/test $tdn
 
 ###### Bookmark: discriminative training and decoding ######
 
-# mpfe training
-criterion=mpfe # smbr, mmi or mpfe
+# mmi training
+criterion=mmi # mmi, mpfe or smbr
 local/nnet3/run_tdnn_discriminative.sh --criterion $criterion $tdnn_dir data/fbank/train || exit 1;
 
 # decoding
