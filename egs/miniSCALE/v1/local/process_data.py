@@ -37,6 +37,9 @@ image_fh = open(image_file, 'w', encoding='utf-8')
 with open(args.data_splits) as f:
     for line in f:
         base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
+        occurance_number = line.split(' ')[1]
+        if occurance_number != 's1'
+            continue
         gedi_xml_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
         madcat_xml_path = os.path.join(args.database_path, 'madcat', line.split(' ')[0])
         madcat_doc = minidom.parse(madcat_xml_path)
