@@ -116,6 +116,9 @@ char_height_buffer = int(args.char_height_buffer)
 with open(args.data_splits) as f:
     for line in f:
         base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
+        occurance_number = line.split(' ')[1]
+        if occurance_number != 's1'
+            continue
         gedi_file_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
         image_file_path = os.path.join(args.database_path, 'images', base_name + '.tif')
         get_line_images_from_page_image(image_file_path, gedi_file_path)
