@@ -18,7 +18,7 @@
 [ -f ./path.sh ] && . ./path.sh
 set +e
 
-uconv=`command -v python3 2>/dev/null` \
+command -v python3 2>/dev/null \
   || { echo  >&2 "python3 not found on PATH. You will have to install Python3, preferably >= 3.6"; exit 1; }
 
 python3 -c "import numpy"
