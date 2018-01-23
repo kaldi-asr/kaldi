@@ -8,21 +8,26 @@
 # and renorm in its recurrence. Experiments show that the TDNN-NormOPGRU could achieve similar
 # results than TDNN-LSTMP and BLSTMP in both large or small data sets (80 ~ 2300 Hrs).
 
-# ./local/chain/compare_wer_general.sh tdnn_opgru_1a_sp
-# System                tdnn_opgru_1a_sp
-# WER on eval2000(tg)        11.7
-#           [looped:]        11.6
-# WER on eval2000(fg)        11.7
-#           [looped:]        11.6
-# WER on rt03(tg)            11.0
-#           [looped:]        11.0
-# WER on rt03(fg)            10.7
-#           [looped:]        10.8
-# Final train prob         -0.085
-# Final valid prob         -0.093
-# Final train prob (xent)        -0.972
-# Final valid prob (xent)       -1.0275
+# ./local/chain/compare_wer_general.sh tdnn_lstm_1a_sp tdnn_lstm_1b_sp tdnn_opgru_1a_sp
+# num parameter         39.7M           39.7M           34.9M
+# System                tdnn_lstm_1a_sp tdnn_lstm_1b_sp tdnn_opgru_1a_sp
+# WER on eval2000(tg)        12.3      12.3      11.7
+#           [looped:]        12.2      12.3      11.6
+# WER on eval2000(fg)        12.1      12.0      11.7
+#           [looped:]        12.1      12.2      11.6
+# WER on rt03(tg)            11.6      11.4      11.0
+#           [looped:]        11.6      11.6      11.0
+# WER on rt03(fg)            11.3      11.1      10.7
+#           [looped:]        11.3      11.3      10.8
+# Final train prob         -0.074    -0.087    -0.085
+# Final valid prob         -0.084    -0.088    -0.093
+# Final train prob (xent)        -0.882    -1.015    -0.972
+# Final valid prob (xent)       -0.9393   -0.9837   -1.0275
 
+#./steps/info/chain_dir_info.pl exp/chain/tdnn_opgru_1a_sp
+#exp/chain/tdnn_opgru_1a_sp: num-iters=2384 nj=3..16 num-params=34.9M dim=40+100->6149 combine=-0.096->-0.095 (over 8) 
+#xent:train/valid[1587,2383,final]=(-1.46,-0.960,-0.972/-1.49,-1.02,-1.03) 
+#logprob:train/valid[1587,2383,final]=(-0.114,-0.086,-0.085/-0.114,-0.094,-0.093)
 
 # online results
 # Eval2000

@@ -2,23 +2,37 @@
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 # Apache 2.0
 
-# Using string-style chunk width, batchnorm in TDNN layers and perframe dropout for LSTMP.
 # Similar to swbd\s5c\local\chain\tuning\run_tdnn_lstm_1e.sh
-# ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1b_sp
-# System                tdnn_lstm_1b_sp
-# WER on eval2000(tg)        12.3
-#           [looped:]        12.3
-# WER on eval2000(fg)        12.0
-#           [looped:]        12.2
-# WER on rt03(tg)            11.4
-#           [looped:]        11.6
-# WER on rt03(fg)            11.1
-#           [looped:]        11.3
-# Final train prob         -0.087
-# Final valid prob         -0.088
-# Final train prob (xent)        -1.015
-# Final valid prob (xent)       -0.9837
- 
+# Difference between tdnn_lstm_1a and tdnn_lstm_1b:
+# chunk width        150  140,100,160
+# xent_regularize    0.0025  0.01
+# minibatch          64  64,32
+# frames-per-iter    1200000  1500000
+# batchnorm in TDNN  No  Yes
+# Dropout in LSTM    No  Yes
+
+# ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp tdnn_lstm_1b_sp
+# System                tdnn_lstm_1a_sp tdnn_lstm_1b_sp
+# num-params                 39.7M     39.7M
+# WER on eval2000(tg)        12.3      12.3
+#           [looped:]        12.2      12.3
+# WER on eval2000(fg)        12.1      12.0
+#           [looped:]        12.1      12.2
+# WER on rt03(tg)            11.6      11.4
+#           [looped:]        11.6      11.6
+# WER on rt03(fg)            11.3      11.1
+#           [looped:]        11.3      11.3
+# Final train prob         -0.074    -0.087
+# Final valid prob         -0.084    -0.088
+# Final train prob (xent)        -0.882    -1.015
+# Final valid prob (xent)       -0.9393   -0.9837
+
+#./steps/info/chain_dir_info.pl exp/chain/tdnn_lstm_1b_sp
+#exp/chain/tdnn_lstm_1b_sp: num-iters=1909 nj=3..16 num-params=39.7M dim=40+100->6149 combine=-0.087->-0.086 (over 5) 
+#xent:train/valid[1270,1908,final]=(-1.37,-1.02,-1.01/-1.31,-1.00,-0.984) 
+#logprob:train/valid[1270,1908,final]=(-0.108,-0.088,-0.087/-0.103,-0.091,-0.088)
+
+
 # online results
 # Eval2000
 #%WER 15.9 | 2628 21594 | 86.0 8.6 5.4 1.9 15.9 53.5 | exp/chain/tdnn_lstm_1b_online/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys

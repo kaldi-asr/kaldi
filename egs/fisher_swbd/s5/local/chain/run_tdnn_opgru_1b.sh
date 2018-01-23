@@ -2,22 +2,34 @@
 # Copyright 2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 # Apache 2.0
 
-# This is similar tdnn_lstm_1e (from egs/swbd/s5c). 
-# Comapared with tdnn_opgru_1a, the performance degrades.
-# ./local/chain/compare_wer_general.sh tdnn_opgru_1b_sp
-# System                tdnn_opgru_1b_sp
-# WER on eval2000(tg)        12.2
-#           [looped:]        12.2
-# WER on eval2000(fg)        12.1
-#           [looped:]        12.0
-# WER on rt03(tg)            11.3
-#           [looped:]        11.4
-# WER on rt03(fg)            11.1
-#           [looped:]        11.1
-# Final train prob         -0.097
-# Final valid prob         -0.093
-# Final train prob (xent)        -1.117
-# Final valid prob (xent)       -1.0635
+# Similar to tdnn_lstm_1e (from egs/swbd/s5c). 
+# Difference between tdnn_opgru_1a and tdnn_opgru_1b:
+# chunk width        150  140,100,160
+# xent_regularize    0.0025 0.01
+# minibatch          64   64,32
+# frames-per-iter    1200000 1500000
+
+# ./local/chain/compare_wer_general.sh tdnn_lstm_1a_sp tdnn_lstm_1b_sp tdnn_opgru_1a_sp tdnn_opgru_1b_sp
+# num parameter              39.7M           39.7M           34.9M            34.9M
+# System                     tdnn_lstm_1a_sp tdnn_lstm_1b_sp tdnn_opgru_1a_sp tdnn_opgru_1b_sp
+# WER on eval2000(tg)        12.3      12.3      11.7      12.2
+#           [looped:]        12.2      12.3      11.6      12.1
+# WER on eval2000(fg)        12.1      12.0      11.7      12.0
+#           [looped:]        12.1      12.2      11.6      11.9
+# WER on rt03(tg)            11.6      11.4      11.0      11.3
+#           [looped:]        11.6      11.6      11.0      11.3
+# WER on rt03(fg)            11.3      11.1      10.7      11.1
+#           [looped:]        11.3      11.3      10.8      11.0
+# Final train prob         -0.074    -0.087    -0.085    -0.097
+# Final valid prob         -0.084    -0.088    -0.093    -0.093
+# Final train prob (xent)        -0.882    -1.015    -0.972    -1.121
+# Final valid prob (xent)       -0.9393   -0.9837   -1.0275   -1.0703
+
+
+#./steps/info/chain_dir_info.pl exp/chain/tdnn_opgru_1b_sp
+# exp/chain/tdnn_opgru_1b_sp: num-iters=1807 nj=3..16 num-params=34.9M dim=40+100->6149 combine=-0.102->-0.101 (over 5) 
+# xent:train/valid[1202,1806,final]=(-1.70,-1.11,-1.12/-1.63,-1.06,-1.07) 
+# logprob:train/valid[1202,1806,final]=(-0.131,-0.098,-0.097/-0.123,-0.094,-0.093)
 
 # online results
 # Eval2000

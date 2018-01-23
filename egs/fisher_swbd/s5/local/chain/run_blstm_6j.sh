@@ -14,7 +14,12 @@
 # Final valid prob         -0.082
 # Final train prob (xent)        -0.698
 # Final valid prob (xent)       -0.8108
+# num-params=41.3M
 
+# ./steps/info/chain_dir_info.pl exp/chain/blstm_6j_sp
+# exp/chain/blstm_6j_sp: num-iters=2384 nj=3..16 num-params=41.3M dim=40+100->6149 combine=-0.075->-0.074 (over 15) 
+# xent:train/valid[1587,2383,final]=(-0.754,-0.710,-0.698/-0.828,-0.824,-0.811) 
+# logprob:train/valid[1587,2383,final]=(-0.070,-0.063,-0.061/-0.082,-0.084,-0.082)
 
 # ./local/chain/show_chain_wer.sh blstm_6j_sp
 # %WER 16.0 | 2628 21594 | 86.3 8.7 5.0 2.3 16.0 53.8 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_tg/score_6_0.0/eval2000_hires.ctm.callhm.filt.sys
