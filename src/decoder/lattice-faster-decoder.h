@@ -345,7 +345,7 @@ class LatticeFasterDecoder {
   // and create wrapper functions, ProcessEmittingWrapper(), which will check 
   // the actual FstType; if it's ConstFst or VectorFst, it will call 
   // ProcessEmitting() with one of those two types explicitly; otherwise it 
-  // will call it with the regular Fst interface (to cover the other cases).
+  // will call it with the regular Fst interface.
   template <typename FstType> BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
   BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);

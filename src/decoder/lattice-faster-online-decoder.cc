@@ -954,17 +954,24 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
   return next_cutoff;
 }
 
-template BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting<fst::ConstFst<fst::StdArc>>(DecodableInterface *decodable);
-template BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting<fst::VectorFst<fst::StdArc>>(DecodableInterface *decodable);
-template BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting<fst::Fst<fst::StdArc>>(DecodableInterface *decodable);
+template BaseFloat LatticeFasterOnlineDecoder::
+    ProcessEmitting<fst::ConstFst<fst::StdArc>>(DecodableInterface *decodable);
+template BaseFloat LatticeFasterOnlineDecoder::
+    ProcessEmitting<fst::VectorFst<fst::StdArc>>(DecodableInterface *decodable);
+template BaseFloat LatticeFasterOnlineDecoder::
+    ProcessEmitting<fst::Fst<fst::StdArc>>(DecodableInterface *decodable);
 
-BaseFloat LatticeFasterOnlineDecoder::ProcessEmittingWrapper(DecodableInterface *decodable) {
-  if (typeid(fst_) == typeid(fst::ConstFst<Arc>)) {
-    return LatticeFasterOnlineDecoder::ProcessEmitting<fst::ConstFst<Arc>>(decodable);
-  } else if (typeid(fst_) == typeid(fst::VectorFst<Arc>)) {
-    return LatticeFasterOnlineDecoder::ProcessEmitting<fst::VectorFst<Arc>>(decodable);
+BaseFloat LatticeFasterOnlineDecoder::ProcessEmittingWrapper(
+        DecodableInterface *decodable) {
+  if (fst_.Type() == "const") {
+    return LatticeFasterOnlineDecoder::
+        ProcessEmitting<fst::ConstFst<Arc>>(decodable);
+  } else if (fst_.Type() == "vector") {
+    return LatticeFasterOnlineDecoder::
+        ProcessEmitting<fst::VectorFst<Arc>>(decodable);
   } else {
-    return LatticeFasterOnlineDecoder::ProcessEmitting<fst::Fst<Arc>>(decodable);
+    return LatticeFasterOnlineDecoder::
+        ProcessEmitting<fst::Fst<Arc>>(decodable);
   }
 }
 
@@ -1032,17 +1039,24 @@ void LatticeFasterOnlineDecoder::ProcessNonemitting(BaseFloat cutoff) {
   } // while queue not empty
 }
 
-template void LatticeFasterOnlineDecoder::ProcessNonemitting<fst::ConstFst<fst::StdArc>>(BaseFloat cutoff);
-template void LatticeFasterOnlineDecoder::ProcessNonemitting<fst::VectorFst<fst::StdArc>>(BaseFloat cutoff);
-template void LatticeFasterOnlineDecoder::ProcessNonemitting<fst::Fst<fst::StdArc>>(BaseFloat cutoff);
+template void LatticeFasterOnlineDecoder::
+    ProcessNonemitting<fst::ConstFst<fst::StdArc>>(BaseFloat cutoff);
+template void LatticeFasterOnlineDecoder::
+    ProcessNonemitting<fst::VectorFst<fst::StdArc>>(BaseFloat cutoff);
+template void LatticeFasterOnlineDecoder::
+    ProcessNonemitting<fst::Fst<fst::StdArc>>(BaseFloat cutoff);
 
-void LatticeFasterOnlineDecoder::ProcessNonemittingWrapper(BaseFloat cost_cutoff) {
-  if (typeid(fst_) == typeid(fst::ConstFst<Arc>)) {
-    return LatticeFasterOnlineDecoder::ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
-  } else if (typeid(fst_) == typeid(fst::VectorFst<Arc>)) {
-    return LatticeFasterOnlineDecoder::ProcessNonemitting<fst::VectorFst<Arc>>(cost_cutoff);
+void LatticeFasterOnlineDecoder::ProcessNonemittingWrapper(
+        BaseFloat cost_cutoff) {
+  if (fst_.Type() == "const") {
+    return LatticeFasterOnlineDecoder::
+        ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+  } else if (fst_.Type() == "vector") {
+    return LatticeFasterOnlineDecoder::
+        ProcessNonemitting<fst::VectorFst<Arc>>(cost_cutoff);
   } else {
-    return LatticeFasterOnlineDecoder::ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+    return LatticeFasterOnlineDecoder::
+        ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
   }
 }
 

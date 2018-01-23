@@ -778,14 +778,17 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   return next_cutoff;
 }
 
-template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::ConstFst<fst::StdArc>>(DecodableInterface *decodable);
-template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::VectorFst<fst::StdArc>>(DecodableInterface *decodable);
-template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::Fst<fst::StdArc>>(DecodableInterface *decodable);
+template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::ConstFst<fst::StdArc>>(
+        DecodableInterface *decodable);
+template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::VectorFst<fst::StdArc>>(
+        DecodableInterface *decodable);
+template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::Fst<fst::StdArc>>(
+        DecodableInterface *decodable);
 
 BaseFloat LatticeFasterDecoder::ProcessEmittingWrapper(DecodableInterface *decodable) {
-  if (typeid(fst_) == typeid(fst::ConstFst<Arc>)) {
+  if (fst_.Type() == "const") {
     return LatticeFasterDecoder::ProcessEmitting<fst::ConstFst<Arc>>(decodable);
-  } else if (typeid(fst_) == typeid(fst::VectorFst<Arc>)) {
+  } else if (fst_.Type() == "vector") {
     return LatticeFasterDecoder::ProcessEmitting<fst::VectorFst<Arc>>(decodable);
   } else {
     return LatticeFasterDecoder::ProcessEmitting<fst::Fst<Arc>>(decodable);
@@ -856,14 +859,17 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
   } // while queue not empty
 }
 
-template void LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<fst::StdArc>>(BaseFloat cutoff);
-template void LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<fst::StdArc>>(BaseFloat cutoff);
-template void LatticeFasterDecoder::ProcessNonemitting<fst::Fst<fst::StdArc>>(BaseFloat cutoff);
+template void LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<fst::StdArc>>(
+        BaseFloat cutoff);
+template void LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<fst::StdArc>>(
+        BaseFloat cutoff);
+template void LatticeFasterDecoder::ProcessNonemitting<fst::Fst<fst::StdArc>>(
+        BaseFloat cutoff);
 
 void LatticeFasterDecoder::ProcessNonemittingWrapper(BaseFloat cost_cutoff) {
-  if (typeid(fst_) == typeid(fst::ConstFst<Arc>)) {
+  if (fst_.Type() == "const") {
     return LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
-  } else if (typeid(fst_) == typeid(fst::VectorFst<Arc>)) {
+  } else if (fst_.Type() == "vector") {
     return LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<Arc>>(cost_cutoff);
   } else {
     return LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
