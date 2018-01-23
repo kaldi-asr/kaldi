@@ -94,9 +94,6 @@ def get_line_images_from_page_image(image_file_name, gedi_file_path):
 
 
 def set_line_image_data(image, line_id, image_file_name):
-    if line_id=="-1":
-        print("Error: lineID missing line_id: {0} is image file name: {1} ".format(line_id, image_file_name))
-        return
     base_name = os.path.splitext(os.path.basename(image_file_name))[0]
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_' + line_id.zfill(3)
@@ -117,17 +114,20 @@ def remove_corrupt_xml_files(gedi_file_path):
         line_id_list.append(int(line_id))
         unique_lineid = list(set(line_id_list))
         unique_lineid.sort()
-
+    
     #check if the lineID is empty
     if len(line_id_list) == 0:
+        print("Error: lineID missing line_id: {0}".format(line_id))
         return False
 
     # check if list contain consequtive entries
     if len(sorted(unique_lineid)) != len(range(min(unique_lineid), max(unique_lineid)+1)):
+        print("Error: lineID list does not contain all consequtive entries: {0}".format(line_id))
         return False
 
     # process the file
     return True
+
 ### main ###
 
 data_path = args.database_path
