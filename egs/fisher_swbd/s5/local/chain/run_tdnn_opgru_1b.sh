@@ -5,7 +5,7 @@
 # Similar to tdnn_lstm_1e (from egs/swbd/s5c). 
 # Difference between tdnn_opgru_1a and tdnn_opgru_1b:
 # chunk width        150  140,100,160
-# xent_regularize    0.0025 0.01
+# xent_regularize    0.025 0.01
 # minibatch          64   64,32
 # frames-per-iter    1200000 1500000
 
