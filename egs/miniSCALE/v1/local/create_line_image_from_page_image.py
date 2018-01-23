@@ -10,7 +10,7 @@ parser.add_argument('database_path', type=str,
                     help='Path to the downloaded (and extracted) mdacat data')
 parser.add_argument('data_splits', type=str,
                     help='Path to file that contains the train/test/dev split information')
-parser.add_argument('--width_buffer', type=int, default=0,
+parser.add_argument('--width_buffer', type=int, default=10,
                     help='width buffer across annotate character')
 parser.add_argument('--height_buffer', type=int, default=0,
                     help='height buffer across annotate character')

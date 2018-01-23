@@ -62,7 +62,11 @@ def get_scaled_image(im):
                                            dtype=int), im), axis=1)
     im_pad1 = np.concatenate((im_pad, 255 * np.ones((padding_y, padding_x),
                                                     dtype=int)), axis=1)
+    horizontal_dim = ny + padding_x + padding_x
+    noise = np.random.normal(2, 1,(nx, horizontal_dim))
+    im_pad1 = im_pad1 - noise
     return im_pad1
+
 
 ### main ###
 data_list_path = os.path.join(args.dir,'images.scp')

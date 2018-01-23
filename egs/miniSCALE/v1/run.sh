@@ -24,10 +24,9 @@ if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$madcat_database"
 fi
-mkdir -p data/{train,test}/data
+mkdir -p data/{train,test,dev}/data
 if [ $stage -le 1 ]; then
-  echo "$0: Preparing the test and train feature files..."
-  for dataset in train test; do
+  for dataset in train test dev; do
     local/make_features.py data/$dataset --feat-dim 40 | \
       copy-feats --compress=true --compression-method=7 \
                  ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
@@ -35,30 +34,25 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-#if [ $stage -le 2 ]; then
-#  echo "$0: Preparing dictionary and lang..."
-#  local/prepare_dict.sh
-#
-#  # local/prepare_lang.sh is the same as utils/prepare_lang.sh except that
-#  # it calls local/gen_topo.py instead of utils/gen_topo.pl. This is done
-#  # because local/gen_topo.py needs extra parameters to handle creating
-#  # a different number of states for punctuation.
-#  local/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
-#                        data/local/dict "<unk>" data/lang/temp data/lang
-#fi
-#
-#if [ $stage -le 3 ]; then
-#  echo "$0: Estimating a language model for decoding..."
-#  local/train_lm.sh
-#  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_big.arpa.gz \
-#                     data/local/dict/lexicon.txt data/lang_test
-#fi
-#
-#if [ $stage -le 4 ]; then
-#  steps/train_mono.sh --nj $nj --cmd $cmd --totgauss 10000 data/train \
-#    data/lang exp/mono
-#fi
-#
+if [ $stage -le 2 ]; then
+  echo "$0: Preparing dictionary and lang..."
+  local/prepare_dict.sh
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
+                        data/local/dict "<sil>" data/lang/temp data/lang
+fi
+
+if [ $stage -le 3 ]; then
+  echo "$0: Estimating a language model for decoding..."
+  local/train_lm.sh
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_big.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang_test
+fi
+
+if [ $stage -le 4 ]; then
+  steps/train_mono.sh --nj $nj --cmd $cmd --totgauss 10000 data/train \
+    data/lang exp/mono
+fi
+
 #if [ $stage -le 5 ]; then
 #  utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
 #
