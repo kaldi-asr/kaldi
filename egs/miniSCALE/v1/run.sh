@@ -26,8 +26,7 @@ if [ $stage -le 0 ]; then
 fi
 mkdir -p data/{train,test,dev}/data
 if [ $stage -le 1 ]; then
-  exit 0;
-  for dataset in train,test,dev; do
+  for dataset in train test dev; do
     local/make_features.py data/$dataset --feat-dim 40 | \
       copy-feats --compress=true --compression-method=7 \
                  ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
