@@ -59,7 +59,7 @@ if [ $stage -le 1 ]; then
   local/prepare_dict.sh $swbd $tedlium2
   (
    local/g2p/train_g2p.sh --stage 0 --silence-phones \
-     "data/local/dict_combined/silence_phones.txt" data/local/dict_combined exp/g2p
+     "data/local/dict_combined/silence_phones.txt" data/local/dict_combined exp/g2p || touch exp/g2p/.error
   ) &
 fi
 
@@ -105,13 +105,13 @@ fi
 
 # Synthesize pronounciations for OOV words across all training transcripts and produce the final lexicon.
 if [ $stage -le 4 ]; then
-  wait
+  wait # Waiting for train_g2p.sh to finish
   dict_dir=data/local/dict_nosp
   mkdir -p $dict_dir
   rm $dict_dir/lexiconp.txt 2>/dev/null
   cp data/local/dict_combined/{extra_questions,nonsilence_phones,silence_phones,optional_silence}.txt $dict_dir
   local/g2p/apply_g2p.sh --var-counts 1 exp/g2p/model.fst data/local/g2p_phonetisarus \
-    data/local/dict_combined/lexicon.txt $dict_dir/lexicon.txt
+    data/local/dict_combined/lexicon.txt $dict_dir/lexicon.txt || touch $dict_dir/.error
 fi
 
 # We'll do multiple iterations of pron/sil-prob estimation. So the structure of
@@ -144,9 +144,9 @@ if [ $stage -le 7 ]; then
      data=data/$c/train
      steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
        --cmd "$train_cmd" --nj 40 \
-       $data exp/make_mfcc/$c/train || exit 1;
+       $data exp/make_mfcc/$c/train || touch $data/.error
      steps/compute_cmvn_stats.sh \
-       $data exp/make_mfcc/$c/train || exit 1;
+       $data exp/make_mfcc/$c/train || touch $data/.error
     ) &
   done
   wait
