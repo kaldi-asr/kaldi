@@ -63,9 +63,9 @@ int main(int argc, char *argv[]) {
 
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
-      
+
     int32 n_done = 0;
-    
+
     KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
     if (inv_acoustic_scale != 1.0)
       acoustic_scale = 1.0 / inv_acoustic_scale;

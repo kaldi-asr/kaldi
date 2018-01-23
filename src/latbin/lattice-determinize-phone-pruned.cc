@@ -100,7 +100,8 @@ int main(int argc, char *argv[]) {
       // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
       unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
                                           PairHasher<int32> > acoustic_scores;
-      ComputeAcousticScoresMap(lat, &acoustic_scores);
+      if (!write_compact)
+        ComputeAcousticScoresMap(lat, &acoustic_scores);
 
       fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
 
@@ -142,8 +143,8 @@ int main(int argc, char *argv[]) {
                 << " (average num-frames = " << (sum_t / n_done) << ").";
     }
     KALDI_LOG << "Done " << n_done << " lattices, determinization finished "
-              << "earlier than specified by the beam (or output was empty) on "
-              << n_warn << " of these.";
+              << "earlier than specified by the beam on " << n_warn << " of "
+              << "these.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

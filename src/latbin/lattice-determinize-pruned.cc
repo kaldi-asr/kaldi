@@ -71,9 +71,9 @@ int main(int argc, char *argv[]) {
     // accepts.
     SequentialLatticeReader lat_reader(lats_rspecifier);
 
-    // Write as compact lattice.
     CompactLatticeWriter compact_lat_writer;
     LatticeWriter lat_writer;
+    
     if (write_compact)
       compact_lat_writer.Open(lats_wspecifier);
     else
@@ -97,7 +97,8 @@ int main(int argc, char *argv[]) {
       // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
       unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
                                           PairHasher<int32> > acoustic_scores;
-      ComputeAcousticScoresMap(lat, &acoustic_scores);
+      if (!write_compact)
+        ComputeAcousticScoresMap(lat, &acoustic_scores);
 
       Invert(&lat); // so word labels are on the input side.
       lat_reader.FreeCurrent();
