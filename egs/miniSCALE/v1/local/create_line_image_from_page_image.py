@@ -10,7 +10,7 @@ parser.add_argument('database_path', type=str,
                     help='Path to the downloaded (and extracted) mdacat data')
 parser.add_argument('data_splits', type=str,
                     help='Path to file that contains the train/test/dev split information')
-parser.add_argument('--width_buffer', type=int, default=0,
+parser.add_argument('--width_buffer', type=int, default=10,
                     help='width buffer across annotate character')
 parser.add_argument('--height_buffer', type=int, default=0,
                     help='height buffer across annotate character')
@@ -94,9 +94,6 @@ def get_line_images_from_page_image(image_file_name, gedi_file_path):
 
 
 def set_line_image_data(image, line_id, image_file_name):
-    if line_id=="-1":
-        print("Error: lineID missing line_id: {0} is image file name: {1} ".format(line_id, image_file_name))
-        return
     base_name = os.path.splitext(os.path.basename(image_file_name))[0]
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_' + line_id.zfill(3)
@@ -120,10 +117,12 @@ def remove_corrupt_xml_files(gedi_file_path):
 
     #check if the lineID is empty
     if len(line_id_list) == 0:
+        print("Error: lineID missing line_id: {0}".format(line_id))
         return False
 
     # check if list contain consequtive entries
     if len(sorted(unique_lineid)) != len(range(min(unique_lineid), max(unique_lineid)+1)):
+        print("Error: lineID list does not contain all consequtive entries: {0}".format(line_id))
         return False
 
     # process the file
