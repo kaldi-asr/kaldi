@@ -42,19 +42,6 @@ done
 
 num_dev_sentences=10000
 
-#bypass_metaparam_optim_opt=
-# If you want to bypass the metaparameter optimization steps with specific metaparameters
-# un-comment the following line, and change the numbers to some appropriate values.
-# You can find the values from output log of train_lm.py.
-# These example numbers of metaparameters is for 4-gram model (with min-counts)
-# running with train_lm.py.
-# The dev perplexity should be close to the non-bypassed model.
-#bypass_metaparam_optim_opt="--bypass-metaparameter-optimization=0.854,0.0722,0.5808,0.338,0.166,0.015,0.999,0.6228,0.340,0.172,0.999,0.788,0.501,0.406"
-# Note: to use these example parameters, you may need to remove the .done files
-# to make sure the make_lm_dir.py be called and tain only 3-gram model
-#for order in 3; do
-#rm -f ${lm_dir}/${num_word}_${order}.pocolm/.done
-
 if [ $stage -le 0 ]; then
   mkdir -p ${dir}/data
   mkdir -p ${dir}/data/text
