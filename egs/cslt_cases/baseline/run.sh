@@ -103,7 +103,7 @@ local/thchs-30_decode.sh --nj $n "steps/decode_fmllr.sh" exp/tri4b data/mfcc &
 steps/align_fmllr.sh --nj $n --cmd "$train_cmd" data/mfcc/train data/lang exp/tri4b exp/tri4b_ali || exit 1;
 
 
-###### Bookmark: DNN training and decoding ######
+###### Bookmark: DNN training & decoding ######
 
 # train tdnn model
 tdnn_dir=exp/nnet3/tdnn
@@ -114,7 +114,7 @@ graph_dir=exp/tri4b/graph_word # the same as gmm
 steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" $graph_dir data/fbank/test $tdnn_dir/decode_test_word || exit 1;
 
 
-###### Bookmark: discriminative training and decoding ######
+###### Bookmark: discriminative training & decoding ######
 
 # mmi training
 criterion=mmi # mmi, mpfe or smbr
