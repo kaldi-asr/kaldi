@@ -18,7 +18,6 @@ cat $segments | tr ' ' '\n' | sort -u | \
 cut -d' ' -f2- $dir/lexicon.txt | tr ' ' '\n' | sort -u >$dir/nonsilence_phones.txt || exit 1;
 
 echo '<sil> SIL' >> $dir/lexicon.txt
-echo '<unk> SIL' >> $dir/lexicon.txt
 
 echo SIL > $dir/silence_phones.txt
 
