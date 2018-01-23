@@ -11,6 +11,9 @@
 #WER on train_dev(fg)         11.59             11.46           11.41
 #WER on eval2000(tg)          14.8              14.8            14.9
 #WER on eval2000(fg)          13.5              13.5            13.6
+# WER on rt03(tg)                               18.6
+# WER on rt03(fg)                               16.3
+
 #Final train prob             -0.069            -0.081
 #Final valid prob             -0.095            -0.100
 #Final train prob (xent)      -0.913            -0.950
@@ -258,7 +261,7 @@ if $test_online_decoding && [ $stage -le 16 ]; then
        $lang exp/nnet3/extractor $dir ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
-  for decode_set in train_dev eval2000 rt03; do
+  for decode_set in train_dev eval2000 $maybe_rt03; do
     (
       # note: we just give it "$decode_set" as it only uses the wav.scp, the
       # feature type does not matter.
