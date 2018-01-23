@@ -39,6 +39,7 @@ num_iters=10
 min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
 num_samples_for_weights=3 # smaller than the default for speed (relates to a sampling method)
 cleanup=true
+apply_cmn=true # If true, apply sliding window cepstral mean normalization
 posterior_scale=1.0 # This scale helps to control for successve features being highly
                     # correlated.  E.g. try 0.1 or 0.3
 sum_accs_opt=
@@ -67,6 +68,8 @@ if [ $# != 3 ]; then
   echo "                                                   # diagonal model."
   echo "  --sum-accs-opt <option|''>                       # Option e.g. '-l hostname=a15' to localize"
   echo "                                                   # sum-accs process to nfs server."
+  echo " --apply-cmn <true,false|true>                     # if true, apply sliding window cepstral mean"
+  echo "                                                   # normalization to features"
   exit 1;
 fi
 
@@ -92,7 +95,11 @@ fi
 
 parallel_opts="--num-threads $[$num_threads*$num_processes]"
 ## Set up features.
-feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+if $apply_cmn; then
+  feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+else
+  feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+fi
 
 # Initialize the i-vector extractor using the FGMM input
 if [ $stage -le -2 ]; then

@@ -7,6 +7,7 @@
 # I just apply renorm component in TDNN layers.
 # ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp
 # System                tdnn_lstm_1a_sp
+# num-params                 39.7M
 # WER on eval2000(tg)        12.3
 #           [looped:]        12.2
 # WER on eval2000(fg)        12.1
@@ -19,6 +20,11 @@
 # Final valid prob         -0.084
 # Final train prob (xent)        -0.882
 # Final valid prob (xent)       -0.9393
+
+# ./steps/info/chain_dir_info.pl exp/chain/tdnn_lstm_1a_sp
+#exp/chain/tdnn_lstm_1a_sp: num-iters=2384 nj=3..16 num-params=39.7M dim=40+100->6149 combine=-0.097->-0.086 
+#xent:train/valid[1587,2383,final]=(-0.949,-0.898,-0.882/-0.998,-0.949,-0.939) 
+#logprob:train/valid[1587,2383,final]=(-0.079,-0.075,-0.074/-0.087,-0.082,-0.084)
 
 # ./show_chain_wer.sh tdnn_lstm_1a_sp
 # %WER 16.0 | 2628 21594 | 86.3 9.0 4.7 2.3 16.0 54.4 | exp/chain/tdnn_lstm_1a_sp/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys

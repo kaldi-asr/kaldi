@@ -863,14 +863,14 @@ EventMap *ClusterEventMapRestrictedByMap(const EventMap &e_in,
 EventMap *ClusterEventMapToNClustersRestrictedByMap(
     const EventMap &e_in,
     const BuildTreeStatsType &stats,
-    int32 num_clusters,
+    int32 num_clusters_required,
     const EventMap &e_restrict,
     int32 *num_removed_ptr) {
   std::vector<BuildTreeStatsType> split_stats;
   SplitStatsByMap(stats, e_restrict, &split_stats);
   
-  if (num_clusters < split_stats.size()) {
-    KALDI_WARN << "num-clusters is less than size of map. Not doing anything.";
+  if (num_clusters_required < split_stats.size()) {
+    KALDI_WARN << "num-clusters-required is less than size of map. Not doing anything.";
     if (num_removed_ptr) *num_removed_ptr = 0;
     return e_in.Copy();
   }
@@ -882,8 +882,15 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
 
   size_t max_index = 0;
 
+  int32 num_non_empty_clusters_required = num_clusters_required;
+
+  int32 num_non_empty_clusters_in_map = 0;
+  int32 num_non_empty_clusters = 0;
+
   for (size_t i = 0; i < split_stats.size(); i++) {
     if (!split_stats[i].empty()) {
+      num_non_empty_clusters_in_map++;
+
       std::vector<BuildTreeStatsType> split_stats_i;
       SplitStatsByMap(split_stats[i], e_in, &split_stats_i);
       std::vector<Clusterable*> summed_stats_i;
@@ -891,6 +898,7 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
 
       for (size_t j = 0; j < summed_stats_i.size(); j++) {
         if (summed_stats_i[j] != NULL) {
+          num_non_empty_clusters++;
           indexes[i].push_back(j);
           summed_stats_contiguous[i].push_back(summed_stats_i[j]);
           if (j > max_index) max_index = j;
@@ -898,14 +906,30 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
       }
       
       normalizer += SumClusterableNormalizer(summed_stats_contiguous[i]);
+    } else { 
+      // Even if split_stats[i] is empty, a cluster will be assigned to 
+      // that. To compensate, we decrease the num-clusters required.
+      num_non_empty_clusters_required--;
     }
+  }
+
+  KALDI_VLOG(1) << "Number of non-empty clusters in map = " << num_non_empty_clusters_in_map;
+  KALDI_VLOG(1) << "Number of non-empty clusters = " << num_non_empty_clusters;
+
+  if (num_non_empty_clusters_required > num_non_empty_clusters) {
+    KALDI_WARN << "Cannot get required num-clusters " << num_clusters_required
+               << " as number of non-empty clusters required is larger than "
+               << " number of non-empty clusters: " << num_non_empty_clusters_required 
+               << " > " << num_non_empty_clusters;
+    if (num_removed_ptr) *num_removed_ptr = 0;
+    return e_in.Copy();
   }
 
   std::vector<std::vector<int32> > assignments;
   BaseFloat change = ClusterBottomUpCompartmentalized(
       summed_stats_contiguous,
       std::numeric_limits<BaseFloat>::infinity(),
-      num_clusters,  
+      num_non_empty_clusters_required,  
       NULL,  // don't need clusters out.
       &assignments);  // this algorithm is quadratic, so might be quite slow.
 
@@ -921,7 +945,7 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
   }
 
   KALDI_VLOG(2) << "ClusterBottomUpCompartmentalized combined " << num_combined
-                << "leaves and gave a likelihood change of " << change
+                << " leaves and gave a likelihood change of " << change
                 << ", normalized = " << (change / normalizer)
                 << ", normalizer = " << normalizer;
   KALDI_ASSERT(change < 0.0001);  // should be negative or zero.
