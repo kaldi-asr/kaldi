@@ -5,31 +5,37 @@
 # The model training procedure is similar to run_blstm_6j.sh under egs/swbd/s5c
 
 # ./local/chain/compare_wer_general.sh blstm_6j_sp
-# System                 blstm_6j_sp
-# WER on eval2000(tg)      12.1
-# WER on eval2000(fg)      11.9
-# WER on rt03(tg)          11.9
-# WER on rt03(fg)          11.6
-# Final train prob         -0.059
-# Final valid prob         -0.072
-# Final train prob (xent)        -0.711
-# Final valid prob (xent)       -0.7782
+# System                blstm_6j_sp
+# WER on eval2000(tg)        12.3
+# WER on eval2000(fg)        12.2
+# WER on rt03(tg)        11.7
+# WER on rt03(fg)        11.5
+# Final train prob         -0.061
+# Final valid prob         -0.082
+# Final train prob (xent)        -0.698
+# Final valid prob (xent)       -0.8108
+# num-params=41.3M
+
+# ./steps/info/chain_dir_info.pl exp/chain/blstm_6j_sp
+# exp/chain/blstm_6j_sp: num-iters=2384 nj=3..16 num-params=41.3M dim=40+100->6149 combine=-0.075->-0.074 (over 15) 
+# xent:train/valid[1587,2383,final]=(-0.754,-0.710,-0.698/-0.828,-0.824,-0.811) 
+# logprob:train/valid[1587,2383,final]=(-0.070,-0.063,-0.061/-0.082,-0.084,-0.082)
 
 # ./local/chain/show_chain_wer.sh blstm_6j_sp
-# %WER 15.2 | 2628 21594 | 87.0 8.2 4.8 2.2 15.2 52.0 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
-# %WER 12.1 | 4459 42989 | 89.8 6.8 3.4 1.9 12.1 49.4 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.filt.sys
-# %WER 8.5 | 1831 21395 | 92.7 5.1 2.1 1.3 8.5 44.0 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_tg/score_8_1.0/eval2000_hires.ctm.swbd.filt.sys
-# %WER 15.0 | 2628 21594 | 87.2 8.1 4.7 2.2 15.0 51.4 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_fg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
-# %WER 11.9 | 4459 42989 | 90.0 6.7 3.3 1.8 11.9 48.6 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_fg/score_7_0.0/eval2000_hires.ctm.filt.sys
-# %WER 8.5 | 1831 21395 | 92.7 5.0 2.3 1.2 8.5 43.7 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 16.0 | 2628 21594 | 86.3 8.7 5.0 2.3 16.0 53.8 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_tg/score_6_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 12.3 | 4459 42989 | 89.3 6.6 4.1 1.6 12.3 49.4 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.filt.sys
+# %WER 8.3 | 1831 21395 | 92.8 4.8 2.4 1.1 8.3 41.8 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_tg/score_10_1.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 15.7 | 2628 21594 | 86.5 8.5 5.0 2.3 15.7 53.2 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_fg/score_6_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 12.2 | 4459 42989 | 89.7 6.9 3.4 2.0 12.2 50.1 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_fg/score_6_0.0/eval2000_hires.ctm.filt.sys
+# %WER 8.2 | 1831 21395 | 93.0 4.8 2.2 1.2 8.2 41.6 | exp/chain/blstm_6j_sp/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
 
 # ./local/chain/show_chain_rt03_wer.sh blstm_6j_sp
-# %WER 10.1 | 3970 36721 | 91.1 5.3 3.6 1.2 10.1 43.8 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
-# %WER 11.9 | 8420 76157 | 89.6 6.6 3.8 1.5 11.9 45.2 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.filt.sys
-# %WER 13.5 | 4450 39436 | 88.2 7.9 3.9 1.8 13.5 46.4 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.swbd.filt.sys
-# %WER 9.7 | 3970 36721 | 91.5 5.1 3.5 1.2 9.7 43.4 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
-# %WER 11.6 | 8420 76157 | 89.9 6.5 3.6 1.5 11.6 44.7 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.filt.sys
-# %WER 13.3 | 4450 39436 | 88.5 7.7 3.8 1.8 13.3 45.8 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.swbd.filt.sys
+# %WER 9.9 | 3970 36721 | 91.3 5.3 3.4 1.2 9.9 43.6 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.7 | 8420 76157 | 89.6 6.3 4.1 1.3 11.7 44.7 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.3 | 4450 39436 | 88.2 7.5 4.3 1.5 13.3 45.3 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
+# %WER 9.7 | 3970 36721 | 91.4 5.2 3.4 1.1 9.7 43.1 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.5 | 8420 76157 | 89.8 6.2 4.0 1.3 11.5 44.3 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.2 | 4450 39436 | 88.3 7.3 4.3 1.5 13.2 45.1 | exp/chain/blstm_6j_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
 
 
 set -e
@@ -140,14 +146,14 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  lstmp-layer name=blstm1-forward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
-  lstmp-layer name=blstm1-backward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3
+  fast-lstmp-layer name=blstm1-forward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-lstmp-layer name=blstm1-backward input=lda cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3
 
-  lstmp-layer name=blstm2-forward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
-  lstmp-layer name=blstm2-backward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3
+  fast-lstmp-layer name=blstm2-forward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-lstmp-layer name=blstm2-backward input=Append(blstm1-forward, blstm1-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3
 
-  lstmp-layer name=blstm3-forward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
-  lstmp-layer name=blstm3-backward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3
+  fast-lstmp-layer name=blstm3-forward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3
+  fast-lstmp-layer name=blstm3-backward input=Append(blstm2-forward, blstm2-backward) cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=3
 
   ## adding the layers for chain branch
   output-layer name=output input=Append(blstm3-forward, blstm3-backward) output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
