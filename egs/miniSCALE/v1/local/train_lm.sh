@@ -77,7 +77,7 @@ if [ $stage -le 0 ]; then
   # get the wordlist from IAM text
   #cat ${dir}/data/text/madcat.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   #cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
-  cat $segments | tr ' ' '\n' | sort | uniq -c | sort -bnr | sed 's/^.//' > ${dir}/data/word_count
+  cat $segments | tr ' ' '\n' | sed '/^$/d' | sort | uniq -c | sort -bnr | sed 's/^.//' > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
@@ -98,41 +98,14 @@ if [ $stage -le 1 ]; then
     lm_name+="_`echo ${min_counts} | tr -s "[:blank:]" "_" | tr "=" "-"`"
   fi
   unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
-  train_lm.py  --wordlist=${wordlist} --num-splits=10 --warm-start-ratio=20  \
+  train_lm.py  --wordlist=${wordlist} --num-splits=5 --warm-start-ratio=1 \
                --limit-unk-history=true \
                ${bypass_metaparam_optim_opt} \
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
   #log-prob: -5.05603614242 [perplexity = 156.967086371] over 19477.0 words
-fi
-
-if [ $stage -le 2 ]; then
-  echo "$0: pruning the LM (to larger size)"
-  # Using 1 million n-grams for a big LM for rescoring purposes.
-  size=1000000
-  prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
-
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_3_prune_big was -5.06654404785 per word [perplexity = 158.625177948] over 19477.0 words
-  # current results, after adding --limit-unk-history=true:
-
 
   mkdir -p ${dir}/data/arpa
-  format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
-fi
-
-if [ $stage -le 3 ]; then
-  echo "$0: pruning the LM (to smaller size)"
-  # Using 500,000 n-grams for a smaller LM for graph building.  Prune from the
-  # bigger-pruned LM, it'll be faster.
-  size=500000
-  prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big ${dir}/data/lm_${order}_prune_small
-
-  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_3_prune_small was -5.24719139498 per word [perplexity = 190.031793995] over 19477.0 words
-  # current results, after adding --limit-unk-history=true (needed for modeling OOVs and not blowing up LG.fst):
-
-
-  format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
+  format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.arpa.gz
 fi
