@@ -30,15 +30,6 @@ parser.add_argument('writing_conditions', type=str,
                     help='if page is written fast/normal/carefully, lined/unlined')
 args = parser.parse_args()
 
-text_file = os.path.join(args.out_dir, 'text')
-text_fh = open(text_file, 'w', encoding='utf-8')
-utt2spk_file = os.path.join(args.out_dir, 'utt2spk')
-utt2spk_fh = open(utt2spk_file, 'w', encoding='utf-8')
-image_file = os.path.join(args.out_dir, 'images.scp')
-image_fh = open(image_file, 'w', encoding='utf-8')
-writing_conditions = os.path.join(args.writing_conditions, 'writing_conditions.tab')
-wc_dict = parse_writing_conditions(writing_conditions)
-
 def remove_corrupt_xml_files(gedi_file_path):
     doc = minidom.parse(gedi_file_path)
     line_id_list = list()
@@ -77,6 +68,15 @@ def check_writing_condition(wc_dict):
         return False
 
     return True
+
+text_file = os.path.join(args.out_dir, 'text')
+text_fh = open(text_file, 'w', encoding='utf-8')
+utt2spk_file = os.path.join(args.out_dir, 'utt2spk')
+utt2spk_fh = open(utt2spk_file, 'w', encoding='utf-8')
+image_file = os.path.join(args.out_dir, 'images.scp')
+image_fh = open(image_file, 'w', encoding='utf-8')
+writing_conditions = os.path.join(args.writing_conditions, 'writing_conditions.tab')
+wc_dict = parse_writing_conditions(writing_conditions)
 
 image_num = 0
 with open(args.data_splits) as f:
