@@ -22,4 +22,4 @@ fi
 
 frame_shift=$(utils/data/get_frame_shift.sh $data) || exit 1
 
-python utils/data/get_num_frames.py --frame-shift $frame_shift --utt2dur-dir $data/utt2dur
+awk -v s=$frame_shift '{n += $2} END{printf("%d\n", int(n / s))}' <$data/utt2dur
