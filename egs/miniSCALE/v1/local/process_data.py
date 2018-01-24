@@ -26,6 +26,8 @@ parser.add_argument('data_splits', type=str,
                     help='Path to file that contains the train/test/dev split information')
 parser.add_argument('out_dir', type=str,
                     help='Where to write output files.')
+parser.add_argument('writing_conditions', type=str,
+                    help='if page is written fast/normal/carefully, lined/unlined')
 args = parser.parse_args()
 
 text_file = os.path.join(args.out_dir, 'text')
@@ -34,6 +36,8 @@ utt2spk_file = os.path.join(args.out_dir, 'utt2spk')
 utt2spk_fh = open(utt2spk_file, 'w', encoding='utf-8')
 image_file = os.path.join(args.out_dir, 'images.scp')
 image_fh = open(image_file, 'w', encoding='utf-8')
+writing_conditions = os.path.join(args.writing_conditions, 'writing_conditions.tab')
+wc_dict = parse_writing_conditions(writing_conditions)
 
 def remove_corrupt_xml_files(gedi_file_path):
     doc = minidom.parse(gedi_file_path)
@@ -59,6 +63,21 @@ def remove_corrupt_xml_files(gedi_file_path):
     # process the file
     return True
 
+def parse_writing_conditions(writing_conditions):
+    with open(writing_conditions) as f:
+        file_writing_cond = dict()
+        for line in f:
+            line_list = line.strip().split("\t")
+            file_writing_cond[line_list[0]]=line_list[3]
+    return file_writing_cond
+
+def check_writing_condition(wc_dict):
+    writing_condition = wc_dict[base_name].strip()
+    if writing_condition != 'IUC':
+        return False
+
+    return True
+
 image_num = 0
 with open(args.data_splits) as f:
     prev_base_name = ''
@@ -67,6 +86,8 @@ with open(args.data_splits) as f:
         if prev_base_name != base_name:
             prev_base_name = base_name
             gedi_xml_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
+            if not check_writing_condition(wc_dict):
+               continue
             if remove_corrupt_xml_files(gedi_xml_path):
                 madcat_xml_path = os.path.join(args.database_path, 'madcat', line.split(' ')[0])
                 madcat_doc = minidom.parse(madcat_xml_path)

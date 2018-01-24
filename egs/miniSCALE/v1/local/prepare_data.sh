@@ -22,6 +22,7 @@ train_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.tr
 test_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.test.raw.lineid
 dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.dev.raw.lineid
 word_segmented_chinese_data=/home/kduh/proj/scale2018/data/madcat_datasplit/zh-en/madcat.train.tok.zh
+writing_condition=data/download/tmp/LDC2014T13/docs
 
 . ./cmd.sh
 . ./path.sh
@@ -35,13 +36,13 @@ fi
 mkdir -p data/{train,test,dev}
 mkdir -p $download_dir/lines
 if [ $stage -le 1 ]; then
-  local/create_line_image_from_page_image.py $download_dir $train_split_file || exit 1
-  local/create_line_image_from_page_image.py $download_dir $test_split_file || exit 1
-  local/create_line_image_from_page_image.py $download_dir $dev_split_file || exit 1
+  local/create_line_image_from_page_image.py $download_dir $train_split_file $writing_condition || exit 1
+  local/create_line_image_from_page_image.py $download_dir $test_split_file $writing_condition || exit 1
+  local/create_line_image_from_page_image.py $download_dir $dev_split_file $writing_condition || exit 1
 
-  local/process_data.py $download_dir $train_split_file data/train || exit 1
-  local/process_data.py $download_dir $test_split_file data/test || exit 1
-  local/process_data.py $download_dir $dev_split_file data/dev || exit 1
+  local/process_data.py $download_dir $train_split_file data/train $writing_condition || exit 1
+  local/process_data.py $download_dir $test_split_file data/test $writing_condition || exit 1
+  local/process_data.py $download_dir $dev_split_file data/dev $writing_condition || exit 1
 
   for dataset in train test dev; do
     cp data/$dataset/utt2spk data/$dataset/utt2spk_tmp

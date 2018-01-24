@@ -10,6 +10,8 @@ parser.add_argument('database_path', type=str,
                     help='Path to the downloaded (and extracted) mdacat data')
 parser.add_argument('data_splits', type=str,
                     help='Path to file that contains the train/test/dev split information')
+parser.add_argument('writing_conditions', type=str,
+                    help='if page is written fast/normal/carefully, lined/unlined')
 parser.add_argument('--width_buffer', type=int, default=10,
                     help='width buffer across annotate character')
 parser.add_argument('--height_buffer', type=int, default=0,
@@ -19,6 +21,7 @@ parser.add_argument('--char_width_buffer', type=int, default=10,
 parser.add_argument('--char_height_buffer', type=int, default=20,
                     help='starting location from the top of the line')
 args = parser.parse_args()
+
 
 def merge_characters_into_line_image(region_list, offset_list):
     # get image width and height
@@ -102,6 +105,7 @@ def set_line_image_data(image, line_id, image_file_name):
     image_path=os.path.join(data_path, 'lines', line_image_file_name)
     imgray.save(image_path)
 
+
 def remove_corrupt_xml_files(gedi_file_path):
     doc = minidom.parse(gedi_file_path)
     line_id_list = list()
@@ -114,18 +118,34 @@ def remove_corrupt_xml_files(gedi_file_path):
         line_id_list.append(int(line_id))
         unique_lineid = list(set(line_id_list))
         unique_lineid.sort()
-
+    
     #check if the lineID is empty
     if len(line_id_list) == 0:
-        print("Error: lineID missing line_id: {0}".format(line_id))
+        print("Error: lineID missing")
         return False
 
     # check if list contain consequtive entries
     if len(sorted(unique_lineid)) != len(range(min(unique_lineid), max(unique_lineid)+1)):
-        print("Error: lineID list does not contain all consequtive entries: {0}".format(line_id))
+        print("Error: lineID list does not contain all consequtive entries")
         return False
 
     # process the file
+    return True
+
+
+def parse_writing_conditions(writing_conditions):
+    with open(writing_conditions) as f:
+        file_writing_cond = dict()
+        for line in f:
+            line_list = line.strip().split("\t")
+            file_writing_cond[line_list[0]]=line_list[3]
+    return file_writing_cond
+
+def check_writing_condition(wc_dict):
+    writing_condition = wc_dict[base_name].strip()
+    if writing_condition != 'IUC':
+        return False
+
     return True
 ### main ###
 
@@ -134,6 +154,8 @@ height_buffer = int(args.height_buffer)
 width_buffer = int(args.width_buffer)
 char_width_buffer = int(args.char_width_buffer)
 char_height_buffer = int(args.char_height_buffer)
+writing_conditions = os.path.join(args.writing_conditions, 'writing_conditions.tab')
+wc_dict = parse_writing_conditions(writing_conditions)
 
 with open(args.data_splits) as f:
     prev_base_name = ''
@@ -141,6 +163,11 @@ with open(args.data_splits) as f:
         base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
         if prev_base_name != base_name:
             prev_base_name = base_name
+            check_writing_condition(wc_dict)
+            if not check_writing_condition(wc_dict):
+               continue
+            #writing_condition = wc_dict[base_name].strip()
+            #print(writing_condition)
             gedi_file_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
             image_file_path = os.path.join(args.database_path, 'images', base_name + '.tif')
             if remove_corrupt_xml_files(gedi_file_path):
