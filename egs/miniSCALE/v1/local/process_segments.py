@@ -21,7 +21,7 @@ args = parser.parse_args()
 segment_file = os.path.join(args.out_dir, 'segmented_words')
 segment_fh = open(segment_file, 'w', encoding='utf-8')
 
-with open(args.segmentation_path) as f:
+with open(args.segmentation_path, encoding='utf-8') as f:
     for line in f:
         line_normalize = unicodedata.normalize('NFKC', line)
         segment_fh.write(line_normalize + '\n')
