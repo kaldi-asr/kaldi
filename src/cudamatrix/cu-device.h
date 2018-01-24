@@ -47,7 +47,6 @@ class CuTimer;
 class CuDevice {
  // Singleton object (there should only be one instantiated per program)
  public:
-  ~CuDevice();
   static inline CuDevice& Instantiate() { return global_device_; }
 
   inline cublasHandle_t GetHandle() { return handle_; }
