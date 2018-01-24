@@ -16,6 +16,7 @@ while 1:
   line = utt2dur_file.readline()
   if not line:
     break
+  line.split()
   wav_time += float(line.split()[1])
 
 num_frames = wav_time / args.frame_shift
