@@ -76,7 +76,8 @@ def get_line_images_from_page_image(image_file_name, gedi_file_path):
             region_list = list()
             height_offset_list = list()
 
-        height_offset = row - first_image_top_loc
+        #height_offset = row - first_image_top_loc
+        height_offset = 0 #fixing slant issue
         height_offset_list.append(height_offset)
 
         # get character dimensions
@@ -166,9 +167,10 @@ with open(args.data_splits) as f:
             check_writing_condition(wc_dict)
             if not check_writing_condition(wc_dict):
                continue
-            #writing_condition = wc_dict[base_name].strip()
-            #print(writing_condition)
             gedi_file_path = os.path.join(args.database_path, 'gedi', base_name + '.gedi.xml')
             image_file_path = os.path.join(args.database_path, 'images', base_name + '.tif')
             if remove_corrupt_xml_files(gedi_file_path):
                 get_line_images_from_page_image(image_file_path, gedi_file_path)
+                im = Image.open(image_file_path)
+                image_file_path = os.path.join(args.database_path, 'subset_images', base_name + '.tif')
+                im.save(image_file_path)
