@@ -56,4 +56,6 @@ if [ $stage -le 1 ]; then
   utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
   utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
   utils/utt2spk_to_spk2utt.pl data/dev/utt2spk > data/dev/spk2utt
+
+  local/process_segments.py $word_segmented_chinese_data data/train
 fi

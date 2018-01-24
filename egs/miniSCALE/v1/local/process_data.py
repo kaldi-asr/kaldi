@@ -17,6 +17,7 @@ import argparse
 import os
 import sys
 import xml.dom.minidom as minidom
+import unicodedata
 
 parser = argparse.ArgumentParser(description="""Creates text, utt2spk and images.scp files.""")
 parser.add_argument('database_path', type=str,
@@ -79,6 +80,7 @@ with open(args.data_splits) as f:
                     lines = []
                     for zone in dl_zone:
                         contents = zone.getAttribute('contents')
+                        contents = unicodedata.normalize('NFKC',contents)
                         lineID = zone.getAttribute('lineID')
                         if lineID != '':
                             lineID = int(lineID)
