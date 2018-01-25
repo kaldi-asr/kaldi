@@ -361,6 +361,8 @@ void NormalizeComponent::Read(std::istream &is, bool binary) {
   if (token == "<AddLogStddev>") {
     ReadBasicType(is, binary, &add_log_stddev_);
     ReadToken(is, binary, &token);
+  } else {
+    add_log_stddev_ = false;
   }
   if (token == "<ValueAvg>") {
     // back-compatibility code.
