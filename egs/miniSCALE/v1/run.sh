@@ -27,7 +27,7 @@ fi
 mkdir -p data/{train,test,dev}/data
 if [ $stage -le 1 ]; then
   for dataset in train test dev; do
-    local/make_features.py data/$dataset --feat-dim 40 | \
+    local/make_features.py data/$dataset --feat-dim 100 | \
       copy-feats --compress=true --compression-method=7 \
                  ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
     steps/compute_cmvn_stats.sh data/$dataset
