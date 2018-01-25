@@ -163,6 +163,14 @@ class NnetComputer {
   // NULL).
   std::vector<void*> memos_;
 
+  // This is only used when commands kCompressMatrix and kUncompressMatrix are
+  // invoked.  It will be (the first time we compress a matrix) resized to be
+  // the same size as 'matrices_' (i.e., indexed by matrix index).  When we
+  // compress a matrix m we set compressed_matrices_[m] to a non-NULL value and
+  // resize matrices_[m] to empty; and when we uncompress it, the reverse
+  // happens.
+  std::vector<CuCompressedMatrixBase*> compressed_matrices_;
+
 
   // executes the command in computation_.commands[program_counter_].
   void ExecuteCommand();

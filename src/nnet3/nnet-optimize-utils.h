@@ -524,6 +524,46 @@ void IdentifyIndexesArgs(std::vector<NnetComputation::Command> *commands,
 void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
                                std::vector<int32*> *indexes_ranges_args);
 
+/// Inserts commands into the computation at the requested places.  'commands'
+///  is a list of pairs (command-index, command) that is expected to be sorted
+///  on command-index.  For each entry (c, command) in 'commands', 'command' is
+///  inserted into 'computation' just *before* the command that (at entry) is in
+///  computation->commands[c].  If there are multiple pairs with the same index
+///  c, they will remain in the same order in which they were present in
+///  'commands'; however, 'commands' does not have to be sorted on 'c'.
+///  As a special case, if c == computation->commands.size(), the
+///  corresponding commands are inserted at the beginning of the computation.
+///  This function will appropriately renumber the argument of the kGotoLabel
+///  command of any 'looped' computation.  Command indexes c in commands[*].first
+///  must be in the range [0, computation->commands.size()].
+///  This function may modify 'commands' by sorting it.
+void InsertCommands(
+    std::vector<std::pair<int32, NnetComputation::Command> > *commands,
+    NnetComputation *computation);
+
+/// Performs optimization to reduce memory usage where possible,
+/// making use of the kCompressMatrix and kUncompressMatrix commands.
+/// Should only be done after most other optimizations, because some
+/// optimizations (such as variable-merging) would not work correctly
+/// after doing this optimization.  This does nothing for looped
+/// computations.  It's OK, though, to expand a shortcut computation
+/// (i.e. call ExpandComputation) after doing this.
+///
+/// memory_compression_level determines how aggressive the compression
+/// is.  Allowed values:
+///       0 = no compression at all
+///       1 = compression that doesn't affect results (e.g. compress
+///           ReLU outputs to 1 byte, as just the sign is needed).
+///       2 = compression that may affect the results slightly (e.g. 16-bit
+///           compression of the output of NormalizeComponent and the like),
+///           but this is not implemented yet, so equivalent to 1.
+///       3 = compression that may affect the results more than just
+///           slightly.  Not implemented yet, so equivalent to 1.
+void OptimizeMemoryCompression(const Nnet &nnet,
+                               int32 memory_compression_level,
+                               NnetComputation *computation);
+
+
 /// This function tries to optimize computation 'computation' for an 'looped'
 /// computation.  It expects as input a computation with no backprop but with
 /// multiple 'segments' separated by command kNoOperationLabel, where each

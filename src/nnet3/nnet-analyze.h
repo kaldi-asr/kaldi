@@ -414,15 +414,17 @@ class ComputationChecker {
                      const NnetComputation &computation);
   void Check();  // call this only once.
  private:
-  // various dimension consistency checks and checks on properties.
+  // Various dimension consistency checks and checks on properties.
   void CheckComputationIndexes() const;
-  // checks for a situation where an undefined variable is read.
+  // Checks for a situation where an undefined variable is read.
   void CheckComputationUndefined() const;
-  // checks that all writes are done before reads.  details with implementation.
+  // Checks that all writes are done before reads.  details with implementation.
   void CheckComputationRewrite() const;
-  // check matrix accesses make sense.
+  // Check matrix accesses make sense.
   void CheckComputationMatrixAccesses() const;
-  // check debug_info has the correct size, if used.
+  // Some checks related to the kCompressMatrix and kUncompressMatrix commands.
+  void CheckComputationCompression() const;
+  // Check debug_info has the correct size, if used.
   void CheckComputationDebugInfo() const;
 
   const CheckComputationOptions &config_;

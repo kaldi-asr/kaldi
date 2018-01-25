@@ -382,6 +382,39 @@ void NnetComputer::ExecuteCommand() {
         }
         break;
       }
+      case kCompressMatrix: {
+        // This does nothing if CUDA is not in use.
+#if HAVE_CUDA == 1
+        if (CuDevice::Instantiate().Enabled()) {
+          if (compressed_matrices_.empty())
+            compressed_matrices_.resize(matrices_.size(), NULL);
+          int32 m = computation_.submatrices[c.arg1].matrix_index;
+          KALDI_ASSERT(compressed_matrices_[m] == NULL &&
+                       matrices_[m].NumRows() != 0);
+          compressed_matrices_[m] = NewCuCompressedMatrix(
+              static_cast<CuCompressedMatrixType>(c.arg2), c.alpha);
+          compressed_matrices_[m]->CopyFromMat(matrices_[m]);
+          matrices_[m].Resize(0, 0);
+        }
+#endif
+      }
+      case kUncompressMatrix: {
+#if HAVE_CUDA == 1
+        if (CuDevice::Instantiate().Enabled()) {
+          int32 m = computation_.submatrices[c.arg1].matrix_index;
+          CuCompressedMatrixBase *compressed_matrix =
+              compressed_matrices_[m];
+          KALDI_ASSERT(compressed_matrix != NULL &&
+                       matrices_[m].NumRows() == 0);
+          matrices_[m].Resize(compressed_matrix->NumRows(),
+                              compressed_matrix->NumCols(),
+                              kUndefined);
+          compressed_matrix->CopyToMat(&(matrices_[m]));
+          delete compressed_matrix;
+          compressed_matrices_[m] = NULL;
+        }
+#endif
+      }
       case kNoOperation: case kNoOperationPermanent: case kNoOperationMarker:
       case kNoOperationLabel:
         break;

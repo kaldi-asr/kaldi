@@ -32,6 +32,7 @@ namespace nnet3 {
 // Options class for optimizing a NnetComputation.  The main projected use for
 // this is in debugging the optimization code itself, so that if an error is
 // detected, we can work out which optimization was responsible for the error.
+// See the Register() function below for option-specific documentation.
 struct NnetOptimizeOptions {
   bool optimize;  // setting this false disallow all optimization.
   bool consolidate_model_update;
@@ -49,6 +50,7 @@ struct NnetOptimizeOptions {
   int32 max_deriv_time;
   int32 max_deriv_time_relative;
   bool snip_row_ops;
+  int32 memory_compression_level;
   // optimize_looped_computation is a 'hidden config' not available from
   // the command line; it's set to true to enable the optimization for
   // looped computation that turns a linear computation into a loop.
@@ -71,6 +73,7 @@ struct NnetOptimizeOptions {
       max_deriv_time(std::numeric_limits<int32>::max()),
       max_deriv_time_relative(std::numeric_limits<int32>::max()),
       snip_row_ops(true),
+      memory_compression_level(0),
       optimize_looped_computation(false) { }
 
   void Register(OptionsItf *opts) {
@@ -123,6 +126,16 @@ struct NnetOptimizeOptions {
     opts->Register("snip-row-ops", &snip_row_ops, "Set this to false to "
                    "disable an optimization that reduces the size of certain "
                    "per-row operations");
+    opts->Register("snip-row-ops", &snip_row_ops, "Set this to false to "
+                   "disable an optimization that reduces the size of certain "
+                   "per-row operations");
+    opts->Register("memory-compression-level", &memory_compression_level,
+                   "This is only relevant to training, not decoding.  Set this "
+                   "to 0,1,2,3; higher levels are more aggressive at reducing "
+                   "memory by compressing quantities needed for backprop, "
+                   "potentially at the expense of speed and the accuracy "
+                   "of derivatives.  0 means no compression at all.");
+
   }
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &os, bool binary) const;

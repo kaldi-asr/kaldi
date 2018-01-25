@@ -367,6 +367,14 @@ void ComputeCommandAttributes(
         vars.RecordAccessForSubmatrix(c.arg2, kReadAccess, &attr);
         break;
       }
+      case kCompressMatrix: {
+        vars.RecordAccessForSubmatrix(c.arg1, kReadWriteAccess, &attr);
+        break;
+      }
+      case kUncompressMatrix: {
+        vars.RecordAccessForSubmatrix(c.arg1, kWriteAccess, &attr);
+        break;
+      }
       case kAcceptInput: {
         vars.RecordAccessForSubmatrix(c.arg1, kWriteAccess, &attr);
         break;
@@ -555,6 +563,7 @@ void ComputationChecker::Check() {
   CheckComputationIndexes();
   a_.Init(nnet_, computation_);
   CheckComputationMatrixAccesses();
+  CheckComputationCompression();
   CheckComputationUndefined();
   CheckComputationDebugInfo();
   if (config_.check_rewrite)
@@ -675,6 +684,63 @@ void ComputationChecker::CheckComputationMatrixAccesses() const {
                accesses.deallocate_command) {
       KALDI_ERR << "Matrix m" << matrix_index << " is accessed after "
           "it is destroyed";
+    }
+  }
+}
+
+void ComputationChecker::CheckComputationCompression() const {
+  int32 num_matrices = a_.matrix_accesses.size();
+
+  // 'middle_command' will be the index of the command that separates
+  // the forward and backward passes.
+  int32 middle_command = -1;
+  for (size_t i = 0; i < computation->commands.size(); i++) {
+    if (computation->commands[i].command_type == kNoOperationMarker) {
+        middle_command = static_cast<int32>(i);
+        break;
+    }
+  }
+  for (int32 matrix_index = 1; matrix_index < num_matrices; matrix_index++) {
+    const MatrixAccesses &accesses = a_.matrix_accesses[matrix_index];
+    int32 num_accesses = accesses.accesses.size();
+    for (int32 a = 0; a < num_accesses; a++) {
+      const Access &access = accesses.accesses[a];
+      int32 command_index = accesses.command_inex;
+      const NnetComputation::Command &command =
+          computation_.commands[command_index];
+      if (command.command_type == kUncompressMatrix) {
+        // check that the previous access to this matrix was a compression
+        // command.
+        KALDI_ASSERT(
+            a > 0 && computation_.commands[
+                accesses.accesses[a-1].command_index].command_type ==
+            kCompressMatrix);
+
+      if (command.command_type == kCompressMatrix) {
+        // check that the next access to this matrix is an uncompression
+        // command.
+        int32 next_command_index = accesses.accesses[a+1].command_index;
+        KALDI_ASSERT(computation_.commands[next_command_index].command_type ==
+                     kUncompressMatrix &&
+                     command_index < middle_command &&
+                     next_command_index > middle_command);
+        if (command.alpha == 0.0) {
+          // alpha == 0.0 means we're only retaining the sign; we should
+          // only do this if this is the output of a ReLU.
+          // make sure there are only 2 commands after this: the uncompress
+          // command, a relu backprop command, and a deallocation command.
+          KALDI_ASSERT(a > 0 && command.arg2 == kCompressedMatrixUint8 &&
+                       num_accesses <= a + 4);
+          // make sure the previous access to that matrix was a ReLU
+          // propagation.
+          int32 previous_command_index = accesses.accesses[a-1].command_index;
+          const NnetComputation::Command &previous_command =
+              computation_.commands[previous_command_index];
+          KALDI_ASSERT(previous_command.command_type == kPropagate &&
+                       nnet_.GetComponent(previous_command.arg1).Type() ==
+                       "RectifiedLinearComponent");
+        }
+      }
     }
   }
 }
@@ -930,6 +996,22 @@ void ComputationChecker::CheckComputationIndexes() const {
                       << " is invalid in add-row-ranges command.";
         }
         break;
+      }
+      case kCompressMatrix: {
+        if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
+            !computation_.IsWholeMatrix(c.arg1))
+          KALDI_ERR << "submatrix index out of range or invalid";
+        if (c.arg2 < static_cast<int32>(kCompressedMatrixInt8) ||
+            c.arg2 > static_cast<int32>(kCompressedMatrixUint16))
+          KALDI_ERR << "Invalid compressed-matrix type.";
+        if (c.alpha < 0.0 || c.alpha > 1000.0 ||
+            (c.alpha == 0.0 && c.arg1 != kCompressedMatrixInt8))
+          KALDI_ERR << "Invalid alpha in kCompressMatrix command.";
+      }
+      case kUncompressMatrix: {
+        if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
+            !computation_.IsWholeMatrix(c.arg1))
+          KALDI_ERR << "submatrix index out of range or invalid";
       }
       case kAcceptInput: case kProvideOutput: {
         if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
@@ -1319,13 +1401,22 @@ int64 GetMaxMemoryUse(const NnetComputation &computation) {
       num_submatrices = computation.submatrices.size();
   for (int32 command_index = 0; command_index < num_commands; ++command_index) {
     const NnetComputation::Command &c = computation.commands[command_index];
-    int64 this_num_bytes = -100000000;
+    int64 this_num_bytes = -100000000,
+        this_compressed_num_bytes = -10000000;
     if (c.arg1 >= 0 && c.arg1 < num_submatrices) {
       // if arg1 could plausibly be a sub-matrix index...
       const NnetComputation::SubMatrixInfo &submat_info =
           computation.submatrices[c.arg1];
       this_num_bytes = static_cast<int64>(sizeof(BaseFloat)) *
           submat_info.num_rows * submat_info.num_cols;
+
+      if (c.arg2 >= static_cast<int32>(kCompressedMatrixInt8) &&
+          c.arg2 <= static_cast<int32>(kCompressedMatrixUint16)) {
+        this_compressed_num_bytes =
+            ((c.arg2 == static_cast<int32>(kCompressedMatrixInt8) ||
+             c.arg2 == static_cast<int32>(kCompressedMatrixUint8)) ?
+             1 : 2) * submat_info.num_rows * submat_info.num_cols;
+      }
     }
     switch (c.command_type) {
       case kAllocMatrix:
@@ -1334,6 +1425,12 @@ int64 GetMaxMemoryUse(const NnetComputation &computation) {
         break;
       case kDeallocMatrix:
         cur_memory_use -= this_num_bytes;
+        break;
+      case kCompressMatrix:
+        cur_memory_use += this_compressed_num_bytes - this_num_bytes;
+        break;
+      case kUncompressMatrix:
+        cur_memory_use += this_num_bytes - this_compressed_num_bytes;
         break;
       default:
         break;

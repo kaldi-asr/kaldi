@@ -282,6 +282,10 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       command_type = kAddToRowsMulti;
     } else if (command_type_str == "kAddRowRanges") {
       command_type = kAddRowRanges;
+    } else if (command_type_str == "kCompressMatrix") {
+      command_type = kCompressMatrix;
+    } else if (command_type_str == "kUncompressMatrix") {
+      command_type = kUncompressMatrix;
     } else if (command_type_str == "kAcceptInput") {
       command_type = kAcceptInput;
     } else if (command_type_str == "kProvideOutput") {
@@ -374,6 +378,12 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
         break;
       case kAddRowRanges:
         os << "kAddRowRanges\n";
+        break;
+      case kCompressMatrix:
+        os << "kCompressMatrix\n";
+        break;
+      case kUncompressMatrix:
+        os << "kUncompressMatrix\n";
         break;
       case kAcceptInput:
         os << "kAcceptInput\n";
@@ -689,7 +699,7 @@ void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
 }
 
 void NnetComputation::Read(std::istream &is, bool binary) {
-  int32 version = 4,  // must be in sync with 'version' in Write.
+  int32 version = 5,  // must be in sync with 'version' in Write.
       version_in = 1;  // defaults to 1 if no version specified.
 
   ExpectToken(is, binary, "<NnetComputation>");
@@ -823,7 +833,7 @@ void NnetComputation::Read(std::istream &is, bool binary) {
 }
 
 void NnetComputation::Write(std::ostream &os, bool binary) const {
-  int32 version = 4;  // Must be in sync with version in Read.
+  int32 version = 5;  // Must be in sync with version in Read.
   WriteToken(os, binary, "<NnetComputation>");
   WriteToken(os, binary, "<Version>");
   WriteBasicType(os, binary, version);

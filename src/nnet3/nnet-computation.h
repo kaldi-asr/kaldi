@@ -232,6 +232,13 @@ struct ComputationRequest {
      indexes_ranges[arg3].  We use the "alpha" as if AddRowRanges()
      accepted that argument, even though it doesn't (we fake it using other
      calls, if alpha != 1.0).
+   - kCompressMatrix: Compresses the matrix which should be referred to
+       by submatrix-index arg1.  arg2 is a number that determines the
+       compression type (it's converted from the enum CuCompressed
+       MatrixType; 1=int8, 2=uint8, 3=int16, 4=uint16), and alpha
+       determines the 'range' parameter (c.f. NewCuCompressedMatrix()).
+   - kUncompressMatrix:  Uncompresses the matrix which is referred to
+      by submatrix-index arg1 (it should previously have been compressed).
    - kAcceptInput: accepts a matrix of input from the user, which may be either
      features, or derivatives w.r.t. the output.  arg1 is the submatrix index of
      a whole matrix that the input goes to, and arg2 is the index of the network
@@ -263,7 +270,8 @@ enum CommandType {
   kPropagate, kBackprop, kBackpropNoModelUpdate,
   kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
   kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
-  kAddRowRanges, kAcceptInput, kProvideOutput,
+  kAddRowRanges, kCompressMatrix, kUncompressMatrix,
+  kAcceptInput, kProvideOutput,
   kNoOperation, kNoOperationPermanent, kNoOperationMarker, kNoOperationLabel,
   kGotoLabel };
 
