@@ -338,14 +338,9 @@ class LatticeFasterDecoder {
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem);
 
-  // Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
-  // Returns the cost cutoff for subsequent ProcessNonemitting() to use.
-  // To reduce vtable lookup cost in openfst based graph search, 
-  // make ProcessEmitting() and ProcessNonemitting() be templated on the FstType,
-  // and create wrapper functions, ProcessEmittingWrapper(), which will check 
-  // the actual FstType; if it's ConstFst or VectorFst, it will call 
-  // ProcessEmitting() with one of those two types explicitly; otherwise it 
-  // will call it with the regular Fst interface.
+  /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
+  /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
+  /// Templated on FST type for speed; called via ProcessEmittingWrapper().  
   template <typename FstType> BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
   BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
