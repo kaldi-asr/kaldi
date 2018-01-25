@@ -171,7 +171,7 @@ bool LatticeFasterDecoder::GetRawLattice(Lattice *ofst,
           KALDI_ASSERT(f >= 0 && f < cost_offsets_.size());
           cost_offset = cost_offsets_[f];
         }
-        Arc arc(l->ilabel, l->olabel,
+        const Arc arc(l->ilabel, l->olabel,
                 Weight(l->graph_cost, l->acoustic_cost - cost_offset),
                 nextstate);
         ofst->AddArc(cur_state, arc);
@@ -709,7 +709,7 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
 
   BaseFloat cost_offset = 0.0; // Used to keep probabilities in a good
   // dynamic range.
-  FstType &fst = dynamic_cast<FstType&>(const_cast<fst::Fst<Arc> &>(fst_));
+  const FstType &fst = dynamic_cast<const FstType&>(fst_);
 
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.  The only
@@ -721,12 +721,10 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
     for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
-      Arc arc = aiter.Value();
+      const Arc arc = aiter.Value();
       if (arc.ilabel != 0) {  // propagate..
-        arc.weight = Times(arc.weight,
-                           Weight(cost_offset -
-                                  decodable->LogLikelihood(frame, arc.ilabel)));
-        BaseFloat new_weight = arc.weight.Value() + tok->tot_cost;
+        BaseFloat new_weight = arc.weight.Value() + cost_offset - 
+            decodable->LogLikelihood(frame, arc.ilabel) + tok->tot_cost;
         if (new_weight + adaptive_beam < next_cutoff)
           next_cutoff = new_weight + adaptive_beam;
       }
@@ -802,7 +800,7 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
   // Note: "frame" is the time-index we just processed, or -1 if
   // we are processing the nonemitting transitions before the
   // first frame (called from InitDecoding()).
-  FstType &fst = dynamic_cast<FstType&>(const_cast<fst::Fst<Arc> &>(fst_));
+  const FstType &fst = dynamic_cast<const FstType&>(fst_);
 
   // Processes nonemitting arcs for one frame.  Propagates within toks_.
   // Note-- this queue structure is is not very optimal as
