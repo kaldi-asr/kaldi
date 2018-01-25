@@ -24,7 +24,7 @@ parser.add_argument('dir', type=str,
                     help='Source data directory (containing images.scp)')
 parser.add_argument('--out-ark', type=str, default='-',
                     help='Where to write the output feature file')
-parser.add_argument('--feat-dim', type=int, default=40,
+parser.add_argument('--feat-dim', type=int, default=100,
                     help='Size to scale the height of all images')
 parser.add_argument('--padding', type=int, default=5,
                     help='Number of white pixels to pad on the left'
