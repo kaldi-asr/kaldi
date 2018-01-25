@@ -10,7 +10,7 @@
 lang=data/lang   # Must match the one used to train the models
 lang_test=data/lang_nosp_sw1_tg  # Lang directory for decoding.
 
-data_dir=data/train 
+data_dir=data/train
 # Model directory used to align the $data_dir to get target labels for training
 # SAD. This should typically be a speaker-adapted system.
 sat_model_dir=exp/tri4
@@ -37,7 +37,6 @@ nstage=-10
 train_stage=-10
 test_stage=-10
 num_data_reps=2
-base_rirs=simulated
 affix=_1a
 stage=-1
 nj=80
@@ -113,6 +112,7 @@ if [ $stage -le 3 ]; then
     --nj 80 --reco-nj 40 --lang-test $lang_test \
     --garbage-phones-list $dir/garbage_phones.txt \
     --silence-phones-list $dir/silence_phones.txt \
+    --merge-weights $merge_weights \
     $lang $data_dir $whole_data_dir $sat_model_dir $model_dir $dir
 fi
 
@@ -124,20 +124,14 @@ if [ $stage -le 4 ]; then
     fi
 
     rvb_opts=()
-    if [ "$base_rirs" == "simulated" ]; then
-	# This is the config for the system using simulated RIRs and point-source noises
-	rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
-	rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
-	rvb_opts+=(--noise-set-parameters RIRS_NOISES/pointsource_noises/noise_list)
-    else
-	# This is the config for the JHU ASpIRE submission system
-	rvb_opts+=(--rir-set-parameters "1.0, RIRS_NOISES/real_rirs_isotropic_noises/rir_list")
-	rvb_opts+=(--noise-set-parameters RIRS_NOISES/real_rirs_isotropic_noises/noise_list)
-    fi
+    # This is the config for the system using simulated RIRs and point-source noises
+    rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
+    rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
+    rvb_opts+=(--noise-set-parameters RIRS_NOISES/pointsource_noises/noise_list)
 
     foreground_snrs="20:10:15:5:0"
     background_snrs="20:10:15:5:0"
-    num_reps=1
+    num_data_reps=1
     # corrupt the data to generate multi-condition data
     # for data_dir in train dev test; do
     python steps/data/reverberate_data_dir.py \
@@ -148,41 +142,36 @@ if [ $stage -le 4 ]; then
 	   --speech-rvb-probability 0.5 \
 	   --pointsource-noise-addition-probability 0.5 \
 	   --isotropic-noise-addition-probability 0.7 \
-	   --num-replications $num_reps \
+	   --num-replications $num_data_reps \
 	   --max-noises-per-minute 4 \
 	   --source-sampling-rate 8000 \
 	   $whole_data_dir $rvb_data_dir
 
+    rvb_dirs=()
     for i in `seq 1 $num_data_reps`; do
-	local/segmentation/copy_targets_dir.sh --cmd "$decode_cmd" --utt-prefix "rev${i}_" exp/segmentation_1a/train_whole_combined_targets_sub3 exp/segmentation_1a/train_whole_combined_targets_sub3_temp_$i || exit 1;
-	rvb_dirs+=" exp/segmentation_1a/train_whole_combined_targets_sub3_temp_$i"
+      steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}_" \
+        exp/segmentation_1a/train_whole_combined_targets_sub3 \
+        exp/segmentation_1a/train_whole_combined_targets_sub3_temp_$i || exit 1;
+      rvb_dirs+=(exp/segmentation_1a/train_whole_combined_targets_sub3_temp_$i)
     done
 
-    local/segmentation/combine_targets_dirs.sh $rvb_data_dir exp/segmentation_1a/train_whole_combined_targets_sub3_rvb $rvb_dirs || exit 1;
-    cp exp/segmentation_1a/train_whole_combined_targets_sub3_rvb/targets.scp  exp/segmentation_1a/
+    steps/segmentation/combine_targets_dirs.sh \
+      $rvb_data_dir exp/segmentation_1a/train_whole_combined_targets_sub3_rvb \
+      $rvb_dirs || exit 1;
 fi
 
 if [ $stage -le 5 ]; then
   utils/copy_data_dir.sh ${rvb_data_dir} ${rvb_data_dir}_hires
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 10 \
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 \
     ${rvb_data_dir}_hires
   steps/compute_cmvn_stats.sh ${rvb_data_dir}_hires
 fi
 
-# if [ $stage -le 6 ]; then
-#   # Train a TDNN-LSTM network for SAD
-#   local/segmentation/tuning/train_lstm_asr_sad_1a.sh \
-#     --stage $nstage --train-stage $train_stage \
-#     --targets-dir $dir \
-#     --data-dir ${rvb_data_dir}_hires
-# fi
-
 if [ $stage -le 6 ]; then
   # Train a STATS-pooling network for SAD
-
     local/segmentation/tuning/train_stats_asr_sad_1a.sh \
     --stage $nstage --train-stage $train_stage \
-    --targets-dir $dir \
+    --targets-dir exp/segmentation_1a/train_whole_combined_targets_sub3_rvb \
     --data-dir ${rvb_data_dir}_hires
 fi
 
@@ -199,30 +188,29 @@ if [ $stage -le 7 ]; then
     --extra-left-context-initial 0 --extra-right-context-final 0 \
     --nj 32 --acwt 0.3 --stage $test_stage \
     data/eval2000 \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2 \
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a \
     mfcc_hires \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/{,eval2000}
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a/{,eval2000}
 fi
 
 if [ $stage -le 8 ]; then
   # Do some diagnostics
   steps/segmentation/evaluate_segmentation.pl data/eval2000/segments \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/segments &> \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/evalutate_segmentation.log
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/segments &> \
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/evalutate_segmentation.log
   
   steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/utt2spk \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/segments \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/sys.rttm
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/utt2spk \
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/segments \
+    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/sys.rttm
 
 #  export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
 #  md-eval.pl -c 0.25 -r $eval2000_rttm_file \
-#    -s exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/sys.rttm > \
-#    exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg/md_eval.log
+#    -s exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/sys.rttm > \
+#    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/md_eval.log
 fi
 
 if [ $stage -le 9 ]; then
-  utils/copy_data_dir.sh exp/segmentation_1a/tdnn_stats_asr_sad_1a2/eval2000_seg \
+  utils/copy_data_dir.sh exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg \
     data/eval2000.seg_asr_sad_1a
 fi
-  

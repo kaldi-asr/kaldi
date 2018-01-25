@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#           2017  Nagendra Kumar Goel
-#           2016  Vimal Manohar
-#           2016  Johns Hopkins University (author: Daniel Povey)
+# Copyright   2016  Vimal Manohar
+#             2016  Johns Hopkins University (author: Daniel Povey)
+#             2017  Nagendra Kumar Goel
 # Apache 2.0
 
 # This script demonstrates how to re-segment training data selecting only the
@@ -23,9 +23,9 @@ set -u
 
 stage=0
 cleanup_stage=0
-data=data/train
+data=data/train_nodup
 cleanup_affix=cleaned
-srcdir=exp/tri4_mmi_b0.1
+srcdir=exp/tri4
 langdir=data/lang_sw1_tg
 nj=100
 decode_nj=16
@@ -42,7 +42,8 @@ cleaned_dir=${srcdir}_${cleanup_affix}
 
 if [ $stage -le 1 ]; then
   # This does the actual data cleanup.
-  steps/cleanup/clean_and_segment_data.sh --stage $cleanup_stage --nj $nj --cmd "$train_cmd" \
+  steps/cleanup/clean_and_segment_data.sh --stage $cleanup_stage \
+    --nj $nj --cmd "$train_cmd" \
     $data $langdir $srcdir $dir $cleaned_data
 fi
 
@@ -53,5 +54,5 @@ fi
 
 if [ $stage -le 3 ]; then
   steps/train_sat.sh --cmd "$train_cmd" \
-    5000 100000 $cleaned_data $langdir ${srcdir}_ali_${cleanup_affix} ${cleaned_dir}
+    11500 200000 $cleaned_data $langdir ${srcdir}_ali_${cleanup_affix} ${cleaned_dir}
 fi

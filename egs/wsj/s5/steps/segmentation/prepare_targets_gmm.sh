@@ -1,7 +1,6 @@
 #! /bin/bash
 
 # Copyright 2017  Vimal Manohar
-#           2017  Nagendra Kumar Goel
 # Apache 2.0
   
 # This script prepares targets for training neural network for 
@@ -211,7 +210,7 @@ if [ $stage -le 5 ]; then
   # the speech / silence decisions, not the exact word sequences.
   steps/decode.sh --cmd "$decode_cmd --mem 2G" --nj $nj \
     --max-active 1000 --beam 10.0 \
-    --skip-scoring true \
+    --decode-extra-opts "--word-determinize=false" --skip-scoring true \
     $graph_dir $uniform_seg_data_dir $decode_dir
 fi
 

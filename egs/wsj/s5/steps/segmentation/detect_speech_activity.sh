@@ -13,17 +13,16 @@ set -e
 set -o pipefail
 set -u
 
-. ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
 
 affix=  # Affix for the segmentation
 nj=32
-cmd=$decode_cmd
+cmd=queue.pl
 stage=-1
 
 # Feature options (Must match training)
 mfcc_config=conf/mfcc_hires.conf
-feat_affix=hires   # Affix for the type of feature used
+feat_affix=   # Affix for the type of feature used
 
 convert_data_dir_to_whole=true    # If true, the input data directory is 
                                   # first converted to whole data directory (i.e. whole recordings)

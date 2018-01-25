@@ -33,8 +33,8 @@ relu_dim=256
 num_epochs=1
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
-num_jobs_initial=1
-num_jobs_final=1
+num_jobs_initial=3
+num_jobs_final=8
 remove_egs=true
 max_param_change=0.2  # Small max-param change for small network
 
@@ -49,7 +49,7 @@ affix=1a2
 data_dir=exp/segmentation_1a/train_whole_rvb_hires
 targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
 
-. cmd.sh
+. ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
@@ -135,9 +135,10 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-    copy-feats scp:$targets_dir/targets.scp ark:- | \
-    matrix-sum-rows ark:- ark:- | vector-sum --binary=false ark:- - | \
-    awk '{print " [ "$2" "$3" "$4" ]"}' > $dir/post_output.vec
+  # Use a subset to compute prior over the output targets
+  $cmd $dir/log/get_priors.log \
+    matrix-sum-rows "scp:utils/subset_scp.pl --quiet 1000 $targets_dir/targets.scp |" \
+    ark:- \| vector-sum --binary=false ark:- $dir/post_output.vec || exit 1
 
   echo 3 > $dir/frame_subsampling_factor
 fi
