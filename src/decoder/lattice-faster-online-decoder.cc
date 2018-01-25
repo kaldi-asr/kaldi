@@ -897,7 +897,7 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
     for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
-      const Arc arc = aiter.Value();
+      const Arc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // propagate..
         BaseFloat new_weight = arc.weight.Value() + cost_offset - 
             decodable->LogLikelihood(frame, arc.ilabel) + tok->tot_cost;
