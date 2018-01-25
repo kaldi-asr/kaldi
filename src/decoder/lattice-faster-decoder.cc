@@ -171,7 +171,7 @@ bool LatticeFasterDecoder::GetRawLattice(Lattice *ofst,
           KALDI_ASSERT(f >= 0 && f < cost_offsets_.size());
           cost_offset = cost_offsets_[f];
         }
-        const Arc arc(l->ilabel, l->olabel,
+        Arc arc(l->ilabel, l->olabel,
                 Weight(l->graph_cost, l->acoustic_cost - cost_offset),
                 nextstate);
         ofst->AddArc(cur_state, arc);
