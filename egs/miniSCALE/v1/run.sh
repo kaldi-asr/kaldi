@@ -44,7 +44,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_big.arpa.gz \
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang_test
 fi
 
@@ -53,13 +53,13 @@ if [ $stage -le 4 ]; then
     data/lang exp/mono
 fi
 
-#if [ $stage -le 5 ]; then
-#  utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
-#
-#  steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
-#    exp/mono/decode_test
-#fi
-#
+if [ $stage -le 5 ]; then
+  utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
+    exp/mono/decode_test
+fi
+
 #if [ $stage -le 6 ]; then
 #  steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
 #    exp/mono exp/mono_ali
