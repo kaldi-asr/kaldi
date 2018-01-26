@@ -10,7 +10,7 @@
 lang=data/lang   # Must match the one used to train the models
 lang_test=data/lang_nosp_sw1_tg  # Lang directory for decoding.
 
-data_dir=data/train
+data_dir=data/train_nodup
 # Model directory used to align the $data_dir to get target labels for training
 # SAD. This should typically be a speaker-adapted system.
 sat_model_dir=exp/tri4
@@ -18,15 +18,8 @@ sat_model_dir=exp/tri4
 # get target labels for training SAD. This should typically be a 
 # speaker-independent system like LDA+MLLT system.
 model_dir=exp/tri3
-graph_dir=    # If not provided, a new one will be created using $lang_test
-
-# Uniform segmentation options for decoding whole recordings. All values are in
-# seconds.
-max_segment_duration=10
-overlap_duration=2.5
-max_remaining_duration=5  # If the last remaining piece when splitting uniformly
-                          # is smaller than this duration, then the last piece 
-                          # is  merged with the previous.
+graph_dir=    # Graph for decoding whole-recording version of $data_dir.
+              # If not provided, a new one will be created using $lang_test
 
 # List of weights on labels obtained from alignment, 
 # labels obtained from decoding and default labels in out-of-segment regions
@@ -37,7 +30,7 @@ nstage=-10
 train_stage=-10
 test_stage=-10
 num_data_reps=2
-affix=_1a
+affix=_1a   # For segmentation
 stage=-1
 nj=80
 
@@ -77,7 +70,10 @@ if ! cat $dir/garbage_phones.txt $dir/silence_phones.txt | \
 fi
 
 whole_data_dir=${data_dir}_whole
-rvb_data_dir=${whole_data_dir}_rvb
+targets_dir=exp/segmentation${affix}/train_whole_combined_targets_sub3
+
+rvb_data_dir=${whole_data_dir}_rvb_hires
+rvb_targets_dir=${targets_dir}_rvb
 
 if [ $stage -le 0 ]; then
   utils/data/convert_data_dir_to_whole.sh $data_dir $whole_data_dir
@@ -112,15 +108,16 @@ if [ $stage -le 3 ]; then
     --nj 80 --reco-nj 40 --lang-test $lang_test \
     --garbage-phones-list $dir/garbage_phones.txt \
     --silence-phones-list $dir/silence_phones.txt \
-    --merge-weights $merge_weights \
+    --merge-weights "$merge_weights" \
+    --graph-dir "$graph_dir" \
     $lang $data_dir $whole_data_dir $sat_model_dir $model_dir $dir
 fi
 
 if [ $stage -le 4 ]; then
     # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
     if [ ! -f rirs_noises.zip ]; then
-	wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
-	unzip rirs_noises.zip
+      wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+      unzip rirs_noises.zip
     fi
 
     rvb_opts=()
@@ -131,7 +128,6 @@ if [ $stage -le 4 ]; then
 
     foreground_snrs="20:10:15:5:0"
     background_snrs="20:10:15:5:0"
-    num_data_reps=1
     # corrupt the data to generate multi-condition data
     # for data_dir in train dev test; do
     python steps/data/reverberate_data_dir.py \
@@ -147,70 +143,70 @@ if [ $stage -le 4 ]; then
 	   --source-sampling-rate 8000 \
 	   $whole_data_dir $rvb_data_dir
 
-    rvb_dirs=()
+    rvb_targets_dirs=()
     for i in `seq 1 $num_data_reps`; do
       steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}_" \
-        exp/segmentation_1a/train_whole_combined_targets_sub3 \
-        exp/segmentation_1a/train_whole_combined_targets_sub3_temp_$i || exit 1;
-      rvb_dirs+=(exp/segmentation_1a/train_whole_combined_targets_sub3_temp_$i)
+        $targets_dir ${targets_dir}_temp_$i || exit 1
+      rvb_targets_dirs+=(${targets_dir}_temp_$i)
     done
 
     steps/segmentation/combine_targets_dirs.sh \
-      $rvb_data_dir exp/segmentation_1a/train_whole_combined_targets_sub3_rvb \
-      $rvb_dirs || exit 1;
+      $rvb_data_dir ${rvb_targets_dir} \
+      ${rvb_targets_dirs[@]} || exit 1;
+
+    rm -r ${rvb_targets_dirs[@]}
 fi
 
 if [ $stage -le 5 ]; then
-  utils/copy_data_dir.sh ${rvb_data_dir} ${rvb_data_dir}_hires
   steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 \
-    ${rvb_data_dir}_hires
-  steps/compute_cmvn_stats.sh ${rvb_data_dir}_hires
+    ${rvb_data_dir}
+  steps/compute_cmvn_stats.sh ${rvb_data_dir}
 fi
 
 if [ $stage -le 6 ]; then
   # Train a STATS-pooling network for SAD
-    local/segmentation/tuning/train_stats_asr_sad_1a.sh \
+  local/segmentation/tuning/train_stats_asr_sad_1a.sh \
     --stage $nstage --train-stage $train_stage \
-    --targets-dir exp/segmentation_1a/train_whole_combined_targets_sub3_rvb \
-    --data-dir ${rvb_data_dir}_hires
+    --targets-dir ${rvb_targets_dir} \
+    --data-dir ${rvb_data_dir} --affix "1a" || exit 1
 fi
 
 if [ $stage -le 7 ]; then
   # The options to this script must match the options used in the 
   # nnet training script. 
-  # e.g. extra-left-context is 70, because the model is an LSTM trained with a 
-  # chunk-left-context of 60. 
+  # e.g. extra-left-context is 79, because the model is an stats pooling network 
+  # trained with a chunk-left-context of 79 and chunk-right-context of 21. 
   # Note: frames-per-chunk is 150 even though the model was trained with 
   # chunk-width of 20. This is just for speed.
   # See the script for details of the options.
   steps/segmentation/detect_speech_activity.sh \
-    --extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 \
+    --extra-left-context 79 --extra-right-context 21 --frames-per-chunk 150 \
     --extra-left-context-initial 0 --extra-right-context-final 0 \
     --nj 32 --acwt 0.3 --stage $test_stage \
     data/eval2000 \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a \
+    exp/segmentation${affix}/tdnn_stats_asr_sad_1a \
     mfcc_hires \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a/{,eval2000}
+    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/{,eval2000}
 fi
 
 if [ $stage -le 8 ]; then
   # Do some diagnostics
   steps/segmentation/evaluate_segmentation.pl data/eval2000/segments \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/segments &> \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/evalutate_segmentation.log
+    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/segments &> \
+    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/evalutate_segmentation.log
   
   steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/utt2spk \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/segments \
-    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/sys.rttm
+    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/utt2spk \
+    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/segments \
+    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/sys.rttm
 
 #  export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
 #  md-eval.pl -c 0.25 -r $eval2000_rttm_file \
-#    -s exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/sys.rttm > \
-#    exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg/md_eval.log
+#    -s exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/sys.rttm > \
+#    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/md_eval.log
 fi
 
 if [ $stage -le 9 ]; then
-  utils/copy_data_dir.sh exp/segmentation_1a/tdnn_stats_asr_sad_1a/eval2000_seg \
+  utils/copy_data_dir.sh exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg \
     data/eval2000.seg_asr_sad_1a
 fi
