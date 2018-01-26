@@ -38,7 +38,7 @@ if [ $stage -le 2 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 26 --sil-prob 0.95 \
-                        data/local/dict "<sil>" data/lang/temp data/lang
+    --position-dependent-phones false data/local/dict "<sil>" data/lang/temp data/lang
 fi
 
 if [ $stage -le 3 ]; then
