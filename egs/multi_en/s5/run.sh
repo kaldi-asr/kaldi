@@ -148,9 +148,9 @@ if [ $stage -le 7 ]; then
      data=data/$c/train
      steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
        --cmd "$train_cmd" --nj 40 \
-       $data exp/make_mfcc/$c/train || touch $data/.error
+       $data exp/make_mfcc/$c/train || exit 1;
      steps/compute_cmvn_stats.sh \
-       $data exp/make_mfcc/$c/train || touch $data/.error
+       $data exp/make_mfcc/$c/train || exit 1;
     ) &
   done
   wait
