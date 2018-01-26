@@ -14,9 +14,9 @@ parser.add_argument('writing_conditions', type=str,
                     help='if page is written fast/normal/carefully, lined/unlined')
 parser.add_argument('--width_buffer', type=int, default=10,
                     help='width buffer across annotate character')
-parser.add_argument('--height_buffer', type=int, default=0,
+parser.add_argument('--height_buffer', type=int, default=10,
                     help='height buffer across annotate character')
-parser.add_argument('--char_width_buffer', type=int, default=10,
+parser.add_argument('--char_width_buffer', type=int, default=20,
                     help='white space between two characters')
 parser.add_argument('--char_height_buffer', type=int, default=20,
                     help='starting location from the top of the line')
