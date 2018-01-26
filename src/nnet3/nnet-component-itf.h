@@ -22,11 +22,11 @@
 #ifndef KALDI_NNET3_NNET_COMPONENT_ITF_H_
 #define KALDI_NNET3_NNET_COMPONENT_ITF_H_
 
+#include <iostream>
+#include <mutex>
 #include "nnet3/nnet-common.h"
 #include "nnet3/nnet-parse.h"
 #include "base/kaldi-error.h"
-#include "thread/kaldi-mutex.h"
-#include <iostream>
 
 namespace kaldi {
 namespace nnet3 {
@@ -47,43 +47,42 @@ enum ComponentProperties {
                                 // UpdatableComponent do not have to return this
                                 // flag, e.g.  if this instance is not really
                                 // updatable).
-  kLinearInInput = 0x004,    // true if the component's output is always a
-                             // linear function of its input, i.e. alpha times
-                             // input gives you alpha times output.
-  kLinearInParameters = 0x008, // true if an updatable component's output is always a
-                               // linear function of its parameters, i.e. alpha times
-                               // parameters gives you alpha times output.  This is true
-                               // for all updatable components we envisage.
-  kPropagateInPlace = 0x010,  // true if we can do the propagate operation in-place
+  kPropagateInPlace = 0x004,  // true if we can do the propagate operation in-place
                               // (input and output matrices are the same).
                               // Note: if doing backprop, you'd also need to check
                               // that the kBackpropNeedsInput property is not true.
-  kPropagateAdds = 0x020,  // true if the Propagate function adds to, rather
-                           // than setting, its output.  The Component chooses
-                           // whether to add or set, and the calling code has to
-                           // accommodate it.
-  kReordersIndexes = 0x040,  // true if the ReorderIndexes function might reorder
+  kPropagateAdds = 0x008,  // true if the Propagate function adds to, rather
+                           // than setting, its output, for non-in-place
+                           // propagation.  The Component chooses whether to add
+                           // or set, and the calling code has to accommodate
+                           // it.
+  kReordersIndexes = 0x010,  // true if the ReorderIndexes function might reorder
                              // the indexes (otherwise we can skip calling it).
                              // Must not be set for simple components.
-  kBackpropAdds = 0x080,   // true if the Backprop function adds to, rather than
-                           // setting, the "in_deriv" output.  The Component
-                           // chooses whether to add or set, and the calling
-                           // code has to accommodate it.  Note: in the case of
-                           // in-place backprop, this flag has no effect.
-  kBackpropNeedsInput = 0x100,  // true if backprop operation needs access to
+  kBackpropAdds = 0x020,   // true if the Backprop function adds to, rather than
+                           // setting, the "in_deriv" output for non-in-place
+                           // backprop.  The Component chooses whether to add or
+                           // set, and the calling code has to accommodate it.
+  kBackpropNeedsInput = 0x040,  // true if backprop operation needs access to
                                 // forward-pass input.
-  kBackpropNeedsOutput = 0x200,  // true if backprop operation needs access to
+  kBackpropNeedsOutput = 0x080,  // true if backprop operation needs access to
                                  // forward-pass output (e.g. true for Sigmoid).
-  kBackpropInPlace = 0x400,   // true if we can do the backprop operation in-place
+  kBackpropInPlace = 0x100,   // true if we can do the backprop operation in-place
                              // (input and output matrices may be the same).
-  kStoresStats = 0x800,      // true if the StoreStats operation stores
+  kStoresStats = 0x200,      // true if the StoreStats operation stores
                              // statistics e.g. on average node activations and
                              // derivatives of the nonlinearity, (as it does for
                              // Tanh, Sigmoid, ReLU and Softmax).
-  kInputContiguous = 0x1000,  // true if the component requires its input data (and
+  kInputContiguous = 0x400,  // true if the component requires its input data (and
                               // input derivatives) to have Stride()== NumCols().
-  kOutputContiguous = 0x2000  // true if the component requires its input data (and
-                              // output derivatives) to have Stride()== NumCols().
+  kOutputContiguous = 0x800,  // true if the component requires its input data (and
+                               // output derivatives) to have Stride()== NumCols().
+  kUsesMemo = 0x1000,  // true if the component returns a void* pointer from its
+                       // Propagate() function that needs to be passed into the
+                       // corresponding Backprop function.
+  kRandomComponent = 0x2000   // true if the component has some kind of
+                              // randomness, like DropoutComponent (these should
+                              // inherit from class RandomComponent.
 };
 
 
@@ -126,9 +125,12 @@ class Component {
   ///      be set and the initial value ignored.  Each Component chooses whether
   ///      it is more convenient implementation-wise to add or set, and the
   ///      calling code has to deal with it.
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
-                         const CuMatrixBase<BaseFloat> &in,
-                         CuMatrixBase<BaseFloat> *out) const = 0;
+  ///   \return  Normally returns NULL, but may return a non-NULL value for
+  ///      components which have the flag kUsesMemo set.  This value will
+  ///      be passed into the corresponding Backprop routine.
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const = 0;
 
   /// \brief Backprop function; depending on which of the arguments 'to_update'
   ///     and 'in_deriv' are non-NULL, this can compute input-data derivatives
@@ -146,6 +148,11 @@ class Component {
   ///      function.  Will be ignored (and may be empty) if
   ///      Properties()&kBackpropNeedsOutput == 0
   ///   \param [in] out_deriv  The derivative at the output of this component.
+  ///   \param [in] memo       This will normally be NULL, but for component
+  ///       types that set the flag kUsesMemo, this will be the return value
+  ///       of the Propagate() function that corresponds to this Backprop()
+  ///       function.  Ownership of any pointers is not transferred to the
+  ///       Backprop function; DeleteMemo() will be called to delete it.
   ///   \param [out] to_update  If model update is desired, the Component
   ///       to be updated, else NULL.  Does not have to be identical to this.
   ///       If supplied, you can assume that
@@ -160,23 +167,31 @@ class Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *to_update, // may be NULL; may be identical
                                               // to "this" or different.
                         CuMatrixBase<BaseFloat> *in_deriv) const = 0;
 
-
   /// \brief This function may store stats on average activation values, and for
   ///        some component types, the average value of the derivative of the
   ///        nonlinearity.  It only does something for those components that
-  ///        have nonzero Properties()&kStoresStats.  It only needs as input
-  ///        the value at the output of the nonlinearity.
-
-  virtual void StoreStats(const CuMatrixBase<BaseFloat> &out_value) { }
+  ///        have nonzero Properties()&kStoresStats.
+  ///
+  /// \param [in] in_value  The input to the Propagate() function.  Note: if
+  ///        the component sets the flag kPropagateInPlace, this should not
+  ///        be used; the empty matrix will be provided here if in-place
+  ///        propagation was used.
+  /// \param [in] out_value  The output of the Propagate() function.
+  /// \param [in] memo  The 'memo' returned by the Propagate() function; this
+  ///        will usually be NULL.
+  virtual void StoreStats(const CuMatrixBase<BaseFloat> &in_value,
+                          const CuMatrixBase<BaseFloat> &out_value,
+                          void *memo) { }
 
   /// \brief Components that provide an implementation of StoreStats should also
   ///        provide an implementation of ZeroStats(), to set those stats to
   ///        zero.  Other components that store other types of statistics
-  ///        (e.g. regarding gradient clipping) are free to implement ZeroStats()
+  ///        (e.g. regarding gradient clipping) should implement ZeroStats()
   ///        also.
   virtual void ZeroStats() { }
 
@@ -194,8 +209,9 @@ class Component {
   ///       add members to misc_info as needed.
   /// \param [in] output_index  The Index at the output of the component, for
   ///       which we are requesting the list of indexes at the component's input.
-  /// \param [out] desired_indexes  A list of indexes that are desired at the input.
-  ///       By "desired" we mean required or optionally-required.
+  /// \param [out] desired_indexes A list of indexes that are desired at the
+  ///       input.  are to be written to here.  By "desired" we mean required or
+  ///       optionally-required.
   ///
   /// The default implementation of this function is suitable for any
   /// SimpleComponent; it just copies the output_index to a single identical
@@ -221,9 +237,9 @@ class Component {
   ///              of this Component.
   ///    @param [in] input_index_set  The set of indexes that is available at the
   ///              input of this Component.
-  ///    @param [out] used_inputs  If non-NULL, then if the output is computable
-  ///       this will be set to the list of input indexes that will actually be
-  ///       used in the computation.
+  ///    @param [out] used_inputs If this is non-NULL and the output is
+  ///       computable this will be set to the list of input indexes that will
+  ///       actually be used in the computation.
   ///    @return Returns true iff this output is computable from the provided
   ///          inputs.
   ///
@@ -237,12 +253,20 @@ class Component {
                             std::vector<Index> *used_inputs) const;
 
   /// \brief This function only does something interesting for non-simple
-  ///  Components.  It provides an opportunity for a Component to reorder the
-  ///  indexes at its input and output.  This might be useful, for instance, if
-  ///  a component requires a particular ordering of the indexes that doesn't
-  ///  correspond to their natural ordering.  Components that might modify the
-  ///  indexes are brequired to return the kReordersIndexes flag in their
-  ///  Properties().
+  ///  Components.  It provides an opportunity for a Component to reorder the or
+  ///  pad the indexes at its input and output.  This might be useful, for
+  ///  instance, if a component requires a particular ordering of the indexes
+  ///  that doesn't correspond to their natural ordering.  Components that might
+  ///  modify the indexes are required to return the kReordersIndexes flag in
+  ///  their Properties().
+  ///     The ReorderIndexes() function is now allowed to insert blanks
+  ///  into the indexes.  The 'blanks' must be of the form (n,kNoTime,x),
+  ///  where the marker kNoTime (a very negative number) is there where
+  ///  the 't' indexes normally live.  The reason we don't just have, say,
+  ///  (-1,-1,-1), relates to the need to preserve a regular pattern over
+  ///  the 'n' indexes so that 'shortcut compilation' (c.f. ExpandComputation())
+  ///  can work correctly
+  ///
   ///
   ///  \param [in,out]  Indexes at the input of the Component.
   ///  \param [in,out]  Indexes at the output of the Component
@@ -330,7 +354,9 @@ class Component {
   /// This virtual function when called by
   //    -- an UpdatableComponent scales the parameters
   ///      by "scale" when called by an UpdatableComponent.
-  //    -- a Nonlinear component it relates to scaling activation stats, not parameters.
+  //    -- a Nonlinear component (or another component that
+  ///      stores stats, like BatchNormComponent-- it relates
+  ///      to scaling activation stats, not parameters.
   virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
@@ -340,6 +366,13 @@ class Component {
   ///    -- a NonlinearComponent it relates to adding stats
   /// Otherwise it should do nothing.
   virtual void Add(BaseFloat alpha, const Component &other) {};
+
+  /// This virtual function only needs to be overwritten by Components that
+  /// return a non-NULL memo from their Propagate() function.  It's called by
+  /// NnetComputer in cases where Propagate returns a memo but there will be no
+  /// backprop to consume it.
+  virtual void DeleteMemo(void *memo) const { KALDI_ASSERT(memo == NULL); }
+
 
   Component() { }
 
@@ -355,33 +388,60 @@ class RandomComponent: public Component {
   // This function is required in testing code and in other places we need
   // consistency in the random number generation (e.g. when optimizing
   // validation-set performance), but check where else we call srand().  You'll
-  // need to call srand as well as making this call.
+  // need to call srand prior to making this call.
   void ResetGenerator() { random_generator_.SeedGpu(); }
+
+  // Call this with 'true' to set 'test mode' where the behavior is different
+  // from normal mode.
+  void SetTestMode(bool test_mode) { test_mode_ = test_mode; }
+
+  RandomComponent(): test_mode_(false) { }
+
+  RandomComponent(const RandomComponent &other):
+      test_mode_(other.test_mode_) {}
  protected:
   CuRand<BaseFloat> random_generator_;
+
+  // This is true if we want a different behavior for inference from  that for
+  // training.
+  bool test_mode_;
 };
 
 /**
- * Class UpdatableComponent is a Component which has trainable parameters; it
- * extends the interface of Component.  This is a base-class for Components with
- * parameters.  See comment by declaration of kUpdatableComponent.
- * The functions in this interface must only be called if the component returns
- * the kUpdatable flag.
+   Class UpdatableComponent is a Component which has trainable parameters; it
+   extends the interface of Component.  This is a base-class for Components with
+   parameters.  See comment by declaration of kUpdatableComponent.
+   The functions in this interface must only be called if the component returns
+   the kUpdatable flag.
+
+   Child classes support the following config-line parameters in addition
+   to more specific ones:
+
+     learning-rate         e.g. learning-rate=1.0e-05.  default=0.001
+                           It's not normally necessary or desirable to set this
+                           in the config line, as it typically gets set
+                           in the training scripts.
+     learning-rate-factor  e.g. learning-rate-factor=0.5, can be used to
+                           conveniently control per-layer learning rates (it's
+                           multiplied by the learning rates given to the
+                           --learning-rate option to nnet3-copy or any
+                           'set-learning-rate' directives to the
+                           --edits-config option of nnet3-copy.  default=1.0.
+     max-change            e.g. max-change=0.75.  Maximum allowed parameter change
+                           for the parameters of this component, in Euclidean norm,
+                           per update step.  If zero, no limit is applied at this
+                           level (the global --max-param-change option will still
+                           apply).  default=0.0.
  */
 class UpdatableComponent: public Component {
  public:
-  UpdatableComponent(const UpdatableComponent &other):
-      learning_rate_(other.learning_rate_),
-      learning_rate_factor_(other.learning_rate_factor_),
-      is_gradient_(other.is_gradient_), max_change_(other.max_change_) { }
+  UpdatableComponent(const UpdatableComponent &other);
 
-  /// \brief Sets parameters to zero, and if treat_as_gradient is true,
-  ///  sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
-  ///  learning_rate_factor_.
-  virtual void SetZero(bool treat_as_gradient) = 0;
-
+  // If these defaults are changed, the defaults in
+  // InitLearningRatesFromConfig() should be changed too.
   UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
-                        is_gradient_(false), max_change_(0.0) { }
+                        l2_regularize_(0.0), is_gradient_(false),
+                        max_change_(0.0) { }
 
   virtual ~UpdatableComponent() { }
 
@@ -403,16 +463,46 @@ class UpdatableComponent: public Component {
   /// Sets the learning rate directly, bypassing learning_rate_factor_.
   virtual void SetActualLearningRate(BaseFloat lrate) { learning_rate_ = lrate; }
 
-  /// Gets the learning rate of gradient descent.  Note: if you call
-  /// SetLearningRate(x), and learning_rate_factor_ != 1.0,
-  /// a different value than x will returned.
+  /// \brief Sets is_gradient_ to true and sets learning_rate_ to 1, ignoring
+  /// learning_rate_factor_.
+  virtual void SetAsGradient() { learning_rate_ = 1.0; is_gradient_ = true; }
+
+  virtual BaseFloat LearningRateFactor() { return learning_rate_factor_; }
+
+  // Sets the learning rate factors to lrate_factor.
+  virtual void SetLearningRateFactor(BaseFloat lrate_factor) {
+    learning_rate_factor_ = lrate_factor;
+  }
+
+  // Copies the learning-rate, learning-rate-factor, l2-regularize, is-gradient
+  // and max-change values from 'other'.
+  void SetUpdatableConfigs(const UpdatableComponent &other);
+
+  /// freezes/unfreezes NaturalGradient updates, if applicable (to be overriden
+  /// by components that use Natural Gradient).
+  virtual void FreezeNaturalGradient(bool freeze) { }
+
+  /// Gets the learning rate to be used in gradient descent.
   BaseFloat LearningRate() const { return learning_rate_; }
 
-  /// Gets per-component max-change value. Note: the components themselves do
-  /// not enforce the per-component max-change; it's enforced in class
-  /// NnetTrainer by querying the max-changes for each component.
-  /// See NnetTrainer::UpdateParamsWithMaxChange() in nnet3/nnet-training.cc.
+  /// Returns the per-component max-change value, which is interpreted as the
+  /// maximum change (in l2 norm) in parameters that is allowed per minibatch
+  /// for this component.  The components themselves do not enforce the
+  /// per-component max-change; it's enforced in class NnetTrainer by querying
+  /// the max-changes for each component.  See
+  /// NnetTrainer::UpdateParamsWithMaxChange() in nnet-utils.h.
   BaseFloat MaxChange() const { return max_change_; }
+
+  void SetMaxChange(BaseFloat max_change) { max_change_ = max_change; }
+
+  /// Returns the l2 regularization constant, which may be set in any updatable
+  /// component (usually from the config file).  This value is not interrogated
+  /// in the component-level code.  Instead it is read by the function
+  /// ApplyL2Regularization(), declared in nnet-utils.h, which is used as part
+  /// of the training workflow.
+  BaseFloat L2Regularization() const { return l2_regularize_; }
+
+  void SetL2Regularization(BaseFloat a) { l2_regularize_ = a; }
 
   virtual std::string Info() const;
 
@@ -436,7 +526,11 @@ class UpdatableComponent: public Component {
 
   // To be used in child-class Read() functions, this function reads the opening
   // tag <ThisComponentType> and the learning-rate factor and the learning-rate.
-  void ReadUpdatableCommon(std::istream &is, bool binary);
+  //
+  // Its return value may not always be needed to be inspected by calling code;
+  // if there was a token that it read but could not process it returns it, else
+  // it returns "".
+  std::string ReadUpdatableCommon(std::istream &is, bool binary);
 
   // To be used in child-class Write() functions, writes the opening
   // <ThisComponentType> tag and the learning-rate factor (if not 1.0) and the
@@ -448,6 +542,8 @@ class UpdatableComponent: public Component {
                                    ///< can be set to another < value so that
                                    ///when < you call SetLearningRate(), that
                                    ///value will be scaled by this factor.
+  BaseFloat l2_regularize_;  ///< L2 regularization constant.  See comment for
+                             ///< the L2Regularization() for details.
   bool is_gradient_;  ///< True if this component is to be treated as a gradient rather
                       ///< than as parameters.  Its main effect is that we disable
                       ///< any natural-gradient update and just compute the standard
@@ -458,10 +554,43 @@ class UpdatableComponent: public Component {
   const UpdatableComponent &operator = (const UpdatableComponent &other); // Disallow.
 };
 
-/// This kind of Component is a base-class for things like sigmoid, softmax and
-/// ReLU: nonlinearities that don't change the dimension.  It takes care of
-/// storing statistics on the average activations and derivatives encountered
-/// during training.
+
+/*   NonlinearComponent is a base-class for things like sigmoid, softmax and
+     ReLU: nonlinearities that don't change the dimension.  This base-class
+     takes care of storing statistics on the average activations and derivatives
+     encountered during training, and model initialization and I/O.
+
+     Supported parameters on the config line:
+
+       dim           Dimension of the input and output of the component.
+                     (Caution: for NormalizeComponent, there is a member
+                     "add-log-stddev" which if true,  will increase the output
+                     dim by one, so it will be "dim" plus one.
+
+       self-repair-scale=0.0   A scale for the self-repair mechanism (which nudges
+                     the activation values towards the 'good' regions when a particular
+                     dimension of the activations seem to be oversaturated or otherwise
+                     unbalanced.  This is typically set from the script level to values
+                     like 1.0e-04 to 1.0e-05.
+
+       self-repair-lower-threshold=-1000  A lower threshold for the self-repair mechanism;
+                     it will be interpreted in a component-specific way, typically a lower
+                     limit on the average derivative or activation below which the
+                     self-repair mechanism is activated.  -1000 is a special value which
+                     will cause a component-specific default to be used.
+
+       self-repair-upper-threshold=-1000  An upper threshold for the self-repair mechanism;
+                     it will be interpreted in a component-specific way, typically an upper
+                     limit on the average derivative or activation above which the
+                     self-repair mechanism is activated.  -1000 is a special value which
+                     will cause a component-specific default to be used.
+
+       block-dim     Defaults to dim, but may be any nonzero divisor of dim.  It affects the
+                     self-repair, which will be done while treating the input/output as
+                     repeating blocks of size 'block-dim' (e.g. blocks of filtes).  It allows
+                     us to do self-repair on the filter level in CNNs.
+                     Currently this only makes a difference for RectifiedLinearComponent.
+*/
 class NonlinearComponent: public Component {
  public:
 
@@ -471,25 +600,9 @@ class NonlinearComponent: public Component {
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
 
-  // We implement InitFromConfig at this level.
-  // supported config parameters and their defaults:
-  //   dim=-1  self-repair-lower-threshold=-1000  self-repair-upper-threshold=-1000
-  //     self-repair-constant=0.0
-  // the 'self-repair' stuff is 'self-repairing' nonlinearities-- they add small
-  // quantities to the derivative to attempt to keep the average value (for
-  // bounded nonlinearities) or average derivative (for ReLU) for each
-  // dimension within a given range.  The default ranges (if you don't
-  // specify self-repair-lower-threshold or self-repair-upper-threshold) are
-  // dependent on the nonlinearity and are set in their Backprop functions.
-  // To activate this code you have to set self-repair-constant to a number >0 like
-  // 0.0001 when initializing the ReLU (this is a scaling factor on the 'fake
-  // derivative').  This code is only activated if derivative and value stats
-  // are present in the model, which will typically only be the case
-  // if the 'store-stats' code is activated
-  // (e.g. --optimization.store-stats=true) because it needs the stats.  To be
-  // activated this code also requires that is_gradient_ is false (i.e. you're
-  // not computing exact gradients).
-
+  // We implement InitFromConfig at this level and this version is sufficient
+  // for most of the child classes.  Note: it's overridden by class
+  // NormalizeComponent.
   virtual void InitFromConfig(ConfigLine *cfl);
 
   /// We implement Read at this level as it just needs the Type().
@@ -529,7 +642,15 @@ class NonlinearComponent: public Component {
 
 
   const NonlinearComponent &operator = (const NonlinearComponent &other); // Disallow.
+
+  // dim_ is the input dimension (and almost always the output dimension) of the
+  // component.
   int32 dim_;
+  // block_dim_ will normally be the same as dim_, but it may be any nonzero
+  // divisor of dim_; if so, each vector is treated as a number of blocks
+  // appended together, and this affects the stats accumulation and self-repair.
+  // Currently this is only supported for RectifiedLinearComponent.
+  int32 block_dim_;
   CuVector<double> value_sum_; // stats at the output.
   CuVector<double> deriv_sum_; // stats of the derivative of the nonlinearity
                                // (only applicable to element-by-element
@@ -546,7 +667,7 @@ class NonlinearComponent: public Component {
   BaseFloat self_repair_scale_;
 
   // The mutex is used in UpdateStats, only for resizing vectors.
-  Mutex mutex_;
+  std::mutex mutex_;
 };
 
 } // namespace nnet3

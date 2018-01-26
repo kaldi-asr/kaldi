@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rules xmlns="http://www.cereproc.com/rulesdat" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.cereproc.com/rulesdat rulesdat.xsd ">
+
+<regex name="whitespace">
+  <comment>
+    Overide default to regard hypens as wspace until norm rules added
+    to deal with hypenation.
+  </comment>
+  <exp>
+    <![CDATA[^([ \n\t\r\-]+)]]>
+  </exp>
+</regex>
+
+  <regex name="separators">
+    <comment>
+      Important: DO NOT REMOVE
+      It is used by the tokeniser to tokenise these characters separately
+    </comment>
+    <exp>
+      <![CDATA[^([+\/\*=$£€¥₩@&%|\\#~^¬])$]]>
+    </exp>
+  </regex>
+
+  <regex name="alpha">
+    <comment>
+      Important: Do not delete this regex, as it is used by the normaliser
+      internally.
+      Also, extend it with the language-specific letters.
+    </comment>
+    <exp>
+      <![CDATA[^[a-zA-Z_']+$]]>
+    </exp>
+  </regex>
+
+  <lookup name="downcase">
+    <comment>
+      Important: Do not delete this table, as it is used by the normaliser
+      internally.
+      Also, extend it with the language-specific letters.
+    </comment>
+    <exp>
+      <![CDATA[{"A":"a", "B":"b", "C":"c", "D":"d", "E":"e", "F":"f", "G":"g", "H":"h", "I":"i", "J":"j", "K":"k", "L":"l", "M":"m", "N":"n", "O":"o", "P":"p", "Q":"q", "R":"r", "S":"s", "T":"t", "U":"u", "V":"v", "W":"w", "X":"x", "Y":"y", "Z":"z", "Ä":"ä", "Ö":"ö", "Ü":"ü"}]]>
+    </exp>
+  </lookup>
+
+  <lookup name="convertillegal">
+    <comment>
+      Important: Do not delete this table, as it is used by the normaliser internally.
+    </comment>
+    <exp>
+      <![CDATA["À":"A", "Á":"A", "Â":"A", "Ã":"A", "Å":"A", "Æ":"AE", "à":"a", "á":"a", "â":"a", "ã":"a", "å":"a", "æ":"ae", "Ç":"C", "ç":"c", "È":"E", "É":"E", "Ê":"E", "Ë":"E", "è":"e", "é":"e", "ê":"e", "ë":"e", "Ì":"I", "Í":"I", "Î":"I", "Ï":"I", "ì":"i", "í":"i", "î":"i", "ï":"i", "Ñ":"N", "ñ":"n", "Ò":"O", "Ó":"O", "Ô":"O", "Õ":"O", "Ø":"O", "ò":"o", "ó":"o", "ô":"o", "õ":"o", "ø":"o", "Ù":"U", "Ú":"U", "Û":"U", "\u0170":u"Ü", "ù":"u", "ú":"u", "û":"u", "\u0171":u"ü", "Ý":"Y", "ý":"y", "０":"0", "１":"1", "２":"2", "３":"3", "４":"4", "５":"5", "６":"6", "７":"7", "８":"8", "９":"9", "Ａ":"A", "Ｂ":"B", "Ｃ":"C", "Ｄ":"D", "Ｅ":"E", "Ｆ":"F", "Ｇ":"G", "Ｈ":"H", "Ｉ":"I", "Ｊ":"J", "Ｋ":"K", "Ｌ":"L", "Ｍ":"M", "Ｎ":"N", "Ｏ":"O", "Ｐ":"P", "Ｑ":"Q", "Ｒ":"R", "Ｓ":"S", "Ｔ":"T", "Ｕ":"U", "Ｖ":"V", "Ｗ":"W", "Ｘ":"X", "Ｙ":"Y", "Ｚ":"Z", "ａ":"a", "ｂ":"b", "ｃ":"c", "ｄ":"d", "ｅ":"e", "ｆ":"f", "ｇ":"g", "ｈ":"h", "ｉ":"i", "ｊ":"j", "ｋ":"k", "ｌ":"l", "ｍ":"m", "ｎ":"n", "ｏ":"o", "ｐ":"p", "ｑ":"q", "ｒ":"r", "ｓ":"s", "ｔ":"t", "ｕ":"u", "ｖ":"v", "ｗ":"w", "ｘ":"x", "ｙ":"y", "ｚ":"z"]]>
+    </exp>
+  </lookup>
+
+  <lookup name="utfpunc2ascii">
+    <comment>
+      Important: Do not delete this table, as it is used by the normaliser
+      internally.
+    </comment>
+    <exp>
+      <![CDATA[{"‘":"'", "’":"'", "‛":"'", '“':'"', '”':'"',"΄":"'", "´":"'", "`":"'", "…":".", "\uFF06":"&", "„":'"', '–':'-', '–':'-', '–':'-', '—':'-', "＇":"'"}]]>
+    </exp>
+  </lookup>
+  <lookup name="asdigits">
+    <comment>
+      This is used for 'H:asdigits'.
+    </comment>
+    <exp>
+      <![CDATA[{'0':'oh', '1':'one', '2':'two', '3':'three', '4':'four', '5':'five', '6':'six', '7':'seven', '8':'eight', '9':'nine'}]]>
+    </exp>
+  </lookup>
+
+  <lookup name="symbols">
+    <comment>
+      Important, do not delete: Used by the hard-coded rule "H:aschars"
+    </comment>
+    <exp>
+      <![CDATA[{"\":"backslash", "_": "underscore", "*":"asterisk", "#":"hash", "@":"at", ".":"dot", "~":"tilde", "%":"percent", "<":"less than", ">":"more than", "=":"equals", "&":"ampersand", "+":"plus", "÷": "divided by", "¢": "cents", ":":"colon", "/":"slash", ",":"comma", "°":"degrees", "?":"question mark", "!":"exclamation mark", "½":"half", "¼":"quarter", "¾":"three quarters", "©":"copyright", "²":"squared", "³":"cubed", "×":"times", "·":"point", "√":"square root"}]]>
+    </exp>
+  </lookup>
+
+</rules>

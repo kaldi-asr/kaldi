@@ -36,6 +36,24 @@
 
 namespace kaldi {
 
+/**
+   This function extracts the per-frame log likelihoods from a linear
+   lattice (which we refer to as an 'nbest' lattice elsewhere in Kaldi code).
+   The dimension of *per_frame_loglikes will be set to the
+   number of input symbols in 'nbest'.  The elements of
+   '*per_frame_loglikes' will be set to the .Value2() elements of the lattice
+   weights, which represent the acoustic costs; you may want to scale this
+   vector afterward by -1/acoustic_scale to get the original loglikes.
+   If there are acoustic costs on input-epsilon arcs or the final-prob in 'nbest'
+   (and this should not normally be the case in situations where it makes
+   sense to call this function), they will be included to the cost of the
+   preceding input symbol, or the following input symbol for input-epsilons
+   encountered prior to any input symbol.  If 'nbest' has no input symbols,
+   'per_frame_loglikes' will be set to the empty vector.
+**/
+void GetPerFrameAcousticCosts(const Lattice &nbest,
+                              Vector<BaseFloat> *per_frame_loglikes);
+
 /// This function iterates over the states of a topologically sorted lattice and
 /// counts the time instance corresponding to each state. The times are returned
 /// in a vector of integers 'times' which is resized to have a size equal to the
@@ -67,12 +85,12 @@ BaseFloat LatticeForwardBackward(const Lattice &lat,
 // the CompactLattice lattice format. Also we only need the alpha in the forward
 // path, not the posteriors.
 bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
-                                 vector<double> *alpha);
+                                 std::vector<double> *alpha);
 
 // A sibling of the function CompactLatticeAlphas()... We compute the beta from
 // the backward path here.
 bool ComputeCompactLatticeBetas(const CompactLattice &lat,
-                                vector<double> *beta);
+                                std::vector<double> *beta);
 
 
 // Computes (normal or Viterbi) alphas and betas; returns (total-prob, or
@@ -82,8 +100,8 @@ bool ComputeCompactLatticeBetas(const CompactLattice &lat,
 template<typename LatticeType>
 double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
                                     bool viterbi,
-                                    vector<double> *alpha,
-                                    vector<double> *beta);
+                                    std::vector<double> *alpha,
+                                    std::vector<double> *beta);
 
 
 /// Topologically sort the compact lattice if not already topologically sorted.
@@ -173,11 +191,39 @@ bool LatticeBoost(const TransitionModel &trans,
    This function implements either the MPFE (minimum phone frame error) or SMBR
    (state-level minimum bayes risk) forward-backward, depending on whether
    "criterion" is "mpfe" or "smbr".  It returns the MPFE
-   criterion of SMBR criterion for this file, and outputs the posteriors (which
-   may be positive or negative) into "arc_post".
-   Note: setting one_silence_class to false gives the old traditional behavior,
-   true gives a possibly improved behavior which will tend to reduce insertions
-   in the trained model.
+   criterion of SMBR criterion for this utterance, and outputs the posteriors (which
+   may be positive or negative) into "post".
+
+   @param [in] trans    The transition model. Used to map the
+                        transition-ids to phones or pdfs.
+   @param [in] silence_phones   A list of integer ids of silence phones. The
+                        silence frames i.e. the frames where num_ali
+                        corresponds to a silence phones are treated specially.
+                        The behavior is determined by 'one_silence_class'
+                        being false (traditional behavior) or true.
+                        Usually in our setup, several phones including
+                        the silence, vocalized noise, non-spoken noise
+                        and unk are treated as "silence phones"
+   @param [in] lat      The denominator lattice
+   @param [in] num_ali  The numerator alignment
+   @param [in] criterion    The objective function. Must be "mpfe" or "smbr"
+                        for MPFE (minimum phone frame error) or sMBR
+                        (state minimum bayes risk) training.
+   @param [in] one_silence_class   Determines how the silence frames are treated.
+                        Setting this to false gives the old traditional behavior,
+                        where the silence frames (according to num_ali) are
+                        treated as incorrect. However, this means that the
+                        insertions are not penalized by the objective.
+                        Setting this to true gives the new behaviour, where we
+                        treat silence as any other phone, except that all pdfs
+                        of silence phones are collapsed into a single class for
+                        the frame-error computation. This can possible reduce
+                        the insertions in the trained model. This is closer to
+                        the WER metric that we actually care about, since WER is
+                        generally computed after filtering out noises, but
+                        does penalize insertions.
+    @param [out] post   The "MBR posteriors" i.e. derivatives w.r.t to the
+                        pseudo log-likelihoods of states at each frame.
 */
 BaseFloat LatticeForwardBackwardMpeVariants(
     const TransitionModel &trans,
@@ -194,12 +240,25 @@ BaseFloat LatticeForwardBackwardMpeVariants(
    used in our normal MMI training recipes, where it's instead done using various command
    line programs that each do a part of the job.  This function was written for use in
    neural-net MMI training.
-   If drop_frames is true, it will not compute any posteriors on frames where the num and
-   den have disjoint pdf-ids.
-   If "convert_to_pdf_ids" is true, it will convert the output to be at the level of pdf-ids,
-   not transition-ids.
-   If "cancel" is true, it will cancel out any positive and negative parts from
-   the same transition-id (or pdf-id, if convert_to_pdf_ids == true).
+
+   @param [in] trans    The transition model. Used to map the
+                        transition-ids to phones or pdfs.
+   @param [in] lat      The denominator lattice
+   @param [in] num_ali  The numerator alignment
+   @param [in] drop_frames   If "drop_frames" is true, it will not compute any
+                        posteriors on frames where the num and den have disjoint
+                        pdf-ids.
+   @param [in] convert_to_pdf_ids   If "convert_to_pdfs_ids" is true, it will
+                        convert the output to be at the level of pdf-ids, not
+                        transition-ids.
+   @param [in] cancel   If "cancel" is true, it will cancel out any positive and
+                        negative parts from the same transition-id (or pdf-id,
+                        if convert_to_pdf_ids == true).
+   @param [out] arc_post   The output MMI posteriors of transition-ids (or
+                        pdf-ids if convert_to_pdf_ids == true) at each frame
+                        i.e. the difference between the numerator
+                        and denominator posteriors.
+
    It returns the forward-backward likelihood of the lattice. */
 BaseFloat LatticeForwardBackwardMmi(
     const TransitionModel &trans,
@@ -321,4 +380,3 @@ void ComposeCompactLatticeDeterministic(
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_
-

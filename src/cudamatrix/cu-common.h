@@ -31,9 +31,8 @@
 
 #if HAVE_CUDA == 1
 #include <cublas_v2.h>
+#include <cusparse.h>
 #include <cuda_runtime_api.h>
-
-
 
 #define CU_SAFE_CALL(fun) \
 { \
@@ -41,7 +40,22 @@
   if ((ret = (fun)) != 0) { \
     KALDI_ERR << "cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\" returned from '" << #fun << "'"; \
   } \
-  cudaDeviceSynchronize(); \
+}
+
+#define CUBLAS_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "cublasStatus_t " << ret << " : \"" << cublasGetStatusString((cublasStatus_t)ret) << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
+#define CUSPARSE_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "cusparseStatus_t " << ret << " : \"" << cusparseGetStatusString((cusparseStatus_t)ret) << "\" returned from '" << #fun << "'"; \
+  } \
 }
 
 #define KALDI_CUDA_ERR(ret, msg) \
@@ -49,8 +63,8 @@
   if (ret != 0) { \
     KALDI_ERR << msg << ", diagnostics: cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\", in " << __FILE__ << ":" << __LINE__; \
   } \
-  cudaDeviceSynchronize(); \
 }
+
 
 namespace kaldi {
 
@@ -76,7 +90,11 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
                                            dim3 *dimGrid,
                                            dim3 *dimBlock);
 
+/** This is analogous to the CUDA function cudaGetErrorString(). **/
+const char* cublasGetStatusString(cublasStatus_t status);
 
+/** This is analogous to the CUDA function cudaGetErrorString(). **/
+const char* cusparseGetStatusString(cusparseStatus_t status);
 }
 
 #endif // HAVE_CUDA

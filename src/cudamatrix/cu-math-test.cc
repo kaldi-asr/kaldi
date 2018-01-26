@@ -69,6 +69,29 @@ static void UnitTestCuMathRandomize() {
   }
 }
 
+template<typename Real>
+static void UnitTestEnsureNonzero() {
+  int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
+  Real epsilon = 0.1;
+  CuMatrix<Real> x(M, N);
+  x.SetRandn();
+  CuMatrix<Real> y(M, N, kUndefined);
+  cu::EnsureNonzero(x, epsilon, &y);
+  Matrix<Real> x_cpu(x);
+  Matrix<Real> y_cpu(y);
+  for (int32 i = 0; i < 30; i++) {
+    int32 r = RandInt(0, M-1), c = RandInt(0, N-1);
+    Real src = x_cpu(r, c), dest = y_cpu(r, c);
+    if (src <= -epsilon || src >= epsilon) {
+      KALDI_ASSERT(src == dest);
+    } else if (src >= 0) {
+      KALDI_ASSERT(dest == epsilon);
+    } else {
+      KALDI_ASSERT(dest == -epsilon);
+    }
+  }
+}
+
 
 template<typename Real>
 static void UnitTestCuMathCopy() {
@@ -144,7 +167,8 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
   for (int i = 0; i < 3; i++) {
     int32 num_rows = 1 + Rand() % 100;
     int32 cell_dim = 1 + Rand() % 2000;
-    Matrix<Real> Hinput(num_rows, 5 * cell_dim);
+    int32 dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
+    Matrix<Real> Hinput(num_rows, 5 * cell_dim + dropout_dim);
     Matrix<Real> Hparams(3, cell_dim);
     Matrix<Real> Houtput(num_rows, 2 * cell_dim);
     Hinput.SetRandn();
@@ -161,11 +185,12 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     AssertEqual(Houtput, HDoutput);
   }
 
-  for (int i = 16; i <= 2048; i *= 2) {
+  for (int i = 16; i <= 1024; i *= 2) {
     BaseFloat time_in_secs = 0.025;
     int32 num_rows = i;
     int32 cell_dim = i;
-    CuMatrix<Real> input(num_rows, 5 * cell_dim);
+    int32 dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
+    CuMatrix<Real> input(num_rows, 5 * cell_dim + dropout_dim);
     CuMatrix<Real> params(3, cell_dim);
     CuMatrix<Real> output(num_rows, 2 * cell_dim);
     input.SetRandn();
@@ -180,6 +205,8 @@ static void UnitTestCuMathComputeLstmNonlinearity() {
     KALDI_LOG << "For ComputeLstmNonlinearity"
               << (sizeof(Real)==8 ? "<double>" : "<float>") << ", for dim = "
               << i << ", speed was " << gflops << " gigaflops";
+    if (tim.Elapsed() > 0.05)
+      break;
   }
 }
 
@@ -188,7 +215,8 @@ void UnitTestLstmNonlinearity() {
 
     // problem dimensions.
     int32 num_rows = RandInt(5, 20),
-        cell_dim = RandInt(2, 200);
+          cell_dim = RandInt(2, 200),
+        dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
 
     // Pick the (input or params block), and output block, for which we'll
     // spot-check the derivative values.  This will give us test failures
@@ -205,7 +233,7 @@ void UnitTestLstmNonlinearity() {
       test_params = -1;
 
 
-    CuMatrix<BaseFloat> input(num_rows, cell_dim * 5),
+    CuMatrix<BaseFloat> input(num_rows, cell_dim * 5 + dropout_dim),
         params(3, cell_dim),
         output_deriv(num_rows, cell_dim * 2);
     input.SetRandn();
@@ -228,7 +256,7 @@ void UnitTestLstmNonlinearity() {
     CuVector<BaseFloat> self_repair_config(10.0); // leave at zero... we don't really test this here.
     CuMatrix<BaseFloat>
         self_repair_sum(5, cell_dim),
-        input_deriv(num_rows, 5 * cell_dim),
+        input_deriv(num_rows, 5 * cell_dim + dropout_dim),
         params_deriv(3, cell_dim);
 
     double count_in = 0.0;
@@ -247,7 +275,7 @@ void UnitTestLstmNonlinearity() {
         measured_objf_change(test_dim);
 
     for (int32 i = 0; i < test_dim; i++) {
-      CuMatrix<BaseFloat> delta_input(num_rows, 5 * cell_dim),
+      CuMatrix<BaseFloat> delta_input(num_rows, 5 * cell_dim + dropout_dim),
           delta_params(3, cell_dim);
       if (test_input >= 0) {
         delta_input.ColRange(test_input * cell_dim, cell_dim).SetRandn();
@@ -258,11 +286,8 @@ void UnitTestLstmNonlinearity() {
         delta_params.Scale(delta);
       }
 
-
-
       predicted_objf_change(i) = TraceMatMat(delta_input, input_deriv, kTrans) +
           TraceMatMat(delta_params, params_deriv, kTrans);
-
 
       CuMatrix<BaseFloat> perturbed_input(input);
       perturbed_input.AddMat(1.0, delta_input);
@@ -278,7 +303,9 @@ void UnitTestLstmNonlinearity() {
       measured_objf_change(i) = objf_change;
     }
     KALDI_LOG << "LSTM nonlinearity test: num_rows=" << num_rows
-              << ", cell_dim=" << cell_dim << ", test_input=" << test_input
+              << ", cell_dim=" << cell_dim
+              << ", dropout_dim=" << dropout_dim
+              << ", test_input=" << test_input
               << ", test_params=" << test_params
               << ", test_output=" << test_output
               << ", predicted_objf_change=" << predicted_objf_change
@@ -294,16 +321,17 @@ template<typename Real>
 static void UnitTestBackpropLstmNonlinearity() {
   for (int i = 0; i < 3; i++) {
     int32 num_rows = 1 + Rand() % 200;
-    int32 cell_dim = 1 + Rand() % 2000;
+    int32 cell_dim = 1 + Rand() % 2000,
+       dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
 //    KALDI_LOG << num_rows << ", " << cell_dim;
 
-    Matrix<Real> hinput(num_rows, 5 * cell_dim);
+    Matrix<Real> hinput(num_rows, 5 * cell_dim + dropout_dim);
     Matrix<Real> hparams(3, cell_dim);
     Matrix<Real> houtput_deriv(num_rows, 2 * cell_dim);
     Matrix<double> hderiv_sum_in(5, cell_dim);
     Vector<Real> hself_repair_config(10);
     double count_in;
-    Matrix<Real> hinput_deriv(num_rows, 5 * cell_dim);
+    Matrix<Real> hinput_deriv(num_rows, 5 * cell_dim + dropout_dim);
     Matrix<Real> hparams_deriv(3, cell_dim);
     Matrix<double> hvalue_sum_out(5, cell_dim);
     Matrix<double> hderiv_sum_out(5, cell_dim);
@@ -407,15 +435,16 @@ static void UnitTestBackpropLstmNonlinearity() {
     BaseFloat time_in_secs = 0.025;
     int32 num_rows = i;
     int32 cell_dim = i;
+    int32 dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
 
-    CuMatrix<Real> input(num_rows, 5 * cell_dim);
+    CuMatrix<Real> input(num_rows, 5 * cell_dim + dropout_dim);
     CuMatrix<Real> params(3, cell_dim);
     CuMatrix<Real> output_deriv(num_rows, 2 * cell_dim);
     CuMatrix<double> deriv_sum_in(5, cell_dim);
     CuVector<Real> self_repair_config(10);
     double count_in;
 
-    CuMatrix<Real> input_deriv(num_rows, 5 * cell_dim);
+    CuMatrix<Real> input_deriv(num_rows, 5 * cell_dim + dropout_dim);
     CuMatrix<Real> params_deriv(3, cell_dim);
     CuMatrix<double> value_sum_out(5, cell_dim);
     CuMatrix<double> deriv_sum_out(5, cell_dim);
@@ -441,6 +470,8 @@ static void UnitTestBackpropLstmNonlinearity() {
     KALDI_LOG << "For BackpropLstmNonlinearity"
               << (sizeof(Real) == 8 ? "<double>" : "<float>") << ", for dim = "
               << i << ", speed was " << gflops << " gigaflops";
+    if (tim.Elapsed() > 0.05)
+      break;
   }
 }
 
@@ -506,11 +537,114 @@ static void UnitTestCuMathNormalizePerRow() {
 
     BaseFloat gflops = ((BaseFloat) dim * dim * iter)
         / (tim.Elapsed() * 1.0e+09);
-    KALDI_LOG << "For CuMatrix::NormalizePerRow"
+    KALDI_LOG << "For CuMath::NormalizePerRow"
               << (sizeof(Real)==8?"<double>":"<float>") << ", for dim = "
               << dim << ", speed was " << gflops << " gigaflops.";
+    if (tim.Elapsed() > 0.05)
+      break;
   }
 }
+
+template<typename Real>
+static void UnitTestCuDiffNormalizePerRow() {
+  for (int32 i = 0; i < 2; i++) {
+    int row = 10 + Rand() % 40;
+    int col = 10 + Rand() % 50;
+
+    Matrix<Real> Hi(row, col);
+    Matrix<Real> Ho(row, col + 1);
+    Matrix<Real> Hid(row, col);
+    Matrix<Real> Hod(row, col + 1);
+    Hi.SetRandn();
+    Hod.SetRandn();
+    Hi.Scale(5.0);
+
+    CuMatrix<Real> Di(row, col);
+    CuMatrix<Real> Do(row, col + 1);
+    CuMatrix<Real> Did(row, col);
+    CuMatrix<Real> Dod(row, col + 1);
+    Di.CopyFromMat(Hi);
+    Dod.CopyFromMat(Hod);
+
+    Real target_rms = 0.3456;
+    bool add_log_stddev = true;
+    const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
+
+    //gpu
+    cu::DiffNormalizePerRow(Di, Dod, target_rms, add_log_stddev, &Did);
+
+    //cpu
+    {
+      MatrixBase<Real>* in_deriv = &Hid;
+      MatrixBase<Real>& out_deriv(Hod);
+      MatrixBase<Real>& in_value(Hi);
+
+      const SubMatrix<Real> out_deriv_no_log(out_deriv, 0, out_deriv.NumRows(),
+                                             0, in_value.NumCols());
+      Vector<Real> dot_products(out_deriv.NumRows());
+      dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans, in_value,
+                                 kTrans, 0.0);
+      Vector<Real> in_norm(in_value.NumRows());
+      Real d_scaled = (in_value.NumCols() * target_rms * target_rms);
+      in_norm.AddDiagMat2(1.0, in_value, kNoTrans, 0.0);
+      if (add_log_stddev) {
+        Vector<Real> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1
+        out_deriv_for_stddev(out_deriv.NumRows(), kUndefined);
+        // f = log(sqrt(max(epsi, x^T x / D)))
+        // df/dx = epsi^2 * D < x^T x ? (1/(x^T x)) * x  : 0.
+        // we don't compute this exactly below for the case when x^2 x is very
+        // small, but we do make sure that the deriv isn't infinity when the input
+        // is zero.
+        log_stddev_deriv.ApplyFloor(in_value.NumCols() * kSquaredNormFloor);
+        log_stddev_deriv.ApplyPow(-1.0);
+        out_deriv_for_stddev.CopyColFromMat(out_deriv,
+                                            (out_deriv.NumCols() - 1));
+        log_stddev_deriv.MulElements(out_deriv_for_stddev);
+        if (in_deriv)
+          in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans,
+                                  1.0);
+      }
+      in_norm.Scale(1.0 / d_scaled);
+      in_norm.ApplyFloor(kSquaredNormFloor);
+      in_norm.ApplyPow(-0.5);
+      if (in_deriv) {
+        if (in_deriv->Data() != out_deriv_no_log.Data())
+          in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans,
+                                  1.0);
+        else
+          in_deriv->MulRowsVec(in_norm);
+        in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
+        in_norm.ApplyPow(3.0);
+        dot_products.MulElements(in_norm);
+
+        in_deriv->AddDiagVecMat(-1.0 / d_scaled, dot_products, in_value,
+                                kNoTrans, 1.0);
+      }
+
+      Matrix<Real> Hid2(Did);
+      AssertEqual(Hid, Hid2, 0.00001);
+    }
+  }
+
+  for (int dim = 16; dim <= 1024; dim *= 2) {
+    BaseFloat time_in_secs = 0.025;
+    CuMatrix<Real> id(dim, dim), iv(dim, dim), od(dim, dim + 1);
+    iv.SetRandn();
+    od.SetRandn();
+    Timer tim;
+    int32 iter = 0;
+    for (; tim.Elapsed() < time_in_secs; iter++) {
+      cu::DiffNormalizePerRow(iv, od, Real(0.456), true, &id);
+    }
+    BaseFloat fdim = dim;
+    BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For CuMath::DiffNormalizePerRow"
+              << (sizeof(Real)==8?"<double>":"<float>")
+              << ", for dim = " << dim << ", speed was " << gflops
+              << " gigaflops.";
+  }
+}
+
 
 
 template<typename Real> void CudaMathUnitTest() {
@@ -523,16 +657,20 @@ template<typename Real> void CudaMathUnitTest() {
   UnitTestCuMathSplice<Real>();
   UnitTestCuMathCopy<Real>();
   UnitTestLstmNonlinearity();
+  UnitTestEnsureNonzero<Real>();
   UnitTestBackpropLstmNonlinearity<Real>();
   UnitTestCuMathNormalizePerRow<Real>();
+  UnitTestCuDiffNormalizePerRow<Real>();
 }
 
 } // namespace kaldi
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  SetVerboseLevel(1);
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no"); // -1 means no GPU
@@ -556,8 +694,8 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
 #if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;

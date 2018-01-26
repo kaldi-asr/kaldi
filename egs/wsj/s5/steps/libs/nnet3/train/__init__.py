@@ -9,7 +9,3 @@ It has separate submodules for frame-level objectives and chain objective:
 frame_level_objf -- For both recurrent and non-recurrent architectures
 chain_objf -- LF-MMI objective training
 """
-
-import common
-
-__all__ = ["common"]

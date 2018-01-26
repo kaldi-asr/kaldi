@@ -1,7 +1,8 @@
-#!/bin/bash -u
+#!/usr/bin/env bash
 
 # Copyright 2012  Arnab Ghoshal
-# Copyright 2010-2011  Microsoft Corporation
+#           2010-2011  Microsoft Corporation
+#           2016-2018  Johns Hopkins University (author: Daniel Povey)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,7 +17,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-set -o errexit
+set -e
 
 if [ $# -ne 4 ]; then
   echo "Usage: $0 <lang_dir> <arpa-LM> <lexicon> <out_dir>"
@@ -35,7 +36,11 @@ mkdir -p $out_dir
 
 echo "Converting '$lm' to FST"
 
-for f in phones.txt words.txt topo L.fst L_disambig.fst phones/ oov.int oov.txt; do
+if [ -e $out_dir/phones ]; then
+  rm -r $out_dir/phones
+fi
+
+for f in phones.txt words.txt topo L.fst L_disambig.fst phones oov.int oov.txt; do
   cp -r $lang_dir/$f $out_dir
 done
 

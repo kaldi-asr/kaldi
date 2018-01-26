@@ -38,7 +38,7 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
   KALDI_ASSERT(SameDim(*weight, *grad));
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(weight->NumCols(), CU2DBLOCK), n_blocks(weight->NumRows(), CU2DBLOCK));
@@ -47,7 +47,7 @@ void RegularizeL1(CuMatrixBase<Real> *weight, CuMatrixBase<Real> *grad, Real l1,
                        weight->Dim(), grad->Stride());
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
   #endif
   {
@@ -87,7 +87,7 @@ void Randomize(const CuMatrixBase<Real> &src,
 
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     /*
     Note: default 16x16 block-size limits the --cachesize to matrix size 16*65535 x 16*65535
@@ -112,7 +112,7 @@ void Randomize(const CuMatrixBase<Real> &src,
                    copy_from_idx.Data(), dimtgt, dimsrc);
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
   #endif
   {
@@ -137,7 +137,7 @@ void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
 
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
@@ -146,7 +146,7 @@ void Splice(const CuMatrixBase<Real> &src, const CuArray<int32> &frame_offsets,
                 frame_offsets.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
   #endif
   {
@@ -178,7 +178,7 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
 
   #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
     dim3 dimGrid(n_blocks(tgt->NumCols(), CU2DBLOCK), n_blocks(tgt->NumRows(), CU2DBLOCK));
@@ -187,7 +187,7 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
               copy_from_indices.Data(), tgt->Dim(), src.Dim());
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
   #endif
   {
@@ -204,6 +204,40 @@ void Copy(const CuMatrixBase<Real> &src, const CuArray<int32> &copy_from_indices
     }
   }
 }
+
+template <typename Real>
+void EnsureNonzero(const CuMatrixBase<Real> &src,
+                   Real epsilon,
+                   CuMatrixBase<Real> *dest) {
+  KALDI_ASSERT(SameDim(*dest, src) && epsilon > 0.0);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(src.NumRows(), src.NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_ensure_nonzero(dimGrid, dimBlock, src.Data(), src.Dim(),
+                        epsilon, dest->Stride(), dest->Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    int32 num_rows = src.NumRows(), num_cols = src.NumCols();
+    for (int32 r = 0; r < num_rows; r++) {
+      const Real *src_data = src.RowData(r);
+      Real *dest_data = dest->RowData(r);
+      for (int32 c = 0; c < num_cols; c++) {
+        Real x = src_data[c], y;
+        if (x <= -epsilon || x >= epsilon) y = x;
+        else if (x >= 0.0) y = epsilon;
+        else y = -epsilon;
+        dest_data[c] = y;
+      }
+    }
+  }
+}
+
 
 // instantiate the templates.
 template
@@ -245,7 +279,7 @@ void Randomize(const CuMatrixBase<double> &src,
 template<typename Real>
 void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
                      const bool add_log_stddev, CuMatrixBase<Real>* out) {
-  const Real kSquaredNormFloor = 1.35525271560688e-20; // 2^-66
+  const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
   if (add_log_stddev) {
     KALDI_ASSERT(in.NumRows() == out->NumRows());
     KALDI_ASSERT(in.NumCols() + 1 == out->NumCols());
@@ -255,13 +289,13 @@ void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     size_t dimBlock = CU1DBLOCK;
     size_t dimGrid = out->NumRows();
     cuda_normalize_per_row(dimGrid, dimBlock, out->Data(), out->Stride(),
                            in.Data(), in.Dim(), target_rms, add_log_stddev);
     CU_SAFE_CALL(cudaGetLastError());
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -291,6 +325,100 @@ void NormalizePerRow(const CuMatrixBase<double>& in, const double target_rms,
                      const bool add_log_stddev, CuMatrixBase<double>* out);
 
 
+// A note on the derivative of NormalizeComponent...
+// let both row_in and row_out be vectors of dimension D.
+// Let p = row_in^T row_in / (D * target_rms^2), and let
+// f = 1.0 / sqrt(max(kSquaredNormFloor, p)), and we compute row_out as:
+// row_out = f row_in.
+// Suppose we have a quantity deriv_out which is the derivative
+// of the objective function w.r.t. row_out.  We want to compute
+// deriv_in which is the derivative of the objective function w.r.t.
+// row_in.  Let the objective function be F.  One term is obvious: we have
+// deriv_in = f deriv_out + ....
+// next we have to take into account the derivative that gets back-propagated
+// through f.  Obviously, dF/df = deriv_out^T row_in.
+// And df/dp = (p <= kSquaredNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kSquaredNormFloor) ? 0.0 : -0.5 f^3),
+// and dp/d(row_in) = 2/(D * target_rms^2) row_in. [it's vector_valued].
+// So this term in dF/d(row_in) equals:
+// dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kSquaredNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
+// So
+// deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3  / (D * target_rms^2) ) (deriv_out^T row_in) row_in
+//  if add_log_stddev_ true, the deriv_in has another term as
+// dF/dx_i = dF/df . df/dx_i => df/dx_i = x_i/(x^T x)
+template<typename Real>
+void DiffNormalizePerRow(const CuMatrixBase<Real> &in_value,
+                         const CuMatrixBase<Real> &out_deriv,
+                         const Real target_rms, const bool add_log_stddev,
+                         CuMatrixBase<Real>* in_deriv) {
+  const Real kSquaredNormFloor = 1.3552527156068805425e-20; // 2^-66
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    size_t dimBlock = CU1DBLOCK;
+    size_t dimGrid = in_deriv->NumRows();
+    cuda_diff_normalize_per_row(dimGrid, dimBlock, in_deriv->Data(),
+                                in_deriv->Stride(), in_value.Data(),
+                                in_value.Dim(), out_deriv.Data(),
+                                out_deriv.Stride(), target_rms, add_log_stddev);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    const CuSubMatrix<Real> out_deriv_no_log(out_deriv, 0, out_deriv.NumRows(),
+                                             0, in_value.NumCols());
+    CuVector<Real> dot_products(out_deriv.NumRows());
+    dot_products.AddDiagMatMat(1.0, out_deriv_no_log, kNoTrans, in_value,
+                               kTrans, 0.0);
+    CuVector<Real> in_norm(in_value.NumRows());
+    Real d_scaled = (in_value.NumCols() * target_rms * target_rms);
+    in_norm.AddDiagMat2(1.0, in_value, kNoTrans, 0.0);
+
+    if (add_log_stddev) {
+      CuVector<Real> log_stddev_deriv(in_norm), // log_stddev deriv as dF/dy .* (x^T x)^-1
+      out_deriv_for_stddev(out_deriv.NumRows(), kUndefined);
+      // f = log(sqrt(max(epsi, x^T x / D)))
+      // df/dx = epsi^2 * D < x^T x ? (1/(x^T x)) * x  : 0.
+      // we don't compute this exactly below for the case when x^2 x is very
+      // small, but we do make sure that the deriv isn't infinity when the input
+      // is zero.
+      log_stddev_deriv.ApplyFloor(in_value.NumCols() * kSquaredNormFloor);
+      log_stddev_deriv.ApplyPow(-1.0);
+      out_deriv_for_stddev.CopyColFromMat(out_deriv, (out_deriv.NumCols() - 1));
+      log_stddev_deriv.MulElements(out_deriv_for_stddev);
+      if (in_deriv)
+        in_deriv->AddDiagVecMat(1.0, log_stddev_deriv, in_value, kNoTrans, 1.0);
+    }
+    in_norm.Scale(1.0 / d_scaled);
+    in_norm.ApplyFloor(kSquaredNormFloor);
+    in_norm.ApplyPow(-0.5);
+    if (in_deriv) {
+      if (in_deriv->Data() != out_deriv_no_log.Data())
+        in_deriv->AddDiagVecMat(1.0, in_norm, out_deriv_no_log, kNoTrans, 1.0);
+      else
+        in_deriv->MulRowsVec(in_norm);
+      in_norm.ReplaceValue(1.0 / sqrt(kSquaredNormFloor), 0.0);
+      in_norm.ApplyPow(3.0);
+      dot_products.MulElements(in_norm);
+
+      in_deriv->AddDiagVecMat(-1.0 / d_scaled, dot_products, in_value, kNoTrans,
+                              1.0);
+    }
+  }
+}
+
+template
+void DiffNormalizePerRow(const CuMatrixBase<float> &in_value,
+                         const CuMatrixBase<float> &out_deriv,
+                         const float target_rms, const bool add_log_stddev,
+                         CuMatrixBase<float>* in_deriv);
+template
+void DiffNormalizePerRow(const CuMatrixBase<double> &in_value,
+                         const CuMatrixBase<double> &out_deriv,
+                         const double target_rms, const bool add_log_stddev,
+                         CuMatrixBase<double>* in_deriv);
+
+
 // not calling this Sigmoid to reduce the chance of future collisions.
 template<typename Real>
 static inline Real ScalarSigmoid(Real a) {
@@ -317,10 +445,11 @@ template<typename Real>
 void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
                                 const MatrixBase<Real> &params_mat,
                                 MatrixBase<Real> *output) {
-  int32 num_rows = input_mat.NumRows();
-  int32 cell_dim = input_mat.NumCols() / 5;
+  int32 num_rows = input_mat.NumRows(),
+      input_cols = input_mat.NumCols(),
+        cell_dim = input_cols / 5;
+  KALDI_ASSERT(input_cols == (cell_dim * 5) || input_cols == (cell_dim * 5) + 3);
   KALDI_ASSERT(output->NumRows() == num_rows);
-  KALDI_ASSERT(input_mat.NumCols() % 5 == 0);
   KALDI_ASSERT(params_mat.NumRows() == 3);
   KALDI_ASSERT(params_mat.NumCols() == cell_dim);
   KALDI_ASSERT(output->NumCols() == 2 * cell_dim);
@@ -330,6 +459,11 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
   int32 params_stride = params_mat.Stride();
   for (int32 r = 0; r < num_rows; r++) {
     const Real *input_row = input_mat.RowData(r);
+    // i_scale and f_scale relate to dropout, they will normally be 1.0.
+    Real i_scale = (input_cols == cell_dim*5 ? 1.0:input_row[cell_dim*5]),
+         f_scale = (input_cols == cell_dim*5 ? 1.0:input_row[cell_dim*5 + 1]),
+         o_scale = (input_cols == cell_dim*5 ? 1.0:input_row[cell_dim*5 + 2]);
+
     Real *output_row = output_mat.RowData(r);
     for (int32 c = 0; c < cell_dim; c++) {
       Real i_part = input_row[c];
@@ -342,9 +476,9 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input_mat,
       Real w_oc = params_data[c + params_stride * 2];
       Real i_t = ScalarSigmoid(i_part + w_ic * c_prev);
       Real f_t = ScalarSigmoid(f_part + w_fc * c_prev);
-      Real c_t = f_t * c_prev + i_t * ScalarTanh(c_part);
+      Real c_t = f_t * f_scale * c_prev + i_t * i_scale * ScalarTanh(c_part);
       Real o_t = ScalarSigmoid(o_part + w_oc * c_t);
-      Real m_t = o_t * ScalarTanh(c_t);
+      Real m_t = o_t * o_scale * ScalarTanh(c_t);
       output_row[c] = c_t;
       output_row[c + cell_dim] = m_t;
     }
@@ -355,17 +489,20 @@ template<typename Real>
 void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
                              const CuMatrixBase<Real> &params,
                              CuMatrixBase<Real> *output) {
-  int32 num_rows = input.NumRows();
-  int32 cell_dim = input.NumCols() / 5;
+  int32 num_rows = input.NumRows(),
+      input_cols = input.NumCols(),
+        cell_dim = input_cols / 5;
+  KALDI_ASSERT(input_cols == (cell_dim * 5) || input_cols == (cell_dim * 5) + 3);
   KALDI_ASSERT(output->NumRows() == num_rows);
-  KALDI_ASSERT(input.NumCols() % 5 == 0);
   KALDI_ASSERT(params.NumRows() == 3);
   KALDI_ASSERT(params.NumCols() == cell_dim);
   KALDI_ASSERT(output->NumCols() == 2 * cell_dim);
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
+
+    int have_dropout_mask = (input_cols == (cell_dim * 5) + 3);
 
     // Each thread block is working on 1 row of the data.
     // It's best that cell dim is a multiple fo CU1DBLOCK
@@ -374,10 +511,10 @@ void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
 
     cuda_lstm_nonlinearity(dimGrid, dimBlock, input.Data(), input.Stride(),
                            params.Data(), params.Stride(), output->Stride(),
-                           cell_dim, num_rows, output->Data());
+                           cell_dim, have_dropout_mask, num_rows, output->Data());
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -414,10 +551,12 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
                                  MatrixBase<double> *value_sum_out,
                                  MatrixBase<double> *deriv_sum_out,
                                  MatrixBase<Real> *self_repair_sum_out) {
-  int32 num_rows = input.NumRows();
-  int32 cell_dim = input.NumCols() / 5;
+  int32 num_rows = input.NumRows(),
+      input_cols = input
+                   .NumCols(),
+        cell_dim = input.NumCols() / 5;
   // Check dimensions.
-  KALDI_ASSERT(input.NumCols() % 5 == 0);
+  KALDI_ASSERT(input_cols == (cell_dim * 5) || input_cols == (cell_dim * 5) + 3);
   KALDI_ASSERT(params.NumRows() == 3);
   KALDI_ASSERT(params.NumCols() == cell_dim);
   KALDI_ASSERT(output_deriv.NumRows() == num_rows);
@@ -481,15 +620,15 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
     //  Sigmoid(i_t_input), Sigmoid(f_t_input),
     //  Tanh(c_part), Sigmoid(o_t_input),  Tanh(c_t)
     Real i_t_self_repair = (
-        deriv_sum_in(0, c) / count < sr_config(0) ? sr_config(5) : 0.0);
+        deriv_sum_in_mat(0, c) / count < sr_config(0) ? sr_config(5) : 0.0);
     Real f_t_self_repair = (
-        deriv_sum_in(1, c) / count < sr_config(1) ? sr_config(6) : 0.0);
+        deriv_sum_in_mat(1, c) / count < sr_config(1) ? sr_config(6) : 0.0);
     Real c_part_self_repair = (
-        deriv_sum_in(2, c) / count < sr_config(2) ? sr_config(7) : 0.0);
+        deriv_sum_in_mat(2, c) / count < sr_config(2) ? sr_config(7) : 0.0);
     Real o_t_self_repair = (
-        deriv_sum_in(3, c) / count < sr_config(3) ? sr_config(8) : 0.0);
+        deriv_sum_in_mat(3, c) / count < sr_config(3) ? sr_config(8) : 0.0);
     Real c_t_self_repair = (
-        deriv_sum_in(4, c) / count < sr_config(4) ? sr_config(9) : 0.0);
+        deriv_sum_in_mat(4, c) / count < sr_config(4) ? sr_config(9) : 0.0);
     // Note on how we add self-repair for sigmoids/tanh's.  If self-repair
     // is activated for this unit, then...
     // For sigmoids we'd add -self_repair_scale * (2 * sigmoid(x) - 1.0)
@@ -512,6 +651,14 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
           c_part = input_mat(r, c + 2 * cell_dim),
           o_part = input_mat(r, c + 3 * cell_dim),
           c_prev = input_mat(r, c + 4 * cell_dim);
+
+      Real i_scale = (input_cols == cell_dim * 5 ? 1.0 :
+                      input_mat(r, cell_dim * 5)),
+           f_scale = (input_cols == cell_dim * 5 ? 1.0 :
+                      input_mat(r, cell_dim * 5 + 1)),
+           o_scale = (input_cols == cell_dim * 5 ? 1.0 :
+                      input_mat(r, cell_dim * 5 + 2));
+
       // For greater clarity, we give some of the quantities in the
       // forward equations their own names.
       Real i_t_input = i_part + w_ic * c_prev,
@@ -519,7 +666,7 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
           f_t_input = f_part + w_fc * c_prev,
           f_t = ScalarSigmoid(f_t_input),
           tanh_c_part = ScalarTanh(c_part),
-          c_t = f_t * c_prev + i_t * tanh_c_part,
+          c_t = f_t * f_scale * c_prev + i_t * i_scale * tanh_c_part,
           o_t_input = o_part + w_oc * c_t,
           o_t = ScalarSigmoid(o_t_input),
           tanh_c_t = ScalarTanh(c_t);
@@ -551,25 +698,25 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       // comes directly from the output of this function.
       Real dc_t_out = output_deriv_mat(r, c);
       Real dm_t = output_deriv_mat(r, c + cell_dim);
-      Real dtanh_c_t = o_t * dm_t;
-      Real do_t = tanh_c_t * dm_t;
+      Real dtanh_c_t = o_t * o_scale * dm_t;
+      Real do_t = o_scale * tanh_c_t * dm_t;
       Real do_t_input = (o_t * (1.0F - o_t) * do_t
           - (2.0F * o_t - 1.0F) * o_t_self_repair);
       Real dc_t = ((1.0F - tanh_c_t * tanh_c_t) * dtanh_c_t + dc_t_out
           + do_t_input * w_oc) - tanh_c_t * c_t_self_repair;
-      Real dtanh_c_part = i_t * dc_t;
-      Real df_t = dc_t * c_prev;
-      Real df_t_input = (df_t * f_t * (1.0F - f_t)
-          - (2.0F * f_t - 1.0F) * f_t_self_repair);
-      Real di_t = dc_t * tanh_c_part;
-      Real di_t_input = (di_t * i_t * (1.0F - i_t)
-          - (2.0F * i_t - 1.0F) * i_t_self_repair);
+      Real dtanh_c_part = i_t * i_scale * dc_t;
+      Real df_t = dc_t * f_scale * c_prev;
+      Real df_t_input = ((df_t * f_t * (1.0F - f_t)
+                          - (2.0F * f_t - 1.0F) * f_t_self_repair));
+      Real di_t = dc_t * i_scale * tanh_c_part;
+      Real di_t_input = ((di_t * i_t * (1.0F - i_t)
+                          - (2.0F * i_t - 1.0F) * i_t_self_repair));
 
       w_ic_deriv_sum += c_prev * di_t_input;
       w_fc_deriv_sum += c_prev * df_t_input;
       w_oc_deriv_sum += c_t * do_t_input;
 
-      Real dc_prev = w_ic * di_t_input + w_fc * df_t_input + f_t * dc_t;
+      Real dc_prev = w_ic * di_t_input + w_fc * df_t_input + f_t * f_scale * dc_t;
       Real do_part = do_t_input;
       Real dc_part = ((1.0F - tanh_c_part * tanh_c_part) * dtanh_c_part
           - tanh_c_part * c_part_self_repair);
@@ -605,7 +752,7 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
       // deriv_sum_out and deriv_sum_in might point to the same memory.
       for (int32 i = 0; i < 5; i++)
         (*self_repair_sum_out_mat)(i, c) =
-            (deriv_sum_in(i, c) / count < sr_config(i) ? num_rows : 0);
+            (deriv_sum_in_mat(i, c) / count < sr_config(i) ? num_rows : 0);
 
       (*deriv_sum_out_mat)(0, c) += i_t_deriv_sum;
       (*deriv_sum_out_mat)(1, c) += f_t_deriv_sum;
@@ -630,10 +777,11 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                               CuMatrixBase<double> *value_sum_out,
                               CuMatrixBase<double> *deriv_sum_out,
                               CuMatrixBase<Real> *self_repair_sum_out) {
-  int32 num_rows = input.NumRows();
-  int32 cell_dim = input.NumCols() / 5;
+  int32 num_rows = input.NumRows(),
+        cell_dim = input.NumCols() / 5,
+      input_cols = input.NumCols();
   // Check dimensions.
-  KALDI_ASSERT(input.NumCols() % 5 == 0);
+  KALDI_ASSERT(input_cols == (cell_dim * 5) || input_cols == (cell_dim*5) + 3);
   KALDI_ASSERT(params.NumRows() == 3);
   KALDI_ASSERT(params.NumCols() == cell_dim);
   KALDI_ASSERT(output_deriv.NumRows() == num_rows);
@@ -641,7 +789,6 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
   KALDI_ASSERT(deriv_sum_in.NumRows() == 5);
   KALDI_ASSERT(deriv_sum_in.NumCols() == cell_dim);
   KALDI_ASSERT(self_repair_config.Dim() == 10);
-  KALDI_ASSERT(count_in >= 0);
   if (input_deriv != NULL) {
     KALDI_ASSERT(SameDim(input, *input_deriv));
   }
@@ -664,10 +811,11 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     // Each thread block is working on 1 row of the data.
     // It's best that cell dim is a multiple fo CU1DBLOCK
 
+    int have_dropout_mask = (input_cols == (cell_dim * 5) + 3);
 
     // Use 2D block (8x32 threads) as we need to compute column sum.
     // Use 1D grid to cover the data matrix width `cell_dim`.
@@ -681,7 +829,8 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
     dim3 dimGrid(n_blocks(cell_dim, dimBlock.x));
     if (input_deriv == NULL) {
       if (params_deriv == NULL) {
-        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim,
+                                    have_dropout_mask, num_rows,
                                     input.Data(), input.Stride(), params.Data(),
                                     params.Stride(), output_deriv.Data(),
                                     output_deriv.Stride(), deriv_sum_in.Data(),
@@ -699,7 +848,8 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                                     0);
 
       } else {
-        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim,
+                                    have_dropout_mask, num_rows,
                                     input.Data(), input.Stride(), params.Data(),
                                     params.Stride(), output_deriv.Data(),
                                     output_deriv.Stride(), deriv_sum_in.Data(),
@@ -717,7 +867,8 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
       }
     } else {
       if (params_deriv == NULL) {
-        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim,
+                                    have_dropout_mask, num_rows,
                                     input.Data(), input.Stride(), params.Data(),
                                     params.Stride(), output_deriv.Data(),
                                     output_deriv.Stride(), deriv_sum_in.Data(),
@@ -727,7 +878,8 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                                     NULL,
                                     0, NULL, 0, NULL, 0, NULL, 0);
       } else {
-        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim, num_rows,
+        cuda_diff_lstm_nonlinearity(dimGrid, dimBlock, cell_dim,
+                                    have_dropout_mask, num_rows,
                                     input.Data(), input.Stride(), params.Data(),
                                     params.Stride(), output_deriv.Data(),
                                     output_deriv.Stride(), deriv_sum_in.Data(),
@@ -747,7 +899,7 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
 
     CU_SAFE_CALL(cudaGetLastError());
 
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -759,6 +911,38 @@ void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
                                 &(self_repair_sum_out->Mat()));
   }
 }
+
+template <typename Real>
+void EnsureNonzero(const CuVectorBase<Real> &src,
+                   Real epsilon,
+                   CuVectorBase<Real> *dest) {
+  KALDI_ASSERT(src.Dim() == dest->Dim());
+  int32 dim = src.Dim();
+  // fake it with a 1-row matrix.
+  CuSubMatrix<Real> src_mat(src.Data(), 1,  dim, dim),
+      dest_mat(dest->Data(), 1, dim, dim);
+  EnsureNonzero(src_mat, epsilon, &dest_mat);
+}
+
+// Instantiate the templates we defined above.
+
+template
+void EnsureNonzero(const CuMatrixBase<float> &src,
+                   float epsilon,
+                   CuMatrixBase<float> *dest);
+template
+void EnsureNonzero(const CuMatrixBase<double> &src,
+                   double epsilon,
+                   CuMatrixBase<double> *dest);
+
+template
+void EnsureNonzero(const CuVectorBase<float> &src,
+                   float epsilon,
+                   CuVectorBase<float> *dest);
+template
+void EnsureNonzero(const CuVectorBase<double> &src,
+                   double epsilon,
+                   CuVectorBase<double> *dest);
 
 template
 void CpuBackpropLstmNonlinearity(const MatrixBase<float> &input,

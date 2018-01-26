@@ -24,11 +24,13 @@
 // This file contains some #includes, forward declarations
 // and typedefs that are needed by all the main header
 // files in this directory.
+#include <mutex>
 #include "base/kaldi-common.h"
 #include "matrix/kaldi-blas.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-matrixdim.h"
+
 
 namespace kaldi {
 
@@ -53,7 +55,7 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
   int32 col_blocksize = 64, row_blocksize = 4;
   while (col_blocksize > 1 &&
          (num_cols + (num_cols / 2) <= col_blocksize ||
-          num_rows > 65536 * row_blocksize)) {
+          num_rows > 65535 * row_blocksize)) {
     col_blocksize /= 2;
     row_blocksize *= 2;
   }
@@ -63,9 +65,42 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
   dimBlock->z = 1;
   dimGrid->x = n_blocks(num_cols, col_blocksize);
   dimGrid->y = n_blocks(num_rows, row_blocksize);
-  KALDI_ASSERT(dimGrid->y <= 65536 &&
+  KALDI_ASSERT(dimGrid->y <= 65535 &&
                "Matrix has too many rows to process");
   dimGrid->z = 1;
+}
+
+const char* cublasGetStatusString(cublasStatus_t status) {
+  switch(status) {
+    case CUBLAS_STATUS_SUCCESS:           return "CUBLAS_STATUS_SUCCESS";
+    case CUBLAS_STATUS_NOT_INITIALIZED:   return "CUBLAS_STATUS_NOT_INITIALIZED";
+    case CUBLAS_STATUS_ALLOC_FAILED:      return "CUBLAS_STATUS_ALLOC_FAILED";
+    case CUBLAS_STATUS_INVALID_VALUE:     return "CUBLAS_STATUS_INVALID_VALUE";
+    case CUBLAS_STATUS_ARCH_MISMATCH:     return "CUBLAS_STATUS_ARCH_MISMATCH";
+    case CUBLAS_STATUS_MAPPING_ERROR:     return "CUBLAS_STATUS_MAPPING_ERROR";
+    case CUBLAS_STATUS_EXECUTION_FAILED:  return "CUBLAS_STATUS_EXECUTION_FAILED";
+    case CUBLAS_STATUS_INTERNAL_ERROR:    return "CUBLAS_STATUS_INTERNAL_ERROR";
+    case CUBLAS_STATUS_NOT_SUPPORTED:     return "CUBLAS_STATUS_NOT_SUPPORTED";
+    case CUBLAS_STATUS_LICENSE_ERROR:     return "CUBLAS_STATUS_LICENSE_ERROR";
+  }
+  return "CUBLAS_STATUS_UNKNOWN_ERROR";
+}
+
+const char* cusparseGetStatusString(cusparseStatus_t status) {
+  // detail info come from http://docs.nvidia.com/cuda/cusparse/index.html#cusparsestatust
+  switch(status) {
+    case CUSPARSE_STATUS_SUCCESS:                   return "CUSPARSE_STATUS_SUCCESS";
+    case CUSPARSE_STATUS_NOT_INITIALIZED:           return "CUSPARSE_STATUS_NOT_INITIALIZED";
+    case CUSPARSE_STATUS_ALLOC_FAILED:              return "CUSPARSE_STATUS_ALLOC_FAILED";
+    case CUSPARSE_STATUS_INVALID_VALUE:             return "CUSPARSE_STATUS_INVALID_VALUE";
+    case CUSPARSE_STATUS_ARCH_MISMATCH:             return "CUSPARSE_STATUS_ARCH_MISMATCH";
+    case CUSPARSE_STATUS_MAPPING_ERROR:             return "CUSPARSE_STATUS_MAPPING_ERROR";
+    case CUSPARSE_STATUS_EXECUTION_FAILED:          return "CUSPARSE_STATUS_EXECUTION_FAILED";
+    case CUSPARSE_STATUS_INTERNAL_ERROR:            return "CUSPARSE_STATUS_INTERNAL_ERROR";
+    case CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED: return "CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED";
+    case CUSPARSE_STATUS_ZERO_PIVOT:                return "CUSPARSE_STATUS_ZERO_PIVOT";
+  }
+  return "CUSPARSE_STATUS_UNKNOWN_ERROR";
 }
 #endif
 

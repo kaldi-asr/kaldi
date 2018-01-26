@@ -112,4 +112,5 @@ cat $srcdir/utt2dur | utils/apply_map.pl -f 1 $destdir/utt_map  | \
 
 rm $destdir/spk_map $destdir/utt_map 2>/dev/null
 echo "$0: generated speed-perturbed version of data in $srcdir, in $destdir"
-utils/validate_data_dir.sh --no-feats $destdir
+
+utils/validate_data_dir.sh --no-feats --no-text $destdir

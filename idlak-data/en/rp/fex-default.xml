@@ -1,0 +1,62 @@
+<fex maxfieldlen="3" pausehandling="SPT">
+  <!-- Sets must be specified before feature functions that depend on them -->
+  <set name="phone" null="X">
+    <item name="pau"/>
+    <item name="aa"/>
+    <item name="ae"/>
+    <item name="ah"/>
+    <item name="ao"/>
+    <item name="aw"/>
+    <item name="ax"/>
+    <item name="ay"/>
+    <item name="b"/>
+    <item name="ch"/>
+    <item name="d"/>
+    <item name="dx"/>
+    <item name="dh"/>
+    <item name="eh"/>
+    <item name="er"/>
+    <item name="ey"/>
+    <item name="f"/>
+    <item name="g"/>
+    <item name="hh"/>
+    <item name="ih"/>
+    <item name="iy"/>
+    <item name="jh"/>
+    <item name="k"/>
+    <item name="l"/>
+    <item name="m"/>
+    <item name="n"/>
+    <item name="ng"/>
+    <item name="ow"/>
+    <item name="oy"/>
+    <item name="p"/>
+    <item name="r"/>
+    <item name="s"/>
+    <item name="sh"/>
+    <item name="t"/>
+    <item name="th"/>
+    <item name="uh"/>
+    <item name="uw"/>
+    <item name="v"/>
+    <item name="w"/>
+    <item name="y"/>
+    <item name="z"/>
+    <item name="zh"/>
+  </set>
+  <feat delim="" htsname="LL" desc="phone_before_before" name="bbp" set="phone" pauctx="false">
+    <mapping fromstr="X" tostr="sil"/>
+  </feat>
+  <feat delim="~" htsname="L" desc="phone_before" name="bp" set="phone" pauctx="false">
+    <mapping fromstr="X" tostr="sil"/>
+  </feat>
+  <feat delim="-" htsname="C" desc="current_phone" name="p" set="phone" pauctx="false">
+    <mapping fromstr="X" tostr="sil"/>
+  </feat>
+  <feat delim="+" htsname="R" desc="phone_forward" name="fp" set="phone" pauctx="false">
+    <mapping fromstr="X" tostr="sil"/>
+  </feat>
+  <feat delim="=" htsname="RR" desc="phone_forward_forward" name="ffp" set="phone" pauctx="false">
+    <mapping fromstr="X" tostr="sil"/>
+  </feat>
+</fex>

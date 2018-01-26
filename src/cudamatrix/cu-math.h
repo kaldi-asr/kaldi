@@ -73,10 +73,25 @@ void Copy(const CuMatrixBase<Real> &src,
           const CuArray<int32> &copy_from_indices,
           CuMatrixBase<Real> *tgt);
 
+
+/// This function requires that src and dest have the same dimension and epsilon
+/// > 0.  It copies src to dest while ensuring that the values are bounded away
+/// from zero by at least epsilon:
+/// \code
+///  y =  x if fabs(x) >= epsilon;
+///       epsilon if 0 <= x < epsilon;
+///       -epsilon if -epsilon < x < 0.
+/// \endcode
 template <typename Real>
-void Group2norm(const CuMatrixBase<Real> &src,
-                CuMatrixBase<Real> *dest,
-                int32 group_stride);
+void EnsureNonzero(const CuMatrixBase<Real> &src,
+                   Real epsilon,
+                   CuMatrixBase<Real> *dest);
+
+/// Vector version of EnsureNonzero, see matrix version for documentation.
+template <typename Real>
+void EnsureNonzero(const CuVectorBase<Real> &src,
+                   Real epsilon,
+                   CuVectorBase<Real> *dest);
 
 /**
  this is a special-purpose function used by class LstmNonlinearityComponent,
@@ -88,6 +103,9 @@ void Group2norm(const CuMatrixBase<Real> &src,
                      a multiple of 5).  The column-space is interpreted as 5
                      consecutive blocks, each of dimension C, which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
+                     This function will also accept input of dimension N by 5C + 3,
+                     and the three final elements will be used as scaling factors
+                     on i_t, f_t and o_t (useful as per-frame dropout masks).
  @param [in] params  A matrix, of dimension 3 by C, with rows containing the three
                      diagonal parameter matrices used in LSTMs, namely
                      w_{ic}, w_{fc} and w_{oc}.
@@ -101,7 +119,14 @@ void Group2norm(const CuMatrixBase<Real> &src,
                      o_t = Sigmoid(o_part + w_{oc}*c_t)
                      m_t = o_t * Tanh(c_t)
 
-
+                     Note on dropout: if the dropout mask is provided, let the
+                     mask values be i_t_mask, f_t_mask and o_t_mask (for each
+                     matrix row, these are scalars while i_t, f_t and o_t are of
+                     dimension C, because this is 'per-frame' dropout as described in
+                     http://www.danielpovey.com/files/2017_interspeech_dropout.pdf).
+                     Then the modification to the equations above consists of
+                     replacing 'i_t' with 'i_t_mask * i_t' in the RHS of the equations
+                     above, and the same type of change for f_t and o_t.
  */
 template<typename Real>
 void ComputeLstmNonlinearity(const CuMatrixBase<Real> &input,
@@ -134,6 +159,9 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      a multiple of 5).  The column-space is interpreted as 5
                      consecutive blocks, each of dimension C, which we name:
                      (i_part, f_part, c_part, o_part, c_{t-1}).
+                     This function will also accept input of dimension N by 5C + 3,
+                     and the three final elements will be interpreted as scaling factors
+                     on i_t, f_t and o_t (useful as per-frame dropout masks).
  @param [in] params  The same as in ComputeLstmNonlinearity().
                      A matrix, of dimension 3 by C, with rows containing the three
                      diagonal parameter matrices used in LSTMs, namely
@@ -165,9 +193,13 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      May be NULL; if not, this function writes, to this
                      location, the backpropagated derivative of the objective
                      function w.r.t. the 'input' matrix.  This matrix should
-                     have the same dimension as 'input' i.e.  N by 5C.  In
-                     addition to the regular backpropagated derivative, the
-                     output will include small values relating to 'self-repair'.
+                     have the same dimension as 'input'.  In addition to the
+                     regular backpropagated derivative, the output will include
+                     small values relating to 'self-repair'.  If the input
+                     is of column-dimension  5C + 3 (i.e. we are using dropout
+                     masks), the derivatives w.r.t. the dropout masks will not
+                     be set; they will retain their value prior to this
+                     function call.
  @param [out] params_deriv
                      May be NULL; if not, this is where this function *writes*
                      [not adds] the backpropagated derivative of the objective
@@ -196,23 +228,6 @@ void CpuComputeLstmNonlinearity(const MatrixBase<Real> &input,
                      processed outside this function into self-repair stats for
                      diagnostics.
 */
-/// Normalize nonlinearity modifies the vector of activations
-/// by scaling it so that the root-mean-square equals 1.0.
-///
-/// The output y_i = scale * x_i,
-/// and we want to RMS value of the y_i to equal target_rms,
-/// so y^t y = D * target_rms^2 (if y is one row of the input).
-/// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
-/// there is also flooring involved, to avoid division-by-zero
-/// problems.  It's important for the backprop, that the floor's
-/// square root is exactly representable as float.
-/// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
-/// is an extra dimension of the output.
-template<typename Real>
-void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
-                     const bool add_log_stddev, CuMatrixBase<Real>* out);
-
-
 
 template<typename Real>
 void BackpropLstmNonlinearity(const CuMatrixBase<Real> &input,
@@ -240,6 +255,49 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
                                  MatrixBase<double> *value_sum_out,
                                  MatrixBase<double> *deriv_sum_out,
                                  MatrixBase<Real> *self_repair_sum_out);
+
+/// Normalize nonlinearity modifies the vector of activations
+/// by scaling it so that the root-mean-square equals 1.0.
+///
+/// The output y_i = scale * x_i,
+/// and we want to RMS value of the y_i to equal target_rms,
+/// so y^t y = D * target_rms^2 (if y is one row of the input).
+/// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
+/// there is also flooring involved, to avoid division-by-zero
+/// problems.  It's important for the backprop, that the floor's
+/// square root is exactly representable as float.
+/// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
+/// is an extra dimension of the output.
+template<typename Real>
+void NormalizePerRow(const CuMatrixBase<Real>& in, const Real target_rms,
+                     const bool add_log_stddev, CuMatrixBase<Real>* out);
+
+// A note on the derivative of NormalizeComponent...
+// let both row_in and row_out be vectors of dimension D.
+// Let p = row_in^T row_in / (D * target_rms^2), and let
+// f = 1.0 / sqrt(max(kSquaredNormFloor, p)), and we compute row_out as:
+// row_out = f row_in.
+// Suppose we have a quantity deriv_out which is the derivative
+// of the objective function w.r.t. row_out.  We want to compute
+// deriv_in which is the derivative of the objective function w.r.t.
+// row_in.  Let the objective function be F.  One term is obvious: we have
+// deriv_in = f deriv_out + ....
+// next we have to take into account the derivative that gets back-propagated
+// through f.  Obviously, dF/df = deriv_out^T row_in.
+// And df/dp = (p <= kSquaredNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kSquaredNormFloor) ? 0.0 : -0.5 f^3),
+// and dp/d(row_in) = 2/(D * target_rms^2) row_in. [it's vector_valued].
+// So this term in dF/d(row_in) equals:
+// dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kSquaredNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
+// So
+// deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3  / (D * target_rms^2) ) (deriv_out^T row_in) row_in
+//  if add_log_stddev_ true, the deriv_in has another term as
+// dF/dx_i = dF/df . df/dx_i => df/dx_i = x_i/(x^T x)
+template<typename Real>
+void DiffNormalizePerRow(const CuMatrixBase<Real> &in_value,
+                         const CuMatrixBase<Real> &out_deriv,
+                         const Real target_rms, const bool add_log_stddev,
+                         CuMatrixBase<Real>* in_deriv);
+
 
 } // namespace cu
 } // namespace kaldi

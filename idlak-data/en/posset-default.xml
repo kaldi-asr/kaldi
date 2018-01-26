@@ -1,0 +1,405 @@
+<?xml version="1.0" ?>
+<pos>
+	<tagset>
+		<tag name="''" set="1">
+			<example_words>
+				'
+			</example_words>
+			<example_sentences>
+				forty or so years ago , no anti vietnam war rally was complete without someone trying to sing the i feel like i 'm fixin ' to die rag by country joe and the fish .
+			</example_sentences>
+		</tag>
+		<tag name="FW" set="1">
+			<example_words>
+				de la
+			</example_words>
+			<example_sentences>
+				later it became known as haut de la garenne . his most recent book is l'islam , la r .
+			</example_sentences>
+		</tag>
+		<tag name="JJ" set="1">
+			<example_words>
+				last new
+			</example_words>
+			<example_sentences>
+				after iraq , the culminating events came last summer . many new recruits lacked common sense , she said .
+			</example_sentences>
+		</tag>
+		<tag name="JJR" set="1">
+			<example_words>
+				more better
+			</example_words>
+			<example_sentences>
+				but it only needs to last three more weeks . you 'd be better off with heston motorway services .
+			</example_sentences>
+		</tag>
+		<tag name="JJS" set="1">
+			<example_words>
+				best most
+			</example_words>
+			<example_sentences>
+				clay pots are best because they help root formation . most people need to earn a living to survive .
+			</example_sentences>
+		</tag>
+		<tag name="LS" set="1">
+			<example_words>
+				b c
+			</example_words>
+			<example_sentences>
+				we 're doing one obscure gem or b side per night . when he outlined his strategy for turning around c .
+			</example_sentences>
+		</tag>
+		<tag name="NN" set="1">
+			<example_words>
+				year mister
+			</example_words>
+			<example_sentences>
+				products are due to start shipping later this year . there was no dissembling in mister harper 's speech .
+			</example_sentences>
+		</tag>
+		<tag name="NNS" set="1">
+			<example_words>
+				people years
+			</example_words>
+			<example_sentences>
+				most people need to earn a living to survive . brent council has now received three more years funding .
+			</example_sentences>
+		</tag>
+		<tag name="NP" set="1">
+			<example_words>
+				i iraq
+			</example_words>
+			<example_sentences>
+				i thought the pitch was unbelievable , he said . after iraq , the culminating events came last summer .
+			</example_sentences>
+		</tag>
+		<tag name="NPS" set="1">
+			<example_words>
+				humphrys
+			</example_words>
+			<example_sentences>
+				humphrys and missis beckett argued on a number of issues .
+			</example_sentences>
+		</tag>
+		<tag name="RB" set="1">
+			<example_words>
+				not n't
+			</example_words>
+			<example_sentences>
+				with carla , we 've decided not to lie . the answer is n't as simple as it seems .
+			</example_sentences>
+		</tag>
+		<tag name="RBR" set="1">
+			<example_words>
+				more later
+			</example_words>
+			<example_sentences>
+				it is even more difficult to imagine him accepting . minutes later , they were told of their mistake .
+			</example_sentences>
+		</tag>
+		<tag name="SYM" set="1">
+			<example_words>
+				c d
+			</example_words>
+			<example_sentences>
+				strauss c how b southee zero , four two . sending your nearest and dearest a d v d .
+			</example_sentences>
+		</tag>
+		<tag name="VHG" set="1">
+			<example_words>
+				having
+			</example_words>
+			<example_sentences>
+				but why is the next generation having these treatments .
+			</example_sentences>
+		</tag>
+		<tag name="VV" set="1">
+			<example_words>
+				make get
+			</example_words>
+			<example_sentences>
+				another ten think they can make the top four . the fifty two others failed to get that far .
+			</example_sentences>
+		</tag>
+		<tag name="VVD" set="1">
+			<example_words>
+				said did
+			</example_words>
+			<example_sentences>
+				i thought the pitch was unbelievable , he said . he did not give up the good fight easily .
+			</example_sentences>
+		</tag>
+		<tag name="VVG" set="1">
+			<example_words>
+				going including
+			</example_words>
+			<example_sentences>
+				it was just the way my life was going . s primary standard annual policy including winter sports cover .
+			</example_sentences>
+		</tag>
+		<tag name="VVN" set="1">
+			<example_words>
+				divided made
+			</example_words>
+			<example_sentences>
+				in kashmore the tribally divided electorate is heavily armed . and say we would n't have made those mistakes .
+			</example_sentences>
+		</tag>
+		<tag name="VVP" set="1">
+			<example_words>
+				dot do
+			</example_words>
+			<example_sentences>
+				var begin equals dc dot indexof , plus prefix . she said , we do have a problem already .
+			</example_sentences>
+		</tag>
+		<tag name="VVZ" set="1">
+			<example_words>
+				equals says
+			</example_words>
+			<example_sentences>
+				var begin equals dc dot indexof , plus prefix . it may cost me my seat , he says .
+			</example_sentences>
+		</tag>
+		<tag name="WP$" set="1">
+			<example_words>
+				whose
+			</example_words>
+			<example_sentences>
+				the ball breaks to scholes whose thirty yards out .
+			</example_sentences>
+		</tag>
+		<tag name="RBS" set="2">
+			<example_words>
+				most best
+			</example_words>
+			<example_sentences>
+				this republican administration is the most diverse in history . there is clear research that traffic lights work best .
+			</example_sentences>
+		</tag>
+		<tag name="UH" set="2">
+			<example_words>
+				oh yes
+			</example_words>
+			<example_sentences>
+				five oh oh oh oh oh dash plus wages . wright replied , it would seem so , yes .
+			</example_sentences>
+		</tag>
+		<tag name="VBG" set="2">
+			<example_words>
+				being
+			</example_words>
+			<example_sentences>
+				she is now fully conscious but being closely monitored .
+			</example_sentences>
+		</tag>
+		<tag name="CC" set="3">
+			<example_words>
+				and but
+			</example_words>
+			<example_sentences>
+				on friday may the sixteenth two thousand and eight . but finding a durable list is only the start .
+			</example_sentences>
+		</tag>
+		<tag name="CD" set="3">
+			<example_words>
+				one two
+			</example_words>
+			<example_sentences>
+				monks on one of cambodia 's many empty beaches . nine point two m , twice the previous deal .
+			</example_sentences>
+		</tag>
+		<tag name="DT" set="3">
+			<example_words>
+				the a
+			</example_words>
+			<example_sentences>
+				nine point two m , twice the previous deal . but finding a durable list is only the start .
+			</example_sentences>
+		</tag>
+		<tag name="EX" set="3">
+			<example_words>
+				there
+			</example_words>
+			<example_sentences>
+				there is an even worse alternative , doing nothing .
+			</example_sentences>
+		</tag>
+		<tag name="IN" set="3">
+			<example_words>
+				of in
+			</example_words>
+			<example_sentences>
+				minutes later , they were told of their mistake . the lynx has been reinstated in parts of europe .
+			</example_sentences>
+		</tag>
+		<tag name="IN/that" set="3">
+			<example_words>
+				that
+			</example_words>
+			<example_sentences>
+				and that , ladies and gents , is drinks .
+			</example_sentences>
+		</tag>
+		<tag name="MD" set="3">
+			<example_words>
+				will would
+			</example_words>
+			<example_sentences>
+				his service and political wisdom will be sadly missed . but that would be to undervalue her inherent dignity .
+			</example_sentences>
+		</tag>
+		<tag name="PDT" set="3">
+			<example_words>
+				all such
+			</example_words>
+			<example_sentences>
+				we listened to all the stuff i 'd done . why is it such an open race this year .
+			</example_sentences>
+		</tag>
+		<tag name="POS" set="3">
+			<example_words>
+				's '
+			</example_words>
+			<example_sentences>
+				each is charged with building britain 's knowledge economy . sir stephen sedley is far from a lock ' em up judge .
+			</example_sentences>
+		</tag>
+		<tag name="PP" set="3">
+			<example_words>
+				it he
+			</example_words>
+			<example_sentences>
+				it is a very different league to anywhere else . he just missed out on the big money football .
+			</example_sentences>
+		</tag>
+		<tag name="PP$" set="3">
+			<example_words>
+				his their
+			</example_words>
+			<example_sentences>
+				in traffic on his way to a mixed doubles . minutes later , they were told of their mistake .
+			</example_sentences>
+		</tag>
+		<tag name="RP" set="3">
+			<example_words>
+				up out
+			</example_words>
+			<example_sentences>
+				the county give up trying to play at hq . he just missed out on the big money football .
+			</example_sentences>
+		</tag>
+		<tag name="TO" set="3">
+			<example_words>
+				to na
+			</example_words>
+			<example_sentences>
+				the county give up trying to play at hq . and jaane tu ya jaane na .
+			</example_sentences>
+		</tag>
+		<tag name="VB" set="3">
+			<example_words>
+				be
+			</example_words>
+			<example_sentences>
+				his service and political wisdom will be sadly missed .
+			</example_sentences>
+		</tag>
+		<tag name="VBD" set="3">
+			<example_words>
+				was were
+			</example_words>
+			<example_sentences>
+				i thought the pitch was unbelievable , he said . minutes later , they were told of their mistake .
+			</example_sentences>
+		</tag>
+		<tag name="VBN" set="3">
+			<example_words>
+				been
+			</example_words>
+			<example_sentences>
+				the lynx has been reinstated in parts of europe .
+			</example_sentences>
+		</tag>
+		<tag name="VBP" set="3">
+			<example_words>
+				are 're
+			</example_words>
+			<example_sentences>
+				foreigners , she repeated , are not welcome underground . but that 's not what we 're doing here .
+			</example_sentences>
+		</tag>
+		<tag name="VBZ" set="3">
+			<example_words>
+				is 's
+			</example_words>
+			<example_sentences>
+				but finding a durable list is only the start . that 's the way i felt , he said .
+			</example_sentences>
+		</tag>
+		<tag name="VH" set="3">
+			<example_words>
+				have 've
+			</example_words>
+			<example_sentences>
+				she said , we do have a problem already . should 've been designed , implemented and tested in a week .
+			</example_sentences>
+		</tag>
+		<tag name="VHD" set="3">
+			<example_words>
+				had 'd
+			</example_words>
+			<example_sentences>
+				it had the man 's ankle in its jaws . we listened to all the stuff i 'd done .
+			</example_sentences>
+		</tag>
+		<tag name="VHN" set="3">
+			<example_words>
+				had
+			</example_words>
+			<example_sentences>
+				the company has always had a with the city .
+			</example_sentences>
+		</tag>
+		<tag name="VHP" set="3">
+			<example_words>
+				have 've
+			</example_words>
+			<example_sentences>
+				where it has not , previous trends have continued . with carla , we 've decided not to lie .
+			</example_sentences>
+		</tag>
+		<tag name="VHZ" set="3">
+			<example_words>
+				has 's
+			</example_words>
+			<example_sentences>
+				the lynx has been reinstated in parts of europe . it 's been a litany of travesties and injustices .
+			</example_sentences>
+		</tag>
+		<tag name="WDT" set="3">
+			<example_words>
+				which that
+			</example_words>
+			<example_sentences>
+				the obvious response to which is , french international . but that would be to undervalue her inherent dignity .
+			</example_sentences>
+		</tag>
+		<tag name="WP" set="3">
+			<example_words>
+				who what
+			</example_words>
+			<example_sentences>
+				a man who was a street vendor was dead . what we have achieved has never been done before .
+			</example_sentences>
+		</tag>
+		<tag name="WRB" set="3">
+			<example_words>
+				when where
+			</example_words>
+			<example_sentences>
+				it 's tough when you sell your top players . where it has not , previous trends have continued .
+			</example_sentences>
+		</tag>
+	</tagset>
+</pos>

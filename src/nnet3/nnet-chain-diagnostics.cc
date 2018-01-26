@@ -32,38 +32,61 @@ NnetChainComputeProb::NnetChainComputeProb(
     chain_config_(chain_config),
     den_graph_(den_fst, nnet.OutputDim("output")),
     nnet_(nnet),
-    compiler_(nnet, nnet_config_.optimize_config),
+    compiler_(nnet, nnet_config_.optimize_config, nnet_config_.compiler_config),
+    deriv_nnet_owned_(true),
     deriv_nnet_(NULL),
     num_minibatches_processed_(0) {
   if (nnet_config_.compute_deriv) {
     deriv_nnet_ = new Nnet(nnet_);
-    bool is_gradient = true;  // force simple update
-    SetZero(is_gradient, deriv_nnet_);
+    ScaleNnet(0.0, deriv_nnet_);
+    SetNnetAsGradient(deriv_nnet_); // force simple update
+  } else if (nnet_config_.store_component_stats) {
+    KALDI_ERR << "If you set store_component_stats == true and "
+              << "compute_deriv == false, use the other constructor.";
   }
 }
 
+
+NnetChainComputeProb::NnetChainComputeProb(
+    const NnetComputeProbOptions &nnet_config,
+    const chain::ChainTrainingOptions &chain_config,
+    const fst::StdVectorFst &den_fst,
+    Nnet *nnet):
+    nnet_config_(nnet_config),
+    chain_config_(chain_config),
+    den_graph_(den_fst, nnet->OutputDim("output")),
+    nnet_(*nnet),
+    compiler_(*nnet, nnet_config_.optimize_config, nnet_config_.compiler_config),
+    deriv_nnet_owned_(false),
+    deriv_nnet_(nnet),
+    num_minibatches_processed_(0) {
+  KALDI_ASSERT(nnet_config.store_component_stats && !nnet_config.compute_deriv);
+}
+
+
 const Nnet &NnetChainComputeProb::GetDeriv() const {
-  if (deriv_nnet_ == NULL)
+  if (!nnet_config_.compute_deriv)
     KALDI_ERR << "GetDeriv() called when no derivatives were requested.";
   return *deriv_nnet_;
 }
 
 NnetChainComputeProb::~NnetChainComputeProb() {
-  delete deriv_nnet_;  // delete does nothing if pointer is NULL.
+  if (deriv_nnet_owned_)
+    delete deriv_nnet_;  // delete does nothing if pointer is NULL.
 }
 
 void NnetChainComputeProb::Reset() {
   num_minibatches_processed_ = 0;
   objf_info_.clear();
   if (deriv_nnet_) {
-    bool is_gradient = true;
-    SetZero(is_gradient, deriv_nnet_);
+    ScaleNnet(0.0, deriv_nnet_);
+    SetNnetAsGradient(deriv_nnet_);
   }
 }
 
 void NnetChainComputeProb::Compute(const NnetChainExample &chain_eg) {
   bool need_model_derivative = nnet_config_.compute_deriv,
-      store_component_stats = false;
+      store_component_stats = nnet_config_.store_component_stats;
   ComputationRequest request;
   // if the options specify cross-entropy regularization, we'll be computing
   // this objective (not interpolated with the regular objective-- we give it a
@@ -82,10 +105,10 @@ void NnetChainComputeProb::Compute(const NnetChainExample &chain_eg) {
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(nnet_, chain_eg.inputs);
-  computer.Forward();
+  computer.Run();
   this->ProcessOutputs(chain_eg, &computer);
   if (nnet_config_.compute_deriv)
-    computer.Backward();
+    computer.Run();
 }
 
 void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
@@ -111,15 +134,15 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
     if (use_xent)
       xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                         kUndefined);
-      
+
     BaseFloat tot_like, tot_l2_term, tot_weight;
-    
+
     ComputeChainObjfAndDeriv(chain_config_, den_graph_,
                              sup.supervision, nnet_output,
                              &tot_like, &tot_l2_term, &tot_weight,
                              (nnet_config_.compute_deriv ? &nnet_output_deriv :
                               NULL), (use_xent ? &xent_deriv : NULL));
-    
+
     // note: in this context we don't want to apply 'sup.deriv_weights' because
     // this code is used only in combination, where it's part of an L-BFGS
     // optimization algorithm, and in that case if there is a mismatch between
@@ -134,7 +157,7 @@ void NnetChainComputeProb::ProcessOutputs(const NnetChainExample &eg,
     totals.tot_l2_term += tot_l2_term;
 
     if (nnet_config_.compute_deriv)
-      computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
+      computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     if (use_xent) {
       ChainObjectiveInfo &xent_totals = objf_info_[xent_name];
@@ -193,6 +216,32 @@ const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
   else
     return NULL;
 }
+
+void RecomputeStats(const std::vector<NnetChainExample> &egs,
+                    const chain::ChainTrainingOptions &chain_config_in,
+                    const fst::StdVectorFst &den_fst,
+                    Nnet *nnet) {
+  KALDI_LOG << "Recomputing stats on nnet (affects batch-norm)";
+  chain::ChainTrainingOptions chain_config(chain_config_in);
+  if (nnet->GetNodeIndex("output-xent") != -1 &&
+      chain_config.xent_regularize == 0) {
+    // this forces it to compute the output for 'output-xent', which
+    // means that we'll be computing batch-norm stats for any
+    // components in that branch that have batch-norm.
+    chain_config.xent_regularize = 0.1;
+  }
+
+  ZeroComponentStats(nnet);
+  NnetComputeProbOptions nnet_config;
+  nnet_config.store_component_stats = true;
+  NnetChainComputeProb prob_computer(nnet_config, chain_config, den_fst, nnet);
+  for (size_t i = 0; i < egs.size(); i++)
+    prob_computer.Compute(egs[i]);
+  prob_computer.PrintTotalStats();
+  KALDI_LOG << "Done recomputing stats.";
+}
+
+
 
 } // namespace nnet3
 } // namespace kaldi

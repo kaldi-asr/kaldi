@@ -133,7 +133,7 @@ void OptimizeFactorTransducer(KwsLexicographicFst *index_transducer,
       }
   }
   KALDI_VLOG(2) << "OptimizeFactorTransducer: minimization...";
-  Minimize(index_transducer);
+  Minimize(index_transducer, static_cast<KwsLexicographicFst *>(NULL), fst::kDelta, true);
   Decode(index_transducer, encoder);
 }
 

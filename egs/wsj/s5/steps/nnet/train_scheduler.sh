@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2015  Brno University of Technology (author: Karel Vesely)
+# Copyright 2012-2017  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
 # Schedules epochs and controls learning rate during the neural network training
@@ -18,6 +18,10 @@ train_tool="nnet-train-frmshuff"
 train_tool_opts="--minibatch-size=256 --randomizer-size=32768 --randomizer-seed=777"
 feature_transform=
 
+split_feats= # int -> number of splits 'feats.scp -> feats.${i}.scp', starting from feats.1.scp,
+             # (data are alredy shuffled and split to N parts),
+             # empty -> no splitting,
+
 # learn rate scheduling,
 max_iters=20
 min_iters=0 # keep training, disable weight rejection, start learn-rate halving as usual,
@@ -28,7 +32,7 @@ end_halving_impr=0.001
 halving_factor=0.5
 
 # misc,
-verbose=1
+verbose=0 # 0 No GPU time-stats, 1 with GPU time-stats (slower),
 frame_weights=
 utt_weights=
 
@@ -108,6 +112,13 @@ for iter in $(seq -w $max_iters); do
     mlp_best=${mlp_best}.dropout_rate${dropout_rate}
   fi
 
+  # select the split,
+  feats_tr_portion="$feats_tr" # no split?
+  if [ -n "$split_feats" ]; then
+    portion=$((1 + iter % split_feats))
+    feats_tr_portion="${feats_tr/train.scp/train.${portion}.scp}"
+  fi
+
   # training,
   log=$dir/log/iter${iter}.tr.log; hostname>$log
   $train_tool --cross-validate=false --randomize=true --verbose=$verbose $train_tool_opts \
@@ -116,7 +127,7 @@ for iter in $(seq -w $max_iters); do
     ${feature_transform:+ --feature-transform=$feature_transform} \
     ${frame_weights:+ "--frame-weights=$frame_weights"} \
     ${utt_weights:+ "--utt-weights=$utt_weights"} \
-    "$feats_tr" "$labels_tr" $mlp_best $mlp_next \
+    "$feats_tr_portion" "$labels_tr" $mlp_best $mlp_next \
     2>> $log || exit 1;
 
   tr_loss=$(cat $dir/log/iter${iter}.tr.log | grep "AvgLoss:" | tail -n 1 | awk '{ print $4; }')
@@ -136,7 +147,7 @@ for iter in $(seq -w $max_iters); do
 
   # accept or reject?
   loss_prev=$loss
-  if [ 1 == $(bc <<< "$loss_new < $loss") -o $iter -le $keep_lr_iters -o $iter -le $min_iters ]; then
+  if [ 1 == $(awk "BEGIN{print($loss_new < $loss ? 1:0);}") -o $iter -le $keep_lr_iters -o $iter -le $min_iters ]; then
     # accepting: the loss was better, or we had fixed learn-rate, or we had fixed epoch-number,
     loss=$loss_new
     mlp_best=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.4f" $tr_loss)_cv$(printf "%.4f" $loss_new)
@@ -159,8 +170,8 @@ for iter in $(seq -w $max_iters); do
   [ $iter -le $keep_lr_iters ] && continue
 
   # stopping criterion,
-  rel_impr=$(bc <<< "scale=10; ($loss_prev-$loss)/$loss_prev")
-  if [ 1 == $halving -a 1 == $(bc <<< "$rel_impr < $end_halving_impr") ]; then
+  rel_impr=$(awk "BEGIN{print(($loss_prev-$loss)/$loss_prev);}")
+  if [ 1 == $halving -a 1 == $(awk "BEGIN{print($rel_impr < $end_halving_impr ? 1:0);}") ]; then
     if [ $iter -le $min_iters ]; then
       echo we were supposed to finish, but we continue as min_iters : $min_iters
       continue
@@ -170,7 +181,7 @@ for iter in $(seq -w $max_iters); do
   fi
 
   # start learning-rate fade-out when improvement is low,
-  if [ 1 == $(bc <<< "$rel_impr < $start_halving_impr") ]; then
+  if [ 1 == $(awk "BEGIN{print($rel_impr < $start_halving_impr ? 1:0);}") ]; then
     halving=1
     echo $halving >$dir/.halving
   fi

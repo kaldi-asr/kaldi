@@ -5,16 +5,24 @@
 SHELL := /bin/bash
 
 
+<<<<<<< HEAD
 SUBDIRS = base matrix util feat tree thread gmm transform sgmm \
           fstext hmm lm decoder lat kws cudamatrix nnet idlakfeat \
           bin fstbin gmmbin fgmmbin sgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 chain nnet3bin nnet2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin chainbin idlakbin
+=======
+SUBDIRS = base matrix util feat tree gmm transform \
+          fstext hmm lm decoder lat kws cudamatrix nnet \
+          bin fstbin gmmbin fgmmbin featbin \
+          nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 rnnlm chain nnet3bin nnet2bin kwsbin \
+          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin
+>>>>>>> d6391f8640f1f92fe27340e87ad797abfb76da3d
 
-MEMTESTDIRS = base matrix util feat tree thread gmm transform sgmm \
+MEMTESTDIRS = base matrix util feat tree gmm transform \
           fstext hmm lm decoder lat nnet kws chain \
-          bin fstbin gmmbin fgmmbin sgmmbin featbin \
-          nnetbin latbin sgmm2 nnet2 nnet3 nnet2bin nnet3bin sgmm2bin kwsbin \
+          bin fstbin gmmbin fgmmbin featbin \
+          nnetbin latbin sgmm2 nnet2 nnet3 rnnlm nnet2bin nnet3bin sgmm2bin kwsbin \
           ivector ivectorbin online2 online2bin lmbin
 
 CUDAMEMTESTDIR = cudamatrix
@@ -31,8 +39,14 @@ include kaldi.mk
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
-all: checkversion test_dependencies kaldi.mk mklibdir $(SUBDIRS)
+all:
+	$(MAKE) checkversion
+	$(MAKE) kaldi.mk
+	$(MAKE) mklibdir
+	$(MAKE) subdirs
 	-echo Done
+
+subdirs: $(SUBDIRS)
 
 mklibdir:
 	test -d $(KALDILIBDIR) || mkdir $(KALDILIBDIR)
@@ -51,8 +65,10 @@ checkversion:
 ifeq ($(shell ./configure --version),$(CONFIGURE_VERSION))
 	@echo "The version of configure script matches kaldi.mk version. Good."
 else
+	@echo ""
 	@echo "The kaldi.mk file was generated using a different version of configure script. Please rerun the configure again"
 	@test -f ./kaldi.mk && echo  "Hint: Previous configure command line: " && head -n 2 ./kaldi.mk | grep configure | sed 's/^# *//g'
+	@echo ""
 	@false
 endif
 
@@ -88,22 +104,11 @@ kaldi.mk:
 	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
 
 # Compile optional stuff
-ext: test_dependencies ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
+ext: ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
 	-echo Done
-
-ifndef OPENFST_VER
-$(error Please rerun configure: OPENFST_VER is not defined, likely kaldi.mk was produced by older configure script.)
-endif
-# Note: OPENFST_VER is determined by configure and added to kaldi.mk
-OPENFST_VER_NUM := $(shell echo $(OPENFST_VER) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-test_dependencies:
-ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10302)","1")
-	$(error OpenFst $(OPENFST_VER) is not supported. You now need OpenFst >= 1.3.2.)
-endif
 
 check_portaudio:
 	@[ -d ../tools/portaudio ] || ( cd ../tools;  ./install_portaudio.sh )
-
 
 clean: rmlibdir
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x clean; done
@@ -111,9 +116,9 @@ clean: rmlibdir
 distclean: clean
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x distclean; done
 
-test: $(addsuffix /test, $(SUBDIRS))
+test: $(addsuffix /test, $(SUBDIRS_LIB))
 
-ext_test: $(addsuffix /test, $(EXT_SUBDIRS))
+ext_test: $(addsuffix /test, $(EXT_SUBDIRS_LIB))
 
 # Define an implicit rule, expands to e.g.:
 #  base/test: base
@@ -145,45 +150,42 @@ $(SUBDIRS) : mklibdir
 	$(MAKE) -C $@
 
 .PHONY: $(EXT_SUBDIRS)
-$(EXT_SUBDIRS) : mklibdir
+$(EXT_SUBDIRS) : mklibdir ext_depend
 	$(MAKE) -C $@
 
 
 ### Dependency list ###
 # this is necessary for correct parallel compilation
 #1)The tools depend on all the libraries
-
-bin fstbin gmmbin fgmmbin sgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin idlakbin: \
- base matrix util feat tree thread gmm transform sgmm sgmm2 fstext hmm \
- lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2 idlakfeat
+bin idlakbin fstbin gmmbin fgmmbin sgmm2bin featbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin rnnlmbin: \
+ base matrix util feat idlakfeat tree gmm transform sgmm2 fstext hmm \
+ lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2 rnnlm
 
 #2)The libraries have inter-dependencies
 base: base/.depend.mk
 matrix: base
-thread: base
-util: base matrix thread
-feat: base matrix util gmm transform tree thread
-tree: base util thread matrix
-gmm: base util matrix tree thread
-transform: base util matrix gmm tree thread
-sgmm: base util matrix gmm tree transform thread hmm
-sgmm2: base util matrix gmm tree transform thread hmm
-fstext: base util thread matrix tree
-hmm: base tree matrix util thread
-lm: base util thread matrix fstext
-decoder: base util thread matrix gmm sgmm hmm tree transform lat
-lat: base util thread hmm tree matrix
-cudamatrix: base util thread matrix
-nnet: base util hmm tree thread matrix cudamatrix
-nnet2: base util matrix thread lat gmm hmm tree transform cudamatrix
-nnet3: base util matrix thread lat gmm hmm tree transform cudamatrix chain fstext
-chain: lat hmm tree fstext matrix cudamatrix util thread base
-ivector: base util matrix thread transform tree gmm
+util: base matrix
+feat: base matrix util gmm transform tree
+tree: base util matrix
+gmm: base util matrix tree
+transform: base util matrix gmm tree
+sgmm2: base util matrix gmm tree transform hmm
+fstext: base util matrix tree
+hmm: base tree matrix util
+lm: base util matrix fstext
+decoder: base util matrix gmm hmm tree transform lat
+lat: base util hmm tree matrix
+cudamatrix: base util matrix
+nnet: base util hmm tree matrix cudamatrix
+nnet2: base util matrix lat gmm hmm tree transform cudamatrix
+nnet3: base util matrix lat gmm hmm tree transform cudamatrix chain fstext
+rnnlm: base util matrix cudamatrix nnet3 lm hmm
+chain: lat hmm tree fstext matrix cudamatrix util base
+ivector: base util matrix transform tree gmm
 #3)Dependencies for optional parts of Kaldi
-onlinebin: base matrix util feat tree gmm transform sgmm sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online thread
-# python-kaldi-decoding: base matrix util feat tree thread gmm transform sgmm sgmm2 fstext hmm decoder lat online
-online: decoder gmm transform feat matrix util base lat hmm thread tree
-online2: decoder gmm transform feat matrix util base lat hmm thread tree ivector cudamatrix nnet2 nnet3 chain
-kws: base util thread hmm tree matrix lat
-idlakfeat: base util hmm thread feat transform
-
+onlinebin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online
+# python-kaldi-decoding: base matrix util feat tree gmm transform sgmm2 fstext hmm decoder lat online
+online: decoder gmm transform feat matrix util base lat hmm tree
+online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudamatrix nnet2 nnet3 chain
+kws: base util hmm tree matrix lat
+idlakfeat: base util hmm feat transform

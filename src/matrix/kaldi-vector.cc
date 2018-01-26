@@ -5,6 +5,7 @@
 //                      Petr Schwarz;  Yanmin Qian;  Jan Silovsky;
 //                      Haihua Xu; Wei Shi
 //                2015  Guoguo Chen
+//                2017  Daniel Galvez
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -304,6 +305,14 @@ void VectorBase<Real>::SetRandn() {
     kaldi::RandGauss2(data_ + i, data_ + i +1, &rstate);
   }
   if (Dim() != last) data_[last] = static_cast<Real>(kaldi::RandGauss(&rstate));
+}
+
+template<typename Real>
+void VectorBase<Real>::SetRandUniform() {
+  kaldi::RandomState rstate;
+  for (MatrixIndexT i = 0; i < Dim(); i++) {
+    *(data_+i) = RandUniform(&rstate);
+  }
 }
 
 template<typename Real>
@@ -803,29 +812,40 @@ void VectorBase<Real>::ApplyAbs() {
 }
 
 template<typename Real>
-MatrixIndexT VectorBase<Real>::ApplyFloor(Real floor_val) {
-  MatrixIndexT num_floored = 0;
-  for (MatrixIndexT i = 0; i < dim_; i++) {
-    if (data_[i] < floor_val) {
-      data_[i] = floor_val;
-      num_floored++;
+void VectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count) {
+  if (floored_count == nullptr) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = std::max(data_[i], floor_val);
     }
+  } else {
+    MatrixIndexT num_floored = 0;
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      if (data_[i] < floor_val) {
+	data_[i] = floor_val;
+	num_floored++;
+      }
+    }
+    *floored_count = num_floored;
   }
-  return num_floored;
 }
 
 template<typename Real>
-MatrixIndexT VectorBase<Real>::ApplyCeiling(Real ceil_val) {
-  MatrixIndexT num_changed = 0;
-  for (MatrixIndexT i = 0; i < dim_; i++) {
-    if (data_[i] > ceil_val) {
-      data_[i] = ceil_val;
-      num_changed++;
+void VectorBase<Real>::ApplyCeiling(Real ceil_val, MatrixIndexT *ceiled_count) {
+  if (ceiled_count == nullptr) {
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      data_[i] = std::min(data_[i], ceil_val);
     }
+  } else {
+    MatrixIndexT num_changed = 0;
+    for (MatrixIndexT i = 0; i < dim_; i++) {
+      if (data_[i] > ceil_val) {
+	data_[i] = ceil_val;
+	num_changed++;
+      }
+    }
+    *ceiled_count = num_changed;
   }
-  return num_changed;
 }
-
 
 template<typename Real>
 MatrixIndexT VectorBase<Real>::ApplyFloor(const VectorBase<Real> &floor_vec) {
@@ -1021,8 +1041,8 @@ template<typename OtherReal>
 void VectorBase<Real>::AddVec(const Real alpha, const VectorBase<OtherReal> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   // remove __restrict__ if it causes compilation problems.
-  register Real *__restrict__ data = data_;
-  register OtherReal *__restrict__ other_data = v.data_;
+  Real *__restrict__ data = data_;
+  OtherReal *__restrict__ other_data = v.data_;
   MatrixIndexT dim = dim_;
   if (alpha != 1.0)
     for (MatrixIndexT i = 0; i < dim; i++)
@@ -1042,8 +1062,8 @@ template<typename OtherReal>
 void VectorBase<Real>::AddVec2(const Real alpha, const VectorBase<OtherReal> &v) {
   KALDI_ASSERT(dim_ == v.dim_);
   // remove __restrict__ if it causes compilation problems.
-  register Real *__restrict__ data = data_;
-  register OtherReal *__restrict__ other_data = v.data_;
+  Real *__restrict__ data = data_;
+  OtherReal *__restrict__ other_data = v.data_;
   MatrixIndexT dim = dim_;
   if (alpha != 1.0)
     for (MatrixIndexT i = 0; i < dim; i++)
@@ -1114,6 +1134,7 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
     std::string token;
     ReadToken(is, binary, &token);
     if (token != my_token) {
+      if (token.length() > 20) token = token.substr(0, 17) + "...";
       specific_error << ": Expected token " << my_token << ", got " << token;
       goto bad;
     }
@@ -1137,7 +1158,11 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
     // }
     if (is.fail()) { specific_error << "EOF while trying to read vector."; goto bad; }
     if (s.compare("[]") == 0) { Resize(0); return; } // tolerate this variant.
-    if (s.compare("[")) { specific_error << "Expected \"[\" but got " << s; goto bad; }
+    if (s.compare("[")) {
+      if (s.length() > 20) s = s.substr(0, 17) + "...";
+      specific_error << "Expected \"[\" but got " << s;
+      goto bad;
+    }
     std::vector<Real> data;
     while (1) {
       int i = is.peek();
@@ -1184,6 +1209,7 @@ void Vector<Real>::Read(std::istream & is,  bool binary, bool add) {
           data.push_back(std::numeric_limits<Real>::quiet_NaN());
           KALDI_WARN << "Reading NaN value into vector.";
         } else {
+          if (s.length() > 20) s = s.substr(0, 17) + "...";
           specific_error << "Expecting numeric vector data, got " << s;
           goto  bad;
         }

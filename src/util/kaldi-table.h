@@ -320,7 +320,9 @@ class SequentialTableReader {
   // option makes it behave as if that key does not even exist, if the
   // corresponding file cannot be read.]  You probably wouldn't want to catch
   // this exception; the user can just specify the p option in the rspecifier.
-  const T &Value();
+  // We make this non-const to enable things like shallow swap on the held
+  // object in situations where this would avoid making a redundant copy.
+  T &Value();
 
   // Next goes to the next key.  It will not throw; any error will
   // result in Done() returning true, and then the destructor will

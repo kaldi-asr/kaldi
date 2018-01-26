@@ -1,0 +1,2082 @@
+<?xml version="1.0" ?>
+<qset>
+	<feat htsname="LL" name="BackwardBackwardPhone">
+		<qs name="LL-Vowel">
+			aa ae ah ao ah ay eh er ey ih iy ow oy uh uw
+		</qs>
+		<qs name="LL-Consonant">
+			b ch d dh f g hh jh k l m n ng p r s sh t th v w y z zh
+		</qs>
+		<qs name="LL-Stop">
+			b d g k p t
+		</qs>
+		<qs name="LL-Fricative">
+			ch dh f hh s sh th v z zh
+		</qs>
+		<qs name="LL-Liquid">
+			hh l r w y
+		</qs>
+		<qs name="LL-Front">
+			ae b eh f ih iy m p v w
+		</qs>
+		<qs name="LL-Central">
+			ah ao d dh er l n r s t th z zh
+		</qs>
+		<qs name="LL-Back">
+			aa ah ch g hh jh k ng ow sh uh uw y
+		</qs>
+		<qs name="LL-Front_Vowel">
+			ae eh ey ih iy
+		</qs>
+		<qs name="LL-Central_Vowel">
+			aa ah ao er
+		</qs>
+		<qs name="LL-Back_Vowel">
+			ah ow uh uw
+		</qs>
+		<qs name="LL-Long_Vowel">
+			ao iy ow uw
+		</qs>
+		<qs name="LL-Short_Vowel">
+			aa ah ah ay eh ey ih oy uh
+		</qs>
+		<qs name="LL-Dipthong_Vowel">
+			ay er ey oy
+		</qs>
+		<qs name="LL-Front_Start_Vowel">
+			er ey
+		</qs>
+		<qs name="LL-Fronting_Vowel">
+			ay ey oy
+		</qs>
+		<qs name="LL-High_Vowel">
+			ih iy uh uw
+		</qs>
+		<qs name="LL-Medium_Vowel">
+			ae ah ah eh er ey ow
+		</qs>
+		<qs name="LL-Low_Vowel">
+			aa ae ah ao ay oy
+		</qs>
+		<qs name="LL-Rounded_Vowel">
+			ao ow oy uh uw w
+		</qs>
+		<qs name="LL-Unrounded_Vowel">
+			aa ae ah ah ay eh er ey hh ih iy l r y
+		</qs>
+		<qs name="LL-IVowel">
+			ih iy
+		</qs>
+		<qs name="LL-EVowel">
+			eh ey
+		</qs>
+		<qs name="LL-AVowel">
+			aa ae ay er
+		</qs>
+		<qs name="LL-OVowel">
+			ao ow oy
+		</qs>
+		<qs name="LL-UVowel">
+			ah ah uh uw
+		</qs>
+		<qs name="LL-Unvoiced_Consonant">
+			ch f hh k p s sh t th
+		</qs>
+		<qs name="LL-Voiced_Consonant">
+			b d dh g jh l m n ng r v w y
+		</qs>
+		<qs name="LL-Front_Consonant">
+			b f m p v w
+		</qs>
+		<qs name="LL-Central_Consonant">
+			d dh l n r s t th z zh
+		</qs>
+		<qs name="LL-Back_Consonant">
+			ch g hh jh k ng sh y
+		</qs>
+		<qs name="LL-Fortis_Consonant">
+			ch f k p s sh t th
+		</qs>
+		<qs name="LL-Lenis_Consonant">
+			b d dh g jh v z zh
+		</qs>
+		<qs name="LL-Neigther_F_or_L">
+			hh l m n ng r w y
+		</qs>
+		<qs name="LL-Coronal_Consonant">
+			ch d dh jh l n r s sh t th z zh
+		</qs>
+		<qs name="LL-Non_Coronal">
+			b f g hh k m ng p v w y
+		</qs>
+		<qs name="LL-Anterior_Consonant">
+			b d dh f l m n p s t th v w z
+		</qs>
+		<qs name="LL-Non_Anterior">
+			ch g hh jh k ng r sh y zh
+		</qs>
+		<qs name="LL-Continuent">
+			dh f hh l m n ng r s sh th v w y z zh
+		</qs>
+		<qs name="LL-No_Continuent">
+			b ch d g jh k p t
+		</qs>
+		<qs name="LL-Positive_Strident">
+			ch jh s sh z zh
+		</qs>
+		<qs name="LL-Negative_Strident">
+			dh f hh th v
+		</qs>
+		<qs name="LL-Neutral_Strident">
+			b d g k l m n ng p r t w y
+		</qs>
+		<qs name="LL-Voiced_Stop">
+			b d g
+		</qs>
+		<qs name="LL-Unvoiced_Stop">
+			k p t
+		</qs>
+		<qs name="LL-Front_Stop">
+			b p
+		</qs>
+		<qs name="LL-Central_Stop">
+			d t
+		</qs>
+		<qs name="LL-Back_Stop">
+			g k
+		</qs>
+		<qs name="LL-Voiced_Fricative">
+			ch dh v z zh
+		</qs>
+		<qs name="LL-Unvoiced_Fricative">
+			ch f s sh th
+		</qs>
+		<qs name="LL-Front_Fricative">
+			f v
+		</qs>
+		<qs name="LL-Central_Fricative">
+			dh s th z
+		</qs>
+		<qs name="LL-Back_Fricative">
+			ch jh sh zh
+		</qs>
+		<qs name="LL-Affricate_Consonant">
+			ch jh
+		</qs>
+		<qs name="LL-Not_Affricate">
+			dh f s sh th v z zh
+		</qs>
+		<qs name="LL-aa">
+			aa
+		</qs>
+		<qs name="LL-ae">
+			ae
+		</qs>
+		<qs name="LL-ah">
+			ah
+		</qs>
+		<qs name="LL-ao">
+			ao
+		</qs>
+		<qs name="LL-ax">
+			ah
+		</qs>
+		<qs name="LL-ay">
+			ay
+		</qs>
+		<qs name="LL-b">
+			b
+		</qs>
+		<qs name="LL-ch">
+			ch
+		</qs>
+		<qs name="LL-d">
+			d
+		</qs>
+		<qs name="LL-dh">
+			dh
+		</qs>
+		<qs name="LL-eh">
+			eh
+		</qs>
+		<qs name="LL-er">
+			er
+		</qs>
+		<qs name="LL-ey">
+			ey
+		</qs>
+		<qs name="LL-f">
+			f
+		</qs>
+		<qs name="LL-g">
+			g
+		</qs>
+		<qs name="LL-h">
+			hh
+		</qs>
+		<qs name="LL-ih">
+			ih
+		</qs>
+		<qs name="LL-iy">
+			iy
+		</qs>
+		<qs name="LL-jh">
+			jh
+		</qs>
+		<qs name="LL-k">
+			k
+		</qs>
+		<qs name="LL-l">
+			l
+		</qs>
+		<qs name="LL-m">
+			m
+		</qs>
+		<qs name="LL-n">
+			n
+		</qs>
+		<qs name="LL-ng">
+			ng
+		</qs>
+		<qs name="LL-ow">
+			ow
+		</qs>
+		<qs name="LL-oy">
+			oy
+		</qs>
+		<qs name="LL-p">
+			p
+		</qs>
+		<qs name="LL-r">
+			r
+		</qs>
+		<qs name="LL-s">
+			s
+		</qs>
+		<qs name="LL-sh">
+			sh
+		</qs>
+		<qs name="LL-sil">
+			sil
+		</qs>
+		<qs name="LL-pau">
+			pau
+		</qs>
+		<qs name="LL-t">
+			t
+		</qs>
+		<qs name="LL-th">
+			th
+		</qs>
+		<qs name="LL-uh">
+			uh
+		</qs>
+		<qs name="LL-uw">
+			uw
+		</qs>
+		<qs name="LL-v">
+			v
+		</qs>
+		<qs name="LL-w">
+			w
+		</qs>
+		<qs name="LL-y">
+			y
+		</qs>
+		<qs name="LL-z">
+			z
+		</qs>
+		<qs name="LL-zh">
+			zh
+		</qs>
+	</feat>
+	<feat htsname="L" name="BackwardPhone">
+		<qs name="L-Vowel">
+			aa ae ah ao ah ay eh er ey ih iy ow oy uh uw
+		</qs>
+		<qs name="L-Consonant">
+			b ch d dh f g hh jh k l m n ng p r s sh t th v w y z zh
+		</qs>
+		<qs name="L-Stop">
+			b d g k p t
+		</qs>
+		<qs name="L-Fricative">
+			ch dh f hh s sh th v z zh
+		</qs>
+		<qs name="L-Liquid">
+			hh l r w y
+		</qs>
+		<qs name="L-Front">
+			ae b eh f ih iy m p v w
+		</qs>
+		<qs name="L-Central">
+			ah ao d dh er l n r s t th z zh
+		</qs>
+		<qs name="L-Back">
+			aa ah ch g hh jh k ng ow sh uh uw y
+		</qs>
+		<qs name="L-Front_Vowel">
+			ae eh ey ih iy
+		</qs>
+		<qs name="L-Central_Vowel">
+			aa ah ao er
+		</qs>
+		<qs name="L-Back_Vowel">
+			ah ow uh uw
+		</qs>
+		<qs name="L-Long_Vowel">
+			ao iy ow uw
+		</qs>
+		<qs name="L-Short_Vowel">
+			aa ah ah ay eh ey ih oy uh
+		</qs>
+		<qs name="L-Dipthong_Vowel">
+			ay er ey oy
+		</qs>
+		<qs name="L-Front_Start_Vowel">
+			er ey
+		</qs>
+		<qs name="L-Fronting_Vowel">
+			ay ey oy
+		</qs>
+		<qs name="L-High_Vowel">
+			ih iy uh uw
+		</qs>
+		<qs name="L-Medium_Vowel">
+			ae ah ah eh er ey ow
+		</qs>
+		<qs name="L-Low_Vowel">
+			aa ae ah ao ay oy
+		</qs>
+		<qs name="L-Rounded_Vowel">
+			ao ow oy uh uw w
+		</qs>
+		<qs name="L-Unrounded_Vowel">
+			aa ae ah ah ay eh er ey hh ih iy l r y
+		</qs>
+		<qs name="L-IVowel">
+			ih iy
+		</qs>
+		<qs name="L-EVowel">
+			eh ey
+		</qs>
+		<qs name="L-AVowel">
+			aa ae ay er
+		</qs>
+		<qs name="L-OVowel">
+			ao ow oy
+		</qs>
+		<qs name="L-UVowel">
+			ah ah uh uw
+		</qs>
+		<qs name="L-Unvoiced_Consonant">
+			ch f hh k p s sh t th
+		</qs>
+		<qs name="L-Voiced_Consonant">
+			b d dh g jh l m n ng r v w y
+		</qs>
+		<qs name="L-Front_Consonant">
+			b f m p v w
+		</qs>
+		<qs name="L-Central_Consonant">
+			d dh l n r s t th z zh
+		</qs>
+		<qs name="L-Back_Consonant">
+			ch g hh jh k ng sh y
+		</qs>
+		<qs name="L-Fortis_Consonant">
+			ch f k p s sh t th
+		</qs>
+		<qs name="L-Lenis_Consonant">
+			b d dh g jh v z zh
+		</qs>
+		<qs name="L-Neigther_F_or_L">
+			hh l m n ng r w y
+		</qs>
+		<qs name="L-Coronal_Consonant">
+			ch d dh jh l n r s sh t th z zh
+		</qs>
+		<qs name="L-Non_Coronal">
+			b f g hh k m ng p v w y
+		</qs>
+		<qs name="L-Anterior_Consonant">
+			b d dh f l m n p s t th v w z
+		</qs>
+		<qs name="L-Non_Anterior">
+			ch g hh jh k ng r sh y zh
+		</qs>
+		<qs name="L-Continuent">
+			dh f hh l m n ng r s sh th v w y z zh
+		</qs>
+		<qs name="L-No_Continuent">
+			b ch d g jh k p t
+		</qs>
+		<qs name="L-Positive_Strident">
+			ch jh s sh z zh
+		</qs>
+		<qs name="L-Negative_Strident">
+			dh f hh th v
+		</qs>
+		<qs name="L-Neutral_Strident">
+			b d g k l m n ng p r t w y
+		</qs>
+		<qs name="L-Voiced_Stop">
+			b d g
+		</qs>
+		<qs name="L-Unvoiced_Stop">
+			k p t
+		</qs>
+		<qs name="L-Front_Stop">
+			b p
+		</qs>
+		<qs name="L-Central_Stop">
+			d t
+		</qs>
+		<qs name="L-Back_Stop">
+			g k
+		</qs>
+		<qs name="L-Voiced_Fricative">
+			ch dh v z zh
+		</qs>
+		<qs name="L-Unvoiced_Fricative">
+			ch f s sh th
+		</qs>
+		<qs name="L-Front_Fricative">
+			f v
+		</qs>
+		<qs name="L-Central_Fricative">
+			dh s th z
+		</qs>
+		<qs name="L-Back_Fricative">
+			ch jh sh zh
+		</qs>
+		<qs name="L-Affricate_Consonant">
+			ch jh
+		</qs>
+		<qs name="L-Not_Affricate">
+			dh f s sh th v z zh
+		</qs>
+		<qs name="L-aa">
+			aa
+		</qs>
+		<qs name="L-ae">
+			ae
+		</qs>
+		<qs name="L-ah">
+			ah
+		</qs>
+		<qs name="L-ao">
+			ao
+		</qs>
+		<qs name="L-ax">
+			ah
+		</qs>
+		<qs name="L-ay">
+			ay
+		</qs>
+		<qs name="L-b">
+			b
+		</qs>
+		<qs name="L-ch">
+			ch
+		</qs>
+		<qs name="L-d">
+			d
+		</qs>
+		<qs name="L-dh">
+			dh
+		</qs>
+		<qs name="L-eh">
+			eh
+		</qs>
+		<qs name="L-er">
+			er
+		</qs>
+		<qs name="L-ey">
+			ey
+		</qs>
+		<qs name="L-f">
+			f
+		</qs>
+		<qs name="L-g">
+			g
+		</qs>
+		<qs name="L-h">
+			hh
+		</qs>
+		<qs name="L-ih">
+			ih
+		</qs>
+		<qs name="L-iy">
+			iy
+		</qs>
+		<qs name="L-jh">
+			jh
+		</qs>
+		<qs name="L-k">
+			k
+		</qs>
+		<qs name="L-l">
+			l
+		</qs>
+		<qs name="L-m">
+			m
+		</qs>
+		<qs name="L-n">
+			n
+		</qs>
+		<qs name="L-ng">
+			ng
+		</qs>
+		<qs name="L-ow">
+			ow
+		</qs>
+		<qs name="L-oy">
+			oy
+		</qs>
+		<qs name="L-p">
+			p
+		</qs>
+		<qs name="L-r">
+			r
+		</qs>
+		<qs name="L-s">
+			s
+		</qs>
+		<qs name="L-sh">
+			sh
+		</qs>
+		<qs name="L-sil">
+			sil
+		</qs>
+		<qs name="L-pau">
+			pau
+		</qs>
+		<qs name="L-t">
+			t
+		</qs>
+		<qs name="L-th">
+			th
+		</qs>
+		<qs name="L-uh">
+			uh
+		</qs>
+		<qs name="L-uw">
+			uw
+		</qs>
+		<qs name="L-v">
+			v
+		</qs>
+		<qs name="L-w">
+			w
+		</qs>
+		<qs name="L-y">
+			y
+		</qs>
+		<qs name="L-z">
+			z
+		</qs>
+		<qs name="L-zh">
+			zh
+		</qs>
+	</feat>
+	<feat htsname="C" name="Phone">
+		<qs name="C-Vowel">
+			aa ae ah ao ah ay eh er ey ih iy ow oy uh uw
+		</qs>
+		<qs name="C-Consonant">
+			b ch d dh f g hh jh k l m n ng p r s sh t th v w y z zh
+		</qs>
+		<qs name="C-Stop">
+			b d g k p t
+		</qs>
+		<qs name="C-Fricative">
+			ch dh f hh s sh th v z zh
+		</qs>
+		<qs name="C-Liquid">
+			hh l r w y
+		</qs>
+		<qs name="C-Front">
+			ae b eh f ih iy m p v w
+		</qs>
+		<qs name="C-Central">
+			ah ao d dh er l n r s t th z zh
+		</qs>
+		<qs name="C-Back">
+			aa ah ch g hh jh k ng ow sh uh uw y
+		</qs>
+		<qs name="C-Front_Vowel">
+			ae eh ey ih iy
+		</qs>
+		<qs name="C-Central_Vowel">
+			aa ah ao er
+		</qs>
+		<qs name="C-Back_Vowel">
+			ah ow uh uw
+		</qs>
+		<qs name="C-Long_Vowel">
+			ao iy ow uw
+		</qs>
+		<qs name="C-Short_Vowel">
+			aa ah ah ay eh ey ih oy uh
+		</qs>
+		<qs name="C-Dipthong_Vowel">
+			ay er ey oy
+		</qs>
+		<qs name="C-Front_Start_Vowel">
+			er ey
+		</qs>
+		<qs name="C-Fronting_Vowel">
+			ay ey oy
+		</qs>
+		<qs name="C-High_Vowel">
+			ih iy uh uw
+		</qs>
+		<qs name="C-Medium_Vowel">
+			ae ah ah eh er ey ow
+		</qs>
+		<qs name="C-Low_Vowel">
+			aa ae ah ao ay oy
+		</qs>
+		<qs name="C-Rounded_Vowel">
+			ao ow oy uh uw w
+		</qs>
+		<qs name="C-Unrounded_Vowel">
+			aa ae ah ah ay eh er ey hh ih iy l r y
+		</qs>
+		<qs name="C-IVowel">
+			ih iy
+		</qs>
+		<qs name="C-EVowel">
+			eh ey
+		</qs>
+		<qs name="C-AVowel">
+			aa ae ay er
+		</qs>
+		<qs name="C-OVowel">
+			ao ow oy
+		</qs>
+		<qs name="C-UVowel">
+			ah ah uh uw
+		</qs>
+		<qs name="C-Unvoiced_Consonant">
+			ch f hh k p s sh t th
+		</qs>
+		<qs name="C-Voiced_Consonant">
+			b d dh g jh l m n ng r v w y
+		</qs>
+		<qs name="C-Front_Consonant">
+			b f m p v w
+		</qs>
+		<qs name="C-Central_Consonant">
+			d dh l n r s t th z zh
+		</qs>
+		<qs name="C-Back_Consonant">
+			ch g hh jh k ng sh y
+		</qs>
+		<qs name="C-Fortis_Consonant">
+			ch f k p s sh t th
+		</qs>
+		<qs name="C-Lenis_Consonant">
+			b d dh g jh v z zh
+		</qs>
+		<qs name="C-Neigther_F_or_L">
+			hh l m n ng r w y
+		</qs>
+		<qs name="C-Coronal_Consonant">
+			ch d dh jh l n r s sh t th z zh
+		</qs>
+		<qs name="C-Non_Coronal">
+			b f g hh k m ng p v w y
+		</qs>
+		<qs name="C-Anterior_Consonant">
+			b d dh f l m n p s t th v w z
+		</qs>
+		<qs name="C-Non_Anterior">
+			ch g hh jh k ng r sh y zh
+		</qs>
+		<qs name="C-Continuent">
+			dh f hh l m n ng r s sh th v w y z zh
+		</qs>
+		<qs name="C-No_Continuent">
+			b ch d g jh k p t
+		</qs>
+		<qs name="C-Positive_Strident">
+			ch jh s sh z zh
+		</qs>
+		<qs name="C-Negative_Strident">
+			dh f hh th v
+		</qs>
+		<qs name="C-Neutral_Strident">
+			b d g k l m n ng p r t w y
+		</qs>
+		<qs name="C-Voiced_Stop">
+			b d g
+		</qs>
+		<qs name="C-Unvoiced_Stop">
+			k p t
+		</qs>
+		<qs name="C-Front_Stop">
+			b p
+		</qs>
+		<qs name="C-Central_Stop">
+			d t
+		</qs>
+		<qs name="C-Back_Stop">
+			g k
+		</qs>
+		<qs name="C-Voiced_Fricative">
+			ch dh v z zh
+		</qs>
+		<qs name="C-Unvoiced_Fricative">
+			ch f s sh th
+		</qs>
+		<qs name="C-Front_Fricative">
+			f v
+		</qs>
+		<qs name="C-Central_Fricative">
+			dh s th z
+		</qs>
+		<qs name="C-Back_Fricative">
+			ch jh sh zh
+		</qs>
+		<qs name="C-Affricate_Consonant">
+			ch jh
+		</qs>
+		<qs name="C-Not_Affricate">
+			dh f s sh th v z zh
+		</qs>
+		<qs name="C-aa">
+			aa
+		</qs>
+		<qs name="C-ae">
+			ae
+		</qs>
+		<qs name="C-ah">
+			ah
+		</qs>
+		<qs name="C-ao">
+			ao
+		</qs>
+		<qs name="C-ax">
+			ah
+		</qs>
+		<qs name="C-ay">
+			ay
+		</qs>
+		<qs name="C-b">
+			b
+		</qs>
+		<qs name="C-ch">
+			ch
+		</qs>
+		<qs name="C-d">
+			d
+		</qs>
+		<qs name="C-dh">
+			dh
+		</qs>
+		<qs name="C-eh">
+			eh
+		</qs>
+		<qs name="C-er">
+			er
+		</qs>
+		<qs name="C-ey">
+			ey
+		</qs>
+		<qs name="C-f">
+			f
+		</qs>
+		<qs name="C-g">
+			g
+		</qs>
+		<qs name="C-h">
+			hh
+		</qs>
+		<qs name="C-ih">
+			ih
+		</qs>
+		<qs name="C-iy">
+			iy
+		</qs>
+		<qs name="C-jh">
+			jh
+		</qs>
+		<qs name="C-k">
+			k
+		</qs>
+		<qs name="C-l">
+			l
+		</qs>
+		<qs name="C-m">
+			m
+		</qs>
+		<qs name="C-n">
+			n
+		</qs>
+		<qs name="C-ng">
+			ng
+		</qs>
+		<qs name="C-ow">
+			ow
+		</qs>
+		<qs name="C-oy">
+			oy
+		</qs>
+		<qs name="C-p">
+			p
+		</qs>
+		<qs name="C-r">
+			r
+		</qs>
+		<qs name="C-s">
+			s
+		</qs>
+		<qs name="C-sh">
+			sh
+		</qs>
+		<qs name="C-sil">
+			sil
+		</qs>
+		<qs name="C-pau">
+			pau
+		</qs>
+		<qs name="C-t">
+			t
+		</qs>
+		<qs name="C-th">
+			th
+		</qs>
+		<qs name="C-uh">
+			uh
+		</qs>
+		<qs name="C-uw">
+			uw
+		</qs>
+		<qs name="C-v">
+			v
+		</qs>
+		<qs name="C-w">
+			w
+		</qs>
+		<qs name="C-y">
+			y
+		</qs>
+		<qs name="C-z">
+			z
+		</qs>
+		<qs name="C-zh">
+			zh
+		</qs>
+	</feat>
+	<feat htsname="R" name="ForwardPhone">
+		<qs name="R-Vowel">
+			aa ae ah ao ah ay eh er ey ih iy ow oy uh uw
+		</qs>
+		<qs name="R-Consonant">
+			b ch d dh f g hh jh k l m n ng p r s sh t th v w y z zh
+		</qs>
+		<qs name="R-Stop">
+			b d g k p t
+		</qs>
+		<qs name="R-Fricative">
+			ch dh f hh s sh th v z zh
+		</qs>
+		<qs name="R-Liquid">
+			hh l r w y
+		</qs>
+		<qs name="R-Front">
+			ae b eh f ih iy m p v w
+		</qs>
+		<qs name="R-Central">
+			ah ao d dh er l n r s t th z zh
+		</qs>
+		<qs name="R-Back">
+			aa ah ch g hh jh k ng ow sh uh uw y
+		</qs>
+		<qs name="R-Front_Vowel">
+			ae eh ey ih iy
+		</qs>
+		<qs name="R-Central_Vowel">
+			aa ah ao er
+		</qs>
+		<qs name="R-Back_Vowel">
+			ah ow uh uw
+		</qs>
+		<qs name="R-Long_Vowel">
+			ao iy ow uw
+		</qs>
+		<qs name="R-Short_Vowel">
+			aa ah ah ay eh ey ih oy uh
+		</qs>
+		<qs name="R-Dipthong_Vowel">
+			ay er ey oy
+		</qs>
+		<qs name="R-Front_Start_Vowel">
+			er ey
+		</qs>
+		<qs name="R-Fronting_Vowel">
+			ay ey oy
+		</qs>
+		<qs name="R-High_Vowel">
+			ih iy uh uw
+		</qs>
+		<qs name="R-Medium_Vowel">
+			ae ah ah eh er ey ow
+		</qs>
+		<qs name="R-Low_Vowel">
+			aa ae ah ao ay oy
+		</qs>
+		<qs name="R-Rounded_Vowel">
+			ao ow oy uh uw w
+		</qs>
+		<qs name="R-Unrounded_Vowel">
+			aa ae ah ah ay eh er ey hh ih iy l r y
+		</qs>
+		<qs name="R-IVowel">
+			ih iy
+		</qs>
+		<qs name="R-EVowel">
+			eh ey
+		</qs>
+		<qs name="R-AVowel">
+			aa ae ay er
+		</qs>
+		<qs name="R-OVowel">
+			ao ow oy
+		</qs>
+		<qs name="R-UVowel">
+			ah ah uh uw
+		</qs>
+		<qs name="R-Unvoiced_Consonant">
+			ch f hh k p s sh t th
+		</qs>
+		<qs name="R-Voiced_Consonant">
+			b d dh g jh l m n ng r v w y
+		</qs>
+		<qs name="R-Front_Consonant">
+			b f m p v w
+		</qs>
+		<qs name="R-Central_Consonant">
+			d dh l n r s t th z zh
+		</qs>
+		<qs name="R-Back_Consonant">
+			ch g hh jh k ng sh y
+		</qs>
+		<qs name="R-Fortis_Consonant">
+			ch f k p s sh t th
+		</qs>
+		<qs name="R-Lenis_Consonant">
+			b d dh g jh v z zh
+		</qs>
+		<qs name="R-Neigther_F_or_L">
+			hh l m n ng r w y
+		</qs>
+		<qs name="R-Coronal_Consonant">
+			ch d dh jh l n r s sh t th z zh
+		</qs>
+		<qs name="R-Non_Coronal">
+			b f g hh k m ng p v w y
+		</qs>
+		<qs name="R-Anterior_Consonant">
+			b d dh f l m n p s t th v w z
+		</qs>
+		<qs name="R-Non_Anterior">
+			ch g hh jh k ng r sh y zh
+		</qs>
+		<qs name="R-Continuent">
+			dh f hh l m n ng r s sh th v w y z zh
+		</qs>
+		<qs name="R-No_Continuent">
+			b ch d g jh k p t
+		</qs>
+		<qs name="R-Positive_Strident">
+			ch jh s sh z zh
+		</qs>
+		<qs name="R-Negative_Strident">
+			dh f hh th v
+		</qs>
+		<qs name="R-Neutral_Strident">
+			b d g k l m n ng p r t w y
+		</qs>
+		<qs name="R-Voiced_Stop">
+			b d g
+		</qs>
+		<qs name="R-Unvoiced_Stop">
+			k p t
+		</qs>
+		<qs name="R-Front_Stop">
+			b p
+		</qs>
+		<qs name="R-Central_Stop">
+			d t
+		</qs>
+		<qs name="R-Back_Stop">
+			g k
+		</qs>
+		<qs name="R-Voiced_Fricative">
+			ch dh v z zh
+		</qs>
+		<qs name="R-Unvoiced_Fricative">
+			ch f s sh th
+		</qs>
+		<qs name="R-Front_Fricative">
+			f v
+		</qs>
+		<qs name="R-Central_Fricative">
+			dh s th z
+		</qs>
+		<qs name="R-Back_Fricative">
+			ch jh sh zh
+		</qs>
+		<qs name="R-Affricate_Consonant">
+			ch jh
+		</qs>
+		<qs name="R-Not_Affricate">
+			dh f s sh th v z zh
+		</qs>
+		<qs name="R-aa">
+			aa
+		</qs>
+		<qs name="R-ae">
+			ae
+		</qs>
+		<qs name="R-ah">
+			ah
+		</qs>
+		<qs name="R-ao">
+			ao
+		</qs>
+		<qs name="R-ax">
+			ah
+		</qs>
+		<qs name="R-ay">
+			ay
+		</qs>
+		<qs name="R-b">
+			b
+		</qs>
+		<qs name="R-ch">
+			ch
+		</qs>
+		<qs name="R-d">
+			d
+		</qs>
+		<qs name="R-dh">
+			dh
+		</qs>
+		<qs name="R-eh">
+			eh
+		</qs>
+		<qs name="R-er">
+			er
+		</qs>
+		<qs name="R-ey">
+			ey
+		</qs>
+		<qs name="R-f">
+			f
+		</qs>
+		<qs name="R-g">
+			g
+		</qs>
+		<qs name="R-h">
+			hh
+		</qs>
+		<qs name="R-ih">
+			ih
+		</qs>
+		<qs name="R-iy">
+			iy
+		</qs>
+		<qs name="R-jh">
+			jh
+		</qs>
+		<qs name="R-k">
+			k
+		</qs>
+		<qs name="R-l">
+			l
+		</qs>
+		<qs name="R-m">
+			m
+		</qs>
+		<qs name="R-n">
+			n
+		</qs>
+		<qs name="R-ng">
+			ng
+		</qs>
+		<qs name="R-ow">
+			ow
+		</qs>
+		<qs name="R-oy">
+			oy
+		</qs>
+		<qs name="R-p">
+			p
+		</qs>
+		<qs name="R-r">
+			r
+		</qs>
+		<qs name="R-s">
+			s
+		</qs>
+		<qs name="R-sh">
+			sh
+		</qs>
+		<qs name="R-sil">
+			sil
+		</qs>
+		<qs name="R-pau">
+			pau
+		</qs>
+		<qs name="R-t">
+			t
+		</qs>
+		<qs name="R-th">
+			th
+		</qs>
+		<qs name="R-uh">
+			uh
+		</qs>
+		<qs name="R-uw">
+			uw
+		</qs>
+		<qs name="R-v">
+			v
+		</qs>
+		<qs name="R-w">
+			w
+		</qs>
+		<qs name="R-y">
+			y
+		</qs>
+		<qs name="R-z">
+			z
+		</qs>
+		<qs name="R-zh">
+			zh
+		</qs>
+	</feat>
+	<feat htsname="RR" name="ForwardForwardPhone">
+		<qs name="RR-Vowel">
+			aa ae ah ao ah ay eh er ey ih iy ow oy uh uw
+		</qs>
+		<qs name="RR-Consonant">
+			b ch d dh f g hh jh k l m n ng p r s sh t th v w y z zh
+		</qs>
+		<qs name="RR-Stop">
+			b d g k p t
+		</qs>
+		<qs name="RR-Fricative">
+			ch dh f hh s sh th v z zh
+		</qs>
+		<qs name="RR-Liquid">
+			hh l r w y
+		</qs>
+		<qs name="RR-Front">
+			ae b eh f ih iy m p v w
+		</qs>
+		<qs name="RR-Central">
+			ah ao d dh er l n r s t th z zh
+		</qs>
+		<qs name="RR-Back">
+			aa ah ch g hh jh k ng ow sh uh uw y
+		</qs>
+		<qs name="RR-Front_Vowel">
+			ae eh ey ih iy
+		</qs>
+		<qs name="RR-Central_Vowel">
+			aa ah ao er
+		</qs>
+		<qs name="RR-Back_Vowel">
+			ah ow uh uw
+		</qs>
+		<qs name="RR-Long_Vowel">
+			ao iy ow uw
+		</qs>
+		<qs name="RR-Short_Vowel">
+			aa ah ah ay eh ey ih oy uh
+		</qs>
+		<qs name="RR-Dipthong_Vowel">
+			ay er ey oy
+		</qs>
+		<qs name="RR-Front_Start_Vowel">
+			er ey
+		</qs>
+		<qs name="RR-Fronting_Vowel">
+			ay ey oy
+		</qs>
+		<qs name="RR-High_Vowel">
+			ih iy uh uw
+		</qs>
+		<qs name="RR-Medium_Vowel">
+			ae ah ah eh er ey ow
+		</qs>
+		<qs name="RR-Low_Vowel">
+			aa ae ah ao ay oy
+		</qs>
+		<qs name="RR-Rounded_Vowel">
+			ao ow oy uh uw w
+		</qs>
+		<qs name="RR-Unrounded_Vowel">
+			aa ae ah ah ay eh er ey hh ih iy l r y
+		</qs>
+		<qs name="RR-IVowel">
+			ih iy
+		</qs>
+		<qs name="RR-EVowel">
+			eh ey
+		</qs>
+		<qs name="RR-AVowel">
+			aa ae ay er
+		</qs>
+		<qs name="RR-OVowel">
+			ao ow oy
+		</qs>
+		<qs name="RR-UVowel">
+			ah ah uh uw
+		</qs>
+		<qs name="RR-Unvoiced_Consonant">
+			ch f hh k p s sh t th
+		</qs>
+		<qs name="RR-Voiced_Consonant">
+			b d dh g jh l m n ng r v w y
+		</qs>
+		<qs name="RR-Front_Consonant">
+			b f m p v w
+		</qs>
+		<qs name="RR-Central_Consonant">
+			d dh l n r s t th z zh
+		</qs>
+		<qs name="RR-Back_Consonant">
+			ch g hh jh k ng sh y
+		</qs>
+		<qs name="RR-Fortis_Consonant">
+			ch f k p s sh t th
+		</qs>
+		<qs name="RR-Lenis_Consonant">
+			b d dh g jh v z zh
+		</qs>
+		<qs name="RR-Neigther_F_or_L">
+			hh l m n ng r w y
+		</qs>
+		<qs name="RR-Coronal_Consonant">
+			ch d dh jh l n r s sh t th z zh
+		</qs>
+		<qs name="RR-Non_Coronal">
+			b f g hh k m ng p v w y
+		</qs>
+		<qs name="RR-Anterior_Consonant">
+			b d dh f l m n p s t th v w z
+		</qs>
+		<qs name="RR-Non_Anterior">
+			ch g hh jh k ng r sh y zh
+		</qs>
+		<qs name="RR-Continuent">
+			dh f hh l m n ng r s sh th v w y z zh
+		</qs>
+		<qs name="RR-No_Continuent">
+			b ch d g jh k p t
+		</qs>
+		<qs name="RR-Positive_Strident">
+			ch jh s sh z zh
+		</qs>
+		<qs name="RR-Negative_Strident">
+			dh f hh th v
+		</qs>
+		<qs name="RR-Neutral_Strident">
+			b d g k l m n ng p r t w y
+		</qs>
+		<qs name="RR-Voiced_Stop">
+			b d g
+		</qs>
+		<qs name="RR-Unvoiced_Stop">
+			k p t
+		</qs>
+		<qs name="RR-Front_Stop">
+			b p
+		</qs>
+		<qs name="RR-Central_Stop">
+			d t
+		</qs>
+		<qs name="RR-Back_Stop">
+			g k
+		</qs>
+		<qs name="RR-Voiced_Fricative">
+			ch dh v z zh
+		</qs>
+		<qs name="RR-Unvoiced_Fricative">
+			ch f s sh th
+		</qs>
+		<qs name="RR-Front_Fricative">
+			f v
+		</qs>
+		<qs name="RR-Central_Fricative">
+			dh s th z
+		</qs>
+		<qs name="RR-Back_Fricative">
+			ch jh sh zh
+		</qs>
+		<qs name="RR-Affricate_Consonant">
+			ch jh
+		</qs>
+		<qs name="RR-Not_Affricate">
+			dh f s sh th v z zh
+		</qs>
+		<qs name="RR-aa">
+			aa
+		</qs>
+		<qs name="RR-ae">
+			ae
+		</qs>
+		<qs name="RR-ah">
+			ah
+		</qs>
+		<qs name="RR-ao">
+			ao
+		</qs>
+		<qs name="RR-ax">
+			ah
+		</qs>
+		<qs name="RR-ay">
+			ay
+		</qs>
+		<qs name="RR-b">
+			b
+		</qs>
+		<qs name="RR-ch">
+			ch
+		</qs>
+		<qs name="RR-d">
+			d
+		</qs>
+		<qs name="RR-dh">
+			dh
+		</qs>
+		<qs name="RR-eh">
+			eh
+		</qs>
+		<qs name="RR-er">
+			er
+		</qs>
+		<qs name="RR-ey">
+			ey
+		</qs>
+		<qs name="RR-f">
+			f
+		</qs>
+		<qs name="RR-g">
+			g
+		</qs>
+		<qs name="RR-h">
+			hh
+		</qs>
+		<qs name="RR-ih">
+			ih
+		</qs>
+		<qs name="RR-iy">
+			iy
+		</qs>
+		<qs name="RR-jh">
+			jh
+		</qs>
+		<qs name="RR-k">
+			k
+		</qs>
+		<qs name="RR-l">
+			l
+		</qs>
+		<qs name="RR-m">
+			m
+		</qs>
+		<qs name="RR-n">
+			n
+		</qs>
+		<qs name="RR-ng">
+			ng
+		</qs>
+		<qs name="RR-ow">
+			ow
+		</qs>
+		<qs name="RR-oy">
+			oy
+		</qs>
+		<qs name="RR-p">
+			p
+		</qs>
+		<qs name="RR-r">
+			r
+		</qs>
+		<qs name="RR-s">
+			s
+		</qs>
+		<qs name="RR-sh">
+			sh
+		</qs>
+		<qs name="RR-sil">
+			sil
+		</qs>
+		<qs name="RR-pau">
+			pau
+		</qs>
+		<qs name="RR-t">
+			t
+		</qs>
+		<qs name="RR-th">
+			th
+		</qs>
+		<qs name="RR-uh">
+			uh
+		</qs>
+		<qs name="RR-uw">
+			uw
+		</qs>
+		<qs name="RR-v">
+			v
+		</qs>
+		<qs name="RR-w">
+			w
+		</qs>
+		<qs name="RR-y">
+			y
+		</qs>
+		<qs name="RR-z">
+			z
+		</qs>
+		<qs name="RR-zh">
+			zh
+		</qs>
+	</feat>
+	<feat htsname="Seg_Fw" name="SegmentLocationFromFront">
+		<qs name="Seg_Fw==xx">
+			0
+		</qs>
+		<qs name="Seg_Fw==1">
+			1
+		</qs>
+		<qs name="Seg_Fw==2">
+			2
+		</qs>
+		<qs name="Seg_Fw==3">
+			3
+		</qs>
+		<qs name="Seg_Fw==4">
+			4
+		</qs>
+		<qs name="Seg_Fw==5">
+			5
+		</qs>
+		<qs name="Seg_Fw==6">
+			6
+		</qs>
+		<qs name="Seg_Fw==7">
+			7
+		</qs>
+		<qs name="Seg_Fw&lt;=1">
+			0 1
+		</qs>
+		<qs name="Seg_Fw&lt;=2">
+			0 1 2
+		</qs>
+		<qs name="Seg_Fw&lt;=3">
+			0 1 2 3
+		</qs>
+		<qs name="Seg_Fw&lt;=4">
+			0 1 2 3 4
+		</qs>
+		<qs name="Seg_Fw&lt;=5">
+			0 1 2 3 4 5
+		</qs>
+		<qs name="Seg_Fw&lt;=6">
+			0 1 2 3 4 5 6
+		</qs>
+		<qs name="Seg_Fw&lt;=7">
+			0 1 2 3 4 5 6 7
+		</qs>
+	</feat>
+	<feat htsname="Seg_Bw" name="SegmentLocationFromBack">
+		<qs name="Seg_Bw==xx">
+			0
+		</qs>
+		<qs name="Seg_Bw==1">
+			1
+		</qs>
+		<qs name="Seg_Bw==2">
+			2
+		</qs>
+		<qs name="Seg_Bw==3">
+			3
+		</qs>
+		<qs name="Seg_Bw==4">
+			4
+		</qs>
+		<qs name="Seg_Bw==5">
+			5
+		</qs>
+		<qs name="Seg_Bw==6">
+			6
+		</qs>
+		<qs name="Seg_Bw==7">
+			7
+		</qs>
+		<qs name="Seg_Bw&lt;=1">
+			0 1
+		</qs>
+		<qs name="Seg_Bw&lt;=2">
+			0 1 2
+		</qs>
+		<qs name="Seg_Bw&lt;=3">
+			0 1 2 3
+		</qs>
+		<qs name="Seg_Bw&lt;=4">
+			0 1 2 3 4
+		</qs>
+		<qs name="Seg_Bw&lt;=5">
+			0 1 2 3 4 5
+		</qs>
+		<qs name="Seg_Bw&lt;=6">
+			0 1 2 3 4 5 6
+		</qs>
+		<qs name="Seg_Bw&lt;=7">
+			0 1 2 3 4 5 6 7
+		</qs>
+	</feat>
+	<feat htsname="L-Syl_Stress" name="BackwardSyllableStress">
+		<qs name="L-Syl_Stress==0">
+			0
+		</qs>
+		<qs name="L-Syl_Stress==1">
+			1
+		</qs>
+	</feat>
+	<feat htsname="C-Syl_Stress" name="SyllableStress">
+		<qs name="C-Syl_Stress==0">
+			0
+		</qs>
+		<qs name="C-Syl_Stress==1">
+			1
+		</qs>
+	</feat>
+	<feat htsname="R-Syl_Stress" name="ForwardSyllableStress">
+		<qs name="R-Syl_Stress==0">
+			0
+		</qs>
+		<qs name="R-Syl_Stress==1">
+			1
+		</qs>
+	</feat>
+	<feat htsname="L-Word_GPOS" name="BackwardWordPosTag">
+		<qs name="L-Word_GPOSxx">
+			0
+		</qs>
+		<qs name="L-Word_GPOSCONTENT">
+			FW JJ JJR JJS NN NNS NP NPS SYM VB VBD VBG VBN VBP VBZ VH VHD VHG VHN VHP VHZ VV VVD VVG VVN VVP VVZ
+		</qs>
+		<qs name="L-Word_GPOSAUX">
+			CC DT EX IN IN/that LSMD PDT POS PP RB RBR RBS RP TO UH WDT WP WP$ WRB
+		</qs>
+	</feat>
+	<feat htsname="C-Word_GPOS" name="WordPosTag">
+		<qs name="C-Word_GPOSxx">
+			0
+		</qs>
+		<qs name="C-Word_GPOSCONTENT">
+			FW JJ JJR JJS NN NNS NP NPS SYM VB VBD VBG VBN VBP VBZ VH VHD VHG VHN VHP VHZ VV VVD VVG VVN VVP VVZ
+		</qs>
+		<qs name="C-Word_GPOSAUX">
+			CC DT EX IN IN/that LSMD PDT POS PP RB RBR RBS RP TO UH WDT WP WP$ WRB
+		</qs>
+	</feat>
+	<feat htsname="R-Word_GPOS" name="ForwardWordPosTag">
+		<qs name="R-Word_GPOSxx">
+			0
+		</qs>
+		<qs name="R-Word_GPOSCONTENT">
+			FW JJ JJR JJS NN NNS NP NPS SYM VB VBD VBG VBN VBP VBZ VH VHD VHG VHN VHP VHZ VV VVD VVG VVN VVP VVZ
+		</qs>
+		<qs name="R-Word_GPOSAUX">
+			CC DT EX IN IN/that LSMD PDT POS PP RB RBR RBS RP TO UH WDT WP WP$ WRB
+		</qs>
+	</feat>
+	<feat htsname="L-Syl_Num-Segs" name="BackwardSyllableNumPhones">
+		<qs name="L-Syl_Num-Segs==0">
+			0
+		</qs>
+		<qs name="L-Syl_Num-Segs==1">
+			1
+		</qs>
+		<qs name="L-Syl_Num-Segs==2">
+			2
+		</qs>
+		<qs name="L-Syl_Num-Segs==3">
+			3
+		</qs>
+		<qs name="L-Syl_Num-Segs==4">
+			4
+		</qs>
+		<qs name="L-Syl_Num-Segs==5">
+			5
+		</qs>
+		<qs name="L-Syl_Num-Segs==6">
+			6
+		</qs>
+		<qs name="L-Syl_Num-Segs==7">
+			7
+		</qs>
+		<qs name="L-Syl_Num-Segs&lt;=1">
+			0 1
+		</qs>
+		<qs name="L-Syl_Num-Segs&lt;=2">
+			0 1 2
+		</qs>
+		<qs name="L-Syl_Num-Segs&lt;=3">
+			0 1 2 3
+		</qs>
+		<qs name="L-Syl_Num-Segs&lt;=4">
+			0 1 2 3 4
+		</qs>
+		<qs name="L-Syl_Num-Segs&lt;=5">
+			0 1 2 3 4 5
+		</qs>
+		<qs name="L-Syl_Num-Segs&lt;=6">
+			0 1 2 3 4 5 6
+		</qs>
+		<qs name="L-Syl_Num-Segs&lt;=7">
+			0 1 2 3 4 5 6 7
+		</qs>
+	</feat>
+	<feat htsname="C-Syl_Num-Segs" name="SyllableNumPhones">
+		<qs name="C-Syl_Num-Segs==0">
+			0
+		</qs>
+		<qs name="C-Syl_Num-Segs==1">
+			1
+		</qs>
+		<qs name="C-Syl_Num-Segs==2">
+			2
+		</qs>
+		<qs name="C-Syl_Num-Segs==3">
+			3
+		</qs>
+		<qs name="C-Syl_Num-Segs==4">
+			4
+		</qs>
+		<qs name="C-Syl_Num-Segs==5">
+			5
+		</qs>
+		<qs name="C-Syl_Num-Segs==6">
+			6
+		</qs>
+		<qs name="C-Syl_Num-Segs==7">
+			7
+		</qs>
+		<qs name="C-Syl_Num-Segs&lt;=1">
+			0 1
+		</qs>
+		<qs name="C-Syl_Num-Segs&lt;=2">
+			0 1 2
+		</qs>
+		<qs name="C-Syl_Num-Segs&lt;=3">
+			0 1 2 3
+		</qs>
+		<qs name="C-Syl_Num-Segs&lt;=4">
+			0 1 2 3 4
+		</qs>
+		<qs name="C-Syl_Num-Segs&lt;=5">
+			0 1 2 3 4 5
+		</qs>
+		<qs name="C-Syl_Num-Segs&lt;=6">
+			0 1 2 3 4 5 6
+		</qs>
+		<qs name="C-Syl_Num-Segs&lt;=7">
+			0 1 2 3 4 5 6 7
+		</qs>
+	</feat>
+	<feat htsname="R-Syl_Num-Segs" name="ForwardSyllableNumPhones">
+		<qs name="R-Syl_Num-Segs==0">
+			0
+		</qs>
+		<qs name="R-Syl_Num-Segs==1">
+			1
+		</qs>
+		<qs name="R-Syl_Num-Segs==2">
+			2
+		</qs>
+		<qs name="R-Syl_Num-Segs==3">
+			3
+		</qs>
+		<qs name="R-Syl_Num-Segs==4">
+			4
+		</qs>
+		<qs name="R-Syl_Num-Segs==5">
+			5
+		</qs>
+		<qs name="R-Syl_Num-Segs==6">
+			6
+		</qs>
+		<qs name="R-Syl_Num-Segs==7">
+			7
+		</qs>
+		<qs name="R-Syl_Num-Segs&lt;=1">
+			0 1
+		</qs>
+		<qs name="R-Syl_Num-Segs&lt;=2">
+			0 1 2
+		</qs>
+		<qs name="R-Syl_Num-Segs&lt;=3">
+			0 1 2 3
+		</qs>
+		<qs name="R-Syl_Num-Segs&lt;=4">
+			0 1 2 3 4
+		</qs>
+		<qs name="R-Syl_Num-Segs&lt;=5">
+			0 1 2 3 4 5
+		</qs>
+		<qs name="R-Syl_Num-Segs&lt;=6">
+			0 1 2 3 4 5 6
+		</qs>
+		<qs name="R-Syl_Num-Segs&lt;=7">
+			0 1 2 3 4 5 6 7
+		</qs>
+	</feat>
+	<feat htsname="L-Word_Num-Syls" name="BackwardWordNumSyls">
+		<qs name="L-Word_Num-Syls==0">
+			0
+		</qs>
+		<qs name="L-Word_Num-Syls==1">
+			1
+		</qs>
+		<qs name="L-Word_Num-Syls==2">
+			2
+		</qs>
+		<qs name="L-Word_Num-Syls==3">
+			3
+		</qs>
+		<qs name="L-Word_Num-Syls==4">
+			4
+		</qs>
+		<qs name="L-Word_Num-Syls==5">
+			5
+		</qs>
+		<qs name="L-Word_Num-Syls==6">
+			6
+		</qs>
+		<qs name="L-Word_Num-Syls==7">
+			7
+		</qs>
+		<qs name="L-Word_Num-Syls&lt;=1">
+			0 1
+		</qs>
+		<qs name="L-Word_Num-Syls&lt;=2">
+			0 1 2
+		</qs>
+		<qs name="L-Word_Num-Syls&lt;=3">
+			0 1 2 3
+		</qs>
+		<qs name="L-Word_Num-Syls&lt;=4">
+			0 1 2 3 4
+		</qs>
+		<qs name="L-Word_Num-Syls&lt;=5">
+			0 1 2 3 4 5
+		</qs>
+		<qs name="L-Word_Num-Syls&lt;=6">
+			0 1 2 3 4 5 6
+		</qs>
+		<qs name="L-Word_Num-Syls&lt;=7">
+			0 1 2 3 4 5 6 7
+		</qs>
+	</feat>
+	<feat htsname="C-Word_Num-Syls" name="WordNumSyls">
+		<qs name="C-Word_Num-Syls==xx">
+			0
+		</qs>
+		<qs name="C-Word_Num-Syls==1">
+			1
+		</qs>
+		<qs name="C-Word_Num-Syls==2">
+			2
+		</qs>
+		<qs name="C-Word_Num-Syls==3">
+			3
+		</qs>
+		<qs name="C-Word_Num-Syls==4">
+			4
+		</qs>
+		<qs name="C-Word_Num-Syls==5">
+			5
+		</qs>
+		<qs name="C-Word_Num-Syls==6">
+			6
+		</qs>
+		<qs name="C-Word_Num-Syls==7">
+			7
+		</qs>
+		<qs name="C-Word_Num-Syls&lt;=1">
+			0 1
+		</qs>
+		<qs name="C-Word_Num-Syls&lt;=2">
+			0 1 2
+		</qs>
+		<qs name="C-Word_Num-Syls&lt;=3">
+			0 1 2 3
+		</qs>
+		<qs name="C-Word_Num-Syls&lt;=4">
+			0 1 2 3 4
+		</qs>
+		<qs name="C-Word_Num-Syls&lt;=5">
+			0 1 2 3 4 5
+		</qs>
+		<qs name="C-Word_Num-Syls&lt;=6">
+			0 1 2 3 4 5 6
+		</qs>
+		<qs name="C-Word_Num-Syls&lt;=7">
+			0 1 2 3 4 5 6 7
+		</qs>
+	</feat>
+	<feat htsname="R-Word_Num-Syls" name="ForwardWordNumSyls">
+		<qs name="R-Word_Num-Syls==0">
+			0
+		</qs>
+		<qs name="R-Word_Num-Syls==1">
+			1
+		</qs>
+		<qs name="R-Word_Num-Syls==2">
+			2
+		</qs>
+		<qs name="R-Word_Num-Syls==3">
+			3
+		</qs>
+		<qs name="R-Word_Num-Syls==4">
+			4
+		</qs>
+		<qs name="R-Word_Num-Syls==5">
+			5
+		</qs>
+		<qs name="R-Word_Num-Syls==6">
+			6
+		</qs>
+		<qs name="R-Word_Num-Syls==7">
+			7
+		</qs>
+		<qs name="R-Word_Num-Syls&lt;=1">
+			0 1
+		</qs>
+		<qs name="R-Word_Num-Syls&lt;=2">
+			0 1 2
+		</qs>
+		<qs name="R-Word_Num-Syls&lt;=3">
+			0 1 2 3
+		</qs>
+		<qs name="R-Word_Num-Syls&lt;=4">
+			0 1 2 3 4
+		</qs>
+		<qs name="R-Word_Num-Syls&lt;=5">
+			0 1 2 3 4 5
+		</qs>
+		<qs name="R-Word_Num-Syls&lt;=6">
+			0 1 2 3 4 5 6
+		</qs>
+		<qs name="R-Word_Num-Syls&lt;=7">
+			0 1 2 3 4 5 6 7
+		</qs>
+	</feat>
+	<feat htsname="C-Phrase_Num-Words" name="PhraseNumWords">
+		<qs name="C-Phrase_Num-Words==xx">
+			0
+		</qs>
+		<qs name="C-Phrase_Num-Words==1">
+			1
+		</qs>
+		<qs name="C-Phrase_Num-Words==2">
+			2
+		</qs>
+		<qs name="C-Phrase_Num-Words==3">
+			3
+		</qs>
+		<qs name="C-Phrase_Num-Words==4">
+			4
+		</qs>
+		<qs name="C-Phrase_Num-Words==5">
+			5
+		</qs>
+		<qs name="C-Phrase_Num-Words==6">
+			6
+		</qs>
+		<qs name="C-Phrase_Num-Words==7">
+			7
+		</qs>
+		<qs name="C-Phrase_Num-Words==8">
+			8
+		</qs>
+		<qs name="C-Phrase_Num-Words==9">
+			9
+		</qs>
+		<qs name="C-Phrase_Num-Words==10">
+			10
+		</qs>
+		<qs name="C-Phrase_Num-Words==11">
+			11
+		</qs>
+		<qs name="C-Phrase_Num-Words==12">
+			12
+		</qs>
+		<qs name="C-Phrase_Num-Words==13">
+			13
+		</qs>
+		<qs name="C-Phrase_Num-Words==14">
+			14
+		</qs>
+		<qs name="C-Phrase_Num-Words==15">
+			15
+		</qs>
+		<qs name="C-Phrase_Num-Words==16">
+			16
+		</qs>
+		<qs name="C-Phrase_Num-Words==17">
+			17
+		</qs>
+		<qs name="C-Phrase_Num-Words==18">
+			18
+		</qs>
+		<qs name="C-Phrase_Num-Words==19">
+			19
+		</qs>
+		<qs name="C-Phrase_Num-Words==20">
+			20
+		</qs>
+		<qs name="C-Phrase_Num-Words==21">
+			21
+		</qs>
+		<qs name="C-Phrase_Num-Words==22">
+			22
+		</qs>
+		<qs name="C-Phrase_Num-Words==23">
+			23
+		</qs>
+		<qs name="C-Phrase_Num-Words==24">
+			24
+		</qs>
+		<qs name="C-Phrase_Num-Words==25">
+			25
+		</qs>
+		<qs name="C-Phrase_Num-Words==26">
+			26
+		</qs>
+		<qs name="C-Phrase_Num-Words==27">
+			27
+		</qs>
+		<qs name="C-Phrase_Num-Words==28">
+			28
+		</qs>
+		<qs name="C-Phrase_Num-Words==29">
+			29
+		</qs>
+		<qs name="C-Phrase_Num-Words==30">
+			30
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=1">
+			0 1
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=2">
+			0 1 2
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=3">
+			0 1 2 3
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=4">
+			0 1 2 3 4
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=5">
+			0 1 2 3 4 5
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=6">
+			0 1 2 3 4 5 6
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=7">
+			0 1 2 3 4 5 6 7
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=8">
+			0 1 2 3 4 5 6 7 8
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=9">
+			0 1 2 3 4 5 6 7 8 9
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=10">
+			0 1 2 3 4 5 6 7 8 9 10
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=11">
+			0 1 2 3 4 5 6 7 8 9 10 11
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=12">
+			0 1 2 3 4 5 6 7 8 9 10 11 12
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=13">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=14">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=15">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=16">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=17">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=18">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=19">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=20">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=21">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=22">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=23">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=24">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=25">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=26">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=27">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=28">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=29">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29
+		</qs>
+		<qs name="C-Phrase_Num-Words&lt;=30">
+			0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30
+		</qs>
+	</feat>
+	<feat htsname="C-Phrase_TOBI_End-tone" name="PhraseTobiEndTone">
+		<qs name="C-Phrase_TOBI_End-tonexx">
+			0
+		</qs>
+		<qs name="C-Phrase_TOBI_End-toneL-L">
+			LL
+		</qs>
+		<qs name="C-Phrase_TOBI_End-toneL-H">
+			LH
+		</qs>
+	</feat>
+</qset>

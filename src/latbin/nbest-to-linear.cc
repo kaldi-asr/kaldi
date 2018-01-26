@@ -39,8 +39,8 @@ int main(int argc, char *argv[]) {
         "Usage: nbest-to-linear [options] <nbest-rspecifier> <alignments-wspecifier> "
         "[<transcriptions-wspecifier> [<lm-cost-wspecifier> [<ac-cost-wspecifier>]]]\n"
         " e.g.: lattice-to-nbest --n=10 ark:1.lats ark:- | \\\n"
-        "   nbest-to-linear ark:1.lats ark,t:1.ali ark,t:1.tra\n";
-    
+        "   nbest-to-linear ark:1.lats ark,t:1.ali 'ark,t:|int2sym.pl -f 2- words.txt > text'\n";
+
     ParseOptions po(usage);
 
     po.Read(argc, argv);
@@ -62,17 +62,17 @@ int main(int argc, char *argv[]) {
     Int32VectorWriter trans_writer(trans_wspecifier);
     BaseFloatWriter lm_cost_writer(lm_cost_wspecifier);
     BaseFloatWriter ac_cost_writer(ac_cost_wspecifier);
-    
+
     int32 n_done = 0, n_err = 0;
-    
+
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
 
-      vector<int32> ilabels;
-      vector<int32> olabels;
+      std::vector<int32> ilabels;
+      std::vector<int32> olabels;
       LatticeWeight weight;
-      
+
       if (!GetLinearSymbolSequence(lat, &ilabels, &olabels, &weight)) {
         KALDI_WARN << "Lattice/nbest for key " << key << " had wrong format: "
             "note, this program expects input with one path, e.g. from "

@@ -1,0 +1,39 @@
+<?xml version="1.0" ?>
+<pbreak>
+	<!--punctuation symbol,-->
+	<!--after: break level (0-4) and break time(seconds),-->
+	<!--before:  break level (0-4) and break time(seconds)-->
+	<!--bigger break level override less levels-->
+	<break name="." pos="pstpunc" time="0.400" type="4"/>
+	<break name="!" pos="pstpunc" time="0.400" type="4"/>
+	<break name="?" pos="pstpunc" time="0.400" type="4"/>
+	<break name="," pos="pstpunc" time="0.200" type="3"/>
+	<break name="-" pos="pstpunc" time="0.200" type="3"/>
+	<break name="(" pos="prepunc" time="0.300" type="3"/>
+	<break name=")" pos="pstpunc" time="0.300" type="3"/>
+	<break name="[" pos="prepunc" time="0.300" type="3"/>
+	<break name="]" pos="pstpunc" time="0.200" type="3"/>
+	<break name=";" pos="pstpunc" time="0.300" type="3"/>
+	<break name=":" pos="pstpunc" time="0.300" type="3"/>
+	<break name="&quot;" pos="pstpunc" time="0.100" type="2"/>
+	<break name="&quot;" pos="prepunc" time="0.100" type="2"/>
+	<!--special case requires opening ' in norm buffer for closing to fire-->
+	<break name="'" pos="pstpunc" time="0.100" type="2"/>
+	<break name="'" pos="prepunc" time="0.100" type="2"/>
+	<!--line feeds only ever after 1 or 2-->
+	<break name="newline" pos="pstpunc" time="0.400" type="4"/>
+	<break name="newlineX2" pos="pstpunc" time="0.400" type="4"/>
+	<!--initial/end pause in a document-->
+	<break name="DEFAULT" pos="pstpunc" time="0.012" type="4"/>
+	<break name="DEFAULT" pos="prepunc" time="0.011" type="4"/>
+	<!--initial/end pause in a forced spurt break-->
+	<break name="FORCED" pos="pstpunc" time="0.052" type="3"/>
+	<break name="FORCED" pos="prepunc" time="0.051" type="3"/>
+	<!--SSML break types, medium is the default break type-->
+	<break name="x-weak" pos="pstpunc" time="0.100" type="2"/>
+	<break name="weak" pos="pstpunc" time="0.200" type="3"/>
+	<break name="medium" pos="pstpunc" time="0.400" type="4"/>
+	<break name="strong" pos="pstpunc" time="1.000" type="4"/>
+	<break name="x-strong" pos="pstpunc" time="1.500" type="4"/>
+</pbreak>
+

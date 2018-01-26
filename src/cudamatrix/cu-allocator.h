@@ -26,6 +26,7 @@
 
 #include <cublas_v2.h>
 #include <map>
+#include <mutex>
 #include <list>
 #include <queue>
 #include <iostream>
@@ -69,11 +70,30 @@ struct CuAllocatorOptions {
 // This is a member of the CuDevice class.
 class CuMemoryAllocator {
  public:
+  /// Allocates memory on the CUDA device, of size 'size'.
   void* Malloc(size_t size);
 
+  /// Allocation function for matrix-like things.
   void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch);
 
+  /// Free device memory allocated by Malloc() or MallocPitch().
   void Free(void *ptr);
+
+  /// Mutex-guarded version of Malloc(), for use in multi-threaded programs.
+  inline void* MallocLocking(size_t size) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return Malloc(size);
+  }
+  /// Mutex-guarded version of Malloc(), for use in multi-threaded programs.
+  inline void* MallocPitchLocking(size_t row_bytes, size_t num_rows, size_t *pitch) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    return MallocPitch(row_bytes, num_rows, pitch);
+  }
+  /// Mutex-guarded version of Free(), for use in multi-threaded programs.
+  void FreeLocking(void *ptr) {
+    std::unique_lock<std::mutex> lock(mutex_);
+    Free(ptr);
+  }
 
 
   // the maximum amount of memory that was ever allocated in the lifetime of the
@@ -141,7 +161,7 @@ class CuMemoryAllocator {
       // be a multiple of 4, and num_rows will frequently be a multiple of
       // powers of 2 also.  We need to shift right and add so that there will be
       // some action in the lower-order bits.
-      size_t operator () (const std::pair<size_t,size_t> &p) const {
+      size_t operator () (const std::pair<size_t,size_t> &p) const noexcept {
         size_t temp = p.first + 1867 * p.second;
         return temp + (temp >> 2) + (temp >> 8);
       }
@@ -206,7 +226,7 @@ class CuMemoryAllocator {
   };
 
   struct PointerHasher {
-    size_t operator() (const void *arg) const {
+    size_t operator() (const void *arg) const noexcept {
       // the last few bits tend to be very predictable, for alignment reasons (CUDA
       // allocation may align on 256 byte or 512 byte boundaries or something similar).
       size_t temp = reinterpret_cast<size_t>(arg);
@@ -217,6 +237,9 @@ class CuMemoryAllocator {
   // This is a map from memory locations owned by the user, so we can recover
   // the information when people call Free() and we add it back into the cache.
   unordered_map<void*, UsedMemoryElement, PointerHasher> used_map_;
+
+  // this is only locked by the '*Locking' versions of the functions.
+  std::mutex mutex_;
 
 };
 

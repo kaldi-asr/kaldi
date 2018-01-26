@@ -17,8 +17,8 @@ if (@ARGV == 0) {
                "This script extracts some important information from the logs\n" .
                "and displays it on a single (rather long) line.\n" .
                "The --debug option is just to debug the script itself.\n" .
-               "This program exits with status 0 if it seems like the argument\n" .
-               "really was a GMM dir, and 1 otherwise.\n";
+               "This program exits with status 0 if it seems like the arguments\n" .
+               "really were of the expected directory type, and 1 otherwise.\n";
   exit(1);
 }
 
@@ -137,10 +137,27 @@ sub get_combine_info {
       if (m/Combining nnets, objective function changed from (\S+) to (\S+)/) {
         close(F);
         return sprintf(" combine=%.2f->%.2f", $1, $2);
+      } elsif (m/Combining (\S+) nnets, objective function changed from (\S+) to (\S+)/) {
+        close(F);
+        return sprintf(" combine=%.2f->%.2f (over %d)", $2, $3, $1); 
       }
     }
   }
   return "";
+}
+
+sub number_to_string {
+  my ($value, $name) = @_;
+  my $precision;
+  if (abs($value) < 0.02 or ($name eq "accuracy" and abs($value) > 0.97)) {
+    $precision = 4;
+  } elsif (abs($value) < 0.2 or ($name eq "accuracy" and abs($value) > 0.7)) {
+    $precision = 3;
+  } else {
+    $precision = 2;
+  }
+  my $format = "%.${precision}f";  # e.g. "%.2f"
+  return sprintf($format, $value);
 }
 
 # this is used in get_loglike_and_accuracy to format
@@ -157,8 +174,8 @@ sub get_printed_string {
   foreach my $iter (@iters_array) {
     if (defined($train_hash{$iter}) && defined($valid_hash{$iter})) {
       push @iters_to_print, $iter;
-      push @train_values_to_print, sprintf("%.2f", $train_hash{$iter});
-      push @valid_values_to_print, sprintf("%.2f", $valid_hash{$iter});
+      push @train_values_to_print, number_to_string($train_hash{$iter}, $name);
+      push @valid_values_to_print, number_to_string($valid_hash{$iter}, $name);
     }
   }
   if (@iters_to_print == 0) {  return ""; }

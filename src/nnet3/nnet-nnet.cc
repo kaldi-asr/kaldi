@@ -23,6 +23,8 @@
 #include "nnet3/nnet-parse.h"
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/am-nnet-simple.h"
+#include "hmm/transition-model.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -154,6 +156,15 @@ void Nnet::SetComponent(int32 c, Component *component) {
   KALDI_ASSERT(static_cast<size_t>(c) < components_.size());
   delete components_[c];
   components_[c] = component;
+}
+
+int32 Nnet::AddComponent(const std::string &name,
+                         Component *component) {
+  int32 ans = components_.size();
+  KALDI_ASSERT(IsValidName(name) && component != NULL);
+  components_.push_back(component);
+  component_names_.push_back(name);
+  return ans;
 }
 
 /// Returns true if this is component-input node, i.e. a node of type kDescriptor
@@ -565,8 +576,28 @@ void Nnet::GetSomeNodeNames(
   }
 }
 
+void Nnet::Swap(Nnet *other) {
+  component_names_.swap(other->component_names_);
+  components_.swap(other->components_);
+  node_names_.swap(other->node_names_);
+  nodes_.swap(other->nodes_);
+}
+
 void Nnet::Read(std::istream &is, bool binary) {
   Destroy();
+  int first_char = PeekToken(is, binary);
+  if (first_char == 'T') {
+    // This branch is to allow '.mdl' files (containing a TransitionModel
+    // and then an AmNnetSimple) to be read where .raw files (containing
+    // just an Nnet) would be expected.  This is often convenient.
+    TransitionModel temp_trans_model;
+    temp_trans_model.Read(is, binary);
+    AmNnetSimple temp_am_nnet;
+    temp_am_nnet.Read(is, binary);
+    temp_am_nnet.GetNnet().Swap(this);
+    return;
+  }
+
   ExpectToken(is, binary, "<Nnet3>");
   std::ostringstream config_file_out;
   std::string cur_line;
@@ -695,7 +726,13 @@ void Nnet::Check(bool warn_for_orphans) const {
         KALDI_ASSERT(n > 0 && nodes_[n-1].node_type == kDescriptor);
         const NetworkNode &src_node = nodes_[n-1];
         const Component *c = GetComponent(node.u.component_index);
-        int32 src_dim = src_node.Dim(*this), input_dim = c->InputDim();
+        int32 src_dim, input_dim = c->InputDim();
+        try {
+          src_dim = src_node.Dim(*this);
+        } catch (...) {
+          KALDI_ERR << "Error in Descriptor for network-node "
+                    << node_name << " (see error above)";
+        }
         if (src_dim != input_dim) {
           KALDI_ERR << "Dimension mismatch for network-node "
                     << node_name << ": input-dim "
@@ -882,8 +919,6 @@ void Nnet::RemoveSomeNodes(const std::vector<int32> &nodes_to_remove) {
       new_nodes[n].u.node_index = new_node_index;
     }
   }
-  KALDI_LOG << "Removed " << (old_num_nodes - new_num_nodes)
-            << " orphan nodes.";
   nodes_ = new_nodes;
   node_names_ = new_node_names;
   bool warn_for_orphans = false;
@@ -901,7 +936,16 @@ void Nnet::RemoveOrphanNodes(bool remove_orphan_inputs) {
     for (int32 i = 0; i < orphan_nodes.size(); i++)
       if (IsInputNode(orphan_nodes[i]))
         orphan_nodes.erase(orphan_nodes.begin() + i);
+  // For each component-node, its component-input node (which is kind of a
+  // "hidden" node) would be included in 'orphan_nodes', but for diagnostic
+  // purposes we want to exclude these from 'num_nodes_removed' to avoid
+  // confusing users.
+  int32 num_nodes_removed = 0;
+  for (int32 i = 0; i < orphan_nodes.size(); i++)
+    if (!IsComponentInputNode(orphan_nodes[i]))
+      num_nodes_removed++;
   RemoveSomeNodes(orphan_nodes);
+  KALDI_LOG << "Removed " << num_nodes_removed << " orphan nodes.";
 }
 
 void Nnet::ResetGenerators() {

@@ -154,7 +154,9 @@ if [ $sub_split -eq 1 ]; then
   # Prepare 'scp' for storing lattices separately and gzipped
   for n in `seq $nj`; do
     [ ! -d $dir/lat$n ] && mkdir $dir/lat$n;
-    cat $sdata/$n/feats.scp | awk '{ print $1" | gzip -c >'$dir'/lat'$n'/"$1".gz"; }'
+    cat $sdata/$n/feats.scp | \
+    awk -v dir=$dir -v n=$n '{ utt=$1; utt_noslash=utt; gsub("/","_",utt_noslash);
+                               printf("%s | gzip -c >%s/lat%d/%s.gz\n", utt, dir, n, utt_noslash); }'
   done >$dir/lat.store_separately_as_gz.scp
   # Generate the lattices
   $cmd $parallel_opts JOB=1:$nj $dir/log/decode_den.JOB.log \
@@ -183,8 +185,10 @@ else
       # Prepare 'scp' for storing lattices separately and gzipped
       for k in `seq $sub_split`; do
         [ ! -d $dir/lat$n/$k ] && mkdir -p $dir/lat$n/$k;
-        cat $sdata2/$k/feats.scp | awk '{ print $1" | gzip -c >'$dir'/lat'$n'/'$k'/"$1".gz"; }'
-      done >$dir/lat.$n.store_separately_as_gz.scp
+        cat $sdata2/$k/feats.scp | \
+        awk -v dir=$dir -v n=$n -v k=$k '{ utt=$1; utt_noslash=utt; gsub("/","_",utt_noslash);
+                                           printf("%s | gzip -c >%s/lat%d/%d/%s.gz\n", utt, dir, n, k, utt_noslash); }'
+      done >$dir/lat.${n}.store_separately_as_gz.scp
       # Generate lattices
       $cmd $parallel_opts JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         latgen-faster-mapped --beam=$beam --lattice-beam=$lattice_beam --acoustic-scale=$acwt \

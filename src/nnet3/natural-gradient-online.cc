@@ -24,8 +24,9 @@ namespace nnet3 {
 
 
 OnlineNaturalGradient::OnlineNaturalGradient():
-    rank_(40), update_period_(1), num_samples_history_(2000.0), alpha_(4.0),
-    epsilon_(1.0e-10), delta_(5.0e-04), t_(-1),
+    rank_(40), update_period_(1), num_samples_history_(2000.0),
+    num_minibatches_history_(0.0), alpha_(4.0),
+    epsilon_(1.0e-10), delta_(5.0e-04), frozen_(false), t_(-1),
     num_updates_skipped_(0), self_debug_(false) { }
 
 
@@ -63,11 +64,6 @@ void OnlineNaturalGradient::InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R) {
     }
   }
   R->AddElements(1.0, elems);
-  { // TODO: remove this testing code.
-    CuMatrix<BaseFloat> prod(num_rows, num_rows);
-    prod.AddMatMat(1.0, *R, kNoTrans, *R, kTrans, 0.0);
-    KALDI_ASSERT(prod.IsUnit());
-  }
 }
 
 
@@ -84,7 +80,10 @@ void OnlineNaturalGradient::InitDefault(int32 D) {
     // We'll handle this as a special case, for generality.
     return;
   }
-  KALDI_ASSERT(num_samples_history_ > 0.0 && num_samples_history_ <= 1.0e+6);
+  KALDI_ASSERT(num_samples_history_ > 0.0 && num_samples_history_ <= 1.0e+06);
+  KALDI_ASSERT((num_minibatches_history_ == 0.0 ||
+                num_minibatches_history_ > 1.0) &&
+               num_minibatches_history_ < 1.0e+06);
   KALDI_ASSERT(alpha_ >= 0.0);
   KALDI_ASSERT(rank_ > 0);
   KALDI_ASSERT(epsilon_ > 0.0 && epsilon_ <= 1.0e-05);  // plausible values.
@@ -142,6 +141,8 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   else
     num_init_iters = 3;
 
+  this_copy.frozen_ = false;   // un-freeze if it was frozen, so we can
+                               // initialize.
   for (int32 i = 0; i < num_init_iters; i++) {
     BaseFloat scale;
     R0_copy.CopyFromMat(R0);
@@ -174,7 +175,7 @@ void OnlineNaturalGradient::PreconditionDirections(
     return;
   }
 
-  read_write_mutex_.Lock();
+  read_write_mutex_.lock();
   if (t_ == -1) // not initialized
     Init(*X_t);
 
@@ -189,7 +190,7 @@ void OnlineNaturalGradient::PreconditionDirections(
   WJKL_t.Range(0, R, 0, D).CopyFromMat(W_t_);
   BaseFloat rho_t(rho_t_);
   Vector<BaseFloat> d_t(d_t_);
-  read_write_mutex_.Unlock();
+  read_write_mutex_.unlock();
   PreconditionDirectionsInternal(t, rho_t, d_t, &WJKL_t, X_t, row_prod, scale);
 }
 
@@ -342,13 +343,26 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
 
   H_t.AddMatMat(1.0, *X_t, kNoTrans, W_t, kTrans, 0.0);  // H_t = X_t W_t^T
 
-  bool locked = update_mutex_.TryLock();
+  bool locked = update_mutex_.try_lock();
   if (locked) {
-    // Just hard-code it here that we do 10 updates before skipping any.
+    // We'll release the lock if we don't plan to update the parameters.
+
+    // Explanation of the conditions below:
+    // if (frozen_) because we don't do the update is the user called Freeze().
+    // I forget why the (t_ > t) is here; probably some race condition encountered
+    //   a long time ago.  Not important; nnet3 doesn't use multiple threads anyway.
+    // The condition:
+    // (num_updates_skipped_ < update_period_ - 1 && t_ >= num_initial_updates)
+    // means we can update if either we're in the first 10 updates (e.g. first
+    // 10 minibatches), or if we've skipped 'update_period_ - 1' batches of data
+    // without updating the parameters (this allows us to update only, say,
+    // every 4 times, for speed, after updating the first 10 times).
+
+    // Just hard-code it here that we do 10 initial updates before skipping any.
     const int num_initial_updates = 10;
-    if (t_ > t || (num_updates_skipped_ < update_period_ - 1 &&
-                   t_ >= num_initial_updates)) {
-      update_mutex_.Unlock();
+    if (frozen_ || t_ > t || (num_updates_skipped_ < update_period_ - 1 &&
+                              t_ >= num_initial_updates)) {
+      update_mutex_.unlock();
       // We got the lock but we were already beaten to it by another thread, or
       // we don't want to update yet due to update_period_ > 1 (this saves
       // compute), so release the lock.
@@ -362,11 +376,12 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
     // the same or later starting point (making our update stale), or because
     // update_period_ > 1.  We just apply the preconditioning and return.
 
-    // note: we don't bother with any locks before incrementing
+    // note: we don't bother with any locks before checking frozen_ or incrementing
     // num_updates_skipped_ below, because the worst that could happen is that,
     // on very rare occasions, we could skip one or two more updates than we
     // intended.
-    num_updates_skipped_++;
+    if (!frozen_)
+      num_updates_skipped_++;
 
     BaseFloat tr_Xt_XtT = TraceMatMat(*X_t, *X_t, kTrans);
     // X_hat_t = X_t - H_t W_t
@@ -435,7 +450,8 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   bool must_reorthogonalize = (c_t(0) > condition_threshold * c_t(R - 1));
 
   BaseFloat c_t_floor = pow(rho_t * (1 - eta), 2);
-  int32 nf = c_t.ApplyFloor(c_t_floor);
+  int32 nf;
+  c_t.ApplyFloor(c_t_floor, &nf);
   if (nf > 0)
     must_reorthogonalize = true;
   if (nf > 0 && self_debug_) {
@@ -492,7 +508,7 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   }
 
   // Commit the new parameters.
-  read_write_mutex_.Lock();
+  read_write_mutex_.lock();
   KALDI_ASSERT(t_ == t);  // we already ensured this.
   t_ = t + 1;
   num_updates_skipped_ = 0;
@@ -503,17 +519,22 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
   if (self_debug_)
     SelfTest();
 
-  read_write_mutex_.Unlock();
-  update_mutex_.Unlock();
+  read_write_mutex_.unlock();
+  update_mutex_.unlock();
 }
 
 BaseFloat OnlineNaturalGradient::Eta(int32 N) const {
-  KALDI_ASSERT(num_samples_history_ > 0.0);
-  BaseFloat ans = 1.0 - exp(-N / num_samples_history_);
-  // Don't let eta approach 1 too closely, as it can lead to NaN's appearing if
-  // the input is all zero.
-  if (ans > 0.9) ans = 0.9;
-  return ans;
+  if (num_minibatches_history_ > 0.0) {
+    KALDI_ASSERT(num_minibatches_history_ > 1.0);
+    return 1.0 / num_minibatches_history_;
+  } else {
+    KALDI_ASSERT(num_samples_history_ > 0.0);
+    BaseFloat ans = 1.0 - exp(-N / num_samples_history_);
+    // Don't let eta approach 1 too closely, as it can lead to NaN's appearing if
+    // the input is all zero.
+    if (ans > 0.9) ans = 0.9;
+    return ans;
+  }
 }
 
 void OnlineNaturalGradient::ComputeWt1(int32 N,
@@ -613,7 +634,9 @@ void OnlineNaturalGradient::ComputeEt(const VectorBase<BaseFloat> &d_t,
 OnlineNaturalGradient::OnlineNaturalGradient(const OnlineNaturalGradient &other):
     rank_(other.rank_), update_period_(other.update_period_),
     num_samples_history_(other.num_samples_history_),
+    num_minibatches_history_(other.num_minibatches_history_),
     alpha_(other.alpha_), epsilon_(other.epsilon_), delta_(other.delta_),
+    frozen_(other.frozen_),
     t_(other.t_), num_updates_skipped_(other.num_updates_skipped_),
     self_debug_(other.self_debug_), W_t_(other.W_t_),
     rho_t_(other.rho_t_), d_t_(other.d_t_) {
@@ -627,6 +650,7 @@ OnlineNaturalGradient& OnlineNaturalGradient::operator = (
   num_samples_history_ = other.num_samples_history_;
   alpha_ = other.alpha_;
   epsilon_ = other.epsilon_;
+  delta_ = other.delta_;
   t_ = other.t_;
   self_debug_ = other.self_debug_;
   W_t_ = other.W_t_;
@@ -648,6 +672,12 @@ void OnlineNaturalGradient::SetNumSamplesHistory(BaseFloat num_samples_history) 
                num_samples_history < 1.0e+6);
   num_samples_history_ = num_samples_history;
 }
+void OnlineNaturalGradient::SetNumMinibatchesHistory(
+    BaseFloat num_minibatches_history) {
+  KALDI_ASSERT(num_minibatches_history > 1.0);
+  num_minibatches_history_ = num_minibatches_history;
+}
+
 void OnlineNaturalGradient::SetAlpha(BaseFloat alpha) {
   KALDI_ASSERT(alpha >= 0.0);
   alpha_ = alpha;

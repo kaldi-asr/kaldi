@@ -1,0 +1,19 @@
+
+# monophone system (shortest 10k)
+%WER 52.21 [ 20035 / 38374, 945 ins, 6290 del, 12800 sub ] exp/mono/decode_valid_dev/wer_10_0.0
+# delta + delta-delta triphone system (20k)
+%WER 25.15 [ 9651 / 38374, 516 ins, 3064 del, 6071 sub ] exp/tri1/decode_valid_dev/wer_15_0.0
+# LDA+MLLT system (20k)
+%WER 22.10 [ 8480 / 38374, 438 ins, 2948 del, 5094 sub ] exp/tri2b/decode_valid_dev/wer_16_0.0
+# LDA+MLLT+SAT system (20k)
+%WER 22.16 [ 8503 / 38374, 518 ins, 2822 del, 5163 sub ] exp/tri3b/decode_valid_dev/wer_16_0.0
+%WER 23.13 [ 8875 / 38374, 616 ins, 2590 del, 5669 sub ] exp/tri3b/decode_valid_dev.si/wer_14_0.0
+# LDA+MLLT+SAT system trained on entire training set
+%WER 17.85 [ 6849 / 38374, 514 ins, 2183 del, 4152 sub ] exp/tri4b/decode_valid_dev/wer_15_0.0
+%WER 18.56 [ 7121 / 38374, 512 ins, 2208 del, 4401 sub ] exp/tri4b/decode_valid_dev.si/wer_15_0.0
+
+# chain tdnn system
+%WER 4.82 [ 1850 / 38374, 130 ins, 685 del, 1035 sub ] exp/chain/tdnn1a_sp/decode_valid_dev/wer_13_0.0
+%WER 4.44 [ 1679 / 37837, 92 ins, 646 del, 941 sub ] exp/chain/tdnn1a_sp/decode_valid_test/wer_13_0.0
+%WER 4.88 [ 1873 / 38374, 138 ins, 678 del, 1057 sub ] exp/chain/tdnn1a_sp_online/decode_valid_dev/wer_13_0.0
+%WER 4.27 [ 1617 / 37837, 84 ins, 622 del, 911 sub ] exp/chain/tdnn1a_sp_online/decode_valid_test/wer_13_0.0

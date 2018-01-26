@@ -1,0 +1,5857 @@
+<?xml version="1.0" ?>
+<pos>
+	<tagger>
+		<most_common tag="NN"/>
+		<regex>
+			<r pat="having" pos="WORD" tag="VHG"/>
+			<r pat="until" pos="WORD" tag="IN"/>
+			<r pat="came" pos="WORD" tag="VVD"/>
+			<r pat="during" pos="WORD" tag="IN"/>
+			<r pat="million" pos="WORD" tag="CD"/>
+			<r pat="does" pos="WORD" tag="VVZ"/>
+			<r pat="since" pos="WORD" tag="IN"/>
+			<r pat="being" pos="WORD" tag="VBG"/>
+			<r pat="its" pos="WORD" tag="PP$"/>
+			<r pat="," pos="WORD" tag=","/>
+			<r pat="the" pos="WORD" tag="DT"/>
+			<r pat="." pos="WORD" tag="SENT"/>
+			<r pat="and" pos="WORD" tag="CC"/>
+			<r pat="to" pos="WORD" tag="TO"/>
+			<r pat="of" pos="WORD" tag="IN"/>
+			<r pat="a" pos="WORD" tag="DT"/>
+			<r pat="in" pos="WORD" tag="IN"/>
+			<r pat="es" pos="SUFFIX" tag="NNS"/>
+			<r pat="ing" pos="SUFFIX" tag="VVG"/>
+			<r pat="is" pos="WORD" tag="VBZ"/>
+			<r pat="rs" pos="SUFFIX" tag="NNS"/>
+			<r pat="for" pos="WORD" tag="IN"/>
+			<r pat="it" pos="WORD" tag="PP"/>
+			<r pat="ly" pos="SUFFIX" tag="RB"/>
+			<r pat="was" pos="WORD" tag="VBD"/>
+			<r pat="he" pos="WORD" tag="PP"/>
+			<r pat="with" pos="WORD" tag="IN"/>
+			<r pat="al" pos="SUFFIX" tag="JJ"/>
+			<r pat="by" pos="WORD" tag="IN"/>
+			<r pat="i" pos="WORD" tag="NP"/>
+			<r pat="his" pos="WORD" tag="PP$"/>
+			<r pat="at" pos="WORD" tag="IN"/>
+			<r pat="two" pos="WORD" tag="CD"/>
+			<r pat="be" pos="WORD" tag="VB"/>
+			<r pat="one" pos="WORD" tag="CD"/>
+			<r pat="ns" pos="SUFFIX" tag="NNS"/>
+			<r pat="ts" pos="SUFFIX" tag="NNS"/>
+			<r pat="but" pos="WORD" tag="CC"/>
+			<r pat="ould" pos="SUFFIX" tag="MD"/>
+			<r pat="'s" pos="WORD" tag="POS"/>
+			<r pat="from" pos="WORD" tag="IN"/>
+			<r pat="are" pos="WORD" tag="VBP"/>
+			<r pat="has" pos="WORD" tag="VHZ"/>
+			<r pat="said" pos="WORD" tag="VVD"/>
+			<r pat="not" pos="WORD" tag="RB"/>
+			<r pat="equals" pos="WORD" tag="VVZ"/>
+			<r pat="an" pos="WORD" tag="DT"/>
+			<r pat="they" pos="WORD" tag="PP"/>
+			<r pat="this" pos="WORD" tag="DT"/>
+			<r pat="we" pos="WORD" tag="PP"/>
+			<r pat="as" pos="WORD" tag="IN"/>
+			<r pat="will" pos="WORD" tag="MD"/>
+			<r pat="had" pos="WORD" tag="VHD"/>
+			<r pat="who" pos="WORD" tag="WP"/>
+			<r pat="thousand" pos="WORD" tag="CD"/>
+			<r pat="been" pos="WORD" tag="VBN"/>
+			<r pat="their" pos="WORD" tag="PP$"/>
+			<r pat="three" pos="WORD" tag="CD"/>
+			<r pat="five" pos="WORD" tag="CD"/>
+			<r pat="were" pos="WORD" tag="VBD"/>
+			<r pat="which" pos="WORD" tag="WDT"/>
+			<r pat="that" pos="WORD" tag="IN/that"/>
+			<r pat="ni" pos="PREFIX" tag="CD"/>
+			<r pat="wou" pos="PREFIX" tag="MD"/>
+			<r pat="you" pos="WORD" tag="PP"/>
+			<r pat="four" pos="WORD" tag="CD"/>
+			<r pat="hundred" pos="WORD" tag="CD"/>
+			<r pat="ed" pos="SUFFIX" tag="VVN"/>
+			<r pat="eig" pos="PREFIX" tag="CD"/>
+			<r pat="ds" pos="SUFFIX" tag="NNS"/>
+			<r pat="when" pos="WORD" tag="WRB"/>
+			<r pat="or" pos="WORD" tag="CC"/>
+			<r pat="if" pos="WORD" tag="IN"/>
+			<r pat="n't" pos="WORD" tag="RB"/>
+			<r pat="enty" pos="SUFFIX" tag="CD"/>
+			<r pat="teen" pos="SUFFIX" tag="CD"/>
+			<r pat="six" pos="WORD" tag="CD"/>
+			<r pat="after" pos="WORD" tag="IN"/>
+			<r pat="she" pos="WORD" tag="PP"/>
+			<r pat="ble" pos="SUFFIX" tag="JJ"/>
+			<r pat="ic" pos="SUFFIX" tag="JJ"/>
+			<r pat="sev" pos="PREFIX" tag="CD"/>
+			<r pat="dot" pos="WORD" tag="VVP"/>
+			<r pat="than" pos="WORD" tag="IN"/>
+			<r pat="there" pos="WORD" tag="EX"/>
+			<r pat="oh" pos="WORD" tag="UH"/>
+			<r pat="peo" pos="PREFIX" tag="NNS"/>
+			<r pat="eople" pos="SUFFIX" tag="NNS"/>
+			<r pat="last" pos="WORD" tag="JJ"/>
+			<r pat="ous" pos="SUFFIX" tag="JJ"/>
+			<r pat="what" pos="WORD" tag="WP"/>
+			<r pat="new" pos="WORD" tag="JJ"/>
+			<r pat="nto" pos="SUFFIX" tag="IN"/>
+			<r pat="twen" pos="PREFIX" tag="CD"/>
+			<r pat="also" pos="WORD" tag="RB"/>
+			<r pat="out" pos="SUFFIX" tag="IN"/>
+			<r pat="ms" pos="SUFFIX" tag="NNS"/>
+			<r pat="gs" pos="SUFFIX" tag="NNS"/>
+			<r pat="can" pos="WORD" tag="MD"/>
+			<r pat="him" pos="WORD" tag="PP"/>
+			<r pat="even" pos="SUFFIX" tag="CD"/>
+			<r pat="them" pos="WORD" tag="PP"/>
+			<r pat="ks" pos="SUFFIX" tag="NNS"/>
+			<r pat="year" pos="WORD" tag="NN"/>
+			<r pat="yea" pos="PREFIX" tag="NNS"/>
+			<r pat="now" pos="WORD" tag="RB"/>
+			<r pat="first" pos="WORD" tag="JJ"/>
+			<r pat="some" pos="WORD" tag="DT"/>
+			<r pat="have" pos="WORD" tag="VHP"/>
+			<r pat="my" pos="WORD" tag="PP$"/>
+			<r pat="so" pos="WORD" tag="RB"/>
+			<r pat="up" pos="WORD" tag="RP"/>
+			<r pat="just" pos="WORD" tag="RB"/>
+			<r pat="other" pos="WORD" tag="JJ"/>
+			<r pat="her" pos="WORD" tag="PP$"/>
+			<r pat="abo" pos="PREFIX" tag="IN"/>
+			<r pat="because" pos="WORD" tag="IN"/>
+			<r pat="thir" pos="PREFIX" tag="CD"/>
+			<r pat="over" pos="WORD" tag="IN"/>
+			<r pat="did" pos="WORD" tag="VVD"/>
+			<r pat="our" pos="WORD" tag="PP$"/>
+			<r pat="then" pos="WORD" tag="RB"/>
+			<r pat="hirty" pos="SUFFIX" tag="CD"/>
+			<r pat="fif" pos="PREFIX" tag="CD"/>
+			<r pat="against" pos="WORD" tag="IN"/>
+			<r pat="no" pos="WORD" tag="DT"/>
+			<r pat="ake" pos="SUFFIX" tag="VV"/>
+			<r pat="ish" pos="SUFFIX" tag="JJ"/>
+			<r pat="any" pos="WORD" tag="DT"/>
+			<r pat="where" pos="WORD" tag="WRB"/>
+			<r pat="shou" pos="PREFIX" tag="MD"/>
+			<r pat="says" pos="WORD" tag="VVZ"/>
+			<r pat="ment" pos="SUFFIX" tag="NN"/>
+			<r pat="me" pos="WORD" tag="PP"/>
+			<r pat="divid" pos="PREFIX" tag="VVN"/>
+			<r pat="ifty" pos="SUFFIX" tag="CD"/>
+			<r pat="how" pos="WORD" tag="WRB"/>
+			<r pat="hs" pos="SUFFIX" tag="NNS"/>
+			<r pat="ever" pos="SUFFIX" tag="RB"/>
+			<r pat="before" pos="WORD" tag="IN"/>
+			<r pat="very" pos="WORD" tag="RB"/>
+			<r pat="many" pos="WORD" tag="JJ"/>
+			<r pat="ten" pos="WORD" tag="CD"/>
+			<r pat="well" pos="WORD" tag="RB"/>
+			<r pat="those" pos="WORD" tag="DT"/>
+			<r pat="may" pos="WORD" tag="MD"/>
+			<r pat="still" pos="WORD" tag="RB"/>
+			<r pat="old" pos="WORD" tag="JJ"/>
+			<r pat="tive" pos="SUFFIX" tag="JJ"/>
+			<r pat="briti" pos="PREFIX" tag="JJ"/>
+			<r pat="inety" pos="SUFFIX" tag="CD"/>
+			<r pat="under" pos="WORD" tag="IN"/>
+			<r pat="between" pos="WORD" tag="IN"/>
+			<r pat="ps" pos="SUFFIX" tag="NNS"/>
+			<r pat="good" pos="WORD" tag="JJ"/>
+			<r pat="next" pos="WORD" tag="JJ"/>
+			<r pat="on" pos="PREFIX" tag="RB"/>
+			<r pat="self" pos="SUFFIX" tag="PP"/>
+			<r pat="while" pos="WORD" tag="IN"/>
+			<r pat="ful" pos="SUFFIX" tag="JJ"/>
+			<r pat="like" pos="WORD" tag="IN"/>
+			<r pat="goi" pos="PREFIX" tag="VVG"/>
+			<r pat="cs" pos="SUFFIX" tag="NNS"/>
+			<r pat="these" pos="WORD" tag="DT"/>
+			<r pat="hildren" pos="SUFFIX" tag="NNS"/>
+			<r pat="us" pos="WORD" tag="PP"/>
+			<r pat="throu" pos="PREFIX" tag="IN"/>
+			<r pat="childr" pos="PREFIX" tag="NNS"/>
+			<r pat="too" pos="WORD" tag="RB"/>
+			<r pat="another" pos="WORD" tag="DT"/>
+			<r pat="own" pos="WORD" tag="JJ"/>
+			<r pat="get" pos="WORD" tag="VV"/>
+			<r pat="men" pos="SUFFIX" tag="NNS"/>
+			<r pat="sixty" pos="WORD" tag="CD"/>
+			<r pat="brown" pos="WORD" tag="JJ"/>
+			<r pat="rent" pos="SUFFIX" tag="JJ"/>
+			<r pat="former" pos="WORD" tag="JJ"/>
+			<r pat="your" pos="WORD" tag="PP$"/>
+			<r pat="sive" pos="SUFFIX" tag="JJ"/>
+			<r pat="hrough" pos="SUFFIX" tag="IN"/>
+			<r pat="lar" pos="SUFFIX" tag="JJ"/>
+			<r pat="second" pos="WORD" tag="JJ"/>
+			<r pat="'ve" pos="WORD" tag="VHP"/>
+			<r pat="such" pos="WORD" tag="JJ"/>
+			<r pat="nev" pos="PREFIX" tag="RB"/>
+			<r pat="might" pos="WORD" tag="MD"/>
+			<r pat="howev" pos="PREFIX" tag="RB"/>
+			<r pat="same" pos="WORD" tag="JJ"/>
+			<r pat="ighty" pos="SUFFIX" tag="CD"/>
+			<r pat="here" pos="WORD" tag="RB"/>
+			<r pat="hough" pos="SUFFIX" tag="IN"/>
+			<r pat="includi" pos="PREFIX" tag="VVG"/>
+			<r pat="'re" pos="WORD" tag="VBP"/>
+			<r pat="'m" pos="WORD" tag="VBP"/>
+			<r pat="iven" pos="SUFFIX" tag="VVN"/>
+			<r pat="witho" pos="PREFIX" tag="IN"/>
+			<r pat="great" pos="WORD" tag="JJ"/>
+			<r pat="playe" pos="PREFIX" tag="NNS"/>
+			<r pat="every" pos="WORD" tag="DT"/>
+			<r pat="ern" pos="SUFFIX" tag="JJ"/>
+			<r pat="do" pos="WORD" tag="VVP"/>
+			<r pat="days" pos="WORD" tag="NNS"/>
+			<r pat="young" pos="WORD" tag="JJ"/>
+			<r pat="ago" pos="WORD" tag="RB"/>
+			<r pat="bs" pos="SUFFIX" tag="NNS"/>
+			<r pat="nation" pos="PREFIX" tag="JJ"/>
+			<r pat="few" pos="WORD" tag="JJ"/>
+			<r pat="high" pos="WORD" tag="JJ"/>
+			<r pat="already" pos="WORD" tag="RB"/>
+			<r pat="big" pos="WORD" tag="JJ"/>
+			<r pat="ken" pos="SUFFIX" tag="VVN"/>
+			<r pat="lear" pos="SUFFIX" tag="JJ"/>
+			<r pat="far" pos="WORD" tag="RB"/>
+			<r pat="took" pos="WORD" tag="VVD"/>
+			<r pat="lls" pos="SUFFIX" tag="NNS"/>
+			<r pat="again" pos="WORD" tag="RB"/>
+			<r pat="internation" pos="PREFIX" tag="JJ"/>
+			<r pat="govern" pos="PREFIX" tag="NN"/>
+			<r pat="go" pos="WORD" tag="VV"/>
+			<r pat="see" pos="WORD" tag="VV"/>
+			<r pat="yet" pos="WORD" tag="RB"/>
+			<r pat="must" pos="WORD" tag="MD"/>
+			<r pat="always" pos="WORD" tag="RB"/>
+			<r pat="prime" pos="WORD" tag="JJ"/>
+			<r pat="most" pos="WORD" tag="RBS"/>
+			<r pat="unit" pos="PREFIX" tag="VVN"/>
+			<r pat="whether" pos="WORD" tag="IN"/>
+			<r pat="why" pos="WORD" tag="WRB"/>
+			<r pat="els" pos="SUFFIX" tag="NNS"/>
+			<r pat="went" pos="WORD" tag="VVD"/>
+			<r pat="tant" pos="SUFFIX" tag="JJ"/>
+			<r pat="althou" pos="PREFIX" tag="IN"/>
+			<r pat="rong" pos="SUFFIX" tag="JJ"/>
+			<r pat="ols" pos="SUFFIX" tag="NNS"/>
+			<r pat="more" pos="WORD" tag="JJR"/>
+			<r pat="plus" pos="WORD" tag="CC"/>
+			<r pat="told" pos="WORD" tag="VVD"/>
+			<r pat="best" pos="WORD" tag="JJS"/>
+			<r pat="later" pos="WORD" tag="RBR"/>
+			<r pat="else" pos="WORD" tag="RB"/>
+			<r pat="almost" pos="WORD" tag="RB"/>
+			<r pat="ecent" pos="SUFFIX" tag="JJ"/>
+			<r pat="ials" pos="SUFFIX" tag="NNS"/>
+			<r pat="seen" pos="WORD" tag="VVN"/>
+			<r pat="among" pos="WORD" tag="IN"/>
+			<r pat="ils" pos="SUFFIX" tag="NNS"/>
+			<r pat="dolla" pos="PREFIX" tag="NNS"/>
+			<r pat="each" pos="WORD" tag="DT"/>
+			<r pat="full" pos="WORD" tag="JJ"/>
+			<r pat="least" pos="WORD" tag="JJS"/>
+		</regex>
+		<patterns>
+			<w word="'d">
+				<p tag="MD"/>
+				<p ptag="NN" tag="VHD"/>
+				<p ptag="WP" tag="VHD"/>
+			</w>
+			<w word="'ll">
+				<p tag="MD"/>
+			</w>
+			<w word="'s">
+				<p ptag="VV" tag="VBZ"/>
+				<p ptag="WP" tag="VBZ"/>
+				<p ptag="DT" tag="VBZ"/>
+				<p ptag="IN/that" tag="VBZ"/>
+				<p ptag="TO" tag="VBZ"/>
+				<p ptag="IN" tag="VBZ"/>
+				<p ptag="#" tag="VBZ"/>
+				<p ptag="PP" tag="VBZ"/>
+				<p ptag="WRB" tag="VBZ"/>
+				<p ptag="EX" tag="VBZ"/>
+				<p ptag="POS" tag="VBZ"/>
+			</w>
+			<w word="'ve">
+				<p ptag="MD" tag="VH"/>
+			</w>
+			<w word="about">
+				<p ptag="VB" tag="RB"/>
+				<p ptag="VBN" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="WDT" tag="RB"/>
+				<p ptag="VHP" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="CC" tag="RB"/>
+				<p ptag="TO" tag="RB"/>
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="EX" tag="RB"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="VBG" tag="RB"/>
+				<p ptag="NP" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="POS" tag="RB"/>
+				<p ptag="IN" tag="RB"/>
+				<p ptag="IN/that" tag="RB"/>
+			</w>
+			<w word="absent">
+				<p tag="JJ"/>
+			</w>
+			<w word="abstract">
+				<p tag="JJ"/>
+			</w>
+			<w word="abuse">
+				<p ptag="PP" tag="VV"/>
+				<p ptag="WDT" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="accused">
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+			</w>
+			<w word="across">
+				<p tag="IN"/>
+				<p ptag="VVZ" tag="RP"/>
+			</w>
+			<w word="act">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="added">
+				<p tag="VVD"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="VVN" tag="JJ"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+			</w>
+			<w word="addresses">
+				<p ptag="IN/that" tag="VVZ"/>
+				<p ptag="NN" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="admitted">
+				<p tag="VVD"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="TO" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+			</w>
+			<w word="advocate">
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="advocates">
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+				<p ptag="WP" tag="VVZ"/>
+			</w>
+			<w word="afghanistan">
+				<p ptag="CC" tag="NP"/>
+			</w>
+			<w word="africa">
+				<p ptag="," tag="NP"/>
+				<p ptag="VB" tag="NP"/>
+				<p ptag="RP" tag="NP"/>
+				<p ptag="VBZ" tag="NP"/>
+			</w>
+			<w word="age">
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="agreed">
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+			</w>
+			<w word="ahead">
+				<p tag="RB"/>
+			</w>
+			<w word="air">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="al">
+				<p tag="NP"/>
+			</w>
+			<w word="all">
+				<p tag="DT"/>
+				<p ptag="VVP" tag="PDT"/>
+				<p ptag="VVN" tag="PDT"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="VHG" tag="PDT"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="VHP" tag="RB"/>
+				<p ptag="PP" tag="RB"/>
+				<p ptag="WP" tag="RB"/>
+				<p ptag="NNS" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="PP$" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="RP" tag="PDT"/>
+				<p ptag="VV" tag="PDT"/>
+				<p ptag="VBD" tag="RB"/>
+			</w>
+			<w word="allied">
+				<p tag="VVD"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+			</w>
+			<w word="allow">
+				<p tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="NN" tag="VVP"/>
+				<p ptag="VVG" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+			</w>
+			<w word="allowed">
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="VVG" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="RP" tag="JJ"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+			</w>
+			<w word="ally">
+				<p tag="NN"/>
+			</w>
+			<w word="along">
+				<p tag="IN"/>
+				<p ptag="VVN" tag="RP"/>
+				<p ptag="VV" tag="RP"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="DT" tag="RB"/>
+				<p ptag="VVD" tag="RP"/>
+				<p ptag="JJR" tag="RB"/>
+				<p ptag="VVZ" tag="RP"/>
+				<p ptag="PP" tag="RP"/>
+			</w>
+			<w word="am">
+				<p tag="VBP"/>
+				<p ptag="IN" tag="RB"/>
+			</w>
+			<w word="america">
+				<p ptag="VB" tag="NP"/>
+				<p ptag="VVD" tag="NP"/>
+				<p ptag="WDT" tag="NP"/>
+				<p ptag="VBD" tag="NP"/>
+				<p ptag="#" tag="NP"/>
+				<p ptag="," tag="NP"/>
+				<p ptag="VBP" tag="NP"/>
+			</w>
+			<w word="american">
+				<p tag="JJ"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="VBD" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="MD" tag="NN"/>
+				<p ptag="WDT" tag="NN"/>
+			</w>
+			<w word="animate">
+				<p tag="VV"/>
+			</w>
+			<w word="announced">
+				<p tag="VVD"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VVD" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+			</w>
+			<w word="anti">
+				<p tag="JJ"/>
+			</w>
+			<w word="anything">
+				<p tag="NN"/>
+			</w>
+			<w word="appeal">
+				<p tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VBZ" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="appeared">
+				<p tag="VVD"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+			</w>
+			<w word="approach">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+			</w>
+			<w word="approximate">
+				<p tag="JJ"/>
+			</w>
+			<w word="approximates">
+				<p tag="VVZ"/>
+			</w>
+			<w word="april">
+				<p ptag="IN/that" tag="JJ"/>
+				<p ptag="CC" tag="VV"/>
+			</w>
+			<w word="areas">
+				<p tag="NNS"/>
+			</w>
+			<w word="around">
+				<p tag="IN"/>
+				<p ptag="JJS" tag="RB"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="VVZ" tag="RP"/>
+				<p ptag="IN" tag="RB"/>
+				<p ptag="TO" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="IN/that" tag="RB"/>
+				<p ptag="WDT" tag="RB"/>
+				<p ptag="VBN" tag="RB"/>
+				<p ptag="VV" tag="RP"/>
+				<p ptag="VB" tag="RB"/>
+				<p ptag="VVG" tag="RP"/>
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="VBG" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="VVP" tag="RP"/>
+			</w>
+			<w word="arsenal">
+				<p tag="NN"/>
+			</w>
+			<w word="articulate">
+				<p tag="VV"/>
+				<p ptag="VBZ" tag="JJ"/>
+			</w>
+			<w word="as">
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="JJS" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="VHG" tag="RB"/>
+				<p ptag="VBG" tag="RB"/>
+				<p ptag="VHP" tag="RB"/>
+				<p ptag="VBN" tag="RB"/>
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="SYM" tag="RB"/>
+				<p ptag="TO" tag="RB"/>
+				<p ptag="VB" tag="RB"/>
+				<p ptag="POS" tag="RB"/>
+			</w>
+			<w word="ask">
+				<p tag="VV"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="DT" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WRB" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RBS" tag="VVP"/>
+			</w>
+			<w word="asked">
+				<p ptag="," tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="RB" tag="VVD"/>
+				<p ptag="CD" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+			</w>
+			<w word="associate">
+				<p ptag="RB" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="asterisk">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="JJ" tag="VVP"/>
+			</w>
+			<w word="attack">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VBZ" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="attacks">
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="IN/that" tag="VVZ"/>
+				<p ptag="," tag="VVZ"/>
+			</w>
+			<w word="attempt">
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="," tag="VVP"/>
+			</w>
+			<w word="attribute">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="DT" tag="VVP"/>
+			</w>
+			<w word="attributes">
+				<p ptag="," tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="NN" tag="VVZ"/>
+			</w>
+			<w word="august">
+				<p tag="JJ"/>
+			</w>
+			<w word="australia">
+				<p ptag="VV" tag="NNS"/>
+				<p ptag="#" tag="NNS"/>
+				<p ptag="JJS" tag="NNS"/>
+				<p ptag="RB" tag="NNS"/>
+				<p ptag="WRB" tag="NNS"/>
+			</w>
+			<w word="average">
+				<p tag="JJ"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="VV" tag="NN"/>
+			</w>
+			<w word="away">
+				<p tag="RB"/>
+				<p ptag="PP" tag="RP"/>
+			</w>
+			<w word="back">
+				<p tag="RB"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="WP$" tag="JJ"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+			</w>
+			<w word="bad">
+				<p tag="JJ"/>
+			</w>
+			<w word="bank">
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="based">
+				<p ptag="WP" tag="VVD"/>
+			</w>
+			<w word="became">
+				<p tag="VVD"/>
+			</w>
+			<w word="become">
+				<p tag="VV"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="JJ" tag="VVN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="," tag="VVN"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="VVP" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="NN" tag="VVN"/>
+			</w>
+			<w word="before">
+				<p ptag="VBN" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="EX" tag="RB"/>
+			</w>
+			<w word="began">
+				<p tag="VVD"/>
+			</w>
+			<w word="behind">
+				<p tag="IN"/>
+				<p ptag="PP$" tag="NN"/>
+			</w>
+			<w word="being">
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="IN/that" tag="JJ"/>
+				<p ptag="WRB" tag="JJ"/>
+			</w>
+			<w word="believe">
+				<p tag="VVP"/>
+				<p ptag="POS" tag="VV"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="IN" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VBZ" tag="VV"/>
+			</w>
+			<w word="believed">
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="DT" tag="VVD"/>
+				<p ptag="CD" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="VVN" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+			</w>
+			<w word="best">
+				<p ptag="VBD" tag="RBS"/>
+				<p ptag="VHD" tag="RBS"/>
+				<p ptag="WP" tag="RBS"/>
+				<p ptag="VHP" tag="RBS"/>
+				<p ptag="VBZ" tag="RBS"/>
+				<p ptag="VBP" tag="RBS"/>
+				<p ptag="VB" tag="RBS"/>
+			</w>
+			<w word="better">
+				<p tag="JJR"/>
+				<p ptag="PP" tag="RBR"/>
+				<p ptag="VBG" tag="RBR"/>
+				<p ptag="VHD" tag="RBR"/>
+				<p ptag="#" tag="RBR"/>
+				<p ptag="MD" tag="RBR"/>
+				<p ptag="NN" tag="RBR"/>
+				<p ptag="TO" tag="RBR"/>
+				<p ptag="NNS" tag="RBR"/>
+				<p ptag="," tag="RBR"/>
+				<p ptag="NP" tag="RBR"/>
+				<p ptag="VVP" tag="RBR"/>
+				<p ptag="VBD" tag="RBR"/>
+			</w>
+			<w word="beyond">
+				<p tag="IN"/>
+			</w>
+			<w word="biggest">
+				<p tag="JJS"/>
+			</w>
+			<w word="black">
+				<p tag="JJ"/>
+			</w>
+			<w word="blair">
+				<p tag="NP"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="NN" tag="NNS"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="board">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="book">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="born">
+				<p tag="VVN"/>
+			</w>
+			<w word="both">
+				<p tag="DT"/>
+				<p ptag="NP" tag="CC"/>
+				<p ptag="," tag="CC"/>
+				<p ptag="VHP" tag="CC"/>
+				<p ptag="NNS" tag="CC"/>
+				<p ptag="CD" tag="CC"/>
+				<p ptag="PP" tag="CC"/>
+				<p ptag="JJ" tag="CC"/>
+				<p ptag="DT" tag="CC"/>
+				<p ptag="MD" tag="CC"/>
+				<p ptag="NN" tag="CC"/>
+			</w>
+			<w word="bow">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="break">
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+			</w>
+			<w word="bring">
+				<p tag="VV"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="britain">
+				<p ptag="VHZ" tag="VVN"/>
+			</w>
+			<w word="brought">
+				<p tag="VVN"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="RB" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="VVN" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="CD" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+			</w>
+			<w word="building">
+				<p tag="NN"/>
+				<p ptag="RB" tag="VVG"/>
+				<p ptag="IN/that" tag="VVG"/>
+				<p ptag="VBP" tag="VVG"/>
+				<p ptag="VBN" tag="VVG"/>
+				<p ptag="#" tag="VVG"/>
+				<p ptag="," tag="VVG"/>
+				<p ptag="RP" tag="VVG"/>
+				<p ptag="NNS" tag="VVG"/>
+				<p ptag="IN" tag="VVG"/>
+				<p ptag="VVD" tag="VVG"/>
+				<p ptag="VB" tag="VVG"/>
+				<p ptag="PP" tag="VVG"/>
+				<p ptag="VBD" tag="VVG"/>
+				<p ptag="VBZ" tag="VVG"/>
+			</w>
+			<w word="bush">
+				<p ptag="JJ" tag="JJ"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="VV" tag="JJ"/>
+				<p ptag="VVP" tag="JJ"/>
+			</w>
+			<w word="but">
+				<p ptag="CC" tag="RB"/>
+			</w>
+			<w word="buy">
+				<p tag="VV"/>
+				<p ptag="VVD" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="NN" tag="VVP"/>
+				<p ptag="WRB" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+			</w>
+			<w word="c">
+				<p tag="SYM"/>
+				<p ptag="CC" tag="LS"/>
+				<p ptag="," tag="LS"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="IN/that" tag="LS"/>
+			</w>
+			<w word="ca">
+				<p tag="MD"/>
+			</w>
+			<w word="call">
+				<p tag="VV"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="VB" tag="JJ"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="IN/that" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="RP" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="WP$" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="called">
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="VVG" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="RBR" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="DT" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="VVD" tag="VVD"/>
+			</w>
+			<w word="calls">
+				<p ptag="NNS" tag="VVZ"/>
+				<p ptag="," tag="VVZ"/>
+				<p ptag="WDT" tag="VVZ"/>
+				<p ptag="WP" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="CC" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="campaign">
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="cannot">
+				<p tag="MD"/>
+			</w>
+			<w word="capital">
+				<p tag="NN"/>
+			</w>
+			<w word="captain">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="care">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="celtic">
+				<p ptag="VB" tag="NN"/>
+				<p ptag="#" tag="NN"/>
+				<p ptag="IN/that" tag="NN"/>
+			</w>
+			<w word="centre">
+				<p ptag="PP" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="certain">
+				<p tag="JJ"/>
+			</w>
+			<w word="challenge">
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="RP" tag="VVP"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="change">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NP" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="charge">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="chassis">
+				<p ptag="CC" tag="NNS"/>
+			</w>
+			<w word="chelsea">
+				<p ptag="VBP" tag="NNS"/>
+				<p ptag="," tag="NNS"/>
+				<p ptag="IN/that" tag="NNS"/>
+				<p ptag="VVP" tag="NNS"/>
+				<p ptag="WP" tag="NNS"/>
+				<p ptag="WRB" tag="NNS"/>
+				<p ptag="#" tag="NNS"/>
+				<p ptag="VBZ" tag="NP"/>
+			</w>
+			<w word="chief">
+				<p tag="JJ"/>
+			</w>
+			<w word="civil">
+				<p tag="JJ"/>
+			</w>
+			<w word="claim">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="CC" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VVP" tag="VVP"/>
+				<p ptag="RP" tag="VV"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+			</w>
+			<w word="claimed">
+				<p tag="VVD"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="PP$" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+			</w>
+			<w word="claims">
+				<p ptag="WP" tag="VVZ"/>
+				<p ptag="IN/that" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+				<p ptag="NP" tag="VVZ"/>
+				<p ptag="," tag="VVZ"/>
+				<p ptag="VBP" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="CC" tag="VVZ"/>
+				<p ptag="MD" tag="VVZ"/>
+				<p ptag="WDT" tag="VVZ"/>
+			</w>
+			<w word="clear">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="close">
+				<p tag="JJ"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="VVN" tag="RB"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="PP" tag="VV"/>
+			</w>
+			<w word="co">
+				<p ptag="MD" tag="RB"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="NP" tag="NP"/>
+				<p ptag="WP" tag="NP"/>
+				<p ptag="TO" tag="NP"/>
+				<p ptag="PP" tag="RB"/>
+			</w>
+			<w word="coach">
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="color">
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+			</w>
+			<w word="combat">
+				<p ptag="VV" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="combines">
+				<p tag="VVZ"/>
+			</w>
+			<w word="come">
+				<p tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="NP" tag="VVN"/>
+				<p ptag="JJ" tag="VVN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="VVZ" tag="VVN"/>
+				<p ptag="VVG" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="NN" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="EX" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="," tag="VVN"/>
+				<p ptag="WRB" tag="VVN"/>
+				<p ptag="VVN" tag="VVN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="CD" tag="VVN"/>
+			</w>
+			<w word="comes">
+				<p tag="VVZ"/>
+			</w>
+			<w word="comment">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="comments">
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="compliment">
+				<p ptag="NP" tag="VVP"/>
+			</w>
+			<w word="compound">
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="conduct">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="confine">
+				<p tag="VV"/>
+			</w>
+			<w word="confirmed">
+				<p tag="VVD"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="JJS" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="PP$" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+			</w>
+			<w word="console">
+				<p tag="VV"/>
+				<p ptag="CD" tag="NN"/>
+			</w>
+			<w word="consoles">
+				<p tag="VVZ"/>
+				<p ptag="PP$" tag="NNS"/>
+				<p ptag="IN" tag="NNS"/>
+			</w>
+			<w word="consort">
+				<p tag="VVP"/>
+				<p ptag="POS" tag="VV"/>
+			</w>
+			<w word="consorts">
+				<p tag="VVZ"/>
+			</w>
+			<w word="constructs">
+				<p tag="VVZ"/>
+			</w>
+			<w word="content">
+				<p ptag="PP" tag="JJ"/>
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="IN/that" tag="JJ"/>
+				<p ptag="VB" tag="JJ"/>
+				<p ptag="VBP" tag="JJ"/>
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="VBN" tag="JJ"/>
+				<p ptag="VBZ" tag="JJ"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="contest">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="contests">
+				<p ptag="WP" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="continue">
+				<p tag="VV"/>
+				<p ptag="VVN" tag="VVP"/>
+				<p ptag="NN" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="continued">
+				<p tag="VVD"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="RP" tag="VVN"/>
+				<p ptag="TO" tag="JJ"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="WP$" tag="JJ"/>
+				<p ptag="EX" tag="VVN"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="VVN" tag="VVN"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="VVP" tag="VVN"/>
+			</w>
+			<w word="contract">
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="contracted">
+				<p ptag="," tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="RB" tag="VVD"/>
+			</w>
+			<w word="contrast">
+				<p ptag="CC" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="contrasts">
+				<p tag="VVZ"/>
+			</w>
+			<w word="control">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="converse">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="," tag="VVP"/>
+			</w>
+			<w word="convert">
+				<p tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="converts">
+				<p ptag="IN/that" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="coordinates">
+				<p tag="VVZ"/>
+				<p ptag="IN" tag="NNS"/>
+				<p ptag="JJ" tag="NNS"/>
+			</w>
+			<w word="cost">
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+			</w>
+			<w word="court">
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="crooked">
+				<p tag="JJ"/>
+			</w>
+			<w word="cross">
+				<p ptag="," tag="VVP"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="NP" tag="VVP"/>
+			</w>
+			<w word="cut">
+				<p tag="VV"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="WP$" tag="NN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="RBR" tag="VVN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+			</w>
+			<w word="d">
+				<p tag="SYM"/>
+				<p ptag="," tag="LS"/>
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="dash">
+				<p ptag="VVG" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="UH" tag="VV"/>
+			</w>
+			<w word="david">
+				<p tag="JJ"/>
+				<p ptag="WP" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+			</w>
+			<w word="de">
+				<p tag="NP"/>
+				<p ptag="WP$" tag="FW"/>
+				<p ptag="PP" tag="FW"/>
+			</w>
+			<w word="dead">
+				<p tag="JJ"/>
+				<p ptag="CD" tag="NN"/>
+			</w>
+			<w word="deal">
+				<p tag="NN"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="debate">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="decided">
+				<p tag="VVD"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+			</w>
+			<w word="decrease">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+			</w>
+			<w word="defeat">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="defect">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="degenerate">
+				<p tag="VV"/>
+				<p ptag="VBZ" tag="JJ"/>
+			</w>
+			<w word="delegate">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="deliberate">
+				<p tag="JJ"/>
+			</w>
+			<w word="des">
+				<p tag="NP"/>
+				<p ptag="CC" tag="FW"/>
+				<p ptag="NNS" tag="FW"/>
+			</w>
+			<w word="described">
+				<p tag="VVD"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="JJS" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="JJR" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+			</w>
+			<w word="desert">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="despite">
+				<p tag="IN"/>
+			</w>
+			<w word="died">
+				<p tag="VVD"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VVG" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="," tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="CD" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="NNS" tag="VVN"/>
+			</w>
+			<w word="dies">
+				<p tag="VVZ"/>
+			</w>
+			<w word="difficult">
+				<p tag="JJ"/>
+			</w>
+			<w word="diffuse">
+				<p tag="VV"/>
+				<p ptag="DT" tag="JJ"/>
+			</w>
+			<w word="digest">
+				<p tag="VV"/>
+			</w>
+			<w word="divided">
+				<p ptag="VVG" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="WRB" tag="JJ"/>
+			</w>
+			<w word="do">
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="RBR" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="VBZ" tag="VV"/>
+				<p ptag="POS" tag="VV"/>
+				<p ptag="VV" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="JJS" tag="VV"/>
+				<p ptag="VVP" tag="VV"/>
+			</w>
+			<w word="doctor">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="document">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="dogged">
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="WP$" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="IN/that" tag="VVD"/>
+			</w>
+			<w word="done">
+				<p tag="VVN"/>
+			</w>
+			<w word="dos">
+				<p tag="NNS"/>
+			</w>
+			<w word="dove">
+				<p tag="VVD"/>
+				<p ptag="VVZ" tag="JJ"/>
+				<p ptag="VBZ" tag="NN"/>
+			</w>
+			<w word="down">
+				<p tag="RP"/>
+				<p ptag="VBG" tag="RB"/>
+				<p ptag="JJ" tag="RB"/>
+				<p ptag="VB" tag="RB"/>
+				<p ptag="NNS" tag="RB"/>
+				<p ptag="POS" tag="RB"/>
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="IN/that" tag="RB"/>
+				<p ptag="NP" tag="RB"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="RBR" tag="RB"/>
+				<p ptag="VBN" tag="RB"/>
+				<p ptag="TO" tag="RB"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="JJR" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="VVP" tag="RB"/>
+				<p ptag="CD" tag="RB"/>
+				<p ptag="RP" tag="IN"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="IN" tag="RB"/>
+				<p ptag="RB" tag="RB"/>
+				<p ptag="DT" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+			</w>
+			<w word="due">
+				<p tag="JJ"/>
+				<p ptag="MD" tag="RB"/>
+			</w>
+			<w word="e">
+				<p ptag="CD" tag="SYM"/>
+				<p ptag="VB" tag="SYM"/>
+				<p ptag="#" tag="SYM"/>
+				<p ptag="SYM" tag="SYM"/>
+			</w>
+			<w word="earlier">
+				<p tag="RBR"/>
+				<p ptag="IN" tag="JJR"/>
+				<p ptag="PP$" tag="JJR"/>
+				<p ptag="DT" tag="JJR"/>
+				<p ptag="POS" tag="JJR"/>
+			</w>
+			<w word="early">
+				<p tag="JJ"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="JJS" tag="RB"/>
+				<p ptag="RP" tag="RB"/>
+				<p ptag="NN" tag="RB"/>
+				<p ptag="PP" tag="RB"/>
+				<p ptag="EX" tag="RB"/>
+			</w>
+			<w word="east">
+				<p tag="JJ"/>
+				<p ptag="NN" tag="RB"/>
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="VVD" tag="RB"/>
+			</w>
+			<w word="easy">
+				<p tag="JJ"/>
+			</w>
+			<w word="edinburgh">
+				<p ptag="RB" tag="NP"/>
+				<p ptag="VBD" tag="NP"/>
+				<p ptag="NNS" tag="NP"/>
+				<p ptag="IN/that" tag="NP"/>
+				<p ptag="VVD" tag="NP"/>
+				<p ptag="JJ" tag="NP"/>
+				<p ptag="DT" tag="NP"/>
+				<p ptag="PP$" tag="NP"/>
+				<p ptag="IN" tag="NP"/>
+				<p ptag="CC" tag="NP"/>
+				<p ptag="TO" tag="NP"/>
+				<p ptag="POS" tag="NP"/>
+				<p ptag="," tag="NP"/>
+				<p ptag="#" tag="NP"/>
+			</w>
+			<w word="effect">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="either">
+				<p tag="RB"/>
+				<p ptag="CD" tag="DT"/>
+				<p ptag="VV" tag="DT"/>
+				<p ptag="NN" tag="CC"/>
+				<p ptag="#" tag="DT"/>
+				<p ptag="IN" tag="DT"/>
+				<p ptag="VVZ" tag="DT"/>
+				<p ptag="WRB" tag="DT"/>
+				<p ptag="," tag="CC"/>
+			</w>
+			<w word="elaborate">
+				<p tag="JJ"/>
+				<p ptag="NP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+			</w>
+			<w word="eleven">
+				<p tag="NN"/>
+			</w>
+			<w word="en">
+				<p tag="IN"/>
+				<p ptag="RP" tag="FW"/>
+				<p ptag="VVP" tag="FW"/>
+				<p ptag="DT" tag="FW"/>
+				<p ptag="IN" tag="FW"/>
+			</w>
+			<w word="end">
+				<p ptag="CC" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="england">
+				<p ptag="VBZ" tag="NP"/>
+				<p ptag="RP" tag="NP"/>
+				<p ptag="#" tag="NP"/>
+				<p ptag="IN/that" tag="NP"/>
+				<p ptag="MD" tag="NP"/>
+				<p ptag="VBD" tag="NP"/>
+			</w>
+			<w word="english">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="enough">
+				<p tag="RB"/>
+				<p ptag="RP" tag="JJ"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="VHD" tag="JJ"/>
+				<p ptag="NNS" tag="JJ"/>
+				<p ptag="VB" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="VV" tag="JJ"/>
+				<p ptag="RBR" tag="JJ"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="VBZ" tag="JJ"/>
+				<p ptag="VHZ" tag="JJ"/>
+				<p ptag="EX" tag="JJ"/>
+				<p ptag="JJR" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="VHP" tag="JJ"/>
+				<p ptag="VBN" tag="JJ"/>
+				<p ptag="PP" tag="JJ"/>
+			</w>
+			<w word="ensure">
+				<p tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="estimate">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+			</w>
+			<w word="estimates">
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="WP" tag="VVZ"/>
+				<p ptag="CC" tag="VVZ"/>
+				<p ptag="NN" tag="VVZ"/>
+				<p ptag="," tag="VVZ"/>
+				<p ptag="NNS" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="et">
+				<p tag="CC"/>
+				<p ptag="POS" tag="NP"/>
+				<p ptag="IN" tag="NP"/>
+				<p ptag="VVN" tag="NP"/>
+				<p ptag="VVG" tag="NP"/>
+				<p ptag="#" tag="NP"/>
+			</w>
+			<w word="europe">
+				<p ptag="MD" tag="NNS"/>
+			</w>
+			<w word="european">
+				<p tag="JJ"/>
+			</w>
+			<w word="even">
+				<p tag="RB"/>
+			</w>
+			<w word="ever">
+				<p tag="RB"/>
+			</w>
+			<w word="everything">
+				<p tag="NN"/>
+			</w>
+			<w word="excise">
+				<p ptag="," tag="JJ"/>
+			</w>
+			<w word="excuse">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="#" tag="VV"/>
+			</w>
+			<w word="executive">
+				<p tag="NN"/>
+				<p ptag="WP$" tag="JJ"/>
+				<p ptag="CC" tag="JJ"/>
+				<p ptag="RP" tag="JJ"/>
+				<p ptag="TO" tag="JJ"/>
+				<p ptag="VBZ" tag="JJ"/>
+				<p ptag="PP" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="IN/that" tag="JJ"/>
+				<p ptag="NNS" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+				<p ptag="VV" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+			</w>
+			<w word="expatriate">
+				<p ptag="JJ" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+			</w>
+			<w word="expected">
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="VV" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+			</w>
+			<w word="experience">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="exploit">
+				<p tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="exploits">
+				<p ptag="," tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="export">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="extra">
+				<p tag="JJ"/>
+			</w>
+			<w word="extract">
+				<p tag="VV"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+			</w>
+			<w word="extracts">
+				<p tag="VVZ"/>
+			</w>
+			<w word="face">
+				<p ptag="," tag="VVP"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="JJR" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="CC" tag="VV"/>
+			</w>
+			<w word="failed">
+				<p tag="VVD"/>
+				<p ptag="RP" tag="JJ"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VVN" tag="VVN"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="JJ" tag="JJ"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VVG" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="RBR" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="DT" tag="JJ"/>
+			</w>
+			<w word="fall">
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="family">
+				<p tag="NN"/>
+			</w>
+			<w word="feel">
+				<p tag="VVP"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="RBR" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="VBZ" tag="VV"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+			</w>
+			<w word="fein">
+				<p tag="NP"/>
+			</w>
+			<w word="felt">
+				<p tag="VVD"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+			</w>
+			<w word="ferment">
+				<p ptag="CC" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="field">
+				<p ptag="NNS" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="fifth">
+				<p tag="JJ"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="CD" tag="NN"/>
+			</w>
+			<w word="fight">
+				<p ptag="CC" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RP" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="fighting">
+				<p ptag="DT" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="RBR" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+			</w>
+			<w word="figure">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="RP" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="figures">
+				<p ptag="WP" tag="VVZ"/>
+			</w>
+			<w word="film">
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="find">
+				<p tag="VV"/>
+				<p ptag="VVN" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="RBS" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="JJS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="DT" tag="VVP"/>
+				<p ptag="JJ" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+			</w>
+			<w word="fire">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="first">
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="WDT" tag="RB"/>
+				<p ptag="VBN" tag="RB"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="VHG" tag="RB"/>
+				<p ptag="NP" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="PP" tag="RB"/>
+				<p ptag="WP" tag="RB"/>
+			</w>
+			<w word="followed">
+				<p tag="VVD"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="CD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="," tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VVP" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VVN" tag="VVN"/>
+				<p ptag="JJR" tag="VVN"/>
+				<p ptag="VV" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+			</w>
+			<w word="following">
+				<p ptag="NP" tag="NN"/>
+			</w>
+			<w word="force">
+				<p ptag="CC" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+			</w>
+			<w word="forced">
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+			</w>
+			<w word="forces">
+				<p ptag="WP" tag="VVZ"/>
+				<p ptag="WDT" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="IN/that" tag="VVZ"/>
+			</w>
+			<w word="foreign">
+				<p tag="JJ"/>
+			</w>
+			<w word="form">
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="forward">
+				<p tag="RB"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP$" tag="JJ"/>
+				<p ptag="JJ" tag="JJ"/>
+			</w>
+			<w word="found">
+				<p tag="VVD"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="TO" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="JJ" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VVZ" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+			</w>
+			<w word="fourteen">
+				<p tag="NN"/>
+			</w>
+			<w word="fourth">
+				<p tag="JJ"/>
+			</w>
+			<w word="fragments">
+				<p ptag="," tag="VVZ"/>
+			</w>
+			<w word="free">
+				<p tag="JJ"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="french">
+				<p ptag="RBS" tag="JJ"/>
+				<p ptag="RP" tag="JJ"/>
+				<p ptag="VB" tag="NNS"/>
+				<p ptag="VBN" tag="JJ"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="WDT" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="VBZ" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="NNS" tag="JJ"/>
+				<p ptag="VBP" tag="JJ"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="VHP" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="RB" tag="JJ"/>
+			</w>
+			<w word="frequent">
+				<p tag="JJ"/>
+			</w>
+			<w word="front">
+				<p ptag="VV" tag="JJ"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+			</w>
+			<w word="function">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="funding">
+				<p tag="NN"/>
+				<p ptag="VBN" tag="VVG"/>
+				<p ptag="," tag="VVG"/>
+				<p ptag="VBZ" tag="VVG"/>
+				<p ptag="VBP" tag="VVG"/>
+				<p ptag="VBD" tag="VVG"/>
+			</w>
+			<w word="further">
+				<p tag="JJR"/>
+				<p ptag="VVD" tag="RBR"/>
+				<p ptag="VHZ" tag="RBR"/>
+				<p ptag="NNS" tag="RBR"/>
+				<p ptag="RP" tag="RBR"/>
+				<p ptag="MD" tag="RBR"/>
+				<p ptag="VB" tag="RBR"/>
+				<p ptag="VVZ" tag="RBR"/>
+				<p ptag="VBD" tag="RBR"/>
+				<p ptag="TO" tag="RBR"/>
+				<p ptag="PP" tag="RBR"/>
+				<p ptag="RB" tag="RBR"/>
+			</w>
+			<w word="future">
+				<p ptag="VVG" tag="JJ"/>
+				<p ptag="WRB" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="TO" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+				<p ptag="NNS" tag="JJ"/>
+				<p ptag="MD" tag="JJ"/>
+				<p ptag="VVN" tag="JJ"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="WP" tag="JJ"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="CC" tag="JJ"/>
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="PP" tag="JJ"/>
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="RP" tag="JJ"/>
+				<p ptag="VV" tag="JJ"/>
+			</w>
+			<w word="gave">
+				<p tag="VVD"/>
+			</w>
+			<w word="general">
+				<p ptag="NN" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+			</w>
+			<w word="george">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VVZ" tag="NP"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="VBD" tag="NP"/>
+				<p ptag="NP" tag="NP"/>
+				<p ptag="#" tag="NP"/>
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="get">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="CD" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="DT" tag="VVP"/>
+				<p ptag="JJ" tag="VVP"/>
+			</w>
+			<w word="give">
+				<p tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+			</w>
+			<w word="giving">
+				<p ptag="JJ" tag="NN"/>
+			</w>
+			<w word="go">
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="CD" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="DT" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VVN" tag="VVP"/>
+			</w>
+			<w word="goal">
+				<p tag="NN"/>
+			</w>
+			<w word="goes">
+				<p tag="VVZ"/>
+			</w>
+			<w word="gone">
+				<p tag="VVN"/>
+			</w>
+			<w word="gordon">
+				<p ptag="WP" tag="NP"/>
+				<p ptag="PP" tag="RB"/>
+			</w>
+			<w word="got">
+				<p tag="VVN"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="JJS" tag="VVD"/>
+				<p ptag="VVG" tag="VVD"/>
+				<p ptag="VV" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="CD" tag="VVD"/>
+			</w>
+			<w word="grace">
+				<p ptag="PP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VV"/>
+			</w>
+			<w word="graduate">
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+			</w>
+			<w word="greater">
+				<p tag="JJR"/>
+			</w>
+			<w word="green">
+				<p tag="JJ"/>
+				<p ptag="VBZ" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="MD" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+			</w>
+			<w word="ground">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="had">
+				<p ptag="VHD" tag="VHN"/>
+				<p ptag="VB" tag="VHN"/>
+				<p ptag="VHP" tag="VHN"/>
+				<p ptag="MD" tag="VHN"/>
+				<p ptag="VHZ" tag="VHN"/>
+				<p ptag="POS" tag="VHN"/>
+				<p ptag="VBD" tag="VHN"/>
+			</w>
+			<w word="half">
+				<p ptag="VV" tag="PDT"/>
+				<p ptag="VHZ" tag="PDT"/>
+				<p ptag="VB" tag="PDT"/>
+				<p ptag="VBD" tag="PDT"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="WDT" tag="DT"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="VVD" tag="PDT"/>
+				<p ptag="," tag="DT"/>
+				<p ptag="IN" tag="DT"/>
+				<p ptag="PP" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="VVP" tag="PDT"/>
+				<p ptag="VVZ" tag="DT"/>
+				<p ptag="WRB" tag="PDT"/>
+				<p ptag="RP" tag="PDT"/>
+				<p ptag="NNS" tag="PDT"/>
+			</w>
+			<w word="hand">
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="PP" tag="RB"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VBN" tag="RB"/>
+			</w>
+			<w word="hands">
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="happened">
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+			</w>
+			<w word="happy">
+				<p tag="JJ"/>
+			</w>
+			<w word="hard">
+				<p tag="JJ"/>
+				<p ptag="VV" tag="RB"/>
+				<p ptag="VVG" tag="RB"/>
+				<p ptag="VVP" tag="RB"/>
+				<p ptag="JJR" tag="RB"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="VVN" tag="RB"/>
+			</w>
+			<w word="hash">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="NN" tag="VVP"/>
+			</w>
+			<w word="have">
+				<p ptag="SYM" tag="VH"/>
+				<p ptag="VVP" tag="VH"/>
+				<p ptag="VBZ" tag="VH"/>
+				<p ptag="RB" tag="VH"/>
+				<p ptag="TO" tag="VH"/>
+				<p ptag="WRB" tag="VH"/>
+				<p ptag="VVZ" tag="VH"/>
+				<p ptag="MD" tag="VH"/>
+				<p ptag="RBR" tag="VH"/>
+				<p ptag="VVD" tag="VH"/>
+			</w>
+			<w word="head">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="heard">
+				<p tag="VVN"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="RBR" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+			</w>
+			<w word="heart">
+				<p ptag="VVZ" tag="RB"/>
+			</w>
+			<w word="held">
+				<p tag="VVN"/>
+				<p ptag="VVG" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+			</w>
+			<w word="help">
+				<p tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="IN/that" tag="NN"/>
+				<p ptag="VB" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="higher">
+				<p tag="JJR"/>
+			</w>
+			<w word="hit">
+				<p tag="VVD"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="VVG" tag="VVN"/>
+				<p ptag="VV" tag="NN"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="WRB" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="hold">
+				<p tag="VV"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="VV" tag="NN"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+			</w>
+			<w word="home">
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="VVP" tag="RB"/>
+			</w>
+			<w word="hope">
+				<p ptag="CC" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="RB" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="POS" tag="VV"/>
+			</w>
+			<w word="hospital">
+				<p tag="NN"/>
+			</w>
+			<w word="house">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="huge">
+				<p tag="JJ"/>
+			</w>
+			<w word="human">
+				<p tag="JJ"/>
+			</w>
+			<w word="ifhasvideo">
+				<p tag="NP"/>
+			</w>
+			<w word="impact">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="implement">
+				<p tag="VV"/>
+			</w>
+			<w word="import">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RBR" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="imports">
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="include">
+				<p tag="VVP"/>
+				<p ptag="VV" tag="VV"/>
+				<p ptag="VBZ" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="increase">
+				<p ptag="PP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="VBZ" tag="VV"/>
+			</w>
+			<w word="increases">
+				<p ptag="IN/that" tag="VVZ"/>
+				<p ptag="WDT" tag="VVZ"/>
+				<p ptag="," tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="independent">
+				<p tag="JJ"/>
+			</w>
+			<w word="india">
+				<p ptag="WRB" tag="NNS"/>
+				<p ptag="IN/that" tag="NNS"/>
+			</w>
+			<w word="initiate">
+				<p tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="inland">
+				<p tag="RB"/>
+			</w>
+			<w word="insert">
+				<p tag="VV"/>
+			</w>
+			<w word="inside">
+				<p tag="IN"/>
+				<p ptag="WP" tag="JJ"/>
+				<p ptag="TO" tag="JJ"/>
+				<p ptag="VVP" tag="RB"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="VHG" tag="JJ"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="insisted">
+				<p tag="VVD"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+			</w>
+			<w word="instead">
+				<p tag="RB"/>
+			</w>
+			<w word="insult">
+				<p ptag="PP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="insults">
+				<p ptag="," tag="VVZ"/>
+			</w>
+			<w word="intern">
+				<p tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="internet">
+				<p ptag="VB" tag="JJ"/>
+			</w>
+			<w word="interns">
+				<p tag="VVZ"/>
+			</w>
+			<w word="intimate">
+				<p tag="JJ"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="invalid">
+				<p tag="JJ"/>
+			</w>
+			<w word="invite">
+				<p tag="VV"/>
+			</w>
+			<w word="invites">
+				<p tag="VVZ"/>
+			</w>
+			<w word="involved">
+				<p ptag="WRB" tag="JJ"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+			</w>
+			<w word="iran">
+				<p ptag="#" tag="NP"/>
+				<p ptag="RP" tag="NP"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="VBZ" tag="NP"/>
+				<p ptag="," tag="NP"/>
+			</w>
+			<w word="iraq">
+				<p tag="NP"/>
+				<p ptag="VBD" tag="VVG"/>
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="NN" tag="JJ"/>
+				<p ptag="JJ" tag="NNS"/>
+				<p ptag="VV" tag="JJ"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="WRB" tag="JJ"/>
+				<p ptag="VBZ" tag="JJ"/>
+				<p ptag="VB" tag="JJ"/>
+			</w>
+			<w word="iraqi">
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="ireland">
+				<p ptag="," tag="NP"/>
+				<p ptag="#" tag="NP"/>
+			</w>
+			<w word="israel">
+				<p tag="NP"/>
+				<p ptag="PP$" tag="NN"/>
+			</w>
+			<w word="israeli">
+				<p ptag="VHZ" tag="JJ"/>
+				<p ptag="VVP" tag="NNS"/>
+				<p ptag="PP" tag="JJ"/>
+				<p ptag="VBP" tag="JJ"/>
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="VHP" tag="JJ"/>
+				<p ptag="VBD" tag="RB"/>
+			</w>
+			<w word="issue">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="issues">
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="WP" tag="VVZ"/>
+			</w>
+			<w word="james">
+				<p ptag="WRB" tag="NP"/>
+				<p ptag="WP" tag="VVZ"/>
+				<p ptag="VBD" tag="NP"/>
+			</w>
+			<w word="january">
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+			</w>
+			<w word="july">
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="PP$" tag="JJ"/>
+			</w>
+			<w word="june">
+				<p ptag="#" tag="NP"/>
+				<p ptag="CC" tag="JJ"/>
+				<p ptag="VVZ" tag="NP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="keep">
+				<p tag="VV"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="DT" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="kept">
+				<p tag="VVD"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="JJS" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VVD" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+			</w>
+			<w word="key">
+				<p tag="JJ"/>
+			</w>
+			<w word="killed">
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+			</w>
+			<w word="kind">
+				<p ptag="EX" tag="RB"/>
+				<p ptag="PP" tag="RB"/>
+			</w>
+			<w word="knew">
+				<p tag="VVD"/>
+			</w>
+			<w word="know">
+				<p tag="VVP"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="POS" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="VBP" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="RBR" tag="VV"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="IN" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+			</w>
+			<w word="known">
+				<p tag="VVN"/>
+				<p ptag="PP" tag="JJ"/>
+			</w>
+			<w word="labour">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="lack">
+				<p ptag="RB" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="laden">
+				<p tag="JJ"/>
+			</w>
+			<w word="land">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="large">
+				<p tag="JJ"/>
+			</w>
+			<w word="last">
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VBD" tag="RB"/>
+			</w>
+			<w word="late">
+				<p tag="JJ"/>
+				<p ptag="NNS" tag="RB"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="RP" tag="RB"/>
+				<p ptag="VVG" tag="RB"/>
+				<p ptag="VV" tag="RB"/>
+			</w>
+			<w word="later">
+				<p ptag="PP$" tag="JJR"/>
+				<p ptag="POS" tag="JJR"/>
+				<p ptag="TO" tag="JJR"/>
+				<p ptag="VHG" tag="JJR"/>
+				<p ptag="DT" tag="JJR"/>
+			</w>
+			<w word="latest">
+				<p tag="JJS"/>
+			</w>
+			<w word="lead">
+				<p ptag="," tag="JJ"/>
+				<p ptag="VVZ" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="VBZ" tag="VV"/>
+				<p ptag="RBR" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VVD" tag="VV"/>
+			</w>
+			<w word="least">
+				<p ptag="VBZ" tag="RBS"/>
+				<p ptag="MD" tag="RBS"/>
+				<p ptag="VBN" tag="RBS"/>
+				<p ptag="VBP" tag="RBS"/>
+			</w>
+			<w word="leave">
+				<p tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="WRB" tag="VVP"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VVG" tag="NN"/>
+			</w>
+			<w word="led">
+				<p tag="VVD"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="NNS" tag="VVN"/>
+				<p ptag="VVG" tag="VVN"/>
+				<p ptag="VVD" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VVP" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VV" tag="VVN"/>
+				<p ptag="CD" tag="VVN"/>
+				<p ptag="," tag="VVN"/>
+			</w>
+			<w word="left">
+				<p tag="VVN"/>
+				<p ptag="JJ" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="VVN" tag="JJ"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="WRB" tag="JJ"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="CD" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="VVZ" tag="JJ"/>
+			</w>
+			<w word="less">
+				<p tag="JJR"/>
+				<p ptag="NNS" tag="RBR"/>
+				<p ptag="VBG" tag="RBR"/>
+				<p ptag="VBN" tag="RBR"/>
+				<p ptag="VBP" tag="RBR"/>
+				<p ptag="JJ" tag="RBR"/>
+				<p ptag="CC" tag="RBR"/>
+				<p ptag="RP" tag="RBR"/>
+				<p ptag="VBZ" tag="RBR"/>
+				<p ptag="PP" tag="RBR"/>
+				<p ptag="RB" tag="RBR"/>
+				<p ptag="JJR" tag="CC"/>
+				<p ptag="#" tag="RBR"/>
+				<p ptag="VB" tag="RBR"/>
+				<p ptag="DT" tag="RBR"/>
+				<p ptag="VVP" tag="RBR"/>
+				<p ptag="VBD" tag="RBR"/>
+			</w>
+			<w word="let">
+				<p tag="VV"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="RBS" tag="VVP"/>
+			</w>
+			<w word="light">
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="VBZ" tag="JJ"/>
+				<p ptag="CC" tag="JJ"/>
+				<p ptag="RBS" tag="JJ"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="VVP" tag="JJ"/>
+				<p ptag="WP" tag="VV"/>
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VHZ" tag="JJ"/>
+				<p ptag="RB" tag="JJ"/>
+			</w>
+			<w word="like">
+				<p ptag="JJS" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="WRB" tag="JJ"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="RBS" tag="VVP"/>
+			</w>
+			<w word="likely">
+				<p tag="JJ"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="VVZ" tag="RB"/>
+			</w>
+			<w word="lima">
+				<p ptag="NP" tag="NP"/>
+			</w>
+			<w word="line">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="CC" tag="VV"/>
+			</w>
+			<w word="list">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="little">
+				<p tag="JJ"/>
+				<p ptag="VVZ" tag="RB"/>
+				<p ptag="TO" tag="RB"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="VVP" tag="RB"/>
+				<p ptag="PP" tag="RB"/>
+			</w>
+			<w word="live">
+				<p tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="JJS" tag="JJ"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="JJR" tag="JJ"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VV" tag="JJ"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+				<p ptag="VVG" tag="JJ"/>
+				<p ptag="VVN" tag="JJ"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VVP" tag="JJ"/>
+				<p ptag="CD" tag="VVP"/>
+				<p ptag="JJ" tag="JJ"/>
+				<p ptag="VHD" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="VHP" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="NN" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+			</w>
+			<w word="liverpool">
+				<p ptag="VB" tag="JJ"/>
+			</w>
+			<w word="lives">
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+				<p ptag="IN/that" tag="VVZ"/>
+				<p ptag="WP" tag="VVZ"/>
+			</w>
+			<w word="living">
+				<p ptag="NN" tag="NN"/>
+				<p ptag="IN/that" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="WDT" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+			</w>
+			<w word="london">
+				<p ptag="VBZ" tag="NP"/>
+				<p ptag="," tag="NP"/>
+				<p ptag="VBD" tag="NP"/>
+				<p ptag="RP" tag="NP"/>
+				<p ptag="IN/that" tag="NP"/>
+			</w>
+			<w word="long">
+				<p tag="JJ"/>
+				<p ptag="IN/that" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="PP" tag="RB"/>
+				<p ptag="VVN" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="RP" tag="RB"/>
+				<p ptag="VBG" tag="RB"/>
+				<p ptag="VV" tag="RB"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="NNS" tag="RB"/>
+				<p ptag="VHP" tag="RB"/>
+				<p ptag="WDT" tag="RB"/>
+				<p ptag="VVP" tag="RB"/>
+				<p ptag="NP" tag="RB"/>
+			</w>
+			<w word="longer">
+				<p tag="RBR"/>
+				<p ptag="CD" tag="JJR"/>
+				<p ptag="PP$" tag="JJR"/>
+				<p ptag="VHD" tag="JJR"/>
+				<p ptag="JJR" tag="JJR"/>
+				<p ptag="CC" tag="JJR"/>
+				<p ptag="IN" tag="JJR"/>
+				<p ptag="POS" tag="JJR"/>
+				<p ptag="TO" tag="JJR"/>
+				<p ptag="#" tag="JJR"/>
+				<p ptag="," tag="JJR"/>
+				<p ptag="VVP" tag="JJR"/>
+			</w>
+			<w word="look">
+				<p tag="VV"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="WRB" tag="VVP"/>
+				<p ptag="VV" tag="NN"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="CD" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+			</w>
+			<w word="looked">
+				<p tag="VVD"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VVN" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VV" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+			</w>
+			<w word="looks">
+				<p tag="VVZ"/>
+				<p ptag="WRB" tag="NNS"/>
+				<p ptag="POS" tag="NNS"/>
+				<p ptag="#" tag="NNS"/>
+				<p ptag="VV" tag="NNS"/>
+				<p ptag="WP$" tag="NNS"/>
+				<p ptag="JJ" tag="NNS"/>
+				<p ptag="VVN" tag="NNS"/>
+				<p ptag="PP$" tag="NNS"/>
+			</w>
+			<w word="lord">
+				<p ptag="RBR" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="lost">
+				<p tag="VVN"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="TO" tag="JJ"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+			</w>
+			<w word="love">
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="RB" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="EX" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="low">
+				<p tag="JJ"/>
+			</w>
+			<w word="made">
+				<p tag="VVN"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="VVD" tag="VVD"/>
+				<p ptag="VVN" tag="VVD"/>
+				<p ptag="VVG" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="EX" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+			</w>
+			<w word="main">
+				<p tag="JJ"/>
+			</w>
+			<w word="major">
+				<p tag="JJ"/>
+			</w>
+			<w word="make">
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="DT" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WRB" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="CD" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="makes">
+				<p tag="VVZ"/>
+				<p ptag="VVP" tag="NNS"/>
+				<p ptag="VVG" tag="NNS"/>
+			</w>
+			<w word="making">
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="man">
+				<p ptag="UH" tag="UH"/>
+			</w>
+			<w word="manchester">
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="march">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="margin">
+				<p ptag="RB" tag="JJ"/>
+			</w>
+			<w word="mark">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="market">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="match">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="UH" tag="VV"/>
+				<p ptag="VBD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="SYM" tag="VV"/>
+				<p ptag="VB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+			</w>
+			<w word="matter">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="me">
+				<p ptag="DT" tag="FW"/>
+				<p ptag="PP" tag="FW"/>
+			</w>
+			<w word="mean">
+				<p tag="VV"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="VVG" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VB" tag="JJ"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="CC" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="NN" tag="VVP"/>
+				<p ptag="JJ" tag="JJ"/>
+			</w>
+			<w word="means">
+				<p tag="VVZ"/>
+				<p ptag="JJ" tag="NNS"/>
+				<p ptag="VBP" tag="NNS"/>
+				<p ptag="IN" tag="NNS"/>
+				<p ptag="CD" tag="NNS"/>
+				<p ptag="PP$" tag="NNS"/>
+				<p ptag="VVN" tag="NNS"/>
+			</w>
+			<w word="media">
+				<p tag="NNS"/>
+				<p ptag="WDT" tag="NN"/>
+			</w>
+			<w word="meet">
+				<p tag="VV"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="JJ" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="CD" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="IN" tag="VVP"/>
+			</w>
+			<w word="meeting">
+				<p tag="NN"/>
+				<p ptag="RP" tag="VVG"/>
+				<p ptag="VB" tag="VVG"/>
+				<p ptag="#" tag="VVG"/>
+				<p ptag="VBD" tag="VVG"/>
+				<p ptag="VBN" tag="VVG"/>
+				<p ptag="VBP" tag="VVG"/>
+				<p ptag="IN" tag="VVG"/>
+				<p ptag="RB" tag="VVG"/>
+				<p ptag="IN/that" tag="VVG"/>
+			</w>
+			<w word="men">
+				<p tag="NNS"/>
+			</w>
+			<w word="met">
+				<p tag="VVD"/>
+				<p ptag="VVG" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="VV" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+			</w>
+			<w word="michael">
+				<p tag="NP"/>
+				<p ptag="VHP" tag="NNS"/>
+				<p ptag="VB" tag="JJ"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="VBP" tag="VVG"/>
+			</w>
+			<w word="middle">
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="VB" tag="JJ"/>
+				<p ptag="NNS" tag="JJ"/>
+				<p ptag="IN/that" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="VBP" tag="JJ"/>
+				<p ptag="NN" tag="JJ"/>
+				<p ptag="RBS" tag="JJ"/>
+				<p ptag="CC" tag="JJ"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="VBZ" tag="JJ"/>
+				<p ptag="TO" tag="JJ"/>
+				<p ptag="VVN" tag="JJ"/>
+				<p ptag="JJ" tag="JJ"/>
+				<p ptag="VVG" tag="JJ"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="JJR" tag="JJ"/>
+			</w>
+			<w word="might">
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+			</w>
+			<w word="military">
+				<p tag="JJ"/>
+			</w>
+			<w word="mind">
+				<p ptag="CC" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="VVN" tag="VV"/>
+			</w>
+			<w word="minute">
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="RBS" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+			</w>
+			<w word="mizz">
+				<p tag="NP"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="TO" tag="NN"/>
+				<p ptag="VVD" tag="NN"/>
+				<p ptag="VHZ" tag="NN"/>
+				<p ptag="NNS" tag="NN"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="SYM" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="VVZ" tag="NN"/>
+				<p ptag="CC" tag="NN"/>
+			</w>
+			<w word="moderate">
+				<p tag="JJ"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="moped">
+				<p ptag="VVG" tag="NN"/>
+			</w>
+			<w word="more">
+				<p ptag="PP" tag="RBR"/>
+				<p ptag="VBG" tag="RBR"/>
+				<p ptag="MD" tag="RBR"/>
+				<p ptag="VBZ" tag="RBR"/>
+				<p ptag="VB" tag="RBR"/>
+				<p ptag="WP" tag="RBR"/>
+				<p ptag="DT" tag="RBR"/>
+				<p ptag="VVZ" tag="RBR"/>
+				<p ptag="VBD" tag="RBR"/>
+				<p ptag="VBN" tag="RBR"/>
+				<p ptag="NNS" tag="RBR"/>
+				<p ptag="RB" tag="RBR"/>
+				<p ptag="VBP" tag="RBR"/>
+			</w>
+			<w word="morning">
+				<p tag="NN"/>
+			</w>
+			<w word="most">
+				<p ptag="TO" tag="JJS"/>
+				<p ptag="VHP" tag="JJS"/>
+				<p ptag="RP" tag="JJS"/>
+				<p ptag="," tag="JJS"/>
+				<p ptag="WP" tag="JJS"/>
+				<p ptag="VVP" tag="JJS"/>
+				<p ptag="VVD" tag="JJS"/>
+				<p ptag="#" tag="JJS"/>
+				<p ptag="VVN" tag="JJS"/>
+				<p ptag="WP$" tag="JJS"/>
+				<p ptag="WRB" tag="JJS"/>
+				<p ptag="VV" tag="JJS"/>
+				<p ptag="IN" tag="JJS"/>
+				<p ptag="IN/that" tag="JJS"/>
+				<p ptag="WDT" tag="JJS"/>
+				<p ptag="NN" tag="JJS"/>
+				<p ptag="VVG" tag="JJS"/>
+				<p ptag="VHD" tag="JJS"/>
+			</w>
+			<w word="move">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="moved">
+				<p tag="VVD"/>
+				<p ptag="VVG" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="VVD" tag="VVN"/>
+				<p ptag="JJ" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="JJR" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+			</w>
+			<w word="much">
+				<p tag="RB"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="WRB" tag="JJ"/>
+				<p ptag="TO" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="EX" tag="JJ"/>
+				<p ptag="VHP" tag="JJ"/>
+			</w>
+			<w word="murder">
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="music">
+				<p tag="NN"/>
+			</w>
+			<w word="name">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="near">
+				<p tag="IN"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="WRB" tag="JJ"/>
+				<p ptag="NP" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="VBP" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+			</w>
+			<w word="need">
+				<p tag="VVP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="IN" tag="NN"/>
+			</w>
+			<w word="needed">
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="RBR" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="VVN" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+			</w>
+			<w word="needs">
+				<p tag="VVZ"/>
+				<p ptag="JJR" tag="NNS"/>
+				<p ptag="JJ" tag="NNS"/>
+				<p ptag="IN" tag="NNS"/>
+				<p ptag="CD" tag="NNS"/>
+				<p ptag="PP$" tag="NNS"/>
+				<p ptag="RBS" tag="NNS"/>
+				<p ptag="POS" tag="NNS"/>
+				<p ptag="WP$" tag="NNS"/>
+				<p ptag="DT" tag="NNS"/>
+				<p ptag="VVN" tag="NNS"/>
+			</w>
+			<w word="ng">
+				<p tag="NNS"/>
+			</w>
+			<w word="night">
+				<p tag="NN"/>
+			</w>
+			<w word="no">
+				<p ptag="VVP" tag="RB"/>
+				<p ptag="DT" tag="RB"/>
+				<p ptag="UH" tag="UH"/>
+				<p ptag="PP" tag="RB"/>
+				<p ptag="NP" tag="RB"/>
+				<p ptag="PP$" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="CD" tag="RB"/>
+			</w>
+			<w word="non">
+				<p tag="JJ"/>
+			</w>
+			<w word="north">
+				<p tag="JJ"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="NP" tag="RB"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="JJR" tag="RB"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="RB" tag="RB"/>
+				<p ptag="VVN" tag="RB"/>
+				<p ptag="CC" tag="NN"/>
+				<p ptag="NNS" tag="RB"/>
+				<p ptag="VVZ" tag="RB"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="RP" tag="RB"/>
+			</w>
+			<w word="nothing">
+				<p tag="NN"/>
+			</w>
+			<w word="obama">
+				<p ptag="MD" tag="NP"/>
+				<p ptag="VBD" tag="NP"/>
+				<p ptag="WP" tag="NP"/>
+				<p ptag="WDT" tag="NP"/>
+			</w>
+			<w word="object">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="oblige">
+				<p tag="VV"/>
+			</w>
+			<w word="october">
+				<p ptag="VBD" tag="JJ"/>
+			</w>
+			<w word="off">
+				<p tag="RP"/>
+				<p ptag="VB" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="POS" tag="RB"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="CC" tag="IN"/>
+				<p ptag="NNS" tag="IN"/>
+				<p ptag="," tag="IN"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="RP" tag="IN"/>
+				<p ptag="RB" tag="IN"/>
+				<p ptag="JJS" tag="JJ"/>
+				<p ptag="IN/that" tag="IN"/>
+				<p ptag="CD" tag="IN"/>
+				<p ptag="NP" tag="IN"/>
+				<p ptag="JJ" tag="IN"/>
+				<p ptag="DT" tag="JJ"/>
+			</w>
+			<w word="offer">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="offered">
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="VVG" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="WRB" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+			</w>
+			<w word="official">
+				<p ptag="CD" tag="NN"/>
+				<p ptag="WP" tag="NN"/>
+				<p ptag="WDT" tag="NN"/>
+				<p ptag="NNS" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+			</w>
+			<w word="often">
+				<p tag="RB"/>
+			</w>
+			<w word="on">
+				<p tag="IN"/>
+			</w>
+			<w word="once">
+				<p ptag="RP" tag="IN"/>
+				<p ptag="JJR" tag="IN"/>
+			</w>
+			<w word="online">
+				<p tag="JJ"/>
+			</w>
+			<w word="only">
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="WP$" tag="JJ"/>
+			</w>
+			<w word="open">
+				<p tag="JJ"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VVG" tag="RP"/>
+				<p ptag="CC" tag="VV"/>
+			</w>
+			<w word="opening">
+				<p tag="NN"/>
+				<p ptag="VBP" tag="VVG"/>
+				<p ptag="VBD" tag="VVG"/>
+				<p ptag="CC" tag="VVG"/>
+				<p ptag="VB" tag="VVG"/>
+				<p ptag="TO" tag="VVG"/>
+				<p ptag="#" tag="VVG"/>
+				<p ptag="IN" tag="VVG"/>
+				<p ptag="RB" tag="VVG"/>
+				<p ptag="VBZ" tag="VVG"/>
+				<p ptag="RP" tag="VVG"/>
+				<p ptag="," tag="VVG"/>
+				<p ptag="WRB" tag="VVG"/>
+			</w>
+			<w word="order">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="orient">
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="out">
+				<p tag="RP"/>
+				<p ptag="RB" tag="RB"/>
+				<p ptag="IN" tag="RB"/>
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="CD" tag="IN"/>
+				<p ptag="CC" tag="RB"/>
+				<p ptag="TO" tag="RB"/>
+				<p ptag="VBG" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="IN/that" tag="RB"/>
+				<p ptag="RBS" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="RBR" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="JJS" tag="RB"/>
+				<p ptag="VBP" tag="RB"/>
+			</w>
+			<w word="outside">
+				<p tag="IN"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="CC" tag="JJ"/>
+				<p ptag="TO" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="IN/that" tag="JJ"/>
+				<p ptag="VVZ" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+			</w>
+			<w word="over">
+				<p ptag="VBZ" tag="RP"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="TO" tag="RB"/>
+				<p ptag="VVZ" tag="RP"/>
+				<p ptag="VBN" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="VBD" tag="RP"/>
+				<p ptag="VBG" tag="RB"/>
+				<p ptag="PP$" tag="RB"/>
+			</w>
+			<w word="own">
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="JJS" tag="VV"/>
+			</w>
+			<w word="padding">
+				<p tag="NN"/>
+			</w>
+			<w word="paid">
+				<p tag="VVN"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+			</w>
+			<w word="pakistan">
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="#" tag="NP"/>
+				<p ptag="WDT" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+			</w>
+			<w word="park">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="pas">
+				<p tag="NNS"/>
+				<p ptag="#" tag="NN"/>
+			</w>
+			<w word="past">
+				<p tag="JJ"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="RP" tag="IN"/>
+				<p ptag="PP" tag="IN"/>
+				<p ptag="VVD" tag="IN"/>
+			</w>
+			<w word="paul">
+				<p tag="NP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="CC" tag="NN"/>
+				<p ptag="VV" tag="NNS"/>
+				<p ptag="RP" tag="NN"/>
+				<p ptag="VHP" tag="NN"/>
+				<p ptag="VVP" tag="NNS"/>
+				<p ptag="VVZ" tag="NN"/>
+				<p ptag="VBZ" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="RB" tag="NN"/>
+			</w>
+			<w word="pay">
+				<p tag="VV"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="IN/that" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VVD" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="WP$" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="per">
+				<p tag="IN"/>
+				<p ptag="DT" tag="FW"/>
+				<p ptag="SYM" tag="FW"/>
+			</w>
+			<w word="perfect">
+				<p tag="JJ"/>
+			</w>
+			<w word="perhaps">
+				<p tag="RB"/>
+			</w>
+			<w word="permit">
+				<p tag="VV"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="permits">
+				<p ptag="WDT" tag="VVZ"/>
+				<p ptag="IN/that" tag="VVZ"/>
+				<p ptag="CC" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="peter">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="phone">
+				<p ptag="RB" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="place">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="plan">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="plans">
+				<p ptag="WDT" tag="VVZ"/>
+				<p ptag="," tag="VVZ"/>
+				<p ptag="WP" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="WRB" tag="VVZ"/>
+				<p ptag="NP" tag="VVZ"/>
+				<p ptag="CC" tag="VVZ"/>
+			</w>
+			<w word="play">
+				<p tag="VV"/>
+				<p ptag="VBD" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VVD" tag="NN"/>
+				<p ptag="VHP" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="VBN" tag="NN"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="WRB" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="PP$" tag="NN"/>
+			</w>
+			<w word="played">
+				<p ptag="VVN" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="DT" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="CD" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+			</w>
+			<w word="player">
+				<p tag="NN"/>
+			</w>
+			<w word="playing">
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+			</w>
+			<w word="plus">
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="VVN" tag="IN"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="RB" tag="IN"/>
+			</w>
+			<w word="point">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="RB" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="points">
+				<p ptag="NP" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+				<p ptag="WP" tag="VVZ"/>
+				<p ptag="WDT" tag="VVZ"/>
+			</w>
+			<w word="police">
+				<p ptag="IN" tag="NNS"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="," tag="NNS"/>
+				<p ptag="WRB" tag="NNS"/>
+				<p ptag="VVP" tag="NNS"/>
+				<p ptag="#" tag="NNS"/>
+				<p ptag="IN/that" tag="NNS"/>
+				<p ptag="VHP" tag="NNS"/>
+				<p ptag="WP" tag="NNS"/>
+				<p ptag="RB" tag="NNS"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VHD" tag="NNS"/>
+				<p ptag="VV" tag="NNS"/>
+			</w>
+			<w word="polish">
+				<p tag="NN"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="IN/that" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+			</w>
+			<w word="poor">
+				<p tag="JJ"/>
+			</w>
+			<w word="position">
+				<p ptag="VBD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+			</w>
+			<w word="post">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+			</w>
+			<w word="potential">
+				<p ptag="JJ" tag="NN"/>
+			</w>
+			<w word="power">
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="premier">
+				<p tag="JJ"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="RB" tag="JJR"/>
+				<p ptag="TO" tag="JJR"/>
+				<p ptag="VVG" tag="NN"/>
+			</w>
+			<w word="present">
+				<p tag="JJ"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+			</w>
+			<w word="presents">
+				<p tag="VVZ"/>
+				<p ptag="VBD" tag="NNS"/>
+				<p ptag="VV" tag="NNS"/>
+				<p ptag="JJ" tag="NNS"/>
+				<p ptag="VVG" tag="NNS"/>
+				<p ptag="DT" tag="NNS"/>
+				<p ptag="IN" tag="NNS"/>
+			</w>
+			<w word="press">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="pressure">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="price">
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="private">
+				<p tag="JJ"/>
+			</w>
+			<w word="proceeds">
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="process">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="produce">
+				<p tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+			</w>
+			<w word="programme">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="progress">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="project">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="projects">
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="protests">
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="provide">
+				<p tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="NN" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="published">
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+			</w>
+			<w word="put">
+				<p tag="VV"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="CD" tag="VVD"/>
+				<p ptag="VVN" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="RBR" tag="VVN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VVG" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="POS" tag="VVN"/>
+			</w>
+			<w word="que">
+				<p tag="NP"/>
+			</w>
+			<w word="question">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="questions">
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="quite">
+				<p tag="RB"/>
+				<p ptag="RBR" tag="PDT"/>
+				<p ptag="VHG" tag="PDT"/>
+				<p ptag="IN" tag="PDT"/>
+				<p ptag="VHD" tag="PDT"/>
+				<p ptag="VHP" tag="PDT"/>
+			</w>
+			<w word="ragged">
+				<p tag="JJ"/>
+			</w>
+			<w word="rand">
+				<p tag="NNS"/>
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="rate">
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="rates">
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="WDT" tag="VVZ"/>
+			</w>
+			<w word="rather">
+				<p tag="RB"/>
+			</w>
+			<w word="read">
+				<p tag="VV"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="WRB" tag="NN"/>
+				<p ptag="VVG" tag="VVD"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="JJS" tag="VVN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="WDT" tag="NN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="SYM" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="RBS" tag="VVN"/>
+			</w>
+			<w word="reading">
+				<p tag="NN"/>
+				<p ptag="VBN" tag="VVG"/>
+				<p ptag="RB" tag="VVG"/>
+				<p ptag="RBR" tag="VVG"/>
+				<p ptag="VBP" tag="VVG"/>
+				<p ptag="IN/that" tag="VVG"/>
+				<p ptag="VV" tag="VVG"/>
+				<p ptag="VB" tag="VVG"/>
+				<p ptag="PP" tag="VVG"/>
+				<p ptag="VBD" tag="VVG"/>
+				<p ptag="VBZ" tag="VVG"/>
+				<p ptag="NNS" tag="VVG"/>
+				<p ptag="VVN" tag="VVG"/>
+			</w>
+			<w word="rebel">
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="WDT" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="RP" tag="JJ"/>
+				<p ptag="VVG" tag="JJ"/>
+			</w>
+			<w word="received">
+				<p tag="VVD"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="JJS" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="VVG" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+			</w>
+			<w word="record">
+				<p ptag="WDT" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="records">
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="red">
+				<p tag="JJ"/>
+			</w>
+			<w word="refund">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="refuse">
+				<p tag="VV"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="RB" tag="VVP"/>
+				<p ptag="VVD" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="NN" tag="VVP"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="CC" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+			</w>
+			<w word="reject">
+				<p tag="VV"/>
+				<p ptag="NN" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="," tag="VVP"/>
+			</w>
+			<w word="rejects">
+				<p tag="VVZ"/>
+			</w>
+			<w word="relapse">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="released">
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+			</w>
+			<w word="remain">
+				<p tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="JJ" tag="VVP"/>
+				<p ptag="CD" tag="VVP"/>
+				<p ptag="NN" tag="VVP"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="VV" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VVZ" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+			</w>
+			<w word="remains">
+				<p tag="VVZ"/>
+				<p ptag="POS" tag="NNS"/>
+				<p ptag="VVN" tag="NNS"/>
+				<p ptag="WP$" tag="NNS"/>
+				<p ptag="RP" tag="NNS"/>
+				<p ptag="PP$" tag="NNS"/>
+				<p ptag="IN" tag="NNS"/>
+				<p ptag="JJ" tag="NNS"/>
+			</w>
+			<w word="report">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="reported">
+				<p tag="VVD"/>
+				<p ptag="JJS" tag="JJ"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="CD" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="PP$" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+			</w>
+			<w word="reports">
+				<p ptag="WDT" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="reread">
+				<p tag="VVN"/>
+				<p ptag="NP" tag="VVD"/>
+			</w>
+			<w word="research">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="rest">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+			</w>
+			<w word="result">
+				<p ptag="," tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="results">
+				<p ptag="WDT" tag="VVZ"/>
+			</w>
+			<w word="resume">
+				<p tag="VV"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="return">
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="revealed">
+				<p tag="VVD"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="TO" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+			</w>
+			<w word="review">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="right">
+				<p tag="JJ"/>
+				<p ptag="IN/that" tag="NN"/>
+				<p ptag="VBG" tag="NN"/>
+				<p ptag="WP" tag="RB"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="PP" tag="RB"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="VVN" tag="RB"/>
+				<p ptag="TO" tag="NN"/>
+				<p ptag="VVG" tag="RB"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="VHP" tag="RB"/>
+				<p ptag="NNS" tag="RB"/>
+				<p ptag="CC" tag="RB"/>
+				<p ptag="VVP" tag="RB"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="VV" tag="RB"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="VVZ" tag="RB"/>
+				<p ptag="VHD" tag="NN"/>
+			</w>
+			<w word="rise">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="risk">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WRB" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="round">
+				<p ptag="PP" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="row">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="rowing">
+				<p tag="NN"/>
+			</w>
+			<w word="rows">
+				<p tag="NNS"/>
+			</w>
+			<w word="royal">
+				<p ptag="NP" tag="NN"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+			</w>
+			<w word="rules">
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="run">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VVP" tag="VVN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="JJR" tag="VVN"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="," tag="VVN"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="running">
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="russia">
+				<p ptag="MD" tag="NNS"/>
+				<p ptag="VVP" tag="NNS"/>
+				<p ptag="JJ" tag="NNS"/>
+				<p ptag="RB" tag="NNS"/>
+				<p ptag="VV" tag="NNS"/>
+				<p ptag="IN/that" tag="NNS"/>
+				<p ptag="VVZ" tag="NNS"/>
+			</w>
+			<w word="russian">
+				<p tag="JJ"/>
+			</w>
+			<w word="s">
+				<p ptag="CC" tag="NNS"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="VHD" tag="JJ"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="IN" tag="NNS"/>
+				<p ptag="VVP" tag="NNS"/>
+				<p ptag="VBZ" tag="JJ"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="JJ" tag="NNS"/>
+				<p ptag="VHZ" tag="NNS"/>
+			</w>
+			<w word="said">
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+			</w>
+			<w word="saint">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="sake">
+				<p tag="NN"/>
+			</w>
+			<w word="saw">
+				<p tag="VVD"/>
+			</w>
+			<w word="say">
+				<p tag="VVP"/>
+				<p ptag="IN" tag="VV"/>
+				<p ptag="POS" tag="VV"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VBZ" tag="VV"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="RP" tag="VV"/>
+				<p ptag="VHP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="scotland">
+				<p ptag="POS" tag="NP"/>
+				<p ptag="," tag="NP"/>
+				<p ptag="WDT" tag="NP"/>
+				<p ptag="VBZ" tag="NP"/>
+			</w>
+			<w word="second">
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="VBG" tag="RB"/>
+			</w>
+			<w word="see">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NN" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="DT" tag="VVP"/>
+				<p ptag="JJ" tag="VVP"/>
+			</w>
+			<w word="seemed">
+				<p tag="VVD"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+			</w>
+			<w word="seems">
+				<p tag="VVZ"/>
+			</w>
+			<w word="senior">
+				<p tag="JJ"/>
+			</w>
+			<w word="sense">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="sent">
+				<p tag="VVN"/>
+				<p ptag="RB" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="CD" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="POS" tag="VVD"/>
+				<p ptag="RP" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+			</w>
+			<w word="separate">
+				<p tag="JJ"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+			</w>
+			<w word="separates">
+				<p tag="VVZ"/>
+			</w>
+			<w word="series">
+				<p tag="NN"/>
+			</w>
+			<w word="service">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="set">
+				<p tag="VVN"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="JJ" tag="NN"/>
+			</w>
+			<w word="setiframesrccallbackfalse">
+				<p tag="NNS"/>
+			</w>
+			<w word="share">
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="short">
+				<p tag="JJ"/>
+				<p ptag="VVN" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="NP" tag="RB"/>
+				<p ptag="VB" tag="RB"/>
+				<p ptag="VV" tag="RB"/>
+			</w>
+			<w word="shot">
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="RP" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="WRB" tag="VVN"/>
+				<p ptag="RBR" tag="VVN"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="," tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+			</w>
+			<w word="show">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WRB" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VBZ" tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+			</w>
+			<w word="showed">
+				<p tag="VVD"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+			</w>
+			<w word="shows">
+				<p tag="VVZ"/>
+				<p ptag="TO" tag="NNS"/>
+				<p ptag="PP$" tag="NNS"/>
+				<p ptag="CD" tag="NNS"/>
+				<p ptag="RBS" tag="NNS"/>
+				<p ptag="JJ" tag="NNS"/>
+				<p ptag="VV" tag="NNS"/>
+				<p ptag="POS" tag="NNS"/>
+				<p ptag="VVN" tag="NNS"/>
+				<p ptag="VVD" tag="NNS"/>
+				<p ptag="DT" tag="NNS"/>
+				<p ptag="JJR" tag="NNS"/>
+				<p ptag="IN" tag="NNS"/>
+			</w>
+			<w word="side">
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="significant">
+				<p tag="JJ"/>
+			</w>
+			<w word="since">
+				<p ptag="VHP" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+			</w>
+			<w word="single">
+				<p tag="JJ"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="slash">
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VB" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WRB" tag="VVP"/>
+				<p ptag="IN" tag="VV"/>
+				<p ptag="UH" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="VVN" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="SYM" tag="VV"/>
+				<p ptag="PP$" tag="VV"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+			</w>
+			<w word="slough">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="small">
+				<p tag="JJ"/>
+			</w>
+			<w word="so">
+				<p ptag="JJ" tag="IN"/>
+			</w>
+			<w word="something">
+				<p tag="NN"/>
+			</w>
+			<w word="soon">
+				<p tag="RB"/>
+			</w>
+			<w word="sort">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="south">
+				<p tag="JJ"/>
+				<p ptag="VV" tag="RB"/>
+				<p ptag="RB" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="NNS" tag="RB"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="JJR" tag="RB"/>
+			</w>
+			<w word="sow">
+				<p tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="DT" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="spending">
+				<p tag="NN"/>
+				<p ptag="VBZ" tag="VVG"/>
+				<p ptag="VVD" tag="VVG"/>
+				<p ptag="VB" tag="VVG"/>
+				<p ptag="PP" tag="VVG"/>
+				<p ptag="VBP" tag="VVG"/>
+				<p ptag="#" tag="VVG"/>
+				<p ptag="VBN" tag="VVG"/>
+				<p ptag="," tag="VVG"/>
+				<p ptag="NNS" tag="VVG"/>
+				<p ptag="RB" tag="VVG"/>
+				<p ptag="VBD" tag="VVG"/>
+			</w>
+			<w word="spent">
+				<p tag="VVN"/>
+				<p ptag="CC" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="VVN" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="NNS" tag="VVD"/>
+				<p ptag="JJ" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+			</w>
+			<w word="st">
+				<p tag="JJ"/>
+				<p ptag="NN" tag="NNS"/>
+				<p ptag="WRB" tag="NNS"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="VV" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="#" tag="NN"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="CC" tag="NN"/>
+				<p ptag="NNS" tag="NN"/>
+				<p ptag="," tag="NN"/>
+			</w>
+			<w word="stage">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="stand">
+				<p tag="VV"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="VBZ" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="CC" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="#" tag="NN"/>
+			</w>
+			<w word="star">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+			</w>
+			<w word="start">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="started">
+				<p tag="VVD"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="CD" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VV" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+			</w>
+			<w word="state">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="states">
+				<p ptag="WDT" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="," tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="stay">
+				<p tag="VV"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="RBR" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="step">
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="stop">
+				<p tag="VV"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="VV" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WRB" tag="NN"/>
+				<p ptag="VBD" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+			</w>
+			<w word="study">
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="subject">
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="POS" tag="JJ"/>
+				<p ptag="NNS" tag="JJ"/>
+				<p ptag="VBP" tag="JJ"/>
+				<p ptag="#" tag="JJ"/>
+				<p ptag="VVN" tag="JJ"/>
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="VB" tag="JJ"/>
+				<p ptag="CC" tag="JJ"/>
+				<p ptag="VV" tag="JJ"/>
+				<p ptag="VBN" tag="JJ"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VBZ" tag="JJ"/>
+				<p ptag="PP" tag="JJ"/>
+				<p ptag="JJR" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="subordinate">
+				<p tag="JJ"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="subordinates">
+				<p ptag="IN" tag="VVZ"/>
+			</w>
+			<w word="such">
+				<p ptag="VBG" tag="PDT"/>
+				<p ptag="VBD" tag="PDT"/>
+				<p ptag="RB" tag="PDT"/>
+				<p ptag="EX" tag="PDT"/>
+				<p ptag="VBZ" tag="PDT"/>
+				<p ptag="VB" tag="PDT"/>
+				<p ptag="VHP" tag="PDT"/>
+				<p ptag="POS" tag="PDT"/>
+				<p ptag="VV" tag="PDT"/>
+				<p ptag="PP" tag="PDT"/>
+				<p ptag="VHG" tag="PDT"/>
+				<p ptag="VHZ" tag="PDT"/>
+			</w>
+			<w word="suggested">
+				<p tag="VVD"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+			</w>
+			<w word="sunday">
+				<p ptag="RB" tag="JJ"/>
+			</w>
+			<w word="supplement">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="support">
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="RBR" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="sure">
+				<p tag="JJ"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="VVD" tag="RB"/>
+				<p ptag="CC" tag="RB"/>
+				<p ptag="VVP" tag="RB"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="NP" tag="RB"/>
+			</w>
+			<w word="survey">
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="surveys">
+				<p tag="NNS"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="IN/that" tag="VVZ"/>
+			</w>
+			<w word="suspect">
+				<p tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="IN/that" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="VBZ" tag="JJ"/>
+			</w>
+			<w word="suspects">
+				<p ptag="," tag="VVZ"/>
+				<p ptag="RB" tag="VVZ"/>
+				<p ptag="NP" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="take">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+			</w>
+			<w word="takes">
+				<p tag="VVZ"/>
+			</w>
+			<w word="talk">
+				<p tag="VV"/>
+				<p ptag="VBZ" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VV" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="VBN" tag="NN"/>
+				<p ptag="VVZ" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="VB" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="WRB" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="VBD" tag="NN"/>
+				<p ptag="#" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="IN/that" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="talks">
+				<p ptag="RB" tag="VVZ"/>
+				<p ptag="PP" tag="VVZ"/>
+				<p ptag="WDT" tag="VVZ"/>
+				<p ptag="WP" tag="VVZ"/>
+			</w>
+			<w word="target">
+				<p ptag="PP" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="tax">
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="team">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="tear">
+				<p tag="VV"/>
+				<p ptag="PP$" tag="NN"/>
+			</w>
+			<w word="tears">
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="tell">
+				<p tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="EX" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="DT" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="terms">
+				<p ptag="PP" tag="VVZ"/>
+			</w>
+			<w word="test">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="PP" tag="VV"/>
+			</w>
+			<w word="that">
+				<p ptag="IN/that" tag="DT"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="," tag="WDT"/>
+				<p ptag="SYM" tag="WDT"/>
+				<p ptag="VHD" tag="DT"/>
+				<p ptag="DT" tag="DT"/>
+				<p ptag="VHP" tag="DT"/>
+				<p ptag="#" tag="DT"/>
+				<p ptag="CD" tag="WDT"/>
+				<p ptag="VHG" tag="DT"/>
+				<p ptag="WP" tag="DT"/>
+				<p ptag="IN" tag="DT"/>
+				<p ptag="TO" tag="DT"/>
+				<p ptag="WRB" tag="DT"/>
+				<p ptag="RBR" tag="DT"/>
+				<p ptag="UH" tag="WDT"/>
+				<p ptag="WDT" tag="DT"/>
+				<p ptag="VHZ" tag="DT"/>
+				<p ptag="NP" tag="WDT"/>
+			</w>
+			<w word="themselves">
+				<p tag="PP"/>
+			</w>
+			<w word="then">
+				<p ptag="PP$" tag="JJ"/>
+			</w>
+			<w word="there">
+				<p ptag="VBG" tag="RB"/>
+				<p ptag="POS" tag="RB"/>
+				<p ptag="RP" tag="RB"/>
+				<p ptag="DT" tag="RB"/>
+				<p ptag="CD" tag="RB"/>
+				<p ptag="VVN" tag="RB"/>
+				<p ptag="VHP" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="VV" tag="RB"/>
+				<p ptag="NP" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="WP" tag="RB"/>
+				<p ptag="VB" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="VVG" tag="RB"/>
+				<p ptag="VBN" tag="RB"/>
+				<p ptag="PP" tag="RB"/>
+			</w>
+			<w word="thing">
+				<p tag="NN"/>
+			</w>
+			<w word="think">
+				<p tag="VVP"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="IN" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="VVD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="VHP" tag="VV"/>
+			</w>
+			<w word="third">
+				<p tag="JJ"/>
+				<p ptag="JJR" tag="NN"/>
+			</w>
+			<w word="though">
+				<p ptag="DT" tag="RB"/>
+				<p ptag="NN" tag="RB"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="VVN" tag="RB"/>
+				<p ptag="RP" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="WP" tag="RB"/>
+				<p ptag="VVZ" tag="RB"/>
+			</w>
+			<w word="thought">
+				<p tag="VVD"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="TO" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="RP" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="IN/that" tag="NN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+			</w>
+			<w word="today">
+				<p ptag="WP" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+			</w>
+			<w word="together">
+				<p tag="RB"/>
+			</w>
+			<w word="told">
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="JJS" tag="VVN"/>
+				<p ptag="VVD" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+			</w>
+			<w word="tomorrow">
+				<p ptag="MD" tag="RB"/>
+			</w>
+			<w word="tony">
+				<p tag="JJ"/>
+			</w>
+			<w word="top">
+				<p tag="JJ"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VHG" tag="NN"/>
+			</w>
+			<w word="tory">
+				<p tag="JJ"/>
+				<p ptag="VVG" tag="NN"/>
+			</w>
+			<w word="tour">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="towards">
+				<p tag="IN"/>
+			</w>
+			<w word="trade">
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="training">
+				<p tag="NN"/>
+				<p ptag="VB" tag="VVG"/>
+				<p ptag="RB" tag="VVG"/>
+				<p ptag="VBZ" tag="VVG"/>
+				<p ptag="VBP" tag="VVG"/>
+				<p ptag="VBD" tag="VVG"/>
+				<p ptag="VBN" tag="VVG"/>
+			</w>
+			<w word="transport">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="trial">
+				<p tag="NN"/>
+			</w>
+			<w word="tried">
+				<p tag="VVD"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+			</w>
+			<w word="true">
+				<p tag="JJ"/>
+			</w>
+			<w word="trust">
+				<p ptag="RB" tag="VV"/>
+				<p ptag="RBR" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="try">
+				<p tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WDT" tag="VVP"/>
+			</w>
+			<w word="turn">
+				<p tag="VV"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="VVN" tag="RB"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="WP$" tag="NN"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="VHD" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+			</w>
+			<w word="turned">
+				<p tag="VVD"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="JJR" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="CD" tag="VVN"/>
+				<p ptag="VVN" tag="VVN"/>
+				<p ptag="RBS" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+			</w>
+			<w word="typeof">
+				<p tag="JJ"/>
+			</w>
+			<w word="uk">
+				<p ptag="," tag="NP"/>
+				<p ptag="DT" tag="NP"/>
+				<p ptag="PP" tag="NP"/>
+				<p ptag="IN" tag="NP"/>
+			</w>
+			<w word="under">
+				<p ptag="VHZ" tag="RB"/>
+			</w>
+			<w word="underestimate">
+				<p tag="VV"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="up">
+				<p ptag="WRB" tag="RB"/>
+				<p ptag="#" tag="RB"/>
+				<p ptag="VB" tag="RB"/>
+				<p ptag="CC" tag="RB"/>
+				<p ptag="RBS" tag="RB"/>
+				<p ptag="VHD" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+				<p ptag="VHZ" tag="RB"/>
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="POS" tag="RB"/>
+				<p ptag="RB" tag="RB"/>
+				<p ptag="," tag="RB"/>
+				<p ptag="RP" tag="RB"/>
+				<p ptag="WP" tag="RB"/>
+				<p ptag="JJR" tag="IN"/>
+				<p ptag="MD" tag="RB"/>
+				<p ptag="CD" tag="RB"/>
+				<p ptag="IN/that" tag="IN"/>
+				<p ptag="JJS" tag="RB"/>
+				<p ptag="TO" tag="RB"/>
+				<p ptag="IN" tag="RB"/>
+				<p ptag="WDT" tag="RB"/>
+				<p ptag="VBP" tag="RB"/>
+				<p ptag="VHP" tag="RB"/>
+				<p ptag="VBN" tag="RB"/>
+			</w>
+			<w word="upset">
+				<p tag="VVN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="VVD" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+				<p ptag="IN/that" tag="JJ"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="CC" tag="JJ"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="VVP" tag="JJ"/>
+				<p ptag="VVG" tag="JJ"/>
+			</w>
+			<w word="upsets">
+				<p ptag="RB" tag="VVZ"/>
+			</w>
+			<w word="use">
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="RBR" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="WRB" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="NNS" tag="VVP"/>
+			</w>
+			<w word="used">
+				<p ptag="WP" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="WDT" tag="VVD"/>
+				<p ptag="NP" tag="VVD"/>
+			</w>
+			<w word="uses">
+				<p tag="VVZ"/>
+				<p ptag="IN" tag="NNS"/>
+				<p ptag="JJ" tag="NNS"/>
+			</w>
+			<w word="very">
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="WP$" tag="JJ"/>
+			</w>
+			<w word="via">
+				<p tag="IN"/>
+			</w>
+			<w word="video">
+				<p ptag="VBD" tag="JJ"/>
+				<p ptag="NNS" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="VVN" tag="JJ"/>
+				<p ptag="RB" tag="JJ"/>
+				<p ptag="JJR" tag="JJ"/>
+				<p ptag="," tag="JJ"/>
+				<p ptag="IN/that" tag="JJ"/>
+				<p ptag="VV" tag="JJ"/>
+				<p ptag="PP" tag="JJ"/>
+				<p ptag="RBS" tag="JJ"/>
+			</w>
+			<w word="vie">
+				<p tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+			</w>
+			<w word="view">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="," tag="VVP"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="visit">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="VV" tag="VV"/>
+			</w>
+			<w word="vote">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="WP" tag="VVP"/>
+			</w>
+			<w word="wales">
+				<p ptag="VVG" tag="VVZ"/>
+			</w>
+			<w word="want">
+				<p tag="VVP"/>
+				<p ptag="VVP" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="POS" tag="VV"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="VVZ" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+			</w>
+			<w word="wanted">
+				<p tag="VVD"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="RBS" tag="JJ"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+			</w>
+			<w word="wants">
+				<p tag="VVZ"/>
+			</w>
+			<w word="warned">
+				<p tag="VVD"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+			</w>
+			<w word="water">
+				<p ptag="TO" tag="VV"/>
+			</w>
+			<w word="way">
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="VBZ" tag="RB"/>
+			</w>
+			<w word="wednesday">
+				<p ptag="VB" tag="JJ"/>
+			</w>
+			<w word="well">
+				<p ptag="UH" tag="UH"/>
+			</w>
+			<w word="west">
+				<p tag="JJ"/>
+				<p ptag="CC" tag="NN"/>
+				<p ptag="VVZ" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="NNS" tag="RB"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+			</w>
+			<w word="what">
+				<p ptag="JJR" tag="WDT"/>
+			</w>
+			<w word="while">
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="white">
+				<p tag="JJ"/>
+				<p ptag="NP" tag="NN"/>
+				<p ptag="IN/that" tag="NN"/>
+				<p ptag="VV" tag="NN"/>
+			</w>
+			<w word="whole">
+				<p tag="JJ"/>
+				<p ptag="VVN" tag="NN"/>
+			</w>
+			<w word="whom">
+				<p tag="WP"/>
+			</w>
+			<w word="whose">
+				<p tag="WP$"/>
+			</w>
+			<w word="will">
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="VHD" tag="NN"/>
+				<p ptag="VBZ" tag="NN"/>
+			</w>
+			<w word="win">
+				<p tag="VV"/>
+				<p ptag="IN/that" tag="VVP"/>
+				<p ptag="VVN" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="IN" tag="NN"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="wind">
+				<p ptag="TO" tag="VV"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="NP" tag="VVP"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+			</w>
+			<w word="winning">
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="RBS" tag="JJ"/>
+				<p ptag="CD" tag="JJ"/>
+				<p ptag="JJS" tag="JJ"/>
+				<p ptag="WP" tag="NN"/>
+				<p ptag="POS" tag="JJ"/>
+			</w>
+			<w word="within">
+				<p tag="IN"/>
+			</w>
+			<w word="won">
+				<p tag="VVD"/>
+				<p ptag="#" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="CD" tag="NN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VBG" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="VBN" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VB" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="DT" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="JJR" tag="VVN"/>
+			</w>
+			<w word="work">
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="EX" tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="WP" tag="VVP"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="RB" tag="VV"/>
+				<p ptag="WDT" tag="VVP"/>
+				<p ptag="PP" tag="VVP"/>
+				<p ptag="RBS" tag="VVP"/>
+			</w>
+			<w word="worked">
+				<p tag="VVD"/>
+				<p ptag="," tag="VVN"/>
+				<p ptag="IN" tag="VVN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="VHD" tag="VVN"/>
+				<p ptag="VHZ" tag="VVN"/>
+				<p ptag="MD" tag="VVN"/>
+				<p ptag="VHG" tag="VVN"/>
+				<p ptag="POS" tag="VVN"/>
+				<p ptag="CD" tag="VVN"/>
+				<p ptag="VBZ" tag="VVN"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="VVN" tag="VVN"/>
+				<p ptag="RB" tag="VVN"/>
+				<p ptag="VBP" tag="VVN"/>
+			</w>
+			<w word="working">
+				<p ptag="VHP" tag="NN"/>
+				<p ptag="JJS" tag="JJ"/>
+				<p ptag="WP" tag="JJ"/>
+				<p ptag="CD" tag="JJ"/>
+			</w>
+			<w word="worth">
+				<p tag="JJ"/>
+				<p ptag="DT" tag="NN"/>
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="VV" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="JJR" tag="NN"/>
+				<p ptag="VVD" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="CD" tag="NN"/>
+			</w>
+			<w word="wound">
+				<p tag="NN"/>
+				<p ptag="VBD" tag="VVN"/>
+				<p ptag="IN/that" tag="VVD"/>
+				<p ptag="VV" tag="VVD"/>
+				<p ptag="PP" tag="VVD"/>
+				<p ptag="NN" tag="VVD"/>
+				<p ptag="NNS" tag="VVN"/>
+				<p ptag="NP" tag="VVD"/>
+				<p ptag="VHP" tag="VVN"/>
+				<p ptag="," tag="VVD"/>
+				<p ptag="RB" tag="VVN"/>
+			</w>
+			<w word="writing">
+				<p ptag="VVG" tag="NN"/>
+				<p ptag="POS" tag="NN"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="RBS" tag="NN"/>
+				<p ptag="JJS" tag="NN"/>
+				<p ptag="PP$" tag="NN"/>
+				<p ptag="JJ" tag="NN"/>
+				<p ptag="WP$" tag="NN"/>
+				<p ptag="VVP" tag="NN"/>
+				<p ptag="DT" tag="NN"/>
+			</w>
+			<w word="written">
+				<p tag="VVN"/>
+				<p ptag="PP$" tag="JJ"/>
+				<p ptag="DT" tag="JJ"/>
+				<p ptag="IN" tag="JJ"/>
+				<p ptag="JJ" tag="JJ"/>
+				<p ptag="VVN" tag="JJ"/>
+			</w>
+			<w word="wrong">
+				<p ptag="CD" tag="NN"/>
+				<p ptag="WRB" tag="RB"/>
+			</w>
+			<w word="wrote">
+				<p tag="VVD"/>
+			</w>
+			<w word="yes">
+				<p tag="RB"/>
+				<p ptag="," tag="UH"/>
+				<p ptag="UH" tag="UH"/>
+				<p ptag="VBZ" tag="UH"/>
+				<p ptag="#" tag="UH"/>
+				<p ptag="VVP" tag="UH"/>
+				<p ptag="CC" tag="UH"/>
+				<p ptag="VVD" tag="UH"/>
+				<p ptag="RB" tag="UH"/>
+			</w>
+			<w word="yesterday">
+				<p ptag="VBD" tag="RB"/>
+				<p ptag="WDT" tag="RB"/>
+				<p ptag="WP" tag="RB"/>
+			</w>
+			<w word="york">
+				<p tag="VVP"/>
+				<p ptag="," tag="VV"/>
+				<p ptag="TO" tag="VV"/>
+				<p ptag="IN" tag="VV"/>
+				<p ptag="#" tag="VV"/>
+				<p ptag="CC" tag="VV"/>
+			</w>
+			<w word="zero">
+				<p tag="CD"/>
+				<p ptag="NNS" tag="VVP"/>
+				<p ptag="VBP" tag="NN"/>
+				<p ptag="MD" tag="VV"/>
+				<p ptag="NN" tag="NN"/>
+				<p ptag="VVZ" tag="VV"/>
+			</w>
+		</patterns>
+	</tagger>
+</pos>

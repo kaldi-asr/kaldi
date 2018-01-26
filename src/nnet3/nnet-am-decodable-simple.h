@@ -33,6 +33,11 @@ namespace kaldi {
 namespace nnet3 {
 
 
+// See also the decodable object in decodable-simple-looped.h, which is better
+// and faster in most situations, including TDNNs and LSTMs (but not for
+// BLSTMs).
+
+
 // Note: the 'simple' in the name means it applies to networks
 // for which IsSimpleNnet(nnet) would return true.
 struct NnetSimpleComputationOptions {
@@ -46,6 +51,7 @@ struct NnetSimpleComputationOptions {
   bool debug_computation;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
+  CachingOptimizingCompilerOptions compiler_config;
 
   NnetSimpleComputationOptions():
       extra_left_context(0),
@@ -55,7 +61,9 @@ struct NnetSimpleComputationOptions {
       frame_subsampling_factor(1),
       frames_per_chunk(50),
       acoustic_scale(0.1),
-      debug_computation(false) { }
+      debug_computation(false) {
+    compiler_config.cache_capacity += frames_per_chunk;
+  }
 
   void Register(OptionsItf *opts) {
     opts->Register("extra-left-context", &extra_left_context,
@@ -67,17 +75,18 @@ struct NnetSimpleComputationOptions {
                    "of the neural net's inherent right context (may be useful in "
                    "recurrent setups");
     opts->Register("extra-left-context-initial", &extra_left_context_initial,
-                   "If >0, overrides the --extra-left-context value at the start "
-                   "of an utterance.");
+                   "If >= 0, overrides the --extra-left-context value at the "
+                   "start of an utterance.");
     opts->Register("extra-right-context-final", &extra_right_context_final,
-                   "If >0, overrides the --extra-right-context value at the end "
-                   "of an utterance.");
+                   "If >= 0, overrides the --extra-right-context value at the "
+                   "end of an utterance.");
     opts->Register("frame-subsampling-factor", &frame_subsampling_factor,
                    "Required if the frame-rate of the output (e.g. in 'chain' "
                    "models) is less than the frame-rate of the original "
                    "alignment.");
     opts->Register("acoustic-scale", &acoustic_scale,
-                   "Scaling factor for acoustic log-likelihoods");
+                   "Scaling factor for acoustic log-likelihoods (caution: is a no-op "
+                   "if set in the program nnet3-compute");
     opts->Register("frames-per-chunk", &frames_per_chunk,
                    "Number of frames in each chunk that is separately evaluated "
                    "by the neural net.  Measured before any subsampling, if the "
@@ -127,8 +136,6 @@ class DecodableNnetSimple {
                         so the calling code has to make sure that if there are
                         multiple threads, they do not share the same compiler
                         object.
-     @param [in] ivector If you are using iVectors estimated in batch mode,
-                         a pointer to the iVector, else NULL.
      @param [in] ivector If you are using iVectors estimated in batch mode,
                          a pointer to the iVector, else NULL.
      @param [in] online_ivectors
@@ -251,9 +258,11 @@ class DecodableAmNnetSimple: public DecodableInterface {
      @param [in] opts   The options class.  Warning: it includes an acoustic
                         weight, whose default is 0.1; you may sometimes want to
                         change this to 1.0.
-     @param [in] nnet   The neural net that we're going to do the computation with
-     @param [in] priors Vector of priors-- if supplied and nonempty, we subtract
-                        the log of these priors from the nnet output.
+     @param [in] trans_model  The transition model to use.  This takes care of the
+                        mapping from transition-id (which is an arg to
+                        LogLikelihood()) to pdf-id (which is used internally).
+     @param [in] am_nnet   The neural net that we're going to do the computation with;
+                         we also get the priors to divide by, if applicable, from here.
      @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
                          We
      @param [in] ivector If you are using iVectors estimated in batch mode,
@@ -318,7 +327,7 @@ class DecodableAmNnetSimpleParallel: public DecodableInterface {
             CachingOptimizingCompiler-- because making that thread safe
             would be quite complicated, and in any case multi-threaded
             decoding probably makes the most sense when using CPU, and
-            in that case won't expect the compilation phase to dominate.
+            in that case we don't expect the compilation phase to dominate.
 
      This constructor takes features as input, and you can either supply a
      single iVector input, estimated in batch-mode ('ivector'), or 'online'
@@ -329,13 +338,12 @@ class DecodableAmNnetSimpleParallel: public DecodableInterface {
      @param [in] opts   The options class.  Warning: it includes an acoustic
                         weight, whose default is 0.1; you may sometimes want to
                         change this to 1.0.
-     @param [in] nnet   The neural net that we're going to do the computation with
-     @param [in] priors Vector of priors-- if supplied and nonempty, we subtract
-                        the log of these priors from the nnet output.
+     @param [in] trans_model  The transition model to use.  This takes care of the
+                        mapping from transition-id (which is an arg to
+                        LogLikelihood()) to pdf-id (which is used internally).
+     @param [in] am_nnet The neural net that we're going to do the computation with;
+                        it may provide priors to divide by.
      @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
-                         We
-     @param [in] ivector If you are using iVectors estimated in batch mode,
-                         a pointer to the iVector, else NULL.
      @param [in] ivector If you are using iVectors estimated in batch mode,
                          a pointer to the iVector, else NULL.
      @param [in] online_ivectors

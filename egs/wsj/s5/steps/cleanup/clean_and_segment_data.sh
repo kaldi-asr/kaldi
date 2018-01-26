@@ -82,7 +82,7 @@ if [ $stage -le 1 ]; then
   echo "$0: Building biased-language-model decoding graphs..."
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
     --nj $nj --cmd "$cmd" \
-     $data $lang $dir
+     $data $lang $dir $dir/graphs
 fi
 
 if [ $stage -le 2 ]; then
@@ -100,7 +100,7 @@ if [ $stage -le 2 ]; then
   steps/cleanup/decode_segmentation.sh \
       --beam 15.0 --nj $nj --cmd "$cmd --mem 4G" $transform_opt \
       --skip-scoring true --allow-partial false \
-       $dir $data $dir/lats
+       $dir/graphs $data $dir/lats
 
   # the following is for diagnostics, e.g. it will give us the lattice depth.
   steps/diagnostic/analyze_lats.sh --cmd "$cmd" $lang $dir/lats
@@ -192,6 +192,9 @@ if [ $stage -le 8 ]; then
   echo "$0: based on the segments and text file in $dir/segments and $dir/text, creating new data-dir in $data_out"
   padding=$(cat $dir/segment_end_padding)  # e.g. 0.02
   utils/data/subsegment_data_dir.sh --segment-end-padding $padding ${data} $dir/segments $dir/text $data_out
+  # utils/data/subsegment_data_dir.sh can output directories that have e.g. to many entries left in wav.scp
+  # Clean this up with the fix_dat_dir.sh script
+  utils/fix_data_dir.sh $data_out
 fi
 
 if [ $stage -le 9 ]; then

@@ -39,7 +39,7 @@ void NnetToDirectedGraph(const Nnet &nnet,
     switch (node.node_type) {
       case kInput:
         break;  // no node dependencies.
-      case kDescriptor: 
+      case kDescriptor:
         node.descriptor.GetNodeDependencies(&node_dependencies);
         break;
       case kComponent:
@@ -265,7 +265,7 @@ std::string PrintGraphToString(const std::vector<std::vector<int32> > &graph) {
 void ComputeNnetComputationEpochs(const Nnet &nnet,
                                   std::vector<int32> *node_to_epoch) {
   KALDI_ASSERT(node_to_epoch != NULL);
-  
+
   std::vector<std::vector<int32> > graph;
   NnetToDirectedGraph(nnet, &graph);
   KALDI_VLOG(6) << "graph is: " << PrintGraphToString(graph);
@@ -276,7 +276,7 @@ void ComputeNnetComputationEpochs(const Nnet &nnet,
   std::vector<std::vector<int32> > scc_graph;
   MakeSccGraph(graph, sccs, &scc_graph);
   KALDI_VLOG(6) << "scc graph is: " << PrintGraphToString(scc_graph);
-  
+
   std::vector<int32> scc_node_to_epoch;
   ComputeTopSortOrder(scc_graph, &scc_node_to_epoch);
   if (GetVerboseLevel() >= 6) {
@@ -285,7 +285,7 @@ void ComputeNnetComputationEpochs(const Nnet &nnet,
       os << scc_node_to_epoch[i] << ", ";
     KALDI_VLOG(6) << "scc_node_to_epoch is: " << os.str();
   }
-  
+
   node_to_epoch->clear();
   node_to_epoch->resize(graph.size());
   for (int32 i = 0; i < sccs.size(); ++i) {
@@ -295,6 +295,22 @@ void ComputeNnetComputationEpochs(const Nnet &nnet,
       (*node_to_epoch)[node] = scc_node_to_epoch[i];
     }
   }
+}
+
+bool GraphHasCycles(const std::vector<std::vector<int32> > &graph) {
+  std::vector<std::vector<int32> > sccs;
+  FindSccs(graph, &sccs);
+  for (size_t i = 0; i < sccs.size(); i++) {
+    if (sccs[i].size() > 1)
+      return true;
+  }
+  // the next code checks for links from a state to itself.
+  int32 num_nodes = graph.size();
+  for (size_t i = 0; i < num_nodes; i++)
+    for (std::vector<int32>::const_iterator iter = graph[i].begin(),
+             end = graph[i].end(); iter != end; ++iter)
+      if (*iter == i) return true;
+  return false;
 }
 
 } // namespace nnet3
