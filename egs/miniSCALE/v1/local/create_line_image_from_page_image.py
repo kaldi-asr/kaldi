@@ -171,6 +171,6 @@ with open(args.data_splits) as f:
             image_file_path = os.path.join(args.database_path, 'images', base_name + '.tif')
             if remove_corrupt_xml_files(gedi_file_path):
                 get_line_images_from_page_image(image_file_path, gedi_file_path)
-                im = Image.open(image_file_path)
-                image_file_path = os.path.join(args.database_path, 'subset_images', base_name + '.tif')
-                im.save(image_file_path)
+                #im = Image.open(image_file_path)
+                #image_file_path = os.path.join(args.database_path, 'subset_images', base_name + '.tif')
+                #im.save(image_file_path)

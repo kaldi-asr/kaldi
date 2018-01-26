@@ -26,8 +26,8 @@ if [ $stage -le 0 ]; then
 fi
 mkdir -p data/{train,test,dev}/data
 if [ $stage -le 1 ]; then
-  for dataset in train test dev; do
-    local/make_features.py data/$dataset --feat-dim 100 | \
+  for dataset in train test; do
+    local/make_features.py data/$dataset --feat-dim 60 | \
       copy-feats --compress=true --compression-method=7 \
                  ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
     steps/compute_cmvn_stats.sh data/$dataset
@@ -37,15 +37,18 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
-  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 12 \
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 12 --sil-prob 0.85 \
                         data/local/dict "<sil>" data/lang/temp data/lang
 fi
 
 if [ $stage -le 3 ]; then
   echo "$0: Estimating a language model for decoding..."
-  local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang_test
+  #local/train_lm.sh
+  #utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
+  #                   data/local/dict/lexicon.txt data/lang_test
+
+  cp -R data/lang -T data/lang_test
+  local/prepare_lm.sh data/train/text data/lang_test 4 || exit 1;
 fi
 
 if [ $stage -le 4 ]; then

@@ -11,9 +11,13 @@ dir=data/local/dict
 segments=data/train/segmented_words
 mkdir -p $dir
 
-cat $segments | tr ' ' '\n' | sort -u | \
-  LC_ALL=en_US.UTF-8 awk '{len=split($0,chars,""); printf($0); for (i=0;i<=len;i++){printf(chars[i]" ")}; printf("\n")};' | \
-  sed 's/.$//' | tail -n +2 >  $dir/lexicon.txt || exit 1;
+#cat $segments | tr ' ' '\n' | sort -u | \
+#  LC_ALL=en_US.UTF-8 awk '{len=split($0,chars,""); printf($0); for (i=0;i<=len;i++){printf(chars[i]" ")}; printf("\n")};' | \
+#  sed 's/.$//' | tail -n +2 >  $dir/lexicon.txt || exit 1;
+#
+
+
+local/prepare_lexicon.py $dir
 
 cut -d' ' -f2- $dir/lexicon.txt | tr ' ' '\n' | sort -u >$dir/nonsilence_phones.txt || exit 1;
 

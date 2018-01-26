@@ -24,4 +24,6 @@ segment_fh = open(segment_file, 'w', encoding='utf-8')
 with open(args.segmentation_path, encoding='utf-8') as f:
     for line in f:
         line_normalize = unicodedata.normalize('NFKC', line)
-        segment_fh.write(line_normalize + '\n')
+        characters = list(line_normalize)
+        spaced_characters = " ".join(characters)
+        segment_fh.write(spaced_characters + '\n')
