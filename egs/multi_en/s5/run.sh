@@ -148,12 +148,16 @@ if [ $stage -le 7 ]; then
      data=data/$c/train
      steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
        --cmd "$train_cmd" --nj 40 \
-       $data exp/make_mfcc/$c/train || exit 1;
+       $data exp/make_mfcc/$c/train || touch $data/.error
      steps/compute_cmvn_stats.sh \
-       $data exp/make_mfcc/$c/train || exit 1;
+       $data exp/make_mfcc/$c/train || touch $data/.error
     ) &
   done
   wait
+  if [ -f $data/.error ]; then
+     rm $data/.error || true
+     echo "Fail to extract features." && exit 1;
+  fi
 fi
 
 # fix and validate training data directories
