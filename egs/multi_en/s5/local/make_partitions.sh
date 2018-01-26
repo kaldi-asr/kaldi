@@ -40,8 +40,9 @@ fi
 # swbd 100k (nodup)
 if [ $stage -eq 3 ]; then
   utils/subset_data_dir.sh --speakers data/swbd/train 100000 data/swbd/train_100k
-  utils/data/remove_dup_utts.sh 200 data/swbd/train_100k $data_dir/tri1b_ali
-  ln -nfs tri1b_ali $data_dir/tri2
+  utils/data/remove_dup_utts.sh 200 data/swbd/train_100k $data_dir/train_100k_nodup
+  ln -nfs train_100k_nodup $data_dir/tri1b_ali
+  ln -nfs train_100k_nodup $data_dir/tri2
 fi
 
 # whole swbd
