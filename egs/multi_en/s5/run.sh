@@ -83,7 +83,7 @@ if [ $stage -le 2 ]; then
   local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?
   local/wsj_format_data.sh
   utils/copy_data_dir.sh --spk_prefix wsj_ --utt_prefix wsj_ data/wsj/train_si284 data/wsj/train
-  rm -r data/wsj/train_si284 2>/dev/null
+  rm -r data/wsj/train_si284 2>/dev/null || true
   # hub4_en
   local/hub4_en_data_prep.sh $hub4_en_96 $hub4_en_97
   # eval2000 (test)
@@ -106,12 +106,16 @@ fi
 # Synthesize pronounciations for OOV words across all training transcripts and produce the final lexicon.
 if [ $stage -le 4 ]; then
   wait # Waiting for train_g2p.sh to finish
+  if [ -f exp/g2p/.error ]; then
+     rm exp/g2p/.error || true
+     echo "Fail to train the G2P model." && exit 1;
+  fi
   dict_dir=data/local/dict_nosp
   mkdir -p $dict_dir
-  rm $dict_dir/lexiconp.txt 2>/dev/null
+  rm $dict_dir/lexiconp.txt 2>/dev/null || true
   cp data/local/dict_combined/{extra_questions,nonsilence_phones,silence_phones,optional_silence}.txt $dict_dir
   local/g2p/apply_g2p.sh --var-counts 1 exp/g2p/model.fst data/local/g2p_phonetisarus \
-    data/local/dict_combined/lexicon.txt $dict_dir/lexicon.txt || touch $dict_dir/.error
+    data/local/dict_combined/lexicon.txt $dict_dir/lexicon.txt || exit 1;
 fi
 
 # We'll do multiple iterations of pron/sil-prob estimation. So the structure of
@@ -144,9 +148,9 @@ if [ $stage -le 7 ]; then
      data=data/$c/train
      steps/make_mfcc.sh --mfcc-config conf/mfcc.conf \
        --cmd "$train_cmd" --nj 40 \
-       $data exp/make_mfcc/$c/train || touch $data/.error
+       $data exp/make_mfcc/$c/train || exit 1;
      steps/compute_cmvn_stats.sh \
-       $data exp/make_mfcc/$c/train || touch $data/.error
+       $data exp/make_mfcc/$c/train || exit 1;
     ) &
   done
   wait
@@ -155,7 +159,7 @@ fi
 # fix and validate training data directories
 if [ $stage -le 8 ]; then
   # get rid of spk2gender files because not all corpora have them
-  rm data/*/train/spk2gender 2>/dev/null
+  rm data/*/train/spk2gender 2>/dev/null || true
   # create reco2channel_and_file files for wsj and librispeech
   for c in wsj librispeech_100 librispeech_360 librispeech_500; do
     awk '{print $1, $1, "A"}' data/$c/train/wav.scp > data/$c/train/reco2file_and_channel;
