@@ -28,7 +28,7 @@ set -euo pipefail
 # Path where AMI gets downloaded (or where locally available):
 AMI_DIR=$PWD/wav_db # Default,
 case $(hostname -d) in
-  fit.vutbr.cz) AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV ;; # BUT,
+  fit.vutbr.cz) AMI_DIR=/mnt/matylda5/iveselyk/KALDI_AMI_WAV ;; # BUT,
   clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
   cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
 esac

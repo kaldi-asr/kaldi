@@ -218,7 +218,7 @@ def process_args(args):
 
     if (not os.path.exists(args.dir)
             or (not os.path.exists(args.dir+"/configs") and
-                not os.path.exists(args.input_model))):
+                (args.input_model is None or not os.path.exists(args.input_model)))):
         raise Exception("This script expects {0} to exist. Also either "
                         "--trainer.input-model option as initial 'raw' model "
                         "(used as 0.raw in the script) should be supplied or "

@@ -27,7 +27,8 @@
 #include "util/stl-utils.h"
 #include <numeric>
 #include <time.h> // This is only needed for UnitTestSvdSpeed, you can
-// comment it (and that function) out if it causes problems.
+// comment it (and that function) out if it causes problems.  
+#include <matrix/cblas-wrappers.h>
 
 namespace kaldi {
 
@@ -4745,5 +4746,4 @@ int main() {
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);
   KALDI_LOG << "Tests succeeded.";
-
 }

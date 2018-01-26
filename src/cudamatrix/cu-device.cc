@@ -547,14 +547,6 @@ CuDevice::CuDevice() :
     multi_threaded_(false) { }
 
 
-CuDevice::~CuDevice() {
-  if (Enabled()) {
-    cublasDestroy(handle_);
-    cusparseDestroy(cusparse_handle_);
-    cudaDeviceReset();
-  }
-}
-
 // The instance of the static singleton
 CuDevice CuDevice::global_device_;
 }
