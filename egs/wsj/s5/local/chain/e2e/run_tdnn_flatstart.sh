@@ -37,35 +37,21 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1a
+affix=1g
 decode_iter=
 
 # training options
-num_epochs=4.5
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
-max_param_change=2.0
+num_epochs=4
 num_jobs_initial=2
 num_jobs_final=5
 minibatch_size=150=128,64/300=100,64,32/600=50,32,16/1200=16,8
 common_egs_dir=
-l2_regularize=0.00005
-dim=512
-frames_per_iter=2500000
+l2_regularize=0.00002
+dim=550
+frames_per_iter=3000000
 cmvn_opts="--norm-means=true --norm-vars=true"
-leaky_hmm_coeff=0.1
-num_scale_opts="--transition-scale=1.0 --self-loop-scale=1.0"
-shared_phones=true
 train_set=train_si284_spe2e_hires
 test_sets="test_dev93 test_eval92"
-first_layer_splice=-1,0,1
-momentum=0
-drop_schedule=
-prefinal_dim=$dim
-
-proportional_shrink=0.0
-chunk_left_context=0
-chunk_right_context=0
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -102,7 +88,6 @@ fi
 if [ $stage -le 1 ]; then
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
                                        --shared-phones true \
-                                       --scale-opts "$num_scale_opts" \
                                        data/$train_set $lang $treedir
   cp exp/chain/e2e_base/phone_lm.fst $treedir/
 fi
@@ -118,7 +103,7 @@ if [ $stage -le 2 ]; then
 
   input dim=40 name=input
 
-  relu-batchnorm-layer name=tdnn1 input=Append($first_layer_splice) dim=$dim
+  relu-batchnorm-layer name=tdnn1 input=Append(-1,0,1) dim=$dim
   relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=$dim $opts
   relu-batchnorm-layer name=tdnn3 dim=$dim $opts
   relu-batchnorm-layer name=tdnn4 input=Append(-1,0,1) dim=$dim $opts
@@ -127,7 +112,7 @@ if [ $stage -le 2 ]; then
   relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=$dim $opts
   relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=$dim $opts
 
-  relu-batchnorm-layer name=prefinal-chain dim=$prefinal_dim target-rms=0.5 $opts
+  relu-batchnorm-layer name=prefinal-chain dim=$dim target-rms=0.5 $opts
   output-layer name=output include-log-softmax=true dim=$num_targets $output_opts
 
 EOF
@@ -141,25 +126,22 @@ if [ $stage -le 3 ]; then
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$decode_cmd" \
     --feat.cmvn-opts "$cmvn_opts" \
-    --chain.leaky-hmm-coefficient $leaky_hmm_coeff \
+    --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize $l2_regularize \
     --chain.apply-deriv-weights false \
-    --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
-    --egs.opts "--normalize-egs true --add-deltas false" \
-    --trainer.dropout-schedule "$drop_schedule" \
+    --egs.opts "" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter $frames_per_iter \
     --trainer.num-epochs $num_epochs \
-    --trainer.optimization.momentum $momentum \
+    --trainer.optimization.momentum 0 \
     --trainer.optimization.num-jobs-initial $num_jobs_initial \
     --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate $final_effective_lrate \
+    --trainer.optimization.initial-effective-lrate 0.001 \
+    --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
-    --trainer.optimization.proportional-shrink $proportional_shrink \
-    --trainer.max-param-change $max_param_change \
+    --trainer.max-param-change 2.0 \
     --cleanup.remove-egs true \
     --feat-dir data/${train_set} \
     --tree-dir $treedir \
@@ -198,8 +180,6 @@ if [ $stage -le 5 ]; then
       for lmtype in tgpr bd_tgpr; do
         steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
-          --extra-left-context $chunk_left_context \
-          --extra-right-context $chunk_right_context \
           --extra-left-context-initial 0 \
           --extra-right-context-final 0 \
           --frames-per-chunk $frames_per_chunk \

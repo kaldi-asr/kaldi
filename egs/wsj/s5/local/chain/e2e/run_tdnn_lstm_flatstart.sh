@@ -43,9 +43,6 @@ decode_iter=
 
 # training options
 num_epochs=4.5
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
-max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=2
 num_jobs_final=5
@@ -55,14 +52,8 @@ l2_regularize=0.00001
 dim=512
 frames_per_iter=2500000
 cmvn_opts="--norm-means=true --norm-vars=true"
-leaky_hmm_coeff=0.1
-num_scale_opts="--transition-scale=1.0 --self-loop-scale=1.0"
 train_set=train_si284_spe2e_hires
 test_sets="test_dev93 test_eval92"
-first_layer_splice=-1,0,1
-momentum=0
-drop_schedule=
-cmd=queue.pl   # in case we want to run on high-memory GPUs we can use this
 
 chunk_left_context=40
 chunk_right_context=0
@@ -105,7 +96,6 @@ if [ $stage -le 1 ]; then
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
                                        --type biphone \
                                        --shared-phones true \
-                                       --scale-opts "$num_scale_opts" \
                                        data/$train_set $lang $treedir
   cp exp/chain/e2e_base/char_lm.fst $treedir/phone_lm.fst
 fi
@@ -126,7 +116,7 @@ if [ $stage -le 2 ]; then
 
   input dim=40 name=input
 
-  relu-batchnorm-layer name=tdnn1 input=Append($first_layer_splice) dim=$dim $opts
+  relu-batchnorm-layer name=tdnn1 input=Append(-1,0,1) dim=$dim $opts
   relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=$dim $opts
   relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=$dim $opts
 
@@ -150,9 +140,9 @@ if [ $stage -le 3 ]; then
   # remove them. Anyway, it takes only 5 minutes to generate them.
 
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
-    --cmd "$cmd" \
+    --cmd "$train_cmd" \
     --feat.cmvn-opts "$cmvn_opts" \
-    --chain.leaky-hmm-coefficient $leaky_hmm_coeff \
+    --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize $l2_regularize \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
@@ -167,12 +157,12 @@ if [ $stage -le 3 ]; then
     --trainer.frames-per-iter $frames_per_iter \
     --trainer.num-epochs $num_epochs \
     --trainer.deriv-truncate-margin 8 \
-    --trainer.optimization.momentum $momentum \
+    --trainer.optimization.momentum 0 \
     --trainer.optimization.num-jobs-initial $num_jobs_initial \
     --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.max-param-change $max_param_change \
+    --trainer.optimization.initial-effective-lrate 0.001 \
+    --trainer.optimization.final-effective-lrate 0.0001 \
+    --trainer.max-param-change 2.0 \
     --cleanup.remove-egs true \
     --cleanup.preserve-model-interval 50 \
     --feat-dir data/${train_set} \

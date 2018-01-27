@@ -1,7 +1,14 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright 2017    Hossein Hadian
 
-set -e
+# This top-level script demonstrates end-to-end LF-MMI training (specifically
+# single-stage flat-start LF-MMI models) on WSJ. It is basically like
+# "../run.sh" except it does not train any GMM or SGMM models and after
+# doing data/dict preparation and feature extraction goes straight to
+# flat-start chain training.
+# It uses a phoneme-based lexicon just like "../run.sh" does.
+
+set -euo pipefail
 
 
 stage=0
@@ -21,8 +28,8 @@ trainset=train_si284
 wsj0=/export/corpora5/LDC/LDC93S6B
 wsj1=/export/corpora5/LDC/LDC94S13B
 
-. ./parse_options.sh
 . ./path.sh
+. utils/parse_options.sh
 
 
 # This is just like stage 0 in run.sh except we do mfcc extraction later
@@ -59,7 +66,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: perturbing the training data to allowed lengths"
-  utils/data/get_utt2dur.sh data/$trainset  # necessary for next command
+  utils/data/get_utt2dur.sh data/$trainset  # necessary for the next command
 
   # 12 in the following command means the allowed lengths are spaced
   # by 12% change in length.
@@ -79,9 +86,10 @@ fi
 
 if [ $stage -le 4 ]; then
   echo "$0: estimating phone language model for the denominator graph"
-  mkdir -p exp/chain/e2e_base
+  mkdir -p exp/chain/e2e_base/log
+  $train_cmd exp/chain/e2e_base/log/make_phone_lm.log \
   cat data/$trainset/text | \
-    utils/text_to_phones.py data/lang_nosp data/local/dict_nosp/lexicon.txt | \
+    utils/text_to_phones.py data/lang_nosp | \
     utils/sym2int.pl -f 2- data/lang_nosp/phones.txt | \
     chain-est-phone-lm --num-extra-lm-states=2000 \
                        ark:- exp/chain/e2e_base/phone_lm.fst

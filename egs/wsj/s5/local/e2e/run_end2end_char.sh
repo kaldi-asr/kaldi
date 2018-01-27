@@ -1,7 +1,12 @@
-#!/bin/bash -x
+#!/bin/bash
 # Copyright 2017    Hossein Hadian
 
-set -e
+# This top-level script demonstrates character-based end-to-end LF-MMI training
+# (specifically single-stage flat-start LF-MMI models) on WSJ. It is exactly
+# like "run_end2end_phone.sh" excpet it uses a trivial grapheme-based
+# (i.e. character-based) lexicon and a stronger neural net (i.e. TDNN-LSTM)
+
+set -euo pipefail
 
 
 stage=0
@@ -74,7 +79,7 @@ if [ -f data/${trainset}_spEx_hires/feats.scp ]; then
   echo "If you want to extract them anyway, remove them first and run this"
   echo "stage again. Skipping this stage..."
 else
-  if [ $stage -le 2 ]; then
+  if [ $stage -le 3 ]; then
     echo "$0: perturbing the training data to allowed lengths..."
     utils/data/get_utt2dur.sh data/$trainset  # necessary for the next command
 
@@ -87,7 +92,7 @@ else
     utils/fix_data_dir.sh data/${trainset}_spe2e_hires
   fi
 
-  if [ $stage -le 3 ]; then
+  if [ $stage -le 4 ]; then
     echo "$0: extracting MFCC features for the training data..."
     steps/make_mfcc.sh --nj 50 --mfcc-config conf/mfcc_hires.conf \
                        --cmd "$train_cmd" data/${trainset}_spe2e_hires
@@ -95,9 +100,10 @@ else
   fi
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   echo "$0: estimating character language model for the denominator graph"
-  mkdir -p exp/chain/e2e_base
+  mkdir -p exp/chain/e2e_base/log
+  $train_cmd exp/chain/e2e_base/log/make_char_lm.log \
   cat data/$trainset/text | \
     utils/text_to_phones.py data/lang_char data/local/dict_char/lexicon.txt | \
     utils/sym2int.pl -f 2- data/lang_char/phones.txt | \
@@ -105,7 +111,7 @@ if [ $stage -le 4 ]; then
                        ark:- exp/chain/e2e_base/char_lm.fst
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: calling the flat-start chain recipe..."
   local/chain/e2e/run_tdnn_lstm_flatstart.sh
 fi

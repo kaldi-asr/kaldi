@@ -17,7 +17,7 @@ shared_phones=true
 treedir=              # if specified, the tree and model will be copied from there
                       # note that it may not be flat start anymore.
 type=mono             # can be either mono or biphone -- either way
-                      # the resulting tree is full (i.e. it's trivial)
+                      # the resulting tree is full (i.e. it doesn't do any tying)
 
 scale_opts="--transition-scale=0.0 --self-loop-scale=0.0"
 # End configuration section.

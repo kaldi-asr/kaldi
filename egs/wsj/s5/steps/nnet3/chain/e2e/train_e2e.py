@@ -251,19 +251,23 @@ def train(args, run_opts):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Check files
-#    chain_lib.check_for_required_files(args.feat_dir, args.tree_dir,
-#                                       args.lat_dir)
+    files = ['{0}/feats.scp'.format(args.feat_dir), '{0}/fst.1.scp'.format(args.tree_dir),
+             '{0}/final.mdl'.format(args.tree_dir), '{0}/tree'.format(args.tree_dir),
+             '{0}/phone_lm.fst'.format(args.tree_dir),
+             '{0}/num_jobs'.format(args.tree_dir)]
+    for file in files:
+        if not os.path.isfile(file):
+            raise Exception('Expected {0} to exist.'.format(file))
 
     # Set some variables.
-
     num_jobs = common_lib.get_number_of_jobs(args.tree_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
     ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
-    logger.info("feat-dim: {}, iv_dim: {}".format(feat_dim, ivector_dim))
+    logger.info("feat-dim: {}, ivector-dim: {}".format(feat_dim, ivector_dim))
 
     # split the training data into parts for individual jobs
-    # we will use the same number of jobs as that used for alignment
+    # we will use the same number of jobs as that used for compiling FSTs
     common_lib.execute_command("utils/split_data.sh {0} {1}".format(
             args.feat_dir, num_jobs))
     shutil.copy('{0}/tree'.format(args.tree_dir), args.dir)
@@ -318,23 +322,36 @@ def train(args, run_opts):
 
     default_egs_dir = '{0}/egs'.format(args.dir)
     if (args.stage <= -3) and args.egs_dir is None:
-        logger.info("Generating egs")
-        # this is where get_egs.sh is called.
-        chain_lib.generate_chain_e2e_egs(
-            dir=args.dir, data=args.feat_dir,
-            fst_dir=args.tree_dir, egs_dir=default_egs_dir,
-            left_context=egs_left_context,
-            right_context=egs_right_context,
-            left_context_initial=egs_left_context_initial,
-            right_context_final=egs_right_context_final,
-            run_opts=run_opts,
-            frame_subsampling_factor=args.frame_subsampling_factor,
-            srand=args.srand,
-            egs_opts=args.egs_opts,
-            cmvn_opts=args.cmvn_opts,
-            online_ivector_dir=args.online_ivector_dir,
-            frames_per_iter=args.frames_per_iter,
-            stage=args.egs_stage)
+        logger.info("Generating end-to-end egs...")
+        common_lib.execute_command(
+            """steps/nnet3/chain/e2e/get_egs_e2e.sh {egs_opts} \
+                    --cmd "{command}" \
+                    --cmvn-opts "{cmvn_opts}" \
+                    --online-ivector-dir "{ivector_dir}" \
+                    --left-context {left_context} \
+                    --right-context {right_context} \
+                    --left-context-initial {left_context_initial} \
+                    --right-context-final {right_context_final} \
+                    --frame-subsampling-factor {frame_subsampling_factor} \
+                    --stage {stage} \
+                    --frames-per-iter {frames_per_iter} \
+                    --srand {srand} \
+                    {data} {dir} {fst_dir} {egs_dir}""".format(
+                        command=run_opts.command,
+                        cmvn_opts=args.cmvn_opts if args.cmvn_opts is not None else '',
+                        ivector_dir=(args.online_ivector_dir
+                                     if args.online_ivector_dir is not None
+                                     else ''),
+                        left_context=egs_left_context,
+                        right_context=egs_right_context,
+                        left_context_initial=egs_left_context_initial,
+                        right_context_final=egs_right_context_final,
+                        frame_subsampling_factor=args.frame_subsampling_factor,
+                        stage=args.egs_stage, frames_per_iter=args.frames_per_iter,
+                        srand=args.srand,
+                        data=args.feat_dir, dir=args.dir, fst_dir=args.tree_dir,
+                        egs_dir=default_egs_dir,
+                        egs_opts=args.egs_opts if args.egs_opts is not None else ''))
 
     if args.egs_dir is None:
         egs_dir = default_egs_dir
