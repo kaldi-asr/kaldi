@@ -104,9 +104,9 @@ if [ $stage -le 5 ]; then
   echo "$0: estimating character language model for the denominator graph"
   mkdir -p exp/chain/e2e_base/log
   $train_cmd exp/chain/e2e_base/log/make_char_lm.log \
-  cat data/$trainset/text | \
-    utils/text_to_phones.py data/lang_char data/local/dict_char/lexicon.txt | \
-    utils/sym2int.pl -f 2- data/lang_char/phones.txt | \
+  cat data/$trainset/text \| \
+    utils/text_to_phones.py data/lang_char data/local/dict_char/lexicon.txt \| \
+    utils/sym2int.pl -f 2- data/lang_char/phones.txt \| \
     chain-est-phone-lm --num-extra-lm-states=2000 \
                        ark:- exp/chain/e2e_base/char_lm.fst
 fi

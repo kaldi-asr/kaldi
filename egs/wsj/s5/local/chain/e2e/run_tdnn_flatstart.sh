@@ -13,20 +13,21 @@
 # of phone_lm.fst (in stage 1 below)
 
 # local/chain/compare_wer.sh exp/chain/e2e_tdnn_1a
-# System                      e2e_tdnn_1a
-# WER dev93 (tgpr)                9.41
-# WER dev93 (tg)                  8.88
-# WER dev93 (big-dict,tgpr)       7.12
-# WER dev93 (big-dict,fg)         6.33
-# WER eval92 (tgpr)               5.71
-# WER eval92 (tg)                 5.32
-# WER eval92 (big-dict,tgpr)      3.65
-# WER eval92 (big-dict,fg)        2.85
-# Final train prob        -0.7611
-# Final valid prob        -0.7813
+# local/chain/compare_wer.sh exp/chain/e2e_tdnn_1e/
+# System                e2e_tdnn_1a
+#WER dev93 (tgpr)                9.70
+#WER dev93 (tg)                  9.05
+#WER dev93 (big-dict,tgpr)       7.20
+#WER dev93 (big-dict,fg)         6.36
+#WER eval92 (tgpr)               5.88
+#WER eval92 (tg)                 5.32
+#WER eval92 (big-dict,tgpr)      3.67
+#WER eval92 (big-dict,fg)        3.05
+# Final train prob        -0.0741
+# Final valid prob        -0.0951
 # Final train prob (xent)
 # Final valid prob (xent)
-# Num-params                 4827732
+# Num-params                 5562234
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_tdnn_1a
 # exp/chain/e2e_tdnn_1a: num-iters=138 nj=2..5 num-params=4.8M dim=40->84 combine=-0.810->-0.809 logprob:train/valid[91,137,final]=(-0.769,-0.761,-0.761/-0.783,-0.782,-0.781)
@@ -37,7 +38,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1g
+affix=1a
 decode_iter=
 
 # training options
