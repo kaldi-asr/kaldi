@@ -271,6 +271,7 @@ def train(args, run_opts):
     common_lib.execute_command("utils/split_data.sh {0} {1}".format(
             args.feat_dir, num_jobs))
     shutil.copy('{0}/tree'.format(args.tree_dir), args.dir)
+    shutil.copy('{0}/phones.txt'.format(args.tree_dir), args.dir)
     shutil.copy('{0}/phone_lm.fst'.format(args.tree_dir), args.dir)
     shutil.copy('{0}/0.trans_mdl'.format(args.tree_dir), args.dir)
     with open('{0}/num_jobs'.format(args.dir), 'w') as f:

@@ -43,7 +43,6 @@ decode_iter=
 
 # training options
 num_epochs=4.5
-final_layer_normalize_target=0.5
 num_jobs_initial=2
 num_jobs_final=5
 minibatch_size=150=128,64/300=64,32/600=32,16/1200=16,8

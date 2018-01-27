@@ -13,7 +13,6 @@
 # of phone_lm.fst (in stage 1 below)
 
 # local/chain/compare_wer.sh exp/chain/e2e_tdnn_1a
-# local/chain/compare_wer.sh exp/chain/e2e_tdnn_1e/
 # System                e2e_tdnn_1a
 #WER dev93 (tgpr)                9.70
 #WER dev93 (tg)                  9.05
@@ -39,7 +38,6 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 affix=1a
-decode_iter=
 
 # training options
 num_epochs=4
