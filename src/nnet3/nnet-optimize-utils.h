@@ -181,6 +181,16 @@ class VariableMergingOptimizer {
   bool already_called_merge_variables_;
 };
 
+/**
+   This is not really an optimization in itself but it can make things easier
+   for class VariableMergingOptimizer (usually called by its wrapper
+   VariableMergingOptimization()).  It looks for a case where most of a matrix
+   (but not its final rows) are copied to some submatrix of another matrix,
+   where the row-range of that submatrix extends to the last row of the other
+   matrix; and it extends the other matrix with additional rows so that the
+   entire source matrix can be copied to the destination.
+ */
+void ExtendMatrices(NnetComputation *computation);
 
 
 /**

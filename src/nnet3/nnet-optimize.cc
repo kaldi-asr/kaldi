@@ -515,6 +515,14 @@ void Optimize(const NnetOptimizeOptions &config,
       CheckComputation(nnet, *computation, true);
   }
 
+  if (config.optimize && config.extend_matrices &&
+      !config.optimize_looped_computation) {
+    ExtendMatrices(computation);
+    if (GetVerboseLevel() >= 3)
+      CheckComputation(nnet, *computation, false);
+  }
+
+
   if (config.optimize &&
       (config.remove_assignments || config.backprop_in_place ||
        config.propagate_in_place)) {
@@ -582,7 +590,7 @@ void Optimize(const NnetOptimizeOptions &config,
 
   if (config.memory_compression_level > 0 &&
       !config.optimize_looped_computation) {
-    OptimizeMemoryCompression(nnet_, config.memory_compression_level,
+    OptimizeMemoryCompression(nnet, config.memory_compression_level,
                               computation);
     if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, false);

@@ -39,6 +39,7 @@ struct NnetOptimizeOptions {
   bool propagate_in_place;
   bool backprop_in_place;
   bool optimize_row_ops;
+  bool extend_matrices;
   bool convert_addition;
   bool remove_assignments;
   bool allow_left_merge;
@@ -62,6 +63,7 @@ struct NnetOptimizeOptions {
       propagate_in_place(true),
       backprop_in_place(true),
       optimize_row_ops(true),
+      extend_matrices(true),
       convert_addition(true),
       remove_assignments(true),
       allow_left_merge(true),
@@ -87,6 +89,9 @@ struct NnetOptimizeOptions {
                    "disable optimization that allows in-place propagation");
     opts->Register("backprop-in-place", &backprop_in_place, "Set to false to "
                    "disable optimization that allows in-place backprop");
+    opts->Register("extend-matrices", &extend_matrices, "This optimization "
+                   "can reduce memory requirements for TDNNs when applied "
+                   "together with --convert-addition=true");
     opts->Register("optimize-row-ops", &optimize_row_ops, "Set to false to "
                    "disable certain optimizations that act on operations of "
                    "type *Row*.");

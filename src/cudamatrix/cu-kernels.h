@@ -1463,6 +1463,30 @@ inline void cuda_vec_sum(int Gr, int Bl, float* v, float* value, int dim,
   cudaF_vec_sum(Gr, Bl, v, value, dim, inc);
 }
 
+// Compresses the matrix in 'src' to 'dest', retaining only zero-one
+// information (1 if the value is >0, 0 otherwise)
+inline void cuda_mat_compress_sign(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                                   MatrixDim dim, unsigned char *dest,
+                                   int dest_stride) {
+  cuda_int8_compress_sign(Gr, Bl, src, dim, dest, dest_stride);
+}
+// this template handles the other types that are not instantiated yet,
+// to avoid compilation errors.
+template <typename I>
+inline void cuda_mat_compress_sign(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                                   MatrixDim dim, I *dest,
+                                   int dest_stride) {
+  KALDI_ERR << "Not implemented for this type.";
+}
+
+inline void cuda_mat_compress(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, unsigned char *dest,
+                              int dest_stride, BaseFloat inv_scale) {
+  cuda_int8_compress_sign(Gr, Bl, src, dim, dest, dest_stride, inv_scale);
+}
+
+
+
 } // namespace kaldi
 
 #endif // HAVE_CUDA

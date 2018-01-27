@@ -63,12 +63,14 @@ class CuCompressedMatrixBase {
    reduce memory use for large networks.
 
    It is *not* a CUDA equivalent for class CompressedMatrix (of
-   ../matrix/compressed-matrix.h).
+   ../matrix/compressed-matrix.h).  Note: this class is only to be used when you
+   are using a GPU.  If you didn't compile for CUDA or you are not using a GPU,
+   you are not supposed to create an instance of this class, and doing so will
+   cause a runtime error.
  */
 template <typename I>
 class CuCompressedMatrix: public CuCompressedMatrixBase {
  public:
-
 
   /// Constructor which sets 'scale_' according to
   /// scale_ = range / std::numeric_limits<I>::max().
@@ -90,6 +92,8 @@ class CuCompressedMatrix: public CuCompressedMatrixBase {
   ~CuCompressedMatrix();
 
  private:
+  // If there was data in 'data_', frees it, and sets it to NULL.
+  void Destroy();
 
   // The raw data.
   I *data_;
@@ -117,12 +121,12 @@ class CuCompressedMatrix: public CuCompressedMatrixBase {
 // This enum value is used to encode the type you want to instantiate
 // a CuCompressedMatrix with.  It's used in class NnetComputation
 // (cast to int32) as one of the arguments of kCompressMatrix.
-enum {
+enum  CuCompressedMatrixType {
   kCompressedMatrixInt8 = 1,
   kCompressedMatrixUint8 = 2,
   kCompressedMatrixInt16 = 3,
   kCompressedMatrixUint16 = 4
-} CuCompressedMatrixType;
+};
 
 /**
    This function allocates a new CuCompressedMatrix with type determined
@@ -135,9 +139,6 @@ CuCompressedMatrixBase *NewCuCompressedMatrix(CuCompressedMatrixType t,
                                               BaseFloat range);
 
 
-
-
-
-
+} // namespace kaldi
 
 #endif

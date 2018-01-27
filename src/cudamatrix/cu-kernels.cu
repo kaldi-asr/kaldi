@@ -3558,6 +3558,47 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int have_dropout_m
   }
 }
 
+
+__global__
+static void _cuda_compress_int8_sign(const BaseFloat *src, MatrixDim dim,
+                                     unsigned char *dest, int dest_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dest_index = i + j * dest_stride,
+      src_index = i + j * dim.stride;
+  if (i < d.cols && j < d.rows) {
+    BaseFloat f = src[src_index];
+    dest[dest_index] = (f > 0.0 ? (unsigned char)1 : (unsigned char)0);
+  }
+}
+
+
+// this version of the function will only be used if BaseFloat is double.
+__global__
+static void _cuda_compress_double_to_int16(const double *src, MatrixDim dim,
+                                           int16_t *dest, int dest_stride,
+                                           double inv_scale) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dest_index = i + j * dest_stride,
+      src_index = i + j * dim.stride;
+  int ok = (i < d.cols && j < d.rows);
+  if  (ok) {
+    BaseFloat f = src[src_index];
+    int i = __double2int_rn(f * inv_scale);
+    // note: SignedInt will be int8 or (more likely) int16.
+    int16_t s;
+    if (i < -32768) s = -32768;
+    else if (i > 32767)  s = 32767;
+    else s = i;
+  }
+  __syncthreads();
+  if (ok) {
+    dest[dest_index] = s;
+  }
+}
+
+
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
  */
@@ -5220,3 +5261,14 @@ void cudaF_apply_exp_special(dim3 Gr, dim3 Bl, float* out, MatrixDim out_dim,
   _apply_exp_special<<<Gr, Bl>>>(out, out_dim, in, in_stride);
 }
 
+void cuda_compress_int8_sign(dim3 Gr, dim3 Bl, const BaseFloat *src, MatrixDim dim,
+                             unsigned char *dest, int dest_stride) {
+  _cuda_compress_int8_sign<<<Gr, Bl>>>(src, dim, dest, dest_stride);
+}
+
+void cuda_compress_double_to_int16(dim3 Gr, dim3 Bl, const double *src,
+                                   MatrixDim dim, int16_t *dest,
+                                   int dest_stride, double inv_scale) {
+  _cuda_compress_double_to_int16<<<Gr, Bl>>>(src, dim, dest, dest_stride,
+                                             inv_scale);
+}

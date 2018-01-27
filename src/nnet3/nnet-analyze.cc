@@ -694,8 +694,8 @@ void ComputationChecker::CheckComputationCompression() const {
   // 'middle_command' will be the index of the command that separates
   // the forward and backward passes.
   int32 middle_command = -1;
-  for (size_t i = 0; i < computation->commands.size(); i++) {
-    if (computation->commands[i].command_type == kNoOperationMarker) {
+  for (size_t i = 0; i < computation_.commands.size(); i++) {
+    if (computation_.commands[i].command_type == kNoOperationMarker) {
         middle_command = static_cast<int32>(i);
         break;
     }
@@ -705,7 +705,7 @@ void ComputationChecker::CheckComputationCompression() const {
     int32 num_accesses = accesses.accesses.size();
     for (int32 a = 0; a < num_accesses; a++) {
       const Access &access = accesses.accesses[a];
-      int32 command_index = accesses.command_inex;
+      int32 command_index = access.command_index;
       const NnetComputation::Command &command =
           computation_.commands[command_index];
       if (command.command_type == kUncompressMatrix) {
@@ -715,7 +715,7 @@ void ComputationChecker::CheckComputationCompression() const {
             a > 0 && computation_.commands[
                 accesses.accesses[a-1].command_index].command_type ==
             kCompressMatrix);
-
+      }
       if (command.command_type == kCompressMatrix) {
         // check that the next access to this matrix is an uncompression
         // command.
@@ -730,14 +730,14 @@ void ComputationChecker::CheckComputationCompression() const {
           // make sure there are only 2 commands after this: the uncompress
           // command, a relu backprop command, and a deallocation command.
           KALDI_ASSERT(a > 0 && command.arg2 == kCompressedMatrixUint8 &&
-                       num_accesses <= a + 4);
-          // make sure the previous access to that matrix was a ReLU
-          // propagation.
-          int32 previous_command_index = accesses.accesses[a-1].command_index;
-          const NnetComputation::Command &previous_command =
-              computation_.commands[previous_command_index];
-          KALDI_ASSERT(previous_command.command_type == kPropagate &&
-                       nnet_.GetComponent(previous_command.arg1).Type() ==
+                       num_accesses == a + 4);
+          // make sure the next access to that matrix, apart from the
+          // uncompression command, is a ReLU propagation.
+          int32 next_command_index = accesses.accesses[a+2].command_index;
+          const NnetComputation::Command &next_command =
+              computation_.commands[next_command_index];
+          KALDI_ASSERT(next_command.command_type == kBackprop &&
+                       nnet_.GetComponent(next_command.arg1)->Type() ==
                        "RectifiedLinearComponent");
         }
       }
