@@ -120,56 +120,6 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                     egs_opts=egs_opts if egs_opts is not None else ''))
 
 
-def generate_chain_e2e_egs(dir, data, fst_dir, egs_dir,
-                           left_context, right_context,
-                           run_opts, stage=0,
-                           left_tolerance=None, right_tolerance=None,
-                           left_context_initial=-1, right_context_final=-1,
-                           frame_subsampling_factor=3,
-                           alignment_subsampling_factor=3,
-                           feat_type='raw', online_ivector_dir=None,
-                           frames_per_iter=20000, frames_per_eg_str="20", srand=0,
-                           egs_opts=None, cmvn_opts=None, transform_dir=None):
-        """Wrapper for steps/nnet3/chain/get_egs_e2e.sh
-        See options in that script.
-        """
-        logger.info('Generating end-to-end egs...')
-        common_lib.execute_command(
-            """steps/nnet3/chain/get_egs_e2e.sh {egs_opts} \
-                    --cmd "{command}" \
-                    --cmvn-opts "{cmvn_opts}" \
-                    --feat-type {feat_type} \
-                    --transform-dir "{transform_dir}" \
-                    --online-ivector-dir "{ivector_dir}" \
-                    --left-context {left_context} \
-                    --right-context {right_context} \
-                    --left-context-initial {left_context_initial} \
-                    --right-context-final {right_context_final} \
-                    --frame-subsampling-factor {frame_subsampling_factor} \
-                    --stage {stage} \
-                    --frames-per-iter {frames_per_iter} \
-                    --srand {srand} \
-                    {data} {dir} {fst_dir} {egs_dir}""".format(
-                        command=run_opts.command,
-                        cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
-                        feat_type=feat_type,
-                        transform_dir=(transform_dir
-                                       if transform_dir is not None
-                                       else ''),
-                        ivector_dir=(online_ivector_dir
-                                     if online_ivector_dir is not None
-                                     else ''),
-                        left_context=left_context,
-                        right_context=right_context,
-                        left_context_initial=left_context_initial,
-                        right_context_final=right_context_final,
-                        frame_subsampling_factor=frame_subsampling_factor,
-                        stage=stage, frames_per_iter=frames_per_iter,
-                        srand=srand,
-                        data=data, dir=dir, fst_dir=fst_dir, egs_dir=egs_dir,
-                        egs_opts=egs_opts if egs_opts is not None else ''))
-
-
 def train_new_models(dir, iter, srand, num_jobs,
                      num_archives_processed, num_archives,
                      raw_model_string, egs_dir,
@@ -406,7 +356,7 @@ def check_for_required_files(feat_dir, tree_dir, lat_dir):
     files = ['{0}/feats.scp'.format(feat_dir), '{0}/ali.1.gz'.format(tree_dir),
              '{0}/final.mdl'.format(tree_dir), '{0}/tree'.format(tree_dir),
              '{0}/lat.1.gz'.format(lat_dir), '{0}/final.mdl'.format(lat_dir),
-             '{0}/num_jobs'.format(lat_dir)]
+             '{0}/num_jobs'.format(lat_dir), '{0}/splice_opts'.format(lat_dir)]
     for file in files:
         if not os.path.isfile(file):
             raise Exception('Expected {0} to exist.'.format(file))
