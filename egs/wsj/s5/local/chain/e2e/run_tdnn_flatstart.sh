@@ -30,7 +30,7 @@
 # Num-params                 5562234
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_tdnn_1a
-# exp/chain/e2e_tdnn_1a: num-iters=138 nj=2..5 num-params=4.8M dim=40->84 combine=-0.810->-0.809 logprob:train/valid[91,137,final]=(-0.769,-0.761,-0.761/-0.783,-0.782,-0.781)
+# exp/chain/e2e_tdnn_1a: num-iters=68 nj=2..5 num-params=5.6M dim=40->84 combine=-0.094->-0.094 logprob:train/valid[44,67,final]=(-0.083,-0.073,-0.072/-0.097,-0.095,-0.095)
 
 set -e
 
@@ -47,7 +47,7 @@ num_jobs_initial=2
 num_jobs_final=5
 minibatch_size=150=128,64/300=100,64,32/600=50,32,16/1200=16,8
 common_egs_dir=
-l2_regularize=0.00002
+l2_regularize=0.00005
 dim=550
 frames_per_iter=3000000
 cmvn_opts="--norm-means=true --norm-vars=true"
