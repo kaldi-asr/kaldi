@@ -38,20 +38,20 @@ class CuCompressedMatrixBase {
   /// Sets *this to an appropriately compressed copy of 'mat', which
   /// includes resizing *this.  The details of how this is done will be
   /// different in different child classes.
-  virtual void CopyFromMat(CuMatrixBase<BaseFloat> &mat) = 0;
+  virtual void CopyFromMat(const CuMatrixBase<BaseFloat> &mat) = 0;
 
   /// Copies the contents of *this to 'mat', which should be
   /// correctly sized beforehand.
-  virtual void CopyToMat(CuMatrixBase<BaseFloat> *mat) = 0;
+  virtual void CopyToMat(CuMatrixBase<BaseFloat> *mat) const = 0;
 
 
   // The number of rows in *this.
-  virtual int32 NumRows() = 0;
+  virtual int32 NumRows() const = 0;
 
   // The number of columns in *this.
-  virtual int32 NumCols() = 0;
+  virtual int32 NumCols() const = 0;
 
-  ~CuCompressedMatrixBase() { }
+  virtual ~CuCompressedMatrixBase() { }
 };
 
 
@@ -78,18 +78,25 @@ class CuCompressedMatrix: public CuCompressedMatrixBase {
   /// range = 0 (only supported for I == int8) is a special case in which only
   /// the sign of the input is retained; and when we reconstruct, the output
   /// will be -1, 0 or 1.
-  CuCompressedMatrix(BaseFloat range);
+  ///
+  /// truncate (only relevant if range != 0) should be true if it's possible
+  /// that the input could exceed the allowed input range, i.e. [0, range] if I
+  /// is unsigned, and [-range, range] if I is signed; and it may be false if
+  /// you know that the input (the matrix given to CopyFromMat) will have
+  /// elements only in the allowed range.  Setting 'truncate' to false
+  /// allows the compression code to avoid the bounds check.
+  CuCompressedMatrix(BaseFloat range, bool truncate = true);
 
-  virtual void CopyFromMat(CuMatrixBase<BaseFloat> &mat);
+  virtual void CopyFromMat(const CuMatrixBase<BaseFloat> &mat);
 
-  virtual void CopyToMat(CuMatrixBase<BaseFloat> *mat);
+  virtual void CopyToMat(CuMatrixBase<BaseFloat> *mat) const;
 
-  virtual MatrixIndexT NumRows() { return num_rows_; }
+  virtual MatrixIndexT NumRows() const { return num_rows_; }
 
-  virtual MatrixIndexT NumCols() { return num_cols_; }
+  virtual MatrixIndexT NumCols() const { return num_cols_; }
 
 
-  ~CuCompressedMatrix();
+  virtual ~CuCompressedMatrix() { Destroy(); }
 
  private:
   // If there was data in 'data_', frees it, and sets it to NULL.
@@ -108,6 +115,8 @@ class CuCompressedMatrix: public CuCompressedMatrixBase {
   // sign of the input, and when uncompressing we do it with a scale such
   // that the output becomes -1, 0 and 1.
   BaseFloat scale_;
+
+  bool truncate_;
 
   MatrixIndexT num_rows_;
   MatrixIndexT num_cols_;
@@ -130,13 +139,15 @@ enum  CuCompressedMatrixType {
 
 /**
    This function allocates a new CuCompressedMatrix with type determined
-   by t, and with the 'range' parameter provided (range must be >= 0,
-   0 as a special case).
+   by t, and with the 'range' and 'truncate' parameters provided to the
+   constructor of class CuCompressedMatrix.
+
    It will crash at runtime if called when CUDA is not compiled in, or not
    enabled.
  */
 CuCompressedMatrixBase *NewCuCompressedMatrix(CuCompressedMatrixType t,
-                                              BaseFloat range);
+                                              BaseFloat range,
+                                              bool truncate = true);
 
 
 } // namespace kaldi

@@ -34,79 +34,109 @@
 namespace kaldi {
 
 
-CuCompressedMatrixBase *NewCuCompressedMatrix(CuCompressedMatrixType t,
-                                              BaseFloat range) {
-  if (t == kCompressedMatrixUint8) {
-    KALDI_ASSERT(range >= 0);
-    return new CuCompressedMatrix<uint8>(range);
-  } else if (t == kCompressedMatrixInt16) {
-    KALDI_ASSERT(range > 0);
-    return new CuCompressedMatrix<int16>(range);
-  }
-}
-
-template <typename I> CuCompressedMatrix::CuCompressedMatrix(BaseFloat range):
+template <typename I>
+CuCompressedMatrix<I>::CuCompressedMatrix(BaseFloat range, bool truncate):
     data_(NULL), scale_(range / std::numeric_limits<I>::max()),
-    num_rows_(0), num_cols_(0), stride_(0) {
+    truncate_(truncate), num_rows_(0), num_cols_(0), stride_(0) {
 #if HAVE_CUDA == 1
   KALDI_ASSERT(CuDevice::Instantiate().Enabled());
-#endif
+#else
   KALDI_ERR << "You instantiated CuCompressedMatrix while GPU use "
       "was not compiled in.";
+#endif
 }
 
-
-template <typename I> void CuCompressedMatrix::Destroy() {
+template <typename I>
+void CuCompressedMatrix<I>::Destroy() {
 #if HAVE_CUDA == 1
   if (data_ != NULL) {
-    CuTimer tim;
+    // we don't bother timing this because Free() won't normally have to
+    // access the GPU at all (due to caching).
     CuDevice::Instantiate().Free(data_);
     data_ = NULL;
     num_rows_ = 0;
     num_cols_ = 0;
     stride_ = 0;
+  }
+#endif
+}
+
+template <typename I>
+void CuCompressedMatrix<I>::CopyFromMat(
+    const CuMatrixBase<BaseFloat> &mat) {
+#if HAVE_CUDA == 1
+  KALDI_ASSERT(CuDevice::Instantiate().Enabled());
+  if (mat.NumRows() == 0)
+    return;
+  if (num_rows_ != mat.NumRows() || num_cols_ != mat.NumCols()) {
+    Destroy();
+    num_rows_ = mat.NumRows();
+    num_cols_ = mat.NumCols();
+    data_ = static_cast<I*>(
+        CuDevice::Instantiate().Malloc(sizeof(I) * num_rows_ * num_cols_));
+    stride_ = num_cols_;
+  }
+
+  {
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+
+    if (scale_ == 0.0) { // scale == 0 calls a different kernel from the others.
+      cuda_mat_compress_sign(dimGrid, dimBlock, mat.Data(), mat.Dim(),
+                             data_, stride_);
+    } else {
+      cuda_mat_compress(dimGrid, dimBlock, mat.Data(), mat.Dim(),
+                        data_, stride_, float(1.0 / scale_),
+                        truncate_);
+    }
+    CU_SAFE_CALL(cudaGetLastError());
+
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   }
 #endif
 }
 
-template <typename I> void CuCompressedMatrix::CopyFromMat(
-    CuMatrixBase<BaseFloat> &mat) {
+template <typename I>
+void CuCompressedMatrix<I>::CopyToMat(CuMatrixBase<BaseFloat> *mat) const {
 #if HAVE_CUDA == 1
   KALDI_ASSERT(CuDevice::Instantiate().Enabled());
-  Destroy();
-  if (mat.NumRows() == 0)
-    return;
-  num_rows_ = mat.NumRows();
-  num_cols_ = mat.NumCold();
-  stride_ = num_cols_;
-
-  CuTimer tim;
-  data_ = CuDevice::Instantiate().Malloc(sizeof(I) * num_rows_ * num_cols_);
-
-  dim3 dimGrid, dimBlock;
-  GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
-                                        &dimGrid, &dimBlock);
-
-  if (scale_ == 0.0) { // scale == 0 calls a different kernel from the others.
-    cuda_mat_compress_sign(dimGrid, dimBlock, mat.Data(), mat.Dim(),
-                           data_, stride_);
-  } else {
-    cuda_mat_compress(dimGrid, dimBlock, mat.Data(), mat.Dim(),
-                      data_, stride_, 1.0 / scale_);
-
+  KALDI_ASSERT(mat->NumRows() == num_rows_ && mat->NumCols() == num_cols_);
+  {
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    BaseFloat scale = (scale_ == 0.0 ? 1.0 : scale_);
+    cuda_mat_uncompress(dimGrid, dimBlock, mat->Data(), mat->Dim(),
+                        data_, stride_, float(scale));
   }
-
-    CU_SAFE_CALL(cudaGetLastError());
-
-
-
-  CuDevice::Instantiate().AccuProfile(CuCompressedMatrix::CopyFromMat(malloc),
-                                      tim);
-
-
 #endif
 }
+
+
+CuCompressedMatrixBase *NewCuCompressedMatrix(CuCompressedMatrixType t,
+                                              BaseFloat range,
+                                              bool truncat) {
+  if (t == kCompressedMatrixUint8) {
+    KALDI_ASSERT(range >= 0);
+    return new CuCompressedMatrix<uint8>(range);
+  } else if (t == kCompressedMatrixInt8) {
+    KALDI_ASSERT(range >= 0);
+    return new CuCompressedMatrix<int8>(range);
+  } else if (t == kCompressedMatrixUint16) {
+    KALDI_ASSERT(range > 0);
+    return new CuCompressedMatrix<uint16>(range);
+  } else if (t == kCompressedMatrixInt16) {
+    KALDI_ASSERT(range > 0);
+    return new CuCompressedMatrix<int16>(range);
+  } else {
+    KALDI_ERR << "Unknown compressed-matrix type";
+    return NULL;
+  }
+}
+
 
 
 } // namespace kaldi

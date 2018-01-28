@@ -7,7 +7,7 @@ LDLIBS += $(CUDA_LDLIBS)
 
 TESTFILES = cu-vector-test cu-matrix-test cu-math-test cu-test cu-sp-matrix-test cu-packed-matrix-test cu-tp-matrix-test \
             cu-block-matrix-test cu-matrix-speed-test cu-vector-speed-test cu-sp-matrix-speed-test cu-array-test \
-	    cu-sparse-matrix-test cu-device-test cu-rand-speed-test
+	    cu-sparse-matrix-test cu-device-test cu-rand-speed-test cu-compressed-matrix-test
 
 OBJFILES = cu-device.o cu-math.o cu-rand.o cu-matrix.o cu-packed-matrix.o cu-sp-matrix.o \
            cu-vector.o cu-common.o cu-tp-matrix.o cu-block-matrix.o \

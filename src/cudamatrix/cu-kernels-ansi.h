@@ -746,11 +746,40 @@ void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim, int inc);
 void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc);
 
 
-void cuda_compress_double_to_int16(dim3 Gr, dim3 Bl, const double *src,
-                                   MatrixDim dim, int16_t *dest,
-                                   int dest_stride, double inv_scale);
-void cuda_compress_int8_sign(dim3 Gr, dim3 Bl, const BaseFloat *src, MatrixDim dim,
-                             unsigned char *dest, int dest_stride);
+void cuda_compress_int16(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                          MatrixDim dim, int16_t *dest,
+                          int dest_stride, float inv_scale,
+                          bool bounds_check);
+void cuda_compress_uint16(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                          MatrixDim dim, uint16_t *dest,
+                          int dest_stride, float inv_scale,
+                          bool bounds_check);
+void cuda_compress_uint8(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                          MatrixDim dim, uint8_t *dest,
+                          int dest_stride, float inv_scale,
+                          bool bounds_check);
+void cuda_compress_int8(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                         MatrixDim dim, int8_t *dest,
+                         int dest_stride, float inv_scale,
+                         bool bounds_check);
+
+void cuda_compress_uint8_sign(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, uint8_t *dest, int dest_stride);
+
+void cuda_uncompress_int16(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                           MatrixDim dim, const int16_t *src,
+                           int src_stride, float scale);
+void cuda_uncompress_uint16(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                            MatrixDim dim, const uint16_t *src,
+                            int src_stride, float scale);
+void cuda_uncompress_int8(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                          MatrixDim dim, const int8_t *src,
+                          int src_stride, float scale);
+void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                          MatrixDim dim, const uint8_t *src,
+                          int src_stride, float scale);
+
+
 
 } // extern "C"
 
