@@ -391,8 +391,11 @@ void NnetComputer::ExecuteCommand() {
           int32 m = computation_.submatrices[c.arg1].matrix_index;
           KALDI_ASSERT(compressed_matrices_[m] == NULL &&
                        matrices_[m].NumRows() != 0);
+          BaseFloat range = c.alpha;
+          bool truncate = (c.arg3 != 0);
           compressed_matrices_[m] = NewCuCompressedMatrix(
-              static_cast<CuCompressedMatrixType>(c.arg2), c.alpha);
+              static_cast<CuCompressedMatrixType>(c.arg2),
+              range, truncate);
           compressed_matrices_[m]->CopyFromMat(matrices_[m]);
           matrices_[m].Resize(0, 0);
         }
@@ -666,6 +669,15 @@ void NnetComputer::AcceptInputs(const Nnet &nnet,
       this->AcceptInput(io.name, &cu_input);
     }
   }
+}
+
+NnetComputer::~NnetComputer() {
+  // Delete any pointers that are present in compressed_matrices_.  Actually
+  // they should all already have been deallocated and set to NULL if the
+  // compuation was run to completion; we do this in case someone ran
+  // the forward propagation but not the backprop.
+  for (size_t i = 0; i < compressed_matrices_.size(); i++)
+    delete compressed_matrices_[i];
 }
 
 } // namespace nnet3

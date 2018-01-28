@@ -160,6 +160,7 @@ class ComputationVariables {
   // zero indexing): something like "m1" or "m1(0:99,:)" or "m1(0:19,10:49)"
   std::string DescribeVariable(int32 variable) const;
 
+  NnetComputation::SubMatrixInfo VariableInfo(int32 variable) const;
  private:
   // sets up split_points_, matrix_to_variable_index_, and num_variables_.
   // called from constructor.

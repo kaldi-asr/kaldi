@@ -125,6 +125,7 @@ class NnetComputer {
                             CuMatrix<BaseFloat> *output);
 
 
+  ~NnetComputer();
  private:
   void Init(); // called from constructors.
 
@@ -239,7 +240,6 @@ class NnetComputer {
   // memos are not reusable.
   inline void *GetMemo(int32 memo_index);
 
- private:
   NnetComputer &operator = (const NnetComputer &other);  // Disallow.
 };
 

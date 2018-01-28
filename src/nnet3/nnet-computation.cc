@@ -621,6 +621,25 @@ static void PrintCommand(std::ostream &os,
       os << "])\n";
       break;
     }
+    case kCompressMatrix: {
+      BaseFloat range = c.alpha;
+      std::string truncate = (c.arg3 != 0 ? "true" : "false");
+      std::string compressed_matrix_type;
+      if (c.arg2 == kCompressedMatrixInt8) { compressed_matrix_type = "int8"; }
+      else if (c.arg2 == kCompressedMatrixUint8) { compressed_matrix_type = "uint8"; }
+      else if (c.arg2 == kCompressedMatrixInt16) { compressed_matrix_type = "int16"; }
+      else {
+        KALDI_ASSERT(c.arg2 == kCompressedMatrixInt16);
+        compressed_matrix_type = "uint16";
+      }
+      os << "CompressMatrix(" << submatrix_strings[c.arg1]
+         << range << ", " << compressed_matrix_type << ", "
+         << truncate << ")\n";
+      break;
+    }
+    case kUncompressMatrix:
+      os << "UncompressMatrix(" << submatrix_strings[c.arg1] << ")\n";
+      break;
     case kAcceptInput:
       os << submatrix_strings[c.arg1] << " = user input [for node: '"
          << nnet.GetNodeName(c.arg2) << "']\n";

@@ -238,6 +238,23 @@ std::string ComputationVariables::DescribeVariable(int32 variable) const {
   return os.str();
 }
 
+NnetComputation::SubMatrixInfo ComputationVariables::VariableInfo(
+    int32 variable) const {
+  KALDI_ASSERT(variable >= 0 && variable < num_variables_);
+  int32 matrix_index = variable_to_matrix_[variable],
+      offset = variable - matrix_to_variable_index_[matrix_index],
+      num_column_variables = column_split_points_[matrix_index].size() - 1,
+      column_variable = offset % num_column_variables,
+      row_variable = offset / num_column_variables;
+  int32 row_offset = row_split_points_[matrix_index][row_variable],
+      num_rows = row_split_points_[matrix_index][row_variable+1] - row_offset,
+      col_offset = column_split_points_[matrix_index][column_variable],
+      num_cols = column_split_points_[matrix_index][column_variable+1] -
+                  col_offset;
+  return NnetComputation::SubMatrixInfo(matrix_index, row_offset, num_rows,
+                                        col_offset, num_cols);
+}
+
 
 /// given a vector of pairs from computation.indexes_multi_indexes
 /// containing paris (submatrix-index, row-index), this function outputs
@@ -622,6 +639,19 @@ void ComputationChecker::CheckComputationUndefined() const {
     const std::vector<Access> &accesses = a_.variable_accesses[v];
     if (accesses.empty()) {
       if (config_.check_unused_variables) {
+        // Before we throw an error, we want to check that it isn't
+        // a case that can be produced by the ExtendMatrices()
+        // optimization, that is actually allowed.  This is a case
+        // when a variable is the last few rows of a matrix, but
+        // not all columns of those last rows.
+        NnetComputation::SubMatrixInfo info = a_.variables.VariableInfo(v);
+        const NnetComputation::MatrixInfo &matrix_info =
+            computation_.matrices[info.matrix_index];
+        if (info.row_offset > 0 &&
+            info.num_rows + info.row_offset == matrix_info.num_rows &&
+            !(info.col_offset == 0 && info.num_cols == matrix_info.num_cols)) {
+          continue;
+        }
         KALDI_ERR << "Variable " << v << " == "
                   << a_.variables.DescribeVariable(v) << " is never used.";
       }
@@ -728,9 +758,10 @@ void ComputationChecker::CheckComputationCompression() const {
           // alpha == 0.0 means we're only retaining the sign; we should
           // only do this if this is the output of a ReLU.
           // make sure there are only 2 commands after this: the uncompress
-          // command, a relu backprop command, and a deallocation command.
+          // command, and a relu backprop command.  (Any deallocation
+          // command doesn't show up in the list of 'accesses').
           KALDI_ASSERT(a > 0 && command.arg2 == kCompressedMatrixUint8 &&
-                       num_accesses == a + 4);
+                       num_accesses == a + 3);
           // make sure the next access to that matrix, apart from the
           // uncompression command, is a ReLU propagation.
           int32 next_command_index = accesses.accesses[a+2].command_index;
@@ -1004,14 +1035,18 @@ void ComputationChecker::CheckComputationIndexes() const {
         if (c.arg2 < static_cast<int32>(kCompressedMatrixInt8) ||
             c.arg2 > static_cast<int32>(kCompressedMatrixUint16))
           KALDI_ERR << "Invalid compressed-matrix type.";
+        if (c.arg3 != 0 && c.arg3 != 1)
+          KALDI_ERR << "Invalid 'truncate' option for compressing matrix.";
         if (c.alpha < 0.0 || c.alpha > 1000.0 ||
-            (c.alpha == 0.0 && c.arg1 != kCompressedMatrixInt8))
+            (c.alpha == 0.0 && c.arg2 != kCompressedMatrixUint8))
           KALDI_ERR << "Invalid alpha in kCompressMatrix command.";
+        break;
       }
       case kUncompressMatrix: {
         if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
             !computation_.IsWholeMatrix(c.arg1))
           KALDI_ERR << "submatrix index out of range or invalid";
+        break;
       }
       case kAcceptInput: case kProvideOutput: {
         if (c.arg1 < 1 || c.arg1 >= num_submatrices ||

@@ -131,9 +131,6 @@ struct NnetOptimizeOptions {
     opts->Register("snip-row-ops", &snip_row_ops, "Set this to false to "
                    "disable an optimization that reduces the size of certain "
                    "per-row operations");
-    opts->Register("snip-row-ops", &snip_row_ops, "Set this to false to "
-                   "disable an optimization that reduces the size of certain "
-                   "per-row operations");
     opts->Register("memory-compression-level", &memory_compression_level,
                    "This is only relevant to training, not decoding.  Set this "
                    "to 0,1,2,3; higher levels are more aggressive at reducing "

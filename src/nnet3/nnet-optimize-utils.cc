@@ -1042,8 +1042,11 @@ class MatrixExtender {
 
   // This function modifies the computation to fix certain problems
   // that might have been introduced by Extend()... allocation, deallocation,
-  //
   void FixComputation();
+
+  // This function modifies the computation to fix the debug info; if needed,
+  // it's called from FixComputation().
+  void FixDebugInfo();
 
   // don't extend a destination matrix if it wasn't already
   // at least 'min_proportion' (80%) big enough to store the source.
@@ -1204,14 +1207,64 @@ void MatrixExtender::FixComputation() {
           m = computation_->submatrices[s].matrix_index,
           new_s = whole_submatrices[m];
       if (new_s != s) {
-        KALDI_ASSERT(orig_num_rows_[m] != computation_->matrices[m].num_rows);
+        KALDI_ASSERT(
+            computation_->submatrices[s] == computation_->submatrices[new_s] ||
+            orig_num_rows_[m] != computation_->matrices[m].num_rows);
+        command.arg1 = new_s;
+      }
+    }
+    if (command.command_type == kSetConst && command.alpha == 0.0) {
+      int32 s = command.arg1,
+          m = computation_->submatrices[s].matrix_index,
+          new_s = whole_submatrices[m];
+      if (new_s != s) {
+        {
+          const NnetComputation::SubMatrixInfo &info = computation_->submatrices[
+              command.arg1];
+          const NnetComputation::MatrixInfo &mat_info = computation_->matrices[
+              info.matrix_index];
+          // If this command wasn't zeroing the the entirety of a matrix,
+          // (before we extended the matrix), we don't need to extend it.
+          if (!(info.row_offset == 0 && info.col_offset == 0 &&
+                info.num_cols == mat_info.num_cols &&
+                info.num_rows == orig_num_rows_[info.matrix_index]))
+            continue;
+          // I know doing this via 'continue' is odd, but it's done this way to
+          // avoid invalid iterators still being in scope; I think some runtimes
+          // check for it.
+        }
         command.arg1 = new_s;
       }
     }
   }
+  if (!computation_->matrix_debug_info.empty())
+    FixDebugInfo();
   RenumberComputation(computation_);
 }
 
+void MatrixExtender::FixDebugInfo() {
+  int32 num_matrices = computation_->matrices.size();
+  // matrix zero is not a 'real' matrix.
+  for (int32 m = 1; m < num_matrices; m++) {
+    NnetComputation::MatrixDebugInfo &debug_info =
+        computation_->matrix_debug_info[m];
+    int32 new_num_rows = computation_->matrices[m].num_rows,
+        old_num_rows = debug_info.cindexes.size();
+    if (new_num_rows != old_num_rows) {
+      debug_info.cindexes.resize(new_num_rows);
+      int32 num_extra_rows = new_num_rows - old_num_rows;
+      // the following should be true because min_proportion_ > 0.5.
+      KALDI_ASSERT(num_extra_rows <= old_num_rows);
+      for (int32 r = old_num_rows; r < new_num_rows; r++) {
+        Cindex cindex = debug_info.cindexes[r - num_extra_rows];
+        // set the 't' value to kNoTime which indicates that it's not a 'real'
+        // time step, and may avoid errors in checking code.
+        cindex.second.t = kNoTime;
+        debug_info.cindexes[r] = cindex;
+      }
+    }
+  }
+}
 
 void ExtendMatrices(NnetComputation *computation) {
   MatrixExtender ext(computation);
@@ -3155,6 +3208,7 @@ void ComputationExpander::ComputeCommands() {
       case kAddRowRanges:
         ExpandRowRangesCommand(c, &c_out);
         break;
+      case kCompressMatrix: case kUncompressMatrix:
       case kAcceptInput: case kProvideOutput: case kNoOperation:
       case kNoOperationPermanent: case kNoOperationMarker:
       case kNoOperationLabel: case kGotoLabel:
@@ -4365,14 +4419,18 @@ class MemoryCompressionOptimizer {
     // sign (-1, 0 or 1) of the input, and decompresses it to -1, 0 or 1; this
     // is useful for ReLUs.
     BaseFloat range;
-
+    // this is provided to the initializer of CuCompressedMatrix; it should
+    // be true if the values being compressed are potentially outside of
+    // the representable range.
+    bool truncate;
     MatrixCompressInfo(int32 m, int32 forward_command_index,
                        int32 backward_command_index,
                        CuCompressedMatrixType compression_type,
-                       BaseFloat range):
+                       BaseFloat range, bool truncate):
         m(m), compression_command_index(forward_command_index),
         uncompression_command_index(backward_command_index),
-        compression_type(compression_type), range(range) { }
+        compression_type(compression_type), range(range),
+        truncate(truncate) { }
 
   };
   std::vector<MatrixCompressInfo> compress_info_;
@@ -4406,7 +4464,8 @@ void MemoryCompressionOptimizer::ModifyComputation() {
     std::pair<int32, NnetComputation::Command> p1(
         info.compression_command_index + 1,
         NnetComputation::Command(info.range, kCompressMatrix,
-                                 s, static_cast<int32>(info.compression_type)));
+                                 s, static_cast<int32>(info.compression_type),
+                                 info.truncate ? 1 : 0));
     pairs_to_insert.push_back(p1);
     std::pair<int32, NnetComputation::Command> p2(
         info.uncompression_command_index,
@@ -4443,6 +4502,11 @@ void MemoryCompressionOptimizer::ProcessMatrix(int32 m) {
   std::vector<Access>::const_iterator iter = std::lower_bound(accesses.begin(),
                                                               accesses.end(),
                                                               middle_access);
+
+  if (m == 84) {
+    KALDI_LOG << "m == 84"; //TEMP
+  }
+
   // At this point, 'iter' points to the first access in 'accesses'
   // whose command index is >= 'middle_command_' (which separates the forward
   // and backward passes), or accesses.end() if this matrix was not
@@ -4466,18 +4530,10 @@ void MemoryCompressionOptimizer::ProcessMatrix(int32 m) {
 
   // 'backward_access_is_last_access' is going to be set to true if
   // 'backward_access' is the last command to access the matrix (apart from
-  // deallocation commands).
-  bool backward_access_is_last_access = false;
-  if (accesses.end() - iter <= 2) {
-    // if there is at most 1 command after 'backward_access' that accesses this
-    // matrix...
-    const Access &next_access = iter[1];
-    NnetComputation::Command &next_command =
-        computation_->commands[next_access.command_index];
-    if (next_command.command_type == kDeallocMatrix ||
-        next_command.command_type == kSwapMatrix)
-      backward_access_is_last_access = true;
-  }
+  // deallocation or matrix-swap commands, which don't show up in the list of
+  // accesses).
+  bool backward_access_is_last_access = (accesses.end() == iter + 1);
+
   int32 backward_command_index = backward_access.command_index,
       forward_command_index = forward_access.command_index;
   NnetComputation::Command
@@ -4495,7 +4551,8 @@ void MemoryCompressionOptimizer::ProcessMatrix(int32 m) {
       compress_info_.push_back(
           MatrixCompressInfo(m, forward_command_index,
                              backward_command_index,
-                             kCompressedMatrixUint8, 0.0));
+                             kCompressedMatrixUint8, 0.0,
+                             true));
       return;
     }
   }
@@ -4510,7 +4567,8 @@ void MemoryCompressionOptimizer::ProcessMatrix(int32 m) {
     compress_info_.push_back(
         MatrixCompressInfo(m, forward_command_index,
                            backward_command_index,
-                           kCompressedMatrixInt16, 10.0));
+                           kCompressedMatrixInt16, 10.0,
+                           true));
     return;
   }
 
