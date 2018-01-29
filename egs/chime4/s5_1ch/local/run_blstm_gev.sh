@@ -8,14 +8,16 @@
 # Config:
 nj=10
 cmd=run.pl
+track=6
 . utils/parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
    echo "Wrong #arguments ($#, expected 4)"
-   echo "Usage: local/run_beamform_blstm_gev_6ch_track.sh [options] <chime4-dir> <chime3-dir> <wav-out-dir> <enhancement-type>"
+   echo "Usage: local/run_blstm_gev.sh [options] <chime4-dir> <chime3-dir> <wav-out-dir> <enhancement-type>"
    echo "main options (for others, see top of script file)"
    echo "  --nj <nj>                                # number of parallel jobs"
    echo "  --cmd <cmd>                              # Command to run in parallel with"
+   echo "  --track <track>            # Chime data to use (1, 2 or 6)"
    exit 1;
 fi
 
@@ -79,4 +81,4 @@ else
 fi
 
 echo "Training a BLSTM-based mask network and enhancing signals with mask-based GEV beamformer"
-$cuda_cmd $odir/beamform.log local/run_nn-gev.sh $sdir $odir $enhancement_type
+$cuda_cmd $odir/beamform.log local/run_nn-gev.sh $sdir $odir $enhancement_type $track

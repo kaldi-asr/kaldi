@@ -1,5 +1,3 @@
-#!/bin/bash
-
 # Kaldi ASR baseline for the CHiME-4 Challenge (6ch track: 6 channel track)
 #
 # Copyright 2016 University of Sheffield (Jon Barker, Ricard Marxer)
@@ -71,10 +69,10 @@ if [ $stage -le 1 ]; then
         local/run_beamform_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data/data/audio/16kHz/isolated_6ch_track $enhancement_data
         ;;
     blstm_gev)
-        local/run_beamform_blstm_gev_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 0
+        local/run_blstm_gev.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 0
         ;;
     single_BLSTMmask)
-        local/run_beamform_blstm_gev_6ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 5 
+        local/run_blstm_gev_6ch.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 5 
         ;;
     *)
         echo "Usage: --enhancement blstm_gev, or --enhancement beamformit_5mics , or --enhancement single_BLSTMmask" 
@@ -94,6 +92,10 @@ if [ $stage -le 2 ]; then
   fi
   local/compute_PESQ.sh $enhancement $enhancement_data $chime4_rir_data $PWD
   local/compute_stoi_estoi_sdr.sh $enhancement $enhancement_data $chime4_rir_data
+  local/compute_PESQ.sh NOISY_1ch $chime4_data/data/audio/16kHz/isolated_1ch_track/ $chime4_rir_data $PWD
+  local/compute_stoi_estoi_sdr.sh NOISY_1ch $chime4_data/data/audio/16kHz/isolated_1ch_track/ $chime4_rir_data
+  local/write_se_results.sh blstm_gev
+  local/write_se_results.sh NOISY_1ch
 fi
 
 # GMM based ASR experiment

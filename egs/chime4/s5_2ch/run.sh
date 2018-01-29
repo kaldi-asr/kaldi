@@ -71,12 +71,7 @@ if [ $stage -le 1 ]; then
         local/run_beamform_2ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data/data/audio/16kHz/isolated_2ch_track $enhancement_data
         ;;
     blstm_gev)
-	# TODO Aswin
-        local/run_beamform_blstm_gev_2ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 0
-        ;;
-    single_BLSTMmask)
-	# TODO Aswin
-        local/run_beamform_blstm_gev_2ch_track.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 2 
+        local/run_blstm_gev.sh --cmd "$train_cmd" --nj 20 --track 2 $chime4_data $chime3_data $enhancement_data 0
         ;;
     *)
         echo "Usage: --enhancement blstm_gev, or --enhancement beamformit_2mics , or --enhancement single_BLSTMmask" 
