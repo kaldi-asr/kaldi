@@ -5,7 +5,10 @@
 #           2017  Vimal Manohar
 # Apache 2.0
 #
-# It is based on the example scripts distributed with PocoLM
+# This script is used to train LMs using pocolm toolkit. 
+# We use limit-unk-history=true, which truncates the history left of OOV word.
+# This ensure the graph is compact when using phone LM to model OOV word.
+# See the script local/run_unk_model.sh.
 
 set -e
 stage=0
