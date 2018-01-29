@@ -284,8 +284,8 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       command_type = kAddRowRanges;
     } else if (command_type_str == "kCompressMatrix") {
       command_type = kCompressMatrix;
-    } else if (command_type_str == "kUncompressMatrix") {
-      command_type = kUncompressMatrix;
+    } else if (command_type_str == "kDecompressMatrix") {
+      command_type = kDecompressMatrix;
     } else if (command_type_str == "kAcceptInput") {
       command_type = kAcceptInput;
     } else if (command_type_str == "kProvideOutput") {
@@ -382,8 +382,8 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
       case kCompressMatrix:
         os << "kCompressMatrix\n";
         break;
-      case kUncompressMatrix:
-        os << "kUncompressMatrix\n";
+      case kDecompressMatrix:
+        os << "kDecompressMatrix\n";
         break;
       case kAcceptInput:
         os << "kAcceptInput\n";
@@ -510,13 +510,17 @@ static void GetIndexesMultiStrings(
 
 
 // writes to "os" the statement for this command.
-static void PrintCommand(std::ostream &os,
+static void PrintCommand(std::ostream &os_out,
                          const Nnet &nnet,
                          const NnetComputation &computation,
                          int32 command_index,
                          const std::vector<std::string> &submatrix_strings,
                          const std::vector<std::string> &indexes_strings,
                          const std::vector<std::string> &indexes_multi_strings) {
+  // If the string is longer than 'max_string_length' characters, it will
+  // be summarized with '...' in the middle.
+  size_t max_string_length = 200;
+  std::ostringstream os;
   KALDI_ASSERT(command_index < computation.commands.size());
   os << "c" << command_index << ": ";
   const NnetComputation::Command &c = computation.commands[command_index];
@@ -637,8 +641,8 @@ static void PrintCommand(std::ostream &os,
          << truncate << ")\n";
       break;
     }
-    case kUncompressMatrix:
-      os << "UncompressMatrix(" << submatrix_strings[c.arg1] << ")\n";
+    case kDecompressMatrix:
+      os << "DecompressMatrix(" << submatrix_strings[c.arg1] << ")\n";
       break;
     case kAcceptInput:
       os << submatrix_strings[c.arg1] << " = user input [for node: '"
@@ -665,6 +669,14 @@ static void PrintCommand(std::ostream &os,
       break;
     default:
       KALDI_ERR << "Un-handled command type.";
+  }
+  std::string str = os.str();
+  if (str.size() <= max_string_length) {
+    os_out << str;
+  } else {
+    size_t len = str.size();
+    os_out << str.substr(0, max_string_length / 2) << " ... "
+           << str.substr(len - max_string_length / 2);
   }
 }
 

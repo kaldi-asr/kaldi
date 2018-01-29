@@ -401,7 +401,7 @@ void NnetComputer::ExecuteCommand() {
         }
 #endif
       }
-      case kUncompressMatrix: {
+      case kDecompressMatrix: {
 #if HAVE_CUDA == 1
         if (CuDevice::Instantiate().Enabled()) {
           int32 m = computation_.submatrices[c.arg1].matrix_index;

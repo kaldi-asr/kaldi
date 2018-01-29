@@ -423,7 +423,7 @@ class ComputationChecker {
   void CheckComputationRewrite() const;
   // Check matrix accesses make sense.
   void CheckComputationMatrixAccesses() const;
-  // Some checks related to the kCompressMatrix and kUncompressMatrix commands.
+  // Some checks related to the kCompressMatrix and kDecompressMatrix commands.
   void CheckComputationCompression() const;
   // Check debug_info has the correct size, if used.
   void CheckComputationDebugInfo() const;

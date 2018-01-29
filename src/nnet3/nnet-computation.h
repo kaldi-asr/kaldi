@@ -241,7 +241,7 @@ struct ComputationRequest {
        class CuCompressedMatrix; it should be false (0) if you know that
        the input is limited to the allowed range, and true (1) if the
        input may exceed that range (see docs for CuCompresedMatrix).
-   - kUncompressMatrix:  Uncompresses the matrix which is referred to
+   - kDecompressMatrix:  Decompresses the matrix which is referred to
       by submatrix-index arg1 (it should previously have been compressed).
    - kAcceptInput: accepts a matrix of input from the user, which may be either
      features, or derivatives w.r.t. the output.  arg1 is the submatrix index of
@@ -274,7 +274,7 @@ enum CommandType {
   kPropagate, kBackprop, kBackpropNoModelUpdate,
   kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
   kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
-  kAddRowRanges, kCompressMatrix, kUncompressMatrix,
+  kAddRowRanges, kCompressMatrix, kDecompressMatrix,
   kAcceptInput, kProvideOutput,
   kNoOperation, kNoOperationPermanent, kNoOperationMarker, kNoOperationLabel,
   kGotoLabel };

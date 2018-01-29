@@ -3208,7 +3208,7 @@ void ComputationExpander::ComputeCommands() {
       case kAddRowRanges:
         ExpandRowRangesCommand(c, &c_out);
         break;
-      case kCompressMatrix: case kUncompressMatrix:
+      case kCompressMatrix: case kDecompressMatrix:
       case kAcceptInput: case kProvideOutput: case kNoOperation:
       case kNoOperationPermanent: case kNoOperationMarker:
       case kNoOperationLabel: case kGotoLabel:
@@ -4469,7 +4469,7 @@ void MemoryCompressionOptimizer::ModifyComputation() {
     pairs_to_insert.push_back(p1);
     std::pair<int32, NnetComputation::Command> p2(
         info.uncompression_command_index,
-        NnetComputation::Command(1.0, kUncompressMatrix, s));
+        NnetComputation::Command(1.0, kDecompressMatrix, s));
     pairs_to_insert.push_back(p2);
   }
   InsertCommands(&pairs_to_insert,
@@ -4502,11 +4502,6 @@ void MemoryCompressionOptimizer::ProcessMatrix(int32 m) {
   std::vector<Access>::const_iterator iter = std::lower_bound(accesses.begin(),
                                                               accesses.end(),
                                                               middle_access);
-
-  if (m == 84) {
-    KALDI_LOG << "m == 84"; //TEMP
-  }
-
   // At this point, 'iter' points to the first access in 'accesses'
   // whose command index is >= 'middle_command_' (which separates the forward
   // and backward passes), or accesses.end() if this matrix was not

@@ -478,7 +478,7 @@ void Optimize(const NnetOptimizeOptions &config,
               const Nnet &nnet,
               int32 max_output_time_in_request,
               NnetComputation *computation) {
-  if (GetVerboseLevel() >= 1) { // TEMP, should be 3
+  if (GetVerboseLevel() >= 3) {
     CheckComputation(nnet, *computation, true);
     KALDI_LOG << "Before optimization, max memory use (bytes) = "
               << GetMaxMemoryUse(*computation);
@@ -594,15 +594,9 @@ void Optimize(const NnetOptimizeOptions &config,
                               computation);
     if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, false);
-
-    { // TEMP
-      std::ostringstream os;
-      computation->Print(os, nnet);
-      KALDI_LOG << "Compuation after adding memory compression is: " << os.str();
-    }
   }
 
-  if (GetVerboseLevel() >= 1) { // TEMP, should be 3
+  if (GetVerboseLevel() >= 3) {
     CheckComputation(nnet, *computation, false);
     KALDI_LOG << "After optimization, max memory use (bytes) = "
               << GetMaxMemoryUse(*computation);

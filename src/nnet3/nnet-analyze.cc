@@ -388,7 +388,7 @@ void ComputeCommandAttributes(
         vars.RecordAccessForSubmatrix(c.arg1, kReadWriteAccess, &attr);
         break;
       }
-      case kUncompressMatrix: {
+      case kDecompressMatrix: {
         vars.RecordAccessForSubmatrix(c.arg1, kWriteAccess, &attr);
         break;
       }
@@ -656,7 +656,11 @@ void ComputationChecker::CheckComputationUndefined() const {
                   << a_.variables.DescribeVariable(v) << " is never used.";
       }
     } else {
-      if (accesses[0].access_type != kWriteAccess)
+      // It's OK if part of a matrix is compressed, that is undefined;
+      // likely that part won't be referred to when we uncompress.
+      if (accesses[0].access_type != kWriteAccess &&
+          !(computation_.commands[accesses[0].command_index].command_type ==
+            kCompressMatrix))
         KALDI_ERR << "Variable " << v << " == "
                   << a_.variables.DescribeVariable(v)
                   << " is read before it is written to";
@@ -738,7 +742,7 @@ void ComputationChecker::CheckComputationCompression() const {
       int32 command_index = access.command_index;
       const NnetComputation::Command &command =
           computation_.commands[command_index];
-      if (command.command_type == kUncompressMatrix) {
+      if (command.command_type == kDecompressMatrix) {
         // check that the previous access to this matrix was a compression
         // command.
         KALDI_ASSERT(
@@ -751,7 +755,7 @@ void ComputationChecker::CheckComputationCompression() const {
         // command.
         int32 next_command_index = accesses.accesses[a+1].command_index;
         KALDI_ASSERT(computation_.commands[next_command_index].command_type ==
-                     kUncompressMatrix &&
+                     kDecompressMatrix &&
                      command_index < middle_command &&
                      next_command_index > middle_command);
         if (command.alpha == 0.0) {
@@ -1042,7 +1046,7 @@ void ComputationChecker::CheckComputationIndexes() const {
           KALDI_ERR << "Invalid alpha in kCompressMatrix command.";
         break;
       }
-      case kUncompressMatrix: {
+      case kDecompressMatrix: {
         if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
             !computation_.IsWholeMatrix(c.arg1))
           KALDI_ERR << "submatrix index out of range or invalid";
@@ -1445,13 +1449,11 @@ int64 GetMaxMemoryUse(const NnetComputation &computation) {
       this_num_bytes = static_cast<int64>(sizeof(BaseFloat)) *
           submat_info.num_rows * submat_info.num_cols;
 
-      if (c.arg2 >= static_cast<int32>(kCompressedMatrixInt8) &&
-          c.arg2 <= static_cast<int32>(kCompressedMatrixUint16)) {
-        this_compressed_num_bytes =
-            ((c.arg2 == static_cast<int32>(kCompressedMatrixInt8) ||
-             c.arg2 == static_cast<int32>(kCompressedMatrixUint8)) ?
-             1 : 2) * submat_info.num_rows * submat_info.num_cols;
-      }
+      this_compressed_num_bytes =
+          ((c.arg2 == static_cast<int32>(kCompressedMatrixInt8) ||
+            c.arg2 == static_cast<int32>(kCompressedMatrixUint8)) ?
+           1 : 2) * static_cast<int64>(submat_info.num_rows) *
+          submat_info.num_cols;
     }
     switch (c.command_type) {
       case kAllocMatrix:
@@ -1464,7 +1466,7 @@ int64 GetMaxMemoryUse(const NnetComputation &computation) {
       case kCompressMatrix:
         cur_memory_use += this_compressed_num_bytes - this_num_bytes;
         break;
-      case kUncompressMatrix:
+      case kDecompressMatrix:
         cur_memory_use += this_num_bytes - this_compressed_num_bytes;
         break;
       default:

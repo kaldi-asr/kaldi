@@ -552,7 +552,7 @@ void InsertCommands(
     NnetComputation *computation);
 
 /// Performs optimization to reduce memory usage where possible,
-/// making use of the kCompressMatrix and kUncompressMatrix commands.
+/// making use of the kCompressMatrix and kDecompressMatrix commands.
 /// Should only be done after most other optimizations, because some
 /// optimizations (such as variable-merging) would not work correctly
 /// after doing this optimization.  This does nothing for looped
