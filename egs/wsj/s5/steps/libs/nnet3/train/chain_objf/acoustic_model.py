@@ -128,7 +128,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      l2_regularize, xent_regularize, leaky_hmm_coefficient,
                      momentum, max_param_change,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
-                     frame_subsampling_factor, run_opts,
+                     frame_subsampling_factor, run_opts, train_opts,
                      backstitch_training_scale=0.0, backstitch_training_interval=1):
     """
     Called from train_one_iteration(), this method trains new models
@@ -184,7 +184,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
                     --backstitch-training-interval={backstitch_training_interval} \
-                    --l2-regularize-factor={l2_regularize_factor} \
+                    --l2-regularize-factor={l2_regularize_factor} {train_opts} \
                     --srand={srand} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs \
@@ -201,6 +201,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
+                        train_opts=train_opts,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
                         cache_io_opts=cache_io_opts,
                         parallel_train_opts=run_opts.parallel_train_opts,
@@ -233,7 +234,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
-                        run_opts, dropout_edit_string="",
+                        run_opts, dropout_edit_string="", train_opts="",
                         backstitch_training_scale=0.0, backstitch_training_interval=1):
     """ Called from steps/nnet3/chain/train.py for one iteration for
     neural network training with LF-MMI objective
@@ -306,7 +307,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
-                     run_opts=run_opts,
+                     run_opts=run_opts, train_opts=train_opts,
                      # linearly increase backstitch_training_scale during the
                      # first few iterations (hard-coded as 15)
                      backstitch_training_scale=(backstitch_training_scale *

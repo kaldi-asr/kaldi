@@ -356,6 +356,7 @@ def train(args, run_opts):
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
+                train_opts=' '.join(args.train_opts),
                 minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
                 momentum=args.momentum,
