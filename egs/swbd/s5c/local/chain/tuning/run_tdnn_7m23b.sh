@@ -1,15 +1,58 @@
 #!/bin/bash
 
+# 7m23b is as 7m23 but making the splicing more 'symmetric'... doing the
+#  splicing in 2 stages...
+# 7m23 is as 7m19m but removing the bottlenecks from the batchnorm components and
+#  reducing the dim of the linear components... it's basically an attempt to
+#  reverse the factorization to have the splicing at a different point.
+#
+
+# 7m19m is as 7m19l but with more skip connections
+#   Hm-- seems better than 19h.
+#
+# local/chain/compare_wer_general.sh --rt03 tdnn7m19h_sp tdnn7m19l_sp tdnn7m19m_sp
+# System                tdnn7m19h_sp tdnn7m19l_sp tdnn7m19m_sp
+# WER on train_dev(tg)      12.61     12.72     12.55
+# WER on train_dev(fg)      11.72     11.62     11.52
+# WER on eval2000(tg)        15.4      15.4      15.2
+# WER on eval2000(fg)        13.7      13.8      13.6
+# WER on rt03(tg)            18.9      18.9      18.6
+# WER on rt03(fg)            16.3      16.4      16.2
+# Final train prob         -0.091    -0.091    -0.089
+# Final valid prob         -0.102    -0.103    -0.101
+# Final train prob (xent)        -1.098    -1.095    -1.080
+# Final valid prob (xent)       -1.1031   -1.1191   -1.0990
+# Num-parameters               21055012  20268580  21055012
+#
+# 7m19l is as 7m19h but projecting down to an intermediate dim (512) before
+# doing the Append... doing this by inserting a linear-component between
+# pairs of relu-batchnorm-layers.
+#  A little worse.
+# local/chain/compare_wer_general.sh --rt03 tdnn7m19h_sp tdnn7m19l_sp
+# System                tdnn7m19h_sp tdnn7m19l_sp
+# WER on train_dev(tg)      12.65     12.72
+# WER on train_dev(fg)      11.57     11.62
+# WER on eval2000(tg)        15.3      15.4
+# WER on eval2000(fg)        13.7      13.8
+# WER on rt03(tg)            18.8      18.9
+# WER on rt03(fg)            16.4      16.4
+# Final train prob         -0.091    -0.091
+# Final valid prob         -0.102    -0.103
+# Final train prob (xent)        -1.091    -1.095
+# Final valid prob (xent)       -1.1064   -1.1191
+# Num-parameters               21055012  20268580
+
+
 # 7m19h is as 7m19e but with an extra bypass connection.  A bit better.
 
 # local/chain/compare_wer_general.sh --rt03 tdnn7m19e_sp tdnn7m19h_sp
-# System                tdnn7m19e_sp tdnn7m19h_sp  [rerun of 17m19h:]
-# WER on train_dev(tg)      12.75     12.65     12.61
-# WER on train_dev(fg)      11.77     11.57     11.72
-# WER on eval2000(tg)        15.5      15.3     15.4
-# WER on eval2000(fg)        14.0      13.7     13.7
-# WER on rt03(tg)            18.9      18.8     18.9
-# WER on rt03(fg)            16.4      16.4     16.3
+# System                tdnn7m19e_sp tdnn7m19h_sp
+# WER on train_dev(tg)      12.75     12.65
+# WER on train_dev(fg)      11.77     11.57
+# WER on eval2000(tg)        15.5      15.3
+# WER on eval2000(fg)        14.0      13.7
+# WER on rt03(tg)            18.9      18.8
+# WER on rt03(fg)            16.4      16.4
 # Final train prob         -0.092    -0.091
 # Final valid prob         -0.102    -0.102
 # Final train prob (xent)        -1.094    -1.091
@@ -201,7 +244,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=7m19h
+affix=7m23b
 suffix=
 $speed_perturb && suffix=_sp
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
@@ -287,6 +330,7 @@ if [ $stage -le 12 ]; then
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   opts="l2-regularize=0.002"
+  linear_opts="orthonormal-constraint=1.0"
   output_opts="l2-regularize=0.0005 bottleneck-dim=256"
 
   mkdir -p $dir/configs
@@ -301,22 +345,32 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $opts dim=1536 bottleneck-dim=192
-  relu-batchnorm-layer name=tdnn2 $opts input=Append(-1,0,1) dim=1536 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn3 $opts dim=1536 bottleneck-dim=192
-  relu-batchnorm-layer name=tdnn4 $opts input=Append(-1,0,1) dim=1536 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn5 $opts dim=1536 input=Append(tdnn4, tdnn2) bottleneck-dim=192
-  relu-batchnorm-layer name=tdnn6 $opts input=Append(-3,0,3) dim=1536 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn7 $opts input=Append(-3,0,3,tdnn5) dim=1536 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn8 $opts input=Append(-3,0,3) dim=1536 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn9 $opts input=Append(-3,0,3,tdnn7) dim=1536 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn10 $opts input=Append(-3,0,3) dim=1536 bottleneck-dim=256
-  relu-batchnorm-layer name=tdnn11 $opts input=Append(-3,0,3,tdnn9) dim=1536 bottleneck-dim=256
+  relu-batchnorm-layer name=tdnn1 $opts dim=1536
+  linear-component name=tdnn1l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-layer name=tdnn2 $opts input=Append(0,1) dim=1536
+  linear-component name=tdnn2l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn3 $opts dim=1536
+  linear-component name=tdnn3l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-layer name=tdnn4 $opts input=Append(0,1) dim=1536
+  linear-component name=tdnn4l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn5 $opts dim=1536 input=Append(tdnn4l, tdnn2l) bottleneck-dim=192
+  linear-component name=tdnn5l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn6 $opts input=Append(0,3) dim=1536
+  linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn7 $opts input=Append(0,3,tdnn5l,tdnn3l,tdnn1l) dim=1536
+  linear-component name=tdnn7l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn8 $opts input=Append(0,3) dim=1536
+  linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn9 $opts input=Append(0,3,tdnn7l,tdnn5l,tdnn3l) dim=1536
+  linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn10 $opts input=Append(0,3) dim=1536
+  linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn11 $opts input=Append(0,3,tdnn9l,tdnn7l,tdnn5l) dim=1536
 
-  relu-batchnorm-layer name=prefinal-chain input=tdnn11 $opts dim=1536 bottleneck-dim=256
+  relu-batchnorm-layer name=prefinal-chain input=tdnn11 $opts dim=1536
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  relu-batchnorm-layer name=prefinal-xent input=tdnn11 $opts dim=1536 bottleneck-dim=256
+  relu-batchnorm-layer name=prefinal-xent input=tdnn11 $opts dim=1536
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
