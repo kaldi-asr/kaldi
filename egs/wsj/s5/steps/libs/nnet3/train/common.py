@@ -904,7 +904,7 @@ class CommonParser(object):
                                  less general patterns, as they are applied
                                  sequentially.""")
         self.parser.add_argument("--trainer.add-option", type=str,
-                                 dest='train_opts', action='append',
+                                 dest='train_opts', action='append', default=[],
                                  help="""You can use this to add arbitrary options that
                                  will be passed through to the core training code (nnet3-train
                                  or nnet3-chain-train)""")
