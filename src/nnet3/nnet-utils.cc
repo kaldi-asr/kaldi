@@ -888,7 +888,7 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
 
   if (GetVerboseLevel() >= 1) {
     BaseFloat error = P.FrobeniusNorm();
-    KALDI_VLOG(1) << "Error in orthogonality is " << error;
+    KALDI_VLOG(2) << "Error in orthogonality is " << error;
   }
 
   // At this point, the matrix P contains what, in the math, would be Q =
