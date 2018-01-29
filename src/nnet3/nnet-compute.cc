@@ -382,7 +382,7 @@ void NnetComputer::ExecuteCommand() {
         }
         break;
       }
-      case kCompressMatrix: {
+      case kCompressMatrix:
         // This does nothing if CUDA is not in use.
 #if HAVE_CUDA == 1
         if (CuDevice::Instantiate().Enabled()) {
@@ -399,9 +399,9 @@ void NnetComputer::ExecuteCommand() {
           compressed_matrices_[m]->CopyFromMat(matrices_[m]);
           matrices_[m].Resize(0, 0);
         }
+        break;
 #endif
-      }
-      case kDecompressMatrix: {
+      case kDecompressMatrix:
 #if HAVE_CUDA == 1
         if (CuDevice::Instantiate().Enabled()) {
           int32 m = computation_.submatrices[c.arg1].matrix_index;
@@ -417,7 +417,7 @@ void NnetComputer::ExecuteCommand() {
           compressed_matrices_[m] = NULL;
         }
 #endif
-      }
+        break;
       case kNoOperation: case kNoOperationPermanent: case kNoOperationMarker:
       case kNoOperationLabel:
         break;
