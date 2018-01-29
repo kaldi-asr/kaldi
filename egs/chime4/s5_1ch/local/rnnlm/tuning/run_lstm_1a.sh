@@ -14,13 +14,13 @@ enhan=$1
 embedding_dim=2048
 lstm_rpd=512
 lstm_nrpd=512
-stage=-10
+stage=4
 train_stage=-10
 
 # variables for lattice rescoring
 run_lat_rescore=true
-run_nbest_rescore=true
-ac_model_dir=exp/chain/tdnn1b_sp
+run_nbest_rescore=false
+ac_model_dir=exp/chain/tdnn7a_sp
 decode_dir_suffix=rnnlm_1a
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
@@ -31,8 +31,7 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 . cmd.sh
 . utils/parse_options.sh
 
-tgtdir=data/local/local_lm
-fisher_text=data/local/lm/fisher/text1.gz
+srcdir=data/local/local_lm
 lexicon=data/local/dict/lexiconp.txt
 text_dir=data/rnnlm/text_nosp_1a
 mkdir -p $dir/config
@@ -46,13 +45,13 @@ done
 #prepare training and dev data
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
-  cat $tgtdir/train.rnn | uniq >$text_dir/chime4.txt
-  cat $tgtdir/valid.rnn | uniq >$text_dir/dev.txt
-  zcat $fisher_text > $text_dir/fisher.txt
+  cp $srcdir/train.rnn $text_dir/chime4.txt
+  cp $srcdir/valid.rnn $text_dir/dev.txt
 fi
 
 if [ $stage -le 1 ]; then
-  cat $tgtdir/vocab_5k.rnn | awk '{printf("%s %d\n", $1, NR)}' | sed '1s/^/<eps> 0\n/' > $dir/config/words.txt
+  cp data/lang_chain/words.txt $dir/config/words.txt
+  sed -i -e 's/<UNK>/<RNN_UNK>/' $dir/config/words.txt
   n=`cat $dir/config/words.txt | wc -l`
   echo "<brk> $n" >> $dir/config/words.txt
   # words that are not present in words.txt but are in the training or dev data, will be
@@ -61,7 +60,6 @@ if [ $stage -le 1 ]; then
 
   cat > $dir/config/data_weights.txt <<EOF
 chime4   3   1.0
-fisher 1   1.0
 EOF
 
   rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
@@ -125,8 +123,8 @@ if [ $stage -le 5 ] && $run_nbest_rescore; then
 
     # Lattice rescoring
     rnnlm/lmrescore_nbest.sh \
-      --cmd "$decode_cmd --mem 4G" --N 50 \
-      0.8 data/lang_test_$LM $dir \
+      --cmd "$decode_cmd --mem 4G" --N 100 \
+      0.5 data/lang_test_$LM $dir \
       data/${decode_set}_${enhan}_hires ${decode_dir} \
       $tgtdir/decode_${LM}_${decode_set}_${enhan}_${decode_dir_suffix}_nbest
   done

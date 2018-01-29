@@ -42,11 +42,17 @@ for sym in special_symbols:
         if special_symbols[sym][0] != lower_ids[sym]:
             print('{0}={1} '.format(special_symbols[sym][1], lower_ids[sym]), end='')
             printed = True
+        elif special_symbols[sym][0] == lower_ids[sym]:
+            print('{0}={1} '.format(special_symbols[sym][1], lower_ids[sym]), end='')
+            printed = True
         if sym in upper_ids:
             print(sys.argv[0] + ": both uppercase and lowercase are present for " + sym,
                   file=sys.stderr)
     elif sym in upper_ids:
         if special_symbols[sym][0] != upper_ids[sym]:
+            print('{0}={1} '.format(special_symbols[sym][1], upper_ids[sym]), end='')
+            printed = True
+        elif special_symbols[sym][0] == upper_ids[sym]:
             print('{0}={1} '.format(special_symbols[sym][1], upper_ids[sym]), end='')
             printed = True
     else:
