@@ -220,9 +220,6 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
     bool use_xent = (opts_.chain_config.xent_regularize != 0.0);
     std::string xent_name = sup.name + "-xent";  // typically "output-xent".
     CuMatrix<BaseFloat> xent_deriv;
-    if (use_xent)
-      xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
-                        kUndefined);
 
     BaseFloat tot_objf, tot_l2_term, tot_weight;
 
