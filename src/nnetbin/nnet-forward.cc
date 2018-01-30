@@ -45,6 +45,9 @@ int main(int argc, char *argv[]) {
     po.Register("feature-transform", &feature_transform,
         "Feature transform in front of main network (in nnet format)");
 
+    bool reverse_transform = false;
+    po.Register("reverse-transform", &reverse_transform, "Feature transform applied in reverse on output");
+
     bool no_softmax = false;
     po.Register("no-softmax", &no_softmax,
         "Removes the last component with Softmax, if found. The pre-softmax "
@@ -142,15 +145,29 @@ int main(int argc, char *argv[]) {
       feats = mat;
 
       // fwd-pass, feature transform,
-      nnet_transf.Feedforward(feats, &feats_transf);
-      if (!KALDI_ISFINITE(feats_transf.Sum())) {  // check there's no nan/inf,
-        KALDI_ERR << "NaN or inf found in transformed-features for " << utt;
-      }
+      if (!reverse_transform) {
+          nnet_transf.Feedforward(feats, &feats_transf);
+          if (!KALDI_ISFINITE(feats_transf.Sum())) {  // check there's no nan/inf,
+              KALDI_ERR << "NaN or inf found in transformed-features for " << utt;
+          }
 
-      // fwd-pass, nnet,
-      nnet.Feedforward(feats_transf, &nnet_out);
-      if (!KALDI_ISFINITE(nnet_out.Sum())) {  // check there's no nan/inf,
-        KALDI_ERR << "NaN or inf found in nn-output for " << utt;
+          // fwd-pass, nnet,
+          nnet.Feedforward(feats_transf, &nnet_out);
+          if (!KALDI_ISFINITE(nnet_out.Sum())) {  // check there's no nan/inf,
+              KALDI_ERR << "NaN or inf found in nn-output for " << utt;
+          }
+      }
+      else {
+          nnet.Feedforward(feats, &feats_transf);
+          if (!KALDI_ISFINITE(feats_transf.Sum())) {  // check there's no nan/inf,
+              KALDI_ERR << "NaN or inf found in transformed-features for " << utt;
+          }
+
+          // fwd-pass, nnet,
+          nnet_transf.Feedforward(feats_transf, &nnet_out);
+          if (!KALDI_ISFINITE(nnet_out.Sum())) {  // check there's no nan/inf,
+              KALDI_ERR << "NaN or inf found in nn-output for " << utt;
+          }
       }
 
       // convert posteriors to log-posteriors,
