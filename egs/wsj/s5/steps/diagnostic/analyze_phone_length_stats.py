@@ -234,6 +234,7 @@ for length in internal_opt_sil_phone_lengths.keys():
     # word-internal count.
     internal_opt_sil_phone_lengths[length] -= (phone_lengths['begin'][optional_silence_phone][length] +
                                                phone_lengths['end'][optional_silence_phone][length])
+    internal_opt_sil_phone_lengths[length] = max(0, internal_opt_sil_phone_lengths[length])
 
 if total_phones['internal'] != 0.0:
     total_internal_optsil_frames = sum([ float(l * c) for l,c in internal_opt_sil_phone_lengths.items() ])
@@ -257,6 +258,7 @@ if total_phones['internal'] != 0.0:
 
     opt_sil_internal_phone_percent = (sum(internal_opt_sil_phone_lengths.values()) *
                                       100.0 / total_phones['internal'])
+
     duration_median = GetPercentile(internal_opt_sil_phone_lengths, 0.5)
     duration_mean = GetMean(internal_opt_sil_phone_lengths)
     duration_percentile_95 = GetPercentile(internal_opt_sil_phone_lengths, 0.95)
