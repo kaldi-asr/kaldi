@@ -6,7 +6,7 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-BINFILES = nnet-train-frmshuff nnet-train-frmshuff-tgtmat \
+BINFILES = nnet-train-frmshuff nnet-train-frmshuff-tgtmat minmax-to-nnet \
         nnet-train-perutt \
         nnet-train-mmi-sequential \
         nnet-train-mpe-sequential \
