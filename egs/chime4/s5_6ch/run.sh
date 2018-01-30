@@ -118,4 +118,9 @@ if [ $stage -le 5 ]; then
   local/run_lmrescore_tdnn.sh $chime4_data $enhancement
 fi
 
+# LM-rescoring experiment with LSTM LMs
+if [ $stage -le 6 ]; then
+  local/rnnlm/run_lstm.sh $enhancement
+fi
+
 echo "Done."

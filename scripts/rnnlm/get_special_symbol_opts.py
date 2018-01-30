@@ -3,6 +3,7 @@
 # Copyright  2017  Jian Wang
 # License: Apache 2.0.
 
+import io
 import os
 import argparse
 import sys
@@ -24,7 +25,8 @@ upper_special_symbols = [key.upper() for key in special_symbols]
 
 lower_ids = {}
 upper_ids = {}
-for line in sys.stdin:
+input_stream = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+for line in input_stream:
     fields = line.split()
     sym = fields[0]
     if sym in special_symbols:
@@ -40,11 +42,17 @@ for sym in special_symbols:
         if special_symbols[sym][0] != lower_ids[sym]:
             print('{0}={1} '.format(special_symbols[sym][1], lower_ids[sym]), end='')
             printed = True
+        elif special_symbols[sym][0] == lower_ids[sym]:
+            print('{0}={1} '.format(special_symbols[sym][1], lower_ids[sym]), end='')
+            printed = True
         if sym in upper_ids:
             print(sys.argv[0] + ": both uppercase and lowercase are present for " + sym,
                   file=sys.stderr)
     elif sym in upper_ids:
         if special_symbols[sym][0] != upper_ids[sym]:
+            print('{0}={1} '.format(special_symbols[sym][1], upper_ids[sym]), end='')
+            printed = True
+        elif special_symbols[sym][0] == upper_ids[sym]:
             print('{0}={1} '.format(special_symbols[sym][1], upper_ids[sym]), end='')
             printed = True
     else:
