@@ -109,24 +109,31 @@ bool ConvertFullCtxAlignment(const TransitionModel &old_trans_model,
     KALDI_ASSERT(full_ali[i].size() == ctx_width);
     int32 old_tid = tid_ali[i],
         phone = old_trans_model.TransitionIdToPhone(old_tid),
-        pdf_class = old_trans_model.TransitionIdToPdfClass(old_tid),
-        hmm_state = old_trans_model.TransitionIdToHmmState(old_tid),
+        old_tstate = old_trans_model.TransitionIdToTransitionState(old_tid);
+    int32 forward_pdf_class = 
+        old_trans_model.TransitionStateToForwardPdfClass(old_tstate),
+        self_loop_pdf_class =
+        old_trans_model.TransitionStateToSelfLoopPdfClass(old_tstate);
+    int32 hmm_state = old_trans_model.TransitionIdToHmmState(old_tid),
         trans_idx = old_trans_model.TransitionIdToTransitionIndex(old_tid);
     KALDI_ASSERT(full_ali[i][central_pos] == phone &&
                  "Mismatched regular and full-context alignments.");
-    KALDI_ASSERT((*full_ali[i].end()) == pdf_class &&
+    KALDI_ASSERT((*full_ali[i].end()) == forward_pdf_class &&
                  "Mismatched regular and full-context alignments.");
     std::vector<int32> fullctx(full_ali[i].begin(), full_ali[i].end()-1);
-    int32 new_pdf;
-    if (!new_ctx_dep.Compute(fullctx, pdf_class, &new_pdf)) {
+    int32 new_forward_pdf, new_self_loop_pdf;
+    if (!new_ctx_dep.Compute(fullctx, forward_pdf_class, &new_forward_pdf) 
+        || !new_ctx_dep.Compute(fullctx, self_loop_pdf_class, &new_self_loop_pdf)) {
       std::ostringstream ctx_ss;
       WriteIntegerVector(ctx_ss, false, full_ali[i]);
       KALDI_ERR << "Decision tree did not produce an answer for: pdf-class = "
-                << pdf_class << " context window = " << ctx_ss.str();
+                << forward_pdf_class << " context window = " << ctx_ss.str();
     }
-    int32 new_trans_state = new_trans_model.TripleToTransitionState(phone,
-                                                                    hmm_state,
-                                                                    new_pdf);
+    int32 new_trans_state = 
+        new_trans_model.TupleToTransitionState(phone,
+                                               hmm_state,
+                                               new_forward_pdf,
+                                               new_self_loop_pdf);
     int32 new_tid = new_trans_model.PairToTransitionId(new_trans_state,
                                                        trans_idx);
     new_tid_ali->push_back(new_tid);
