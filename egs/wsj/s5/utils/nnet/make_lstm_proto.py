@@ -25,6 +25,13 @@ import sys
 from optparse import OptionParser
 usage="%prog [options] <feat-dim> <num-leaves> >nnet-proto-file"
 parser = OptionParser(usage)
+# Softmax related,
+parser.add_option('--no-softmax', dest='with_softmax',
+                   help='Do not put <SoftMax> in the prototype [default: %default]',
+                   default=True, action='store_false');
+parser.add_option('--block-softmax-dims', dest='block_softmax_dims',
+                   help='Generate <BlockSoftmax> with dims D1:D2:D3 [default: %default]',
+                   default="", type='string');
 # Required,
 parser.add_option('--cell-dim', dest='cell_dim', type='int', default=320,
                    help='Number of cells for one direction in LSTM [default: %default]');
@@ -82,5 +89,10 @@ print "<Tanh> <InputDim> %d <OutputDim> %d" % (o.proj_dim, o.proj_dim)
 
 # Softmax layer,
 print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> 0.0 <BiasRange> 0.0" % (o.proj_dim, num_leaves) + softmax_affine_opts
-print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+# Optionaly append softmax
+if o.with_softmax:
+  if o.block_softmax_dims == "":
+    print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+  else:
+    print "<BlockSoftmax> <InputDim> %d <OutputDim> %d <BlockDims> %s" % (num_leaves, num_leaves, o.block_softmax_dims)
 
