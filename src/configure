@@ -855,6 +855,12 @@ MATHLIB='ATLAS'
 ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
 FSTROOT=`rel2abs ../tools/openfst`
 
+## IDLAK LIBRARIES
+## Default locations for pcre, expat and pujiXML
+EXPATROOT=`rel2abs ../tools/expat-2.1.0/`
+PCREROOT=`rel2abs ../tools/pcre-8.20/`
+PUJIXMLROOT=`rel2abs ../tools/pugixml-1.2/`
+
 # Save the command line to include in kaldi.mk
 cmd_line="$0 $@"
 
@@ -1080,6 +1086,29 @@ if $double_precision; then
 else
   echo "DOUBLE_PRECISION = 0" >> kaldi.mk
 fi
+
+# Idlak specific setup
+echo "Checking PCRE library in $PCREROOT ..."
+if [ ! -f $PCREROOT/include/pcre.h  ]; then
+	failure "Could not find file $PCREROOT/include/pcre.h:
+    you may not have installed PCRE.  See ../tools/install_idlak.sh"
+fi
+echo "Checking EXPAT library in $EXPATROOT ..."
+if [ ! -f $EXPATROOT/include/expat.h  ]; then
+	failure "Could not find file $EXPATROOT/include/expat.h:
+    you may not have installed EXPAT.  See ../tools/install_idlak.sh"
+fi
+echo "Checking PUJIXML library in $PUJIXMLROOT ..."
+if [ ! -f $PUJIXMLROOT/src/pugixml.hpp  ]; then
+	failure "Could not find file $PUJIROOT/src/pugixml.hpp:
+    you may not have installed PUJIXML.  See ../tools/install_idlak.sh"
+fi
+echo IDLAK = true >> kaldi.mk
+echo PCREROOT = $PCREROOT >> kaldi.mk
+echo EXPATROOT = $EXPATROOT >> kaldi.mk
+echo PUJIXMLROOT = $PUJIXMLROOT >> kaldi.mk
+
+
 echo "Checking OpenFst library in $FSTROOT ..."
 if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
   failure "Could not find file $FSTROOT/include/fst/fst.h:
