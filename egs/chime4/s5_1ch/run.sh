@@ -61,10 +61,8 @@ if [ $stage -le 0 ]; then
   local/run_init.sh $chime4_data
 fi
 
-enhancement_method=isolated_1ch_track
-enhancement_data=$chime4_data/data/audio/16kHz/$enhancement_method
+enhancement_data=$chime4_data/data/audio/16kHz/isolated_1ch_track
 if [ $stage -le 1 ]; then
-  enhancement_method=single_BLSTMmask
   enhancement_data=`pwd`/enhan/$enhancement
   local/run_blstm_gev.sh --cmd "$train_cmd" --nj 20 --track 1 $chime4_data $chime3_data $enhancement_data 
 fi
