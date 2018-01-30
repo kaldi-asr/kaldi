@@ -274,6 +274,10 @@ def train(args, run_opts):
     chain_lib.check_for_required_files(args.feat_dir, args.tree_dir,
                                        args.lat_dir)
 
+    # Copy phones.txt from tree-dir to dir. Later, steps/nnet3/decode.sh will
+    # use it to check compatibility between training and decoding phone-sets.
+    shutil.copy('{0}/phones.txt'.format(args.tree_dir), args.dir)
+
     # Set some variables.
     num_jobs = common_lib.get_number_of_jobs(args.tree_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
