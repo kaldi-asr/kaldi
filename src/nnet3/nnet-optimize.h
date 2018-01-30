@@ -75,7 +75,7 @@ struct NnetOptimizeOptions {
       max_deriv_time(std::numeric_limits<int32>::max()),
       max_deriv_time_relative(std::numeric_limits<int32>::max()),
       snip_row_ops(true),
-      memory_compression_level(0),
+      memory_compression_level(1),
       optimize_looped_computation(false) { }
 
   void Register(OptionsItf *opts) {
@@ -133,10 +133,11 @@ struct NnetOptimizeOptions {
                    "per-row operations");
     opts->Register("memory-compression-level", &memory_compression_level,
                    "This is only relevant to training, not decoding.  Set this "
-                   "to 0,1,2,3; higher levels are more aggressive at reducing "
+                   "to 0,1,2; higher levels are more aggressive at reducing "
                    "memory by compressing quantities needed for backprop, "
                    "potentially at the expense of speed and the accuracy "
-                   "of derivatives.  0 means no compression at all.");
+                   "of derivatives.  0 means no compression at all; 1 means "
+                   "compression that shouldn't affect results at all.");
 
   }
   void Read(std::istream &is, bool binary);

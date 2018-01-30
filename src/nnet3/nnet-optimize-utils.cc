@@ -1064,6 +1064,9 @@ class MatrixExtender {
   std::vector<bool> is_input_or_output_;
 };
 
+// note: the initializer for min_proportion_ below needs to be kept in sync with
+// the min_proportion variable in
+// ComputationChecker::CheckComputationUndefined() in nnet-analyze.cc.
 MatrixExtender::MatrixExtender(NnetComputation *computation):
     min_proportion_(0.8),
     computation_(computation) {
@@ -1111,9 +1114,10 @@ bool MatrixExtender::CanBeExtended(int32 dest_submatrix_index,
   const MatrixInfo
       &src_matrix = computation_->matrices[src_submatrix.matrix_index];
 
-  int32 dest_matrix_num_rows = orig_num_rows_[dest_submatrix.matrix_index];
+  int32 dest_matrix_orig_num_rows = orig_num_rows_[dest_submatrix.matrix_index],
+      src_matrix_orig_num_rows = orig_num_rows_[src_submatrix.matrix_index];
 
-  if (src_submatrix.num_rows < min_proportion_ * src_matrix.num_rows)
+  if (src_submatrix.num_rows < min_proportion_ * src_matrix_orig_num_rows)
     return false;
 
   // The following checks that the source submatrix covers be all of the
@@ -1124,7 +1128,7 @@ bool MatrixExtender::CanBeExtended(int32 dest_submatrix_index,
           src_submatrix.row_offset == 0 &&
           src_submatrix.num_rows < src_matrix.num_rows &&
           dest_submatrix.row_offset + dest_submatrix.num_rows ==
-          dest_matrix_num_rows);
+          dest_matrix_orig_num_rows);
 }
 
 
@@ -4614,9 +4618,11 @@ void OptimizeMemoryCompression(const Nnet &nnet,
 
     if (GetVerboseLevel() >= 2) {
       bytes_used_final = GetMaxMemoryUse(*computation);
-      KALDI_VLOG(2) << "Memory compression reduced  memory use from "
-                    << bytes_used_initial << " to "
-                    << bytes_used_final << " bytes.";
+      if (bytes_used_final != bytes_used_initial) {
+        KALDI_VLOG(2) << "Memory compression reduced  memory use from "
+                      << bytes_used_initial << " to "
+                      << bytes_used_final << " bytes.";
+      }
     }
   }
 }

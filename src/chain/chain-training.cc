@@ -64,7 +64,8 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
 
     if (xent_output_deriv) {
       numerator.Backward(xent_output_deriv);
-      nnet_output_deriv->AddMat(1.0, *xent_output_deriv);
+      if (nnet_output_deriv)
+        nnet_output_deriv->AddMat(1.0, *xent_output_deriv);
     } else if (nnet_output_deriv) {
       numerator.Backward(nnet_output_deriv);
     }

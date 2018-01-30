@@ -634,21 +634,24 @@ void ComputationChecker::CheckComputationRewrite() const {
    Checks for the situation where a variable is read before being written.
 */
 void ComputationChecker::CheckComputationUndefined() const {
+  // the variable 'min_proportion' needs to be <= the min_proportion_ value in
+  // class MatrixExtender, otherwise this code could spuriously reject a
+  // computation.
+  BaseFloat min_proportion = 0.8;
+
   int32 num_variables = a_.variable_accesses.size();
   for (int32 v = 0; v < num_variables; v++) {
     const std::vector<Access> &accesses = a_.variable_accesses[v];
     if (accesses.empty()) {
       if (config_.check_unused_variables) {
-        // Before we throw an error, we want to check that it isn't
-        // a case that can be produced by the ExtendMatrices()
-        // optimization, that is actually allowed.  This is a case
-        // when a variable is the last few rows of a matrix, but
-        // not all columns of those last rows.
         NnetComputation::SubMatrixInfo info = a_.variables.VariableInfo(v);
         const NnetComputation::MatrixInfo &matrix_info =
             computation_.matrices[info.matrix_index];
-        if (info.row_offset > 0 &&
-            info.num_rows + info.row_offset == matrix_info.num_rows &&
+        // Before we throw an error, we want to check that it isn't a case that
+        // can be produced by the ExtendMatrices() optimization, that is
+        // actually allowed.  This is a case when a variable is inside the last
+        // few rows of a matrix, but not all columns of those last rows.
+        if (info.row_offset >= min_proportion * matrix_info.num_rows &&
             !(info.col_offset == 0 && info.num_cols == matrix_info.num_cols)) {
           continue;
         }
