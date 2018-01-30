@@ -18,7 +18,7 @@ ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
             Supported versions: >= 1.6.0)
 endif
 
-all: check_required_programs sph2pipe sclite openfst
+all: check_required_programs sph2pipe sclite openfst idlak
 	@echo -e "\n\n"
 	@echo "Warning: IRSTLM is not installed by default anymore. If you need IRSTLM"
 	@echo "Warning: use the script extras/install_irstlm.sh"
@@ -48,6 +48,7 @@ distclean:
 	rm -rf sctk-2.4.10-20151007-1312Z.tar.bz2
 	rm -rf openfst-$(OPENFST_VERSION).tar.gz
 	rm -f openfst
+	rm -rf idlak
 	rm -rf libsndfile-1.0.25{,.tar.gz} BeamformIt-3.51{,.tgz}
 
 
@@ -124,6 +125,9 @@ sph2pipe_v2.5: sph2pipe_v2.5.tar.gz
 sph2pipe_v2.5.tar.gz:
 	wget -T 10 -t 3 http://www.openslr.org/resources/3/sph2pipe_v2.5.tar.gz || \
 	wget --no-check-certificate -T 10  https://sourceforge.net/projects/kaldi/files/sph2pipe_v2.5.tar.gz
+
+idlak:
+	./install_idlak.sh || touch idlak
 
 openblas: openblas_compiled
 
