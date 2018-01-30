@@ -9,6 +9,8 @@ ${KALDI_ROOT}/src/featbin:\
 ${KALDI_ROOT}/src/fgmmbin:\
 ${KALDI_ROOT}/src/fstbin:\
 ${KALDI_ROOT}/src/gmmbin:\
+${KALDI_ROOT}/src/idlakbin:\
+${KALDI_ROOT}/src/idlaktxpbin:\
 ${KALDI_ROOT}/src/ivectorbin:\
 ${KALDI_ROOT}/src/kwsbin:\
 ${KALDI_ROOT}/src/latbin:\
