@@ -17,6 +17,7 @@ l2_penalty=0
 train_tool="nnet-train-frmshuff"
 train_tool_opts="--minibatch-size=256 --randomizer-size=32768 --randomizer-seed=777"
 feature_transform=
+output_feature_transform=
 
 split_feats= # int -> number of splits 'feats.scp -> feats.${i}.scp', starting from feats.1.scp,
              # (data are alredy shuffled and split to N parts),
@@ -84,6 +85,7 @@ mlp_base=${mlp_init##*/}; mlp_base=${mlp_base%.*}
 log=$dir/log/iter00.initial.log; hostname>$log
 $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
   ${feature_transform:+ --feature-transform=$feature_transform} \
+  ${output_feature_transform:+ --output-feature-transform=$output_feature_transform} \
   ${frame_weights:+ "--frame-weights=$frame_weights"} \
   ${utt_weights:+ "--utt-weights=$utt_weights"} \
   "$feats_cv" "$labels_cv" $mlp_best \
@@ -125,6 +127,7 @@ for iter in $(seq -w $max_iters); do
     --learn-rate=$learn_rate --momentum=$momentum \
     --l1-penalty=$l1_penalty --l2-penalty=$l2_penalty \
     ${feature_transform:+ --feature-transform=$feature_transform} \
+    ${output_feature_transform:+ --output-feature-transform=$output_feature_transform} \
     ${frame_weights:+ "--frame-weights=$frame_weights"} \
     ${utt_weights:+ "--utt-weights=$utt_weights"} \
     "$feats_tr_portion" "$labels_tr" $mlp_best $mlp_next \
@@ -137,6 +140,7 @@ for iter in $(seq -w $max_iters); do
   log=$dir/log/iter${iter}.cv.log; hostname>$log
   $train_tool --cross-validate=true --randomize=false --verbose=$verbose $train_tool_opts \
     ${feature_transform:+ --feature-transform=$feature_transform} \
+    ${output_feature_transform:+ --output-feature-transform=$output_feature_transform} \
     ${frame_weights:+ "--frame-weights=$frame_weights"} \
     ${utt_weights:+ "--utt-weights=$utt_weights"} \
     "$feats_cv" "$labels_cv" $mlp_next \
