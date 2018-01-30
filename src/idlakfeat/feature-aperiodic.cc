@@ -42,7 +42,8 @@ AperiodicEnergy::AperiodicEnergy(const AperiodicEnergyOptions &opts)
 
   FrameExtractionOptions freq_frame_opts = opts_.frame_opts;
   freq_frame_opts.frame_length_ms =
-    padded_window_size_ * 1000.0 / freq_frame_opts.samp_freq;
+      (static_cast<BaseFloat>(padded_window_size_)
+          * 1000.0) / freq_frame_opts.samp_freq;
   // If using HTS bands, we force the bark scale options on the MelBanks
   if (opts_.use_hts_bands)
     opts_.banks_opts.scale_type = "bark";
@@ -165,17 +166,18 @@ void AperiodicEnergy::Compute(const VectorBase<BaseFloat> &wave,
       dim_out = opts_.banks_opts.num_bins;
   if (frames_out == 0)
     KALDI_ERR << "No frames fit in file (#samples is " << wave.Dim() << ")";
-  if (voicing_prob.Dim() != frames_out) {
+  if (std::abs(voicing_prob.Dim() - frames_out) > opts_.frame_diff_tolerance) {
     KALDI_ERR << "#frames in probability of voicing vector ("
               << voicing_prob.Dim() << ") doesn't match #frames in data ("
               << frames_out << ").";
   }
-  if (f0.Dim() != frames_out) {
+  if (std::abs(f0.Dim() - frames_out) > opts_.frame_diff_tolerance) {
     KALDI_ERR << "#frames in F0 vector (" << f0.Dim() << ") doesn't match "
               << "#frames in data (" << frames_out << ").";
   }
-  output->Resize(frames_out, dim_out);
 
+  frames_out = std::min(frames_out, f0.Dim());  // will be removed eventually
+  output->Resize(frames_out, dim_out);
   if (wave_remainder != NULL)
     ExtractWaveformRemainder(wave, opts_.frame_opts, wave_remainder);
   Vector<BaseFloat> wave_window;
@@ -486,6 +488,7 @@ void AperiodicEnergy::ObtainNoiseSpectrum(
       last_index = j;
     }
   }
+  ComputePowerSpectrum(noise_spectrum);
 }
 
 }  // namespace kaldi
