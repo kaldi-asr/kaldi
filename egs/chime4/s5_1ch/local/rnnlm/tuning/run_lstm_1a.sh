@@ -14,13 +14,13 @@ enhan=$1
 embedding_dim=2048
 lstm_rpd=512
 lstm_nrpd=512
-stage=4
+stage=-10
 train_stage=-10
 
 # variables for lattice rescoring
 run_lat_rescore=true
-run_nbest_rescore=false
-ac_model_dir=exp/chain/tdnn7a_sp
+run_nbest_rescore=true
+ac_model_dir=exp/chain/tdnn1a_sp
 decode_dir_suffix=rnnlm_1a
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
