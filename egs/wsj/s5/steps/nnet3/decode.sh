@@ -70,6 +70,13 @@ if [ ! -z "$online_ivector_dir" ]; then
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 fi
 
+if [ ! -f $srcdir/phones.txt ]; then
+  echo >&2 "$0: WARNING: The model directory '$srcdir' does not contain phones.txt."
+  echo >&2 "$0: WARNING: That means it's you who's reponsible for keeping the"
+  echo >&2 "$0: WARNING: phone-sets compatible between the trained model and the decoding graph."
+fi
+utils/lang/check_phones_compatible.sh {$srcdir,$graphdir}/phones.txt || exit 1
+
 for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
