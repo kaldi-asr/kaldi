@@ -1,7 +1,7 @@
-// nnetbin/nnet-train-frmshuff.cc
+// nnetbin/nnet-train-frmshuff-tgtmat.cc
 
 // Copyright 2013-2016  Brno University of Technology (Author: Karel Vesely)
-//                2016  CereProc Ltd. (author: Blaise Potard)
+//           2016-2018  CereProc Ltd. (author: Blaise Potard)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -46,6 +46,8 @@ int main(int argc, char *argv[]) {
     trn_opts.Register(&po);
     NnetDataRandomizerOptions rnd_opts;
     rnd_opts.Register(&po);
+    LossOptions loss_opts;
+    loss_opts.Register(&po);
 
     bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
@@ -54,7 +56,7 @@ int main(int argc, char *argv[]) {
     po.Register("cross-validate", &crossvalidate,
         "Perform cross-validation (don't back-propagate)");
 
-    bool randomize = true;
+    bool randomize = false;
     po.Register("randomize", &randomize,
         "Perform the frame-level shuffling within the Cache::");
 
@@ -69,6 +71,10 @@ int main(int argc, char *argv[]) {
     std::string objective_function = "xent";
     po.Register("objective-function", &objective_function,
         "Objective function : xent|mse|multitask");
+
+    int32 max_frames = 360000;
+    po.Register("max-frames", &max_frames,
+        "Maximum number of frames an utterance can have (skipped if longer)");
 
     int32 length_tolerance = 5;
     po.Register("length-tolerance", &length_tolerance,
@@ -86,11 +92,6 @@ int main(int argc, char *argv[]) {
     std::string use_gpu="yes";
     po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
-
-    double dropout_retention = 0.0;
-    po.Register("dropout-retention", &dropout_retention,
-        "number between 0..1, controls how many neurons are preserved "
-        "(0.0 will keep the value unchanged)");
 
     po.Read(argc, argv);
 
@@ -128,15 +129,11 @@ int main(int argc, char *argv[]) {
     nnet.Read(model_filename);
     nnet.SetTrainOptions(trn_opts);
 
-    if (dropout_retention > 0.0) {
-      nnet_transf.SetDropoutRetention(dropout_retention);
-      nnet.SetDropoutRetention(dropout_retention);
-    }
     if (crossvalidate) {
-      nnet_transf.SetDropoutRetention(1.0);
-      nnet.SetDropoutRetention(1.0);
+      nnet_transf.SetDropoutRate(0.0);
+      nnet.SetDropoutRate(0.0);
+      out_nnet_transf.SetDropoutRate(0.0);
     }
-    out_nnet_transf.SetDropoutRetention(1.0);
 
     kaldi::int64 total_frames = 0;
 
@@ -156,10 +153,10 @@ int main(int argc, char *argv[]) {
     MatrixRandomizer targets_randomizer(rnd_opts);
     VectorRandomizer weights_randomizer(rnd_opts);
 
-    Xent xent;
-    Mse mse;
+    Xent xent(loss_opts);
+    Mse mse(loss_opts);
 
-    MultiTaskLoss multitask;
+    MultiTaskLoss multitask(loss_opts);
     if (0 == objective_function.compare(0, 9, "multitask")) {
       // objective_function contains something like :
       // 'multitask,xent,2456,1.0,mse,440,0.001'
@@ -240,6 +237,15 @@ int main(int argc, char *argv[]) {
           KALDI_ASSERT(w >= 0.0);
           if (w == 0.0) continue;  // remove sentence from training,
           weights.Scale(w);
+        }
+
+        // skip too long utterances (or we run out of memory),
+        if (mat.NumRows() > max_frames) {
+          KALDI_WARN << "Utterance too long, skipping! " << utt
+            << " (length " << mat.NumRows() << ", max_frames "
+            << max_frames << ")";
+          num_other_error++;
+          continue;
         }
 
         // correct small length mismatch or drop sentence,
