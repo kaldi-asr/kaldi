@@ -72,7 +72,7 @@ if [ $stage -le 1 ]; then
         local/run_blstm_gev.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 0
         ;;
     single_BLSTMmask)
-        local/run_blstm_gev_6ch.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 5 
+        local/run_blstm_gev.sh --cmd "$train_cmd" --nj 20 $chime4_data $chime3_data $enhancement_data 5 
         ;;
     *)
         echo "Usage: --enhancement blstm_gev, or --enhancement beamformit_5mics , or --enhancement single_BLSTMmask" 
