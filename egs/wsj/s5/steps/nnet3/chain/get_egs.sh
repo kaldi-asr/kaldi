@@ -283,7 +283,7 @@ chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$ali
 [ ! -z $left_tolerance ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance=$left_tolerance"
 
-normalization_scale=1.0
+normalization_fst_scale=1.0
 
 lats_rspecifier="ark:gunzip -c $latdir/lat.JOB.gz |"
 if [ ! -z $lattice_prune_beam ]; then
@@ -297,7 +297,7 @@ fi
 if [ ! -z "$lattice_lm_scale" ]; then
   chain_supervision_all_opts="$chain_supervision_all_opts --lm-scale=$lattice_lm_scale"
 
-  normalization_scale=$(perl -e "
+  normalization_fst_scale=$(perl -e "
   if ($lattice_lm_scale >= 1.0 || $lattice_lm_scale < 0) {
     print STDERR \"Invalid --lattice-lm-scale $lattice_lm_scale\";
     exit(1);
@@ -331,7 +331,7 @@ if [ $stage -le 2 ]; then
     chain-get-supervision $chain_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
       ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
-      $egs_opts --normalization-scale=$normalization_scale $chaindir/normalization.fst \
+      $egs_opts --normalization-fst-scale=$normalization_fst_scale $chaindir/normalization.fst \
       "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || exit 1 &
   $cmd $dir/log/create_train_subset.log \
     utils/filter_scp.pl $dir/train_subset_uttlist $dir/lat_special.scp \| \
@@ -339,7 +339,7 @@ if [ $stage -le 2 ]; then
     chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
-      $egs_opts --normalization-scale=$normalization_scale $chaindir/normalization.fst \
+      $egs_opts --normalization-fst-scale=$normalization_fst_scale $chaindir/normalization.fst \
       "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || exit 1 &
   wait
   sleep 5  # wait for file system to sync.
@@ -429,8 +429,10 @@ if [ $stage -le 5 ]; then
     else
       output_archive="ark:$dir/cegs.JOB.ark"
     fi
-    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-chain-normalize-egs --normalization-scale=$normalization_scale $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
+    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G \
+      JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
+      nnet3-chain-normalize-egs --normalization-fst-scale=$normalization_fst_scale \
+        $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
       nnet3-chain-shuffle-egs --srand=\$[JOB+$srand] ark:- $output_archive || exit 1;
 
     if $generate_egs_scp; then
@@ -459,8 +461,10 @@ if [ $stage -le 5 ]; then
         ln -sf cegs.$archive_index.ark $dir/cegs.$x.$y.ark || exit 1
       done
     done
-    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
-      nnet3-chain-normalize-egs --normalization-scale=$normalization_scale $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
+    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G \
+      JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
+      nnet3-chain-normalize-egs --normalization-fst-scale=$normalization_fst_scale \
+        $chaindir/normalization.fst "ark:cat $egs_list|" ark:- \| \
       nnet3-chain-shuffle-egs --srand=\$[JOB+$srand] ark:- ark:- \| \
       nnet3-chain-copy-egs ark:- $output_archives || exit 1;
 

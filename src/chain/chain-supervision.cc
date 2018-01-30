@@ -144,7 +144,7 @@ bool ProtoSupervision::operator == (const ProtoSupervision &other) const {
           fst::Equal(fst, other.fst));
 }
 
-bool PhoneLatticeToProtoSupervisionInternalSimple(
+bool PhoneLatticeToProtoSupervisionInternal(
     const SupervisionOptions &opts,
     const CompactLattice &lat,
     ProtoSupervision *proto_supervision) {
@@ -218,7 +218,7 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
                                     const CompactLattice &lat,
                                     ProtoSupervision *proto_supervision) {
 
-  if (!PhoneLatticeToProtoSupervisionInternalSimple(opts, lat, proto_supervision))
+  if (!PhoneLatticeToProtoSupervisionInternal(opts, lat, proto_supervision))
     return false;
   if (opts.lm_scale != 0.0)
     fst::Push(&(proto_supervision->fst),

@@ -32,7 +32,7 @@ extra_left_context_initial=-1
 extra_right_context_final=-1
 online_ivector_dir=
 minimize=false
-word_determinize=false
+word_determinize=true
 write_compact=true
 # End configuration section.
 

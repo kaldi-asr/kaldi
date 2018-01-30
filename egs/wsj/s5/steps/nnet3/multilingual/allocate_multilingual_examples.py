@@ -45,6 +45,8 @@
     for validation examples and "combine." for examples used for model
     combination.
 
+    For chain training egs, the --egs-prefix option should be "cegs."
+
     You can call this script as (e.g.):
 
     allocate_multilingual_examples.py [opts] example-scp-lists
@@ -57,9 +59,9 @@
     To avoid loading whole scp files from all languages in memory,
     input egs.scp files are processed line by line using readline() for input
     languages. To have more randomization across different archives,
-    "num-jobs * num-archives" temporary scp.<job>.<archive_index> files are created
-    in egs/temp dir and all "num_jobs" scp.*.<archive_index> combined into
-    egs.<archive_index>.scp.
+    "num-jobs * num-archives" temporary scp.<job>.<archive_index> files are
+    created in egs/temp dir and all "num_jobs" scp.*.<archive_index>
+    combined into egs.<archive_index>.scp.
 """
 
 from __future__ import print_function
@@ -97,14 +99,19 @@ def get_args():
 
     parser.add_argument("--samples-per-iter", type=int, default=None,
                         help="The target number of egs in each archive of egs, "
-                        "(prior to merging egs). [DEPRECATED]")
+                        "(prior to merging egs). If provided, will "
+                        "override --frames-per-iter and --frames-per-eg-list")
     parser.add_argument("--frames-per-iter", type=int, default=400000,
                         help="The target number of frames in each archive of "
                         "egs")
     parser.add_argument("--frames-per-eg-list", type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
                         help="Number of frames per eg for each input language "
-                        "as a comma separated list")
+                        "as a comma separated list. If not provided, "
+                        "this is assumed to be 1 in each language. "
+                        "Note: This affects the proportion of different "
+                        "languages in each archive and in combination with "
+                        "--frames-per-iter affects the num-frames in archive.")
     parser.add_argument("--num-jobs", type=int, default=20,
                         help="This can be used for better randomization in distributing "
                         "examples for different languages across egs.*.scp files, "
@@ -183,9 +190,16 @@ def process_multilingual_egs(args):
     scp_lists = args.egs_scp_lists
     num_langs = len(scp_lists)
 
+    # frames_per_eg is by default taken as 1 for every language.
+    # If --frames-per-eg-list is provided, then frames_per_eg is parsed
+    # from that list.
     frames_per_eg = ([1 for x in scp_lists]
                      if args.frames_per_eg_list is None
                      else [int(x) for x in args.frames_per_eg_list.split(',')])
+
+    if len(frames_per_eg) != num_langs:
+        raise Exception("--frames-per-eg-list must have the same number of "
+                        "values as the number of languages.")
 
     scp_files = [open(scp_lists[lang], 'r') for lang in range(num_langs)]
 
@@ -204,20 +218,21 @@ def process_multilingual_egs(args):
 
     if not os.path.exists("{0}/temp".format(args.egs_dir)):
         os.makedirs("{0}/temp".format(args.egs_dir))
-    num_lang_file = open("{0}/info/{1}num_tasks".format(args.egs_dir, args.egs_prefix), "w")
+    num_lang_file = open("{0}/info/{1}num_tasks".format(
+        args.egs_dir, args.egs_prefix), "w")
     print("{0}".format(num_langs), file=num_lang_file)
 
     # Each element of all_egs (one per num_archive * num_jobs) is
     # an array of 3-tuples (lang-id, local-start-egs-line, num-egs)
     all_egs = []
-    num_frames_in_lang = [frames_per_eg[i] * lang2len[i]
-                          for i in range(num_langs)]
+    frames_remaining_in_lang = [frames_per_eg[i] * lang2len[i]
+                                for i in range(num_langs)]
     for lang in range(num_langs):
         logger.info("Number of frames for language {0} "
-                    "is {1}.".format(lang, num_frames_in_lang[lang]))
+                    "is {1}.".format(lang, frames_remaining_in_lang[lang]))
 
     # total num of frames in all languages
-    tot_num_frames = sum(num_frames_in_lang[i] for i in range(num_langs))
+    tot_num_frames = sum(frames_remaining_in_lang[i] for i in range(num_langs))
     num_archives = max(1, min(args.max_archives,
                               tot_num_frames / args.frames_per_iter))
 
@@ -243,28 +258,28 @@ def process_multilingual_egs(args):
             num_egs = 0
             num_frames = 0
             while num_frames <= this_num_frames_per_archive:
-                num_frames_left = sum(num_frames_in_lang)
+                num_frames_left = sum(frames_remaining_in_lang)
                 if num_frames_left > 0:
-                    lang_id = select_random_lang(num_frames_in_lang,
+                    lang_id = select_random_lang(frames_remaining_in_lang,
                                                  num_frames_left, rand_select)
                     start_egs = (
                         lang2len[lang_id]
-                        - num_frames_in_lang[lang_id] / frames_per_eg[lang_id])
+                        - frames_remaining_in_lang[lang_id] / frames_per_eg[lang_id])
                     this_egs.append((lang_id, start_egs, args.minibatch_size))
                     for scpline in range(args.minibatch_size):
                         scp_key = scp_files[lang_id].readline().splitlines()[0]
                         print("{0} {1}".format(scp_key, lang_id),
                               file=archfile)
 
-                    num_frames_in_lang[lang_id] -= (
+                    frames_remaining_in_lang[lang_id] -= (
                         args.minibatch_size * frames_per_eg[lang_id])
                     num_egs += args.minibatch_size
                     num_frames += args.minibatch_size * frames_per_eg[lang_id]
                     # If num of remaining egs in each lang is less than minibatch_size,
                     # they are discarded.
-                    if (num_frames_in_lang[lang_id]
+                    if (frames_remaining_in_lang[lang_id]
                             < args.minibatch_size * frames_per_eg[lang_id]):
-                        num_frames_in_lang[lang_id] = 0
+                        frames_remaining_in_lang[lang_id] = 0
                         logger.info("Done processing data for language {0}"
                                     "".format(lang_id))
                 else:

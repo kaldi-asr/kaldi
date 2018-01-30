@@ -72,7 +72,9 @@ struct SupervisionOptions {
                    "left-tolerance and right-tolerance are applied (so they are "
                    "in terms of the original num-frames.");
     opts->Register("weight", &weight,
-                   "Use this to set the supervision weight for training");
+                   "Use this to set the supervision weight for training. "
+                   "This can be used to assign different weights to "
+                   "different data sources.");
     opts->Register("lm-scale", &lm_scale, "The scale with which the graph/lm "
                    "weights from the phone lattice are included in the "
                    "supervision fst.");

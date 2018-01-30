@@ -49,7 +49,12 @@ int main(int argc, char *argv[]) {
     opts.max_mem = 50000000;
     opts.max_loop = 0; // was 500000;
 
-    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
+    po.Register("write-compact", &write_compact, 
+                "If true, write in normal (compact) form. "
+                "--write-compact=false allows you to retain frame-level "
+                "acoustic score information, but this requires the input "
+                "to be in non-compact form e.g. undeterminized lattice "
+                "straight from decoding.");
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
@@ -73,7 +78,7 @@ int main(int argc, char *argv[]) {
 
     CompactLatticeWriter compact_lat_writer;
     LatticeWriter lat_writer;
-    
+
     if (write_compact)
       compact_lat_writer.Open(lats_wspecifier);
     else
@@ -140,12 +145,13 @@ int main(int argc, char *argv[]) {
       } else {
         Lattice out_lat;
         fst::ConvertLattice(det_clat, &out_lat);
-      
+
         // Replace each arc (t, tid) with the averaged acoustic score from
         // the computed map
         ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
         lat_writer.Write(key, out_lat);
       }
+
       n_done++;
     }
 

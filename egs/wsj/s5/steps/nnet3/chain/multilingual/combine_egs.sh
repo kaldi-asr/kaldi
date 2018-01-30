@@ -19,13 +19,14 @@ minibatch_size=512      # it is the number of consecutive egs that we take from
                         # access. This does not have to be the actual minibatch size;
 num_jobs=10             # helps for better randomness across languages
                         # per archive.
-samples_per_iter=400000 # this is the target number of egs in each archive of egs
+frames_per_iter=400000 # this is the target number of egs in each archive of egs
                         # (prior to merging egs).  We probably should have called
                         # it egs_per_iter. This is just a guideline; it will pick
                         # a number that divides the number of samples in the
                         # entire data.
 lang2weight=            # array of weights one per input languge to scale example's output
                         # w.r.t its input language during training.
+allocate_opts=
 stage=0
 
 echo "$0 $@"  # Print the command line for logging
@@ -53,7 +54,8 @@ if [ ${#args[@]} != $[$num_langs+1] ]; then
   exit 1;
 fi
 
-required="egs.scp combine.scp train_diagnostic.scp valid_diagnostic.scp"
+required="cegs.scp combine.scp train_diagnostic.scp valid_diagnostic.scp"
+frames_per_eg_list=
 train_scp_list=
 train_diagnostic_scp_list=
 valid_diagnostic_scp_list=
@@ -61,13 +63,15 @@ combine_scp_list=
 
 # read paramter from $egs_dir[0]/info and cmvn_opts
 # to write in multilingual egs_dir.
-check_params="info/feat_dim info/ivector_dim info/left_context info/right_context info/frames_per_eg cmvn_opts"
+check_params="info/feat_dim info/ivector_dim info/left_context info/right_context cmvn_opts"
 ivec_dim=`cat ${args[0]}/info/ivector_dim`
 if [ $ivec_dim -ne 0 ];then check_params="$check_params info/final.ie.id"; fi
 
 for param in $check_params; do
   cat ${args[0]}/$param > $megs_dir/$param || exit 1;
 done
+cat ${args[0]}/cmvn_opts > $megs_dir/cmvn_opts || exit 1; # caution: the top-level nnet training
+cp ${args[0]}/info/frames_per_eg $megs_dir/info/frames_per_eg || exit 1;
 
 for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
@@ -76,10 +80,21 @@ for lang in $(seq 0 $[$num_langs-1]);do
       echo "$0: no such file ${multi_egs_dir[$lang]}/$f." && exit 1;
     fi
   done
-  train_scp_list="$train_scp_list ${args[$lang]}/egs.scp"
+  train_scp_list="$train_scp_list ${args[$lang]}/cegs.scp"
   train_diagnostic_scp_list="$train_diagnostic_scp_list ${args[$lang]}/train_diagnostic.scp"
   valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.scp"
   combine_scp_list="$combine_scp_list ${args[$lang]}/combine.scp"
+  
+  this_frames_per_eg=$(cat ${args[$lang]}/info/frames_per_eg | \
+    awk -F, '{for (i=1; i<=NF; i++) sum += $i;} END{print int(sum / NF)}')  # use average frames-per-eg
+
+  # frames_per_eg_list stores the average frames-per-eg for each language.
+  # The average does not have to be exact.
+  if [ $lang -eq 0 ]; then
+    frames_per_eg_list="$this_frames_per_eg"
+  else
+    frames_per_eg_list="$frames_per_eg_list,$this_frames_per_eg"
+  fi
 
   # check parameter dimension to be the same in all egs dirs
   for f in $check_params; do
@@ -102,12 +117,12 @@ fi
 
 if [ $stage -le 0 ]; then
   echo "$0: allocating multilingual examples for training."
-  # Generate egs.*.scp for multilingual setup.
+  # Generate cegs.*.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
-      --minibatch-size $minibatch_size \
-      --samples-per-iter $samples_per_iter \
-      --egs-prefix "egs." \
+      ${allocate_opts} --minibatch-size $minibatch_size \
+      --frames-per-iter $frames_per_iter --frames-per-eg-list $frames_per_eg_list \
+      --egs-prefix "cegs." \
       $train_scp_list $megs_dir || exit 1;
 fi
 
@@ -117,7 +132,8 @@ if [ $stage -le 1 ]; then
   $cmd $megs_dir/log/allocate_multilingual_examples_combine.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --random-lang false --max-archives 1 --num-jobs 1 \
-      --minibatch-size $minibatch_size \
+      --frames-per-eg-list $frames_per_eg_list \
+      ${allocate_opts} --minibatch-size $minibatch_size \
       --egs-prefix "combine." \
       $combine_scp_list $megs_dir || exit 1;
 
@@ -126,7 +142,8 @@ if [ $stage -le 1 ]; then
   $cmd $megs_dir/log/allocate_multilingual_examples_train_diagnostic.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --random-lang false --max-archives 1 --num-jobs 1 \
-      --minibatch-size $minibatch_size \
+      --frames-per-eg-list $frames_per_eg_list \
+      ${allocate_opts} --minibatch-size $minibatch_size \
       --egs-prefix "train_diagnostic." \
       $train_diagnostic_scp_list $megs_dir || exit 1;
 
@@ -136,7 +153,8 @@ if [ $stage -le 1 ]; then
   $cmd $megs_dir/log/allocate_multilingual_examples_valid_diagnostic.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --random-lang false --max-archives 1 --num-jobs 1\
-      --minibatch-size $minibatch_size \
+      --frames-per-eg-list $frames_per_eg_list \
+      ${allocate_opts} --minibatch-size $minibatch_size \
       --egs-prefix "valid_diagnostic." \
       $valid_diagnostic_scp_list $megs_dir || exit 1;
 
@@ -146,6 +164,6 @@ for egs_type in combine train_diagnostic valid_diagnostic; do
   mv $megs_dir/${egs_type}.weight.1.ark $megs_dir/${egs_type}.weight.ark || exit 1;
   mv $megs_dir/${egs_type}.1.scp $megs_dir/${egs_type}.scp || exit 1;
 done
-mv $megs_dir/info/egs.num_archives $megs_dir/info/num_archives || exit 1;
-mv $megs_dir/info/egs.num_tasks $megs_dir/info/num_tasks || exit 1;
+mv $megs_dir/info/cegs.num_archives $megs_dir/info/num_archives || exit 1;
+mv $megs_dir/info/cegs.num_tasks $megs_dir/info/num_tasks || exit 1;
 echo "$0: Finished preparing multilingual training example."

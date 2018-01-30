@@ -5,22 +5,31 @@
 
 cmd=run.pl
 
-. path.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 
-. utils/parse_options.sh
+. ./utils/parse_options.sh
 
 if [ $# -ne 4 ]; then
   cat <<EOF
   This script creates an alignment directory containing a subset of 
-  utterances from the original alignment directory.
+  utterances contained in <subset-data-dir> from the 
+  original alignment directory containing alignments for utterances in
+  <full-data-dir>.
 
-  Usage: <subset-data-dir> <data-dir> <ali-dir> <subset-ali-dir>
-   e.g.: data/train data/train_sp exp/tri3_ali_sp exp/tri3_ali
+  The number of split jobs in the output alignment directory is 
+  equal to the number of jobs in the original alignment directory, 
+  unless the subset data directory has too few speakers.
+
+  Usage: $0 [options] <full-data-dir> <subset-data-dir> <ali-dir> <subset-ali-dir>
+   e.g.: $0 data/train_sp data/train exp/tri3_ali_sp exp/tri3_ali
+
+  Options: 
+   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
 EOF
 fi
 
-subset_data=$1
-data=$2
+data=$1
+subset_data=$2
 ali_dir=$3
 dir=$4
 

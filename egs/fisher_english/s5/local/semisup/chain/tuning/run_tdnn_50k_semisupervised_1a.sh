@@ -79,8 +79,6 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 egs_affix=${egs_affix}_prun${lattice_prune_beam}_lmwt${lattice_lm_scale}_tol${tolerance}
 
-RANDOM=0
-
 if ! cuda-compiled; then
   cat <<EOF && exit 1
 This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA

@@ -99,7 +99,6 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                  << (chunk.first_frame + chunk.num_frames)
                  << ", FST was empty after composing with normalization FST. "
                  << "This should be extremely rare (a few per corpus, at most)";
-      return false;
     }
 
     int32 first_frame = 0;  // we shift the time-indexes of all these parts so
@@ -211,7 +210,7 @@ int main(int argc, char *argv[]) {
     ExampleGenerationConfig eg_config;  // controls num-frames,
                                         // left/right-context, etc.
 
-    BaseFloat scale = 1.0;
+    BaseFloat normalization_fst_scale = 1.0;
     int32 srand_seed = 0;
     std::string online_ivector_rspecifier, deriv_weights_rspecifier;
 
@@ -231,15 +230,19 @@ int main(int argc, char *argv[]) {
     po.Register("srand", &srand_seed, "Seed for random number generator ");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
-    po.Register("supervision-length-tolerance", &supervision_length_tolerance, "Tolerance for "
-                "difference in num-frames-subsampled between supervision and deriv weights");
+    po.Register("supervision-length-tolerance", &supervision_length_tolerance, 
+                "Tolerance for difference in num-frames-subsampled between "
+                "supervision and deriv weights, and also between supervision "
+                "and input frames.");
     po.Register("deriv-weights-rspecifier", &deriv_weights_rspecifier,
-                "Per-frame weights (only binary - 0 or 1) that specifies "
-                "whether a frame's gradient must be backpropagated or not. "
+                "Per-frame weights that scales a frame's gradient during "
+                "backpropagation."
                 "Not specifying this is equivalent to specifying a vector of "
                 "all 1s.");
-    po.Register("normalization-scale", &scale, "Scale the weights from the "
-                "'normalization' FST before applying them to the examples.");
+    po.Register("normalization-fst-scale", &normalization_fst_scale, 
+                "Scale the weights from the "
+                "'normalization' FST before applying them to the examples. "
+                "(Useful for semi-supervised training)");
 
     eg_config.Register(&po);
 
@@ -277,13 +280,11 @@ int main(int argc, char *argv[]) {
       ReadFstKaldi(normalization_fst_rxfilename, &normalization_fst);
       KALDI_ASSERT(normalization_fst.NumStates() > 0);
       
-      if (scale <= 0.0) {
+      if (normalization_fst_scale <= 0.0)
         KALDI_ERR << "Invalid scale on normalization FST; must be > 0.0";
-      }
 
-      if (scale != 1.0) {
-        ScaleFst(scale, &normalization_fst);
-      }
+      if (normalization_fst_scale != 1.0)
+        ScaleFst(normalization_fst_scale, &normalization_fst);
     }
 
     // Read as GeneralMatrix so we don't need to un-compress and re-compress

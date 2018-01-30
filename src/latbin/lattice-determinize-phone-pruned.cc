@@ -50,7 +50,12 @@ int main(int argc, char *argv[]) {
     fst::DeterminizeLatticePhonePrunedOptions opts;
     opts.max_mem = 50000000;
 
-    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
+    po.Register("write-compact", &write_compact, 
+                "If true, write in normal (compact) form. "
+                "--write-compact=false allows you to retain frame-level "
+                "acoustic score information, but this requires the input "
+                "to be in non-compact form e.g. undeterminized lattice "
+                "straight from decoding.");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic"
                 " likelihoods.");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
@@ -123,7 +128,7 @@ int main(int argc, char *argv[]) {
       if (write_compact) {
         fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &det_clat);
         compact_lat_writer.Write(key, det_clat);
-      } else{
+      } else {
         Lattice out_lat;
         fst::ConvertLattice(det_clat, &out_lat);
 
