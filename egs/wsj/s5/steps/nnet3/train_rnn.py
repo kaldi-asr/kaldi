@@ -219,7 +219,7 @@ def train(args, run_opts):
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
     # Copy phones.txt from ali-dir to dir. Later, steps/nnet3/decode.sh will
-    # need it to check compatibility between training and decoding phone-sets.
+    # use it to check compatibility between training and decoding phone-sets.
     shutil.copy('{0}/phones.txt'.format(args.ali_dir), args.dir)
 
     # Set some variables.

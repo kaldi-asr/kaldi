@@ -149,7 +149,7 @@ for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/
 done
 
 # Copy phones.txt from ali-dir to dir. Later, steps/nnet3/decode.sh will
-# need it to check compatibility between training and decoding phone-sets.
+# use it to check compatibility between training and decoding phone-sets.
 cp $alidir/phones.txt $dir
 
 # Set some variables.

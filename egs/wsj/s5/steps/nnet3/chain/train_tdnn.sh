@@ -159,7 +159,7 @@ for f in $data/feats.scp $treedir/ali.1.gz $treedir/final.mdl $treedir/tree \
 done
 
 # Copy phones.txt from tree-dir to dir. Later, steps/nnet3/decode.sh will
-# need it to check compatibility between training and decoding phone-sets.
+# use it to check compatibility between training and decoding phone-sets.
 cp $treedir/phones.txt $dir
 
 # Set some variables.
