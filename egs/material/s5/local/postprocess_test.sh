@@ -4,10 +4,10 @@ set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error 
 echo "$0 $@"
 
-test_sets=$2 # TODO: fix this
-tree_dir=$4
-dir=$6
-language=$8
+test_sets=$1
+tree_dir=$2
+dir=$3
+language=$4
 
 ./cmd.sh                                                                        
 ./path.sh                                                                       
@@ -32,6 +32,9 @@ for data in $test_sets; do
     - | utils/convert_ctm.pl data/$language/${data}_hires/segments \
     data/$language/${data}_hires/reco2file_and_channel > \
    $dir/decode_$data/score_10/ctm_out
+
+  # compute WER              
+  local/score_segments.sh data/$language/${data}_hires/ $dir/decode_$data
 done
 
-# TODO: add compute wer scripts
+exit 0;

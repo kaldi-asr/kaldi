@@ -50,7 +50,7 @@ EOF
 fi
 
 # audio segmentation
-local/preprocess_test.sh --datadev $datadev
+local/preprocess_test.sh $datadev $language
 
 nj=30
 gmm=tri3
@@ -113,12 +113,12 @@ for data in $test_sets; do
         --online-ivector-dir exp/$language/nnet3${nnet3_affix}/ivectors_${data}_hires \
         $tree_dir/graph data/$language/${data}_hires ${dir}/decode_${data} || exit 1
   ) || touch $dir/.error &
+  
+  # resolve ctm overlaping regions, and compute wer
+  cp $datadev/reftext data/$language/${data}_hires
+  local/postprocess_test.sh $test_sets $tree_dir $dir $language
 done
 wait
 [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
-
-# resolve ctm overlaping regions, and compute wer
-local/postprocess_test.sh --test_sets $test_sets --tree_dir $tree_dir \
-  --dir $dir --language $language
 
 exit 0;
