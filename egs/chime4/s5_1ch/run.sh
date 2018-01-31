@@ -64,7 +64,6 @@ fi
 enhancement_method=isolated_1ch_track
 enhancement_data=$chime4_data/data/audio/16kHz/$enhancement_method
 if [ $stage -le 1 ]; then
-  enhancement_method=single_BLSTMmask
   enhancement_data=`pwd`/enhan/$enhancement
   local/run_blstm_gev.sh --cmd "$train_cmd" --nj 20 --track 1 $chime4_data $chime3_data $enhancement_data 0 
 fi
@@ -81,6 +80,10 @@ if [ $stage -le 2 ]; then
   fi
   local/compute_PESQ.sh $enhancement $enhancement_data $chime4_rir_data $PWD
   local/compute_stoi_estoi_sdr.sh $enhancement $enhancement_data $chime4_rir_data
+  local/compute_PESQ.sh NOISY_1ch $chime4_data/data/audio/16kHz/isolated_1ch_track/ $chime4_rir_data $PWD
+  local/compute_stoi_estoi_sdr.sh NOISY_1ch $chime4_data/data/audio/16kHz/isolated_1ch_track/ $chime4_rir_data
+  local/write_se_results.sh $enhancement
+  local/write_se_results.sh NOISY_1ch
 fi
 
 # GMM based ASR experiment

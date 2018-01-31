@@ -94,7 +94,7 @@ if [ $stage -le 2 ]; then
   local/compute_stoi_estoi_sdr.sh $enhancement $enhancement_data $chime4_rir_data
   local/compute_PESQ.sh NOISY_1ch $chime4_data/data/audio/16kHz/isolated_1ch_track/ $chime4_rir_data $PWD
   local/compute_stoi_estoi_sdr.sh NOISY_1ch $chime4_data/data/audio/16kHz/isolated_1ch_track/ $chime4_rir_data
-  local/write_se_results.sh blstm_gev
+  local/write_se_results.sh $enhancement
   local/write_se_results.sh NOISY_1ch
 fi
 
