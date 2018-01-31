@@ -24,8 +24,9 @@ if [ $# -ne 4 ]; then
    e.g.: $0 data/train_sp data/train exp/tri3_ali_sp exp/tri3_ali
 
   Options: 
-   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+      --cmd (utils/run.pl|utils/queue.pl <queue opts>)  # how to run jobs.
 EOF
+  exit 1
 fi
 
 data=$1

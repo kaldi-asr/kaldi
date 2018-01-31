@@ -36,7 +36,43 @@ namespace nnet3 {
    supervision objects to 'example_writer'.  Note: if normalization_fst is the
    empty FST (with no states), it skips the final stage of egs preparation and
    you should do it later with nnet3-chain-normalize-egs.
-*/
+
+     @param [in]  normalization_fst   A version of denominator FST used to add weights
+                                      to the created supervision. It is 
+                                      actually an FST expected to have the
+                                      labels as (pdf-id+1)
+     @param [in]  feats               Input feature matrix 
+     @param [in]  ivector_feats       Online iVector matrix sub-sampled at a 
+                                      rate of "ivector_period".
+                                      If NULL, iVector will not be added 
+                                      as in input to the egs.
+     @param [in]  ivector_period      Number of frames between iVectors in
+                                      "ivector_feats" matrix.
+     @param [in]  supervision         Supervision for 'chain' training created 
+                                      from the binary chain-get-supervision.
+                                      This is expected to be at a 
+                                      sub-sampled rate if 
+                                      --frame-subsampling-factor > 1.
+     @param [in]  deriv_weights       Vector of per-frame weights that scale
+                                      a frame's gradient during backpropagation.
+                                      If NULL, this is equivalent to specifying
+                                      a vector of all 1s. 
+                                      The dimension of the vector is expected 
+                                      to be the supervision size, which is 
+                                      at a sub-sampled rate if 
+                                      --frame-subsampling-factor > 1.
+     @param [in]  supervision_length_tolerance
+                                      Tolerance for difference in num-frames-subsampled between 
+                                      supervision and deriv weights, and also between supervision 
+                                      and input frames.
+     @param [in]  utt_id              Utterance-id
+     @param [in]  compress            If true, compresses the feature matrices.
+     @param [out]  utt_splitter       Pointer to UtteranceSplitter object,
+                                      which helps to split an utterance into 
+                                      chunks. This also stores some stats.
+     @param [out]  example_writer     Pointer to egs writer.
+
+**/
 
 static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                         const GeneralMatrix &feats,

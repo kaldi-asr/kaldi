@@ -1,5 +1,9 @@
 #!/bin/bash
-#
+
+# Copyright 2017     Pegah Ghahremani
+#           2017-18  Vimal Manohar
+# Apache 2.0
+
 # This script generates examples for multilingual training of neural network
 # using separate input egs dir per language as input.
 # This scripts produces 3 sets of files --
@@ -34,8 +38,35 @@ if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# -lt 3 ]; then
-  echo "Usage:$0 [opts] <num-input-langs,N> <lang1-egs-dir> ...<langN-egs-dir> <multilingual-egs-dir>"
-  echo "Usage:$0 [opts] 2 exp/lang1/egs exp/lang2/egs exp/multi/egs"
+  cat <<EOF
+  This script generates examples for multilingual training of neural network
+  using separate input egs dir per language as input.
+  See top of the script for details.
+
+  Usage: $0 [opts] <num-input-langs,N> <lang1-egs-dir> ...<langN-egs-dir> <multilingual-egs-dir>
+   e.g.: $0 [opts] 2 exp/lang1/egs exp/lang2/egs exp/multi/egs
+
+  Options:
+      --cmd (utils/run.pl|utils/queue.pl <queue opts>)  # how to run jobs.
+      --minibatch-size <int|512>  # it is the number of consecutive egs that we take from 
+                                  # each source, and it only affects the locality of disk 
+                                  # access. This does not have to be the actual minibatch size
+      --num-jobs <int|10>         # number of sub-splits of archive to create.
+                                  # Larger the number of jobs, the more sub-splits 
+                                  # are created, each with input egs from 
+                                  # different languages.
+                                  # This helps for better randomness across
+                                  # languages per archive. 
+      --samples-per-iter <int|400000> 
+                                  # this is the target number of egs in each archive of egs
+                                  # (prior to merging egs).  We probably should have called
+                                  # it egs_per_iter. This is just a guideline; it will pick
+                                  # a number that divides the number of samples in the
+                                  # entire data.
+      --lang2weight <list>        # comma-separated list of weights --
+                                  # one per input languge to scale example's
+                                  # output, and hence gradients during training.
+EOF
   exit 1;
 fi
 

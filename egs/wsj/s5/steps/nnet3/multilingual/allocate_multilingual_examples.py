@@ -113,17 +113,27 @@ def get_args():
                         "languages in each archive and in combination with "
                         "--frames-per-iter affects the num-frames in archive.")
     parser.add_argument("--num-jobs", type=int, default=20,
-                        help="This can be used for better randomization in distributing "
-                        "examples for different languages across egs.*.scp files, "
-                        "where egs.<job>.*.scp are generated "
-                        "randomly and combined across all jobs in egs.*.scp files.")
+                        help="""Number of sub-splits of archive to create.
+                        This can be used for better randomization in distributing
+                        examples for different languages across egs.*.scp files,
+                        where egs.<job>.*.scp are generated
+                        randomly and combined across all jobs in egs.*.scp files.
+                        Larger the number of jobs, the more sub-splits
+                        are created, each with input egs from different languages.
+                        This helps for better randomness across languages per
+                        archive.""")
     parser.add_argument("--random-lang", type=str, action=common_lib.StrToBoolAction,
                         help="If true, egs.ranges.*.txt are generated "
                         "randomly w.r.t distribution of remaining examples in "
                         "each language, otherwise it is generated sequentially.",
                         default=True, choices=["false", "true"])
     parser.add_argument("--max-archives", type=int, default=1000,
-                        help="max number of archives used to generate egs.*.scp")
+                        help="""max number of archives used to generate egs.*.scp.
+                        Each archive contains egs for one job of one iteration
+                        of training. Limiting the number of archives
+                        results in more frames in each iterator of training.
+                        Set this to 1 to create a single archive for train and
+                        validation diagnostic sets.""")
     parser.add_argument("--seed", type=int, default=1,
                         help="Seed for random number generator")
     parser.add_argument("--minibatch-size", type=int, default=512,

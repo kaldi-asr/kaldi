@@ -72,6 +72,60 @@ int32 GetCount(double expected_count) {
   return ans;
 }
 
+/**
+   This function filters the indexes (and associated feature rows) in a
+   NnetExample, removing any index/row in an NnetIo named "input" with t <
+   min_input_t or t > max_input_t and any index/row in an NnetIo named "output" with t <
+   min_output_t or t > max_output_t.
+   Will crash if filtering removes all Indexes of "input" or "output".
+ */
+void FilterExample(int32 min_input_t,
+                   int32 max_input_t,
+                   int32 min_output_t,
+                   int32 max_output_t,
+                   NnetChainExample *eg) {
+  // process the <NnetIo> inputs
+  for (size_t i = 0; i < eg->inputs.size(); i++) {
+    bool is_input;
+    int32 min_t, max_t;
+    NnetIo &io = eg->inputs[i];
+    if (io.name == "input") {
+      min_t = min_input_t;
+      max_t = max_input_t;
+      
+      const std::vector<Index> &indexes_in = io.indexes;
+      std::vector<Index> indexes_out;
+      indexes_out.reserve(indexes_in.size());
+      int32 num_indexes = indexes_in.size(), num_kept = 0;
+      KALDI_ASSERT(io.features.NumRows() == num_indexes);
+      std::vector<bool> keep(num_indexes, false);
+      std::vector<Index>::const_iterator iter_in = indexes_in.begin(),
+                                          end_in = indexes_in.end();
+      std::vector<bool>::iterator iter_out = keep.begin();
+      for (; iter_in != end_in; ++iter_in, ++iter_out) {
+        int32 t = iter_in->t;
+        bool is_within_range = (t >= min_t && t <= max_t);
+        *iter_out = is_within_range;
+        if (is_within_range) {
+          indexes_out.push_back(*iter_in);
+          num_kept++;
+        }
+      }
+      KALDI_ASSERT(iter_out == keep.end());
+      if (num_kept == 0)
+        KALDI_ERR << "FilterExample removed all indexes for '" << name << "'";
+      io.indexes = indexes_out;
+
+      GeneralMatrix features_out;
+      FilterGeneralMatrixRows(io.features, keep, &features_out);
+      io.features = features_out;
+      KALDI_ASSERT(io.features.NumRows() == num_kept &&
+                   indexes_out.size() == static_cast<size_t>(num_kept));
+    }
+  }
+}
+
+
 /** Returns true if the "eg" contains just a single example, meaning
     that all the "n" values in the indexes are zero, and the example
     has NnetIo members named both "input" and "output"
@@ -160,60 +214,6 @@ bool ContainsSingleExample(const NnetChainExample &eg,
   }
   return true;
 }
-
-/**
-   This function filters the indexes (and associated feature rows) in a
-   NnetExample, removing any index/row in an NnetIo named "input" with t <
-   min_input_t or t > max_input_t and any index/row in an NnetIo named "output" with t <
-   min_output_t or t > max_output_t.
-   Will crash if filtering removes all Indexes of "input" or "output".
- */
-void FilterExample(int32 min_input_t,
-                   int32 max_input_t,
-                   int32 min_output_t,
-                   int32 max_output_t,
-                   NnetChainExample *eg) {
-  // process the <NnetIo> inputs
-  for (size_t i = 0; i < eg->inputs.size(); i++) {
-    bool is_input;
-    int32 min_t, max_t;
-    NnetIo &io = eg->inputs[i];
-    if (io.name == "input") {
-      min_t = min_input_t;
-      max_t = max_input_t;
-      
-      const std::vector<Index> &indexes_in = io.indexes;
-      std::vector<Index> indexes_out;
-      indexes_out.reserve(indexes_in.size());
-      int32 num_indexes = indexes_in.size(), num_kept = 0;
-      KALDI_ASSERT(io.features.NumRows() == num_indexes);
-      std::vector<bool> keep(num_indexes, false);
-      std::vector<Index>::const_iterator iter_in = indexes_in.begin(),
-                                          end_in = indexes_in.end();
-      std::vector<bool>::iterator iter_out = keep.begin();
-      for (; iter_in != end_in; ++iter_in, ++iter_out) {
-        int32 t = iter_in->t;
-        bool is_within_range = (t >= min_t && t <= max_t);
-        *iter_out = is_within_range;
-        if (is_within_range) {
-          indexes_out.push_back(*iter_in);
-          num_kept++;
-        }
-      }
-      KALDI_ASSERT(iter_out == keep.end());
-      if (num_kept == 0)
-        KALDI_ERR << "FilterExample removed all indexes for '" << name << "'";
-      io.indexes = indexes_out;
-
-      GeneralMatrix features_out;
-      FilterGeneralMatrixRows(io.features, keep, &features_out);
-      io.features = features_out;
-      KALDI_ASSERT(io.features.NumRows() == num_kept &&
-                   indexes_out.size() == static_cast<size_t>(num_kept));
-    }
-  }
-}
-
 
 // calculate the frame_subsampling_factor
 void CalculateFrameSubsamplingFactor(const NnetChainExample &eg,
@@ -349,8 +349,6 @@ int main(int argc, char *argv[]) {
     exclude_names.push_back(std::string("ivector"));
 
     int64 num_read = 0, num_written = 0, num_err = 0;
-    bool modify_eg_output = !eg_output_name_rspecifier.empty() ||
-                            !eg_weight_rspecifier.empty();
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       const std::string &key = example_reader.Key();
       NnetChainExample &eg = example_reader.Value();
