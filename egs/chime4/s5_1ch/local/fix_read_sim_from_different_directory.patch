@@ -172,7 +172,7 @@ index 3c7de5a..aaae10d 100755
 +     $HOME/miniconda3/bin/python local/nn-gev/beamform.py $flist "$@"
 +done
 diff --git a/chime_data.py b/chime_data.py
-index 0072e1b..f8dbf7d 100644
+index 0072e1b..641d9d3 100644
 --- a/chime_data.py
 +++ b/chime_data.py
 @@ -11,7 +11,7 @@ from fgnt.signal_processing import stft
@@ -204,7 +204,7 @@ index 0072e1b..f8dbf7d 100644
 +        annotations = json.load(fid)
 +    flist = [os.path.join(
 +            chime_data_dir, 'audio', '16kHz', 'isolated_2ch_track',
-+            '{}05_{}_{}'.format(stage, a['environment'].lower(), 'simu'),
++            '{}05_{}_{}'.format(stage, a['environment'].lower(), scenario),
 +            '{}_{}_{}'.format(a['speaker'], a['wsj_name'], a['environment']))
 +             for a in annotations]
 +    return flist
