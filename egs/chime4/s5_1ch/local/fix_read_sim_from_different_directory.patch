@@ -1,5 +1,5 @@
 diff --git a/beamform.py b/beamform.py
-index 02eeed8..757fa44 100644
+index 02eeed8..ca80994 100644
 --- a/beamform.py
 +++ b/beamform.py
 @@ -6,9 +6,10 @@ from chainer import Variable
@@ -124,7 +124,7 @@ index 02eeed8..757fa44 100644
 +        env = cur_line.split('/')[-1].split('_')[2].split('.')[0]
 +        filename = os.path.join(args.output_dir, '{}05_{}_{}'.format(stage, env.lower(), scenario), os.path.basename(cur_line))
 +    else:
-+        if scenario == 'simu':
++        if scenario == 'simu' or args.track == 2:
 +            wsj_name = cur_line.split('/')[-1].split('_')[1]
 +            spk = cur_line.split('/')[-1].split('_')[0]
 +            env = cur_line.split('/')[-1].split('_')[-1]
