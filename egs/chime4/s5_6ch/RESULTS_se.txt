@@ -1,0 +1,9 @@
+PESQ (blstm_gev) 	 dt05_simu=2.10979 	 et05_simu=2.11808
+STOI (blstm_gev) 	 dt05_simu=0.880542 	 et05_simu=0.880542
+eSTOI (blstm_gev) 	 dt05_simu=0.748191 	 et05_simu=0.748191
+SDR (blstm_gev) 	 dt05_simu=3.536451 	 et05_simu=3.536451
+
+PESQ (NOISY_1ch) 	 dt05_simu=2.01162 	 et05_simu=1.9782
+STOI (NOISY_1ch) 	 dt05_simu=0.827181 	 et05_simu=0.827181
+eSTOI (NOISY_1ch) 	 dt05_simu=0.615554 	 et05_simu=0.615554
+SDR (NOISY_1ch) 	 dt05_simu=3.915106 	 et05_simu=3.915106
