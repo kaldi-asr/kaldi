@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2017 Nagendra Kumar Goel
+# Apache 2.0
+
 # This is a script to train a TDNN-LSTM for speech activity detection (SAD) 
 # using LSTM for long-context information.
 
@@ -47,8 +50,7 @@ affix=1a
 data_dir=exp/segmentation_1a/train_whole_hires_bp
 targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
 
-. ./cmd.sh
-. ./path.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 if [ -z "$dir" ]; then
