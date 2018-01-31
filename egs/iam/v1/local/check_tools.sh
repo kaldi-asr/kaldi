@@ -1,0 +1,45 @@
+#!/bin/bash -u
+
+# Copyright 2015 (c) Johns Hopkins University (Jan Trmal <jtrmal@gmail.com>)
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+# MERCHANTABLITY OR NON-INFRINGEMENT.
+# See the Apache 2 License for the specific language governing permissions and
+# limitations under the License.
+
+[ -f ./path.sh ] && . ./path.sh
+set +e
+
+command -v python3 2>/dev/null \
+  || { echo  >&2 "python3 not found on PATH. You will have to install Python3, preferably >= 3.6"; exit 1; }
+
+python3 -c "import numpy"
+if [ $? -ne 0 ] ; then
+  echo >&2 "This recipe needs numpy installed."
+  exit 1
+fi
+
+python3 -c "import scipy"
+if [ $? -ne 0 ] ; then
+  echo >&2 "This recipe needs scipy installed."
+  exit 1
+fi
+
+python3 -c "import scipy.misc; scipy.misc.__dict__['imread']"
+if [ $? -ne 0 ] ; then
+  echo >&2 "This recipe needs scipy-image and  Pillow installed."
+  exit 1
+fi
+
+
+exit  0
+
+

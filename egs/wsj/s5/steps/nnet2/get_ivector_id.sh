@@ -16,8 +16,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 1 ]; then
-  echo >$2 "Usage: $0 <directory>"
-  echo >$2 " e.g.: $0 exp/nnet3/extractor"
+  echo >&2 "Usage: $0 <directory>"
+  echo >&2 " e.g.: $0 exp/nnet3/extractor"
   exit 1
 fi
 

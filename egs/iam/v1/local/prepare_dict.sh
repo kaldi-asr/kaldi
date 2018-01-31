@@ -37,7 +37,7 @@ while(<>){ @A = split;
 }' | sort > $dir/lexicon.txt
 
 
-sed -i "s/#/<HASH>/" $dir/nonsilence_phones.txt
+sed -i '' "s/#/<HASH>/" $dir/nonsilence_phones.txt
 
 echo '<sil> SIL' >> $dir/lexicon.txt
 echo '<unk> SIL' >> $dir/lexicon.txt

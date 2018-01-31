@@ -12,7 +12,6 @@
 # Dev objf:   -10.32 -4.96 -4.53 -4.37 -4.30 -4.23 -4.20 -4.16 -4.14 -4.12 -4.15 -4.10 -4.09 -4.09 -4.10 -4.09 -4.10 -4.10 -4.11 -4.12 -4.12 -4.12 -4.13 -4.14 -4.14 -4.17 -4.17 -4.17 -4.18 -4.19
 
 # Begin configuration section.
-cmd=run.pl
 dir=exp/rnnlm_tdnn_lstm_swbd
 embedding_dim=1024
 lstm_rpd=256
@@ -26,6 +25,7 @@ train_stage=0
 
 . ./cmd.sh
 . ./utils/parse_options.sh
+[ -z "$cmd" ] && cmd=$train_cmd
 
 text=data/train_nodev/text
 wordlist=data/lang/words.txt
@@ -98,7 +98,7 @@ fi
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --embedding_l2 $embedding_l2 \
                        --stage $train_stage \
-                       --num-epochs $epochs --cmd "queue.pl" $dir
+                       --num-epochs $epochs --cmd "$cmd" $dir
 fi
 
 exit 0

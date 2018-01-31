@@ -3,6 +3,7 @@
 # Copyright  2017  Jian Wang
 # License: Apache 2.0.
 
+import io
 import os
 import argparse
 import sys
@@ -24,7 +25,8 @@ upper_special_symbols = [key.upper() for key in special_symbols]
 
 lower_ids = {}
 upper_ids = {}
-for line in sys.stdin:
+input_stream = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+for line in input_stream:
     fields = line.split()
     sym = fields[0]
     if sym in special_symbols:

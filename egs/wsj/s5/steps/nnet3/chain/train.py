@@ -223,7 +223,6 @@ def process_args(args):
         raise Exception("Either --trainer.input-model option should be supplied, "
                         "and exist; or the {0}/configs directory should exist.")
 
-
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir
     # set the options corresponding to args.use_gpu
@@ -271,6 +270,10 @@ def train(args, run_opts):
     # Check files
     chain_lib.check_for_required_files(args.feat_dir, args.tree_dir,
                                        args.lat_dir)
+
+    # Copy phones.txt from tree-dir to dir. Later, steps/nnet3/decode.sh will
+    # use it to check compatibility between training and decoding phone-sets.
+    shutil.copy('{0}/phones.txt'.format(args.tree_dir), args.dir)
 
     # Set some variables.
     num_jobs = common_lib.get_number_of_jobs(args.tree_dir)
