@@ -87,8 +87,8 @@ def run(args):
         else:
             end = end_time
         new_utt = "{utt_id}-{s:08d}-{e:08d}".format(
-            utt_id=utt_id, s=int(100 * (start - start_time)),
-            e=int(100 * (end - start_time)))
+            utt_id=utt_id, s=int(round(100 * (start - start_time))),
+            e=int(round(100 * (end - start_time))))
         print ("{new_utt} {utt_id} {s} {e}".format(
             new_utt=new_utt, utt_id=utt_id, s=start - start_time,
             e=end - start_time))
