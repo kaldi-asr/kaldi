@@ -31,7 +31,12 @@
 
 #if HAVE_CUDA == 1
 #include <cublas_v2.h>
+#if CUDART_VERSION < 9000 // for compatibility cuda < 9.0
+#include <cusparse_v2.h>
+#endif
+#if CUDART_VERSION >= 9000
 #include <cusparse.h>
+#endif
 #include <cuda_runtime_api.h>
 
 #define CU_SAFE_CALL(fun) \
