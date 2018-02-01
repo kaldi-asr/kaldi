@@ -87,6 +87,7 @@ if [ $stage -le 0 ]; then
   # it as one of the data sources.
   for x in dev96pe dev96ue eval96 eval97 eval98 eval99_1 eval99_2; do
     cat data/$x/stm | awk '!/^;;/ {if (NF > 6) print $0}' | cut -d ' ' -f 1,7- | \
+      awk '!/IGNORE_TIME_SEGMENT_IN_SCORING/ {print $0}' | \
       local/normalize_transcripts.pl "<NOISE>" "<SPOKEN_NOISE>" | \
       cut -d ' ' -f 2- > ${dir}/data/${x}.txt
   done

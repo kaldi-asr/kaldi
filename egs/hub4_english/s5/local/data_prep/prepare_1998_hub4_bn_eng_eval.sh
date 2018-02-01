@@ -28,6 +28,7 @@ fi
 for uem in $SOURCE_DIR/h4e_evl/h4e_98_{1,2}.uem; do
   python -c '
 import sys, os
+sys.path.insert(0, "local/data_prep")
 import hub4_utils
 uem = sys.argv[1]
 reco, ext = os.path.splitext(os.path.basename(uem))
