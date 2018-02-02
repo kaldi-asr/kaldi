@@ -31,7 +31,7 @@ void NnetChainSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
   supervision.Write(os, binary);
-  WriteToken(os, binary, "<DW2>");  // for DerivWeights.  Want to save space.
+  WriteToken(os, binary, "<DW2>");
   deriv_weights.Write(os, binary);
   WriteToken(os, binary, "</NnetChainSup>");
 }
