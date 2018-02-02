@@ -17,6 +17,7 @@ nj=30
 stage=0 # resume training with --stage=N
 train=noisy # noisy data multi-condition training
 eval_flag=true # make it true when the evaluation data are released
+add_enhaced_data=true # make it true when you want to add enhanced data into training set
 
 . utils/parse_options.sh || exit 1;
 
@@ -94,10 +95,18 @@ fi
 # want to store MFCC features.
 mfccdir=mfcc
 if [ $stage -le 3 ]; then
-  if $eval_flag; then
-    tasks="tr05_real_${train} dt05_real_${train} tr05_simu_${train} dt05_simu_${train} et05_real_${train} et05_simu_${train} tr05_real_$enhan tr05_simu_$enhan"
+  if $add_enhaced_data; then
+    if $eval_flag; then
+      tasks="tr05_real_${train} dt05_real_${train} tr05_simu_${train} dt05_simu_${train} et05_real_${train} et05_simu_${train} tr05_real_$enhan tr05_simu_$enhan"
+    else
+      tasks="tr05_real_${train} dt05_real_${train} tr05_simu_${train} dt05_simu_${train} tr05_real_$enhan tr05_simu_$enhan"
+    fi
   else
-    tasks="tr05_real_${train} dt05_real_${train} tr05_simu_${train} dt05_simu_${train} tr05_real_$enhan tr05_simu_$enhan"
+    if $eval_flag; then
+      tasks="tr05_real_${train} dt05_real_${train} tr05_simu_${train} dt05_simu_${train} et05_real_${train} et05_simu_${train}"
+    else
+      tasks="tr05_real_${train} dt05_real_${train} tr05_simu_${train} dt05_simu_${train}"
+    fi
   fi
   for x in $tasks; do
     steps/make_mfcc.sh --nj 8 --cmd "$train_cmd" \
