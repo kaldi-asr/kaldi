@@ -22,6 +22,8 @@
 # Config:
 stage=0 # resume training with --stage N
 enhancement=blstm_gev #### or your method 
+tdnn_decode_only=false # if true, it wouldn't train a model again and will only do decoding
+add_enhaced_data=false # make it true when you want to add enhanced data into training set
 
 . utils/parse_options.sh || exit 1;
 
@@ -102,14 +104,14 @@ fi
 # Please set a directory of your speech enhancement method.
 # The directory structure and audio files must follow the attached baseline enhancement directory
 if [ $stage -le 3 ]; then
-  local/run_gmm.sh $enhancement $enhancement_data $chime4_data
+  local/run_gmm.sh --add-enhaced-data $add_enhaced_data $enhancement $enhancement_data $chime4_data
 fi
 
 # DNN based ASR experiment
 # Since it takes time to evaluate DNN, we make the GMM and DNN scripts separately.
 # You may execute it after you would have promising results using GMM-based ASR experiments
 if [ $stage -le 4 ]; then
-  local/chain/run_tdnn.sh $enhancement
+  local/chain/run_tdnn.sh --decode-only $tdnn_decode_only $enhancement
 fi
 
 # LM-rescoring experiment with 5-gram and RNN LMs

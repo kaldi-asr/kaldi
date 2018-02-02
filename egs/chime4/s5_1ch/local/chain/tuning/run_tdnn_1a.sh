@@ -59,7 +59,7 @@ remove_egs=true
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
-decode_only=true # if true, it wou't train a model again
+decode_only=false # if true, it wouldn't train a model again and will only do decoding
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
