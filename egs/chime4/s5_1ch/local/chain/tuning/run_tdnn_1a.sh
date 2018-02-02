@@ -59,7 +59,7 @@ remove_egs=true
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
-
+decode_only=true # if true, it wou't train a model again
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -121,7 +121,7 @@ for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 12 ] && [ ! $decode_only ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
@@ -144,7 +144,7 @@ if [ $stage -le 12 ]; then
   fi
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 13 ] && [ ! $decode_only ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
@@ -152,7 +152,7 @@ if [ $stage -le 13 ]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 14 ] && [ ! $decode_only ]; then
   # Build a tree using our new topology.  We know we have alignments for the
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
@@ -169,7 +169,7 @@ if [ $stage -le 14 ]; then
 fi
 
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 15 ] && [ ! $decode_only ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
 
@@ -216,7 +216,7 @@ EOF
 fi
 
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 16 ] && [ ! $decode_only ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/chime4-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
