@@ -12,10 +12,24 @@
 
 export train_cmd="queue.pl --mem 1G"
 export decode_cmd="queue.pl --mem 2G"
+export tfrnnlm_cmd="queue.pl -l hostname=b*"  # this is specific to the CLSP grid
+# we limit to certain machines because TF binaries compiled from C++ take advantage
+# of machine architectures for optimization
+
+# this is the cmd we use for, specifically on the CLSP grid,
+# training RNNLM with tensorflow. I have gpu here but it actually depends on the versions
+# installed - in tools/extras/install_tensorflow_py.sh we could install either
+# the GPU or CPU version; if the CPU version is installed, we should remove the
+# gpu 1 option here so as to not waste GPUs
+# as for the CUDA_VISIBLE_DEVICES variable this is because TensorFlow would
+# automatically utilize all resources, and in this case multiple GPUs if it is
+# present on the machine. This option is only necessary if you're using GPUs and
+# want to limit the job only on the GPU that you reserve
+
 # the use of cuda_cmd is deprecated, used only in 'nnet1',
 export cuda_cmd="queue.pl --gpu 1 --mem 20G"
 
-if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
+if [[ "$(hostname -f)" == "*.fit.vutbr.cz" ]]; then
   queue_conf=$HOME/queue_conf/default.conf # see example /homes/kazi/iveselyk/queue_conf/default.conf,
   export train_cmd="queue.pl --config $queue_conf --mem 2G --matylda 0.2"
   export decode_cmd="queue.pl --config $queue_conf --mem 3G --matylda 0.1"

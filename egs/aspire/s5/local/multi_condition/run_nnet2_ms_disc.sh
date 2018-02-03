@@ -17,7 +17,7 @@
 # The time taken is dominated by the lattice generation anyway, so this isn't
 # a huge deal.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -35,7 +35,7 @@ cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large thi
                # alignments and degs).
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -135,7 +135,7 @@ fi
 
 if [ $stage -le 5 ]; then
   dir=${srcdir}_${criterion}_${learning_rate}_nj${num_jobs_nnet}
-  #ln -sf $(readlink -f ${srcdir}_multicondition/conf) $dir/conf # so it acts like an online-decoding directory
+  #ln -sf $(utils/make_absolute.sh ${srcdir}_multicondition/conf) $dir/conf # so it acts like an online-decoding directory
   graph_dir=exp/tri5a/graph
   for epoch in $(seq $decode_start_epoch $num_epochs); do
     for data_dir in dev_rvb test_rvb dev_aspire dev test; do

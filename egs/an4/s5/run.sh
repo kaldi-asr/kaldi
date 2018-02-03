@@ -15,8 +15,8 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e  # exit on error
 
 stage=0

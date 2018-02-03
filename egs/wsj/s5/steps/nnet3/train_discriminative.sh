@@ -117,7 +117,10 @@ mkdir -p $dir/log || exit 1;
 model_left_context=$(nnet3-am-info $src_model | grep "^left-context:" | awk '{print $2}')
 model_right_context=$(nnet3-am-info $src_model | grep "^right-context:" | awk '{print $2}')
 
-
+# Copy the ivector information
+if [ -f $degs_dir/info/final.ie.id ]; then
+  cp $degs_dir/info/final.ie.id $dir/ 2>/dev/null || true
+fi
 
 # copy some things
 for f in splice_opts cmvn_opts tree final.mat; do
@@ -224,7 +227,7 @@ while [ $x -lt $num_iters ]; do
         --one-silence-class=$one_silence_class \
         --boost=$boost --acoustic-scale=$acoustic_scale \
         $dir/$x.mdl \
-        ark:$degs_dir/valid_diagnostic.degs &
+        "ark,bg:nnet3-discriminative-copy-egs ark:$degs_dir/valid_diagnostic.degs ark:- | nnet3-discriminative-merge-egs --minibatch-size=1:64 ark:- ark:- |" &
       $cmd $dir/log/compute_objf_train.$x.log \
         nnet3-discriminative-compute-objf  $regularization_opts \
         --silence-phones=$silphonelist \
@@ -232,7 +235,7 @@ while [ $x -lt $num_iters ]; do
         --one-silence-class=$one_silence_class \
         --boost=$boost --acoustic-scale=$acoustic_scale \
         $dir/$x.mdl \
-        ark:$degs_dir/train_diagnostic.degs &
+        "ark,bg:nnet3-discriminative-copy-egs ark:$degs_dir/train_diagnostic.degs ark:- | nnet3-discriminative-merge-egs --minibatch-size=1:64 ark:- ark:- |" &
     fi
 
     if [ $x -gt 0 ]; then
@@ -345,7 +348,7 @@ rm $dir/final.mdl 2>/dev/null
 cp $dir/$x.mdl $dir/final.mdl
 
 # function to remove egs that might be soft links.
-remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }
 
 if $cleanup && $remove_egs; then  # note: this is false by default.
   echo Removing training examples

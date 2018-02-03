@@ -36,7 +36,19 @@ struct SimpleObjectiveInfo {
   double tot_objective;
   SimpleObjectiveInfo(): tot_weight(0.0),
                          tot_objective(0.0) { }
+};
 
+/* This is used to store more detailed information about the objective,
+ * which will be used to compute accuracy per dimension.
+ * This might be sensible only for classification tasks.
+ */
+struct PerDimObjectiveInfo: public SimpleObjectiveInfo {
+  // Counts for each of the classes in the output.
+  // In the simplest cases, this might be the number of frames for each class.
+  Vector<BaseFloat> tot_weight_vec;
+
+  // Objective contribution per-class
+  Vector<BaseFloat> tot_objective_vec;
 };
 
 
@@ -49,6 +61,9 @@ struct NnetComputeProbOptions {
   // constructor of NnetComputeProb that takes a pointer to the nnet, and the
   // stats will be stored there.
   bool store_component_stats;
+  
+  bool compute_per_dim_accuracy;
+
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
   CachingOptimizingCompilerOptions compiler_config;
@@ -56,7 +71,8 @@ struct NnetComputeProbOptions {
       debug_computation(false),
       compute_deriv(false),
       compute_accuracy(true),
-      store_component_stats(false) { }
+      store_component_stats(false),
+      compute_per_dim_accuracy(false) { }
   void Register(OptionsItf *opts) {
     // compute_deriv is not included in the command line options
     // because it's not relevant for nnet3-compute-prob.
@@ -66,6 +82,8 @@ struct NnetComputeProbOptions {
                    "debug for the actual computation (very verbose!)");
     opts->Register("compute-accuracy", &compute_accuracy, "If true, compute "
                    "accuracy values as well as objective functions");
+    opts->Register("compute-per-dim-accuracy", &compute_per_dim_accuracy,
+                   "If true, compute accuracy values per-dim");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
@@ -140,7 +158,7 @@ class NnetComputeProb {
 
   unordered_map<std::string, SimpleObjectiveInfo, StringHasher> objf_info_;
 
-  unordered_map<std::string, SimpleObjectiveInfo, StringHasher> accuracy_info_;
+  unordered_map<std::string, PerDimObjectiveInfo, StringHasher> accuracy_info_;
 };
 
 
@@ -168,14 +186,27 @@ class NnetComputeProb {
    @param [out] tot_weight  The sum of the values in the supervision matrix
    @param [out] tot_accuracy  The total accuracy, equal to the sum over all row
                      indexes r such that the maximum column index of row r of
-                     supervision and nnet_output is the same, of the sum of the
-                     r'th row of supervision (i.e. the row's weight).
+                     supervision and nnet_output is the same, of the sum of 
+                     the r'th row of supervision (i.e. the row's weight).
+   @param [out] tot_weight_vec  If non-NULL, we write to this location
+                    the counts per-class in the supervision matrix.
+                    This is expected to have the same dimension as the 
+                    corresponding output in the network. 
+   @param [out] tot_accuracy_vec  If non-NULL, we write to this location 
+                    the accuracy per-class. For index j, 
+                    the value is equal to the sum 
+                    over all row indexes r such that the maximum column index 
+                    of row r of supervision is j and nnet_output is also j,
+                    of the sum of the r'th row of supervision 
+                    (i.e. the row's weight)
 
 */
 void ComputeAccuracy(const GeneralMatrix &supervision,
                      const CuMatrixBase<BaseFloat> &nnet_output,
                      BaseFloat *tot_weight,
-                     BaseFloat *tot_accuracy);
+                     BaseFloat *tot_accuracy,
+                     VectorBase<BaseFloat> *tot_weight_vec = NULL,
+                     VectorBase<BaseFloat> *tot_accuracy_vec = NULL);
 
 
 } // namespace nnet3

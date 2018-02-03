@@ -6,6 +6,8 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
+//           2016-2017  Shiyin Kang
+//                2017  Hossein Hadian
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -967,11 +969,146 @@ void CuMatrixBase<Real>::AddMat(Real alpha, const CuMatrixBase<Real>& A,
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::AddSmat(Real alpha, const CuSparseMatrix<Real> &A,
+                                 MatrixTransposeType trans) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (trans == kNoTrans) {
+      KALDI_ASSERT(NumRows() == A.NumRows());
+      KALDI_ASSERT(NumCols() == A.NumCols());
+    } else {
+      KALDI_ASSERT(NumRows() == A.NumCols());
+      KALDI_ASSERT(NumCols() == A.NumRows());
+    }
+
+    CuTimer tim;
+
+    // We use warpSize threads per row to access only the nonzero elements.
+    // Every CU1DBLOCK/warpSize rows share one thread block.
+    // 1D grid to cover all rows of A.
+    const int warpSize = 32;
+    dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
+    dim3 dimGrid(n_blocks(A.NumRows(), dimBlock.y));
+
+    if (trans == kNoTrans) {
+      cuda_add_smat(dimGrid, dimBlock, Data(), Dim(), alpha, A.CsrRowPtr(),
+                    A.CsrColIdx(), A.CsrVal());
+    } else {
+      cuda_add_smat_trans(dimGrid, dimBlock, Data(), Dim(), alpha,
+      A.CsrRowPtr(), A.CsrColIdx(), A.CsrVal());
+    }
+
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().AddSmat(alpha, A.Smat(), trans);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::AddSmatMat(Real alpha, const CuSparseMatrix<Real> &A,
+                                    MatrixTransposeType transA,
+                                    const CuMatrixBase<Real> &B, Real beta) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (transA == kNoTrans) {
+      KALDI_ASSERT(NumRows() == A.NumRows());
+      KALDI_ASSERT(NumCols() == B.NumCols());
+      KALDI_ASSERT(A.NumCols() == B.NumRows());
+    } else {
+      KALDI_ASSERT(NumRows() == A.NumCols());
+      KALDI_ASSERT(NumCols() == B.NumCols());
+      KALDI_ASSERT(A.NumRows() == B.NumRows());
+    }
+
+    CuTimer tim;
+
+    // We have op(A) and BT in col-major (B in row-major).
+    // We first compute C in col-major (CT in row-major)
+    // with C = op(A) * BT^T by cusparse_csrmm2,
+    // then transpose CT to get C in row-major
+    CuMatrix<Real> CT(*this, kTrans);
+
+    cusparseMatDescr_t descr;
+    CUSPARSE_SAFE_CALL(cusparseCreateMatDescr(&descr));
+    if (transA == kTrans) {
+      // Note: only op(A)=A is supported if op(B)=B^T according to cusparse doc
+      // http://docs.nvidia.com/cuda/cusparse/index.html#cusparse-lt-t-gt-csrmm2
+      CuSparseMatrix<Real> AT(A, kTrans);
+      CU_SAFE_CALL(
+          cusparse_csrmm2(GetCusparseHandle(), CUSPARSE_OPERATION_NON_TRANSPOSE,
+                          CUSPARSE_OPERATION_TRANSPOSE, AT.NumRows(),
+                          CT.NumRows(), AT.NumCols(), AT.NumElements(), &alpha,
+                          descr, AT.CsrVal(), AT.CsrRowPtr(), AT.CsrColIdx(),
+                          B.Data(), B.Stride(), &beta, CT.Data(), CT.Stride()));
+    } else {
+      CU_SAFE_CALL(
+          cusparse_csrmm2(GetCusparseHandle(), CUSPARSE_OPERATION_NON_TRANSPOSE,
+                          CUSPARSE_OPERATION_TRANSPOSE, A.NumRows(),
+                          CT.NumRows(), A.NumCols(), A.NumElements(), &alpha,
+                          descr, A.CsrVal(), A.CsrRowPtr(), A.CsrColIdx(),
+                          B.Data(), B.Stride(), &beta, CT.Data(), CT.Stride()));
+    }
+    CUSPARSE_SAFE_CALL(cusparseDestroyMatDescr(descr));
+
+    this->CopyFromMat(CT, kTrans);
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().AddSmatMat(alpha, A.Smat(), transA, B.Mat(), beta);
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::AddMatSmat(Real alpha, const CuMatrixBase<Real> &A,
+                                    const CuSparseMatrix<Real> &B,
+                                    MatrixTransposeType transB, Real beta) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    if (transB == kNoTrans) {
+      KALDI_ASSERT(NumRows() == A.NumRows());
+      KALDI_ASSERT(NumCols() == B.NumCols());
+      KALDI_ASSERT(A.NumCols() == B.NumRows());
+    } else {
+      KALDI_ASSERT(NumRows() == A.NumRows());
+      KALDI_ASSERT(NumCols() == B.NumRows());
+      KALDI_ASSERT(A.NumCols() == B.NumCols());
+    }
+
+    CuTimer tim;
+
+    cusparseMatDescr_t descr;
+    CUSPARSE_SAFE_CALL(cusparseCreateMatDescr(&descr));
+    CU_SAFE_CALL(
+        cusparse_csrmm(
+            GetCusparseHandle(),
+            transB == kNoTrans ?
+                CUSPARSE_OPERATION_TRANSPOSE : CUSPARSE_OPERATION_NON_TRANSPOSE,
+            B.NumRows(), NumRows(), B.NumCols(), B.NumElements(), &alpha, descr,
+            B.CsrVal(), B.CsrRowPtr(), B.CsrColIdx(), A.Data(), A.Stride(),
+            &beta, Data(), Stride()));
+    CUSPARSE_SAFE_CALL(cusparseDestroyMatDescr(descr));
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().AddMatSmat(alpha, A.Mat(), B.Smat(), transB, beta);
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
                                       MatrixTransposeType transA) {
   if (num_rows_ == 0 || num_cols_ == 0) return;
 
-  if (A.NumRows() >= num_rows_ && A.NumCols() >= num_cols_) {
+  if (A.NumRows() >= (transA == kNoTrans ? num_rows_ : num_cols_) &&
+      A.NumCols() >= (transA == kNoTrans ? num_cols_ : num_rows_)) {
     // This is the "summing", not broadcasting, version of AddMatBlocks.
     // It supports both regular and transposed operation.
     int32 num_row_blocks, num_col_blocks;
@@ -1017,10 +1154,10 @@ void CuMatrixBase<Real>::AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
   } else {
     // This is the "broadcasting" version of AddMatBlocks, where
     // *this is larger than src.
-    if (!(num_rows_ % A.NumRows() == 0 && num_cols_ % A.NumCols() == 0))
-      KALDI_ERR << "Invalid sizes of arguments";
     if (transA != kNoTrans)
       KALDI_ERR << "Transposed operation not supported currently.";
+    if (!(num_rows_ % A.NumRows() == 0 && num_cols_ % A.NumCols() == 0))
+      KALDI_ERR << "Invalid sizes of arguments";
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().Enabled()) {
       CuTimer tim;
@@ -1160,7 +1297,7 @@ void CuMatrixBase<Real>::AddMatMat(
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
-    CU_SAFE_CALL(cublas_gemm(GetCublasHandle(),
+    CUBLAS_SAFE_CALL(cublas_gemm(GetCublasHandle(),
                              (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
                              (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
                              m, n, k, alpha, B.data_, B.Stride(),
@@ -1187,8 +1324,8 @@ void CuMatrixBase<Real>::AddVecVec(
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
-    CU_SAFE_CALL(cublas_ger(GetCublasHandle(), m, n, alpha,
-                 y.Data(), 1, x.Data(), 1, data_, Stride()));
+    CUBLAS_SAFE_CALL(cublas_ger(GetCublasHandle(), m, n, alpha,
+                     y.Data(), 1, x.Data(), 1, data_, Stride()));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
@@ -1214,9 +1351,10 @@ void CuMatrixBase<Real>::SymAddMat2(
     CuTimer tim;
     cublasOperation_t trans = (transA == kTrans ? CUBLAS_OP_N : CUBLAS_OP_T);
     MatrixIndexT A_other_dim = (transA == kNoTrans ? A.num_cols_ : A.num_rows_);
-    CU_SAFE_CALL(cublas_syrk(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, trans,
-                             num_rows_, A_other_dim, alpha, A.Data(), A.Stride(),
-                             beta, this->data_, this->stride_));
+    CUBLAS_SAFE_CALL(cublas_syrk(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER,
+                                 trans, num_rows_, A_other_dim,
+                                 alpha, A.Data(), A.Stride(),
+                                 beta, this->data_, this->stride_));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
@@ -1714,7 +1852,8 @@ template<typename Real>
 void CuMatrixBase<Real>::DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
                                            const CuMatrixBase<Real> &diff) {
 
-  KALDI_ASSERT(SameDim(value, diff) && SameDim(value, *this));
+  KALDI_ASSERT(SameDim(value, diff) && SameDim(value, *this) &&
+               this != &value);
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -1734,12 +1873,12 @@ void CuMatrixBase<Real>::DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
     const CuMatrixBase<Real> &P(value), &E(diff);
     CuMatrixBase<Real> &D(*this);
 
-    D.CopyFromMat(P);
-    D.MulElements(E);
-    // At this point, D = P .* E (in matlab notation)
     CuVector<Real> pe_vec(D.NumRows()); // For each row i, the dot product (p_t . e_t).
     pe_vec.AddDiagMatMat(1.0, P, kNoTrans, E, kTrans, 0.0);
 
+    D.CopyFromMat(E);
+    D.MulElements(P);
+    // At this point, D = P .* E (in matlab notation)
     D.AddDiagVecMat(-1.0, pe_vec, P, kNoTrans, 1.0); // does D -= diag(pe_vec) * P.
   }
 }
@@ -1748,7 +1887,8 @@ template<typename Real>
 void CuMatrixBase<Real>::DiffLogSoftmaxPerRow(
     const CuMatrixBase<Real> &out_value, const CuMatrixBase<Real> &out_deriv) {
 
-  KALDI_ASSERT(SameDim(out_value, out_deriv) && SameDim(out_value, *this));
+  KALDI_ASSERT(SameDim(out_value, out_deriv) && SameDim(out_value, *this) &&
+               this != &out_value);
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -1766,6 +1906,13 @@ void CuMatrixBase<Real>::DiffLogSoftmaxPerRow(
   } else
 #endif
   {
+    if (this == &out_deriv) {
+      // the code below doesn't work for in-place, so make a copy and recurse.
+      CuMatrix<Real> temp(NumRows(), NumCols(), kUndefined);
+      temp.DiffLogSoftmaxPerRow(out_value, out_deriv);
+      CopyFromMat(temp);
+      return;
+    }
     /*
      Let the output be y, then
      y_i = x_i - log(sum_i exp(x_i))
@@ -1791,7 +1938,7 @@ void CuMatrixBase<Real>::DiffLogSoftmaxPerRow(
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::DiffXent(const CuArray<int32> &tgt,
+void CuMatrixBase<Real>::DiffXent(const CuArrayBase<int32> &tgt,
                                   CuVector<Real> *log_post_tgt) {
 
   KALDI_ASSERT(tgt.Dim() == num_rows_);
@@ -2096,13 +2243,13 @@ void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
 
     CU_SAFE_CALL(cudaMemcpy(device_abc_array, host_abc_array, 3*size*sizeof(Real*), cudaMemcpyHostToDevice));
 
-    CU_SAFE_CALL(cublas_gemmBatched(GetCublasHandle(),
-                                    (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
-                                    (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
-                                    m, n, k, alpha, device_b_array,
-                                    B[0]->Stride(), device_a_array,
-                                    A[0]->Stride(), beta, device_c_array,
-                                    C[0]->Stride(), size));
+    CUBLAS_SAFE_CALL(cublas_gemmBatched(GetCublasHandle(),
+                                        (transB==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
+                                        (transA==kTrans? CUBLAS_OP_T:CUBLAS_OP_N),
+                                        m, n, k, alpha, device_b_array,
+                                        B[0]->Stride(), device_a_array,
+                                        A[0]->Stride(), beta, device_c_array,
+                                        C[0]->Stride(), size));
 
     CuDevice::Instantiate().Free(device_abc_array);
     delete[] host_abc_array;
@@ -2351,6 +2498,26 @@ void CuMatrixBase<Real>::ApplyExp() {
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::ApplyExpSpecial() {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    const int warpSize = 32;
+    dim3 dimBlock(CU1DBLOCK / warpSize, warpSize);
+    dim3 dimGrid(n_blocks(NumRows(), dimBlock.x),
+                 n_blocks(NumCols(), dimBlock.y));
+
+    cuda_apply_exp_special(dimGrid, dimBlock, Data(), Dim(), Data(), Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().ApplyExpSpecial();
+  }
+}
 
 template<typename Real>
 void CuMatrixBase<Real>::ApplyFloor(Real floor_val) {
@@ -2423,7 +2590,7 @@ void VectorBase<double>::CopyRowsFromMat(const CuMatrixBase<double> &mat);
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
-                                  const CuArray<MatrixIndexT> &indices) {
+                                  const CuArrayBase<MatrixIndexT> &indices) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(indices.Dim() == NumCols());
@@ -2445,7 +2612,7 @@ void CuMatrixBase<Real>::CopyCols(const CuMatrixBase<Real> &src,
 
 template<typename Real>
 void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
-                                  const CuArray<MatrixIndexT> &indices) {
+                                  const CuArrayBase<MatrixIndexT> &indices) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(static_cast<MatrixIndexT>(indices.Dim()) == NumRows());
@@ -2468,7 +2635,7 @@ void CuMatrixBase<Real>::CopyRows(const CuMatrixBase<Real> &src,
 
 template<typename Real>
 void CuMatrixBase<Real>::AddCols(const CuMatrixBase<Real> &src,
-                                 const CuArray<MatrixIndexT> &indices) {
+                                 const CuArrayBase<MatrixIndexT> &indices) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(indices.Dim() == NumCols());
@@ -2489,7 +2656,7 @@ void CuMatrixBase<Real>::AddCols(const CuMatrixBase<Real> &src,
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyRows(const CuArray<const Real*> &src) {
+void CuMatrixBase<Real>::CopyRows(const CuArrayBase<const Real*> &src) {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2510,7 +2677,7 @@ void CuMatrixBase<Real>::CopyRows(const CuArray<const Real*> &src) {
 
 
 template<typename Real>
-void CuMatrixBase<Real>::CopyToRows(const CuArray<Real*> &dst) const {
+void CuMatrixBase<Real>::CopyToRows(const CuArrayBase<Real*> &dst) const {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2534,7 +2701,7 @@ void CuMatrixBase<Real>::CopyToRows(const CuArray<Real*> &dst) const {
 template<typename Real>
 void CuMatrixBase<Real>::AddRows(Real alpha,
                                  const CuMatrixBase<Real> &src,
-                                 const CuArray<MatrixIndexT> &indexes) {
+                                 const CuArrayBase<MatrixIndexT> &indexes) {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2557,7 +2724,7 @@ void CuMatrixBase<Real>::AddRows(Real alpha,
 
 
 template<typename Real>
-void CuMatrixBase<Real>::AddRows(Real alpha, const CuArray<const Real*> &src) {
+void CuMatrixBase<Real>::AddRows(Real alpha, const CuArrayBase<const Real*> &src) {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2579,7 +2746,7 @@ void CuMatrixBase<Real>::AddRows(Real alpha, const CuArray<const Real*> &src) {
 
 template<typename Real>
 void CuMatrixBase<Real>::AddToRows(Real alpha,
-                                   const CuArray<Real*> &dst) const {
+                                   const CuArrayBase<Real*> &dst) const {
   if (NumRows() == 0) return;
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2600,8 +2767,32 @@ void CuMatrixBase<Real>::AddToRows(Real alpha,
 
 
 template<typename Real>
+void CuMatrixBase<Real>::AddToRows(Real alpha,
+                                   const CuArrayBase<MatrixIndexT> &indexes,
+                                   CuMatrixBase<Real> *dst) const {
+  if (NumRows() == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumRows());
+    KALDI_ASSERT(dst->NumCols() == NumCols());
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_add_to_rows(dimGrid, dimBlock, alpha, dst->Data(), data_, indexes.Data(), Dim(), dst->Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    Mat().AddToRows(alpha, indexes.Data(), &(dst->Mat()));
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::SumColumnRanges(const CuMatrixBase<Real> &src,
-                                         const CuArray<Int32Pair> &indices) {
+                                         const CuArrayBase<Int32Pair> &indices) {
   KALDI_ASSERT(static_cast<MatrixIndexT>(indices.Dim()) == NumCols());
   KALDI_ASSERT(NumRows() == src.NumRows());
   if (NumRows() == 0) return;
@@ -2639,7 +2830,7 @@ void CuMatrixBase<Real>::SumColumnRanges(const CuMatrixBase<Real> &src,
 
 template<typename Real>
 void CuMatrixBase<Real>::AddRowRanges(const CuMatrixBase<Real> &src,
-                                      const CuArray<Int32Pair> &indexes) {
+                                      const CuArrayBase<Int32Pair> &indexes) {
   KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumRows());
   KALDI_ASSERT(src.NumCols() == NumCols());
   if (NumRows() == 0) return;
@@ -3018,7 +3209,7 @@ void CuMatrixBase<Real>::AddElements(Real alpha,
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::AddElements(Real alpha, const CuArray<Int32Pair> &indexes,
+void CuMatrixBase<Real>::AddElements(Real alpha, const CuArrayBase<Int32Pair> &indexes,
                                      const Real *input) {
   if (indexes.Dim() == 0) return;
   KALDI_ASSERT(input != NULL);
@@ -3050,6 +3241,32 @@ void CuMatrixBase<Real>::AddElements(Real alpha, const CuArray<Int32Pair> &index
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::AddToElements(Real alpha, const CuArrayBase<int32> &elements) {
+  KALDI_ASSERT(elements.Dim() == NumRows());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(n_blocks(NumRows(), CU1DBLOCK));
+
+    cuda_matrix_add_to_elements(dimGrid, dimBlock, alpha, data_, Dim(), elements.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    MatrixBase<Real> &this_mat = this->Mat();
+    const int32* row_to_col = elements.Data();
+    for (int32 r = 0; r < this_mat.NumRows(); r++) {
+      KALDI_ASSERT(row_to_col[r] >= -1);
+      if (row_to_col[r] >= 0)
+        this_mat(r, row_to_col[r]) += alpha;
+    }
+  }
+}
+
+template<typename Real>
 void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
                                 Real *output) const {
   // Checks the dimension.
@@ -3075,7 +3292,7 @@ void CuMatrixBase<Real>::Lookup(const std::vector<Int32Pair> &indices,
 }
 
 template<typename Real>
-void CuMatrixBase<Real>::Lookup(const CuArray<Int32Pair> &indices,
+void CuMatrixBase<Real>::Lookup(const CuArrayBase<Int32Pair> &indices,
                                 Real *output) const {
   int32 num_elements = indices.Dim();
   if (num_elements == 0) return;

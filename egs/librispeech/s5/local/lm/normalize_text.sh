@@ -7,7 +7,7 @@
 
 echo $@
 
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 if [[ $# -ne 2 ]]; then
   echo "Usage: $0 <input-book-dirs> <output-root>"

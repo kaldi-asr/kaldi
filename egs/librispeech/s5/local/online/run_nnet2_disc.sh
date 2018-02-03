@@ -15,7 +15,7 @@
 # The time taken is dominated by the lattice generation anyway, so this isn't
 # a huge deal.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -32,7 +32,7 @@ cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large thi
                # alignments and degs).
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -129,7 +129,7 @@ fi
 
 if [ $stage -le 5 ]; then
   dir=${srcdir}_${criterion}_${learning_rate}
-  ln -sf $(readlink -f ${srcdir}_online/conf) $dir/conf # so it acts like an online-decoding directory
+  ln -sf $(utils/make_absolute.sh ${srcdir}_online/conf) $dir/conf # so it acts like an online-decoding directory
 
   for epoch in $(seq $decode_start_epoch $num_epochs); do
     for test in test_clean test_other dev_clean dev_other; do

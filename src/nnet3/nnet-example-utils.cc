@@ -66,9 +66,9 @@ static void GetIoSizes(const std::vector<NnetExample> &src,
       KALDI_ASSERT(*names_iter == io.name);
       int32 i = names_iter - names_begin;
       int32 this_dim = io.features.NumCols();
-      if (dims[i] == -1)
+      if (dims[i] == -1) {
         dims[i] = this_dim;
-      else if(dims[i] != this_dim) {
+      } else if (dims[i] != this_dim) {
         KALDI_ERR << "Merging examples with inconsistent feature dims: "
                   << dims[i] << " vs. " << this_dim << " for '"
                   << io.name << "'.";
@@ -90,9 +90,15 @@ static void MergeIo(const std::vector<NnetExample> &src,
                     const std::vector<int32> &sizes,
                     bool compress,
                     NnetExample *merged_eg) {
+  // The total number of Indexes we have across all examples.
   int32 num_feats = names.size();
+
   std::vector<int32> cur_size(num_feats, 0);
+
+  // The features in the different NnetIo in the Indexes across all examples
   std::vector<std::vector<GeneralMatrix const*> > output_lists(num_feats);
+
+  // Initialize the merged_eg
   merged_eg->io.clear();
   merged_eg->io.resize(num_feats);
   for (int32 f = 0; f < num_feats; f++) {
@@ -105,20 +111,26 @@ static void MergeIo(const std::vector<NnetExample> &src,
 
   std::vector<std::string>::const_iterator names_begin = names.begin(),
                                              names_end = names.end();
-  std::vector<NnetExample>::const_iterator iter = src.begin(), end = src.end();
-  for (int32 n = 0; iter != end; ++iter,++n) {
-    std::vector<NnetIo>::const_iterator iter2 = iter->io.begin(),
-                                         end2 = iter->io.end();
-    for (; iter2 != end2; ++iter2) {
-      const NnetIo &io = *iter2;
+  std::vector<NnetExample>::const_iterator eg_iter = src.begin(),
+    eg_end = src.end();
+  for (int32 n = 0; eg_iter != eg_end; ++eg_iter, ++n) {
+    std::vector<NnetIo>::const_iterator io_iter = eg_iter->io.begin(),
+      io_end = eg_iter->io.end();
+    for (; io_iter != io_end; ++io_iter) {
+      const NnetIo &io = *io_iter;
       std::vector<std::string>::const_iterator names_iter =
           std::lower_bound(names_begin, names_end, io.name);
       KALDI_ASSERT(*names_iter == io.name);
+
       int32 f = names_iter - names_begin;
-      int32 this_size = io.indexes.size(),
-          &this_offset = cur_size[f];
+      int32 this_size = io.indexes.size();
+      int32 &this_offset = cur_size[f];
       KALDI_ASSERT(this_size + this_offset <= sizes[f]);
+
+      // Add f'th Io's features
       output_lists[f].push_back(&(io.features));
+
+      // Work on the Indexes for the f^th Io in merged_eg
       NnetIo &output_io = merged_eg->io[f];
       std::copy(io.indexes.begin(), io.indexes.end(),
                 output_io.indexes.begin() + this_offset);
@@ -534,10 +546,12 @@ void UtteranceSplitter::InitSplitForLength() {
 
 bool UtteranceSplitter::LengthsMatch(const std::string &utt,
                                      int32 utterance_length,
-                                     int32 supervision_length) const {
+                                     int32 supervision_length,
+                                     int32 length_tolerance) const {
   int32 sf = config_.frame_subsampling_factor,
       expected_supervision_length = (utterance_length + sf - 1) / sf;
-  if (supervision_length == expected_supervision_length) {
+  if (std::abs(supervision_length - expected_supervision_length) 
+      <= length_tolerance) {
     return true;
   } else {
     if (sf == 1) {

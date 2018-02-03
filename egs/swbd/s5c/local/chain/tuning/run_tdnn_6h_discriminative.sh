@@ -50,7 +50,7 @@ set -e
 # %WER 18.1 | 8420 76157 | 84.0 10.7 5.3 2.1 18.1 49.4 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch3/score_11_1.0/rt03_hires.ctm.filt.sys
 # %WER 18.2 | 8420 76157 | 83.8 10.5 5.7 2.1 18.2 49.6 | exp/chain/tdnn_7b_sp_smbr/decode_rt03_sw1_fsh_fg_epoch4/score_12_1.0/rt03_hires.ctm.filt.sys
 
-. cmd.sh
+. ./cmd.sh
 
 stage=0
 train_stage=-10 # can be used to start training in the middle.
@@ -59,7 +59,7 @@ use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -218,8 +218,6 @@ if [ $stage -le 4 ]; then
     --num-epochs $num_epochs --one-silence-class $one_silence_class --minibatch-size $minibatch_size \
     --num-jobs-nnet $num_jobs_nnet --num-threads $num_threads \
     --regularization-opts "$regularization_opts" --use-frame-shift false \
-    --adjust-priors false \
-    --modify-learning-rates false \
       ${degs_dir} $dir ;
 fi
 
@@ -229,7 +227,7 @@ if [ $stage -le 5 ]; then
     for decode_set in train_dev eval2000 rt03; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      iter=epoch$x.adj
+      iter=epoch$x_adj
 
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --acwt 1.0 --post-decode-acwt 10.0 \

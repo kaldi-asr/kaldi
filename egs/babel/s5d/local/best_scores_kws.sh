@@ -8,14 +8,14 @@ set -o nounset                              # Treat unset variables as an error
 
 
 if [ ! -x  results ] ; then
-  data=$(readlink -f ./local)
+  data=$(utils/make_absolute.sh ./local)
   data=$(dirname $data)
   mkdir -p $data/results
   ln -s $data/results results
 fi
 
 if [ ! -e ./RESULTS.kws ] ; then
-  p=$(basename `readlink -f lang.conf`)
+  p=$(basename `utils/make_absolute.sh lang.conf`)
   p=${p##.*}
   filename=kws_results.${p}.${USER}.$(date --iso-8601=seconds)
   echo "#Created on $(date --iso-8601=seconds) by $0" >> results/$filename
@@ -37,7 +37,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (
@@ -64,7 +64,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (
@@ -92,7 +92,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (
@@ -125,7 +125,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (
@@ -158,7 +158,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (

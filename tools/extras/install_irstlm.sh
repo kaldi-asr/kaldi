@@ -11,7 +11,7 @@ errcho() { echo "$@" 1>&2; }
 
 errcho "****() Installing IRSTLM"
 
-if [ ! -x ./irstlm ] ; then
+if [ ! -d ./irstlm ] ; then
   svn=`which git`
   if [ $? != 0 ]  ; then
     errcho "****() You need to have git installed"
@@ -28,6 +28,7 @@ else
   echo "****() Assuming IRSTLM is already installed. Please delete"
   echo "****() the directory ./irstlm if you need us to download"
   echo "****() the sources again."
+  exit 0
 fi
 
 (
@@ -35,6 +36,7 @@ fi
   automake --version | grep 1.13.1 >/dev/null && \
          sed s:AM_CONFIG_HEADER:AC_CONFIG_HEADERS: <configure.in >configure.ac;
 
+  patch -p1 < ../extras/irstlm.patch
   ./regenerate-makefiles.sh || ./regenerate-makefiles.sh
 
   ./configure --prefix `pwd`

@@ -32,6 +32,10 @@ extra_kws=false
 cmd=run.pl
 max_states=150000
 wip=0.5 #Word insertion penalty
+resolve_overlaps=false   # Set this to true, if there are overlapping segments
+                         # as input and the words in the CTM in the 
+                         # overlapping regions must be resolved to one 
+                         # of the segments.
 #End of options
 
 if [ $(basename $0) == score.sh ]; then
@@ -56,7 +60,7 @@ decode_dir=$3;
 if ! $skip_stt ; then
   if  [ ! -f $decode_dir/.score.done ] && [ ! -f $decode_dir/.done.score ]; then
     local/lattice_to_ctm.sh --cmd "$cmd" --word-ins-penalty $wip \
-      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
+      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --resolve-overlaps $resolve_overlaps \
       $data_dir $lang_dir $decode_dir
 
     if ! $skip_scoring ; then
@@ -101,7 +105,7 @@ if ! $skip_kws ; then
 
   for extraid in `cat $data_dir/extra_kws_tasks | grep -v oov` ; do
     if [ ! -f $decode_dir/.done.kwset.$extraid ] ; then
-      local/search/search.sh --cmd "$decode_cmd"  --extraid ${extraid} \
+      local/search/search.sh --cmd "$cmd"  --extraid ${extraid} \
         --max-states ${max_states} --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
         --indices-dir $decode_dir/kws_indices --skip-scoring $skip_scoring \
         $lang_dir $data_dir $decode_dir

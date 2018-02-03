@@ -74,7 +74,7 @@ void CuTpMatrix<Real>::Invert() {
     CU_SAFE_CALL(cudaGetLastError());        
     CuMatrix<Real> tmp2(dim, dim);
     tmp2.CopyFromTp(*this);
-    CU_SAFE_CALL(cublas_trsm(GetCublasHandle(), dim, dim, alpha, tmp2.Data(), tmp2.Dim().stride, 
+    CUBLAS_SAFE_CALL(cublas_trsm(GetCublasHandle(), dim, dim, alpha, tmp2.Data(), tmp2.Dim().stride, 
       tmp.Data(), tmp.Dim().stride));
     this->CopyFromMat(tmp, kNoTrans);
     CuDevice::Instantiate().AccuProfile(__func__, tim);

@@ -10,7 +10,7 @@ original_mic=sdm1
 parallel_mic=ihm
 new_mic=sdm1_cleanali
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

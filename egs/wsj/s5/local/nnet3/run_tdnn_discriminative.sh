@@ -9,7 +9,7 @@ set -e
 # since the lattice generation runs in about real-time, so takes of the order of
 # 1000 hours of CPU time.
 #
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -19,7 +19,7 @@ use_gpu=true  # for training
 cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large things like denlats,
                # alignments and degs).
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -144,7 +144,7 @@ fi
 
 if [ $stage -le 5 ]; then
   for x in `seq $decode_start_epoch $num_epochs`; do
-    iter=epoch$x.adj
+    iter=epoch${x}_adj
     for lm_suffix in tgpr bd_tgpr; do
       graph_dir=exp/tri4b/graph_${lm_suffix}
       # use already-built graphs.

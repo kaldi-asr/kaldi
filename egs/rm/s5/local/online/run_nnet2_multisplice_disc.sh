@@ -3,7 +3,7 @@
 # This is to be run after run_nnet2_multisplice.sh.
 # It demonstrates discriminative training for the online-nnet2 models
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
@@ -15,7 +15,7 @@ learning_rate=0.0016
 
 drop_frames=false # only relevant for MMI
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -82,7 +82,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  ln -sf $(readlink -f $srcdir/conf) ${srcdir}_${criterion}_${learning_rate}/conf # so it acts like an online-decoding directory
+  ln -sf $(utils/make_absolute.sh $srcdir/conf) ${srcdir}_${criterion}_${learning_rate}/conf # so it acts like an online-decoding directory
 
   for epoch in 0 1 2 3 4 5 6; do
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \

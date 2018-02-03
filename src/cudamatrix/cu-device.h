@@ -26,6 +26,7 @@
 #if HAVE_CUDA == 1
 
 #include <cublas_v2.h>
+#include <cusparse.h>
 #include <map>
 #include <string>
 #include <iostream>
@@ -50,15 +51,21 @@ class CuDevice {
   static inline CuDevice& Instantiate() { return global_device_; }
 
   inline cublasHandle_t GetHandle() { return handle_; }
+  inline cusparseHandle_t GetCusparseHandle() { return cusparse_handle_; }
 
   // We provide functions Malloc, MallocPitch and Free which replace cudaMalloc,
   // cudaMallocPitch and cudaFree.  Their function is to cache the results of
   // previous allocations to avoid the very large overhead that CUDA's
   // allocation seems to give for some setups.
-  inline void* Malloc(size_t size) { return allocator_.Malloc(size); }
+  inline void* Malloc(size_t size) {
+    return multi_threaded_ ? allocator_.MallocLocking(size) :
+        allocator_.Malloc(size);
+  }
 
   inline void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
-    if (debug_stride_mode_) {
+    if (multi_threaded_) {
+      return allocator_.MallocPitchLocking(row_bytes, num_rows, pitch);
+    } else if (debug_stride_mode_) {
       // The pitch bucket size is hardware dependent.
       // It is 512 on K40c with CUDA 7.5
       // "% 8" ensures that any 8 adjacent allocations have different pitches
@@ -70,7 +77,10 @@ class CuDevice {
       return allocator_.MallocPitch(row_bytes, num_rows, pitch);
     }
   }
-  inline void Free(void *ptr) { allocator_.Free(ptr); }
+  inline void Free(void *ptr) {
+    if (multi_threaded_) allocator_.FreeLocking(ptr);
+    else allocator_.Free(ptr);
+  }
 
   /// Select a GPU for computation, the 'use_gpu' modes are:
   ///  "yes"      -- Select GPU automatically and die if this fails.
@@ -100,6 +110,11 @@ class CuDevice {
   void PrintProfile();
 
   void PrintMemoryUsage() const;
+
+  /// The user should call this if the program plans to access the GPU (e.g. via
+  /// using class CuMatrix) from more than one thread.  If you fail to call this
+  /// for a multi-threaded program, it will occasionally segfault.
+  inline void AllowMultithreading() { multi_threaded_ = true; }
 
   void ResetProfile() {
     profile_map_.clear();
@@ -132,6 +147,13 @@ class CuDevice {
     return old_mode;
   }
 
+  /// Check if the GPU is set to compute exclusive mode (you can set this mode,
+  /// if you are root, by doing: `nvidia-smi -c 3`).  Returns true if we have a
+  /// GPU and it is running in compute exclusive mode.  Returns false otherwise.
+  /// WILL CRASH if we are not using a GPU at all.  If calling this as a user
+  /// (i.e. from outside the class), call this only if Enabled() returns true.
+  bool IsComputeExclusive();
+
  private:
   CuDevice();
   CuDevice(CuDevice&); // Disallow.
@@ -140,13 +162,7 @@ class CuDevice {
 
   static CuDevice global_device_;
   cublasHandle_t handle_;
-
-  /// Check if the GPU run in compute exclusive mode Returns true if it is
-  /// running in compute exclusive mode and we have a GPU.  Returns false
-  /// otherwise.  Sets error to true if there was some error, such as that we
-  /// were running in compute exclusive modes but no GPUs available; otherwise
-  /// sets it to false.
-  bool IsComputeExclusive();
+  cusparseHandle_t cusparse_handle_;
 
   /// Automatically select GPU and get CUDA context.  Returns true on success.
   bool SelectGpuIdAuto();
@@ -184,7 +200,7 @@ class CuDevice {
   uint32 num_debug_stride_allocations_;
 
   CuMemoryAllocator allocator_;
-
+  bool multi_threaded_;   // true if user called AllowMultithreading().
 }; // class CuDevice
 
 
@@ -200,7 +216,8 @@ class CuTimer: public Timer {
 // This function is declared as a more convenient way to get the CUDA device handle for use
 // in the CUBLAS v2 API, since we so frequently need to access it.
 inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetHandle(); }
-
+// A more convenient way to get the handle to use cuSPARSE APIs.
+inline cusparseHandle_t GetCusparseHandle() { return CuDevice::Instantiate().GetCusparseHandle(); }
 
 }  // namespace
 

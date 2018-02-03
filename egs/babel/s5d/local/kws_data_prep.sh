@@ -69,8 +69,6 @@ cat $keywords | perl -e '
 
 # Map the keywords to integers; note that we remove the keywords that
 # are not in our $langdir/words.txt, as we won't find them anyway...
-#cat $kwsdatadir/keywords.txt | babel/filter_keywords.pl $langdir/words.txt - - | \
-#  sym2int.pl --map-oov 0 -f 2- $langdir/words.txt | \
 if  $case_insensitive && ! $use_icu  ; then
   echo "$0: Running case insensitive processing"
   cat $langdir/words.txt | tr '[:lower:]' '[:upper:]'  > $kwsdatadir/words.txt

@@ -103,8 +103,8 @@ class Compiler {
     // information about the inputs to this descriptor, telling us for each row
     // of the matrix what other matrix rows it is a summation over.  this is a
     // quantity indexed[part-index][row-index], then a list of pairs (step,
-    // row-index), that we store here to avoid computing it twice in forward and
-    // backprop.
+    // row-index), representing source Cindexes present in a summation, that we
+    // store here to avoid computing it twice in forward and backprop.
     std::vector<std::vector<std::vector<std::pair<int32,int32> > > > input_locations_list;
 
     StepInfo(): node_index(-1), value(0), deriv(0), segment(0),
@@ -153,8 +153,9 @@ class Compiler {
   /// This maps each cindex_id to its location.  However, you should not rely on
   /// its accuracy for cindex_ids that correspond to the Descriptors at
   /// Component inputs, since it's possible in principle for such cindex_ids to
-  /// exist at >1 location.  A location is a pair (step-index,
-  /// matrix-row-index).
+  /// exist at >1 location.  (This is not a problem in practice, because we only
+  /// need this for the outputs of component-nodes, and for computation inputs).
+  /// A location is a pair (step-index, matrix-row-index).
   std::vector<std::pair<int32, int32> > cindex_id_to_location_;
 
 
@@ -179,13 +180,13 @@ class Compiler {
 
   // Adds to "computation" the command(s) for the forward computation
   // for this step.
-  void DoForwardComputation(int32 step, NnetComputation *computation) const;
+  void CompileForward(int32 step, NnetComputation *computation) const;
 
-  // Called from DoForwardComputation, handles the case where the step corresponds
+  // Called from CompileForward, handles the case where the step corresponds
   // to a Component.
   void AddForwardStepComponent(int32 step, NnetComputation *computation) const;
 
-  // Called from DoForwardComputation, handles the case where the step corresponds
+  // Called from CompileForward, handles the case where the step corresponds
   // to an input node.
   void AddForwardStepInput(int32 step, NnetComputation *computation) const;
 
@@ -194,12 +195,12 @@ class Compiler {
   bool IsInputStep(int32 step) const;
 
 
-  // Called from DoForwardComputation, handles the case where the step
+  // Called from CompileForward, handles the case where the step
   // corresponds to type kDescriptor
-  void DoForwardComputationDescriptor(
+  void CompileForwardDescriptor(
       int32 step, NnetComputation *computation) const;
 
-  void DoForwardComputationSumDescriptor(
+  void CompileForwardSumDescriptor(
       int32 step, int32 part_index, NnetComputation *computation) const;
 
 
@@ -214,6 +215,64 @@ class Compiler {
       int32 step, int32 part_index,
       std::vector<std::vector<std::pair<int32, int32> > > *input_locations)
       const;
+
+  /**
+     This function helps to handle scalar factors in Descriptors (expressions
+     like `Scale(-1.0, <descriptor)`).  It splits an input_locations_list
+     for one SumDescriptor (consisting of one of the appended-together parts
+     of a Descriptor) by scale, such that each split-up locations_list
+     corresponds to a single scaling factor.
+     The scaling factors are all 1.0 by default, but may be different from
+     1.0 if the user uses `Scale(...)` expressions in descriptors, e.g.
+     `Scale(-1.0, lstm1.z)`.
+     To help efficiency, this function treats the case where all the scales
+     in the expression are the same (usually 1.0), as a special case.  In this
+     case, 'split_locations_lists' will be empty and the shared scale (e.g. 1.0)
+     is returned.
+
+       @param [in] descriptor  The SumDescriptor for which we're getting
+                      scalar factors.
+       @param [in] input_locations_list This is one element of the
+                      input_locations_list from the StepInfo of the step we are
+                      computing, corresponding to this SumDescriptor (i.e. one
+                      part of the Descriptor).  It is indexed by row-index, then
+                      it is a list of pairs (step, row-index), representing
+                      source Cindexes of a summation.  This function will work
+                      out what scaling factors the pairs in these lists have.
+       @param [out] split_locations_lists
+                      We write to this location.  If all the scaling factors
+                      are the same this will be set to the empty list and the
+                      common scaling factor returned.  Otherwise +infinity
+                      will be returned and the split-up list will be
+                      written to the location.  Each element
+                      (*split_locations_lists)[i] will be set to a pair
+                      (alpha, partial_input_locations_list)
+                      where alpha is the scaling factor associated with this
+                      split-up piece (e.g. -1.0 if it was part of an expression
+                      like `Scale(-1.0, lstm1.z)`), and
+                      'partial_input_locations_list' is a vector with the same
+                      dimension as 'input_locations_list' (indexed by row-index),
+                      where partial_input_locations_list[r] will contain a subset
+                      of the pairs present in input_locations_list[r], and
+                      if we were to append together all the
+                      (*split_locations_lists)[*].second.partial_input_locations_list[r],
+                      we'd get a list with the same members as
+                      input_locations_list[r], although not necessarily in the same
+                      order.
+        @return  In the general case (where multiple scales are used), returns
+                 +infinity and sets 'split_locations_lists' to the split-up list.
+                 In the special, but more common case where only a single scale
+                 is used, return that scale (1.0 will be the most common value)
+                 and set 'split_locations_lists' to empty; in this special case,
+                 which has been made a special case for efficiency reasons,
+                 the user should directly use the un-split locations list in
+                 'input_locations_list'.
+   */
+  BaseFloat SplitByScale(const SumDescriptor &descriptor,
+   const std::vector<std::vector<std::pair<int32,int32> > > &input_locations_list,
+   std::vector<std::pair<BaseFloat,
+                         std::vector<std::vector<std::pair<int32,int32> > > > >
+                         *split_locations_lists) const;
 
   // Changes the format of the location-list produced by ComputeInputLocationsList,
   // to have pairs (sub-matrix, row) instead of (step, row), by replacing each step
@@ -238,74 +297,108 @@ class Compiler {
 
 
 
-  // Called from DoForwardComputationSumDescriptor.
-  // Does the forward computation for one sub-matrix of a Descriptor,
-  // after the caller has already worked out what the input terms for
-  // each row are in terms of a list of sub-matrix locations; each location
-  // is pair (submatrix-index, row-index)
-  void DoForwardComputationFromSubmatLocationsList(
+  /** Adds to 'computation' commands for part of the forward computation
+      corresponding to a Descriptor.  This is called from
+      CompileForwardSumDescriptor.
+
+      @param [in] value_submatrix_index  The submatrix index
+               of the quanitity we are computing (part of a Descriptor;
+               it's something like Sum(tdnn1, tdnn2) in general).
+      @param [in] alpha  The scale (1.0 unless Scale(...) expressions are
+               involved in descriptors) with which these terms are present
+               in the summation.
+      @param [in] submat_locations  Indexed by the row index of
+               the submatrix referred to by 'value_submatrix_index', each element is
+               a list of sources over which we must sum to obtain
+               that row.  Each source is a pair (submatrix-index, row-index).
+  */
+  void CompileForwardFromSubmatLocationsList(
       int32 value_submatrix_index,
+      BaseFloat alpha,
       const std::vector<std::vector<std::pair<int32, int32> > > &submat_locations,
       NnetComputation *computation) const;
 
+  /** Adds to 'computation' commands for part of the forward computation
+      corresponding to a Descriptor.  This is called from
+      CompileForwardFromSubmatLocationsList.
 
-  void DoForwardComputationFromSubmatLocations(
+      @param [in] value_submatrix_index  The submatrix index
+               of the quanitity we are computing (part of a Descriptor;
+               it's something like Sum(tdnn1, tdnn2) in general).
+      @param [in] alpha  The scale (1.0 unless Scale(...) expressions are
+               involved in descriptors) with which these terms are present
+               in the summation.
+      @param [in] submat_locations  Indexed by the row index corresponding
+               to the rows of the submatrix referred to by 'value_submatrix_index',
+               this reprenents the source vector which we are adding to this row,
+               in the format (submatrix-index, row-index), or (-1, -1)
+               if in this case there is nothing to add.
+       @param [in,out] computation  The computation which we are adding
+               commands to.
+  */
+  void CompileForwardFromSubmatLocations(
       int32 value_submatrix_index,
-      bool is_first_term_in_sum,
+      BaseFloat alpha,
       const std::vector<std::pair<int32, int32> > &submat_locations,
       NnetComputation *computation) const;
 
 
-  // Called from DoForwardComputationFromSubmatLocations (special
-  // case where all input is from the same matrix).
-  void DoForwardComputationFromIndexes(
+  /** Adds to `computation` a command that adds to the submatrix in
+      `value_submatrix_index` a quantity consisting of alpha times
+      the submatrix in `input_submatrix_index`, with a row mapping
+      given by `indexes`.
+  */
+  void CompileForwardFromIndexes(
       int32 value_submatrix_index,
       int32 input_submatrix_index,
-      bool is_first_term_in_sum,
+      BaseFloat alpha,
       const std::vector<int32> &indexes,
       NnetComputation *computation) const;
 
 
   // Adds to "computation" the command(s) for the backward computation (if any) for
   // this step.  (non-const only because we clear the cached submat_locations).
-  void DoBackwardComputation(int32 step, NnetComputation *computation);
+  void CompileBackward(int32 step, NnetComputation *computation);
 
-  // Called from DoBackwardComputation, handles the case where the step corresponds
+  // Called from CompileBackward, handles the case where the step corresponds
   // to a Component.
   void AddBackwardStepComponent(int32 step, NnetComputation *computation) const;
 
-  // Called from DoBackwardComputation, handles the case where the step
+  // Called from CompileBackward, handles the case where the step
   // corresponds to an input.  If applicable, this generates a command for the
   // network to provide the derivative w.r.t. the input, to the user.
   void AddBackwardStepInput(int32 step, NnetComputation *computation) const;
 
-  // Called from DoBackwardComputation, handles the case where the step
+  // Called from CompileBackward, handles the case where the step
   // corresponds to type kDescriptor.
-  void DoBackwardComputationDescriptor(
+  void CompileBackwardDescriptor(
       int32 step, NnetComputation *computation);
 
-  // Called from DoBackwardComputationSumDescriptor.
-  void DoBackwardComputationSumDescriptor(
+  // Called from CompileBackwardSumDescriptor.
+  void CompileBackwardSumDescriptor(
       int32 step, int32 part_index,
       NnetComputation *computation) const;
 
-  // Called from DoBackwardComputationForwardingDescriptor.
-  void DoBackwardComputationFromSubmatLocationsList(
+  // Called from CompileBackwardForwardingDescriptor.
+  void CompileBackwardFromSubmatLocationsList(
       int32 deriv_submatrix_index,
+      BaseFloat alpha,
       const std::vector<std::vector<std::pair<int32, int32> > >&submat_locations,
       NnetComputation *computation) const;
 
 
-  void DoBackwardComputationFromSubmatLocations(
+  void CompileBackwardFromSubmatLocations(
       int32 deriv_submatrix_index,
+      BaseFloat alpha,
       const std::vector<std::pair<int32, int32> > &submat_locations,
       NnetComputation *computation) const;
 
-  // Called from DoBackwardComputationFromSubmatLocations - special case where
+  // Called from CompileBackwardFromSubmatLocations - special case where
   // input is from just one matrix.
-  void DoBackwardComputationFromIndexes(
+  void CompileBackwardFromIndexes(
       int32 deriv_submatrix_index,
       int32 input_deriv_submatrix_index,
+      BaseFloat alpha,
       const std::vector<int32> &indexes,
       NnetComputation *computation) const;
 

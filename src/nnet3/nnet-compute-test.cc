@@ -125,9 +125,13 @@ void TestNnetDecodable(Nnet *nnet) {
   }
 
 
+  // the components that we exclude from this test, are excluded because they
+  // all take "optional" right context, and this destroys the equivalence that
+  // we are testing.
   if (!NnetIsRecurrent(*nnet) &&
       nnet->Info().find("statistics-extraction") == std::string::npos &&
-      nnet->Info().find("TimeHeightConvolutionComponent") == std::string::npos) {
+      nnet->Info().find("TimeHeightConvolutionComponent") == std::string::npos &&
+      nnet->Info().find("RestrictedAttentionComponent") == std::string::npos) {
     // this equivalence will not hold for recurrent nnets, or those that
     // have the statistics-extraction/statistics-pooling layers,
     // or in general for nnets with convolution components (because these
@@ -175,9 +179,10 @@ void UnitTestNnetCompute() {
 
     Nnet nnet_collapsed(nnet);
     CollapseModelConfig collapse_config;
-    CollapseModel(collapse_config, &nnet_collapsed);
     NnetComputation computation_collapsed;
+
     if (test_collapse_model) {
+      CollapseModel(collapse_config, &nnet_collapsed);
       Compiler compiler_collapsed(request, nnet_collapsed);
       compiler_collapsed.CreateComputation(opts, &computation_collapsed);
       computation_collapsed.ComputeCudaIndexes();
@@ -279,7 +284,7 @@ int main() {
   using namespace kaldi::nnet3;
   // uncommenting the following activates extra checks during optimization, that
   // can help narrow down the source of problems.
-  // SetVerboseLevel(4);
+  SetVerboseLevel(4);
 
 
   for (kaldi::int32 loop = 0; loop < 2; loop++) {

@@ -19,7 +19,7 @@ min_seg_len=
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -74,7 +74,6 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4200 data/$mic/$latgen_train_set $lang $ali_dir $treedir
 
 fi

@@ -37,7 +37,7 @@ void MinimumBayesRisk::MbrDecode() {
     // Caution: q in the line below is (q-1) in the algorithm
     // in the paper; both R_ and gamma_ are indexed by q-1.
     for (size_t q = 0; q < R_.size(); q++) {
-      if (do_mbr_) { // This loop updates R_ [indexed same as gamma_].
+      if (opts_.decode_mbr) { // This loop updates R_ [indexed same as gamma_].
         // gamma_[i] is sorted in reverse order so most likely one is first.
         const std::vector<std::pair<int32, BaseFloat> > &this_gamma = gamma_[q];
         double old_gamma = 0, new_gamma = this_gamma[0].second;
@@ -50,7 +50,8 @@ void MinimumBayesRisk::MbrDecode() {
           KALDI_VLOG(2) << "Changing word " << rq << " to " << rhat;
         R_[q] = rhat;
       }
-      if (R_[q] != 0) {
+      // build the outputs (time, confidences),
+      if (R_[q] != 0 || opts_.print_silence) {
         one_best_times_.push_back(times_[q]);
         BaseFloat confidence = 0.0;
         for (int32 j = 0; j < gamma_[q].size(); j++)
@@ -65,7 +66,7 @@ void MinimumBayesRisk::MbrDecode() {
       break;
     }
   }
-  RemoveEps(&R_);
+  if (!opts_.print_silence) RemoveEps(&R_);
 }
 
 struct Int32IsZero {
@@ -113,11 +114,11 @@ double MinimumBayesRisk::EditDistance(int32 N, int32 Q,
       for (int32 q = 0; q <= Q; q++) {
         if (q == 0) {
           alpha_dash_arc(q) = // line 15.
-              alpha_dash(s_a, q) + l(w_a, 0) + delta();
+              alpha_dash(s_a, q) + l(w_a, 0, true);
         } else {  // a1,a2,a3 are the 3 parts of min expression of line 17.
           int32 r_q = r(q);
           double a1 = alpha_dash(s_a, q-1) + l(w_a, r_q),
-              a2 = alpha_dash(s_a, q) + l(w_a, 0) + delta(),
+              a2 = alpha_dash(s_a, q) + l(w_a, 0, true),
               a3 = alpha_dash_arc(q-1) + l(0, r_q);
           alpha_dash_arc(q) = std::min(a1, std::min(a2, a3));
         }
@@ -165,11 +166,11 @@ void MinimumBayesRisk::AccStats() {
       const Arc &arc = arcs_[pre_[n][i]];
       int32 s_a = arc.start_node, w_a = arc.word;
       BaseFloat p_a = arc.loglike;
-      alpha_dash_arc(0) = alpha_dash(s_a, 0) + l(w_a, 0) + delta(); // line 14.
+      alpha_dash_arc(0) = alpha_dash(s_a, 0) + l(w_a, 0, true); // line 14.
       for (int32 q = 1; q <= Q; q++) { // this loop == lines 15-18.
         int32 r_q = r(q);
         double a1 = alpha_dash(s_a, q-1) + l(w_a, r_q),
-            a2 = alpha_dash(s_a, q) + l(w_a, 0) + delta(),
+            a2 = alpha_dash(s_a, q) + l(w_a, 0, true),
             a3 = alpha_dash_arc(q-1) + l(0, r_q);
         if (a1 <= a2) {
           if (a1 <= a3) { b_arc[q] = 1; alpha_dash_arc(q) = a1; }
@@ -314,8 +315,8 @@ void MinimumBayesRisk::PrepareLatticeAndInitStats(CompactLattice *clat) {
   }
 }
 
-MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
-    do_mbr_(do_mbr) {
+MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
+                                   MinimumBayesRiskOptions opts) : opts_(opts) {
   CompactLattice clat(clat_in); // copy.
 
   PrepareLatticeAndInitStats(&clat);
@@ -350,7 +351,7 @@ MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
 
 MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
                                    const std::vector<int32> &words,
-                                   bool do_mbr): do_mbr_(do_mbr) {
+                                   MinimumBayesRiskOptions opts) : opts_(opts) {
   CompactLattice clat(clat_in); // copy.
 
   PrepareLatticeAndInitStats(&clat);
@@ -360,5 +361,21 @@ MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
 
   MbrDecode();
 }
+
+MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
+                                   const std::vector<int32> &words,
+                                   const std::vector<std::pair<BaseFloat,BaseFloat> > &times,
+                                   MinimumBayesRiskOptions opts) : opts_(opts) {
+  CompactLattice clat(clat_in); // copy.
+
+  PrepareLatticeAndInitStats(&clat);
+
+  R_ = words;
+  times_ = times;
+  L_ = 0.0;
+
+  MbrDecode();
+}
+
 
 }  // namespace kaldi

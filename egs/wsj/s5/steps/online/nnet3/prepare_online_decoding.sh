@@ -9,7 +9,7 @@ feature_type=mfcc
 add_pitch=false
 mfcc_config=conf/mfcc.conf # you can override any of these you need to override.
 plp_config=conf/plp.conf
-fbank_config=conf/fbank.conf 
+fbank_config=conf/fbank.conf
 # online_pitch_config is the config file for both pitch extraction and
 # post-processing; we combine them into one because during training this
 # is given to the program compute-and-process-kaldi-pitch-feats.
@@ -77,7 +77,7 @@ if [ ! -z "$iedir" ]; then
 fi
 
 
-dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
+dir=$(utils/make_absolute.sh $dir) # Convert $dir to an absolute pathname, so that the
                         # configuration files we write will contain absolute
                         # pathnames.
 mkdir -p $dir/conf
@@ -88,7 +88,7 @@ cp $lang/phones.txt $dir || exit 1;
 cp $srcdir/${iter}.mdl $dir/final.mdl || exit 1;
 cp $srcdir/tree $dir/ || exit 1;
 if [ -f $srcdir/frame_subsampling_factor ]; then
-	cp $srcdir/frame_subsampling_factor $dir/
+  cp $srcdir/frame_subsampling_factor $dir/
 fi
 
 if [ ! -z "$iedir" ]; then

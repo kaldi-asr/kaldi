@@ -9,7 +9,7 @@
 stage=1
 
 . utils/parse_options.sh || exit 1
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 if [ $# -ne "2" ]; then
   echo "Usage: $0 <cmudict-download-dir> <g2p-dir>"

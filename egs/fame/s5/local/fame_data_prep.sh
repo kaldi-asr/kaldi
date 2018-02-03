@@ -8,7 +8,7 @@
 corpus=$1
 set -e -o pipefail
 if [ -z "$corpus" ] ; then
-    echo >&2 "The script $0 expects one parameter -- the location of the FAME! speech database"
+    echo >&2 "The script $0 expects one parameter -- the location of the FAME! speech corpus"
     exit 1
 fi
 if [ ! -d "$corpus" ] ; then
@@ -34,7 +34,7 @@ for x in train devel test; do
             exit 1
         fi
         # we might want to store physical paths as a general rule
-        filename=$(readlink -f $filename)
+        filename=$(utils/make_absolute.sh $filename)
         echo "$rec $filename"
     done > data/$x/wav.scp
 

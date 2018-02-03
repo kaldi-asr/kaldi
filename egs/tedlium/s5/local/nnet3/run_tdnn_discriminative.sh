@@ -159,7 +159,7 @@ if [ $stage -le 5 ]; then
     for decode_set in dev test; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      iter=epoch$x.adj
+      iter=epoch${x}_adj
 
       steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" --iter $iter \
         --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
