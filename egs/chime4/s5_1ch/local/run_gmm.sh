@@ -18,6 +18,7 @@ stage=0 # resume training with --stage=N
 train=noisy # noisy data multi-condition training
 eval_flag=true # make it true when the evaluation data are released
 add_enhaced_data=true # make it true when you want to add enhanced data into training set
+decode_only=false # if true, it wouldn't train a model again and will only do decoding
 
 . utils/parse_options.sh || exit 1;
 
@@ -50,6 +51,33 @@ if [ ! -d data/lang ]; then
   exit 1;
 fi
 
+if $decode_only; then
+  # check data/loca/data
+  mdir=`pwd`
+  if [ ! -d $mdir/data/local/data ]; then
+    echo "error, set $mdir correctly"
+    exit 1;
+  elif [ ! -d data/local/data ]; then
+    echo "copy $mdir/data/local/data"
+    mkdir -p data/local
+    cp -r $mdir/data/local/data data/local/
+  fi
+  # check gmm model
+  if [ ! -d $mdir/exp/tri3b_tr05_multi_${train} ]; then
+    echo "error, set $mdir correctly"
+    exit 1;
+  elif [ ! -d exp/tri3b_tr05_multi_${train} ]; then
+    echo "copy $mdir/exp/tri3b_tr05_multi_${train}"
+    mkdir -p exp
+    cp -r $mdir/exp/tri3b_tr05_multi_${train} exp/
+  fi
+  # process for enhanced data
+  if [ ! -d data/dt05_real_$enhan ] || [ ! -d data/et05_real_$enhan ]; then
+    local/real_enhan_chime4_data_prep.sh $enhan $enhan_data
+    local/simu_enhan_chime4_data_prep.sh $enhan $enhan_data
+  fi
+  stage=6
+fi
 #######################
 #### training #########
 if [ $stage -le 1 ]; then

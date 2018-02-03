@@ -91,12 +91,65 @@ if [ ! -d exp/tri3b_tr05_multi_${train} ]; then
   exit 1;
 fi
 
-local/nnet3/run_ivector_common.sh \
-  --stage $stage --nj $nj \
-  --train-set "$train_set" --gmm $gmm \
-  --test-sets "$test_sets" \
-  --num-threads-ubm $num_threads_ubm \
-  --nnet3-affix "$nnet3_affix"
+if $decode_only; then
+  mdir=`pwd`
+  # check ivector extractor
+  if [ ! -d $mdir/exp/nnet3${nnet3_affix}/extractor ]; then
+    echo "error, set $mdir correctly"
+    exit 1;
+  elif [ ! -d exp/nnet3${nnet3_affix}/extractor ]; then
+    echo "copy $mdir/exp/nnet3${nnet3_affix}/extractor"
+    mkdir -p exp/nnet3${nnet3_affix}
+    cp -r $mdir/exp/nnet3${nnet3_affix}/extractor exp/nnet3${nnet3_affix}/
+  fi
+  # check tdnn graph
+  if [ ! -d $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k ]; then
+    echo "error, set $mdir correctly"
+    exit 1;
+  elif [ ! -d exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k ]; then
+    echo "copy $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k"
+    mkdir -p exp/chain${nnet3_affix}/tree_a_sp
+    cp -r $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k exp/chain${nnet3_affix}/tree_a_sp/
+  fi
+  # check dir
+  if [ ! -d $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp ]; then
+    echo "error, set $mdir correctly"
+    exit 1;
+  elif [ ! -d exp/chain${nnet3_affix}/tdnn${affix}_sp ]; then
+    echo "copy $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp"
+    cp -r $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp exp/chain${nnet3_affix}/
+  fi
+  # make ivector for dev and eval
+  for datadir in ${test_sets}; do
+    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
+  done
+
+  # extracting hires features
+  for datadir in ${test_sets}; do
+    steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" data/${datadir}_hires
+    steps/compute_cmvn_stats.sh data/${datadir}_hires
+    utils/fix_data_dir.sh data/${datadir}_hires
+  done
+
+  # extract iVectors for the test data, but in this case we don't need the speed
+  # perturbation (sp).
+  for data in ${test_sets}; do
+    nspk=$(wc -l <data/${data}_hires/spk2utt)
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj "${nspk}" \
+    data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
+    exp/nnet3${nnet3_affix}/ivectors_${data}_hires
+  done
+  # directly do decoding
+  stage=18
+else
+  local/nnet3/run_ivector_common.sh \
+    --stage $stage --nj $nj \
+    --train-set "$train_set" --gmm $gmm \
+    --test-sets "$test_sets" \
+    --num-threads-ubm $num_threads_ubm \
+    --nnet3-affix "$nnet3_affix"
+fi
 
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
@@ -121,7 +174,7 @@ for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-if [ $stage -le 12 ] && [ ! $decode_only ]; then
+if [ $stage -le 12 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
@@ -144,7 +197,7 @@ if [ $stage -le 12 ] && [ ! $decode_only ]; then
   fi
 fi
 
-if [ $stage -le 13 ] && [ ! $decode_only ]; then
+if [ $stage -le 13 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
@@ -152,7 +205,7 @@ if [ $stage -le 13 ] && [ ! $decode_only ]; then
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [ $stage -le 14 ] && [ ! $decode_only ]; then
+if [ $stage -le 14 ]; then
   # Build a tree using our new topology.  We know we have alignments for the
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
@@ -169,7 +222,7 @@ if [ $stage -le 14 ] && [ ! $decode_only ]; then
 fi
 
 
-if [ $stage -le 15 ] && [ ! $decode_only ]; then
+if [ $stage -le 15 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
 
@@ -216,7 +269,7 @@ EOF
 fi
 
 
-if [ $stage -le 16 ] && [ ! $decode_only ]; then
+if [ $stage -le 16 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/chime4-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
