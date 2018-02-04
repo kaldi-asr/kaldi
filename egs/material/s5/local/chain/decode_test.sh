@@ -5,6 +5,8 @@ export LD_LIBRARY_PATH=/home/dpovey/libs
 set -euo pipefail
 
 language=swahili
+. utils/parse_options.sh
+
 datadev="data/"$language"/analysis1"
 label_delay=5
 tlstm_affix=1a   # affix for the TDNN-LSTM directory name

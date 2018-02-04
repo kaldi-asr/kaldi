@@ -37,4 +37,3 @@ for data in $test_sets; do
   local/score_segments.sh data/$language/${data}_hires/ $dir/decode_$data
 done
 
-exit 0;

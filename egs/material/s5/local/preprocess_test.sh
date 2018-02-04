@@ -78,4 +78,3 @@ $datadev/uniform_sub_segments
 utils/data/subsegment_data_dir.sh $datadev/ \
   $datadev/uniform_sub_segments $datadev-segmented
 
-exit 0;
