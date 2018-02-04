@@ -52,4 +52,3 @@ if [ $stage -le 0 ]; then
   cat $dir/wer
 fi
 
-exit 0;
