@@ -31,7 +31,7 @@ ivector_append_tool=append-vector-to-feats # (optional) the tool for appending i
 insplice=
 indelta_opts=
 minmax_opts=
-incmvn_opts="--norm-vars=true"
+incmvn_opts="--norm-means=true --norm-vars=true"
 ##
 
 feat_type=plain
@@ -203,20 +203,6 @@ else
   infeats_tr="ark:copy-feats scp:$dir/intrain.scp ark:- |"
   infeats_cv="ark:copy-feats scp:$dir/incv.scp ark:- |"
 
-  if [ ! -z "$insplice" ]; then
-    raw_dim=$(feat-to-dim "$infeats_tr" -);
-    echo "# + default 'input_feature_transform_proto' with splice +/-$insplice frames,"
-    input_feature_transform_proto=$dir/insplice${insplice}.proto
-    echo "<Splice> <InputDim> $raw_dim <OutputDim> $(((2*insplice+1)*raw_dim)) <BuildVector> -$insplice:$insplice </BuildVector>" >$input_feature_transform_proto
-
-    # Initialize 'input_feature-transform' from a prototype,
-    input_feature_transform=$dir/tr_$(basename $input_feature_transform_proto .proto).nnet
-    nnet-initialize --binary=false $input_feature_transform_proto $input_feature_transform
-    infeats_tr="$infeats_tr nnet-forward $input_feature_transform ark:- ark:- |"
-    infeats_cv="$infeats_cv nnet-forward $input_feature_transform ark:- ark:- |"
-    cp $input_feature_transform $dir/input_final.feature_transform
-  fi
-
   # optionally add deltas to input,
   if [ ! -z "$indelta_opts" ]; then
     infeats_tr="$infeats_tr add-deltas $indelta_opts ark:- ark:- |"
@@ -231,10 +217,24 @@ else
       compute-cmvn-stats --binary=false "$infeats_tr" $dir/incmvn_glob.ark
       infeats_tr="$infeats_tr apply-cmvn $incmvn_opts $dir/incmvn_glob.ark ark:- ark:- |"
 	  infeats_cv="$infeats_cv apply-cmvn $incmvn_opts $dir/incmvn_glob.ark ark:- ark:- |"
-      
   else
       echo "No CMVN used on MLP front-end"
   fi
+  if [ ! -z $input_feature_transform_proto ]; then
+    echo "# importing custom 'feature_transform_proto' from '$input_feature_transform_proto'"
+  else
+    raw_dim=$(feat-to-dim "$infeats_tr" -);
+    insplice=${insplice:-0}
+    echo "# + default 'input_feature_transform_proto' with splice +/-$insplice frames,"
+    input_feature_transform_proto=$dir/insplice${insplice}.proto
+    echo "<Splice> <InputDim> $raw_dim <OutputDim> $(((2*insplice+1)*raw_dim)) <BuildVector> -$insplice:$insplice </BuildVector>" >$input_feature_transform_proto
+  fi
+  # Initialize 'input_feature-transform' from a prototype,
+  input_feature_transform=$dir/tr_$(basename $input_feature_transform_proto .proto).nnet
+  nnet-initialize --binary=false $input_feature_transform_proto $input_feature_transform
+  infeats_tr="$infeats_tr nnet-forward $input_feature_transform ark:- ark:- |"
+  infeats_cv="$infeats_cv nnet-forward $input_feature_transform ark:- ark:- |"
+  cp $input_feature_transform $dir/input_final.feature_transform
 fi
 
 # output features,
@@ -452,7 +452,7 @@ else
   echo "# genrating network prototype $nnet_proto"
   case "$network_type" in
     dnn)
-      train_tool_opts += " --randomize=true"
+      train_tool_opts+=" --randomize=true"
       utils/nnet/make_nnet_proto.py $proto_opts \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
         $num_in $num_out $hid_layers $hid_dim >$nnet_proto
