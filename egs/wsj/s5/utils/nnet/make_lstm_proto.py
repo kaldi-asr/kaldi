@@ -17,7 +17,7 @@
 
 # Generated Nnet prototype, to be initialized by 'nnet-initialize'.
 
-import sys
+import sys, math
 
 ###
 ### Parse options
@@ -39,6 +39,29 @@ parser.add_option('--proj-dim', dest='proj_dim', type='int', default=400,
                    help='Number of LSTM recurrent units [default: %default]');
 parser.add_option('--num-layers', dest='num_layers', type='int', default=2,
                    help='Number of LSTM layers [default: %default]');
+# Activation related,
+parser.add_option('--activation-final', dest='activation_final',
+                   help='If set, outputs an activation layer as final layer [default: %default]',
+                   default=False, action='store_true');
+parser.add_option('--activation-type', dest='activation_type',
+                   help='Select type of activation function : (<Sigmoid>|<Tanh>|<ParametricRelu>) [default: %default]',
+                   default='<Tanh>', type='string');
+parser.add_option('--activation-opts', dest='activation_opts',
+                   help='Additional options for protoype of activation function [default: %default]',
+                   default='', type='string');
+# Affine-transform related,
+parser.add_option('--hid-bias-mean', dest='hid_bias_mean',
+                   help='Set bias for hidden activations [default: %default]',
+                   default=-2.0, type='float');
+parser.add_option('--hid-bias-range', dest='hid_bias_range',
+                   help='Set bias range for hidden activations (+/- 1/2 range around mean) [default: %default]',
+                   default=4.0, type='float');
+parser.add_option('--param-stddev-factor', dest='param_stddev_factor',
+                   help='Factor to rescale Normal distriburtion for initalizing weight matrices [default: %default]',
+                   default=0.1, type='float');
+parser.add_option('--no-glorot-scaled-stddev', dest='with_glorot',
+                   help='Generate normalized weights according to X.Glorot paper, but mapping U->N with same variance (factor sqrt(x/(dim_in+dim_out)))',
+                   action='store_false', default=True);
 # Optional (default == 'None'),
 parser.add_option('--lstm-param-range', dest='lstm_param_range', type='float',
                    help='Range of initial LSTM parameters [default: %default]');
@@ -60,6 +83,15 @@ if len(args) != 2 :
   sys.exit(1)
 
 (feat_dim, num_leaves) = map(int,args);
+
+
+# Optionaly scale
+def Glorot(dim1, dim2):
+  if o.with_glorot:
+    # 35.0 = magic number, gives ~1.0 in inner layers for hid-dim 1024dim,
+    return 35.0 * math.sqrt(2.0/(dim1+dim2));
+  else:
+    return 1.0
 
 # Original prototype from Jiayu,
 #<NnetProto>
@@ -85,10 +117,12 @@ for l in range(o.num_layers - 1):
   print "<LstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (o.proj_dim, o.proj_dim, o.cell_dim) + lstm_extra_opts
 
 # Adding <Tanh> for more stability,
+#print "%s <InputDim> %d <OutputDim> %d %s" % (o.activation_type, o.proj_dim, o.proj_dim, o.activation_opts) # Non-linearity
 print "<Tanh> <InputDim> %d <OutputDim> %d" % (o.proj_dim, o.proj_dim)
 
 # Softmax layer,
-print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> 0.0 <BiasRange> 0.0" % (o.proj_dim, num_leaves) + softmax_affine_opts
+print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <LearnRateCoef> %f <BiasLearnRateCoef> %f" % (o.proj_dim, num_leaves, 0.0, 0.0, (o.param_stddev_factor * Glorot(o.proj_dim, num_leaves)), 1.0, 0.1)# + softmax_affine_opts
+
 # Optionaly append softmax
 if o.with_softmax:
   if o.block_softmax_dims == "":
@@ -96,3 +130,5 @@ if o.with_softmax:
   else:
     print "<BlockSoftmax> <InputDim> %d <OutputDim> %d <BlockDims> %s" % (num_leaves, num_leaves, o.block_softmax_dims)
 
+if o.activation_final:
+  print "%s <InputDim> %d <OutputDim> %d %s" % (o.activation_type, num_leaves, num_leaves, o.activation_opts)
