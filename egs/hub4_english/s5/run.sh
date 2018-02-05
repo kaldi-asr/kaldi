@@ -200,20 +200,26 @@ fi
 if [ $stage -le 19 ]; then
   utils/mkgraph.sh data/lang_nosp_test exp/tri3 exp/tri3/graph_nosp
 
-  (
   for dset in $test_sets; do
+    (
     this_nj=`cat data/$dset/spk2utt | wc -l`
     if [ $this_nj -gt 20 ]; then
       this_nj=20
     fi
     steps/decode_fmllr.sh --nj $this_nj --cmd "$decode_cmd" --num-threads 4 \
-      exp/tri3/graph_nosp data/$dset exp/tri3/decode_nosp_${dset}
+      exp/tri3/graph_nosp data/$dset exp/tri3/decode_nosp_${dset} || touch exp/tri3/.error
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_nosp_test data/lang_nosp_test_rescore \
       data/${dset} exp/tri3/decode_nosp_${dset} \
-      exp/tri3/decode_nosp_${dset}_rescore
+      exp/tri3/decode_nosp_${dset}_rescore || touch exp/tri3/.error
+    ) &
   done
-  ) &
+  wait
+
+  if [ -f exp/tri3/.error ]; then
+    echo "Decode failed in exp/tri3/decode*"
+    exit 1
+  fi
 fi
 
 if [ $stage -le 20 ]; then
@@ -227,8 +233,8 @@ fi
 if [ $stage -le 21 ]; then
   utils/mkgraph.sh data/lang_nosp_test exp/tri4 exp/tri4/graph_nosp
 
-  (
   for dset in $test_sets; do
+    (
     this_nj=`cat data/$dset/spk2utt | wc -l`
     if [ $this_nj -gt 20 ]; then
       this_nj=20
@@ -239,9 +245,17 @@ if [ $stage -le 21 ]; then
       data/lang_nosp_test data/lang_nosp_test_rescore \
       data/${dset} exp/tri4/decode_nosp_${dset} \
       exp/tri4/decode_nosp_${dset}_rescore
+    ) &
   done
-  ) &
+  wait
+
+  if [ -f exp/tri4/.error ]; then
+    echo "Decode failed in exp/tri4/decode*"
+    exit 1
+  fi
 fi
+
+wait
 
 # %WER 18.0 | 728 32834 | 83.9 11.7 4.3 2.0 18.0 85.9 | exp/tri4/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
 # %WER 19.3 | 728 32834 | 82.9 12.6 4.6 2.2 19.3 86.8 | exp/tri4/decode_nosp_eval97.pem/score_13_0.0/eval97.pem.ctm.filt.sys
@@ -252,6 +266,12 @@ fi
 
 # First run the data preparation stages in WSJ run.sh
 wsj_base=../../wsj/s5   # Change this to the WSJ base directory
+
+if [ ! -f $wsj_base/data/train_si284/wav.scp ]; then
+  echo "WSJ data directory $wsj_base/data/train_si284 is not prepared."
+  echo "Run the initial stages of WSJ's run.sh"
+  exit 0
+fi
 
 if [ $stage -le 25 ]; then
   # We copy the prepared data to the current directory

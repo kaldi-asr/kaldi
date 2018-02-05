@@ -66,12 +66,11 @@ if [ $stage -le 0 ]; then
   done
 fi
 
-utils/data/get_reco2utt.sh $data
 if [ $stage -le 1 ]; then
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
     if $resolve_ctm_overlaps; then
       $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/resolve_ctm_overlaps.LMWT.${wip}.log \
-        steps/resolve_ctm_overlaps.py $data/segments $data/reco2utt \
+        utils/ctm/resolve_ctm_overlaps.py $data/segments \
           $dir/score_LMWT_${wip}/$name.utt_ctm - \| \
         utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
         '>' $dir/score_LMWT_${wip}/$name.ctm || exit 1;
