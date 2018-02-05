@@ -52,14 +52,14 @@ garbage_phones="lau spn"
 silence_phones="sil"
 
 for p in $garbage_phones; do 
-  for affix in "" "_B" "_E" "_I" "_S"; do
-    echo "$p$affix"
+  for a in "" "_B" "_E" "_I" "_S"; do
+    echo "$p$a"
   done
 done > $dir/garbage_phones.txt
 
 for p in $silence_phones; do 
-  for affix in "" "_B" "_E" "_I" "_S"; do
-    echo "$p$affix"
+  for a in "" "_B" "_E" "_I" "_S"; do
+    echo "$p$a"
   done
 done > $dir/silence_phones.txt
 
@@ -69,8 +69,9 @@ if ! cat $dir/garbage_phones.txt $dir/silence_phones.txt | \
   exit 1
 fi
 
+data_id=$(basename $data_dir)
 whole_data_dir=${data_dir}_whole
-targets_dir=exp/segmentation${affix}/train_whole_combined_targets_sub3
+targets_dir=exp/segmentation${affix}/${data_id}_whole_combined_targets_sub3
 
 rvb_data_dir=${whole_data_dir}_rvb_hires
 rvb_targets_dir=${targets_dir}_rvb
@@ -84,8 +85,8 @@ fi
 ###############################################################################
 if [ $stage -le 1 ]; then
   steps/make_mfcc.sh --nj 50 --cmd "$train_cmd"  --write-utt2num-frames true \
-    $whole_data_dir exp/make_mfcc/train_whole
-  steps/compute_cmvn_stats.sh $whole_data_dir exp/make_mfcc/train_whole
+    $whole_data_dir exp/make_mfcc/${data_id}_whole
+  steps/compute_cmvn_stats.sh $whole_data_dir exp/make_mfcc/${data_id}_whole
   utils/fix_data_dir.sh $whole_data_dir
 fi
 
@@ -114,56 +115,59 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-    # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
-    if [ ! -f rirs_noises.zip ]; then
-      wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
-      unzip rirs_noises.zip
-    fi
+  # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
+  if [ ! -f rirs_noises.zip ]; then
+    wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
+    unzip rirs_noises.zip
+  fi
 
-    rvb_opts=()
-    # This is the config for the system using simulated RIRs and point-source noises
-    rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
-    rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
-    rvb_opts+=(--noise-set-parameters RIRS_NOISES/pointsource_noises/noise_list)
+  rvb_opts=()
+  # This is the config for the system using simulated RIRs and point-source noises
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
+  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
+  rvb_opts+=(--noise-set-parameters RIRS_NOISES/pointsource_noises/noise_list)
 
-    foreground_snrs="20:10:15:5:0"
-    background_snrs="20:10:15:5:0"
-    # corrupt the data to generate multi-condition data
-    # for data_dir in train dev test; do
-    python steps/data/reverberate_data_dir.py \
-	   "${rvb_opts[@]}" \
-	   --prefix "rev" \
-	   --foreground-snrs $foreground_snrs \
-	   --background-snrs $background_snrs \
-	   --speech-rvb-probability 0.5 \
-	   --pointsource-noise-addition-probability 0.5 \
-	   --isotropic-noise-addition-probability 0.7 \
-	   --num-replications $num_data_reps \
-	   --max-noises-per-minute 4 \
-	   --source-sampling-rate 8000 \
-	   $whole_data_dir $rvb_data_dir
-
-    rvb_targets_dirs=()
-    for i in `seq 1 $num_data_reps`; do
-      steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}_" \
-        $targets_dir ${targets_dir}_temp_$i || exit 1
-      rvb_targets_dirs+=(${targets_dir}_temp_$i)
-    done
-
-    steps/segmentation/combine_targets_dirs.sh \
-      $rvb_data_dir ${rvb_targets_dir} \
-      ${rvb_targets_dirs[@]} || exit 1;
-
-    rm -r ${rvb_targets_dirs[@]}
+  foreground_snrs="20:10:15:5:0"
+  background_snrs="20:10:15:5:0"
+  # corrupt the data to generate multi-condition data
+  # for data_dir in train dev test; do
+  python steps/data/reverberate_data_dir.py \
+    "${rvb_opts[@]}" \
+    --prefix "rev" \
+    --foreground-snrs $foreground_snrs \
+    --background-snrs $background_snrs \
+    --speech-rvb-probability 0.5 \
+    --pointsource-noise-addition-probability 0.5 \
+    --isotropic-noise-addition-probability 0.7 \
+    --num-replications $num_data_reps \
+    --max-noises-per-minute 4 \
+    --source-sampling-rate 8000 \
+    $whole_data_dir $rvb_data_dir
 fi
 
 if [ $stage -le 5 ]; then
   steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 \
     ${rvb_data_dir}
   steps/compute_cmvn_stats.sh ${rvb_data_dir}
+  utils/fix_data_dir.sh $rvb_data_dir
 fi
 
 if [ $stage -le 6 ]; then
+  rvb_targets_dirs=()
+  for i in `seq 1 $num_data_reps`; do
+    steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}_" \
+      $targets_dir ${targets_dir}_temp_$i || exit 1
+    rvb_targets_dirs+=(${targets_dir}_temp_$i)
+  done
+
+  steps/segmentation/combine_targets_dirs.sh \
+    $rvb_data_dir ${rvb_targets_dir} \
+    ${rvb_targets_dirs[@]} || exit 1;
+
+  rm -r ${rvb_targets_dirs[@]}
+fi
+
+if [ $stage -le 7 ]; then
   # Train a STATS-pooling network for SAD
   local/segmentation/tuning/train_stats_asr_sad_1a.sh \
     --stage $nstage --train-stage $train_stage \
@@ -171,7 +175,7 @@ if [ $stage -le 6 ]; then
     --data-dir ${rvb_data_dir} --affix "1a" || exit 1
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   # The options to this script must match the options used in the 
   # nnet training script. 
   # e.g. extra-left-context is 79, because the model is an stats pooling network 
@@ -189,7 +193,7 @@ if [ $stage -le 7 ]; then
     exp/segmentation${affix}/tdnn_stats_asr_sad_1a/{,eval2000}
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   # Do some diagnostics
   steps/segmentation/evaluate_segmentation.pl data/eval2000/segments \
     exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/segments &> \
@@ -206,7 +210,7 @@ if [ $stage -le 8 ]; then
 #    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/md_eval.log
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   utils/copy_data_dir.sh exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg \
     data/eval2000.seg_asr_sad_1a
 fi
