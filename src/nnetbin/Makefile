@@ -7,10 +7,10 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = nnet-train-frmshuff nnet-train-frmshuff-tgtmat minmax-to-nnet \
-        nnet-train-perutt \
+        nnet-train-perutt nnet-train-perutt-tgtmat \
         nnet-train-mmi-sequential \
         nnet-train-mpe-sequential \
-        nnet-train-multistream nnet-train-multistream-perutt \
+        nnet-train-multistream nnet-train-multistream-tgtmat nnet-train-multistream-perutt-tgtmat \
         rbm-train-cd1-frmshuff rbm-convert-to-nnet \
         nnet-forward nnet-copy nnet-info nnet-concat \
         transf-to-nnet cmvn-to-nnet nnet-initialize \
