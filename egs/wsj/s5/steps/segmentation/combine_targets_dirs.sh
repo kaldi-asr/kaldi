@@ -49,7 +49,7 @@ for d in $*; do
   cat $d/targets.scp
 done | sort -k1,1 > $dest/targets.scp || exit 1
 
-steps/segmentation/verify_targets_dir.sh $data $dest || exit 1
+steps/segmentation/validate_targets_dir.sh $dest $data || exit 1
 
 echo "Combined targets and stored in $dest"
 exit 0
