@@ -247,6 +247,7 @@ void AperiodicEnergy::Compute(const VectorBase<BaseFloat> &wave,
     // regions obtained previously.
     // padded_window contains the FFT coefficients
     ObtainNoiseSpectrum(padded_window, noise_indices, &tmp_spectrum);
+    ComputePowerSpectrum(&tmp_spectrum);
     SubVector<BaseFloat> noise_spectrum(tmp_spectrum, 0,
                                         padded_window_size_/2 + 1);
 
@@ -374,7 +375,7 @@ void AperiodicEnergy::IdentifyNoiseRegions(
   // same quefrencies.
   // The harmonic "peaks" are actually present for every multiple of F0,
   // we take only the first 2
-  for (int32 k = 1; k <= 2; k++) {
+  for (int32 k = 1; k <= 4; k++) {
     if (k * f0_index + f0_peak_width >= padded_window_size_/2) break;
     int32 offset = k * f0_index;
     // copy within the peak
@@ -488,7 +489,7 @@ void AperiodicEnergy::ObtainNoiseSpectrum(
       last_index = j;
     }
   }
-  ComputePowerSpectrum(noise_spectrum);
+  //ComputePowerSpectrum(noise_spectrum);
 }
 
 }  // namespace kaldi
