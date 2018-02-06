@@ -2854,8 +2854,8 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   }
   std::string token;
   ReadToken(is, binary, &token);
-  if (token != "<NaturalGradientAffineComponent>" &&
-      token != "</NaturalGradientAffineComponent>")
+  // the following has to handle a couple variants of
+  if (token.find("NaturalGradientAffineComponent>") == std::string::npos)
     KALDI_ERR << "Expected <NaturalGradientAffineComponent> or "
               << "</NaturalGradientAffineComponent>, got " << token;
   SetNaturalGradientConfigs();
