@@ -136,7 +136,7 @@ fi
 
 if [ $stage -le 7 ]; then
   # Use a subset to compute prior over the output targets
-  $cmd $dir/log/get_priors.log \
+  $train_cmd $dir/log/get_priors.log \
     matrix-sum-rows "scp:utils/subset_scp.pl --quiet 1000 $targets_dir/targets.scp |" \
     ark:- \| vector-sum --binary=false ark:- $dir/post_output.vec || exit 1
 
