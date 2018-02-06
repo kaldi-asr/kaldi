@@ -69,6 +69,16 @@ class DecodableMatrixScaledMapped: public DecodableInterface {
     return scale_ * (*likes_)(frame, trans_model_.TransitionIdToPdf(tid));
   }
 
+  virtual void ComputeLogLikelihoods(BaseFloat* out, int32 frame, int32 count) {
+    if (frame >= likes_->NumRows()) return;
+    SubVector<BaseFloat> vec = likes_->Row(frame);
+    vec.Scale(scale_);
+    for(int i=0;i<count;i++) {
+      BaseFloat val = vec.Data()[trans_model_.TransitionIdToPdf(i)];
+      out[i]=val;
+    }
+  };
+
   // Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
 
