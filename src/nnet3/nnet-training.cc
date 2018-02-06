@@ -34,7 +34,8 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(config.momentum >= 0.0 &&
-               config.max_param_change >= 0.0);
+               config.max_param_change >= 0.0 &&
+               config.backstitch_training_interval > 0);
   delta_nnet_ = nnet_->Copy();
   ScaleNnet(0.0, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
@@ -106,7 +107,12 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
   bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       1.0, 1.0 - config_.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
-  // Scales deta_nnet
+
+  // Scale down the batchnorm stats (keeps them fresh... this affects what
+  // happens when we use the model with batchnorm test-mode set).
+  ScaleBatchnormStats(config_.batchnorm_stats_scale, nnet_);
+
+  // Scale deta_nnet
   if (success)
     ScaleNnet(config_.momentum, delta_nnet_);
   else
@@ -189,11 +195,19 @@ bool NnetTrainer::PrintTotalStats() const {
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
+  std::vector<std::pair<std::string, const ObjectiveFunctionInfo*> > all_pairs;
+  for (; iter != end; ++iter)
+    all_pairs.push_back(std::pair<std::string, const ObjectiveFunctionInfo*>(
+        iter->first, &(iter->second)));
+  // ensure deterministic order of these names (this will matter in situations
+  // where a script greps for the objective from the log).
+  std::sort(all_pairs.begin(), all_pairs.end());
   bool ans = false;
-  for (; iter != end; ++iter) {
-    const std::string &name = iter->first;
-    const ObjectiveFunctionInfo &info = iter->second;
-    ans = ans || info.PrintTotalStats(name);
+  for (size_t i = 0; i < all_pairs.size(); i++) {
+    const std::string &name = all_pairs[i].first;
+    const ObjectiveFunctionInfo &info = *(all_pairs[i].second);
+    bool ok = info.PrintTotalStats(name);
+    ans = ans || ok;
   }
   PrintMaxChangeStats();
   return ans;

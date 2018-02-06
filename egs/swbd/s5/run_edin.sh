@@ -26,14 +26,14 @@ if ! command -v prune-lm >/dev/null 2>&1 ; then
 fi
 
 # Data prep
-# Here we make some Edinburgh-specific changes from the Kaldi recipe in 
+# Here we make some Edinburgh-specific changes from the Kaldi recipe in
 # trunk/egs/swbd/s5 (rev. 1841). The major differences are that everything is
 # made lowercase since SRILM has an option to make the data lowercase, but not
 # uppercase. [It is easy to change since SRILM uses the awk tolower function,
-# but I prefered not to change SRILM]. The prefix in the names of the data 
-# processing scripts are changed to swbd1_ from swbd_p1_ since Switchboard-1 
+# but I prefered not to change SRILM]. The prefix in the names of the data
+# processing scripts are changed to swbd1_ from swbd_p1_ since Switchboard-1
 # Release 2 (LDC97S62) has two phases marked as p1_ and p2_ in the data. We
-# are using both and so p1_ prefix in the scripts is confusing. There are a 
+# are using both and so p1_ prefix in the scripts is confusing. There are a
 # few minor changes related to where the scripts expect the data to be, which
 # are Edinburgh-specific. --Arnab (Jan 2013)
 local/swbd1_data_prep_edin.sh /exports/work/inf_hcrc_cstr_general/corpora/switchboard/switchboard1
@@ -43,7 +43,7 @@ local/swbd1_prepare_dict.sh
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
 # Now train the language models. We are using SRILM and interpolating with an
-# LM trained on the Fisher transcripts (part 2 disk is currently missing; so 
+# LM trained on the Fisher transcripts (part 2 disk is currently missing; so
 # only part 1 transcripts ~700hr are used)
 local/swbd1_train_lms_edin.sh \
   --fisher /exports/work/inf_hcrc_cstr_general/corpora/fisher/transcripts \
@@ -74,11 +74,11 @@ utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
 local/eval2000_data_prep_edin.sh /exports/work/inf_hcrc_cstr_general/corpora/switchboard/hub5/2000 /exports/work/inf_hcrc_cstr_general/corpora/switchboard/hub5/2000/transcr
 
 # mfccdir should be some place with a largish disk where you
-# want to store MFCC features. 
+# want to store MFCC features.
 mfccdir=mfcc
 
 steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir || exit 1;
-# Remove the small number of utterances that couldn't be extracted for some 
+# Remove the small number of utterances that couldn't be extracted for some
 # reason (e.g. too short; no such file).
 utils/fix_data_dir.sh data/train || exit 1;
 steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir || exit 1
@@ -100,10 +100,10 @@ utils/subset_data_dir.sh --last data/train $n data/train_nodev
 # perl -ne 'split; $s+=($_[3]-$_[2]); END{$h=int($s/3600); $r=($s-$h*3600); $m=int($r/60); $r-=$m*60; printf "%.1f sec -- %d:%d:%.1f\n", $s, $h, $m, $r;}' data/local/train/segments
 
 
-# Now-- there are 260k utterances (313hr 23min), and we want to start the 
-# monophone training on relatively short utterances (easier to align), but not 
+# Now-- there are 260k utterances (313hr 23min), and we want to start the
+# monophone training on relatively short utterances (easier to align), but not
 # only the shortest ones (mostly uh-huh).  So take the 100k shortest ones;
-# remove most of the repeated utterances (these are the uh-huh type ones), and 
+# remove most of the repeated utterances (these are the uh-huh type ones), and
 # then take 10k random utterances from those (about 4hr 40mins)
 utils/subset_data_dir.sh --shortest data/train_nodev 100000 data/train_100kshort
 utils/data/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
@@ -184,7 +184,7 @@ for lm_suffix in tg fsh_tgpr; do
   ) &
 done
 
-# From now, we start building a bigger system (on train_100k_nodup, which has 
+# From now, we start building a bigger system (on train_100k_nodup, which has
 # 110hrs of data). We start with the LDA+MLLT system
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri2 exp/tri2_ali_100k_nodup || exit 1;
@@ -225,7 +225,7 @@ for lm_suffix in tg fsh_tgpr; do
   ) &
 done
 
-# Now train a LDA+MLLT+SAT model on the entire training data (train_nodup; 
+# Now train a LDA+MLLT+SAT model on the entire training data (train_nodup;
 # 286 hours)
 # Train tri4b, which is LDA+MLLT+SAT, on train_nodup data.
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
@@ -246,7 +246,7 @@ for lm_suffix in tg fsh_tgpr; do
   ) &
 done
 
-# MMI training starting from the LDA+MLLT+SAT systems on both the 
+# MMI training starting from the LDA+MLLT+SAT systems on both the
 # train_100k_nodup (110hr) and train_nodup (286hr) sets
 steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri4a exp/tri4a_ali_100k_nodup || exit 1
@@ -319,8 +319,8 @@ for iter in 4 5 6 7 8; do
       graph_dir=exp/tri4a/graph_sw1_${lm_suffix}
       decode_dir=exp/tri4a_fmmi_b0.1/decode_eval2000_it${iter}_sw1_${lm_suffix}
       steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
-	--transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} \
-	--config conf/decode.config $graph_dir data/eval2000 $decode_dir
+        --transform-dir exp/tri4a/decode_eval2000_sw1_${lm_suffix} \
+        --config conf/decode.config $graph_dir data/eval2000 $decode_dir
     ) &
   done
 done
@@ -331,8 +331,8 @@ for iter in 4 5 6 7 8; do
       graph_dir=exp/tri4b/graph_sw1_${lm_suffix}
       decode_dir=exp/tri4b_fmmi_b0.1/decode_eval2000_it${iter}_sw1_${lm_suffix}
       steps/decode_fmmi.sh --nj 30 --cmd "$decode_cmd" --iter $iter \
-	--transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
-	--config conf/decode.config $graph_dir data/eval2000 $decode_dir
+        --transform-dir exp/tri4b/decode_eval2000_sw1_${lm_suffix} \
+        --config conf/decode.config $graph_dir data/eval2000 $decode_dir
     ) &
   done
 done

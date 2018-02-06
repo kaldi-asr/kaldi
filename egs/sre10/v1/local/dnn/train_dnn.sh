@@ -77,19 +77,19 @@ utils/subset_data_dir.sh --speakers data/train_asr 100000 data/train_asr_100k
 # The next commands are not necessary for the scripts to run, but increase
 # efficiency of data access by putting the mfcc's of the subset
 # in a contiguous place in a file.
-( . path.sh;
+( . ./path.sh;
   # make sure mfccdir is defined as above..
   cp data/train_asr_10k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_asr_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_10k_nodup.ark,$mfccdir/kaldi_fish_10k_nodup.scp \
   && cp $mfccdir/kaldi_fish_10k_nodup.scp data/train_asr_10k_nodup/feats.scp
 )
-( . path.sh;
+( . ./path.sh;
   # make sure mfccdir is defined as above..
   cp data/train_asr_30k/feats.scp{,.bak}
   copy-feats scp:data/train_asr_30k/feats.scp  ark,scp:$mfccdir/kaldi_fish_30k.ark,$mfccdir/kaldi_fish_30k.scp \
   && cp $mfccdir/kaldi_fish_30k.scp data/train_asr_30k/feats.scp
 )
-( . path.sh;
+( . ./path.sh;
   # make sure mfccdir is defined as above..
   cp data/train_asr_100k/feats.scp{,.bak}
   copy-feats scp:data/train_asr_100k/feats.scp  ark,scp:$mfccdir/kaldi_fish_100k.ark,$mfccdir/kaldi_fish_100k.scp \

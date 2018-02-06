@@ -2,7 +2,7 @@
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 #
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 mkdir -p data/lang_test
 

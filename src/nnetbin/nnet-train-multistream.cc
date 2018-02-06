@@ -124,6 +124,8 @@ int main(int argc, char *argv[]) {
 
     NnetTrainOptions trn_opts;
     trn_opts.Register(&po);
+    LossOptions loss_opts;
+    loss_opts.Register(&po);
 
     bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
@@ -210,8 +212,8 @@ int main(int argc, char *argv[]) {
       weights_reader.Open(frame_weights);
     }
 
-    Xent xent;
-    Mse mse;
+    Xent xent(loss_opts);
+    Mse mse(loss_opts);
 
     Timer time;
     KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
@@ -412,15 +414,15 @@ int main(int argc, char *argv[]) {
 
       // monitor the NN training (--verbose=2),
       int32 F = 25000;
-      if (GetVerboseLevel() >= 3) {
+      if (GetVerboseLevel() >= 2) {
         // print every 25k frames,
         if (tmp_frames / F != total_frames / F) {
-          KALDI_VLOG(3) << "### After " << total_frames << " frames,";
-          KALDI_VLOG(3) << nnet.Info();
-          KALDI_VLOG(3) << nnet.InfoPropagate();
+          KALDI_VLOG(2) << "### After " << total_frames << " frames,";
+          KALDI_VLOG(2) << nnet.Info();
+          KALDI_VLOG(2) << nnet.InfoPropagate();
           if (!crossvalidate) {
-            KALDI_VLOG(3) << nnet.InfoBackPropagate();
-            KALDI_VLOG(3) << nnet.InfoGradient();
+            KALDI_VLOG(2) << nnet.InfoBackPropagate();
+            KALDI_VLOG(2) << nnet.InfoGradient();
           }
         }
       }

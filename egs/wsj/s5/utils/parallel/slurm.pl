@@ -394,12 +394,12 @@ print Q ") >$logfile\n";
 print Q "if [ \"\$CUDA_VISIBLE_DEVICES\" == \"NoDevFiles\" ]; then\n";
 print Q "  ( echo CUDA_VISIBLE_DEVICES set to NoDevFiles, unsetting it... \n";
 print Q "  )>>$logfile\n";
-print Q "  unset CUDA_VISIBLE_DEVICES.\n";
+print Q "  unset CUDA_VISIBLE_DEVICES\n";
 print Q "fi\n";
 print Q "time1=\`date +\"%s\"\`\n";
 print Q " ( $cmd ) &>>$logfile\n";
 print Q "ret=\$?\n";
-print Q "sync || true";
+print Q "sync || true\n";
 print Q "time2=\`date +\"%s\"\`\n";
 print Q "echo '#' Accounting: begin_time=\$time1 >>$logfile\n";
 print Q "echo '#' Accounting: end_time=\$time2 >>$logfile\n";
@@ -506,7 +506,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
         if ($squeue_status == 1) {
           # time to make sure it is not just delayed creation of the syncfile.
 
-          # Don't consider immediately missing job as error, first wait some  
+          # Don't consider immediately missing job as error, first wait some
           # time to make sure it is not just delayed creation of the syncfile.
           sleep(4);
           # Sometimes NFS gets confused and thinks it's transmitted the directory

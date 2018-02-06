@@ -26,7 +26,7 @@ sdir=$1
 [ ! -d $sdir/transcr ] \
   && echo Expecting directory $sdir/transcr to be present && exit 1;
 
-. path.sh 
+. ./path.sh
 
 dir=data/local/eval1997
 mkdir -p $dir

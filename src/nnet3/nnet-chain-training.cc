@@ -37,7 +37,8 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
-               opts.nnet_config.max_param_change >= 0.0);
+               opts.nnet_config.max_param_change >= 0.0 &&
+               opts.nnet_config.backstitch_training_interval > 0);
   delta_nnet_ = nnet_->Copy();
   ScaleNnet(0.0, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
@@ -114,7 +115,12 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   bool success = UpdateNnetWithMaxChange(*delta_nnet_,
       nnet_config.max_param_change, 1.0, 1.0 - nnet_config.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
-  // Scales delta_nnet
+
+  // Scale down the batchnorm stats (keeps them fresh... this affects what
+  // happens when we use the model with batchnorm test-mode set).
+  ScaleBatchnormStats(nnet_config.batchnorm_stats_scale, nnet_);
+
+  // Scale delta_nnet
   if (success)
     ScaleNnet(nnet_config.momentum, delta_nnet_);
   else

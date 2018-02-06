@@ -364,7 +364,7 @@ def train(args, run_opts):
                 models_to_combine=models_to_combine,
                 egs_dir=egs_dir,
                 minibatch_size_str=args.minibatch_size, run_opts=run_opts,
-                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+                max_objective_evaluations=args.max_objective_evaluations)
     
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "

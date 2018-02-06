@@ -384,7 +384,7 @@ int main(int argc, char *argv[]) {
       PerturbImageInNnetExample(config, &eg);
       example_writer.Write(key, eg);
     }
-    KALDI_LOG << "Perturbed" << num_done << " neural-network training images.";
+    KALDI_LOG << "Perturbed " << num_done << " neural-network training images.";
     return (num_done == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

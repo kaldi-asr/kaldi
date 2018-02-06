@@ -35,13 +35,12 @@ namespace nnet3 {
 
 
 
-// this struct contains the attributes for a single command.  see class
-// ComputationVariables for the meaning of a variable.  note, variables may be
-// both read and written, e.g. for operations that do += or that write to only
-// some elements of a variable (we can think of these as, for purposes of
-// analysis, reading the remaining elements and writing them back... a more
-// exact analysis would have to define the variables on a more fine-grained
-// level).
+// This struct contains the attributes for a single command.  See class
+// ComputationVariables for the meaning of a variable, which can be identified
+// with a sub-part of a matrix.  Note, variables may be both read and written in
+// the same command; e.g. for operations that do += or that write to only some
+// elements of a variable (we can think of these as, for purposes of analysis,
+// reading the remaining elements and writing them back.
 struct CommandAttributes {
   // All of the vector variables below are made sorted and uniq by
   // ComputeCommandAttributes.
@@ -90,9 +89,9 @@ enum AccessType {
     would cause the resulting analysis to be inaccurate.
 
     What we do instead, which is accurate enough in the cases we envisage, is to
-    make the variables correspond to the most specific row column ranges in the
+    make the variables correspond to the most specific row and column ranges in the
     matrices that we ever access.  We do this as follows: for each matrix in the
-    computation we get a list of all the "split points" at which the row column
+    computation we get a list of all the "split points" at which the row and column
     ranges respectively ever start and end, and define a split_point_index as
     the index into the array.  The variable could be defined as the triple
     (matrix_index, row_split_point_index, column_split_point_index), but we map
@@ -247,18 +246,20 @@ void ComputeVariableAccesses(
 
 
 struct MatrixAccesses {
-  /// Index of the command that allocates the matrix, or -1 if the command
-  /// doesn't exist (e.g. it is an input).
+  /// Index of the command that allocates the matrix (which will be of type
+  /// kAllocMatrix or kSwapMatrix), or -1 if the command doesn't exist (e.g. it
+  /// is an input).
   int32 allocate_command;
-  /// Index of the command that deallocates the matrix, or -1 if never gets
-  /// deallocated (e.g. it is an output).
+  /// Index of the command that deallocates the matrix (which will be of type
+  /// kDeallocMatrix or kSwapMatrix), or -1 if never gets deallocated (e.g. it
+  /// is an output).
   int32 deallocate_command;
   /// Records the indexes of commands that access the matrix, and the type
   /// (read, read/write, write).  It will be sorted on command index with only
   /// one record per command.  Note: a write to only a part of the matrix
   /// (i.e. a submatrix that isn't the whole thing) will be recorded as an
-  /// access of type read/write.  An allocation with zeroing is recorded
-  /// as a write access.
+  /// access of type read/write.  Input commands are considered writes, but
+  /// allocation and swap commands (which do not set up any values) are not.
   std::vector<Access> accesses;
   /// true if this matrix is an input to the computation (i.e. either an
   /// input-value or an output-deriv).
@@ -271,10 +272,10 @@ struct MatrixAccesses {
 };
 
 /**
-   This function organizes information in the CommandAttributes in a way that
-   is convenient to access per matrix.  See struct MatrixAccesses for the
-   output format; the output "matrix_accesses" is indexed by the matrix index
-   (the same index as computation.matrices).
+   This function organizes information in the CommandAttributes in a way that is
+   convenient to access per matrix.  See the declaration of struct
+   MatrixAccesses for the output format; the output "matrix_accesses" is indexed
+   by matrix index (the same index as computation.matrices).
  */
 void ComputeMatrixAccesses(
     const Nnet &nnet,
@@ -312,12 +313,13 @@ class ComputationAnalysis {
                       const Analyzer &analyzer): computation_(computation),
                                                  analyzer_(analyzer) { }
 
-  /// Returns the first command (read or write) that is not a kAlloc* command,
-  /// that accesses any part of 's' [note: deallocation does not count as a read
-  /// or write operation].  If there is no such command, it returns
+  /// Returns the first command (read or write) that accesses any part of 's'
+  /// except for zeroing it (i.e. kSetConst with zero alpha).
+  /// [note: kAllocMatrix, kSwapMatrix and kDeallocMatrix do not count as read
+  /// or write operations].  If there is no such command, it returns
   /// num_commands.
   /// s must be >0 (i.e. not the empty submatrix).
-  int32 FirstAccess(int32 s) const;
+  int32 FirstNontrivialAccess(int32 s) const;
 
   /// Returns the last non-deallocation command that accesses any part of
   /// submatrix 's'; if there is no such command it returns -1.
@@ -337,11 +339,12 @@ class ComputationAnalysis {
   /// s must be >0 (i.e. not the empty submatrix).
   int32 DataInvalidatedCommand(int32 c, int32 s) const;
 
-  /// Returns the first command (read or write or accept-input) that is not an
-  /// kAllocate* command, that accesses any part of 'm' [note: deallocation does
-  /// not count as a read or write operation].  If there is no such command, it
-  /// returns num_commands.  m must be >0 (i.e. not the empty matrix).
-  int32 FirstMatrixAccess(int32 m) const;
+  /// Returns the first command that is not a zeroing command (kSetConst with
+  /// alpha=0.0), that accesses any part of 'm' [note: allocation and
+  /// deallocation do not count a matrix accesses.]  If there is no such
+  /// command, it returns num_commands.  m must be >0 (i.e. not the empty
+  /// matrix).
+  int32 FirstNontrivialMatrixAccess(int32 m) const;
 
   /// Returns the last non-deallocation command that accesses any part of
   /// matrix 'm'; if there is no such command it returns -1.  m must be >0
@@ -415,7 +418,6 @@ class ComputationChecker {
   // check debug_info has the correct size, if used.
   void CheckComputationDebugInfo() const;
 
-
   const CheckComputationOptions &config_;
   const Nnet &nnet_;
   const NnetComputation &computation_;
@@ -436,6 +438,16 @@ void GetCommandsOfType(const NnetComputation &computation,
 void CheckComputation(const Nnet &nnet,
                       const NnetComputation &computation,
                       bool check_rewrite = false);
+
+// This function returns the maximum amount of memory (in bytes) that the
+// computation uses at any point (this would be GPU memory if the computation
+// were using a GPU).  This is based on allocations and deallocations of
+// matrices, and input commands; it ignores any temporary allocation done inside
+// Propagate() and Backprop() or other similar functions; it ignores precomputed
+// indexes and other things residing in the computation; and of course it
+// ignores things you might do with the output, such as the forward-backward
+// code for chain computation.
+int64 GetMaxMemoryUse(const NnetComputation &computation);
 
 
 } // namespace nnet3
