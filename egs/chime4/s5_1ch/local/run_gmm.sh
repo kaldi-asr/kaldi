@@ -147,7 +147,11 @@ fi
 # multi = simu + real
 # Note that we are combining enhanced training data with noisy training data
 if [ $stage -le 4 ]; then
-  utils/combine_data.sh data/tr05_multi_${train} data/tr05_simu_${train} data/tr05_real_${train} data/tr05_simu_$enhan data/tr05_real_$enhan
+  if $add_enhaced_data; then
+    utils/combine_data.sh data/tr05_multi_${train} data/tr05_simu_${train} data/tr05_real_${train} data/tr05_simu_$enhan data/tr05_real_$enhan
+  else
+    utils/combine_data.sh data/tr05_multi_${train} data/tr05_simu_${train} data/tr05_real_${train}
+  fi
   utils/combine_data.sh data/dt05_multi_${train} data/dt05_simu_${train} data/dt05_real_${train}
   if $eval_flag; then
     utils/combine_data.sh data/et05_multi_${train} data/et05_simu_${train} data/et05_real_${train}
