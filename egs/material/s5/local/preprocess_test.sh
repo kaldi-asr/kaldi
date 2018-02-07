@@ -5,10 +5,7 @@ set -o nounset                              # Treat unset variables as an error
 echo "$0 $@"
 
 datadev=$1
-language=$2
-AorB="1A" # for swahili
-if [ $language = "tagalog" ]; then AorB="1B"; fi
-audio_path="/export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-"$AorB"/ANALYSIS1/audio/"
+audio_path="/export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A/ANALYSIS1/audio/"
 
 ./cmd.sh                                                                        
 ./path.sh                                                                       
