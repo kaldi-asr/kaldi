@@ -8,7 +8,7 @@ set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 echo "$0 " "$@"
 
-if [ $# -ne 2 ] ; then
+if [ $# -ne 1 ] ; then
   echo "Invalid number of script parameters. "
   echo "  $0 <path-to-material-corpus>"
   echo "e.g."
