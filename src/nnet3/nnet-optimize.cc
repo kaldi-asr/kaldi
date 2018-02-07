@@ -41,6 +41,14 @@ void NnetOptimizeOptions::Read(std::istream &is, bool binary) {
   if (tok == "<OptimizeRowOps>") {
     ReadBasicType(is, binary, &optimize_row_ops);
     ReadToken(is, binary, &tok);
+  } else {
+    optimize_row_ops = true;
+  }
+  if (tok == "<SplitRowOps>") {
+    ReadBasicType(is, binary, &split_row_ops);
+    ReadToken(is, binary, &tok);
+  } else {
+    split_row_ops = true;
   }
   KALDI_ASSERT(tok == "<ConvertAddition>");
   ReadBasicType(is, binary, &convert_addition);
@@ -516,12 +524,16 @@ void Optimize(const NnetOptimizeOptions &config,
   }
 
 
-  if (config.optimize && (config.snip_row_ops || config.optimize_row_ops)) {
+  if (config.optimize &&  (config.snip_row_ops || config.optimize_row_ops ||
+                           config.split_row_ops)) {
     bool must_renumber = false;
     if (config.snip_row_ops && SnipRowOps(computation))
       must_renumber = true;
+    if (config.split_row_ops && SplitRowOps(computation))
+      must_renumber = true;
     if (config.optimize_row_ops && ReplaceRowWithMatrixOps(computation))
       must_renumber = true;
+
     if (must_renumber) {
       RenumberComputation(computation);
       if (GetVerboseLevel() >= 3)
