@@ -9,7 +9,7 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
-@ARGV == 2 ||  die "usage: normalize_bn97_transcripts.pl noise_word spoken_noise_word < transcript > transcript2";
+@ARGV == 2 ||  die "usage: hub4_normalize_bn97_transcripts.pl noise_word spoken_noise_word < transcript > transcript2";
 $noise_word = shift @ARGV;
 $spoken_noise_word = shift @ARGV;
 
