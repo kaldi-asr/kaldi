@@ -44,6 +44,8 @@ int main(int argc, char *argv[]) {
 
     NnetTrainOptions trn_opts;
     trn_opts.Register(&po);
+    LossOptions loss_opts;
+    loss_opts.Register(&po);
 
     bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
@@ -128,8 +130,18 @@ int main(int argc, char *argv[]) {
       weights_reader.Open(frame_weights);
     }
 
-    Xent xent;
-    Mse mse;
+    Xent xent(loss_opts);
+    Mse mse(loss_opts);
+
+    MultiTaskLoss multitask(loss_opts);
+    if (0 == objective_function.compare(0, 9, "multitask")) {
+      // objective_function contains something like :
+      // 'multitask,xent,2456,1.0,mse,440,0.001'
+      //
+      // the meaning is following:
+      // 'multitask,<type1>,<dim1>,<weight1>,...,<typeN>,<dimN>,<weightN>'
+      multitask.InitFromString(objective_function);
+    }
 
     CuMatrix<BaseFloat> feats, feats_transf, nnet_out, obj_diff;
 
@@ -159,7 +171,7 @@ int main(int argc, char *argv[]) {
       }
       // get feature / target pair
       Matrix<BaseFloat> mat = feature_reader.Value();
-      Posterior targets = targets_reader.Value(utt);
+      Posterior nnet_tgt = targets_reader.Value(utt);
       // skip the sentence if it is too long,
       if (mat.NumRows() > max_frames) {
         KALDI_WARN << "Skipping " << utt
@@ -169,30 +181,30 @@ int main(int argc, char *argv[]) {
         continue;
       }
       // get per-frame weights
-      Vector<BaseFloat> weights;
+      Vector<BaseFloat> frm_weights;
       if (frame_weights != "") {
-        weights = weights_reader.Value(utt);
+        frm_weights = weights_reader.Value(utt);
       } else {  // all per-frame weights are 1.0
-        weights.Resize(mat.NumRows());
-        weights.Set(1.0);
+        frm_weights.Resize(mat.NumRows());
+        frm_weights.Set(1.0);
       }
       // correct small length mismatch ... or drop sentence
       {
         // add lengths to vector
         std::vector<int32> length;
         length.push_back(mat.NumRows());
-        length.push_back(targets.size());
-        length.push_back(weights.Dim());
+        length.push_back(nnet_tgt.size());
+        length.push_back(frm_weights.Dim());
         // find min, max
         int32 min = *std::min_element(length.begin(), length.end());
         int32 max = *std::max_element(length.begin(), length.end());
         // fix or drop ?
         if (max - min < length_tolerance) {
           if (mat.NumRows() != min) mat.Resize(min, mat.NumCols(), kCopyData);
-          if (targets.size() != min) targets.resize(min);
-          if (weights.Dim() != min) weights.Resize(min, kCopyData);
+          if (nnet_tgt.size() != min) nnet_tgt.resize(min);
+          if (frm_weights.Dim() != min) frm_weights.Resize(min, kCopyData);
         } else {
-          KALDI_WARN << utt << ", length mismatch of targets " << targets.size()
+          KALDI_WARN << utt << ", length mismatch of targets " << nnet_tgt.size()
                      << " and features " << mat.NumRows();
           num_other_error++;
           continue;
@@ -207,10 +219,13 @@ int main(int argc, char *argv[]) {
       // evaluate objective function we've chosen,
       if (objective_function == "xent") {
         // gradients are re-scaled by weights inside Eval,
-        xent.Eval(weights, nnet_out, targets, &obj_diff);
+        xent.Eval(frm_weights, nnet_out, nnet_tgt, &obj_diff);
       } else if (objective_function == "mse") {
         // gradients are re-scaled by weights inside Eval,
-        mse.Eval(weights, nnet_out, targets, &obj_diff);
+        mse.Eval(frm_weights, nnet_out, nnet_tgt, &obj_diff);
+      } else if (0 == objective_function.compare(0, 9, "multitask")) {
+        // gradients re-scaled by weights in Eval,
+        multitask.Eval(frm_weights, nnet_out, nnet_tgt, &obj_diff);
       } else {
         KALDI_ERR << "Unknown objective function code : "
                   << objective_function;
@@ -249,7 +264,7 @@ int main(int argc, char *argv[]) {
       }
 
       num_done++;
-      total_frames += weights.Sum();
+      total_frames += frm_weights.Sum();
 
       // do this every 5000 utterances,
       if (num_done % 5000 == 0) {
@@ -290,6 +305,8 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << xent.Report();
     } else if (objective_function == "mse") {
       KALDI_LOG << mse.Report();
+    } else if (0 == objective_function.compare(0, 9, "multitask")) {
+      KALDI_LOG << multitask.Report();
     } else {
       KALDI_ERR << "Unknown objective function code : " << objective_function;
     }

@@ -112,7 +112,7 @@ cleanup=true
 echo "$0 $@"  # Print the command line for logging
 
 . utils/parse_options.sh
-. path.sh
+. ./path.sh
 
 if [ $# -ne 2 ] && [ $# -ne 3 ]; then
   echo "$0: usage: extend_lexicon.sh [options] <lexicon-in> <working-dir> [dev_text]"

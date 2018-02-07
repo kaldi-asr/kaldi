@@ -8,7 +8,7 @@ export HOME=$PWD/tensorflow_build/
 mkdir -p $HOME
 
 java=`which java`
-if [ "$JAVA_HOME" != "" ]; then
+if [ -z "$JAVA_HOME" ]; then
   java=$JAVA_HOME/bin/java
 fi
 
@@ -35,6 +35,7 @@ cd ../
 # now bazel is built
 git clone https://github.com/tensorflow/tensorflow
 cd tensorflow
+git checkout r1.4
 ./configure
 
 tensorflow/contrib/makefile/download_dependencies.sh 
@@ -42,8 +43,8 @@ bazel build -c opt //tensorflow:libtensorflow.so
 bazel build -c opt //tensorflow:libtensorflow_cc.so
 
 echo Building tensorflow completed. You will need to go to kaldi/src/ and do
-echo \"make\" under tensorflow/ and tfbin/ to generate the binaries
-
+echo \"make\" under tfrnnlm/ and tfrnnlmbin/ to generate the binaries
+exit
 # the following would utilize the highest optimization but might not work in a
 # grid where each machine might have different configurations
 bazel build --config=opt //tensorflow:libtensorflow.so

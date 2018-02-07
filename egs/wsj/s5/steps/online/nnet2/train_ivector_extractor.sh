@@ -166,13 +166,13 @@ while [ $x -lt $num_iters ]; do
     done
     wait
     [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
-	accs=""
-	for j in $(seq $nj); do
-	  accs+="$dir/acc.$x.$j "
-	done
-	echo "Summing accs (pass $x)"
-	$cmd $dir/log/sum_acc.$x.log \
-	  ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
+    accs=""
+    for j in $(seq $nj); do
+      accs+="$dir/acc.$x.$j "
+    done
+    echo "Summing accs (pass $x)"
+    $cmd $dir/log/sum_acc.$x.log \
+      ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
     echo "Updating model (pass $x)"
     nt=$[$num_threads*$num_processes] # use the same number of threads that
                                       # each accumulation process uses, since we
@@ -181,9 +181,9 @@ while [ $x -lt $num_iters ]; do
                                       # The parallel-opts was either specified by
                                       # the user or we computed it correctly in
                                       # tge previous stages
-	$cmd --num-threads $[$num_threads*$num_processes] $dir/log/update.$x.log \
-	  ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
-	rm $dir/acc.$x.*
+    $cmd --num-threads $[$num_threads*$num_processes] $dir/log/update.$x.log \
+      ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
+    rm $dir/acc.$x.*
     if $cleanup; then
       rm $dir/acc.$x $dir/$x.ie
     fi

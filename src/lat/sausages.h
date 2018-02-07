@@ -128,8 +128,18 @@ class MinimumBayesRisk {
   /// Minimum-Bayes-Risk Decode. Top-level algorithm.  Figure 6 of the paper.
   void MbrDecode();
 
-  /// The basic edit-distance function l(a,b), as in the paper.
-  inline double l(int32 a, int32 b) { return (a == b ? 0.0 : 1.0); }
+  /// Without the 'penalize' argument this gives us the basic edit-distance
+  /// function l(a,b), as in the paper.
+  /// With the 'penalize' argument it can be interpreted as the edit distance
+  /// plus the 'delta' from the paper, except that we make a kind of conceptual
+  /// bug-fix and only apply the delta if the edit-distance was not already
+  /// zero.  This bug-fix was necessary in order to force all the stats to show
+  /// up, that should show up, and applying the bug-fix makes the sausage stats
+  /// significantly less sparse.
+  inline double l(int32 a, int32 b, bool penalize = false) {
+    if (a == b) return 0.0;
+    else return (penalize ? 1.0 + delta() : 1.0);
+  }
 
   /// returns r_q, in one-based indexing, as in the paper.
   inline int32 r(int32 q) { return R_[q-1]; }
@@ -151,8 +161,14 @@ class MinimumBayesRisk {
   // epsilon (0).  (But if no words in vec, just one epsilon)
   static void NormalizeEps(std::vector<int32> *vec);
 
-  static inline BaseFloat delta() { return 1.0e-05; } // A constant
-  // used in the algorithm.
+  // delta() is a constant used in the algorithm, which penalizes
+  // the use of certain epsilon transitions in the edit-distance which would cause
+  // words not to show up in the accumulated edit-distance statistics.
+  // There has been a conceptual bug-fix versus the way it was presented in
+  // the paper: we now add delta only if the edit-distance was not already
+  // zero.
+  static inline BaseFloat delta() { return 1.0e-05; }
+
 
   /// Function used to increment map.
   static inline void AddToMap(int32 i, double d, std::map<int32, double> *gamma) {

@@ -42,8 +42,7 @@ fi
 # Note: when you add new tuples here you'll also want to add ndew
 # \htmlinclude directives in versions.dox.
 
-
-for tuple in "5.0 5.0 c160a9883" "5.1 5.1 2145519961" "5.2 master 393ef73caa93"; do
+for tuple in "5.0 5.0 c160a9883" "5.1 5.1 2145519961" "5.2 5.2 393ef73caa93" "5.3 master 131cdd4cb544"; do
   major_minor_number=$(echo $tuple | awk '{print $1}')  # e.g. 5.0
   branch=$(echo $tuple | awk '{print $2}')  # e.g. 'master', or '5.1' (it's a branch name)
   first_commit=$(echo $tuple | awk '{print $3}')

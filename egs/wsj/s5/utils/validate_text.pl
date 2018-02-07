@@ -1,6 +1,8 @@
 #!/usr/bin/env perl
+#
 #===============================================================================
-# Copyright 2017  (Author: Yenda Trmal <jtrmal@gmail.com>)
+# Copyright 2017  Johns Hopkins University (author: Yenda Trmal <jtrmal@gmail.com>)
+#                 Johns Hopkins University (author: Daniel Povey)
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -88,23 +90,20 @@ sub validate_utf8_whitespaces {
 # reading the text.
 sub check_allowed_whitespace {
   my $file = shift;
+  my $filename = shift;
   my $pos = tell($file);
   (my $is_utf, my @lines) = get_utf8_or_bytestream($file);
   seek($file, $pos, SEEK_SET);
   if ($is_utf) {
     my $has_invalid_whitespaces = validate_utf8_whitespaces(\@lines);
-    print "--> text seems to be UTF-8 or ASCII, checking whitespaces\n";
     if ($has_invalid_whitespaces) {
-      print "--> ERROR: the text containes disallowed UTF-8 whitespace character(s)\n";
+      print STDERR "$0: ERROR: text file '$filename' contains disallowed UTF-8 whitespace character(s)\n";
       return 0;
-    } else {
-      print "--> text contains only allowed whitespaces\n";
     }
-  } else {
-    print "--> text doesn't seem to be UTF-8 or ASCII, won't check whitespaces\n";
   }
   return 1;
 }
+
 if(@ARGV != 1) {
   die "Usage: validate_text.pl <text-file>\n" .
       "e.g.: validate_text.pl data/train/text\n";
@@ -112,20 +111,15 @@ if(@ARGV != 1) {
 
 my $text = shift @ARGV;
 
-# Checking optional_silence.txt -------------------------------
-print "Checking $text ...\n";
-if(-z "$text") {
-  print "--> ERROR: $text is empty or not exists\n";
+if (-z "$text") {
+  print STDERR "$0: ERROR: file '$text' is empty or does not exist\n";
   exit 1;
 }
 
 if(!open(FILE, "<$text")) {
-  print "--> ERROR: fail to open $text\n";
+  print STDERR "$0: ERROR: failed to open $text\n";
   exit 1;
 }
 
-print "--> reading $text\n";
-check_allowed_whitespace(\*FILE) or exit 1;
+check_allowed_whitespace(\*FILE, $text) or exit 1;
 close(FILE);
-
-

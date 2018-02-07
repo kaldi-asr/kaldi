@@ -13,7 +13,7 @@
 # resegmentation of data.
 
 
-. cmd.sh
+. ./cmd.sh
 
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
   data/train_30k_nodup data/lang exp/tri3b exp/tri3b_ali_30k_nodup || exit 1;

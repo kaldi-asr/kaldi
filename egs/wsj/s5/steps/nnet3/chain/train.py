@@ -218,7 +218,7 @@ def process_args(args):
 
     if (not os.path.exists(args.dir)
             or (not os.path.exists(args.dir+"/configs") and
-                not os.path.exists(args.input_model))):
+                (args.input_model is None or not os.path.exists(args.input_model)))):
         raise Exception("This script expects {0} to exist. Also either "
                         "--trainer.input-model option as initial 'raw' model "
                         "(used as 0.raw in the script) should be supplied or "
@@ -554,7 +554,7 @@ def train(args, run_opts):
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 run_opts=run_opts,
-                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+                max_objective_evaluations=args.max_objective_evaluations)
         else:
             logger.info("Copying the last-numbered model to final.mdl")
             common_lib.force_symlink("{0}.mdl".format(num_iters),

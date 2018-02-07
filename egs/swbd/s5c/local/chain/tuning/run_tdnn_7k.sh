@@ -35,7 +35,7 @@ num_jobs_initial=3
 num_jobs_final=16
 minibatch_size=128
 frames_per_eg=150
-remove_egs=false
+remove_egs=true
 common_egs_dir=
 xent_regularize=0.1
 

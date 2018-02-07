@@ -416,7 +416,8 @@ void OnlinePreconditioner::PreconditionDirectionsInternal(
   bool must_reorthogonalize = (c_t(0) > condition_threshold * c_t(R - 1));
 
   BaseFloat c_t_floor = pow(rho_t * (1 - eta), 2);
-  int32 nf = c_t.ApplyFloor(c_t_floor);
+  int32 nf;
+  c_t.ApplyFloor(c_t_floor, &nf);
   if (nf > 0)
     must_reorthogonalize = true;
   if (nf > 0 && self_debug_) {

@@ -31,7 +31,7 @@
 // The class MultiThreader, and the function RunMultiThreaded provide a
 // mechanism to run a specified number of jobs in parellel and wait for them
 // all to finish. They accept objects of some class C that derives from the
-// base class MultiThreadable. C needs to define the operator () that takes no
+// base class MultiThreadable. C needs to define the operator () that takes
 // no arguments. See ExampleClass below.
 //
 // The class TaskSequencer addresses a different problem typically encountered

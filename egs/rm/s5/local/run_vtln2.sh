@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 featdir=mfcc
 
 # train linear vtln
