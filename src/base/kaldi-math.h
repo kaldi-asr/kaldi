@@ -107,7 +107,7 @@ inline float Log1p(float x) {  return log1pf(x); }
 inline double Log1p(double x) {
   const double cutoff = 1.0e-08;
   if (x < cutoff)
-    return x - 2 * x * x;
+    return x - 0.5 * x * x;
   else
     return Log(1.0 + x);
 }
@@ -115,7 +115,7 @@ inline double Log1p(double x) {
 inline float Log1p(float x) {
   const float cutoff = 1.0e-07;
   if (x < cutoff)
-    return x - 2 * x * x;
+    return x - 0.5 * x * x;
   else
     return Log(1.0 + x);
 }
