@@ -37,7 +37,8 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
-               opts.nnet_config.max_param_change >= 0.0);
+               opts.nnet_config.max_param_change >= 0.0 &&
+               opts.nnet_config.backstitch_training_interval > 0);
   delta_nnet_ = nnet_->Copy();
   ScaleNnet(0.0, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
