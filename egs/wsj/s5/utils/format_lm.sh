@@ -36,6 +36,10 @@ mkdir -p $out_dir
 
 echo "Converting '$lm' to FST"
 
+# the -ef test checks if  source and target directory
+# are two different directories in the filesystem
+# if they are the same, the section guarded by the test
+# would be actually harmfull (deleting the phones/ subdirectory)
 if [ -e $out_dir ] && [ ! $lang_dir -ef $out_dir ] ; then
   if [ -e $out_dir/phones ] ; then
     rm -r $out_dir/phones
