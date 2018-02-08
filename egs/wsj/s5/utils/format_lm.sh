@@ -36,13 +36,19 @@ mkdir -p $out_dir
 
 echo "Converting '$lm' to FST"
 
-if [ -e $out_dir/phones ]; then
-  rm -r $out_dir/phones
-fi
+# the -ef test checks if  source and target directory
+# are two different directories in the filesystem
+# if they are the same, the section guarded by the test
+# would be actually harmfull (deleting the phones/ subdirectory)
+if [ -e $out_dir ] && [ ! $lang_dir -ef $out_dir ] ; then
+  if [ -e $out_dir/phones ] ; then
+    rm -r $out_dir/phones
+  fi
 
-for f in phones.txt words.txt topo L.fst L_disambig.fst phones oov.int oov.txt; do
-  cp -r $lang_dir/$f $out_dir
-done
+  for f in phones.txt words.txt topo L.fst L_disambig.fst phones oov.int oov.txt; do
+     cp -r $lang_dir/$f $out_dir
+  done
+fi
 
 lm_base=$(basename $lm '.gz')
 gunzip -c $lm \
