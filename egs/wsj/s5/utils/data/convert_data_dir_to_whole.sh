@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# Copyright 2016  Vimal Manohar
+# Copyright 2016-18  Vimal Manohar
 # Apache 2.0
 
 # This scripts converts a data directory into a "whole" data directory
@@ -42,13 +42,14 @@ rm $dir/utt2spk || true
 [ -f $data/stm ] && cp $data/stm $dir
 [ -f $data/glm ] && cp $data/glm $dir
 
-text_opts=
+utils/data/internal/combine_segments_to_recording.py \
+  --write-reco2utt=$dir/reco2sorted_utts $data/segments $dir/utt2spk || exit 1
+
 if [ -f $data/text ]; then
-  text_opts="--text-in=$data/text --text-out=$dir/text"
+  utils/apply_map.pl -f 2 $data/text < $dir/reco2sorted_utts > $dir/text || exit 1
 fi
 
-utils/data/internal/combine_segments_to_recording.py \
-  $text_opts $data/segments $dir/utt2spk || exit 1
+rm $dir/reco2sorted_utts
 
 utils/fix_data_dir.sh $dir || exit 1
 

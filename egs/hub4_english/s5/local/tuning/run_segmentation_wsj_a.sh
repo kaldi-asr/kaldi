@@ -33,7 +33,7 @@ set -o pipefail
 # %WER 19.8 | 728 32834 | 82.1 12.6 5.3 1.9 19.8 85.9 | exp/tri4_a/decode_nosp_eval97.pem_rescore/score_15_1.0/eval97.pem.ctm.filt.sys
 # %WER 20.9 | 728 32834 | 81.2 13.5 5.3 2.1 20.9 86.5 | exp/tri4_a/decode_nosp_eval97.pem/score_14_0.0/eval97.pem.ctm.filt.sys
 
-# In-domain GMM (From step 5)
+# Stage 2 in-domain GMM (From step 5)
 # %WER 20.4 | 728 32834 | 81.7 13.1 5.2 2.1 20.4 86.1 | exp/tri4_2a/decode_nosp_eval97.pem_rescore/score_14_0.0/eval97.pem.ctm.filt.sys
 # %WER 21.3 | 728 32834 | 80.7 13.7 5.6 2.0 21.3 87.1 | exp/tri4_2a/decode_nosp_eval97.pem/score_15_1.0/eval97.pem.ctm.filt.sys
 
@@ -46,18 +46,32 @@ set -o pipefail
 # %WER 19.3 | 728 32834 | 82.9 12.6 4.6 2.2 19.3 86.8 | exp/tri4/decode_nosp_eval97.pem/score_13_0.0/eval97.pem.ctm.filt.sys
 
 stage=0
-
-if [ -f ./path.sh ]; then . ./path.sh; fi
-. ./cmd.sh
-. utils/parse_options.sh
-
 segment_stage=-8
 nj=40
 reco_nj=80
-affix=a
-new_affix=2a
+stage1_affix=a    # For steps 2, 3 and 4 above
+stage2_affix=2a   # For step 5 above
+
+# WSJ run.sh must be run until the data preparation stage
+wsj_base=../../wsj/s5   # Change this to the WSJ base directory
+
+if [ -f ./path.sh ]; then . ./path.sh; fi
+. ./cmd.sh
 
 . utils/parse_options.sh
+
+if [ ! -f $wsj_base/data/train_si284/wav.scp ]; then
+  echo "WSJ data directory $wsj_base/data/train_si284 is not prepared."
+  echo "Run the initial stages of WSJ's run.sh"
+  exit 0
+fi
+
+if [ $stage -le 0 ]; then
+  # We copy the prepared data to the current directory
+  utils/copy_data_dir.sh $wsj_base/data/train_si84_2kshort data/train_si84_2kshort
+  utils/copy_data_dir.sh $wsj_base/data/train_si84 data/train_si84
+  utils/copy_data_dir.sh $wsj_base/data/train_si284 data/train_si284
+fi
 
 ###############################################################################
 ## Simulate unsegmented HUB4 data directory.
@@ -120,19 +134,19 @@ if [ $stage -le 6 ]; then
     --stage $segment_stage --nj $reco_nj \
     --max-bad-proportion 0.5 --align-full-hyp false \
     exp/wsj_tri3 data/lang_nosp data/train_long \
-    data/train_reseg_${affix} exp/segment_long_utts_${affix}_train
+    data/train_reseg_${stage1_affix} exp/segment_long_utts_${stage1_affix}_train
 fi
 
 if [ $stage -le 7 ]; then
-  steps/compute_cmvn_stats.sh data/train_reseg_${affix} \
-    exp/make_mfcc/train_reseg_${affix} mfcc
-  utils/fix_data_dir.sh data/train_reseg_${affix}
+  steps/compute_cmvn_stats.sh data/train_reseg_${stage1_affix} \
+    exp/make_mfcc/train_reseg_${stage1_affix} mfcc
+  utils/fix_data_dir.sh data/train_reseg_${stage1_affix}
 
-  utils/data/modify_speaker_info.sh data/train_reseg_${affix} \
-    data/train_reseg_${affix}_spk30sec
-  steps/compute_cmvn_stats.sh data/train_reseg_${affix}_spk30sec \
-    exp/make_mfcc/train_reseg_${affix}_spk30sec mfcc
-  utils/fix_data_dir.sh data/train_reseg_${affix}_spk30sec
+  utils/data/modify_speaker_info.sh data/train_reseg_${stage1_affix} \
+    data/train_reseg_${stage1_affix}_spk30sec
+  steps/compute_cmvn_stats.sh data/train_reseg_${stage1_affix}_spk30sec \
+    exp/make_mfcc/train_reseg_${stage1_affix}_spk30sec mfcc
+  utils/fix_data_dir.sh data/train_reseg_${stage1_affix}_spk30sec
 fi
 
 ###############################################################################
@@ -141,35 +155,35 @@ fi
 
 if [ $stage -le 7 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    data/train_reseg_${affix}_spk30sec data/lang_nosp \
-    exp/wsj_tri3 exp/wsj_tri3_ali_train_reseg_${affix}
+    data/train_reseg_${stage1_affix}_spk30sec data/lang_nosp \
+    exp/wsj_tri3 exp/wsj_tri3_ali_train_reseg_${stage1_affix}
 
   steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
-    data/train_reseg_${affix}_spk30sec data/lang_nosp \
-    exp/wsj_tri3_ali_train_reseg_${affix} exp/tri3_${affix} 
+    data/train_reseg_${stage1_affix}_spk30sec data/lang_nosp \
+    exp/wsj_tri3_ali_train_reseg_${stage1_affix} exp/tri3_${stage1_affix} 
 fi
 
 if [ $stage -le 8 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    data/train_reseg_${affix}_spk30sec data/lang_nosp exp/tri3_${affix} exp/tri3_${affix}_ali
+    data/train_reseg_${stage1_affix}_spk30sec data/lang_nosp exp/tri3_${stage1_affix} exp/tri3_${stage1_affix}_ali
 
   steps/train_sat.sh --cmd "$train_cmd" 5000 100000 \
-    data/train_reseg_${affix}_spk30sec data/lang_nosp exp/tri3_${affix}_ali exp/tri4_${affix}
+    data/train_reseg_${stage1_affix}_spk30sec data/lang_nosp exp/tri3_${stage1_affix}_ali exp/tri4_${stage1_affix}
 fi
 
 if [ $stage -le 9 ]; then
-  utils/mkgraph.sh data/lang_nosp_test exp/tri4_${affix}/{,graph_nosp_test}
+  utils/mkgraph.sh data/lang_nosp_test exp/tri4_${stage1_affix}/{,graph_nosp_test}
   for dset in eval97.pem; do
     this_nj=`cat data/$dset/spk2utt | wc -l`
     if [ $this_nj -gt 20 ]; then
       this_nj=20
     fi
     steps/decode_fmllr.sh --nj $this_nj --cmd "$decode_cmd" --num-threads 4 \
-      exp/tri4_${affix}/graph_nosp_test data/$dset exp/tri4_${affix}/decode_nosp_${dset}
+      exp/tri4_${stage1_affix}/graph_nosp_test data/$dset exp/tri4_${stage1_affix}/decode_nosp_${dset}
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_nosp_test data/lang_nosp_test_rescore \
-      data/${dset} exp/tri4_${affix}/decode_nosp_${dset} \
-      exp/tri4_${affix}/decode_nosp_${dset}_rescore
+      data/${dset} exp/tri4_${stage1_affix}/decode_nosp_${dset} \
+      exp/tri4_${stage1_affix}/decode_nosp_${dset}_rescore
   done
 fi
 
@@ -183,14 +197,14 @@ if [ $stage -le 10 ]; then
   steps/cleanup/segment_long_utterances.sh --cmd "$train_cmd" \
     --stage $segment_stage --nj $reco_nj \
     --max-bad-proportion 0.5 --align-full-hyp false \
-    exp/tri4_${affix} data/lang_nosp data/train_long \
-    data/train_reseg_${new_affix} exp/segment_long_utts_${new_affix}_train
+    exp/tri4_${stage1_affix} data/lang_nosp data/train_long \
+    data/train_reseg_${stage2_affix} exp/segment_long_utts_${stage2_affix}_train
 fi
 
 if [ $stage -le 11 ]; then
-  steps/compute_cmvn_stats.sh data/train_reseg_${new_affix} \
-    exp/make_mfcc/train_reseg_${new_affix} mfcc
-  utils/fix_data_dir.sh data/train_reseg_${new_affix}
+  steps/compute_cmvn_stats.sh data/train_reseg_${stage2_affix} \
+    exp/make_mfcc/train_reseg_${stage2_affix} mfcc
+  utils/fix_data_dir.sh data/train_reseg_${stage2_affix}
 fi
 
 ###############################################################################
@@ -199,27 +213,27 @@ fi
 
 if [ $stage -le 12 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-    data/train_reseg_${new_affix} data/lang_nosp \
-    exp/tri4_${affix} exp/tri4_${affix}_ali_train_reseg_${new_affix}
+    data/train_reseg_${stage2_affix} data/lang_nosp \
+    exp/tri4_${stage1_affix} exp/tri4_${stage1_affix}_ali_train_reseg_${stage2_affix}
 
   steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
-    data/train_reseg_${new_affix} data/lang_nosp \
-    exp/tri4_${affix}_ali_train_reseg_${new_affix} exp/tri4_${new_affix} 
+    data/train_reseg_${stage2_affix} data/lang_nosp \
+    exp/tri4_${stage1_affix}_ali_train_reseg_${stage2_affix} exp/tri4_${stage2_affix} 
 fi
 
 if [ $stage -le 13 ]; then
-  utils/mkgraph.sh data/lang_nosp_test exp/tri4_${new_affix}/{,graph_nosp_test}
+  utils/mkgraph.sh data/lang_nosp_test exp/tri4_${stage2_affix}/{,graph_nosp_test}
   for dset in eval97.pem; do
     this_nj=`cat data/$dset/spk2utt | wc -l`
     if [ $this_nj -gt 20 ]; then
       this_nj=20
     fi
     steps/decode_fmllr.sh --nj $this_nj --cmd "$decode_cmd" --num-threads 4 \
-      exp/tri4_${new_affix}/graph_nosp_test data/$dset exp/tri4_${new_affix}/decode_nosp_${dset}
+      exp/tri4_${stage2_affix}/graph_nosp_test data/$dset exp/tri4_${stage2_affix}/decode_nosp_${dset}
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_nosp_test data/lang_nosp_test_rescore \
-      data/${dset} exp/tri4_${new_affix}/decode_nosp_${dset} \
-      exp/tri4_${new_affix}/decode_nosp_${dset}_rescore
+      data/${dset} exp/tri4_${stage2_affix}/decode_nosp_${dset} \
+      exp/tri4_${stage2_affix}/decode_nosp_${dset}_rescore
   done
 fi
 
@@ -230,15 +244,15 @@ fi
 
 cleanup_stage=-1
 cleanup_affix=cleaned
-srcdir=exp/tri4_${new_affix}
-cleaned_data=data/train_reseg_${new_affix}_${cleanup_affix}
+srcdir=exp/tri4_${stage2_affix}
+cleaned_data=data/train_reseg_${stage2_affix}_${cleanup_affix}
 dir=${srcdir}_${cleanup_affix}_work
 cleaned_dir=${srcdir}_${cleanup_affix}
 
 if [ $stage -le 14 ]; then
   steps/cleanup/clean_and_segment_data.sh --stage $cleanup_stage --nj 80 \
     --cmd "$train_cmd" \
-    data/train_reseg_${new_affix} data/lang_nosp \
+    data/train_reseg_${stage2_affix} data/lang_nosp \
     $srcdir $dir $cleaned_data
 fi
 
@@ -252,24 +266,24 @@ if [ $stage -le 15 ]; then
 
   steps/train_sat.sh --cmd "$train_cmd" \
     5000 100000 $cleaned_data data/lang_nosp \
-    ${srcdir}_ali_${cleanup_affix} exp/tri5_${new_affix}_${cleanup_affix}
+    ${srcdir}_ali_${cleanup_affix} exp/tri5_${stage2_affix}_${cleanup_affix}
 fi
 
 if [ $stage -le 16 ]; then
   utils/mkgraph.sh data/lang_nosp_test \
-    exp/tri5_${new_affix}_${cleanup_affix}/{,graph_nosp_test}
+    exp/tri5_${stage2_affix}_${cleanup_affix}/{,graph_nosp_test}
   for dset in eval97.pem; do
     this_nj=`cat data/$dset/spk2utt | wc -l`
     if [ $this_nj -gt 20 ]; then
       this_nj=20
     fi
     steps/decode_fmllr.sh --nj $this_nj --cmd "$decode_cmd" --num-threads 4 \
-      exp/tri5_${new_affix}_${cleanup_affix}/graph_nosp_test data/$dset \
-      exp/tri5_${new_affix}_${cleanup_affix}/decode_nosp_${dset}
+      exp/tri5_${stage2_affix}_${cleanup_affix}/graph_nosp_test data/$dset \
+      exp/tri5_${stage2_affix}_${cleanup_affix}/decode_nosp_${dset}
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_nosp_test data/lang_nosp_test_rescore \
-      data/${dset} exp/tri5_${new_affix}_${cleanup_affix}/decode_nosp_${dset} \
-      exp/tri5_${new_affix}_${cleanup_affix}/decode_nosp_${dset}_rescore
+      data/${dset} exp/tri5_${stage2_affix}_${cleanup_affix}/decode_nosp_${dset} \
+      exp/tri5_${stage2_affix}_${cleanup_affix}/decode_nosp_${dset}_rescore
   done
 fi
 

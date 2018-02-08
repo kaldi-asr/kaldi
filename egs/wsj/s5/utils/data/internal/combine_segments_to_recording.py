@@ -1,4 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+
+# Copyright 2018  Vimal Manohar
+# Apache 2.0
 
 from __future__ import print_function
 import argparse
@@ -10,20 +13,18 @@ def get_args():
     parser = argparse.ArgumentParser(description="""
         This script combines segments into utterances at
         recording-level and write out new utt2spk file with reco-id as the
-        speakers. If text-in and text-out are provided, then
-        the transcription from text-in are combined into recording-level
-        transcription and written to text-out.""")
+        speakers. If --write-reco2utt is provided, it writes a mapping from
+        recording-id to the list of utterances sorted by start and end times.
+        This map can be used to combine text corresponding to the segments to
+        recording-level.""")
 
-    parser.add_argument("--text-in", help="Input text file")
-    parser.add_argument("--text-out", help="Output text file")
+    parser.add_argument("--write-reco2utt", help="If provided, writes a "
+                        "mapping from recording-id to list of utterances "
+                        "sorted by start and end times.")
     parser.add_argument("segments_in", help="Input segments file")
     parser.add_argument("utt2spk_out", help="Output utt2spk file")
 
     args = parser.parse_args()
-
-    if args.text_in is not None:
-        if args.text_out is None:
-            raise Exception("--text-out is required if --text-in is provided.")
 
     return args
 
@@ -47,18 +48,13 @@ def main():
         segments_for_reco[reco].append((utt, start_time, end_time))
         utt2reco[utt] = reco
 
-    text = {}
-    if args.text_in is not None:
-        for line in open(args.text_in):
-            parts = line.strip().split()
-            text[parts[0]] = " ".join(parts[1:])
-
-        with open(args.text_out, 'w') as text_writer, \
+    if args.write_reco2utt is not None:
+        with open(args.write_reco2utt, 'w') as reco2utt_writer, \
                 open(args.utt2spk_out, 'w') as utt2spk_writer:
             for reco, segments_in_reco in segments_for_reco.items():
-                text_for_reco = " ".join([text[seg[0]] for seg in sorted(
+                utts = ' '.join([seg[0] for seg in sorted(
                     segments_in_reco, key=lambda x:(x[1], x[2]))])
-                print("{0} {1}".format(reco, text_for_reco), file=text_writer)
+                print("{0} {1}".format(reco, utts), file=reco2utt_writer)
                 print ("{0} {0}".format(reco), file=utt2spk_writer)
     else:
         with open(args.utt2spk_out, 'w') as utt2spk_writer:

@@ -30,7 +30,7 @@ if [ $# -ne 4 ]; then
   echo "                                    # not equal to 0.01 seconds"
   echo "e.g.:"
   echo "$0 data/train data/lang exp/tri4a/decode/"
-  echo "See also: steps/get_train_ctm.sh"
+  echo "See also: steps/get_ctm.sh"
   exit 1;
 fi
 

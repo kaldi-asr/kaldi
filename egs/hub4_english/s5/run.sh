@@ -264,23 +264,5 @@ wait
 # audio recordings of HUB4 with raw unaligned transcripts into short segments
 # with aligned transcripts for training new ASR models.
 
-# First run the data preparation stages in WSJ run.sh
-wsj_base=../../wsj/s5   # Change this to the WSJ base directory
-
-if [ ! -f $wsj_base/data/train_si284/wav.scp ]; then
-  echo "WSJ data directory $wsj_base/data/train_si284 is not prepared."
-  echo "Run the initial stages of WSJ's run.sh"
-  exit 0
-fi
-
-if [ $stage -le 25 ]; then
-  # We copy the prepared data to the current directory
-  utils/copy_data_dir.sh $wsj_base/data/train_si84_2kshort data/train_si84_2kshort
-  utils/copy_data_dir.sh $wsj_base/data/train_si84 data/train_si84
-  utils/copy_data_dir.sh $wsj_base/data/train_si284 data/train_si284
-
-  local/run_segmentation_wsj.sh
-fi
-
-wait
+# local/run_segmentation_wsj.sh
 exit 0

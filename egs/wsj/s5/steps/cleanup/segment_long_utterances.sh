@@ -202,8 +202,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  steps/cleanup/internal/get_ctm.sh \
-    --lmwt $lmwt --cmd "$cmd --mem 4G" \
+  steps/get_ctm_fast.sh --lmwt $lmwt --cmd "$cmd --mem 4G" \
     --print-silence true \
     $data_uniform_seg $lang $decode_dir $decode_dir/ctm_$lmwt
 fi
