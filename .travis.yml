@@ -21,6 +21,7 @@ addons:
       - gfortran-4.9
       - liblapack-dev
       - clang-3.8
+      - csh
 
 branches:
   only:
