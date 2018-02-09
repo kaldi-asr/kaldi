@@ -6,6 +6,7 @@
 # begin configuration section.
 cmd=run.pl
 stage=0
+stats=true
 #end configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -52,3 +53,24 @@ if [ $stage -le 0 ]; then
   cat $dir/wer
 fi
 
+if [ $stage -le 1 ]; then
+  if $stats; then
+    mkdir -p $dir/scoring_kaldi/wer_details
+
+    $cmd $dir/scoring_kaldi/log/stats1.log \
+      cat $dir/scoring_kaldi/hyp.txt \| \
+      align-text --special-symbol="'***'" ark:$dir/scoring_kaldi/test_filt.txt ark:- ark,t:- \| \
+      utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \| tee $dir/scoring_kaldi/wer_details/per_utt \| \
+      utils/scoring/wer_per_spk_details.pl $data/utt2spk \> $dir/scoring_kaldi/wer_details/per_spk || exit 1;
+
+    $cmd $dir/scoring_kaldi/log/stats2.log \
+      cat $dir/scoring_kaldi/wer_details/per_utt \| \
+      utils/scoring/wer_ops_details.pl --special-symbol "'***'" \| \
+      sort -b -i -k 1,1 -k 4,4rn -k 2,2 -k 3,3 \> $dir/scoring_kaldi/wer_details/ops || exit 1;
+
+    $cmd $dir/scoring_kaldi/log/wer_bootci.log \
+      compute-wer-bootci --mode=present \
+         ark:$dir/scoring_kaldi/test_filt.txt ark:$dir/scoring_kaldi/hyp.txt \
+         '>' $dir/scoring_kaldi/wer_details/wer_bootci || exit 1;
+  fi
+fi

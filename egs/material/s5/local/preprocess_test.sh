@@ -6,9 +6,9 @@ echo "$0 $@"
 
 datadev=$1
 
-./cmd.sh                                                                        
-./path.sh                                                                       
-./utils/parse_options.sh 
+. ./cmd.sh
+. ./path.sh
+. ./utils/parse_options.sh
 . ./lang.conf
 
 mkdir -p $datadev
@@ -73,5 +73,5 @@ utils/data/get_uniform_subsegments.py --max-segment-duration=30 \
 $datadev/uniform_sub_segments
 
 utils/data/subsegment_data_dir.sh $datadev/ \
-  $datadev/uniform_sub_segments $datadev-segmented
+  $datadev/uniform_sub_segments ${datadev}_segmented
 
