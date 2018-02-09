@@ -21,6 +21,9 @@ add_deb http://mirrors.kernel.org/ubuntu/pool/universe/o/openblas/libopenblas-ba
 add_deb http://mirrors.kernel.org/ubuntu/pool/main/b/blas/libblas-dev_1.2.20110419-7_amd64.deb
 add_deb http://mirrors.kernel.org/ubuntu/pool/main/b/blas/libblas3_1.2.20110419-7_amd64.deb
 
+# For idlak dep SPTK
+add_deb http://mirrors.kernel.org/ubuntu/pool/universe/t/tcsh/tcsh_6.17.06-2_amd64.deb
+
 if [[ "$(ccache --version 2>/dev/null | sed -n '1{s/^[a-z ]*//;s/\./0/g;p}')" -lt 30304 ]]; then
     add_deb http://mirrors.kernel.org/debian/pool/main/c/ccache/ccache_3.3.4-1_amd64.deb
 fi
