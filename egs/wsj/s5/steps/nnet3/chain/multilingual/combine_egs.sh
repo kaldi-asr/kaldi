@@ -28,14 +28,10 @@ minibatch_size=256      # it is the number of consecutive egs that we take from
                         # access. This does not have to be the actual minibatch size;
 num_jobs=10             # helps for better randomness across languages
                         # per archive.
-frames_per_iter=1500000 # this is the target number of frames in each archive 
-                        # of egs. 
+samples_per_iter=10000  # this is the target number of egs in each archive.
                         # This is just a guideline; it will pick a number that 
-                        # based on the number of frames in the entire data 
+                        # based on the number of egs in the entire data 
                         # and the chunk widths of egs in different languages.
-                        # Further, this may not be exact when egs have 
-                        # different chunk-widths within a language or 
-                        # across languages.
 lang2weight=            # array of weights one per input languge to scale example's output
                         # w.r.t its input language during training.
 stage=0
@@ -65,15 +61,12 @@ if [ $# -lt 3 ]; then
                                   # different languages.
                                   # This helps for better randomness across
                                   # languages per archive. 
-      --frames-per-iter <int|1500000> 
-                                  # this is the target number of frames in each archive 
+      --samples-per-iter <int|1500000> 
+                                  # this is the target number of egs in each archive 
                                   # of egs. 
                                   # This is just a guideline; it will pick a number that 
-                                  # based on the number of frames in the entire data 
+                                  # based on the number of egs in the entire data 
                                   # and the chunk widths of egs in different languages.
-                                  # Further, this may not be exact when egs have 
-                                  # different chunk-widths within a language or 
-                                  # across languages.
       --lang2weight <list>        # comma-separated list of weights --
                                   # one per input languge to scale example's
                                   # output, and hence gradients during training.
@@ -96,7 +89,6 @@ if [ ${#args[@]} != $[$num_langs+1] ]; then
 fi
 
 required="cegs.scp combine.scp train_diagnostic.scp valid_diagnostic.scp"
-frames_per_eg_list=
 train_scp_list=
 train_diagnostic_scp_list=
 valid_diagnostic_scp_list=
@@ -124,19 +116,6 @@ for lang in $(seq 0 $[$num_langs-1]);do
   valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.scp"
   combine_scp_list="$combine_scp_list ${args[$lang]}/combine.scp"
   
-  # use average frames-per-eg
-  this_frames_per_eg=$(cat ${args[$lang]}/info/frames_per_eg | \
-    awk -F, '{for (i=1; i<=NF; i++) sum += $i;} END{print int(sum / NF)}')  
-
-  # frames_per_eg_list stores the average frames-per-eg for each language.
-  # The average does not have to be the "real" one which depends on how many 
-  # egs are there of each chunk-width.
-  if [ $lang -eq 0 ]; then
-    frames_per_eg_list="$this_frames_per_eg"
-  else
-    frames_per_eg_list="$frames_per_eg_list,$this_frames_per_eg"
-  fi
-
   # check parameter dimension to be the same in all egs dirs
   for f in $check_params; do
     if [ -f $megs_dir/$f ] && [ -f ${multi_egs_dir[$lang]}/$f ]; then
@@ -161,8 +140,7 @@ if [ $stage -le 0 ]; then
   # Generate cegs.*.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
-      --minibatch-size $minibatch_size \
-      --frames-per-iter $frames_per_iter --frames-per-eg-list $frames_per_eg_list \
+      --minibatch-size $minibatch_size --samples-per-iter $samples_per_iter \
       --egs-prefix "cegs." \
       $train_scp_list $megs_dir || exit 1;
 fi
@@ -173,7 +151,6 @@ if [ $stage -le 1 ]; then
   $cmd $megs_dir/log/allocate_multilingual_examples_combine.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --random-lang false --max-archives 1 --num-jobs 1 \
-      --frames-per-eg-list $frames_per_eg_list \
       --minibatch-size $minibatch_size \
       --egs-prefix "combine." \
       $combine_scp_list $megs_dir || exit 1;
@@ -183,7 +160,6 @@ if [ $stage -le 1 ]; then
   $cmd $megs_dir/log/allocate_multilingual_examples_train_diagnostic.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --random-lang false --max-archives 1 --num-jobs 1 \
-      --frames-per-eg-list $frames_per_eg_list \
       --minibatch-size $minibatch_size \
       --egs-prefix "train_diagnostic." \
       $train_diagnostic_scp_list $megs_dir || exit 1;
@@ -194,7 +170,6 @@ if [ $stage -le 1 ]; then
   $cmd $megs_dir/log/allocate_multilingual_examples_valid_diagnostic.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --random-lang false --max-archives 1 --num-jobs 1\
-      --frames-per-eg-list $frames_per_eg_list \
       --minibatch-size $minibatch_size \
       --egs-prefix "valid_diagnostic." \
       $valid_diagnostic_scp_list $megs_dir || exit 1;

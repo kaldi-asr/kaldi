@@ -516,10 +516,6 @@ class ExampleMerger {
    MapType eg_to_egs_;
 };
 
-// This function scales the scores of a StdVectorFst
-// by a factor 'scale'.
-void ScaleFst(BaseFloat scale, fst::StdVectorFst *fst);
-
 } // namespace nnet3
 } // namespace kaldi
 

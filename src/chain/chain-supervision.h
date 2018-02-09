@@ -52,14 +52,12 @@ struct SupervisionOptions {
   int32 frame_subsampling_factor;
   BaseFloat weight;
   BaseFloat lm_scale;
-  BaseFloat phone_ins_penalty;
 
   SupervisionOptions(): left_tolerance(5),
                         right_tolerance(5),
                         frame_subsampling_factor(1),
                         weight(1.0),
-                        lm_scale(0.0),
-                        phone_ins_penalty(0.0) { }
+                        lm_scale(0.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("left-tolerance", &left_tolerance, "Left tolerance for "
@@ -78,8 +76,6 @@ struct SupervisionOptions {
     opts->Register("lm-scale", &lm_scale, "The scale with which the graph/lm "
                    "weights from the phone lattice are included in the "
                    "supervision fst.");
-    opts->Register("phone-ins-penalty", &phone_ins_penalty,
-                   "The penalty to penalize longer paths");
   }
   void Check() const;
 };

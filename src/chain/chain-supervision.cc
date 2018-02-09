@@ -182,7 +182,7 @@ bool PhoneLatticeToProtoSupervisionInternal(
         fst::StdArc(phone, phone,
                     fst::TropicalWeight(
                       lat_arc.weight.Weight().Value1()
-                      * opts.lm_scale + opts.phone_ins_penalty),
+                      * opts.lm_scale),
                     lat_arc.nextstate));
 
       int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),

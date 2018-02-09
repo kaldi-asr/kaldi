@@ -96,7 +96,6 @@ if [ -z "$common_treedir" ]; then
   if [ $stage -le 11 ]; then
     # Build a tree using our new topology.
     steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-        --leftmost-questions-truncate -1 \
         --context-opts "--context-width=2 --central-position=1" \
         --cmd "$train_cmd" 7000 data/${train_set}_sp $lang $lat_dir $treedir || exit 1
   fi

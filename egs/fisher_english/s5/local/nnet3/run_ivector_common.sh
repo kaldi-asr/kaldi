@@ -106,14 +106,14 @@ if [ $stage -le 7 ]; then
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
     data/${ivector_train_set}_max2_hires exp/nnet3${nnet3_affix}/extractor \
-    exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set}_hires || exit 1;
+    exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set} || exit 1;
 fi
 
 if [ $stage -le 8 ]; then
   for dataset in test dev; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
       data/${dataset}_hires exp/nnet3${nnet3_affix}/extractor \
-      exp/nnet3${nnet3_affix}/ivectors_${dataset}_hires || exit 1;
+      exp/nnet3${nnet3_affix}/ivectors_${dataset} || exit 1;
   done
 fi
 
