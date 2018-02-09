@@ -3,55 +3,59 @@
 # Copyright 2017-2018  Johns Hopkins University (author: Daniel Povey)
 #           2017-2018  Yiming Wang
 
-# tdnn-lstm recipe
+# 1a is trying an architecture with factored parameter matrices with dropout.
+
 # [for swahili]
-# cat exp/chain/tdnn_lstm1a_sp/decode_dev/scoring_kaldi/best_wer
-# %WER 39.12 [ 24312 / 62144, 3118 ins, 5952 del, 15242 sub ] exp/chain/tdnn_lstm1a_sp/decode_dev/wer_9_0.5
+# cat exp/chain/tdnn1a_sp/decode_dev/scoring_kaldi/best_wer
+# %WER 38.65 [ 24021 / 62144, 3044 ins, 6378 del, 14599 sub ] exp/chain/tdnn1a_sp/decode_dev/wer_9_0.5
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn_lstm1a_sp
-# exp/chain/tdnn_lstm1a_sp: num-iters=70 nj=2..12 num-params=10.9M dim=40+100->1792 combine=-0.176->-0.174 (over 6) xent:train/valid[45,69,final]=(-1.71,-1.52,-1.50/-1.81,-1.69,-1.67) logprob:train/valid[45,69,final]=(-0.185,-0.160,-0.159/-0.213,-0.208,-0.205)
+# steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
+# exp/chain/tdnn1a_sp: num-iters=99 nj=2..12 num-params=12.2M dim=40+100->1792 xent:train/valid[65,98,final]=(-1.93,-1.66,-1.68/-2.05,-1.84,-1.83) logprob:train/valid[65,98,final]=(-0.199,-0.166,-0.167/-0.225,-0.208,-0.206)
 
-# Set -e here so that we catch if any executable fails immediately
-set -euo pipefail
+set -e -o pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
 stage=0
-decode_nj=30
+nj=30
 train_set=train
-test_sets=dev
-gmm=tri3
-nnet3_affix=
+test_sets="dev"
+gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
+                 # should have alignments for the specified training data.
+nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
-# The rest are configs specific to this script.  Most of the parameters
-# are just hardcoded at this level, in the commands below.
-tlstm_affix=1a   # affix for the TDNN-LSTM directory name
+# Options which are not passed through to run_ivector_common.sh
+affix=1a   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 tree_affix=
+common_egs_dir=
+reporting_email=
+
+# LSTM/chain options
 train_stage=-10
 get_egs_stage=-10
-decode_iter=
+xent_regularize=0.1
 
-# training options
 # training chunk-options
 chunk_width=140,100,160
-chunk_left_context=40
+# we don't need extra left/right context for TDNN systems.
+chunk_left_context=0
 chunk_right_context=0
-label_delay=5
-common_egs_dir=
-xent_regularize=0.1
+dropout_schedule='0,0@0.20,0.3@0.50,0'
+num_epochs=7
 
 # training options
 srand=0
 remove_egs=true
-reporting_email=
 
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
+
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -61,28 +65,25 @@ where "nvcc" is installed.
 EOF
 fi
 
-# The iVector-extraction and feature-dumping parts are the same as the standard
-# nnet3 setup, and you can skip them by setting "--stage 11" if you have already
-# run those things.
-local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --train-set $train_set \
-                                  --gmm $gmm \
-                                  --nnet3-affix "$nnet3_affix" || exit 1;
+local/nnet3/run_ivector_common.sh \
+  --stage $stage --nj $nj \
+  --train-set $train_set --gmm $gmm \
+  --nnet3-affix "$nnet3_affix" || exit 1;
 
-# Problem: We have removed the "train_" prefix of our training set in
-# the alignment directory names! Bad!
-gmm_dir=exp/$gmm
+
+gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_affix}/tdnn_lstm${tlstm_affix}_sp
+dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
 train_data_dir=data/${train_set}_sp_hires
-lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
 
-for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do
+for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
+    $lores_train_data_dir/feats.scp $gmm_dir/final.mdl \
+    $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -119,7 +120,7 @@ if [ $stage -le 8 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
-    data/lang_test $gmm_dir $lat_dir
+    data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -139,20 +140,23 @@ if [ $stage -le 9 ]; then
     $lang $ali_dir $tree_dir
 fi
 
+
 if [ $stage -le 10 ]; then
   mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  tdnn_opts="l2-regularize=0.02"
-  lstm_opts="l2-regularize=0.005"
-  output_opts="l2-regularize=0.004"
+  opts="l2-regularize=0.01 dropout-per-dim=true dropout-per-dim-continuous=true"
+  linear_opts="orthonormal-constraint=1.0"
+  output_opts="l2-regularize=0.005"
+
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
+
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
@@ -160,34 +164,34 @@ if [ $stage -le 10 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $tdnn_opts dim=512
-  relu-batchnorm-layer name=tdnn2 $tdnn_opts input=Append(-1,0,1) dim=512
-  relu-batchnorm-layer name=tdnn3 $tdnn_opts input=Append(-1,0,1) dim=512
+  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=768
+  linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=768
+  linear-component name=tdnn3l dim=256 $linear_opts
+  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=768
+  linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=768
+  linear-component name=tdnn5l dim=256 $linear_opts
+  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=768 input=Append(0, tdnn3l)
+  linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1024
+  linear-component name=tdnn7l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=768
+  linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1024
+  linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=768
+  linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1024
+  linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn9l,tdnn7l) dim=768
+  linear-component name=prefinal-l dim=256 $linear_opts
 
-  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  fast-lstmp-layer name=lstm1 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstm_opts
-  relu-batchnorm-layer name=tdnn4 $tdnn_opts input=Append(-3,0,3) dim=512
-  relu-batchnorm-layer name=tdnn5 $tdnn_opts input=Append(-3,0,3) dim=512
-  relu-batchnorm-layer name=tdnn6 $tdnn_opts input=Append(-3,0,3) dim=512
-  fast-lstmp-layer name=lstm2 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstm_opts
-  relu-batchnorm-layer name=tdnn7 $tdnn_opts input=Append(-3,0,3) dim=512
-  relu-batchnorm-layer name=tdnn8 $tdnn_opts input=Append(-3,0,3) dim=512
-  relu-batchnorm-layer name=tdnn9 $tdnn_opts input=Append(-3,0,3) dim=512
-  fast-lstmp-layer name=lstm3 cell-dim=512 recurrent-projection-dim=128 non-recurrent-projection-dim=128 delay=-3 $lstm_opts
+  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1024
+  output-layer name=output include-log-softmax=false dim=$num_targets bottleneck-dim=256 $output_opts
 
-  ## adding the layers for chain branch
-  output-layer name=output input=lstm3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
-
-  # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' models... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
-  output-layer name=output-xent input=lstm3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5 $output_opts
+  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1024
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor bottleneck-dim=256 $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -205,24 +209,24 @@ if [ $stage -le 11 ]; then
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.00005 \
+    --chain.l2-regularize=0.0 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=5 \
+    --trainer.num-epochs=$num_epochs \
     --trainer.frames-per-iter=1500000 \
     --trainer.optimization.num-jobs-initial=2 \
     --trainer.optimization.num-jobs-final=12 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
-    --trainer.optimization.shrink-value=1.0 \
     --trainer.num-chunk-per-minibatch=128,64 \
     --trainer.optimization.momentum=0.0 \
-    --trainer.deriv-truncate-margin=8 \
     --egs.chunk-width=$chunk_width \
-    --egs.chunk-left-context=$chunk_left_context \
-    --egs.chunk-right-context=$chunk_right_context \
+    --egs.chunk-left-context=0 \
+    --egs.chunk-right-context=0 \
     --egs.chunk-left-context-initial=0 \
     --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
@@ -254,11 +258,10 @@ if [ $stage -le 13 ]; then
 
   for data in $test_sets; do
     (
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      nspk=$(wc -l <data/${data}_hires/spk2utt)  
       steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
-          --extra-left-context $chunk_left_context \
-          --extra-right-context $chunk_right_context \
+          --extra-left-context 0 --extra-right-context 0 \
           --extra-left-context-initial 0 \
           --extra-right-context-final 0 \
           --frames-per-chunk $frames_per_chunk \

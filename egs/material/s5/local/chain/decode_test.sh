@@ -1,43 +1,40 @@
 #!/bin/bash
-. ./cmd.sh                                                                      
-. ./path.sh
+
+# Copyright 2018  Johns Hopkins University (author: Daniel Povey)
+#           2018  Mahsa Yarmohammadi
+#           2018  Yiming Wang
+
+
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
 language=swahili
-. ./utils/parse_options.sh
-
+stage=0
 datadev="data/analysis1"
-label_delay=5
-tlstm_affix=1a   # affix for the TDNN-LSTM directory name
-test_sets="analysis1-segmented"
-nnet3_affix=
-tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}             
-dir=exp/chain${nnet3_affix}/tdnn_lstm${tlstm_affix}_sp
-if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi
-train_set=train
-train_data_dir=data/${train_set}_sp_hires                                       
-lores_train_data_dir=data/${train_set}_sp
-
-decode_nj=30
-gmm=tri3
-nnet3_affix=
-
-tlstm_affix=1a   # affix for the TDNN-LSTM directory name
-tree_affix=
+dir=exp/chain/tdnn_lstm1a_sp
+lang=data/lang_chain
+tree_dir=exp/chain/tree_sp
+cmd=queue.pl
 
 # training options
-# training chunk-options
 chunk_width=140,100,160
 chunk_left_context=40
 chunk_right_context=0
-label_delay=5
-common_egs_dir=
-xent_regularize=0.1
 
+# ivector options
+max_count=75 # parameter for extract_ivectors.sh
+sub_speaker_frames=600
+filter_ctm=true
+weights_file=
+silence_weight=0.00001
+nj=30
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
+
+. ./cmd.sh
+. ./path.sh
+. ./utils/parse_options.sh
 
 [ ! -f ./conf/lang/${language}.conf ] && echo "Language configuration conf/lang/${language}.conf does not exist!" && exit 1
 ln -sf ./conf/lang/${language}.conf lang.conf                                   
@@ -51,71 +48,132 @@ where "nvcc" is installed.
 EOF
 fi
 
-# audio segmentation
-local/preprocess_test.sh $datadev
+if [ $stage -le 0 ]; then
+  # audio segmentation: uniformly
+  for datadir in $datadev; do
+    local/preprocess_test.sh $datadir
+  done
+fi
 
-nj=30
-gmm=tri3
-test_sets="analysis1-segmented"
+if [ $stage -le 1 ]; then
+  # extract hires mfcc features from uniformly segmented data
+  for datadir in $datadev; do
+    utils/copy_data_dir.sh ${datadir}_segmented ${datadir}_segmented_hires
+    steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" ${datadir}_segmented_hires || exit 1;
+    steps/compute_cmvn_stats.sh ${datadir}_segmented_hires || exit 1;
+    utils/fix_data_dir.sh ${datadir}_segmented_hires || exit 1;
+  done
+fi
 
-for datadir in $test_sets; do
-  utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
-done
-
-for datadir in $test_sets; do
-  steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
-    --cmd "$train_cmd" data/${datadir}_hires || exit 1;
-  steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
-  utils/fix_data_dir.sh data/${datadir}_hires || exit 1;
-done
-
-
-# extract iVectors for the test data, in this case we don't need the speed
-# perturbation (sp).
-for data in $test_sets; do
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
-    data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
-    exp/nnet3${nnet3_affix}/ivectors_${data}_hires
-done
-
-
-gmm_dir=exp/$gmm                                                                
-ali_dir=exp/${gmm}_ali_${train_set}_sp                                          
-tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}             
-dir=exp/chain${nnet3_affix}/tdnn_lstm${tlstm_affix}_sp                          
-if [ $label_delay -gt 0 ]; then dir=${dir}_ld$label_delay; fi                   
-train_data_dir=data/${train_set}_sp_hires                                       
-lores_train_data_dir=data/${train_set}_sp                                       
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires        
-                                                                                
-for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do                       
-  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1                 
-done 
-
+if [ $stage -le 3 ]; then
+  # extract iVectors for the test data, in this case we don't need the speed
+  # perturbation (sp).
+  for datadir in $datadev; do
+    data=$(basename $datadir)
+    steps/online/nnet2/extract_ivectors.sh --cmd "$train_cmd" --nj $nj \
+      --silence-weight $silence_weight \
+      --sub-speaker-frames $sub_speaker_frames --max-count $max_count \
+      ${datadir}_segmented_hires $lang exp/nnet3/extractor \
+      exp/nnet3/ivectors_${data}_segmented_hires
+  done
+fi
 
 frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
 rm $dir/.error 2>/dev/null || true
 
-for data in $test_sets; do
-  (
-    nspk=$(wc -l <data/${data}_hires/spk2utt)
-    steps/nnet3/decode.sh \
+if [ $stage -le 4 ]; then
+  # do the 1st pass decoding
+  for datadir in $datadev; do
+    (
+      data=$(basename $datadir)
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      decode_dir=${dir}/decode_${data}_segmented
+      steps/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --extra-left-context $chunk_left_context \
         --extra-right-context $chunk_right_context \
         --extra-left-context-initial 0 \
         --extra-right-context-final 0 \
         --frames-per-chunk $frames_per_chunk \
+        --skip-scoring true \
         --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
-        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-        $tree_dir/graph data/${data}_hires ${dir}/decode_${data} || exit 1
-  ) || touch $dir/.error &
-  wait 
-  # resolve ctm overlaping regions, and compute wer
-  cp $datadev/reftext data/${data}_hires
-  local/postprocess_test.sh $test_sets $tree_dir $dir
-done
+        --online-ivector-dir exp/nnet3/ivectors_${data}_segmented_hires \
+        $tree_dir/graph_combined ${datadir}_segmented_hires ${decode_dir} || exit 1
+
+      # resolve ctm overlaping regions, and compute wer
+      cp ${datadir}/reftext ${datadir}_segmented_hires
+      local/postprocess_test.sh ${data}_segmented ${tree_dir}/graph_combined \
+        ${decode_dir}
+    ) || touch $dir/.error &
+  done
+fi
+wait
+[ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+
+if [ $stage -le 5 ]; then
+  # re-segement data based on 1st-pass decoding
+  segmentation_opts="--silence-proportion 0.2 --max-segment-length 15 --frame-shift 0.03"
+  for datadir in $datadev; do
+    data=$(basename $datadir)
+    # get alignment from lattice
+    nj_ali=`cat ${dir}/decode_${data}_segmented/num_jobs` || exit 1;
+    $cmd JOB=1:${nj_ali} ${dir}/decode_${data}_segmented/log/generate_alignments.JOB.log \
+    lattice-best-path --acoustic-scale=0.2 \
+    "ark:gunzip -c ${dir}/decode_${data}_segmented/lat.JOB.gz |" \
+    ark:/dev/null "ark:|gzip -c >${dir}/decode_${data}_segmented/ali.JOB.gz" || exit 1;
+
+    cp $lang/phones.txt ${dir}/decode_${data}_segmented || exit 1;
+
+    steps/resegment_data.sh --segmentation-opts "$segmentation_opts" ${datadir}_segmented_hires $lang \
+      ${dir}/decode_${data}_segmented ${datadir}_segmented_reseg_hires_tmp exp/resegment_${data}_segmented
+
+    utils/data/subsegment_data_dir.sh ${datadir}_segmented_hires ${datadir}_segmented_reseg_hires_tmp/segments \
+      ${datadir}_segmented_reseg_hires
+
+    rm -rf ${datadir}_segmented_reseg_hires_tmp 2>/dev/null || true
+
+    echo "Extracting i-vectors, stage 2"
+    # this does offline decoding, except we estimate the iVectors per
+    # speaker, excluding silence (based on alignments from a DNN decoding), with a
+    # different script.  This is just to demonstrate that script.
+    # the --sub-speaker-frames is optional; if provided, it will divide each speaker
+    # up into "sub-speakers" of at least that many frames... can be useful if
+    # acoustic conditions drift over time within the speaker's data.
+    steps/online/nnet2/extract_ivectors.sh --cmd "$train_cmd" --nj $nj \
+      --silence-weight $silence_weight \
+      --sub-speaker-frames $sub_speaker_frames --max-count $max_count \
+      ${datadir}_segmented_reseg_hires $lang exp/nnet3/extractor \
+      exp/nnet3/ivectors_${data}_segmented_reseg_hires;
+  done
+fi
+
+if [ $stage -le 8 ]; then
+  # 2nd-pass decoding on the resegmented data
+  for datadir in $datadev; do
+    (
+      data=$(basename $datadir)
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      decode_dir=${dir}/decode_${data}_segmented_reseg
+      steps/nnet3/decode.sh \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --extra-left-context $chunk_left_context \
+        --extra-right-context $chunk_right_context \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
+        --frames-per-chunk $frames_per_chunk \
+        --skip-scoring true \
+        --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
+        --online-ivector-dir exp/nnet3/ivectors_${data}_segmented_reseg_hires \
+        $tree_dir/graph_combined ${datadir}_segmented_reseg_hires ${decode_dir} || exit 1
+
+      # resolve ctm overlaping regions, and compute wer
+      cp ${datadir}/reftext ${datadir}_segmented_reseg_hires
+      local/postprocess_test.sh ${data}_segmented_reseg $tree_dir/graph_combined \
+        ${decode_dir}
+    ) || touch $dir/.error &
+  done
+fi
 wait
 [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 
