@@ -316,6 +316,6 @@ if [ $stage -le 5 ]; then
   cat $dir/train_diagnostic_egs.*.scp > $dir/train_diagnostic.scp
   if [ -e $dir/combine.scp ]; then
     rm -rf $dir/combine.scp
-    ln -s $dir/train_diagnostic.scp $dir/combine.scp
   fi
+    ln -s $dir/train_diagnostic.scp $dir/combine.scp
 fi
