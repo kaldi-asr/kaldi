@@ -14,7 +14,7 @@ set -o pipefail
 stage=0
 train_stage=-10
 get_egs_stage=-10
-exp=exp/semisup_100k
+exp_root=exp/semisup_100k
 
 tdnn_affix=1a
 train_set=train_sup
@@ -53,18 +53,18 @@ where "nvcc" is installed.
 EOF
 fi
 
-gmm_dir=$exp/$gmm   # used to get training lattices (for chain supervision)
-treedir=$exp/chain${chain_affix}/tree_${tree_affix}
-lat_dir=$exp/chain${chain_affix}/${gmm}_${train_set}_sp_unk_lats  # training lattices directory
-dir=$exp/chain${chain_affix}/tdnn${tdnn_affix}_sp
+gmm_dir=$exp_root/$gmm   # used to get training lattices (for chain supervision)
+treedir=$exp_root/chain${chain_affix}/tree_${tree_affix}
+lat_dir=$exp_root/chain${chain_affix}/${gmm}_${train_set}_sp_unk_lats  # training lattices directory
+dir=$exp_root/chain${chain_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
-train_ivector_dir=$exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
+train_ivector_dir=$exp_root/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 lang=data/lang_chain_unk
 
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
-local/nnet3/run_ivector_common.sh --stage $stage --exp $exp \
+local/nnet3/run_ivector_common.sh --stage $stage --exp-root $exp_root \
                                   --speed-perturb true \
                                   --train-set $train_set \
                                   --ivector-train-set "$ivector_train_set" \
@@ -189,7 +189,7 @@ if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_poco_test_unk $dir $graph_dir
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_test_poco_unk $dir $graph_dir
 fi
 
 decode_suff=
@@ -203,7 +203,7 @@ if [ $stage -le 15 ]; then
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $num_jobs --cmd "$decode_cmd" $iter_opts \
-          --online-ivector-dir $exp/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
+          --online-ivector-dir $exp_root/nnet3${nnet3_affix}/ivectors_${decode_set}_hires \
           $graph_dir data/${decode_set}_hires $dir/decode_poco_unk_${decode_set}${decode_iter:+_$decode_iter}${decode_suff} || exit 1;
       ) &
   done

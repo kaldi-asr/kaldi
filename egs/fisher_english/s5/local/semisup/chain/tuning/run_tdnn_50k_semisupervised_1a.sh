@@ -70,9 +70,9 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 # The following can be replaced with the versions that do not model 
 # UNK using phone LM. $sup_lat_dir should also ideally be changed.
-unsup_decode_lang=data/lang_poco_test_ex250k_unk
+unsup_decode_lang=data/lang_test_poco_ex250k_unk
 unsup_decode_graph_affix=_poco_ex250k_unk
-test_lang=data/lang_poco_test_unk
+test_lang=data/lang_test_poco_unk
 test_graph_affix=_poco_unk
 
 unsup_rescore_lang=${unsup_decode_lang}_big

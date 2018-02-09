@@ -3,101 +3,133 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
-. cmd.sh
-. path.sh 
+# This script demonstrates semi-supervised training using 50 hours of 
+# supervised data and 250 hours of unsupervised data.
+# We assume the supervised data is in data/train_sup and unsupervised data
+# is in data/train_unsup100k_250k. 
+# Further, for LM training we assume there is data/train/text, from which
+# we will exclude the utterances contained in the unsupervised set.
 
-. utils/parse_options.sh
+. ./cmd.sh
+. ./path.sh 
 
 set -o pipefail
-exp=exp/semisup_50k
+exp_root=exp/semisup_50k
 
-for f in data/train_sup/utt2spk data/train_unsup100k_250k/utt2spk; do
+for f in data/train_sup/utt2spk data/train_unsup100k_250k/utt2spk \
+  data/train/text; do
   if [ ! -f $f ]; then
     echo "$0: Could not find $f"
     exit 1
   fi
 done
 
+###############################################################################
+# Prepare the 50 hours supervised set and subsets for initial GMM training
+###############################################################################
+
 utils/subset_data_dir.sh --speakers data/train_sup 50000 data/train_sup50k || exit 1
 utils/subset_data_dir.sh --shortest data/train_sup50k 25000 data/train_sup50k_short || exit 1
 utils/subset_data_dir.sh --speakers data/train_sup50k 30000 data/train_sup50k_30k || exit 1;
 
+###############################################################################
+# GMM system training using 50 hours supervised data
+###############################################################################
+
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
-  data/train_sup50k_short data/lang $exp/mono0a || exit 1
+  data/train_sup50k_short data/lang $exp_root/mono0a || exit 1
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_sup50k_30k data/lang $exp/mono0a $exp/mono0a_ali || exit 1
+  data/train_sup50k_30k data/lang $exp_root/mono0a $exp_root/mono0a_ali || exit 1
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-  2500 20000 data/train_sup50k_30k data/lang $exp/mono0a_ali $exp/tri1 || exit 1
+  2500 20000 data/train_sup50k_30k data/lang $exp_root/mono0a_ali $exp_root/tri1 || exit 1
 
-(utils/mkgraph.sh data/lang_test $exp/tri1 $exp/tri1/graph
+(utils/mkgraph.sh data/lang_test $exp_root/tri1 $exp_root/tri1/graph
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $exp/tri1/graph data/dev $exp/tri1/decode_dev)&
+   $exp_root/tri1/graph data/dev $exp_root/tri1/decode_dev)&
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
- data/train_sup50k_30k data/lang $exp/tri1 $exp/tri1_ali || exit 1;
+ data/train_sup50k_30k data/lang $exp_root/tri1 $exp_root/tri1_ali || exit 1;
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-  2500 20000 data/train_sup50k_30k data/lang $exp/tri1_ali $exp/tri2 || exit 1
+  2500 20000 data/train_sup50k_30k data/lang $exp_root/tri1_ali $exp_root/tri2 || exit 1
 
-(utils/mkgraph.sh data/lang_test $exp/tri2 $exp/tri2/graph
+(utils/mkgraph.sh data/lang_test $exp_root/tri2 $exp_root/tri2/graph
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $exp/tri2/graph data/dev $exp/tri2/decode_dev)&
+   $exp_root/tri2/graph data/dev $exp_root/tri2/decode_dev)&
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_sup50k data/lang $exp/tri2 $exp/tri2_ali || exit 1;
+  data/train_sup50k data/lang $exp_root/tri2 $exp_root/tri2_ali || exit 1;
 
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
-  4000 30000 data/train_sup50k data/lang $exp/tri2_ali $exp/tri3a || exit 1;
+  4000 30000 data/train_sup50k data/lang $exp_root/tri2_ali $exp_root/tri3a || exit 1;
 
-(utils/mkgraph.sh data/lang_test $exp/tri3a $exp/tri3a/graph
+(utils/mkgraph.sh data/lang_test $exp_root/tri3a $exp_root/tri3a/graph
  steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $exp/tri3a/graph data/dev $exp/tri3a/decode_dev)&
+   $exp_root/tri3a/graph data/dev $exp_root/tri3a/decode_dev)&
 
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train_sup50k data/lang $exp/tri3a $exp/tri3a_ali || exit 1;
+  data/train_sup50k data/lang $exp_root/tri3a $exp_root/tri3a_ali || exit 1;
 
 steps/train_sat.sh --cmd "$train_cmd" \
-  4000 50000 data/train_sup50k data/lang $exp/tri3a_ali $exp/tri4a || exit 1;
+  4000 50000 data/train_sup50k data/lang $exp_root/tri3a_ali $exp_root/tri4a || exit 1;
 
 (
-  utils/mkgraph.sh data/lang_test $exp/tri4a $exp/tri4a/graph
+  utils/mkgraph.sh data/lang_test $exp_root/tri4a $exp_root/tri4a/graph
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
-   $exp/tri4a/graph data/dev $exp/tri4a/decode_dev
+   $exp_root/tri4a/graph data/dev $exp_root/tri4a/decode_dev
 )&
+
+###############################################################################
+# Prepare semi-supervised train set 
+###############################################################################
 
 utils/combine_data.sh data/semisup50k_100k_250k \
   data/train_sup50k data/train_unsup100k_250k || exit 1
+
+###############################################################################
+# Train LM on all the text in data/train/text, but excluding the 
+# utterances in the unsupervised set
+###############################################################################
 
 mkdir -p data/local/pocolm_ex250k
 
 utils/filter_scp.pl --exclude data/train_unsup100k_250k/utt2spk \
   data/train/text > data/local/pocolm_ex250k/text.tmp
 
-if [ ! -f data/lang_poco_test_ex250k_big/G.carpa ]; then
+if [ ! -f data/lang_test_poco_ex250k_big/G.carpa ]; then
   local/fisher_train_lms_pocolm.sh \
     --text data/local/pocolm_ex250k/text.tmp \
     --dir data/local/pocolm_ex250k
 
   local/fisher_create_test_lang.sh \
     --arpa-lm data/local/pocolm_ex250k/data/arpa/4gram_small.arpa.gz \
-    --dir data/lang_poco_test_ex250k
+    --dir data/lang_test_poco_ex250k
 
   utils/build_const_arpa_lm.sh \
     data/local/pocolm_ex250k/data/arpa/4gram_big.arpa.gz \
-    data/lang_poco_test_ex250k data/lang_poco_test_ex250k_big
+    data/lang_test_poco_ex250k data/lang_test_poco_ex250k_big
 fi
+
+###############################################################################
+# Prepare lang directories with UNK modeled using phone LM
+###############################################################################
 
 local/run_unk_model.sh || exit 1
 
-for lang_dir in data/lang_poco_test_ex250k_big data/lang_poco_test_ex250k; do
-  rm -r ${lang_dir}_unk 2>/dev/null || true
-  mkdir -p ${lang_dir}_unk
-  cp -r data/lang_unk ${lang_dir}_unk
-  if [ -f ${lang_dir}/G.fst ]; then cp ${lang_dir}/G.fst ${lang_dir}_unk/G.fst; fi
-  if [ -f ${lang_dir}/G.carpa ]; then cp ${lang_dir}/G.carpa ${lang_dir}_unk/G.carpa; fi
+for lang_dir in data/lang_test_poco_ex250k; do
+  rm -r ${lang_dir}_unk ${lang_dir}_unk_big 2>/dev/null || true
+  cp -rT data/lang_unk ${lang_dir}_unk
+  cp ${lang_dir}/G.fst ${lang_dir}_unk/G.fst
+  cp -rT data/lang_unk ${lang_dir}_unk_big
+  cp ${lang_dir}_big/G.carpa ${lang_dir}_unk_big/G.carpa; 
 done
+
+###############################################################################
+# Train seed chain system using 50 hours supervised data.
+# Here we train i-vector extractor on combined supervised and unsupervised data
+###############################################################################
 
 local/semisup/chain/run_tdnn.sh \
   --train-set train_sup50k \
@@ -105,22 +137,36 @@ local/semisup/chain/run_tdnn.sh \
   --nnet3-affix _semi50k_100k_250k \
   --chain-affix _semi50k_100k_250k \
   --tdnn-affix 1a --tree-affix bi_a \
-  --gmm tri4a --exp $exp || exit 1
+  --gmm tri4a --exp-root $exp_root || exit 1
+
+###############################################################################
+# Semi-supervised training using 50 hours supervised data and 
+# 250 hours unsupervised data. We use i-vector extractor, tree, lattices 
+# and seed chain system from the previous stage.
+###############################################################################
 
 local/semisup/chain/run_tdnn_50k_semisupervised.sh \
   --supervised-set train_sup50k \
   --unsupervised-set train_unsup100k_250k \
-  --semisup-train-set semisup50k_100k_250k \
-  --nnet3-affix _semi50k_100k_250k \
+  --sup-chain-dir $exp_root/chain_semi50k_100k_250k/tdnn_1a_sp \
+  --sup-lat-dir $exp_root/chain_semi50k_100k_250k/tri4a_train_sup50k_unk_lats \
+  --sup-tree-dir $exp_root/chain_semi50k_100k_250k/tree_bi_a \
+  --ivector-root-dir $exp_root/nnet3_semi50k_100k_250k \
   --chain-affix _semi50k_100k_250k \
-  --tdnn-affix 1a --tree-affix bi_a \
-  --gmm tri4a --exp $exp --stage 0 || exit 1
+  --tdnn-affix _semisup_1a \
+  --exp-root $exp_root --stage 0 || exit 1
+
+###############################################################################
+# Oracle system trained on combined 300 hours including both supervised and 
+# unsupervised sets. We use i-vector extractor, tree, and GMM trained
+# on only the supervised for fair comparison to semi-supervised experiments.
+###############################################################################
 
 local/semisup/chain/run_tdnn.sh \
   --train-set semisup50k_100k_250k \
   --nnet3-affix _semi50k_100k_250k \
   --chain-affix _semi50k_100k_250k \
-  --common-treedir exp/chain_semi50k_100k_250k/tree_bi_a \
+  --common-treedir $exp_root/chain_semi50k_100k_250k/tree_bi_a \
   --tdnn-affix 1a_oracle \
-  --gmm tri4a --exp $exp \
+  --gmm tri4a --exp-root $exp_root \
   --stage 9 || exit 1

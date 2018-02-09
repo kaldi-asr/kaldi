@@ -12,6 +12,7 @@ ivector_train_set=  # data set for training i-vector extractor.
                     # If not provided, train_set will be used.
 
 nnet3_affix=
+exp_root=exp
 
 . ./path.sh
 . ./utils/parse_options.sh
@@ -29,9 +30,9 @@ if [ "$speed_perturb" == "true" ]; then
 
       mfccdir=mfcc_perturbed
       steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
-        data/${datadir}_sp exp/make_mfcc/${datadir}_sp $mfccdir || exit 1;
+        data/${datadir}_sp $exp_root/make_mfcc/${datadir}_sp $mfccdir || exit 1;
       steps/compute_cmvn_stats.sh \
-        data/${datadir}_sp exp/make_mfcc/${datadir}_sp $mfccdir || exit 1;
+        data/${datadir}_sp $exp_root/make_mfcc/${datadir}_sp $mfccdir || exit 1;
       utils/fix_data_dir.sh data/${datadir}_sp
     done
   fi
@@ -53,8 +54,8 @@ if [ $stage -le 3 ]; then
     utils/data/perturb_data_dir_volume.sh data/${dataset}_hires
 
     steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
-        --cmd "$train_cmd" data/${dataset}_hires exp/make_hires/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/${dataset} $mfccdir;
+        --cmd "$train_cmd" data/${dataset}_hires $exp_root/make_hires/$dataset $mfccdir;
+    steps/compute_cmvn_stats.sh data/${dataset}_hires $exp_root/make_hires/${dataset} $mfccdir;
 
     # Remove the small number of utterances that couldn't be extracted for some
     # reason (e.g. too short; no such file).
@@ -65,8 +66,8 @@ if [ $stage -le 3 ]; then
     # Create MFCCs for the eval set
     utils/copy_data_dir.sh data/$dataset data/${dataset}_hires
     steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 --mfcc-config conf/mfcc_hires.conf \
-        data/${dataset}_hires exp/make_hires/$dataset $mfccdir;
-    steps/compute_cmvn_stats.sh data/${dataset}_hires exp/make_hires/$dataset $mfccdir;
+        data/${dataset}_hires $exp_root/make_hires/$dataset $mfccdir;
+    steps/compute_cmvn_stats.sh data/${dataset}_hires $exp_root/make_hires/$dataset $mfccdir;
     utils/fix_data_dir.sh data/${dataset}_hires  # remove segments with problems
   done
 fi
@@ -81,19 +82,19 @@ if [ $stage -le 4 ]; then
     --splice-opts "--left-context=3 --right-context=3" \
     --max-utts 10000 --subsample 2 \
     data/${ivector_train_set}_hires \
-    exp/nnet3${nnet3_affix}/pca_transform
+    $exp_root/nnet3${nnet3_affix}/pca_transform
 fi
 
 if [ $stage -le 5 ]; then
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 200000 \
     data/${ivector_train_set}_hires 512 \
-    exp/nnet3${nnet3_affix}/pca_transform exp/nnet3${nnet3_affix}/diag_ubm
+    $exp_root/nnet3${nnet3_affix}/pca_transform $exp_root/nnet3${nnet3_affix}/diag_ubm
 fi
 
 if [ $stage -le 6 ]; then
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    data/${ivector_train_set}_hires exp/nnet3${nnet3_affix}/diag_ubm \
-    exp/nnet3${nnet3_affix}/extractor || exit 1;
+    data/${ivector_train_set}_hires $exp_root/nnet3${nnet3_affix}/diag_ubm \
+    $exp_root/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
 if [ $stage -le 7 ]; then
@@ -105,15 +106,15 @@ if [ $stage -le 7 ]; then
     data/${ivector_train_set}_hires data/${ivector_train_set}_max2_hires
 
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-    data/${ivector_train_set}_max2_hires exp/nnet3${nnet3_affix}/extractor \
-    exp/nnet3${nnet3_affix}/ivectors_${ivector_train_set} || exit 1;
+    data/${ivector_train_set}_max2_hires $exp_root/nnet3${nnet3_affix}/extractor \
+    $exp_root/nnet3${nnet3_affix}/ivectors_${ivector_train_set} || exit 1;
 fi
 
 if [ $stage -le 8 ]; then
   for dataset in test dev; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-      data/${dataset}_hires exp/nnet3${nnet3_affix}/extractor \
-      exp/nnet3${nnet3_affix}/ivectors_${dataset} || exit 1;
+      data/${dataset}_hires $exp_root/nnet3${nnet3_affix}/extractor \
+      $exp_root/nnet3${nnet3_affix}/ivectors_${dataset} || exit 1;
   done
 fi
 

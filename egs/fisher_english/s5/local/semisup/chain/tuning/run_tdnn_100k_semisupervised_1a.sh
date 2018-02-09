@@ -29,7 +29,7 @@ stage=0   # Start from -1 for supervised seed system training
 train_stage=-100
 nj=80
 test_nj=50
-exp=exp/semisup_100k
+exp_root=exp/semisup_100k
 
 chain_affix=    # affix for chain dir
 tdnn_affix=_semisup_1a  # affix for semi-supervised chain system 
@@ -40,7 +40,7 @@ supervised_set=train_sup
 unsupervised_set=train_unsup100k_250k
 
 sup_chain_dir=exp/semisup_100k/chain/tdnn_1a_sp  # supervised chain system
-sup_lat_dir=exp/semisup_100k/chain/tri4a_train_sup_lats  # Seed model options
+sup_lat_dir=exp/semisup_100k/chain/tri4a_train_sup_unk_lats  # Seed model options
 sup_tree_dir=exp/semisup_100k/chain/tree_bi_a  # tree directory for supervised chain system
 ivector_root_dir=exp/semisup_100k/nnet3  # i-vector extractor root directory
 
@@ -66,12 +66,12 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
-# The following can be replaced with the versions that do not model 
+# The following can be replaced with the versions that model 
 # UNK using phone LM. $sup_lat_dir should also ideally be changed.
-unsup_decode_lang=data/lang_poco_test_sup100k
-unsup_decode_graph_affix=_poco_sup100k
-test_lang=data/lang_poco_test
-test_graph_affix=_poco
+unsup_decode_lang=data/lang_test_poco_sup100k_unk
+unsup_decode_graph_affix=_poco_sup100k_unk
+test_lang=data/lang_test_poco_unk
+test_graph_affix=_poco_unk
 
 dir=$exp_root/chain${chain_affix}/tdnn${tdnn_affix}
 
@@ -166,7 +166,7 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 # unsupervised data
 
 # tree_affix=bi_semisup_a
-# treedir=$exp/chain${chain_affix}/tree_${tree_affix}
+# treedir=$exp_root/chain${chain_affix}/tree_${tree_affix}
 # if [ -f $treedir/final.mdl ]; then
 #   echo "$0: $treedir/final.mdl exists. Remove it and run again."
 #   exit 1
