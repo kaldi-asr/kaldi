@@ -220,7 +220,7 @@ void AperiodicEnergy::Compute(const VectorBase<BaseFloat> &wave,
     ComputePowerSpectrum(&tmp_spectrum);
     SubVector<BaseFloat> power_spectrum(tmp_spectrum, 0,
                                         padded_window_size_/2 + 1);
-    KALDI_LOG << "Computing frame " << r << " with F0 " << f0(r);
+    KALDI_VLOG(2) << "Computing frame " << r << " with F0 " << f0(r);
 
     // BP: this code allows us to speed things up a bit for unvoiced regions
     if (voicing_prob(r) <= 0.0) {  // unvoiced region
