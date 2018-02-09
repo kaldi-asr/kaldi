@@ -461,30 +461,44 @@ def idlak_make_lang(textfile, datadir, langdir):
         fp = open(os.path.join(langdir, "extra_questions.txt"), 'w')
         fp.close()
 
-def load_labs(labfile):
+def load_labs(labfile, statefile = None):
     out = {}
-    for l in open(labfile).readlines():
+    states = None
+    if statefile is not None:
+        states = open(statefile).readlines()
+    for j, l in enumerate(open(labfile)):
         ll = l.strip().split()
+        ls = []
+        if states is not None:
+            ls = states[j].strip().split()
         key = ll[0]
         phones = []
         oldp = ll[1]
         np = 1
         start_time = 0.0
+        state = 0
+        olds = 0
         for i, p in enumerate(ll[2:]):
-            if p != oldp or i == len(ll) - 3:
-                if p == oldp: np += 1
+            if len(ls):
+                state = int(ls[i+2])
+            if p != oldp or olds > state or i == len(ll) - 3:
+                if p == oldp and olds <= state: np += 1
                 end_time = round(start_time + np * FRAMESHIFT, 4)
                 phones.append([start_time, end_time, oldp])
                 start_time = end_time
-                if p != oldp:
+                #if p == oldp and olds > state:
+                #    print "Duplicate phone encountered"
+                if p != oldp or olds > state:
                     np = 1
                     oldp = p
+                    olds = 0
                     # Border case where there is a single lonely phone at the end; should not happen
                     if i == len(ll) - 3:
                         end_time = round(start_time + np * FRAMESHIFT, 4)
                         phones.append([start_time, end_time, oldp])
             else:
                 np += 1
+                olds = state
         out[key] = phones
     return out
 
@@ -510,15 +524,18 @@ def load_words(wordfile):
     return out
 
 # Recreate an idlak compatible xml file from word and phone alignment
-def write_xml_textalign(breaktype, breakdef, labfile, wordfile, output):
+def write_xml_textalign(breaktype, breakdef, labfile, wordfile, output, statefile=None):
     impl = getDOMImplementation()
 
     document = impl.createDocument(None, "document", None)
     doc_element = document.documentElement
+
+    if statefile is None:
+        print "WARNING: alignment with phone identity only is not accurate enough. Please use states aligment as final argument."
     
     #labs = glob.glob(labdir + '/*.lab')
     #labs.sort()
-    all_labs = load_labs(labfile)
+    all_labs = load_labs(labfile, statefile)
     all_words = load_words(wordfile)
     f = open(output, 'w')
     f.write('<document>\n')
@@ -589,9 +606,9 @@ def main():
                       help = 'Root name to use for generating spurtID from anonymous spt')
     opts, args = parser.parse_args()
     if int(opts.mode) == 0 and len(args) == 3:
-        idlak_make_lang(args[0], args[1], args[2])
-    elif int(opts.mode) == 1 and len(args) == 5:
-        write_xml_textalign(args[0], args[1], args[2], args[3], args[4])
+        idlak_make_lang(*args)
+    elif int(opts.mode) == 1 and len(args) in [5, 6]:
+        write_xml_textalign(*args)
     elif int(opts.mode) == 2:
         logger = Logger('kaldicex', logopts)
         if len(args) == 2:
