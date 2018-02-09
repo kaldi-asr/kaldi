@@ -5,11 +5,11 @@ set -o nounset                              # Treat unset variables as an error
 echo "$0 $@"
 
 datadev=$1
-audio_path="/export/corpora5/MATERIAL/IARPA_MATERIAL_BASE-1A/ANALYSIS1/audio/"
 
 ./cmd.sh                                                                        
 ./path.sh                                                                       
 ./utils/parse_options.sh 
+. ./lang.conf
 
 mkdir -p $datadev
 

@@ -1,10 +1,11 @@
 #!/bin/bash
-export LD_LIBRARY_PATH=/home/dpovey/libs
-
+. ./cmd.sh                                                                      
+. ./path.sh
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
-. utils/parse_options.sh
+language=swahili
+. ./utils/parse_options.sh
 
 datadev="data/analysis1"
 label_delay=5
@@ -38,9 +39,9 @@ xent_regularize=0.1
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. ./cmd.sh
-. ./path.sh
-. ./utils/parse_options.sh
+[ ! -f ./conf/lang/${language}.conf ] && echo "Language configuration conf/lang/${language}.conf does not exist!" && exit 1
+ln -sf ./conf/lang/${language}.conf lang.conf                                   
+. ./lang.conf
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -57,8 +58,6 @@ nj=30
 gmm=tri3
 test_sets="analysis1-segmented"
 
-# stage 3
-
 for datadir in $test_sets; do
   utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
 done
@@ -70,7 +69,6 @@ for datadir in $test_sets; do
   utils/fix_data_dir.sh data/${datadir}_hires || exit 1;
 done
 
-# stage 6
 
 # extract iVectors for the test data, in this case we don't need the speed
 # perturbation (sp).
@@ -95,7 +93,6 @@ for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1                 
 done 
 
-# stage 16
 
 frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
 rm $dir/.error 2>/dev/null || true
@@ -114,7 +111,7 @@ for data in $test_sets; do
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
         $tree_dir/graph data/${data}_hires ${dir}/decode_${data} || exit 1
   ) || touch $dir/.error &
-  
+  wait 
   # resolve ctm overlaping regions, and compute wer
   cp $datadev/reftext data/${data}_hires
   local/postprocess_test.sh $test_sets $tree_dir $dir
