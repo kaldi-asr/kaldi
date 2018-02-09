@@ -4,7 +4,7 @@
 
 """This is a new version allocate_egs code for xvector.
 
-In previous xvector setup, the different examples in the same archive are equvalent
+In previous xvector setup, the different examples in the same archive are equivalent
 length and it uses ranges.* files to control archives, which contains local and
 global archive index and example description in each line.
 In this version, we hope the length of different examples in the same archive is
@@ -14,7 +14,7 @@ it is similar to conventional 'nnet3-get-egs' setup uses separate input and
 output files to generate examples directly. 
 
 (In order to be compatible with previous version, we provide the method to 
-generate equvalent length egs in same archive. For details, the number of
+generate equivalent length egs in same archive. For details, the number of
 egs for each kind of length is same, but since the length is different, so the
 total number of frames is different. We assign the option "frames_per_iter", it
 looks like a upperbound. We use "total_frames"/"frames_per_iter" to decide how
@@ -31,12 +31,18 @@ In this mode, the startpoint is "num_egs_per_speaker_per_length" as we think
 the balance of each speaker's egs maybe important for xvector.
 
 In this mode, we provide the "average_method":
-For details, if the "average_method" is true, when we generate new utt,
-we will consider average choose the utterance from the uttlist of the speaker(
-it means assume we want 12 egs for each speaker, and each speaker has 6 utterances,
-we will generate 2 egs from each utterance. If we encounter decimal, we generate
-it in probability), otherwise, we will randomly choose utterance from 
-the uttlist of the spekaer.
+For details, if the "average_method == true" when we generate new utterance,
+we will consider average choose the utterance from the uttlist of the speaker.
+(For example, assume we want 12 egs for each speaker. According to "spk2utt",
+we can know the number of utterances belongs to some speaker. Assume some speaker
+has 5 utterances. 12/5=2.4. We are certain to generate 2 egs from each utterance. 
+And we generate another one eg for each utterance in probability[0.4].) 
+Otherwise, if "average_method == false", we will randomly choose utterance from
+the uttlist of the speaker to generate new entry.
+(For example, assume we want 12 egs for each speaker. According to "spk2utt",
+we can know the number of utterances belongs to some speaker. Assume some speaker
+has 5 utterances. We choose one utterance from the 5 utterances randomly and
+then generate one eg. This process will iterate 12 times.)
 
 When we generate valid set or train_sub set, we can set the option 
 "generate-validate" to true. In this way, we will only generate one eg for each
@@ -49,7 +55,7 @@ import re, os, argparse, sys, math, warnings, random
 
 def get_args():
     parser = argparse.ArgumentParser(description="In previous xvector setup, "
-            "the different examples in the same archive are equvalent length."
+            "the different examples in the same archive are equivalent length."
             "Now, we hope the length of different examples in the same archive is "
             "different. This script modifies the feats.scp in original data directory "
             "to generate some new feats.scp which corresponds "

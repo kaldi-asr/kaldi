@@ -27,7 +27,7 @@ namespace nnet3 {
 // Process the utt2label file and store it as a map from utt_id to
 // label
 static void ProcessUttToLabelFile(const std::string &utt2label_rxfilename, 
-    unordered_map<std::string, int32, StringHasher> *utt_to_label) {
+                                  unordered_map<std::string, int32, StringHasher> *utt_to_label) {
   Input utt2label_input(utt2label_rxfilename);
   if (!utt2label_rxfilename.empty()) {
     std::string line;
@@ -51,10 +51,12 @@ static void ProcessUttToLabelFile(const std::string &utt2label_rxfilename,
 
 
 static void WriteExample(const MatrixBase<BaseFloat> &feats,
-  const int32 this_pdf_id, const std::string &key,
-  bool compress, int32 num_pdfs, int32 &num_egs_written,
-  NnetExampleWriter *example_writer) {
-
+                         const int32 this_pdf_id,
+                         const std::string &key,
+                         bool compress,
+                         int32 num_pdfs,
+                         int32 *num_egs_written,
+                         NnetExampleWriter *example_writer) {
   NnetIo nnet_input = NnetIo("input", 0, feats);
   for (std::vector<Index>::iterator indx_it = nnet_input.indexes.begin();
       indx_it != nnet_input.indexes.end(); ++indx_it) {
@@ -87,10 +89,15 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "In previous xvector setup, the different examples in the same archive\n"
-        "are equvalent length. Now, we hope the length of different examples in\n"
-        "the same archive is different, so that the randomness of data is increased\n"
-        "For this binary, it deals with the variable length feats.scp file.\n"
-        "Generate the variable length egs into egs.ark file.\n"
+        "are equivalent length and it uses ranges.* files to generate archives, \n"
+        "which contains local and global archive index and example description \n"
+        "in each line. Now, we hope the length of different examples in\n"
+        "the same archive is different, so that the randomness of data is increased.\n"
+        "And in new setup we use 'ranges in script-file lines' method to extract \n"
+        "the submatrix directly so that it is similar to conventional \n"
+        "'nnet3-get-egs' setup uses separate input and output files to \n"
+        "generate examples directly. For this binary, it deals with the variable \n"
+        "length feats.scp file. Generate the variable length egs into egs.ark file.\n"
         "Usage: nnet3-xvector-get-egs [options] <utt2label-rxfilename>"
         "<features-rspecifier> <egs-wspecifier>\n"
         "For example:\n"
@@ -100,10 +107,15 @@ int main(int argc, char *argv[]) {
     int32 num_pdfs = -1;
 
     ParseOptions po(usage);
-    po.Register("compress", &compress, "If true, write egs in "
-                "compressed format.");
+    po.Register("compress", &compress, "If true, write egs in compressed format.");
     po.Register("num-pdfs", &num_pdfs, "Number of speakers in the training "
-                "list.");
+                "list. If this option is not supplied, it will be set to the "
+                "maximum value in utt2label file plus 1, since the label is "
+                "zero-based. We strongly recommend that you set this value by "
+                "hand, especially for the small dataset such as valid or "
+                "train_sub set. As the kind of small dataset doesn't guarantee "
+                "contain the last speaker so that the calculated num-pdfs value "
+                "may smaller than actual num-pdfs. This will lead to mismatch.");
 
     po.Read(argc, argv);
 
@@ -150,7 +162,7 @@ int main(int argc, char *argv[]) {
         int32 this_pdf_id = got_label->second;
         KALDI_ASSERT(this_pdf_id < num_pdfs);
         WriteExample(feats, this_pdf_id, key, compress, num_pdfs,
-            num_egs_written, &egs_writer);
+                     &num_egs_written, &egs_writer);
         num_done++;
       }
     }
