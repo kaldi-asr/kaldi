@@ -84,6 +84,7 @@ for (my $n = 1; $n <= $num_storage; $n++) {
     push(@coprimes, $n);
   }
 }
+
 my $ret = 0;
 
 foreach my $fullpath (@ARGV) {
