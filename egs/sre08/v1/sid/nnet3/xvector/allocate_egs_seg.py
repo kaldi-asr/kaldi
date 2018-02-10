@@ -332,7 +332,6 @@ def main():
         for i in range(0, args.kinds_of_length):
             num_err = 0
             this_length = length_types[i]
-            num_this_segments = 1
 
             this_dir_name =  args.output_dir + "/data_" + str(this_length)
             feats_f, spk_f = create_newdir(this_dir_name, this_length)
@@ -346,7 +345,7 @@ def main():
                     if num_err > (0.1 * len(utt_list)):
                         raise Exception("{0} is not a suitable length".format(
                             this_length))
-                    break
+                    continue
                 else:
                     this_utt_boundary = int(this_utt_len - this_length)
                     start_point = random.randint(0, this_utt_boundary)
