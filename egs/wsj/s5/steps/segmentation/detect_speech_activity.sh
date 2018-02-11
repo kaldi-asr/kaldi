@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2016-17  Vimal Manohar
+#              2017  Nagendra Kumar Goel
 # Apache 2.0.
 
 # This script does nnet3-based speech activity detection given an input 
@@ -12,7 +13,7 @@ set -e
 set -o pipefail
 set -u
 
-. ./path.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 
 affix=  # Affix for the segmentation
 nj=32
@@ -20,8 +21,8 @@ cmd=queue.pl
 stage=-1
 
 # Feature options (Must match training)
-mfcc_config=conf/mfcc_hires_bp.conf
-feat_affix=bp   # Affix for the type of feature used
+mfcc_config=conf/mfcc_hires.conf
+feat_affix=   # Affix for the type of feature used
 
 convert_data_dir_to_whole=true    # If true, the input data directory is 
                                   # first converted to whole data directory (i.e. whole recordings)
@@ -67,7 +68,7 @@ if [ $# -ne 5 ]; then
   echo "See script for details of the options to be supplied."
   echo "Usage: $0 <src-data-dir> <sad-nnet-dir> <mfcc-dir> <work-dir> <out-data-dir>"
   echo " e.g.: $0 ~/workspace/egs/ami/s5b/data/sdm1/dev exp/nnet3_sad_snr/nnet_tdnn_j_n4 \\"
-  echo "    mfcc_hires_bp exp/segmentation_sad_snr/nnet_tdnn_j_n4 data/ami_sdm1_dev"
+  echo "    mfcc_hires exp/segmentation_sad_snr/nnet_tdnn_j_n4 data/ami_sdm1_dev"
   echo ""
   echo "Options: "
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
