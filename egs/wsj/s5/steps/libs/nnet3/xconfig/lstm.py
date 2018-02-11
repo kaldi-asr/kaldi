@@ -609,19 +609,12 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                         'clipping-threshold' : 30.0,
                         'zeroing-interval' : 20,
                         'zeroing-threshold' : 15.0,
-                        # self-scale is a scale we put on the m_t when doing
-                        # linear projections from it... making it larger than 1
-                        # (e.g. 4) helps equalize scales.
-                        'self-scale': 1.0,
                         'delay' : -1,
                         # if you want to set 'self-repair-scale' (c.f. the
                         # self-repair-scale-nonlinearity config value in older LSTM layers), you can
                         # add 'self-repair-scale=xxx' to
                         # lstm-nonlinearity-options.
                         'lstm-nonlinearity-options' : ' max-change=0.75',
-                        # if self-stabilize=true, the W_all will be a
-                        # LinearComponent followed by a ScaleAndOffsetComponent.
-                         'self-stabilize': False,
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
@@ -720,17 +713,9 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         configs.append("### Begin LTSM layer '{0}'".format(name))
         configs.append("# Gate control: contains W_i, W_f, W_c and W_o matrices as blocks.")
 
-        if not self.config['self-stabilize']:
-            configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} "
-                           "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, cell_dim * 4,
-                                                           affine_str, l2_regularize_option))
-        else:
-            configs.append("component name={0}.W_all type=LinearComponent input-dim={1} "
-                           "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, cell_dim * 4,
-                                                           affine_str, l2_regularize_option))
-            configs.append("component name={0}.W_all_so type=ScaleAndOffsetComponent dim={1} "
-                           "max-change=0.75".format(name, cell_dim * 4))
-
+        configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, cell_dim * 4,
+                                                       affine_str, l2_regularize_option))
 
         configs.append("# The core LSTM nonlinearity, implemented as a single component.")
         configs.append("# Input = (i_part, f_part, c_part, o_part, c_{t-1}), output = (c_t, m_t)")
@@ -738,32 +723,25 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         configs.append("component name={0}.lstm_nonlin type=LstmNonlinearityComponent "
                        "cell-dim={1} {2} {3}".format(name, cell_dim, lstm_str,
                                                      l2_regularize_option))
-        # Note from Dan: I don't remember why we are applying the backprop
-        # truncation on both c and m appended together, instead of just on c.
-        # Possibly there was some memory or speed or WER reason for it which I
-        # have forgotten about now.
+
         configs.append("# Component for backprop truncation, to avoid gradient blowup in long training examples.")
         configs.append("component name={0}.cm_trunc type=BackpropTruncationComponent dim={1} "
                        "{2}".format(name, 2 * cell_dim, bptrunc_str))
 
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all component={0}.W_all input=Append({1}, "
-                       "IfDefined(Offset(Scale({2}, {0}.c_trunc), {3})))".format(
-                          name, input_descriptor, self.config['self-scale'], delay))
-        if self.config['self-stabilize']:
-            configs.append("component-node name={0}.W_all_so component={0}.W_all_so input={0}.W_all".format(name))
-            W_all_name = 'W_all_so'
-        else:
-            W_all_name = 'W_all'
+                       "IfDefined(Offset({0}.m_trunc, {2})))".format(
+                           name, input_descriptor, delay))
 
         configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
-                       "input=Append({0}.{1}, IfDefined(Offset({0}.c_trunc, {2})))".format(
-                           name, W_all_name, delay))
+                       "input=Append({0}.W_all, IfDefined(Offset({0}.c_trunc, {1})))".format(
+                           name, delay))
         # we can print .c later if needed, but it generates a warning since it's not used.  could use c_trunc instead
         #configs.append("dim-range-node name={0}.c input-node={0}.lstm_nonlin dim-offset=0 dim={1}".format(name, cell_dim))
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin dim-offset={1} dim={1}".format(name, cell_dim))
         configs.append("component-node name={0}.cm_trunc component={0}.cm_trunc input={0}.lstm_nonlin".format(name))
         configs.append("dim-range-node name={0}.c_trunc input-node={0}.cm_trunc dim-offset=0 dim={1}".format(name, cell_dim))
+        configs.append("dim-range-node name={0}.m_trunc input-node={0}.cm_trunc dim-offset={1} dim={1}".format(name, cell_dim))
 
         if self.layer_type == "fast-lstm-batchnorm-layer":
             # Add the batchnorm component, if requested to include batchnorm.
@@ -1030,11 +1008,6 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                         # add 'self-repair-scale=xxx' to
                         # lstm-nonlinearity-options.
                         'lstm-nonlinearity-options' : ' max-change=0.75',
-                        # If you set 'self-stabilize=true', for W_all_a, instead
-                        # of a NaturalGradientAffineComponent, it has a LinearComponent followed
-                        # by a ScaleAndOffsetComponent.  This is similar to
-                        # "SELF-STABILIZED DEEP NEURAL NETWORK" by Ghahremani and Droppo.
-                        'self-stabilize': False,
                         # the affine layer contains 4 of our old layers -> use a
                         # larger max-change than the normal value of 0.75.
                         'ng-affine-options' : ' max-change=1.5',
@@ -1155,20 +1128,10 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix providing output to gate i and operating on an appended vector [x,r]
         configs.append("##  Begin LTSM layer '{0}'".format(name))
         configs.append("# Gate control: contains W_i, W_f, W_c and W_o matrices as blocks.")
-        if self.config['self-stabilize']:
-            # have LinearComponent followed by ScaleAndOffsetComponent.
-            configs.append("component name={0}.W_all type=LinearComponent input-dim={1} "
-                           "output-dim={2} {3} {4} ".format(
-                               name, input_dim + rec_proj_dim, cell_dim * 4,
-                               affine_str, l2_regularize_option))
-            configs.append("component name={0}.W_all_so type=ScaleAndOffsetComponent dim={1} "
-                           "max-change=0.75".format(name, cell_dim * 4))
-        else:
-            # have NaturalGradientAffineComponent
-            configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} "
-                           "output-dim={2} {3} {4}".format(
-                               name, input_dim + rec_proj_dim, cell_dim * 4,
-                               affine_str, l2_regularize_option))
+        configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} "
+                       "output-dim={2} {3} {4}".format(
+                           name, input_dim + rec_proj_dim, cell_dim * 4,
+                           affine_str, l2_regularize_option))
         configs.append("# The core LSTM nonlinearity, implemented as a single component.")
         configs.append("# Input = (i_part, f_part, c_part, o_part, c_{t-1}), output = (c_t, m_t)")
         configs.append("# See cu-math.h:ComputeLstmNonlinearity() for details.")
@@ -1186,18 +1149,13 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
                            .format(name, dropout_proportion))
         configs.append("# Component specific to 'projected' LSTM (LSTMP), contains both recurrent");
         configs.append("# and non-recurrent projections")
-        configs.append("component name={0}.W_rp type=LinearComponent orthonormal-constraint=2.0 "
+        configs.append("component name={0}.W_rp type=NaturalGradientAffineComponent "
                        "input-dim={1} output-dim={2} {3} {4}".format(
                            name, cell_dim, rec_proj_dim + nonrec_proj_dim,
                            affine_str, l2_regularize_option))
         configs.append("###  Nodes for the components above.")
         configs.append("component-node name={0}.W_all component={0}.W_all input=Append({1}, "
                        "IfDefined(Offset({0}.r_trunc, {2})))".format(name, input_descriptor, delay))
-        if self.config['self-stabilize']:
-            configs.append("component-node name={0}.W_all_so component={0}.W_all_so input={0}.W_all".format(name))
-            W_all_name = 'W_all_so'
-        else:
-            W_all_name = 'W_all'
 
         if dropout_proportion != -1.0:
             # note: the 'input' is a don't-care as the component never uses it; it's required
@@ -1205,12 +1163,12 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
             configs.append("component-node name={0}.dropout_mask component={0}.dropout_mask "
                            "input={0}.dropout_mask".format(name))
             configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
-                           "input=Append({0}.{1}, IfDefined(Offset({0}.c_trunc, {2})), {0}.dropout_mask)"
-                           .format(name, W_all_name, delay))
+                           "input=Append({0}.W_all, IfDefined(Offset({0}.c_trunc, {1})), "
+                           "{0}.dropout_mask)".format(name, delay))
         else:
             configs.append("component-node name={0}.lstm_nonlin component={0}.lstm_nonlin "
-                           "input=Append({0}.{1}, IfDefined(Offset({0}.c_trunc, {2})))".format(
-                               name, W_all_name, delay))
+                           "input=Append({0}.W_all, IfDefined(Offset({0}.c_trunc, {1})))".format(
+                               name, delay))
         configs.append("dim-range-node name={0}.c input-node={0}.lstm_nonlin "
                        "dim-offset=0 dim={1}".format(name, cell_dim))
         configs.append("dim-range-node name={0}.m input-node={0}.lstm_nonlin "

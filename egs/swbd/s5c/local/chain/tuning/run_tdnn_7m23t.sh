@@ -5,7 +5,6 @@
 # seems slightly better than 23h, and it's nice that it has fewer parameters.
 
 
-
 # local/chain/compare_wer_general.sh --rt03 tdnn7m23h_sp tdnn7m23r_sp tdnn7m23t_sp
 # System                tdnn7m23h_sp tdnn7m23r_sp tdnn7m23t_sp
 # WER on train_dev(tg)      12.28     11.95     12.18
