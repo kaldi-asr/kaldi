@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# Copyright 2016-18  Vimal Manohar
+# Copyright 2016-2018  Vimal Manohar
 # Apache 2.0
 
 # This scripts converts a data directory into a "whole" data directory

@@ -63,7 +63,8 @@ if [ $stage -le 0 ]; then
     data/local/data/train_bn97
 fi
 
-# Install Beautiful Soup 4 python package
+# Install Beautiful Soup 4 python package for parsing SGML-like files
+# in CSR-IV HUB4 corpus
 if [ ! -d tools/beautifulsoup4 ]; then
   mkdir -p tools
   pip install -t tools/beautifulsoup4 beautifulsoup4

@@ -38,7 +38,7 @@ export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
 ) || exit 1;
 
 num_dev_sentences=4500
-RANDOM=0
+RANDOM=0  # set seed for shuffling to ensure reproducibility
 
 if [ $stage -le 0 ]; then
   mkdir -p ${dir}/data
@@ -50,14 +50,15 @@ if [ $stage -le 0 ]; then
 
   # Take unique subset to make sure that the training text is not in the 
   # dev set.
-  cat data/train_bn96/text | cut -d ' ' -f 2- | sort | uniq -c | \
-    shuf > ${dir}/train_bn96_text_with_count
-  head -n $num_dev_sentences < ${dir}/train_bn96_text_with_count | \
+  # Replace train with train_bn96 in order to use only the 1996 HUB4 set
+  cat data/train/text | cut -d ' ' -f 2- | sort | uniq -c | \
+    shuf > ${dir}/train_text_with_count
+  head -n $num_dev_sentences < ${dir}/train_text_with_count | \
     awk '{for (i=0; i<$1; i++) {print $0;} }' | cut -d ' ' -f 2- > \
     ${dir}/data/text/dev.txt 
-  tail -n +$[num_dev_sentences+1] < ${dir}/train_bn96_text_with_count | \
+  tail -n +$[num_dev_sentences+1] < ${dir}/train_text_with_count | \
     awk '{for (i=0; i<$1; i++) {print $0;} }' | cut -d ' ' -f 2- > \
-    ${dir}/data/text/train_bn96.txt
+    ${dir}/data/text/train.txt
 
   # Get text from NA News corpus 
   for x in data/local/data/na_news/*; do
@@ -110,8 +111,8 @@ if [ $stage -le 2 ]; then
   #   [ -f $y ] && cat $y 
   # done | local/lm/merge_word_counts.py 15 > $dir/data/work/na_news.wordlist_counts
 
-  cat $dir/data/work/word_counts/{train_bn96,dev}.counts | \
-    local/lm/merge_word_counts.py 2 > $dir/data/work/train_bn96.wordlist_counts
+  cat $dir/data/work/word_counts/{train,dev}.counts | \
+    local/lm/merge_word_counts.py 2 > $dir/data/work/train.wordlist_counts
 
   cat $dir/data/work/word_counts/csr96_hub4.counts | \
     local/lm/merge_word_counts.py 5 > $dir/data/work/csr96_hub4.wordlist_counts
@@ -119,19 +120,14 @@ if [ $stage -le 2 ]; then
   cat $dir/data/work/word_counts/csr95_hub4.counts | \
     local/lm/merge_word_counts.py 5 > $dir/data/work/csr95_hub4.wordlist_counts
 
-  cat $dir/data/work/{train_bn96,csr96_hub4,csr95_hub4}.wordlist_counts | \
+  cat $dir/data/work/{train,csr96_hub4,csr95_hub4}.wordlist_counts | \
     perl -ane 'if ($F[1] =~ m/[A-Za-z]/) { print "$F[0] $F[1]\n"; }' | \
     local/lm/merge_word_counts.py 1 | sort -k 1,1nr > $dir/data/work/final.wordlist_counts
 
   if [ ! -z "$vocab_size" ]; then
     awk -v sz=$vocab_size 'BEGIN{count=-1;} 
-    { i+=1; 
-      if (i == int(sz)) { 
-        count = $1; 
-      };
-      if (count > 0 && count != $1) { 
-        exit(0); 
-      } 
+    { i+=1; if (i == int(sz)) { count = $1; };
+      if (count > 0 && count != $1) { exit(0); } 
       print $0;
     }' $dir/data/work/final.wordlist_counts
   else 
@@ -142,7 +138,7 @@ fi
 order=4
 wordlist=$dir/data/work/wordlist
 
-min_counts='default=5 train_bn96=1 csr96_hub4=2,3 csr95_hub4=2,3'
+min_counts='default=5 train=1 csr96_hub4=2,3 csr95_hub4=2,3'
 
 lm_name="`basename ${wordlist}`_${order}"
 if [ -n "${min_counts}" ]; then
@@ -158,7 +154,7 @@ if [ $stage -le 3 ]; then
   $cmd ${unpruned_lm_dir}/log/train.log \
     train_lm.py  --wordlist=$wordlist --num-splits=10 --warm-start-ratio=20  \
                  --limit-unk-history=true \
-                 --fold-dev-into=train_bn96 \
+                 --fold-dev-into=train \
                  --min-counts="${min_counts}" \
                  ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 

@@ -10,12 +10,6 @@
 # biased language model built from the reference, and then work out the
 # segmentation from a ctm like file.
 
-# For nnet3 and chain results after cleanup, see the scripts in
-# local/nnet3/run_tdnn.sh and local/chain/run_tdnn.sh
-
-# GMM Results for speaker-independent (SI) and speaker adaptive training (SAT) systems on dev and test sets
-# [will add these later].
-
 stage=0
 cleanup_stage=0
 data=data/train
@@ -80,10 +74,10 @@ fi
 if [ $stage -le 6 ]; then
   steps/train_sat.sh --cmd "$train_cmd" \
     5000 100000 $cleaned_data data/lang_nosp \
-    ${cleaned_dir}_ali_${cleanup_affix} exp/tri4b_${cleanup_affix}
+    ${cleaned_dir}_ali_${cleanup_affix} exp/tri4_${cleanup_affix}
 fi
 
-cleaned_dir=exp/tri4b_${cleanup_affix}
+cleaned_dir=exp/tri4_${cleanup_affix}
 if [ $stage -le 7 ]; then
   # Test with the larger model trained on cleaned-up data.
   utils/mkgraph.sh data/lang_nosp_test ${cleaned_dir} ${cleaned_dir}/graph_nosp
