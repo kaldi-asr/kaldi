@@ -58,6 +58,12 @@ namespace kaldi {
 */
 
 static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
+
+  // Our first attempt is to just do cudaFree(0) and see if that
+  // returns no error code.
+  if (cudaFree(0) == 0)
+    return true;
+
   std::ostringstream debug_stream;
   debug_stream << "num-gpus=" << num_gpus << ". ";
   for (int32 device = 0; device < num_gpus; device++) {
@@ -220,9 +226,9 @@ void CuDevice::FinalizeActiveGpu() {
     }
     // Remember the id of active GPU
     active_gpu_id_ = act_gpu_id; // CuDevice::Enabled() is true from now on
-    // Initialize the CUBLAS
+    // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&handle_));
-    // Initialize the cuSPARSE
+    // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
 
     // Notify user which GPU is finally used
