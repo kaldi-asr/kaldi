@@ -57,6 +57,7 @@ def normalize_text(text, remove_punct=False):
     text1 = text.strip()
     text2 = text1.upper()
     text2 = re.sub(r" [ ]*", " ", text2)
+    text2 = re.sub(r"([A-Z][A-Z])[.!,;]\s", "\1", text2)  # remove punctuations
     return text2
 
 

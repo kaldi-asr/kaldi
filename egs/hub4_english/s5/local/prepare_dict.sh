@@ -60,8 +60,9 @@ if [ ! -d $dir/cmudict ]; then
     $dir/cmudict || exit 1;
 fi
 
-# can add -r 10966 for strict compatibility.
+cp $wordlist $dir/orig_wordlist
 
+# can add -r 10966 for strict compatibility.
 
 #(2) Dictionary preparation:
 
@@ -122,7 +123,7 @@ fi
 export PATH=$PATH:`pwd`/local/dict
 
 if [ $stage -le 3 ]; then
-  utils/filter_scp.pl --exclude $dir/wordlist_with_prons < $wordlist | \
+  utils/filter_scp.pl --exclude $dir/wordlist_with_prons < $dir/orig_wordlist | \
     sort -u > $dir/oovlist
 fi
 

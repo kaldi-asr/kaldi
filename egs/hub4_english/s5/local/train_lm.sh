@@ -165,18 +165,17 @@ if [ $stage -le 3 ]; then
     cat ${unpruned_lm_dir}/log/compute_data_prob_${x}.log | grep -F '[perplexity'
   done
   
-  # train_lm.py: Ngram counts: 190742 + 31139856 + 14766071 + 13851899 = 59948568
-  # train_lm.py: You can set --bypass-metaparameter-optimization='1.000,0.007,0.000,0.002,0.000,0.006,0.003,0.000,0.000,0.000,0.001,0.002,0.002,0.000,0.000,0.000,0.003,0.000,0.000,0.604,0.187,0.044,0.012,1.000,0.490,0.026,0.001,0.732,0.328,0.281,0.218' to get equivalent results
-  # get_data_prob.py: log-prob of data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt given model data/local/local_lm_bn_nanews_csr96/data/wordlist_4_default-5_bn-1.pocolm was -4.9927348506 per word [perplexity = 147.338822662] over 33180.0 words.
-
-  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96pe.txt given model data/local/local_lm/data/wordlist_4_default-5_train_bn96-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.92985727862 per word [perplexity = 138.359764034] over 23760.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96ue.txt given model data/local/local_lm/data/wordlist_4_default-5_train_bn96-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.88171588624 per word [perplexity = 131.85672102] over 18821.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval96.txt given model data/local/local_lm/data/wordlist_4_default-5_train_bn96-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.85089075845 per word [perplexity = 127.85422637] over 20625.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval97.txt given model data/local/local_lm/data/wordlist_4_default-5_train_bn96-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.84370861758 per word [perplexity = 126.939248987] over 33340.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval98.txt given model data/local/local_lm/data/wordlist_4_default-5_train_bn96-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.91000862327 per word [perplexity = 135.640584068] over 33180.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_1.txt given model data/local/local_lm/data/wordlist_4_default-5_train_bn96-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -5.03738768271 per word [perplexity = 154.067016944] over 11529.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_2.txt given model data/local/local_lm/data/wordlist_4_default-5_train_bn96-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -5.02574438024 per word [perplexity = 152.283570813] over 16395.0 words.
-
+  # train_lm.py: You can set --bypass-metaparameter-optimization='0.829,0.997,0.066,0.014,0.171,0.244,0.063,0.001,0.023,0.004,0.014,0.006,0.018,0.027,0.082,1.000,0.004,0.007,0.024,0.703,0.108,0.046,0.019,0.848,0.258,0.208,0.195,0.889,0.297,0.282,0.242' to get equivalent results
+  # train_lm.py: Ngram counts: 98768 + 26286404 + 21077207 + 17945418 = 65407797
+  
+  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96ue.txt given model data/local/local_lm/data/wordlist_4_default-5_train-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.88365261291 per word [perplexity = 132.112338899] over 18771.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96pe.txt given model data/local/local_lm/data/wordlist_4_default-5_train-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.9299451353 per word [perplexity = 138.371920398] over 23710.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval96.txt given model data/local/local_lm/data/wordlist_4_default-5_train-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.8308081807 per word [perplexity = 125.312194639] over 20553.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval97.txt given model data/local/local_lm/data/wordlist_4_default-5_train-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.82377287988 per word [perplexity = 124.433679586] over 33234.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval98.txt given model data/local/local_lm/data/wordlist_4_default-5_train-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -4.88114977878 per word [perplexity = 131.782097071] over 33180.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_1.txt given model data/local/local_lm/data/wordlist_4_default-5_train-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -5.01175279868 per word [perplexity = 150.167719384] over 11529.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_2.txt given model data/local/local_lm/data/wordlist_4_default-5_train-1_csr96_hub4-2.3_csr95_hub4-2.3.pocolm was -5.01485733132 per word [perplexity = 150.634644387] over 16395.0 words.
+  
 fi
 
 if [ $stage -le 4 ]; then
@@ -194,18 +193,13 @@ if [ $stage -le 4 ]; then
     cat ${dir}/data/lm_${order}_prune_big/log/compute_data_prob_${x}.log | grep -F '[perplexity'
   done
 
-  # get_data_prob.py data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt data/local/local_lm_bn_nanews_csr96/data/lm_4_prune_big
-  # grep -F '[perplexity'
-  # get_data_prob.py: log-prob of data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt given model data/local/local_lm_bn_nanews_csr96/data/lm_4_prune_big was -5.05700399638 per word [perplexity = 157.11908113]
-  # over 33180.0 words.
-
-  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96pe.txt given model data/local/local_lm/data/lm_4_prune_big was -5.00197658249 per word [perplexity = 148.706800062] over 23760.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96ue.txt given model data/local/local_lm/data/lm_4_prune_big was -4.95522131024 per word [perplexity = 141.914009921] over 18821.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval96.txt given model data/local/local_lm/data/lm_4_prune_big was -4.91668501333 per word [perplexity = 136.54920329] over 20625.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval97.txt given model data/local/local_lm/data/lm_4_prune_big was -4.92810468806 per word [perplexity = 138.117488385] over 33340.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval98.txt given model data/local/local_lm/data/lm_4_prune_big was -4.98326999699 per word [perplexity = 145.950861062] over 33180.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_1.txt given model data/local/local_lm/data/lm_4_prune_big was -5.10923357186 per word [perplexity = 165.543429098] over 11529.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_2.txt given model data/local/local_lm/data/lm_4_prune_big was -5.10475193474 per word [perplexity = 164.803183515] over 16395.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96ue.txt given model data/local/local_lm/data/lm_4_prune_big was -4.96695051249 per word [perplexity = 143.588348177] over 18771.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96pe.txt given model data/local/local_lm/data/lm_4_prune_big was -5.01232680304 per word [perplexity = 150.253941052] over 23710.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval96.txt given model data/local/local_lm/data/lm_4_prune_big was -4.91227395027 per word [perplexity = 135.948202644] over 20553.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval97.txt given model data/local/local_lm/data/lm_4_prune_big was -4.92411302883 per word [perplexity = 137.567269311] over 33234.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval98.txt given model data/local/local_lm/data/lm_4_prune_big was -4.97443821579 per word [perplexity = 144.667530381] over 33180.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_1.txt given model data/local/local_lm/data/lm_4_prune_big was -5.10483206523 per word [perplexity = 164.816389804] over 11529.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_2.txt given model data/local/local_lm/data/lm_4_prune_big was -5.10905926136 per word [perplexity = 165.514575655] over 16395.0 words.
 
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
@@ -228,19 +222,13 @@ if [ $stage -le 5 ]; then
     cat ${dir}/data/lm_${order}_prune_small/log/compute_data_prob_${x}.log | grep -F '[perplexity'
   done
 
-  # get_data_prob.py data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt data/local/local_lm_bn_nanews_csr96/data/lm_4_prune_small
-  # grep -F '[perplexity'
-  # get_data_prob.py: log-prob of data/local/local_lm_bn_nanews_csr96/data/real_dev_set.txt given model data/local/local_lm_bn_nanews_csr96/data/lm_4_prune_small was -5.27172473478 per word [perplexity = 194.751567749] over 33180.0 words.
-  # float-counts-to-pre-arpa: output [ 190743 673670 802551 351512 ] n-grams
-
-  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96pe.txt given model data/local/local_lm/data/lm_4_prune_small was -5.15402161616 per word [perplexity = 173.126339858] over 23760.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96ue.txt given model data/local/local_lm/data/lm_4_prune_small was -5.10689797354 per word [perplexity = 165.157237313] over 18821.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval96.txt given model data/local/local_lm/data/lm_4_prune_small was -5.07740442667 per word [perplexity = 160.357296176] over 20625.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval97.txt given model data/local/local_lm/data/lm_4_prune_small was -5.09747614277 per word [perplexity = 163.608461382] over 33340.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval98.txt given model data/local/local_lm/data/lm_4_prune_small was -5.13563068716 per word [perplexity = 169.971484911] over 33180.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_1.txt given model data/local/local_lm/data/lm_4_prune_small was -5.26596417642 per word [perplexity = 193.632915104] over 11529.0 words.
-  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_2.txt given model data/local/local_lm/data/lm_4_prune_small was -5.26092885453 per word [perplexity = 192.660361662] over 16395.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96ue.txt given model data/local/local_lm/data/lm_4_prune_small was -5.12459372596 per word [perplexity = 168.105830741] over 18771.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/dev96pe.txt given model data/local/local_lm/data/lm_4_prune_small was -5.16866547448 per word [perplexity = 175.680231224] over 23710.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval96.txt given model data/local/local_lm/data/lm_4_prune_small was -5.08096906048 per word [perplexity = 160.929931226] over 20553.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval97.txt given model data/local/local_lm/data/lm_4_prune_small was -5.09222677679 per word [perplexity = 162.751870937] over 33234.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval98.txt given model data/local/local_lm/data/lm_4_prune_small was -5.12842796263 per word [perplexity = 168.751625556] over 33180.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_1.txt given model data/local/local_lm/data/lm_4_prune_small was -5.26755997571 per word [perplexity = 193.942161054] over 11529.0 words.
+  # get_data_prob.py: log-prob of data/local/local_lm/data/eval99_2.txt given model data/local/local_lm/data/lm_4_prune_small was -5.27092234584 per word [perplexity = 194.595363921] over 16395.0 words
 
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
 fi
-
