@@ -6,7 +6,7 @@
 
 . ./path.sh
 
-set -e 
+set -e
 set -o pipefail
 set -u
 
@@ -24,13 +24,13 @@ lmwt=10
 
 # TF-IDF similarity search options
 max_words=1000
-num_neighbors_to_search=1   # Number of neighboring documents to search around the one retrieved based on maximum tf-idf similarity. 
-neighbor_tfidf_threshold=0.5   
+num_neighbors_to_search=1   # Number of neighboring documents to search around the one retrieved based on maximum tf-idf similarity.
+neighbor_tfidf_threshold=0.5
 
 align_full_hyp=false  # Align full hypothesis i.e. trackback from the end to get the alignment.
 
 # First-pass segmentation opts
-# These options are passed to the script 
+# These options are passed to the script
 # steps/cleanup/internal/segment_ctm_edits_mild.py
 segmentation_extra_opts=
 min_split_point_duration=0.1
@@ -56,11 +56,11 @@ Usage: $0 [options] <model-dir> <lang> <data-in> [<text-in> <utt2text>] <segment
  e.g.: $0 exp/wsj_tri2b data/lang_nosp data/train_long data/train_long/text data/train_reseg exp/segment_wsj_long_utts_train
 This script performs segmentation of the data in <data-in> and writes out the
 segmented data (with a segments file) to
-<segmented-data-out> along with the corresponding aligned transcription.  
-Note: If <utt2text> is not provided, the "text" file in <data-in> is used as the 
+<segmented-data-out> along with the corresponding aligned transcription.
+Note: If <utt2text> is not provided, the "text" file in <data-in> is used as the
 raw transcripts to train biased LM for the utterances.
-If <utt2text> is provided, then it should be a mapping from the utterance-ids in 
-<data-in> to the transcript-keys in the file <text-in>, which will be 
+If <utt2text> is provided, then it should be a mapping from the utterance-ids in
+<data-in> to the transcript-keys in the file <text-in>, which will be
 used to train biased LMs for the utterances.
 The purpose of this script is to divide up the input data (which may consist of
 long recordings such as television shows or audiobooks) into segments which are
@@ -86,7 +86,7 @@ if [ $# -eq 7 ]; then
   out_data=$6
   dir=$7
   extra_files="$utt2text"
-else 
+else
   out_data=$4
   dir=$5
 fi
@@ -103,12 +103,12 @@ data_id=`basename $data`
 mkdir -p $dir
 
 data_uniform_seg=$dir/${data_id}_uniform_seg
-  
+
 frame_shift=`utils/data/get_frame_shift.sh $data`
 
-# First we split the data into segments of around 30s long, on which 
-# it would be possible to do a decoding. 
-# A diarization step will be added in the future. 
+# First we split the data into segments of around 30s long, on which
+# it would be possible to do a decoding.
+# A diarization step will be added in the future.
 if [ $stage -le 1 ]; then
   echo "$0: Stage 1 (Splitting data directory $data into uniform segments)"
 
@@ -133,12 +133,12 @@ if [ $stage -le 2 ]; then
       $data $dir/uniform_sub_segments $dir/${data_id}_uniform_seg.temp
 
     utils/data/modify_speaker_info.sh --seconds-per-spk-max $seconds_per_spk_max \
-      $dir/${data_id}_uniform_seg.temp $data_uniform_seg 
+      $dir/${data_id}_uniform_seg.temp $data_uniform_seg
   else
     utils/data/subsegment_data_dir.sh \
       $data $dir/uniform_sub_segments $data_uniform_seg
   fi
-  
+
   utils/fix_data_dir.sh $data_uniform_seg
 
   # Compute new cmvn stats for the segmented data directory
@@ -157,19 +157,19 @@ if [ $stage -le 3 ]; then
   cp $srcdir/phones.txt $dir 2>/dev/null || true
 
   mkdir -p $graph_dir
-  
-  # Make graphs w.r.t. to the original text (usually recording-level) 
+
+  # Make graphs w.r.t. to the original text (usually recording-level)
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
     --nj $nj --cmd "$cmd" $text \
     $lang $dir $dir/graphs
   if [ -z "$utt2text" ]; then
-    # and then copy it to the sub-segments. 
+    # and then copy it to the sub-segments.
     cat $dir/uniform_sub_segments | awk '{print $1" "$2}' | \
       utils/apply_map.pl -f 2 $dir/graphs/HCLG.fsts.scp | \
       sort -k1,1 > \
       $graph_dir/HCLG.fsts.scp
   else
-    # and then copy it to the sub-segments. 
+    # and then copy it to the sub-segments.
     cat $dir/uniform_sub_segments | awk '{print $1" "$2}' | \
       utils/apply_map.pl -f 2 $utt2text | \
       utils/apply_map.pl -f 2 $dir/graphs/HCLG.fsts.scp | \
@@ -187,13 +187,13 @@ mkdir -p $decode_dir
 
 if [ $stage -le 4 ]; then
   echo "$0: Decoding with biased language models..."
-  
+
   if [ -f $srcdir/trans.1 ]; then
     steps/cleanup/decode_fmllr_segmentation.sh \
       --beam $beam --lattice-beam $lattice_beam --nj $nj --cmd "$cmd --mem 4G" \
       --skip-scoring true --allow-partial false \
       $graph_dir $data_uniform_seg $decode_dir
-  else 
+  else
     steps/cleanup/decode_segmentation.sh \
       --beam $beam --lattice-beam $lattice_beam --nj $nj --cmd "$cmd --mem 4G" \
       --skip-scoring true --allow-partial false \
@@ -202,25 +202,24 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  steps/cleanup/internal/get_ctm.sh \
-    --lmwt $lmwt --cmd "$cmd --mem 4G" \
+  steps/get_ctm_fast.sh --lmwt $lmwt --cmd "$cmd --mem 4G" \
     --print-silence true \
-    $data_uniform_seg $lang $decode_dir
+    $data_uniform_seg $lang $decode_dir $decode_dir/ctm_$lmwt
 fi
 
-# Split the original text into documents, over which we can do 
+# Split the original text into documents, over which we can do
 # searching reasonably efficiently. Also get a mapping from the original
 # text to the created documents (i.e. text2doc)
-# Since the Smith-Waterman alignment is linear in the length of the 
-# text, we want to keep it reasonably small (a few thousand words). 
+# Since the Smith-Waterman alignment is linear in the length of the
+# text, we want to keep it reasonably small (a few thousand words).
 
 if [ $stage -le 6 ]; then
   # Split the reference text into documents.
   mkdir -p $dir/docs
-    
+
   # text2doc is a mapping from the original transcript to the documents
   # it is split into.
-  # The format is 
+  # The format is
   # <original-transcript> <doc1> <doc2> ...
   steps/cleanup/internal/split_text_into_docs.pl --max-words $max_words \
     $text $dir/docs/doc2text $dir/docs/docs.txt
@@ -230,11 +229,11 @@ fi
 if [ $stage -le 7 ]; then
   # Get TF-IDF for the reference documents.
   echo $nj > $dir/docs/num_jobs
-  
+
   utils/split_data.sh $data_uniform_seg $nj
 
   mkdir -p $dir/docs/split$nj/
-  
+
   # First compute IDF stats
   $cmd $dir/log/compute_source_idf_stats.log \
     steps/cleanup/internal/compute_tf_idf.py \
@@ -242,23 +241,23 @@ if [ $stage -le 7 ]; then
     --idf-weighting-scheme="log" \
     --output-idf-stats=$dir/docs/idf_stats.txt \
     $dir/docs/docs.txt $dir/docs/src_tf_idf.txt
-  
+
   # Split documents so that they can be accessed easily by parallel jobs.
   mkdir -p $dir/docs/split$nj/
   sdir=$dir/docs/split$nj
   for n in `seq $nj`; do
 
-    # old2new_utts is a mapping from the original segments to the 
+    # old2new_utts is a mapping from the original segments to the
     # new segments created by uniformly segmenting.
     # The format is <old-utterance> <new-utt1> <new-utt2> ...
     utils/filter_scp.pl $data_uniform_seg/split$nj/$n/utt2spk $dir/uniform_sub_segments | \
       cut -d ' ' -f 1,2 | utils/utt2spk_to_spk2utt.pl > $sdir/old2new_utts.$n.txt
 
     if [ ! -z "$utt2text" ]; then
-      # utt2text, if provided, is a mapping from the <old-utterance> to 
+      # utt2text, if provided, is a mapping from the <old-utterance> to
       # <original-transript>.
-      # Since text2doc is mapping from <original-transcript> to documents, we 
-      # first have to find the original-transcripts that are in the current 
+      # Since text2doc is mapping from <original-transcript> to documents, we
+      # first have to find the original-transcripts that are in the current
       # split.
       utils/filter_scp.pl $sdir/old2new_utts.$n.txt $utt2text | \
         cut -d ' ' -f 2 | sort -u | \
@@ -273,13 +272,13 @@ if [ $stage -le 7 ]; then
       $sdir/docs.$n.txt
   done
 
-  # Compute TF-IDF for the source documents. 
+  # Compute TF-IDF for the source documents.
   $cmd JOB=1:$nj $dir/docs/log/get_tfidf_for_source_texts.JOB.log \
     steps/cleanup/internal/compute_tf_idf.py \
       --tf-weighting-scheme="raw" \
       --idf-weighting-scheme="log" \
       --input-idf-stats=$dir/docs/idf_stats.txt \
-      $sdir/docs.JOB.txt $sdir/src_tf_idf.JOB.txt 
+      $sdir/docs.JOB.txt $sdir/src_tf_idf.JOB.txt
 
   sdir=$dir/docs/split$nj
   # Make $sdir an absolute pathname.
@@ -288,15 +287,15 @@ if [ $stage -le 7 ]; then
   for n in `seq $nj`; do
     awk -v f="$sdir/src_tf_idf.$n.txt" '{print $1" "f}' \
       $sdir/text2doc.$n
-  done | perl -ane 'BEGIN { %tfidfs = (); } 
-  { 
-    if (!defined $tfidfs{$F[0]}) { 
-      $tfidfs{$F[0]} = $F[1]; 
-    } 
-  } 
+  done | perl -ane 'BEGIN { %tfidfs = (); }
+  {
+    if (!defined $tfidfs{$F[0]}) {
+      $tfidfs{$F[0]} = $F[1];
+    }
+  }
   END {
-  while(my ($k, $v) = each %tfidfs) { 
-    print "$k $v\n"; 
+  while(my ($k, $v) = each %tfidfs) {
+    print "$k $v\n";
   } }' > $dir/docs/source2tf_idf.scp
 fi
 
@@ -317,18 +316,18 @@ if [ $stage -le 9 ]; then
   sdir=$dir/query_docs/split$nj
   mkdir -p $sdir
 
-  # Compute TF-IDF for the query documents (decode hypotheses). 
+  # Compute TF-IDF for the query documents (decode hypotheses).
   # The output is an archive of TF-IDF indexed by the query.
-  $cmd JOB=1:$nj $dir/lats/log/compute_query_tf_idf.JOB.log \
+  $cmd JOB=1:$nj $decode_dir/ctm_$lmwt/log/compute_query_tf_idf.JOB.log \
     steps/cleanup/internal/ctm_to_text.pl --non-scored-words $dir/non_scored_words.txt \
-      $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB \| \
+      $decode_dir/ctm_$lmwt/ctm.JOB \| \
     steps/cleanup/internal/compute_tf_idf.py \
       --tf-weighting-scheme="normalized" \
       --idf-weighting-scheme="log" \
       --input-idf-stats=$dir/docs/idf_stats.txt \
       --accumulate-over-docs=false \
       - $sdir/query_tf_idf.JOB.ark.txt
-  
+
   # The relevant documents can be found using TF-IDF similarity and nearby
   # documents can also be picked for the Smith-Waterman alignment stage.
 
@@ -345,15 +344,15 @@ if [ $stage -le 9 ]; then
   # The query TF-IDFs are all indexed by the utterance-id of the sub-segments.
   # The source TF-IDFs use the document-ids created by splitting the reference
   # text into documents.
-  # For each query, we need to retrieve the documents that were created from 
-  # the same original utterance that the sub-segment was from. For this, 
-  # we have to load the source TF-IDF that has those documents. This 
+  # For each query, we need to retrieve the documents that were created from
+  # the same original utterance that the sub-segment was from. For this,
+  # we have to load the source TF-IDF that has those documents. This
   # information is provided using the option --source-text-id2tf-idf-file.
-  # The output of this script is a file where the first column is the 
+  # The output of this script is a file where the first column is the
   # query-id (i.e. sub-segment-id) and the remaining columns, which is at least
   # one in number and a maxmium of (1 + 2 * num-neighbors-to-search) columns
   # is the document-ids for the retrieved documents.
-  $cmd JOB=1:$nj $dir/lats/log/retrieve_similar_docs.JOB.log \
+  $cmd JOB=1:$nj $dir/log/retrieve_similar_docs.JOB.log \
     steps/cleanup/internal/retrieve_similar_docs.py \
       --query-tfidf=$dir/query_docs/split$nj/query_tf_idf.JOB.ark.txt \
       --source-text-id2tfidf=$dir/docs/source2tf_idf.scp \
@@ -362,8 +361,8 @@ if [ $stage -le 9 ]; then
       --num-neighbors-to-search=$num_neighbors_to_search \
       --neighbor-tfidf-threshold=$neighbor_tfidf_threshold \
       --relevant-docs=$dir/query_docs/split$nj/relevant_docs.JOB.txt
-  
-  $cmd JOB=1:$nj $dir/lats/log/get_ctm_edits.JOB.log \
+
+  $cmd JOB=1:$nj $decode_dir/ctm_$lmwt/log/get_ctm_edits.JOB.log \
     steps/cleanup/internal/stitch_documents.py \
       --query2docs=$dir/query_docs/split$nj/relevant_docs.JOB.txt \
       --input-documents=$dir/docs/split$nj/docs.JOB.txt \
@@ -371,18 +370,18 @@ if [ $stage -le 9 ]; then
     steps/cleanup/internal/align_ctm_ref.py --eps-symbol='"<eps>"' \
       --oov-word="'`cat $lang/oov.txt`'" --symbol-table=$lang/words.txt \
       --hyp-format=CTM --align-full-hyp=$align_full_hyp \
-      --hyp=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm.JOB --ref=- \
-      --output=$dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.JOB 
-  
+      --hyp=$decode_dir/ctm_$lmwt/ctm.JOB --ref=- \
+      --output=$decode_dir/ctm_$lmwt/ctm_edits.JOB
+
   for n in `seq $nj`; do
-    cat $dir/lats/score_$lmwt/${data_id}_uniform_seg.ctm_edits.$n 
-  done > $dir/lats/score_$lmwt/ctm_edits
-  
+    cat $decode_dir/ctm_$lmwt/ctm_edits.$n
+  done > $decode_dir/ctm_$lmwt/ctm_edits
+
 fi
 
 if [ $stage -le 10 ]; then
   steps/cleanup/internal/resolve_ctm_edits_overlaps.py \
-    ${data_uniform_seg}/segments $dir/lats/score_$lmwt/ctm_edits $dir/ctm_edits
+    ${data_uniform_seg}/segments $decode_dir/ctm_$lmwt/ctm_edits $dir/ctm_edits
 fi
 
 if [ $stage -le 11 ]; then
@@ -421,7 +420,7 @@ if [ $stage -le 13 ]; then
   --splitting.min-silence-length=$min_silence_length_to_split_at
   --splitting.min-non-scored-length=$min_non_scored_length_to_split_at
   )
-  
+
   $cmd $dir/log/segment_ctm_edits.log \
     steps/cleanup/internal/segment_ctm_edits_mild.py \
       ${segmentation_opts[@]} $segmentation_extra_opts \
