@@ -9,6 +9,7 @@
 . ./path.sh
 
 mfccdir=`pwd`/mfcc
+aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data
 set -e
 
 # the next command produces the data in local/train_all
@@ -160,7 +161,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 local/build_silprob.sh
 
 # train the neural network model
-local/multi_condition/run_nnet2_ms.sh
+local/multi_condition/run_nnet2_ms.sh --aspire-data $aspire_data
 
  local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
    --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
