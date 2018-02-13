@@ -198,6 +198,54 @@ void ShiftExampleTimes(int32 t_offset,
     }
   }
 }
+void GetComputationRequest(const Nnet &nnet,
+                           const NnetExample &eg,
+                           bool need_model_derivative,
+                           bool store_component_stats,
+                           bool use_xent_regularization,
+                           bool use_xent_derivative,
+                           ComputationRequest *request) {
+  request->inputs.clear();
+  request->inputs.reserve(eg.io.size());
+  request->outputs.clear();
+  request->outputs.reserve(eg.io.size() * 2);
+  request->need_model_derivative = need_model_derivative;
+  request->store_component_stats = store_component_stats;
+  for (size_t i = 0; i < eg.io.size(); i++) {
+    const NnetIo &io = eg.io[i];
+    const std::string &name = io.name;
+    int32 node_index = nnet.GetNodeIndex(name);
+    if (node_index == -1 &&
+        !nnet.IsInputNode(node_index) && !nnet.IsOutputNode(node_index))
+      KALDI_ERR << "Nnet example has input or output named '" << name
+                << "', but no such input or output node is in the network.";
+
+    std::vector<IoSpecification> &dest =
+        nnet.IsInputNode(node_index) ? request->inputs : request->outputs;
+    dest.resize(dest.size() + 1);
+    IoSpecification &io_spec = dest.back();
+    io_spec.name = name;
+    io_spec.indexes = io.indexes;
+    io_spec.has_deriv = nnet.IsOutputNode(node_index) && need_model_derivative;
+    if (use_xent_regularization && nnet.IsOutputNode(node_index)) {
+      size_t cur_size = request->outputs.size();
+      request->outputs.resize(cur_size + 1);
+      IoSpecification &io_spec = request->outputs[cur_size - 1],
+        io_spec_xent = request->outputs[cur_size];
+      // the IoSpecification for the -xent output is the same
+      // as for the regular output, except for its name which has
+      // the -xent suffix (and the has_deriv member may differ).
+      io_spec_xent = io_spec;
+      io_spec_xent.name = name + "-xent";
+      io_spec_xent.has_deriv = use_xent_derivative;
+    }
+  }
+  // check to see if something went wrong.
+  if (request->inputs.empty())
+    KALDI_ERR << "No inputs in computation request.";
+  if (request->outputs.empty())
+    KALDI_ERR << "No outputs in computation request.";
+}
 
 void GetComputationRequest(const Nnet &nnet,
                            const NnetExample &eg,
@@ -207,7 +255,7 @@ void GetComputationRequest(const Nnet &nnet,
   request->inputs.clear();
   request->inputs.reserve(eg.io.size());
   request->outputs.clear();
-  request->outputs.reserve(eg.io.size());
+  request->outputs.reserve(eg.io.size() * 2);
   request->need_model_derivative = need_model_derivative;
   request->store_component_stats = store_component_stats;
   for (size_t i = 0; i < eg.io.size(); i++) {

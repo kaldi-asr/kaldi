@@ -63,7 +63,7 @@ struct ChainTrainingOptions {
 
   ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05),
                           xent_regularize(0.0) { }
-  
+
   void Register(OptionsItf *opts) {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
                    "constant for 'chain' training, applied to the output "
@@ -121,8 +121,16 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv,
                               CuMatrixBase<BaseFloat> *xent_output_deriv = NULL);
-                              
 
+void ComputeObjfAndDeriv2(const ChainTrainingOptions &opts,
+                         const DenominatorGraph &den_graph,
+                         const GeneralMatrix &supervision,
+                         const CuMatrixBase<BaseFloat> &nnet_output,
+                         BaseFloat *objf,
+                         BaseFloat *l2_term,
+                         BaseFloat *weight,
+                         CuMatrixBase<BaseFloat> *nnet_output_deriv,
+                         CuMatrixBase<BaseFloat> *xent_output_deriv = NULL);
 
 }  // namespace chain
 }  // namespace kaldi

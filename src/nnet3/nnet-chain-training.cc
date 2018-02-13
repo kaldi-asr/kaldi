@@ -58,6 +58,22 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
   }
 }
 
+void NnetChainTrainer::Train(const NnetExample &eg) {
+  bool need_model_derivative = true;
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
+  bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
+  ComputationRequest request;
+  GetComputationRequest(*nnet_, eg, need_model_derivative,
+                        nnet_config.store_component_stats,
+                        use_xent_regularization, need_model_derivative,
+                        &request);
+  const NnetComputation *computation = compiler_.Compile(request);
+
+  // conventional training
+  TrainInternal(eg, *computation);
+
+  num_minibatches_processed_++;
+}
 
 void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   bool need_model_derivative = true;
@@ -90,6 +106,41 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   }
 
   num_minibatches_processed_++;
+}
+
+void NnetChainTrainer::TrainInternal(const NnetExample &eg,
+                                     const NnetComputation &computation) {
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
+  NnetComputer computer(nnet_config.compute_config, computation,
+                        *nnet_, delta_nnet_);
+  // give the inputs to the computer object
+  computer.AcceptInputs(*nnet_, eg.io);
+  computer.Run();
+
+  this->ProcessOutputs(eg, &computer);
+  computer.Run();
+
+  // If relevant, add in the part of the gradient that comes from L2
+  // regularization.
+  ApplyL2Regularization(*nnet_,
+                        GetNumNvalues(eg.io, false) *
+                        nnet_config.l2_regularize_factor,
+                        delta_nnet_);
+
+  // Updates the parameters of nnet
+  bool success = UpdateNnetWithMaxChange(*delta_nnet_,
+      nnet_config.max_param_change, 1.0, 1.0 - nnet_config.momentum, nnet_,
+      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+
+  // Scale down the batchnorm stats (keeps them fresh... this affects what
+  // happens when we use the model with batchnorm test-mode set).
+  ScaleBatchnormStats(nnet_config.batchnorm_stats_scale, nnet_);
+
+  // Scale delta_nnet
+  if (success)
+    ScaleNnet(nnet_config.momentum, delta_nnet_);
+  else
+    ScaleNnet(0.0, delta_nnet_);
 }
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
@@ -171,6 +222,69 @@ void NnetChainTrainer::TrainInternalBackstitch(const NnetChainExample &eg,
   ScaleNnet(0.0, delta_nnet_);
 }
 
+void NnetChainTrainer::ProcessOutputs(const NnetExample &eg,
+                                      NnetComputer *computer) {
+  std::vector<NnetIo>::const_iterator iter = eg.io.begin(),
+    end = eg.io.end();
+  for (; iter != end; ++iter) {
+    const NnetIo &io = *iter;
+    int32 node_index = nnet_->GetNodeIndex(io.name);
+    KALDI_ASSERT(node_index >= 0);
+    if (nnet_->IsOutputNode(node_index)) {
+      const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(io.name);
+      CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
+                                            nnet_output.NumCols(),
+                                            kUndefined);
+      bool use_xent = (opts_.chain_config.xent_regularize != 0.0);
+      std::string xent_name = io.name + "-xent";  // typically "output-xent".
+      CuMatrix<BaseFloat> xent_deriv;
+      if (use_xent)
+        xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
+                          kUndefined);
+
+      BaseFloat tot_objf, tot_l2_term, tot_weight;
+
+      ComputeObjfAndDeriv2(opts_.chain_config, den_graph_,
+                           io.features,
+                           nnet_output,
+                           &tot_objf, &tot_l2_term, &tot_weight,
+                           &nnet_output_deriv,
+                           (use_xent ? &xent_deriv : NULL));
+      if (use_xent) {
+        // this block computes the cross-entropy objective.
+        const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(
+          xent_name);
+        // at this point, xent_deriv is posteriors derived from the numerato
+        // computation.  note, xent_objf has a factor of '.supervision.weight'
+        CuMatrix<BaseFloat> cu_post(io.features.GetFullMatrix());
+        BaseFloat xent_objf = TraceMatMat(xent_output, cu_post, kTrans);
+        objf_info_[xent_name].UpdateStats(xent_name,
+                                          opts_.nnet_config.print_interval,
+                                          num_minibatches_processed_,
+                                          tot_weight, xent_objf);
+      }
+
+      //if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
+        if (opts_.apply_deriv_weights) {
+        CuVector<BaseFloat> cu_deriv_weights;
+        nnet_output_deriv.MulRowsVec(cu_deriv_weights);
+        if (use_xent)
+          xent_deriv.MulRowsVec(cu_deriv_weights);
+      }
+      computer->AcceptInput(io.name, &nnet_output_deriv);
+
+      objf_info_[io.name].UpdateStats(io.name,
+                            opts_.nnet_config.print_interval,
+                            num_minibatches_processed_,
+                            tot_weight, tot_objf, tot_l2_term);
+      if (use_xent) {
+        xent_deriv.Scale(opts_.chain_config.xent_regularize);
+        computer->AcceptInput(xent_name, &xent_deriv);
+      }
+    }
+  }
+}
+
 void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                                       const NnetChainExample &eg,
                                       NnetComputer *computer) {
@@ -215,7 +329,7 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
       // at this point, xent_deriv is posteriors derived from the numerator
       // computation.  note, xent_objf has a factor of '.supervision.weight'
       BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
-      objf_info_[xent_name + suffix].UpdateStats(xent_name + suffix,
+      objf_info_[xent_name].UpdateStats(xent_name,
                                         opts_.nnet_config.print_interval,
                                         num_minibatches_processed_,
                                         tot_weight, xent_objf);

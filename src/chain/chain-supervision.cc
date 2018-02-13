@@ -650,6 +650,37 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
   }
 }
 
+bool AddWeightToFst(const fst::StdVectorFst &normalization_fst,
+                    fst::StdVectorFst *supervision_fst) {
+  // remove epsilons before composing. 'normalization_fst' has noepsilons so
+  // the composed result will be epsilon free.
+  fst::StdVectorFst supervision_fst_noeps(*supervision_fst);
+  fst::RmEpsilon(&supervision_fst_noeps);
+  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
+                              &supervision_fst_noeps))
+    return false;
+
+  // note: by default, 'Compose' will call 'Connect', so if the
+  // resulting FST is not connected, it will end up empty.
+  fst::StdVectorFst composed_fst;
+  fst::Compose(supervision_fst_noeps, normalization_fst,
+               &composed_fst);
+  if (composed_fst.NumStates() == 0)
+    return false;
+  // projection should not be necessary, as both FSTs are acceptors.
+  // determinize and minimize to make it as compact as possible.
+
+  if (!TryDeterminizeMinimize(kSupervisionMaxStates,
+                              &composed_fst))
+    return false;
+  *supervision_fst = composed_fst;
+  // Make sure the states are numbered in increasing order of time.
+  SortBreadthFirstSearch(supervision_fst);
+  KALDI_ASSERT(supervision_fst->Properties(fst::kAcceptor, true) == fst::kAcceptor);
+  KALDI_ASSERT(supervision_fst->Properties(fst::kIEpsilons, true) == 0);
+  return true;
+}
+
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {
   // remove epsilons before composing.  'normalization_fst' has noepsilons so

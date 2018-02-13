@@ -166,7 +166,7 @@ int main(int argc, char *argv[]) {
 
     bool compress = true;
     int32 num_pdfs = -1, length_tolerance = 100,
-        targets_length_tolerance = 2,  
+        targets_length_tolerance = 2,
         online_ivector_period = 1;
 
     ExampleGenerationConfig eg_config;  // controls num-frames,
@@ -192,7 +192,7 @@ int main(int argc, char *argv[]) {
                 "--online-ivectors option");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
-    po.Register("targets-length-tolerance", &targets_length_tolerance, 
+    po.Register("targets-length-tolerance", &targets_length_tolerance,
                 "Tolerance for "
                 "difference in num-frames (after subsampling) between "
                 "feature matrix and posterior");
@@ -260,7 +260,7 @@ int main(int argc, char *argv[]) {
         }
 
         if (!ProcessFile(feats, online_ivector_feats, online_ivector_period,
-                         pdf_post, key, compress, num_pdfs, 
+                         pdf_post, key, compress, num_pdfs,
                          targets_length_tolerance,
                          &utt_splitter, &example_writer))
           num_err++;

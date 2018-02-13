@@ -64,6 +64,25 @@ void GetComputationRequest(const Nnet &nnet,
                            ComputationRequest *computation_request);
 
 
+/**  This function takes NnetExample and produces a ComputatioRequest.
+     It assumes you don't want the derivatives w.r.t the input;
+
+     If use_xent_regularization == true, then it assumes that for each output
+     name (e.g. "output" in the eg, there is another output with the same
+     dimension and with the suffix "-xent" on its name, e.g. named
+     "output-xent".  The derivative w.r.t. the xent objective will only be
+     supplied to the nnet computation if 'use_xent_derivative' is true (we
+     propagate back the xent derivative to the model only in training, not in
+     model-combination in nnet3-chain-combine).
+*/
+void GetComputationRequest(const Nnet &nnet,
+                           const NnetExample &eg,
+                           bool need_model_derivative,
+                           bool store_component_stats,
+                           bool use_xent_regularization,
+                           bool use_xent_derivative,
+                           ComputationRequest *computation_request);
+
 // Writes as unsigned char a vector 'vec' that is required to have
 // values between 0 and 1.
 void WriteVectorAsChar(std::ostream &os,
