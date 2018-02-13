@@ -22,7 +22,7 @@ if [ $# != 2 ]; then
   exit 1
 fi
 
-synth=convolve
+synth=excitation
 #synth=cere
 voice_dir=$1
 outdir=$2
@@ -124,11 +124,27 @@ utils/utt2spk_to_spk2utt.pl $lbldir/utt2spk > $lbldir/spk2utt
 #    steps/compute_cmvn_stats.sh $dir $dir $dir
 
 # 4. Forward pass through pitch DNN
-
+echo -e "\n** Pitch forward **\n"
 pitchdir=$datadir/pitchout
 local/make_forward_fmllr.sh --single $f0dnndir $lbldir $pitchdir ""
 
-# 5. TODO: mlpg on pitch values?
+pitchlbldir=$datadir/pitchlbl
+mkdir -p $pitchlbldir
+
+# 5.a without mlpg
+rm -rf $outdir/*
+select-feats 0-1 ark:$pitchdir/feats.ark ark:- \
+    | paste-feats ark:- scp:$lbldir/feats.scp ark,scp:$pitchlbldir/feats.ark,$pitchlbldir/feats.scp
+cp $lbldir/{spk2utt,utt2spk} $pitchlbldir
+echo -e "\n** Acoustic forward no mlpg **\n"
+local/make_forward_fmllr.sh --single $dnndir $pitchlbldir $outdir ""
+paste-feats ark:$pitchdir/feats.ark scp:$outdir/feats.scp ark,t:- \
+    | awk -v dir=$outdir/cmp/ '($2 == "["){if (out) close(out); out=dir $1 ".cmp";}($2 != "["){if ($NF == "]") $NF=""; print $0 > out}'
+mkdir -p $outdir/wav_nomlpg/; for cmp in $outdir/cmp/*.cmp; do
+    local/mlsa_synthesis_pitch_mlpg.sh --synth $synth --voice_thresh $voice_thresh --alpha $alpha --fftlen $fftlen --srate $srate --bndap_order $bndap_order --mcep_order $mcep_order --delta_order $delta_order $cmp $outdir/wav_nomlpg/`basename $cmp .cmp`.wav
+done
+
+# 5b. mlpg on pitch values
 # NB: rather evil bit of code that processes a kaldi feature
 # file "in-line" with tools that only work on individual files
 f0_win="-d win/logF0_d1.win -d win/logF0_d2.win"
@@ -145,8 +161,7 @@ while read line; do
     echo "]"
 done > $pitchdir/feats_mlpg.ark
 
-pitchlbldir=$datadir/pitchlbl
-mkdir -p $pitchlbldir
+
 # We have to recreate a kaldi pitch file
 select-feats 0-1 ark:$pitchdir/feats_mlpg.ark ark:- \
     | paste-feats ark:- scp:$lbldir/feats.scp ark,scp:$pitchlbldir/feats.ark,$pitchlbldir/feats.scp
@@ -155,9 +170,9 @@ select-feats 0-1 ark:$pitchdir/feats_mlpg.ark ark:- \
 
 #pitchlbldir=$datadir/pitchlbl
 #mkdir -p $pitchlbldir
-cp $lbldir/{spk2utt,utt2spk} $pitchlbldir
 
-rm -rf $outdir/*
+
+
 local/make_forward_fmllr.sh --single $dnndir $pitchlbldir $outdir ""
 paste-feats ark:$pitchdir/feats_mlpg.ark scp:$outdir/feats.scp ark,t:- \
     | awk -v dir=$outdir/cmp/ '($2 == "["){if (out) close(out); out=dir $1 ".cmp";}($2 != "["){if ($NF == "]") $NF=""; print $0 > out}'
