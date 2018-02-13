@@ -248,12 +248,12 @@ if [ $stage -le 3 ]; then
 for step in full; do
     ali=$expa/quin_ali_$step
     # Extract phone alignment
-    ali-to-phones --per-frame $ali/final.mdl ark:"gunzip -c $ali/ali.*.gz|" ark,t:- \
+    ali-to-phones --per-frame $ali/final.mdl ark:"gunzip -c $ali/ali.{1..$nj}.gz|" ark,t:- \
 	| utils/int2sym.pl -f 2- $lang/phones.txt > $ali/phones.txt
     # Extract state alignment
-    ali-to-hmmstate $ali/final.mdl ark:"gunzip -c $ali/ali.*.gz|" ark,t:$ali/states.tra
+    ali-to-hmmstate $ali/final.mdl ark:"gunzip -c $ali/ali.{1..$nj}.gz|" ark,t:$ali/states.tra
     # Extract word alignment
-    linear-to-nbest ark:"gunzip -c $ali/ali.*.gz|" \
+    linear-to-nbest ark:"gunzip -c $ali/ali.{1..$nj}.gz|" \
 	ark:"utils/sym2int.pl --map-oov 1669 -f 2- $lang/words.txt < data/$step/text |" '' '' ark:- \
 	| lattice-align-words $lang/phones/word_boundary.int $ali/final.mdl ark:- ark:- \
 	| nbest-to-ctm --frame-shift=$FRAMESHIFT --precision=3 ark:- - \
@@ -269,8 +269,8 @@ for step in full; do
     
     # Merge alignment with output from idlak cex front-end => gives you a nice vector
     # NB: for triphone alignment:
-    # make-fullctx-ali-dnn  --phone-context=3 --mid-context=1 --max-sil-phone=15 $ali/final.mdl ark:"gunzip -c $ali/ali.*.gz|" ark,t:data/$step/cex.ark ark,t:data/$step/ali
-    make-fullctx-ali-dnn --max-sil-phone=15 $ali/final.mdl ark:"gunzip -c $ali/ali.*.gz|" ark,t:data/$step/cex.ark ark,t:data/$step/ali
+    # make-fullctx-ali-dnn  --phone-context=3 --mid-context=1 --max-sil-phone=15 $ali/final.mdl ark:"gunzip -c $ali/ali.{1..$nj}.gz|" ark,t:data/$step/cex.ark ark,t:data/$step/ali
+    make-fullctx-ali-dnn --max-sil-phone=15 $ali/final.mdl ark:"gunzip -c $ali/ali.{1..$nj}.gz|" ark,t:data/$step/cex.ark ark,t:data/$step/ali
 
 
     # UGLY convert alignment to features
@@ -354,6 +354,15 @@ for step in train dev; do
     steps/compute_cmvn_stats.sh $dir $dir $dir
 done
 
+# Compute cmvn for f0data
+for step in train dev; do
+    dir=f0data/$step
+    steps/compute_cmvn_stats.sh $dir $dir $dir
+
+    dir=data/$step
+    steps/compute_cmvn_stats.sh $dir $dir $dir
+done
+
 # Same for input of DNN3: pitch + frame-level labels
 # Generate DNN 3 input data: pitch + frames labels
 for step in train dev; do
@@ -419,7 +428,7 @@ if [ "$network_type" == "lstm" ]; then
     $cuda_cmd $dnndurdir/_train_nnet.log steps/train_nnet_basic.sh --config conf/dur-lstm-splice5.conf --feature-transform-proto $dnndurdir/delay5.proto \
         $lbldurdir/train $lbldurdir/dev $durdir/train $durdir/dev $dnndurdir
 else
-    $cuda_cmd $dnndurdir/_train_nnet.log steps/train_nnet_basic.sh --config conf/dur-dnn-splice5.conf \
+    $cuda_cmd $dnndurdir/_train_nnet.log steps/train_nnet_basic.sh --config conf/dur-nn-splice5.conf \
         $lbldurdir/train $lbldurdir/dev $durdir/train $durdir/dev $dnndurdir
 fi
 
@@ -431,7 +440,7 @@ if [ "$network_type" == "lstm" ]; then
     $cuda_cmd $dnnf0dir/_train_nnet.log steps/train_nnet_basic.sh --config conf/pitch-lstm-splice5.conf --feature-transform-proto $dnnf0dir/delay5.proto \
         $lbldir/train $lbldir/dev $pitchdir/train $pitchdir/dev $dnnf0dir
 else
-    $cuda_cmd $dnnf0dir/_train_nnet.log steps/train_nnet_basic.sh --config conf/pitch-dnn-splice5.conf \
+    $cuda_cmd $dnnf0dir/_train_nnet.log steps/train_nnet_basic.sh --config conf/pitch-nn-splice5.conf \
         $lbldir/train $lbldir/dev $pitchdir/train $pitchdir/dev $dnnf0dir
 fi
 
@@ -444,7 +453,7 @@ if [ "$network_type" == "lstm" ]; then
     $cuda_cmd $dnndir/_train_nnet.log steps/train_nnet_basic.sh --config conf/full-lstm-splice5.conf --feature-transform-proto $dnndir/delay5.proto \
         $lblpitchdir/train $lblpitchdir/dev $acdir/train $acdir/dev $dnndir
 else
-    $cuda_cmd $dnndir/_train_nnet.log steps/train_nnet_basic.sh --config conf/full-dnn-splice5.conf \
+    $cuda_cmd $dnndir/_train_nnet.log steps/train_nnet_basic.sh --config conf/full-nn-splice5.conf \
         $lblpitchdir/train $lblpitchdir/dev $acdir/train $acdir/dev $dnndir
 fi
 
