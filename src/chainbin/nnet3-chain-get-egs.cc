@@ -42,6 +42,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                         const GeneralMatrix &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
+                        const Lattice &lattice,
                         const chain::Supervision &supervision,
                         const std::string &utt_id,
                         bool compress,
@@ -278,12 +279,13 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-
+        /*
         if (!ProcessFile(normalization_fst, feats,
                          online_ivector_feats, online_ivector_period,
                          supervision, key, compress,
                          &utt_splitter, &example_writer))
           num_err++;
+        */
       }
     }
     if (num_err > 0)

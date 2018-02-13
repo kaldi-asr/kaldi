@@ -323,6 +323,10 @@ class SupervisionSplitter {
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision);
 
+
+bool AddWeightToFst(const fst::StdVectorFst &normalization_fst,
+                    fst::StdVectorFst *supervision_fst);
+
 /// Assuming the 'fst' is epsilon-free, connected, and has the property that all
 /// paths from the start-state are of the same length, output a vector
 /// containing that length (from the start-state to the current state) to

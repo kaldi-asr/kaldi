@@ -25,6 +25,57 @@
 namespace kaldi {
 namespace chain {
 
+void ComputeObjfAndDeriv2(const ChainTrainingOptions &opts,
+                         const DenominatorGraph &den_graph,
+                         const GeneralMatrix &supervision,
+                         const CuMatrixBase<BaseFloat> &nnet_output,
+                         BaseFloat *objf,
+                         BaseFloat *l2_term,
+                         BaseFloat *weight,
+                         CuMatrixBase<BaseFloat> *nnet_output_deriv,
+                         CuMatrixBase<BaseFloat> *xent_output_deriv) {
+  if (nnet_output_deriv) {
+    nnet_output_deriv->SetZero();
+    nnet_output_deriv->CopyFromMat(supervision.GetFullMatrix());
+    if (xent_output_deriv)
+      xent_output_deriv->CopyFromMat(*nnet_output_deriv);
+  } else if (xent_output_deriv) {
+    // this branch will be taken if xent_output_deriv but not
+    // nnet_output_deriv is set- which could happen if you want to compute the
+    // cross-entropy objective but not the derivatives.
+    xent_output_deriv->SetZero();
+    xent_output_deriv->CopyFromMat(supervision.GetFullMatrix());
+  }
+  int32 num_sequences = 64,
+    frames_per_sequence = 150;
+  BaseFloat sup_weight = 1.0;
+  DenominatorComputation denominator(opts, den_graph,
+                                     num_sequences,
+                                     nnet_output);
+  BaseFloat den_logprob = denominator.Forward();
+  bool ok = true;
+  if (nnet_output_deriv)
+    ok = denominator.Backward(-sup_weight, nnet_output_deriv);
+  // we don't consider log-prob w.r.t numerator.
+  *objf = -sup_weight * den_logprob;
+  *weight = sup_weight * num_sequences * frames_per_sequence;
+
+  if (!((*objf) - (*objf) == 0) || !ok) {
+    // inf or NaN detected, or denominator computation returned false.
+    if (nnet_output_deriv)
+      nnet_output_deriv->SetZero();
+    if (xent_output_deriv)
+      xent_output_deriv->SetZero();
+    BaseFloat default_objf = -10;
+    KALDI_WARN << "Objective function is " << (*objf)
+               << " and denominator computation (if done) returned "
+               << std::boolalpha << ok
+               << ", setting objective function to " << default_objf
+               << " per frame.";
+    *objf  = default_objf * *weight;
+  }
+}
+
 void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               const DenominatorGraph &den_graph,
                               const Supervision &supervision,
