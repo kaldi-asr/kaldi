@@ -14,7 +14,7 @@ hid_dim=1024        # number of neurons per layer,
 bn_dim=             # (optional) adds bottleneck and one more hidden layer to the NN,
 dbn=                # (optional) prepend layers to the initialized NN,
 
-proto_opts="--activation-final --no-softmax"         # adds options to 'make_nnet_proto.py',
+proto_opts="--activation-final=<Sigmoid> --no-softmax"         # adds options to 'make_nnet_proto.py',
 cnn_proto_opts=     # adds options to 'make_cnn_proto.py',
 
 nnet_init=          # (optional) use this pre-initialized NN,
@@ -241,12 +241,6 @@ fi
 feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
 feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
 
-# optionally add deltas,
-if [ ! -z "$delta_opts" ]; then
-  feats_tr="$feats_tr add-deltas $delta_opts ark:- ark:- |"
-  feats_cv="$feats_cv add-deltas $delta_opts ark:- ark:- |"
-  echo "# + 'add-deltas' with '$delta_opts'"
-fi
 
 # optionally add per-speaker CMVN,
 if [ ! -z "$cmvn_opts" ]; then
@@ -257,6 +251,13 @@ if [ ! -z "$cmvn_opts" ]; then
   feats_cv="$feats_cv apply-cmvn $cmvn_opts --utt2spk=ark:$odata_cv/utt2spk scp:$odata_cv/cmvn.scp ark:- ark:- |"
 else
   echo "# 'apply-cmvn' is not used,"
+fi
+
+# optionally add deltas,
+if [ ! -z "$delta_opts" ]; then
+  feats_tr="$feats_tr add-deltas $delta_opts ark:- ark:- |"
+  feats_cv="$feats_cv add-deltas $delta_opts ark:- ark:- |"
+  echo "# + 'add-deltas' with '$delta_opts'"
 fi
 
 # optionally add fmllr transformations,
@@ -373,7 +374,7 @@ else
     nnet-forward --print-args=true --use-gpu=yes $feature_transform_old \
         "$feats_tr_10k" ark:- |\
     compute-cmvn-stats --binary=false ark:- $dir/cmvn-g.stats
-    echo "# + normalization of NN-input at '$feature_transform'"
+    echo "# + normalization of NN-output at '$feature_transform'"
     nnet-concat --binary=false $feature_transform_old \
         "cmvn-to-nnet --std-dev=$feats_std $dir/cmvn-g.stats -|" $feature_transform
   fi
