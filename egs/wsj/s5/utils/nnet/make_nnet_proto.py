@@ -39,7 +39,7 @@ parser.add_option('--block-softmax-dims', dest='block_softmax_dims',
 # Activation related,
 parser.add_option('--activation-final', dest='activation_final',
                    help='If set, outputs an activation layer as final layer [default: %default]',
-                   default=False, action='store_true');
+                   default=None, type='string');
 parser.add_option('--activation-type', dest='activation_type',
                    help='Select type of activation function : (<Sigmoid>|<Tanh>|<ParametricRelu>) [default: %default]',
                    default='<Sigmoid>', type='string');
@@ -235,7 +235,7 @@ if o.with_softmax:
     print "<BlockSoftmax> <InputDim> %d <OutputDim> %d <BlockDims> %s" % (num_leaves, num_leaves, o.block_softmax_dims)
 
 if o.activation_final:
-  print "%s <InputDim> %d <OutputDim> %d %s" % (o.activation_type, num_leaves, num_leaves, o.activation_opts)
+  print "%s <InputDim> %d <OutputDim> %d %s" % (o.activation_final, num_leaves, num_leaves, o.activation_opts)
 
 # We are done!
 sys.exit(0)
