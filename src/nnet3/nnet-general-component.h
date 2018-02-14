@@ -715,7 +715,12 @@ class DropoutMaskComponent: public RandomComponent {
   virtual std::string Info() const;
 
   // possible parameter values with their defaults:
-  // dropout-proportion=0.5 output-dim=-1
+  // dropout-proportion=0.5 output-dim=-1 continuous=false
+  // With the 'continous=false' option (the default), it generates
+  // 0 with probability 'dropout-proportion' and 1 otherwise.
+  // With 'continuous=true' it outputs 1 plus dropout-proportion times
+  //  a value uniformly distributed on [-2, 2].  (e.g. if dropout-proportion is
+  // 0.5, this would amount to a value uniformly distributed on [0,2].)
   virtual void InitFromConfig(ConfigLine *cfl);
 
   DropoutMaskComponent();
@@ -770,6 +775,8 @@ class DropoutMaskComponent: public RandomComponent {
   int32 output_dim_;
 
   BaseFloat dropout_proportion_;
+
+  bool continuous_;
 
   const DropoutMaskComponent &operator
   = (const DropoutMaskComponent &other); // Disallow.

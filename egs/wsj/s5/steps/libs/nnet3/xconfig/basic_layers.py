@@ -689,6 +689,7 @@ class XconfigBasicLayer(XconfigLayerBase):
                                                    # 'dropout' in the name
                        'dropout-per-dim': False,  # if dropout-per-dim=true, the dropout
                                                   # mask is shared across time.
+                       'dropout-per-dim-continuous':  False,
                        'add-log-stddev': False,
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
@@ -870,9 +871,11 @@ class XconfigBasicLayer(XconfigLayerBase):
                                 self.name, nonlinearity, output_dim,
                                 self.config['dropout-proportion']))
                 else:
+                    continuous_opt='continuous=true' if self.config['dropout-per-dim-continuous'] else ''
                     line = ('component name={0}.dropout_mask type=DropoutMaskComponent '
-                            'output-dim={1} dropout-proportion={2}'.format(
-                                self.name, output_dim, self.config['dropout-proportion']))
+                            'output-dim={1} dropout-proportion={2} {3}'.format(
+                                self.name, output_dim, self.config['dropout-proportion'],
+                                continuous_opt))
                     configs.append(line)
                     # note: the input to the dropout_mask component is never used, it's
                     # just syntactically required.
@@ -886,6 +889,8 @@ class XconfigBasicLayer(XconfigLayerBase):
                     line = ('component-node name={0}.dropout component={0}.dropout '
                             'input=Append({1}, ReplaceIndex({0}.dropout_mask, t, 0))'
                             ''.format(self.name, cur_node))
+
+
                     configs.append(line)
                     cur_node = '{0}.dropout'.format(self.name)
                     continue
