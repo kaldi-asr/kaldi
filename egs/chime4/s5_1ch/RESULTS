@@ -31,6 +31,20 @@ et05_simu WER: 32.18% (Average), 25.33% (BUS), 37.37% (CAFE), 33.36% (PEDESTRIAN
 et05_real WER: 35.54% (Average), 49.07% (BUS), 38.94% (CAFE), 31.60% (PEDESTRIAN), 22.56% (STREET)
 -------------------
 
+GMM noisy multi-condition with BLSTM masking using 6 channel data
+exp/tri3b_tr05_multi_noisy/best_wer_single_BLSTMmask.result
+-------------------
+best overall dt05 WER 20.83% (language model weight = 10)
+-------------------
+dt05_simu WER: 21.90% (Average), 18.13% (BUS), 27.70% (CAFE), 19.16% (PEDESTRIAN), 22.60% (STREET)
+-------------------
+dt05_real WER: 19.76% (Average), 22.17% (BUS), 22.83% (CAFE), 15.36% (PEDESTRIAN), 18.68% (STREET)
+-------------------
+et05_simu WER: 30.02% (Average), 22.56% (BUS), 35.52% (CAFE), 30.82% (PEDESTRIAN), 31.17% (STREET)
+-------------------
+et05_real WER: 30.89% (Average), 37.39% (BUS), 35.04% (CAFE), 29.71% (PEDESTRIAN), 21.44% (STREET)
+-------------------
+
 GMM noisy multi-condition with BLSTM masking using 6 channel data plus enhanced data
 exp/tri3b_tr05_multi_noisy/best_wer_single_BLSTMmask.result
 -------------------
