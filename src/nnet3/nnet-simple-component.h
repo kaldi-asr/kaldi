@@ -2176,7 +2176,7 @@ class LstmNonlinearityComponent: public UpdatableComponent {
   // it contains the 3 diagonal parameter matrices w_i, w_f and w_o.
   CuMatrix<BaseFloat> params_;
 
-  // If true, we expect an extra 2 dimensions on the input, for dropout masks
+  // If true, we expect an extra 3 dimensions on the input, for dropout masks
   // for i_t and f_t.
   bool use_dropout_;
 
