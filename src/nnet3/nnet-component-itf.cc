@@ -59,6 +59,8 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new StatisticsExtractionComponentPrecomputedIndexes();
   } else if (cpi_type == "StatisticsPoolingComponentPrecomputedIndexes") {
     ans = new StatisticsPoolingComponentPrecomputedIndexes();
+  } else if (cpi_type == "SelfAttentionComponentPrecomputedIndexes") {
+    ans = new SelfAttentionComponentPrecomputedIndexes();
   } else if (cpi_type == "BackpropTruncationComponentPrecomputedIndexes") {
     ans = new BackpropTruncationComponentPrecomputedIndexes();
   } else if (cpi_type == "TimeHeightConvolutionComponentPrecomputedIndexes") {
@@ -149,6 +151,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new StatisticsExtractionComponent();
   } else if (component_type == "StatisticsPoolingComponent") {
     ans = new StatisticsPoolingComponent();
+  } else if (component_type == "SelfAttentionComponent") {
+    ans = new SelfAttentionComponent();
   } else if (component_type == "ConstantFunctionComponent") {
     ans = new ConstantFunctionComponent();
   } else if (component_type == "ConstantComponent") {
