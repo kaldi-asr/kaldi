@@ -1,5 +1,5 @@
 diff --git a/beamform.py b/beamform.py
-index 02eeed8..ca80994 100644
+index 02eeed8..070c76d 100644
 --- a/beamform.py
 +++ b/beamform.py
 @@ -6,9 +6,10 @@ from chainer import Variable
@@ -97,19 +97,19 @@ index 02eeed8..ca80994 100644
      t_io += t.msecs
      Y = stft(audio_data, time_dim=1).transpose((1, 0, 2))
      Y_var = Variable(np.abs(Y).astype(np.float32), True)
-@@ -85,28 +123,41 @@ for cur_line in tqdm(flist):
+@@ -85,28 +123,45 @@ for cur_line in tqdm(flist):
      t_net += t.msecs
  
      with Timer() as t:
 -        N_mask = np.median(N_masks.data, axis=1)
 -        X_mask = np.median(X_masks.data, axis=1)
 -        Y_hat = gev_wrapper_on_masks(Y, N_mask, X_mask)
-+        if args.single == 0:
++        if args.single >= 1 or args.track == 1:
++            Y_hat = X_masks.data * Y
++        elif args.single == 0:
 +            N_mask = np.median(N_masks.data, axis=1)
 +            X_mask = np.median(X_masks.data, axis=1)
 +            Y_hat = gev_wrapper_on_masks(Y, N_mask, X_mask)
-+        elif args.single >= 1 or args.track == 1:
-+            Y_hat = X_masks.data * Y
      t_beamform += t.msecs
  
 -    if scenario == 'simu':
@@ -146,7 +146,11 @@ index 02eeed8..ca80994 100644
 +                '{}05_{}_{}'.format(stage, env.lower(), scenario),
 +                '{}_{}_{}.wav'.format(spk, wsj_name, env.upper())
 +        )
-+    if args.single == 0:
++    if args.track == 1:
++        with Timer() as t:
++            audiowrite(istft(Y_hat[:,0,:])[int(context_samples):], filename, 16000, True, True)
++        t_io += t.msecs
++    elif args.single == 0:
 +        with Timer() as t:
 +            audiowrite(istft(Y_hat)[int(context_samples):], filename, 16000, True, True)
 +        t_io += t.msecs
