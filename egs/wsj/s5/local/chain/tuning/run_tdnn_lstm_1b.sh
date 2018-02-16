@@ -1,24 +1,28 @@
 #!/bin/bash
-#TODO: this needs to be renamed and the comments changed, before merging to master.
 
-# 1b22c is as 1b22 but setting label delay to 8.  It improves on average, even
-# if not everywhere.
 
-# local/chain/compare_wer.sh exp/chain/tdnn_lstm1a_sp exp/chain/tdnn_lstm1b21_sp exp/chain/tdnn_lstm1b22_sp exp/chain/tdnn_lstm1b22c_sp
-# System                tdnn_lstm1a_sp tdnn_lstm1b21_sp tdnn_lstm1b22_sp tdnn_lstm1b22c_sp
-#WER dev93 (tgpr)                7.64      7.69      7.47      7.24
-#WER dev93 (tg)                  7.29      7.27      7.14      7.03
-#WER dev93 (big-dict,tgpr)       5.53      5.42      5.31      5.04
-#WER dev93 (big-dict,fg)         5.14      5.04      5.00      4.92
-#WER eval92 (tgpr)               5.62      5.19      5.14      5.23
-#WER eval92 (tg)                 5.30      5.00      4.93      4.78
-#WER eval92 (big-dict,tgpr)      3.62      3.24      3.12      3.17
-#WER eval92 (big-dict,fg)        3.31      2.96      2.73      2.73
-# Final train prob        -0.0344   -0.0470   -0.0401   -0.0403
-# Final valid prob        -0.0518   -0.0587   -0.0527   -0.0526
-# Final train prob (xent)   -0.5589   -0.7782   -0.7484   -0.7406
-# Final valid prob (xent)   -0.6620   -0.8210   -0.7865   -0.7766
-# Num-params                 9106252   4216524   4216524   4216524
+# 1b is like 1a but instead of having 3 fast-lstm-layers, having one
+#  lstmb-layer.  Caution: although it's better than run_tdnn_lstm_1a.sh, it's
+#  still not better than run_tdnn_1f.sh, and my experience with this LSTMB layer
+#  on larger-scale setups like Switchboard has not been good.  So I *don't
+#  particularly recommend* this setup.
+
+
+# local/chain/compare_wer.sh exp/chain/tdnn_lstm1a_sp exp/chain/tdnn_lstm1b_sp
+# System                tdnn_lstm1a_sp  tdnn_lstm1b_sp
+#WER dev93 (tgpr)                7.64       7.24
+#WER dev93 (tg)                  7.29       7.03
+#WER dev93 (big-dict,tgpr)       5.53       5.04
+#WER dev93 (big-dict,fg)         5.14       4.92
+#WER eval92 (tgpr)               5.62       5.23
+#WER eval92 (tg)                 5.30       4.78
+#WER eval92 (big-dict,tgpr)      3.62       3.17
+#WER eval92 (big-dict,fg)        3.31       2.73
+# Final train prob        -0.0344    -0.0403
+# Final valid prob        -0.0518    -0.0526
+# Final train prob (xent)   -0.5589    -0.7406
+# Final valid prob (xent)   -0.6620    -0.7766
+# Num-params                 9106252    4216524
 
 # 1b22 is as 1b21 but setting chain.l2-regularize to zero.
 
@@ -346,7 +350,7 @@ num_threads_ubm=32
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1b22c  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
 

@@ -1,12 +1,13 @@
 #!/bin/bash
 
 
-# 1m13 is as 1m but with significant changes, replacing TDNN layers with a
-# structure like run_tdnn_7m23t.sh.  Seems better!
-#
+# 1n is as 1m but with significant changes, replacing TDNN layers with a
+# structure like run_tdnn_7n.sh.  Seems better!  But the improvement
+# versus the best TDNN system (see run_tdnn_7n.sh) is so small that it's
+# not really worth it when you consider how much slower it is.
 
-# local/chain/compare_wer_general.sh --rt03 tdnn_lstm_1m_ld5_sp tdnn_lstm_1m_ld5_sp_online tdnn_lstm1m13_sp tdnn_lstm1m13_sp_online
-# System                tdnn_lstm_1m_ld5_sp tdnn_lstm_1m_ld5_sp_online tdnn_lstm1m13_sp tdnn_lstm1m13_sp_online
+# local/chain/compare_wer_general.sh --rt03 tdnn_lstm_1m_ld5_sp tdnn_lstm_1m_ld5_sp_online tdnn_lstm1n_sp tdnn_lstm1n_sp_online
+# System                tdnn_lstm_1m_ld5_sp tdnn_lstm_1m_ld5_sp_online tdnn_lstm1n_sp tdnn_lstm1n_sp_online
 # WER on train_dev(tg)      12.33     12.21     12.38     12.49
 # WER on train_dev(fg)      11.42     11.41     11.48     11.59
 # WER on eval2000(tg)        15.2      15.1      15.0      14.9
@@ -20,7 +21,8 @@
 # Num-parameters               39558436         0  27773348         0
 #
 
-# exp/chain/tdnn_lstm_1m_ld5_sp: num-iters=262 nj=3..16 num-params=39.6M dim=40+100->6050 combine=-0.091->-0.088 xent:train/valid[173,261,final]=(-1.33,-0.947,-0.950/-1.39,-1.03,-1.03) logprob:train/valid[173,261,final]=(-0.112,-0.080,-0.081/-0.127,-0.100,-0.100)
+
+# exp/chain/tdnn_lstm1n_sp: num-iters=394 nj=3..16 num-params=27.8M dim=40+100->6034 combine=-0.081->-0.080 (over 5) xent:train/valid[261,393,final]=(-1.59,-1.14,-1.15/-1.64,-1.22,-1.22) logprob:train/valid[261,393,final]=(-0.105,-0.086,-0.084/-0.123,-0.107,-0.104)
 
 set -e
 
@@ -29,7 +31,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=1m13
+affix=1n
 decode_iter=
 decode_dir_affix=
 decode_nj=50
@@ -141,27 +143,27 @@ if [ $stage -le 12 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-layer name=tdnn1 $opts dim=1280
-  linear-component name=tdnn1l dim=256 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
   relu-batchnorm-layer name=tdnn2 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn2l dim=256 $linear_opts
+  linear-component name=tdnn3l dim=256 $linear_opts
   relu-batchnorm-layer name=tdnn3 $opts dim=1280
-  linear-component name=tdnn3l dim=256 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
   relu-batchnorm-layer name=tdnn4 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn4l dim=256 $linear_opts
-  relu-batchnorm-layer name=tdnn5 $opts dim=1280 input=Append(tdnn4l, tdnn2l)
-  linear-component name=tdnn5l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn6 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn5l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn5 $opts dim=1280 input=Append(tdnn5l, tdnn3l)
   linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn6 $opts input=Append(0,3) dim=1280
+  linear-component name=lstm1l dim=256 $linear_opts input=Append(-3,0)
   fast-lstmp-layer name=lstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=128 delay=-3 dropout-proportion=0.0 $lstm_opts
-  relu-batchnorm-layer name=tdnn7 $opts input=Append(0,3,tdnn5l,tdnn3l,tdnn1l) dim=1280
-  linear-component name=tdnn7l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn8 $opts input=Append(0,3) dim=1280
+  relu-batchnorm-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
   linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn8 $opts input=Append(0,3) dim=1280
+  linear-component name=lstm2l dim=256 $linear_opts input=Append(-3,0)
   fast-lstmp-layer name=lstm2 cell-dim=1280 recurrent-projection-dim=256 non-recurrent-projection-dim=128 delay=-3 dropout-proportion=0.0 $lstm_opts
-  relu-batchnorm-layer name=tdnn9 $opts input=Append(0,3,tdnn7l,tdnn5l,tdnn3l) dim=1280
-  linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn10 $opts input=Append(0,3) dim=1280
+  relu-batchnorm-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn4l) dim=1280
   linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn10 $opts input=Append(0,3) dim=1280
+  linear-component name=lstm3l dim=256 $linear_opts input=Append(-3,0)
   fast-lstmp-layer name=lstm3 cell-dim=1280 recurrent-projection-dim=256 non-recurrent-projection-dim=128 delay=-3 dropout-proportion=0.0 $lstm_opts
 
   output-layer name=output input=lstm3  include-log-softmax=false $output_opts
