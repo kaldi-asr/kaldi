@@ -3601,7 +3601,7 @@ static void _cuda_compress_bounds_check(const BaseFloat *src, MatrixDim dim,
       src_index = i + j * dim.stride;
   const int min_value = minimum_integer_value<I>(),
       max_value = maximum_integer_value<I>();
-  int16_t compressed_value;
+  int compressed_value;
   int ok = (i < dim.cols && j < dim.rows);
   if  (ok) {
     float f = src[src_index];
@@ -3611,7 +3611,6 @@ static void _cuda_compress_bounds_check(const BaseFloat *src, MatrixDim dim,
     // range of 'int', and if it fails, we've probably already catastrophically
     // diverged.
     int i = __float2int_rn(f * inv_scale);
-    // note: SignedInt will be int8 or (more likely) int16.
     if (i < min_value) compressed_value = min_value;
     else if (i > max_value) compressed_value = max_value;
     else compressed_value = i;
