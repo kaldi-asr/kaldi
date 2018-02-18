@@ -23,6 +23,7 @@ config_to_layer = {
         'relu-layer' : xlayers.XconfigBasicLayer,
         'relu-renorm-layer' : xlayers.XconfigBasicLayer,
         'relu-batchnorm-dropout-layer' : xlayers.XconfigBasicLayer,
+        'relu-dropout-batchnorm-layer' : xlayers.XconfigBasicLayer,
         'relu-dropout-layer': xlayers.XconfigBasicLayer,
         'relu-batchnorm-layer' : xlayers.XconfigBasicLayer,
         'relu-batchnorm-so-layer' : xlayers.XconfigBasicLayer,
