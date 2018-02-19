@@ -1675,11 +1675,11 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     // labels to the most recently added component, so it gets tested more
     case 31: {
       *component_type = "BatchNormComponent";
-      int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
+      int32 block_dim = RandInt(1, 20), dim = block_dim * RandInt(1, 2);
       bool test_mode = (RandInt(0, 1) == 0);
       os << " dim=" << dim
          << " block-dim=" << block_dim << " target-rms="
-         << RandInt(1, 2) << " test-mode="
+         << RandInt(1, 4) << " test-mode="
          << (test_mode ? "true" : "false")
          << " epsilon=" << (RandInt(0, 1) == 0 ? "0.1" : "1.0");
       break;

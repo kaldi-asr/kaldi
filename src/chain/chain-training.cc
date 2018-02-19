@@ -33,38 +33,45 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *l2_term,
                               BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv,
-                              CuMatrixBase<BaseFloat> *xent_output_deriv) {
-  BaseFloat num_logprob_weighted;
-  if (nnet_output_deriv)
+                              CuMatrix<BaseFloat> *xent_output_deriv) {
+  BaseFloat num_logprob_weighted, den_logprob_weighted;
+  bool ok = true;
+  if (nnet_output_deriv != NULL)
     nnet_output_deriv->SetZero();
+
+  { // Doing the denominator first helps to reduce the maximum
+    // memory use, as we can set 'xent_deriv' to nonempty after
+    // we've freed the memory in this object.
+    DenominatorComputation denominator(opts, den_graph,
+                                       supervision.num_sequences,
+                                       nnet_output);
+
+    den_logprob_weighted = supervision.weight * denominator.Forward();
+    if (nnet_output_deriv)
+      ok = denominator.Backward(-supervision.weight,
+                                nnet_output_deriv);
+  }
+
+  if (xent_output_deriv != NULL)
+    xent_output_deriv->Resize(nnet_output.NumRows(), nnet_output.NumCols());
+
+
   {
     NumeratorComputation numerator(supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from
-    // the numerator object, and the logprob too.
+    // the numerator object, as well as the returned logprob.
     num_logprob_weighted = numerator.Forward();
-    if (nnet_output_deriv) {
-      numerator.Backward(nnet_output_deriv);
-      if (xent_output_deriv)
-        xent_output_deriv->CopyFromMat(*nnet_output_deriv);
-    } else if (xent_output_deriv) {
-      // this branch will be taken if xent_output_deriv but not
-      // nnet_output_deriv is set- which could happen if you want to compute the
-      // cross-entropy objective but not the derivatives.
-      xent_output_deriv->SetZero();
+
+    if (xent_output_deriv) {
       numerator.Backward(xent_output_deriv);
+      if (nnet_output_deriv)
+        nnet_output_deriv->AddMat(1.0, *xent_output_deriv);
+    } else if (nnet_output_deriv) {
+      numerator.Backward(nnet_output_deriv);
     }
   }
-  DenominatorComputation denominator(opts, den_graph,
-                                     supervision.num_sequences,
-                                     nnet_output);
 
-  BaseFloat den_logprob = denominator.Forward();
-  bool ok = true;
-  if (nnet_output_deriv)
-    ok = denominator.Backward(-supervision.weight,
-                              nnet_output_deriv);
-
-  *objf = num_logprob_weighted - supervision.weight * den_logprob;
+  *objf = num_logprob_weighted - den_logprob_weighted;
   *weight = supervision.weight * supervision.num_sequences *
       supervision.frames_per_sequence;
   if (!((*objf) - (*objf) == 0) || !ok) {
@@ -86,7 +93,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
   // for different frames of the sequences.  As expected, they are
   // smaller towards the edges of the sequences (due to the penalization
   // of 'incorrect' pdf-ids.
-  if (GetVerboseLevel() >= 1 && nnet_output_deriv != NULL) {
+  if (GetVerboseLevel() >= 1 && nnet_output_deriv != NULL && RandInt(0, 10) == 0) {
     int32 tot_frames = nnet_output_deriv->NumRows(),
  frames_per_sequence = supervision.frames_per_sequence,
        num_sequences = supervision.num_sequences;

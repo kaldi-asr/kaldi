@@ -58,6 +58,15 @@ namespace kaldi {
 */
 
 static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
+
+  // Our first attempt to get a device context is: we do cudaFree(0) and see if
+  // that returns no error code.  If it succeeds then we have a device
+  // context.  Apparently this is the canonical way to get a context.
+  if (cudaFree(0) == 0)
+    return true;
+
+  // The rest of this code represents how we used to get a device context, but
+  // now its purpose is mainly a debugging one.
   std::ostringstream debug_stream;
   debug_stream << "num-gpus=" << num_gpus << ". ";
   for (int32 device = 0; device < num_gpus; device++) {
@@ -220,9 +229,9 @@ void CuDevice::FinalizeActiveGpu() {
     }
     // Remember the id of active GPU
     active_gpu_id_ = act_gpu_id; // CuDevice::Enabled() is true from now on
-    // Initialize the CUBLAS
+    // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&handle_));
-    // Initialize the cuSPARSE
+    // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
 
     // Notify user which GPU is finally used
@@ -546,14 +555,6 @@ CuDevice::CuDevice() :
     num_debug_stride_allocations_(0), allocator_(CuAllocatorOptions()),
     multi_threaded_(false) { }
 
-
-CuDevice::~CuDevice() {
-  if (Enabled()) {
-    cublasDestroy(handle_);
-    cusparseDestroy(cusparse_handle_);
-    cudaDeviceReset();
-  }
-}
 
 // The instance of the static singleton
 CuDevice CuDevice::global_device_;

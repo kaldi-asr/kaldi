@@ -1,6 +1,7 @@
 # Compiled extensionless executable files in /src/*/
 # This stanza must precede wildcard patterns below!
 /src/*/*
+!/src/lm/test_data/
 !/src/*/?*.*
 !/src/doc/*
 !/src/*/Makefile

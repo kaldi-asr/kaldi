@@ -313,179 +313,6 @@ void ElementwiseProductComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "</ElementwiseProductComponent>");
 }
 
-const BaseFloat NormalizeComponent::kSquaredNormFloor =
-    pow(2.0, NormalizeComponent::kExpSquaredNormFloor);
-
-NormalizeComponent::NormalizeComponent(const NormalizeComponent &other):
-    input_dim_(other.input_dim_), block_dim_(other.block_dim_),
-    target_rms_(other.target_rms_),
-    add_log_stddev_(other.add_log_stddev_) { }
-
-void NormalizeComponent::InitFromConfig(ConfigLine *cfl) {
-  input_dim_ = 0;
-  add_log_stddev_ = false;
-  target_rms_ = 1.0;
-  bool ok = cfl->GetValue("dim", &input_dim_) ||
-      cfl->GetValue("input-dim", &input_dim_);
-  block_dim_ = input_dim_;
-  cfl->GetValue("block-dim", &block_dim_);
-  cfl->GetValue("target-rms", &target_rms_);
-  cfl->GetValue("add-log-stddev", &add_log_stddev_);
-  if (!ok || cfl->HasUnusedValues() || input_dim_ <= 0 || target_rms_ <= 0.0 ||
-      block_dim_ <= 0 || input_dim_ % block_dim_ != 0)
-    KALDI_ERR << "Invalid initializer for layer of type "
-              << Type() << ": \"" << cfl->WholeLine() << "\"";
-}
-
-void NormalizeComponent::Read(std::istream &is, bool binary) {
-  std::string token;
-  ReadToken(is, binary, &token);
-  if (token == "<NormalizeComponent>") {
-    ReadToken(is, binary, &token);
-  }
-  KALDI_ASSERT(token == "<Dim>" || token == "<InputDim>");
-  ReadBasicType(is, binary, &input_dim_); // Read dimension.
-  ReadToken(is, binary, &token);
-  if (token == "<BlockDim>") {
-    ReadBasicType(is, binary, &block_dim_);
-    ReadToken(is, binary, &token);
-  } else {
-    block_dim_ = input_dim_;
-  }
-  // read target_rms_ if it is available.
-  if (token == "<TargetRms>") {
-    ReadBasicType(is, binary, &target_rms_);
-    ReadToken(is, binary, &token);
-  }
-  //  Read add_log_stddev_ token, if it is available.
-  if (token == "<AddLogStddev>") {
-    ReadBasicType(is, binary, &add_log_stddev_);
-    ReadToken(is, binary, &token);
-  }
-  if (token == "<ValueAvg>") {
-    // back-compatibility code.
-    CuVector<double> temp;
-    temp.Read(is, binary);
-    ExpectToken(is, binary, "<DerivAvg>");
-    temp.Read(is, binary);
-    ExpectToken(is, binary, "<Count>");
-    double count;
-    ReadBasicType(is, binary, &count);
-    ReadToken(is, binary, &token);
-  }
-  KALDI_ASSERT(token == "</NormalizeComponent>");
-}
-
-void NormalizeComponent::Write(std::ostream &os, bool binary) const {
-  WriteToken(os, binary, "<NormalizeComponent>");
-  WriteToken(os, binary, "<InputDim>");
-  WriteBasicType(os, binary, input_dim_);
-  if (block_dim_ != input_dim_) {
-    WriteToken(os, binary, "<BlockDim>");
-    WriteBasicType(os, binary, block_dim_);
-  }
-  WriteToken(os, binary, "<TargetRms>");
-  WriteBasicType(os, binary, target_rms_);
-  WriteToken(os, binary, "<AddLogStddev>");
-  WriteBasicType(os, binary, add_log_stddev_);
-  WriteToken(os, binary, "</NormalizeComponent>");
-}
-
-std::string NormalizeComponent::Info() const {
-  std::ostringstream stream;
-  stream << Type() << ", input-dim=" << InputDim()
-         << ", output-dim=" << OutputDim() << ", target-rms=" << target_rms_
-         << ", add-log-stddev=" << std::boolalpha << add_log_stddev_;
-  if (block_dim_ != input_dim_)
-    stream << ", block-dim=" << block_dim_;
-  return stream.str();
-}
-
-// The output y_i = scale * x_i,
-// and we want to RMS value of the y_i to equal target_rms,
-// so y^t y = D * target_rms^2 (if y is one row of the input).
-// we need to have scale = 1.0 / sqrt(x^t x / (D * target_rms^2)).
-// there is also flooring involved, to avoid division-by-zero
-// problems.  It's important for the backprop, that the floor's
-// square root is exactly representable as float.
-// If add_log_stddev_ is true, log(max(epsi, sqrt(x^t x / D)))
-// is an extra dimension of the output.
-void* NormalizeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
-                                   const CuMatrixBase<BaseFloat> &in,
-                                   CuMatrixBase<BaseFloat> *out) const {
-  KALDI_ASSERT(in.NumCols() == InputDim() && out->NumCols() == OutputDim() &&
-               in.NumRows() == out->NumRows());
-  if (block_dim_ != input_dim_) {
-    int32 num_blocks = input_dim_ / block_dim_,
-        new_num_rows = in.NumRows() * num_blocks,
-        output_block_dim = block_dim_ + (add_log_stddev_ ? 1 : 0);
-    KALDI_ASSERT(in.Stride() == in.NumCols() && out->Stride() == out->NumCols());
-    CuSubMatrix<BaseFloat> in_reshaped(in.Data(), new_num_rows,
-                                       block_dim_, block_dim_),
-        out_reshaped(out->Data(), new_num_rows,
-                     output_block_dim, output_block_dim);
-    cu::NormalizePerRow(in_reshaped, target_rms_, add_log_stddev_,
-                        &out_reshaped);
-  } else {
-    cu::NormalizePerRow(in, target_rms_, add_log_stddev_, out);
-  }
-  return NULL;
-}
-
-/*
-  A note on the derivative of NormalizeComponent...
-  let both row_in and row_out be vectors of dimension D.
-  Let p = row_in^T row_in / (D * target_rms^2), and let
-  f = 1.0 / sqrt(max(kSquaredNormFloor, p)), and we compute row_out as:
-  row_out = f row_in.
-  Suppose we have a quantity deriv_out which is the derivative
-  of the objective function w.r.t. row_out.  We want to compute
-  deriv_in which is the derivative of the objective function w.r.t.
-  row_in.  Let the objective function be F.  One term is obvious: we have
-  deriv_in = f deriv_out + ....
-  next we have to take into account the derivative that gets back-propagated
-  through f.  Obviously, dF/df = deriv_out^T row_in.
-  And df/dp = (p <= kSquaredNormFloor ? 0.0 : -0.5 p^{-1.5}) = (f == 1.0 / sqrt(kSquaredNormFloor) ? 0.0 : -0.5 f^3),
-  and dp/d(row_in) = 2/(D * target_rms^2) row_in. [it's vector_valued].
-  So this term in dF/d(row_in) equals:
-  dF/df df/dp dp/d(row_in)   =    2/(D * target_rms^2) (f == 1.0 / sqrt(kSquaredNormFloor)  ? 0.0 : -0.5 f^3) (deriv_out^T row_in) row_in
-  So
-  deriv_in = f deriv_out + (f == 1.0 ? 0.0 : -f^3  / (D * target_rms^2) ) (deriv_out^T row_in) row_in
-
-  if add_log_stddev_ true, the deriv_in has another term as
-  dF/dx_i = dF/df . df/dx_i => df/dx_i = x_i/(x^T x)
-*/
-void NormalizeComponent::Backprop(const std::string &debug_info,
-                                  const ComponentPrecomputedIndexes *indexes,
-                                  const CuMatrixBase<BaseFloat> &in_value,
-                                  const CuMatrixBase<BaseFloat> &, // out_value
-                                  const CuMatrixBase<BaseFloat> &out_deriv,
-                                  void *memo,
-                                  Component *to_update,
-                                  CuMatrixBase<BaseFloat> *in_deriv) const {
-  if (!in_deriv)
-    return;
-  if (block_dim_ != input_dim_) {
-    int32 num_blocks = input_dim_ / block_dim_,
-        new_num_rows = in_value.NumRows() * num_blocks,
-        output_block_dim = block_dim_ + (add_log_stddev_ ? 1 : 0);
-    KALDI_ASSERT(in_value.Stride() == in_value.NumCols() &&
-                 out_deriv.Stride() == out_deriv.NumCols() &&
-                 in_deriv->Stride() == in_deriv->NumCols());
-    CuSubMatrix<BaseFloat> in_value_reshaped(in_value.Data(), new_num_rows,
-                                             block_dim_, block_dim_),
-        out_deriv_reshaped(out_deriv.Data(), new_num_rows,
-                           output_block_dim, output_block_dim),
-        in_deriv_reshaped(in_deriv->Data(), new_num_rows,
-                          block_dim_, block_dim_);
-    cu::DiffNormalizePerRow(in_value_reshaped, out_deriv_reshaped, target_rms_,
-                            add_log_stddev_, &in_deriv_reshaped);
-  } else {
-    cu::DiffNormalizePerRow(in_value, out_deriv, target_rms_, add_log_stddev_,
-                            in_deriv);
-  }
-}
-
 void* SigmoidComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                  const CuMatrixBase<BaseFloat> &in,
                                  CuMatrixBase<BaseFloat> *out) const {
@@ -504,8 +331,10 @@ void SigmoidComponent::Backprop(const std::string &debug_info,
   if (in_deriv != NULL) {
     in_deriv->DiffSigmoid(out_value, out_deriv);
     SigmoidComponent *to_update = dynamic_cast<SigmoidComponent*>(to_update_in);
-    if (to_update != NULL)
+    if (to_update != NULL) {
       RepairGradients(out_value, in_deriv, to_update);
+      to_update->StoreBackpropStats(out_deriv);
+    }
   }
 }
 
@@ -1013,8 +842,10 @@ void TanhComponent::Backprop(const std::string &debug_info,
   if (in_deriv != NULL) {
     in_deriv->DiffTanh(out_value, out_deriv);
     TanhComponent *to_update = dynamic_cast<TanhComponent*>(to_update_in);
-    if (to_update != NULL)
+    if (to_update != NULL) {
       RepairGradients(out_value, in_deriv, to_update);
+      to_update->StoreBackpropStats(out_deriv);
+    }
   }
 }
 
@@ -1063,8 +894,10 @@ void RectifiedLinearComponent::Backprop(
     in_deriv->MulElements(out_deriv);
     RectifiedLinearComponent *to_update =
         dynamic_cast<RectifiedLinearComponent*>(to_update_in);
-    if (to_update != NULL)
+    if (to_update != NULL) {
       RepairGradients(in_deriv, to_update);
+      to_update->StoreBackpropStats(out_deriv);
+    }
   }
 }
 
@@ -1198,13 +1031,15 @@ void AffineComponent::Add(BaseFloat alpha, const Component &other_in) {
 AffineComponent::AffineComponent(const AffineComponent &component):
     UpdatableComponent(component),
     linear_params_(component.linear_params_),
-    bias_params_(component.bias_params_) { }
+    bias_params_(component.bias_params_),
+    orthonormal_constraint_(component.orthonormal_constraint_) { }
 
 AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                                  const CuVectorBase<BaseFloat> &bias_params,
                                  BaseFloat learning_rate):
     linear_params_(linear_params),
-    bias_params_(bias_params) {
+    bias_params_(bias_params),
+    orthonormal_constraint_(0.0) {
   SetUnderlyingLearningRate(learning_rate);
   KALDI_ASSERT(linear_params.NumRows() == bias_params.Dim()&&
                bias_params.Dim() != 0);
@@ -1230,7 +1065,13 @@ void AffineComponent::PerturbParams(BaseFloat stddev) {
 std::string AffineComponent::Info() const {
   std::ostringstream stream;
   stream << UpdatableComponent::Info();
-  PrintParameterStats(stream, "linear-params", linear_params_);
+  if (orthonormal_constraint_ != 0.0)
+    stream << ", orthonormal-constraint=" << orthonormal_constraint_;
+  PrintParameterStats(stream, "linear-params", linear_params_,
+                      false, // include_mean
+                      true, // include_row_norms
+                      true, // include_column_norms
+                      GetVerboseLevel() >= 2); // include_singular_values
   PrintParameterStats(stream, "bias", bias_params_, true);
   return stream.str();
 }
@@ -1292,6 +1133,8 @@ void AffineComponent::InitFromConfig(ConfigLine *cfl) {
     Init(input_dim, output_dim,
          param_stddev, bias_stddev);
   }
+  cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
+
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
@@ -1360,6 +1203,12 @@ void AffineComponent::Read(std::istream &is, bool binary) {
     ExpectToken(is, binary, "<IsGradient>");
     ReadBasicType(is, binary, &is_gradient_);
   }
+  if (PeekToken(is, binary) == 'O') {
+    ExpectToken(is, binary, "<OrthonormalConstraint>");
+    ReadBasicType(is, binary, &orthonormal_constraint_);
+  } else {
+    orthonormal_constraint_ = 0.0;
+  }
   ExpectToken(is, binary, "</AffineComponent>");
 }
 
@@ -1369,6 +1218,10 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   linear_params_.Write(os, binary);
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
+  if (orthonormal_constraint_ != 0.0) {
+    WriteToken(os, binary, "<OrthonormalConstraint>");
+    WriteBasicType(os, binary, orthonormal_constraint_);
+  }
   WriteToken(os, binary, "</AffineComponent>");
 }
 
@@ -1686,7 +1539,7 @@ void NaturalGradientRepeatedAffineComponent::Update(
     try {
       // Only apply the preconditioning/natural-gradient if we're not computing
       // the exact gradient.
-      preconditioner_in_.PreconditionDirections(&deriv, NULL, &scale);
+      preconditioner_in_.PreconditionDirections(&deriv, &scale);
     } catch (...) {
       int32 num_bad_rows = 0;
       for (int32 i = 0; i < out_deriv.NumRows(); i++) {
@@ -2101,12 +1954,6 @@ void PerElementScaleComponent::Backprop(
   PerElementScaleComponent *to_update =
       dynamic_cast<PerElementScaleComponent*>(to_update_in);
 
-  if (in_deriv) {
-    // Propagate the derivative back to the input.
-    in_deriv->CopyFromMat(out_deriv);
-    in_deriv->MulColsVec(scales_);
-  }
-
   if (to_update != NULL) {
     // Next update the model (must do this 2nd so the derivatives we propagate
     // are accurate, in case this == to_update_in.)
@@ -2114,6 +1961,13 @@ void PerElementScaleComponent::Backprop(
       to_update->UpdateSimple(in_value, out_deriv);
     else  // the call below is to a virtual function that may be re-implemented
       to_update->Update(debug_info, in_value, out_deriv);  // by child classes.
+  }
+
+  if (in_deriv) {
+    // Propagate the derivative back to the input.
+    if (in_deriv->Data() != out_deriv.Data())
+      in_deriv->CopyFromMat(out_deriv);
+    in_deriv->MulColsVec(scales_);
   }
 }
 
@@ -2301,7 +2155,7 @@ void PerElementOffsetComponent::Backprop(
       // this scenario)
       CuMatrix<BaseFloat> out_deriv_copy(out_deriv_reshaped);
       BaseFloat scale = 1.0;
-      to_update->preconditioner_.PreconditionDirections(&out_deriv_copy, NULL,
+      to_update->preconditioner_.PreconditionDirections(&out_deriv_copy,
                                                         &scale);
       to_update->offsets_.AddRowSumMat(scale * to_update->learning_rate_,
                                        out_deriv_copy);
@@ -2586,7 +2440,7 @@ void ScaleAndOffsetComponent::BackpropInternal(
       BaseFloat scale = 1.0;
       CuMatrix<BaseFloat> out_deriv_copy(out_deriv);
       to_update->offset_preconditioner_.PreconditionDirections(
-          &out_deriv_copy, NULL, &scale);
+          &out_deriv_copy, &scale);
       to_update->offsets_.AddRowSumMat(scale * to_update->learning_rate_,
                                        out_deriv_copy);
     }
@@ -2609,7 +2463,7 @@ void ScaleAndOffsetComponent::BackpropInternal(
     BaseFloat scale = 1.0;
     if (to_update->use_natural_gradient_ && !to_update->is_gradient_) {
       to_update->scale_preconditioner_.PreconditionDirections(
-          &in_value_reconstructed, NULL, &scale);
+          &in_value_reconstructed, &scale);
     }
     to_update->scales_.AddRowSumMat(scale * to_update->learning_rate_,
                                     in_value_reconstructed);
@@ -2675,7 +2529,7 @@ void ConstantFunctionComponent::Backprop(
         CuMatrix<BaseFloat> out_deriv_copy(out_deriv);
         BaseFloat scale = 1.0;
         to_update->preconditioner_.PreconditionDirections(&out_deriv_copy,
-                                                          NULL, &scale);
+                                                          &scale);
         to_update->output_.AddRowSumMat(scale * to_update->learning_rate_,
                                         out_deriv_copy);
       } else {
@@ -2818,16 +2672,35 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   linear_params_.Read(is, binary);
   ExpectToken(is, binary, "<BiasParams>");
   bias_params_.Read(is, binary);
+
+  BaseFloat num_samples_history, alpha;
+  int32 rank_in, rank_out, update_period;
+
   ExpectToken(is, binary, "<RankIn>");
-  ReadBasicType(is, binary, &rank_in_);
+  ReadBasicType(is, binary, &rank_in);
   ExpectToken(is, binary, "<RankOut>");
-  ReadBasicType(is, binary, &rank_out_);
+  ReadBasicType(is, binary, &rank_out);
+  if (PeekToken(is, binary) == 'O') {
+    ExpectToken(is, binary, "<OrthonormalConstraint>");
+    ReadBasicType(is, binary, &orthonormal_constraint_);
+  } else {
+    orthonormal_constraint_ = 0.0;
+  }
   ExpectToken(is, binary, "<UpdatePeriod>");
-  ReadBasicType(is, binary, &update_period_);
+  ReadBasicType(is, binary, &update_period);
   ExpectToken(is, binary, "<NumSamplesHistory>");
-  ReadBasicType(is, binary, &num_samples_history_);
+  ReadBasicType(is, binary, &num_samples_history);
   ExpectToken(is, binary, "<Alpha>");
-  ReadBasicType(is, binary, &alpha_);
+  ReadBasicType(is, binary, &alpha);
+
+  preconditioner_in_.SetNumSamplesHistory(num_samples_history);
+  preconditioner_out_.SetNumSamplesHistory(num_samples_history);
+  preconditioner_in_.SetAlpha(alpha);
+  preconditioner_out_.SetAlpha(alpha);
+  preconditioner_in_.SetRank(rank_in);
+  preconditioner_out_.SetRank(rank_out);
+  preconditioner_out_.SetUpdatePeriod(update_period);
+
   if (PeekToken(is, binary) == 'M') {
     // MaxChangePerSample, long ago removed; back compatibility.
     ExpectToken(is, binary, "<MaxChangePerSample>");
@@ -2852,11 +2725,10 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   }
   std::string token;
   ReadToken(is, binary, &token);
-  if (token != "<NaturalGradientAffineComponent>" &&
-      token != "</NaturalGradientAffineComponent>")
+  // the following has to handle a couple variants of
+  if (token.find("NaturalGradientAffineComponent>") == std::string::npos)
     KALDI_ERR << "Expected <NaturalGradientAffineComponent> or "
               << "</NaturalGradientAffineComponent>, got " << token;
-  SetNaturalGradientConfigs();
 }
 
 
@@ -2866,30 +2738,21 @@ NaturalGradientAffineComponent::NaturalGradientAffineComponent(
     AffineComponent(linear_params, bias_params, 0.001) {
   KALDI_ASSERT(bias_params.Dim() == linear_params.NumRows() &&
                bias_params.Dim() != 0);
-  num_samples_history_ = 2000.0;
-  alpha_ = 4.0;
-  rank_in_ = 20;
-  rank_out_ = 80;
-  update_period_ = 4;
-  SetNaturalGradientConfigs();
+
+  // set some default natural gradient configs.
+  preconditioner_in_.SetRank(20);
+  preconditioner_out_.SetRank(80);
+  preconditioner_in_.SetUpdatePeriod(4);
+  preconditioner_out_.SetUpdatePeriod(4);
 }
 
 void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = true;
   std::string matrix_filename;
-  num_samples_history_ = 2000.0;
-  alpha_ = 4.0;
-  rank_in_ = 20;
-  rank_out_ = 80;
-  update_period_ = 4;
+
   is_gradient_ = false;  // not configurable; there's no reason you'd want this
 
   InitLearningRatesFromConfig(cfl);
-  cfl->GetValue("num-samples-history", &num_samples_history_);
-  cfl->GetValue("alpha", &alpha_);
-  cfl->GetValue("rank-in", &rank_in_);
-  cfl->GetValue("rank-out", &rank_out_);
-  cfl->GetValue("update-period", &update_period_);
 
   if (cfl->GetValue("matrix", &matrix_filename)) {
     CuMatrix<BaseFloat> mat;
@@ -2928,23 +2791,34 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
     bias_params_.Scale(bias_stddev);
     bias_params_.Add(bias_mean);
   }
+
+  orthonormal_constraint_ = 0.0;
+  cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
+
+  // Set natural-gradient configs.
+  BaseFloat num_samples_history = 2000.0,
+      alpha = 4.0;
+  int32 rank_in = 20, rank_out = 80,
+      update_period = 4;
+  cfl->GetValue("num-samples-history", &num_samples_history);
+  cfl->GetValue("alpha", &alpha);
+  cfl->GetValue("rank-in", &rank_in);
+  cfl->GetValue("rank-out", &rank_out);
+  cfl->GetValue("update-period", &update_period);
+
+  preconditioner_in_.SetNumSamplesHistory(num_samples_history);
+  preconditioner_out_.SetNumSamplesHistory(num_samples_history);
+  preconditioner_in_.SetAlpha(alpha);
+  preconditioner_out_.SetAlpha(alpha);
+  preconditioner_in_.SetRank(rank_in);
+  preconditioner_out_.SetRank(rank_out);
+  preconditioner_out_.SetUpdatePeriod(update_period);
+
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
               << cfl->UnusedValues();
   if (!ok)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
-  SetNaturalGradientConfigs();
-}
-
-void NaturalGradientAffineComponent::SetNaturalGradientConfigs() {
-  preconditioner_in_.SetRank(rank_in_);
-  preconditioner_in_.SetNumSamplesHistory(num_samples_history_);
-  preconditioner_in_.SetAlpha(alpha_);
-  preconditioner_in_.SetUpdatePeriod(update_period_);
-  preconditioner_out_.SetRank(rank_out_);
-  preconditioner_out_.SetNumSamplesHistory(num_samples_history_);
-  preconditioner_out_.SetAlpha(alpha_);
-  preconditioner_out_.SetUpdatePeriod(update_period_);
 }
 
 void NaturalGradientAffineComponent::Write(std::ostream &os,
@@ -2955,28 +2829,30 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
   WriteToken(os, binary, "<BiasParams>");
   bias_params_.Write(os, binary);
   WriteToken(os, binary, "<RankIn>");
-  WriteBasicType(os, binary, rank_in_);
+  WriteBasicType(os, binary, preconditioner_in_.GetRank());
   WriteToken(os, binary, "<RankOut>");
-  WriteBasicType(os, binary, rank_out_);
+  WriteBasicType(os, binary, preconditioner_out_.GetRank());
+  if (orthonormal_constraint_ != 0.0) {
+    WriteToken(os, binary, "<OrthonormalConstraint>");
+    WriteBasicType(os, binary, orthonormal_constraint_);
+  }
   WriteToken(os, binary, "<UpdatePeriod>");
-  WriteBasicType(os, binary, update_period_);
+  WriteBasicType(os, binary, preconditioner_in_.GetUpdatePeriod());
   WriteToken(os, binary, "<NumSamplesHistory>");
-  WriteBasicType(os, binary, num_samples_history_);
+  WriteBasicType(os, binary, preconditioner_in_.GetNumSamplesHistory());
   WriteToken(os, binary, "<Alpha>");
-  WriteBasicType(os, binary, alpha_);
+  WriteBasicType(os, binary, preconditioner_in_.GetAlpha());
   WriteToken(os, binary, "</NaturalGradientAffineComponent>");
 }
 
 std::string NaturalGradientAffineComponent::Info() const {
   std::ostringstream stream;
-  stream << UpdatableComponent::Info();
-  PrintParameterStats(stream, "linear-params", linear_params_);
-  PrintParameterStats(stream, "bias", bias_params_, true);
-  stream << ", rank-in=" << rank_in_
-         << ", rank-out=" << rank_out_
-         << ", num-samples-history=" << num_samples_history_
-         << ", update-period=" << update_period_
-         << ", alpha=" << alpha_;
+  stream << AffineComponent::Info();
+  stream << ", rank-in=" << preconditioner_in_.GetRank()
+         << ", rank-out=" << preconditioner_out_.GetRank()
+         << ", num-samples-history=" << preconditioner_in_.GetNumSamplesHistory()
+         << ", update-period=" << preconditioner_in_.GetUpdatePeriod()
+         << ", alpha=" << preconditioner_in_.GetAlpha();
   return stream.str();
 }
 
@@ -2987,15 +2863,8 @@ Component* NaturalGradientAffineComponent::Copy() const {
 NaturalGradientAffineComponent::NaturalGradientAffineComponent(
     const NaturalGradientAffineComponent &other):
     AffineComponent(other),
-    rank_in_(other.rank_in_),
-    rank_out_(other.rank_out_),
-    update_period_(other.update_period_),
-    num_samples_history_(other.num_samples_history_),
-    alpha_(other.alpha_),
     preconditioner_in_(other.preconditioner_in_),
-    preconditioner_out_(other.preconditioner_out_) {
-  SetNaturalGradientConfigs();
-}
+    preconditioner_out_(other.preconditioner_out_) { }
 
 void NaturalGradientAffineComponent::Update(
     const std::string &debug_info,
@@ -3018,8 +2887,8 @@ void NaturalGradientAffineComponent::Update(
   // than having the matrices scaled inside the preconditioning code).
   BaseFloat in_scale, out_scale;
 
-  preconditioner_in_.PreconditionDirections(&in_value_temp, NULL, &in_scale);
-  preconditioner_out_.PreconditionDirections(&out_deriv_temp, NULL, &out_scale);
+  preconditioner_in_.PreconditionDirections(&in_value_temp, &in_scale);
+  preconditioner_out_.PreconditionDirections(&out_deriv_temp, &out_scale);
 
   // "scale" is a scaling factor coming from the PreconditionDirections calls
   // (it's faster to have them output a scaling factor than to have them scale
@@ -3073,6 +2942,12 @@ void LinearComponent::Read(std::istream &is, bool binary) {
   KALDI_ASSERT(token == "");
   ExpectToken(is, binary, "<Params>");
   params_.Read(is, binary);
+  if (PeekToken(is, binary) == 'O') {
+    ExpectToken(is, binary, "<OrthonormalConstraint>");
+    ReadBasicType(is, binary, &orthonormal_constraint_);
+  } else {
+    orthonormal_constraint_ = 0.0;
+  }
   ExpectToken(is, binary, "<UseNaturalGradient>");
   ReadBasicType(is, binary, &use_natural_gradient_);
 
@@ -3135,11 +3010,14 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
   BaseFloat alpha = 4.0,
       num_samples_history = 2000.0;
 
+  use_natural_gradient_ = true;
+
   cfl->GetValue("num-samples-history", &num_samples_history);
   cfl->GetValue("alpha", &alpha);
   cfl->GetValue("rank-in", &rank_in);
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("update-period", &update_period);
+  cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
 
   preconditioner_in_.SetAlpha(alpha);
   preconditioner_out_.SetAlpha(alpha);
@@ -3149,6 +3027,9 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
   preconditioner_out_.SetNumSamplesHistory(num_samples_history);
   preconditioner_in_.SetUpdatePeriod(update_period);
   preconditioner_out_.SetUpdatePeriod(update_period);
+
+  orthonormal_constraint_ = 0.0;
+  cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
@@ -3161,6 +3042,10 @@ void LinearComponent::Write(std::ostream &os,
   WriteUpdatableCommon(os, binary);  // Write the opening tag and learning rate
   WriteToken(os, binary, "<Params>");
   params_.Write(os, binary);
+  if (orthonormal_constraint_ != 0.0) {
+    WriteToken(os, binary, "<OrthonormalConstraint>");
+    WriteBasicType(os, binary, orthonormal_constraint_);
+  }
   WriteToken(os, binary, "<UseNaturalGradient>");
   WriteBasicType(os, binary, use_natural_gradient_);
 
@@ -3184,11 +3069,17 @@ void LinearComponent::Write(std::ostream &os,
 std::string LinearComponent::Info() const {
   std::ostringstream stream;
   stream << UpdatableComponent::Info();
-  PrintParameterStats(stream, "params", params_);
+  PrintParameterStats(stream, "params", params_,
+                      false, // include_mean
+                      true, // include_row_norms
+                      true, // include_column_norms
+                      GetVerboseLevel() >= 2); // include_singular_values
+  if (orthonormal_constraint_ != 0.0)
+    stream << ", orthonormal-constraint=" << orthonormal_constraint_;
   stream << ", use-natural-gradient="
          << (use_natural_gradient_ ? "true" : "false")
          << ", rank-in=" << preconditioner_in_.GetRank()
-         << ", rank-out=" << preconditioner_in_.GetRank()
+         << ", rank-out=" << preconditioner_out_.GetRank()
          << ", num-samples-history="
          << preconditioner_in_.GetNumSamplesHistory()
          << ", update-period=" << preconditioner_in_.GetUpdatePeriod()
@@ -3226,9 +3117,9 @@ void LinearComponent::Backprop(const std::string &debug_info,
       // than having the matrices scaled inside the preconditioning code).
       BaseFloat in_scale, out_scale;
       to_update->preconditioner_in_.PreconditionDirections(&in_value_temp,
-                                                           NULL, &in_scale);
+                                                           &in_scale);
       to_update->preconditioner_out_.PreconditionDirections(&out_deriv_temp,
-                                                            NULL, &out_scale);
+                                                            &out_scale);
       BaseFloat local_lrate = in_scale * out_scale * to_update->learning_rate_;
 
       to_update->params_.AddMatMat(local_lrate, out_deriv_temp, kTrans,
@@ -3250,12 +3141,14 @@ LinearComponent::LinearComponent(
     const LinearComponent &other):
     UpdatableComponent(other),
     params_(other.params_),
+    orthonormal_constraint_(other.orthonormal_constraint_),
     use_natural_gradient_(other.use_natural_gradient_),
     preconditioner_in_(other.preconditioner_in_),
     preconditioner_out_(other.preconditioner_out_) { }
 
 LinearComponent::LinearComponent(const CuMatrix<BaseFloat> &params):
     params_(params),
+    orthonormal_constraint_(0.0),
     use_natural_gradient_(true) {
   // Set defaults for natural gradient.
   preconditioner_in_.SetRank(40);
@@ -3547,6 +3440,13 @@ void SoftmaxComponent::Backprop(const std::string &debug_info,
                                 void *memo,
                                 Component *to_update_in,
                                 CuMatrixBase<BaseFloat> *in_deriv) const {
+
+  if (to_update_in) {
+    SoftmaxComponent *to_update =
+        dynamic_cast<SoftmaxComponent*>(to_update_in);
+    to_update->StoreBackpropStats(out_deriv);
+  }
+
   if (in_deriv == NULL)
     return;
   /*
@@ -3586,8 +3486,13 @@ void LogSoftmaxComponent::Backprop(const std::string &debug_info,
                                    const CuMatrixBase<BaseFloat> &out_value,
                                    const CuMatrixBase<BaseFloat> &out_deriv,
                                    void *memo,
-                                   Component *, // to_update
+                                   Component *to_update_in,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (to_update_in) {
+    LogSoftmaxComponent *to_update =
+        dynamic_cast<LogSoftmaxComponent*>(to_update_in);
+    to_update->StoreBackpropStats(out_deriv);
+  }
   if (in_deriv == NULL)
     return;
   in_deriv->DiffLogSoftmaxPerRow(out_value, out_deriv);
@@ -3900,7 +3805,7 @@ void NaturalGradientPerElementScaleComponent::Update(
   // scales_.AddRowSumMat(learning_rate_, derivs_per_frame).
 
   BaseFloat scale;
-  preconditioner_.PreconditionDirections(&derivs_per_frame, NULL, &scale);
+  preconditioner_.PreconditionDirections(&derivs_per_frame, &scale);
 
   CuVector<BaseFloat> delta_scales(scales_.Dim());
   delta_scales.AddRowSumMat(scale * learning_rate_, derivs_per_frame);
@@ -5773,7 +5678,7 @@ void LstmNonlinearityComponent::Backprop(
     BaseFloat scale = 1.0;
     if (!to_update->is_gradient_) {
       to_update->preconditioner_.PreconditionDirections(
-          &params_deriv, NULL, &scale);
+          &params_deriv, &scale);
     }
     to_update->params_.AddMat(to_update->learning_rate_ * scale,
                               params_deriv);
@@ -5880,489 +5785,6 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
               << Type() << ": \"" << cfl->WholeLine() << "\"";
   }
 }
-
-
-
-void BatchNormComponent::ComputeDerived() {
-  if (!test_mode_) {
-    offset_.Resize(0);
-    scale_.Resize(0);
-    return;
-  }
-
-  if (count_ == 0.0) {
-    KALDI_WARN << "Test-mode is set but there is no data count.  "
-        "Creating random counts.  This only makes sense "
-        "in unit-tests (or compute_prob_*.0.log).  If you see this "
-        "elsewhere, something is very wrong.";
-    count_ = 1.0;
-    stats_sum_.SetRandn();
-    stats_sumsq_.SetRandn();
-    stats_sumsq_.AddVecVec(1.0, stats_sum_, stats_sum_, 1.0);
-  }
-
-  offset_.Resize(block_dim_);
-  scale_.Resize(block_dim_);
-  offset_.CopyFromVec(stats_sum_);
-  offset_.Scale(-1.0 / count_);
-  // now offset_ is -mean.
-  scale_.CopyFromVec(stats_sumsq_);
-  scale_.Scale(1.0 / count_);
-  scale_.AddVecVec(-1.0, offset_, offset_, 1.0);
-  // now scale_ is variance.
-  // Mathematically the ApplyFloor statement should be a no-op; this is in case
-  // of numerical roundoff.
-  scale_.ApplyFloor(0.0);
-  scale_.Add(epsilon_);
-  scale_.ApplyPow(-0.5);
-  // now scale_ = min(variance, epsilon)^{-0.5}.
-  // next, multiply by the target RMS (normally 1.0).
-  scale_.Scale(target_rms_);
-  offset_.MulElements(scale_);
-  // now offset_ is -(scale*mean).
-}
-
-void BatchNormComponent::SetTestMode(bool test_mode) {
-  test_mode_ = test_mode;
-  ComputeDerived();
-}
-
-void BatchNormComponent::Check() const {
-  KALDI_ASSERT(dim_ > 0 && block_dim_ > 0 && dim_ % block_dim_ == 0 &&
-               epsilon_ > 0.0 && target_rms_ > 0.0);
-}
-
-BatchNormComponent::BatchNormComponent(const BatchNormComponent &other):
-    dim_(other.dim_), block_dim_(other.block_dim_), epsilon_(other.epsilon_),
-    target_rms_(other.target_rms_), test_mode_(other.test_mode_),
-    count_(other.count_), stats_sum_(other.stats_sum_),
-    stats_sumsq_(other.stats_sumsq_) {
-  ComputeDerived();
-  Check();
-}
-
-
-std::string BatchNormComponent::Info() const {
-  std::ostringstream stream;
-  stream << Type() << ", dim=" << dim_ << ", block-dim=" << block_dim_
-         << ", epsilon=" << epsilon_ << ", target-rms=" << target_rms_
-         << ", count=" << count_
-         << ", test-mode=" << (test_mode_ ? "true" : "false");
-  if (count_ > 0) {
-    Vector<BaseFloat> mean(stats_sum_), var(stats_sumsq_);
-    mean.Scale(1.0 / count_);
-    var.Scale(1.0 / count_);
-    // subtract mean^2 from var.
-    var.AddVecVec(-1.0, mean, mean, 1.0);
-    var.ApplyFloor(0.0);
-    var.ApplyPow(0.5);  // make it the stddev.
-    stream << ", data-mean=" << SummarizeVector(mean)
-           << ", data-stddev=" << SummarizeVector(var);
-  }
-  return stream.str();
-}
-
-void BatchNormComponent::InitFromConfig(ConfigLine *cfl) {
-  dim_ = -1;
-  block_dim_ = -1;
-  epsilon_ = 1.0e-03;
-  target_rms_ = 1.0;
-  test_mode_ = false;
-  bool ok = cfl->GetValue("dim", &dim_);
-  cfl->GetValue("block-dim", &block_dim_);
-  cfl->GetValue("epsilon", &epsilon_);
-  cfl->GetValue("target-rms", &target_rms_);
-  cfl->GetValue("test-mode", &test_mode_);
-  if (!ok || dim_ <= 0) {
-    KALDI_ERR << "BatchNormComponent must have 'dim' specified, and > 0";
-  }
-  if (block_dim_ == -1)
-    block_dim_ = dim_;
-  if (!(block_dim_ > 0 && dim_ % block_dim_ == 0 &&
-        epsilon_ > 0 && target_rms_ > 0))
-    KALDI_ERR << "Invalid configuration in BatchNormComponent.";
-  if (cfl->HasUnusedValues())
-    KALDI_ERR << "Could not process these elements in initializer: "
-              << cfl->UnusedValues();
-  count_ = 0;
-  stats_sum_.Resize(block_dim_);
-  stats_sumsq_.Resize(block_dim_);
-  if (test_mode_) {
-    ComputeDerived();
-  }
-}
-
-
-
-/*
-  BATCH_NORM_MATH
-
-  This comment describes the equations involved in batch normalization, and
-  derives the forward and back-propagation.
-
-  This is all dimension-by-dimension, so we just imagine the inputs
-  are scalars x(i), for i=0 .. n-1.
-
-  FORWARD PASS:
-
-  Define xsum  = sum_i x(i)
-         x2sum = sum_i x(i)^2
-          mean = xsum / n
-           var = x2sum / n - (mean*mean)
-         scale = (var + epsilon)^{-0.5}
-        offset = -mean * scale
-
-      y(i) = scale * x(i) + offset
-
-   Most of the rest of this comment derives how to compute the derivatives.  If
-   you just want the formulas, please skip to the string 'BACKWARD PASS' below.
-
-  We'll use a notation where an apostrophe on something means (the derivative of
-  the objective function w.r.t. that thing), so y'(i) is df/dy(i), and so on.
-  We are given y'(i).  Propagating the derivatives backward:
-     offset' = sum_i y'(i)
-     scale' = (sum_i y'(i) * x(i)) - offset' * mean
-       var' = scale' * -0.5 * (var + epsilon)^{-1.5}
-            = -0.5 * scale' * scale^3
-      mean' = -offset' * scale - 2 * mean * var'
-      xsum' = mean' / n
-     x2sum' = var' / n
-
-  So the derivatives propagated back to the original data are:
-     x'(i) = y'(i) * scale  +  xsum'  +  x(i) * x2sum'
-
-  The above is quite complicated to compute, but we can use some invariances
-  to work out a simpler way to compute the derivatives.
-
-  Firstly, note that x'(i) is of the form:
-
-   x'(i) =  y'(i) * scale + [affine function of x(i)].
-
-   [it's a 1-d affine function, i.e. offset and scale].
- This has the same functional form as:
-
-  x'(i) =  y'(i) * scale + [affine function of y(i)].
-
-  since y(i) is an affine function of x(i) with nonzero scale.
-  Because the output is invariant to shifts in the input, sum_i x'(i)
-  will be zero.  This is sufficient to determine the bias
-  term in the affine function.  [Note: the scale on y(i) doesn't
-  come into it because the y(i) sum to zero].  The offset
-  will just be (sum_i y'(i) * scale / n); this makes the sum of x'(i) zero.
-  So let's write it as
-
-    x'(i) =  (y'(i) - 1/n sum_i y'(i)) * scale + alpha y(i).
-
-  and it will be convenient to define:
-
-  x_deriv_base(i) = (y'(i) - 1/n sum_i y'(i)) * scale
-
-  which is just y'(i) with mean subtraction, scaled according to
-  the scale used in the normalization.  So write
-
-   x'(i) = x_deriv_base(i) + alpha y(i).
-
- The question is, what is the scale alpha.  We don't actually need to
- do any differentiation to figure this out.  First, assume there is
- no "+ epsilon" in the variance; later we'll explain why this doesn't
- matter.  The key to working out alpha is that the output is invariant
- to scaling of the input.  Assume we scale around the input's mean,
- since that makes the math simpler.  We can express this by the
- constraint that (\sum_i x'(i) * (x(i) - avg-x)) = 0.  This is
- equivalent to the constraint that (\sum_i x'(i) y (i)) = 0, since
- y(i) is x(i) - avg-x times a nonzero scale.  We'll use this contraint
- to determine alpha, Using the above expressionfor x(i), we can write
- this constraint as:
-   \sum_i ( y(i) x_deriv_base(i)  + alpha y(i) y(i)) = 0.
- Now, since we said we'd ignore the epsilon, the output has unit variance,
- so we know that \sum_i y(i) y(i) = n.
- So alpha = - \sum_i y(i) x_deriv_base(i) / n.  We can actually re-imagine
- the epsilon term (or variance-flooring) as having been implemented by
- adding a couple extra rows to the matrix with suitable values, and zero
- output-deriv for those rows.  If you think about it carefully you'll see that
- the formula above is valid even if there is an extra term
- in the variance.  Anyway the correctness of the derivative will get tested
- throughly by the component unit-tests.
-
- So to recap, here is the backprop.
-
- BACKWARD PASS:
-
-  We are given y'(i), scale, and y(i).
-
-  We compute:
-    x_deriv_base(i) = (y'(i) - 1/n sum_i y'(i)) * scale
-              alpha = - \sum_i y(i) x_deriv_base(i) / n
-              x'(i) = x_deriv_base(i) + alpha y(i)
-  */
-
-
-
-void* BatchNormComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
-                                    const CuMatrixBase<BaseFloat> &in,
-                                    CuMatrixBase<BaseFloat> *out) const {
-  KALDI_ASSERT(SameDim(in, *out) &&
-               (in.NumCols() == dim_ || in.NumCols() == block_dim_));
-  if (in.NumCols() != block_dim_) {
-    // if block_dim_ != dim_, we recurse; this helps keep the main code
-    // simple.
-    KALDI_ASSERT(in.Stride() == in.NumCols() && out->Stride() == out->NumCols());
-    int32 ratio = dim_ / block_dim_, orig_rows = in.NumRows(),
-        orig_cols = in.NumCols(), new_rows = orig_rows * ratio,
-        new_cols = orig_cols / ratio;
-    CuSubMatrix<BaseFloat> in_reshaped(in.Data(), new_rows, new_cols, new_cols),
-        out_reshaped(out->Data(), new_rows, new_cols, new_cols);
-    return Propagate(indexes, in_reshaped, &out_reshaped);
-  }
-
-  // From this point, we can assume that the num-cols of 'in' and 'out'
-  // equals block_dim_.
-
-  if (!test_mode_) {
-    // search in the comment above for FORWARD PASS to see what is being
-    // implemented here.
-    // if this takes too much time due to multiple different CUDA calls,
-    // we'll consider making a single kernel for some of it.
-    Memo *memo = new Memo;
-    int32 num_frames = in.NumRows(), dim = block_dim_;
-    memo->num_frames = num_frames;
-    memo->mean_uvar_scale.Resize(4, dim);
-    CuSubVector<BaseFloat> mean(memo->mean_uvar_scale, 0),
-        uvar(memo->mean_uvar_scale, 1),
-        scale(memo->mean_uvar_scale, 2);
-    mean.AddRowSumMat(1.0 / num_frames, in, 0.0);
-    uvar.AddDiagMat2(1.0 / num_frames, in, kTrans, 0.0);
-    scale.CopyFromVec(uvar);
-    // by applying this scale at this point, we save a multiply later on.
-    BaseFloat var_scale = 1.0 / (target_rms_ * target_rms_);
-    scale.AddVecVec(-var_scale, mean, mean, var_scale);
-    // at this point, 'scale' contains just the variance [divided by target-rms^2].
-    scale.ApplyFloor(0.0);
-    scale.Add(var_scale * epsilon_);
-    // Now 'scale' contains the variance floored to zero and then with epsilon
-    // added [both divided by target-rms^2].
-    scale.ApplyPow(-0.5);
-    // now 'scale' is the actual scale we'll use.
-
-    // the next command will do no work if out == in, for in-place propagation.
-    out->CopyFromMat(in);
-    out->AddVecToRows(-1.0, mean, 1.0);
-    out->MulColsVec(scale);
-    return static_cast<void*>(memo);
-  } else {
-    if (offset_.Dim() != block_dim_) {
-      if (count_ == 0)
-        KALDI_ERR << "Test mode set in BatchNormComponent, but no stats.";
-      else  // why was ComputeDerived() not called?
-        KALDI_ERR << "Code error in BatchNormComponent";
-    }
-    out->CopyFromMat(in);
-    out->MulColsVec(scale_);
-    out->AddVecToRows(1.0, offset_, 1.0);
-    return NULL;
-  }
-}
-
-void BatchNormComponent::Backprop(
-    const std::string &debug_info,
-    const ComponentPrecomputedIndexes *indexes,
-    const CuMatrixBase<BaseFloat> &in_value,  // unused
-    const CuMatrixBase<BaseFloat> &out_value,
-    const CuMatrixBase<BaseFloat> &out_deriv,
-    void *memo_in,
-    Component *to_update,  // unused
-    CuMatrixBase<BaseFloat> *in_deriv) const {
-
-  KALDI_ASSERT(SameDim(out_value, out_deriv) &&
-               SameDim(out_value, *in_deriv) &&
-               (out_value.NumCols() == dim_ ||
-                out_value.NumCols() == block_dim_));
-  if (out_value.NumCols() != block_dim_) {
-    // if block_dim_ != dim_, we recurse; this helps keep the main code
-    // simple.
-    KALDI_ASSERT(out_value.Stride() == out_value.NumCols() &&
-                 out_deriv.Stride() == out_deriv.NumCols() &&
-                 in_deriv->Stride() == in_deriv->NumCols());
-    int32 ratio = dim_ / block_dim_,
-        orig_rows = out_value.NumRows(),
-        orig_cols = out_value.NumCols(),
-        new_rows = orig_rows * ratio, new_cols = orig_cols / ratio;
-    CuSubMatrix<BaseFloat> out_value_reshaped(out_value.Data(), new_rows,
-                                              new_cols, new_cols),
-        out_deriv_reshaped(out_deriv.Data(), new_rows, new_cols, new_cols),
-        in_deriv_reshaped(in_deriv->Data(), new_rows, new_cols, new_cols);
-    // we'll never use in_value, so pass it in unchanged.
-    Backprop(debug_info, indexes, in_value,
-             out_value_reshaped, out_deriv_reshaped,
-             memo_in, to_update, &in_deriv_reshaped);
-    return;
-  }
-
-  Memo *memo = static_cast<Memo*>(memo_in);
-
-  if (!test_mode_) {
-    // search above for BACKWARD PASS for a comment describing the math.
-    KALDI_ASSERT(memo != NULL && "memo not passed into backprop");
-    int32 num_frames = memo->num_frames;
-    KALDI_ASSERT(out_value.NumRows() == num_frames);
-    CuSubVector<BaseFloat> temp(memo->mean_uvar_scale, 3),
-        scale(memo->mean_uvar_scale, 2);
-    temp.AddRowSumMat(-1.0 / num_frames, out_deriv, 0.0);
-    // the following does no work if in_deriv and out_deriv are the same matrix.
-    in_deriv->CopyFromMat(out_deriv);
-    in_deriv->AddVecToRows(1.0, temp);
-    in_deriv->MulColsVec(scale);
-    // at this point, 'in_deriv' contains:
-    // x_deriv_base(i) = (y'(i) - 1/n sum_i y'(i)) * scale
-    temp.AddDiagMatMat(-1.0 / (num_frames * target_rms_ * target_rms_),
-                       out_value, kTrans, *in_deriv, kNoTrans, 0.0);
-    // now, 'temp' contains the quantity which we described
-    // in the math as:
-    // alpha = - \sum_i y(i) x_deriv_base(i) / n.
-    // The factor 1 / (target_rms_ * target_rms_) comes from following
-    // this additional scaling factor through the math.  In the comment I said
-    // "we know that \sum_i y(i) y(i) = n".  Taking target-rms into account
-    // this becomes "we know that \sum_i y(i) y(i) = n * target-rms^2".
-    in_deriv->AddMatDiagVec(1.0, out_value, kNoTrans, temp, 1.0);
-    // At this point, in_deriv contains  x'(i) = x_deriv_base(i) + alpha y(i).
-
-  } else {
-    KALDI_ASSERT(offset_.Dim() == block_dim_);
-    // the next call does no work if they point to the same memory.
-    in_deriv->CopyFromMat(out_deriv);
-    in_deriv->MulColsVec(scale_);
-  }
-}
-
-void BatchNormComponent::StoreStats(
-    const CuMatrixBase<BaseFloat> &in_value,
-    const CuMatrixBase<BaseFloat> &out_value,
-    void *memo_in) {
-  // in test mode this component does not store stats, it doesn't provide the
-  // kStoresStats flag.
-  KALDI_ASSERT(!test_mode_);
-  KALDI_ASSERT(out_value.NumCols() == dim_ || out_value.NumCols() == block_dim_);
-  if (out_value.NumCols() != block_dim_) {
-    // if block_dim_ != dim_, we recurse; this helps keep the main code
-    // simple.
-    KALDI_ASSERT(out_value.Stride() == out_value.NumCols());
-    int32 ratio = dim_ / block_dim_,
-        orig_rows = out_value.NumRows(),
-        orig_cols = out_value.NumCols(),
-        new_rows = orig_rows * ratio, new_cols = orig_cols / ratio;
-    CuSubMatrix<BaseFloat> out_value_reshaped(out_value.Data(), new_rows,
-                                              new_cols, new_cols);
-    // we'll never use in_value, so just pass it in unchanged.
-    StoreStats(in_value, out_value_reshaped, memo_in);
-    return;
-  }
-
-  Memo *memo = static_cast<Memo*>(memo_in);
-  KALDI_ASSERT(out_value.NumRows() == memo->num_frames);
-
-  CuSubVector<BaseFloat> mean(memo->mean_uvar_scale, 0),
-      uvar(memo->mean_uvar_scale, 1);
-  KALDI_ASSERT(mean.Dim() == block_dim_ && memo->num_frames > 0);
-  BaseFloat num_frames = memo->num_frames;
-  if (stats_sum_.Dim() != block_dim_) {
-    stats_sum_.Resize(block_dim_);
-    stats_sumsq_.Resize(block_dim_);
-    KALDI_ASSERT(count_ == 0);
-  }
-  count_ += num_frames;
-  stats_sum_.AddVec(num_frames, mean, 1.0);
-  stats_sumsq_.AddVec(num_frames, uvar, 1.0);
-}
-
-void BatchNormComponent::Read(std::istream &is, bool binary) {
-  ExpectOneOrTwoTokens(is, binary, "<BatchNormComponent>", "<Dim>");
-  ReadBasicType(is, binary, &dim_);
-  ExpectToken(is, binary, "<BlockDim>");
-  ReadBasicType(is, binary, &block_dim_);
-  ExpectToken(is, binary, "<Epsilon>");
-  ReadBasicType(is, binary, &epsilon_);
-  ExpectToken(is, binary, "<TargetRms>");
-  ReadBasicType(is, binary, &target_rms_);
-  ExpectToken(is, binary, "<TestMode>");
-  ReadBasicType(is, binary, &test_mode_);
-  ExpectToken(is, binary, "<Count>");
-  ReadBasicType(is, binary, &count_);
-  ExpectToken(is, binary, "<StatsMean>");
-  stats_sum_.Read(is, binary);
-  ExpectToken(is, binary, "<StatsVar>");
-  stats_sumsq_.Read(is, binary);
-  stats_sumsq_.AddVecVec(1.0, stats_sum_, stats_sum_, 1.0);
-  stats_sum_.Scale(count_);
-  stats_sumsq_.Scale(count_);
-  ExpectToken(is, binary, "</BatchNormComponent>");
-  ComputeDerived();
-  Check();
-}
-
-void BatchNormComponent::Write(std::ostream &os, bool binary) const {
-  Check();
-  WriteToken(os, binary, "<BatchNormComponent>");
-  WriteToken(os, binary, "<Dim>");
-  WriteBasicType(os, binary, dim_);
-  WriteToken(os, binary, "<BlockDim>");
-  WriteBasicType(os, binary, block_dim_);
-  WriteToken(os, binary, "<Epsilon>");
-  WriteBasicType(os, binary, epsilon_);
-  WriteToken(os, binary, "<TargetRms>");
-  WriteBasicType(os, binary, target_rms_);
-  WriteToken(os, binary, "<TestMode>");
-  WriteBasicType(os, binary, test_mode_);
-  WriteToken(os, binary, "<Count>");
-  WriteBasicType(os, binary,  count_);
-  CuVector<BaseFloat> mean(stats_sum_), var(stats_sumsq_);
-  if (count_ != 0) {
-    mean.Scale(1.0 / count_);
-    var.Scale(1.0 / count_);
-    var.AddVecVec(-1.0, mean, mean, 1.0);
-  }
-  WriteToken(os, binary, "<StatsMean>");
-  mean.Write(os, binary);
-  WriteToken(os, binary, "<StatsVar>");
-  var.Write(os, binary);
-  WriteToken(os, binary, "</BatchNormComponent>");
-}
-
-void BatchNormComponent::Scale(BaseFloat scale) {
-  if (scale == 0) {
-    count_ = 0.0;
-    stats_sum_.SetZero();
-    stats_sumsq_.SetZero();
-  } else {
-    count_ *= scale;
-    stats_sum_.Scale(scale);
-    stats_sumsq_.Scale(scale);
-  }
-}
-
-
-void BatchNormComponent::Add(BaseFloat alpha, const Component &other_in) {
-  const BatchNormComponent *other =
-      dynamic_cast<const BatchNormComponent*>(&other_in);
-  count_ += alpha * other->count_;
-  stats_sum_.AddVec(alpha, other->stats_sum_);
-  stats_sumsq_.AddVec(alpha, other->stats_sumsq_);
-  // this operation might change offset_ and scale_, so we recompute them
-  // in this instance (but not in Scale()).
-  ComputeDerived();
-}
-
-void BatchNormComponent::ZeroStats() {
-  // We only zero the stats if we're not in test mode.  In test mode, this would
-  // be dangerous as the stats are the source for the transform, and zeroing
-  // them and then calling ComputeDerived() again would remove the transform
-  // parameters (offset_ and scale_).
-  if (!test_mode_) {
-    count_ = 0.0;
-    stats_sum_.SetZero();
-    stats_sumsq_.SetZero();
-  }
-}
-
 
 SumBlockComponent::SumBlockComponent(const SumBlockComponent &other):
     input_dim_(other.input_dim_), output_dim_(other.output_dim_),

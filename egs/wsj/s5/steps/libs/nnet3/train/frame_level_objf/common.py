@@ -9,6 +9,8 @@ deep neural network acoustic model and raw model (i.e., generic neural
 network without transition model) with frame-level objectives.
 """
 
+from __future__ import print_statement
+from __future__ import division
 import glob
 import logging
 import math
@@ -31,7 +33,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                      image_augmentation_opts,
                      run_opts, frames_per_eg=-1,
                      min_deriv_time=None, max_deriv_time_relative=None,
-                     use_multitask_egs=False,
+                     use_multitask_egs=False, train_opts="",
                      backstitch_training_scale=0.0, backstitch_training_interval=1):
     """ Called from train_one_iteration(), this model does one iteration of
     training with 'num_jobs' jobs, and writes files like
@@ -91,7 +93,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         archive_index = (k % num_archives) + 1
 
         if not chunk_level_training:
-            frame = (k / num_archives + archive_index) % frames_per_eg
+            frame = (k // num_archives + archive_index) % frames_per_eg
 
         cache_io_opts = (("--read-cache={dir}/cache.{iter}".format(dir=dir,
                                                                   iter=iter)
@@ -142,7 +144,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --backstitch-training-scale={backstitch_training_scale} \
                     --l2-regularize-factor={l2_regularize_factor} \
                     --backstitch-training-interval={backstitch_training_interval} \
-                    --srand={srand} \
+                    --srand={srand} {train_opts} \
                     {deriv_time_opts} "{raw_model}" "{egs_rspecifier}" \
                     {dir}/{next_iter}.{job}.raw""".format(
                 command=run_opts.command,
@@ -157,6 +159,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                 l2_regularize_factor=1.0/num_jobs,
                 backstitch_training_scale=backstitch_training_scale,
                 backstitch_training_interval=backstitch_training_interval,
+                train_opts=train_opts,
                 deriv_time_opts=" ".join(deriv_time_opts),
                 raw_model=raw_model_string,
                 egs_rspecifier=egs_rspecifier),
@@ -175,9 +178,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         run_opts, image_augmentation_opts=None,
                         frames_per_eg=-1,
                         min_deriv_time=None, max_deriv_time_relative=None,
-                        shrinkage_value=1.0, dropout_edit_string="",
-                        get_raw_nnet_from_am=True,
-                        use_multitask_egs=False,
+                        shrinkage_value=1.0, dropout_edit_string="",  train_opts="",
+                        get_raw_nnet_from_am=True, use_multitask_egs=False,
                         backstitch_training_scale=0.0, backstitch_training_interval=1,
                         compute_per_dim_accuracy=False):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
@@ -277,6 +279,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      max_deriv_time_relative=max_deriv_time_relative,
                      image_augmentation_opts=image_augmentation_opts,
                      use_multitask_egs=use_multitask_egs,
+                     train_opts=train_opts,
                      backstitch_training_scale=backstitch_training_scale,
                      backstitch_training_interval=backstitch_training_interval)
 
@@ -355,8 +358,8 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
-    lda_stat_files = map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
-                         range(1, num_lda_jobs + 1))
+    lda_stat_files = list(map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
+                              range(1, num_lda_jobs + 1)))
 
     common_lib.execute_command(
         """{command} {dir}/log/sum_transform_stats.log \
@@ -457,6 +460,29 @@ def compute_progress(dir, iter, egs_dir,
                     nnet3-show-progress --use-gpu=no {prev_model} {model} """
         ''.format(command=run_opts.command, dir=dir,
                   iter=iter, model=model, prev_model=prev_model))
+
+    if iter % 10 == 0 and iter > 0:
+        # Every 10 iters, print some more detailed information.
+        # full_progress.X.log contains some diagnostics of the difference in
+        # parameters, printed in the same format as from nnet3-info.
+        common_lib.background_command(
+            """{command} {dir}/log/full_progress.{iter}.log \
+            nnet3-show-progress --use-gpu=no --verbose=2 {prev_model} {model}
+        """.format(command=run_opts.command,
+                   dir=dir,
+                   iter=iter,
+                   model=model,
+                   prev_model=prev_model))
+        # full_info.X.log is just the nnet3-info of the model, with the --verbose=2
+        # option which includes stats on the singular values of the parameter matrices.
+        common_lib.background_command(
+            """{command} {dir}/log/full_info.{iter}.log \
+            nnet3-info --verbose=2 {model}
+        """.format(command=run_opts.command,
+                   dir=dir,
+                   iter=iter,
+                   model=model))
+
 
 
 def combine_models(dir, num_iters, models_to_combine, egs_dir,
@@ -564,7 +590,7 @@ def get_realign_iters(realign_times, num_iters,
                                      + realign_time * math.pow(num_jobs_final,
                                                                2))
             realign_iter = realign_iter - num_jobs_initial
-            realign_iter = realign_iter / (num_jobs_final - num_jobs_initial)
+            realign_iter = realign_iter // (num_jobs_final - num_jobs_initial)
             realign_iter = realign_iter * num_iters
         realign_iters.append(int(realign_iter))
 

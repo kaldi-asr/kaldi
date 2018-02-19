@@ -271,7 +271,7 @@ void UnitTestPreconditionDirectionsOnline() {
   if (Rand() % 3 == 0) zero = true;
   //else if (Rand() % 2 == 0) one = true;
 
-  CuVector<BaseFloat> row_prod1(N), row_prod2(N);
+  CuVector<BaseFloat> row_prod1(N);
   BaseFloat gamma1, gamma2;
   BaseFloat big_eig_factor = RandInt(1, 20);
   big_eig_factor = big_eig_factor * big_eig_factor;
@@ -301,14 +301,13 @@ void UnitTestPreconditionDirectionsOnline() {
 
     preconditioner1.PreconditionDirections(&Mcopy1, &row_prod1, &gamma1);
 
-    preconditioner2.PreconditionDirections(&Mcopy2, &row_prod2, &gamma2);
+    preconditioner2.PreconditionDirections(&Mcopy2, &gamma2);
 
     BaseFloat trace1 = TraceMatMat(M, M, kTrans),
         trace2 = TraceMatMat(Mcopy1, Mcopy1, kTrans);
     AssertEqual(trace1, trace2 * gamma2 * gamma2, 1.0e-02);
 
     AssertEqual(Mcopy1, Mcopy2);
-    AssertEqual<BaseFloat>(row_prod1, row_prod2, 1.0e-02);
     AssertEqual(gamma1, gamma2, 1.0e-02);
 
     // make sure positive definite

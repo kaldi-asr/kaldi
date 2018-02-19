@@ -68,7 +68,7 @@ except Exception as e:
 phone_depth_counts = dict()
 
 # note: -1 is for all phones put in one bucket.
-for p in [ -1 ] + phone_int2text.keys():
+for p in [ -1 ] + list(phone_int2text.keys()):
     phone_depth_counts[p] = defaultdict(int)
 
 total_frames = 0

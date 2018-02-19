@@ -218,6 +218,10 @@ def train(args, run_opts):
     arg_string = pprint.pformat(vars(args))
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
+    # Copy phones.txt from ali-dir to dir. Later, steps/nnet3/decode.sh will
+    # use it to check compatibility between training and decoding phone-sets.
+    shutil.copy('{0}/phones.txt'.format(args.ali_dir), args.dir)
+
     # Set some variables.
     num_jobs = common_lib.get_number_of_jobs(args.ali_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
@@ -410,6 +414,7 @@ def train(args, run_opts):
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
+                train_opts=' '.join(args.train_opts),
                 shrinkage_value=shrinkage_value,
                 minibatch_size_str=args.num_chunk_per_minibatch,
                 min_deriv_time=min_deriv_time,

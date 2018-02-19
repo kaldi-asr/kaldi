@@ -351,20 +351,23 @@ class Component {
   ///     although most components will have much more info.
   virtual std::string Info() const;
 
-  /// This virtual function when called by
-  //    -- an UpdatableComponent scales the parameters
+  /// This virtual function when called on
+  ///    -- an UpdatableComponent scales the parameters
   ///      by "scale" when called by an UpdatableComponent.
-  //    -- a Nonlinear component (or another component that
-  ///      stores stats, like BatchNormComponent-- it relates
+  ///    -- a Nonlinear component (or another component that
+  ///      stores stats, like BatchNormComponent)-- it relates
   ///      to scaling activation stats, not parameters.
+  /// Otherwise it will normally do nothing.
   virtual void Scale(BaseFloat scale) {};
 
   /// This virtual function when called by
   ///    -- an UpdatableComponent adds the parameters of
   ///      another updatable component, times some constant, to the current
   ///      parameters.
-  ///    -- a NonlinearComponent it relates to adding stats
-  /// Otherwise it should do nothing.
+  ///    -- a NonlinearComponent (or another component that stores
+  ///       stats, like BatchNormComponent)-- it relates to adding
+  ///       stats.
+  /// Otherwise it will normally do nothing.
   virtual void Add(BaseFloat alpha, const Component &other) {};
 
   /// This virtual function only needs to be overwritten by Components that
@@ -587,7 +590,7 @@ class UpdatableComponent: public Component {
 
        block-dim     Defaults to dim, but may be any nonzero divisor of dim.  It affects the
                      self-repair, which will be done while treating the input/output as
-                     repeating blocks of size 'block-dim' (e.g. blocks of filtes).  It allows
+                     repeating blocks of size 'block-dim' (e.g. blocks of filters).  It allows
                      us to do self-repair on the filter level in CNNs.
                      Currently this only makes a difference for RectifiedLinearComponent.
 */
@@ -640,6 +643,10 @@ class NonlinearComponent: public Component {
   void StoreStatsInternal(const CuMatrixBase<BaseFloat> &out_value,
                           const CuMatrixBase<BaseFloat> *deriv = NULL);
 
+  // This function may be called from child class members during backprop.  It
+  // stores the 'oderiv_sumsq_' stats.
+  void StoreBackpropStats(const CuMatrixBase<BaseFloat> &out_deriv);
+
 
   const NonlinearComponent &operator = (const NonlinearComponent &other); // Disallow.
 
@@ -655,7 +662,15 @@ class NonlinearComponent: public Component {
   CuVector<double> deriv_sum_; // stats of the derivative of the nonlinearity
                                // (only applicable to element-by-element
                                // nonlinearities, not Softmax.
+  // Count corresponding to the stats in 'value_sum_' and 'deriv_sum_'
   double count_;
+
+  CuVector<double> oderiv_sumsq_;  // Sum-square of the derivative of the
+                                   // objective function, that we're propagating
+                                   // back.  Accumulated during the backprop;
+                                   // used for diagnostics.
+  // Count corresponding to the stats in 'oderiv_sumsq_'.
+  double oderiv_count_;
 
   // some stats for self-repairing nonlinearities.
   double num_dims_self_repaired_;
@@ -665,9 +680,6 @@ class NonlinearComponent: public Component {
   BaseFloat self_repair_lower_threshold_;
   BaseFloat self_repair_upper_threshold_;
   BaseFloat self_repair_scale_;
-
-  // The mutex is used in UpdateStats, only for resizing vectors.
-  std::mutex mutex_;
 };
 
 } // namespace nnet3

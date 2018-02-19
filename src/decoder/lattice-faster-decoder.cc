@@ -3,6 +3,7 @@
 // Copyright 2009-2012  Microsoft Corporation  Mirko Hannemann
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
+//                2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -68,7 +69,7 @@ void LatticeFasterDecoder::InitDecoding() {
   active_toks_[0].toks = start_tok;
   toks_.Insert(start_state, start_tok);
   num_toks_++;
-  ProcessNonemitting(config_.beam);
+  ProcessNonemittingWrapper(config_.beam);
 }
 
 // Returns true if any kind of traceback is available (not necessarily from
@@ -84,8 +85,8 @@ bool LatticeFasterDecoder::Decode(DecodableInterface *decodable) {
   while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
     if (NumFramesDecoded() % config_.prune_interval == 0)
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-    BaseFloat cost_cutoff = ProcessEmitting(decodable);
-    ProcessNonemitting(cost_cutoff);
+    BaseFloat cost_cutoff = ProcessEmittingWrapper(decodable);
+    ProcessNonemittingWrapper(cost_cutoff);
   }
   FinalizeDecoding();
 
@@ -588,8 +589,8 @@ void LatticeFasterDecoder::AdvanceDecoding(DecodableInterface *decodable,
     if (NumFramesDecoded() % config_.prune_interval == 0) {
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     }
-    BaseFloat cost_cutoff = ProcessEmitting(decodable);
-    ProcessNonemitting(cost_cutoff);
+    BaseFloat cost_cutoff = ProcessEmittingWrapper(decodable);
+    ProcessNonemittingWrapper(cost_cutoff);
   }
 }
 
@@ -683,6 +684,7 @@ BaseFloat LatticeFasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
   }
 }
 
+template <typename FstType>
 BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   KALDI_ASSERT(active_toks_.size() > 0);
   int32 frame = active_toks_.size() - 1; // frame is the frame-index
@@ -707,6 +709,7 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
 
   BaseFloat cost_offset = 0.0; // Used to keep probabilities in a good
   // dynamic range.
+  const FstType &fst = dynamic_cast<const FstType&>(fst_);
 
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.  The only
@@ -715,15 +718,13 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
     StateId state = best_elem->key;
     Token *tok = best_elem->val;
     cost_offset = - tok->tot_cost;
-    for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+    for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
-      Arc arc = aiter.Value();
+      const Arc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // propagate..
-        arc.weight = Times(arc.weight,
-                           Weight(cost_offset -
-                                  decodable->LogLikelihood(frame, arc.ilabel)));
-        BaseFloat new_weight = arc.weight.Value() + tok->tot_cost;
+        BaseFloat new_weight = arc.weight.Value() + cost_offset - 
+            decodable->LogLikelihood(frame, arc.ilabel) + tok->tot_cost;
         if (new_weight + adaptive_beam < next_cutoff)
           next_cutoff = new_weight + adaptive_beam;
       }
@@ -744,7 +745,7 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
     StateId state = e->key;
     Token *tok = e->val;
     if (tok->tot_cost <= cur_cutoff) {
-      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+      for (fst::ArcIterator<FstType> aiter(fst, state);
            !aiter.Done();
            aiter.Next()) {
         const Arc &arc = aiter.Value();
@@ -775,12 +776,31 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   return next_cutoff;
 }
 
+template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::ConstFst<fst::StdArc>>(
+        DecodableInterface *decodable);
+template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::VectorFst<fst::StdArc>>(
+        DecodableInterface *decodable);
+template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::Fst<fst::StdArc>>(
+        DecodableInterface *decodable);
+
+BaseFloat LatticeFasterDecoder::ProcessEmittingWrapper(DecodableInterface *decodable) {
+  if (fst_.Type() == "const") {
+    return LatticeFasterDecoder::ProcessEmitting<fst::ConstFst<Arc>>(decodable);
+  } else if (fst_.Type() == "vector") {
+    return LatticeFasterDecoder::ProcessEmitting<fst::VectorFst<Arc>>(decodable);
+  } else {
+    return LatticeFasterDecoder::ProcessEmitting<fst::Fst<Arc>>(decodable);
+  }
+}
+
+template <typename FstType> 
 void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
   KALDI_ASSERT(!active_toks_.empty());
   int32 frame = static_cast<int32>(active_toks_.size()) - 2;
   // Note: "frame" is the time-index we just processed, or -1 if
   // we are processing the nonemitting transitions before the
   // first frame (called from InitDecoding()).
+  const FstType &fst = dynamic_cast<const FstType&>(fst_);
 
   // Processes nonemitting arcs for one frame.  Propagates within toks_.
   // Note-- this queue structure is is not very optimal as
@@ -812,7 +832,7 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
     // but since most states are emitting it's not a huge issue.
     tok->DeleteForwardLinks(); // necessary when re-visiting
     tok->links = NULL;
-    for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+    for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
       const Arc &arc = aiter.Value();
@@ -837,6 +857,22 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
   } // while queue not empty
 }
 
+template void LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<fst::StdArc>>(
+        BaseFloat cutoff);
+template void LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<fst::StdArc>>(
+        BaseFloat cutoff);
+template void LatticeFasterDecoder::ProcessNonemitting<fst::Fst<fst::StdArc>>(
+        BaseFloat cutoff);
+
+void LatticeFasterDecoder::ProcessNonemittingWrapper(BaseFloat cost_cutoff) {
+  if (fst_.Type() == "const") {
+    return LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+  } else if (fst_.Type() == "vector") {
+    return LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<Arc>>(cost_cutoff);
+  } else {
+    return LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+  }
+}
 
 void LatticeFasterDecoder::DeleteElems(Elem *list) {
   for (Elem *e = list, *e_tail; e != NULL; e = e_tail) {
