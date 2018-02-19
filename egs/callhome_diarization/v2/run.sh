@@ -75,7 +75,7 @@ if [ $stage -le 1 ]; then
   done
 
   # Create segments for ivector extraction for PLDA training data.
-  echo "0.01" > data/sre/frame_shift
+  echo "0.01" > data/sre_cmn/frame_shift
   diarization/vad_to_segments.sh --nj 40 --cmd "$train_cmd" \
     data/sre_cmn data/sre_cmn_segmented
 fi
