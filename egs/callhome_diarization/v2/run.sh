@@ -68,7 +68,7 @@ if [ $stage -le 1 ]; then
   cp data/train/{feats,vad}.scp data/sre/
   utils/fix_data_dir.sh data/sre
 
-  for name in train callhome1 callhome2; do
+  for name in sre callhome1 callhome2; do
     local/nnet3/xvector/prepare_feats.sh --nj 40 --cmd "$train_cmd" \
       data/$name data/${name}_cmn exp/${name}_cmn
       utils/fix_data_dir.sh data/${name}_cmn
