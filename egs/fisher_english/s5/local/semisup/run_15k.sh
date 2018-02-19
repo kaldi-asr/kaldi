@@ -3,15 +3,15 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
-# This script demonstrates semi-supervised training using 15 hours of 
+# This script demonstrates semi-supervised training using 15 hours of
 # supervised data and 250 hours of unsupervised data.
 # We assume the supervised data is in data/train_sup and unsupervised data
-# is in data/train_unsup100k_250k. 
+# is in data/train_unsup100k_250k.
 # Further, for LM training we assume there is data/train/text, from which
 # we will exclude the utterances contained in the unsupervised set.
 
 . ./cmd.sh
-. ./path.sh 
+. ./path.sh
 
 set -o pipefail
 exp_root=exp/semisup_15k
@@ -72,14 +72,14 @@ steps/train_sat.sh --cmd "$train_cmd" \
 )&
 
 ###############################################################################
-# Prepare semi-supervised train set 
+# Prepare semi-supervised train set
 ###############################################################################
 
 utils/combine_data.sh data/semisup15k_100k_250k \
   data/train_sup15k data/train_unsup100k_250k || exit 1
 
 ###############################################################################
-# Train LM on all the text in data/train/text, but excluding the 
+# Train LM on all the text in data/train/text, but excluding the
 # utterances in the unsupervised set
 ###############################################################################
 
@@ -113,7 +113,7 @@ for lang_dir in data/lang_test_poco_ex250k; do
   cp -rT data/lang_unk ${lang_dir}_unk
   cp ${lang_dir}/G.fst ${lang_dir}_unk/G.fst
   cp -rT data/lang_unk ${lang_dir}_unk_big
-  cp ${lang_dir}_big/G.carpa ${lang_dir}_unk_big/G.carpa; 
+  cp ${lang_dir}_big/G.carpa ${lang_dir}_unk_big/G.carpa;
 done
 
 ###############################################################################
@@ -130,9 +130,16 @@ local/semisup/chain/run_tdnn.sh \
   --hidden-dim 500 \
   --gmm tri3 --exp-root $exp_root || exit 1
 
+# WER on dev                27.75
+# WER on test               27.24
+# Final train prob          -0.0959
+# Final valid prob          -0.1823
+# Final train prob (xent)   -1.9246
+# Final valid prob (xent)   -2.1873
+
 ###############################################################################
-# Semi-supervised training using 15 hours supervised data and 
-# 250 hours unsupervised data. We use i-vector extractor, tree, lattices 
+# Semi-supervised training using 15 hours supervised data and
+# 250 hours unsupervised data. We use i-vector extractor, tree, lattices
 # and seed chain system from the previous stage.
 ###############################################################################
 
@@ -147,8 +154,19 @@ local/semisup/chain/run_tdnn_50k_semisupervised.sh \
   --tdnn-affix _semisup_1a \
   --exp-root $exp_root --stage 0 || exit 1
 
+# WER on dev                          21.31
+# WER on test                         21.00
+# Final output-0 train prob           -0.1577
+# Final output-0 valid prob           -0.1761
+# Final output-0 train prob (xent)    -1.4744
+# Final output-0 valid prob (xent)    -1.5293
+# Final output-1 train prob           -0.7305
+# Final output-1 valid prob           -0.7319
+# Final output-1 train prob (xent)    -1.1681
+# Final output-1 valid prob (xent)    -1.2871
+
 ###############################################################################
-# Oracle system trained on combined 300 hours including both supervised and 
+# Oracle system trained on combined 300 hours including both supervised and
 # unsupervised sets. We use i-vector extractor, tree, and GMM trained
 # on only the supervised for fair comparison to semi-supervised experiments.
 ###############################################################################
@@ -161,3 +179,10 @@ local/semisup/chain/run_tdnn.sh \
   --tdnn-affix 1a_oracle \
   --gmm tri3 --exp-root $exp_root \
   --stage 9 || exit 1
+
+# WER on dev                          17.92
+# WER on test                         17.95
+# Final output train prob             -0.1145
+# Final output valid prob             -0.1370
+# Final output train prob (xent)      -1.7449
+# Final output valid prob (xent)      -1.7785

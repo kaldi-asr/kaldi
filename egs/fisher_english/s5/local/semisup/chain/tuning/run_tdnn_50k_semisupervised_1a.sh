@@ -11,7 +11,7 @@
 
 # We use the combined data for i-vector extractor training.
 # We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
-# unsupervised data to create LM for decoding. Rescoring is done with 
+# unsupervised data to create LM for decoding. Rescoring is done with
 # a larger 4-gram LM.
 # This script uses phone LM to model UNK.
 # This script uses the same tree as that for the seed model.
@@ -25,6 +25,26 @@
 # LM for decoding unsupervised data: 4gram
 # Supervision: Naive split lattices
 
+# Supervised training results         train_sup15k        train_sup50k
+# WER on dev                          27.75               21.41
+# WER on test                         27.24               21.03
+# Final output train prob             -0.0959             -0.1035
+# Final output valid prob             -0.1823             -0.1667
+# Final output train prob (xent)      -1.9246             -1.5926
+# Final output valid prob (xent)      -2.1873             -1.7990
+
+# Semi-supervised training            train_sup15k        train_sup50k
+# WER on dev                          21.31               18.98
+# WER on test                         21.00               18.85
+# Final output-0 train prob           -0.1577             -0.1381
+# Final output-0 valid prob           -0.1761             -0.1723
+# Final output-0 train prob (xent)    -1.4744             -1.3676
+# Final output-0 valid prob (xent)    -1.5293             -1.4589
+# Final output-1 train prob           -0.7305             -0.7671
+# Final output-1 valid prob           -0.7319             -0.7714
+# Final output-1 train prob (xent)    -1.1681             -1.1480
+# Final output-1 valid prob (xent)    -1.2871             -1.2382
+
 set -u -e -o pipefail
 
 stage=0   # Start from -1 for supervised seed system training
@@ -36,7 +56,7 @@ exp_root=exp/semisup_50k
 chain_affix=_semi50k_100k_250k    # affix for chain dir
 tdnn_affix=_semisup_1a
 
-# Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be 
+# Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be
 # present
 supervised_set=train_sup50k
 unsupervised_set=train_unsup100k_250k
@@ -59,7 +79,7 @@ unsup_egs_opts=  # Extra options to pass to unsupervised egs creation
 # Neural network opts
 xent_regularize=0.1
 
-decode_iter=  # Iteration to decode with 
+decode_iter=  # Iteration to decode with
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -68,7 +88,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
-# The following can be replaced with the versions that do not model 
+# The following can be replaced with the versions that do not model
 # UNK using phone LM. $sup_lat_dir should also ideally be changed.
 unsup_decode_lang=data/lang_test_poco_ex250k_unk
 unsup_decode_graph_affix=_poco_ex250k_unk
@@ -121,7 +141,7 @@ if [ $stage -le 3 ]; then
     $ivector_root_dir/ivectors_${unsupervised_set_perturbed}_hires || exit 1
 fi
 
-# Decode unsupervised data and write lattices in non-compact 
+# Decode unsupervised data and write lattices in non-compact
 # undeterminized format
 # Set --skip-scoring to false in order to score the unsupervised data
 if [ $stage -le 4 ]; then
@@ -144,7 +164,7 @@ if [ $stage -le 5 ]; then
   ln -sf ../final.mdl $sup_chain_dir/decode_${unsupervised_set_perturbed}_big/final.mdl
 fi
 
-# Get best path alignment and lattice posterior of best path alignment to be 
+# Get best path alignment and lattice posterior of best path alignment to be
 # used as frame-weights in lattice-based training
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
@@ -162,7 +182,7 @@ cmvn_opts=$(cat $sup_chain_dir/cmvn_opts) || exit 1
 diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree and $sup_chain_dir/tree differ"; exit 1; }
 
 # Uncomment the following lines if you need to build new tree using both
-# supervised and unsupervised data. This may help if amount of 
+# supervised and unsupervised data. This may help if amount of
 # supervised data used to train the seed system tree is very small.
 # unsupervised data
 
@@ -172,7 +192,7 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 #   echo "$0: $treedir/final.mdl exists. Remove it and run again."
 #   exit 1
 # fi
-# 
+#
 # if [ $stage -le 9 ]; then
 #   # This is usually 3 for chain systems.
 #   echo $frame_subsampling_factor > \
@@ -197,7 +217,7 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 #
 # sup_tree_dir=$treedir   # Use the new tree dir for further steps
 
-# Train denominator FST using phone alignments from 
+# Train denominator FST using phone alignments from
 # supervised and unsupervised data
 if [ $stage -le 10 ]; then
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
@@ -244,7 +264,7 @@ if [ $stage -le 11 ]; then
   # similar in the xent and regular final layers.
   relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=725 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
-  
+
   # We use separate outputs for supervised and unsupervised data
   # so we can properly track the train and valid objectives.
 
@@ -304,9 +324,9 @@ fi
 unsup_frames_per_eg=150  # Using a frames-per-eg of 150 for unsupervised data
                          # was found to be better than allowing smaller chunks
                          # (160,140,110,80) like for supervised system
-lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when 
+lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when
                       # creating numerator supervision
-lattice_prune_beam=4.0  # beam for pruning the lattices prior to getting egs 
+lattice_prune_beam=4.0  # beam for pruning the lattices prior to getting egs
                         # for unsupervised data
 tolerance=1   # frame-tolerance for chain training
 

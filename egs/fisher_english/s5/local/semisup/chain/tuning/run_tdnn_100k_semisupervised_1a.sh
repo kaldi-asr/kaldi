@@ -9,9 +9,9 @@
 # Vimal Manohar, Hossein Hadian, Daniel Povey, Sanjeev Khudanpur, ICASSP 2018
 # http://www.danielpovey.com/files/2018_icassp_semisupervised_mmi.pdf
 
-# This version of script uses only supervised data for i-vector extractor 
+# This version of script uses only supervised data for i-vector extractor
 # training as against using the combined data as in run_tdnn_50k_semisupervised.sh.
-# We use 3-gram LM trained on 100 hours of supervised data. We do not have 
+# We use 3-gram LM trained on 100 hours of supervised data. We do not have
 # enough data to do 4-gram LM rescoring as in run_tdnn_50k_semisupervised.sh.
 # This script uses the same tree as that for the seed model.
 
@@ -23,6 +23,18 @@
 # LM for decoding unsupervised data: 4gram
 # Supervision: Naive split lattices
 
+# train_set                           train_sup
+# WER on dev                          18.70
+# WER on test                         18.18
+# Final output-0 train prob           -0.1345
+# Final output-0 valid prob           -0.1547
+# Final output-0 train prob (xent)    -1.3683
+# Final output-0 valid prob (xent)    -1.4077
+# Final output-1 train prob           -0.6856
+# Final output-1 valid prob           -0.6815
+# Final output-1 train prob (xent)    -1.1224
+# Final output-1 valid prob (xent)    -1.2218
+
 set -u -e -o pipefail
 
 stage=0   # Start from -1 for supervised seed system training
@@ -32,9 +44,9 @@ test_nj=50
 exp_root=exp/semisup_100k
 
 chain_affix=    # affix for chain dir
-tdnn_affix=_semisup_1a  # affix for semi-supervised chain system 
+tdnn_affix=_semisup_1a  # affix for semi-supervised chain system
 
-# Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be 
+# Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be
 # present
 supervised_set=train_sup
 unsupervised_set=train_unsup100k_250k
@@ -57,7 +69,7 @@ unsup_egs_opts=  # Extra options to pass to unsupervised egs creation
 # Neural network opts
 xent_regularize=0.1
 
-decode_iter=  # Iteration to decode with 
+decode_iter=  # Iteration to decode with
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -66,7 +78,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
-# The following can be replaced with the versions that model 
+# The following can be replaced with the versions that model
 # UNK using phone LM. $sup_lat_dir should also ideally be changed.
 unsup_decode_lang=data/lang_test_poco_sup100k_unk
 unsup_decode_graph_affix=_poco_sup100k_unk
@@ -131,7 +143,7 @@ if [ $stage -le 3 ]; then
     $ivector_root_dir/ivectors_${unsupervised_set_perturbed}_hires || exit 1
 fi
 
-# Decode unsupervised data and write lattices in non-compact 
+# Decode unsupervised data and write lattices in non-compact
 # undeterminized format
 # Set --skip-scoring to false in order to score the unsupervised data
 if [ $stage -le 5 ]; then
@@ -143,7 +155,7 @@ if [ $stage -le 5 ]; then
             $graphdir data/${unsupervised_set_perturbed}_hires $sup_chain_dir/decode_${unsupervised_set_perturbed}
 fi
 
-# Get best path alignment and lattice posterior of best path alignment to be 
+# Get best path alignment and lattice posterior of best path alignment to be
 # used as frame-weights in lattice-based training
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
@@ -161,7 +173,7 @@ cmvn_opts=$(cat $sup_chain_dir/cmvn_opts) || exit 1
 diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree and $sup_chain_dir/tree differ"; exit 1; }
 
 # Uncomment the following lines if you need to build new tree using both
-# supervised and unsupervised data. This may help if amount of 
+# supervised and unsupervised data. This may help if amount of
 # supervised data used to train the seed system tree is very small.
 # unsupervised data
 
@@ -171,7 +183,7 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 #   echo "$0: $treedir/final.mdl exists. Remove it and run again."
 #   exit 1
 # fi
-# 
+#
 # if [ $stage -le 9 ]; then
 #   # This is usually 3 for chain systems.
 #   echo $frame_subsampling_factor > \
@@ -196,7 +208,7 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 #
 # sup_tree_dir=$treedir   # Use the new tree dir for further steps
 
-# Train denominator FST using phone alignments from 
+# Train denominator FST using phone alignments from
 # supervised and unsupervised data
 if [ $stage -le 10 ]; then
   steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
@@ -243,7 +255,7 @@ if [ $stage -le 11 ]; then
   # similar in the xent and regular final layers.
   relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=725 target-rms=0.5
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
-  
+
   # We use separate outputs for supervised and unsupervised data
   # so we can properly track the train and valid objectives.
 
@@ -303,9 +315,9 @@ fi
 unsup_frames_per_eg=150  # Using a frames-per-eg of 150 for unsupervised data
                          # was found to be better than allowing smaller chunks
                          # (160,140,110,80) like for supervised system
-lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when 
+lattice_lm_scale=0.5  # lm-scale for using the weights from unsupervised lattices when
                       # creating numerator supervision
-lattice_prune_beam=4.0  # beam for pruning the lattices prior to getting egs 
+lattice_prune_beam=4.0  # beam for pruning the lattices prior to getting egs
                         # for unsupervised data
 tolerance=1   # frame-tolerance for chain training
 

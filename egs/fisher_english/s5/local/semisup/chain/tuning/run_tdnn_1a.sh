@@ -6,9 +6,27 @@
 set -e
 set -o pipefail
 
-# This is fisher chain recipe for training a model on a subset of around 
+# This is fisher chain recipe for training a model on a subset of around
 # 100-300 hours of supervised data.
 # This system uses phone LM to model UNK.
+
+# train_set                 train_sup15k           train_sup50k           train_sup
+# ivector_train_set         semisup15k_100k_250k   semisup50k_100k_250k   train_sup
+# WER on dev                27.75                  21.41                  19.23
+# WER on test               27.24                  21.03                  19.01
+# Final train prob          -0.0959                -0.1035                -0.1224
+# Final valid prob          -0.1823                -0.1667                -0.1503
+# Final train prob (xent)   -1.9246                -1.5926                -1.6454
+# Final valid prob (xent)   -2.1873                -1.7990                -1.7107
+
+# train_set                           semisup15k_100k_250k    semisup50k_100k_250k    semisup100k_250k
+# ivector_train_set                   semisup15k_100k_250k    semisup50k_100k_250k    train_sup
+# WER on dev                          17.92                   17.55                   16.97
+# WER on test                         17.95                   17.72                   17.03
+# Final output train prob             -0.1145                 -0.1155                 -0.1196
+# Final output valid prob             -0.1370                 -0.1510                 -0.1469
+# Final output train prob (xent)      -1.7449                 -1.7458                 -1.5487
+# Final output valid prob (xent)      -1.7785                 -1.9045                 -1.6360
 
 # configs for 'chain'
 stage=0

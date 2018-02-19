@@ -139,6 +139,13 @@ local/semisup/chain/run_tdnn.sh \
   --tdnn-affix 1a --tree-affix bi_a \
   --gmm tri4a --exp-root $exp_root || exit 1
 
+# WER on dev                21.41
+# WER on test               21.03
+# Final train prob          -0.1035
+# Final valid prob          -0.1667
+# Final train prob (xent)   -1.5926
+# Final valid prob (xent)   -1.7990
+
 ###############################################################################
 # Semi-supervised training using 50 hours supervised data and 
 # 250 hours unsupervised data. We use i-vector extractor, tree, lattices 
@@ -156,6 +163,17 @@ local/semisup/chain/run_tdnn_50k_semisupervised.sh \
   --tdnn-affix _semisup_1a \
   --exp-root $exp_root --stage 0 || exit 1
 
+# WER on dev                          18.98
+# WER on test                         18.85
+# Final output-0 train prob           -0.1381
+# Final output-0 valid prob           -0.1723
+# Final output-0 train prob (xent)    -1.3676
+# Final output-0 valid prob (xent)    -1.4589
+# Final output-1 train prob           -0.7671
+# Final output-1 valid prob           -0.7714
+# Final output-1 train prob (xent)    -1.1480
+# Final output-1 valid prob (xent)    -1.2382
+
 ###############################################################################
 # Oracle system trained on combined 300 hours including both supervised and 
 # unsupervised sets. We use i-vector extractor, tree, and GMM trained
@@ -170,3 +188,10 @@ local/semisup/chain/run_tdnn.sh \
   --tdnn-affix 1a_oracle \
   --gmm tri4a --exp-root $exp_root \
   --stage 9 || exit 1
+
+# WER on dev                          17.55
+# WER on test                         17.72
+# Final output train prob             -0.1155
+# Final output valid prob             -0.1510
+# Final output train prob (xent)      -1.7458
+# Final output valid prob (xent)      -1.9045
