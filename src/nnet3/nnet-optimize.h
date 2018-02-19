@@ -39,6 +39,7 @@ struct NnetOptimizeOptions {
   bool propagate_in_place;
   bool backprop_in_place;
   bool optimize_row_ops;
+  bool split_row_ops;
   bool extend_matrices;
   bool convert_addition;
   bool remove_assignments;
@@ -63,6 +64,7 @@ struct NnetOptimizeOptions {
       propagate_in_place(true),
       backprop_in_place(true),
       optimize_row_ops(true),
+      split_row_ops(true),
       extend_matrices(true),
       convert_addition(true),
       remove_assignments(true),
@@ -95,6 +97,10 @@ struct NnetOptimizeOptions {
     opts->Register("optimize-row-ops", &optimize_row_ops, "Set to false to "
                    "disable certain optimizations that act on operations of "
                    "type *Row*.");
+    opts->Register("split-row-ops", &split_row_ops, "Set to false to disable "
+                   "an optimization that may replace some operations of type "
+                   "kCopyRowsMulti or kAddRowsMulti with up to two simpler "
+                   "operations.");
     opts->Register("convert-addition", &convert_addition, "Set to false to "
                    "disable the optimization that converts Add commands into "
                    "Copy commands wherever possible.");

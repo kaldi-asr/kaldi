@@ -1809,19 +1809,7 @@ class ModelCollapser {
 void CollapseModel(const CollapseModelConfig &config,
                    Nnet *nnet) {
   ModelCollapser c(config, nnet);
-  std::string info_before_collapse;
-  if (GetVerboseLevel() >= 4)
-    info_before_collapse = nnet->Info();
   c.Collapse();
-  if (GetVerboseLevel() >= 4) {
-    std::string info_after_collapse = nnet->Info();
-    if (info_after_collapse != info_before_collapse) {
-      KALDI_VLOG(4) << "Collapsing model: info before collapse was: "
-                    << info_before_collapse
-                    << ", info after collapse was:"
-                    << info_after_collapse;
-    }
-  }
 }
 
 bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
