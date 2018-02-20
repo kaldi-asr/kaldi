@@ -39,7 +39,6 @@ void ConvertLatticeToPdfLabels(
   StateId num_states = ifst.NumStates();
   for (StateId s = 0; s < num_states; s++) {
     StateId news = ofst->AddState();
-    assert(news == s);
   }
   ofst->SetStart(ifst.Start());
   for (StateId s = 0; s < num_states; s++) {
@@ -90,14 +89,22 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-to-fst  ark:1.lats ark:1.fsts\n";
       
     ParseOptions po(usage);
-    po.Register("read-compact", &read_compact, "Read compact lattice");
+    po.Register("read-compact", &read_compact, 
+                "Read compact lattice. Make this false to convert a "
+                "non-compact lattice to an FST. --project-input or --project-output "
+                "can be used to get FSA transition-ids or word labels as labels."
+                "--convert-to-pdf-labels can be used to convert transition-ids to pdf-id+1");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("lm-scale", &lm_scale, "Scaling factor for graph/lm costs");
     po.Register("rm-eps", &rm_eps, "Remove epsilons in resulting FSTs (in lazy way; may not remove all)");
     po.Register("convert-to-pdf-labels", &convert_to_pdf_labels,
-                "Convert lattice to pdf labels");
+                "Convert lattice to FST with pdf (1-indexed i.e. pdf_id+1) labels "
+                "at the input side; "
+                "applicable only when --read-compact=false. "
+                "Also supply --project-input to get FSA of pdf_id+1 labels.");
     po.Register("trans-model", &trans_model,
-                "Transition model");
+                "Transition model. This is only required if "
+                "--convert-to-pdf-labels is true");
     po.Register("project-input", &project_input,
                 "Project to input labels (transition-ids); applicable only "
                 "when --read-compact=false");
@@ -143,12 +150,7 @@ int main(int argc, char *argv[]) {
           ConvertLattice(clat, &lat); // convert to non-compact form.. won't introduce
           // extra states because already removed alignments.
           
-          if (convert_to_pdf_labels) {
-            ConvertLatticeToPdfLabels(tmodel, lat, &fst); // this adds up the (lm,acoustic) costs to get
-            // the normal (tropical) costs.
-          } else {
-            ConvertLattice(lat, &fst);
-          }
+          ConvertLattice(lat, &fst);
 
           Project(&fst, fst::PROJECT_OUTPUT); // Because in the standard compact_lattice format,
           // the words are on the output, and we want the word labels.

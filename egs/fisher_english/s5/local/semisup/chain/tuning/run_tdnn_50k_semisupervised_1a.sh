@@ -286,10 +286,10 @@ right_context=$model_right_context
 left_context_initial=0
 right_context_final=0
 
-egs_left_context=`perl -e "print int($left_context + $frame_subsampling_factor / 2)"`
-egs_right_context=`perl -e "print int($right_context + $frame_subsampling_factor / 2)"`
-egs_left_context_initial=`perl -e "print int($left_context_initial + $frame_subsampling_factor / 2)"`
-egs_right_context_final=`perl -e "print int($right_context_final + $frame_subsampling_factor / 2)"`
+egs_left_context=$(perl -e "print int($left_context + $frame_subsampling_factor / 2)")
+egs_right_context=$(perl -e "print int($right_context + $frame_subsampling_factor / 2)")
+egs_left_context_initial=$(perl -e "print int($left_context_initial + $frame_subsampling_factor / 2)")
+egs_right_context_final=$(perl -e "print int($right_context_final + $frame_subsampling_factor / 2)")
 
 if [ -z "$sup_egs_dir" ]; then
   sup_egs_dir=$dir/egs_${supervised_set_perturbed}
@@ -370,7 +370,8 @@ if [ $stage -le 14 ]; then
 fi
 
 if [ $train_stage -le -4 ]; then
-  train_stage=-4
+  # This is to skip stages of den-fst creation, which was already done.
+  train_stage=-4  
 fi
 
 if [ $stage -le 15 ]; then

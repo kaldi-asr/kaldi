@@ -4,18 +4,23 @@
 #           2017  Vimal Manohar
 # Apache 2.0
 
-# This script rescores non-compact undeterminized lattices with the 
+# This script rescores non-compact, (possibly) undeterminized lattices with the 
 # ConstArpaLm format language model.
 # This is similar to steps/lmrescore_const_arpa.sh, but expects 
-# undeterminized non-compact lattices as input.
+# non-compact lattices as input.
+# This works by first determinizing the lattice and rescoring it with 
+# const ARPA LM, followed by composing it with the original lattice to add the 
+# new LM scores.
 
 # Begin configuration section.
 cmd=run.pl
 skip_scoring=false
 stage=1
 scoring_opts=
-write_compact=true
-acwt=0.1
+write_compact=true   # If set to false, writes lattice in non-compact format.
+                     # This retains the acoustic scores on the arcs of the lattice.
+                     # Useful for another stage of LM rescoring.
+acwt=0.1  # used for pruning and determinization
 beam=8.0  # beam used in determinization
 
 # End configuration section.

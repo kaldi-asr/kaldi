@@ -119,7 +119,7 @@ def get_args():
                         help="""max number of archives used to generate egs.*.scp.
                         Each archive contains egs for one job of one iteration
                         of training. Limiting the number of archives
-                        results in more frames in each iterator of training.
+                        results in more frames in each iteration of training.
                         Set this to 1 to create a single archive for train and
                         validation diagnostic sets.""")
     parser.add_argument("--seed", type=int, default=1,

@@ -32,8 +32,15 @@ extra_left_context_initial=-1
 extra_right_context_final=-1
 online_ivector_dir=
 minimize=false
-word_determinize=true
-write_compact=true
+word_determinize=true   # If set to false, then output lattice retains alternate paths 
+                        # of a sequence of words (with alternate pronunciations).
+                        # This is useful for generation of semi-supervised training 
+                        # supervision and frame-level confidences.
+write_compact=true   # If set to false, then writes the lattice in non-compact format,
+                     # retaining the acoustic scores on each arc. This is 
+                     # required to be false for LM rescoring undeterminized 
+                     # lattices (when --word-determinize is false)
+                     # Useful for semi-supervised training with rescored lattices.
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
