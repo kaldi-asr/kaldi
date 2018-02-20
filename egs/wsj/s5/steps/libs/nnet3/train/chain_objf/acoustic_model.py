@@ -322,7 +322,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
-                     truncate_deriv_weights=truncate_deriv_weights,
                      run_opts=run_opts, train_opts=train_opts,
                      # linearly increase backstitch_training_scale during the
                      # first few iterations (hard-coded as 15)
