@@ -3,7 +3,14 @@
 # Apache 2.0.
 set -e
 stage=0
-aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data
+# Set this to somewhere where you want to put your aspire data, or where
+# someone else has already put it.  You'll want to change this
+# if you're not on the CLSP grid.
+aspire_data=
+case $(hostname -d) in
+  clsp.jhu.edu) aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data ;; # JHU
+esac
+
 mean_rms=0.0417 # determined from the mean rms value of data/train_rvb/mean_rms
 . ./path.sh # Needed for KALDI_ROOT
 
@@ -16,6 +23,7 @@ if [ ! -f $aspire_data/my_english.glm ]; then
   echo "Expected to find the glm file, provided in ASpIRE challenge."
   echo "Please provide the glm file in $aspire_data." && exit 1;
 fi
+
 # (1) Get transcripts in one file, and clean them up ..
 tmpdir=`pwd`/data/local/data
 mkdir -p $tmpdir
@@ -25,7 +33,7 @@ if [ $stage -le 0 ]; then
   find $dev_audio/ -name '*.wav'  > $tmpdir/wav.flist
   find $test_audio/ -name '*.wav'  > $tmpdir/wav_test.flist
 
-  n=`cut -d' ' -f1 $(cat $tmpdir/transcripts.flist) | uniq | wc -l`
+  n=`awk '{print $1}' $(cat $tmpdir/transcripts.flist) | uniq | wc -l`
   if [ $n -ne 30 ]; then
     echo "Expected to find 30 transcript files in the aspire_single_dev_transcript directory, found $n"
     exit 1;
@@ -118,7 +126,7 @@ for line in sys.stdin.readlines():
   cp $aspire_data/my_english.glm $dev
 fi
 
-# prepare the eval and test data
+# prepare test data
 if [ $stage -le 4 ]; then
   for dataset in test ; do
     test=data/${dataset}_aspire
