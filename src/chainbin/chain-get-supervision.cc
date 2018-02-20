@@ -33,6 +33,7 @@ static bool ProcessSupervision(const TransitionModel &trans_model,
                                const ContextDependencyInterface &ctx_dep,
                                const ProtoSupervision &proto_sup,
                                const std::string &key,
+                               const BaseFloat weight,
                                SupervisionWriter *supervision_writer) {
   Supervision supervision;
   if (!ProtoSupervisionToSupervision(ctx_dep, trans_model,
@@ -44,10 +45,26 @@ static bool ProcessSupervision(const TransitionModel &trans_model,
   if (RandInt(0, 10) == 0)
     supervision.Check(trans_model);
 
+  supervision.weight *= weight; // scaling probably makes more sense semantically
+                                // despite the weight is by default 1.0
   supervision_writer->Write(key, supervision);
   return true;
 }
 
+
+// This is a safe wrapper to return either the default weight or get the
+// utterance-specifc weight (and report warning if that fails)
+static BaseFloat GetUtteranceWeight(const std::string &key,
+                                    RandomAccessBaseFloatReader &reader) {
+  BaseFloat weight = 1.0;
+  if (reader.IsOpen()) {
+    if (reader.HasKey(key))
+      weight = reader.Value(key);
+    else
+      KALDI_WARN << "Error retrieving utterance weight for " << key;
+  }
+  return weight;
+}
 
 } // namespace chain
 } // namespace kaldi
@@ -84,15 +101,22 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4) {
+    if ((po.NumArgs() < 4) || (po.NumArgs() > 5))  {
       po.PrintUsage();
       exit(1);
     }
 
     std::string tree_rxfilename = po.GetArg(1),
         trans_model_rxfilename = po.GetArg(2),
-        phone_durs_or_lat_rspecifier = po.GetArg(3),
-        supervision_wspecifier = po.GetArg(4);
+        phone_durs_or_lat_rspecifier = po.GetArg(3);
+    std::string weight_rspecifier,
+        supervision_wspecifier;
+    if (po.NumArgs() == 4) {
+      supervision_wspecifier = po.GetArg(4);
+    } else {
+      weight_rspecifier = po.GetArg(4);
+      supervision_wspecifier = po.GetArg(5);
+    }
 
     TransitionModel trans_model;
     ReadKaldiObject(trans_model_rxfilename, &trans_model);
@@ -102,12 +126,17 @@ int main(int argc, char *argv[]) {
 
     SupervisionWriter supervision_writer(supervision_wspecifier);
 
+    RandomAccessBaseFloatReader weight_reader(weight_rspecifier);
+
     int32 num_utts_done = 0, num_utts_error = 0;
+    BaseFloat weight = 1.0;
 
     if (lattice_input) {
       SequentialCompactLatticeReader clat_reader(phone_durs_or_lat_rspecifier);
       for (; !clat_reader.Done(); clat_reader.Next()) {
         std::string key = clat_reader.Key();
+
+        weight = GetUtteranceWeight(key, weight_reader);
         const CompactLattice &clat = clat_reader.Value();
         ProtoSupervision proto_supervision;
         bool ans = PhoneLatticeToProtoSupervision(sup_opts, clat,
@@ -118,7 +147,8 @@ int main(int argc, char *argv[]) {
           continue;
         }
         if (ProcessSupervision(trans_model, ctx_dep,
-                               proto_supervision, key, &supervision_writer))
+                               proto_supervision, key, weight,
+                               &supervision_writer))
           num_utts_done++;
         else
           num_utts_error++;
@@ -130,11 +160,15 @@ int main(int argc, char *argv[]) {
         std::string key = phone_and_dur_reader.Key();
         const std::vector<std::pair<int32,int32> > &ali =
             phone_and_dur_reader.Value();
+
+        weight = GetUtteranceWeight(key, weight_reader);
+
         ProtoSupervision proto_supervision;
         AlignmentToProtoSupervision(sup_opts, ali,
                                     &proto_supervision);
         if (ProcessSupervision(trans_model, ctx_dep,
-                               proto_supervision, key, &supervision_writer))
+                               proto_supervision, key, weight,
+                               &supervision_writer))
           num_utts_done++;
         else
           num_utts_error++;

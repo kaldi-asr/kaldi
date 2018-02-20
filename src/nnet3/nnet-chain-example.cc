@@ -428,11 +428,17 @@ bool NnetChainExampleStructureCompare::operator () (
   for (size_t i = 0; i < size; i++)
     if (!io_compare(a.inputs[i], b.inputs[i]))
       return false;
+
   size = a.outputs.size();
   for (size_t i = 0; i < size; i++)
     if (a.outputs[i].name != b.outputs[i].name ||
         a.outputs[i].indexes != b.outputs[i].indexes)
       return false;
+  // verify the weights are compatible (i.e. equal) for merging
+  for (size_t i = 0; i < size; i++)
+    if (a.outputs[i].supervision.weight != b.outputs[i].supervision.weight)
+      return false;
+
   return true;
 }
 

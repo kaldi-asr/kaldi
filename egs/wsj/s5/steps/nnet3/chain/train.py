@@ -58,6 +58,12 @@ def get_args():
                         should halve --trainer.samples-per-iter.  May be
                         a comma-separated list of alternatives: first width
                         is the 'principal' chunk-width, used preferentially""")
+    parser.add_argument("--egs.utterance-weights", type=str,
+                        dest='utterance_weights',
+                        default=None,
+                        help="""A map utterance-id -> float-weight
+                        to explicitly set weights of the examples generated
+                        from individual utterances""")
 
     # chain options
     parser.add_argument("--chain.lm-opts", type=str, dest='lm_opts',
@@ -376,6 +382,7 @@ def train(args, run_opts):
             srand=args.srand,
             egs_opts=args.egs_opts,
             cmvn_opts=args.cmvn_opts,
+            utterance_weights=args.utterance_weights,
             online_ivector_dir=args.online_ivector_dir,
             frames_per_iter=args.frames_per_iter,
             transform_dir=args.transform_dir,

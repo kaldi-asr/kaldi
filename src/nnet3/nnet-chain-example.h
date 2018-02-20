@@ -266,7 +266,7 @@ class ChainExampleMerger {
                         std::vector<NnetChainExample*>,
                         NnetChainExampleStructureHasher,
                         NnetChainExampleStructureCompare> MapType;
-MapType eg_to_egs_;
+  MapType eg_to_egs_;
 };
 
 

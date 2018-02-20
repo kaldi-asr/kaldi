@@ -51,6 +51,12 @@ left_tolerance=
 
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
+utterance_weights=  # If supplied, scales the supervision examples by the weight
+                    # The supplied argument is expected to be a file, one line
+                    # per utterance, each line of the following format
+                    # utterance-id float-weight
+                    # e.g.
+                    # utt-1 1.0
 stage=0
 nj=15         # This should be set to the maximum number of jobs you are
               # comfortable to run in parallel; you can increase it if your disk
@@ -281,6 +287,10 @@ chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$ali
 [ ! -z $left_tolerance ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance=$left_tolerance"
 
+chain_supervision_utterance_weights=""
+[ ! -z $utterance_weights ] && \
+  chain_supervision_utterance_weights="ark,t:$utterance_weights"
+
 echo $left_context > $dir/info/left_context
 echo $right_context > $dir/info/right_context
 echo $left_context_initial > $dir/info/left_context_initial
@@ -298,8 +308,9 @@ if [ $stage -le 3 ]; then
   $cmd $dir/log/create_valid_subset.log \
     utils/filter_scp.pl $dir/valid_uttlist $dir/lat_special.scp \| \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
-    chain-get-supervision $chain_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
-      ark:- ark:- \| \
+    chain-get-supervision $chain_supervision_all_opts \
+      $chaindir/tree $chaindir/0.trans_mdl \
+      ark:- $chain_supervision_utterance_weights ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
       $egs_opts $chaindir/normalization.fst \
       "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || touch $dir/.error &
@@ -307,7 +318,8 @@ if [ $stage -le 3 ]; then
     utils/filter_scp.pl $dir/train_subset_uttlist $dir/lat_special.scp \| \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $chain_supervision_all_opts \
-      $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
+      $chaindir/tree $chaindir/0.trans_mdl \
+      ark:- $chain_supervision_utterance_weights ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=$srand \
       $egs_opts $chaindir/normalization.fst \
       "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || touch $dir/.error &
@@ -359,7 +371,8 @@ if [ $stage -le 4 ]; then
     utils/filter_scp.pl $sdata/JOB/utt2spk $dir/lat.scp \| \
     lattice-align-phones --replace-output-symbols=true $latdir/final.mdl scp:- ark:- \| \
     chain-get-supervision $chain_supervision_all_opts \
-      $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
+      $chaindir/tree $chaindir/0.trans_mdl \
+      ark:- $chain_supervision_utterance_weights ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=\$[JOB+$srand] $egs_opts \
       --num-frames-overlap=$frames_overlap_per_eg \
      "$feats" ark,s,cs:- ark:- \| \
