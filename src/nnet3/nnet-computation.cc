@@ -637,7 +637,7 @@ static void PrintCommand(std::ostream &os_out,
         compressed_matrix_type = "uint16";
       }
       os << "CompressMatrix(" << submatrix_strings[c.arg1]
-         << range << ", " << compressed_matrix_type << ", "
+         << ", " << range << ", " << compressed_matrix_type << ", "
          << truncate << ")\n";
       break;
     }
