@@ -165,7 +165,7 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # build silprob lang directory
 local/build_silprob.sh
 
-local/multi_condition/aspire_data_prep.sh
+local/multi_condition/aspire_data_prep.sh --aspire-data $aspire_data
 
 # train the neural network model
 local/chain/run_tdnn.sh
