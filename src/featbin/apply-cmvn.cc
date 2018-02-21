@@ -60,15 +60,15 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-    if (norm_vars && !norm_means)
-      KALDI_ERR << "You cannot normalize the variance but not the mean.";
+    /*if (norm_vars && !norm_means)
+      KALDI_ERR << "You cannot normalize the variance but not the mean.";*/
 
 
     std::string cmvn_rspecifier_or_rxfilename = po.GetArg(1);
     std::string feat_rspecifier = po.GetArg(2);
     std::string feat_wspecifier = po.GetArg(3);
 
-    if (!norm_means) {
+    if (!norm_means && !norm_vars) {
       // CMVN is a no-op, we're not doing anything.  Just echo the input
       // don't even uncompress, if it was a CompressedMatrix.
       SequentialGeneralMatrixReader reader(feat_rspecifier);
@@ -119,9 +119,9 @@ int main(int argc, char *argv[]) {
             FakeStatsForSomeDims(skip_dims, &cmvn_stats);
 
           if (reverse) {
-            ApplyCmvnReverse(cmvn_stats, norm_vars, &feat);
+              ApplyCmvnReverse(cmvn_stats, norm_vars, &feat, norm_means);
           } else {
-            ApplyCmvn(cmvn_stats, norm_vars, &feat);
+              ApplyCmvn(cmvn_stats, norm_vars, &feat, norm_means);
           }
           feat_writer.Write(utt, feat);
         } else {
@@ -146,9 +146,9 @@ int main(int argc, char *argv[]) {
         Matrix<BaseFloat> feat(feat_reader.Value());
         if (norm_means) {
           if (reverse) {
-            ApplyCmvnReverse(cmvn_stats, norm_vars, &feat);
+            ApplyCmvnReverse(cmvn_stats, norm_vars, &feat, norm_means);
           } else {
-            ApplyCmvn(cmvn_stats, norm_vars, &feat);
+            ApplyCmvn(cmvn_stats, norm_vars, &feat, norm_means);
           }
         }
         feat_writer.Write(utt, feat);

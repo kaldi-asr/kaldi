@@ -50,7 +50,8 @@ void AccCmvnStats(const MatrixBase<BaseFloat> &feats,
 /// represents it as "fake stats".
 void ApplyCmvn(const MatrixBase<double> &stats,
                bool norm_vars,
-               MatrixBase<BaseFloat> *feats);
+               MatrixBase<BaseFloat> *feats,
+               bool mean_norm = true);
 
 /// This is as ApplyCmvn, but does so in the reverse sense, i.e. applies a transform
 /// that would take zero-mean, unit-variance input and turn it into output with the
@@ -59,7 +60,8 @@ void ApplyCmvn(const MatrixBase<double> &stats,
 /// CMVN with the summed stats of your training data.
 void ApplyCmvnReverse(const MatrixBase<double> &stats,
                       bool norm_vars,
-                      MatrixBase<BaseFloat> *feats);
+                      MatrixBase<BaseFloat> *feats,
+                      bool mean_norm = true);
 
 
 /// Modify the stats so that for some dimensions (specified in "dims"), we

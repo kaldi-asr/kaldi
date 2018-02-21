@@ -63,7 +63,8 @@ void AccCmvnStats(const MatrixBase<BaseFloat> &feats,
 
 void ApplyCmvn(const MatrixBase<double> &stats,
                bool var_norm,
-               MatrixBase<BaseFloat> *feats) {
+               MatrixBase<BaseFloat> *feats,
+               bool mean_norm) {
   KALDI_ASSERT(feats != NULL);
   int32 dim = stats.NumCols() - 1;
   if (stats.NumRows() > 2 || stats.NumRows() < 1 || feats->NumCols() != dim) {
@@ -103,7 +104,11 @@ void ApplyCmvn(const MatrixBase<double> &stats,
         KALDI_ERR << "NaN or infinity in cepstral mean/variance computation";
       offset = -(mean*scale);
     }
-    norm(0, d) = offset;
+    if (mean_norm) { 
+        norm(0, d) = offset;
+    } else {
+        norm(0, d) = 0;
+    }
     norm(1, d) = scale;
   }
   // Apply the normalization.
@@ -114,7 +119,8 @@ void ApplyCmvn(const MatrixBase<double> &stats,
 
 void ApplyCmvnReverse(const MatrixBase<double> &stats,
                       bool var_norm,
-                      MatrixBase<BaseFloat> *feats) {
+                      MatrixBase<BaseFloat> *feats,
+                      bool mean_norm) {
   KALDI_ASSERT(feats != NULL);
   int32 dim = stats.NumCols() - 1;
   if (stats.NumRows() > 2 || stats.NumRows() < 1 || feats->NumCols() != dim) {
@@ -152,7 +158,11 @@ void ApplyCmvnReverse(const MatrixBase<double> &stats,
       // we aim to transform zero-mean, unit-variance input into data
       // with the given mean and variance.
       scale = sqrt(var);
-      offset = mean;
+      if (mean_norm) {
+          offset = mean;
+      } else {
+          offset = 0;
+      }
     }
     norm(0, d) = offset;
     norm(1, d) = scale;
