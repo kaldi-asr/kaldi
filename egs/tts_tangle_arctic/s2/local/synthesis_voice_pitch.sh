@@ -64,6 +64,7 @@ lbldurdir=$datadir/lbldur
 mkdir -p $lbldurdir
 cp $datadir/in_durfeats.scp $lbldurdir/feats.scp
 cut -d ' ' -f 1 $lbldurdir/feats.scp | awk -v spk=$spk '{print $1, spk}' > $lbldurdir/utt2spk
+[ -f $durdnndir/cmvn.scp ] && cp $durdnndir/cmvn.scp $lbldurdir/cmvn.scp
 utils/utt2spk_to_spk2utt.pl $lbldurdir/utt2spk > $lbldurdir/spk2utt
 #steps/compute_cmvn_stats.sh $lbldurdir $lbldurdir $lbldurdir
 

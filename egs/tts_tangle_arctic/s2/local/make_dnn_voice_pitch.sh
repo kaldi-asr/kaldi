@@ -58,7 +58,7 @@ for step in dur pitch acoustic; do
         fi
     done
     # Copy other files (they should really be merged into a configuration file)
-    for i in $dnndir/{indelta_opts,delta_opts,cmvn_opts,incmvn_opts}; do
+    for i in $dnndir/{indelta_opts,delta_opts,cmvn_opts,incmvn_opts,cmvn.scp}; do
         if [ -e "$i" ]; then
             cp $i $outputdir/$step/`basename $i`;
         fi

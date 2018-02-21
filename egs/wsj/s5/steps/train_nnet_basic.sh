@@ -31,6 +31,7 @@ ivector_append_tool=append-vector-to-feats # (optional) the tool for appending i
 insplice=
 indelta_opts=
 minmax_opts=
+global_cmvn=
 incmvn_opts="--norm-means=true --norm-vars=true"
 ##
 
@@ -249,6 +250,7 @@ if [ ! -z "$cmvn_opts" ]; then
   [ ! -r $odata_cv/cmvn.scp ] && echo "Missing $odata_cv/cmvn.scp" && exit 1;
   feats_tr="$feats_tr apply-cmvn $cmvn_opts --utt2spk=ark:$odata/utt2spk scp:$odata/cmvn.scp ark:- ark:- |"
   feats_cv="$feats_cv apply-cmvn $cmvn_opts --utt2spk=ark:$odata_cv/utt2spk scp:$odata_cv/cmvn.scp ark:- ark:- |"
+  cp $odata/cmvn.scp $dir/cmvn.scp
 else
   echo "# 'apply-cmvn' is not used,"
 fi
@@ -367,16 +369,18 @@ else
       compute-minmax-stats ark:- - 2>$dir/log/minmax_calculation.log | minmax-to-nnet - - |\
       nnet-concat --binary=false $feature_transform_old - $feature_transform
   else
-    # Renormalize the MLP input to zero mean and unit variance,
-    feature_transform_old=$feature_transform
-    feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
-    echo "# compute normalization stats from 10k sentences"
-    nnet-forward --print-args=true --use-gpu=yes $feature_transform_old \
+    if [ ! -z $global_cmvn ]; then
+      # Renormalize the MLP input to zero mean and unit variance,
+      feature_transform_old=$feature_transform
+      feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
+      echo "# compute normalization stats from 10k sentences"
+      nnet-forward --print-args=true --use-gpu=yes $feature_transform_old \
         "$feats_tr_10k" ark:- |\
-    compute-cmvn-stats --binary=false ark:- $dir/cmvn-g.stats
-    echo "# + normalization of NN-output at '$feature_transform'"
-    nnet-concat --binary=false $feature_transform_old \
+        compute-cmvn-stats --binary=false ark:- $dir/cmvn-g.stats
+      echo "# + normalization of NN-output at '$feature_transform'"
+      nnet-concat --binary=false $feature_transform_old \
         "cmvn-to-nnet --std-dev=$feats_std $dir/cmvn-g.stats -|" $feature_transform
+    fi
   fi
 fi
 
