@@ -58,6 +58,14 @@
   } \
 }
 
+#define CURAND_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "curandStatus_t " << ret << " : \"" << curandGetStatusString((curandStatus_t)ret) << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
 #define KALDI_CUDA_ERR(ret, msg) \
 { \
   if (ret != 0) { \
@@ -95,6 +103,9 @@ const char* cublasGetStatusString(cublasStatus_t status);
 
 /** This is analogous to the CUDA function cudaGetErrorString(). **/
 const char* cusparseGetStatusString(cusparseStatus_t status);
+
+/** This is analogous to the CUDA function cudaGetErrorString(). **/
+const char* curandGetStatusString(curandStatus_t status);
 }
 
 #endif // HAVE_CUDA
