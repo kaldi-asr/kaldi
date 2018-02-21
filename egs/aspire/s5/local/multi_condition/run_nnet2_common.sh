@@ -5,6 +5,7 @@
 
 
 stage=1
+aspire_data=
 foreground_snrs="20:10:15:5:0"
 background_snrs="20:10:15:5:0"
 num_data_reps=3
@@ -58,7 +59,7 @@ if [ $stage -le 1 ]; then
   done
 
   # create the dev, test and eval sets from the aspire recipe
-  local/multi_condition/aspire_data_prep.sh
+  local/multi_condition/aspire_data_prep.sh --aspire-data $aspire_data
 
   # copy the alignments for the newly created utterance ids
   ali_dirs=

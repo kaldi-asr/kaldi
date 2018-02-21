@@ -12,6 +12,7 @@
 stage=1
 train_stage=-10
 use_gpu=true
+aspire_data=
 dir=exp/nnet2_multicondition/nnet_ms_a
 
 set -e
@@ -51,7 +52,7 @@ else
 fi
 
 # do the common parts of the script.
-local/multi_condition/run_nnet2_common.sh --stage $stage
+local/multi_condition/run_nnet2_common.sh --stage $stage --aspire-data $aspire_data
 
 
 if [ $stage -le 7 ]; then

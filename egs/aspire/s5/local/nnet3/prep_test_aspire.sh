@@ -186,8 +186,6 @@ if [ $stage -le 8 ]; then
     --ctm-beam 6 \
     --iter $iter \
     --decode-mbr true \
-    --window $window \
-    --overlap $overlap \
     --tune-hyper true \
     $lang $decode_dir $act_data_set $segmented_data_set $out_file
 fi
