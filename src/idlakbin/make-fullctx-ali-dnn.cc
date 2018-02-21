@@ -65,6 +65,7 @@ int main(int argc, char *argv[]) {
     int phonecontext = 5;
     int midcontext = 2;
     int maxsilphone = 1;
+    bool output_feat = false;
     BaseFloat phone_fuzz_factor = 0.1;
     BaseFloat state_fuzz_factor = 0.2;
     ParseOptions po(usage);
@@ -73,6 +74,7 @@ int main(int argc, char *argv[]) {
     po.Register("max-sil-phone", &maxsilphone, "Maximum value of silence phone");
     po.Register("phone-fuzz-factor", &phone_fuzz_factor, "Rounding value for phone positioning");
     po.Register("state-fuzz-factor", &state_fuzz_factor, "Rounding value for state positioning");
+    po.Register("output-feat", &output_feat, "Set this to true to output features instead of vectors of vectors");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -90,8 +92,11 @@ int main(int argc, char *argv[]) {
     SequentialInt32VectorReader alignment_reader(old_alignments_rspecifier);
     SequentialInt32VectorVectorReader contexts_reader(contexts_rspecifier);
     Int32VectorVectorWriter alignment_writer(new_alignments_wspecifier);
-
+    BaseFloatMatrixWriter feat_writer(new_alignments_wspecifier);
     int num_success = 0, num_fail = 0;
+    /*if (!output_feat) {
+        alignment_writer = Int32VectorVectorWriter(new_alignments_wspecifier);
+        }*/
 
     for (; !contexts_reader.Done() && !alignment_reader.Done();
          contexts_reader.Next(), alignment_reader.Next()) {
@@ -114,6 +119,7 @@ int main(int argc, char *argv[]) {
         std::vector<int32> phones;
         std::vector<int32> states;
         std::vector< std::vector<int32> > output;
+        Matrix<BaseFloat> output_feats; 
         std::vector<int32> curphone;
 
         for (size_t i = 0; i < old_alignment.size(); i++)
@@ -258,7 +264,12 @@ int main(int argc, char *argv[]) {
         /*for (k = 0; k < output.size(); k++) {
             KALDI_LOG << k << " : " << output[k].size();
             }*/
-        alignment_writer.Write(key, output);
+        if (output_feat) {
+            //output_feats.CopyRowsFromVec(output);
+            feat_writer.Write(key, output_feats);
+        } else {
+            alignment_writer.Write(key, output);
+        }
         num_success++;
     }
   } catch(const std::exception &e) {

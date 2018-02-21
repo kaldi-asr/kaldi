@@ -151,7 +151,7 @@ for iter in $(seq -w $max_iters); do
 
   # accept or reject?
   loss_prev=$loss
-  if [ 1 == $(awk "BEGIN{print($loss_new < $loss ? 1:0);}") -o $iter -le $keep_lr_iters -o $iter -le $min_iters ]; then
+  if [ 1 == $(awk "BEGIN{print($loss_new < $loss ? 1:0);}") -o $iter -le $keep_lr_iters ]; then
     # accepting: the loss was better, or we had fixed learn-rate, or we had fixed epoch-number,
     loss=$loss_new
     mlp_best=$dir/nnet/${mlp_base}_iter${iter}_learnrate${learn_rate}_tr$(printf "%.4f" $tr_loss)_cv$(printf "%.4f" $loss_new)

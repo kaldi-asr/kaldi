@@ -94,11 +94,11 @@ if ! which python2.7 >&/dev/null; then
   pythonok=false
 fi
 
-if ! which python3 >&/dev/null; then
-  echo "$0: python3 is not installed"
-  add_packages python3
-  pythonok=false
-fi
+#if ! which python3 >&/dev/null; then
+#  echo "$0: python3 is not installed"
+#  add_packages python3
+#  pythonok=false
+#fi
 
 ( 
 #Use a subshell so that sourcing env.sh does not have an influence on the rest of the script
