@@ -10,6 +10,7 @@ set -e
 # general opts
 iter=final
 stage=0
+sad_num_jobs=30
 decode_num_jobs=30
 affix=
 
@@ -19,7 +20,6 @@ sad_opts="--extra-left-context 79 --extra-right-context 21 --frames-per-chunk 15
 sad_graph_opts=
 sad_priors_opts=
 sad_stage=0
-segment_only=false
 
 # ivector opts
 max_count=75  # parameter for extract_ivectors.sh
@@ -80,7 +80,7 @@ fi
 
 if [ $stage -le 2 ]; then
   steps/segmentation/detect_speech_activity.sh \
-    --nj $decode_num_jobs --stage $sad_stage \
+    --nj $sad_num_jobs --stage $sad_stage \
     --affix "$sad_affix" --graph-opts "$sad_graph_opts" \
     --transform-probs-opts "$sad_priors_opts" $sad_opts \
     data/$data_set $sad_nnet_dir mfcc_hires $sad_work_dir \
@@ -112,11 +112,6 @@ if [ $stage -le 4 ]; then
     data/${segmented_data_set}_hires
   steps/compute_cmvn_stats.sh data/${segmented_data_set}_hires
   utils/fix_data_dir.sh data/${segmented_data_set}_hires
-fi
-
-if $segment_only; then
-  echo "$0: --segment-only is true. Exiting."
-  exit 0
 fi
 
 if [ $stage -le 5 ]; then

@@ -5,7 +5,8 @@
 # Apache 2.0
 
 # We assume the run.sh has been executed (because we are using model
-# directories like exp/tri4)
+# directories like exp/tri4a)
+# This script is adapted from the run_asr_segmentation.sh script in swbd
 
 lang=data/lang   # Must match the one used to train the models
 lang_test=data/lang_test  # Lang directory for decoding.
@@ -15,13 +16,13 @@ data_dir=data/train_100k
 # SAD. This should typically be a speaker-adapted system.
 sat_model_dir=exp/tri4a
 # Model direcotry used to decode the whole-recording version of the $data_dir to
-# get target labels for training SAD. This should typically be a 
+# get target labels for training SAD. This should typically be a
 # speaker-independent system like LDA+MLLT system.
 model_dir=exp/tri3a
 graph_dir=exp/tri3a/graph   # Graph for decoding whole-recording version of $data_dir.
                             # If not provided, a new one will be created using $lang_test
 
-# List of weights on labels obtained from alignment, 
+# List of weights on labels obtained from alignment,
 # labels obtained from decoding and default labels in out-of-segment regions
 merge_weights=1.0,0.1,0.5
 
@@ -175,21 +176,22 @@ if [ $stage -le 6 ]; then
     rm -r ${rvb_targets_dirs[@]}
 fi
 
-#sad_nnet=exp/segmentation${affix}/tdnn_stats_asr_sad_1a
-sad_nnet_dir=exp/segmentation${affix}/tdnn_lstm_asr_sad_1a
+sad_nnet_dir=exp/segmentation${affix}/tdnn_stats_asr_sad_1a
+#sad_nnet_dir=exp/segmentation${affix}/tdnn_lstm_asr_sad_1a
+#sad_opts="--extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 --extra-left-context-initial 0 --extra-right-context-final 0 --acwt 0.3"
 
 if [ $stage -le 7 ]; then
-  # # Train a STATS-pooling network for SAD
-  # local/segmentation/tuning/train_stats_asr_sad_1a.sh \
-  #   --stage $nstage --train-stage $train_stage \
-  #   --targets-dir ${rvb_targets_dir} \
-  #   --data-dir ${rvb_data_dir} --affix "1a" || exit 1
-
-  # Train a TDNN+LSTM network for SAD
-  local/segmentation/tuning/train_lstm_asr_sad_1a.sh \
+  # Train a STATS-pooling network for SAD
+  local/segmentation/tuning/train_stats_asr_sad_1a.sh \
     --stage $nstage --train-stage $train_stage \
     --targets-dir ${rvb_targets_dir} \
     --data-dir ${rvb_data_dir} --affix "1a" || exit 1
+
+  # # Train a TDNN+LSTM network for SAD
+  # local/segmentation/tuning/train_lstm_asr_sad_1a.sh \
+  #   --stage $nstage --train-stage $train_stage \
+  #   --targets-dir ${rvb_targets_dir} \
+  #   --data-dir ${rvb_data_dir} --affix "1a" || exit 1
 fi
 
 if [ ! -f data/dev_aspire/wav.scp ]; then
@@ -206,9 +208,12 @@ fi
 chain_dir=exp/chain/tdnn_lstm_1a
 
 if [ $stage -le 9 ]; then
+  # Use left and right context options that were used when training
+  # the chain nnet
+  # Increase sil-scale to predict more silence
   local/nnet3/prep_test_aspire_segmentation.sh --stage $test_stage \
     --decode-num-jobs $test_nj --affix "${test_affix}" \
-    --sad-opts "--extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 --extra-left-context-initial 0 --extra-right-context-final 0 --acwt 0.3" \
+    --sad-opts "$sad_opts" \
     --sad-graph-opts "--min-silence-duration=0.03 --min-speech-duration=0.3 --max-speech-duration=10.0" --sad-priors-opts "--sil-scale=0.1" \
     --acwt 1.0 --post-decode-acwt 10.0 \
     --extra-left-context 50 \

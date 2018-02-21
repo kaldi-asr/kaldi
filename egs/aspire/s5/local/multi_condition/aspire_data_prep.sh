@@ -6,10 +6,7 @@ stage=0
 # Set this to somewhere where you want to put your aspire data, or where
 # someone else has already put it.  You'll want to change this
 # if you're not on the CLSP grid.
-aspire_data=
-case $(hostname -d) in
-  clsp.jhu.edu) aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data ;; # JHU
-esac
+aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data ;; # JHU
 
 mean_rms=0.0417 # determined from the mean rms value of data/train_rvb/mean_rms
 . ./path.sh # Needed for KALDI_ROOT
@@ -33,7 +30,7 @@ if [ $stage -le 0 ]; then
   find $dev_audio/ -name '*.wav'  > $tmpdir/wav.flist
   find $test_audio/ -name '*.wav'  > $tmpdir/wav_test.flist
 
-  n=`awk '{print $1}' $(cat $tmpdir/transcripts.flist) | uniq | wc -l`
+  n=$(awk '{print $1}' $(cat $tmpdir/transcripts.flist) | uniq | wc -l)
   if [ $n -ne 30 ]; then
     echo "Expected to find 30 transcript files in the aspire_single_dev_transcript directory, found $n"
     exit 1;
@@ -123,7 +120,7 @@ for line in sys.stdin.readlines():
   print '{0} sox --vol {1} {2} -r 8000 -t wav - |'.format(file_id, out_rms, line)
 "| sort -k1,1 -u  > $dev/wav.scp || exit 1;
   cat $dev/wav.scp |awk '{printf("%s %s A\n", $1, $1)}' > $dev/reco2file_and_channel
-  cp $aspire_data/my_english.glm $dev
+  cp $aspire_data/my_english.glm $dev/glm
 fi
 
 # prepare test data

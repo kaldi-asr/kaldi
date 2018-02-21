@@ -32,49 +32,50 @@ data_set=$1
 
 if [ "$data_set" == "dev_aspire" ]; then
   if [ $stage -le 1 ]; then
-    echo "$0 : Creating the data dir with whole recordings without segmentation"
+    echo "$0: Creating the data dir with whole recordings without segmentation"
     # create a whole directory without the segments
-    unseg_dir=data/${data_set}_whole
-    src_dir=data/$data_set
-    mkdir -p $unseg_dir
-    echo "$0 : Creating the $unseg_dir/wav.scp file"
-    cp $src_dir/wav.scp $unseg_dir
+    unseg_dir=data/${data_set}_whole_hires
+    src_dir=data/${data_set}
+    utils/data/convert_data_dir_to_whole.sh $src_dir $unseg_dir
 
-    echo "$0 : Creating the $unseg_dir/reco2file_and_channel file"
+    echo "$0: Creating the $unseg_dir/reco2file_and_channel file"
     cat $unseg_dir/wav.scp | awk '{print $1, $1, "A";}' > $unseg_dir/reco2file_and_channel
-    cat $unseg_dir/wav.scp | awk '{print $1, $1;}' > $unseg_dir/utt2spk
-    utils/utt2spk_to_spk2utt.pl $unseg_dir/utt2spk > $unseg_dir/spk2utt
-
   fi
   data_set=${data_set}_whole
+else
+  utils/copy_data_dir.sh data/$data_set data/${data_set}_hires
+fi
+
+if [ $stage -le 2 ]; then
+  echo "$0: Extracting features"
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $num_jobs \
+    --mfcc-config conf/mfcc_hires.conf data/${data_set}_hires
+
+  steps/compute_cmvn_stats.sh data/${data_set}_hires
+
+  utils/fix_data_dir.sh data/${data_set}_hires
+  utils/validate_data_dir.sh --no-text data/${data_set}_hires
 fi
 
 segmented_data_set=${data_set}_uniformsegmented_win${window}_over${overlap}
-if [ $stage -le 2 ]; then
-  echo "$0 : Generating uniform segments with length $window and overlap $overlap."
-  [ -d data/$segmented_data_set ] && rm -r data/$segmented_data_set
-  utils/copy_data_dir.sh --validate-opts "--no-text" \
-    data/$data_set data/$segmented_data_set
-  cp data/$data_set/reco2file_and_channel data/$segmented_data_set
-
-  local/multi_condition/create_uniform_segments.py \
-    --overlap $overlap --window $window data/$segmented_data_set
-
-  for file in cmvn.scp feats.scp; do
-    rm -f data/$segmented_data_set/$file
-  done
-  utils/validate_data_dir.sh --no-text --no-feats data/$segmented_data_set
-fi
-
 if [ $stage -le 3 ]; then
-  echo "$0 : Extracting features for the uniformly segmented dir"
+  echo "$0: Generating uniform segments with length $window and overlap $overlap."
   [ -d data/${segmented_data_set}_hires ] && rm -r data/${segmented_data_set}_hires
-  utils/copy_data_dir.sh --validate-opts "--no-text " \
-    data/${segmented_data_set} data/${segmented_data_set}_hires
+  if [ ! -f data/${data_set}_hires/segments ]; then
+    utils/data/get_segments_for_data.sh data/${data_set}_hires > \
+      data/${data_set}_hires/segments
+  fi
 
-  steps/make_mfcc.sh --cmd "$train_cmd" --nj $num_jobs \
-    --mfcc-config conf/mfcc_hires.conf data/${segmented_data_set}_hires
+  mkdir -p data/${segmented_data_set}_hires
 
+  utils/data/get_uniform_subsegments.py \
+    --max-segment-duration=$window \
+    --overlap-duration=$overlap \
+    --max-remaining-duration=$(perl -e "print $window/ 2.0") \
+    data/${data_set}_hires/segments > data/${segmented_data_set}_hires/sub_segments
+
+  utils/data/subsegment_data_dir.sh data/${data_set}_hires \
+    data/${segmented_data_set}_hires/sub_segments data/${segmented_data_set}_hires
   steps/compute_cmvn_stats.sh data/${segmented_data_set}_hires
 
   utils/fix_data_dir.sh data/${segmented_data_set}_hires

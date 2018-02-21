@@ -59,23 +59,26 @@ model_affix=`basename $dir`
 ivector_dir=exp/nnet3
 ivector_affix=${affix:+_$affix}_chain_${model_affix}_iter$iter
 affix=_${affix}_iter${iter}
-act_data_set=${data_set} # we will modify the data set, when uniformly segmenting it
-                         # so we will keep track of original data set for the glm and stm files
 
 if [ $stage -le 1 ]; then
   local/generate_uniformly_segmented_data_dir.sh  \
     --overlap $overlap --window $window $data_set
 fi
 
-if [ "$data_set" == "test_aspire" ]; then
+if [[ "$data_set" =~ "test_aspire" ]]; then
   out_file=single_dev_test${affix}_$model_affix.ctm
-elif [ "$data_set" == "eval_aspire" ]; then
+  act_data_set=test_aspire
+elif [[ "$data_set" =~ "eval_aspire" ]]; then
   out_file=single_eval${affix}_$model_affix.ctm
-elif [ "$data_set" ==  "dev_aspire" ]; then
+  act_data_set=eval_aspire
+elif [[ "$data_set" =~  "dev_aspire" ]]; then
   # we will just decode the directory without oracle segments file
   # as we would like to operate in the actual evaluation condition
-  data_set=${data_set}_whole
   out_file=single_dev${affix}_${model_affix}.ctm
+  act_data_set=dev_aspire
+else
+  echo "$0: Unknown data-set $data_set"
+  exit 1
 fi
 
 # uniform segmentation script would have created this dataset
@@ -162,6 +165,8 @@ if [ $stage -le 6 ]; then
       --acwt $acwt --post-decode-acwt $post_decode_acwt \
       --extra-left-context $extra_left_context  \
       --extra-right-context $extra_right_context  \
+      --extra-left-context-initial $extra_left_context_initial \
+      --extra-right-context-final $extra_right_context_final \
       --frames-per-chunk "$frames_per_chunk" \
       --skip-scoring true --iter $iter --lattice-beam $lattice_beam \
       --online-ivector-dir $ivector_dir/ivectors_${segmented_data_set}${ivector_affix} \
