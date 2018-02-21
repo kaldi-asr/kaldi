@@ -180,20 +180,22 @@ if [ "$synth" = "cere" ]; then
     $cmd
     cp $tmpdir/$base.wav $out_wav
 elif [ "$synth" = "excitation" ]; then
+    echo "generating in $tmpdir"
     x2x +af $mcep > $mcep.float
+    mlsacheck -l $fftlen -c 2 -r 0 -P 5 -m $order -a $alpha < $mcep.float > $mcep.float.stable
     psize=`echo "$period * $srate / 1000" | bc`
     # We have to drop the first few F0 frames to match SPTK behaviour
     #cat $f0 | awk -v srate=$srate '(NR > 2){if ($1 > 0) print srate / $1; else print 0.0}' | x2x +af \
     #    | excite -p $psize \
-    python local/excitation.py -s $srate -f $fftlen -b $bndap_order $f0 $bap > $tmpdir/resid.float
-    cat $tmpdir/resid.float | mlsadf -P 5 -m $order -a $alpha -p $psize $mcep.float | x2x -o +fs > $tmpdir/data.mcep.syn
+    python local/excitation.py -s $srate -f $fftlen -b $bndap_order $f0 $bap $resid.float
+    cat $resid.float | mlsadf -P 5 -m $order -a $alpha -p $psize $mcep.float.stable | x2x -o +fs > $tmpdir/data.mcep.syn
     sox --norm -t raw -c 1 -r $srate -s -b 16 $tmpdir/data.mcep.syn $out_wav
 elif [ "$synth" = "convolve" ]; then
     x2x +af $mcep > $mcep.float
     psize=`echo "$period * $srate / 1000" | bc`
     isize=`echo "$period * $srate / 5000" | bc`
     echo "Excitation"
-    python local/excitation.py -s $srate -f $fftlen -b $bndap_order $f0 $bap $resid.float #$bap
+    python local/excitation.py -G 0.8 -s $srate -f $fftlen -b $bndap_order $f0 $bap $resid.float #$bap
     # Generate mcep spectogram; note that phase has been lost so output waveform will look very different
     echo "Spectrum $fftlen"
     # Rather slow process: we have to generate amplitude and phase separately
