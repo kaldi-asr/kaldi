@@ -9,7 +9,7 @@ deep neural network acoustic model and raw model (i.e., generic neural
 network without transition model) with frame-level objectives.
 """
 
-from __future__ import print_statement
+from __future__ import print_function
 from __future__ import division
 import glob
 import logging
