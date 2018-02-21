@@ -399,8 +399,8 @@ void NnetComputer::ExecuteCommand() {
           compressed_matrices_[m]->CopyFromMat(matrices_[m]);
           matrices_[m].Resize(0, 0);
         }
-        break;
 #endif
+        break;
       case kDecompressMatrix:
 #if HAVE_CUDA == 1
         if (CuDevice::Instantiate().Enabled()) {

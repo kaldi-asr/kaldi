@@ -872,29 +872,11 @@ class XconfigBasicLayer(XconfigLayerBase):
                                 self.config['dropout-proportion']))
                 else:
                     continuous_opt='continuous=true' if self.config['dropout-per-dim-continuous'] else ''
-                    line = ('component name={0}.dropout_mask type=DropoutMaskComponent '
-                            'output-dim={1} dropout-proportion={2} {3}'.format(
+
+                    line = ('component name={0}.dropout type=GeneralDropoutComponent '
+                            'dim={1} dropout-proportion={2} {3}'.format(
                                 self.name, output_dim, self.config['dropout-proportion'],
                                 continuous_opt))
-                    configs.append(line)
-                    # note: the input to the dropout_mask component is never used, it's
-                    # just syntactically required.
-                    line = ('component-node name={0}.dropout_mask component={0}.dropout_mask '
-                            'input={1}'.format(self.name, cur_node))
-                    configs.append(line)
-                    line = ('component name={0}.dropout type=ElementwiseProductComponent '
-                            'input-dim={1} output-dim={2} '.format(
-                                self.name, 2 * output_dim, output_dim))
-                    configs.append(line)
-                    line = ('component-node name={0}.dropout component={0}.dropout '
-                            'input=Append({1}, ReplaceIndex({0}.dropout_mask, t, 0))'
-                            ''.format(self.name, cur_node))
-
-
-                    configs.append(line)
-                    cur_node = '{0}.dropout'.format(self.name)
-                    continue
-
             else:
                 raise RuntimeError("Unknown nonlinearity type: {0}"
                                    .format(nonlinearity))
