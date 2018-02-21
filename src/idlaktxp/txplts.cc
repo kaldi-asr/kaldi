@@ -80,22 +80,34 @@ int TxpLts::GetPron(const std::string &word, TxpLexiconLkp* lkp) {
     it = ltslkp_.find(ltr);
     if (it != ltslkp_.end()) {
       phone = ApplyTree(it->second, word.c_str(), pos);
+      const char * orig = phone;
       // If not a null result
       if (strcmp("0", phone)) {
+        const char *sep = strchr(phone, '_');
         if (!lkp->pron.empty()) lkp->pron += " ";
+        // Split the phone on "_" as LTS can return multiphone
+        while (sep) {
+          lkp->pron += std::string(phone, sep - phone);
+          lkp->pron += " ";
+          phone = sep + 1;
+          sep = strchr(phone, '_');
+        }
+
         // Check is syllabic and if so get stress
         if (phone[strlen(phone) - 1] == '0') {
           stress = ApplyTree(stress_tree, word.c_str(), pos);
           lkp->pron += std::string(phone, strlen(phone) - 1);
           lkp->pron += stress;
-	  free((void *)stress);
+	      free((void *)stress);
         } else {
           lkp->pron += phone;
         }
       }
-      free((void *)phone);
+      free((void *)orig);
     } else {
-      KALDI_WARN << "Letter not in LTS tree: " << ltr;
+      // HACKY: Remove annoying warning for English possessive form
+      if (ltr.compare("'"))
+        KALDI_WARN << "Letter not in LTS tree: " << ltr;
     }
     p += clen;
     pos++;
@@ -120,7 +132,7 @@ static int32 pos2int(const std::string &pos) {
 
 static bool ApplyQuestion(const char* word, const int32 pos, const char* utfchar) {
   TxpUtf8 utf8;
-  int32 clen, idx = 0;
+  int32 clen = 0, idx = 0;
   const char* p = word;
   // position before word start
   if (pos < 0 && !strcmp(utfchar, "#")) return true;
