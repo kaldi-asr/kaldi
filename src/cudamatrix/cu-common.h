@@ -32,6 +32,7 @@
 #if HAVE_CUDA == 1
 #include <cublas_v2.h>
 #include <cusparse.h>
+#include <curand.h>
 #include <cuda_runtime_api.h>
 
 #define CU_SAFE_CALL(fun) \
