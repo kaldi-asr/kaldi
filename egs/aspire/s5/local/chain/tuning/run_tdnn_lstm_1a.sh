@@ -4,9 +4,9 @@ set -e
 
 # based on run_tdnn_7b.sh in the swbd recipe
 
-# configs for 'chain'
-affix=v8
+affix=v8    # for results
 
+# configs for 'chain'
 stage=0
 train_stage=-10
 get_egs_stage=-10
