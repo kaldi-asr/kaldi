@@ -229,7 +229,6 @@ bool SelectFromExample(const NnetExample &eg,
   int32 min_input_t, max_input_t,
       min_output_t, max_output_t;
   if (!ContainsSingleExample(eg, &min_input_t, &max_input_t,
-                   NnetExample *eg_out) {
                              &min_output_t, &max_output_t))
     KALDI_ERR << "Too late to perform frame selection/context reduction on "
               << "these examples (already merged?)";

@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "Invalid scale on normalization FST; must be >= 0.0";
 
     if (normalization_fst_scale != 1.0)
-      ScaleFst(normalization_fst_scale, &normalization_fst);
+      ApplyProbabilityScale(normalization_fst_scale, &normalization_fst);
 
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
     NnetChainExampleWriter example_writer(examples_wspecifier);

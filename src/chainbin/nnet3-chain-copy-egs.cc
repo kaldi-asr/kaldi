@@ -86,7 +86,6 @@ void FilterExample(int32 min_input_t,
                    NnetChainExample *eg) {
   // process the <NnetIo> inputs
   for (size_t i = 0; i < eg->inputs.size(); i++) {
-    bool is_input;
     int32 min_t, max_t;
     NnetIo &io = eg->inputs[i];
     if (io.name == "input") {
@@ -113,7 +112,7 @@ void FilterExample(int32 min_input_t,
       }
       KALDI_ASSERT(iter_out == keep.end());
       if (num_kept == 0)
-        KALDI_ERR << "FilterExample removed all indexes for '" << name << "'";
+        KALDI_ERR << "FilterExample removed all indexes for '" << io.name << "'";
       io.indexes = indexes_out;
 
       GeneralMatrix features_out;

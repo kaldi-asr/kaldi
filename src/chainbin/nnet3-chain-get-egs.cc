@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Invalid scale on normalization FST; must be > 0.0";
 
       if (normalization_fst_scale != 1.0)
-        ScaleFst(normalization_fst_scale, &normalization_fst);
+        ApplyProbabilityScale(normalization_fst_scale, &normalization_fst);
     }
 
     // Read as GeneralMatrix so we don't need to un-compress and re-compress
