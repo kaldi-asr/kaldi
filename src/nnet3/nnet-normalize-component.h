@@ -58,7 +58,7 @@ namespace nnet3 {
    Configuration values accepted:
       dim, or input-dim    Input dimension of this component, e.g. 1024.
                            Will be the same as the output dimension if add-log-stddev=false.
-      block-dim            Defaults to 'dim' you may specify a nonzero divisor
+      block-dim            Defaults to 'dim' you may specify a divisor
                            of 'dim'.  In this case the input dimension will
                            be interpreted as blocks of dimension 'block-dim'
                            to which the nonlinearity described above is applied
@@ -144,11 +144,11 @@ class NormalizeComponent: public Component {
 
     Accepted configuration values:
            dim          Dimension of the input and output
-           block-dim    Defaults to 'dim', but may be set to a nonzero divisor
+           block-dim    Defaults to 'dim', but may be set to a divisor
                         of 'dim'.  In this case, each block of dimension 'block-dim'
                         is treated like a separate row of the input matrix, which
                         means that the stats from n'th element of each
-                        block are pooled into one class, for each n.a
+                        block are pooled into one class, for each n.
            epsilon      Small term added to the variance that is used to prevent
                         division by zero
            target-rms   This defaults to 1.0, but if set, for instance, to 2.0,

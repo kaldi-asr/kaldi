@@ -66,6 +66,8 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new TimeHeightConvolutionComponent::PrecomputedIndexes();
   } else if (cpi_type == "RestrictedAttentionComponentPrecomputedIndexes") {
     ans = new RestrictedAttentionComponent::PrecomputedIndexes();
+  } else if (cpi_type == "GeneralDropoutComponentPrecomputedIndexes") {
+    ans = new GeneralDropoutComponentPrecomputedIndexes();
   }
   if (ans != NULL) {
     KALDI_ASSERT(cpi_type == ans->Type());
@@ -158,6 +160,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new DropoutComponent();
   } else if (component_type == "DropoutMaskComponent") {
     ans = new DropoutMaskComponent();
+  } else if (component_type == "GeneralDropoutComponent") {
+    ans = new GeneralDropoutComponent();
   } else if (component_type == "BackpropTruncationComponent") {
     ans = new BackpropTruncationComponent();
   } else if (component_type == "LstmNonlinearityComponent") {
