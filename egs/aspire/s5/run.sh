@@ -15,7 +15,7 @@ set -e
 # Set this to somewhere where you want to put your aspire data, or where
 # someone else has already put it.  You'll want to change this
 # if you're not on the CLSP grid.
-aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data ;; # JHU
+aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data  # JHU
 
 # the next command produces the data in local/train_all
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
@@ -167,30 +167,10 @@ local/build_silprob.sh
 
 local/multi_condition/aspire_data_prep.sh --aspire-data $aspire_data
 
+# see local/{chain,nnet3}/* for nnet3 scripts
+
 # train the neural network model
 local/chain/run_tdnn.sh
-
-local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
- --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
- --ivector-scale 0.75 --affix v6 --tune-hyper true dev_aspire data/lang exp/nnet2_multicondition/nnet_ms_a
-# %WER 30.8 | 2120 27213 | 75.3 16.2 8.4 6.2 30.8 78.8 | -0.724 | exp/nnet2_multicondition/nnet_ms_a/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterfinal_pp_fg/score_13/penalty_0.0/ctm.filt.filt.sys
-
-local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
- --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
- --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a
-# 72.3 on leaderboard
-
-# discriminative training. Helped on dev, but not on dev_test
-local/multi_condition/run_nnet2_ms_disc.sh
-local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
- --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
- --ivector-scale 0.75 --affix v6 --tune-hyper true dev_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
-#%WER 29.1 | 2120 27208 | 77.6 15.4 7.0 6.7 29.1 77.1 | -1.357 | exp/nnet2_multicondition/nnet_ms_c_prior_adjusted_smbr_0.00015_nj12/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterepoch2_pp_fg/score_16/penalty_1.0/ctm.filt.filt.sys
-
-local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
- --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
- --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
-# around 71.5, as models changed after server closed
 
 local/chain/run_tdnn_lstm.sh
 # %WER 22.9 | 2083 25838 | 81.6 12.0 6.4 4.6 22.9 70.8 | -0.469 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_8/penalty_0.0/ctm.filt.filt.sys
@@ -216,4 +196,28 @@ local/nnet3/prep_test_aspire_segmentation.sh --stage 1 --decode-num-jobs 30 --af
   dev_aspire $sad_nnet_dir $sad_nnet_dir \
   data/lang $chain_dir/graph_pp $chain_dir
 
-# see local/{chain,nnet3}/* for nnet3 scripts
+# Old nnet2-based systems are in the comments below. The results here are
+# not applicable to the latest dev set from LDC.
+
+# local/multi_condition/run_nnet2_ms.sh
+# 
+# local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
+#  --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
+#  --ivector-scale 0.75 --affix v6 --tune-hyper true dev_aspire data/lang exp/nnet2_multicondition/nnet_ms_a
+# 
+# local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
+#  --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
+#  --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a
+# # 72.3 on leaderboard
+# 
+# # discriminative training. Helped on dev, but not on dev_test
+# local/multi_condition/run_nnet2_ms_disc.sh
+# local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
+#  --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
+#  --ivector-scale 0.75 --affix v6 --tune-hyper true dev_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
+# #%WER 29.1 | 2120 27208 | 77.6 15.4 7.0 6.7 29.1 77.1 | -1.357 | exp/nnet2_multicondition/nnet_ms_c_prior_adjusted_smbr_0.00015_nj12/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterepoch2_pp_fg/score_16/penalty_1.0/ctm.filt.filt.sys
+# 
+# local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
+#  --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
+#  --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
+# # around 71.5, as models changed after server closed

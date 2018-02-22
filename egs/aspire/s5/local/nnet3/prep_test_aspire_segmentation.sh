@@ -33,10 +33,10 @@ extra_right_context=0 # change for BLSTM
 frames_per_chunk=50 # change for (B)LSTM
 acwt=0.1 # important to change this when using chain models
 post_decode_acwt=1.0 # important to change this when using chain models
-extra_left_context_initial=-1
-extra_right_context_final=-1
+extra_left_context_initial=0
+extra_right_context_final=0
 
-score_opts="--min-lmwt 1 --max-lmwt 20"
+score_opts="--min-lmwt 6 --max-lmwt 13"
 
 . ./cmd.sh
 [ -f ./path.sh ] && . ./path.sh

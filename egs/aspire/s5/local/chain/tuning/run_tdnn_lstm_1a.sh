@@ -4,6 +4,14 @@ set -e
 
 # based on run_tdnn_7b.sh in the swbd recipe
 
+# System                      exp/chain/tdnn_lstm_1a
+# WER on dev_aspire (fg)                    22.9
+# Final train prob                        -0.118
+# Final valid prob                        -0.123
+# Final train prob (xent)                 -1.243
+# Final valid prob (xent)                -1.2350
+# Num-parameters                        49945168
+
 affix=v8    # for results
 
 # configs for 'chain'

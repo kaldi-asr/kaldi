@@ -7,6 +7,16 @@
 # We assume the run.sh has been executed (because we are using model
 # directories like exp/tri4)
 
+# This script demonstrates nnet3-based speech activity detection for
+# segmentation.
+# This script:
+# 1) Prepares targets (per-frame labels) for a subset of training data 
+#    using GMM models
+# 2) Augments the training data with reverberation and additive noise
+# 3) Trains TDNN+Stats or TDNN+LSTM neural network using the targets 
+#    and augmented data
+# 4) Demonstrates using the SAD system to get segments of eval data and decode
+
 lang=data/lang   # Must match the one used to train the models
 lang_test=data/lang_nosp_sw1_tg  # Lang directory for decoding.
 
@@ -21,8 +31,8 @@ model_dir=exp/tri3
 graph_dir=    # Graph for decoding whole-recording version of $data_dir.
               # If not provided, a new one will be created using $lang_test
 
-# List of weights on labels obtained from alignment, 
-# labels obtained from decoding and default labels in out-of-segment regions
+# List of weights on labels obtained from alignment;
+# labels obtained from decoding; and default labels in out-of-segment regions
 merge_weights=1.0,0.1,0.5
 
 prepare_targets_stage=-10
