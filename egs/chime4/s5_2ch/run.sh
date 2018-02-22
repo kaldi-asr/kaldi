@@ -111,8 +111,8 @@ if [ $stage -le 3 ]; then
     --decode-only $gmm_decode_only_flag $enhancement $enhancement_data $chime4_data
 fi
 
-# DNN based ASR experiment
-# Since it takes time to evaluate DNN, we make the GMM and DNN scripts separately.
+# TDNN based ASR experiment
+# Since it takes time to evaluate TDNN, we make the GMM and TDNN scripts separately.
 # You may execute it after you would have promising results using GMM-based ASR experiments
 if [ $stage -le 4 ]; then
   local/chain/run_tdnn.sh --decode-only $tdnn_decode_only_flag $enhancement
@@ -122,6 +122,11 @@ fi
 # It takes a few days to train a RNNLM.
 if [ $stage -le 5 ]; then
   local/run_lmrescore_tdnn.sh $chime4_data $enhancement
+fi
+
+# LM-rescoring experiment with LSTM LMs
+if [ $stage -le 6 ]; then
+  local/rnnlm/run_lstm.sh $enhancement
 fi
 
 echo "Done."
