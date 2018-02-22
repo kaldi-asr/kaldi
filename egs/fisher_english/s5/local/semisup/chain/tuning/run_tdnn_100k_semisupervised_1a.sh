@@ -13,7 +13,10 @@
 # training as against using the combined data as in run_tdnn_50k_semisupervised.sh.
 # We use 3-gram LM trained on 100 hours of supervised data. We do not have
 # enough data to do 4-gram LM rescoring as in run_tdnn_50k_semisupervised.sh.
+
+# This script uses phone LM to model UNK.
 # This script uses the same tree as that for the seed model.
+# See the comments in the script about how to change these.
 
 # Unsupervised set: train_unsup100k_250k
 # unsup_frames_per_eg=150

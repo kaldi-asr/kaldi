@@ -7,8 +7,12 @@
 # supervised data and 250 hours of unsupervised data.
 # We assume the supervised data is in data/train_sup and unsupervised data
 # is in data/train_unsup100k_250k. 
-# Further, for LM training we assume there is data/train/text, from which
+# For LM training, we assume there is data/train/text, from which
 # we will exclude the utterances contained in the unsupervised set.
+# We use all 300 hours of semi-supervised data for i-vector extractor training.
+
+# This differs from run_100k.sh, which uses only 100 hours supervised data for 
+# both i-vector extractor training and LM training.
 
 . ./cmd.sh
 . ./path.sh 

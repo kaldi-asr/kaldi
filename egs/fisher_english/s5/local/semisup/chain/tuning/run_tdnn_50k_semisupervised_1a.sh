@@ -13,6 +13,8 @@
 # We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
 # unsupervised data to create LM for decoding. Rescoring is done with
 # a larger 4-gram LM.
+# This differs from the case in run_tdnn_100k_semisupervised.sh.
+
 # This script uses phone LM to model UNK.
 # This script uses the same tree as that for the seed model.
 # See the comments in the script about how to change these.

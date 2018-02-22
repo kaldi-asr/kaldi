@@ -10,6 +10,9 @@
 # For LM training, we only use the supervised set corresponding to 100 hours as 
 # opposed to the case in run_50k.sh, where we included part of the 
 # transcripts in data/train/text.
+# This uses only 100 hours supervised set for i-vector extractor training, 
+# which is different from run_50k.sh, which uses combined supervised + 
+# unsupervised set.
 
 . ./cmd.sh
 . ./path.sh 
