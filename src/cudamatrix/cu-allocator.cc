@@ -78,6 +78,7 @@ void* CuMemoryAllocator::MallocPitchInternal(size_t row_bytes,
   num_system_allocations_++;
   void *ans;
   cudaError_t e;
+  size_t cuda_memory_marker = GetDeviceMemoryMarker();
   for (int32 i = 0; i <= 2; i++) {
     if (num_rows != 1) {
       CuTimer tim;
@@ -97,7 +98,7 @@ void* CuMemoryAllocator::MallocPitchInternal(size_t row_bytes,
         KALDI_WARN << "Allocation of " << row_bytes << " x "
                    << num_rows << " region failed: freeing some memory and "
                    << "trying again. ";
-        BaseFloat new_memory_factor = 1.1;
+        BaseFloat new_memory_factor = 1.03;
         if (opts_.memory_factor > new_memory_factor) {
           KALDI_LOG << "To avoid future problems like this, changing "
                     << "memory_factor from " << opts_.memory_factor << " to "
@@ -110,6 +111,8 @@ void* CuMemoryAllocator::MallocPitchInternal(size_t row_bytes,
                                               std::min<size_t>(memory_cached,
                                                                memory_requested));
         FreeSomeCachedMemory(memory_to_free);
+        cuda_memory_marker = GetDeviceMemoryMarker(); // refresh the memory marker
+                                                      // as we freed some (hopefully)
       } else {
         KALDI_ERR << "Cannot allocate the requested memory ("
                   << row_bytes << " x " << num_rows << " = "
@@ -117,10 +120,34 @@ void* CuMemoryAllocator::MallocPitchInternal(size_t row_bytes,
       }
       cudaGetLastError();  // Clear the error state.
     } else {
+      ReportAllocCallStats(row_bytes, num_rows, *pitch, cuda_memory_marker);
       break;
     }
   }
   return ans;
+}
+
+size_t CuMemoryAllocator::GetDeviceMemoryMarker() const {
+  size_t free_memory_now = 0;
+  if (GetVerboseLevel() >= 5)
+    cudaMemGetInfo(&free_memory_now, NULL);
+  return free_memory_now;
+}
+
+void CuMemoryAllocator::ReportAllocCallStats(int64 row_bytes,
+                                             int64 num_rows,
+                                             int64 pitch,
+                                             size_t marker) const {
+  size_t free_memory_now = 0;
+  if (GetVerboseLevel() >= 5) {
+    cudaMemGetInfo(&free_memory_now, NULL);
+    KALDI_VLOG(5) << "Alloc requested   : " << row_bytes << "x" << num_rows
+                  << " -> " << row_bytes * num_rows << " bytes.";
+    KALDI_VLOG(5) << "Alloc granted     : " << pitch     << "x" << num_rows
+                  << " -> " << pitch * num_rows << " bytes.";
+    KALDI_VLOG(5) << "Alloc device bytes: " << (marker - free_memory_now)
+                  << " bytes (" << (marker - free_memory_now)/(1024*1024) <<"MB)";
+  }
 }
 
 void CuMemoryAllocator::PrintMemoryUsage() const {
@@ -158,6 +185,27 @@ CuMemoryAllocator::CuMemoryAllocator(CuAllocatorOptions opts):
 void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
                                      size_t num_rows,
                                      size_t *pitch) {
+#if 0
+  t_++;
+  num_user_allocations_++;
+  void *tmp;
+  cudaError_t e;
+  size_t marker = GetDeviceMemoryMarker();
+  CuTimer tim;
+  e = cudaMallocPitch(&tmp, pitch, row_bytes, num_rows);
+  tot_time_taken_in_cuda_malloc_pitch_ += tim.Elapsed();
+  tot_time_taken_in_malloc_pitch_ += tim.Elapsed();
+  num_system_allocations_++;
+  if (e != cudaSuccess) {
+    PrintMemoryUsage();
+    cudaGetLastError();
+    KALDI_ERR << "Cannot allocate the requested memory ("
+              << row_bytes << " x " << num_rows << " = "
+              << row_bytes * num_rows << " bytes)";
+  }
+  ReportAllocCallStats(row_bytes, num_rows, *pitch, marker);
+  return tmp;
+#else
   CuTimer tim;
   t_++;
   num_user_allocations_++;
@@ -200,6 +248,7 @@ void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
     tot_time_taken_in_malloc_pitch_ += tim.Elapsed();
     return ans;
   }
+#endif
 }
 
 void CuMemoryAllocator::FreeSomeCachedMemory(size_t bytes_to_free_in) {
@@ -222,7 +271,7 @@ void CuMemoryAllocator::FreeSomeCachedMemory(size_t bytes_to_free_in) {
   // we declare to be the time since we last used it multiplied by the size
   // of the memory in the pointer.
   std::vector<BaseFloat> size_factor(num_caches);
-  for (size_t i = 0, j=1; i < num_caches; i++, j *= 2)
+  for (size_t i = 0, j=1; i < num_caches; i++, j *= 1)
     size_factor[i] = j;
 
   std::priority_queue<std::pair<BaseFloat,int32> > queue;
@@ -278,6 +327,11 @@ void CuMemoryAllocator::FreeSomeCachedMemory(size_t bytes_to_free_in) {
 }
 
 void CuMemoryAllocator::Free(void *ptr) {
+#if 0
+  CuTimer tim;
+  cudaFree(ptr);
+  tot_time_taken_in_cuda_free_ += tim.Elapsed();
+#else
   t_++;
   unordered_map<void*, UsedMemoryElement, PointerHasher>::iterator iter =
       used_map_.find(ptr);
@@ -294,6 +348,7 @@ void CuMemoryAllocator::Free(void *ptr) {
   cache.Insert(MemoryRequest(elem.row_bytes, elem.num_rows),
                CachedMemoryElement(ptr, t_, elem.pitch));
   used_map_.erase(iter);
+#endif
 }
 
 size_t CuMemoryAllocator::MruCache::LeastRecentTime() const {

@@ -410,6 +410,7 @@ void CuDevice::AccuProfile(const char *function_name,
   }
 }
 
+
 void CuDevice::PrintMemoryUsage() const {
   if (Enabled()) {
     allocator_.PrintMemoryUsage();

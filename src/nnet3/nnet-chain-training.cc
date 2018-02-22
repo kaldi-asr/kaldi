@@ -92,6 +92,74 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   num_minibatches_processed_++;
 }
 
+class ChainTrainerMemoryHolder {
+ public:
+  ChainTrainerMemoryHolder(const NnetChainTrainer *const trainer,
+                           NnetComputer &computer,
+                           const NnetChainExample &eg);
+ private:
+  CuMatrix<BaseFloat> nnet_output_;
+  CuMatrix<BaseFloat> nnet_output_deriv_;
+  CuMatrix<BaseFloat> beta_;
+  CuMatrix<BaseFloat> alpha_;
+
+};
+
+ChainTrainerMemoryHolder::ChainTrainerMemoryHolder(const NnetChainTrainer *const trainer,
+                                                   NnetComputer &computer,
+                                                   const NnetChainExample &eg) {
+
+  std::vector<NnetChainSupervision>::const_iterator iter = eg.outputs.begin(),
+      end = eg.outputs.end();
+
+  int max_rows = 0,
+      max_cols = 0;
+
+  size_t max_frames_per_sequence = 0,
+         max_sequence_size = 0,
+         max_alpha_matrix_size = 0;
+
+  for (; iter != end; ++iter) {
+    const NnetChainSupervision &sup = *iter;
+
+    int output_rows = sup.supervision.num_sequences * sup.supervision.frames_per_sequence;
+    int output_cols = trainer->nnet_->OutputDim("output");
+
+    size_t curr_frames_per_sequence = output_rows / sup.supervision.num_sequences + 1;
+    size_t den_graph_size = trainer->den_graph_.NumStates() + 1;
+    size_t curr_sequence_size = den_graph_size * sup.supervision.num_sequences;
+    size_t curr_alpha_matrix_size = curr_frames_per_sequence * curr_sequence_size;
+
+    if (curr_alpha_matrix_size > max_alpha_matrix_size) {
+      max_alpha_matrix_size = curr_alpha_matrix_size;
+      max_frames_per_sequence = curr_frames_per_sequence;
+      max_sequence_size = curr_sequence_size;
+    }
+
+    size_t matrix_size = output_rows * output_cols;
+    if (matrix_size > (max_rows * max_cols)) {
+      max_rows = output_rows;
+      max_cols = output_cols;
+    }
+
+  }
+
+  KALDI_VLOG(5) << "Pre-caching chain training memory";
+  // the sequence of resizes is in a specific order (bigger to smaller)
+  // so that the cudaMalloc won't trash the memory it has already
+  // alloc'd in the previous iterations
+  alpha_.Resize(max_frames_per_sequence,
+                max_sequence_size,
+                kUndefined);
+
+  nnet_output_.Resize(max_rows, max_cols, kUndefined);
+  nnet_output_deriv_.Resize(max_rows, max_cols, kUndefined);
+
+  beta_.Resize(2, max_sequence_size, kUndefined);
+
+  KALDI_VLOG(5) << "Precaching chain training memory...Done";
+}
+
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
                                      const NnetComputation &computation) {
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
@@ -100,10 +168,17 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   // store stats.  This is mainly important for memory-norm.
   NnetComputer computer(nnet_config.compute_config, computation,
                         nnet_, delta_nnet_);
+
+  // reserve the memory needed in ProcessOutputs and
+  // and release it back (so that it will get cached).
+  ChainTrainerMemoryHolder *memory_holder = new ChainTrainerMemoryHolder(this, computer, eg);
+  delete memory_holder;
+
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.inputs);
   computer.Run();
 
+  // Probably could be merged in a single call PreallocateChainTrainerMemory(*nnet_, eg) ?
   this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 
