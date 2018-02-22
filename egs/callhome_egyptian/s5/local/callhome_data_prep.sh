@@ -140,16 +140,16 @@ then
 fi
 
 if [ $stage -le 0 ]; then
-	#Gather all the speech files together to create a file list
-	(
-	    find $speech_train -iname '*.sph';
-	    find $speech_dev -iname '*.sph';
-	    find $speech_test -iname '*.sph';
+  #Gather all the speech files together to create a file list
+  (
+      find $speech_train -iname '*.sph';
+      find $speech_dev -iname '*.sph';
+      find $speech_test -iname '*.sph';
       find $speech_sup -iname '*.sph';
       find $speech_h5 -iname '*.sph';
-	)  > $tmpdir/callhome_train_sph.flist
+  )  > $tmpdir/callhome_train_sph.flist
 
-	#Get all the transcripts in one place
+  #Get all the transcripts in one place
 
   (
     find $transcripts_train -iname '*.txt';
@@ -162,9 +162,9 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-	$local/callhome_make_trans.pl $tmpdir
-	mkdir -p $dir/train_all
-	mv $tmpdir/reco2file_and_channel $dir/train_all/
+  $local/callhome_make_trans.pl $tmpdir
+  mkdir -p $dir/train_all
+  mv $tmpdir/reco2file_and_channel $dir/train_all/
 fi
 
 if [ $stage -le 2 ]; then

@@ -6,6 +6,7 @@
 //                       Johns Hopkins University (Author: Daniel Povey);
 //                       Haihua Xu; Wei Shi
 //                2015   Guoguo Chen
+//                2017   Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -26,7 +27,8 @@
 #include "util/stl-utils.h"
 #include <numeric>
 #include <time.h> // This is only needed for UnitTestSvdSpeed, you can
-// comment it (and that function) out if it causes problems.
+// comment it (and that function) out if it causes problems.  
+#include <matrix/cblas-wrappers.h>
 
 namespace kaldi {
 
@@ -1851,6 +1853,48 @@ template<typename Real> static void UnitTestDotprod() {
   }
 }
 
+
+template<class Real>
+void PlaceNansInGaps(Matrix<Real> *mat) {
+  int32 num_rows = mat->NumRows(), num_cols = mat->NumCols(),
+      stride = mat->Stride();
+  BaseFloat not_a_number = nan(" ");  // nan is from <cmath>
+  for (int32 r = 0; r + 1 < num_rows; r++) {
+    for (int32 j = num_cols; j < stride; j++) {
+      if (RandInt(0, 1) == 0)
+        (mat->RowData(r))[j] = not_a_number;
+      else
+        (mat->RowData(r))[j] = RandGauss() * 1.5e+31;
+    }
+  }
+}
+
+
+/**
+ * Make sure that when Resize() is called with resize_type = kCopyData
+ * and a stride_type different from this's stride_type, the resized
+ * matrix is equivalent to the original matrix (modulo the stride).
+ */
+template<typename Real>
+static void UnitTestResizeCopyDataDifferentStrideType() {
+  for (size_t i = 0; i < 10; i++) {
+    MatrixIndexT num_rows = Rand() % 10, num_cols = Rand() % 10;
+    if (num_rows * num_cols == 0) num_rows = num_cols = 0;
+    MatrixStrideType src_stride_type = (Rand() % 2 == 0) ?
+      kDefaultStride : kStrideEqualNumCols;
+    // Always pick the other stride type.
+    MatrixStrideType resize_stride_type = (src_stride_type == kDefaultStride) ?
+      kStrideEqualNumCols : kDefaultStride;
+    Matrix<Real> src(num_rows, num_cols, kSetZero, src_stride_type);
+    Matrix<Real> clone(src);
+    PlaceNansInGaps(&clone);
+    src.Resize(num_rows, num_cols, kCopyData, resize_stride_type);
+    PlaceNansInGaps(&src);
+    AssertEqual(src, clone);
+  }
+}
+
+
 template<typename Real>
 static void UnitTestResize() {
   for (size_t i = 0; i < 10; i++) {
@@ -2244,8 +2288,10 @@ template<typename Real> static void  UnitTestFloorCeiling() {
     v.SetRandn();
     Real pivot = v(5);
     Vector<Real> f(v), f2(v), c(v), c2(v);
-    MatrixIndexT floored2 = f.ApplyFloor(pivot),
-        ceiled2 = c.ApplyCeiling(pivot);
+    MatrixIndexT floored2;
+    f.ApplyFloor(pivot, &floored2);
+    MatrixIndexT ceiled2;
+    c.ApplyCeiling(pivot, &ceiled2);
     MatrixIndexT floored = 0, ceiled = 0;
     for (MatrixIndexT d = 0; d < dimM; d++) {
       if (f2(d) < pivot) { f2(d) = pivot; floored++; }
@@ -2255,6 +2301,16 @@ template<typename Real> static void  UnitTestFloorCeiling() {
     AssertEqual(c, c2);
     KALDI_ASSERT(floored == floored2);
     KALDI_ASSERT(ceiled == ceiled2);
+
+    // Check that the non-counting variants are equivalent to the counting
+    // variants.
+    Vector<Real> f3(v);
+    f3.ApplyFloor(pivot);
+    AssertEqual(f2, f3);
+
+    Vector<Real> c3(v);
+    c3.ApplyCeiling(pivot);
+    AssertEqual(c2, c3);
   }
 }
 
@@ -2737,6 +2793,19 @@ template<typename Real> static void UnitTestMul() {
   }
 }
 
+template<typename Real> static void UnitTestApplyExpSpecial() {
+  int32 rows = RandInt(1, 10), cols = RandInt(1, 10);
+  Matrix<Real> mat(rows, cols);
+  mat.SetRandn();
+  Matrix<Real> A(mat), B(mat);
+  A.ApplyExp();
+  B.Add(1.0);
+  B.ApplyFloor(1.0);
+  A.Min(B); // min of exp(x) and max(1.0, x + 1).
+  mat.ApplyExpSpecial();
+  KALDI_LOG << "A is: " << A;
+  AssertEqual(mat, A);
+}
 
 template<typename Real> static void UnitTestInnerProd() {
 
@@ -4426,22 +4495,6 @@ static void UnitTestRandCategorical() {
 }
 
 
-template<class Real>
-void PlaceNansInGaps(Matrix<Real> *mat) {
-  int32 num_rows = mat->NumRows(), num_cols = mat->NumCols(),
-      stride = mat->Stride();
-  BaseFloat not_a_number = nan(" ");  // nan is from <cmath>
-  for (int32 r = 0; r + 1 < num_rows; r++) {
-    for (int32 j = num_cols; j < stride; j++) {
-      if (RandInt(0, 1) == 0)
-        (mat->RowData(r))[j] = not_a_number;
-      else
-        (mat->RowData(r))[j] = RandGauss() * 1.5e+31;
-    }
-  }
-}
-
-
 template <class Real>
 static void UnitTestAddMatMatNans() {
   for (int32 i = 0; i < 200; i++) {
@@ -4547,6 +4600,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestCompressedMatrix2<Real>();
   UnitTestExtractCompressedMatrix<Real>();
   UnitTestResize<Real>();
+  UnitTestResizeCopyDataDifferentStrideType<Real>();
   UnitTestNonsymmetricPower<Real>();
   UnitTestEigSymmetric<Real>();
   KALDI_LOG << " Point A";
@@ -4640,6 +4694,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestAddMatSelf<Real>();
   UnitTestMaxMin<Real>();
   UnitTestInnerProd<Real>();
+  UnitTestApplyExpSpecial<Real>();
   UnitTestScaleDiag<Real>();
   UnitTestSetDiag<Real>();
   UnitTestSetRandn<Real>();
@@ -4691,5 +4746,4 @@ int main() {
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);
   KALDI_LOG << "Tests succeeded.";
-
 }

@@ -196,23 +196,23 @@ bool LatticeBoost(const TransitionModel &trans,
 
    @param [in] trans    The transition model. Used to map the
                         transition-ids to phones or pdfs.
-   @param [in] silence_phones   A list of integer ids of silence phones. The 
+   @param [in] silence_phones   A list of integer ids of silence phones. The
                         silence frames i.e. the frames where num_ali
                         corresponds to a silence phones are treated specially.
                         The behavior is determined by 'one_silence_class'
                         being false (traditional behavior) or true.
-                        Usually in our setup, several phones including 
-                        the silence, vocalized noise, non-spoken noise 
+                        Usually in our setup, several phones including
+                        the silence, vocalized noise, non-spoken noise
                         and unk are treated as "silence phones"
    @param [in] lat      The denominator lattice
    @param [in] num_ali  The numerator alignment
    @param [in] criterion    The objective function. Must be "mpfe" or "smbr"
-                        for MPFE (minimum phone frame error) or sMBR 
+                        for MPFE (minimum phone frame error) or sMBR
                         (state minimum bayes risk) training.
    @param [in] one_silence_class   Determines how the silence frames are treated.
                         Setting this to false gives the old traditional behavior,
-                        where the silence frames (according to num_ali) are 
-                        treated as incorrect. However, this means that the 
+                        where the silence frames (according to num_ali) are
+                        treated as incorrect. However, this means that the
                         insertions are not penalized by the objective.
                         Setting this to true gives the new behaviour, where we
                         treat silence as any other phone, except that all pdfs
@@ -221,7 +221,7 @@ bool LatticeBoost(const TransitionModel &trans,
                         the insertions in the trained model. This is closer to
                         the WER metric that we actually care about, since WER is
                         generally computed after filtering out noises, but
-                        does penalize insertions. 
+                        does penalize insertions.
     @param [out] post   The "MBR posteriors" i.e. derivatives w.r.t to the
                         pseudo log-likelihoods of states at each frame.
 */
@@ -254,11 +254,11 @@ BaseFloat LatticeForwardBackwardMpeVariants(
    @param [in] cancel   If "cancel" is true, it will cancel out any positive and
                         negative parts from the same transition-id (or pdf-id,
                         if convert_to_pdf_ids == true).
-   @param [out] arc_post   The output MMI posteriors of transition-ids (or 
+   @param [out] arc_post   The output MMI posteriors of transition-ids (or
                         pdf-ids if convert_to_pdf_ids == true) at each frame
                         i.e. the difference between the numerator
                         and denominator posteriors.
-   
+
    It returns the forward-backward likelihood of the lattice. */
 BaseFloat LatticeForwardBackwardMmi(
     const TransitionModel &trans,

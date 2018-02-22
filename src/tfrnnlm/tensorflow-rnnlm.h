@@ -149,6 +149,7 @@ class TfRnnlmDeterministicFst:
   // Does not take ownership.
   TfRnnlmDeterministicFst(int32 max_ngram_order, KaldiTfRnnlmWrapper *rnnlm);
   ~TfRnnlmDeterministicFst();
+  void Clear();
 
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.

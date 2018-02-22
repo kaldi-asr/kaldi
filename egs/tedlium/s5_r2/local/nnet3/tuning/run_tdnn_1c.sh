@@ -69,7 +69,7 @@ reporting_email=dpovey@gmail.com
 # set common_egs_dir to use previously dumped egs.
 common_egs_dir=
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

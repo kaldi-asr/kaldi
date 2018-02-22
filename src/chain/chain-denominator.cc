@@ -260,7 +260,7 @@ bool DenominatorComputation::Backward(
       BetaGeneralFrameDebug(t);
     Beta(t);
     if (t % kMaxDerivTimeSteps == 0) {
-      // commit the derivative stored in exp_nnet_output_transposed_ by adding
+      // commit the derivative stored in nnet_output_deriv_transposed_ by adding
       // its transpose to the appropriate sub-matrix of 'nnet_output_deriv'.
       int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps),
                                            frames_per_sequence_ - t),

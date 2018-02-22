@@ -150,6 +150,8 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
   rm $dir/uniq2utt $dir/valid_uttlist.tmp
 fi
 
+echo "$0: creating egs.  To ensure they are not deleted later you can do:  touch $dir/.nodelete"
+
 cat $data/utt2dur | \
   awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
    utils/filter_scp.pl --exclude $dir/valid_uttlist | \

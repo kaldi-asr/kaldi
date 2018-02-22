@@ -85,7 +85,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -95,7 +95,7 @@ if [ -f $alidir/trans.1 ]; then
   echo "$0: Using transforms from $alidir"
   feats="$sifeats transform-feats ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
   cur_trans_dir=$alidir
-else 
+else
   if [ $stage -le -5 ]; then
     echo "$0: obtaining initial basis fMLLR transforms since not present in $alidir"
     # The next line is necessary because of $silphonelist otherwise being incorrect; would require
@@ -109,7 +109,7 @@ else
 
     # Compute the basis matrices.
     $cmd $dir/log/basis_training.log \
-	  gmm-basis-fmllr-training $alidir/final.mdl $alidir/fmllr.basis $dir/basis.acc.* || exit 1;
+          gmm-basis-fmllr-training $alidir/final.mdl $alidir/fmllr.basis $dir/basis.acc.* || exit 1;
     $cmd JOB=1:$nj $dir/log/fmllr.0.JOB.log \
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
@@ -184,14 +184,14 @@ fi
 
 x=1
 while [ $x -lt $num_iters ]; do
-   echo Pass $x
+  echo Pass $x
   if echo $realign_iters | grep -w $x >/dev/null && [ $stage -le $x ]; then
     echo Aligning data
     mdl="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $dir/$x.mdl - |"
     $cmd JOB=1:$nj $dir/log/align.$x.JOB.log \
       gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam "$mdl" \
-      "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
-      "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+        "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
+        "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
   fi
 
   if echo $fmllr_iters | grep -w $x >/dev/null; then
@@ -200,21 +200,21 @@ while [ $x -lt $num_iters ]; do
       # but this is the way the script does it right now.
       echo Estimating basis and fMLLR transforms
       $cmd JOB=1:$nj $dir/log/fmllr_est.$x.JOB.log \
-          ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
-          weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
-	  gmm-post-to-gpost $dir/$x.mdl "$feats" ark:- ark:- \| \
-	  gmm-basis-fmllr-accs-gpost \
-	  $dir/$x.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1; 
+        ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
+        weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
+        gmm-post-to-gpost $dir/$x.mdl "$feats" ark:- ark:- \| \
+        gmm-basis-fmllr-accs-gpost \
+          $dir/$x.mdl "$sifeats" ark,s,cs:- $dir/basis.acc.JOB || exit 1;
 
       # Compute the basis matrices.
       $cmd $dir/log/basis_training.log \
- 	    gmm-basis-fmllr-training $dir/$x.mdl $dir/fmllr.basis $dir/basis.acc.* || exit 1;
+        gmm-basis-fmllr-training $dir/$x.mdl $dir/fmllr.basis $dir/basis.acc.* || exit 1;
 
       $cmd JOB=1:$nj $dir/log/fmllr_app.$x.JOB.log \
-          ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
-          weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
-          gmm-post-to-gpost $dir/$x.mdl "$sifeats" ark:- ark:- \| \
-	  gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
+        ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
+        weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
+        gmm-post-to-gpost $dir/$x.mdl "$sifeats" ark:- ark:- \| \
+        gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
           --size-scale=0.2 --step-size-iters=3 \
           --write-weights=ark:$dir/pre_wgt.JOB \
           $dir/$x.mdl $dir/fmllr.basis "$sifeats"  ark,s,cs:- \
@@ -224,7 +224,7 @@ while [ $x -lt $num_iters ]; do
     feats="$sifeats transform-feats ark:$dir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$dir
   fi
-  
+
   if [ $stage -le $x ]; then
     $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
       gmm-acc-stats-ali $dir/$x.mdl "$feats" \
@@ -234,7 +234,7 @@ while [ $x -lt $num_iters ]; do
       gmm-est --power=$power --write-occs=$dir/$[$x+1].occs --mix-up=$numgauss $dir/$x.mdl \
       "gmm-sum-accs - $dir/$x.*.acc |" $dir/$[$x+1].mdl || exit 1;
     rm $dir/$x.mdl $dir/$x.*.acc
-    rm $dir/$x.occs 
+    rm $dir/$x.occs
   fi
   [ $x -le $max_iter_inc ] && numgauss=$[$numgauss+$incgauss];
   x=$[$x+1];
@@ -253,7 +253,7 @@ if [ $stage -le $x ]; then
   # Update model.
   $cmd $dir/log/est_alimdl.log \
     gmm-est --power=$power --remove-low-count-gaussians=false $dir/$x.mdl \
-    "gmm-sum-accs - $dir/$x.*.acc|" $dir/$x.alimdl  || exit 1;
+      "gmm-sum-accs - $dir/$x.*.acc|" $dir/$x.alimdl  || exit 1;
   rm $dir/$x.*.acc
 fi
 
@@ -269,7 +269,7 @@ utils/summarize_warnings.pl $dir/log
   echo "$0: Likelihood evolution:"
   for x in `seq $[$num_iters-1]`; do
     tail -n 30 $dir/log/acc.$x.*.log | awk '/Overall avg like/{l += $(NF-3)*$(NF-1); t += $(NF-1); }
-        /Overall average logdet/{d += $(NF-3)*$(NF-1); t2 += $(NF-1);} 
+        /Overall average logdet/{d += $(NF-3)*$(NF-1); t2 += $(NF-1);}
         END{ d /= t2; l /= t; printf("%s ", d+l); } '
   done
   echo

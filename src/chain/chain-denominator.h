@@ -51,7 +51,7 @@ namespace chain {
 
   All this is done in parallel over multiple sequences, but the computations
   are independent over the separate sequences, so we won't introduce any notation
-  or index for the sequence; we'll just explain it for one sequences.
+  or index for the sequence; we'll just explain it for one sequence.
 
   Suppose we have I hmm-states, numbered i = 0 ... I-1 (we'll use i and j for
   hmm-state indexes).  Let foll(i) give a list of arcs leaving state i, and
@@ -313,4 +313,3 @@ class DenominatorComputation {
 }  // namespace kaldi
 
 #endif  // KALDI_CHAIN_CHAIN_DENOMINATOR_H_
-

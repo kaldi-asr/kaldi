@@ -70,6 +70,8 @@ if [ ! -z "$online_ivector_dir" ]; then
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 fi
 
+utils/lang/check_phones_compatible.sh {$srcdir,$graphdir}/phones.txt || exit 1
+
 for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
@@ -161,7 +163,7 @@ if [ $stage -le 3 ]; then
       echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
     echo "score best paths"
     [ "$iter" != "final" ] && iter_opt="--iter $iter"
-    local/score.sh $iter_opt $scoring_opts --cmd "$cmd" $data $graphdir $dir
+    local/score.sh $scoring_opts --cmd "$cmd" $data $graphdir $dir
     echo "score confidence and timing with sclite"
   fi
 fi

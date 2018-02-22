@@ -5,7 +5,7 @@
 # It uses corrupted (reverberation + noise) speech as input and clean speech 
 # as output.
 
-. cmd.sh
+. ./cmd.sh
 
 stage=0
 affix=
@@ -16,7 +16,7 @@ num_data_reps=10
 
 remove_egs=true
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

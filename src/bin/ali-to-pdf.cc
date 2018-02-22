@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         "Converts alignments (containing transition-ids) to pdf-ids, zero-based.\n"
         "Usage:  ali-to-pdf  [options] <model> <alignments-rspecifier> <pdfs-wspecifier>\n"
         "e.g.: \n"
-        " ali-to-pdf 1.mdl ark:1.ali ark, t:-\n";
+        " ali-to-pdf 1.mdl ark:1.ali ark,t:-\n";
     ParseOptions po(usage);
 
     po.Read(argc, argv);

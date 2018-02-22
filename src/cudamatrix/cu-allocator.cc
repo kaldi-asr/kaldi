@@ -131,10 +131,13 @@ void CuMemoryAllocator::PrintMemoryUsage() const {
             << "; " << num_system_allocations_ << '/'
             << num_user_allocations_ << " calls to Malloc* resulted in "
             << "CUDA calls.";
-  KALDI_LOG << "Time taken in cudaMallocPitch=" << tot_time_taken_in_cuda_malloc_pitch_
-            << ", in cudaMalloc=" << tot_time_taken_in_cuda_malloc_
-            << ", in cudaFree=" << tot_time_taken_in_cuda_free_
-            << ", in this->MallocPitch()=" << tot_time_taken_in_malloc_pitch_;
+  if (GetVerboseLevel() >= 1) {
+    // CuTimer only accumulates stats at verbose level 1 or above.
+    KALDI_LOG << "Time taken in cudaMallocPitch=" << tot_time_taken_in_cuda_malloc_pitch_
+              << ", in cudaMalloc=" << tot_time_taken_in_cuda_malloc_
+              << ", in cudaFree=" << tot_time_taken_in_cuda_free_
+              << ", in this->MallocPitch()=" << tot_time_taken_in_malloc_pitch_;
+  }
 }
 
 CuMemoryAllocator::CuMemoryAllocator(CuAllocatorOptions opts):

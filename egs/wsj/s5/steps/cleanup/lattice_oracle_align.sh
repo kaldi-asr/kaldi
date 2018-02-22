@@ -16,7 +16,7 @@ special_symbol="***"    # Special symbol to be aligned with the inserted or
 print_silence=true      # True if we want the silences in the ctm.  We do.
 frame_shift=0.01
 
-. path.sh
+. ./path.sh
 . utils/parse_options.sh
 
 if [ $# -ne 4 ]; then
@@ -72,9 +72,9 @@ fi
 nj=$(cat $latdir/num_jobs)
 oov=$(cat $lang/oov.int)
 
-utils/split_data.sh --per-utt $data $nj
+utils/split_data.sh $data $nj
 
-sdata=$data/split$nj
+sdata=$data/split${nj}
 
 if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $dir/log/get_oracle.JOB.log \
