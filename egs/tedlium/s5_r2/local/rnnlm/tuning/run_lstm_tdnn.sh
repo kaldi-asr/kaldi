@@ -5,9 +5,9 @@
 #           2017  Ke Li
 
 # rnnlm/train_rnnlm.sh: best iteration (out of 10) was 8, linking it to final iteration.
-# rnnlm/train_rnnlm.sh: train/dev perplexity was 78.4 / 147.8.
-# Train objf: -1556.00 -5.43 -5.15 -5.00 -4.90 -4.82 -4.75 -4.69 -4.63 -4.58
-# Dev objf:   -11.92 -5.70 -5.29 -5.16 -5.08 -5.04 -5.02 -5.00 -5.00 -5.00
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 100.9 / 155.7.
+# Train objf: -6.19 -5.43 -5.14 -4.99 -4.88 -4.80 -4.73 -4.66 -4.60 -4.54  
+# Dev objf:   -11.92 -5.75 -5.33 -5.19 -5.12 -5.09 -5.06 -5.05 -5.05 -5.05
 
 # Begin configuration section.
 dir=exp/rnnlm_lstm_tdnn
