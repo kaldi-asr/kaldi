@@ -1489,7 +1489,7 @@ class ModelCollapser {
                       // this dropout comonent.
     if (dropout_component != NULL) {
       BaseFloat dropout_proportion = dropout_component->DropoutProportion();
-      BaseFloat scale = 1.0 / (1.0 - dropout_proportion);
+      scale = 1.0 / (1.0 - dropout_proportion);
     } else {
       // for GeneralDropoutComponent, it's done in such a way that the expectation
       // is always 1.  (When it's nonzero, we give it a value 1/(1-dropout_proportion).
