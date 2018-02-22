@@ -110,6 +110,8 @@ if [ $stage -le 2 ] && [[ "$PWD" != *s5_6ch* ]]; then
     cp -r ../s5_6ch/data/tr05_real_$enhan data/
     cp -r ../s5_6ch/data/tr05_simu_$enhan data/
     beamformed=1
+  elif [[ "$enhan" == *isolated_1ch_track* ]]; then
+    beamformed=1
   fi
   if [ $beamformed == 0 ]; then
     echo "no such directory tr05_{real,simu}_{beamformit_5mics,blstm_gev,single_BLSTMmask}"

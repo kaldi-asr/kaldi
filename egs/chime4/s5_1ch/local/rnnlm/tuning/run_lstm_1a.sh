@@ -8,18 +8,23 @@
 # This script trains LMs on the Chime4 data.
 # rnnlm/train_rnnlm.sh: best iteration (out of 120) was 91, linking it to final iteration.
 # rnnlm/train_rnnlm.sh: train/dev perplexity was 23.2 / 25.6.
-# Train objf: -5.64 -4.53 -4.21 -4.05 -3.96 -3.89 -3.84 -3.79 -3.76 -3.73 -3.70 -3.67 -3.65 -3.63 -3.61 -3.59 -3.58 -3.56 -3.55 -3.53 -3.52 -
-# 3.51 -3.50 -3.48 -3.48 -3.47 -3.46 -3.44 -3.44 -3.43 -3.44 -3.42 -3.40 -3.38 -3.39 -3.37 -3.36 -3.34 -3.35 -3.34 -3.32 -3.31 -3.31 -3.30 -3
-# .29 -3.28 -3.28 -3.27 -3.26 -3.25 -3.26 -3.25 -3.24 -3.23 -3.23 -3.22 -3.21 -3.20 -3.21 -3.20 -3.19 -3.18 -3.18 -3.17 -3.17 -3.16 -3.16 -3.
-# 15 -3.15 -3.14 -3.14 -3.13 -3.12 -3.12 -3.12 -3.11 -3.10 -3.10 -3.10 -3.09 -3.08 -3.08 -3.08 -3.07 -3.06 -3.06 -3.06 -3.05 -3.04 -3.04 -3.0
-# 4 -3.03 -3.00 -3.02 -3.00 -2.99 -3.00 -2.99 -2.99 -2.99 -2.97 -2.98 -2.96 -2.95 -2.96 -2.95 -2.95 -2.95 -2.93 -2.94 -2.92 -2.92 -2.92 -2.91
-# -2.91 -2.91 -2.89 -2.90 -2.89 -2.88
-# Dev objf:   -11.73 -5.17 -4.46 -4.23 -4.08 -3.98 -3.90 -3.83 -3.78 -3.74 -3.70 -3.69 -3.65 -3.62 -3.59 -3.56 -3.55 -3.54 -3.54 -3.51 -3.51
-# -3.50 -3.48 -3.47 -3.45 -3.46 -3.43 -3.43 -3.43 -3.42 -3.42 -3.37 -3.37 -3.36 -3.35 -3.34 -3.33 -3.33 -3.34 -3.31 -3.31 -3.31 -3.31 -3.31 -
-# 3.30 -3.29 -3.29 -3.30 -3.29 -3.28 -3.29 -3.28 -3.27 -3.28 -3.28 -3.27 -3.27 -3.27 -3.27 -3.26 -3.26 -3.27 -3.26 -3.25 -3.26 -3.27 -3.26 -3
-# .25 -3.26 -3.25 -3.26 -3.25 -3.26 -3.25 -3.25 -3.25 -3.24 -3.26 -3.26 -3.25 -3.26 -3.25 -3.25 -3.24 -3.26 -3.25 -3.25 -3.25 -3.26 -3.26 -3.
-# 26 -3.24 -3.25 -3.25 -3.25 -3.26 -3.26 -3.25 -3.26 -3.26 -3.26 -3.26 -3.27 -3.27 -3.26 -3.26 -3.27 -3.27 -3.27 -3.27 -3.27 -3.27 -3.27 -3.2
-# 7 -3.28 -3.28 -3.28 -3.28 -3.29 -3.29
+# Train objf: -5.63 -4.52 -4.20 -4.05 -3.96 -3.89 -3.83 -3.79 -3.76 -3.73 -3.70 -3.67 -3.65
+# -3.63 -3.61 -3.59 -3.58 -3.56 -3.54 -3.53 -3.52 -3.50 -3.49 -3.48 -3.47 -3.46 -3.45 -3.44
+# -3.43 -3.42 -3.43 -3.41 -3.39 -3.38 -3.38 -3.37 -3.35 -3.34 -3.34 -3.33 -3.32 -3.31 -3.31
+# -3.30 -3.29 -3.28 -3.28 -3.27 -3.26 -3.25 -3.25 -3.25 -3.23 -3.22 -3.23 -3.22 -3.21 -3.20
+# -3.20 -3.19 -3.19 -3.18 -3.18 -3.17 -3.16 -3.15 -3.16 -3.15 -3.14 -3.13 -3.13 -3.13 -3.12
+# -3.11 -3.12 -3.11 -3.10 -3.09 -3.09 -3.09 -3.08 -3.07 -3.07 -3.07 -3.06 -3.05 -3.05 -3.05
+# -3.04 -3.04 -3.04 -3.03 -3.00 -3.02 -3.00 -2.99 -3.00 -2.99 -2.99 -2.98 -2.96 -2.97 -2.96
+# -2.95 -2.96 -2.95 -2.95 -2.94 -2.93 -2.93 -2.92 -2.91 -2.92 -2.91 -2.91 -2.91 -2.89 -2.90 -2.89 -2.88 
+#Dev objf:   -11.73 -5.17 -4.46 -4.21 -4.06 -3.96 -3.88 -3.82 -3.79 -3.73 -3.69 -3.68 -3.63 
+# -3.61 -3.59 -3.58 -3.54 -3.54 -3.53 -3.51 -3.50 -3.47 -3.47 -3.46 -3.44 -3.44 -3.42 -3.42 
+# -3.42 -3.42 -3.40 -3.36 -3.35 -3.35 -3.34 -3.34 -3.34 -3.33 -3.32 -3.32 -3.31 -3.31 -3.31 
+# -3.30 -3.29 -3.29 -3.29 -3.28 -3.28 -3.28 -3.27 -3.27 -3.26 -3.27 -3.27 -3.26 -3.25 -3.26 
+# -3.26 -3.25 -3.25 -3.25 -3.25 -3.25 -3.25 -3.25 -3.26 -3.25 -3.24 -3.25 -3.25 -3.24 -3.24 
+# -3.25 -3.25 -3.24 -3.24 -3.25 -3.26 -3.25 -3.25 -3.24 -3.25 -3.25 -3.24 -3.25 -3.25 -3.25 
+# -3.24 -3.26 -3.25 -3.25 -3.25 -3.25 -3.25 -3.25 -3.25 -3.25 -3.26 -3.26 -3.26 -3.26 -3.26 
+# -3.27 -3.27 -3.27 -3.27 -3.27 -3.27 -3.27 -3.27 -3.27 -3.27 -3.28 -3.28 -3.28 -3.28 -3.29 -3.29 -3.29 
+
 # Begin configuration section.
 
 dir=exp/rnnlm_lstm_1a
@@ -34,7 +39,7 @@ train_stage=-10
 run_lat_rescore=true
 run_nbest_rescore=true
 ac_model_dir=exp/chain/tdnn1a_sp
-decode_dir_suffix=rnnlm_1a
+decode_dir_suffix=rnnlm_lstm_1a
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
@@ -59,31 +64,31 @@ done
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
   cp $srcdir/train.rnn $text_dir/chime4.txt
+  sed -i -e "s/<RNN_UNK>/<UNK>/g" $text_dir/chime4.txt
   cp $srcdir/valid.rnn $text_dir/dev.txt
 fi
 
 if [ $stage -le 1 ]; then
   cp data/lang_chain/words.txt $dir/config/words.txt
-  sed -i -e 's/<UNK>/<RNN_UNK>/' $dir/config/words.txt
   n=`cat $dir/config/words.txt | wc -l`
   echo "<brk> $n" >> $dir/config/words.txt
   # words that are not present in words.txt but are in the training or dev data, will be
   # mapped to <SPOKEN_NOISE> during training.
-  echo "<RNN_UNK>" >$dir/config/oov.txt
+  echo "<UNK>" >$dir/config/oov.txt
 
   cat > $dir/config/data_weights.txt <<EOF
 chime4   3   1.0
 EOF
 
   rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
-                             --unk-word="<RNN_UNK>" \
+                             --unk-word="<UNK>" \
                              --data-weights-file=$dir/config/data_weights.txt \
                              $text_dir | awk 'NF==2' >$dir/config/unigram_probs.txt
 
   # choose features
   rnnlm/choose_features.py --unigram-probs=$dir/config/unigram_probs.txt \
                            --use-constant-feature=true \
-                           --special-words='<s>,</s>,<RNN_UNK>,<brk>' \
+                           --special-words='<s>,</s>,<UNK>,<brk>' \
                            $dir/config/words.txt > $dir/config/features.txt
 
   cat >$dir/config/xconfig <<EOF
@@ -107,12 +112,12 @@ if [ $stage -le 3 ]; then
                   --stage $train_stage --num-epochs 10 --cmd "$train_cmd" $dir
 fi
 
-LM=tgpr_5k # using the 3-gram as old lm
+LM=5gkn_5k # using the 5-gram lm from run_lmrescore_tdnn.sh
 tgtdir=${ac_model_dir}_smbr_lmrescore
 if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
   for decode_set in dt05_real dt05_simu et05_real et05_simu; do
-    decode_dir=${ac_model_dir}/decode_${LM}_${decode_set}_${enhan}
+    decode_dir=$tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${LM}
 
     # Lattice rescoring
     rnnlm/lmrescore_pruned.sh \
@@ -120,7 +125,7 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
       --weight 0.5 --max-ngram-order $ngram_order \
       data/lang_test_$LM $dir \
       data/${decode_set}_${enhan}_hires ${decode_dir} \
-      $tgtdir/decode_${LM}_${decode_set}_${enhan}_${decode_dir_suffix}
+      $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}
   done
   # calc wers for lattice-rescoring results
   local/chime4_calc_wers.sh $tgtdir ${enhan}_${decode_dir_suffix} \
@@ -129,23 +134,25 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
   head -n 15 $tgtdir/best_wer_${enhan}_${decode_dir_suffix}.result
 fi
 
+nbest=100
+rnnweight=0.5
 if [ $stage -le 5 ] && $run_nbest_rescore; then
   echo "$0: Perform nbest-rescoring on $ac_model_dir"
   for decode_set in dt05_real dt05_simu et05_real et05_simu; do
-    decode_dir=${ac_model_dir}/decode_${LM}_${decode_set}_${enhan}
+    decode_dir=$tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${LM}
 
     # Lattice rescoring
     rnnlm/lmrescore_nbest.sh \
-      --cmd "$decode_cmd --mem 4G" --N 100 \
-      0.5 data/lang_test_$LM $dir \
+      --cmd "$decode_cmd --mem 4G" --N $nbest \
+      $rnnweight data/lang_test_$LM $dir \
       data/${decode_set}_${enhan}_hires ${decode_dir} \
-      $tgtdir/decode_${LM}_${decode_set}_${enhan}_${decode_dir_suffix}_nbest
+      $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}
   done
   # calc wers for nbest-rescoring results
-  local/chime4_calc_wers.sh $tgtdir ${enhan}_${decode_dir_suffix}_nbest \
+  local/chime4_calc_wers.sh $tgtdir ${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} \
       $tgtdir/graph_tgpr_5k \
-      > $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_nbest.result
-  head -n 15 $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_nbest.result
+      > $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}.result
+  head -n 15 $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}.result
 fi
 
 exit 0

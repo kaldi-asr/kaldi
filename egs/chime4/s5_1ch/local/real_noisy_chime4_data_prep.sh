@@ -68,10 +68,14 @@ if $eval_flag; then
 cp $trans_dir/et05_real.dot_all et05_real.dot
 fi
 
-# make a scp file from file list
+# make a scp temporary file from file list
 for x in $list_set; do
-    cat $x.flist | awk -F'[/]' '{print $NF}'| sed -e 's/\.wav/_REAL/' > ${x}_wav.ids
-    paste -d" " ${x}_wav.ids $x.flist | sort -k 1 > ${x}_wav.scp
+    cat $x.flist | awk -F'[/]' '{print $NF}'| sed -e 's/\.wav/_REAL/' > ${x}_wav.idtemp
+    cat ${x}_wav.idtemp | awk -F'_' '{print $3}' | awk -F'.' '{print $2}' > $x.ch
+    cat ${x}_wav.idtemp | awk -F'_' '{print $1}' > $x.p1
+    cat ${x}_wav.idtemp | sed -e 's/^..._//' > $x.p2
+    paste -d"_" $x.p1 $x.ch $x.p2 > ${x}_wav.ids
+    paste -d" " ${x}_wav.ids $x.flist | sort -t_ -k1,1 -k3 > ${x}_wav.scptmp
 done
 
 #make a transcription from dot
@@ -98,13 +102,17 @@ fi
 # data-preparation stage independent of the specific lexicon used.
 noiseword="<NOISE>";
 for x in $list_set;do
+  cat ${x}_wav.scptmp | awk '{print $1}' > $x.txtp1
+  cat $x.trans1 | awk '{$1=""; print $0}' | sed 's/^[ \t]*//g' > $x.txtp2
+  paste -d" " $x.txtp1 $x.txtp2 > $x.trans1
   cat $x.trans1 | $local/normalize_transcript.pl $noiseword \
     | sort > $x.txt || exit 1;
 done
 
 # Make the utt2spk and spk2utt files.
 for x in $list_set; do
-  cat ${x}_wav.scp | awk -F'_' '{print $1}' > $x.spk
+  cat ${x}_wav.scptmp | sort > ${x}_wav.scp
+  cat ${x}_wav.scp | awk -F'_' '{print $1"_"$2}' > $x.spk
   cat ${x}_wav.scp | awk '{print $1}' > $x.utt
   paste -d" " $x.utt $x.spk > $x.utt2spk
   cat $x.utt2spk | $utils/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
