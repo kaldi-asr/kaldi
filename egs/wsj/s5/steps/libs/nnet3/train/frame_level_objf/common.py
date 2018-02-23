@@ -530,12 +530,14 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                 nnet3-combine \
                 --max-objective-evaluations={max_objective_evaluations} \
                 --verbose=3 {raw_models} \
+                {combine_gpu_opt} \
                 "ark,bg:nnet3-copy-egs {multitask_egs_opts} \
                     {egs_rspecifier} ark:- | \
                       nnet3-merge-egs --minibatch-size=1:{mbsize} ark:- ark:- |" \
                 "{out_model}"
         """.format(command=run_opts.command,
                    combine_queue_opt=run_opts.combine_queue_opt,
+                   combine_gpu_opt=run_opts.combine_gpu_opt,
                    dir=dir, raw_models=" ".join(raw_model_strings),
                    max_objective_evaluations=max_objective_evaluations,
                    egs_rspecifier=egs_rspecifier,
