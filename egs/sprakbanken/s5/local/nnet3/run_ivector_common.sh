@@ -105,7 +105,7 @@ if [ $stage -le 4 ]; then
   # note: essentially all the original segments should be in the hires data.
   n1=$(wc -l <data/${train_set}/feats.scp)
   n2=$(wc -l <$temp_data_root/${train_set}_hires/feats.scp)
-  if [ $n1 != $n1 ]; then
+  if [ $n1 != $n2 ]; then
     echo "$0: warning: number of feats $n1 != $n2, if these are very different it could be bad."
   fi
 
