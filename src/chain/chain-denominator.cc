@@ -33,10 +33,9 @@ DenominatorComputation::DenominatorComputation(
     den_graph_(den_graph),
     num_sequences_(num_sequences),
     frames_per_sequence_(nnet_output.NumRows() / num_sequences_),
-    exp_nnet_output_transposed_(nnet_output, kTrans),
     nnet_output_deriv_transposed_(
-        exp_nnet_output_transposed_.NumRows(),
-        std::min<int32>(exp_nnet_output_transposed_.NumCols(),
+        nnet_output.NumCols(),
+        std::min<int32>(nnet_output.NumRows(),
                         static_cast<int32>(kMaxDerivTimeSteps) *
                         num_sequences_)),
     alpha_(frames_per_sequence_ + 1,
@@ -57,6 +56,14 @@ DenominatorComputation::DenominatorComputation(
                  num_sequences_).SetZero();
 
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
+  // the kStrideEqualNumCols argument means we'll allocate a contiguous block of
+  // memory for this; it is added to ensure that the same block of memory
+  // (cached in the allocator) can be used for xent_output_deriv when allocated
+  // from chain-training.cc.
+  exp_nnet_output_transposed_.Resize(nnet_output.NumCols(),
+                                     nnet_output.NumRows(),
+                                     kUndefined, kStrideEqualNumCols);
+  exp_nnet_output_transposed_.CopyFromMat(nnet_output, kTrans);
   exp_nnet_output_transposed_.ApplyExp();
 }
 

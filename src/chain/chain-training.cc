@@ -52,8 +52,15 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                                 nnet_output_deriv);
   }
 
-  if (xent_output_deriv != NULL)
-    xent_output_deriv->Resize(nnet_output.NumRows(), nnet_output.NumCols());
+  if (xent_output_deriv != NULL) {
+    // the reason for kStrideEqualNumCols is so that we can share the memory
+    // block with the memory that was used for exp_nnet_output_transposed_ from
+    // chain-denominator.cc, which has just been freed; it also uses the
+    // kStrideEqualNumCols arg (its shape is the transpose of this matrix's
+    // shape).
+    xent_output_deriv->Resize(nnet_output.NumRows(), nnet_output.NumCols(),
+                              kSetZero, kStrideEqualNumCols);
+  }
 
 
   {
