@@ -497,6 +497,11 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
 
   std::string token;
   ReadToken(is, binary, &token);
+  if (token[0] != '<') {
+    // this should happen only rarely, in case we couldn't push back the
+    // '<' to the stream in PeekToken().
+    token = '<' + token;
+  }
   if (token == "<NumDimsSelfRepaired>") {
     ReadBasicType(is, binary, &num_dims_self_repaired_);
     ReadToken(is, binary, &token);
