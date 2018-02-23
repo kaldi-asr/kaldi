@@ -116,7 +116,7 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
   ScaleBatchnormStats(config_.batchnorm_stats_scale, nnet_);
 
   // The following will only do something if we have a LinearComponent
-  // with is-constrained-orthonormal set to true.
+  // or AffineComponent with orthonormal-constraint set to a nonzero value.
   ConstrainOrthonormal(nnet_);
 
   // Scale deta_nnet
@@ -170,9 +170,9 @@ void NnetTrainer::TrainInternalBackstitch(const NnetExample &eg,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
 
   if (is_backstitch_step1) {
-    // The following will only do something if we have a LinearComponent
-    // with is-constrained-orthonormal set to true.  We choose to do this
-    // only on the 1st backstitch step, for efficiency.
+    // The following will only do something if we have a LinearComponent or
+    // AffineComponent with orthonormal-constraint set to a nonzero value. We
+    // choose to do this only on the 1st backstitch step, for efficiency.
     ConstrainOrthonormal(nnet_);
   }
 

@@ -8,7 +8,7 @@
 #
 # local/chain/compare_wer.sh --online exp/chain/tdnn1{e,f}_sp 2>/dev/null
 # local/chain/compare_wer.sh --online exp/chain/tdnn1e_sp exp/chain/tdnn1f_sp
-# System                tdnn1e_sp tdnn1f7_sp
+# System                tdnn1e_sp tdnn1f_sp
 #WER dev_clean_2 (tgsmall)      14.11     13.91
 #             [online:]         14.07     13.96
 #WER dev_clean_2 (tglarge)      10.15      9.95
@@ -20,7 +20,7 @@
 # Num-params                 7508490   4205322
 
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1{e,f7}_sp
+# steps/info/chain_dir_info.pl exp/chain/tdnn1{e,f}_sp
 # exp/chain/tdnn1e_sp: num-iters=17 nj=2..5 num-params=7.5M dim=40+100->2309 combine=-0.057->-0.057 (over 1) xent:train/valid[10,16,final]=(-1.73,-1.46,-1.43/-1.94,-1.72,-1.68) logprob:train/valid[10,16,final]=(-0.067,-0.055,-0.050/-0.105,-0.095,-0.089)
 # exp/chain/tdnn1f_sp: num-iters=17 nj=2..5 num-params=4.2M dim=40+100->2309 combine=-0.060->-0.060 (over 2) xent:train/valid[10,16,final]=(-1.60,-1.39,-1.35/-1.81,-1.64,-1.59) logprob:train/valid[10,16,final]=(-0.068,-0.056,-0.051/-0.104,-0.097,-0.092)
 

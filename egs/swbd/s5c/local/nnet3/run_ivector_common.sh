@@ -17,10 +17,12 @@ if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
 
 if $speed_perturb; then
   if [ $stage -le 1 ]; then
-    # Although the nnet will be trained by high resolution data, we still have to perturb the normal data to get the alignments
-    # _sp stands for speed-perturbed
+    # Although the nnet will be trained by high resolution data, we still have
+    # to perturb the normal data to get the alignments _sp stands for
+    # speed-perturbed
     echo "$0: preparing directory for speed-perturbed data"
-    utils/data/perturb_data_dir_speed_3way.sh data/${train_set} data/${train_set}_sp
+    utils/data/perturb_data_dir_speed_3way.sh --always-include-prefix true \
+           data/${train_set} data/${train_set}_sp
 
     echo "$0: creating MFCC features for low-resolution speed-perturbed data"
     mfccdir=mfcc_perturbed

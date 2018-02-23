@@ -105,8 +105,8 @@ class CuCompressedMatrix: public CuCompressedMatrixBase {
   // The raw data.
   I *data_;
 
-  // Scale() affects how the raw data is interpreted as a floating point value.
-  // When uncompressing to a CuMatrix, we'll do
+  // scale_ affects how the raw data is interpreted as a floating point value.
+  // When uncompressing to a CuMatrix, we'll do:
   //  f  = scale_ * i
   // where f is the floating point value we're writing to, and i is the integer
   // value.
@@ -116,6 +116,13 @@ class CuCompressedMatrix: public CuCompressedMatrixBase {
   // that the output becomes -1, 0 and 1.
   BaseFloat scale_;
 
+  // 'truncate_' affects the code that compresses data to integer values.
+  // If the data we're compressing might possibly be outside of the representable
+  // range, then you should set truncate to true (this is the default in the
+  // constructor).  This way, values larger than the minimum or maximum will
+  // be set to the minimum or maximum value.  If truncate_ is false, it will
+  // just wrap around, but the compression code will be slightly faster as
+  // it doesn't need to check.
   bool truncate_;
 
   MatrixIndexT num_rows_;
