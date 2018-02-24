@@ -58,8 +58,13 @@ for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
 # The following results use the new ASpIRE dev sets from LDC.
 # This uses a new GLM with more acronym normalizations.
 # The new STM has more IGNORE_TIME_SEGMENT markings and acronym normalizations.
-%WER 22.9 | 2083 25838 | 81.6 12.0 6.4 4.6 22.9 70.8 | -0.469 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_8/penalty_0.0/ctm.filt.filt.sys
-%WER 24.0 | 2083 25822 | 79.9 11.9 8.1 3.9 24.0 71.7 | -0.450 | exp/chain/tdnn_lstm_1a_online/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
+%WER 22.9 | 2083 25834 | 81.6 12.0 6.4 4.5 22.9 70.7 | -0.546 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_8/penalty_0.0/ctm.filt.filt.sys
+%WER 24.0 | 2083 25820 | 79.9 12.0 8.1 4.0 24.0 71.8 | -0.444 | exp/chain/tdnn_lstm_1a_online/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
+
+# Result using oracle segmentation
+# There is no specific script for this. But you can run the decoding and lm rescoring using the
+# default parameters in local/nnet3/decode.sh.
+%WER 23.0 | 2083 25830 | 81.5 12.1 6.4 4.5 23.0 70.4 | -0.522 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_fg/score_8/penalty_0.0/ctm.filt.filt.sys
 
 # Result using speech activity detection for segmentation
-%WER 23.2 | 2083 25819 | 81.9 11.9 6.2 5.1 23.2 71.8 | -0.641 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_asr_sad_1a_iterfinal_pp_fg/score_8/penalty_0.75/ctm.filt.filt.sys
+%WER 22.9 | 2083 25821 | 81.9 11.1 7.0 4.9 22.9 71.8 | -0.488 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_asr_sad_1a_iterfinal_pp_fg/score_10/penalty_0.25/ctm.filt.filt.sys

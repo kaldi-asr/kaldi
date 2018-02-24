@@ -12,8 +12,6 @@ set -e
 # Final valid prob (xent)                -1.2350
 # Num-parameters                        49945168
 
-affix=v8    # for results
-
 # configs for 'chain'
 stage=0
 train_stage=-10
@@ -22,8 +20,6 @@ test_stage=1
 nj=70
 
 tdnn_affix=_1a
-tree_affix=bi_a
-chain_affix=
 
 hidden_dim=1024
 cell_dim=1024
@@ -67,9 +63,9 @@ fi
 train_set=train_rvb
 
 gmm_dir=exp/tri5a   # used to get training lattices (for chain supervision)
-treedir=exp/chain${chain_affix}/tree_${tree_affix}
-lat_dir=exp/chain${chain_affix}/tri5a_${train_set}_lats  # training lattices directory
-dir=exp/chain${chain_affix}/tdnn_lstm${tdnn_affix}
+treedir=exp/chain/tree_bi_a
+lat_dir=exp/chain/tri5a_${train_set}_lats  # training lattices directory
+dir=exp/chain/tdnn_lstm${tdnn_affix}
 train_data_dir=data/${train_set}_hires
 train_ivector_dir=exp/nnet3/ivectors_${train_set}
 lang=data/lang_chain
@@ -82,7 +78,7 @@ local/nnet3/run_ivector_common.sh --stage $stage --num-data-reps 3 || exit 1
 
 mkdir -p $dir
 
-norvb_lat_dir=exp/chain${chain_affix}/tri5a_train_lats
+norvb_lat_dir=exp/chain/tri5a_train_lats
 
 if [ $stage -le 7 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
@@ -262,10 +258,10 @@ if [ $stage -le 15 ]; then
 
   for d in dev_rvb test_rvb; do
     (
-      if [ ! -f exp/nnet3${nnet3_affix}/ivectors_${d}/ivector_online.scp ]; then
+      if [ ! -f exp/nnet3/ivectors_${d}/ivector_online.scp ]; then
         steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
-          data/${d}_hires exp/nnet3${nnet3_affix}/extractor \
-          exp/nnet3${nnet3_affix}/ivectors_${d} || { echo "Failed i-vector extraction for data/${d}_hires"; touch $dir/.error; }
+          data/${d}_hires exp/nnet3/extractor \
+          exp/nnet3/ivectors_${d} || { echo "Failed i-vector extraction for data/${d}_hires"; touch $dir/.error; }
       fi
 
       decode_dir=$dir/decode_${d}_pp
@@ -275,7 +271,7 @@ if [ $stage -le 15 ]; then
         --extra-right-context $extra_right_context \
         --extra-left-context-initial 0 --extra-right-context-final 0 \
         --frames-per-chunk 160 \
-        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${d} \
+        --online-ivector-dir exp/nnet3/ivectors_${d} \
         $graph_dir data/${d}_hires $decode_dir || { echo "Failed decoding in $decode_dir"; touch $dir/.error; }
     ) &
   done
@@ -288,23 +284,23 @@ if [ $stage -le 15 ]; then
 fi
 
 if [ $stage -le 16 ]; then
-  # %WER 22.9 | 2083 25838 | 81.6 12.0 6.4 4.6 22.9 70.8 | -0.469 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_8/penalty_0.0/ctm.filt.filt.sys
-  local/nnet3/prep_test_aspire.sh --stage $test_stage --decode-num-jobs 30 --affix "$affix" \
+  # %WER 22.9 | 2083 25834 | 81.6 12.0 6.4 4.5 22.9 70.7 | -0.546 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_8/penalty_0.0/ctm.filt.filt.sys
+  local/nnet3/decode.sh --stage $test_stage --decode-num-jobs 30 --affix "v9" \
    --acwt 1.0 --post-decode-acwt 10.0 \
-   --window 10 --overlap 5 \
-    --extra-left-context $extra_left_context \
-    --extra-right-context $extra_right_context \
-    --extra-left-context-initial 0 --extra-right-context-final 0 \
+   --window 10 --overlap 5 --frames-per-chunk 160 \
+   --extra-left-context $extra_left_context \
+   --extra-right-context $extra_right_context \
+   --extra-left-context-initial 0 --extra-right-context-final 0 \
    --sub-speaker-frames 6000 --max-count 75 --ivector-scale 0.75 \
    --pass2-decode-opts "--min-active 1000" \
    dev_aspire data/lang $dir/graph_pp $dir
 fi
 
 if [ $stage -le 17 ]; then
-  # %WER 24.0 | 2083 25822 | 79.9 11.9 8.1 3.9 24.0 71.7 | -0.450 | exp/chain/tdnn_lstm_1a_online/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
-  local/nnet3/prep_test_aspire_online.sh --stage $test_stage --decode-num-jobs 30 --affix "$affix" \
+  # %WER 24.0 | 2083 25820 | 79.9 12.0 8.1 4.0 24.0 71.8 | -0.444 | exp/chain/tdnn_lstm_1a_online/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
+  local/nnet3/decode_online.sh --stage $test_stage --decode-num-jobs 30 --affix "v9" \
    --acwt 1.0 --post-decode-acwt 10.0 \
-   --window 10 --overlap 5 \
+   --window 10 --overlap 5 --frames-per-chunk 160 \
    --extra-left-context $extra_left_context \
    --extra-right-context $extra_right_context \
    --extra-left-context-initial 0 \

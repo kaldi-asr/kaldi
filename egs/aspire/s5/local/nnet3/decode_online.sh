@@ -54,9 +54,10 @@ dir=$4 # exp/nnet3/tdnn
 model_affix=`basename $dir`
 affix=_${affix}_iter${iter}
 
+segmented_data_set=${data_set}_uniformsegmented
 if [ $stage -le 1 ]; then
   local/generate_uniformly_segmented_data_dir.sh  \
-    --overlap $overlap --window $window $data_set
+    --overlap $overlap --window $window $data_set $segmented_data_set
 fi
 
 if [[ "$data_set" =~ "test_aspire" ]]; then
@@ -74,10 +75,6 @@ else
   echo "$0: Unknown data-set $data_set"
   exit 1
 fi
-
-# uniform segmentation script would have created this dataset
-# so update that script if you plan to change this variable
-segmented_data_set=${data_set}_uniformsegmented_win${window}_over${overlap}
 
 if [ $stage -le 2 ]; then
   # If this setup used PLP features, we'd have to give the option --feature-type plp

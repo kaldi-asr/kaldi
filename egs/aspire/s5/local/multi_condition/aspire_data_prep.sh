@@ -3,10 +3,8 @@
 # Apache 2.0.
 set -e
 stage=0
-# Set this to somewhere where you want to put your aspire data, or where
-# someone else has already put it.  You'll want to change this
-# if you're not on the CLSP grid.
-aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data ;; # JHU
+# Location of aspire data.
+aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data  # for JHU
 
 mean_rms=0.0417 # determined from the mean rms value of data/train_rvb/mean_rms
 . ./path.sh # Needed for KALDI_ROOT
