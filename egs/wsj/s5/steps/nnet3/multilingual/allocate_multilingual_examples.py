@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-# Copyright 2017 Pegah Ghahremani
+# Copyright      2017 Pegah Ghahremani
+#                2018 Hossein Hadian
 #
 # Apache 2.0.
 
@@ -70,7 +71,7 @@ def get_args():
         'output-2'.""",
         epilog="Called by steps/nnet3/multilingual/combine_egs.sh")
 
-    parser.add_argument("--samples-per-iter", type=int, default=40000,
+    parser.add_argument("--samples-per-iter", type=int, default=10000,
                         help="The target number of egs in each archive of egs, "
                         "(prior to merging egs). ")
     parser.add_argument("--num-archives", type=int, default=None,
@@ -178,12 +179,12 @@ def process_multilingual_egs(args):
     for archive_index in range(num_archives):
         logger.info("Generating archive {}...".format(archive_index))
 
-        out_scp_file_handle = open('{0}/{1}{2}.scp'.format(args.egs_dir, args.egs_prefix,
-                                                           archive_index + 1), 'w')
+        out_scp_file_handle = open('{0}/{1}{2}.scp'.format(args.egs_dir,
+                                                           args.egs_prefix, archive_index + 1), 'w')
         eg_to_output_file_handle = open("{0}/{1}output.{2}.ark".format(args.egs_dir,
                                                                        args.egs_prefix, archive_index + 1), 'w')
-        eg_to_weight_file_handle = open("{0}/{1}weight.{2}.ark".format(
-            args.egs_dir, args.egs_prefix, archive_index + 1), 'w')
+        eg_to_weight_file_handle = open("{0}/{1}weight.{2}.ark".format(args.egs_dir,
+                                                                       args.egs_prefix, archive_index + 1), 'w')
 
         for round_index in range(args.shuffle_factor):
             # Read 'block_size' examples from each lang and write them to the current output scp file:
