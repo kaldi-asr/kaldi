@@ -32,7 +32,7 @@
     allocate_multilingual_examples.py [opts] example-scp-lists
         multilingual-egs-dir
 
-    allocate_multilingual_examples.py --shuffle-factor 2
+    allocate_multilingual_examples.py --block-size 512
         --lang2weight  "0.2,0.8" exp/lang1/egs.scp exp/lang2/egs.scp
         exp/multi/egs
 
@@ -75,10 +75,8 @@ def get_args():
                         help="The target number of egs in each archive of egs, "
                         "(prior to merging egs). ")
     parser.add_argument("--num-archives", type=int, default=None,
-                        help="number of output archives (i.e. output scp files)."
+                        help="Number of output archives (i.e. output scp files)."
                         "If not set, it will be determined using --samples-per-iter.")
-    parser.add_argument("--seed", type=int, default=1,
-                        help="Seed for random number generator")
     parser.add_argument("--block-size", type=int, default=512,
                         help="This relates to locality of disk access. 'block-size' is"
                         "the average number of examples that are read consecutively"
@@ -163,7 +161,9 @@ def process_multilingual_egs(args):
     egs_per_archive = tot_num_egs // num_archives
     avg_block_size = args.block_size
 
-    # This is the number of robin rounds we do for generating each output scp:
+    # This is the number of robin rounds we do for generating each output scp (in
+    # each round we read one block from each input lang and write it to the current
+    # output scp file; please see the main 'for' loop below):
     num_rounds = egs_per_archive // (avg_block_size * num_langs)
 
     # The block size for each lang is calculated based on its size (and average block size).
@@ -172,7 +172,7 @@ def process_multilingual_egs(args):
     lang_to_block_size = [int(lang_to_num_examples[i] / tot_num_egs * avg_block_size * num_langs) + 1
                           for i in range(num_langs)]
 
-    # Due to integer roundings this could be slightly different from (avg_block_size * num_langs)
+    # Due to integer roundings this could be slightly different from 'avg_block_size * num_langs'
     sum_of_block_sizes = sum(lang_to_block_size)
     logger.info("Number of egs in each output scp file (except the last one) "
                 "is {}".format(num_rounds * sum_of_block_sizes))
