@@ -14,9 +14,9 @@
 #
 # Begin configuration section.
 cmd=run.pl
-minibatch_size=512      # it is the number of consecutive egs that we take from 
-                        # each source, and it only affects the locality of disk 
-                        # access. This does not have to be the actual minibatch size;
+block_size=512          # This is the number of consecutive egs that we take from
+                        # each source, and it only affects the locality of disk
+                        # access.
 num_jobs=10             # helps for better randomness across languages
                         # per archive.
 samples_per_iter=400000 # this is the target number of egs in each archive of egs
@@ -98,7 +98,7 @@ if [ $stage -le 0 ]; then
   # Generate egs.*.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
-      --minibatch-size $minibatch_size \
+      --block-size $block_size \
       --samples-per-iter $samples_per_iter \
       $train_scp_list $megs_dir || exit 1;
 fi
@@ -108,9 +108,8 @@ if [ $stage -le 1 ]; then
   # Generate combine.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_combine.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py \
-      --random-lang false \
-      --max-archives 1 --num-jobs 1 \
-      --minibatch-size $minibatch_size \
+      --num-archives 1 \
+      --block-size $block_size \
       --egs-prefix "combine." \
       $combine_scp_list $megs_dir || exit 1;
 
@@ -118,9 +117,8 @@ if [ $stage -le 1 ]; then
   # Generate train_diagnostic.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train_diagnostic.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py \
-      --random-lang false \
-      --max-archives 1 --num-jobs 1 \
-      --minibatch-size $minibatch_size \
+      --num-archives 1 \
+      --block-size $block_size \
       --egs-prefix "train_diagnostic." \
       $train_diagnostic_scp_list $megs_dir || exit 1;
 
@@ -129,8 +127,8 @@ if [ $stage -le 1 ]; then
   # Generate valid_diagnostic.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_valid_diagnostic.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py \
-      --random-lang false --max-archives 1 --num-jobs 1\
-      --minibatch-size $minibatch_size \
+      --num-archives 1 \
+      --block-size $block_size \
       --egs-prefix "valid_diagnostic." \
       $valid_diagnostic_scp_list $megs_dir || exit 1;
 

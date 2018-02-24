@@ -75,14 +75,16 @@ def get_args():
                         help="The target number of egs in each archive of egs, "
                         "(prior to merging egs). ")
     parser.add_argument("--num-archives", type=int, default=None,
-                        help="number of output archives. If not set, it will be "
-                        "determined using --samples-per-iter.")
+                        help="number of output archives (i.e. output scp files)."
+                        "If not set, it will be determined using --samples-per-iter.")
     parser.add_argument("--seed", type=int, default=1,
                         help="Seed for random number generator")
-    parser.add_argument("--shuffle-factor", type=int, default=1,
-                        help="shuffle-factor N means for each output scp file, we read exactly "
-                        "N block of examples from each input scp file in a round-robin manner."
-                        "Larger values mean more shuffling and more random disk access.")
+    parser.add_argument("--block-size", type=int, default=512,
+                        help="This relates to locality of disk access. 'block-size' is"
+                        "the average number of examples that are read consecutively"
+                        "from each input scp file (and are written in the same order to the output scp files)"
+                        "Smaller values lead to more random disk access (during "
+                        "the nnet3 training process).")
     parser.add_argument("--egs-prefix", type=str, default="egs.",
                         help="option can be used to generated example scp, weight "
                         "and output files for training and diagnostics."
@@ -159,22 +161,31 @@ def process_multilingual_egs(args):
         print("{0}".format(num_archives), file=fh)
 
     egs_per_archive = tot_num_egs // num_archives
-    base_block_size = egs_per_archive // args.shuffle_factor
+    avg_block_size = args.block_size
 
-    # The block size for each lang is calculated based on its size
-    lang_to_block_size = [int(lang_to_num_examples[i] / tot_num_egs * base_block_size) for i in range(num_langs)]
+    # This is the number of robin rounds we do for generating each output scp:
+    num_rounds = egs_per_archive // (avg_block_size * num_langs)
 
-    logger.info("egs-per-archive for the output scp files is {}".format(egs_per_archive))
+    # The block size for each lang is calculated based on its size (and average block size).
+    # Note that we can't use the same block size for all input languages; otherwise
+    # we might run out of egs for some of the languages.
+    lang_to_block_size = [int(lang_to_num_examples[i] / tot_num_egs * avg_block_size * num_langs) + 1
+                          for i in range(num_langs)]
+
+    # Due to integer roundings this could be slightly different from (avg_block_size * num_langs)
+    sum_of_block_sizes = sum(lang_to_block_size)
+    logger.info("Number of egs in each output scp file (except the last one) "
+                "is {}".format(num_rounds * sum_of_block_sizes))
 
     for lang in range(num_langs):
-        logger.info("egs per block for lang {} is {}".format(lang, lang_to_block_size[lang]))
+        logger.info("block size for lang {} is {}".format(lang, lang_to_block_size[lang]))
 
     in_scp_file_handles = [open(scp_lists[lang], 'r') for lang in range(num_langs)]
 
 
     # For each output scp file, read the examples in a round-robin fashion
-    # from the inputs scp files. Each time a block is read, where the size of the
-    # block is proportional to the total number of egs in the corresponding lang,
+    # from the inputs scp files. Each time exactly one block is read, where the size of the
+    # block is proportional to the total number of egs in the corresponding lang;
     # so that there is a bit of each lang in each generated scp file.
     for archive_index in range(num_archives):
         logger.info("Generating archive {}...".format(archive_index))
@@ -186,7 +197,7 @@ def process_multilingual_egs(args):
         eg_to_weight_file_handle = open("{0}/{1}weight.{2}.ark".format(args.egs_dir,
                                                                        args.egs_prefix, archive_index + 1), 'w')
 
-        for round_index in range(args.shuffle_factor):
+        for round_index in range(num_rounds):
             # Read 'block_size' examples from each lang and write them to the current output scp file:
             for lang_index in range(num_langs):
                 example_lines  = read_lines(in_scp_file_handles[lang_index], lang_to_block_size[lang_index])
