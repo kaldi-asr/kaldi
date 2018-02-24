@@ -52,7 +52,10 @@ void KaldiRnnlmDeterministicFst::Clear() {
 }
 
 KaldiRnnlmDeterministicFst::KaldiRnnlmDeterministicFst(int32 max_ngram_order,
-    const RnnlmComputeStateInfo &info) {
+    const RnnlmComputeStateInfo &info,
+    const std::map<int32, double> &unigrams,
+    const std::vector<double> &ori_unigrams):
+        unigrams_(unigrams), ori_unigrams_(ori_unigrams) {
   max_ngram_order_ = max_ngram_order;
   bos_index_ = info.opts.bos_index;
   eos_index_ = info.opts.eos_index;
@@ -84,6 +87,16 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   const RnnlmComputeState* rnnlm = state_to_rnnlm_state_[s];
 
   BaseFloat logprob = rnnlm->LogProbOfWord(ilabel);
+  
+  std::map<int32, double>::const_iterator iter = unigrams_.find(ilabel);
+  if (iter != unigrams_.end()) {
+    double diff = (iter->second + 0.0000001) / (ori_unigrams_[ilabel] + 0.0000001);
+    diff = diff / 2 + 0.5; 
+    diff = std::max(diff, 1.0);
+    diff = std::min(diff, 2.0);
+    diff = log(diff);
+    logprob += diff;
+  }
 
   word_seq.push_back(ilabel);
   if (max_ngram_order_ > 0) {
