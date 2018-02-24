@@ -5,7 +5,6 @@ set -e
 # based on run_blstm_6h.sh in fisher_swbd recipe
 
 # configs for 'chain'
-affix=
 stage=11 # assuming you already ran the xent systems
 train_stage=-10
 get_egs_stage=-10
@@ -39,7 +38,6 @@ where "nvcc" is installed.
 EOF
 fi
 
-dir=${dir}${affix:+_$affix}
 ali_dir=exp/tri5a_rvb_ali
 treedir=exp/chain/tri6_tree_11000
 lang=data/lang_chain

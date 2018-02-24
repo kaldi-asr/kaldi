@@ -36,7 +36,6 @@ where "nvcc" is installed.
 EOF
 fi
 
-dir=${dir}${affix:+_$affix}
 ali_dir=exp/tri5a_rvb_ali
 treedir=exp/chain/tri6_tree_11000
 lang=data/lang_chain
