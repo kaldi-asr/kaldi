@@ -173,8 +173,8 @@ local/multi_condition/aspire_data_prep.sh --aspire-data $aspire_data
 local/chain/run_tdnn.sh
 
 local/chain/run_tdnn_lstm.sh
-# %WER 22.9 | 2083 25834 | 81.6 12.0 6.4 4.5 22.9 70.7 | -0.546 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_8/penalty_0.0/ctm.filt.filt.sys
-# %WER 24.0 | 2083 25820 | 79.9 12.0 8.1 4.0 24.0 71.8 | -0.444 | exp/chain/tdnn_lstm_1a_online/decode_dev_aspire_uniformsegmented_win10_over5_v8_iterfinal_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
+# %WER 22.9 | 2083 25834 | 81.6 12.0 6.4 4.5 22.9 70.7 | -0.546 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_uniformsegmented_pp_fg/score_8/penalty_0.0/ctm.filt.filt.sys
+# %WER 24.0 | 2083 25820 | 79.9 12.0 8.1 4.0 24.0 71.8 | -0.444 | exp/chain/tdnn_lstm_1a_online/decode_dev_aspire_uniformsegmented_v9_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
 
 # Train speech activity detection system using TDNN+Stats
 local/run_asr_segmentation.sh
@@ -182,7 +182,7 @@ local/run_asr_segmentation.sh
 sad_nnet_dir=exp/segmentation_1a/tdnn_stats_asr_sad_1a
 chain_dir=exp/chain/tdnn_lstm_1a
 
-# %WER 22.9 | 2083 25821 | 81.9 11.1 7.0 4.9 22.9 71.8 | -0.488 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_asr_sad_1a_iterfinal_pp_fg/score_10/penalty_0.25/ctm.filt.filt.sys
+# %WER 22.9 | 2083 25821 | 81.9 11.1 7.0 4.9 22.9 71.8 | -0.488 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_asr_sad_1a_pp_fg/score_10/penalty_0.25/ctm.filt.filt.sys
 local/nnet3/segment_and_decode.sh --stage 1 --decode-num-jobs 30 --affix "" \
   --acwt 1.0 --post-decode-acwt 10.0 --frames-per-chunk 160 \
   --extra-left-context 50 --extra-right-context 0 \

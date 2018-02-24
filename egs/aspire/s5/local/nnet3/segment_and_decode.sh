@@ -8,7 +8,7 @@
 set -e
 
 # general opts
-iter=final
+iter=
 stage=0
 sad_num_jobs=30
 decode_num_jobs=30
@@ -137,7 +137,7 @@ if [ $stage -le 6 ]; then
       --extra-left-context-initial $extra_left_context_initial \
       --extra-right-context-final $extra_right_context_final \
       --frames-per-chunk "$frames_per_chunk" \
-      --skip-scoring true --iter $iter --lattice-beam $lattice_beam \
+      --skip-scoring true ${iter:+--iter $iter} --lattice-beam $lattice_beam \
       --online-ivector-dir $ivector_root_dir/ivectors_${segmented_data_set} \
      $graph data/${segmented_data_set}_hires ${decode_dir}_tg || \
      { echo "$0: Error decoding" && exit 1; }
@@ -158,7 +158,7 @@ if [ $stage -le 8 ]; then
     $score_opts \
     --word-ins-penalties "0.0,0.25,0.5,0.75,1.0" \
     --ctm-beam 6 \
-    --iter $iter \
+    ${iter:+--iter $iter} \
     --decode-mbr true \
     --tune-hyper true \
     $lang $decode_dir $act_data_set $segmented_data_set $out_file

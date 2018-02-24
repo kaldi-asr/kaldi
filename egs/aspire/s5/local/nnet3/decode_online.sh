@@ -1,12 +1,13 @@
 #!/bin/bash
 
 # Copyright Johns Hopkins University (Author: Daniel Povey, Vijayaditya Peddinti) 2016.  Apache 2.0.
-# This script does online decoding, unlike prep_test_aspire.sh which does 2-pass decoding.
+# This script does online decoding, unlike local/nnet3/decode.sh which does 2-pass decoding with
+# uniform segments.
 
 set -e
 
 # general opts
-iter=final
+iter=
 stage=0
 decode_num_jobs=30
 num_jobs=30
@@ -52,7 +53,7 @@ graph=$3 #exp/tri5a/graph_pp
 dir=$4 # exp/nnet3/tdnn
 
 model_affix=`basename $dir`
-affix=_${affix}_iter${iter}
+affix=_${affix}${iter:+_iter${iter}}
 
 segmented_data_set=${data_set}_uniformsegmented
 if [ $stage -le 1 ]; then
@@ -98,7 +99,7 @@ if [ $stage -le 3 ]; then
       --extra-left-context-initial $extra_left_context_initial \
       --silence-weight $silence_weight \
       --per-utt true \
-      --skip-scoring true --iter $iter --lattice-beam $lattice_beam \
+      --skip-scoring true ${iter:+--iter $iter} --lattice-beam $lattice_beam \
      $graph data/${segmented_data_set}_hires ${decode_dir}_tg || \
      { echo "$0: Error decoding" && exit 1; }
 fi
@@ -117,7 +118,7 @@ if [ $stage -le 5 ]; then
     $score_opts \
     --word-ins-penalties "0.0,0.25,0.5,0.75,1.0" \
     --ctm-beam 6 \
-    --iter $iter \
+    ${iter:+--iter $iter} \
     --decode-mbr true \
     --tune-hyper true \
     $lang $decode_dir $act_data_set $segmented_data_set $out_file
