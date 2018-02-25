@@ -73,9 +73,11 @@ def get_args():
 
     parser.add_argument("--samples-per-iter", type=int, default=10000,
                         help="The target number of egs in each archive of egs, "
-                        "(prior to merging egs). ")
+                        "(prior to merging the egs). ")
     parser.add_argument("--num-archives", type=int, default=None,
-                        help="Number of output archives (i.e. output scp files)."
+                        help="Number of archives to split the data into. (Note: in reality they are not "
+                        "archives, only scp files, but we use this notation by analogy with the "
+                        "conventional egs-creating script). "
                         "If not set, it will be determined using --samples-per-iter.")
     parser.add_argument("--block-size", type=int, default=512,
                         help="This relates to locality of disk access. 'block-size' is"
@@ -84,21 +86,20 @@ def get_args():
                         "Smaller values lead to more random disk access (during "
                         "the nnet3 training process).")
     parser.add_argument("--egs-prefix", type=str, default="egs.",
-                        help="option can be used to generated example scp, weight "
-                        "and output files for training and diagnostics."
-                        "If --egs-prefix=combine. , then files produced "
-                        "by the sript will be named with this prefix as "
-                        "combine.output.*.ark, combine.weight.*.ark, combine.*.scp, "
-                        "combine.ranges.*.ark.")
+                        help="This option can be used to add a prefix to the filenames "
+                        "of the output files. For e.g. "
+                        "if --egs-prefix=combine. , then the files produced "
+                        "by this script will be "
+                        "combine.output.*.ark, combine.weight.*.ark, and combine.*.scp")
     parser.add_argument("--lang2weight", type=str,
-                        help="comma-separated list of weights, one per language."
+                        help="Comma-separated list of weights, one per language. "
                         "The language order is as egs_scp_lists.")
 # now the positional arguments
     parser.add_argument("egs_scp_lists", nargs='+',
-                        help="list of egs.scp files per input language."
+                        help="List of egs.scp files per input language."
                            "e.g. exp/lang1/egs/egs.scp exp/lang2/egs/egs.scp")
     parser.add_argument("egs_dir",
-                        help="Name of egs directory e.g. exp/tdnn_multilingual_sp/egs")
+                        help="Name of output egs directory e.g. exp/tdnn_multilingual_sp/egs")
 
 
     print(sys.argv, file=sys.stderr)
