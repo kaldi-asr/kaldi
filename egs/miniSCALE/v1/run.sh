@@ -6,7 +6,7 @@
 
 set -e
 stage=0
-nj=20
+nj=50
 
 # iam_database points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
@@ -66,11 +66,8 @@ if [ $stage -le 6 ]; then
   steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
     exp/mono exp/mono_ali
 
-  #steps/train_deltas.sh --cmd $cmd 500 20000 data/train data/lang \
-  #  exp/mono_ali exp/tri
-
   steps/train_deltas.sh --cmd $cmd --context-opts "--context-width=2 --central-position=1" \
-    500 20000 data/train data/lang \
+    50000 20000 data/train data/lang \
     exp/mono_ali exp/tri
 fi
 
@@ -87,7 +84,7 @@ if [ $stage -le 8 ]; then
 
   steps/train_lda_mllt.sh --cmd $cmd \
     --splice-opts "--left-context=3 --right-context=3" \
-    --context-opts "--context-width=2 --central-position=1" 500 20000 \
+    --context-opts "--context-width=2 --central-position=1" 50000 20000 \
     data/train data/lang exp/tri_ali exp/tri2
 fi
 
@@ -103,7 +100,7 @@ if [ $stage -le 10 ]; then
     data/train data/lang exp/tri2 exp/tri2_ali
 
   steps/train_sat.sh --cmd $cmd --context-opts "--context-width=2 --central-position=1" \
-    500 20000 data/train data/lang \
+    50000 20000 data/train data/lang \
     exp/tri2_ali exp/tri3
 fi
 
@@ -120,9 +117,9 @@ if [ $stage -le 12 ]; then
 fi
 
 if [ $stage -le 13 ]; then
-  local/chain/run_cnn_1a.sh
+  local/chain/run_cnn_1a.sh 
 fi
 
-#if [ $stage -le 14 ]; then
-#  local/chain/run_cnn_chainali_1b.sh --chain-model-dir exp/chain/cnn_1a --stage 2
-#fi
+if [ $stage -le 14 ]; then
+  local/chain/run_cnn_chainali_1b.sh --chain-model-dir exp/chain/cnn_1a --stage 2
+fi
