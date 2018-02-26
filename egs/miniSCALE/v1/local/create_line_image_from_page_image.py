@@ -73,7 +73,8 @@ def get_line_images_from_page_image(image_file_name, gedi_file_path):
             region_list = list()
             height_offset_list = list()
 
-        height_offset = row - first_image_top_loc
+        #height_offset = row - first_image_top_loc
+        height_offset = 0
         height_offset_list.append(height_offset)
 
         # get character dimensions
