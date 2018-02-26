@@ -1463,6 +1463,73 @@ inline void cuda_vec_sum(int Gr, int Bl, float* v, float* value, int dim,
   cudaF_vec_sum(Gr, Bl, v, value, dim, inc);
 }
 
+// Compresses the matrix in 'src' to 'dest', retaining only zero-one
+// information (1 if the value is >0, 0 otherwise)
+inline void cuda_mat_compress_sign(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                                   MatrixDim dim, uint8 *dest,
+                                   int dest_stride) {
+  cuda_compress_uint8_sign(Gr, Bl, src, dim, dest, dest_stride);
+}
+// this template handles the other types that are not instantiated yet,
+// to avoid compilation errors.
+template <typename I>
+inline void cuda_mat_compress_sign(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                                   MatrixDim dim, I *dest,
+                                   int dest_stride) {
+  KALDI_ERR << "Not implemented for this type.";
+}
+
+inline void cuda_mat_compress(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, int16_t *dest,
+                              int dest_stride, float inv_scale,
+                              bool bounds_check) {
+  cuda_compress_int16(Gr, Bl, src, dim, dest, dest_stride,
+                      inv_scale, bounds_check);
+}
+inline void cuda_mat_compress(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, uint16_t *dest,
+                              int dest_stride, float inv_scale,
+                              bool bounds_check) {
+  cuda_compress_uint16(Gr, Bl, src, dim, dest, dest_stride,
+                       inv_scale, bounds_check);
+}
+inline void cuda_mat_compress(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, uint8_t *dest,
+                              int dest_stride, float inv_scale,
+                              bool bounds_check) {
+  cuda_compress_uint8(Gr, Bl, src, dim, dest, dest_stride,
+                      inv_scale, bounds_check);
+}
+inline void cuda_mat_compress(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, int8_t *dest,
+                              int dest_stride, float inv_scale,
+                              bool bounds_check) {
+  cuda_compress_int8(Gr, Bl, src, dim, dest, dest_stride,
+                     inv_scale, bounds_check);
+}
+
+inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                                MatrixDim dim, const int8_t *src,
+                                int src_stride, float scale) {
+  cuda_uncompress_int8(Gr, Bl, dest, dim, src, src_stride, scale);
+}
+inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                                MatrixDim dim, const uint8_t *src,
+                                int src_stride, float scale) {
+  cuda_uncompress_uint8(Gr, Bl, dest, dim, src, src_stride, scale);
+}
+inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                                MatrixDim dim, const int16_t *src,
+                                int src_stride, float scale) {
+  cuda_uncompress_int16(Gr, Bl, dest, dim, src, src_stride, scale);
+}
+inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                                MatrixDim dim, const uint16_t *src,
+                                int src_stride, float scale) {
+  cuda_uncompress_uint16(Gr, Bl, dest, dim, src, src_stride, scale);
+}
+
+
 } // namespace kaldi
 
 #endif // HAVE_CUDA

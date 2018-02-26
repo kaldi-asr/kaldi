@@ -22,6 +22,7 @@
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-graph.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-normalize-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-convolutional-component.h"
 #include "nnet3/nnet-parse.h"
@@ -491,9 +492,7 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
 bool HasBatchnorm(const Nnet &nnet) {
   for (int32 c = 0; c < nnet.NumComponents(); c++) {
     const Component *comp = nnet.GetComponent(c);
-    const BatchNormComponent *bc =
-        dynamic_cast<const BatchNormComponent*>(comp);
-    if (bc != NULL)
+    if (dynamic_cast<const BatchNormComponent*>(comp) != NULL)
       return true;
   }
   return false;
@@ -858,6 +857,105 @@ class SvdApplier {
   int32 bottleneck_dim_;
   std::string component_name_pattern_;
 };
+
+// Does an update that moves M closer to being a (matrix with
+// orthonormal rows) times 'scale'.  Note: this will diverge if
+// we start off with singular values too far from 'scale'.
+void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
+  // Larger alpha will update faster but will be more prone to instability.  I
+  // believe the scalar value below shouldn't be more than 0.25 or maybe 0.5 or
+  // it will always be unstable.  It should be > 0.0.
+
+  // The factor of 1/scale^2 is, I *believe*, going to give us the right kind of
+  // invariance w.r.t. the scale.  To explain why this is the appropriate
+  // factor, look at the statement M_update.AddMatMat(-4.0 * alpha, P, kNoTrans,
+  // *M, kNoTrans, 0.0); where P is proportional to scale^2 and M to 'scale' and
+  // alpha to 1/scale^2, so change in M_update is proportional to 'scale'.
+  // We'd like 'M_update' to be proportional to 'scale'. This reasoning is very
+  // hand-wavey but I think it can be made rigorous.  This is about remaining
+  // stable (not prone to divergence) even for very large or small values of
+  // 'scale'.
+  BaseFloat alpha = 0.125 / (scale * scale);
+
+  // We'd like to enforce the rows of M to be orthonormal.
+  // define P = M M^T.  If P is unit then M has orthonormal rows.
+  // We actually want P to equal scale^2 * I, so that M's rows are
+  // orthogonal with 2-norms equal to 'scale'.
+  // We (notionally) add to the objective function, the value
+  // -alpha times the sum of squared elements of Q = (P - scale^2 * I).
+  int32 rows = M->NumRows(), cols = M->NumCols();
+  CuMatrix<BaseFloat> M_update(rows, cols);
+  CuMatrix<BaseFloat> P(rows, rows);
+  P.SymAddMat2(1.0, *M, kNoTrans, 0.0);
+  P.CopyLowerToUpper();
+  P.AddToDiag(-1.0 * scale * scale);
+
+  if (GetVerboseLevel() >= 1) {
+    BaseFloat error = P.FrobeniusNorm();
+    KALDI_VLOG(2) << "Error in orthogonality is " << error;
+  }
+
+  // At this point, the matrix P contains what, in the math, would be Q =
+  // P-scale^2*I.  The derivative of the objective function w.r.t. an element q(i,j)
+  // of Q is now equal to -2*alpha*q(i,j), i.e. we could write q_deriv(i,j)
+  // = -2*alpha*q(i,j) This is also the derivative of the objective function
+  // w.r.t. p(i,j): i.e. p_deriv(i,j) = -2*alpha*q(i,j).
+  // Suppose we have define this matrix as 'P_deriv'.
+  // The derivative of the objective w.r.t M equals
+  // 2 * P_deriv * M, which equals -4*alpha*(P-scale^2*I)*M.
+  // (Currently the matrix P contains what, in the math, is P-scale^2*I).
+  M_update.AddMatMat(-4.0 * alpha, P, kNoTrans, *M, kNoTrans, 0.0);
+  M->AddMat(1.0, M_update);
+}
+
+/**
+   This function, to be called after processing every minibatch, is responsible
+   for enforcing the orthogonality constraint for any components of type
+   LinearComponent or inheriting from AffineComponent that have the
+   "orthonormal_constraint" value set.
+ */
+void ConstrainOrthonormal(Nnet *nnet) {
+
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *component = nnet->GetComponent(c);
+    LinearComponent *lc = dynamic_cast<LinearComponent*>(component);
+    if (lc != NULL && lc->OrthonormalConstraint() != 0.0) {
+      if (RandInt(0, 3) != 0)
+        continue;  // For efficiency, only do this every 4 minibatches-- it won't
+                   // stray far.
+      BaseFloat scale = lc->OrthonormalConstraint();
+      KALDI_ASSERT(scale > 0.0);
+
+      CuMatrixBase<BaseFloat> &params = lc->Params();
+      int32 rows = params.NumRows(), cols = params.NumCols();
+      if (rows <= cols) {
+        ConstrainOrthonormalInternal(scale, &params);
+      } else {
+        CuMatrix<BaseFloat> params_trans(params, kTrans);
+        ConstrainOrthonormalInternal(scale, &params_trans);
+        params.CopyFromMat(params_trans, kTrans);
+      }
+    }
+
+    AffineComponent *ac = dynamic_cast<AffineComponent*>(component);
+    if (ac != NULL && ac->OrthonormalConstraint() != 0.0) {
+      if (RandInt(0, 3) != 0)
+        continue;  // For efficiency, only do this every 4 minibatches-- it won't
+                   // stray far.
+      BaseFloat scale = ac->OrthonormalConstraint();
+      KALDI_ASSERT(scale > 0.0);
+      CuMatrixBase<BaseFloat> &params = ac->LinearParams();
+      int32 rows = params.NumRows(), cols = params.NumCols();
+      if (rows <= cols) {
+        ConstrainOrthonormalInternal(scale, &params);
+      } else {
+        CuMatrix<BaseFloat> params_trans(params, kTrans);
+        ConstrainOrthonormalInternal(scale, &params_trans);
+        params.CopyFromMat(params_trans, kTrans);
+      }
+    }
+  }
+}
 
 
 // This code has been broken out of ReadEditConfig as it's quite long.
