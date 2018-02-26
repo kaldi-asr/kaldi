@@ -8,21 +8,45 @@
 # and renorm in its recurrence. Experiments show that the TDNN-NormOPGRU could achieve similar
 # results than TDNN-LSTMP and BLSTMP in both large or small data sets (80 ~ 2300 Hrs).
 
-# ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1a_sp tdnn_opgru_1a_sp
-# System                tdnn_lstm_1a_sp tdnn_opgru_1a_sp
-# WER on eval2000(tg)        12.3      11.6
-#           [looped:]        12.2      11.7
-# WER on eval2000(fg)        12.1      11.6
-#           [looped:]        12.1      11.6
-# WER on rt03(tg)            11.6      10.9
-#           [looped:]        11.6      10.9
-# WER on rt03(fg)            11.3      10.7
-#           [looped:]        11.3      10.7
-# Final train prob         -0.074    -0.087
-# Final valid prob         -0.084    -0.092
-# Final train prob (xent)        -0.882    -1.007
-# Final valid prob (xent)       -0.9393   -1.0350
+# ./local/chain/compare_wer_general.sh tdnn_lstm_1a_sp tdnn_lstm_1b_sp tdnn_opgru_1a_sp
+# num parameter         39.7M           39.7M           34.9M
+# System                tdnn_lstm_1a_sp tdnn_lstm_1b_sp tdnn_opgru_1a_sp
+# WER on eval2000(tg)        12.3      12.3      11.7
+#           [looped:]        12.2      12.3      11.6
+# WER on eval2000(fg)        12.1      12.0      11.7
+#           [looped:]        12.1      12.2      11.6
+# WER on rt03(tg)            11.6      11.4      11.0
+#           [looped:]        11.6      11.6      11.0
+# WER on rt03(fg)            11.3      11.1      10.7
+#           [looped:]        11.3      11.3      10.8
+# Final train prob         -0.074    -0.087    -0.085
+# Final valid prob         -0.084    -0.088    -0.093
+# Final train prob (xent)        -0.882    -1.015    -0.972
+# Final valid prob (xent)       -0.9393   -0.9837   -1.0275
 
+#./steps/info/chain_dir_info.pl exp/chain/tdnn_opgru_1a_sp
+#exp/chain/tdnn_opgru_1a_sp: num-iters=2384 nj=3..16 num-params=34.9M dim=40+100->6149 combine=-0.096->-0.095 (over 8) 
+#xent:train/valid[1587,2383,final]=(-1.46,-0.960,-0.972/-1.49,-1.02,-1.03) 
+#logprob:train/valid[1587,2383,final]=(-0.114,-0.086,-0.085/-0.114,-0.094,-0.093)
+
+# online results
+# Eval2000
+# %WER 14.7 | 2628 21594 | 87.3 8.5 4.2 2.0 14.7 50.8 | exp/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 11.7 | 4459 42989 | 89.9 7.0 3.1 1.7 11.7 48.1 | exp/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_tg/score_7_0.0/eval2000_hires.ctm.filt.sys
+# %WER 8.3 | 1831 21395 | 92.7 4.9 2.4 1.0 8.3 42.2 | exp/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 14.7 | 2628 21594 | 87.4 8.5 4.1 2.1 14.7 50.5 | exp/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_fg/score_7_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 11.6 | 4459 42989 | 90.1 6.9 3.0 1.7 11.6 47.6 | exp/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_fg/score_7_0.0/eval2000_hires.ctm.filt.sys
+# %WER 8.1 | 1831 21395 | 92.9 4.8 2.3 1.1 8.1 41.8 | exp/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+# online results
+# RT03
+# %WER 8.9 | 3970 36721 | 92.1 5.3 2.5 1.1 8.9 37.3 | exp/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_tg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.0 | 8420 76157 | 90.1 6.1 3.8 1.1 11.0 41.0 | exp/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_tg/score_9_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.0 | 4450 39436 | 88.3 7.7 4.0 1.3 13.0 43.1 | exp/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
+# %WER 8.6 | 3970 36721 | 92.4 4.9 2.8 1.0 8.6 37.2 | exp/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 10.8 | 8420 76157 | 90.4 6.2 3.4 1.2 10.8 40.0 | exp/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 12.8 | 4450 39436 | 88.6 7.5 4.0 1.4 12.8 42.5 | exp/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
+ 
 
 set -e
 
@@ -125,7 +149,7 @@ if [ $stage -le 12 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  lstm_opts="dropout-per-frame=true dropout-proportion=0.0 "
+  gru_opts="dropout-per-frame=true dropout-proportion=0.0 "
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -143,13 +167,13 @@ if [ $stage -le 12 ]; then
   relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
-  norm-opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  norm-opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
   relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
   relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
-  norm-opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  norm-opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
   relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
   relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
-  norm-opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
+  norm-opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
 
   ## adding the layers for chain branch
   output-layer name=output input=opgru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5

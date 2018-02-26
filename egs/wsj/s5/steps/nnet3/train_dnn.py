@@ -162,6 +162,10 @@ def train(args, run_opts):
     arg_string = pprint.pformat(vars(args))
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
+    # Copy phones.txt from ali-dir to dir. Later, steps/nnet3/decode.sh will
+    # use it to check compatibility between training and decoding phone-sets.
+    shutil.copy('{0}/phones.txt'.format(args.ali_dir), args.dir)
+
     # Set some variables.
     # num_leaves = common_lib.get_number_of_leaves_from_tree(args.ali_dir)
     num_jobs = common_lib.get_number_of_jobs(args.ali_dir)
@@ -328,6 +332,7 @@ def train(args, run_opts):
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
+                train_opts=' '.join(args.train_opts),
                 minibatch_size_str=args.minibatch_size,
                 frames_per_eg=args.frames_per_eg,
                 momentum=args.momentum,
@@ -365,16 +370,16 @@ def train(args, run_opts):
                 egs_dir=egs_dir,
                 minibatch_size_str=args.minibatch_size, run_opts=run_opts,
                 max_objective_evaluations=args.max_objective_evaluations)
-    
+
     if args.stage <= num_iters + 1:
         logger.info("Getting average posterior for purposes of "
                     "adjusting the priors.")
-        
+
         # If args.do_final_combination is true, we will use the combined model.
         # Otherwise, we will use the last_numbered model.
         real_iter = 'combined' if args.do_final_combination else num_iters
         avg_post_vec_file = train_lib.common.compute_average_posterior(
-            dir=args.dir, iter=real_iter, 
+            dir=args.dir, iter=real_iter,
             egs_dir=egs_dir, num_archives=num_archives,
             prior_subset_size=args.prior_subset_size, run_opts=run_opts)
 

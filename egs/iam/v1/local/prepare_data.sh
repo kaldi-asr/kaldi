@@ -35,6 +35,7 @@ if [[ ! -f $download_dir/lines.tgz && -z $username ]]; then
   echo "Please register at http://www.fki.inf.unibe.ch/databases/iam-handwriting-database"
   echo "... and then call this script again with --username <username> --password <password>"
   echo ""
+  exit 1
 fi
 
 lines=data/local/lines

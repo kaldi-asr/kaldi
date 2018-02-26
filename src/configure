@@ -800,6 +800,7 @@ function linux_configure_dynamic {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  echo ATLASLDFLAGS = -Wl,-rpath,$ATLASLIBDIR >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk

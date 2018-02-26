@@ -439,7 +439,7 @@ void ConvertAdditionToAssignment(const Nnet &nnet,
             case kMatrixAdd: c.command_type = kMatrixCopy;
               break;
             case kAddRows: c.command_type = kCopyRows;
-              break;
+               break;
             case kAddRowsMulti: c.command_type = kCopyRowsMulti;
               break;
             // note: kCopyToRowsMulti does not currently support alpha != 1.0.
@@ -515,13 +515,6 @@ void Optimize(const NnetOptimizeOptions &config,
       CheckComputation(nnet, *computation, true);
   }
 
-  if (config.optimize &&
-      (config.remove_assignments || config.backprop_in_place ||
-       config.propagate_in_place)) {
-    VariableMergingOptimization(config, nnet, computation);
-    if (GetVerboseLevel() >= 3)
-      CheckComputation(nnet, *computation, false);
-  }
 
   if (config.optimize && (config.snip_row_ops || config.optimize_row_ops)) {
     bool must_renumber = false;
@@ -536,6 +529,21 @@ void Optimize(const NnetOptimizeOptions &config,
     }
   }
 
+  if (config.optimize && config.extend_matrices &&
+      !config.optimize_looped_computation) {
+    ExtendMatrices(computation);
+    if (GetVerboseLevel() >= 3)
+      CheckComputation(nnet, *computation, false);
+  }
+
+
+  if (config.optimize &&
+      (config.remove_assignments || config.backprop_in_place ||
+       config.propagate_in_place)) {
+    VariableMergingOptimization(config, nnet, computation);
+    if (GetVerboseLevel() >= 3)
+      CheckComputation(nnet, *computation, false);
+  }
 
   if (config.optimize && config.initialize_undefined) {
     RemoveUnnecessaryZeroing(nnet, computation);
@@ -543,7 +551,9 @@ void Optimize(const NnetOptimizeOptions &config,
       CheckComputation(nnet, *computation, false);
   }
 
-  if (config.optimize && config.move_sizing_commands) {
+
+  if ((config.optimize && config.move_sizing_commands) ||
+      config.optimize_looped_computation) {
     MoveSizingCommands(nnet, computation);
     if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, false);
@@ -552,7 +562,7 @@ void Optimize(const NnetOptimizeOptions &config,
   // the looped computation optimization has to go before
   // 'RemoveUnnecessaryAllocation()'.  We don't gate this by 'config.optimize'
   // because it's necessary for looped computation to run.
-  if (config.optimize_looped_computation){
+  if (config.optimize_looped_computation) {
     OptimizeLoopedComputation(nnet, computation);
     if (GetVerboseLevel() >= 3)
       CheckComputation(nnet, *computation, false);
@@ -577,11 +587,21 @@ void Optimize(const NnetOptimizeOptions &config,
   if (config.optimize_looped_computation)
     FixGotoLabel(computation);
 
+
+  if (config.memory_compression_level > 0 &&
+      !config.optimize_looped_computation) {
+    OptimizeMemoryCompression(nnet, config.memory_compression_level,
+                              computation);
+    if (GetVerboseLevel() >= 3)
+      CheckComputation(nnet, *computation, false);
+  }
+
   if (GetVerboseLevel() >= 3) {
     CheckComputation(nnet, *computation, false);
     KALDI_LOG << "After optimization, max memory use (bytes) = "
               << GetMaxMemoryUse(*computation);
   }
+
 }
 
 // ComputationRequests are distinguished by the names and indexes

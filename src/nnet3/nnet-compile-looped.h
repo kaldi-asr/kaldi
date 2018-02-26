@@ -132,10 +132,17 @@ void ModifyNnetIvectorPeriod(int32 ivector_period,
                'nnet' before calling this function; otherwise the neural net
                will most likely not actually be able to consume the iVector with
                this frequency.
-   @param [in] extra_left_context_begin  The additional left-context that
-               should be supplied to the network on top of the minimum
-               that the network requires.  We call this extra_left_context_begin
-               because this only relates to the start of the utterance (t=0).
+   @param [in] left_context_begin This should be the left-context of the network
+               plus any additional left-context (provided via the option
+               --extra-left-context-begin) that should be supplied to the
+               network on top of the minimum that the network requires.  We call
+               this left_context_begin because this only relates to the
+               start of the utterance (t=0).
+   @param [in] right_context This should be the right-context of the network,
+               plus any additional right-context ("extra-right-context") that
+               should be supplied to the network on top of the minimum that the
+               network requires (currently extra-right-context != 0 is is not
+               supported at the command-line level).
    @param [in] num_sequences  The number of separate 'n' values to put in the computation;
                normally this will be just 1, but it can be increased to allow
                simultaneous operation on multiple streams of input.
@@ -151,6 +158,25 @@ void ModifyNnetIvectorPeriod(int32 ivector_period,
                Caution: none of the inputs and outputs should overlap.
    @param [out] request3  The third of the 3 requests that this function generates.
                 It will be the same as request2, except for a time offset.
+*/
+void CreateLoopedComputationRequest(const Nnet &nnet,
+                                    int32 chunk_size,
+                                    int32 frame_subsampling_factor,
+                                    int32 ivector_period,
+                                    int32 left_context_begin,
+                                    int32 right_context,
+                                    int32 num_sequences,
+                                    ComputationRequest *request1,
+                                    ComputationRequest *request2,
+                                    ComputationRequest *request3);
+
+
+/**
+   This function is deprecated.  It has the same interface as
+   CreateLoopedComputationRequest(), except that the left and right context are
+   specified in a different way (as just the 'extra' part).  It is deprecated because
+   this function has to work out the left and right context of the network, which
+   turns out to be quite slow if it's done after you call ModifyNnetIvectorPeriod().
 */
 void CreateLoopedComputationRequestSimple(const Nnet &nnet,
                                           int32 chunk_size,

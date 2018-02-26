@@ -44,6 +44,9 @@ def parse_cmu_seg_line(line, prepend_reco_to_spk=False):
     The CMU segmentation has the following format:
     <file> <channel> <speaker> <start-time> <end-time> <condition>
 
+    e.g.:
+    h4e_98_1 1 F0-0000     0.00    28.22 F0
+
     We force the channel to be 1 and take the file-id to be the recording-id.
     """
     line = line.strip()
@@ -77,27 +80,6 @@ def parse_cmu_seg_line(line, prepend_reco_to_spk=False):
     utt2spk_line = "{0} {1}".format(utt, spk)
 
     return (segment_line, utt2spk_line)
-
-
-def normalize_bn_transcript(text, noise_word, spoken_noise_word):
-    """Normalize broadcast news transcript for audio."""
-    text = text.upper()
-    # Remove unclear speech markings
-    text = re.sub(r"\(\(([^)]*)\)\)", r"\1", text)
-    text = re.sub(r"#", "", text)   # Remove overlapped speech markings
-    # Remove invented word markings
-    text = re.sub(r"\*\*([^*]+)\*\*", r"\1", text)
-    text = re.sub(r"\[[^]]+\]", noise_word, text)
-    text = re.sub(r"\{[^}]+\}", spoken_noise_word, text)
-    # Remove mispronunciation brackets
-    text = re.sub(r"\+([^+]+)\+", r"\1", text)
-
-    text1 = []
-    for word in text.split():
-        # Remove best guesses for proper nouns
-        word = re.sub(r"^@(\w+)$", r"\1", word)
-        text1.append(word)
-    return " ".join(text1)
 
 
 def normalize_csr_transcript(text, noise_word, spoken_noise_word):

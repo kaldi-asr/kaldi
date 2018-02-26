@@ -77,12 +77,11 @@ void RnnlmEmbeddingTrainer::Train(
     if (l2_term != 0.0) {
       embedding_deriv->AddMat(l2_term, *embedding_mat_);
     }
-  } 
+  }
 
   BaseFloat scale = 1.0;
   if (config_.use_natural_gradient) {
-    preconditioner_.PreconditionDirections(embedding_deriv, NULL,
-                                           &scale);
+    preconditioner_.PreconditionDirections(embedding_deriv, &scale);
   }
   scale *= config_.learning_rate;
   num_minibatches_++;
@@ -128,13 +127,12 @@ void RnnlmEmbeddingTrainer::Train(
   if (config_.l2_regularize > 0.0) {
     BaseFloat l2_term = -2 * config_.l2_regularize;
     if (l2_term != 0.0) {
-      embedding_deriv->AddMat(l2_term, *embedding_mat_);
+      embedding_deriv->AddToRows(l2_term, active_words, embedding_mat_);
     }
-  } 
+  }
   BaseFloat scale = 1.0;
   if (config_.use_natural_gradient) {
-    preconditioner_.PreconditionDirections(embedding_deriv, NULL,
-                                           &scale);
+    preconditioner_.PreconditionDirections(embedding_deriv, &scale);
   }
   scale *= config_.learning_rate;
   num_minibatches_++;
