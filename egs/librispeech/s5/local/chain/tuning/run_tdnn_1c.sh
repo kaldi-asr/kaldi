@@ -2,36 +2,55 @@
 
 ## Adapted from swbd for librispeech by David van Leeuwen
 
-# 7m23t is as 7m23r but with 1280 instead of 1536 as the dim.
-# Differernce vs. 23r is unclear (maybe slightly worse), but it
-# seems slightly better than 23h, and it's nice that it has fewer parameters.
+# 7n is a kind of factorized TDNN, with skip connections
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn_7m_sp
-# exp/chain/tdnn_7m_sp: num-iters=262 nj=3..16 num-params=16.3M dim=40+100->6034 combine=-0.103->-0.103 xent:train/valid[173,261,final]=(-1.28,-1.21,-1.21/-1.32,-1.27,-1.27) logprob:train/valid[173,261,final]=(-0.093,-0.084,-0.084/-0.109,-0.104,-0.103)
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnn7n_sp
+# exp/chain_cleaned/tdnn7n_sp: num-iters=1307 nj=3..16 num-params=20.1M dim=40+100->6040 combine=-0.051->-0.050 (over 23) xent:train/valid[869,1306,final]=(-0.817,-0.771,-0.775/-0.824,-0.784,-0.790) logprob:train/valid[869,1306,final]=(-0.052,-0.049,-0.048/-0.058,-0.055,-0.055)
+
+# local/chain/compare_wer.sh exp/chain_cleaned/tdnn_1b_sp exp/chain_cleaned/tdnn7n_sp
+# System                      tdnn_1b_sp tdnn7n_sp
+# WER on dev(fglarge)              3.76      3.54
+# WER on dev(tglarge)              3.85      3.72
+# WER on dev(tgmed)                4.88      4.62
+# WER on dev(tgsmall)              5.41      5.17
+# WER on dev_other(fglarge)       10.39      8.93
+# WER on dev_other(tglarge)       10.87      9.37
+# WER on dev_other(tgmed)         13.22     11.63
+# WER on dev_other(tgsmall)       14.56     12.78
+# WER on test(fglarge)             4.24      3.98
+# WER on test(tglarge)             4.43      4.20
+# WER on test(tgmed)               5.42      5.11
+# WER on test(tgsmall)             6.08      5.59
+# WER on test_other(fglarge)      10.49      9.39
+# WER on test_other(tglarge)      11.04      9.87
+# WER on test_other(tgmed)        13.66     12.10
+# WER on test_other(tgsmall)      14.97     13.28
+# Final train prob              -0.0658   -0.0645
+# Final valid prob              -0.0721   -0.0675
+# Final train prob (xent)       -1.0390   -0.9569
+# Final valid prob (xent)       -1.0230   -0.9559
 
 set -e
 
 # configs for 'chain'
 stage=0
-train_stage=-10
-get_egs_stage=-10
-speed_perturb=true
-affix=7m23t
-suffix=
-$speed_perturb && suffix=_sp
-tree_affix=7m
+decode_nj=50
+min_seg_len=1.55
 train_set=train_960_cleaned
 gmm=tri6b_cleaned
 nnet3_affix=_cleaned
 
-dir=exp/chain/tdnn${affix}${suffix}
+# The rest are configs specific to this script.  Most of the parameters
+# are just hardcoded at this level, in the commands below.
+affix=1c
+tree_affix=
+train_stage=-10
+get_egs_stage=-10
 decode_iter=
-decode_nj=50
 
-# training options
-min_seg_len=1.55
+# TDNN options
 frames_per_eg=150,110,100
-remove_egs=false
+remove_egs=true
 common_egs_dir=
 xent_regularize=0.1
 
@@ -53,7 +72,7 @@ EOF
 fi
 
 # The iVector-extraction and feature-dumping parts are the same as the standard
-# nnet3 setup, and you can skip them by setting "--stage 8" if you have already
+# nnet3 setup, and you can skip them by setting "--stage 11" if you have already
 # run those things.
 
 local/nnet3/run_ivector_common.sh --stage $stage \
@@ -68,6 +87,7 @@ ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
+dir=exp/chain${nnet3_affix}/tdnn${affix:+_$affix}_sp
 train_data_dir=data/${train_set}_sp_hires_comb
 lores_train_data_dir=data/${train_set}_sp_comb
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
