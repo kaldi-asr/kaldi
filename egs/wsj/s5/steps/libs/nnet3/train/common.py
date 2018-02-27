@@ -35,6 +35,7 @@ class RunOpts(object):
     def __init__(self):
         self.command = None
         self.train_queue_opt = None
+        self.combine_gpu_opt = None
         self.combine_queue_opt = None
         self.prior_gpu_opt = None
         self.prior_queue_opt = None
