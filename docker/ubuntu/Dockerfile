@@ -22,6 +22,7 @@ RUN git clone https://github.com/kaldi-asr/kaldi.git
 
 
 WORKDIR /usr/local/kaldi/tools
+RUN extras/check_dependencies.sh
 RUN make -j $CPU_CORE
 
 WORKDIR /usr/local/kaldi/src
