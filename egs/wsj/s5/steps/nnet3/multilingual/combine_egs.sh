@@ -14,16 +14,9 @@
 #
 # Begin configuration section.
 cmd=run.pl
-block_size=512          # This is the number of consecutive egs that we take from
+block_size=256          # This is the number of consecutive egs that we take from
                         # each source, and it only affects the locality of disk
                         # access.
-num_jobs=10             # helps for better randomness across languages
-                        # per archive.
-samples_per_iter=400000 # this is the target number of egs in each archive of egs
-                        # (prior to merging egs).  We probably should have called
-                        # it egs_per_iter. This is just a guideline; it will pick
-                        # a number that divides the number of samples in the
-                        # entire data.
 lang2weight=            # array of weights one per input languge to scale example's output
                         # w.r.t its input language during training.
 stage=0
@@ -63,6 +56,7 @@ for param in $check_params; do
     cat ${args[0]}/$param > $megs_dir/$param || exit 1;
 done
 
+tot_num_archives=0
 for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
   for f in $required; do
@@ -70,6 +64,8 @@ for lang in $(seq 0 $[$num_langs-1]);do
       echo "$0: no such file ${multi_egs_dir[$lang]}/$f." && exit 1;
     fi
   done
+  num_archives=$(cat ${multi_egs_dir[$lang]}/num_archives)
+  tot_num_archives=$[tot_num_archives+num_archives]
   train_scp_list="$train_scp_list ${args[$lang]}/egs.scp"
   train_diagnostic_scp_list="$train_diagnostic_scp_list ${args[$lang]}/train_diagnostic.scp"
   valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.scp"
@@ -98,8 +94,8 @@ if [ $stage -le 0 ]; then
   # Generate egs.*.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train.log \
   steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
+      --num-archives $tot_num_archives \
       --block-size $block_size \
-      --samples-per-iter $samples_per_iter \
       $train_scp_list $megs_dir || exit 1;
 fi
 
