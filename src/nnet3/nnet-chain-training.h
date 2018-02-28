@@ -69,6 +69,7 @@ class NnetChainTrainer {
   void PrintMaxChangeStats() const;
 
   ~NnetChainTrainer();
+  friend class ChainTrainerMemoryHolder;
  private:
   // The internal function for doing one step of conventional SGD training.
   void TrainInternal(const NnetChainExample &eg,

@@ -74,6 +74,9 @@ class CuDevice {
           pitch);
     } else {
       return allocator_.MallocPitch(row_bytes, num_rows, pitch);
+      //void *tmp =  allocator_.Malloc(row_bytes * num_rows);
+      //*pitch = row_bytes;
+      //return tmp;
     }
   }
   inline void Free(void *ptr) {

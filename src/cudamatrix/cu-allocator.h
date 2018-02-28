@@ -54,7 +54,7 @@ struct CuAllocatorOptions {
   // is a constant overhead proportional to the number of buckets.
   BaseFloat delete_factor;
 
-  CuAllocatorOptions(): memory_factor(1.3),
+  CuAllocatorOptions(): memory_factor(1.1),
                         delete_factor(0.001) { }
 
   void Check() {
@@ -110,6 +110,11 @@ class CuMemoryAllocator {
 
   CuMemoryAllocator(CuAllocatorOptions opts);
  private:
+  size_t GetDeviceMemoryMarker() const;
+  void ReportAllocCallStats(int64 row_bytes,
+                             int64 num_rows,
+                             int64 pitch,
+                             size_t marker) const;
 
   void FreeSomeCachedMemory(size_t bytes_to_free);
 
