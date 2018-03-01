@@ -64,6 +64,7 @@ if [ $stage -le 0 ]; then
   cat $text | cut -d ' ' -f2- | tail -n +$[$dev_sents+1] > $text_dir/ted.txt
 fi
 
+
 if [ $stage -le 1 ]; then
   cp $wordlist $dir/config/
   n=`cat $dir/config/words.txt | wc -l`
