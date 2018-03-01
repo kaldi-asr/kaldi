@@ -535,6 +535,42 @@ static void UnitTestCuMatrixAddRows() {
 
 
 template<typename Real>
+static void UnitTestCuMatrixMulRows() {
+  for (int32 p = 0; p < 2; p++) {
+    MatrixIndexT num_rows1 = 10 + Rand() % 10,
+        num_rows2 = 10 + Rand() % 10,
+        num_cols = 10 + Rand() % 10;
+    CuMatrix<Real> M(num_rows1, num_cols);
+    M.SetRandn();
+
+    CuMatrix<Real> N1(num_rows2, num_cols),
+        O(num_rows2, num_cols);
+    std::vector<int32> reorder(num_rows2);
+    std::vector<const Real*> reorder_src(num_rows2, NULL);
+    for (int32 i = 0; i < num_rows2; i++) {
+      reorder[i] = -1 + (Rand() % (num_rows1 + 1));
+      if (reorder[i] != -1)
+        reorder_src[i] = M.RowData(reorder[i]);
+    }
+
+    CuArray<int32> reorder_cuda(reorder);
+    N1.MulRows(M, reorder_cuda);
+
+    for (int32 i = 0; i < num_rows2; i++) {
+      if (reorder[i] != -1) {
+        CuSubVector<Real> O_row(O, i),
+            M_row(M, reorder[i]);
+        O_row.MulElements(M_row);
+      }
+    }
+
+    AssertEqual(N1, O);
+  }
+}
+
+
+
+template<typename Real>
 static void UnitTestCuMatrixAddToRows() {
   for (int32 p = 0; p < 2; p++) {
     MatrixIndexT num_rows1 = 10 + Rand() % 10,
@@ -2914,6 +2950,7 @@ template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixCopyColsFromVec<Real>();
   UnitTestCuMatrixCopyToRows<Real>();
   UnitTestCuMatrixAddRows<Real>();
+  UnitTestCuMatrixMulRows<Real>();
   UnitTestCuMatrixAddToRows<Real>();
   UnitTestCuMatrixAddRowRanges<Real>();
   UnitTestCuMatrixAddTpMat<Real>();

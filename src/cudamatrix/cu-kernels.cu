@@ -1986,6 +1986,23 @@ static void _add_rows(Real alpha, Real* dst, const Real *src,
 
 template<typename Real>
 __global__
+static void _mul_rows(Real* dst, const Real *src,
+                      const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
+                      int src_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < dst_dim.cols && j < dst_dim.rows) {
+    int dst_index = j * dst_dim.stride + i;
+    if (reorder[j] >= 0) {
+      int src_index = reorder[j] * src_stride + i;
+      dst[dst_index] *= src[src_index];
+    }
+  }
+}
+
+
+template<typename Real>
+__global__
 static void _add_rows(Real alpha, Real* dst, const Real * const *src,
                       MatrixDim dst_dim) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
@@ -3764,6 +3781,12 @@ void cudaF_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst, const float* src,
   _add_rows<<<Gr,Bl>>>(alpha, dst, src, reorder, dst_dim, src_stride);
 }
 
+void cudaF_mul_rows(dim3 Gr, dim3 Bl, float* dst, const float* src,
+                    const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
+                    int src_stride) {
+  _mul_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
+}
+
 void cudaF_add_rows_direct(dim3 Gr, dim3 Bl, float alpha, float* dst,
                            const float* const * src, MatrixDim dst_dim) {
   _add_rows<<<Gr,Bl>>>(alpha, dst, src, dst_dim);
@@ -4452,6 +4475,12 @@ void cudaD_add_rows(dim3 Gr, dim3 Bl, double alpha, double* dst,
                     const double* src, const MatrixIndexT_cuda* reorder,
                     MatrixDim dst_dim, int src_stride) {
   _add_rows<<<Gr,Bl>>>(alpha, dst, src, reorder, dst_dim, src_stride);
+}
+
+void cudaD_mul_rows(dim3 Gr, dim3 Bl, double* dst,
+                    const double* src, const MatrixIndexT_cuda* reorder,
+                    MatrixDim dst_dim, int src_stride) {
+  _mul_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
 void cudaD_add_rows_direct(dim3 Gr, dim3 Bl, double alpha, double* dst,

@@ -486,6 +486,10 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
         dynamic_cast<DropoutMaskComponent*>(nnet->GetComponent(c));
     if (mc != NULL)
       mc->SetDropoutProportion(dropout_proportion);
+    GeneralDropoutComponent *gdc =
+        dynamic_cast<GeneralDropoutComponent*>(nnet->GetComponent(c));
+    if (gdc != NULL)
+      gdc->SetDropoutProportion(dropout_proportion);
   }
 }
 
@@ -1172,11 +1176,16 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
              dynamic_cast<DropoutComponent*>(nnet->GetComponent(c));
           DropoutMaskComponent *mask_component =
              dynamic_cast<DropoutMaskComponent*>(nnet->GetComponent(c));
+          GeneralDropoutComponent *general_dropout_component =
+             dynamic_cast<GeneralDropoutComponent*>(nnet->GetComponent(c));
           if (dropout_component != NULL) {
             dropout_component->SetDropoutProportion(proportion);
             num_dropout_proportions_set++;
           } else if (mask_component != NULL){
             mask_component->SetDropoutProportion(proportion);
+            num_dropout_proportions_set++;
+          } else if (general_dropout_component != NULL){
+            general_dropout_component->SetDropoutProportion(proportion);
             num_dropout_proportions_set++;
           }
         }
@@ -1461,9 +1470,10 @@ class ModelCollapser {
   /**
      Tries to produce a component that's equivalent to running the component
      'component_index2' with input given by 'component_index1'.  This handles
-     the case where 'component_index1' is of type DropoutComponent, and where
-     'component_index2' is of type AffineComponent,
-     NaturalGradientAffineComponent or TimeHeightConvolutionComponent.
+     the case where 'component_index1' is of type DropoutComponent or
+     GeneralDropoutComponent, and where 'component_index2' is of type
+     AffineComponent, NaturalGradientAffineComponent or
+     TimeHeightConvolutionComponent.
 
      Returns -1 if this code can't produce a combined component (normally
      because the components have the wrong types).
@@ -1473,10 +1483,23 @@ class ModelCollapser {
     const DropoutComponent *dropout_component =
         dynamic_cast<const DropoutComponent*>(
             nnet_->GetComponent(component_index1));
-    if (dropout_component == NULL)
+    const GeneralDropoutComponent *general_dropout_component =
+        dynamic_cast<const GeneralDropoutComponent*>(
+            nnet_->GetComponent(component_index1));
+
+    if (dropout_component == NULL && general_dropout_component == NULL)
       return -1;
-    BaseFloat dropout_proportion = dropout_component->DropoutProportion();
-    BaseFloat scale = 1.0 / (1.0 - dropout_proportion);
+    BaseFloat scale;  // the scale we have to apply to correct for removing
+                      // this dropout comonent.
+    if (dropout_component != NULL) {
+      BaseFloat dropout_proportion = dropout_component->DropoutProportion();
+      scale = 1.0 / (1.0 - dropout_proportion);
+    } else {
+      // for GeneralDropoutComponent, it's done in such a way that the expectation
+      // is always 1.  (When it's nonzero, we give it a value 1/(1-dropout_proportion).
+      // So no scaling is needed.
+      scale = 1.0;
+    }
     // note: if the 2nd component is not of a type that we can scale, the
     // following function call will return -1, which is OK.
     return GetScaledComponentIndex(component_index2,

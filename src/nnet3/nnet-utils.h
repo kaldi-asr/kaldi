@@ -189,7 +189,7 @@ void RecomputeStats(const std::vector<NnetExample> &egs, Nnet *nnet);
 
 
 /// This function affects components of child-classes of
-/// RandomComponent( currently only DropoutComponent and DropoutMaskComponent).
+/// RandomComponent.
 /// It sets "test mode" on such components (if you call it with test_mode =
 /// true, otherwise it would set normal mode, but this wouldn't be needed often).
 /// "test mode" means that having a mask containing (1-dropout_prob) in all
@@ -296,7 +296,8 @@ void CollapseModel(const CollapseModelConfig &config,
        'remove-orphans'.
 
     set-dropout-proportion [name=<name-pattern>] proportion=<dropout-proportion>
-       Sets the dropout rates for any components of type DropoutComponent whose
+       Sets the dropout rates for any components of type DropoutComponent,
+       DropoutMaskComponent or GeneralDropoutComponent whose
        names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
 
     apply-svd name=<name-pattern> bottleneck-dim=<dim>
