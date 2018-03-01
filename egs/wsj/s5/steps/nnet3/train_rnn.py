@@ -183,6 +183,7 @@ def process_args(args):
 
         run_opts.train_queue_opt = "--gpu 1"
         run_opts.parallel_train_opts = ""
+        run_opts.combine_gpu_opt = ""
         run_opts.combine_queue_opt = "--gpu 1"
         run_opts.prior_gpu_opt = "--use-gpu=yes"
         run_opts.prior_queue_opt = "--gpu 1"
@@ -193,6 +194,7 @@ def process_args(args):
 
         run_opts.train_queue_opt = ""
         run_opts.parallel_train_opts = "--use-gpu=no"
+        run_opts.combine_gpu_opt = "--use-gpu=no"
         run_opts.combine_queue_opt = ""
         run_opts.prior_gpu_opt = "--use-gpu=no"
         run_opts.prior_queue_opt = ""

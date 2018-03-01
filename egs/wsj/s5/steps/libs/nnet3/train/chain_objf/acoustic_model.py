@@ -549,7 +549,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                 nnet3-chain-combine \
                 --max-objective-evaluations={max_objective_evaluations} \
                 --l2-regularize={l2} --leaky-hmm-coefficient={leaky} \
-                --verbose=3 {dir}/den.fst {raw_models} \
+                --verbose=3 {combine_gpu_opt} {dir}/den.fst {raw_models} \
                 "ark,bg:nnet3-chain-copy-egs ark:{egs_dir}/combine.cegs ark:- | \
                     nnet3-chain-merge-egs --minibatch-size={num_chunk_per_mb} \
                     ark:- ark:- |" - \| \
@@ -557,6 +557,7 @@ def combine_models(dir, num_iters, models_to_combine, num_chunk_per_minibatch_st
                 {dir}/final.mdl""".format(
                     command=run_opts.command,
                     combine_queue_opt=run_opts.combine_queue_opt,
+                    combine_gpu_opt=run_opts.combine_gpu_opt,
                     max_objective_evaluations=max_objective_evaluations,
                     l2=l2_regularize, leaky=leaky_hmm_coefficient,
                     dir=dir, raw_models=" ".join(raw_model_strings),
