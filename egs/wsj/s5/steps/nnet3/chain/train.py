@@ -221,7 +221,8 @@ def process_args(args):
     if (not os.path.exists(args.dir+"/configs") and
         (args.input_model is None or not os.path.exists(args.input_model))):
         raise Exception("Either --trainer.input-model option should be supplied, "
-                        "and exist; or the {0}/configs directory should exist.")
+                        "and exist; or the {0}/configs directory should exist."
+                        "".format(args.dir))
 
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir
@@ -238,6 +239,7 @@ def process_args(args):
         run_opts.train_queue_opt = "--gpu 1"
         run_opts.parallel_train_opts = ""
         run_opts.combine_queue_opt = "--gpu 1"
+        run_opts.combine_gpu_opt = ""
 
     else:
         logger.warning("Without using a GPU this will be very slow. "
@@ -246,6 +248,7 @@ def process_args(args):
         run_opts.train_queue_opt = ""
         run_opts.parallel_train_opts = "--use-gpu=no"
         run_opts.combine_queue_opt = ""
+        run_opts.combine_gpu_opt = "--use-gpu=no"
 
     run_opts.command = args.command
     run_opts.egs_command = (args.egs_command

@@ -5,7 +5,7 @@
 # Apache 2.0
 
 # We assume the run.sh has been executed (because we are using model
-# directories like exp/tri4)
+# directories like exp/tri4a)
 
 # This script demonstrates nnet3-based speech activity detection for
 # segmentation.
@@ -15,21 +15,21 @@
 # 2) Augments the training data with reverberation and additive noise
 # 3) Trains TDNN+Stats or TDNN+LSTM neural network using the targets 
 #    and augmented data
-# 4) Demonstrates using the SAD system to get segments of eval data and decode
+# 4) Demonstrates using the SAD system to get segments of dev data and decode
 
 lang=data/lang   # Must match the one used to train the models
-lang_test=data/lang_nosp_sw1_tg  # Lang directory for decoding.
+lang_test=data/lang_test  # Lang directory for decoding.
 
-data_dir=data/train_nodup
+data_dir=data/train_100k
 # Model directory used to align the $data_dir to get target labels for training
 # SAD. This should typically be a speaker-adapted system.
-sat_model_dir=exp/tri4
+sat_model_dir=exp/tri4a
 # Model direcotry used to decode the whole-recording version of the $data_dir to
-# get target labels for training SAD. This should typically be a 
+# get target labels for training SAD. This should typically be a
 # speaker-independent system like LDA+MLLT system.
-model_dir=exp/tri3
-graph_dir=    # Graph for decoding whole-recording version of $data_dir.
-              # If not provided, a new one will be created using $lang_test
+model_dir=exp/tri3a
+graph_dir=exp/tri3a/graph   # Graph for decoding whole-recording version of $data_dir.
+                            # If not provided, a new one will be created using $lang_test
 
 # List of weights on labels obtained from alignment;
 # labels obtained from decoding; and default labels in out-of-segment regions
@@ -39,10 +39,16 @@ prepare_targets_stage=-10
 nstage=-10
 train_stage=-10
 test_stage=-10
-num_data_reps=2
+num_data_reps=3
 affix=_1a   # For segmentation
+test_affix=1a
 stage=-1
 nj=80
+reco_nj=40
+
+# test options
+test_nj=30
+test_stage=1
 
 . ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
@@ -58,8 +64,8 @@ dir=exp/segmentation${affix}
 mkdir -p $dir
 
 # See $lang/phones.txt and decide which should be garbage
-garbage_phones="lau spn"
-silence_phones="sil"
+garbage_phones="laughter oov"
+silence_phones="sil noise"
 
 for p in $garbage_phones; do 
   for a in "" "_B" "_E" "_I" "_S"; do
@@ -94,7 +100,7 @@ fi
 # Extract features for the whole data directory
 ###############################################################################
 if [ $stage -le 1 ]; then
-  steps/make_mfcc.sh --nj 50 --cmd "$train_cmd"  --write-utt2num-frames true \
+  steps/make_mfcc.sh --nj $reco_nj --cmd "$train_cmd"  --write-utt2num-frames true \
     $whole_data_dir exp/make_mfcc/${data_id}_whole
   steps/compute_cmvn_stats.sh $whole_data_dir exp/make_mfcc/${data_id}_whole
   utils/fix_data_dir.sh $whole_data_dir
@@ -109,6 +115,8 @@ if [ $stage -le 2 ]; then
   fi
   utils/data/subsegment_data_dir.sh $whole_data_dir ${data_dir}/segments ${data_dir}/tmp
   cp $data_dir/tmp/feats.scp $data_dir
+
+  # Use recording as the "speaker". This is required by prepare_targets_gmm.sh script.
   awk '{print $1" "$2}' $data_dir/segments > $data_dir/utt2spk
   utils/utt2spk_to_spk2utt.pl $data_dir/utt2spk > $data_dir/spk2utt
 fi
@@ -116,7 +124,7 @@ fi
 if [ $stage -le 3 ]; then
   steps/segmentation/prepare_targets_gmm.sh --stage $prepare_targets_stage \
     --train-cmd "$train_cmd" --decode-cmd "$decode_cmd" \
-    --nj 80 --reco-nj 40 --lang-test $lang_test \
+    --nj $nj --reco-nj $reco_nj --lang-test $lang_test \
     --garbage-phones-list $dir/garbage_phones.txt \
     --silence-phones-list $dir/silence_phones.txt \
     --merge-weights "$merge_weights" \
@@ -156,26 +164,30 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 \
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj \
     ${rvb_data_dir}
   steps/compute_cmvn_stats.sh ${rvb_data_dir}
   utils/fix_data_dir.sh $rvb_data_dir
 fi
 
 if [ $stage -le 6 ]; then
-  rvb_targets_dirs=()
-  for i in `seq 1 $num_data_reps`; do
-    steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}_" \
-      $targets_dir ${targets_dir}_temp_$i || exit 1
-    rvb_targets_dirs+=(${targets_dir}_temp_$i)
-  done
+    rvb_targets_dirs=()
+    for i in `seq 1 $num_data_reps`; do
+      steps/segmentation/copy_targets_dir.sh --utt-prefix "rev${i}_" \
+        $targets_dir ${targets_dir}_temp_$i || exit 1
+      rvb_targets_dirs+=(${targets_dir}_temp_$i)
+    done
 
-  steps/segmentation/combine_targets_dirs.sh \
-    $rvb_data_dir ${rvb_targets_dir} \
-    ${rvb_targets_dirs[@]} || exit 1;
+    steps/segmentation/combine_targets_dirs.sh \
+      $rvb_data_dir ${rvb_targets_dir} \
+      ${rvb_targets_dirs[@]} || exit 1;
 
-  rm -r ${rvb_targets_dirs[@]}
+    rm -r ${rvb_targets_dirs[@]}
 fi
+
+sad_nnet_dir=exp/segmentation${affix}/tdnn_stats_asr_sad_1a
+#sad_nnet_dir=exp/segmentation${affix}/tdnn_lstm_asr_sad_1a
+#sad_opts="--extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 --extra-left-context-initial 0 --extra-right-context-final 0 --acwt 0.3"
 
 if [ $stage -le 7 ]; then
   # Train a STATS-pooling network for SAD
@@ -183,44 +195,40 @@ if [ $stage -le 7 ]; then
     --stage $nstage --train-stage $train_stage \
     --targets-dir ${rvb_targets_dir} \
     --data-dir ${rvb_data_dir} --affix "1a" || exit 1
+
+  # # Train a TDNN+LSTM network for SAD
+  # local/segmentation/tuning/train_lstm_asr_sad_1a.sh \
+  #   --stage $nstage --train-stage $train_stage \
+  #   --targets-dir ${rvb_targets_dir} \
+  #   --data-dir ${rvb_data_dir} --affix "1a" || exit 1
+fi
+
+if [ ! -f data/dev_aspire/wav.scp ]; then
+  echo "$0: Not evaluating on data/dev_aspire"
+  exit 0
 fi
 
 if [ $stage -le 8 ]; then
-  # The options to this script must match the options used in the 
-  # nnet training script. 
-  # e.g. extra-left-context is 79, because the model is an stats pooling network 
-  # trained with a chunk-left-context of 79 and chunk-right-context of 21. 
-  # Note: frames-per-chunk is 150 even though the model was trained with 
-  # chunk-width of 20. This is just for speed.
-  # See the script for details of the options.
-  steps/segmentation/detect_speech_activity.sh \
-    --extra-left-context 79 --extra-right-context 21 --frames-per-chunk 150 \
-    --extra-left-context-initial 0 --extra-right-context-final 0 \
-    --nj 32 --acwt 0.3 --stage $test_stage \
-    data/eval2000 \
-    exp/segmentation${affix}/tdnn_stats_asr_sad_1a \
-    mfcc_hires \
-    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/{,eval2000}
+steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
+  --reco2file-and-channel=data/dev_aspire/reco2file_and_channel \
+  data/dev_aspire/{utt2spk,segments,ref.rttm}
 fi
+
+chain_dir=exp/chain/tdnn_lstm_1a
 
 if [ $stage -le 9 ]; then
-  # Do some diagnostics
-  steps/segmentation/evaluate_segmentation.pl data/eval2000/segments \
-    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/segments &> \
-    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/evalutate_segmentation.log
-  
-  steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
-    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/utt2spk \
-    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/segments \
-    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/sys.rttm
-
-#  export PATH=$PATH:$KALDI_ROOT/tools/sctk/bin
-#  md-eval.pl -c 0.25 -r $eval2000_rttm_file \
-#    -s exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/sys.rttm > \
-#    exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg/md_eval.log
-fi
-
-if [ $stage -le 10 ]; then
-  utils/copy_data_dir.sh exp/segmentation${affix}/tdnn_stats_asr_sad_1a/eval2000_seg \
-    data/eval2000.seg_asr_sad_1a
+  # Use left and right context options that were used when training
+  # the chain nnet
+  # Increase sil-scale to predict more silence
+  local/nnet3/prep_test_aspire_segmentation.sh --stage $test_stage \
+    --decode-num-jobs $test_nj --affix "${test_affix}" \
+    --sad-opts "$sad_opts" \
+    --sad-graph-opts "--min-silence-duration=0.03 --min-speech-duration=0.3 --max-speech-duration=10.0" --sad-priors-opts "--sil-scale=0.1" \
+    --acwt 1.0 --post-decode-acwt 10.0 \
+    --extra-left-context 50 \
+    --extra-right-context 0 \
+    --extra-left-context-initial 0 --extra-right-context-final 0 \
+   --sub-speaker-frames 6000 --max-count 75 \
+   --decode-opts "--min-active 1000" \
+   dev_aspire $sad_nnet_dir $sad_nnet_dir data/lang $chain_dir/graph_pp $chain_dir
 fi

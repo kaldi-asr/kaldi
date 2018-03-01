@@ -1,12 +1,13 @@
 #!/bin/bash
 
 # Copyright Johns Hopkins University (Author: Daniel Povey, Vijayaditya Peddinti) 2016.  Apache 2.0.
-# This script does online decoding, unlike prep_test_aspire.sh which does 2-pass decoding.
+# This script does online decoding, unlike local/nnet3/decode.sh which does 2-pass decoding with
+# uniform segments.
 
 set -e
 
 # general opts
-iter=final
+iter=
 stage=0
 decode_num_jobs=30
 num_jobs=30
@@ -29,6 +30,9 @@ extra_right_context=0 # change for BLSTM
 frames_per_chunk=50 # change for (B)LSTM
 acwt=0.1 # important to change this when using chain models
 post_decode_acwt=1.0 # important to change this when using chain models
+extra_left_context_initial=0
+
+score_opts="--min-lmwt 6 --max-lmwt 13"
 
 . ./cmd.sh
 [ -f ./path.sh ] && . ./path.sh
@@ -49,29 +53,29 @@ graph=$3 #exp/tri5a/graph_pp
 dir=$4 # exp/nnet3/tdnn
 
 model_affix=`basename $dir`
-affix=_${affix}_iter${iter}
-act_data_set=${data_set} # we will modify the data set, when uniformly segmenting it
-                         # so we will keep track of original data set for the glm and stm files
+affix=_${affix}${iter:+_iter${iter}}
 
+segmented_data_set=${data_set}_uniformsegmented
 if [ $stage -le 1 ]; then
   local/generate_uniformly_segmented_data_dir.sh  \
-    --overlap $overlap --window $window $data_set
+    --overlap $overlap --window $window $data_set $segmented_data_set
 fi
 
-if [ "$data_set" == "test_aspire" ]; then
+if [[ "$data_set" =~ "test_aspire" ]]; then
   out_file=single_dev_test${affix}_$model_affix.ctm
-elif [ "$data_set" == "eval_aspire" ]; then
+  act_data_set=test_aspire
+elif [[ "$data_set" =~ "eval_aspire" ]]; then
   out_file=single_eval${affix}_$model_affix.ctm
-elif [ "$data_set" ==  "dev_aspire" ]; then
+  act_data_set=eval_aspire
+elif [[ "$data_set" =~  "dev_aspire" ]]; then
   # we will just decode the directory without oracle segments file
   # as we would like to operate in the actual evaluation condition
-  data_set=${data_set}_whole
   out_file=single_dev${affix}_${model_affix}.ctm
+  act_data_set=dev_aspire
+else
+  echo "$0: Unknown data-set $data_set"
+  exit 1
 fi
-
-# uniform segmentation script would have created this dataset
-# so update that script if you plan to change this variable
-segmented_data_set=${data_set}_uniformsegmented_win${window}_over${overlap}
 
 if [ $stage -le 2 ]; then
   # If this setup used PLP features, we'd have to give the option --feature-type plp
@@ -89,13 +93,15 @@ if [ $stage -le 3 ]; then
       # --frames-per-chunk "$frames_per_chunk"
       #--extra-left-context $extra_left_context  \
       #--extra-right-context $extra_right_context  \
-  steps/online/nnet3/decode.sh  --cmd "$decode_cmd" \
+  steps/online/nnet3/decode.sh --nj $decode_num_jobs --cmd "$decode_cmd" \
       --config conf/decode.config $pass2_decode_opts \
       --acwt $acwt --post-decode-acwt $post_decode_acwt \
+      --extra-left-context-initial $extra_left_context_initial \
       --silence-weight $silence_weight \
       --per-utt true \
-      --skip-scoring true --iter $iter --lattice-beam $lattice_beam \
-     $graph data/${segmented_data_set}_hires ${decode_dir}_tg
+      --skip-scoring true ${iter:+--iter $iter} --lattice-beam $lattice_beam \
+     $graph data/${segmented_data_set}_hires ${decode_dir}_tg || \
+     { echo "$0: Error decoding" && exit 1; }
 fi
 
 if [ $stage -le 4 ]; then
@@ -109,13 +115,11 @@ fi
 decode_dir=${decode_dir}_fg
 if [ $stage -le 5 ]; then
   local/score_aspire.sh --cmd "$decode_cmd" \
-    --min-lmwt 1 --max-lmwt 20 \
+    $score_opts \
     --word-ins-penalties "0.0,0.25,0.5,0.75,1.0" \
     --ctm-beam 6 \
-    --iter $iter \
+    ${iter:+--iter $iter} \
     --decode-mbr true \
-    --window $window \
-    --overlap $overlap \
     --tune-hyper true \
     $lang $decode_dir $act_data_set $segmented_data_set $out_file
 fi
