@@ -2,6 +2,8 @@
 
 # Copyright 2017  Vimal Manohar
 
+# This script prepares lang directory with UNK modeled by a phone LM.
+
 utils/lang/make_unk_lm.sh data/local/dict exp/unk_lang_model || exit 1
 
 utils/prepare_lang.sh \

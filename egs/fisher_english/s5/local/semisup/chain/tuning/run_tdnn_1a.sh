@@ -9,6 +9,7 @@ set -o pipefail
 # This is fisher chain recipe for training a model on a subset of around
 # 100-300 hours of supervised data.
 # This system uses phone LM to model UNK.
+# local/semisup/run_50k.sh and local/semisup/run_100k.sh show how to call this.
 
 # train_set                 train_sup15k           train_sup50k           train_sup
 # ivector_train_set         semisup15k_100k_250k   semisup50k_100k_250k   train_sup

@@ -8,6 +8,7 @@
 # Based on "Semi-Supervised Training of Acoustic Models using Lattice-Free MMI",
 # Vimal Manohar, Hossein Hadian, Daniel Povey, Sanjeev Khudanpur, ICASSP 2018
 # http://www.danielpovey.com/files/2018_icassp_semisupervised_mmi.pdf
+# local/semisup/run_50k.sh shows how to call this.
 
 # We use the combined data for i-vector extractor training.
 # We use 4-gram LM trained on 1250 hours of data excluding the 250 hours
@@ -35,6 +36,8 @@
 # Final output train prob (xent)      -1.9246             -1.5926
 # Final output valid prob (xent)      -2.1873             -1.7990
 
+# output-0 and output-1 are for superivsed and unsupervised data respectively.
+
 # Semi-supervised training            train_sup15k        train_sup50k
 # WER on dev                          21.31               18.98
 # WER on test                         21.00               18.85
@@ -53,8 +56,12 @@ stage=0   # Start from -1 for supervised seed system training
 train_stage=-100
 nj=80
 test_nj=50
-exp_root=exp/semisup_50k
 
+# The following 3 options decide the output directory for semi-supervised 
+# chain system
+# dir=${exp_root}/chain${chain_affix}/tdnn${tdnn_affix}
+
+exp_root=exp/semisup_50k
 chain_affix=_semi50k_100k_250k    # affix for chain dir
 tdnn_affix=_semisup_1a
 
@@ -63,6 +70,7 @@ tdnn_affix=_semisup_1a
 supervised_set=train_sup50k
 unsupervised_set=train_unsup100k_250k
 
+# Input seed system
 sup_chain_dir=exp/semisup_50k/chain_semi50k_100k_250k/tdnn_1a_sp  # supervised chain system
 sup_lat_dir=exp/semisup_50k/chain_semi50k_100k_250k/tri4a_train_sup50k_unk_lats  # lattices for supervised set
 sup_tree_dir=exp/semisup_50k/chain_semi50k_100k_250k/tree_bi_a  # tree directory for supervised chain system

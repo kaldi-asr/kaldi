@@ -22,6 +22,8 @@
 # It can optionally read alignments from a directory, in which case,
 # the script gets frame-level posteriors of the pdf corresponding to those
 # alignments.
+# The frame-level posteriors in the form of kaldi vectors and are 
+# output in weights.scp.
 
 set -e
 

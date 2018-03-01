@@ -181,3 +181,15 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # # local/run_nnet2.sh
 #
 
+# This prepares lang directory with UNK modeled by a phone LM
+# local/run_unk_model.sh
+
+# These are semi-supervised training recipes using 50 hrs and 100 hrs 
+# of supervised data respectively with 250 hrs of unsupervised data.
+# run_50k.sh uses i-vector extractor trained on 300 hrs of combined data, 
+# while run_100.sh uses i-vector extractor trained on 100 hrs of supervised data.
+# run_50k.sh uses 4-gram LM trained on 1250 hrs transcripts, 
+# while run_100k.sh uses 3-gram LM trained on 100 hrs transcripts.
+
+# local/semisup/run_50k.sh
+# local/semisup/run_100k.sh 
