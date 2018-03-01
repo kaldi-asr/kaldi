@@ -10,15 +10,15 @@ set -euo pipefail
 
 language=swahili
 stage=0
-datadev="data/analysis1"
-dir=exp/chain/tdnn_lstm1a_sp
+datadev="data/analysis1 data/test_dev data/eval1"
+dir=exp/chain/tdnn1a_sp
 lang=data/lang_chain
 tree_dir=exp/chain/tree_sp
 cmd=queue.pl
 
 # training options
 chunk_width=140,100,160
-chunk_left_context=40
+chunk_left_context=0
 chunk_right_context=0
 
 # ivector options
@@ -66,7 +66,7 @@ if [ $stage -le 1 ]; then
   done
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 2 ]; then
   # extract iVectors for the test data, in this case we don't need the speed
   # perturbation (sp).
   for datadir in $datadev; do
@@ -82,12 +82,12 @@ fi
 frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
 rm $dir/.error 2>/dev/null || true
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
   # do the 1st pass decoding
   for datadir in $datadev; do
     (
       data=$(basename $datadir)
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      nspk=$(wc -l <data/${data}_segmented_hires/spk2utt)
       decode_dir=${dir}/decode_${data}_segmented
       steps/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
@@ -111,7 +111,7 @@ fi
 wait
 [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   # re-segement data based on 1st-pass decoding
   segmentation_opts="--silence-proportion 0.2 --max-segment-length 15 --frame-shift 0.03"
   for datadir in $datadev; do
@@ -148,12 +148,12 @@ if [ $stage -le 5 ]; then
   done
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 5 ]; then
   # 2nd-pass decoding on the resegmented data
   for datadir in $datadev; do
     (
       data=$(basename $datadir)
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      nspk=$(wc -l <data/${data}_segmented_reseg_hires/spk2utt)
       decode_dir=${dir}/decode_${data}_segmented_reseg
       steps/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
