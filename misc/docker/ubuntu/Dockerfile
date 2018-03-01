@@ -4,7 +4,6 @@ MAINTAINER sih4sing5hong5
 
 ENV CPU_CORE 4
 
-# 準備環境
 RUN \
   apt-get update -qq && \
   apt-get install -y \
@@ -13,11 +12,9 @@ RUN \
     zlib1g-dev automake autoconf libtool subversion \
     libatlas-dev libatlas-base-dev
 
-#  apt-get install -y g++ 2 subversion  # kaldi/tool && \
-#  apt-get install -y libatlas-dev libatlas-base-dev  # kaldi/src && \
 
 WORKDIR /usr/local/
-# Should it be replaced by copy ??
+# Use the newest kaldi version
 RUN git clone https://github.com/kaldi-asr/kaldi.git
 
 

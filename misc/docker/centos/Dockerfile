@@ -4,7 +4,6 @@ MAINTAINER sih4sing5hong5
 
 ENV CPU_CORE 4
 
-# 準備環境
 RUN yum update -y 
 RUN yum groupinstall -y "C Development Tools and Libraries" "Development Tools" "System Tools"
 RUN  yum install -y \
@@ -19,7 +18,7 @@ RUN yum -y install python36u
 RUN ln -s /usr/bin/python3.6 /usr/bin/python3
 
 WORKDIR /usr/local/
-# Should it be replaced by copy ??
+# Use the newest kaldi version
 RUN git clone https://github.com/kaldi-asr/kaldi.git
 
 
