@@ -221,7 +221,8 @@ def process_args(args):
     if (not os.path.exists(args.dir+"/configs") and
         (args.input_model is None or not os.path.exists(args.input_model))):
         raise Exception("Either --trainer.input-model option should be supplied, "
-                        "and exist; or the {0}/configs directory should exist.")
+                        "and exist; or the {0}/configs directory should exist."
+                        "".format(args.dir))
 
     if args.transform_dir is None:
         args.transform_dir = args.lat_dir

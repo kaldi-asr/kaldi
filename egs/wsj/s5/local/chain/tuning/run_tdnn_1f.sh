@@ -4,7 +4,7 @@
 # end, and no chain l2-regularize
 #[note: was 1e12e.]
 
-# local/chain/compare_wer.sh exp/chain/tdnn1e10_sp exp/chain/tdnn1e12e_sp
+# local/chain/compare_wer.sh exp/chain/tdnn1e_sp exp/chain/tdnn1f_sp
 # System                tdnn1e10_sp tdnn1e12e_sp
 #WER dev93 (tgpr)                7.29      7.20
 #WER dev93 (tg)                  7.08      6.81

@@ -689,7 +689,9 @@ class XconfigBasicLayer(XconfigLayerBase):
                                                    # 'dropout' in the name
                        'dropout-per-dim': False,  # if dropout-per-dim=true, the dropout
                                                   # mask is shared across time.
-                       'dropout-per-dim-continuous':  False,
+                       'dropout-per-dim-continuous':  False, # if you set this, it's
+                                                    # like dropout-per-dim but with a
+                                                    # continuous-valued (not zero-one) mask.
                        'add-log-stddev': False,
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
@@ -865,7 +867,8 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ''.format(self.name, nonlinearity, output_dim))
 
             elif nonlinearity == 'dropout':
-                if not self.config['dropout-per-dim']:
+                if not (self.config['dropout-per-dim'] or
+                        self.config['dropout-per-dim-continuous']):
                     line = ('component name={0}.{1} type=DropoutComponent '
                             'dim={2} dropout-proportion={3}'.format(
                                 self.name, nonlinearity, output_dim,

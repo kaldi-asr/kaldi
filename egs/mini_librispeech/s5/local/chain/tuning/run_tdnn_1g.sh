@@ -156,7 +156,7 @@ if [ $stage -le 13 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  opts="l2-regularize=0.05 dropout-per-dim=true dropout-per-dim-continuous=true"
+  opts="l2-regularize=0.05 dropout-per-dim-continuous=true"
   output_opts="l2-regularize=0.02 bottleneck-dim=192"
 
   mkdir -p $dir/configs
