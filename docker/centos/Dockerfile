@@ -33,11 +33,8 @@ RUN ln -s /usr/bin/python3.6 /usr/bin/python3
 RUN extras/check_dependencies.sh
 RUN make -j $CPU_CORE
 
-RUN  yum install -y findutils
+RUN  yum install -y atlas-static
 
 WORKDIR /usr/local/kaldi/src
 RUN ./configure && make depend -j $CPU_CORE && make -j $CPU_CORE
 
-
-RUN  yum install -y 
-#    libatlas-dev libatlas-base-dev
