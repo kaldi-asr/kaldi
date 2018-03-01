@@ -1,13 +1,12 @@
 #!/bin/bash
 
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
-#           2017  Hainan Xu
 #           2018  Ke Li
 
 # rnnlm/train_rnnlm.sh: best iteration (out of 9) was 8, linking it to final iteration.
-# rnnlm/train_rnnlm.sh: train/dev perplexity was 94.1 / 155.1.
-# Train objf: -6.24 -5.45 -5.12 -4.95 -4.84 -4.74 -4.66 -4.59 -4.52 -4.46
-# Dev objf:   -11.92 -5.80 -5.32 -5.17 -5.10 -5.07 -5.05 -5.05 -5.04 -5.06
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 32.2 / 123.2.
+# Train objf: -4.02 -3.71 -3.64 -3.58 -3.55 -3.52 -3.50 -3.48 -3.44
+# Dev objf:   -11.92 -5.13 -5.03 -4.94 -4.91 -4.87 -4.85 -4.83 -4.81
 
 # 1-pass results 
 # %WER 8.3 | 1155 27500 | 92.7 4.9 2.4 1.0 8.3 68.8 | -0.019 | /export/a12/ywang/kaldi/egs/tedlium/s5_r2/exp/chain_cleaned/tdnn_lstm1i_adversarial1.0_interval4_epoches7_lin_to_5_sp_bi/decode_looped_test/score_10_0.0/ctm.filt.filt.sys
@@ -16,15 +15,15 @@
 # %WER 7.8 | 1155 27500 | 93.1 4.5 2.4 0.9 7.8 66.4 | -0.089 | /export/a12/ywang/kaldi/egs/tedlium/s5_r2/exp/chain_cleaned/tdnn_lstm1i_adversarial1.0_interval4_epoches7_lin_to_5_sp_bi/decode_looped_test_rescore/score_10_0.0/ctm.filt.filt.sys
 
 # RNNLM lattice rescoring
-# %WER 7.4 | 1155 27500 | 93.4 4.2 2.4 0.8 7.4 65.0 | -0.117 | exp/decode_test_rnnlm_tedlium/score_10_0.0/ctm.filt.filt.sys
+# %WER 7.3 | 1155 27500 | 93.6 4.0 2.4 0.9 7.3 65.4 | -0.138 | exp/decode_test_rnnlm_lm1b_tedlium_weight3/score_10_0.0/ctm.filt.filt.sys
 
 # RNNLM nbest rescoring
-# %WER 7.7 | 1155 27500 | 93.1 4.3 2.6 0.8 7.7 65.8 | -0.855 | exp/decode_test_rnnlm_tedlium_nbest//score_10_0.0/ctm.filt.filt.sys
+# %WER 7.3 | 1155 27500 | 93.6 4.3 2.1 0.9 7.3 65.0 | -0.895 | exp/decode_test_rnnlm_lm1b_tedlium_weight3_nbest/score_8_0.0/ctm.filt.filt.sys
 
 # Begin configuration section.
 cmd=run.pl
 decode_cmd=run.pl
-dir=exp/rnnlm_lstm_tdnn
+dir=exp/rnnlm_lm1b_tedlium_weight3
 embedding_dim=1024
 lstm_rpd=256
 lstm_nrpd=256
@@ -35,7 +34,7 @@ epochs=20
 # variables for lattice rescoring
 run_lat_rescore=true
 run_nbest_rescore=true
-decode_dir_suffix=rnnlm_tedlium
+decode_dir_suffix=rnnlm_lm1b_tedlium_weight3
 ac_model_dir=/export/a12/ywang/kaldi/egs/tedlium/s5_r2/exp/chain_cleaned/tdnn_lstm1i_adversarial1.0_interval4_epoches7_lin_to_5_sp_bi
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
@@ -46,22 +45,25 @@ pruned_rescore=true
 . ./cmd.sh
 . ./utils/parse_options.sh
 
+text=/export/a07/keli1/1-billion-word-language-modeling-benchmark/training-monolingual.tokenized.shuffled/news.en
 wordlist=data/lang/words.txt
-text=data/train/text
+train_text=data/train/text
 dev_sents=10000
-text_dir=data/rnnlm/text
+text_dir=data/rnnlm/text_lm1b_tedlium
 mkdir -p $dir/config
 set -e
 
-for f in $text $wordlist; do
+for f in $text $wordlist $train_text; do
   [ ! -f $f ] && \
-    echo "$0: expected file $f to exist; search for local/prepare_data.sh and utils/prepare_lang.sh in run.sh" && exit 1
+    echo "$0: expected file $f to exist; generate lm1b data first; \
+    search for local/prepare_data.sh and utils/prepare_lang.sh in run.sh" && exit 1
 done
 
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
-  cat $text | cut -d ' ' -f2- | head -n $dev_sents > $text_dir/dev.txt
-  cat $text | cut -d ' ' -f2- | tail -n +$[$dev_sents+1] > $text_dir/ted.txt
+  cat $train_text | cut -d ' ' -f2- | head -n $dev_sents > $text_dir/dev.txt
+  cat $train_text | cut -d ' ' -f2- | tail -n +$[$dev_sents+1] > $text_dir/ted.txt
+  cp $text $text_dir/lm1b.txt
 fi
 
 
@@ -75,7 +77,8 @@ if [ $stage -le 1 ]; then
   echo "<unk>" >$dir/config/oov.txt
 
   cat > $dir/config/data_weights.txt <<EOF
-ted   1   1.0
+ted   1   3.0
+lm1b    1   1.0
 EOF
 
   rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
@@ -108,11 +111,12 @@ if [ $stage -le 2 ]; then
   # in order to reduce the size of the sampling LM, because rnnlm-get-egs
   # was taking up too much CPU (as much as 10 cores).
   rnnlm/prepare_rnnlm_dir.sh --unigram-factor 200.0 \
+                             --words_per_split 100000000 \
                              $text_dir $dir/config $dir
 fi
 
 if [ $stage -le 3 ]; then
-  rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 1 \
+  rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 5 \
                        --stage $train_stage --num-epochs $epochs --cmd "queue.pl" $dir
 fi
 
