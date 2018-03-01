@@ -15,6 +15,14 @@
 # %WER 50.60 [ 29937 / 59166, 1664 ins, 11851 del, 16422 sub ] exp/chain/tdnn_lstm1a_sp/decode_analysis1_segmented_reseg_rnnlm_rescore
 # %WER 37.32 [ 23193 / 62144, 3036 ins, 6108 del, 14049 sub ] exp/chain/tdnn_lstm1a_sp/decode_dev_rnnlm_rescore/wer_9_0.5
 
+# [for tagalog]
+# rnnlm/train_rnnlm.sh: best iteration (out of 10) was 4, linking it to final iteration.
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 73.6 / 106.2.
+# Train objf: -5.55 -4.83 -4.58 -4.41 -4.28 -4.17 -4.06 -3.96 -3.86
+# Dev objf:   -10.54 -4.87 -4.72 -4.67 -4.67 -4.69 -4.71 -4.74 -4.78
+# %WER 56.53 [ 49383 / 87362, 2899 ins, 25688 del, 20796 sub ] exp/chain/tdnn1a_sp/decode_analysis1_segmented_reseg_rnnlm_rescore
+# %WER 43.54 [ 28033 / 64382, 3471 ins, 9061 del, 15501 sub ] exp/chain/tdnn1a_sp/decode_dev_rnnlm_rescore/wer_9_0.0
+
 # Begin configuration section.
 
 embedding_dim=512
@@ -33,8 +41,8 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
               # exploding exponentially
 pruned_rescore=true
 
-ac_model_dir=exp/chain/tdnn_lstm1a_sp
-decode_sets="dev analysis1_segmented_reseg"
+ac_model_dir=exp/chain/tdnn1a_sp
+decode_sets="dev analysis1_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg"
 dir=exp/rnnlm_lstm_1a
 text_dir=data/rnnlm/text
 train_text=data/lm/train.txt

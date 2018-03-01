@@ -5,12 +5,17 @@
 
 # 1a is trying an architecture with factored parameter matrices with dropout.
 
-# [for swahili]
 # cat exp/chain/tdnn1a_sp/decode_dev/scoring_kaldi/best_wer
+# [for swahili]
 # %WER 38.65 [ 24021 / 62144, 3044 ins, 6378 del, 14599 sub ] exp/chain/tdnn1a_sp/decode_dev/wer_9_0.5
+# [for tagalog]
+# %WER 46.53 [ 29955 / 64382, 3425 ins, 9485 del, 17045 sub ] exp/chain/tdnn1a_sp/decode_dev/wer_9_0.0
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
+# [for swahili]
 # exp/chain/tdnn1a_sp: num-iters=99 nj=2..12 num-params=12.2M dim=40+100->1792 xent:train/valid[65,98,final]=(-1.93,-1.66,-1.68/-2.05,-1.84,-1.83) logprob:train/valid[65,98,final]=(-0.199,-0.166,-0.167/-0.225,-0.208,-0.206)
+# [for tagalog]
+# exp/chain/tdnn1a_sp: num-iters=96 nj=2..12 num-params=12.3M dim=40+100->1952 combine=-0.165->-0.165 (over 2) xent:train/valid[63,95,final]=(-1.89,-1.66,-1.65/-2.06,-1.89,-1.89) logprob:train/valid[63,95,final]=(-0.186,-0.158,-0.157/-0.231,-0.219,-0.218)
 
 set -e -o pipefail
 

@@ -25,7 +25,12 @@ hyp_filtering_cmd="cat"
 
 
 mkdir -p $dir/scoring_kaldi
-cat $data/reftext | $ref_filtering_cmd > $dir/scoring_kaldi/test_filt.txt || exit 1;
+if [ -f $data/reftext ]; then
+  cat $data/reftext | $ref_filtering_cmd > $dir/scoring_kaldi/test_filt.txt || exit 1;
+else
+  echo "$0: No reference text to compute WER" 
+fi
+
 if [ $stage -le 0 ]; then
 
   mkdir -p $dir/scoring_kaldi/log
@@ -34,23 +39,32 @@ if [ $stage -le 0 ]; then
   rm -rf tmpconcat
   awk '{a[$1]=a[$1]" "$5;}END{for(i in a)print i""a[i];}' \
     $dir/score_10/ctm_out > tmpconcat
-  awk -F" " '{print $1}' $data/reftext > tmpreforder
-  rm -rf $dir/score_10/ctm_out.concat
-  while read LINE; do                                                             
-    grep "$LINE" "tmpconcat" >> "$dir/score_10/ctm_out.concat"
-  done < "tmpreforder"
-  rm -rf tmpconcat
-  rm -rf tmpreforder
-  $hyp_filtering_cmd $dir/score_10/ctm_out.concat > \
-    $dir/scoring_kaldi/hyp.txt || exit 1;
-  #end building hypothesis hyp.txt
+  if [ -f $data/reftext ]; then
+    awk -F" " '{print $1}' $data/reftext > tmpreforder
+    rm -rf $dir/score_10/ctm_out.concat
+    while read LINE; do
+      grep "$LINE" "tmpconcat" >> "$dir/score_10/ctm_out.concat"
+    done < "tmpreforder"
+    rm -rf tmpconcat
+    rm -rf tmpreforder
+    $hyp_filtering_cmd $dir/score_10/ctm_out.concat > \
+      $dir/scoring_kaldi/hyp.txt || exit 1;
+    #end building hypothesis hyp.txt
     
-  $cmd $dir/scoring_kaldi/log/score.hyp.log \
-    cat $dir/scoring_kaldi/hyp.txt \| \
-    compute-wer --text --mode=present \
-    ark:$dir/scoring_kaldi/test_filt.txt  ark:- ">&" $dir/wer || exit 1;
+    $cmd $dir/scoring_kaldi/log/score.hyp.log \
+      cat $dir/scoring_kaldi/hyp.txt \| \
+      compute-wer --text --mode=present \
+      ark:$dir/scoring_kaldi/test_filt.txt  ark:- ">&" $dir/wer || exit 1;
 
-  cat $dir/wer
+    cat $dir/wer
+  else
+    cat tmpconcat > "$dir/score_10/ctm_out.concat"
+    rm -rf tmpconcat
+    $hyp_filtering_cmd $dir/score_10/ctm_out.concat > \
+      $dir/scoring_kaldi/hyp.txt || exit 1;
+    exit 0;
+    #end building hypothesis hyp.txt
+  fi
 fi
 
 if [ $stage -le 1 ]; then
