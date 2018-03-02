@@ -333,8 +333,11 @@ if [ $stage -le 18 ]; then
 
   for data in $test_sets; do
     (
+      utils/data/modify_speaker_info.sh --seconds-per-spk-max 200 \
+        data/${data}_hires data/${data}_chunked
+      
       data_affix=$(echo $data | sed s/test_//)
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      nspk=$(wc -l <data/${data}_chunked/spk2utt)
       for lmtype in tgpr_5k; do
         steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
@@ -344,7 +347,7 @@ if [ $stage -le 18 ]; then
           --frames-per-chunk $frames_per_chunk \
           --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-          $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
+          $tree_dir/graph_${lmtype} data/${data}_chunked ${dir}/decode_${lmtype}_${data_affix} || exit 1
       done
     ) || touch $dir/.error &
   done

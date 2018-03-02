@@ -124,7 +124,7 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
       --cmd "$decode_cmd --mem 4G" \
       --weight 0.5 --max-ngram-order $ngram_order \
       data/lang_test_$LM $dir \
-      data/${decode_set}_${enhan}_hires ${decode_dir} \
+      data/${decode_set}_${enhan}_chunked ${decode_dir} \
       $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}
   done
   # calc wers for lattice-rescoring results
@@ -145,7 +145,7 @@ if [ $stage -le 5 ] && $run_nbest_rescore; then
     rnnlm/lmrescore_nbest.sh \
       --cmd "$decode_cmd --mem 4G" --N $nbest \
       $rnnweight data/lang_test_$LM $dir \
-      data/${decode_set}_${enhan}_hires ${decode_dir} \
+      data/${decode_set}_${enhan}_chunked ${decode_dir} \
       $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}
   done
   # calc wers for nbest-rescoring results
