@@ -215,3 +215,17 @@ et05_simu WER: 6.07% (Average), 4.52% (BUS), 6.93% (CAFE), 6.05% (PEDESTRIAN), 6
 -------------------
 et05_real WER: 6.93% (Average), 10.23% (BUS), 6.13% (CAFE), 6.41% (PEDESTRIAN), 4.97% (STREET)
 -------------------
+
+TDNN+RNNLM with BLSTM masking using 6 channel data plus enhanced data
+exp/chain/tdnn1a_sp_smbr_lmrescore/best_wer_blstm_gev_rnnlm_lstm_1a_w0.5_n100.result
+-------------------
+best overall dt05 WER 3.39% (language model weight = 10)
+-------------------
+dt05_simu WER: 3.94% (Average), 2.99% (BUS), 5.65% (CAFE), 3.44% (PEDESTRIAN), 3.67% (STREET)
+-------------------
+dt05_real WER: 2.85% (Average), 3.58% (BUS), 2.89% (CAFE), 2.07% (PEDESTRIAN), 2.85% (STREET)
+-------------------
+et05_simu WER: 5.03% (Average), 3.66% (BUS), 5.57% (CAFE), 4.87% (PEDESTRIAN), 6.03% (STREET)
+-------------------
+et05_real WER: 5.40% (Average), 7.81% (BUS), 4.71% (CAFE), 4.73% (PEDESTRIAN), 4.37% (STREET)
+-------------------
