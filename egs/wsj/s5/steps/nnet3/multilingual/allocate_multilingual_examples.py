@@ -156,34 +156,50 @@ def process_multilingual_egs(args):
     logger.info("Number of blocks in each output archive will be approximately "
                 "{}, and block-size is {}.".format(int(round(tot_num_egs / num_archives / args.block_size)),
                                                    args.block_size))
+    for lang in range(num_langs):
+        blocks_per_archive_this_lang = lang_to_num_examples[lang] / num_archives / args.block_size
+        warning = ""
+        if blocks_per_archive_this_lang < 1.0:
+            warning = ("Warning: This means some of the output archives might "
+                       "not include any examples from this lang.")
+        logger.info("The proportion of egs from lang {} is {:.2f}. The number of blocks "
+                    "per archive for this lang is approximately {:.2f}. "
+                    "{}".format(lang, lang_to_num_examples[lang] / tot_num_egs,
+                                blocks_per_archive_this_lang,
+                                warning))
 
     in_scp_file_handles = [open(scp_lists[lang], 'r') for lang in range(num_langs)]
 
     num_remaining_egs = tot_num_egs
     lang_to_num_remaining_egs = [n for n in lang_to_num_examples]
-    for archive_index in range(num_archives):
+    for archive_index in range(num_archives + 1):  #  +1 is because we write to the last archive in two rounds
         num_remaining_archives = num_archives - archive_index
         num_remaining_blocks = num_remaining_egs / args.block_size
 
-        num_blocks_per_this_archive = int(round(num_remaining_blocks / num_remaining_archives))
-        logger.info("Generating archive {} containing {} blocks...".format(archive_index, num_blocks_per_this_archive))
+        last_round = (archive_index == num_archives)
+        if not last_round:
+            num_blocks_this_archive = int(round(num_remaining_blocks / num_remaining_archives))
+            logger.info("Generating archive {} containing {} blocks...".format(archive_index, num_blocks_this_archive))
+        else:  # This is the second round for the last archive. Flush all the remaining egs...
+            archive_index = num_archives - 1
+            num_blocks_this_archive = num_langs
+            logger.info("Writing all the {} remaining egs to the last archive...".format(num_remaining_egs))
 
-        out_scp_file_handle = open('{0}/{1}{2}.scp'.format(args.egs_dir,
-                                                           args.egs_prefix, archive_index + 1), 'w')
-        eg_to_output_file_handle = open("{0}/{1}output.{2}.ark".format(args.egs_dir,
-                                                                       args.egs_prefix, archive_index + 1), 'w')
-        eg_to_weight_file_handle = open("{0}/{1}weight.{2}.ark".format(args.egs_dir,
-                                                                       args.egs_prefix, archive_index + 1), 'w')
+        out_scp_file_handle = open('{0}/{1}{2}.scp'.format(args.egs_dir, args.egs_prefix, archive_index + 1),
+                                   'a' if last_round else 'w')
+        eg_to_output_file_handle = open("{0}/{1}output.{2}.ark".format(args.egs_dir, args.egs_prefix, archive_index + 1),
+                                        'a' if last_round else 'w')
+        eg_to_weight_file_handle = open("{0}/{1}weight.{2}.ark".format(args.egs_dir, args.egs_prefix, archive_index + 1),
+                                        'a' if last_round else 'w')
 
 
-        for block_index in range(num_blocks_per_this_archive):
-            # find the lang with the highest proportion of remaining examples
+        for block_index in range(num_blocks_this_archive):
+            # Find the lang with the highest proportion of remaining examples
             remaining_proportions = [remain / tot for remain, tot in zip(lang_to_num_remaining_egs, lang_to_num_examples)]
             lang_index, max_proportion = max(enumerate(remaining_proportions), key=lambda a: a[1])
 
             # Read 'block_size' examples from the selected lang and write them to the current output scp file:
             example_lines  = read_lines(in_scp_file_handles[lang_index], args.block_size)
-
             for eg_line in example_lines:
                 eg_id = eg_line.split()[0]
                 print(eg_line, file=out_scp_file_handle)
@@ -200,7 +216,9 @@ def process_multilingual_egs(args):
     for handle in in_scp_file_handles:
         handle.close()
     logger.info("Finished generating {0}*.scp, {0}output.*.ark "
-                "and {0}weight.*.ark files.".format(args.egs_prefix))
+                "and {0}weight.*.ark files. Wrote a total of {1} examples "
+                "to {2} archives.".format(args.egs_prefix,
+                                          tot_num_egs - num_remaining_egs, num_archives))
 
 
 def main():
