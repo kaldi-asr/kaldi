@@ -59,11 +59,12 @@ if [ ! -d local/nn-gev ]; then
     cd local/
     git clone https://github.com/fgnt/nn-gev.git
     cd nn-gev/
+    git checkout 3a039a4b707419fab05deb9679b41360ea92d779 .
     git apply ../fix_read_sim_from_different_directory.patch
     cd ../../
 else
     cd local/nn-gev/
-    git checkout .
+    git checkout 3a039a4b707419fab05deb9679b41360ea92d779 .
     git apply ../fix_read_sim_from_different_directory.patch
     cd ../../
 fi
