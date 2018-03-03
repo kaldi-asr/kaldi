@@ -33,10 +33,9 @@ GenericNumeratorComputation::GenericNumeratorComputation(
     const Supervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output):
     supervision_(supervision),
-    exp_nnet_output_transposed_(nnet_output, kTrans),
     nnet_output_deriv_transposed_(
-        exp_nnet_output_transposed_.NumRows(),
-        std::min<int32>(exp_nnet_output_transposed_.NumCols(),
+        nnet_output.NumCols(),
+        std::min<int32>(nnet_output.NumRows(),
                         static_cast<int32>(kMaxDerivTimeSteps) *
                         supervision.num_sequences)),
     tot_prob_(supervision.num_sequences, kUndefined),
@@ -44,14 +43,21 @@ GenericNumeratorComputation::GenericNumeratorComputation(
   KALDI_ASSERT(supervision.num_sequences *
                supervision.frames_per_sequence == nnet_output.NumRows() &&
                supervision.label_dim == nnet_output.NumCols());
-  exp_nnet_output_transposed_.ApplyExp();
+  {
+    CuMatrix<BaseFloat> exp_nnet_output_transposed_gpu(nnet_output, kTrans);
+    exp_nnet_output_transposed_gpu.ApplyExp();
+    exp_nnet_output_transposed_.Resize(nnet_output.NumCols(),
+                                       nnet_output.NumRows(), kUndefined);
+    exp_nnet_output_transposed_.CopyFromMat(exp_nnet_output_transposed_gpu);
+  }
+
   using std::vector;
   int32 B = supervision_.num_sequences,
       num_frames = supervision_.frames_per_sequence;
   KALDI_ASSERT(supervision_.e2e_fsts.size() == B);
 
-  // find max number of hmm states and then
-  // init final probs, alpha, and beta
+  // Find the maximum number of HMM states and then
+  // initialize final probs, alpha, and beta.
   max_num_hmm_states_ = 0;
   for (int32 i = 0; i < B; i++) {
     KALDI_ASSERT(supervision_.e2e_fsts[i].Properties(fst::kIEpsilons, true)
@@ -63,10 +69,10 @@ GenericNumeratorComputation::GenericNumeratorComputation(
   alpha_.Resize(num_frames + 1,
                 max_num_hmm_states_ * B + B,
                 kSetZero);
-  // the extra B is for storing alpha sums
+  // The extra B is for storing alpha sums
   beta_.Resize(2, max_num_hmm_states_ * B, kSetZero);
 
-  // init incmoing transitions for easy access
+  // Initialize incoming transitions for easy access
   in_transitions_.resize(B); // indexed by seq, state
   out_transitions_.resize(B); // indexed by seq, state
   for (int32 seq = 0; seq < B; seq++) {
@@ -112,12 +118,12 @@ GenericNumeratorComputation::GenericNumeratorComputation(
 void GenericNumeratorComputation::AlphaFirstFrame() {
   const int32 num_sequences = supervision_.num_sequences,
       num_states = max_num_hmm_states_;
-  // set alpha_0(0) for all sequences to 1.0 and leave the rest to be 0.0.
+  // Set alpha_0(0) for all sequences to 1.0 and leave the rest to be 0.0.
   double *first_frame_alpha = alpha_.RowData(0);
   SubVector<double> alpha_hmm_state0(first_frame_alpha, num_sequences);
   alpha_hmm_state0.Set(1.0);
 
-  // Now compute alpha-sums for t==0 which is obviously 1.0 for each sequence
+  // Now compute alpha-sums for t=0 which is obviously 1.0 for each sequence
   SubVector<double> alpha_sum_vec(first_frame_alpha +
                                   num_states * num_sequences,
                                   num_sequences);
@@ -125,9 +131,9 @@ void GenericNumeratorComputation::AlphaFirstFrame() {
 }
 
 
-// the alpha computation for some 0 < t <= num_time_steps_.
+// The alpha computation for some 0 < t <= num_time_steps_.
 void GenericNumeratorComputation::AlphaGeneralFrame(int32 t) {
-  // define some variables to make things nicer
+  // Define some variables to make things nicer
   const int32
       num_sequences = supervision_.num_sequences,
       num_frames = supervision_.frames_per_sequence,
@@ -159,7 +165,7 @@ void GenericNumeratorComputation::AlphaGeneralFrame(int32 t) {
 
   if (t == num_frames)  // last alpha
     this_alpha.MulElements(final_probs_);
-  // now compute alpha-sums for frame t:
+  // Now compute alpha-sums for frame t:
   SubVector<double> alpha_sum_vec(alpha_.RowData(t) + num_states * num_sequences,
                                   num_sequences);
   alpha_sum_vec.AddRowSumMat(1.0, this_alpha, 0.0);
@@ -210,7 +216,7 @@ bool GenericNumeratorComputation::Backward(
     if (GetVerboseLevel() >= 1 || t == 0 || t == num_frames - 1)
       BetaGeneralFrameDebug(t);
     if (t % kMaxDerivTimeSteps == 0) {
-      // commit the derivative stored in exp_nnet_output_transposed_ by adding
+      // Commit the derivative stored in exp_nnet_output_transposed_ by adding
       // its transpose to the appropriate sub-matrix of 'nnet_output_deriv'.
       int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps),
                                            num_frames - t);
@@ -232,7 +238,7 @@ bool GenericNumeratorComputation::Backward(
 }
 
 void GenericNumeratorComputation::BetaLastFrame() {
-  // sets up the beta quantity on the last frame (frame ==
+  // Sets up the beta quantity on the last frame (frame ==
   // frames_per_sequence_).  Note that the betas we use here contain a
   // 1/(tot-prob) factor in order to simplify the backprop.
   int32 t = supervision_.frames_per_sequence;
@@ -319,7 +325,7 @@ void GenericNumeratorComputation::BetaGeneralFrameDebug(int32 t) {
       ok_ = false;
     }
   }
-  // use higher tolerance, since we are using randomized pruning for the
+  // Use higher tolerance, since we are using randomized pruning for the
   // log-prob derivatives.
   if (!ApproxEqual(this_log_prob_deriv_sum,
                    supervision_.num_sequences, 0.01)) {

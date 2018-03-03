@@ -32,6 +32,7 @@ fi
 set -e -o pipefail
 utils/copy_data_dir.sh $srcdir $dir
 
-extract-segments scp:$srcdir/wav.scp $srcdir/segments ark,scp:$dir/data/wav_segments.ark,$dir/segments.scp
-cat $dir/segments.scp | awk '{ print $1 " wav-copy " $2 " - |" }' >$dir/wav.scp
+extract-segments scp:$srcdir/wav.scp $srcdir/segments \
+                 ark,scp:$dir/data/wav_segments.ark,$dir/data/wav_segments.scp
+cat $dir/data/wav_segments.scp | awk '{ print $1 " wav-copy " $2 " - |" }' >$dir/wav.scp
 rm $dir/reco2file_and_channel || true

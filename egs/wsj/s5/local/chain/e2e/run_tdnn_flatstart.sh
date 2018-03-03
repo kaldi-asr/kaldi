@@ -37,7 +37,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1a
+affix=1a_dim450
 
 # training options
 num_epochs=4
@@ -46,7 +46,7 @@ num_jobs_final=5
 minibatch_size=150=128,64/300=100,64,32/600=50,32,16/1200=16,8
 common_egs_dir=
 l2_regularize=0.00005
-dim=550
+dim=450
 frames_per_iter=3000000
 cmvn_opts="--norm-means=true --norm-vars=true"
 train_set=train_si284_spe2e_hires

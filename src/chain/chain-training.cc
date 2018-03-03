@@ -21,6 +21,7 @@
 #include "chain/chain-training.h"
 #include "chain/chain-kernels-ansi.h"
 #include "chain/chain-numerator.h"
+#include "chain/chain-generic-numerator.h"
 #include "chain/chain-denominator.h"
 
 namespace kaldi {
@@ -102,7 +103,7 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
     BaseFloat default_objf = -10;
     KALDI_WARN << "Objective function is " << (*objf)
                << " and denominator computation (if done) returned "
-               << std::boolalpha << ok
+               << std::boolalpha << denominator_ok
                << " and numerator computation returned "
                << std::boolalpha << numerator_ok
                << ", setting objective function to " << default_objf

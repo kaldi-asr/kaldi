@@ -76,8 +76,8 @@ static bool ProcessFile(const ExampleGenerationConfig &opts,
 
   chain::Supervision supervision;
   KALDI_VLOG(2) << "Preparing supervision for utt " << utt_id;
-  if (!TrainingGraphToSupervision(training_fst, trans_model,
-                                  num_output_frames, &supervision))
+  if (!TrainingGraphToSupervisionE2e(training_fst, trans_model,
+                                     num_output_frames, &supervision))
     return false;
   if (normalization_fst.NumStates() > 0 &&
       !AddWeightToSupervisionFst(normalization_fst,

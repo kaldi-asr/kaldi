@@ -115,11 +115,11 @@ utils/data/get_utt2dur.sh $data
 frames_per_eg=$(cat $data/allowed_lengths.txt | tr '\n' , | sed 's/,$//')
 
 [ ! -f "$data/utt2len" ] && feat-to-len scp:$data/feats.scp ark,t:$data/utt2len
-# TODO(222 --> most frequent len)
+
 cat $data/utt2len | \
   awk '{print $1}' | \
   utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
-#  awk -v mf_len=222 '{if ($2 == mf_len) print $1}' | \
+
 
 len_uttlist=`wc -l $dir/valid_uttlist | awk '{print $1}'`
 if [ $len_uttlist -lt $num_utts_subset ]; then
@@ -221,7 +221,7 @@ num_archives=$[$num_frames/$frames_per_iter+1]
 # We may have to first create a smaller number of larger archives, with number
 # $num_archives_intermediate, if $num_archives is more than the maximum number
 # of open filehandles that the system allows per process (ulimit -n).
-max_open_filehandles=$(ulimit -n) || exit 1
+max_open_filehandles=500 #$(ulimit -n) || exit 1
 num_archives_intermediate=$num_archives
 archives_multiple=1
 while [ $[$num_archives_intermediate+4] -gt $max_open_filehandles ]; do

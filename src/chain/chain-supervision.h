@@ -272,12 +272,13 @@ bool ProtoSupervisionToSupervision(
 /** This function creates and initializes an end-to-end supervision object
     from a training FST (e.g. created using compile-train-graphs). It simply
     sets all the input and output labels to pdf_id+1 (i.e. converts the FST to
-    an FSA) and stores the resulting FST in e2e-fsts[0].
+    an FSA) and stores the resulting FST in supervision->e2e_fsts[0].
     It returns true if there were no epsilon transitions, otherwise
-    it would return false.
+    it would return false (the current implementation of forward-backward in
+    chain-generic-numerator.cc does not support epsilon transitions).
     To find out more about end-to-end training, see chain-generic-numerator.h
  */
-bool TrainingGraphToSupervision(
+bool TrainingGraphToSupervisionE2e(
     const fst::StdVectorFst& training_graph,
     const TransitionModel& trans_model,
     int32 num_frames,

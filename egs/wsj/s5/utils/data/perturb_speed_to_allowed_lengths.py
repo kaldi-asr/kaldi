@@ -13,6 +13,19 @@ import os
 import sys
 import copy
 import math
+import logging
+
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
+
+logger = logging.getLogger('libs')
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
+                              "%(funcName)s - %(levelname)s ] %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 def get_args():
     parser = argparse.ArgumentParser(description="""This script copies the 'srcdir'
@@ -37,12 +50,14 @@ def get_args():
     parser.add_argument('--frame-subsampling-factor', type=int, default=3,
                         help="""Chain frame subsampling factor.
                              See steps/nnet3/chain/train.py""")
-    parser.add_argument('--speed-perturb',  type=bool, default=True,
+    parser.add_argument('--speed-perturb', type=str, choices=['true','false'],
+                        default='true',
                         help="""If false, no speed perturbation will occur, i.e.
                              only 1 copy of each utterance will be
                              saved, which is modified to have an allowed length
                              by using extend-wav-with-silence.""")
     args = parser.parse_args()
+    args.speed_perturb = True if args.speed_perturb == 'true' else False
     return args
 
 class Utterance:
@@ -73,17 +88,38 @@ def read_kaldi_datadir(dir):
         data/train as a list of utterances
     """
 
+    # check to make sure that no segments file exists as this script won't work
+    # with data directories which use a segments file.
+    if os.path.isfile(os.path.join(dir, 'segments')):
+        logger.info("The data directory '{}' seems to use a 'segments' file. "
+                    "This script does not yet support a 'segments' file. You'll need "
+                    "to use utils/data/extract_wav_segments_data_dir.sh "
+                    "to convert the data dir so it does not use a 'segments' file. "
+                    "Exiting...".format(dir))
+        sys.exit(1)
+
+    logger.info("Loading the data from {}...".format(dir))
     utterances = []
     wav_scp = read_kaldi_mapfile(os.path.join(dir, 'wav.scp'))
     text = read_kaldi_mapfile(os.path.join(dir, 'text'))
     utt2dur = read_kaldi_mapfile(os.path.join(dir, 'utt2dur'))
     utt2spk = read_kaldi_mapfile(os.path.join(dir, 'utt2spk'))
+
+    num_fail = 0
     for utt in wav_scp:
         if utt in text and utt in utt2dur and utt in utt2spk:
             utterances.append(Utterance(utt, wav_scp[utt], utt2spk[utt],
                                   text[utt], utt2dur[utt]))
         else:
-            print('Warning: incomplete data for utt {}'.format(utt))
+            num_fail += 1
+
+    if len(utterances) / len(wav_scp) < 0.5:
+        logger.info("More than half your data is problematic. Try "
+                    "fixing using fix_data_dir.sh.")
+        sys.exit(1)
+
+    logger.info("Successfully read {} utterances. Failed for {} "
+                "utterances.".format(len(utterances), num_fail))
     return utterances
 
 
@@ -106,7 +142,7 @@ def generate_kaldi_data_files(utterances, outdir):
         output data directory.
     """
 
-    print("Exporting to {}...".format(outdir))
+    logger.info("Exporting to {}...".format(outdir))
     speakers = {}
 
     with open(os.path.join(outdir, 'text'), 'w') as f:
@@ -136,6 +172,8 @@ def generate_kaldi_data_files(utterances, outdir):
                 f.write(utt + " ")
             f.write('\n')
 
+    logger.info("Successfully wrote {} utterances to data "
+                "directory '{}'".format(len(utterances), outdir))
 
 def find_duration_range(utterances, coverage_factor):
     """Given a list of utterances, find the start and end duration to cover
@@ -248,7 +286,7 @@ def perturb_utterances(utterances, allowed_durations, args):
             ## Add two versions for the second allowed_duration
             ## one version is by using speed modification using sox
             ## the other is by extending by silence
-            if not args.speed_perturb:
+            if args.speed_perturb:
                 u2 = copy.deepcopy(u)
                 u2.id = 'pv2-' + u.id
                 u2.speaker = 'pv2-' + u.speaker
@@ -279,12 +317,12 @@ def main():
     utterances = read_kaldi_datadir(args.srcdir)
 
     start_dur, end_dur = find_duration_range(utterances, args.coverage_factor)
-    print("Durations in the range [{},{}] will be covered."
-          "Coverage rate: {}%".format(start_dur, end_dur,
+    logger.info("Durations in the range [{},{}] will be covered. "
+                "Coverage rate: {}%".format(start_dur, end_dur,
                                       100.0 - args.coverage_factor * 2))
-    print("There will be {} unique allowed lengths"
-          "for the utterances.".format(int(math.log(end_dur / start_dur) /
-                                       math.log(args.factor))))
+    logger.info("There will be {} unique allowed lengths "
+                "for the utterances.".format(int(math.log(end_dur / start_dur) /
+                                                 math.log(args.factor))))
 
     allowed_durations = find_allowed_durations(start_dur, end_dur, args)
 
