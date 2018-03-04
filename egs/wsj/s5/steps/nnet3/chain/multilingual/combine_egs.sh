@@ -23,15 +23,9 @@
 #
 # Begin configuration section.
 cmd=run.pl
-minibatch_size=256      # it is the number of consecutive egs that we take from 
-                        # each source, and it only affects the locality of disk 
-                        # access. This does not have to be the actual minibatch size;
-num_jobs=10             # helps for better randomness across languages
-                        # per archive.
-samples_per_iter=10000  # this is the target number of egs in each archive.
-                        # This is just a guideline; it will pick a number that 
-                        # based on the number of egs in the entire data 
-                        # and the chunk widths of egs in different languages.
+block_size=256          # This is the number of consecutive egs that we take from
+                        # each source, and it only affects the locality of disk
+                        # access.
 lang2weight=            # array of weights one per input languge to scale example's output
                         # w.r.t its input language during training.
 stage=0
@@ -52,24 +46,9 @@ if [ $# -lt 3 ]; then
 
   Options:
       --cmd (utils/run.pl|utils/queue.pl <queue opts>)  # how to run jobs.
-      --minibatch-size <int|512>  # it is the number of consecutive egs that we take from 
+      --block-size <int|512>      # it is the number of consecutive egs that we take from 
                                   # each source, and it only affects the locality of disk 
                                   # access. This does not have to be the actual minibatch size
-      --num-jobs <int|10>         # number of sub-splits of archive to create.
-                                  # Larger the number of jobs, the more sub-splits 
-                                  # are created, each with input egs from 
-                                  # different languages.
-                                  # This helps for better randomness across
-                                  # languages per archive. 
-      --samples-per-iter <int|1500000> 
-                                  # this is the target number of egs in each archive 
-                                  # of egs. 
-                                  # This is just a guideline; it will pick a number that 
-                                  # based on the number of egs in the entire data 
-                                  # and the chunk widths of egs in different languages.
-      --lang2weight <list>        # comma-separated list of weights --
-                                  # one per input languge to scale example's
-                                  # output, and hence gradients during training.
 EOF
   exit 1;
 fi
@@ -104,6 +83,7 @@ for param in $check_params; do
   cat ${args[0]}/$param > $megs_dir/$param || exit 1;
 done
 
+tot_num_archives=0
 for lang in $(seq 0 $[$num_langs-1]);do
   multi_egs_dir[$lang]=${args[$lang]}
   for f in $required; do
@@ -111,11 +91,13 @@ for lang in $(seq 0 $[$num_langs-1]);do
       echo "$0: no such file ${multi_egs_dir[$lang]}/$f." && exit 1;
     fi
   done
-  train_scp_list="$train_scp_list ${args[$lang]}/cegs.scp"
+  num_archives=$(cat ${multi_egs_dir[$lang]}/num_archives)
+  tot_num_archives=$[tot_num_archives+num_archives]
+  train_scp_list="$train_scp_list ${args[$lang]}/egs.scp"
   train_diagnostic_scp_list="$train_diagnostic_scp_list ${args[$lang]}/train_diagnostic.scp"
   valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.scp"
   combine_scp_list="$combine_scp_list ${args[$lang]}/combine.scp"
-  
+
   # check parameter dimension to be the same in all egs dirs
   for f in $check_params; do
     if [ -f $megs_dir/$f ] && [ -f ${multi_egs_dir[$lang]}/$f ]; then
@@ -140,8 +122,8 @@ if [ $stage -le 0 ]; then
   # Generate cegs.*.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train.log \
     steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
-      --minibatch-size $minibatch_size --samples-per-iter $samples_per_iter \
-      --egs-prefix "cegs." \
+      --num-archives $tot_num_archives \
+      --block-size $block_size \
       $train_scp_list $megs_dir || exit 1;
 fi
 
@@ -150,8 +132,8 @@ if [ $stage -le 1 ]; then
   # Generate combine.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_combine.log \
     steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
-      --random-lang false --max-archives 1 --num-jobs 1 \
-      --minibatch-size $minibatch_size \
+      --num-archives 1 \
+      --block-size $block_size \
       --egs-prefix "combine." \
       $combine_scp_list $megs_dir || exit 1;
 
@@ -159,8 +141,8 @@ if [ $stage -le 1 ]; then
   # Generate train_diagnostic.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train_diagnostic.log \
     steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
-      --random-lang false --max-archives 1 --num-jobs 1 \
-      --minibatch-size $minibatch_size \
+      --num-archives 1 \
+      --block-size $block_size \
       --egs-prefix "train_diagnostic." \
       $train_diagnostic_scp_list $megs_dir || exit 1;
 
@@ -169,8 +151,8 @@ if [ $stage -le 1 ]; then
   # Generate valid_diagnostic.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_valid_diagnostic.log \
     steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
-      --random-lang false --max-archives 1 --num-jobs 1\
-      --minibatch-size $minibatch_size \
+      --num-archives 1 \
+      --block-size $block_size \
       --egs-prefix "valid_diagnostic." \
       $valid_diagnostic_scp_list $megs_dir || exit 1;
 
