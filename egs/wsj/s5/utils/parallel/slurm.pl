@@ -477,7 +477,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
         # the following (.kick) commands are basically workarounds for NFS bugs.
         if (rand() < 0.25) { # don't do this every time...
           if (rand() > 0.5) {
-            system("touch $qdir/.kick");
+            system("touch $qdir/.kick 2>/dev/null");
           } else {
             system("rm $qdir/.kick 2>/dev/null");
           }

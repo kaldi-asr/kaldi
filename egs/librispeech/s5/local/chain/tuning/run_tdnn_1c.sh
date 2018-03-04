@@ -1,36 +1,35 @@
 #!/bin/bash
+set -e
 
 ## Adapted from swbd for librispeech by David van Leeuwen
 
 # 7n is a kind of factorized TDNN, with skip connections
 
-# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnn7n_sp
-# exp/chain_cleaned/tdnn7n_sp: num-iters=1307 nj=3..16 num-params=20.1M dim=40+100->6040 combine=-0.051->-0.050 (over 23) xent:train/valid[869,1306,final]=(-0.817,-0.771,-0.775/-0.824,-0.784,-0.790) logprob:train/valid[869,1306,final]=(-0.052,-0.049,-0.048/-0.058,-0.055,-0.055)
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnn_1c_sp
+# exp/chain_cleaned/tdnn_1c_sp: num-iters=1307 nj=3..16 num-params=20.1M dim=40+100->6024 combine=-0.051->-0.050 (over 23) xent:train/valid[869,1306,final]=(-0.808,-0.767,-0.771/-0.828,-0.780,-0.787) logprob:train/valid[869,1306,final]=(-0.051,-0.049,-0.047/-0.059,-0.056,-0.056)
 
-# local/chain/compare_wer.sh exp/chain_cleaned/tdnn_1b_sp exp/chain_cleaned/tdnn7n_sp
-# System                      tdnn_1b_sp tdnn7n_sp
-# WER on dev(fglarge)              3.76      3.54
-# WER on dev(tglarge)              3.85      3.72
-# WER on dev(tgmed)                4.88      4.62
-# WER on dev(tgsmall)              5.41      5.17
-# WER on dev_other(fglarge)       10.39      8.93
-# WER on dev_other(tglarge)       10.87      9.37
-# WER on dev_other(tgmed)         13.22     11.63
-# WER on dev_other(tgsmall)       14.56     12.78
-# WER on test(fglarge)             4.24      3.98
-# WER on test(tglarge)             4.43      4.20
-# WER on test(tgmed)               5.42      5.11
-# WER on test(tgsmall)             6.08      5.59
-# WER on test_other(fglarge)      10.49      9.39
-# WER on test_other(tglarge)      11.04      9.87
-# WER on test_other(tgmed)        13.66     12.10
-# WER on test_other(tgsmall)      14.97     13.28
-# Final train prob              -0.0658   -0.0645
-# Final valid prob              -0.0721   -0.0675
-# Final train prob (xent)       -1.0390   -0.9569
-# Final valid prob (xent)       -1.0230   -0.9559
-
-set -e
+# local/chain/compare_wer.sh exp/chain_cleaned/tdnn_1b_sp exp/chain_cleaned/tdnn_1c_sp
+# System                      tdnn_1b_sp tdnn_1c_sp
+# WER on dev(fglarge)              3.77      3.35
+# WER on dev(tglarge)              3.90      3.49
+# WER on dev(tgmed)                4.89      4.30
+# WER on dev(tgsmall)              5.47      4.78
+# WER on dev_other(fglarge)       10.05      8.76
+# WER on dev_other(tglarge)       10.80      9.26
+# WER on dev_other(tgmed)         13.07     11.21
+# WER on dev_other(tgsmall)       14.46     12.47
+# WER on test(fglarge)             4.20      3.87
+# WER on test(tglarge)             4.28      4.08
+# WER on test(tgmed)               5.31      4.80
+# WER on test(tgsmall)             5.97      5.25
+# WER on test_other(fglarge)      10.44      8.95
+# WER on test_other(tglarge)      11.05      9.41
+# WER on test_other(tgmed)        13.36     11.52
+# WER on test_other(tgsmall)      14.90     12.66
+# Final train prob              -0.0670   -0.0475
+# Final valid prob              -0.0704   -0.0555
+# Final train prob (xent)       -1.0502   -0.7708
+# Final valid prob (xent)       -1.0441   -0.7874
 
 # configs for 'chain'
 stage=0
@@ -133,32 +132,32 @@ if [ $stage -le 14 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-layer name=tdnn1 $opts dim=1280
-  linear-component name=tdnn1l dim=256 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
   relu-batchnorm-layer name=tdnn2 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn2l dim=256 $linear_opts
+  linear-component name=tdnn3l dim=256 $linear_opts
   relu-batchnorm-layer name=tdnn3 $opts dim=1280
-  linear-component name=tdnn3l dim=256 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
   relu-batchnorm-layer name=tdnn4 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn4l dim=256 $linear_opts
-  relu-batchnorm-layer name=tdnn5 $opts dim=1280 input=Append(tdnn4l, tdnn2l)
-  linear-component name=tdnn5l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn6 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn5l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn5 $opts dim=1280 input=Append(tdnn5l, tdnn3l)
   linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn7 $opts input=Append(0,3,tdnn5l,tdnn3l,tdnn1l) dim=1280
+  relu-batchnorm-layer name=tdnn6 $opts input=Append(0,3) dim=1280
   linear-component name=tdnn7l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn8 $opts input=Append(0,3) dim=1280
+  relu-batchnorm-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
   linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn9 $opts input=Append(0,3,tdnn7l,tdnn5l,tdnn3l) dim=1280
+  relu-batchnorm-layer name=tdnn8 $opts input=Append(0,3) dim=1280
   linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn10 $opts input=Append(0,3) dim=1280
+  relu-batchnorm-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn4l) dim=1280
   linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn11 $opts input=Append(0,3,tdnn9l,tdnn7l,tdnn5l) dim=1280
-  linear-component name=tdnn11l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn10 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn8l,tdnn6l) dim=1280
+  linear-component name=prefinal-l dim=256 $linear_opts
 
-  relu-batchnorm-layer name=prefinal-chain input=tdnn11l $opts dim=1280
+  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1280
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  relu-batchnorm-layer name=prefinal-xent input=tdnn11l $opts dim=1280
+  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1280
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
