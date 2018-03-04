@@ -411,7 +411,7 @@ def train(args, run_opts):
 
     if not os.path.exists('{0}/valid_diagnostic.cegs'.format(egs_dir)):
         if (not os.path.exists('{0}/valid_diagnostic.scp'.format(egs_dir))):
-            raise Exception('neither {0}/valid_diagnostic.cegs nor '
+            raise Exception('Neither {0}/valid_diagnostic.cegs nor '
                             '{0}/valid_diagnostic.scp exist.'
                             'This script expects one of them.'.format(egs_dir))
         use_multitask_egs = True
@@ -584,7 +584,7 @@ def train(args, run_opts):
                 run_opts=run_opts,
                 use_multitask_egs=use_multitask_egs)
             common_lib.force_symlink("compute_prob_valid.{iter}.log"
-                                     "".format(iter=num_iters-1),
+                                     "".format(iter=num_iters),
                                      "{dir}/log/compute_prob_valid.final.log".format(
                                          dir=args.dir))
 

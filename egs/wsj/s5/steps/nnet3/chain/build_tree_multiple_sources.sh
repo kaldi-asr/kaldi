@@ -227,7 +227,7 @@ fi
 
 if [ $stage -le -1 ]; then
   # Convert the alignments to the new tree.  Note: we likely will not use these
-  # converted alignments in the CTC system directly, but they could be useful
+  # converted alignments in the chain system directly, but they could be useful
   # for other purposes.
 
   for n in `seq 0 $[num_sys-1]`; do

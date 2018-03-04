@@ -1265,21 +1265,5 @@ void ExampleMerger::Finish() {
   stats_.PrintStats();
 }
 
-void ScaleFst(BaseFloat scale, fst::StdVectorFst *fst) {
-  typedef fst::StdArc Arc;
-  typedef Arc::StateId StateId;
-  typedef Arc::Weight Weight;
-  
-  for (StateId s = 0; s < fst->NumStates(); s++) {
-    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(fst, s);
-         !aiter.Done(); aiter.Next()) {
-      Arc arc = aiter.Value();
-      Weight weight(arc.weight.Value() * scale);
-      arc.weight = weight;
-      aiter.SetValue(arc);
-    }
-  }
-}
-
 } // namespace nnet3
 } // namespace kaldi

@@ -139,7 +139,7 @@ if [ $stage -le 0 ]; then
   echo "$0: allocating multilingual examples for training."
   # Generate cegs.*.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train.log \
-  steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
+    steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --minibatch-size $minibatch_size --samples-per-iter $samples_per_iter \
       --egs-prefix "cegs." \
       $train_scp_list $megs_dir || exit 1;
@@ -149,7 +149,7 @@ if [ $stage -le 1 ]; then
   echo "$0: combine combine.scp examples from all langs in $megs_dir/combine.scp."
   # Generate combine.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_combine.log \
-  steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
+    steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --random-lang false --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
       --egs-prefix "combine." \
@@ -158,7 +158,7 @@ if [ $stage -le 1 ]; then
   echo "$0: combine train_diagnostic.scp examples from all langs in $megs_dir/train_diagnostic.scp."
   # Generate train_diagnostic.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train_diagnostic.log \
-  steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
+    steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --random-lang false --max-archives 1 --num-jobs 1 \
       --minibatch-size $minibatch_size \
       --egs-prefix "train_diagnostic." \
@@ -168,7 +168,7 @@ if [ $stage -le 1 ]; then
   echo "$0: combine valid_diagnostic.scp examples from all langs in $megs_dir/valid_diagnostic.scp."
   # Generate valid_diagnostic.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_valid_diagnostic.log \
-  steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
+    steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --random-lang false --max-archives 1 --num-jobs 1\
       --minibatch-size $minibatch_size \
       --egs-prefix "valid_diagnostic." \

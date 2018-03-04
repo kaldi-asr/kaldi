@@ -12,6 +12,13 @@
 # const ARPA LM, followed by composing it with the original lattice to add the 
 # new LM scores.
 
+# If you use the option "--write compact false" it outputs non-compact lattices;
+# the purpose is to add in LM scores while leaving the frame-by-frame acoustic
+# scores in the same position that they were in in the input, undeterminized
+# lattices. This is important in our 'chain' semi-supervised training recipes,
+# where it helps us to split lattices while keeping the scores at the edges of
+# the split points correct.
+
 # Begin configuration section.
 cmd=run.pl
 skip_scoring=false

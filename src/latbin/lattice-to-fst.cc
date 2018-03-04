@@ -147,7 +147,8 @@ int main(int argc, char *argv[]) {
         fst::VectorFst<StdArc> fst;
         {
           Lattice lat;
-          ConvertLattice(clat, &lat); // convert to non-compact form.. won't introduce
+          ConvertLattice(clat, &lat); 
+          // convert to non-compact form.. won't introduce
           // extra states because already removed alignments.
           
           ConvertLattice(lat, &fst);
