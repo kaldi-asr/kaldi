@@ -15,20 +15,20 @@
 #####Baseline settings#####
 # Usage: 
 # Execute './run.sh' to get the models.
-# We provide BLSTM masking based enhancement --enhancement single_BLSTMmask
+# We provide BLSTM masking based enhancement --enhancement single_blstmmask
 #
 # We stopped to support the old CHiME-3/4 baseline. If you want to reproduce the old results
 # Please use the old version of Kaldi, e.g., git checkout 9e8ff73648917836d0870c8f6fdd2ff4bdde384f
 
 # Config:
 stage=0 # resume training with --stage N
-enhancement=single_BLSTMmask #### or your method
+enhancement=single_blstmmask #### or your method
 # if the following options are true, they wouldn't train a model again and will only do decoding
-gmm_decode_only_flag=false
-tdnn_decode_only_flag=false
+gmm_decode_only=false
+tdnn_decode_only=false
 # make it true when you want to add enhanced data into training set. But please note that when changing enhancement method,
 # you may need to retrain from run_gmm.sh and avoid using decode-only options above
-add_enhaced_data_flag=true
+add_enhanced_data=true
 
 . utils/parse_options.sh || exit 1;
 
@@ -43,8 +43,8 @@ set -o pipefail
 # If you use scripts distributed in the CHiME4 package,
 chime4_data=`pwd`/../..
 # Otherwise, please specify it, e.g.,
-chime4_data=/db/laputa1/data/processed/public/CHiME4
-chime3_data=/data2/archive/speech-db/original/public/CHiME3
+# chime4_data=/db/laputa1/data/processed/public/CHiME4
+# chime3_data=/data2/archive/speech-db/original/public/CHiME3
 
 case $(hostname -f) in
   *.clsp.jhu.edu) 
@@ -99,15 +99,15 @@ fi
 # Please set a directory of your speech enhancement method.
 # The directory structure and audio files must follow the attached baseline enhancement directory
 if [ $stage -le 3 ]; then
-  local/run_gmm.sh --add-enhaced-data $add_enhaced_data_flag \
-    --decode-only $gmm_decode_only_flag $enhancement $enhancement_data $chime4_data
+  local/run_gmm.sh --add-enhanced-data $add_enhanced_data \
+    --decode-only $gmm_decode_only $enhancement $enhancement_data $chime4_data
 fi
 
 # TDNN based ASR experiment
 # Since it takes time to evaluate TDNN, we make the GMM and TDNN scripts separately.
 # You may execute it after you would have promising results using GMM-based ASR experiments
 if [ $stage -le 4 ]; then
-  local/chain/run_tdnn.sh --decode-only $tdnn_decode_only_flag $enhancement
+  local/chain/run_tdnn.sh --decode-only $tdnn_decode_only $enhancement
 fi
 
 # LM-rescoring experiment with 5-gram and RNN LMs

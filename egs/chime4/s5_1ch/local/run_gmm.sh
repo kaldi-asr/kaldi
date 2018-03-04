@@ -17,7 +17,7 @@ nj=30
 stage=0 # resume training with --stage=N
 train=noisy # noisy data multi-condition training
 eval_flag=true # make it true when the evaluation data are released
-add_enhaced_data=true # make it true when you want to add enhanced data into training set
+add_enhanced_data=true # make it true when you want to add enhanced data into training set
 decode_only=false # if true, it wouldn't train a model again and will only do decoding
 
 . utils/parse_options.sh || exit 1;
@@ -125,7 +125,7 @@ fi
 # want to store MFCC features.
 mfccdir=mfcc
 if [ $stage -le 3 ]; then
-  if $add_enhaced_data; then
+  if $add_enhanced_data; then
     if $eval_flag; then
       tasks="tr05_real_${train} dt05_real_${train} tr05_simu_${train} dt05_simu_${train} et05_real_${train} et05_simu_${train} tr05_real_$enhan tr05_simu_$enhan"
     else
@@ -149,7 +149,7 @@ fi
 # multi = simu + real
 # Note that we are combining enhanced training data with noisy training data
 if [ $stage -le 4 ]; then
-  if $add_enhaced_data; then
+  if $add_enhanced_data; then
     utils/combine_data.sh data/tr05_multi_${train} data/tr05_simu_${train} data/tr05_real_${train} data/tr05_simu_$enhan data/tr05_real_$enhan
   else
     utils/combine_data.sh data/tr05_multi_${train} data/tr05_simu_${train} data/tr05_real_${train}
