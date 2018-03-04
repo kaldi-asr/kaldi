@@ -42,7 +42,7 @@ for sym in special_symbols:
         if special_symbols[sym][0] != lower_ids[sym]:
             print('{0}={1} '.format(special_symbols[sym][1], lower_ids[sym]), end='')
             printed = True
-        elif special_symbols[sym][0] == lower_ids[sym]:
+        else:
             print('{0}={1} '.format(special_symbols[sym][1], lower_ids[sym]), end='')
             printed = True
         if sym in upper_ids:
@@ -52,7 +52,7 @@ for sym in special_symbols:
         if special_symbols[sym][0] != upper_ids[sym]:
             print('{0}={1} '.format(special_symbols[sym][1], upper_ids[sym]), end='')
             printed = True
-        elif special_symbols[sym][0] == upper_ids[sym]:
+        else:
             print('{0}={1} '.format(special_symbols[sym][1], upper_ids[sym]), end='')
             printed = True
     else:
