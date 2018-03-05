@@ -136,6 +136,8 @@ echo "$(basename $0): Preparing the extended lang dir."
 utils/prepare_lang.sh $prep_lang_opts $extdict \
   $oov_word $tmpdir $extlang || exit 1;
 
+[ -z "$lm" ] && echo "$(basename $0): Not extending the language model since it's not provided." && exit 0;
+
 # Check the OOV entry in the language model and get it's unigram prob.
 oov_prob=`gunzip -c $lm | awk -v oov=$oov_word '{ if ($2 == oov) print exp($1);  if ($1 == "\\\2-grams:") exit 0;}'`
 [ -z "$oov_prob" ] && echo "$(basename $0): Cannot find the unigram prob of the oov word $oov_word from the provided LM." \
@@ -144,13 +146,15 @@ oov_prob=`gunzip -c $lm | awk -v oov=$oov_word '{ if ($2 == oov) print exp($1); 
 echo "$(basename $0): The the unigram prob. of the oov word $oov_word found in the provided LM is $oov_prob."
 echo "  It'll be boosted by $boost_extra_words to get the unigram prob. of each extra word added."
 
-[ -z "$lm" ] && echo "$(basename $0): Not extending the language model since it's not provided." && exit 0;
+# Get the list of words to insert into the LM, excluding those who are within the vocab of the LM.
+gunzip -c $lm | awk 'BEGIN { a = 0; } {if (a == 1 && NF > 1) print $2; if ($1 == "\\1-grams:") a = 1; if ($1 == "\\2-grams:") exit 0;}' | \
+  awk 'NR==FNR{a[$0]=1;next} {if (!($1 in a)) print $0 }' - $extdict/lexicon_extra.txt | sort -u > $tmpdir/extra_words || exit 1;
 
 awk '{print $1}' $extlang/words.txt > $tmpdir/voc || exit 1;
 
 echo "$(basename $0): Inserting extra unigrams into '$lm' and convert it to FST"
 gunzip -c $lm | \
-  awk -v s=$extdict/lexicon_extra.txt -v oov=$oov_word -v boost=$boost_extra_words -v prob=$oov_prob \
+  awk -v s=$tmpdir/extra_words -v oov=$oov_word -v boost=$boost_extra_words -v prob=$oov_prob \
   'BEGIN{ while((getline < s) > 0) { dict[$1] = 1; a += 1; } unigram = 1; } 
   { if ($1 == "ngram") { split($2, y, "="); if (y[1] == 1) $2 = y[1]"="y[2]+a; } print $0;
     if (unigram == 1 && $2 == oov) {
