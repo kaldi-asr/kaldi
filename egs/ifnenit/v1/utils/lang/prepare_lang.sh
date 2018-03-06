@@ -1,0 +1,1 @@
+../prepare_lang.sh
