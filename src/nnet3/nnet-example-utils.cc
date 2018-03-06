@@ -300,6 +300,9 @@ void RoundUpNumFrames(int32 frame_subsampling_factor,
 }
 
 void ExampleGenerationConfig::ComputeDerived() {
+  if (num_frames_str == "-1") {
+    return;
+  }
   if (!SplitStringToIntegers(num_frames_str, ",", false, &num_frames) ||
       num_frames.empty()) {
     KALDI_ERR << "Invalid option (expected comma-separated list of integers): "
@@ -341,14 +344,17 @@ UtteranceSplitter::UtteranceSplitter(const ExampleGenerationConfig &config):
     total_num_utterances_(0), total_input_frames_(0),
     total_frames_overlap_(0), total_num_chunks_(0),
     total_frames_in_chunks_(0) {
-  if (config.num_frames.empty()) {
-    KALDI_ERR << "You need to call ComputeDerived() on the "
+  if (config.num_frames_str != "-1") {
+   if (config.num_frames.empty()) {
+     KALDI_ERR << "You need to call ComputeDerived() on the "
                  "ExampleGenerationConfig().";
+   }
+   InitSplitForLength();
   }
-  InitSplitForLength();
 }
 
 UtteranceSplitter::~UtteranceSplitter() {
+
   KALDI_LOG << "Split " << total_num_utterances_ << " utts, with "
             << "total length " << total_input_frames_ << " frames ("
             << (total_input_frames_ / 360000.0) << " hours assuming "
@@ -377,6 +383,7 @@ UtteranceSplitter::~UtteranceSplitter() {
     KALDI_LOG << "Output frames are distributed among chunk-sizes as follows: "
               << os.str();
   }
+
 }
 
 float UtteranceSplitter::DefaultDurationOfSplit(
@@ -816,6 +823,21 @@ void UtteranceSplitter::GetGapSizes(int32 utterance_length,
 void UtteranceSplitter::GetChunksForUtterance(
     int32 utterance_length,
     std::vector<ChunkTimeInfo> *chunk_info) {
+  if (config_.num_frames_str == "-1" ) {
+
+    ChunkTimeInfo *info;
+    info = new ChunkTimeInfo;
+    info->first_frame = 0;
+    info->num_frames = utterance_length;
+    info->left_context = (config_.left_context_initial >= 0 ?
+                         config_.left_context_initial : config_.left_context);
+    info->right_context = (config_.right_context_final >= 0 ?
+                          config_.right_context_final : config_.right_context);
+
+    (*chunk_info).push_back(*info);
+
+  }
+  else {
   std::vector<int32> chunk_sizes;
   GetChunkSizesForUtterance(utterance_length, &chunk_sizes);
   std::vector<int32> gaps(chunk_sizes.size());
@@ -834,12 +856,13 @@ void UtteranceSplitter::GetChunksForUtterance(
                           config_.right_context_final : config_.right_context);
     t += chunk_sizes[i];
   }
-  SetOutputWeights(utterance_length, chunk_info);
-  AccStatsForUtterance(utterance_length, *chunk_info);
-  // check that the end of the last chunk doesn't go more than
-  // 'config_.frame_subsampling_factor - 1' frames past the end
-  // of the utterance.  That amount, we treat as rounding error.
-  KALDI_ASSERT(t - utterance_length < config_.frame_subsampling_factor);
+    SetOutputWeights(utterance_length, chunk_info);
+    AccStatsForUtterance(utterance_length, *chunk_info);
+    // check that the end of the last chunk doesn't go more than
+    // 'config_.frame_subsampling_factor - 1' frames past the end
+    // of the utterance.  That amount, we treat as rounding error.
+    KALDI_ASSERT(t - utterance_length < config_.frame_subsampling_factor);
+  }
 }
 
 void UtteranceSplitter::AccStatsForUtterance(
