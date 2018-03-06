@@ -39,10 +39,6 @@ do
 
   ## Gather transcriptions
   mkdir data/$set
-  # for corpus in 'ienit'
-  # do
-    # Filter ids lost from binaries->normalized conversion
-  # cat data/text.$set | cut -d' ' -f1 | xargs -IBLA -n 1 ls data/normalized/BLA.png | xargs -IBLA -n 1 basename BLA '.png' | xargs -IBLA -n 1 egrep '^BLA ' data/text.$set >> tmp.unsorted
   cat data/text.$set > tmp.unsorted
   # done
   export LC_ALL=C
@@ -52,28 +48,22 @@ do
   cat tmp.sorted | cut -d' ' -f2- | python3 local/remove_diacritics.py | python3 local/replace_arabic_punctuation.py | python3 local/replace_brackets.py | tr '+' '\\' | tr '=' '\\' | sed 's/\xA0/X/g' | sed 's/\x00\xA0/X/g' | sed 's/\xC2\xA0/X/g' | sed 's/\s\+/ /g' | sed 's/ \+$//' | sed 's/^ \+$//' | paste -d' ' data/$set/uttids - > data/$set/text
   rm tmp.unsorted tmp.sorted
 
-  ## Image files
-  # cat data/$set/uttids | sed 's/^\([a-z]\+\)-/\1 /i' | awk '{print "data/normalized/"$1".png"}' | xargs -n 1 realpath > data/$set/img.flist
-  # paste -d' ' data/$set/uttids data/$set/img.flist > data/$set/images.scp
-
   local/process_data.py $database data/$set --dataset $set --model_type word || exit 1
   sort data/$set/images.scp -o data/$set/images.scp
   sort data/$set/utt2spk -o data/$set/utt2spk
 
-  ## Speaker mappings
-  # cat data/$set/uttids | sed 's/^\([^_]\+\)_/\1 /' | awk '{if (NF < 2) print $1" "$1; else print $1"_"$2" "$1}' > data/$set/utt2spk
   export LC_ALL=C
   ./utils/utt2spk_to_spk2utt.pl data/$set/utt2spk > data/$set/spk2utt
   export LC_ALL=$oldLC
 
   mkdir -p data/{train,test}/data
-  # for f in train test; do
+
   local/make_feature_vect.py data/$set --scale-size 40 | \
     copy-feats --compress=true --compression-method=7 \
     ark:- ark,scp:data/$set/data/images.ark,data/$set/feats.scp || exit 1
 
   steps/compute_cmvn_stats.sh data/$set || exit 1;
-  # done
+
 
 done
 
@@ -114,18 +104,17 @@ export LC_ALL=$oldLC
 
 
 cut -d ' ' -f 2- data/train/text > data/local/lm/train.lines
-# cp data/train/text data/local/lm/train.lines
 cat data/test/text | awk '{ for(i=2;i<=NF;i++) print $i;}' | sort -u >test_words.txt
 cat data/train/text | awk '{ for(i=2;i<=NF;i++) print $i;}' | sort -u >train_words.txt
 utils/filter_scp.pl --exclude train_words.txt test_words.txt > diff.txt
 cat diff.txt >> data/local/lm/train.lines
 
 ## Create LM (mix 1-gram LM on training transcriptions with decoding LM)
-ngram-count -text data/local/lm/train.lines -map-unk "<unk>" -order 1 -lm data/local/lm/train.lm
+/export/b01/babak/srilm/bin/i686-m64/ngram-count -text data/local/lm/train.lines -map-unk "<unk>" -order 1 -lm data/local/lm/train.lm
 gzip data/local/lm/train.lm
 # Following command needs srilm/bin and srilm/bin/i686-m64/ in PATH
 export LC_ALL=C
-local/format_lm_sri.sh --srilm-opts "-order 1" data/lang_pregdl_nolm data/local/lm/train.lm.gz data/local/dict/lexicon.txt data/lang_pregdl
+utils/format_lm_sri.sh --srilm-opts "-order 1" data/lang_pregdl_nolm data/local/lm/train.lm.gz data/local/dict/lexicon.txt data/lang_pregdl
 export LC_ALL=$oldLC
 
 
@@ -146,7 +135,7 @@ export LC_ALL=C
 cat data/local/dict/lexicon.txt| cut -d' ' -f2- | tr ' ' "\n" | sort -u > data/local/phonemeset
 cat data/local/phonemeset | fgrep -v 'rare' | fgrep -v '.A' | fgrep -v ',A' | fgrep -v 'conn' | fgrep -v 'sil' | sort > data/local/dict/nonsilence_phones.txt
 utils/prepare_lang.sh --num-sil-states 3 --num-nonsil-states 4 --position-dependent-phones false data/local/dict "<unk>" data/local/lang data/lang_nolm
-local/format_lm_sri.sh --srilm-opts "-order 1" data/lang_nolm data.noligatures/local/lm/train.lm.gz data/local/dict/lexicon.txt data/lang
+utils/format_lm_sri.sh --srilm-opts "-order 1" data/lang_nolm data.noligatures/local/lm/train.lm.gz data/local/dict/lexicon.txt data/lang
 
 
 

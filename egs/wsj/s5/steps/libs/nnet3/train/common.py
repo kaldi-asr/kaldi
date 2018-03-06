@@ -195,7 +195,7 @@ def validate_chunk_width(chunk_width):
     for elem in a:
         try:
             i = int(elem)
-            if i < 1:
+            if i < 1 and i != -1:
                 return False
         except:
             return False

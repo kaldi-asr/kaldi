@@ -1,0 +1,1 @@
+You can fill the registration form in http://www.ifnenit.com/ to download dataset. Then you sould set the path of the dataset in the beginnig of the "local/ienit-initialize.sh" and "local/process_data.py" 
