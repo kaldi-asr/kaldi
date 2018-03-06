@@ -118,7 +118,7 @@ void CuPackedMatrix<Real>::Swap(PackedMatrix<Real> *mat) {
         this->Swap(&temp); // now temp is full, *this is empty.
         mat->Swap(&temp); // now mat has data from *this, temp has
         // data from mat.
-        this->Swap(mat); // copy data in mat to *this, which is now empty.
+        this->Swap(&temp); // copy data in mat to *this, which is now empty.
       } else { // *this is full but *mat is empty.
         mat->Resize(this->num_rows_, kUndefined);
         this->CopyToPacked(mat);
