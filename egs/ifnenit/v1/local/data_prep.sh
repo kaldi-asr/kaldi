@@ -121,11 +121,11 @@ utils/filter_scp.pl --exclude train_words.txt test_words.txt > diff.txt
 cat diff.txt >> data/local/lm/train.lines
 
 ## Create LM (mix 1-gram LM on training transcriptions with decoding LM)
-/export/b01/babak/srilm/bin/i686-m64/ngram-count -text data/local/lm/train.lines -map-unk "<unk>" -order 1 -lm data/local/lm/train.lm
+ngram-count -text data/local/lm/train.lines -map-unk "<unk>" -order 1 -lm data/local/lm/train.lm
 gzip data/local/lm/train.lm
 # Following command needs srilm/bin and srilm/bin/i686-m64/ in PATH
 export LC_ALL=C
-utils/format_lm_sri.sh --srilm-opts "-order 1" data/lang_pregdl_nolm data/local/lm/train.lm.gz data/local/dict/lexicon.txt data/lang_pregdl
+local/format_lm_sri.sh --srilm-opts "-order 1" data/lang_pregdl_nolm data/local/lm/train.lm.gz data/local/dict/lexicon.txt data/lang_pregdl
 export LC_ALL=$oldLC
 
 
@@ -146,7 +146,7 @@ export LC_ALL=C
 cat data/local/dict/lexicon.txt| cut -d' ' -f2- | tr ' ' "\n" | sort -u > data/local/phonemeset
 cat data/local/phonemeset | fgrep -v 'rare' | fgrep -v '.A' | fgrep -v ',A' | fgrep -v 'conn' | fgrep -v 'sil' | sort > data/local/dict/nonsilence_phones.txt
 utils/prepare_lang.sh --num-sil-states 3 --num-nonsil-states 4 --position-dependent-phones false data/local/dict "<unk>" data/local/lang data/lang_nolm
-utils/format_lm_sri.sh --srilm-opts "-order 1" data/lang_nolm data.noligatures/local/lm/train.lm.gz data/local/dict/lexicon.txt data/lang
+local/format_lm_sri.sh --srilm-opts "-order 1" data/lang_nolm data.noligatures/local/lm/train.lm.gz data/local/dict/lexicon.txt data/lang
 
 
 
