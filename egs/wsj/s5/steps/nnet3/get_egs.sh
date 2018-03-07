@@ -138,6 +138,8 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 
+echo "$0: creating egs.  To ensure they are not deleted later you can do:  touch $dir/.nodelete"
+
 # because we'll need the features with a different number of jobs than $alidir,
 # copy to ark,scp.
 if [ -f $transform_dir/raw_trans.1 ]; then

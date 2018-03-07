@@ -224,8 +224,21 @@ struct Supervision {
   // first sequence; then 'frames_per_sequence' arcs for the second sequence, and so on).
   fst::StdVectorFst fst;
 
+  // if the 'e2e' flag is set to true, it means that this supervision is meant
+  // to be used in end-to-end (i.e. flat-start) chain training. In that case,
+  // the numerator FST's are no longer stored in 'fst' but instead they are
+  // stored in e2e_fsts which is a list (with size() == 'num_sequences').
+  // That's because end-to-end numerator FST's are similar to training FST's
+  // used in gmm monophone flat-start training (i.e. they have self-loops)
+  // and therefore they can't be appended into a single long FST.
+  // The function responsible for creating an end-to-end 'supervision'
+  // is TrainingGraphToSupervision().
+  // To find out more about end-to-end training, see chain-generic-numerator.h
+  bool e2e;  // end to end
+  std::vector<fst::StdVectorFst> e2e_fsts;
+
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
-                 label_dim(-1) { }
+                 label_dim(-1), e2e(false) { }
 
   Supervision(const Supervision &other);
 
@@ -256,6 +269,20 @@ bool ProtoSupervisionToSupervision(
     const ProtoSupervision &proto_supervision,
     Supervision *supervision);
 
+/** This function creates and initializes an end-to-end supervision object
+    from a training FST (e.g. created using compile-train-graphs). It simply
+    sets all the input and output labels to pdf_id+1 (i.e. converts the FST to
+    an FSA) and stores the resulting FST in supervision->e2e_fsts[0].
+    It returns true if there were no epsilon transitions, otherwise
+    it would return false (the current implementation of forward-backward in
+    chain-generic-numerator.cc does not support epsilon transitions).
+    To find out more about end-to-end training, see chain-generic-numerator.h
+ */
+bool TrainingGraphToSupervisionE2e(
+    const fst::StdVectorFst& training_graph,
+    const TransitionModel& trans_model,
+    int32 num_frames,
+    Supervision *supervision);
 
 /**
    This function sorts the states of the fst argument in an ordering

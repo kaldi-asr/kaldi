@@ -1,4 +1,4 @@
-// tensorflow-rnnlm-lib.h
+// tensorflow-rnnlm.h
 
 // Copyright (C) 2017 Intellisist, Inc. (Author: Hainan Xu)
 
@@ -27,6 +27,32 @@
 #include "base/kaldi-common.h"
 #include "fstext/deterministic-fst.h"
 #include "util/common-utils.h"
+
+// Following macros are defined in both OpenFst and Tensorflow headers. Here we
+// undef them before including "tensorflow/core/public/session.h" to silence
+// compiler warnings. Note that this is not a panacea. We should still pay
+// attention to the order of includes in other places in the codebase to avoid
+// using the wrong macro definitions. Any OpenFst header or any header including
+// an OpenFst header should be included before tfrnnlm/tensorflow-rnnlm.h. Also,
+// to avoid macro redefinitions, any Tensorflow header should be included after
+// tfrnnlm/tensorflow-rnnlm.h.
+#undef LOG
+#undef VLOG
+#undef CHECK
+#undef CHECK_EQ
+#undef CHECK_LT
+#undef CHECK_GT
+#undef CHECK_LE
+#undef CHECK_GE
+#undef CHECK_NE
+#undef DCHECK
+#undef DCHECK_EQ
+#undef DCHECK_LT
+#undef DCHECK_GT
+#undef DCHECK_LE
+#undef DCHECK_GE
+#undef DCHECK_NE
+
 #include "tensorflow/core/public/session.h"
 
 using tensorflow::Session;
@@ -149,6 +175,7 @@ class TfRnnlmDeterministicFst:
   // Does not take ownership.
   TfRnnlmDeterministicFst(int32 max_ngram_order, KaldiTfRnnlmWrapper *rnnlm);
   ~TfRnnlmDeterministicFst();
+  void Clear();
 
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.

@@ -51,7 +51,7 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename,
                                  bool throw_on_err = true);
 
 // This function attempts to dynamic_cast the pointer 'fst' (which will likely
-// have been returned by ReadFstGeneric()), to the more derived 
+// have been returned by ReadFstGeneric()), to the more derived
 // type VectorFst<StdArc>. If this succeeds, it returns the same pointer;
 // if it fails, it converts the FST type (by creating a new VectorFst<stdArc>
 // initialized by 'fst'), prints a warning, and deletes 'fst'.
@@ -80,6 +80,10 @@ void WriteFstKaldi(std::ostream &os, bool binary,
 template <class Arc>
 void ReadFstKaldi(std::istream &is, bool binary,
                   VectorFst<Arc> *fst);
+
+// Read an FST file for LM (G.fst) and make it an acceptor,
+// and make sure it is sorted on labels
+fst::VectorFst<fst::StdArc> *ReadAndPrepareLmFst(std::string rxfilename);
 
 // This is a Holder class with T = VectorFst<Arc>, that meets the requirements
 // of a Holder class as described in ../util/kaldi-holder.h. This enables us to
@@ -112,7 +116,7 @@ class VectorFstTplHolder {
   // them.
   static bool IsReadInBinary() { return true; }
 
-  const T &Value() {
+  T &Value() {
     // code error if !t_.
     if (!t_) KALDI_ERR << "VectorFstTplHolder::Value() called wrongly.";
     return *t_;
@@ -143,7 +147,7 @@ class VectorFstTplHolder {
   T *t_;
 };
 
-// Now make the original VectorFstHolder as the typedef o VectorFstHolder<StdArc>.
+// Now make the original VectorFstHolder as the typedef of VectorFstHolder<StdArc>.
 typedef VectorFstTplHolder<StdArc> VectorFstHolder;
 
 

@@ -7,8 +7,8 @@
 
 #echo >&2 "$0 $@"  # Print the command line for logging
 if [ $# != 2 ] ; then
-  echo >$2 "Usage: $0  <first-dir> <second-dir>"
-  echo >$2 " e.g.: $0 exp/nnet3/extractor exp/nnet3/ivectors_dev10h.pem"
+  echo >&2 "Usage: $0  <first-dir> <second-dir>"
+  echo >&2 " e.g.: $0 exp/nnet3/extractor exp/nnet3/ivectors_dev10h.pem"
 fi
 
 dir_a=$1

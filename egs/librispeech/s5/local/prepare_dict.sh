@@ -12,7 +12,7 @@ cmd=run.pl
 
 
 . utils/parse_options.sh || exit 1;
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 
 if [ $# -ne 3 ]; then
@@ -120,7 +120,7 @@ if [ $stage -le 3 ]; then
     perl -e 'while(<>){
       chop; m:^([^\d]+)(\d*)$: || die "Bad phone $_";
       $phones_of{$1} .= "$_ "; }
-      foreach $list (values %phones_of) {print $list . "\n"; } ' \
+      foreach $list (values %phones_of) {print $list . "\n"; } ' | sort \
       > $nonsil_phones || exit 1;
   # A few extra questions that will be added to those obtained by automatically clustering
   # the "real" phones.  These ask about stress; there's also one for silence.

@@ -309,10 +309,11 @@ def parse_progress_logs_for_param_diff(exp_dir, pattern):
             'max_iter': max_iter}
 
 
-def parse_train_logs(exp_dir):
-    train_log_files = "%s/log/train.*.log" % (exp_dir)
+def get_train_times(exp_dir):
+    train_log_files = "%s/log/" % (exp_dir)
+    train_log_names = "train.*.log"
     train_log_lines = common_lib.get_command_stdout(
-        'grep -e Accounting {0}'.format(train_log_files))
+        'find {0} -name "{1}" | xargs grep -H -e Accounting'.format(train_log_files,train_log_names))
     parse_regex = re.compile(".*train\.([0-9]+)\.([0-9]+)\.log:# "
                              "Accounting: time=([0-9]+) thread.*")
 
@@ -357,16 +358,16 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
         "nnet.*diagnostics.cc:[0-9]+. Overall ([a-zA-Z\-]+) for "
         "'{output}'.*is ([0-9.\-e]+) .*per frame".format(output=output))
 
-    train_loss = {}
-    valid_loss = {}
+    train_objf = {}
+    valid_objf = {}
 
     for line in train_prob_strings.split('\n'):
         mat_obj = parse_regex.search(line)
         if mat_obj is not None:
             groups = mat_obj.groups()
             if groups[1] == key:
-                train_loss[int(groups[0])] = groups[2]
-    if not train_loss:
+                train_objf[int(groups[0])] = groups[2]
+    if not train_objf:
         raise KaldiLogParseException("Could not find any lines with {k} in "
                 " {l}".format(k=key, l=train_prob_files))
 
@@ -375,35 +376,102 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
         if mat_obj is not None:
             groups = mat_obj.groups()
             if groups[1] == key:
-                valid_loss[int(groups[0])] = groups[2]
+                valid_objf[int(groups[0])] = groups[2]
 
-    if not valid_loss:
+    if not valid_objf:
         raise KaldiLogParseException("Could not find any lines with {k} in "
                 " {l}".format(k=key, l=valid_prob_files))
 
-    iters = list(set(valid_loss.keys()).intersection(train_loss.keys()))
+    iters = list(set(valid_objf.keys()).intersection(train_objf.keys()))
     if not iters:
         raise KaldiLogParseException("Could not any common iterations with"
                 " key {k} in both {tl} and {vl}".format(
                     k=key, tl=train_prob_files, vl=valid_prob_files))
     iters.sort()
-    return map(lambda x: (int(x), float(train_loss[x]),
-                          float(valid_loss[x])), iters)
+    return list(map(lambda x: (int(x), float(train_objf[x]),
+                               float(valid_objf[x])), iters))
+
+def parse_rnnlm_prob_logs(exp_dir, key='objf'):
+    train_prob_files = "%s/log/train.*.*.log" % (exp_dir)
+    valid_prob_files = "%s/log/compute_prob.*.log" % (exp_dir)
+    train_prob_strings = common_lib.get_command_stdout(
+        'grep -e {0} {1}'.format(key, train_prob_files))
+    valid_prob_strings = common_lib.get_command_stdout(
+        'grep -e {0} {1}'.format(key, valid_prob_files))
+
+    # LOG
+    # (rnnlm-train[5.3.36~8-2ec51]:PrintStatsOverall():rnnlm-core-training.cc:118)
+    # Overall objf is (-4.426 + -0.008287) = -4.435 over 4.503e+06 words (weighted)
+    # in 1117 minibatches; exact = (-4.426 + 0) = -4.426
+
+    # LOG
+    # (rnnlm-compute-prob[5.3.36~8-2ec51]:PrintStatsOverall():rnnlm-core-training.cc:118)
+    # Overall objf is (-4.677 + -0.002067) = -4.679 over 1.08e+05 words (weighted)
+    # in 27 minibatches; exact = (-4.677 + 0.002667) = -4.674
+
+    parse_regex_train = re.compile(
+        ".*train\.([0-9]+).1.log:LOG "
+        ".rnnlm-train.*:PrintStatsOverall..:"
+        "rnnlm.*training.cc:[0-9]+. Overall ([a-zA-Z\-]+) is "
+        ".*exact = \(.+\) = ([0-9.\-\+e]+)")
+
+    parse_regex_valid = re.compile(
+        ".*compute_prob\.([0-9]+).log:LOG "
+        ".rnnlm.*compute-prob.*:PrintStatsOverall..:"
+        "rnnlm.*training.cc:[0-9]+. Overall ([a-zA-Z\-]+) is "
+        ".*exact = \(.+\) = ([0-9.\-\+e]+)")
+
+    train_objf = {}
+    valid_objf = {}
+
+    for line in train_prob_strings.split('\n'):
+        mat_obj = parse_regex_train.search(line)
+        if mat_obj is not None:
+            groups = mat_obj.groups()
+            if groups[1] == key:
+                train_objf[int(groups[0])] = groups[2]
+    if not train_objf:
+        raise KaldiLogParseException("Could not find any lines with {k} in "
+                " {l}".format(k=key, l=train_prob_files))
+
+    for line in valid_prob_strings.split('\n'):
+        mat_obj = parse_regex_valid.search(line)
+        if mat_obj is not None:
+            groups = mat_obj.groups()
+            if groups[1] == key:
+                valid_objf[int(groups[0])] = groups[2]
+
+    if not valid_objf:
+        raise KaldiLogParseException("Could not find any lines with {k} in "
+                " {l}".format(k=key, l=valid_prob_files))
+
+    iters = list(set(valid_objf.keys()).intersection(train_objf.keys()))
+    if not iters:
+        raise KaldiLogParseException("Could not any common iterations with"
+                " key {k} in both {tl} and {vl}".format(
+                    k=key, tl=train_prob_files, vl=valid_prob_files))
+    iters.sort()
+    return map(lambda x: (int(x), float(train_objf[x]),
+                          float(valid_objf[x])), iters)
+
 
 
 
 def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
     try:
-        times = parse_train_logs(exp_dir)
+        times = get_train_times(exp_dir)
     except:
         tb = traceback.format_exc()
         logger.warning("Error getting info from logs, exception was: " + tb)
         times = []
 
     report = []
-    report.append("%Iter\tduration\ttrain_loss\tvalid_loss\tdifference")
+    report.append("%Iter\tduration\ttrain_objective\tvalid_objective\tdifference")
     try:
-        data = list(parse_prob_logs(exp_dir, key, output))
+        if key == "rnnlm_objective":
+            data = list(parse_rnnlm_prob_logs(exp_dir, 'objf'))
+        else:
+            data = list(parse_prob_logs(exp_dir, key, output))
     except:
         tb = traceback.format_exc()
         logger.warning("Error getting info from logs, exception was: " + tb)

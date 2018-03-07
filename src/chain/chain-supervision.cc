@@ -230,6 +230,43 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
   }
 }
 
+bool TrainingGraphToSupervisionE2e(
+    const fst::StdVectorFst& training_graph,
+    const TransitionModel &trans_model,
+    int32 num_frames,
+    Supervision *supervision) {
+  using fst::VectorFst;
+  using fst::StdArc;
+  using fst::StdVectorFst;
+  StdVectorFst trans2word_fst(training_graph);
+  fst::RemoveEpsLocal(&trans2word_fst);
+  fst::RmEpsilon(&trans2word_fst);
+  // first change labels to pdf-id + 1
+  int32 num_states = trans2word_fst.NumStates();
+  for (int32 state = 0; state < num_states; state++) {
+    for (fst::MutableArcIterator<StdVectorFst> aiter(&trans2word_fst, state);
+         !aiter.Done(); aiter.Next()) {
+      const StdArc &arc = aiter.Value();
+      if (arc.ilabel == 0) {
+        KALDI_WARN << "Utterance rejected due to eps on input label";
+        return false;
+      }
+      KALDI_ASSERT(arc.ilabel != 0);
+      StdArc arc2(arc);
+      arc2.ilabel = arc2.olabel = trans_model.TransitionIdToPdf(arc.ilabel) + 1;
+      aiter.SetValue(arc2);
+    }
+  }
+  supervision->e2e = true;
+  supervision->e2e_fsts.clear();
+  supervision->e2e_fsts.resize(1);
+  supervision->e2e_fsts[0] = trans2word_fst;
+  supervision->weight = 1.0;
+  supervision->num_sequences = 1;
+  supervision->frames_per_sequence = num_frames;
+  supervision->label_dim = trans_model.NumPdfs();
+  return true;
+}
 
 bool ProtoSupervisionToSupervision(
     const ContextDependencyInterface &ctx_dep,
@@ -518,16 +555,37 @@ void Supervision::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, label_dim);
   KALDI_ASSERT(frames_per_sequence > 0 && label_dim > 0 &&
                num_sequences > 0);
-  if (binary == false) {
-    // In text mode, write the FST without any compactification.
-    WriteFstKaldi(os, binary, fst);
+  WriteToken(os, binary, "<End2End>");
+  WriteBasicType(os, binary, e2e);
+  if (!e2e) {
+    if (binary == false) {
+      // In text mode, write the FST without any compactification.
+      WriteFstKaldi(os, binary, fst);
+    } else {
+      // Write using StdAcceptorCompactFst, making use of the fact that it's an
+      // acceptor.
+      fst::FstWriteOptions write_options("<unknown>");
+      fst::StdCompactAcceptorFst::WriteFst(
+          fst, fst::AcceptorCompactor<fst::StdArc>(), os,
+          write_options);
+    }
   } else {
-    // Write using StdAcceptorCompactFst, making use of the fact that it's an
-    // acceptor.
-    fst::FstWriteOptions write_options("<unknown>");
-    fst::StdCompactAcceptorFst::WriteFst(
-        fst, fst::AcceptorCompactor<fst::StdArc>(), os,
-        write_options);
+    KALDI_ASSERT(e2e_fsts.size() == num_sequences);
+    WriteToken(os, binary, "<Fsts>");
+    for (int i = 0; i < num_sequences; i++) {
+      if (binary == false) {
+        // In text mode, write the FST without any compactification.
+        WriteFstKaldi(os, binary, e2e_fsts[i]);
+      } else {
+        // Write using StdAcceptorCompactFst, making use of the fact that it's an
+        // acceptor.
+        fst::FstWriteOptions write_options("<unknown>");
+        fst::StdCompactAcceptorFst::WriteFst(
+            e2e_fsts[i], fst::AcceptorCompactor<fst::StdArc>(), os,
+            write_options);
+      }
+    }
+    WriteToken(os, binary, "</Fsts>");
   }
   WriteToken(os, binary, "</Supervision>");
 }
@@ -538,6 +596,8 @@ void Supervision::Swap(Supervision *other) {
   std::swap(frames_per_sequence, other->frames_per_sequence);
   std::swap(label_dim, other->label_dim);
   std::swap(fst, other->fst);
+  std::swap(e2e, other->e2e);
+  std::swap(e2e_fsts, other->e2e_fsts);
 }
 
 void Supervision::Read(std::istream &is, bool binary) {
@@ -550,18 +610,42 @@ void Supervision::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &frames_per_sequence);
   ExpectToken(is, binary, "<LabelDim>");
   ReadBasicType(is, binary, &label_dim);
-  if (!binary) {
-    ReadFstKaldi(is, binary, &fst);
+  if (PeekToken(is, binary) == 'E') {
+    ExpectToken(is, binary, "<End2End>");
+    ReadBasicType(is, binary, &e2e);
   } else {
-    fst::StdCompactAcceptorFst *compact_fst =
-        fst::StdCompactAcceptorFst::Read(
-            is, fst::FstReadOptions(std::string("[unknown]")));
-    if (compact_fst == NULL)
-      KALDI_ERR << "Error reading compact FST from disk";
-    fst = *compact_fst;
-    delete compact_fst;
+    e2e = false;
   }
-    // ReadFstKaldi will work even though we wrote using a compact format.
+  if (!e2e) {
+    if (!binary) {
+      ReadFstKaldi(is, binary, &fst);
+    } else {
+      fst::StdCompactAcceptorFst *compact_fst =
+          fst::StdCompactAcceptorFst::Read(
+              is, fst::FstReadOptions(std::string("[unknown]")));
+      if (compact_fst == NULL)
+        KALDI_ERR << "Error reading compact FST from disk";
+      fst = *compact_fst;
+      delete compact_fst;
+    }
+  } else {
+    e2e_fsts.resize(num_sequences);
+    ExpectToken(is, binary, "<Fsts>");
+    for (int i = 0; i < num_sequences; i++) {
+      if (!binary) {
+        ReadFstKaldi(is, binary, &e2e_fsts[i]);
+      } else {
+        fst::StdCompactAcceptorFst *compact_fst =
+            fst::StdCompactAcceptorFst::Read(
+                is, fst::FstReadOptions(std::string("[unknown]")));
+        if (compact_fst == NULL)
+          KALDI_ERR << "Error reading compact FST from disk";
+        e2e_fsts[i] = *compact_fst;
+        delete compact_fst;
+      }
+    }
+    ExpectToken(is, binary, "</Fsts>");
+  }
   ExpectToken(is, binary, "</Supervision>");
 }
 
@@ -603,7 +687,29 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 Supervision::Supervision(const Supervision &other):
     weight(other.weight), num_sequences(other.num_sequences),
     frames_per_sequence(other.frames_per_sequence),
-    label_dim(other.label_dim), fst(other.fst) { }
+    label_dim(other.label_dim), fst(other.fst),
+    e2e(other.e2e), e2e_fsts(other.e2e_fsts) { }
+
+
+// This static function is called by AppendSupervision if the supervisions
+// are end2end. It simply puts all e2e FST's into 1 supervision.
+void AppendSupervisionE2e(const std::vector<const Supervision*> &input,
+                          bool compactify,
+                          std::vector<Supervision> *output_supervision) {
+  KALDI_ASSERT(!input.empty());
+  KALDI_ASSERT(input[0]->e2e);
+  output_supervision->clear();
+  output_supervision->resize(1);
+  KALDI_ASSERT(input[0]->e2e_fsts.size() == 1);
+  (*output_supervision)[0] = *(input[0]);
+  for (int32 i = 1; i < input.size(); i++) {
+    (*output_supervision)[0].num_sequences++;
+    KALDI_ASSERT(input[i]->e2e_fsts.size() == 1);
+    KALDI_ASSERT(input[i]->frames_per_sequence ==
+                 (*output_supervision)[0].frames_per_sequence);
+    (*output_supervision)[0].e2e_fsts.push_back(input[i]->e2e_fsts[0]);
+  }
+}
 
 void AppendSupervision(const std::vector<const Supervision*> &input,
                        bool compactify,
@@ -616,6 +722,11 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
     (*output_supervision)[0] = *(input[0]);
     return;
   }
+  if (input[0]->e2e) {
+    AppendSupervisionE2e(input, compactify, output_supervision);
+    return;
+  }
+
   std::vector<bool> output_was_merged;
   for (int32 i = 1; i < num_inputs; i++)
     KALDI_ASSERT(input[i]->label_dim == label_dim &&
@@ -650,8 +761,41 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
   }
 }
 
+// This static function is called by AddWeightToSupervisionFst if the supervision
+// is end2end. It's similar to AddWeightToSupervisionFst, except we don't do
+// TryDeterminizeMinimize as it's not necessary (the graphs are already small)
+// and we don't do SortBreadthFirstSearch (the graph has self-loops so it can't
+// be sorted).
+bool AddWeightToSupervisionFstE2e(const fst::StdVectorFst &normalization_fst,
+                                  Supervision *supervision) {
+    KALDI_ASSERT(supervision->e2e);
+    KALDI_ASSERT(supervision->num_sequences == 1);
+    KALDI_ASSERT(supervision->e2e_fsts.size() == 1);
+    // Remove epsilons before composing.  'normalization_fst' has no epsilons so
+    // the composed result will be epsilon free.
+    fst::StdVectorFst supervision_fst_noeps(supervision->e2e_fsts[0]);
+    fst::RmEpsilon(&supervision_fst_noeps);
+
+    // Note: by default, 'Compose' will call 'Connect', so if the
+    // resulting FST is not connected, it will end up empty.
+    fst::StdVectorFst composed_fst;
+    fst::Compose(supervision_fst_noeps, normalization_fst,
+                 &composed_fst);
+    if (composed_fst.NumStates() == 0)
+      return false;
+    // Projection should not be necessary, as both FSTs are acceptors.
+
+    supervision->e2e_fsts[0] = composed_fst;
+    KALDI_ASSERT(supervision->fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
+    KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
+    return true;
+}
+
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {
+  if (supervision->e2e)
+    return AddWeightToSupervisionFstE2e(normalization_fst, supervision);
+
   // remove epsilons before composing.  'normalization_fst' has noepsilons so
   // the composed result will be epsilon free.
   fst::StdVectorFst supervision_fst_noeps(supervision->fst);

@@ -1,0 +1,9 @@
+for x in exp/*/decode*; do grep Sum $x/score*/*.ctm.*sys | utils/best_wer.sh ; done | sort -k2,2n
+exit 0
+
+%WER 17.8 | 728 32834 | 84.1 11.8 4.1 1.9 17.8 82.8 | exp/tri4/decode_nosp_eval97.pem_rescore/score_13_0.5/eval97.pem.ctm.filt.sys
+%WER 19.0 | 728 32834 | 83.0 12.7 4.3 2.0 19.0 84.2 | exp/tri4/decode_nosp_eval97.pem/score_13_0.0/eval97.pem.ctm.filt.sys
+%WER 19.4 | 728 32834 | 82.7 13.1 4.2 2.1 19.4 83.8 | exp/tri3/decode_nosp_eval97.pem_rescore/score_13_0.0/eval97.pem.ctm.filt.sys
+%WER 20.5 | 728 32834 | 81.7 13.9 4.4 2.3 20.5 85.0 | exp/tri3/decode_nosp_eval97.pem/score_13_0.0/eval97.pem.ctm.filt.sys
+%WER 23.7 | 728 32834 | 79.0 16.0 5.0 2.7 23.7 85.3 | exp/tri4/decode_nosp_eval97.pem.si/score_12_0.0/eval97.pem.ctm.filt.sys
+%WER 25.7 | 728 32834 | 77.1 17.6 5.3 2.8 25.7 85.9 | exp/tri3/decode_nosp_eval97.pem.si/score_13_0.0/eval97.pem.ctm.filt.sys

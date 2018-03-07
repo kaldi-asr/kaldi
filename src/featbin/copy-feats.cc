@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
         "e.g.: copy-feats ark:- ark,scp:foo.ark,foo.scp\n"
         " or: copy-feats ark:foo.ark ark,t:txt.ark\n"
         "See also: copy-matrix, copy-feats-to-htk, copy-feats-to-sphinx, select-feats,\n"
-        "extract-rows, subset-feats, subsample-feats, splice-feats, paste-feats,\n"
+        "extract-feature-segments, subset-feats, subsample-feats, splice-feats, paste-feats,\n"
         "concat-feats\n";
 
     ParseOptions po(usage);
