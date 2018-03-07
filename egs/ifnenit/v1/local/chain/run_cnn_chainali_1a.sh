@@ -1,13 +1,10 @@
 #!/bin/bash
 
 # chainali_1a uses chain model for lattice instead of gmm-hmm model. It has more cnn layers as compared to 1a
-# (18.34% -> 13.68%)
+
 
 # steps/info/chain_dir_info.pl exp/chainfsf4/cnn1a_chainali/
 # exp/chainfsf4/cnn1a_chainali/: num-iters=21 nj=2..4 num-params=3.8M dim=40->380 combine=-0.009->-0.006 xent:train/valid[13,20,final]=(-0.870,-0.593,-0.568/-1.08,-0.889,-0.874) logprob:train/valid[13,20,final]=(-0.035,-0.003,-0.001/-0.077,-0.055,-0.054)
-
-# head exp/chainfsf4/cnn1a_chainali/decode_test/scoring_kaldi/best_wer
-# %WER 13.68 [ 2410 / 17616, 243 ins, 633 del, 1534 sub ] exp/chainfsf4/cnn1a_chainali/decode_test/wer_8_1.0
 
 set -e -o pipefail
 
