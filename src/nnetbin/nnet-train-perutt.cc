@@ -238,11 +238,11 @@ int main(int argc, char *argv[]) {
 
       // 1st minibatch : show what happens in network,
       if (total_frames == 0) {
-        KALDI_VLOG(1) << "### After " << total_frames << " frames,";
-        KALDI_VLOG(1) << nnet.InfoPropagate();
+        KALDI_LOG << "### After " << total_frames << " frames,";
+        KALDI_LOG << nnet.InfoPropagate();
         if (!crossvalidate) {
-          KALDI_VLOG(1) << nnet.InfoBackPropagate();
-          KALDI_VLOG(1) << nnet.InfoGradient();
+          KALDI_LOG << nnet.InfoBackPropagate();
+          KALDI_LOG << nnet.InfoGradient();
         }
       }
 
@@ -265,27 +265,14 @@ int main(int argc, char *argv[]) {
 
       num_done++;
       total_frames += frm_weights.Sum();
-
-      // do this every 5000 utterances,
-      if (num_done % 5000 == 0) {
-        // report the speed,
-        double time_now = time.Elapsed();
-        KALDI_VLOG(1) << "After " << num_done << " utterances: "
-          << "time elapsed = " << time_now / 60 << " min; "
-          << "processed " << total_frames / time_now << " frames per sec.";
-#if HAVE_CUDA == 1
-        // check that GPU computes accurately,
-        CuDevice::Instantiate().CheckGpuHealth();
-#endif
-      }
     }  // main loop,
 
     // after last minibatch : show what happens in network,
-    KALDI_VLOG(1) << "### After " << total_frames << " frames,";
-    KALDI_VLOG(1) << nnet.InfoPropagate();
+    KALDI_LOG << "### After " << total_frames << " frames,";
+    KALDI_LOG << nnet.InfoPropagate();
     if (!crossvalidate) {
-      KALDI_VLOG(1) << nnet.InfoBackPropagate();
-      KALDI_VLOG(1) << nnet.InfoGradient();
+      KALDI_LOG << nnet.InfoBackPropagate();
+      KALDI_LOG << nnet.InfoGradient();
     }
 
     if (!crossvalidate) {
