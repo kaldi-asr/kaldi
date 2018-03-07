@@ -17,8 +17,7 @@ import re
 import shutil
 
 import libs.common as common_lib
-import libs.nnet3.train.dropout_schedule as dropout_schedule
-from dropout_schedule import *
+from libs.nnet3.train.dropout_schedule import *
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
