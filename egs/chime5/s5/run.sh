@@ -24,8 +24,8 @@ set -e # exit on error
 # chime5 main directory path
 # please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
-json_dir=${chime5_corpus}/data/transcriptions
-audio_dir=${chime5_corpus}/data/audio
+json_dir=${chime5_corpus}/transcriptions
+audio_dir=${chime5_corpus}/audio
 
 # training and test data
 train_set=train_worn_u100k
@@ -33,6 +33,7 @@ test_sets="dev_worn dev_${enhancement}_ref"
 # use the below once you obtain the evaluation data. Also remove the comment #eval# in the lines below
 #eval#test_sets="dev_worn eval_worn dev_${enhancement}_ref eval_${enhancement}_ref"
 
+# This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
 
 if [ $stage -le 1 ]; then

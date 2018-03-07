@@ -24,11 +24,6 @@ set -o nounset                              # Treat unset variables as an error
 # check existing directories
 [ $# != 0 ] && echo "Usage: $0" && exit 1;
 
-# This script also needs the phonetisaurus g2p, srilm,subversion,
-# and ICU4C installed. We test for these things during the kaldi instalation
-# and during when the master script is run, so we do not run any tests here.
-. ./local/check_tools.sh
-
 dir=data/local/dict_nosp
 
 mkdir -p $dir
