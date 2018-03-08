@@ -179,28 +179,28 @@ if [ $stage -le 13 ]; then
   steps/get_prons.sh --cmd "$train_cmd" \
 		data/${train_set} data/lang_nosp exp/tri2
 
-	utils/dict_dir_add_pronprobs.sh --max-normalize true \
-	  data/local/dict_nosp exp/tri2/pron_counts_nowb.txt \
+  utils/dict_dir_add_pronprobs.sh --max-normalize true \
+    data/local/dict_nosp exp/tri2/pron_counts_nowb.txt \
     exp/tri2/sil_counts_nowb.txt \
     exp/tri2/pron_bigram_counts_nowb.txt data/local/dict
 
   # add explicit phone loop for <unk> model
   utils/lang/make_unk_lm.sh --use-pocolm false \
-		data/local/dict exp/make_unk
+    data/local/dict exp/make_unk
 
   # and compile the lang directory
   utils/prepare_lang.sh \
     --unk-fst exp/make_unk/unk_fst.txt \
-		--phone-symbol-table data/lang_nosp/phones.txt \
-    data/local/dict "<unk>" data/local/lang_test data/lang_test
+    --phone-symbol-table data/lang_nosp/phones.txt \
+    data/local/dict "<unk>" data/local/lang data/lang
 
   # and convert the LM in arpa to G.fst
   utils/format_lm.sh \
-		data/lang_test $LM data/local/dict/lexicon.txt data/lang_test
+    data/lang $LM data/local/dict/lexicon.txt data/lang
 fi
 
 if [ $stage -le 14 ]; then
-  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
+  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
   for dset in ${test_sets}; do
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
 		    exp/tri2/graph data/${dset} exp/tri2/decode_${dset} &
@@ -217,7 +217,7 @@ if [ $stage -le 15 ]; then
 fi
 
 if [ $stage -le 16 ]; then
-  utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
+  utils/mkgraph.sh data/lang exp/tri3 exp/tri3/graph
   for dset in ${test_sets}; do
     steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
 			  exp/tri3/graph data/${dset} exp/tri3/decode_${dset} &
