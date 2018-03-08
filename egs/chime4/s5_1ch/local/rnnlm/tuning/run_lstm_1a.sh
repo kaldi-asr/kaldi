@@ -28,7 +28,8 @@
 # Begin configuration section.
 
 dir=exp/rnnlm_lstm_1a
-enhan=$1
+chime4_data=$1
+enhan=$2
 embedding_dim=2048
 lstm_rpd=512
 lstm_nrpd=512
@@ -52,6 +53,8 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 srcdir=data/local/local_lm
 lexicon=data/local/dict/lexiconp.txt
 text_dir=data/rnnlm/text_nosp_1a
+wsj0_data=$chime4_data/data/WSJ0
+lm_train=$wsj0_data/wsj0/doc/lng_modl/lm_train/np_data
 mkdir -p $dir/config
 set -e
 
@@ -63,7 +66,18 @@ done
 #prepare training and dev data
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
-  cp $srcdir/train.rnn $text_dir/chime4.txt
+  cat data/lang_chain/words.txt | awk '{print $1}' > $srcdir/words.txt
+  gunzip -c $lm_train/{87,88,89}/*.z \
+   | awk -v voc=$srcdir/words.txt '
+   BEGIN{ while((getline<voc)>0) { invoc[$1]=1; }}
+   /^</{next}{
+     for (x=1;x<=NF;x++) {
+       w=toupper($x);
+       if (invoc[w]) { printf("%s ",w); } else { printf("<RNN_UNK> "); }
+     }
+     printf("\n");
+   }' > $srcdir/train_complete.rnn
+  cp $srcdir/train_complete.rnn $text_dir/chime4.txt
   sed -i -e "s/<RNN_UNK>/<UNK>/g" $text_dir/chime4.txt
   cp $srcdir/valid.rnn $text_dir/dev.txt
 fi
@@ -77,7 +91,7 @@ if [ $stage -le 1 ]; then
   echo "<UNK>" >$dir/config/oov.txt
 
   cat > $dir/config/data_weights.txt <<EOF
-chime4   3   1.0
+chime4   1   1.0
 EOF
 
   rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
