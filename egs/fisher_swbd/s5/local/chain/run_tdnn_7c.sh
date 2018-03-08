@@ -3,35 +3,34 @@
 # Apache 2.0
 
 # Based on tdnn_7m (from egs/swbd/s5c).
-# But tdnn_7c enjoys two more TDNN layers to make [-21,21] input temporal context.
 
-# local/chain/compare_wer_general.sh tdnn7m_21_context_reorth_clean_sp
-# System                tdnn7c_sp tdnn7b_sp
-# WER on eval2000(tg)        13.5    13.6
-# WER on eval2000(fg)        13.3    13.3
-# WER on rt03(tg)        12.7    12.7
-# WER on rt03(fg)        12.5    12.4
-# Final train prob         -0.103
-# Final valid prob         -0.114
-# Final train prob (xent)        -1.159
-# Final valid prob (xent)       -1.2024
-# Num-parameters               18781673
+# But tdnn_7c enjoys two more TDNN layers to make [-21,21] input temporal context,
+# this is intended as an extra baseline for 7d.
 
-# Results for the tdnn7b is {total eval2000:13.3; total RT03:12.4}
+# System               tdnn_7b_sp tdnn_7c_sp 
+# WER on eval2000(tg)    13.6     13.5    
+# WER on eval2000(fg)    13.3     13.3    
+# WER on rt03(tg)        12.7     12.7    
+# WER on rt03(fg)        12.4     12.5    
+# Final train prob                -0.103
+# Final valid prob                -0.114
+# Final train prob (xent)         -1.159
+# Final valid prob (xent)         -1.2024
+# Num-parameters                  18781673
 
-#%WER 17.8 | 2628 21594 | 84.1 9.3 6.5 1.9 17.8 56.5 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
-#%WER 13.5 | 4459 42989 | 88.1 7.5 4.4 1.6 13.5 51.3 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.filt.sys
-#%WER 9.2 | 1831 21395 | 92.1 5.6 2.3 1.3 9.2 44.0 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.swbd.filt.sys
-#%WER 17.7 | 2628 21594 | 84.3 9.2 6.5 2.0 17.7 55.9 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
-#%WER 13.3 | 4459 42989 | 88.3 7.4 4.3 1.6 13.3 50.5 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.filt.sys
-#%WER 8.9 | 1831 21395 | 92.2 5.1 2.8 1.0 8.9 42.4 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 17.8 | 2628 21594 | 84.1 9.3 6.5 1.9 17.8 56.5 | exp/chain/tdnn_7c_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 13.5 | 4459 42989 | 88.1 7.5 4.4 1.6 13.5 51.3 | exp/chain/tdnn_7c_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.filt.sys
+# %WER 9.2 | 1831 21395 | 92.1 5.6 2.3 1.3 9.2 44.0 | exp/chain/tdnn_7c_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 17.7 | 2628 21594 | 84.3 9.2 6.5 2.0 17.7 55.9 | exp/chain/tdnn_7c_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 13.3 | 4459 42989 | 88.3 7.4 4.3 1.6 13.3 50.5 | exp/chain/tdnn_7c_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.filt.sys
+# %WER 8.9 | 1831 21395 | 92.2 5.1 2.8 1.0 8.9 42.4 | exp/chain/tdnn_7c_sp/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
 
-#%WER 10.2 | 3970 36721 | 90.8 5.7 3.5 1.1 10.2 42.0 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
-#%WER 12.7 | 8420 76157 | 88.6 7.2 4.2 1.3 12.7 44.3 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.filt.sys
-#%WER 15.0 | 4450 39436 | 86.5 8.6 4.9 1.5 15.0 46.4 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
-#%WER 9.9 | 3970 36721 | 91.1 5.4 3.5 1.0 9.9 41.6 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
-#%WER 12.5 | 8420 76157 | 88.8 7.0 4.2 1.3 12.5 43.9 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
-#%WER 14.8 | 4450 39436 | 86.6 7.9 5.6 1.4 14.8 46.1 | exp/chain/tdnn7m_21_context_reorth_clean_sp/decode_rt03_fsh_sw1_fg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys
+# %WER 10.2 | 3970 36721 | 90.8 5.7 3.5 1.1 10.2 42.0 | exp/chain/tdnn_7c_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 12.7 | 8420 76157 | 88.6 7.2 4.2 1.3 12.7 44.3 | exp/chain/tdnn_7c_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 15.0 | 4450 39436 | 86.5 8.6 4.9 1.5 15.0 46.4 | exp/chain/tdnn_7c_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
+# %WER 9.9 | 3970 36721 | 91.1 5.4 3.5 1.0 9.9 41.6 | exp/chain/tdnn_7c_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 12.5 | 8420 76157 | 88.8 7.0 4.2 1.3 12.5 43.9 | exp/chain/tdnn_7c_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 14.8 | 4450 39436 | 86.6 7.9 5.6 1.4 14.8 46.1 | exp/chain/tdnn_7c_sp/decode_rt03_fsh_sw1_fg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys
 
 
 set -e
