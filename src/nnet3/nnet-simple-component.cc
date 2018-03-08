@@ -2812,6 +2812,7 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   preconditioner_out_.SetAlpha(alpha);
   preconditioner_in_.SetRank(rank_in);
   preconditioner_out_.SetRank(rank_out);
+  preconditioner_in_.SetUpdatePeriod(update_period);
   preconditioner_out_.SetUpdatePeriod(update_period);
 
   if (cfl->HasUnusedValues())
