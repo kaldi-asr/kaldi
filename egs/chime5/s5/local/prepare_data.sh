@@ -20,9 +20,25 @@ if [ $# -ne 3 ] ; then
   exit 1
 fi
 
+set -e -o pipefail
+
 adir=$1
 jdir=$2
 dir=$3
+
+json_count=$(find $jdir -name "*.json" | wc -l)
+wav_count=$(find $adir -name "*.wav" | wc -l)
+
+if [ "$json_count" -eq 0 ]; then
+  echo >&2 "We expect that the directory $jdir will contain json files."
+  echo >&2 "That implies you have supplied a wrong path to the data."
+  exit 1
+fi
+if [ "$wav_count" -eq 0 ]; then
+  echo >&2 "We expect that the directory $adir will contain wav files."
+  echo >&2 "That implies you have supplied a wrong path to the data."
+  exit 1
+fi
 
 echo "$0: Converting transcription to text"
 

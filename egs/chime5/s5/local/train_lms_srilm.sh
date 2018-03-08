@@ -40,20 +40,9 @@ tgtdir=$2
 ##End of configuration
 loc=`which ngram-count`;
 if [ -z $loc ]; then
-  if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-    sdir=`pwd`/../../../tools/srilm/bin/i686-m64
-  else
-    sdir=`pwd`/../../../tools/srilm/bin/i686
-  fi
-  if [ -f $sdir/ngram-count ]; then
-    echo Using SRILM tools from $sdir
-    export PATH=$PATH:$sdir
-  else
-    echo You appear to not have SRILM tools installed, either on your path,
-    echo or installed in $sdir.  See tools/install_srilm.sh for installation
-    echo instructions.
-    exit 1
-  fi
+  echo >&2 "You appear to not have SRILM tools installed, either on your path,"
+  echo >&2 "Use the script \$KALDI_ROOT/tools/install_srilm.sh to install it."
+  exit 1
 fi
 
 # Prepare the destination directory
@@ -122,7 +111,6 @@ else
     echo train.txt contains `cat $tgtdir/train.txt | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F; $s++;}END{print "$w words, $s sentences\n";}'`
 fi
 
-set -x
 # Kaldi transcript files contain Utterance_ID as the first word; remove it
 sed -e "s/\.CH.//" -e "s/_.\-./_/" $dev_text | sort -u | \
   perl -ane 'print join(" ", @F[1..$#F]) . "\n" if @F > 1' > $tgtdir/dev.txt
@@ -247,7 +235,10 @@ if [ ! -z ${LIBLBFGS} ]; then
     ngram -lm - -order 4 -unk -map-unk "$oov_symbol" -prune-lowprobs -write-lm - |\
     sed 's/<unk>/'${oov_symbol}'/g' | gzip -c > $tgtdir/4gram.me.gz || exit 1
 else
-  echo "Skipping MaxEnt models"
+  echo >&2  "SRILM is not compiled with the support of MaxEnt models."
+  echo >&2  "You should use the script in \$KALDI_ROOT/tools/install_srilm.sh"
+  echo >&2  "which will take care of compiling the SRILM with MaxEnt support"
+  exit 1;
 fi
 
 

@@ -87,7 +87,6 @@ awk '{print $1}' $dir/iv_lexicon.txt | \
      if (!defined $seen{$w}) { print; }
    } ' $dir/word_counts > $dir/oov_counts.txt
 
-set -x
 echo "*Highest-count OOVs (including fragments) are:"
 head -n 10 $dir/oov_counts.txt
 echo "*Highest-count OOVs (excluding fragments) are:"

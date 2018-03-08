@@ -25,11 +25,9 @@ odir=$2
 array=$3
 expdir=exp/enhan/`echo $odir | awk -F '/' '{print $NF}'`_`echo $bmf | tr ' ' '_'`
 
-if [ -z $BEAMFORMIT ] ; then
-  export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt
+if ! command  -v BeamformIt &>/dev/null ; then
+  echo "Missing BeamformIt, run 'cd $KALDI_ROOT/tools/; ./extras/install_beamformit.sh; cd -;'" && exit 1
 fi
-export PATH=${PATH}:$BEAMFORMIT
-! hash BeamformIt && echo "Missing BeamformIt, run 'cd $KALDI_ROOT/tools/; ./extras/install_beamformit.sh; cd -;'" && exit 1
 
 # Set bash to 'debug' mode, it will exit on :
 # -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
@@ -75,7 +73,7 @@ for n in `seq $nj`; do
 cat << EOF > $expdir/log/beamform.$n.sh
 while read line; do
   $BEAMFORMIT/BeamformIt -s \$line -c $input_arrays \
-    --config_file `pwd`/conf/chime5.cfg \
+    --config_file `pwd`/conf/beamformit.cfg \
     --source_dir $sdir \
     --result_dir $odir
 done < $output_wavfiles.$n

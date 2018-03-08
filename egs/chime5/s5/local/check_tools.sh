@@ -17,11 +17,18 @@
 
 [ -f ./path.sh ] && . ./path.sh
 
-uconv=`command -v uconv 2>/dev/null` \
+command -v uconv &>/dev/null \
   || { echo  >&2 "uconv not found on PATH. You will have to install ICU4C"; exit 1; }
 
-srilm=`command -v ngram 2>/dev/null` \
+command -v ngram &>/dev/null \
   || { echo  >&2 "srilm not found on PATH. Please use the script $KALDI_ROOT/tools/extras/install_srilm.sh to install it"; exit 1; }
+
+if [  -z ${LIBLBFGS} ]; then
+  echo >&2  "SRILM is not compiled with the support of MaxEnt models."
+  echo >&2  "You should use the script in \$KALDI_ROOT/tools/install_srilm.sh"
+  echo >&2  "which will take care of compiling the SRILM with MaxEnt support"
+  exit 1;
+fi
 
 sox=`command -v sox 2>/dev/null` \
   || { echo  >&2 "sox not found on PATH. Please install it manually (you will need version 14.4.0 and higher)."; exit 1; }
@@ -35,10 +42,10 @@ if [ ! -z "$sox" ]; then
   fi
 fi
 
-phalign=`command -v phonetisaurus-align 2>/dev/null` \
+command -v phonetisaurus-align &>/dev/null \
   || { echo  >&2 "Phonetisaurus not found on PATH. Please use the script $KALDI_ROOT/tools/extras/install_phonetisaurus.sh to install it"; exit 1; }
 
-beamformit=`command -v BeamformIt 2>/dev/null` \
+command -v BeamformIt &>/dev/null \
   || { echo  >&2 "BeamformIt not found on PATH. Please use the script $KALDI_ROOT/tools/extras/install_beamformit.sh to install it"; exit 1; }
 
 exit  0
