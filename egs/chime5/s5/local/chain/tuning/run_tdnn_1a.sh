@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# 1e is as 1d but instead of the --proportional-shrink option, using
-#  the newly added xconfig-layer-specific 'l2-regularize' options.
-
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
@@ -11,10 +8,10 @@ set -euo pipefail
 stage=0
 nj=96
 train_set=train_worn_u100k
-test_sets="dev_worn eval_worn dev_beamformit_ref eval_beamformit_ref"
+test_sets="dev_worn dev_beamformit_ref"
 gmm=tri3
 nnet3_affix=_train_worn_u100k
-lm_suffix=_chime5_tg
+lm_suffix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
@@ -62,6 +59,7 @@ fi
 # run those things.
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
+				  --test-sets $test_sets \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
@@ -137,7 +135,7 @@ if [ $stage -le 13 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   opts="l2-regularize=0.05"
-  output_opts="l2-regularize=0.01"
+  output_opts="l2-regularize=0.01 bottleneck-dim=320"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig

@@ -31,7 +31,7 @@ audio_dir=${chime5_corpus}/audio
 train_set=train_worn_u100k
 test_sets="dev_worn dev_${enhancement}_ref"
 # use the below once you obtain the evaluation data. Also remove the comment #eval# in the lines below
-#eval#test_sets="dev_worn eval_worn dev_${enhancement}_ref eval_${enhancement}_ref"
+#eval#test_sets="dev_worn dev_${enhancement}_ref eval_${enhancement}_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -234,5 +234,5 @@ fi
 
 if [ $stage -le 18 ]; then
   # chain TDNN
-  local/chain/run_tdnn.sh --nj ${nj} --test_sets "$test_sets"
+  local/chain/run_tdnn.sh --nj ${nj} --train_set ${train_set}_cleaned --test_sets "$test_sets" --gmm tri3_cleaned --nnet3_affix _${train_set}_cleaned
 fi

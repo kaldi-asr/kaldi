@@ -10,7 +10,7 @@ set -euo pipefail
 
 stage=0
 train_set=train_worn_u100k
-test_sets="dev_worn eval_worn dev_beamformit_ref eval_beamformit_ref"
+test_sets="dev_worn dev_beamformit_ref"
 gmm=tri3
 nj=96
 
