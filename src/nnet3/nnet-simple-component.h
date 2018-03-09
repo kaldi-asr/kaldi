@@ -762,14 +762,21 @@ class LogSoftmaxComponent: public NonlinearComponent {
     orthonormal-constraint=0.0   If you set this to 1.0, then
                            the linear_params_ matrix will be (approximately)
                            constrained during training to have orthonormal rows
-                           (or columns, whichever is fewer).  You can choose a
-                           positive nonzero value different than 1.0 to have a
-                           scaled orthonormal matrix, i.e. with singular values
-                           at the selected value (e.g. 0.5, or 2.0).  This is
-                           not enforced inside the component itself; you have to
-                           call ConstrainOrthonormal() from the training code to
-                           do this.  All this component does is return the
-                           OrthonormalConstraint() value.
+                           (or columns, whichever is fewer).. it turns out the
+                           real name for this is a "semi-orthogonal" matrix.
+                           You can choose a positive nonzero value different
+                           than 1.0 to have a scaled semi-orthgonal matrix,
+                           i.e. with singular values at the selected value
+                           (e.g. 0.5, or 2.0).  This is not enforced inside the
+                           component itself; you have to call
+                           ConstrainOrthonormal() from the training code to do
+                           this.  All this component does is return the
+                           OrthonormalConstraint() value.  If you set this to a
+                           negative value, it's like saying "for any value",
+                           i.e. it will constrain the parameter matrix to be
+                           closer to "any alpha" times a semi-orthogonal matrix,
+                           without changing its overall norm.
+
 
    Options to the natural gradient (you won't normally have to set these,
    the defaults are suitable):
@@ -851,15 +858,22 @@ class NaturalGradientAffineComponent: public AffineComponent {
                            Dimension is output-dim by (input-dim + 1), last
                            column is interpreted as the bias.
     orthonormal-constraint=0.0   If you set this to 1.0, then
-                           this matrix will be (approximately) constrained during
-                           training to have orthonormal rows (or columns, whichever
-                           is fewer).  You can choose a positive nonzero value different
-                           than 1.0 to have a scaled orthonormal matrix, i.e. with singular
-                           values at the selected value (e.g. 0.5, or 2.0).
-                           This is not enforced inside the component
-                           itself; you have to call ConstrainOrthonormal()
-                           from the training code to do this.  All this component
-                           does is return the OrthonormalConstraint() value.
+                           the linear_params_ matrix will be (approximately)
+                           constrained during training to have orthonormal rows
+                           (or columns, whichever is fewer).. it turns out the
+                           real name for this is a "semi-orthogonal" matrix.
+                           You can choose a positive nonzero value different
+                           than 1.0 to have a scaled semi-orthgonal matrix,
+                           i.e. with singular values at the selected value
+                           (e.g. 0.5, or 2.0).  This is not enforced inside the
+                           component itself; you have to call
+                           ConstrainOrthonormal() from the training code to do
+                           this.  All this component does is return the
+                           OrthonormalConstraint() value.  If you set this to a
+                           negative value, it's like saying "for any value",
+                           i.e. it will constrain the parameter matrix to be
+                           closer to "any alpha" times a semi-orthogonal matrix,
+                           without changing its overall norm.
 
    Options to the natural gradient (you won't normally have to set these,
    the defaults are suitable):
