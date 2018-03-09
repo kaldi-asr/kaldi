@@ -455,7 +455,18 @@ void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
    This function, to be called after processing every minibatch, is responsible
    for enforcing the orthogonality constraint for any components of type
    LinearComponent or inheriting from AffineComponent that have the
-   "orthonormal-constraint" value set to nonzero.
+   "orthonormal-constraint" value set to a nonzero value.
+
+   Technically what we are doing is constraining the parameter matrix M to be a
+   "semi-orthogonal" matrix times a constant alpha.  That is: if num-rows >
+   num-cols, this amounts to asserting that M M^T == alpha^2 I; otherwise, that
+   M^T M == alpha^2 I.
+
+   If, for a particular component, orthonormal-constraint > 0.0, then that value
+   becomes the "alpha" mentioned above.  If orthonormal-constraint == 0.0, then
+   nothing is done.  If orthonormal-constraint < 0.0, then it's like letting alpha
+   "float", i.e. we try to make M closer to (any constant alpha) times a
+   semi-orthogonal matrix.
 
    In order to make it efficient on GPU, it doesn't make it completely orthonormal,
    it just makes it closer to being orthonormal (times the 'orthonormal_constraint'
