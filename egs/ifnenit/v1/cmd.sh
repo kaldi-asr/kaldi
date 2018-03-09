@@ -6,8 +6,7 @@
 # the number of cpus on your machine.
 
 
-train_cmd="queue.pl -l arch=*64 --num-threads 8 -l gpu=1"
-train_cmd_without_gpu="queue.pl -l arch=*64 --num-threads 8"
+train_cmd="queue.pl"
 decode_cmd="queue.pl --mem 4G"
 # train_cmd="run.pl"
 # decode_cmd="run.pl"

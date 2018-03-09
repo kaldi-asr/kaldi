@@ -14,18 +14,18 @@ fi
 oldLC=$LC_ALL
 export LC_ALL="en_US.utf8"
 
-scoreDir=$1
-wordsTxt=$2
-refWordTrn=$3
-refPhoneTrn=$4
+score_dir=$1
+words_txt=$2
+ref_word_trn=$3
+ref_phone_trn=$4
 
-for traFile in $(ls $scoreDir/*.tra)
+for traFile in $(ls $score_dir/*.tra)
 do
-  ./utils/int2sym.pl -f 2- $wordsTxt $traFile | awk '{print $0" ("$1")"}' | cut -d' ' -f2- >  $traFile.trn
+  ./utils/int2sym.pl -f 2- $words_txt $traFile | awk '{print $0" ("$1")"}' | cut -d' ' -f2- >  $traFile.trn
   cat $traFile.trn | ./local/word2char-trn.sh > $traFile.clevel.trn
-  ../../tools/sctk/bin/sclite -r $refWordTrn trn -h $traFile.trn trn -o sum pralign -i rm -s 
-  if [ -n "$refPhoneTrn" ]; then
-     ../../tools/sctk/bin/sclite -r $refPhoneTrn trn -h $traFile.clevel.trn trn -o sum pralign -i rm -s 
+  ../../tools/sctk/bin/sclite -r $ref_word_trn trn -h $traFile.trn trn -o sum pralign -i rm -s 
+  if [ -n "$ref_phone_trn" ]; then
+     ../../tools/sctk/bin/sclite -r $ref_phone_trn trn -h $traFile.clevel.trn trn -o sum pralign -i rm -s 
   fi
 done
 

@@ -10,12 +10,6 @@ exp_dir=exp
            ## This relates to the queue.
 . utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
 
-if [ $stage -le 0 ]; then
-  # data preparation
-  local/ienit-initialize.sh
-  local/data_prep.sh
-fi
-
 
 numSilStates=4
 numStates=8
@@ -24,6 +18,28 @@ num_gauss=10000
 numLeavesTri=500
 numGaussTri=20000
 
+
+
+if [ $stage -le 0 ]; then
+  # data preparation
+  echo "data preparation"
+  local/ienit_initialize.sh
+  local/prepare_data.sh
+fi
+
+if [ $stage -le 1 ]; then
+  # dict folder preparation
+  echo "dict folder preparation"
+  local/prepare_dict.sh
+  utils/prepare_lang.sh --num-sil-states 3 --num-nonsil-states 4 --position-dependent-phones false data/local/dict "<unk>" data/local/lang data/lang_nolm
+fi
+
+if [ $stage -le 2 ]; then
+  # LM preparation
+  echo "LM preparation"
+  cp -R $data_dir/lang_nolm -T $data_dir/lang
+  local/prepare_lm.sh --ngram 1 $data_dir/train/text $data_dir/lang || exit 1;
+fi
 
 if [ $stage -le 4 ]; then
   steps/train_mono.sh --nj $nj \

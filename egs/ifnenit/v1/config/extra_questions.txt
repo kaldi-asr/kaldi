@@ -1,50 +1,60 @@
-0A 1A 2A 3A 4A 5A 6A 7A 8A 9A
-aaA amA aeA ahA
-aaE amE aeE ahE
-aaE amE aeE ahE aaA amA aeA ahA
-alA eeA yaA
-alA eeA yaA alE eeE yaE
-alE eeE yaE
-ayA ghA
-ayB ghB
-ayB ghB hhA
-ayE ghE
-ayM ghM
-ayM baB baM daA daE deB dhE faM haM heB jaM kaB kaM keB keM khB laE laM maA maB maM naB naM raA raE saM seB seM shB shM taM toE toM waA waE yaB yaE yaM zaE zaM
-daA dhA
-daA dhA daE dhE
-daE dhE
-faB kaB faA kaA
-faM kaM faE kaE
-heB heM
-jaA haA khA
-jaB haB khB
-jaB haB khB jaM haM khM
-jaE haE khE
-jaE haE khE jaA haA khA
-jaM haM khM
-keB keM
-laB keA
-laB naB
-laB laM
-laM keE
-maA maE
-maB maA
-maM maB
-maM maE
-naE naA laE laA
-raA zaA
-raE zaE
-saM deM saB deB
-seB seA naB taB taA baB baA thB yaB thA shB shA
-seB seM naB naM taB taM baB baM thB thM yaB yaM shB shM
-seE seA shE shA saE saA deE deA
-seM seE naM taM taE baM baE thM thE yaM shM shE
-teA heA
+seMllL seM seE naMllL naM taMllL taM taE baM baMllL baE thM thE yaM yaMllL shMllL shM shE
+seBllL seB seA naB naBllL taB taA baB baBllL baA thB yaB yaBllL thA shBllL shB shA
 teE heE
-toB dzB saB deB toA dzA saA deA
-toM dzM saM deM toE dzE saE deE
-toM dzM toB dzB
-waA whA
-waE whE
-waE whE raE zaE waA whA raA zaA
+teA heA
+alE eeE yaEllL yaE
+alA eeA yaA
+laMllL laM keE
+laB keA
+ayB ghB hhA
+ayM ayMllL ghM
+ayE ghE
+ayA ghA
+aaE amE aeE ahE
+aaA amA aeA ahA
+toMllL toM dzM saMllL saM deM toEllL toE dzE saE deE
+toB dzB saB deBllL deB toA dzA saA deA
+raEllL raE zaEllL zaE
+raAllL raA zaA
+waEllL waE whE
+waA waAllL whA
+faMllL faM kaMllL kaM faE kaE
+faB kaB kaBllL faA kaA
+jaB haB khBllL khB
+jaM jaMllL haM haMllL khM
+jaE haE khE
+jaA haA khA
+daA daAllL dhA
+daE daEllL dhEllL dhE
+waEllL waE whE raEllL raE zaEllL zaE waAllL waA whA raAllL raA zaA
+waEllL waE whE raEllL raE zaEllL zaE waAllL waA whA raAllL raA zaA
+naE naA laEllL laE laA
+seBllL seB seMllL seM naBllL naB naMllL naM taB taMllL taM baB baBllL baMllL baM thB thM yaB yaBllL yaM yaMllL shBllL shB shMllL shM
+aaE amE aeE ahE aaA amA aeA ahA
+alA eeA yaA alE eeE yaEllL yaE
+jaB haB khBllL khB jaM jaMllL haMllL haM khM
+jaE haE khE jaA haA khA
+ayB ghB
+ayM ayMllL ghM
+ayE ghE
+ayA ghA
+daAllL daA dhA daEllL daE dhEllL dhE
+saMllL saM deM saB deBllL deB
+toMllL toM dzM toB dzB
+seE seA shE shA saE saA deE deA
+0A 1A 2A 6A 7A 8A 9A
+0A 1A 2A 6A 7A 8A 9A
+aaElaB aaElaM
+aaElaB aaElaM
+haMlaB haMmaMlaB haMllLnaB haMnaB
+haMlaB haMmaMlaB haMllLnaB haMnaB
+heBllL heB heM
+keBllL keB keMllL keM
+keBllL keB
+keMllL keM
+maMllL maM maBllL maB
+maMllL maM maE
+maBllL maB maAllL maA
+maAllL maA maE
+ayMllL baBllL baMllL daAllL daEllL deBllL dhEllL faMllL haMllL haMllLnaB heBllL jaMllL kaBllL kaMllL keBllL keMllL khBllL laEllL laMllL maAllL maBllL maMllL naBllL naMllL raAllL raEllL saMllL seBllL seMllL shBllL shMllL taMllL toEllL toMllL waAllL waEllL yaBllL yaEllL yaMllL zaEllL zaMllL
+ayMllL baBllL baMllL daAllL daEllL deBllL dhEllL faMllL haMllL haMllLnaB heBllL jaMllL kaBllL kaMllL keBllL keMllL khBllL laEllL laMllL maAllL maBllL maMllL naBllL naMllL raAllL raEllL saMllL seBllL seMllL shBllL shMllL taMllL toEllL toMllL waAllL waEllL yaBllL yaEllL yaMllL zaEllL zaMllL

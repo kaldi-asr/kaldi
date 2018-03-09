@@ -100,7 +100,7 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  local/chain/align_nnet3_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
+  steps/nnet3/align_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
     data/$lang_test $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
