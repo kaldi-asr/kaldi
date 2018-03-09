@@ -95,13 +95,14 @@ fi
 
 if [ $stage -le 5 ]; then
   # remove possibly bad sessions (P11_S03, P52_S19, P53_S24, P54_S24)
+  # see http://spandh.dcs.shef.ac.uk/chime_challenge/data.html for more details
   utils/copy_data_dir.sh data/train_worn data/train_worn_org # back up
   grep -v -e "^P11_S03" -e "^P52_S19" -e "^P53_S24" -e "^P54_S24" data/train_worn_org/text > data/train_worn/text
   utils/fix_data_dir.sh data/train_worn
 
   # combine mix array and worn mics
   # randomly extract first 100k utterances from all mics
-  # If you want to include more training data, you can increase the number of array mic utterances
+  # if you want to include more training data, you can increase the number of array mic utterances
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u04 data/train_u05 data/train_u06
   utils/subset_data_dir.sh data/train_uall 100000 data/train_u100k
   utils/combine_data.sh data/${train_set} data/train_worn data/train_u100k
@@ -111,7 +112,7 @@ if [ $stage -le 5 ]; then
   #eval#for dset in train dev eval; do
   for dset in train dev; do
     utils/copy_data_dir.sh data/${dset}_worn data/${dset}_worn_stereo
-    grep "_L-" data/${dset}_worn_stereo/text > data/${dset}_worn/text
+    grep "\.L-" data/${dset}_worn_stereo/text > data/${dset}_worn/text
     utils/fix_data_dir.sh data/${dset}_worn
   done
 fi

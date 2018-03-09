@@ -54,7 +54,7 @@ echo "$0: Creating datadir $dir for type=\"$mictype\""
 
 if [ $mictype == "worn" ]; then
   # convert the filenames to wav.scp format, use the basename of the file
-  # as a the wav.scp key, add _L and _R for left and right channel
+  # as a the wav.scp key, add .L and .R for left and right channel
   # i.e. each file will have two entries (left and right channel)
   find $adir -name  "S[0-9]*_P[0-9]*.wav" | \
     perl -ne '{
@@ -64,17 +64,17 @@ if [ $mictype == "worn" ]; then
       @F = split "/", $path;
       ($f = $F[@F-1]) =~ s/.wav//;
       @F = split "_", $f;
-      print "${F[1]}_${F[0]}_L sox $path -t wav - remix 1 |\n";
-      print "${F[1]}_${F[0]}_R sox $path -t wav - remix 2 |\n";
+      print "${F[1]}_${F[0]}.L sox $path -t wav - remix 1 |\n";
+      print "${F[1]}_${F[0]}.R sox $path -t wav - remix 2 |\n";
     }' | sort > $dir/wav.scp
 
   # generate the transcripts for both left and right channel
   # from the original transcript in the form
   # P09_S03-0006072-0006147 gimme the baker
   # create left and right channel transcript
-  # P09_S03_L-0006072-0006147 gimme the baker
-  # P09_S03_R-0006072-0006147 gimme the baker
-  sed -n 's/  *$//; h; s/-/_L-/p; g; s/-/_R-/p' $dir/text.orig | sort > $dir/text
+  # P09_S03.L-0006072-0006147 gimme the baker
+  # P09_S03.R-0006072-0006147 gimme the baker
+  sed -n 's/  *$//; h; s/-/\.L-/p; g; s/-/\.R-/p' $dir/text.orig | sort > $dir/text
 elif [ $mictype == "ref" ]; then
   # fixed reference array
 
@@ -98,10 +98,10 @@ else
   # convert the transcripts from
   # P09_S03-0006072-0006147 gimme the baker
   # to the per-channel transcripts
-  # P09_S03_U01.CH1-0006072-0006147 gimme the baker
-  # P09_S03_U01.CH2-0006072-0006147 gimme the baker
-  # P09_S03_U01.CH3-0006072-0006147 gimme the baker
-  # P09_S03_U01.CH4-0006072-0006147 gimme the baker
+  # P09_S03_U01_NOLOCATION.CH1-0006072-0006147 gimme the baker
+  # P09_S03_U01_NOLOCATION.CH2-0006072-0006147 gimme the baker
+  # P09_S03_U01_NOLOCATION.CH3-0006072-0006147 gimme the baker
+  # P09_S03_U01_NOLOCATION.CH4-0006072-0006147 gimme the baker
   perl -ne '$l=$_;
     for($i=1; $i<=4; $i++) {
       ($x=$l)=~ s/-/.CH\Q$i\E-/;
@@ -113,15 +113,18 @@ $cleanup && rm -f $dir/text.* $dir/wav.scp.* $dir/wav.flist
 # Prepare 'segments', 'utt2spk', 'spk2utt'
 if [ $mictype == "worn" ]; then
   cut -d" " -f 1 $dir/text | \
-    awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' \
+    awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
+    sed -e "s/_[A-Z]*\././2" \
     > $dir/segments
 elif [ $mictype == "ref" ]; then
   cut -d" " -f 1 $dir/text | \
     awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
+    sed -e "s/_[A-Z]*\././2" |\
     sed -e "s/ P.._/ /" > $dir/segments
 else
   cut -d" " -f 1 $dir/text | \
     awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
+    sed -e "s/_[A-Z]*\././2" |\
     sed -e 's/ P.._/ /' > $dir/segments
 fi
 cut -f 1 -d ' ' $dir/segments | \

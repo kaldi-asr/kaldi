@@ -50,6 +50,12 @@ if __name__ == '__main__':
             else:
                 mictype = args.mictype.upper() # convert from u01 to U01
 
+            # add location tag for scoring (only for dev and eval sets)
+            if 'location' in x.keys():
+                location = x['location'].upper()
+            else:
+                location = 'NOLOCATION'
+
             start_time = x['start_time'][mictype]
             end_time = x['end_time'][mictype]
         
@@ -69,10 +75,10 @@ if __name__ == '__main__':
             start_time = hms_to_seconds(start_time)
             end_time = hms_to_seconds(end_time)
 
-            if args.mictype == 'worn':
-                uttid = speaker_id + '_' + session_id + '-' + start_time + '-' + end_time
-            else:
-                uttid = speaker_id + '_' + session_id + '_' + mictype + '-' + start_time + '-' + end_time
+            uttid = speaker_id + '_' + session_id
+            if not args.mictype == 'worn':
+                uttid += '_' + mictype
+            uttid += '_' + location + '-' + start_time + '-' + end_time
 
             if end_time > start_time:
                 sys.stdout.buffer.write((uttid + ' ' + words + '\n').encode("utf-8"))
