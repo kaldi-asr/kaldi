@@ -56,11 +56,11 @@ if [ $stage -le 2 ]; then
   local/prepare_dict.sh
 
   utils/prepare_lang.sh \
-    data/local/dict_nosp "<unk>" data/local/lang_nosp data/lang_nosp
+    data/local/dict "<unk>" data/local/lang data/lang
 
   local/train_lms_srilm.sh \
     --train-text data/train_worn/text --dev-text data/dev_worn/text \
-    --oov-symbol "<unk>" --words-file data/lang_nosp/words.txt \
+    --oov-symbol "<unk>" --words-file data/lang/words.txt \
     data/ data/srilm
 fi
 
@@ -68,7 +68,7 @@ LM=data/srilm/best_3gram.gz
 if [ $stage -le 3 ]; then
   # Compiles G for chime5 trigram LM
   utils/format_lm.sh \
-		data/lang_nosp $LM data/local/dict_nosp/lexicon.txt data/lang_nosp_test
+		data/lang $LM data/local/dict/lexicon.txt data/lang
 
 fi
 
@@ -148,59 +148,34 @@ fi
 if [ $stage -le 9 ]; then
   # Starting basic training on MFCC features
   steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
-		      data/${train_set}_30kshort data/lang_nosp exp/mono
+		      data/${train_set}_30kshort data/lang exp/mono
 fi
 
 if [ $stage -le 10 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-		    data/${train_set} data/lang_nosp exp/mono exp/mono_ali
+		    data/${train_set} data/lang exp/mono exp/mono_ali
 
   steps/train_deltas.sh --cmd "$train_cmd" \
-			2500 30000 data/${train_set} data/lang_nosp exp/mono_ali exp/tri1
+			2500 30000 data/${train_set} data/lang exp/mono_ali exp/tri1
 fi
 
 if [ $stage -le 11 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-		    data/${train_set} data/lang_nosp exp/tri1 exp/tri1_ali
+		    data/${train_set} data/lang exp/tri1 exp/tri1_ali
 
   steps/train_lda_mllt.sh --cmd "$train_cmd" \
-			  4000 50000 data/${train_set} data/lang_nosp exp/tri1_ali exp/tri2
+			  4000 50000 data/${train_set} data/lang exp/tri1_ali exp/tri2
 fi
 
 if [ $stage -le 12 ]; then
-  utils/mkgraph.sh data/lang_nosp_test exp/tri2 exp/tri2/graph_nosp
+  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
   for dset in ${test_sets}; do
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-		    exp/tri2/graph_nosp data/${dset} exp/tri2/decode_${dset}_nosp
+		    exp/tri2/graph data/${dset} exp/tri2/decode_${dset}
   done
 fi
 
 if [ $stage -le 13 ]; then
-  # create a more refined lexicon (include pronunciation probabilities)
-  steps/get_prons.sh --cmd "$train_cmd" \
-		data/${train_set} data/lang_nosp exp/tri2
-
-  utils/dict_dir_add_pronprobs.sh --max-normalize true \
-    data/local/dict_nosp exp/tri2/pron_counts_nowb.txt \
-    exp/tri2/sil_counts_nowb.txt \
-    exp/tri2/pron_bigram_counts_nowb.txt data/local/dict
-
-  # add explicit phone loop for <unk> model
-  utils/lang/make_unk_lm.sh --use-pocolm false \
-    data/local/dict exp/make_unk
-
-  # and compile the lang directory
-  utils/prepare_lang.sh \
-    --unk-fst exp/make_unk/unk_fst.txt \
-    --phone-symbol-table data/lang_nosp/phones.txt \
-    data/local/dict "<unk>" data/local/lang data/lang
-
-  # and convert the LM in arpa to G.fst
-  utils/format_lm.sh \
-    data/lang $LM data/local/dict/lexicon.txt data/lang
-fi
-
-if [ $stage -le 14 ]; then
   utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
   for dset in ${test_sets}; do
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
@@ -209,7 +184,7 @@ if [ $stage -le 14 ]; then
   wait
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 14 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
 
@@ -217,7 +192,7 @@ if [ $stage -le 15 ]; then
 		     5000 100000 data/${train_set} data/lang exp/tri2_ali exp/tri3
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 15 ]; then
   utils/mkgraph.sh data/lang exp/tri3 exp/tri3/graph
   for dset in ${test_sets}; do
     steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
@@ -226,14 +201,14 @@ if [ $stage -le 16 ]; then
   wait
 fi
 
-if [ $stage -le 17 ]; then
+if [ $stage -le 16 ]; then
   # The following script cleans the data and produces cleaned data
   steps/cleanup/clean_and_segment_data.sh --nj ${nj} --cmd "$train_cmd" \
     --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
     data/${train_set} data/lang exp/tri3 exp/tri3_cleaned data/${train_set}_cleaned
 fi
 
-if [ $stage -le 18 ]; then
+if [ $stage -le 17 ]; then
   # chain TDNN
   local/chain/run_tdnn.sh --nj ${nj} --train_set ${train_set}_cleaned --test_sets "$test_sets" --gmm tri3_cleaned --nnet3_affix _${train_set}_cleaned
 fi

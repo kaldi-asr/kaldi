@@ -24,7 +24,7 @@ set -o nounset                              # Treat unset variables as an error
 # check existing directories
 [ $# != 0 ] && echo "Usage: $0" && exit 1;
 
-dir=data/local/dict_nosp
+dir=data/local/dict
 
 mkdir -p $dir
 echo "$0: Getting CMU dictionary"
