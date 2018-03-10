@@ -3,7 +3,11 @@
 import re
 import sys
 
-# tr ' ' ' ' | tr ' ' ' ' | tr '×' 'x' | tr '،' ',' | tr '؛' ':' | tr '؟' '?' | tr 'ـ' '_' | tr '–' '-' | tr '‘' "'" | 
+# This script is originally from qatip project (http://qatsdemo.cloudapp.net/qatip/demo/)
+# of Qatar Computing Research Institute (http://qcri.qa/)
+
+# Repalce Arabic Punctuations and Brackets instead of latin ones.  
+
 for line in sys.stdin:
     sys.stdout.write(
       line
@@ -13,7 +17,12 @@ for line in sys.stdin:
 		     .replace("،", ",")
 		     .replace("؛", ":")
 		     .replace("؟", "?")
-		     #.replace("ـ", "uscore")
 		     .replace("–", "-")
 		     .replace("‘", "'")
+			 .replace("[", "(")
+		     .replace("{", "(")
+		     .replace("﴾", "(")
+		     .replace("]", ")")
+		     .replace("}", ")")
+		     .replace("}", "﴿")
       )

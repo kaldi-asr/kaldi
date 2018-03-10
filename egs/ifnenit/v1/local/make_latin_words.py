@@ -1,5 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+
+# This script is originally from qatip project (http://qatsdemo.cloudapp.net/qatip/demo/)
+# of Qatar Computing Research Institute (http://qcri.qa/)
+
+# Convert unicode words to position dependent latin form.
+# This script make creating lexicon very easy. 
+
 import os, sys
 
 map = {

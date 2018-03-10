@@ -2,8 +2,12 @@
 . ./cmd.sh
 . ./path.sh
 
-# To be run from one directory above this script.
+# This script is originally from qatip project (http://qatsdemo.cloudapp.net/qatip/demo/)
+# of Qatar Computing Research Institute (http://qcri.qa/)
 
+# To be run from one directory above this script.
+# Prepare the dict folder. 
+# Creating lexicon.txt, phonemeset, nonsilence_phones.txt, extra_questions.txt and silence_phones.txt.
 
 # oldLC should be some utf8.*
 oldLC="en_US.utf8"
@@ -16,8 +20,8 @@ fi
 ## Determine phoneme set
 mkdir -p data/local/lm
 cat data/train/text | cut -d' ' -f2- | tr ' ' "\n" | sort -u > data/local/lm/train.vocab
-cat data/local/lm/train.vocab | python3 local/get_atb_pronun.py > data/train/words2latin
-cat data/train/text | cut -d' ' -f2- | python3 local/rollout_pronuns.py data/train/words2latin | cut -d' ' -f2- | tr ' ' "\n" | sort | uniq -c | awk '{if ($1 > 50 || length($2) == 3) print $2}' | fgrep -v '~A' > data/local/phonemeset
+cat data/local/lm/train.vocab | python3 local/make_latin_words.py > data/train/words2latin
+cat data/train/text | cut -d' ' -f2- | python3 local/transcript_to_latin.py data/train/words2latin | cut -d' ' -f2- | tr ' ' "\n" | sort | uniq -c | awk '{if ($1 > 50 || length($2) == 3) print $2}' | fgrep -v '~A' > data/local/phonemeset
 
 ## Lexicon and word/phoneme lists
 mkdir -p data/lang/

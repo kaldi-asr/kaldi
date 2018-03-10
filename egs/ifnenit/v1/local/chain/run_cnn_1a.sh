@@ -23,7 +23,7 @@ xent_regularize=0.1
 frame_subsampling_factor=4
 alignment_subsampling_factor=1
 # training chunk-options
-chunk_width="-1"
+chunk_width=-1
 num_leaves=500
 # we don't need extra left/right context for TDNN systems.
 chunk_left_context=0

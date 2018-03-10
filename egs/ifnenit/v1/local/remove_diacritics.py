@@ -1,3 +1,9 @@
+# This script is originally from qatip project (http://qatsdemo.cloudapp.net/qatip/demo/)
+# of Qatar Computing Research Institute (http://qcri.qa/)
+
+# Convert unicode transcripts to Normal Form D (NFD).
+# Delete Mark,Nonspacing unicode characters.
+
 import unicodedata
 import sys
 def strip_accents(s):

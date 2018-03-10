@@ -3,13 +3,7 @@
 . ./path.sh
 
 # To be run from one directory above this script.
-
-# Note: when creating your own data preparation scripts, it's a good idea
-# to make sure that the speaker id (if present) is a prefix of the utterance
-# id, that the output scp file is sorted on utterance id, and that the 
-# transcription file is exactly the same length as the scp file and is also
-# sorted on utterance id (missing transcriptions should be removed from the
-# scp file using e.g. scripts/filter_scp.pl)
+# Creat text, utt2spk, spk2utt, images.scp, and feats.scp for test and train.
 
 # oldLC should be some utf8.*
 oldLC=en_US.utf8
@@ -40,7 +34,7 @@ do
   # done
   cat tmp.unsorted | sort -k1 > tmp.sorted
   cat tmp.sorted | cut -d' ' -f1 > data/$set/uttids
-  cat tmp.sorted | cut -d' ' -f2- | python3 local/remove_diacritics.py | python3 local/replace_arabic_punctuation.py | python3 local/replace_brackets.py | tr '+' '\\' | tr '=' '\\' | sed 's/\xA0/X/g' | sed 's/\x00\xA0/X/g' | sed 's/\xC2\xA0/X/g' | sed 's/\s\+/ /g' | sed 's/ \+$//' | sed 's/^ \+$//' | paste -d' ' data/$set/uttids - > data/$set/text
+  cat tmp.sorted | cut -d' ' -f2- | python3 local/remove_diacritics.py | python3 local/replace_arabic_punctuation.py | tr '+' '\\' | tr '=' '\\' | sed 's/\xA0/X/g' | sed 's/\x00\xA0/X/g' | sed 's/\xC2\xA0/X/g' | sed 's/\s\+/ /g' | sed 's/ \+$//' | sed 's/^ \+$//' | paste -d' ' data/$set/uttids - > data/$set/text
   rm tmp.unsorted tmp.sorted
 
   local/process_data.py $database data/$set --dataset $set --model_type word || exit 1

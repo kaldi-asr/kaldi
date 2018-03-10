@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 import os, sys
 
+# This script is originally from qatip project (http://qatsdemo.cloudapp.net/qatip/demo/)
+# of Qatar Computing Research Institute (http://qcri.qa/)
+
 # This script adds ligatures as pronunciation variants. We allow only one ligature
 # per pronunciation but apply all possible rules
 
