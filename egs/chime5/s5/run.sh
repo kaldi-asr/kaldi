@@ -235,5 +235,5 @@ fi
 
 if [ $stage -le 18 ]; then
   # chain TDNN
-  local/chain/run_tdnn.sh --nj ${nj} --train_set ${train_set}_cleaned --test_sets "$test_sets" --gmm tri3_cleaned --nnet3_affix _${train_set}_cleaned
+  local/chain/run_tdnn.sh --nj ${nj} --train-set ${train_set}_cleaned --test-sets "$test_sets" --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned
 fi
