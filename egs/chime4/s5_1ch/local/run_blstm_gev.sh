@@ -35,8 +35,6 @@ set -o pipefail
 miniconda_dir=$HOME/miniconda3/
 if [ ! -d $miniconda_dir ]; then
     echo "$miniconda_dir does not exist. Please run '../../../tools/extras/install_miniconda.sh' and '../../../tools/extras/install_chainer.sh';"
-    echo "For chainer install, you have to use cudnn <= 5.1."
-    echo "In the CLSP cluster, $HOME/miniconda3/bin/python -m pip uninstall chainer; . /home/asubraman/.bash_profile_cuda_path; $HOME/miniconda3/bin/python -m pip install chainer==1.16.0 -vvvv --no-cache" && exit 1;
 fi
 
 # check if chainer is installed
@@ -51,8 +49,6 @@ if [ "$result" == "1" ]; then
     echo "Chainer is installed"
 else
     echo "Chainer is not installed. Please run ../../../tools/extras/install_chainer.sh"
-    echo "For chainer install, you have to use cudnn <= 5.1."
-    echo "In the CLSP cluster, $HOME/miniconda3/bin/python -m pip uninstall chainer; . /home/asubraman/.bash_profile_cuda_path; $HOME/miniconda3/bin/python -m pip install chainer==1.16.0 -vvvv --no-cache" && exit 1;   
 fi
 
 if [ ! -d local/nn-gev ]; then
@@ -71,10 +67,10 @@ fi
 
 mkdir -p $odir
 set +e
-nIsolatedDirs=`ls local/nn-gev/data/audio/16kHz/isolated/ 2>/dev/null | wc -l`
-nIsolatedExtDirs=`ls local/nn-gev/data/audio/16kHz/isolated_ext/ 2>/dev/null | wc -l`
+n_isolated_dirs=`ls local/nn-gev/data/audio/16kHz/isolated/ 2>/dev/null | wc -l`
+n_isolated_ext_dirs=`ls local/nn-gev/data/audio/16kHz/isolated_ext/ 2>/dev/null | wc -l`
 set -e
-if [[ "$nIsolatedDirs" -ne 12 || "$nIsolatedExtDirs" -ne 12 ]];then
+if [[ "$n_isolated_dirs" -ne 12 || "$n_isolated_ext_dirs" -ne 12 ]];then
    echo "generating simulation data and storing in local/nn-gev/data"
    $cmd $odir/simulation.log matlab -nodisplay -nosplash -r "addpath('local'); CHiME3_simulate_data_patched_parallel(1,$nj,'$sdir','$chime3_dir');exit"
 else
