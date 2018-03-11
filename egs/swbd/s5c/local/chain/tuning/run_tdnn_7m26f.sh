@@ -1,9 +1,13 @@
 #!/bin/bash
 
+
+# 7m26f is as 7m25e but an even smaller model: changing all 1280's to 1024's
+# and 1024's to 768's, and removing one layer (tdnn11*).
+
 # 7m26e is as 7m25d but with half the learning rate and using
 #  the same type of linear layer for the output that we used for the other layers
 #  (with orthonormal-constraint=-1.0 and l2), with batchnorm to control
-#  its output's magnitude.  Also using 6 instead of 8 epochs.
+#  its output's magnitude.
 
 # 7m26d is as 7m25c but an even smaller model, changing most of the 1280's to
 # 1024's.
@@ -414,7 +418,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=7m26e
+affix=7m26f
 suffix=
 $speed_perturb && suffix=_sp
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
@@ -516,43 +520,40 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=1024
+  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=768
   linear-component name=tdnn2l0 dim=256 $linear_opts input=Append(-1,0)
   linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=1024
+  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=768
   linear-component name=tdnn3l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=1024 input=Append(0,1)
+  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=768 input=Append(0,1)
   linear-component name=tdnn4l0 dim=256 $linear_opts input=Append(-1,0)
   linear-component name=tdnn4l dim=256 $linear_opts input=Append(0,1)
-  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=1024
+  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=768
   linear-component name=tdnn5l dim=256 $linear_opts
-  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=1024 input=Append(0, tdnn3l)
+  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=768 input=Append(0, tdnn3l)
   linear-component name=tdnn6l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1280
+  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1024
   linear-component name=tdnn7l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn7l dim=256 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1024
+  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=768
   linear-component name=tdnn8l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn8l dim=256 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1280
+  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1024
   linear-component name=tdnn9l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=1024
+  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=768
   linear-component name=tdnn10l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn10l dim=256 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1280
-  linear-component name=tdnn11l0 dim=256 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn9l,tdnn7l) dim=1024
+  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1024
   linear-component name=prefinal-l dim=256 $linear_opts
 
-  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1280
+  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1024
   linear-component name=prefinal-chain-l dim=256 $linear_opts
   batchnorm-component name=prefinal-chain-batchnorm
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1280
+  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1024
   linear-component name=prefinal-xent-l dim=256 $linear_opts
   batchnorm-component name=prefinal-xent-batchnorm
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
