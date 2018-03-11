@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import os
@@ -45,7 +45,7 @@ def get_scaled_image(im):
     im = misc.imresize(im, (nx, ny))
     padding_x = 0
     padding_y = 0
-    for i in range(0,23):
+    for i in range(0,30):
         im_x = im.shape[1]
         im_y = im.shape[0]
         if im_x >= (28 + (20*i)) and im_x <= (28 + (20*(i+1))):
@@ -53,12 +53,8 @@ def get_scaled_image(im):
            padding_y = im_y
         else:
            continue
-    # padding_x = max(5,int((args.padding/100)*im.shape[1]))
-    # padding_y = im.shape[0]
     im_pad = np.concatenate((255 * np.ones((padding_y, math.ceil(1.0 * padding_x / 2)) , dtype=int), im), axis=1)
     im_pad1 = np.concatenate((im_pad,255 * np.ones((padding_y, int(1.0 * padding_x / 2)), dtype=int)), axis=1)
-    # im_pad = np.concatenate((255 * np.ones((padding_y,5) , dtype=int), im), axis=1)
-    # im_pad1 = np.concatenate((im_pad,255 * np.ones((padding_y,5), dtype=int)), axis=1)
     return im_pad1
 
 ### main ###

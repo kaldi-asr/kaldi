@@ -6,7 +6,6 @@
 # of Qatar Computing Research Institute (http://qcri.qa/)
 
 data_dir="/export/b01/babak/IFN-ENIT/ifnenit_v2.0p1e"
-
 export LC_ALL="en_US.utf8"
 
 # Fetch transcriptions for Test and Train.
@@ -33,3 +32,4 @@ done
 rm tmp.flist tmp.uttids
 
 export LC_ALL=C
+

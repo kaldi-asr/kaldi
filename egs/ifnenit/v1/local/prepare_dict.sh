@@ -9,9 +9,7 @@
 # Prepare the dict folder. 
 # Creating lexicon.txt, phonemeset, nonsilence_phones.txt, extra_questions.txt and silence_phones.txt.
 
-# oldLC should be some utf8.*
-oldLC="en_US.utf8"
-export LC_ALL=$oldLC
+export LC_ALL="en_US.utf8"
 
 if [ -d "data/local" ]; then
   rm -r data/local
@@ -49,7 +47,3 @@ cat data/local/dict/lexicon.txt| cut -d' ' -f2- | tr ' ' "\n" | sort -u > data/l
 cat data/local/phonemeset | fgrep -v 'rare' | fgrep -v '.A' | fgrep -v ',A' | fgrep -v 'conn' | fgrep -v 'sil' | sort > data/local/dict/nonsilence_phones.txt
 
 export LC_ALL=C
-
-
-
-

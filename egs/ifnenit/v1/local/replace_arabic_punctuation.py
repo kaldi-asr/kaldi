@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import re
 import sys
@@ -19,10 +19,10 @@ for line in sys.stdin:
 		     .replace("؟", "?")
 		     .replace("–", "-")
 		     .replace("‘", "'")
-			 .replace("[", "(")
+	 	     .replace("[", "(")
 		     .replace("{", "(")
 		     .replace("﴾", "(")
 		     .replace("]", ")")
 		     .replace("}", ")")
-		     .replace("}", "﴿")
+		     .replace("﴿", ")")
       )

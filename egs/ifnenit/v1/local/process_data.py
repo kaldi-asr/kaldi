@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import argparse
 import os
@@ -65,7 +65,7 @@ def process_text_file_for_word_model():
 
 
 if args.model_type=='word':
-  print 'processing word model'
+  print('processing word model')
   process_text_file_for_word_model()
 
 

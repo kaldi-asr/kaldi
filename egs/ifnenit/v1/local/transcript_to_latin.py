@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # This script is originally from qatip project (http://qatsdemo.cloudapp.net/qatip/demo/)
@@ -6,7 +6,7 @@
 
 # Convert every utterance transcript to position dependent latin format using "data/train/words2latin" as dictionary.
 
-import os, sys, re
+import io, os, sys, re
 
 with open(sys.argv[1]) as f:
     d = dict(x.rstrip().split(None, 1) for x in f)

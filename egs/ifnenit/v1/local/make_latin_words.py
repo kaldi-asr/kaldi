@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # This script is originally from qatip project (http://qatsdemo.cloudapp.net/qatip/demo/)
