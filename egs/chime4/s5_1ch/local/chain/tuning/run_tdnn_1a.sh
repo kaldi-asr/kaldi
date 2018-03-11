@@ -274,7 +274,13 @@ if [ $stage -le 16 ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/chime4-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
-
+  
+  cat $train_data_dir/utt2uniq | awk -F' ' '{print $1}' > $train_data_dir/utt2uniq.tmp1
+  cat $train_data_dir/utt2uniq | awk -F' ' '{print $2}' | sed -e 's/\....//g' | sed -e 's/\_CH.//g' > $train_data_dir/utt2uniq.tmp2
+  paste -d" " $train_data_dir/utt2uniq.tmp1 $train_data_dir/utt2uniq.tmp2 > $train_data_dir/utt2uniq
+  rm -rf $train_data_dir/utt2uniq.tmp1
+  rm -rf $train_data_dir/utt2uniq.tmp2
+  
   steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir=$train_ivector_dir \
