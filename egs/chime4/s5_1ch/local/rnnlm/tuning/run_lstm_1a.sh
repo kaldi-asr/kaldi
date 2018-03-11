@@ -28,8 +28,7 @@
 # Begin configuration section.
 
 dir=exp/rnnlm_lstm_1a
-chime4_data=$1
-enhan=$2
+enhan=$1
 embedding_dim=2048
 lstm_rpd=512
 lstm_nrpd=512
@@ -53,8 +52,6 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 srcdir=data/local/local_lm
 lexicon=data/local/dict/lexiconp.txt
 text_dir=data/rnnlm/text_nosp_1a
-wsj0_data=$chime4_data/data/WSJ0
-lm_train=$wsj0_data/wsj0/doc/lng_modl/lm_train/np_data
 mkdir -p $dir/config
 set -e
 
@@ -66,18 +63,7 @@ done
 #prepare training and dev data
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
-  cat data/lang_chain/words.txt | awk '{print $1}' > $srcdir/words.txt
-  gunzip -c $lm_train/{87,88,89}/*.z \
-   | awk -v voc=$srcdir/words.txt '
-   BEGIN{ while((getline<voc)>0) { invoc[$1]=1; }}
-   /^</{next}{
-     for (x=1;x<=NF;x++) {
-       w=toupper($x);
-       if (invoc[w]) { printf("%s ",w); } else { printf("<RNN_UNK> "); }
-     }
-     printf("\n");
-   }' > $srcdir/train_complete.rnn
-  cp $srcdir/train_complete.rnn $text_dir/chime4.txt
+  cp $srcdir/train.rnn $text_dir/chime4.txt
   sed -i -e "s/<RNN_UNK>/<UNK>/g" $text_dir/chime4.txt
   cp $srcdir/valid.rnn $text_dir/dev.txt
 fi
@@ -136,7 +122,7 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
     # Lattice rescoring
     rnnlm/lmrescore_pruned.sh \
       --cmd "$decode_cmd --mem 4G" \
-      --weight 0.5 --max-ngram-order $ngram_order \
+      --weight 0.8 --max-ngram-order $ngram_order \
       data/lang_test_$LM $dir \
       data/${decode_set}_${enhan}_chunked ${decode_dir} \
       $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}
@@ -149,7 +135,7 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
 fi
 
 nbest=100
-rnnweight=0.5
+rnnweight=0.8
 if [ $stage -le 5 ] && $run_nbest_rescore; then
   echo "$0: Perform nbest-rescoring on $ac_model_dir"
   for decode_set in dt05_real dt05_simu et05_real et05_simu; do
