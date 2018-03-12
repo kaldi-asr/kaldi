@@ -127,7 +127,7 @@ static bool ProcessFile(const GeneralMatrix &feats,
     }
 
     // push this created targets matrix into the eg
-    eg.io.push_back(NnetIo("output", 0, targets_part));
+    eg.io.push_back(NnetIo("output", 0, targets_part, frame_subsampling_factor));
 
     if (compress)
       eg.Compress();
