@@ -101,18 +101,8 @@ if [ $stage -le 1 ]; then
 fi
 
 ###############################################################################
-# Get feats for the manual segments
+# Prepare SAD targets for recordings
 ###############################################################################
-if [ $stage -le 2 ]; then
-  if [ ! -f ${data_dir}/segments ]; then
-    utils/data/get_segments_for_data.sh $data_dir > $data_dir/segments
-  fi
-  utils/data/subsegment_data_dir.sh $whole_data_dir ${data_dir}/segments ${data_dir}/tmp
-  cp $data_dir/tmp/feats.scp $data_dir
-  awk '{print $1" "$2}' $data_dir/segments > $data_dir/utt2spk
-  utils/utt2spk_to_spk2utt.pl $data_dir/utt2spk > $data_dir/spk2utt
-fi
-
 if [ $stage -le 3 ]; then
   steps/segmentation/prepare_targets_gmm.sh --stage $prepare_targets_stage \
     --train-cmd "$train_cmd" --decode-cmd "$decode_cmd" \
