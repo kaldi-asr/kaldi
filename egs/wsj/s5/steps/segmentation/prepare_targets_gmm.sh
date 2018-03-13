@@ -126,7 +126,7 @@ if [ $stage -le 0 ]; then
 
   utils/data/modify_speaker_info_to_recording.sh \
     $in_data_dir $dir/$data_id || exit 1
-  utils/validate_data_dir.sh --no-spk-sort --no-feats $dir/$data_id || exit 1
+  utils/validate_data_dir.sh --no-feats $dir/$data_id || exit 1
 fi 
 
 # Work with a temporary data directory with recording-id as the speaker labels.
