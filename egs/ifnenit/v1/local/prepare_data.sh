@@ -6,8 +6,6 @@
 # Creat text, utt2spk, spk2utt, images.scp, and feats.scp for test and train.
 
 database='/export/b01/babak/IFN-ENIT/ifnenit_v2.0p1e/data'
-export LC_ALL="en_US.utf8"
-
 
 mkdir -p data
 for set in 'train' 'test'
@@ -45,5 +43,3 @@ do
   steps/compute_cmvn_stats.sh data/$set || exit 1;
 
 done
-
-export LC_ALL=C

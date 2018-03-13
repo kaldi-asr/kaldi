@@ -6,12 +6,13 @@
 
 # Convert every utterance transcript to position dependent latin format using "data/train/words2latin" as dictionary.
 
-import io, os, sys, re
+import os, sys, re, io
 
-with open(sys.argv[1]) as f:
+with open(sys.argv[1], encoding="utf-8") as f:
     d = dict(x.rstrip().split(None, 1) for x in f)
 
-for line in sys.stdin:
+in_stream = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+for line in in_stream:
     mappedWords = []
     for word in line.split():
         mappedWords.append(d[word])

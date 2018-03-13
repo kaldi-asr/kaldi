@@ -7,7 +7,7 @@
 # Convert unicode words to position dependent latin form.
 # This script make creating lexicon very easy. 
 
-import os, sys
+import os, sys, io
 
 map = {
     'ء': 'hh',
@@ -85,18 +85,20 @@ connecting = {
   'ya': True
 }
 
-for line in sys.stdin:
+in_stream = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+out_stream = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+for line in in_stream:
     connected = False
     lastChar = ''
     lastType = ''
-    sys.stdout.write(line.strip())
+    out_stream.write(line.strip())
     for char in line.strip():
         if char == '+':
             continue
         if char == '=':
             connected = True
             continue
-        sys.stdout.write((" " if lastChar else "") + lastChar + lastType + (" conn" if connected else " sil"))
+        out_stream.write((" " if lastChar else "") + lastChar + lastType + (" conn" if connected else " sil"))
         if char in map:
             lastChar = map[char]
             if connected:
@@ -127,5 +129,5 @@ for line in sys.stdin:
         lastType = "E"
     elif lastType == "B":
         lastType = "A"
-    sys.stdout.write(" "+lastChar+lastType)
-    sys.stdout.write("\n")
+    out_stream.write(" "+lastChar+lastType)
+    out_stream.write("\n")
