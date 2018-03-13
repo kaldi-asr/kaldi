@@ -1,10 +1,8 @@
 #!/bin/bash
 
-
-# 7m26f is as 7m25e but an even smaller model: changing all 1280's to 1024's
-# and 1024's to 768's, and removing one layer (tdnn11*).  It's worse but the difference
-# is not totally consistent... I'm wondering whether removing the tdnn11 layer might
-# have been helpful while the reduction in parameters was harmful.
+# 7m26c is as 7m25b but with a smaller model (changing all 1536's to 1280's)
+# and reducing the l2 regularization slightly, from 0.0015 to 0.001.
+#  Seems a bit worse, but not absolutely clear.
 #
 # local/chain/compare_wer_general.sh --rt03 tdnn7m25u_sp tdnn7m26b_sp tdnn7m26c_sp tdnn7m26d_sp tdnn7m26e_sp tdnn7m26f_sp
 # System                tdnn7m25u_sp tdnn7m26b_sp tdnn7m26c_sp tdnn7m26d_sp tdnn7m26e_sp tdnn7m26f_sp
@@ -20,17 +18,6 @@
 # Final valid prob (xent)       -0.9076   -0.8592   -0.8739   -0.8933   -0.9285   -1.0318
 # Num-parameters               24439076  24439076  21815332  19332132  19332132  14225444
 
-
-# 7m26e is as 7m25d but with half the learning rate and using
-#  the same type of linear layer for the output that we used for the other layers
-#  (with orthonormal-constraint=-1.0 and l2), with batchnorm to control
-#  its output's magnitude.
-
-# 7m26d is as 7m25c but an even smaller model, changing most of the 1280's to
-# 1024's.
-
-# 7m26c is as 7m25b but with a smaller model (changing all 1536's to 1024's)
-# and reducing the l2 regularization slightly, from 0.0015 to 0.001.
 
 # 7m26b is as 7m25a but after a code change to ensure the change in M is
 # orthoonal to M.
@@ -435,7 +422,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=7m26f
+affix=7m26c
 suffix=
 $speed_perturb && suffix=_sp
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
@@ -537,43 +524,42 @@ if [ $stage -le 12 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=768
+  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=1280
   linear-component name=tdnn2l0 dim=256 $linear_opts input=Append(-1,0)
   linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=768
+  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=1280
   linear-component name=tdnn3l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=768 input=Append(0,1)
+  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=1280 input=Append(0,1)
   linear-component name=tdnn4l0 dim=256 $linear_opts input=Append(-1,0)
   linear-component name=tdnn4l dim=256 $linear_opts input=Append(0,1)
-  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=768
+  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=1280
   linear-component name=tdnn5l dim=256 $linear_opts
-  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=768 input=Append(0, tdnn3l)
+  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=1280 input=Append(0, tdnn3l)
   linear-component name=tdnn6l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1024
+  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1280
   linear-component name=tdnn7l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn7l dim=256 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=768
+  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
   linear-component name=tdnn8l0 dim=256 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn8l dim=256 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1024
+  linear-component name=tdnn8l dim=256 $linear_opts input=Append(3,0)
+  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1280
   linear-component name=tdnn9l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=768
+  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=1280
   linear-component name=tdnn10l0 dim=256 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn10l dim=256 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1024
+  linear-component name=tdnn10l dim=256 $linear_opts input=Append(3,0)
+  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn11l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn9l,tdnn7l) dim=1280
   linear-component name=prefinal-l dim=256 $linear_opts
 
-  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1024
-  linear-component name=prefinal-chain-l dim=256 $linear_opts
-  batchnorm-component name=prefinal-chain-batchnorm
-  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
+  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1280
+  output-layer name=output include-log-softmax=false dim=$num_targets bottleneck-dim=256 $output_opts
 
-  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1024
-  linear-component name=prefinal-xent-l dim=256 $linear_opts
-  batchnorm-component name=prefinal-xent-batchnorm
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
+  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1280
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor bottleneck-dim=256 $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -603,11 +589,11 @@ if [ $stage -le 13 ]; then
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs 6 \
+    --trainer.num-epochs 8 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
-    --trainer.optimization.initial-effective-lrate 0.0005 \
-    --trainer.optimization.final-effective-lrate 0.00005 \
+    --trainer.optimization.initial-effective-lrate 0.001 \
+    --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.max-param-change 2.0 \
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/${train_set}_hires \

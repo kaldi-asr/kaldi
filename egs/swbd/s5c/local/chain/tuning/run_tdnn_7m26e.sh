@@ -3,12 +3,28 @@
 # 7m26e is as 7m25d but with half the learning rate and using
 #  the same type of linear layer for the output that we used for the other layers
 #  (with orthonormal-constraint=-1.0 and l2), with batchnorm to control
-#  its output's magnitude.  Also using 6 instead of 8 epochs.
+#  its output's magnitude.  Also using 6 instead of 8 epochs.  Consistently worse.
+#
+#
+# local/chain/compare_wer_general.sh --rt03 tdnn7m25u_sp tdnn7m26b_sp tdnn7m26c_sp tdnn7m26d_sp tdnn7m26e_sp tdnn7m26f_sp
+# System                tdnn7m25u_sp tdnn7m26b_sp tdnn7m26c_sp tdnn7m26d_sp tdnn7m26e_sp tdnn7m26f_sp
+# WER on train_dev(tg)      11.92     11.79     11.95     12.11     12.27     12.65
+# WER on train_dev(fg)      10.95     10.92     11.02     11.22     11.27     11.54
+# WER on eval2000(tg)        14.6      14.8      14.7      15.0      15.2      15.2
+# WER on eval2000(fg)        13.1      13.4      13.3      13.6      13.9      13.8
+# WER on rt03(tg)            17.7      17.9      18.3      18.3      18.6      18.9
+# WER on rt03(fg)            15.6      15.9      16.0      16.2      16.5      16.5
+# Final train prob         -0.075    -0.065    -0.067    -0.069    -0.069    -0.076
+# Final valid prob         -0.089    -0.084    -0.085    -0.086    -0.086    -0.095
+# Final train prob (xent)        -0.883    -0.804    -0.819    -0.847    -0.896    -1.007
+# Final valid prob (xent)       -0.9076   -0.8592   -0.8739   -0.8933   -0.9285   -1.0318
+# Num-parameters               24439076  24439076  21815332  19332132  19332132  14225444
+
 
 # 7m26d is as 7m25c but an even smaller model, changing most of the 1280's to
 # 1024's.
 
-# 7m26c is as 7m25b but with a smaller model (changing all 1536's to 1024's)
+# 7m26c is as 7m25b but with a smaller model (changing all 1536's to 1280's)
 # and reducing the l2 regularization slightly, from 0.0015 to 0.001.
 
 # 7m26b is as 7m25a but after a code change to ensure the change in M is
