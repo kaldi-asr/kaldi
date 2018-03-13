@@ -36,7 +36,7 @@ remove_egs=true
 reporting_email=
 
 #decode options
-test_online_decoding=true  # if true, it will run the last decoding stage.
+test_online_decoding=false  # if true, it will run the last decoding stage.
 
 
 # End configuration section.
