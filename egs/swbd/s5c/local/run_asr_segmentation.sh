@@ -38,11 +38,15 @@ merge_weights=1.0,0.1,0.5
 prepare_targets_stage=-10
 nstage=-10
 train_stage=-10
-test_stage=-10
 num_data_reps=2
 affix=_1a   # For segmentation
 stage=-1
 nj=80
+reco_nj=40
+
+# test options
+test_stage=-10
+test_nj=32
 
 . ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
@@ -92,7 +96,7 @@ fi
 # Extract features for the whole data directory
 ###############################################################################
 if [ $stage -le 1 ]; then
-  steps/make_mfcc.sh --nj 50 --cmd "$train_cmd"  --write-utt2num-frames true \
+  steps/make_mfcc.sh --nj $reco_nj --cmd "$train_cmd"  --write-utt2num-frames true \
     $whole_data_dir exp/make_mfcc/${whole_data_id}
   steps/compute_cmvn_stats.sh $whole_data_dir exp/make_mfcc/${whole_data_id}
   utils/fix_data_dir.sh $whole_data_dir
@@ -105,7 +109,7 @@ targets_dir=$dir/${whole_data_id}_combined_targets_sub3
 if [ $stage -le 3 ]; then
   steps/segmentation/prepare_targets_gmm.sh --stage $prepare_targets_stage \
     --train-cmd "$train_cmd" --decode-cmd "$decode_cmd" \
-    --nj 80 --reco-nj 40 --lang-test $lang_test \
+    --nj $nj --reco-nj $reco_nj --lang-test $lang_test \
     --garbage-phones-list $dir/garbage_phones.txt \
     --silence-phones-list $dir/silence_phones.txt \
     --merge-weights "$merge_weights" \
@@ -146,7 +150,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 \
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $reco_nj \
     ${rvb_data_dir}
   steps/compute_cmvn_stats.sh ${rvb_data_dir}
   utils/fix_data_dir.sh $rvb_data_dir
@@ -186,7 +190,7 @@ if [ $stage -le 8 ]; then
   steps/segmentation/detect_speech_activity.sh \
     --extra-left-context 79 --extra-right-context 21 --frames-per-chunk 150 \
     --extra-left-context-initial 0 --extra-right-context-final 0 \
-    --nj 32 --acwt 0.3 --stage $test_stage \
+    --nj $test_nj --acwt 0.3 --stage $test_stage \
     data/eval2000 \
     exp/segmentation${affix}/tdnn_stats_asr_sad_1a \
     mfcc_hires \

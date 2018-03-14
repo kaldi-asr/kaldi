@@ -35,11 +35,15 @@ merge_weights=1.0,0.1,0.5
 prepare_targets_stage=-10
 nstage=-10
 train_stage=-10
-test_stage=-10
 
 affix=_1a
 stage=-1
 nj=80
+reco_nj=40
+
+# test options
+test_nj=32
+test_stage=-10
 
 # Babel specific configuration. These two lines can be removed when adapting to other corpora.
 [ ! -f ./lang.conf ] && echo 'Language configuration does not exist! Use the configurations in conf/lang/* as a startup' && exit 1
@@ -92,10 +96,10 @@ fi
 ###############################################################################
 if [ $stage -le 1 ]; then
   if $use_pitch; then
-    steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $nj --write-utt2num-frames true \
+    steps/make_plp_pitch.sh --cmd "$train_cmd" --nj $reco_nj --write-utt2num-frames true \
       ${whole_data_dir} || exit 1
   else
-    steps/make_plp.sh --cmd "$train_cmd" --nj $nj --write-utt2num-frames true \
+    steps/make_plp.sh --cmd "$train_cmd" --nj $reco_nj --write-utt2num-frames true \
       ${whole_data_dir} || exit 1
   fi
   steps/compute_cmvn_stats.sh $whole_data_dir
@@ -109,15 +113,17 @@ targets_dir=$dir/${whole_data_id}_combined_targets_sub3
 if [ $stage -le 3 ]; then
   steps/segmentation/prepare_targets_gmm.sh --stage $prepare_targets_stage \
     --train-cmd "$train_cmd" --decode-cmd "$decode_cmd" \
-    --nj 80 --reco-nj 40 --lang-test $lang_test \
+    --nj $nj --reco-nj $reco_nj --lang-test $lang_test \
     --garbage-phones-list $dir/garbage_phones.txt \
     --silence-phones-list $dir/silence_phones.txt \
+    --merge-weights "$merge_weights" \
+    --graph-dir "$graph_dir" \
     $lang $data_dir $whole_data_dir $sat_model_dir $model_dir $dir
 fi
 
 if [ $stage -le 4 ]; then
   utils/copy_data_dir.sh ${whole_data_dir} ${whole_data_dir}_hires_bp
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires_bp.conf --nj 40 \
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires_bp.conf --nj $reco_nj \
     ${whole_data_dir}_hires_bp
   steps/compute_cmvn_stats.sh ${whole_data_dir}_hires_bp
 fi
@@ -141,7 +147,7 @@ if [ $stage -le 6 ]; then
   steps/segmentation/detect_speech_activity.sh \
     --extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 \
     --extra-left-context-initial 0 --extra-right-context-final 0 \
-    --nj 32 --acwt 0.3 --stage $test_stage \
+    --nj $test_nj --acwt 0.3 --stage $test_stage \
     data/dev10h.pem \
     exp/segmentation_1a/tdnn_lstm_asr_sad_1a \
     mfcc_hires_bp \

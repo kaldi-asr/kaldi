@@ -48,7 +48,6 @@ reco_nj=40
 
 # test options
 test_nj=30
-test_stage=1
 
 . ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
@@ -152,7 +151,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj \
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $reco_nj \
     ${rvb_data_dir}
   steps/compute_cmvn_stats.sh ${rvb_data_dir}
   utils/fix_data_dir.sh $rvb_data_dir
