@@ -30,6 +30,15 @@
 #if HAVE_CUDA == 1
 extern "C" {
 
+// "C" version of the BaseFloat typedef-- this saves us having to write
+// multiple versions of these kernels.
+#if (KALDI_DOUBLEPRECISION != 0)
+typedef double  BaseFloat;
+#else
+typedef float   BaseFloat;
+#endif
+
+
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
                            const MatrixDim d, const double alpha,
                            const double beta);
@@ -132,6 +141,12 @@ void cudaD_add_rows(dim3 Gr, dim3 Bl, double alpha, double* dst,
                     const double* src, const MatrixIndexT_cuda* reorder,
                     MatrixDim dst_dim, int src_stride);
 void cudaF_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst, const float* src,
+                    const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
+                    int src_stride);
+void cudaD_mul_rows(dim3 Gr, dim3 Bl, double* dst,
+                    const double* src, const MatrixIndexT_cuda* reorder,
+                    MatrixDim dst_dim, int src_stride);
+void cudaF_mul_rows(dim3 Gr, dim3 Bl, float* dst, const float* src,
                     const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
                     int src_stride);
 void cudaD_add_rows_direct(dim3 Gr, dim3 Bl, double alpha, double* dst,
@@ -735,6 +750,42 @@ void cudaD_vec_soft_max(int Gr, int Bl, double* v, int dim);
 void cudaF_vec_soft_max(int Gr, int Bl, float* v, int dim);
 void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim, int inc);
 void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc);
+
+
+void cuda_compress_int16(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                          MatrixDim dim, int16_t *dest,
+                          int dest_stride, float inv_scale,
+                          bool bounds_check);
+void cuda_compress_uint16(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                          MatrixDim dim, uint16_t *dest,
+                          int dest_stride, float inv_scale,
+                          bool bounds_check);
+void cuda_compress_uint8(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                          MatrixDim dim, uint8_t *dest,
+                          int dest_stride, float inv_scale,
+                          bool bounds_check);
+void cuda_compress_int8(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                         MatrixDim dim, int8_t *dest,
+                         int dest_stride, float inv_scale,
+                         bool bounds_check);
+
+void cuda_compress_uint8_sign(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, uint8_t *dest, int dest_stride);
+
+void cuda_uncompress_int16(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                           MatrixDim dim, const int16_t *src,
+                           int src_stride, float scale);
+void cuda_uncompress_uint16(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                            MatrixDim dim, const uint16_t *src,
+                            int src_stride, float scale);
+void cuda_uncompress_int8(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                          MatrixDim dim, const int8_t *src,
+                          int src_stride, float scale);
+void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                          MatrixDim dim, const uint8_t *src,
+                          int src_stride, float scale);
+
+
 
 } // extern "C"
 

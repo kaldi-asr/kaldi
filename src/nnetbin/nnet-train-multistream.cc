@@ -360,7 +360,6 @@ int main(int argc, char *argv[]) {
           os << frame_num_utt[i] << " ";
         }
         os << "]";
-
         KALDI_LOG << "frame_num_utt[" << frame_num_utt.size() << "]" << os.str();
       }
 
@@ -387,30 +386,19 @@ int main(int argc, char *argv[]) {
 
       // 1st minibatch : show what happens in network,
       if (total_frames == 0) {
-        KALDI_VLOG(1) << "### After " << total_frames << " frames,";
-        KALDI_VLOG(1) << nnet.Info();
-        KALDI_VLOG(1) << nnet.InfoPropagate();
+        KALDI_LOG << "### After " << total_frames << " frames,";
+        KALDI_LOG << nnet.Info();
+        KALDI_LOG << nnet.InfoPropagate();
         if (!crossvalidate) {
-          KALDI_VLOG(1) << nnet.InfoBackPropagate();
-          KALDI_VLOG(1) << nnet.InfoGradient();
+          KALDI_LOG << nnet.InfoBackPropagate();
+          KALDI_LOG << nnet.InfoGradient();
         }
       }
 
-      int32 tmp_done = num_done;
       kaldi::int64 tmp_frames = total_frames;
 
       num_done += std::accumulate(new_utt_flags.begin(), new_utt_flags.end(), 0);
       total_frames += std::accumulate(frame_num_utt.begin(), frame_num_utt.end(), 0);
-
-      // report the speed,
-      int32 N = 5000;
-      if (tmp_done / N != num_done / N) {
-        double time_now = time.Elapsed();
-        KALDI_VLOG(1) << "After " << num_done << " utterances, "
-          << "(" << total_frames/360000.0 << "h), "
-          << "time elapsed = " << time_now / 60 << " min; "
-          << "processed " << total_frames / time_now << " frames per sec.";
-      }
 
       // monitor the NN training (--verbose=2),
       int32 F = 25000;
@@ -429,12 +417,12 @@ int main(int argc, char *argv[]) {
     }
 
     // after last minibatch : show what happens in network,
-    KALDI_VLOG(1) << "### After " << total_frames << " frames,";
-    KALDI_VLOG(1) << nnet.Info();
-    KALDI_VLOG(1) << nnet.InfoPropagate();
+    KALDI_LOG << "### After " << total_frames << " frames,";
+    KALDI_LOG << nnet.Info();
+    KALDI_LOG << nnet.InfoPropagate();
     if (!crossvalidate) {
-      KALDI_VLOG(1) << nnet.InfoBackPropagate();
-      KALDI_VLOG(1) << nnet.InfoGradient();
+      KALDI_LOG << nnet.InfoBackPropagate();
+      KALDI_LOG << nnet.InfoGradient();
     }
 
     if (!crossvalidate) {

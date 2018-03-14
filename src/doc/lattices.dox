@@ -264,8 +264,10 @@ has the same effect as calling that the normal OpenFst RemoveEps() and Determini
 
  \section lattices_generation Lattice generation
 
-Currently, the only decoder that generates lattices is the class
-LatticeSimpleDecoder, defined in decoder/lattice-simple-decoder.h, and invoked by gmm-latgen-simple.cc.
+Command-line decoding programs that have 'latgen' in their names generate lattices.
+Currently most of these use LatticeFasterDecoder.  For purposes of exposition we will
+focus instead on LatticeSimpleDecoder, whose operation is simpler.
+This is defined in decoder/lattice-simple-decoder.h, and invoked by gmm-latgen-simple.cc.
 As the name suggests, LatticeSimpleDecoder is a lattice-generating decoder that is modified from SimpleDecoder.
 SimpleDecoder is a straightforwardly implemented Viterbi beam search algorithm with only a single
 tunable parameter: the pruning beam (see \ref decoders_simple).  LatticeSimpleDecoder has

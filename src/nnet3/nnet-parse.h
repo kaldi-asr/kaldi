@@ -189,9 +189,16 @@ std::string ErrorContext(std::istream &is);
 
 std::string ErrorContext(const std::string &str);
 
-// Returns a string that summarizes a vector fairly succintly, for
-// printing stats in info lines.
-std::string SummarizeVector(const Vector<BaseFloat> &vec);
+/** Returns a string that summarizes a vector fairly succintly, for
+    printing stats in info lines.  For example:
+   "[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.001,0.003,0.003,0.004 \
+      0.005,0.01,0.07,0.11,0.14 0.18,0.24,0.29,0.39), mean=0.0745, stddev=0.0611]"
+*/
+std::string SummarizeVector(const VectorBase<BaseFloat> &vec);
+
+std::string SummarizeVector(const VectorBase<double> &vec);
+
+std::string SummarizeVector(const CuVectorBase<BaseFloat> &vec);
 
 /** Print to 'os' some information about the mean and standard deviation of
     some parameters, used in Info() functions in nnet-simple-component.cc.
@@ -213,13 +220,25 @@ void PrintParameterStats(std::ostringstream &os,
      PrintParameterStats(os, "linear-params", linear_params_;
     would print to 'os' something like the string
      ", linear-params-rms=0.239".
-    If you set include_mean to true, it will print something like
+    If you set 'include_mean' to true, it will print something like
     ", linear-params-{mean-stddev}=0.103,0.183".
+    If you set 'include_row_norms' to true, it will print something
+    like
+    ", linear-params-row-norms=[percentiles(0,1........, stddev=0.0508]"
+    If you set 'include_column_norms' to true, it will print something
+    like
+    ", linear-params-col-norms=[percentiles(0,1........, stddev=0.0508]"
+    If you set 'include_singular_values' to true, it will print something
+    like
+    ", linear-params-singular-values=[percentiles(0,1........, stddev=0.0508]"
  */
 void PrintParameterStats(std::ostringstream &os,
                          const std::string &name,
                          const CuMatrix<BaseFloat> &params,
-                         bool include_mean = false);
+                         bool include_mean = false,
+                         bool include_row_norms = false,
+                         bool include_column_norms = false,
+                         bool include_singular_values = false);
 
 
 } // namespace nnet3

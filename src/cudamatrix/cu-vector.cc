@@ -387,7 +387,7 @@ void CuVectorBase<Real>::ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_cou
       // vector as a matrix with a single row.
       ::MatrixDim dim = {1, Dim(), 1};
       cuda_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, dim);
-      
+
       CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeilingNoCount", tim);
     } else {
       if (dim_ == 0) { *ceiled_count = 0; return; }
@@ -991,7 +991,7 @@ void CuVector<Real>::Swap(Vector<Real> *vec) {
         this->Swap(&temp); // now temp is full, *this is empty.
         vec->Swap(&temp); // now vec has data from *this, temp has
         // data from vec.
-        Swap(vec); // copy data in vec to *this, which is now empty.
+        Swap(&temp); // copy data in vec to *this, which is now empty.
       } else { // *this is full but *vec is empty.
         vec->Resize(this->dim_, kUndefined);
         this->CopyToVec(vec);

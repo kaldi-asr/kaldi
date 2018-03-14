@@ -189,6 +189,7 @@ def process_args(args):
 
         run_opts.train_queue_opt = "--gpu 1"
         run_opts.parallel_train_opts = ""
+        run_opts.combine_gpu_opt = ""
         run_opts.combine_queue_opt = "--gpu 1"
         run_opts.prior_gpu_opt = "--use-gpu=yes"
         run_opts.prior_queue_opt = "--gpu 1"
@@ -199,6 +200,7 @@ def process_args(args):
 
         run_opts.train_queue_opt = ""
         run_opts.parallel_train_opts = "--use-gpu=no"
+        run_opts.combine_gpu_opt = "--use-gpu=no"
         run_opts.combine_queue_opt = ""
         run_opts.prior_gpu_opt = "--use-gpu=no"
         run_opts.prior_queue_opt = ""
@@ -432,6 +434,7 @@ def train(args, run_opts):
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
+                train_opts=' '.join(args.train_opts),
                 shrinkage_value=shrinkage_value,
                 minibatch_size_str=args.num_chunk_per_minibatch,
                 min_deriv_time=min_deriv_time,

@@ -34,9 +34,12 @@ config_to_layer = {
         'affine-layer' : xlayers.XconfigAffineLayer,
         'lstm-layer' : xlayers.XconfigLstmLayer,
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
+        'lstmp-batchnorm-layer' : xlayers.XconfigLstmpLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
+        'fast-lstm-batchnorm-layer' : xlayers.XconfigFastLstmLayer,
         'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
-        'fast-lstmb-layer' : xlayers.XconfigFastLstmbLayer,
+        'fast-lstmp-batchnorm-layer' : xlayers.XconfigFastLstmpLayer,
+        'lstmb-layer' : xlayers.XconfigLstmbLayer,
         'stats-layer': xlayers.XconfigStatsLayer,
         'relu-conv-layer': xlayers.XconfigConvLayer,
         'conv-layer': xlayers.XconfigConvLayer,
@@ -65,7 +68,9 @@ config_to_layer = {
         'opgru-layer' : xlayers.XconfigOpgruLayer,
         'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
         'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
-        'renorm-component': xlayers.XconfigRenormComponent
+        'renorm-component': xlayers.XconfigRenormComponent,
+        'no-op-component': xlayers.XconfigNoOpComponent,
+        'linear-component': xlayers.XconfigLinearComponent
 }
 
 # Turn a config line and a list of previous layers into

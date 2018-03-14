@@ -8,10 +8,18 @@
 echo "# $0 $*";  # print command line.
 
 include_looped=false
-if [ "$1" == "--looped" ]; then
-  include_looped=true
-  shift
-fi
+include_rt03=false
+
+for x in $(seq 3); do
+  if [ "$1" == "--looped" ]; then
+    include_looped=true
+    shift
+  fi
+  if [ "$1" == "--rt03" ]; then
+    include_rt03=true
+    shift
+  fi
+done
 
 echo -n "# System               "
 for x in $*; do   printf " % 9s" $x;   done
@@ -118,6 +126,46 @@ if $include_looped; then
   done
   echo
 fi
+
+
+if $include_rt03; then
+  echo -n "# WER on rt03(tg)      "
+  for x in $*; do
+    set_names $x
+    wer=$(grep Sum $dirname/decode_rt03*sw1_tg$epoch_suffix/score*/rt03_hires.ctm.filt.sys | utils/best_wer.sh | awk '{print $2}')
+    printf "% 10s" $wer
+  done
+  echo
+
+  if $include_looped; then
+    echo -n "#           [looped:]  "
+    for x in $*; do
+      set_names $x
+      wer=$(grep Sum $dirname/decode_rt03*sw1_tg${epoch_suffix}_looped/score*/rt03_hires.ctm.filt.sys | utils/best_wer.sh | awk '{print $2}')
+      printf "% 10s" $wer
+    done
+    echo
+  fi
+
+  echo -n "# WER on rt03(fg)      "
+  for x in $*; do
+    set_names $x
+    wer=$(grep Sum $dirname/decode_rt03*sw1_fsh_fg$epoch_suffix/score*/rt03_hires.ctm.filt.sys | utils/best_wer.sh | awk '{print $2}')
+    printf "% 10s" $wer
+  done
+  echo
+
+  if $include_looped; then
+    echo -n "#           [looped:]  "
+    for x in $*; do
+      set_names $x
+      wer=$(grep Sum $dirname/decode_rt03*sw1_fsh_fg${epoch_suffix}_looped/score*/*ys | grep -v swbd | utils/best_wer.sh | awk '{print $2}')
+      printf "% 10s" $wer
+    done
+    echo
+  fi
+fi
+
 
 
 if $used_epochs; then

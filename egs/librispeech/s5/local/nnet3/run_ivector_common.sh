@@ -16,6 +16,7 @@ train_set=train_960_cleaned    # you might set this to e.g. train_960
 gmm=tri6b_cleaned         # This specifies a GMM-dir from the features of the type you're training the system on;
                          # it should contain alignments for 'train_set'.
 num_threads_ubm=32
+num_processes=4
 nnet3_affix=_cleaned     # affix for exp/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/nnet3_cleaned or whatever.
 
@@ -161,7 +162,7 @@ if [ $stage -le 8 ]; then
   # this one has a fairly small dim (defaults to 100) so we don't use all of it,
   # we use just the 60k subset (about one fifth of the data, or 200 hours).
   echo "$0: training the iVector extractor"
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
+  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 --num-processes $num_processes \
     data/${train_set}_sp_mixed_hires_60k exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 

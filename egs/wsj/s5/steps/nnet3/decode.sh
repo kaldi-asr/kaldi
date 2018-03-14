@@ -70,6 +70,8 @@ if [ ! -z "$online_ivector_dir" ]; then
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 fi
 
+utils/lang/check_phones_compatible.sh {$srcdir,$graphdir}/phones.txt || exit 1
+
 for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
