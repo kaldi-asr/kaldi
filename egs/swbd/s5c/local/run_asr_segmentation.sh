@@ -79,12 +79,10 @@ if ! cat $dir/garbage_phones.txt $dir/silence_phones.txt | \
   exit 1
 fi
 
-data_id=$(basename $data_dir)
 whole_data_dir=${data_dir}_whole
-targets_dir=exp/segmentation${affix}/${data_id}_whole_combined_targets_sub3
+whole_data_id=$(basename $whole_data_dir)
 
 rvb_data_dir=${whole_data_dir}_rvb_hires
-rvb_targets_dir=${targets_dir}_rvb
 
 if [ $stage -le 0 ]; then
   utils/data/convert_data_dir_to_whole.sh $data_dir $whole_data_dir
@@ -95,14 +93,15 @@ fi
 ###############################################################################
 if [ $stage -le 1 ]; then
   steps/make_mfcc.sh --nj 50 --cmd "$train_cmd"  --write-utt2num-frames true \
-    $whole_data_dir exp/make_mfcc/${data_id}_whole
-  steps/compute_cmvn_stats.sh $whole_data_dir exp/make_mfcc/${data_id}_whole
+    $whole_data_dir exp/make_mfcc/${whole_data_id}
+  steps/compute_cmvn_stats.sh $whole_data_dir exp/make_mfcc/${whole_data_id}
   utils/fix_data_dir.sh $whole_data_dir
 fi
 
 ###############################################################################
 # Prepare SAD targets for recordings
 ###############################################################################
+targets_dir=$dir/${whole_data_id}_combined_targets_sub3
 if [ $stage -le 3 ]; then
   steps/segmentation/prepare_targets_gmm.sh --stage $prepare_targets_stage \
     --train-cmd "$train_cmd" --decode-cmd "$decode_cmd" \
@@ -114,6 +113,7 @@ if [ $stage -le 3 ]; then
     $lang $data_dir $whole_data_dir $sat_model_dir $model_dir $dir
 fi
 
+rvb_targets_dir=${targets_dir}_rvb
 if [ $stage -le 4 ]; then
   # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
   if [ ! -f rirs_noises.zip ]; then

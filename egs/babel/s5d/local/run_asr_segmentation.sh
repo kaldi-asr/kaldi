@@ -63,13 +63,13 @@ garbage_phones="<oov> <vns>"
 silence_phones="<sss> SIL"
 
 for p in $garbage_phones; do 
-  for affix in "" "_B" "_E" "_I" "_S"; do
+  for a in "" "_B" "_E" "_I" "_S"; do
     echo "$p$affix"
   done
 done > $dir/garbage_phones.txt
 
 for p in $silence_phones; do 
-  for affix in "" "_B" "_E" "_I" "_S"; do
+  for a in "" "_B" "_E" "_I" "_S"; do
     echo "$p$affix"
   done
 done > $dir/silence_phones.txt
@@ -81,6 +81,7 @@ if ! cat $dir/garbage_phones.txt $dir/silence_phones.txt | \
 fi
 
 whole_data_dir=${data_dir}_whole
+whole_data_id=$(basename $whole_data_dir)
 
 if [ $stage -le 0 ]; then
   utils/data/convert_data_dir_to_whole.sh $data_dir $whole_data_dir
@@ -104,6 +105,7 @@ fi
 ###############################################################################
 # Prepare SAD targets for recordings
 ###############################################################################
+targets_dir=$dir/${whole_data_id}_combined_targets_sub3
 if [ $stage -le 3 ]; then
   steps/segmentation/prepare_targets_gmm.sh --stage $prepare_targets_stage \
     --train-cmd "$train_cmd" --decode-cmd "$decode_cmd" \
@@ -124,7 +126,7 @@ if [ $stage -le 5 ]; then
   # Train a TDNN-LSTM network for SAD
   local/segmentation/tuning/train_lstm_asr_sad_1a.sh \
     --stage $nstage --train-stage $train_stage \
-    --targets-dir $dir \
+    --targets-dir $targets_dir \
     --data-dir ${whole_data_dir}_hires_bp
 fi
 
