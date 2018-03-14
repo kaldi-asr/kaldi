@@ -13,7 +13,7 @@ import sys
 import warnings
 
 sys.path.insert(0, 'steps')
-import libs.nnet3.report.log_parse_test as log_parse
+import libs.nnet3.report.log_parse as log_parse
 import libs.common as common_lib
 
 try:
@@ -65,6 +65,9 @@ def get_args():
     parser.add_argument("--is-chain", type=str, default=False,
                         action=common_lib.StrToBoolAction,
                         help="True if directory contains chain models")
+    parser.add_argument("--is-rnnlm", type=str, default=False,
+                        action=common_lib.StrToBoolAction,
+                        help="True if directory contains RNNLM.")
     parser.add_argument("--output-nodes", type=str, default=None,
                         action=common_lib.NullstrToNoneAction,
                         help="""List of space separated
@@ -87,6 +90,8 @@ def get_args():
             carefully tune the plot_colors variable which specified colors used
             for plotting.""")
     assert args.start_iter >= 1
+    if args.is_chain and args.is_rnnlm:
+        raise Exception("""is_chain and is_rnnlm is not compatible.""")
     return args
 
 
@@ -391,7 +396,6 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
                 iter_stats.append([iter] + comp_stats[iter])
             stat_tables_per_component[component_name] = iter_stats
         stat_tables_per_component_per_dir[dir] = stat_tables_per_component
-    # pdb.set_trace()
     if len(comp_stats[iter]) == 15:
         with_oderiv = 1
     main_stat_tables = stat_tables_per_component_per_dir[exp_dir]
@@ -771,6 +775,13 @@ def generate_plots(exp_dir, output_dir, output_names, comparison_dir=None,
                 key='log-probability', file_basename='log_probability',
                 comparison_dir=comparison_dir, start_iter=start_iter,
                 latex_report=latex_report, output_name=output_name)
+        elif objective_type == "rnnlm_objective":
+            logger.info("Generating RNNLM objective plots")
+            generate_acc_logprob_plots(
+                exp_dir, output_dir, g_plot, key='rnnlm_objective',
+                file_basename='objective', comparison_dir=comparison_dir,
+                start_iter=start_iter,
+                latex_report=latex_report, output_name=output_name)
         else:
             logger.info("Generating " + objective_type + " objective plots")
             generate_acc_logprob_plots(
@@ -815,6 +826,8 @@ def main():
             output_nodes.append(tuple(parts))
     elif args.is_chain:
         output_nodes.append(('output', 'chain'))
+    elif args.is_rnnlm:
+        output_nodes.append(('output', 'rnnlm_objective'))
     else:
         output_nodes.append(('output', 'linear'))
 
