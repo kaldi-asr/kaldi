@@ -173,10 +173,8 @@ if [ $stage -le 6 ]; then
   rm -r ${rvb_targets_dirs[@]}
 fi
 
+
 sad_nnet_dir=$dir/tdnn_stats_asr_sad_1a
-sad_opts="--extra-left-context 79 --extra-right-context 21 --frames-per-chunk 150 --extra-left-context-initial 0 --extra-right-context-final 0 --acwt 0.3"
-#sad_nnet_dir=exp/segmentation${affix}/tdnn_lstm_asr_sad_1a
-#sad_opts="--extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 --extra-left-context-initial 0 --extra-right-context-final 0 --acwt 0.3"
 
 if [ $stage -le 7 ]; then
   # Train a STATS-pooling network for SAD
@@ -204,6 +202,13 @@ steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
 fi
 
 chain_dir=exp/chain/tdnn_lstm_1a
+
+# The context options in "sad_opts" must match the options used to train the 
+# SAD network in "sad_nnet_dir"
+sad_opts="--extra-left-context 79 --extra-right-context 21 --frames-per-chunk 150 --extra-left-context-initial 0 --extra-right-context-final 0 --acwt 0.3"
+
+# For LSTM SAD network, the options might be something like
+# sad_opts="--extra-left-context 70 --extra-right-context 0 --frames-per-chunk 150 --extra-left-context-initial 0 --extra-right-context-final 0 --acwt 0.3"
 
 if [ $stage -le 9 ]; then
   # Use left and right context options that were used when training

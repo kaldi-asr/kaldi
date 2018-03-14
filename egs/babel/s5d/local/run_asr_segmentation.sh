@@ -64,13 +64,13 @@ silence_phones="<sss> SIL"
 
 for p in $garbage_phones; do 
   for a in "" "_B" "_E" "_I" "_S"; do
-    echo "$p$affix"
+    echo "$p$a"
   done
 done > $dir/garbage_phones.txt
 
 for p in $silence_phones; do 
   for a in "" "_B" "_E" "_I" "_S"; do
-    echo "$p$affix"
+    echo "$p$a"
   done
 done > $dir/silence_phones.txt
 
