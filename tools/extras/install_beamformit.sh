@@ -5,7 +5,7 @@
 # libsndfile needed by beamformit
 [ ! -f libsndfile-1.0.25.tar.gz ] && \
   wget http://www.mega-nerd.com/libsndfile/files/libsndfile-1.0.25.tar.gz
-[ ! -d liblbfgs-1.10] && \
+[ ! -d libsndfile-1.0.25 ] && \
   tar xzf libsndfile-1.0.25.tar.gz
 (
   cd libsndfile-1.0.25
