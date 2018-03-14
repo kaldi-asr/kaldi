@@ -228,7 +228,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         buf_size=shuffle_buffer_size,
                         num_chunk_per_mb=num_chunk_per_minibatch_str,
                         multitask_egs_opts=multitask_egs_opts,
-                        scp_or_ark=scp_or_ark)
+                        scp_or_ark=scp_or_ark),
             require_zero_status=True)
 
         threads.append(thread)

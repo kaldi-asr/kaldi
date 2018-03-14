@@ -191,5 +191,17 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # run_50k.sh uses 4-gram LM trained on 1250 hrs transcripts, 
 # while run_100k.sh uses 3-gram LM trained on 100 hrs transcripts.
 
+# local/fisher_train_lms_pocolm.sh 
+# local/fisher_create_test_lang.sh --arpa-lm data/local/pocolm/data/arpa/4gram_small.arpa.gz --dir data/lang_test_poco
+# utils/build_const_arpa_lm.sh data/local/pocolm/data/arpa/4gram_big.arpa.gz data/lang_test_poco data/lang_test_poco_big
+
+# for lang_dir in data/lang_test_poco; do
+#   rm -r ${lang_dir}_unk ${lang_dir}_unk_big 2>/dev/null || true
+#   cp -rT data/lang_unk ${lang_dir}_unk
+#   cp ${lang_dir}/G.fst ${lang_dir}_unk/G.fst
+#   cp -rT data/lang_unk ${lang_dir}_unk_big
+#   cp ${lang_dir}_big/G.carpa ${lang_dir}_unk_big/G.carpa; 
+# done
+
 # local/semisup/run_50k.sh
 # local/semisup/run_100k.sh 

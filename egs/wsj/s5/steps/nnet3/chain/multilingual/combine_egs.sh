@@ -75,11 +75,11 @@ combine_scp_list=
 
 # read paramter from $egs_dir[0]/info and cmvn_opts
 # to write in multilingual egs_dir.
-check_params="info/feat_dim info/ivector_dim info/left_context info/right_context info/frames_per_eg cmvn_opts"
+check_params="info/feat_dim info/ivector_dim info/left_context info/right_context cmvn_opts"
 ivec_dim=`cat ${args[0]}/info/ivector_dim`
 if [ $ivec_dim -ne 0 ];then check_params="$check_params info/final.ie.id"; fi
 
-for param in $check_params; do
+for param in $check_params info/frames_per_eg; do
   cat ${args[0]}/$param > $megs_dir/$param || exit 1;
 done
 
@@ -91,9 +91,9 @@ for lang in $(seq 0 $[$num_langs-1]);do
       echo "$0: no such file ${multi_egs_dir[$lang]}/$f." && exit 1;
     fi
   done
-  num_archives=$(cat ${multi_egs_dir[$lang]}/num_archives)
+  num_archives=$(cat ${multi_egs_dir[$lang]}/info/num_archives)
   tot_num_archives=$[tot_num_archives+num_archives]
-  train_scp_list="$train_scp_list ${args[$lang]}/egs.scp"
+  train_scp_list="$train_scp_list ${args[$lang]}/cegs.scp"
   train_diagnostic_scp_list="$train_diagnostic_scp_list ${args[$lang]}/train_diagnostic.scp"
   valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.scp"
   combine_scp_list="$combine_scp_list ${args[$lang]}/combine.scp"
@@ -124,6 +124,7 @@ if [ $stage -le 0 ]; then
     steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --num-archives $tot_num_archives \
       --block-size $block_size \
+      --egs-prefix "cegs." \
       $train_scp_list $megs_dir || exit 1;
 fi
 

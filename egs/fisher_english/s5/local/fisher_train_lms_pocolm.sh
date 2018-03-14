@@ -40,7 +40,7 @@ export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
 ) || exit 1;
 
 for f in "$text" "$lexicon"; do
-  [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 
 num_dev_sentences=10000
@@ -88,7 +88,7 @@ if [ $stage -le 0 ]; then
   # out interpolation weights.
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
-  cut -d " " -f 2-  < data/dev_and_test/text  > ${dir}/data/real_dev_set.txt
+  cat data/dev/text data/test/text | cut -d " " -f 2- > ${dir}/data/real_dev_set.txt
 
   cat $lexicon | awk '{print $1}' | sort | uniq  | awk '
   {

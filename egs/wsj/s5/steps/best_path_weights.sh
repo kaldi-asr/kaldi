@@ -59,6 +59,7 @@ fi
 mkdir -p $dir
 
 nj=$(cat $decode_dir/num_jobs)
+echo $nj > $dir/num_jobs
 
 if [ $stage -le 1 ]; then
   mkdir -p $dir/log
