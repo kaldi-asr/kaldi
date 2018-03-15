@@ -1,29 +1,11 @@
 #!/bin/bash
 
+# 7m26i is as 7m26g but with slightly more l2 on the output.
+
 # 7m26g is as 7m26e (which has improved controllability of the learning rates of
 # different layers), but trying to revert the system in other respects to be
 # more like 7m25u.  That is: increasing the l2 values, and the layer sizes, to
-# more like 7m26u.  Leaving the learning rate as it was, though.
-# It's almost the same as 7m25u.  (Note: some of the layer sizes are smaller than
-#  25u, though, namely: tdnn{5,7,9,11} are 1280 instead of 1536.)
-# From the loglikes, it looks like it's overfitting more than 25u.
-
-# local/chain/compare_wer_general.sh --rt03 tdnn7m25u_sp tdnn7m26{e,g}_sp
-# local/chain/compare_wer_general.sh --rt03 tdnn7m25u_sp tdnn7m26e_sp tdnn7m26g_sp
-# System                tdnn7m25u_sp tdnn7m26e_sp tdnn7m26g_sp
-# WER on train_dev(tg)      11.92     12.27     11.68
-# WER on train_dev(fg)      10.95     11.27     10.94
-# WER on eval2000(tg)        14.6      15.2      14.6
-# WER on eval2000(fg)        13.1      13.9      13.3
-# WER on rt03(tg)            17.7      18.6      17.9
-# WER on rt03(fg)            15.6      16.5      15.7
-# Final train prob         -0.075    -0.069    -0.066
-# Final valid prob         -0.089    -0.086    -0.084
-# Final train prob (xent)        -0.883    -0.896    -0.851
-# Final valid prob (xent)       -0.9076   -0.9285   -0.8872
-# Num-parameters               24439076  19332132  22865188
-
-
+# more like 7m26u.  Leaving the learnin rate as it was, though.
 
 # 7m26e is as 7m25d but with half the learning rate and using
 #  the same type of linear layer for the output that we used for the other layers
@@ -439,7 +421,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=7m26g
+affix=7m26i
 suffix=
 $speed_perturb && suffix=_sp
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
@@ -527,7 +509,7 @@ if [ $stage -le 12 ]; then
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   opts="l2-regularize=0.003 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
   linear_opts="orthonormal-constraint=-1.0 l2-regularize=0.003"
-  output_opts="l2-regularize=0.001"
+  output_opts="l2-regularize=0.0015"
 
   mkdir -p $dir/configs
 
