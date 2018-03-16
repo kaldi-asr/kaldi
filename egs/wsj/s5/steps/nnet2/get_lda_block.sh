@@ -66,7 +66,7 @@ cp $alidir/tree $dir
 cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 ## Set up features.  Note: these are different from the normal features
 ## because we have one rspecifier that has the features for the entire

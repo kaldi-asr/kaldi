@@ -85,7 +85,7 @@ cp $alidir/tree $dir
 
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 if [ -z "$cmvn_opts" ]; then

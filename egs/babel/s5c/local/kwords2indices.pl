@@ -5,8 +5,8 @@
 use Data::Dumper;
 $Data::Dumper::Indent = 1;
 
-binmode STDOUT, ":utf8"; 
-binmode STDIN, ":utf8"; 
+binmode STDOUT, ":utf8";
+binmode STDIN, ":utf8";
 
 sub permute {
 
@@ -16,10 +16,10 @@ sub permute {
            return map([$_], @$last);
     }
 
-    return map { 
-                 my $left = $_; 
+    return map {
+                 my $left = $_;
                  map([@$left, $_], @$last)
-               } 
+               }
                permute(@_);
 }
 
@@ -32,8 +32,8 @@ for($x = 0; $x < 2; $x++) {
     shift @ARGV; $map_oov = shift @ARGV;
   }
   if ($ARGV[0] eq "-f") {
-    shift @ARGV; 
-    $field_spec = shift @ARGV; 
+    shift @ARGV;
+    $field_spec = shift @ARGV;
     if ($field_spec =~ m/^\d+$/) {
       $field_begin = $field_spec - 1; $field_end = $field_spec - 1;
     }
@@ -46,7 +46,7 @@ for($x = 0; $x < 2; $x++) {
       }
     }
     if (!defined $field_begin && !defined $field_end) {
-      die "Bad argument to -f option: $field_spec"; 
+      die "Bad argument to -f option: $field_spec";
     }
   }
 }
@@ -61,7 +61,7 @@ open(F, "<:encoding(UTF-8)", $symtab) || die "Error opening symbol table file $s
 while(<F>) {
     @A = split(" ", $_);
     @A == 2 || die "bad line in symbol table file: $_";
-    
+
     if ( not defined( $sym2int{$A[0]} ) ) {
       $sym2int{$A[0]} = [];
     }

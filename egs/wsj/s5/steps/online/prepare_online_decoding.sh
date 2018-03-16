@@ -78,7 +78,7 @@ mkdir -p $dir/log
 echo $nj >$dir/num_jobs || exit 1;
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` 
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null` 

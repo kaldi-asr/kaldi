@@ -27,7 +27,7 @@
 #include "decoder/decoder-wrappers.h"
 #include "nnet2/decodable-am-nnet.h"
 #include "base/timer.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 
 int main(int argc, char *argv[]) {
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -106,11 +106,11 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_done = 0, num_err = 0;
-    VectorFst<StdArc> *decode_fst = NULL;
+    Fst<StdArc> *decode_fst = NULL;
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
-      decode_fst = fst::ReadFstKaldi(fst_in_str);
+      decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
       timer.Reset();
 
       {

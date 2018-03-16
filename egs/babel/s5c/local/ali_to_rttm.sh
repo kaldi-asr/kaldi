@@ -28,7 +28,7 @@ beam=10
 retry_beam=40
 boost_silence=1.0
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
@@ -42,7 +42,7 @@ if [ $# != 3 ]; then
   exit 1;
 fi
 
-set -e 
+set -e
 set -o pipefail
 set -u
 
@@ -65,7 +65,7 @@ fi
 $cmd $dir/log/align_to_words.log \
   ali-to-phones $dir/final.mdl "ark:gunzip -c $dir/ali.*.gz|" ark,t:- \| \
   phones-to-prons $lang/L_align.fst $wbegin $wend ark:- "ark,s:utils/sym2int.pl -f 2- --map-oov '$oov' $lang/words.txt <$data/text|" ark,t:- \| \
-  prons-to-wordali ark:- "ark:ali-to-phones --write-lengths=true $dir/final.mdl 'ark:gunzip -c $dir/ali.*.gz|' ark,t:- |" ark,t:$dir/align.txt 
+  prons-to-wordali ark:- "ark:ali-to-phones --write-lengths=true $dir/final.mdl 'ark:gunzip -c $dir/ali.*.gz|' ark,t:- |" ark,t:$dir/align.txt
 
 echo "$0: done writing alignments."
 

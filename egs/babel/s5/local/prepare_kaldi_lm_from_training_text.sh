@@ -189,24 +189,24 @@ phone_disambig_symbol=`grep \#0 $lang/phones.txt | awk '{print $2}'`
 word_disambig_symbol=`grep \#0 $lang/words.txt | awk '{print $2}'`
 
 if [ -r $dir/$LMtoCompileIntoFST ]; then
-    gzipped_ARPA_LM="$dir/$LMtoCompileIntoFST"
+  gzipped_ARPA_LM="$dir/$LMtoCompileIntoFST"
 else
-    echo "$0 WARNING: Cannot read ARPA LM $dir/$LMtoCompileIntoFST"
-    echo "        Trying $LMtoCompileIntoFST"
-    if [ -r $LMtoCompileIntoFST ]; then
-	gzipped_ARPA_LM="$LMtoCompileIntoFST"
-    else
-	echo "$0 ERROR: Cannot read ARPA LM"
-	exit 1
-    fi
+  echo "$0 WARNING: Cannot read ARPA LM $dir/$LMtoCompileIntoFST"
+  echo "        Trying $LMtoCompileIntoFST"
+  if [ -r $LMtoCompileIntoFST ]; then
+    gzipped_ARPA_LM="$LMtoCompileIntoFST"
+  else
+    echo "$0 ERROR: Cannot read ARPA LM"
+    exit 1
+  fi
 fi
 
 echo "Compiling $gzipped_ARPA_LM into $lang/G.fst"
 
 . ./path.sh || exit 1;
 gunzip -c $gzipped_ARPA_LM | \
-    arpa2fst --disambig-symbol=#0 \
-             --read-symbol-table=$lang/words.txt - $lang/G.fst || exit 1;
+  arpa2fst --disambig-symbol=#0 \
+  --read-symbol-table=$lang/words.txt - $lang/G.fst || exit 1;
 fstisstochastic $lang/G.fst
 
 ##################################################################

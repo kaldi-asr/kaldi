@@ -4,7 +4,7 @@
 # this is a baseline for ./run_nnet2.sh, without
 # the iVectors, to see whether they make a difference.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
@@ -12,7 +12,7 @@ train_stage=-10
 use_gpu=true
 dir=exp/nnet2_online/nnet_a_baseline
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -20,13 +20,13 @@ dir=exp/nnet2_online/nnet_a_baseline
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
 else
@@ -34,7 +34,7 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 

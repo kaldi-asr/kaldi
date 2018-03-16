@@ -32,7 +32,7 @@ if [ $# != 5 ]; then
    exit 1;
 fi
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 data=$1
 srcdata=$2
@@ -44,7 +44,7 @@ bnfeadir=$5
 
 # copy the dataset metadata from srcdata.
 mkdir -p $data $logdir $bnfeadir || exit 1;
-utils/copy_data_dir.sh $srcdata $data; rm $data/{feats,cmvn}.scp 2>/dev/null
+utils/copy_data_dir.sh $srcdata $data; rm -f $data/{feats,cmvn}.scp 2>/dev/null
 
 # make $bnfeadir an absolute pathname.
 [ '/' != ${bnfeadir:0:1} ] && bnfeadir=$PWD/$bnfeadir

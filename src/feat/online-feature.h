@@ -215,7 +215,7 @@ struct OnlineCmvnOptions {
     po->Register("norm-vars", &normalize_variance, "If true, do "
                  "cepstral variance normalization in addition to cepstral mean "
                  "normalization ");
-    po->Register("norm-mean", &normalize_mean, "If true, do mean normalization "
+    po->Register("norm-means", &normalize_mean, "If true, do mean normalization "
                  "(note: you cannot normalize the variance but not the mean)");
     po->Register("skip-dims", &skip_dims, "Dimensions to skip normalization of "
                  "(colon-separated list of integers)");}

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ./train.py
+
 # note, TDNN is the same as what we used to call multisplice.
 # This version of the script, nnet3/chain/train_tdnn.sh, is for 'chain' systems.
 
@@ -18,8 +20,6 @@ num_epochs=10      # Number of epochs of training;
                    # Be careful with this: we actually go over the data
                    # num-epochs * frame-subsampling-factor times, due to
                    # using different data-shifts.
-truncate_deriv_weights=0  # can be used to set to zero the weights of derivs from frames
-                          # near the edges.  (counts subsampled frames).
 apply_deriv_weights=true
 initial_effective_lrate=0.0002
 final_effective_lrate=0.00002
@@ -93,7 +93,6 @@ egs_opts=
 transform_dir=     # If supplied, this dir used instead of latdir to find transforms.
 cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
-feat_type=raw  # or set to 'lda' to use LDA features.
 frames_per_eg=25   # number of frames of output per chunk.  To be passed on to get_egs.sh.
 left_deriv_truncate=   # number of time-steps to avoid using the deriv of, on the left.
 right_deriv_truncate=  # number of time-steps to avoid using the deriv of, on the right.
@@ -102,6 +101,8 @@ right_deriv_truncate=  # number of time-steps to avoid using the deriv of, on th
 
 trap 'for pid in $(jobs -pr); do kill -TERM $pid; done' INT QUIT TERM
 
+
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -125,10 +126,10 @@ if [ $# != 4 ]; then
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
   echo "                                                   # results as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
-  echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
-  echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
-  echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
+  echo "                                                   # use multiple threads... note, you might have to reduce --mem"
+  echo "                                                   # versus your defaults, because it gets multiplied by the --num-threads argument."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --frames-per-iter <#frames|400000>               # Number of frames of data to process per iteration, per"
@@ -157,6 +158,9 @@ for f in $data/feats.scp $treedir/ali.1.gz $treedir/final.mdl $treedir/tree \
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
+# Copy phones.txt from tree-dir to dir. Later, steps/nnet3/decode.sh will
+# use it to check compatibility between training and decoding phone-sets.
+cp $treedir/phones.txt $dir
 
 # Set some variables.
 nj=`cat $treedir/num_jobs` || exit 1;  # number of jobs in alignment dir...
@@ -170,17 +174,9 @@ cp $treedir/tree $dir
 
 
 # First work out the feature and iVector dimension, needed for tdnn config creation.
-case $feat_type in
-  raw) feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \
-      { echo "$0: Error getting feature dim"; exit 1; }
-    ;;
-  lda)  [ ! -f $treedir/final.mat ] && echo "$0: With --feat-type lda option, expect $treedir/final.mat to exist."
-   # get num-rows in lda matrix, which is the lda feature dim.
-   feat_dim=$(matrix-dim --print-args=false $treedir/final.mat | cut -f 1)
-    ;;
-  *)
-   echo "$0: Bad --feat-type '$feat_type';"; exit 1;
-esac
+feat_dim=$(feat-to-dim --print-args=false scp:$data/feats.scp -) || \
+  { echo "$0: Error getting feature dim"; exit 1; }
+
 if [ -z "$online_ivector_dir" ]; then
   ivector_dim=0
 else
@@ -271,7 +267,6 @@ fi
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
   [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
-  [ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
   [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
   extra_opts+=(--transform-dir $transform_dir)
   # we need a bit of extra left-context and right-context to allow for frame
@@ -526,7 +521,7 @@ while [ $x -lt $num_iters ]; do
               $this_cache_io_opts $parallel_train_opts $deriv_time_opts \
              --max-param-change=$this_max_param_change \
             --print-interval=10 "$mdl" $dir/den.fst \
-          "ark,bg:nnet3-chain-copy-egs --truncate-deriv-weights=$truncate_deriv_weights --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
+          "ark,bg:nnet3-chain-copy-egs --frame-shift=$frame_shift ark:$egs_dir/cegs.$archive.ark ark:- | nnet3-chain-shuffle-egs --buffer-size=$shuffle_buffer_size --srand=$x ark:- ark:-| nnet3-chain-merge-egs --minibatch-size=$this_minibatch_size ark:- ark:- |" \
           $dir/$[$x+1].$n.raw || touch $dir/.error &
       done
       wait

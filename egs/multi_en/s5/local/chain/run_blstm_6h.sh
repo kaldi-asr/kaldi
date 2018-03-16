@@ -81,7 +81,6 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 11000 data/$train_set $lang $ali_dir $treedir
 fi
 
@@ -124,7 +123,6 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --chain.left-deriv-truncate 0 \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 1200000 \
     --trainer.max-param-change 1.414 \
@@ -135,6 +133,7 @@ if [ $stage -le 13 ]; then
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.momentum 0.0 \
+    --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $chunk_width \

@@ -9,8 +9,8 @@
 # This example script is still a bit of a mess, and needs to be
 # cleaned up, but it shows you all the basic ingredients.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
@@ -23,17 +23,17 @@ local/make_fisher.sh /export/corpora3/LDC/{LDC2005S13,LDC2005T19} data/fisher2
 
 local/make_sre_2005_test.pl /export/corpora5/LDC/LDC2011S04 data
 local/make_sre_2004_test.pl \
-    /export/corpora5/LDC/LDC2006S44/r93_5_1/sp04-05/test data/sre_2004_1
+  /export/corpora5/LDC/LDC2006S44/r93_5_1/sp04-05/test data/sre_2004_1
 local/make_sre_2004_test.pl \
-    /export/corpora5/LDC/LDC2006S44/r93_6_1/sp04-06/test data/sre_2004_2
+  /export/corpora5/LDC/LDC2006S44/r93_6_1/sp04-06/test data/sre_2004_2
 local/make_sre_2008_train.pl /export/corpora5/LDC/LDC2011S05 data
 local/make_sre_2008_test.sh  /export/corpora5/LDC/LDC2011S08 data
 local/make_sre_2006_train.pl /export/corpora5/LDC/LDC2011S09 data
 local/make_sre_2005_train.pl /export/corpora5/LDC/LDC2011S01 data
 local/make_swbd_cellular1.pl /export/corpora5/LDC/LDC2001S13 \
-                             data/swbd_cellular1_train
+  data/swbd_cellular1_train
 local/make_swbd_cellular2.pl /export/corpora5/LDC/LDC2004S07 \
-                             data/swbd_cellular2_train
+  data/swbd_cellular2_train
 
 utils/combine_data.sh data/train data/fisher1 data/fisher2 \
   data/swbd_cellular1_train data/swbd_cellular2_train \
@@ -106,16 +106,16 @@ sid/train_full_ubm.sh --nj 30 --remove-low-count-gaussians false \
   data/train_male_8k exp/full_ubm_2048 exp/full_ubm_2048_male &
 sid/train_full_ubm.sh --nj 30 --remove-low-count-gaussians false \
   --num-iters 1 --cmd "$train_cmd" \
- data/train_female_8k exp/full_ubm_2048 exp/full_ubm_2048_female &
+  data/train_female_8k exp/full_ubm_2048 exp/full_ubm_2048_female &
 wait
 
 # Train the iVector extractor for male speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 35G" \
   --num-iters 5 exp/full_ubm_2048_male/final.ubm data/train_male \
   exp/extractor_2048_male
 
 # The same for female speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=35G,ram_free=35G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 35G" \
   --num-iters 5 exp/full_ubm_2048_female/final.ubm data/train_female \
   exp/extractor_2048_female
 
@@ -129,27 +129,27 @@ sid/gender_id.sh --cmd "$train_cmd" --nj 150 exp/full_ubm_2048{,_male,_female} \
 # Gender-id error rate is 3.41%
 
 # Extract the iVectors for the training data.
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
- exp/extractor_2048_male data/train_male exp/ivectors_train_male
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
+  exp/extractor_2048_male data/train_male exp/ivectors_train_male
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
- exp/extractor_2048_female data/train_female exp/ivectors_train_female
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
+  exp/extractor_2048_female data/train_female exp/ivectors_train_female
 
 # .. and for the SRE08 training and test data. (We focus on the main
 # evaluation condition, the only required one in that eval, which is
 # the short2-short3 eval.)
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
- exp/extractor_2048_female data/sre08_train_short2_female \
- exp/ivectors_sre08_train_short2_female
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
- exp/extractor_2048_male data/sre08_train_short2_male \
- exp/ivectors_sre08_train_short2_male
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
- exp/extractor_2048_female data/sre08_test_short3_female \
- exp/ivectors_sre08_test_short3_female
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" --nj 50 \
- exp/extractor_2048_male data/sre08_test_short3_male \
- exp/ivectors_sre08_test_short3_male
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
+  exp/extractor_2048_female data/sre08_train_short2_female \
+  exp/ivectors_sre08_train_short2_female
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
+  exp/extractor_2048_male data/sre08_train_short2_male \
+  exp/ivectors_sre08_train_short2_male
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
+  exp/extractor_2048_female data/sre08_test_short3_female \
+  exp/ivectors_sre08_test_short3_female
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 6G" --nj 50 \
+  exp/extractor_2048_male data/sre08_test_short3_male \
+  exp/ivectors_sre08_test_short3_male
 
 ### Demonstrate simple cosine-distance scoring:
 
@@ -199,15 +199,15 @@ local/score_sre08.sh $trials foo
 
 ivector-compute-lda --dim=150  --total-covariance-factor=0.1 \
   'ark:ivector-normalize-length scp:exp/ivectors_train_female/ivector.scp ark:- |' \
-    ark:data/train_female/utt2spk \
-    exp/ivectors_train_female/transform.mat
+  ark:data/train_female/utt2spk \
+  exp/ivectors_train_female/transform.mat
 
 trials=data/sre08_trials/short2-short3-female.trials
 cat $trials | awk '{print $1, $2}' | \
   ivector-compute-dot-products - \
-    'ark:ivector-transform exp/ivectors_train_female/transform.mat scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
-    'ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- | ivector-transform exp/ivectors_train_female/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |' \
-    foo
+  'ark:ivector-transform exp/ivectors_train_female/transform.mat scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+  'ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- | ivector-transform exp/ivectors_train_female/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |' \
+  foo
 local/score_sre08.sh $trials foo
 
 # Results for Female:
@@ -221,11 +221,11 @@ ivector-compute-lda --dim=150 --total-covariance-factor=0.1 \
   exp/ivectors_train_male/transform.mat
 
 trials=data/sre08_trials/short2-short3-male.trials
- cat $trials | awk '{print $1, $2}' | \
+  cat $trials | awk '{print $1, $2}' | \
   ivector-compute-dot-products - \
-    'ark:ivector-transform exp/ivectors_train_male/transform.mat scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
-    'ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- | ivector-transform exp/ivectors_train_male/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |' \
-    foo
+  'ark:ivector-transform exp/ivectors_train_male/transform.mat scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |' \
+  'ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- | ivector-transform exp/ivectors_train_male/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |' \
+  foo
 local/score_sre08.sh $trials foo
 
 # Results for Male:
@@ -242,12 +242,12 @@ local/score_sre08.sh $trials foo
 trials=data/sre08_trials/short2-short3-female.trials
 ivector-compute-plda ark:data/train_female/spk2utt \
   'ark:ivector-normalize-length scp:exp/ivectors_train_female/ivector.scp  ark:- |' \
-    exp/ivectors_train_female/plda 2>exp/ivectors_train_female/log/plda.log
-ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
-   "ivector-copy-plda --smoothing=0.0 exp/ivectors_train_female/plda - |" \
-   "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- |" \
-   "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- | ivector-subtract-global-mean ark:- ark:- |" \
-   "cat '$trials' | awk '{print \$1, \$2}' |" foo
+  exp/ivectors_train_female/plda 2>exp/ivectors_train_female/log/plda.log
+ivector-plda-scoring --simple-length-normalization=true --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
+  "ivector-copy-plda --smoothing=0.0 exp/ivectors_train_female/plda - |" \
+  "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp ark:- |" \
+  "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- | ivector-subtract-global-mean ark:- ark:- |" \
+  "cat '$trials' | awk '{print \$1, \$2}' |" foo
 local/score_sre08.sh $trials foo
 
 # Result for Female is below:
@@ -258,12 +258,12 @@ local/score_sre08.sh $trials foo
 trials=data/sre08_trials/short2-short3-male.trials
 ivector-compute-plda ark:data/train_male/spk2utt \
   'ark:ivector-normalize-length scp:exp/ivectors_train_male/ivector.scp  ark:- |' \
-    exp/ivectors_train_male/plda 2>exp/ivectors_train_male/log/plda.log
-ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
-   "ivector-copy-plda --smoothing=0.0 exp/ivectors_train_male/plda - |" \
-   "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- |" \
-   "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- | ivector-subtract-global-mean ark:- ark:- |" \
-   "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
+  exp/ivectors_train_male/plda 2>exp/ivectors_train_male/log/plda.log
+ivector-plda-scoring --simple-length-normalization=true --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
+  "ivector-copy-plda --smoothing=0.0 exp/ivectors_train_male/plda - |" \
+  "ark:ivector-subtract-global-mean scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp ark:- |" \
+  "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- | ivector-subtract-global-mean ark:- ark:- |" \
+  "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
 
 # Result for Male is below:
 # Scoring against data/sre08_trials/short2-short3-male.trials
@@ -276,11 +276,11 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utt
 # first, female.
 trials=data/sre08_trials/short2-short3-female.trials
 cat exp/ivectors_sre08_train_short2_female/spk_ivector.scp exp/ivectors_sre08_test_short3_female/ivector.scp > female.scp
-ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
-   "ivector-adapt-plda $adapt_opts exp/ivectors_train_female/plda scp:female.scp -|" \
-   scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp \
-   "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- |" \
-   "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
+ivector-plda-scoring --simple-length-normalization=true --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_utts.ark \
+  "ivector-adapt-plda $adapt_opts exp/ivectors_train_female/plda scp:female.scp -|" \
+  scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp \
+  "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_female/ivector.scp ark:- |" \
+  "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
 # Results:
 #  Condition:      0      1      2      3      4      5      6      7      8
 #        EER:   5.45   6.73   1.19   6.79   7.06   6.61   6.32   4.18   4.74
@@ -291,11 +291,11 @@ ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_female/num_u
 # next, male.
 trials=data/sre08_trials/short2-short3-male.trials
 cat exp/ivectors_sre08_train_short2_male/spk_ivector.scp exp/ivectors_sre08_test_short3_male/ivector.scp > male.scp
-ivector-plda-scoring --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
-   "ivector-adapt-plda $adapt_opts exp/ivectors_train_male/plda scp:male.scp -|" \
-   scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp \
-   "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- |" \
-   "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
+ivector-plda-scoring --simple-length-normalization=true --num-utts=ark:exp/ivectors_sre08_train_short2_male/num_utts.ark \
+  "ivector-adapt-plda $adapt_opts exp/ivectors_train_male/plda scp:male.scp -|" \
+  scp:exp/ivectors_sre08_train_short2_male/spk_ivector.scp \
+  "ark:ivector-normalize-length scp:exp/ivectors_sre08_test_short3_male/ivector.scp ark:- |" \
+  "cat '$trials' | awk '{print \$1, \$2}' |" foo; local/score_sre08.sh $trials foo
 
 # Results:
 #  Condition:      0      1      2      3      4      5      6      7      8

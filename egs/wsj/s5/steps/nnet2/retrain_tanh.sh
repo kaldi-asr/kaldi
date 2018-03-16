@@ -99,7 +99,8 @@ num_jobs_nnet=`cat $egs_dir/num_jobs_nnet` || exit 1;
 iters_per_epoch=`cat $egs_dir/iters_per_epoch`  || exit 1;
 
 mkdir -p $dir/log
-cp $nnet_dir/phones.txt $dir || exit 1;
+
+cp $nnet_dir/phones.txt $dir 2>/dev/null
 
 cp $nnet_dir/splice_opts $dir 2>/dev/null
 cp $nnet_dir/final.mat $dir 2>/dev/null # any LDA matrix...

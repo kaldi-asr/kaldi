@@ -60,7 +60,6 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
 fi
-
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 8" if you have already
 # run those things.
@@ -75,7 +74,6 @@ train_set=train_nodup$suffix
 ali_dir=exp/tri4_ali_nodup$suffix
 treedir=exp/chain/tri5_7d_tree$suffix
 lang=data/lang_chain_2y
-
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
@@ -183,7 +181,7 @@ if [ $stage -le 14 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
-  utils/mkgraph.sh --left-biphone --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
+  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_sw1_tg $dir $dir/graph_sw1_tg
 fi
 
 decode_suff=sw1_tg

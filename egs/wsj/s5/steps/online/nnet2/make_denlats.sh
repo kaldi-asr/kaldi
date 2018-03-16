@@ -63,7 +63,6 @@ split_data.sh $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt $dir || exit 1;
 
 oov=`cat $lang/oov.int` || exit 1;
 

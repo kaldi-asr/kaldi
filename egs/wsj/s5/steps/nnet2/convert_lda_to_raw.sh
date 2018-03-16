@@ -44,7 +44,8 @@ for f in $src/final.mdl $src/final.mat $src/splice_opts $src/cmvn_opts; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-cp $src/phones.txt $dir/phones.txt || exit 1;
+cp $src/phones.txt $dir 2>/dev/null
+
 mkdir -p $dir/log
 
 # nnet.config will be a config for a few trivial neural-network layers

@@ -37,29 +37,34 @@ int main(int argc, char *argv[]) {
 
     const char *usage = "Computes the Actual Term-Weighted Value and prints it."
         "\n"
-        "Usage: compute-atwv [options] <nof-trials> <ref-rspecifier> <hyp-rspecifier> [alignment-csv-filename]\n"
-        " e.g.: compute-atwv 32485.4 ark:ref.1 ark:hyp.1 ali.csv\n"
-        "   or: compute-atwv 32485.4 ark:ref.1 ark:hyp.1\n"
+        "Usage: \n"
+        " compute-atwv [options] <nof-trials> <ref-rspecifier>"
+        " <hyp-rspecifier> [alignment-csv-filename]\n"
+        "e.g.: \n"
+        " compute-atwv 32485.4 ark:ref.1 ark:hyp.1 ali.csv\n"
+        "or: \n"
+        " compute-atwv 32485.4 ark:ref.1 ark:hyp.1\n"
         "\n"
         "NOTES: \n"
         "  a) the number of trials is usually equal to the size of the searched\n"
         "     collection in seconds\n"
-        "  b  the ref-rspecifier/hyp-rspecifier are the kaldi IO specifiers for both\n"
-        "     the reference and the hypotheses (found hits), respectively.\n"
-        "     The format is the same for both of them. Each line is of \n"
-        "     the following format\n"
+        "  b  the ref-rspecifier/hyp-rspecifier are the kaldi IO specifiers \n"
+        "     for both the reference and the hypotheses (found hits), "
+        "     respectively The format is the same for both of them. Each line\n"
+        "     is of the following format\n"
         "\n"
         "     <KW-ID> <utterance-id> <start-frame> <end-frame> <score>\n\n"
         "     e.g.:\n\n"
         "     KW106-189 348 459 560 0.8\n"
         "\n"
-        "  b) the alignment-csv-filename is an optional parameter. If present,\n"
-        "     the alignment i.e. detailed information about what hypotheses match\n"
-        "     up with which reference entries will be generated. The alignemnt\n"
-        "     file format is equivalent to the alignment file produced using\n"
-        "     the F4DE tool. However, we do not set some fields and the utterance\n"
-        "     identifiers are numeric. You can use the script utils/int2sym.pl\n"
-        "     and the utterance/keyword maps to convert the numerical ids into text\n"
+        "  b) the alignment-csv-filename is an optional parameter. \n"
+        "     If present, the alignment i.e. detailed information about what \n"
+        "     hypotheses match up with which reference entries will be \n"
+        "     generated. The alignemnt file format is equivalent to \n"
+        "     the alignment file produced using the F4DE tool. However, we do"
+        "     not set some fields and the utterance identifiers are numeric.\n"
+        "     You can use the script utils/int2sym.pl and the utterance and \n"
+        "     keyword maps to convert the numerical ids into text form\n"
         "  c) the scores are expected to be probabilities. Please note that\n"
         "     the output from the kws-search is in -log(probability).\n"
         "  d) compute-atwv does not perform any score normalization (it's just\n"
@@ -79,7 +84,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if ((po.NumArgs() < 3) || (po.NumArgs() > 4)) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
@@ -161,7 +166,6 @@ int main(int argc, char *argv[]) {
     std::cout << "aproximate OTWV = "
       << std::fixed << std::setprecision(4)
       << otwv << std::endl;
-
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

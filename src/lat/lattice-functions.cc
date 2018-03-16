@@ -33,6 +33,48 @@ namespace kaldi {
 using std::map;
 using std::vector;
 
+void GetPerFrameAcousticCosts(const Lattice &nbest, Vector<BaseFloat> *per_frame_loglikes) {
+  using namespace fst;
+  typedef Lattice::Arc::Weight Weight;
+  vector<BaseFloat> loglikes;
+
+  int32 cur_state = nbest.Start();
+  int32 prev_frame = -1;
+  BaseFloat eps_acwt = 0.0;
+  while(1) {
+    Weight w = nbest.Final(cur_state);
+    if (w != Weight::Zero()) {
+      KALDI_ASSERT(nbest.NumArcs(cur_state) == 0);
+      if (per_frame_loglikes != NULL)  {
+        SubVector<BaseFloat> subvec(&(loglikes[0]), loglikes.size());
+        Vector<BaseFloat> vec(subvec);
+        *per_frame_loglikes = vec;
+      }
+      break;
+    } else {
+      KALDI_ASSERT(nbest.NumArcs(cur_state) == 1);
+      fst::ArcIterator<Lattice> iter(nbest, cur_state);
+      const Lattice::Arc &arc = iter.Value();
+      BaseFloat acwt = arc.weight.Value2();
+      if (arc.ilabel != 0) {
+        if (eps_acwt > 0) {
+          acwt += eps_acwt;
+          eps_acwt = 0.0;
+        }
+        loglikes.push_back(acwt);
+        prev_frame++;
+      } else if (acwt == acwt){
+        if (prev_frame > -1) {
+          loglikes[prev_frame] += acwt;
+        } else {
+          eps_acwt += acwt;
+        }
+      }
+      cur_state = arc.nextstate;
+    }
+  }
+}
+
 int32 LatticeStateTimes(const Lattice &lat, vector<int32> *times) {
   if (!lat.Properties(fst::kTopSorted, true))
     KALDI_ERR << "Input lattice must be topologically sorted.";

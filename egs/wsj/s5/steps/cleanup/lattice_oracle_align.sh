@@ -16,7 +16,7 @@ special_symbol="***"    # Special symbol to be aligned with the inserted or
 print_silence=true      # True if we want the silences in the ctm.  We do.
 frame_shift=0.01
 
-. path.sh
+. ./path.sh
 . utils/parse_options.sh
 
 if [ $# -ne 4 ]; then
@@ -72,9 +72,9 @@ fi
 nj=$(cat $latdir/num_jobs)
 oov=$(cat $lang/oov.int)
 
-utils/split_data.sh --per-utt $data $nj
+utils/split_data.sh $data $nj
 
-sdata=$data/split$nj
+sdata=$data/split${nj}
 
 if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $dir/log/get_oracle.JOB.log \
@@ -111,9 +111,9 @@ if [ $stage -le 2 ]; then
     $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
       set -o pipefail '&&' \
       lattice-align-words-lexicon $lang/phones/align_lexicon.int $model  "ark:gunzip -c $dir/lat.JOB.gz|" ark:- \| \
+      lattice-1best ark:- ark:- \| \
       nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt \| \
-      $filter_cmd '>' $dir/ctm.JOB || exit 1;
+      utils/int2sym.pl -f 5 $lang/words.txt '>' $dir/ctm.JOB || exit 1;
   else
     echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
     exit 1;
@@ -193,7 +193,7 @@ if [ $stage -le 5 ]; then
 
   $cmd $dir/log/get_ctm_edits.log \
     align-text ark:$dir/oracle_hyp.txt ark:$dir/text ark,t:-  \| \
-      steps/cleanup/get_ctm_edits.py --oov=$oov --symbol-table=$lang/words.txt \
+      steps/cleanup/internal/get_ctm_edits.py --oov=$oov --symbol-table=$lang/words.txt \
        /dev/stdin $dir/ctm $dir/ctm_edits || exit 1
 
   echo "$0: ctm with edits information appended is in $dir/ctm_edits"

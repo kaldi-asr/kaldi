@@ -79,7 +79,7 @@ for (my $x = 1; $x <= $num_storage; $x++) {
 
 # Second, get the coprime list.
 my @coprimes;
-for (my $n = 1; $n < $num_storage; $n++) {
+for (my $n = 1; $n <= $num_storage; $n++) {
   if (GetGCD($n, $num_storage) == 1) {
     push(@coprimes, $n);
   }

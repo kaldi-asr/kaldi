@@ -48,7 +48,7 @@ for inv_acwt in `seq $min_lmwt $max_lmwt`; do
 done
 wait;
 [ -f $dir/.error ] && echo "score_mbr.sh: errror getting MBR outout.";
-     
+
 
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
    cat $dir/scoring/LMWT.tra \| \

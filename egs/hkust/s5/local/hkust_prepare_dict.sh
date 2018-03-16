@@ -2,74 +2,59 @@
 # Copyright 2016 LeSpeech (Author: Xingyu Na)
 
 # prepare dictionary for HKUST
-# it is done for English and Chinese separately, 
+# it is done for English and Chinese separately,
 # For English, we use CMU dictionary, and Sequitur G2P
 # for OOVs, while all englist phone set will concert to Chinese
 # phone set at the end. For Chinese, we use an online dictionary,
 # for OOV, we just produce pronunciation using Charactrt Mapping.
-  
-. path.sh
 
-[ $# != 0 ] && echo "Usage: local/hkust_prepare_dict.sh" && exit 1;
+. ./path.sh
+
+[ $# != 0 ] && echo "Usage: $0" && exit 1;
 
 train_dir=data/local/train
 dev_dir=data/local/dev
 dict_dir=data/local/dict
 mkdir -p $dict_dir
 mkdir -p $dict_dir/lexicon-{en,ch}
-  
+
 # extract full vocabulary
 cat $train_dir/text $dev_dir/text | awk '{for (i = 2; i <= NF; i++) print $i}' |\
-  sed -e 's/ /\n/g' | sort -u | grep -v '\[LAUGHTER\]' | grep -v '\[NOISE\]' |\
-  grep -v '\[VOCALIZED-NOISE\]' > $dict_dir/words.txt  
+  perl -ape 's/ /\n/g;' | sort -u | grep -v '\[LAUGHTER\]' | grep -v '\[NOISE\]' |\
+  grep -v '\[VOCALIZED-NOISE\]' > $dict_dir/words.txt || exit 1;
 
 # split into English and Chinese
-cat $dict_dir/words.txt | grep '[a-zA-Z]' > $dict_dir/lexicon-en/words-en.txt
-cat $dict_dir/words.txt | grep -v '[a-zA-Z]' > $dict_dir/lexicon-ch/words-ch.txt
+cat $dict_dir/words.txt | grep '[a-zA-Z]' > $dict_dir/lexicon-en/words-en.txt || exit 1;
+cat $dict_dir/words.txt | grep -v '[a-zA-Z]' > $dict_dir/lexicon-ch/words-ch.txt || exit 1;
 
 
-##### produce pronunciations for english 
+##### produce pronunciations for english
 if [ ! -f $dict_dir/cmudict/cmudict.0.7a ]; then
   echo "--- Downloading CMU dictionary ..."
   svn co -r 13068 https://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict \
     $dict_dir/cmudict || exit 1;
 fi
 
+# format cmudict
 echo "--- Striping stress and pronunciation variant markers from cmudict ..."
 perl $dict_dir/cmudict/scripts/make_baseform.pl \
   $dict_dir/cmudict/cmudict.0.7a /dev/stdout |\
-  sed -e 's:^\([^\s(]\+\)([0-9]\+)\(\s\+\)\(.*\):\1\2\3:' > $dict_dir/cmudict/cmudict-plain.txt
+  sed -e 's:^\([^\s(]\+\)([0-9]\+)\(\s\+\)\(.*\):\1\2\3:' > $dict_dir/cmudict/cmudict-plain.txt || exit 1;
 
+# extract in-vocab lexicon and oov words
 echo "--- Searching for English OOV words ..."
-gawk 'NR==FNR{words[$1]; next;} !($1 in words)' \
+awk 'NR==FNR{words[$1]; next;} !($1 in words)' \
   $dict_dir/cmudict/cmudict-plain.txt $dict_dir/lexicon-en/words-en.txt |\
-  egrep -v '<.?s>' > $dict_dir/lexicon-en/words-en-oov.txt
+  egrep -v '<.?s>' > $dict_dir/lexicon-en/words-en-oov.txt || exit 1;
 
-gawk 'NR==FNR{words[$1]; next;} ($1 in words)' \
+awk 'NR==FNR{words[$1]; next;} ($1 in words)' \
   $dict_dir/lexicon-en/words-en.txt $dict_dir/cmudict/cmudict-plain.txt |\
-  egrep -v '<.?s>' > $dict_dir/lexicon-en/lexicon-en-iv.txt
+  egrep -v '<.?s>' > $dict_dir/lexicon-en/lexicon-en-iv.txt || exit 1;
 
 wc -l $dict_dir/lexicon-en/words-en-oov.txt
 wc -l $dict_dir/lexicon-en/lexicon-en-iv.txt
 
-pyver=`python --version 2>&1 | sed -e 's:.*\([2-3]\.[0-9]\+\).*:\1:g'`
-export PYTHONPATH=$PYTHONPATH:`pwd`/tools/g2p/lib/python${pyver}/site-packages
-if [ ! -f tools/g2p/lib/python${pyver}/site-packages/g2p.py ]; then
-  echo "--- Downloading Sequitur G2P ..."
-  echo "NOTE: it assumes that you have Python, NumPy and SWIG installed on your system!"
-  wget -P tools http://www-i6.informatik.rwth-aachen.de/web/Software/g2p-r1668.tar.gz
-  tar xf tools/g2p-r1668.tar.gz -C tools
-  cd tools/g2p
-  echo '#include <cstdio>' >> Utility.hh # won't compile on my system w/o this "patch"
-  python setup.py build 
-  python setup.py install --prefix=.
-  cd ../..
-  if [ ! -f tools/g2p/lib/python${pyver}/site-packages/g2p.py ]; then
-    echo "Sequitur G2P is not found - installation failed?"
-    exit 1
-  fi
-fi
-
+# setup g2p and generate oov lexicon
 if [ ! -f conf/g2p_model ]; then
   echo "--- Downloading a pre-trained Sequitur G2P model ..."
   wget http://sourceforge.net/projects/kaldi/files/sequitur-model4 -O conf/g2p_model
@@ -80,24 +65,31 @@ if [ ! -f conf/g2p_model ]; then
 fi
 
 echo "--- Preparing pronunciations for OOV words ..."
-python tools/g2p/lib/python${pyver}/site-packages/g2p.py \
-  --model=conf/g2p_model --apply $dict_dir/lexicon-en/words-en-oov.txt > $dict_dir/lexicon-en/lexicon-en-oov.txt
+g2p=`which g2p.py`
+if [ ! -x $g2p ]; then
+  echo "g2p.py is not found. Checkout tools/extras/install_sequitur.sh."
+  exit 1
+fi
+g2p.py --model=conf/g2p_model --apply $dict_dir/lexicon-en/words-en-oov.txt \
+  > $dict_dir/lexicon-en/lexicon-en-oov.txt || exit 1;
 
+# merge in-vocab and oov lexicon
 cat $dict_dir/lexicon-en/lexicon-en-oov.txt $dict_dir/lexicon-en/lexicon-en-iv.txt |\
-  sort > $dict_dir/lexicon-en/lexicon-en-phn.txt
+  sort > $dict_dir/lexicon-en/lexicon-en-phn.txt || exit 1;
 
+# convert cmu phoneme to pinyin phonenme
 mkdir $dict_dir/map
-cat conf/cmu2pinyin | awk '{print $1;}' | sort -u > $dict_dir/map/cmu 
+cat conf/cmu2pinyin | awk '{print $1;}' | sort -u > $dict_dir/map/cmu || exit 1;
 cat conf/pinyin2cmu | awk -v cmu=$dict_dir/map/cmu \
   'BEGIN{while((getline<cmu)) dict[$1] = 1;}
-   {for (i = 2; i <=NF; i++) if (dict[$i]) print $i;}' | sort -u > $dict_dir/map/cmu-used
+   {for (i = 2; i <=NF; i++) if (dict[$i]) print $i;}' | sort -u > $dict_dir/map/cmu-used || exit 1;
 cat $dict_dir/map/cmu | awk -v cmu=$dict_dir/map/cmu-used \
   'BEGIN{while((getline<cmu)) dict[$1] = 1;}
-   {if (!dict[$1]) print $1;}' > $dict_dir/map/cmu-not-used 
+   {if (!dict[$1]) print $1;}' > $dict_dir/map/cmu-not-used || exit 1;
 
-gawk 'NR==FNR{words[$1]; next;} ($1 in words)' \
+awk 'NR==FNR{words[$1]; next;} ($1 in words)' \
   $dict_dir/map/cmu-not-used conf/cmu2pinyin |\
-  egrep -v '<.?s>' > $dict_dir/map/cmu-py
+  egrep -v '<.?s>' > $dict_dir/map/cmu-py || exit 1;
 
 cat $dict_dir/map/cmu-py | \
   perl -e '
@@ -116,9 +108,9 @@ cat $dict_dir/map/cmu-py | \
     push(@entry, $W);
     for($i = 0; $i < @A; $i++) { push(@entry, @{$py2ph{$A[$i]}}); }
     print "@entry";
-    print "\n";  
-  }  
-' conf/pinyin2cmu > $dict_dir/map/cmu-cmu 
+    print "\n";
+  }
+' conf/pinyin2cmu > $dict_dir/map/cmu-cmu || exit 1;
 
 cat $dict_dir/lexicon-en/lexicon-en-phn.txt | \
   perl -e '
@@ -135,45 +127,46 @@ cat $dict_dir/lexicon-en/lexicon-en-phn.txt | \
     @entry = ();
     $W = shift(@A);
     push(@entry, $W);
-    for($i = 0; $i < @A; $i++) { 
+    for($i = 0; $i < @A; $i++) {
       if (exists $py2ph{$A[$i]}) { push(@entry, @{$py2ph{$A[$i]}}); }
       else {push(@entry, $A[$i])};
     }
     print "@entry";
-    print "\n";  
+    print "\n";
   }
-' $dict_dir/map/cmu-cmu > $dict_dir/lexicon-en/lexicon-en.txt 
+' $dict_dir/map/cmu-cmu > $dict_dir/lexicon-en/lexicon-en.txt || exit 1;
 
 
-##### produce pronunciations for chinese 
+##### produce pronunciations for chinese
 if [ ! -f $dict_dir/cedict/cedict_1_0_ts_utf-8_mdbg.txt ]; then
+  echo "------------- Downloading cedit dictionary ---------------"
   mkdir -p $dict_dir/cedict
-  wget -P $dict_dir/cedict http://www.mdbg.net/chindict/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz 
+  wget -P $dict_dir/cedict http://www.mdbg.net/chindict/export/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz
   gunzip $dict_dir/cedict/cedict_1_0_ts_utf-8_mdbg.txt.gz
 fi
 
 cat $dict_dir/cedict/cedict_1_0_ts_utf-8_mdbg.txt | grep -v '#' | awk -F '/' '{print $1}' |\
- perl -e '   
+ perl -e '
   while (<STDIN>) {
     @A = split(" ", $_);
     print $A[1];
     for($n = 2; $n < @A; $n++) {
-      $A[$n] =~ s:\[?([a-zA-Z0-9\:]+)\]?:$1:; 
-      $tmp = uc($A[$n]); 
+      $A[$n] =~ s:\[?([a-zA-Z0-9\:]+)\]?:$1:;
+      $tmp = uc($A[$n]);
       print " $tmp";
     }
     print "\n";
   }
- ' | sort -k1 > $dict_dir/cedict/ch-dict.txt 
+ ' | sort -k1 > $dict_dir/cedict/ch-dict.txt || exit 1;
 
 echo "--- Searching for Chinese OOV words ..."
-gawk 'NR==FNR{words[$1]; next;} !($1 in words)' \
+awk 'NR==FNR{words[$1]; next;} !($1 in words)' \
   $dict_dir/cedict/ch-dict.txt $dict_dir/lexicon-ch/words-ch.txt |\
-  egrep -v '<.?s>' > $dict_dir/lexicon-ch/words-ch-oov.txt
+  egrep -v '<.?s>' > $dict_dir/lexicon-ch/words-ch-oov.txt || exit 1;
 
-gawk 'NR==FNR{words[$1]; next;} ($1 in words)' \
+awk 'NR==FNR{words[$1]; next;} ($1 in words)' \
   $dict_dir/lexicon-ch/words-ch.txt $dict_dir/cedict/ch-dict.txt |\
-  egrep -v '<.?s>' > $dict_dir/lexicon-ch/lexicon-ch-iv.txt
+  egrep -v '<.?s>' > $dict_dir/lexicon-ch/lexicon-ch-iv.txt || exit 1;
 
 wc -l $dict_dir/lexicon-ch/words-ch-oov.txt
 wc -l $dict_dir/lexicon-ch/lexicon-ch-iv.txt
@@ -187,10 +180,10 @@ cat $dict_dir/cedict/ch-dict.txt |\
   while (<STDIN>) {
     @A = split(" ", $_);
     $word_len = length($A[0]);
-    $proun_len = @A - 1 ; 
+    $proun_len = @A - 1 ;
     if ($word_len == $proun_len) {print $_;}
   }
-  ' > $dict_dir/cedict/ch-dict-1.txt
+  ' > $dict_dir/cedict/ch-dict-1.txt || exit 1;
 
 # extract chars
 cat $dict_dir/cedict/ch-dict-1.txt | awk '{print $1}' |\
@@ -203,12 +196,14 @@ cat $dict_dir/cedict/ch-dict-1.txt | awk '{print $1}' |\
       print "$_\n";
     }
   }
-  ' | grep -v '^$' > $dict_dir/lexicon-ch/ch-char.txt
+  ' | grep -v '^$' > $dict_dir/lexicon-ch/ch-char.txt || exit 1;
 
 # extract individual pinyins
-cat $dict_dir/cedict/ch-dict-1.txt | awk '{for(i=2; i<=NF; i++) print $i}' | sed -e 's/ /\n/g' > $dict_dir/lexicon-ch/ch-char-pinyin.txt
+cat $dict_dir/cedict/ch-dict-1.txt |\
+  awk '{for(i=2; i<=NF; i++) print $i}' |\
+  perl -ape 's/ /\n/g;' > $dict_dir/lexicon-ch/ch-char-pinyin.txt || exit 1;
 
-# first make sure number of characters and pinyins 
+# first make sure number of characters and pinyins
 # are equal, so that a char-based dictionary can
 # be composed.
 nchars=`wc -l < $dict_dir/lexicon-ch/ch-char.txt`
@@ -218,12 +213,13 @@ if [ $nchars -ne $npinyin ]; then
   exit 1
 fi
 
-paste $dict_dir/lexicon-ch/ch-char.txt $dict_dir/lexicon-ch/ch-char-pinyin.txt | sort -u > $dict_dir/lexicon-ch/ch-char-dict.txt 
+paste $dict_dir/lexicon-ch/ch-char.txt $dict_dir/lexicon-ch/ch-char-pinyin.txt |\
+  sort -u > $dict_dir/lexicon-ch/ch-char-dict.txt || exit 1;
 
 # create a multiple pronunciation dictionary
 cat $dict_dir/lexicon-ch/ch-char-dict.txt |\
   perl -e '
-  my $prev = ""; 
+  my $prev = "";
   my $out_line = "";
   while (<STDIN>) {
     @A = split(" ", $_);
@@ -232,14 +228,15 @@ cat $dict_dir/lexicon-ch/ch-char-dict.txt |\
     #print length($prev);
     if (length($prev) == 0) { $out_line = $_; chomp($out_line);}
     if (length($prev)>0 && $cur ne $prev) { print $out_line; print "\n"; $out_line = $_; chomp($out_line);}
-    if (length($prev)>0 && $cur eq $prev) { $out_line = $out_line."/"."$cur_py";} 
+    if (length($prev)>0 && $cur eq $prev) { $out_line = $out_line."/"."$cur_py";}
     $prev = $cur;
   }
-  print $out_line;  
-  ' >  $dict_dir/lexicon-ch/ch-char-dict-mp.txt
+  print $out_line;
+  ' >  $dict_dir/lexicon-ch/ch-char-dict-mp.txt || exit 1;
 
 # get lexicon for Chinese OOV words
-perl local/create_oov_char_lexicon.pl $dict_dir/lexicon-ch/ch-char-dict-mp.txt $dict_dir/lexicon-ch/words-ch-oov.txt > $dict_dir/lexicon-ch/lexicon-ch-oov.txt
+local/create_oov_char_lexicon.pl $dict_dir/lexicon-ch/ch-char-dict-mp.txt \
+  $dict_dir/lexicon-ch/words-ch-oov.txt > $dict_dir/lexicon-ch/lexicon-ch-oov.txt || exit 1;
 
 # seperate multiple prons for Chinese OOV lexicon
 cat $dict_dir/lexicon-ch/lexicon-ch-oov.txt |\
@@ -249,8 +246,8 @@ cat $dict_dir/lexicon-ch/lexicon-ch-oov.txt |\
   while (<STDIN>) {
     @A = split(" ", $_);
     @entry = ();
-    push(@entry, $A[0]);  
-    for($i = 1; $i < @A; $i++ ) { 
+    push(@entry, $A[0]);
+    for($i = 1; $i < @A; $i++ ) {
       @py = split("/", $A[$i]);
       @entry1 = @entry;
       @entry = ();
@@ -258,27 +255,27 @@ cat $dict_dir/lexicon-ch/lexicon-ch-oov.txt |\
         for ($k = 0; $k < @py; $k++) {
           $tmp = $entry1[$j]." ".$py[$k];
           push(@entry, $tmp);
-        }     
-      }    
+        }
+      }
     }
     for ($i = 0; $i < @entry; $i++) {
-      print $entry[$i]; 
+      print $entry[$i];
       print "\n";
-    } 
+    }
   }
-  ' > $dict_dir/lexicon-ch/lexicon-ch-oov-mp.txt
+  ' > $dict_dir/lexicon-ch/lexicon-ch-oov-mp.txt || exit 1;
 
 # compose IV and OOV lexicons for Chinese
 cat $dict_dir/lexicon-ch/lexicon-ch-oov-mp.txt $dict_dir/lexicon-ch/lexicon-ch-iv.txt |\
-  awk '{if (NF > 1 && $2 ~ /[A-Za-z0-9]+/) print $0;}' > $dict_dir/lexicon-ch/lexicon-ch.txt 
+  awk '{if (NF > 1 && $2 ~ /[A-Za-z0-9]+/) print $0;}' > $dict_dir/lexicon-ch/lexicon-ch.txt || exit 1;
 
 # convert Chinese pinyin to CMU format
 cat $dict_dir/lexicon-ch/lexicon-ch.txt | sed -e 's/U:/V/g' | sed -e 's/ R\([0-9]\)/ ER\1/g'|\
-  utils/pinyin_map.pl conf/pinyin2cmu > $dict_dir/lexicon-ch/lexicon-ch-cmu.txt
+  utils/pinyin_map.pl conf/pinyin2cmu > $dict_dir/lexicon-ch/lexicon-ch-cmu.txt || exit 1;
 
 # combine English and Chinese lexicons
 cat $dict_dir/lexicon-en/lexicon-en.txt $dict_dir/lexicon-ch/lexicon-ch-cmu.txt |\
-  sort -u > $dict_dir/lexicon1.txt
+  sort -u > $dict_dir/lexicon1.txt || exit 1;
 
 cat $dict_dir/lexicon1.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}'| \
   sort -u |\
@@ -287,8 +284,8 @@ cat $dict_dir/lexicon1.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{f
   while (<STDIN>) {
     $phone = $_;
     chomp($phone);
-    chomp($_);      
-    $phone =~ s:([A-Z]+)[0-9]:$1:; 
+    chomp($_);
+    $phone =~ s:([A-Z]+)[0-9]:$1:;
     if (exists $ph_cl{$phone}) { push(@{$ph_cl{$phone}}, $_)  }
     else { $ph_cl{$phone} = [$_]; }
   }
@@ -314,4 +311,5 @@ cat $dict_dir/nonsilence_phones.txt | perl -e 'while(<>){ foreach $p (split(" ",
  echo '<UNK> SPN' ) | \
  cat - $dict_dir/lexicon1.txt  > $dict_dir/lexicon.txt || exit 1;
 
-exit 1;
+echo "$0: HKUST dict preparation succeeded"
+exit 0;

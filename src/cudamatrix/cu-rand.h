@@ -37,11 +37,11 @@ class CuRand {
   #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().Enabled()) {
       // Initialize the generator,
-      CU_SAFE_CALL(curandCreateGenerator(&gen_, CURAND_RNG_PSEUDO_DEFAULT));
+      CURAND_SAFE_CALL(curandCreateGenerator(&gen_, CURAND_RNG_PSEUDO_DEFAULT));
       // To get same random sequence, call srand() before the constructor is invoked,
-      CU_SAFE_CALL(curandSetGeneratorOrdering(gen_, CURAND_ORDERING_PSEUDO_DEFAULT));
-      CU_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(gen_, RandInt(128, RAND_MAX)));
-      CU_SAFE_CALL(curandSetGeneratorOffset(gen_, 0));
+      CURAND_SAFE_CALL(curandSetGeneratorOrdering(gen_, CURAND_ORDERING_PSEUDO_DEFAULT));
+      CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(gen_, RandInt(128, RAND_MAX)));
+      CURAND_SAFE_CALL(curandSetGeneratorOffset(gen_, 0));
     }
   #endif
   }
@@ -50,7 +50,7 @@ class CuRand {
   #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().Enabled()) {
       // Release the generator,
-      CU_SAFE_CALL(curandDestroyGenerator(gen_));
+      CURAND_SAFE_CALL(curandDestroyGenerator(gen_));
     }
   #endif
   }
@@ -60,16 +60,28 @@ class CuRand {
   #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().Enabled()) {
       // To get same random sequence, call srand() before the method is invoked,
-      CU_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(gen_, RandInt(128, RAND_MAX)));
-      CU_SAFE_CALL(curandSetGeneratorOffset(gen_, 0));
+      CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(gen_, RandInt(128, RAND_MAX)));
+      CURAND_SAFE_CALL(curandSetGeneratorOffset(gen_, 0));
     }
   #endif
   }
 
+  // CAUTION.
+  // For the versions of these functions that output to a CuMatrix (as opposed to
+  // CuMatrixBase), the random numbers depend on the stride, and the stride
+  // is not guaranteed to be consistent for the same dimension of matrix
+  // (it usually will be, but not when memory is nearly exhausted).  So
+  // for applications where consistency is essential, either use the versions
+  // of these function that accept CuMatrixBase, or initialize your matrix
+  // with the kStrideEqualNumCols argument to ensure consistent stride.
+
   /// Fill with uniform [0..1] floats,
   void RandUniform(CuMatrixBase<Real> *tgt);
+  void RandUniform(CuMatrix<Real> *tgt);
+  void RandUniform(CuVectorBase<Real> *tgt);
   /// Fill with Normal random numbers,
   void RandGaussian(CuMatrixBase<Real> *tgt);
+  void RandGaussian(CuMatrix<Real> *tgt);
   void RandGaussian(CuVectorBase<Real> *tgt);
 
   /// align probabilities to discrete 0/1 states (use uniform sampling),
@@ -86,4 +98,3 @@ class CuRand {
 }  // namsepace
 
 #endif  // KALDI_CUDAMATRIX_CU_RAND_H_
-

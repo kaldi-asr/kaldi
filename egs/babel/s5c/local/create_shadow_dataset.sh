@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2012  Johns Hopkins University   
+# Copyright 2012  Johns Hopkins University
 # Apache 2.0.
 
 stage=0
@@ -29,8 +29,8 @@ if [ $stage -le 1 ] ; then
   #zkombinovat ecf
   echo "Combining ECF files..."
   perl -e '
-    #binmode STDIN, ":utf8"; 
-    binmode STDOUT, ":utf8"; 
+    #binmode STDIN, ":utf8";
+    binmode STDOUT, ":utf8";
 
     use XML::Simple;
     use Data::Dumper;
@@ -87,8 +87,8 @@ if [ $stage -le 2 ] ; then
   #zkombinovat kwlist
   echo "Combining the KWLIST files"
   perl -e '
-    #binmode STDIN, ":utf8"; 
-    binmode STDOUT, ":utf8"; 
+    #binmode STDIN, ":utf8";
+    binmode STDOUT, ":utf8";
 
     use XML::Simple;
     use Data::Dumper;
@@ -107,7 +107,7 @@ if [ $stage -le 2 ] ; then
     if ( $src1->{language} ne $src2->{language} ) {
         die "KWLIST languages differ in the source kwlist.xml files";
     }
-    
+
     $tgt->{ecf_filename} = "";
     $tgt->{language}=$src1->{language};
     $tgt->{compareNormalize}=$src1->{compareNormalize};
@@ -143,8 +143,8 @@ fi
 if [ $stage -le 3 ] ; then
   echo "Making KWLIST maps"
   perl -e '
-    #binmode STDIN, ":utf8"; 
-    binmode STDOUT, ":utf8"; 
+    #binmode STDIN, ":utf8";
+    binmode STDOUT, ":utf8";
 
     use XML::Simple;
     use Data::Dumper;

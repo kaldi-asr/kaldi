@@ -59,7 +59,7 @@ static void UnitTestCuArray() {
     std::vector<T> garbage_vec(size2); // We just use garbage_vec to make sure
                                        // we sometimes resize from empty,
                                        // sometimes not.
-    
+
     int32 byte_size = size * sizeof(T);
     std::vector<char> rand_c(byte_size);
     for (size_t i = 0; i < byte_size; i++)
@@ -87,7 +87,7 @@ static void UnitTestCuArray() {
       AssertEqual(vec, vec2);
       KALDI_ASSERT(cu_vec2.Dim() == int32(vec2.size())); // test Dim()
     }
-      
+
     { // test resize with resize_type = kSetZero.
       CuArray<T> cu_vec(vec);
       cu_vec.Resize(size, kSetZero);
@@ -116,8 +116,10 @@ static void UnitTestCuArray() {
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  SetVerboseLevel(1);
+  int32 loop = 0;
 #if HAVE_CUDA == 1
+  for (; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
@@ -134,8 +136,8 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
 #if HAVE_CUDA == 1
+  }
   CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;

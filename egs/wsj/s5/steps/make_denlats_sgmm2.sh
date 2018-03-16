@@ -67,7 +67,6 @@ oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
 
 cp -RH $lang $dir/
 
@@ -103,7 +102,8 @@ esac
 
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "$0: using fMLLR transforms from $transform_dir"
-  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
+  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist." && exit 1
+  [ ! -f $transform_dir/num_jobs ] && echo "Expected $transform_dir/num_jobs to exist." && exit 1
   [ "`cat $transform_dir/num_jobs`" -ne "$nj" ] \
     && echo "$0: mismatch in number of jobs with $transform_dir" && exit 1;
   [ -f $alidir/final.mat ] && ! cmp $transform_dir/final.mat $alidir/final.mat && \

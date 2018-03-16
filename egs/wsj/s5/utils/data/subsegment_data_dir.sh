@@ -21,12 +21,14 @@
 
 
 segment_end_padding=0.0
+cmd=run.pl
+nj=1
 
 . utils/parse_options.sh
 
-if [ $# != 4 ]; then
+if [ $# != 4 ] && [ $# != 3 ]; then
   echo "Usage: "
-  echo "  $0 [options] <srcdir> <subsegments-file> <text-file> <destdir>"
+  echo "  $0 [options] <srcdir> <subsegments-file> [<text-file>] <destdir>"
   echo "This script sub-segments a data directory.  <subsegments-file> is to"
   echo "have lines of the form <new-utt> <old-utt> <start-time-within-old-utt> <end-time-within-old-utt>"
   echo "and <text-file> is of the form <new-utt> <word1> <word2> ... <wordN>."
@@ -50,11 +52,23 @@ export LC_ALL=C
 
 srcdir=$1
 subsegments=$2
-new_text=$3
-dir=$4
 
+add_subsegment_text=false
+if [ $# -eq 4 ]; then
+  new_text=$3
+  dir=$4
+  add_subsegment_text=true
 
-for f in "$subsegments" "$new_text" "$srcdir/utt2spk"; do
+  if [ ! -f "$new_text" ]; then
+    echo "$0: no such file $new_text"
+    exit 1
+  fi
+
+else
+  dir=$3
+fi
+
+for f in "$subsegments" "$srcdir/utt2spk"; do
   if [ ! -f "$f" ]; then
     echo "$0: no such file $f"
     exit 1;
@@ -65,9 +79,11 @@ if ! mkdir -p $dir; then
   echo "$0: failed to create directory $dir"
 fi
 
-if ! cmp <(awk '{print $1}' <$subsegments)  <(awk '{print $1}' <$new_text); then
-  echo "$0: expected the first fields of the files $subsegments and $new_text to be identical"
-  exit 1
+if $add_subsegment_text; then
+  if ! cmp <(awk '{print $1}' <$subsegments)  <(awk '{print $1}' <$new_text); then
+    echo "$0: expected the first fields of the files $subsegments and $new_text to be identical"
+    exit 1
+  fi
 fi
 
 # create the utt2spk in $dir
@@ -86,8 +102,11 @@ awk '{print $1, $2}' < $subsegments > $dir/new2old_utt
 utils/apply_map.pl -f 2 $srcdir/utt2spk < $dir/new2old_utt >$dir/utt2spk
 # .. and the new spk2utt file.
 utils/utt2spk_to_spk2utt.pl  <$dir/utt2spk >$dir/spk2utt
-# the new text file is just what the user provides.
-cp $new_text $dir/text
+
+if $add_subsegment_text; then
+  # the new text file is just what the user provides.
+  cp $new_text $dir/text
+fi
 
 # copy the source wav.scp
 cp $srcdir/wav.scp $dir
@@ -122,10 +141,13 @@ if [ -f $srcdir/feats.scp ]; then
   # We want to avoid recomputing the features.   We'll use sub-matrices of the
   # original feature matrices, using the [] notation that is available for
   # matrices in Kaldi.
-  frame_shift=$(utils/data/get_frame_shift.sh $srcdir)
+  if [ ! -s $srcdir/frame_shift ]; then
+    frame_shift=$(utils/data/get_frame_shift.sh $srcdir) || exit 1
+  else
+    frame_shift=$(cat $srcdir/frame_shift)
+  fi
   echo "$0: note: frame shift is $frame_shift [affects feats.scp]"
-
-
+  
   # The subsegments format is <new-utt-id> <old-utt-id> <start-time> <end-time>.
   # e.g. 'utt_foo-1 utt_foo 7.21 8.93'
   # The first awk command replaces this with the format:
@@ -145,12 +167,44 @@ if [ -f $srcdir/feats.scp ]; then
   # like pipes that might contain spaces, so it has to be able to produce output like the
   # following:
   # utt_foo-1 some command|[721:892]
+  # The 'end' frame is ensured to not exceed the feature archive size of 
+  # <old-utt-id>. This is done using the script fix_subsegment_feats.pl.
+  # e.g if the number of frames in foo-bar.ark is 891, then the features are 
+  # truncated to that many frames.
+  # utt_foo-1 foo-bar.ark:514231[721:890]
   # Lastly, utils/data/normalize_data_range.pl will only do something nontrivial if
   # the original data-dir already had data-ranges in square brackets.
+  
+  # Here, we computes the maximum 'end' frame allowed for each <new-utt-id>.
+  # This is equal to the number of frames in the feature archive for <old-utt-id>.
+  if [ ! -f $srcdir/utt2num_frames ]; then
+    echo "$0: WARNING: Could not find $srcdir/utt2num_frames. It might take a long time to run get_utt2num_frames.sh."
+    echo "Increase the number of jobs or write this file while extracting features by passing --write-utt2num-frames true to steps/make_mfcc.sh etc." 
+  fi
+  utils/data/get_utt2num_frames.sh --cmd "$cmd" --nj $nj $srcdir
+  awk '{print $1" "$2}' $subsegments | \
+    utils/apply_map.pl -f 2 $srcdir/utt2num_frames > \
+    $dir/utt2max_frames
+  
   awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' <$subsegments| \
     utils/apply_map.pl -f 2 $srcdir/feats.scp | \
     awk '{p=NF-1; for (n=1;n<NF-2;n++) printf("%s ", $n); k=NF-2; l=NF-1; printf("%s[%d:%d]\n", $k, $l, $NF)}' | \
-    utils/data/normalize_data_range.pl  >$dir/feats.scp
+    utils/data/fix_subsegment_feats.pl $dir/utt2max_frames | \
+    utils/data/normalize_data_range.pl >$dir/feats.scp || { echo "Failed to create $dir/feats.scp" && exit; }
+  
+  # Parse the frame ranges from feats.scp, which is in the form of [first-frame:last-frame]
+  # and write the number-of-frames = last-frame - first-frame + 1 for the utterance.
+  cat $dir/feats.scp | perl -ne 'm/^(\S+) .+\[(\d+):(\d+)\]$/; print "$1 " . ($3-$2+1) . "\n"' > \
+    $dir/utt2num_frames
+
+  # Here we add frame ranges to the elements of vad.scp, as we did for rows of feats.scp above.
+  if [ -f $srcdir/vad.scp ]; then
+    cat $subsegments | awk -v s=$frame_shift '{print $1, $2, int(($3/s)+0.5), int(($4/s)-0.5);}' | \
+      utils/apply_map.pl -f 2 $srcdir/vad.scp | \
+      awk '{p=NF-1; for (n=1;n<NF-2;n++) printf("%s ", $n); k=NF-2; l=NF-1; printf("%s[%d:%d]\n", $k, $l, $NF)}' | \
+      utils/data/fix_subsegment_feats.pl $dir/utt2max_frames | \
+      utils/data/normalize_data_range.pl >$dir/vad.scp
+  fi
 fi
 
 
@@ -177,15 +231,6 @@ for f in stm ctm; do
 done
 
 rm $dir/new2old_utt
-
-echo "$0: calling fix_data_dir.sh to remove any unused speakers, utterances, etc."
-utils/data/fix_data_dir.sh $dir
-
-validate_opts=
-[ ! -f $srcdir/feats.scp ] && validate_opts="$validate_opts --no-feats"
-[ ! -f $srcdir/wav.scp ] && validate_opts="$validate_opts --no-wav"
-
-utils/data/validate_data_dir.sh $validate_opts $dir
 
 echo "$0: subsegmented data from $srcdir to $dir"
 

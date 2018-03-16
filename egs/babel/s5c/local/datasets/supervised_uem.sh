@@ -1,4 +1,4 @@
-#This script is not really supposed to be run directly 
+#This script is not really supposed to be run directly
 #Instead, it should be sourced from the decoding script
 #It makes many assumption on existence of certain environmental
 #variables as well as certain directory structure.
@@ -6,7 +6,7 @@
 eval my_data_cmudb=\$${dataset_type}_data_cmudb
 
 if [ "${dataset_kind}" != "supervised" ] ; then
-  mandatory_variables="my_data_dir my_data_list my_nj my_data_cmudb" 
+  mandatory_variables="my_data_dir my_data_list my_nj my_data_cmudb"
   optional_variables=""
 else
   mandatory_variables="my_data_dir my_data_list my_nj my_data_cmudb"

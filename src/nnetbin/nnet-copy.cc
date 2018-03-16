@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     bool binary_write = true;
     int32 remove_first_components = 0;
     int32 remove_last_components = 0;
-    BaseFloat dropout_retention = 0.0;
+    BaseFloat dropout_rate = -1.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
@@ -52,8 +52,9 @@ int main(int argc, char *argv[]) {
     po.Register("remove-last-components", &remove_last_components,
         "Remove N last layers Components from the Nnet");
 
-    po.Register("dropout-retention", &dropout_retention,
-        "Set dropout retention to a particular value.");
+    po.Register("dropout-rate", &dropout_rate,
+        "Probability that neuron is dropped"
+        "(-1.0 keeps original value).");
 
     std::string from_parallel_component;
     po.Register("from-parallel-component", &from_parallel_component,
@@ -131,8 +132,8 @@ int main(int argc, char *argv[]) {
     }
 
     // dropout,
-    if (dropout_retention != 0.0) {
-      nnet.SetDropoutRetention(dropout_retention);
+    if (dropout_rate != -1.0) {
+      nnet.SetDropoutRate(dropout_rate);
     }
 
     // store the network,

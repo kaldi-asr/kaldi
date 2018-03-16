@@ -8,8 +8,8 @@
 # This example script is still a bit of a mess, and needs to be
 # cleaned up, but it shows you all the basic ingredients.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
@@ -49,7 +49,7 @@ sid/compute_vad_decision.sh --nj 4 --cmd "$train_cmd" data/sre08_test_short3_mal
 
 
 # Note: to see the proportion of voiced frames you can do,
-# grep Prop exp/make_vad/vad_*.1.log 
+# grep Prop exp/make_vad/vad_*.1.log
 
 # Get male and female subsets of training data.
 grep -w m data/train/spk2gender | awk '{print $1}' > foo;
@@ -78,20 +78,20 @@ sid/train_full_ubm.sh --nj 30 --remove-low-count-gaussians false --num-iters 1 -
    data/train_female_4k exp/full_ubm_2048 exp/full_ubm_2048_female &
 wait
 
-# note, the mem_free,ram_free is counted per thread... in this setup each
+# note, the --mem is counted per thread... in this setup each
 # job has 4 processes running each with 4 threads; each job takes about 5G
 # of memory so we need about 20G, plus add memory for sum-accs to make it 25G.
-# but we'll submit using -pe smp 16, and this multiplies the memory requirement
+# but we'll submit using --num-threads 16, and this multiplies the memory requirement
 # by 16, so submitting with 2G as the requirement, to make the total requirement
 # 32, is reasonable.
 
 # Train the iVector extractor for male speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 2G" \
   --num-iters 5 exp/full_ubm_2048_male/final.ubm data/train_male \
   exp/extractor_2048_male
 
 # The same for female speakers.
-sid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
+sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 2G" \
   --num-iters 5 exp/full_ubm_2048_female/final.ubm data/train_female \
   exp/extractor_2048_female
 
@@ -105,22 +105,22 @@ sid/gender_id.sh --cmd "$train_cmd" --nj 150 exp/full_ubm_2048{,_male,_female} \
 # Gender-id error rate is 2.58%
 
 # Extract the iVectors for the Fisher data.
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_male data/train_male exp/ivectors_train_male
 
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_female data/train_female exp/ivectors_train_female
 
 # .. and for the SRE08 training and test data. (We focus on the main
 # evaluation condition, the only required one in that eval, which is
 # the short2-short3 eval.)
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_female data/sre08_train_short2_female exp/ivectors_sre08_train_short2_female
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_male data/sre08_train_short2_male exp/ivectors_sre08_train_short2_male
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_female data/sre08_test_short3_female exp/ivectors_sre08_test_short3_female
-sid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+sid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048_male data/sre08_test_short3_male exp/ivectors_sre08_test_short3_male
 
 
@@ -131,7 +131,7 @@ cat $trials | awk '{print $1, $2}' | \
  ivector-compute-dot-products - \
   scp:exp/ivectors_sre08_train_short2_female/spk_ivector.scp \
   scp:exp/ivectors_sre08_test_short3_female/spk_ivector.scp \
-   foo 
+   foo
 
 local/score_sre08.sh $trials foo
 

@@ -52,7 +52,6 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
-cp $srcdir/phones.txt $dir || exit 1;
 
 sdata1=$data1/split$nj
 sdata2=$data2/split$nj
@@ -91,10 +90,10 @@ if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
   delta)
-  	echo "$0: feature type is $feat_type"
-  	;;
+    echo "$0: feature type is $feat_type"
+    ;;
   lda)
-	  echo "$0: feature type is $feat_type"
+    echo "$0: feature type is $feat_type"
     cp $srcdir/{lda,final}.mat $dir/ || exit 1;
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;

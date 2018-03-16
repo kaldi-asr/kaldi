@@ -66,7 +66,7 @@
  a C++ class representing a matrix.  We provide a mini-tutorial on the matrix
  library \ref matrix "here", if you are interested.  You might notice what seems like
  a strange comment style in the code, with comments started by three slashes (///).
- These types of commends, and block comments that begin with /**, are interpreted by the
+ These types of commends, and block comments that begin with \verbatim /**\endverbatim, are interpreted by the
  Doxygen software that automatically generates documentation.  It also generates the
  page you are reading right now (the source for this type of documentation
  is in src/doc/).
@@ -89,8 +89,8 @@ void UnitTestAddVec() {
   // note: Real will be float or double when instantiated.
   int32 dim = 1 + Rand() % 10;
   Vector<Real> v(dim); w(dim); // two vectors the same size.
-  InitRand(&v);
-  InitRand(&w);
+  v.SetRandn();
+  w.SetRandn();
   Vector<Real> w2(w); // w2 is a copy of w.
   Real f = RandGauss();
   w.AddVec(f, v); // w <-- w + f v
@@ -229,7 +229,7 @@ The only useful information you get from this is that it doesn't crash; try
 removing the "=" sign or abbreviating the option name or changing the
 number of arguments, and see that it fails and prints a usage message.
 
-\section tutorial_code_acoustic Acoustic decision-tree and HMM topology code
+\section tutorial_code_tree Acoustic decision-tree and HMM topology code
 
 Next look at tree/build-tree.h.  Find the BuildTree function.  This is the main
 top-level function for building the decision tree.  Notice that it returns a

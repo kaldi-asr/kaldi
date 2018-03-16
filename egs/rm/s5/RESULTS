@@ -230,8 +230,12 @@ for x in exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_*; do grep WER $x/
 %WER 7.36 [ 923 / 12533, 85 ins, 148 del, 690 sub ] exp/nnet2_online_wsj/nnet_ms_a_smbr_0.00005/1/decode_ug_epoch4/wer_13
 
 ### chain results ###
-# current best chain result with TDNN (check local/chain/run_tdnn_5f.sh)
-%WER 2.94 [ 369 / 12533, 51 ins, 71 del, 247 sub ] exp/chain/tdnn_5f/decode/wer_3_0.5
+# current best chain result with TDNN (check local/chain/run_tdnn_5g.sh)
+%WER 2.86 [ 358 / 12533, 46 ins, 61 del, 251 sub ] exp/chain/tdnn_5g/decode/wer_5_0.0
+%WER 2.71 [ 340 / 12533, 58 ins, 59 del, 223 sub ] exp/chain/tdnn_5n/decode/wer_4_0.0
+
+### WSJ->RM Transfer learning using chain model ###
+%WER 1.68 [ 210 / 12533, 25 ins, 33 del, 152 sub ] exp/chain/tdnn_wsj_rm_1a/decode/wer_2_0.0
 
 ### nnet1 results ###
 

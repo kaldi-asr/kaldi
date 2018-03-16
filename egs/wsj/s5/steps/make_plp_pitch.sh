@@ -15,11 +15,12 @@ pitch_config=conf/pitch.conf
 pitch_postprocess_config=
 paste_length_tolerance=2
 compress=true
+write_utt2num_frames=false  # if true writes utt2num_frames
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
 
-if [ -f path.sh ]; then . ./path.sh; fi
+if [ -f ./path.sh ]; then . ./path.sh;  fi
 . parse_options.sh || exit 1;
 
 if [ $# -lt 1 ] || [ $# -gt 3 ]; then
@@ -76,9 +77,9 @@ done
 utils/validate_data_dir.sh --no-text --no-feats $data || exit 1;
 
 if [ ! -z "$pitch_postprocess_config" ]; then
-	postprocess_config_opt="--config=$pitch_postprocess_config";
+  postprocess_config_opt="--config=$pitch_postprocess_config";
 else
-	postprocess_config_opt=
+  postprocess_config_opt=
 fi
 
 if [ -f $data/spk2warp ]; then
@@ -95,6 +96,11 @@ for n in $(seq $nj); do
   utils/create_data_link.pl $plp_pitch_dir/raw_plp_pitch_$name.$n.ark
 done
 
+if $write_utt2num_frames; then
+  write_num_frames_opt="--write-num-frames=ark,t:$logdir/utt2num_frames.JOB"
+else
+  write_num_frames_opt=
+fi
 
 if [ -f $data/segments ]; then
   echo "$0 [info]: segments file exists: using that."
@@ -111,7 +117,7 @@ if [ -f $data/segments ]; then
 
   $cmd JOB=1:$nj $logdir/make_plp_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$plp_feats" "$pitch_feats" ark:- \| \
-    copy-feats --compress=$compress ark:- \
+    copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$plp_pitch_dir/raw_plp_pitch_$name.JOB.ark,$plp_pitch_dir/raw_plp_pitch_$name.JOB.scp \
      || exit 1;
 
@@ -130,7 +136,7 @@ else
 
   $cmd JOB=1:$nj $logdir/make_plp_pitch_${name}.JOB.log \
     paste-feats --length-tolerance=$paste_length_tolerance "$plp_feats" "$pitch_feats" ark:- \| \
-    copy-feats --compress=$compress ark:- \
+    copy-feats --compress=$compress $write_num_frames_opt ark:- \
       ark,scp:$plp_pitch_dir/raw_plp_pitch_$name.JOB.ark,$plp_pitch_dir/raw_plp_pitch_$name.JOB.scp \
       || exit 1;
 
@@ -147,6 +153,13 @@ fi
 for n in $(seq $nj); do
   cat $plp_pitch_dir/raw_plp_pitch_$name.$n.scp || exit 1;
 done > $data/feats.scp
+
+if $write_utt2num_frames; then
+  for n in $(seq $nj); do
+    cat $logdir/utt2num_frames.$n || exit 1;
+  done > $data/utt2num_frames || exit 1
+  rm $logdir/utt2num_frames.*
+fi
 
 rm $logdir/wav_${name}.*.scp  $logdir/segments.* 2>/dev/null
 

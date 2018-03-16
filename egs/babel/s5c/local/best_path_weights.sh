@@ -16,19 +16,19 @@
 # limitations under the License.
 
 
-# This script combines frame-level posteriors from different decode 
-# directories. The first decode directory is assumed to be the primary 
+# This script combines frame-level posteriors from different decode
+# directories. The first decode directory is assumed to be the primary
 # and is used to get the best path. The posteriors from other decode
-# directories are interpolated with the posteriors of the best path. 
-# The output is a new directory with final.mdl, tree from the primary 
-# decode-dir and the best path alignments and weights in a decode-directory 
+# directories are interpolated with the posteriors of the best path.
+# The output is a new directory with final.mdl, tree from the primary
+# decode-dir and the best path alignments and weights in a decode-directory
 # with the same basename as the primary directory.
 # This is typically used to get better posteriors for semisupervised training
 # of DNN
-# e.g. local/combine_posteriors.sh exp/tri6_nnet/decode_train_unt.seg 
+# e.g. local/combine_posteriors.sh exp/tri6_nnet/decode_train_unt.seg
 # exp/sgmm_mmi_b0.1/decode_fmllr_train_unt.seg_it4 exp/combine_dnn_sgmm
-# Here the final.mdl and tree are copied from exp/tri6_nnet to 
-# exp/combine_dnn_sgmm. best_path_ali.*.gz obtained from the primary dir and 
+# Here the final.mdl and tree are copied from exp/tri6_nnet to
+# exp/combine_dnn_sgmm. best_path_ali.*.gz obtained from the primary dir and
 # the interpolated posteriors in weights.*.gz are placed in
 # exp/combine_dnn_sgmm/decode_train_unt.seg
 
@@ -115,7 +115,7 @@ for i in `seq 0 $[num_sys-1]`; do
       echo $nj > $out_decode/num_jobs
     else
       if [ $nj != `cat $decode_dir/num_jobs` ]; then
-        echo "$0: number of decoding jobs mismatches, $nj versus `cat $decode_dir/num_jobs`" 
+        echo "$0: number of decoding jobs mismatches, $nj versus `cat $decode_dir/num_jobs`"
         exit 1;
       fi
     fi

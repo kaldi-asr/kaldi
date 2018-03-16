@@ -5,15 +5,15 @@
 use Data::Dumper;
 $Data::Dumper::Indent = 1;
 
-binmode STDOUT, ":utf8"; 
-binmode STDIN, ":utf8"; 
+binmode STDOUT, ":utf8";
+binmode STDIN, ":utf8";
 
 $ignore_oov = 0;
 $ignore_first_field = 0;
 for($x = 0; $x < 2; $x++) {
   if ($ARGV[0] eq "-f") {
-    shift @ARGV; 
-    $field_spec = shift @ARGV; 
+    shift @ARGV;
+    $field_spec = shift @ARGV;
     if ($field_spec =~ m/^\d+$/) {
       $field_begin = $field_spec - 1; $field_end = $field_spec - 1;
     }
@@ -26,7 +26,7 @@ for($x = 0; $x < 2; $x++) {
       }
     }
     if (!defined $field_begin && !defined $field_end) {
-      die "Bad argument to -f option: $field_spec"; 
+      die "Bad argument to -f option: $field_spec";
     }
   }
 }
@@ -43,7 +43,7 @@ open(F, "<:encoding(UTF-8)", $symtab) || die "Error opening symbol table file $s
 while(<F>) {
     @A = split(" ", $_);
     @A == 2 || die "bad line in symbol table file: $_";
-    
+
     if ( not defined( $sym2int{$A[0]} ) ) {
       $sym2int{$A[0]} = [];
     }
@@ -62,7 +62,7 @@ while (<>) {
       $i = $sym2int{$a};
       if (!defined ($i)) {
         print $a . "\n";
-      } 
+      }
     }
   }
 }

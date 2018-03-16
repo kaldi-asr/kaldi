@@ -5,7 +5,7 @@ lang_suffix=
 echo "$0 $@"  # Print the command line for logging
 . utils/parse_options.sh || exit 1;
 
-. cmd.sh
+. ./cmd.sh
 
 mfccdir=mfcc
 
@@ -18,7 +18,7 @@ for x in test_eval92 test_eval93 test_dev93 ; do
   cp -r data/$x data/$y
   cat data/$x/utt2spk | awk '{print $1, $1;}' > data/$y/utt2spk;
   cp data/$y/utt2spk data/$y/spk2utt;
-  steps/compute_cmvn_stats.sh data/$y exp/make_mfcc/$y $mfccdir || exit 1; 
+  steps/compute_cmvn_stats.sh data/$y exp/make_mfcc/$y $mfccdir || exit 1;
 done
 
 
@@ -33,7 +33,7 @@ steps/decode_fmllr.sh --nj 8 --cmd "$decode_cmd" \
 
  # get the fMLLR basis.
 steps/get_fmllr_basis.sh --cmd "$train_cmd" \
-  data/train_si84 data/lang${lang_suffix} exp/tri3b
+  data/train_si284 data/lang${lang_suffix} exp/tri3b
 
  # decoding tri3b with basis fMLLR
 steps/decode_basis_fmllr.sh --nj 10 --cmd "$decode_cmd" \
@@ -50,5 +50,3 @@ steps/decode_basis_fmllr.sh --nj 10 --cmd "$decode_cmd" \
 steps/decode_basis_fmllr.sh --nj 8 --cmd "$decode_cmd" \
   exp/tri3b/graph${lang_suffix}_tgpr data/test_eval92_utt \
   exp/tri3b/decode${lang_suffix}_tgpr_eval92_basis_utt || exit 1;
-
-

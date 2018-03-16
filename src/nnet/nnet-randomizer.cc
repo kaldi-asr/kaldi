@@ -64,9 +64,11 @@ void MatrixRandomizer::AddData(const CuMatrixBase<BaseFloat>& m) {
   }
   // extend the buffer if necessary,
   if (data_.NumRows() < data_end_ + m.NumRows()) {
-    CuMatrix<BaseFloat> data_aux(data_);
-    // Add extra 1000 rows, so we don't reallocate soon:
-    data_.Resize(data_end_ + m.NumRows() + 1000, data_.NumCols());
+    // CuMatrix -> Matrix -> CuMatrix (needs less GPU memory),
+    Matrix<BaseFloat> data_aux(data_);
+    // Add extra 3% rows, so we don't reallocate soon:
+    int32 extra_rows = 0.03 * data_.NumRows();
+    data_.Resize(data_end_ + m.NumRows() + extra_rows, data_.NumCols());
     data_.RowRange(0, data_aux.NumRows()).CopyFromMat(data_aux);
   }
   // copy the data

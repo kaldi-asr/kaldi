@@ -40,6 +40,19 @@ void Plda::Read(std::istream &is, bool binary) {
   ComputeDerivedVars();
 }
 
+template<class Real>
+/// This function computes a projection matrix that when applied makes the
+/// covariance unit (i.e. all 1).
+static void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
+                                        MatrixBase<Real> *proj) {
+  int32 dim = covar.NumRows();
+  TpMatrix<Real> C(dim);  // Cholesky of covar, covar = C C^T
+  C.Cholesky(covar);
+  C.Invert();  // The matrix that makes covar unit is C^{-1}, because
+               // C^{-1} covar C^{-T} = C^{-1} C C^T C^{-T} = I.
+  proj->CopyFromTp(C, kNoTrans);  // set "proj" to C^{-1}.
+}
+
 
 void Plda::ComputeDerivedVars() {
   KALDI_ASSERT(Dim() > 0);
@@ -83,32 +96,60 @@ void Plda::ComputeDerivedVars() {
 
  */
 
+double Plda::GetNormalizationFactor(
+    const VectorBase<double> &transformed_ivector,
+    int32 num_examples) const {
+  KALDI_ASSERT(num_examples > 0);
+  // Work out the normalization factor.  The covariance for an average over
+  // "num_examples" training iVectors equals \Psi + I/num_examples.
+  Vector<double> transformed_ivector_sq(transformed_ivector);
+  transformed_ivector_sq.ApplyPow(2.0);
+  // inv_covar will equal 1.0 / (\Psi + I/num_examples).
+  Vector<double> inv_covar(psi_);
+  inv_covar.Add(1.0 / num_examples);
+  inv_covar.InvertElements();
+  // "transformed_ivector" should have covariance (\Psi + I/num_examples), i.e.
+  // within-class/num_examples plus between-class covariance.  So
+  // transformed_ivector_sq . (I/num_examples + \Psi)^{-1} should be equal to
+  //  the dimension.
+  double dot_prod = VecVec(inv_covar, transformed_ivector_sq);
+  return sqrt(Dim() / dot_prod);
+}
+
+
 double Plda::TransformIvector(const PldaConfig &config,
                               const VectorBase<double> &ivector,
+                              int32 num_examples,
                               VectorBase<double> *transformed_ivector) const {
   KALDI_ASSERT(ivector.Dim() == Dim() && transformed_ivector->Dim() == Dim());
+  double normalization_factor;
   transformed_ivector->CopyFromVec(offset_);
   transformed_ivector->AddMatVec(1.0, transform_, kNoTrans, ivector, 1.0);
-  double normalization_factor = sqrt(transformed_ivector->Dim()) 
-                                / transformed_ivector->Norm(2.0);
+  if (config.simple_length_norm)
+    normalization_factor = sqrt(transformed_ivector->Dim())
+      / transformed_ivector->Norm(2.0);
+  else
+    normalization_factor = GetNormalizationFactor(*transformed_ivector,
+                                                  num_examples);
   if (config.normalize_length)
-      transformed_ivector->Scale(normalization_factor);
+    transformed_ivector->Scale(normalization_factor);
   return normalization_factor;
 }
 
 // "float" version of TransformIvector.
 float Plda::TransformIvector(const PldaConfig &config,
                              const VectorBase<float> &ivector,
+                             int32 num_examples,
                              VectorBase<float> *transformed_ivector) const {
   Vector<double> tmp(ivector), tmp_out(ivector.Dim());
-  float ans = TransformIvector(config, tmp, &tmp_out);
+  float ans = TransformIvector(config, tmp, num_examples, &tmp_out);
   transformed_ivector->CopyFromVec(tmp_out);
   return ans;
 }
 
 
-// There is an extended comment within this file, referencing a paper by Ioffe, that
-// may clarify what this function is doing.
+// There is an extended comment within this file, referencing a paper by
+// Ioffe, that may clarify what this function is doing.
 double Plda::LogLikelihoodRatio(
     const VectorBase<double> &transformed_train_ivector,
     int32 n, // number of training utterances.
@@ -123,7 +164,8 @@ double Plda::LogLikelihoodRatio(
     Vector<double> mean(dim, kUndefined);
     Vector<double> variance(dim, kUndefined);
     for (int32 i = 0; i < dim; i++) {
-      mean(i) = n * psi_(i) / (n * psi_(i) + 1.0) * transformed_train_ivector(i);
+      mean(i) = n * psi_(i) / (n * psi_(i) + 1.0)
+        * transformed_train_ivector(i);
       variance(i) = 1.0 + psi_(i) / (n * psi_(i) + 1.0);
     }
     double logdet = variance.SumLog();
@@ -175,6 +217,72 @@ void Plda::SmoothWithinClassCovariance(double smoothing_factor) {
   ComputeDerivedVars();
 }
 
+void Plda::ApplyTransform(const Matrix<double> &in_transform) {
+  KALDI_ASSERT(in_transform.NumRows() <= Dim()
+    && in_transform.NumCols() == Dim());
+
+  // Apply in_transform to mean_.
+  Vector<double> mean_new(in_transform.NumRows());
+  mean_new.AddMatVec(1.0, in_transform, kNoTrans, mean_, 0.0);
+  mean_.Resize(in_transform.NumRows());
+  mean_.CopyFromVec(mean_new);
+
+  SpMatrix<double> between_var(in_transform.NumCols()),
+                   within_var(in_transform.NumCols()),
+                   psi_mat(in_transform.NumCols()),
+                   between_var_new(Dim()),
+                   within_var_new(Dim());
+  Matrix<double> transform_invert(transform_);
+
+  // Next, compute the between_var and within_var that existed
+  // prior to diagonalization.
+  psi_mat.AddDiagVec(1.0, psi_);
+  transform_invert.Invert();
+  within_var.AddMat2(1.0, transform_invert, kNoTrans, 0.0);
+  between_var.AddMat2Sp(1.0, transform_invert, kNoTrans, psi_mat, 0.0);
+
+  // Next, transform the variances using the input transformation.
+  between_var_new.AddMat2Sp(1.0, in_transform, kNoTrans, between_var, 0.0);
+  within_var_new.AddMat2Sp(1.0, in_transform, kNoTrans, within_var, 0.0);
+
+  // Finally, we need to recompute psi_ and transform_. The remainder of
+  // the code in this function  is a lightly modified copy of
+  // PldaEstimator::GetOutput().
+  Matrix<double> transform1(Dim(), Dim());
+  ComputeNormalizingTransform(within_var_new, &transform1);
+  // Now transform is a matrix that if we project with it,
+  // within_var becomes unit.
+  // between_var_proj is between_var after projecting with transform1.
+  SpMatrix<double> between_var_proj(Dim());
+  between_var_proj.AddMat2Sp(1.0, transform1, kNoTrans, between_var_new, 0.0);
+
+  Matrix<double> U(Dim(), Dim());
+  Vector<double> s(Dim());
+  // Do symmetric eigenvalue decomposition between_var_proj = U diag(s) U^T,
+  // where U is orthogonal.
+  between_var_proj.Eig(&s, &U);
+
+  KALDI_ASSERT(s.Min() >= 0.0);
+  int32 n;
+  s.ApplyFloor(0.0, &n);
+  if (n > 0) {
+    KALDI_WARN << "Floored " << n << " eigenvalues of between-class "
+               << "variance to zero.";
+  }
+  // Sort from greatest to smallest eigenvalue.
+  SortSvd(&s, &U);
+
+  // The transform U^T will make between_var_proj diagonal with value s
+  // (i.e. U^T U diag(s) U U^T = diag(s)).  The final transform that
+  // makes within_var unit and between_var diagonal is U^T transform1,
+  // i.e. first transform1 and then U^T.
+  transform_.Resize(Dim(), Dim());
+  transform_.AddMatMat(1.0, U, kTrans, transform1, kNoTrans, 0.0);
+  psi_.Resize(Dim());
+  psi_.CopyFromVec(s);
+  ComputeDerivedVars();
+}
+
 void PldaStats::AddSamples(double weight,
                            const Matrix<double> &group) {
   if (dim_ == 0) {
@@ -223,7 +331,7 @@ void PldaStats::Init(int32 dim) {
   example_weight_ = 0.0;
   sum_.Resize(dim);
   offset_scatter_.Resize(dim);
-  KALDI_ASSERT(class_info_.empty());  
+  KALDI_ASSERT(class_info_.empty());
 }
 
 
@@ -242,7 +350,7 @@ double PldaEstimator::ComputeObjfPart1() const {
   // #examples) separate samples, each with the within-class covariance.. the
   // argument is a little complicated and involves an orthogonal complement of a
   // matrix whose first row computes the mean.
-  
+
   double within_class_count = stats_.example_weight_ - stats_.class_weight_,
       within_logdet, det_sign;
   SpMatrix<double> inv_within_var(within_var_);
@@ -256,12 +364,12 @@ double PldaEstimator::ComputeObjfPart1() const {
 
 double PldaEstimator::ComputeObjfPart2() const {
   double tot_objf = 0.0;
-  
+
   int32 n = -1; // the number of examples for the current class
   SpMatrix<double> combined_inv_var(Dim());
   // combined_inv_var = (between_var_ + within_var_ / n)^{-1}
   double combined_var_logdet;
-  
+
   for (size_t i = 0; i < stats_.class_info_.size(); i++) {
     const ClassInfo &info = stats_.class_info_[i];
     if (info.num_examples != n) {
@@ -338,9 +446,9 @@ void PldaEstimator::GetStatsFromIntraClass() {
             = C - 0.5 x^T (between_var^{-1} + n within_var^{-1}) x + x^T z
 
             where z = n within_var^{-1} m, and we can write this as:
-            
+
    log p(x) = C - 0.5 (x-w)^T (between_var^{-1} + n within_var^{-1}) (x-w)
-     
+
     where x^T (between_var^{-1} + n within_var^{-1}) w = x^T z, i.e.
        (between_var^{-1} + n within_var^{-1}) w = z = n within_var^{-1} m, so
 
@@ -353,7 +461,7 @@ void PldaEstimator::GetStatsFromIntraClass() {
        between-var-stats += w w^T + (between_var^{-1} + n within_var^{-1})^{-1}.
     and the update to the within-var stats will be:
        within-var-stats += n ( (m-w) (m-w)^T (between_var^{-1} + n within_var^{-1})^{-1} ).
-    
+
     The drawback of this formulation is that each time we encounter a different
     value of n (number of examples) we will have to do a different matrix
     inversion.  We'll try to improve on this later using a suitable transform.
@@ -365,7 +473,7 @@ void PldaEstimator::GetStatsFromClassMeans() {
   SpMatrix<double> within_var_inv(within_var_);
   within_var_inv.Invert();
   // mixed_var will equal (between_var^{-1} + n within_var^{-1})^{-1}.
-  SpMatrix<double> mixed_var(Dim()); 
+  SpMatrix<double> mixed_var(Dim());
   int32 n = -1; // the current number of examples for the class.
 
   for (size_t i = 0; i < stats_.class_info_.size(); i++) {
@@ -425,24 +533,13 @@ void PldaEstimator::Estimate(const PldaEstimationConfig &config,
   GetOutput(plda);
 }
 
-template<class Real>
-static void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
-                                        MatrixBase<Real> *proj) {
-  int32 dim = covar.NumRows();
-  TpMatrix<Real> C(dim);  // Cholesky of covar, covar = C C^T
-  C.Cholesky(covar);
-  C.Invert();  // The matrix that makes covar unit is C^{-1}, because
-               // C^{-1} covar C^{-T} = C^{-1} C C^T C^{-T} = I.
-  proj->CopyFromTp(C, kNoTrans);  // set "proj" to C^{-1}.
-}
-
 
 void PldaEstimator::GetOutput(Plda *plda) {
   plda->mean_ = stats_.sum_;
   plda->mean_.Scale(1.0 / stats_.class_weight_);
   KALDI_LOG << "Norm of mean of iVector distribution is "
             << plda->mean_.Norm(2.0);
-  
+
   Matrix<double> transform1(Dim(), Dim());
   ComputeNormalizingTransform(within_var_, &transform1);
   // now transform is a matrix that if we project with it,
@@ -456,17 +553,18 @@ void PldaEstimator::GetOutput(Plda *plda) {
   Vector<double> s(Dim());
   // Do symmetric eigenvalue decomposition between_var_proj = U diag(s) U^T,
   // where U is orthogonal.
-  between_var_proj.Eig(&s, &U); 
+  between_var_proj.Eig(&s, &U);
 
   KALDI_ASSERT(s.Min() >= 0.0);
-  int32 n = s.ApplyFloor(0.0);
+  int32 n;
+  s.ApplyFloor(0.0, &n);
   if (n > 0) {
     KALDI_WARN << "Floored " << n << " eigenvalues of between-class "
                << "variance to zero.";
   }
   // Sort from greatest to smallest eigenvalue.
   SortSvd(&s, &U);
-  
+
   // The transform U^T will make between_var_proj diagonal with value s
   // (i.e. U^T U diag(s) U U^T = diag(s)).  The final transform that
   // makes within_var_ unit and between_var_ diagonal is U^T transform1,
@@ -539,7 +637,7 @@ void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &co
   // plda->transform_ transforms into a space where the within-class covar is
   // 1.0 and the the between-class covar is diag(plda->psi_), we need to scale
   // each dimension i by 1.0 / sqrt(1.0 + plda->psi_(i))
-  
+
   Matrix<double> transform_mod(plda->transform_);
   for (int32 i = 0; i < dim; i++)
     transform_mod.Row(i).Scale(1.0 / sqrt(1.0 + plda->psi_(i)));
@@ -564,7 +662,7 @@ void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &co
   // transform_mod.
   SpMatrix<double> W(dim), B(dim);
   for (int32 i = 0; i < dim; i++) {
-    W(i, i) =           1.0 / (1.0 + plda->psi_(i)), 
+    W(i, i) =           1.0 / (1.0 + plda->psi_(i)),
     B(i, i) = plda->psi_(i) / (1.0 + plda->psi_(i));
   }
 
@@ -576,7 +674,7 @@ void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &co
   // First let's compute these projected variances... we call the "proj2" because
   // it's after the data has been projected twice (actually, transformed, as there is no
   // dimension loss), by transform_mod and then P^T.
-  
+
   SpMatrix<double> Wproj2(dim), Bproj2(dim);
   Wproj2.AddMat2Sp(1.0, P, kTrans, W, 0.0);
   Bproj2.AddMat2Sp(1.0, P, kTrans, B, 0.0);
@@ -584,7 +682,7 @@ void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &co
   Matrix<double> Ptrans(P, kTrans);
 
   SpMatrix<double> Wproj2mod(Wproj2), Bproj2mod(Bproj2);
-  
+
   for (int32 i = 0; i < dim; i++) {
     // For this eigenvalue, compute the within-class covar projected with this direction,
     // and the same for between.
@@ -626,20 +724,20 @@ void PldaUnsupervisedAdaptor::UpdatePlda(const PldaUnsupervisedAdaptorConfig &co
   SpMatrix<double> Wmod(dim), Bmod(dim);
   Wmod.AddMat2Sp(1.0, combined_trans_inv, kNoTrans, Wproj2mod, 0.0);
   Bmod.AddMat2Sp(1.0, combined_trans_inv, kNoTrans, Bproj2mod, 0.0);
-  
+
   TpMatrix<double> C(dim);
   // Do Cholesky Wmod = C C^T.  Now if we use C^{-1} as a transform, we have
   // C^{-1} W C^{-T} = I, so it makes the within-class covar unit.
   C.Cholesky(Wmod);
   TpMatrix<double> Cinv(C);
   Cinv.Invert();
-  
+
   // Bmod_proj is Bmod projected by Cinv.
   SpMatrix<double> Bmod_proj(dim);
   Bmod_proj.AddTp2Sp(1.0, Cinv, kNoTrans, Bmod, 0.0);
   Vector<double> psi_new(dim);
   Matrix<double> Q(dim, dim);
-  // Do symmetric eigenvalue decomposition of Bmod_proj, so 
+  // Do symmetric eigenvalue decomposition of Bmod_proj, so
   // Bmod_proj = Q diag(psi_new) Q^T
   Bmod_proj.Eig(&psi_new, &Q);
   SortSvd(&psi_new, &Q);

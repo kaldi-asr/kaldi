@@ -47,7 +47,7 @@ dir=$5
 mkdir -p $dir/log
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
-cp $alidir/phones.txt $dir || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 for f in $data/feats.scp $alidir/{tree,final.mdl,ali.1.gz} $denlatdir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;

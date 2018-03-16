@@ -72,10 +72,12 @@ parser.add_option('--affine-opts', dest='affine_opts',
 parser.add_option('--bottleneck-dim', dest='bottleneck_dim',
                    help='Make bottleneck network with desired bn-dim (0 = no bottleneck) [default: %default]',
                    default=0, type='int');
-parser.add_option('--dropout-retention', dest='dropout_retention',
-                   help='Put dropout after the non-linearity of hidden layerm (0.0 = disabled) [default: %default]',
-                   default=0.0, type='float');
-
+parser.add_option('--with-dropout', dest='with_dropout',
+                   help='Add <Dropout> after the non-linearity of hidden layer.',
+                   action='store_true', default=False);
+parser.add_option('--dropout-opts', dest='dropout_opts',
+                   help='Extra options for dropout [default: %default]',
+                   default='', type='string');
 
 
 (o,args) = parser.parse_args()
@@ -86,6 +88,7 @@ if len(args) != 4 :
 # A HACK TO PASS MULTI-WORD OPTIONS, WORDS ARE CONNECTED BY UNDERSCORES '_',
 o.activation_opts = o.activation_opts.replace("_"," ")
 o.affine_opts = o.affine_opts.replace("_"," ")
+o.dropout_opts = o.dropout_opts.replace("_"," ")
 
 (feat_dim, num_leaves, num_hid_layers, num_hid_neurons) = map(int,args);
 ### End parse options
@@ -179,8 +182,8 @@ print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> 
       # This is done by multiplying with stddev(U[0,1]) = sqrt(1/12).
       # The stddev of weights is consequently reduced with scale 0.29,
 print "%s <InputDim> %d <OutputDim> %d %s" % (o.activation_type, num_hid_neurons, num_hid_neurons, o.activation_opts)
-if o.dropout_retention > 0.0:
-  print "<Dropout> <InputDim> %d <OutputDim> %d <DropoutRetention> %f" % (num_hid_neurons, num_hid_neurons, o.dropout_retention)
+if o.with_dropout:
+  print "<Dropout> <InputDim> %d <OutputDim> %d %s" % (num_hid_neurons, num_hid_neurons, o.dropout_opts)
 
 
 # Internal AffineTransforms,
@@ -189,8 +192,8 @@ for i in range(num_hid_layers-1):
         (num_hid_neurons, num_hid_neurons, o.hid_bias_mean, o.hid_bias_range, \
          (o.param_stddev_factor * Glorot(num_hid_neurons, num_hid_neurons)), o.max_norm, o.affine_opts)
   print "%s <InputDim> %d <OutputDim> %d %s" % (o.activation_type, num_hid_neurons, num_hid_neurons, o.activation_opts)
-  if o.dropout_retention > 0.0:
-    print "<Dropout> <InputDim> %d <OutputDim> %d <DropoutRetention> %f" % (num_hid_neurons, num_hid_neurons, o.dropout_retention)
+  if o.with_dropout:
+    print "<Dropout> <InputDim> %d <OutputDim> %d %s" % (num_hid_neurons, num_hid_neurons, o.dropout_opts)
 
 # Optionaly add bottleneck,
 if o.bottleneck_dim != 0:
@@ -213,8 +216,8 @@ if o.bottleneck_dim != 0:
      (o.bottleneck_dim, num_hid_neurons, o.hid_bias_mean, o.hid_bias_range, \
       (o.param_stddev_factor * Glorot(o.bottleneck_dim, num_hid_neurons)), o.max_norm, o.affine_opts)
   print "%s <InputDim> %d <OutputDim> %d %s" % (o.activation_type, num_hid_neurons, num_hid_neurons, o.activation_opts)
-  if o.dropout_retention > 0.0:
-    print "<Dropout> <InputDim> %d <OutputDim> %d <DropoutRetention> %f" % (num_hid_neurons, num_hid_neurons, o.dropout_retention)
+  if o.with_dropout:
+    print "<Dropout> <InputDim> %d <OutputDim> %d %s" % (num_hid_neurons, num_hid_neurons, o.dropout_opts)
 
 # Last AffineTransform (10x smaller learning rate on bias)
 print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <LearnRateCoef> %f <BiasLearnRateCoef> %f" % \
