@@ -941,9 +941,8 @@ class CommonParser(object):
                                  action=common_lib.NullstrToNoneAction,
                                  help="Script to launch egs jobs")
         self.parser.add_argument("--use-gpu", type=str,
-                                 action=common_lib.StrToBoolAction,
-                                 choices=["true", "false"],
-                                 help="Use GPU for training", default=True)
+                                 choices=["true", "false", "yes", "no", "wait"],
+                                 help="Use GPU for training", default="true")
         self.parser.add_argument("--cleanup", type=str,
                                  action=common_lib.StrToBoolAction,
                                  choices=["true", "false"], default=True,
