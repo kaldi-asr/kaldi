@@ -1,7 +1,21 @@
 #!/bin/bash
 
 # 7m26j is as 7m26i but with slightly more l2 regularization on all layers (increasing
-# by a factor of 4/3).
+# by a factor of 4/3).  Very nice-- improved across the board
+
+# local/chain/compare_wer_general.sh --rt03 tdnn7m26g_sp tdnn7m26i_sp tdnn7m26j_sp
+# System                tdnn7m26g_sp tdnn7m26i_sp tdnn7m26j_sp
+# WER on train_dev(tg)      11.68     11.83     11.74
+# WER on train_dev(fg)      10.94     10.96     10.69
+# WER on eval2000(tg)        14.6      14.5      14.6
+# WER on eval2000(fg)        13.3      13.3      13.1
+# WER on rt03(tg)            17.9      17.9      17.5
+# WER on rt03(fg)            15.7      15.7      15.4
+# Final train prob         -0.066    -0.067    -0.070
+# Final valid prob         -0.084    -0.082    -0.084
+# Final train prob (xent)        -0.851    -0.862    -0.883
+# Final valid prob (xent)       -0.8872   -0.8933   -0.9110
+# Num-parameters               22865188  22865188  22865188
 
 # 7m26i is as 7m26g but with slightly more l2 on the output.
 

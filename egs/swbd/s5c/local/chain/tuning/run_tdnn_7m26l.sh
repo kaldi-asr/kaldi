@@ -1,21 +1,26 @@
 #!/bin/bash
 
+# 7m26l is as 7m26j but nearly doubling the l2-regularize value for the
+#  non-output layers.
+
+# 7m26j is as 7m26i but with slightly more l2 regularization on all layers (increasing
+# by a factor of 4/3).  Very nice-- improved across the board
+
+# local/chain/compare_wer_general.sh --rt03 tdnn7m26g_sp tdnn7m26i_sp tdnn7m26j_sp
+# System                tdnn7m26g_sp tdnn7m26i_sp tdnn7m26j_sp
+# WER on train_dev(tg)      11.68     11.83     11.74
+# WER on train_dev(fg)      10.94     10.96     10.69
+# WER on eval2000(tg)        14.6      14.5      14.6
+# WER on eval2000(fg)        13.3      13.3      13.1
+# WER on rt03(tg)            17.9      17.9      17.5
+# WER on rt03(fg)            15.7      15.7      15.4
+# Final train prob         -0.066    -0.067    -0.070
+# Final valid prob         -0.084    -0.082    -0.084
+# Final train prob (xent)        -0.851    -0.862    -0.883
+# Final valid prob (xent)       -0.8872   -0.8933   -0.9110
+# Num-parameters               22865188  22865188  22865188
+
 # 7m26i is as 7m26g but with slightly more l2 on the output.
-#
-# The difference is not absolutely clear.  Maybe slightly better though.
-# local/chain/compare_wer_general.sh --rt03 tdnn7m26g_sp tdnn7m26i_sp
-# System                tdnn7m26g_sp tdnn7m26i_sp
-# WER on train_dev(tg)      11.68     11.83
-# WER on train_dev(fg)      10.94     10.96
-# WER on eval2000(tg)        14.6      14.5
-# WER on eval2000(fg)        13.3      13.3
-# WER on rt03(tg)            17.9      17.9
-# WER on rt03(fg)            15.7      15.7
-# Final train prob         -0.066    -0.067
-# Final valid prob         -0.084    -0.082
-# Final train prob (xent)        -0.851    -0.862
-# Final valid prob (xent)       -0.8872   -0.8933
-# Num-parameters               22865188  22865188
 
 # 7m26g is as 7m26e (which has improved controllability of the learning rates of
 # different layers), but trying to revert the system in other respects to be
@@ -436,7 +441,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=7m26i
+affix=7m26l
 suffix=
 $speed_perturb && suffix=_sp
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
@@ -522,9 +527,9 @@ if [ $stage -le 12 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  opts="l2-regularize=0.003 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
-  linear_opts="orthonormal-constraint=-1.0 l2-regularize=0.003"
-  output_opts="l2-regularize=0.0015"
+  opts="l2-regularize=0.0075 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
+  linear_opts="l2-regularize=0.0075 orthonormal-constraint=-1.0"
+  output_opts="l2-regularize=0.002"
 
   mkdir -p $dir/configs
 
