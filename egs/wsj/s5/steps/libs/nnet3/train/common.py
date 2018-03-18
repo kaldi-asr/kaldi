@@ -942,7 +942,9 @@ class CommonParser(object):
                                  help="Script to launch egs jobs")
         self.parser.add_argument("--use-gpu", type=str,
                                  choices=["true", "false", "yes", "no", "wait"],
-                                 help="Use GPU for training", default="true")
+                                 help="Use GPU for training. "
+                                 "Note 'true' and 'false' are deprecated.",
+                                 default="yes")
         self.parser.add_argument("--cleanup", type=str,
                                  action=common_lib.StrToBoolAction,
                                  choices=["true", "false"], default=True,

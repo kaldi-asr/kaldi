@@ -229,7 +229,7 @@ def process_args(args):
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
     if args.use_gpu in ["true", "false"]:
-        args.use_gpu = {'true': 'yes', 'false': 'no'}[args.use_gpu]
+        args.use_gpu = ("yes" if args.use_gpu == "true" else "no")
     if args.use_gpu in ["yes", "wait"]:
         if not common_lib.check_if_cuda_compiled():
             logger.warning(
