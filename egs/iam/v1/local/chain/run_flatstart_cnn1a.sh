@@ -8,19 +8,20 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1a
+affix=1afix1
 
 # training options
 tdnn_dim=450
 num_epochs=4
 num_jobs_initial=2
 num_jobs_final=4
-minibatch_size=150=128,64/300=100,64,32/600=50,32,16/1200=16,8
+minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
 common_egs_dir=
 l2_regularize=0.00005
-frames_per_iter=1500000
+frames_per_iter=1000000
 cmvn_opts="--norm-means=true --norm-vars=true"
 train_set=train_e2e
+lang_test=lang_test
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -108,6 +109,8 @@ if [ $stage -le 3 ]; then
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
     --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
+    --chain.frame-subsampling-factor 4 \
+    --chain.alignment-subsampling-factor 4 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter $frames_per_iter \
     --trainer.num-epochs $num_epochs \
@@ -140,12 +143,7 @@ fi
 if [ $stage -le 5 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --extra-left-context $chunk_left_context \
-    --extra-right-context $chunk_right_context \
-    --extra-left-context-initial 0 \
-    --extra-right-context-final 0 \
-    --frames-per-chunk $frames_per_chunk \
-    --nj $nj --cmd "$cmd" \
+    --nj 30 --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
 fi
 
