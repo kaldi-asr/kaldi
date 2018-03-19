@@ -47,7 +47,7 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
-  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
+  utils/prepare_lang.sh --sil-prob 0.95 \
                         data/local/dict "<unk>" data/lang/temp data/lang
 fi
 
@@ -72,5 +72,5 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
-  local/chain/e2e/run_tdnn_flatstart.sh
+  local/chain/run_flatstart_cnn1a.sh
 fi
