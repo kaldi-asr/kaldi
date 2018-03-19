@@ -58,6 +58,7 @@ if [ $stage -le 0 ]; then
 
   # Using LOB and brown corpus.
   cat data/local/Wellington_tmp2.txt > ${dir}/data/text/text.txt
+  cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt >> ${dir}/data/text/text.txt
   cat data/local/browncorpus/brown.txt >> ${dir}/data/text/text.txt
 
   # use the validation data as the dev set.

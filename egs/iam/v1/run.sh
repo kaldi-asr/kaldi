@@ -55,7 +55,7 @@ if [ $stage -le 3 ]; then
                      data/local/dict/lexicon.txt data/lang_test
 
   utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 10000 data/local/dict exp/unk_lang_model
-  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
+  local/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
                         --unk-fst exp/unk_lang_model/unk_fst.txt data/local/dict "<unk>" data/lang/temp data/lang_unk
   cp data/lang_test/G.fst data/lang_unk/G.fst
 fi

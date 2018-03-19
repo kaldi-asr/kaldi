@@ -147,4 +147,8 @@ if [ $stage -le 0 ]; then
 
   utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
   utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
+
+  mv data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt data/local/lobcorpus/0167/download/LOB_COCOA/lob_1.txt
+  local/remove_utterances_from_corpus.py data/local/lobcorpus/0167/download/LOB_COCOA/ data/test/ data/val/ data/local/lobcorpus/0167/download/LOB_COCOA/
+
 fi

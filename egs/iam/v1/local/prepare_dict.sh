@@ -56,6 +56,7 @@ export letters=$(cat $dir/nonsilence_phones.txt | tr -d "\n")
 
 cut -d' ' -f2- data/train/text | \
   cat data/local/browncorpus/brown.txt - | \
+  cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt - | \
   cat data/local/Wellington_tmp2.txt - | \
   perl -e '$letters=$ENV{letters};
 while(<>){ @A = split;

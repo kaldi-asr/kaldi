@@ -91,4 +91,3 @@ else:
     print("<State> " + str(args.num_sil_states) + " </State>")
 print("</TopologyEntry>")
 print("</Topology>")
-
