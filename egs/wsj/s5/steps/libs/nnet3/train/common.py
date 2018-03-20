@@ -17,8 +17,7 @@ import re
 import shutil
 
 import libs.common as common_lib
-import libs.nnet3.train.dropout_schedule as dropout_schedule
-from dropout_schedule import *
+from libs.nnet3.train.dropout_schedule import *
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -35,6 +34,7 @@ class RunOpts(object):
     def __init__(self):
         self.command = None
         self.train_queue_opt = None
+        self.combine_gpu_opt = None
         self.combine_queue_opt = None
         self.prior_gpu_opt = None
         self.prior_queue_opt = None
@@ -941,9 +941,10 @@ class CommonParser(object):
                                  action=common_lib.NullstrToNoneAction,
                                  help="Script to launch egs jobs")
         self.parser.add_argument("--use-gpu", type=str,
-                                 action=common_lib.StrToBoolAction,
-                                 choices=["true", "false"],
-                                 help="Use GPU for training", default=True)
+                                 choices=["true", "false", "yes", "no", "wait"],
+                                 help="Use GPU for training. "
+                                 "Note 'true' and 'false' are deprecated.",
+                                 default="yes")
         self.parser.add_argument("--cleanup", type=str,
                                  action=common_lib.StrToBoolAction,
                                  choices=["true", "false"], default=True,

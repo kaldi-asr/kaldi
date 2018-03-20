@@ -159,13 +159,15 @@ int main(int argc, char *argv[]) {
 
     CuMatrix<BaseFloat> feats_transf, nnet_out, obj_diff;
 
-    Timer time;
+    Timer time, time_io;
     KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
               << " STARTED";
 
     int32 num_done = 0,
           num_no_tgt_mat = 0,
           num_other_error = 0;
+
+    double time_io_accu = 0.0;
 
     // main loop,
     while (!feature_reader.Done()) {
@@ -174,6 +176,7 @@ int main(int argc, char *argv[]) {
       CuDevice::Instantiate().CheckGpuHealth();
 #endif
       // fill the randomizer,
+      time_io.Reset();
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
         if (feature_randomizer.IsFull()) {
           // break the loop without calling Next(),
@@ -218,6 +221,10 @@ int main(int argc, char *argv[]) {
           if (w == 0.0) continue;  // remove sentence from training,
           weights.Scale(w);
         }
+
+        // accumulate the I/O time,
+        time_io_accu += time_io.Elapsed();
+        time_io.Reset(); // to be sure we don't count 2x,
 
         // skip too long utterances (or we run out of memory),
         if (mat.NumRows() > max_frames) {
@@ -299,13 +306,7 @@ int main(int argc, char *argv[]) {
         weights_randomizer.AddData(weights);
         num_done++;
 
-        // report the speed,
-        if (num_done % 5000 == 0) {
-          double time_now = time.Elapsed();
-          KALDI_VLOG(1) << "After " << num_done << " utterances: "
-            << "time elapsed = " << time_now / 60 << " min; "
-            << "processed " << total_frames / time_now << " frames per sec.";
-        }
+        time_io.Reset(); // reset before reading next feature matrix,
       }
 
       // randomize,
@@ -350,11 +351,11 @@ int main(int argc, char *argv[]) {
 
         // 1st mini-batch : show what happens in network,
         if (total_frames == 0) {
-          KALDI_VLOG(1) << "### After " << total_frames << " frames,";
-          KALDI_VLOG(1) << nnet.InfoPropagate();
+          KALDI_LOG << "### After " << total_frames << " frames,";
+          KALDI_LOG << nnet.InfoPropagate();
           if (!crossvalidate) {
-            KALDI_VLOG(1) << nnet.InfoBackPropagate();
-            KALDI_VLOG(1) << nnet.InfoGradient();
+            KALDI_LOG << nnet.InfoBackPropagate();
+            KALDI_LOG << nnet.InfoGradient();
           }
         }
 
@@ -380,11 +381,11 @@ int main(int argc, char *argv[]) {
     }  // main loop,
 
     // after last mini-batch : show what happens in network,
-    KALDI_VLOG(1) << "### After " << total_frames << " frames,";
-    KALDI_VLOG(1) << nnet.InfoPropagate();
+    KALDI_LOG << "### After " << total_frames << " frames,";
+    KALDI_LOG << nnet.InfoPropagate();
     if (!crossvalidate) {
-      KALDI_VLOG(1) << nnet.InfoBackPropagate();
-      KALDI_VLOG(1) << nnet.InfoGradient();
+      KALDI_LOG << nnet.InfoBackPropagate();
+      KALDI_LOG << nnet.InfoGradient();
     }
 
     if (!crossvalidate) {
@@ -397,7 +398,8 @@ int main(int argc, char *argv[]) {
       << "[" << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
       << ", " << (randomize ? "RANDOMIZED" : "NOT-RANDOMIZED")
       << ", " << time.Elapsed() / 60 << " min, processing "
-      << total_frames / time.Elapsed() << " frames per sec.]";
+      << total_frames / time.Elapsed() << " frames per sec;"
+      << " i/o time " << 100.*time_io_accu/time.Elapsed() << "%]";
 
     if (objective_function == "xent") {
       KALDI_LOG << xent.ReportPerClass();

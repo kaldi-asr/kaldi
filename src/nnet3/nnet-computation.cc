@@ -636,8 +636,8 @@ static void PrintCommand(std::ostream &os_out,
         KALDI_ASSERT(c.arg2 == kCompressedMatrixInt16);
         compressed_matrix_type = "uint16";
       }
-      os << "CompressMatrix(" << submatrix_strings[c.arg1]
-         << ", " << range << ", " << compressed_matrix_type << ", "
+      os << "CompressMatrix(" << submatrix_strings[c.arg1] << ", "
+         << range << ", " << compressed_matrix_type << ", "
          << truncate << ")\n";
       break;
     }

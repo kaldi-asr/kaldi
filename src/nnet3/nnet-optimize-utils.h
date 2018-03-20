@@ -455,6 +455,23 @@ bool ReplaceRowWithMatrixOps(NnetComputation *computation);
 /// computation->indexes.
 bool SnipRowOps(NnetComputation *computation);
 
+
+/// This function detects cases where commands of type kAddRowsMulti,
+/// kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti use indexes that
+/// correspond to at most two submatrices, in two distinct ranges without gaps
+/// filled by -1's, and could be converted to at most two commands of type
+/// kMatrixAdd, kMatrixCopy, kAddRows or kCopyRows.  (Note: it's important that
+/// this optimization takes place after SnipRowOps, because it doesn't remove
+/// the -1's from the edges of the indexes, it relies on that operation doing
+/// so).  The "without-gaps" stipulation is just for convenience of
+/// implementation, to have fewer cases to worry about.
+///
+/// This function returns true if it made any changes to the computation; if it
+/// returns true, then after calling this you should at some point do
+/// RenumberComputation(), which will remove any now-unused members of
+/// computation->indexes.
+bool SplitRowOps(NnetComputation *computation);
+
 /// This function detects submatrices and matrices that are never used (e.g. due
 /// to changes made in other optimization code), and members of indexes,
 /// indexes_multi and indexes_ranges that are unused or are duplicates, and memo
@@ -535,18 +552,18 @@ void IdentifyIndexesRangesArgs(std::vector<NnetComputation::Command> *commands,
                                std::vector<int32*> *indexes_ranges_args);
 
 /// Inserts commands into the computation at the requested places.  'commands'
-///  is a list of pairs (command-index, command) that is expected to be sorted
-///  on command-index.  For each entry (c, command) in 'commands', 'command' is
-///  inserted into 'computation' just *before* the command that (at entry) is in
-///  computation->commands[c].  If there are multiple pairs with the same index
-///  c, they will remain in the same order in which they were present in
-///  'commands'; however, 'commands' does not have to be sorted on 'c'.
-///  As a special case, if c == computation->commands.size(), the
-///  corresponding commands are inserted at the beginning of the computation.
-///  This function will appropriately renumber the argument of the kGotoLabel
-///  command of any 'looped' computation.  Command indexes c in commands[*].first
-///  must be in the range [0, computation->commands.size()].
-///  This function may modify 'commands' by sorting it.
+/// is a list of pairs (command-index, command) that is expected to be sorted on
+/// command-index.  For each entry (c, command) in 'commands', 'command' is
+/// inserted into 'computation' just *before* the command that (at entry) is in
+/// computation->commands[c].  If there are multiple pairs with the same index
+/// c, they will remain in the same order in which they were present in
+/// 'commands'; however, 'commands' does not have to be sorted on 'c'.  As a
+/// special case, if c == computation->commands.size(), the corresponding
+/// commands are inserted at the beginning of the computation.  This function
+/// will appropriately renumber the argument of the kGotoLabel command of any
+/// 'looped' computation.  Command indexes c in commands[*].first must be in the
+/// range [0, computation->commands.size()].  This function may modify
+/// 'commands' by sorting it.
 void InsertCommands(
     std::vector<std::pair<int32, NnetComputation::Command> > *commands,
     NnetComputation *computation);

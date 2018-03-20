@@ -46,7 +46,7 @@ utils/data/internal/combine_segments_to_recording.py \
   --write-reco2utt=$dir/reco2sorted_utts $data/segments $dir/utt2spk || exit 1
 
 if [ -f $data/text ]; then
-  utils/apply_map.pl -f 2 $data/text < $dir/reco2sorted_utts > $dir/text || exit 1
+  utils/apply_map.pl -f 2- $data/text < $dir/reco2sorted_utts > $dir/text || exit 1
 fi
 
 rm $dir/reco2sorted_utts

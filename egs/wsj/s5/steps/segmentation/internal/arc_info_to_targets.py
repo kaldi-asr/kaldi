@@ -144,7 +144,7 @@ def run(args):
 
     logger.info("Wrote {num_utts} targets; failed with {num_err}"
                 "".format(num_utts=num_utts, num_err=num_err))
-    if num_utts == 0 or num_err >= num_utts / 2:
+    if num_utts == 0 or num_err >= num_utts // 2:
         raise RuntimeError
 
 

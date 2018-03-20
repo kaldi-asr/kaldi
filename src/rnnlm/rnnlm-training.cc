@@ -44,7 +44,8 @@ RnnlmTrainer::RnnlmTrainer(bool train_embedding,
     num_minibatches_processed_(0),
     end_of_input_(false),
     previous_minibatch_empty_(1),
-    current_minibatch_empty_(1) {
+    current_minibatch_empty_(1),
+    srand_seed_(RandInt(0, 100000)) {
 
 
   int32 rnnlm_input_dim = rnnlm_->InputDim("input"),
@@ -182,7 +183,45 @@ void RnnlmTrainer::TrainWordEmbedding(
   }
 }
 
+void RnnlmTrainer::TrainBackstitchWordEmbedding(
+    bool is_backstitch_step1,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv) {
+  RnnlmExample &minibatch = previous_minibatch_;
+  bool sampling = !minibatch.sampled_words.empty();
 
+  if (word_feature_mat_ == NULL) {
+    // There is no sparse word-feature matrix.
+    if (!sampling) {
+      embedding_trainer_->TrainBackstitch(is_backstitch_step1,
+                                          word_embedding_deriv);
+    } else {
+      embedding_trainer_->TrainBackstitch(is_backstitch_step1, active_words_,
+                                          word_embedding_deriv);
+    }
+  } else {
+    // There is a sparse word-feature matrix, so we need to multiply by it
+    // to get the derivative w.r.t. the feature-embedding matrix.
+
+    if (!sampling && word_feature_mat_transpose_.NumRows() == 0)
+      word_feature_mat_transpose_.CopyFromSmat(*word_feature_mat_, kTrans);
+
+    CuMatrix<BaseFloat> feature_embedding_deriv(embedding_mat_->NumRows(),
+                                                embedding_mat_->NumCols());
+    const CuSparseMatrix<BaseFloat> &word_features_trans =
+        (sampling ? active_word_features_trans_ : word_feature_mat_transpose_);
+
+    feature_embedding_deriv.AddSmatMat(1.0, word_features_trans, kNoTrans,
+                                       *word_embedding_deriv, 0.0);
+
+    // TODO: eventually remove these lines.
+    KALDI_VLOG(3) << "word-features-trans sum is " << word_features_trans.Sum()
+                  << ", word-embedding-deriv-sum is " << word_embedding_deriv->Sum()
+                  << ", feature-embedding-deriv-sum is " << feature_embedding_deriv.Sum();
+
+    embedding_trainer_->TrainBackstitch(is_backstitch_step1,
+                                        &feature_embedding_deriv);
+  }
+}
 
 
 void RnnlmTrainer::TrainInternal() {
@@ -195,10 +234,30 @@ void RnnlmTrainer::TrainInternal() {
     word_embedding_deriv.Resize(word_embedding->NumRows(),
                                 word_embedding->NumCols());
 
-  core_trainer_->Train(previous_minibatch_, derived_, *word_embedding,
-                       (train_embedding_ ? &word_embedding_deriv : NULL));
-  if (train_embedding_)
-    TrainWordEmbedding(&word_embedding_deriv);
+  if (core_config_.backstitch_training_scale > 0.0 &&
+      num_minibatches_processed_ % core_config_.backstitch_training_interval ==
+      srand_seed_ % core_config_.backstitch_training_interval) {
+    bool is_backstitch_step1 = true;
+    srand(srand_seed_ + num_minibatches_processed_);
+    core_trainer_->TrainBackstitch(is_backstitch_step1, previous_minibatch_,
+        derived_, *word_embedding,
+        (train_embedding_ ? &word_embedding_deriv : NULL));
+    if (train_embedding_)
+      TrainBackstitchWordEmbedding(is_backstitch_step1, &word_embedding_deriv);
+
+    is_backstitch_step1 = false;
+    srand(srand_seed_ + num_minibatches_processed_);
+    core_trainer_->TrainBackstitch(is_backstitch_step1, previous_minibatch_,
+        derived_, *word_embedding,
+        (train_embedding_ ? &word_embedding_deriv : NULL));
+    if (train_embedding_)
+      TrainBackstitchWordEmbedding(is_backstitch_step1, &word_embedding_deriv);
+  } else {
+    core_trainer_->Train(previous_minibatch_, derived_, *word_embedding,
+                         (train_embedding_ ? &word_embedding_deriv : NULL));
+    if (train_embedding_)
+      TrainWordEmbedding(&word_embedding_deriv);
+  }
 }
 
 int32 RnnlmTrainer::VocabSize() {

@@ -588,7 +588,7 @@ class UpdatableComponent: public Component {
                      self-repair mechanism is activated.  -1000 is a special value which
                      will cause a component-specific default to be used.
 
-       block-dim     Defaults to dim, but may be any nonzero divisor of dim.  It affects the
+       block-dim     Defaults to dim, but may be any divisor of dim.  It affects the
                      self-repair, which will be done while treating the input/output as
                      repeating blocks of size 'block-dim' (e.g. blocks of filters).  It allows
                      us to do self-repair on the filter level in CNNs.
