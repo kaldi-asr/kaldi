@@ -120,7 +120,7 @@ def should_remove_frame(row, dim):
         # Remove frame.
         return True
 
-    best_source = max_idx / dim
+    best_source = max_idx // dim
     best_class = max_idx % dim
 
     confident_in_source = []  # List of length num_sources
@@ -171,7 +171,7 @@ def run(args):
                     "is not a multiple of dim {dim}"
                     "".format(utt=key, f=args.pasted_targets.name,
                               nc=mat.shape[1], dim=args.dim))
-            num_sources = mat.shape[1] / args.dim
+            num_sources = mat.shape[1] // args.dim
 
             out_mat = np.matrix(np.zeros([mat.shape[0], args.dim]))
 
