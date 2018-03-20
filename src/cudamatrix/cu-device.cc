@@ -65,6 +65,13 @@ static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
   if (cudaFree(0) == 0)
     return true;
 
+  if (debug_str == NULL) {
+    // this function called when "wait" is specified... don't get debug_str,
+    // because it's not needed and the stuff below can actually interact badly
+    // with device initialization, for mysterious reasons.
+    return false;
+  }
+
   // The rest of this code represents how we used to get a device context, but
   // now its purpose is mainly a debugging one.
   std::ostringstream debug_stream;
@@ -164,7 +171,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   } else {
     int32 num_times = 0;
     BaseFloat wait_time = 0.0;
-    while (! got_context) {
+    while (!got_context) {
       int32 sec_sleep = 5;
       if (num_times == 0)
         KALDI_WARN << "Will try again indefinitely every " << sec_sleep
@@ -172,7 +179,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
       num_times++;
       wait_time += sec_sleep;
       Sleep(sec_sleep);
-      got_context = GetCudaContext(num_gpus, &debug_str);
+      got_context = GetCudaContext(num_gpus, NULL);
     }
 
     KALDI_WARN << "Waited " << wait_time
