@@ -1,0 +1,24 @@
+# In the results below, "tgsmall" is the pruned 3-gram LM, which is used for lattice generation.
+# The following language models are then used for rescoring:
+# a) tglarge- the full, non-pruned 3-gram LM
+# b) fglarge- non-pruned 4-gram LM
+# The "test-clean" sets generally contain, relatively cleaner Korean speech,
+# the "test_200" are subset of "test-clean", designed for quick evaluation
+
+### SAT GMM model trained on the "train-01" set (51 hours "clean" speech)
+decode_fglarge_test_200/wer_14_0.5:%WER 21.17 [ 873 / 4124, 93 ins, 172 del, 608 sub ]
+decode_tglarge_test_200/wer_15_0.0:%WER 21.46 [ 885 / 4124, 101 ins, 168 del, 616 sub ]
+decode_tgsmall_test_200/wer_14_0.5:%WER 33.83 [ 1395 / 4124, 85 ins, 330 del, 980 sub ]
+decode_tgsmall_test_200.si/wer_14_0.0:%WER 46.02 [ 1898 / 4124, 133 ins, 389 del, 1376 sub ]
+
+### Chain model trained on the "train-01" set 
+tdnn1n_online/decode_fglarge_test_200/wer_13_1.0:%WER 11.25 [ 464 / 4124, 65 ins, 78 del, 321 sub ]
+tdnn1n_online/decode_tgsmall_test_200/wer_13_0.0:%WER 18.09 [ 746 / 4124, 89 ins, 123 del, 534 sub ]
+tdnn_opgru_1c_sp_online/decode_fglarge_test_200/wer_8_1.0:%WER 9.00 [ 371 / 4124, 50 ins, 63 del, 258 sub ]
+tdnn_opgru_1c_sp_online/decode_tgsmall_test_200/wer_8_0.5:%WER 14.06 [ 580 / 4124, 62 ins, 92 del, 426 sub ]
+
+### Chain model trained on the "train-01" set with multi-conditioned data augmentation
+tdnn1n_rvb_online/decode_fglarge_test_200/wer_10_0.0:%WER 10.11 [ 417 / 4124, 73 ins, 57 del, 287 sub ]
+tdnn1n_rvb_online/decode_tgsmall_test_200/wer_8_0.5:%WER 16.27 [ 671 / 4124, 87 ins, 91 del, 493 sub ]
+tdnn_lstm_1e_rvb_online/decode_fglarge_test_200/wer_13_0.0:%WER 11.47 [ 473 / 4124, 74 ins, 61 del, 338 sub ]
+tdnn_lstm_1e_rvb_online/decode_tgsmall_test_200/wer_12_1.0:%WER 16.97 [ 700 / 4124, 72 ins, 130 del, 498 sub ]
