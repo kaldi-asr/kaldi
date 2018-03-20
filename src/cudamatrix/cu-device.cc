@@ -65,29 +65,24 @@ static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
   if (cudaFree(0) == 0)
     return true;
 
-  if (debug_str == NULL) {
-    // this function called when "wait" is specified... don't get debug_str,
-    // because it's not needed and the stuff below can actually interact badly
-    // with device initialization, for mysterious reasons.
-    return false;
-  }
-
   // The rest of this code represents how we used to get a device context, but
   // now its purpose is mainly a debugging one.
   std::ostringstream debug_stream;
   debug_stream << "num-gpus=" << num_gpus << ". ";
   for (int32 device = 0; device < num_gpus; device++) {
     cudaSetDevice(device);
-    cudaError_t e = cudaDeviceSynchronize(); // << CUDA context gets created here.
+    cudaError_t e = cudaFree(0);  // CUDA context gets created here.
     if (e == cudaSuccess) {
-      *debug_str = debug_stream.str();
+      if (debug_str)
+        *debug_str = debug_stream.str();
       return true;
     }
     debug_stream << "Device " << device << ": " << cudaGetErrorString(e) << ".  ";
     cudaGetLastError();  // Make sure the error state doesn't get returned in
                          // the next cudaGetLastError().
   }
-  *debug_str = debug_stream.str();
+  if (debug_str)
+    *debug_str = debug_stream.str();
   return false;
 }
 
