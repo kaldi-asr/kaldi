@@ -419,7 +419,7 @@ void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &inpu
       fst::Concat(src.den_lat, &output_supervision->den_lat);
 
       output_supervision->num_ali.insert(
-          output_supervision->num_ali.end(),
+          output_supervision->num_ali.begin(),
           src.num_ali.begin(), src.num_ali.end());
 
       output_supervision->num_sequences++;
