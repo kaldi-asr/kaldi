@@ -1,4 +1,4 @@
-// nnet3bin/nnet3-xvector-compute.cc
+// nnet3/nnet3-xvector-threaded.cc
 
 // Copyright 2017   Johns Hopkins University (author: Daniel Povey)
 //           2017   Johns Hopkins University (author: Daniel Garcia-Romero)
@@ -46,56 +46,55 @@ XVectorExtractorParallelClass::XVectorExtractorParallelClass(
   xvector_writer_(xvector_writer) {
     tot_weight_ = 0.0;
     xvector_avg_.Resize(nnet_->OutputDim("output"), kSetZero);
-  }
+}
 
 void XVectorExtractorParallelClass::operator () () {
-    // feature chunking
-      int32 num_rows = feats_.NumRows(),
-            feat_dim = feats_.NumCols(),
-            this_chunk_size = chunk_size_;
+  int32 num_rows = feats_.NumRows(),
+        feat_dim = feats_.NumCols(),
+        this_chunk_size = chunk_size_;
 
-      if (num_rows < min_chunk_size_) {
-        KALDI_WARN << "Minimum chunk size of " << min_chunk_size_
-                   << " is greater than the number of rows "
-                   << "in utterance: " << utt_;
-        // let's make sure client does this check 
-        // TODO: exit gracefully 
-      } else if (num_rows < chunk_size_) {
-        // KALDI_LOG << "Chunk size of " << chunk_size_ << " is greater than "
-        //          << "the number of rows in utterance: " << utt_
-        //          << ", using chunk size  of " << num_rows;
-        this_chunk_size = num_rows;
-      } else if (chunk_size_ == -1) {
-        this_chunk_size = num_rows;
-      }
-
-      int32 num_chunks = ceil(
-        num_rows / static_cast<BaseFloat>(this_chunk_size));
-
-      // Iterate over the feature chunks.
-      for (int32 chunk_indx = 0; chunk_indx < num_chunks; chunk_indx++) {
-        // If we're nearing the end of the input, we may need to shift the
-        // offset back so that we can get this_chunk_size frames of input to
-        // the nnet.
-        int32 offset = std::min(
-          this_chunk_size, num_rows - chunk_indx * this_chunk_size);
-        if (offset < min_chunk_size_)
-          continue;
-        SubMatrix<BaseFloat> sub_features(
-          feats_, chunk_indx * this_chunk_size, offset, 0, feat_dim);
-        Vector<BaseFloat> xvector;
-        tot_weight_ += offset;
-        
-        RunNnetComputation(sub_features, *nnet_, &compiler_, &xvector);
-
-        xvector_avg_.AddVec(offset, xvector);
-      }
+  if (num_rows < min_chunk_size_) {
+    KALDI_WARN << "Minimum chunk size of " << min_chunk_size_
+               << " is greater than the number of rows "
+               << "in utterance: " << utt_;
+    // let's make sure client does this check 
+    // TODO: exit gracefully 
+  } else if (num_rows < chunk_size_) {
+    // KALDI_LOG << "Chunk size of " << chunk_size_ << " is greater than "
+    //          << "the number of rows in utterance: " << utt_
+    //          << ", using chunk size  of " << num_rows;
+    this_chunk_size = num_rows;
+  } else if (chunk_size_ == -1) {
+    this_chunk_size = num_rows;
   }
+
+  int32 num_chunks = ceil(
+    num_rows / static_cast<BaseFloat>(this_chunk_size));
+
+  // Iterate over the feature chunks.
+  for (int32 chunk_indx = 0; chunk_indx < num_chunks; chunk_indx++) {
+    // If we're nearing the end of the input, we may need to shift the
+    // offset back so that we can get this_chunk_size frames of input to
+    // the nnet.
+    int32 offset = std::min(
+      this_chunk_size, num_rows - chunk_indx * this_chunk_size);
+    if (offset < min_chunk_size_)
+      continue;
+    SubMatrix<BaseFloat> sub_features(
+      feats_, chunk_indx * this_chunk_size, offset, 0, feat_dim);
+    Vector<BaseFloat> xvector;
+    tot_weight_ += offset;
+    
+    RunNnetComputation(sub_features, *nnet_, &compiler_, &xvector);
+
+    xvector_avg_.AddVec(offset, xvector);
+  }
+}
 
 
 XVectorExtractorParallelClass::~XVectorExtractorParallelClass () {
-    xvector_avg_.Scale(1.0 / tot_weight_);
-    xvector_writer_->Write(utt_, xvector_avg_);
+  xvector_avg_.Scale(1.0 / tot_weight_);
+  xvector_writer_->Write(utt_, xvector_avg_);
 }
 
 
@@ -113,7 +112,6 @@ void XVectorExtractorParallelClass::RunNnetComputation(const MatrixBase<BaseFloa
       output_spec.indexes.resize(1);
       request.outputs.resize(1);
       request.outputs[0].Swap(&output_spec);
-      // const NnetComputation *computation = compiler->Compile(request);
       std::shared_ptr<const NnetComputation> computation = compiler->Compile(request);
       Nnet *nnet_to_update = NULL;  // we're not doing any update.
       NnetComputer computer(NnetComputeOptions(), *computation,
@@ -125,7 +123,7 @@ void XVectorExtractorParallelClass::RunNnetComputation(const MatrixBase<BaseFloa
       computer.GetOutputDestructive("output", &cu_output);
       xvector->Resize(cu_output.NumCols());
       xvector->CopyFromVec(cu_output.Row(0));
-    }
+}
 }
 // nnet3
 }

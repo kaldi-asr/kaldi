@@ -1,4 +1,4 @@
-// nnet3bin/nnet3-xvector-compute.cc
+// nnet3bin/nnet3-xvector-compute-parallel.cc
 
 // Copyright 2017   Johns Hopkins University (author: Daniel Povey)
 //           2017   Johns Hopkins University (author: Daniel Garcia-Romero)
