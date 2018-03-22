@@ -25,41 +25,9 @@
 #include "nnet3/nnet-am-decodable-simple.h"
 #include "base/timer.h"
 #include "nnet3/nnet-utils.h"
+#include "nnet3/nnet-xvector-threaded.h"
+#include "util/kaldi-thread.h"
 
-namespace kaldi {
-namespace nnet3 {
-
-// Computes an xvector from a chunk of speech features.
-static void RunNnetComputation(const MatrixBase<BaseFloat> &features,
-    const Nnet &nnet, CachingOptimizingCompiler *compiler,
-    Vector<BaseFloat> *xvector) {
-  ComputationRequest request;
-  request.need_model_derivative = false;
-  request.store_component_stats = false;
-  request.inputs.push_back(
-    IoSpecification("input", 0, features.NumRows()));
-  IoSpecification output_spec;
-  output_spec.name = "output";
-  output_spec.has_deriv = false;
-  output_spec.indexes.resize(1);
-  request.outputs.resize(1);
-  request.outputs[0].Swap(&output_spec);
-  //std::shared_ptr NnetComputation *computation = compiler->Compile(request);
-  std::shared_ptr<const NnetComputation> computation = compiler->Compile(request);
-  Nnet *nnet_to_update = NULL;  // we're not doing any update.
-  NnetComputer computer(NnetComputeOptions(), *computation,
-                  nnet, nnet_to_update);
-  CuMatrix<BaseFloat> input_feats_cu(features);
-  computer.AcceptInput("input", &input_feats_cu);
-  computer.Run();
-  CuMatrix<BaseFloat> cu_output;
-  computer.GetOutputDestructive("output", &cu_output);
-  xvector->Resize(cu_output.NumCols());
-  xvector->CopyFromVec(cu_output.Row(0));
-}
-
-} // namespace nnet3
-} // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {
@@ -82,45 +50,61 @@ int main(int argc, char *argv[]) {
         "utterance.  Optionally, xvectors are extracted from chunks of input\n"
         "features and averaged, to produce a single vector.\n"
         "\n"
+        "This version supports multi threading. WARNING: this works properly\n"
+        "only if you use <compiler-cache> with the same parameters \n"
+        "(to not allow re-compiling cache in multiple thread, as this operation is not thread-safe)\n"
+        "\n" 
         "Usage: nnet3-xvector-compute [options] <raw-nnet-in> "
         "<features-rspecifier> <vector-wspecifier>\n"
-        "e.g.: nnet3-xvector-compute final.raw scp:feats.scp "
+        "e.g.: nnet3-xvector-compute <compiler-cache> final.raw scp:feats.scp "
         "ark:nnet_prediction.ark\n"
         "See also: nnet3-compute\n";
 
     ParseOptions po(usage);
     Timer timer;
 
+    TaskSequencerConfig sequencer_config; // has --num-threads option
     NnetSimpleComputationOptions opts;
+
     opts.acoustic_scale = 1.0; // by default do no scaling in this recipe.
 
-    std::string use_gpu = "no";
     int32 chunk_size = -1,
-      min_chunk_size = 100;
+      min_chunk_size = 100,
+      chunk_sampling_rate = 1;
 
     opts.Register(&po);
-    po.Register("use-gpu", &use_gpu,
-      "yes|no|optional|wait, only has effect if compiled with CUDA");
+    sequencer_config.Register(&po);
+
+    CachingOptimizingCompilerOptions compiler_config; 
+    compiler_config.Register(&po);
     po.Register("chunk-size", &chunk_size,
       "If set, extracts xectors from specified chunk-size, and averages.  "
       "If not set, extracts an xvector from all available features.");
     po.Register("min-chunk-size", &min_chunk_size,
       "Minimum chunk-size allowed when extracting xvectors.");
+    po.Register("chunk-sampling-rate", &chunk_sampling_rate,
+      "Chunk size will be rounded to this number of frames (to take advantage of compiler cache).");
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 3) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 4) {
       po.PrintUsage();
       exit(1);
     }
 
-#if HAVE_CUDA==1
-    CuDevice::Instantiate().SelectGpuId(use_gpu);
-#endif
-
-    std::string nnet_rxfilename = po.GetArg(1),
-                feature_rspecifier = po.GetArg(2),
-                vector_wspecifier = po.GetArg(3);
+    std::string cache_rxfilename = "", nnet_rxfilename, feature_rspecifier, vector_wspecifier;
+   
+    if (po.NumArgs() == 3) {
+      nnet_rxfilename = po.GetArg(1);
+      feature_rspecifier = po.GetArg(2);
+      vector_wspecifier = po.GetArg(3);
+    }
+    else {
+      cache_rxfilename = po.GetArg(1);
+      nnet_rxfilename = po.GetArg(2);
+      feature_rspecifier = po.GetArg(3);
+      vector_wspecifier = po.GetArg(4);
+    }
 
     Nnet nnet;
     ReadKaldiObject(nnet_rxfilename, &nnet);
@@ -128,74 +112,66 @@ int main(int argc, char *argv[]) {
     SetDropoutTestMode(true, &nnet);
     CollapseModel(CollapseModelConfig(), &nnet);
 
-    CachingOptimizingCompiler compiler(nnet, opts.optimize_config);
-
     BaseFloatVectorWriter vector_writer(vector_wspecifier);
 
     int32 num_success = 0, num_fail = 0;
     int64 frame_count = 0;
-    int32 xvector_dim = nnet.OutputDim("output");
 
+    TaskSequencer<XVectorExtractorParallelClass> sequencer(sequencer_config);
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
+
+    if (chunk_size > 0 and chunk_sampling_rate > 0) {
+        compiler_config.cache_capacity = (chunk_size - min_chunk_size) / chunk_sampling_rate + 1;
+    }
+    CachingOptimizingCompiler compiler(nnet, opts.optimize_config, compiler_config);
+
+    if (cache_rxfilename != "") {
+        KALDI_LOG << "Reading cache from " << cache_rxfilename;
+        bool cache_binary_in;
+        Input ki(cache_rxfilename, &cache_binary_in);
+        compiler.ReadCache(ki.Stream(), cache_binary_in);
+    }
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-      const Matrix<BaseFloat> &features (feature_reader.Value());
+      Matrix<BaseFloat> &features (feature_reader.Value());
+
+      // pad features to make sure chunk_sampling_rate is satisfied
+      int32 num_rows = features.NumRows(),
+            feat_dim = features.NumCols();
+     
+      if (num_rows < min_chunk_size) { 
+          KALDI_WARN << "Minimum chunk size of " << min_chunk_size
+                     << " is greater than the number of rows "
+                     << "in utterance: " << utt;
+          num_fail++;
+          continue;
+      }
+ 
       if (features.NumRows() == 0) {
         KALDI_WARN << "Zero-length utterance: " << utt;
         num_fail++;
         continue;
       }
-      int32 num_rows = features.NumRows(),
-            feat_dim = features.NumCols(),
-            this_chunk_size = chunk_size;
 
-      if (num_rows < min_chunk_size) {
-        KALDI_WARN << "Minimum chunk size of " << min_chunk_size
-                   << " is greater than the number of rows "
-                   << "in utterance: " << utt;
-        num_fail++;
-        continue;
-      } else if (num_rows < chunk_size) {
-        KALDI_LOG << "Chunk size of " << chunk_size << " is greater than "
-                  << "the number of rows in utterance: " << utt
-                  << ", using chunk size  of " << num_rows;
-        this_chunk_size = num_rows;
-      } else if (chunk_size == -1) {
-        this_chunk_size = num_rows;
+      if (chunk_sampling_rate > 1) {
+          int32 feat_pad = chunk_sampling_rate - num_rows % chunk_sampling_rate;
+          if (feat_pad > 0){
+              features.Resize(num_rows + feat_pad, feat_dim, kCopyData);
+              for (int32 i = 0; i < feat_pad; i++) {
+                for (int32 j = 0; j < feat_dim; j++) {
+                  features(num_rows + i, j) = features(i, j);
+                }
+              }
+          }
       }
 
-      int32 num_chunks = ceil(
-        num_rows / static_cast<BaseFloat>(this_chunk_size));
-      Vector<BaseFloat> xvector_avg(xvector_dim, kSetZero);
-      BaseFloat tot_weight = 0.0;
-
-      // Iterate over the feature chunks.
-      for (int32 chunk_indx = 0; chunk_indx < num_chunks; chunk_indx++) {
-        // If we're nearing the end of the input, we may need to shift the
-        // offset back so that we can get this_chunk_size frames of input to
-        // the nnet.
-        int32 offset = std::min(
-          this_chunk_size, num_rows - chunk_indx * this_chunk_size);
-        if (offset < min_chunk_size)
-          continue;
-        SubMatrix<BaseFloat> sub_features(
-          features, chunk_indx * this_chunk_size, offset, 0, feat_dim);
-        Vector<BaseFloat> xvector;
-        tot_weight += offset;
-        RunNnetComputation(sub_features, nnet, &compiler, &xvector);
-        xvector_avg.AddVec(offset, xvector);
-      }
-      xvector_avg.Scale(1.0 / tot_weight);
-      vector_writer.Write(utt, xvector_avg);
-
+      sequencer.Run(new XVectorExtractorParallelClass(opts, nnet, &compiler, utt, chunk_size, min_chunk_size, 
+                                             features, &vector_writer));
       frame_count += features.NumRows();
       num_success++;
     }
-
-#if HAVE_CUDA==1
-    CuDevice::Instantiate().PrintProfile();
-#endif
+    sequencer.Wait(); 
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "
