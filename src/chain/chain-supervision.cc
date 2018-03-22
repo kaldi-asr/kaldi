@@ -698,7 +698,7 @@ void AppendSupervisionE2e(const std::vector<const Supervision*> &input,
   KALDI_ASSERT(!input.empty());
   KALDI_ASSERT(input[0]->e2e);
   KALDI_ASSERT(input[0]->e2e_fsts.size() == 1);
-  (*output_supervision) = *(input[0]);
+  *output_supervision = *(input[0]);
   for (int32 i = 1; i < input.size(); i++) {
     output_supervision->num_sequences++;
     KALDI_ASSERT(input[i]->e2e_fsts.size() == 1);
@@ -714,7 +714,7 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
   int32 label_dim = input[0]->label_dim,
       num_inputs = input.size();
   if (num_inputs == 1) {
-    (*output_supervision) = *(input[0]);
+    *output_supervision = *(input[0]);
     return;
   }
   if (input[0]->e2e) {
@@ -725,8 +725,8 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
   for (int32 i = 1; i < num_inputs; i++)
     KALDI_ASSERT(input[i]->label_dim == label_dim &&
                  "Trying to append incompatible Supervision objects");
-  (*output_supervision) = *(input[num_inputs-1]);
-  for (int32 i = num_inputs-2; i > -1; i--) {
+  *output_supervision = *(input[num_inputs-1]);
+  for (int32 i = num_inputs - 2; i >= 0; i--) {
     const Supervision &src = *(input[i]);
     if (output_supervision->weight == src.weight &&
         output_supervision->frames_per_sequence ==
@@ -737,7 +737,7 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
       fst::Concat(src.fst, &output_supervision->fst);
       output_supervision->num_sequences++;
     } else {
-      KALDI_ERR << "mismatch between inputs";
+      KALDI_ERR << "Mismatch weight or frames_per_sequence  between inputs";
     }
 
   }

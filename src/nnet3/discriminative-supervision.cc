@@ -404,11 +404,11 @@ void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &inpu
   KALDI_ASSERT(!input.empty());
   int32 num_inputs = input.size();
   if (num_inputs == 1) {
-    (*output_supervision) = *(input[0]);
+    *output_supervision = *(input[0]);
     return;
   }
-  (*output_supervision) = *(input[num_inputs-1]);
-  for (int32 i = num_inputs-2; i > -1; i--) {
+  *output_supervision = *(input[num_inputs-1]);
+  for (int32 i = num_inputs - 2; i >= 0; i--) {
     const DiscriminativeSupervision &src = *(input[i]);
     KALDI_ASSERT(src.num_sequences == 1);
     if (output_supervision->weight == src.weight &&
@@ -424,10 +424,10 @@ void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &inpu
 
       output_supervision->num_sequences++;
     } else {
-      KALDI_ERR << "mismatch between inputs";
+      KALDI_ERR << "Mismatch weight or frames_per_sequence  between inputs";
     }
   }
-  DiscriminativeSupervision &out_sup = (*output_supervision);
+  DiscriminativeSupervision &out_sup = *output_supervision;
   fst::TopSort(&(out_sup.den_lat));
   out_sup.Check();
 }
