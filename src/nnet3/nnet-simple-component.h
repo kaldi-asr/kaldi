@@ -1221,10 +1221,31 @@ class SumBlockComponent: public Component {
 };
 
 
-// ClipGradientComponent just duplicates its input, but clips gradients
-// during backpropagation if they cross a predetermined threshold.
-// This component will be used to prevent gradient explosion problem in
-// recurrent neural networks
+/*
+ ClipGradientComponent just duplicates its input, but clips gradients
+ during backpropagation if they cross a predetermined threshold.
+ This component will be used to prevent gradient explosion problem in
+ recurrent neural networks.
+
+   Configuration values accepted:
+      dim                   Dimension of this component, e.g. 1024
+      clipping-threshold    Threshold to be used for clipping. It could correspond
+                            to max-row-norm (if norm_based_clipping_ == true) or
+                            max-absolute-value (otherwise).
+      norm-based-clipping   If true, the max-row-norm will be clipped. Else element-wise
+                            absolute value clipping is done.
+      self-repair-clipped-proportion-threshold  The threshold of clipped-proportion
+                            for self-repair mechanism to be activated. The self-repair mechanism
+                            adds a term (proportional to [-(input vector - self_repair_target_)])
+                            to in-deriv, attempting to shrink the maginitude of the input towards
+                            self_repair_target_ (e.g. 0.0 or 0.5). The default value is 1.0.
+      self-repair-target    The target value towards which self-repair is trying to set
+                            for in-deriv. The default value is 0.0.
+      self-repair-scale     Scale for the self-repair mechanism; see comments above.
+                            The default value is 0.0, but we usually set this to 1.0e-05 (or
+                            occasionally 1.0e-04) in the scripts.
+*/
+
 class ClipGradientComponent: public Component {
  public:
   ClipGradientComponent(int32 dim, BaseFloat clipping_threshold,
