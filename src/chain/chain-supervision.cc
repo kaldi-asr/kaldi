@@ -733,21 +733,20 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
                  "Trying to append incompatible Supervision objects");
   output_supervision->clear();
   output_supervision->reserve(input.size());
-  for (int32 i = 0; i < input.size(); i++) {
+  for (int32 i = input.size()-1; i > -1; i--) {
     const Supervision &src = *(input[i]);
     if (compactify && !output_supervision->empty() &&
-        output_supervision->back().weight == src.weight &&
-        output_supervision->back().frames_per_sequence ==
+        output_supervision->front().weight == src.weight &&
+        output_supervision->front().frames_per_sequence ==
         src.frames_per_sequence) {
       // Combine with current output
       // append src.fst to output_supervision->fst.
-      fst::Concat(&output_supervision->back().fst, src.fst);
-      output_supervision->back().num_sequences++;
-      output_was_merged.back() = true;
+      fst::Concat(src.fst, &output_supervision->back().fst);
+      output_supervision->front().num_sequences++;
+      output_was_merged.front() = true;
     } else {
-      output_supervision->resize(output_supervision->size() + 1);
-      output_supervision->back() = src;
-      output_was_merged.push_back(false);
+      output_supervision->emplace(output_supervision->begin(), src);
+      output_was_merged.insert(output_was_merged.begin(), false);
     }
   }
   KALDI_ASSERT(output_was_merged.size() == output_supervision->size());
