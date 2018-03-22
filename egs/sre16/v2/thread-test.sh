@@ -35,10 +35,3 @@ time /home/agorin/src/kaldi/kaldi-my/src/nnet3bin/nnet3-xvector-compute-parallel
 # user    2m16.898s
 # sys     0m1.451s
 
-
-
-
-
-
-
-
