@@ -232,10 +232,11 @@ class CachingOptimizingCompiler {
 
   /// Does the compilation and returns a const pointer to the result, which is
   /// owned by this class, not the caller.  It calls ComputeCudaIndexes() for
-  /// you, because you wouldn't be able to do this on a const object.  If you
-  /// want to preserve thread safety you should hold the result in the same type
-  /// (std::shared_ptr<const NnetComputation>) while you still need it, but
-  /// otherwise you can just cast to const NnetComputation*.
+  /// you, because you wouldn't be able to do this on a const object.
+  ///
+  /// Note: this used to return 'const NnetComputation*'.  If you get a
+  /// compilation failure, just replace 'const NnetComputation*' with
+  /// 'std::shared_ptr<const NnetComputation*>' in the calling code.
   std::shared_ptr<const NnetComputation> Compile(
       const ComputationRequest &request);
   void ReadCache(std::istream &is, bool binary);
