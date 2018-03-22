@@ -236,7 +236,7 @@ class CachingOptimizingCompiler {
   ///
   /// Note: this used to return 'const NnetComputation*'.  If you get a
   /// compilation failure, just replace 'const NnetComputation*' with
-  /// 'std::shared_ptr<const NnetComputation*>' in the calling code.
+  /// 'std::shared_ptr<const NnetComputation>' in the calling code.
   std::shared_ptr<const NnetComputation> Compile(
       const ComputationRequest &request);
   void ReadCache(std::istream &is, bool binary);
