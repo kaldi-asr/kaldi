@@ -44,7 +44,7 @@ static void RunNnetComputation(const MatrixBase<BaseFloat> &features,
   output_spec.indexes.resize(1);
   request.outputs.resize(1);
   request.outputs[0].Swap(&output_spec);
-  const NnetComputation *computation = compiler->Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler->Compile(request);
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(NnetComputeOptions(), *computation,
                   nnet, nnet_to_update);

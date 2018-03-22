@@ -100,7 +100,7 @@ void NnetChainComputeProb::Compute(const NnetChainExample &chain_eg) {
   GetChainComputationRequest(nnet_, chain_eg, need_model_derivative,
                              store_component_stats, use_xent_regularization,
                              use_xent_derivative, &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
   NnetComputer computer(nnet_config_.compute_config, *computation,
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
