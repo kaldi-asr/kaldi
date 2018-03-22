@@ -741,6 +741,7 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
         src.frames_per_sequence) {
       // Combine with current output
       // append src.fst to output_supervision->fst.
+      // the complexity here is O(V1 + E1)
       fst::Concat(src.fst, &output_supervision->back().fst);
       output_supervision->front().num_sequences++;
       output_was_merged.front() = true;
