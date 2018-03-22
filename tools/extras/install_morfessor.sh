@@ -7,18 +7,18 @@
 echo "#### installing morfessor"
 dirname=morfessor
 if [ ! -d ./$dirname ]; then
-	mkdir -p ./$dirname
-	git clone https://github.com/aalto-speech/morfessor.git morfessor ||
-		{
-			if [ $? -ne 0 ]; then
-				echo  >&2 "$0: Error git clone operation "
-				echo  >&2 "  Failed in cloning the github repository (https://github.com/aalto-speech/morfessor.git)"
-				echo  >&2 "  Download morfessor-2.0.1.tar.gz instead"
-				wget http://morpho.aalto.fi/projects/morpho/morfessor-2.0.1.tar.gz
-				tar -zxvf morfessor-2.0.1.tar.gz
-				mv Morfessor-2.0.1/ $dirname
-			fi
-		}
+  mkdir -p ./$dirname
+  git clone https://github.com/aalto-speech/morfessor.git morfessor ||
+    {
+      if [ $? -ne 0 ]; then
+        echo  >&2 "$0: Error git clone operation "
+        echo  >&2 "  Failed in cloning the github repository (https://github.com/aalto-speech/morfessor.git)"
+        echo  >&2 "  Download morfessor-2.0.1.tar.gz instead"
+        wget http://morpho.aalto.fi/projects/morpho/morfessor-2.0.1.tar.gz
+        tar -zxvf morfessor-2.0.1.tar.gz
+        mv Morfessor-2.0.1/ $dirname
+      fi
+    }
 fi
 
 # local installation
