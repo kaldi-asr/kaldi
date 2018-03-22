@@ -68,7 +68,8 @@ void CuRand<Real>::RandUniform(CuMatrixBase<Real> *tgt) {
     // may vary).
     CuMatrix<Real> tmp(tgt->NumRows(), tgt->NumCols(), kUndefined,
                        kStrideEqualNumCols);
-    CURAND_SAFE_CALL(curandGenerateUniformWrap(gen_, tmp.Data(), tmp.NumRows() * tmp.Stride()));
+    size_t s = static_cast<size_t>(tmp.NumRows()) * static_cast<size_t>(tmp.Stride());
+    CURAND_SAFE_CALL(curandGenerateUniformWrap(gen_, tmp.Data(), s));
     tgt->CopyFromMat(tmp);
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
@@ -84,7 +85,8 @@ void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
     // Here we don't need to use 'tmp' matrix,
-    CURAND_SAFE_CALL(curandGenerateUniformWrap(gen_, tgt->Data(), tgt->NumRows() * tgt->Stride()));
+    size_t s = static_cast<size_t>(tgt->NumRows()) * static_cast<size_t>(tgt->Stride());
+    CURAND_SAFE_CALL(curandGenerateUniformWrap(gen_, tgt->Data(), s));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif

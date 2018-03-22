@@ -49,6 +49,8 @@ struct RnnlmEmbeddingTrainerOptions {
                             // controlling the command line options to the
                             // training program (e.g. not providing a place to
                             // write the embedding matrix).
+  BaseFloat backstitch_training_scale;
+  int32 backstitch_training_interval;
 
   // Natural-gradient related options
   bool use_natural_gradient;
@@ -63,6 +65,8 @@ struct RnnlmEmbeddingTrainerOptions {
       max_param_change(1.0),
       l2_regularize(0.0),
       learning_rate(0.01),
+      backstitch_training_scale(0.0),
+      backstitch_training_interval(1),
       use_natural_gradient(true),
       natural_gradient_alpha(4.0),
       natural_gradient_rank(80),
@@ -86,6 +90,14 @@ struct RnnlmEmbeddingTrainerOptions {
                    "parameters.");
     opts->Register("learning-rate", &learning_rate, "The learning rate used in "
                    "training the word-embedding matrix.");
+    opts->Register("backstitch-training-scale", &backstitch_training_scale,
+                   "backstitch training factor. "
+                   "if 0 then in the normal training mode. It is referred to as "
+                   "'\\alpha' in our publications.");
+    opts->Register("backstitch-training-interval",
+                   &backstitch_training_interval,
+                   "do backstitch training with the specified interval of "
+                   "minibatches. It is referred to as 'n' in our publications.");
     opts->Register("use-natural-gradient", &use_natural_gradient,
                    "True if you want to use natural gradient to update the "
                    "embedding matrix");
@@ -138,6 +150,12 @@ class RnnlmEmbeddingTrainer {
   */
   void Train(CuMatrixBase<BaseFloat> *embedding_deriv);
 
+  // The backstitch version of the above function. Depending
+  // on whether is_backstitch_step1 is true, It could be either the first
+  // (backward) step, or the second (forward) step of backstitch.
+  void TrainBackstitch(bool is_backstitch_step1,
+                       CuMatrixBase<BaseFloat> *embedding_deriv);
+
 
   /* Train on one minibatch-- this version is for when there is subsampling, and
      the user is providing the derivative w.r.t. just the word-indexes that were
@@ -158,6 +176,10 @@ class RnnlmEmbeddingTrainer {
   void Train(const CuArrayBase<int32> &active_words,
              CuMatrixBase<BaseFloat> *word_embedding_deriv);
 
+  // The backstitch version of the above function.
+  void TrainBackstitch(bool is_backstitch_step1,
+                       const CuArrayBase<int32> &active_words,
+                       CuMatrixBase<BaseFloat> *word_embedding_deriv);
 
   ~RnnlmEmbeddingTrainer();
 
@@ -202,7 +224,6 @@ class RnnlmEmbeddingTrainer {
 
   // A count of the number of times the max-change constraint was applied.
   int32 max_change_count_;
-
 };
 
 

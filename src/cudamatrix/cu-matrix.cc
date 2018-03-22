@@ -2722,6 +2722,41 @@ void CuMatrixBase<Real>::AddRows(Real alpha,
   }
 }
 
+template<typename Real>
+void CuMatrixBase<Real>::MulRows(const CuMatrixBase<Real> &src,
+                                 const CuArrayBase<MatrixIndexT> &indexes) {
+  if (NumRows() == 0) return;
+  KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumRows());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(src.NumCols() == NumCols());
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_mul_rows(dimGrid, dimBlock,
+                  data_, src.Data(), indexes.Data(), Dim(), src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    MatrixBase<Real> &this_mat(Mat());
+    const MatrixBase<Real> &src_mat(src.Mat());
+    int32 num_rows = NumRows();
+    const MatrixIndexT *index_ptr = indexes.Data();
+    for (int32 r = 0; r < num_rows; r++) {
+      int32 src_r = index_ptr[r];
+      if (src_r < 0)
+        continue;
+      SubVector<Real> this_row(this_mat, r),
+          src_row(src_mat, src_r);
+      this_row.MulElements(src_row);
+    }
+  }
+}
+
+
 
 template<typename Real>
 void CuMatrixBase<Real>::AddRows(Real alpha, const CuArrayBase<const Real*> &src) {

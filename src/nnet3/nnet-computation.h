@@ -395,12 +395,17 @@ struct NnetComputation {
   // These are owned here.
   std::vector<PrecomputedIndexesInfo> component_precomputed_indexes;
 
-  // used in kAddRows, kAddToRows, kCopyRows, kCopyToRows.  contains row-indexes.
+  // Used in commands kAddRows, kAddToRows, kCopyRows, which
+  // contain indexes into this data-member.
+  // Each vector<int32> is a vector of row-indexes (with -1 usually treated as
+  // a special case meaning "don't do anything for this row" for add
+  // commands, or "use zero" for copy commands.
   std::vector<std::vector<int32> > indexes;
 
-  // used kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti.
-  // contains pairs (sub-matrix index, row index)- or (-1,-1) meaning don't
-  // do anything for this row.
+  // Used in commands kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti and
+  // kCopyToRowsMulti.  Contains pairs (sub-matrix index, row index)- or the
+  // special pair (-1,-1) meaning "don't do anything for this row" for add
+  // commands, or "use zero" for copy commands.
   std::vector<std::vector<std::pair<int32,int32> > > indexes_multi;
 
 

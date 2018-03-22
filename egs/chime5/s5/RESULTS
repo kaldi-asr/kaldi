@@ -1,0 +1,13 @@
+
+# tri2
+%WER 76.40 [ 44985 / 58881, 3496 ins, 17652 del, 23837 sub ] exp/tri2/decode_dev_worn/wer_13_1.0
+%WER 93.56 [ 55091 / 58881, 2132 ins, 35555 del, 17404 sub ] exp/tri2/decode_dev_beamformit_ref/wer_17_1.0
+
+# tri3
+%WER 72.81 [ 42869 / 58881, 3629 ins, 15998 del, 23242 sub ] exp/tri3/decode_dev_worn/wer_15_1.0
+%WER 91.73 [ 54013 / 58881, 3519 ins, 27098 del, 23396 sub ] exp/tri3/decode_dev_beamformit_ref/wer_17_1.0
+
+# nnet3 tdnn+chain
+%WER 47.91 [ 28212 / 58881, 2843 ins, 8957 del, 16412 sub ] exp/chain_train_worn_u100k_cleaned/tdnn1a_sp/decode_dev_worn/wer_9_0.0
+%WER 81.28 [ 47859 / 58881, 4210 ins, 27511 del, 16138 sub ] exp/chain_train_worn_u100k_cleaned/tdnn1a_sp/decode_dev_beamformit_ref/wer_9_0.5
+
