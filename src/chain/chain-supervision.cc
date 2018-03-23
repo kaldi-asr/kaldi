@@ -694,71 +694,57 @@ Supervision::Supervision(const Supervision &other):
 // This static function is called by AppendSupervision if the supervisions
 // are end2end. It simply puts all e2e FST's into 1 supervision.
 void AppendSupervisionE2e(const std::vector<const Supervision*> &input,
-                          bool compactify,
-                          std::vector<Supervision> *output_supervision) {
+                          Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
   KALDI_ASSERT(input[0]->e2e);
-  output_supervision->clear();
-  output_supervision->resize(1);
   KALDI_ASSERT(input[0]->e2e_fsts.size() == 1);
-  (*output_supervision)[0] = *(input[0]);
+  *output_supervision = *(input[0]);
   for (int32 i = 1; i < input.size(); i++) {
-    (*output_supervision)[0].num_sequences++;
+    output_supervision->num_sequences++;
     KALDI_ASSERT(input[i]->e2e_fsts.size() == 1);
     KALDI_ASSERT(input[i]->frames_per_sequence ==
-                 (*output_supervision)[0].frames_per_sequence);
-    (*output_supervision)[0].e2e_fsts.push_back(input[i]->e2e_fsts[0]);
+                 output_supervision->frames_per_sequence);
+    output_supervision->e2e_fsts.push_back(input[i]->e2e_fsts[0]);
   }
 }
 
 void AppendSupervision(const std::vector<const Supervision*> &input,
-                       bool compactify,
-                       std::vector<Supervision> *output_supervision) {
+                       Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
   int32 label_dim = input[0]->label_dim,
       num_inputs = input.size();
   if (num_inputs == 1) {
-    output_supervision->resize(1);
-    (*output_supervision)[0] = *(input[0]);
+    *output_supervision = *(input[0]);
     return;
   }
   if (input[0]->e2e) {
-    AppendSupervisionE2e(input, compactify, output_supervision);
+    AppendSupervisionE2e(input, output_supervision);
     return;
   }
 
-  std::vector<bool> output_was_merged;
   for (int32 i = 1; i < num_inputs; i++)
     KALDI_ASSERT(input[i]->label_dim == label_dim &&
                  "Trying to append incompatible Supervision objects");
-  output_supervision->clear();
-  output_supervision->reserve(input.size());
-  for (int32 i = 0; i < input.size(); i++) {
+  *output_supervision = *(input[num_inputs-1]);
+  for (int32 i = num_inputs - 2; i >= 0; i--) {
     const Supervision &src = *(input[i]);
-    if (compactify && !output_supervision->empty() &&
-        output_supervision->back().weight == src.weight &&
-        output_supervision->back().frames_per_sequence ==
+    if (output_supervision->weight == src.weight &&
+        output_supervision->frames_per_sequence ==
         src.frames_per_sequence) {
       // Combine with current output
       // append src.fst to output_supervision->fst.
-      fst::Concat(&output_supervision->back().fst, src.fst);
-      output_supervision->back().num_sequences++;
-      output_was_merged.back() = true;
+      // the complexity here is O(V1 + E1)
+      fst::Concat(src.fst, &output_supervision->fst);
+      output_supervision->num_sequences++;
     } else {
-      output_supervision->resize(output_supervision->size() + 1);
-      output_supervision->back() = src;
-      output_was_merged.push_back(false);
+      KALDI_ERR << "Mismatch weight or frames_per_sequence  between inputs";
     }
+
   }
-  KALDI_ASSERT(output_was_merged.size() == output_supervision->size());
-  for (size_t i = 0; i < output_supervision->size(); i++) {
-    if (output_was_merged[i]) {
-      fst::StdVectorFst &out_fst = (*output_supervision)[i].fst;
-      // The process of concatenation will have introduced epsilons.
-      fst::RmEpsilon(&out_fst);
-      SortBreadthFirstSearch(&out_fst);
-    }
-  }
+  fst::StdVectorFst &out_fst = output_supervision->fst;
+  // The process of concatenation will have introduced epsilons.
+  fst::RmEpsilon(&out_fst);
+  SortBreadthFirstSearch(&out_fst);
 }
 
 // This static function is called by AddWeightToSupervisionFst if the supervision
