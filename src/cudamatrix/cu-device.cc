@@ -62,8 +62,10 @@ static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
   // Our first attempt to get a device context is: we do cudaFree(0) and see if
   // that returns no error code.  If it succeeds then we have a device
   // context.  Apparently this is the canonical way to get a context.
-  if (cudaFree(0) == 0)
+  if (cudaFree(0) == 0) {
+    cudaGetLastError();  // Clear any error status.
     return true;
+  }
 
   // The rest of this code represents how we used to get a device context, but
   // now its purpose is mainly a debugging one.
@@ -75,11 +77,11 @@ static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
     if (e == cudaSuccess) {
       if (debug_str)
         *debug_str = debug_stream.str();
+      cudaGetLastError();  // Make sure the error state doesn't get returned in
+                           // the next cudaGetLastError().
       return true;
     }
     debug_stream << "Device " << device << ": " << cudaGetErrorString(e) << ".  ";
-    cudaGetLastError();  // Make sure the error state doesn't get returned in
-                         // the next cudaGetLastError().
   }
   if (debug_str)
     *debug_str = debug_stream.str();
