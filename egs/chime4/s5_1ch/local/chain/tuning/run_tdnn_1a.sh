@@ -274,8 +274,7 @@ if [ $stage -le 16 ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/chime4-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
-  #    --trainer.optimization.backstitch-training-scale=0.3 \
-  #  --trainer.optimization.backstitch-training-interval=0
+  
   cat $train_data_dir/utt2uniq | awk -F' ' '{print $1}' > $train_data_dir/utt2uniq.tmp1
   cat $train_data_dir/utt2uniq | awk -F' ' '{print $2}' | sed -e 's/\....//g' | sed -e 's/\_CH.//g' > $train_data_dir/utt2uniq.tmp2
   paste -d" " $train_data_dir/utt2uniq.tmp1 $train_data_dir/utt2uniq.tmp2 > $train_data_dir/utt2uniq
@@ -293,13 +292,14 @@ if [ $stage -le 16 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=8 \
+    --trainer.num-epochs=6 \
     --trainer.frames-per-iter=3000000 \
     --trainer.optimization.num-jobs-initial=2 \
     --trainer.optimization.num-jobs-final=12 \
     --trainer.optimization.initial-effective-lrate=0.003 \
     --trainer.optimization.final-effective-lrate=0.0003 \
     --trainer.optimization.shrink-value=1.0 \
+    --trainer.optimization.proportional-shrink=60.0 \
     --trainer.num-chunk-per-minibatch=128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
