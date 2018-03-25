@@ -486,6 +486,10 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
         dynamic_cast<DropoutMaskComponent*>(nnet->GetComponent(c));
     if (mc != NULL)
       mc->SetDropoutProportion(dropout_proportion);
+    GeneralDropoutComponent *gdc =
+        dynamic_cast<GeneralDropoutComponent*>(nnet->GetComponent(c));
+    if (gdc != NULL)
+      gdc->SetDropoutProportion(dropout_proportion);
   }
 }
 
@@ -858,24 +862,17 @@ class SvdApplier {
   std::string component_name_pattern_;
 };
 
-// Does an update that moves M closer to being a (matrix with
-// orthonormal rows) times 'scale'.  Note: this will diverge if
-// we start off with singular values too far from 'scale'.
-void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
-  // Larger alpha will update faster but will be more prone to instability.  I
-  // believe the scalar value below shouldn't be more than 0.25 or maybe 0.5 or
-  // it will always be unstable.  It should be > 0.0.
+/*
+  Does an update that moves M closer to being a (matrix with orthonormal rows)
+  times 'scale'.  Note: this will diverge if we start off with singular values
+  too far from 'scale'.
 
-  // The factor of 1/scale^2 is, I *believe*, going to give us the right kind of
-  // invariance w.r.t. the scale.  To explain why this is the appropriate
-  // factor, look at the statement M_update.AddMatMat(-4.0 * alpha, P, kNoTrans,
-  // *M, kNoTrans, 0.0); where P is proportional to scale^2 and M to 'scale' and
-  // alpha to 1/scale^2, so change in M_update is proportional to 'scale'.
-  // We'd like 'M_update' to be proportional to 'scale'. This reasoning is very
-  // hand-wavey but I think it can be made rigorous.  This is about remaining
-  // stable (not prone to divergence) even for very large or small values of
-  // 'scale'.
-  BaseFloat alpha = 0.125 / (scale * scale);
+  This function requires 'scale' to be nonzero.  If 'scale' is negative, then it
+  will be set internally to the value that ensures the change in M is orthogonal to
+  M (viewed as a vector).
+*/
+void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
+  KALDI_ASSERT(scale != 0.0);
 
   // We'd like to enforce the rows of M to be orthonormal.
   // define P = M M^T.  If P is unit then M has orthonormal rows.
@@ -888,6 +885,50 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   CuMatrix<BaseFloat> P(rows, rows);
   P.SymAddMat2(1.0, *M, kNoTrans, 0.0);
   P.CopyLowerToUpper();
+
+  if (scale < 0.0) {
+    // If scale < 0.0 then it's like letting the scale "float".
+    // We pick the scale that will give us an update to M that is
+    // orthogonal to M (viewed as a vector): i.e., if we're doing
+    // an update M := M + X, then we want to have tr(M X^T) == 0.
+    // The following formula is what gives us that.
+    // With P = M M^T, our update formula is doing to be:
+    //  M := M + (-4 * alpha * (P - scale^2 I) * M).
+    // (The math below explains this update formula; for now, it's
+    // best to view it as an established fact).
+    // So X (the change in M) is -4 * alpha * (P - scale^2 I) * M,
+    // where alpha == update_speed / scale^2.
+    // We want tr(M X^T) == 0.  First, forget the -4*alpha, because
+    // we don't care about constant factors.  So we want:
+    //  tr(M * M^T * (P - scale^2 I)) == 0.
+    // Since M M^T == P, that means:
+    //  tr(P^2 - scale^2 P) == 0,
+    // or scale^2 = tr(P^2) / tr(P).
+    // Note: P is symmetric so it doesn't matter whether we use tr(P P) or
+    // tr(P^T P); we use tr(P^T P) becaus I believe it's faster to compute.
+    scale = std::sqrt(TraceMatMat(P, P, kTrans)/ P.Trace());
+  }
+
+  // The 'update_speed' is a constant that determines how fast we approach a
+  // matrix with the desired properties (larger -> faster).  Larger values will
+  // update faster but will be more prone to instability.  I believe
+  // 'update_speed' shouldn't be more than 0.25 or maybe 0.5, or it will always
+  // be unstable, but I haven't done the analysis.  It should definitely be more
+  // than 0.0.
+  BaseFloat update_speed = 0.125;
+
+  // The factor of 1/scale^2 is, I *believe*, going to give us the right kind of
+  // invariance w.r.t. the scale.  To explain why this is the appropriate
+  // factor, look at the statement M_update.AddMatMat(-4.0 * alpha, P, kNoTrans,
+  // *M, kNoTrans, 0.0); where P is proportional to scale^2 and M to 'scale' and
+  // alpha to 1/scale^2, so change in M_update is proportional to 'scale'.
+  // We'd like 'M_update' to be proportional to 'scale'. This reasoning is very
+  // approximate but I think it can be made rigorous.  This is about remaining
+  // stable (not prone to divergence) even for very large or small values of
+  // 'scale'.
+  BaseFloat alpha = update_speed / (scale * scale);
+
+
   P.AddToDiag(-1.0 * scale * scale);
 
   if (GetVerboseLevel() >= 1) {
@@ -924,7 +965,6 @@ void ConstrainOrthonormal(Nnet *nnet) {
         continue;  // For efficiency, only do this every 4 minibatches-- it won't
                    // stray far.
       BaseFloat scale = lc->OrthonormalConstraint();
-      KALDI_ASSERT(scale > 0.0);
 
       CuMatrixBase<BaseFloat> &params = lc->Params();
       int32 rows = params.NumRows(), cols = params.NumCols();
@@ -943,7 +983,6 @@ void ConstrainOrthonormal(Nnet *nnet) {
         continue;  // For efficiency, only do this every 4 minibatches-- it won't
                    // stray far.
       BaseFloat scale = ac->OrthonormalConstraint();
-      KALDI_ASSERT(scale > 0.0);
       CuMatrixBase<BaseFloat> &params = ac->LinearParams();
       int32 rows = params.NumRows(), cols = params.NumCols();
       if (rows <= cols) {
@@ -1172,11 +1211,16 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
              dynamic_cast<DropoutComponent*>(nnet->GetComponent(c));
           DropoutMaskComponent *mask_component =
              dynamic_cast<DropoutMaskComponent*>(nnet->GetComponent(c));
+          GeneralDropoutComponent *general_dropout_component =
+             dynamic_cast<GeneralDropoutComponent*>(nnet->GetComponent(c));
           if (dropout_component != NULL) {
             dropout_component->SetDropoutProportion(proportion);
             num_dropout_proportions_set++;
           } else if (mask_component != NULL){
             mask_component->SetDropoutProportion(proportion);
+            num_dropout_proportions_set++;
+          } else if (general_dropout_component != NULL){
+            general_dropout_component->SetDropoutProportion(proportion);
             num_dropout_proportions_set++;
           }
         }
@@ -1461,9 +1505,10 @@ class ModelCollapser {
   /**
      Tries to produce a component that's equivalent to running the component
      'component_index2' with input given by 'component_index1'.  This handles
-     the case where 'component_index1' is of type DropoutComponent, and where
-     'component_index2' is of type AffineComponent,
-     NaturalGradientAffineComponent or TimeHeightConvolutionComponent.
+     the case where 'component_index1' is of type DropoutComponent or
+     GeneralDropoutComponent, and where 'component_index2' is of type
+     AffineComponent, NaturalGradientAffineComponent or
+     TimeHeightConvolutionComponent.
 
      Returns -1 if this code can't produce a combined component (normally
      because the components have the wrong types).
@@ -1473,10 +1518,23 @@ class ModelCollapser {
     const DropoutComponent *dropout_component =
         dynamic_cast<const DropoutComponent*>(
             nnet_->GetComponent(component_index1));
-    if (dropout_component == NULL)
+    const GeneralDropoutComponent *general_dropout_component =
+        dynamic_cast<const GeneralDropoutComponent*>(
+            nnet_->GetComponent(component_index1));
+
+    if (dropout_component == NULL && general_dropout_component == NULL)
       return -1;
-    BaseFloat dropout_proportion = dropout_component->DropoutProportion();
-    BaseFloat scale = 1.0 / (1.0 - dropout_proportion);
+    BaseFloat scale;  // the scale we have to apply to correct for removing
+                      // this dropout comonent.
+    if (dropout_component != NULL) {
+      BaseFloat dropout_proportion = dropout_component->DropoutProportion();
+      scale = 1.0 / (1.0 - dropout_proportion);
+    } else {
+      // for GeneralDropoutComponent, it's done in such a way that the expectation
+      // is always 1.  (When it's nonzero, we give it a value 1/(1-dropout_proportion).
+      // So no scaling is needed.
+      scale = 1.0;
+    }
     // note: if the 2nd component is not of a type that we can scale, the
     // following function call will return -1, which is OK.
     return GetScaledComponentIndex(component_index2,

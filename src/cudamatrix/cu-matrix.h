@@ -139,6 +139,15 @@ class CuMatrixBase {
                const CuMatrixBase<Real> &src,
                const CuArrayBase<MatrixIndexT> &indexes);
 
+
+  /// Does for each row r, this.Row(r) *= alpha * src.row(indexes[r]),
+  /// where '*=' is elementwise multiplication.
+  /// If indexes[r] < 0, does not add anything.
+  /// src.NumCols() must equal this.NumCols()
+  void MulRows(const CuMatrixBase<Real> &src,
+               const CuArrayBase<MatrixIndexT> &indexes);
+
+
   /// Does for each row r, this.Row(r) += alpha * src[r],
   /// treating src[r] as the beginning of a region of memory representing
   /// a vector of floats, of the same length as this.NumCols().

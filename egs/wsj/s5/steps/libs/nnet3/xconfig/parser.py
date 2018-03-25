@@ -70,6 +70,7 @@ config_to_layer = {
         'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
         'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
         'renorm-component': xlayers.XconfigRenormComponent,
+        'batchnorm-component': xlayers.XconfigBatchnormComponent,
         'no-op-component': xlayers.XconfigNoOpComponent,
         'linear-component': xlayers.XconfigLinearComponent
 }

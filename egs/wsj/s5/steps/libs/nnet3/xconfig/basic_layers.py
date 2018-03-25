@@ -688,10 +688,10 @@ class XconfigBasicLayer(XconfigLayerBase):
                                                    # affects layers with
                                                    # 'dropout' in the name
                        'dropout-per-dim': False,  # if dropout-per-dim=true, the dropout
-                                                  # mask is shared across time.  Or you can set dropout-period
-                       'dropout-period': 0,  # if set to a nonzero value (e.g. 10), we'll share the
-                                               # dropout mask across chunks of time values.
-                       'dropout-per-dim-continuous':  False,
+                                                  # mask is shared across time.
+                       'dropout-per-dim-continuous':  False, # if you set this, it's
+                                                    # like dropout-per-dim but with a
+                                                    # continuous-valued (not zero-one) mask.
                        'add-log-stddev': False,
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
@@ -867,42 +867,19 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ''.format(self.name, nonlinearity, output_dim))
 
             elif nonlinearity == 'dropout':
-                if not self.config['dropout-per-dim'] and self.config['dropout-period'] == 0:
+                if not (self.config['dropout-per-dim'] or
+                        self.config['dropout-per-dim-continuous']):
                     line = ('component name={0}.{1} type=DropoutComponent '
                             'dim={2} dropout-proportion={3}'.format(
                                 self.name, nonlinearity, output_dim,
                                 self.config['dropout-proportion']))
                 else:
                     continuous_opt='continuous=true' if self.config['dropout-per-dim-continuous'] else ''
-                    line = ('component name={0}.dropout_mask type=DropoutMaskComponent '
-                            'output-dim={1} dropout-proportion={2} {3}'.format(
+
+                    line = ('component name={0}.dropout type=GeneralDropoutComponent '
+                            'dim={1} dropout-proportion={2} {3}'.format(
                                 self.name, output_dim, self.config['dropout-proportion'],
                                 continuous_opt))
-                    configs.append(line)
-                    # note: the input to the dropout_mask component is never used, it's
-                    # just syntactically required.
-                    line = ('component-node name={0}.dropout_mask component={0}.dropout_mask '
-                            'input={1}'.format(self.name, cur_node))
-                    configs.append(line)
-                    line = ('component name={0}.dropout type=ElementwiseProductComponent '
-                            'input-dim={1} output-dim={2} '.format(
-                                self.name, 2 * output_dim, output_dim))
-                    configs.append(line)
-                    if self.config['dropout-per-dim']:
-                        line = ('component-node name={0}.dropout component={0}.dropout '
-                                'input=Append({1}, ReplaceIndex({0}.dropout_mask, t, 0))'
-                                ''.format(self.name, cur_node))
-                    else:
-                        dropout_period = self.config['dropout-period']
-                        assert dropout_period > 0
-                        line = ('component-node name={0}.dropout component={0}.dropout '
-                                'input=Append({1}, Round({0}.dropout_mask, {2}))'
-                                ''.format(self.name, cur_node, dropout_period))
-
-                    configs.append(line)
-                    cur_node = '{0}.dropout'.format(self.name)
-                    continue
-
             else:
                 raise RuntimeError("Unknown nonlinearity type: {0}"
                                    .format(nonlinearity))

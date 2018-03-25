@@ -636,7 +636,7 @@ static void PrintCommand(std::ostream &os_out,
         KALDI_ASSERT(c.arg2 == kCompressedMatrixInt16);
         compressed_matrix_type = "uint16";
       }
-      os << "CompressMatrix(" << submatrix_strings[c.arg1]
+      os << "CompressMatrix(" << submatrix_strings[c.arg1] << ", "
          << range << ", " << compressed_matrix_type << ", "
          << truncate << ")\n";
       break;
@@ -1199,6 +1199,23 @@ size_t IoSpecificationHasher::operator () (
       (io_spec.has_deriv ? 4261 : 0);
 }
 
+// ComputationRequests are distinguished by the names and indexes
+// of inputs and outputs
+size_t ComputationRequestHasher::operator() (
+    const ComputationRequest *cr) const noexcept {
+  size_t ans = 0;
+  size_t p1 = 4111, p2 = 26951;
+  IoSpecificationHasher io_hasher;
+  std::vector<IoSpecification>::const_iterator itr = cr->inputs.begin(),
+                                               end = cr->inputs.end();
+  for (; itr != end; ++itr)
+    ans = ans * p1 + io_hasher(*itr);
+  itr = cr->outputs.begin();
+  end = cr->outputs.end();
+  for (; itr != end; ++itr)
+    ans = ans * p2 + io_hasher(*itr);
+  return ans;
+}
 
 
 

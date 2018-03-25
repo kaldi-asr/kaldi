@@ -8,7 +8,7 @@
 set -e
 
 # general opts
-iter=final
+iter=
 stage=0
 decode_num_jobs=30
 num_jobs=30
@@ -34,8 +34,10 @@ extra_right_context=0 # change for BLSTM
 frames_per_chunk=50 # change for (B)LSTM
 acwt=0.1 # important to change this when using chain models
 post_decode_acwt=1.0 # important to change this when using chain models
-extra_left_context_initial=-1
-extra_right_context_final=-1
+extra_left_context_initial=0
+extra_right_context_final=0
+
+score_opts="--min-lmwt 6 --max-lmwt 13"
 
 . ./cmd.sh
 [ -f ./path.sh ] && . ./path.sh
@@ -57,30 +59,30 @@ dir=$4 # exp/nnet3/tdnn
 
 model_affix=`basename $dir`
 ivector_dir=exp/nnet3
-ivector_affix=${affix:+_$affix}_chain_${model_affix}_iter$iter
-affix=_${affix}_iter${iter}
-act_data_set=${data_set} # we will modify the data set, when uniformly segmenting it
-                         # so we will keep track of original data set for the glm and stm files
+ivector_affix=${affix:+_$affix}_chain_${model_affix}${iter:+_iter$iter}
+affix=_${affix}${iter:+_iter${iter}}
 
+segmented_data_set=${data_set}_uniformsegmented
 if [ $stage -le 1 ]; then
   local/generate_uniformly_segmented_data_dir.sh  \
-    --overlap $overlap --window $window $data_set
+    --overlap $overlap --window $window $data_set $segmented_data_set
 fi
 
-if [ "$data_set" == "test_aspire" ]; then
+if [[ "$data_set" =~ "test_aspire" ]]; then
   out_file=single_dev_test${affix}_$model_affix.ctm
-elif [ "$data_set" == "eval_aspire" ]; then
+  act_data_set=test_aspire
+elif [[ "$data_set" =~ "eval_aspire" ]]; then
   out_file=single_eval${affix}_$model_affix.ctm
-elif [ "$data_set" ==  "dev_aspire" ]; then
+  act_data_set=eval_aspire
+elif [[ "$data_set" =~  "dev_aspire" ]]; then
   # we will just decode the directory without oracle segments file
   # as we would like to operate in the actual evaluation condition
-  data_set=${data_set}_whole
   out_file=single_dev${affix}_${model_affix}.ctm
+  act_data_set=dev_aspire
+else
+  echo "$0: Unknown data-set $data_set"
+  exit 1
 fi
-
-# uniform segmentation script would have created this dataset
-# so update that script if you plan to change this variable
-segmented_data_set=${data_set}_uniformsegmented_win${window}_over${overlap}
 
 if [ $stage -le 2 ]; then
   echo "Extracting i-vectors, stage 1"
@@ -118,7 +120,7 @@ if [ $stage -le 3 ]; then
     --extra-right-context-final $extra_right_context_final \
     --frames-per-chunk "$frames_per_chunk" \
     --online-ivector-dir $ivector_dir/ivectors_${segmented_data_set}${ivector_affix}${ivector_scale_affix}_stage1 \
-    --skip-scoring true --iter $iter \
+    --skip-scoring true ${iter:+--iter $iter} \
     $graph data/${segmented_data_set}_hires ${decode_dir}_stage1;
 fi
 
@@ -130,7 +132,7 @@ if [ $stage -le 4 ]; then
     else
       echo "$0 : Generating vad weights file"
       ivector_extractor_input=${decode_dir}_stage1/weights${affix}.gz
-      local/extract_vad_weights.sh --cmd "$decode_cmd" --iter $iter \
+      local/extract_vad_weights.sh --cmd "$decode_cmd" ${iter:+--iter $iter} \
         data/${segmented_data_set}_hires $lang \
         ${decode_dir}_stage1 $ivector_extractor_input
     fi
@@ -162,8 +164,10 @@ if [ $stage -le 6 ]; then
       --acwt $acwt --post-decode-acwt $post_decode_acwt \
       --extra-left-context $extra_left_context  \
       --extra-right-context $extra_right_context  \
+      --extra-left-context-initial $extra_left_context_initial \
+      --extra-right-context-final $extra_right_context_final \
       --frames-per-chunk "$frames_per_chunk" \
-      --skip-scoring true --iter $iter --lattice-beam $lattice_beam \
+      --skip-scoring true ${iter:+--iter $iter} --lattice-beam $lattice_beam \
       --online-ivector-dir $ivector_dir/ivectors_${segmented_data_set}${ivector_affix} \
      $graph data/${segmented_data_set}_hires ${decode_dir}_tg || touch ${decode_dir}_tg/.error
   [ -f ${decode_dir}_tg/.error ] && echo "$0: Error decoding" && exit 1;
@@ -178,16 +182,13 @@ if [ $stage -le 7 ]; then
 fi
 
 decode_dir=${decode_dir}_fg
-
 if [ $stage -le 8 ]; then
   local/score_aspire.sh --cmd "$decode_cmd" \
-    --min-lmwt 1 --max-lmwt 20 \
+    $score_opts \
     --word-ins-penalties "0.0,0.25,0.5,0.75,1.0" \
     --ctm-beam 6 \
-    --iter $iter \
+    ${iter:+--iter $iter} \
     --decode-mbr true \
-    --window $window \
-    --overlap $overlap \
     --tune-hyper true \
     $lang $decode_dir $act_data_set $segmented_data_set $out_file
 fi

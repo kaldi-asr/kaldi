@@ -9,7 +9,7 @@ deep neural network acoustic model and raw model (i.e., generic neural
 network without transition model) with frame-level objectives.
 """
 
-from __future__ import print_statement
+from __future__ import print_function
 from __future__ import division
 import glob
 import logging
@@ -527,7 +527,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                              use_multitask_egs=use_multitask_egs)
     common_lib.execute_command(
         """{command} {combine_queue_opt} {dir}/log/combine.log \
-                nnet3-combine \
+                nnet3-combine {combine_gpu_opt} \
                 --max-objective-evaluations={max_objective_evaluations} \
                 --verbose=3 {raw_models} \
                 "ark,bg:nnet3-copy-egs {multitask_egs_opts} \
@@ -536,6 +536,7 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                 "{out_model}"
         """.format(command=run_opts.command,
                    combine_queue_opt=run_opts.combine_queue_opt,
+                   combine_gpu_opt=run_opts.combine_gpu_opt,
                    dir=dir, raw_models=" ".join(raw_model_strings),
                    max_objective_evaluations=max_objective_evaluations,
                    egs_rspecifier=egs_rspecifier,
