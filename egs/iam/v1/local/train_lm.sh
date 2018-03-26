@@ -13,6 +13,7 @@
 
 set -e
 stage=0
+vocab_size=50000
 
 echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh || exit 1;
@@ -57,8 +58,10 @@ if [ $stage -le 0 ]; then
   rm ${dir}/data/text/* 2>/dev/null || true
 
   # Using LOB and brown corpus.
-  cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt > ${dir}/data/text/text.txt
-  cat data/local/browncorpus/brown.txt >> ${dir}/data/text/text.txt
+  cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt | \
+    local/remove_test_utterances_from_lob.py data/test/text data/val/text \
+                                             > ${dir}/data/text/lob.txt
+  cat data/local/browncorpus/brown.txt >> ${dir}/data/text/brown.txt
 
   # use the validation data as the dev set.
   # Note: the name 'dev' is treated specially by pocolm, it automatically
@@ -78,8 +81,8 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get the wordlist from IAM text
-  cat ${dir}/data/text/{iam,text}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
-  cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
+  cat ${dir}/data/text/{iam,lob,brown}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  head -n $vocab_size ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
 order=3
@@ -91,7 +94,7 @@ if [ $stage -le 1 ]; then
   # Note: if you have more than one order, use a certain amount of words as the
   # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  min_counts='train=2 iam=1'
+  min_counts='brown=2 lob=2 iam=1'
   wordlist=${dir}/data/wordlist
 
   lm_name="`basename ${wordlist}`_${order}"
