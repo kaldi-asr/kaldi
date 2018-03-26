@@ -1,6 +1,7 @@
 #!/bin/bash
 # Copyright    2017  Hossein Hadian
 
+# This script does end2end chain training (i.e. from scratch)
 
 set -e
 
@@ -8,7 +9,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1afix1
+affix=1a
 
 # training options
 tdnn_dim=450
