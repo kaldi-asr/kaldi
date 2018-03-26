@@ -21,13 +21,15 @@
 #include <utility>
 #include <fstream>
 
-#include "tensorflow/core/public/session.h"
-#include "tensorflow/core/platform/env.h"
-#include "tensorflow/core/protobuf/meta_graph.pb.h"
-
 #include "tfrnnlm/tensorflow-rnnlm.h"
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
+
+// Tensorflow includes were moved after tfrnnlm/tensorflow-rnnlm.h include to
+// avoid macro redefinitions. See also the note in tfrnnlm/tensorflow-rnnlm.h.
+#include "tensorflow/core/public/session.h"
+#include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/protobuf/meta_graph.pb.h"
 
 namespace kaldi {
 using std::ifstream;
@@ -316,7 +318,7 @@ void TfRnnlmDeterministicFst::Clear() {
   for (int i = 1; i < state_to_cell_.size(); i++) {
     delete state_to_cell_[i];
   }
-  
+
   state_to_context_.resize(1);
   state_to_cell_.resize(1);
   state_to_wseq_.resize(1);

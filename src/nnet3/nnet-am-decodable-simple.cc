@@ -248,7 +248,7 @@ void DecodableNnetSimple::DoNnetComputation(
   request.outputs.resize(1);
   request.outputs[0].Swap(&output_spec);
 
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(opts_.compute_config, *computation,
                         nnet_, nnet_to_update);

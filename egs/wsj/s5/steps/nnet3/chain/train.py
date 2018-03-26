@@ -228,7 +228,9 @@ def process_args(args):
         args.transform_dir = args.lat_dir
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
-    if args.use_gpu:
+    if args.use_gpu in ["true", "false"]:
+        args.use_gpu = ("yes" if args.use_gpu == "true" else "no")
+    if args.use_gpu in ["yes", "wait"]:
         if not common_lib.check_if_cuda_compiled():
             logger.warning(
                 """You are running with one thread but you have not compiled
@@ -237,9 +239,9 @@ def process_args(args):
                    ./configure; make""")
 
         run_opts.train_queue_opt = "--gpu 1"
-        run_opts.parallel_train_opts = ""
+        run_opts.parallel_train_opts = "--use-gpu={}".format(args.use_gpu)
         run_opts.combine_queue_opt = "--gpu 1"
-        run_opts.combine_gpu_opt = ""
+        run_opts.combine_gpu_opt = "--use-gpu={}".format(args.use_gpu)
 
     else:
         logger.warning("Without using a GPU this will be very slow. "
@@ -342,16 +344,16 @@ def train(args, run_opts):
             {dir}/init.raw""".format(command=run_opts.command,
                                      dir=args.dir))
 
-    egs_left_context = left_context + args.frame_subsampling_factor / 2
-    egs_right_context = right_context + args.frame_subsampling_factor / 2
+    egs_left_context = left_context + args.frame_subsampling_factor // 2
+    egs_right_context = right_context + args.frame_subsampling_factor // 2
     # note: the '+ args.frame_subsampling_factor / 2' is to allow for the
     # fact that we'll be shifting the data slightly during training to give
     # variety to the training data.
     egs_left_context_initial = (left_context_initial +
-                                args.frame_subsampling_factor / 2 if
+                                args.frame_subsampling_factor // 2 if
                                 left_context_initial >= 0 else -1)
     egs_right_context_final = (right_context_final +
-                               args.frame_subsampling_factor / 2 if
+                               args.frame_subsampling_factor // 2 if
                                right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
@@ -443,7 +445,7 @@ def train(args, run_opts):
     num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
-                 / (args.num_jobs_initial + args.num_jobs_final))
+                 // (args.num_jobs_initial + args.num_jobs_final))
 
     # If do_final_combination is True, compute the set of models_to_combine.
     # Otherwise, models_to_combine will be none.

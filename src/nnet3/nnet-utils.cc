@@ -862,24 +862,17 @@ class SvdApplier {
   std::string component_name_pattern_;
 };
 
-// Does an update that moves M closer to being a (matrix with
-// orthonormal rows) times 'scale'.  Note: this will diverge if
-// we start off with singular values too far from 'scale'.
-void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
-  // Larger alpha will update faster but will be more prone to instability.  I
-  // believe the scalar value below shouldn't be more than 0.25 or maybe 0.5 or
-  // it will always be unstable.  It should be > 0.0.
+/*
+  Does an update that moves M closer to being a (matrix with orthonormal rows)
+  times 'scale'.  Note: this will diverge if we start off with singular values
+  too far from 'scale'.
 
-  // The factor of 1/scale^2 is, I *believe*, going to give us the right kind of
-  // invariance w.r.t. the scale.  To explain why this is the appropriate
-  // factor, look at the statement M_update.AddMatMat(-4.0 * alpha, P, kNoTrans,
-  // *M, kNoTrans, 0.0); where P is proportional to scale^2 and M to 'scale' and
-  // alpha to 1/scale^2, so change in M_update is proportional to 'scale'.
-  // We'd like 'M_update' to be proportional to 'scale'. This reasoning is very
-  // hand-wavey but I think it can be made rigorous.  This is about remaining
-  // stable (not prone to divergence) even for very large or small values of
-  // 'scale'.
-  BaseFloat alpha = 0.125 / (scale * scale);
+  This function requires 'scale' to be nonzero.  If 'scale' is negative, then it
+  will be set internally to the value that ensures the change in M is orthogonal to
+  M (viewed as a vector).
+*/
+void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
+  KALDI_ASSERT(scale != 0.0);
 
   // We'd like to enforce the rows of M to be orthonormal.
   // define P = M M^T.  If P is unit then M has orthonormal rows.
@@ -892,6 +885,50 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   CuMatrix<BaseFloat> P(rows, rows);
   P.SymAddMat2(1.0, *M, kNoTrans, 0.0);
   P.CopyLowerToUpper();
+
+  if (scale < 0.0) {
+    // If scale < 0.0 then it's like letting the scale "float".
+    // We pick the scale that will give us an update to M that is
+    // orthogonal to M (viewed as a vector): i.e., if we're doing
+    // an update M := M + X, then we want to have tr(M X^T) == 0.
+    // The following formula is what gives us that.
+    // With P = M M^T, our update formula is doing to be:
+    //  M := M + (-4 * alpha * (P - scale^2 I) * M).
+    // (The math below explains this update formula; for now, it's
+    // best to view it as an established fact).
+    // So X (the change in M) is -4 * alpha * (P - scale^2 I) * M,
+    // where alpha == update_speed / scale^2.
+    // We want tr(M X^T) == 0.  First, forget the -4*alpha, because
+    // we don't care about constant factors.  So we want:
+    //  tr(M * M^T * (P - scale^2 I)) == 0.
+    // Since M M^T == P, that means:
+    //  tr(P^2 - scale^2 P) == 0,
+    // or scale^2 = tr(P^2) / tr(P).
+    // Note: P is symmetric so it doesn't matter whether we use tr(P P) or
+    // tr(P^T P); we use tr(P^T P) becaus I believe it's faster to compute.
+    scale = std::sqrt(TraceMatMat(P, P, kTrans)/ P.Trace());
+  }
+
+  // The 'update_speed' is a constant that determines how fast we approach a
+  // matrix with the desired properties (larger -> faster).  Larger values will
+  // update faster but will be more prone to instability.  I believe
+  // 'update_speed' shouldn't be more than 0.25 or maybe 0.5, or it will always
+  // be unstable, but I haven't done the analysis.  It should definitely be more
+  // than 0.0.
+  BaseFloat update_speed = 0.125;
+
+  // The factor of 1/scale^2 is, I *believe*, going to give us the right kind of
+  // invariance w.r.t. the scale.  To explain why this is the appropriate
+  // factor, look at the statement M_update.AddMatMat(-4.0 * alpha, P, kNoTrans,
+  // *M, kNoTrans, 0.0); where P is proportional to scale^2 and M to 'scale' and
+  // alpha to 1/scale^2, so change in M_update is proportional to 'scale'.
+  // We'd like 'M_update' to be proportional to 'scale'. This reasoning is very
+  // approximate but I think it can be made rigorous.  This is about remaining
+  // stable (not prone to divergence) even for very large or small values of
+  // 'scale'.
+  BaseFloat alpha = update_speed / (scale * scale);
+
+
   P.AddToDiag(-1.0 * scale * scale);
 
   if (GetVerboseLevel() >= 1) {
@@ -928,7 +965,6 @@ void ConstrainOrthonormal(Nnet *nnet) {
         continue;  // For efficiency, only do this every 4 minibatches-- it won't
                    // stray far.
       BaseFloat scale = lc->OrthonormalConstraint();
-      KALDI_ASSERT(scale > 0.0);
 
       CuMatrixBase<BaseFloat> &params = lc->Params();
       int32 rows = params.NumRows(), cols = params.NumCols();
@@ -947,7 +983,6 @@ void ConstrainOrthonormal(Nnet *nnet) {
         continue;  // For efficiency, only do this every 4 minibatches-- it won't
                    // stray far.
       BaseFloat scale = ac->OrthonormalConstraint();
-      KALDI_ASSERT(scale > 0.0);
       CuMatrixBase<BaseFloat> &params = ac->LinearParams();
       int32 rows = params.NumRows(), cols = params.NumCols();
       if (rows <= cols) {
@@ -1832,19 +1867,7 @@ class ModelCollapser {
 void CollapseModel(const CollapseModelConfig &config,
                    Nnet *nnet) {
   ModelCollapser c(config, nnet);
-  std::string info_before_collapse;
-  if (GetVerboseLevel() >= 4)
-    info_before_collapse = nnet->Info();
   c.Collapse();
-  if (GetVerboseLevel() >= 4) {
-    std::string info_after_collapse = nnet->Info();
-    if (info_after_collapse != info_before_collapse) {
-      KALDI_VLOG(4) << "Collapsing model: info before collapse was: "
-                    << info_before_collapse
-                    << ", info after collapse was:"
-                    << info_after_collapse;
-    }
-  }
 }
 
 bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
