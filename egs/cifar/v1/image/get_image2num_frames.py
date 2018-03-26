@@ -16,7 +16,7 @@ import sys
 import numpy as np
 from scipy import misc
 
-parser = argparse.ArgumentParser(description="""Computes the image lengths (with padding) in an image data dir
+parser = argparse.ArgumentParser(description="""Computes the image lengths (i.e. width) in an image data dir
                                                 and writes them (by default) to image2num_frames.txt.""")
 parser.add_argument('dir', type=str,
                     help='Source data directory (containing images.scp)')

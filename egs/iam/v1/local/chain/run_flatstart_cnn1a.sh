@@ -3,6 +3,19 @@
 
 # This script does end2end chain training (i.e. from scratch)
 
+# local/chain/compare_wer.sh exp/chain/cnn_1a exp/chain/cnn_chainali_1c exp/chain/e2e_cnn_1a
+# System                         cnn_1a cnn_chainali_1c e2e_cnn_1a
+# WER                             18.58     12.84     15.46
+# CER                             10.17      6.40      7.21
+# Final train prob              -0.0122   -0.0120   -0.0426
+# Final valid prob              -0.0999   -0.0199   -0.0724
+# Final train prob (xent)       -0.5652   -0.9973
+# Final valid prob (xent)       -0.9758   -1.1537
+# Parameters                      4.36M     3.96M     9.13M
+
+# steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a/
+# exp/chain/e2e_cnn_1a/: num-iters=21 nj=2..4 num-params=9.1M dim=40->12640 combine=-0.040->-0.040 (over 1) logprob:train/valid[13,20,final]=(-0.065,-0.046,-0.043/-0.081,-0.073,-0.072)
+
 set -e
 
 # configs for 'chain'
