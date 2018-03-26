@@ -1,16 +1,13 @@
 #!/usr/bin/env python3
 
-# Copyright      2017  Chun Chieh Chang
-#                2017  Ashish Arora
+# Copyright      2018  Hossein Hadian
 
-""" This script converts images to Kaldi-format feature matrices. The input to
-    this script is the path to a data directory, e.g. "data/train". This script
-    reads the images listed in images.scp and writes them to standard output
-    (by default) as Kaldi-formatted matrices (in text form). It also scales the
-    images so they have the same height (via --feat-dim). It can optionally pad
-    the images (on left/right sides) with white pixels.
 
-    eg. local/make_features.py data/train --feat-dim 40
+""" This script computes the image lengths (with padding) in an image data dir.
+    The output is written to 'image2num_frames.txt' in the given data dir. This
+    file is later used by image/get_allowed_lengths.py to find a set of allowed lengths
+    for the data dir. The output format is similar to utt2num_frames
+
 """
 
 import argparse
@@ -19,12 +16,13 @@ import sys
 import numpy as np
 from scipy import misc
 
-parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images.scp) to features and
-                                                writes them to standard output in text format.""")
+parser = argparse.ArgumentParser(description="""Computes the image lengths (with padding) in an image data dir
+                                                and writes them (by default) to image2num_frames.txt.""")
 parser.add_argument('dir', type=str,
                     help='Source data directory (containing images.scp)')
 parser.add_argument('--out-ark', type=str, default=None,
-                    help='Where to write the output image-to-num_frames info.')
+                    help='Where to write the output image-to-num_frames info. '
+                    'Default: dir/image2num_frames.txt')
 parser.add_argument('--feat-dim', type=int, default=40,
                     help='Size to scale the height of all images')
 parser.add_argument('--padding', type=int, default=5,

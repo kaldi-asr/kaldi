@@ -4,8 +4,11 @@
 # Apache 2.0
 
 
-""" This script perturbs speeds of utterances to force their lengths to some
-    allowed lengths spaced by a factor (like 10%)
+""" This script finds a set of allowed lengths for a given OCR/HWR data dir.
+    The allowed lengths are spaced by a factor (like 10%) and are written
+    in an output file named "allowed_lengths.txt" in the output data dir. This
+    file is later used by make_features.py to pad each image sufficiently so that
+    they all have an allowed length. This is intended for end2end chain training.
 """
 
 import argparse
@@ -28,13 +31,9 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 def get_args():
-    parser = argparse.ArgumentParser(description="""This script copies the 'srcdir'
-                                   data directory to output data directory 'dir'
-                                   while modifying the utterances so that there are
-                                   3 copies of each utterance: one with the same
-                                   speed, one with a higher speed (not more than
-                                   factor% faster) and one with a lower speed
-                                   (not more than factor% slower)""")
+    parser = argparse.ArgumentParser(description="""This script finds a set of
+                                   allowed lengths for a given OCR/HWR data dir.
+                                   Intended for chain training."""
     parser.add_argument('factor', type=float, default=12,
                         help='Spacing (in percentage) between allowed lengths.')
     parser.add_argument('srcdir', type=str,
