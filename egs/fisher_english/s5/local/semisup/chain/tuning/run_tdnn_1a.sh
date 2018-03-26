@@ -35,7 +35,8 @@ train_stage=-10
 get_egs_stage=-10
 exp_root=exp/semisup_100k
 
-tdnn_affix=1a
+nj=30
+tdnn_affix=_1a
 train_set=train_sup
 ivector_train_set=   # dataset for training i-vector extractor
 
@@ -89,16 +90,31 @@ local/nnet3/run_ivector_common.sh --stage $stage --exp-root $exp_root \
                                   --ivector-train-set "$ivector_train_set" \
                                   --nnet3-affix "$nnet3_affix" || exit 1
 
-if [ $stage -le 9 ]; then
+if [ "$train_set" != "$ivector_train_set" ]; then
+  if [ $stage -le 9 ]; then
+    # We extract iVectors on all the ${train_set} data, which will be what we
+    # train the system on.
+    # having a larger number of speakers is helpful for generalization, and to
+    # handle per-utterance decoding well (iVector starts at zero).
+    utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
+      data/${train_set}_sp_hires data/${train_set}_sp_max2_hires
+
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
+      data/${train_set}_sp_max2_hires $exp_root/nnet3${nnet3_affix}/extractor \
+      $exp_root/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires || exit 1;
+  fi
+fi
+
+if [ $stage -le 10 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 30 --cmd "$train_cmd" \
+  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" \
     --generate-ali-from-lats true data/${train_set}_sp \
     data/lang_unk $gmm_dir $lat_dir || exit 1;
   rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
@@ -112,7 +128,7 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ -z "$common_treedir" ]; then
-  if [ $stage -le 11 ]; then
+  if [ $stage -le 12 ]; then
     # Build a tree using our new topology.
     steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
         --context-opts "--context-width=2 --central-position=1" \
@@ -122,7 +138,7 @@ else
   treedir=$common_treedir
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
@@ -166,7 +182,7 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 14 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b0{5,6,7,8}/$USER/kaldi-data/egs/fisher_english-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
@@ -204,7 +220,7 @@ if [ $stage -le 13 ]; then
 fi
 
 graph_dir=$dir/graph_poco_unk
-if [ $stage -le 14 ]; then
+if [ $stage -le 15 ]; then
   # Note: it might appear that this $lang directory is mismatched, and it is as
   # far as the 'topo' is concerned, but this script doesn't read the 'topo' from
   # the lang directory.
@@ -212,7 +228,7 @@ if [ $stage -le 14 ]; then
 fi
 
 decode_suff=
-if [ $stage -le 15 ]; then
+if [ $stage -le 16 ]; then
   iter_opts=
   if [ ! -z $decode_iter ]; then
     iter_opts=" --iter $decode_iter "

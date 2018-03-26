@@ -154,7 +154,7 @@ if [ $stage -le 9 ]; then
     --train-set train_sup \
     --ivector-train-set "" \
     --nnet3-affix "" --chain-affix "" \
-    --tdnn-affix 1a --tree-affix bi_a \
+    --tdnn-affix _1a --tree-affix bi_a \
     --gmm tri4a --exp-root $exp_root || exit 1
 
   # WER on dev                19.23
@@ -181,7 +181,7 @@ if [ $stage -le 10 ]; then
     --ivector-root-dir $exp_root/nnet3 \
     --chain-affix "" \
     --tdnn-affix _semisup_1a \
-    --exp $exp_root --stage 0 || exit 1
+    --exp-root $exp_root || exit 1
 
   # WER on dev                          18.70
   # WER on test                         18.18
@@ -206,7 +206,7 @@ if [ $stage -le 11 ]; then
     --train-set semisup100k_250k \
     --nnet3-affix "" --chain-affix "" \
     --common-treedir $exp_root/chain/tree_bi_a \
-    --tdnn-affix 1a_oracle \
+    --tdnn-affix 1a_oracle --nj 100 \
     --gmm tri4a --exp $exp_root \
     --stage 9 || exit 1
 

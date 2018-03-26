@@ -54,7 +54,7 @@ fi
 if [ $stage -le 2 ]; then
   steps/align_si.sh --nj 30 --cmd "$train_cmd" \
     data/train_sup50k_30k data/lang $exp_root/mono0a $exp_root/mono0a_ali || exit 1
-  
+
   steps/train_deltas.sh --cmd "$train_cmd" \
     2500 20000 data/train_sup50k_30k data/lang $exp_root/mono0a_ali $exp_root/tri1 || exit 1
 
@@ -163,7 +163,7 @@ if [ $stage -le 9 ]; then
     --ivector-train-set semisup50k_100k_250k \
     --nnet3-affix _semi50k_100k_250k \
     --chain-affix _semi50k_100k_250k \
-    --tdnn-affix 1a --tree-affix bi_a \
+    --tdnn-affix _1a --tree-affix bi_a \
     --gmm tri4a --exp-root $exp_root || exit 1
 
   # WER on dev                21.41
@@ -185,12 +185,12 @@ if [ $stage -le 10 ]; then
     --supervised-set train_sup50k \
     --unsupervised-set train_unsup100k_250k \
     --sup-chain-dir $exp_root/chain_semi50k_100k_250k/tdnn_1a_sp \
-    --sup-lat-dir $exp_root/chain_semi50k_100k_250k/tri4a_train_sup50k_unk_lats \
+    --sup-lat-dir $exp_root/chain_semi50k_100k_250k/tri4a_train_sup50k_sp_unk_lats \
     --sup-tree-dir $exp_root/chain_semi50k_100k_250k/tree_bi_a \
     --ivector-root-dir $exp_root/nnet3_semi50k_100k_250k \
     --chain-affix _semi50k_100k_250k \
     --tdnn-affix _semisup_1a \
-    --exp-root $exp_root --stage 0 || exit 1
+    --exp-root $exp_root || exit 1
 
   # WER on dev                          18.98
   # WER on test                         18.85
@@ -216,7 +216,7 @@ if [ $stage -le 11 ]; then
     --nnet3-affix _semi50k_100k_250k \
     --chain-affix _semi50k_100k_250k \
     --common-treedir $exp_root/chain_semi50k_100k_250k/tree_bi_a \
-    --tdnn-affix 1a_oracle \
+    --tdnn-affix 1a_oracle --nj 100 \
     --gmm tri4a --exp-root $exp_root \
     --stage 9 || exit 1
 

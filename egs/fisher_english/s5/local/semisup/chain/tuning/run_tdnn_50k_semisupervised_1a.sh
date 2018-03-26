@@ -20,7 +20,7 @@
 # This script uses the same tree as that for the seed model.
 # See the comments in the script about how to change these.
 
-# Unsupervised set: train_unsup100k_250k
+# Unsupervised set: train_unsup100k_250k (250 hour subset of Fisher excluding 100 hours for supervised)
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
@@ -63,6 +63,8 @@ test_nj=50
 
 exp_root=exp/semisup_50k
 chain_affix=_semi50k_100k_250k    # affix for chain dir
+                                  # 50 hour subset out of 100 hours of supervised data
+                                  # 250 hour subset out of (1500-100=1400) hours of unsupervised data 
 tdnn_affix=_semisup_1a
 
 # Datasets -- Expects data/$supervised_set and data/$unsupervised_set to be
@@ -126,8 +128,6 @@ graphdir=$sup_chain_dir/graph${unsup_decode_graph_affix}
 
 for f in data/${supervised_set_perturbed}/feats.scp \
   data/${supervised_set_perturbed}_hires/feats.scp \
-  data/${unsupervised_set_perturbed}/feats.scp \
-  data/${unsupervised_set_perturbed}_hires/feats.scp \
   $ivector_root_dir/extractor/final.ie $sup_ivector_dir/ivector_online.scp \
   $sup_lat_dir/lat.1.gz $sup_tree_dir/ali.1.gz \
   $unsup_decode_lang/G.fst; do
@@ -139,6 +139,17 @@ done
 
 if [ ! -f $graphdir/HCLG.fst ]; then
   utils/mkgraph.sh --self-loop-scale 1.0 $unsup_decode_lang $sup_chain_dir $graphdir
+fi
+
+if [ $stage -le 2 ]; then
+  utils/data/perturb_data_dir_speed_3way.sh data/${unsupervised_set} \
+    data/${unsupervised_set_perturbed}_hires
+
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj \
+    --mfcc-config conf/mfcc_hires.conf \
+    data/${unsupervised_set_perturbed}_hires
+  steps/compute_cmvn_stats.sh data/${unsupervised_set_perturbed}_hires
+  utils/fix_data_dir.sh data/${unsupervised_set_perturbed}_hires
 fi
 
 # Extract i-vectors for the unsupervised data
@@ -156,7 +167,7 @@ fi
 # Set --skip-scoring to false in order to score the unsupervised data
 if [ $stage -le 4 ]; then
   echo "$0: getting the decoding lattices for the unsupervised subset using the chain model at: $sup_chain_dir"
-  steps/nnet3/decode.sh --num-threads 4 --nj $nj --cmd "$decode_cmd" \
+  steps/nnet3/decode_semisup.sh --num-threads 4 --nj $nj --cmd "$decode_cmd" \
             --acwt 1.0 --post-decode-acwt 10.0 --write-compact false --skip-scoring true \
             --online-ivector-dir $ivector_root_dir/ivectors_${unsupervised_set_perturbed}_hires \
             --scoring-opts "--min-lmwt 10 --max-lmwt 10" --word-determinize false \
@@ -197,7 +208,7 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 # unsupervised data
 
 # tree_affix=bi_semisup_a
-# treedir=$exp/chain${chain_affix}/tree_${tree_affix}
+# treedir=$exp_root/chain${chain_affix}/tree_${tree_affix}
 # if [ -f $treedir/final.mdl ]; then
 #   echo "$0: $treedir/final.mdl exists. Remove it and run again."
 #   exit 1
@@ -293,8 +304,8 @@ fi
 
 left_context=$model_left_context
 right_context=$model_right_context
-left_context_initial=0
-right_context_final=0
+left_context_initial=$model_left_context
+right_context_final=$model_right_context
 
 egs_left_context=$(perl -e "print int($left_context + $frame_subsampling_factor / 2)")
 egs_right_context=$(perl -e "print int($right_context + $frame_subsampling_factor / 2)")
@@ -372,16 +383,16 @@ fi
 
 comb_egs_dir=$dir/comb_egs
 if [ $stage -le 14 ]; then
-  steps/nnet3/multilingual/combine_egs.sh --cmd "$train_cmd" \
-    --minibatch-size 128 --samples-per-iter 10000 \
-    --lang2weight $supervision_weights --egs-prefix cegs. 2 \
+  steps/nnet3/chain/multilingual/combine_egs.sh --cmd "$train_cmd" \
+    --block-size 128 \
+    --lang2weight $supervision_weights 2 \
     $sup_egs_dir $unsup_egs_dir $comb_egs_dir
   touch $comb_egs_dir/.nodelete # keep egs around when that run dies.
 fi
 
 if [ $train_stage -le -4 ]; then
   # This is to skip stages of den-fst creation, which was already done.
-  train_stage=-4  
+  train_stage=-4
 fi
 
 if [ $stage -le 15 ]; then
@@ -420,18 +431,23 @@ if [ $stage -le 17 ]; then
 fi
 
 if [ $stage -le 18 ]; then
+  rm -f $dir/.error
   for decode_set in dev test; do
-      (
+    (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      if [ $num_jobs -gt $test_nj ]; then num_jobs=$test_nj fi
+      if [ $num_jobs -gt $test_nj ]; then num_jobs=$test_nj; fi
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $num_jobs --cmd "$decode_cmd" ${decode_iter:+--iter $decode_iter} \
         --online-ivector-dir $ivector_root_dir/ivectors_${decode_set}_hires \
         $test_graph_dir data/${decode_set}_hires \
-        $dir/decode${test_graph_affix}_${decode_set}${decode_iter:+_iter$decode_iter} || exit 1;
-      ) &
+        $dir/decode${test_graph_affix}_${decode_set}${decode_iter:+_iter$decode_iter} || touch $dir/.error
+    ) &
   done
+  wait;
+  if [ -f $dir/.error ]; then
+    echo "$0: Decoding failed. See $dir/decode${test_graph_affix}_*/log/*"
+    exit 1
+  fi
 fi
 
-wait;
 exit 0;

@@ -203,5 +203,10 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 #   cp ${lang_dir}_big/G.carpa ${lang_dir}_unk_big/G.carpa; 
 # done
 
+# Create supervised and unsupervised data subsets
+# utils/subset_data_dir.sh --speakers data/train 100000 data/train_sup
+# utils/subset_data_dir.sh --spk-list <(utils/filter_scp.pl --exclude data/train_sup/spk2utt data/train/spk2utt) data/train data/train_unsup100k
+# utils/subset_data_dir.sh --speakers data/train_unsup100k 250000 data/train_unsup100k_250k
+
 # local/semisup/run_50k.sh
 # local/semisup/run_100k.sh 
