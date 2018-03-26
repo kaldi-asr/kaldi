@@ -35,7 +35,7 @@ sub get_utf8_or_bytestream {
       $is_utf_compatible = $is_utf_compatible && defined($decoded_text);
       push @unicode_lines, $decoded_text;
     } else {
-      #print STDERR "WARNING: the line $raw_text cannot be interpreted as UTF-8: $decoded_text\n";
+      #print STDERR "WARNING: the line($.) $raw_text cannot be interpreted as UTF-8: $decoded_text\n";
       ;
     }
     push @raw_lines, $raw_text;
