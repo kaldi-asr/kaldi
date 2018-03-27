@@ -43,6 +43,14 @@ RnnlmComputeStateInfo::RnnlmComputeStateInfo(
     KALDI_ERR << "Embedding file and nnet have different embedding sizes. ";
   }
 
+  if (opts.bos_index <= 0 || opts.bos_index >= word_embedding_mat.NumRows()) {
+    KALDI_ERR < "--bos-symbol option isn't set correctly.";
+  }
+
+  if (opts.eos_index <= 0 || opts.eos_index >= word_embedding_mat.NumRows()) {
+    KALDI_ERR < "--eos-symbol option isn't set correctly.";
+  }
+
   nnet3::ComputationRequest request1, request2, request3;
   CreateLoopedComputationRequestSimple(rnnlm,
                                        1, // num_frames
@@ -85,6 +93,7 @@ RnnlmComputeState* RnnlmComputeState::GetSuccessorState(int32 next_word) const {
 }
 
 void RnnlmComputeState::AddWord(int32 word_index) {
+  KALDI_ASSERT(word_index > 0 && word_index < info_.word_embedding_mat.NumRows());
   previous_word_ = word_index;
   AdvanceChunk();
 
