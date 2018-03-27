@@ -4,7 +4,7 @@
 
 
 """ This script computes the image lengths (with padding) in an image data dir.
-    The output is written to 'image2num_frames.txt' in the given data dir. This
+    The output is written to 'image2num_frames' in the given data dir. This
     file is later used by image/get_allowed_lengths.py to find a set of allowed lengths
     for the data dir. The output format is similar to utt2num_frames
 
@@ -17,12 +17,12 @@ import numpy as np
 from scipy import misc
 
 parser = argparse.ArgumentParser(description="""Computes the image lengths (i.e. width) in an image data dir
-                                                and writes them (by default) to image2num_frames.txt.""")
+                                                and writes them (by default) to image2num_frames.""")
 parser.add_argument('dir', type=str,
                     help='Source data directory (containing images.scp)')
 parser.add_argument('--out-ark', type=str, default=None,
                     help='Where to write the output image-to-num_frames info. '
-                    'Default: dir/image2num_frames.txt')
+                    'Default: "dir"/image2num_frames')
 parser.add_argument('--feat-dim', type=int, default=40,
                     help='Size to scale the height of all images')
 parser.add_argument('--padding', type=int, default=5,
@@ -43,7 +43,7 @@ def get_scaled_image_length(im):
 data_list_path = os.path.join(args.dir,'images.scp')
 
 if not args.out_ark:
-    args.out_ark = os.path.join(args.dir,'image2num_frames.txt')
+    args.out_ark = os.path.join(args.dir,'image2num_frames')
 if args.out_ark == '-':
     out_fh = sys.stdout
 else:
