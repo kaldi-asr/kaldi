@@ -93,6 +93,7 @@ RnnlmComputeState* RnnlmComputeState::GetSuccessorState(int32 next_word) const {
 }
 
 void RnnlmComputeState::AddWord(int32 word_index) {
+  KALDI_ASSERT(word_index > 0 && word_index < info_.word_embedding_mat.NumRows());
   previous_word_ = word_index;
   AdvanceChunk();
 
