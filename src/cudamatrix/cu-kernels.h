@@ -345,6 +345,14 @@ inline void cuda_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
 inline void cuda_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   cudaF_apply_exp(Gr, Bl, mat, d);
 }
+inline void cuda_apply_exp_limited(dim3 Gr, dim3 Bl, double* mat, MatrixDim d,
+                                   double lower_limit, double upper_limit) {
+  cudaD_apply_exp_limited(Gr, Bl, mat, d, lower_limit, upper_limit);
+}
+inline void cuda_apply_exp_limited(dim3 Gr, dim3 Bl, float* mat, MatrixDim d,
+                                   float lower_limit, float upper_limit) {
+  cudaF_apply_exp_limited(Gr, Bl, mat, d, lower_limit, upper_limit);
+}
 inline void cuda_apply_exp_special(dim3 Gr, dim3 Bl, double* out,
                                    MatrixDim out_dim, const double* in,
                                    int in_stride) {

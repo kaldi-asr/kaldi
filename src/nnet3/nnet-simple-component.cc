@@ -3730,15 +3730,11 @@ void NaturalGradientPerElementScaleComponent::InitFromConfig(ConfigLine *cfl) {
                    // for the preconditioner actually exceeds the memory for the
                    // parameters (by "rank").
       update_period = 10;
-  BaseFloat num_samples_history = 2000.0, alpha = 4.0,
-      max_change_per_minibatch = 0.0;
+  BaseFloat num_samples_history = 2000.0, alpha = 4.0;
   cfl->GetValue("rank", &rank);
   cfl->GetValue("update-period", &update_period);
   cfl->GetValue("num-samples-history", &num_samples_history);
   cfl->GetValue("alpha", &alpha);
-  cfl->GetValue("max-change-per-minibatch", &max_change_per_minibatch);
-  if (max_change_per_minibatch != 0.0)
-    KALDI_WARN << "max-change-per-minibatch is now ignored, use 'max-change'";
   InitLearningRatesFromConfig(cfl);
   std::string filename;
   // Accepts "scales" config (for filename) or "dim" -> random init, for testing.
