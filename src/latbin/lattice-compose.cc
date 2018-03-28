@@ -102,11 +102,6 @@ int main(int argc, char *argv[]) {
         std::string key = lattice_reader1.Key();
         KALDI_VLOG(1) << "Processing lattice for key " << key;
         Lattice lat1 = lattice_reader1.Value();
-        // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
-        unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
-                                            PairHasher<int32> > acoustic_scores;
-        if (!write_compact)
-          ComputeAcousticScoresMap(lat1, &acoustic_scores);
         ArcSort(&lat1, fst::OLabelCompare<LatticeArc>());
         Lattice composed_lat;
         if (phi_label > 0) PhiCompose(lat1, mapped_fst2, phi_label, &composed_lat);
@@ -120,9 +115,6 @@ int main(int argc, char *argv[]) {
             ConvertLattice(composed_lat, &clat);
             compact_lattice_writer.Write(key, clat);
           } else {
-            // Replace each arc (t, tid) with the averaged acoustic score from
-            // the computed map
-            ReplaceAcousticScoresFromMap(acoustic_scores, &composed_lat);
             lattice_writer.Write(key, composed_lat);
           }
           n_done++;
@@ -157,11 +149,6 @@ int main(int argc, char *argv[]) {
           fst::ILabelCompare<LatticeArc> ilabel_comp;
           fst::ArcSort(&lat2, ilabel_comp);
         }
-        // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
-        unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
-                                            PairHasher<int32> > acoustic_scores;
-        if (!write_compact)
-          ComputeAcousticScoresMap(lat1, &acoustic_scores);
 
         Lattice lat_out;
         if (phi_label > 0) {
@@ -179,9 +166,6 @@ int main(int argc, char *argv[]) {
             ConvertLattice(lat_out, &clat_out);
             compact_lattice_writer.Write(key, clat_out);
           } else {
-            // Replace each arc (t, tid) with the averaged acoustic score from
-            // the computed map
-            ReplaceAcousticScoresFromMap(acoustic_scores, &lat_out);
             lattice_writer.Write(key, lat_out);
           }
           n_done++;

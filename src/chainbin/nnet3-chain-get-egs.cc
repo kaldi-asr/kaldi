@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
                 "and input frames.");
     po.Register("deriv-weights-rspecifier", &deriv_weights_rspecifier,
                 "Per-frame weights that scales a frame's gradient during "
-                "backpropagation."
+                "backpropagation. "
                 "Not specifying this is equivalent to specifying a vector of "
                 "all 1s.");
     po.Register("normalization-fst-scale", &normalization_fst_scale, 
