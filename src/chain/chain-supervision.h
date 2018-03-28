@@ -50,10 +50,14 @@ struct SupervisionOptions {
   int32 left_tolerance;
   int32 right_tolerance;
   int32 frame_subsampling_factor;
+  BaseFloat weight;
+  BaseFloat lm_scale;
 
   SupervisionOptions(): left_tolerance(5),
                         right_tolerance(5),
-                        frame_subsampling_factor(1) { }
+                        frame_subsampling_factor(1),
+                        weight(1.0),
+                        lm_scale(0.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("left-tolerance", &left_tolerance, "Left tolerance for "
@@ -65,6 +69,13 @@ struct SupervisionOptions {
                    "frame-rate of the original alignment.  Applied after "
                    "left-tolerance and right-tolerance are applied (so they are "
                    "in terms of the original num-frames.");
+    opts->Register("weight", &weight,
+                   "Use this to set the supervision weight for training. "
+                   "This can be used to assign different weights to "
+                   "different data sources.");
+    opts->Register("lm-scale", &lm_scale, "The scale with which the graph/lm "
+                   "weights from the phone lattice are included in the "
+                   "supervision fst.");
   }
   void Check() const;
 };

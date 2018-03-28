@@ -1265,6 +1265,5 @@ void ExampleMerger::Finish() {
   stats_.PrintStats();
 }
 
-
 } // namespace nnet3
 } // namespace kaldi

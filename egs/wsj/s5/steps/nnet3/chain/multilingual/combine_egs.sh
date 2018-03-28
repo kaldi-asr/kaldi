@@ -2,18 +2,22 @@
 
 # Copyright 2017     Pegah Ghahremani
 #           2017-18  Vimal Manohar
-#           2018     Hossein Hadian
 # Apache 2.0
 
-# This script generates examples for multilingual training of neural network
-# using separate input egs dir per language as input.
+# This script generates examples for multilingual training of 'chain' 
+# models using separate input egs dir per language as input.
+# This script is similar to steps/nnet3/multilingual/combine_egs.sh, but 
+# works on 'chain' egs. This is also useful for semi-supervised training,
+# where supervised and unsupervised datasets are treated as different 
+# languages.
+
 # This scripts produces 3 sets of files --
-# egs.*.scp, egs.output.*.ark, egs.weight.*.ark
+# cegs.*.scp, cegs.output.*.ark, cegs.weight.*.ark
 #
-# egs.*.scp are the SCP files of the training examples.
-# egs.weight.*.ark map from the key of the example to the language-specific
+# cegs.*.scp are the SCP files of the training examples.
+# cegs.weight.*.ark map from the key of the example to the language-specific
 # weight of that example.
-# egs.output.*.ark map from the key of the example to the name of
+# cegs.output.*.ark map from the key of the example to the name of
 # the output-node in the neural net for that specific language, e.g.
 # 'output-2'.
 #
@@ -63,7 +67,7 @@ if [ ${#args[@]} != $[$num_langs+1] ]; then
   exit 1;
 fi
 
-required="egs.scp combine.scp train_diagnostic.scp valid_diagnostic.scp"
+required="cegs.scp combine.scp train_diagnostic.scp valid_diagnostic.scp"
 train_scp_list=
 train_diagnostic_scp_list=
 valid_diagnostic_scp_list=
@@ -89,7 +93,7 @@ for lang in $(seq 0 $[$num_langs-1]);do
   done
   num_archives=$(cat ${multi_egs_dir[$lang]}/info/num_archives)
   tot_num_archives=$[tot_num_archives+num_archives]
-  train_scp_list="$train_scp_list ${args[$lang]}/egs.scp"
+  train_scp_list="$train_scp_list ${args[$lang]}/cegs.scp"
   train_diagnostic_scp_list="$train_diagnostic_scp_list ${args[$lang]}/train_diagnostic.scp"
   valid_diagnostic_scp_list="$valid_diagnostic_scp_list ${args[$lang]}/valid_diagnostic.scp"
   combine_scp_list="$combine_scp_list ${args[$lang]}/combine.scp"
@@ -115,11 +119,12 @@ fi
 
 if [ $stage -le 0 ]; then
   echo "$0: allocating multilingual examples for training."
-  # Generate egs.*.scp for multilingual setup.
+  # Generate cegs.*.scp for multilingual setup.
   $cmd $megs_dir/log/allocate_multilingual_examples_train.log \
     steps/nnet3/multilingual/allocate_multilingual_examples.py $egs_opt \
       --num-archives $tot_num_archives \
       --block-size $block_size \
+      --egs-prefix "cegs." \
       $train_scp_list $megs_dir || exit 1;
 fi
 
@@ -158,6 +163,6 @@ for egs_type in combine train_diagnostic valid_diagnostic; do
   mv $megs_dir/${egs_type}.weight.1.ark $megs_dir/${egs_type}.weight.ark || exit 1;
   mv $megs_dir/${egs_type}.1.scp $megs_dir/${egs_type}.scp || exit 1;
 done
-mv $megs_dir/info/egs.num_archives $megs_dir/info/num_archives || exit 1;
-mv $megs_dir/info/egs.num_tasks $megs_dir/info/num_tasks || exit 1;
+mv $megs_dir/info/cegs.num_archives $megs_dir/info/num_archives || exit 1;
+mv $megs_dir/info/cegs.num_tasks $megs_dir/info/num_tasks || exit 1;
 echo "$0: Finished preparing multilingual training example."

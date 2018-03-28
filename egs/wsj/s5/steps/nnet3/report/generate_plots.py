@@ -259,7 +259,7 @@ def plot_a_nonlin_component(fig, dirs, stat_tables_per_component_per_dir,
                 continue
 
             data = np.array(iter_stats)
-            data = data[data[:, 0] >= start_iter, :] 
+            data = data[data[:, 0] >= start_iter, :]
 
             ax = plt.subplot(211)
             lp, = ax.plot(data[:, 0], data[:, gate_index*10+5], color=color_val,
@@ -345,7 +345,7 @@ def plot_a_nonlin_component(fig, dirs, stat_tables_per_component_per_dir,
                 bbox_to_anchor=(0.5 , -1.5 + len(dirs) * -0.2),
                 ncol=4, handletextpad = -2, title="[1]:{0}".format(common_prefix),
                 borderaxespad=0.)
-        plt.grid(True)        
+        plt.grid(True)
 
     return lgd
 
@@ -826,6 +826,7 @@ def main():
             output_nodes.append(tuple(parts))
     elif args.is_chain:
         output_nodes.append(('output', 'chain'))
+        output_nodes.append(('output-xent', 'chain'))
     elif args.is_rnnlm:
         output_nodes.append(('output', 'rnnlm_objective'))
     else:

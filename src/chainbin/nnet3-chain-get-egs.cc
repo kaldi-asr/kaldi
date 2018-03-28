@@ -36,13 +36,51 @@ namespace nnet3 {
    supervision objects to 'example_writer'.  Note: if normalization_fst is the
    empty FST (with no states), it skips the final stage of egs preparation and
    you should do it later with nnet3-chain-normalize-egs.
-*/
+
+     @param [in]  normalization_fst   A version of denominator FST used to add weights
+                                      to the created supervision. It is 
+                                      actually an FST expected to have the
+                                      labels as (pdf-id+1)
+     @param [in]  feats               Input feature matrix 
+     @param [in]  ivector_feats       Online iVector matrix sub-sampled at a 
+                                      rate of "ivector_period".
+                                      If NULL, iVector will not be added 
+                                      as in input to the egs.
+     @param [in]  ivector_period      Number of frames between iVectors in
+                                      "ivector_feats" matrix.
+     @param [in]  supervision         Supervision for 'chain' training created 
+                                      from the binary chain-get-supervision.
+                                      This is expected to be at a 
+                                      sub-sampled rate if 
+                                      --frame-subsampling-factor > 1.
+     @param [in]  deriv_weights       Vector of per-frame weights that scale
+                                      a frame's gradient during backpropagation.
+                                      If NULL, this is equivalent to specifying
+                                      a vector of all 1s. 
+                                      The dimension of the vector is expected 
+                                      to be the supervision size, which is 
+                                      at a sub-sampled rate if 
+                                      --frame-subsampling-factor > 1.
+     @param [in]  supervision_length_tolerance
+                                      Tolerance for difference in num-frames-subsampled between 
+                                      supervision and deriv weights, and also between supervision 
+                                      and input frames.
+     @param [in]  utt_id              Utterance-id
+     @param [in]  compress            If true, compresses the feature matrices.
+     @param [out]  utt_splitter       Pointer to UtteranceSplitter object,
+                                      which helps to split an utterance into 
+                                      chunks. This also stores some stats.
+     @param [out]  example_writer     Pointer to egs writer.
+
+**/
 
 static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                         const GeneralMatrix &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
                         const chain::Supervision &supervision,
+                        const VectorBase<BaseFloat> *deriv_weights,
+                        int32 supervision_length_tolerance,
                         const std::string &utt_id,
                         bool compress,
                         UtteranceSplitter *utt_splitter,
@@ -51,7 +89,18 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
   int32 num_input_frames = feats.NumRows(),
       num_output_frames = supervision.frames_per_sequence;
 
-  if (!utt_splitter->LengthsMatch(utt_id, num_input_frames, num_output_frames))
+  int32 frame_subsampling_factor = utt_splitter->Config().frame_subsampling_factor;
+
+  if (deriv_weights && (std::abs(deriv_weights->Dim() - num_output_frames)
+                        > supervision_length_tolerance)) {
+    KALDI_WARN << "For utterance " << utt_id
+               << ", mismatch between deriv-weights dim and num-output-frames"
+               << "; " << deriv_weights->Dim() << " vs " << num_output_frames;
+    return false;
+  }
+
+  if (!utt_splitter->LengthsMatch(utt_id, num_input_frames, num_output_frames,
+                                  supervision_length_tolerance))
     return false;  // LengthsMatch() will have printed a warning.
 
   std::vector<ChunkTimeInfo> chunks;
@@ -64,8 +113,6 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                << num_input_frames << " frames.";
     return false;
   }
-
-  int32 frame_subsampling_factor = utt_splitter->Config().frame_subsampling_factor;
 
   chain::SupervisionSplitter sup_splitter(supervision);
 
@@ -92,19 +139,36 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
 
     int32 first_frame = 0;  // we shift the time-indexes of all these parts so
                             // that the supervised part starts from frame 0.
+    
+    NnetChainExample nnet_chain_eg;
+    nnet_chain_eg.outputs.resize(1);
 
     SubVector<BaseFloat> output_weights(
         &(chunk.output_weights[0]),
         static_cast<int32>(chunk.output_weights.size()));
 
-    NnetChainSupervision nnet_supervision("output", supervision_part,
-                                          output_weights,
-                                          first_frame,
-                                          frame_subsampling_factor);
+    if (!deriv_weights) {
+      NnetChainSupervision nnet_supervision("output", supervision_part,
+                                            output_weights,
+                                            first_frame,
+                                            frame_subsampling_factor);
+      nnet_chain_eg.outputs[0].Swap(&nnet_supervision);
+    } else {
+      Vector<BaseFloat> this_deriv_weights(num_frames_subsampled);
+      for (int32 i = 0; i < num_frames_subsampled; i++) {
+        int32 t = i + start_frame_subsampled;
+        if (t < deriv_weights->Dim())
+          this_deriv_weights(i) = (*deriv_weights)(t);
+      }
+      KALDI_ASSERT(output_weights.Dim() == num_frames_subsampled);
+      this_deriv_weights.MulElements(output_weights);
+      NnetChainSupervision nnet_supervision("output", supervision_part,
+                                            this_deriv_weights,
+                                            first_frame,
+                                            frame_subsampling_factor);
+      nnet_chain_eg.outputs[0].Swap(&nnet_supervision);
+    }
 
-    NnetChainExample nnet_chain_eg;
-    nnet_chain_eg.outputs.resize(1);
-    nnet_chain_eg.outputs[0].Swap(&nnet_supervision);
     nnet_chain_eg.inputs.resize(ivector_feats != NULL ? 2 : 1);
 
     int32 tot_input_frames = chunk.left_context + chunk.num_frames +
@@ -176,13 +240,15 @@ int main(int argc, char *argv[]) {
         "chain-get-supervision.\n";
 
     bool compress = true;
-    int32 length_tolerance = 100, online_ivector_period = 1;
+    int32 length_tolerance = 100, online_ivector_period = 1,
+          supervision_length_tolerance = 1;
 
     ExampleGenerationConfig eg_config;  // controls num-frames,
                                         // left/right-context, etc.
 
+    BaseFloat normalization_fst_scale = 1.0;
     int32 srand_seed = 0;
-    std::string online_ivector_rspecifier;
+    std::string online_ivector_rspecifier, deriv_weights_rspecifier;
 
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs with input features "
@@ -200,6 +266,20 @@ int main(int argc, char *argv[]) {
     po.Register("srand", &srand_seed, "Seed for random number generator ");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
+    po.Register("supervision-length-tolerance", &supervision_length_tolerance, 
+                "Tolerance for difference in num-frames-subsampled between "
+                "supervision and deriv weights, and also between supervision "
+                "and input frames.");
+    po.Register("deriv-weights-rspecifier", &deriv_weights_rspecifier,
+                "Per-frame weights that scales a frame's gradient during "
+                "backpropagation. "
+                "Not specifying this is equivalent to specifying a vector of "
+                "all 1s.");
+    po.Register("normalization-fst-scale", &normalization_fst_scale, 
+                "Scale the weights from the "
+                "'normalization' FST before applying them to the examples. "
+                "(Useful for semi-supervised training)");
+
     eg_config.Register(&po);
 
     po.Read(argc, argv);
@@ -235,6 +315,12 @@ int main(int argc, char *argv[]) {
     if (!normalization_fst_rxfilename.empty()) {
       ReadFstKaldi(normalization_fst_rxfilename, &normalization_fst);
       KALDI_ASSERT(normalization_fst.NumStates() > 0);
+      
+      if (normalization_fst_scale <= 0.0)
+        KALDI_ERR << "Invalid scale on normalization FST; must be > 0.0";
+
+      if (normalization_fst_scale != 1.0)
+        ApplyProbabilityScale(normalization_fst_scale, &normalization_fst);
     }
 
     // Read as GeneralMatrix so we don't need to un-compress and re-compress
@@ -245,6 +331,8 @@ int main(int argc, char *argv[]) {
     NnetChainExampleWriter example_writer(examples_wspecifier);
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
         online_ivector_rspecifier);
+    RandomAccessBaseFloatVectorReader deriv_weights_reader(
+        deriv_weights_rspecifier);
 
     int32 num_err = 0;
 
@@ -278,10 +366,24 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
+        
+        const Vector<BaseFloat> *deriv_weights = NULL;
+        if (!deriv_weights_rspecifier.empty()) {
+          if (!deriv_weights_reader.HasKey(key)) {
+            KALDI_WARN << "No deriv weights for utterance " << key;
+            num_err++;
+            continue;
+          } else {
+            // this address will be valid until we call HasKey() or Value()
+            // again.
+            deriv_weights = &(deriv_weights_reader.Value(key));
+          }
+        }
 
         if (!ProcessFile(normalization_fst, feats,
                          online_ivector_feats, online_ivector_period,
-                         supervision, key, compress,
+                         supervision, deriv_weights, supervision_length_tolerance,
+                         key, compress,
                          &utt_splitter, &example_writer))
           num_err++;
       }

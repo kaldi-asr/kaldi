@@ -516,8 +516,6 @@ class ExampleMerger {
    MapType eg_to_egs_;
 };
 
-
-
 } // namespace nnet3
 } // namespace kaldi
 
