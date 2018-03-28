@@ -72,7 +72,7 @@ if [ $stage -le 9 ]; then
   relu-renorm-layer name=tdnn4 input=Append(-7,2) dim=1024
   relu-renorm-layer name=tdnn5 dim=1024
 
-  output-layer name=output input=tdnn5 dim=$num_targets max-change=1.5 presoftmax-scale-file=$dir/configs/presoftmax_prior_scale.vec
+  output-layer name=output input=tdnn5 dim=$num_targets max-change=1.5
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/

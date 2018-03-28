@@ -74,7 +74,9 @@ void ProtoSupervision::Write(std::ostream &os, bool binary) const {
 void SupervisionOptions::Check() const {
   KALDI_ASSERT(left_tolerance >= 0 && right_tolerance >= 0 &&
                frame_subsampling_factor > 0 &&
-               left_tolerance + right_tolerance >= frame_subsampling_factor);
+               left_tolerance + right_tolerance + 1 >= frame_subsampling_factor);
+
+  KALDI_ASSERT(lm_scale >= 0.0 && lm_scale < 1.0);
 }
 
 bool AlignmentToProtoSupervision(const SupervisionOptions &opts,
@@ -142,9 +144,10 @@ bool ProtoSupervision::operator == (const ProtoSupervision &other) const {
           fst::Equal(fst, other.fst));
 }
 
-bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
-                                    const CompactLattice &lat,
-                                    ProtoSupervision *proto_supervision) {
+bool PhoneLatticeToProtoSupervisionInternal(
+    const SupervisionOptions &opts,
+    const CompactLattice &lat,
+    ProtoSupervision *proto_supervision) {
   opts.Check();
   if (lat.NumStates() == 0) {
     KALDI_WARN << "Empty lattice provided";
@@ -176,20 +179,24 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
         return false;
       }
       proto_supervision->fst.AddArc(state,
-                                    fst::StdArc(phone, phone,
-                                                fst::TropicalWeight::One(),
-                                                lat_arc.nextstate));
+        fst::StdArc(phone, phone,
+                    fst::TropicalWeight(
+                      lat_arc.weight.Weight().Value1()
+                      * opts.lm_scale),
+                    lat_arc.nextstate));
+
       int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),
               t_end = std::min<int32>(num_frames,
                                       (next_state_time + opts.right_tolerance)),
- t_begin_subsampled = (t_begin + factor - 1)/ factor,
-   t_end_subsampled = (t_end + factor - 1)/ factor;
+              t_begin_subsampled = (t_begin + factor - 1)/ factor,
+              t_end_subsampled = (t_end + factor - 1)/ factor;
     for (int32 t_subsampled = t_begin_subsampled;
          t_subsampled < t_end_subsampled; t_subsampled++)
       proto_supervision->allowed_phones[t_subsampled].push_back(phone);
     }
     if (lat.Final(state) != CompactLatticeWeight::Zero()) {
-      proto_supervision->fst.SetFinal(state, fst::TropicalWeight::One());
+      proto_supervision->fst.SetFinal(state, fst::TropicalWeight(
+            lat.Final(state).Weight().Value1() * opts.lm_scale));
       if (state_times[state] != num_frames) {
         KALDI_WARN << "Time of final state " << state << " in lattice is "
                    << "not equal to number of frames " << num_frames
@@ -207,6 +214,18 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
   return true;
 }
 
+bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
+                                    const CompactLattice &lat,
+                                    ProtoSupervision *proto_supervision) {
+
+  if (!PhoneLatticeToProtoSupervisionInternal(opts, lat, proto_supervision))
+    return false;
+  if (opts.lm_scale != 0.0)
+    fst::Push(&(proto_supervision->fst),
+              fst::REWEIGHT_TO_INITIAL, fst::kDelta, true);
+  
+  return true;
+}
 
 bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
   // the following call will do the range-check on 'ilabel'.
@@ -694,71 +713,57 @@ Supervision::Supervision(const Supervision &other):
 // This static function is called by AppendSupervision if the supervisions
 // are end2end. It simply puts all e2e FST's into 1 supervision.
 void AppendSupervisionE2e(const std::vector<const Supervision*> &input,
-                          bool compactify,
-                          std::vector<Supervision> *output_supervision) {
+                          Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
   KALDI_ASSERT(input[0]->e2e);
-  output_supervision->clear();
-  output_supervision->resize(1);
   KALDI_ASSERT(input[0]->e2e_fsts.size() == 1);
-  (*output_supervision)[0] = *(input[0]);
+  *output_supervision = *(input[0]);
   for (int32 i = 1; i < input.size(); i++) {
-    (*output_supervision)[0].num_sequences++;
+    output_supervision->num_sequences++;
     KALDI_ASSERT(input[i]->e2e_fsts.size() == 1);
     KALDI_ASSERT(input[i]->frames_per_sequence ==
-                 (*output_supervision)[0].frames_per_sequence);
-    (*output_supervision)[0].e2e_fsts.push_back(input[i]->e2e_fsts[0]);
+                 output_supervision->frames_per_sequence);
+    output_supervision->e2e_fsts.push_back(input[i]->e2e_fsts[0]);
   }
 }
 
 void AppendSupervision(const std::vector<const Supervision*> &input,
-                       bool compactify,
-                       std::vector<Supervision> *output_supervision) {
+                       Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
   int32 label_dim = input[0]->label_dim,
       num_inputs = input.size();
   if (num_inputs == 1) {
-    output_supervision->resize(1);
-    (*output_supervision)[0] = *(input[0]);
+    *output_supervision = *(input[0]);
     return;
   }
   if (input[0]->e2e) {
-    AppendSupervisionE2e(input, compactify, output_supervision);
+    AppendSupervisionE2e(input, output_supervision);
     return;
   }
 
-  std::vector<bool> output_was_merged;
   for (int32 i = 1; i < num_inputs; i++)
     KALDI_ASSERT(input[i]->label_dim == label_dim &&
                  "Trying to append incompatible Supervision objects");
-  output_supervision->clear();
-  output_supervision->reserve(input.size());
-  for (int32 i = 0; i < input.size(); i++) {
+  *output_supervision = *(input[num_inputs-1]);
+  for (int32 i = num_inputs - 2; i >= 0; i--) {
     const Supervision &src = *(input[i]);
-    if (compactify && !output_supervision->empty() &&
-        output_supervision->back().weight == src.weight &&
-        output_supervision->back().frames_per_sequence ==
+    if (output_supervision->weight == src.weight &&
+        output_supervision->frames_per_sequence ==
         src.frames_per_sequence) {
       // Combine with current output
       // append src.fst to output_supervision->fst.
-      fst::Concat(&output_supervision->back().fst, src.fst);
-      output_supervision->back().num_sequences++;
-      output_was_merged.back() = true;
+      // the complexity here is O(V1 + E1)
+      fst::Concat(src.fst, &output_supervision->fst);
+      output_supervision->num_sequences++;
     } else {
-      output_supervision->resize(output_supervision->size() + 1);
-      output_supervision->back() = src;
-      output_was_merged.push_back(false);
+      KALDI_ERR << "Mismatch weight or frames_per_sequence  between inputs";
     }
+
   }
-  KALDI_ASSERT(output_was_merged.size() == output_supervision->size());
-  for (size_t i = 0; i < output_supervision->size(); i++) {
-    if (output_was_merged[i]) {
-      fst::StdVectorFst &out_fst = (*output_supervision)[i].fst;
-      // The process of concatenation will have introduced epsilons.
-      fst::RmEpsilon(&out_fst);
-      SortBreadthFirstSearch(&out_fst);
-    }
-  }
+  fst::StdVectorFst &out_fst = output_supervision->fst;
+  // The process of concatenation will have introduced epsilons.
+  fst::RmEpsilon(&out_fst);
+  SortBreadthFirstSearch(&out_fst);
 }
 
 // This static function is called by AddWeightToSupervisionFst if the supervision
@@ -801,8 +806,10 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
   fst::StdVectorFst supervision_fst_noeps(supervision->fst);
   fst::RmEpsilon(&supervision_fst_noeps);
   if (!TryDeterminizeMinimize(kSupervisionMaxStates,
-                              &supervision_fst_noeps))
+                              &supervision_fst_noeps)) {
+    KALDI_WARN << "Failed to determinize supervision fst";
     return false;
+  }
 
   // note: by default, 'Compose' will call 'Connect', so if the
   // resulting FST is not connected, it will end up empty.
@@ -815,8 +822,10 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
   // determinize and minimize to make it as compact as possible.
 
   if (!TryDeterminizeMinimize(kSupervisionMaxStates,
-                              &composed_fst))
+                              &composed_fst)) {
+    KALDI_WARN << "Failed to determinize normalized supervision fst";
     return false;
+  }
   supervision->fst = composed_fst;
 
   // Make sure the states are numbered in increasing order of time.

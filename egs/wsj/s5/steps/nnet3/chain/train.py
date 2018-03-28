@@ -274,7 +274,8 @@ def train(args, run_opts):
 
     # Check files
     chain_lib.check_for_required_files(args.feat_dir, args.tree_dir,
-                                       args.lat_dir)
+                                       args.lat_dir if args.egs_dir is None
+                                       else None)
 
     # Copy phones.txt from tree-dir to dir. Later, steps/nnet3/decode.sh will
     # use it to check compatibility between training and decoding phone-sets.
@@ -410,6 +411,15 @@ def train(args, run_opts):
     logger.info("Copying the properties from {0} to {1}".format(egs_dir, args.dir))
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
+    if not os.path.exists('{0}/valid_diagnostic.cegs'.format(egs_dir)):
+        if (not os.path.exists('{0}/valid_diagnostic.scp'.format(egs_dir))):
+            raise Exception('Neither {0}/valid_diagnostic.cegs nor '
+                            '{0}/valid_diagnostic.scp exist.'
+                            'This script expects one of them.'.format(egs_dir))
+        use_multitask_egs = True
+    else:
+        use_multitask_egs = False
+
     if ((args.stage <= -2) and (os.path.exists(args.dir+"/configs/init.config"))
             and (args.input_model is None)):
         logger.info('Computing the preconditioning matrix for input features')
@@ -417,7 +427,8 @@ def train(args, run_opts):
         chain_lib.compute_preconditioning_matrix(
             args.dir, egs_dir, num_archives, run_opts,
             max_lda_jobs=args.max_lda_jobs,
-            rand_prune=args.rand_prune)
+            rand_prune=args.rand_prune,
+            use_multitask_egs=use_multitask_egs)
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
@@ -526,7 +537,8 @@ def train(args, run_opts):
                 frame_subsampling_factor=args.frame_subsampling_factor,
                 run_opts=run_opts,
                 backstitch_training_scale=args.backstitch_training_scale,
-                backstitch_training_interval=args.backstitch_training_interval)
+                backstitch_training_interval=args.backstitch_training_interval,
+                use_multitask_egs=use_multitask_egs)
 
             if args.cleanup:
                 # do a clean up everything but the last 2 models, under certain
@@ -561,13 +573,20 @@ def train(args, run_opts):
                 l2_regularize=args.l2_regularize,
                 xent_regularize=args.xent_regularize,
                 run_opts=run_opts,
-                max_objective_evaluations=args.max_objective_evaluations)
+                max_objective_evaluations=args.max_objective_evaluations,
+                use_multitask_egs=use_multitask_egs)
         else:
             logger.info("Copying the last-numbered model to final.mdl")
             common_lib.force_symlink("{0}.mdl".format(num_iters),
                                      "{0}/final.mdl".format(args.dir))
+            chain_lib.compute_train_cv_probabilities(
+                dir=args.dir, iter=num_iters, egs_dir=egs_dir,
+                l2_regularize=l2_regularize, xent_regularize=xent_regularize,
+                leaky_hmm_coefficient=args.leaky_hmm_coefficient,
+                run_opts=run_opts,
+                use_multitask_egs=use_multitask_egs)
             common_lib.force_symlink("compute_prob_valid.{iter}.log"
-                                     "".format(iter=num_iters-1),
+                                     "".format(iter=num_iters),
                                      "{dir}/log/compute_prob_valid.final.log".format(
                                          dir=args.dir))
 

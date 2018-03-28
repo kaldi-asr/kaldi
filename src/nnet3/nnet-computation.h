@@ -157,6 +157,22 @@ struct ComputationRequest {
   bool operator== (const ComputationRequest &other) const;
 };
 
+// Hash function for ComputationRequest. It converts
+// ComputationRequest to hash code by looking at input
+// and output IoSpecifications vectors.
+struct ComputationRequestHasher {
+  size_t operator()(const ComputationRequest *cr) const noexcept;
+};
+
+// Equality function for ComputationRequest pointer
+struct ComputationRequestPtrEqual {
+ public:
+  bool operator() (const ComputationRequest* cr1,
+                   const ComputationRequest* cr2) const {
+    return (*cr1) == (*cr2);
+  }
+};
+
 
 /**
    CommandType is an enum that describes the category of the command used in
