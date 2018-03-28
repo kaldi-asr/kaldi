@@ -380,15 +380,14 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 /// This function appends a list of supervision objects to create what will
 /// usually be a single such object, but if the weights and num-frames are not
 /// all the same it will only append Supervision objects where successive ones
-/// have the same weight and num-frames, and if 'compactify' is true.  The
-/// normal use-case for this is when you are combining neural-net examples for
+/// have the same weight and num-frames.
+/// The normal use-case for this is when you are combining neural-net examples for
 /// training; appending them like this helps to simplify the training process.
 
 /// This function will crash if the values of label_dim in the inputs are not
 /// all the same.
 void AppendSupervision(const std::vector<const Supervision*> &input,
-                       bool compactify,
-                       std::vector<Supervision> *output_supervision);
+                       Supervision *output_supervision);
 
 
 /// This function helps you to pseudo-randomly split a sequence of length 'num_frames',

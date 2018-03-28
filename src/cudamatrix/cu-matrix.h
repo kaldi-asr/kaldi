@@ -399,6 +399,13 @@ class CuMatrixBase {
   void ApplyCeiling(Real ceiling_val);
   void ApplyExp();
 
+
+  /// This is equivalent to running:
+  /// ApplyFloor(lower_limit);
+  /// ApplyCeiling(upper_limit);
+  /// ApplyExp()
+  void ApplyExpLimited(Real lower_limit, Real upper_limit);
+
   /// For each element x of the matrix, set it to
   /// (x < 0 ? exp(x) : x + 1).  This function is used
   /// in our RNNLM training.

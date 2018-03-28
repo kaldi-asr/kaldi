@@ -34,6 +34,9 @@ For cygwin installation, see the instructions in `../INSTALL`.
 ## Steps
 
 ## Compiling OpenFST
+
+Skip this section, if you have downloaded OpenFST project from https://github.com/kkm000/openfst.git and it already contains openfst.sln file in the root folder. If it is present you can directly open it with Visual Studio 17 and you do not need CMake.
+------------------------- 
 For compilation of OpenFST, you will need CMake installed. Simply go to https://cmake.org/download/ and download and install.
 Then, in the command line, run the following commands. Be very careful about writing the commands verbatim!
 
@@ -71,6 +74,8 @@ The last command will generate output looking similarly to this. Do not try to r
         -- Build files have been written to: C:/Users/jtrmal/Documents/openfst/build64
 
 In the directory `build64`, find the file `openfst.sln` and open it using Visual Studio 17. 
+------------------------- 
+
    **Switch the configuration to `debug|Win64` and build the solution.**
    **Do the same for configuration `release|Win64`.**
 
@@ -133,15 +138,14 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 
     If you plan to use MKL, you can ignore the `OPENBLASDIR` path.
     If you plan to use OpenBLAS, you can ignore the `MKLDIR` path.
-    No matter what you plan to use, set both the `OPENFST*` and `PTHREADW`
-    variables correctly
+    No matter what you plan to use, set `OPENFST*` variable correctly.
 
 6. For OpenBLAS support, copy the file `kaldiwin_openblas.props` to `kaldiwin.props`
 7. For MKL support, copy the `kaldiwin_mkl.props` to `kaldiwin.props`
 
 8. Call the script that generates the MSVC solution
 
-         ./generate_solution.pl --vsver <default|vs2017|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mkl]
+         generate_solution.pl --vsver <default|vs2017|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mkl]
 
     `--enable-mkl` is the default so you shouldn't need to use it. If `--enable-openblas` is passed it disables MKL support.
     CUDA is disabled by default. The default Visual Studio version is 15.0 (Visual Studio 2017). 
@@ -160,7 +164,8 @@ for their processors. It isn't free, but you can get [Community Licensing for In
         
         (kaldi)/windows$ get_version.pl
   
-10. Open the generated solution in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
+10. Open the generated solution that was created in a subfolder (kaldi)/kaldiwin_vs<version>_<blas-library> 
+	in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
    Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`. The tests will
    fail to compile too -- this is because of deficiency of the script generate_solution.pl. We might fix it
    later on.
