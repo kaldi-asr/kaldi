@@ -60,7 +60,7 @@ struct OnlineFasterDecoderParallelOpts {
                      "Setting used in decoder to control hash behavior");
     }
 
-    // just copied from OnlineFasterDecoderOptions
+    // just copied from OnlineFasterDecoderOpts
     opts->Register("rt-min", &rt_min,
                    "Approximate minimum decoding run time factor");
     opts->Register("rt-max", &rt_max,
@@ -85,20 +85,53 @@ struct OnlineFasterDecoderParallelOpts {
 /* Class OnlineFasterDecoderParallel */
 // This class is combined from online/online-faster-decoder.h and decoder/faster-decoder.h.
 
-class OnlineFasterDecoderParallel{
-  typedef fst::StdArc Arc;
-  typedef Arc::Label Label;
-  typedef Arc::StateId StateId;
-  typedef Arc::Weight Weight;
+class OnlineFasterDecoderParallel {
 
   public:
+    typedef fst::StdArc Arc;
+    typedef Arc::Label Label;
+    typedef Arc::StateId StateId;
+    typedef Arc::Weight Weight;
     enum DecodeState {
       kEndFeats = 1, // No more scores are available from the Decodable
       kEndUtt = 2, // End of utterance, caused by e.g. a sufficiently long silence
       kEndBatch = 4 // End of batch - end of utterance not reached yet
     };
 
-  private:
+
+    /* Changes here :
+     * effective_beam_ is assigned same with max_beam
+     */ 
+    OnlineFasterDecoderParallel(
+      const fst::Fst<fst::StdArc> &fst,
+      const FasterDecoderOptions &opts,
+      const std::vector<int32> &sil_phones,
+      const TransitionModel &trans_model) : 
+        fst_(fst), opts_(opts), num_frames_decoded(-1),
+        silence_set_(sil_phones), trans_model_(trans_model),
+        max_beam_(opts.beam), effective_beam_(opts.beam),
+        state_(kEndFeats), frame_(0), utt_frames_(0) {}
+
+    ~OnlineFasterDecoderParallel(); // TODO : ini nanti liat yang faster-decoder.h
+
+    /// As a new alternative to Decode(), you can call InitDecoding
+    /// and then (possibly multiple times) AdvanceDecoding().
+    void InitDecoding();
+    DecodeState Decode(DecodableInterface *decodable);
+
+    // Makes a linear graph, by tracing back from the last "immortal" token
+    // to the previous one
+    bool PartialTraceback(fst::MutableFst<LatticeArc> *out_fst);
+
+    // Makes a linear graph, by tracing back from the best currently active token
+    // to the last immortal token. This method is meant to be invoked at the end
+    // of an utterance in order to get the last chunk of the hypothesis
+    void FinishTraceBack(fst::MutableFst<LatticeArc> *fst_out);
+
+    // Returns "true" if the best current hypothesis ends with long enough silence
+    bool EndOfUtterance();
+
+  protected:
     const OnlineFasterDecoderParallelOpts opts_;
     const ConstIntegerSet<int32> silence_set_; // silence phones IDs
     const TransitionModel &trans_model_; // needed for trans-id -> phone conversion
@@ -111,7 +144,6 @@ class OnlineFasterDecoderParallel{
     Token *prev_immortal_tok_; // ... all currently active tokens
 
     const fst::Fst<fst::StdArc> &fst_;
-    FasterDecoderOptions config_;
     std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
     std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
     // make it class member to avoid internal new/delete.
@@ -160,6 +192,8 @@ class OnlineFasterDecoderParallel{
         }
       }
     };
+
+    KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineFasterDecoderParallel);
 };
 
 }
