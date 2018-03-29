@@ -77,7 +77,7 @@ if [ $stage -le 1 ]; then
   echo "<UNK>" >$dir/config/oov.txt
 
   cat > $dir/config/data_weights.txt <<EOF
-chime4   1   1.0
+chime4   3   1.0
 EOF
 
   rnnlm/get_unigram_probs.py --vocab-file=$dir/config/words.txt \
@@ -121,7 +121,7 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
 
     # Lattice rescoring
     rnnlm/lmrescore_pruned.sh \
-      --cmd "$decode_cmd --mem 4G" \
+      --cmd "$train_cmd --mem 2G" \
       --weight 0.8 --max-ngram-order $ngram_order \
       data/lang_test_$LM $dir \
       data/${decode_set}_${enhan}_chunked ${decode_dir} \
@@ -143,7 +143,7 @@ if [ $stage -le 5 ] && $run_nbest_rescore; then
 
     # Lattice rescoring
     rnnlm/lmrescore_nbest.sh \
-      --cmd "$decode_cmd --mem 4G" --N $nbest \
+      --cmd "$train_cmd --mem 2G" --N $nbest \
       $rnnweight data/lang_test_$LM $dir \
       data/${decode_set}_${enhan}_chunked ${decode_dir} \
       $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}
