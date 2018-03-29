@@ -16,7 +16,6 @@ OBJFILES = training-graph-compiler.o lattice-simple-decoder.o lattice-faster-dec
 	 cuda-decoder.o \
     cuda-decoder-utils_prelink.o  \
 		lattice-faster-decoder-cuda.o cuda-lattice-decoder_prelink.o 
-#	 cuda-decoder_prelink.o faster-decoder-cuda.o 
 
 LIBNAME = kaldi-decoder
 
@@ -40,15 +39,5 @@ cuda-decoder-utils_prelink.o: cuda-decoder-utils.cu cuda-decoder-utils.h
 
 cuda-decoder.o:  cuda-decoder-utils_prelink.o  cuda-lattice-decoder_prelink.o
 	$(CUDATKDIR)/bin/nvcc -rdc=true $(CUDAOPTS) -O3 $^ -v $(CUDA_ARCH)  -dlink -o $@ -Xcompiler "-pthread -fPIC"  #
-# cuda-decoder_prelink.o
-
-
-#cuda-lattice-decoder.o: cuda-lattice-decoder_prelink.o cuda-decoder-utils_prelink.o 
-#	$(CUDATKDIR)/bin/nvcc  $(CUDAOPTS) -O3 $^ -v $(CUDA_ARCH)  -dlink -o $@ -Xcompiler "-pthread -fPIC"  #-rdc=true
-
-#cuda-decoder-utils.o: cuda-decoder-utils_prelink.o
-#	$(CUDATKDIR)/bin/nvcc  $(CUDAOPTS) -O3 $< -v $(CUDA_ARCH)  -dlink -o $@ -Xcompiler "-pthread -fPIC" 
-#cuda-decoder-utils.o: cuda-decoder-utils.cu cuda-decoder-utils.h
-#	$(CUDATKDIR)/bin/nvcc  -Xptxas -v $(CUDA_ARCH)  -dc -DCUDA_API_PER_THREAD_DEFAULT_STREAM -lineinfo -w -std=c++11 -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -I$(OPENFSTINC) -DKALDI_DOUBLEPRECISION=0 -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_ATLAS  -Xcompiler "-msse -msse2 -pthread  -fopenmp"  -Xcompiler -fPIC -DHAVE_CUDA 
 
 include ../makefiles/default_rules.mk

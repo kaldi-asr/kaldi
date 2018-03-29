@@ -21,13 +21,11 @@
 #define KALDI_CUDA_DECODER_UTILS_H_
 
 
-#include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
+#include "cuda_runtime.h"
 #include "util/stl-utils.h"
 #include "omp.h"
-#include "cuda_runtime.h"
 #include <algorithm>
-#include <cuda_runtime_api.h>
 #include <float.h>
 #include <math.h>
 #include <cooperative_groups.h>

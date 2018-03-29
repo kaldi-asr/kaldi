@@ -287,10 +287,10 @@ class LatticeFasterDecoderCuda {
   const CudaFst& fst_;
   bool delete_fst_;
 
-  CudaLatticeDecoder decoder_; // GPU decoder
   const CudaLatticeDecoderConfig &config_;
   int32 num_toks_; // current total number of toks allocated
   int32 num_frames_decoded_;
+  CudaLatticeDecoder decoder_; // GPU decoder
 
   // the TokenState of the last frame, used in ComputeFinalCosts()
   cuTokenVector* last_toks_;

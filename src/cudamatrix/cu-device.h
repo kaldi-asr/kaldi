@@ -159,7 +159,7 @@ class CuDevice {
   CuDevice &operator=(CuDevice&);  // Disallow.
 
 
-  static thread_local CuDevice global_device_;
+  static CuDevice global_device_;
   cublasHandle_t handle_;
   cusparseHandle_t cusparse_handle_;
 

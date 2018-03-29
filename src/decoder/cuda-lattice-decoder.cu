@@ -871,13 +871,13 @@ void TokenAllocator::PrefetchAllocatedToHostForce(cudaStream_t stream) {
 }
 
 void TokenAllocator::PrefetchAllocatedToHost(cudaStream_t stream) {
-  nvtxRangePushA("PrefetchAllocatedToHost");
+  PUSH_RANGE("PrefetchAllocatedToHost", 6);
 #ifdef MEMADVISE
   if (!*front_h) return;
   cudaMemPrefetchAsync(tokens_allocation, sizeof(Token) * *front_h, cudaCpuDeviceId,
                        stream);
 #endif
-  nvtxRangePop();
+  POP_RANGE
 }
 
 size_t TokenAllocator::GetCudaMallocManagedBytes() {

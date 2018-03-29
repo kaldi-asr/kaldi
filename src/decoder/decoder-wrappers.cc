@@ -237,7 +237,7 @@ bool DecodeUtteranceLatticeFasterCuda(
     }
   }
 
-  PUSH_RANGE("post_decoding")
+  PUSH_RANGE("post_decoding", 0);
   Timer timer;
   double likelihood;
   LatticeWeight weight;
@@ -245,7 +245,7 @@ bool DecodeUtteranceLatticeFasterCuda(
   {
     // First do some stuff with word-level traceback...
     VectorFst<LatticeArc> decoded;
-    PUSH_RANGE("get_lattice_shortest")
+    PUSH_RANGE("get_lattice_shortest", 5);
     if (!decoder.GetBestPath(&decoded))
       // Shouldn't really reach this point as already checked success.
       KALDI_ERR << "Failed to get traceback for utterance " << utt;
@@ -271,7 +271,7 @@ bool DecodeUtteranceLatticeFasterCuda(
     likelihood = -(weight.Value1() + weight.Value2());
   }
   // Get lattice, and do determinization if requested.
-  PUSH_RANGE("get_lattice")
+  PUSH_RANGE("get_lattice", 1);
   Lattice& lat = *olat;
   decoder.GetRawLattice(&lat);
   if (lat.NumStates() == 0)
@@ -327,7 +327,7 @@ bool DecodeUtteranceLatticeFasterCudaOutput(
     compact_lattice_writer->Write(utt, clat);
 
   } else {
-    PUSH_RANGE("write_lat")
+    PUSH_RANGE("write_lat", 0);
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);

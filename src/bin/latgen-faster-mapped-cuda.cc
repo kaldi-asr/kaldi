@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
       "Generate lattices, reading log-likelihoods as matrices\n"
       " (model is needed only for the integer mappings in its transition-model)\n"
-      "Usage: latgen-faster-mapped-cuda [options] trans-model-in
+      "Usage: latgen-faster-mapped-cuda [options] trans-model-in \
       (fst-in|fsts-rspecifier) loglikes-rspecifier"
       " lattice-wspecifier [ words-wspecifier [alignments-wspecifier] ]\n";
     ParseOptions po(usage);
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader loglike_reader(feature_rspecifier);
       // Input FST is just one FST, not a table of FSTs.
       Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
-#if 1
+#if 0
       cuInit(0);
       cudaDeviceReset();
       cudaSetDeviceFlags(cudaDeviceScheduleYield);
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
 #endif
       // GPU version of WFST
       CudaFst decode_fst_cuda;
-      decode_fst_cuda.initialize(*decode_fst);
+      decode_fst_cuda.Initialize(*decode_fst);
 
       LatticeFasterDecoderCuda decoder(decode_fst_cuda, config);
       {
@@ -160,6 +160,7 @@ int main(int argc, char *argv[]) {
           POP_RANGE
         }
       }
+      decode_fst_cuda.Finalize();
       delete decode_fst; // delete this only after decoder goes out of scope.
     } else { // We have different FSTs for different utterances.
       KALDI_ERR << "Unimplemented yet. ";
@@ -173,7 +174,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like / frame_count) <<
               " over "
               << frame_count << " frames.";
-
+ 
     delete word_syms;
     if (num_success != 0) return 0;
     else return 1;

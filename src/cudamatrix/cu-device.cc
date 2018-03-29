@@ -108,14 +108,6 @@ static bool GetCudaContext(int32 num_gpus, std::string *debug_str) {
  *
  */
 void CuDevice::SelectGpuId(std::string use_gpu) {
-//quick and dirty hack to get one context per device.  This should not be commited to tree.
-   CUdevice device;
-   cuDeviceGet(&device,0);
-   CUcontext ctx;
-   cuCtxCreate(&ctx, 0, device);
-   cuCtxSetCurrent(ctx);
-   FinalizeActiveGpu();
-#if 0
   // Possible modes
   if (use_gpu != "yes" && use_gpu != "no" && use_gpu != "optional" && use_gpu != "wait") {
     KALDI_ERR << "Please choose : --use-gpu=yes|no|optional|wait, passed '" << use_gpu << "'";
@@ -225,7 +217,6 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
       }
     }
   }
-#endif
 }
 
 
@@ -246,10 +237,6 @@ void CuDevice::FinalizeActiveGpu() {
     CUBLAS_SAFE_CALL(cublasCreate(&handle_));
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
-
-    cublasSetStream(handle_, cudaStreamPerThread);
-
-    cusparseSetStream(cusparse_handle_,cudaStreamPerThread);
 
     // Notify user which GPU is finally used
     char name[128];
@@ -574,7 +561,7 @@ CuDevice::CuDevice() :
 
 
 // The instance of the static singleton
-thread_local CuDevice CuDevice::global_device_;
+CuDevice CuDevice::global_device_;
 }
 
 

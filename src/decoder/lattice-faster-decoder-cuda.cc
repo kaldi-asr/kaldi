@@ -69,7 +69,7 @@ void LatticeFasterDecoderCuda::InitDecoding() {
 //  a final state).  It should only very rarely return false; this indicates
 //  an unusual search error.
 bool LatticeFasterDecoderCuda::Decode(DecodableInterface *decodable) {
-  PUSH_RANGE("CudaLatticeDecoder::Decode::init_search")
+  PUSH_RANGE("CudaLatticeDecoder::Decode::init_search", 0);
   InitDecoding(); // CPU init
   decoder_.InitDecoding(); // GPU init
   decoder_.ComputeLogLikelihoods(decodable); // get posteriors
@@ -91,7 +91,7 @@ bool LatticeFasterDecoderCuda::Decode(DecodableInterface *decodable) {
     num_frames_decoded_++;
   }
   POP_RANGE
-  PUSH_RANGE("CudaLatticeDecoder::Decode::final")
+  PUSH_RANGE("CudaLatticeDecoder::Decode::final", 1);
   cuToken* toks_buf;
   int* toks_sidx;
   LatLink* arcs_buf;
@@ -567,7 +567,7 @@ void LatticeFasterDecoderCuda::PruneTokensForFrame(int32 frame_plus_one) {
 //  where the delta-costs are not changing (and the delta controls when we consider
 //  a cost to have "not changed").
 void LatticeFasterDecoderCuda::PruneActiveTokens(BaseFloat delta) {
-  PUSH_RANGE("PruneActiveTokens")
+  PUSH_RANGE("PruneActiveTokens", 4);
   int32 cur_frame_plus_one = NumFramesDecoded(); //  till last frame
   int32 num_toks_begin = num_toks_;
   //  The index "f" below represents a "frame plus one", i.e. you'd have to subtract
