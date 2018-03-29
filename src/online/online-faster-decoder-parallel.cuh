@@ -98,7 +98,6 @@ class OnlineFasterDecoderParallel {
       kEndBatch = 4 // End of batch - end of utterance not reached yet
     };
 
-
     /* Changes here :
      * effective_beam_ is assigned same with max_beam
      */ 
@@ -130,6 +129,9 @@ class OnlineFasterDecoderParallel {
 
     // Returns "true" if the best current hypothesis ends with long enough silence
     bool EndOfUtterance();
+
+    /// Returns the number of frames already decoded.
+    int32 NumFramesDecoded() const { return num_frames_decoded_; }
 
   protected:
     const OnlineFasterDecoderParallelOpts opts_;
