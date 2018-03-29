@@ -297,7 +297,9 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
       oarc->olabel = pdf_id + 1;
     } else {
       // negative olabel, which will be interpreted by class SupervisionSplitter
-      // as "this arc is allowed except at the edges of chunks."
+      // as "this arc is allowed except at the edges of chunks."  Instead of
+      // -(pdf_id + 1), we have to use -(pdf_id + 2) to avoid the special symbol
+      // 'kNoSymbol = -1'.
       oarc->olabel = -(pdf_id + 2);
     }
     oarc->weight = fst::TropicalWeight::One();
@@ -589,10 +591,10 @@ void SupervisionSplitter::CreateRangeFst(
         continue;
       }
       int32 nextstate = arc.nextstate;
-      // note: arc.ilabel should equal arc.olabel.  We need to take the absolute
-      // value of 'arc.ilabel' because it may have been negated by some code
-      // that we use to enforce --boundary-tolerance.  Its absolute value
-      // represents a (pdf-id plus one).
+      // note: arc.ilabel should equal arc.olabel.  We need to reconstruct the
+      // (pdf-id + 1) ('label' in the code below) from 'arc.ilabel' because it
+      // may have been set to -(pdf-id + 2) by some code that we use to enforce
+      // --boundary-tolerance.
       int32 label = arc.ilabel < 0 ? -(arc.ilabel + 1) : arc.ilabel;
       if (nextstate >= end_state) {
         // A transition to any state outside the range becomes a transition to

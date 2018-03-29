@@ -264,10 +264,18 @@ struct Supervision {
 
   // This is an epsilon-free unweighted acceptor that is sorted in increasing
   // order of frame index (this implies it's topologically sorted but it's a
-  // stronger condition).  The labels are pdf-ids plus one (to avoid epsilons,
+  // stronger condition).  The labels are pdf-ids plus one* (to avoid epsilons,
   // since pdf-ids are zero-based).  Each successful path in 'fst' has exactly
   // 'frames_per_sequence * num_sequences' arcs on it (first 'frames_per_sequence' arcs for the
   // first sequence; then 'frames_per_sequence' arcs for the second sequence, and so on).
+  //
+  // * However, if this is a supervision prior to splitting (as output from
+  // chain-get-supervision), and the --boundary-tolerance option is set by the
+  // user, for arcs which are within the left-tolerance/right-tolerance but
+  // outside the boundar-tolerance, the labels will be -(pdf_id + 2).  This will
+  // be interpreted by the supervision-splitting code as, "don't allow these
+  // arcs if they are on the first or last frame of a chunk", which is our way
+  // to enforce tighter time tolerances at chunk boundaries.
   fst::StdVectorFst fst;
 
   // if the 'e2e' flag is set to true, it means that this supervision is meant
