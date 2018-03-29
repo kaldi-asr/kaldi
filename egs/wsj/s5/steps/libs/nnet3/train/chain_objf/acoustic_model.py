@@ -64,6 +64,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                        left_context, right_context,
                        run_opts, stage=0,
                        left_tolerance=None, right_tolerance=None,
+                       boundary_tolerance=-1,
                        left_context_initial=-1, right_context_final=-1,
                        frame_subsampling_factor=3,
                        alignment_subsampling_factor=3,
@@ -87,6 +88,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 --right-context-final {right_context_final} \
                 --left-tolerance '{left_tolerance}' \
                 --right-tolerance '{right_tolerance}' \
+                --boundary-tolerance {boundary_tolerance} \
                 --frame-subsampling-factor {frame_subsampling_factor} \
                 --alignment-subsampling-factor {alignment_subsampling_factor} \
                 --stage {stage} \
@@ -112,6 +114,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                     right_tolerance=(right_tolerance
                                      if right_tolerance is not None
                                      else ''),
+                    boundary_tolerance=boundary_tolerance,
                     frame_subsampling_factor=frame_subsampling_factor,
                     alignment_subsampling_factor=alignment_subsampling_factor,
                     stage=stage, frames_per_iter=frames_per_iter,

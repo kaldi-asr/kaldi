@@ -4,8 +4,8 @@
 # pickled python dict.  (see documentation for the function 'read_model' below
 # for more details).
 #
-# It also contains some utility function that you can get access by importing this
-# file.
+# It also contains some utility functions that you can get access to by
+# importing this file.
 #
 # In egs/mini_librispeech/s5/local/chain/diagnostic/report_example.py, you can
 # find an example of the use of this script.
@@ -403,12 +403,15 @@ def compute_derived_quantities(model):
          c['row-norms'] = np.sqrt(np.sum(params * params, axis=1))
          c['col-norms'] = np.sqrt(np.sum(params * params, axis=0))
          size = c['col-norms'].size
-         if size % 3 == 0:
-            # if the input-dim of this layer is divisible by 3, then compute the
-            # column-norms after reshaping... this is a kind of pooled column-norm
-            # that makes sense for TDNNs or wherever we have used Append().
-            c['col-norms-3'] = np.sqrt(np.sum(np.power(c['col-norms'], 2).reshape(3, size/3), axis=0))
-            assert c['col-norms-3'].shape == (size/3,)
+         for n in [ 2, 3, 4, 5 ]:
+            if size % n == 0:
+               # if the input-dim of this layer is divisible by one of these numbers, then compute the
+               # column-norms after reshaping... this is a kind of pooled column-norm
+               # that makes sense for TDNNs or wherever we have used Append() with this many offsets
+               # of the same thing, inside.
+               c['col-norms-{0}'.format(n)] = np.sqrt(np.sum(np.power(c['col-norms'], 2).reshape(n, size//n), axis=0))
+               assert c['col-norms-{0}'.format(n)].shape == (size//n,)
+
 
       if raw_component_type == 'BatchNorm':
          stats_var = c['stats-var']

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright 2012-2018 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
 # This script, which will generally be called from other neural-net training
 # scripts, extracts the training examples used to train the 'chain' system
@@ -48,6 +48,7 @@ frames_per_iter=400000 # each iteration of training, see this many frames per
 
 right_tolerance=  # chain right tolerance == max label delay.
 left_tolerance=
+boundary_tolerance=
 
 transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
 
@@ -65,9 +66,9 @@ cmvn_opts=  # can be used for specifying CMVN options, if feature type is not ld
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
 lattice_lm_scale=     # If supplied, the graph/lm weight of the lattices will be
                       # used (with this scale) in generating supervisions
-                      # This is 0 by default for conventional supervised training, 
-                      # but may be close to 1 for the unsupervised part of the data 
-                      # in semi-supervised training. The optimum is usually 
+                      # This is 0 by default for conventional supervised training,
+                      # but may be close to 1 for the unsupervised part of the data
+                      # in semi-supervised training. The optimum is usually
                       # 0.5 for unsupervised data.
 lattice_prune_beam=         # If supplied, the lattices will be pruned to this beam,
                             # before being used to get supervisions.
@@ -289,9 +290,10 @@ egs_opts="--left-context=$left_context --right-context=$right_context --num-fram
 chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$alignment_subsampling_factor"
 [ ! -z $right_tolerance ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --right-tolerance=$right_tolerance"
-
 [ ! -z $left_tolerance ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance=$left_tolerance"
+[ ! -z $boundary_tolerance ] && \
+  chain_supervision_all_opts="$chain_supervision_all_opts --boundary-tolerance=$boundary_tolerance"
 
 lats_rspecifier="ark:gunzip -c $latdir/lat.JOB.gz |"
 if [ ! -z $lattice_prune_beam ]; then

@@ -255,6 +255,10 @@ bool PhoneLatticeToProtoSupervisionInternal(
        t_subsampled++) {
     KALDI_ASSERT(!proto_supervision->allowed_phones[t_subsampled].empty());
     SortAndUniq(&(proto_supervision->allowed_phones[t_subsampled]));
+    if (opts.boundary_tolerance >= 0) {
+      KALDI_ASSERT(!proto_supervision->allowed_boundary_phones[t_subsampled].empty());
+      SortAndUniq(&(proto_supervision->allowed_boundary_phones[t_subsampled]));
+    }
   }
   return true;
 }
@@ -294,7 +298,7 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
     } else {
       // negative olabel, which will be interpreted by class SupervisionSplitter
       // as "this arc is allowed except at the edges of chunks."
-      oarc->olabel = -(pdf_id + 1);
+      oarc->olabel = -(pdf_id + 2);
     }
     oarc->weight = fst::TropicalWeight::One();
     oarc->nextstate = s + 1;
@@ -475,8 +479,9 @@ SupervisionSplitter::SupervisionSplitter(
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state);
          !aiter.Done(); aiter.Next()) {
       const fst::StdArc &arc = aiter.Value();
-      // The FST is supposed to be an epsilon-free acceptor.
-      KALDI_ASSERT(arc.ilabel == arc.olabel && arc.ilabel > 0);
+      // The FST is supposed to be an epsilon-free acceptor, but
+      // some labels may be negative if --boundary-tolerance is set.
+      KALDI_ASSERT(arc.ilabel == arc.olabel && arc.ilabel != 0);
       int32 nextstate = arc.nextstate;
       KALDI_ASSERT(nextstate >= 0 && nextstate < num_states);
       // all arcs go from some t to t + 1.
@@ -583,15 +588,12 @@ void SupervisionSplitter::CreateRangeFst(
         // relevant code and comments.
         continue;
       }
-      fst::TropicalWeight arc_weight = arc.weight;
-      if (arc_weight.Value() == 1000.0)
-        arc_weight = fst::TropicalWeight::One();
       int32 nextstate = arc.nextstate;
       // note: arc.ilabel should equal arc.olabel.  We need to take the absolute
       // value of 'arc.ilabel' because it may have been negated by some code
       // that we use to enforce --boundary-tolerance.  Its absolute value
       // represents a (pdf-id plus one).
-      int32 label = arc.ilabel < 0 ? -arc.ilabel : arc.ilabel;
+      int32 label = arc.ilabel < 0 ? -(arc.ilabel + 1) : arc.ilabel;
       if (nextstate >= end_state) {
         // A transition to any state outside the range becomes a transition to
         // our special final-state.
