@@ -117,9 +117,6 @@ bool AlignmentToProtoSupervision(const SupervisionOptions &opts,
         proto_supervision->allowed_phones[t_subsampled].push_back(phone);
     }
     if (opts.boundary_tolerance >= 0) {
-      if (opts.lm_scale != 0.0)
-        KALDI_ERR << "The --boundary-tolerance option cannot be specified if you "
-            "set --lm-scale.";
       // Set up 'allowed_boundary_phones'
       int32 t_begin_b = std::max<int32>(0,
                       (current_frame - opts.BoundaryLeftTolerance())),
@@ -228,9 +225,6 @@ bool PhoneLatticeToProtoSupervisionInternal(
       }
       if (opts.boundary_tolerance >= 0) {
         // Set up 'allowed_boundary_phones'
-        if (opts.lm_scale != 0.0)
-          KALDI_ERR << "The --boundary-tolerance option cannot be specified if you "
-            "set --lm-scale.";
         int32 t_begin_b = std::max<int32>(0,
                             (state_time - opts.BoundaryLeftTolerance())),
             t_end_b = std::min<int32>(num_frames,
@@ -291,19 +285,18 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
     // the olabel will be a pdf-id plus one, not a transition-id.
     int32 pdf_id = trans_model_.TransitionIdToPdf(ilabel);
     oarc->ilabel = ilabel;
-    oarc->olabel = pdf_id + 1;
     if (allowed_boundary_phones_.empty() ||
         std::binary_search(allowed_boundary_phones_[s].begin(),
                            allowed_boundary_phones_[s].end(), phone)) {
-      // zero cost, which will be interpreted by class SupervisionSplitter
+      // positive olabel, which will be interpreted by class SupervisionSplitter
       // as "this arc is allowed even at the edges of chunks."
-      oarc->weight = fst::TropicalWeight(0.0);
+      oarc->olabel = pdf_id + 1;
     } else {
-      // Cost that's exactly 1000.0, which will be interpreted by class
-      // SupervisionSplitter as "this arc is allowed except at the edges of
-      // chunks."
-      oarc->weight = fst::TropicalWeight(1000.0);
+      // negative olabel, which will be interpreted by class SupervisionSplitter
+      // as "this arc is allowed except at the edges of chunks."
+      oarc->olabel = -(pdf_id + 1);
     }
+    oarc->weight = fst::TropicalWeight::One();
     oarc->nextstate = s + 1;
     return true;
   } else {
@@ -420,7 +413,7 @@ bool ProtoSupervisionToSupervision(
   // are 'allowed' to appear on.  This will also convert the FST to have pdf-ids
   // plus one as the labels.
   // (It will mark arcs that are not allowed to appear on chunk boundaries, by
-  // having nonzero cost, if 'boundary_tolerance' was specified by the user).
+  // having negated labels, if 'boundary_tolerance' was specified by the user).
   TimeEnforcerFst enforcer_fst(trans_model,
                                proto_supervision.allowed_phones,
                                proto_supervision.allowed_boundary_phones);
@@ -583,7 +576,7 @@ void SupervisionSplitter::CreateRangeFst(
     typedef fst::ArcIterator<fst::StdVectorFst> IterType;
     for (IterType aiter(supervision_.fst, state); !aiter.Done(); aiter.Next()) {
       const fst::StdArc &arc(aiter.Value());
-      if (is_boundary_frame && arc.weight.Value() == 1000.0) {
+      if (is_boundary_frame && arc.ilabel < 0) {
         // We should reach this point only if the user has specified a
         // nonnegative '--boundary-tolerance' value less than --left-tolerance
         // or --right-tolerance.  Search for 'boundary' in this file to find
@@ -594,18 +587,20 @@ void SupervisionSplitter::CreateRangeFst(
       if (arc_weight.Value() == 1000.0)
         arc_weight = fst::TropicalWeight::One();
       int32 nextstate = arc.nextstate;
+      // note: arc.ilabel should equal arc.olabel.  We need to take the absolute
+      // value of 'arc.ilabel' because it may have been negated by some code
+      // that we use to enforce --boundary-tolerance.  Its absolute value
+      // represents a (pdf-id plus one).
+      int32 label = arc.ilabel < 0 ? -arc.ilabel : arc.ilabel;
       if (nextstate >= end_state) {
         // A transition to any state outside the range becomes a transition to
         // our special final-state.
         fst->AddArc(output_state,
-                    fst::StdArc(arc.ilabel, arc.olabel,
-                                arc_weight, final_state));
+                    fst::StdArc(label, label, arc.weight, final_state));
       } else {
         int32 output_nextstate = arc.nextstate - begin_state + 1;
-        // note: arc.ilabel should equal arc.olabel.
         fst->AddArc(output_state,
-                    fst::StdArc(arc.ilabel, arc.olabel,
-                                arc_weight, output_nextstate));
+                    fst::StdArc(label, label, arc.weight, output_nextstate));
       }
     }
   }
