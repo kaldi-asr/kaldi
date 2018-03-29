@@ -38,11 +38,15 @@ merge_weights=1.0,0.1,0.5
 prepare_targets_stage=-10
 nstage=-10
 train_stage=-10
-test_stage=-10
 num_data_reps=2
 affix=_1a   # For segmentation
 stage=-1
 nj=80
+reco_nj=40
+
+# test options
+test_stage=-10
+test_nj=32
 
 . ./cmd.sh
 if [ -f ./path.sh ]; then . ./path.sh; fi
@@ -79,12 +83,10 @@ if ! cat $dir/garbage_phones.txt $dir/silence_phones.txt | \
   exit 1
 fi
 
-data_id=$(basename $data_dir)
 whole_data_dir=${data_dir}_whole
-targets_dir=exp/segmentation${affix}/${data_id}_whole_combined_targets_sub3
+whole_data_id=$(basename $whole_data_dir)
 
 rvb_data_dir=${whole_data_dir}_rvb_hires
-rvb_targets_dir=${targets_dir}_rvb
 
 if [ $stage -le 0 ]; then
   utils/data/convert_data_dir_to_whole.sh $data_dir $whole_data_dir
@@ -94,29 +96,20 @@ fi
 # Extract features for the whole data directory
 ###############################################################################
 if [ $stage -le 1 ]; then
-  steps/make_mfcc.sh --nj 50 --cmd "$train_cmd"  --write-utt2num-frames true \
-    $whole_data_dir exp/make_mfcc/${data_id}_whole
-  steps/compute_cmvn_stats.sh $whole_data_dir exp/make_mfcc/${data_id}_whole
+  steps/make_mfcc.sh --nj $reco_nj --cmd "$train_cmd"  --write-utt2num-frames true \
+    $whole_data_dir exp/make_mfcc/${whole_data_id}
+  steps/compute_cmvn_stats.sh $whole_data_dir exp/make_mfcc/${whole_data_id}
   utils/fix_data_dir.sh $whole_data_dir
 fi
 
 ###############################################################################
-# Get feats for the manual segments
+# Prepare SAD targets for recordings
 ###############################################################################
-if [ $stage -le 2 ]; then
-  if [ ! -f ${data_dir}/segments ]; then
-    utils/data/get_segments_for_data.sh $data_dir > $data_dir/segments
-  fi
-  utils/data/subsegment_data_dir.sh $whole_data_dir ${data_dir}/segments ${data_dir}/tmp
-  cp $data_dir/tmp/feats.scp $data_dir
-  awk '{print $1" "$2}' $data_dir/segments > $data_dir/utt2spk
-  utils/utt2spk_to_spk2utt.pl $data_dir/utt2spk > $data_dir/spk2utt
-fi
-
+targets_dir=$dir/${whole_data_id}_combined_targets_sub3
 if [ $stage -le 3 ]; then
   steps/segmentation/prepare_targets_gmm.sh --stage $prepare_targets_stage \
     --train-cmd "$train_cmd" --decode-cmd "$decode_cmd" \
-    --nj 80 --reco-nj 40 --lang-test $lang_test \
+    --nj $nj --reco-nj $reco_nj --lang-test $lang_test \
     --garbage-phones-list $dir/garbage_phones.txt \
     --silence-phones-list $dir/silence_phones.txt \
     --merge-weights "$merge_weights" \
@@ -124,6 +117,7 @@ if [ $stage -le 3 ]; then
     $lang $data_dir $whole_data_dir $sat_model_dir $model_dir $dir
 fi
 
+rvb_targets_dir=${targets_dir}_rvb
 if [ $stage -le 4 ]; then
   # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
   if [ ! -f rirs_noises.zip ]; then
@@ -156,7 +150,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj 80 \
+  steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $reco_nj \
     ${rvb_data_dir}
   steps/compute_cmvn_stats.sh ${rvb_data_dir}
   utils/fix_data_dir.sh $rvb_data_dir
@@ -196,7 +190,7 @@ if [ $stage -le 8 ]; then
   steps/segmentation/detect_speech_activity.sh \
     --extra-left-context 79 --extra-right-context 21 --frames-per-chunk 150 \
     --extra-left-context-initial 0 --extra-right-context-final 0 \
-    --nj 32 --acwt 0.3 --stage $test_stage \
+    --nj $test_nj --acwt 0.3 --stage $test_stage \
     data/eval2000 \
     exp/segmentation${affix}/tdnn_stats_asr_sad_1a \
     mfcc_hires \

@@ -101,8 +101,8 @@ struct NnetChainSupervision {
   bool operator == (const NnetChainSupervision &other) const;
 };
 
-/// NnetChainExample is like NnetExample, but specialized for CTC training.
-/// (actually CCTC training, which is our extension of CTC).
+/// NnetChainExample is like NnetExample, but specialized for 
+/// lattice-free (chain) training.
 struct NnetChainExample {
 
   /// 'inputs' contains the input to the network-- normally just it has just one
@@ -110,7 +110,7 @@ struct NnetChainExample {
   /// "ivector")...  this depends on the setup.
   std::vector<NnetIo> inputs;
 
-  /// 'outputs' contains the CTC output supervision.  There will normally
+  /// 'outputs' contains the chain output supervision.  There will normally
   /// be just one member with name == "output".
   std::vector<NnetChainSupervision> outputs;
 

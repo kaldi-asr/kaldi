@@ -21,7 +21,6 @@
 #define KALDI_NNET3_NATURAL_GRADIENT_ONLINE_H_
 
 #include <iostream>
-#include <mutex>
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"

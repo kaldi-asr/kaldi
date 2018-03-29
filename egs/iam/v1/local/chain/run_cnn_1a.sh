@@ -7,9 +7,15 @@
 # steps/info/chain_dir_info.pl exp/chain/cnn_1a/
 # exp/chain/cnn_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.021->-0.015 xent:train/valid[13,20,final]=(-1.05,-0.701,-0.591/-1.30,-1.08,-1.00) logprob:train/valid[13,20,final]=(-0.061,-0.034,-0.030/-0.107,-0.101,-0.098)
 
-# cat exp/chain/cnn_1a/decode_test/scoring_kaldi/best_*
-# %WER 5.94 [ 3913 / 65921, 645 ins, 1466 del, 1802 sub ] exp/chain/cnn_1a/decode_test//cer_11_0.0
-# %WER 9.13 [ 1692 / 18542, 162 ins, 487 del, 1043 sub ] exp/chain/cnn_1a/decode_test/wer_11_0.0
+# local/chain/compare_wer.sh exp/chain/cnn_1a/
+# System                         cnn_1a
+# WER                             18.58
+# CER                             10.17
+# Final train prob              -0.0122
+# Final valid prob              -0.0999
+# Final train prob (xent)       -0.5652
+# Final valid prob (xent)       -0.9758
+# Parameters                      4.36M
 
 set -e -o pipefail
 
@@ -40,7 +46,7 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=false
-lang_test=lang_test
+lang_test=lang_unk
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 

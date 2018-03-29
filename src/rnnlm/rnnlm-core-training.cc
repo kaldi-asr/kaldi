@@ -156,7 +156,7 @@ void RnnlmCoreTrainer::Train(
                              store_component_stats,
                              &request);
 
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   NnetComputeOptions compute_opts;
 
@@ -178,12 +178,12 @@ void RnnlmCoreTrainer::Train(
     word_embedding_deriv->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
                                      input_deriv, 1.0);
   }
-  // If relevant, add in the part of the gradient that comes from L2 
+  // If relevant, add in the part of the gradient that comes from L2
   // regularization.
   ApplyL2Regularization(*nnet_,
                         minibatch.num_chunks * config_.l2_regularize_factor,
                         delta_nnet_);
-  
+
   bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       1.0, 1.0 - config_.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
@@ -214,7 +214,7 @@ void RnnlmCoreTrainer::TrainBackstitch(
                              store_component_stats,
                              &request);
 
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   NnetComputeOptions compute_opts;
 
@@ -259,7 +259,7 @@ void RnnlmCoreTrainer::TrainBackstitch(
                           minibatch.num_chunks * config_.l2_regularize_factor,
                           delta_nnet_);
   }
-  
+
   UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       max_change_scale, scale_adding, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
@@ -309,7 +309,7 @@ void RnnlmCoreTrainer::PrintMaxChangeStats() const {
   if (num_max_change_global_applied_ > 0)
     KALDI_LOG << "The global max-change was enforced "
               << (100.0 * num_max_change_global_applied_) /
-                 (num_minibatches_processed_ * 
+                 (num_minibatches_processed_ *
                  (config_.backstitch_training_scale == 0.0 ? 1.0 :
                  1.0 + 1.0 / config_.backstitch_training_interval))
               << "\% of the time.";
