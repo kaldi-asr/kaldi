@@ -31,8 +31,8 @@ void NnetChainSupervision::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, name);
   WriteIndexVector(os, binary, indexes);
   supervision.Write(os, binary);
-  WriteToken(os, binary, "<DW>");  // for DerivWeights.  Want to save space.
-  WriteVectorAsChar(os, binary, deriv_weights);
+  WriteToken(os, binary, "<DW2>");
+  deriv_weights.Write(os, binary);
   WriteToken(os, binary, "</NnetChainSup>");
 }
 
@@ -51,8 +51,11 @@ void NnetChainSupervision::Read(std::istream &is, bool binary) {
   ReadToken(is, binary, &token);
   // in the future this back-compatibility code can be reworked.
   if (token != "</NnetChainSup>") {
-    KALDI_ASSERT(token == "<DW>");
-    ReadVectorAsChar(is, binary, &deriv_weights);
+    KALDI_ASSERT(token == "<DW>" || token == "<DW2>");
+    if (token == "<DW>")
+      ReadVectorAsChar(is, binary, &deriv_weights);
+    else
+      deriv_weights.Read(is, binary);
     ExpectToken(is, binary, "</NnetChainSup>");
   }
   CheckDim();
@@ -82,8 +85,7 @@ void NnetChainSupervision::CheckDim() const {
   }
   if (deriv_weights.Dim() != 0) {
     KALDI_ASSERT(deriv_weights.Dim() == indexes.size());
-    KALDI_ASSERT(deriv_weights.Min() >= 0.0 &&
-                 deriv_weights.Max() <= 1.0);
+    KALDI_ASSERT(deriv_weights.Min() >= 0.0);
   }
 }
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright     2017  Hossein Hadian
 # Apache 2.0
@@ -113,7 +113,7 @@ def read_kaldi_datadir(dir):
         else:
             num_fail += 1
 
-    if len(utterances) / len(wav_scp) < 0.5:
+    if float(len(utterances)) / len(wav_scp) < 0.5:
         logger.info("More than half your data is problematic. Try "
                     "fixing using fix_data_dir.sh.")
         sys.exit(1)
@@ -128,7 +128,7 @@ def read_kaldi_mapfile(path):
     """
 
     m = {}
-    with open(path, 'r') as f:
+    with open(path, 'r', encoding='latin-1') as f:
         for line in f:
             line = line.strip()
             sp_pos = line.find(' ')
@@ -145,19 +145,19 @@ def generate_kaldi_data_files(utterances, outdir):
     logger.info("Exporting to {}...".format(outdir))
     speakers = {}
 
-    with open(os.path.join(outdir, 'text'), 'w') as f:
+    with open(os.path.join(outdir, 'text'), 'w', encoding='latin-1') as f:
         for utt in utterances:
             f.write(utt.to_kaldi_utt_str() + "\n")
 
-    with open(os.path.join(outdir, 'wav.scp'), 'w') as f:
+    with open(os.path.join(outdir, 'wav.scp'), 'w', encoding='latin-1') as f:
         for utt in utterances:
             f.write(utt.to_kaldi_wave_str() + "\n")
 
-    with open(os.path.join(outdir, 'utt2dur'), 'w') as f:
+    with open(os.path.join(outdir, 'utt2dur'), 'w', encoding='latin-1') as f:
         for utt in utterances:
             f.write(utt.to_kaldi_dur_str() + "\n")
 
-    with open(os.path.join(outdir, 'utt2spk'), 'w') as f:
+    with open(os.path.join(outdir, 'utt2spk'), 'w', encoding='latin-1') as f:
         for utt in utterances:
             f.write(utt.id + " " + utt.speaker + "\n")
             if utt.speaker not in speakers:
@@ -165,7 +165,7 @@ def generate_kaldi_data_files(utterances, outdir):
             else:
                 speakers[utt.speaker].append(utt.id)
 
-    with open(os.path.join(outdir, 'spk2utt'), 'w') as f:
+    with open(os.path.join(outdir, 'spk2utt'), 'w', encoding='latin-1') as f:
         for s in speakers:
             f.write(s + " ")
             for utt in speakers[s]:
@@ -222,8 +222,8 @@ def find_allowed_durations(start_dur, end_dur, args):
 
     allowed_durations = []
     d = start_dur
-    with open(os.path.join(args.dir, 'allowed_durs.txt'), 'wb') as durs_fp, \
-           open(os.path.join(args.dir, 'allowed_lengths.txt'), 'wb') as lengths_fp:
+    with open(os.path.join(args.dir, 'allowed_durs.txt'), 'w', encoding='latin-1') as durs_fp, \
+           open(os.path.join(args.dir, 'allowed_lengths.txt'), 'w', encoding='latin-1') as lengths_fp:
         while d < end_dur:
             length = int(d * 1000 - args.frame_length) / args.frame_shift + 1
             if length % args.frame_subsampling_factor != 0:
@@ -233,7 +233,7 @@ def find_allowed_durations(start_dur, end_dur, args):
                      + args.frame_length + args.frame_shift / 2) / 1000.0
             allowed_durations.append(d)
             durs_fp.write("{}\n".format(d))
-            lengths_fp.write("{}\n".format(length))
+            lengths_fp.write("{}\n".format(int(length)))
             d *= args.factor
     return allowed_durations
 

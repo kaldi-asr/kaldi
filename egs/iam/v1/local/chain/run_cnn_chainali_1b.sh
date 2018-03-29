@@ -1,20 +1,20 @@
 #!/bin/bash
 
 # chainali_1b is as chainali_1a except it has 3 more cnn layers and 1 less tdnn layer.
-# ./local/chain/compare_wer.sh exp/chain/cnn_chainali_1a/ exp/chain/cnn_chainali_1b/
-# System                      cnn_chainali_1a cnn_chainali_1b
-# WER                              6.69     6.25
-# Final train prob              -0.0132   -0.0041
-# Final valid prob              -0.0509   -0.0337
-# Final train prob (xent)       -0.6393   -0.6287
-# Final valid prob (xent)       -1.0116   -0.9064
+
+# local/chain/compare_wer.sh exp/chain/cnn_1a/ exp/chain/cnn_chainali_1b/
+# System                         cnn_1a cnn_chainali_1b
+# WER                             18.58     14.67
+# CER                             10.17      7.31
+# Final train prob              -0.0122    0.0042
+# Final valid prob              -0.0999   -0.0256
+# Final train prob (xent)       -0.5652   -0.6282
+# Final valid prob (xent)       -0.9758   -0.9096
+# Parameters                      4.36M     3.96M
 
 # steps/info/chain_dir_info.pl exp/chain/chainali_cnn_1b/
 # exp/chain/chainali_cnn_1b/: num-iters=21 nj=2..4 num-params=4.0M dim=40->364 combine=-0.009->-0.005 xent:train/valid[13,20,final]=(-1.47,-0.728,-0.623/-1.69,-1.02,-0.940) logprob:train/valid[13,20,final]=(-0.068,-0.030,-0.011/-0.086,-0.056,-0.038)
 
-# cat exp/chain/cnn_chainali_1b/decode_test/scoring_kaldi/best_*
-# %WER 3.94 [ 2600 / 65921, 415 ins, 1285 del, 900 sub ] exp/chain/cnn_chainali_1b/decode_test/cer_10_0.0
-# %WER 6.25 [ 1158 / 18542, 103 ins, 469 del, 586 sub ] exp/chain/cnn_chainali_1b/decode_test/wer_12_0.0
 
 set -e -o pipefail
 
@@ -46,7 +46,7 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=false
-lang_test=lang_test
+lang_test=lang_unk
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 

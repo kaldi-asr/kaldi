@@ -306,15 +306,17 @@ const SimpleObjectiveInfo* NnetComputeProb::GetObjective(
     return NULL;
 }
 
-double NnetComputeProb::GetTotalObjective(double *tot_weight) const {
+double NnetComputeProb::GetTotalObjective(double *total_weight) const {
   double tot_objectives = 0.0;
-  *tot_weight = 0.0;
+  double tot_weight = 0.0;
   unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
     iter = objf_info_.begin(), end = objf_info_.end();
   for (; iter != end; ++iter) {
     tot_objectives += iter->second.tot_objective;
-    (*tot_weight) += iter->second.tot_weight;
+    tot_weight += iter->second.tot_weight;
   }
+
+  if (total_weight) *total_weight = tot_weight;
   return tot_objectives;
 }
 

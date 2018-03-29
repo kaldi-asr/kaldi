@@ -1446,6 +1446,19 @@ class PermuteComponent: public Component {
    trainable scale; it's like a linear component with a diagonal matrix.  This
    version (and its child class NaturalGradientPerElementScaleComponent)
    requires the input for backprop.  See also ScaleAndOffsetComponent.
+
+   Accepted values on its config line, with defaults if applicable:
+
+     vector           If specified, the offsets will be read from this file ('vector'
+                      is interpreted as an rxfilename).
+
+     dim              The dimension that this component inputs and outputs.
+                      Only required if 'vector' is not specified.
+
+     param-mean=1.0   Mean of randomly initialized offset parameters; should only
+                      be supplied if 'vector' is not supplied.
+     param-stddev=0.0 Standard deviation of randomly initialized offset parameters;
+                      should only be supplied if 'vector' is not supplied.
 */
 class PerElementScaleComponent: public UpdatableComponent {
  public:
@@ -1670,8 +1683,29 @@ class ConstantFunctionComponent: public UpdatableComponent {
 
 
 
-// NaturalGradientPerElementScaleComponent is like PerElementScaleComponent but
-// it uses a natural gradient update for the per-element scales.
+/**
+   NaturalGradientPerElementScaleComponent is like PerElementScaleComponent but
+   it uses a natural gradient update for the per-element scales.
+
+   Accepted values on its config line, with defaults if applicable:
+
+     vector           If specified, the offsets will be read from this file ('vector'
+                      is interpreted as an rxfilename).
+
+     dim              The dimension that this component inputs and outputs.
+                      Only required if 'vector' is not specified.
+
+     param-mean=1.0   Mean of randomly initialized offset parameters; should only
+                      be supplied if 'vector' is not supplied.
+     param-stddev=0.0 Standard deviation of randomly initialized offset parameters;
+                      should only be supplied if 'vector' is not supplied.
+
+  And the natural-gradient-related configuration values:
+      rank=8
+      update-period=10
+      num-samples-history=2000.0
+      alpha=4.0
+*/
 class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
  public:
 

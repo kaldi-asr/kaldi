@@ -171,14 +171,6 @@ if [ $stage -le 12 ]; then
   utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
   for dset in ${test_sets}; do
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-		    exp/tri2/graph data/${dset} exp/tri2/decode_${dset}
-  done
-fi
-
-if [ $stage -le 13 ]; then
-  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
-  for dset in ${test_sets}; do
-    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
 		    exp/tri2/graph data/${dset} exp/tri2/decode_${dset} &
   done
   wait
