@@ -89,7 +89,6 @@ fi
 # Overwrite ./version.h with the temporary file if they are different.
 if ! cmp -s $temp version.h; then
   cp $temp version.h
-  sed -i 's/\r//g' version.h
   chmod 644 version.h
 fi
 exit 0
