@@ -52,7 +52,7 @@
 #  define KALDI_MEMALIGN_FREE(x) _aligned_free(x)
 #elif defined(__CYGWIN__)
 #  define KALDI_MEMALIGN(align, size, pp_orig) \
-  (*(pp_orig) = aligned_alloc(size, align))
+  (*(pp_orig) = aligned_alloc(align, size))
 #  define KALDI_MEMALIGN_FREE(x) free(x)
 #else
 #  define KALDI_MEMALIGN(align, size, pp_orig) \

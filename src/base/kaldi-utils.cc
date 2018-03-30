@@ -46,7 +46,7 @@ void Sleep(float seconds) {
 #if defined(_MSC_VER) || defined(MINGW)
   ::Sleep(static_cast<int>(seconds * 1000.0));
 #elif defined(__CYGWIN__)
-  kaldi::Sleep(static_cast<int>(seconds * 1000.0));
+  sleep(static_cast<int>(seconds * 1.0));
 #else
   usleep(static_cast<int>(seconds * 1000000.0));
 #endif
