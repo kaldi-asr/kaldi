@@ -3,9 +3,15 @@
 #include <cuda.h>
 #include "util/errors-cuda.h"
 
+#include "feat/feature-mfcc.h"
+#include "feat/wave-reader.h"
+#include "online/online-audio-source.h"
+#include "online/online-feat-input.h"
+#include "online/online-decodable.h"
+#include "online/onlinebin-util.h"
 #include "online/online-faster-decoder.h"
 
-int main(void){
+int main(int argc, char *argv[]){
 
   try{
     using namespace kaldi;
@@ -37,15 +43,14 @@ int main(void){
     ParseOptions po(usage);
     ParseOptions *po_d;
 
-    cudaMalloc((void **)&po_d, sizeof(ParseOptions));
-    cudaMemcpy(po_d, &po, sizeof(ParseOptions), cudaMemcpyHostToDevice);
+    //cudaMalloc((void **)&po_d, sizeof(ParseOptions));
+    //cudaMemcpy(po_d, &po, sizeof(ParseOptions), cudaMemcpyHostToDevice);
 
     BaseFloat acoustic_scale = 0.1;
     BaseFloat *acoustic_scale_d;
 
     int32 cmn_window = 600,
       min_cmn_window = 100; // adds 1 second latency, only at utterance start.
-    int32 *cmn_window, min_cmn_window;
 
     int32 channel = -1;
     int32 right_context = 4, left_context = 4;
