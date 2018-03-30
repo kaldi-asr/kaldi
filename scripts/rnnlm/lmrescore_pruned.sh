@@ -16,7 +16,7 @@ max_ngram_order=4 # Approximate the lattice-rescoring by limiting the max-ngram-
                   # the same ngram history and this prevents the lattice from 
                   # exploding exponentially. Details of the n-gram approximation
                   # method are described in section 2.3 of the paper
-                  # http://www.danielpovey.com/files/2018_icassp_lattice_pruning.pdm
+                  # http://www.danielpovey.com/files/2018_icassp_lattice_pruning.pdf
 max_arcs=         # limit the max arcs in lattice while rescoring. E.g., 20000
 
 acwt=0.1
@@ -26,6 +26,8 @@ normalize=false # If true, we add a normalization step to the output of the RNNL
                 # as in our RNNLM setup, a properly trained network would automatically
                 # have its normalization term close to 1. The details of this
                 # could be found at http://www.danielpovey.com/files/2018_icassp_rnnlm.pdf
+lattice_prune_beam=4 # Beam used in pruned lattice composition
+                     # This option affects speed and how large the composed lattice may be
 
 # End configuration section.
 
@@ -97,6 +99,7 @@ cp $indir/num_jobs $outdir
 
 $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
   lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=$weight $special_symbol_opts \
+    --lattice-compose-beam=$lattice_prune_beam \
     --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order $normalize_opt $max_arcs_opt \
     $carpa_option $oldlm $word_embedding "$rnnlm_dir/final.raw" \
     "ark:gunzip -c $indir/lat.JOB.gz|" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
