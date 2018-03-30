@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdio>
 #include <cuda.h>
-#include "util/errors.h"
+#include "util/errors-cuda.h"
 
 #include "online/online-faster-decoder.h"
 
