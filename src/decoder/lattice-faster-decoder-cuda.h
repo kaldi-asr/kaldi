@@ -3,13 +3,13 @@
 // Copyright      2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
-//
+// 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//
-//  http://www.apache.org/licenses/LICENSE-2.0
-//
+// 
+// http:// www.apache.org/licenses/LICENSE-2.0
+// 
 // THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
 // WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
@@ -59,60 +59,60 @@ class LatticeFasterDecoderCuda {
   }
   const CudaLatticeDecoder &Decoder() const { return decoder_; }
 
-  /// Decodes until there are no more frames left in the "decodable" object..
-  /// note, this may block waiting for input if the "decodable" object blocks.
-  /// Returns true if any kind of traceback is available (not necessarily from a
-  /// final state).
+  // Decodes until there are no more frames left in the "decodable" object..
+  // note, this may block waiting for input if the "decodable" object blocks.
+  // Returns true if any kind of traceback is available (not necessarily from a
+  // final state).
   // the main procedure is done in GPU
   bool Decode(DecodableInterface *decodable);
 
   // the same to the version in lattice-faster-decoder.h
-  /// says whether a final-state was active on the last frame.  If it was not, the
-  /// lattice (or traceback) will end with states that are not final-states.
+  // says whether a final-state was active on the last frame.  If it was not, the
+  // lattice (or traceback) will end with states that are not final-states.
   bool ReachedFinal() const {
     return FinalRelativeCost() != std::numeric_limits<BaseFloat>::infinity();
   }
 
   // the same to the version in lattice-faster-decoder.h
-  /// Outputs an FST corresponding to the single best path through the lattice.
-  /// Returns true if result is nonempty (using the return status is deprecated,
-  /// it will become void).  If "use_final_probs" is true AND we reached the
-  /// final-state of the graph then it will include those as final-probs, else
-  /// it will treat all final-probs as one.  Note: this just calls GetRawLattice()
-  /// and figures out the shortest path.
+  // Outputs an FST corresponding to the single best path through the lattice.
+  // Returns true if result is nonempty (using the return status is deprecated,
+  // it will become void).  If "use_final_probs" is true AND we reached the
+  // final-state of the graph then it will include those as final-probs, else
+  // it will treat all final-probs as one.  Note: this just calls GetRawLattice()
+  // and figures out the shortest path.
   bool GetBestPath(Lattice *ofst,
                    bool use_final_probs = true) const;
 
   // the same to the version in lattice-faster-decoder.h
-  /// Outputs an FST corresponding to the raw, state-level
-  /// tracebacks.  Returns true if result is nonempty.
-  /// If "use_final_probs" is true AND we reached the final-state
-  /// of the graph then it will include those as final-probs, else
-  /// it will treat all final-probs as one.
-  /// The raw lattice will be topologically sorted.
+  // Outputs an FST corresponding to the raw, state-level
+  // tracebacks.  Returns true if result is nonempty.
+  // If "use_final_probs" is true AND we reached the final-state
+  // of the graph then it will include those as final-probs, else
+  // it will treat all final-probs as one.
+  // The raw lattice will be topologically sorted.
   bool GetRawLattice(Lattice *ofst,
                      bool use_final_probs = true) const;
 
   // the same to the version in lattice-faster-decoder.h
-  /// [Deprecated, users should now use GetRawLattice and determinize it
-  /// themselves, e.g. using DeterminizeLatticePhonePrunedWrapper].
-  /// Outputs an FST corresponding to the lattice-determinized
-  /// lattice (one path per word sequence).   Returns true if result is nonempty.
-  /// If "use_final_probs" is true AND we reached the final-state of the graph
-  /// then it will include those as final-probs, else it will treat all
-  /// final-probs as one.
+  // [Deprecated, users should now use GetRawLattice and determinize it
+  // themselves, e.g. using DeterminizeLatticePhonePrunedWrapper].
+  // Outputs an FST corresponding to the lattice-determinized
+  // lattice (one path per word sequence).   Returns true if result is nonempty.
+  // If "use_final_probs" is true AND we reached the final-state of the graph
+  // then it will include those as final-probs, else it will treat all
+  // final-probs as one.
   bool GetLattice(CompactLattice *ofst,
                   bool use_final_probs = true) const;
 
   // the same to the version in lattice-faster-decoder.h
-  /// FinalRelativeCost() serves the same purpose as ReachedFinal(), but gives
-  /// more information.  It returns the difference between the best (final-cost
-  /// plus cost) of any token on the final frame, and the best cost of any token
-  /// on the final frame.  If it is infinity it means no final-states were
-  /// present on the final frame.  It will usually be nonnegative.  If it not
-  /// too positive (e.g. < 5 is my first guess, but this is not tested) you can
-  /// take it as a good indication that we reached the final-state with
-  /// reasonable likelihood.
+  // FinalRelativeCost() serves the same purpose as ReachedFinal(), but gives
+  // more information.  It returns the difference between the best (final-cost
+  // plus cost) of any token on the final frame, and the best cost of any token
+  // on the final frame.  If it is infinity it means no final-states were
+  // present on the final frame.  It will usually be nonnegative.  If it not
+  // too positive (e.g. < 5 is my first guess, but this is not tested) you can
+  // take it as a good indication that we reached the final-state with
+  // reasonable likelihood.
   BaseFloat FinalRelativeCost() const;
 
   // the same to the version in lattice-faster-decoder.h
@@ -217,7 +217,7 @@ class LatticeFasterDecoderCuda {
   // delta is the amount by which the extra_costs must change
   // before we set *extra_costs_changed = true.
   // If delta is larger,  we'll tend to go back less far
-  //    toward the beginning of the file.
+  // toward the beginning of the file.
   // extra_costs_changed is set to true if extra_cost was changed for any token
   // links_pruned is set to true if any link in any token was pruned
   void PruneForwardLinks(int32 frame_plus_one, bool *extra_costs_changed,
@@ -300,7 +300,7 @@ class LatticeFasterDecoderCuda {
   // used to index arcs by (frame, index), see AddLatticeArcs() for details
   std::vector<ForwardLink*> active_arcs_perframe_;
   std::vector<int> active_arcs_size_perframe_; // size of arcs in each frame
-  Token* toks_buf_; //as GPU is so fast, we need to pre-allocate toks
+  Token* toks_buf_; // as GPU is so fast, we need to pre-allocate toks
   int32 toks_buf_used_;
 
   // below definitions are the same to lattice-faster-decoder.h
@@ -318,17 +318,17 @@ class LatticeFasterDecoderCuda {
   // frame in order to keep everything in a nice dynamic range i.e.  close to
   // zero, to reduce roundoff errors.
 
-  /// decoding_finalized_ is true if someone called FinalizeDecoding().  [note,
-  /// calling this is optional].  If true, it's forbidden to decode more.  Also,
-  /// if this is set, then the output of ComputeFinalCosts() is in the next
-  /// three variables.  The reason we need to do this is that after
-  /// FinalizeDecoding() calls PruneTokensForFrame() for the final frame, some
-  /// of the tokens on the last frame are freed, so we free the list from toks_
-  /// to avoid having dangling pointers hanging around.
+  // decoding_finalized_ is true if someone called FinalizeDecoding().  [note,
+  // calling this is optional].  If true, it's forbidden to decode more.  Also,
+  // if this is set, then the output of ComputeFinalCosts() is in the next
+  // three variables.  The reason we need to do this is that after
+  // FinalizeDecoding() calls PruneTokensForFrame() for the final frame, some
+  // of the tokens on the last frame are freed, so we free the list from toks_
+  // to avoid having dangling pointers hanging around.
   bool decoding_finalized_;
 
-  /// For the meaning of the next 3 variables, see the comment for
-  /// decoding_finalized_ above., and ComputeFinalCosts().
+  // For the meaning of the next 3 variables, see the comment for
+  // decoding_finalized_ above., and ComputeFinalCosts().
   unordered_map<Token*, BaseFloat> final_costs_;
   BaseFloat final_relative_cost_;
   BaseFloat final_best_cost_;

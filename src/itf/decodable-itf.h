@@ -86,6 +86,10 @@ class DecodableInterface {
   /// The "frame" starts from zero.  You should verify that IsLastFrame(frame-1)
   /// returns false before calling this.
   virtual BaseFloat LogLikelihood(int32 frame, int32 index) = 0;
+  
+ 
+  //Computes loglikelihoods betewen [0,count) and writes them to out for the frame specified
+  virtual void ComputeLogLikelihoods(BaseFloat* out, int32 frame, int32 count) {};
 
   /// Returns true if this is the last frame.  Frames are zero-based, so the
   /// first frame is zero.  IsLastFrame(-1) will return false, unless the file

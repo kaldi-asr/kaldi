@@ -3,13 +3,13 @@
 // Copyright      2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
-//
+// 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//
-//  http://www.apache.org/licenses/LICENSE-2.0
-//
+// 
+// http:// www.apache.org/licenses/LICENSE-2.0
+// 
 // THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
 // WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
@@ -21,16 +21,20 @@
 #define KALDI_CUDA_DECODER_UTILS_H_
 
 
+#include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
-#include "cuda_runtime.h"
-#include "util/stl-utils.h"
 #include "omp.h"
+#include "cuda_runtime.h"
 #include <algorithm>
+#include <cuda_runtime_api.h>
 #include <float.h>
 #include <math.h>
 #include <cooperative_groups.h>
 #include "math_constants.h"
 #include "omp.h"
+
+#include "util/stl-utils.h"
+#include "cudamatrix/cu-common.h"
 
 // cuda macro
 
@@ -50,7 +54,7 @@ const uint32 colors[] = {0x0000ff00, 0x000000ff, 0x00ffff00, 0x00ff00ff,
                          0x0000ffff, 0x00ff0000, 0x00ffffff};
 const int32 num_colors = sizeof(colors) / sizeof(uint32);
 
-#define PUSH_RANGE(name,cid) { \
+#define PUSH_RANGE(name,cid) do { \
     int32 color_id = cid; \
     color_id = color_id%num_colors;\
     nvtxEventAttributes_t eventAttrib = {0}; \
@@ -61,21 +65,12 @@ const int32 num_colors = sizeof(colors) / sizeof(uint32);
     eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII; \
     eventAttrib.message.ascii = name; \
     nvtxRangePushEx(&eventAttrib); \
-}
+} while (0);
 #define POP_RANGE nvtxRangePop();
 #else
 #define PUSH_RANGE(name,cid)
 #define POP_RANGE
 #endif
-
-// Macro for checking cuda errors following a cuda launch or api call
-#define cudaCheckError() {                                          \
-        cudaError_t e=cudaGetLastError();                                 \
-        if(e!=cudaSuccess) {                                              \
-            printf("Cuda failure %s:%d: '%s'\n",__FILE__,__LINE__,cudaGetErrorString(e));           \
-            exit(EXIT_FAILURE);                                           \
-        }                                                                 \
-    }
 
 // decoder macro
 
@@ -156,6 +151,6 @@ class CudaFst {
     size_t bytes_cudaMalloc;
 };
 
-} //  end namespace kaldi.
+} // end namespace kaldi.
 
 #endif

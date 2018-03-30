@@ -3,13 +3,13 @@
 // Copyright      2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
-//
+// 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-//
-//  http://www.apache.org/licenses/LICENSE-2.0
-//
+// 
+// http:// www.apache.org/licenses/LICENSE-2.0
+// 
 // THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 // KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
 // WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
@@ -50,8 +50,8 @@ struct CudaLatticeDecoderConfig {
                        max_tokens_per_frame(200000),
                        max_lat_tok_per_frame(200000),
                        max_lat_arc_per_frame(600000),
-                       max_tokens(6000000),
-                       max_arcs(9000000),
+                       max_tokens(10000000),
+                       max_arcs(12000000), // 17000000*10 can fill all mem
                        lattice_beam(10.0),
                        beam(16.0),
                        prune_interval(3000),
@@ -172,7 +172,7 @@ class CudaLatticeDecoder {
     using CudaVector<T>::mem_d;
     using CudaVector<T>::max_size;
 
-    //for arr merge to single; assume create using cudaMallocManaged
+    // for arr merge to single; assume create using cudaMallocManaged
     int32 *mem_update_d;
     // record recombination uint64 address corresponding to each elem in T* mem_d
     uint64** mem_pack_buf_d; 
@@ -209,7 +209,7 @@ class CudaLatticeDecoder {
   // in GPU memory and use memcpy to move to CPU memory
   class __align__(32) LatLink {  
    public:
-     //below variables are with the same size as ForwardLink, so as to enable memcpy
+     // below variables are with the same size as ForwardLink, so as to enable memcpy
     void *p1; // pack of (int32 next_tok_id, int32 next_tok_fr;)
     int32 ilabel; // ilabel on link.
     int32 olabel; // olabel on link.
@@ -238,14 +238,14 @@ class CudaLatticeDecoder {
       : token(token), state(state), cost_(cost) { }
   };
 
-  //struct to hold pre-allocated tokens (one per WFST state) for fast lookup
+  // struct to hold pre-allocated tokens (one per WFST state) for fast lookup
   struct  TokenLookupElem{
     Token *token; // pointer to the Token
     uint32 active;  // the token has been passed to or not
     uint64 token_pack; // used in atomic operation based token recombination
     volatile int32_t tokenstate_idx; // used to index the corresponding TokenState
   };
-  //typedef CudaVector<TokenState> TokenVector;
+  // typedef CudaVector<TokenState> TokenVector;
   typedef CudaMergeVector<TokenState> TokenMergeVector;
   typedef CudaVector<LatLink> LatLinkVector;
 
@@ -256,7 +256,7 @@ class CudaLatticeDecoder {
    public:
     void Initialize(uint32 size);
     void Finalize();
-    void Reset(); //returns all memory to the allocator
+    void Reset(); // returns all memory to the allocator
 
     // memory prefetch to speedup the reading in target device
     inline void PrefetchNextToDevice(cudaStream_t stream, int32 count);
@@ -265,24 +265,24 @@ class CudaLatticeDecoder {
     inline void PrefetchAllocatedToHostForce(cudaStream_t stream);
     inline size_t GetCudaMallocManagedBytes();
     
-    //gets a free token offset by index
+    // gets a free token offset by index
     DEVICE inline Token* GetToken(uint32 index); 
-    //advances the allocated token list by num
+    // advances the allocated token list by num
     DEVICE inline void AdvanceFront(uint32 num); 
 
    private:
     int32_t device; // for MEMADVISE
     uint32 size; // host size
     size_t bytes_cuda_malloc_managed;
-    uint32 prefetch_size; //amount of elements to prefetch beyond front
-    //next free token index
+    uint32 prefetch_size; // amount of elements to prefetch beyond front
+    // next free token index
     uint32 *front_d, *front_h;    
     // token buffer used discontinuously; Just going static for now.
     // TODO we could have a list of these and dynamically add more.  
     Token *tokens_allocation; 
   };
 
-  //for lattice pruning
+  // for lattice pruning
   class LatticePruner {
    public:  
     void Initialize();
@@ -395,7 +395,7 @@ class CudaLatticeDecoder {
     TokenAllocator token_allocator;
     LatticePruner lattice_pruner;
 
-    //never change
+    // never change
     const __restrict__ uint32 *e_offsets;
     const __restrict__ uint32 *ne_offsets;
     const __restrict__ int32 *arc_ilabels;
@@ -415,7 +415,7 @@ class CudaLatticeDecoder {
 
     // configurations
     BaseFloat beam;
-    int32 verbose; //for debug 
+    int32 verbose; // for debug 
     BaseFloat lattice_beam;
     int32 prune_interval;
     int32 numArcs;
@@ -427,25 +427,25 @@ class CudaLatticeDecoder {
   CudaLatticeDecoder(const CudaFst &fst, const CudaLatticeDecoderConfig &config);  
   ~CudaLatticeDecoder();
 
-  //pre-computes log likelihoods for the current frame
+  // pre-computes log likelihoods for the current frame
   void ComputeLogLikelihoods(DecodableInterface *decodable);
 
-  //decoding functions
-  void InitParams(processTokens_params& params);  // parameters for calling GPU
+  // decoding functions
+  void InitParams(processTokens_params* params);  // parameters for calling GPU
   // call InitDecoding if you have already decoded an
   // utterance and want to start with a new utterance. 
   void InitDecoding(); 
   void UpdateTokPointersByFrame(uint32 frame);
-  /// Returns the number of frames already decoded.  
+  // Returns the number of frames already decoded.  
   int32 NumFramesDecoded() const { return num_frames_decoded_; }
   void ClearToks(TokenMergeVector &toks); 
-  void PreProcessTokens();  //called before ProcessTokens()
+  void PreProcessTokens();  // called before ProcessTokens()
   // ProcessTokens decodes the frame num_frames_decoded_ of the
   // decodable object, then increments num_frames_decoded_.
   void ProcessTokens();
   void ProcessNonemitting(); // only called at frame 0
 
-  //lattice processing functions
+  // lattice processing functions
   void FinalProcessLattice(Token** toks_buf, int** toks_fr_sidx, 
                                  LatLink** arcs_buf, int** arcs_fr_size,
                                  TokenMergeVector** toks_vec_last_fr);
@@ -463,30 +463,30 @@ class CudaLatticeDecoder {
   CudaLatticeDecoderConfig config_;
   const CudaFst fst_;
 
-  //dynamic load balancing
+  // dynamic load balancing
   int32 *pe_idx_d, *ne_idx_d, *fb_idx_d; // warp assignment indexes
   int32 *agg_idx_d, *ne_queue_d; // for aggregation of token idx
-  //token passing
+  // token passing
   TokenMergeVector* cur_toks_;
   TokenMergeVector* prev_toks_;  
   CostType *cutoff_d;
-  int32 *modified_d; //used in processTokens_cg()
+  int32 *modified_d; // used in processTokens_cg()
   // Keep track of the number of frames decoded in the current file.
   int32 num_frames_decoded_;
   // 2-stage atomic token recombination
   Token* token_per_arc_d; // token array whose length equal to size of WFST arcs
   int32 *token_per_arc_update_d; // to check whether the token is updated at this frame  
-  //token lookup table.  Provides constant time lookup for active tokens.
-  //One entry per state. TokenLookupElem::active to denote whether it is active.
+  // token lookup table.  Provides constant time lookup for active tokens.
+  // One entry per state. TokenLookupElem::active to denote whether it is active.
   TokenLookupElem *current_tokens_lookup_d;
   TokenAllocator token_allocator_; // allocate new tokens to current_tokens_lookup_d
 
-  //data store for log likelihoods needed in the current frame.  
-  //Double buffering to avoid synchronization.
+  // data store for log likelihoods needed in the current frame.  
+  // Double buffering to avoid synchronization.
   BaseFloat *loglikelihoods_h, *loglikelihoods_old_h,
             *loglikelihoods_d, *loglikelihoods_old_d;    
 
-  //lattice
+  // lattice
   TokenMergeVector lat_toks_bufs_[LAT_BUF_SIZE];
   LatLinkVector lat_arcs_buf_;
   LatticePruner lattice_pruner_;
@@ -494,10 +494,10 @@ class CudaLatticeDecoder {
   // GPU usage
   uint32 total_threads; // GPU utilization
   size_t bytes_cuda_malloc, bytes_cuda_malloc_managed;
-  int32 *barrier_d;  //barrier to allow grid syncs
+  int32 *barrier_d;  // barrier to allow grid syncs
   cudaEvent_t event_pt; // token passing
   cudaEvent_t event_ll; // log likelihoods calculation
-  cudaStream_t stream_comp; //decoding
+  cudaStream_t stream_comp; // decoding
   cudaStream_t stream_lat[LAT_BUF_SIZE]; // lattice processing and copying
   cudaStream_t stream_ll; // log likelihoods calculation
   KALDI_DISALLOW_COPY_AND_ASSIGN(CudaLatticeDecoder);

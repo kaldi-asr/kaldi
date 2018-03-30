@@ -38,7 +38,7 @@ if [ $stage -le 20 ]; then
   nnet3-am-copy --raw=true  $model_dir/final.mdl $dir/final.raw
   
   queue.pl  JOB=1:25 $dir/log/post.JOB.log \
-   net3-compute --use-gpu=no \
+  net3-compute --use-gpu=no \
      --online-ivectors=scp:exp/nnet3/ivectors_eval2000/ivector_online.scp --online-ivector-period=10 --frame-subsampling-factor=3 --frames-per-chunk=140 --extra-left-context=50 --extra-right-context=0 --extra-left-context-initial=0 --extra-right-context-final=0 \
     $dir/final.raw \
     "ark,s,cs:apply-cmvn --norm-means=false --norm-vars=false --utt2spk=ark:data/eval2000_hires/split25/JOB/utt2spk scp:data/eval2000_hires/split25/JOB/cmvn.scp scp:data/eval2000_hires/split25/JOB/feats.scp ark:- |" \

@@ -105,18 +105,8 @@ int main(int argc, char *argv[]) {
       SequentialBaseFloatMatrixReader loglike_reader(feature_rspecifier);
       // Input FST is just one FST, not a table of FSTs.
       Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
-#if 0
-      cuInit(0);
-      cudaDeviceReset();
-      cudaSetDeviceFlags(cudaDeviceScheduleYield);
-      uint flags;
-      cudaGetDeviceFlags(&flags);
-      KALDI_VLOG(3) << flags;
-      assert(flags & cudaDeviceScheduleYield);
-#else
       CuDevice::Instantiate().SelectGpuId("yes");
       CuDevice::Instantiate().AllowMultithreading();
-#endif
       // GPU version of WFST
       CudaFst decode_fst_cuda;
       decode_fst_cuda.Initialize(*decode_fst);
@@ -174,7 +164,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like / frame_count) <<
               " over "
               << frame_count << " frames.";
- 
+
     delete word_syms;
     if (num_success != 0) return 0;
     else return 1;
