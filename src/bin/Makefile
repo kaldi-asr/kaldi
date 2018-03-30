@@ -4,13 +4,6 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-LDFLAGS += $(CUDA_LDFLAGS)
-LDLIBS += $(CUDA_LDLIBS)
-LDLIBS += -lnvToolsExt -lcuda 
-CXXFLAGS += -fopenmp
-LDFLAGS += -fopenmp
-LDFLAGS += ../cudamatrix/libkaldi-cudamatrix.so
-
 BINFILES = align-equal align-equal-compiled acc-tree-stats \
         show-alignments compile-questions cluster-phones \
         compute-wer compute-wer-bootci make-h-transducer \
@@ -28,10 +21,18 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         post-to-pdf-post logprob-to-post prob-to-post copy-post \
         matrix-sum build-pfile-from-ali get-post-on-ali tree-info am-info \
         vector-sum matrix-sum-rows est-pca sum-lda-accs sum-mllt-accs \
-        transform-vec align-text matrix-dim post-to-smat \
-        latgen-faster-mapped-cuda
+        transform-vec align-text matrix-dim post-to-smat
 
 
+ifeq ($(CUDA), true)
+LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
+LDLIBS += -lnvToolsExt -lcuda 
+CXXFLAGS += -fopenmp
+LDFLAGS += -fopenmp
+LDFLAGS += ../cudamatrix/libkaldi-cudamatrix.so
+BINFILES += latgen-faster-mapped-cuda
+endif
 
 OBJFILES =
 

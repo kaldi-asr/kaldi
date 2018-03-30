@@ -22,8 +22,11 @@
 
 #include "itf/options-itf.h"
 #include "decoder/lattice-faster-decoder.h"
-#include "decoder/lattice-faster-decoder-cuda.h"
 #include "decoder/lattice-simple-decoder.h"
+
+#if HAVE_CUDA == 1
+#include "decoder/lattice-faster-decoder-cuda.h"
+#endif
 
 // This header contains declarations from various convenience functions that are called
 // from binary-level programs such as gmm-decode-faster.cc, gmm-align-compiled.cc, and
@@ -89,6 +92,7 @@ void AlignUtteranceWrapper(
 void ModifyGraphForCarefulAlignment(
   fst::VectorFst<fst::StdArc> *fst);
 
+#if HAVE_CUDA == 1
 // GPU decoding interface of decoding and lattice processing
 bool DecodeUtteranceLatticeFasterCuda(
   LatticeFasterDecoderCuda &decoder, // not const but is really an input.
@@ -124,6 +128,7 @@ bool DecodeUtteranceLatticeFasterCudaOutput(
   LatticeWriter *lattice_writer,
   double *like_ptr,
   Lattice& lat);
+#endif
 
 /// This function DecodeUtteranceLatticeFaster is used in several decoders, and
 /// we have moved it here.  Note: this is really "binary-level" code as it

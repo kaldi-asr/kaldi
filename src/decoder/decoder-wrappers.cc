@@ -17,14 +17,17 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "nvToolsExt.h"
 #include "base/timer.h"
 #include "fst/fstlib.h"
-#include "cuda-decoder-utils.h"
 #include "decoder/decoder-wrappers.h"
 #include "decoder/faster-decoder.h"
 #include "lat/lattice-functions.h"
+
+#if HAVE_CUDA == 1
 #include "omp.h"
+#include "nvToolsExt.h"
+#include "cuda-decoder-utils.h"
+#endif
 
 
 namespace kaldi {
@@ -201,6 +204,7 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
   delete decodable_;
 }
 
+#if HAVE_CUDA == 1
 // GPU decoding interface of outputting lattice
 // use a separate interface is to do the output in a critical section
 // e.g. using #pragma omp critical { }
@@ -337,6 +341,7 @@ bool DecodeUtteranceLatticeFasterCudaOutput(
   return true;
 }
 
+#endif
 
 
 // Takes care of output.  Returns true on success.

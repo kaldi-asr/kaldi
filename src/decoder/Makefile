@@ -2,23 +2,27 @@ all:
 
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
+
+TESTFILES =
+
+OBJFILES = training-graph-compiler.o lattice-simple-decoder.o lattice-faster-decoder.o \
+           lattice-faster-online-decoder.o simple-decoder.o faster-decoder.o \
+           decoder-wrappers.o 
+
+ifeq ($(CUDA), true)
+OBJFILES +=	cuda-decoder.o cuda-decoder-utils_prelink.o cuda-lattice-decoder_prelink.o \
+            lattice-faster-decoder-cuda.o
+LDLIBS += -lnvToolsExt -lcudart
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
-LDLIBS += -lnvToolsExt -lcudart
+endif
+
 CUDAOPTS = -O3 $(CUDA_ARCH) 
 #CUDAOPTS += -G  
 CUDA_DC_OPTS = -dc -DCUDA_API_PER_THREAD_DEFAULT_STREAM -DHAVE_CXXABI_H \
                -lineinfo -w -std=c++11 -DHAVE_EXECINFO_H=1 \
                -DHAVE_ATLAS -Xcompiler "-msse -msse2 -pthread  -fopenmp" \
                $(CUDAOPTS) -I.. -I$(OPENFSTINC) 
-
-TESTFILES =
-
-OBJFILES = training-graph-compiler.o lattice-simple-decoder.o lattice-faster-decoder.o \
-           lattice-faster-online-decoder.o simple-decoder.o faster-decoder.o \
-           decoder-wrappers.o \
-           cuda-decoder.o cuda-decoder-utils_prelink.o cuda-lattice-decoder_prelink.o \
-           lattice-faster-decoder-cuda.o
 
 LIBNAME = kaldi-decoder
 
