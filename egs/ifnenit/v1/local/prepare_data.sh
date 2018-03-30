@@ -1,11 +1,15 @@
 #!/bin/bash
-. ./cmd.sh
-. ./path.sh
 
 # To be run from one directory above this script.
 # Creat text, utt2spk, spk2utt, images.scp, and feats.scp for test and train.
 
-database='/export/b01/babak/IFN-ENIT/ifnenit_v2.0p1e/data'
+database_dir= # directory of the dataset
+train_sets= # sets for training
+test_sets=  # sets for testing
+
+. ./cmd.sh
+. ./path.sh
+. ./utils/parse_options.sh
 
 mkdir -p data
 for set in 'train' 'test'
@@ -28,7 +32,7 @@ do
   cat tmp.sorted | cut -d' ' -f2- | python3 local/remove_diacritics.py | python3 local/replace_arabic_punctuation.py | tr '+' '\\' | tr '=' '\\' | sed 's/\xA0/X/g' | sed 's/\x00\xA0/X/g' | sed 's/\xC2\xA0/X/g' | sed 's/\s\+/ /g' | sed 's/ \+$//' | sed 's/^ \+$//' | paste -d' ' data/$set/uttids - > data/$set/text
   rm tmp.unsorted tmp.sorted
 
-  local/process_data.py $database data/$set --dataset $set --model_type word || exit 1
+  local/process_data.py $database_dir data/$set --dataset $set --train_sets "$train_sets" --test_sets "$test_sets" || exit 1
   sort data/$set/images.scp -o data/$set/images.scp
   sort data/$set/utt2spk -o data/$set/utt2spk
 
@@ -36,7 +40,7 @@ do
 
   mkdir -p data/{train,test}/data
 
-  local/make_feature_vect.py data/$set --scale-size 40 | \
+  local/make_features.py data/$set --feat-dim 40 | \
     copy-feats --compress=true --compression-method=7 \
     ark:- ark,scp:data/$set/data/images.ark,data/$set/feats.scp || exit 1
 

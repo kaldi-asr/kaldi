@@ -2,19 +2,27 @@
 
 stage=0
 nj=8
-data_dir=data
-exp_dir=exp
+. ./path.sh
+
+# ienit_database points to the database path on the JHU grid.
+# you can change this to your local directory of the dataset
+ienit_database="/export/b01/babak/IFN-ENIT/ifnenit_v2.0p1e/data"
+train_sets="set_a set_b set_c"
+test_sets="set_d"
+
 . ./path.sh
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
 
-
 if [ $stage -le 0 ]; then
   # data preparation
   echo "data preparation"
-  local/ienit_initialize.sh
-  local/prepare_data.sh
+  local/ienit_initialize.sh --database_dir $ienit_database \
+     --train_sets "$train_sets" --test_sets "$test_sets"
+
+  local/prepare_data.sh --database_dir $ienit_database \
+    --train_sets "$train_sets" --test_sets "$test_sets"
 fi
 
 if [ $stage -le 1 ]; then
@@ -28,118 +36,103 @@ if [ $stage -le 2 ]; then
   # LM preparation
   echo "LM preparation"
   cat data/train/text | cut -d' ' -f2- | utils/make_unigram_grammar.pl | \
-    fstcompile --isymbols=$data_dir/lang/words.txt --osymbols=$data_dir/lang/words.txt > $data_dir/lang/G.fst
+    fstcompile --isymbols=data/lang/words.txt --osymbols=data/lang/words.txt > data/lang/G.fst
 fi
 
 if [ $stage -le 3 ]; then
   steps/train_mono.sh --nj $nj \
-    $data_dir/train \
-    $data_dir/lang \
-    $exp_dir/mono
+    data/train \
+    data/lang \
+    exp/mono
 fi
 
 if [ $stage -le 4 ]; then
-  utils/mkgraph.sh --mono $data_dir/lang \
-    $exp_dir/mono \
-    $exp_dir/mono/graph
+  utils/mkgraph.sh --mono data/lang \
+    exp/mono \
+    exp/mono/graph
   steps/decode.sh --nj $nj --cmd $cmd \
-    $exp_dir/mono/graph \
-    $data_dir/test \
-    $exp_dir/mono/decode_test
+    exp/mono/graph \
+    data/test \
+    exp/mono/decode_test
 fi
 
 if [ $stage -le 5 ]; then
   steps/align_si.sh --nj $nj \
-    $data_dir/train $data_dir/lang \
-    $exp_dir/mono \
-    $exp_dir/mono_ali
+    data/train data/lang \
+    exp/mono \
+    exp/mono_ali
   steps/train_deltas.sh \
-    500 20000 $data_dir/train $data_dir/lang \
-    $exp_dir/mono_ali \
-    $exp_dir/tri
+    500 20000 data/train data/lang \
+    exp/mono_ali \
+    exp/tri
 fi
 
 if [ $stage -le 6 ]; then
-  utils/mkgraph.sh $data_dir/lang \
-    $exp_dir/tri \
-    $exp_dir/tri/graph
+  utils/mkgraph.sh data/lang \
+    exp/tri \
+    exp/tri/graph
   steps/decode.sh --nj $nj --cmd $cmd \
-    $exp_dir/tri/graph \
-    $data_dir/test \
-    $exp_dir/tri/decode_test
+    exp/tri/graph \
+    data/test \
+    exp/tri/decode_test
 fi
 
 if [ $stage -le 7 ]; then
   steps/align_si.sh --nj $nj --cmd $cmd \
-    $data_dir/train $data_dir/lang \
-    $exp_dir/mono \
-    $exp_dir/mono_ali
+    data/train data/lang \
+    exp/mono \
+    exp/mono_ali
   steps/train_lda_mllt.sh --cmd $cmd \
     --splice-opts "--left-context=3 --right-context=3" \
     500 20000 \
-    $data_dir/train $data_dir/lang \
-    $exp_dir/mono_ali $exp_dir/tri2
+    data/train data/lang \
+    exp/mono_ali exp/tri2
 fi
 
 if [ $stage -le 8 ]; then
-  utils/mkgraph.sh $data_dir/lang \
-    $exp_dir/tri2 \
-    $exp_dir/tri2/graph
+  utils/mkgraph.sh data/lang \
+    exp/tri2 \
+    exp/tri2/graph
   steps/decode.sh --nj $nj --cmd $cmd \
-    $exp_dir/tri2/graph \
-    $data_dir/test \
-    $exp_dir/tri2/decode_test
+    exp/tri2/graph \
+    data/test \
+    exp/tri2/decode_test
 fi
 
 if [ $stage -le 9 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd \
     --use-graphs true \
-    $data_dir/train $data_dir/lang \
-    $exp_dir/tri2 \
-    $exp_dir/tri2_ali
+    data/train data/lang \
+    exp/tri2 \
+    exp/tri2_ali
   steps/train_sat.sh --cmd $cmd \
     500 20000 \
-    $data_dir/train $data_dir/lang \
-    $exp_dir/tri2_ali $exp_dir/tri3
+    data/train data/lang \
+    exp/tri2_ali exp/tri3
 fi
 
 if [ $stage -le 10 ]; then
-  utils/mkgraph.sh $data_dir/lang \
-    $exp_dir/tri3 \
-    $exp_dir/tri3/graph
+  utils/mkgraph.sh data/lang \
+    exp/tri3 \
+    exp/tri3/graph
   steps/decode_fmllr.sh --nj $nj --cmd $cmd \
-    $exp_dir/tri3/graph \
-    $data_dir/test \
-    $exp_dir/tri3/decode_test
+    exp/tri3/graph \
+    data/test \
+    exp/tri3/decode_test
 fi
 
 if [ $stage -le 11 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd \
     --use-graphs true \
-    $data_dir/train $data_dir/lang \
-    $exp_dir/tri3 \
-    $exp_dir/tri3_ali
+    data/train data/lang \
+    exp/tri3 \
+    exp/tri3_ali
 fi
 
-affix=1a
-affix_chain=1b_chainali
-nnet3_affix=fsf4
-
 if [ $stage -le 12 ]; then
-  local/chain/run_cnn_1a.sh --stage 0 \
-   --gmm tri3 \
-   --ali tri3_ali \
-   --nnet3_affix $nnet3_affix \
-   --affix $affix \
-   --lang_test lang
+  local/chain/run_cnn_1a.sh 
 fi
 
 if [ $stage -le 13 ]; then
-  local/chain/run_cnn_chainali_1b.sh --stage 0 \
-   --gmm tri3 \
-   --ali tri3_ali \
-   --nnet3_affix $nnet3_affix \
-   --affix $affix_chain \
-   --chain_model_dir $exp_dir/chain${nnet3_affix}/cnn${affix} \
-   --lang_test lang
+  local/chain/run_cnn_chainali_1b.sh --stage 2
 fi

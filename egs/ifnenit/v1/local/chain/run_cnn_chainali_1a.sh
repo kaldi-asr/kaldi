@@ -15,9 +15,10 @@ train_set=train
 gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
                 # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=1a_chainali  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix_ali=_1a   # affix for the chain model using for alignment.
+affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 ali=tri3_ali
-chain_model_dir=exp/chain${nnet3_affix}/cnn${affix}
+chain_model_dir=exp/chain${nnet3_affix}/cnn${affix_ali}
 common_egs_dir=
 reporting_email=
 
@@ -27,7 +28,7 @@ xent_regularize=0.1
 frame_subsampling_factor=4
 alignment_subsampling_factor=1
 # training chunk-options
-chunk_width=340,300,200,100
+chunk_width="-1"
 num_leaves=500
 # we don't need extra left/right context for TDNN systems.
 chunk_left_context=0
@@ -36,7 +37,7 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=false
-lang_test=lang_test
+lang_test=lang
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -54,14 +55,14 @@ where "nvcc" is installed.
 EOF
 fi
 
-gmm_dir=exp5/${gmm}
-ali_dir=exp5/${ali}
-lat_dir=exp5/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain
-gmm_lat_dir=exp5/chain${nnet3_affix}/${gmm}_${train_set}_lats
-dir=exp5/chain${nnet3_affix}/cnn${affix}
+gmm_dir=exp/${gmm}
+ali_dir=exp/${ali}
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain
+gmm_lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
+dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
 train_data_dir=data/${train_set}
 lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
-tree_dir=exp5/chain${nnet3_affix}/tree_chain
+tree_dir=exp/chain${nnet3_affix}/tree_chain
 
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
@@ -100,7 +101,7 @@ fi
 if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/nnet3/align_lats.sh --nj $nj --cmd "$train_cmd" ${lores_train_data_dir} \
+  steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" ${lores_train_data_dir} \
     data/$lang_test $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
@@ -117,7 +118,7 @@ if [ $stage -le 3 ]; then
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
     --context-opts "--context-width=2 --central-position=1" \
-    --cmd "$train_cmd" $num_leaves ${lores_train_data_dir} \
+    --cmd "$cmd" $num_leaves ${lores_train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
 
@@ -167,11 +168,11 @@ fi
 if [ $stage -le 5 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/iam-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ifnenit-$(date +'%m_%d_%H_%M')/v1/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage=$train_stage \
-    --cmd="$decode_cmd" \
+    --cmd="$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
@@ -189,7 +190,7 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=64,32 \
+    --trainer.num-chunk-per-minibatch="100=128,64/300=64,32/500=32" \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
@@ -221,13 +222,12 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --extra-left-context $chunk_left_context \
     --extra-right-context $chunk_right_context \
     --extra-left-context-initial 0 \
     --extra-right-context-final 0 \
-    --frames-per-chunk $frames_per_chunk \
-    --nj $nj --cmd "$decode_cmd" \
+    --frames-per-chunk 300 \
+    --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
 fi

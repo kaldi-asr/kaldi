@@ -14,9 +14,10 @@ train_set=train
 gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
                 # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
+affix_ali=_1a   # affix for the chain model using for alignment.
 affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 ali=tri3_ali
-chain_model_dir=exp/chain${nnet3_affix}/cnn${affix}
+chain_model_dir=exp/chain${nnet3_affix}/cnn${affix_ali}
 common_egs_dir=
 reporting_email=
 
@@ -35,7 +36,7 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=false
-lang_test=lang_test
+lang_test=lang
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -165,7 +166,7 @@ fi
 if [ $stage -le 5 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/iam-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/ifnenit-$(date +'%m_%d_%H_%M')/v1/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage=$train_stage \
@@ -219,7 +220,6 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --extra-left-context $chunk_left_context \
     --extra-right-context $chunk_right_context \
