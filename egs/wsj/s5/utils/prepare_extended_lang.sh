@@ -18,11 +18,12 @@
 # derived files, that go in data/lang/.
 
 # Begin configuration section.
-boost_extra_words=1.0 # Factor by which to boost the probability of extra words in the language model.
-# By default it's 1.0, meaning they just share the the same weight of <unk> in the original G.fst.
+oov_unigram_prob=0.0001 # Unigram LM probability we'll assign to each word outside the original vocab.
 srilm_opts="-subset -prune-lowprobs -unk"
 prep_lang_opts=
 lm=
+to_carpa=false # convert the language model to const arpa format rather than FST 
+stage=0
 # end configuration sections
 
 echo "$0 $@"  # Print the command line for logging
@@ -35,14 +36,15 @@ if [ $# -ne 7 ]; then
   echo "The goal is to extend the lexicon from <dict-src-dir> with extra lexical entries from <extra-lexicon>, putting the extended lexicon into <extended-dict-dir>,"
   echo "and then build a valid lang dir <extended-lang-dir>."
   echo "<dict-src-dir> must be a valid dictionary dir and <oov-dict-entry> is the oov word (see utils/prepare_lang.sh for details)."
-  echo "If a language model is provided, we'll also extend the language model and re-build G.fst, by inserting extra words as extra unigrams,"
+  echo "If a language model is provided, we'll also extend the language model and re-build G.fst (or G.carpa), by inserting extra words as extra unigrams,"
   echo "with probalities as the same as the unigram prob. (optionally boosted) of <oov-dict-entry> from the original LM."
   echo "A phone symbol table from a previsouly built lang dir is required, for validating provided lexical entries."
   echo "options: "
-  echo "     --boost-extra-words (float)                     # default: 1.0, factor by which to boost the probability of extra words in the language model."
+  echo "     --oov-unigram-prob (float)                      # a fixed float value we'll assign to words out of the old vocab, as unigram probs in the language model."
   echo "     --srilm-opts STRING                             # options to pass to SRILM tools (default: '$srilm_opts')"
   echo "     --prep-lang-opts STRING                         # options to pass to utils/prepare_lang.sh"
   echo "     --lm                                            # an ARPA-format language model which we want to insert extra words into, and compile as G.fst. "
+  echo "     --to-carpa (true|false)                         # convert the ARPA language model to const arpa format rather than FST. (default: false)."
   exit 1;
 fi
 
@@ -50,8 +52,8 @@ srcdict=$1
 oov_word=$2
 extra_lexicon=$3
 phone_symbol_table=$4
-tmpdir=$5
-extdict=$6 # extended dict dir
+extdict=$5 # extended dict dir
+tmpdir=$6
 extlang=$7 # extended lang dir
 
 mkdir -p $extlang $tmpdir 
@@ -92,78 +94,89 @@ BEGIN { while ((getline < f) > 0) { sub(/_[BEIS]$/, "", $1); phones[$1] = 1; }}
 { for (x = 2; x <= NF; ++x) { if (!($x in phones)) {
     print "The extra lexicon contains a phone not in the phone symbol table: "$x; exit 1; }}}' || exit 1;
 
-# Genearte the extended dict dir
-echo "$(basename $0): Creating the extended lexicon $extdict/lexicon.txt"
-cp -R $srcdict $extdict 2>/dev/null
-
-# Reformat the source lexicon
-perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' <$srcdict/lexiconp.txt | awk '{ gsub(/\t/, " "); print }'  > $tmpdir/lexicon.txt || exit 1;
-
-# Filter lexical entries which are already in the source lexicon
-awk '{ gsub(/\t/, " "); print }' $extra_lexicon | sort -u | \
-  awk 'NR==FNR{a[$0]=1;next} {if (!($0 in a)) print $0 }' $tmpdir/lexicon.txt - \
-  > $extdict/lexicon_extra.txt || exit 1;
-
-echo "$(basename $0): Creating $extdict/lexiconp.txt from $srcdict/lexiconp.txt and $extdict/lexicon_extra.txt"
-perl -ape 's/(\S+\s+)(.+)/${1}1.0\t$2/;' < $extdict/lexicon_extra.txt | \
-  cat $srcdict/lexiconp.txt - | sort -u > $extdict/lexiconp.txt || exit 1;
-
-perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' <$extdict/lexiconp.txt  >$extdict/lexicon.txt || exit 1;
-
-# Create lexicon_silprobs.txt
-silprob=false
-[ -f $srcdict/lexiconp_silprob.txt ] && silprob=true
-if "$silprob"; then
-  echo "$(basename $0): Creating $extdict/lexiconp_silprob.txt from $srcdict/lexicon_silprob.txt"
-  # Here we assume no acoustic evidence for the extra word-pron pairs.
-  # So we assign silprob1 = overall_silprob, silprob2 = silprob3 = 1.00
-  overall_silprob=`awk '{if ($1=="overall") print $2}' $srcdict/silprob.txt`
-  awk -v overall=$overall_silprob '{
-    printf("%s %d %.1f %.2f %.2f",$1, 1, overall, 1.00, 1.00); 
-    for(n=2;n<=NF;n++) printf " "$n; printf("\n");
-    }' $extdict/lexicon_extra.txt | cat $srcdict/lexiconp_silprob.txt - | \
-    sort -k1,1 -k2g,2 -k6 \
-    > $extdict/lexiconp_silprob.txt || exit 1;
+if [ $stage -le 0 ]; then
+  # Genearte the extended dict dir
+  echo "$(basename $0): Creating the extended lexicon $extdict/lexicon.txt"
+  [ -d $extdict ] && rm -r $extdict 2>/dev/null
+  cp -R $srcdict $extdict 2>/dev/null
+  
+  # Reformat the source lexicon
+  perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' <$srcdict/lexiconp.txt | awk '{ gsub(/\t/, " "); print }'  > $tmpdir/lexicon.txt || exit 1;
+  
+  # Filter lexical entries which are already in the source lexicon
+  awk '{ gsub(/\t/, " "); print }' $extra_lexicon | sort -u | \
+    awk 'NR==FNR{a[$0]=1;next} {if (!($0 in a)) print $0 }' $tmpdir/lexicon.txt - \
+    > $extdict/lexicon_extra.txt || exit 1;
+  
+  echo "$(basename $0): Creating $extdict/lexiconp.txt from $srcdict/lexiconp.txt and $extdict/lexicon_extra.txt"
+  perl -ape 's/(\S+\s+)(.+)/${1}1\t$2/;' < $extdict/lexicon_extra.txt | \
+    cat $srcdict/lexiconp.txt - | sort -u > $extdict/lexiconp.txt || exit 1;
+  
+  perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' <$extdict/lexiconp.txt  >$extdict/lexicon.txt || exit 1;
+  
+  # Create lexicon_silprobs.txt
+  silprob=false
+  [ -f $srcdict/lexiconp_silprob.txt ] && silprob=true
+  if "$silprob"; then
+    echo "$(basename $0): Creating $extdict/lexiconp_silprob.txt from $srcdict/lexicon_silprob.txt"
+    # Here we assume no acoustic evidence for the extra word-pron pairs.
+    # So we assign silprob1 = overall_silprob, silprob2 = silprob3 = 1.00
+    overall_silprob=`awk '{if ($1=="overall") print $2}' $srcdict/silprob.txt`
+    awk -v overall=$overall_silprob '{
+      printf("%s %d %.1f %.2f %.2f",$1, 1, overall, 1.00, 1.00); 
+      for(n=2;n<=NF;n++) printf " "$n; printf("\n");
+      }' $extdict/lexicon_extra.txt | cat $srcdict/lexiconp_silprob.txt - | \
+      sort -k1,1 -k2g,2 -k6 \
+      > $extdict/lexiconp_silprob.txt || exit 1;
+  fi
+  
+  if ! utils/validate_dict_dir.pl $extdict >&/dev/null; then
+    utils/validate_dict_dir.pl $extdict  # show the output.
+    echo "$(basename $0): Validation failed on the extended dict"
+    exit 1;
+  fi
 fi
 
-if ! utils/validate_dict_dir.pl $extdict >&/dev/null; then
-  utils/validate_dict_dir.pl $extdict  # show the output.
-  echo "$(basename $0): Validation failed on the extended dict"
-  exit 1;
+if [ $stage -le 1 ]; then
+  echo "$(basename $0): Preparing the extended lang dir."
+  [ -d $extlang ] && rm -r $extlang 2>/dev/null
+  utils/prepare_lang.sh $prep_lang_opts $extdict \
+    $oov_word $tmpdir $extlang || exit 1;
 fi
 
-echo "$(basename $0): Preparing the extended lang dir."
-utils/prepare_lang.sh $prep_lang_opts $extdict \
-  $oov_word $tmpdir $extlang || exit 1;
+if [ $stage -le 2 ]; then
+  [ -z "$lm" ] && echo "$(basename $0): Not extending the language model since it's not provided." && exit 0;
+  awk '{print $1}' $extlang/words.txt > $tmpdir/voc || exit 1;
+  
+  echo "$(basename $0): Inserting extra unigrams into '$lm'."
+  gunzip -c $lm | \
+    awk -v s=$extdict/lexicon_extra.txt -v oov=$oov_word -v boost=$oov_unigram_prob -v prob=$oov_prob \
+    'BEGIN{ while((getline < s) > 0) { dict[$1] = 1; a += 1; } unigram = 1; } 
+    { if ($1 == "ngram") { split($2, y, "="); if (y[1] == 1) $2 = y[1]"="y[2]+a; } print $0;
+      if (unigram == 1 && $2 == oov) {
+        prob = log(oov_unigram_prob); 
+        for (x in dict) { $1 = prob; $2 = x; print $0; }
+      } 
+      if ($1 == "\\2-grams:") unigram = 0;
+    }' | change-lm-vocab -vocab $tmpdir/voc -lm - -write-lm - $srilm_opts | gzip -c > $tmpdir/lm_tmp.gz
 
-[ -z "$lm" ] && echo "$(basename $0): Not extending the language model since it's not provided." && exit 0;
-
-# Check the OOV entry in the language model and get it's unigram prob.
-oov_prob=`gunzip -c $lm | awk -v oov=$oov_word '{ if ($2 == oov) print exp($1);  if ($1 == "\\\2-grams:") exit 0;}'`
-[ -z "$oov_prob" ] && echo "$(basename $0): Cannot find the unigram prob of the oov word $oov_word from the provided LM." \
-  && "Probably the wrong oov-dict-entry was provided" && exit 1;
-
-echo "$(basename $0): The the unigram prob. of the oov word $oov_word found in the provided LM is $oov_prob."
-echo "  It'll be boosted by $boost_extra_words to get the unigram prob. of each extra word added."
-
-# Get the list of words to insert into the LM, excluding those who are within the vocab of the LM.
-gunzip -c $lm | awk 'BEGIN { a = 0; } {if (a == 1 && NF > 1) print $2; if ($1 == "\\1-grams:") a = 1; if ($1 == "\\2-grams:") exit 0;}' | \
-  awk 'NR==FNR{a[$0]=1;next} {if (!($1 in a)) print $0 }' - $extdict/lexicon_extra.txt | sort -u > $tmpdir/extra_words || exit 1;
-
-awk '{print $1}' $extlang/words.txt > $tmpdir/voc || exit 1;
-
-echo "$(basename $0): Inserting extra unigrams into '$lm' and convert it to FST"
-gunzip -c $lm | \
-  awk -v s=$tmpdir/extra_words -v oov=$oov_word -v boost=$boost_extra_words -v prob=$oov_prob \
-  'BEGIN{ while((getline < s) > 0) { dict[$1] = 1; a += 1; } unigram = 1; } 
-  { if ($1 == "ngram") { split($2, y, "="); if (y[1] == 1) $2 = y[1]"="y[2]+a; } print $0;
-    if (unigram == 1 && $2 == oov) {
-      prob = log(prob*boost); 
-      for (x in dict) { $1 = prob; $2 = x; print $0; }
-    } 
-    if ($1 == "\\2-grams:") unigram = 0;
-  }' | change-lm-vocab -vocab $tmpdir/voc -lm - -write-lm - $srilm_opts | \
-  arpa2fst --disambig-symbol=#0 \
-    --read-symbol-table=$extlang/words.txt - $extlang/G.fst || exit 1
+  if $to_carpa; then
+    echo "$(basename $0): Convert the LM to FST."
+    unk=`cat $extlang/oov.int`
+    bos=`grep -w "<s>" $extlang/words.txt | awk '{print $2}'`
+    eos=`grep "</s>" $extlang/words.txt | awk '{print $2}'`
+    if [[ -z $bos || -z $eos ]]; then
+      echo "$0: <s> and </s> symbols are not in $extlang/words.txt"
+      exit 1
+    fi
+    arpa-to-const-arpa --bos-symbol=$bos \
+      --eos-symbol=$eos --unk-symbol=$unk \
+      "gunzip -c $tmpdir/lm_tmp.gz | utils/map_arpa_lm.pl $extlang/words.txt|"  $extlang/G.carpa  || exit 1;
+   else
+     echo "$(basename $0): Convert the LM to const arpa format."
+     gunzip -c $tmpdir/lm_tmp.gz | arpa2fst --disambig-symbol=#0 \
+       --read-symbol-table=$extlang/words.txt - $extlang/G.fst || exit 1
+   fi
+fi
 
 exit 0;
