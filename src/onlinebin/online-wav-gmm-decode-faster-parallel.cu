@@ -11,6 +11,12 @@
 #include "online/onlinebin-util.h"
 #include "online/online-faster-decoder.h"
 
+template<class T>
+void malmem(T* dest, T* src){
+  cudaMalloc((void **) &dest, sizeof(T));
+  cudaMemcpy(dest, src, sizeof(T), cudaMemcpyHostToDevice);
+}
+
 int main(int argc, char *argv[]){
 
   try{
@@ -42,18 +48,28 @@ int main(int argc, char *argv[]){
 
     ParseOptions po(usage);
     ParseOptions *po_d;
-
-    //cudaMalloc((void **)&po_d, sizeof(ParseOptions));
-    //cudaMemcpy(po_d, &po, sizeof(ParseOptions), cudaMemcpyHostToDevice);
+    malmem<ParseOptions>(po_d, &po);
 
     BaseFloat acoustic_scale = 0.1;
     BaseFloat *acoustic_scale_d;
 
+    malmem<BaseFloat>(acoustic_scale_d, &acoustic_scale);
+
     int32 cmn_window = 600,
       min_cmn_window = 100; // adds 1 second latency, only at utterance start.
-
     int32 channel = -1;
     int32 right_context = 4, left_context = 4;
+
+    int32 *cmn_window_d, 
+      *min_cmn_window_d;
+    int32 *channel_d;
+    int32 *right_context_d, *left_context_d; 
+
+    malmem<int32>(cmn_window_d, &cmn_window);
+    malmem<int32>(min_cmn_window_d, &min_cmn_window);
+    malmem<int32>(channel_d, &channel);
+    malmem<int32>(right_context_d, &right_context);
+    malmem<int32>(left_context_d, &left_context);
 
     OnlineFasterDecoderOpts decoder_opts; // needed in the GPU
     decoder_opts.Register(&po, true);
@@ -227,6 +243,8 @@ int main(int argc, char *argv[]){
     }
     delete word_syms;
     delete decode_fst;
+    cudaFree(acoustic_scale_d);  
+    cudaFree(po_d);
     return 0;
   }
   catch(const std::exception& e) {
