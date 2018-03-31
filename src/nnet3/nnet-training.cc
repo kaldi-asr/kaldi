@@ -34,7 +34,8 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(config.momentum >= 0.0 &&
-               config.max_param_change >= 0.0);
+               config.max_param_change >= 0.0 &&
+               config.backstitch_training_interval > 0);
   delta_nnet_ = nnet_->Copy();
   ScaleNnet(0.0, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
@@ -61,7 +62,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   GetComputationRequest(*nnet_, eg, need_model_derivative,
                         config_.store_component_stats,
                         &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   if (config_.backstitch_training_scale > 0.0 &&
       num_minibatches_processed_ % config_.backstitch_training_interval ==
@@ -87,8 +88,11 @@ void NnetTrainer::Train(const NnetExample &eg) {
 
 void NnetTrainer::TrainInternal(const NnetExample &eg,
                                 const NnetComputation &computation) {
+  // note: because we give the 1st arg (nnet_) as a pointer to the
+  // constructor of 'computer', it will use that copy of the nnet to
+  // store stats.
   NnetComputer computer(config_.compute_config, computation,
-                        *nnet_, delta_nnet_);
+                        nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
@@ -111,6 +115,10 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
   // happens when we use the model with batchnorm test-mode set).
   ScaleBatchnormStats(config_.batchnorm_stats_scale, nnet_);
 
+  // The following will only do something if we have a LinearComponent
+  // or AffineComponent with orthonormal-constraint set to a nonzero value.
+  ConstrainOrthonormal(nnet_);
+
   // Scale deta_nnet
   if (success)
     ScaleNnet(config_.momentum, delta_nnet_);
@@ -121,8 +129,11 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
 void NnetTrainer::TrainInternalBackstitch(const NnetExample &eg,
                                           const NnetComputation &computation,
                                           bool is_backstitch_step1) {
+  // note: because we give the 1st arg (nnet_) as a pointer to the
+  // constructor of 'computer', it will use that copy of the nnet to
+  // store stats.
   NnetComputer computer(config_.compute_config, computation,
-                        *nnet_, delta_nnet_);
+                        nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
@@ -157,6 +168,21 @@ void NnetTrainer::TrainInternalBackstitch(const NnetExample &eg,
   UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       max_change_scale, scale_adding, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+
+  if (is_backstitch_step1) {
+    // The following will only do something if we have a LinearComponent or
+    // AffineComponent with orthonormal-constraint set to a nonzero value. We
+    // choose to do this only on the 1st backstitch step, for efficiency.
+    ConstrainOrthonormal(nnet_);
+  }
+
+  if (!is_backstitch_step1) {
+    // Scale down the batchnorm stats (keeps them fresh... this affects what
+    // happens when we use the model with batchnorm test-mode set).  Do this
+    // after backstitch step 2 so that the stats are scaled down before we start
+    // the next minibatch.
+    ScaleBatchnormStats(config_.batchnorm_stats_scale, nnet_);
+  }
 
   ScaleNnet(0.0, delta_nnet_);
 }

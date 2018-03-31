@@ -282,6 +282,10 @@ void NnetComputation::Command::Read(std::istream &is, bool binary) {
       command_type = kAddToRowsMulti;
     } else if (command_type_str == "kAddRowRanges") {
       command_type = kAddRowRanges;
+    } else if (command_type_str == "kCompressMatrix") {
+      command_type = kCompressMatrix;
+    } else if (command_type_str == "kDecompressMatrix") {
+      command_type = kDecompressMatrix;
     } else if (command_type_str == "kAcceptInput") {
       command_type = kAcceptInput;
     } else if (command_type_str == "kProvideOutput") {
@@ -374,6 +378,12 @@ void NnetComputation::Command::Write(std::ostream &os, bool binary) const {
         break;
       case kAddRowRanges:
         os << "kAddRowRanges\n";
+        break;
+      case kCompressMatrix:
+        os << "kCompressMatrix\n";
+        break;
+      case kDecompressMatrix:
+        os << "kDecompressMatrix\n";
         break;
       case kAcceptInput:
         os << "kAcceptInput\n";
@@ -500,13 +510,17 @@ static void GetIndexesMultiStrings(
 
 
 // writes to "os" the statement for this command.
-static void PrintCommand(std::ostream &os,
+static void PrintCommand(std::ostream &os_out,
                          const Nnet &nnet,
                          const NnetComputation &computation,
                          int32 command_index,
                          const std::vector<std::string> &submatrix_strings,
                          const std::vector<std::string> &indexes_strings,
                          const std::vector<std::string> &indexes_multi_strings) {
+  // If the string is longer than 'max_string_length' characters, it will
+  // be summarized with '...' in the middle.
+  size_t max_string_length = 200;
+  std::ostringstream os;
   KALDI_ASSERT(command_index < computation.commands.size());
   os << "c" << command_index << ": ";
   const NnetComputation::Command &c = computation.commands[command_index];
@@ -611,6 +625,25 @@ static void PrintCommand(std::ostream &os,
       os << "])\n";
       break;
     }
+    case kCompressMatrix: {
+      BaseFloat range = c.alpha;
+      std::string truncate = (c.arg3 != 0 ? "true" : "false");
+      std::string compressed_matrix_type;
+      if (c.arg2 == kCompressedMatrixInt8) { compressed_matrix_type = "int8"; }
+      else if (c.arg2 == kCompressedMatrixUint8) { compressed_matrix_type = "uint8"; }
+      else if (c.arg2 == kCompressedMatrixInt16) { compressed_matrix_type = "int16"; }
+      else {
+        KALDI_ASSERT(c.arg2 == kCompressedMatrixInt16);
+        compressed_matrix_type = "uint16";
+      }
+      os << "CompressMatrix(" << submatrix_strings[c.arg1] << ", "
+         << range << ", " << compressed_matrix_type << ", "
+         << truncate << ")\n";
+      break;
+    }
+    case kDecompressMatrix:
+      os << "DecompressMatrix(" << submatrix_strings[c.arg1] << ")\n";
+      break;
     case kAcceptInput:
       os << submatrix_strings[c.arg1] << " = user input [for node: '"
          << nnet.GetNodeName(c.arg2) << "']\n";
@@ -636,6 +669,14 @@ static void PrintCommand(std::ostream &os,
       break;
     default:
       KALDI_ERR << "Un-handled command type.";
+  }
+  std::string str = os.str();
+  if (str.size() <= max_string_length) {
+    os_out << str;
+  } else {
+    size_t len = str.size();
+    os_out << str.substr(0, max_string_length / 2) << " ... "
+           << str.substr(len - max_string_length / 2);
   }
 }
 
@@ -689,7 +730,7 @@ void NnetComputation::Print(std::ostream &os, const Nnet &nnet) const {
 }
 
 void NnetComputation::Read(std::istream &is, bool binary) {
-  int32 version = 4,  // must be in sync with 'version' in Write.
+  int32 version = 5,  // must be in sync with 'version' in Write.
       version_in = 1;  // defaults to 1 if no version specified.
 
   ExpectToken(is, binary, "<NnetComputation>");
@@ -823,7 +864,7 @@ void NnetComputation::Read(std::istream &is, bool binary) {
 }
 
 void NnetComputation::Write(std::ostream &os, bool binary) const {
-  int32 version = 4;  // Must be in sync with version in Read.
+  int32 version = 5;  // Must be in sync with version in Read.
   WriteToken(os, binary, "<NnetComputation>");
   WriteToken(os, binary, "<Version>");
   WriteBasicType(os, binary, version);
@@ -1158,6 +1199,23 @@ size_t IoSpecificationHasher::operator () (
       (io_spec.has_deriv ? 4261 : 0);
 }
 
+// ComputationRequests are distinguished by the names and indexes
+// of inputs and outputs
+size_t ComputationRequestHasher::operator() (
+    const ComputationRequest *cr) const noexcept {
+  size_t ans = 0;
+  size_t p1 = 4111, p2 = 26951;
+  IoSpecificationHasher io_hasher;
+  std::vector<IoSpecification>::const_iterator itr = cr->inputs.begin(),
+                                               end = cr->inputs.end();
+  for (; itr != end; ++itr)
+    ans = ans * p1 + io_hasher(*itr);
+  itr = cr->outputs.begin();
+  end = cr->outputs.end();
+  for (; itr != end; ++itr)
+    ans = ans * p2 + io_hasher(*itr);
+  return ans;
+}
 
 
 

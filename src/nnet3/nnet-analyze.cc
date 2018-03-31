@@ -238,6 +238,23 @@ std::string ComputationVariables::DescribeVariable(int32 variable) const {
   return os.str();
 }
 
+NnetComputation::SubMatrixInfo ComputationVariables::VariableInfo(
+    int32 variable) const {
+  KALDI_ASSERT(variable >= 0 && variable < num_variables_);
+  int32 matrix_index = variable_to_matrix_[variable],
+      offset = variable - matrix_to_variable_index_[matrix_index],
+      num_column_variables = column_split_points_[matrix_index].size() - 1,
+      column_variable = offset % num_column_variables,
+      row_variable = offset / num_column_variables;
+  int32 row_offset = row_split_points_[matrix_index][row_variable],
+      num_rows = row_split_points_[matrix_index][row_variable+1] - row_offset,
+      col_offset = column_split_points_[matrix_index][column_variable],
+      num_cols = column_split_points_[matrix_index][column_variable+1] -
+                  col_offset;
+  return NnetComputation::SubMatrixInfo(matrix_index, row_offset, num_rows,
+                                        col_offset, num_cols);
+}
+
 
 /// given a vector of pairs from computation.indexes_multi_indexes
 /// containing paris (submatrix-index, row-index), this function outputs
@@ -365,6 +382,14 @@ void ComputeCommandAttributes(
       case kAddRowRanges: {
         vars.RecordAccessForSubmatrix(c.arg1, kReadWriteAccess, &attr);
         vars.RecordAccessForSubmatrix(c.arg2, kReadAccess, &attr);
+        break;
+      }
+      case kCompressMatrix: {
+        vars.RecordAccessForSubmatrix(c.arg1, kReadWriteAccess, &attr);
+        break;
+      }
+      case kDecompressMatrix: {
+        vars.RecordAccessForSubmatrix(c.arg1, kWriteAccess, &attr);
         break;
       }
       case kAcceptInput: {
@@ -555,6 +580,7 @@ void ComputationChecker::Check() {
   CheckComputationIndexes();
   a_.Init(nnet_, computation_);
   CheckComputationMatrixAccesses();
+  CheckComputationCompression();
   CheckComputationUndefined();
   CheckComputationDebugInfo();
   if (config_.check_rewrite)
@@ -608,16 +634,36 @@ void ComputationChecker::CheckComputationRewrite() const {
    Checks for the situation where a variable is read before being written.
 */
 void ComputationChecker::CheckComputationUndefined() const {
+  // the variable 'min_proportion' needs to be <= the min_proportion_ value in
+  // class MatrixExtender, otherwise this code could spuriously reject a
+  // computation.
+  BaseFloat min_proportion = 0.8;
+
   int32 num_variables = a_.variable_accesses.size();
   for (int32 v = 0; v < num_variables; v++) {
     const std::vector<Access> &accesses = a_.variable_accesses[v];
     if (accesses.empty()) {
       if (config_.check_unused_variables) {
+        NnetComputation::SubMatrixInfo info = a_.variables.VariableInfo(v);
+        const NnetComputation::MatrixInfo &matrix_info =
+            computation_.matrices[info.matrix_index];
+        // Before we throw an error, we want to check that it isn't a case that
+        // can be produced by the ExtendMatrices() optimization, that is
+        // actually allowed.  This is a case when a variable is inside the last
+        // few rows of a matrix, but not all columns of those last rows.
+        if (info.row_offset >= min_proportion * matrix_info.num_rows &&
+            !(info.col_offset == 0 && info.num_cols == matrix_info.num_cols)) {
+          continue;
+        }
         KALDI_ERR << "Variable " << v << " == "
                   << a_.variables.DescribeVariable(v) << " is never used.";
       }
     } else {
-      if (accesses[0].access_type != kWriteAccess)
+      // It's OK if part of a matrix is compressed, that is undefined;
+      // likely that part won't be referred to when we uncompress.
+      if (accesses[0].access_type != kWriteAccess &&
+          !(computation_.commands[accesses[0].command_index].command_type ==
+            kCompressMatrix))
         KALDI_ERR << "Variable " << v << " == "
                   << a_.variables.DescribeVariable(v)
                   << " is read before it is written to";
@@ -647,9 +693,10 @@ void ComputationChecker::CheckComputationMatrixAccesses() const {
       KALDI_ERR << "Matrix m" << matrix_index << " is accessed before "
           "it is initialized";
     }
-    if (accesses.accesses.size() == 1) {
+    if (accesses.accesses.size() == 1 && config_.check_unused_variables) {
       int32 first_access_command = accesses.accesses[0].command_index;
       if (computation_.commands[first_access_command].command_type == kSetConst) {
+        if (!config_.check_unused_variables)
         KALDI_ERR << "Matrix m" << matrix_index << " is only set to a constant "
                   << "value, but then never accessed.";
       }
@@ -674,6 +721,64 @@ void ComputationChecker::CheckComputationMatrixAccesses() const {
                accesses.deallocate_command) {
       KALDI_ERR << "Matrix m" << matrix_index << " is accessed after "
           "it is destroyed";
+    }
+  }
+}
+
+void ComputationChecker::CheckComputationCompression() const {
+  int32 num_matrices = a_.matrix_accesses.size();
+
+  // 'middle_command' will be the index of the command that separates
+  // the forward and backward passes.
+  int32 middle_command = -1;
+  for (size_t i = 0; i < computation_.commands.size(); i++) {
+    if (computation_.commands[i].command_type == kNoOperationMarker) {
+        middle_command = static_cast<int32>(i);
+        break;
+    }
+  }
+  for (int32 matrix_index = 1; matrix_index < num_matrices; matrix_index++) {
+    const MatrixAccesses &accesses = a_.matrix_accesses[matrix_index];
+    int32 num_accesses = accesses.accesses.size();
+    for (int32 a = 0; a < num_accesses; a++) {
+      const Access &access = accesses.accesses[a];
+      int32 command_index = access.command_index;
+      const NnetComputation::Command &command =
+          computation_.commands[command_index];
+      if (command.command_type == kDecompressMatrix) {
+        // check that the previous access to this matrix was a compression
+        // command.
+        KALDI_ASSERT(
+            a > 0 && computation_.commands[
+                accesses.accesses[a-1].command_index].command_type ==
+            kCompressMatrix);
+      }
+      if (command.command_type == kCompressMatrix) {
+        // check that the next access to this matrix is an uncompression
+        // command.
+        int32 next_command_index = accesses.accesses[a+1].command_index;
+        KALDI_ASSERT(computation_.commands[next_command_index].command_type ==
+                     kDecompressMatrix &&
+                     command_index < middle_command &&
+                     next_command_index > middle_command);
+        if (command.alpha == 0.0) {
+          // alpha == 0.0 means we're only retaining the sign; we should
+          // only do this if this is the output of a ReLU.
+          // make sure there are only 2 commands after this: the uncompress
+          // command, and a relu backprop command.  (Any deallocation
+          // command doesn't show up in the list of 'accesses').
+          KALDI_ASSERT(a > 0 && command.arg2 == kCompressedMatrixUint8 &&
+                       num_accesses == a + 3);
+          // make sure the next access to that matrix, apart from the
+          // uncompression command, is a ReLU propagation.
+          int32 next_command_index = accesses.accesses[a+2].command_index;
+          const NnetComputation::Command &next_command =
+              computation_.commands[next_command_index];
+          KALDI_ASSERT(next_command.command_type == kBackprop &&
+                       nnet_.GetComponent(next_command.arg1)->Type() ==
+                       "RectifiedLinearComponent");
+        }
+      }
     }
   }
 }
@@ -930,6 +1035,26 @@ void ComputationChecker::CheckComputationIndexes() const {
         }
         break;
       }
+      case kCompressMatrix: {
+        if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
+            !computation_.IsWholeMatrix(c.arg1))
+          KALDI_ERR << "submatrix index out of range or invalid";
+        if (c.arg2 < static_cast<int32>(kCompressedMatrixInt8) ||
+            c.arg2 > static_cast<int32>(kCompressedMatrixUint16))
+          KALDI_ERR << "Invalid compressed-matrix type.";
+        if (c.arg3 != 0 && c.arg3 != 1)
+          KALDI_ERR << "Invalid 'truncate' option for compressing matrix.";
+        if (c.alpha < 0.0 || c.alpha > 1000.0 ||
+            (c.alpha == 0.0 && c.arg2 != kCompressedMatrixUint8))
+          KALDI_ERR << "Invalid alpha in kCompressMatrix command.";
+        break;
+      }
+      case kDecompressMatrix: {
+        if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
+            !computation_.IsWholeMatrix(c.arg1))
+          KALDI_ERR << "submatrix index out of range or invalid";
+        break;
+      }
       case kAcceptInput: case kProvideOutput: {
         if (c.arg1 < 1 || c.arg1 >= num_submatrices ||
             !computation_.IsWholeMatrix(c.arg1))
@@ -1076,6 +1201,23 @@ int32 ComputationAnalysis::FirstNontrivialAccess(int32 s) const {
         break;  // break from access_iter loop (an optimization)
       }
     }
+  }
+  return ans;
+}
+
+
+int32 ComputationAnalysis::FirstAccess(int32 s) const {
+  KALDI_ASSERT(static_cast<size_t>(s) < computation_.submatrices.size() && s>0);
+  int32 ans = computation_.commands.size();
+  std::vector<int32> variable_indexes;
+  analyzer_.variables.AppendVariablesForSubmatrix(s, &variable_indexes);
+  std::vector<int32>::const_iterator iter = variable_indexes.begin(),
+          end = variable_indexes.end();
+  for (; iter != end; ++iter) {
+    int32 v = *iter;
+    const std::vector<Access> &accesses = analyzer_.variable_accesses[v];
+    if (!accesses.empty())
+      ans = std::min(ans, accesses[0].command_index);
   }
   return ans;
 }
@@ -1301,13 +1443,20 @@ int64 GetMaxMemoryUse(const NnetComputation &computation) {
       num_submatrices = computation.submatrices.size();
   for (int32 command_index = 0; command_index < num_commands; ++command_index) {
     const NnetComputation::Command &c = computation.commands[command_index];
-    int64 this_num_bytes = -100000000;
+    int64 this_num_bytes = -100000000,
+        this_compressed_num_bytes = -10000000;
     if (c.arg1 >= 0 && c.arg1 < num_submatrices) {
       // if arg1 could plausibly be a sub-matrix index...
       const NnetComputation::SubMatrixInfo &submat_info =
           computation.submatrices[c.arg1];
       this_num_bytes = static_cast<int64>(sizeof(BaseFloat)) *
           submat_info.num_rows * submat_info.num_cols;
+
+      this_compressed_num_bytes =
+          ((c.arg2 == static_cast<int32>(kCompressedMatrixInt8) ||
+            c.arg2 == static_cast<int32>(kCompressedMatrixUint8)) ?
+           1 : 2) * static_cast<int64>(submat_info.num_rows) *
+          submat_info.num_cols;
     }
     switch (c.command_type) {
       case kAllocMatrix:
@@ -1316,6 +1465,12 @@ int64 GetMaxMemoryUse(const NnetComputation &computation) {
         break;
       case kDeallocMatrix:
         cur_memory_use -= this_num_bytes;
+        break;
+      case kCompressMatrix:
+        cur_memory_use += this_compressed_num_bytes - this_num_bytes;
+        break;
+      case kDecompressMatrix:
+        cur_memory_use += this_num_bytes - this_compressed_num_bytes;
         break;
       default:
         break;

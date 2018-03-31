@@ -139,6 +139,15 @@ class CuMatrixBase {
                const CuMatrixBase<Real> &src,
                const CuArrayBase<MatrixIndexT> &indexes);
 
+
+  /// Does for each row r, this.Row(r) *= alpha * src.row(indexes[r]),
+  /// where '*=' is elementwise multiplication.
+  /// If indexes[r] < 0, does not add anything.
+  /// src.NumCols() must equal this.NumCols()
+  void MulRows(const CuMatrixBase<Real> &src,
+               const CuArrayBase<MatrixIndexT> &indexes);
+
+
   /// Does for each row r, this.Row(r) += alpha * src[r],
   /// treating src[r] as the beginning of a region of memory representing
   /// a vector of floats, of the same length as this.NumCols().
@@ -389,6 +398,13 @@ class CuMatrixBase {
   void ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);
   void ApplyExp();
+
+
+  /// This is equivalent to running:
+  /// ApplyFloor(lower_limit);
+  /// ApplyCeiling(upper_limit);
+  /// ApplyExp()
+  void ApplyExpLimited(Real lower_limit, Real upper_limit);
 
   /// For each element x of the matrix, set it to
   /// (x < 0 ? exp(x) : x + 1).  This function is used

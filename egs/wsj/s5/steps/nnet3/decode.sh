@@ -37,7 +37,7 @@ minimize=false
 echo "$0 $@"  # Print the command line for logging
 
 [ -f ./path.sh ] && . ./path.sh; # source the path.
-. parse_options.sh || exit 1;
+. utils/parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
   echo "Usage: $0 [options] <graph-dir> <data-dir> <decode-dir>"
@@ -69,6 +69,8 @@ if [ ! -z "$online_ivector_dir" ]; then
   steps/nnet2/check_ivectors_compatible.sh $srcdir $online_ivector_dir || exit 1
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 fi
+
+utils/lang/check_phones_compatible.sh {$srcdir,$graphdir}/phones.txt || exit 1
 
 for f in $graphdir/HCLG.fst $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;

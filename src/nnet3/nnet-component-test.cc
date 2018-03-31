@@ -41,7 +41,7 @@ bool CheckStringsApproxEqual(const std::string &a,
                              int32 tolerance = 3) {
   if (!StringsApproxEqual(a, b, tolerance)) {
     KALDI_WARN << "Strings differ: " << a
-               << "\vs.\n" << b;
+               << "\nvs.\n" << b;
     return false;
   } else {
     return true;

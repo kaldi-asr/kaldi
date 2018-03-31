@@ -21,7 +21,6 @@
 #define KALDI_NNET3_NATURAL_GRADIENT_ONLINE_H_
 
 #include <iostream>
-#include <mutex>
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"
@@ -437,16 +436,31 @@ class OnlineNaturalGradient {
   // see comment where 'frozen_' is declared.
   inline void Freeze(bool frozen) { frozen_ = frozen; }
 
-  // The "R" pointer is both the input (R in the comment) and the output (P in
-  // the comment; equal to the preconditioned directions before scaling by
-  // gamma).  If the pointer "row_prod" is supplied, it's set to the inner product
-  // of each row of the preconditioned directions P, at output, with itself.
-  // You would need to apply "scale" to R and "scale * scale" to row_prod, to
-  // get the preconditioned directions; we don't do this ourselves, in order to
-  // save CUDA calls.
+  /**
+     This call implements the main functionality of this class.
+
+     @param [in,out] R  The "R" pointer is both the input (R in the
+            comment, X in the paper), and the output (P in the comment,
+            X with a hat on it in the paper).  Each row of R is viewed
+            as a vector in some space, where we're estimating a smoothed
+            Fisher matrix and then multiplying by the inverse of that
+            smoothed Fisher matrix.
+
+    @param [out] scale  If non-NULL, a scaling factor is written to here,
+            and the output 'R' should be multiplied by this factor by
+            the user (we don't do it internally, to save an operation).
+            The factor is chosen so that the vector 2-norm of R is the
+            same after the natural gradient as it was before.  (The pointer
+            being NULL or non-NULL doesn't affect the magnitude of R;
+            in any case the user will probably want to do this rescaling,
+            the question being whether they want to do so manually or
+            not.
+
+  */
   void PreconditionDirections(CuMatrixBase<BaseFloat> *R,
-                              CuVectorBase<BaseFloat> *row_prod,
                               BaseFloat *scale);
+
+
 
   // Copy constructor.
   explicit OnlineNaturalGradient(const OnlineNaturalGradient &other);
@@ -454,16 +468,20 @@ class OnlineNaturalGradient {
   OnlineNaturalGradient &operator = (const OnlineNaturalGradient &other);
  private:
 
-  // This does the work of PreconditionDirections (the top-level
-  // function handles some multithreading issues and then calls this function).
+
+  // This is an internal function called from PreconditionDirections().
   // Note: WJKL_t (dimension 2*R by D + R) is [ W_t L_t; J_t K_t ].
-  void PreconditionDirectionsInternal(const int32 t,
-                                      const BaseFloat rho_t,
+  void PreconditionDirectionsInternal(const BaseFloat rho_t,
+                                      const BaseFloat tr_X_Xt,
+                                      bool updating,
                                       const Vector<BaseFloat> &d_t,
                                       CuMatrixBase<BaseFloat> *WJKL_t,
-                                      CuMatrixBase<BaseFloat> *X_t,
-                                      CuVectorBase<BaseFloat> *row_prod,
-                                      BaseFloat *scale);
+                                      CuMatrixBase<BaseFloat> *X_t);
+
+
+  // Works out from t_ and various class variables whether we will update
+  // the parameters on this iteration (returns true if so).
+  bool Updating() const;
 
   void ComputeEt(const VectorBase<BaseFloat> &d_t,
                  BaseFloat beta_t,
@@ -512,10 +530,14 @@ class OnlineNaturalGradient {
   // or columns.
   static void InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R);
 
-  // Returns the learning rate eta as the function of the number of samples
-  // (actually, N is the number of vectors we're preconditioning, which due to
-  // context is not always exactly the same as the number of samples).  The
-  // value returned depends on num_samples_history_.
+  // Returns the value eta (with 0 < eta < 1) which reflects how fast we update
+  // the estimate of the Fisher matrix (larger == faster).  This is a function
+  // rather than a constant because we set this indirectly, via
+  // num_samples_history_ or num_minibatches_history_.  The argument N is the
+  // number of vectors we're preconditioning, which is the number of rows in the
+  // argument R to PreconditionDirections(); you can think of it as the number
+  // of vectors we're preconditioning (and in the common case it's some multiple
+  // of the minibatch size)
   BaseFloat Eta(int32 N) const;
 
   // called if self_debug_ = true, makes sure the members satisfy certain
@@ -577,14 +599,9 @@ class OnlineNaturalGradient {
   // the *second* time we see the same data (to avoid biasing the update).
   bool frozen_;
 
-  // t is a counter that measures how many updates we've done.
+  // t is a counter that measures how many times the user has previously called
+  // PreconditionDirections(); it's 0 if that has never been called.
   int32 t_;
-
-  // This keeps track of how many minibatches we've skipped updating the parameters,
-  // since the most recent update; it's used in enforcing "update_period_", which
-  // is a mechanism to avoid spending too much time updating the subspace (which can
-  // be wasteful).
-  int32 num_updates_skipped_;
 
   // If true, activates certain checks.
   bool self_debug_;
@@ -592,14 +609,6 @@ class OnlineNaturalGradient {
   CuMatrix<BaseFloat> W_t_;
   BaseFloat rho_t_;
   Vector<BaseFloat> d_t_;
-
-
-  // Used to prevent parameters being read or written in an inconsistent state.
-  std::mutex read_write_mutex_;
-
-  // This mutex is used to control which thread gets to update the
-  // parameters, in multi-threaded code.
-  std::mutex update_mutex_;
 };
 
 } // namespace nnet3

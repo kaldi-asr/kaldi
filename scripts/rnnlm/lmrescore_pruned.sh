@@ -17,6 +17,7 @@ max_ngram_order=4 # Approximate the lattice-rescoring by limiting the max-ngram-
                   # exploding exponentially. Details of the n-gram approximation
                   # method are described in section 2.3 of the paper
                   # http://www.danielpovey.com/files/2018_icassp_lattice_pruning.pdm
+max_arcs=         # limit the max arcs in lattice while rescoring. E.g., 20000
 
 acwt=0.1
 weight=0.5  # Interpolation weight for RNNLM.
@@ -85,13 +86,18 @@ else
   word_embedding="'rnnlm-get-word-embedding $rnnlm_dir/word_feats.txt $rnnlm_dir/feat_embedding.final.mat -|'"
 fi
 
+max_arcs_opt=
+if [ ! -z "$max_arcs" ]; then
+  max_arcs_opt="--max-arcs=$max_arcs"
+fi
+
 mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
 
 $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
   lattice-lmrescore-kaldi-rnnlm-pruned --lm-scale=$weight $special_symbol_opts \
-    --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order $normalize_opt \
+    --acoustic-scale=$acwt --max-ngram-order=$max_ngram_order $normalize_opt $max_arcs_opt \
     $carpa_option $oldlm $word_embedding "$rnnlm_dir/final.raw" \
     "ark:gunzip -c $indir/lat.JOB.gz|" "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 

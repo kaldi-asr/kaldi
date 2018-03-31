@@ -31,7 +31,7 @@ Now, run:
 make depend
 make
 
-This should result in libgstkaldi.so which contains the GStreamer plugin
+This should result in libgstonlinegmmdecodefaster.so which contains the GStreamer plugin
 
 == Usage ==
 

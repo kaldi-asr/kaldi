@@ -33,7 +33,6 @@ self_repair_scale=0.00001
 label_delay=0
 dropout_schedule='0,0@0.20,0.1@0.50,0'
 # decode options
-frames_per_chunk=
 remove_egs=false
 common_egs_dir=
 
@@ -216,6 +215,7 @@ if [ $stage -le 15 ]; then
   if [ ! -z $decode_iter ]; then
     iter_opts=" --iter $decode_iter "
   fi
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   for decode_set in train_dev eval2000; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \

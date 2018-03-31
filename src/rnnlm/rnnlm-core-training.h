@@ -44,12 +44,16 @@ struct RnnlmCoreTrainerOptions {
   BaseFloat momentum;
   BaseFloat max_param_change;
   BaseFloat l2_regularize_factor;
+  BaseFloat backstitch_training_scale;
+  int32 backstitch_training_interval;
 
   RnnlmCoreTrainerOptions():
       print_interval(100),
       momentum(0.0),
       max_param_change(2.0),
-      l2_regularize_factor(1.0) { }
+      l2_regularize_factor(1.0),
+      backstitch_training_scale(0.0),
+      backstitch_training_interval(1) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("momentum", &momentum, "Momentum constant to apply during "
@@ -69,6 +73,14 @@ struct RnnlmCoreTrainerOptions {
                    "--l2-regularize-factor will be multiplied by the component-level "
                    "l2-regularize values and can be used to correct for effects "
                    "related to parallelization by model averaging.");
+    opts->Register("backstitch-training-scale", &backstitch_training_scale,
+                   "backstitch training factor. "
+                   "if 0 then in the normal training mode. It is referred to as "
+                   "'\\alpha' in our publications.");
+    opts->Register("backstitch-training-interval",
+                   &backstitch_training_interval,
+                   "do backstitch training with the specified interval of "
+                   "minibatches. It is referred to as 'n' in our publications.");
   }
 };
 
@@ -161,6 +173,15 @@ class RnnlmCoreTrainer {
              const CuMatrixBase<BaseFloat> &word_embedding,
              CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
 
+  // The backstitch version of the above function. Depending
+  // on whether is_backstitch_step1 is true, It could be either the first
+  // (backward) step, or the second (forward) step of backstitch.
+  void TrainBackstitch(bool is_backstitch_step1,
+                       const RnnlmExample &minibatch,
+                       const RnnlmExampleDerived &derived,
+                       const CuMatrixBase<BaseFloat> &word_embedding,
+                       CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
+
   // Prints out the final stats.
   void PrintTotalStats() const;
 
@@ -178,6 +199,7 @@ class RnnlmCoreTrainer {
 
   /** Process the output of the neural net and record the objective function
       in objf_info_.
+   @param [in] is_backstitch_step1  If true update stats otherwise not.
    @param [in] minibatch  The minibatch for which we're proessing the output.
    @param [in] derived  Derived quantities from the minibatch.
    @param [in] word_embedding  The word embedding, with the same numbering as
@@ -186,7 +208,8 @@ class RnnlmCoreTrainer {
                       w.r.t. the word-embedding that arises from the output
                       computation will be *added* to here.
   */
-  void ProcessOutput(const RnnlmExample &minibatch,
+  void ProcessOutput(bool is_backstitch_step1,
+                     const RnnlmExample &minibatch,
                      const RnnlmExampleDerived &derived,
                      const CuMatrixBase<BaseFloat> &word_embedding,
                      nnet3::NnetComputer *computer,
