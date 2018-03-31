@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+# Copyright      2017  Hossein Hadian
+
+# This is a filter used in scoring. It separates all
+# punctuations from words. For e.g. this sentence:
+
+# "They have come!" he said reverently, gripping his
+# hands. "Isn't it a glorious thing! Long awaited."
+
+# is converted to this:
+
+# " They have come ! " he said reverently , gripping his
+# hands . " Isn ' t it a glorious thing ! Long awaited . "
+
+import sys
+import re
+import codecs
+import string
+
+a = string.punctuation
+punctuations = "!(),.?;:'-\""
+ascii_punctuations=punctuations.decode("ascii")
+utf8_punctuations=ascii_punctuations.encode("utf8")
+escaped_punctuations = re.escape(utf8_punctuations)
+
+UTF8Reader = codecs.getreader('utf8')
+sys.stdin = UTF8Reader(sys.stdin)
+
+UTF8Writer = codecs.getwriter('utf8')
+sys.stdout = UTF8Writer(sys.stdout)
+
+for line in sys.stdin:
+  words = line.strip().split()
+  uttid = words[0]
+  transcript = ' '.join(words[1:])
+  split_transcript = " ".join(re.split("([{}])".format(escaped_punctuations),
+                                       transcript)).strip()
+  print "%s %s" % (uttid, split_transcript)
