@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 
-# Copyright      2018  Hossein Hadian
+# Copyright      2017  Chun Chieh Chang
+#                2017  Ashish Arora
 
+""" This script converts images to Kaldi-format feature matrices. The input to
+    this script is the path to a data directory, e.g. "data/train". This script
+    reads the images listed in images.scp and writes them to standard output
+    (by default) as Kaldi-formatted matrices (in text form). It also scales the
+    images so they have the same height (via --feat-dim). It can optionally pad
+    the images (on left/right sides) with white pixels.
 
-""" This script computes the image lengths (with padding) in an image data dir.
-    The output is written to 'image2num_frames' in the given data dir. This
-    file is later used by image/get_allowed_lengths.py to find a set of allowed lengths
-    for the data dir. The output format is similar to utt2num_frames
-
+    eg. local/make_features.py data/train --feat-dim 40
 """
 
 import argparse
@@ -16,13 +19,12 @@ import sys
 import numpy as np
 from scipy import misc
 
-parser = argparse.ArgumentParser(description="""Computes the image lengths (i.e. width) in an image data dir
-                                                and writes them (by default) to image2num_frames.""")
+parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images.scp) to features and
+                                                writes them to standard output in text format.""")
 parser.add_argument('dir', type=str,
                     help='Source data directory (containing images.scp)')
 parser.add_argument('--out-ark', type=str, default=None,
-                    help='Where to write the output image-to-num_frames info. '
-                    'Default: "dir"/image2num_frames')
+                    help='Where to write the output image-to-num_frames info.')
 parser.add_argument('--feat-dim', type=int, default=40,
                     help='Size to scale the height of all images')
 parser.add_argument('--padding', type=int, default=5,
@@ -43,7 +45,7 @@ def get_scaled_image_length(im):
 data_list_path = os.path.join(args.dir,'images.scp')
 
 if not args.out_ark:
-    args.out_ark = os.path.join(args.dir,'image2num_frames')
+    args.out_ark = os.path.join(args.dir,'image2num_frames.txt')
 if args.out_ark == '-':
     out_fh = sys.stdout
 else:
