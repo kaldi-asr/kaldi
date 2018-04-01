@@ -354,7 +354,6 @@ UtteranceSplitter::UtteranceSplitter(const ExampleGenerationConfig &config):
 }
 
 UtteranceSplitter::~UtteranceSplitter() {
-
   KALDI_LOG << "Split " << total_num_utterances_ << " utts, with "
             << "total length " << total_input_frames_ << " frames ("
             << (total_input_frames_ / 360000.0) << " hours assuming "
@@ -853,12 +852,12 @@ void UtteranceSplitter::GetChunksForUtterance(
       t += chunk_sizes[i];
     }
   }
-    SetOutputWeights(utterance_length, chunk_info);
-    AccStatsForUtterance(utterance_length, *chunk_info);
-    // check that the end of the last chunk doesn't go more than
-    // 'config_.frame_subsampling_factor - 1' frames past the end
-    // of the utterance.  That amount, we treat as rounding error.
-    KALDI_ASSERT(t - utterance_length < config_.frame_subsampling_factor);
+  SetOutputWeights(utterance_length, chunk_info);
+  AccStatsForUtterance(utterance_length, *chunk_info);
+  // check that the end of the last chunk doesn't go more than
+  // 'config_.frame_subsampling_factor - 1' frames past the end
+  // of the utterance.  That amount, we treat as rounding error.
+  KALDI_ASSERT(t - utterance_length < config_.frame_subsampling_factor);
 }
 
 void UtteranceSplitter::AccStatsForUtterance(
