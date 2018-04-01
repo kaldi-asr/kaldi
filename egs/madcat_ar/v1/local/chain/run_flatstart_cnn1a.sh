@@ -26,15 +26,15 @@ affix=1a
 
 # training options
 tdnn_dim=450
-num_epochs=4
-num_jobs_initial=2
-num_jobs_final=4
-minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
+num_epochs=2
+num_jobs_initial=3
+num_jobs_final=16
+minibatch_size=150=64,32/300=32,16/600=16,8/1200=8,4
 common_egs_dir=
 l2_regularize=0.00005
 frames_per_iter=1000000
 cmvn_opts="--norm-means=true --norm-vars=true"
-train_set=train_e2e
+train_set=train
 lang_test=lang_test
 
 # End configuration section.
@@ -70,7 +70,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$cmd" \
+  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 70 --cmd "$cmd" \
                                        --shared-phones true \
                                        --type biphone \
                                        data/$train_set $lang $treedir
@@ -157,7 +157,7 @@ fi
 if [ $stage -le 5 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj 30 --cmd "$cmd" \
+    --nj 70 --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
 fi
 
