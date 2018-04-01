@@ -21,7 +21,7 @@ fi
 mkdir -p data/{train,test,dev}/data
 
 if [ $stage -le 1 ]; then
-  get_image2num_frames.py data/train  # This will be needed for the next command
+  image/get_image2num_frames.py data/train  # This will be needed for the next command
   # The next command creates a "allowed_lengths.txt" file in data/train
   # which will be used by local/make_features.py to enforce the images to
   # have allowed lengths. The allowed lengths will be spaced by 10% difference in length.
