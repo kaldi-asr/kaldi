@@ -3,14 +3,7 @@
 
 set -e
 stage=0
-nj=20
-username=
-password=
-# iam_database points to the database path on the JHU grid. If you have not
-# already downloaded the database you can set it to a local directory
-# like "data/download" and follow the instructions
-# in "local/prepare_data.sh" to download the database:
-iam_database=/export/corpora5/handwriting_ocr/IAM
+nj=70
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -19,14 +12,13 @@ iam_database=/export/corpora5/handwriting_ocr/IAM
                             # if supplied.
 
 
-./local/check_tools.sh
+#./local/check_tools.sh
 
 if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
-  local/prepare_data.sh --download-dir "$iam_database" \
-    --username "$username" --password "$password"
+  local/prepare_data.sh
 fi
-mkdir -p data/{train,test}/data
+mkdir -p data/{train,test,dev}/data
 
 if [ $stage -le 1 ]; then
   get_image2num_frames.py data/train  # This will be needed for the next command
@@ -35,7 +27,7 @@ if [ $stage -le 1 ]; then
   # have allowed lengths. The allowed lengths will be spaced by 10% difference in length.
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   echo "$0: Preparing the test and train feature files..."
-  for dataset in train test; do
+  for dataset in train test dev; do
     local/make_features.py data/$dataset --feat-dim 40 | \
       copy-feats --compress=true --compression-method=7 \
                  ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
@@ -47,15 +39,18 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
-  utils/prepare_lang.sh --sil-prob 0.95 \
-                        data/local/dict "<unk>" data/lang/temp data/lang
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
+                        data/local/dict "<sil>" data/lang/temp data/lang
 fi
 
 if [ $stage -le 3 ]; then
   echo "$0: Estimating a language model for decoding..."
-  local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_big.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang_test
+#  local/train_lm.sh
+#  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_big.arpa.gz \
+#                     data/local/dict/lexicon.txt data/lang_test
+  
+  cp -R data/lang -T data/lang_test
+  local/prepare_lm.sh data/train/text data/lang_test 3 || exit 1;
 fi
 
 
