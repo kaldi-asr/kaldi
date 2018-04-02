@@ -67,5 +67,5 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
-  local/chain/run_flatstart_cnn1a.sh
+  local/chain/run_flatstart_cnn1a.sh --stage 3 --common_egs_dir exp/chain/e2e_cnn_1a/egs/ --train_stage 34
 fi
