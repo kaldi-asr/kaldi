@@ -25,14 +25,13 @@
 namespace kaldi {
 
 #define LAT_BUF_SIZE 2
-#define ESTIMATED_PRUNE_RATIO 0.25
+#define ESTIMATED_PRUNE_RATIO 0.1
 class CudaLatticeDecoder;
 
 struct CudaLatticeDecoderConfig {
   BaseFloat gpu_fraction;
   BaseFloat lat_fraction;
   uint32 max_tokens_per_frame;
-  uint32 max_lat_tok_per_frame;
   uint32 max_lat_arc_per_frame;
   uint32 max_tokens;
   uint32 max_arcs;
@@ -47,9 +46,8 @@ struct CudaLatticeDecoderConfig {
   CudaLatticeDecoderConfig(): 
                        gpu_fraction(1.0/8.0),
                        lat_fraction(1.0/2.0),
-                       max_tokens_per_frame(200000),
-                       max_lat_tok_per_frame(200000),
-                       max_lat_arc_per_frame(600000),
+                       max_tokens_per_frame(400000),
+                       max_lat_arc_per_frame(1000000),
                        max_tokens(10000000),
                        max_arcs(12000000), // 17000000*10 can fill all mem
                        lattice_beam(10.0),
@@ -105,6 +103,7 @@ class CudaLatticeDecoder {
   typedef BaseFloat CostType;
   
   class LatticePruner;
+  class TokenAllocator;
 
   // general cuda vector can be used in both host and device. 
   // page faults need to be paid attention to
@@ -161,7 +160,8 @@ class CudaLatticeDecoder {
     // according to the unpack index, copy data from external buf to the inside
     // buf; it's used in the 2nd stage of 2-pass atomic token recombination
     DEVICE inline void StoreDataByPackIdx(void* temp_data_buf, 
-                      int* temp_data_buf_update, int32 buf_size);
+                      int* temp_data_buf_update, int32 buf_size,
+                      TokenAllocator * token_allocator);
     // check whether data at index i is updated
     DEVICE inline int32 IsUpdated(int32 i);
     // push back data & data_pack to vectors respectively
@@ -175,22 +175,19 @@ class CudaLatticeDecoder {
     // for arr merge to single; assume create using cudaMallocManaged
     int32 *mem_update_d;
     // record recombination uint64 address corresponding to each elem in T* mem_d
-    uint64** mem_pack_buf_d; 
+    // uint64** mem_pack_buf_d;  // as it's always in mem_d, we do not need this any more
     int* barrier_;
   };
 
   // align to 16 bits so as to fast memcpy, see store16()
-  class __align__(16) Token {
+  class __align__(8) Token {
    public:
     CostType cost_; // accumulated total cost up to this place.
-    int32_t frame; // used in lattice generation & Token address pair
     BaseFloat extra_cost; // used in lattice pruning
-    // this variable is unused just to pad Token to 16bits
-    StateId state_id; // WFST state 
-
-    HOST DEVICE inline Token(BaseFloat cost, int32 frame, Token* prev) : 
-                            cost_(cost), frame(frame), extra_cost(0) {
-      assert(sizeof(Token)==16); 
+    
+    HOST DEVICE inline Token(BaseFloat cost, Token* prev) : 
+                            cost_(cost), extra_cost(0) {
+      assert(sizeof(Token)==8); 
       if(prev) {
         cost_ += prev->cost_;
       }
@@ -207,6 +204,8 @@ class CudaLatticeDecoder {
 
   // we save all info in this structure, so as to collect all info together
   // in GPU memory and use memcpy to move to CPU memory
+  // this structure is only used before D2H memcpy, during decoding, 
+  // we use LatLinkCompact
   class __align__(32) LatLink {  
    public:
      // below variables are with the same size as ForwardLink, so as to enable memcpy
@@ -222,32 +221,69 @@ class CudaLatticeDecoder {
         int32 ilabel, int32 olabel, BaseFloat graph_cost, BaseFloat acoustic_cost): 
         ilabel(ilabel), olabel(olabel), graph_cost(graph_cost), 
         acoustic_cost(acoustic_cost) {
-        p1=(void*)ENCODE_TOK_IDX_PAIR(next_tok_fr,next_tok_id);
-        p2=(void*)ENCODE_TOK_IDX_PAIR(prev_tok_fr,prev_tok_id);
+      p1=(void*)ENCODE_TOK_IDX_PAIR(next_tok_fr,next_tok_id);
+      p2=(void*)ENCODE_TOK_IDX_PAIR(prev_tok_fr,prev_tok_id);
     }
+  };
+
+  // during decoding, as arcs are pre-allocated, we need a more compact 
+  // structure and it is aligned in 16 bits. 
+  // Notably, to work in 16 bits, we have to pack both id & whether it is 
+  // emit arc in is_emit_pack_prev_tok_id
+  class __align__(16) LatLinkCompact {  
+   public:
+    uint32 next_tok_id; // token index in the frame level token vector
+    BaseFloat acoustic_cost; // acoustic cost (pre-scaled) of traversing link
+    int32 arc_id;
+
+    HOST DEVICE inline LatLinkCompact(uint32 prev_tok_id, int32 prev_tok_fr,     
+                                      uint32 next_tok_id, int32 next_tok_fr, 
+                                      BaseFloat acoustic_cost, int32 arc_id): 
+        next_tok_id(next_tok_id), 
+        acoustic_cost(acoustic_cost), arc_id(arc_id),
+        is_emit_pack_prev_tok_id(prev_tok_id) {
+      assert(is_emit_pack_prev_tok_id < ((uint32)1<<31));  // we can't cope with that large number
+      uint32 is_emit_arc = prev_tok_fr != next_tok_fr;
+      this->is_emit_pack_prev_tok_id |= (is_emit_arc<<31); // a hack to save is_emit_arc in is_emit_pack_prev_tok_id
+    }
+    HOST DEVICE inline bool IsEmitArc() {
+      return is_emit_pack_prev_tok_id >= ((uint32)1<<31);
+    }
+    HOST DEVICE inline uint32 GetPrevTokId() {
+      return is_emit_pack_prev_tok_id & (((uint32)1<<31) - 1);
+    }
+
+   private:
+    // a hack to contain both id & whether it is emit arc
+    uint32 is_emit_pack_prev_tok_id;  
   };
 
   // align to 16 bits so as to fast memcpy, see store16()
   struct __align__(16) TokenState {
    public:
-    Token* token; // record the corresponding Token data address
+
+    volatile int32_t tok_idx_allocated; // this can ALSO be obtained from 
+    //TokenLookupElem[state].tok_idx_allocated in each frame
     StateId state;  // record WFST state
-    CostType cost_; // for CPU to copy lattice without prefetch token_allocator_
+    //CostType cost_; // for CPU to copy lattice without prefetch token_allocator_; totally deprecated
+    uint64 token_pack; // the real mem is here
+    // if learned from TokenLookupElem that this TS is de-active, we need to firstly giving value or reset all the mem of this; thus don't need to call allocate_new_tokens
     
-    HOST DEVICE inline TokenState (Token *token, StateId state, CostType cost)
-      : token(token), state(state), cost_(cost) { }
+    HOST DEVICE inline TokenState (StateId state);
+
   };
 
   // struct to hold pre-allocated tokens (one per WFST state) for fast lookup
   struct  TokenLookupElem{
-    Token *token; // pointer to the Token
-    uint32 active;  // the token has been passed to or not
-    uint64 token_pack; // used in atomic operation based token recombination
-    volatile int32_t tokenstate_idx; // used to index the corresponding TokenState
+    #define LOOKUP_STORE_TYPE uint32
+    #define LOOKUP_DEACTIVE ((LOOKUP_STORE_TYPE)-1)
+    #define LOOKUP_READY_PUSH ((LOOKUP_STORE_TYPE)-2)
+    // TODO: considering change int32_t to int16
+    volatile LOOKUP_STORE_TYPE tokenstate_idx; // used to index the corresponding TokenState
   };
   // typedef CudaVector<TokenState> TokenVector;
   typedef CudaMergeVector<TokenState> TokenMergeVector;
-  typedef CudaVector<LatLink> LatLinkVector;
+  typedef CudaVector<LatLinkCompact> LatLinkVector;
 
 
   // Preallocates tokens, allows threads to concurrently
@@ -256,7 +292,8 @@ class CudaLatticeDecoder {
    public:
     void Initialize(uint32 size);
     void Finalize();
-    void Reset(); // returns all memory to the allocator
+    DEVICE HOST void Reset(); // returns all memory to the allocator
+    DEVICE inline int32 Size() { return *front_d; }
 
     // memory prefetch to speedup the reading in target device
     inline void PrefetchNextToDevice(cudaStream_t stream, int32 count);
@@ -267,19 +304,24 @@ class CudaLatticeDecoder {
     
     // gets a free token offset by index
     DEVICE inline Token* GetToken(uint32 index); 
+    DEVICE inline Token* GetTokenByExactIdx(uint32 index); 
+    DEVICE inline int32 GetTokenAllocIdx(uint32 offset);
+    DEVICE inline int32 GetIdxFromAddr(Token* tok);
     // advances the allocated token list by num
     DEVICE inline void AdvanceFront(uint32 num); 
 
+    Token* GetTokenAllocation() { return tokens_allocation; };
    private:
     int32_t device; // for MEMADVISE
     uint32 size; // host size
     size_t bytes_cuda_malloc_managed;
     uint32 prefetch_size; // amount of elements to prefetch beyond front
     // next free token index
-    uint32 *front_d, *front_h;    
     // token buffer used discontinuously; Just going static for now.
     // TODO we could have a list of these and dynamically add more.  
     Token *tokens_allocation; 
+   public:
+    uint32 *front_d, *front_h;
   };
 
   // for lattice pruning
@@ -287,16 +329,16 @@ class CudaLatticeDecoder {
    public:  
     void Initialize();
     int32 Allocate(int32 max_tokens_per_frame, int32 max_lat_arc_per_frame, 
-      int32 prune_interval, int32 max_toks, int32 max_arcs);
+      int32 prune_interval, int32 max_toks, int32 max_arcs, const CudaFst& fst, Token* tokens_allocation);
     void Free();
     // The GPU memory of lattice arcs is shared with LatLinkVector
-    LatLink* GetDeviceArcsBpr() { return arcs_bpr_d; } 
+    LatLinkCompact* GetDeviceArcsBpr() { return arcs_bpr_d; } 
 
     // Entry of lattice pruning until this frame
     inline DEVICE void PruneActiveTokens(int32 frame, BaseFloat lattice_beam, int32 verbose);    
     // Collect after each token passing
-    inline DEVICE void CollectToksPerFrame(TokenMergeVector& cur_toks_vec, 
-                                           int32 frame);
+    inline DEVICE void CollectToksPerFrame(TokenMergeVector& cur_toks_vec, int32 frame, 
+                                           TokenAllocator* token_allocator);
     inline DEVICE void CollectArcsPerFrame(LatLinkVector& cur_arc_array,
                                              int32 frame);
 
@@ -309,11 +351,15 @@ class CudaLatticeDecoder {
    private:    
     // #define ENCODE_TOK_IDX_PAIR(frame,idx) (((uint64)(frame)<<32)+(idx))
     inline DEVICE int32 AddArc(LatLink* arc);
+    inline DEVICE int32 AddArc(LatLinkCompact* arc, int32 frame);
     // Set start index in the buffer of the next frame
     inline DEVICE void SetNextSidx(int* sidx_buf, int32 size, int32 frame);
     inline DEVICE Token* GetActiveToken(void* p, bool check=false, int32 frame=-1) const;
     inline DEVICE Token* GetActiveToken(int32 frame, int32 id, bool check=false) const;
-    inline DEVICE LatLink* GetActiveArc(int32 frame, int32 id) const;
+    inline DEVICE Token* GetActiveTokenByExactId(int32 frame, 
+  int32 id_exact, bool check) const;
+
+    inline DEVICE LatLinkCompact* GetActiveArc(int32 frame, int32 id) const;
     inline DEVICE int32 GetSize(int* acc_len, int32 frame) const;
     // used in PruneLatticeForFrame()
     inline DEVICE void UpdateModifiedFlags( 
@@ -344,7 +390,7 @@ class CudaLatticeDecoder {
    private:
     // before pruning (bpr)
     // aggregate Token data from per-frame TokenState in decoding
-    Token* toks_bpr_d; 
+    Token* toks_bpr_d; // it is shared with TokenAllocator::tokens_allocation
     Token* toks_bpr_h;
     // we keep start idx per-frame to fast index a token by (frame, idx) pair
     // see GetActiveToken() & GetActiveArc()
@@ -352,7 +398,7 @@ class CudaLatticeDecoder {
     int* toks_bpr_fr_sidx_h;
     // the GPU memory of lattice arcs is shared with LatLinkVector
     // see CudaLatticeDecoder::CudaLatticeDecoder()
-    LatLink* arcs_bpr_d;
+    LatLinkCompact* arcs_bpr_d;
     // we keep start idx per-frame to fast index a arc by (frame, idx) pair
     int* arcs_bpr_fr_sidx_d; 
     int* arcs_bpr_used_d; // used in CollectArcsPerFrame() to get the size per-frame
@@ -377,6 +423,12 @@ class CudaLatticeDecoder {
     int32 prune_interval;
     int32 toks_buf_before_pr_size;
     int32 arcs_buf_before_pr_size;
+
+    // for AddArc() from LatLinkCompact to LatLink
+    // we record all information in LatLink to eliminate CPU memory lookup
+    const int32 *arc_ilabels;
+    const int32 *arc_olabels; 
+    const BaseFloat *arc_weights;
   };
   
   // structs to hold kernel parameters.  Large numbers of parameters can slow down 
@@ -412,6 +464,7 @@ class CudaLatticeDecoder {
     int32 *fb_idx;
     int32 *agg_idx;
     int32 *barrier;
+    int32 *num_arcs_till_last;
 
     // configurations
     BaseFloat beam;
@@ -419,7 +472,8 @@ class CudaLatticeDecoder {
     BaseFloat lattice_beam;
     int32 prune_interval;
     int32 numArcs;
-    uint32 frame;    
+    uint32 frame;   
+    int32 max_lat_arc_per_frame;
   };
 
 
@@ -454,7 +508,6 @@ class CudaLatticeDecoder {
 
   // other functions
   bool GetBestPath(Lattice *fst_out, bool use_final_probs = true) const;
-  bool ReachedFinal() const;
   inline size_t GetCudaMallocBytes() const { return bytes_cuda_malloc; } 
   inline size_t GetCudaMallocManagedBytes() const { return bytes_cuda_malloc_managed;  }
 
@@ -470,6 +523,7 @@ class CudaLatticeDecoder {
   TokenMergeVector* cur_toks_;
   TokenMergeVector* prev_toks_;  
   CostType *cutoff_d;
+  int32 *num_arcs_till_last_d;
   int32 *modified_d; // used in processTokens_cg()
   // Keep track of the number of frames decoded in the current file.
   int32 num_frames_decoded_;

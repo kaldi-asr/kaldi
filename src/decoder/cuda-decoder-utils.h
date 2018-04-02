@@ -35,6 +35,7 @@
 
 #include "util/stl-utils.h"
 #include "cudamatrix/cu-common.h"
+#include "cudamatrix/cu-device.h"
 
 // cuda macro
 
@@ -74,7 +75,7 @@ const int32 num_colors = sizeof(colors) / sizeof(uint32);
 
 // decoder macro
 
-// #define __DEBUG__
+#define __DEBUG__
 #ifdef __DEBUG__
 #define VERBOSE 5
 #define CUDA_PRINTF(format,...) printf(format, ##__VA_ARGS__)
@@ -100,9 +101,34 @@ const int32 num_colors = sizeof(colors) / sizeof(uint32);
 namespace kaldi {
 
 
+void get_free_memory_stat(char *prefix);
+
+#ifdef __CUDACC__
 // Assumptions: 1-d grid and blocks. No threads "early-exit" the grid.
 // No stream priorities
-DEVICE void __grid_sync_nv_internal(int32 *barrier);
+DEVICE inline void __gpu_sync_fast(volatile int *fast_epoch) {
+  __syncthreads();
+  if (threadIdx.x == 0) {
+    // gridDim.x-1 blocks are adding 1
+    // and one block is adding 0x80000000 - (gridDim.x-1)
+    // so the whole sum is 0x80000000
+    int nb = 1;
+    if (blockIdx.x == 0) {
+      nb = 0x80000000 - (gridDim.x - 1);
+    }
+    int old_epoch = *fast_epoch;
+    __threadfence();
+    atomicAdd((int*)fast_epoch, nb);
+    // wait for the sign bit to commute
+    int cnt = 0;
+    while (((*fast_epoch) ^ old_epoch) >= 0) ;
+  }
+  __syncthreads();
+}
+DEVICE inline void __grid_sync_nv_internal(int *barrier) {
+  __gpu_sync_fast((volatile int*)barrier);
+}
+#endif
 
 // WFST struct designed for GPU memory
 class CudaFst {

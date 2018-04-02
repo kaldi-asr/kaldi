@@ -252,7 +252,7 @@ bool DecodeUtteranceLatticeFasterCuda(
     PUSH_RANGE("get_lattice_shortest", 5);
     if (!decoder.GetBestPath(&decoded))
       // Shouldn't really reach this point as already checked success.
-      KALDI_ERR << "Failed to get traceback for utterance " << utt;
+      KALDI_WARN << "Failed to get traceback for utterance " << utt;
     POP_RANGE
     std::vector<int32> alignment;
     std::vector<int32> words;
@@ -279,8 +279,8 @@ bool DecodeUtteranceLatticeFasterCuda(
   Lattice& lat = *olat;
   decoder.GetRawLattice(&lat);
   if (lat.NumStates() == 0)
-    KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
-  fst::Connect(&lat);
+    KALDI_WARN << "Unexpected problem getting lattice for utterance " << utt;
+  else fst::Connect(&lat);
   POP_RANGE
 
   double t4 = timer.Elapsed();

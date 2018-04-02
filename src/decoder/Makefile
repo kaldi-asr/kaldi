@@ -10,16 +10,17 @@ OBJFILES = training-graph-compiler.o lattice-simple-decoder.o lattice-faster-dec
            decoder-wrappers.o 
 
 ifeq ($(CUDA), true)
-OBJFILES +=	cuda-decoder.o cuda-decoder-utils_prelink.o cuda-lattice-decoder_prelink.o \
+OBJFILES += cuda-decoder-utils.o cuda-lattice-decoder.o \
             lattice-faster-decoder-cuda.o
 LDLIBS += -lnvToolsExt -lcudart
 LDFLAGS += $(CUDA_LDFLAGS)
+LDFLAGS += ../cudamatrix/libkaldi-cudamatrix.so
 LDLIBS += $(CUDA_LDLIBS)
 endif
 
 CUDAOPTS = -O3 $(CUDA_ARCH) 
 #CUDAOPTS += -G  
-CUDA_DC_OPTS = -dc -DCUDA_API_PER_THREAD_DEFAULT_STREAM -DHAVE_CXXABI_H \
+CUDA_DEC_OPTS = -DCUDA_API_PER_THREAD_DEFAULT_STREAM -DHAVE_CXXABI_H \
                -lineinfo -w -std=c++11 -DHAVE_EXECINFO_H=1 \
                -DHAVE_ATLAS -Xcompiler "-msse -msse2 -pthread  -fopenmp" \
                $(CUDAOPTS) -I.. -I$(OPENFSTINC) 
@@ -31,18 +32,9 @@ ADDLIBS = ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
-cuda-decoder_test.o: cuda-decoder_test.cu
-	$(CUDATKDIR)/bin/nvcc  -G -g -O0 -v -c $(CUDA_ARCH) cuda-decoder_test.cu 
-
-cuda-decoder_test:cuda-decoder_test.o
-	g++ -g -O0 -o cuda-decoder_test $(CUDA_LDFLAGS)  $(CUDA_LDLIBS)  -lcuda cuda-decoder_test.o
-
-cuda-lattice-decoder_prelink.o: cuda-lattice-decoder.cu cuda-lattice-decoder.h cuda-decoder-utils.h
-	$(CUDATKDIR)/bin/nvcc $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_DC_OPTS) 
-cuda-decoder-utils_prelink.o: cuda-decoder-utils.cu cuda-decoder-utils.h
-	$(CUDATKDIR)/bin/nvcc $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_DC_OPTS) 
-
-cuda-decoder.o:  cuda-decoder-utils_prelink.o  cuda-lattice-decoder_prelink.o
-	$(CUDATKDIR)/bin/nvcc $^ -o $@ -rdc=true -dlink -Xcompiler "-pthread -fPIC" -v $(CUDAOPTS) 
+# Implicit rule for kernel compilation,
+%.o : %.cu
+	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) \
+	 -I../ $(CUDA_DEC_OPTS)
 
 include ../makefiles/default_rules.mk

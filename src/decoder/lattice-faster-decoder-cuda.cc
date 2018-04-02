@@ -127,6 +127,7 @@ inline LatticeFasterDecoderCuda::Token* LatticeFasterDecoderCuda::
 inline LatticeFasterDecoderCuda::Token* LatticeFasterDecoderCuda::
                                     ActiveToksMap(int32 frame, int32 id) const {
   assert(frame < active_toks_perframe_.size()); // toks of frame 0 is in index 0
+  if (id >= active_toks_size_perframe_[frame]) KALDI_ERR << id<<"\t"<<frame<<"\t"<<active_toks_size_perframe_[frame]<<"\t"<<active_toks_perframe_.size();
   assert(id < active_toks_size_perframe_[frame]); // index < the size of toks
   Token* tok = active_toks_perframe_[frame] + id;
   assert(tok);
@@ -190,6 +191,7 @@ void LatticeFasterDecoderCuda::FinalProcessLattice(cuTokenVector* last_toks,
                  config_.max_tokens);
     active_toks_perframe_.push_back(newtoks);
     active_toks_size_perframe_.push_back(cur_toks_size);
+    if (config_.verbose > 3 || (cur_toks_size == 0)) KALDI_LOG << i << " " << cur_toks_size;
   }
   assert(proc_frame == active_toks_perframe_.size() - 1); // frame 0 has idx 0
   
@@ -200,7 +202,7 @@ void LatticeFasterDecoderCuda::FinalProcessLattice(cuTokenVector* last_toks,
   std::vector<int> active_arcs_size_perframe_tmp;
   for (int32 i = num_frames_decoded_; i >= 0; i--) {
     int32 num_arcs = arcs_size[i];
-    KALDI_VLOG(4) << i << " " << num_arcs;
+    if (config_.verbose > 3 || (num_arcs == 0 && i != 0)) KALDI_LOG << i << " " << num_arcs;
     active_arcs_perframe_tmp.push_back((ForwardLink*)arcs_buf + acc);
     acc += num_arcs;
     active_arcs_size_perframe_tmp.push_back(num_arcs);
@@ -410,7 +412,7 @@ void LatticeFasterDecoderCuda::PruneForwardLinks(
           *links_pruned = true;
         } else {   // keep the link and update the tok_extra_cost if needed.
           if (link_extra_cost < 0.0) {  // this is just a precaution.
-            if (link_extra_cost < -0.01)
+            if (config_.verbose > 1 && link_extra_cost < -0.01)
               KALDI_WARN << "Negative extra_cost: " << link_extra_cost;
             link_extra_cost = 0.0;
           }
