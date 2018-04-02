@@ -34,7 +34,7 @@ typedef CompactLatticeWeightCommonDivisorTpl<LatticeWeight, int32>
 
 
 LatticeWeight RandomLatticeWeight() {
-  int tmp = kaldi::Rand() % 4
+  int tmp = kaldi::Rand() % 4;
   if (tmp == 0) {
   	return LatticeWeight::Zero();
   } else if (tmp == 1) {
