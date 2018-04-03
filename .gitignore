@@ -72,11 +72,17 @@ GSYMS
 /src/kaldi.mk.tmp
 /src/kaldi.mk.bak
 
-# /egs/
+# /egs/ & /idlak-egs/
 /egs/*/s*/mfcc
 /egs/*/s*/plp
 /egs/*/s*/exp
 /egs/*/s*/data
+/idlak-egs/*/s*/mfcc
+/idlak-egs/*/s*/plp
+/idlak-egs/*/s*/exp
+/idlak-egs/*/s*/data
+/idlak-egs/*/s*/rawaudio
+/idlak-egs/*/s*/labels
 
 # /tools/
 /tools/ATLAS/
