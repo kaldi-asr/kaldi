@@ -886,6 +886,14 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   P.SymAddMat2(1.0, *M, kNoTrans, 0.0);
   P.CopyLowerToUpper();
 
+  // The 'update_speed' is a constant that determines how fast we approach a
+  // matrix with the desired properties (larger -> faster).  Larger values will
+  // update faster but will be more prone to instability.  I believe
+  // 'update_speed' shouldn't be more than 0.25 or maybe 0.5, or it will always
+  // be unstable, but I haven't done the analysis.  It should definitely be more
+  // than 0.0.
+  BaseFloat update_speed = 0.125;
+
   if (scale < 0.0) {
     // If scale < 0.0 then it's like letting the scale "float".
     // We pick the scale that will give us an update to M that is
@@ -905,17 +913,28 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
     //  tr(P^2 - scale^2 P) == 0,
     // or scale^2 = tr(P^2) / tr(P).
     // Note: P is symmetric so it doesn't matter whether we use tr(P P) or
-    // tr(P^T P); we use tr(P^T P) becaus I believe it's faster to compute.
-    scale = std::sqrt(TraceMatMat(P, P, kTrans)/ P.Trace());
-  }
+    // tr(P^T P); we use tr(P^T P) because I believe it's faster to compute.
 
-  // The 'update_speed' is a constant that determines how fast we approach a
-  // matrix with the desired properties (larger -> faster).  Larger values will
-  // update faster but will be more prone to instability.  I believe
-  // 'update_speed' shouldn't be more than 0.25 or maybe 0.5, or it will always
-  // be unstable, but I haven't done the analysis.  It should definitely be more
-  // than 0.0.
-  BaseFloat update_speed = 0.125;
+    BaseFloat trace_P = P.Trace(), trace_P_P = TraceMatMat(P, P, kTrans);
+
+    scale = std::sqrt(trace_P_P / trace_P);
+
+    // The following is a tweak to avoid divergence when the eigenvalues aren't
+    // close to being the same.  trace_P is the sum of eigenvalues of P, and
+    // trace_P_P is the sum-square of eigenvalues of P.  Treat trace_P as a sum
+    // of positive values, and trace_P_P as their sumsq.  Then mean = trace_P /
+    // dim, and trace_P_P cannot be less than dim * (trace_P / dim)^2,
+    // i.e. trace_P_P >= trace_P^2 / dim.  If ratio = trace_P_P * dim /
+    // trace_P^2, then ratio >= 1.0, and the excess above 1.0 is a measure of
+    // how far we are from convergence.  If we're far from convergence, we make
+    // the learning rate slower to reduce the risk of divergence, since the
+    // update may not be stable for starting points far from equilibrium.
+    BaseFloat ratio = (trace_P_P * P.NumRows() / (trace_P * trace_P));
+    KALDI_ASSERT(ratio > 0.999);
+    if (ratio > 1.02) {
+      update_speed *= 0.5;  // Slow down the update speed to reduce the risk of divergence.
+    }
+  }
 
   // The factor of 1/scale^2 is, I *believe*, going to give us the right kind of
   // invariance w.r.t. the scale.  To explain why this is the appropriate
@@ -927,7 +946,6 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   // stable (not prone to divergence) even for very large or small values of
   // 'scale'.
   BaseFloat alpha = update_speed / (scale * scale);
-
 
   P.AddToDiag(-1.0 * scale * scale);
 
