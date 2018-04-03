@@ -65,9 +65,9 @@ cmvn_opts=  # can be used for specifying CMVN options, if feature type is not ld
             # LDA transform).  This is used to turn off CMVN in the online-nnet experiments.
 lattice_lm_scale=     # If supplied, the graph/lm weight of the lattices will be
                       # used (with this scale) in generating supervisions
-                      # This is 0 by default for conventional supervised training, 
-                      # but may be close to 1 for the unsupervised part of the data 
-                      # in semi-supervised training. The optimum is usually 
+                      # This is 0 by default for conventional supervised training,
+                      # but may be close to 1 for the unsupervised part of the data
+                      # in semi-supervised training. The optimum is usually
                       # 0.5 for unsupervised data.
 lattice_prune_beam=         # If supplied, the lattices will be pruned to this beam,
                             # before being used to get supervisions.
@@ -136,9 +136,13 @@ for f in $data/feats.scp $latdir/lat.1.gz $latdir/final.mdl \
 done
 
 nj=$(cat $latdir/num_jobs) || exit 1
-
-sdata=$data/split$nj
-utils/split_data.sh $data $nj
+if [ -f $latdir/per_utt ]; then
+  sdata=$data/split${nj}utt
+  utils/split_data.sh --per-utt $data $nj
+else
+  sdata=$data/split$nj
+  utils/split_data.sh $data $nj
+fi
 
 mkdir -p $dir/log $dir/info
 
@@ -508,10 +512,10 @@ if [ $stage -le 6 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/cegs.*.*.ark; do rm $f; done
   fi
-  echo "$0: removing temporary alignments and transforms"
+  echo "$0: removing temporary alignments, lattices and transforms"
   # Ignore errors below because trans.* might not exist.
   rm $dir/{ali,trans}.{ark,scp} 2>/dev/null
-
+  rm $dir/lat_special.*.{ark,scp} 2>/dev/null
 fi
 
 echo "$0: Finished preparing training examples"
