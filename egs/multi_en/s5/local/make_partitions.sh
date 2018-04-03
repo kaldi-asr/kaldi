@@ -87,19 +87,18 @@ if [ $stage -eq 8 ]; then
   ln -nfs tri5a_ali $data_dir/tri5b
 fi
 
-# whole fisher + swbd + tedlilum + wsj + hub4_en + librispeech460 (nodup)
+# whole fisher + swbd + tedlilum + wsj + hub4_en + librispeech960 (nodup)
 if [ $stage -eq 9 ]; then
   utils/combine_data.sh $data_dir/fisher_swbd_tedlium_wsj_hub4_libri960 \
     $data_dir/fisher_swbd_tedlium_wsj_hub4_libri460 data/librispeech_500/train \
     || { echo "Failed to combine data"; exit 1; }
   utils/data/remove_dup_utts.sh 300 $data_dir/fisher_swbd_tedlium_wsj_hub4_libri960 $data_dir/tri5b_ali
-  ln -nfs tri6a $data_dir/tri5b_ali
-  ln -nfs tri6a $data_dir/tri6a_ali
-  ln -nfs tri6a $data_dir/tri6b
+  ln -nfs tri5b_ali $data_dir/tri6a
+  ln -nfs tri5b_ali $data_dir/tri6a_ali
 fi
 
+# sampled data for ivector extractor training,.etc
 if [ $stage -eq 10 ]; then
-  ln -nfs tri6a $data_dir/tr6b_ali
   ln -nfs tri6a $data_dir/tdnn
   utils/subset_data_dir.sh $data_dir/tdnn \
     100000 $data_dir/tdnn_100k

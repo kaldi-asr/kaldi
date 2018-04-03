@@ -20,12 +20,14 @@
 
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
-#include "tfrnnlm/tensorflow-rnnlm.h"
-#include "util/common-utils.h"
-#include "lm/const-arpa-lm.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 #include "lat/compose-lattice-pruned.h"
+#include "lm/const-arpa-lm.h"
+#include "util/common-utils.h"
+
+// This should come after any OpenFst includes to avoid using the wrong macros.
+#include "tfrnnlm/tensorflow-rnnlm.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -139,7 +141,7 @@ int main(int argc, char *argv[]) {
 
     int32 n_done = 0, n_fail = 0;
 
-    TfRnnlmDeterministicFst* lm_to_add_orig = 
+    TfRnnlmDeterministicFst* lm_to_add_orig =
       new TfRnnlmDeterministicFst(max_ngram_order, &rnnlm);
 
     for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {

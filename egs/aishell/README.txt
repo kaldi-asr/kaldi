@@ -5,5 +5,9 @@ Aishell is an open Chinese Mandarin speech database published by Beijing Shell S
 The database can be downloaded from openslr:
 http://www.openslr.org/33/
 
+This folder contains two subfolders:
+s5: a speech recognition recipe
+v1: a speaker recognition recipe
+
 For more details, please visit:
 http://www.aishelltech.com/kysjcp

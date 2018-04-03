@@ -221,19 +221,29 @@ inline void cuda_add_rows(dim3 Gr, dim3 Bl, double alpha, double* dst,
                           const double* const * src, MatrixDim dst_dim) {
   cudaD_add_rows_direct(Gr, Bl, alpha, dst, src, dst_dim);
 }
+inline void cuda_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst,
+                          const float* const * src, MatrixDim dst_dim) {
+  cudaF_add_rows_direct(Gr, Bl, alpha, dst, src, dst_dim);
+}
 inline void cuda_add_rows(dim3 Gr, dim3 Bl, double alpha, double* dst,
                           const double* src, const MatrixIndexT_cuda* reorder,
                           MatrixDim dst_dim, int src_stride) {
   cudaD_add_rows(Gr, Bl, alpha, dst, src, reorder, dst_dim, src_stride);
 }
 inline void cuda_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst,
-                          const float* const * src, MatrixDim dst_dim) {
-  cudaF_add_rows_direct(Gr, Bl, alpha, dst, src, dst_dim);
-}
-inline void cuda_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst,
                           const float* src, const MatrixIndexT_cuda* reorder,
                           MatrixDim dst_dim, int src_stride) {
   cudaF_add_rows(Gr, Bl, alpha, dst, src, reorder, dst_dim, src_stride);
+}
+inline void cuda_mul_rows(dim3 Gr, dim3 Bl, double* dst,
+                          const double* src, const MatrixIndexT_cuda* reorder,
+                          MatrixDim dst_dim, int src_stride) {
+  cudaD_mul_rows(Gr, Bl, dst, src, reorder, dst_dim, src_stride);
+}
+inline void cuda_mul_rows(dim3 Gr, dim3 Bl, float* dst,
+                          const float* src, const MatrixIndexT_cuda* reorder,
+                          MatrixDim dst_dim, int src_stride) {
+  cudaF_mul_rows(Gr, Bl, dst, src, reorder, dst_dim, src_stride);
 }
 inline void cuda_add_smat(dim3 Gr, dim3 Bl, double* mat, MatrixDim mat_dim,
                           double alpha, const int* smat_row_ptr,
@@ -334,6 +344,14 @@ inline void cuda_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
 }
 inline void cuda_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   cudaF_apply_exp(Gr, Bl, mat, d);
+}
+inline void cuda_apply_exp_limited(dim3 Gr, dim3 Bl, double* mat, MatrixDim d,
+                                   double lower_limit, double upper_limit) {
+  cudaD_apply_exp_limited(Gr, Bl, mat, d, lower_limit, upper_limit);
+}
+inline void cuda_apply_exp_limited(dim3 Gr, dim3 Bl, float* mat, MatrixDim d,
+                                   float lower_limit, float upper_limit) {
+  cudaF_apply_exp_limited(Gr, Bl, mat, d, lower_limit, upper_limit);
 }
 inline void cuda_apply_exp_special(dim3 Gr, dim3 Bl, double* out,
                                    MatrixDim out_dim, const double* in,
@@ -1462,6 +1480,73 @@ inline void cuda_vec_sum(int Gr, int Bl, float* v, float* value, int dim,
                          int inc) {
   cudaF_vec_sum(Gr, Bl, v, value, dim, inc);
 }
+
+// Compresses the matrix in 'src' to 'dest', retaining only zero-one
+// information (1 if the value is >0, 0 otherwise)
+inline void cuda_mat_compress_sign(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                                   MatrixDim dim, uint8 *dest,
+                                   int dest_stride) {
+  cuda_compress_uint8_sign(Gr, Bl, src, dim, dest, dest_stride);
+}
+// this template handles the other types that are not instantiated yet,
+// to avoid compilation errors.
+template <typename I>
+inline void cuda_mat_compress_sign(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                                   MatrixDim dim, I *dest,
+                                   int dest_stride) {
+  KALDI_ERR << "Not implemented for this type.";
+}
+
+inline void cuda_mat_compress(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, int16_t *dest,
+                              int dest_stride, float inv_scale,
+                              bool bounds_check) {
+  cuda_compress_int16(Gr, Bl, src, dim, dest, dest_stride,
+                      inv_scale, bounds_check);
+}
+inline void cuda_mat_compress(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, uint16_t *dest,
+                              int dest_stride, float inv_scale,
+                              bool bounds_check) {
+  cuda_compress_uint16(Gr, Bl, src, dim, dest, dest_stride,
+                       inv_scale, bounds_check);
+}
+inline void cuda_mat_compress(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, uint8_t *dest,
+                              int dest_stride, float inv_scale,
+                              bool bounds_check) {
+  cuda_compress_uint8(Gr, Bl, src, dim, dest, dest_stride,
+                      inv_scale, bounds_check);
+}
+inline void cuda_mat_compress(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, int8_t *dest,
+                              int dest_stride, float inv_scale,
+                              bool bounds_check) {
+  cuda_compress_int8(Gr, Bl, src, dim, dest, dest_stride,
+                     inv_scale, bounds_check);
+}
+
+inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                                MatrixDim dim, const int8_t *src,
+                                int src_stride, float scale) {
+  cuda_uncompress_int8(Gr, Bl, dest, dim, src, src_stride, scale);
+}
+inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                                MatrixDim dim, const uint8_t *src,
+                                int src_stride, float scale) {
+  cuda_uncompress_uint8(Gr, Bl, dest, dim, src, src_stride, scale);
+}
+inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                                MatrixDim dim, const int16_t *src,
+                                int src_stride, float scale) {
+  cuda_uncompress_int16(Gr, Bl, dest, dim, src, src_stride, scale);
+}
+inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                                MatrixDim dim, const uint16_t *src,
+                                int src_stride, float scale) {
+  cuda_uncompress_uint16(Gr, Bl, dest, dim, src, src_stride, scale);
+}
+
 
 } // namespace kaldi
 

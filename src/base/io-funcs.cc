@@ -178,8 +178,14 @@ int PeekToken(std::istream &is, bool binary) {
   }
   int ans = is.peek();
   if (read_bracket) {
-    if (!is.unget())
+    if (!is.unget()) {
       KALDI_WARN << "Error ungetting '<' in PeekToken";
+      // Clear the bad bit.  It seems to be possible for this code to be
+      // reached, and the C++ standard is very vague on whether even a single
+      // call to unget() should succeed; see
+      // http://www.cplusplus.com/reference/istream/istream/unget/
+      is.clear();
+    }
   }
   return ans;
 }
@@ -197,7 +203,12 @@ void ExpectToken(std::istream &is, bool binary, const char *token) {
     KALDI_ERR << "Failed to read token [started at file position "
               << pos_at_start << "], expected " << token;
   }
-  if (strcmp(str.c_str(), token) != 0) {
+  // The second half of the '&&' expression below is so that if we're expecting
+  // "<Foo>", we will accept "Foo>" instead.  This is so that the model-reading
+  // code will tolerate errors in PeekToken where is.unget() failed; search for
+  // is.clear() in PeekToken() for an explanation.
+  if (strcmp(str.c_str(), token) != 0 &&
+      !(token[0] == '<' && strcmp(str.c_str(), token + 1) == 0)) {
     KALDI_ERR << "Expected token \"" << token << "\", got instead \""
               << str <<"\".";
   }

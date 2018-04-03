@@ -1,6 +1,7 @@
 // latbin/lattice-determinize-phone-pruned.cc
 
 // Copyright 2014  Guoguo Chen
+//           2017  Vimal Manohar
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -43,11 +44,18 @@ int main(int argc, char *argv[]) {
         "                            final.mdl ark:in.lats ark:det.lats\n";
 
     ParseOptions po(usage);
+    bool write_compact = true;
     BaseFloat acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
     fst::DeterminizeLatticePhonePrunedOptions opts;
     opts.max_mem = 50000000;
 
+    po.Register("write-compact", &write_compact, 
+                "If true, write in normal (compact) form. "
+                "--write-compact=false allows you to retain frame-level "
+                "acoustic score information, but this requires the input "
+                "to be in non-compact form e.g. undeterminized lattice "
+                "straight from decoding.");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic"
                 " likelihoods.");
     po.Register("beam", &beam, "Pruning beam [applied after acoustic scaling].");
@@ -70,8 +78,13 @@ int main(int argc, char *argv[]) {
     // accepts.
     SequentialLatticeReader lat_reader(lats_rspecifier);
 
-    // Writes as compact lattice.
-    CompactLatticeWriter compact_lat_writer(lats_wspecifier);
+    CompactLatticeWriter compact_lat_writer;
+    LatticeWriter lat_writer;
+
+    if (write_compact)
+      compact_lat_writer.Open(lats_wspecifier);
+    else
+      lat_writer.Open(lats_wspecifier);
 
     int32 n_done = 0, n_warn = 0;
 
@@ -88,6 +101,12 @@ int main(int argc, char *argv[]) {
       lat_reader.FreeCurrent();
 
       KALDI_VLOG(2) << "Processing lattice " << key;
+
+      // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
+      unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
+                                          PairHasher<int32> > acoustic_scores;
+      if (!write_compact)
+        ComputeAcousticScoresMap(lat, &acoustic_scores);
 
       fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
 
@@ -106,8 +125,19 @@ int main(int argc, char *argv[]) {
       sum_depth_out += depth * t;
       sum_t += t;
 
-      fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &det_clat);
-      compact_lat_writer.Write(key, det_clat);
+      if (write_compact) {
+        fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), &det_clat);
+        compact_lat_writer.Write(key, det_clat);
+      } else {
+        Lattice out_lat;
+        fst::ConvertLattice(det_clat, &out_lat);
+
+        // Replace each arc (t, tid) with the averaged acoustic score from
+        // the computed map
+        ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
+        lat_writer.Write(key, out_lat);
+      }
+
       n_done++;
     }
 

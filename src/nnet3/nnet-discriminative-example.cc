@@ -196,15 +196,10 @@ void MergeSupervision(
   input_supervision.reserve(inputs.size());
   for (int32 n = 0; n < num_inputs; n++)
     input_supervision.push_back(&(inputs[n]->supervision));
-  std::vector<discriminative::DiscriminativeSupervision> output_supervision;
-  bool compactify = true;
+  discriminative::DiscriminativeSupervision output_supervision;
   discriminative::AppendSupervision(input_supervision,
-                         compactify,
                          &output_supervision);
-  if (output_supervision.size() != 1)
-    KALDI_ERR << "Failed to merge discriminative examples-- inconsistent lengths "
-              << "or weights?";
-  output->supervision.Swap(&(output_supervision[0]));
+  output->supervision.Swap(&(output_supervision));
 
   output->indexes.clear();
   output->indexes.reserve(num_indexes);

@@ -7,6 +7,6 @@
 deep neural network acoustic model with chain objective.
 """
 
-import acoustic_model
+from . import acoustic_model
 
 __all__ = ["acoustic_model"]

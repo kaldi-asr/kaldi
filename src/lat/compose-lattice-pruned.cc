@@ -126,7 +126,7 @@ class PrunedCompactLatticeComposer {
 
     // 'arc_delta_costs' is an array, one for each arc (and the final-prob, if
     // present), showing how much the cost to the final-state for the best path
-    // starting in this state and exiting through each arc (or final-state),
+    // starting in this state and exiting through each arc (or final-prob),
     // differs from 'backward_cost'.  Specifically, it contains pairs
     // (delta_cost, arc_index), where delta_cost >= 0 and arc_index is
     // either the index into this state's array of arcs (for arcs), or -1
@@ -201,8 +201,8 @@ class PrunedCompactLatticeComposer {
     //   - If backward_cost is finite (this state in the composed result can
     //    reach the final state via currently expanded states), then
     //    delta_backward_cost is this->backward_cost minus
-    //    lat_state_info_[lat_state].backward_cost.  (It will mostly,
-    //    not always, be >= 0, reflecting that the new LM is better than
+    //    lat_state_info_[lat_state].backward_cost.  (It will mostly, but
+    //    not always, be <= 0, reflecting that the new LM is better than
     //    the old LM).
     //  - On the other hand, if backward_cost is infinite: delta_backward_cost
     //     is set to the delta_backward_cost of the previous state on the best
@@ -216,7 +216,10 @@ class PrunedCompactLatticeComposer {
     //  - For other states, delta_backward_cost will be unchanged since
     //    RecomputePruningInfo() was last called.
     // The above rules may make the delta_backward_cost a less accurate, but
-    // still probably reasonable, heuristic.
+    // still probably reasonable, heuristic.  What it is a heuristic for,
+    // is: if we were to successfully reach an end-state of the composed output
+    // from this state, what would be the resulting backward_cost
+    // minus lat_state_info_[lat_state].backward_cost.
     BaseFloat delta_backward_cost;
 
     // 'prev_composed_state' is the previous state on the best path from
@@ -226,14 +229,14 @@ class PrunedCompactLatticeComposer {
     // used.
     int32 prev_composed_state;
 
-    // 'sorted_arc_index' is an index into the 'arc_delta_costs' array of the
-    // LatticeStateInfo corresponding to 'lat_state'.  It corresponds to the
-    // next arc (or final-prob) out of the input lattice that we have yet to
-    // expand in the composition; or -1 if we have expanded all of them.  When
-    // we first reach a composed state, 'sorted_arc_index' will be zero; then it
-    // will increase one at a time as we expand arcs until either the
-    // composition terminates or we have expanded all the arcs and it becomes
-    // -1.
+    // 'sorted_arc_index' is an index into the 'arc_delta_costs' array which is
+    // a member of the LatticeStateInfo object corresponding to the lattice
+    // state 'lat_state'.  It corresponds to the next arc (or final-prob) out of
+    // the input lattice that we have yet to expand in the composition; or -1 if
+    // we have expanded all of them.  When we first reach a composed state,
+    // 'sorted_arc_index' will be zero; then it will increase one at a time as
+    // we expand arcs until either the composition terminates or we have
+    // expanded all the arcs and it becomes -1.
     int32 sorted_arc_index;
 
     // 'arc_delta_cost' is a derived quantity that we store here for easier
@@ -241,6 +244,11 @@ class PrunedCompactLatticeComposer {
     // if sorted_arc_index >= 0, then:
     //    arc_delta_cost == this_lat_info.arc_delta_costs[sorted_arc_index].first
     // else: arc_delta_cost == +infinity.
+    //
+    // what 'arc_delta_cost' represents (or is a heuristic for), is the expected
+    // cost of a path to the final-state leaving through the arc we're about to
+    // expand, minus the expected cost of any path to the final-state starting
+    // from this state.
     BaseFloat arc_delta_cost;
 
     // view 'expected_cost_offset' a phantom field of this struct, that has
@@ -249,8 +257,11 @@ class PrunedCompactLatticeComposer {
     //
     // 'expected_cost_offset' is a derived quantity that reflects the expected
     // cost (according to our heuristic) of the best path we might encounter
-    // when expanding the next previously unseen arc (or final-prob), corresponding
-    // to 'sorted_arc_index'.
+    // when expanding the next previously unseen arc (or final-prob),
+    // corresponding to 'sorted_arc_index'.  (This is the expected cost of a
+    // successful path, from the beginning to the end of the lattice, but
+    // constrained to be a path that contains the arc we're about to expand).
+    //
     // The 'offset' part is about subtracting the best cost of the lattice, so we
     // can cast to float without too much loss of accuracy:
     //   expected_cost_offset = expected_cost - lat_best_cost_.
@@ -258,7 +269,8 @@ class PrunedCompactLatticeComposer {
     // We define expected_cost_offset by defining the 'expected_cost' part;
     // for clarity:
     //   First, let lat_backward_cost equal the backward_cost of the LatticeStateInfo
-    //   corresponding to 'lat_state'.  Then:
+    //   corresponding to 'lat_state', i.e.
+    //   lat_backward_cost = lat_state_info_[lat_state].backward_cost.  Then:
     //  expected_cost = forward_cost + lat_backward_cost +
     //                  delta_backward_cost + arc_delta_cost.
     // expected_cost_offset will always equal the above minus lat_best_cost_.
@@ -298,7 +310,7 @@ class PrunedCompactLatticeComposer {
 
   // current_cutoff_ is a value used in deciding which composed states
   // need to be included in the queue.  Each time RecomputePruningInfo()
-  // called, it is set to
+  // called, current_cutoff_ is set to
   //    (output_best_cost_ - lat_best_cost_ + opts_.lattice_compose_beam).
   // It will be +infinity if the output lattice doesn't yet have any
   // successful paths.  It decreases with time.  You can compare the
@@ -755,9 +767,11 @@ void PrunedCompactLatticeComposer::ProcessTransition(int32 src_composed_state,
     std::pair<MapType::iterator, bool> ret =
         pair_to_state_.insert(value);
     if (ret.second) {
-      // Successfully inserted.  Most of the rest of this block deals with the
-      // consequences of adding a new state.
-      KALDI_ASSERT(clat_out_->AddState() == new_composed_state);
+      // Successfully inserted: this dest-state did not already exist.  Most of
+      // the rest of this block deals with the consequences of adding a new
+      // state.
+      int32 ans = clat_out_->AddState();
+      KALDI_ASSERT(ans == new_composed_state);
       dest_composed_state = new_composed_state;
       composed_state_info_.resize(dest_composed_state + 1);
       dest_info = &(composed_state_info_[dest_composed_state]);
@@ -776,7 +790,8 @@ void PrunedCompactLatticeComposer::ProcessTransition(int32 src_composed_state,
       dest_info->delta_backward_cost =
           src_info->delta_backward_cost;
       // The 'prev_composed_state' field will not be read again until after it's
-      // overwritten; we set it as below only for debugging purposes.
+      // overwritten; we set it as below only for debugging purposes (the
+      // negation is also for debugging purposes).
       dest_info->prev_composed_state = -src_composed_state;
       dest_info->sorted_arc_index = 0;
       dest_info->arc_delta_cost = 0.0;
@@ -790,8 +805,11 @@ void PrunedCompactLatticeComposer::ProcessTransition(int32 src_composed_state,
            dest_info->delta_backward_cost -
            lat_best_cost_);
       if (expected_cost_offset < current_cutoff_) {
-        composed_state_queue_.push(std::pair<BaseFloat, int32>(
-            expected_cost_offset, dest_composed_state));
+        // the following call should be equivalent to
+        // composed_state_queue_.push(std::pair<BaseFloat,int32>(...)) with
+        // the same pair of args.
+        composed_state_queue_.emplace(expected_cost_offset,
+                                      dest_composed_state);
       }
     } else { // the destination composed state already existed.
       dest_composed_state = ret.first->second;
