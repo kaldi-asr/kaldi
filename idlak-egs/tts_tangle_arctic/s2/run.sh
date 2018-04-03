@@ -150,7 +150,7 @@ if [ $stage -le 1 ]; then
 	        # Generate Band Aperiodicity feature
 	        steps/make_bndap.sh --nj $nj --bndap-config conf/bndap-48k.conf --frame_length $bndapflen data/${step}_$spk exp/make_bndap/${step}_$spk  $featdir
 	        # Generate Mel Cepstral features
-	        steps/make_mcep.sh  --nj $nj --mcep-config  conf/mcep-48k.conf --frame_length $mcepflen  data/${step}_$spk exp/make_mcep/${step}_$spk   $featdir	
+	        steps/make_mcep.sh  --nj $nj --mcep-config  conf/mcep-48k.conf --frame_length $mcepflen  data/${step}_$spk exp/make_mcep/${step}_$spk   $featdir
         done
         # Merge features
         cat data/${step}_*/bndap_feats.scp > data/$step/bndap_feats.scp
@@ -161,7 +161,7 @@ if [ $stage -le 1 ]; then
         # Copy pitch feature in separate folder
         mkdir -p f0data/${step}
         cp data/$step/pitch_feats.scp f0data/${step}/feats.scp
-        for k in utt2spk spk2utt; do 
+        for k in utt2spk spk2utt; do
             cp data/$step/$k f0data/${step}/$k;
         done
     done
@@ -258,7 +258,7 @@ for step in full; do
 	| lattice-align-words $lang/phones/word_boundary.int $ali/final.mdl ark:- ark:- \
 	| nbest-to-ctm --frame-shift=$FRAMESHIFT --precision=3 ark:- - \
 	| utils/int2sym.pl -f 5 $lang/words.txt > $ali/wrdalign.dat
-    
+
     # Regenerate text output from alignment
     python local/idlak_make_lang.py --mode 1 "2:0.03,3:0.2" "4" $ali/phones.txt $ali/wrdalign.dat data/$step/text_align.xml $ali/states.tra
 
@@ -266,7 +266,7 @@ for step in full; do
     idlaktxp --pretty --tpdb=$tpdb data/$step/text_align.xml data/$step/text_anorm.xml
     idlakcex --pretty --cex-arch=default --tpdb=$tpdb data/$step/text_anorm.xml data/$step/text_afull.xml
     python local/idlak_make_lang.py --mode 2 data/$step/text_afull.xml data/$step/cex.ark > data/$step/cex_output_dump
-    
+
     # Merge alignment with output from idlak cex front-end => gives you a nice vector
     # NB: for triphone alignment:
     # make-fullctx-ali-dnn  --phone-context=3 --mid-context=1 --max-sil-phone=15 $ali/final.mdl ark:"gunzip -c $ali/ali.{1..$nj}.gz|" ark,t:data/$step/cex.ark ark,t:data/$step/ali
@@ -292,7 +292,7 @@ function print_phone(vkey, vasd, vpd) {
 }
 (NF == 2){print}
 (NF > 2){
-   n = NF; 
+   n = NF;
    if ($NF == "]") n = NF - 1;
    state = $(n-4); sd = $(n-3); pd = $(n-1);
    for (i = n-4; i <= NF; i++) $i = "";
@@ -319,7 +319,7 @@ function print_phone(vkey, vasd, vpd) {
 
 duration_feats="ark:$featdir/tmp_durfeats_full.ark"
 nfeats=$(feat-to-dim "$duration_feats" -)
-# Input 
+# Input
 select-feats 0-$(( $nfeats - 3 )) "$duration_feats" ark,scp:$featdir/in_durfeats_full.ark,$featdir/in_durfeats_full.scp
 # Output: duration of phone and state are assumed to be the 2 last features
 select-feats $(( $nfeats - 2 ))-$(( $nfeats - 1 )) "$duration_feats" ark,scp:$featdir/out_durfeats_full.ark,$featdir/out_durfeats_full.scp
@@ -400,8 +400,8 @@ for class in train dev; do
     done
     for dir in $acdir $lbldir $pitchdir $lblpitchdir $durdir $lbldurdir; do
         cat $dir/$class/feats_tmp.scp | awk -v lst=$lst  '
-BEGIN{ nv=split(lst, v, ","); 
-  for (i = 1; i <= nv; i++) while (getline < v[i]) {nt[$1] = 1; nk[i "_" $1] = 1;} 
+BEGIN{ nv=split(lst, v, ",");
+  for (i = 1; i <= nv; i++) while (getline < v[i]) {nt[$1] = 1; nk[i "_" $1] = 1;}
   for (k in nt) {
      add = 1;
      for (i = 1; i <= nv; i++) if (nk[i "_" k] != 1) add=0;
@@ -526,7 +526,7 @@ echo "#### Step 6: packaging DNN voice ####"
 local/make_dnn_voice_pitch.sh --spk $spk --srate $srate --mcep_order $order --bndap_order $bndap_order --alpha $alpha --fftlen $fftlen --durdnndir $dnndurdir --f0dnndir $dnnf0dir --acsdnndir $dnndir
 
 echo "Voice packaged successfully. Portable models have been stored in ${spk}_pmdl."
-echo "Synthesis can be performed using: 
-         echo \"This is a demo of D N N synthesis\" | local/synthesis_voice_pitch.sh ${spk}_pmdl <outdir>"
+echo "Synthesis can be performed using:
+         echo \"This is a demo of D N N synthesis\" | local/synthesis_voice_pitch.sh ${spk}_pmdl <out_wav>"
 
 
