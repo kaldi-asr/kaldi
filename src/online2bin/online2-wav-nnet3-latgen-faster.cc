@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
                 "--use-most-recent-ivector=true and --greedy-ivector-extractor=true "
                 "in the file given to --ivector-extraction-config, and "
                 "--chunk-length=-1.");
-    po.Register("num-threads-startup", &g_num_threads,
+    po.Register("num-threads", &g_num_threads,
                 "Number of threads used when initializing iVector extractor.");
 
     feature_opts.Register(&po);

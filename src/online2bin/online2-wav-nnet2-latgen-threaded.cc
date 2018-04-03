@@ -128,7 +128,7 @@ int main(int argc, char *argv[]) {
                 "If true, simulate real-time decoding scenario by providing the "
                 "data incrementally, calling sleep() until each piece is ready. "
                 "If false, don't sleep (so it will be faster).");
-    po.Register("num-threads-startup", &g_num_threads,
+    po.Register("num-threads", &g_num_threads,
                 "Number of threads used when initializing iVector extractor.  ");
     
     feature_config.Register(&po);
