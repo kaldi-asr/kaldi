@@ -268,7 +268,7 @@ class TaskSequencer {
     args->me->tot_threads_avail_.Signal();
   }
 
-  int num_threads_; // copy of config.num_threads (since Semaphore doesn't store original count)
+  int32 num_threads_; // copy of config.num_threads (since Semaphore doesn't store original count)
 
   Semaphore threads_avail_; // Initialized to the number of threads we are
   // supposed to run with; the function Run() waits on this.
