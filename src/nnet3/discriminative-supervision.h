@@ -223,8 +223,7 @@ class DiscriminativeSupervisionSplitter {
 /// training; appending them like this helps to simplify the training process.
 
 void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &input,
-    bool compactify,
-    std::vector<DiscriminativeSupervision> *output_supervision);
+    DiscriminativeSupervision *output_supervision);
 
 
 } // namespace discriminative
