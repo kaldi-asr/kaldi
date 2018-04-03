@@ -174,6 +174,7 @@ template<class C>
 class TaskSequencer {
  public:
   TaskSequencer(const TaskSequencerConfig &config):
+      num_threads_(config.num_threads),
       threads_avail_(config.num_threads),
       tot_threads_avail_(config.num_threads_total > 0 ? config.num_threads_total :
                          config.num_threads + 20),
@@ -186,6 +187,13 @@ class TaskSequencer {
   /// This function takes ownership of the pointer "c", and will delete it
   /// in the same sequence as Run was called on the jobs.
   void Run(C *c) {
+    // run in main thread
+    if (num_threads_ == 0) {
+      (*c)();
+      delete c;
+      return;
+    }
+
     threads_avail_.Wait(); // wait till we have a thread for computation free.
     tot_threads_avail_.Wait(); // this ensures we don't have too many threads
     // waiting on I/O, and consume too much memory.
@@ -259,6 +267,8 @@ class TaskSequencer {
     // that are waiting on I/O or other threads.
     args->me->tot_threads_avail_.Signal();
   }
+
+  int32 num_threads_; // copy of config.num_threads (since Semaphore doesn't store original count)
 
   Semaphore threads_avail_; // Initialized to the number of threads we are
   // supposed to run with; the function Run() waits on this.
