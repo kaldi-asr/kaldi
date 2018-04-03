@@ -30,7 +30,7 @@ namespace kaldi {
 static void UnitTestAperiodic() {
   WaveData wave;
   {
-    std::ifstream is("test_data/test.wav");
+    std::ifstream is("../feat/test_data/test.wav");
     wave.Read(is);
   }
   KALDI_ASSERT(wave.Data().NumRows() == 1);
@@ -39,7 +39,7 @@ static void UnitTestAperiodic() {
   Matrix<BaseFloat> f0_info;
   {
     bool binary;
-    Input in("test_data/test.f0", &binary);
+    Input in("../feat/test_data/test.f0", &binary);
     f0_info.Read(in.Stream(), binary);
   }
 
