@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
       " is less than this threshold.");
     po.Register("read-costs", &read_costs, "If true, the first"
       " argument is interpreted as a matrix of costs rather than a"
-       "similarity matrix.");
+      " similarity matrix.");
 
     po.Read(argc, argv);
 
