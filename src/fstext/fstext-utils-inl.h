@@ -1132,7 +1132,7 @@ inline bool IsStochasticFst(const Fst<LogArc> &fst,
 
 // Will override this for LogArc where NaturalLess will not work.
 template<class Arc>
-bool IsStochasticFst(const Fst<Arc> &fst,
+inline bool IsStochasticFst(const Fst<Arc> &fst,
                      float delta,
                      typename Arc::Weight *min_sum,
                      typename Arc::Weight *max_sum) {
@@ -1168,7 +1168,7 @@ bool IsStochasticFst(const Fst<Arc> &fst,
 
 // Overriding template for LogArc as NaturalLess does not work there.
 template<>
-bool IsStochasticFst(const Fst<LogArc> &fst,
+inline bool IsStochasticFst(const Fst<LogArc> &fst,
                      float delta,
                      LogArc::Weight *min_sum,
                      LogArc::Weight *max_sum) {
@@ -1208,7 +1208,7 @@ bool IsStochasticFst(const Fst<LogArc> &fst,
 // This function deals with the generic fst.
 // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>.
 // Otherwise, it will be died with an error.
-bool IsStochasticFstInLog(const Fst<StdArc> &fst,
+inline bool IsStochasticFstInLog(const Fst<StdArc> &fst,
                           float delta,
                           StdArc::Weight *min_sum,
                           StdArc::Weight *max_sum) {
