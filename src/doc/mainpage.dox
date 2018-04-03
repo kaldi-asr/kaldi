@@ -30,13 +30,11 @@
 /**
   \mainpage Kaldi
 
-   Now <a href=kaldi.sourceforge.net>kaldi.sourceforge.net</a> is only a backup
-   location.  <a href=http://kaldi-asr.org>kaldi-asr.org/doc</a> is the
-   definitive location of this documentation.  Kaldi's code repository is
-   now located at <a href="http://github.com/kaldi-asr/kaldi">http://github.com/kaldi-asr/kaldi</a>
+  Kaldi is a toolkit for speech recognition, intended for use by speech recognition researchers and
+  professionals.
 
-   See also the top level of <a href=http://kaldi-asr.org>kaldi-asr.org</a>, where
-   you can download pre-built models.
+  Find the code repository at <a href="http://github.com/kaldi-asr/kaldi">http://github.com/kaldi-asr/kaldi</a>.
+
 
   <p>
    - \subpage about

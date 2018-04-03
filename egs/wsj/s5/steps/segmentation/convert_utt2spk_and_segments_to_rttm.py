@@ -92,7 +92,7 @@ def main():
             duration = float(parts[3]) - start_time
 
             print("SPEAKER {0} {1} {2:7.2f} {3:7.2f} "
-                  "<NA> <NA> {4} <NA>\n".format(
+                  "<NA> <NA> {4} <NA>".format(
                       file_id, channel, start_time,
                       duration, spkr), file=rttm_writer)
 

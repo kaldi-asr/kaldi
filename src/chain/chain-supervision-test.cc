@@ -157,17 +157,11 @@ void TestSupervisionAppend(const TransitionModel &trans_model,
   std::vector<const Supervision*> input(num_append);
   for (int32 i = 0; i < num_append; i++)
     input[i] = &supervision;
-  std::vector<Supervision> output;
-  bool compactify = (RandInt(0, 1) == 0);
-  AppendSupervision(input, compactify, &output);
-  if (compactify) {
-    KALDI_ASSERT(output.size() == 1 &&
-                 output[0].frames_per_sequence ==
-                 supervision.frames_per_sequence &&
-                 output[0].num_sequences == num_append);
-  } else {
-    KALDI_ASSERT(output.size() == input.size());
-  }
+  Supervision output;
+  AppendSupervision(input, &output);
+  KALDI_ASSERT(output.frames_per_sequence ==
+               supervision.frames_per_sequence &&
+               output.num_sequences == num_append);
   int32 tot_sequences_in = 0, tot_sequences_out = 0,
       tot_frames_in = 0, tot_frames_out = 0;
   for (int32 i = 0; i < num_append; i++) {
@@ -175,17 +169,15 @@ void TestSupervisionAppend(const TransitionModel &trans_model,
     tot_frames_in += input[i]->num_sequences *
         input[i]->frames_per_sequence;
   }
-  for (int32 i = 0; i < output.size(); i++) {
-    tot_sequences_out += output[i].num_sequences;
-    tot_frames_out += output[i].num_sequences *
-        output[i].frames_per_sequence;
-  }
+  tot_sequences_out += output.num_sequences;
+  tot_frames_out += output.num_sequences *
+      output.frames_per_sequence;
   KALDI_ASSERT(tot_sequences_out == tot_sequences_in &&
                tot_frames_out == tot_frames_in);
 
-  TestSupervisionIo(output[0]);
-  TestSupervisionNumerator(output[0]);
-  output[0].Check(trans_model);
+  TestSupervisionIo(output);
+  TestSupervisionNumerator(output);
+  output.Check(trans_model);
 }
 
 void TestSupervisionReattached(const TransitionModel &trans_model,
@@ -368,18 +360,16 @@ void TestSupervisionSplitting(const ContextDependency &ctx_dep,
     TestSupervisionIo(split_supervision[RandInt(0, num_ranges - 1)]);
     TestSupervisionFrames(split_supervision[RandInt(0, num_ranges - 1)]);
 
-    std::vector<Supervision> reattached_supervision;
+    Supervision reattached_supervision;
     std::vector<const Supervision*> to_append(num_ranges);
     for (int32 i = 0; i < num_ranges; i++)
       to_append[i] = &(split_supervision[i]);
-    bool compactify = true;
-    AppendSupervision(to_append, compactify, &reattached_supervision);
-    KALDI_ASSERT(reattached_supervision.size() == 1);
-    ChainTrainingTest(den_graph, reattached_supervision[0]);
+    AppendSupervision(to_append, &reattached_supervision);
+    ChainTrainingTest(den_graph, reattached_supervision);
     if (num_frames % frames_per_range == 0) {
       TestSupervisionReattached(trans_model,
                                 supervision,
-                                reattached_supervision[0]);
+                                reattached_supervision);
     }
   }
 }
@@ -607,8 +597,8 @@ void TestRanges() {
 int main() {
   using namespace kaldi;
   SetVerboseLevel(1);
-  int32 loop = 0;
 #if HAVE_CUDA == 1
+  int32 loop = 0;
   for (loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)

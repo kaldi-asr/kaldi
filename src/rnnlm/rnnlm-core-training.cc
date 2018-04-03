@@ -156,7 +156,7 @@ void RnnlmCoreTrainer::Train(
                              store_component_stats,
                              &request);
 
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   NnetComputeOptions compute_opts;
 
@@ -166,7 +166,8 @@ void RnnlmCoreTrainer::Train(
   ProvideInput(minibatch, derived, word_embedding, &computer);
   computer.Run();  // This is the forward pass.
 
-  ProcessOutput(minibatch, derived, word_embedding,
+  bool is_backstitch_step1 = true;
+  ProcessOutput(is_backstitch_step1, minibatch, derived, word_embedding,
                 &computer, word_embedding_deriv);
 
   computer.Run();  // This is the backward pass.
@@ -177,12 +178,12 @@ void RnnlmCoreTrainer::Train(
     word_embedding_deriv->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
                                      input_deriv, 1.0);
   }
-  // If relevant, add in the part of the gradient that comes from L2 
+  // If relevant, add in the part of the gradient that comes from L2
   // regularization.
   ApplyL2Regularization(*nnet_,
                         minibatch.num_chunks * config_.l2_regularize_factor,
                         delta_nnet_);
-  
+
   bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       1.0, 1.0 - config_.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
@@ -192,6 +193,83 @@ void RnnlmCoreTrainer::Train(
   num_minibatches_processed_++;
 }
 
+void RnnlmCoreTrainer::TrainBackstitch(
+    bool is_backstitch_step1,
+    const RnnlmExample &minibatch,
+    const RnnlmExampleDerived &derived,
+    const CuMatrixBase<BaseFloat> &word_embedding,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv) {
+  using namespace nnet3;
+
+  // backstitch training is incompatible with momentum > 0
+  KALDI_ASSERT(config_.momentum == 0.0);
+
+  bool need_model_derivative = true;
+  bool need_input_derivative = (word_embedding_deriv != NULL);
+  bool store_component_stats = true;
+
+  ComputationRequest request;
+  GetRnnlmComputationRequest(minibatch, need_model_derivative,
+                             need_input_derivative,
+                             store_component_stats,
+                             &request);
+
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
+
+  NnetComputeOptions compute_opts;
+
+  if (is_backstitch_step1) {
+    FreezeNaturalGradient(true, delta_nnet_);
+  }
+  ResetGenerators(nnet_);
+  NnetComputer computer(compute_opts, *computation,
+                        *nnet_, delta_nnet_);
+
+  ProvideInput(minibatch, derived, word_embedding, &computer);
+  computer.Run();  // This is the forward pass.
+
+  ProcessOutput(is_backstitch_step1, minibatch, derived, word_embedding,
+                &computer, word_embedding_deriv);
+
+  computer.Run();  // This is the backward pass.
+
+  if (word_embedding_deriv != NULL) {
+    CuMatrix<BaseFloat> input_deriv;
+    computer.GetOutputDestructive("input", &input_deriv);
+    word_embedding_deriv->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
+                                     input_deriv, 1.0);
+  }
+
+  BaseFloat max_change_scale, scale_adding;
+  if (is_backstitch_step1) {
+    // max-change is scaled by backstitch_training_scale;
+    // delta_nnet is scaled by -backstitch_training_scale when added to nnet;
+    max_change_scale = config_.backstitch_training_scale;
+    scale_adding = -config_.backstitch_training_scale;
+  } else {
+    // max-change is scaled by 1 + backstitch_training_scale;
+    // delta_nnet is scaled by 1 + backstitch_training_scale when added to nnet;
+    max_change_scale = 1.0 + config_.backstitch_training_scale;
+    scale_adding = 1.0 + config_.backstitch_training_scale;
+    num_minibatches_processed_++;
+    // If relevant, add in the part of the gradient that comes from L2
+    // regularization.
+    ApplyL2Regularization(*nnet_,
+                          1.0 / scale_adding *
+                          minibatch.num_chunks * config_.l2_regularize_factor,
+                          delta_nnet_);
+  }
+
+  UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
+      max_change_scale, scale_adding, nnet_,
+      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+
+  ScaleNnet(0.0, delta_nnet_);
+
+  if (is_backstitch_step1) {
+    FreezeNaturalGradient(false, delta_nnet_);
+  }
+}
 
 void RnnlmCoreTrainer::ProvideInput(
     const RnnlmExample &minibatch,
@@ -230,12 +308,15 @@ void RnnlmCoreTrainer::PrintMaxChangeStats() const {
   }
   if (num_max_change_global_applied_ > 0)
     KALDI_LOG << "The global max-change was enforced "
-              << ((100.0 * num_max_change_global_applied_) /
-                  num_minibatches_processed_)
+              << (100.0 * num_max_change_global_applied_) /
+                 (num_minibatches_processed_ *
+                 (config_.backstitch_training_scale == 0.0 ? 1.0 :
+                 1.0 + 1.0 / config_.backstitch_training_interval))
               << "\% of the time.";
 }
 
 void RnnlmCoreTrainer::ProcessOutput(
+    bool is_backstitch_step1,
     const RnnlmExample &minibatch,
     const RnnlmExampleDerived &derived,
     const CuMatrixBase<BaseFloat> &word_embedding,
@@ -257,7 +338,8 @@ void RnnlmCoreTrainer::ProcessOutput(
                      &weight, &objf_num, &objf_den,
                      &objf_den_exact);
 
-  objf_info_.AddStats(weight, objf_num, objf_den, objf_den_exact);
+  if (is_backstitch_step1)
+    objf_info_.AddStats(weight, objf_num, objf_den, objf_den_exact);
   computer->AcceptInput("output", &output_deriv);
 }
 

@@ -23,8 +23,7 @@
 
 #include "nnet3/nnet-compile.h"
 #include "nnet3/nnet-analyze.h"
-
-#include <list>
+#include "nnet3/nnet-optimize-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -32,12 +31,17 @@ namespace nnet3 {
 // Options class for optimizing a NnetComputation.  The main projected use for
 // this is in debugging the optimization code itself, so that if an error is
 // detected, we can work out which optimization was responsible for the error.
+// See the Register() function below for option-specific documentation.
 struct NnetOptimizeOptions {
+  // Caution: if adding or removing members, the Read and Write functions and
+  // the == operator should be modified.  This relates to computation caching.
   bool optimize;  // setting this false disallow all optimization.
   bool consolidate_model_update;
   bool propagate_in_place;
   bool backprop_in_place;
   bool optimize_row_ops;
+  bool split_row_ops;
+  bool extend_matrices;
   bool convert_addition;
   bool remove_assignments;
   bool allow_left_merge;
@@ -49,6 +53,7 @@ struct NnetOptimizeOptions {
   int32 max_deriv_time;
   int32 max_deriv_time_relative;
   bool snip_row_ops;
+  int32 memory_compression_level;
   // optimize_looped_computation is a 'hidden config' not available from
   // the command line; it's set to true to enable the optimization for
   // looped computation that turns a linear computation into a loop.
@@ -60,6 +65,8 @@ struct NnetOptimizeOptions {
       propagate_in_place(true),
       backprop_in_place(true),
       optimize_row_ops(true),
+      split_row_ops(true),
+      extend_matrices(true),
       convert_addition(true),
       remove_assignments(true),
       allow_left_merge(true),
@@ -71,6 +78,7 @@ struct NnetOptimizeOptions {
       max_deriv_time(std::numeric_limits<int32>::max()),
       max_deriv_time_relative(std::numeric_limits<int32>::max()),
       snip_row_ops(true),
+      memory_compression_level(1),
       optimize_looped_computation(false) { }
 
   void Register(OptionsItf *opts) {
@@ -84,9 +92,16 @@ struct NnetOptimizeOptions {
                    "disable optimization that allows in-place propagation");
     opts->Register("backprop-in-place", &backprop_in_place, "Set to false to "
                    "disable optimization that allows in-place backprop");
+    opts->Register("extend-matrices", &extend_matrices, "This optimization "
+                   "can reduce memory requirements for TDNNs when applied "
+                   "together with --convert-addition=true");
     opts->Register("optimize-row-ops", &optimize_row_ops, "Set to false to "
                    "disable certain optimizations that act on operations of "
                    "type *Row*.");
+    opts->Register("split-row-ops", &split_row_ops, "Set to false to disable "
+                   "an optimization that may replace some operations of type "
+                   "kCopyRowsMulti or kAddRowsMulti with up to two simpler "
+                   "operations.");
     opts->Register("convert-addition", &convert_addition, "Set to false to "
                    "disable the optimization that converts Add commands into "
                    "Copy commands wherever possible.");
@@ -123,6 +138,14 @@ struct NnetOptimizeOptions {
     opts->Register("snip-row-ops", &snip_row_ops, "Set this to false to "
                    "disable an optimization that reduces the size of certain "
                    "per-row operations");
+    opts->Register("memory-compression-level", &memory_compression_level,
+                   "This is only relevant to training, not decoding.  Set this "
+                   "to 0,1,2; higher levels are more aggressive at reducing "
+                   "memory by compressing quantities needed for backprop, "
+                   "potentially at the expense of speed and the accuracy "
+                   "of derivatives.  0 means no compression at all; 1 means "
+                   "compression that shouldn't affect results at all.");
+
   }
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &os, bool binary) const;
@@ -164,22 +187,6 @@ void Optimize(const NnetOptimizeOptions &config,
               int32 max_output_time_in_request,
               NnetComputation *computation);
 
-// Hash function for ComputationRequest. It converts
-// ComputationRequest to hash code by looking at input
-// and output IoSpecifications vectors.
-struct ComputationRequestHasher {
-  size_t operator()(const ComputationRequest *cr) const noexcept;
-};
-
-// Equality function for ComputationRequest pointer
-struct ComputationRequestPtrEqual {
- public:
-  bool operator() (const ComputationRequest* cr1,
-                   const ComputationRequest* cr2) const {
-    return (*cr1) == (*cr2);
-  }
-};
-
 
 
 struct CachingOptimizingCompilerOptions {
@@ -207,6 +214,8 @@ struct CachingOptimizingCompilerOptions {
 /// This class enables you to do the compilation and optimization in one call,
 /// and also ensures that if the ComputationRequest is identical to the previous
 /// one, the compilation process is not repeated.
+/// It is safe to call Compile() from multiple parallel threads without additional
+/// synchronization; synchronization is managed internally by class ComputationCache.
 class CachingOptimizingCompiler {
  public:
   CachingOptimizingCompiler(const Nnet &nnet,
@@ -220,29 +229,35 @@ class CachingOptimizingCompiler {
                             CachingOptimizingCompilerOptions());
 
   ~CachingOptimizingCompiler();
-  /// Does the compilation and returns a const pointer to
-  /// the result, which is owned by this class, not the caller.
-  /// It calls ComputeCudaIndexes() for you, because you wouldn't
-  /// be able to do this on a const object.
-  const NnetComputation* Compile(const ComputationRequest &request);
+
+  /// Does the compilation and returns a const pointer to the result, which is
+  /// owned by this class, not the caller.  It calls ComputeCudaIndexes() for
+  /// you, because you wouldn't be able to do this on a const object.
+  ///
+  /// Note: this used to return 'const NnetComputation*'.  If you get a
+  /// compilation failure, just replace 'const NnetComputation*' with
+  /// 'std::shared_ptr<const NnetComputation>' in the calling code.
+  std::shared_ptr<const NnetComputation> Compile(
+      const ComputationRequest &request);
   void ReadCache(std::istream &is, bool binary);
-  void WriteCache(std::ostream &os, bool binary) const;
+  void WriteCache(std::ostream &os, bool binary);
+
  private:
 
   // This function just implements the work of Compile(); it's made a separate
   // function for the convenience of the timer code, to avoid it being called
   // twice (we also call this function directly from inside the class).
-  const NnetComputation* CompileInternal(const ComputationRequest &request);
+  std::shared_ptr<const NnetComputation> CompileInternal(const ComputationRequest &request);
 
   // This function, called from CompileInternal(), is called when a
   // ComputationRequest has been determined not to have already been cached.  It
   // otherwise has the same interface as CompileInternal(), but assumes that
   // there is nothing cached for this computation as yet.  It compiles the
   // computation and takes care of caching it.
-  const NnetComputation* CompileAndCache(const ComputationRequest &request);
+  std::shared_ptr<const NnetComputation> CompileAndCache(const ComputationRequest &request);
 
 
-  // This function, called from CompileAndCache(), tries to compile the
+  // This function, called from CompileInternal(), tries to compile the
   // ComputationRequest 'request' via 'shortcut' compilation; if this is
   // possible, it returns a pointer to a newly allocated computation that it has
   // compiled this way (note: this computation will not yet have been placed in
@@ -251,36 +266,19 @@ class CachingOptimizingCompiler {
   // request was not decomposable because of too few n values or irregular or
   // unexpected structure), this function returns NULL and you should compile
   // via CompileNoShortcut.
-  const NnetComputation* CompileViaShortcut(const ComputationRequest &request);
+  const NnetComputation *CompileViaShortcut(const ComputationRequest &request);
 
-  // This function, called from CompileAndCache(), tries to compile the
+  // This function, called from CompileInternal(), tries to compile the
   // ComputationRequest 'request' via the regular (not shortcut) compilation
   // process; it returns a pointer to a newly allocated computation that it has
   // compiled this way (note: this computation will not yet have been placed in
   // the computation cache).
-  const NnetComputation* CompileNoShortcut(const ComputationRequest &request);
+  const NnetComputation *CompileNoShortcut(const ComputationRequest &request);
 
   const Nnet &nnet_;
   CachingOptimizingCompilerOptions config_;
   NnetOptimizeOptions opt_config_;
 
-  // The access queue for keeping track of the freshness of computation.
-  // Most-recently-accessed computation is at the end, and
-  // least-recently-accessed computaiton is at the beginning.
-  // Together with computation_cache_, this forms a most-recently-used (MRU)
-  // cache for Computations, indexed by ComputationRequest. Pointers
-  // are owned in computation_cache_.
-  typedef std::list<const ComputationRequest*> AqType;
-  AqType access_queue_;
-
-  // Map from computation-request to pair of (computation, and position in
-  // access_queue_). Used for fast lookup of previously compiled computations.
-  // All pointers are owned here.
-  typedef unordered_map<const ComputationRequest*,
-                        std::pair<const NnetComputation*, AqType::iterator>,
-                        ComputationRequestHasher,
-                        ComputationRequestPtrEqual> CacheType;
-  CacheType computation_cache_;
 
   // seconds spent in various phases of compilation-- for diagnostic messages
   double seconds_taken_total_;
@@ -289,15 +287,9 @@ class CachingOptimizingCompiler {
   double seconds_taken_expand_;
   double seconds_taken_check_;
   double seconds_taken_indexes_;
+  double seconds_taken_io_;
 
-  // This function updates the computation cache. It is called within
-  // CompileInternal().  It takes ownership of the pointers.  It inserts the
-  // request at the end of the queue, and purges the least-recently-accessed
-  // request from the queue and the cache if the capacity is reached.
-  void UpdateCache(const ComputationRequest *request,
-                   const NnetComputation *computation);
-  // This function updates the recently accessed queue.
-  void UpdateAccessQueue(CacheType::iterator &cit);
+  ComputationCache cache_;
 };
 
 

@@ -1,6 +1,6 @@
 #! /bin/bash
 
-# Copyright 2016  Vimal Manohar
+# Copyright 2016-2018  Vimal Manohar
 # Apache 2.0
 
 # This scripts converts a data directory into a "whole" data directory
@@ -11,9 +11,7 @@ set -o pipefail
 
 . ./path.sh
 
-cmd=run.pl
-
-. parse_options.sh
+. utils/parse_options.sh
 
 if [ $# -ne 2 ]; then
   echo "Usage: convert_data_dir_to_whole.sh <in-data> <out-data>"
@@ -32,75 +30,27 @@ fi
 
 mkdir -p $dir
 cp $data/wav.scp $dir
-cp $data/reco2file_and_channel $dir
-rm -f $dir/{utt2spk,text} || true
+if [ -f $data/reco2file_and_channel ]; then 
+  cp $data/reco2file_and_channel $dir; 
+fi
+
+mkdir -p $dir/.backup
+mv $dir/feats.scp $dir/cmvn.scp $dir/.backup
+
+rm $dir/utt2spk || true
 
 [ -f $data/stm ] && cp $data/stm $dir
 [ -f $data/glm ] && cp $data/glm $dir
 
-text_files=
-[ -f $data/text ] && text_files="$data/text $dir/text"
+utils/data/internal/combine_segments_to_recording.py \
+  --write-reco2utt=$dir/reco2sorted_utts $data/segments $dir/utt2spk || exit 1
 
-# Combine utt2spk and text from the segments into utt2spk and text for the whole
-# recording.
-cat $data/segments | perl -e '
-if (scalar @ARGV == 3) {
-  ($utt2spk_in, $text_in, $text_out) = @ARGV;
-} elsif (scalar @ARGV == 1) {
-  $utt2spk_in = $ARGV[0];
-} else {
-  die "Unexpected number of arguments";
-}
+if [ -f $data/text ]; then
+  utils/apply_map.pl -f 2- $data/text < $dir/reco2sorted_utts > $dir/text || exit 1
+fi
 
-if (defined $text_in) {
-  open(TI, "<$text_in") || die "Error: fail to open $text_in\n";
-  open(TO, ">$text_out") || die "Error: fail to open $text_out\n";
-}
-open(UI, "<$utt2spk_in") || die "Error: fail to open $utt2spk_in\n";
+rm $dir/reco2sorted_utts
 
-my %file2utt = ();
-while (<STDIN>) {
-  chomp;
-  my @col = split;
-  @col >= 4 or die "bad line $_\n";
+utils/fix_data_dir.sh $dir || exit 1
 
-  if (! defined $file2utt{$col[1]}) {
-    $file2utt{$col[1]} = [];
-  }
-  push @{$file2utt{$col[1]}}, $col[0]; 
-}
-
-my %text = ();
-my %utt2spk = ();
-
-while (<UI>) {
-  chomp; 
-  my @col = split;
-  $utt2spk{$col[0]} = $col[1];
-}
-
-if (defined $text_in) {
-  while (<TI>) {
-    chomp;
-    my @col = split;
-    @col >= 1 or die "bad line $_\n";
-
-    my $utt = shift @col;
-    $text{$utt} = join(" ", @col);
-  }
-}
-
-foreach $file (keys %file2utt) {
-  my @utts = @{$file2utt{$file}};
-  print "$file $file\n";
-
-  if (defined $text_in) {
-    $text_line = "";
-    print TO "$file $text_line\n";
-  }
-}
-' $data/utt2spk $text_files > $dir/utt2spk
-
-utils/spk2utt_to_utt2spk.pl $dir/utt2spk > $dir/spk2utt
-
-utils/fix_data_dir.sh $dir
+exit 0

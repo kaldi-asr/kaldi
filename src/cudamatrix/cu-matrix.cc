@@ -2499,6 +2499,37 @@ void CuMatrixBase<Real>::ApplyExp() {
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::ApplyExpLimited(Real lower_limit, Real upper_limit) {
+  KALDI_ASSERT(upper_limit > lower_limit);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_apply_exp_limited(dimGrid, dimBlock, data_, Dim(), lower_limit, upper_limit);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    int32 num_rows = num_rows_, num_cols = num_cols_;
+    for (int32 r = 0; r < num_rows; r++) {
+      Real *row_data = this->RowData(r);
+      for (int32 c = 0; c < num_cols; c++) {
+        Real x = row_data[c];
+        if (!(x >= lower_limit))
+          x = lower_limit;
+        if (x > upper_limit)
+          x = upper_limit;
+        row_data[c] = Exp(x);
+      }
+    }
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::ApplyExpSpecial() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -2721,6 +2752,41 @@ void CuMatrixBase<Real>::AddRows(Real alpha,
     Mat().AddRows(alpha, src.Mat(), indexes.Data());
   }
 }
+
+template<typename Real>
+void CuMatrixBase<Real>::MulRows(const CuMatrixBase<Real> &src,
+                                 const CuArrayBase<MatrixIndexT> &indexes) {
+  if (NumRows() == 0) return;
+  KALDI_ASSERT(static_cast<MatrixIndexT>(indexes.Dim()) == NumRows());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    KALDI_ASSERT(src.NumCols() == NumCols());
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_mul_rows(dimGrid, dimBlock,
+                  data_, src.Data(), indexes.Data(), Dim(), src.Stride());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    MatrixBase<Real> &this_mat(Mat());
+    const MatrixBase<Real> &src_mat(src.Mat());
+    int32 num_rows = NumRows();
+    const MatrixIndexT *index_ptr = indexes.Data();
+    for (int32 r = 0; r < num_rows; r++) {
+      int32 src_r = index_ptr[r];
+      if (src_r < 0)
+        continue;
+      SubVector<Real> this_row(this_mat, r),
+          src_row(src_mat, src_r);
+      this_row.MulElements(src_row);
+    }
+  }
+}
+
 
 
 template<typename Real>

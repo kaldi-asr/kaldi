@@ -715,7 +715,12 @@ class DropoutMaskComponent: public RandomComponent {
   virtual std::string Info() const;
 
   // possible parameter values with their defaults:
-  // dropout-proportion=0.5 output-dim=-1
+  // dropout-proportion=0.5 output-dim=-1 continuous=false
+  // With the 'continous=false' option (the default), it generates
+  // 0 with probability 'dropout-proportion' and 1 otherwise.
+  // With 'continuous=true' it outputs 1 plus dropout-proportion times
+  //  a value uniformly distributed on [-2, 2].  (e.g. if dropout-proportion is
+  // 0.5, this would amount to a value uniformly distributed on [0,2].)
   virtual void InitFromConfig(ConfigLine *cfl);
 
   DropoutMaskComponent();
@@ -771,9 +776,179 @@ class DropoutMaskComponent: public RandomComponent {
 
   BaseFloat dropout_proportion_;
 
+  bool continuous_;
+
   const DropoutMaskComponent &operator
   = (const DropoutMaskComponent &other); // Disallow.
 };
+
+
+
+/**
+   GeneralDropoutComponent implements dropout, including a continuous
+   variant where the thing we multiply is not just zero or one, but may
+   be a continuous value.  It is intended for the case where you want to
+   either share the dropout mask across all of time, or across groups
+   of 't' values (e.g. the first block of 10 values gets one dropout
+   mask, the second block of 10 gets another one, and so on).
+
+
+   Configuration values accepted on the command line, with defaults:
+
+       dim        Dimension of the input and output of this component,
+                  e.g. 512
+
+       block-dim  Block size if you want the dropout mask to repeat,
+                  e.g. if dim=512 and you sent block-dim=128, there will
+                  be a mask of dimension 128 repeated 4 times.  This can
+                  be useful in convolutional setups.  If not specified,
+                  block-dim defaults to 'dim'; if specified, it must be
+                  a divisor of 'dim'.
+
+       dropout-proportion=0.5   For conventional dropout, this is the proportion
+                  of mask values that (in expectation) are zero; it would
+                  normally be between 0 and 0.5.  The nonzero mask values
+                  will be given values 1.0 / dropout_proportion, so that the
+                  expected value is 1.0.  This behavior is different from
+                  DropoutComponent and DropoutMaskComponent.
+
+                  For continuous dropout (continuous==true), the dropout scales
+                  will have values (1.0 + 2 * dropout-proportion *
+                  Uniform[-1,1]).  This might seem like a strange choice, but it
+                  means that dropout-proportion=0.5 gives us a kind of
+                  'extremal' case where the dropout scales are distributed as
+                  Uniform[0, 2] and we can pass in the dropout scale as if it
+                  were a conventional dropout scale.
+
+       time-period=0   This determines how the dropout mask interacts
+                  with the time index (t).  In all cases, different sequences
+                  (different 'n' values) get different dropout masks.
+                  If time-period==0, then the dropout mask is shared across
+                  all time values.  If you set time-period > 0, then the
+                  dropout mask is shared across blocks of time values: for
+                  instance if time-period==10, then we'll use one dropout
+                  mask for t values 0 through 9, another for 10 through 19,
+                  and so on.  In all cases, the dropout mask will be shared
+                  across all 'x' values, although in most setups the x values
+                  are just zero so this isn't very interesting.
+                  If you set time-period==1 it would be similar to regular
+                  dropout, and it would probably make more sense to just use the
+                  normal DropoutComponent.
+
+ */
+class GeneralDropoutComponent: public RandomComponent {
+ public:
+  virtual int32 InputDim() const { return dim_; }
+
+  virtual int32 OutputDim() const { return dim_; }
+
+  virtual std::string Info() const;
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  GeneralDropoutComponent();
+
+  GeneralDropoutComponent(const GeneralDropoutComponent &other);
+
+  virtual std::string Type() const { return "GeneralDropoutComponent"; }
+  virtual int32 Properties() const {
+    return kRandomComponent|kPropagateInPlace|kBackpropInPlace|kUsesMemo|
+        (block_dim_ != dim_ ? (kInputContiguous|kOutputContiguous) : 0);
+  }
+
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void DeleteMemo(void *memo) const {
+    delete static_cast<CuMatrix<BaseFloat>*>(memo);
+  }
+
+  virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  void SetDropoutProportion(BaseFloat p) { dropout_proportion_ = p; }
+
+ private:
+
+  // Returns a random matrix of dimension 'num_mask_rows' by 'block_dim_'.  This
+  // should not be called if test_mode_ is true or dropout_proportion_ is zero.
+  CuMatrix<BaseFloat> *GetMemo(int32 num_mask_rows) const;
+
+
+  // The input and output dimension
+  int32 dim_;
+
+  // block_dim_ must divide dim_.
+  int32 block_dim_;
+
+  // time_period_ can be zero if we want all 't' values to share the same
+  // dropout mask, and a value more than zero if we want blocks of 't' values to
+  // share the dropout mask.  For example, if time_period_ is 10, blocks of size
+  // 10 frames will share the same dropout mask.
+  int32 time_period_;
+
+  BaseFloat dropout_proportion_;
+
+  bool continuous_;
+
+  bool test_mode_;
+
+  const GeneralDropoutComponent &operator
+  = (const GeneralDropoutComponent &other); // Disallow.
+};
+
+// This stores some precomputed indexes for GeneralDropoutComponent.
+// This object is created for every instance of the Propagate()
+// function in the compiled computation.
+class GeneralDropoutComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+
+
+  // num_mask_rows is the number of rows in the dropout-mask matrix;
+  // it's num-cols is the block_dim_ of the component.
+  int32 num_mask_rows;
+
+  // 'indexes' is of dimension (the number of rows in the matrix we're doing
+  // Propagate() or Backprop() on) times the (dim_ / block_dim_) of the
+  // GeneralDropoutComponent.  Each value is in the range [0, num_mask_rows-1],
+  // and each value is repeated (dim_ / block_dim_) times.  This array is used
+  // to multiply the reshaped values or derivatives by the appropriate rows of
+  // the dropout matrix.
+  CuArray<int32> indexes;
+
+  virtual ~GeneralDropoutComponentPrecomputedIndexes() { }
+
+  ComponentPrecomputedIndexes *Copy() const {
+    return new GeneralDropoutComponentPrecomputedIndexes(*this);
+  }
+
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual void Read(std::istream &is, bool binary);
+
+  virtual std::string Type() const {
+    return "GeneralDropoutComponentPrecomputedIndexes";
+  }
+};
+
 
 
 
