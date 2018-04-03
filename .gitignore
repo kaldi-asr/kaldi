@@ -83,6 +83,8 @@ GSYMS
 /idlak-egs/*/s*/data
 /idlak-egs/*/s*/rawaudio
 /idlak-egs/*/s*/labels
+/idlak-egs/*/s*/exp-align
+/idlak-egs/*/s*/f0data
 
 # /tools/
 /tools/ATLAS/
