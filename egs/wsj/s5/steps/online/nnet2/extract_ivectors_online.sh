@@ -59,7 +59,7 @@ if [ $# != 3 ]; then
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --nj <n|10>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
-  echo "  --num-threads <n|8>                              # Number of threads for ivector-extract-online2
+  echo "  --num-threads <n|8>                              # Number of threads for ivector-extract-online2"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
   echo "  --min-post <float;default=0.025>                 # Pruning threshold for posteriors"
