@@ -174,6 +174,7 @@ template<class C>
 class TaskSequencer {
  public:
   TaskSequencer(const TaskSequencerConfig &config):
+      num_threads_(config.num_threads),
       threads_avail_(config.num_threads),
       tot_threads_avail_(config.num_threads_total > 0 ? config.num_threads_total :
                          config.num_threads + 20),
@@ -181,16 +182,13 @@ class TaskSequencer {
     KALDI_ASSERT((config.num_threads_total <= 0 ||
                   config.num_threads_total >= config.num_threads) &&
                  "num-threads-total, if specified, must be >= num-threads");
-    if (config.num_threads == 0) {
-      synchronous_ = true;
-    }
   }
 
   /// This function takes ownership of the pointer "c", and will delete it
   /// in the same sequence as Run was called on the jobs.
   void Run(C *c) {
     // run in main thread
-    if (synchronous_) {
+    if (num_threads_ == 0) {
       (*c)();
       delete c;
       return;
@@ -270,7 +268,7 @@ class TaskSequencer {
     args->me->tot_threads_avail_.Signal();
   }
 
-  bool synchronous_ = false; // set to true if config.num_threads==0
+  int num_threads_; // copy of config.num_threads (since Semaphore doesn't store original count)
 
   Semaphore threads_avail_; // Initialized to the number of threads we are
   // supposed to run with; the function Run() waits on this.
