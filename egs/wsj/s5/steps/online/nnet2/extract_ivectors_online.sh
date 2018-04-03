@@ -22,6 +22,7 @@ set -o pipefail
 nj=30
 cmd="run.pl"
 stage=0
+num_threads=8 # the default value in ivector-extract-online2
 num_gselect=5 # Gaussian-selection using diagonal model: number of Gaussians to select
 min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
 ivector_period=10
@@ -58,6 +59,7 @@ if [ $# != 3 ]; then
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --nj <n|10>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
+  echo "  --num-threads <n|8>                              # Number of threads for ivector-extract-online2"
   echo "  --num-gselect <n|5>                              # Number of Gaussians to select using"
   echo "                                                   # diagonal model."
   echo "  --min-post <float;default=0.025>                 # Pruning threshold for posteriors"
@@ -117,8 +119,9 @@ done
 
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
-  $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
-     ivector-extract-online2 --config=$ieconf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
+  $cmd --num-threads $num_threads JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
+     ivector-extract-online2 --config=$ieconf --num-threads=$num_threads \
+     ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
      copy-feats --compress=$compress ark:- \
       ark,scp:$absdir/ivector_online.JOB.ark,$absdir/ivector_online.JOB.scp || exit 1;
 fi
