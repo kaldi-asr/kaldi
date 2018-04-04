@@ -1,0 +1,147 @@
+#!/bin/bash
+# kaldi:
+for x in exp/sdm*/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+# sclite / asclite:
+for x in exp/sdm*/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/ascore_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+exit 0
+
+# The below are WER scores with up to 4 overlapping speakers,
+
+# Pawel,
+dev
+exp/sdm1/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.dtl:Percent Total Error       =   66.9%   (63190)
+exp/sdm1/tri3a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.dtl:Percent Total Error       =   64.5%   (60963)
+exp/sdm1/tri3a_mmi_b0.1/decode_dev_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/dev_o4.ctm.filt.dtl:Percent Total Error       =   62.2%   (58772)
+
+eval
+exp/sdm1/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   71.8%   (64577)
+exp/sdm1/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.dtl:Percent Total Error       =   69.5%   (62576)
+exp/sdm1/tri3a_mmi_b0.1/decode_eval_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/eval_o4.ctm.filt.dtl:Percent Total Error       =   67.2%   (60447)
+
+#--------------------------------------------------------------------------------------------------------------------------------------------
+#TDNN-online system
+mic=sdm1
+for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/ascore_*/*.sys | utils/best_wer.sh; done
+  # Cross entropy system
+    #Dev
+    %WER 46.8 | 15053 94502 | 59.3 27.6 13.0 6.2 46.8 67.0 | -23.602 | exp/sdm1/nnet2_online/nnet_ms_sp_online/decode_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
+    %WER 46.4 | 14210 94496 | 59.0 26.6 14.4 5.4 46.4 70.7 | -23.844 | exp/sdm1/nnet2_online/nnet_ms_sp_online/decode_dev_utt_offline/ascore_13/dev_hires_o4.ctm.filt.sys
+
+    #Eval
+    %WER 50.7 | 13180 89643 | 54.7 29.6 15.7 5.3 50.7 72.6 | -23.104 | exp/sdm1/nnet2_online/nnet_ms_sp_online/decode_eval_utt/ascore_12/eval_hires_o4.ctm.filt.sys
+    %WER 50.5 | 13099 89806 | 54.7 29.3 15.9 5.2 50.5 73.5 | -23.149 | exp/sdm1/nnet2_online/nnet_ms_sp_online/decode_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
+
+  # sMBR training
+  # dev set
+  # epoch 0
+  %WER 46.8 | 15053 94502 | 59.3 27.6 13.0 6.2 46.8 67.0 | -23.602 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
+  %WER 46.4 | 14210 94496 | 59.0 26.6 14.4 5.4 46.4 70.7 | -23.844 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_dev_utt_offline/ascore_13/dev_hires_o4.ctm.filt.sys
+  #epoch 1
+  %WER 45.7 | 14207 94490 | 59.5 22.9 17.6 5.3 45.7 70.5 | -24.681 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch1_dev_utt/ascore_11/dev_hires_o4.ctm.filt.sys
+  %WER 45.9 | 15232 94491 | 59.9 23.2 17.0 5.7 45.9 65.9 | -24.541 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch1_dev_utt_offline/ascore_10/dev_hires_o4.ctm.filt.sys
+  #epoch 2
+  %WER 45.9 | 14543 94497 | 59.3 22.5 18.2 5.3 45.9 68.8 | -24.748 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch2_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
+  %WER 46.1 | 14125 94492 | 59.6 22.7 17.7 5.7 46.1 71.1 | -24.626 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch2_dev_utt_offline/ascore_11/dev_hires_o4.ctm.filt.sys
+  #epoch 3
+  %WER 46.0 | 15128 94502 | 59.6 23.1 17.3 5.6 46.0 66.2 | -24.565 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch3_dev_utt/ascore_12/dev_hires_o4.ctm.filt.sys
+  %WER 46.2 | 14764 94498 | 59.3 22.3 18.4 5.5 46.2 68.0 | -24.723 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch3_dev_utt_offline/ascore_12/dev_hires_o4.ctm.filt.sys
+  #epoch 4
+  %WER 46.1 | 15193 94485 | 58.5 21.4 20.1 4.6 46.1 65.8 | -25.114 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt/ascore_15/dev_hires_o4.ctm.filt.sys
+  %WER 46.5 | 15169 94494 | 59.2 22.8 18.0 5.7 46.5 66.3 | -24.554 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_dev_utt_offline/ascore_12/dev_hires_o4.ctm.filt.sys
+
+# eval set
+  #epoch 0
+  %WER 50.7 | 13180 89643 | 54.7 29.6 15.7 5.3 50.7 72.6 | -23.104 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_eval_utt/ascore_12/eval_hires_o4.ctm.filt.sys
+  %WER 50.5 | 13099 89806 | 54.7 29.3 15.9 5.2 50.5 73.5 | -23.149 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch0_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
+  #epoch 1
+  %WER 49.3 | 13432 89977 | 55.4 25.2 19.4 4.7 49.3 70.7 | -23.885 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch1_eval_utt/ascore_12/eval_hires_o4.ctm.filt.sys
+  %WER 49.2 | 13497 89975 | 55.5 24.9 19.5 4.7 49.2 70.7 | -23.937 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch1_eval_utt_offline/ascore_12/eval_hires_o4.ctm.filt.sys
+  #epoch 2
+  %WER 49.2 | 13372 89987 | 55.6 25.3 19.0 4.9 49.2 71.0 | -23.850 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch2_eval_utt/ascore_13/eval_hires_o4.ctm.filt.sys
+  %WER 48.9 | 13318 89796 | 55.9 25.2 18.9 4.8 48.9 71.3 | -23.901 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch2_eval_utt_offline/ascore_13/eval_hires_o4.ctm.filt.sys
+  #epoch 3
+  %WER 49.0 | 14307 89984 | 55.7 25.3 19.0 4.8 49.0 66.3 | -23.885 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch3_eval_utt/ascore_14/eval_hires_o4.ctm.filt.sys
+  %WER 48.9 | 14084 89798 | 55.9 25.3 18.8 4.8 48.9 67.4 | -23.884 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch3_eval_utt_offline/ascore_14/eval_hires_o4.ctm.filt.sys
+  #epoch 4
+  %WER 49.1 | 13948 89977 | 55.6 25.2 19.2 4.8 49.1 68.2 | -23.902 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt/ascore_15/eval_hires_o4.ctm.filt.sys
+  %WER 49.0 | 14259 89798 | 55.8 25.4 18.8 4.8 49.0 66.6 | -23.873 | exp/sdm1/nnet2_online/nnet_ms_sp_smbr_0.000005/decode_epoch4_eval_utt_offline/ascore_15/eval_hires_o4.ctm.filt.sys
+
+
+#------------------------------------------------------------------------------------------------------------------------------------
+# Nnet3 systems
+# the ivectors are estimated per recording (not per utterance), the results will be updated with per-utterance ivectors
+
+#TDNN
+#Total training time is 5:19:19
+# local/nnet3/run_tdnn.sh --mic sdm1 --use-sat-alignments false
+%WER 46.1 | 15377 94333 | 59.1 25.8 15.0 5.2 46.1 65.6 | -24.026 | exp/sdm1/nnet3/tdnn_sp/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 50.9 | 13867 89975 | 53.6 27.9 18.5 4.5 50.9 70.1 | -23.332 | exp/sdm1/nnet3/tdnn_sp/decode_eval/ascore_11/eval_hires_o4.ctm.filt.sys
+
+#LSTM
+#Total training time is 21:34:06
+%WER 44.2 | 14069 94507 | 61.3 25.8 12.9 5.5 44.2 70.7 | -24.180 | exp/sdm1/nnet3/lstm_sp_ld5/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 47.6 | 14034 89978 | 56.8 26.9 16.4 4.3 47.6 67.7 | -23.786 | exp/sdm1/nnet3/lstm_sp_ld5/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+#Variable-delay LSTM (Default LSTM recipe)
+#Total training time is 18:43:35
+# local/nnet3/run_lstm.sh --mic sdm1 --use-sat-alignments false
+%WER 44.4 | 14208 94318 | 61.2 25.7 13.1 5.5 44.4 70.1 | -24.197 | exp/sdm1/nnet3/lstm_sp_ld5/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 47.9 | 14766 89956 | 56.0 25.7 18.2 3.9 47.9 64.1 | -23.997 | exp/sdm1/nnet3/lstm_sp_ld5/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+# BLSTM
+# local/nnet3/run_blstm.sh --mic sdm1 --use-sat-alignments false
+%WER 42.8 | 14948 94501 | 62.2 25.2 12.6 5.1 42.8 65.8 | -24.499 | exp/sdm1/nnet3/lstm_sp_bidirectional_ld0/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 46.1 | 13760 89981 | 57.8 25.9 16.3 3.9 46.1 68.2 | -24.143 | exp/sdm1/nnet3/lstm_sp_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+# local/nnet3/run_blstm.sh --mic sdm1 --use-sat-alignments true
+%WER 42.5 | 14150 94510 | 62.4 24.6 12.9 4.9 42.5 69.2 | -24.676 | exp/sdm1/nnet3/lstm_sp_bidirectional_fmllr_ld0/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 45.6 | 14142 89993 | 58.5 26.1 15.4 4.2 45.6 66.5 | -24.127 | exp/sdm1/nnet3/lstm_sp_bidirectional_fmllr_ld0/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+# BLSTM + clean alignments
+#  local/nnet3/run_blstm.sh --mic sdm1 \
+#    --chunk-right-context 20 \
+#    --use-sat-alignments true \
+#    --use-ihm-ali true
+# Note: Chunk right context of 20 limits the latency of the acoustic model to
+# 20 frames.
+
+%WER 38.5 | 14828 94514 | 66.6 22.7 10.6 5.2 38.5 63.7 | -25.569 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 41.8 | 12828 89977 | 62.5 24.6 12.9 4.3 41.8 70.8 | -24.813 | exp/sdm1_cleanali/nnet3/lstm_sp_bidirectional_ld0/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+##################################
+# chain model results
+  # local/chain/run_tdnn_ami_5.sh  --mic sdm1 --affix msl1.5_45wer
+  %WER 42.8 | 14391 94487 | 60.8 19.3 19.9 3.6 42.8 69.1 | 0.588 | exp/sdm1/chain/tdnn_ami4_msl1.5_45wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  %WER 46.1 | 13754 89977 | 57.5 20.7 21.9 3.6 46.1 69.2 | 0.561 | exp/sdm1/chain/tdnn_ami4_msl1.5_45wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+
+  # local/chain/run_tdnn_ami_5.sh  --mic sdm1 --use-ihm-ali true --max-wer 50 --affix msl1.5_50wer
+  %WER 41.6 | 14793 94504 | 61.8 19.3 18.9 3.4 41.6 65.3 | 0.591 | exp/sdm1_cleanali/chain/tdnn_ami4_msl1.5_50wer_sp/decode_dev/ascore_9/dev_hires_o4.ctm.filt.sys
+  %WER 45.4 | 14141 89972 | 57.9 20.7 21.4 3.3 45.4 64.8 | 0.567 | exp/sdm1_cleanali/chain/tdnn_ami4_msl1.5_50wer_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+#--------------------------------------------------------------------------------------------------------------------------------------------
+# Karel, JSALT 2015, (28.7.2015)
+# nnet1, MFCC-LDA-MLLT-DNN system (local/nnet/run_dnn_lda_mllt.sh),
+
+# dev,
+## GMM
+%WER 66.8 | 14238 94527 | 40.1 40.4 19.5 6.8 66.8 76.1 | -22.367 | exp/sdm1/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_12/dev_o4.ctm.filt.sys
+%WER 64.4 | 14843 94511 | 42.1 38.7 19.2 6.5 64.4 72.2 | -22.275 | exp/sdm1/tri3a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_12/dev_o4.ctm.filt.sys
+%WER 62.3 | 14761 94499 | 44.0 35.7 20.3 6.3 62.3 72.4 | -22.262 | exp/sdm1/tri3a_mmi_b0.1/decode_dev_2.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/dev_o4.ctm.filt.sys
+## DNN-Xent,
+%WER 54.0 | 14017 94513 | 51.7 32.3 15.9 5.7 54.0 73.8 | -22.649 | exp/sdm1/dnn4noSAT_pretrain-dbn_dnn/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+## DNN-sMBR,
+%WER 51.6 | 15097 94506 | 54.5 29.8 15.7 6.1 51.6 67.5 | -22.989 | exp/sdm1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_ami_fsh.o3g.kn.pr1-7_it1/ascore_11/dev_o4.ctm.filt.sys
+%WER 50.6 | 14806 94481 | 55.4 29.6 15.0 6.0 50.6 68.7 | -23.087 | exp/sdm1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_ami_fsh.o3g.kn.pr1-7_it4/ascore_14/dev_o4.ctm.filt.sys
+
+# eval,
+## GMM,
+%WER 71.8 | 13901 89999 | 33.9 41.6 24.5 5.7 71.8 74.4 | -22.720 | exp/sdm1/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+%WER 69.5 | 13480 89988 | 36.0 39.6 24.4 5.5 69.5 76.3 | -22.469 | exp/sdm1/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+%WER 67.2 | 13704 89979 | 38.1 36.6 25.3 5.3 67.2 73.7 | -22.292 | exp/sdm1/tri3a_mmi_b0.1/decode_eval_2.mdl_ami_fsh.o3g.kn.pr1-7/ascore_10/eval_o4.ctm.filt.sys
+## DNN-Xent,
+%WER 58.6 | 14191 89646 | 46.7 34.8 18.6 5.3 58.6 69.2 | -22.351 | exp/sdm1/dnn4noSAT_pretrain-dbn_dnn/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+## DNN-sMBR,
+%WER 56.4 | 14203 89973 | 48.8 31.7 19.5 5.2 56.4 68.8 | -22.584 | exp/sdm1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_ami_fsh.o3g.kn.pr1-7_it1/ascore_11/eval_o4.ctm.filt.sys
+%WER 55.0 | 13731 89834 | 50.7 32.6 16.6 5.8 55.0 70.7 | -22.580 | exp/sdm1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_ami_fsh.o3g.kn.pr1-7_it4/ascore_13/eval_o4.ctm.filt.sys
+

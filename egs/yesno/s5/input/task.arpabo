@@ -1,0 +1,11 @@
+
+\data\
+ngram 1=4
+
+\1-grams:
+-1	NO
+-1	YES
+-99 <s>
+-1 </s>
+
+\end\

@@ -1,0 +1,70 @@
+for x in exp/*/decode_dev; do grep WER $x/wer_* | utils/best_wer.sh; done
+
+# WERs for the GMM build
+%WER 47.11 [ 18255 / 38753, 1643 ins, 4415 del, 12197 sub ] exp/tri1/decode_dev/wer_12
+%WER 46.78 [ 18130 / 38753, 1647 ins, 4377 del, 12106 sub ] exp/tri2/decode_dev/wer_12
+%WER 39.42 [ 15276 / 38753, 1799 ins, 3434 del, 10043 sub ] exp/tri3a/decode_dev/wer_11
+%WER 32.31 [ 12522 / 38753, 1531 ins, 2965 del, 8026 sub ] exp/tri4a/decode_dev/wer_13
+%WER 28.86 [ 11183 / 38753, 1546 ins, 2499 del, 7138 sub ] exp/tri5a/decode_dev/wer_13
+
+# Results for the ASpIRE submission system
+# dev set
+%WER 30.8 | 2120 27213 | 75.3 16.2 8.4 6.2 30.8 78.8 | -0.724 | exp/nnet2_multicondition/nnet_ms_a/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterfinal_pp_fg/score_13/penalty_0.0/ctm.filt.filt.sys
+%WER 29.1 | 2120 27208 | 77.6 15.4 7.0 6.7 29.1 77.1 | -1.357 | exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterepoch2_pp_fg/score_16/penalty_1.0/ctm.filt.filt.sys
+# dev-test set
+72.30 score dev_test for leaderboard
+
+# These results are for the dev and test sets in Fisher corpora (these are subsets created for the purpose of testing and not actual universally accepted evalutation sets)
+# dev_rvb and test_rvb are artificially reverberated test data (no care was taken to ensure non-overlap of RIRs between train, test and dev sets)
+%WER 18.11 [ 7020 / 38753, 960 ins, 1807 del, 4253 sub ] exp/nnet2_multicondition/nnet_ms_a/decode_dev/wer_11
+%WER 18.51 [ 7174 / 38753, 1093 ins, 1663 del, 4418 sub ] exp/nnet2_multicondition/nnet_ms_a_online/decode_dev/wer_10
+%WER 24.68 [ 9563 / 38753, 1127 ins, 2374 del, 6062 sub ] exp/nnet2_multicondition/nnet_ms_a/decode_dev_rvb/wer_10
+%WER 25.39 [ 9839 / 38753, 1115 ins, 2539 del, 6185 sub ] exp/nnet2_multicondition/nnet_ms_a_online/decode_dev_rvb/wer_11
+
+%WER 18.17 [ 7171 / 39477, 1015 ins, 1783 del, 4373 sub ] exp/nnet2_multicondition/nnet_ms_a/decode_test/wer_10
+%WER 18.41 [ 7267 / 39477, 1027 ins, 1740 del, 4500 sub ] exp/nnet2_multicondition/nnet_ms_a_online/decode_test/wer_10
+%WER 24.36 [ 9618 / 39477, 1152 ins, 2347 del, 6119 sub ] exp/nnet2_multicondition/nnet_ms_a/decode_test_rvb/wer_10
+%WER 25.02 [ 9876 / 39477, 1032 ins, 2581 del, 6263 sub ] exp/nnet2_multicondition/nnet_ms_a_online/decode_test_rvb/wer_12
+
+# Results on ASpIRE dev data using nnet3 scripts
+# -----------------------------------------------
+# local/chain/run_tdnn_7b.sh
+%WER 27.8 | 2120 27217 | 78.2 13.6 8.2 6.0 27.8 75.9 | -0.613 | exp/chain/tdnn_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iterfinal_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
+#Total training time is 4 days, 4:17:26
+
+# local/chain/run_blstm_7b.sh
+%WER 25.7 | 2120 27216 | 81.1 11.2 7.8 6.8 25.7 76.1 | -0.906 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_9/penalty_0.25/ctm.filt.filt.sys
+# Total training time is 10 days, 13:40:32
+
+# local/nnet3/run_tdnn.sh
+%WER 31.0 | 2120 27217 | 74.8 16.1 9.1 5.9 31.0 77.9 | -0.707 | exp/nnet3/tdnn/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iterfinal_pp_fg/score_14/penalty_0.0/ctm.filt.filt.sys
+#Total training time is 2 days, 21:24:30
+
+# local/nnet3/run_blstm.sh
+%WER 29.4 | 2120 27210 | 77.0 14.7 8.3 6.4 29.4 77.9 | -1.227 | exp/nnet3/lstm_bidirectional/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_13/penalty_0.25/ctm.filt.filt.sys
+#Total training time is 14 days, 17:29:02
+
+# Results on ASpIRE dev data using data reverberated by simulated RIRs and point-source noises
+# --------------------------------------------------------------------------------------------
+# local/chain/run_tdnn_7b.sh
+%WER 27.0 | 2120 27219 | 78.9 12.7 8.4 6.0 27.0 74.8 | -0.577 | exp/chain/tdnn_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_200jobs_iterfinal_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
+
+# local/chain/run_blstm_7b.sh
+%WER 24.6 | 2120 27224 | 82.0 11.5 6.5 6.7 24.6 74.6 | -0.976 | exp/chain/blstm_7b/decode_dev_aspire_whole_uniformsegmented_win10_over5_v7_iterfinal_pp_fg/score_8/penalty_0.75/ctm.filt.filt.sys
+
+# local/chain/run_tdnn_lstm_1a.sh
+%WER 23.6 | 2120 27219 | 82.8 11.5 5.7 6.5 23.6 73.8 | -0.675 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_whole_uniformsegmented_v9_pp_fg/score_9/penalty_0.0/ctm.filt.filt.sys
+
+# The following results use the new ASpIRE dev sets from LDC.
+# This uses a new GLM with more acronym normalizations.
+# The new STM has more IGNORE_TIME_SEGMENT markings and acronym normalizations.
+%WER 22.9 | 2083 25834 | 81.6 12.0 6.4 4.5 22.9 70.7 | -0.546 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_uniformsegmented_v9_pp_fg/score_8/penalty_0.0/ctm.filt.filt.sys
+%WER 24.0 | 2083 25820 | 79.9 12.0 8.1 4.0 24.0 71.8 | -0.444 | exp/chain/tdnn_lstm_1a_online/decode_dev_aspire_uniformsegmented_v9_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
+
+# Result using oracle segmentation
+# There is no specific script for this. But you can run the decoding and lm rescoring using the
+# default parameters in local/nnet3/decode.sh.
+%WER 23.0 | 2083 25830 | 81.5 12.1 6.4 4.5 23.0 70.4 | -0.522 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_fg/score_8/penalty_0.0/ctm.filt.filt.sys
+
+# Result using speech activity detection for segmentation
+%WER 22.9 | 2083 25821 | 81.9 11.1 7.0 4.9 22.9 71.8 | -0.488 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_asr_sad_1a_pp_fg/score_10/penalty_0.25/ctm.filt.filt.sys

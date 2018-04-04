@@ -1,0 +1,17 @@
+# Copyright  2015 Tokyo Institute of Technology (Authors: Takafumi Moriya and Takahiro Shinozaki)
+#            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
+# Apache 2.0
+# Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055.  
+
+# Currently optimized parameter config for CSJ
+
+splice=17
+nn_depth=6
+hid_dim=1905
+param_stddev_first=0.119931389955673
+param_stddev=0.226677922033472
+rbm_lrate=0.466611327982458
+rbm_lrate_low=0.0064959687211594
+rbm_l2penalty=0.000158194138761752
+learn_rate=0.00436084275587514
+momentum=8.53165740024456e-06

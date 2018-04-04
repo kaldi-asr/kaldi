@@ -1,0 +1,28 @@
+for x in exp/system1/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+%WER 26.67 [ 4721 / 17700, 371 ins, 1338 del, 3012 sub ] exp/system1/combine_tri3b_fmmi_indirect_sgmm2_5b2_mmi_b0.1/decode_test_it8_3/wer_10
+%WER 48.76 [ 8631 / 17700, 235 ins, 2810 del, 5586 sub ] exp/system1/mono/decode_test/wer_9
+%WER 27.55 [ 4877 / 17700, 493 ins, 1112 del, 3272 sub ] exp/system1/sgmm2_5b2/decode_test/wer_9
+%WER 26.95 [ 4771 / 17700, 484 ins, 1067 del, 3220 sub ] exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it1/wer_9
+%WER 26.83 [ 4749 / 17700, 507 ins, 1060 del, 3182 sub ] exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it2/wer_9
+%WER 27.05 [ 4788 / 17700, 515 ins, 1041 del, 3232 sub ] exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3/wer_9
+%WER 26.62 [ 4711 / 17700, 487 ins, 1076 del, 3148 sub ] exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3.mbr/wer_9
+%WER 27.45 [ 4859 / 17700, 538 ins, 1035 del, 3286 sub ] exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it4/wer_9
+%WER 33.71 [ 5967 / 17700, 371 ins, 2262 del, 3334 sub ] exp/system1/tri1/decode_test/wer_14
+%WER 33.64 [ 5955 / 17700, 464 ins, 1880 del, 3611 sub ] exp/system1/tri2a/decode_test/wer_12
+%WER 31.86 [ 5639 / 17700, 409 ins, 1856 del, 3374 sub ] exp/system1/tri2b/decode_test/wer_14
+%WER 31.60 [ 5594 / 17700, 436 ins, 1644 del, 3514 sub ] exp/system1/tri3b/decode_test/wer_13
+%WER 32.79 [ 5804 / 17700, 510 ins, 1495 del, 3799 sub ] exp/system1/tri3b/decode_test.si/wer_12
+%WER 30.79 [ 5450 / 17700, 443 ins, 1452 del, 3555 sub ] exp/system1/tri3b_fmmi_a/decode_test_it3/wer_10
+%WER 30.81 [ 5453 / 17700, 416 ins, 1580 del, 3457 sub ] exp/system1/tri3b_fmmi_a/decode_test_it4/wer_10
+%WER 30.47 [ 5393 / 17700, 461 ins, 1377 del, 3555 sub ] exp/system1/tri3b_fmmi_a/decode_test_it5/wer_9
+%WER 30.93 [ 5474 / 17700, 419 ins, 1572 del, 3483 sub ] exp/system1/tri3b_fmmi_a/decode_test_it6/wer_10
+%WER 31.40 [ 5558 / 17700, 433 ins, 1531 del, 3594 sub ] exp/system1/tri3b_fmmi_a/decode_test_it7/wer_10
+%WER 32.23 [ 5705 / 17700, 446 ins, 1600 del, 3659 sub ] exp/system1/tri3b_fmmi_a/decode_test_it8/wer_10
+%WER 29.84 [ 5281 / 17700, 457 ins, 1337 del, 3487 sub ] exp/system1/tri3b_fmmi_indirect/decode_test_it3/wer_10
+%WER 29.97 [ 5304 / 17700, 480 ins, 1287 del, 3537 sub ] exp/system1/tri3b_fmmi_indirect/decode_test_it4/wer_10
+%WER 29.99 [ 5309 / 17700, 441 ins, 1338 del, 3530 sub ] exp/system1/tri3b_fmmi_indirect/decode_test_it5/wer_10
+%WER 30.57 [ 5411 / 17700, 456 ins, 1294 del, 3661 sub ] exp/system1/tri3b_fmmi_indirect/decode_test_it6/wer_10
+%WER 31.17 [ 5517 / 17700, 520 ins, 1245 del, 3752 sub ] exp/system1/tri3b_fmmi_indirect/decode_test_it7/wer_9
+%WER 32.12 [ 5686 / 17700, 466 ins, 1418 del, 3802 sub ] exp/system1/tri3b_fmmi_indirect/decode_test_it8/wer_10
+%WER 30.56 [ 5409 / 17700, 501 ins, 1291 del, 3617 sub ] exp/system1/tri3b_mmi_b0.1/decode_test/wer_11

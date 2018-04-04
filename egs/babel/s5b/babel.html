@@ -1,0 +1,788 @@
+<html> <head> <meta name="description" content="Kaldi BABEL system description"> <style> td,th{padding:0 1em 0 1em;background-color: #e3e3e3;} table{background-color:#000000;margin:0.4em;}</style> </head>
+
+<body>
+
+
+ <h2> Description of Kaldi subsystems </h2>
+
+ This is a description of the complete Kaldi sub-system, containing a description of
+ all components.  It will be referred to from the system descriptions of the various
+ Kaldi sub-systems, and from the top-level system description of the RADICAL team.
+
+ <h3> 1. Abstract </h3>
+
+<p>
+  The Kaldi keyword search system is based mostly on a conventional LVCSR pipeline.
+  We have three main sub-systems, which separately decode the data;
+  we then use conventional system combination techniques.  The four systems are:
+ <ul>
+  <li> SGMM+BMMI.  This is a Subspace Gaussian Mixture Model (SGMM) of the type described in <a href="#2">[2]</a>,
+      discriminatively trained with Boosted MMI <a href="#3">[3]</a>.
+  <li> DNN.  This is a Deep Neural Network with p-norm activations as described in <a href="#8">[8]</a>.
+     For LimitedLP systems we improve performance with an ensemble method which we will
+     describe below.
+  <li> Bottleneck SGMM+BMMI system.  In this system we train a DNN with a bottleneck layer
+    of dimension 42, and use it to extract features which we train an SGMM+BMMI system on.
+ </ul>
+  For LimitedLP we add a fourth system, which is a version of the bottleneck system where
+  DNN to extract the bottleneck features is trained on automatically transcribed data as
+  well as the LimitedLP data.  For FullLP we add a different fourth system, which is
+  a "sequence-trained" version of the DNN, trained with the State-level Minimum Bayes
+  Risk criterion (a variant of MPE).
+
+  We also include a fifth, less conventional sub-system, based on the "Point Process Model" (PPM)
+  that uses phone-level posteriors from a DNNs trained for one of the systems above.
+  This will be described in <a href="#ppm"> Section 4.16</a>.  Its outputs are combined with our systems above
+  for keyword spotting but not for transcription.
+<p>
+  Our keyword search pipeline is based on lattice-indexing as described in <a href="#5">[5]</a>; the lattices
+  are generated using the "exact" lattice generation method described in <a href="#6">[6]</a>.
+  To handle out of vocabulary (OOV) keywords, we use the method <a href="#4">[4]</a> which constructs for
+  an OOV keyword sequence, proxy keyword sequences consisting of word sequences which are phonetically
+  similar.  This year we added a "lexicon expansion" method, in which we generate plausible
+  new words using a syllable-level language model and add them to the lexicon and language model
+  when decoding (see <a href="#expansion">Section 4.4</a>).  (This even slightly improves the WER).  We actually add
+  the original and expanded-lexicon versions of each system to the final system combination,
+  but including non-expanded decodings in the system combination is not really necessary.
+<p>
+ The code and scripts used for the main Kaldi system are available as part of Kaldi;
+ see svn://svn.code.sf.net/p/kaldi/code/trunk/.  The scripts we used this year are
+ located in the directory egs/babel/s5b. 
+
+
+ <h3> 2. Notable features </h3>
+
+ A new feature of our system that is shared by all the sub-systems is our
+ <em> pitch features </em>.  We describe these in more detail in <a href="#7">[7]</a>.  This is a
+ pitch extraction algorithm based on the old "getf0" method, but which naturally
+ ensures continuity of the pitch contours even in unvoiced regions.  We also
+ derive a continuous-valued voicing feature from the algoirhtm.  Finally we get
+ a three-dimensional feature consisting of pitch, delta-pitch, and a feature
+ derived from probability of voicing (POV).  These are appended to the PLP
+ features, giving us consistent gains across languages compared with our
+ previous pitch features (other teams have also reported gains using our
+ features).
+<p>
+ Something else that is new is the <em> p-norm neural networks </em> <a href="#8">[8]</a>.  This
+ is a new nonlinearity type that is related to maxout (in that it is a
+ dimension-reducing nonlinearity).  This gave us around 1% absolute improvement
+ compared with our old, tanh-based networks.   On top of this, for LimitedLP
+ we introduce an <em> ensemble training method </em>.  Imagine training four
+ networks from different random seeds.  We can average the scores from all 
+ of them to get an improvement (around 2% absolute).  But we don't like to have
+ to use multiple networks in test time.   Our ensemble method introduces a term in
+ the objective function to train the networks' outputs towards each other, to make
+ them more similar, so that in test time we can pick just one of the networks to test with.
+ This gives us three quarters of the improvement from the simple method of averaging the scores,
+ but does not slow us down in test time.  We only do this for limitedLP because it
+ slows down training too much to be practical for FullLP.
+<p>
+ Our <em> bottleneck feature </em> system is heavily modified since last year, and
+ has improved.
+ Firstly, we implemented it all in Kaldi, as opposed to last year's system which was a
+ hybrid between Kaldi and Theano.  This makes the training faster, since Kaldi
+ supports parallelized neural network training, using multiple GPUs.  The basic
+ recipe is basically the same as last year-- a DNN with a 42-dimensional bottleneck, appending
+ these features with the baseline fMLLR features, splicing across 3 frames and doing
+ LDA dimension reduction to 60 dimensions, then training an SGMM system on these features.
+ However, results seemed a little better with the Kaldi implementation, perhaps 0.5\% 
+ absolute.  It's hard to say why, as there are too many differences.  The thing that is
+ new is that we implemented semi-supervised training in the LimitedLP case.  We
+ use the 1-best output from decoding as supervision for the untranscribed data, but only
+ train on a frame if the state-level posterior is above a threshold (we use a low threshold
+ of 0.35 for this case).
+<p>
+ Our <em> point process model </em> system (<a href="#ppm"> Section 4.16</a>), while it get only around half
+ the ATWV of our conventional system by itself, is giving us large improvements in
+ combination with our conventional system, of around 3 to 4% ATWV.  This is an 
+ unconventional "exemplar-based" approach.
+<p>
+ Our <em> expanded lexicon </em> (<a href="#expansion">Section 4.4</a>) also new.  This method takes
+ as input the provided lexicon, and uses it to hypothesize likely new words
+ and their pronuciations, along with their probabilities.  We generate 2 million
+ extra words, with associated probabilities, and we allocate the "unknown-word"
+ probability mass of our language model to these words.  Our method is
+ "backwards", in that we first generate the phonetic sequences, and then
+ work out the spellings.  The improvement this gives is extremely variable.
+ For Bengali and Assamese, it makes essentialy no difference.  But for Zulu
+ LimitedLP using the development keywords on the development data, it improved
+ the Kaldi-only ATWV from 0.20 to 0.28.
+
+<h3> 3. Extra resources </h3>
+
+ For the submitted Kaldi systems we did not use any linguistic or other
+ resources outside of the language development pack.  For our LimitedLP
+ submissions, we did use the FullLP and "untranscribed" data for unsupervised
+ training, without using the transcriptions.  (This is allowed even in the
+ BaseLR condition).
+
+<h3> 4.  System description </h3>
+
+ <h4> 4.1 Low level features </h4>
+
+ Our basic features are standard 13-dimensional PLP features.  To these we
+ append 3-dimensional features derived from our "Kaldi" pitch tracker, giving a
+ 16-dimensional "base feature".  Our pitch tracker and the configuration we used
+ are described in <a href="#7">[7]</a>.  These features were extremly helpful on tonal languages:
+ on Cantonese and Vietnamese last year, our tests showed as much as 6% absolute
+ WER improvement compared with no pitch features.  In general our new "Kaldi"
+ pitch features give us about twice as much improvement as our old features from
+ last year that were based on SAcC.
+
+ <h4> 4.2 Segmentation </h4>
+
+ Our segmentation is performed via decoding the whole-conversation data using a
+ GMM-based model.  The model is trained in the normal way for an LVCSR system,
+ but the decoding graph is derived from a phone bigram language model (unsmoothed,
+ to avoid blowup due to context dependency).  We do a single pass of decoding,
+ without adaptation; the features are processed as spliced-frames+LDA+STC.  The
+ model used for segmentation is trained on transcripts that included certain
+ data we would normally exclude: segments containing only non-speech events such
+ as noise are included in the transcripts.
+<p>
+ The output of the decoding above is used as the input to the following algorithm.
+ First we map the frames of the decoder best path to one of three classes: speech,
+ noise or silence.  The segmentation algorithm is as follows:
+
+<ul>
+ <li> Get initial segments: Contiguous regions consisting of speech and/or noise are marked as the initial segments. </li>
+ <li> Pad the initial segments: Non-speech frames on either side of the initial segments are included in the segments one at a time until there
+are no more non-speech frames adjacent to any segments (unlikely) or until the non-speech frames make up about 5% of the total frames in the conversation. </li>
+ <li> Merge segments: Two segments are merged if the length of non-speech frames between two segments is less than about 1 second and the merged segments are not longer than 10 seconds. </li>
+ <li> Split long segments: Initial segments that are longer than 10s are split into equal pieces, each shorter than 10s. </li>
+ <li> Remove segments with only non-speech frames, i.e. containing only silence and noise. </li>
+</ul>
+
+
+ <h4> 4.3 Lexicon (non-expanded) </h4>
+
+ Here we describe our basic lexicon, before expansion.  The BABEL lexicon
+ comes with syllable boundaries marked using tabs, and syllable-level tags
+ marking tone.  We attach the tone tags to the phones, so that a syllable
+ <code> k a t _1 </code> would become the phone sequence  <code> k_1 a_1 t_1 </code>
+ Formally, each tone version of a phone is a separate phone, but see
+ <a href=#ctx_dep> our explanation of contenxt dependency below </a>.
+ We noticed that in some languages, the original lexicon seemed to have been expanded
+ with some kind of script where some original phone was mapped to two alternative
+ phones.  That was the case for Vietnamese last year and Zulu this year, and it
+ was helpful to reverse this mapping.  Our mapping for Zulu is as follows:
+<table>
+ <tr>  <td> k_&gt; </td> <td> g_&lt; </td>
+ <tr>  <td>  3  </td> <td> e  </td>
+ <tr>  <td>  R  </td> <td> l  </td>
+ <tr>  <td>  o  </td> <td> O  </td>
+ <tr>  <td>  b_&lt; </td> <td> b  </td>
+ <tr>  <td>  t_&gt </td> <td> th  </td>
+</table>
+ After generating a lexicon as described above, we perform the standard procedure
+ in Kaldi training scripts, to add word-position dependency.  Each phone is mapped
+ to five versions of the phone depending on whether it's at the beginning, middle
+ or end of a word, or is a singleton phone, or is a nonword phone (e.g. optional
+ silence in the lexicon).  By this point the phone set is quite large, but again,
+ see <a href=#ctx_dep> our explanation of context dependency below </a>.
+<p>
+ We have four phones in our inventory apart from those that appear in words;
+ they are all modeled in a context independent way and using a different topology
+ (5 states, where the middle 3 states all have transitions to each other).  These are
+ for silence, noise, vocalized-noise and unknown-words.  The difference between
+ vocalized noise and unknown-words is that vocalized noise models things like coughs
+ and laughs, whereas the unknown-word phone models words whose pronunciation is not
+ known (mainly so we can align them during training).
+
+ <h4 id="expansion"> 4.4 Lexicon (expanded) </h4>
+
+ As mentioned above, we perform lexicon expansion to improve our ability to decode
+ OOV words.  The lexicon expansion procedure produces pronunciations and probabilities
+ for the generated words, so that we know how to allocate the "unknown-word" probability
+ mass in the language model.  The unknown words are introduced as unigrams into our
+ ARPA language model, with probabilities equal to the probabilities we estimated,
+ times the unknown-word fraction (equal to the token OOV rate).
+<p>
+ The lexicon expansion procedure works as follows (but note that lexicon expansion is
+ not the only thing we do to handle OOVs; see also <a href="#oov"> Section 4.15</a>).   We first take all the entries
+ in our original lexicon and view them as sentences, where each syllable corresponds to
+ one symbol (we ignore the spelling).  We train an ARPA language model on this with
+ SRILM; a 3-gram "modified Kneser-Ney with interpolation" seemed to work the best.
+ We then generate a large number of "sentences" from this language model: 20 million or so,
+ For each unique sentence in the generated sentences, we compute its language model
+ probability; we then exclude the sentences that correspond to words in the original
+ lexicon, take the 2 million best ones, and these will become the pronunciations of
+ our lexicon entries.
+<p>
+ A lexicon entry needs a spelling as well as a pronunciation, and to do this we
+ use the g2p tool from Sequitur <em> in reverse </em> to produce the most likely
+ spellings for each pronunciation.  We reverse it by taking each lexicon entry,
+ e.g. <br>
+<code> hi h iy </code>
+and reversing it to produce something like <br>
+<code> hiy h i </code> <br>
+ Actually we don't do it exactly this way because we want <code>iy</code> to appear as a single
+ symbol on the left, rather than as a sequence of two symbols.  So we map the phones
+ to ASCII symbols first.  When doing so we treat tags (e.g. tones) separately, so each tag
+ has its own ASCII symbol, and a phone with a tag would be rendered as two ASCII symbols.
+<p>
+ We use g2p to generate a list of the top few likely spellings for each of the generated
+ pronunciations.  We take  the pronunciations we generated and the probabilities of their spellings,
+ and convert them into a list of words with probabilities on the words, and a list of
+ pronunciations for each word with asociated pronunciation probabilities.  This is the output
+ of the lexicon expansion and it is used to create the lexicon and language model that we
+ decode with.
+<p>
+ We ran two versions of each system, one with and one without the lexicon
+ expansion, because we wanted to see how much effect it was having.  Because we
+ had them both available, we decided to combine both versions for the final
+ system combination, but this combination made very little difference to the
+ results and we could equally well have submitted just the expanded-lexicon
+ systems.
+
+
+ <h4 id=ctx_dep> 4.5 Phonetic context dependency </h4>
+
+ Our phonetic context dependency is a fairly standard setup based on triphone context
+ and a phonetic decision tree with questions about the phonetic context.  However,
+ we should mention how we handle tone and word-position-dependent phones.  The number
+ of actual phone symbols is quite large; it consists of the number of "base phones"
+ times five (from word-position dependency), times the number of tones.  Firstly,
+ the decision-tree roots are not separate for each phone symbol, but we have one per
+ "base phone", with all states sharing a root.  The questions can be about the state
+ of the HMM, or about the left phone, the central phone, or the right phone.
+ Each question is simply a set of phone symbols.  However, in constructing the questions
+ we make use of the structure of the phone symbols.  Each question is either about
+ the tone (or some other tag), about the word-position, or about the "base-phone",
+ and the questions about the base phone consist of sets of base-phones that are derived
+ from a binary tree clustering of the acoustic statistics from the central HMM-states
+ of all the phones.
+
+ <h4> 4.6 Language models </h4>
+
+ Our language models are created using SRILM using the training transcripts.
+ We automatically select the best one from among a range of smoothing rules and
+ count cutoffs, using perplexity on held-out data as the criterion; a typical
+ chosen language model is a good-Turing smoothed 3-gram.
+
+ <h4> 4.7 Feature processing and adaptation </h4>
+
+ Our base features, as described above, are 16-dimensional (MFCC + pitch) features.
+ We process these by splicing with 3 frames of left and right context, doing
+ LDA (with the context-dependent states as the classes), and then estimating
+ an STC/MLLT transform <a href="#13">[13]</a> along with our models.  We then use speaker adaptation
+ based on fMLLR, done also during training (i.e. our models are speaker adaptive).
+ In test time the transforms are obtained by decoding with a GMM-based model.
+ Our SGMM models use speaker vectors as an additional form of adaptation on top of
+ this.
+
+
+ <h4> 4.8 Subspace Gaussian Mixture Models (SGMMs)</h4>
+
+ Two of the branches of our systems are based on SGMMs <a href="#14">[14]</a>, as mentioned in the
+ introduction.  Our SGMMs are the "SGMM2" recipe of Kaldi; this uses
+ the "symmetric" extension of SGMMs as described in <a href="#2">[2]</a>, and also a substate-tying
+ scheme that uses a two-level version of the phonetic decision tree, and is similar
+ in spirit to the Gaussian tying used in BBN's Byblos system.
+<p>
+ The main tunable parameters of the SGMM training are given below:
+ <table>
+ <tr> <th>           </th> <th> Num-gauss-UBM </th>  <th> Num-leaves </th> <th> Num-substates </th> </tr>
+ <tr> <td> LimitedLP </td> <td>    750        </td>  <td> 5000       </td> <td> 18000 </td> </tr>
+ <tr> <td> FullLP    </td> <td>    800        </td>  <td>10000       </td> <td> 80000 </td> </tr>
+ </table>
+ The number of "leaves per group" in the substate-tying scheme is set at its normal value, which
+ is 5.
+
+
+ <h4> 4.9 Deep Neural Networks </h4>
+
+ The deep neural network training setup we use in Kaldi is one of two parallel setups that
+ we maintain "Karel's setup" and "Dan's setup".  This system uses "Dan's setup".  The
+ training procedure differs in a number of ways from previously published methods, and
+ for reasons of time and space we can't document it fully here.
+ See <a href=http://kaldi-asr.org/doc/dnn2.html> here </a> for more information.
+ The most salient point is that the setup allows us to train a neural network in parallel
+ on multiple GPUs, which substantially decreases the training time.  For example, for Zulu, the
+ FullLP system took 11 hours to train for 25 epochs on 8 GPUs.
+ The LimitedLP system took 7 hours to train for 25 epochs on 4 GPUs, but note that we
+ were training 4 networks at the same time, which slowed down the training by roughly a factor
+ of 4.
+
+ <h5> 4.9.1 p-norm nonlinearities </h5>
+
+ Our major improvement to our DNN system was the introduction of "p-norm" nonlinearities.
+ This is described in <a href="#8">[8]</a>.  The input to our DNNs are 40-dimensional fMLLR features, obtained
+ via first-pass decoding with our GMM system.  These are spliced across a 9-frame context window
+ (4 frames on each side), and processed with an LDA-like transform to decorrelate them.
+ The FullLP system has four hidden layers with 4000 as the input dimension to the nonlinearity
+ and 400 as the output-dimension (so the group size is 10).  There are 12000 output neurons
+ in the softmax layer; this is more than the number of context-dependent states (which is
+ about 5000), because of the "mixing-up" as described <a href=http://kaldi-asr.org/doc/dnn2.html> here </a>.
+ For the LimitedLP system the input/output dimensions are 3000/300 and the softmax layer dimension
+ is 5000 (versus about 2000 context-dependent states).
+
+ <h5> 4.9.2 Ensemble training </h5>
+
+ For the LimitedLP system we improve our system via a novel "ensemble training" method.
+ This involves training four versions of the neural network in parallel.  We initialize
+ four networks using four different random seeds.  During training, we train them
+ towards each other by adding a term in the objective function which penalizes the
+ K-L divergence between their outputs.  Practically speaking, this means interpolating
+ the "hard label" for each frame with a "soft label" derived from interpolating the
+ posteriors derived from the averaged output of all four neural nets.  The amount of
+ the "soft label" we add to the "hard" label is determined by a constant that we vary
+ from about 3 to 5 during training, so the extent of "training towards each other" gets
+ stronger as we train.
+ <p>
+ During decoding, we pick just one of the systems arbitrarily.  Since it has been
+ trained towards the other networks, it acts a little bit like an ensemble of
+ networks, even though it is just one network.  This gives us about 1.5% WER
+ improvement.
+
+ <h5> 4.9.3 Sequence training </h5>
+
+ For the FullLP system only, we do discriminative training ("sequence training")
+ on our DNN.  Our discriminative training is based on a state-level variannt of
+ the Minimum Phone Error (MPE) criterion, called sMBR <a href="#15">[15]</a>.  We are mostly following
+ the recipe described in <a href="#16">[16]</a>, although modified for our parallel-training method.
+
+ The training is based on Stochastic Gradient Descent (SGD), although modified by our
+ "preconditioning method" which will eventually be described
+  <a href=http://kaldi-asr.org/doc/dnn2.html> here </a> (till then, see the code).
+ We use a learning rate of 9E-5, but one tenth that value for the output layer.
+ Training is for four epochs.
+ Instead of frame-level randomization we use segment-level randomization, where a
+ segment is the smallest pieces we could chop our lattices into while still being
+ able to accurately evaluate the objective function.   The training is in parallel
+ using 4 GPUs and periodically averaging the parameters, just like for our basic training.
+ (Note that the "effective learning rate" is as a result four times lower than what
+ we mentioned above).
+
+
+ <h4> 4.10 Bottleneck features </h4>
+
+ Our bottleneck system is based on the same code and methods as our DNN system,
+ except that we use tanh rather than p-norm nonlinearities, and the DNN has a bottleneck
+ layer.  For the LimitedLP system we use four hidden layers with 1024 neurons, then
+ a bottleneck layer with 42 neurons, then one hidden layer with 1024 neurons, then the
+ output layer.  For the FullLP system, replace (4, 1024) with (5, 2048).  As before,
+ the input to the network is 40-dimensional LDA+STC+fMLLR features, spliced across 9 frames.
+<p>
+ For feature extraction we remove the part after the 42-dimensional bottleneck, including
+ the tanh nonlinearity, and append it with the baseline 40-dimensional features, giving
+ an 82-dimensional feature vector.  This is appended across &plusmn;1 frame and the dimension
+ is reduced with LDA to 60 dimensions.  (Note: we don't commence training on these features
+ from scratch but start with alignments from our SAT-trained GMM-based system).
+<p>
+ From this point we train an SGMM+BMMI system.  Because the feature dimension is higher the
+ number of parameters would increase if we left the rest of the configuration of the system
+ the same, so we use the following reduced configuration values:
+ <table>
+ <tr> <th>           </th> <th> Num-gauss-UBM </th>  <th> Num-leaves </th> <th> Num-substates </th> </tr>
+ <tr> <td> LimitedLP </td> <td>    500        </td>  <td> 5000       </td> <td> 10000 </td> </tr>
+ <tr> <td> FullLP    </td> <td>    5500        </td>  <td>10000       </td> <td> 50000 </td> </tr>
+ </table>
+ Because the features are much "stronger" than normal features (i.e. more informative about the
+ class), and more correlated, we need to decode with a different acoustic scale than normal.
+ We normally decode SGMM systems with an acoustic scale of 0.1.  For this system we decode with
+ an acoustic scale of 1/15 = 0.06666.  Note: the more finely tuned acoustic scale is determined
+ by best WER or ATWV on the development data, after rescoring the lattices with different weights;
+ this value is just to get us in the right ballpark during lattice generation.
+
+
+ <h4> 4.11 Build order </h4>
+
+ In order to clarify the relationship between the various systems, we document here the
+ order of system building.   The initial stages, when the dependency graph is just a linear
+ sequence, are as follows:
+ <table>
+<tr>  <th> Stage </th> <th> Num-leaves/gauss </th> <th>  Num-leaves/gauss </th> <th> Feature type </th> </tr>
+<tr>  <th>      </th>  <th> (LimitedLP) </th> <th> (FullLP)    </th> <th>             </th> </tr>
+<tr> <td> mono   </td> <td>  n/a       </td>  <td>   n/a       </td> <td> delta+delta-delta </td> </tr>
+<tr> <td> tri1   </td> <td>  1000/10k  </td>  <td>  1000/10k    </td> <td> delta+delta-delta </td> </tr>
+<tr> <td> tri2   </td> <td>  2500/36k   </td> <td>  1000/20k     </td><td> delta+delta-delta </td> </tr>
+<tr> <td> tri3   </td> <td>  2500/36k   </td> <td>  6000/75k     </td><td> delta+delta-delta </td> </tr>
+<tr> <td> tri4   </td> <td>  2500/36k   </td> <td>  6000/75k     </td><td> LDA+STC </td> </tr>
+<tr> <td> tri5   </td> <td>  2500/36k   </td> <td>  6000/75k     </td><td> LDA+STC+fMLLR </td> </tr>
+</table>
+After the tri5 stage, the build graph "branches out", and the training of the SGMM system, the
+DNN system and the DNN that includes the bottleneck features, all depend on the alignments and
+transforms obtained from the tri5 system.  We have documented the number of parameters of those
+other systems separately.
+
+ <h4> 4.12 Decoding order </h4>
+
+ After training the tri5 system, we obtain via single-pass retraining a version of the system that
+ is trained on speaker-independent features.  This model is used in the first, speaker-independent pass
+ of recognition-- other than about segmentation, which we have documented separately.  All decoding
+ passes are with WFST decoders that output lattices.  Starting from a raw,
+ state-level lattice we use the determinization algorithm of <a href="#6">[6]</a> to produce
+ a word-level lattice, although this year we extended the determinization algorithm slightly to
+ enable the generation of deeper lattices, by first doing a phone-level determinization before
+ the word-level determinization.  This keeps the determinization from "blowing up" when the
+ beam is too large.
+<p>
+  The lattices from the speaker-independent decoding are used with the speaker-adapted "tri5" model to compute initial
+ fMLLR transforms, which are used with the speaker-adapted model to rescore the lattices to get
+ better posteriors and estimate the fMLLR transforms a second time.
+ Then another lattice generation pass is done with the speaker-adapted model and adapted features,
+ and the fMLLR transforms are estimated a third time and the lattices rescored with those features.
+<p>
+ Note: we don't include silence frames in the fMLLR computation.  Since the
+ lattice generates soft counts, this is accomplished via per-frame weights,
+ not a hard cutoff.
+<p>
+ The decoding of the later models-- the SGMMs, DNNs and bottleneck feature based SGMMs--
+ all depend on the "tri5" decoding because they use the fMLLR transforms generated there.
+<p>
+ Once we have these transforms, the DNN decoding is single-pass, but for the discriminatively
+ trained DNNs we first decode with the basic DNN and then rescore the lattices with
+ four different versions of the final DNN system, one for each epoch.  This is so that we
+ can choose the best epoch to use.
+<p>
+ The SGMM decoding naturally has two passes: one using a speaker-independent version of
+ the SGMM system (speaker-independent because it doesn't have speaker vectors, although
+ we do have fMLLR features), and then another pass of decoding after estimating the
+ speaker vectors.  However, we only generate the lattice once.  In order to ensure
+ an accurate final lattice, we dump the state-level lattice from the first pass of
+ decoding and don't do the final lattice-determinization until after estimating the
+ speaker vectors.  See <a href="#6">[6]</a> if the term "state-level lattice" is confusing.
+
+<h4> 4.13 Keyword index generation </h4>
+
+ The keyword index generation uses Finite State Transducer concepts, and is based on <a href="#5">[5]</a>.
+ It relies on the fact that our lattices are determinized at the word level, which
+ is an essential part of our lattice generation procedure.   This method constructs
+ an index such that for any given keyword sequence (of any length), one can do a simple
+ lookup in a finite state transducer and find a list of all the occurrences of that keyword
+ sequence in the set of lattices that were indexed.
+ The number of potential word sequences grows exponentially with the sequence
+ length, and the index does not blow up even though it allows us to look up arbitrarily long
+ sequences.  This is accomplished through the magic of determinization, together with
+ some clever choices of semirings.
+<p>
+ We build a separate index for each language model scale in a predetermined range (e.g. 10, 12, 13, 14, 15),
+ so that we can separately run the keyword search pipeline for each scale, and pick the
+ scale with the best ATWV on the dev data.  (Note: since there is only one dev set, all our
+ numbers reported on the dev set have these scales optimized on that set, and the same
+ applies for WER numbers).
+
+ <h4 id="kws"> 4.14 Keyword search </h4>
+
+ Once the index is built, keyword search is very simple and fast: we look up
+ the sequence in the index generated above, and it returns a list of the hit locations
+ (utterance-ids and start and end times) and the associated lattice posteriors.
+ In this document, we assume that by "keyword" we mean some given sequence of words, possibly
+ of length one.
+<p>
+ The most non-obvious aspect of this is the per-keyword normalization of the scores.
+ The Term Weighted Value (TWV) metric, after ignoring constant terms and doing
+ a few manipulations, may be expressed as follows:
+<p>
+ TWV = const + sum-over-keywords (  1/K (  N<sub>true-hit</sub> / N<sub>true</sub>  - beta/duration   N<sub>FA</sub> ) )
+<p>
+ Here, sum-over-keywords is taken over all keywords that were actually seen in
+ the test set being considered.   The values in the equation may be defined as follows:
+<table>
+<tr> <th> Name                 </th> <th> Definition </th> </tr>
+<tr>  <td> K                    </td> <td> Number of keywords that appear in this test set </td></tr>
+<tr>  <td> N<sub>true-hit</sub> </td> <td> Number of occurrences of this keyword that we correctly spotted. </td></tr>
+<tr>  <td> N<sub>true</sub>     </td> <td> Number of times this keyword actually occurred in this test set. </td></tr>
+<tr>  <td> N<sub>FA</sub>       </td> <td> Number of incorrect hits of this keyword that we produced. </td></tr>
+<tr>  <td> beta                 </td> <td> A constant equal to exactly 999.9 (don't ask) </td></tr>
+<tr>  <td> duration             </td> <td> The total number of seconds of audio in the test set: a constant we know exactly. </td></tr>
+</table>
+
+ I believe the following analysis comes from <a href="#17">[17]</a>.  In statistical systems, if we assume
+ model correctness we can generally trust marginals even of very noisy and unreliable things.
+ So for instance, even if our individual recognitions of a word are very inaccurate, the sum
+ of the posterior may be reasonably accurate if the system was well trained.  At least, we can hope so.
+ So if we take the sum of posteriors of the hits of a keyword over our entire training set, we can form
+ a reasonable estimate of N<sub>true</sub>.  In what goes below, let N<sub>true-estimate</sub> be simply
+ the sum of the lattice posteriors of this keyword, over all our test set.  We will use  N<sub>true-estimate</sub>
+ in place of N<sub>true</sub>.  So for some keyword, the TWV contribution from that keyword is:
+<p>
+ TWV-contribution =  1/K (  N<sub>true-hit</sub> / N<sub>true-estimate</sub>  - beta/duration   N<sub>FA</sub> )
+<p>
+ Here, N<sub>true-estimate</sub> and beta/duration are both known quantities.  Consider one putative hit,
+ i.e. one location in time where we have a nonzero posterior and we might want to produce a hit.  Let
+ the posterior of the keyword in the lattice be p.  Let's assume that p is a reasonable estimate of the
+ probability that the keyword actually exists there, which is reasonable assuming model correctness.
+ As an aside, note that we scale down the acoustics in our lattices while computing the posteriors, so the probabilities
+ are quite well calibrated; also, we have plotted the (posterior in our lattice) versus
+ (probability that the word was actually there) and it's within spitting distance of a straight line.
+ Anyway, back to the task at hand.  We can write, for this putative hit,
+<p>
+ expected-TWV-contribution =  1/K ( p / N<sub>true-estimate</sub>  - beta/duration  (1-p) ) .
+<p>
+ Here, all but one of the quantities in the equation are known.  K is not known, because we don't know
+ how many keywords were actually seen in the test set,  but because we only care about the sign of this quantity
+ we don't actually need to know K.  For a putative hit, the equation above gives us all we need to know
+ in order to know whether to say "yes" or "no": if it's positive, "yes", else "no".  We want to
+ keep the hit if this is positive, i.e. if.
+<p>
+    p / N<sub>true-estimate</sub> - beta/duration (1-p) > 0  <br>
+    p (1/N<sub>true-estimate</sub> + beta/duration) - beta/duration > 0  <br>
+    p  >   (beta/duration) / (1/N<sub>true-estimate</sub> + beta/duration) <br>
+    p  >   N<sub>true-estimate</sub> / (duration/beta + N<sub>true-estimate</sub>)
+<p>
+ Let's call the value above the "threshold", i.e. <br>
+threshold = N<sub>true-estimate</sub> / (duration/beta + N<sub>true-estimate</sub>)   <p>
+ (there is a different threshold for each keyword).  In order to make it easier to choose
+ the cutoff point for when to stop producing hits, we would to produce the output
+ as normalized scores that are all somehow comparable to each other.  That way we can tune a global threshold.
+ We would like to normalize our scores in such a way that they are still all between zero and one.
+ We do this by converting p to a log-ratio, i.e. q = log(p / (1-p)), computing a similar log-ratio for the
+ threshold, i.e. t = log(threshold / (1-threshold)), and then subtracting t from q,
+ i.e. q' = q - t, to produce a normalized log-ratio q' (so if q' > 0, then p > threshold).
+ Then we convert back from a log-ratio to an actual
+ probability, call this p'.  When we work out the equations for this, it comes out to <br>
+ p' = (1-threshold) * p / ((1-threshold)*p + (1-p)*threshold)
+
+
+ <h4 id="oov"> 4.15 Out of vocabulary (OOV) keyword search </h4>
+
+ In this section we describe how we perform the keyword search when the keyword is
+ OOV-- i.e. when at least one of the words in the sequence is not in our lexicon.
+ Note that this is a separate thing from the lexicon expansion described above.
+ If we are using the lexicon-expanded decoding graph, then this procedure is only applied
+ if the keyword is OOV with respect to the expanded lexicon.
+<p>
+ We have described our basic proxy search procedure in <a href="#4">[4]</a> so we will not repeat
+ it at length here.  The basic idea is to use a learned phone confusion matrix
+ to find a list of in-vocabulary word sequences that are phonetically close to
+ the sequence we want, with associated penalties for being too distant.  As a
+ special case, we don't penalize the proxy sequences for having extra phones at
+ their beginning and end (so, for instance, if the pronunciation of a
+ searched-for word appeared as part of a longer word, we would allow that
+ without penalty).
+<p>
+ As background, our index lookup is actually done by FST composition, where one
+ of the things to be composed is the "query FST" (normally with a linear structure)
+ and one is the huge index.  In our proxy search method, we represent the set of
+ proxy keywords, and their associated weights, as an FST, and to the keyword
+ search pipeline it looks no different from a linear sequence (since the input
+ is just an FST).
+<p>
+ There is something new about our proxy keyword search pipeline this
+ year.  After implementing the "expanded lexicon", we noticed that the process
+ of generating proxy keywords was very slow.  This procedure involves various
+ operations of composition and determinization, where the inputs are a linear
+ sequence consisting of the OOV keyword (as phones), a phone-edit-distance FST,
+ and a lexicon.  When we made the lexicon much bigger, it became slow.  In order
+ to make it fast again, we had to rearrange the order of composition and
+ determinization, and implement an "on-demand" FST pruning procedure for OpenFST
+ (as part of the Kaldi extensions to OpenFST).
+
+
+
+<h4 id="ppm"> 4.16.  Point Process Models for Keyword Search </h4>
+
+<p> The point process model (PPM) for keyword search <a href="#9">[9]</a> is a
+whole-word, event-based acoustic modeling and phonetic search technique.
+It operates on sparse phonetic event streams extracted from the speech
+signal using a frame-level subword acoustic model.  In our Babel system,
+we use our Kaldi Deep Neural Network acoustic models described above to
+generate posteriorgrams over context-dependent states.  We subsequently
+sum posterior dimensions sharing the same center phone to produce
+monophone posteriorgrams for each utterance.  After applying the matched
+filter smoothing of <a href="#10">[10]</a>, local maxima of each posterior trajectory
+define phonetic event times.  The set of phonetic events for the search
+collection defines the index for subsequent keyword search; this
+construction, which is performed entirely independent of the keyword
+set, is our only use of the test audio.
+<p>
+The next stage is point process model construction.  For
+in-vocabulary words, we perform MAP estimation of the Poisson rate
+parameters for each word in the lexicon <a href="#11">[11]</a>. This takes advantage of
+any exemplars present in the training data, but falls back on
+dictionary-based model priors (the simple variant, see <a href="#11">[11]</a> for details)
+if no exemplars are available.  For OOV keywords, we use Sequitur G2P
+pronunciations to construct the dictionary models.  Multi-word keyword
+models are constructed by concatenating MAP estimated unigram PPMs, with
+the overall duration distributions derived using the Monte Carlo
+techniques from <a href="#12">[12]</a>.  Search for each keyword is performed using an
+optimized detection function calculation scheme that is 500,000 times
+faster than realtime.  We consider the PPM system performance both in
+isolation and in combination (at the kwslist level) with the Kaldi LVCSR
+search engine outputs.
+
+<br>
+<h4 id="classlm"> 4.17. Class-based language model </h4>
+Due to the sparsity of the Tamil data a combination of different smoothing techniques where used to train a trigram for LimitedLP and FullLP:
+<ul>
+<li>1. a class based language model, where the class is derived from the first three characters of the Tamil word</li>
+<li>2. a class based LM using the first six characters</li>
+<li>3. one using the last three characters</li>
+<li>4. a skip bigram</li>
+<li>5. a word trigram where the absolute discounting parameter depends on the count level using a rational function</li>
+<li>6. the original trigram (KN as implemented in SRILM)</li>
+</ul>
+Models 1-5 where implemented in LSVLM. In order to map them to ARPA format an artificial corpus of 30 million tokens was sampled using model 5. A trigram tree was constructed and probabilities of models 1-5 where written to the leafs of that tree. In the end model 1-6 where combined using linear interpolation. Model 2 had for all experiments the largest contribution.
+
+<br>
+
+<h4 id="classlm"> 4.18. Segment-level decoding  </h4>
+<br>
+
+<h4> 4.19 System combination methods </h4>
+
+ <h5> 4.19.1 System combination for transcription </h5>
+
+ Here we describe the system combination methods that are used in the "Kaldi-only"
+ submissions.  For the overall RADICAL combination, which is based on ROVER, we
+ provide both the individual Kaldi sub-systems, and the overall combined system
+ which we combine as described in this section.
+<p>
+ Our systems are not cross-adapted, unless you count the fact that they all use
+ the fMLLR transforms from the shared "tri5" stage.  For transcription purposes,
+ the only form of combination we use in the Kaldi sub-system is a combination
+ procedure based on Minimum Bayes Risk decoding, as described in <a href="#1">[1]</a>.  We view
+ this as a more principled way to do confusion network combination (CNC) <a href="#18">[18]</a>,
+ without the various heuristics that are used to produce confusion networks.
+ There is one aspect of this that we should explain, which relates to the
+ language-model weight.  Normally when decoding, we do a linear sweep over the
+ language model weights over some range (e.g. 10, 11, 12, ... 18), and select
+ the best one.  We do the same when combining systems, except that sometimes the
+ different systems will require substantially different language model weights
+ and there is no one weight that is good for all of them; it's not practical to
+ try all possible combinations of weights.  When combining systems, we apply a
+ different offset to the language-model weights for each system.  This offset is
+ determined by the beginning of the language-model-weight range that we sweep
+ for each system, which in turn was determined by us when setting up the
+ configuration files for our system.  So for instance, if we start the regular
+ SGMM system at offset 10, and the bottleneck+SGMM system at 15, then there would
+ be an offset of 5 between the two systems when we do the combination.
+<p>
+ We don't bother applying weights to the different systems when combining, but
+ on occasion we do leave out some of the worse systems from the combination.
+ This is decided by a human operator, based on trying different combinations on
+ the dev set.  The identities of the systems that were combined will be noted
+ in the individual submissions.
+
+ <h5> 4.19.2 System combination for keyword search </h5>
+
+ In this section we describe the Kaldi-internal method of system combination for
+ keyword search.  For the overall RADICAL system combination, we provide the kwslists
+ for both the individual Kaldi subsystems, and their combination as described in this
+ section.
+<p>
+ The Kaldi-internal combination for keyword search is based on averaging across systems the
+ unnormalized putative hits (i.e. the lattice posteriors extracted from the index),
+ before normalizing the averaged posteriors using the normalization method described
+ in <a href=#kws> Section 4.14.</a>.  Note that in order to do this averaging, we have
+ to have some notion of when multiple hits are "at the same time".  This is pretty obvious
+ (hits are the same if they overlap in time), so we won't refer to it further.  If one
+ system did not have a hit at a particular time, it's identical to it having a posterior of
+ zero.
+<p>
+ We do not do a conventional average (i.e. a mean).
+ We wanted to implement something that was in between a mean and a geometric mean.  We
+ used the notion that a geometric mean is a mean of logs, and a log is like a power of
+ x,  (1/p) x<sup>p</sup>, as p approaches zero.  So if we take the mean of x<sup>p</sup>
+ for some power p between zero and one, and take the result to the power 1/p,
+ this is somewhere between a mean and a geometric mean.  So this is what we do.
+ Suppose we have three scores: a, b and c.  We choose a power p (say, p=0.5, but it's tuned
+ per language).  Then we let <br>
+  average = (a<sup>p</sup> + b<sup>p</sup> + c<sup>p</sup>)<sup>1/p</sup> .
+<br>
+Actually we extend this to a weighted average, i.e.
+<br>
+  average = (w<sub>a</sub>a<sup>p</sup> + w<sub>b</sub>b<sup>p</sup> + w<sub>c</sub>c<sup>p</sup>)<sup>1/p</sup>
+<br>
+where the weights sum to one.  The weights are determined manually in small scale
+experiments on one of the languages, as the result is not very sensitive to the
+weights.  We used weights that are fairly close to each other, but with better
+systems having larger weights.
+<p>
+We apply the normalization method of <a href=#kws> Section 4.14.</a> after taking the
+ weighted mean.
+
+
+<h3> 5. Hardware </h3>
+
+A variable number of 16-core (Intel(R) Xeon(R) CPU E5-2680) machines was used. The amount
+of per-core memory was 2\;GB. The training of the LimitedLP was done using 32 cores (2 nodes),
+the training of FullLP system was done using 64 cores (4 nodes). Each of the nodes was
+equipped with one GPU card (Tesla K20m), however these card weren't used for training, with
+the exception of the neural networks (DNN and BNF systems). The detailed timing info will be
+provided in the next section.  The maximum total storage capacity used was approximately 5TB.
+The typical size of a complete system (including lattices) is around 300\;GB. The lattice
+generation of the shadow dataset (combined dev10h and eval) was done on 96 cores (6 nodes).
+Indexing and search was done on 64 cpus (4 nodes).
+
+<h3> 6. Timing </h3>
+<pre>
+DATADEF:==BaseLR{204LimitedLP}:AM{204LimitedLP},LM{204LimitedLP},PRON{204LimitedLP},AR{None}
+</pre>
+<pre>
+Ingestion Elapsed Time (hh:mm:ss) - 151:29:03
+Ingestion Total CPU Time (hh:mm:ss) - 9546:33:38
+Ingestion Total GPU Time (hh:mm:ss) - 92:23:16
+
+Ingestion Maximum CPU Memory (gbytes) - 192
+Ingestion Maximum GPU Memory (gbytes) - 16
+
+Search Elapsed Time (hh:mm:ss) - 12:39:08
+Search Total CPU Time (hh:mm:ss) - 427:17:22
+Search Total GPU Time (hh:mm:ss) - 0:00:00
+
+Search Maximum CPU Memory (gbytes) - 32
+Search Maximum GPU Memory (gbytes) - 16
+</pre>
+
+
+<h3> 7. References </h3>
+
+
+<ul>
+
+<li id="1" > [1]  "Minimum Bayes Risk decoding and system combination based on a recursion for edit distance",
+ Haihua Xu, Daniel Povey, Lidia Mangu and Jie Zhu, Computer Speech and Language, 2011. </li>
+
+<li id="2" > [2]  "A Symmetrization of the Subspace Gaussian Mixture Model", Daniel Povey,
+     Martin Karafiat, Arnab Ghoshal, Petr Schwarz, ICASSP 2011 </li>
+
+<li id="3" > [3]  "Boosted MMI for Model and Feature Space Discriminative Training" ,
+    Daniel Povey, Dimitri Kanevsky, Brian Kingsbury, Bhuvana Ramabhadran, George Saon & Karthik Visweswariah. </li>
+
+<li id="4" > [4]  "Using Proxies for OOV keywords in the Keyword Search Task", Guoguo Chen, Oguz Yilmaz, Jan Trmal,
+      Daniel Povey, and Sanjeev Khudanpur, ASRU 2013</li>
+
+<li id="5" > [5]  "Lattice Indexing for Spoken Term Detection", Dogan Can and Murat Saraclar,
+     IEEE Transactions on Audio, Speech and Language Processing. </li>
+
+<li id="6" > [6]  "Generating exact lattices in the WFST framework", D. Povey, M. Hannemann et. al, ICASSP 2012 </li>
+
+<li id="7" > [7]  "A Pitch Extraction Algorithm Tuned for Automatic Speech Recognition",
+  Pegah Ghahremani, Bagher BabaAli, Daniel Povey, Korbinian Riedhammer, Jan Trmal and Sanjeev Khudanpur, ICASSP 2014 </li>
+
+<li id="8" > [8]  "Improving Deep Neural Network Acoustic Models using Generalized Maxout Networks",
+   Xiaohui Zhang, Jan Trmal, Daniel Povey and Sanjeev Khudanpur, ICASSP 2014
+
+<li id="9" > [9]  Jansen, A. and Niyogi, P., ``Point process models for spotting keywords in
+  continuous speech", IEEE Trans. Audio, Speech and Language Proc., 17(8), pp. 1457-1470, 2009. </li>
+
+<li id="10" > [10]  Kintzley, K., Jansen, A., and Hermansky, H., ``Event Selection from Phone Posteriorgrams
+   Using Matched Filters," in Proc. of INTERSPEECH, 2011. </li>
+
+<li id="11" > [11]  Kintzley, K., Jansen, A., and Hermansky, H., ``MAP Estimation of Whole-Word Acoustic Models
+   with Dictionary Priors," in Proc. of INTERSPEECH, 2012. </li>
+
+<li id="12" > [12]  Kintzley, K., Jansen, A., and Hermansky, H., ``Featherweight Phonetic Keyword Search for
+   Conversational Speech", in Proc. of ICASSP, 2014. </li>
+
+<li id="13" > [13]  Mark Gales, "Semi-Tied Covariance Matrices for Hidden Markov Models", IEEE Trans. SAP, 1999. </li>
+
+<li id="14" > [14]  Daniel Povey, Lukas Burget et. al, "The Subspace Gaussian Mixture Model– a Structured
+    Model for Speech Recognition", Computer Speech and Language, 2011. </li>
+
+<li id="15" > [15]  Gibson, Matthew.  "Minimum Bayes risk acoustic model estimation and adaptation." Dissertation,
+    University of Sheffield, 2008. </li>
+
+<li id="16" > [16]  K. Vesely, A. Ghoshal, L. Burget and D. Povey,
+     "Sequence-discriminative training of deep neural networks", Proc. Interspeech 2013 </li>
+
+<li id="17" > [17]  Damianos Karakos et al., "Score normalization and system combination for improved keyword spotting", ASRU 2013. </li>
+
+<li id="18" > [18]  Evermann, Gunnar, and P. C. Woodland. "Posterior probability decoding, confidence estimation and system combination." Proc. Speech Transcription Workshop. Vol. 27. 2000. </li>
+
+</ul>
+<body>
+</html>

@@ -259,7 +259,6 @@ if total_phones['internal'] != 0.0:
 
     opt_sil_internal_phone_percent = (sum(internal_opt_sil_phone_lengths.values()) *
                                       100.0 / total_phones['internal'])
-
     duration_median = GetPercentile(internal_opt_sil_phone_lengths, 0.5)
     duration_mean = GetMean(internal_opt_sil_phone_lengths)
     duration_percentile_95 = GetPercentile(internal_opt_sil_phone_lengths, 0.95)

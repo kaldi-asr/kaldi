@@ -1,0 +1,14 @@
+exp             set     LM      LMW     WER     SER
+mono            test    build0  9       67.52   91.6
+tri1            test    build0  10      36.75   74.7
+tri2a           test    build0  10      35.8    71.65
+tri2b           test    build0  10      32.42   69.9
+tri2b_mmi       test    build0  9       24.82   54.15
+tri2b_mmi_b0.05 test    build0  9       23.57   51.8
+tri2b_mpe       test    build0  9       21.5    49.9
+tri1            test    build2  20      15.2    43.55
+tri2a           test    build2  16      15.61   43.4
+tri2b           test    build2  20      15.04   42.7
+tri2b_mmi       test    build2  14      10.32   30.15
+tri2b_mmi_b0.05 test    build2  17      10.14   29.85
+tri2b_mpe       test    build2  18      11.27   31.75

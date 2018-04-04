@@ -1,0 +1,38 @@
+&	&+	?&	?&+	'&	'&+	'?&	'?&+
+0	?0	'0	'?0
+3	'3
+e	?e	'e	'?e
+E	?E	?'E	'?E
+i	?i	?'i	'i	I	'I
+o	?o	'o	'?o
+O	?O	'O	'?O
+u	?u	'u	'?u
+U	'U
+V	?V	'V	'?V
+W	W+	?W	?W+	'W	'W+	'?W	'?W+
+y	?y	Y	'y	'Y	'?y
+@	@-	?@-	'@	'@-
+a	'a
+A	?A	'A	'?A
+aI	'aI
+n	n-                   
+b	B    
+d	?d
+D    
+dZ      tS
+f
+g
+h
+j	;	J
+k    
+l	l/2	l/3	L
+m	?m
+N	~
+p    
+r	R	R3	3-
+s	?s	z
+S	x	Z	
+t    
+T    
+v    
+w        

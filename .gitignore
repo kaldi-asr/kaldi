@@ -72,11 +72,28 @@ GSYMS
 /src/kaldi.mk.tmp
 /src/kaldi.mk.bak
 
-# /egs/
+# /egs/ & /idlak-egs/
 /egs/*/s*/mfcc
 /egs/*/s*/plp
 /egs/*/s*/exp
 /egs/*/s*/data
+/idlak-egs/*/s*/mfcc
+/idlak-egs/*/s*/plp
+/idlak-egs/*/s*/exp
+/idlak-egs/*/s*/data
+/idlak-egs/*/s*/rawaudio
+/idlak-egs/*/s*/labels
+/idlak-egs/*/s*/exp-align
+/idlak-egs/*/s*/f0data
+/idlak-egs/*/s*/durdata
+/idlak-egs/*/s*/exp_dnn
+/idlak-egs/*/s*/lbldata
+/idlak-egs/*/s*/lbldurdata
+/idlak-egs/*/s*/lblf0data
+/idlak-egs/*/s*/slt_pmdl
+/idlak-egs/*/s*/bdl_pmdl
+/idlak-egs/*/s*/jmk_pmdl
+/idlak-egs/tts_tangle_lj/s2/LJ_pmdl/
 
 # /tools/
 /tools/ATLAS/
@@ -140,4 +157,14 @@ GSYMS
 /tools/phonetisaurus-g2p/
 /tools/mmseg-1.3.0.tar.gz
 /tools/mmseg-1.3.0/
+/tools/SPTK-3.9.tar.gz
+/tools/SPTK-3.9/
+/tools/SPTK/
+/tools/expat-2.1.0.tar.gz
+/tools/expat-2.1.0/
+/tools/pcre-8.20.tar.bz2
+/tools/pcre-8.20/
+/tools/pugixml-1.2.tar.gz
+/tools/pugixml-1.2/
+
 /kaldiwin_vs*

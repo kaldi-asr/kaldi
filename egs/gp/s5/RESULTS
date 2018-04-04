@@ -1,0 +1,108 @@
+#!/bin/bash
+
+# this RESULTS file was obtained by Bogdan Vlasenko in February 2016.
+
+for x in exp/*/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+# Monophone, MFCC+delta+accel
+%WER 45.16 [ 10073 / 22306, 684 ins, 2010 del, 7379 sub ] exp/FR/mono/decode_dev_tgpr_sri/wer_8
+%WER 26.96 [ 4149 / 15387, 285 ins, 933 del, 2931 sub ] exp/GE/mono/decode_dev_tgpr_sri/wer_11
+%WER 52.95 [ 10040 / 18962, 588 ins, 2182 del, 7270 sub ] exp/RU/mono/decode_dev_tgpr_sri/wer_8
+
+%WER 41.80 [ 9071 / 21700, 513 ins, 1876 del, 6682 sub ] exp/FR/mono/decode_eval_tgpr_sri/wer_9
+%WER 44.71 [ 5347 / 11959, 399 ins, 1024 del, 3924 sub ] exp/GE/mono/decode_eval_tgpr_sri/wer_9
+%WER 51.55 [ 9416 / 18266, 533 ins, 1975 del, 6908 sub ] exp/RU/mono/decode_eval_tgpr_sri/wer_9
+
+# First triphone build.
+%WER 28.44 [ 6343 / 22306, 751 ins, 742 del, 4850 sub ] exp/FR/tri1/decode_dev_tgpr_sri/wer_14
+%WER 15.29 [ 2353 / 15387, 288 ins, 388 del, 1677 sub ] exp/GE/tri1/decode_dev_tgpr_sri/wer_18
+%WER 36.40 [ 6903 / 18962, 578 ins, 1876 del, 4449 sub ] exp/RU/tri1/decode_dev_tgpr_sri/wer_13
+
+%WER 26.26 [ 5699 / 21700, 697 ins, 526 del, 4476 sub ] exp/FR/tri1/decode_eval_tgpr_sri/wer_13
+%WER 22.80 [ 2727 / 11959, 386 ins, 329 del, 2012 sub ] exp/GE/tri1/decode_eval_tgpr_sri/wer_15
+%WER 34.69 [ 6336 / 18266, 547 ins, 1470 del, 4319 sub ] exp/RU/tri1/decode_eval_tgpr_sri/wer_14
+
+# tri2a is delta+delta-delta features.
+%WER 28.45 [ 6345 / 22306, 771 ins, 725 del, 4849 sub ] exp/FR/tri2a/decode_dev_tgpr_sri/wer_14
+%WER 15.13 [ 2328 / 15387, 320 ins, 345 del, 1663 sub ] exp/GE/tri2a/decode_dev_tgpr_sri/wer_17
+%WER 36.62 [ 6944 / 18962, 526 ins, 2083 del, 4335 sub ] exp/RU/tri2a/decode_dev_tgpr_sri/wer_14
+
+%WER 26.18 [ 5681 / 21700, 694 ins, 542 del, 4445 sub ] exp/FR/tri2a/decode_eval_tgpr_sri/wer_14
+%WER 22.52 [ 2693 / 11959, 341 ins, 363 del, 1989 sub ] exp/GE/tri2a/decode_eval_tgpr_sri/wer_17
+%WER 34.37 [ 6278 / 18266, 594 ins, 1378 del, 4306 sub ] exp/RU/tri2a/decode_eval_tgpr_sri/wer_14
+
+# LDA+MLLT. 
+%WER 27.76 [ 6192 / 22306, 723 ins, 824 del, 4645 sub ] exp/FR/tri2b/decode_dev_tgpr_sri/wer_17
+%WER 13.78 [ 2121 / 15387, 300 ins, 313 del, 1508 sub ] exp/GE/tri2b/decode_dev_tgpr_sri/wer_18
+%WER 34.68 [ 6576 / 18962, 521 ins, 1872 del, 4183 sub ] exp/RU/tri2b/decode_dev_tgpr_sri/wer_15
+
+%WER 25.43 [ 5519 / 21700, 724 ins, 532 del, 4263 sub ] exp/FR/tri2b/decode_eval_tgpr_sri/wer_15
+%WER 21.26 [ 2542 / 11959, 307 ins, 372 del, 1863 sub ] exp/GE/tri2b/decode_eval_tgpr_sri/wer_17
+%WER 32.83 [ 5997 / 18266, 522 ins, 1431 del, 4044 sub ] exp/RU/tri2b/decode_eval_tgpr_sri/wer_16
+
+# LDA+MLLT+SAT.
+%WER 25.62 [ 5714 / 22306, 746 ins, 634 del, 4334 sub ] exp/FR/tri3b/decode_dev_tgpr_sri/wer_18
+%WER 11.01 [ 1694 / 15387, 311 ins, 205 del, 1178 sub ] exp/GE/tri3b/decode_dev_tgpr_sri/wer_20
+%WER 32.48 [ 6159 / 18962, 556 ins, 1534 del, 4069 sub ] exp/RU/tri3b/decode_dev_tgpr_sri/wer_17
+
+%WER 23.82 [ 5169 / 21700, 685 ins, 478 del, 4006 sub ] exp/FR/tri3b/decode_eval_tgpr_sri/wer_17
+%WER 17.72 [ 2119 / 11959, 329 ins, 248 del, 1542 sub ] exp/GE/tri3b/decode_eval_tgpr_sri/wer_18
+%WER 31.24 [ 5706 / 18266, 657 ins, 1046 del, 4003 sub ] exp/RU/tri3b/decode_eval_tgpr_sri/wer_16
+
+# Some "SGMM2" experiments.
+%WER 24.76 [ 5524 / 22306, 716 ins, 623 del, 4185 sub ] exp/FR/sgmm2_4a/decode_dev_tgpr_sri/wer_12
+%WER 9.61 [ 1478 / 15387, 253 ins, 174 del, 1051 sub ] exp/GE/sgmm2_4a/decode_dev_tgpr_sri/wer_13
+%WER 30.27 [ 5740 / 18962, 505 ins, 1301 del, 3934 sub ] exp/RU/sgmm2_4a/decode_dev_tgpr_sri/wer_12
+
+%WER 22.88 [ 4965 / 21700, 675 ins, 430 del, 3860 sub ] exp/FR/sgmm2_4a/decode_eval_tgpr_sri/wer_11
+%WER 16.03 [ 1917 / 11959, 267 ins, 224 del, 1426 sub ] exp/GE/sgmm2_4a/decode_eval_tgpr_sri/wer_12
+%WER 29.06 [ 5309 / 18266, 494 ins, 1107 del, 3708 sub ] exp/RU/sgmm2_4a/decode_eval_tgpr_sri/wer_13
+
+%WER 24.16 [ 5389 / 22306, 733 ins, 559 del, 4097 sub ] exp/FR/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it1/wer_12
+%WER 24.02 [ 5359 / 22306, 733 ins, 534 del, 4092 sub ] exp/FR/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it2/wer_12
+%WER 24.23 [ 5405 / 22306, 754 ins, 532 del, 4119 sub ] exp/FR/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it3/wer_12
+%WER 24.50 [ 5464 / 22306, 727 ins, 574 del, 4163 sub ] exp/FR/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it4/wer_13
+%WER 9.22 [ 1418 / 15387, 266 ins, 146 del, 1006 sub ] exp/GE/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it1/wer_12
+%WER 9.17 [ 1411 / 15387, 253 ins, 153 del, 1005 sub ] exp/GE/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it2/wer_13
+%WER 9.18 [ 1412 / 15387, 264 ins, 150 del, 998 sub ] exp/GE/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it3/wer_13
+%WER 9.31 [ 1432 / 15387, 271 ins, 150 del, 1011 sub ] exp/GE/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it4/wer_13
+%WER 29.96 [ 5681 / 18962, 465 ins, 1549 del, 3667 sub ] exp/RU/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it1/wer_11
+%WER 30.39 [ 5762 / 18962, 500 ins, 1669 del, 3593 sub ] exp/RU/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it2/wer_10
+%WER 31.00 [ 5879 / 18962, 420 ins, 1864 del, 3595 sub ] exp/RU/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it3/wer_11
+%WER 31.50 [ 5973 / 18962, 433 ins, 1926 del, 3614 sub ] exp/RU/sgmm2_4a_mmi_b0.1/decode_dev_tgpr_sri_it4/wer_11
+
+%WER 22.51 [ 4885 / 21700, 672 ins, 423 del, 3790 sub ] exp/FR/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it1/wer_12
+%WER 22.56 [ 4896 / 21700, 702 ins, 380 del, 3814 sub ] exp/FR/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it2/wer_11
+%WER 22.70 [ 4925 / 21700, 670 ins, 398 del, 3857 sub ] exp/FR/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it3/wer_12
+%WER 22.83 [ 4954 / 21700, 681 ins, 400 del, 3873 sub ] exp/FR/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it4/wer_12
+%WER 15.28 [ 1827 / 11959, 291 ins, 178 del, 1358 sub ] exp/GE/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it1/wer_11
+%WER 15.22 [ 1820 / 11959, 271 ins, 190 del, 1359 sub ] exp/GE/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it2/wer_12
+%WER 15.35 [ 1836 / 11959, 281 ins, 187 del, 1368 sub ] exp/GE/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it3/wer_12
+%WER 15.38 [ 1839 / 11959, 252 ins, 205 del, 1382 sub ] exp/GE/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it4/wer_13
+%WER 28.31 [ 5172 / 18266, 496 ins, 1127 del, 3549 sub ] exp/RU/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it1/wer_11
+%WER 28.64 [ 5232 / 18266, 446 ins, 1321 del, 3465 sub ] exp/RU/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it2/wer_11
+%WER 28.96 [ 5289 / 18266, 458 ins, 1334 del, 3497 sub ] exp/RU/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it3/wer_10
+%WER 29.55 [ 5398 / 18266, 421 ins, 1477 del, 3500 sub ] exp/RU/sgmm2_4a_mmi_b0.1/decode_eval_tgpr_sri_it4/wer_11
+
+
+# these RESULTS were obtained with Arnab Ghoshal version of the script established in 2012.
+$ for L in $GP_LANGUAGES; do grep WER exp/$L/mono/decode_dev_tgpr_sri/wer_* | ./utils/best_wer.sh ; done
+
+exp/CZ/mono/decode_dev_tgpr_sri/wer_9:%WER 35.13 [ 5820 / 16568, 486 ins, 1116 del, 4218 sub ]
+exp/FR/mono/decode_dev_tgpr_sri/wer_9:%WER 45.69 [ 10192 / 22306, 533 ins, 2323 del, 7336 sub ]
+exp/GE/mono/decode_dev_tgpr_sri/wer_11:%WER 27.48 [ 4228 / 15387, 278 ins, 974 del, 2976 sub ]
+exp/PL/mono/decode_dev_tgpr_sri/wer_9:%WER 36.45 [ 6437 / 17660, 607 ins, 1228 del, 4602 sub ]
+exp/PO/mono/decode_dev_tgpr_sri/wer_11:%WER 44.63 [ 5815 / 13030, 283 ins, 1861 del, 3671 sub ]
+exp/RU/mono/decode_dev_tgpr_sri/wer_9:%WER 51.89 [ 9840 / 18962, 427 ins, 2457 del, 6956 sub ]
+exp/SP/mono/decode_dev_tgpr_sri/wer_9:%WER 43.56 [ 8320 / 19098, 379 ins, 2581 del, 5360 sub ]
+qghoshal@merlin:[~/globalphone/a1.1]
+
+$ for L in $GP_LANGUAGES; do grep WER exp/$L/tri1/decode_dev_tgpr_sri/wer_* | ./utils/best_wer.sh ; done
+exp/CZ/tri1/decode_dev_tgpr_sri/wer_16:%WER 20.68 [ 3427 / 16568, 606 ins, 521 del, 2300 sub ]
+exp/FR/tri1/decode_dev_tgpr_sri/wer_14:%WER 28.61 [ 6381 / 22306, 744 ins, 779 del, 4858 sub ]
+exp/GE/tri1/decode_dev_tgpr_sri/wer_17:%WER 15.08 [ 2321 / 15387, 273 ins, 440 del, 1608 sub ]
+exp/PL/tri1/decode_dev_tgpr_sri/wer_17:%WER 21.34 [ 3768 / 17660, 548 ins, 646 del, 2574 sub ]
+exp/PO/tri1/decode_dev_tgpr_sri/wer_14:%WER 26.56 [ 3461 / 13030, 477 ins, 795 del, 2189 sub ]
+exp/RU/tri1/decode_dev_tgpr_sri/wer_14:%WER 33.89 [ 6427 / 18962, 575 ins, 1612 del, 4240 sub ]
+exp/SP/tri1/decode_dev_tgpr_sri/wer_16:%WER 26.73 [ 5105 / 19098, 551 ins, 1313 del, 3241 sub ]
+qghoshal@merlin:[~/globalphone/a1.1]

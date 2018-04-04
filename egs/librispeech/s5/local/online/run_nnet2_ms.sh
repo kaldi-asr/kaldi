@@ -8,7 +8,7 @@
 . ./cmd.sh
 
 
-stage=0
+stage=7
 train_stage=-10
 use_gpu=true
 dir=exp/nnet2_online/nnet_ms_a
@@ -63,7 +63,7 @@ if [ $stage -le 7 ]; then
   # this is because we want it to be small enough that we could plausibly run it
   # in real-time.
   steps/nnet2/train_multisplice_accel2.sh --stage $train_stage \
-    --num-epochs 8 --num-jobs-initial 1 --num-jobs-final 4 \
+    --num-epochs 8 --num-jobs-initial 3 --num-jobs-final 18 \
     --num-hidden-layers 6 --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer3/-3:3 layer4/-7:2" \
     --feat-type raw \
     --online-ivector-dir exp/nnet2_online/ivectors_train_960_hires \
@@ -94,7 +94,7 @@ if [ $stage -le 9 ]; then
   # real online decoding (the one with --per-utt true)
   for test in test_clean test_other dev_clean dev_other; do
     (
-    steps/nnet2/decode.sh --nj 5 --cmd "$decode_cmd" --config conf/decode.config \
+    steps/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
       --online-ivector-dir exp/nnet2_online/ivectors_${test} \
       exp/tri6b/graph_tgsmall data/${test}_hires $dir/decode_${test}_tgsmall || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -123,7 +123,7 @@ if [ $stage -le 11 ]; then
   # previous utterances of the same speaker.
   for test in test_clean test_other dev_clean dev_other; do
     (
-    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 5 \
+    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
       exp/tri6b/graph_tgsmall data/$test ${dir}_online/decode_${test}_tgsmall || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
       data/$test ${dir}_online/decode_${test}_{tgsmall,tgmed}  || exit 1;
@@ -143,7 +143,7 @@ if [ $stage -le 12 ]; then
   # without carrying forward speaker information.
   for test in test_clean test_other dev_clean dev_other; do
     (
-    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 5 \
+    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
       --per-utt true exp/tri6b/graph_tgsmall data/$test ${dir}_online/decode_${test}_tgsmall_utt || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
       data/$test ${dir}_online/decode_${test}_{tgsmall,tgmed}_utt  || exit 1;
@@ -164,7 +164,7 @@ if [ $stage -le 13 ]; then
   # of the utterance while computing the iVector (--online false)
   for test in test_clean test_other dev_clean dev_other; do
     (
-    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 5 \
+    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
       --per-utt true --online false exp/tri6b/graph_tgsmall data/$test \
         ${dir}_online/decode_${test}_tgsmall_utt_offline || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \

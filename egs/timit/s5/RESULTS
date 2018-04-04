@@ -1,0 +1,94 @@
+#!/bin/bash
+for x in exp/{mono,tri,sgmm,dnn,combine}*/decode*; do [ -d $x ] && echo $x | grep "${1:-.*}" >/dev/null && grep WER $x/wer_* 2>/dev/null | utils/best_wer.sh; done
+for x in exp/{mono,tri,sgmm,dnn,combine}*/decode*; do [ -d $x ] && echo $x | grep "${1:-.*}" >/dev/null && grep Sum $x/score_*/*.sys 2>/dev/null | utils/best_wer.sh; done
+exit 0
+
+# Use caution when comparing these results with other published results.
+Training Set   : 3696 sentences 4620 sentences
+Dev Set        : 400 sentences
+Test Set       : 192 sentences Core Test Set (different from Full 1680 sent. set)
+Language Model : Bigram phoneme language model which is extracted from training set
+Phone mapping  : Training with 48 phonemes, for testing mapped to 39 phonemes
+
+
+# monophone, deltas.
+---------------------------------Dev Set------------------------------------------
+%WER 31.7 | 400 15057 | 71.8 19.5 8.7 3.5 31.7 100.0 | -0.457 | exp/mono/decode_dev/score_5/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 32.7 | 192 7215 | 70.5 19.8 9.6 3.2 32.7 100.0 | -0.482 | exp/mono/decode_test/score_5/ctm_39phn.filt.sys
+
+
+# tri1 : first triphone system  (delta+delta-delta features)
+---------------------------------Dev Set------------------------------------------
+%WER 25.1 | 400 15057 | 78.9 15.9 5.2 4.0 25.1 99.8 | -0.178 | exp/tri1/decode_dev/score_10/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 25.6 | 192 7215 | 78.3 15.9 5.8 3.9 25.6 100.0 | -0.129 | exp/tri1/decode_test/score_10/ctm_39phn.filt.sys
+
+
+# tri2 : an LDA+MLLT system
+---------------------------------Dev Set------------------------------------------
+%WER 23.0 | 400 15057 | 80.7 14.6 4.7 3.7 23.0 99.5 | -0.230 | exp/tri2/decode_dev/score_10/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 23.7 | 192 7215 | 80.0 14.8 5.2 3.7 23.7 99.5 | -0.284 | exp/tri2/decode_test/score_10/ctm_39phn.filt.sys
+
+
+# tri3 : Speaker Adaptive Training (SAT) system
+---------------------------------Dev Set------------------------------------------
+%WER 20.3 | 400 15057 | 82.7 12.8 4.5 3.1 20.3 99.8 | -0.556 | exp/tri3/decode_dev/score_10/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 21.6 | 192 7215 | 81.6 13.6 4.9 3.2 21.6 99.5 | -0.560 | exp/tri3/decode_test/score_10/ctm_39phn.filt.sys
+
+
+# SGMM2 Training :
+---------------------------------Dev Set------------------------------------------
+%WER 17.8 | 400 15057 | 85.1 11.0 3.9 2.9 17.8 99.3 | -0.451 | exp/sgmm2_4/decode_dev/score_7/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 19.7 | 192 7215 | 83.2 12.2 4.6 3.0 19.7 99.0 | -0.291 | exp/sgmm2_4/decode_test/score_8/ctm_39phn.filt.sys
+
+
+# SGMM2 + MMI Training :
+---------------------------------Dev Set------------------------------------------
+%WER 18.0 | 400 15057 | 85.6 11.2 3.3 3.6 18.0 98.8 | -0.599 | exp/sgmm2_4_mmi_b0.1/decode_dev_it1/score_6/ctm_39phn.filt.sys
+%WER 18.0 | 400 15057 | 85.7 11.2 3.1 3.6 18.0 99.0 | -0.619 | exp/sgmm2_4_mmi_b0.1/decode_dev_it2/score_6/ctm_39phn.filt.sys
+%WER 18.1 | 400 15057 | 85.6 11.3 3.1 3.7 18.1 98.8 | -0.646 | exp/sgmm2_4_mmi_b0.1/decode_dev_it3/score_6/ctm_39phn.filt.sys
+%WER 18.1 | 400 15057 | 85.3 11.3 3.4 3.4 18.1 99.0 | -0.463 | exp/sgmm2_4_mmi_b0.1/decode_dev_it4/score_7/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 19.9 | 192 7215 | 83.4 12.3 4.3 3.4 19.9 99.5 | -0.300 | exp/sgmm2_4_mmi_b0.1/decode_test_it1/score_8/ctm_39phn.filt.sys
+%WER 20.2 | 192 7215 | 83.0 12.3 4.6 3.2 20.2 99.0 | -0.208 | exp/sgmm2_4_mmi_b0.1/decode_test_it2/score_9/ctm_39phn.filt.sys
+%WER 20.2 | 192 7215 | 83.4 12.4 4.2 3.7 20.2 99.5 | -0.333 | exp/sgmm2_4_mmi_b0.1/decode_test_it3/score_8/ctm_39phn.filt.sys
+%WER 20.3 | 192 7215 | 83.0 12.6 4.5 3.3 20.3 99.0 | -0.235 | exp/sgmm2_4_mmi_b0.1/decode_test_it4/score_9/ctm_39phn.filt.sys
+# bMMI not helpful here...
+
+# Hybrid System (Dans DNN):
+---------------------------------Dev Set------------------------------------------
+%WER 21.1 | 400 15057 | 81.9 12.6 5.6 3.0 21.1 99.5 | -0.485 | exp/tri4_nnet/decode_dev/score_5/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 23.0 | 192 7215 | 79.4 13.5 7.1 2.4 23.0 100.0 | -0.138 | exp/tri4_nnet/decode_test/score_7/ctm_39phn.filt.sys
+
+# Hybrid System (Karel's DNN)
+---------------------------------Dev Set------------------------------------------
+%WER 17.5 | 400 15057 | 84.6 10.5 4.8 2.2 17.5 98.5 | -0.471 | exp/dnn4_pretrain-dbn_dnn/decode_dev/score_6/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 18.5 | 192 7215 | 84.2 11.0 4.8 2.7 18.5 100.0 | -1.151 | exp/dnn4_pretrain-dbn_dnn/decode_test/score_4/ctm_39phn.filt.sys
+# Hybrid System (Karel's DNN), sMBR training
+---------------------------------Dev Set------------------------------------------
+%WER 17.3 | 400 15057 | 85.5 10.6 4.0 2.7 17.3 98.5 | -0.696 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_dev_it1/score_5/ctm_39phn.filt.sys
+%WER 17.3 | 400 15057 | 85.4 10.7 3.9 2.7 17.3 98.5 | -0.380 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_dev_it6/score_7/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 18.6 | 192 7215 | 84.2 11.1 4.7 2.8 18.6 100.0 | -0.816 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_test_it1/score_5/ctm_39phn.filt.sys
+%WER 18.8 | 192 7215 | 84.7 11.4 3.9 3.5 18.8 100.0 | -0.819 | exp/dnn4_pretrain-dbn_dnn_smbr/decode_test_it6/score_5/ctm_39phn.filt.sys
+# sMBR not helpful here...
+
+
+# Combination SGMM + Dans DNN:
+---------------------------------Dev Set------------------------------------------
+%WER 16.7 | 400 15057 | 86.0 10.9 3.1 2.7 16.7 99.5 | -0.102 | exp/combine_2/decode_dev_it1/score_6/ctm_39phn.filt.sys
+%WER 16.7 | 400 15057 | 86.4 10.8 2.8 3.1 16.7 99.5 | -0.248 | exp/combine_2/decode_dev_it2/score_5/ctm_39phn.filt.sys
+%WER 16.8 | 400 15057 | 85.8 10.9 3.3 2.6 16.8 99.3 | -0.013 | exp/combine_2/decode_dev_it3/score_7/ctm_39phn.filt.sys
+%WER 16.9 | 400 15057 | 86.2 11.0 2.8 3.1 16.9 99.8 | -0.240 | exp/combine_2/decode_dev_it4/score_5/ctm_39phn.filt.sys
+--------------------------------Test Set------------------------------------------
+%WER 18.4 | 192 7215 | 84.6 12.0 3.5 3.0 18.4 99.0 | -0.223 | exp/combine_2/decode_test_it1/score_5/ctm_39phn.filt.sys
+%WER 18.5 | 192 7215 | 84.5 12.1 3.4 3.0 18.5 99.0 | -0.215 | exp/combine_2/decode_test_it2/score_5/ctm_39phn.filt.sys
+%WER 18.5 | 192 7215 | 84.4 12.0 3.7 2.9 18.5 99.0 | -0.074 | exp/combine_2/decode_test_it3/score_6/ctm_39phn.filt.sys
+%WER 18.6 | 192 7215 | 84.9 12.0 3.1 3.6 18.6 99.0 | -0.451 | exp/combine_2/decode_test_it4/score_4/ctm_39phn.filt.sys
+
