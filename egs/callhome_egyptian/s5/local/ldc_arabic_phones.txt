@@ -1,0 +1,46 @@
+C	voiceless glottal stop
+	b	voiced bilabial stop
+	t	voiceless dental stop
+	g	voiced velar stop
+	H	voiceless pharyngeal fricative
+	x	voiceless velar fricative
+	d	voiced dental stop
+	r	voiced alveolar flap
+	z	voiced alveolar fricative
+	s	voiceless alveolar fricative
+	$	voiceless alveopalatal fricative
+	S	voiceless alveolar velarized fricative
+	D	voiced dental velarized stop
+	T	voiceless dental velarized stop
+	Z	voiced velarized interdental fricative
+	c	voiced pharyngeal fricative
+	G	voiced uvular fricative
+	f	voiceless labio-dental fricative
+	q	voiceless glottal stop
+	Q	voiceless pharyngeal stop
+	k	voiceless velar stop
+	l	voiced alveolar lateral
+	m	voiced bilabial nasal
+	n	voiced alveolar nasal
+	h	voiceless glottal fricative
+	w	voiced bilabial continuant
+	y	voiced palatal continuant
+
+	v	voiced labio-dental fricative
+	j	voiced alveopalatal affricate
+
+
+	@	low front unrounded vowel
+	a	low back unrounded vowel
+	i	high front unrounded vowel
+	u	high back rounded vowel
+
+	%	long @
+	A	long a
+	I	long i
+	O	long back mid rounded vowel
+	U	long u
+	E	long front mid unrounded vowel
+
+	ay	front upgliding diphthong
+	aw	back upgliding diphthong

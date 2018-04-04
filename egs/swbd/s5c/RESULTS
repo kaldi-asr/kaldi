@@ -1,0 +1,249 @@
+#!/bin/bash
+# eval2000,
+for x in exp/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/score_*/*.ctm.filt.sys | utils/best_wer.sh; done 2>/dev/null
+# swbd subset of eval2000,
+for x in exp/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/score_*/*.ctm.swbd.filt.sys | utils/best_wer.sh; done 2>/dev/null
+exit 0
+
+# Note: we report the overall eval2000 performance and the Switchboard portion
+# of eval2000 (without CallHome) performance separately below.
+
+# GMM and SGMM numbers for all eval2000.
+# for x in exp/{mono,tri,sgmm}*/decode*; do [ -d $x ] && grep Sum $x/score_*/eval2000.ctm.filt.sys | utils/best_wer.sh; done 2>/dev/null
+%WER 44.0 | 4459 42989 | 59.7 28.3 11.9 3.7 44.0 74.0 | exp/tri1/decode_eval2000_nopp_sw1_tg/score_12/eval2000.ctm.filt.sys
+%WER 41.0 | 4459 42989 | 62.9 26.9 10.2 3.9 41.0 73.4 | exp/tri2/decode_eval2000_nopp_sw1_tg/score_11/eval2000.ctm.filt.sys
+%WER 34.2 | 4459 42989 | 69.4 22.1 8.5 3.6 34.2 70.0 | exp/tri3/decode_eval2000_nopp_sw1_tg/score_11/eval2000.ctm.filt.sys
+%WER 34.1 | 4459 42989 | 69.1 21.7 9.2 3.2 34.1 69.4 | exp/tri3/decode_eval2000_sw1_tg/score_13/eval2000.ctm.filt.sys
+%WER 26.9 | 4459 42989 | 75.8 16.9 7.3 2.8 26.9 64.7 | exp/tri4/decode_eval2000_sw1_fsh_fg/score_15/eval2000.ctm.filt.sys
+%WER 28.8 | 4459 42989 | 74.2 18.2 7.6 3.0 28.8 66.1 | exp/tri4/decode_eval2000_sw1_tg/score_14/eval2000.ctm.filt.sys
+%WER 36.8 | 4459 42989 | 67.2 24.0 8.8 4.1 36.8 71.0 | exp/tri4/decode_eval2000_sw1_tg.si/score_12/eval2000.ctm.filt.sys
+%WER 26.0 | 4459 42989 | 76.8 16.3 6.9 2.8 26.0 63.7 | exp/tri4_fmmi_b0.1/decode_eval2000_it4_sw1_fsh_fg/score_13/eval2000.ctm.filt.sys
+%WER 27.9 | 4459 42989 | 75.1 17.5 7.4 2.9 27.9 65.3 | exp/tri4_fmmi_b0.1/decode_eval2000_it4_sw1_tg/score_13/eval2000.ctm.filt.sys
+%WER 24.7 | 4459 42989 | 77.6 15.3 7.1 2.3 24.7 62.2 | exp/tri4_fmmi_b0.1/decode_eval2000_it5_sw1_fsh_fg/score_14/eval2000.ctm.filt.sys
+%WER 26.3 | 4459 42989 | 76.4 16.6 7.0 2.7 26.3 64.0 | exp/tri4_fmmi_b0.1/decode_eval2000_it5_sw1_tg/score_12/eval2000.ctm.filt.sys
+%WER 24.3 | 4459 42989 | 78.3 15.1 6.6 2.7 24.3 61.4 | exp/tri4_fmmi_b0.1/decode_eval2000_it6_sw1_fsh_fg/score_12/eval2000.ctm.filt.sys
+%WER 26.1 | 4459 42989 | 76.9 16.4 6.7 3.0 26.1 63.4 | exp/tri4_fmmi_b0.1/decode_eval2000_it6_sw1_tg/score_11/eval2000.ctm.filt.sys
+%WER 24.1 | 4459 42989 | 78.6 14.9 6.6 2.7 24.1 61.1 | exp/tri4_fmmi_b0.1/decode_eval2000_it7_sw1_fsh_fg/score_12/eval2000.ctm.filt.sys
+%WER 25.8 | 4459 42989 | 77.3 16.1 6.6 3.1 25.8 62.9 | exp/tri4_fmmi_b0.1/decode_eval2000_it7_sw1_tg/score_11/eval2000.ctm.filt.sys
+%WER 24.2 | 4459 42989 | 78.7 14.9 6.3 2.9 24.2 61.5 | exp/tri4_fmmi_b0.1/decode_eval2000_it8_sw1_fsh_fg/score_11/eval2000.ctm.filt.sys
+%WER 25.8 | 4459 42989 | 77.4 16.0 6.6 3.1 25.8 63.0 | exp/tri4_fmmi_b0.1/decode_eval2000_it8_sw1_tg/score_11/eval2000.ctm.filt.sys
+%WER 27.0 | 4459 42989 | 75.7 17.1 7.2 2.7 27.0 64.4 | exp/tri4_mmi_b0.1/decode_eval2000_1.mdl_sw1_tg/score_13/eval2000.ctm.filt.sys
+%WER 26.4 | 4459 42989 | 76.4 16.7 6.9 2.8 26.4 63.4 | exp/tri4_mmi_b0.1/decode_eval2000_2.mdl_sw1_tg/score_12/eval2000.ctm.filt.sys
+%WER 25.9 | 4459 42989 | 77.0 16.2 6.8 2.9 25.9 63.0 | exp/tri4_mmi_b0.1/decode_eval2000_3.mdl_sw1_tg/score_12/eval2000.ctm.filt.sys
+%WER 25.8 | 4459 42989 | 77.1 16.1 6.8 2.9 25.8 62.9 | exp/tri4_mmi_b0.1/decode_eval2000_4.mdl_sw1_tg/score_12/eval2000.ctm.filt.sys
+%WER 25.2 | 4459 42989 | 77.4 15.6 7.0 2.6 25.2 62.7 | exp/sgmm2_5/decode_eval2000_sw1_tg/score_11/eval2000.ctm.filt.sys
+%WER 22.1 | 4459 42989 | 80.3 13.9 5.8 2.4 22.1 59.0 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it1/score_10/eval2000.ctm.filt.sys
+%WER 21.6 | 4459 42989 | 80.9 13.5 5.6 2.4 21.6 58.4 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it2/score_10/eval2000.ctm.filt.sys
+%WER 21.4 | 4459 42989 | 81.2 13.4 5.4 2.6 21.4 58.6 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it3/score_10/eval2000.ctm.filt.sys
+%WER 21.4 | 4459 42989 | 81.3 13.5 5.2 2.8 21.4 58.4 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it4/score_10/eval2000.ctm.filt.sys
+%WER 23.8 | 4459 42989 | 78.8 14.9 6.3 2.6 23.8 61.1 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it1/score_10/eval2000.ctm.filt.sys
+%WER 23.2 | 4459 42989 | 79.4 14.6 6.0 2.6 23.2 60.3 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it2/score_10/eval2000.ctm.filt.sys
+%WER 23.0 | 4459 42989 | 79.8 14.5 5.7 2.8 23.0 60.2 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it3/score_10/eval2000.ctm.filt.sys
+%WER 23.0 | 4459 42989 | 79.9 14.5 5.5 3.0 23.0 60.2 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it4/score_10/eval2000.ctm.filt.sys
+
+# GMM and SGMM numbers for swbd subset.
+# for x in exp/{mono,tri,sgmm}*/decode*; do [ -d $x ] && grep Sum $x/score_*/eval2000.ctm.swbd.filt.sys | utils/best_wer.sh; done 2>/dev/null
+%WER 35.6 | 1831 21395 | 67.5 23.3 9.2 3.1 35.6 68.8 | exp/tri1/decode_eval2000_nopp_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 32.7 | 1831 21395 | 70.7 21.6 7.8 3.4 32.7 67.9 | exp/tri2/decode_eval2000_nopp_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+%WER 26.2 | 1831 21395 | 76.4 16.7 6.9 2.6 26.2 64.2 | exp/tri3/decode_eval2000_nopp_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 26.1 | 1831 21395 | 76.5 16.8 6.7 2.6 26.1 64.1 | exp/tri3/decode_eval2000_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 19.9 | 1831 21395 | 82.1 12.4 5.5 2.0 19.9 58.5 | exp/tri4/decode_eval2000_sw1_fsh_fg/score_15/eval2000.ctm.swbd.filt.sys
+%WER 21.6 | 1831 21395 | 80.5 13.6 5.9 2.1 21.6 60.2 | exp/tri4/decode_eval2000_sw1_tg/score_15/eval2000.ctm.swbd.filt.sys
+%WER 29.2 | 1831 21395 | 74.0 19.0 7.0 3.2 29.2 65.0 | exp/tri4/decode_eval2000_sw1_tg.si/score_13/eval2000.ctm.swbd.filt.sys
+%WER 18.9 | 1831 21395 | 82.9 11.8 5.2 1.9 18.9 57.1 | exp/tri4_fmmi_b0.1/decode_eval2000_it4_sw1_fsh_fg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 20.6 | 1831 21395 | 81.3 12.9 5.8 1.9 20.6 59.0 | exp/tri4_fmmi_b0.1/decode_eval2000_it4_sw1_tg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 17.8 | 1831 21395 | 83.8 11.1 5.1 1.6 17.8 55.4 | exp/tri4_fmmi_b0.1/decode_eval2000_it5_sw1_fsh_fg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 19.4 | 1831 21395 | 82.5 11.9 5.6 1.8 19.4 57.3 | exp/tri4_fmmi_b0.1/decode_eval2000_it5_sw1_tg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 17.6 | 1831 21395 | 84.2 10.9 5.0 1.8 17.6 54.2 | exp/tri4_fmmi_b0.1/decode_eval2000_it6_sw1_fsh_fg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 19.0 | 1831 21395 | 82.8 11.6 5.6 1.8 19.0 56.6 | exp/tri4_fmmi_b0.1/decode_eval2000_it6_sw1_tg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 17.5 | 1831 21395 | 84.3 10.8 4.9 1.8 17.5 54.2 | exp/tri4_fmmi_b0.1/decode_eval2000_it7_sw1_fsh_fg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 18.9 | 1831 21395 | 83.3 11.7 5.0 2.2 18.9 56.6 | exp/tri4_fmmi_b0.1/decode_eval2000_it7_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 17.7 | 1831 21395 | 84.3 11.0 4.7 2.0 17.7 54.2 | exp/tri4_fmmi_b0.1/decode_eval2000_it8_sw1_fsh_fg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 19.0 | 1831 21395 | 83.4 11.8 4.8 2.4 19.0 56.2 | exp/tri4_fmmi_b0.1/decode_eval2000_it8_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+%WER 20.0 | 1831 21395 | 81.9 12.5 5.6 1.9 20.0 57.5 | exp/tri4_mmi_b0.1/decode_eval2000_1.mdl_sw1_tg/score_14/eval2000.ctm.swbd.filt.sys
+%WER 19.4 | 1831 21395 | 82.5 12.1 5.3 2.0 19.4 56.4 | exp/tri4_mmi_b0.1/decode_eval2000_2.mdl_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 19.1 | 1831 21395 | 83.0 11.9 5.1 2.1 19.1 56.3 | exp/tri4_mmi_b0.1/decode_eval2000_3.mdl_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 19.1 | 1831 21395 | 83.1 11.8 5.1 2.2 19.1 56.0 | exp/tri4_mmi_b0.1/decode_eval2000_4.mdl_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 18.7 | 1831 21395 | 83.1 11.5 5.4 1.8 18.7 57.3 | exp/sgmm2_5/decode_eval2000_sw1_tg/score_11/eval2000.ctm.swbd.filt.sys
+%WER 15.9 | 1831 21395 | 85.7 9.9 4.4 1.6 15.9 53.2 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it1/score_10/eval2000.ctm.swbd.filt.sys
+%WER 15.6 | 1831 21395 | 86.1 9.7 4.3 1.7 15.6 52.6 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it2/score_10/eval2000.ctm.swbd.filt.sys
+%WER 15.4 | 1831 21395 | 86.3 9.6 4.1 1.8 15.4 52.8 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it3/score_10/eval2000.ctm.swbd.filt.sys
+%WER 15.4 | 1831 21395 | 86.5 9.6 4.0 1.8 15.4 52.5 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_fsh_fg_it4/score_10/eval2000.ctm.swbd.filt.sys
+%WER 17.5 | 1831 21395 | 84.2 10.6 5.2 1.7 17.5 55.8 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it1/score_11/eval2000.ctm.swbd.filt.sys
+%WER 17.1 | 1831 21395 | 84.8 10.5 4.7 1.9 17.1 54.9 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it2/score_10/eval2000.ctm.swbd.filt.sys
+%WER 16.9 | 1831 21395 | 85.1 10.4 4.6 2.0 16.9 54.7 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it3/score_10/eval2000.ctm.swbd.filt.sys
+%WER 16.7 | 1831 21395 | 85.2 10.3 4.5 1.9 16.7 54.3 | exp/sgmm2_5_mmi_b0.1/decode_eval2000_sw1_tg_it4/score_11/eval2000.ctm.swbd.filt.sys
+
+# Nnet2 numbers for swbd subset.
+# for x in exp/nnet2*/decode*; do [ -d $x ] && grep Sum $x/score_*/eval2000.ctm.swbd.filt.sys | utils/best_wer.sh; done 2>/dev/null
+%WER 13.3 | 1831 21395 | 88.1 8.0 3.9 1.4 13.3 50.0 | exp/nnet2_5/decode_eval2000_sw1_fsh_fg/score_12/eval2000.ctm.swbd.filt.sys
+%WER 14.5 | 1831 21395 | 87.0 8.6 4.4 1.5 14.5 51.9 | exp/nnet2_5/decode_eval2000_sw1_tg/score_12/eval2000.ctm.swbd.filt.sys
+
+# Nnet2 online numbers for swbd subset.
+# for x in exp/nnet2_online/nnet_ms_*/decode_eval2000_*; do grep Sum $x/score_*/eval2000.ctm.swbd.filt.sys  | utils/best_wer.sh; done
+%WER 13.6 | 1831 21395 | 87.7 8.0 4.3 1.3 13.6 50.7 | exp/nnet2_online/nnet_ms_a_unscaled/decode_eval2000_hires_sw1_fsh_fg/score_13/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.8 | 1831 21395 | 86.6 8.8 4.7 1.4 14.8 52.5 | exp/nnet2_online/nnet_ms_a_unscaled/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.6 | 1831 21395 | 87.8 7.9 4.3 1.3 13.6 50.6 | exp/nnet2_online/nnet_ms_a_unscaled_online/decode_eval2000_hires_sw1_fsh_fg/score_13/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.8 | 1831 21395 | 87.5 8.2 4.3 1.4 13.8 50.4 | exp/nnet2_online/nnet_ms_a_unscaled_online/decode_eval2000_hires_sw1_fsh_fg_per_utt/score_13/eval2000_hires.ctm.swbd.filt.sy
+%WER 14.8 | 1831 21395 | 86.8 8.8 4.4 1.6 14.8 52.9 | exp/nnet2_online/nnet_ms_a_unscaled_online/decode_eval2000_hires_sw1_tg/score_10/eval2000_hires.ctm.swbd.filt.sys
+%WER 15.1 | 1831 21395 | 86.3 9.1 4.6 1.5 15.1 52.9 | exp/nnet2_online/nnet_ms_a_unscaled_online/decode_eval2000_hires_sw1_tg_per_utt/score_12/eval2000_hires.ctm.swbd.filt.sys
+
+# Nnet2 speed-perturbed and volume perturbed numbers for swbd subset.
+# for x in exp/nnet2_online/nnet_ms_b*/decode_eval2000_*; do grep Sum $x/score_*/eval2000.ctm.swbd.filt.sys  | utils/best_wer.sh; done
+%WER 12.9 | 1831 21395 | 88.2 7.6 4.2 1.1 12.9 49.3 | exp/nnet2_online/nnet_ms_b/decode_eval2000_hires_sw1_fsh_fg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.2 | 1831 21395 | 87.1 8.3 4.6 1.3 14.2 51.2 | exp/nnet2_online/nnet_ms_b/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 12.9 | 1831 21395 | 88.3 7.6 4.1 1.2 12.9 49.0 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_fsh_fg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.5 | 1831 21395 | 87.9 8.0 4.2 1.3 13.5 50.0 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_fsh_fg_per_utt/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.1 | 1831 21395 | 87.2 8.3 4.5 1.4 14.1 51.7 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg/score_11/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.8 | 1831 21395 | 86.7 8.8 4.5 1.5 14.8 52.5 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg_per_utt/score_11/eval2000_hires.ctm.swbd.filt.sys
+
+# these are results just with speed perturbation (these are provided just for reference, the scripts have been modified for speed and volume perturbation)
+%WER 13.1 | 1831 21395 | 88.1 7.7 4.2 1.2 13.1 50.1 | exp/nnet2_online/nnet_ms_b/decode_eval2000_hires_sw1_fsh_fg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.5 | 1831 21395 | 86.8 8.6 4.6 1.3 14.5 52.4 | exp/nnet2_online/nnet_ms_b/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.2 | 1831 21395 | 88.0 7.7 4.3 1.2 13.2 50.1 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_fsh_fg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.6 | 1831 21395 | 87.7 8.1 4.2 1.3 13.6 50.7 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_fsh_fg_per_utt/score_13/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.5 | 1831 21395 | 86.8 8.5 4.6 1.3 14.5 52.4 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg/score_12/eval2000_hires.ctm.swbd.filt.sys
+%WER 14.8 | 1831 21395 | 86.7 9.0 4.3 1.6 14.8 52.8 | exp/nnet2_online/nnet_ms_b_online/decode_eval2000_hires_sw1_tg_per_utt/score_10/eval2000_hires.ctm.swbd.filt.sys
+
+
+(
+# old results with 25 million parameter model. We do not want to use such a big model. So see the new results below
+# local/nnet3/run_lstm.sh
+# these are results with nnet3 LSTMs cell_dim=1280, recurrent_dim=384, lstm_delay=-1 -2 -3, label_delay=5 num_params=25010228 (8 epoch training on speed-perturbed
+# and volume perturbed data)
+%WER 16.8 | 4459 42989 | 85.1 10.4 4.5 1.9 16.8 52.8 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 18.1 | 4459 42989 | 84.0 11.2 4.8 2.0 18.1 54.9 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 11.4 | 1831 21395 | 89.8 6.8 3.4 1.2 11.4 46.0 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 12.7 | 1831 21395 | 88.6 7.6 3.8 1.3 12.7 48.7 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 22.0 | 2628 21594 | 80.5 13.9 5.6 2.5 22.0 57.3 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 23.3 | 2628 21594 | 79.4 14.7 6.0 2.7 23.3 59.2 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+)
+
+
+# local/nnet3/run_lstm.sh
+# these are results with nnet3 LSTMs cell_dim=1024, recurrent_dim=256, nonrecurrent_projection_dim=256, lstm_delay=-1 -2 -3, label_delay=5 num_params=14.6M (8 epoch training on speed-perturbed
+# this setup has the newly introduced feature self-repair, in addition to shrink
+%WER 16.5 | 4459 42989 | 85.3 10.1 4.6 1.8 16.5 53.0 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+%WER 17.9 | 4459 42989 | 84.1 11.2 4.8 2.0 17.9 55.5 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 11.6 | 1831 21395 | 89.7 6.9 3.4 1.3 11.6 46.9 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 12.6 | 1831 21395 | 88.7 7.6 3.7 1.4 12.6 49.6 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 21.3 | 2628 21594 | 81.0 13.2 5.8 2.4 21.3 57.3 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 23.1 | 2628 21594 | 79.5 14.7 5.8 2.6 23.1 59.6 | exp/nnet3/lstm_ld5_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 15.17 [ 7466 / 49204, 993 ins, 1937 del, 4536 sub ] exp/nnet3/lstm_ld5_sp/decode_train_dev_sw1_fsh_fg/wer_12_0.0
+%WER 16.12 [ 7931 / 49204, 1072 ins, 1910 del, 4949 sub ] exp/nnet3/lstm_ld5_sp/decode_train_dev_sw1_tg/wer_11_0.0
+
+
+# bidirectional LSTM
+# -----------------------
+# local/nnet3/run_lstm.sh --affix bidirectional \
+#                         --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#                         --label-delay 0 \
+#                         --cell-dim 1024 \
+#                         --recurrent-projection-dim 128 \
+#                         --non-recurrent-projection-dim 128 \
+#                         --chunk-left-context 40 \
+#                         --chunk-right-context 40
+# (8 epoch training on speed-perturbed and volume perturbed data)
+# num_params=20101172
+%WER 14.9 | 4459 42989 | 86.6 9.1 4.3 1.5 14.9 50.6 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 16.1 | 4459 42989 | 85.5 10.1 4.5 1.6 16.1 52.7 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 10.3 | 1831 21395 | 90.6 6.1 3.2 0.9 10.3 44.2 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 11.3 | 1831 21395 | 89.6 6.9 3.5 1.0 11.3 46.6 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_11_1.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.4 | 2628 21594 | 82.7 12.0 5.3 2.1 19.4 54.9 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 20.8 | 2628 21594 | 81.3 13.1 5.6 2.2 20.8 56.9 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+
+# bidirectional LSTM with the same configuration as the above experiment, with self-repair of all nonliearities and clipgradient, and max-change-per-component activated
+%WER 14.9 | 4459 42989 | 86.7 9.0 4.3 1.6 14.9 50.5 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 15.9 | 4459 42989 | 85.7 9.8 4.5 1.7 15.9 52.3 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 10.2 | 1831 21395 | 90.8 6.1 3.2 1.0 10.2 44.4 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 11.2 | 1831 21395 | 89.9 6.8 3.3 1.1 11.2 46.6 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.4 | 2628 21594 | 82.7 11.8 5.4 2.2 19.4 54.5 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 20.6 | 2628 21594 | 81.5 12.8 5.7 2.2 20.6 56.2 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_10_0.5/eval2000_hires.ctm.callhm.filt.sys
+
+(
+# bidirectional LSTM with the same configuration as the above experiment, with self-repair of all nonliearities and clipgradient activated
+%WER 15.0 | 4459 42989 | 86.5 9.1 4.5 1.5 15.0 50.4 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+%WER 16.0 | 4459 42989 | 85.6 9.9 4.5 1.6 16.0 52.7 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 10.4 | 1831 21395 | 90.5 6.2 3.3 0.9 10.4 44.2 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 11.3 | 1831 21395 | 89.8 6.8 3.3 1.1 11.3 46.7 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.6 | 2628 21594 | 82.5 12.1 5.5 2.1 19.6 54.8 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 20.7 | 2628 21594 | 81.4 12.9 5.7 2.2 20.7 56.8 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+)
+
+# results with nnet3 tdnn: local/nnet3/run_tdnn.sh (11.10.2015) (2 epoch training on speed-perturbed and volume perturbed data)
+%WER 12.1 | 1831 21395 | 89.1 7.1 3.8 1.3 12.1 48.1 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.6 | 1831 21395 | 87.9 8.2 3.9 1.5 13.6 51.0 | exp/nnet3/tdnn_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+# results with nnet3 tdnn: local/nnet3/run_tdnn.sh (7.20.2016) (2 epoch training on speed-perturbed data)
+%WER 17.1 | 4459 42989 | 84.7 10.4 4.9 1.8 17.1 53.7 | exp/nnet3/tdnn_b_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.filt.sys
+%WER 18.7 | 4459 42989 | 83.3 11.5 5.2 2.0 18.7 56.4 | exp/nnet3/tdnn_b_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.filt.sys
+%WER 11.6 | 1831 21395 | 89.5 6.7 3.8 1.1 11.6 46.7 | exp/nnet3/tdnn_b_sp/decode_eval2000_hires_sw1_fsh_fg/score_13_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.1 | 1831 21395 | 88.3 8.0 3.7 1.4 13.1 49.6 | exp/nnet3/tdnn_b_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 22.5 | 2628 21594 | 79.9 13.8 6.2 2.4 22.5 58.4 | exp/nnet3/tdnn_b_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 24.2 | 2628 21594 | 78.4 15.0 6.6 2.6 24.2 61.2 | exp/nnet3/tdnn_b_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.callhm.filt.sys
+
+# results with nnet3 cnn+tdnn: local/nnet3/run_tdnn.sh --use_cnn true (1.2.2016) (2 epoch training on speed-perturbed and volume perturbed data)
+%WER 17.3 | 4459 42989 | 84.7 10.5 4.9 2.0 17.3 53.5 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_11_0.0/eval2000_hires.ctm.filt.sys
+%WER 18.9 | 4459 42989 | 83.2 11.5 5.3 2.2 18.9 55.6 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.filt.sys
+%WER 12.0 | 1831 21395 | 89.3 7.1 3.7 1.3 12.0 47.1 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 13.5 | 1831 21395 | 88.0 8.1 3.9 1.5 13.5 49.4 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_tg/score_11_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 22.4 | 2628 21594 | 80.1 13.7 6.2 2.6 22.4 57.6 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_fsh_fg/score_11_1.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 24.3 | 2628 21594 | 78.6 15.0 6.4 2.9 24.3 60.0 | exp/nnet3/tdnn_cnn_sp/decode_eval2000_hires_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+
+
+# current best 'chain' models with TDNNs (see local/chain/tuning/run_tdnn_7k.sh)
+# (4 epoch training on data being speed-perturbed, volume-perturbed)
+%WER 14.7 | 4459 42989 | 87.0 8.7 4.4 1.7 14.7 50.1 | exp/chain/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 9.8 | 1831 21395 | 91.3 5.8 3.0 1.1 9.8 43.7 | exp/chain/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_11_0.5/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.4 | 2628 21594 | 82.8 11.3 6.0 2.1 19.4 54.5 | exp/chain/tdnn_7k_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+
+#(see local/chain/multi_condition/run_tdnn_7k.sh)
+# (2 epoch training on data being speed-perturbed, volume-perturbed and reverberated with room impulse responses)
+%WER 14.3 | 4459 42989 | 87.3 8.5 4.1 1.6 14.3 49.1 | exp/chain/tdnn_7k_sp_rvb1/decode_eval2000_sw1_fsh_fg/score_9_0.0/eval2000_hires.ctm.filt.sys
+%WER 9.3 | 1831 21395 | 91.7 5.5 2.8 1.0 9.3 41.9 | exp/chain/tdnn_7k_sp_rvb1/decode_eval2000_sw1_fsh_fg/score_9_1.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.2 | 2628 21594 | 83.0 11.4 5.5 2.2 19.2 54.2 | exp/chain/tdnn_7k_sp_rvb1/decode_eval2000_sw1_fsh_fg/score_9_0.0/eval2000_hires.ctm.callhm.filt.sys
+
+# current best 'chain' models with LSTM (see local/chain/run_lstm_d.sh)
+%WER 15.9 | 4459 42989 | 86.0 9.6 4.3 2.0 15.9 51.7 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 10.5 | 1831 21395 | 90.8 6.4 2.9 1.3 10.5 44.3 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 21.2 | 2628 21594 | 81.4 12.8 5.9 2.6 21.2 56.7 | exp/chain/lstm_d_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 13.88 [ 6829 / 49204, 935 ins, 1690 del, 4204 sub ] exp/chain/lstm_d_ld5_sp/decode_train_dev_sw1_fsh_fg/wer_9_0.0
+
+# current best 'chain' models with TDNN + LSTM + dropout (see local/chain/run_tdnn_lstm_1l.sh)
+%WER 13.5 | 4459 42989 | 88.2 8.0 3.8 1.7 13.5 48.2 | exp/chain/tdnn_lstm_1b_dropout_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
+%WER 8.8 | 1831 21395 | 92.3 5.2 2.5 1.1 8.8 41.9 | exp/chain/tdnn_lstm_1b_dropout_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 18.1 | 2628 21594 | 84.0 10.8 5.2 2.2 18.1 52.6 | exp/chain/tdnn_lstm_1b_dropout_ld5_sp/decode_eval2000_sw1_fsh_fg/score_10_1.0/eval2000_hires.ctm.callhm.filt.sys
+%WER 11.59 [ 5615 / 48460, 708 ins, 1450 del, 3457 sub ] exp/chain/tdnn_lstm_1b_dropout_ld5_sp/decode_train_dev_sw1_fsh_fg/wer_9_0.0
+
+# these are results with nnet3 LSTMs with CTC training : local/ctc/run_lstm.sh
+%WER 17.4 | 1831 21395 | 85.3 10.1 4.6 2.7 17.4 57.8 | exp/ctc/lstm_sp/decode_eval2000_sw1_fsh_fg_0.15/score_12_0.0/eval2000_hires.ctm.swbd.filt.sys
+%WER 19.4 | 1831 21395 | 83.5 11.2 5.2 3.0 19.4 60.7 | exp/ctc/lstm_sp/decode_eval2000_sw1_tg_0.15/score_12_0.5/eval2000_hires.ctm.swbd.filt.sys
+
+
+# Resegmentation numbers for swbd subset.
+%WER 22.4 | 1831 21395 | 79.9 13.4 6.6 2.4 22.4 61.4 | exp/tri4a_reseg/decode_eval2000_sw1_tg/score_15/eval2000.ctm.swbd.filt.sys
+%WER 30.3 | 1831 21395 | 73.1 19.1 7.9 3.4 30.3 67.5 | exp/tri4a_reseg/decode_eval2000_sw1_tg.si/score_13/eval2000.ctm.swbd.filt.sys
+
+# Raw fmllr numbers for swbd subset.
+%WER 22.1 | 1831 21395 | 80.1 14.1 5.8 2.2 22.1 59.8 | exp/tri4b/decode_eval2000_sw1_tg/score_13/eval2000.ctm.swbd.filt.sys
+%WER 30.1 | 1831 21395 | 72.7 19.5 7.9 2.8 30.1 65.4 | exp/tri4b/decode_eval2000_sw1_tg.si/score_14/eval2000.ctm.swbd.filt.sys
+
+
+### Karel's nnet1
+# nnet1 DNN recipe (29.09.2015), swbd subset,
+# cross-entropy (3gram decoding, fisher 4gram rescoring),
+%WER 14.6 | 1831 21395 | 87.0 8.9 4.2 1.6 14.6 52.3 | exp/dnn5b_pretrain-dbn_dnn/decode_eval2000_sw1_tg/score_12_0.5/eval2000.ctm.swbd.filt.sys
+%WER 13.0 | 1831 21395 | 88.5 7.8 3.7 1.4 13.0 49.5 | exp/dnn5b_pretrain-dbn_dnn/decode_eval2000_sw1_fsh_fg/score_12_0.0/eval2000.ctm.swbd.filt.sys
+# sMBR (3gram decoding, fisher 4gram rescoring),
+%WER 13.2 | 1831 21395 | 88.5 8.1 3.4 1.7 13.2 48.7 | exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval2000_sw1_tg_it4/score_14_0.0/eval2000.ctm.swbd.filt.sys
+%WER 11.7 | 1831 21395 | 89.9 7.1 3.0 1.6 11.7 45.8 | exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval2000_sw1_fsh_fg_it4/score_13_0.0/eval2000.ctm.swbd.filt.sys
+
+# nnet1 Tandem recipe local/nnet/run_dnn_tandem_uc.sh (29.09.2015), swbd subset,
+# Stacked bottleneck network,
+%WER 15.3 | 1831 21395 | 86.2 9.5 4.3 1.5 15.3 52.6 | exp/nnet5uc-part2/decode_eval2000_sw1_tg/score_13_0.0/eval2000.ctm.swbd.filt.sys
+# GMMs on BN-features,
+%WER 16.7 | 1831 21395 | 85.0 10.5 4.5 1.8 16.7 54.3 | exp/tri6uc/decode_eval2000_graph_sw1_tg/score_20_0.0/eval2000.ctm.swbd.filt.sys
+%WER 15.8 | 1831 21395 | 85.8 9.9 4.4 1.6 15.8 53.2 | exp/tri7uc-sat/decode_eval2000_graph_sw1_tg/score_20_0.0/eval2000.ctm.swbd.filt.sys
+%WER 14.6 | 1831 21395 | 87.1 9.2 3.6 1.8 14.6 51.8 | exp/tri7uc-sat_mmi_b0.1/decode_eval2000_graph_sw1_tg_it4/score_17_0.0/eval2000.ctm.swbd.filt.sys
+# fisher 4gram rescoring,
+%WER 13.2 | 1831 21395 | 88.3 8.2 3.4 1.5 13.2 49.2 | exp/tri7uc-sat_mmi_b0.1/decode_eval2000_graph_sw1_fsh_fg_it4/score_19_0.0/eval2000.ctm.swbd.filt.sys

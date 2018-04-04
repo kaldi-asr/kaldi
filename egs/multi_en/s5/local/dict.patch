@@ -1,0 +1,65 @@
+1,8d0
+< !exclamation-point eh k s k l ah m ey sh ah n p oy n t
+< "close-quote k l ow z k w ow t
+< "double-quote d ah b ah l k w ow t
+< "end-of-quote eh n d ah v k w ow t
+< "end-quote eh n d k w ow t
+< "in-quotes ih n k w ow t s
+< "quote k w ow t
+< "unquote ah n k w ow t
+11,13d2
+< #sharp-sign sh aa r p s ay n
+< %percent p er s eh n t
+< &ampersand ae m p er s ae n d
+15d3
+< 'apostrophe ah p aa s t r ah f iy
+21,22d8
+< 'end-inner-quote eh n d ih n er k w ow t
+< 'end-quote eh n d k w ow t
+25d10
+< 'inner-quote ih n er k w ow t
+29d13
+< 'quote k w ow t
+32d15
+< 'single-quote s ih ng g ah l k w ow t
+36,52d18
+< (begin-parens b ih g ih n p er eh n z
+< (in-parentheses ih n p er eh n th ah s iy z
+< (left-paren l eh f t p er eh n
+< (open-parentheses ow p ah n p er eh n th ah s iy z
+< (paren p er eh n
+< (parens p er eh n z
+< (parentheses p er eh n th ah s iy z
+< )close-paren k l ow z p er eh n
+< )close-parentheses k l ow z p er eh n th ah s iy z
+< )end-paren eh n d p er eh n
+< )end-parens eh n d p er eh n z
+< )end-parentheses eh n d p er eh n th ah s iy z
+< )end-the-paren eh n d dh ah p er eh n
+< )paren p er eh n
+< )parens p er eh n z
+< )right-paren r ay t p eh r ah n
+< )un-parentheses ah n p er eh n th ah s iy z
+54d19
+< ,comma k aa m ah
+56,64d20
+< -dash d ae sh
+< -hyphen hh ay f ah n
+< ...ellipsis ih l ih p s ih s
+< .decimal d eh s ah m ah l
+< .dot d aa t
+< .full-stop f uh l s t aa p
+< .period p ih r iy ah d
+< .point p oy n t
+< /slash s l ae sh
+67,70d22
+< :colon k ow l ah n
+< ;semi-colon s eh m ih k ow l ah n
+< ;semi-colon s eh m iy k ow l ah n
+< ?question-mark k w eh s ch ah n m aa r k
+133535,133539d133486
+< {brace b r ey s
+< {left-brace l eh f t b r ey s
+< {open-brace ow p eh n b r ey s
+< }close-brace k l ow z b r ey s
+< }right-brace r ay t b r ey s

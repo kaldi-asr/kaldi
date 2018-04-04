@@ -1,0 +1,12 @@
+for x in exp/{mono,tri,sgmm,nnet}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+%WER 80.22 [ 25764 / 32118, 677 ins, 9404 del, 15683 sub ] exp/mono0a/decode_tgpr_eval92_5k_noisy/wer_11
+%WER 63.51 [ 20398 / 32118, 975 ins, 7575 del, 11848 sub ] exp/tri1/decode_tgpr_eval92_5k_noisy/wer_13
+%WER 60.91 [ 19564 / 32118, 1043 ins, 7085 del, 11436 sub ] exp/tri2a/decode_tgpr_eval92_5k_noisy/wer_13
+%WER 57.33 [ 18412 / 32118, 924 ins, 7165 del, 10323 sub ] exp/tri2b/decode_tgpr_eval92_5k_noisy/wer_13
+%WER 48.32 [ 15518 / 32118, 1305 ins, 5317 del, 8896 sub ] exp/tri3b/decode_tgpr_eval92_5k_noisy/wer_12
+%WER 61.61 [ 19787 / 32118, 1015 ins, 7211 del, 11561 sub ] exp/tri3b/decode_tgpr_eval92_5k_noisy.si/wer_13
+%WER 35.02 [ 11247 / 32118, 991 ins, 3068 del, 7188 sub ] exp/tri4a_dnn/decode_tgpr_5k_eval92_5k_noisy/wer_10
+%WER 31.01 [ 9959 / 32118, 1051 ins, 2257 del, 6651 sub ] exp/tri5a_dnn/decode_tgpr_5k_eval92_5k_noisy/wer_11
+%WER 29.71 [ 9541 / 32118, 1116 ins, 1999 del, 6426 sub ] exp/tri6a_dnn/decode_tgpr_5k_eval92_5k_noisy/wer_11
+%WER 29.06 [ 9335 / 32118, 1046 ins, 1987 del, 6302 sub ] exp/tri7a_dnn/decode_tgpr_5k_eval92_5k_noisy/wer_12

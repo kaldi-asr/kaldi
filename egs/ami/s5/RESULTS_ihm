@@ -1,0 +1,94 @@
+#!/bin/bash
+# kaldi:
+for x in exp/ihm/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+# sclite / asclite:
+for x in exp/ihm/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/ascore_*/*.sys | utils/best_wer.sh; done 2>/dev/null
+
+exit 0
+
+# Results with close-talk microphones (IHM),
+
+# Pawel,
+dev
+exp/ihm/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.dtl:Percent Total Error       =   38.0%   (35925)
+exp/ihm/tri3a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev.ctm.filt.dtl:Percent Total Error       =   35.3%   (33329)
+exp/ihm/tri4a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.dtl:Percent Total Error       =   32.1%   (30364)
+exp/ihm/tri4a_mmi_b0.1/decode_dev_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_12/dev.ctm.filt.dtl:Percent Total Error       =   29.9%   (28220)
+
+eval
+exp/ihm/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval.ctm.filt.dtl:Percent Total Error       =   43.7%   (39330)
+exp/ihm/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_14/eval.ctm.filt.dtl:Percent Total Error       =   40.4%   (36385)
+exp/ihm/tri4a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_13/eval_o4.ctm.filt.dtl:Percent Total Error       =   35.0%   (31463)
+exp/ihm/tri4a_mmi_b0.1/decode_eval_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.dtl:Percent Total Error       =   31.7%   (28518)
+
+# Karel, JSALT 2015, (21.7.2015)
+
+# GMM - dev,
+%WER 38.1 | 13098 94489 | 67.1 20.6 12.2 5.2 38.1 67.0 | exp/ihm/tri2a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.sys
+%WER 35.5 | 13098 94487 | 69.6 19.0 11.4 5.1 35.5 65.8 | exp/ihm/tri3a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_13/dev.ctm.filt.sys
+%WER 32.2 | 13098 94483 | 72.5 17.2 10.3 4.8 32.2 63.8 | exp/ihm/tri4a/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_14/dev.ctm.filt.sys #0.1% worse than Pawel!
+%WER 30.2 | 13098 94479 | 74.0 15.6 10.4 4.2 30.2 61.9 | exp/ihm/tri4a_mmi_b0.1/decode_dev_3.mdl_ami_fsh.o3g.kn.pr1-7/ascore_12/dev.ctm.filt.sys
+
+# GMM - eval,
+%WER 43.9 | 12643 89978 | 60.8 25.3 13.9 4.8 43.9 65.6 | exp/ihm/tri2a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_14/eval.ctm.filt.sys
+%WER 40.8 | 12643 89985 | 63.8 23.6 12.6 4.7 40.8 64.6 | exp/ihm/tri3a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_14/eval.ctm.filt.sys
+%WER 35.1 | 12643 89975 | 69.1 19.8 11.1 4.2 35.1 61.8 | exp/ihm/tri4a/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_14/eval.ctm.filt.sys #0.1% worse than Pawel!
+%WER 31.7 | 12643 89986 | 72.1 18.0 9.9 3.8 31.7 59.4 | exp/ihm/tri4a_mmi_b0.1/decode_eval_4.mdl_ami_fsh.o3g.kn.pr1-7/ascore_11/eval.ctm.filt.sys
+
+# nnet1 DNN on 'fmllr' system, RBMs 6x2048 neurons (21.7.2015):
+## DNN-Xent,
+%WER 26.0 | 13098 94483 | 77.9 13.5 8.5 4.0 26.0 58.4 | exp/ihm/dnn4_pretrain-dbn_dnn/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_11/dev.ctm.filt.sys
+%WER 27.1 | 12643 89971 | 76.4 15.5 8.1 3.5 27.1 57.2 | exp/ihm/dnn4_pretrain-dbn_dnn/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_10/eval.ctm.filt.sys
+## DNN-sMBR,
+%WER 24.3 | 13098 94481 | 79.6 12.6 7.8 3.9 24.3 56.3 | exp/ihm/dnn4_pretrain-dbn_dnn_smbr/decode_dev_ami_fsh.o3g.kn.pr1-7_it4/ascore_12/dev.ctm.filt.sys
+%WER 24.6 | 12643 89972 | 78.8 14.1 7.1 3.3 24.6 54.4 | exp/ihm/dnn4_pretrain-dbn_dnn_smbr/decode_eval_ami_fsh.o3g.kn.pr1-7_it4/ascore_11/eval.ctm.filt.sys
+
+# nnet1 'fmllr + relu + dropout' system (27.9.2016):
+## DNN-Xent,
+%WER 26.3 | 13098 94489 | 77.6 13.6 8.7 3.9 26.3 59.2 | 0.005 | exp/ihm/dnn4d-6L1024-relu/decode_dev/ascore_11/dev.ctm.filt.sys
+%WER 27.2 | 12643 89970 | 75.9 15.0 9.1 3.1 27.2 57.4 | 0.053 | exp/ihm/dnn4d-6L1024-relu/decode_eval/ascore_11/eval.ctm.filt.sys
+# => about the same as the larger RBM system,
+## DNN-sMBR,
+%WER 25.1 | 13098 94474 | 78.6 12.7 8.6 3.7 25.1 57.6 | -0.193 | exp/ihm/dnn4d-6L1024-relu_smbr/decode_dev_ami_fsh.o3g.kn.pr1-7_it4/ascore_15/dev.ctm.filt.sys
+%WER 25.2 | 12643 89977 | 77.7 14.1 8.2 2.9 25.2 55.1 | -0.138 | exp/ihm/dnn4d-6L1024-relu_smbr/decode_eval_ami_fsh.o3g.kn.pr1-7_it4/ascore_15/eval.ctm.filt.sys
+# => on sMBR worse than the larger RBM system (tuning learning rate did not help),
+
+# nnet1 DNN on 'fmllr + kaldi i-vector per-spk' system (3.10.2016), RBMs 6x2048 neurons:
+## DNN-Xent,
+%WER 24.7 | 13098 94475 | 79.2 12.7 8.2 3.9 24.7 58.1 | -0.018 | exp/ihm/dnn4_pretrain-dbn-ivec_dnn/decode_dev_ami_fsh.o3g.kn.pr1-7/ascore_11/dev.ctm.filt.sys
+%WER 25.2 | 12643 89972 | 78.0 13.8 8.2 3.2 25.2 56.4 | 0.057 | exp/ihm/dnn4_pretrain-dbn-ivec_dnn/decode_eval_ami_fsh.o3g.kn.pr1-7/ascore_11/eval.ctm.filt.sys
+## DNN-sMBR,
+%WER 23.2 | 13098 94477 | 80.3 11.5 8.2 3.6 23.2 56.3 | 0.010 | exp/ihm/dnn4_pretrain-dbn-ivec_dnn_smbr/decode_dev_ami_fsh.o3g.kn.pr1-7_it4/ascore_13/dev.ctm.filt.sys
+%WER 22.8 | 12643 89982 | 80.2 12.8 7.1 3.0 22.8 53.8 | 0.060 | exp/ihm/dnn4_pretrain-dbn-ivec_dnn_smbr/decode_eval_ami_fsh.o3g.kn.pr1-7_it4/ascore_12/eval.ctm.filt.sys
+# => The kaldi i-vectors on fMLLR feats are helping nicely,
+# (WER not too far from the chain systems, even w/o data augmentation, but with fMLLR),
+
+
+# Vijay, TDNN results,
+for x in exp/$mic/nnet2_online/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep Sum $x/ascore_*/*.sys | utils/best_wer.sh; done
+# dev,
+%WER 25.0 | 13098 94483 | 78.3 12.0 9.6 3.4 25.0 57.7 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_dev/ascore_13/dev_hires.ctm.filt.sys
+%WER 25.3 | 13098 94468 | 78.5 12.7 8.8 3.8 25.3 57.9 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_dev_utt/ascore_12/dev_hires.ctm.filt.sys
+%WER 25.0 | 13098 94476 | 78.5 12.4 9.1 3.6 25.0 58.0 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_dev_utt_offline/ascore_13/dev_hires.ctm.filt.sys
+# eval,
+%WER 25.9 | 12643 89971 | 77.2 14.2 8.6 3.2 25.9 56.4 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_eval/ascore_12/eval_hires.ctm.filt.sys
+%WER 26.0 | 12643 89976 | 77.1 14.7 8.2 3.2 26.0 55.7 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_eval_utt/ascore_12/eval_hires.ctm.filt.sys
+%WER 25.8 | 12643 89978 | 77.6 14.6 7.8 3.4 25.8 55.8 | exp/ihm/nnet2_online/nnet_ms_sp_online/decode_eval_utt_offline/ascore_11/eval_hires.ctm.filt.sys
+
+#------------------------------------------------------------------------------------------------------------------------------------
+# Nnet3 systems
+
+# BLSTM
+#  local/nnet3/run_blstm.sh --mic ihm \
+#    --chunk-right-context 20 \
+#    --use-sat-alignments true
+# Note: Chunk right context of 20 limits the latency of the acoustic model to
+# 20 frames.
+
+%WER 22.8 | 13098 94494 | 80.1 11.0 8.9 3.0 22.8 54.8 | exp/ihm/nnet3/lstm_bidirectional_ld0/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+%WER 22.6 | 12643 89969 | 80.0 12.7 7.3 2.7 22.6 53.5 | exp/ihm/nnet3/lstm_bidirectional_ld0/decode_eval/ascore_9/eval_hires.ctm.filt.sys
+
+## Chain systems
+  # local/chain/run_tdnn_ami_5.sh  --mic ihm --max-wer 50 --affix min_seg_len2_50wer (built with min-seg-len 2 secs, but script now just supports (frames_per_eg+5)/100)
+  %WER 22.4 | 13098 94484 | 80.5 10.7 8.8 3.0 22.4 54.8 | 0.091 | exp/ihm/chain/tdnn_min_seg_len2_50wer_sp/decode_dev/ascore_10/dev_hires.ctm.filt.sys
+  %WER 22.4 | 12643 89973 | 80.3 12.6 7.1 2.8 22.4 53.2 | 0.155 | exp/ihm/chain/tdnn_min_seg_len2_50wer_sp/decode_eval/ascore_10/eval_hires.ctm.filt.sys

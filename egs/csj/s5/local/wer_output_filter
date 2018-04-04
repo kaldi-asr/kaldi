@@ -1,0 +1,7 @@
+#!/bin/bash
+
+perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; }                                                                                                                                      
+   while(<STDIN>) { @A  = split(" ", $_); $id = shift @A; print "$id ";                                                                                                              
+     foreach $a (@A) { if (!defined $bad{$a}){ @W=split(/\+/,$a); $word=$W[0]; { print "$word "; }}} print "\n"; }' \
+   '<unk>' '<sp>'
+

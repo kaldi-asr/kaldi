@@ -1,0 +1,16 @@
+# This table defines the mapping used by the binary merge-vads to 
+# combine the output of compute-vad and compute-vad-from-frame-likes.
+# The first column corresponds to VAD decisions from compute-vad
+# and the second corresponds to VAD decisions from
+# compute-vad-from-frame-likes.  The labels "0" and "1" in the
+# first column represent (approximately) silence and nonsilence
+# respectively.  The labels "0," "1," and "2" in the second column
+# represent noise, speech, and music, respectively.  The third
+# column lists the resulting output labels: "0," "1," and "2" 
+# corresponding to silence/noise, speech, and music. 
+0 0 0
+1 0 0
+0 1 0
+1 1 1
+0 2 0
+1 2 2

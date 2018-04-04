@@ -1,0 +1,28 @@
+GMM-based systems
+%WER 22.87 [ 24286 / 106172, 3577 ins, 5321 del, 15388 sub ] exp/tri1/decode_fg_dev/wer_12_0.5
+%WER 23.13 [ 24561 / 106172, 3602 ins, 5411 del, 15548 sub ] exp/tri1/decode_tg_dev/wer_12_0.5
+%WER 21.24 [ 22548 / 106172, 4028 ins, 4246 del, 14274 sub ] exp/tri2a/decode_tg_dev/wer_13_0.0
+%WER 19.46 [ 20664 / 106172, 3276 ins, 4332 del, 13056 sub ] exp/tri2b/decode_tg_dev/wer_15_0.5
+%WER 16.80 [ 17839 / 106172, 3238 ins, 3403 del, 11198 sub ] exp/tri3b/decode_fg_dev/wer_17_0.0
+%WER 19.45 [ 20651 / 106172, 3880 ins, 3671 del, 13100 sub ] exp/tri3b/decode_fg_dev.si/wer_15_0.0
+%WER 14.24 [ 9849 / 69165, 2046 ins, 1365 del, 6438 sub ] exp/tri3b/decode_fg_test/wer_16_0.5
+%WER 17.31 [ 11972 / 69165, 2330 ins, 1695 del, 7947 sub ] exp/tri3b/decode_fg_test.si/wer_15_0.5
+%WER 16.94 [ 17984 / 106172, 3361 ins, 3377 del, 11246 sub ] exp/tri3b/decode_tg_dev/wer_16_0.0
+%WER 19.52 [ 20720 / 106172, 3654 ins, 3846 del, 13220 sub ] exp/tri3b/decode_tg_dev.si/wer_17_0.0
+%WER 14.40 [ 9957 / 69165, 2291 ins, 1184 del, 6482 sub ] exp/tri3b/decode_tg_test/wer_16_0.0
+%WER 17.41 [ 12044 / 69165, 2291 ins, 1736 del, 8017 sub ] exp/tri3b/decode_tg_test.si/wer_15_0.5
+nnet3 xent systems
+%WER 11.57 [ 12279 / 106172, 2640 ins, 2442 del, 7197 sub ] exp/nnet3/tdnn0_sp/decode_dev/wer_10_0.0
+%WER 9.89 [ 6841 / 69165, 1542 ins, 917 del, 4382 sub ] exp/nnet3/tdnn0_sp/decode_test/wer_11_0.5
+%WER 10.45 [ 11098 / 106172, 2199 ins, 2272 del, 6627 sub ] exp/nnet3/lstm_0_ld5_sp/decode_dev/wer_9_0.0
+%WER 12.34 [ 8533 / 69165, 1740 ins, 1393 del, 5400 sub ] exp/nnet3/lstm_0_ld5_sp/decode_test/wer_11_1.0
+%WER 10.59 [ 11241 / 106172, 2208 ins, 2304 del, 6729 sub ] exp/nnet3/lstm_bidirectional_ld5_sp/decode_dev/wer_9_0.0
+%WER 12.43 [ 8596 / 69165, 1742 ins, 1426 del, 5428 sub ] exp/nnet3/lstm_bidirectional_ld5_sp/decode_test/wer_11_1.0
+%WER 9.18 [ 9747 / 106172, 1987 ins, 1913 del, 5847 sub ] exp/nnet3/lstm_bidirectional_sp/decode_dev/wer_8_0.0
+Nnet3 chain systems
+%WER 8.48 [ 9001 / 106172, 1559 ins, 1624 del, 5818 sub ] exp/chain/tdnn_lstm1a_sp_bi/decode_dev/wer_9_0.0
+%WER 7.20 [ 4981 / 69165, 915 ins, 402 del, 3664 sub ] exp/chain/tdnn_lstm1a_sp_bi/decode_test/wer_8_1.0
+%WER 10.00 [ 10619 / 106172, 1980 ins, 1896 del, 6743 sub ] exp/chain/tdnn_sp_bi/decode_dev/wer_9_0.0
+%WER 8.58 [ 5936 / 69165, 1059 ins, 667 del, 4210 sub ] exp/chain/tdnn_sp_bi/decode_test/wer_9_1.0
+%WER 9.39 [ 9969 / 106172, 1624 ins, 1912 del, 6433 sub ] exp/chain/lstm1e_sp_bi/decode_dev/wer_8_0.5
+%WER 7.72 [ 5341 / 69165, 1002 ins, 497 del, 3842 sub ] exp/chain/lstm1e_sp_bi/decode_test/wer_8_0.5

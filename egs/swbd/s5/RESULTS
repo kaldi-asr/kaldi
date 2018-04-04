@@ -1,0 +1,98 @@
+
+# Note: these numbers are on eval2000 but don't compare them with the
+# numbers Microsoft quotes in their DNN papers; those are just on the
+# Switchboard portion of eval2000, excluding CallHome, which is
+# substantially easier.
+
+# These results are slightly out of date: since then I changed
+# the LDA+MLLT to use 7, not 9 frames of context, and also increased
+# the learning rate for the "indirect" fMMI.
+
+for x in exp/{mono,tri,sgmm,nnet,tandem}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.ctm.filt.sys | utils/best_wer.sh; done 2>/dev/null
+for x in exp/{mono,tri,sgmm,nnet,tandem}*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done 2>/dev/null
+
+exit 0
+
+
+# Note: the 2nd to last number is the WER.
+exp/tri1/decode_eval2000/score_11/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 57.0   31.6   11.4    4.7   47.8   75.7 |
+exp/tri2/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 56.9   31.1   11.9    4.4   47.4   75.3 |
+
+exp/tri3a/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 60.3   28.2   11.4    3.9   43.5   74.3 |
+
+
+exp/tri4a/decode_eval2000/score_13/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 70.9   20.9    8.2    3.6   32.7   68.1 |
+exp/tri4a/decode_train_dev/wer_14:%WER 31.35 [ 15192 / 48460, 1641 ins, 3858 del, 9693 sub ]
+
+exp/tri5a/decode_eval2000/score_12/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 71.6   20.7    7.7    3.8   32.2   67.5 |
+
+exp/sgmm2_5a/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.9   17.7    7.5    3.1   28.3   64.6 |
+exp/sgmm2_5a_mmi_b0.1/decode_eval2000_it1/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.2   16.9    7.0    3.1   27.0   63.7 |
+exp/sgmm2_5a_mmi_b0.1/decode_eval2000_it2/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.7   16.6    6.6    3.2   26.4   63.2 |
+exp/sgmm2_5a_mmi_b0.1/decode_eval2000_it3/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.1   16.4    6.5    3.2   26.1   63.0 |
+exp/sgmm2_5a_mmi_b0.1/decode_eval2000_it4/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.4   16.3    6.3    3.4   26.0   62.8 |
+exp/sgmm5a/decode_eval2000/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 74.1   18.5    7.4    3.5   29.4   66.3 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it1/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 75.1   17.6    7.3    3.2   28.0   64.9 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it2/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.3   17.3    6.5    3.4   27.1   64.1 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it3/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 76.9   17.0    6.1    3.5   26.6   63.7 |
+exp/sgmm5a_mmi_b0.1/decode_eval2000_it4/score_9/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.2   16.9    5.9    3.6   26.4   63.4 |
+
+
+# Karel's neural net setup:
+exp/tri5a_dnn/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.6   15.5    7.0    2.8   25.2   62.9 |
+# Note: the results on the following line are not really kosher as they
+# used the transcripts to estimate the fMLLR transforms.
+exp/tri5a_dnn/decode_train_dev/wer_10:%WER 22.85 [ 11075 / 48460, 1261 ins, 2955 del, 6859 sub ]
+# Previous system re-trained with sequential MMI with per-utterance updates
+%WER 24.1 | 4459 42989 | 79.0 15.3 5.7 3.1 24.1 61.1 | exp/tri5a_dnn_mmi/decode_eval2000_it1/score_10/eval2000.ctm.filt.sys
+%WER 23.8 | 4459 42989 | 79.5 15.2 5.3 3.3 23.8 60.8 | exp/tri5a_dnn_mmi/decode_eval2000_it2/score_10/eval2000.ctm.filt.sys
+%WER 23.8 | 4459 42989 | 79.7 15.2 5.1 3.5 23.8 60.5 | exp/tri5a_dnn_mmi/decode_eval2000_it3/score_10/eval2000.ctm.filt.sys
+%WER 23.7 | 4459 42989 | 79.8 15.2 5.0 3.5 23.7 60.5 | exp/tri5a_dnn_mmi/decode_eval2000_it4/score_10/eval2000.ctm.filt.sys
+
+# Karel's DNN setup from local/run_dnn.sh with train100k
+# Cross-entropy trained DNN from RBM init, 6 hidden layers, 2048 sigmoids each
+%WER 23.9 | 4459 42989 | 78.8 14.9 6.3 2.7 23.9 62.2 | exp/tri5a_pretrain-dbn_dnn/decode_eval2000/score_10/eval2000.ctm.filt.sys
+# sMBR training - 1 iteration on cross-entropy lattices
+%WER 22.4 | 4459 42989 | 80.4 14.4 5.2 2.8 22.4 59.6 | exp/tri5a_pretrain-dbn_dnn_smbr/decode_eval2000_it1/score_12/eval2000.ctm.filt.sys
+# sMBR training - 4 iteration on 1x sMBR lattices
+%WER 22.1 | 4459 42989 | 80.9 14.3 4.7 3.1 22.1 59.8 | exp/tri5a_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_it1/score_11/eval2000.ctm.filt.sys
+%WER 21.9 | 4459 42989 | 80.9 14.1 5.0 2.9 21.9 59.6 | exp/tri5a_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_it2/score_12/eval2000.ctm.filt.sys
+%WER 22.0 | 4459 42989 | 80.8 14.1 5.0 2.9 22.0 59.6 | exp/tri5a_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_it3/score_12/eval2000.ctm.filt.sys
+%WER 22.1 | 4459 42989 | 81.0 14.3 4.7 3.1 22.1 59.7 | exp/tri5a_pretrain-dbn_dnn_smbr_iter1-lats/decode_eval2000_it4/score_11/eval2000.ctm.filt.sys
+
+
+
+# Dan's neural net setup:
+exp/nnet6a/decode_eval2000/score_10/eval2000.ctm.filt.sys:     | Sum/Avg    | 4459  42989 | 77.1   16.0    6.9    2.7   25.6   62.6 |
+exp/nnet6a/decode_train_dev/wer_10:%WER 24.87 [ 12053 / 48460, 1590 ins, 3017 del, 7446 sub ]
+
+
+## Results from the run_edin.sh recipe:
+
+1. With swbd 3-gram LM:
+exp/tri1/decode_eval2000_sw1_tg/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   46.8%   (20140)
+exp/tri2/decode_eval2000_sw1_tg/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   46.4%   (19933)
+exp/tri3a/decode_eval2000_sw1_tg/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   43.0%   (18505)
+exp/tri3b/decode_eval2000_sw1_tg/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   38.1%   (16394)
+exp/tri4a/decode_eval2000_sw1_tg/score_13/eval2000.ctm.filt.dtl:Percent Total Error       =   32.6%   (13994)
+exp/tri4b/decode_eval2000_sw1_tg/score_13/eval2000.ctm.filt.dtl:Percent Total Error       =   30.2%   (12980)
+exp/tri4a_mmi_b0.1/decode_eval2000_4.mdl_sw1_tg/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   29.7%   (12733)
+exp/tri4b_mmi_b0.1/decode_eval2000_4.mdl_sw1_tg/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   27.1%   (11667)
+
+2. With swbd+fisher pruned 3-gram LM:
+exp/tri1/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   45.9%   (19724)
+exp/tri2/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   45.5%   (19547)
+exp/tri3a/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   42.4%   (18241)
+exp/tri3b/decode_eval2000_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   37.3%   (16029)
+exp/tri4a/decode_eval2000_sw1_fsh_tgpr/score_14/eval2000.ctm.filt.dtl:Percent Total Error       =   31.9%   (13703)
+exp/tri4b/decode_eval2000_sw1_fsh_tgpr/score_14/eval2000.ctm.filt.dtl:Percent Total Error       =   29.2%   (12573)
+exp/tri4a_mmi_b0.1/decode_eval2000_4.mdl_sw1_fsh_tgpr/score_11/eval2000.ctm.filt.dtl:Percent Total Error       =   28.8%   (12358)
+exp/tri4b_mmi_b0.1/decode_eval2000_4.mdl_sw1_fsh_tgpr/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   26.3%   (11322)
+
+3. Rescoring with full swbd+fisher 3-gram LM:
+exp/tri4a/decode_eval2000_sw1_fsh_tg.3/score_14/eval2000.ctm.filt.dtl:Percent Total Error       =   31.2%   (13419)
+exp/tri4b/decode_eval2000_sw1_fsh_tg.3/score_13/eval2000.ctm.filt.dtl:Percent Total Error       =   28.8%   (12381)
+exp/tri4a_mmi_b0.1/decode_eval2000_4.mdl_sw1_fsh_tg.3/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   28.3%   (12187)
+exp/tri4b_mmi_b0.1/decode_eval2000_4.mdl_sw1_fsh_tg.3/score_12/eval2000.ctm.filt.dtl:Percent Total Error       =   25.8%   (11104)
+
+
