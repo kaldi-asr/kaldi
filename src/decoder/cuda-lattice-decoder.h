@@ -25,7 +25,7 @@
 namespace kaldi {
 
 #define LAT_BUF_SIZE 2
-#define ESTIMATED_PRUNE_RATIO 0.1
+#define ESTIMATED_PRUNE_RATIO 0.25
 class CudaLatticeDecoder;
 
 struct CudaLatticeDecoderConfig {
@@ -38,8 +38,9 @@ struct CudaLatticeDecoderConfig {
   BaseFloat lattice_beam;
   BaseFloat beam;
   uint32 prune_interval;
-  fst::DeterminizeLatticePhonePrunedOptions det_opts;
+  int32 max_active;
 
+  fst::DeterminizeLatticePhonePrunedOptions det_opts;
   bool determinize_lattice;
   int32 verbose;
   
@@ -48,11 +49,12 @@ struct CudaLatticeDecoderConfig {
                        lat_fraction(1.0/2.0),
                        max_tokens_per_frame(400000),
                        max_lat_arc_per_frame(1000000),
-                       max_tokens(10000000),
-                       max_arcs(12000000), // 17000000*10 can fill all mem
+                       max_tokens(12000000),
+                       max_arcs(15000000), // 17000000*10 can fill all mem
                        lattice_beam(10.0),
                        beam(16.0),
                        prune_interval(3000),
+                       max_active(std::numeric_limits<int32>::max()),
                        determinize_lattice(true),
                        verbose(0) { }
  
@@ -82,6 +84,8 @@ struct CudaLatticeDecoderConfig {
                    "and deeper lattices");
     opts->Register("prune-interval", &prune_interval, "Interval (in frames) at "
                    "which to prune tokens");
+    opts->Register("max-active", &max_active, "Decoder max active states.  Larger->slower; "
+                   "more accurate. It's a faster but approximate version for GPU.");    
     opts->Register("determinize-lattice", &determinize_lattice, "If true, "
                    "determinize the lattice (lattice-determinization, keeping only "
                    "best pdf-sequence for each word-sequence).");    
@@ -439,6 +443,7 @@ class CudaLatticeDecoder {
     TokenMergeVector cur_toks;
     TokenLookupElem *current_tokens_lookup;
     CostType *cutoff;
+    CostType *cutoff_prev;
     LatLinkVector lat_arcs_sub_vec;
     Token* token_per_arc;
     int* token_per_arc_update;
@@ -446,6 +451,7 @@ class CudaLatticeDecoder {
     // tools
     TokenAllocator token_allocator;
     LatticePruner lattice_pruner;
+    CudaHistogram histogram_prev_toks;
 
     // never change
     const __restrict__ uint32 *e_offsets;
@@ -474,6 +480,7 @@ class CudaLatticeDecoder {
     int32 numArcs;
     uint32 frame;   
     int32 max_lat_arc_per_frame;
+    int max_active;
   };
 
 
@@ -523,6 +530,7 @@ class CudaLatticeDecoder {
   TokenMergeVector* cur_toks_;
   TokenMergeVector* prev_toks_;  
   CostType *cutoff_d;
+  CostType *cutoff_prev_d;
   int32 *num_arcs_till_last_d;
   int32 *modified_d; // used in processTokens_cg()
   // Keep track of the number of frames decoded in the current file.
@@ -534,6 +542,7 @@ class CudaLatticeDecoder {
   // One entry per state. TokenLookupElem::active to denote whether it is active.
   TokenLookupElem *current_tokens_lookup_d;
   TokenAllocator token_allocator_; // allocate new tokens to current_tokens_lookup_d
+  CudaHistogram histogram_prev_toks_;
 
   // data store for log likelihoods needed in the current frame.  
   // Double buffering to avoid synchronization.
