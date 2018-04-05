@@ -40,7 +40,6 @@ eval_flag=true # make it true when the evaluation data are released
 set -e
 set -u
 set -o pipefail
-set -x
 
 if [ $stage -le 0 ]; then
   # process for clean speech and making LMs etc. from original WSJ0

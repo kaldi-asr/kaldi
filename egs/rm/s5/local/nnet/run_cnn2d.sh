@@ -93,7 +93,7 @@ if [ $stage -le 4 ]; then
   cnn_dbn=$dir/cnn_dbn.nnet
   { # Concatenate CNN layers and DBN,
     num_components=$(nnet-info $feature_transform | grep -m1 num-components | awk '{print $2;}')
-    cnn="nnet-copy --remove-first-layers=$num_components $feature_transform_dbn - |"
+    cnn="nnet-copy --remove-first-components=$num_components $feature_transform_dbn - |"
     nnet-concat "$cnn" $dbn $cnn_dbn 2>$dir/log/concat_cnn_dbn.log || exit 1 
   }
   # Train

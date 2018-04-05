@@ -3,9 +3,92 @@
 # Apache 2.0.
 # Copyright  2012   Guoguo Chen
 #            2014   Neil Nelson
+#            2017   Johns Hopkins University (Jan "Yenda" Trmal <jtrmal@gmail.com>)
 #
 # Validation script for data/lang
 
+# this function reads the opened file (supplied as a first
+# parameter) into an array of lines. For each
+# line, it tests whether it's a valid utf-8 compatible
+# line. If all lines are valid utf-8, it returns the lines
+# decoded as utf-8, otherwise it assumes the file's encoding
+# is one of those 1-byte encodings, such as ISO-8859-x
+# or Windows CP-X.
+# Please recall we do not really care about
+# the actually encoding, we just need to
+# make sure the length of the (decoded) string
+# is correct (to make the output formatting looking right).
+sub get_utf8_or_bytestream {
+  use Encode qw(decode encode);
+  my $is_utf_compatible = 1;
+  my @unicode_lines;
+  my @raw_lines;
+  my $raw_text;
+  my $lineno = 0;
+  my $file = shift;
+
+  while (<$file>) {
+    $raw_text = $_;
+    last unless $raw_text;
+    if ($is_utf_compatible) {
+      my $decoded_text = eval { decode("UTF-8", $raw_text, Encode::FB_CROAK) } ;
+      $is_utf_compatible = $is_utf_compatible && defined($decoded_text);
+      push @unicode_lines, $decoded_text;
+    } else {
+      #print STDERR "WARNING: the line $raw_text cannot be interpreted as UTF-8: $decoded_text\n";
+      ;
+    }
+    push @raw_lines, $raw_text;
+    $lineno += 1;
+  }
+
+  if (!$is_utf_compatible) {
+    return (0, @raw_lines);
+  } else {
+    return (1, @unicode_lines);
+  }
+}
+
+# check if the given unicode string contain unicode whitespaces
+# other than the usual four: TAB, LF, CR and SPACE
+sub validate_utf8_whitespaces {
+  my $unicode_lines = shift;
+  use feature 'unicode_strings';
+  for (my $i = 0; $i < scalar @{$unicode_lines}; $i++) {
+    my $current_line = $unicode_lines->[$i];
+    # we replace TAB, LF, CR, and SPACE
+    # this is to simplify the test
+    $current_line =~ s/[\x{0009}\x{000a}\x{000d}\x{0020}]/./g;
+    if ($current_line =~/\s/) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+# checks if the text in the file (supplied as the argument) is utf-8 compatible
+# if yes, checks if it contains only allowed whitespaces. If no, then does not
+# do anything. The function seeks to the original position in the file after
+# reading the text.
+sub check_allowed_whitespace {
+  my $file = shift;
+  my $pos = tell($file);
+  (my $is_utf, my @lines) = get_utf8_or_bytestream($file);
+  seek($file, $pos, SEEK_SET);
+  if ($is_utf) {
+    my $has_invalid_whitespaces = validate_utf8_whitespaces(\@lines);
+    print "--> text seems to be UTF-8 or ASCII, checking whitespaces\n";
+    if ($has_invalid_whitespaces) {
+      print "--> ERROR: the text containes disallowed UTF-8 whitespace character(s)\n";
+      return 0;
+    } else {
+      print "--> text contains only allowed whitespaces\n";
+    }
+  } else {
+    print "--> text doesn't seem to be UTF-8 or ASCII, won't check whitespaces\n";
+  }
+  return 1;
+}
 
 $skip_det_check = 0;
 $skip_disambig_check = 0;
@@ -44,6 +127,7 @@ if (!open(P, "<$lang/phones.txt")) {
 }
 $idx = 1;
 %psymtab = ();
+check_allowed_whitespace(\*P) or exit 1;
 while (<P>) {
   chomp;
   my @col = split(" ", $_);
@@ -77,6 +161,7 @@ if (!open(W, "<$lang/words.txt")) {
 }
 $idx = 1;
 %wsymtab = ();
+check_allowed_whitespace(\*W) or exit 1;
 while (<W>) {
   chomp;
   my @col = split(" ", $_);
@@ -124,6 +209,7 @@ sub check_txt_int_csl {
   }
 
   $idx1 = 1;
+  check_allowed_whitespace(\*TXT) or $exit = 1;
   while (<TXT>) {
     chomp;
     my @col = split(" ", $_);
@@ -202,6 +288,7 @@ sub check_txt_int {
   }
 
   $idx1 = 1;
+  check_allowed_whitespace(\*TXT) or $exit = 1;
   while (<TXT>) {
     chomp;
     s/^(shared|not-shared) (split|not-split) //g;
@@ -501,48 +588,46 @@ if (-z "$lang/topo") {
 if (!open(T, "<$lang/topo")) {
   $exit = 1; print "--> ERROR: fail to open $lang/topo\n";
 } else {
+  $topo_ok = 1;
   $idx = 1;
+  %phones_in_topo_int_hash = ( );
+  %phones_in_topo_hash = ( );
   while (<T>) {
     chomp;
     next if (m/^<.*>[ ]*$/);
-    if ($idx == 1) {
-      $nonsilence_seq = $_; $idx ++;
-    }
-    if ($idx == 2) {
-      $silence_seq = $_;
+    foreach $i (split(" ", $_)) {
+      if (defined $phones_in_topo_int_hash{$i}) {
+        $topo_ok = 0;
+        $exit = 1; print "--> ERROR: $lang/topo has phone $i twice\n";
+      }
+      if (!defined $pint2sym{$i}) {
+        $topo_ok = 0;
+        $exit = 1; print "--> ERROR: $lang/topo has phone $i which is not in phones.txt\n";
+      }
+      $phones_in_topo_int_hash{$i} = 1;
+      $phones_in_topo_hash{$pint2sym{$i}} = 1;
     }
   }
   close(T);
-  if ($silence_seq == 0 || $nonsilence_seq == 0) {
-    $exit = 1; print "--> ERROR: $lang/topo doesn't have nonsilence section or silence section\n";
-  }
-  @silence_seq = split(" ", $silence_seq);
-  @nonsilence_seq = split(" ", $nonsilence_seq);
-  $success1 = 1;
-  if (@nonsilence_seq != @nonsilence) {
-    $exit = 1; print "--> ERROR: $lang/topo's nonsilence section doesn't correspond to nonsilence.txt\n";
-  } else {
-    foreach (0 .. scalar(@nonsilence)-1) {
-      if ($psymtab{@nonsilence[$_]} ne @nonsilence_seq[$_]) {
-        $exit = 1; print "--> ERROR: $lang/topo's nonsilence section doesn't correspond to nonsilence.txt\n";
-        $success = 0;
-      }
+  $phones_that_should_be_in_topo_hash = {};
+  foreach $p (@silence, @nonsilence) { $phones_that_should_be_in_topo_hash{$p} = 1; }
+  foreach $p (keys %phones_that_should_be_in_topo_hash) {
+    if ( ! defined $phones_in_topo_hash{$p}) {
+      $topo_ok = 0;
+      $i = $pint2sym{$p};
+      $exit = 1; print "--> ERROR: $lang/topo does not cover phone $p (label = $i)\n";
     }
   }
-  $success1 != 1 || print "--> $lang/topo's nonsilence section is OK\n";
-  $success2 = 1;
-  if (@silence_seq != @silence) {
-    $exit = 1; print "--> ERROR: $lang/topo's silence section doesn't correspond to silence.txt\n";
-  } else {
-    foreach (0 .. scalar(@silence)-1) {
-      if ($psymtab{@silence[$_]} ne @silence_seq[$_]) {
-        $exit = 1; print "--> ERROR: $lang/topo's silence section doesn't correspond to silence.txt\n";
-        $success = 0;
-      }
+  foreach $i (keys %phones_in_topo_int_hash) {
+    $p = $pint2sym{$i};
+    if ( ! defined $phones_that_should_be_in_topo_hash{$p}) {
+      $topo_ok = 0;
+      $exit = 1; print "--> ERROR: $lang/topo covers phone $p (label = $i) which is not a real phone\n";
     }
   }
-  $success2 != 1 || print "--> $lang/topo's silence section is OK\n";
-  $success1 != 1 or $success2 != 1 || print "--> $lang/topo is OK\n";
+  if ($topo_ok) {
+    "--> $lang/topo is OK\n";
+  }
   print "\n";
 }
 
@@ -626,6 +711,76 @@ if (-s "$lang/phones/word_boundary.txt") {
   print "\n";
 }
 
+
+
+{
+  print "Checking word-level disambiguation symbols...\n";
+  # This block checks that one of the two following conditions hold:
+  # (1) for lang diretories prepared by older versions of prepare_lang.sh:
+  #  The symbol  '#0' should appear in words.txt and phones.txt, and should
+  # or (2): the files wdisambig.txt, wdisambig_phones.int and wdisambig_words.int
+  #  exist, and have the expected properties (see below for details).
+
+  # note, %wdisambig_words_hash hashes from the integer word-id of word-level
+  # disambiguation symbols, to 1 if the word is a disambig symbol.
+
+  if (! -e "$lang/phones/wdisambig.txt") {
+    print "--> no $lang/phones/wdisambig.txt (older prepare_lang.sh)\n";
+    if (exists $wsymtab{"#0"}) {
+      print "--> $lang/words.txt has \"#0\"\n";
+      $wdisambig_words_hash{$wsymtab{"#0"}} = 1;
+    } else {
+      print "--> WARNING: $lang/words.txt doesn't have \"#0\"\n";
+      print "-->          (if you are using ARPA-type language models, you will normally\n";
+      print "-->           need the disambiguation symbol \"#0\" to ensure determinizability)\n";
+    }
+  } else {
+    print "--> $lang/phones/wdisambig.txt exists (newer prepare_lang.sh)\n";
+    if (!open(T, "<$lang/phones/wdisambig.txt")) {
+      print "--> ERROR: fail to open $lang/phones/wdisambig.txt\n"; $exit = 1; return;
+    }
+    chomp(my @wdisambig = <T>);
+    close(T);
+    if (!open(W, "<$lang/phones/wdisambig_words.int")) {
+      print "--> ERROR: fail to open $lang/phones/wdisambig_words.int\n"; $exit = 1; return;
+    }
+    chomp(my @wdisambig_words = <W>);
+    close(W);
+    if (!open(P, "<$lang/phones/wdisambig_phones.int")) {
+      print "--> ERROR: fail to open $lang/phones/wdisambig_phones.int\n"; $exit = 1; return;
+    }
+    chomp(my @wdisambig_phones = <P>);
+    close(P);
+    my $len = @wdisambig, $len2;
+    if (($len2 = @wdisambig_words) != $len) {
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int have different lengths";
+      $exit = 1; return;
+    }
+    if (($len2 = @wdisambig_phones) != $len) {
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int have different lengths";
+      $exit = 1; return;
+    }
+    for (my $i = 0; $i < $len; $i++) {
+      if ($wsymtab{$wdisambig[$i]} ne $wdisambig_words[$i]) {
+        my $ii = $i + 1;
+        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int mismatch\n";
+        $exit = 1; return;
+      }
+    }
+    for (my $i = 0; $i < $len; $i++) {
+      if ($psymtab{$wdisambig[$i]} ne $wdisambig_phones[$i]) {
+        my $ii = $i + 1;
+        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int mismatch\n";
+        $exit = 1; return;
+      }
+    }
+    foreach my $i ( @wdisambig_words ) {
+      $wdisambig_words_hash{$i} = 1;
+    }
+  }
+}
+
+
 if (-s "$lang/phones/word_boundary.int") {
   print "Checking word_boundary.int and disambig.int\n";
   if (!open (W, "<$lang/phones/word_boundary.int")) {
@@ -650,6 +805,13 @@ if (-s "$lang/phones/word_boundary.int") {
     $is_disambig{$A[0]} = 1;
   }
 
+  $text = `. ./path.sh`;
+  if ($text ne "") {
+    print "*** This script cannot continue because your path.sh or bash profile prints something: $text" .
+      "*** Please fix that and try again.\n";
+    exit(1);
+  }
+
   foreach $fst ("L.fst", "L_disambig.fst") {
     $wlen = int(rand(100)) + 1;
     print "--> generating a $wlen word sequence\n";
@@ -658,7 +820,9 @@ if (-s "$lang/phones/word_boundary.int") {
     $wordseq_syms = "";
     foreach (1 .. $wlen) {
       $id = int(rand(scalar(keys %wint2sym)));
-      while ($wint2sym{$id} =~ m/^#[0-9]*$/ or
+      # exclude disambiguation symbols, BOS and EOS and epsilon from the word
+      # sequence.
+      while (defined $wdisambig_words_hash{$id} or
              $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or $id == 0) {
         $id = int(rand(scalar(keys %wint2sym)));
       }
@@ -668,7 +832,6 @@ if (-s "$lang/phones/word_boundary.int") {
     }
     $wordseq = $wordseq . "$sid 0";
     $phoneseq = `. ./path.sh; echo \"$wordseq" | fstcompile | fstcompose $lang/$fst - | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint | awk '{if (NF > 2) {print \$3}}';`;
-    @phoneseq = split(" ", $phoneseq);
     $transition = { }; # empty assoc. array of allowed transitions between phone types.  1 means we count a word,
     # 0 means transition is allowed.  bos and eos are added as extra symbols here.
     foreach $x ("bos", "nonword", "end", "singleton") {
@@ -684,10 +847,15 @@ if (-s "$lang/phones/word_boundary.int") {
 
     $cur_state = "bos";
     $num_words = 0;
-    foreach $phone (split (" ", "$phoneseq eos")) {
-      if (!($fst == "L_disambig.fst" && defined $is_disambig{$phone})) {
-        if ($phone == "eos") {
+    foreach $phone (split (" ", "$phoneseq <<eos>>")) {
+      # Note: now that we support unk-LMs (see the --unk-fst option to
+      # prepare_lang.sh), the regular L.fst may contain some disambiguation
+      # symbols.
+      if (! defined $is_disambig{$phone}) {
+        if ($phone eq "<<eos>>") {
           $state = "eos";
+        } elsif ($phone == 0) {
+          $exit = 1; print "--> ERROR: unexpected phone sequence=$phoneseq, wordseq=$wordseq\n"; last;
         } else {
           $state = $wbtype{$phone};
         }
@@ -744,80 +912,13 @@ if (-e "$lang/L_disambig.fst") {
   }
 }
 
-sub check_wdisambig {
-  print "Checking word-level disambiguation symbols...\n";
-  # This block checks that one of the two following conditions hold:
-  # (1) for lang diretories prepared by older versions of prepare_lang.sh:
-  #  The symbol  '#0' should appear in words.txt and phones.txt, and should
-  # or (2): the files wdisambig.txt, wdisambig_phones.int and wdisambig_words.int
-  #  exist, and have the expected properties (see below for details).
-  my %wdisambig_words_hash;
-  my %wdisambig_words_string = "";
-
-  if (! -e "$lang/phones/wdisambig.txt") {
-    print "--> no $lang/phones/wdisambig.txt (older prepare_lang.sh)\n";
-    if (exists $wsymtab{"#0"}) {
-      print "--> $lang/words.txt has \"#0\"\n";
-      $wdisambig_words_hash{$wsymtab{"#0"}} = 1;
-      $wdisambig_words_string = $wsymtab{"#0"};
-    } else {
-      print "--> WARNING: $lang/words.txt doesn't have \"#0\"\n";
-      print "-->          (if you are using ARPA-type language models, you will normally\n";
-      print "-->           need the disambiguation symbol \"#0\" to ensure determinizability)\n";
-    }
-  } else {
-   print "--> $lang/phones/wdisambig.txt exists (newer prepare_lang.sh)\n";
-    if (!open(T, "<$lang/phones/wdisambig.txt")) {
-      print "--> ERROR: fail to open $lang/phones/wdisambig.txt\n"; $exit = 1; return;
-    }
-    chomp(my @wdisambig = <T>);
-    close(T);
-    if (!open(W, "<$lang/phones/wdisambig_words.int")) {
-      print "--> ERROR: fail to open $lang/phones/wdisambig_words.int\n"; $exit = 1; return;
-    }
-    chomp(my @wdisambig_words = <W>);
-    close(W);
-    if (!open(P, "<$lang/phones/wdisambig_phones.int")) {
-      print "--> ERROR: fail to open $lang/phones/wdisambig_phones.int\n"; $exit = 1; return;
-    }
-    chomp(my @wdisambig_phones = <P>);
-    close(P);
-    my $len = @wdisambig, $len2;
-    if (($len2 = @wdisambig_words) != $len) {
-      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int have different lengths";
-      $exit = 1; return;
-    }
-   if (($len2 = @wdisambig_phones) != $len) {
-      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int have different lengths";
-      $exit = 1; return;
-    }
-    for (my $i = 0; $i < $len; $i++) {
-      if ($wsymtab{$wdisambig[$i]} ne $wdisambig_words[$i]) {
-        my $ii = $i + 1;
-        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int mismatch\n";
-        $exit = 1; return;
-      }
-    }
-    for (my $i = 0; $i < $len; $i++) {
-      if ($psymtab{$wdisambig[$i]} ne $wdisambig_phones[$i]) {
-        my $ii = $i + 1;
-        print "--> ERROR: line $ii of files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int mismatch\n";
-        $exit = 1; return;
-      }
-    }
-    foreach my $i ( @wdisambig_words ) {
-      $wdisambig_words_hash{$i} = 1;
-      $wdisambig_words_string .= " " . $i;
-    }
- }
-}
-
-check_wdisambig();
-
 if (-e "$lang/G.fst") {
   # Check that G.fst is ilabel sorted and nonempty.
   $text = `. ./path.sh; fstinfo $lang/G.fst`;
-
+  if ($? != 0) {
+    print "--> ERROR: fstinfo failed on $lang/G.fst\n";
+    $exit = 1;
+  }
   if ($text =~ m/input label sorted\s+y/) {
     print "--> $lang/G.fst is ilabel sorted\n";
   } else {

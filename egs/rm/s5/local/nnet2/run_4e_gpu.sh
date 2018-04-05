@@ -2,9 +2,9 @@
 
 # This is GPU based pnorm neural net ensemble training on top of adapted 40-dimensional features.
 
-parallel_opts="-l gpu=1" 
+parallel_opts="--gpu 1" 
 
-. cmd.sh
+. ./cmd.sh
 
 dir=exp/nnet4e_gpu
 (  steps/nnet2/train_pnorm_ensemble.sh  --num-epochs 20 \

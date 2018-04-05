@@ -41,8 +41,10 @@ struct FrameExtractionOptions {
   bool remove_dc_offset;  // Subtract mean of wave before FFT.
   std::string window_type;  // e.g. Hamming window
   bool round_to_power_of_two;
+  BaseFloat blackman_coeff;
   bool snip_edges;
-  // Maybe "hamming", "rectangular", "povey", "hanning"
+  bool allow_downsample;
+  // May be "hamming", "rectangular", "povey", "hanning", "blackman"
   // "povey" is a window I made to be similar to Hamming but to go to zero at the
   // edges, it's pow((0.5 - 0.5*cos(n/N*2*pi)), 0.85)
   // I just don't think the Hamming window makes sense as a windowing function.
@@ -55,7 +57,9 @@ struct FrameExtractionOptions {
       remove_dc_offset(true),
       window_type("povey"),
       round_to_power_of_two(true),
-      snip_edges(true){ }
+      blackman_coeff(0.42),
+      snip_edges(true),
+      allow_downsample(false) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("sample-frequency", &samp_freq,
@@ -69,14 +73,21 @@ struct FrameExtractionOptions {
                    "Subtract mean from waveform on each frame");
     opts->Register("dither", &dither, "Dithering constant (0.0 means no dither)");
     opts->Register("window-type", &window_type, "Type of window "
-                   "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\")");
+                   "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\""
+                   "|\"blackmann\")");
+    opts->Register("blackman-coeff", &blackman_coeff,
+                   "Constant coefficient for generalized Blackman window.");
     opts->Register("round-to-power-of-two", &round_to_power_of_two,
-                   "If true, round window size to power of two.");
+                   "If true, round window size to power of two by zero-padding "
+                   "input to FFT.");
     opts->Register("snip-edges", &snip_edges,
                    "If true, end effects will be handled by outputting only frames that "
                    "completely fit in the file, and the number of frames depends on the "
                    "frame-length.  If false, the number of frames depends only on the "
                    "frame-shift, and we reflect the data at the ends.");
+    opts->Register("allow-downsample", &allow_downsample,
+                   "If true, allow the input waveform to have a higher frequency than"
+                   "the specified --sample-frequency (and we'll downsample).");
   }
   int32 WindowShift() const {
     return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms);

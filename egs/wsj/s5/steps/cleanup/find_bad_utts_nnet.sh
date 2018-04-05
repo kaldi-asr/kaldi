@@ -1,12 +1,14 @@
 #!/bin/bash
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey)
-#           2016       Ilya Platonov      
+#           2016       Api.ai (Author: Ilya Platonov)      
 # Apache 2.0
 #
-# Tweaked version of find_bad_utts.sh to work with nnet2 baseline models. 
+# Tweaked version of find_bad_utts.sh to work with nnet2 and nnet3(supports chain models) non-ivector models.
+# This script uses nnet-info and nnet3-am-info to determine type of nnet (nnet2 or nnet3).
+# Use --acoustic-scale=1.0 for chain models.
 #
 # Begin configuration section.  
-nj=32
+nj=8
 cmd=run.pl
 use_graphs=false
 # Begin configuration.
@@ -61,6 +63,30 @@ cp $srcdir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
+#checking type of nnet
+if nnet-info 1>/dev/null 2>/dev/null $srcdir/final.mdl; then 
+  nnet_type="nnet";
+  latgen_cmd="nnet-latgen-faster";
+elif nnet3-am-info 1>/dev/null 2>/dev/null $srcdir/final.mdl; then
+  nnet_type="nnet3"
+  frame_subsampling_factor=1;
+  nnet3_opt=
+  if [ -f $srcdir/frame_subsampling_factor ]; then
+    frame_subsampling_factor="$(cat $srcdir/frame_subsampling_factor)"
+  fi
+  if [ "$frame_subsamping_factor" != "1" ]; then
+    nnet3_opt="--frame-subsampling-factor=$frame_subsampling_factor";
+  fi
+  latgen_cmd="nnet3-latgen-faster $nnet3_opt";
+else
+  echo "Unsupported type of nnet for $srcdir/final.mdl";
+fi 
+
+echo "nnet type is $nnet_type";
+
 
 if [ $stage -le 0 ]; then
   utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt <$data/text | \
@@ -87,7 +113,7 @@ if [ $stage -le 1 ]; then
     steps/cleanup/make_utterance_fsts.pl $dir/top_words.int \| \
     compile-train-graphs-fsts $scale_opts --read-disambig-syms=$lang/phones/disambig.int \
      $dir/tree $dir/final.mdl $lang/L_disambig.fst ark:- ark:- \| \
-    nnet-latgen-faster --acoustic-scale=$acoustic_scale --beam=$beam \
+    $latgen_cmd --acoustic-scale=$acoustic_scale --beam=$beam \
       --max-active=$max_active --lattice-beam=$lattice_beam \
       --word-symbol-table=$lang/words.txt \
      $dir/final.mdl ark:- "$feats" ark:- \| \

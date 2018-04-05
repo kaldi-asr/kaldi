@@ -30,10 +30,10 @@ namespace kaldi {
 
  We first describe "non-table" I/O.  This refers to files or streams containing just
  one or two objects (e.g. acoustic model files; transformation matrices), rather than a
- collection of objects indexed by strings.  
+ collection of objects indexed by strings.
 
    - Kaldi file formats are binary by default but programs will output non-binary
-     if you supply the flag --binary=false. 
+     if you supply the flag --binary=false.
    - Many objects have corresponding "copy" programs, e.g. copy-matrix or gmm-copy,
       which can be used with the --binary=false flag to convert to text form, e.g.
      "copy-matrix --binary=false foo.mat -".
@@ -62,8 +62,8 @@ It will print out a log message and some binary data corresponding to that matri
 \endverbatim
 The output will look like this:
 \verbatim
-# copy-matrix --binary=false - - 
-copy-matrix --binary=false - - 
+# copy-matrix --binary=false - -
+copy-matrix --binary=false - -
  [
   0 1 ]
 LOG (copy-matrix:main():copy-matrix.cc:68) Copied matrix to -
@@ -90,9 +90,9 @@ already being used.  It is particularly useful with tables (see next section).
 
 
  \subsection io_tut_table Table I/O
- 
+
  Kaldi has special I/O mechanisms for dealing with collections of objects
- indexed by strings.  Examples of this are feature matrices indexed by 
+ indexed by strings.  Examples of this are feature matrices indexed by
  utterance-ids, or speaker-adaptation transformation matrices indexed
  by speaker-ids.  The strings that index the collection must be nonempty
  and whitespace free.   See \ref io_sec_tables for a more in-depth
@@ -113,7 +113,7 @@ already being used.  It is particularly useful with tables (see next section).
  mind are:
 
    - The part after the colon is interpreted as a wxfilename or rxfilename (as
-     in \ref io_tut_nontable), meaning that things like pipes and standard 
+     in \ref io_tut_nontable), meaning that things like pipes and standard
      input/output are supported.
    - A Table always contains just one type of object (e.g., a matrix of floats).
    - You may see options on rspecifiers and wspecifiers, principally:
@@ -121,7 +121,7 @@ already being used.  It is particularly useful with tables (see next section).
         we expect the keys to be in sorted order (,s) and we assert that they will be accessed
         in sorted order (,cs) meaning that we know the program will
         access them in sorted order (the program will crash if these conditions do not hold).
-        This allows Kaldi to emulate random access without using up a lot of memory. 
+        This allows Kaldi to emulate random access without using up a lot of memory.
       - For data that isn't too large and for which it's inconvenient to ensure sorted order
         (e.g. transforms for speaker adaptation), there is little harm in omitting the ,s,cs.
       - Typically programs that take multiple rspecifiers will iterate over the objects in the
@@ -130,14 +130,14 @@ already being used.  It is particularly useful with tables (see next section).
       - In scp,p:foo.scp, the ,p means we should not crash if some of the
         referenced files do not exist (for archives, ,p will prevent a crash if
         the archive is corrupted or truncated.)
-      - For writing, the option ,t means text mode, e.g. in ark,t:-.  
+      - For writing, the option ,t means text mode, e.g. in ark,t:-.
         The --binary command-line option has no effect for archives.
    - The script-file format is, on each line, "<key> <rspecifier|wspecifier>", e.g.
       "utt1 /foo/bar/utt1.mat".  It is OK for the rspecifier or wspecifier to contain
       spaces, e.g. "utt1 gunzip -c /foo/bar/utt1.mat.gz|".
    - The archive format is: <key1> <object1> <newline> <key2> <object2> <newline> ...
    - Archives may be concatenated and they will still be valid archives, but be careful about
-     the order of concatenation, e.g. avoid "cat a/b/*.ark"
+     the order of concatenation, e.g. avoid \verbatim "cat a/b/*.ark"\endverbatim
      if you need the sorted order.
    - Although not often used, script files may be used for output, e.g. if we write to
      the wspecifier scp:foo.scp, and the program tries to write to key utt1,
@@ -169,9 +169,43 @@ already being used.  It is particularly useful with tables (see next section).
    - In certain cases the archive-reading code allows for limited type conversion, e.g.
      between float and double for matrices, or Lattice and CompactLattice for lattices.
 
+
+  \subsubsection io_tut_table_ranges Table I/O (with ranges)
+
+   It is now possible to specify row ranges and column ranges of matrices from scp files.
+   It is typical, when you dump feature files, to have them represented as an scp file
+   that looks something like:
+\verbatim
+ utt-00001  /some/dir/feats.scp:0
+ utt-00002  /some/dir/feats.scp:16402
+ ...
+\endverbatim
+ You can modify this scp file by adding row and column ranges, with a format similar to
+ MATLAB (except with zero-based indexes).  So, for instance, if you modify it to:
+\verbatim
+ utt-00001  /some/dir/feats.scp:0[0:9]
+ utt-00001  /some/dir/feats.scp:0[10:19]
+ ...
+\endverbatim
+ the first two lines would represent rows 0 through 9, and rows 10 through 19,
+ of utt-00001.  You can represent column indexes in a similar way:
+\verbatim
+ utt-00001  /some/dir/feats.scp:0[:,0:12]
+ utt-00001  /some/dir/feats.scp:0[:,13:25]
+ ...
+\endverbatim
+ would be columns 0 through 12, and columns 13 through 25, of that file.
+ You can also have combinations of row and column indexes: for instance,
+ \verbatim
+ utt-00001 /some/dir/feats.scp:0[10:19,0:12]
+\endverbatim
+
+
+
+
   \subsection io_tut_maps Utterance-to-speaker and speaker-to-utterance maps.
 
-  Many Kaldi programs take utterance-to-speaker and speaker-to-utterances maps-- files 
+  Many Kaldi programs take utterance-to-speaker and speaker-to-utterances maps-- files
   called "utt2spk" or "spk2utt".  These are generally specified by command-line options
    --utt2spk and --spk2utt.  The utt2spk map has the format
 \verbatim
@@ -191,12 +225,12 @@ spk2 utt1_of_spk2 utt2_of_spk2
  and the way we split data up into multiple pieces, it's important to ensure
  that the speakers in the utterance-to-speaker map are in sorted order (see \ref data_prep).
  Anyway, these files are actually treated as archives, and for this reason
- you will see command-line options like --utt2spk=ark:data/train/utt2spk.  
+ you will see command-line options like --utt2spk=ark:data/train/utt2spk.
  You will see that these files fit the generic archive format of: "<key1> <data> <newline> <key2> <data> <newline>",
  where in this case the data is in text form.
  At the code level, the utt2spk file is treated as a table containing a string, and the spk2utt
  file is treated as a table containing a list of strings.
 
- 
+
 */
 }

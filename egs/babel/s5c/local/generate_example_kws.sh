@@ -71,7 +71,7 @@ cat $text | perl -e '
     }
     $min_count++;
   }
-  
+
   $total = 20;
   $current = 0;
   $min_count = 4;
@@ -88,7 +88,7 @@ cat $text | perl -e '
     }
     $min_count++;
   }
-  
+
   $total = 10;
   $current = 0;
   $min_count = 3;

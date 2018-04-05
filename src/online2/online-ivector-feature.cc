@@ -42,7 +42,7 @@ void OnlineIvectorExtractionInfo::Init(
     use_most_recent_ivector = true;
   }
   max_remembered_frames = config.max_remembered_frames;
-  
+
   std::string note = "(note: this may be needed "
       "in the file supplied to --ivector-extractor-config)";
   if (config.lda_mat_rxfilename == "")
@@ -72,7 +72,7 @@ void OnlineIvectorExtractionInfo::Check() const {
   int32 base_feat_dim = global_cmvn_stats.NumCols() - 1,
       num_splice = splice_opts.left_context + 1 + splice_opts.right_context,
       spliced_input_dim = base_feat_dim * num_splice;
-  
+
   KALDI_ASSERT(lda_mat.NumCols() == spliced_input_dim ||
                lda_mat.NumCols() == spliced_input_dim + 1);
   KALDI_ASSERT(lda_mat.NumRows() == diag_ubm.Dim());
@@ -113,7 +113,7 @@ void OnlineIvectorExtractorAdaptationState::LimitFrames(
   if (ivector_stats.Count() > max_remembered_frames_scaled) {
     ivector_stats.Scale(max_remembered_frames_scaled /
                         ivector_stats.Count());
-  }  
+  }
 }
 
 void OnlineIvectorExtractorAdaptationState::Write(std::ostream &os, bool binary) const {
@@ -152,6 +152,10 @@ int32 OnlineIvectorFeature::NumFramesReady() const {
   return lda_->NumFramesReady();
 }
 
+BaseFloat OnlineIvectorFeature::FrameShiftInSeconds() const {
+  return lda_->FrameShiftInSeconds();
+}
+
 void OnlineIvectorFeature::UpdateFrameWeights(
     const std::vector<std::pair<int32, BaseFloat> > &delta_weights) {
   // add the elements to delta_weights_, which is a priority queue.  The top
@@ -160,11 +164,10 @@ void OnlineIvectorFeature::UpdateFrameWeights(
   // elements from top (lower-numbered frames) to bottom (higher-numbered
   // frames) should be most efficient, assuming it's a heap internally.  So we
   // go forward not backward in delta_weights while adding.
-  int32 num_frames_ready = NumFramesReady();
   for (size_t i = 0; i < delta_weights.size(); i++) {
     delta_weights_.push(delta_weights[i]);
     int32 frame = delta_weights[i].first;
-    KALDI_ASSERT(frame >= 0 && frame < num_frames_ready);
+    KALDI_ASSERT(frame >= 0);
     if (frame > most_recent_frame_with_weight_)
       most_recent_frame_with_weight_ = frame;
   }
@@ -173,7 +176,7 @@ void OnlineIvectorFeature::UpdateFrameWeights(
 
 void OnlineIvectorFeature::UpdateStatsForFrame(int32 t,
                                                BaseFloat weight) {
-  int32 feat_dim = lda_normalized_->Dim();      
+  int32 feat_dim = lda_normalized_->Dim();
   Vector<BaseFloat> feat(feat_dim),  // features given to iVector extractor
       log_likes(info_.diag_ubm.NumGauss());
   lda_normalized_->GetFrame(t, &feat);
@@ -193,10 +196,10 @@ void OnlineIvectorFeature::UpdateStatsUntilFrame(int32 frame) {
   KALDI_ASSERT(frame >= 0 && frame < this->NumFramesReady() &&
                !delta_weights_provided_);
   updated_with_no_delta_weights_ = true;
-  
+
   int32 ivector_period = info_.ivector_period;
   int32 num_cg_iters = info_.num_cg_iters;
-  
+
   for (; num_frames_stats_ <= frame; num_frames_stats_++) {
     int32 t = num_frames_stats_;
     UpdateStatsForFrame(t, 1.0);
@@ -217,7 +220,7 @@ void OnlineIvectorFeature::UpdateStatsUntilFrameWeighted(int32 frame) {
                delta_weights_provided_ &&
                ! updated_with_no_delta_weights_ &&
                frame <= most_recent_frame_with_weight_);
-  bool debug_weights = true;
+  bool debug_weights = false;
 
   int32 ivector_period = info_.ivector_period;
   int32 num_cg_iters = info_.num_cg_iters;
@@ -237,8 +240,6 @@ void OnlineIvectorFeature::UpdateStatsUntilFrameWeighted(int32 frame) {
         if (current_frame_weight_debug_.size() <= frame)
           current_frame_weight_debug_.resize(frame + 1, 0.0);
         current_frame_weight_debug_[frame] += weight;
-        KALDI_ASSERT(current_frame_weight_debug_[frame] >= -0.01 &&
-                     current_frame_weight_debug_[frame] <= 1.01);
       }
     }
     if ((!info_.use_most_recent_ivector && t % ivector_period == 0) ||
@@ -264,7 +265,7 @@ void OnlineIvectorFeature::GetFrame(int32 frame,
     UpdateStatsUntilFrameWeighted(frame_to_update_until);
 
   KALDI_ASSERT(feat->Dim() == this->Dim());
-  
+
   if (info_.use_most_recent_ivector) {
     KALDI_VLOG(5) << "due to --use-most-recent-ivector=true, using iVector "
                   << "from frame " << num_frames_stats_ << " for frame "
@@ -295,7 +296,7 @@ void OnlineIvectorFeature::PrintDiagnostics() const {
 
     Vector<BaseFloat> temp_ivector(current_ivector_);
     temp_ivector(0) -= info_.extractor.PriorOffset();
-    
+
     KALDI_VLOG(3) << "By the end of the utterance, objf change/frame "
                   << "from estimating iVector (vs. default) was "
                   << ivector_stats_.ObjfChange(current_ivector_)
@@ -355,7 +356,7 @@ OnlineIvectorFeature::OnlineIvectorFeature(
 
   // Set the iVector to its default value, [ prior_offset, 0, 0, ... ].
   current_ivector_.Resize(info_.extractor.IvectorDim());
-  current_ivector_(0) = info_.extractor.PriorOffset(); 
+  current_ivector_(0) = info_.extractor.PriorOffset();
 }
 
 void OnlineIvectorFeature::SetAdaptationState(
@@ -380,10 +381,13 @@ BaseFloat OnlineIvectorFeature::ObjfImprPerFrame() const {
 
 OnlineSilenceWeighting::OnlineSilenceWeighting(
     const TransitionModel &trans_model,
-    const OnlineSilenceWeightingConfig &config):
+    const OnlineSilenceWeightingConfig &config,
+    int32 frame_subsampling_factor):
     trans_model_(trans_model), config_(config),
+    frame_subsampling_factor_(frame_subsampling_factor),
     num_frames_output_and_correct_(0) {
-  vector<int32> silence_phones;
+  KALDI_ASSERT(frame_subsampling_factor_ >= 1);
+  std::vector<int32> silence_phones;
   SplitStringToIntegers(config.silence_phones_str, ":,", false,
                         &silence_phones);
   for (size_t i = 0; i < silence_phones.size(); i++)
@@ -405,7 +409,7 @@ void OnlineSilenceWeighting::ComputeCurrentTraceback(
     KALDI_ERR << "Number of frames decoded decreased";  // Likely bug
 
   if (num_frames_decoded == 0)
-    return;  
+    return;
   int32 frame = num_frames_decoded - 1;
   bool use_final_probs = false;
   LatticeFasterOnlineDecoder::BestPathIterator iter =
@@ -417,20 +421,20 @@ void OnlineSilenceWeighting::ComputeCurrentTraceback(
       iter = decoder.TraceBackBestPath(iter, &arc);
     // note, the iter.frame values are slightly unintuitively defined,
     // they are one less than you might expect.
-    KALDI_ASSERT(iter.frame == frame - 1); 
-    
+    KALDI_ASSERT(iter.frame == frame - 1);
+
     if (frame_info_[frame].token == iter.tok) {
       // we know that the traceback from this point back will be identical, so
       // no point tracing back further.  Note: we are comparing memory addresses
       // of tokens of the decoder; this guarantees it's the same exact token
       // because tokens, once allocated on a frame, are only deleted, never
       // reallocated for that frame.
-      break;  
+      break;
     }
 
     if (num_frames_output_and_correct_ > frame)
       num_frames_output_and_correct_ = frame;
-    
+
     frame_info_[frame].token = iter.tok;
     frame_info_[frame].transition_id = arc.ilabel;
     frame--;
@@ -450,7 +454,7 @@ int32 OnlineSilenceWeighting::GetBeginFrame() {
   // run of length greater than max_duration, since this would force it
   // to be treated as silence (note: typically a non-silence phone that's very
   // long is really silence, for example this can happen with the word "mm").
-  
+
   int32 t_last_untouched = num_frames_output_and_correct_ - 1,
       t_end = frame_info_.size();
   int32 transition_id = frame_info_[t_last_untouched].transition_id;
@@ -459,17 +463,17 @@ int32 OnlineSilenceWeighting::GetBeginFrame() {
   int32 lower_search_bound = std::max(0, t_last_untouched - max_duration),
       upper_search_bound = std::min(t_last_untouched + max_duration, t_end - 1),
       t_lower, t_upper;
-  
+
   // t_lower will be the first index in the run of equal transition-ids.
   for (t_lower = t_last_untouched;
        t_lower > lower_search_bound &&
-           frame_info_[t_lower - 1].transition_id == transition_id; t_lower++);
+           frame_info_[t_lower - 1].transition_id == transition_id; t_lower--);
 
   // t_lower will be the last index in the run of equal transition-ids.
   for (t_upper = t_last_untouched;
        t_upper < upper_search_bound &&
            frame_info_[t_upper + 1].transition_id == transition_id; t_upper++);
-  
+
   int32 run_length = t_upper - t_lower + 1;
   if (run_length <= max_duration) {
     // we wouldn't treat this run as being silence, as it's within
@@ -493,16 +497,23 @@ int32 OnlineSilenceWeighting::GetBeginFrame() {
 }
 
 void OnlineSilenceWeighting::GetDeltaWeights(
-    int32 num_frames_ready,
+    int32 num_frames_ready_in,
     std::vector<std::pair<int32, BaseFloat> > *delta_weights) {
+  // num_frames_ready_in is at the feature frame-rate, most of the code
+  // in this function is at the decoder frame-rate.
+  // round up, so we are sure to get weights for at least the frame
+  // 'num_frames_ready_in - 1', and maybe one or two frames afterward.
+  int32 fs = frame_subsampling_factor_,
+  num_frames_ready = (num_frames_ready_in + fs - 1) / fs;
+
   const int32 max_state_duration = config_.max_state_duration;
   const BaseFloat silence_weight = config_.silence_weight;
 
   delta_weights->clear();
-  
+
   if (frame_info_.size() < static_cast<size_t>(num_frames_ready))
     frame_info_.resize(num_frames_ready);
-  
+
   // we may have to make begin_frame earlier than num_frames_output_and_correct_
   // so that max_state_duration is properly enforced.   GetBeginFrame() handles
   // this logic.
@@ -510,12 +521,12 @@ void OnlineSilenceWeighting::GetDeltaWeights(
       frames_out = static_cast<int32>(frame_info_.size()) - begin_frame;
   // frames_out is the number of frames we will output.
   KALDI_ASSERT(frames_out >= 0);
-  vector<BaseFloat> frame_weight(frames_out, 1.0);
-  // we will frame_weight to the value silence_weight for silence frames and for
-  // transition-ids that repeat with duration > max_state_duration.  Frames newer
-  // than the most recent traceback will get a weight equal to the weight for the
-  // most recent frame in the traceback; or the silence weight, if there is no
-  // traceback at all available yet.
+  std::vector<BaseFloat> frame_weight(frames_out, 1.0);
+  // we will set frame_weight to the value silence_weight for silence frames and
+  // for transition-ids that repeat with duration > max_state_duration.  Frames
+  // newer than the most recent traceback will get a weight equal to the weight
+  // for the most recent frame in the traceback; or the silence weight, if there
+  // is no traceback at all available yet.
 
   // First treat some special cases.
   if (frames_out == 0)  // Nothing to output.
@@ -574,10 +585,13 @@ void OnlineSilenceWeighting::GetDeltaWeights(
     // Even if the delta-weight is zero for the last frame, we provide it,
     // because the identity of the most recent frame with a weight is used in
     // some debugging/checking code.
-    if (weight_diff != 0.0 || offset + 1 == frames_out)
-      delta_weights->push_back(std::make_pair(frame, weight_diff));
-  }
-  
+    if (weight_diff != 0.0 || offset + 1 == frames_out) {
+      for(int32 i = 0; i < frame_subsampling_factor_; i++) {
+	int32 input_frame = (frame * frame_subsampling_factor_) + i;
+	delta_weights->push_back(std::make_pair(input_frame, weight_diff));
+      }
+    }
+  }  
 }
 
 }  // namespace kaldi

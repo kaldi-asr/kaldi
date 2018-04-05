@@ -5,6 +5,7 @@
 //                      Lucas Ondel
 //           2013       Xiaohui Zhang
 //           2015       Guoguo Chen
+//           2017       Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -62,20 +63,20 @@ class CuVectorBase {
                                const CuArray<int32> &frame_offsets,
                                CuMatrixBase<Real> *tgt);
   friend class CuRand<Real>;
-  
+
   /// Dimensions
-  MatrixIndexT Dim() const { return dim_;  }   
+  MatrixIndexT Dim() const { return dim_;  }
 
   /// Returns a pointer to the start of the vector's data.
   inline Real* Data() { return data_; }
   /// Returns a pointer to the start of the vector's data (const).
   inline const Real* Data() const { return data_; }
-  
+
   /// Copy functions; these will crash if the dimension
   /// do not match.  The operator = in class CuVector will
   /// also change the sizes for you.
   void CopyFromVec(const CuVectorBase<Real> &src);
-  
+
   template<typename OtherReal>
   void CopyFromVec(const CuVectorBase<OtherReal> &M);
 
@@ -84,17 +85,17 @@ class CuVectorBase {
 
   template<typename OtherReal>
   void CopyToVec(VectorBase<OtherReal> *dst) const;
-  
+
   void CopyRowsFromMat(const CuMatrixBase<Real> &M);
 
   void CopyRowsFromMat(const MatrixBase<Real> &M);
-  
+
   /// Math operations
   void SetZero();
   void Set(Real value);
   void Add(Real value);
   void Scale(Real value);
-  
+
   void AddVec(Real alpha, const CuVectorBase<Real> &vec, Real beta = 1.0);
 
   template<typename OtherReal>
@@ -103,30 +104,44 @@ class CuVectorBase {
   /// Sum the rows of the matrix, add to vector
   void AddRowSumMat(Real alpha, const CuMatrixBase<Real> &mat, Real beta = 1.0);
   /// Sum the columns of the matrix, add to vector
-  void AddColSumMat(Real alpha, const CuMatrixBase<Real> &mat, Real beta = 1.0); 
+  void AddColSumMat(Real alpha, const CuMatrixBase<Real> &mat, Real beta = 1.0);
 
   /// Add triangular matrix times vector: this <-- beta*this + alpha*M*v.
   /// Works even if rv == *this.
   void AddTpVec(const Real alpha, const CuTpMatrix<Real>&M,
                 const MatrixTransposeType trans, const CuVectorBase<Real> &v,
                 const Real beta);  // **beta previously defaulted to 0.0**
-  
+
   /// Multiplies this vector by lower-triangular marix:  *this <-- *this *M
   void MulTp(const CuTpMatrix<Real> &M, const MatrixTransposeType trans);
 
   bool ApproxEqual(const CuVectorBase<Real> &other, float tol = 0.01) const;
-  
-  void InvertElements(); 
+
+  void InvertElements();
+
+
+  /// Copies selected elements from 'mat' to *this.  Expects this->Dim()
+  /// to equal elements.Dim(). If trans == kNoTrans,
+  /// expects mat.NumRows() to equal this.Dim(), and for each i,
+  /// copies mat(i, elements[i]) to (*this)(i).
+  /// If trans == kTrans,
+  /// expects mat.NumCols() to equal this.Dim(), and for each i,
+  /// copies mat(elements[i], i) to (*this)(i).
+  void CopyElements(const CuMatrixBase<Real> &mat,
+                    const MatrixTransposeType trans,
+                    const CuArrayBase<int32> &elements);
 
   void ApplySoftMax();
   void ApplyExp();
   void ApplyLog();
-  MatrixIndexT ApplyFloor(Real floor_val);
-  MatrixIndexT ApplyCeiling(Real ceiling_val);
+  void ApplyFloor(Real floor_val, MatrixIndexT *floored_count = NULL);
+  void ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_count = NULL);
   void ApplyPow(Real power);
   Real Sum() const;
+
   void SetRandn();
-  
+  void SetRandUniform();
+
   CuSubVector<Real> Range(const MatrixIndexT o, const MatrixIndexT l) {
     return CuSubVector<Real>(*this, o, l);
   }
@@ -161,7 +176,7 @@ class CuVectorBase {
   /// as you would expect.
   void AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M, MatrixTransposeType transM,
                      const CuMatrixBase<Real> &N, MatrixTransposeType transN,
-                     Real beta = 1.0);  
+                     Real beta = 1.0);
 
   inline CuValue<Real> operator() (MatrixIndexT i) {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
@@ -170,7 +185,7 @@ class CuVectorBase {
   }
 
   Real Norm(Real p); // Only works for p = 1 and p = 2.
-  
+
   inline Real operator() (MatrixIndexT i) const {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                           static_cast<UnsignedMatrixIndexT>(dim_));
@@ -183,32 +198,38 @@ class CuVectorBase {
   /// Extracts the diagonal of a matrix.
   void CopyDiagFromMat(const CuMatrix<Real> &M);
 
-  /// Returns the maximum value of any element, or -infinity for the empty vector.  
+  /// Returns the maximum value of any element, or -infinity for the empty vector.
   Real Max() const;
 
-  /// Returns the minimum value of any element, or +infinity for the empty vector.  
+  /// Returns the minimum value of any element, or +infinity for the empty vector.
   Real Min() const;
-  
+
   // Set each element to y = (x == orig ? changed : x).
   void ReplaceValue(Real orig, Real changed);
-  
+
+  // Multiplies (*this) by v elementwise: (*this)[i] *= v
   void MulElements(const CuVectorBase<Real> &v);
- protected:
+
+  // Divides (*this) by v elementwise: (*this)[i] /= v
+  void DivElements(const CuVectorBase<Real> &v);
 
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
   // interpreted the same as a regular vector.
+  // Do not use the following functions unless you know what you are doing!
   inline const VectorBase<Real> &Vec() const {
     return *(reinterpret_cast<const VectorBase<Real>* >(this));
   }
   inline VectorBase<Real> &Vec() {
     return *(reinterpret_cast<VectorBase<Real>* >(this));
   }
-  
+
+ protected:
+
   /// Default constructor: make it protected so the user cannot
   /// instantiate this class.
   CuVectorBase<Real>(): data_(NULL), dim_(0) { }
-  
+
   Real *data_; ///< GPU data pointer (or regular data pointer
                ///< if CUDA is not compiled in or we have no GPU).
   MatrixIndexT dim_; ///< dimension of the vector
@@ -225,14 +246,14 @@ class CuVector: public CuVectorBase<Real> {
   friend class CuPackedMatrix<Real>;
   friend class CuSpMatrix<Real>;
   friend class CuTpMatrix<Real>;
-  
+
  public:
   CuVector() { }
   CuVector(MatrixIndexT dim, MatrixResizeType t = kSetZero) { Resize(dim, t); }
-  
+
   CuVector(const CuVectorBase<Real> &v);
 
-  CuVector(const VectorBase<Real> &v);  
+  CuVector(const VectorBase<Real> &v);
   explicit CuVector(const CuVector<Real> &v) : CuVectorBase<Real>() {
     Resize(v.Dim(), kUndefined);
     this->CopyFromVec(v);
@@ -252,7 +273,7 @@ class CuVector: public CuVectorBase<Real> {
 
   /// Allocate the memory
   void Resize(MatrixIndexT dim, MatrixResizeType t = kSetZero);
-  
+
   ~CuVector() { Destroy(); }
 
   CuVector<Real> &operator = (const CuVectorBase<Real> &other) {
@@ -271,13 +292,14 @@ class CuVector: public CuVectorBase<Real> {
     this->CopyFromVec(other);
     return *this;
   }
-      
 
-  /// I/O 
+  void Swap(CuVector<Real> *vec);
+  void Swap(Vector<Real> *vec);
+
+  /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
 
-  void Swap(Vector<Real> *vec);
 
  private:
   void Destroy();
@@ -286,7 +308,7 @@ class CuVector: public CuVectorBase<Real> {
 // We'll fill out the following class if it's needed.
 template<typename Real>
 class CuSubVector: public CuVectorBase<Real> {
- public:  
+ public:
   CuSubVector(const CuVectorBase<Real> &t, const MatrixIndexT origin,
               const MatrixIndexT length) : CuVectorBase<Real>() {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(origin)+
@@ -308,20 +330,20 @@ class CuSubVector: public CuVectorBase<Real> {
     CuVectorBase<Real>::data_ = const_cast<Real*>(data);
     CuVectorBase<Real>::dim_ = length;
   }
-    
+
   /// This operation does not preserve const-ness, so be careful.
   CuSubVector(const CuMatrixBase<Real> &matrix, MatrixIndexT row) {
     CuVectorBase<Real>::data_ = const_cast<Real*>(matrix.RowData(row));
     CuVectorBase<Real>::dim_ = matrix.NumCols();
   }
-  
+
 
 };
 
 /// I/O
 template<typename Real>
 std::ostream &operator << (std::ostream &out, const CuVectorBase<Real> &vec);
- 
+
 
 template<typename Real>
 bool ApproxEqual(const CuVectorBase<Real> &a,
@@ -330,7 +352,7 @@ bool ApproxEqual(const CuVectorBase<Real> &a,
 }
 
 template<typename Real>
-inline void AssertEqual(const CuVectorBase<Real> &a, 
+inline void AssertEqual(const CuVectorBase<Real> &a,
                         const CuVectorBase<Real> &b, Real tol = 0.01) {
   KALDI_ASSERT(a.ApproxEqual(b, tol));
 }
@@ -349,7 +371,7 @@ void VectorBase<Real>::CopyFromVec(const CuVectorBase<OtherReal> &cu) {
 
 // declare template specializations.
 template <>
-template <>    
+template <>
 void CuVectorBase<double>::CopyFromVec<float>(const CuVectorBase<float> &src);
 
 template<>
@@ -362,6 +384,12 @@ Vector<Real>::Vector(const CuVectorBase<OtherReal> &cu) {
   Init(cu.Dim());
   cu.CopyToVec(this);
 }
+
+/// Returns \f$ v_1^T M v_2  \f$ .
+template<typename Real>
+Real VecMatVec(const CuVectorBase<Real> &v1, const CuMatrixBase<Real> &M,
+               const CuVectorBase<Real> &v2);
+
 
 } // namespace
 

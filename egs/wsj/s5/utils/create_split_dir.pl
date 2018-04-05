@@ -20,6 +20,7 @@ use File::Spec;
 use Getopt::Long;
 
 my $Usage = <<EOU;
+create_split_dir.pl:
 This script creates storage directories on different file systems, and creates
 symbolic links to those directories.
 

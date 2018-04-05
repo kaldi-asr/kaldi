@@ -268,8 +268,8 @@ class RandomAccessTableReader {
 
   // Allow copy-constructor only for non-opened readers (needed for inclusion in
   // stl vector)
-  explicit RandomAccessTableReader(const RandomAccessTableReader<Holder>
-                                   &other):
+  RandomAccessTableReader(const RandomAccessTableReader<Holder>
+                          &other):
       impl_(NULL) { KALDI_ASSERT(other.impl_ == NULL); }
  private:
   // Disallow assignment.
@@ -320,7 +320,9 @@ class SequentialTableReader {
   // option makes it behave as if that key does not even exist, if the
   // corresponding file cannot be read.]  You probably wouldn't want to catch
   // this exception; the user can just specify the p option in the rspecifier.
-  const T &Value();
+  // We make this non-const to enable things like shallow swap on the held
+  // object in situations where this would avoid making a redundant copy.
+  T &Value();
 
   // Next goes to the next key.  It will not throw; any error will
   // result in Done() returning true, and then the destructor will
@@ -349,7 +351,7 @@ class SequentialTableReader {
 
   // Allow copy-constructor only for non-opened readers (needed for inclusion in
   // stl vector)
-  explicit SequentialTableReader(const SequentialTableReader<Holder> &other):
+  SequentialTableReader(const SequentialTableReader<Holder> &other):
       impl_(NULL) { KALDI_ASSERT(other.impl_ == NULL); }
  private:
   // Disallow assignment.
@@ -407,6 +409,7 @@ class TableWriter {
   }
  private:
   TableWriter &operator = (const TableWriter&);  // Disallow assignment.
+
   void CheckImpl() const;  // Checks that impl_ is non-NULL; prints an error
                            // message and dies (with KALDI_ERR) if NULL.
   TableWriterImplBase<Holder> *impl_;

@@ -13,7 +13,7 @@
 #  - Set num_threads to the minimum of (4, or how many virtual cores your machine has).
 #    (because of needing to lock various global quantities, the program can't
 #    use many more than 4 threads with good CPU utilization).
-#  - Set num_processes to the number of virtual cores on each machine you have, divided by 
+#  - Set num_processes to the number of virtual cores on each machine you have, divided by
 #    num_threads.  E.g. 4, if you have 16 virtual cores.   If you're on a shared queue
 #    that's busy with other people's jobs, it may be wise to set it to rather less
 #    than this maximum though, or your jobs won't get scheduled.  And if memory is
@@ -24,8 +24,8 @@
 #    may want more jobs, though.
 
 # Begin configuration section.
-nj=10   # this is the number of separate queue jobs we run, but each one 
-        # contains num_processes sub-jobs.. the real number of threads we 
+nj=10   # this is the number of separate queue jobs we run, but each one
+        # contains num_processes sub-jobs.. the real number of threads we
         # run is nj * num_processes * num_threads, and the number of
         # separate pieces of data is nj * num_processes.
 num_threads=4
@@ -39,6 +39,7 @@ num_iters=10
 min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
 num_samples_for_weights=3 # smaller than the default for speed (relates to a sampling method)
 cleanup=true
+apply_cmn=true # If true, apply sliding window cepstral mean normalization
 posterior_scale=1.0 # This scale helps to control for successve features being highly
                     # correlated.  E.g. try 0.1 or 0.3
 sum_accs_opt=
@@ -67,6 +68,8 @@ if [ $# != 3 ]; then
   echo "                                                   # diagonal model."
   echo "  --sum-accs-opt <option|''>                       # Option e.g. '-l hostname=a15' to localize"
   echo "                                                   # sum-accs process to nfs server."
+  echo " --apply-cmn <true,false|true>                     # if true, apply sliding window cepstral mean"
+  echo "                                                   # normalization to features"
   exit 1;
 fi
 
@@ -90,9 +93,13 @@ if [ -f $srcdir/delta_opts ]; then
   cp $srcdir/delta_opts $dir/ 2>/dev/null
 fi
 
-parallel_opts="-pe smp $[$num_threads*$num_processes]"
+parallel_opts="--num-threads $[$num_threads*$num_processes]"
 ## Set up features.
-feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+if $apply_cmn; then
+  feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+else
+  feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- |"
+fi
 
 # Initialize the i-vector extractor using the FGMM input
 if [ $stage -le -2 ]; then
@@ -102,7 +109,7 @@ if [ $stage -le -2 ]; then
   $cmd $dir/log/init.log \
     ivector-extractor-init --ivector-dim=$ivector_dim --use-weights=$use_weights \
      $dir/final.ubm $dir/0.ie || exit 1
-fi 
+fi
 
 # Do Gaussian selection and posterior extracion
 
@@ -140,26 +147,24 @@ while [ $x -lt $num_iters ]; do
     done
     wait
     [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
-	accs=""
-	for j in $(seq $nj); do
-	  accs+="$dir/acc.$x.$j "
-	done
-	echo "Summing accs (pass $x)"
-	$cmd $sum_accs_opt $dir/log/sum_acc.$x.log \
-	  ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
+    accs=""
+    for j in $(seq $nj); do
+      accs+="$dir/acc.$x.$j "
+    done
+    echo "Summing accs (pass $x)"
+    $cmd $sum_accs_opt $dir/log/sum_acc.$x.log \
+      ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
     echo "Updating model (pass $x)"
     nt=$[$num_threads*$num_processes] # use the same number of threads that
                                       # each accumulation process uses, since we
                                       # can be sure the queue will support this many.
-	$cmd -pe smp $nt $dir/log/update.$x.log \
-	  ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
-	rm $dir/acc.$x.*
-    if $cleanup; then
-      rm $dir/acc.$x
-      # rm $dir/$x.ie
-    fi
+    $cmd $parallel_opts $dir/log/update.$x.log \
+      ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
+    rm $dir/acc.$x.*
+    $cleanup && rm $dir/acc.$x $dir/$x.ie
   fi
   x=$[$x+1]
 done
-
+$cleanup && rm -f $dir/post.*.gz
+rm -f $dir/final.ie
 ln -s $x.ie $dir/final.ie

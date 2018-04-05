@@ -51,7 +51,7 @@ namespace chain {
 
   All this is done in parallel over multiple sequences, but the computations
   are independent over the separate sequences, so we won't introduce any notation
-  or index for the sequence; we'll just explain it for one sequences.
+  or index for the sequence; we'll just explain it for one sequence.
 
   Suppose we have I hmm-states, numbered i = 0 ... I-1 (we'll use i and j for
   hmm-state indexes).  Let foll(i) give a list of arcs leaving state i, and
@@ -87,12 +87,12 @@ namespace chain {
   inverse of the total-prob as a factor in the betas.  This is both more
   convenient (it simplifies the way we obtain posteriors), and makes the
   algorithm more generalizable as all the beta quantities can be interpreted as
-  the partial derivative of the logprob with respect to their corresponding
-  alpha.
+  the partial derivative of the overall logprob with respect to their
+  corresponding alpha.
 
   In forward backward notation, gamma is normally used for state-level
   occupation probabilities, but what we care about here is pdf-id-level
-  occupation probabilities (i.e. the partial derivative of the log-likelihood
+  occupation probabilities (i.e. the partial derivative of the overall logprob
   w.r.t. the logs of the x(t, n) quantities), so we use gamma for that.
 
     - for the final frame:
@@ -110,14 +110,14 @@ namespace chain {
   due to the limited range of IEEE floating-point exponents.
   Define tot-alpha(t) = \sum_i alpha(t, i).  Then the renormalized version of
   the computation is as above, except whenever the quantity x(t, n) appears,
-  we replace it with x(t, n) / alpha(t).  In the algorithm we refer to
+  we replace it with x(t, n) / tot-alpha(t).  In the algorithm we refer to
   1.0 / tot-alpha(t) as 'arbitrary_scale', because mathematically we can use any
   value here as long as we are consistent and the value only varies with t
   and not with n; we'll always get the same posteriors (gamma).
 
   When the algorithm outputs log(total-prob) as the total log-probability
   of the HMM, we have to instead return the expression:
-    log(total-prob) + \sum_{t=0}^{T-1} tot-alpha(t).
+    log(total-prob) + \sum_{t=0}^{T-1} \log tot-alpha(t).
   to correct for the scaling of the x values.
 
   The algorithm is still vulnerable to overflow in the beta computation because
@@ -161,7 +161,7 @@ namespace chain {
   - total-prob = \sum_i alpha'(T, i)
 
   The corrected log-prob that we return from the algorithm will be
-   (total-prob + \sum_{t=0}^{T-1} tot-alpha(t)).
+   (total-prob + \sum_{t=0}^{T-1} \log tot-alpha(t)).
 
   * Backward computation (version 3)
 
@@ -313,4 +313,3 @@ class DenominatorComputation {
 }  // namespace kaldi
 
 #endif  // KALDI_CHAIN_CHAIN_DENOMINATOR_H_
-

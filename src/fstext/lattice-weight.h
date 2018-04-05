@@ -119,7 +119,7 @@ class LatticeWeightTpl {
       return LatticeWeightTpl(floor(value1_/delta + 0.5F)*delta, floor(value2_/delta + 0.5F) * delta);
     }
   }
-  static uint64 Properties() {
+  static constexpr uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kCommutative |
         kPath | kIdempotent;
   }
@@ -320,6 +320,9 @@ template<class FloatType>
 class NaturalLess<LatticeWeightTpl<FloatType> > {
  public:
   typedef LatticeWeightTpl<FloatType> Weight;
+
+  NaturalLess() {}
+
   bool operator()(const Weight &w1, const Weight &w2) const {
     // NaturalLess is a negative order (opposite to normal ordering).
     // This operator () corresponds to "<" in the negative order, which
@@ -344,8 +347,8 @@ inline LatticeWeightTpl<FloatType> Divide(const LatticeWeightTpl<FloatType> &w1,
   T a = w1.Value1() - w2.Value1(), b = w1.Value2() - w2.Value2();
   if (a != a || b != b || a == -numeric_limits<T>::infinity()
      || b == -numeric_limits<T>::infinity()) {
-    std::cerr << "LatticeWeightTpl::Divide, NaN or invalid number produced. "
-              << "[dividing by zero?]  Returning zero.";
+    KALDI_WARN << "LatticeWeightTpl::Divide, NaN or invalid number produced. "
+               << "[dividing by zero?]  Returning zero";
     return LatticeWeightTpl<T>::Zero();
   }
   if (a == numeric_limits<T>::infinity() ||
@@ -473,7 +476,7 @@ class CompactLatticeWeightTpl {
     return CompactLatticeWeightTpl(weight_.Quantize(delta), string_);
   }
 
-  static uint64 Properties() {
+  static constexpr uint64 Properties() {
     return kLeftSemiring | kRightSemiring | kPath | kIdempotent;
   }
 
@@ -486,7 +489,7 @@ class CompactLatticeWeightTpl {
     ReadType(strm, &sz);
     if (strm.fail()){ return strm; }
     if (sz < 0) {
-      std::cerr << "Negative string size!  Read failure.";
+      KALDI_WARN << "Negative string size!  Read failure";
       strm.clear(std::ios::badbit);
       return strm;
     }
@@ -579,6 +582,9 @@ template<class FloatType, class IntType>
 class NaturalLess<CompactLatticeWeightTpl<LatticeWeightTpl<FloatType>, IntType> > {
  public:
   typedef CompactLatticeWeightTpl<LatticeWeightTpl<FloatType>, IntType> Weight;
+
+  NaturalLess() {}
+
   bool operator()(const Weight &w1, const Weight &w2) const {
     // NaturalLess is a negative order (opposite to normal ordering).
     // This operator () corresponds to "<" in the negative order, which
@@ -632,40 +638,34 @@ inline CompactLatticeWeightTpl<WeightType, IntType> Divide(const CompactLatticeW
     if (w2.Weight() != WeightType::Zero()) {
       return CompactLatticeWeightTpl<WeightType, IntType>::Zero();
     } else {
-      std::cerr << "Division by zero [0/0] in CompactLatticeWeightTpl\n";
-      exit(1);
+      KALDI_ERR << "Division by zero [0/0]";
     }
   } else if (w2.Weight() == WeightType::Zero()) {
-    std::cerr << "Error: division by zero in CompactLatticeWeightTpl::Divide()";
-    exit(1);
+    KALDI_ERR << "Error: division by zero";
   }
   WeightType w = Divide(w1.Weight(), w2.Weight());
 
   const vector<IntType> v1 = w1.String(), v2 = w2.String();
   if (v2.size() > v1.size()) {
-    std::cerr << "Error in Divide (CompactLatticeWeightTpl): cannot divide, length mismatch.\n";
-    exit(1);
+    KALDI_ERR << "Cannot divide, length mismatch";
   }
   typename vector<IntType>::const_iterator v1b = v1.begin(),
       v1e = v1.end(), v2b = v2.begin(), v2e = v2.end();
   if (div == DIVIDE_LEFT) {
     if (!std::equal(v2b, v2e, v1b)) { // v2 must be identical to first part of v1.
-      std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, data mismatch.\n";
-      exit(1);
+      KALDI_ERR << "Cannot divide, data mismatch";
     }
     return CompactLatticeWeightTpl<WeightType, IntType>(
         w, vector<IntType>(v1b+(v2e-v2b), v1e)); // return last part of v1.
   } else if (div == DIVIDE_RIGHT) {
     if (!std::equal(v2b, v2e, v1e-(v2e-v2b))) { // v2 must be identical to last part of v1.
-      std::cerr << "Error in Divide (CompactLatticeWeighTpl): cannot divide, data mismatch.\n";
-      exit(1);
+      KALDI_ERR << "Cannot divide, data mismatch";
     }
     return CompactLatticeWeightTpl<WeightType, IntType>(
         w, vector<IntType>(v1b, v1e-(v2e-v2b))); // return first part of v1.
 
   } else {
-    std::cerr << "Cannot divide CompactLatticeWeightTpl with DIVIDE_ANY.\n";
-    exit(1);
+    KALDI_ERR << "Cannot divide CompactLatticeWeightTpl with DIVIDE_ANY";
   }
   return CompactLatticeWeightTpl<WeightType,IntType>::Zero(); // keep compiler happy.
 }
@@ -754,7 +754,7 @@ inline CompactLatticeWeightTpl<Weight, IntType> ScaleTupleWeight(
     const CompactLatticeWeightTpl<Weight, IntType> &w,
     const vector<vector<ScaleFloatType> > &scale) {
   return CompactLatticeWeightTpl<Weight, IntType>(
-      ScaleTupleWeight(w.Weight(), scale), w.String());
+      Weight(ScaleTupleWeight(w.Weight(), scale)), w.String());
 }
 
 /** Define some ConvertLatticeWeight functions that are used in various lattice
@@ -804,8 +804,6 @@ inline double ConvertToCost(const TropicalWeightTpl<Float> &w) {
 }
 
 
-
-
-} // end namespace fst
+}  // namespace fst
 
 #endif  // KALDI_FSTEXT_LATTICE_WEIGHT_H_

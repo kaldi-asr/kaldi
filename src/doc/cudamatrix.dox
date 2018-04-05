@@ -24,7 +24,7 @@ namespace kaldi {
   \page cudamatrix The CUDA Matrix library
 
  The CUDA matrix library provides access to GPU-based matrix operations with
- an interface similar to \ref matrix.  
+ an interface similar to \ref matrix.
  The general principle is that if you want to be able to run a particular part
  of the computation the GPU, you would declare the relevant quantities as
  type CuMatrix or CuVector instead of Matrix or Vector.  Then, if you have
@@ -47,10 +47,10 @@ namespace kaldi {
  <tt>HAVE_CUDA=1</tt> and set other Makefile variables to enable GPU compilation.
  You can disable this if you don't want it by calling <tt>configure</tt> with
  <tt>--use-cuda=no</tt>.  If the script doesn't find the location where you installed
- the CUDA toolkit but you want to use it, you can use an option like 
+ the CUDA toolkit but you want to use it, you can use an option like
  <tt>--cudatk-dir=/opt/cuda-4.2</tt>.
  If you want to tell whether Kaldi has been configured to use CUDA, you can
- grep for <tt>nvcc</tt> in <tt>kaldi.mk</tt>; if the string appears, then it has
+ grep for <tt>CUDATKDIR</tt> in <tt>kaldi.mk</tt>; if the string appears, then it has
  been configured to use CUDA.  In scripts, you can check the return status of
  the program <tt>cuda-compiled</tt>: it returns success (0) if you compiled for CUDA.
 
@@ -91,9 +91,9 @@ on the GPU- mainly neural net training.
  matter.  You can find out what mode your GPU is running in as follows:
 \verbatim
 # nvidia-smi  --query | grep 'Compute Mode'
-    Compute Mode                    : Exclusive_Thread
+    Compute Mode                    : Exclusive_Process
 \endverbatim
- You can set the correct mode by typing <tt>nvidia-smi -c 1</tt>.  You might want to
+ You can set the correct mode by typing <tt>nvidia-smi -c 3</tt>.  You might want to
  do this in a startup script so it happens each time you reboot.
 
  Rather than calling the malloc and free functions that NVidia provides, Kaldi
@@ -104,7 +104,7 @@ on the GPU- mainly neural net training.
  Anyway, the memory caching can cause a problem if for some reason you run using
  the default (non-exclusive) compute mode, because it can cause allocation
  failures.  You can disable it at the code level by calling
- <tt>CuDevice::Instantiate().DisableCaching()</tt>, if needed. 
+ <tt>CuDevice::Instantiate().DisableCaching()</tt>, if needed.
 
 
 

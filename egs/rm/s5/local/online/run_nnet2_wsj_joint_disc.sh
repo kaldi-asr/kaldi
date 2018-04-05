@@ -3,11 +3,11 @@
 
 # this script is discriminative training after multi-language training (as
 # run_nnet2_gale_combined_disc1.sh), but the discriminative training is
-# multi-language too. 
+# multi-language too.
 # some of the stages are the same as run_nnet2_gale_combined_disc1.sh,
 # and we didn't repeat them (we used the --stage option, it defaults to 4).
 
-# This script is to be run after run_nnet2_gale_combined.sh.  
+# This script is to be run after run_nnet2_gale_combined.sh.
 # It's discriminative training, using just the BOLT data.
 # note, the _filt data has some bad conversations removed, that
 # weren't aligning.
@@ -28,7 +28,7 @@ num_epochs=4
 set -e
 
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -38,7 +38,7 @@ if [ $stage -le 1 ]; then
   sub_split=100
   num_threads=6
 
-  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G -pe smp $num_threads" \
+  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G --num-threads $num_threads" \
       --nj $nj --sub-split $sub_split --num-threads "$num_threads" \
      $data_wsj $lang_wsj ${dir}_wsj_online ${dir}_wsj_denlats
 fi
@@ -73,7 +73,7 @@ if [ $stage -le 4 ]; then
   num_threads=6
 
   steps/online/nnet2/make_denlats.sh \
-      --cmd "$decode_cmd -l mem_free=1G,ram_free=1G -pe smp $num_threads" \
+      --cmd "$decode_cmd --mem 1G --num-threads $num_threads" \
       --nj $nj --sub-split $sub_split --num-threads "$num_threads" \
      $data_rm $lang_rm  ${dir}_rm_online ${dir}_rm_denlats
 fi
@@ -102,8 +102,8 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  
-  steps/nnet2/train_discriminative_multilang2.sh --cmd "$decode_cmd -l gpu=1" --stage $train_stage \
+
+  steps/nnet2/train_discriminative_multilang2.sh --cmd "$decode_cmd --gpu 1" --stage $train_stage \
     --learning-rate $learning_rate --num-jobs-nnet "4 1" \
     --criterion $criterion --drop-frames $drop_frames \
     --num-epochs $num_epochs --num-threads 1 \
@@ -112,7 +112,7 @@ fi
 
 if [ $stage -le 8 ]; then
   discdir=${dir}_${criterion}_${learning_rate}/1 # RM is directory number 1.
-  ln -sf $(readlink -f ${dir}_rm_online/conf) $discdir/conf
+  ln -sf $(utils/make_absolute.sh ${dir}_rm_online/conf) $discdir/conf
   # ... so it acts like an online-decoding directory.
 
   for epoch in $(seq 0 $num_epochs); do

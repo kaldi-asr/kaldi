@@ -4,6 +4,7 @@
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
 //                2014  IMSL, PKU-HKUST (author: Wei Shi)
+//                2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -68,7 +69,7 @@ void LatticeFasterOnlineDecoder::InitDecoding() {
   active_toks_[0].toks = start_tok;
   toks_.Insert(start_state, start_tok);
   num_toks_++;
-  ProcessNonemitting(config_.beam);
+  ProcessNonemittingWrapper(config_.beam);
 }
 
 // Returns true if any kind of traceback is available (not necessarily from
@@ -84,8 +85,8 @@ bool LatticeFasterOnlineDecoder::Decode(DecodableInterface *decodable) {
   while (!decodable->IsLastFrame(NumFramesDecoded() - 1)) {
     if (NumFramesDecoded() % config_.prune_interval == 0)
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
-    BaseFloat cost_cutoff = ProcessEmitting(decodable);  // Note: the value returned by
-    ProcessNonemitting(cost_cutoff);
+    BaseFloat cost_cutoff = ProcessEmittingWrapper(decodable);  // Note: the value returned by
+    ProcessNonemittingWrapper(cost_cutoff);
   }
   FinalizeDecoding();
 
@@ -763,8 +764,8 @@ void LatticeFasterOnlineDecoder::AdvanceDecoding(DecodableInterface *decodable,
       PruneActiveTokens(config_.lattice_beam * config_.prune_scale);
     }
     // note: ProcessEmitting() increments NumFramesDecoded().
-    BaseFloat cost_cutoff = ProcessEmitting(decodable);
-    ProcessNonemitting(cost_cutoff);
+    BaseFloat cost_cutoff = ProcessEmittingWrapper(decodable);
+    ProcessNonemittingWrapper(cost_cutoff);
   }
 }
 
@@ -861,6 +862,7 @@ BaseFloat LatticeFasterOnlineDecoder::GetCutoff(Elem *list_head, size_t *tok_cou
 }
 
 
+template <typename FstType>
 BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
     DecodableInterface *decodable) {
   KALDI_ASSERT(active_toks_.size() > 0);
@@ -883,6 +885,7 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
 
   BaseFloat cost_offset = 0.0; // Used to keep probabilities in a good
   // dynamic range.
+  const FstType &fst = dynamic_cast<const FstType&>(fst_);
 
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.  The only
@@ -891,15 +894,13 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
     StateId state = best_elem->key;
     Token *tok = best_elem->val;
     cost_offset = - tok->tot_cost;
-    for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+    for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
-      Arc arc = aiter.Value();
+      const Arc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // propagate..
-        arc.weight = Times(arc.weight,
-                           Weight(cost_offset -
-                                  decodable->LogLikelihood(frame, arc.ilabel)));
-        BaseFloat new_weight = arc.weight.Value() + tok->tot_cost;
+        BaseFloat new_weight = arc.weight.Value() + cost_offset - 
+            decodable->LogLikelihood(frame, arc.ilabel) + tok->tot_cost;
         if (new_weight + adaptive_beam < next_cutoff)
           next_cutoff = new_weight + adaptive_beam;
       }
@@ -919,8 +920,8 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
     // loop this way because we delete "e" as we go.
     StateId state = e->key;
     Token *tok = e->val;
-    if (tok->tot_cost <=  cur_cutoff) {
-      for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+    if (tok->tot_cost <= cur_cutoff) {
+      for (fst::ArcIterator<FstType> aiter(fst, state);
            !aiter.Done();
            aiter.Next()) {
         const Arc &arc = aiter.Value();
@@ -951,12 +952,35 @@ BaseFloat LatticeFasterOnlineDecoder::ProcessEmitting(
   return next_cutoff;
 }
 
+template BaseFloat LatticeFasterOnlineDecoder::
+    ProcessEmitting<fst::ConstFst<fst::StdArc>>(DecodableInterface *decodable);
+template BaseFloat LatticeFasterOnlineDecoder::
+    ProcessEmitting<fst::VectorFst<fst::StdArc>>(DecodableInterface *decodable);
+template BaseFloat LatticeFasterOnlineDecoder::
+    ProcessEmitting<fst::Fst<fst::StdArc>>(DecodableInterface *decodable);
+
+BaseFloat LatticeFasterOnlineDecoder::ProcessEmittingWrapper(
+        DecodableInterface *decodable) {
+  if (fst_.Type() == "const") {
+    return LatticeFasterOnlineDecoder::
+        ProcessEmitting<fst::ConstFst<Arc>>(decodable);
+  } else if (fst_.Type() == "vector") {
+    return LatticeFasterOnlineDecoder::
+        ProcessEmitting<fst::VectorFst<Arc>>(decodable);
+  } else {
+    return LatticeFasterOnlineDecoder::
+        ProcessEmitting<fst::Fst<Arc>>(decodable);
+  }
+}
+
+template <typename FstType> 
 void LatticeFasterOnlineDecoder::ProcessNonemitting(BaseFloat cutoff) {
   KALDI_ASSERT(!active_toks_.empty());
   int32 frame = static_cast<int32>(active_toks_.size()) - 2;
   // Note: "frame" is the time-index we just processed, or -1 if
   // we are processing the nonemitting transitions before the
   // first frame (called from InitDecoding()).
+  const FstType &fst = dynamic_cast<const FstType&>(fst_);
 
   // Processes nonemitting arcs for one frame.  Propagates within toks_.
   // Note-- this queue structure is is not very optimal as
@@ -988,7 +1012,7 @@ void LatticeFasterOnlineDecoder::ProcessNonemitting(BaseFloat cutoff) {
     // but since most states are emitting it's not a huge issue.
     tok->DeleteForwardLinks(); // necessary when re-visiting
     tok->links = NULL;
-    for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+    for (fst::ArcIterator<FstType> aiter(fst, state);
          !aiter.Done();
          aiter.Next()) {
       const Arc &arc = aiter.Value();
@@ -1013,6 +1037,26 @@ void LatticeFasterOnlineDecoder::ProcessNonemitting(BaseFloat cutoff) {
   } // while queue not empty
 }
 
+template void LatticeFasterOnlineDecoder::
+    ProcessNonemitting<fst::ConstFst<fst::StdArc>>(BaseFloat cutoff);
+template void LatticeFasterOnlineDecoder::
+    ProcessNonemitting<fst::VectorFst<fst::StdArc>>(BaseFloat cutoff);
+template void LatticeFasterOnlineDecoder::
+    ProcessNonemitting<fst::Fst<fst::StdArc>>(BaseFloat cutoff);
+
+void LatticeFasterOnlineDecoder::ProcessNonemittingWrapper(
+        BaseFloat cost_cutoff) {
+  if (fst_.Type() == "const") {
+    return LatticeFasterOnlineDecoder::
+        ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+  } else if (fst_.Type() == "vector") {
+    return LatticeFasterOnlineDecoder::
+        ProcessNonemitting<fst::VectorFst<Arc>>(cost_cutoff);
+  } else {
+    return LatticeFasterOnlineDecoder::
+        ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+  }
+}
 
 void LatticeFasterOnlineDecoder::DeleteElems(Elem *list) {
   for (Elem *e = list, *e_tail; e != NULL; e = e_tail) {

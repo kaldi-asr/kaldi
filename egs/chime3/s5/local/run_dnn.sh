@@ -37,7 +37,6 @@ enhan_data=$2
 set -e
 set -u
 set -o pipefail
-set -x
 
 # check whether run_init is executed
 if [ ! -d data/lang ]; then
@@ -131,7 +130,7 @@ srcdir=exp/tri4a_dnn_tr05_multi_${enhan}
 acwt=0.1
 
 # First we generate lattices and alignments:
-# gawk must be installed to perform awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }' in
+# awk -v FS="/" '{ NF_nosuffix=$NF; sub(".gz","",NF_nosuffix); print NF_nosuffix gunzip -c "$0" |"; }' in
 # steps/nnet/make_denlats.sh
 if [ $stage -le 7 ]; then
   steps/nnet/align.sh --nj $nj --cmd "$train_cmd" \

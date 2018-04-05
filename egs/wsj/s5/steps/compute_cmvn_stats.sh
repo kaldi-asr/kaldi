@@ -1,11 +1,11 @@
-#!/bin/bash 
+#!/bin/bash
 
-# Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2012-2016  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 # To be run from .. (one directory up from here)
 # see ../run.sh for example
 
-# Compute cepstral mean and variance statistics per speaker.  
+# Compute cepstral mean and variance statistics per speaker.
 # We do this in just one job; it's fast.
 # This script takes no options.
 #
@@ -39,9 +39,10 @@ if [ "$1" == "--two-channel" ]; then
   shift
 fi
 
-if [ $# != 3 ]; then
-   echo "Usage: $0 [options] <data-dir> <log-dir> <path-to-cmvn-dir>";
+if [ $# -lt 1 ] || [ $# -gt 3 ]; then
+   echo "Usage: $0 [options] <data-dir> [<log-dir> [<cmvn-dir>] ]";
    echo "e.g.: $0 data/train exp/make_mfcc/train mfcc"
+   echo "Note: <log-dir> defaults to <data-dir>/log, and <cmvn-dir> defaults to <data-dir>/data"
    echo "Options:"
    echo " --fake          gives you fake cmvn stats that do no normalization."
    echo " --two-channel   is for two-channel telephone data, there must be no segments "
@@ -55,8 +56,16 @@ fi
 if [ -f path.sh ]; then . ./path.sh; fi
 
 data=$1
-logdir=$2
-cmvndir=$3
+if [ $# -ge 2 ]; then
+  logdir=$2
+else
+  logdir=$data/log
+fi
+if [ $# -ge 3 ]; then
+  cmvndir=$3
+else
+  cmvndir=$data/data
+fi
 
 # make $cmvndir an absolute pathname.
 cmvndir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $cmvndir ${PWD}`
@@ -82,24 +91,24 @@ if $fake; then
   ! cat $data/spk2utt | awk -v dim=$dim '{print $1, "["; for (n=0; n < dim; n++) { printf("0 "); } print "1";
                                                         for (n=0; n < dim; n++) { printf("1 "); } print "0 ]";}' | \
     copy-matrix ark:- ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp && \
-     echo "Error creating fake CMVN stats" && exit 1;
+     echo "Error creating fake CMVN stats.  See $logdir/cmvn_$name.log." && exit 1;
 elif $two_channel; then
   ! compute-cmvn-stats-two-channel $data/reco2file_and_channel scp:$data/feats.scp \
        ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp \
-    2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats (using two-channel method)" && exit 1;
+    2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats (using two-channel method). See $logdir/cmvn_$name.log." && exit 1;
 elif [ ! -z "$fake_dims" ]; then
   ! compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark:- | \
     modify-cmvn-stats "$fake_dims" ark:- ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp && \
-    echo "Error computing (partially fake) CMVN stats" && exit 1;
+    echo "Error computing (partially fake) CMVN stats.  See $logdir/cmvn_$name.log" && exit 1;
 else
   ! compute-cmvn-stats --spk2utt=ark:$data/spk2utt scp:$data/feats.scp ark,scp:$cmvndir/cmvn_$name.ark,$cmvndir/cmvn_$name.scp \
-    2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats" && exit 1;
+    2> $logdir/cmvn_$name.log && echo "Error computing CMVN stats. See $logdir/cmvn_$name.log" && exit 1;
 fi
 
 cp $cmvndir/cmvn_$name.scp $data/cmvn.scp || exit 1;
 
-nc=`cat $data/cmvn.scp | wc -l` 
-nu=`cat $data/spk2utt | wc -l` 
+nc=`cat $data/cmvn.scp | wc -l`
+nu=`cat $data/spk2utt | wc -l`
 if [ $nc -ne $nu ]; then
   echo "$0: warning: it seems not all of the speakers got cmvn stats ($nc != $nu);"
   [ $nc -eq 0 ] && exit 1;

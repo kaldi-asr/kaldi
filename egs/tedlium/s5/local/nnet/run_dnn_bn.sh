@@ -15,8 +15,8 @@
 # Apache 2.0
 #
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 
 nj=32
 njdec=11

@@ -5,7 +5,7 @@
 # You'll notice that we splice over successively larger windows as we go deeper
 # into the network.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=7
@@ -14,20 +14,20 @@ use_gpu=true
 dir=exp/nnet2_online/nnet_ms_a
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1"
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
 
@@ -46,7 +46,7 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 # do the common parts of the script.
@@ -82,7 +82,7 @@ fi
 
 if [ $stage -le 8 ]; then
   # dump iVectors for the testing data.
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
       data/${test}_hires exp/nnet2_online/extractor exp/nnet2_online/ivectors_$test || exit 1;
   done
@@ -92,7 +92,8 @@ fi
 if [ $stage -le 9 ]; then
   # this does offline decoding that should give about the same results as the
   # real online decoding (the one with --per-utt true)
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
+    (
     steps/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
       --online-ivector-dir exp/nnet2_online/ivectors_${test} \
       exp/tri6b/graph_tgsmall data/${test}_hires $dir/decode_${test}_tgsmall || exit 1;
@@ -104,7 +105,9 @@ if [ $stage -le 9 ]; then
     steps/lmrescore_const_arpa.sh \
       --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
       data/$test $dir/decode_${test}_{tgsmall,fglarge} || exit 1;
+    ) &
   done
+  wait
 fi
 
 
@@ -116,9 +119,10 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ $stage -le 11 ]; then
-  # do the actual online decoding with iVectors, carrying info forward from 
+  # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
+    (
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
       exp/tri6b/graph_tgsmall data/$test ${dir}_online/decode_${test}_tgsmall || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -129,13 +133,16 @@ if [ $stage -le 11 ]; then
     steps/lmrescore_const_arpa.sh \
       --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
       data/$test ${dir}_online/decode_${test}_{tgsmall,fglarge} || exit 1;
+    ) &
   done
+  wait
 fi
 
 if [ $stage -le 12 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
-  for test in dev_clean dev_other; do
+  for test in test_clean test_other dev_clean dev_other; do
+    (
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
       --per-utt true exp/tri6b/graph_tgsmall data/$test ${dir}_online/decode_${test}_tgsmall_utt || exit 1;
     steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
@@ -146,7 +153,9 @@ if [ $stage -le 12 ]; then
     steps/lmrescore_const_arpa.sh \
       --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
       data/$test ${dir}_online/decode_${test}_{tgsmall,fglarge}_utt || exit 1;
+    ) &
   done
+  wait
 fi
 
 if [ $stage -le 13 ]; then
@@ -154,6 +163,7 @@ if [ $stage -le 13 ]; then
   # without carrying forward speaker information, but looks to the end
   # of the utterance while computing the iVector (--online false)
   for test in test_clean test_other dev_clean dev_other; do
+    (
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
       --per-utt true --online false exp/tri6b/graph_tgsmall data/$test \
         ${dir}_online/decode_${test}_tgsmall_utt_offline || exit 1;
@@ -165,7 +175,9 @@ if [ $stage -le 13 ]; then
     steps/lmrescore_const_arpa.sh \
       --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
       data/$test ${dir}_online/decode_${test}_{tgsmall,fglarge}_utt_offline || exit 1;
+    ) &
   done
+  wait
 fi
 
 if [ $stage -le 14 ]; then

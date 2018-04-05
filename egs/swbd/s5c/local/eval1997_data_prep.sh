@@ -5,13 +5,13 @@
 
 # To be run from one directory above this script.
 
-# The input is a directory name containing the 1997 Hub5 english evaluation 
+# The input is a directory name containing the 1997 Hub5 english evaluation
 # test set and transcripts, which is LDC2002S10
 # e.g. see
 # http://www.ldc.upenn.edu/Catalog/CatalogEntry.jsp?catalogId=LDC2002S10
 #
 # It is assumed that the transcripts are in a subdirectory called transcr
-# However, we download the STM from NIST site: 
+# However, we download the STM from NIST site:
 # ftp://jaguar.ncsl.nist.gov/lvcsr/mar97/eval/hub5e97.english.980618.stm
 
 if [ $# -ne 1 ]; then
@@ -26,7 +26,7 @@ sdir=$1
 [ ! -d $sdir/transcr ] \
   && echo Expecting directory $sdir/transcr to be present && exit 1;
 
-. path.sh 
+. ./path.sh
 
 dir=data/local/eval1997
 mkdir -p $dir
@@ -40,7 +40,7 @@ sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
   && echo "Could not execute the sph2pipe program at $sph2pipe" && exit 1;
 
 awk -v sph2pipe=$sph2pipe '{
-  printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2); 
+  printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2);
   printf("%s-B %s -f wav -p -c 2 %s |\n", $1, sph2pipe, $2);
 }' < $dir/sph.scp | sort > $dir/wav.scp || exit 1;
 #side A - channel 1, side B - channel 2
@@ -49,8 +49,8 @@ awk -v sph2pipe=$sph2pipe '{
 # segments file format is: utt-id side-id start-time end-time, e.g.:
 # sw02001-A_000098-001156 sw02001-A 0.98 11.56
 pem=$sdir/speech/97_hub5e.pem
-[ ! -f $pem ] && echo "No such file $pem" && exit 1;
-# pem file has lines like: 
+[ ! -f $pem ] && echo "$0: No such file $pem" && exit 1;
+# pem file has lines like:
 # en_4156 A unknown_speaker 301.85 302.48
 # There is one line in the 97_hub5e.pem with an extra : on the channel
 # sw_10022 B: unknown_speaker 281.21 284.37 -- the : is removed
@@ -64,7 +64,7 @@ grep -v ';;' $pem | sed -e 's?:??g' \
            printf "%s %s %.2f %.2f\n", utt, spk, start, end; }' \
   | sort -u > $dir/segments
 
- 
+
 # Download the STM and GLM files:
 ( cd $dir
   rm -f stm glm
@@ -78,9 +78,9 @@ grep -v ';;' $pem | sed -e 's?:??g' \
 
 
 # stm file has lines like:
-# en_4042 A en_4042_A 227.71 232.26 <O>  BEANS RIGHT THAT IS WHY I SAID BEANS 
-# One of the segments (sw_10022-B_028120-028437) is removed since it is not 
-# scored and does not show up in the pem file. 
+# en_4042 A en_4042_A 227.71 232.26 <O>  BEANS RIGHT THAT IS WHY I SAID BEANS
+# One of the segments (sw_10022-B_028120-028437) is removed since it is not
+# scored and does not show up in the pem file.
 grep -v ';;' $dir/hub5e97.english.980618.stm \
   | awk '{
            spk=$1"-"$2;
@@ -96,7 +96,7 @@ grep -v IGNORE_TIME_SEGMENT_ $dir/text.all > $dir/text
 
 # create an utt2spk file that assumes each conversation side is
 # a separate speaker.
-awk '{print $1,$2;}' $dir/segments > $dir/utt2spk  
+awk '{print $1,$2;}' $dir/segments > $dir/utt2spk
 utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
 
 # cp $dir/segments $dir/segments.tmp
@@ -116,4 +116,3 @@ done
 
 echo Data preparation and formatting completed for Eval 2000
 echo "(but not MFCC extraction)"
-

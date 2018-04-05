@@ -21,6 +21,8 @@
 #ifndef KALDI_NNET_NNET_UTILS_H_
 #define KALDI_NNET_NNET_UTILS_H_
 
+#include <string>
+#include <vector>
 #include <iterator>
 #include <algorithm>
 
@@ -37,20 +39,20 @@ namespace nnet1 {
 /**
  * Define stream insertion opeartor for 'std::vector', useful for log-prints,
  */
-template <typename T> 
+template <typename T>
 std::ostream& operator<<(std::ostream& os, const std::vector<T>& v) {
-  std::copy(v.begin(), v.end(), std::ostream_iterator<T>(os," "));
+  std::copy(v.begin(), v.end(), std::ostream_iterator<T>(os, " "));
   return os;
 }
 
 /**
- * Convert basic type to string (try not to overuse as ostringstream creation is slow)
+ * Convert basic type to a string (please don't overuse),
  */
-template <typename T> 
-std::string ToString(const T& t) { 
-  std::ostringstream os; 
-  os << t; 
-  return os.str(); 
+template <typename T>
+std::string ToString(const T& t) {
+  std::ostringstream os;
+  os << t;
+  return os.str();
 }
 
 /**
@@ -61,30 +63,31 @@ template <typename Real>
 std::string MomentStatistics(const VectorBase<Real> &vec) {
   // we use an auxiliary vector for the higher order powers
   Vector<Real> vec_aux(vec);
-  Vector<Real> vec_no_mean(vec); // vec with mean subtracted
+  Vector<Real> vec_no_mean(vec);  // vec with mean subtracted
   // mean
   Real mean = vec.Sum() / vec.Dim();
   // variance
-  vec_aux.Add(-mean); vec_no_mean = vec_aux;
-  vec_aux.MulElements(vec_no_mean); // (vec-mean)^2
+  vec_aux.Add(-mean);
+  vec_no_mean = vec_aux;
+  vec_aux.MulElements(vec_no_mean);  // (vec-mean)^2
   Real variance = vec_aux.Sum() / vec.Dim();
-  // skewness 
-  // - negative : left tail is longer, 
-  // - positive : right tail is longer, 
+  // skewness
+  // - negative : left tail is longer,
+  // - positive : right tail is longer,
   // - zero : symmetric
-  vec_aux.MulElements(vec_no_mean); // (vec-mean)^3
+  vec_aux.MulElements(vec_no_mean);  // (vec-mean)^3
   Real skewness = vec_aux.Sum() / pow(variance, 3.0/2.0) / vec.Dim();
   // kurtosis (peakedness)
   // - makes sense for symmetric distributions (skewness is zero)
   // - positive : 'sharper peak' than Normal distribution
   // - negative : 'heavier tails' than Normal distribution
   // - zero : same peakedness as the Normal distribution
-  vec_aux.MulElements(vec_no_mean); // (vec-mean)^4
+  vec_aux.MulElements(vec_no_mean);  // (vec-mean)^4
   Real kurtosis = vec_aux.Sum() / (variance * variance) / vec.Dim() - 3.0;
   // send the statistics to stream,
   std::ostringstream ostr;
   ostr << " ( min " << vec.Min() << ", max " << vec.Max()
-       << ", mean " << mean 
+       << ", mean " << mean
        << ", stddev " << sqrt(variance)
        << ", skewness " << skewness
        << ", kurtosis " << kurtosis
@@ -117,7 +120,7 @@ std::string MomentStatistics(const CuVectorBase<Real> &vec) {
  */
 template <typename Real>
 std::string MomentStatistics(const CuMatrixBase<Real> &mat) {
-  Matrix<Real> mat_host(mat.NumRows(),mat.NumCols());
+  Matrix<Real> mat_host(mat.NumRows(), mat.NumCols());
   mat.CopyToMat(&mat_host);
   return MomentStatistics(mat_host);
 }
@@ -128,8 +131,8 @@ std::string MomentStatistics(const CuMatrixBase<Real> &mat) {
 template <typename Real>
 void CheckNanInf(const CuMatrixBase<Real> &mat, const char *msg = "") {
   Real sum = mat.Sum();
-  if(KALDI_ISINF(sum)) { KALDI_ERR << "'inf' in " << msg; }
-  if(KALDI_ISNAN(sum)) { KALDI_ERR << "'nan' in " << msg; }
+  if (KALDI_ISINF(sum)) { KALDI_ERR << "'inf' in " << msg; }
+  if (KALDI_ISNAN(sum)) { KALDI_ERR << "'nan' in " << msg; }
 }
 
 /**
@@ -149,59 +152,166 @@ Real ComputeStdDev(const CuMatrixBase<Real> &mat) {
   return sqrt(var);
 }
 
+
 /**
- * Convert Posterior to CuMatrix, 
- * the Posterior outer-dim defines number of matrix-rows,
- * number of matrix-colmuns is set by 'num_cols'.
+ * Fill CuMatrix with random numbers (Gaussian distribution):
+ * mu = the mean value,
+ * sigma = standard deviation,
+ *
+ * Using the CPU random generator.
  */
 template <typename Real>
-void PosteriorToMatrix(const Posterior &post, int32 num_cols, CuMatrix<Real> *mat) {
-  // Make a host-matrix,
-  int32 num_rows = post.size();
-  Matrix<Real> m(num_rows, num_cols, kSetZero); // zero-filled
-  // Fill from Posterior,
-  for (int32 t = 0; t < post.size(); t++) {
-    for (int32 i = 0; i < post[t].size(); i++) {
-      int32 col = post[t][i].first;
-      if (col >= num_cols) {
-        KALDI_ERR << "Out-of-bound Posterior element with index " << col 
-                  << ", higher than number of columns " << num_cols;
-      }
-      m(t, col) = post[t][i].second;
+void RandGauss(BaseFloat mu, BaseFloat sigma, CuMatrixBase<Real>* mat,
+               struct RandomState* state = NULL) {
+  // fill temporary matrix with 'Normal' samples,
+  Matrix<Real> m(mat->NumRows(), mat->NumCols(), kUndefined);
+  for (int32 r = 0; r < m.NumRows(); r++) {
+    for (int32 c = 0; c < m.NumCols(); c++) {
+      m(r, c) = RandGauss(state);
     }
   }
-  // Copy to output GPU matrix,
-  (*mat) = m; 
+  // re-shape the distrbution,
+  m.Scale(sigma);
+  m.Add(mu);
+  // export,
+  mat->CopyFromMat(m);
 }
 
 /**
- * Convert Posterior to CuMatrix, while mapping to PDFs. 
- * The Posterior outer-dim defines number of matrix-rows,
- * number of matrix-colmuns is set by 'TransitionModel::NumPdfs'.
+ * Fill CuMatrix with random numbers (Uniform distribution):
+ * mu = the mean value,
+ * range = the 'width' of the uniform PDF (spanning mu-range/2 .. mu+range/2)
+ *
+ * Using the CPU random generator.
  */
 template <typename Real>
-void PosteriorToMatrixMapped(const Posterior &post, const TransitionModel &model, CuMatrix<Real> *mat) {
-  // Make a host-matrix,
-  int32 num_rows = post.size(),
-        num_cols = model.NumPdfs();
-  Matrix<Real> m(num_rows, num_cols, kSetZero); // zero-filled
-  // Fill from Posterior,
-  for (int32 t = 0; t < post.size(); t++) {
-    for (int32 i = 0; i < post[t].size(); i++) {
-      int32 col = model.TransitionIdToPdf(post[t][i].first);
-      if (col >= num_cols) {
-        KALDI_ERR << "Out-of-bound Posterior element with index " << col 
-                  << ", higher than number of columns " << num_cols;
-      }
-      m(t, col) += post[t][i].second; // sum,
+void RandUniform(BaseFloat mu, BaseFloat range, CuMatrixBase<Real>* mat,
+                 struct RandomState* state = NULL) {
+  // fill temporary matrix with '0..1' samples,
+  Matrix<Real> m(mat->NumRows(), mat->NumCols(), kUndefined);
+  for (int32 r = 0; r < m.NumRows(); r++) {
+    for (int32 c = 0; c < m.NumCols(); c++) {
+      m(r, c) = Rand(state) / static_cast<Real>(RAND_MAX);
     }
   }
-  // Copy to output GPU matrix,
-  (*mat) = m; 
+  // re-shape the distrbution,
+  m.Scale(range);  // 0..range,
+  m.Add(mu - (range / 2.0));  // mu-range/2 .. mu+range/2,
+  // export,
+  mat->CopyFromMat(m);
+}
+
+/**
+ * Fill CuVector with random numbers (Uniform distribution):
+ * mu = the mean value,
+ * range = the 'width' of the uniform PDF (spanning mu-range/2 .. mu+range/2)
+ *
+ * Using the CPU random generator.
+ */
+template <typename Real>
+void RandUniform(BaseFloat mu, BaseFloat range, CuVectorBase<Real>* vec,
+                 struct RandomState* state = NULL) {
+  // fill temporary vector with '0..1' samples,
+  Vector<Real> v(vec->Dim(), kUndefined);
+  for (int32 i = 0; i < v.Dim(); i++) {
+    v(i) = Rand(state) / static_cast<Real>(RAND_MAX);
+  }
+  // re-shape the distrbution,
+  v.Scale(range);  // 0..range,
+  v.Add(mu - (range / 2.0));  // mu-range/2 .. mu+range/2,
+  // export,
+  vec->CopyFromVec(v);
 }
 
 
-} // namespace nnet1
-} // namespace kaldi
+/**
+ * Build 'integer vector' out of vector of 'matlab-like' representation:
+ * 'b, b:e, b:s:e'
+ *
+ * b,e,s are integers, where:
+ * b = beginning
+ * e = end
+ * s = step
+ *
+ * The sequence includes 'end', 1:3 => [ 1 2 3 ].
+ * The 'step' has to be positive.
+ */
+inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
+                               std::vector<int32>* out) {
+  // start with empty vector,
+  out->clear();
+  // loop over records,
+  for (int32 i = 0; i < in.size(); i++) {
+    // process i'th record,
+    int32 beg = 0, end = 0, step = 1;
+    switch (in[i].size()) {
+      case 1:
+        beg  = in[i][0];
+        end  = in[i][0];
+        step = 1;
+        break;
+      case 2:
+        beg  = in[i][0];
+        end  = in[i][1];
+        step = 1;
+        break;
+      case 3:
+        beg  = in[i][0];
+        end  = in[i][2];
+        step = in[i][1];
+        break;
+      default:
+        KALDI_ERR << "Something is wrong! (should be 1-3) : "
+                  << in[i].size();
+    }
+    // check the inputs,
+    KALDI_ASSERT(beg <= end);
+    KALDI_ASSERT(step > 0);  // positive,
+    // append values to vector,
+    for (int32 j = beg; j <= end; j += step) {
+      out->push_back(j);
+    }
+  }
+}
 
-#endif
+/**
+ * Wrapper with 'CuArray<int32>' output.
+ */
+inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
+                               CuArray<int32>* out) {
+  std::vector<int32> v;
+  BuildIntegerVector(in, &v);
+  (*out) = v;
+}
+
+
+/**
+ * Wrapper of PosteriorToMatrix with CuMatrix argument.
+ */
+template <typename Real>
+void PosteriorToMatrix(const Posterior &post,
+                       const int32 post_dim, CuMatrix<Real> *mat) {
+  Matrix<Real> m;
+  PosteriorToMatrix(post, post_dim, &m);
+  (*mat) = m;
+}
+
+
+/**
+ * Wrapper of PosteriorToMatrixMapped with CuMatrix argument.
+ */
+template <typename Real>
+void PosteriorToPdfMatrix(const Posterior &post,
+                          const TransitionModel &model,
+                          CuMatrix<Real> *mat) {
+  Matrix<BaseFloat> m;
+  PosteriorToPdfMatrix(post, model, &m);
+  // Copy to output GPU matrix,
+  (*mat) = m;
+}
+
+
+}  // namespace nnet1
+}  // namespace kaldi
+
+#endif  // KALDI_NNET_NNET_UTILS_H_

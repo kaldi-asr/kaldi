@@ -39,7 +39,6 @@ self_repair_scale=0.00001
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
-leftmost_questions_truncate=-1
 max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=3
@@ -73,8 +72,8 @@ fi
 # run those things.
 
 gmm_dir=exp/tri3
-ali_dir=exp/tri3_ali
-lats_dir=${ali_dir/ali/lats}
+ali_dir=exp/tri3_ali_sp
+lats_dir=${ali_dir/ali/lats} # note, this is a search-and-replace from 'ali' to 'lats'
 treedir=exp/chain/tri3_tree
 lang=data/lang_chain
 
@@ -109,15 +108,14 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate $leftmost_questions_truncate \
-      --cmd "$train_cmd" 4000 data/$train_set $lang $ali_dir $treedir
+      --cmd "$train_cmd" 4000 data/train_sp $lang $ali_dir $treedir
 fi
 
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs";
 
   # create the config files for nnet initialization
-  repair_opts=${self_repair_scale:+" --self-repair-scale $self_repair_scale "}
+  repair_opts=${self_repair_scale:+" --self-repair-scale-nonlinearity $self_repair_scale "}
 
   steps/nnet3/tdnn/make_configs.py \
     $repair_opts \
@@ -188,7 +186,7 @@ if [ $stage -le 15 ]; then
   for decode_set in dev test; do
     (
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --nj $(wc -l data/$decode_set/spk2utt) --cmd "$decode_cmd" $iter_opts \
+      --nj $(wc -l < data/$decode_set/spk2utt) --cmd "$decode_cmd" $iter_opts \
       --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
       --scoring-opts "--min_lmwt 5 --max_lmwt 15" \
       $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}${decode_iter:+_$decode_iter} || exit 1;
