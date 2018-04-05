@@ -107,6 +107,7 @@ int main(int argc, char *argv[]) {
       Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
       CuDevice::Instantiate().SelectGpuId("yes");
       CuDevice::Instantiate().AllowMultithreading();
+
       // GPU version of WFST
       CudaFst decode_fst_cuda;
       decode_fst_cuda.Initialize(*decode_fst);
@@ -142,6 +143,8 @@ int main(int argc, char *argv[]) {
           } else num_fail++;
 
           elapsed += timer.Elapsed();
+          if (num_success % config.mem_print_freq == 0)
+            get_free_memory_stat("");
           DecodeUtteranceLatticeFasterCudaOutput(
             decoder, decodable, trans_model, word_syms, utt,
             acoustic_scale, determinize, allow_partial, &alignment_writer,

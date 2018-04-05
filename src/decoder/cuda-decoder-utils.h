@@ -84,7 +84,7 @@ const int32 num_colors = sizeof(colors) / sizeof(uint32);
 #define CUDA_PRINTF(format,...)
 #endif
 
-// #define MEMADVISE // used after Pascal, details: 
+#define MEMADVISE // used after Pascal, details: 
 // http:// mug.mvapich.cse.ohio-state.edu/static/media/mug/presentations/2016/MUG16_GPU_tutorial_V5.pdf
 
 #define DIV_ROUND_UP(a,b) ((a+b-1)/b)
@@ -101,7 +101,10 @@ const int32 num_colors = sizeof(colors) / sizeof(uint32);
 namespace kaldi {
 
 
-void get_free_memory_stat(char *prefix);
+void get_free_memory_stat(const char *prefix);
+
+// a combination of cudaMallocManaged & cudaMemAdvise
+void cuda_malloc_managed_preferred_device(void** devPtr, size_t size);
 
 #ifdef __CUDACC__
 // Assumptions: 1-d grid and blocks. No threads "early-exit" the grid.
