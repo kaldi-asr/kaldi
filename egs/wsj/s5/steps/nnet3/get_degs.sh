@@ -13,7 +13,6 @@ cmd=run.pl
 max_copy_jobs=5  # Limit disk I/O
 
 # feature options
-transform_dir= # If this is a SAT system, directory for transforms
 online_ivector_dir=
 
 # example splitting and context options
@@ -116,8 +115,6 @@ dir=$5
 extra_files=
 [ ! -z $online_ivector_dir ] && \
   extra_files="$extra_files $online_ivector_dir/ivector_period $online_ivector_dir/ivector_online.scp"
-[ ! -z $transform_dir ] && \
-  extra_files="$extra_files $transform_dir/trans.1 $transform_dir/num_jobs"
 
 # Check some files.
 for f in $data/feats.scp $lang/L.fst $lang/phones/silence.csl $srcdir/${iter}.mdl $srcdir/tree \
@@ -146,28 +143,6 @@ cmvn_opts=$(cat $srcdir/cmvn_opts) || exit 1
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 
 cp $srcdir/{splice_opts,cmvn_opts} $dir 2>/dev/null || true
-
-if [ ! -z "$transform_dir" ]; then
-  echo "$0: using transforms from $transform_dir"
-  [ ! -s $transform_dir/num_jobs ] && \
-    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
-  nj_orig=$(cat $transform_dir/num_jobs)
-
-  if [ ! -f $transform_dir/raw_trans.1 ]; then
-    echo "$0: expected $transform_dir/raw_trans.1 to exist (--transform-dir option)"
-    exit 1;
-  fi
-  if [ $nj -ne $nj_orig ]; then
-    # Copy the transforms into an archive with an index.
-    for n in $(seq $nj_orig); do cat $transform_dir/raw_trans.$n; done | \
-       copy-feats ark:- ark,scp:$dir/raw_trans.ark,$dir/raw_trans.scp || exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/raw_trans.scp ark:- ark:- |"
-  else
-    # number of jobs matches with alignment dir.
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
-  fi
-fi
-
 
 ## set iVector options
 if [ ! -z "$online_ivector_dir" ]; then

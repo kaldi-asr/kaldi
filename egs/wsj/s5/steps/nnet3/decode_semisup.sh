@@ -3,14 +3,11 @@
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 # Apache 2.0.
 
-# This script does decoding with a neural-net.  If the neural net was built on
-# top of fMLLR transforms from a conventional system, you should provide the
-# --transform-dir option.
+# This script does decoding with a neural-net.
 
 # Begin configuration section.
 stage=1
-transform_dir=    # dir to find fMLLR transforms.
-nj=4 # number of decoding jobs.  If --transform-dir set, must match that number!
+nj=4 # number of decoding jobs.
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
 post_decode_acwt=1.0  # can be used in 'chain' systems to scale acoustics by 10 so the
                       # regular scoring script works.
@@ -34,13 +31,13 @@ online_ivector_dir=
 minimize=false
 word_determinize=false  # If set to true, then output lattice does not retain
                         # alternate paths a sequence of words (with alternate pronunciations).
-                        # Setting to true is the default in steps/nnet3/decode.sh.  
+                        # Setting to true is the default in steps/nnet3/decode.sh.
                         # However, setting this to false
                         # is useful for generation w of semi-supervised training
                         # supervision and frame-level confidences.
 write_compact=true   # If set to false, then writes the lattice in non-compact format,
-                     # retaining the acoustic scores on each arc. This is 
-                     # required to be false for LM rescoring undeterminized 
+                     # retaining the acoustic scores on each arc. This is
+                     # required to be false for LM rescoring undeterminized
                      # lattices (when --word-determinize is false)
                      # Useful for semi-supervised training with rescored lattices.
 # End configuration section.
@@ -101,30 +98,6 @@ echo $nj > $dir/num_jobs
 echo "$0: feature type is raw"
 
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-if [ ! -z "$transform_dir" ]; then
-  echo "$0: using transforms from $transform_dir"
-  [ ! -s $transform_dir/num_jobs ] && \
-    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
-  nj_orig=$(cat $transform_dir/num_jobs)
-
-  if [ ! -f $transform_dir/raw_trans.1 ]; then
-    echo "$0: expected $transform_dir/raw_trans.1 to exist (--transform-dir option)"
-    exit 1;
-  fi
-  if [ $nj -ne $nj_orig ]; then
-    # Copy the transforms into an archive with an index.
-    for n in $(seq $nj_orig); do cat $transform_dir/raw_trans.$n; done | \
-       copy-feats ark:- ark,scp:$dir/raw_trans.ark,$dir/raw_trans.scp || exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/raw_trans.scp ark:- ark:- |"
-  else
-    # number of jobs matches with alignment dir.
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
-  fi
-elif grep 'transform-feats --utt2spk' $srcdir/log/train.1.log >&/dev/null; then
-  echo "$0: **WARNING**: you seem to be using a neural net system trained with transforms,"
-  echo "  but you are not providing the --transform-dir option in test time."
-fi
-##
 
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
