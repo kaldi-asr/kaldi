@@ -45,6 +45,8 @@ std::string CharToString(const char &c) {
 void Sleep(float seconds) {
 #if defined(_MSC_VER) || defined(MINGW)
   ::Sleep(static_cast<int>(seconds * 1000.0));
+#elif defined(__CYGWIN__)
+  sleep(static_cast<int>(seconds));
 #else
   usleep(static_cast<int>(seconds * 1000000.0));
 #endif

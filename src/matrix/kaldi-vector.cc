@@ -173,11 +173,10 @@ inline void Vector<Real>::Init(const MatrixIndexT dim) {
   }
   MatrixIndexT size;
   void *data;
-  void *free_data;
 
   size = dim * sizeof(Real);
 
-  if ((data = KALDI_MEMALIGN(16, size, &free_data)) != NULL) {
+  if ((data = aligned_alloc(16, size)) != NULL) {
     this->data_ = static_cast<Real*> (data);
     this->dim_ = dim;
   } else {
@@ -279,7 +278,7 @@ template<typename Real>
 void Vector<Real>::Destroy() {
   /// we need to free the data block if it was defined
   if (this->data_ != NULL)
-    KALDI_MEMALIGN_FREE(this->data_);
+    free(this->data_);
   this->data_ = NULL;
   this->dim_ = 0;
 }
