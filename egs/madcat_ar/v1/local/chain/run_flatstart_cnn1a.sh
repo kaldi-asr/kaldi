@@ -29,7 +29,7 @@ tdnn_dim=450
 num_epochs=2
 num_jobs_initial=3
 num_jobs_final=16
-minibatch_size=150=64,32/300=32,16/600=16,8/1200=8,4
+minibatch_size=150=32,16/300=16,8/600=8,4/1200=4,2
 common_egs_dir=
 l2_regularize=0.00005
 frames_per_iter=1000000
@@ -72,7 +72,7 @@ fi
 if [ $stage -le 1 ]; then
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 70 --cmd "$cmd" \
                                        --shared-phones true \
-                                       --type biphone \
+                                       --type mono \
                                        data/$train_set $lang $treedir
   cp exp/chain/e2e_base/phone_lm.fst $treedir/
 fi
@@ -80,13 +80,9 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
-
-  opts="l2-regularize=0.075"
-  opts_2="l2-regularize=0.075"
-  opts_3="l2-regularize=0.1"
-  common1="$opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
-  common2="$opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="$opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
+  common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
+  common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
+  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
@@ -98,13 +94,13 @@ if [ $stage -le 2 ]; then
   conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn6 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
   conv-relu-batchnorm-layer name=cnn7 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
-  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $opts_2
-  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $opts_2
-  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $opts_2
+  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $opts_2
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $opts_3
+  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs
@@ -113,6 +109,11 @@ fi
 if [ $stage -le 3 ]; then
   # no need to store the egs in a shared storage because we always
   # remove them. Anyway, it takes only 5 minutes to generate them.
+
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+    utils/create_split_dir.pl \
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/madcat-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+  fi
 
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$cmd" \
