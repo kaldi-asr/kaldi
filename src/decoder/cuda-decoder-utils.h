@@ -37,7 +37,11 @@
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-device.h"
 
-// cuda macro
+namespace kaldi {
+
+// we put functions and macros shared by different modules in this file
+
+// cuda macro definition
 
 #ifdef __CUDACC__
 #define HOST __host__
@@ -84,8 +88,10 @@ const int32 num_colors = sizeof(colors) / sizeof(uint32);
 #define CUDA_PRINTF(format,...)
 #endif
 
-#define MEMADVISE // used after Pascal, details: 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 600
+#define MEMADVISE // used after Pascal, details in: 
 // http:// mug.mvapich.cse.ohio-state.edu/static/media/mug/presentations/2016/MUG16_GPU_tutorial_V5.pdf
+#endif
 
 #define DIV_ROUND_UP(a,b) ((a+b-1)/b)
 
@@ -98,18 +104,101 @@ const int32 num_colors = sizeof(colors) / sizeof(uint32);
     idx=(((uint64)v)&(((uint64)1<<32)-1)); \
 }
 
-namespace kaldi {
+// host function definition
 
-
+// get current GPU memory usage
 void get_free_memory_stat(const char *prefix);
 
 // a combination of cudaMallocManaged & cudaMemAdvise
 void cuda_malloc_managed_preferred_device(void** devPtr, size_t size);
 
+// inline host device function definition
+
+// In atomic based token recombination, we pack the
+// cost and the arc index into an uint64 to represent the token
+// before recombination, with the former one in the higher bits
+// for comparison purpose.
+// for speedup purpose, make them inline (5% 0.165->0.158)
+inline HOST DEVICE uint64 pack_cost_idx_into_uint64(BaseFloat cost, int32 idx) {
+  uint32 i_cost = *(uint32 *) & cost;
+  if (i_cost & 0x80000000)
+    i_cost = i_cost ^ 0xFFFFFFFF;
+  else
+    i_cost = i_cost ^ 0x80000000;
+  return (uint64)i_cost << 32 | idx;
+}
+
+// Unpacks a cost
+inline HOST DEVICE BaseFloat unpack_cost_from_uint64(uint64 packed) {
+  uint32 i_cost = packed >> 32;
+  if (i_cost & 0x80000000)
+    i_cost = i_cost ^ 0x80000000;
+  else
+    i_cost = i_cost ^ 0xFFFFFFFF;
+  return *(BaseFloat *) & i_cost;
+}
+
+// Unpacks a idx for tracing the data
+inline HOST DEVICE int32 unpack_idx_from_uint64(uint64 packed) {
+  // assert (!(packed & 0x80000000));
+  return packed & 0x7FFFFFFF;
+}
+
+// inline device function definition
 #ifdef __CUDACC__
+
+// fast load 16 bits using CUDA ASM
+inline  DEVICE void fast_load16(void *a, const void *b) {
+  const ulong2 *src = reinterpret_cast<const ulong2*>(b);
+  ulong2 &dst = *reinterpret_cast<ulong2*>(a);
+  asm("ld.global.v2.u64 {%0,%1}, [%2];" : "=l"(dst.x), "=l"(dst.y) : "l"(src));
+}
+
+// fast store 16 bits using CUDA ASM
+inline  DEVICE void fast_store16(void *a, const void *b) {
+  const ulong2 src = *reinterpret_cast<const ulong2*>(b);
+  asm("st.global.v2.u64 [%0], {%1,%2};" :: "l"(a), "l"(src.x), "l"(src.y));
+}
+
+// fast store 8 bits using CUDA ASM
+inline  DEVICE void fast_store8(void *a, const void *b) {
+#if 0
+  memcpy(a, b, 8);
+#else
+  *(uint64*)a = (*(uint64*)b);
+#endif
+}
+
+// TODO: we need a fast 32 bits storing function
+inline  DEVICE void fast_store32(void *a, const void *b) {
+  memcpy(a, b, 32);
+}
+
+// overload CUDA atomicMin to consume double
+inline DEVICE void atomic_min(double *address, double val) {
+  unsigned long long *address_ull = (unsigned long long *)address;
+  double minval = *address;
+  while (val < minval) {  // if my value is less than minimum
+    minval = val;         // update the minimum to my value locally
+    // write minimum and read back value
+    val = __longlong_as_double(atomicExch(address_ull, __double_as_longlong(val)));
+  } // if the new value is < the minimum I wrote I need to try again.
+}
+
+// overload CUDA atomicMin to consume BaseFloat
+inline DEVICE void atomic_min(BaseFloat *address, BaseFloat val) {
+  uint32 *address_ui = (uint32  *)address;
+  BaseFloat minval = *address;
+  while (val < minval) {  // if my value is less than minimum
+    minval = val;         // update the minimum to my value locally
+    // write minimum and read back value
+    val = __uint_as_float(atomicExch(address_ui, __float_as_uint(val)));
+  } // if the new value is < the minimum I wrote I need to try again.
+}
+
 // Assumptions: 1-d grid and blocks. No threads "early-exit" the grid.
 // No stream priorities
-DEVICE inline void __gpu_sync_fast(volatile int *fast_epoch) {
+static DEVICE inline void _grid_sync(volatile int *fast_epoch) {
   __syncthreads();
   if (threadIdx.x == 0) {
     // gridDim.x-1 blocks are adding 1
@@ -128,10 +217,14 @@ DEVICE inline void __gpu_sync_fast(volatile int *fast_epoch) {
   }
   __syncthreads();
 }
-DEVICE inline void __grid_sync_nv_internal(int *barrier) {
-  __gpu_sync_fast((volatile int*)barrier);
+
+DEVICE inline void grid_sync(int *barrier) {
+  _grid_sync((volatile int*)barrier);
 }
+
 #endif
+
+// class definition
 
 // We don't use cub::DeviceHistogram because its kernel launch overhead is 30us
 // while current GPU decoding takes around 200 us to decode 1 frame
@@ -140,6 +233,7 @@ class CudaHistogram {
   public:
     int32 Allocate(BaseFloat beam, BaseFloat beam_lowest, BaseFloat step);
     void Free();
+
 #ifdef __CUDACC__
     inline DEVICE void Initialize(BaseFloat best_cost) {
         *best_cost_ = best_cost;

@@ -50,7 +50,6 @@ void cuda_malloc_managed_preferred_device(void** devPtr, size_t size) {
   cudaMemAdvise(*devPtr, size,
                 cudaMemAdviseSetPreferredLocation, device);
   /*
-  //
   cudaMemPrefetchAsync(tokens_allocation, sizeof(Token)*size,
                        device); // force pages to allocate now
                        */

@@ -209,7 +209,8 @@ void LatticeFasterDecoderCuda::FinalProcessLattice(cuTokenVector* last_toks,
   std::vector<int> active_arcs_size_perframe_tmp;
   for (int32 i = num_frames_decoded_; i >= 0; i--) {
     int32 num_arcs = arcs_size[i];
-    if (config_.verbose > 3 || (num_arcs == 0 && i != 0)) KALDI_LOG << i << " " << num_arcs;
+    if (config_.verbose > 3 || (num_arcs == 0 && i != 0)) 
+      KALDI_LOG << i << " " << num_arcs;
     active_arcs_perframe_tmp.push_back((ForwardLink*)arcs_buf + acc);
     acc += num_arcs;
     active_arcs_size_perframe_tmp.push_back(num_arcs);
