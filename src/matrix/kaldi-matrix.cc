@@ -50,9 +50,8 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
   KaldiBlasInt result = -1;
   KaldiBlasInt l_work = std::max<KaldiBlasInt>(1, N);
   Real *p_work;
-  void *temp;
   if ((p_work = static_cast<Real*>(
-          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &temp))) == NULL) {
+          aligned_alloc(16, sizeof(Real)*l_work))) == NULL) {
     delete[] pivot;
     throw std::bad_alloc();
   }
@@ -75,7 +74,7 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
       if (det_sign) *det_sign = 0;
       delete[] pivot;
 #ifndef HAVE_ATLAS
-      KALDI_MEMALIGN_FREE(p_work);
+      free(p_work);
 #endif
       return;
     }
@@ -103,7 +102,7 @@ void MatrixBase<Real>::Invert(Real *log_det, Real *det_sign,
   if (inverse_needed) clapack_Xgetri2(&M, data_, &LDA, pivot, p_work, &l_work,
                               &result);
   delete[] pivot;
-  KALDI_MEMALIGN_FREE(p_work);
+  free(p_work);
 #else
   if (inverse_needed)
     clapack_Xgetri(num_rows_, data_, stride_, pivot, &result);
@@ -710,9 +709,8 @@ void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
 
   l_work = static_cast<KaldiBlasInt>(work_query);
   Real *p_work;
-  void *temp;
   if ((p_work = static_cast<Real*>(
-          KALDI_MEMALIGN(16, sizeof(Real)*l_work, &temp))) == NULL)
+          aligned_alloc(16, sizeof(Real)*l_work))) == NULL)
     throw std::bad_alloc();
 
   // perform svd
@@ -729,7 +727,7 @@ void MatrixBase<Real>::LapackGesvd(VectorBase<Real> *s, MatrixBase<Real> *U_in,
   if (result != 0) {
     KALDI_WARN << "CLAPACK sgesvd_ : some weird convergence not satisfied";
   }
-  KALDI_MEMALIGN_FREE(p_work);
+  free(p_work);
 }
 
 #endif
@@ -794,7 +792,6 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
   MatrixIndexT skip, stride;
   size_t size;
   void *data;  // aligned memory block
-  void *temp;  // memory block to be really freed
 
   // compute the size of skip and real cols
   skip = ((16 / sizeof(Real)) - cols % (16 / sizeof(Real)))
@@ -804,7 +801,7 @@ inline void Matrix<Real>::Init(const MatrixIndexT rows,
       * sizeof(Real);
 
   // allocate the memory and set the right dimensions and parameters
-  if (NULL != (data = KALDI_MEMALIGN(16, size, &temp))) {
+  if (NULL != (data = aligned_alloc(16, size))) {
     MatrixBase<Real>::data_        = static_cast<Real *> (data);
     MatrixBase<Real>::num_rows_      = rows;
     MatrixBase<Real>::num_cols_      = cols;
@@ -1127,7 +1124,7 @@ template<typename Real>
 void Matrix<Real>::Destroy() {
   // we need to free the data block if it was defined
   if (NULL != MatrixBase<Real>::data_)
-    KALDI_MEMALIGN_FREE( MatrixBase<Real>::data_);
+    free( MatrixBase<Real>::data_);
   MatrixBase<Real>::data_ = NULL;
   MatrixBase<Real>::num_rows_ = MatrixBase<Real>::num_cols_
       = MatrixBase<Real>::stride_ = 0;

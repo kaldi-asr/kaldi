@@ -36,8 +36,7 @@
 #define MapOsPath(x) x
 #endif  // KALDI_CYGWIN_COMPAT
 
-
-#if defined(_MSC_VER) 
+#ifdef _MSC_VER 
 static FILE *popen(const char* command, const char* mode) {
 #ifdef KALDI_CYGWIN_COMPAT
   return kaldi::CygwinCompatPopen(command, mode);
