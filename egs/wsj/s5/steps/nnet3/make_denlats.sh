@@ -46,7 +46,6 @@ num_threads=1 # Fixed to 1 for now
 if [ $# != 4 ]; then
   echo "Usage: steps/nnet3/make_denlats.sh [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
   echo "  e.g.: steps/nnet3/make_denlats.sh data/train data/lang exp/nnet4 exp/nnet4_denlats"
-  echo "Works for (delta|lda) features"
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
