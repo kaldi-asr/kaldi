@@ -1,11 +1,11 @@
 #!/bin/bash
 # Copyright    2017  Hossein Hadian
 
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1afix1
-# System                      e2e_cnn_1afix1
-# WER                              6.98
-# Final train prob              -0.0447
-# Final valid prob              -0.0439
+# local/chain/compare_wer.sh exp/chain/e2e_cnn_1bfix1
+# System                      e2e_cnn_1bfix1
+# WER                              6.93
+# Final train prob              -0.0438
+# Final valid prob              -0.0428
 # Final train prob (xent)
 # Final valid prob (xent)
 
@@ -15,17 +15,17 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1afix1
+affix=1bfix1
 
 # training options
 tdnn_dim=450
 num_epochs=4
-num_jobs_initial=4
-num_jobs_final=8
-minibatch_size=150=48,24/300=24,12/600=12,6/1200=4,4
+num_jobs_initial=6
+num_jobs_final=12
+minibatch_size=150=64,32/300=32,16/600=16,8/1200=8,4
 common_egs_dir=
 l2_regularize=0.00005
-frames_per_iter=1000000
+frames_per_iter=400000
 cmvn_opts="--norm-means=true --norm-vars=true"
 train_set=train
 lang_test=lang_test
@@ -87,11 +87,9 @@ if [ $stage -le 2 ]; then
   conv-relu-batchnorm-layer name=cnn1 height-in=80 height-out=80 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=80 height-out=40 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=40 height-out=40 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn4 height-in=40 height-out=40 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn5 height-in=40 height-out=20 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn6 height-in=20 height-out=20 time-offsets=-1,0,1 $common3
-  conv-relu-batchnorm-layer name=cnn7 height-in=20 height-out=20 time-offsets=-1,0,1 $common3
-  conv-relu-batchnorm-layer name=cnn8 height-in=20 height-out=10 time-offsets=-1,0,1 $common3 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn4 height-in=40 height-out=20 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=20 time-offsets=-1,0,1 $common3
+  conv-relu-batchnorm-layer name=cnn6 height-in=20 height-out=10 time-offsets=-1,0,1 $common3 height-subsample-out=2
   relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $opts_2
   relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $opts_2
   relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $opts_2

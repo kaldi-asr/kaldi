@@ -21,7 +21,6 @@ download_dir=data/download/tmp/LDC2014T13/data
 train_split_file=data/download/tmp/madcat_datasplit/zh-en/madcat.train.raw.lineid
 test_split_file=data/download/tmp/madcat_datasplit/zh-en/madcat.test.raw.lineid
 dev_split_file=data/download/tmp/madcat_datasplit/zh-en/madcat.dev.raw.lineid
-word_segmented_chinese_data=data/download/tmp/madcat_datasplit/zh-en/madcat.train.tok.zh
 
 . ./cmd.sh
 . ./path.sh
@@ -56,6 +55,4 @@ if [ $stage -le 1 ]; then
   utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
   utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
   utils/utt2spk_to_spk2utt.pl data/dev/utt2spk > data/dev/spk2utt
-
-  local/process_segments.py $word_segmented_chinese_data data/train
 fi

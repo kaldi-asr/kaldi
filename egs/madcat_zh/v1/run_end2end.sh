@@ -28,7 +28,7 @@ fi
 
 mkdir -p data/{train,test}/data
 if [ $stage -le 1 ]; then
-  image/get_image2num_frames.py --feat-dim 60 data/train  # This will be needed for the next command
+  image/get_image2num_frames.py --feat-dim 80 data/train  # This will be needed for the next command
   
   # The next command creates a "allowed_lengths.txt" file in data/train
   # which will be used by local/make_features.py to enforce the images to
@@ -37,7 +37,7 @@ if [ $stage -le 1 ]; then
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   echo "$0: Preparing the test and train feature files..."
   for dataset in train test; do
-    local/make_features.py data/$dataset --feat-dim 60 | \
+    local/make_features.py data/$dataset --feat-dim 80 | \
       copy-feats --compress=true --compression-method=7 \
                  ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
     steps/compute_cmvn_stats.sh data/$dataset
@@ -74,5 +74,5 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
-  local/chain/run_flatstart_cnn1a.sh
+  local/chain/run_flatstart_cnn1b.sh
 fi
