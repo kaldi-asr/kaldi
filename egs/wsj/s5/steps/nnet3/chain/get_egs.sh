@@ -488,7 +488,7 @@ if [ $stage -le 6 ]; then
     # 'storage' directory.
     rm cegs_orig.*.ark 2>/dev/null
   )
-  if [ $archives_multiple -gt 1 ]; then
+  if ! $generate_egs_scp && [ $archives_multiple -gt 1 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/cegs.*.*.ark; do rm $f; done
   fi
