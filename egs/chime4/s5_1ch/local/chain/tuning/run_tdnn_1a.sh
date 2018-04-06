@@ -1,20 +1,20 @@
 #!/bin/bash
 
-# This was modified from wsj/local/chain/tunning/run_tdnn_1d.sh to be
+# This was modified from wsj/local/chain/tunning/run_tdnn_1e.sh to be
 # used in Chime4.
 
 #This is the result using all 6 channels:
-# exp/chain/tdnn1a_sp/best_wer_beamformit_5mics.result
+# exp/chain/tdnn1a_sp/best_wer_blstm_gev.result
 # -------------------
-# best overall dt05 WER 6.04% (language model weight = 9)
+# best overall dt05 WER 4.34% (language model weight = 7)
 # -------------------
-# dt05_simu WER: 6.25% (Average), 5.71% (BUS), 6.92% (CAFE), 5.37% (PEDESTRIAN), 7.02% (STREET)
+# dt05_simu WER: 4.46% (Average), 4.12% (BUS), 5.29% (CAFE), 4.00% (PEDESTRIAN), 4.42% (STREET)
 # -------------------
-# dt05_real WER: 5.83% (Average), 7.48% (BUS), 5.28% (CAFE), 4.43% (PEDESTRIAN), 6.13% (STREET)
+# dt05_real WER: 4.21% (Average), 4.94% (BUS), 4.07% (CAFE), 3.81% (PEDESTRIAN), 4.04% (STREET)
 # -------------------
-# et05_simu WER: 10.30% (Average), 7.34% (BUS), 10.37% (CAFE), 10.05% (PEDESTRIAN), 13.43% (STREET)
+# et05_simu WER: 5.50% (Average), 4.78% (BUS), 5.86% (CAFE), 5.51% (PEDESTRIAN), 5.83% (STREET)
 # -------------------
-# et05_real WER: 9.67% (Average), 12.71% (BUS), 8.33% (CAFE), 8.20% (PEDESTRIAN), 9.45% (STREET)
+# et05_real WER: 5.78% (Average), 6.82% (BUS), 5.10% (CAFE), 5.70% (PEDESTRIAN), 5.51% (STREET)
 # -------------------
 # Final train prob        -0.080
 # Final valid prob        -0.075
@@ -39,7 +39,7 @@ num_threads_ubm=32
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1c  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
 
@@ -228,6 +228,8 @@ if [ $stage -le 15 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  opts="l2-regularize=0.01"
+  output_opts="l2-regularize=0.005"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -240,18 +242,18 @@ if [ $stage -le 15 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=750
-  relu-batchnorm-layer name=tdnn2 dim=750 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 dim=750
-  relu-batchnorm-layer name=tdnn4 dim=750 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 dim=750
-  relu-batchnorm-layer name=tdnn6 dim=750 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 dim=750 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 dim=750 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 $opts dim=850
+  relu-batchnorm-layer name=tdnn2 $opts dim=850 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 $opts dim=850
+  relu-batchnorm-layer name=tdnn4 $opts dim=850 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn5 $opts dim=850
+  relu-batchnorm-layer name=tdnn6 $opts dim=850 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn7 $opts dim=850 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn8 $opts dim=850 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=750 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  relu-batchnorm-layer name=prefinal-chain $opts dim=850 target-rms=0.5
+  output-layer name=output $output_opts include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -262,8 +264,8 @@ if [ $stage -le 15 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=750 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  relu-batchnorm-layer name=prefinal-xent $opts input=tdnn8 dim=850 target-rms=0.5
+  output-layer name=output-xent $output_opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -276,7 +278,7 @@ if [ $stage -le 16 ]; then
   fi
   
   cat $train_data_dir/utt2uniq | awk -F' ' '{print $1}' > $train_data_dir/utt2uniq.tmp1
-  cat $train_data_dir/utt2uniq | awk -F' ' '{print $2}' | sed -e 's/\....//g' | sed -e 's/\_CH.//g' > $train_data_dir/utt2uniq.tmp2
+  cat $train_data_dir/utt2uniq | awk -F' ' '{print $2}' | sed -e 's/\....//g' | sed -e 's/\_CH.//g' | sed -e 's/\_enhan//g' > $train_data_dir/utt2uniq.tmp2
   paste -d" " $train_data_dir/utt2uniq.tmp1 $train_data_dir/utt2uniq.tmp2 > $train_data_dir/utt2uniq
   rm -rf $train_data_dir/utt2uniq.tmp1
   rm -rf $train_data_dir/utt2uniq.tmp2
@@ -292,16 +294,17 @@ if [ $stage -le 16 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=6 \
+    --trainer.num-epochs=12 \
     --trainer.frames-per-iter=3000000 \
     --trainer.optimization.num-jobs-initial=2 \
     --trainer.optimization.num-jobs-final=12 \
-    --trainer.optimization.initial-effective-lrate=0.003 \
-    --trainer.optimization.final-effective-lrate=0.0003 \
+    --trainer.optimization.initial-effective-lrate=0.005 \
+    --trainer.optimization.final-effective-lrate=0.0005 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.optimization.proportional-shrink=60.0 \
     --trainer.num-chunk-per-minibatch=128,64 \
     --trainer.optimization.momentum=0.0 \
+    --trainer.optimization.backstitch-training-scale=0.3 \
+    --trainer.optimization.backstitch-training-interval=1 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=0 \
     --egs.chunk-right-context=0 \
