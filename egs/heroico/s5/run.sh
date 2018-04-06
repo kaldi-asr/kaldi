@@ -105,108 +105,108 @@ fi
 if [ $stage -le 6 ]; then
   echo "$0 monophone training"
   steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train data/lang exp/mono
+fi
 
-  # evaluation
+if [ $stage -le 7 ]; then
   (
-  # make decoding graph for monophones
-  utils/mkgraph.sh \
-    data/lang_test \
-    exp/mono \
-    exp/mono/graph || exit 1;
+    # make decoding graph for monophones
+    utils/mkgraph.sh data/lang exp/mono exp/mono/graph
 
   # test monophones
-  for x in native nonnative devtest test; do
-    steps/decode.sh --nj 8  \
-      exp/mono/graph data/$x exp/mono/decode_${x} || exit 1;
-  done
+    for x in native nonnative devtest test; do
+      steps/decode.sh --nj 8 exp/mono/graph data/$x exp/mono/decode_${x}
+    done
   ) &
+fi
 
+if [ $stage -le 8 ]; then
   # align with monophones
   steps/align_si.sh \
-    --nj 8 --cmd "$train_cmd" \
-    data/train data/lang exp/mono exp/mono_ali || exit 1;
+    --nj 8 --cmd "$train_cmd" data/train data/lang exp/mono exp/mono_ali
+fi
 
+if [ $stage -le 9 ]; then
   echo "$0 Starting  triphone training in exp/tri1"
   steps/train_deltas.sh \
     --cmd "$train_cmd" \
     --cluster-thresh 100 \
     1500 25000 \
     data/train data/lang exp/mono_ali exp/tri1 || exit 1;
+fi
 
+if [ $stage -le 10 ]; then
   # test cd gmm hmm models
   # make decoding graphs for tri1
   (
-  utils/mkgraph.sh \
-    data/lang_test exp/tri1 exp/tri1/graph || exit 1;
+    utils/mkgraph.sh data/lang exp/tri1 exp/tri1/graph
 
-  # decode test data with tri1 models
-  for x in native nonnative devtest test; do
-    steps/decode.sh \
-      --nj 8  \
-      exp/tri1/graph data/$x exp/tri1/decode_${x} || exit 1;
-  done
+    # decode test data with tri1 models
+    for x in native nonnative devtest test; do
+      steps/decode.sh --nj 8 exp/tri1/graph data/$x exp/tri1/decode_${x}
+    done
   ) &
-
-  # align with triphones
-  steps/align_si.sh \
-    --nj 8 --cmd "$train_cmd" \
-    data/train data/lang exp/tri1 exp/tri1_ali
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 11 ]; then
+  # align with triphones
+  steps/align_si.sh \
+    --nj 8 --cmd "$train_cmd" data/train data/lang exp/tri1 exp/tri1_ali
+fi
+
+if [ $stage -le 12 ]; then
   echo "$0 Starting (lda_mllt) triphone training in exp/tri2b"
   steps/train_lda_mllt.sh \
     --splice-opts "--left-context=3 --right-context=3" \
     2000 30000 \
     data/train data/lang exp/tri1_ali exp/tri2b
+fi
 
+if [ $stage -le 13 ]; then
   (
-  #  make decoding FSTs for tri2b models
-  utils/mkgraph.sh \
-    data/lang_test exp/tri2b exp/tri2b/graph || exit 1;
+    #  make decoding FSTs for tri2b models
+    utils/mkgraph.sh data/lang exp/tri2b exp/tri2b/graph
 
-  # decode  test with tri2b models
-  for x in native nonnative devtest test; do
-    steps/decode.sh \
-      --nj 8  \
-      exp/tri2b/graph data/$x exp/tri2b/decode_${x} || exit 1;
-  done
+    # decode  test with tri2b models
+    for x in native nonnative devtest test; do
+      steps/decode.sh --nj 8  exp/tri2b/graph data/$x exp/tri2b/decode_${x}
+    done
   ) &
+fi
 
+if [ $stage -le 14 ]; then
   # align with lda and mllt adapted triphones
   steps/align_si.sh \
-    --use-graphs true --nj 8 --cmd "$train_cmd" \
-    data/train data/lang exp/tri2b exp/tri2b_ali
+    --use-graphs true --nj 8 --cmd "$train_cmd" data/train data/lang exp/tri2b \
+    exp/tri2b_ali
+fi
 
+if [ $stage -le 15 ]; then
   echo "$0 Starting (SAT) triphone training in exp/tri3b"
   steps/train_sat.sh \
-    --cmd "$train_cmd" \
-    3100 50000 \
-    data/train data/lang exp/tri2b_ali exp/tri3b
+    --cmd "$train_cmd" 3100 50000 data/train data/lang exp/tri2b_ali exp/tri3b
+fi
 
-  # align with tri3b models
+if [ $stage -le 16 ]; then
   echo "$0 Starting exp/tri3b_ali"
   steps/align_fmllr.sh \
     --nj 8 --cmd "$train_cmd" \
     data/train data/lang exp/tri3b exp/tri3b_ali
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 17 ]; then
   (
   # make decoding graphs for SAT models
-  utils/mkgraph.sh \
-    data/lang_test exp/tri3b exp/tri3b/graph ||  exit 1;
+    utils/mkgraph.sh data/lang exp/tri3b exp/tri3b/graph
 
-  # decode test sets with tri3b models
-  for x in native nonnative devtest test; do
-    steps/decode_fmllr.sh \
-      --nj 8 --cmd "$decode_cmd" \
-      exp/tri3b/graph data/$x exp/tri3b/decode_${x}
-  done
+    # decode test sets with tri3b models
+    for x in native nonnative devtest test; do
+      steps/decode_fmllr.sh \
+      --nj 8 --cmd "$decode_cmd" exp/tri3b/graph data/$x exp/tri3b/decode_${x}
+    done
   ) &
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 18 ]; then
   # train and test chain models
   local/chain/run_tdnn.sh
 fi
