@@ -26,6 +26,7 @@
 #include "decoder/decoder-wrappers.h"
 #include "decoder/decodable-matrix.h"
 #include "base/timer.h"
+#include "decoder/lattice-biglm-faster-decoder.h"
 
 
 namespace kaldi {
@@ -240,7 +241,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
                 
-          DecodableMatrixScaledMapped decodable(trans_model, loglikes, acoustic_scale);
+          DecodableMatrixScaledMapped decodable(trans_model, features, acoustic_scale);
 
           double like;
           if (DecodeUtterance(decoder, decodable, trans_model, word_syms,
