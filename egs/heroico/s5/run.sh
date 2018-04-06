@@ -4,7 +4,6 @@
 
 . ./path.sh
 stage=0
-
 . ./utils/parse_options.sh
 
 set -e
@@ -27,15 +26,11 @@ datadir=$data_dir
 subsdata="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip"
 
 if [ $stage -le 0 ]; then
-  mkdir -p $tmpdir/heroico
-  mkdir -p $tmpdir/usma
-  mkdir -p $download_dir
+  mkdir -p $tmpdir/heroico $tmpdir/usma $download_dir
 
-  [ -z "$datadir" ] && \
-      # download the corpus from openslr
+  # download the corpus from openslr
   if [ ! -f $download_dir/LDC2006S37.tar.gz ]; then
     wget -O $download_dir/LDC2006S37.tar.gz $speech
-  fi
 
   (
     #run in shell, so we don't have to remember the path
@@ -43,8 +38,9 @@ if [ $stage -le 0 ]; then
     tar -xzf LDC2006S37.tar.gz
   )
   local/prepare_data.sh $data_dir
-else
-  local/prepare_data.sh $datadir
+  else
+    local/prepare_data.sh $datadir
+  fi
 fi
 
 if [ $stage -le 1 ]; then
@@ -58,19 +54,18 @@ fi
 
 if [ $stage -le 2 ]; then
   (
-    #run in shell, so we don't have to remember the path
     cd $tmpdir/dict
     tar -xzf santiago.tar.gz
   )
 
   local/prepare_dict.sh
 fi
-exit
-if [ $stage -le 2 ]; then
-  # prepare the lang directory
-  utils/prepare_lang.sh \
-    data/local/dict "<UNK>" \
-    data/local/lang data/lang   || exit 1;
+
+if [ $stage -le 3 ]; then
+  utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/local/lang
+fi
+
+if [ $stage -le 4 ]; then
   # use am training text to train lm
   mkdir -p $tmpdir/heroico/lm
 
@@ -80,9 +75,11 @@ if [ $stage -le 2 ]; then
   # build lm
   local/prepare_lm.sh $tmpdir/heroico/lm/train.txt
 
+  # make the grammar fst
   utils/format_lm.sh \
-    data/lang data/local/lm/threegram.arpa.gz data/local/dict/lexicon.txt \
-    data/lang_test
+    data/local/lang data/local/lm/threegram.arpa.gz data/local/dict/lexicon.txt \
+    data/lang
+
 fi
 
 if [ $stage -le 5 ]; then
@@ -94,20 +91,20 @@ if [ $stage -le 5 ]; then
       rm data/$fld/cmvn.scp
     fi
 
-    steps/make_plp_pitch.sh --cmd "$train_cmd" --nj 4 \
-      data/$fld exp/make_plp_pitch/$fld plp_pitch || exit 1;
+    steps/make_plp_pitch.sh \
+      --cmd "$train_cmd" --nj 4 data/$fld exp/make_plp_pitch/$fld plp_pitch
 
-    utils/fix_data_dir.sh data/$fld || exit 1;
+    utils/fix_data_dir.sh data/$fld
 
-    steps/compute_cmvn_stats.sh data/$fld exp/make_plp_pitch plp_pitch || exit 1;
+    steps/compute_cmvn_stats.sh data/$fld exp/make_plp_pitch plp_pitch
 
-    utils/fix_data_dir.sh data/$fld || exit 1;
+    utils/fix_data_dir.sh data/$fld
   done
+fi
 
+if [ $stage -le 6 ]; then
   echo "$0 monophone training"
-  steps/train_mono.sh \
-    --nj 4 --cmd "$train_cmd" \
-    data/train data/lang exp/mono || exit 1;
+  steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train data/lang exp/mono
 
   # evaluation
   (
