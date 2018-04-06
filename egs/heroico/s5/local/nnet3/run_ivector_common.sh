@@ -38,7 +38,7 @@ if [ $stage -le 1 ]; then
 	data/${train_set} \
 	data/${train_set}_sp
     echo "$0: making PLP_PITCH features for low-resolution speed-perturbed data"
-    steps/make_mfcc_plp_pitch.sh \
+    steps/make_plp_pitch.sh \
 	--cmd "$train_cmd" \
 	--nj 10 \
 	data/${train_set}_sp || exit 1;
