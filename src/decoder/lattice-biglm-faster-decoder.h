@@ -640,6 +640,8 @@ class LatticeBiglmFasterDecoder {
         }
       }
       if (tok_count != NULL) *tok_count = count;
+      KALDI_VLOG(6) << "Number of tokens active on frame " << active_toks_.size() - 1
+                    << " is " << tmp_array_.size();
       if (tmp_array_.size() <= static_cast<size_t>(config_.max_active)) {
         if (adaptive_beam) *adaptive_beam = config_.beam;
         return best_weight + config_.beam;
