@@ -1,5 +1,4 @@
-#!/bin/bash
-# -*- tab-width: 2; indent-tabs-mode: nil; -*-
+#!/bin/bash 
 
 . ./cmd.sh
 
@@ -12,35 +11,52 @@ set -e
 set -o pipefail
 set -u
 
-# the location of the LDC corpus
-datadir=/mnt/corpora/LDC2006S37/data
+# The corpus and lexicon are on openslr.org
+lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
+speech="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
+
+tmpdir=data/local/tmp
+
+# where to put the downloaded speech corpus
+download_dir=$tmpdir/speech
+data_dir=$download_dir/LDC2006S37/data
+# If you already have the corpus, put the path  here
+datadir=$data_dir
 
 # location of subs text data
 subsdata="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip"
-lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
-tmpdir=data/local/tmp
 
 if [ $stage -le 0 ]; then
-  # prepare the lists for acoustic model training and testing
   mkdir -p $tmpdir/heroico
   mkdir -p $tmpdir/usma
+  mkdir -p $download_dir
 
-  [ ! -d "$datadir" ] && \
-    echo "$0 Data directory (LDC corpus release) does not exist" && \
-    exit 1
+  [ -z "$datadir" ] && \
+      # download the corpus from openslr
+  if [ ! -f $download_dir/LDC2006S37.tar.gz ]; then
+    wget -O $download_dir/LDC2006S37.tar.gz $speech
+  fi
+
+  (
+    #run in shell, so we don't have to remember the path
+    cd $download_dir
+    tar -xzf LDC2006S37.tar.gz
+  )
+  local/prepare_data.sh $data_dir
+else
   local/prepare_data.sh $datadir
 fi
 
 if [ $stage -le 1 ]; then
-  # prepare a dictionary
-  mkdir -p data/local/dict
-  mkdir -p data/local/tmp/dict
+  mkdir -p data/local/dict $tmpdir/dict
 
   # download the dictionary from openslr
-  if [ ! -f data/local/tmp/dict/santiago.tar.gz ]; then
-    wget -O data/local/tmp/dict/santiago.tar.gz $lexicon
+  if [ ! -f $tmpdir/dict/santiago.tar.gz ]; then
+    wget -O $tmpdir/dict/santiago.tar.gz $lexicon
   fi
+fi
 
+if [ $stage -le 2 ]; then
   (
     #run in shell, so we don't have to remember the path
     cd $tmpdir/dict
@@ -48,14 +64,13 @@ if [ $stage -le 1 ]; then
   )
 
   local/prepare_dict.sh
-
+fi
+exit
+if [ $stage -le 2 ]; then
   # prepare the lang directory
   utils/prepare_lang.sh \
     data/local/dict "<UNK>" \
     data/local/lang data/lang   || exit 1;
-fi
-
-if [ $stage -le 2 ]; then
   # use am training text to train lm
   mkdir -p $tmpdir/heroico/lm
 
@@ -68,9 +83,6 @@ if [ $stage -le 2 ]; then
   utils/format_lm.sh \
     data/lang data/local/lm/threegram.arpa.gz data/local/dict/lexicon.txt \
     data/lang_test
-
-  # delete temporary work
-  rm -Rf data/local/tmp
 fi
 
 if [ $stage -le 5 ]; then
@@ -82,12 +94,12 @@ if [ $stage -le 5 ]; then
       rm data/$fld/cmvn.scp
     fi
 
-    steps/make_mfcc.sh --cmd "$train_cmd" --nj 4 \
-      data/$fld exp/make_mfcc/$fld mfcc || exit 1;
+    steps/make_plp_pitch.sh --cmd "$train_cmd" --nj 4 \
+      data/$fld exp/make_plp_pitch/$fld plp_pitch || exit 1;
 
     utils/fix_data_dir.sh data/$fld || exit 1;
 
-    steps/compute_cmvn_stats.sh data/$fld exp/make_mfcc mfcc || exit 1;
+    steps/compute_cmvn_stats.sh data/$fld exp/make_plp_pitch plp_pitch || exit 1;
 
     utils/fix_data_dir.sh data/$fld || exit 1;
   done
