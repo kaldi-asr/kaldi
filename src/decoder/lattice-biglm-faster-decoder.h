@@ -630,35 +630,54 @@ class LatticeBiglmFasterDecoder {
       if (adaptive_beam != NULL) *adaptive_beam = config_.beam;
       return best_weight + config_.beam;
     } else {
-      tmp_array_.clear();
-      for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
-        BaseFloat w = e->val->tot_cost;
-        tmp_array_.push_back(w);
-        if (w < best_weight) {
-          best_weight = w;
-          if (best_elem) *best_elem = e;
-        }
+    tmp_array_.clear();
+    for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
+      BaseFloat w = e->val->tot_cost;
+      tmp_array_.push_back(w);
+      if (w < best_weight) {
+        best_weight = w;
+        if (best_elem) *best_elem = e;
       }
-      if (tok_count != NULL) *tok_count = count;
-      KALDI_VLOG(6) << "Number of tokens active on frame " << active_toks_.size() - 1
-                    << " is " << tmp_array_.size();
-      if (tmp_array_.size() <= static_cast<size_t>(config_.max_active)) {
-        if (adaptive_beam) *adaptive_beam = config_.beam;
-        return best_weight + config_.beam;
-      } else {
-        // the lowest elements (lowest costs, highest likes)
-        // will be put in the left part of tmp_array.
+    }
+    if (tok_count != NULL) *tok_count = count;
+
+    BaseFloat beam_cutoff = best_weight + config_.beam,
+        min_active_cutoff = std::numeric_limits<BaseFloat>::infinity(),
+        max_active_cutoff = std::numeric_limits<BaseFloat>::infinity();
+
+    KALDI_VLOG(6) << "Number of tokens active on frame " << active_toks_.size()
+                  << " is " << tmp_array_.size();
+
+    if (tmp_array_.size() > static_cast<size_t>(config_.max_active)) {
+      std::nth_element(tmp_array_.begin(),
+                       tmp_array_.begin() + config_.max_active,
+                       tmp_array_.end());
+      max_active_cutoff = tmp_array_[config_.max_active];
+    }
+    if (max_active_cutoff < beam_cutoff) { // max_active is tighter than beam.
+      if (adaptive_beam)
+        *adaptive_beam = max_active_cutoff - best_weight + config_.beam_delta;
+      return max_active_cutoff;
+    }
+    if (tmp_array_.size() > static_cast<size_t>(config_.min_active)) {
+      if (config_.min_active == 0) min_active_cutoff = best_weight;
+      else {
         std::nth_element(tmp_array_.begin(),
-                         tmp_array_.begin()+config_.max_active,
+                         tmp_array_.begin() + config_.min_active,
+                         tmp_array_.size() > static_cast<size_t>(config_.max_active) ?
+                         tmp_array_.begin() + config_.max_active :
                          tmp_array_.end());
-        // return the tighter of the two beams.
-        BaseFloat ans = std::min(best_weight + config_.beam,
-                                 *(tmp_array_.begin()+config_.max_active));
-        if (adaptive_beam)
-          *adaptive_beam = std::min(config_.beam,
-                                    ans - best_weight + config_.beam_delta);
-        return ans;
+        min_active_cutoff = tmp_array_[config_.min_active];
       }
+    }
+    if (min_active_cutoff > beam_cutoff) { // min_active is looser than beam.
+      if (adaptive_beam)
+        *adaptive_beam = min_active_cutoff - best_weight + config_.beam_delta;
+      return min_active_cutoff;
+    } else {
+      *adaptive_beam = config_.beam;
+      return beam_cutoff;
+    }
     }
   }
 
