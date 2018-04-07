@@ -230,6 +230,7 @@ int main(int argc, char *argv[]) {
 
       {
         LatticeBiglmFasterDecoder decoder(*decode_fst, config, &cache_dfst);
+        timer.Reset();
     
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();

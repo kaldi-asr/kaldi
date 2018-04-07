@@ -615,21 +615,22 @@ class LatticeBiglmFasterDecoder {
   /// Gets the weight cutoff.  Also counts the active tokens.
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem) {
-    BaseFloat best_weight = std::numeric_limits<BaseFloat>::infinity();
-    // positive == high cost == bad.
-    size_t count = 0;
-    if (config_.max_active == std::numeric_limits<int32>::max()) {
-      for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
-        BaseFloat w = static_cast<BaseFloat>(e->val->tot_cost);
-        if (w < best_weight) {
-          best_weight = w;
-          if (best_elem) *best_elem = e;
-        }
+  BaseFloat best_weight = std::numeric_limits<BaseFloat>::infinity();
+  // positive == high cost == bad.
+  size_t count = 0;
+  if (config_.max_active == std::numeric_limits<int32>::max() &&
+      config_.min_active == 0) {
+    for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
+      BaseFloat w = static_cast<BaseFloat>(e->val->tot_cost);
+      if (w < best_weight) {
+        best_weight = w;
+        if (best_elem) *best_elem = e;
       }
-      if (tok_count != NULL) *tok_count = count;
-      if (adaptive_beam != NULL) *adaptive_beam = config_.beam;
-      return best_weight + config_.beam;
-    } else {
+    }
+    if (tok_count != NULL) *tok_count = count;
+    if (adaptive_beam != NULL) *adaptive_beam = config_.beam;
+    return best_weight + config_.beam;
+  } else {
     tmp_array_.clear();
     for (Elem *e = list_head; e != NULL; e = e->tail, count++) {
       BaseFloat w = e->val->tot_cost;
@@ -678,7 +679,7 @@ class LatticeBiglmFasterDecoder {
       *adaptive_beam = config_.beam;
       return beam_cutoff;
     }
-    }
+  }
   }
 
   inline StateId PropagateLm(StateId lm_state,
@@ -713,7 +714,10 @@ class LatticeBiglmFasterDecoder {
     size_t tok_cnt;
     BaseFloat cur_cutoff = GetCutoff(last_toks, &tok_cnt, &adaptive_beam, &best_elem);
     PossiblyResizeHash(tok_cnt);  // This makes sure the hash is always big enough.    
-    
+    KALDI_VLOG(6) << "Adaptive beam on frame " << frame << "\t" << active_toks_.size() << " is "
+                << adaptive_beam << "\t" << cur_cutoff;
+
+  
     BaseFloat next_cutoff = std::numeric_limits<BaseFloat>::infinity();
     // pruning "online" before having seen all tokens
 
