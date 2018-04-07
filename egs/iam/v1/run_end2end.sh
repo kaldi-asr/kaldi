@@ -29,7 +29,7 @@ fi
 mkdir -p data/{train,test}/data
 
 if [ $stage -le 1 ]; then
-  get_image2num_frames.py data/train  # This will be needed for the next command
+  image/get_image2num_frames.py data/train  # This will be needed for the next command
   # The next command creates a "allowed_lengths.txt" file in data/train
   # which will be used by local/make_features.py to enforce the images to
   # have allowed lengths. The allowed lengths will be spaced by 10% difference in length.
@@ -45,32 +45,38 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  echo "$0: Preparing dictionary and lang..."
-  local/prepare_dict.sh
-  utils/prepare_lang.sh --sil-prob 0.95 \
-                        data/local/dict "<unk>" data/lang/temp data/lang
+  echo "$0: Estimating a language model for decoding..."
+  # We do this stage before dict preparation because prepare_dict.sh
+  # generates the lexicon from pocolm's wordlist
+  local/train_lm.sh --vocab-size 50k
 fi
 
 if [ $stage -le 3 ]; then
-  echo "$0: Estimating a language model for decoding..."
-  local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_big.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang_test
-fi
+  echo "$0: Preparing dictionary and lang..."
 
+  # This is for training. Use a large vocab size, e.g. 500k to include all the
+  # training words:
+  local/prepare_dict.sh --vocab-size 500k --dir data/local/dict
+  utils/prepare_lang.sh --sil-prob 0.95 \
+                        data/local/dict "<unk>" data/lang/temp data/lang
+
+  # This is for decoding. We use a 50k lexicon to be consistent with the papers
+  # reporting WERs on IAM.
+  local/prepare_dict.sh --vocab-size 50k --dir data/local/dict_50k
+  utils/prepare_lang.sh --sil-prob 0.95 data/local/dict_50k \
+                        "<unk>" data/lang_test/temp data/lang_test
+  utils/format_lm.sh data/lang_test data/local/local_lm/data/arpa/3gram_big.arpa.gz \
+                     data/local/dict_50k/lexicon.txt data/lang_test
+
+  echo "$0: Preparing the unk model for open-vocab decoding..."
+  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 7500 \
+                            data/local/dict_50k exp/unk_lang_model
+  utils/prepare_lang.sh --unk-fst exp/unk_lang_model/unk_fst.txt \
+                        data/local/dict_50k "<unk>" data/lang_unk/temp data/lang_unk
+  cp data/lang_test/G.fst data/lang_unk/G.fst
+fi
 
 if [ $stage -le 4 ]; then
-  echo "$0: estimating phone language model for the denominator graph"
-  mkdir -p exp/chain/e2e_base/log
-  $cmd exp/chain/e2e_base/log/make_phone_lm.log \
-  cat data/train/text \| \
-    steps/nnet3/chain/e2e/text_to_phones.py data/lang \| \
-    utils/sym2int.pl -f 2- data/lang/phones.txt \| \
-    chain-est-phone-lm --num-extra-lm-states=1000 \
-                       ark:- exp/chain/e2e_base/phone_lm.fst
-fi
-
-if [ $stage -le 5 ]; then
-  echo "$0: calling the flat-start chain recipe..."
+  echo "$0: Calling the flat-start chain recipe..."
   local/chain/run_flatstart_cnn1a.sh
 fi

@@ -27,7 +27,7 @@ gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 ali=tri3_ali
-chain_model_dir=exp/chain${nnet3_affix}/cnn${affix}
+chain_model_dir=exp/chain${nnet3_affix}/cnn_1a
 common_egs_dir=
 reporting_email=
 
@@ -89,7 +89,7 @@ if [ $stage -le 1 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   if [ -d $lang ]; then
-    if [ $lang/L.fst -nt data/$lang_test/L.fst ]; then
+    if [ $lang/L.fst -nt data/lang/L.fst ]; then
       echo "$0: $lang already exists, not overwriting it; continuing"
     else
       echo "$0: $lang already exists and seems to be older than data/lang..."
@@ -97,7 +97,7 @@ if [ $stage -le 1 ]; then
       exit 1;
     fi
   else
-    cp -r data/$lang_test $lang
+    cp -r data/lang $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
@@ -111,7 +111,7 @@ if [ $stage -le 2 ]; then
   # use the same num-jobs as the alignments
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            ${train_data_dir} data/$lang_test $chain_model_dir $lat_dir
+                            ${train_data_dir} data/lang $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
 

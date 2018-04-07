@@ -108,7 +108,6 @@ if [ $stage -le 1 ]; then
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
-  #log-prob: -5.05603614242 [perplexity = 156.967086371] over 19477.0 words
 fi
 
 if [ $stage -le 2 ]; then
@@ -118,9 +117,6 @@ if [ $stage -le 2 ]; then
   prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_3_prune_big was -5.06654404785 per word [perplexity = 158.625177948] over 19477.0 words
-  # current results, after adding --limit-unk-history=true:
-
 
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
@@ -134,9 +130,6 @@ if [ $stage -le 3 ]; then
   prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big ${dir}/data/lm_${order}_prune_small
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
-  # get_data_prob.py: log-prob of data/local/local_lm/data/real_dev_set.txt given model data/local/local_lm/data/lm_3_prune_small was -5.24719139498 per word [perplexity = 190.031793995] over 19477.0 words
-  # current results, after adding --limit-unk-history=true (needed for modeling OOVs and not blowing up LG.fst):
-
 
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
 fi
