@@ -805,7 +805,7 @@ bool AddWeightToSupervisionFstE2e(const fst::StdVectorFst &normalization_fst,
 
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {
-  if (supervision->e2e_fsts.empty())
+  if (!supervision->e2e_fsts.empty())
     return AddWeightToSupervisionFstE2e(normalization_fst, supervision);
 
   // remove epsilons before composing.  'normalization_fst' has noepsilons so
