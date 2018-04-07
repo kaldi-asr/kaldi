@@ -78,7 +78,7 @@ struct SupervisionOptions {
     opts->Register("lm-scale", &lm_scale, "The scale with which the graph/lm "
                    "weights from the phone lattice are included in the "
                    "supervision fst.");
-    opts->Register("convert-to-pfds", &convert_to_pdfs, "If true, convert "
+    opts->Register("convert-to-pdfs", &convert_to_pdfs, "If true, convert "
                    "transition-ids to pdf-ids + 1 in supervision FSTs.");
   }
   void Check() const;
@@ -276,16 +276,14 @@ struct Supervision {
   std::vector<fst::StdVectorFst> e2e_fsts;
 
 
-  // This member is only set to a nonempty value if the egs were created using
-  // nnet3-chain-get-egs2.  It reflects the best path through the supervision
-  // lattice, and contains pdf-ids (not pdf-ids plus one).
+  // This member is only set to a nonempty value if we are creating 'unconstrained'
+  // egs.  These are egs that are split into chunks using the lattice alignments,
+  // but then within the chunks we remove the frame-level constraints on which
+  // phones can appear when, and use the 'e2e_fsts' member.
   //
-  // 'alignment_pdfs' will only be nonempty in egs which have 'e2e_fsts' set but
-  // where the utterances have been broken into chunks (these are what we call
-  // 'unconstrained' egs).  The 'alignment_pdfs' member is only required in
-  // order to accumulate the LDA stats using `nnet3-chain-acc-lda-stats`, and it
-  // is not merged by nnet3-chain-merge-egs; it will only be present for
-  // un-merged egs.
+  // It is only required in order to accumulate the LDA stats using
+  // `nnet3-chain-acc-lda-stats`, and it is not merged by nnet3-chain-merge-egs;
+  // it will only be present for un-merged egs.
   std::vector<int32> alignment_pdfs;
 
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),

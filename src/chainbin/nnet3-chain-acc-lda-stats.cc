@@ -56,7 +56,7 @@ class NnetChainLdaStatsAccumulator {
     computer.AcceptInputs(nnet_, eg.inputs);
     computer.Run();
     const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
-    if (eg.supervision.fst.NumStates() > 0) {
+    if (eg.outputs[0].supervision.fst.NumStates() > 0) {
       AccStatsFst(eg, nnet_output);
     } else {
       AccStatsAlignment(eg, nnet_output);
@@ -167,7 +167,7 @@ class NnetChainLdaStatsAccumulator {
       // but we're about to do an outer product, so this doesn't dominate.
       Vector<BaseFloat> row(cu_row);
 
-      int32 pdf = supervision.alignment_pdf[t];
+      int32 pdf = supervision.alignment_pdfs[t];
       BaseFloat weight = 1.0;
       BaseFloat pruned_weight = RandPrune(weight, rand_prune);
       if (pruned_weight != 0.0)

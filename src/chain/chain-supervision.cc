@@ -909,9 +909,11 @@ void Supervision::Check(const TransitionModel &trans_mdl) const {
     KALDI_ERR << "Invalid frames_per_sequence: " << frames_per_sequence;
   if (num_sequences <= 0)
     KALDI_ERR << "Invalid num_sequences: " << num_sequences;
-  if (label_dim != trans_mdl.NumPdfs())
+  if (!(label_dim == trans_mdl.NumPdfs() ||
+        label_dim == trans_mdl.NumTransitionIds()))
     KALDI_ERR << "Invalid label-dim: " << label_dim
-              << ", expected " << trans_mdl.NumPdfs();
+              << ", expected " << trans_mdl.NumPdfs()
+              << " or " << trans_mdl.NumTransitionIds();
   std::vector<int32> state_times;
   if (frames_per_sequence * num_sequences !=
       ComputeFstStateTimes(fst, &state_times))
@@ -1002,8 +1004,11 @@ bool ConvertSupervisionToUnconstrained(
                &(supervision->fst), s);
            !aiter.Done();  aiter.Next()) {
         fst::StdArc arc = aiter.Value();
-        // At this point, the FST should be epsilon free.
-        KALDI_ASSERT(arc.ilabel != 0);
+        // This input FST will have a few epsilon transition due to
+        // how we split the utterance into chunks with SupervisionSplitter;
+        // we just leave those as they are.
+        if (arc.ilabel == 0)
+          continue;
         // First replace all output labels with epsilon.
         arc.olabel = 0;
         int32 transition_id = arc.ilabel;
@@ -1031,8 +1036,13 @@ bool ConvertSupervisionToUnconstrained(
     // more natural definition of functional than Mohri likely uses in the
     // context of determinization; we mean, functional after removing epsilons]
     supervision->e2e_fsts.resize(1);
-    bool ans = fst::DeterminizeStar(supervision->fst, &(supervision->e2e_fsts[0]));
-    KALDI_ASSERT(ans && "Determinization failed.");
+    bool is_partial = fst::DeterminizeStar(supervision->fst,
+                                           &(supervision->e2e_fsts[0]));
+    if (is_partial) {
+      KALDI_WARN << "Partial FST generated when determinizing supervision; "
+          "abandoning this chunk.";
+      return false;
+    }
     supervision->fst.DeleteStates();
     fst::Minimize(&(supervision->e2e_fsts[0]));
     if (supervision->e2e_fsts[0].NumStates() == 0) {
@@ -1070,16 +1080,32 @@ bool ConvertSupervisionToUnconstrained(
       for (fst::MutableArcIterator<fst::StdVectorFst> aiter(&e2e_fst, s);
            !aiter.Done();  aiter.Next()) {
         fst::StdArc arc = aiter.Value();
-        // The FST should at this point be epsilon free and should have zero
-        // olabels.
-        KALDI_ASSERT(arc.ilabel != 0 && arc.olabel == 0);
-        int32 pdf_id_plus_one = trans_mdl.TransitionIdToPdf(arc.ilabel) + 1;
-        arc.ilabel = pdf_id_plus_one;
-        arc.olabel = pdf_id_plus_one;
-        aiter.SetValue(arc);
+        // There will be a few zero ilabels at this point, due to how
+        // AddSelfLoops() works (it calls MakePrecedingInputSymbolsSame(), which
+        // adds epsilons).  zero olabels.
+        if (arc.ilabel != 0) {
+          int32 pdf_id_plus_one = trans_mdl.TransitionIdToPdf(arc.ilabel) + 1;
+          arc.ilabel = pdf_id_plus_one;
+          arc.olabel = pdf_id_plus_one;
+          aiter.SetValue(arc);
+        }
       }
     }
     supervision->label_dim = trans_mdl.NumPdfs();
+  }
+
+  {
+    // AddSelfLoops() adds epsilons, and we don't want these.  Determinize-star
+    // (which removes epsilons) and minimize again.
+    fst::StdVectorFst temp_fst(supervision->e2e_fsts[0]);
+    bool is_partial = fst::DeterminizeStar(temp_fst,
+                                           &(supervision->e2e_fsts[0]));
+    if (is_partial) {
+      KALDI_WARN << "Partial FST generated when determinizing supervision; "
+          "abandoning this chunk.";
+      return false;
+    }
+    fst::Minimize(&(supervision->e2e_fsts[0]));
   }
   return true;
 }
