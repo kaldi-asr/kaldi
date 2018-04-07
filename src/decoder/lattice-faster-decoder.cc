@@ -699,8 +699,8 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   BaseFloat adaptive_beam;
   size_t tok_cnt;
   BaseFloat cur_cutoff = GetCutoff(final_toks, &tok_cnt, &adaptive_beam, &best_elem);
-  KALDI_VLOG(6) << "Adaptive beam on frame " << NumFramesDecoded() << " is "
-                << adaptive_beam;
+  KALDI_VLOG(6) << "Adaptive beam on frame " << frame << "\t" << NumFramesDecoded() << " is "
+                << adaptive_beam << "\t" << cur_cutoff;
 
   PossiblyResizeHash(tok_cnt);  // This makes sure the hash is always big enough.
 
