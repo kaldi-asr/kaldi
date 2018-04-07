@@ -278,12 +278,14 @@ struct Supervision {
 
   // This member is only set to a nonempty value if the egs were created using
   // nnet3-chain-get-egs2.  It reflects the best path through the supervision
-  // lattice.  These egs will have 'e2e_fsts' set but the utterances will be
-  // broken into chunks.  The 'alignment_pdfs' member is only required in order
-  // to accumulate the LDA stats using `nnet3-chain-acc-lda-stats`; it's
-  // required in this case because there is no time alignment information
-  // computable from 'e2e_fsts'.  The order of 'alignment_pdfs' if num_sequences
-  // > 1, is: all pdfs from frame 0; all pdfs from frame 1; and so on.
+  // lattice, and contains pdf-ids (not pdf-ids plus one).
+  //
+  // 'alignment_pdfs' will only be nonempty in egs which have 'e2e_fsts' set but
+  // where the utterances have been broken into chunks (these are what we call
+  // 'unconstrained' egs).  The 'alignment_pdfs' member is only required in
+  // order to accumulate the LDA stats using `nnet3-chain-acc-lda-stats`, and it
+  // is not merged by nnet3-chain-merge-egs; it will only be present for
+  // un-merged egs.
   std::vector<int32> alignment_pdfs;
 
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
@@ -430,17 +432,11 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
                            std::vector<int32> *state_times);
 
 
-/// This function appends a list of supervision objects to create what will
-/// usually be a single such object, but if the weights and num-frames are not
-/// all the same it will only append Supervision objects where successive ones
-/// have the same weight and num-frames.
-/// The normal use-case for this is when you are combining neural-net examples for
-/// training; appending them like this helps to simplify the training process.
 
-/// This function will crash if the values of label_dim in the inputs are not
-/// all the same.
-void AppendSupervision(const std::vector<const Supervision*> &input,
-                       Supervision *output_supervision);
+/// This function merges a list of supervision objects, which must have the
+/// same num-frames and label-dim.
+void MergeSupervision(const std::vector<const Supervision*> &input,
+                      Supervision *output_supervision);
 
 
 /// This function helps you to pseudo-randomly split a sequence of length 'num_frames',

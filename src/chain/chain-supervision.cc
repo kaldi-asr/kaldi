@@ -711,24 +711,30 @@ Supervision::Supervision(const Supervision &other):
     e2e_fsts(other.e2e_fsts), alignment_pdfs(other.alignment_pdfs) { }
 
 
-// This static function is called by AppendSupervision if the supervisions
+// This static function is called by MergeSupervision if the supervisions
 // are end2end. It simply puts all e2e FST's into 1 supervision.
-void AppendSupervisionE2e(const std::vector<const Supervision*> &input,
+void MergeSupervisionE2e(const std::vector<const Supervision*> &input,
                           Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
   KALDI_ASSERT(input[0]->e2e_fsts.size() == 1);
   *output_supervision = *(input[0]);
-  for (int32 i = 1; i < input.size(); i++) {
+  output_supervision->e2e_fsts.reserve(input.size());
+  int32 frames_per_sequence = output_supervision->frames_per_sequence,
+      num_seqs = input.size();
+  for (int32 i = 1; i < num_seqs; i++) {
     output_supervision->num_sequences++;
     KALDI_ASSERT(input[i]->e2e_fsts.size() == 1);
     KALDI_ASSERT(input[i]->frames_per_sequence ==
-                 output_supervision->frames_per_sequence);
+                 frames_per_sequence);
     output_supervision->e2e_fsts.push_back(input[i]->e2e_fsts[0]);
   }
+  output_supervision->alignment_pdfs.clear();
+  // The program nnet3-chain-acc-lda-stats works on un-merged egs,
+  // and there is no need to support merging of 'alignment_pdfs'
 }
 
-void AppendSupervision(const std::vector<const Supervision*> &input,
-                       Supervision *output_supervision) {
+void MergeSupervision(const std::vector<const Supervision*> &input,
+                      Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
   int32 label_dim = input[0]->label_dim,
       num_inputs = input.size();
@@ -737,13 +743,15 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
     return;
   }
   if (!input[0]->e2e_fsts.empty()) {
-    AppendSupervisionE2e(input, output_supervision);
+    MergeSupervisionE2e(input, output_supervision);
     return;
   }
 
-  for (int32 i = 1; i < num_inputs; i++)
+  for (int32 i = 1; i < num_inputs; i++) {
     KALDI_ASSERT(input[i]->label_dim == label_dim &&
                  "Trying to append incompatible Supervision objects");
+    KALDI_ASSERT(input[i]->alignment_pdfs.empty());
+  }
   *output_supervision = *(input[num_inputs-1]);
   for (int32 i = num_inputs - 2; i >= 0; i--) {
     const Supervision &src = *(input[i]);
@@ -977,6 +985,10 @@ bool ConvertSupervisionToUnconstrained(
     if (static_cast<int32>(supervision->alignment_pdfs.size()) !=
         supervision->frames_per_sequence) {
       KALDI_ERR << "Length mismatch between FST and frames-per-sequence.";
+    }
+    for (int32 i = 0; i < supervision->frames_per_sequence; i++) {
+      supervision->alignment_pdfs[i] =
+          trans_mdl.TransitionIdToPdf(supervision->alignment_pdfs[i]);
     }
   }
 
