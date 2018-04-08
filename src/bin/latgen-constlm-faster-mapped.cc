@@ -26,12 +26,13 @@
 #include "decoder/decoder-wrappers.h"
 #include "decoder/decodable-matrix.h"
 #include "base/timer.h"
-#include "decoder/lattice-constlm-faster-decoder.h"
+#include "lm/const-arpa-lm.h"
+#include "decoder/lattice-biglm-faster-decoder.h"
 
 
 namespace kaldi {
 // Takes care of output.  Returns true on success.
-bool DecodeUtterance(LatticeConstlmFasterDecoder &decoder, // not const but is really an input.
+bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is really an input.
                      DecodableInterface &decodable, // not const but is really an input.
                      const TransitionModel &trans_model,
                      const fst::SymbolTable *word_syms,
@@ -157,7 +158,7 @@ int main(int argc, char *argv[]) {
     Timer timer;
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
-    LatticeConstlmFasterDecoderConfig config;
+    LatticeBiglmFasterDecoderConfig config;
     
     std::string word_syms_filename;
     config.Register(&po);
@@ -185,18 +186,18 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
+    /*
     ConstArpaLm old_lm;
     ReadKaldiObject(old_lm_fst_rxfilename, &old_lm);
     ConstArpaLmDeterministicFst old_lm_dfst(old_lm);
     ApplyProbabilityScale(-1.0, old_lm_dfst); // Negate old LM probs...
+    */
 
     ConstArpaLm new_lm;
     ReadKaldiObject(new_lm_fst_rxfilename, &new_lm);
     ConstArpaLmDeterministicFst new_lm_dfst(new_lm);
 
-    fst::ComposeDeterministicOnDemandFst<StdArc> compose_dfst(&old_lm_dfst,
-                                                              &new_lm_dfst);
-    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&compose_dfst);
+    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&new_lm_dfst);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
@@ -227,7 +228,7 @@ int main(int argc, char *argv[]) {
       Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
 
       {
-        LatticeConstlmFasterDecoder decoder(*decode_fst, config, &cache_dfst);
+        LatticeBiglmFasterDecoder decoder(*decode_fst, config, &cache_dfst);
         timer.Reset();
     
         for (; !feature_reader.Done(); feature_reader.Next()) {
