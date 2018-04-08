@@ -973,6 +973,11 @@ bool ConvertSupervisionToUnconstrained(
                supervision->e2e_fsts.empty() &&
                supervision->alignment_pdfs.empty());
 
+  // Remove epsilons that will have been introduced into supervision->fst by
+  // class SupervisionSplitter (they make it harder to identify arcs that are on
+  // the first frame).
+  fst::RmEpsilon(&(supervision->fst));
+
   { // Set supervision->alignment_pdfs to the label sequence on a randomly chosen
     // path through supervision->fst.  This is only needed for computing LDA
     // stats in `nnet3-chain-acc-lda-stats`.
@@ -1004,11 +1009,6 @@ bool ConvertSupervisionToUnconstrained(
                &(supervision->fst), s);
            !aiter.Done();  aiter.Next()) {
         fst::StdArc arc = aiter.Value();
-        // This input FST will have a few epsilon transition due to
-        // how we split the utterance into chunks with SupervisionSplitter;
-        // we just leave those as they are.
-        if (arc.ilabel == 0)
-          continue;
         // First replace all output labels with epsilon.
         arc.olabel = 0;
         int32 transition_id = arc.ilabel;
@@ -1106,6 +1106,12 @@ bool ConvertSupervisionToUnconstrained(
       return false;
     }
     fst::Minimize(&(supervision->e2e_fsts[0]));
+    fst::Connect(&(supervision->e2e_fsts[0]));
+    if (supervision->e2e_fsts[0].NumStates() == 0) {
+      // this should not happen-- likely a code bug or mismatch of some kind.
+      KALDI_WARN << "Supervision FST became empty.";
+      return false;
+    }
   }
   return true;
 }
