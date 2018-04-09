@@ -123,10 +123,8 @@ if [ $stage -le 11 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  # Build a tree using our new topology.  We know we have alignments for the
-  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
-  # those.  The num-leaves is always somewhat less than the num-leaves from
-  # the GMM baseline.
+  # Build a tree using our new topology.
+    # num-leaves is always somewhat less than num-leaves from the GMM baseline.
    if [ -f $tree_dir/final.mdl ]; then
      echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
      exit 1;
@@ -139,7 +137,6 @@ if [ $stage -le 12 ]; then
     ${lores_train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
-
 
 if [ $stage -le 13 ]; then
   mkdir -p $dir
