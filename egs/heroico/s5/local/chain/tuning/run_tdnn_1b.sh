@@ -82,7 +82,7 @@ ali_dir=exp/${gmm}_ali
 tree_dir=exp/chain${nnet3_affix}/tree${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
-dir=exp/chain${nnet3_affix}/tdnn${affix}
+dir=exp/chain/tdnn${affix}
 train_data_dir=data/${train_set}
 lores_train_data_dir=data/${train_set}
 
@@ -149,7 +149,7 @@ if [ $stage -le 13 ]; then
   #output_opts="l2-regularize=0.0025"
   output_opts=""
 
-  mkdir -p $dir/configss
+  mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
