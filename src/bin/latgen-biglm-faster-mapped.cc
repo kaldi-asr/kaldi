@@ -198,7 +198,7 @@ int main(int argc, char *argv[]) {
     fst::BackoffDeterministicOnDemandFst<StdArc> new_lm_dfst(*new_lm_fst);
     fst::ComposeDeterministicOnDemandFst<StdArc> compose_dfst(&old_lm_dfst,
                                                               &new_lm_dfst);
-    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&compose_dfst);
+    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&compose_dfst, 1e7);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
