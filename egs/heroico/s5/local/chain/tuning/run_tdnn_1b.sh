@@ -193,7 +193,7 @@ if [ $stage -le 14 ]; then
   steps/nnet3/chain/train.py \
     --stage=$train_stage \
     --cmd="$decode_cmd" \
-    --feat.online-ivector-dir=$train_ivector_dir \
+    --feat.online-ivector-dir="" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
