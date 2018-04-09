@@ -190,7 +190,7 @@ bool ComposeDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
   Arc arc2;
   if (!fst2_->GetArc(pr.second, arc1.olabel, &arc2)) return false;
   std::pair<const std::pair<StateId, StateId>, StateId> new_value(
-      std::pair<StateId, StateId>(arc1.nextstate, arc1.nextstate),
+      std::pair<StateId, StateId>(arc1.nextstate, arc2.nextstate),
       next_state_);
   std::pair<IterType, bool> result =
       state_map_.insert(new_value);
@@ -199,7 +199,7 @@ bool ComposeDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
   oarc->nextstate = result.first->second;
   oarc->weight = Times(arc1.weight, arc2.weight);
   if (result.second == true) { // was inserted
-    //next_state_++;
+    next_state_++;
     const std::pair<StateId, StateId> &new_pair (new_value.first);
     state_vec_.push_back(new_pair);
   }
