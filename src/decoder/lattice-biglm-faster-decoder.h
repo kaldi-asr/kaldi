@@ -371,8 +371,11 @@ class LatticeBiglmFasterDecoder {
           e_found->val = tot_cost;
         return true;
       }
-      else {
+      else if (pp) {
         return false;
+      }
+      else {
+        return true;
       }
     }
    }
@@ -791,7 +794,7 @@ class LatticeBiglmFasterDecoder {
           const Arc &arc_ref = aiter.Value();
           if (arc_ref.ilabel != 0) {  // propagate..
             Arc arc(arc_ref);
-            bool pp;
+            bool pp=arc.olabel>0;
             BaseFloat ac_cost = -decodable->LogLikelihood(frame-1, arc.ilabel);
             if (!FindOrAddToken(arc.nextstate, frame, tok->tot_cost + ac_cost+ arc.weight.Value(), true, NULL, pp)) continue;
             StateId next_lm_state = PropagateLm(lm_state, &arc, &pp);
@@ -864,7 +867,7 @@ class LatticeBiglmFasterDecoder {
         const Arc &arc_ref = aiter.Value();
         if (arc_ref.ilabel == 0) {  // propagate nonemitting only...
           Arc arc(arc_ref);
-          bool pp;
+          bool pp=arc.olabel>0;
           if (!FindOrAddToken(arc.nextstate, frame, tok->tot_cost + arc.weight.Value(), true, NULL, pp)) continue;
           StateId next_lm_state = PropagateLm(lm_state, &arc, &pp);          
           BaseFloat graph_cost = arc.weight.Value(),
