@@ -86,8 +86,8 @@ dir=exp/chain${nnet3_affix}/tdnn${affix}
 train_data_dir=data/${train_set}
 lores_train_data_dir=data/${train_set}
 
-for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
-    $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do
+for f in $gmm_dir/final.mdl $train_data_dir/feats.scp \
+                            $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
