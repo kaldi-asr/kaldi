@@ -78,7 +78,7 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 
 gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}
+ali_dir=exp/${gmm}_ali
 tree_dir=exp/chain${nnet3_affix}/tree${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
