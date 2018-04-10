@@ -888,14 +888,20 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
 
   // The 'update_speed' is a constant that determines how fast we approach a
   // matrix with the desired properties (larger -> faster).  Larger values will
-  // update faster but will be more prone to instability.  I believe
-  // 'update_speed' shouldn't be more than 0.25 or maybe 0.5, or it will always
-  // be unstable, but I haven't done the analysis.  It should definitely be more
-  // than 0.0.
+  // update faster but will be more prone to instability.  0.125 (1/8) is the
+  // value that gives us the fastest possible convergence when we are already
+  // close to be a semi-orthogonal matrix (in fact, it will lead to quadratic
+  // convergence).
+  // See  http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
+  // for more details.
   BaseFloat update_speed = 0.125;
 
   if (scale < 0.0) {
-    // If scale < 0.0 then it's like letting the scale "float".
+    // If scale < 0.0 then it's like letting the scale "float",
+    // as in Sec. 2.3 of
+    // http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf,
+    // where 'scale' here is written 'alpha' in the paper.
+    //
     // We pick the scale that will give us an update to M that is
     // orthogonal to M (viewed as a vector): i.e., if we're doing
     // an update M := M + X, then we want to have tr(M X^T) == 0.
@@ -936,15 +942,10 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
     }
   }
 
-  // The factor of 1/scale^2 is, I *believe*, going to give us the right kind of
-  // invariance w.r.t. the scale.  To explain why this is the appropriate
-  // factor, look at the statement M_update.AddMatMat(-4.0 * alpha, P, kNoTrans,
-  // *M, kNoTrans, 0.0); where P is proportional to scale^2 and M to 'scale' and
-  // alpha to 1/scale^2, so change in M_update is proportional to 'scale'.
-  // We'd like 'M_update' to be proportional to 'scale'. This reasoning is very
-  // approximate but I think it can be made rigorous.  This is about remaining
-  // stable (not prone to divergence) even for very large or small values of
-  // 'scale'.
+  // see Sec. 2.2 of http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
+  // for explanation of the 1/(scale*scale) factor, but there is a difference in
+  // notation; 'scale' here corresponds to 'alpha' in the paper, and
+  // 'update_speed' corresponds to 'nu' in the paper.
   BaseFloat alpha = update_speed / (scale * scale);
 
   P.AddToDiag(-1.0 * scale * scale);
