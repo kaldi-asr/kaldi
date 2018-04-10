@@ -222,8 +222,9 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
   KaldiBlasInt   rows = static_cast<int>(this->num_rows_);
   KaldiBlasInt*  p_ipiv = new KaldiBlasInt[rows];
   Real *p_work;  // workspace for the lapack function
+  void *temp;
   if ((p_work = static_cast<Real*>(
-          aligned_alloc(16, sizeof(Real) * rows))) == NULL) {
+          KALDI_MEMALIGN(16, sizeof(Real) * rows, &temp))) == NULL) {
     delete[] p_ipiv;
     throw std::bad_alloc();
   }
@@ -276,7 +277,7 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
   }
   if (!need_inverse) {
     delete [] p_ipiv;
-    free(p_work);
+    KALDI_MEMALIGN_FREE(p_work);
     return;  // Don't need what is computed next.
   }
   // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
@@ -291,7 +292,7 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
   }
 
   delete [] p_ipiv;
-  free(p_work);
+  KALDI_MEMALIGN_FREE(p_work);
 }
 #else
 // in the ATLAS case, these are not implemented using a library and we back off to something else.

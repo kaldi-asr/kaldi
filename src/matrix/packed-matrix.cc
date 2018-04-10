@@ -67,8 +67,9 @@ inline void PackedMatrix<Real>::Init(MatrixIndexT r) {
   }
 
   void *data;  // aligned memory block
+  void *temp;
 
-  if ((data = aligned_alloc(16, size * sizeof(Real))) != NULL) {
+  if ((data = KALDI_MEMALIGN(16, size * sizeof(Real), &temp)) != NULL) {
     this->data_ = static_cast<Real *> (data);
     this->num_rows_ = r;
   } else {
@@ -225,7 +226,7 @@ Real PackedMatrix<Real>::Trace() const {
 template<typename Real>
 void PackedMatrix<Real>::Destroy() {
   // we need to free the data block if it was defined
-  if (data_ != NULL) free(data_);
+  if (data_ != NULL) KALDI_MEMALIGN_FREE(data_);
   data_ = NULL;
   num_rows_ = 0;
 }

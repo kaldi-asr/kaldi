@@ -91,7 +91,7 @@ void CuPackedMatrix<Real>::Destroy() {
   } else
 #endif
   {
-    if (this->data_ != NULL) free(this->data_);
+    if (this->data_ != NULL) KALDI_MEMALIGN_FREE(this->data_);
   }
   this->data_ = NULL;
   this->num_rows_ = 0;
