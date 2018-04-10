@@ -82,6 +82,12 @@ elif [ -f $data/wav.scp ]; then
       echo "... perturb_data_dir_speed_3way.sh."
     fi
 
+
+    num_utts=$(wc -l <$data/utt2spk)
+    if [ $nj -gt $num_utts ]; then
+      nj=$num_utts
+    fi
+
     utils/data/split_data.sh --per-utt $data $nj
     sdata=$data/split${nj}utt
 

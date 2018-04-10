@@ -1,20 +1,21 @@
 #!/bin/bash
 
-# chainali_1b is as chainali_1a except it has 3 more cnn layers and 1 less tdnn layer.
+# e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
+# lattice alignments and to build a tree
 
-# local/chain/compare_wer.sh exp/chain/cnn_1a/ exp/chain/cnn_chainali_1b/
-# System                         cnn_1a cnn_chainali_1b
-# WER                             18.58     14.67
-# CER                             10.17      7.31
-# Final train prob              -0.0122    0.0042
-# Final valid prob              -0.0999   -0.0256
-# Final train prob (xent)       -0.5652   -0.6282
-# Final valid prob (xent)       -0.9758   -0.9096
-# Parameters                      4.36M     3.96M
+# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a exp/chain/cnn_chainali_1c exp/chain/cnn_e2eali_1a
+# System                      e2e_cnn_1a cnn_chainali_1c cnn_e2eali_1a
+# WER                             14.05     13.14     12.79
+# CER                              6.59      6.40      5.73
+# Final train prob              -0.0349   -0.0260   -0.0556
+# Final valid prob              -0.0595   -0.0451   -0.0795
+# Final train prob (xent)                 -0.9993   -0.9178
+# Final valid prob (xent)                 -1.1549   -1.0604
+# Parameters                      9.13M     3.97M     3.95M
 
-# steps/info/chain_dir_info.pl exp/chain/chainali_cnn_1b/
-# exp/chain/chainali_cnn_1b/: num-iters=21 nj=2..4 num-params=4.0M dim=40->364 combine=-0.009->-0.005 xent:train/valid[13,20,final]=(-1.47,-0.728,-0.623/-1.69,-1.02,-0.940) logprob:train/valid[13,20,final]=(-0.068,-0.030,-0.011/-0.086,-0.056,-0.038)
 
+# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1a
+# exp/chain/cnn_e2eali_1a: num-iters=21 nj=2..4 num-params=4.0M dim=40->360 combine=-0.056->-0.056 (over 1) xent:train/valid[13,20,final]=(-1.47,-0.978,-0.918/-1.54,-1.10,-1.06) logprob:train/valid[13,20,final]=(-0.106,-0.065,-0.056/-0.113,-0.086,-0.079)
 
 set -e -o pipefail
 
@@ -22,12 +23,9 @@ stage=0
 
 nj=30
 train_set=train
-gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
-                # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-ali=tri3_ali
-chain_model_dir=exp/chain${nnet3_affix}/cnn_1a
+affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+e2echain_model_dir=exp/chain/e2e_cnn_1a
 common_egs_dir=
 reporting_email=
 
@@ -35,7 +33,6 @@ reporting_email=
 train_stage=-10
 xent_regularize=0.1
 frame_subsampling_factor=4
-alignment_subsampling_factor=1
 # training chunk-options
 chunk_width=340,300,200,100
 num_leaves=500
@@ -45,7 +42,7 @@ chunk_right_context=0
 tdnn_dim=450
 # training options
 srand=0
-remove_egs=false
+remove_egs=true
 lang_test=lang_unk
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -64,21 +61,17 @@ where "nvcc" is installed.
 EOF
 fi
 
-gmm_dir=exp/${gmm}
-ali_dir=exp/${ali}
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain
-gmm_lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
-dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
+ali_dir=exp/chain/e2e_ali_train
+lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats
+dir=exp/chain${nnet3_affix}/cnn_e2eali${affix}
 train_data_dir=data/${train_set}
-tree_dir=exp/chain${nnet3_affix}/tree_chain
+tree_dir=exp/chain${nnet3_affix}/tree_e2e
 
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
 lang=data/lang_chain
-for f in $train_data_dir/feats.scp \
-    $train_data_dir/feats.scp $gmm_dir/final.mdl \
-    $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
+for f in $train_data_dir/feats.scp $ali_dir/ali.1.gz $ali_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -111,8 +104,8 @@ if [ $stage -le 2 ]; then
   # use the same num-jobs as the alignments
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            ${train_data_dir} data/lang $chain_model_dir $lat_dir
-  cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
+                            ${train_data_dir} data/lang $e2echain_model_dir $lat_dir
+  echo "" >$lat_dir/splice_opts
 fi
 
 if [ $stage -le 3 ]; then
@@ -120,12 +113,14 @@ if [ $stage -le 3 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-   if [ -f $tree_dir/final.mdl ]; then
-     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-     exit 1;
+  if [ -f $tree_dir/final.mdl ]; then
+    echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+    exit 1;
   fi
+
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
+    --alignment-subsampling-factor 1 \
     --context-opts "--context-width=2 --central-position=1" \
     --cmd "$cmd" $num_leaves ${train_data_dir} \
     $lang $ali_dir $tree_dir
@@ -138,9 +133,12 @@ if [ $stage -le 4 ]; then
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
-  common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
+  cnn_opts="l2-regularize=0.075"
+  tdnn_opts="l2-regularize=0.075"
+  output_opts="l2-regularize=0.1"
+  common1="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
+  common2="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
+  common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
@@ -152,13 +150,13 @@ if [ $stage -le 4 ]; then
   conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn6 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
   conv-relu-batchnorm-layer name=cnn7 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
-  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim
-  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
-  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $tdnn_opts
+  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
+  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $tdnn_opts
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -169,8 +167,8 @@ if [ $stage -le 4 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5 $tdnn_opts
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5 $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -191,7 +189,9 @@ if [ $stage -le 5 ]; then
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=500" \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
-    --chain.alignment-subsampling-factor=$alignment_subsampling_factor \
+    --chain.alignment-subsampling-factor=1 \
+    --chain.left-tolerance 3 \
+    --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
