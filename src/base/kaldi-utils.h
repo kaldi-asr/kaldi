@@ -46,6 +46,20 @@
 #endif
 #endif
 
+#if defined(_MSC_VER)
+#  define KALDI_MEMALIGN(align, size, pp_orig) \
+  (*(pp_orig) = _aligned_malloc(size, align))
+#  define KALDI_MEMALIGN_FREE(x) _aligned_free(x)
+#elif defined(__CYGWIN__)
+#  define KALDI_MEMALIGN(align, size, pp_orig) \
+  (*(pp_orig) = aligned_alloc(align, size))
+#  define KALDI_MEMALIGN_FREE(x) free(x)
+#else
+#  define KALDI_MEMALIGN(align, size, pp_orig) \
+     (!posix_memalign(pp_orig, align, size) ? *(pp_orig) : NULL)
+#  define KALDI_MEMALIGN_FREE(x) free(x)
+#endif
+
 #ifdef __ICC
 #pragma warning(disable: 383)  // ICPC remark we don't want.
 #pragma warning(disable: 810)  // ICPC remark we don't want.
@@ -124,7 +138,7 @@ template<> class KaldiCompileTimeAssert<true> {
   KaldiCompileTimeAssert<std::numeric_limits<F>::is_specialized \
                 && !std::numeric_limits<F>::is_integer>::Check()
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #define KALDI_STRCASECMP _stricmp
 #elif defined(__CYGWIN__)
 #include <strings.h>
