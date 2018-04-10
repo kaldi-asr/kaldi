@@ -1,43 +1,8 @@
 #!/bin/bash
-# 1e
-# lower number of epochs to 7 from 10 (avoid overfitting?)
+# 1b
+# compare with 1a
+# ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b
 
-# compare with 1d
-# ./local/chain/compare_wer.sh exp/chain/tdnn1d_sp exp/chain/tdnn1e_sp
-# System                tdnn1d_sp tdnn1e_sp
-#WER devtest       52.78     52.21
-#WER native       55.32     53.43
-#nonnative     64.35     61.03
-# test       60.28     57.70
-# Final train prob        -0.0229   -0.0250
-# Final valid prob        -0.0683   -0.0678
-# Final train prob (xent)   -0.7525   -0.7887
-# Final valid prob (xent)   -1.0296   -1.0419
-
-# info
-#exp/chain/tdnn1e_sp:
-# num-iters=105
-# nj=1..1
-# num-params=6.6M
-# dim=40+100->1392
-# combine=-0.036->-0.033
-# xent:train/valid[69,104,final]=(-1.20,-0.917,-0.789/-1.35,-1.16,-1.04)
-# logprob:train/valid[69,104,final]=(-0.049,-0.030,-0.025/-0.082,-0.075,-0.068)
-
-# Word Error Rates on folds
-#%WER 61.03 [ 5624 / 9215, 630 ins, 727 del, 4267 sub ] exp/chain/tdnn1e_sp/decode_nonnative/wer_8_1.0
-#%WER 57.70 [ 9644 / 16713, 1249 ins, 1040 del, 7355 sub ] exp/chain/tdnn1e_sp/decode_test/wer_7_1.0
-#%WER 53.43 [ 4006 / 7498, 558 ins, 408 del, 3040 sub ] exp/chain/tdnn1e_sp/decode_native/wer_7_1.0
-#%WER 52.21 [ 3994 / 7650, 585 ins, 456 del, 2953 sub ] exp/chain/tdnn1e_sp/decode_devtest/wer_9_1.0
-
-# | fold | 1a | 1b | 1c | 1d | 1e |
-#| devtest | 54.46 | 54.20 | 54.16 | 52.78 | 52.21 |
-#| native |  62.14 | 62.32 | 61.70 | 55.32 | 53.43 |
-#| nonnative | 70.58 | 71.20 | 71.68 | 64.35 | 61.03 |
-#| test | 66.85 | 67.21 | 67.25 | 60.28 | 57.70 |
-
-# this script came from the mini librispeech recipe
-# Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
 stage=0
@@ -51,18 +16,15 @@ tree_affix=
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
-
 num_leaves=3500
 
 # training options
 # training chunk-options
 chunk_width=140,100,160
-# we don't need extra left/right context for TDNN systems.
 chunk_left_context=0
 chunk_right_context=0
 common_egs_dir=
 xent_regularize=0.1
-
 srand=0
 remove_egs=true
 reporting_email=
