@@ -55,9 +55,10 @@ done
 
 if [ $stage -le 10 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
-  # Create a version of the lang/ directory that has one state per phone in the
-  # topo file. [note, it really has two states.. the first one is only repeated
-  # once, the second one has zero or more repeats.]
+  #  topo file has one state per phone 
+  #it really has two states
+  # the first one is only repeated once
+  # the second one has zero or more repeats
   if [ -d $lang ]; then
     if [ $lang/L.fst -nt data/lang/L.fst ]; then
       echo "$0: $lang already exists, not overwriting it; continuing"
@@ -115,9 +116,6 @@ if [ $stage -le 13 ]; then
   cat <<EOF > $dir/configs/network.xconfig
   input dim=16 name=input
 
-  # please note that it is important to have input layer with the name=input
-  # as the layer immediately preceding the fixed-affine-layer to enable
-  # the use of short notation for the descriptor
   #fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
@@ -149,7 +147,6 @@ EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
-
 if [ $stage -le 14 ]; then
   steps/nnet3/chain/train.py \
     --stage=$train_stage \
@@ -165,10 +162,11 @@ if [ $stage -le 14 ]; then
     --trainer.num-epochs=7 \
     --trainer.frames-per-iter=3000000 \
     --trainer.optimization.num-jobs-initial=1 \
-    --trainer.optimization.num-jobs-final=1 \
+    --trainer.optimization.num-jobs-final=2 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
+    --trainer.optimization.proportional-shrink=60.0 \
     --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
