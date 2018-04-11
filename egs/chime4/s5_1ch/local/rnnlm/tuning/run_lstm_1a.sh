@@ -107,14 +107,24 @@ if [ $stage -le 2 ]; then
   rnnlm/prepare_rnnlm_dir.sh $text_dir $dir/config $dir
 fi
 
+# Train model with forward data(forward model)
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 3 \
                   --stage $train_stage --num-epochs 10 --cmd "$train_cmd" $dir
 fi
 
+# Train another model with reversed data(backward model)
+if [ $stage -le 4 ]; then
+  local/rnnlm/run_lstm_back.sh --embedding-dim $embedding_dim \
+    --lstm-rpd $lstm_rpd --lstm-nrpd $lstm_nrpd \
+    --ac-model-dir ${ac_model_dir} $enhan
+fi
+
+# Since lattice-rescoring performs worse but faster than nbest-rescoring,
+# we only use it to evaluate how good our forward model is.
 LM=5gkn_5k # using the 5-gram lm from run_lmrescore_tdnn.sh
 tgtdir=${ac_model_dir}_smbr_lmrescore
-if [ $stage -le 4 ] && $run_lat_rescore; then
+if [ $stage -le 5 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
   for decode_set in dt05_real dt05_simu et05_real et05_simu; do
     decode_dir=$tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${LM}
@@ -125,8 +135,11 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
       --weight 0.8 --max-ngram-order $ngram_order \
       data/lang_test_$LM $dir \
       data/${decode_set}_${enhan}_chunked ${decode_dir} \
-      $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}
+      $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix} &
   done
+  
+  wait
+  
   # calc wers for lattice-rescoring results
   local/chime4_calc_wers.sh $tgtdir ${enhan}_${decode_dir_suffix} \
       $tgtdir/graph_tgpr_5k \
@@ -136,7 +149,7 @@ fi
 
 nbest=100
 rnnweight=0.8
-if [ $stage -le 5 ] && $run_nbest_rescore; then
+if [ $stage -le 6 ] && $run_nbest_rescore; then
   echo "$0: Perform nbest-rescoring on $ac_model_dir"
   for decode_set in dt05_real dt05_simu et05_real et05_simu; do
     decode_dir=$tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${LM}
@@ -146,8 +159,11 @@ if [ $stage -le 5 ] && $run_nbest_rescore; then
       --cmd "$train_cmd --mem 2G" --N $nbest \
       $rnnweight data/lang_test_$LM $dir \
       data/${decode_set}_${enhan}_chunked ${decode_dir} \
-      $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}
+      $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} &
   done
+  
+  wait
+  
   # calc wers for nbest-rescoring results
   local/chime4_calc_wers.sh $tgtdir ${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} \
       $tgtdir/graph_tgpr_5k \
