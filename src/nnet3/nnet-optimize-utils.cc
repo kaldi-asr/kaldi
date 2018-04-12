@@ -4950,5 +4950,126 @@ void OptimizeMemoryCompression(const Nnet &nnet,
 }
 
 
+std::shared_ptr<const NnetComputation> ComputationCache::Find(
+    const ComputationRequest &in_request) {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  CacheType::iterator iter = computation_cache_.find(&in_request);
+  if (iter == computation_cache_.end()) {
+    return NULL;
+  } else {
+    std::shared_ptr<const NnetComputation> ans = iter->second.first;
+    // Update access record by moving the accessed request to the end of the
+    // access queue, which declares that it's the most recently used.
+    access_queue_.splice(access_queue_.end(), access_queue_,
+                         iter->second.second);
+    return ans;
+  }
+}
+
+
+ComputationCache::ComputationCache(int32 cache_capacity):
+    cache_capacity_(cache_capacity) {
+  KALDI_ASSERT(cache_capacity > 0);
+}
+
+std::shared_ptr<const NnetComputation> ComputationCache::Insert(
+    const ComputationRequest &request_in,
+    const NnetComputation *computation_in) {
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (static_cast<int32>(computation_cache_.size()) >= cache_capacity_) {
+    //  Cache has reached capacity; purge the least-recently-accessed request
+    const CacheType::iterator iter =
+        computation_cache_.find(access_queue_.front());
+    KALDI_ASSERT(iter != computation_cache_.end());
+    const ComputationRequest *request = iter->first;
+    computation_cache_.erase(iter);
+    delete request;
+    // we don't need to delete the computation in iter->second.first, as the
+    // shared_ptr takes care of that automatically.
+    access_queue_.pop_front();
+  }
+
+  // Now insert the thing we need to insert.  We'll own the pointer 'request' in
+  // 'computation_cache_', so we need to allocate our own version.
+  ComputationRequest *request = new ComputationRequest(request_in);
+  // When we construct this shared_ptr, it takes ownership of the pointer
+  // 'computation_in'.
+  std::shared_ptr<const NnetComputation> computation(computation_in);
+
+  AqType::iterator ait = access_queue_.insert(access_queue_.end(), request);
+
+  std::pair<CacheType::iterator, bool> p = computation_cache_.insert(
+      std::make_pair(request, std::make_pair(computation, ait)));
+  if (!p.second) {
+    // if p.second is false, this pair was not inserted because
+    // a computation for the same computation-request already existed in
+    // the map. This is possible in multi-threaded operations, if two
+    // threads try to compile the same computation at the same time (only
+    // one of them will successfully add it).
+    // We need to erase the access-queue element that we just added, it's
+    // no longer going to be needed.
+    access_queue_.erase(ait);
+    delete request;
+  }
+  return computation;
+}
+
+
+void ComputationCache::Read(std::istream &is, bool binary) {
+  // Note: the object on disk doesn't have tokens like "<ComputationCache>"
+  // and "</ComputationCache>" for back-compatibility reasons.
+  int32 computation_cache_size;
+  ExpectToken(is, binary, "<ComputationCacheSize>");
+  ReadBasicType(is, binary, &computation_cache_size);
+  KALDI_ASSERT(computation_cache_size >= 0);
+  computation_cache_.clear();
+  access_queue_.clear();
+  ExpectToken(is, binary, "<ComputationCache>");
+  for (size_t c = 0; c < computation_cache_size; c++) {
+    ComputationRequest request;
+    request.Read(is, binary);
+    NnetComputation *computation = new NnetComputation();
+    computation->Read(is, binary);
+    Insert(request, computation);
+  }
+}
+
+void ComputationCache::Check(const Nnet &nnet) const {
+  CacheType::const_iterator iter = computation_cache_.begin(),
+      end = computation_cache_.end();
+  // We only need to explicitly delete the pointer to the ComputationRequest.
+  // The pointers to Computation are deleted automatically by std::shared_ptr
+  // when the reference count goes to zero.
+  for (; iter != end; ++iter) {
+    const NnetComputation &computation = *(iter->second.first);
+    CheckComputationOptions check_config;
+    ComputationChecker checker(check_config, nnet, computation);
+    checker.Check();
+  }
+}
+
+void ComputationCache::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ComputationCacheSize>");
+  WriteBasicType(os, binary, static_cast<int32>(computation_cache_.size()));
+  WriteToken(os, binary, "<ComputationCache>");
+  for (CacheType::const_iterator iter = computation_cache_.begin();
+           iter != computation_cache_.end(); ++iter) {
+    iter->first->Write(os, binary);
+    iter->second.first->Write(os, binary);
+  }
+}
+
+ComputationCache::~ComputationCache() {
+  CacheType::const_iterator iter = computation_cache_.begin(),
+      end = computation_cache_.end();
+  // We only need to explicitly delete the pointer to the ComputationRequest.
+  // The pointers to Computation are deleted automatically by std::shared_ptr
+  // when the reference count goes to zero.
+  for (; iter != end; ++iter)
+    delete iter->first;
+}
+
 } // namespace nnet3
 } // namespace kaldi

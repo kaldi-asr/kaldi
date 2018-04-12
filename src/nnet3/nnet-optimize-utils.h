@@ -20,8 +20,11 @@
 #ifndef KALDI_NNET3_NNET_OPTIMIZE_UTILS_H_
 #define KALDI_NNET3_NNET_OPTIMIZE_UTILS_H_
 
+#include <mutex>
+#include <list>
 #include "nnet3/nnet-compile.h"
 #include "nnet3/nnet-analyze.h"
+
 
 namespace kaldi {
 namespace nnet3 {
@@ -613,16 +616,67 @@ void OptimizeLoopedComputation(const Nnet &nnet,
 void FixGotoLabel(NnetComputation *computation);
 
 
-/*
+/// Class ComputationCache is used inside class CachingOptimizingCompiler to
+/// cache previously computed computations.  The code was moved from class
+/// CachingOptimizingCompiler to this separate class for clarity when adding
+/// thread-safety functionality.
+/// It's OK to call Find() and Insert() from multiple threads without
+/// additional synchronization.
+class ComputationCache {
+ public:
+  ComputationCache(int32 cache_capacity);
 
-   Possible TODO:
-      optimizations to replace row-by-row copy and add commands with whole-matrix
-      commands on smaller sub-matrices (if the row-by-row copy commands have certain
-      regularities).  this is a minor issue, we can handle it later.  We have to be
-      careful if this causes sub-matrices to overlap.
+  // Note: if something fails in Read(), or the written cache was from an older
+  // format, it will just leave the cache empty.
+  void Read(std::istream &is, bool binary);
 
- */
+  void Write(std::ostream &os, bool binary) const;
 
+
+  // Searches for the computation corresponding to this computation, and returns
+  // it if cached, or NULL (as std::shared_ptr) if not.  (We need shared_ptr to
+  // handle multi-threaded operation, so that if the computation is ejected from
+  // the cache by another thread, it won't be deleted while still in use).  This
+  // function also moves this computation to the end of the
+  // most-recently-accessed queue, which is why it's not const.
+  std::shared_ptr<const NnetComputation> Find(const ComputationRequest &request);
+
+
+  // Inserts the computation into the cache-- this is assumed to be the
+  // computation for the computation-request 'request'.  Returns a shared_ptr
+  // which can be used to access the object.  This function takes ownership of
+  // 'computation'.
+  std::shared_ptr<const NnetComputation> Insert(const ComputationRequest &request,
+                                                const NnetComputation *computation);
+
+  ~ComputationCache();
+
+  // Checks the stored computation for correctness.
+  void Check(const Nnet &nnet) const;
+ private:
+
+  std::mutex mutex_;  // Read/write mutex.
+
+  int32 cache_capacity_;
+
+  // The access queue for keeping track of the freshness of computation.
+  // Most-recently-accessed computation is at the end, and
+  // least-recently-accessed computaiton is at the beginning.  Together with
+  // computation_cache_, this forms a most-recently-used (MRU) cache for
+  // Computations, indexed by ComputationRequest. The pointers are owned in
+  // computation_cache_.
+  typedef std::list<const ComputationRequest*> AqType;
+  AqType access_queue_;
+
+  // Map from computation-request to pair of (computation, and position in
+  // access_queue_). Used for fast lookup of previously compiled computations.
+  // All pointers are owned here.
+  typedef unordered_map<const ComputationRequest*,
+                        std::pair<std::shared_ptr<const NnetComputation>, AqType::iterator>,
+                        ComputationRequestHasher,
+                        ComputationRequestPtrEqual> CacheType;
+  CacheType computation_cache_;
+};
 
 
 

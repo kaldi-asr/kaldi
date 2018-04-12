@@ -21,7 +21,6 @@ iam_database=/export/corpora5/handwriting_ocr/IAM
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
 
-
 ./local/check_tools.sh
 
 if [ $stage -le 0 ]; then
@@ -42,21 +41,35 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  echo "$0: Preparing dictionary and lang..."
-  local/prepare_dict.sh
-  local/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
-                        data/local/dict "<unk>" data/lang/temp data/lang
+  echo "$0: Estimating a language model for decoding..."
+  # We do this stage before dict preparation because prepare_dict.sh
+  # generates the lexicon from pocolm's wordlist
+  local/train_lm.sh --vocab-size 50k
 fi
 
 if [ $stage -le 3 ]; then
-  echo "$0: Estimating a language model for decoding..."
-  local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_big.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang_test
+  echo "$0: Preparing dictionary and lang..."
 
-  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 10000 data/local/dict exp/unk_lang_model
-  local/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
-                        --unk-fst exp/unk_lang_model/unk_fst.txt data/local/dict "<unk>" data/lang/temp data/lang_unk
+  # This is for training. Use a large vocab size, e.g. 500k to include all the
+  # training words:
+  local/prepare_dict.sh --vocab-size 500k --dir data/local/dict  # this is for training
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
+                        data/local/dict "<unk>" data/lang/temp data/lang
+
+  # This is for decoding. We use a 50k lexicon to be consistent with the papers
+  # reporting WERs on IAM:
+  local/prepare_dict.sh --vocab-size 50k --dir data/local/dict_50k  # this is for decoding
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
+                        data/local/dict_50k "<unk>" data/lang_test/temp data/lang_test
+  utils/format_lm.sh data/lang_test data/local/local_lm/data/arpa/3gram_big.arpa.gz \
+                     data/local/dict_50k/lexicon.txt data/lang_test
+
+  echo "$0: Preparing the unk model for open-vocab decoding..."
+  utils/lang/make_unk_lm.sh --ngram-order 4 --num-extra-ngrams 7500 \
+                            data/local/dict_50k exp/unk_lang_model
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 \
+                        --unk-fst exp/unk_lang_model/unk_fst.txt \
+                        data/local/dict_50k "<unk>" data/lang_unk/temp data/lang_unk
   cp data/lang_test/G.fst data/lang_unk/G.fst
 fi
 
@@ -128,5 +141,5 @@ if [ $stage -le 13 ]; then
 fi
 
 if [ $stage -le 14 ]; then
-  local/chain/run_cnn_chainali_1b.sh --lang-test lang_unk --chain-model-dir exp/chain/cnn_1a --stage 2
+  local/chain/run_cnn_chainali_1c.sh --chain-model-dir exp/chain/cnn_1a --stage 2
 fi

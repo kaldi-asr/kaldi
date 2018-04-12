@@ -44,7 +44,7 @@ BaseFloat RnnlmCoreComputer::Compute(
                              store_component_stats,
                              &request);
 
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   NnetComputeOptions compute_opts;
 

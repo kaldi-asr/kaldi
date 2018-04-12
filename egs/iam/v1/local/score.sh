@@ -2,7 +2,9 @@
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
 # Apache 2.0
 
-# See the script steps/scoring/score_kaldi_cer.sh in case you need to evalutate CER
+# This script is like steps/scoring/score_kaldi_wer.sh except it transcribes the <unk>'s
+# using local/unk_arc_post_to_transcription.py and also it calls
+# steps/scoring/score_kaldi_cer.sh at the end.
 
 [ -f ./path.sh ] && . ./path.sh
 
@@ -13,8 +15,13 @@ decode_mbr=false
 stats=true
 beam=6
 word_ins_penalty=0.0,0.5,1.0
+<<<<<<< HEAD
 min_lmwt=7
 max_lmwt=17
+=======
+min_lmwt=3
+max_lmwt=13
+>>>>>>> upstream/master
 iter=final
 #end configuration section.
 
@@ -90,9 +97,14 @@ if [ $stage -le 0 ]; then
 
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/score.LMWT.log \
       cat $dir/scoring_kaldi/penalty_$wip/LMWT.txt \| \
+<<<<<<< HEAD
       tr '[:upper:]' '[:lower:]' \| \
       compute-wer --text --mode=present \
       "ark:cat $dir/scoring_kaldi/test_filt.txt| tr '[:upper:]' '[:lower:]' |" ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
+=======
+      compute-wer --text --mode=present \
+      "ark:cat $dir/scoring_kaldi/test_filt.txt |" ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
+>>>>>>> upstream/master
 
   done
 fi
@@ -141,7 +153,9 @@ if [ $stage -le 1 ]; then
   fi
 fi
 
-steps/scoring/score_kaldi_cer.sh --cmd "$cmd" --stage 2 $data $lang_or_graph $dir
+steps/scoring/score_kaldi_cer.sh --cmd "$cmd" --stage 2 --min-lmwt $min_lmwt \
+                                 --max-lmwt $max_lmwt --word-ins-penalty $word_ins_penalty \
+                                 $data $lang_or_graph $dir
 
 # If we got here, the scoring was successful.
 # As a  small aid to prevent confusion, we remove all wer_{?,??} files;

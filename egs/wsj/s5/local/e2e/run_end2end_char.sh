@@ -34,10 +34,10 @@ wsj1=/export/corpora5/LDC/LDC94S13B
 # _char for character-based dictionary and lang directories.
 
 if [ $stage -le 0 ]; then
-  [[ -f data/train_si284/text ]] || \
+  [[ -d data/local/data ]] || \
     local/wsj_data_prep.sh $wsj0/??-{?,??}.? $wsj1/??-{?,??}.?
   [[ -f data/local/dict_nosp/lexicon.txt ]] || \
-    local/wsj_prepare_phn_dict.sh --dict-suffix "_nosp"
+    local/wsj_prepare_dict.sh --dict-suffix "_nosp"
 
   local/wsj_prepare_char_dict.sh
   utils/prepare_lang.sh data/local/dict_char \
@@ -105,7 +105,7 @@ if [ $stage -le 5 ]; then
   mkdir -p exp/chain/e2e_base/log
   $train_cmd exp/chain/e2e_base/log/make_char_lm.log \
   cat data/$trainset/text \| \
-    steps/nnet3/chain/e2e/text_to_phones.py data/lang_char data/local/dict_char/lexicon.txt \| \
+    steps/nnet3/chain/e2e/text_to_phones.py data/lang_char \| \
     utils/sym2int.pl -f 2- data/lang_char/phones.txt \| \
     chain-est-phone-lm --num-extra-lm-states=2000 \
                        ark:- exp/chain/e2e_base/char_lm.fst

@@ -218,6 +218,7 @@ fi
 decode_suff=fsh_sw1_tg
 graph_dir=$dir/graph_fsh_sw1_tg
 if [ $stage -le 15 ]; then
+  rm $dir/.error 2>/dev/null || true
   if [ ! -z $decode_iter ]; then
     iter_opts=" --iter $decode_iter "
   fi
@@ -228,13 +229,16 @@ if [ $stage -le 15 ]; then
           --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
          $graph_dir data/${decode_set}_hires \
          $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_${decode_suff} || exit 1;
-      if $has_fisher; then
-          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
             data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
             $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
-      fi
-      ) &
+      ) || touch $dir/.error &
   done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
 fi
 
 test_online_decoding=true
@@ -256,11 +260,9 @@ if $test_online_decoding && [ $stage -le 16 ]; then
           --acwt 1.0 --post-decode-acwt 10.0 \
          $graph_dir data/${decode_set}_hires \
          ${dir}_online/decode_${decode_set}${decode_iter:+_$decode_iter}_${decode_suff} || exit 1;
-      if $has_fisher; then
-	      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+	    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
 		      data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
 		      ${dir}_online/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
-      fi
     ) || touch $dir/.error &
   done
   wait

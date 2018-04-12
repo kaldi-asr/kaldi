@@ -44,7 +44,7 @@ static void RunNnetComputation(const MatrixBase<BaseFloat> &features,
   output_spec.indexes.resize(1);
   request.outputs.resize(1);
   request.outputs[0].Swap(&output_spec);
-  const NnetComputation *computation = compiler->Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler->Compile(request);
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(NnetComputeOptions(), *computation,
                   nnet, nnet_to_update);
@@ -91,6 +91,8 @@ int main(int argc, char *argv[]) {
     Timer timer;
 
     NnetSimpleComputationOptions opts;
+    CachingOptimizingCompilerOptions compiler_config;
+
     opts.acoustic_scale = 1.0; // by default do no scaling in this recipe.
 
     std::string use_gpu = "no";
@@ -98,6 +100,8 @@ int main(int argc, char *argv[]) {
       min_chunk_size = 100;
 
     opts.Register(&po);
+    compiler_config.Register(&po);
+
     po.Register("use-gpu", &use_gpu,
       "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("chunk-size", &chunk_size,
@@ -127,7 +131,7 @@ int main(int argc, char *argv[]) {
     SetDropoutTestMode(true, &nnet);
     CollapseModel(CollapseModelConfig(), &nnet);
 
-    CachingOptimizingCompiler compiler(nnet, opts.optimize_config);
+    CachingOptimizingCompiler compiler(nnet, opts.optimize_config, compiler_config);
 
     BaseFloatVectorWriter vector_writer(vector_wspecifier);
 
