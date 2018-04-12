@@ -187,7 +187,7 @@ fi
 if [ $stage -le 7 ]; then
   echo "$0: doing average on forward and backward scores."
   for n in `seq $nj`; do
-    paste $adir.$n/lmwt.rnn $adir.$n/lmwt.rnn_back | awk '{print $1, $2 * 0.5 + $2 * 0.5}' \
+    paste $adir.$n/lmwt.rnn $adir.$n/lmwt.rnn_back | awk -F' ' '{print $1,$2 * 0.5 + $4 * 0.5}' \
     > $adir.$n/lmwt.rnn_bi
   done
 fi
