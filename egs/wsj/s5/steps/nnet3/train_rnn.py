@@ -168,9 +168,6 @@ def process_args(args):
                         "directory which is the output of "
                         "make_configs.py script")
 
-    if args.transform_dir is None:
-        args.transform_dir = args.ali_dir
-
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
     if args.use_gpu in ["true", "false"]:
@@ -296,7 +293,6 @@ def train(args, run_opts):
             cmvn_opts=args.cmvn_opts,
             online_ivector_dir=args.online_ivector_dir,
             samples_per_iter=args.samples_per_iter,
-            transform_dir=args.transform_dir,
             stage=args.egs_stage)
 
     if args.egs_dir is None:
