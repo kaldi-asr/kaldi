@@ -7,6 +7,7 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = online2-wav-gmm-latgen-faster apply-cmvn-online \
+     online2-audio-nnet2-latgen-faster online2-audio-nnet3-latgen-faster \
      extend-wav-with-silence compress-uncompress-speex \
      online2-wav-nnet2-latgen-faster ivector-extract-online2 \
      online2-wav-dump-features ivector-randomize \
