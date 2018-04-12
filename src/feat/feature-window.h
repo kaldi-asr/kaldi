@@ -86,7 +86,7 @@ struct FrameExtractionOptions {
                    "frame-length.  If false, the number of frames depends only on the "
                    "frame-shift, and we reflect the data at the ends.");
     opts->Register("allow-downsample", &allow_downsample,
-                   "If true, allow the input waveform to have a higher frequency than"
+                   "If true, allow the input waveform to have a higher frequency than "
                    "the specified --sample-frequency (and we'll downsample).");
   }
   int32 WindowShift() const {
