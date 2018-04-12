@@ -15,13 +15,8 @@ decode_mbr=false
 stats=true
 beam=6
 word_ins_penalty=0.0,0.5,1.0
-<<<<<<< HEAD
-min_lmwt=7
-max_lmwt=17
-=======
 min_lmwt=3
 max_lmwt=13
->>>>>>> upstream/master
 iter=final
 #end configuration section.
 
@@ -97,14 +92,8 @@ if [ $stage -le 0 ]; then
 
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/score.LMWT.log \
       cat $dir/scoring_kaldi/penalty_$wip/LMWT.txt \| \
-<<<<<<< HEAD
-      tr '[:upper:]' '[:lower:]' \| \
-      compute-wer --text --mode=present \
-      "ark:cat $dir/scoring_kaldi/test_filt.txt| tr '[:upper:]' '[:lower:]' |" ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
-=======
       compute-wer --text --mode=present \
       "ark:cat $dir/scoring_kaldi/test_filt.txt |" ark,p:- ">&" $dir/wer_LMWT_$wip || exit 1;
->>>>>>> upstream/master
 
   done
 fi
