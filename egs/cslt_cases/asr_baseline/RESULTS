@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Obtained by Zhiyuan Tang in April 2018.
+
+for dir in exp/{mono,tri1,tri2b,tri3b,tri4b,nnet3/{tdnn,tdnn_mmi}}; do
+  grep WER $dir/*/wer_* | utils/best_wer.sh
+done
+
+exit 0
+
+%WER 50.61 [ 41068 / 81139, 502 ins, 2310 del, 38256 sub ] exp/mono/decode_test_word/wer_8_0.5
+%WER 36.00 [ 29206 / 81139, 536 ins, 1055 del, 27615 sub ] exp/tri1/decode_test_word/wer_10_0.0
+%WER 32.41 [ 26297 / 81139, 452 ins, 1020 del, 24825 sub ] exp/tri2b/decode_test_word/wer_10_0.0
+%WER 29.57 [ 23993 / 81139, 419 ins, 866 del, 22708 sub ] exp/tri3b/decode_test_word/wer_10_0.0
+%WER 28.01 [ 22724 / 81139, 401 ins, 787 del, 21536 sub ] exp/tri4b/decode_test_word/wer_11_0.0
+%WER 23.29 [ 18894 / 81139, 315 ins, 793 del, 17786 sub ] exp/nnet3/tdnn/decode_test_word/wer_8_0.0
+%WER 23.27 [ 18884 / 81139, 347 ins, 726 del, 17811 sub ] exp/nnet3/tdnn_mmi/decode_test_word/wer_8_0.0

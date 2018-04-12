@@ -7,12 +7,13 @@
 !/src/*/Makefile
 !/src/*/README
 
-# Handbook
+# handbook
 /egs/cslt_cases/speech_book
 
 # output
-/egs/cslt_cases/*/data
-/egs/cslt_cases/*/exp
+/egs/cslt_cases/*/data*
+/egs/cslt_cases/*/exp*
+*.log
 
 # mac store file
 .DS_Store

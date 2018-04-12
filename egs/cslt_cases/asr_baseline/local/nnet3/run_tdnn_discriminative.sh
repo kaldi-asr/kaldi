@@ -35,7 +35,14 @@ fi
 
 srcdir=$1
 train_data_dir=$2
+
 online_ivector_dir=
+if [ -z "$online_ivector_dir" ]; then
+  ivector_opt=""
+else
+  ivector_opt="--online-ivector-dir $online_ivector_dir"
+fi
+
 degs_dir=                     # If provided, will skip the degs directory creation
 lats_dir=                     # If provided, will skip denlats creation
 
@@ -81,8 +88,7 @@ if [ $stage -le 1 ]; then
   # get excellent GPU utilization though.]
   nj=100 # have a high number of jobs because this could take a while, and we might
          # have some stragglers.
-  steps/nnet3/align.sh  --cmd "$decode_cmd" --use-gpu false \
-    --online-ivector-dir $online_ivector_dir \
+  steps/nnet3/align.sh --cmd "$decode_cmd" --use-gpu false $ivector_opt \
      --nj $nj $train_data_dir data/lang $srcdir ${srcdir}_ali ;
 
 fi
@@ -90,14 +96,13 @@ fi
 if [ -z "$lats_dir" ]; then
   lats_dir=${srcdir}_denlats
   if [ $stage -le 2 ]; then
-    nj=50
+    nj=8
     # this doesn't really affect anything strongly, except the num-jobs for one of
     # the phases of get_egs_discriminative.sh below.
-    num_threads_denlats=6
-    subsplit=40 # number of jobs that run per job (but 2 run at a time, so total jobs is 80, giving
-    # total slots = 80 * 6 = 480.
-    steps/nnet3/make_denlats.sh --cmd "$decode_cmd" --determinize true \
-      --online-ivector-dir $online_ivector_dir \
+    num_threads_denlats=1
+    subsplit=4 # number of jobs that run per job (but 2 run at a time, so total jobs is 8, giving
+    # total slots = 8 * 1 = 8.
+    steps/nnet3/make_denlats.sh --cmd "$decode_cmd" --determinize true $ivector_opt \
       --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode_dnn.config \
       $train_data_dir data/lang $srcdir ${lats_dir} ;
   fi
@@ -128,8 +133,8 @@ if [ -z "$degs_dir" ]; then
     if [ -d ${srcdir}_degs/storage ]; then max_jobs=10; else max_jobs=5; fi
 
     steps/nnet3/get_egs_discriminative.sh \
-      --cmd "$decode_cmd --max-jobs-run $max_jobs --mem 20G" --stage $get_egs_stage --cmvn-opts "$cmvn_opts" \
-      --online-ivector-dir $online_ivector_dir \
+      --cmd "$decode_cmd --max-jobs-run $max_jobs" --stage $get_egs_stage --cmvn-opts "$cmvn_opts" \
+      $ivector_opt \
       --left-context $left_context --right-context $right_context \
       $frame_subsampling_opt \
       --frames-per-eg $frames_per_eg --frames-overlap-per-eg $frames_overlap_per_eg \
@@ -138,7 +143,7 @@ if [ -z "$degs_dir" ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  steps/nnet3/train_discriminative.sh --cmd "$decode_cmd" \
+  steps/nnet3/train_discriminative.sh --cmd "$cuda_cmd" \
     --stage $train_stage \
     --effective-lrate $effective_learning_rate --max-param-change $max_param_change \
     --criterion $criterion --drop-frames true \

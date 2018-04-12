@@ -396,7 +396,7 @@ if [ $stage -le 6 ]; then
   done
 
   if [ $archives_multiple == 1 ]; then # normal case.
-    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
+    $cmd --max-jobs-run $max_shuffle_jobs_run JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-discriminative-shuffle-egs --srand=JOB "ark:cat $degs_list|" ark:$dir/degs.JOB.ark  || exit 1;
   else
     # we need to shuffle the 'intermediate archives' and then split into the
@@ -412,7 +412,7 @@ if [ $stage -le 6 ]; then
         ln -sf degs.$archive_index.ark $dir/degs.$x.$y.ark || exit 1
       done
     done
-    $cmd --max-jobs-run $max_shuffle_jobs_run --mem 8G JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
+    $cmd --max-jobs-run $max_shuffle_jobs_run JOB=1:$num_archives_intermediate $dir/log/shuffle.JOB.log \
       nnet3-discriminative-shuffle-egs --srand=JOB "ark:cat $degs_list|" ark:- \| \
       nnet3-discriminative-copy-egs ark:- $output_archives || exit 1;
   fi

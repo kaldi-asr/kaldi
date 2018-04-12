@@ -79,7 +79,7 @@ if [ $stage -le 2 ]; then
     --trainer.num-epochs=3 \
     --trainer.samples-per-iter=400000 \
     --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=10 \
+    --trainer.optimization.num-jobs-final=2 \
     --trainer.optimization.initial-effective-lrate=0.0015 \
     --trainer.optimization.final-effective-lrate=0.00015 \
     --trainer.optimization.minibatch-size=256,128 \

@@ -175,7 +175,7 @@ option num_threads=1  # Do not add anything to qsub_opts
 option max_jobs_run=* -tc $0
 default gpu=0
 option gpu=0
-option gpu=* -l gpu=$0 -q g.q
+option gpu=*
 EOF
 
 # Here the configuration options specified by the user on the command line
@@ -275,7 +275,7 @@ for my $option (keys %cli_options) {
     $qsub_opts .= "$cli_config_options{$option} ";
   } else {
     if ($opened_config_file == 0) { $config = "default config file"; }
-    die "queue.pl: Command line option $option not described in $config (or value '$value' not allowed)\n";
+    #die "queue.pl: Command line option $option not described in $config (or value '$value' not allowed)\n";
   }
 }
 

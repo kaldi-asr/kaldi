@@ -1,22 +1,24 @@
 #!/bin/bash
-# Copyright 2016  Tsinghua University (Author: Dong Wang, Xuewei Zhang).  Apache 2.0.
+# Copyright 2016  Tsinghua University (Author: Dong Wang, Xuewei Zhang). Apache 2.0.
 #           2016  LeSpeech (Author: Xingyu Na)
 
-#This script pepares the data directory for thchs30 recipe. 
-#It reads the corpus and get wav.scp and transcriptions.
+# This script pepares the data directory for thchs30 recipe. 
+# It reads the corpus and get wav.scp and transcriptions.
+
 
 corpus_dir=$1
+dir=`pwd`
 
 
-
-echo "creating data/{train,test}"
+echo "creating data/{train,test}, ignore dev set"
 mkdir -p data/{train,test}
 
-#create wav.scp, utt2spk.scp, spk2utt.scp, text
+
+# create wav.scp, utt2spk, spk2utt, text
 (
 for x in train test; do
   echo "cleaning data/$x"
-  cd data/$x
+  cd $dir/data/$x
   rm -rf wav.scp utt2spk spk2utt word.txt text
   echo "preparing scps and text in data/$x"
   for nn in `find  $corpus_dir/$x/*.wav | sort -u | xargs -i basename {} .wav`; do
