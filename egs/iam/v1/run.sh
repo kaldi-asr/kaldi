@@ -7,6 +7,7 @@
 set -e
 stage=0
 nj=20
+decode_gmm=false
 username=
 password=
 # iam_database points to the database path on the JHU grid. If you have not
@@ -78,12 +79,12 @@ if [ $stage -le 4 ]; then
     data/lang exp/mono
 fi
 
-#if [ $stage -le 5 ]; then
-#  utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
-#
-#  steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
-#    exp/mono/decode_test
-#fi
+if [ $stage -le 5 ] && $decode_gmm; then
+  utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
+    exp/mono/decode_test
+fi
 
 if [ $stage -le 6 ]; then
   steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
@@ -93,12 +94,12 @@ if [ $stage -le 6 ]; then
     exp/mono_ali exp/tri
 fi
 
-#if [ $stage -le 7 ]; then
-#  utils/mkgraph.sh data/lang_test exp/tri exp/tri/graph
-#
-#  steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test \
-#    exp/tri/decode_test
-#fi
+if [ $stage -le 7 ] && $decode_gmm; then
+  utils/mkgraph.sh data/lang_test exp/tri exp/tri/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test \
+    exp/tri/decode_test
+fi
 
 if [ $stage -le 8 ]; then
   steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
@@ -109,12 +110,12 @@ if [ $stage -le 8 ]; then
     data/train data/lang exp/tri_ali exp/tri2
 fi
 
-#if [ $stage -le 9 ]; then
-#  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
-#
-#  steps/decode.sh --nj $nj --cmd $cmd exp/tri2/graph \
-#    data/test exp/tri2/decode_test
-#fi
+if [ $stage -le 9 ] && $decode_gmm; then
+  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/tri2/graph \
+    data/test exp/tri2/decode_test
+fi
 
 if [ $stage -le 10 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
@@ -124,12 +125,12 @@ if [ $stage -le 10 ]; then
     data/train data/lang exp/tri2_ali exp/tri3
 fi
 
-#if [ $stage -le 11 ]; then
-#  utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
-#
-#  steps/decode_fmllr.sh --nj $nj --cmd $cmd exp/tri3/graph \
-#    data/test exp/tri3/decode_test
-#fi
+if [ $stage -le 11 ] && $decode_gmm; then
+  utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
+
+  steps/decode_fmllr.sh --nj $nj --cmd $cmd exp/tri3/graph \
+    data/test exp/tri3/decode_test
+fi
 
 if [ $stage -le 12 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
