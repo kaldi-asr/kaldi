@@ -186,18 +186,19 @@ int main(int argc, char *argv[]) {
     TransitionModel trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
-    /*
-    ConstArpaLm old_lm;
-    ReadKaldiObject(old_lm_fst_rxfilename, &old_lm);
-    ConstArpaLmDeterministicFst old_lm_dfst(old_lm);
-    ApplyProbabilityScale(-1.0, old_lm_dfst); // Negate old LM probs...
-    */
+    VectorFst<StdArc> *old_lm_fst = fst::CastOrConvertToVectorFst(
+        fst::ReadFstKaldiGeneric(old_lm_fst_rxfilename));
+    ApplyProbabilityScale(-1.0, old_lm_fst); // Negate old LM probs...
+    fst::BackoffDeterministicOnDemandFst<StdArc> old_lm_dfst(*old_lm_fst);
 
     ConstArpaLm new_lm;
     ReadKaldiObject(new_lm_fst_rxfilename, &new_lm);
     ConstArpaLmDeterministicFst new_lm_dfst(new_lm);
 
-    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&new_lm_dfst);
+    fst::ComposeDeterministicOnDemandFst<StdArc> compose_dfst(&old_lm_dfst,
+                                                              &new_lm_dfst);
+
+    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&compose_dfst);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
