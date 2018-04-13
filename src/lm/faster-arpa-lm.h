@@ -73,7 +73,7 @@ class FasterArpaLm {
           Options().bos_symbol, Options().eos_symbol, Options().unk_symbol);
     }
     virtual void ConsumeNGram(const NGram& ngram) {
-      LmState *lmstate = lm_->GetHashedState(ngram.words);
+      LmState *lmstate = lm_->GetHashedState(ngram.words, true);
       assert(lmstate);
       lmstate->Allocate(&ngram, lm_scale_);
     }
@@ -124,10 +124,13 @@ class FasterArpaLm {
     }
   }
   inline LmState* GetHashedState(const std::vector<int32> &word_ids, 
-      int query_ngram_order = 0) const {
+       bool reverse = false, int query_ngram_order = 0) const {
     int32 ngram_order = query_ngram_order==0? word_ids.size(): query_ngram_order;
     int32 word_ids_arr[MAX_NGRAM];
-    for (int i=0; i<ngram_order;i++) word_ids_arr[i]=word_ids[i];
+    if (reverse)
+      for (int i=0; i<ngram_order;i++) word_ids_arr[ngram_order - i - 1]=word_ids[i];
+    else
+      for (int i=0; i<ngram_order;i++) word_ids_arr[i]=word_ids[i];
     return GetHashedState(word_ids_arr, ngram_order);
   }
 
@@ -152,14 +155,27 @@ class FasterArpaLm {
     LmState *lm_state = GetHashedState(word_ids, ngram_order);
     assert(lm_state);
     if (lm_state->IsExist()) {
+      assert(ngram_order==1 || GetHashedState(word_ids, ngram_order-1)->IsExist());
       prob = lm_state->logprob_;
       o_word_ids.resize(ngram_order);
       for (int i=0; i<ngram_order; i++) {
-        o_word_ids[i] = word_ids[i];
+        o_word_ids[i] = word_ids[i]; 
+      }
+      if ( word_ids[0] == 82325 && word_ids[1]==84746) {
+        KALDI_LOG<<word_ids[0] <<" "<<ngram_order<<" "<<word_ids[ngram_order-1];
       }
     } else {
       assert(ngram_order > 1); // thus we can do backoff
       LmState *lm_state_bo = GetHashedState(word_ids + 1, ngram_order-1); 
+#if 1
+      if (!lm_state_bo->IsExist()) {
+        KALDI_WARN << ngram_order << "\t" << lm_state_bo->backoff_logprob_;
+        for (int i=0; i<ngram_order; i++) {
+          KALDI_WARN << word_ids[i];
+        }
+      }
+      assert(lm_state_bo->IsExist()); // TODO: assert will fail because some place has false-exist? 
+#endif
       prob = lm_state_bo->backoff_logprob_ + 
         GetNgramLogprob(word_ids, ngram_order - 1, o_word_ids);
     }
@@ -291,8 +307,8 @@ class FasterArpaLmDeterministicFst
     assert(n+1 <= MAX_NGRAM);
 
     word_ids[0] = ilabel;
-    for (int i=n-1; i>=0; i-- ) {
-      word_ids[n-i] = wseq[i];
+    for (int i=0; i<n; i++ ) {
+      word_ids[i+1] = wseq[i];
     }
 
     return lm_.GetNgramLogprob(word_ids, n+1, owseq);
