@@ -117,7 +117,7 @@ local/nnet3/run_tdnn.sh data/fbank/train exp/tri4b_ali $tdnn_dir
 
 # decoding
 graph_dir=exp/tri4b/graph_word # the same as gmm
-steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" $graph_dir data/fbank/test $tdnn_dir/decode_test_word
+steps/nnet3/decode.sh --nj $n --cmd "$decode_cmd" $graph_dir data/fbank/test $tdnn_dir/decode_test_word
 
 
 ###### Bookmark: discriminative training & decoding ######
@@ -127,7 +127,7 @@ criterion=mmi # mmi, mpfe or smbr
 local/nnet3/run_tdnn_discriminative.sh --criterion $criterion $tdnn_dir data/fbank/train
 
 # decoding
-steps/nnet3/decode.sh --nj 8 --cmd "$decode_cmd" $graph_dir data/fbank/test ${tdnn_dir}_$criterion/decode_test_word
+steps/nnet3/decode.sh --nj $n --cmd "$decode_cmd" $graph_dir data/fbank/test ${tdnn_dir}_$criterion/decode_test_word
 
 
 exit 0
