@@ -158,11 +158,23 @@ int main(int argc, char *argv[]) {
     Timer timer;
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
+    int32 symbol_size = 0;
     LatticeBiglmFasterDecoderConfig config;
     config.Register(&po);
 
     ArpaParseOptions arpa_options;
-    options.Register(&po);
+    arpa_options.Register(&po);
+    po.Register("symbol-size", &symbol_size, "symbol table size");
+    po.Register("unk-symbol", &arpa_options.unk_symbol,
+                "Integer corresponds to unknown-word in language model. -1 if "
+                "no such word is provided.");
+    po.Register("bos-symbol", &arpa_options.bos_symbol,
+                "Integer corresponds to <s>. You must set this to your actual "
+                "BOS integer.");
+    po.Register("eos-symbol", &arpa_options.eos_symbol,
+                "Integer corresponds to </s>. You must set this to your actual "
+                "EOS integer.");
+
 
     std::string word_syms_filename;
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
@@ -177,6 +189,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     
+    KALDI_LOG << RAND_MAX;
     std::string model_in_filename = po.GetArg(1),
         fst_in_str = po.GetArg(2),
         old_lm_fst_rxfilename = po.GetArg(3),
@@ -196,10 +209,10 @@ int main(int argc, char *argv[]) {
     ApplyProbabilityScale(-1.0, old_lm_dfst); // Negate old LM probs...
     */
 
-    FasterArpaLm old_lm(arpa_options, old_lm_fst_rxfilename, -1);
-    FasterArpaLmDeterministicFst new_lm_dfst(old_lm);
+    FasterArpaLm old_lm(arpa_options, old_lm_fst_rxfilename,  symbol_size, -1);
+    FasterArpaLmDeterministicFst old_lm_dfst(old_lm);
 
-    FasterArpaLm new_lm(arpa_options, new_lm_fst_rxfilename);
+    FasterArpaLm new_lm(arpa_options, new_lm_fst_rxfilename, symbol_size);
     FasterArpaLmDeterministicFst new_lm_dfst(new_lm);
 
     fst::ComposeDeterministicOnDemandFst<StdArc> compose_dfst(&old_lm_dfst,

@@ -31,24 +31,24 @@
 namespace kaldi {
 
 #define MAX_NGRAM 5+1
-
+#define RAND_TYPE int32
 class FasterArpaLm {
  public:
 
   // LmState in FasterArpaLm: the basic storage unit
   class LmState {
    public:
-    LmState() logprob_(0) { }
-    Allocate(NGram* ngram, float lm_scale=1): 
-    logprob_(ngram->logprob_*lm_scale), 
-    backoff_logprob_(ngram->backoff_logprob_*lm_scale) {
+    LmState(): logprob_(0) { }
+    void Allocate(const NGram* ngram, float lm_scale=1) {
+      logprob_ = ngram->logprob*lm_scale;
+      backoff_logprob_ = ngram->backoff*lm_scale;
       /*
       std::vector<int32> &word_ids = ngram->words;
       int32 ngram_order = word_ids.size();
       int32 sz= sizeof(int32)*(ngram_order);
       */
     }
-    bool IsExist() { return logprob_!=0; };
+    bool IsExist() { return logprob_!=0; }
     ~LmState() { }
 
     // for current query
@@ -62,17 +62,19 @@ class FasterArpaLm {
   class FasterArpaLmBuilder : public ArpaFileParser {
    public:
     FasterArpaLmBuilder(ArpaParseOptions &options, FasterArpaLm *lm, 
-      float lm_scale = 1): 
-    lm_(lm), lm_scale_(lm_scale) { ArpaFileParser(options, NULL); }
+      float lm_scale = 1): ArpaFileParser(options, NULL),
+    lm_(lm), lm_scale_(lm_scale) { }
     ~FasterArpaLmBuilder() { }
 
    protected:
     // ArpaFileParser overrides.
     virtual void HeaderAvailable() {
-      lm_->Allocate(NgramCounts(), Symbols());
+      lm_->Allocate(NgramCounts(), 
+          Options().bos_symbol, Options().eos_symbol, Options().unk_symbol);
     }
     virtual void ConsumeNGram(const NGram& ngram) {
       LmState *lmstate = lm_->GetHashedState(ngram.words);
+      assert(lmstate);
       lmstate->Allocate(&ngram, lm_scale_);
     }
 
@@ -84,14 +86,14 @@ class FasterArpaLm {
   };
 
   FasterArpaLm(ArpaParseOptions &options, const std::string& arpa_rxfilename,
-    float lm_scale=0) {
+    int32 symbol_size, float lm_scale=1): symbol_size_(symbol_size), options_(options) {
+    assert(symbol_size_);
     is_built_ = false;
     ngram_order_ = 0;
     num_words_ = 0;
     lm_states_size_ = 0;
     ngrams_ = NULL;
     randint_per_word_gram_ = NULL;
-    options_ = options;
 
     BuildFasterArpaLm(arpa_rxfilename, lm_scale);
   }
@@ -100,10 +102,16 @@ class FasterArpaLm {
     if (is_built_) free();
   }
 
-  inline LmState* GetHashedState(int32* word_ids, 
-      int query_ngram_order) {
+  int32 BosSymbol() const { return bos_symbol_; }
+  int32 EosSymbol() const { return eos_symbol_; }
+  int32 UnkSymbol() const { return unk_symbol_; }
+  int32 NgramOrder() const { return ngram_order_; }
+
+  inline LmState* GetHashedState(const int32* word_ids, 
+      int query_ngram_order) const {
     assert(query_ngram_order > 0 && query_ngram_order <= ngram_order_);
     int32 ngram_order = query_ngram_order;
+    assert(word_ids[ngram_order-1] < ngrams_hashed_size_[ngram_order-1]);
     if (ngram_order == 1) {
       return &ngrams_[ngram_order-1][word_ids[ngram_order-1]];
     } else {
@@ -115,20 +123,21 @@ class FasterArpaLm {
           (ngrams_hashed_size_[ngram_order-1] - 1)];
     }
   }
-  inline LmState* GetHashedState(std::vector<int32> &word_ids, 
-      int query_ngram_order = 0) {
+  inline LmState* GetHashedState(const std::vector<int32> &word_ids, 
+      int query_ngram_order = 0) const {
     int32 ngram_order = query_ngram_order==0? word_ids.size(): query_ngram_order;
     int32 word_ids_arr[MAX_NGRAM];
-    for (int i=0; i<query_ngram_order;i++) word_ids_arr[i]=word_ids[i];
-    return GetHashedState(word_ids_arr, ngram_order)
+    for (int i=0; i<ngram_order;i++) word_ids_arr[i]=word_ids[i];
+    return GetHashedState(word_ids_arr, ngram_order);
   }
 
   // if exist, get logprob_, else get backoff_logprob_
   // memcpy(n_wids+1, wids, len(wids)); n_wids[0] = cur_wrd;
   inline float GetNgramLogprob(const int32 *word_ids, 
-      const int32 ngram_order, 
-      std::std::vector<int32>& o_word_ids) {
+      const int32 word_ngram_order, 
+      std::vector<int32>& o_word_ids) const {
     float prob;
+    int32 ngram_order = word_ngram_order;
     assert(ngram_order > 0);
     if (ngram_order > ngram_order_) {
       //while (wseq.size() >= lm_.NgramOrder()) {
@@ -149,6 +158,7 @@ class FasterArpaLm {
         o_word_ids[i] = word_ids[i];
       }
     } else {
+      assert(ngram_order > 1); // thus we can do backoff
       LmState *lm_state_bo = GetHashedState(word_ids + 1, ngram_order-1); 
       prob = lm_state_bo->backoff_logprob_ + 
         GetNgramLogprob(word_ids, ngram_order - 1, o_word_ids);
@@ -166,25 +176,29 @@ class FasterArpaLm {
 
  private:
   void Allocate(const std::vector<int32>& ngram_count, 
-                const fst::SymbolTable* symbols) {
+                int32 bos_symbol, int32 eos_symbol, 
+                int32 unk_symbol) {
+    bos_symbol_ = bos_symbol;
+    eos_symbol_ = eos_symbol;
+    unk_symbol_ = unk_symbol;
     ngram_order_ = ngram_count.size();
-    uint64 max_rand = -1;
+    RAND_TYPE max_rand = RAND_MAX;
     kaldi::RandomState rstate;
     rstate.seed = 27437;
-    ngrams_ = malloc(ngram_order_ * sizeof(void*));
-    randint_per_word_gram_ = malloc(ngram_order_ * sizeof(void*));
-    ngrams_hashed_size_ = malloc(ngram_order_ * sizeof(int32));
+    ngrams_ = (LmState**)malloc(ngram_order_ * sizeof(void*));
+    randint_per_word_gram_ = (RAND_TYPE **)malloc(ngram_order_ * sizeof(void*));
+    ngrams_hashed_size_ = (int32*)malloc(ngram_order_ * sizeof(int32));
     for (int i=0; i< ngram_order_; i++) {
-      if (i == 0) ngrams_hashed_size_[i] = ngram_count[i]; // uni-gram
+      if (i == 0) ngrams_hashed_size_[i] = symbol_size_; // uni-gram
       else {
         ngrams_hashed_size_[i] = (1<<(int)ceil(log(ngram_count[i]) / 
-                                 M_LN2 + 0.3));
+                                 M_LN2 + 0.5));
       }
-      KALDI_VLOG(2) << "ngram: "<< i <<" hashed_size/size = "<< 
-        ngrams_hashed_size_[i] / ngram_count[i];
+      KALDI_VLOG(2) << "ngram: "<< i+1 <<" hashed_size/size = "<< 
+        1.0 * ngrams_hashed_size_[i] / ngram_count[i]<<" "<<ngram_count[i];
       ngrams_[i] = new LmState[ngrams_hashed_size_[i]];
-      randint_per_word_gram_[i] = new int32[symbols->NumSymbols()];
-      for (int j=0; j<symbols->NumSymbols(); j++) {
+      randint_per_word_gram_[i] = new RAND_TYPE[symbol_size_];
+      for (int j=0; j<symbol_size_; j++) {
         randint_per_word_gram_[i][j] = kaldi::RandInt(0, max_rand, &rstate);
       }
     }
@@ -204,9 +218,17 @@ class FasterArpaLm {
 
   // Indicating if FasterArpaLm has been built or not.
   bool is_built_;
+  // Integer corresponds to <s>.
+  int32 bos_symbol_;
+  // Integer corresponds to </s>.
+  int32 eos_symbol_;
+  // Integer corresponds to unknown-word. -1 if no unknown-word symbol is
+  // provided.
+  int32 unk_symbol_;  
   // N-gram order of language model. This can be figured out from "/data/"
   // section in Arpa format language model.
   int32 ngram_order_;
+  int32 symbol_size_;
   // Index of largest word-id plus one. It defines the end of <unigram_states_>
   // array.
   int32 num_words_;
@@ -215,14 +237,14 @@ class FasterArpaLm {
   // Hash table from word sequences to LmStates.
   unordered_map<std::vector<int32>,
                 LmState*, VectorHasher<int32> > seq_to_state_;
-  ArpaParseOptions &options;
+  ArpaParseOptions &options_;
 
   // data
 
   // Memory blcok for storing N-gram; ngrams_[ngram_order][hashed_idx]
   LmState** ngrams_;
   // used to obtain hash value; randint_per_word_gram_[ngram_order][word_id]
-  uint64** randint_per_word_gram_;
+  RAND_TYPE** randint_per_word_gram_;
   int32* ngrams_hashed_size_;
 };
 
@@ -240,7 +262,7 @@ class FasterArpaLmDeterministicFst
   typedef FasterArpaLm::LmState LmState;
 
   explicit FasterArpaLmDeterministicFst(const FasterArpaLm& lm): 
-    lm_(lm), start_state_(0) { 
+    start_state_(0), lm_(lm) { 
     // Creates a history state for <s>.
     std::vector<Label> bos_state(1, lm_.BosSymbol());
     state_to_wseq_.push_back(bos_state);
@@ -257,14 +279,13 @@ class FasterArpaLmDeterministicFst
     // At this point, we should have created the state.
     KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
     const std::vector<Label>& wseq = state_to_wseq_[s];
-    std::vector<Label> wseq = state_to_wseq_[s];
     std::vector<Label> owseq;
-    float logprob = GetNgramLogprob(wseq, ilabel, owseq);
+    float logprob = GetNgramLogprob(wseq, lm_.EosSymbol(), owseq);
     return Weight(-logprob);
   }
 
-  float GetNgramLogprob(std::std::vector<int32> &wseq, int32 ilabel,
-    std::std::vector<int32> &owseq) {
+  float GetNgramLogprob(const std::vector<int32> &wseq, int32 ilabel,
+    std::vector<int32> &owseq) {
     int32 n = wseq.size();
     int32 word_ids[MAX_NGRAM];
     assert(n+1 <= MAX_NGRAM);
