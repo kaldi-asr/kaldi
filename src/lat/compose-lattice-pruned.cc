@@ -284,7 +284,14 @@ class PrunedCompactLatticeComposer {
     // BaseFloat expected_cost_offset;
   };
 
-
+  // This bool variable is initialized to false, and will be updated to true
+  // the first time a Final() function is called on the det_fst_. Then we will
+  // immediately call RecomputeRruningInfo() so that the output_best_cost_ is
+  // changed from +inf to a finite value, to be used in beam search. This is the
+  // only time the RecomputeRruningInfo() function is called manually; otherwise
+  // it always follows an automatic schedule based on the num-arcs of the output
+  // lattice.
+  bool output_reached_final_;
   const ComposeLatticePrunedOptions &opts_;
   const CompactLattice &clat_in_;
   fst::DeterministicOnDemandFst<fst::StdArc> *det_fst_;
@@ -596,7 +603,7 @@ PrunedCompactLatticeComposer::PrunedCompactLatticeComposer(
       const ComposeLatticePrunedOptions &opts,
       const CompactLattice &clat_in,
       fst::DeterministicOnDemandFst<fst::StdArc> *det_fst,
-      CompactLattice* composed_clat):
+      CompactLattice* composed_clat): output_reached_final_(false),
     opts_(opts), clat_in_(clat_in), det_fst_(det_fst),
     clat_out_(composed_clat),
     num_arcs_out_(0),
@@ -709,6 +716,10 @@ void PrunedCompactLatticeComposer::ProcessQueueElement(
       double final_cost = ConvertToCost(final_lat_weight);
       if (final_cost < src_composed_state_info.backward_cost)
         src_composed_state_info.backward_cost = final_cost;
+      if (!output_reached_final_) {
+        output_reached_final_ = true;
+        RecomputePruningInfo();
+      }
     }
   } else {
     // It really was an arc.  This code is very complicated, so we make it its
