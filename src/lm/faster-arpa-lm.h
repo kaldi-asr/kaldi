@@ -99,7 +99,7 @@ class FasterArpaLm {
   }
 
   ~FasterArpaLm() {
-    if (is_built_) free();
+    if (is_built_) Free();
   }
 
   int32 BosSymbol() const { return bos_symbol_; }
@@ -192,25 +192,25 @@ class FasterArpaLm {
       if (i == 0) ngrams_hashed_size_[i] = symbol_size_; // uni-gram
       else {
         ngrams_hashed_size_[i] = (1<<(int)ceil(log(ngram_count[i]) / 
-                                 M_LN2 + 0.5));
+                                 M_LN2 + 4));
       }
       KALDI_VLOG(2) << "ngram: "<< i+1 <<" hashed_size/size = "<< 
         1.0 * ngrams_hashed_size_[i] / ngram_count[i]<<" "<<ngram_count[i];
-      ngrams_[i] = new LmState[ngrams_hashed_size_[i]];
-      randint_per_word_gram_[i] = new RAND_TYPE[symbol_size_];
+      ngrams_[i] = (LmState* )calloc(ngrams_hashed_size_[i], sizeof(LmState)) ;
+      randint_per_word_gram_[i] = (RAND_TYPE* )malloc(symbol_size_ * sizeof(RAND_TYPE)) ;
       for (int j=0; j<symbol_size_; j++) {
         randint_per_word_gram_[i][j] = kaldi::RandInt(0, max_rand, &rstate);
       }
     }
     is_built_ = true;
   }
-  void free() {
+  void Free() {
     for (int i=0; i< ngram_order_; i++) {
-      delete ngrams_[i];
-      delete randint_per_word_gram_[i];
+      free(ngrams_[i]);
+      free(randint_per_word_gram_[i]);
     }
-    delete ngrams_;
-    delete randint_per_word_gram_;
+    free(ngrams_);
+    free(randint_per_word_gram_);
   }
 
  private:
