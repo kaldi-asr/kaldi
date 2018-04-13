@@ -62,7 +62,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   GetComputationRequest(*nnet_, eg, need_model_derivative,
                         config_.store_component_stats,
                         &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   if (config_.backstitch_training_scale > 0.0 &&
       num_minibatches_processed_ % config_.backstitch_training_interval ==

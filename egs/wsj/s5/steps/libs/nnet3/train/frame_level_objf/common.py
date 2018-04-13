@@ -200,7 +200,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
-    logger.info("Training neural net (pass {0})".format(iter))
 
     # check if different iterations use the same random seed
     if os.path.exists('{0}/srand'.format(dir)):
@@ -256,15 +255,6 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         # keep the update stable.
         cur_minibatch_size_str = common_train_lib.halve_minibatch_size_str(minibatch_size_str)
         cur_max_param_change = float(max_param_change) / math.sqrt(2)
-
-    shrink_info_str = ''
-    if shrinkage_value != 1.0:
-        shrink_info_str = ' and shrink value is {0}'.format(shrinkage_value)
-
-    logger.info("On iteration {0}, learning rate is {1}"
-                "{shrink_info}.".format(
-                    iter, learning_rate,
-                    shrink_info=shrink_info_str))
 
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
                      num_archives_processed=num_archives_processed,
@@ -329,21 +319,32 @@ def train_one_iteration(dir, iter, srand, egs_dir,
 
 def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                                    max_lda_jobs=None, rand_prune=4.0,
-                                   lda_opts=None):
+                                   lda_opts=None, use_multitask_egs=False):
     if max_lda_jobs is not None:
         if num_lda_jobs > max_lda_jobs:
             num_lda_jobs = max_lda_jobs
+    multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
+        egs_dir,
+        egs_prefix="egs.",
+        archive_index="JOB",
+        use_multitask_egs=use_multitask_egs)
+    scp_or_ark = "scp" if use_multitask_egs else "ark"
+    egs_rspecifier = (
+        "ark:nnet3-copy-egs {multitask_egs_opts} "
+        "{scp_or_ark}:{egs_dir}/egs.JOB.{scp_or_ark} ark:- |"
+        "".format(egs_dir=egs_dir, scp_or_ark=scp_or_ark,
+                  multitask_egs_opts=multitask_egs_opts))
 
     # Write stats with the same format as stats for LDA.
     common_lib.execute_command(
         """{command} JOB=1:{num_lda_jobs} {dir}/log/get_lda_stats.JOB.log \
                 nnet3-acc-lda-stats --rand-prune={rand_prune} \
-                {dir}/init.raw "ark:{egs_dir}/egs.JOB.ark" \
+                {dir}/init.raw "{egs_rspecifier}" \
                 {dir}/JOB.lda_stats""".format(
                     command=run_opts.command,
                     num_lda_jobs=num_lda_jobs,
                     dir=dir,
-                    egs_dir=egs_dir,
+                    egs_rspecifier=egs_rspecifier,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
@@ -587,7 +588,7 @@ def get_realign_iters(realign_times, num_iters,
     return realign_iters
 
 
-def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
+def align(dir, data, lang, run_opts, iter=None,
           online_ivector_dir=None):
 
     alidir = '{dir}/ali{ali_suffix}'.format(
@@ -601,7 +602,6 @@ def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
         """steps/nnet3/align.sh --nj {num_jobs_align} \
                 --cmd "{align_cmd} {align_queue_opt}" \
                 --use-gpu {align_use_gpu} \
-                --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{online_ivector_dir}" \
                 --iter "{iter}" {data} {lang} {dir} {alidir}""".format(
                     dir=dir, align_use_gpu=("yes"
@@ -610,9 +610,6 @@ def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
                     align_cmd=run_opts.realign_command,
                     align_queue_opt=run_opts.realign_queue_opt,
                     num_jobs_align=run_opts.realign_num_jobs,
-                    transform_dir=(transform_dir
-                                   if transform_dir is not None
-                                   else ""),
                     online_ivector_dir=(online_ivector_dir
                                         if online_ivector_dir is not None
                                         else ""),
@@ -624,7 +621,7 @@ def align(dir, data, lang, run_opts, iter=None, transform_dir=None,
 
 def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
             prior_subset_size, num_archives,
-            run_opts, transform_dir=None, online_ivector_dir=None):
+            run_opts, online_ivector_dir=None):
     raise Exception("Realignment stage has not been implemented in nnet3")
     logger.info("Getting average posterior for purposes of adjusting "
                 "the priors.")
@@ -643,7 +640,7 @@ def realign(dir, iter, feat_dir, lang, prev_egs_dir, cur_egs_dir,
     adjust_am_priors(dir, model, avg_post_vec_file, model, run_opts)
 
     alidir = align(dir, feat_dir, lang, run_opts, iter,
-                   transform_dir, online_ivector_dir)
+                   online_ivector_dir)
     common_lib.execute_command(
         """steps/nnet3/relabel_egs.sh --cmd "{command}" --iter {iter} \
                 {alidir} {prev_egs_dir} {cur_egs_dir}""".format(

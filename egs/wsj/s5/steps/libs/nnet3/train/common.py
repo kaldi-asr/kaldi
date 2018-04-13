@@ -744,11 +744,6 @@ class CommonParser(object):
                                  to the right of the *last* input chunk extracted
                                  from an utterance.  If negative, defaults to the
                                  same as --egs.chunk-right-context""")
-        self.parser.add_argument("--egs.transform_dir", type=str,
-                                 dest='transform_dir', default=None,
-                                 action=common_lib.NullstrToNoneAction,
-                                 help="String to provide options directly to "
-                                 "steps/nnet3/get_egs.sh script")
         self.parser.add_argument("--egs.dir", type=str, dest='egs_dir',
                                  default=None,
                                  action=common_lib.NullstrToNoneAction,

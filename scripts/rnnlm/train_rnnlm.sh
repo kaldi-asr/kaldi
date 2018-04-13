@@ -220,12 +220,12 @@ while [ $x -lt $num_iters ]; do
       fi
     )
 
-    num_splits_processed=$[num_splits_processed+this_num_jobs]
     # the error message below is not that informative, but $cmd will
     # have printed a more specific one.
     [ -f $dir/.error ] && echo "$0: error with diagnostics on iteration $x of training" && exit 1;
   fi
   x=$[x+1]
+  num_splits_processed=$[num_splits_processed+this_num_jobs]
 done
 
 wait # wait for diagnostic jobs in the background.

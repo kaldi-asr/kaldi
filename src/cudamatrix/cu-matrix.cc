@@ -2499,6 +2499,37 @@ void CuMatrixBase<Real>::ApplyExp() {
 }
 
 template<typename Real>
+void CuMatrixBase<Real>::ApplyExpLimited(Real lower_limit, Real upper_limit) {
+  KALDI_ASSERT(upper_limit > lower_limit);
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    dim3 dimGrid, dimBlock;
+    GetBlockSizesForSimpleMatrixOperation(NumRows(), NumCols(),
+                                          &dimGrid, &dimBlock);
+    cuda_apply_exp_limited(dimGrid, dimBlock, data_, Dim(), lower_limit, upper_limit);
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    int32 num_rows = num_rows_, num_cols = num_cols_;
+    for (int32 r = 0; r < num_rows; r++) {
+      Real *row_data = this->RowData(r);
+      for (int32 c = 0; c < num_cols; c++) {
+        Real x = row_data[c];
+        if (!(x >= lower_limit))
+          x = lower_limit;
+        if (x > upper_limit)
+          x = upper_limit;
+        row_data[c] = Exp(x);
+      }
+    }
+  }
+}
+
+
+template<typename Real>
 void CuMatrixBase<Real>::ApplyExpSpecial() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {

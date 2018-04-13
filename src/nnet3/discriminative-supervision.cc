@@ -400,49 +400,36 @@ void DiscriminativeSupervisionSplitter::ComputeLatticeScores(const Lattice &lat,
 }
 
 void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &input,
-    bool compactify,
-    std::vector<DiscriminativeSupervision> *output_supervision) {
+    DiscriminativeSupervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
   int32 num_inputs = input.size();
   if (num_inputs == 1) {
-    output_supervision->resize(1);
-    (*output_supervision)[0] = *(input[0]);
+    *output_supervision = *(input[0]);
     return;
   }
-  std::vector<bool> output_was_merged;
-  output_supervision->clear();
-  output_supervision->reserve(input.size());
-  for (int32 i = 0; i < input.size(); i++) {
+  *output_supervision = *(input[num_inputs-1]);
+  for (int32 i = num_inputs - 2; i >= 0; i--) {
     const DiscriminativeSupervision &src = *(input[i]);
     KALDI_ASSERT(src.num_sequences == 1);
-    if (compactify && !output_supervision->empty() &&
-        output_supervision->back().weight == src.weight &&
-        output_supervision->back().frames_per_sequence ==
+    if (output_supervision->weight == src.weight &&
+        output_supervision->frames_per_sequence ==
         src.frames_per_sequence) {
       // Combine with current output
       // append src.den_lat to output_supervision->den_lat.
-      fst::Concat(&output_supervision->back().den_lat, src.den_lat);
+      fst::Concat(src.den_lat, &output_supervision->den_lat);
 
-      output_supervision->back().num_ali.insert(
-          output_supervision->back().num_ali.end(),
+      output_supervision->num_ali.insert(
+          output_supervision->num_ali.begin(),
           src.num_ali.begin(), src.num_ali.end());
 
-      output_supervision->back().num_sequences++;
-      output_was_merged.back() = true;
+      output_supervision->num_sequences++;
     } else {
-      output_supervision->resize(output_supervision->size() + 1);
-      output_supervision->back() = src;
-      output_was_merged.push_back(false);
+      KALDI_ERR << "Mismatch weight or frames_per_sequence  between inputs";
     }
   }
-  KALDI_ASSERT(output_was_merged.size() == output_supervision->size());
-  for (size_t i = 0; i < output_supervision->size(); i++) {
-    if (output_was_merged[i]) {
-      DiscriminativeSupervision &out_sup = (*output_supervision)[i];
-      fst::TopSort(&(out_sup.den_lat));
-      out_sup.Check();
-    }
-  }
+  DiscriminativeSupervision &out_sup = *output_supervision;
+  fst::TopSort(&(out_sup.den_lat));
+  out_sup.Check();
 }
 
 } // namespace discriminative

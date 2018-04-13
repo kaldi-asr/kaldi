@@ -68,7 +68,7 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
                              nnet_config.store_component_stats,
                              use_xent_regularization, need_model_derivative,
                              &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
       % nnet_config.backstitch_training_interval ==

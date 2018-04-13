@@ -194,6 +194,30 @@ static void UnitTestCuMatrixApplyExp() {
 }
 
 
+template<typename Real>
+static void UnitTestCuMatrixApplyExpLimited() {
+  int32 M = 10 + Rand() % 20, N = 10 + Rand() % 20;
+  Matrix<Real> H(M, N);
+  H.SetRandn();
+
+
+  BaseFloat lower_limit = -0.2, upper_limit = 0.2;
+
+  CuMatrix<Real> D(H);
+
+  D.ApplyExpLimited(lower_limit, upper_limit);
+
+
+  H.ApplyFloor(lower_limit);
+  H.ApplyCeiling(upper_limit);
+  H.ApplyExp();
+
+  Matrix<Real> H2(D);
+
+  AssertEqual(H,H2);
+}
+
+
 
 template<typename Real>
 static void UnitTestCuMatrixSigmoid() {
@@ -2895,6 +2919,7 @@ static void UnitTestCuMatrixEqualElementMask() {
 
 template<typename Real> void CudaMatrixUnitTest() {
   UnitTestCuMatrixApplyExpSpecial<Real>();
+  UnitTestCuMatrixApplyExpLimited<Real>();
   UnitTextCuMatrixAddSmatMat<Real>();
   UnitTextCuMatrixAddMatSmat<Real>();
   UnitTextCuMatrixAddSmat<Real>();

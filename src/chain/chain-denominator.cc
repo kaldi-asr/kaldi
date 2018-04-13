@@ -64,7 +64,10 @@ DenominatorComputation::DenominatorComputation(
                                      nnet_output.NumRows(),
                                      kUndefined, kStrideEqualNumCols);
   exp_nnet_output_transposed_.CopyFromMat(nnet_output, kTrans);
-  exp_nnet_output_transposed_.ApplyExp();
+  // We limit the nnet output to the range [-30,30] before doing the exp;
+  // this avoids NaNs appearing in the forward-backward computation, which
+  // is not done in log space.
+  exp_nnet_output_transposed_.ApplyExpLimited(-30.0, 30.0);
 }
 
 
