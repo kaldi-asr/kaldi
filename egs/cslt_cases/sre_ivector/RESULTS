@@ -3,18 +3,15 @@
 # Obtained by Zhiyuan Tang in April 2018.
 
 . ./path.sh
-num_gauss=2048
-ivector_dim=400
-exp=exp/ivector_gauss${num_gauss}_dim${ivector_dim}
 trials=data/test/trials
 # print eer
 for i in cosine lda plda; do
-  eer=`compute-eer <(python local/prepare_for_eer.py $trials $exp/scores/${i}_scores) 2> /dev/null`
+  eer=`compute-eer <(python local/prepare_for_eer.py $trials exp/*/scores/${i}_scores) 2> /dev/null`
   printf "%15s %5.2f \n" "$i eer:" $eer
 done
 exit 0
 
 cosine eer:  0.67
    lda eer:  0.07
-  plda eer:  7.89
+  plda eer:  0.07
 
