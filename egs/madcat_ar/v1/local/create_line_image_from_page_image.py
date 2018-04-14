@@ -169,11 +169,14 @@ def rotated_points(bounding_box, center):
 
 def set_line_image_data(image, line_id, image_file_name):
     base_name = os.path.splitext(os.path.basename(image_file_name))[0]
+    image_file_name_wo_tif, b = image_file_name.split('.tif')
+    line_id = '_' + line_id.zfill(4)
     line_image_file_name = base_name + line_id + '.tif'
     imgray = image.convert('L')
     imgray_rev_arr = np.fliplr(imgray)
-    imgray_rev = toimage(imgray_rev_arr)
-    imgray_rev.save(os.path.join(data_path, 'lines', line_image_file_name))
+    imgray_rev = toimage(imgray_rev_arr)    
+    image_path=os.path.join(line_images_path, 'lines', line_image_file_name)
+    imgray_rev.save(image_path)
 
 
 def get_line_images_from_page_image(image_file_name, madcat_file_path):
