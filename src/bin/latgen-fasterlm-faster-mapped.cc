@@ -189,7 +189,6 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
     
-    KALDI_LOG << RAND_MAX;
     std::string model_in_filename = po.GetArg(1),
         fst_in_str = po.GetArg(2),
         old_lm_fst_rxfilename = po.GetArg(3),
