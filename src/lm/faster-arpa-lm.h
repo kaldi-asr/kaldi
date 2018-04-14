@@ -31,8 +31,16 @@
 
 namespace kaldi {
 
+uint64  RandInt64() {
+  uint64_t random =
+  (((uint64_t) rand() <<  0) & 0x000000000000FFFFull) ^ 
+  (((uint64_t) rand() << 16) & 0x00000000FFFF0000ull) ^ 
+  (((uint64_t) rand() << 32) & 0x0000FFFF00000000ull) ^
+  (((uint64_t) rand() << 48) & 0xFFFF000000000000ull);
+  return random;
+}
 #define MAX_NGRAM 5+1
-#define RAND_TYPE int32
+#define RAND_TYPE int64
 class FasterArpaLm {
  public:
 
@@ -122,14 +130,15 @@ class FasterArpaLm {
       hashed_idx = word_ids[ngram_order-1];
     } else {
       hashed_idx=randint_per_word_gram_[0][word_ids[0]];
-      for (int i=1; i<ngram_order_; i++) {
-        int word_id=i<ngram_order?word_ids[i]:
-          (word_ids[i-ngram_order] + i + ngram_order); // this is totally a hack
+      for (int i=1; i<ngram_order; i++) {
+        int word_id=word_ids[i];
         hashed_idx ^= randint_per_word_gram_[i][word_id];
       }
       if (h_value) *h_value = hashed_idx; // to check colid
+      int i = ngram_order-1;
       hashed_idx &= 
-          (hash_size_except_uni_ - 1);
+          (ngrams_hashed_size_[i]-ngrams_hashed_size_[i-1] - 1);
+      hashed_idx += ngrams_hashed_size_[i-1];
     }
     return hashed_idx;
   }
@@ -227,12 +236,13 @@ class FasterArpaLm {
       assert(lm_state->IsExist());
       //assert(ngram_order==1 || GetHashedState(word_ids, ngram_order-1)->IsExist());
       prob = lm_state->logprob_;
-      /*
+     
+/* 
       for (int i=0; i<ngram_order; i++) {
         std::cout<<word_ids[i]<<" ";
       }
       std::cout<<ngram_order<<" "<<prob<<"\n";
-      */
+  */    
       // below code is to make sure the LmState exist, so un-exist states can be recombined to a same state
       ngram_order = std::min(ngram_order,ngram_order_-1);
       while(!GetHashedState(word_ids, ngram_order)) ngram_order--;
@@ -271,26 +281,30 @@ class FasterArpaLm {
     eos_symbol_ = eos_symbol;
     unk_symbol_ = unk_symbol;
     ngram_order_ = ngram_count.size();
-    RAND_TYPE max_rand = RAND_MAX;
-    kaldi::RandomState rstate;
-    rstate.seed = 27437;
+    srand(0);
     randint_per_word_gram_ = (RAND_TYPE **)malloc(ngram_order_ * sizeof(void*));
     ngrams_hashed_size_ = (int32*)malloc(ngram_order_ * sizeof(int32));
     int32 acc=0;
+    int32 acc_hashed=0;
     for (int i=0; i< ngram_order_; i++) {
       if (i == 0) ngrams_hashed_size_[i] = symbol_size_; // uni-gram
       else {
-        ngrams_hashed_size_[i] = ngram_count[i];
+        ngrams_hashed_size_[i] = (1<<(int)ceil(log(ngram_count[i]) / 
+                                 M_LN2 + 0.5));
       }
+      KALDI_VLOG(2) << "ngram: "<< i+1 <<" hashed_size/size = "<< 
+        1.0 * ngrams_hashed_size_[i] / ngram_count[i]<<" "<<ngram_count[i];
       randint_per_word_gram_[i] = (RAND_TYPE* )malloc(symbol_size_ * sizeof(RAND_TYPE)) ;
       for (int j=0; j<symbol_size_; j++) {
-        randint_per_word_gram_[i][j] = kaldi::RandInt(0, max_rand, &rstate);
+        randint_per_word_gram_[i][j] = RandInt64(); 
       }
-      acc+= ngrams_hashed_size_[i];
+      acc+= ngram_count[i];
+      acc_hashed+= ngrams_hashed_size_[i];
+      if (i==0) ngrams_hashed_size_[i]=0;
+      else ngrams_hashed_size_[i]+=ngrams_hashed_size_[i-1];
     }
-    hash_size_except_uni_ = acc - symbol_size_;
-    hash_size_except_uni_  = (1<<(int)ceil(log(hash_size_except_uni_) / 
-                                 M_LN2 + 0.5));
+    hash_size_except_uni_ = acc_hashed - symbol_size_;
+    assert(ngrams_hashed_size_[ngram_order_-1]==hash_size_except_uni_);
     KALDI_VLOG(2) << " hashed_size/size = "<< 
         1.0 * (hash_size_except_uni_+symbol_size_) / acc <<" "<<acc;
     
@@ -342,7 +356,7 @@ class FasterArpaLm {
   std::vector<LmState *> ngrams_map_; // hash to ngrams_ index
   // used to obtain hash value; randint_per_word_gram_[ngram_order][word_id]
   RAND_TYPE** randint_per_word_gram_;
-  int32* ngrams_hashed_size_;
+  int32* ngrams_hashed_size_; //after init, it's an accumulate value
   int32 hash_size_except_uni_;
   int32 max_collision_;
 };

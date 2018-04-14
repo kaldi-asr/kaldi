@@ -67,14 +67,16 @@ int main(int argc, char *argv[]) {
 #define  Arc fst::StdArc
     using fst::ReadFstKaldi;
 
-#define TEST_SIZE 28
+#define TEST_SIZE 26
+//#define TEST_SIZE 28
 //#define TEST_SIZE 25
     ParseOptions po("");
     float scores[TEST_SIZE];
     float scores2[TEST_SIZE];
     float scores3[TEST_SIZE];
     //int32 word_ids[]={14207, 198712, 7589, 175861, 171937, 124782, 36528, 175861, 104488, 150861, 139719, 78075, 14268, 124782, 61783, 196158, 4, 20681, 194454, 137421, 158810, 161569, 4, 37434, 50498};
-    int32 word_ids[] = {14207, 198712, 7589, 4, 171935, 87918, 124782, 36528, 175861, 104488, 150861, 139719, 78075, 14268, 124782, 61783, 196158, 4, 20681, 194454, 138359, 155516, 2379, 160908, 2811, 4, 37434, 50498};
+    //int32 word_ids[] = {14207, 198712, 7589, 4, 171935, 87918, 124782, 36528, 175861, 104488, 150861, 139719, 78075, 14268, 124782, 61783, 196158, 4, 20681, 194454, 138359, 155516, 2379, 160908, 2811, 4, 37434, 50498};
+    int32 word_ids[] = {14207, 198712, 7589, 175861, 171937, 124782, 36528, 175861, 104488, 150861, 139719, 78075, 14268, 124782, 61783, 196158, 124782, 19206, 53865, 137753, 2279, 32505, 153074, 4, 37434, 50498};
     int32 state_ids[TEST_SIZE]={0};
 
     ArpaParseOptions arpa_options;
@@ -117,8 +119,8 @@ int main(int argc, char *argv[]) {
     get_score(&cache_dfst, word_ids, state_ids, scores3, TEST_SIZE);
    }
    for (int i=0;i<TEST_SIZE;i++) {
-     if (scores[i]!=scores2[i]) KALDI_LOG<<scores[i]<< " "<< scores2[i]<< " "<<word_ids[i]<<" "<<i;
-     if (scores[i]!=scores3[i]) KALDI_LOG<<scores[i]<< " "<< scores3[i]<< " "<<word_ids[i]<<" "<<i;
+     if (abs(scores[i]-scores2[i])>1e-4) KALDI_LOG<<scores[i]<< " "<< scores2[i]<< " "<<word_ids[i]<<" "<<i;
+     if (abs(scores[i]-scores3[i])>1e-4) KALDI_LOG<<scores[i]<< " "<< scores3[i]<< " "<<word_ids[i]<<" "<<i;
    }
    return 0;
 }
