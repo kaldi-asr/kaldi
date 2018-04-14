@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright     2017  Ashish Arora
 
@@ -12,20 +12,22 @@ parser.add_argument('unk', type=str, default='-', help='location of unk file')
 parser.add_argument('--input-ark', type=str, default='-', help='where to read the input data')
 parser.add_argument('--out-ark', type=str, default='-', help='where to write the output data')
 args = parser.parse_args()
+
+
 ### main ###
-phone_fh = open(args.phones, 'r')
-word_fh = open(args.words, 'r')
-unk_fh = open(args.unk,'r')
+phone_fh = open(args.phones, 'r', encoding='latin-1')
+word_fh = open(args.words, 'r', encoding='latin-1')
+unk_fh = open(args.unk, 'r', encoding='latin-1')
 if args.input_ark == '-':
     input_fh = sys.stdin
 else:
-    input_fh = open(args.input_ark,'r')
+    input_fh = open(args.input_ark, 'r', encoding='latin-1')
 if args.out_ark == '-':
     out_fh = sys.stdout
 else:
-    out_fh = open(args.out_ark,'wb')
+    out_fh = open(args.out_ark, 'w', encoding='latin-1')
 
-phone_dict = dict()# stores phoneID and phone mapping
+phone_dict = dict()  # Stores phoneID and phone mapping
 phone_data_vect = phone_fh.read().strip().split("\n")
 for key_val in phone_data_vect:
   key_val = key_val.split(" ")
@@ -38,14 +40,14 @@ for key_val in word_data_vect:
 unk_val = unk_fh.read().strip().split(" ")[0]
 
 utt_word_dict = dict()
-utt_phone_dict = dict()# stores utteranceID and phoneID
+utt_phone_dict = dict()  # Stores utteranceID and phoneID
 unk_word_dict = dict()
 count=0
 for line in input_fh:
   line_vect = line.strip().split("\t")
   if len(line_vect) < 6:
-    print "IndexError"
-    print line_vect
+    print("Bad line: '{}'   Expecting 6 fields. Skipping...".format(line),
+          file=sys.stderr)
     continue
   uttID = line_vect[0]
   word = line_vect[4]
@@ -59,7 +61,7 @@ for line in input_fh:
     utt_phone_dict[uttID] = dict()
     utt_word_dict[uttID][count] = word
     utt_phone_dict[uttID][count] = phones
-  if word == unk_val: # get character sequence for unk
+  if word == unk_val:   # Get character sequence for unk
     phone_key_vect = phones.split(" ")
     phone_val_vect = list()
     for pkey in phone_key_vect:
@@ -78,9 +80,9 @@ for line in input_fh:
   count += 1
 
 transcription = ""
-for key in sorted(utt_word_dict.iterkeys()):
+for key in sorted(utt_word_dict.keys()):
   transcription = key
-  for index in sorted(utt_word_dict[key].iterkeys()):
+  for index in sorted(utt_word_dict[key].keys()):
     value = utt_word_dict[key][index]
     transcription = transcription + " " + value
   out_fh.write(transcription + '\n')

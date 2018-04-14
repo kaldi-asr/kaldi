@@ -35,8 +35,6 @@ frames_per_iter=400000 # each iteration of training, see this many frames per
                        # used.  This is just a guideline; it will pick a number
                        # that divides the number of samples in the entire data.
 
-transform_dir=     # If supplied, overrides latdir as the place to find fMLLR transforms
-
 stage=0
 nj=15         # This should be set to the maximum number of jobs you are
               # comfortable to run in parallel; you can increase it if your disk
@@ -149,26 +147,6 @@ if [ $len_uttlist -lt $num_utts_subset ]; then
   echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
 fi
 
-[ -z "$transform_dir" ] && transform_dir=$latdir
-
-# because we'll need the features with a different number of jobs than $latdir,
-# copy to ark,scp.
-if [ -f $transform_dir/trans.1 ] && [ $feat_type != "raw" ]; then
-  echo "$0: using transforms from $transform_dir"
-  if [ $stage -le 0 ]; then
-    $cmd $dir/log/copy_transforms.log \
-      copy-feats "ark:cat $transform_dir/trans.* |" "ark,scp:$dir/trans.ark,$dir/trans.scp"
-  fi
-fi
-if [ -f $transform_dir/raw_trans.1 ] && [ $feat_type == "raw" ]; then
-  echo "$0: using raw transforms from $transform_dir"
-  if [ $stage -le 0 ]; then
-    $cmd $dir/log/copy_transforms.log \
-      copy-feats "ark:cat $transform_dir/raw_trans.* |" "ark,scp:$dir/trans.ark,$dir/trans.scp"
-  fi
-fi
-
-
 
 ## Set up features.
 echo "$0: feature type is $feat_type"
@@ -181,12 +159,6 @@ case $feat_type in
    ;;
   *) echo "$0: invalid feature type --feat-type '$feat_type'" && exit 1;
 esac
-
-if [ -f $dir/trans.scp ]; then
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/trans.scp ark:- ark:- |"
-  valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
-  train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
-fi
 
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
@@ -408,9 +380,8 @@ if [ $stage -le 6 ]; then
     # there are some extra soft links that we should delete.
     for f in $dir/cegs.*.*.ark; do rm $f; done
   fi
-  echo "$0: removing temporary alignments and transforms"
-  # Ignore errors below because trans.* might not exist.
-  rm $dir/{ali,trans}.{ark,scp} 2>/dev/null
+  echo "$0: removing temporary alignments"
+  rm $dir/ali.{ark,scp} 2>/dev/null
 
 fi
 
