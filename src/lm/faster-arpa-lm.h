@@ -22,6 +22,7 @@
 
 #include <string>
 #include <vector>
+#include <math.h>
 
 #include "base/kaldi-common.h"
 #include "fstext/deterministic-fst.h"
@@ -97,8 +98,10 @@ class FasterArpaLm {
     num_words_ = 0;
     lm_states_size_ = 0;
     randint_per_word_gram_ = NULL;
+    max_collision_ = 0;
 
     BuildFasterArpaLm(arpa_rxfilename, lm_scale);
+    KALDI_VLOG(2) << max_collision_;
   }
 
   ~FasterArpaLm() {
@@ -132,8 +135,13 @@ class FasterArpaLm {
   inline void InsertHash(int32 hashed_idx, int32 ngrams_saved_num_) {
     if (ngrams_map_.at(hashed_idx)) {
       LmState *lm_state = ngrams_map_[hashed_idx];
-      while (lm_state->next) lm_state = lm_state->next;
+      int32 cnt=0;
+      while (lm_state->next) {
+        lm_state = lm_state->next;
+        cnt++;
+      }
       lm_state->next = &ngrams_[ngrams_saved_num_];
+      max_collision_=std::max(cnt,max_collision_);
     } else {
       ngrams_map_[hashed_idx] = &ngrams_[ngrams_saved_num_];
     }
@@ -159,6 +167,7 @@ class FasterArpaLm {
       for (int i=0; i<ngram_order;i++) word_ids_arr[ngram_order - i - 1]=word_ids[i];
     else
       for (int i=0; i<ngram_order;i++) word_ids_arr[i]=word_ids[i];
+
     return SaveHashedState(word_ids_arr, ngram_order, lm_state_pattern);
   }
 
@@ -225,17 +234,10 @@ class FasterArpaLm {
       assert(ngram_order > 1); // thus we can do backoff
       const LmState *lm_state_bo = GetHashedState(word_ids + 1, ngram_order-1); 
 
-      assert(lm_state_bo && lm_state_bo->IsExist()); // TODO: assert will fail because some place has false-exist? 
-#if 1
-      if (!lm_state_bo->IsExist()) {
-        KALDI_WARN << ngram_order << "\t" << lm_state_bo->backoff_logprob_;
-        for (int i=0; i<ngram_order; i++) {
-          KALDI_WARN << word_ids[i];
-        }
-      }
-#endif
-      prob = lm_state_bo->backoff_logprob_ + 
-        GetNgramLogprob(word_ids, ngram_order - 1, o_word_ids);
+      //assert(lm_state_bo && lm_state_bo->IsExist()); // TODO: assert will fail because some place has false-exist? 84746 4447 8537 without 4447 8537 in LM
+
+      prob = lm_state_bo? lm_state_bo->backoff_logprob_:0;
+      prob += GetNgramLogprob(word_ids, ngram_order - 1, o_word_ids);
     }
     return prob;
   }
@@ -329,6 +331,7 @@ class FasterArpaLm {
   RAND_TYPE** randint_per_word_gram_;
   int32* ngrams_hashed_size_;
   int32 hash_size_except_uni_;
+  int32 max_collision_;
 };
 
 
