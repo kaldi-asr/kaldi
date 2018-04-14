@@ -6,7 +6,7 @@
 # note: this relies on having a cluster that has plenty of CPUs as well as GPUs,
 # since the lattice generation runs in about real-time, so takes of the order of
 # 1000 hours of CPU time.
-# 
+#
 # Note: rather than using any features we have dumped on disk, this script
 # regenerates them from the wav data three times-- when we do lattice
 # generation, numerator alignment and discriminative training.  This made the
@@ -15,7 +15,7 @@
 # The time taken is dominated by the lattice generation anyway, so this isn't
 # a huge deal.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -33,26 +33,26 @@ cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large thi
                # alignments and degs).
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 if [ ! -f ${srcdir}_online/final.mdl ]; then
@@ -67,13 +67,13 @@ if [ $stage -le 1 ]; then
   num_threads_denlats=6
   subsplit=40 # number of jobs that run per job (but 2 run at a time, so total jobs is 80, giving
               # max total slots = 80 * 6 = 480.
-  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G -pe smp $num_threads_denlats" \
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G --num-threads $num_threads_denlats" \
       --online-ivector-dir exp/nnet2_online/ivectors_train_hires \
       --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.config \
      data/train_hires data/lang $srcdir ${srcdir}_denlats || exit 1;
 
   # the command below is a more generic, but slower, way to do it.
-  #steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G -pe smp $num_threads_denlats" \
+  #steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G --num-threads $num_threads_denlats" \
   #    --nj $nj --sub-split $subsplit --num-threads "$num_threads_denlats" --config conf/decode.config \
   #   data/train_hires data/lang ${srcdir}_online ${srcdir}_denlats || exit 1;
 
@@ -130,7 +130,7 @@ fi
 
 if [ $stage -le 5 ]; then
   dir=${srcdir}_${criterion}_${effective_lrate}
-  ln -sf $(readlink -f ${srcdir}_online/conf) $dir/conf # so it acts like an online-decoding directory
+  ln -sf $(utils/make_absolute.sh ${srcdir}_online/conf) $dir/conf # so it acts like an online-decoding directory
 
   for epoch in $(seq $decode_start_epoch $num_epochs); do
     for decode_set in dev test; do

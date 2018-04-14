@@ -243,7 +243,7 @@ inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
   // loop over records,
   for (int32 i = 0; i < in.size(); i++) {
     // process i'th record,
-    int32 beg, end, step;
+    int32 beg = 0, end = 0, step = 1;
     switch (in[i].size()) {
       case 1:
         beg  = in[i][0];
@@ -286,70 +286,29 @@ inline void BuildIntegerVector(const std::vector<std::vector<int32> >& in,
 
 
 /**
- * Convert Posterior to CuMatrix,
- * the Posterior outer-dim defines number of matrix-rows,
- * number of matrix-colmuns is set by 'num_cols'.
+ * Wrapper of PosteriorToMatrix with CuMatrix argument.
  */
 template <typename Real>
 void PosteriorToMatrix(const Posterior &post,
-                       const int32 num_cols, CuMatrix<Real> *mat) {
-  // Make a host-matrix,
-  int32 num_rows = post.size();
-  Matrix<Real> m(num_rows, num_cols, kSetZero);  // zero-filled
-  // Fill from Posterior,
-  for (int32 t = 0; t < post.size(); t++) {
-    for (int32 i = 0; i < post[t].size(); i++) {
-      int32 col = post[t][i].first;
-      if (col >= num_cols) {
-        KALDI_ERR << "Out-of-bound Posterior element with index " << col
-                  << ", higher than number of columns " << num_cols;
-      }
-      m(t, col) = post[t][i].second;
-    }
-  }
-  // Copy to output GPU matrix,
+                       const int32 post_dim, CuMatrix<Real> *mat) {
+  Matrix<Real> m;
+  PosteriorToMatrix(post, post_dim, &m);
   (*mat) = m;
 }
 
-/**
- * Convert Posterior to CuMatrix, while mapping to PDFs.
- * The Posterior outer-dim defines number of matrix-rows,
- * number of matrix-colmuns is set by 'TransitionModel::NumPdfs'.
- */
-template <typename Real>
-void PosteriorToMatrixMapped(const Posterior &post,
-                             const TransitionModel &model,
-                             Matrix<Real> *mat) {
-  // Make a host-matrix,
-  int32 num_rows = post.size(),
-        num_cols = model.NumPdfs();
-  mat->Resize(num_rows, num_cols, kSetZero);  // zero-filled,
-  // Fill from Posterior,
-  for (int32 t = 0; t < post.size(); t++) {
-    for (int32 i = 0; i < post[t].size(); i++) {
-      int32 col = model.TransitionIdToPdf(post[t][i].first);
-      if (col >= num_cols) {
-        KALDI_ERR << "Out-of-bound Posterior element with index " << col
-                  << ", higher than number of columns " << num_cols;
-      }
-      (*mat)(t, col) += post[t][i].second;  // sum,
-    }
-  }
-}
 
 /**
  * Wrapper of PosteriorToMatrixMapped with CuMatrix argument.
  */
 template <typename Real>
-void PosteriorToMatrixMapped(const Posterior &post,
-                             const TransitionModel &model,
-                             CuMatrix<Real> *mat) {
+void PosteriorToPdfMatrix(const Posterior &post,
+                          const TransitionModel &model,
+                          CuMatrix<Real> *mat) {
   Matrix<BaseFloat> m;
-  PosteriorToMatrixMapped(post, model, &m);
+  PosteriorToPdfMatrix(post, model, &m);
   // Copy to output GPU matrix,
   (*mat) = m;
 }
-
 
 
 }  // namespace nnet1

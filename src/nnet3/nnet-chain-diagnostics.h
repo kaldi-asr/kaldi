@@ -59,6 +59,17 @@ class NnetChainComputeProb {
                        const fst::StdVectorFst &den_fst,
                        const Nnet &nnet);
 
+  // This version of the constructor may only be called if
+  // nnet_config.store_component_stats == true and nnet_config.compute_deriv ==
+  // false; it means it will store the component stats in 'nnet'.  In this case
+  // you should call ZeroComponentStats(nnet) first if you want the stats to be
+  // zeroed first.
+  NnetChainComputeProb(const NnetComputeProbOptions &nnet_config,
+                       const chain::ChainTrainingOptions &chain_config,
+                       const fst::StdVectorFst &den_fst,
+                       Nnet *nnet);
+
+
   // Reset the likelihood stats, and the derivative stats (if computed).
   void Reset();
 
@@ -71,6 +82,11 @@ class NnetChainComputeProb {
   // returns the objective-function info for this output name (e.g. "output"),
   // or NULL if there is no such info.
   const ChainObjectiveInfo *GetObjective(const std::string &output_name) const;
+
+  // This function returns the total objective over all output nodes recorded here, and
+  // outputs to 'tot_weight' the total weight (typically the number of frames)
+  // corresponding to it.
+  double GetTotalObjective(double *tot_weight) const;
 
   // if config.compute_deriv == true, returns a reference to the
   // computed derivative.  Otherwise crashes.
@@ -86,6 +102,7 @@ class NnetChainComputeProb {
   chain::DenominatorGraph den_graph_;
   const Nnet &nnet_;
   CachingOptimizingCompiler compiler_;
+  bool deriv_nnet_owned_;
   Nnet *deriv_nnet_;
   int32 num_minibatches_processed_;  // this is only for diagnostics
 
@@ -93,6 +110,14 @@ class NnetChainComputeProb {
 
 };
 
+/// This function zeros the stored component-level stats in the nnet using
+/// ZeroComponentStats(), then recomputes them with the supplied egs.  It
+/// affects batch-norm, for instance.  See also the version of RecomputeStats
+/// declared in nnet-utils.h.
+void RecomputeStats(const std::vector<NnetChainExample> &egs,
+                    const chain::ChainTrainingOptions &chain_config,
+                    const fst::StdVectorFst &den_fst,
+                    Nnet *nnet);
 
 
 

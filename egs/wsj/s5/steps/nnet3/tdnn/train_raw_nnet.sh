@@ -1,6 +1,9 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ../train_raw_dnn.py
+
 # note, TDNN is the same as what we used to call multisplice.
+# THIS SCRIPT IS DEPRECATED, see ../train_raw_dnn.py
 
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
@@ -69,12 +72,14 @@ dense_targets=true        # Use dense targets instead of sparse targets
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
 if [ $# != 3 ]; then
+  echo "$0: THIS SCRIPT IS DEPRECATED, see ../train_raw_dnn.py"
   echo "Usage: $0 [opts] <data> <targets-scp> <exp-dir>"
   echo " e.g.: $0 data/train scp:snr_targets/targets.scp exp/nnet3_snr_predictor"
   echo ""
@@ -92,9 +97,9 @@ if [ $# != 3 ]; then
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
   echo "                                                   # results as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
-  echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
-  echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
-  echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
+  echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
+  echo "                                                   # use multiple threads... note, you might have to reduce --mem"
+  echo "                                                   # versus your defaults, because it gets multiplied by the --num-threads argument."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -136,6 +141,7 @@ if [ -z "$online_ivector_dir" ]; then
   ivector_dim=0
 else
   ivector_dim=$(feat-to-dim scp:$online_ivector_dir/ivector_online.scp -) || exit 1;
+  steps/nnet2/get_ivector_id.sh $online_ivector_dir > $dir/final.ie.id || exit 1
 fi
 
 if [ ! -z "$configs_dir" ]; then
@@ -185,7 +191,6 @@ fi
 if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
   extra_opts=()
   [ ! -z "$cmvn_opts" ] && extra_opts+=(--cmvn-opts "$cmvn_opts")
-  [ ! -z "$feat_type" ] && extra_opts+=(--feat-type $feat_type)
   [ ! -z "$online_ivector_dir" ] && extra_opts+=(--online-ivector-dir $online_ivector_dir)
   extra_opts+=(--transform-dir "$transform_dir")
   extra_opts+=(--left-context $left_context)
@@ -207,6 +212,11 @@ if [ $stage -le -4 ] && [ -z "$egs_dir" ]; then
 fi
 
 [ -z $egs_dir ] && egs_dir=$dir/egs
+
+if [ ! -z "$online_ivector_dir" ] ; then
+  steps/nnet2/check_ivectors_compatible.sh $online_ivector_dir $egs_dir/info || exit 1
+fi
+
 
 if [ "$feat_dim" != "$(cat $egs_dir/info/feat_dim)" ]; then
   echo "$0: feature dimension mismatch with egs, $feat_dim vs $(cat $egs_dir/info/feat_dim)";
@@ -544,4 +554,3 @@ if $cleanup; then
     fi
   done
 fi
-

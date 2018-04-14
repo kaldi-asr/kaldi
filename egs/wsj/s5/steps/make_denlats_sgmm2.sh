@@ -66,7 +66,9 @@ oov=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir
 
-cp -rH $lang $dir/
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+
+cp -RH $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
 new_lang="$dir/"$(basename "$lang")
@@ -93,14 +95,15 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
    ;;
   *) echo "$0: Invalid feature type $feat_type" && exit 1;
 esac
 
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "$0: using fMLLR transforms from $transform_dir"
-  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
+  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist." && exit 1
+  [ ! -f $transform_dir/num_jobs ] && echo "Expected $transform_dir/num_jobs to exist." && exit 1
   [ "`cat $transform_dir/num_jobs`" -ne "$nj" ] \
     && echo "$0: mismatch in number of jobs with $transform_dir" && exit 1;
   [ -f $alidir/final.mat ] && ! cmp $transform_dir/final.mat $alidir/final.mat && \
@@ -137,7 +140,7 @@ cleanup() {
 }
 trap "cleanup" INT QUIT TERM EXIT
 
-if [ $sub_split -eq 1 ]; then 
+if [ $sub_split -eq 1 ]; then
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode_den.JOB.log \
     sgmm2-latgen-faster$thread_string $spkvecs_opt "$gselect_opt" --beam=$beam \
     --lattice-beam=$lattice_beam --acoustic-scale=$acwt \
@@ -157,14 +160,12 @@ else
     elif [ -f $dir/.done.$n ] && [ $dir/.done.$n -nt $alidir/final.mdl ]; then
       echo "$0: Not processing subset $n as already done (delete $dir/.done.$n if not)";
       this_pid=
-    else 
-      sdata2=$data/split$nj/$n/split$sub_split;
-      if [ ! -d $sdata2 ] || [ $sdata2 -ot $sdata/$n/feats.scp ]; then
-        split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
-      fi
+    else
+      sdata2=$data/split$nj/$n/split${sub_split}utt;
+      split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
+      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split${sub_split}utt/JOB/:g`
       spkvecs_opt_subset=`echo $spkvecs_opt | sed "s/JOB/$n/g"`
       gselect_opt_subset=`echo $gselect_opt | sed "s/JOB/$n/g"`
       $cmd --num-threads $num_threads JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \

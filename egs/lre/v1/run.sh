@@ -5,8 +5,8 @@
 #
 # An incomplete run.sh for this example.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 mfccdir=`pwd`/mfcc
@@ -49,19 +49,13 @@ rm foo
 
 local/split_long_utts.sh --max-utt-len 120 data/train_unsplit data/train
 
-# This commented script is an alternative to the above utterance
-# splitting method. Here we split the utterance based on the number of 
-# frames which are voiced, rather than the total number of frames.
-# max_voiced=3000 
-# local/vad_split_utts.sh --max-voiced $max_voiced data/train_unsplit $mfccdir data/train
-
 use_vtln=true
 if $use_vtln; then
   for t in train lre07; do
     cp -rt data/${t} data/${t}_novtln
     rm -r data/${t}_novtln/{split,.backup,spk2warp} 2>/dev/null || true
     steps/make_mfcc.sh --mfcc-config conf/mfcc_vtln.conf --nj 100 --cmd "$train_cmd" \
-       data/${t}_novtln exp/make_mfcc $mfccdir 
+       data/${t}_novtln exp/make_mfcc $mfccdir
     lid/compute_vad_decision.sh data/${t}_novtln exp/make_mfcc $mfccdir
   done
   # Vtln-related things:
@@ -115,7 +109,7 @@ lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train \
 # Alternatively, a diagonal UBM can replace the full UBM used above.
 # The preceding calls to train_diag_ubm.sh and train_full_ubm.sh
 # can be commented out and replaced with the following lines.
-# 
+#
 # This results in a slight degradation but could improve error rate when
 # there is less training data than used in this example.
 #
@@ -125,12 +119,12 @@ lid/train_full_ubm.sh --nj 30 --cmd "$train_cmd" data/train \
 #gmm-global-to-fgmm exp/diag_ubm_2048/final.dubm \
 #  exp/full_ubm_2048/final.ubm
 
-lid/train_ivector_extractor.sh --cmd "$train_cmd -l mem_free=2G,ram_free=2G" \
+lid/train_ivector_extractor.sh --cmd "$train_cmd --mem 2G" \
   --num-iters 5 exp/full_ubm_2048/final.ubm data/train \
   exp/extractor_2048
 
-lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+lid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048 data/train exp/ivectors_train
 
-lid/extract_ivectors.sh --cmd "$train_cmd -l mem_free=3G,ram_free=3G" --nj 50 \
+lid/extract_ivectors.sh --cmd "$train_cmd --mem 3G" --nj 50 \
    exp/extractor_2048 data/lre07 exp/ivectors_lre07

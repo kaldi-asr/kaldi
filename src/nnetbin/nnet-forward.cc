@@ -62,10 +62,6 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet1;
     typedef kaldi::int32 int32;
 
-    int32 time_shift = 0;
-    po.Register("time-shift", &time_shift,
-        "LSTM : repeat last input frame N-times, discrad N initial output frames.");
-
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -113,8 +109,8 @@ int main(int argc, char *argv[]) {
     PdfPrior pdf_prior(prior_opts);
 
     // disable dropout,
-    nnet_transf.SetDropoutRetention(1.0);
-    nnet.SetDropoutRetention(1.0);
+    nnet_transf.SetDropoutRate(0.0);
+    nnet.SetDropoutRate(0.0);
 
     kaldi::int64 tot_t = 0;
 
@@ -140,15 +136,6 @@ int main(int argc, char *argv[]) {
 
       if (!KALDI_ISFINITE(mat.Sum())) {  // check there's no nan/inf,
         KALDI_ERR << "NaN or inf found in features for " << utt;
-      }
-
-      // time-shift, copy the last frame of LSTM input N-times,
-      if (time_shift > 0) {
-        int32 last_row = mat.NumRows() - 1;  // last row,
-        mat.Resize(mat.NumRows() + time_shift, mat.NumCols(), kCopyData);
-        for (int32 r = last_row+1; r < mat.NumRows(); r++) {
-          mat.CopyRowFromVec(mat.Row(last_row), r);  // copy last row,
-        }
       }
 
       // push it to gpu,
@@ -184,12 +171,6 @@ int main(int argc, char *argv[]) {
       // download from GPU,
       nnet_out_host = Matrix<BaseFloat>(nnet_out);
 
-      // time-shift, remove N first frames of LSTM output,
-      if (time_shift > 0) {
-        Matrix<BaseFloat> tmp(nnet_out_host);
-        nnet_out_host = tmp.RowRange(time_shift, tmp.NumRows() - time_shift);
-      }
-
       // write,
       if (!KALDI_ISFINITE(nnet_out_host.Sum())) {  // check there's no nan/inf,
         KALDI_ERR << "NaN or inf found in final output nn-output for " << utt;
@@ -213,7 +194,7 @@ int main(int argc, char *argv[]) {
               << " (fps " << tot_t/time.Elapsed() << ")";
 
 #if HAVE_CUDA == 1
-    if (kaldi::g_kaldi_verbose_level >= 1) {
+    if (GetVerboseLevel() >= 1) {
       CuDevice::Instantiate().PrintProfile();
     }
 #endif

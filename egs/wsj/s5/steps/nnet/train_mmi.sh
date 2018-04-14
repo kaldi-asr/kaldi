@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2013-2015  Brno University of Technology (author: Karel Vesely)  
+# Copyright 2013-2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0.
 
 # Sequence-discriminative MMI/BMMI training of DNN.
@@ -14,13 +14,13 @@
 # Begin configuration section.
 cmd=run.pl
 num_iters=4
-boost=0.0 #ie. disable boosting 
+boost=0.0 #ie. disable boosting
 acwt=0.1
 lmwt=1.0
 learn_rate=0.00001
 halving_factor=1.0 #ie. disable halving
 drop_frames=true
-verbose=1
+verbose=0 # 0 No GPU time-stats, 1 with GPU time-stats (slower),
 ivector=
 
 seed=777    # seed value used for training data shuffling
@@ -46,7 +46,7 @@ if [ $# -ne 6 ]; then
   echo "  --learn-rate <float>                             # learning rate for NN training"
   echo "  --drop-frames <bool>                             # drop frames num/den completely disagree"
   echo "  --boost <boost-weight>                           # (e.g. 0.1), for boosted MMI.  (default 0)"
-  
+
   exit 1;
 fi
 
@@ -67,6 +67,10 @@ done
 if ! $skip_cuda_check; then cuda-compiled || { echo "Error, CUDA not compiled-in!"; exit 1; } fi
 
 mkdir -p $dir/log
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
+cp $lang/phones.txt $dir
 
 cp $alidir/{final.mdl,tree} $dir
 
@@ -122,12 +126,19 @@ feats="ark,o:copy-feats scp:$dir/train.scp ark:- |"
 
 # add-ivector (optional),
 if [ -e $D/ivector_dim ]; then
-  ivector_dim=$(cat $D/ivector_dim)
-  [ -z $ivector ] && echo "Missing --ivector, they were used in training! (dim $ivector_dim)" && exit 1
-  ivector_dim2=$(copy-vector "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
-  [ $ivector_dim != $ivector_dim2 ] && "Error, i-vector dimensionality mismatch! (expected $ivector_dim, got $ivector_dim2 in $ivector)" && exit 1
-  # Append to feats
-  feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
+  # Get the tool,
+  ivector_append_tool=append-vector-to-feats # default,
+  [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
+  # Check dims,
+  dim_raw=$(feat-to-dim "$feats" -)
+  dim_raw_and_ivec=$(feat-to-dim "$feats $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_ivec=$((dim_raw_and_ivec - dim_raw))
+  [ $dim_ivec != "$(cat $D/ivector_dim)" ] && \
+    echo "Error, i-vector dim. mismatch (expected $(cat $D/ivector_dim), got $dim_ivec in '$ivector')" && \
+    exit 1
+  # Append to feats,
+  feats="$feats $ivector_append_tool ark:- '$ivector' ark:- |"
 fi
 
 ### Record the setup,
@@ -135,11 +146,12 @@ fi
 [ ! -z "$delta_opts" ] && echo $delta_opts >$dir/delta_opts
 [ -e $D/pytel_transform.py ] && cp $D/pytel_transform.py $dir/pytel_transform.py
 [ -e $D/ivector_dim ] && cp $D/ivector_dim $dir/ivector_dim
+[ -e $D/ivector_append_tool ] && cp $D/ivector_append_tool $dir/ivector_append_tool
 ###
 
 ###
 ### Prepare the alignments
-### 
+###
 # Assuming all alignments will fit into memory
 ali="ark:gunzip -c $alidir/ali.*.gz |"
 
@@ -198,7 +210,7 @@ while [ $x -le $num_iters ]; do
 
   x=$((x+1))
   learn_rate=$(awk "BEGIN{print($learn_rate*$halving_factor)}")
-  
+
 done
 
 (cd $dir; [ -e final.nnet ] && unlink final.nnet; ln -s $((x-1)).nnet final.nnet)
@@ -209,11 +221,10 @@ if [ -e $dir/prior_counts ]; then
   echo "Priors are already re-estimated, skipping... ($dir/prior_counts)"
 else
   echo "Re-estimating priors by forwarding 10k utterances from training set."
-  . cmd.sh
+  . ./cmd.sh
   nj=$(cat $alidir/num_jobs)
   steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj \
-    ${ivector:+ --ivector "$ivector"} \
-    $data $dir
+    ${ivector:+ --ivector "$ivector"} $data $dir
 fi
 
 echo "$0: Done. '$dir'"

@@ -5,8 +5,8 @@
 # Before running this script, go to ../../wsj/s5, and after running
 # the earlier stages in the run.sh (so the baseline SAT system is built),
 # run the following:
-# 
-# local/online/run_nnet2.sh --stage 8 --dir exp/nnet2_online/nnet_ms_a_partial --exit-train-stage 15    
+#
+# local/online/run_nnet2.sh --stage 8 --dir exp/nnet2_online/nnet_ms_a_partial --exit-train-stage 15
 #
 # (you may want to keep --stage 8 on the above command line after run_nnet2.sh,
 # in case you already ran some scripts in local/online/ in ../../wsj/s5/ and
@@ -23,30 +23,30 @@ dir=exp/nnet2_online_wsj/nnet_ms_a
 use_gpu=true
 set -e
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
 else
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 # Check inputs.
 for f in $srcdir/egs/egs.1.ark $srcdir/egs/info/egs_per_archive \
-    ${srcdir}_online/final.mdl $src_alidir/ali.1.gz; do 
+    ${srcdir}_online/final.mdl $src_alidir/ali.1.gz; do
   [ ! -f $f ] && echo "$0: expected file $f to exist." && exit 1;
 done
 
@@ -59,7 +59,7 @@ if [ $stage -le 0 ]; then
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train data/train_max2
 fi
 
-if [ $stage -le 1 ]; then 
+if [ $stage -le 1 ]; then
   echo "$0: dumping egs for RM data"
   steps/online/nnet2/get_egs2.sh --cmd "$train_cmd" \
     data/train_max2 exp/tri3b_ali ${srcdir}_online ${dir}/egs

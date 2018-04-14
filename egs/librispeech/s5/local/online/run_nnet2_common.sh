@@ -2,13 +2,13 @@
 
 # this script contains some common (shared) parts of the run_nnet*.sh scripts.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -24,7 +24,7 @@ if [ $stage -le 1 ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
-  for datadir in train_960 dev_clean dev_other; do
+  for datadir in train_960 test_clean test_other dev_clean dev_other; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
     steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/${datadir}_hires exp/make_hires/$datadir $mfccdir || exit 1;

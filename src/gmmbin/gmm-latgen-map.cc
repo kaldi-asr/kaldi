@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage = "Decode features using GMM-based model.  Note: the input\n"
@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
 
     if (ClassifyRspecifier(fst_in_filename, NULL, NULL) == kNoRspecifier) {
       // Input FST is just one FST, not a table of FSTs.
-      VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_filename);
+      Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_filename);
 
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !feature_reader.Done(); feature_reader.Next()) {

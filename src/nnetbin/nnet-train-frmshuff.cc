@@ -45,6 +45,8 @@ int main(int argc, char *argv[]) {
     trn_opts.Register(&po);
     NnetDataRandomizerOptions rnd_opts;
     rnd_opts.Register(&po);
+    LossOptions loss_opts;
+    loss_opts.Register(&po);
 
     bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
@@ -65,6 +67,10 @@ int main(int argc, char *argv[]) {
     po.Register("objective-function", &objective_function,
         "Objective function : xent|mse|multitask");
 
+    int32 max_frames = 360000;
+    po.Register("max-frames", &max_frames,
+        "Maximum number of frames an utterance can have (skipped if longer)");
+
     int32 length_tolerance = 5;
     po.Register("length-tolerance", &length_tolerance,
         "Allowed length mismatch of features/targets/weights "
@@ -81,11 +87,6 @@ int main(int argc, char *argv[]) {
     std::string use_gpu="yes";
     po.Register("use-gpu", &use_gpu,
         "yes|no|optional, only has effect if compiled with CUDA");
-
-    double dropout_retention = 0.0;
-    po.Register("dropout-retention", &dropout_retention,
-        "number between 0..1, controls how many neurons are preserved "
-        "(0.0 will keep the value unchanged)");
 
     po.Read(argc, argv);
 
@@ -120,13 +121,9 @@ int main(int argc, char *argv[]) {
     nnet.Read(model_filename);
     nnet.SetTrainOptions(trn_opts);
 
-    if (dropout_retention > 0.0) {
-      nnet_transf.SetDropoutRetention(dropout_retention);
-      nnet.SetDropoutRetention(dropout_retention);
-    }
     if (crossvalidate) {
-      nnet_transf.SetDropoutRetention(1.0);
-      nnet.SetDropoutRetention(1.0);
+      nnet_transf.SetDropoutRate(0.0);
+      nnet.SetDropoutRate(0.0);
     }
 
     kaldi::int64 total_frames = 0;
@@ -147,10 +144,10 @@ int main(int argc, char *argv[]) {
     PosteriorRandomizer targets_randomizer(rnd_opts);
     VectorRandomizer weights_randomizer(rnd_opts);
 
-    Xent xent;
-    Mse mse;
+    Xent xent(loss_opts);
+    Mse mse(loss_opts);
 
-    MultiTaskLoss multitask;
+    MultiTaskLoss multitask(loss_opts);
     if (0 == objective_function.compare(0, 9, "multitask")) {
       // objective_function contains something like :
       // 'multitask,xent,2456,1.0,mse,440,0.001'
@@ -162,13 +159,15 @@ int main(int argc, char *argv[]) {
 
     CuMatrix<BaseFloat> feats_transf, nnet_out, obj_diff;
 
-    Timer time;
+    Timer time, time_io;
     KALDI_LOG << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
               << " STARTED";
 
     int32 num_done = 0,
           num_no_tgt_mat = 0,
           num_other_error = 0;
+
+    double time_io_accu = 0.0;
 
     // main loop,
     while (!feature_reader.Done()) {
@@ -177,6 +176,7 @@ int main(int argc, char *argv[]) {
       CuDevice::Instantiate().CheckGpuHealth();
 #endif
       // fill the randomizer,
+      time_io.Reset();
       for ( ; !feature_reader.Done(); feature_reader.Next()) {
         if (feature_randomizer.IsFull()) {
           // break the loop without calling Next(),
@@ -220,6 +220,19 @@ int main(int argc, char *argv[]) {
           KALDI_ASSERT(w >= 0.0);
           if (w == 0.0) continue;  // remove sentence from training,
           weights.Scale(w);
+        }
+
+        // accumulate the I/O time,
+        time_io_accu += time_io.Elapsed();
+        time_io.Reset(); // to be sure we don't count 2x,
+
+        // skip too long utterances (or we run out of memory),
+        if (mat.NumRows() > max_frames) {
+          KALDI_WARN << "Utterance too long, skipping! " << utt
+            << " (length " << mat.NumRows() << ", max_frames "
+            << max_frames << ")";
+          num_other_error++;
+          continue;
         }
 
         // correct small length mismatch or drop sentence,
@@ -293,13 +306,7 @@ int main(int argc, char *argv[]) {
         weights_randomizer.AddData(weights);
         num_done++;
 
-        // report the speed,
-        if (num_done % 5000 == 0) {
-          double time_now = time.Elapsed();
-          KALDI_VLOG(1) << "After " << num_done << " utterances: "
-            << "time elapsed = " << time_now / 60 << " min; "
-            << "processed " << total_frames / time_now << " frames per sec.";
-        }
+        time_io.Reset(); // reset before reading next feature matrix,
       }
 
       // randomize,
@@ -344,17 +351,17 @@ int main(int argc, char *argv[]) {
 
         // 1st mini-batch : show what happens in network,
         if (total_frames == 0) {
-          KALDI_VLOG(1) << "### After " << total_frames << " frames,";
-          KALDI_VLOG(1) << nnet.InfoPropagate();
+          KALDI_LOG << "### After " << total_frames << " frames,";
+          KALDI_LOG << nnet.InfoPropagate();
           if (!crossvalidate) {
-            KALDI_VLOG(1) << nnet.InfoBackPropagate();
-            KALDI_VLOG(1) << nnet.InfoGradient();
+            KALDI_LOG << nnet.InfoBackPropagate();
+            KALDI_LOG << nnet.InfoGradient();
           }
         }
 
         // VERBOSE LOG
         // monitor the NN training (--verbose=2),
-        if (kaldi::g_kaldi_verbose_level >= 2) {
+        if (GetVerboseLevel() >= 2) {
           static int32 counter = 0;
           counter += nnet_in.NumRows();
           // print every 25k frames,
@@ -374,11 +381,11 @@ int main(int argc, char *argv[]) {
     }  // main loop,
 
     // after last mini-batch : show what happens in network,
-    KALDI_VLOG(1) << "### After " << total_frames << " frames,";
-    KALDI_VLOG(1) << nnet.InfoPropagate();
+    KALDI_LOG << "### After " << total_frames << " frames,";
+    KALDI_LOG << nnet.InfoPropagate();
     if (!crossvalidate) {
-      KALDI_VLOG(1) << nnet.InfoBackPropagate();
-      KALDI_VLOG(1) << nnet.InfoGradient();
+      KALDI_LOG << nnet.InfoBackPropagate();
+      KALDI_LOG << nnet.InfoGradient();
     }
 
     if (!crossvalidate) {
@@ -391,7 +398,8 @@ int main(int argc, char *argv[]) {
       << "[" << (crossvalidate ? "CROSS-VALIDATION" : "TRAINING")
       << ", " << (randomize ? "RANDOMIZED" : "NOT-RANDOMIZED")
       << ", " << time.Elapsed() / 60 << " min, processing "
-      << total_frames / time.Elapsed() << " frames per sec.]";
+      << total_frames / time.Elapsed() << " frames per sec;"
+      << " i/o time " << 100.*time_io_accu/time.Elapsed() << "%]";
 
     if (objective_function == "xent") {
       KALDI_LOG << xent.ReportPerClass();

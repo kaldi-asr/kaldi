@@ -104,7 +104,7 @@ int main(int argc, char *argv[]) {
       int32 num_frames = featlen_reader.Value();
 
       // show which streams are non-empty,
-      if (allow_partial && kaldi::g_kaldi_verbose_level >= 2) {
+      if (allow_partial && GetVerboseLevel() >= 2) {
         std::string nonempty_streams;
         for (int32 s = 0; s < stream_count; s++) {
           if (posterior_reader[s].HasKey(utt)) {

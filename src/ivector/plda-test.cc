@@ -23,7 +23,7 @@
 namespace kaldi {
 
 void UnitTestPldaEstimation(int32 dim) {
-  int32 num_classes = 4000 + Rand() % 10;
+  int32 num_classes = 1000 + Rand() % 10;
   Matrix<double> between_proj(dim, dim);
   while (between_proj.Cond() > 100)
     between_proj.SetRandn();
@@ -31,13 +31,13 @@ void UnitTestPldaEstimation(int32 dim) {
   while (within_proj.Cond() > 100)
     within_proj.SetRandn();
 
-  
+
   Vector<double> global_mean(dim);
   global_mean.SetRandn();
   global_mean.Scale(10.0);
-  
+
   PldaStats stats;
-  
+
   for (int32 n = 0; n < num_classes; n++) {
     int32 num_egs = 1 + Rand() % 30;
     Vector<double> rand_vec(dim);
@@ -57,8 +57,8 @@ void UnitTestPldaEstimation(int32 dim) {
                      offset_mat);
   }
 
-  
-  
+
+
   SpMatrix<double> between_var(dim), within_var(dim);
   between_var.AddMat2(1.0, between_proj, kNoTrans, 0.0);
   within_var.AddMat2(1.0, within_proj, kNoTrans, 0.0);
@@ -86,7 +86,7 @@ void UnitTestPldaEstimation(int32 dim) {
     KALDI_LOG << "Diagonal of between-class variance in normalized space "
               << "should be: " << s;
   }
-  
+
 }
 
 }
@@ -109,7 +109,7 @@ int main() {
     UnitTestPldaEstimation(i + 1);
 
   // UnitTestPldaEstimation(400);
-  UnitTestPldaEstimation(80);
+  UnitTestPldaEstimation(40);
   std::cout << "Test OK.\n";
   return 0;
 }

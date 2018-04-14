@@ -5,6 +5,7 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
+//                2017  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -51,9 +52,11 @@ Real TraceMatMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B,
 /// C[i] = alpha *  A[i](^T)*B[i](^T) + beta * C[i].
 template<typename Real>
 void AddMatMatBatched(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
-		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
-		const std::vector<CuSubMatrix<Real>* > &B, MatrixTransposeType transB,
-		const Real beta);
+                      const std::vector<CuSubMatrix<Real>* > &A,
+                      MatrixTransposeType transA,
+                      const std::vector<CuSubMatrix<Real>* > &B,
+                      MatrixTransposeType transB,
+                      const Real beta);
 
 /**
  * Matrix for CUDA computing.
@@ -94,26 +97,23 @@ class CuMatrixBase {
   /// Copies column r from column indexes[r] of src.
   /// As a special case, if indexes[i] == -1, sets column i to zero
   /// indexes.size() must equal this->NumCols(),
-  /// all elements of "reorder" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void CopyCols(const CuMatrixBase<Real> &src,
-                const CuArray<MatrixIndexT> &indexes);
+                const CuArrayBase<MatrixIndexT> &indexes);
 
 
   /// Add column indices[r] of src to column r.
   /// As a special case, if indexes[i] == -1, skip column i
   /// indices.size() must equal this->NumCols(),
-  /// all elements of "reorder" must be in [-1, src.NumCols()-1],
   /// and src.NumRows() must equal this.NumRows()
   void AddCols(const CuMatrixBase<Real> &src,
-               const CuArray<MatrixIndexT> &indices);
+               const CuArrayBase<MatrixIndexT> &indices);
 
   /// Copies row r from row indexes[r] of src.
-  /// As a special case, if indexes[i] < 0, sets row i to zero
-  /// "reorder".size() must equal this->NumRows(), and
+  /// As a special case, if indexes[i] < 0, sets row i to zero.
   /// src.NumCols() must equal this.NumCols()
   void CopyRows(const CuMatrixBase<Real> &src,
-                const CuArray<MatrixIndexT> &indexes);
+                const CuArrayBase<MatrixIndexT> &indexes);
 
   /// Copies row r of this matrix from an array of floats at the location given
   /// by src[r], where src[r] is assumed to be obtained from the RowData()
@@ -121,7 +121,7 @@ class CuMatrixBase {
   /// data it points to should be on the GPU if we're using a GPU, and on a CPU
   /// otherwise).  src.size() must equal this.NumRows(), and if any src[r] is
   /// NULL then this.Row(r) will be set to zero.
-  void CopyRows(const CuArray<const Real*> &src);
+  void CopyRows(const CuArrayBase<const Real*> &src);
 
   /// For each row r of this matrix, copies it to the array of floats at the
   /// location given by dst[r], where dst[r] is assumed to be obtained from the
@@ -130,22 +130,38 @@ class CuMatrixBase {
   /// otherwise).  If dst[r] is NULL, does not copy anywhere.  Requires that
   /// none of the memory regions pointed to by the pointers in "dst" overlap
   /// (e.g. none of the pointers should be the same).
-  void CopyToRows(const CuArray<Real*> &dst) const;
+  void CopyToRows(const CuArrayBase<Real*> &dst) const;
 
   /// Does for each row r, this.Row(r) += alpha * src.row(indexes[r]).
   /// If indexes[r] < 0, does not add anything.
-  /// "reorder".size() must equal this->NumRows(),
-  /// all elements of "reorder" must be in [0, src.NumRows()-1],
-  /// and src.NumCols() must equal this.NumCols()
+  /// src.NumCols() must equal this.NumCols()
   void AddRows(Real alpha,
                const CuMatrixBase<Real> &src,
-               const CuArray<MatrixIndexT> &indexes);
+               const CuArrayBase<MatrixIndexT> &indexes);
+
+
+  /// Does for each row r, this.Row(r) *= alpha * src.row(indexes[r]),
+  /// where '*=' is elementwise multiplication.
+  /// If indexes[r] < 0, does not add anything.
+  /// src.NumCols() must equal this.NumCols()
+  void MulRows(const CuMatrixBase<Real> &src,
+               const CuArrayBase<MatrixIndexT> &indexes);
+
 
   /// Does for each row r, this.Row(r) += alpha * src[r],
   /// treating src[r] as the beginning of a region of memory representing
   /// a vector of floats, of the same length as this.NumCols().
   void AddRows(Real alpha,
-               const CuArray<const Real*> &src);
+               const CuArrayBase<const Real*> &src);
+
+
+  /// For each row i of *this, adds this->Row(i) to
+  /// dst->Row(indexes(i)) if indexes(i) >= 0, else do nothing.
+  /// Requires that all the indexes[i] that are >= 0
+  /// be distinct, otherwise the behavior is undefined.
+  void AddToRows(Real alpha,
+                 const CuArrayBase<MatrixIndexT> &indexes,
+                 CuMatrixBase<Real> *dst) const;
 
 
   /// For each row r of this matrix, adds it (times alpha) to the array of
@@ -155,14 +171,14 @@ class CuMatrixBase {
   /// a GPU, or on the CPU otherwise).  If dst[r] is NULL, does not do anything
   /// for that row.  Requires that none of the memory regions pointed to by the
   /// pointers in "dst" overlap (e.g. none of the pointers should be the same).
-  void AddToRows(Real alpha, const CuArray<Real*> &dst) const;
+  void AddToRows(Real alpha, const CuArrayBase<Real*> &dst) const;
 
 
   /// For each row r of this and for each column c, sets (*this)(r, c) to the
   /// sum \sum_j src(r, j), where j ranges from indexes[c].first through
   /// indexes[c].second - 1.
   void SumColumnRanges(const CuMatrixBase<Real> &src,
-                       const CuArray<Int32Pair> &indexes);
+                       const CuArrayBase<Int32Pair> &indexes);
 
 
   /// For each row r of this and for each column c, do
@@ -171,7 +187,7 @@ class CuMatrixBase {
   /// In general indexes must be >= 0 and < src.NumRows(); but to represent an empty range
   /// you may use the pair (-1, -1) or any pair of numbers (i, j) such that i >= j.
   void AddRowRanges(const CuMatrixBase<Real> &src,
-                    const CuArray<Int32Pair> &indexes);
+                    const CuArrayBase<Int32Pair> &indexes);
 
 
   friend Real TraceMatMat<Real>(const CuMatrixBase<Real> &A,
@@ -182,10 +198,13 @@ class CuMatrixBase {
                                  const CuSparseMatrix<Real> &B,
                                  MatrixTransposeType trans);
 
-  friend void AddMatMatBatched<Real>(const Real alpha, std::vector<CuSubMatrix<Real>* > &C,
-		const std::vector<CuSubMatrix<Real>* > &A, MatrixTransposeType transA,
-		const std::vector<CuSubMatrix<Real>* > &B, MatrixTransposeType transB,
-		const Real beta);
+  friend void AddMatMatBatched<Real>(const Real alpha,
+                                     std::vector<CuSubMatrix<Real>* > &C,
+                                     const std::vector<CuSubMatrix<Real>* > &A,
+                                     MatrixTransposeType transA,
+                                     const std::vector<CuSubMatrix<Real>* > &B,
+                                     MatrixTransposeType transB,
+                                     const Real beta);
 
   /// Adds "value" to the diagonal elements of the matrix.  The matrix
   /// *this does not have to be square.
@@ -247,6 +266,11 @@ class CuMatrixBase {
   /// Version of CopyRowsFromVec() that takes a CPU-based vector.
   void CopyRowsFromVec(const VectorBase<Real> &v);
 
+  /// Copies vector into matrix, column-by-column.
+  /// Note that rv.Dim() must either equal NumRows()*NumCols() or NumRows();
+  /// this has two modes of operation.
+  void CopyColsFromVec(const CuVectorBase<Real> &v);
+
   /// Copy vector into specific column of matrix.
   void CopyColFromVec(const CuVectorBase<Real> &v, const MatrixIndexT col);
 
@@ -270,14 +294,11 @@ class CuMatrixBase {
   ///  src.NumCols() / this->NumCols() must be an integer.
   void GroupPnorm(const CuMatrixBase<Real> &src, Real pow);
 
-  /// Calculate derivatives for the GroupPnorm function above...
-  /// if "input" is the input to the GroupPnorm function above (i.e. the "src" variable),
-  /// and "output" is the result of the computation (i.e. the "this" of that function
-  /// call), and *this has the same dimension as "input", then it sets each element
-  /// of *this to the derivative d(output-elem)/d(input-elem) for each element of "input", where
-  /// "output-elem" is whichever element of output depends on that input element.
-  void GroupPnormDeriv(const CuMatrixBase<Real> &input,
-                       const CuMatrixBase<Real> &output, Real power);
+  /// Differentiate backward through the GroupPnorm function.
+  /// It is a combination of GroupPnormDeriv and MulRowsGroupMat.
+  void DiffGroupPnorm(const CuMatrixBase<Real> &in_value,
+                      const CuMatrixBase<Real> &out_value,
+                      const CuMatrixBase<Real> &out_deriv, Real power);
 
   /// Apply the function y(i) = (max_{j = i*G}^{(i+1)*G-1} x_j
   /// where G = x.NumCols() / y.NumCols() must be an integer.
@@ -295,6 +316,20 @@ class CuMatrixBase {
   void GroupMaxDeriv(const CuMatrixBase<Real> &input,
                      const CuMatrixBase<Real> &output);
 
+  /// Compute the parametric rectified linear unit function;
+  /// element by element, *this = src * (src > 0 ? alpha : beta)
+  void ParametricRelu(const CuMatrixBase<Real> &src,
+                      const CuVectorBase<Real> &alpha,
+                      const CuVectorBase<Real> &beta);
+
+  /// Differentiate backward through the parametric relu function.
+  /// Here the "value" is the Relu input. Does, element-by-element.
+  /// *this = diff * (value > 0 ? alpha : beta)
+  void DiffParametricRelu(const CuMatrixBase<Real> &value,
+                          const CuMatrixBase<Real> &diff,
+                          const CuVectorBase<Real> &alpha,
+                          const CuVectorBase<Real> &beta);
+
   /// Compute the hyperbolic tangent (tanh) function; element by element,
   /// *this = tanh(src).
   void Tanh(const CuMatrixBase<Real> &src);
@@ -309,6 +344,22 @@ class CuMatrixBase {
   void DiffTanh(const CuMatrixBase<Real> &value,
                 const CuMatrixBase<Real> &diff);
 
+  /// Differentiate backward through the softmax function.  Here, "value" is the
+  /// softmax output. Does, for each row i,
+  /// *this(i) =  diff(i) * diag(value(i)) - diff(i) * (value(i)^T * value(i))
+  /// xxxx(i) is row-vector; '*' and '-' are matrix operations.
+  /// Supports in-place operation, this  == &diff.
+  void DiffSoftmaxPerRow(const CuMatrixBase<Real> &value,
+                         const CuMatrixBase<Real> &diff);
+
+  /// Differentiate backward through the log softmax function.
+  /// Here, "out_value" is the log softmax output. Does, for each row i,
+  /// *this(i) =  out_deriv(i) - sum(out_deriv(i)) .* exp(out_value(i))
+  /// xxxx(i) is row-vector.
+  /// Supports in-place operation, this == &out_deriv.
+  void DiffLogSoftmaxPerRow(const CuMatrixBase<Real> &out_value,
+                            const CuMatrixBase<Real> &out_deriv);
+
   /// Differentiate the block [softmax+cross-entropy] :
   /// dE/da = posterior_mat - target_mat,
   /// 'E' is error function, 'a' is activation on softmax input
@@ -318,7 +369,7 @@ class CuMatrixBase {
   /// net_out_or_diff ... before invocation net output, after diff dE/da
   /// log_post_tgt ... per-frame statistics for cross-entropy computations :
   ///                  log(sum_row(posterior_mat .* target_mat))
-  void DiffXent(const CuArray<int32> &tgt,
+  void DiffXent(const CuArrayBase<int32> &tgt,
                 CuVector<Real> *log_post_tgt);
 
   /// This function does sets *this to the Cholesky factor of *this (i.e.  the C
@@ -334,12 +385,12 @@ class CuMatrixBase {
   void SymInvertPosDef();
 
   void ApplyPow(Real power);
-  ///< Apply power to the absolute value of each element.
-  ///< If inlude_sign is true, the result will be multiplied with
-  ///< the sign of the input value.
-  ///< If the power is negative and the input to the power is zero,
-  ///< The output will be set zero. If include_sign is true, it will
-  ///< multiply the result by the sign of the input.
+  /// Apply power to the absolute value of each element.
+  /// If include_sign is true, the result will be multiplied with
+  /// the sign of the input value.
+  /// If the power is negative and the input to the power is zero,
+  /// The output will be set zero. If include_sign is true, it will
+  /// multiply the result by the sign of the input.
   void ApplyPowAbs(Real power, bool include_sign=false);
   /// For each element, sets x = (x > 0 ? 1.0 : 0.0).
   /// See also Heaviside().
@@ -347,17 +398,33 @@ class CuMatrixBase {
   void ApplyFloor(Real floor_val);
   void ApplyCeiling(Real ceiling_val);
   void ApplyExp();
+
+
+  /// This is equivalent to running:
+  /// ApplyFloor(lower_limit);
+  /// ApplyCeiling(upper_limit);
+  /// ApplyExp()
+  void ApplyExpLimited(Real lower_limit, Real upper_limit);
+
+  /// For each element x of the matrix, set it to
+  /// (x < 0 ? exp(x) : x + 1).  This function is used
+  /// in our RNNLM training.
+  void ApplyExpSpecial();
+
   /// Softmax nonlinearity
-  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row
-  /// for each row, the max value is first subtracted for good numerical stability
+  /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row,
+  /// with attention to avoiding  overflow or underflow.
+  /// Supports in-place operation (i.e. this == &src).
   void ApplySoftMaxPerRow(const CuMatrixBase<Real> &src);
 
   /// LogSoftmax nonlinearity
-  /// Y = LogSoftmax(X) : Yij = Xij - log(sum_k(e^Xik)), done to each row
-  /// for each row, the max value is first subtracted for good numerical stability
+  /// Y = LogSoftmax(X) : Yij = Xij - log(sum_k(e^Xik)), done to each row,
+  /// with attention to avoiding  overflow or underflow.
+  /// Supports in-place operation (i.e. this == &src).
   void ApplyLogSoftMaxPerRow(const CuMatrixBase<Real> &src);
 
-  /// Find the id of the maximal element for each row
+  /// Find the id of the maximal element for each row (resizes the 'id'
+  /// array to the appropriate size).
   void FindRowMaxId(CuArray<int32> *id) const;
 
   /// Math operations, some calling kernels
@@ -375,6 +442,8 @@ class CuMatrixBase {
   void DivElements(const CuMatrixBase<Real> &A);
   /// Do, elementwise, *this = max(*this, A).
   void Max(const CuMatrixBase<Real> &A);
+  /// Do, elementwise, *this = min(*this, A).
+  void Min(const CuMatrixBase<Real> &A);
   /// scale i'th column by scale[i]
   void MulColsVec(const CuVectorBase<Real> &scale);
   /// scale i'th row by scale[i]
@@ -389,9 +458,56 @@ class CuMatrixBase {
   void AddMat(Real alpha, const CuMatrixBase<Real> &A,
               MatrixTransposeType trans = kNoTrans);
 
-  /// if A.NumRows() is multiple of (*this)->NumRows and A.NumCols() is multiple of (*this)->NumCols
-  /// divide A into blocks of the same size as (*this) and add them to *this (times alpha)
-  void AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A, MatrixTransposeType trans = kNoTrans);
+  /// *this += alpha * A.
+  void AddSmat(Real alpha, const CuSparseMatrix<Real> &A,
+              MatrixTransposeType trans = kNoTrans);
+
+  /// (*this) = alpha * op(A) * B + beta * (*this), where A is sparse.
+  /// Multiplication of sparse with dense matrix.  See also AddMatSmat.
+  /// Note: we recommend, for greatest efficiency, that transA be kNoTrans.
+  /// Use AddMatSmat() for better efficiency, as 2 dense mat transpose ops
+  /// are called in this API.
+  void AddSmatMat(Real alpha, const CuSparseMatrix<Real> &A,
+                  MatrixTransposeType transA, const CuMatrixBase<Real> &B,
+                  Real beta);
+
+  /// (*this) = alpha * A * op(B) + beta * (*this), where B is sparse
+  /// and op(B) is either B or trans(B) depending on the 'transB' argument.
+  /// This is multiplication of a dense by a sparse matrix.  See also
+  /// AddSmatMat.
+  void AddMatSmat(Real alpha, const CuMatrixBase<Real> &A,
+                  const CuSparseMatrix<Real> &B, MatrixTransposeType transB,
+                  Real beta);
+
+
+  /// This is a rather special purpose function; we might
+  /// generalize it later by adding a transpose-type option.
+  /// It expects 'elements.Dim()' to equal NumRows(), and
+  /// for each elements[i] to be either -1, or
+  /// 0 <= element[i] < NumCols().
+  /// It adds alpha to each element (*this)(i, elements[i])
+  /// for 0 <= i < NumRows().
+  void AddToElements(Real alpha, const CuArrayBase<int32> &elements);
+
+
+  /// This function is like AddMat (it does *this += alpha * src),
+  /// except that it supports cases where *this and src have
+  /// different dimension.  There are two allowed cases:
+  ///
+  ///  (1) *this is larger than src; we do a broadcasting operation.  *this must
+  ///       have NumRows() == a * src.NumRows() and NumCols() == b *
+  ///       src.NumCols() for integer a >= 1, b >= 1.  *this will be treated as
+  ///       a being made up of of blocks with the same size as src, and to each
+  ///       block we'll add alpha * src.  This case does not support trans ==
+  ///       kTrans.
+  ///
+  ///  (2) *this is smaller than src; we sum.  src.NumRows() must == a *
+  ///      this->NumRows(), and src.NumCols() must == b * this->NumCols(), for a
+  ///      >= 1, b >= 1.  In this case, src will be treated as being made up of
+  ///      blocks with the same size as *this, and to *this we will add the
+  ///      summation of all of those blocks.
+  void AddMatBlocks(Real alpha, const CuMatrixBase<Real> &A,
+                    MatrixTransposeType trans = kNoTrans);
 
   /// (for each column c of *this), c = alpha * col + beta * c
   void AddVecToCols(Real alpha, const CuVectorBase<Real> &col, Real beta = 1.0);
@@ -403,7 +519,8 @@ class CuMatrixBase {
   /// A = alpha * x * y^T + A .
   void AddVecVec(Real alpha, const CuVectorBase<Real> &x, const CuVectorBase<Real> &y);
   /// *this = a * b / c (by element; when c = 0, *this = a)
-  void AddMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
+  /// *this can be an alias of a, b or c safely and get expected result.
+  void SetMatMatDivMat(const CuMatrixBase<Real> &A, const CuMatrixBase<Real> &B, const CuMatrixBase<Real> &C);
 
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
   /// updates the lower triangle of *this.  It will leave the matrix asymmetric;
@@ -522,8 +639,8 @@ class CuMatrixBase {
   }
 
   Real Sum() const;
-  Real Max() const; ///< proxy to MatrixBase::Max(), cuda not used
-  Real Min() const; ///< proxy to MatrixBase::Min(), cuda not used
+  Real Max() const;
+  Real Min() const;
 
   /// Return the trace. If check_square = true, will crash if matrix is not square.
   Real Trace(bool check_square = true) const;
@@ -542,7 +659,7 @@ class CuMatrixBase {
   // Requires, but does not check, that the vector of indexes does not contrain
   // repeated elements, 'input' is the start of an array of length equal to
   // indexes.Dim(), which is located on GPU memory if we are using the GPU.
-  void AddElements(Real alpha, const CuArray<Int32Pair> &indexes,
+  void AddElements(Real alpha, const CuArrayBase<Int32Pair> &indexes,
                    const Real *input);
 
   // This function requires that 'output' is a host array and is allocated with size
@@ -553,7 +670,7 @@ class CuMatrixBase {
               Real *output) const;
 
   // CUDA version of Lookup, would be called internally by the above function.
-  void Lookup(const CuArray<Int32Pair> &indexes,
+  void Lookup(const CuArrayBase<Int32Pair> &indexes,
               Real *output) const;
 
   // Creates binary mask with per-element equality predicates of *this, mat.

@@ -25,7 +25,7 @@ if [ ! -d data/raw_train_data ]; then
     echo ---------------------------------------------------------------------
 
     local/make_corpus_subset.sh "$train_data_dir" "$train_data_list" ./data/raw_train_data
-    train_data_dir=`readlink -f ./data/raw_train_data`
+    train_data_dir=`utils/make_absolute.sh ./data/raw_train_data`
 
 fi
 nj_max=`cat $train_data_list | wc -l`
@@ -34,7 +34,7 @@ if [[ "$nj_max" -lt "$train_nj" ]] ; then
     exit 1;
     train_nj=$nj_max
 fi
-train_data_dir=`readlink -f ./data/raw_train_data`
+train_data_dir=`utils/make_absolute.sh ./data/raw_train_data`
 
 if [ ! -d data/raw_dev2h_data ]; then
   echo ---------------------------------------------------------------------

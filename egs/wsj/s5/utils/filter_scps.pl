@@ -25,9 +25,27 @@
 # the -f <n> switch
 
 
+$field = 1;
+$shifted = 0;
+$print_warnings = 1;
+do {
+  $shifted=0;
+  if ($ARGV[0] eq "-f") {
+    $field = $ARGV[1];
+    shift @ARGV; shift @ARGV;
+    $shifted = 1;
+  }
+  if (@ARGV[0] eq "--no-warn") {
+    $print_warnings = 0;
+    shift @ARGV;
+    $shifted = 1;
+  }
+} while ($shifted);
+
+
 if(@ARGV != 4) {
-  die "Usage: utils/filter_scps.pl  <job-range-specifier> <filter-pattern> <input-scp> <output-scp-pattern>\n" .
-       "e.g.:  utils/filter_scps.pl [-f <field-to-filter-on>] JOB=1:10 data/train/split10/JOB/spk2utt data/train/feats.scp data/train/split10/JOB/feats.scp\n" .
+  die "Usage: utils/filter_scps.pl [-f <field-to-filter-on>] <job-range-specifier> <filter-pattern> <input-scp> <output-scp-pattern>\n" .
+       "e.g.:  utils/filter_scps.pl  JOB=1:10 data/train/split10/JOB/spk2utt data/train/feats.scp data/train/split10/JOB/feats.scp\n" .
        "similar to utils/filter_scp.pl, but it uses multiple filters and output multiple filtered files.\n".
        "The -f option specifies the field in <input-scp> that we filter on (default: 1)." .
        "See also: utils/filter_scp.pl\n";
@@ -44,17 +62,6 @@ if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) { # e.g. JOB=1:10
 } else {
   die "filter_scps.pl: bad job-range specifier $ARGV[0]: expected e.g. JOB=1:10";
 }
-
-$field = 1;
-$shifted = 0;
-do {
-  $shifted=0;
-  if ($ARGV[0] eq "-f") {
-    $field = $ARGV[1];
-    shift @ARGV; shift @ARGV;
-    $shifted=1
-  }
-} while ($shifted);
 
 $idlist = shift @ARGV;
 
@@ -154,9 +161,10 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
   close(FW);
 }
 
-if ($warn_uncovered) {
+if ($warn_uncovered && $print_warnings) {
   print STDERR "filter_scps.pl: warning: some input lines did not get output\n";
 }
-if ($warn_multiply_covered) {
-  print STDERR "filter_scps.pl: warning: some input lines were output to multiple files\n";
+if ($warn_multiply_covered && $print_warnings) {
+  print STDERR "filter_scps.pl: warning: some input lines were output to multiple files [OK if splitting per utt] " .
+    join(" ", @ARGV) . "\n";
 }

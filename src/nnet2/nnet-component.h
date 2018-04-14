@@ -24,11 +24,11 @@
 #ifndef KALDI_NNET2_NNET_COMPONENT_H_
 #define KALDI_NNET2_NNET_COMPONENT_H_
 
+#include <mutex>
 #include "base/kaldi-common.h"
 #include "itf/options-itf.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"
-#include "thread/kaldi-mutex.h"
 #include "nnet2/nnet-precondition-online.h"
 
 #include <iostream>
@@ -405,7 +405,7 @@ class NonlinearComponent: public Component {
   // applicable to element-by-element nonlinearities, not Softmax.
   double count_;
   // The mutex is used in UpdateStats, only for resizing vectors.
-  Mutex mutex_;
+  std::mutex mutex_;
 };
 
 class MaxoutComponent: public Component {
@@ -843,7 +843,7 @@ class FixedAffineComponent;
 class AffineComponent: public UpdatableComponent {
   friend class SoftmaxComponent; // Friend declaration relates to mixing up.
  public:
-  explicit AffineComponent(const AffineComponent &other);
+  AffineComponent(const AffineComponent &other);
   // The next constructor is used in converting from nnet1.
   AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                   const CuVectorBase<BaseFloat> &bias_params,
@@ -1083,7 +1083,7 @@ class RandomComponent: public Component {
   // consistency in the random number generation (e.g. when optimizing
   // validation-set performance), but check where else we call sRand().  You'll
   // need to call srand as well as making this call.
-  void ResetGenerator() { random_generator_.SeedGpu(0); }
+  void ResetGenerator() { random_generator_.SeedGpu(); }
  protected:
   CuRand<BaseFloat> random_generator_;
 };

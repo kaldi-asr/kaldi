@@ -5,7 +5,7 @@
 
 # To be run from one directory above this script.
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 if [ $# != 2 ]; then
@@ -75,7 +75,7 @@ awk '{print $1}' $dir/wav2.scp | join -2 2 - $dir/segments | \
 awk '{print $1}' $dir/segments | join - $dir/text > $dir/t; mv $dir/t $dir/text
 
 #replace path with an appropriate sox command that select single channel only
-awk '{print $1" sox -c 1 -t wavpcm -s "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
+awk '{print $1" sox -c 1 -t wavpcm -e signed-integer "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
 
 #prep reco2file_and_channel
 cat $dir/wav.scp | \

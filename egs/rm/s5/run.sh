@@ -7,7 +7,7 @@ set -e # exit on error
 # call the next line with the directory where the RM data is
 # (the argument below is just an example).  This should contain
 # subdirectories named as follows:
-#    rm1_audio1  rm1_audio2	rm2_audio
+#    rm1_audio1  rm1_audio2    rm2_audio
 
 #local/rm_data_prep.sh /mnt/matylda2/data/RM
 
@@ -47,7 +47,7 @@ steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train.1k data/lang exp/mono
 
 
 
-utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
+utils/mkgraph.sh data/lang exp/mono exp/mono/graph
 
 
 steps/decode.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
@@ -233,8 +233,7 @@ done
 # local/run_raw_fmllr.sh
 
 
-# You don't have to run all 3 of the below, e.g. you can just run the run_sgmm2.sh
-#local/run_sgmm.sh
+# You don't have to run all 2 of the below, e.g. you can just run the run_sgmm2.sh
 local/run_sgmm2.sh
 #local/run_sgmm2x.sh
 

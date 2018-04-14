@@ -107,7 +107,7 @@ inline float Log1p(float x) {  return log1pf(x); }
 inline double Log1p(double x) {
   const double cutoff = 1.0e-08;
   if (x < cutoff)
-    return x - 2 * x * x;
+    return x - 0.5 * x * x;
   else
     return Log(1.0 + x);
 }
@@ -115,7 +115,7 @@ inline double Log1p(double x) {
 inline float Log1p(float x) {
   const float cutoff = 1.0e-07;
   if (x < cutoff)
-    return x - 2 * x * x;
+    return x - 0.5 * x * x;
   else
     return Log(1.0 + x);
 }
@@ -138,8 +138,8 @@ struct RandomState {
   unsigned seed;
 };
 
-// Returns a random integer between min and max inclusive.
-int32 RandInt(int32 min, int32 max, struct RandomState* state = NULL);
+// Returns a random integer between first and last inclusive.
+int32 RandInt(int32 first, int32 last, struct RandomState* state = NULL);
 
 // Returns true with probability "prob",
 bool WithProb(BaseFloat prob, struct RandomState* state = NULL);
@@ -279,6 +279,17 @@ static inline void AssertEqual(float a, float b,
 
 // RoundUpToNearestPowerOfTwo does the obvious thing. It crashes if n <= 0.
 int32 RoundUpToNearestPowerOfTwo(int32 n);
+
+/// Returns a / b, rounding towards negative infinity in all cases.
+static inline int32 DivideRoundingDown(int32 a, int32 b) {
+  KALDI_ASSERT(b != 0);
+  if (a * b >= 0)
+    return a / b;
+  else if (a < 0)
+    return (a - b + 1) / b;
+  else
+    return (a - b - 1) / b;
+}
 
 template<class I> I  Gcd(I m, I n) {
   if (m == 0 || n == 0) {

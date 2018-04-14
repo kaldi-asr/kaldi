@@ -3,6 +3,7 @@
 // Copyright 2009-2013  Microsoft Corporation;  Mirko Hannemann;
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
+//                2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -66,20 +67,22 @@ struct LatticeFasterDecoderConfig {
                                 prune_scale(0.1) { }
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
-    opts->Register("beam", &beam, "Decoding beam.");
-    opts->Register("max-active", &max_active, "Decoder max active states.");
+    opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
+    opts->Register("max-active", &max_active, "Decoder max active states.  Larger->slower; "
+                   "more accurate");
     opts->Register("min-active", &min_active, "Decoder minimum #active states.");
-    opts->Register("lattice-beam", &lattice_beam, "Lattice generation beam");
+    opts->Register("lattice-beam", &lattice_beam, "Lattice generation beam.  Larger->slower, "
+                   "and deeper lattices");
     opts->Register("prune-interval", &prune_interval, "Interval (in frames) at "
                    "which to prune tokens");
     opts->Register("determinize-lattice", &determinize_lattice, "If true, "
-                   "determinize the lattice (in a special sense, keeping only "
+                   "determinize the lattice (lattice-determinization, keeping only "
                    "best pdf-sequence for each word-sequence).");
     opts->Register("beam-delta", &beam_delta, "Increment used in decoding-- this "
                    "parameter is obscure and relates to a speedup in the way the "
                    "max-active constraint is applied.  Larger is more accurate.");
-    opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to control"
-                   " hash behavior");
+    opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to "
+                   "control hash behavior");
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
@@ -337,12 +340,18 @@ class LatticeFasterDecoder {
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
   /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
-  BaseFloat ProcessEmitting(DecodableInterface *decodable);
+  /// Templated on FST type for speed; called via ProcessEmittingWrapper().  
+  template <typename FstType> BaseFloat ProcessEmitting(DecodableInterface *decodable);
+
+  BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.  Called after
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
-  void ProcessNonemitting(BaseFloat cost_cutoff);
+  /// the templated design is similar to ProcessEmitting()
+  template <typename FstType> void ProcessNonemitting(BaseFloat cost_cutoff);
+
+  void ProcessNonemittingWrapper(BaseFloat cost_cutoff);
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of

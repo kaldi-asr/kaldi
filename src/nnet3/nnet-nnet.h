@@ -117,25 +117,39 @@ class Nnet {
   // This function can be used either to initialize a new Nnet from a config
   // file, or to add to an existing Nnet, possibly replacing certain parts of
   // it.  It will die with error if something went wrong.
+  // Also see the function ReadEditConfig() in nnet-utils.h (it's made a
+  // non-member because it doesn't need special access).
   void ReadConfig(std::istream &config_file);
 
   int32 NumComponents() const { return components_.size(); }
 
   int32 NumNodes() const { return nodes_.size(); }
 
-  /// return component indexed c.  not a copy; not owned by caller.
+  /// Return component indexed c.  Not a copy; not owned by caller.
   Component *GetComponent(int32 c);
 
-  /// return component indexed c (const version).  not a copy; not owned by
+  /// Return component indexed c (const version).  Not a copy; not owned by
   /// caller.
   const Component *GetComponent(int32 c) const;
 
   /// Replace the component indexed by c with a new component.
-  /// Frees previous component indexed by c.
+  /// Frees previous component indexed by c.  Takes ownership of
+  /// the pointer 'component'.
   void SetComponent(int32 c, Component *component);
+
+  /// Adds a new component with the given name, which should not be the same as
+  /// any existing component name.  Returns the new component index.  Takes
+  /// ownership of the pointer 'component'.
+  int32 AddComponent(const std::string &name, Component *component);
 
   /// returns const reference to a particular numbered network node.
   const NetworkNode &GetNode(int32 node) const {
+    KALDI_ASSERT(node >= 0 && node < nodes_.size());
+    return nodes_[node];
+  }
+
+  /// Non-const accessor for the node... use with extreme caution.
+  NetworkNode &GetNode(int32 node) {
     KALDI_ASSERT(node >= 0 && node < nodes_.size());
     return nodes_[node];
   }
@@ -171,6 +185,11 @@ class Nnet {
   /// returns individual node name.
   const std::string &GetNodeName(int32 node_index) const;
 
+  /// This can be used to modify invidual node names.  Note, this does not
+  /// affect the neural net structure at all, it just assigns a new
+  /// name to an existing node while leaving all connections identical.
+  void SetNodeName(int32 node_index, const std::string &new_name);
+
   /// returns vector of component names (needed by some parsing code, for instance).
   const std::vector<std::string> &GetComponentNames() const;
 
@@ -197,12 +216,11 @@ class Nnet {
 
   void Write(std::ostream &ostream, bool binary) const;
 
-  /// note to self: one thing of many that we need to check is that no output
-  /// nodes are referred to in Descriptors.  This might mess up the combination
-  /// of each output node into a single step, as dependencies would be messed
-  /// up.  Also make sure no nodes referred to in Descriptors, or in kDimRange,
-  /// are themselves Descriptors.
-  void Check() const;
+  /// Checks the neural network for validity (dimension matches and various
+  /// other requirements).
+  /// You can call this with warn_for_orphans = false to disable the warnings
+  /// that are printed if orphan nodes or components exist.
+  void Check(bool warn_for_orphans = true) const;
 
   /// returns some human-readable information about the network, mostly for
   /// debugging purposes.
@@ -227,8 +245,35 @@ class Nnet {
 
   Nnet *Copy() const { return new Nnet(*this); }
 
+  void Swap(Nnet *other);
+
   // Assignment operator
   Nnet& operator =(const Nnet &nnet);
+
+  // Removes nodes that are never needed to compute any output.
+  void RemoveOrphanNodes(bool remove_orphan_inputs = false);
+
+  // Removes components that are not used by any node.
+  void RemoveOrphanComponents();
+
+  // Removes some nodes.  This is not to be called without a lot of thought,
+  // as it could ruin the graph structure if done carelessly.
+  void RemoveSomeNodes(const std::vector<int32> &nodes_to_remove);
+
+  void ResetGenerators(); // resets random-number generators for all
+  // random components.  You must call srand() prior to this call, for this to
+  // be effective.
+
+
+  // This function outputs to "config_lines" the lines of a config file.  If you
+  // provide include_dim=false, this will enable you to reconstruct the nodes in
+  // the network (but not the components, which need to be written separately).
+  // If you provide include_dim=true, it also adds extra information about
+  // node dimensions which is useful for a human reader but won't be
+  // accepted as the config-file format.
+  void GetConfigLines(bool include_dim,
+                      std::vector<std::string> *config_lines) const;
+
  private:
 
   void Destroy();
@@ -240,14 +285,6 @@ class Nnet {
   // include dimension information that would not be provided in a config file.
   std::string GetAsConfigLine(int32 node_index, bool include_dim) const;
 
-  // This function outputs to "config_lines" the lines of a config file.  If you
-  // provide include_dim=false, this will enable you to reconstruct the nodes in
-  // the network (but not the components, which need to be written separately).
-  // If you provide include_dim=true, it also adds extra information about
-  // node dimensions which is useful for a human reader but won't be
-  // accepted as the config-file format.
-  void GetConfigLines(bool include_dim,
-                      std::vector<std::string> *config_lines) const;
 
   // This function is used when reading config files; it exists in order to
   // handle replacement of existing nodes.  The two input vectors have the same
@@ -262,8 +299,7 @@ class Nnet {
   // means literally "name", but "xxx" stands in for the actual name,
   // e.g. "my-funky-component."
   static void RemoveRedundantConfigLines(int32 num_lines_initial,
-                                         std::vector<std::string> *first_tokens,
-                                         std::vector<ConfigLine> *configs);
+                                         std::vector<ConfigLine> *config_lines);
 
   void ProcessComponentConfigLine(int32 initial_num_components,
                                   ConfigLine *config);
@@ -304,7 +340,6 @@ class Nnet {
   std::vector<NetworkNode> nodes_;
 
 };
-
 
 
 } // namespace nnet3

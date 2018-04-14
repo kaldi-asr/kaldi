@@ -2,7 +2,7 @@
 
 # This runs on the 100 hour subset.
 
-. cmd.sh
+. ./cmd.sh
 
 . utils/parse_options.sh
 

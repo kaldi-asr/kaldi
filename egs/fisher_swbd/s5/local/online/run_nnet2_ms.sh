@@ -1,14 +1,14 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 
-stage=6
+stage=0
 train_stage=451
 use_gpu=true
 rescore=true
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -16,13 +16,13 @@ set -e
 # assume use_gpu=true since it would be way too slow otherwise.
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+  cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
 fi
-parallel_opts="-l gpu=1 -q g.q" 
+parallel_opts="--gpu 1"
 num_threads=1
 minibatch_size=512
 dir=exp/nnet2_online/nnet_ms_a
@@ -37,7 +37,7 @@ if [ $stage -le 6 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
     utils/create_split_dir.pl /export/b0{6,7,8,9}/${USER}/kaldi-dsata/egs/fisher_swbd/s5/$dir/egs/storage $dir/egs/storage
   fi
-  
+
   # Because we have a lot of data here and we don't want the training to take
   # too long, we reduce the number of epochs from the defaults (15 + 5) to (3 +
   # 1).  The option "--io-opts '--max-jobs-run 12'" is to have more than the default number
@@ -73,12 +73,12 @@ fi
 
 if [ $stage -le 8 ]; then
   for test in eval2000 rt03; do
-  # do the actual online decoding with iVectors, carrying info forward from 
+  # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
      steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
         exp/tri5a/graph_fsh_sw1_tg data/$test ${dir}_online/decode_${test}_fsh_sw1_tg || exit 1;
-  
-  # rescore 
+
+  # rescore
     if [ $rescore ]; then
          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
            data/lang_fsh_sw1_{tg,fg} data/${test} \
@@ -88,14 +88,14 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 9 ]; then
-  for test in eval2000 rt03; do  
+  for test in eval2000 rt03; do
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
      --per-utt true \
       exp/tri5a/graph_fsh_sw1_tg data/$test ${dir}_online/decode_${test}_utt_fsh_sw1_tg || exit 1;
-  
-  
+
+
   # rescore
     if [ $rescore ]; then
          steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \

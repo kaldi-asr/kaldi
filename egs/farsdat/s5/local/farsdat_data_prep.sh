@@ -74,7 +74,7 @@ sed -e 's:.*/PH\([1-2]\)\(.*\)\.\(.*\)$:\2 \1 \3:i' $tmpdir/phn.flist |\
 
 while read line; do
   [ -f $line ] || error_exit "Cannot find transcription file '$line'";
-  cut -c1 "$line" | tr '\n' ' ' | sed -e 's: *$:\n:' || exit 1;
+  cut -c1 "$line" | tr '\n' ' ' | perl -ape 's: *$:\n:;' || exit 1;
 done < $tmpdir/phn.flist > $tmpdir/phn.trans || exit 1;
 
 paste $tmpdir/phn.uttids $tmpdir/phn.trans | sort -k1,1 > $dir/trans || exit 1;

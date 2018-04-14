@@ -3,7 +3,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 # Apache 2.0.
 
-# Begin configuration section.  
+# Begin configuration section.
 cmd=run.pl
 duptime=0.5
 model=final.mdl
@@ -35,8 +35,8 @@ mkdir -p $oracledir/log
 for filename in $lang/words.txt $decodedir/num_jobs \
                 $data/text $decodedir/lat.1.gz \
                 $decodedir/../$model ; do
-    if [[ ! -f $filename ]] ; then 
-        echo "FATAL: File $filename does not exist!" 
+    if [[ ! -f $filename ]] ; then
+        echo "FATAL: File $filename does not exist!"
         exit 1;
     fi
 done
@@ -44,7 +44,7 @@ done
 nj=`cat $decodedir/num_jobs`
 
 (cd $decodedir; ln -s ../$model final.mdl )
-(cd $oracledir; echo "$nj" > num_jobs ) 
+(cd $oracledir; echo "$nj" > num_jobs )
 
 $cmd LAT=1:$nj $oracledir/log/lat.LAT.log \
   cat $data/text \| \

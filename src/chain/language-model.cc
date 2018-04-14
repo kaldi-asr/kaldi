@@ -200,7 +200,7 @@ BaseFloat LanguageModelEstimator::BackoffLogLikelihoodChange(
   LmState sum_state(backoff_lm_state);
   sum_state.Add(lm_state);
   BaseFloat log_like_change =
-      sum_state.LogLike() - 
+      sum_state.LogLike() -
       lm_state.LogLike() -
       backoff_lm_state.LogLike();
   // log-like change should not be positive... give it a margin for round-off
@@ -272,7 +272,7 @@ void LanguageModelEstimator::BackOffState(int32 l) {
   lm_state.Clear();
   backoff_lm_state.backoff_allowed = BackoffAllowed(
       lm_state.backoff_lmstate_index);
-  
+
   if (!backoff_state_had_backoff_allowed &&
       backoff_lm_state.backoff_allowed) {
     // the backoff state would not have been in the queue, but is now allowed in
@@ -357,7 +357,7 @@ void LanguageModelEstimator::OutputToFst(
   for (int32 i = 0; i < num_states; i++)
     fst->AddState();
   fst->SetStart(FindInitialFstState());
-  
+
   int64 tot_count = 0;
   double tot_logprob = 0.0;
 
@@ -402,7 +402,8 @@ void LanguageModelEstimator::OutputToFst(
   KALDI_ASSERT(num_states_connected == num_states);
   // arc-sort.  ilabel or olabel doesn't matter, it's an acceptor.
   fst::ArcSort(fst, fst::ILabelCompare<fst::StdArc>());
-  KALDI_LOG << "Created phone language model with " << num_states << " states.";
+  KALDI_LOG << "Created phone language model with " << num_states
+            << " states and " << fst::NumArcs(*fst) << " arcs.";
 }
 
 }  // namespace chain

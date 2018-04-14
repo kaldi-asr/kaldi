@@ -58,6 +58,9 @@ nj=`cat $alidir/num_jobs` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 sdata=$data/split$nj;
 split_data.sh $data $nj || exit 1;
 
@@ -123,7 +126,7 @@ fi
 if [ $stage -le 0 ]; then
   echo "$0: compiling graphs of transcripts"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-    compile-train-graphs $dir/tree $dir/1.mdl  $lang/L.fst  \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/1.mdl  $lang/L.fst  \
      "ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
       "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
@@ -158,8 +161,13 @@ rm $dir/final.mdl $dir/final.occs 2>/dev/null
 ln -s $x.mdl $dir/final.mdl
 ln -s $x.occs $dir/final.occs
 
+steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
+
 # Summarize warning messages...
 utils/summarize_warnings.pl  $dir/log
 
+steps/info/gmm_dir_info.pl $dir
+
 echo "$0: Done training system with delta+delta-delta features in $dir"
 
+exit 0

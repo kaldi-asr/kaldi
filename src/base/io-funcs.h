@@ -188,7 +188,7 @@ inline void WriteIntegerPairVector(std::ostream &os, bool binary,
                                    const std::vector<std::pair<T, T> > &v);
 
 /// Function for reading STL vector of pairs of integer types.
-template<class T> 
+template<class T>
 inline void ReadIntegerPairVector(std::istream &is, bool binary,
                                   std::vector<std::pair<T, T> > *v);
 

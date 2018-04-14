@@ -112,8 +112,27 @@ class Splice: public Component {
                         const CuMatrixBase<BaseFloat> &out,
                         const CuMatrixBase<BaseFloat> &out_diff,
                         CuMatrixBase<BaseFloat> *in_diff) {
-    KALDI_ERR << Component::TypeToMarker(GetType()) << " : "
-              << __func__ << "() Not implemented!";
+    // WARNING!!! WARNING!!! WARNING!!!
+    // THIS BACKPROPAGATION CAN BE USED ONLY WITH 'PER-UTTERANCE' TRAINING!
+    // IN MINI-BATCH TRAINING, THIS <Splice> COMPONENT HAS TO BE PART OF THE
+    // 'feature_transform' SO WE DON'T BACKPROPAGATE THROUGH IT...
+
+    // dims,
+    int32 input_dim = in.NumCols(),
+          num_frames = out_diff.NumRows();
+    // Copy offsets to 'host',
+    std::vector<int32> offsets(frame_offsets_.Dim());
+    frame_offsets_.CopyToVec(&offsets);
+    // loop over the offsets,
+    for (int32 i = 0; i < offsets.size(); i++) {
+      int32 o_i = offsets.at(i);
+      int32 n_rows = num_frames - abs(o_i),
+            src_row = std::max(-o_i, 0),
+            tgt_row = std::max(o_i, 0);
+      const CuSubMatrix<BaseFloat> src = out_diff.Range(src_row, n_rows, i*input_dim, input_dim);
+      CuSubMatrix<BaseFloat> tgt = in_diff->RowRange(tgt_row, n_rows);
+      tgt.AddMat(1.0, src, kNoTrans);
+    }
   }
 
  protected:
@@ -370,7 +389,7 @@ class AddShift : public UpdatableComponent {
     shift_data_.AddVec(-lr * learn_rate_coef_, shift_data_grad_);
   }
 
-  void SetLearnRateCoef(float c) { learn_rate_coef_ = c; }
+  void SetLearnRateCoef(BaseFloat c) { learn_rate_coef_ = c; }
 
  protected:
   CuVector<BaseFloat> shift_data_;
@@ -486,7 +505,7 @@ class Rescale : public UpdatableComponent {
     scale_data_.AddVec(-lr * learn_rate_coef_, scale_data_grad_);
   }
 
-  void SetLearnRateCoef(float c) { learn_rate_coef_ = c; }
+  void SetLearnRateCoef(BaseFloat c) { learn_rate_coef_ = c; }
 
  protected:
   CuVector<BaseFloat> scale_data_;

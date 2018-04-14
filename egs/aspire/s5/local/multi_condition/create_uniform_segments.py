@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # Copyright 2014  Johns Hopkins University (Authors: Daniel Povey, Vijayaditya Peddinti).  Apache 2.0.
 
-# creates a segments file in the provided data directory 
+# creates a segments file in the provided data directory
 # into uniform segments with specified window and overlap
 
 import imp, sys, argparse, os, math, subprocess
 
-corruptor = imp.load_source('', 'local/multi_condition/corrupt.py')
 min_segment_length = 10 # in seconds
 def segment(total_length, window_length, overlap = 0):
   increment = window_length - overlap
@@ -16,7 +15,7 @@ def segment(total_length, window_length, overlap = 0):
     segments[-2] = (segments[-2][0], segments[-1][1])
     segments.pop()
   return segments
-  
+
 def get_wave_segments(wav_command, window_length, overlap):
   raw_output = subprocess.check_output(wav_command+" sox -t wav - -n stat 2>&1 | grep Length ", shell = True)
   parts = raw_output.split(":")

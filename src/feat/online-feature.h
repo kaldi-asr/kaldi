@@ -58,7 +58,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
     return input_finished_ && frame == NumFramesReady() - 1;
   }
   virtual BaseFloat FrameShiftInSeconds() const {
-    return computer_.GetFrameOptions().frame_shift_ms * 1.0e-03;
+    return computer_.GetFrameOptions().frame_shift_ms / 1000.0f;
   }
 
   virtual int32 NumFramesReady() const { return features_.size(); }
@@ -215,7 +215,7 @@ struct OnlineCmvnOptions {
     po->Register("norm-vars", &normalize_variance, "If true, do "
                  "cepstral variance normalization in addition to cepstral mean "
                  "normalization ");
-    po->Register("norm-mean", &normalize_mean, "If true, do mean normalization "
+    po->Register("norm-means", &normalize_mean, "If true, do mean normalization "
                  "(note: you cannot normalize the variance but not the mean)");
     po->Register("skip-dims", &skip_dims, "Dimensions to skip normalization of "
                  "(colon-separated list of integers)");}
@@ -530,7 +530,7 @@ class OnlineCacheFeature: public OnlineFeatureInterface {
     return src_->IsLastFrame(frame);
   }
   virtual BaseFloat FrameShiftInSeconds() const {
-    return src_->FrameShiftInSeconds(); 
+    return src_->FrameShiftInSeconds();
   }
 
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }

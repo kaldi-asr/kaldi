@@ -3,7 +3,7 @@
 # Copyright 2012-2014  Guoguo Chen
 # Apache 2.0.
 
-# Begin configuration section.  
+# Begin configuration section.
 nj=8
 cmd=run.pl
 beam=-1             # Beam for proxy FST, -1 means no prune
@@ -46,7 +46,7 @@ if [ $# -ne 1 ]; then
   exit 1;
 fi
 
-set -e 
+set -e
 set -o pipefail
 
 kwsdatadir=$1
@@ -68,8 +68,34 @@ if $pron_probs; then
   pron_probs_param="--pron-probs";
 fi
 
+cat $kwsdatadir/L1.lex | \
+  perl -e '
+  while ( $line = <STDIN> ) {
+    chomp $line;
+    ($word, $pron) = split " ", $line, 2;
+    $pron = join(" ", split(" ", $pron));
+    push @{$LEX{$pron}}, $word;
+  }
+
+  open(L1, "| sort -u > $ARGV[0]") or die "Cannot open $ARGV[0]\n";
+  open(MAP, "| sort -u > $ARGV[1]") or die "Cannot open $ARGV[1]\n";
+  foreach $pron (keys %LEX) {
+    $head = $LEX{$pron}->[0];
+    print L1 "$head $pron\n";
+    foreach $alt (@{$LEX{$pron}}) {
+      print MAP "0 0 $alt $head\n";
+    }
+  }
+  print MAP "0\n";
+  close(L1);
+  close(MAP);
+' $kwsdatadir/L1_dedup.lex $kwsdatadir/L1.revdup.fst.txt
+
+fstcompile --isymbols=$kwsdatadir/words.txt --osymbols=$kwsdatadir/words.txt $kwsdatadir/L1.revdup.fst.txt | \
+  fstarcsort --sort_type=olabel - $kwsdatadir/L1.revdup.fst
+
 ndisambig=`utils/add_lex_disambig.pl \
-  $pron_probs_param $kwsdatadir/L1.lex $kwsdatadir/L1_disambig.lex`
+  $pron_probs_param $kwsdatadir/L1_dedup.lex $kwsdatadir/L1_disambig.lex`
 ndisambig=$[$ndisambig+1]; # add one disambig symbol for silence in lexicon FST.
 ( for n in `seq 0 $ndisambig`; do echo '#'$n; done ) > $kwsdatadir/disambig.txt
 
@@ -86,11 +112,12 @@ cat $kwsdatadir/L2.lex |\
   --osymbols=$kwsdatadir/words.txt - |\
   fstinvert | fstarcsort --sort_type=olabel > $kwsdatadir/L2.fst
 
+echo $kwsdatadir/phones.txt
 phone_disambig_symbol=`grep \#0 $kwsdatadir/phones.txt | awk '{print $2}'`
 word_disambig_symbol=`grep \#0 $kwsdatadir/words.txt | awk '{print $2}'`
-phone_disambig_symbols=`grep \# $kwsdatadir/phones.txt |\
+phone_disambig_symbols=`grep "^#" $kwsdatadir/phones.txt |\
   awk '{print $2}' | tr "\n" " "`
-word_disambig_symbols=`grep \# $kwsdatadir/words.txt |\
+word_disambig_symbols=`grep "^#" $kwsdatadir/words.txt |\
   awk '{print $2}' | tr "\n" " "`
 cat $kwsdatadir/L1_disambig.lex |\
   utils/make_lexicon_fst.pl $pron_probs_param - |\
@@ -139,10 +166,11 @@ $cmd JOB=1:$nj $kwsdatadir/split/log/proxy.JOB.log \
   generate-proxy-keywords --verbose=1 \
   --proxy-beam=$beam --proxy-nbest=$nbest \
   --phone-beam=$phone_beam --phone-nbest=$phone_nbest \
-  $kwsdatadir/L2xE.fst $kwsdatadir/L1.fst ark:- ark:$kwsdatadir/split/proxy.JOB.fsts
+  $kwsdatadir/L2xE.fst $kwsdatadir/L1.fst ark:- ark,t:$kwsdatadir/split/proxy.JOB.fsts
 
 proxy_fsts=""
 for j in `seq 1 $nj`; do
   proxy_fsts="$proxy_fsts $kwsdatadir/split/proxy.$j.fsts"
 done
-cat $proxy_fsts > $kwsdatadir/keywords.fsts
+cat $proxy_fsts | fsttablecompose $kwsdatadir/L1.revdup.fst ark:- ark:- | \
+  fsts-project ark:- ark:$kwsdatadir/keywords.fsts

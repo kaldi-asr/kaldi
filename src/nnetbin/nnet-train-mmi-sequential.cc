@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
         }
       }
       // get the lattice length and times of states,
-      vector<int32> state_times;
+      std::vector<int32> state_times;
       int32 max_time = kaldi::LatticeStateTimes(den_lat, &state_times);
       // check duration of den. lattice,
       if (max_time != mat.NumRows()) {
@@ -313,7 +313,7 @@ int main(int argc, char *argv[]) {
       lat_like = kaldi::LatticeForwardBackward(den_lat, &post, &lat_ac_like);
 
       // 6) convert the Posterior to a matrix,
-      PosteriorToMatrixMapped(post, trans_model, &nnet_diff_h);
+      PosteriorToPdfMatrix(post, trans_model, &nnet_diff_h);
 
       // 7) Calculate the MMI-objective function,
       // Calculate the likelihood of correct path from acoustic score,
@@ -431,7 +431,7 @@ int main(int argc, char *argv[]) {
         KALDI_VLOG(1) << nnet.InfoGradient();
       }
       // Every 1000 utterances (--verbose=2),
-      if (kaldi::g_kaldi_verbose_level >= 2) {
+      if (GetVerboseLevel() >= 2) {
         if (num_done % 1000 == 0) {
           KALDI_VLOG(2) << nnet.InfoPropagate();
           KALDI_VLOG(2) << nnet.InfoBackPropagate();

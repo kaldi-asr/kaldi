@@ -24,6 +24,7 @@
 #include "hmm/posterior.h"
 #include "util/kaldi-table.h"
 #include "util/stl-utils.h"
+#include "matrix/kaldi-matrix.h"
 
 
 namespace kaldi {
@@ -129,8 +130,7 @@ bool PosteriorHolder::Write(std::ostream &os, bool binary, const T &t) {
     WritePosterior(os, binary, t);
     return true;
   } catch(const std::exception &e) {
-    KALDI_WARN << "Exception caught writing table of posteriors";
-    if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+    KALDI_WARN << "Exception caught writing table of posteriors. " << e.what();
     return false;  // Write failure.
   }
 }
@@ -147,8 +147,7 @@ bool PosteriorHolder::Read(std::istream &is) {
     ReadPosterior(is, is_binary, &t_);
     return true;
   } catch (std::exception &e) {
-    KALDI_WARN << "Exception caught reading table of posteriors";
-    if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+    KALDI_WARN << "Exception caught reading table of posteriors. " << e.what();
     t_.clear();
     return false;
   }
@@ -174,8 +173,7 @@ bool GaussPostHolder::Write(std::ostream &os, bool binary, const T &t) {
     if(!binary) os << '\n';
     return os.good();
   } catch (const std::exception &e) {
-    KALDI_WARN << "Exception caught writing table of posteriors";
-    if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+    KALDI_WARN << "Exception caught writing table of posteriors. " << e.what();
     return false;  // Write failure.
   }
 }
@@ -210,8 +208,7 @@ bool GaussPostHolder::Read(std::istream &is) {
     }
     return true;
   } catch (std::exception &e) {
-    KALDI_WARN << "Exception caught reading table of posteriors";
-    if (!IsKaldiError(e.what())) { std::cerr << e.what(); }
+    KALDI_WARN << "Exception caught reading table of posteriors. " << e.what();
     t_.clear();
     return false;
   }
@@ -472,5 +469,60 @@ BaseFloat VectorToPosteriorEntry(
   return ans;
 }
 
+
+template <typename Real>
+void PosteriorToMatrix(const Posterior &post,
+                       const int32 post_dim, Matrix<Real> *mat) {
+  // Make a host-matrix,
+  int32 num_rows = post.size();
+  mat->Resize(num_rows, post_dim, kSetZero);  // zero-filled
+  // Fill from Posterior,
+  for (int32 t = 0; t < post.size(); t++) {
+    for (int32 i = 0; i < post[t].size(); i++) {
+      int32 col = post[t][i].first;
+      if (col >= post_dim) {
+        KALDI_ERR << "Out-of-bound Posterior element with index " << col
+                  << ", higher than number of columns " << post_dim;
+      }
+      (*mat)(t, col) = post[t][i].second;
+    }
+  }
+}
+// instantiate the template function,
+template void PosteriorToMatrix<float>(const Posterior &post,
+                                       const int32 post_dim,
+                                       Matrix<float> *mat);
+template void PosteriorToMatrix<double>(const Posterior &post,
+                                        const int32 post_dim,
+                                        Matrix<double> *mat);
+
+
+template <typename Real>
+void PosteriorToPdfMatrix(const Posterior &post,
+                          const TransitionModel &model,
+                          Matrix<Real> *mat) {
+  // Allocate the matrix,
+  int32 num_rows = post.size(),
+        num_cols = model.NumPdfs();
+  mat->Resize(num_rows, num_cols, kSetZero);  // zero-filled,
+  // Fill from Posterior,
+  for (int32 t = 0; t < post.size(); t++) {
+    for (int32 i = 0; i < post[t].size(); i++) {
+      int32 col = model.TransitionIdToPdf(post[t][i].first);
+      if (col >= num_cols) {
+        KALDI_ERR << "Out-of-bound Posterior element with index " << col
+                  << ", higher than number of columns " << num_cols;
+      }
+      (*mat)(t, col) += post[t][i].second;  // sum,
+    }
+  }
+}
+// instantiate the template function,
+template void PosteriorToPdfMatrix<float>(const Posterior &post,
+                                          const TransitionModel &model,
+                                          Matrix<float> *mat);
+template void PosteriorToPdfMatrix<double>(const Posterior &post,
+                                           const TransitionModel &model,
+                                           Matrix<double> *mat);
 
 } // End namespace kaldi

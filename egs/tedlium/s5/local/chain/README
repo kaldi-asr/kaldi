@@ -1,0 +1,16 @@
+These are the instructions to reproduce the TEDLIUM models described in
+"Purely sequence-trained neural networks for ASR based on lattice-free
+MMI", by Povey et al.
+
+First run:
+
+./run.sh
+
+until the end of stage 7. (local/nnet/run_dnn.sh can be skipped.)
+
+Then run:
+
+local/chain/run_tdnn.sh
+
+to see results for a generic chain model. See the script's header
+comments to see other options, and their results.

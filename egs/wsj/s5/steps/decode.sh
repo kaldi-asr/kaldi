@@ -21,6 +21,7 @@ scoring_opts=
 # note: there are no more min-lmwt and max-lmwt options, instead use
 # e.g. --scoring-opts "--min-lmwt 1 --max-lmwt 20"
 skip_scoring=false
+decode_extra_opts=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -122,8 +123,13 @@ if [ $stage -le 0 ]; then
   fi
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
-    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt \
+    --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=$graphdir/words.txt $decode_extra_opts \
     $model $graphdir/HCLG.fst "$feats" "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
+fi
+
+if [ $stage -le 1 ]; then
+  [ ! -z $iter ] && iter_opt="--iter $iter"
+  steps/diagnostic/analyze_lats.sh --cmd "$cmd" $iter_opt $graphdir $dir
 fi
 
 if ! $skip_scoring ; then

@@ -54,7 +54,7 @@ class NnetChainLdaStatsAccumulator {
     NnetComputer computer(options, computation, nnet_, NULL);
 
     computer.AcceptInputs(nnet_, eg.inputs);
-    computer.Forward();
+    computer.Run();
     const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
     AccStatsFromOutput(eg, nnet_output);
   }
@@ -202,5 +202,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

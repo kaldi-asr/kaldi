@@ -3,7 +3,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Yenda Trmal)
 # Apache 2.0.
 
-#This script takes the source STM file and generates the *.txt files which 
+#This script takes the source STM file and generates the *.txt files which
 #are usually part of the BABEL delivery
 #The *.txt files are not the part of the delivery for the evalpart1 subset
 #The program works as a filter and the only parameter it expects is
@@ -12,7 +12,7 @@
 #example of usage:
 #  cat data/evalpart1/stm local/stm2text.pl data/raw_evalpart1_data/transcriptions
 
-use strict; 
+use strict;
 use warnings;
 
 use utf8;
@@ -30,7 +30,7 @@ while ( <STDIN> ) {
   next if ( $filename =~ /;;.*/ );
   #$filename =~ s/;;(.*)/$1/ if ( $filename =~ /;;.*/ );
   $text = "<no-speech>" if not $text;
-   
+
   if ( $prev_filename ne $filename ) {
     #close($OUTPUT) if ( tell(FH) != -1 );
     print "$output_dir/$filename.txt\n";

@@ -52,7 +52,7 @@ for subdir in fe_03_p1_sph1  fe_03_p1_sph3  fe_03_p1_sph5  fe_03_p1_sph7 \
       found_subdir=true
       ln -s $dir/$subdir data/local/data/links
     else
-      new_style_subdir=$(echo $subdir | sed s/fe_03_p2_sph/fisher_eng_tr_sp_d/)
+      new_style_subdir=$(echo $subdir | sed s/fe_03_p1_sph/fisher_eng_tr_sp_d/)
       if [ -d $dir/$new_style_subdir ]; then
         found_subdir=true
         ln -s $dir/$new_style_subdir data/local/data/links/$subdir
@@ -167,7 +167,7 @@ fi
 if [ $stage -le 3 ]; then
   for f in `cat $tmpdir/sph.flist`; do
     # convert to absolute path
-    readlink -e $f
+    utils/make_absolute.sh $f
   done > $tmpdir/sph_abs.flist
   
   cat $tmpdir/sph_abs.flist | perl -ane 'm:/([^/]+)\.sph$: || die "bad line $_; ";  print "$1 $_"; ' > $tmpdir/sph.scp
