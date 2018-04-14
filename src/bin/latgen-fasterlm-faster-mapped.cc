@@ -208,7 +208,7 @@ int main(int argc, char *argv[]) {
     FasterArpaLmDeterministicFst old_lm_dfst(old_lm);
     ApplyProbabilityScale(-1.0, old_lm_dfst); // Negate old LM probs...
     */
-#if 0
+#if 1
     FasterArpaLm old_lm(arpa_options, old_lm_fst_rxfilename,  symbol_size, -1);
     FasterArpaLmDeterministicFst old_lm_dfst(old_lm);
 #else

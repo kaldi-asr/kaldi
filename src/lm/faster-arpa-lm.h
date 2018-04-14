@@ -123,7 +123,8 @@ class FasterArpaLm {
     } else {
       hashed_idx=randint_per_word_gram_[0][word_ids[0]];
       for (int i=1; i<ngram_order_; i++) {
-        int word_id=i<ngram_order?word_ids[i]:0;
+        int word_id=i<ngram_order?word_ids[i]:
+          (word_ids[i-ngram_order] + i + ngram_order); // this is totally a hack
         hashed_idx ^= randint_per_word_gram_[i][word_id];
       }
       if (h_value) *h_value = hashed_idx; // to check colid
@@ -226,10 +227,22 @@ class FasterArpaLm {
       assert(lm_state->IsExist());
       //assert(ngram_order==1 || GetHashedState(word_ids, ngram_order-1)->IsExist());
       prob = lm_state->logprob_;
+      /*
+      for (int i=0; i<ngram_order; i++) {
+        std::cout<<word_ids[i]<<" ";
+      }
+      std::cout<<ngram_order<<" "<<prob<<"\n";
+      */
+      // below code is to make sure the LmState exist, so un-exist states can be recombined to a same state
+      ngram_order = std::min(ngram_order,ngram_order_-1);
+      while(!GetHashedState(word_ids, ngram_order)) ngram_order--;
+      assert(ngram_order>0);
+
       o_word_ids.resize(ngram_order);
       for (int i=0; i<ngram_order; i++) {
         o_word_ids[i] = word_ids[i]; 
       }
+
     } else {
       assert(ngram_order > 1); // thus we can do backoff
       const LmState *lm_state_bo = GetHashedState(word_ids + 1, ngram_order-1); 
