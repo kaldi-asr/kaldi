@@ -39,18 +39,18 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
-  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.9999 \
                         data/local/dict "<sil>" data/lang/temp data/lang
 fi
 
 if [ $stage -le 3 ]; then
   echo "$0: Estimating a language model for decoding..."
-#  local/train_lm.sh
-#  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_big.arpa.gz \
-#                     data/local/dict/lexicon.txt data/lang_test
+  local/train_lm.sh
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang_test
   
-  cp -R data/lang -T data/lang_test
-  local/prepare_lm.sh data/train/text data/lang_test 3 || exit 1;
+#  cp -R data/lang -T data/lang_test
+#  local/prepare_lm.sh data/train/text data/lang_test 3 || exit 1;
 fi
 
 
@@ -67,5 +67,5 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
-  local/chain/run_flatstart_cnn1a.sh --affix 1a_mono
+  local/chain/run_flatstart_cnn1a.sh --affix 1a_mono_sp_1.0
 fi

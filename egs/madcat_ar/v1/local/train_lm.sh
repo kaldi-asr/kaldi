@@ -77,7 +77,9 @@ if [ $stage -le 0 ]; then
   # get the wordlist from IAM text
   #cat ${dir}/data/text/madcat.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   #cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
-  cat $segments | tr ' ' '\n' | sed '/^$/d' | sort | uniq -c | sort -bnr | sed 's/^.//' > ${dir}/data/word_count
+  #cat $segments | tr ' ' '\n' | sed '/^$/d' | sort | uniq -c | sort -bnr | sed 's/^.//' > ${dir}/data/word_count
+  #cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
+  cat ${dir}/data/text/madcat.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 

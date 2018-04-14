@@ -80,8 +80,6 @@ def get_scaled_image(im, allowed_lengths = None):
     im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding),
                                                     dtype=int)), axis=1)
     horizontal_dim = ny + left_padding + right_padding
-    noise = np.random.normal(2, 1,(nx, horizontal_dim))
-    im_pad1 = im_pad1 - noise
     return im_pad1
 
 ### main ###

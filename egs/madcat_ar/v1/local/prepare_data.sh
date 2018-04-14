@@ -31,9 +31,9 @@ dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.
 mkdir -p data/{train,test,dev}
 mkdir -p data/download/tmp/lines
 if [ $stage -le 1 ]; then
-  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $train_split_file || exit 1
-  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $test_split_file || exit 1
-  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $dev_split_file || exit 1
+#  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $train_split_file || exit 1
+#  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $test_split_file || exit 1
+#  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $dev_split_file || exit 1
 
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $train_split_file data/train || exit 1
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $test_split_file data/test || exit 1
