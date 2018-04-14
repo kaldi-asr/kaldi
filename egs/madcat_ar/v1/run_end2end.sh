@@ -48,9 +48,6 @@ if [ $stage -le 3 ]; then
   local/train_lm.sh
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang_test
-  
-#  cp -R data/lang -T data/lang_test
-#  local/prepare_lm.sh data/train/text data/lang_test 3 || exit 1;
 fi
 
 

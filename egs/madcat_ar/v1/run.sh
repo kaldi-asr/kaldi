@@ -7,8 +7,8 @@
 set -e
 stage=0
 nj=70
-
-# iam_database points to the database path on the JHU grid. If you have not
+decode_gmm=false
+# MADCAT_Arabic_database points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
 # like "data/download" and follow the instructions
 # in "local/prepare_data.sh" to download the database:
@@ -42,12 +42,9 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "$0: Estimating a language model for decoding..."
-  #local/train_lm.sh
-  #utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
-  #                   data/local/dict/lexicon.txt data/lang_test
-
-  cp -R data/lang -T data/lang_test
-  local/prepare_lm.sh data/train/text data/lang_test 3 || exit 1;
+  local/train_lm.sh
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang_test
 fi
 
 if [ $stage -le 4 ]; then
@@ -55,12 +52,12 @@ if [ $stage -le 4 ]; then
     data/lang exp/mono
 fi
 
-#if [ $stage -le 5 ]; then
-#  utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
-#
-#  steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
-#    exp/mono/decode_test
-#fi
+if [ $stage -le 5 ] && $decode_gmm; then
+  utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
+    exp/mono/decode_test
+fi
 
 if [ $stage -le 6 ]; then
   steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
@@ -70,12 +67,12 @@ if [ $stage -le 6 ]; then
     exp/mono_ali exp/tri
 fi
 
-#if [ $stage -le 7 ]; then
-#  utils/mkgraph.sh data/lang_test exp/tri exp/tri/graph
-#
-#  steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test \
-#    exp/tri/decode_test
-#fi
+if [ $stage -le 7 ] && $decode_gmm; then
+  utils/mkgraph.sh data/lang_test exp/tri exp/tri/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test \
+    exp/tri/decode_test
+fi
 
 if [ $stage -le 8 ]; then
   steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
@@ -86,39 +83,37 @@ if [ $stage -le 8 ]; then
     data/train data/lang exp/tri_ali exp/tri2
 fi
 
-#if [ $stage -le 9 ]; then
-#  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
-#
-#  steps/decode.sh --nj $nj --cmd $cmd exp/tri2/graph \
-#    data/test exp/tri2/decode_test
-#fi
+if [ $stage -le 9 ] && $decode_gmm; then
+  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/tri2/graph \
+    data/test exp/tri2/decode_test
+fi
 
 if [ $stage -le 10 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
     data/train data/lang exp/tri2 exp/tri3_ali
 
-#  steps/train_sat.sh --cmd $cmd 500 20000 \
-#    data/train data/lang exp/tri2_ali exp/tri3
+  steps/train_sat.sh --cmd $cmd 500 20000 \
+    data/train data/lang exp/tri2_ali exp/tri3
 fi
 
-#if [ $stage -le 11 ]; then
-#  utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
-#
-#  steps/decode_fmllr.sh --nj $nj --cmd $cmd exp/tri3/graph \
-#    data/test exp/tri3/decode_test
-#fi
-#
-#if [ $stage -le 12 ]; then
-#  steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
-#    data/train data/lang exp/tri3 exp/tri3_ali
-#fi
+if [ $stage -le 11 ] && $decode_gmm; then
+  utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
+
+  steps/decode_fmllr.sh --nj $nj --cmd $cmd exp/tri3/graph \
+    data/test exp/tri3/decode_test
+fi
+
+if [ $stage -le 12 ]; then
+  steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
+    data/train data/lang exp/tri3 exp/tri3_ali
+fi
 
 if [ $stage -le 13 ]; then
-  local/chain/run_cnn_1a.sh \
-    --affix _1b_epoch_2_l2_001 --common_egs_dir exp/chain/cnn_1a/egs/
+  local/chain/run_cnn_1a.sh
 fi
 
 if [ $stage -le 14 ]; then
-  local/chain/run_cnn_chainali_1b.sh --chain-model-dir exp/chain/cnn_1b_epoch_2_l2_001 --stage 3 \
-    --affix _1b_epoch_2_l2_001 --lats_affix epoch_2_l2_001 --common_egs_dir exp/chain/cnn_chainali_1b/egs
+  local/chain/run_cnn_chainali_1b.sh --chain-model-dir exp/chain/cnn_1a --stage 2
 fi
