@@ -208,9 +208,15 @@ int main(int argc, char *argv[]) {
     FasterArpaLmDeterministicFst old_lm_dfst(old_lm);
     ApplyProbabilityScale(-1.0, old_lm_dfst); // Negate old LM probs...
     */
-
+#if 0
     FasterArpaLm old_lm(arpa_options, old_lm_fst_rxfilename,  symbol_size, -1);
     FasterArpaLmDeterministicFst old_lm_dfst(old_lm);
+#else
+    VectorFst<StdArc> *old_lm_fst = fst::CastOrConvertToVectorFst(
+        fst::ReadFstKaldiGeneric(old_lm_fst_rxfilename));
+    ApplyProbabilityScale(-1.0, old_lm_fst); // Negate old LM probs...
+    fst::BackoffDeterministicOnDemandFst<StdArc> old_lm_dfst(*old_lm_fst);
+#endif
 
     FasterArpaLm new_lm(arpa_options, new_lm_fst_rxfilename, symbol_size);
     FasterArpaLmDeterministicFst new_lm_dfst(new_lm);
