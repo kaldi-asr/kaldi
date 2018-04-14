@@ -67,7 +67,7 @@ class FasterArpaLm {
     float logprob_;
     // for next query; can be optional
     float backoff_logprob_;
-    int32 h_value;
+    RAND_TYPE h_value;
     LmState* next; // for colid
   };
 
@@ -122,10 +122,10 @@ class FasterArpaLm {
   int32 NgramOrder() const { return ngram_order_; }
 
   inline int32 GetHashedIdx(const int32* word_ids, 
-      int query_ngram_order, int32 *h_value=NULL) const {
+      int query_ngram_order, RAND_TYPE *h_value=NULL) const {
     assert(query_ngram_order > 0 && query_ngram_order <= ngram_order_);
     int32 ngram_order = query_ngram_order;
-    int32 hashed_idx;
+    RAND_TYPE hashed_idx;
     if (ngram_order == 1) {
       hashed_idx = word_ids[ngram_order-1];
     } else {
@@ -134,7 +134,7 @@ class FasterArpaLm {
         int word_id=word_ids[i];
         hashed_idx ^= randint_per_word_gram_[i][word_id];
       }
-      if (h_value) *h_value = hashed_idx; // to check colid
+      if (h_value) *h_value = hashed_idx; // to check colid, h_value should be precise
       int i = ngram_order-1;
       hashed_idx &= 
           (ngrams_hashed_size_[i]-ngrams_hashed_size_[i-1] - 1);
@@ -158,7 +158,7 @@ class FasterArpaLm {
   }
   inline void SaveHashedState(const int32* word_ids, 
       int query_ngram_order, LmState &lm_state_pattern) {
-    int32 h_value=0;
+    RAND_TYPE h_value=0;
     int32 hashed_idx = GetHashedIdx(word_ids, query_ngram_order, &h_value);
     lm_state_pattern.h_value = h_value;
     int32 ngram_order = query_ngram_order;
@@ -184,7 +184,7 @@ class FasterArpaLm {
 
   inline const LmState* GetHashedState(const int32* word_ids, 
       int query_ngram_order) const {
-    int32 h_value;
+    RAND_TYPE h_value;
     int32 hashed_idx = GetHashedIdx(word_ids, query_ngram_order, &h_value);
     int32 ngram_order = query_ngram_order;
     if (ngram_order == 1) {
