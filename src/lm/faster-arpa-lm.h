@@ -38,7 +38,10 @@ class FasterArpaLm {
   // LmState in FasterArpaLm: the basic storage unit
   class LmState {
    public:
-    LmState(): logprob_(0) { }
+    LmState(): logprob_(0), h_value(0), next(NULL) { }
+    LmState(float logprob, float backoff_logprob): 
+      logprob_(logprob), backoff_logprob_(backoff_logprob), h_value(0),
+    next(NULL) { }
     void Allocate(const NGram* ngram, float lm_scale=1) {
       logprob_ = ngram->logprob*lm_scale;
       backoff_logprob_ = ngram->backoff*lm_scale;
@@ -48,13 +51,15 @@ class FasterArpaLm {
       int32 sz= sizeof(int32)*(ngram_order);
       */
     }
-    bool IsExist() { return logprob_!=0; }
+    bool IsExist() const { return logprob_!=0; }
     ~LmState() { }
 
     // for current query
     float logprob_;
     // for next query; can be optional
     float backoff_logprob_;
+    int32 h_value;
+    LmState* next; // for colid
   };
 
   // Class to build FasterArpaLm from Arpa format language model. It relies on the
@@ -73,9 +78,8 @@ class FasterArpaLm {
           Options().bos_symbol, Options().eos_symbol, Options().unk_symbol);
     }
     virtual void ConsumeNGram(const NGram& ngram) {
-      LmState *lmstate = lm_->GetHashedState(ngram.words, true);
-      assert(lmstate);
-      lmstate->Allocate(&ngram, lm_scale_);
+      LmState lm_state(ngram.logprob * lm_scale_, ngram.backoff * lm_scale_);
+      lm_->SaveHashedState(ngram.words, lm_state, true);
     }
 
     virtual void ReadComplete()  { }
@@ -92,7 +96,6 @@ class FasterArpaLm {
     ngram_order_ = 0;
     num_words_ = 0;
     lm_states_size_ = 0;
-    ngrams_ = NULL;
     randint_per_word_gram_ = NULL;
 
     BuildFasterArpaLm(arpa_rxfilename, lm_scale);
@@ -107,23 +110,80 @@ class FasterArpaLm {
   int32 UnkSymbol() const { return unk_symbol_; }
   int32 NgramOrder() const { return ngram_order_; }
 
-  inline LmState* GetHashedState(const int32* word_ids, 
-      int query_ngram_order) const {
+  inline int32 GetHashedIdx(const int32* word_ids, 
+      int query_ngram_order, int32 *h_value=NULL) const {
     assert(query_ngram_order > 0 && query_ngram_order <= ngram_order_);
     int32 ngram_order = query_ngram_order;
-    assert(word_ids[ngram_order-1] < ngrams_hashed_size_[ngram_order-1]);
+    int32 hashed_idx;
     if (ngram_order == 1) {
-      return &ngrams_[ngram_order-1][word_ids[ngram_order-1]];
+      hashed_idx = word_ids[ngram_order-1];
     } else {
-      int32 hashed_idx=randint_per_word_gram_[0][word_ids[0]];
-      for (int i=1; i<ngram_order; i++) {
-        hashed_idx ^= randint_per_word_gram_[i][word_ids[i]];
+      hashed_idx=randint_per_word_gram_[0][word_ids[0]];
+      for (int i=1; i<ngram_order_; i++) {
+        int word_id=i<ngram_order?word_ids[i]:0;
+        hashed_idx ^= randint_per_word_gram_[i][word_id];
       }
-      return &ngrams_[ngram_order-1][hashed_idx & 
-          (ngrams_hashed_size_[ngram_order-1] - 1)];
+      if (h_value) *h_value = hashed_idx; // to check colid
+      hashed_idx &= 
+          (hash_size_except_uni_ - 1);
+    }
+    return hashed_idx;
+  }
+  inline void InsertHash(int32 hashed_idx, int32 ngrams_saved_num_) {
+    if (ngrams_map_.at(hashed_idx)) {
+      LmState *lm_state = ngrams_map_[hashed_idx];
+      while (lm_state->next) lm_state = lm_state->next;
+      lm_state->next = &ngrams_[ngrams_saved_num_];
+    } else {
+      ngrams_map_[hashed_idx] = &ngrams_[ngrams_saved_num_];
     }
   }
-  inline LmState* GetHashedState(const std::vector<int32> &word_ids, 
+  inline void SaveHashedState(const int32* word_ids, 
+      int query_ngram_order, LmState &lm_state_pattern) {
+    int32 h_value=0;
+    int32 hashed_idx = GetHashedIdx(word_ids, query_ngram_order, &h_value);
+    lm_state_pattern.h_value = h_value;
+    int32 ngram_order = query_ngram_order;
+    if (ngram_order == 1) {
+      ngrams_[hashed_idx] = lm_state_pattern;
+    } else {
+      ngrams_[ngrams_saved_num_] = lm_state_pattern;
+      InsertHash(hashed_idx, ngrams_saved_num_++);
+    }
+  }
+  inline void SaveHashedState(const std::vector<int32> &word_ids, LmState &lm_state_pattern,
+       bool reverse = false, int query_ngram_order = 0)  {
+    int32 ngram_order = query_ngram_order==0? word_ids.size(): query_ngram_order;
+    int32 word_ids_arr[MAX_NGRAM];
+    if (reverse)
+      for (int i=0; i<ngram_order;i++) word_ids_arr[ngram_order - i - 1]=word_ids[i];
+    else
+      for (int i=0; i<ngram_order;i++) word_ids_arr[i]=word_ids[i];
+    return SaveHashedState(word_ids_arr, ngram_order, lm_state_pattern);
+  }
+
+
+  inline const LmState* GetHashedState(const int32* word_ids, 
+      int query_ngram_order) const {
+    int32 h_value;
+    int32 hashed_idx = GetHashedIdx(word_ids, query_ngram_order, &h_value);
+    int32 ngram_order = query_ngram_order;
+    if (ngram_order == 1) {
+      return &ngrams_[hashed_idx];
+    } else {
+      LmState *lm_state = ngrams_map_[hashed_idx];
+      while (lm_state) {
+        if (lm_state->h_value == h_value) {
+          return lm_state;
+        }
+        lm_state = lm_state->next;
+      }
+    }
+   
+    // not found, can be bug or really not found the corresponding ngram 
+    return NULL;
+  }
+  inline const LmState* GetHashedState(const std::vector<int32> &word_ids, 
        bool reverse = false, int query_ngram_order = 0) const {
     int32 ngram_order = query_ngram_order==0? word_ids.size(): query_ngram_order;
     int32 word_ids_arr[MAX_NGRAM];
@@ -152,21 +212,20 @@ class FasterArpaLm {
       ngram_order = ngram_order_;
     }
 
-    LmState *lm_state = GetHashedState(word_ids, ngram_order);
-    assert(lm_state);
-    if (lm_state->IsExist()) {
-      assert(ngram_order==1 || GetHashedState(word_ids, ngram_order-1)->IsExist());
+    const LmState *lm_state = GetHashedState(word_ids, ngram_order);
+    if (lm_state) { //found out
+      assert(lm_state->IsExist());
+      //assert(ngram_order==1 || GetHashedState(word_ids, ngram_order-1)->IsExist());
       prob = lm_state->logprob_;
       o_word_ids.resize(ngram_order);
       for (int i=0; i<ngram_order; i++) {
         o_word_ids[i] = word_ids[i]; 
       }
-      if ( word_ids[0] == 82325 && word_ids[1]==84746) {
-        KALDI_LOG<<word_ids[0] <<" "<<ngram_order<<" "<<word_ids[ngram_order-1];
-      }
     } else {
       assert(ngram_order > 1); // thus we can do backoff
-      LmState *lm_state_bo = GetHashedState(word_ids + 1, ngram_order-1); 
+      const LmState *lm_state_bo = GetHashedState(word_ids + 1, ngram_order-1); 
+
+      assert(lm_state_bo && lm_state_bo->IsExist()); // TODO: assert will fail because some place has false-exist? 
 #if 1
       if (!lm_state_bo->IsExist()) {
         KALDI_WARN << ngram_order << "\t" << lm_state_bo->backoff_logprob_;
@@ -174,7 +233,6 @@ class FasterArpaLm {
           KALDI_WARN << word_ids[i];
         }
       }
-      assert(lm_state_bo->IsExist()); // TODO: assert will fail because some place has false-exist? 
 #endif
       prob = lm_state_bo->backoff_logprob_ + 
         GetNgramLogprob(word_ids, ngram_order - 1, o_word_ids);
@@ -201,32 +259,37 @@ class FasterArpaLm {
     RAND_TYPE max_rand = RAND_MAX;
     kaldi::RandomState rstate;
     rstate.seed = 27437;
-    ngrams_ = (LmState**)malloc(ngram_order_ * sizeof(void*));
     randint_per_word_gram_ = (RAND_TYPE **)malloc(ngram_order_ * sizeof(void*));
     ngrams_hashed_size_ = (int32*)malloc(ngram_order_ * sizeof(int32));
+    int32 acc=0;
     for (int i=0; i< ngram_order_; i++) {
       if (i == 0) ngrams_hashed_size_[i] = symbol_size_; // uni-gram
       else {
-        ngrams_hashed_size_[i] = (1<<(int)ceil(log(ngram_count[i]) / 
-                                 M_LN2 + 4));
+        ngrams_hashed_size_[i] = ngram_count[i];
       }
-      KALDI_VLOG(2) << "ngram: "<< i+1 <<" hashed_size/size = "<< 
-        1.0 * ngrams_hashed_size_[i] / ngram_count[i]<<" "<<ngram_count[i];
-      ngrams_[i] = (LmState* )calloc(ngrams_hashed_size_[i], sizeof(LmState)) ;
       randint_per_word_gram_[i] = (RAND_TYPE* )malloc(symbol_size_ * sizeof(RAND_TYPE)) ;
       for (int j=0; j<symbol_size_; j++) {
         randint_per_word_gram_[i][j] = kaldi::RandInt(0, max_rand, &rstate);
       }
+      acc+= ngrams_hashed_size_[i];
     }
+    hash_size_except_uni_ = acc - symbol_size_;
+    hash_size_except_uni_  = (1<<(int)ceil(log(hash_size_except_uni_) / 
+                                 M_LN2 + 0.5));
+    KALDI_VLOG(2) << " hashed_size/size = "<< 
+        1.0 * (hash_size_except_uni_+symbol_size_) / acc <<" "<<acc;
+    
+    ngrams_ = (LmState* )calloc(sizeof(LmState), acc); //use default constructor
+    ngrams_saved_num_ = symbol_size_; // assume uni-gram is allocated
+    ngrams_map_.resize(hash_size_except_uni_, NULL);
     is_built_ = true;
   }
   void Free() {
     for (int i=0; i< ngram_order_; i++) {
-      free(ngrams_[i]);
       free(randint_per_word_gram_[i]);
     }
-    free(ngrams_);
     free(randint_per_word_gram_);
+    free(ngrams_);
   }
 
  private:
@@ -258,10 +321,14 @@ class FasterArpaLm {
   // data
 
   // Memory blcok for storing N-gram; ngrams_[ngram_order][hashed_idx]
-  LmState** ngrams_;
+  LmState* ngrams_;
+  int32 ngrams_saved_num_;
+
+  std::vector<LmState *> ngrams_map_; // hash to ngrams_ index
   // used to obtain hash value; randint_per_word_gram_[ngram_order][word_id]
   RAND_TYPE** randint_per_word_gram_;
   int32* ngrams_hashed_size_;
+  int32 hash_size_except_uni_;
 };
 
 
