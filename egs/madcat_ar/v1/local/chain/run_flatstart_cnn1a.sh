@@ -53,7 +53,7 @@ EOF
 fi
 
 lang=data/lang_e2e
-treedir=exp/chain/e2e_bitree  # it's actually just a trivial tree (no tree building)
+treedir=exp/chain/e2e_monotree  # it's actually just a trivial tree (no tree building)
 dir=exp/chain/e2e_cnn_${affix}
 
 if [ $stage -le 0 ]; then
@@ -74,7 +74,12 @@ if [ $stage -le 1 ]; then
                                        --shared-phones true \
                                        --type mono \
                                        data/$train_set $lang $treedir
-  cp exp/chain/e2e_base/phone_lm.fst $treedir/
+  $cmd $treedir/log/make_phone_lm.log \
+  cat data/$train_set/text \| \
+    steps/nnet3/chain/e2e/text_to_phones.py data/lang \| \
+    utils/sym2int.pl -f 2- data/lang/phones.txt \| \
+    chain-est-phone-lm --num-extra-lm-states=500 \
+                       ark:- $treedir/phone_lm.fst
 fi
 
 if [ $stage -le 2 ]; then
@@ -109,11 +114,6 @@ fi
 if [ $stage -le 3 ]; then
   # no need to store the egs in a shared storage because we always
   # remove them. Anyway, it takes only 5 minutes to generate them.
-
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
-    utils/create_split_dir.pl \
-     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/madcat-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
-  fi
 
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$cmd" \
