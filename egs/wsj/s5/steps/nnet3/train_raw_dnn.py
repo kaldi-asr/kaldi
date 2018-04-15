@@ -94,6 +94,10 @@ def get_args():
                         "the neural network.")
     parser.add_argument("--targets-scp", type=str, required=False,
                         help="Targets for training neural network.")
+    parser.add_argument("--vad-egs", type=str,
+                        action=common_lib.StrToBoolAction,
+                        default=False, choices=["true", "false"],
+                        help="Get nnet3 egs with vad applied on features.")
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and "
                         "all other files.")
@@ -241,6 +245,7 @@ def train(args, run_opts):
 
         train_lib.raw_model.generate_egs_using_targets(
             data=args.feat_dir, targets_scp=args.targets_scp,
+            vad_egs=args.vad_egs,
             egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,
             run_opts=run_opts,

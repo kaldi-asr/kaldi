@@ -12,6 +12,7 @@ srand=0
 reporting_email=
 common_egs_dir= # use previously dumped egs
 dvector_dim=400
+vad=false # vad or not when getting egs
 
 . ./cmd.sh
 . ./path.sh
@@ -91,8 +92,9 @@ if [ $stage -le 2 ]; then
     --use-gpu=true \
     --reporting.email="$reporting_email" \
     --feat-dir=$train_data_dir \
-    --use-dense-targets false \
-    --targets-scp "$ali_dir/ali.scp" \
+    --use-dense-targets=false \
+    --targets-scp="$ali_dir/ali.scp" \
+    --vad-egs=$vad \
     --dir=$dir  || exit 1;
 fi
 

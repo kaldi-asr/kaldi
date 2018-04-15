@@ -57,7 +57,7 @@ local/spk_ali.py -vad data/fbank/train $exp/spk_ali
 
 
 ###### Bookmark: dnn training ######
-local/nnet3/run_tdnn_raw_vad.sh --dvector-dim ${dvector_dim} \
+local/nnet3/run_tdnn_raw.sh --vad true --dvector-dim ${dvector_dim} \
   data/fbank/train $exp/spk_ali $exp/tdnn
 
 
