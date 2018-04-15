@@ -64,7 +64,7 @@ bounding_box = namedtuple('bounding_box', ('area',
 
 
 def unit_vector(pt0, pt1):
-    """Returns an unit vector that points in the direction of pt0 to pt1.
+    """ Returns an unit vector that points in the direction of pt0 to pt1.
     Args:
         pt0 (float, float): Point 0. Eg. (1.0, 2.0).
         pt1 (float, float): Point 1. Eg. (3.0, 8.0).
@@ -79,7 +79,7 @@ def unit_vector(pt0, pt1):
 
 
 def orthogonal_vector(vector):
-    """From vector returns a orthogonal/perpendicular vector of equal length.
+    """ From vector returns a orthogonal/perpendicular vector of equal length.
     Args:
         vector (float, float): A vector. Eg. (0.31622776601683794, 0.9486832980505138).
 
@@ -91,6 +91,23 @@ def orthogonal_vector(vector):
 
 
 def bounding_area(index, hull):
+    """ Returns a named tuple that mainly contains area of the box that bounds
+        the hull. This bounding box orintation is same as the orientation of the 
+        lines formed by the point hull[index] and hull[index+1].
+    Args:
+        index (int): Eg. 1.
+        hull [(float, float)]: list or tuple of point cloud
+        Eg. ((1.0, -1.0), (2.0, -3.0), (3.0, 4.0), (5.0, 6.0)).
+
+    Returns: a named tuple that contains:
+             area: area of the rectangle
+             length_parallel: length of the side that is parallel to unit_vector
+             length_orthogonal: length of the side that is orthogonal to unit_vector
+             rectangle_center: coordinates of the rectangle center
+             (use rectangle_corners to get the corner points of the rectangle)
+             unit_vector: direction of the length_parallel side. RADIANS
+             (it's orthogonal vector can be found with the orthogonal_vector function
+    """
     unit_vector_p = unit_vector(hull[index], hull[index+1])
     unit_vector_o = orthogonal_vector(unit_vector_p)
 
@@ -116,6 +133,7 @@ def to_xy_coordinates(unit_vector_angle, point):
         unit_vector_angle (float): angle of unit vector to be in radians. 
         Eg. 0.1543 .
         point (float, float): Point from origin. Eg. (1.0, 2.0).
+
     Returns:
         (float, float): converted x,y coordinate of the unit vector.
         Eg. 0.680742447866183, 2.1299271629971663
@@ -133,6 +151,7 @@ def rotate_points(center_of_rotation, angle, points):
         angle (float): angle of rotation to be in radians. Eg. 0.1543 .
         points [(float, float)]: Points to be a list or tuple of points. Points to be rotated. 
         Eg. ((1.56, -23.4), (1.56, -23.4))
+
     Returns:
         [(float, float)]: Rotated points around center of rotation by angle
         Eg. ((1.16, -12.4), (2.34, -34.4))
@@ -156,6 +175,7 @@ def rectangle_corners(rectangle):
         locations of the rectangle.
     Args:
         rectangle (bounding_box): the output of minimum bounding box rectangle
+
     Returns:
     [(float, float)]: 4 corner points of rectangle.
         Eg. ((1.0, -1.0), (2.0, -3.0), (3.0, 4.0), (5.0, 6.0))
@@ -176,6 +196,7 @@ def minimum_bounding_box(points):
     Args:
         points [(float, float)]: points to be a list or tuple of 2D points
                                  needs to be more than 2 points
+
     Returns: returns a namedtuple that contains:
              area: area of the rectangle
              length_parallel: length of the side that is parallel to unit_vector
@@ -215,12 +236,31 @@ def minimum_bounding_box(points):
 
 
 def get_center(im):
+    """ Returns the center pixel location of an image
+    Args:
+        im: image 
+
+    Returns:
+        (int, int): center of the image
+        Eg.  2550, 3300
+    """
+
     center_x = im.size[0]/2
     center_y = im.size[1]/2
-    return center_x, center_y
+    return int(center_x), int(center_y)
 
 
 def get_horizontal_angle(unit_vector_angle):
+    """ Returns angle of the unit vector in first or fourth quadrant.
+    Args:
+        angle (float): angle of the unit vector to be in radians. Eg. 0.01543.
+
+    Returns:
+        (float): updated angle of the unit vector to be in radians.
+                 It is only in first or fourth quadrant.
+        Eg. 0.01543.
+    """
+
     if unit_vector_angle > pi / 2 and unit_vector_angle <= pi:
         unit_vector_angle = unit_vector_angle - pi
     elif unit_vector_angle > -pi and unit_vector_angle < -pi / 2:
@@ -230,6 +270,15 @@ def get_horizontal_angle(unit_vector_angle):
 
 
 def get_smaller_angle(bounding_box):
+    """ Returns smallest absolute angle of a rectangle.
+    Args:
+        rectangle (bounding_box): bounding box rectangle
+
+    Returns:
+        (float): smallest angle of the rectangle to be in radians.
+        Eg. 0.01543.
+    """
+
     unit_vector = bounding_box.unit_vector
     unit_vector_angle = bounding_box.unit_vector_angle
     ortho_vector = orthogonal_vector(unit_vector)
@@ -245,6 +294,18 @@ def get_smaller_angle(bounding_box):
 
 
 def rotated_points(bounding_box, center):
+    """ Rotates the corners of a  bounding box rectangle around the center by smallest angle 
+        of the rectangle. It first finds the smallest angle of the rectangle
+        then rotates it around the given center point.
+    Args:
+        rectangle (bounding_box): bounding box rectangle
+        center (int, int): center point around which the corners of rectangle are rotated.
+        Eg. (2550, 3300).
+
+    Returns: 4 corner points of rectangle.
+        Eg. ((1.0, -1.0), (2.0, -3.0), (3.0, 4.0), (5.0, 6.0))
+    """
+
     p1, p2, p3, p4 = bounding_box.corner_points
     x1, y1 = p1
     x2, y2 = p2
@@ -265,6 +326,16 @@ def rotated_points(bounding_box, center):
 
 
 def set_line_image_data(image, line_id, image_file_name):
+    """ Flips a given line image and saves it. Line image file name 
+        is formed by appending the line id at the end page image name.
+    Args:
+        image: line image, non flipped
+        line_id (string): id of the line image.
+        image_file_name(string): name of the page image.
+
+    Returns:
+    """
+
     base_name = os.path.splitext(os.path.basename(image_file_name))[0]
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_' + line_id.zfill(4)
@@ -277,6 +348,15 @@ def set_line_image_data(image, line_id, image_file_name):
 
 
 def get_line_images_from_page_image(image_file_name, madcat_file_path):
+    """ Extracts the line image from page image.
+    Args:
+        image_file_name (string): complete path and name of the page image.
+        madcat_file_path (string): complete path and name of the madcat xml file
+                                  corresponding to the page image.
+
+    Returns:
+    """
+
     im = Image.open(image_file_name)
     doc = minidom.parse(madcat_file_path)
     zone = doc.getElementsByTagName('zone')
@@ -311,6 +391,15 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
 
 
 def check_file_location():
+    """ Returns the complete path of the page image and corresponding
+        xml file.
+    Args:
+
+    Returns:
+        image_file_name (string): complete path and name of the page image.
+        madcat_file_path (string): complete path and name of the madcat xml file
+                                  corresponding to the page image.
+    """
 
     madcat_file_path1 = os.path.join(args.database_path1, 'madcat', base_name + '.madcat.xml')
     madcat_file_path2 = os.path.join(args.database_path2, 'madcat', base_name + '.madcat.xml')
@@ -333,6 +422,14 @@ def check_file_location():
     return None, None, None
 
 def parse_writing_conditions(writing_conditions):
+    """ Returns a dictionary which have writing condition of each page image.
+    Args: 
+         writing_conditions(string): complete path of writing condition file.
+
+    Returns:
+        (dict): dictionary with key as page image name and value as writing condition.
+    """
+
     with open(writing_conditions) as f:
         file_writing_cond = dict()
         for line in f:
@@ -341,6 +438,15 @@ def parse_writing_conditions(writing_conditions):
     return file_writing_cond
 
 def check_writing_condition(wc_dict):
+    """ Checks if a given page image is writing in a given writing condition.
+        It is used to create subset of dataset based on writing condition.
+    Args:
+         wc_dict (dict): dictionary with key as page image name and value as writing condition.
+
+    Returns:
+        (bool): True if writing condition matches.
+    """
+
     return True
     writing_condition = wc_dict[base_name].strip()
     if writing_condition != 'IUC':
