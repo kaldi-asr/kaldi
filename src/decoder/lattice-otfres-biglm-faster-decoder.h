@@ -355,7 +355,7 @@ class LatticeBiglmFasterDecoder {
       return tok;
     }
   }
-#define res_beam 1
+#define res_beam 0.5
    inline bool FindOrAddToken(StateId state_id, int32 frame, BaseFloat tot_cost,
                                bool emitting, bool *changed, bool pp) {
     // Returns the Token pointer.  Sets "changed" (if non-NULL) to true
