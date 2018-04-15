@@ -100,5 +100,5 @@ if [ $stage -le 11 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  local/chain/run_cnn_chainali_1b.sh --chain-model-dir exp/chain/cnn_1a --stage 2
+  local/chain/run_cnn_chainali_1b.sh --stage 2
 fi
