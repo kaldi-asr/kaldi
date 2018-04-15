@@ -1,3 +1,33 @@
+#!/usr/bin/env python3
+# Copyright   2018 Ashish Arora
+# minimum bounding box part in this script is originally from
+#https://github.com/BebeSparkelSparkel/MinimumBoundingBox
+
+""" This module will be used for extracting line images from page image.
+ Given the word segmentation (bounding boxes) around every word, it will
+ extract line segmentation. To extract line segmentation, it will take word bounding
+ boxes of a line as input, will create a minimum bounding box that will contain 
+ all corner points of word bounding boxes. The obtained bounding box (will not necessarily 
+ be vertically or horizontally aligned). Hence after obtaining the line bounding box
+ page image is rotated and line image is cropped and saved.
+ Args:
+  database_path1: Path to the downloaded (and extracted) madcat data directory 1
+          Eg. /export/corpora/LDC/LDC2012T15
+  database_path2: Path to the downloaded (and extracted) madcat data directory 2
+          Eg. /export/corpora/LDC/LDC2013T09
+  database_path3: Path to the downloaded (and extracted) madcat data directory 3
+          Eg. /export/corpora/LDC/LDC2013T15
+  data_splits: Path to file that contains the train,test or development split information.
+               There are total 3 split files. one of train, test and dev each.
+          Eg. /home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
+             groups.google.com_women1000_508c404bd84f8ba3_ARB_20060426_124900_3_LDC0188.madcat.xml s1
+             <xml file name> <scribe number>
+             <scribe number> is the number of time this page has been written
+  
+  Eg. local/create_line_image_from_page_image.py /export/corpora/LDC/LDC2012T15 /export/corpora/LDC/LDC2013T09 
+      /export/corpora/LDC/LDC2013T15 /home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
+"""
+
 import argparse
 import os
 import xml.dom.minidom as minidom
@@ -6,17 +36,18 @@ import numpy as np
 from scipy.misc import toimage
 
 from scipy.spatial import ConvexHull
-from math import sqrt
-from math import atan2, cos, sin, pi, degrees
+from math import atan2, cos, sin, pi, degrees, sqrt
 from collections import namedtuple
 
-parser = argparse.ArgumentParser(description="""Creates line images from page image.""")
+parser = argparse.ArgumentParser(description="Creates line images from page image",
+                                 epilog="E.g. local/create_line_image_from_page_image.py data/LDC2012T15 data/LDC2013T09 data/LDC2013T15 data/madcat.train.raw.lineid ",
+                                formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('database_path1', type=str,
-                    help='Path to the downloaded (and extracted) mdacat data file 1')
+                    help='Path to the downloaded (and extracted) madcat data directory 1')
 parser.add_argument('database_path2', type=str,
-                    help='Path to the downloaded (and extracted) mdacat data file 2')
+                    help='Path to the downloaded (and extracted) madcat data directory 2')
 parser.add_argument('database_path3', type=str,
-                    help='Path to the downloaded (and extracted) mdacat data file 3')
+                    help='Path to the downloaded (and extracted) madcat data directory 3')
 parser.add_argument('data_splits', type=str,
                     help='Path to file that contains the train/test/dev split information')
 args = parser.parse_args()
@@ -31,12 +62,14 @@ bounding_box = namedtuple('bounding_box', ('area',
 
 
 def unit_vector(pt0, pt1):
+    # returns an unit vector that points in the direction of pt0 to pt1
     dis_0_to_1 = sqrt((pt0[0] - pt1[0])**2 + (pt0[1] - pt1[1])**2)
     return (pt1[0] - pt0[0]) / dis_0_to_1, \
            (pt1[1] - pt0[1]) / dis_0_to_1
 
 
 def orthogonal_vector(vector):
+    # from vector returns a orthogonal/perpendicular vector of equal length
     return -1 * vector[1], vector[0]
 
 
@@ -61,12 +94,17 @@ def bounding_area(index, hull):
 
 
 def to_xy_coordinates(unit_vector_angle, point):
+    # returns converted unit vector coordinates in x, y coordinates
     angle_orthogonal = unit_vector_angle + pi / 2
     return point[0] * cos(unit_vector_angle) + point[1] * cos(angle_orthogonal), \
            point[0] * sin(unit_vector_angle) + point[1] * sin(angle_orthogonal)
 
 
 def rotate_points(center_of_rotation, angle, points):
+    # Requires: center_of_rotation to be a 2d vector. ex: (1.56, -23.4)
+    #           angle to be in radians
+    #           points to be a list or tuple of points. ex: ((1.56, -23.4), (1.56, -23.4))
+    # Effects: rotates a point cloud around the center_of_rotation point by angle
     rot_points = []
     ang = []
     for pt in points:
@@ -81,6 +119,8 @@ def rotate_points(center_of_rotation, angle, points):
 
 
 def rectangle_corners(rectangle):
+    # Requires: the output of mon_bounding_rectangle
+    # Effects: returns the corner locations of the bounding rectangle
     corner_points = []
     for i1 in (.5, -.5):
         for i2 in (i1, -1 * i1):
@@ -90,7 +130,20 @@ def rectangle_corners(rectangle):
     return rotate_points(rectangle['rectangle_center'], rectangle['unit_vector_angle'], corner_points)
 
 
+# use this function to find the listed properties of the minimum bounding box of a point cloud
 def minimum_bounding_box(points):
+    # Requires: points to be a list or tuple of 2D points. ex: ((5, 2), (3, 4), (6, 8))
+    #           needs to be more than 2 points
+    # Effects:  returns a namedtuple that contains:
+    #               area: area of the rectangle
+    #               length_parallel: length of the side that is parallel to unit_vector
+    #               length_orthogonal: length of the side that is orthogonal to unit_vector
+    #               rectangle_center: coordinates of the rectangle center
+    #                   (use rectangle_corners to get the corner points of the rectangle)
+    #               unit_vector: direction of the length_parallel side. RADIANS
+    #                   (it's orthogonal vector can be found with the orthogonal_vector function
+    #               unit_vector_angle: angle of the unit vector
+    #               corner_points: set that contains the corners of the rectangle
     if len(points) <= 2: raise ValueError('More than two points required.')
 
     hull_ordered = [points[index] for index in ConvexHull(points).vertices]
