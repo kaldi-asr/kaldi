@@ -54,6 +54,19 @@ parser.add_argument('data_splits', type=str,
                     help='Path to file that contains the train/test/dev split information')
 args = parser.parse_args()
 
+"""
+bounding_box is a named tuple which contains:
+
+             area (float): area of the rectangle
+             length_parallel (float): length of the side that is parallel to unit_vector
+             length_orthogonal (float): length of the side that is orthogonal to unit_vector
+             rectangle_center(int, int): coordinates of the rectangle center
+             (use rectangle_corners to get the corner points of the rectangle)
+             unit_vector (float, float): direction of the length_parallel side.
+             (it's orthogonal vector can be found with the orthogonal_vector function
+             unit_vector_angle (float): angle of the unit vector to be in radians.
+             corner_points [(float, float)]: set that contains the corners of the rectangle
+"""
 bounding_box = namedtuple('bounding_box', ('area',
                                          'length_parallel',
                                          'length_orthogonal',
@@ -105,7 +118,7 @@ def bounding_area(index, hull):
              length_orthogonal: length of the side that is orthogonal to unit_vector
              rectangle_center: coordinates of the rectangle center
              (use rectangle_corners to get the corner points of the rectangle)
-             unit_vector: direction of the length_parallel side. RADIANS
+             unit_vector: direction of the length_parallel side.
              (it's orthogonal vector can be found with the orthogonal_vector function
     """
     unit_vector_p = unit_vector(hull[index], hull[index+1])
@@ -467,19 +480,19 @@ char_height_buffer = int(args.char_height_buffer)
 line_images_path_list = args.database_path1.split('/')
 line_images_path = ('/').join(line_images_path_list[:3])
 
-writing_condiiton_folder_list = args.database_path1.split('/')
-writing_condiiton_folder1 = ('/').join(writing_condiiton_folder_list[:4])
+writing_condition_folder_list = args.database_path1.split('/')
+writing_condition_folder1 = ('/').join(writing_condition_folder_list[:4])
 
-writing_condiiton_folder_list = args.database_path2.split('/')
-writing_condiiton_folder2 = ('/').join(writing_condiiton_folder_list[:4])
+writing_condition_folder_list = args.database_path2.split('/')
+writing_condition_folder2 = ('/').join(writing_condition_folder_list[:4])
 
-writing_condiiton_folder_list = args.database_path3.split('/')
-writing_condiiton_folder3 = ('/').join(writing_condiiton_folder_list[:4])
+writing_condition_folder_list = args.database_path3.split('/')
+writing_condition_folder3 = ('/').join(writing_condition_folder_list[:4])
 
 
-writing_conditions1 = os.path.join(writing_condiiton_folder1, 'docs', 'writing_conditions.tab')
-writing_conditions2 = os.path.join(writing_condiiton_folder2, 'docs', 'writing_conditions.tab')
-writing_conditions3 = os.path.join(writing_condiiton_folder3, 'docs', 'writing_conditions.tab')
+writing_conditions1 = os.path.join(writing_condition_folder1, 'docs', 'writing_conditions.tab')
+writing_conditions2 = os.path.join(writing_condition_folder2, 'docs', 'writing_conditions.tab')
+writing_conditions3 = os.path.join(writing_condition_folder3, 'docs', 'writing_conditions.tab')
 
 wc_dict1 = parse_writing_conditions(writing_conditions1)
 wc_dict2 = parse_writing_conditions(writing_conditions2)
