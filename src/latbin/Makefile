@@ -27,6 +27,8 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            lattice-arc-post lattice-determinize-non-compact lattice-lmrescore-kaldi-rnnlm \
            lattice-lmrescore-pruned lattice-lmrescore-kaldi-rnnlm-pruned
 
+BINFILES += lattice-lmrescore-fasterlm-arpa
+
 OBJFILES =
 
 
