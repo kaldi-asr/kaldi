@@ -47,7 +47,7 @@ class FasterArpaLm {
   // LmState in FasterArpaLm: the basic storage unit
   class LmState {
    public:
-    LmState(): logprob_(0), h_value(0), next(NULL) { }
+    LmState(): logprob_(0), h_value(0), word_ids_(NULL), next(NULL) { }
     LmState(float logprob, float backoff_logprob): 
       logprob_(logprob), backoff_logprob_(backoff_logprob), h_value(0),
     next(NULL) { }
@@ -60,14 +60,21 @@ class FasterArpaLm {
       int32 sz= sizeof(int32)*(ngram_order);
       */
     }
+    void SaveWordIds(const int32 *word_ids, const int32 ngram_order) {
+      word_ids_ = (int32 *)malloc(sizeof(int32)*ngram_order);
+      for (int i=0; i<ngram_order; i++) word_ids_[i] = word_ids[i];
+      ngram_order_ = ngram_order;
+    }
     bool IsExist() const { return logprob_!=0; }
-    ~LmState() { }
+    ~LmState() { if (word_ids_) free(word_ids_); }
 
     // for current query
     float logprob_;
     // for next query; can be optional
     float backoff_logprob_;
     RAND_TYPE h_value;
+    int32 *word_ids_;
+    int32 ngram_order_;
     LmState* next; // for colid
   };
 
@@ -164,8 +171,10 @@ class FasterArpaLm {
     int32 ngram_order = query_ngram_order;
     if (ngram_order == 1) {
       ngrams_[hashed_idx] = lm_state_pattern;
+      ngrams_[hashed_idx].SaveWordIds(word_ids, ngram_order);
     } else {
       ngrams_[ngrams_saved_num_] = lm_state_pattern;
+      ngrams_[ngrams_saved_num_].SaveWordIds(word_ids, ngram_order);
       InsertHash(hashed_idx, ngrams_saved_num_++);
     }
   }
@@ -183,24 +192,27 @@ class FasterArpaLm {
 
 
   inline const LmState* GetHashedState(const int32* word_ids, 
-      int query_ngram_order) const {
+      int query_ngram_order, int32 *lm_state_idx=NULL) const {
     RAND_TYPE h_value;
+    LmState *ret_lm_state = NULL;
     int32 hashed_idx = GetHashedIdx(word_ids, query_ngram_order, &h_value);
     int32 ngram_order = query_ngram_order;
     if (ngram_order == 1) {
-      return &ngrams_[hashed_idx];
+      ret_lm_state = &ngrams_[hashed_idx];
     } else {
       LmState *lm_state = ngrams_map_[hashed_idx];
       while (lm_state) {
         if (lm_state->h_value == h_value) {
-          return lm_state;
+          ret_lm_state = lm_state;
+          break;
         }
         lm_state = lm_state->next;
       }
     }
+    if (ret_lm_state && lm_state_idx) *lm_state_idx = ret_lm_state - ngrams_;
    
     // not found, can be bug or really not found the corresponding ngram 
-    return NULL;
+    return ret_lm_state;
   }
   inline const LmState* GetHashedState(const std::vector<int32> &word_ids, 
        bool reverse = false, int query_ngram_order = 0) const {
@@ -215,9 +227,15 @@ class FasterArpaLm {
 
   // if exist, get logprob_, else get backoff_logprob_
   // memcpy(n_wids+1, wids, len(wids)); n_wids[0] = cur_wrd;
+  inline void GetWordIdsByLmStateIdx(int32 **word_ids, 
+      int32 *word_ngram_order, int32 lm_state_idx) const {
+    *word_ids = ngrams_[lm_state_idx].word_ids_;
+    *word_ngram_order = ngrams_[lm_state_idx].ngram_order_;
+  }
+
   inline float GetNgramLogprob(const int32 *word_ids, 
       const int32 word_ngram_order, 
-      std::vector<int32>& o_word_ids) const {
+      int32 *lm_state_idx) const {
     float prob;
     int32 ngram_order = word_ngram_order;
     assert(ngram_order > 0);
@@ -245,14 +263,8 @@ class FasterArpaLm {
   */    
       // below code is to make sure the LmState exist, so un-exist states can be recombined to a same state
       ngram_order = std::min(ngram_order,ngram_order_-1);
-      while(!GetHashedState(word_ids, ngram_order)) ngram_order--;
+      while(!GetHashedState(word_ids, ngram_order, lm_state_idx)) ngram_order--;
       assert(ngram_order>0);
-
-      o_word_ids.resize(ngram_order);
-      for (int i=0; i<ngram_order; i++) {
-        o_word_ids[i] = word_ids[i]; 
-      }
-
     } else {
       assert(ngram_order > 1); // thus we can do backoff
       const LmState *lm_state_bo = GetHashedState(word_ids + 1, ngram_order-1); 
@@ -260,7 +272,7 @@ class FasterArpaLm {
       //assert(lm_state_bo && lm_state_bo->IsExist()); // TODO: assert will fail because some place has false-exist? 84746 4447 8537 without 4447 8537 in LM
 
       prob = lm_state_bo? lm_state_bo->backoff_logprob_:0;
-      prob += GetNgramLogprob(word_ids, ngram_order - 1, o_word_ids);
+      prob += GetNgramLogprob(word_ids, ngram_order - 1, lm_state_idx);
     }
     return prob;
   }
@@ -343,8 +355,6 @@ class FasterArpaLm {
   // Size of the <lm_states_> array, which will be needed by I/O.
   int64 lm_states_size_;
   // Hash table from word sequences to LmStates.
-  unordered_map<std::vector<int32>,
-                LmState*, VectorHasher<int32> > seq_to_state_;
   ArpaParseOptions &options_;
 
   // data
@@ -376,10 +386,10 @@ class FasterArpaLmDeterministicFst
 
   explicit FasterArpaLmDeterministicFst(const FasterArpaLm& lm): 
     start_state_(0), lm_(lm) { 
+      // TODO
     // Creates a history state for <s>.
-    std::vector<Label> bos_state(1, lm_.BosSymbol());
-    state_to_wseq_.push_back(bos_state);
-    wseq_to_state_[bos_state] = 0;
+    int32 word_ids = lm_.BosSymbol();
+    lm_.GetNgramLogprob(&word_ids, 1, &start_state_);
   }
 
   // We cannot use "const" because the pure virtual function in the interface is
@@ -390,16 +400,18 @@ class FasterArpaLmDeterministicFst
   // not const.
   virtual Weight Final(StateId s) {
     // At this point, we should have created the state.
-    KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
-    const std::vector<Label>& wseq = state_to_wseq_[s];
-    std::vector<Label> owseq;
-    float logprob = GetNgramLogprob(wseq, lm_.EosSymbol(), owseq);
+    int32 lm_state_idx;
+    float logprob = GetNgramLogprob(s, lm_.EosSymbol(), &lm_state_idx);
     return Weight(-logprob);
   }
 
-  float GetNgramLogprob(const std::vector<int32> &wseq, int32 ilabel,
-    std::vector<int32> &owseq) {
-    int32 n = wseq.size();
+  float GetNgramLogprob(const int32 pre_lm_state_idx, int32 ilabel,
+      int32 *lm_state_idx) {
+    int32 *wseq;
+    int32 wseq_order;
+    lm_.GetWordIdsByLmStateIdx(&wseq, &wseq_order, pre_lm_state_idx);
+    int32 n = wseq_order;
+    assert(n>0);
     int32 word_ids[MAX_NGRAM];
     assert(n+1 <= MAX_NGRAM);
 
@@ -408,46 +420,28 @@ class FasterArpaLmDeterministicFst
       word_ids[i+1] = wseq[i];
     }
 
-    return lm_.GetNgramLogprob(word_ids, n+1, owseq);
+    return lm_.GetNgramLogprob(word_ids, n+1, lm_state_idx);
   }
   virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
     // At this point, we should have created the state.
-    KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 
-    std::vector<Label> wseq = state_to_wseq_[s];
-    std::vector<Label> owseq;
-    float logprob = GetNgramLogprob(wseq, ilabel, owseq);
+    int32 lm_state_idx;
+    float logprob = GetNgramLogprob(s, ilabel, &lm_state_idx);
     if (logprob == std::numeric_limits<float>::min()) {
       return false;
     }
 
-    std::pair<const std::vector<Label>, StateId> wseq_state_pair(
-        owseq, static_cast<Label>(state_to_wseq_.size()));
-
-    // Attemps to insert the current <wseq_state_pair>. If the pair already exists
-    // then it returns false.
-    typedef MapType::iterator IterType;
-    std::pair<IterType, bool> result = wseq_to_state_.insert(wseq_state_pair);
-
-    // If the pair was just inserted, then also add it to <state_to_wseq_>.
-    if (result.second == true)
-      state_to_wseq_.push_back(owseq);
-
     // Creates the arc.
     oarc->ilabel = ilabel;
     oarc->olabel = ilabel;
-    oarc->nextstate = result.first->second;
+    oarc->nextstate = lm_state_idx;
     oarc->weight = Weight(-logprob);
 
     return true;
   }
 
  private:
-  typedef unordered_map<std::vector<Label>,
-                        StateId, VectorHasher<Label> > MapType;
   StateId start_state_;
-  MapType wseq_to_state_;
-  std::vector<std::vector<Label> > state_to_wseq_;
 
   const FasterArpaLm& lm_;
 };
