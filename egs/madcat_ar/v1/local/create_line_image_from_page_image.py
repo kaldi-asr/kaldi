@@ -473,10 +473,6 @@ def check_writing_condition(wc_dict):
 data_path1 = args.database_path1
 data_path2 = args.database_path2
 data_path3 = args.database_path3
-height_buffer = int(args.height_buffer)
-width_buffer = int(args.width_buffer)
-char_width_buffer = int(args.char_width_buffer)
-char_height_buffer = int(args.char_height_buffer)
 line_images_path_list = args.database_path1.split('/')
 line_images_path = ('/').join(line_images_path_list[:3])
 
