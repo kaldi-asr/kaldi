@@ -12,7 +12,7 @@ nj=70
                             # if supplied.
 
 
-#./local/check_tools.sh
+./local/check_tools.sh
 
 if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
