@@ -38,7 +38,7 @@ class ParseOptions : public OptionsItf {
   explicit ParseOptions(const char *usage) :
     print_args_(true), help_(false), usage_(usage), argc_(0), argv_(NULL),
     prefix_(""), other_parser_(NULL) {
-#ifndef _MSC_VER  // This is just a convenient place to set the stderr to line
+#if !defined(_MSC_VER) && !defined(__CYGWIN__) // This is just a convenient place to set the stderr to line
     setlinebuf(stderr);  // buffering mode, since it's called at program start.
 #endif  // This helps ensure different programs' output is not mixed up.
     RegisterStandard("config", &config_, "Configuration file to read (this "

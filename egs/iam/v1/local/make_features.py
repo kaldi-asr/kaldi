@@ -124,4 +124,4 @@ with open(data_list_path) as f:
         write_kaldi_matrix(out_fh, data, image_id)
 
 print('Generated features for {} images. Failed for {} (iamge too '
-      'long).'.format(num_ok, num_fail))
+      'long).'.format(num_ok, num_fail), file=sys.stderr)

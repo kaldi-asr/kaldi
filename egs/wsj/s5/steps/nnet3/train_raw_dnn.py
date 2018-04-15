@@ -250,7 +250,6 @@ def train(args, run_opts):
             cmvn_opts=args.cmvn_opts,
             online_ivector_dir=args.online_ivector_dir,
             samples_per_iter=args.samples_per_iter,
-            transform_dir=args.transform_dir,
             stage=args.egs_stage,
             target_type=target_type,
             num_targets=num_targets)
@@ -358,6 +357,19 @@ def train(args, run_opts):
                 raise Exception("proportional-shrink={0} is too large, it gives "
                                 "shrink-value={1}".format(args.proportional_shrink,
                                                           shrinkage_value))
+
+            percent = num_archives_processed * 100.0 / num_archives_to_process
+            epoch = (num_archives_processed * args.num_epochs
+                     / num_archives_to_process)
+            shrink_info_str = ''
+            if shrinkage_value != 1.0:
+                shrink_info_str = 'shrink: {0:0.5f}'.format(shrinkage_value)
+            logger.info("Iter: {0}/{1}    "
+                        "Epoch: {2:0.2f}/{3:0.1f} ({4:0.1f}% complete)    "
+                        "lr: {5:0.6f}    {6}".format(iter, num_iters - 1,
+                                                     epoch, args.num_epochs,
+                                                     percent,
+                                                     lrate, shrink_info_str))
 
             train_lib.common.train_one_iteration(
                 dir=args.dir,
