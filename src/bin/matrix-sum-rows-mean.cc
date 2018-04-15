@@ -1,6 +1,7 @@
 // bin/matrix-sum-rows-mean.cc
 
 // Copyright 2012  Johns Hopkins University (author: Daniel Povey)
+//           2018  Tsinghua University (author: Zhiyuan Tang)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
