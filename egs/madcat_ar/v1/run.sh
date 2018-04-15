@@ -80,40 +80,25 @@ if [ $stage -le 8 ]; then
 
   steps/train_lda_mllt.sh --cmd $cmd \
     --splice-opts "--left-context=3 --right-context=3" 500 20000 \
-    data/train data/lang exp/tri_ali exp/tri2
+    data/train data/lang exp/tri_ali exp/tri3
 fi
 
 if [ $stage -le 9 ] && $decode_gmm; then
-  utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
+  utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
 
-  steps/decode.sh --nj $nj --cmd $cmd exp/tri2/graph \
-    data/test exp/tri2/decode_test
+  steps/decode.sh --nj $nj --cmd $cmd exp/tri3/graph \
+    data/test exp/tri3/decode_test
 fi
 
 if [ $stage -le 10 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
-    data/train data/lang exp/tri2 exp/tri3_ali
-
-  steps/train_sat.sh --cmd $cmd 500 20000 \
-    data/train data/lang exp/tri2_ali exp/tri3
-fi
-
-if [ $stage -le 11 ] && $decode_gmm; then
-  utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
-
-  steps/decode_fmllr.sh --nj $nj --cmd $cmd exp/tri3/graph \
-    data/test exp/tri3/decode_test
-fi
-
-if [ $stage -le 12 ]; then
-  steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
     data/train data/lang exp/tri3 exp/tri3_ali
 fi
 
-if [ $stage -le 13 ]; then
+if [ $stage -le 11 ]; then
   local/chain/run_cnn_1a.sh
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 12 ]; then
   local/chain/run_cnn_chainali_1b.sh --chain-model-dir exp/chain/cnn_1a --stage 2
 fi
