@@ -18,6 +18,22 @@ def get_utt_len_dict(data):
   return len_dict
 
 
+def get_utt_len_dict_vad(data):
+  '''Get num of frames for each utt with vad.
+  '''
+  cmd = '. ./path.sh; copy-vector scp:' + data + '/vad.scp ark,t:|less'
+  vads = subprocess.check_output(cmd, shell=True)
+  len_dict = collections.OrderedDict()
+  for line in vads.strip().split('\n'):
+    utt = line.strip().split()[0]
+    vad = line.strip().split()[1:]
+    num = 0
+    for i in vad[1:len(vad)-1]:
+      num += int(i)
+    len_dict[utt] = num
+  return len_dict
+
+
 def get_spk_id_dict(data, dir):
   '''Get spk id for each utt and spk num. Store spk2spk_id in dir.
   '''
@@ -57,10 +73,10 @@ def generate_spk_ali(spk_dict, spk_num, len_dict, dir):
   for i in len_dict.keys():
     content += i + (' ' + str(spk_dict[i])) * int(len_dict[i]) + '\n'
     counts[int(spk_dict[i])] += int(len_dict[i])
-  # write spk aligment, spk num, and num of frames per spk
-  ali = open(dir + '/ali.ark', 'w')
-  num = open(dir + '/spk_num', 'w')
-  cou = open(dir + '/spk_frame_counts', 'w')
+  # write spk aligment, spk num, and total num of frames per spk
+  ali = open(dir + '/ali.ark.tmp', 'w')
+  num = open(dir + '/target_num', 'w')
+  cou = open(dir + '/target_counts', 'w')
   ali.write(content)
   num.write(str(spk_num))
   cou.write('[')
@@ -70,22 +86,32 @@ def generate_spk_ali(spk_dict, spk_num, len_dict, dir):
   ali.close()
   num.close()
   cou.close()
+  # write ali.ark with ali.scp
+  cmd = ('. ./path.sh; copy-int-vector ark:' +
+         dir + '/ali.ark.tmp ark,t,scp:' +
+         dir + '/ali.ark,' + dir + '/ali.scp;' +
+         'rm ' + dir + '/ali.ark.tmp')
+  subprocess.check_call(cmd, shell=True)
   
 
 if __name__ == "__main__":
-  '''Get int spk id alignments on frame level for each utt.
+  '''Get int spk id alignments on frame level for each utt with or without vad.
   '''
-  if len(sys.argv) != 3:
-    print('usage: spk_ali.py <data-dir> <spk-ali-dir>')
+  if len(sys.argv) != 4 or (sys.argv[1] != '-vad' and sys.argv[1] != '-novad'):
+    print('usage: spk_ali.py [-vad|-novad] <data-dir> <spk-ali-dir>')
     sys.exit()
   
-  data = sys.argv[1]
-  dir = sys.argv[2]
+  vad = sys.argv[1]
+  data = sys.argv[2]
+  dir = sys.argv[3]
   if not os.path.exists(dir):
     os.makedirs(dir)
 
   spk_dict, spk_num = get_spk_id_dict(data, dir)
-  len_dict = get_utt_len_dict(data)
+  if vad == '-vad':
+    len_dict = get_utt_len_dict_vad(data)
+  else:
+    len_dict = get_utt_len_dict(data)
   generate_spk_ali(spk_dict, spk_num, len_dict, dir)
   print('Spk ali done.')
 

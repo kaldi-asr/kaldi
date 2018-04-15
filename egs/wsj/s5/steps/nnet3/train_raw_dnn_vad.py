@@ -239,7 +239,7 @@ def train(args, run_opts):
                                 "in {1}".format(
                                     str(e), '{0}/configs'.format(args.dir)))
 
-        train_lib.raw_model.generate_egs_using_targets(
+        train_lib.raw_model.generate_egs_using_targets_vad(
             data=args.feat_dir, targets_scp=args.targets_scp,
             egs_dir=default_egs_dir,
             left_context=left_context, right_context=right_context,

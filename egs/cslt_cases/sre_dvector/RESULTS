@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Obtained by Zhiyuan Tang in April 2018.
+
+. ./path.sh
+trials=data/test/trials
+# print eer
+for i in cosine lda plda; do
+  eer=`compute-eer <(python local/prepare_for_eer.py $trials exp/*/scores/${i}_scores) 2> /dev/null`
+  printf "%15s %5.2f \n" "$i eer:" $eer
+done
+exit 0
+
+cosine eer:  3.61
+   lda eer:  0.94
+  plda eer:  2.21
+

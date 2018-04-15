@@ -521,6 +521,22 @@ def compute_presoftmax_prior_scale(dir, alidir, num_jobs, run_opts,
                                 dir))
 
 
+def compute_presoftmax_prior_scale_targets(dir, counts_path,
+                                           presoftmax_prior_scale_power=-0.25):
+    # total num of frames per target already prepared
+    target_counts = common_lib.read_kaldi_matrix(counts_path)[0]
+    scaled_counts = smooth_presoftmax_prior_scale_vector(
+        target_counts,
+        presoftmax_prior_scale_power=presoftmax_prior_scale_power,
+        smooth=0.01)
+
+    output_file = "{0}/presoftmax_prior_scale.vec".format(dir)
+    common_lib.write_kaldi_matrix(output_file, [scaled_counts])
+    common_lib.force_symlink("../presoftmax_prior_scale.vec",
+                             "{0}/configs/presoftmax_prior_scale.vec".format(
+                                dir))
+
+
 def smooth_presoftmax_prior_scale_vector(pdf_counts,
                                          presoftmax_prior_scale_power=-0.25,
                                          smooth=0.01):

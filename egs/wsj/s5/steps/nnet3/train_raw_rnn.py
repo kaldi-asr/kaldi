@@ -342,6 +342,17 @@ def train(args, run_opts):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
+        logger.info("Computing initial vector for FixedScaleComponent before"
+                    " softmax, using priors^{prior_scale} and rescaling to"
+                    " average 1".format(
+                        prior_scale=args.presoftmax_prior_scale_power))
+
+        # total num of frames per target already prepared
+        counts_path = os.path.dirname(args.targets_scp) + '/target_counts'
+        common_train_lib.compute_presoftmax_prior_scale_targets(
+            args.dir, counts_path,
+            presoftmax_prior_scale_power=args.presoftmax_prior_scale_power)
+
     if args.stage <= -1:
         logger.info("Preparing the initial network.")
         common_train_lib.prepare_initial_network(args.dir, run_opts)

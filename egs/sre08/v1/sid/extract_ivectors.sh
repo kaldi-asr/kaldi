@@ -80,7 +80,7 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "$0: combining iVectors across jobs"
-  for j in $(seq $nj); do cat $dir/ivector.$j.scp; done >$dir/ivector.scp || exit 1;
+  for j in $(seq $nj); do cat $dir/ivector.$j.scp; done >$dir/vector.scp || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
@@ -88,7 +88,7 @@ if [ $stage -le 2 ]; then
   # even if they are otherwise the same as the utterance-level ones.
   echo "$0: computing mean of iVectors for each speaker and length-normalizing"
   $cmd $dir/log/speaker_mean.log \
-    ivector-normalize-length scp:$dir/ivector.scp  ark:- \| \
+    ivector-normalize-length scp:$dir/vector.scp  ark:- \| \
     ivector-mean ark:$data/spk2utt ark:- ark:- ark,t:$dir/num_utts.ark \| \
-    ivector-normalize-length ark:- ark,scp:$dir/spk_ivector.ark,$dir/spk_ivector.scp || exit 1;
+    ivector-normalize-length ark:- ark,scp:$dir/spk_vector.ark,$dir/spk_vector.scp || exit 1;
 fi
