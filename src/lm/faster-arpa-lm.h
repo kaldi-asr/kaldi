@@ -249,7 +249,7 @@ class FasterArpaLm {
       ngram_order = ngram_order_;
     }
 
-    const LmState *lm_state = GetHashedState(word_ids, ngram_order);
+    const LmState *lm_state = GetHashedState(word_ids, ngram_order, lm_state_idx);
     if (lm_state) { //found out
       assert(lm_state->IsExist());
       //assert(ngram_order==1 || GetHashedState(word_ids, ngram_order-1)->IsExist());
@@ -260,11 +260,17 @@ class FasterArpaLm {
         std::cout<<word_ids[i]<<" ";
       }
       std::cout<<ngram_order<<" "<<prob<<"\n";
-  */    
-      // below code is to make sure the LmState exist, so un-exist states can be recombined to a same state
-      ngram_order = std::min(ngram_order,ngram_order_-1);
-      while(!GetHashedState(word_ids, ngram_order, lm_state_idx)) ngram_order--;
-      assert(ngram_order>0);
+  */   
+#define IMPROVE_RECOMBINE
+#ifdef IMPROVE_RECOMBINE
+      if (ngram_order > ngram_order_-1) {
+        ngram_order = ngram_order_-1;
+        // below code is to make sure the LmState exist, so un-exist states can be recombined to a same state; 
+        // however, it wastes some hashing if we never use the nextstate
+        while(!GetHashedState(word_ids, ngram_order, lm_state_idx)) ngram_order--;
+        assert(ngram_order>0);
+      }
+#endif
     } else {
       assert(ngram_order > 1); // thus we can do backoff
       const LmState *lm_state_bo = GetHashedState(word_ids + 1, ngram_order-1); 
