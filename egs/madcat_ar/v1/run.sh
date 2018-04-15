@@ -18,6 +18,8 @@ decode_gmm=false
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
 
+./local/check_tools.sh
+
 if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh
