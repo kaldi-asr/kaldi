@@ -535,6 +535,4 @@ with open(args.data_splits) as f:
             if wc_dict == None or not check_writing_condition(wc_dict):
                continue
             if madcat_file_path != None:
-                print(madcat_file_path)
-                print(image_file_path)
                 get_line_images_from_page_image(image_file_path, madcat_file_path)
