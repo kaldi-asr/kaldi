@@ -380,10 +380,7 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
         minimum_bounding_box_input = []
         for token_node in token_image:
             word_point = token_node.getElementsByTagName('point')
-            col_word, row_word = [], []
             for word_node in word_point:
-                col_word.append(int(word_node.getAttribute('x')))
-                row_word.append(int(word_node.getAttribute('y')))
                 word_coordinate = (int(word_node.getAttribute('x')), int(word_node.getAttribute('y')))
                 minimum_bounding_box_input.append(word_coordinate)
         bounding_box = minimum_bounding_box(minimum_bounding_box_input)
@@ -397,6 +394,9 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
         max_x = int(max(x1, x2, x3, x4))
         max_y = int(max(y1, y2, y3, y4))
         region_initial = im[min_y:max_y, min_x:max_x]
+
+        if min_y <=0:
+            continue
 
         # #calculate new crop points
         rot_points = []
@@ -429,6 +429,10 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
         min_y = int(min(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
         max_x = int(max(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
         max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
+
+        if min_y <= 0:
+            continue
+
         region_final = img2[min_y:max_y, min_x:max_x]
         set_line_image_data(region_final, id, image_file_name)
 
@@ -444,13 +448,13 @@ def check_file_location():
                                   corresponding to the page image.
     """
 
-    madcat_file_path1 = os.path.join(args.database_path1, 'madcat', base_name + '.madcat.xml')
-    madcat_file_path2 = os.path.join(args.database_path2, 'madcat', base_name + '.madcat.xml')
-    madcat_file_path3 = os.path.join(args.database_path3, 'madcat', base_name + '.madcat.xml')
+    madcat_file_path1 = os.path.join(data_path1, 'madcat', base_name + '.madcat.xml')
+    madcat_file_path2 = os.path.join(data_path2, 'madcat', base_name + '.madcat.xml')
+    madcat_file_path3 = os.path.join(data_path3, 'madcat', base_name + '.madcat.xml')
 
-    image_file_path1 = os.path.join(args.database_path1, 'images', base_name + '.tif')
-    image_file_path2 = os.path.join(args.database_path2, 'images', base_name + '.tif')
-    image_file_path3 = os.path.join(args.database_path3, 'images', base_name + '.tif')
+    image_file_path1 = os.path.join(data_path1, 'images', base_name + '.tif')
+    image_file_path2 = os.path.join(data_path2, 'images', base_name + '.tif')
+    image_file_path3 = os.path.join(data_path3, 'images', base_name + '.tif')
 
     if os.path.exists(madcat_file_path1):
         return madcat_file_path1, image_file_path1, wc_dict1
@@ -550,17 +554,17 @@ wc_dict1 = parse_writing_conditions(writing_conditions1)
 wc_dict2 = parse_writing_conditions(writing_conditions2)
 wc_dict3 = parse_writing_conditions(writing_conditions3)
 
+splits_handle = open(args.data_splits, 'r')
+splits_data = splits_handle.read().strip().split('\n')
+splits_data_new = splits_data[16470:]
 
-with open(args.data_splits) as f:
-    prev_base_name = ''
-    for line in f:
-        base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
-        if prev_base_name != base_name:
-            prev_base_name = base_name
-            madcat_file_path, image_file_path, wc_dict = check_file_location()
-            if wc_dict == None or not check_writing_condition(wc_dict):
-               continue
-            if madcat_file_path != None and allowed_word_segmentation(madcat_file_path):
-                get_line_images_from_page_image(image_file_path, madcat_file_path)
-            elif madcat_file_path != None:
-                 print(image_file_path)
+prev_base_name = ''
+for line in splits_data_new:
+    base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
+    if prev_base_name != base_name:
+        prev_base_name = base_name
+        madcat_file_path, image_file_path, wc_dict = check_file_location()
+        if wc_dict == None or not check_writing_condition(wc_dict):
+            continue
+        if madcat_file_path != None and allowed_word_segmentation(madcat_file_path):
+            get_line_images_from_page_image(image_file_path, madcat_file_path)
