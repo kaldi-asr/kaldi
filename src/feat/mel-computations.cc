@@ -69,7 +69,9 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
 
   BaseFloat vtln_low = opts.vtln_low,
       vtln_high = opts.vtln_high;
-  if (vtln_high < 0.0) vtln_high += nyquist;
+  if (vtln_high < 0.0) {
+    vtln_high += nyquist;
+  }
 
   if (vtln_warp_factor != 1.0 &&
       (vtln_low < 0.0 || vtln_low <= low_freq
