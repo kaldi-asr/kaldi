@@ -443,6 +443,8 @@ class UpdatableComponent: public Component {
   // InitLearningRatesFromConfig() should be changed too.
   UpdatableComponent(): learning_rate_(0.001), learning_rate_factor_(1.0),
                         l2_regularize_(0.0), is_gradient_(false),
+                        min_param_value_(std::numeric_limits<float>::lowest()),
+                        max_param_value_(std::numeric_limits<float>::max()),
                         max_change_(0.0) { }
 
   virtual ~UpdatableComponent() { }
@@ -520,6 +522,13 @@ class UpdatableComponent: public Component {
   virtual void UnVectorize(const VectorBase<BaseFloat> &params) {
     KALDI_ASSERT(0);
   }
+  // This function applies min and max parameter value contraints by
+  // mapping parameter weight to range [min_param_value_, max_param_value]
+  virtual void ApplyMinMaxToWeights() = 0;
+
+  BaseFloat MaxParamValue() const { return max_param_value_; }
+
+  BaseFloat MinParamValue() const { return min_param_value_; }
 
  protected:
   // to be called from child classes, extracts any learning rate information
@@ -538,7 +547,11 @@ class UpdatableComponent: public Component {
   // <ThisComponentType> tag and the learning-rate factor (if not 1.0) and the
   // learning rate;
   void WriteUpdatableCommon(std::ostream &is, bool binary) const;
-
+  
+  BaseFloat max_param_value_; /// max parameter value constant, the parameters mapped to
+                              /// this value, if they get larger than max_param_value_.
+  BaseFloat min_param_value_; /// min parameter value constant, the parameters mapped to
+                              /// this value, if they get smaller than min_param_value_.
   BaseFloat learning_rate_; ///< learning rate (typically 0.0..0.01)
   BaseFloat learning_rate_factor_; ///< learning rate factor (normally 1.0, but
                                    ///< can be set to another < value so that

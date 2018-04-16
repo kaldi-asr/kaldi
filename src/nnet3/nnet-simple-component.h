@@ -387,6 +387,7 @@ class PerElementOffsetComponent;
 // AffineComponent.
 class AffineComponent: public UpdatableComponent {
  public:
+  virtual void ApplyMinMaxToWeights();
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
@@ -482,6 +483,7 @@ class RepeatedAffineComponent;
 /// num-blocks must divide both input-dim and output-dim
 class BlockAffineComponent : public UpdatableComponent {
  public:
+  virtual void ApplyMinMaxToWeights() {}
   virtual int32 InputDim() const { return linear_params_.NumCols() * num_blocks_; }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
@@ -547,7 +549,7 @@ class BlockAffineComponent : public UpdatableComponent {
 
 class RepeatedAffineComponent: public UpdatableComponent {
  public:
-
+  virtual void ApplyMinMaxToWeights() {}
   virtual int32 InputDim() const { return linear_params_.NumCols() * num_repeats_; }
   virtual int32 OutputDim() const { return linear_params_.NumRows() * num_repeats_; }
 
@@ -898,6 +900,7 @@ class NaturalGradientAffineComponent: public AffineComponent {
 */
 class LinearComponent: public UpdatableComponent {
  public:
+  virtual void ApplyMinMaxToWeights();
   virtual int32 InputDim() const { return params_.NumCols(); }
   virtual int32 OutputDim() const { return params_.NumRows(); }
 
@@ -1462,6 +1465,7 @@ class PermuteComponent: public Component {
 */
 class PerElementScaleComponent: public UpdatableComponent {
  public:
+  virtual void ApplyMinMaxToWeights() {}
   virtual int32 InputDim() const { return scales_.Dim(); }
   virtual int32 OutputDim() const { return scales_.Dim(); }
 
@@ -1558,6 +1562,7 @@ class PerElementScaleComponent: public UpdatableComponent {
 */
 class PerElementOffsetComponent: public UpdatableComponent {
  public:
+  virtual void ApplyMinMaxToWeights() {}
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
 
@@ -1622,6 +1627,7 @@ class PerElementOffsetComponent: public UpdatableComponent {
 // no inputs].
 class ConstantFunctionComponent: public UpdatableComponent {
  public:
+  virtual void ApplyMinMaxToWeights() {}
   virtual int32 InputDim() const { return input_dim_; }
   virtual int32 OutputDim() const { return output_.Dim(); }
 
@@ -1794,6 +1800,7 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
 */
 class ScaleAndOffsetComponent: public UpdatableComponent {
  public:
+  virtual void ApplyMinMaxToWeights() {}
   virtual int32 InputDim() const { return dim_; }
   virtual int32 OutputDim() const { return dim_; }
 
@@ -1963,6 +1970,7 @@ class ScaleAndOffsetComponent: public UpdatableComponent {
  */
 class ConvolutionComponent: public UpdatableComponent {
  public:
+  virtual void ApplyMinMaxToWeights() {}
   enum TensorVectorizationType  {
     kYzx = 0,
     kZyx = 1
@@ -2185,6 +2193,7 @@ class ConvolutionComponent: public UpdatableComponent {
 class LstmNonlinearityComponent: public UpdatableComponent {
  public:
 
+  virtual void ApplyMinMaxToWeights() {}
   virtual int32 InputDim() const;
   virtual int32 OutputDim() const;
   virtual std::string Info() const;
@@ -2426,6 +2435,7 @@ class MaxpoolingComponent: public Component {
  */
 class CompositeComponent: public UpdatableComponent {
  public:
+  virtual void ApplyMinMaxToWeights() {}
   virtual int32 InputDim() const;
   virtual int32 OutputDim() const;
 
@@ -2518,6 +2528,149 @@ class CompositeComponent: public UpdatableComponent {
   std::vector<Component*> components_;
 
 };
+
+//For raw data
+/*
+ * The shiftedComponent shifts the input using random or constant shift.
+ * The output y contains the shifted version of input and it is equal to
+ * x.Range(shift * diff, output_dim_), where 0 <= shift < 1.
+ * The output_dim_ is the target dimension of the output and the input_dim_ is the input
+ * dim of this component and diff = input_dim_ - output_dim_ and input_dim_ >  output_dim_ and the diff should be > = original frame_length.
+ * This component is useful when we train a DNN using raw-waveform
+ * and we can shift the input e.g. shift the input by 20% of original frame-length.
+ * max_shift_ is the max shift used to shift the input(0 <= max_shift_ <= 1, the default is 0.5.)
+ */
+class ShiftInputComponent: public RandomComponent {
+ public:
+  void Init(int32 input_dim, int32 output_dim, BaseFloat max_shift,
+    BaseFloat rand_vol_var = 0.0, BaseFloat dither = 0.0, bool preprocess = false);
+
+  explicit ShiftInputComponent(const ShiftInputComponent &other);
+
+  explicit ShiftInputComponent(int32 input_dim, int32 output_dim,
+                               BaseFloat max_shift,
+                               BaseFloat rand_vol_var = 0.0,
+                               BaseFloat dither = 0.0,
+                               bool preprocess = false) {
+      Init(input_dim, output_dim, max_shift, rand_vol_var, dither, preprocess); }
+  ShiftInputComponent(): input_dim_(0), output_dim_(0), max_shift_(1.0),
+    rand_vol_var_(0.0), shift_per_frame_(false), dither_(0.0),
+    preprocess_(false) { }
+
+  virtual std::string Type() const { return "ShiftInputComponent"; }
+  virtual std::string Info() const;
+  virtual void InitFromConfig(ConfigLine *cfl);
+  void SetShiftAndVolume(BaseFloat shift, BaseFloat vol_var) { max_shift_ = shift;
+    rand_vol_var_ = vol_var; }
+  virtual int32 InputDim() const { return input_dim_; }
+  virtual int32 OutputDim() const { return output_dim_; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kRandomComponent;
+  }
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual Component* Copy() const;
+
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+ protected:
+  void Preprocess(CuMatrixBase<BaseFloat> *preprocessed_in) const;
+  int32 input_dim_;
+  int32 output_dim_;
+  BaseFloat max_shift_; // max shift is the max shift used to shift the input.
+                        // max_shift_ should be between 0 and 1.
+  BaseFloat rand_vol_var_; // The variance used to generate random volume perturbation value.
+  bool shift_per_frame_;  // If true, different random shift is applied per frame of input.
+  BaseFloat dither_; // The random vector with stddev of dither_ is added to input before random shift.
+                     // The main reason is to make zero values on raw waveform nonzero.
+                     // This is done on both test and train.
+  bool preprocess_; // If true, the preemphasis, mean-removal and windowing is applied
+                    // on outputs.
+};
+
+// The ExpComponent outputs the exp of input values as y = Exp(x)
+class ExpComponent: public NonlinearComponent {
+ public:
+  explicit ExpComponent(const ExpComponent &other):
+    NonlinearComponent(other) { }
+  ExpComponent() { }
+  virtual std::string Type() const { return "ExpComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsOutput|kStoresStats;
+  }
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual Component* Copy() const { return new ExpComponent(*this); }
+ private:
+  ExpComponent &operator = (const ExpComponent &other); // Disallow.
+};
+
+// The LogComponent outputs the log of input values as y = Log(max(x, epsi))
+class LogComponent: public NonlinearComponent {
+ public:
+  //explicit LogComponent(int32 dim): dim_(dim) { }
+  explicit LogComponent(const LogComponent &other):
+    NonlinearComponent(other), log_floor_(other.log_floor_),
+    additive_offset_(other.additive_offset_) {}
+  LogComponent(): log_floor_(1e-10), additive_offset_(false) { }
+  virtual std::string Type() const { return "LogComponent"; }
+  virtual int32 Properties() const {
+    return kSimpleComponent|kBackpropNeedsInput|kStoresStats;
+  }
+
+  virtual std::string Info() const;
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &in_value,
+                        const CuMatrixBase<BaseFloat> &out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual Component* Copy() const { return new LogComponent(*this); }
+
+  virtual void Read(std::istream &is, bool binary);
+
+  virtual void Write(std::ostream &os, bool binary) const;
+
+ private:
+  LogComponent &operator = (const LogComponent &other); // Disallow.
+  BaseFloat log_floor_;
+  bool additive_offset_; // If true, log is computed using abs(x) + log_floor_
+                         // otherwise it is computed as log(max(x,log_floor_))
+};
+
 
 
 } // namespace nnet3

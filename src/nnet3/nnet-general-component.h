@@ -502,6 +502,7 @@ class BackpropTruncationComponent: public Component {
 
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void ApplyMinMaxToWeights() {}
   virtual void Read(std::istream &is, bool binary); // This Read function
   // requires that the Component has the correct type.
   /// Write component to stream
@@ -675,6 +676,7 @@ class ConstantComponent: public UpdatableComponent {
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
   virtual void PerturbParams(BaseFloat stddev);
+  virtual void ApplyMinMaxToWeights() {}
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;

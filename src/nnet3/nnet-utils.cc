@@ -2051,6 +2051,22 @@ void ApplyL2Regularization(const Nnet &nnet,
   }
 }
 
+bool PositiveUpdatableWeights(Nnet *nnet) {
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *comp = nnet->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *src_comp =
+        dynamic_cast<UpdatableComponent*>(comp);
+      BaseFloat min_param_value = src_comp->MinParamValue(),
+                max_param_value = src_comp->MaxParamValue();
+      KALDI_ASSERT(min_param_value < max_param_value);
+      // apply min and max weight constraints to linear and bias parameters.
+      src_comp->ApplyMinMaxToWeights();
+    }
+  }
+  return true;
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

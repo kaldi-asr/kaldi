@@ -71,7 +71,11 @@ config_to_layer = {
         'renorm-component': xlayers.XconfigRenormComponent,
         'batchnorm-component': xlayers.XconfigBatchnormComponent,
         'no-op-component': xlayers.XconfigNoOpComponent,
-        'linear-component': xlayers.XconfigLinearComponent
+        'linear-component': xlayers.XconfigLinearComponent,
+        'preprocess-fft-abs-norm-lognorm-affine-log-layer': xlayers.XconfigFftFilterLayer,
+        'preprocess-fft-abs-lognorm-affine-log-layer': xlayers.XconfigFftFilterLayer,
+        'preprocess-fft-abs-log-layer': xlayers.XconfigFftFilterLayer,
+        'preprocess-tconv-abs-log-nin-affine-layer': xlayers.XconfigTimeDomainLayer
 }
 
 # Turn a config line and a list of previous layers into

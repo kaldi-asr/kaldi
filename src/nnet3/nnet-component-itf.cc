@@ -174,6 +174,12 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new RestrictedAttentionComponent();
   } else if (component_type == "SumBlockComponent") {
     ans = new SumBlockComponent();
+  } else if (component_type == "ShiftInputComponent") {
+    ans = new ShiftInputComponent();
+  } else if (component_type == "LogComponent") {
+    ans = new LogComponent();
+  } else if (component_type == "ExpComponent") {
+    ans = new ExpComponent();
   } else if (component_type == "ScaleAndOffsetComponent") {
     ans = new ScaleAndOffsetComponent();
   }
@@ -218,6 +224,8 @@ UpdatableComponent::UpdatableComponent(const UpdatableComponent &other):
     learning_rate_factor_(other.learning_rate_factor_),
     l2_regularize_(other.l2_regularize_),
     is_gradient_(other.is_gradient_),
+    min_param_value_(other.min_param_value_),
+    max_param_value_(other.max_param_value_),
     max_change_(other.max_change_) { }
 
 
@@ -228,6 +236,8 @@ void UpdatableComponent::SetUpdatableConfigs(
   l2_regularize_ = other.l2_regularize_;
   is_gradient_ = other.is_gradient_;
   max_change_ = other.max_change_;
+  max_param_value_ = other.max_param_value_;
+  min_param_value_ = other.min_param_value_;
 }
 
 // If these defaults are changed, the defaults in the constructor that
@@ -244,6 +254,13 @@ void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
   if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0 ||
       max_change_ < 0.0 || l2_regularize_ < 0.0)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+  BaseFloat min_param_value = std::numeric_limits<float>::lowest(),
+            max_param_value = std::numeric_limits<float>::max();
+  cfl->GetValue("min-param-value", &min_param_value);
+  cfl->GetValue("max-param-value", &max_param_value);
+  KALDI_ASSERT(min_param_value < max_param_value);
+  min_param_value_ = min_param_value;
+  max_param_value_ = max_param_value;
 }
 
 
@@ -282,6 +299,21 @@ std::string UpdatableComponent::ReadUpdatableCommon(std::istream &is,
   } else {
     l2_regularize_ = 0.0;
   }
+
+  if (token == "<MaxParamValue>") {
+    ReadBasicType(is, binary, &max_param_value_);
+    ReadToken(is, binary, &token);
+  } else {
+    max_param_value_ = std::numeric_limits<float>::max();
+  }
+
+  if (token == "<MinParamValue>") {
+    ReadBasicType(is, binary, &min_param_value_);
+    ReadToken(is, binary, &token);
+  } else {
+     min_param_value_ = std::numeric_limits<float>::lowest();
+  }
+
   if (token == "<LearningRate>") {
     ReadBasicType(is, binary, &learning_rate_);
     return "";
@@ -312,6 +344,17 @@ void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
     WriteToken(os, binary, "<L2Regularize>");
     WriteBasicType(os, binary, l2_regularize_);
   }
+
+  if (max_param_value_ < std::numeric_limits<float>::max()) {
+    WriteToken(os, binary, "<MaxParamValue>");
+    WriteBasicType(os, binary, max_param_value_);
+  }
+  
+  if (min_param_value_ > std::numeric_limits<float>::lowest()) {
+    WriteToken(os, binary, "<MinParamValue>");
+    WriteBasicType(os, binary, min_param_value_);
+  }
+
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
 }
@@ -330,6 +373,9 @@ std::string UpdatableComponent::Info() const {
     stream << ", learning-rate-factor=" << learning_rate_factor_;
   if (max_change_ > 0.0)
     stream << ", max-change=" << max_change_;
+
+  stream << ", max-param-value=" << max_param_value_
+         << ", min-param-value=" << min_param_value_;
   return stream.str();
 }
 

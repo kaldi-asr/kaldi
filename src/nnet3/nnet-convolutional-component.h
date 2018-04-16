@@ -276,6 +276,7 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
   virtual void PerturbParams(BaseFloat stddev);
+  virtual void ApplyMinMaxToWeights() {}
   virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;

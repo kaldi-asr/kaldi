@@ -497,6 +497,15 @@ void ConstrainOrthonormal(Nnet *nnet);
 int32 GetNumNvalues(const std::vector<NnetIo> &io_vec,
                     bool exhaustive);
 
+/**
+ This function is used as part of the regular training workflow, after
+ UpdateNnetWithMaxChange().
+ For each Updatable component c in the neural net, it makes updatable params
+ less than min_param_value_ to be equal to this value and also params larger
+ than max_param_value_ to max_param_value_.
+*/
+bool PositiveUpdatableWeights(Nnet *nnet);
+
 
 } // namespace nnet3
 } // namespace kaldi

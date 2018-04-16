@@ -99,6 +99,17 @@ def get_args():
                         dest='left_deriv_truncate',
                         default=None,
                         help="Deprecated. Kept for back compatibility")
+    parser.add_argument("--chain.fft-feat-dim", type=int,
+                        dest='fft_feat_dim', default=0,
+                        help="""If nonzero, the cosine and sine transformation
+                        with dim fft_feat_dim and closest 2-power of that is
+                        generated as configs/{cos,sin}_transform.mat.
+                        """)
+    parser.add_argument("--chain.l1-regularize", type=float,
+                        dest='l1_regularize', default=0.0,
+                        help="""Weight of regularization function which is the
+                        l1-norm of the fft transform of convolution filters in
+                        the network.""")
 
     # trainer options
     parser.add_argument("--trainer.input-model", type=str,
@@ -426,6 +437,22 @@ def train(args, run_opts):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune,
             use_multitask_egs=use_multitask_egs)
+
+    if (args.l1_regularize != 0) or (args.fft_feat_dim != 0):
+        feat_dim = args.fft_feat_dim
+        add_bias = True
+        num_fft_bins = (2**(feat_dim-1).bit_length())
+        common_lib.write_sin_cos_transform_matrix(feat_dim, num_fft_bins,
+            "{0}/configs/cos_transform.mat".format(args.dir),
+            compute_cosine=True, add_bias=add_bias, half_range=True)
+        common_lib.write_sin_cos_transform_matrix(feat_dim, num_fft_bins,
+            "{0}/configs/sin_transform.mat".format(args.dir),
+            compute_cosine=False, add_bias=add_bias, half_range=True)
+        common_lib.write_negate_vector(num_fft_bins,
+            "{0}/configs/negate.vec".format(args.dir))
+        preemph = 0.97
+        common_lib.compute_and_write_preprocess_transform(preemph, feat_dim,
+            "{0}/configs/preprocess.mat".format(args.dir))
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")

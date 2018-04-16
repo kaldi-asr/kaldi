@@ -1007,6 +1007,49 @@ void RectifiedLinearComponent::StoreStats(
   StoreStatsInternal(out_value, &temp_deriv);
 }
 
+
+void AffineComponent::ApplyMinMaxToWeights() {
+  BaseFloat max_param_value = MaxParamValue(),
+    min_param_value = MinParamValue();
+  CuMatrix<BaseFloat> linear_params_diff(linear_params_);
+  if (min_param_value > std::numeric_limits<float>::lowest()) {
+    linear_params_.ApplyFloor(min_param_value);
+    bias_params_.ApplyFloor(min_param_value);
+  }
+  int32 tot_dim = InputDim() * OutputDim();
+  // percentage of weight, smaller than min-param-value, which mapped to
+  // min-param-value.
+  if (GetVerboseLevel() > 0) {
+    linear_params_diff.AddMat(-1.0, linear_params_);
+    linear_params_diff.Scale(-1.0);
+    linear_params_diff.ApplyHeaviside();
+    BaseFloat num_min_weights = linear_params_diff.Sum();
+    KALDI_LOG << num_min_weights / tot_dim * 100.0 << " % of parameters floored "
+              << " to min-param-value="<< min_param_value;
+  }
+  
+  linear_params_diff.CopyFromMat(linear_params_);
+  if (max_param_value < std::numeric_limits<float>::max()) {
+    // apply min(max_value, w)
+    linear_params_.ApplyCeiling(max_param_value);
+    bias_params_.ApplyCeiling(max_param_value);
+  }
+  // percentage of weight, larger than max-param-value, which mapped to
+  // max-param-value.
+  if (GetVerboseLevel() > 0) {
+    linear_params_diff.AddMat(-1.0, linear_params_);
+    linear_params_diff.ApplyHeaviside();
+    BaseFloat num_max_weights = linear_params_diff.Sum();
+    KALDI_LOG << num_max_weights / tot_dim * 100.0 << " % of parameters ceiled "
+              << " to max-param-value="<< max_param_value;
+  }
+  
+  KALDI_ASSERT(linear_params_.Max() <= max_param_value &&
+               linear_params_.Min() >= min_param_value &&
+               bias_params_.Max() <= max_param_value &&
+               bias_params_.Min() >= min_param_value);
+}
+
 void AffineComponent::Scale(BaseFloat scale) {
   if (scale == 0.0) {
     // If scale == 0.0 we call SetZero() which will get rid of NaN's and inf's.
@@ -1094,6 +1137,9 @@ BaseFloat AffineComponent::DotProduct(const UpdatableComponent &other_in) const 
 
 void AffineComponent::Init(int32 input_dim, int32 output_dim,
                            BaseFloat param_stddev, BaseFloat bias_stddev) {
+  BaseFloat max_param_value = MaxParamValue(),
+   min_param_value = MinParamValue();
+  KALDI_ASSERT(param_stddev < std::abs(max_param_value));
   linear_params_.Resize(output_dim, input_dim);
   bias_params_.Resize(output_dim);
   KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
@@ -2245,7 +2291,9 @@ void ScaleAndOffsetComponent::InitFromConfig(ConfigLine *cfl) {
   }
   cfl->GetValue("rank", &rank);
   scales_.Resize(block_dim);
-  scales_.Set(1.0);
+  BaseFloat scale_value = 1.0;
+  cfl->GetValue("scale", &scale_value);
+  scales_.Set(scale_value);
   offsets_.Resize(block_dim);
   // offsets are all zero when initialized.
   if (cfl->HasUnusedValues())
@@ -2942,6 +2990,19 @@ void NaturalGradientAffineComponent::FreezeNaturalGradient(bool freeze) {
   preconditioner_out_.Freeze(freeze);
 }
 
+void LinearComponent::ApplyMinMaxToWeights() {
+  BaseFloat max_param_value = MaxParamValue(),
+    min_param_value = MinParamValue();
+  if (min_param_value > std::numeric_limits<float>::lowest())
+    params_.ApplyFloor(min_param_value);
+
+  // apply min(max_value, w)
+  if (max_param_value < std::numeric_limits<float>::max())
+    params_.ApplyCeiling(max_param_value);
+
+  KALDI_ASSERT(params_.Max() <= max_param_value &&
+               params_.Min() >= min_param_value);
+}
 
 void LinearComponent::Read(std::istream &is, bool binary) {
   std::string token = ReadUpdatableCommon(is, binary);
@@ -3005,6 +3066,9 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
     if (!ok)
       KALDI_ERR << "Bad initializer " << cfl->WholeLine();
     BaseFloat param_stddev = 1.0 / std::sqrt(input_dim);
+    BaseFloat max_param_value = MaxParamValue(),
+              min_param_value = MinParamValue();
+    param_stddev = std::min(param_stddev, max_param_value);
     cfl->GetValue("param-stddev", &param_stddev);
     params_.Resize(output_dim, input_dim);
     KALDI_ASSERT(output_dim > 0 && input_dim > 0 && param_stddev >= 0.0);
@@ -5859,6 +5923,389 @@ void SumBlockComponent::Backprop(
     in_deriv->AddMatBlocks(scale_, out_deriv, kNoTrans);
   }
 }
+
+//For raw data
+ShiftInputComponent::ShiftInputComponent(const ShiftInputComponent &other):
+  RandomComponent(other),
+  input_dim_(other.input_dim_),
+  output_dim_(other.output_dim_),
+  max_shift_(other.max_shift_),
+  rand_vol_var_(other.rand_vol_var_),
+  shift_per_frame_(other.shift_per_frame_),
+  dither_(other.dither_),
+  preprocess_(other.preprocess_) { }
+
+Component* ShiftInputComponent::Copy() const {
+  ShiftInputComponent *ans = new ShiftInputComponent(*this);
+  return ans;
+}
+
+std::string ShiftInputComponent::Info() const {
+  std::stringstream stream;
+  stream << Type() << ", input-dim=" << input_dim_
+         << ", output-dim=" << output_dim_
+         << ", max-shift=" << max_shift_
+         << ", shift-per-frame=" << shift_per_frame_
+         << ", dither=" << dither_
+         << ", preprocess=" << preprocess_;
+  return stream.str();
+}
+
+void ShiftInputComponent::Init(int32 input_dim, int32 output_dim, BaseFloat max_shift,
+    BaseFloat rand_vol_var,
+    BaseFloat dither, bool preprocess) {
+  input_dim_ = input_dim;
+  output_dim_ = output_dim;
+  max_shift_ = max_shift;
+  rand_vol_var_ = rand_vol_var;
+  dither_ = dither;
+  preprocess_ = preprocess;
+  KALDI_ASSERT(input_dim_ - output_dim_ >= 0 && input_dim_ > 0);
+  KALDI_ASSERT(max_shift >= 0.0 && max_shift <= 1.0);
+  KALDI_ASSERT(rand_vol_var >= 0.0 && rand_vol_var <= 1.0);
+}
+
+void ShiftInputComponent::InitFromConfig(ConfigLine *cfl) {
+  bool ok = true, preprocess = false;
+  test_mode_ = false;
+  int32 input_dim, output_dim;
+  BaseFloat max_shift = 1.0, rand_vol_var = 0.0, dither = 0.0;
+  ok = ok && cfl->GetValue("input-dim", &input_dim);
+  ok = ok && cfl->GetValue("output-dim", &output_dim);
+  // It only makes sense to set test-mode in the config for testing purposes.
+  cfl->GetValue("test-mode", &test_mode_);
+  if (cfl->GetValue("max-shift", &max_shift))
+    KALDI_ASSERT(max_shift >= 0.0 && max_shift <= 1.0);
+  if (cfl->GetValue("rand-vol-var", &rand_vol_var))
+    KALDI_ASSERT(rand_vol_var >= 0 && rand_vol_var <= 1.0);
+  cfl->GetValue("shift-per-frame", &shift_per_frame_);
+  cfl->GetValue("dither", &dither);
+  cfl->GetValue("preprocess", &preprocess);
+  Init(input_dim, output_dim, max_shift, rand_vol_var, dither, preprocess);
+}
+
+void ShiftInputComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<ShiftInputComponent>", "<InputDim>");
+  ReadBasicType(is, binary, &input_dim_);
+  ExpectToken(is, binary, "<OutputDim>");
+  ReadBasicType(is, binary, &output_dim_);
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<MaxShift>") {
+    ReadBasicType(is, binary, &max_shift_);
+    ReadToken(is, binary, &token);
+    if (token == "<RandVolVar>") {
+      ReadBasicType(is, binary, &rand_vol_var_);
+      ReadToken(is, binary, &token);
+    }
+  }
+  if (token == "<ShiftPerFrame>") {
+    ReadBasicType(is, binary, &shift_per_frame_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<Dither>") {
+    ReadBasicType(is, binary, &dither_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<Preprocess>") {
+    ReadBasicType(is, binary, &preprocess_);
+    ReadToken(is, binary, &token);
+  }
+
+  if (token == "<TestMode>") {
+    ReadBasicType(is, binary, &test_mode_);  // read test mode
+    ExpectToken(is, binary, "</ShiftInputComponent>");
+  } else {
+    test_mode_ = false;
+    KALDI_ASSERT(token == "</ShiftInputComponent>");
+  }
+}
+
+void ShiftInputComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ShiftInputComponent>");
+  WriteToken(os, binary, "<InputDim>");
+  WriteBasicType(os, binary, input_dim_);
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, output_dim_);
+  WriteToken(os, binary, "<MaxShift>");
+  WriteBasicType(os, binary, max_shift_);
+  WriteToken(os, binary, "<RandVolVar>");
+  WriteBasicType(os, binary, rand_vol_var_);
+  WriteToken(os, binary, "<ShiftPerFrame>");
+  WriteBasicType(os, binary, shift_per_frame_);
+  WriteToken(os, binary, "<Dither>");
+  WriteBasicType(os, binary, dither_);
+  WriteToken(os, binary, "<Preprocess>");
+  WriteBasicType(os, binary, preprocess_);
+  WriteToken(os, binary, "<TestMode>");
+  WriteBasicType(os, binary, test_mode_);
+  WriteToken(os, binary, "</ShiftInputComponent>");
+}
+
+void* ShiftInputComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                                     const CuMatrixBase<BaseFloat> &in,
+                                     CuMatrixBase<BaseFloat> *out) const {
+  // dithering is done on both train and test time.
+  // it is done to make zero values nonzero on raw frame of signal.
+  CuMatrix<BaseFloat> modified_in(in);
+  if (dither_ != 0.0) {
+    CuMatrix<BaseFloat> dither_mat(in.NumRows(), in.NumCols());
+    dither_mat.SetRandn();
+    dither_mat.Scale(dither_);
+    modified_in.AddMat(1.0, dither_mat);
+  }
+  if (test_mode_)
+    out->CopyFromMat(modified_in.Range(0,in.NumRows(), 0, output_dim_));
+  else {
+    int32 in_out_diff = input_dim_ - output_dim_,
+      shift;
+    KALDI_ASSERT(in_out_diff >= 0);
+    int32 max_shift_int = static_cast<int32>(max_shift_ * in_out_diff);
+    if (shift_per_frame_) {
+      int32 block_size = 1024,
+        num_blocks = out->NumRows() / block_size;
+      CuMatrix<BaseFloat> tmp(1, num_blocks, kUndefined);
+      const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&tmp);
+      tmp.Scale(max_shift_int);
+      for (int i = 0; i < num_blocks; i++) {
+        int32 start_row = i * block_size,
+          num_shifted_row = std::min(block_size, out->NumRows() - start_row);
+        shift = static_cast<int32>(tmp(0,i) + 0.5);
+        CuSubMatrix<BaseFloat> out_row = out->Range(start_row, num_shifted_row,
+                                                    0, output_dim_);
+        out_row.CopyFromMat(modified_in.Range(start_row, num_shifted_row,
+          shift, output_dim_));
+      }
+    } else {
+    // Generate random shift integer value.
+    shift = RandInt(0, max_shift_int);
+    out->CopyFromMat(modified_in.Range(0, in.NumRows(), shift, output_dim_));
+
+    BaseFloat rand_vol = (1.0 + rand_vol_var_ *
+      (Rand() % 2 ? -1.0 : 1.0) * RandUniform());
+    if (rand_vol != 0 && rand_vol != 1.0)
+      out->Scale(rand_vol);
+    }
+  }
+  if (preprocess_)
+    Preprocess(out);
+  return NULL;
+}
+
+void ShiftInputComponent::Preprocess(CuMatrixBase<BaseFloat> *preprocessed_in) const {
+  // removing dc offset
+  int32 dim = preprocessed_in->NumCols(),
+    num_rows = preprocessed_in->NumRows();
+  BaseFloat scale_w = 1.0 / float(dim), preemph = 0.97;
+  CuVector<BaseFloat> mean(num_rows);
+  mean.AddColSumMat(scale_w, *preprocessed_in, 0);
+  preprocessed_in->AddVecToCols(-1.0, mean);
+
+  // Doing pre-emphasis
+  CuMatrix<BaseFloat> shifted_in(preprocessed_in->ColRange(0, dim-1));
+  preprocessed_in->ColRange(1, dim-1).AddMat(-1.0 * preemph, shifted_in);
+  preprocessed_in->ColRange(0,1).Scale(1.0 - preemph);
+
+
+  // Apply windowing
+  CuVector<BaseFloat> window(dim);
+  double a = M_2PI / (dim-1);
+  for (int32 i = 1; i < dim-1; i++) {
+    double i_fl = static_cast<double>(i);
+    window(i) = std::pow(0.5 - 0.5 * cos(a * i_fl), 0.85);
+  }
+  window(0) = window(1);
+  window(dim - 1) = window(dim - 2);
+  CuMatrix<BaseFloat> window_mat(preprocessed_in->NumRows(), dim);
+  window_mat.CopyRowsFromVec(window);
+  preprocessed_in->MulElements(window_mat);
+}
+
+void ShiftInputComponent::Backprop(const std::string &debug_info,
+                                   const ComponentPrecomputedIndexes *indexes,
+                                   const CuMatrixBase<BaseFloat> &,
+                                   const CuMatrixBase<BaseFloat> &,
+                                   const CuMatrixBase<BaseFloat> &,
+                                   void *memo,
+                                   Component *,
+                                   CuMatrixBase<BaseFloat> *in_deriv) const {
+  in_deriv->SetZero();
+}
+
+std::string LogComponent::Info() const {
+  std::stringstream stream;
+  stream << NonlinearComponent::Info()
+         << ", log-floor=" << log_floor_
+         << ", additive-offset=" << additive_offset_;
+  return stream.str();
+}
+
+void LogComponent::InitFromConfig(ConfigLine *cfl) {
+  cfl->GetValue("log-floor", &log_floor_);
+  cfl->GetValue("additive-offset", &additive_offset_);
+  NonlinearComponent::InitFromConfig(cfl);
+}
+
+void* LogComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                              const CuMatrixBase<BaseFloat> &in,
+                              CuMatrixBase<BaseFloat> *out) const {
+  out->CopyFromMat(in);
+  if (additive_offset_) {
+    // Apply log(abs(x)+epsi)
+    out->ApplyPowAbs(1.0);
+    out->Add(log_floor_);
+    out->ApplyLog();
+  } else {
+    // Apply log function (x >= epsi ? log(x) : log(epsi)).
+    out->ApplyFloor(log_floor_);
+    out->ApplyLog();
+  }
+  return NULL;
+}
+
+void LogComponent::Backprop(const std::string &debug_info,
+                            const ComponentPrecomputedIndexes *indexes,
+                            const CuMatrixBase<BaseFloat> &in_value,
+                            const CuMatrixBase<BaseFloat> &out_value,
+                            const CuMatrixBase<BaseFloat> &out_deriv,
+                            void *memo,
+                            Component *to_update,
+                            CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv != NULL) {
+    CuMatrix<BaseFloat> divided_in_value(in_value), floored_in_value(in_value);
+    divided_in_value.Set(1.0);
+    floored_in_value.CopyFromMat(in_value);
+    if (additive_offset_) {
+      in_deriv->CopyFromMat(in_value);
+      in_deriv->ApplyHeaviside(); // (x > 0 ? 1 : 0)
+      in_deriv->Scale(2.0);
+      in_deriv->Add(-1.0); // (x > 0 ? 1 : -1)
+      floored_in_value.ApplyPowAbs(1.0);
+      floored_in_value.Add(log_floor_); // (abs(x) + epsi)
+      divided_in_value.DivElements(floored_in_value); // 1 / (abs(x) + epsi)
+      in_deriv->MulElements(divided_in_value); // (dy/dx: x > 0 : 1/(abs(x) + epsi), -1/(abs(x) + epsi))
+      in_deriv->MulElements(out_deriv);   // dF/dx = dF/dy * dy/dx
+    } else {
+      floored_in_value.ApplyFloor(log_floor_); // (x > epsi ? x : epsi)
+      divided_in_value.DivElements(floored_in_value); // (x > epsi ? 1/x : 1/epsi)
+      in_deriv->CopyFromMat(in_value);
+      in_deriv->Add(-1.0 * log_floor_); // (x - epsi)
+      in_deriv->ApplyHeaviside(); // (x > epsi ? 1 : 0)
+      in_deriv->MulElements(divided_in_value); // (dy/dx: x  > epsi ? 1/x : 0)
+      in_deriv->MulElements(out_deriv);   // dF/dx = dF/dy * dy/dx
+    }
+  }
+}
+
+void LogComponent::Read(std::istream &is, bool binary) {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<SigmoidComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
+  ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
+  ReadBasicType(is, binary, &dim_); // Read dimension.
+  ExpectToken(is, binary, "<ValueAvg>");
+  value_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<DerivAvg>");
+  deriv_sum_.Read(is, binary);
+  ExpectToken(is, binary, "<Count>");
+  ReadBasicType(is, binary, &count_);
+  value_sum_.Scale(count_);
+  deriv_sum_.Scale(count_);
+
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<SelfRepairLowerThreshold>") {
+    ReadBasicType(is, binary, &self_repair_lower_threshold_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<SelfRepairUpperThreshold>") {
+    ReadBasicType(is, binary, &self_repair_upper_threshold_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<SelfRepairScale>") {
+    ReadBasicType(is, binary, &self_repair_scale_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<LogFloor>") {
+    ReadBasicType(is, binary, &log_floor_);
+    ReadToken(is, binary, &token);
+  }
+
+  if (token == "<AdditiveOffset>") {
+    ReadBasicType(is, binary, &additive_offset_);
+    ReadToken(is, binary, &token);
+  }
+
+  if (token != ostr_end.str()) {
+    KALDI_ERR << "Expected token " << ostr_end.str()
+              << ", got " << token;
+  }
+}
+
+void LogComponent::Write(std::ostream &os, bool binary) const {
+  std::ostringstream ostr_beg, ostr_end;
+  ostr_beg << "<" << Type() << ">"; // e.g. "<SigmoidComponent>"
+  ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
+  WriteToken(os, binary, ostr_beg.str());
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  // Write the values and derivatives in a count-normalized way, for
+  // greater readability in text form.
+  WriteToken(os, binary, "<ValueAvg>");
+  Vector<BaseFloat> temp(value_sum_);
+  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  temp.Write(os, binary);
+  WriteToken(os, binary, "<DerivAvg>");
+
+  temp.Resize(deriv_sum_.Dim(), kUndefined);
+  temp.CopyFromVec(deriv_sum_);
+  if (count_ != 0.0) temp.Scale(1.0 / count_);
+  temp.Write(os, binary);
+  WriteToken(os, binary, "<Count>");
+  WriteBasicType(os, binary, count_);
+  if (self_repair_lower_threshold_ != kUnsetThreshold) {
+    WriteToken(os, binary, "<SelfRepairLowerThreshold>");
+    WriteBasicType(os, binary, self_repair_lower_threshold_);
+  }
+  if (self_repair_upper_threshold_ != kUnsetThreshold) {
+    WriteToken(os, binary, "<SelfRepairUpperThreshold>");
+    WriteBasicType(os, binary, self_repair_upper_threshold_);
+  }
+  if (self_repair_scale_ != 0.0) {
+    WriteToken(os, binary, "<SelfRepairScale>");
+    WriteBasicType(os, binary, self_repair_scale_);
+  }
+  WriteToken(os, binary, "<LogFloor>");
+  WriteBasicType(os, binary, log_floor_);
+
+  WriteToken(os, binary, "<AdditiveOffset>");
+  WriteBasicType(os, binary, additive_offset_);
+  WriteToken(os, binary, ostr_end.str());
+}
+
+void* ExpComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+                             const CuMatrixBase<BaseFloat> &in,
+                             CuMatrixBase<BaseFloat> *out) const {
+  // Applied exp function
+  out->CopyFromMat(in);
+  out->ApplyExp();
+  return NULL;
+}
+
+void ExpComponent::Backprop(const std::string &debug_info,
+                            const ComponentPrecomputedIndexes *indexes,
+                            const CuMatrixBase<BaseFloat> &,//in_value,
+                            const CuMatrixBase<BaseFloat> &out_value,
+                            const CuMatrixBase<BaseFloat> &out_deriv,
+                            void *memo,
+                            Component *to_update,
+                            CuMatrixBase<BaseFloat> *in_deriv) const {
+  if (in_deriv != NULL) {
+    in_deriv->CopyFromMat(out_value);
+    in_deriv->MulElements(out_deriv);
+  }
+}
+
 
 
 } // namespace nnet3

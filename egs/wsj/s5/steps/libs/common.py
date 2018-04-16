@@ -17,6 +17,7 @@ import os
 import subprocess
 import sys
 import threading
+import numpy as np
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -517,3 +518,53 @@ def write_idct_matrix(feat_dim, cepstral_lifter, file_path):
     for k in range(0, feat_dim):
         idct_matrix[k].append(0)
     write_kaldi_matrix(file_path, idct_matrix)
+
+
+def compute_sin_cos_transform_matrix(K, N, compute_cosine=True, add_bias=False, half_range=False):
+    assert(K <= N)
+    n_range = (N/2 if half_range is  True else N)
+    matrix = [[0] * (K + (1 if add_bias else 0)) for i in range(n_range)]
+    if compute_cosine:
+        for k in range(0, K):
+            for n in range(0, n_range):
+                matrix[n][k] = math.cos(2* math.pi / float(N) * n * k)
+    else:
+        for k in range(0, K):
+            for n in range(0, n_range):
+                matrix[n][k] = -1.0 * math.sin(2* math.pi / float(N) * n * k)
+    return matrix
+
+def write_sin_cos_transform_matrix(feat_dim, fft_dim, file_path, compute_cosine=True, add_bias=False, half_range=False):
+    # generate discrete sin and cosine transform and write to the file
+    transform_matrix = compute_sin_cos_transform_matrix(feat_dim, fft_dim,
+                       compute_cosine=compute_cosine, add_bias=add_bias, half_range=half_range)
+    write_kaldi_matrix(file_path, transform_matrix)
+
+def write_negate_vector(fft_dim, file_path):
+    scale_vec = [[-1.0] * fft_dim]
+    write_kaldi_matrix(file_path, scale_vec)
+
+# This function computes transform for applying mean-subtraction -> pre-emphasis
+#   -> windowing, which can be used in the begining of network.
+def compute_and_write_preprocess_transform(preemph, dim, file_path):
+    preemph_mat = [[0] * dim for i in range(dim)]
+    mean_subtract_mat = [[-1.0/dim] * dim for i in range(dim)]
+    window_mat = [[0] * dim for i in range(dim)]
+    preemph_mat[0][0] = 1.0 - 1.0 * preemph;
+    for i in range(dim):
+        if (i > 0):
+            preemph_mat[i][i-1] = -1.0 * preemph
+            preemph_mat[i][i] = 1.0
+        mean_subtract_mat [i][i] = 1.0 - 1.0/dim
+        if (i ==  0):
+            i_fl = float(i+1)
+        elif (i == (dim-1)):
+            i_fl = float(dim-2.0)
+        else:
+            i_fl = float(i)
+        window_mat[i][i] = (0.5 - 0.5 * math.cos(2 * math.pi * i_fl / float(dim)))**0.85
+    tot_mat_tmp = np.dot(preemph_mat, mean_subtract_mat)
+    tot_mat = np.dot(window_mat, tot_mat_tmp)
+    bias = np.zeros((dim,1))
+    biased_mat = np.c_[tot_mat, bias]
+    write_kaldi_matrix(file_path, biased_mat)
