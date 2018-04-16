@@ -37,7 +37,6 @@ MelBanks::MelBanks(const MelBanksOptions &opts,
   int32 num_bins = opts.num_bins;
   if (num_bins < 3) KALDI_ERR << "Must have at least 3 mel bins";
   BaseFloat sample_freq = frame_opts.samp_freq;
-  int32 window_length = frame_opts.WindowSize();
   int32 window_length_padded = frame_opts.PaddedWindowSize();
   KALDI_ASSERT(window_length_padded % 2 == 0);
   int32 num_fft_bins = window_length_padded / 2;
