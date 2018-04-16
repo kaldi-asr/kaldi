@@ -39,7 +39,7 @@ if [ $? -ne 0 ] ; then
   exit 1
 fi
 
-python3 -c "import scipy.misc; scipy.misc.__dict__['imread']; skimage"
+python3 -c "import scipy.misc; scipy.misc.__dict__['imread'];"
 if [ $? -ne 0 ] ; then
   echo >&2 "This recipe needs scipy-image, scikit-image and  Pillow installed."
   exit 1

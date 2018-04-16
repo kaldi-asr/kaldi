@@ -69,14 +69,15 @@ bounding_box is a named tuple which contains:
              unit_vector_angle (float): angle of the unit vector to be in radians.
              corner_points [(float, float)]: set that contains the corners of the rectangle
 """
-bounding_box = namedtuple('bounding_box', ('area',
-                                         'length_parallel',
-                                         'length_orthogonal',
-                                         'rectangle_center',
-                                         'unit_vector',
-                                         'unit_vector_angle',
-                                         'corner_points'))
 
+bounding_box_tuple = namedtuple('bounding_box_tuple', 'area '
+                                        'length_parallel '
+                                        'length_orthogonal '
+                                        'rectangle_center '
+                                        'unit_vector '
+                                        'unit_vector_angle '
+                                        'corner_points'
+                         )
 
 def unit_vector(pt0, pt1):
     """ Returns an unit vector that points in the direction of pt0 to pt1.
@@ -239,7 +240,7 @@ def minimum_bounding_box(points):
     min_rectangle['unit_vector_angle'] = atan2(min_rectangle['unit_vector'][1], min_rectangle['unit_vector'][0])
     min_rectangle['rectangle_center'] = to_xy_coordinates(min_rectangle['unit_vector_angle'], min_rectangle['rectangle_center'])
 
-    return bounding_box(
+    return bounding_box_tuple(
         area=min_rectangle['area'],
         length_parallel=min_rectangle['length_parallel'],
         length_orthogonal=min_rectangle['length_orthogonal'],
@@ -386,18 +387,50 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
                 word_coordinate = (int(word_node.getAttribute('x')), int(word_node.getAttribute('y')))
                 minimum_bounding_box_input.append(word_coordinate)
         bounding_box = minimum_bounding_box(minimum_bounding_box_input)
-        rotation_angle_in_rad = get_smaller_angle(bounding_box)
+        p1, p2, p3, p4 = bounding_box.corner_points
+        x1, y1 = p1
+        x2, y2 = p2
+        x3, y3 = p3
+        x4, y4 = p4
+        min_x = int(min(x1, x2, x3, x4))
+        min_y = int(min(y1, y2, y3, y4))
+        max_x = int(max(x1, x2, x3, x4))
+        max_y = int(max(y1, y2, y3, y4))
+        region_initial = im[min_y:max_y, min_x:max_x]
 
-        img2 = rotate(im, degrees(rotation_angle_in_rad), order=3)
+        # #calculate new crop points
+        rot_points = []
+        p1_new = (x1 - min_x, y1 - min_y)
+        p2_new = (x2 - min_x, y2 - min_y)
+        p3_new = (x3 - min_x, y3 - min_y)
+        p4_new = (x4 - min_x, y4 - min_y)
+        rot_points.append(p1_new)
+        rot_points.append(p2_new)
+        rot_points.append(p3_new)
+        rot_points.append(p4_new)
+
+        cropped_bounding_box = bounding_box_tuple(bounding_box.area,
+                bounding_box.length_parallel,
+                bounding_box.length_orthogonal,
+                bounding_box.length_orthogonal,
+                bounding_box.unit_vector,
+                bounding_box.unit_vector_angle,
+                set(rot_points)
+            )
+
+        rotation_angle_in_rad = get_smaller_angle(cropped_bounding_box)
+        img2 = rotate(region_initial, degrees(rotation_angle_in_rad), order=3)
+
         x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4 = rotated_points(
-            bounding_box, get_center(im))
+                cropped_bounding_box, get_center(region_initial))
+
 
         min_x = int(min(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
         min_y = int(min(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
         max_x = int(max(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
         max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
-        region = img2[min_y:max_y, min_x:max_x]
-        set_line_image_data(region, id, image_file_name)
+        region_final = img2[min_y:max_y, min_x:max_x]
+        set_line_image_data(region_final, id, image_file_name)
 
 
 def check_file_location():
@@ -502,4 +535,6 @@ with open(args.data_splits) as f:
             if wc_dict == None or not check_writing_condition(wc_dict):
                continue
             if madcat_file_path != None:
+                print(madcat_file_path)
+                print(image_file_path)
                 get_line_images_from_page_image(image_file_path, madcat_file_path)
