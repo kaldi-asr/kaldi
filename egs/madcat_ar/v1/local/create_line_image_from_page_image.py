@@ -498,6 +498,32 @@ def check_writing_condition(wc_dict):
     return True
 
 
+def allowed_word_segmentation(madcat_file_path):
+    doc = minidom.parse(madcat_file_path)
+    zone = doc.getElementsByTagName('zone')
+    points = []
+    for node in zone:
+        id = node.getAttribute('id')
+        if id != 'z0' and id != 'z1' and id != 'z2' and id != 'z3' :
+            continue
+        token_image = node.getElementsByTagName('token-image')
+        for token_node in token_image:
+            word_point = token_node.getElementsByTagName('point')
+            for word_node in word_point:
+                word_coordinate = (int(word_node.getAttribute('x')), int(word_node.getAttribute('y')))
+                points.append(word_coordinate)
+
+    y_val = []
+    for point in points:
+        y_val.append(point[1])
+
+    min_y = min(y_val)
+    if min_y < 100:
+        return False
+    else:
+        return True
+
+
 ### main ###
 
 data_path1 = args.database_path1
@@ -534,5 +560,7 @@ with open(args.data_splits) as f:
             madcat_file_path, image_file_path, wc_dict = check_file_location()
             if wc_dict == None or not check_writing_condition(wc_dict):
                continue
-            if madcat_file_path != None:
+            if madcat_file_path != None and allowed_word_segmentation(madcat_file_path):
                 get_line_images_from_page_image(image_file_path, madcat_file_path)
+            elif madcat_file_path != None:
+                 print(image_file_path)
