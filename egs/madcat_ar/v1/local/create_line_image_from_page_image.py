@@ -556,10 +556,9 @@ wc_dict3 = parse_writing_conditions(writing_conditions3)
 
 splits_handle = open(args.data_splits, 'r')
 splits_data = splits_handle.read().strip().split('\n')
-splits_data_new = splits_data[16470:]
 
 prev_base_name = ''
-for line in splits_data_new:
+for line in splits_data:
     base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
     if prev_base_name != base_name:
         prev_base_name = base_name
