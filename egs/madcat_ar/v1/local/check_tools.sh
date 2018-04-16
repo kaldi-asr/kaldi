@@ -33,6 +33,12 @@ if [ $? -ne 0 ] ; then
   exit 1
 fi
 
+python3 -c "from scipy.spatial import ConvexHull"
+if [ $? -ne 0 ] ; then
+  echo >&2 "This recipe needs scipy installed."
+  exit 1
+fi
+
 python3 -c "import scipy.misc; scipy.misc.__dict__['imread']"
 if [ $? -ne 0 ] ; then
   echo >&2 "This recipe needs scipy-image and  Pillow installed."

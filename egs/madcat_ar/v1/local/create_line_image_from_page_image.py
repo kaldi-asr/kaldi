@@ -29,19 +29,21 @@
       /export/corpora/LDC/LDC2013T15 /home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
 """
 
+import sys
 import argparse
 import os
 import xml.dom.minidom as minidom
-from PIL import Image
 import numpy as np
-from scipy.misc import toimage
-
-from scipy.spatial import ConvexHull
 from math import atan2, cos, sin, pi, degrees, sqrt
 from collections import namedtuple
 
+from scipy.spatial import ConvexHull
+from skimage.io import imread, imsave
+from skimage.transform import rotate
+from skimage import img_as_uint
+
 parser = argparse.ArgumentParser(description="Creates line images from page image",
-                                 epilog="E.g. local/create_line_image_from_page_image.py data/LDC2012T15" 
+                                 epilog="E.g.  " + sys.argv[0] + "  data/LDC2012T15" 
                                              " data/LDC2013T09 data/LDC2013T15 data/madcat.train.raw.lineid ",
                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('database_path1', type=str,
@@ -257,9 +259,9 @@ def get_center(im):
         (int, int): center of the image
         Eg.  2550, 3300
     """
-
-    center_x = im.size[0]/2
-    center_y = im.size[1]/2
+    center = im.shape
+    center_x = center[1] / 2
+    center_y = center[0] / 2
     return int(center_x), int(center_y)
 
 
@@ -353,12 +355,10 @@ def set_line_image_data(image, line_id, image_file_name):
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_' + line_id.zfill(4)
     line_image_file_name = base_name + line_id + '.tif'
-    imgray = image.convert('L')
-    imgray_rev_arr = np.fliplr(imgray)
-    imgray_rev = toimage(imgray_rev_arr)    
-    image_path=os.path.join(line_images_path, 'lines', line_image_file_name)
-    imgray_rev.save(image_path)
-
+    imgray_rev_arr = np.fliplr(image)
+    im = img_as_uint(imgray_rev_arr)
+    image_path = os.path.join(line_images_path, 'lines', line_image_file_name)
+    imsave(image_path, im)
 
 def get_line_images_from_page_image(image_file_name, madcat_file_path):
     """ Extracts the line image from page image.
@@ -370,7 +370,7 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
     Returns:
     """
 
-    im = Image.open(image_file_name)
+    im = imread(image_file_name)
     doc = minidom.parse(madcat_file_path)
     zone = doc.getElementsByTagName('zone')
     for node in zone:
@@ -388,18 +388,15 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
         bounding_box = minimum_bounding_box(minimum_bounding_box_input)
         rotation_angle_in_rad = get_smaller_angle(bounding_box)
 
-        img2 = im.rotate(degrees(rotation_angle_in_rad), resample=Image.BICUBIC)
+        img2 = rotate(im, degrees(rotation_angle_in_rad), order=3)
         x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4 = rotated_points(
             bounding_box, get_center(im))
 
-        min_x = min(x_dash_1, x_dash_2, x_dash_3, x_dash_4)
-        min_y = min(y_dash_1, y_dash_2, y_dash_3, y_dash_4)
-
-        max_x = max(x_dash_1, x_dash_2, x_dash_3, x_dash_4)
-        max_y = max(y_dash_1, y_dash_2, y_dash_3, y_dash_4)
-        box = (min_x, min_y, max_x, max_y)
-
-        region = img2.crop(box)
+        min_x = int(min(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
+        min_y = int(min(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
+        max_x = int(max(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
+        max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
+        region = img2[min_y:max_y, min_x:max_x]
         set_line_image_data(region, id, image_file_name)
 
 
