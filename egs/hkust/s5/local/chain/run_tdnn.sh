@@ -5,8 +5,9 @@
 set -e
 
 # configs for 'chain'
-affix=
+affix=pr43
 stage=12
+nj=10
 train_stage=-10
 get_egs_stage=-10
 dir=exp/chain/tdnn_7h  # Note: _sp will get added to this if $speed_perturb == true.
@@ -90,13 +91,15 @@ fi
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
+  ivector_dim=$(feat-to-dim scp:exp/nnet3/ivectors_${train_set}/ivector_online.scp -)
+  feat_dim=$(feat-to-dim scp:data/${train_set}_hires/feats.scp -)
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
-  input dim=100 name=ivector
-  input dim=43 name=input
+  input dim=$ivector_dim name=ivector
+  input dim=$feat_dim name=input
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
@@ -179,7 +182,7 @@ if [ $stage -le 15 ]; then
     iter_opts=" --iter $decode_iter "
   fi
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --nj 10 --cmd "$decode_cmd" $iter_opts \
+      --nj $nj --cmd "$decode_cmd" $iter_opts \
       --online-ivector-dir exp/nnet3/ivectors_dev \
     $graph_dir data/dev_hires $dir/decode || exit 1;
 fi
@@ -187,14 +190,14 @@ fi
 if [ $stage -le 16 ]; then
   steps/online/nnet3/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
     --add-pitch true \
-    data/lang exp/nnet2_online/extractor "$dir" ${dir}_online || exit 1;
+    data/lang exp/nnet3/extractor "$dir" ${dir}_online || exit 1;
 fi
 
 if [ $stage -le 17 ]; then
   # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
   steps/online/nnet3/decode.sh --config conf/decode.config \
-    --cmd "$decode_cmd" --nj 10 --acwt 1.0 --post-decode-acwt 10.0 \
+    --cmd "$decode_cmd" --nj $nj --acwt 1.0 --post-decode-acwt 10.0 \
     "$graph_dir" data/dev_hires \
     ${dir}_online/decode || exit 1;
 fi
@@ -203,7 +206,7 @@ if [ $stage -le 18 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
   steps/online/nnet3/decode.sh --config conf/decode.config \
-    --cmd "$decode_cmd" --nj 10 --per-utt true --acwt 1.0 --post-decode-acwt 10.0 \
+    --cmd "$decode_cmd" --nj $nj --per-utt true --acwt 1.0 --post-decode-acwt 10.0 \
     "$graph_dir" data/dev_hires \
     ${dir}_online/decode_per_utt || exit 1;
 fi

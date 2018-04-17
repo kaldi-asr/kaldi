@@ -11,8 +11,9 @@
 set -e
 
 stage=0
+nj=10
 train_stage=-10
-affix=
+affix=pr43
 common_egs_dir=
 
 # training options
@@ -46,21 +47,40 @@ train_set=train_sp
 ali_dir=${gmm_dir}_sp_ali
 graph_dir=$gmm_dir/graph
 
-local/nnet3/run_ivector_common.sh --stage $stage \
-  --ivector-extractor exp/nnet2_online/extractor || exit 1;
+if [ $stage -le 7 ]; then
+  local/nnet3/run_ivector_common.sh --stage $stage \
+    --ivector-extractor exp/nnet3/extractor || exit 1;
+fi
 
 if [ $stage -le 8 ]; then
   echo "$0: creating neural net configs";
 
-  # create the config files for nnet initialization
-  python steps/nnet3/tdnn/make_configs.py  \
-    --feat-dir data/${train_set}_hires \
-    --ivector-dir exp/nnet3/ivectors_${train_set} \
-    --ali-dir $ali_dir \
-    --relu-dim 850 \
-    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 -3,3 0 0"  \
-    --use-presoftmax-prior-scale true \
-   $dir/configs || exit 1;
+  ivector_dim=$(feat-to-dim scp:exp/nnet3/ivectors_${train_set}/ivector_online.scp -)
+  feat_dim=$(feat-to-dim scp:data/${train_set}_hires/feats.scp -)
+  num_targets=$(tree-info $ali_dir/tree | grep num-pdfs | awk '{print $2}')
+
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=$ivector_dim name=ivector
+  input dim=$feat_dim name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=1024
+  relu-renorm-layer name=tdnn2 input=Append(-1,2) dim=1024
+  relu-renorm-layer name=tdnn3 input=Append(-3,3) dim=1024
+  relu-renorm-layer name=tdnn4 input=Append(-7,2) dim=1024
+  relu-renorm-layer name=tdnn5 input=Append(-3,3) dim=1024
+  relu-renorm-layer name=tdnn6 dim=1024
+
+  output-layer name=output input=tdnn6 dim=$num_targets max-change=1.5
+EOF
+
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 if [ $stage -le 9 ]; then
@@ -107,7 +127,7 @@ fi
 if [ $stage -le 11 ]; then
   steps/online/nnet3/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
     --add-pitch true \
-    data/lang exp/nnet2_online/extractor "$dir" ${dir}_online || exit 1;
+    data/lang exp/nnet3/extractor "$dir" ${dir}_online || exit 1;
 fi
 
 if [ $stage -le 12 ]; then
@@ -115,7 +135,7 @@ if [ $stage -le 12 ]; then
   # previous utterances of the same speaker.
   graph_dir=exp/tri5a/graph
   steps/online/nnet3/decode.sh --config conf/decode.config \
-    --cmd "$decode_cmd" --nj 10 \
+    --cmd "$decode_cmd" --nj $nj \
     "$graph_dir" data/dev_hires \
     ${dir}_online/decode || exit 1;
 fi
@@ -125,7 +145,7 @@ if [ $stage -le 13 ]; then
   # without carrying forward speaker information.
   graph_dir=exp/tri5a/graph
   steps/online/nnet3/decode.sh --config conf/decode.config \
-    --cmd "$decode_cmd" --nj 10 --per-utt true \
+    --cmd "$decode_cmd" --nj $nj --per-utt true \
     "$graph_dir" data/dev_hires \
     ${dir}_online/decode_per_utt || exit 1;
 fi
