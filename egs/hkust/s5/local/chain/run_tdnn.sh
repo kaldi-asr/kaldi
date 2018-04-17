@@ -55,8 +55,10 @@ lang=data/lang_chain
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.
-local/nnet3/run_ivector_common.sh --stage $stage \
-  --ivector-extractor exp/nnet2_online/extractor || exit 1;
+if [ $stage -le 8 ]; then
+  local/nnet3/run_ivector_common.sh --stage $stage \
+    --ivector-extractor exp/nnet3/extractor || exit 1;
+fi
 
 if [ $stage -le 9 ]; then
   # Get the alignments as lattices (gives the LF-MMI training more freedom).
