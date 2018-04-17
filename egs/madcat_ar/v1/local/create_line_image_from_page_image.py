@@ -565,5 +565,5 @@ for line in splits_data:
         madcat_file_path, image_file_path, wc_dict = check_file_location()
         if wc_dict == None or not check_writing_condition(wc_dict):
             continue
-        if madcat_file_path != None and allowed_word_segmentation(madcat_file_path):
+        if madcat_file_path != None:
             get_line_images_from_page_image(image_file_path, madcat_file_path)
