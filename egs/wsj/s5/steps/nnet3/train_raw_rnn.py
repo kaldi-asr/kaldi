@@ -179,7 +179,9 @@ def process_args(args):
 
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
-    if args.use_gpu:
+    if args.use_gpu in ["true", "false"]:
+        args.use_gpu = ("yes" if args.use_gpu == "true" else "no")
+    if args.use_gpu in ["yes", "wait"]:
         if not common_lib.check_if_cuda_compiled():
             logger.warning(
                 """You are running with one thread but you have not compiled
@@ -188,9 +190,10 @@ def process_args(args):
                    ./configure; make""")
 
         run_opts.train_queue_opt = "--gpu 1"
-        run_opts.parallel_train_opts = ""
+        run_opts.parallel_train_opts = "--use-gpu={}".format(args.use_gpu)
+        run_opts.combine_gpu_opt = "--use-gpu={}".format(args.use_gpu)
         run_opts.combine_queue_opt = "--gpu 1"
-        run_opts.prior_gpu_opt = "--use-gpu=yes"
+        run_opts.prior_gpu_opt = "--use-gpu={}".format(args.use_gpu)
         run_opts.prior_queue_opt = "--gpu 1"
 
     else:
@@ -199,6 +202,7 @@ def process_args(args):
 
         run_opts.train_queue_opt = ""
         run_opts.parallel_train_opts = "--use-gpu=no"
+        run_opts.combine_gpu_opt = "--use-gpu=no"
         run_opts.combine_queue_opt = ""
         run_opts.prior_gpu_opt = "--use-gpu=no"
         run_opts.prior_queue_opt = ""
@@ -300,7 +304,6 @@ def train(args, run_opts):
             cmvn_opts=args.cmvn_opts,
             online_ivector_dir=args.online_ivector_dir,
             samples_per_iter=args.samples_per_iter,
-            transform_dir=args.transform_dir,
             stage=args.egs_stage,
             target_type=target_type,
             num_targets=num_targets)
@@ -419,6 +422,19 @@ def train(args, run_opts):
                                            get_raw_nnet_from_am=False)
                                    else shrinkage_value)
 
+            percent = num_archives_processed * 100.0 / num_archives_to_process
+            epoch = (num_archives_processed * args.num_epochs
+                     / num_archives_to_process)
+            shrink_info_str = ''
+            if shrinkage_value != 1.0:
+                shrink_info_str = 'shrink: {0:0.5f}'.format(shrinkage_value)
+            logger.info("Iter: {0}/{1}    "
+                        "Epoch: {2:0.2f}/{3:0.1f} ({4:0.1f}% complete)    "
+                        "lr: {5:0.6f}    {6}".format(iter, num_iters - 1,
+                                                     epoch, args.num_epochs,
+                                                     percent,
+                                                     lrate, shrink_info_str))
+
             train_lib.common.train_one_iteration(
                 dir=args.dir,
                 iter=iter,
@@ -432,6 +448,7 @@ def train(args, run_opts):
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
+                train_opts=' '.join(args.train_opts),
                 shrinkage_value=shrinkage_value,
                 minibatch_size_str=args.num_chunk_per_minibatch,
                 min_deriv_time=min_deriv_time,
@@ -475,7 +492,7 @@ def train(args, run_opts):
                 run_opts=run_opts, chunk_width=args.chunk_width,
                 get_raw_nnet_from_am=False,
                 compute_per_dim_accuracy=args.compute_per_dim_accuracy,
-                sum_to_one_penalty=args.combine_sum_to_one_penalty)
+                max_objective_evaluations=args.max_objective_evaluations)
         else:
             common_lib.force_symlink("{0}.raw".format(num_iters),
                                      "{0}/final.raw".format(args.dir))

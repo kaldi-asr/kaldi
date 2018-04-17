@@ -2,7 +2,7 @@
 
 # this script contains some common (shared) parts of the run_nnet*.sh scripts.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -10,7 +10,7 @@ mic=ihm
 num_threads_ubm=32
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

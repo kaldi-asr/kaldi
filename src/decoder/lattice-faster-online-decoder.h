@@ -3,6 +3,7 @@
 // Copyright 2009-2013  Microsoft Corporation;  Mirko Hannemann;
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
+//                2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -337,12 +338,18 @@ class LatticeFasterOnlineDecoder {
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
   /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
-  BaseFloat ProcessEmitting(DecodableInterface *decodable);
+  /// Templated on FST type for speed; called via ProcessEmittingWrapper().
+  template <typename FstType> BaseFloat ProcessEmitting(DecodableInterface *decodable);
+
+  BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.  Called after
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
-  void ProcessNonemitting(BaseFloat cost_cutoff);
+  /// the templated design is similar to ProcessEmitting()
+  template <typename FstType> void ProcessNonemitting(BaseFloat cost_cutoff);
+
+  void ProcessNonemittingWrapper(BaseFloat cost_cutoff);
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
@@ -361,7 +368,7 @@ class LatticeFasterOnlineDecoder {
   // make it class member to avoid internal new/delete.
   const fst::Fst<fst::StdArc> &fst_;
   bool delete_fst_;
-  std::vector<BaseFloat> cost_offsets_;  // This contains, for each
+  std::vector<BaseFloat> cost_offsets_; // This contains, for each
   // frame, an offset that was added to the acoustic log-likelihoods on that
   // frame in order to keep everything in a nice dynamic range i.e.  close to
   // zero, to reduce roundoff errors.

@@ -1127,7 +1127,8 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
                               kNoTrans, 0.0);
   // now clipping_scales contains the squared (norm of each row divided by
   //  clipping_threshold)
-  int32 num_not_scaled = clipping_scales.ApplyFloor(1.0);
+  int32 num_not_scaled;
+  clipping_scales.ApplyFloor(1.0, &num_not_scaled);
   // now clipping_scales contains min(1, squared-(norm/clipping_threshold))
   clipping_scales.ApplyPow(-0.5);
   // now clipping_scales contains max(1, clipping_threshold/vector_norm)
@@ -1251,7 +1252,7 @@ void ConstantComponent::Backprop(
         CuMatrix<BaseFloat> out_deriv_copy(out_deriv);
         BaseFloat scale = 1.0;
         to_update->preconditioner_.PreconditionDirections(&out_deriv_copy,
-                                                          NULL, &scale);
+                                                          &scale);
         to_update->output_.AddRowSumMat(scale * to_update->learning_rate_,
                                         out_deriv_copy);
       } else {
@@ -1391,16 +1392,19 @@ std::string DropoutMaskComponent::Info() const {
   stream << Type()
          << ", output-dim=" << output_dim_
          << ", dropout-proportion=" << dropout_proportion_;
+  if (continuous_)
+    stream << ", continuous=true";
   return stream.str();
 }
 
 DropoutMaskComponent::DropoutMaskComponent():
-    output_dim_(-1), dropout_proportion_(0.5) { }
+    output_dim_(-1), dropout_proportion_(0.5), continuous_(false) { }
 
 DropoutMaskComponent::DropoutMaskComponent(
     const DropoutMaskComponent &other):
     output_dim_(other.output_dim_),
-    dropout_proportion_(other.dropout_proportion_) { }
+    dropout_proportion_(other.dropout_proportion_),
+    continuous_(other.continuous_) { }
 
 void* DropoutMaskComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes,
@@ -1410,33 +1414,51 @@ void* DropoutMaskComponent::Propagate(
   BaseFloat dropout_proportion = dropout_proportion_;
   KALDI_ASSERT(dropout_proportion >= 0.0 && dropout_proportion <= 1.0);
 
-  if (dropout_proportion_ == 0) {
+  if (dropout_proportion == 0) {
     out->Set(1.0);
     return NULL;
   }
+
+  if (continuous_) {
+    if (test_mode_) {
+      out->Set(1.0);
+    } else {
+      const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
+      out->Scale(dropout_proportion * 4.0);
+      // make the expected value 1.0.
+      out->Add(1.0 - (2.0 * dropout_proportion));
+    }
+    return NULL;
+  }
+
   if (test_mode_) {
     out->Set(1.0 - dropout_proportion);
     return NULL;
   }
+
   const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
   out->Add(-dropout_proportion);
   out->ApplyHeaviside();
-  // To generate data where it's never the case that both of the dimensions
-  // for a row are zero, we generate uniformly distributed data (call this u_i),
-  // and for row i, set (*out)(i, 0) = (0 if u_i < dropout_proportion else 1)
-  //                and (*out)(i, 1) = (0 if u_i > 1-dropout_proportion else 1)
-  int32 num_rows = out->NumRows();
-  // later we may make this a bit more efficient.
-  CuVector<BaseFloat> temp(num_rows, kUndefined);
-  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&temp);
-  temp.Add(-dropout_proportion);
-  out->CopyColFromVec(temp, 0);
-  temp.Add(-1.0 + (2.0 * dropout_proportion));
-  // Now, 'temp' contains the original uniformly-distributed data plus
-  // -(1 - dropout_proportion).
-  temp.Scale(-1.0);
-  out->CopyColFromVec(temp, 1);
-  out->ApplyHeaviside();
+
+  if (out->NumCols() == 2 || out->NumCols() == 3) {
+    // This is a kind of special case relevant to LSTms.
+    // To generate data where it's never the case that both of the dimensions
+    // for a row are zero, we generate uniformly distributed data (call this u_i),
+    // and for row i, set (*out)(i, 0) = (0 if u_i < dropout_proportion else 1)
+    //                and (*out)(i, 1) = (0 if u_i > 1-dropout_proportion else 1)
+    int32 num_rows = out->NumRows();
+    // later we may make this a bit more efficient.
+    CuVector<BaseFloat> temp(num_rows, kUndefined);
+    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&temp);
+    temp.Add(-dropout_proportion);
+    out->CopyColFromVec(temp, 0);
+    temp.Add(-1.0 + (2.0 * dropout_proportion));
+    // Now, 'temp' contains the original uniformly-distributed data plus
+    // -(1 - dropout_proportion).
+    temp.Scale(-1.0);
+    out->CopyColFromVec(temp, 1);
+    out->ApplyHeaviside();
+  }
   return NULL;
 }
 
@@ -1446,15 +1468,19 @@ void DropoutMaskComponent::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &output_dim_);
   ExpectToken(is, binary, "<DropoutProportion>");
   ReadBasicType(is, binary, &dropout_proportion_);
-  std::string token;
-  ReadToken(is, binary, &token);
-  if (token == "<TestMode>") {
+  if (PeekToken(is, binary) == 'T') {
+    ExpectToken(is, binary, "<TestMode>");
     ReadBasicType(is, binary, &test_mode_);  // read test mode
-    ExpectToken(is, binary, "</DropoutMaskComponent>");
   } else {
     test_mode_ = false;
-    KALDI_ASSERT(token == "</DropoutMaskComponent>");
   }
+  if (PeekToken(is, binary) == 'C') {
+    ExpectToken(is, binary, "<Continuous>");
+    continuous_ = true;
+  } else {
+    continuous_ = false;
+  }
+  ExpectToken(is, binary, "</DropoutMaskComponent>");
 }
 
 
@@ -1466,6 +1492,8 @@ void DropoutMaskComponent::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, dropout_proportion_);
   WriteToken(os, binary, "<TestMode>");
   WriteBasicType(os, binary, test_mode_);
+  if (continuous_)
+    WriteToken(os, binary, "<Continuous>");
   WriteToken(os, binary, "</DropoutMaskComponent>");
 }
 
@@ -1479,11 +1507,279 @@ void DropoutMaskComponent::InitFromConfig(ConfigLine *cfl) {
   KALDI_ASSERT(ok && output_dim_ > 0);
   dropout_proportion_ = 0.5;
   cfl->GetValue("dropout-proportion", &dropout_proportion_);
+  continuous_ = false;
+  cfl->GetValue("continuous", &continuous_);
   test_mode_ = false;
   cfl->GetValue("test-mode", &test_mode_);
 }
 
 
+std::string GeneralDropoutComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type()
+         << ", dim=" << dim_
+         << ", block-dim=" << block_dim_
+         << ", dropout-proportion=" << dropout_proportion_;
+  if (continuous_)
+    stream << ", continuous=true";
+  if (time_period_ > 0)
+    stream << ", time-period=" << time_period_;
+  return stream.str();
+}
+
+GeneralDropoutComponent::GeneralDropoutComponent():
+    dim_(-1), block_dim_(-1), time_period_(0),
+    dropout_proportion_(0.5), continuous_(false) { }
+
+GeneralDropoutComponent::GeneralDropoutComponent(
+    const GeneralDropoutComponent &other):
+    dim_(other.dim_),
+    block_dim_(other.block_dim_),
+    time_period_(other.time_period_),
+    dropout_proportion_(other.dropout_proportion_),
+    continuous_(other.continuous_) { }
+
+void* GeneralDropoutComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes_in,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+
+  KALDI_ASSERT(SameDim(in, *out));
+
+  // The following will do nothing if 'out' and 'in' refer to the same data.
+  out->CopyFromMat(in);
+
+  if (test_mode_ || dropout_proportion_ == 0.0)
+    return NULL;
+
+  const GeneralDropoutComponentPrecomputedIndexes *indexes =
+    dynamic_cast<const GeneralDropoutComponentPrecomputedIndexes*>(indexes_in);
+  KALDI_ASSERT(indexes != NULL);
+
+  CuMatrix<BaseFloat> *mask = GetMemo(indexes->num_mask_rows);
+
+  if (block_dim_ < dim_) {
+    KALDI_ASSERT(out->Stride() == out->NumCols());
+    int32 num_rows = out->NumRows(),
+        dim_multiple = dim_  / block_dim_,
+        num_rows_reshaped = num_rows * dim_multiple;
+    CuSubMatrix<BaseFloat> out_reshaped(out->Data(), num_rows_reshaped,
+                                        block_dim_, block_dim_);
+    out_reshaped.MulRows(*mask, indexes->indexes);
+  } else {
+    out->MulRows(*mask, indexes->indexes);
+  }
+  return mask;
+}
+
+void GeneralDropoutComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes_in,
+    const CuMatrixBase<BaseFloat> &, // in_value
+    const CuMatrixBase<BaseFloat> &, // out_value
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
+    Component *to_update,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(in_deriv != NULL && SameDim(*in_deriv, out_deriv));
+
+  // The following will do no work if in_deriv->Data() == out_deriv.Data().
+  in_deriv->CopyFromMat(out_deriv);
+
+  if (test_mode_ || dropout_proportion_ == 0.0) {
+    KALDI_ASSERT(memo == NULL);
+    return;
+  }
+
+  const GeneralDropoutComponentPrecomputedIndexes *indexes =
+     dynamic_cast<const GeneralDropoutComponentPrecomputedIndexes*>(indexes_in);
+  KALDI_ASSERT(indexes != NULL && memo != NULL);
+  CuMatrix<BaseFloat> *mask = reinterpret_cast<CuMatrix<BaseFloat>*>(memo);
+
+  if (block_dim_ < dim_) {
+    KALDI_ASSERT(in_deriv->Stride() == in_deriv->NumCols());
+    int32 num_rows = in_deriv->NumRows(),
+        dim_multiple = dim_  / block_dim_,
+        num_rows_reshaped = num_rows * dim_multiple;
+    CuSubMatrix<BaseFloat> in_deriv_reshaped(in_deriv->Data(),
+                                             num_rows_reshaped,
+                                             block_dim_, block_dim_);
+    in_deriv_reshaped.MulRows(*mask, indexes->indexes);
+  } else {
+    in_deriv->MulRows(*mask, indexes->indexes);
+  }
+}
+
+void GeneralDropoutComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<GeneralDropoutComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<BlockDim>");
+  ReadBasicType(is, binary, &block_dim_);
+  ExpectToken(is, binary, "<TimePeriod>");
+  ReadBasicType(is, binary, &time_period_);
+  ExpectToken(is, binary, "<DropoutProportion>");
+  ReadBasicType(is, binary, &dropout_proportion_);
+  if (PeekToken(is, binary) == 'T') {
+    ExpectToken(is, binary, "<TestMode>");
+    test_mode_ = true;
+  } else {
+    test_mode_ = false;
+  }
+  if (PeekToken(is, binary) == 'C') {
+    ExpectToken(is, binary, "<Continuous>");
+    continuous_ = true;
+  } else {
+    continuous_ = false;
+  }
+  ExpectToken(is, binary, "</GeneralDropoutComponent>");
+}
+
+
+void GeneralDropoutComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<GeneralDropoutComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<BlockDim>");
+  WriteBasicType(os, binary, block_dim_);
+  WriteToken(os, binary, "<TimePeriod>");
+  WriteBasicType(os, binary, time_period_);
+  WriteToken(os, binary, "<DropoutProportion>");
+  WriteBasicType(os, binary, dropout_proportion_);
+  if (test_mode_)
+    WriteToken(os, binary, "<TestMode>");
+  if (continuous_)
+    WriteToken(os, binary, "<Continuous>");
+  WriteToken(os, binary, "</GeneralDropoutComponent>");
+}
+
+Component* GeneralDropoutComponent::Copy() const {
+  return new GeneralDropoutComponent(*this);
+}
+
+void GeneralDropoutComponent::InitFromConfig(ConfigLine *cfl) {
+  dim_ = 0;
+  bool ok = cfl->GetValue("dim", &dim_);
+  KALDI_ASSERT(ok && dim_ > 0);
+  block_dim_ = dim_;
+  cfl->GetValue("block-dim", &block_dim_);
+  if (!(block_dim_ > 0 && dim_ % block_dim_ == 0))
+    KALDI_ERR << "Invalid configuration dim=" << dim_
+              << ", block-dim=" << block_dim_;
+  time_period_ = 0;
+  cfl->GetValue("time-period", &time_period_);
+  dropout_proportion_ = 0.5;
+  cfl->GetValue("dropout-proportion", &dropout_proportion_);
+  continuous_ = false;
+  cfl->GetValue("continuous", &continuous_);
+  test_mode_ = false;
+  cfl->GetValue("test-mode", &test_mode_);
+}
+
+
+CuMatrix<BaseFloat>* GeneralDropoutComponent::GetMemo(
+    int32 num_mask_rows) const {
+  KALDI_ASSERT(num_mask_rows > 0 && !test_mode_ &&
+               dropout_proportion_ > 0.0);
+  CuMatrix<BaseFloat> *ans = new CuMatrix<BaseFloat>(num_mask_rows, block_dim_);
+  BaseFloat dropout_proportion = dropout_proportion_;
+
+  // This const_cast is only safe assuming you don't attempt
+  // to use multi-threaded code with the GPU.
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(ans);
+
+  if (!continuous_) {
+    ans->Add(-dropout_proportion);
+    // now, a proportion "dropout_proportion" will be < 0.0. After applying the
+    // function (x>0?1:0), a proportion "dropout_proportion" will be zero and (1 -
+    // dropout_proportion) will be 1.0.
+    ans->ApplyHeaviside();
+    ans->Scale(1.0 / dropout_proportion);
+  } else {
+    ans->Scale(dropout_proportion * 4.0);
+    // make the expected value 1.0.
+    ans->Add(1.0 - (2.0 * dropout_proportion));
+  }
+  return ans;
+}
+
+ComponentPrecomputedIndexes* GeneralDropoutComponent::PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const {
+  KALDI_ASSERT(input_indexes == output_indexes);
+
+  GeneralDropoutComponentPrecomputedIndexes *ans = new
+      GeneralDropoutComponentPrecomputedIndexes;
+  int32 size = input_indexes.size(), time_period = time_period_,
+      cur_row = 0;
+  std::vector<int32> indexes(size);
+  // the map 'm' will map from a pair from (n, t) value to the row-index of the
+  // dropout-mask matrix*.   However, the 't' isn't a real 't' value;
+  // if time_period_ == 0, the 't' value will just be zero; otherwise,
+  // it will be t divided by time_period_ (rounding towards negative infinity).
+
+  // *before considering effects related to when block_dim_ != dim_.
+
+  std::unordered_map<std::pair<int32,int32>, int32, PairHasher<int32> > m;
+  for (int32 i = 0; i < size; i++) {
+    int32 n = input_indexes[i].n,
+        t = (time_period == 0 ? 0 : DivideRoundingDown(input_indexes[i].t,
+                                                       time_period));
+    std::pair<int32, int32> p(n, t);
+
+    std::unordered_map<std::pair<int32,int32>, int32,
+                       PairHasher<int32> >::const_iterator
+        iter = m.find(p);
+    if (iter != m.end()) {
+      indexes[i] = iter->second;
+    } else {
+      m[p] = cur_row;
+      indexes[i] = cur_row;
+      cur_row++;
+    }
+  }
+  int32 multiple = dim_ / block_dim_;
+  ans->num_mask_rows = cur_row;
+  if (multiple == 1) {
+    ans->indexes.CopyFromVec(indexes);
+  } else {
+    ans->num_mask_rows = cur_row * multiple;
+    std::vector<int32> repeated_indexes;
+    repeated_indexes.reserve(size * multiple);
+    for (int32 i = 0; i < size; i++) {
+      int32 row = indexes[i];
+      for (int32 j = 0; j < multiple; j++)
+        repeated_indexes.push_back(row);
+    }
+    ans->indexes.CopyFromVec(repeated_indexes);
+  }
+  return ans;
+}
+
+void GeneralDropoutComponentPrecomputedIndexes::Write(std::ostream &os,
+    bool binary) const {
+  WriteToken(os, binary,
+             "<GeneralDropoutComponentPrecomputedIndexes>");
+  WriteToken(os, binary, "<NumMaskRows>");
+  WriteBasicType(os, binary, num_mask_rows);
+  WriteToken(os, binary, "<Indexes>");
+  indexes.Write(os, binary);
+  WriteToken(os, binary,
+             "</GeneralDropoutComponentPrecomputedIndexes>");
+}
+
+void GeneralDropoutComponentPrecomputedIndexes::Read(std::istream &is,
+    bool binary) {
+  ExpectOneOrTwoTokens(is, binary,
+                       "<GeneralDropoutComponentPrecomputedIndexes>",
+                       "<NumMaskRows>");
+  ReadBasicType(is, binary, &num_mask_rows);
+  ExpectToken(is, binary, "<Indexes>");
+  indexes.Read(is, binary);
+  ExpectToken(is, binary,
+              "</GeneralDropoutComponentPrecomputedIndexes>");
+}
 
 
 } // namespace nnet3

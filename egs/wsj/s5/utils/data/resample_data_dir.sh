@@ -1,6 +1,7 @@
 #! /bin/bash
 
 # Copyright 2016  Vimal Manohar
+#           2018  Xiaohui Zhang
 # Apache 2.0.
 
 if [ $# -ne 2 ]; then
@@ -23,6 +24,12 @@ if [ -f $dir/feats.scp ]; then
     mv $dir/cmvn.scp $dir/.backup/
   fi
   echo "$0: feats.scp already exists. Moving it to $dir/.backup"
+fi
+
+# After resampling we cannot compute utt2dur from wav.scp any more,
+# so we create utt2dur now, in case it's needed later
+if [ ! -s $dir/utt2dur ]; then
+  utils/data/get_utt2dur.sh $dir 1>&2 || exit 1;
 fi
 
 mv $dir/wav.scp $dir/wav.scp.tmp

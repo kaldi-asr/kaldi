@@ -9,7 +9,7 @@
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 # should run this on a machine that has sufficient memory.
 
-. cmd.sh
+. ./cmd.sh
 
 # Data Preparation,
 local/hkust_data_prep.sh /export/corpora/LDC/LDC2005S15/  /export/corpora/LDC/LDC2005T32/

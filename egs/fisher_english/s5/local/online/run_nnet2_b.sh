@@ -6,14 +6,14 @@
 # you can run it using --stage 4 if you've already run run_nnet2.sh,
 # since the iVector extractor is the same.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
 train_stage=-10
 use_gpu=true
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

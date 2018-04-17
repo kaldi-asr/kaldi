@@ -21,6 +21,7 @@
 #include "util/common-utils.h"
 #include "nnet3/nnet-discriminative-training.h"
 #include "nnet3/am-nnet-simple.h"
+#include "nnet3/nnet-utils.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -41,12 +42,17 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     std::string use_gpu = "yes";
+    bool dropout_test_mode = true;
+    
     NnetDiscriminativeOptions opts;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
+    po.Register("dropout-test-mode", &dropout_test_mode,
+                "If true, set test-mode to true on any DropoutComponents and "
+                "DropoutMaskComponents.");
 
     opts.Register(&po);
 
@@ -75,6 +81,10 @@ int main(int argc, char *argv[]) {
     am_nnet.Read(ki.Stream(), binary);
     
     Nnet nnet = am_nnet.GetNnet();
+
+    if (dropout_test_mode)
+      SetDropoutTestMode(true, &nnet);
+    
     const VectorBase<BaseFloat> &priors = am_nnet.Priors();
 
     NnetDiscriminativeTrainer trainer(opts, tmodel, priors, &nnet);

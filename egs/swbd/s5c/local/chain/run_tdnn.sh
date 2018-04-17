@@ -1,1 +1,1 @@
-tuning/run_tdnn_7m.sh
+tuning/run_tdnn_7o.sh

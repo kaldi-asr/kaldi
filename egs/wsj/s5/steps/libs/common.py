@@ -14,7 +14,6 @@ import argparse
 import logging
 import math
 import os
-import re
 import subprocess
 import sys
 import threading
@@ -263,7 +262,7 @@ def get_number_of_leaves_from_model(dir):
 def get_number_of_jobs(alidir):
     try:
         num_jobs = int(open('{0}/num_jobs'.format(alidir)).readline().strip())
-    except IOError, ValueError:
+    except (IOError, ValueError) as e:
         logger.error("Exception while reading the "
                      "number of alignment jobs: ", exc_info=True)
         raise SystemExit(1)

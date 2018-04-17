@@ -34,7 +34,8 @@ NnetTrainer::NnetTrainer(const NnetTrainerOptions &config,
   if (config.zero_component_stats)
     ZeroComponentStats(nnet);
   KALDI_ASSERT(config.momentum >= 0.0 &&
-               config.max_param_change >= 0.0);
+               config.max_param_change >= 0.0 &&
+               config.backstitch_training_interval > 0);
   delta_nnet_ = nnet_->Copy();
   ScaleNnet(0.0, delta_nnet_);
   const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
@@ -61,7 +62,7 @@ void NnetTrainer::Train(const NnetExample &eg) {
   GetComputationRequest(*nnet_, eg, need_model_derivative,
                         config_.store_component_stats,
                         &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   if (config_.backstitch_training_scale > 0.0 &&
       num_minibatches_processed_ % config_.backstitch_training_interval ==
@@ -87,8 +88,11 @@ void NnetTrainer::Train(const NnetExample &eg) {
 
 void NnetTrainer::TrainInternal(const NnetExample &eg,
                                 const NnetComputation &computation) {
+  // note: because we give the 1st arg (nnet_) as a pointer to the
+  // constructor of 'computer', it will use that copy of the nnet to
+  // store stats.
   NnetComputer computer(config_.compute_config, computation,
-                        *nnet_, delta_nnet_);
+                        nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
@@ -96,11 +100,26 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
   this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 
-  // Updates the parameters of nnet
+  // If relevant, add in the part of the gradient that comes from L2
+  // regularization.
+  ApplyL2Regularization(*nnet_,
+                        GetNumNvalues(eg.io, false) * config_.l2_regularize_factor,
+                        delta_nnet_);
+
+  // Update the parameters of nnet
   bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       1.0, 1.0 - config_.momentum, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
-  // Scales deta_nnet
+
+  // Scale down the batchnorm stats (keeps them fresh... this affects what
+  // happens when we use the model with batchnorm test-mode set).
+  ScaleBatchnormStats(config_.batchnorm_stats_scale, nnet_);
+
+  // The following will only do something if we have a LinearComponent
+  // or AffineComponent with orthonormal-constraint set to a nonzero value.
+  ConstrainOrthonormal(nnet_);
+
+  // Scale deta_nnet
   if (success)
     ScaleNnet(config_.momentum, delta_nnet_);
   else
@@ -110,8 +129,11 @@ void NnetTrainer::TrainInternal(const NnetExample &eg,
 void NnetTrainer::TrainInternalBackstitch(const NnetExample &eg,
                                           const NnetComputation &computation,
                                           bool is_backstitch_step1) {
+  // note: because we give the 1st arg (nnet_) as a pointer to the
+  // constructor of 'computer', it will use that copy of the nnet to
+  // store stats.
   NnetComputer computer(config_.compute_config, computation,
-                        *nnet_, delta_nnet_);
+                        nnet_, delta_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.io);
   computer.Run();
@@ -133,10 +155,34 @@ void NnetTrainer::TrainInternalBackstitch(const NnetExample &eg,
     scale_adding = 1.0 + config_.backstitch_training_scale;
   }
 
+  // If relevant, add in the part of the gradient that comes from L2
+  // regularization.  It may not be optimally inefficient to do it on both
+  // passes of the backstitch, like we do here, but it probably minimizes
+  // any harmful interactions with the max-change.
+  ApplyL2Regularization(*nnet_,
+                        scale_adding * GetNumNvalues(eg.io, false) *
+                        config_.l2_regularize_factor,
+                        delta_nnet_);
+
   // Updates the parameters of nnet
   UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
       max_change_scale, scale_adding, nnet_,
       &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+
+  if (is_backstitch_step1) {
+    // The following will only do something if we have a LinearComponent or
+    // AffineComponent with orthonormal-constraint set to a nonzero value. We
+    // choose to do this only on the 1st backstitch step, for efficiency.
+    ConstrainOrthonormal(nnet_);
+  }
+
+  if (!is_backstitch_step1) {
+    // Scale down the batchnorm stats (keeps them fresh... this affects what
+    // happens when we use the model with batchnorm test-mode set).  Do this
+    // after backstitch step 2 so that the stats are scaled down before we start
+    // the next minibatch.
+    ScaleBatchnormStats(config_.batchnorm_stats_scale, nnet_);
+  }
 
   ScaleNnet(0.0, delta_nnet_);
 }
@@ -174,11 +220,19 @@ bool NnetTrainer::PrintTotalStats() const {
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
+  std::vector<std::pair<std::string, const ObjectiveFunctionInfo*> > all_pairs;
+  for (; iter != end; ++iter)
+    all_pairs.push_back(std::pair<std::string, const ObjectiveFunctionInfo*>(
+        iter->first, &(iter->second)));
+  // ensure deterministic order of these names (this will matter in situations
+  // where a script greps for the objective from the log).
+  std::sort(all_pairs.begin(), all_pairs.end());
   bool ans = false;
-  for (; iter != end; ++iter) {
-    const std::string &name = iter->first;
-    const ObjectiveFunctionInfo &info = iter->second;
-    ans = ans || info.PrintTotalStats(name);
+  for (size_t i = 0; i < all_pairs.size(); i++) {
+    const std::string &name = all_pairs[i].first;
+    const ObjectiveFunctionInfo &info = *(all_pairs[i].second);
+    bool ok = info.PrintTotalStats(name);
+    ans = ans || ok;
   }
   PrintMaxChangeStats();
   return ans;

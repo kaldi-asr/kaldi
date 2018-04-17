@@ -2,11 +2,10 @@
 
 ###########################################################################################
 # This script was copied from egs/fisher_swbd/s5/local/swbd1_data_prep.sh
-# The source commit was e69198c3dc5633f98eb88e1cdf20b2521a598f21
+# The source commit was edb1aae9457f6441a224dbc451bb8c5220dfefc7
 # Changes made:
 #  - Specified path to path.sh
 #  - Modified paths to match multi_en naming conventions
-#  - Deleted acronym formatting step
 ###########################################################################################
 
 # Switchboard-1 training data preparation customized for Edinburgh
@@ -90,6 +89,13 @@ cat $dir/transcripts1.txt \
 # **NOTE: swbd1_map_words.pl has been modified to make the pattern matches 
 # case insensitive
 local/swbd1_map_words.pl -f 2- $dir/transcripts2.txt  > $dir/text  # final transcripts
+
+# format acronyms in text
+python local/swbd_map_acronyms_transcripts.py -i $dir/text -o $dir/text_map \
+  -M data/local/dict_swbd/acronyms.map
+cp $dir/text $dir/text_bk
+mv $dir/text_map $dir/text
+
 
 
 # (1c) Make segment files from transcript

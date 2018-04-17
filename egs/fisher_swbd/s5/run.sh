@@ -126,19 +126,19 @@ utils/data/remove_dup_utts.sh 300 data/train data/train_nodup
 # The next commands are not necessary for the scripts to run, but increase
 # efficiency of data access by putting the mfcc's of the subset
 # in a contiguous place in a file.
-( . path.sh;
+( . ./path.sh;
   # make sure mfccdir is defined as above..
   cp data/train_10k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_10k_nodup.ark,$mfccdir/kaldi_fish_10k_nodup.scp \
   && cp $mfccdir/kaldi_fish_10k_nodup.scp data/train_10k_nodup/feats.scp
 )
-( . path.sh;
+( . ./path.sh;
   # make sure mfccdir is defined as above..
   cp data/train_30k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_30k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_30k_nodup.ark,$mfccdir/kaldi_fish_30k_nodup.scp \
   && cp $mfccdir/kaldi_fish_30k_nodup.scp data/train_30k_nodup/feats.scp
 )
-( . path.sh;
+( . ./path.sh;
   # make sure mfccdir is defined as above..
   cp data/train_100k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_100k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_100k_nodup.ark,$mfccdir/kaldi_fish_100k_nodup.scp \
