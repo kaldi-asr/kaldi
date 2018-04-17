@@ -395,7 +395,7 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
         max_y = int(max(y1, y2, y3, y4))
         region_initial = im[min_y:max_y, min_x:max_x]
 
-        if min_y <=0:
+        if min_y <=0 or min_x <=0:
             continue
 
         # #calculate new crop points
@@ -430,7 +430,7 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
         max_x = int(max(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
         max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
 
-        if min_y <= 0:
+        if min_y <= 0 or min_x <=0:
             continue
 
         region_final = img2[min_y:max_y, min_x:max_x]
