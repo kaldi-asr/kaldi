@@ -1,15 +1,15 @@
 
 To train models, for an arbitrary mic, run something like:
 
-./run_shared.sh
+./run_prepare_shared.sh
 
 and then
 
 ./run.sh --mic mic_type 
 
 where mic_type depends on whether you want to use individual headset mic (ihm),
- distant (but beamformed) multiple mics (mdm) or distant single mic (d1...d4, pda1, pda2).
-Mutliple distant microphone (mdm) setup is using only 4 PDA mics. Look below
+distant (but beamformed) multiple mics (mdm) or distant single mic (d1...d4, pda1, pda2).
+Mutliple distant microphones (mdm) setup is using only 4 PDA mics. Look below
 for more details, more on notations and a typical meeting layout ICSI followed.
 
 
@@ -39,6 +39,7 @@ in a way to minimise the speaker-overlap between different partitions. This is b
 
 
 Below description is (mostly) copied from ICSI documentation for convenience.
+=================================================================================
 
 Simple diagram of the seating arrangement in the ICSI meeting room.             
                                                                                 
@@ -47,9 +48,7 @@ alignment with microphones may not always be as precise as indicated
 here. Also, the seat number only indicates where the participant                
 started the meeting. Since most of the microphones are wireless, they           
 were able to move around.                                                       
-                                                                                
-                                                                                
-                                                                                
+                                                                                                                                                                
    Door                                                                         
                                                                                 
                                                                                 

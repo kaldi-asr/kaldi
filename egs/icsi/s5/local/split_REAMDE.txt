@@ -1,0 +1,4 @@
+The splits for train/valid/test are following the split as mentioned in 
+README.txt. If for some reason ones need to use different split 
+the way to do so is to create split_*.final versions in 
+this directory and run the recipe.
