@@ -13,7 +13,7 @@ set -e
 stage=0
 nj=10
 train_stage=-10
-affix=pr43
+affix=
 common_egs_dir=
 
 # training options
