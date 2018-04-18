@@ -5,7 +5,7 @@
 set -e
 
 # configs for 'chain'
-affix=pr43
+affix=pr43_chain
 stage=12
 nj=10
 train_stage=-10
