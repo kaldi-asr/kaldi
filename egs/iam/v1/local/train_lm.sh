@@ -85,7 +85,7 @@ if [ $stage -le 0 ]; then
 
   # get the wordlist from IAM text
   if [ -d "data/local/wellingtoncorpus" ]; then
-    cat ${dir}/data/text/{iam,lob,brown,wellington.txt}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+    cat ${dir}/data/text/{iam,lob,brown,wellington}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   else
     echo "$0: Wellington Corpus not found. Proceeding without using that corpus."
     cat ${dir}/data/text/{iam,lob,brown}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
