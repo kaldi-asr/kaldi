@@ -18,7 +18,7 @@
 
 stage=0
 download_dir=data/download
-wwc_dir=
+wellington_dir=
 username=
 password=       # username and password for downloading the IAM database
                 # if you have not already downloaded the database, please
@@ -128,9 +128,9 @@ fi
 
 if [ -d $wcorpus ]; then
   echo "$0: Not copying Wellington corpus as it is already there."
-elif [ ! -z $wwc_dir ]; then
+elif [ ! -z $wellington_dir ]; then
   mkdir -p $wcorpus
-  cp -r $wwc_dir/. $wcorpus
+  cp -r $wellington_dir/. $wcorpus
 
   # Combine Wellington corpora and replace some of their annotations
   cat data/local/wellingtoncorpus/Section{A,B,C,D,E,F,G,H,J,K,L}.txt | \
@@ -157,7 +157,7 @@ EOF
 
   echo "$0: Done copying Wellington corpus"
 else
-  echo "$0: Wellington Corpus not included because wwc_dir not provided"
+  echo "$0: Wellington Corpus not included because wellington_dir not provided"
 fi
 
 mkdir -p data/{train,test,val}

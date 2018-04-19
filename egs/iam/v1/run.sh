@@ -32,7 +32,7 @@ wellington_database=/export/corpora5/Wellington/WWC/
 if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$iam_database" \
-    --wwc-dir "$wellington_database" \
+    --wellington-dir "$wellington_database" \
     --username "$username" --password "$password"
 fi
 mkdir -p data/{train,test}/data
