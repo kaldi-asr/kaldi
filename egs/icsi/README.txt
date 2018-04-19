@@ -31,8 +31,8 @@ mostly used as a training data for NIST RT evaluations. Some portions of unrelas
 data (as a part of corpora) can be found in, for example, NIST RT04 amd RT05 evaluation sets.
 
 This recipe, however, to be self-contained factors out development and evaluation sets
-in a way to minimise the speaker-overlap between different partitions. This is based on
-[4] where dev uses {Bmr021 and Bns00} while eval uses {Bmr013, Bmr018 and Bro021}.
+in a way to minimise the speaker-overlap between different partitions. This recipe follows
+[4] where dev and eval sets use {Bmr021 and Bns00} and {Bmr013, Bmr018 and Bro021}, respectively.
 
 [4] S Renals and P Swietojanski, Neural networks for distant speech recognition. 
     in Proc IEEE HSCMA 2014 pp. 172-176. DOI:10.1109/HSCMA.2014.6843274

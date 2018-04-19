@@ -41,7 +41,7 @@ local/icsi_text_prep.sh data/local/downloads
 local/icsi_prepare_dict.sh
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
-local/icsi_train_lms.sh --fisher $FISHER_TRANS data/local/annotations/train.txt data/local/annotations/dev.txt data/local/dict/lexicon.txt data/local/lm
+local/ami_train_lms.sh --fisher $FISHER_TRANS data/local/annotations/train.txt data/local/annotations/dev.txt data/local/dict/lexicon.txt data/local/lm
 
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
