@@ -2,6 +2,7 @@
 
 # This script is based on run_tdnn_7h.sh in swbd chain recipe.
 # exp 2a: change the step of making configs, using xconfig
+#         some minor changes on training parameters, referencing wsj
 
 set -e
 
@@ -16,8 +17,8 @@ decode_iter=
 
 # training options
 num_epochs=4
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
+initial_effective_lrate=0.0005
+final_effective_lrate=0.00005
 max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=2
@@ -149,7 +150,7 @@ if [ $stage -le 13 ]; then
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize 0.00005 \
+    --chain.l2-regularize 0.0 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
@@ -157,6 +158,7 @@ if [ $stage -le 13 ]; then
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch $minibatch_size \
+    --trainer.optimization.momentum 0.0 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \
     --trainer.optimization.num-jobs-initial $num_jobs_initial \
