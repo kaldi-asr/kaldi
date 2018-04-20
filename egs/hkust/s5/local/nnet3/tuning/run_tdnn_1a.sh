@@ -111,7 +111,7 @@ fi
 if [ $stage -le 11 ]; then
   steps/online/nnet3/prepare_online_decoding.sh --mfcc-config conf/mfcc_hires.conf \
     --add-pitch true \
-    data/lang exp/nnet2_online/extractor "$dir" ${dir}_online || exit 1;
+    data/lang exp/nnet3/extractor "$dir" ${dir}_online || exit 1;
 fi
 
 if [ $stage -le 12 ]; then

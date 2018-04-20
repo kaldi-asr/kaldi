@@ -4,6 +4,7 @@
 
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.
+# exp 2a: change the step of making configs, using xconfig
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
