@@ -48,7 +48,7 @@ train_set=train_sp
 ali_dir=${gmm_dir}_sp_ali
 graph_dir=$gmm_dir/graph
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 0 ]; then
   local/nnet3/run_ivector_common.sh --stage $stage \
     --ivector-extractor exp/nnet3/extractor || exit 1;
 fi
