@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# This script is based on tun_tdnn_7h.sh in swbd chain recipe.
+# This script is based on run_tdnn_7h.sh in swbd chain recipe.
 # exp 2b: compared to 2a, it changes frames_per_eg from a contant to a
 # list of number, separated by comma
 
