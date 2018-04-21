@@ -288,8 +288,8 @@ class TransitionModel {
 
   HmmTopology topo_;
 
-  /// Triples indexed by transition state minus one;
-  /// the triples are in sorted order which allows us to do the reverse mapping from
+  /// Tuples indexed by transition state minus one;
+  /// the tuples are in sorted order which allows us to do the reverse mapping from
   /// triple to transition state
   std::vector<Tuple> tuples_;
 
