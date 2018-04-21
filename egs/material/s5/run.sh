@@ -217,9 +217,6 @@ fi
 # prepare the new LM with bitext data and the new lexicon,
 # as in the new test lang directory ${lang_root}_nosp_test
 if [ $stage -le 17 ]; then
-  # Combine two sources of text
-  awk '{print $1}' < $bitext > ${srctext_bitext}.header
-  paste ${srctext_bitext}.header ${srctext_bitext}.txt > ${srctext_bitext}.processed
   mkdir -p data/lm_combined
   # train a new lm located in data/lm_combine
   cat data/lm/train_text ${srctext_bitext}.processed > data/lm_combined/train_text

@@ -74,7 +74,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
-lang=data/lang_chain
+lang_combined=data/lang_combined_chain
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
 dir=exp/chain${nnet3_affix}/tdnn_lstm${tlstm_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
@@ -87,31 +87,25 @@ for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector
 done
 
 if [ $stage -le 7 ]; then
-  echo "$0: creating lang directory $lang with chain-type topology"
+  echo "$0: creating lang directory $lang_combined with chain-type topology"
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
-  if [ -d $lang ]; then
-    if [ $lang/L.fst -nt data/lang_test/L.fst ]; then
-      echo "$0: $lang already exists, not overwriting it; continuing"
+  if [ -d $lang_combined ]; then
+    if [ $lang_combined/L.fst -nt data/lang_combined_test/L.fst ]; then
+      echo "$0: $lang_combined already exists, not overwriting it; continuing"
     else
-      echo "$0: $lang already exists and seems to be older than data/lang..."
+      echo "$0: $lang_combined already exists and seems to be older than data/lang_combined_test ..."
       echo " ... not sure what to do.  Exiting."
       exit 1;
     fi
   else
-    cp -r data/lang_test $lang
-    silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
-    nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
+    cp -r data/lang_combined_test $lang_combined
+    silphonelist=$(cat $lang_combined/phones/silence.csl) || exit 1;
+    nonsilphonelist=$(cat $lang_combined/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
     # topology.
-    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
-
-    lang_combined=data/lang_combined_chain
-    rm -rf ${lang_combined} 2>/dev/null || true
-    cp -r data/lang_combined_test $lang_combined
-    rm -f ${lang_combined}/topo 2>/dev/null || true
-    cp $lang/topo $lang_combined
+    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang_combined/topo
   fi
 fi
 
@@ -119,7 +113,7 @@ if [ $stage -le 8 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
-    data/lang_test $gmm_dir $lat_dir
+    data/lang_combined $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -136,7 +130,7 @@ if [ $stage -le 9 ]; then
     --frame-subsampling-factor 3 \
     --context-opts "--context-width=2 --central-position=1" \
     --cmd "$train_cmd" 6000 ${lores_train_data_dir} \
-    $lang $ali_dir $tree_dir
+    $lang_combined $ali_dir $tree_dir
 fi
 
 if [ $stage -le 10 ]; then

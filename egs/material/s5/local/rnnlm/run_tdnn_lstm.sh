@@ -8,20 +8,21 @@
 
 # [for swahili]
 # rnnlm/train_rnnlm.sh: best iteration (out of 10) was 5, linking it to final iteration.
-# rnnlm/train_rnnlm.sh: train/dev perplexity was 58.3 / 275.9.
-# Train objf: -5.55 -4.75 -4.47 -4.29 -4.16 -4.04 -3.94 -3.84 -3.75 -3.66
-# Dev objf:   -10.79 -6.07 -5.76 -5.67 -5.64 -5.62 -5.62 -5.66 -5.69 -5.68
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 59.1 / 273.1.
+# Train objf: -5.48 -4.75 -4.47 -4.30 -4.17 -4.06 -3.96 -3.87 -3.77 -3.68 
+# Dev objf:   -10.79 -6.00 -5.75 -5.69 -5.62 -5.61 -5.62 -5.66 -5.66
 
-# %WER 50.60 [ 29937 / 59166, 1664 ins, 11851 del, 16422 sub ] exp/chain/tdnn_lstm1a_sp/decode_analysis1_segmented_reseg_rnnlm_rescore
-# %WER 37.32 [ 23193 / 62144, 3036 ins, 6108 del, 14049 sub ] exp/chain/tdnn_lstm1a_sp/decode_dev_rnnlm_rescore/wer_9_0.5
+# %WER 35.84 [ 22270 / 62144, 2573 ins, 6961 del, 12736 sub ] exp/chain/tdnn1b_sp/decode_dev_rnnlm_rescore/wer_11_0.5
+# %WER 48.49 [ 28692 / 59166, 2310 ins, 9200 del, 17182 sub ] exp/chain/tdnn1b_sp/decode_analysis1_segmented_reseg_rnnlm_rescore
 
 # [for tagalog]
 # rnnlm/train_rnnlm.sh: best iteration (out of 10) was 4, linking it to final iteration.
 # rnnlm/train_rnnlm.sh: train/dev perplexity was 73.6 / 106.2.
 # Train objf: -5.55 -4.83 -4.58 -4.41 -4.28 -4.17 -4.06 -3.96 -3.86
 # Dev objf:   -10.54 -4.87 -4.72 -4.67 -4.67 -4.69 -4.71 -4.74 -4.78
-# %WER 56.53 [ 49383 / 87362, 2899 ins, 25688 del, 20796 sub ] exp/chain/tdnn1a_sp/decode_analysis1_segmented_reseg_rnnlm_rescore
-# %WER 43.54 [ 28033 / 64382, 3471 ins, 9061 del, 15501 sub ] exp/chain/tdnn1a_sp/decode_dev_rnnlm_rescore/wer_9_0.0
+
+# %WER 42.91 [ 27628 / 64382, 3624 ins, 8301 del, 15703 sub ] exp/chain/tdnn1b_sp/decode_dev_rnnlm_rescore/wer_10_0.0
+# %WER 55.55 [ 48530 / 87362, 4030 ins, 19326 del, 25174 sub ] exp/chain/tdnn1b_sp/decode_analysis1_segmented_reseg_rnnlm_rescore
 
 # Begin configuration section.
 
@@ -41,8 +42,8 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
               # exploding exponentially
 pruned_rescore=true
 
-ac_model_dir=exp/chain/tdnn1a_sp
-decode_sets="dev analysis1_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg"
+ac_model_dir=exp/chain/tdnn1b_sp
+decode_sets="dev analysis1_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg eval2_segmented_reseg"
 dir=exp/rnnlm_lstm_1a
 text_dir=data/rnnlm/text
 train_text=data/lm/train.txt
