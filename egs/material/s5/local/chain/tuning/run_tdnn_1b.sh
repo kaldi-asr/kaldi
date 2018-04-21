@@ -5,15 +5,15 @@
 
 # 1a is trying an architecture with factored parameter matrices with dropout.
 
-# cat exp/chain/tdnn1a_sp/decode_dev/scoring_kaldi/best_wer
+# cat exp/chain/tdnn1b_sp/decode_dev/scoring_kaldi/best_wer
 # [for swahili]
-# %WER 38.65 [ 24021 / 62144, 3044 ins, 6378 del, 14599 sub ] exp/chain/tdnn1a_sp/decode_dev/wer_9_0.5
+# %WER 37.51 [ 23309 / 62144, 3027 ins, 5917 del, 14365 sub ] exp/chain/tdnn1b_sp/decode_dev/wer_10_0.5
 # [for tagalog]
 # %WER 46.53 [ 29955 / 64382, 3425 ins, 9485 del, 17045 sub ] exp/chain/tdnn1a_sp/decode_dev/wer_9_0.0
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
+# steps/info/chain_dir_info.pl exp/chain/tdnn1b_sp
 # [for swahili]
-# exp/chain/tdnn1a_sp: num-iters=99 nj=2..12 num-params=12.2M dim=40+100->1792 xent:train/valid[65,98,final]=(-1.93,-1.66,-1.68/-2.05,-1.84,-1.83) logprob:train/valid[65,98,final]=(-0.199,-0.166,-0.167/-0.225,-0.208,-0.206)
+# exp/chain/tdnn1b_sp: num-iters=99 nj=2..12 num-params=17.2M dim=40+100->1800 combine=-0.129->-0.128 (over 3) xent:train/valid[65,98,final]=(-1.72,-1.42,-1.42/-1.91,-1.74,-1.72) logprob:train/valid[65,98,final]=(-0.163,-0.125,-0.124/-0.213,-0.205,-0.203)
 # [for tagalog]
 # exp/chain/tdnn1a_sp: num-iters=96 nj=2..12 num-params=12.3M dim=40+100->1952 combine=-0.165->-0.165 (over 2) xent:train/valid[63,95,final]=(-1.89,-1.66,-1.65/-2.06,-1.89,-1.89) logprob:train/valid[63,95,final]=(-0.186,-0.158,-0.157/-0.231,-0.219,-0.218)
 
@@ -30,7 +30,7 @@ gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1a   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1b   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 tree_affix=
 common_egs_dir=
 reporting_email=
@@ -146,16 +146,15 @@ if [ $stage -le 10 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  opts="l2-regularize=0.01 dropout-per-dim=true dropout-per-dim-continuous=true"
-  linear_opts="orthonormal-constraint=1.0"
-  output_opts="l2-regularize=0.005"
-
+  opts="l2-regularize=0.004 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
+  linear_opts="orthonormal-constraint=-1.0 l2-regularize=0.004"
+  output_opts="l2-regularize=0.002"
 
   mkdir -p $dir/configs
+
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
-
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
@@ -163,34 +162,47 @@ if [ $stage -le 10 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=768
+  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=1024
+  linear-component name=tdnn2l0 dim=256 $linear_opts input=Append(-1,0)
   linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=768
-  linear-component name=tdnn3l dim=256 $linear_opts
-  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=768
-  linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=768
+  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=1024
+  linear-component name=tdnn3l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=1024 input=Append(0,1)
+  linear-component name=tdnn4l0 dim=256 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn4l dim=256 $linear_opts input=Append(0,1)
+  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=1024
   linear-component name=tdnn5l dim=256 $linear_opts
-  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=768 input=Append(0, tdnn3l)
+  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=1024 input=Append(0, tdnn3l)
+  linear-component name=tdnn6l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1024
-  linear-component name=tdnn7l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=768
-  linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1024
+  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn7l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn7l dim=256 $linear_opts input=Append(0,3)
+  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1024
+  linear-component name=tdnn8l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn8l dim=256 $linear_opts input=Append(0,3)
+  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn9l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=768
-  linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1024
+  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=1024
+  linear-component name=tdnn10l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn10l dim=256 $linear_opts input=Append(0,3)
+  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn11l0 dim=256 $linear_opts input=Append(-3,0)
   linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn9l,tdnn7l) dim=768
+  relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn9l,tdnn7l) dim=1024
   linear-component name=prefinal-l dim=256 $linear_opts
 
-  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1024
-  output-layer name=output include-log-softmax=false dim=$num_targets bottleneck-dim=256 $output_opts
+  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1280
+  linear-component name=prefinal-chain-l dim=256 $linear_opts
+  batchnorm-component name=prefinal-chain-batchnorm
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1024
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor bottleneck-dim=256 $output_opts
+  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1280
+  linear-component name=prefinal-xent-l dim=256 $linear_opts
+  batchnorm-component name=prefinal-xent-batchnorm
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
+  
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -242,10 +254,6 @@ fi
 if [ $stage -le 12 ]; then
   # Note: it's not important to give mkgraph.sh the lang directory with the
   # matched topology (since it gets the topology file from the model).
-  utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_test \
-    $tree_dir $tree_dir/graph || exit 1;
-
   utils/mkgraph.sh \
     --self-loop-scale 1.0 data/lang_combined_test \
     $tree_dir ${tree_dir}/graph_combined || exit 1;
