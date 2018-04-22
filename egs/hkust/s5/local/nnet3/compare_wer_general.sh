@@ -7,12 +7,6 @@
 #       users on adding affix for their own use when training models. This script applies
 #       to both nnet3 and chain models.
 
-# Model                  tdnn_sp tdnn_sp_pr43
-# WER(%)                    33.11     32.86
-# WER(%)[online]                    32.91     33.08
-# Final train prob     -1.316250.638707      -1.233190.664891
-# Final valid prob     -1.725830.556767      -1.6510.576218
-
 set -e
 . ./cmd.sh
 . ./path.sh
