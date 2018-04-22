@@ -18,6 +18,7 @@
 
 stage=0
 download_dir=data/download
+wellington_dir=
 username=
 password=       # username and password for downloading the IAM database
                 # if you have not already downloaded the database, please
@@ -128,16 +129,16 @@ fi
 
 if [ -d $wcorpus ]; then
   echo "$0: Not copying Wellington corpus as it is already there."
-else
+elif [ ! -z $wellington_dir ]; then
   mkdir -p $wcorpus
-  cp -r $wellington_corpus_loc/. $wcorpus
+  cp -r $wellington_dir/. $wcorpus
 
   # Combine Wellington corpora and replace some of their annotations
   cat data/local/wellingtoncorpus/Section{A,B,C,D,E,F,G,H,J,K,L}.txt | \
     cut -d' ' -f3- | sed "s/^[ \t]*//" > data/local/wellingtoncorpus/Wellington_annotated.txt
 
   cat data/local/wellingtoncorpus/Wellington_annotated.txt | python3 <(
-  cat << EOF
+  cat << 'EOF'
 import sys, io, re;
 from collections import OrderedDict;
 sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf8");
@@ -147,7 +148,7 @@ dict=OrderedDict([("^",""), ("|",""), ("_",""), ("*0",""), ("*1",""), ("*2",""),
   ("*+$",""), ("$",""), ("*+","£"), ("*-","-"), ("*/","*"), ("*|",""), ("*{","{"), ("*}","}"),
   ("**#",""), ("*#",""), ("*?",""), ("**\"","\""), ("*\"","\""), ("**'","'"), ("*'","'"),
   ("*<",""), ("*>",""), ("**[",""), ("**]",""), ("**;",""), ("*;",""), ("**:",""), ("*:",""),
-  ("\\\0",""), ("\\\15",""), ("\\\1",""), ("\\\2",""), ("\\\3",""), ("\\\6",""), ("\\\",""),
+  ("\\0",""), ("\\15",""), ("\\1",""), ("\\2",""), ("\\3",""), ("\\6",""), ("\\",""),
   ("{0",""), ("{15",""), ("{1",""), ("{2",""), ("{3",""), ("{6","")]);
 pattern = re.compile("|".join(re.escape(key) for key in dict.keys()) + "|[^\\*]\\}");
 dict["}"]="";
@@ -156,6 +157,8 @@ EOF
 ) > data/local/wellingtoncorpus/Wellington_annotation_removed.txt
 
   echo "$0: Done copying Wellington corpus"
+else
+  echo "$0: Wellington Corpus not included because wellington_dir not provided"
 fi
 
 mkdir -p data/{train,test,val}
