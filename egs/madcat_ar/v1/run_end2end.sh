@@ -18,9 +18,11 @@ if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh
 fi
+
 mkdir -p data/{train,test,dev}/data
 
 if [ $stage -le 1 ]; then
+  echo "$0: Obtaining image groups..."
   image/get_image2num_frames.py data/train  # This will be needed for the next command
   # The next command creates a "allowed_lengths.txt" file in data/train
   # which will be used by local/make_features.py to enforce the images to
@@ -48,6 +50,9 @@ if [ $stage -le 3 ]; then
   local/train_lm.sh
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang_test
+
+#  cp -R data/lang -T data/lang_test
+#  local/prepare_lm.sh data/train/text data/lang_test 3 || exit 1;
 fi
 
 
@@ -64,5 +69,5 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
-  local/chain/run_flatstart_cnn1a.sh --affix 1a_mono_sp_1.0
+  local/chain/run_flatstart_cnn1a.sh
 fi

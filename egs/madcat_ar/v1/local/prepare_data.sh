@@ -17,9 +17,9 @@
 #      spk2utt file: 000 000_a01-000u-00 000_a01-000u-01 000_a01-000u-02 000_a01-000u-03
 
 stage=0
-download_dir1=data/download/tmp/LDC2012T15/data
-download_dir2=data/download/tmp/LDC2013T09/data
-download_dir3=data/download/tmp/LDC2013T15/data
+download_dir1=/export/corpora/LDC/LDC2012T15/data
+download_dir2=/export/corpora/LDC/LDC2013T09/data
+download_dir3=/export/corpora/LDC/LDC2013T15/data
 train_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
 test_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.test.raw.lineid
 dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.raw.lineid
@@ -31,13 +31,13 @@ dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.
 mkdir -p data/{train,test,dev}
 mkdir -p data/download/tmp/lines
 if [ $stage -le 1 ]; then
-  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $train_split_file || exit 1
-  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $test_split_file || exit 1
-  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $dev_split_file || exit 1
+  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $train_split_file data/local/lines || exit 1
+  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $test_split_file data/local/lines || exit 1
+  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $dev_split_file data/local/lines || exit 1
 
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $train_split_file data/train || exit 1
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $test_split_file data/test || exit 1
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $dev_split_file data/dev || exit 1
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $dev_split_file data/dev data/local/lines || exit 1
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $test_split_file data/test data/local/lines || exit 1
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $train_split_file data/train data/local/lines || exit 1
 
   for dataset in train test dev; do
     cp data/$dataset/utt2spk data/$dataset/utt2spk_tmp
