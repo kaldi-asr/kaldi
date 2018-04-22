@@ -29,7 +29,7 @@ if [ $stage -le 1 ]; then
   # have allowed lengths. The allowed lengths will be spaced by 10% difference in length.
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   echo "$0: Preparing the test and train feature files..."
-  for dataset in train test dev; do
+  for dataset in test train dev; do
     local/make_features.py data/$dataset --feat-dim 40 | \
       copy-feats --compress=true --compression-method=7 \
                  ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
