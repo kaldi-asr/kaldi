@@ -9,7 +9,7 @@
 # word_feats.txt and word embeddings.
 
 cmd=run.pl
-oov_unigram_prob=0.01
+oov_unigram_prob=0.0000001
 
 . utils/parse_options.sh
 
