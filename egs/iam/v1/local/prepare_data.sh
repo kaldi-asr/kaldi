@@ -52,6 +52,7 @@ data_split_info_url=http://www.fki.inf.unibe.ch/DBs/iamDB/tasks/largeWriterIndep
 ascii_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/ascii/ascii.tgz
 brown_corpus_url=http://www.sls.hawaii.edu/bley-vroman/brown.txt
 lob_corpus_url=http://ota.ox.ac.uk/text/0167.zip
+wellington_corpus_loc=/export/corpora5/Wellington/WWC/
 mkdir -p $download_dir data/local
 
 # download and extact images and transcription

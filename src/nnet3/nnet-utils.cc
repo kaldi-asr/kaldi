@@ -886,8 +886,22 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   P.SymAddMat2(1.0, *M, kNoTrans, 0.0);
   P.CopyLowerToUpper();
 
+  // The 'update_speed' is a constant that determines how fast we approach a
+  // matrix with the desired properties (larger -> faster).  Larger values will
+  // update faster but will be more prone to instability.  0.125 (1/8) is the
+  // value that gives us the fastest possible convergence when we are already
+  // close to be a semi-orthogonal matrix (in fact, it will lead to quadratic
+  // convergence).
+  // See  http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
+  // for more details.
+  BaseFloat update_speed = 0.125;
+
   if (scale < 0.0) {
-    // If scale < 0.0 then it's like letting the scale "float".
+    // If scale < 0.0 then it's like letting the scale "float",
+    // as in Sec. 2.3 of
+    // http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf,
+    // where 'scale' here is written 'alpha' in the paper.
+    //
     // We pick the scale that will give us an update to M that is
     // orthogonal to M (viewed as a vector): i.e., if we're doing
     // an update M := M + X, then we want to have tr(M X^T) == 0.
@@ -905,29 +919,34 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
     //  tr(P^2 - scale^2 P) == 0,
     // or scale^2 = tr(P^2) / tr(P).
     // Note: P is symmetric so it doesn't matter whether we use tr(P P) or
-    // tr(P^T P); we use tr(P^T P) becaus I believe it's faster to compute.
-    scale = std::sqrt(TraceMatMat(P, P, kTrans)/ P.Trace());
+    // tr(P^T P); we use tr(P^T P) because I believe it's faster to compute.
+
+    BaseFloat trace_P = P.Trace(), trace_P_P = TraceMatMat(P, P, kTrans);
+
+    scale = std::sqrt(trace_P_P / trace_P);
+
+    // The following is a tweak to avoid divergence when the eigenvalues aren't
+    // close to being the same.  trace_P is the sum of eigenvalues of P, and
+    // trace_P_P is the sum-square of eigenvalues of P.  Treat trace_P as a sum
+    // of positive values, and trace_P_P as their sumsq.  Then mean = trace_P /
+    // dim, and trace_P_P cannot be less than dim * (trace_P / dim)^2,
+    // i.e. trace_P_P >= trace_P^2 / dim.  If ratio = trace_P_P * dim /
+    // trace_P^2, then ratio >= 1.0, and the excess above 1.0 is a measure of
+    // how far we are from convergence.  If we're far from convergence, we make
+    // the learning rate slower to reduce the risk of divergence, since the
+    // update may not be stable for starting points far from equilibrium.
+    BaseFloat ratio = (trace_P_P * P.NumRows() / (trace_P * trace_P));
+    KALDI_ASSERT(ratio > 0.999);
+    if (ratio > 1.02) {
+      update_speed *= 0.5;  // Slow down the update speed to reduce the risk of divergence.
+    }
   }
 
-  // The 'update_speed' is a constant that determines how fast we approach a
-  // matrix with the desired properties (larger -> faster).  Larger values will
-  // update faster but will be more prone to instability.  I believe
-  // 'update_speed' shouldn't be more than 0.25 or maybe 0.5, or it will always
-  // be unstable, but I haven't done the analysis.  It should definitely be more
-  // than 0.0.
-  BaseFloat update_speed = 0.125;
-
-  // The factor of 1/scale^2 is, I *believe*, going to give us the right kind of
-  // invariance w.r.t. the scale.  To explain why this is the appropriate
-  // factor, look at the statement M_update.AddMatMat(-4.0 * alpha, P, kNoTrans,
-  // *M, kNoTrans, 0.0); where P is proportional to scale^2 and M to 'scale' and
-  // alpha to 1/scale^2, so change in M_update is proportional to 'scale'.
-  // We'd like 'M_update' to be proportional to 'scale'. This reasoning is very
-  // approximate but I think it can be made rigorous.  This is about remaining
-  // stable (not prone to divergence) even for very large or small values of
-  // 'scale'.
+  // see Sec. 2.2 of http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
+  // for explanation of the 1/(scale*scale) factor, but there is a difference in
+  // notation; 'scale' here corresponds to 'alpha' in the paper, and
+  // 'update_speed' corresponds to 'nu' in the paper.
   BaseFloat alpha = update_speed / (scale * scale);
-
 
   P.AddToDiag(-1.0 * scale * scale);
 
