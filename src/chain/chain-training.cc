@@ -150,7 +150,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv,
                               CuMatrix<BaseFloat> *xent_output_deriv) {
-  if (supervision.e2e) {
+  if (!supervision.e2e_fsts.empty()) {
     ComputeChainObjfAndDerivE2e(opts, den_graph, supervision,
                                 nnet_output, objf, l2_term,
                                 weight, nnet_output_deriv, xent_output_deriv);
