@@ -2,6 +2,7 @@
 #           2016    Vijayaditya Peddinti
 #           2017    Google Inc. (vpeddinti@google.com)
 #           2017    Vimal Manohar
+#           2018    Gaofeng Cheng
 # Apache 2.0.
 
 """ This module contains layers that just map to a single component.
@@ -332,10 +333,10 @@ class XconfigBlockSumLayer(XconfigLayerBase):
         configs.append(line)
         cur_node = "{0}.element_wise_scale".format(self.name)
 
-        line = ('component name={0}.blocksum type=SumBlockComponent input-dim={1} output-dim={2} '
+        line = ('component name={0} type=SumBlockComponent input-dim={1} output-dim={2} '
         'scale={3}').format(self.name, input_dim, output_dim, blocksum_scale)
         configs.append(line)
-        line = ('component-node name={0}.blocksum component={0}.blocksum input={1}').format(self.name, cur_node)
+        line = ('component-node name={0} component={0} input={1}').format(self.name, cur_node)
         configs.append(line)
 
         return configs

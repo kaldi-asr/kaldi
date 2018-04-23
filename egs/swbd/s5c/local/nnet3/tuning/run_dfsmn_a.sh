@@ -22,6 +22,8 @@ chunk_width=20
 chunk_left_context=0
 chunk_right_context=0
 num_epochs=8
+num_jobs_initial=3
+num_jobs_final=15
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 momentum=0.5
@@ -115,10 +117,9 @@ if [ $stage -le 9 ]; then
 
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-ce1 input=dfsmn9_projection dim=512 target-rms=0.5 l2-regularize=0.0015 
-  relu-batchnorm-layer name=prefinal-ce2 input=prefinal1 dim=1536 target-rms=0.5 $opts2
+  relu-batchnorm-layer name=prefinal-ce2 input=prefinal-ce1 dim=1536 target-rms=0.5 $opts2
   output-layer name=output input=prefinal-ce2 dim=$num_targets max-change=1.5 $output_opts 
 
-  output-layer name=output input=tdnn5 dim=$num_targets max-change=1.5
 EOF
 
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
@@ -133,6 +134,7 @@ if [ $stage -le 10 ]; then
   steps/nnet3/train_rnn.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --feat.online-ivector-dir exp/nnet3/ivectors_${train_set} \
     --trainer.num-epochs=$num_epochs \
     --trainer.samples-per-iter=$samples_per_iter \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \
@@ -151,7 +153,7 @@ if [ $stage -le 10 ]; then
     --cleanup.remove-egs=$remove_egs \
     --cleanup.preserve-model-interval=20 \
     --use-gpu=true \
-    --feat-dir=$data_dir \
+    --feat-dir=data/${train_set}_hires \
     --ali-dir=$ali_dir \
     --lang=data/lang \
     --reporting.email="$reporting_email" \
@@ -161,6 +163,15 @@ fi
 
 graph_dir=exp/tri4/graph_sw1_tg
 if [ $stage -le 11 ]; then
+  if [ -z $extra_left_context ]; then
+    extra_left_context=$chunk_left_context
+  fi
+  if [ -z $extra_right_context ]; then
+    extra_right_context=$chunk_right_context
+  fi
+  if [ -z $frames_per_chunk ]; then
+    frames_per_chunk=$chunk_width
+  fi
   for decode_set in train_dev eval2000 rt03; do
     (
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
@@ -168,6 +179,7 @@ if [ $stage -le 11 ]; then
       --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
       --extra-left-context $extra_left_context  \
       --extra-right-context $extra_right_context  \
+      --frames-per-chunk "$frames_per_chunk" \
       $graph_dir data/${decode_set}_hires $dir/decode_${decode_set}_hires_sw1_tg || exit 1;
     if $has_fisher; then
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
