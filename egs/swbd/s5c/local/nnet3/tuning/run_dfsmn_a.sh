@@ -69,6 +69,7 @@ if [ $stage -le 9 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=60 name=input
+  input dim=100 name=ivector
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
