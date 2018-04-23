@@ -32,6 +32,7 @@ config_to_layer = {
         'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
         'idct-layer' : xlayers.XconfigIdctLayer,
         'affine-layer' : xlayers.XconfigAffineLayer,
+        'blocksum-layer' : xlayers.XconfigBlockSumLayer,
         'lstm-layer' : xlayers.XconfigLstmLayer,
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
         'lstmp-batchnorm-layer' : xlayers.XconfigLstmpLayer,
