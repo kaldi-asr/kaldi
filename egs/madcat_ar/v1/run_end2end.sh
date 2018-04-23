@@ -28,24 +28,25 @@ if [ $stage -le 1 ]; then
   # which will be used by local/make_features.py to enforce the images to
   # have allowed lengths. The allowed lengths will be spaced by 10% difference in length.
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
+fi
+
+if [ $stage -le 2 ]; then
   echo "$0: Preparing the test and train feature files..."
   for dataset in test train dev; do
-    local/make_features.py data/$dataset --feat-dim 40 | \
-      copy-feats --compress=true --compression-method=7 \
-                 ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
-    steps/compute_cmvn_stats.sh data/$dataset
+    local/extract_feature.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
+    steps/compute_cmvn_stats.sh data/$dataset || exit 1;
   done
   utils/fix_data_dir.sh data/train
 fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.9999 \
                         data/local/dict "<sil>" data/lang/temp data/lang
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
@@ -56,7 +57,7 @@ if [ $stage -le 3 ]; then
 fi
 
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   echo "$0: estimating phone language model for the denominator graph"
   mkdir -p exp/chain/e2e_base/log
   $cmd exp/chain/e2e_base/log/make_phone_lm.log \
@@ -67,7 +68,7 @@ if [ $stage -le 4 ]; then
                        ark:- exp/chain/e2e_base/phone_lm.fst
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: calling the flat-start chain recipe..."
   local/chain/run_flatstart_cnn1a.sh
 fi

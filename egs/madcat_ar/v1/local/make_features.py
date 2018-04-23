@@ -14,6 +14,7 @@
     to enforce the images to have the specified length in that file by padding
     white pixels (the --padding option will be ignored in this case). This relates
     to end2end chain training.
+
     eg. local/make_features.py data/train --feat-dim 40
 """
 
@@ -27,6 +28,8 @@ parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images
                                                 writes them to standard output in text format.""")
 parser.add_argument('dir', type=str,
                     help='Source data directory (containing images.scp)')
+parser.add_argument('--job', type=str, default='',
+                    help='JOB number of images.JOB.scp')
 parser.add_argument('--out-ark', type=str, default='-',
                     help='Where to write the output feature file')
 parser.add_argument('--feat-dim', type=int, default=40,
@@ -92,7 +95,10 @@ def horizontal_pad(im, allowed_lengths = None):
 
 
 ### main ###
-data_list_path = os.path.join(args.dir, 'images.scp')
+
+#data_list_path = os.path.join(args.dir, 'images.scp')
+scp_name = 'images.' + args.job + '.scp'  # parallel
+data_list_path = os.path.join(args.dir, scp_name)
 
 if args.out_ark == '-':
     out_fh = sys.stdout
