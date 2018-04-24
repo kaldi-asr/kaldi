@@ -521,6 +521,15 @@ void ChainSupervisionTest() {
     ChainTrainingTest(den_graph, supervision);
   }
 
+  // Test IO for supervisions which have transition id's as labels
+  if (!ProtoSupervisionToSupervision(*ctx_dep, *trans_model,
+                                     proto_sup1, false, &supervision)) {
+    KALDI_ERR << "Failed creating supervision with transition-ids as labels.";
+  } else {
+    supervision.Check(*trans_model);
+    TestSupervisionIo(supervision);
+  }
+
   delete ctx_dep;
   delete trans_model;
 }
