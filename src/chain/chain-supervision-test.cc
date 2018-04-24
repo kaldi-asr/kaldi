@@ -495,7 +495,7 @@ void ChainSupervisionTest() {
 
   Supervision supervision;
   if (!ProtoSupervisionToSupervision(*ctx_dep, *trans_model,
-                                     proto_sup1, &supervision)) {
+                                     proto_sup1, true, &supervision)) {
     // we shouldn't fail because we multiplied by
     // 'subsample_factor' when creating the duration.
     KALDI_ERR << "Failed creating supervision.";

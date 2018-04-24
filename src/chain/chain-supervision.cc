@@ -549,12 +549,10 @@ void Supervision::Write(std::ostream &os, bool binary) const {
   KALDI_ASSERT(frames_per_sequence > 0 && label_dim > 0 &&
                num_sequences > 0);
   bool e2e = !e2e_fsts.empty();
-  if (e2e) {
-    WriteToken(os, binary, "<End2End>");
-    // the following is of course redundant, but it's for back compatibility
-    // reasons.
-    WriteBasicType(os, binary, e2e);
-  }
+  WriteToken(os, binary, "<End2End>");
+  // the following is of course redundant, but it's for back compatibility
+  // reasons.
+  WriteBasicType(os, binary, e2e);
   if (!e2e) {
     if (binary == false) {
       // In text mode, write the FST without any compactification.
@@ -613,12 +611,8 @@ void Supervision::Read(std::istream &is, bool binary) {
   ExpectToken(is, binary, "<LabelDim>");
   ReadBasicType(is, binary, &label_dim);
   bool e2e;
-  if (PeekToken(is, binary) == 'E') {
-    ExpectToken(is, binary, "<End2End>");
-    ReadBasicType(is, binary, &e2e);
-  } else {
-    e2e = false;
-  }
+  ExpectToken(is, binary, "<End2End>");
+  ReadBasicType(is, binary, &e2e);
   if (!e2e) {
     if (!binary) {
       ReadFstKaldi(is, binary, &fst);
