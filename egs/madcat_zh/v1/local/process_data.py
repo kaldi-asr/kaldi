@@ -91,7 +91,7 @@ with open(args.data_splits) as f:
                         if line:
                             image_file_name = base_name + '_' + str(lineID).zfill(3) +'.tif'
                             image_file_path = os.path.join(args.database_path, 'lines', image_file_name)
-                            text = ' '.join(line)
+                            text = ' '.join(''.join(line))
                             utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_name + '_' + str(lineID).zfill(3)
                             text_fh.write(utt_id + ' ' + text + '\n')
                             utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
