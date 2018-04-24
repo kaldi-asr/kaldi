@@ -189,12 +189,8 @@ if [ $stage -le 9 ]; then
 fi
 
 if [ $stage -le 10 ]; then
-  # Treat each test utterance independently from the other test utterances of the same speaker
-  awk '{print $1, 1;}' <data/voxceleb2_test/utt2spk >exp/xvectors_voxceleb2_test/num_utts.ark
-
   $train_cmd exp/scores/log/voxceleb2_test_scoring.log \
     ivector-plda-scoring --normalize-length=true \
-    --num-utts=ark:exp/xvectors_voxceleb2_test/num_utts.ark \
     "ivector-copy-plda --smoothing=0.0 exp/xvectors_voxceleb2_train/plda - |" \
     "ark:ivector-subtract-global-mean exp/xvectors_voxceleb2_train/mean.vec scp:exp/xvectors_voxceleb2_test/xvector.scp ark:- | transform-vec exp/xvectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "ark:ivector-subtract-global-mean exp/xvectors_voxceleb2_train/mean.vec scp:exp/xvectors_voxceleb2_test/xvector.scp ark:- | transform-vec exp/xvectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \

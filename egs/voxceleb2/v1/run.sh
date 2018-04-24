@@ -56,7 +56,7 @@ fi
 if [ $stage -le 3 ]; then
   # Train the i-vector extractor.
   sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 20G" \
-    --ivector-dim 400 --num-iters 5 --stage 1 \
+    --ivector-dim 400 --num-iters 5 \
     exp/full_ubm/final.ubm data/voxceleb2_train \
     exp/extractor
 fi
@@ -96,12 +96,8 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  # Treat each test utterance independently from the other test utterances of the same speaker
-  awk '{print $1, 1;}' <data/voxceleb2_test/utt2spk >exp/ivectors_voxceleb2_test/num_utts.ark
-
   $train_cmd exp/scores/log/voxceleb2_test_scoring.log \
     ivector-plda-scoring --normalize-length=true \
-    --num-utts=ark:exp/ivectors_voxceleb2_test/num_utts.ark \
     "ivector-copy-plda --smoothing=0.0 exp/ivectors_voxceleb2_train/plda - |" \
     "ark:ivector-subtract-global-mean exp/ivectors_voxceleb2_train/mean.vec scp:exp/ivectors_voxceleb2_test/ivector.scp ark:- | transform-vec exp/ivectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "ark:ivector-subtract-global-mean exp/ivectors_voxceleb2_train/mean.vec scp:exp/ivectors_voxceleb2_test/ivector.scp ark:- | transform-vec exp/ivectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
