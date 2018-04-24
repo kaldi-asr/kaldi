@@ -21,13 +21,21 @@ decode_gmm=false
 ./local/check_tools.sh
 
 if [ $stage -le 0 ]; then
+  for dataset in test train dev; do
+    dataset_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.$dataset.raw.lineid
+    local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
+                           data/local/lines
+  done
+fi
+
+if [ $stage -le 1 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh
 fi
 
 mkdir -p data/{train,test,dev}/data
 
-if [ $stage -le 1 ]; then
+if [ $stage -le 2 ]; then
   for dataset in test train dev; do
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
     steps/compute_cmvn_stats.sh data/$dataset || exit 1;
@@ -35,33 +43,33 @@ if [ $stage -le 1 ]; then
   utils/fix_data_dir.sh data/train
 fi
 
-if [ $stage -le 2 ]; then
+if [ $stage -le 3 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
   local/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.95 \
     data/local/dict "<sil>" data/lang/temp data/lang
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang_test
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   steps/train_mono.sh --nj $nj --cmd $cmd --totgauss 10000 data/train \
     data/lang exp/mono
 fi
 
-if [ $stage -le 5 ] && $decode_gmm; then
+if [ $stage -le 6 ] && $decode_gmm; then
   utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
     exp/mono/decode_test
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
     exp/mono exp/mono_ali
 
@@ -69,14 +77,14 @@ if [ $stage -le 6 ]; then
     exp/mono_ali exp/tri
 fi
 
-if [ $stage -le 7 ] && $decode_gmm; then
+if [ $stage -le 8 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri exp/tri/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test \
     exp/tri/decode_test
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
     exp/tri exp/tri_ali
 
@@ -85,22 +93,22 @@ if [ $stage -le 8 ]; then
     data/train data/lang exp/tri_ali exp/tri3
 fi
 
-if [ $stage -le 9 ] && $decode_gmm; then
+if [ $stage -le 10 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/tri3/graph \
     data/test exp/tri3/decode_test
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
     data/train data/lang exp/tri3 exp/tri3_ali
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 12 ]; then
   local/chain/run_cnn_1a.sh
 fi
 
-if [ $stage -le 12 ]; then
+if [ $stage -le 13 ]; then
   local/chain/run_cnn_chainali_1b.sh --stage 2
 fi

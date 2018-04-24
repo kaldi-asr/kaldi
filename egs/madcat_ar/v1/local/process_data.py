@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright      2017  Chun Chieh Chang
-#                2017  Ashish Arora
+# Copyright  2018  Ashish Arora
 
 """ This script reads the extracted IAM database files and creates
     the following files (for the data subset selected via --dataset):
@@ -34,8 +33,8 @@ parser.add_argument('data_splits', type=str,
                     help='Path to file that contains the train/test/dev split information')
 parser.add_argument('out_dir', type=str,
                     help='directory location to write output files.')
-parser.add_argument('lines_dir', type=str,
-                    help='directory location of line images')
+parser.add_argument('images_scp_path', type=str,
+                    help='Path of images.scp file')
 args = parser.parse_args()
 
 
@@ -154,6 +153,17 @@ def read_text(madcat_file_path):
     return text_line_word_dict
 
 
+def get_line_image_location():
+    image_loc_dict = dict()  # Stores image base name and location
+    image_loc_vect = input_image_fh.read().strip().split("\n")
+    for line in image_loc_vect:
+        base_name = os.path.basename(line)
+        location_vect = line.split('/')
+        location = "/".join(location_vect[:-1])
+        image_loc_dict[base_name]=location
+    return image_loc_dict
+
+
 text_file = os.path.join(args.out_dir, 'text')
 text_fh = open(text_file, 'w', encoding='utf-8')
 utt2spk_file = os.path.join(args.out_dir, 'utt2spk')
@@ -164,7 +174,9 @@ image_fh = open(image_file, 'w', encoding='utf-8')
 data_path1 = args.database_path1
 data_path2 = args.database_path2
 data_path3 = args.database_path3
-line_images_path = args.lines_dir
+
+input_image_file = args.images_scp_path
+input_image_fh = open(input_image_file, 'r', encoding='utf-8')
 
 writing_condition_folder_list = args.database_path1.split('/')
 writing_condition_folder1 = ('/').join(writing_condition_folder_list[:5])
@@ -175,7 +187,6 @@ writing_condition_folder2 = ('/').join(writing_condition_folder_list[:5])
 writing_condition_folder_list = args.database_path3.split('/')
 writing_condition_folder3 = ('/').join(writing_condition_folder_list[:5])
 
-
 writing_conditions1 = os.path.join(writing_condition_folder1, 'docs', 'writing_conditions.tab')
 writing_conditions2 = os.path.join(writing_condition_folder2, 'docs', 'writing_conditions.tab')
 writing_conditions3 = os.path.join(writing_condition_folder3, 'docs', 'writing_conditions.tab')
@@ -183,6 +194,7 @@ writing_conditions3 = os.path.join(writing_condition_folder3, 'docs', 'writing_c
 wc_dict1 = parse_writing_conditions(writing_conditions1)
 wc_dict2 = parse_writing_conditions(writing_conditions2)
 wc_dict3 = parse_writing_conditions(writing_conditions3)
+image_loc_dict = get_line_image_location()
 
 image_num = 0
 with open(args.data_splits) as f:
@@ -206,7 +218,8 @@ with open(args.data_splits) as f:
                 base_name, b = base_name.split('.tif')
                 for lineID in sorted(text_line_word_dict):
                     updated_base_name = base_name + '_' + str(lineID).zfill(4) +'.tif'
-                    image_file_path = os.path.join(line_images_path, updated_base_name)
+                    location = image_loc_dict[updated_base_name]
+                    image_file_path = os.path.join(location, updated_base_name)
                     line = text_line_word_dict[lineID]
                     text = ' '.join(line)
                     utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_name + '_' + str(lineID).zfill(4)

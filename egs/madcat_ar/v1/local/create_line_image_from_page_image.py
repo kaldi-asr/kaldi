@@ -416,7 +416,7 @@ def set_line_image_data(image, line_id, image_file_name):
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_' + line_id.zfill(4)
     line_image_file_name = base_name + line_id + '.tif'
-    image_path = os.path.join(args.out_dir, line_image_file_name)
+    image_path = os.path.join(output_directory, line_image_file_name)
     #Temporary change
     #imgray_rev_arr = np.fliplr(image)
     #im = img_as_uint(imgray_rev_arr)
@@ -425,6 +425,7 @@ def set_line_image_data(image, line_id, image_file_name):
     imgray_rev_arr = np.fliplr(imgray)
     imgray_rev = toimage(imgray_rev_arr)
     imgray_rev.save(image_path)
+    image_fh.write(image_path + '\n')
 
 def get_line_images_from_page_image(image_file_name, madcat_file_path):
     """ Extracts the line image from page image.
@@ -577,19 +578,23 @@ data_path2 = args.database_path2
 data_path3 = args.database_path3
 
 writing_condition_folder_list = args.database_path1.split('/')
-writing_condition_folder1 = ('/').join(writing_condition_folder_list[:4])
+writing_condition_folder1 = ('/').join(writing_condition_folder_list[:5])
 
 writing_condition_folder_list = args.database_path2.split('/')
-writing_condition_folder2 = ('/').join(writing_condition_folder_list[:4])
+writing_condition_folder2 = ('/').join(writing_condition_folder_list[:5])
 
 writing_condition_folder_list = args.database_path3.split('/')
-writing_condition_folder3 = ('/').join(writing_condition_folder_list[:4])
+writing_condition_folder3 = ('/').join(writing_condition_folder_list[:5])
 
 splits_handle = open(args.data_splits, 'r')
 splits_data = splits_handle.read().strip().split('\n')
 
-padding = int(args.width_buffer)
+padding = int(args.padding)
 offset = int(padding // 2)
+
+output_directory = args.out_dir
+image_file = os.path.join(output_directory, 'images.scp')
+image_fh = open(image_file, 'w', encoding='utf-8')
 
 writing_conditions1 = os.path.join(writing_condition_folder1, 'docs', 'writing_conditions.tab')
 writing_conditions2 = os.path.join(writing_condition_folder2, 'docs', 'writing_conditions.tab')
