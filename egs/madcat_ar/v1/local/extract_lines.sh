@@ -1,12 +1,8 @@
 #!/bin/bash
+# Copyright   2018 Ashish Arora
 
 nj=4
 cmd=run.pl
-compress=true
-echo "$0 $@"
-
-. utils/parse_options.sh || exit 1;
-
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
@@ -15,21 +11,30 @@ test_split=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.test.raw
 dev_split=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.raw.lineid
 lines_dir=data/local/lines
 logdir=data/local/log
+echo "$0 $@"
 
-# make $lines_dir an absolute pathname
-lines_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $featdir ${PWD}`
+. ./cmd.sh
+. ./path.sh
+. ./utils/parse_options.sh || exit 1;
 
+data=$1
+featdir=$data/data
+scp=$data/images.scp
+logdir=$data/log
 scp=$dev_split
-echo $lines_dir
-echo $scp
+
+mkdir -p $logdir
+mkdir -p $featdir
+
+# make $featdir an absolute pathname
+featdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $featdir ${PWD}`
+lines_dir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $featdir ${PWD}`
 
 for n in $(seq $nj); do
     split_scps="$split_scps $logdir/lines.$n.scp"
 done
 
-echo $split_scps
-echo $logdir
-
+# split images.scp
 utils/split_scp.pl $scp $split_scps || exit 1;
 
 $cmd JOB=1:$nj $logdir/extract_lines.JOB.log \
