@@ -28,7 +28,6 @@ fi
 mkdir -p data/{train,test,dev}/data
 
 if [ $stage -le 1 ]; then
-  echo "$0: Preparing the test and train feature files..."
   for dataset in test train dev; do
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
     steps/compute_cmvn_stats.sh data/$dataset || exit 1;

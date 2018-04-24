@@ -12,9 +12,9 @@ stage=0
 decode_mbr=false
 stats=true
 beam=6
-word_ins_penalty=0.0,0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0,4.5,5.0,5.5,6.0,6.5,7.0,7.5,8.0,8.5,9.0,9.5
-min_lmwt=3
-max_lmwt=13
+word_ins_penalty=0.0,0.5,1.0
+min_lmwt=7
+max_lmwt=17
 iter=final
 #end configuration section.
 
