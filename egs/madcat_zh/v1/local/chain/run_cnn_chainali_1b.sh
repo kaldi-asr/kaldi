@@ -21,7 +21,7 @@ set -e -o pipefail
 stage=0
 
 nj=30
-train_set=train
+train_set=train_60
 gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
                 # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
@@ -241,5 +241,5 @@ if [ $stage -le 7 ]; then
     --extra-right-context-final 0 \
     --frames-per-chunk $frames_per_chunk \
     --nj $nj --cmd "$cmd" \
-    $dir/graph data/test $dir/decode_test || exit 1;
+    $dir/graph data/test_60 $dir/decode_test || exit 1;
 fi
