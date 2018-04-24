@@ -33,7 +33,7 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: Preparing the test and train feature files..."
   for dataset in test train dev; do
-    local/extract_feature.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
     steps/compute_cmvn_stats.sh data/$dataset || exit 1;
   done
   utils/fix_data_dir.sh data/train
