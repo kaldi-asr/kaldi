@@ -158,7 +158,7 @@ void TestSupervisionAppend(const TransitionModel &trans_model,
   for (int32 i = 0; i < num_append; i++)
     input[i] = &supervision;
   Supervision output;
-  AppendSupervision(input, &output);
+  MergeSupervision(input, &output);
   KALDI_ASSERT(output.frames_per_sequence ==
                supervision.frames_per_sequence &&
                output.num_sequences == num_append);
@@ -364,7 +364,7 @@ void TestSupervisionSplitting(const ContextDependency &ctx_dep,
     std::vector<const Supervision*> to_append(num_ranges);
     for (int32 i = 0; i < num_ranges; i++)
       to_append[i] = &(split_supervision[i]);
-    AppendSupervision(to_append, &reattached_supervision);
+    MergeSupervision(to_append, &reattached_supervision);
     ChainTrainingTest(den_graph, reattached_supervision);
     if (num_frames % frames_per_range == 0) {
       TestSupervisionReattached(trans_model,
@@ -495,7 +495,7 @@ void ChainSupervisionTest() {
 
   Supervision supervision;
   if (!ProtoSupervisionToSupervision(*ctx_dep, *trans_model,
-                                     proto_sup1, &supervision)) {
+                                     proto_sup1, true, &supervision)) {
     // we shouldn't fail because we multiplied by
     // 'subsample_factor' when creating the duration.
     KALDI_ERR << "Failed creating supervision.";
@@ -519,6 +519,15 @@ void ChainSupervisionTest() {
     KALDI_ASSERT(ans);
     // TODO: still have to test for appended sequences.
     ChainTrainingTest(den_graph, supervision);
+  }
+
+  // Test IO for supervisions which have transition id's as labels
+  if (!ProtoSupervisionToSupervision(*ctx_dep, *trans_model,
+                                     proto_sup1, false, &supervision)) {
+    KALDI_ERR << "Failed creating supervision with transition-ids as labels.";
+  } else {
+    supervision.Check(*trans_model);
+    TestSupervisionIo(supervision);
   }
 
   delete ctx_dep;
