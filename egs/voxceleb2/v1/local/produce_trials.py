@@ -20,25 +20,25 @@
 
 import sys
 
-fnutt = sys.argv[1]
-ftrial = open(sys.argv[2], 'w')
+utt2spk_file = sys.argv[1]
+trial_file = open(sys.argv[2], 'w')
 
-dictutt = {}
-for line in open(fnutt):
+utt_dict = {}
+for line in open(utt2spk_file):
   utt2spk = line.rstrip('\r\t\n ')
   utt, spk = utt2spk.split(' ')
-  if utt not in dictutt:
-    dictutt[utt] = spk
+  if utt not in utt_dict:
+    utt_dict[utt] = spk
 
-for line in open(fnutt):
+for line in open(utt2spk_file):
   utt2spk = line.rstrip('\r\t\n ')
   utt, spk = utt2spk.split(' ')
-  for target in dictutt:
+  for target in utt_dict:
     if target != utt:
-      if dictutt[target] == spk:
+      if utt_dict[target] == spk:
         trial = utt + ' ' + target + ' target'
       else:
         trial = utt + ' ' + target + ' nontarget'
-      ftrial.write(trial + '\n')
-  dictutt.pop(utt)
-ftrial.close()
+      trial_file.write(trial + '\n')
+  utt_dict.pop(utt)
+trial_file.close()

@@ -14,7 +14,7 @@ if (@ARGV != 3) {
 
 ($data_base, $dataset, $out_dir) = @ARGV;
 
-if("$dataset" ne "dev" && "$dataset" ne "test") {
+if ("$dataset" ne "dev" && "$dataset" ne "test") {
   die "dataset parameter must be 'dev' or 'test'!";
 }
 
@@ -22,20 +22,20 @@ opendir my $dh, "$data_base/$dataset/aac" or die "Cannot open directory: $!";
 my @spkr_dirs = grep {-d "$data_base/$dataset/aac/$_" && ! /^\.{1,2}$/} readdir($dh);
 closedir $dh;
 
-if(! -d "$out_dir") {
+if (! -d "$out_dir") {
   mkdir($out_dir) or die "Could not create director $!";
 }
-open(SPKR,">", "$out_dir/utt2spk") or die "Could not open the output file $out_dir/utt2spk";
-open(WAV,">", "$out_dir/wav.scp") or die "Could not open the output file $out_dir/wav.scp";
+open(SPKR, ">", "$out_dir/utt2spk") or die "Could not open the output file $out_dir/utt2spk";
+open(WAV, ">", "$out_dir/wav.scp") or die "Could not open the output file $out_dir/wav.scp";
 
-foreach(@spkr_dirs) {
+foreach (@spkr_dirs) {
   my $spkr_id = $_;
 
   opendir my $dh, "$data_base/$dataset/aac/$spkr_id/" or die "Cannot open directory: $!";
   my @rec_dirs = grep {-d "$data_base/$dataset/aac/$spkr_id/$_" && ! /^\.{1,2}$/} readdir($dh);
   closedir $dh;
 
-  foreach(@rec_dirs) {
+  foreach (@rec_dirs) {
     my $rec_id = $_;
 
     opendir my $dh, "$data_base/$dataset/aac/$spkr_id/$rec_id/" or die "Cannot open directory: $!";
@@ -45,14 +45,14 @@ foreach(@spkr_dirs) {
     foreach (@files) {
       my $name = $_;
       my $wav = "ffmpeg -v 8 -i $data_base/$dataset/aac/$spkr_id/$rec_id/$name.m4a -f wav -acodec pcm_s16le -|";
-      my $uttId = "$spkr_id-$rec_id-$name";
-      print WAV "$uttId"," $wav","\n";
-      print SPKR "$uttId"," $spkr_id","\n";
+      my $utt_id = "$spkr_id-$rec_id-$name";
+      print WAV "$utt_id", " $wav", "\n";
+      print SPKR "$utt_id", " $spkr_id", "\n";
     }
   }
 }
-close(SPKR) || die;
-close(WAV) || die;
+close(SPKR) or die;
+close(WAV) or die;
 
 if (system(
   "utils/utt2spk_to_spk2utt.pl $out_dir/utt2spk >$out_dir/spk2utt") != 0) {
