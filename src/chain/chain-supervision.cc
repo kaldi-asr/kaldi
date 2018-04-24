@@ -91,6 +91,9 @@ bool AlignmentToProtoSupervision(const SupervisionOptions &opts,
       num_frames_subsampled = (num_frames + factor - 1) / factor;
   proto_supervision->allowed_phones.clear();
   proto_supervision->allowed_phones.resize(num_frames_subsampled);
+  proto_supervision->allowed_boundary_phones.clear();
+  if (opts.boundary_tolerance >= 0)
+    proto_supervision->allowed_boundary_phones.resize(num_frames_subsampled);
   proto_supervision->fst.DeleteStates();
   if (num_frames_subsampled == 0)
     return false;
@@ -99,26 +102,48 @@ bool AlignmentToProtoSupervision(const SupervisionOptions &opts,
   for (int32 i = 0; i < num_phones; i++) {
     int32 phone = phones[i], duration = durations[i];
     KALDI_ASSERT(phone > 0 && duration > 0);
-    int32 t_start = std::max<int32>(0, (current_frame - opts.left_tolerance)),
-            t_end = std::min<int32>(num_frames,
-                                    (current_frame + duration + opts.right_tolerance)),
-       t_start_subsampled = (t_start + factor - 1) / factor,
-       t_end_subsampled = (t_end + factor - 1) / factor;
+    {  // Set up 'allowed_phones'
+      int32 t_begin = std::max<int32>(0, (current_frame - opts.left_tolerance)),
+          t_end = std::min<int32>(num_frames,
+                                  (current_frame + duration + opts.right_tolerance)),
+          t_begin_subsampled = (t_begin + factor - 1) / factor,
+          t_end_subsampled = (t_end + factor - 1) / factor;
 
-    // note: if opts.Check() passed, the following assert should pass too.
-    KALDI_ASSERT(t_end_subsampled > t_start_subsampled &&
-                 t_end_subsampled <= num_frames_subsampled);
-    for (int32 t_subsampled = t_start_subsampled;
-         t_subsampled < t_end_subsampled; t_subsampled++)
-      proto_supervision->allowed_phones[t_subsampled].push_back(phone);
+      // note: if opts.Check() passed, the following assert should pass too.
+      KALDI_ASSERT(t_end_subsampled > t_begin_subsampled &&
+                   t_end_subsampled <= num_frames_subsampled);
+      for (int32 t_subsampled = t_begin_subsampled;
+           t_subsampled < t_end_subsampled; t_subsampled++)
+        proto_supervision->allowed_phones[t_subsampled].push_back(phone);
+    }
+    if (opts.boundary_tolerance >= 0) {
+      // Set up 'allowed_boundary_phones'
+      int32 t_begin_b = std::max<int32>(0,
+                      (current_frame - opts.BoundaryLeftTolerance())),
+            t_end_b = std::min<int32>(num_frames,
+                      (current_frame + duration + opts.BoundaryRightTolerance())),
+          t_begin_subsampled_b = (t_begin_b + factor - 1) / factor,
+          t_end_subsampled_b = (t_end_b + factor - 1) / factor;
+      KALDI_ASSERT(t_end_subsampled_b > t_begin_subsampled_b &&
+                   t_end_subsampled_b <= num_frames_subsampled);
+      for (int32 t_subsampled = t_begin_subsampled_b;
+           t_subsampled < t_end_subsampled_b; t_subsampled++)
+        proto_supervision->allowed_boundary_phones[t_subsampled].push_back(phone);
+    }
     current_frame += duration;
   }
+
   KALDI_ASSERT(current_frame == num_frames);
   for (int32 t_subsampled = 0; t_subsampled < num_frames_subsampled;
        t_subsampled++) {
     KALDI_ASSERT(!proto_supervision->allowed_phones[t_subsampled].empty());
     SortAndUniq(&(proto_supervision->allowed_phones[t_subsampled]));
+    if (opts.boundary_tolerance >= 0) {
+      KALDI_ASSERT(!proto_supervision->allowed_boundary_phones[t_subsampled].empty());
+      SortAndUniq(&(proto_supervision->allowed_boundary_phones[t_subsampled]));
+    }
   }
+
   fst::MakeLinearAcceptor(phones, &(proto_supervision->fst));
   return true;
 }
@@ -166,6 +191,9 @@ bool PhoneLatticeToProtoSupervisionInternal(
 
   proto_supervision->allowed_phones.clear();
   proto_supervision->allowed_phones.resize(num_frames_subsampled);
+  proto_supervision->allowed_boundary_phones.clear();
+  if (opts.boundary_tolerance >= 0)
+    proto_supervision->allowed_boundary_phones.resize(num_frames_subsampled);
 
   for (int32 state = 0; state < num_states; state++) {
     int32 state_time = state_times[state];
@@ -179,20 +207,36 @@ bool PhoneLatticeToProtoSupervisionInternal(
         return false;
       }
       proto_supervision->fst.AddArc(state,
-        fst::StdArc(phone, phone,
-                    fst::TropicalWeight(
-                      lat_arc.weight.Weight().Value1()
-                      * opts.lm_scale),
-                    lat_arc.nextstate));
+                                    fst::StdArc(phone, phone,
+                                                fst::TropicalWeight(
+                                                    lat_arc.weight.Weight().Value1()
+                                                    * opts.lm_scale),
+                                                lat_arc.nextstate));
 
-      int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),
-              t_end = std::min<int32>(num_frames,
+      {  // Set up 'allowed_phones'
+        int32 t_begin = std::max<int32>(0, (state_time - opts.left_tolerance)),
+                t_end = std::min<int32>(num_frames,
                                       (next_state_time + opts.right_tolerance)),
-              t_begin_subsampled = (t_begin + factor - 1)/ factor,
-              t_end_subsampled = (t_end + factor - 1)/ factor;
-    for (int32 t_subsampled = t_begin_subsampled;
-         t_subsampled < t_end_subsampled; t_subsampled++)
-      proto_supervision->allowed_phones[t_subsampled].push_back(phone);
+   t_begin_subsampled = (t_begin + factor - 1)/ factor,
+     t_end_subsampled = (t_end + factor - 1)/ factor;
+        for (int32 t_subsampled = t_begin_subsampled;
+             t_subsampled < t_end_subsampled; t_subsampled++)
+          proto_supervision->allowed_phones[t_subsampled].push_back(phone);
+      }
+      if (opts.boundary_tolerance >= 0) {
+        // Set up 'allowed_boundary_phones'
+        int32 t_begin_b = std::max<int32>(0,
+                            (state_time - opts.BoundaryLeftTolerance())),
+            t_end_b = std::min<int32>(num_frames,
+                            (next_state_time + opts.BoundaryRightTolerance())),
+            t_begin_subsampled_b = (t_begin_b + factor - 1) / factor,
+            t_end_subsampled_b = (t_end_b + factor - 1) / factor;
+        KALDI_ASSERT(t_end_subsampled_b > t_begin_subsampled_b &&
+                     t_end_subsampled_b <= num_frames_subsampled);
+        for (int32 t_subsampled = t_begin_subsampled_b;
+             t_subsampled < t_end_subsampled_b; t_subsampled++)
+          proto_supervision->allowed_boundary_phones[t_subsampled].push_back(phone);
+      }
     }
     if (lat.Final(state) != CompactLatticeWeight::Zero()) {
       proto_supervision->fst.SetFinal(state, fst::TropicalWeight(
@@ -206,10 +250,15 @@ bool PhoneLatticeToProtoSupervisionInternal(
       }
     }
   }
+
   for (int32 t_subsampled = 0; t_subsampled < num_frames_subsampled;
        t_subsampled++) {
     KALDI_ASSERT(!proto_supervision->allowed_phones[t_subsampled].empty());
     SortAndUniq(&(proto_supervision->allowed_phones[t_subsampled]));
+    if (opts.boundary_tolerance >= 0) {
+      KALDI_ASSERT(!proto_supervision->allowed_boundary_phones[t_subsampled].empty());
+      SortAndUniq(&(proto_supervision->allowed_boundary_phones[t_subsampled]));
+    }
   }
   return true;
 }
@@ -223,7 +272,7 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
   if (opts.lm_scale != 0.0)
     fst::Push(&(proto_supervision->fst),
               fst::REWEIGHT_TO_INITIAL, fst::kDelta, true);
-  
+
   return true;
 }
 
@@ -240,7 +289,19 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
     // the olabel will be a pdf-id plus one, not a transition-id.
     int32 pdf_id = trans_model_.TransitionIdToPdf(ilabel);
     oarc->ilabel = ilabel;
-    oarc->olabel = pdf_id + 1;
+    if (allowed_boundary_phones_.empty() ||
+        std::binary_search(allowed_boundary_phones_[s].begin(),
+                           allowed_boundary_phones_[s].end(), phone)) {
+      // positive olabel, which will be interpreted by class SupervisionSplitter
+      // as "this arc is allowed even at the edges of chunks."
+      oarc->olabel = pdf_id + 1;
+    } else {
+      // negative olabel, which will be interpreted by class SupervisionSplitter
+      // as "this arc is allowed except at the edges of chunks."  Instead of
+      // -(pdf_id + 1), we have to use -(pdf_id + 2) to avoid the special symbol
+      // 'kNoSymbol = -1'.
+      oarc->olabel = -(pdf_id + 2);
+    }
     oarc->weight = fst::TropicalWeight::One();
     oarc->nextstate = s + 1;
     return true;
@@ -356,8 +417,14 @@ bool ProtoSupervisionToSupervision(
 
   // The last step is to enforce that phones can only appear on the frames they
   // are 'allowed' to appear on.  This will also convert the FST to have pdf-ids
-  // plus one as the labels
-  TimeEnforcerFst enforcer_fst(trans_model, proto_supervision.allowed_phones);
+  // plus one as the labels.
+  // (It will mark arcs that are not allowed to appear on chunk boundaries, by
+  // having negated labels, if 'boundary_tolerance' was specified by the user).
+  TimeEnforcerFst enforcer_fst(trans_model,
+                               proto_supervision.allowed_phones,
+                               proto_supervision.allowed_boundary_phones);
+
+
   ComposeDeterministicOnDemand(transition_id_fst,
                                &enforcer_fst,
                                &(supervision->fst));
@@ -414,8 +481,9 @@ SupervisionSplitter::SupervisionSplitter(
     for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state);
          !aiter.Done(); aiter.Next()) {
       const fst::StdArc &arc = aiter.Value();
-      // The FST is supposed to be an epsilon-free acceptor.
-      KALDI_ASSERT(arc.ilabel == arc.olabel && arc.ilabel > 0);
+      // The FST is supposed to be an epsilon-free acceptor, but
+      // some labels may be negative if --boundary-tolerance is set.
+      KALDI_ASSERT(arc.ilabel == arc.olabel && arc.ilabel != 0);
       int32 nextstate = arc.nextstate;
       KALDI_ASSERT(nextstate >= 0 && nextstate < num_states);
       // all arcs go from some t to t + 1.
@@ -508,23 +576,35 @@ void SupervisionSplitter::CreateRangeFst(
     } else {
       KALDI_ASSERT(frame_[state] < end_frame);
     }
+    // 'is_boundary_frame' will be true if the arc we are about to process is
+    // going to be an initial or final arc within the chunk.
+    bool is_boundary_frame = (frame_[state] == begin_frame ||
+                              frame_[state] + 1 == end_frame);
     typedef fst::ArcIterator<fst::StdVectorFst> IterType;
     for (IterType aiter(supervision_.fst, state); !aiter.Done(); aiter.Next()) {
       const fst::StdArc &arc(aiter.Value());
+      if (is_boundary_frame && arc.ilabel < 0) {
+        // We should reach this point only if the user has specified a
+        // nonnegative '--boundary-tolerance' value less than --left-tolerance
+        // or --right-tolerance.  Search for 'boundary' in this file to find
+        // relevant code and comments.
+        continue;
+      }
       int32 nextstate = arc.nextstate;
+      // note: arc.ilabel should equal arc.olabel.  We need to reconstruct the
+      // (pdf-id + 1) ('label' in the code below) from 'arc.ilabel' because it
+      // may have been set to -(pdf-id + 2) by some code that we use to enforce
+      // --boundary-tolerance.
+      int32 label = arc.ilabel < 0 ? -(arc.ilabel + 1) : arc.ilabel;
       if (nextstate >= end_state) {
         // A transition to any state outside the range becomes a transition to
         // our special final-state.
         fst->AddArc(output_state,
-                    fst::StdArc(arc.ilabel, arc.olabel,
-                                arc.weight, final_state));
+                    fst::StdArc(label, label, arc.weight, final_state));
       } else {
         int32 output_nextstate = arc.nextstate - begin_state + 1;
-        // note: arc.ilabel should equal arc.olabel and arc.weight should equal
-        // fst::TropicalWeight::One().
         fst->AddArc(output_state,
-                    fst::StdArc(arc.ilabel, arc.olabel,
-                                arc.weight, output_nextstate));
+                    fst::StdArc(label, label, arc.weight, output_nextstate));
       }
     }
   }
@@ -833,60 +913,6 @@ bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
   KALDI_ASSERT(supervision->fst.Properties(fst::kAcceptor, true) == fst::kAcceptor);
   KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
   return true;
-}
-
-void SplitIntoRanges(int32 num_frames,
-                     int32 frames_per_range,
-                     std::vector<int32> *range_starts) {
-  if (frames_per_range > num_frames) {
-    range_starts->clear();
-    return;  // there is no room for even one range.
-  }
-  int32 num_ranges = num_frames  / frames_per_range,
-      extra_frames = num_frames % frames_per_range;
-  // this is a kind of heuristic.  If the number of frames we'd
-  // be skipping is less than 1/4 of the frames_per_range, then
-  // skip frames; otherwise, duplicate frames.
-  // it's important that this is <=, not <, so that if
-  // extra_frames == 0 and frames_per_range is < 4, we
-  // don't insert an extra range.
-  if (extra_frames <= frames_per_range / 4) {
-    // skip frames.  we do this at start or end, or between ranges.
-    std::vector<int32> num_skips(num_ranges + 1, 0);
-    for (int32 i = 0; i < extra_frames; i++)
-      num_skips[RandInt(0, num_ranges)]++;
-    range_starts->resize(num_ranges);
-    int32 cur_start = num_skips[0];
-    for (int32 i = 0; i < num_ranges; i++) {
-      (*range_starts)[i] = cur_start;
-      cur_start += frames_per_range;
-      cur_start += num_skips[i + 1];
-    }
-    KALDI_ASSERT(cur_start == num_frames);
-  } else {
-    // duplicate frames.
-    num_ranges++;
-    int32 num_duplicated_frames = frames_per_range - extra_frames;
-    // the way we handle the 'extra_frames' frames of output is that we
-    // backtrack zero or more frames between outputting each pair of ranges, and
-    // the total of these backtracks equals 'extra_frames'.
-    std::vector<int32> num_backtracks(num_ranges, 0);
-    for (int32 i = 0; i < num_duplicated_frames; i++) {
-      // num_ranges - 2 below is not a bug.  we only want to backtrack
-      // between ranges, not past the end of the last range (i.e. at
-      // position num_ranges - 1).  we make the vector one longer to
-      // simplify the loop below.
-      num_backtracks[RandInt(0, num_ranges - 2)]++;
-    }
-    range_starts->resize(num_ranges);
-    int32 cur_start = 0;
-    for (int32 i = 0; i < num_ranges; i++) {
-      (*range_starts)[i] = cur_start;
-      cur_start += frames_per_range;
-      cur_start -= num_backtracks[i];
-    }
-    KALDI_ASSERT(cur_start == num_frames);
-  }
 }
 
 bool Supervision::operator == (const Supervision &other) const {

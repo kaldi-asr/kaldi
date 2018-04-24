@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2015 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
+# Copyright 2012-2018 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #
 # This script, which will generally be called from other neural-net training
 # scripts, extracts the training examples used to train the 'chain' system
@@ -48,6 +48,7 @@ frames_per_iter=400000 # each iteration of training, see this many frames per
 
 right_tolerance=  # chain right tolerance == max label delay.
 left_tolerance=
+boundary_tolerance=
 
 stage=0
 max_jobs_run=15         # This should be set to the maximum number of nnet3-chain-get-egs jobs you are
@@ -273,9 +274,10 @@ egs_opts="--left-context=$left_context --right-context=$right_context --num-fram
 chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$alignment_subsampling_factor"
 [ ! -z $right_tolerance ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --right-tolerance=$right_tolerance"
-
 [ ! -z $left_tolerance ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance=$left_tolerance"
+[ ! -z $boundary_tolerance ] && \
+  chain_supervision_all_opts="$chain_supervision_all_opts --boundary-tolerance=$boundary_tolerance"
 
 lats_rspecifier="ark:gunzip -c $latdir/lat.JOB.gz |"
 if [ ! -z $lattice_prune_beam ]; then

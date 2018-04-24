@@ -49,21 +49,35 @@ namespace chain {
 struct SupervisionOptions {
   int32 left_tolerance;
   int32 right_tolerance;
+  int32 boundary_tolerance;
   int32 frame_subsampling_factor;
   BaseFloat weight;
   BaseFloat lm_scale;
 
   SupervisionOptions(): left_tolerance(5),
                         right_tolerance(5),
+                        boundary_tolerance(-1),
                         frame_subsampling_factor(1),
                         weight(1.0),
                         lm_scale(0.0) { }
+
+  int32 BoundaryLeftTolerance() const {
+    return (boundary_tolerance >= 0 ? boundary_tolerance : left_tolerance);
+  }
+  int32 BoundaryRightTolerance() const {
+    return (boundary_tolerance >= 0 ? boundary_tolerance : right_tolerance);
+  }
 
   void Register(OptionsItf *opts) {
     opts->Register("left-tolerance", &left_tolerance, "Left tolerance for "
                    "shift in phone position relative to the alignment");
     opts->Register("right-tolerance", &right_tolerance, "Right tolerance for "
                    "shift in phone position relative to the alignment");
+    opts->Register("boundary-tolerance", &boundary_tolerance, "If set to >= 0, "
+                   "this will be used in place of left-tolerance and "
+                   "right-tolerance for the first and last frame of chunks... it "
+                   "allows us to tolerate less time deviation from the "
+                   "supervision, at the edges of chunks.");
     opts->Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
                    "if the frame-rate for the chain model will be less than the "
                    "frame-rate of the original alignment.  Applied after "
@@ -92,6 +106,12 @@ struct ProtoSupervision {
   // on each frame.  number of frames is allowed_phones.size(), which
   // will equal the path length in 'fst'.
   std::vector<std::vector<int32> > allowed_phones;
+
+  // allowed_boundary_phones is a list of phones that are allowed if
+  // this is the first or last frame of a chunk; this will always be
+  // a subset of allowed_phones, and may be a strict subset of
+  // allowed_phones
+  std::vector<std::vector<int32> > allowed_boundary_phones;
 
   // The FST of phones; an epsilon-free acceptor.
   fst::StdVectorFst fst;
@@ -163,12 +183,24 @@ void ModifyProtoSupervisionTimes(const SupervisionOptions &options,
    is what we'll be using in the forward-backward (it avoids the need to
    keep the transition model around).
 
-   Suppose the number of frames is T, then there will be T+1 states in
-   this FST, numbered from 0 to T+1, where state 0 is initial and state
-   T+1 is final.  A transition is only allowed from state t to state t+1
-   with a particular transition-id as its ilabel, if the corresponding
-   phone is listed in the 'allowed_phones' for that frame.  The olabels
-   are pdf-ids plus one.
+   In the current version of the code, there are two versions of 'allowed' phones.
+   There are 'allowed_phones' which are allowed on normal frames, and the
+   possibly-smaller set 'allowed_boundary_phones', which are allowed on split points where we
+   split the file into chunks.  The idea is that we may want to be more lax about enforcing
+   the phones to be on particular frames, *inside* chunks than we are at the boundaries,
+   to prevent phones from being deleted that really should have been emitted.
+
+   Suppose the number of frames is T, then there will be T+1 states in this FST,
+   numbered from 0 to T+1, where state 0 is initial and state T+1 is final.  A
+   transition is only allowed from state t to state t+1 with a particular
+   transition-id as its ilabel, if the corresponding phone is listed in the
+   'allowed_phones' for that frame.  The olabels are pdf-ids plus one.
+   The cost on the arc will be 0.0 if the phone is in 'allowed_boundary_phones',
+   and 1.0 otherwise.  Later on, these won't be treated as real costs; class
+   SupervisionSplitter will interpret them as a kind of boolean flag and will
+   remove them as costs.  As a special case, if 'allowed_boundary_phones' is
+   the empty vector, it is treated the same as if it were equal to
+   'allowed_phones'.
  */
 class TimeEnforcerFst:
       public fst::DeterministicOnDemandFst<fst::StdArc> {
@@ -178,9 +210,11 @@ class TimeEnforcerFst:
   typedef fst::StdArc::Label Label;
 
   TimeEnforcerFst(const TransitionModel &trans_model,
-                  const std::vector<std::vector<int32> > &allowed_phones):
+                  const std::vector<std::vector<int32> > &allowed_phones,
+                  const std::vector<std::vector<int32> > &allowed_boundary_phones):
       trans_model_(trans_model),
-      allowed_phones_(allowed_phones) { }
+      allowed_phones_(allowed_phones),
+      allowed_boundary_phones_(allowed_boundary_phones) { }
 
   // We cannot use "const" because the pure virtual function in the interface is
   // not const.
@@ -200,6 +234,7 @@ class TimeEnforcerFst:
  private:
   const TransitionModel &trans_model_;
   const std::vector<std::vector<int32> > &allowed_phones_;
+  const std::vector<std::vector<int32> > &allowed_boundary_phones_;
 };
 
 
@@ -229,10 +264,18 @@ struct Supervision {
 
   // This is an epsilon-free unweighted acceptor that is sorted in increasing
   // order of frame index (this implies it's topologically sorted but it's a
-  // stronger condition).  The labels are pdf-ids plus one (to avoid epsilons,
+  // stronger condition).  The labels are pdf-ids plus one* (to avoid epsilons,
   // since pdf-ids are zero-based).  Each successful path in 'fst' has exactly
   // 'frames_per_sequence * num_sequences' arcs on it (first 'frames_per_sequence' arcs for the
   // first sequence; then 'frames_per_sequence' arcs for the second sequence, and so on).
+  //
+  // * However, if this is a supervision prior to splitting (as output from
+  // chain-get-supervision), and the --boundary-tolerance option is set by the
+  // user, for arcs which are within the left-tolerance/right-tolerance but
+  // outside the boundar-tolerance, the labels will be -(pdf_id + 2).  This will
+  // be interpreted by the supervision-splitting code as, "don't allow these
+  // arcs if they are on the first or last frame of a chunk", which is our way
+  // to enforce tighter time tolerances at chunk boundaries.
   fst::StdVectorFst fst;
 
   // if the 'e2e' flag is set to true, it means that this supervision is meant
@@ -400,18 +443,6 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
 void AppendSupervision(const std::vector<const Supervision*> &input,
                        Supervision *output_supervision);
 
-
-/// This function helps you to pseudo-randomly split a sequence of length 'num_frames',
-/// interpreted as frames 0 ... num_frames - 1, into pieces of length exactly
-/// 'frames_per_range', to be used as examples for training.  Because frames_per_range
-/// may not exactly divide 'num_frames', this function will leave either small gaps or
-/// small overlaps in pseudo-random places.
-/// The output 'range_starts' will be set to a list of the starts of ranges, the
-/// output ranges are of the form
-/// [ (*range_starts)[i] ... (*range_starts)[i] + frames_per_range - 1 ].
-void SplitIntoRanges(int32 num_frames,
-                     int32 frames_per_range,
-                     std::vector<int32> *range_starts);
 
 
 /// This utility function is not used directly in the 'chain' code.  It is used

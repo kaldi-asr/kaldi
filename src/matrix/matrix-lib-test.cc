@@ -27,7 +27,7 @@
 #include "util/stl-utils.h"
 #include <numeric>
 #include <time.h> // This is only needed for UnitTestSvdSpeed, you can
-// comment it (and that function) out if it causes problems.  
+// comment it (and that function) out if it causes problems.
 #include <matrix/cblas-wrappers.h>
 
 namespace kaldi {
@@ -4585,6 +4585,7 @@ template<typename Real> static void UnitTestTriVecSolver() {
 }
 
 
+
 template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestLinearCgd<Real>();
   UnitTestGeneralMatrix<BaseFloat>();
@@ -4735,6 +4736,32 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
 }
 
 
+double ErrorInOrthogonality(const Matrix<double> &M) {
+  int32 num_rows = M.NumRows();
+  SpMatrix<double> P(num_rows);
+  P.AddMat2(1.0, M, kNoTrans, 0.0);
+  P.AddToDiag(-1.0);
+  return sqrt(TraceSpSp(P, P));
+}
+
+void InitRandSemiOrthogonal(Matrix<double> *M) {
+  int32 num_rows = M->NumRows();
+  for (int32 r = 0; r < num_rows; r++) {
+    SubVector<double> v(*M, r);
+    v.SetRandn();
+    for (int32 s = 0; s < r; s++) {
+      SubVector<double> w(*M, s);
+      double dot_prod = VecVec(v, w);
+      v.AddVec(-dot_prod, w);
+    }
+    v.Scale(1.0 / sqrt(VecVec(v, v)));
+  }
+  SpMatrix<double> P(num_rows);
+  P.AddMat2(1.0, *M, kNoTrans, 0.0);
+  KALDI_ASSERT(P.IsUnit(1.0e-05));
+  KALDI_ASSERT(ErrorInOrthogonality(*M) < 1.0e-05);
+}
+
 
 }
 
@@ -4742,6 +4769,30 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
 int main() {
   using namespace kaldi;
   bool full_test = false;
+
+  { // TEMP
+    double errors[3] = { 1.0e-02, 1.0e-04, 1.0e-06 };
+    for (int32 i = 0; i < 3; i++) {
+      double error = errors[i];
+      int32 num_rows = 10, num_cols = 100;
+      Matrix<double> M(num_rows, num_cols), N(num_rows, num_cols);
+      InitRandSemiOrthogonal(&M);
+      InitRandSemiOrthogonal(&N);
+      M.AddMat(error, N);
+      KALDI_LOG << "Error in orthogonality is " << ErrorInOrthogonality(M);
+
+      SpMatrix<double> P(num_rows);
+      P.AddMat2(1.0, M, kNoTrans, 0.0);
+      P.AddToDiag(-1.0); // P is now M M^T - I.
+      Matrix<double> M_copy(M);
+      M.AddSpMat(-0.5, P, M_copy, kNoTrans, 1.0);
+      KALDI_LOG << "Error in orthogonality after fix is " << ErrorInOrthogonality(M);
+    }
+  }
+  exit(0);
+
+
+
   SetVerboseLevel(5);
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);

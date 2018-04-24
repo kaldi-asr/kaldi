@@ -427,5 +427,6 @@ int main() {
     fst::TestEqualAlign<fst::StdArc>();
     fst::TestEqualAlign<fst::LogArc>();
     fst::TestRemoveUselessArcs<fst::StdArc>();
+    int32 i = fst::kNoSymbol;
   }
 }
