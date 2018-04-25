@@ -1,10 +1,7 @@
 #!/bin/bash
 
-# This script is based on swbd/s5c/local/nnet3/run_tdnn.sh
-
-# this is the standard "tdnn" system, built in nnet3; it's what we use to
-# call multi-splice.
 # exp 1a: original baseline
+#         (deprecated because since Kaldi 5.2 make_configs.py is no longer usable)
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,

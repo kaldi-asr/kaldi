@@ -1,11 +1,17 @@
 #!/bin/bash
+# Copyright 2018 Emotech LTD (Author: Xuechen Liu)
 
-# This script is based on swbd/s5c/local/nnet3/run_tdnn.sh
+# exp 2a: change the step of making configs, using xconfig with
+#         minor changes on training configs, referencing wsj
 
-# this is the standard "tdnn" system, built in nnet3; it's what we use to
-# call multi-splice.
-# exp 2a: change the step of making configs, using xconfig
-#         minor changes on training parameters, referencing wsj
+# Results:
+# local/nnet3/compare_wer_general.sh --online exp/nnet3/tdnn_sp_pr43_2a
+# Model                tdnn_sp_pr43_2a
+# WER(%)                    32.86
+# WER(%)[online]            33.08
+# WER(%)[per-utt]           34.51
+# Final train prob        -1.2331
+# Final valid prob        -1.6510
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,

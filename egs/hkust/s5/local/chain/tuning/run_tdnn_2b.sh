@@ -1,8 +1,19 @@
 #!/bin/bash
+# Copyright 2018  Emotech LTD (Author: Xuechen Liu)
 
 # This script is based on run_tdnn_7h.sh in swbd chain recipe.
 # exp 2b: compared to 2a, it changes frames_per_eg from a contant to a
-# list of number, separated by comma
+#         list of number, separated by comma
+
+# Results
+# local/nnet3/compare_wer_general.sh --online exp/chain/tdnn_7h_chain_2b_sp
+# Model                tdnn_7h_chain_2b_sp
+# WER(%)                    29.96
+# WER(%)[online]            29.98
+# WER(%)[per-utt]           31.31
+# Final train prob        -0.1136
+# Final valid prob        -0.1761
+
 
 set -e
 

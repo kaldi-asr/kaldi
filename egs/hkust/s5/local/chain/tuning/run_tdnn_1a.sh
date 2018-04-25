@@ -2,6 +2,7 @@
 
 # This script is based on run_tdnn_7h.sh in swbd chain recipe.
 # exp 1a: original baseline
+#         (deprecated because since Kaldi 5.2 make_configs.py is no longer usable)
 
 set -e
 
