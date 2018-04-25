@@ -41,6 +41,7 @@ uint64  RandInt64() {
 }
 #define MAX_NGRAM 5+1
 #define RAND_TYPE int64
+#define HASH_REDUNDANT 0.5
 class FasterArpaLm {
  public:
 
@@ -308,7 +309,7 @@ class FasterArpaLm {
       if (i == 0) ngrams_hashed_size_[i] = symbol_size_; // uni-gram
       else {
         ngrams_hashed_size_[i] = (1<<(int)ceil(log(ngram_count[i]) / 
-                                 M_LN2 + 0.5));
+                                 M_LN2 + HASH_REDUNDANT));
       }
       KALDI_VLOG(2) << "ngram: "<< i+1 <<" hashed_size/size = "<< 
         1.0 * ngrams_hashed_size_[i] / ngram_count[i]<<" "<<ngram_count[i];
