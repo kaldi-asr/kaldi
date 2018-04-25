@@ -116,7 +116,7 @@ struct FeatureWindowFunction {
    file with the given number of samples in it (assumed to have the same
    sampling rate as specified in 'opts').
 
-      @param [in] wave_length  The number of samples in the wave file.
+      @param [in] num_samples  The number of samples in the wave file.
       @param [in] opts     The frame-extraction options class
 
       @param [in] flush   True if we are asserting that this number of samples is

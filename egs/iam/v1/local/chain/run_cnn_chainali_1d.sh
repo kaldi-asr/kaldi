@@ -1,21 +1,20 @@
 #!/bin/bash
 
-# e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
-# lattice alignments and to build a tree
+# chainali_1d is as chainali_1c except it uses unconstrained egs
 
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a exp/chain/cnn_chainali_1c exp/chain/cnn_e2eali_1a
-# System                      e2e_cnn_1a cnn_chainali_1c cnn_e2eali_1a
-# WER                             14.05     13.14     12.79
-# CER                              6.59      6.40      5.73
-# Final train prob              -0.0349   -0.0260   -0.0556
-# Final valid prob              -0.0595   -0.0451   -0.0795
-# Final train prob (xent)                 -0.9993   -0.9178
-# Final valid prob (xent)                 -1.1549   -1.0604
-# Parameters                      9.13M     3.97M     3.95M
+# local/chain/compare_wer.sh /home/hhadian/kaldi-rnnlm/egs/iam/v1/exp/chain/cnn_chainali_1c exp/chain/cnn_chainali_1d
+# System                      cnn_chainali_1c cnn_chainali_1d
+# WER                             13.14     12.33
+# CER                              6.40      5.72
+# Final train prob              -0.0260   -0.0037
+# Final valid prob              -0.0451   -0.0132
+# Final train prob (xent)       -0.9993   -0.8647
+# Final valid prob (xent)       -1.1549   -1.0101
+# Parameters                      3.97M     3.97M
 
+# steps/info/chain_dir_info.pl exp/chain/cnn_chainali_1d
+# exp/chain/cnn_chainali_1d: num-iters=21 nj=2..4 num-params=4.0M dim=40->376 combine=-0.002->-0.002 (over 1) xent:train/valid[13,20,final]=(-1.66,-1.01,-0.865/-1.72,-1.12,-1.01) logprob:train/valid[13,20,final]=(-0.058,-0.019,-0.004/-0.055,-0.027,-0.013)
 
-# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1a
-# exp/chain/cnn_e2eali_1a: num-iters=21 nj=2..4 num-params=4.0M dim=40->360 combine=-0.056->-0.056 (over 1) xent:train/valid[13,20,final]=(-1.47,-0.978,-0.918/-1.54,-1.10,-1.06) logprob:train/valid[13,20,final]=(-0.106,-0.065,-0.056/-0.113,-0.086,-0.079)
 
 set -e -o pipefail
 
@@ -23,9 +22,12 @@ stage=0
 
 nj=30
 train_set=train
+gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
+                # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1a
+affix=_1c_uc  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+ali=tri3_ali
+chain_model_dir=exp/chain${nnet3_affix}/cnn_1a_uc
 common_egs_dir=
 reporting_email=
 
@@ -42,7 +44,7 @@ chunk_right_context=0
 tdnn_dim=450
 # training options
 srand=0
-remove_egs=true
+remove_egs=false
 lang_test=lang_unk
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -61,17 +63,20 @@ where "nvcc" is installed.
 EOF
 fi
 
-ali_dir=exp/chain/e2e_ali_train
-lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats
-dir=exp/chain${nnet3_affix}/cnn_e2eali${affix}
+gmm_dir=exp/${gmm}
+ali_dir=exp/${ali}
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain
+gmm_lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
+dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
 train_data_dir=data/${train_set}
-tree_dir=exp/chain${nnet3_affix}/tree_e2e
+tree_dir=exp/chain${nnet3_affix}/tree_chain
 
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
 lang=data/lang_chain
-for f in $train_data_dir/feats.scp $ali_dir/ali.1.gz $ali_dir/final.mdl; do
+for f in $train_data_dir/feats.scp \
+    $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -105,8 +110,8 @@ if [ $stage -le 2 ]; then
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
                             --acoustic-scale 1.0 \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            ${train_data_dir} data/lang $e2echain_model_dir $lat_dir
-  echo "" >$lat_dir/splice_opts
+                            ${train_data_dir} data/lang $chain_model_dir $lat_dir
+  cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
 
 if [ $stage -le 3 ]; then
@@ -114,14 +119,12 @@ if [ $stage -le 3 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-  if [ -f $tree_dir/final.mdl ]; then
-    echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-    exit 1;
+   if [ -f $tree_dir/final.mdl ]; then
+     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+     exit 1;
   fi
-
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
-    --alignment-subsampling-factor 1 \
     --context-opts "--context-width=2 --central-position=1" \
     --cmd "$cmd" $num_leaves ${train_data_dir} \
     $lang $ali_dir $tree_dir
@@ -210,7 +213,7 @@ if [ $stage -le 5 ]; then
     --egs.chunk-left-context-initial=0 \
     --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0" \
+    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \

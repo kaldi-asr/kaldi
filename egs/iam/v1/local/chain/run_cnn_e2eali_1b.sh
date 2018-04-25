@@ -1,21 +1,19 @@
 #!/bin/bash
 
-# e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
-# lattice alignments and to build a tree
+# e2eali_1b is the same as e2eali_1a but uses unconstrained egs
 
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a exp/chain/cnn_chainali_1c exp/chain/cnn_e2eali_1a
-# System                      e2e_cnn_1a cnn_chainali_1c cnn_e2eali_1a
-# WER                             14.05     13.14     12.79
-# CER                              6.59      6.40      5.73
-# Final train prob              -0.0349   -0.0260   -0.0556
-# Final valid prob              -0.0595   -0.0451   -0.0795
-# Final train prob (xent)                 -0.9993   -0.9178
-# Final valid prob (xent)                 -1.1549   -1.0604
-# Parameters                      9.13M     3.97M     3.95M
+# local/chain/compare_wer.sh /home/hhadian/kaldi-rnnlm/egs/iam/v1/exp/chain/cnn_e2eali_1a exp/chain/cnn_e2eali_1b
+# System                      cnn_e2eali_1a cnn_e2eali_1b
+# WER                             12.79     12.23
+# CER                              5.73      5.48
+# Final train prob              -0.0556   -0.0367
+# Final valid prob              -0.0795   -0.0592
+# Final train prob (xent)       -0.9178   -0.8382
+# Final valid prob (xent)       -1.0604   -0.9853
+# Parameters                      3.95M     3.95M
 
-
-# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1a
-# exp/chain/cnn_e2eali_1a: num-iters=21 nj=2..4 num-params=4.0M dim=40->360 combine=-0.056->-0.056 (over 1) xent:train/valid[13,20,final]=(-1.47,-0.978,-0.918/-1.54,-1.10,-1.06) logprob:train/valid[13,20,final]=(-0.106,-0.065,-0.056/-0.113,-0.086,-0.079)
+# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
+# exp/chain/cnn_e2eali_1b: num-iters=21 nj=2..4 num-params=4.0M dim=40->360 combine=-0.038->-0.038 (over 1) xent:train/valid[13,20,final]=(-1.34,-0.967,-0.838/-1.40,-1.07,-0.985) logprob:train/valid[13,20,final]=(-0.075,-0.054,-0.037/-0.083,-0.072,-0.059)
 
 set -e -o pipefail
 
@@ -24,7 +22,7 @@ stage=0
 nj=30
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1a
 common_egs_dir=
 reporting_email=
@@ -107,6 +105,8 @@ if [ $stage -le 2 ]; then
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                             ${train_data_dir} data/lang $e2echain_model_dir $lat_dir
   echo "" >$lat_dir/splice_opts
+
+  stage=4
 fi
 
 if [ $stage -le 3 ]; then
@@ -210,7 +210,7 @@ if [ $stage -le 5 ]; then
     --egs.chunk-left-context-initial=0 \
     --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0" \
+    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \

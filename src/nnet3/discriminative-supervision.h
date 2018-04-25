@@ -222,7 +222,7 @@ class DiscriminativeSupervisionSplitter {
 /// normal use-case for this is when you are combining neural-net examples for
 /// training; appending them like this helps to simplify the training process.
 
-void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &input,
+void MergeSupervision(const std::vector<const DiscriminativeSupervision*> &input,
     DiscriminativeSupervision *output_supervision);
 
 

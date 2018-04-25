@@ -399,7 +399,7 @@ void DiscriminativeSupervisionSplitter::ComputeLatticeScores(const Lattice &lat,
   // This check will fail if the lattice is not breadth-first search sorted
 }
 
-void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &input,
+void MergeSupervision(const std::vector<const DiscriminativeSupervision*> &input,
     DiscriminativeSupervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
   int32 num_inputs = input.size();

@@ -7,6 +7,7 @@
 set -e
 stage=0
 nj=20
+decode_gmm=false
 username=
 password=
 # iam_database points to the database path on the JHU grid. If you have not
@@ -14,6 +15,11 @@ password=
 # like "data/download" and follow the instructions
 # in "local/prepare_data.sh" to download the database:
 iam_database=/export/corpora5/handwriting_ocr/IAM
+# wellington_database points to the database path on the JHU grid. The Wellington
+# corpus contains two directories WWC and WSC (Wellington Written and Spoken Corpus).
+# This corpus is of written NZ English that can be purchased here:
+# "https://www.victoria.ac.nz/lals/resources/corpora-default"
+wellington_database=/export/corpora5/Wellington/WWC/
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -26,6 +32,7 @@ iam_database=/export/corpora5/handwriting_ocr/IAM
 if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$iam_database" \
+    --wellington-dir "$wellington_database" \
     --username "$username" --password "$password"
 fi
 mkdir -p data/{train,test}/data
@@ -78,7 +85,7 @@ if [ $stage -le 4 ]; then
     data/lang exp/mono
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 5 ] && $decode_gmm; then
   utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
@@ -93,7 +100,7 @@ if [ $stage -le 6 ]; then
     exp/mono_ali exp/tri
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 7 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri exp/tri/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test \
@@ -109,7 +116,7 @@ if [ $stage -le 8 ]; then
     data/train data/lang exp/tri_ali exp/tri2
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 9 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/tri2/graph \
@@ -124,7 +131,7 @@ if [ $stage -le 10 ]; then
     data/train data/lang exp/tri2_ali exp/tri3
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 11 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
 
   steps/decode_fmllr.sh --nj $nj --cmd $cmd exp/tri3/graph \
@@ -137,7 +144,7 @@ if [ $stage -le 12 ]; then
 fi
 
 if [ $stage -le 13 ]; then
-  local/chain/run_cnn_1a.sh
+  local/chain/run_cnn_1a.sh --lang-test lang_unk
 fi
 
 if [ $stage -le 14 ]; then
