@@ -982,7 +982,8 @@ bool ConvertSupervisionToUnconstrained(
     fst::RandGen(supervision->fst, &single_path_fst, randgen_opts);
     fst::GetLinearSymbolSequence(single_path_fst, &(supervision->alignment_pdfs),
                                  static_cast<std::vector<int32>*>(NULL),
-                                 NULL);
+                                 static_cast<fst::StdArc::Weight*>(NULL));
+
     if (static_cast<int32>(supervision->alignment_pdfs.size()) !=
         supervision->frames_per_sequence) {
       KALDI_ERR << "Length mismatch between FST and frames-per-sequence.";
