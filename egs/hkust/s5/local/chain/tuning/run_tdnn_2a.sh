@@ -1,13 +1,23 @@
 #!/bin/bash
+# Copyright 2018  Emotech LTD (Author: Xuechen Liu)
 
 # This script is based on run_tdnn_7h.sh in swbd chain recipe.
 # exp 2a: change the step of making configs, using xconfig
 #         some minor changes on training parameters, referencing wsj
 
-set -e
+# Results
+# local/nnet3/compare_wer_general.sh --online exp/chain/tdnn_7h_chain_2asp
+# Model                tdnn_7h_chain_2a_sp
+# WER(%)                    29.30
+# WER(%)[online]            25.23
+# WER(%)[per-utt]           30.66
+# Final train prob        -0.1068
+# Final valid prob        -0.1542
+
+set -euxo pipefail
 
 # configs for 'chain'
-affix=
+affix=chain_2a
 stage=12
 nj=10
 train_stage=-10

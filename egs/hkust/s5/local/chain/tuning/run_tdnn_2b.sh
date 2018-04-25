@@ -1,7 +1,6 @@
 #!/bin/bash
-# Copyright 2018  Emotech LTD (Author: Xuechen Liu)
 
-# This script is based on run_tdnn_7h.sh in swbd chain recipe.
+# This script is based on run_tdnn_2a.sh
 # exp 2b: compared to 2a, it changes frames_per_eg from a contant to a
 #         list of number, separated by comma
 
@@ -14,11 +13,10 @@
 # Final train prob        -0.1136
 # Final valid prob        -0.1761
 
-
-set -e
+set -euxo pipefail
 
 # configs for 'chain'
-affix=
+affix=chain_2b
 stage=12
 nj=10
 train_stage=-10
