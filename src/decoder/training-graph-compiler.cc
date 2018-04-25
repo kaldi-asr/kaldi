@@ -39,7 +39,7 @@ TrainingGraphCompiler::TrainingGraphCompiler(const TransitionModel &trans_model,
                            disambig_syms_[i]))
       KALDI_ERR << "Disambiguation symbol " << disambig_syms_[i]
                 << " is also a phone.";
-  
+
   int32 subseq_symbol = 1 + phone_syms.back();
   if (!disambig_syms_.empty() && subseq_symbol <= disambig_syms_.back())
     subseq_symbol = 1 + disambig_syms_.back();
@@ -111,10 +111,10 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
                                         trans_model_,
                                         h_cfg,
                                         &disambig_syms_h);
-  
+
   VectorFst<StdArc> &trans2word_fst = *out_fst;  // transition-id to word.
   TableCompose(*H, ctx2word_fst, &trans2word_fst);
-  
+
   KALDI_ASSERT(trans2word_fst.Start() != kNoStateId);
 
   // Epsilon-removal and determinization combined. This will fail if not determinizable.
@@ -128,15 +128,17 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
       RemoveEpsLocal(&trans2word_fst);
   }
 
-  
+
   // Encoded minimization.
   MinimizeEncoded(&trans2word_fst);
 
   std::vector<int32> disambig;
+  bool check_no_self_loops = true;
   AddSelfLoops(trans_model_,
                disambig,
                opts_.self_loop_scale,
                opts_.reorder,
+               check_no_self_loops,
                &trans2word_fst);
 
   delete H;
@@ -154,7 +156,7 @@ bool TrainingGraphCompiler::CompileGraphsFromText(
     VectorFst<StdArc> *word_fst = new VectorFst<StdArc>();
     MakeLinearAcceptor(transcripts[i], word_fst);
     word_fsts[i] = word_fst;
-  }    
+  }
   bool ans = CompileGraphs(word_fsts, out_fsts);
   for (size_t i = 0; i < transcripts.size(); i++)
     delete word_fsts[i];
@@ -192,7 +194,7 @@ bool TrainingGraphCompiler::CompileGraphs(
 
     KALDI_ASSERT(phone2word_fst.Start() != kNoStateId &&
                  "Perhaps you have words missing in your lexicon?");
-    
+
     VectorFst<StdArc> ctx2word_fst;
     ComposeContextFst(*cfst, phone2word_fst, &ctx2word_fst);
     // ComposeContextFst is like Compose but faster for this particular Fst type.
@@ -226,15 +228,17 @@ bool TrainingGraphCompiler::CompileGraphs(
       if (opts_.rm_eps)
         RemoveEpsLocal(&trans2word_fst);
     }
-    
+
     // Encoded minimization.
     MinimizeEncoded(&trans2word_fst);
 
     std::vector<int32> disambig;
+    bool check_no_self_loops = true;
     AddSelfLoops(trans_model_,
                  disambig,
                  opts_.self_loop_scale,
                  opts_.reorder,
+                 check_no_self_loops,
                  &trans2word_fst);
 
     KALDI_ASSERT(trans2word_fst.Start() != kNoStateId);

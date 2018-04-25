@@ -61,8 +61,10 @@ if [ $stage -le 0 ]; then
   cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt | \
     local/remove_test_utterances_from_lob.py data/test/text data/val/text \
                                              > ${dir}/data/text/lob.txt
-  cat data/local/browncorpus/brown.txt >> ${dir}/data/text/brown.txt
-  cat data/local/wellingtoncorpus/Wellington_annotation_removed.txt >> ${dir}/data/text/wellington.txt
+  cat data/local/browncorpus/brown.txt > ${dir}/data/text/brown.txt
+  if [ -d "data/local/wellingtoncorpus" ]; then
+    cat data/local/wellingtoncorpus/Wellington_annotation_removed.txt > ${dir}/data/text/wellington.txt
+  fi
 
   # use the validation data as the dev set.
   # Note: the name 'dev' is treated specially by pocolm, it automatically
@@ -82,7 +84,12 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get the wordlist from IAM text
-  cat ${dir}/data/text/{iam,lob,brown,wellington.txt}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  if [ -d "data/local/wellingtoncorpus" ]; then
+    cat ${dir}/data/text/{iam,lob,brown,wellington}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  else
+    echo "$0: Wellington Corpus not found. Proceeding without using that corpus."
+    cat ${dir}/data/text/{iam,lob,brown}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  fi
   head -n $vocab_size ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
