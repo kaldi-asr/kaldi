@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2018 Emotech LTD (Author: Xuechen Liu)
+# Copyright 2018  Emotech LTD (Author: Xuechen Liu)
 
 # exp 2a: change the step of making configs, using xconfig with
 #         minor changes on training configs, referencing wsj
