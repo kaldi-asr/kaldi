@@ -88,7 +88,7 @@ if [ $stage -le 6 ]; then
     "ark:ivector-subtract-global-mean scp:exp/ivectors_voxceleb2_train/ivector.scp ark:- |" \
     ark:data/voxceleb2_train/utt2spk exp/ivectors_voxceleb2_train/transform.mat || exit 1;
 
-  #  Train the PLDA model.
+  # Train the PLDA model.
   $train_cmd exp/ivectors_voxceleb2_train/log/plda.log \
     ivector-compute-plda ark:data/voxceleb2_train/spk2utt \
     "ark:ivector-subtract-global-mean scp:exp/ivectors_voxceleb2_train/ivector.scp ark:- | transform-vec exp/ivectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:-  ark:- |" \
