@@ -21,6 +21,7 @@
 #define KALDI_ONLINE_ONLINE_TCP_SOURCE_H_
 
 #if !defined(_MSC_VER)
+#define KALDI_NO_PORTAUDIO
 
 #include "online/online-audio-source.h"
 #include "matrix/kaldi-vector.h"

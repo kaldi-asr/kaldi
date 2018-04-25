@@ -285,8 +285,14 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
       nnet.Read(ki.Stream(), binary);
     }
+    fst::Fst<fst::StdArc> *decode_fst;
 
-    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
+    try {
+        decode_fst = ReadFstKaldi(fst_rxfilename);
+    } catch(const std::exception& e) {
+        decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
+    }
+
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_rxfilename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename)))
