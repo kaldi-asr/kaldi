@@ -1,6 +1,7 @@
 #!/bin/bash
 # Copyright 2018  Emotech LTD (Author: Xuechen Liu)
 
+# This script is based on run_tdnn_7h.sh in swbd chain recipe.
 # exp 2a: change the step of making configs, using xconfig with
 #         minor changes on training configs, referencing wsj
 

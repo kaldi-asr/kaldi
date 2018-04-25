@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script is based on run_tdnn_2a.sh
-# exp 2b: compared to 2a, it changes frames_per_eg from a contant to a
+# exp 2b: compared to 2a, it changes frames_per_eg from a constant to a
 #         list of number, separated by comma
 
 # Results
