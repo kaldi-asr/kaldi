@@ -56,7 +56,11 @@ class NnetChainLdaStatsAccumulator {
     computer.AcceptInputs(nnet_, eg.inputs);
     computer.Run();
     const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput("output");
-    AccStatsFromOutput(eg, nnet_output);
+    if (eg.outputs[0].supervision.fst.NumStates() > 0) {
+      AccStatsFst(eg, nnet_output);
+    } else {
+      AccStatsAlignment(eg, nnet_output);
+    }
   }
 
   void WriteStats(const std::string &stats_wxfilename, bool binary) {
@@ -70,8 +74,8 @@ class NnetChainLdaStatsAccumulator {
     }
   }
  private:
-  void AccStatsFromOutput(const NnetChainExample &eg,
-                          const CuMatrixBase<BaseFloat> &nnet_output) {
+  void AccStatsFst(const NnetChainExample &eg,
+                   const CuMatrixBase<BaseFloat> &nnet_output) {
     BaseFloat rand_prune = rand_prune_;
 
     if (eg.outputs.size() != 1 || eg.outputs[0].name != "output")
@@ -85,6 +89,7 @@ class NnetChainLdaStatsAccumulator {
     int32 num_frames = supervision.frames_per_sequence,
         num_pdfs = supervision.label_dim;
     KALDI_ASSERT(num_frames == nnet_output.NumRows());
+
     const fst::StdVectorFst &fst = supervision.fst;
 
     Lattice lat;
@@ -125,6 +130,48 @@ class NnetChainLdaStatsAccumulator {
         if (pruned_weight != 0.0)
           lda_stats_.Accumulate(row, pdf, pruned_weight);
       }
+    }
+  }
+
+
+  void AccStatsAlignment(const NnetChainExample &eg,
+                          const CuMatrixBase<BaseFloat> &nnet_output) {
+    BaseFloat rand_prune = rand_prune_;
+
+    if (eg.outputs.size() != 1 || eg.outputs[0].name != "output")
+      KALDI_ERR << "Expecting the example to have one output named 'output'.";
+
+    const chain::Supervision &supervision = eg.outputs[0].supervision;
+    // handling the one-sequence-per-eg case is easier so we just do that.
+    KALDI_ASSERT(supervision.num_sequences == 1 &&
+                 "This program expects one sequence per eg.");
+
+    int32 num_frames = supervision.frames_per_sequence,
+        num_pdfs = supervision.label_dim;
+    KALDI_ASSERT(num_frames == nnet_output.NumRows());
+
+    if (supervision.alignment_pdfs.size() !=
+        static_cast<size_t>(num_frames))
+      KALDI_ERR << "Alignment pdfs not present or wrong length.  Using e2e egs?";
+
+    if (lda_stats_.Dim() == 0)
+      lda_stats_.Init(num_pdfs,
+                      nnet_output.NumCols());
+
+    for (int32 t = 0; t < num_frames; t++) {
+      // the following, transferring row by row to CPU, would be wasteful if we
+      // actually were using a GPU, but we don't anticipate using a GPU in this
+      // program.
+      CuSubVector<BaseFloat> cu_row(nnet_output, t);
+      // "row" is actually just a redudant copy, since we're likely on CPU,
+      // but we're about to do an outer product, so this doesn't dominate.
+      Vector<BaseFloat> row(cu_row);
+
+      int32 pdf = supervision.alignment_pdfs[t];
+      BaseFloat weight = 1.0;
+      BaseFloat pruned_weight = RandPrune(weight, rand_prune);
+      if (pruned_weight != 0.0)
+        lda_stats_.Accumulate(row, pdf, pruned_weight);
     }
   }
 

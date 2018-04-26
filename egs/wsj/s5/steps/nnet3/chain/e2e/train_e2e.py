@@ -487,7 +487,7 @@ def train(args, run_opts):
 
 
             if args.cleanup:
-                # do a clean up everythin but the last 2 models, under certain
+                # do a clean up everything but the last 2 models, under certain
                 # conditions
                 common_train_lib.remove_model(
                     args.dir, iter-2, num_iters, models_to_combine,

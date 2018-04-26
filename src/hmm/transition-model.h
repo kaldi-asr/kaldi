@@ -130,7 +130,7 @@ class TransitionModel {
 
 
   /// Constructor that takes no arguments: typically used prior to calling Read.
-  TransitionModel() { }
+  TransitionModel(): num_pdfs_(0) { }
 
   void Read(std::istream &is, bool binary);  // note, no symbol table: topo object always read/written w/o symbols.
   void Write(std::ostream &os, bool binary) const;
@@ -184,7 +184,7 @@ class TransitionModel {
   // an unseen phone has the highest-numbered pdf, this might be different.
   int32 NumPdfs() const { return num_pdfs_; }
 
-  // This loops over the triples and finds the highest phone index present. If
+  // This loops over the tuples and finds the highest phone index present. If
   // the FST symbol table for the phones is created in the expected way, i.e.:
   // starting from 1 (<eps> is 0) and numbered contiguously till the last phone,
   // this will be the total number of phones.
@@ -288,9 +288,9 @@ class TransitionModel {
 
   HmmTopology topo_;
 
-  /// Triples indexed by transition state minus one;
-  /// the triples are in sorted order which allows us to do the reverse mapping from
-  /// triple to transition state
+  /// Tuples indexed by transition state minus one;
+  /// the tuples are in sorted order which allows us to do the reverse mapping from
+  /// tuple to transition state
   std::vector<Tuple> tuples_;
 
   /// Gives the first transition_id of each transition-state; indexed by

@@ -233,7 +233,7 @@ class LatticeFasterDecoder {
   // links from it when we process the next frame.
   struct Token {
     BaseFloat tot_cost; // would equal weight.Value()... cost up to this point.
-    BaseFloat extra_cost; // >= 0.  This is used in pruning a way tokens.
+    BaseFloat extra_cost; // >= 0.  This is used in pruning away tokens.
     // there is a comment in lattice-faster-decoder.cc explaining this;
     // search for "a note on the definition of extra_cost".
 
@@ -340,7 +340,7 @@ class LatticeFasterDecoder {
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
   /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
-  /// Templated on FST type for speed; called via ProcessEmittingWrapper().  
+  /// Templated on FST type for speed; called via ProcessEmittingWrapper().
   template <typename FstType> BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
   BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
