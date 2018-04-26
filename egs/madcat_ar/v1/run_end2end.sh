@@ -67,19 +67,19 @@ if [ $stage -le 5 ]; then
                      data/local/dict/lexicon.txt data/lang_test
 fi
 
-
 if [ $stage -le 6 ]; then
-  echo "$0: estimating phone language model for the denominator graph"
-  mkdir -p exp/chain/e2e_base/log
-  $cmd exp/chain/e2e_base/log/make_phone_lm.log \
-  cat data/train/text \| \
-    steps/nnet3/chain/e2e/text_to_phones.py data/lang \| \
-    utils/sym2int.pl -f 2- data/lang/phones.txt \| \
-    chain-est-phone-lm --num-extra-lm-states=1000 \
-                       ark:- exp/chain/e2e_base/phone_lm.fst
+  echo "$0: Calling the flat-start chain recipe..."
+  local/chain/run_flatstart_cnn1a.sh
 fi
 
 if [ $stage -le 7 ]; then
-  echo "$0: calling the flat-start chain recipe..."
-  local/chain/run_flatstart_cnn1a.sh
+  echo "$0: Aligning the training data using the e2e chain model..."
+  steps/nnet3/align.sh --nj 70 --cmd "$cmd" \
+                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
+                       data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
+fi
+
+if [ $stage -le 8 ]; then
+  echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
+  local/chain/run_cnn_e2eali_1a.sh
 fi
