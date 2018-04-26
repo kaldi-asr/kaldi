@@ -50,7 +50,7 @@ class FasterArpaLm {
    public:
     LmState(): logprob_(0), h_value(0), word_ids_(NULL), next(NULL) { }
     LmState(float logprob, float backoff_logprob): 
-      logprob_(logprob), backoff_logprob_(backoff_logprob), h_value(0),
+      logprob_(logprob), backoff_logprob_(backoff_logprob), h_value(0), word_ids_(NULL),
     next(NULL) { }
     void Allocate(const NGram* ngram, float lm_scale=1) {
       logprob_ = ngram->logprob*lm_scale;
@@ -151,6 +151,7 @@ class FasterArpaLm {
     return hashed_idx;
   }
   inline void InsertHash(int32 hashed_idx, int32 ngrams_saved_num_) {
+    assert(hashed_idx < ngrams_map_.size());
     if (ngrams_map_.at(hashed_idx)) {
       LmState *lm_state = ngrams_map_[hashed_idx];
       int32 cnt=0;
@@ -201,6 +202,7 @@ class FasterArpaLm {
     if (ngram_order == 1) {
       ret_lm_state = &ngrams_[hashed_idx];
     } else {
+      assert(hashed_idx < ngrams_map_.size());
       LmState *lm_state = ngrams_map_[hashed_idx];
       while (lm_state) {
         if (lm_state->h_value == h_value) {
