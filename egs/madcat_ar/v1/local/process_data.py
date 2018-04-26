@@ -36,7 +36,7 @@ parser.add_argument('data_splits', type=str,
 parser.add_argument('out_dir', type=str,
                     help='directory location to write output files.')
 parser.add_argument('images_scp_path', type=str,
-                    help='Path of images.scp file')
+                    help='Path of input images.scp file(maps line image and location)')
 args = parser.parse_args()
 
 
@@ -165,6 +165,10 @@ def get_line_image_location():
         image_loc_dict[base_name]=location
     return image_loc_dict
 
+
+### main ###
+
+print("Processing '{}' data...".format(args.out_dir))
 
 text_file = os.path.join(args.out_dir, 'text')
 text_fh = open(text_file, 'w', encoding='utf-8')
