@@ -99,7 +99,7 @@ class FasterArpaLm {
       lm_->SaveHashedState(ngram.words, lm_state, true);
     }
 
-    virtual void ReadComplete()  { }
+    virtual void ReadComplete()  {  }
 
    private:
     FasterArpaLm *lm_;
@@ -117,6 +117,10 @@ class FasterArpaLm {
     max_collision_ = 0;
 
     BuildFasterArpaLm(arpa_rxfilename, lm_scale);
+    assert(ngrams_num_ >= ngrams_saved_num_);
+    if (ngrams_num_ != ngrams_saved_num_) {
+      KALDI_WARN << "num mismatch in arpa header: "<<ngrams_num_<<" "<<ngrams_saved_num_;
+    }
     KALDI_VLOG(2) << max_collision_;
   }
 
@@ -163,6 +167,7 @@ class FasterArpaLm {
       max_collision_=std::max(cnt,max_collision_);
     } else {
       ngrams_map_[hashed_idx] = &ngrams_[ngrams_saved_num_];
+      assert(ngrams_saved_num_ < ngrams_num_);
     }
   }
   inline void SaveHashedState(const int32* word_ids, 
@@ -319,7 +324,7 @@ class FasterArpaLm {
       for (int j=0; j<symbol_size_; j++) {
         randint_per_word_gram_[i][j] = RandInt64(); 
       }
-      acc+= ngram_count[i];
+      acc+= i==0? ngrams_hashed_size_[i]:ngram_count[i];
       acc_hashed+= ngrams_hashed_size_[i];
       if (i==0) ngrams_hashed_size_[i]=0;
       else ngrams_hashed_size_[i]+=ngrams_hashed_size_[i-1];
@@ -329,7 +334,8 @@ class FasterArpaLm {
     KALDI_VLOG(2) << " hashed_size/size = "<< 
         1.0 * (hash_size_except_uni_+symbol_size_) / acc <<" "<<acc;
     
-    ngrams_ = (LmState* )calloc(sizeof(LmState), acc); //use default constructor
+    ngrams_ = (LmState* )calloc(sizeof(LmState), acc); //use default constructo
+    ngrams_num_ = acc;
     ngrams_saved_num_ = symbol_size_; // assume uni-gram is allocated
     ngrams_map_.resize(hash_size_except_uni_, NULL);
     is_built_ = true;
@@ -371,6 +377,7 @@ class FasterArpaLm {
   // Memory blcok for storing N-gram; ngrams_[ngram_order][hashed_idx]
   LmState* ngrams_;
   int32 ngrams_saved_num_;
+  int32 ngrams_num_;
 
   std::vector<LmState *> ngrams_map_; // hash to ngrams_ index
   // used to obtain hash value; randint_per_word_gram_[ngram_order][word_id]
