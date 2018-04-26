@@ -120,9 +120,9 @@ if [ $stage -le 4 ]; then
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  cnn_opts="l2-regularize=0.075"
-  tdnn_opts="l2-regularize=0.075"
-  output_opts="l2-regularize=0.1"
+  cnn_opts="l2-regularize=0.005"
+  tdnn_opts="l2-regularize=0.005"
+  output_opts="l2-regularize=0.005"
   common1="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
   common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"

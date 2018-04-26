@@ -26,10 +26,10 @@ affix=1a
 
 # training options
 tdnn_dim=450
-num_epochs=4
-num_jobs_initial=2
-num_jobs_final=4
-minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
+num_epochs=2
+num_jobs_initial=3
+num_jobs_final=16
+minibatch_size=150=48,24/300=24,12/600=12,6/1200=4,4
 common_egs_dir=
 l2_regularize=0.00005
 frames_per_iter=1000000
@@ -70,9 +70,9 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$cmd" \
+  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 70 --cmd "$cmd" \
                                        --shared-phones true \
-                                       --type biphone \
+                                       --type mono \
                                        data/$train_set $lang $treedir
   $cmd $treedir/log/make_phone_lm.log \
   cat data/$train_set/text \| \
@@ -86,9 +86,9 @@ if [ $stage -le 2 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
 
-  cnn_opts="l2-regularize=0.075"
-  tdnn_opts="l2-regularize=0.075"
-  output_opts="l2-regularize=0.1"
+  cnn_opts="l2-regularize=0.005"
+  tdnn_opts="l2-regularize=0.005"
+  output_opts="l2-regularize=0.005"
   common1="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
   common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
@@ -160,7 +160,7 @@ fi
 if [ $stage -le 5 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj 30 --cmd "$cmd" \
+    --nj 70 --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
 fi
 
