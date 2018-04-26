@@ -4,6 +4,12 @@
 set -e
 stage=0
 nj=70
+download_dir1=/export/corpora/LDC/LDC2012T15/data
+download_dir2=/export/corpora/LDC/LDC2013T09/data
+download_dir3=/export/corpora/LDC/LDC2013T15/data
+train_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
+test_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.test.raw.lineid
+dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.raw.lineid
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -12,18 +18,21 @@ nj=70
                             # if supplied.
 ./local/check_tools.sh
 
-
 if [ $stage -le 0 ]; then
   for dataset in test train dev; do
     dataset_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.$dataset.raw.lineid
     local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
-                           data/local/lines
+                           --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
+                           --download_dir3 $download_dir3 data/local/lines
   done
 fi
 
 if [ $stage -le 1 ]; then
   echo "$0: Preparing data..."
-  local/prepare_data.sh
+  local/prepare_data.sh  --download_dir1 $download_dir1 \
+    --download_dir2 $download_dir2 --download_dir3 $download_dir3 \
+    --train_split_file $train_split_file --test_split_file $test_split_file \
+    --dev_split_file $dev_split_file
 fi
 
 mkdir -p data/{train,test,dev}/data

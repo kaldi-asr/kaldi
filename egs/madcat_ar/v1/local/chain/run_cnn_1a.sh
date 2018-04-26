@@ -4,18 +4,11 @@
 #              2017 Chun Chieh Chang
 #              2017 Ashish Arora
 
-# steps/info/chain_dir_info.pl exp/chain/cnn_1a/
-# exp/chain/cnn_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.021->-0.015 xent:train/valid[13,20,final]=(-1.05,-0.701,-0.591/-1.30,-1.08,-1.00) logprob:train/valid[13,20,final]=(-0.061,-0.034,-0.030/-0.107,-0.101,-0.098)
-
-# cat exp/chain/cnn_1a/decode_test/scoring_kaldi/best_*
-# %WER 5.94 [ 3913 / 65921, 645 ins, 1466 del, 1802 sub ] exp/chain/cnn_1a/decode_test//cer_11_0.0
-# %WER 9.13 [ 1692 / 18542, 162 ins, 487 del, 1043 sub ] exp/chain/cnn_1a/decode_test/wer_11_0.0
-
 set -e -o pipefail
 
 stage=0
 
-nj=30
+nj=70
 train_set=train
 gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
                 # should have alignments for the specified training data.
@@ -29,7 +22,6 @@ reporting_email=
 train_stage=-10
 xent_regularize=0.1
 frame_subsampling_factor=4
-alignment_subsampling_factor=1
 # training chunk-options
 chunk_width=340,300,200,100
 num_leaves=500

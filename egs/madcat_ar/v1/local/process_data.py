@@ -2,14 +2,16 @@
 
 # Copyright  2018  Ashish Arora
 
-""" This script reads the extracted IAM database files and creates
-    the following files (for the data subset selected via --dataset):
-    text, utt2spk, images.scp.
+""" This script reads MADCAT files and creates the following files (for the 
+    data subset selected via --dataset) :text, utt2spk, images.scp.
 
-  Eg. local/process_data.py data/local data/train data --dataset train
-  Eg. text file: 000_a01-000u-00 A MOVE to stop Mr. Gaitskell from
-      utt2spk file: 000_a01-000u-00 000
-      images.scp file: 000_a01-000u-00 data/local/lines/a01/a01-000u/a01-000u-00.png
+  Eg. local/process_data.py data/local /export/corpora/LDC/LDC2012T15 /export/corpora/LDC/LDC2013T09
+      /export/corpora/LDC/LDC2013T15 /home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid 
+      data/dev data/local/lines/images.scp
+  Eg. text file: LDC0001_000404_NHR_ARB_20070113.0052_11_LDC0001_00z2 وجه وعقل غارق حتّى النخاع
+      utt2spk file: LDC0001_000397_NHR_ARB_20070113.0052_11_LDC0001_00z1 LDC0001
+      images.scp file: LDC0009_000000_arb-NG-2-76513-5612324_2_LDC0009_00z0 
+      data/local/lines/1/arb-NG-2-76513-5612324_2_LDC0009_00z0.tif
 """
 
 import argparse
