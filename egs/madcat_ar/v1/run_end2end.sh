@@ -19,7 +19,7 @@ dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.
 ./local/check_tools.sh
 
 if [ $stage -le 0 ]; then
-  for dataset in test train dev; do
+  for dataset in test dev train; do
     dataset_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.$dataset.raw.lineid
     local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
                            --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
@@ -46,7 +46,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  for dataset in test train dev; do
+  for dataset in test dev train; do
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
     steps/compute_cmvn_stats.sh data/$dataset || exit 1;
   done

@@ -18,6 +18,7 @@ echo "$0 $@"
 data=$1
 mkdir -p $log_dir
 mkdir -p $lines_dir
+mkdir -p $data
 
 for n in $(seq $nj); do
     split_scps="$split_scps $log_dir/lines.$n.scp"
@@ -37,3 +38,5 @@ $cmd JOB=1:$nj $log_dir/extract_lines.JOB.log \
 for n in $(seq $nj); do
   cat $lines_dir/$n/images.scp || exit 1;
 done > $data/images.scp || exit 1
+
+rm -rf $log_dir

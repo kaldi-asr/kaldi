@@ -27,7 +27,7 @@ affix=1a
 # training options
 tdnn_dim=450
 num_epochs=2
-num_jobs_initial=3
+num_jobs_initial=8
 num_jobs_final=16
 minibatch_size=150=48,24/300=24,12/600=12,6/1200=4,4
 common_egs_dir=
@@ -35,7 +35,7 @@ l2_regularize=0.00005
 frames_per_iter=1000000
 cmvn_opts="--norm-means=true --norm-vars=true"
 train_set=train
-lang_test=lang_unk
+lang_test=lang_test
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -53,7 +53,7 @@ EOF
 fi
 
 lang=data/lang_e2e
-treedir=exp/chain/e2e_bitree  # it's actually just a trivial tree (no tree building)
+treedir=exp/chain/e2e_monotree  # it's actually just a trivial tree (no tree building)
 dir=exp/chain/e2e_cnn_${affix}
 
 if [ $stage -le 0 ]; then

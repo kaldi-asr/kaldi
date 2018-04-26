@@ -179,7 +179,7 @@ if [ $stage -le 5 ]; then
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=2 \
     --trainer.frames-per-iter=1000000 \
-    --trainer.optimization.num-jobs-initial=3 \
+    --trainer.optimization.num-jobs-initial=8 \
     --trainer.optimization.num-jobs-final=16 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
