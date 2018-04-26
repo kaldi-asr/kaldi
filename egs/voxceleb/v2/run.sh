@@ -196,7 +196,7 @@ if [ $stage -le 9 ]; then
 fi
 
 if [ $stage -le 10 ]; then
-  eer=`compute-eer <(python2 local/prepare_for_eer.py $voxceleb1_trials exp/scores_voxceleb1_test) 2> /dev/null`
+  eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_voxceleb1_test) 2> /dev/null`
   echo "EER: ${eer}%"
   # EER: 4.173%
   # For reference, here's the ivector system from ../v1:
