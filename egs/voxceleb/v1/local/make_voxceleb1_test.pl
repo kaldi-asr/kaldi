@@ -15,16 +15,16 @@ if (@ARGV != 2) {
 if (! -e "$data_base/voxceleb1_test.txt") {
   system("wget -O $data_base/voxceleb1_test.txt http://www.robots.ox.ac.uk/~vgg/data/voxceleb/voxceleb1_test.txt");
 }
-if(! -d "$out_dir") {
+if (! -d "$out_dir") {
   mkdir($out_dir) or die "Could not create director $!";
 }
 
 open(TRIAL_IN, "<", "$data_base/voxceleb1_test.txt") or die "cannot open dataset index file";
-open(SPKR,">", "$out_dir/utt2spk") or die "Could not open the output file $out_dir/utt2spk";
-open(WAV,">", "$out_dir/wav.scp") or die "Could not open the output file $out_dir/wav.scp";
-open(TRIAL_OUT,">", "$out_dir/trials") or die "Could not open the output file $out_dir/trials";
+open(SPKR, ">", "$out_dir/utt2spk") or die "Could not open the output file $out_dir/utt2spk";
+open(WAV, ">", "$out_dir/wav.scp") or die "Could not open the output file $out_dir/wav.scp";
+open(TRIAL_OUT, ">", "$out_dir/trials") or die "Could not open the output file $out_dir/trials";
 
-while(<TRIAL_IN>) {
+while (<TRIAL_IN>) {
   chomp;
   my ($tar_or_none, $path1, $path2) = split;
 
