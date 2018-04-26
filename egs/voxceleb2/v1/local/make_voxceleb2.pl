@@ -23,7 +23,7 @@ my @spkr_dirs = grep {-d "$data_base/$dataset/aac/$_" && ! /^\.{1,2}$/} readdir(
 closedir $dh;
 
 if (! -d "$out_dir") {
-  mkdir($out_dir) or die "Could not create director $!";
+  mkdir($out_dir) or die "Could not create directory $!";
 }
 open(SPKR, ">", "$out_dir/utt2spk") or die "Could not open the output file $out_dir/utt2spk";
 open(WAV, ">", "$out_dir/wav.scp") or die "Could not open the output file $out_dir/wav.scp";

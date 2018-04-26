@@ -16,7 +16,8 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-voxceleb2_trials=data/voxceleb2_test/trials
+voxceleb1_trials=data/voxceleb1_test/trials
+voxceleb1_root=/path/to/voxceleb1
 voxceleb2_root=/path/to/voxceleb2
 
 stage=0
@@ -25,12 +26,12 @@ stage=0
 
 if [ $stage -le 0 ]; then
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
-  local/make_voxceleb2.pl $voxceleb2_root test data/voxceleb2_test
+  local/make_voxceleb1_test.pl $voxceleb1_root data/voxceleb1_test
 fi
 
 if [ $stage -le 1 ]; then
   # Make MFCCs and compute the energy-based VAD for each dataset
-  for name in voxceleb2_train voxceleb2_test; do
+  for name in voxceleb2_train voxceleb1_test; do
     steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
       data/${name} exp/make_mfcc $mfccdir
     utils/fix_data_dir.sh data/${name}
@@ -67,15 +68,11 @@ if [ $stage -le 4 ]; then
     exp/ivectors_voxceleb2_train
 
   sid/extract_ivectors.sh --cmd "$train_cmd --mem 4G" --nj 40 \
-    exp/extractor data/voxceleb2_test \
-    exp/ivectors_voxceleb2_test
+    exp/extractor data/voxceleb1_test \
+    exp/ivectors_voxceleb1_test
 fi
 
 if [ $stage -le 5 ]; then
-  local/produce_trials.py data/voxceleb2_test/utt2spk $voxceleb2_trials
-fi
-
-if [ $stage -le 6 ]; then
   # Compute the mean vector for centering the evaluation i-vectors.
   $train_cmd exp/ivectors_voxceleb2_train/log/compute_mean.log \
     ivector-mean scp:exp/ivectors_voxceleb2_train/ivector.scp \
@@ -95,17 +92,17 @@ if [ $stage -le 6 ]; then
     exp/ivectors_voxceleb2_train/plda || exit 1;
 fi
 
-if [ $stage -le 7 ]; then
-  $train_cmd exp/scores/log/voxceleb2_test_scoring.log \
+if [ $stage -le 6 ]; then
+  $train_cmd exp/scores/log/voxceleb1_test_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     "ivector-copy-plda --smoothing=0.0 exp/ivectors_voxceleb2_train/plda - |" \
-    "ark:ivector-subtract-global-mean exp/ivectors_voxceleb2_train/mean.vec scp:exp/ivectors_voxceleb2_test/ivector.scp ark:- | transform-vec exp/ivectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "ark:ivector-subtract-global-mean exp/ivectors_voxceleb2_train/mean.vec scp:exp/ivectors_voxceleb2_test/ivector.scp ark:- | transform-vec exp/ivectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "cat '$voxceleb2_trials' | cut -d\  --fields=1,2 |" exp/scores_voxceleb2_test || exit 1;
+    "ark:ivector-subtract-global-mean exp/ivectors_voxceleb2_train/mean.vec scp:exp/ivectors_voxceleb1_test/ivector.scp ark:- | transform-vec exp/ivectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-subtract-global-mean exp/ivectors_voxceleb2_train/mean.vec scp:exp/ivectors_voxceleb1_test/ivector.scp ark:- | transform-vec exp/ivectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "cat '$voxceleb1_trials' | cut -d\  --fields=1,2 |" exp/scores_voxceleb1_test || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
-  eer=`compute-eer <(awk '{if(substr($1,1,7) == substr($2,1,7)) {print $3, "target";} else {print $3, "nontarget";}}' exp/scores_voxceleb2_test) 2> /dev/null`
+if [ $stage -le 7 ]; then
+  eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_voxceleb1_test) 2> /dev/null`
   echo "EER: ${eer}%"
-  # EER: 7.204%
+  # EER: 5.748%
 fi

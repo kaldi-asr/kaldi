@@ -16,9 +16,11 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-voxceleb2_trials=data/voxceleb2_test/trials
-nnet_dir=exp/xvector_nnet_1a
+
+voxceleb1_trials=data/voxceleb1_test/trials
+voxceleb1_root=/path/to/voxceleb1
 voxceleb2_root=/path/to/voxceleb2
+nnet_dir=exp/xvector_nnet_1a
 musan_root=/export/corpora/JHU/musan
 
 stage=0
@@ -28,12 +30,12 @@ stage=0
 if [ $stage -le 0 ]; then
   mkdir data
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
-  local/make_voxceleb2.pl $voxceleb2_root test data/voxceleb2_test
+  local/make_voxceleb1_test.pl $voxceleb1_root data/voxceleb1_test
 fi
 
 if [ $stage -le 1 ]; then
   # Make MFCCs and compute the energy-based VAD for each dataset
-  for name in voxceleb2_train voxceleb2_test; do
+  for name in voxceleb2_train voxceleb1_test; do
     steps/make_mfcc.sh --write-utt2num-frames true --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
       data/${name} exp/make_mfcc $mfccdir
     utils/fix_data_dir.sh data/${name}
@@ -44,7 +46,7 @@ if [ $stage -le 1 ]; then
 fi
 
 # In this section, we augment the VoxCeleb2 data with reverberation,
-# noise, music, and babble, and combined it with the clean data.
+# noise, music, and babble, and combine it with the clean data.
 if [ $stage -le 2 ]; then
   frame_shift=0.01
   awk -v frame_shift=$frame_shift '{print $1, $2*frame_shift;}' data/voxceleb2_train/utt2num_frames > data/voxceleb2_train/reco2dur
@@ -159,16 +161,12 @@ if [ $stage -le 7 ]; then
     $nnet_dir data/voxceleb2_train \
     exp/xvectors_voxceleb2_train
 
-  sid/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 4G" --nj 80 \
-    $nnet_dir data/voxceleb2_test \
-    exp/xvectors_voxceleb2_test
+  sid/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 4G" --nj 40 \
+    $nnet_dir data/voxceleb1_test \
+    exp/xvectors_voxceleb1_test
 fi
 
 if [ $stage -le 8 ]; then
-  local/produce_trials.py data/voxceleb2_test/utt2spk $voxceleb2_trials
-fi
-
-if [ $stage -le 9 ]; then
   # Compute the mean vector for centering the evaluation xvectors.
   $train_cmd exp/xvectors_voxceleb2_train/log/compute_mean.log \
     ivector-mean scp:exp/xvectors_voxceleb2_train/xvector.scp \
@@ -188,19 +186,19 @@ if [ $stage -le 9 ]; then
     exp/xvectors_voxceleb2_train/plda || exit 1;
 fi
 
-if [ $stage -le 10 ]; then
-  $train_cmd exp/scores/log/voxceleb2_test_scoring.log \
+if [ $stage -le 9 ]; then
+  $train_cmd exp/scores/log/voxceleb1_test_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     "ivector-copy-plda --smoothing=0.0 exp/xvectors_voxceleb2_train/plda - |" \
-    "ark:ivector-subtract-global-mean exp/xvectors_voxceleb2_train/mean.vec scp:exp/xvectors_voxceleb2_test/xvector.scp ark:- | transform-vec exp/xvectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "ark:ivector-subtract-global-mean exp/xvectors_voxceleb2_train/mean.vec scp:exp/xvectors_voxceleb2_test/xvector.scp ark:- | transform-vec exp/xvectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "cat '$voxceleb2_trials' | cut -d\  --fields=1,2 |" exp/scores_voxceleb2_test || exit 1;
+    "ark:ivector-subtract-global-mean exp/xvectors_voxceleb2_train/mean.vec scp:exp/xvectors_voxceleb1_test/xvector.scp ark:- | transform-vec exp/xvectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-subtract-global-mean exp/xvectors_voxceleb2_train/mean.vec scp:exp/xvectors_voxceleb1_test/xvector.scp ark:- | transform-vec exp/xvectors_voxceleb2_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "cat '$voxceleb1_trials' | cut -d\  --fields=1,2 |" exp/scores_voxceleb1_test || exit 1;
 fi
 
-if [ $stage -le 11 ]; then
-  eer=`compute-eer <(awk '{if(substr($1,1,7) == substr($2,1,7)) {print $3, "target";} else {print $3, "nontarget";}}' exp/scores_voxceleb2_test) 2> /dev/null`
+if [ $stage -le 10 ]; then
+  eer=`compute-eer <(python2 local/prepare_for_eer.py $voxceleb1_trials exp/scores_voxceleb1_test) 2> /dev/null`
   echo "EER: ${eer}%"
-  # EER: 5.323%
+  # EER: 4.173%
   # For reference, here's the ivector system from ../v1:
-  # EER: 7.204%
+  # EER: 5.748%
 fi
