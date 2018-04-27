@@ -63,7 +63,7 @@ if [ $stage -le 4 ]; then
     data/lang exp/mono
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 5 ] && $decode_gmm; then
   utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test_60 \
@@ -79,7 +79,7 @@ if [ $stage -le 6 ]; then
     exp/mono_ali exp/tri
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 7 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri exp/tri/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test_60 \
@@ -96,7 +96,7 @@ if [ $stage -le 8 ]; then
     data/train_60 data/lang exp/tri_ali exp/tri2
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 9 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
 
   steps/decode.sh --nj $nj --cmd $cmd exp/tri2/graph \
@@ -112,7 +112,7 @@ if [ $stage -le 10 ]; then
     exp/tri2_ali exp/tri3
 fi
 
-if [ $stage -le 11 ]; then
+if [ $stage -le 11 ] && $decode_gmm; then
   utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph
 
   steps/decode_fmllr.sh --nj $nj --cmd $cmd exp/tri3/graph \
