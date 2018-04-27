@@ -58,7 +58,6 @@ args = parser.parse_args()
 
 """
 bounding_box is a named tuple which contains:
-
              area (float): area of the rectangle
              length_parallel (float): length of the side that is parallel to unit_vector
              length_orthogonal (float): length of the side that is orthogonal to unit_vector
@@ -82,7 +81,6 @@ bounding_box_tuple = namedtuple('bounding_box_tuple', 'area '
 def unit_vector(pt0, pt1):
     """ Given two points pt0 and pt1, return a unit vector that
         points in the direction of pt0 to pt1.
-
     Returns
     -------
     (float, float): unit vector
@@ -94,7 +92,6 @@ def unit_vector(pt0, pt1):
 
 def orthogonal_vector(vector):
     """ Given a vector, returns a orthogonal/perpendicular vector of equal length.
-
     Returns
     ------
     (float, float): A vector that points in the direction orthogonal to vector.
@@ -108,7 +105,6 @@ def bounding_area(index, hull):
         tuple that mainly contains area of the box that bounds the hull. This
         bounding box orintation is same as the orientation of the lines formed
         by the point hull[index] and hull[index+1].
-
     Returns
     -------
     a named tuple that contains:
@@ -142,7 +138,6 @@ def to_xy_coordinates(unit_vector_angle, point):
     """ Given angle from horizontal axis and a point from origin,
         returns converted unit vector coordinates in x, y coordinates.
         angle of unit vector should be in radians.
-
     Returns
     ------
     (float, float): converted x,y coordinate of the unit vector.
@@ -159,7 +154,6 @@ def rotate_points(center_of_rotation, angle, points):
     center_of_rotation (float, float): angle of unit vector to be in radians.
     angle (float): angle of rotation to be in radians.
     points [(float, float)]: Points to be a list or tuple of points. Points to be rotated.
-
     Returns
     ------
     [(float, float)]: Rotated points around center of rotation by angle
@@ -180,7 +174,6 @@ def rotate_points(center_of_rotation, angle, points):
 def rectangle_corners(rectangle):
     """ Given rectangle center and its inclination, returns the corner
         locations of the rectangle.
-
     Returns
     ------
     [(float, float)]: 4 corner points of rectangle.
@@ -198,7 +191,6 @@ def rectangle_corners(rectangle):
 def minimum_bounding_box(points):
     """ Given a list of 2D points, it returns the minimum area rectangle bounding all
         the points in the point cloud.
-
     Returns
     ------
     returns a namedtuple that contains:
@@ -239,7 +231,6 @@ def minimum_bounding_box(points):
 
 def get_center(im):
     """ Given image, returns the location of center pixel
-
     Returns
     -------
     (int, int): center of the image
@@ -252,7 +243,6 @@ def get_center(im):
 def get_horizontal_angle(unit_vector_angle):
     """ Given an angle in radians, returns angle of the unit vector in
         first or fourth quadrant.
-
     Returns
     ------
     (float): updated angle of the unit vector to be in radians.
@@ -268,7 +258,6 @@ def get_horizontal_angle(unit_vector_angle):
 
 def get_smaller_angle(bounding_box):
     """ Given a rectangle, returns its smallest absolute angle from horizontal axis.
-
     Returns
     ------
     (float): smallest angle of the rectangle to be in radians.
@@ -290,7 +279,6 @@ def get_smaller_angle(bounding_box):
 def rotated_points(bounding_box, center):
     """ Given the rectangle, returns corner points of rotated rectangle.
         It rotates the rectangle around the center by its smallest angle.
-
     Returns
     ------- 
     [(int, int)]: 4 corner points of rectangle.
@@ -318,7 +306,6 @@ def pad_image(image):
     """ Given an image, returns a padded image around the border.
         This routine save the code from crashing if bounding boxes that are
         slightly outside the page boundary.
-
     Returns
     -------
     image: page image
@@ -330,7 +317,6 @@ def pad_image(image):
 
 def update_minimum_bounding_box_input(bounding_box_input):
     """ Given list of 2D points, returns list of 2D points shifted by an offset.
-
     Returns
     ------
     points [(float, float)]: points, a list or tuple of 2D coordinates
@@ -462,7 +448,6 @@ def check_file_location():
 def parse_writing_conditions(writing_conditions):
     """ Given writing condition file path, returns a dictionary which have writing condition
         of each page image.
-
     Returns
     ------
     (dict): dictionary with key as page image name and value as writing condition.
@@ -478,7 +463,6 @@ def check_writing_condition(wc_dict):
     """ Given writing condition dictionary, checks if a page image is writing
         in a specifed writing condition.
         It is used to create subset of dataset based on writing condition.
-
     Returns
     (bool): True if writing condition matches.
     """
