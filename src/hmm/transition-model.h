@@ -139,6 +139,15 @@ class TransitionModel {
   /// return reference to HMM-topology object.
   const HmmTopology &GetTopo() const { return topo_; }
 
+  /// BEGIN FOR Radit's Final Project :(
+  const std::vector<Tuple> &tuples() const { return tuples_; }
+  const std::vector<int32> &state2id() const { return state2id_; }
+  const std::vector<int32> &id2state() const { return id2state_; }
+  const std::vector<int32> &id2pdf_id() const { return id2pdf_id_; }
+  const Vector<BaseFloat> &log_probs() const { return log_probs_; }
+  const Vector<BaseFloat> &non_self_loop_log_probs() const { return non_self_loop_log_probs_; }
+  /// END FOR Radit's Final Project :(
+
   /// \name Integer mapping functions
   /// @{
 
@@ -245,6 +254,7 @@ class TransitionModel {
   /// returns true if all the integer class members are identical (but does not
   /// compare the transition probabilities.
   bool Compatible(const TransitionModel &other) const;
+
 
  private:
   void MleUpdateShared(const Vector<double> &stats,
