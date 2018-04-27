@@ -6,7 +6,7 @@
 #           2017  Hossein Hadian
 # Apache 2.0
 #
-# This script trains an LM on the LOB+Brown text data and IAM training transcriptions.
+# This script trains a LM on the MADCAT training transcriptions.
 # It is based on the example scripts distributed with PocoLM
 
 # It will check if pocolm is installed and if not will proceed with installation
