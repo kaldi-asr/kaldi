@@ -7,12 +7,12 @@
 set -e
 stage=0
 nj=50
-
+decode_gmm=false
 # iam_database points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
 # like "data/download" and follow the instructions
 # in "local/prepare_data.sh" to download the database:
-madcat_database=data/download/tmp/LDC2014T13/data
+madcat_database=data/download/tmp/LDC2014T13
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -20,9 +20,15 @@ madcat_database=data/download/tmp/LDC2014T13/data
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
 
+mkdir -p data/{train,test,dev}/lines
 if [ $stage -le 0 ]; then
+  for dataset in train test dev; do
+    dataset_file=data/download/tmp/madcat_datasplit/zh-en/madcat.${dataset}.raw.lineid
+    local/extract_lines.sh --nj $nj --cmd $cmd --dataset-file $dataset_file data/${dataset}/lines
+  done
+
   echo "$0: Preparing data..."
-  local/prepare_data.sh --download-dir "$madcat_database"
+  local/prepare_data.sh --download-dir $madcat_database
 fi
 
 mkdir -p data/{train_60,test_60,dev_60}/data
@@ -32,9 +38,7 @@ if [ $stage -le 1 ]; then
       cp data/$dataset/$prepared data/${dataset}_60/$prepared
     done
 
-    local/make_features.py data/${dataset}_60 --feat-dim 60 | \
-      copy-feats --compress=true --compression-method=7 \
-                 ark:- ark,scp:data/${dataset}_60/data/images.ark,data/${dataset}_60/feats.scp
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
     steps/compute_cmvn_stats.sh data/${dataset}_60
   done
 fi

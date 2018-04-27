@@ -17,7 +17,7 @@
 #      spk2utt file: 000 000_a01-000u-00 000_a01-000u-01 000_a01-000u-02 000_a01-000u-03
 
 stage=0
-download_dir=data/download/tmp/LDC2014T13/data
+download_dir=data/download/tmp/LDC2014T13
 train_split_file=data/download/tmp/madcat_datasplit/zh-en/madcat.train.raw.lineid
 test_split_file=data/download/tmp/madcat_datasplit/zh-en/madcat.test.raw.lineid
 dev_split_file=data/download/tmp/madcat_datasplit/zh-en/madcat.dev.raw.lineid
@@ -31,13 +31,8 @@ if [[ ! -d $download_dir ]]; then
   echo ""
 fi
 
-mkdir -p data/{train,test,dev}
-mkdir -p $download_dir/lines
+mkdir -p data/{train,test,dev}/lines
 if [ $stage -le 1 ]; then
-  local/create_line_image_from_page_image.py $download_dir $train_split_file || exit 1
-  local/create_line_image_from_page_image.py $download_dir $test_split_file || exit 1
-  local/create_line_image_from_page_image.py $download_dir $dev_split_file || exit 1
-
   local/process_data.py $download_dir $train_split_file data/train || exit 1
   local/process_data.py $download_dir $test_split_file data/test || exit 1
   local/process_data.py $download_dir $dev_split_file data/dev || exit 1
