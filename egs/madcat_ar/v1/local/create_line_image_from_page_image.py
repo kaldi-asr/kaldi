@@ -25,6 +25,17 @@ from collections import namedtuple
 from scipy.spatial import ConvexHull
 from PIL import Image
 from scipy.misc import toimage
+import logging
+
+sys.path.insert(0, 'steps')
+logger = logging.getLogger('libs')
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
+                              "%(funcName)s - %(levelname)s ] %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 parser = argparse.ArgumentParser(description="Creates line images from page image",
                                  epilog="E.g.  " + sys.argv[0] + "  data/LDC2012T15" 
@@ -446,7 +457,6 @@ def check_file_location():
     if os.path.exists(madcat_file_path3):
         return madcat_file_path3, image_file_path3, wc_dict3
 
-    print("ERROR: path does not exist")
     return None, None, None
 
 def parse_writing_conditions(writing_conditions):
