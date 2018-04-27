@@ -2,9 +2,10 @@
 # Copyright 2018  Emotech LTD (Author: Xuechen Liu)
 
 # compare wer between diff. models in hkust chain directory
-# exemplar usage: local/chain/compare_wer.sh exp/chain/tdnn_sp exp/chain/tdnn_sp_pr43
+# exemplar usage: local/chain/compare_wer.sh --online exp/chain/tdnn_7h_sp
 # note: this script is made quite general since we kinda wanna give more flexibility to
 #       users on adding affix for their own use when training models.
+
 set -e
 . ./cmd.sh
 . ./path.sh
@@ -65,7 +66,7 @@ if $include_online; then
   echo
 fi
 
-# print log for train & validation
+# print final log prob for train & validation
 echo -n "# Final train prob     "
 for x in $*; do
   prob=$(grep Overall $x/log/compute_prob_train.final.log | grep -v xent | awk '{printf($8)}' | cut -c1-7)
@@ -80,6 +81,7 @@ for x in $*; do
 done
 echo
 
+# do the same for xent objective
 echo -n "# Final train prob (xent)"
 for x in $*; do
   prob=$(grep Overall $x/log/compute_prob_train.final.log | grep -w xent | awk '{printf("%.4f", $8)}')
