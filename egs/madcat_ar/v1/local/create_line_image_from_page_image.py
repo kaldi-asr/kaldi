@@ -37,11 +37,7 @@ import numpy as np
 from math import atan2, cos, sin, pi, degrees, sqrt
 from collections import namedtuple
 
-#Temporary change
 from scipy.spatial import ConvexHull
-#from skimage.io import imread, imsave
-#from skimage.transform import rotate
-#from skimage import img_as_uint
 from PIL import Image
 from scipy.misc import toimage
 
@@ -268,10 +264,6 @@ def get_center(im):
         (int, int): center of the image
         Eg.  2550, 3300
     """
-    #Temporary change
-    #center = im.shape
-    #center_x = center[1] / 2
-    #center_y = center[0] / 2
     center_x = im.size[0] / 2
     center_y = im.size[1] / 2
     return int(center_x), int(center_y)
@@ -362,20 +354,6 @@ def pad_image(image):
         image: page image
     """
 
-    #Temporary change
-    #height = image.shape[0]
-    #im_pad = np.concatenate((255 * np.ones((height, width_padding),
-    #                                     dtype=int), image), axis=1)
-    #im_pad1 = np.concatenate((im_pad, 255 * np.ones((height, width_padding),
-    #                                              dtype=int)), axis=1)
-
-    #width = im_pad1.shape[1]
-
-    #im_pad2 = np.concatenate((255 * np.ones((height_padding, width),
-    #                                      dtype=int), im_pad1), axis=0)
-    #im_pad3 = np.concatenate((im_pad2, 255 * np.ones((height_padding, width),
-    #                                               dtype=int)), axis=0)
-
     padded_image = Image.new('RGB', (image.size[0] + padding, image.size[1] + padding), "white")
     padded_image.paste(im=image, box=(offset, offset))
     return padded_image
@@ -416,15 +394,12 @@ def set_line_image_data(image, line_id, image_file_name):
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_' + line_id.zfill(4)
     line_image_file_name = base_name + line_id + '.tif'
-    image_path = os.path.join(args.out_dir, line_image_file_name)
-    #Temporary change
-    #imgray_rev_arr = np.fliplr(image)
-    #im = img_as_uint(imgray_rev_arr)
-    #imsave(image_path, im)
+    image_path = os.path.join(output_directory, line_image_file_name)
     imgray = image.convert('L')
     imgray_rev_arr = np.fliplr(imgray)
     imgray_rev = toimage(imgray_rev_arr)
     imgray_rev.save(image_path)
+    image_fh.write(image_path + '\n')
 
 def get_line_images_from_page_image(image_file_name, madcat_file_path):
     """ Extracts the line image from page image.
@@ -435,8 +410,6 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
 
     Returns:
     """
-    #Temporary change
-    #im_wo_pad = imread(image_file_name)
     im_wo_pad = Image.open(image_file_name)
     im = pad_image(im_wo_pad)
     doc = minidom.parse(madcat_file_path)
@@ -464,9 +437,6 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
         max_y = int(max(y1, y2, y3, y4))
         box = (min_x, min_y, max_x, max_y)
         region_initial = im.crop(box)
-        #Temporary change
-        #region_initial = im[min_y:max_y, min_x:max_x]
-        # #calculate new crop points
         rot_points = []
         p1_new = (x1 - min_x, y1 - min_y)
         p2_new = (x2 - min_x, y2 - min_y)
@@ -487,8 +457,6 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
             )
 
         rotation_angle_in_rad = get_smaller_angle(cropped_bounding_box)
-        #Temporary change
-        #img2 = rotate(region_initial, degrees(rotation_angle_in_rad), order=3)
         img2 = region_initial.rotate(degrees(rotation_angle_in_rad), resample=Image.BICUBIC)
         x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4 = rotated_points(
                 cropped_bounding_box, get_center(region_initial))
@@ -500,8 +468,6 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
         max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
         box = (min_x, min_y, max_x, max_y)
         region_final = img2.crop(box)
-        #Temporary change
-        #region_final = img2[min_y:max_y, min_x:max_x]
         set_line_image_data(region_final, id, image_file_name)
 
 
@@ -577,19 +543,23 @@ data_path2 = args.database_path2
 data_path3 = args.database_path3
 
 writing_condition_folder_list = args.database_path1.split('/')
-writing_condition_folder1 = ('/').join(writing_condition_folder_list[:4])
+writing_condition_folder1 = ('/').join(writing_condition_folder_list[:5])
 
 writing_condition_folder_list = args.database_path2.split('/')
-writing_condition_folder2 = ('/').join(writing_condition_folder_list[:4])
+writing_condition_folder2 = ('/').join(writing_condition_folder_list[:5])
 
 writing_condition_folder_list = args.database_path3.split('/')
-writing_condition_folder3 = ('/').join(writing_condition_folder_list[:4])
+writing_condition_folder3 = ('/').join(writing_condition_folder_list[:5])
 
 splits_handle = open(args.data_splits, 'r')
 splits_data = splits_handle.read().strip().split('\n')
 
-padding = int(args.width_buffer)
+padding = int(args.padding)
 offset = int(padding // 2)
+
+output_directory = args.out_dir
+image_file = os.path.join(output_directory, 'images.scp')
+image_fh = open(image_file, 'w', encoding='utf-8')
 
 writing_conditions1 = os.path.join(writing_condition_folder1, 'docs', 'writing_conditions.tab')
 writing_conditions2 = os.path.join(writing_condition_folder2, 'docs', 'writing_conditions.tab')

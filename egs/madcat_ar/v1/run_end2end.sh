@@ -4,24 +4,39 @@
 set -e
 stage=0
 nj=70
+download_dir1=/export/corpora/LDC/LDC2012T15/data
+download_dir2=/export/corpora/LDC/LDC2013T09/data
+download_dir3=/export/corpora/LDC/LDC2013T15/data
+train_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
+test_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.test.raw.lineid
+dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.raw.lineid
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
-
-
 ./local/check_tools.sh
 
+
+mkdir -p data/{train,test,dev}/data
+mkdir -p data/local/{train,test,dev}
+
 if [ $stage -le 0 ]; then
+  for dataset in test dev train; do
+    dataset_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.$dataset.raw.lineid
+    local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
+                           --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
+                           --download_dir3 $download_dir3 data/local/$dataset
+  done
+fi
+
+if [ $stage -le 1 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh
 fi
 
-mkdir -p data/{train,test,dev}/data
-
-if [ $stage -le 1 ]; then
+if [ $stage -le 2 ]; then
   echo "$0: Obtaining image groups..."
   image/get_image2num_frames.py data/train  # This will be needed for the next command
   # The next command creates a "allowed_lengths.txt" file in data/train
@@ -30,44 +45,41 @@ if [ $stage -le 1 ]; then
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
 fi
 
-if [ $stage -le 2 ]; then
-  for dataset in test train dev; do
+if [ $stage -le 3 ]; then
+  for dataset in test dev train; do
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
     steps/compute_cmvn_stats.sh data/$dataset || exit 1;
   done
   utils/fix_data_dir.sh data/train
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.9999 \
                         data/local/dict "<sil>" data/lang/temp data/lang
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang_test
-
-#  cp -R data/lang -T data/lang_test
-#  local/prepare_lm.sh data/train/text data/lang_test 3 || exit 1;
-fi
-
-
-if [ $stage -le 5 ]; then
-  echo "$0: estimating phone language model for the denominator graph"
-  mkdir -p exp/chain/e2e_base/log
-  $cmd exp/chain/e2e_base/log/make_phone_lm.log \
-  cat data/train/text \| \
-    steps/nnet3/chain/e2e/text_to_phones.py data/lang \| \
-    utils/sym2int.pl -f 2- data/lang/phones.txt \| \
-    chain-est-phone-lm --num-extra-lm-states=1000 \
-                       ark:- exp/chain/e2e_base/phone_lm.fst
 fi
 
 if [ $stage -le 6 ]; then
-  echo "$0: calling the flat-start chain recipe..."
-  local/chain/run_flatstart_cnn1a.sh
+  echo "$0: Calling the flat-start chain recipe..."
+  local/chain/run_flatstart_cnn1a.sh --nj $nj
+fi
+
+if [ $stage -le 7 ]; then
+  echo "$0: Aligning the training data using the e2e chain model..."
+  steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
+                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
+                       data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
+fi
+
+if [ $stage -le 8 ]; then
+  echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
+  local/chain/run_cnn_e2eali_1a.sh --nj $nj
 fi

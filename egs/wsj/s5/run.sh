@@ -148,8 +148,6 @@ if [ $stage -le 2 ]; then
   fi
 fi
 
-exit 0 ## TEMP
-
 if [ $stage -le 3 ]; then
   # tri2b.  there is no special meaning in the "b"-- it's historical.
   if $train; then

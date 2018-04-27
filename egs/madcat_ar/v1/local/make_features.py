@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images
                                                 writes them to standard output in text format.""")
 parser.add_argument('images_scp_path', type=str,
                     help='Path of images.scp file')
-parser.add_argument('--allowed-len-file-path', type=str, default=None,
+parser.add_argument('--allowed_len_file_path', type=str, default=None,
                     help='If supplied, each images will be padded to reach the '
                     'target length (this overrides --padding).')
 parser.add_argument('--out-ark', type=str, default='-',
