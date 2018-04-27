@@ -28,22 +28,13 @@ dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.
 
 mkdir -p data/{train,test,dev}
 if [ $stage -le 1 ]; then
+  echo "$0: Processing data..."
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $dev_split_file data/dev data/local/dev/images.scp || exit 1
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $test_split_file data/test data/local/test/images.scp || exit 1
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $train_split_file data/train data/local/train/images.scp || exit 1
 
-  for dataset in train test dev; do
-    cp data/$dataset/utt2spk data/$dataset/utt2spk_tmp
-    cp data/$dataset/text data/$dataset/text_tmp
-    cp data/$dataset/images.scp data/$dataset/images_tmp.scp
-    sort data/$dataset/utt2spk_tmp > data/$dataset/utt2spk
-    sort data/$dataset/text_tmp > data/$dataset/text
-    sort data/$dataset/images_tmp.scp > data/$dataset/images.scp
-    rm data/$dataset/utt2spk_tmp data/$dataset/text_tmp data/$dataset/images_tmp.scp
+  for dataset in dev test train; do
+    echo "$0: Fixing data directory..."
+    image/fix_data_dir.sh data/$dataset
   done
-
-  utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
-  utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
-  utils/utt2spk_to_spk2utt.pl data/dev/utt2spk > data/dev/spk2utt
-
 fi
