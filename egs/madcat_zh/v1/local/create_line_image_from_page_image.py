@@ -418,7 +418,7 @@ def set_line_image_data(image, line_id, image_file_name):
     #im = img_as_uint(imgray_rev_arr)
     #imsave(image_path, im)
     imgray = image.convert('L')
-    imgray_rev_arr = np.fliplr(imgray)
+    #imgray_rev_arr = np.fliplr(imgray)
     imgray_rev = toimage(imgray_rev_arr)
     imgray_rev.save(image_path)
     image_fh.write(image_path + '\n')
