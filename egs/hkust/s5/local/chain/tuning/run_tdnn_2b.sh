@@ -1,5 +1,4 @@
 #!/bin/bash
-# Copyright 2018  Emotech LTD (Author: Xuechen Liu)
 
 # This script is based on run_tdnn_7p.sh in swbd chain recipe.
 # exp 2b: changes on network arch with multiple training options, referencing swbd
