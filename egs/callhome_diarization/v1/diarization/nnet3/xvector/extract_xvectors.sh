@@ -5,12 +5,12 @@
 #               2017-2018  Matthew Maciejewski
 # Apache 2.0.
 
-# This script extracts iVectors over a sliding window for a
-# set of utterances, given features and a trained iVector
+# This script extracts xvectors over a sliding window for a
+# set of utterances, given features and a trained xvector
 # extractor. This is used for speaker diarization. This is done
 # using subsegmentation on the data directory. As a result, the
 # files containing "spk" (e.g. utt2spk) in the data directory
-# within the ivector directory are not referring to true speaker
+# within the xvector directory are not referring to true speaker
 # labels, but are referring to recording labels. For example,
 # the spk2utt file contains a table mapping recording IDs to the
 # sliding-window subsegments generated for that recording.
@@ -42,16 +42,16 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 3 ]; then
-  echo "Usage: $0 <extractor-dir> <data> <ivector-dir>"
-  echo " e.g.: $0 exp/extractor_2048 data/train exp/ivectors"
+  echo "Usage: $0 <extractor-dir> <data> <xvector-dir>"
+  echo " e.g.: $0 exp/extractor_2048 data/train exp/xvectors"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --window <window|1.5>                            # Sliding window length in seconds"
   echo "  --period <period|0.75>                           # Period of sliding windows in seconds"
-  echo "  --min-segment <min|0.5>                          # Minimum segment length in seconds per ivector"
+  echo "  --min-segment <min|0.5>                          # Minimum segment length in seconds per xvector"
   echo "  --hard-min <bool|false>                          # Removes segments less than min-segment if true."
-  echo "                                                   # Useful for extracting training ivectors."
+  echo "                                                   # Useful for extracting training xvectors."
   echo "  --nj <n|10>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --num-gselect <n|20>                             # Number of Gaussians to select using"
@@ -145,7 +145,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  echo "$0: Computing mean of iVectors"
+  echo "$0: Computing mean of xvectors"
   $cmd $dir/log/mean.log \
     ivector-mean scp:$dir/xvector.scp $dir/mean.vec || exit 1;
 fi

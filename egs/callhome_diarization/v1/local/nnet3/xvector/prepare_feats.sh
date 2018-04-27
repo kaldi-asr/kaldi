@@ -34,7 +34,7 @@ dir=$3
 
 name=`basename $data_in`
 
-for f in $data_in/feats.scp $data_in/vad.scp ; do
+for f in $data_in/feats.scp ; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 

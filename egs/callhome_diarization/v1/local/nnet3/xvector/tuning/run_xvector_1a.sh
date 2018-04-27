@@ -65,7 +65,7 @@ if [ $stage -le 4 ]; then
     --min-frames-per-chunk 200 \
     --max-frames-per-chunk 400 \
     --num-diagnostic-archives 3 \
-    --num-repeats 20 \
+    --num-repeats 40 \
     "$data" $egs_dir
 fi
 
