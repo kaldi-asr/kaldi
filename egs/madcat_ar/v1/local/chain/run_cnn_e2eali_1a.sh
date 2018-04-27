@@ -188,8 +188,9 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=64,32 \
+    --trainer.num-chunk-per-minibatch=96,64 \
     --trainer.optimization.momentum=0.0 \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \

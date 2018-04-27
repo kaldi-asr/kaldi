@@ -18,24 +18,24 @@ dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.
                             # if supplied.
 ./local/check_tools.sh
 
+
+mkdir -p data/{train,test,dev}/data
+mkdir -p data/local/{train,test,dev}
+
 if [ $stage -le 0 ]; then
   for dataset in test dev train; do
     dataset_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.$dataset.raw.lineid
     local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
                            --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
-                           --download_dir3 $download_dir3 data/local/lines
+                           --download_dir3 $download_dir3 data/local/$dataset
   done
 fi
 
 if [ $stage -le 1 ]; then
   echo "$0: Preparing data..."
-  local/prepare_data.sh  --download_dir1 $download_dir1 \
-    --download_dir2 $download_dir2 --download_dir3 $download_dir3 \
-    --train_split_file $train_split_file --test_split_file $test_split_file \
-    --dev_split_file $dev_split_file
+  local/prepare_data.sh
 fi
 
-mkdir -p data/{train,test,dev}/data
 if [ $stage -le 2 ]; then
   echo "$0: Obtaining image groups..."
   image/get_image2num_frames.py data/train  # This will be needed for the next command
@@ -69,17 +69,17 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: Calling the flat-start chain recipe..."
-  local/chain/run_flatstart_cnn1a.sh
+  local/chain/run_flatstart_cnn1a.sh --nj $nj
 fi
 
 if [ $stage -le 7 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
-  steps/nnet3/align.sh --nj 70 --cmd "$cmd" \
+  steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                        data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 8 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali_1a.sh
+  local/chain/run_cnn_e2eali_1a.sh --nj $nj
 fi

@@ -20,6 +20,7 @@ set -e
 
 # configs for 'chain'
 stage=0
+nj=70
 train_stage=-10
 get_egs_stage=-10
 affix=1a
@@ -29,7 +30,7 @@ tdnn_dim=450
 num_epochs=2
 num_jobs_initial=8
 num_jobs_final=16
-minibatch_size=150=48,24/300=24,12/600=12,6/1200=4,4
+minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
 common_egs_dir=
 l2_regularize=0.00005
 frames_per_iter=1000000
@@ -70,7 +71,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  steps/nnet3/chain/e2e/prepare_e2e.sh --nj 70 --cmd "$cmd" \
+  steps/nnet3/chain/e2e/prepare_e2e.sh --nj $nj --cmd "$cmd" \
                                        --shared-phones true \
                                        --type mono \
                                        data/$train_set $lang $treedir
@@ -128,6 +129,7 @@ if [ $stage -le 3 ]; then
     --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter $frames_per_iter \
     --trainer.num-epochs $num_epochs \
@@ -160,7 +162,7 @@ fi
 if [ $stage -le 5 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj 70 --cmd "$cmd" \
+    --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
 fi
 
