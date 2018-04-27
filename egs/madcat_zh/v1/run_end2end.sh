@@ -37,9 +37,7 @@ if [ $stage -le 1 ]; then
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   echo "$0: Preparing the test and train feature files..."
   for dataset in train test; do
-    local/make_features.py data/$dataset --feat-dim 80 | \
-      copy-feats --compress=true --compression-method=7 \
-                 ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 80 data/$dataset
     steps/compute_cmvn_stats.sh data/$dataset
   done
   utils/fix_data_dir.sh data/train
