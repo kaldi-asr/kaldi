@@ -38,7 +38,7 @@ if [ $stage -le 1 ]; then
       cp data/$dataset/$prepared data/${dataset}_60/$prepared
     done
 
-    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 60 data/$dataset
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 60 data/${dataset}_60
     steps/compute_cmvn_stats.sh data/${dataset}_60
   done
 fi
