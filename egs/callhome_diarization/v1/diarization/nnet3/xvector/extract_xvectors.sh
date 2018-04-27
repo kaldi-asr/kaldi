@@ -7,7 +7,7 @@
 
 # This script extracts xvectors over a sliding window for a
 # set of utterances, given features and a trained xvector
-# extractor. This is used for speaker diarization. This is done
+# DNN. This is used for speaker diarization. This is done
 # using subsegmentation on the data directory. As a result, the
 # files containing "spk" (e.g. utt2spk) in the data directory
 # within the xvector directory are not referring to true speaker
@@ -27,10 +27,6 @@ period=0.75
 pca_dim=
 min_segment=0.5
 hard_min=false
-num_gselect=20 # Gaussian-selection using diagonal model: number of Gaussians to select
-min_post=0.025 # Minimum posterior to use (posteriors below this are pruned out)
-posterior_scale=1.0 # This scale helps to control for successve features being highly
-                    # correlated.  E.g. try 0.1 or 0.3.
 apply_cmn=true # If true, apply sliding window cepstral mean normalization
 use_gpu=false
 # End configuration section.
@@ -42,8 +38,8 @@ if [ -f path.sh ]; then . ./path.sh; fi
 
 
 if [ $# != 3 ]; then
-  echo "Usage: $0 <extractor-dir> <data> <xvector-dir>"
-  echo " e.g.: $0 exp/extractor_2048 data/train exp/xvectors"
+  echo "Usage: $0 <nnet-dir> <data> <xvector-dir>"
+  echo " e.g.: $0 exp/xvector_nnet data/train exp/xvectors"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
@@ -54,9 +50,6 @@ if [ $# != 3 ]; then
   echo "                                                   # Useful for extracting training xvectors."
   echo "  --nj <n|10>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
-  echo "  --num-gselect <n|20>                             # Number of Gaussians to select using"
-  echo "                                                   # diagonal model."
-  echo "  --min-post <min-post|0.025>                      # Pruning threshold for posteriors"
   echo "  --apply-cmn <true,false|true>                    # if true, apply sliding window cepstral mean"
   echo "                                                   # normalization to features"
   exit 1;
