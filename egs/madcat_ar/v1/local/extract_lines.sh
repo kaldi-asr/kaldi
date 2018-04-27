@@ -1,4 +1,4 @@
-i#!/bin/bash
+#!/bin/bash
 # Copyright   2018 Ashish Arora
 
 nj=4
