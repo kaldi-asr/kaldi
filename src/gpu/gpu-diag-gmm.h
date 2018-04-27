@@ -24,7 +24,6 @@ struct GPUDiagGmm{
   GPUDiagGmm(DiagGmm &d):
     valid_gconsts_(d.valid_gconsts_()),
   {
-    int verbose = 0;
     
     // copy gconsts_
     const size_t gconsts_dim = d.gconsts().SizeInBytes() / sizeof(BaseFloat);

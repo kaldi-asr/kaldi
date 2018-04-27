@@ -356,6 +356,16 @@ class OnlineFeatureMatrix {
   SubVector<BaseFloat> GetFrame(int32 frame);
 
   bool Good(); // returns true if we have at least one frame.
+
+  /// BEGIN FOR Radit's Final Project :")
+  const OnlineFeatureMatrixOptions& opts() const { return opts_; }
+  // TODO : OnlineFeatInputItf* 
+  int32 feat_dim() { return feat_dim_; }
+  const Matrix<BaseFloat>& feat_matrix() { return feat_matrix_; }
+  int32 feat_offset() { return feat_offset_; }
+  bool finished() { return finished_; }
+  /// END FOR Radit's Final Project :")
+
  private:
   void GetNextFeatures(); // called when we need more features.  Guarantees
   // to get at least one more frame, or set finished_ = true.

@@ -1,6 +1,14 @@
 #ifndef KALDI_HMM_GPU_TRANSITION_MODEL_H_
 #define KALDI_HMM_GPU_TRANSITION_MODEL_H_
 
+#include <vector>
+
+#include <thrust/sort.h>
+#include <thrust/copy.h>
+#include <thrust/device_vector.h>
+#include <thrust/execution_policy.h>
+#include <thrust/fill.h>
+
 #include "hmm/transition-model.h"
 
 namespace kaldi{
