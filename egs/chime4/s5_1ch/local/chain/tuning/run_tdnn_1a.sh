@@ -97,28 +97,18 @@ if $decode_only; then
   if [ ! -d $mdir/exp/nnet3${nnet3_affix}/extractor ]; then
     echo "error, set $mdir correctly"
     exit 1;
-  elif [ ! -d exp/nnet3${nnet3_affix}/extractor ]; then
-    echo "copy $mdir/exp/nnet3${nnet3_affix}/extractor"
-    mkdir -p exp/nnet3${nnet3_affix}
-    cp -r $mdir/exp/nnet3${nnet3_affix}/extractor exp/nnet3${nnet3_affix}/
   fi
   # check tdnn graph
   if [ ! -d $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k ]; then
     echo "error, set $mdir correctly"
     exit 1;
-  elif [ ! -d exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k ]; then
-    echo "copy $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k"
-    mkdir -p exp/chain${nnet3_affix}/tree_a_sp
-    cp -r $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k exp/chain${nnet3_affix}/tree_a_sp/
   fi
   # check dir
   if [ ! -d $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp ]; then
     echo "error, set $mdir correctly"
     exit 1;
-  elif [ ! -d exp/chain${nnet3_affix}/tdnn${affix}_sp ]; then
-    echo "copy $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp"
-    cp -r $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp exp/chain${nnet3_affix}/
   fi
+
   # make ivector for dev and eval
   for datadir in ${test_sets}; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
@@ -280,8 +270,7 @@ if [ $stage -le 16 ]; then
   cat $train_data_dir/utt2uniq | awk -F' ' '{print $1}' > $train_data_dir/utt2uniq.tmp1
   cat $train_data_dir/utt2uniq | awk -F' ' '{print $2}' | sed -e 's/\....//g' | sed -e 's/\_CH.//g' | sed -e 's/\_enhan//g' > $train_data_dir/utt2uniq.tmp2
   paste -d" " $train_data_dir/utt2uniq.tmp1 $train_data_dir/utt2uniq.tmp2 > $train_data_dir/utt2uniq
-  rm -rf $train_data_dir/utt2uniq.tmp1
-  rm -rf $train_data_dir/utt2uniq.tmp2
+  rm -rf $train_data_dir/utt2uniq.tmp{1,2}
   
   steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd="$decode_cmd" \
