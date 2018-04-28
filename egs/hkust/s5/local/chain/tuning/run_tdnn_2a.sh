@@ -1,22 +1,23 @@
 #!/bin/bash
 
-# This script is based on run_tdnn_7h.sh in swbd chain recipe.
-# exp 2a: change the step of making configs, using xconfig
-#         some minor changes on training parameters, referencing wsj
+# This script is based on run_tdnn_7p.sh in swbd chain recipe.
 
 # Results
-# local/nnet3/compare_wer_general.sh --online exp/chain/tdnn_7h_chain_2asp
-# Model                tdnn_7h_chain_2a_sp
-# WER(%)                    29.30
-# WER(%)[online]            25.23
-# WER(%)[per-utt]           30.66
-# Final train prob        -0.1068
-# Final valid prob        -0.1542
+# local/chain/compare_wer.sh --online exp/chain/tdnn_7h_chain_2b_sp
+# Model                tdnn_7h_chain_2b_sp
+# WER(%)                    23.67
+# WER(%)[online]            23.69
+# WER(%)[per-utt]           24.67
+# Final train prob        -0.0895
+# Final valid prob        -0.1251
+# Final train prob (xent)   -1.3628
+# Final valid prob (xent)   -1.5590
 
+# exp 2b: changes on network arch with multiple training options, referencing swbd
 set -euxo pipefail
 
 # configs for 'chain'
-affix=chain_2a
+affix=chain_2b
 stage=12
 nj=10
 train_stage=-10
@@ -30,13 +31,14 @@ initial_effective_lrate=0.0005
 final_effective_lrate=0.00005
 max_param_change=2.0
 final_layer_normalize_target=0.5
-num_jobs_initial=2
-num_jobs_final=12
+num_jobs_initial=3
+num_jobs_final=3
 minibatch_size=128
-frames_per_eg=150
-remove_egs=true
+frames_per_eg=150,110,100
+remove_egs=false
 common_egs_dir=
 xent_regularize=0.1
+dropout_schedule='0,0@0.20,0.5@0.50,0'
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -108,41 +110,58 @@ if [ $stage -le 12 ]; then
   feat_dim=$(feat-to-dim scp:data/${train_set}_hires/feats.scp -)
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  opts="l2-regularize=0.004 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
+  linear_opts="orthonormal-constraint=-1.0 l2-regularize=0.004"
+  output_opts="l2-regularize=0.002"
 
   mkdir -p $dir/configs
+
   cat <<EOF > $dir/configs/network.xconfig
   input dim=$ivector_dim name=ivector
   input dim=$feat_dim name=input
-
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
-
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=625
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
-
-  ## adding the layers for chain branch
-  relu-renorm-layer name=prefinal-chain input=tdnn6 dim=625 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
-
-  # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' models... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
-  relu-renorm-layer name=prefinal-xent input=tdnn6 dim=625 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
-
+  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=1024
+  linear-component name=tdnn2l0 dim=256 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=1024
+  linear-component name=tdnn3l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=1024 input=Append(0,1)
+  linear-component name=tdnn4l0 dim=256 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn4l dim=256 $linear_opts input=Append(0,1)
+  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=1024
+  linear-component name=tdnn5l dim=256 $linear_opts
+  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=1024 input=Append(0, tdnn3l)
+  linear-component name=tdnn6l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn7l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn7l dim=256 $linear_opts input=Append(0,3)
+  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1024
+  linear-component name=tdnn8l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn8l dim=256 $linear_opts input=Append(0,3)
+  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn9l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=1024
+  linear-component name=tdnn10l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn10l dim=256 $linear_opts input=Append(0,3)
+  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn11l0 dim=256 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn9l,tdnn7l) dim=1024
+  linear-component name=prefinal-l dim=256 $linear_opts
+  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1280
+  linear-component name=prefinal-chain-l dim=256 $linear_opts
+  batchnorm-component name=prefinal-chain-batchnorm
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
+  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1280
+  linear-component name=prefinal-xent-l dim=256 $linear_opts
+  batchnorm-component name=prefinal-xent-batchnorm
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -162,9 +181,11 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.0 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
-    --egs.opts "--frames-overlap-per-eg 0" \
+    --egs.opts "--frames-overlap-per-eg 0 --constrained false" \
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.optimization.momentum 0.0 \
