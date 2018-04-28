@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2017  Hainan Xu
+#           2017  Szu-Jui Chen
+
 # This script is very similar to steps/rnnlmrescore.sh, and it performs n-best
 # LM rescoring with Kaldi-RNNLM.
 
@@ -180,17 +183,26 @@ if [ $stage -le 6 ]; then
     rnnlm/compute_sentence_scores.sh $rnndir $adir.JOB/temp \
                                    $adir.JOB/words_text $adir.JOB/lmwt.rnn 
 fi
+
 if [ $stage -le 7 ]; then
+  echo "$0: doing average on forward and backward scores."
+  for n in `seq $nj`; do
+    paste $adir.$n/lmwt.rnn $adir.$n/lmwt.rnn_back | awk -F' ' '{print $1,$2 * 0.5 + $4 * 0.5}' \
+    > $adir.$n/lmwt.rnn_bi
+  done
+fi
+
+if [ $stage -le 8 ]; then
   echo "$0: reconstructing total LM+graph scores including interpolation of RNNLM and old LM scores."
   for n in `seq $nj`; do
-    paste $adir.$n/lmwt.nolm $adir.$n/lmwt.lmonly $adir.$n/lmwt.rnn | awk -v rnnweight=$rnnweight \
+    paste $adir.$n/lmwt.nolm $adir.$n/lmwt.lmonly $adir.$n/lmwt.rnn_bi | awk -v rnnweight=$rnnweight \
       '{ key=$1; graphscore=$2; lmscore=$4; rnnscore=$6;
      score = graphscore+(rnnweight*rnnscore)+((1-rnnweight)*lmscore);
      print $1,score; } ' > $adir.$n/lmwt.interp.$rnnweight || exit 1;
   done
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   echo "$0: reconstructing archives back into lattices."
   $cmd JOB=1:$nj $dir/log/reconstruct_lattice.JOB.log \
     linear-to-nbest "ark:$adir.JOB/ali" "ark:$adir.JOB/words" \

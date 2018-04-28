@@ -6,8 +6,8 @@
 #           2017  Szu-Jui Chen
 
 # Begin configuration section.
-
-dir=exp/rnnlm_lstm_1a_back
+affix=1a
+dir=exp/rnnlm_lstm_${affix}_back
 enhan=$1
 embedding_dim=2048
 lstm_rpd=512
@@ -17,7 +17,7 @@ train_stage=-10
 
 # variables for lattice rescoring
 ac_model_dir=exp/chain/tdnn1a_sp
-decode_dir_suffix=rnnlm_lstm_1a_back
+decode_dir_suffix=rnnlm_lstm_${affix}_back
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
@@ -28,7 +28,7 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 
 srcdir=data/local/local_lm
 lexicon=data/local/dict/lexiconp.txt
-text_dir=data/rnnlm/text_nosp_1a_back
+text_dir=data/rnnlm/text_nosp_${affix}_back
 mkdir -p $dir/config
 set -e
 
