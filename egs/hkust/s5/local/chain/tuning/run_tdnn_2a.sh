@@ -17,7 +17,7 @@
 set -euxo pipefail
 
 # configs for 'chain'
-affix=chain_2b
+affix=chain_2a
 stage=12
 nj=10
 train_stage=-10
