@@ -12,7 +12,7 @@ set -e
 
 if [ $# == 0 ]; then
   echo "Usage: $0: [--online] <dir1> [<dir2> ... ]"
-  echo "e.g.: $0 exp/nnet3/tdnn_sp exp/nnet3/tdnn_sp_pr"
+  echo "e.g.: $0 --online exp/chain/tdnn_7h_sp"
   exit 1
 fi
 
