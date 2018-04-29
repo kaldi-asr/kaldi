@@ -1,5 +1,7 @@
+// This is the main program of Radit's Final Project
+// The file mostly contains the same program with onlinebin/online-wav-gmm-decode-faster.cpp
 
-
+#include "gpu/gpu-online-decodable.h"
 #include <vector>
 
 #include <thrust/sort.h>
@@ -8,7 +10,6 @@
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 
-#include "gpu/gpu-online-decodable.h"
 
 #include "feat/feature-mfcc.h"
 #include "feat/wave-reader.h"
@@ -108,12 +109,12 @@ int main(int argc, char *argv[]) {
         am_gmm.Read(ki.Stream(), binary);
     }
 
-    fst::SymbolTable *word_syms = NULL;
-    if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
-        KALDI_ERR << "Could not read symbol table from file "
-                    << word_syms_filename;
+//     fst::SymbolTable *word_syms = NULL;
+//     if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
+//         KALDI_ERR << "Could not read symbol table from file "
+//                     << word_syms_filename;
 
-    fst::Fst<fst::StdArc> *decode_fst = ReadDecodeGraph(fst_rspecifier);
+//     fst::Fst<fst::StdArc> *decode_fst = ReadDecodeGraph(fst_rspecifier);
 
     // We are not properly registering/exposing MFCC and frame extraction options,
     // because there are parts of the online decoding code, where some of these
@@ -173,9 +174,24 @@ int main(int argc, char *argv[]) {
 
       // feature_reading_opts contains number of retries, batch size.
       OnlineFeatureMatrix feature_matrix(feature_reading_opts,
-                                         feat_transform);  
-      // TODO : Buat Versi GPUnya
+                                         feat_transform);
       
+      // Copy AmDiagGmm ke GPUAmDiagGmm
+      GPUAmDiagGmm gpu_am_gmm;
+      for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
+        GPUDiagGmm *gpu_gmm = new GPUDiagGmm(am_gmm.GetPdf(i));
+        gpu_am_gmm.AddPdf(*gpu_gmm);
+      }
+      
+      // Copy TransitionModel ke GPUTransitionModel
+      GPUTransitionModel gpu_trans_model = GPUTransitionModel(trans_model);
+      
+      // Create GPUOnlineDecodableDiagGmmScaled
+      GPUOnlineDecodableDiagGmmScaled(gpu_am_gmm, acoustic_scale, gpu_trans_model);
+     
+      // TODO : Buat Loop Decodenya
+      
+      delete feat_transform;
     }
     delete word_syms;
     delete decode_fst;
