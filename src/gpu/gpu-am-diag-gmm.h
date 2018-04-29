@@ -17,10 +17,19 @@ struct GPUAmDiagGmm{
 
   thrust::device_vector<GPUDiagGmm*> densities_;
   GPUAmDiagGmm(){}
-  ~GPUAmDiagGmm();
+  ~GPUAmDiagGmm(){
+    for(int i = 0;i < densities_.size(); ++i){
+      GPUDiagGmm* gpugmm = densities_[i];
+      delete gpugmm;
+    }
+    densities_.clear();
+  }
 
-  
-  
+  void AddPdf(const GPUDiagGmm &gpugmm){
+    if (densities_.size() != 0)  // not the first gmm
+      KALDI_ASSERT(gpugmm.Dim() == this->Dim());
+    densities_.push_back(&gpugmm);
+  }
 };
 
 }
