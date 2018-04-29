@@ -31,12 +31,10 @@ struct GPUOnlineDecodableDiagGmmScaled {
     const GPUAmDiagGmm& gpu_ac_model_,
     BaseFloat ac_scale_,
     const GPUTransitionModel& gpu_transition_model_,
-    const int32 feat_dim_
   ) : 
   ac_model_(gpu_ac_model_),
   ac_scale_(ac_scale_),
-  transition_model_(gpu_transition_model_),
-  feat_dim_(feat_dim_) {}
+  transition_model_(gpu_transition_model_) {}
 
 };  
 
