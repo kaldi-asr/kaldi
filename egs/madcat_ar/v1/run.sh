@@ -32,7 +32,7 @@ if [ $stage -le 0 ]; then
     dataset_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.$dataset.raw.lineid
     local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
                            --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
-                           --download_dir3 $download_dir3 data/local/lines
+                           --download_dir3 $download_dir3 data/local/$dataset
   done
 fi
 
