@@ -345,7 +345,7 @@ template<typename Real> void CuVectorUnitTestSum() {
     A.SetRandn();
     ones.Set(1.0);
 
-    AssertEqual(VecVec(A, ones), A.Sum());
+    AssertEqual(VecVec(A, ones), A.Sum(), 0.0012);
   }
 }
 
