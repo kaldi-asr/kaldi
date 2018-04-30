@@ -7,9 +7,6 @@ nj=70
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
-train_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
-test_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.test.raw.lineid
-dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.raw.lineid
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -24,6 +21,8 @@ mkdir -p data/local/{train,test,dev}
 
 if [ $stage -le 0 ]; then
   for dataset in test dev train; do
+    echo "$0: Extracting line images from page image for dataset:  $dataset. "
+    echo "Date: $(date)."
     dataset_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.$dataset.raw.lineid
     local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
                            --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
@@ -32,24 +31,32 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  echo "$0: Preparing data..."
+  echo "$0: Preparing dev train and eval data..."
+  echo "Date: $(date)."
   local/prepare_data.sh
 fi
 
 if [ $stage -le 2 ]; then
-  echo "$0: Obtaining image groups..."
+  echo "$0: Obtaining image groups. calling get_image2num_frames"
+  echo "Date: $(date)."
   image/get_image2num_frames.py data/train  # This will be needed for the next command
   # The next command creates a "allowed_lengths.txt" file in data/train
   # which will be used by local/make_features.py to enforce the images to
   # have allowed lengths. The allowed lengths will be spaced by 10% difference in length.
+  echo "$0: Obtaining image groups. calling get_allowed_lengths"
+  echo "Date: $(date)."
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
 fi
 
 if [ $stage -le 3 ]; then
   for dataset in test dev train; do
+    echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. "
+    echo "Date: $(date)."
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
     steps/compute_cmvn_stats.sh data/$dataset || exit 1;
   done
+  echo "$0: Fixing data directory for train dataset"
+  echo "Date: $(date)."
   utils/fix_data_dir.sh data/train
 fi
 
@@ -69,11 +76,13 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: Calling the flat-start chain recipe..."
+  echo "Date: $(date)."
   local/chain/run_flatstart_cnn1a.sh --nj $nj
 fi
 
 if [ $stage -le 7 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
+  echo "Date: $(date)."
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                        data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
@@ -81,5 +90,6 @@ fi
 
 if [ $stage -le 8 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali_1a.sh --nj $nj
+  echo "Date: $(date)."
+  local/chain/run_cnn_e2eali_1b.sh --nj $nj
 fi

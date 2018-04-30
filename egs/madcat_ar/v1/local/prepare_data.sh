@@ -28,13 +28,15 @@ dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.
 
 mkdir -p data/{train,test,dev}
 if [ $stage -le 1 ]; then
-  echo "$0: Processing data..."
+  echo "$0: Processing dev, train and test data..."
+  echo "Date: $(date)."
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $dev_split_file data/dev data/local/dev/images.scp || exit 1
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $test_split_file data/test data/local/test/images.scp || exit 1
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $train_split_file data/train data/local/train/images.scp || exit 1
 
   for dataset in dev test train; do
-    echo "$0: Fixing data directory..."
+    echo "$0: Fixing data directory for dataset: $dataset"
+    echo "Date: $(date)."
     image/fix_data_dir.sh data/$dataset
   done
 fi
