@@ -1,6 +1,8 @@
 // This is the main program of Radit's Final Project
 // The file mostly contains the same program with onlinebin/online-wav-gmm-decode-faster.cpp
 
+// Uses Parallel Viterbi Beam Search Algorithm from Arturo Argueta and David Chiang's paper.
+
 #include "gpu/gpu-online-decodable.h"
 #include <vector>
 
@@ -35,9 +37,9 @@ struct PointerComparison
 
 
 __global__ void compute_initial(int *from_states, int *to_states, float *probs,
-				int start_offset, int end_offset,
-				state_t initial_state,
-				prob_ptr_t *viterbi)
+        int start_offset, int end_offset,
+        state_t initial_state,
+        prob_ptr_t *viterbi)
 {
     int id = blockIdx.x*blockDim.x+threadIdx.x;
     int offset = start_offset+id;
@@ -51,13 +53,18 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs,
     shared_probs[threadIdx.x] = probs[offset];
 
     if (offset < end_offset && from_shared_states[threadIdx.x] == initial_state) {
-	    atomicMax(&viterbi[to_shared_states[threadIdx.x]], pack(shared_probs[threadIdx.x], offset));
+      atomicMax(&viterbi[to_shared_states[threadIdx.x]], pack(shared_probs[threadIdx.x], offset));
     }
 }
 
+
+/* TODO:
+ * 1. Ganti assignment pp di if itu (tambahin LogLikelihood)
+ *    Perhatiin LogLikelihood bakal assign sesuatu di CUDA, jangan sampe kegedean
+ */
 __global__ void compute_transition(int *from_states, int *to_states, float *probs,
-				   int start_offset, int end_offset,
-				   prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
+          int start_offset, int end_offset,
+          prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   int offset = start_offset+id;
 
@@ -79,8 +86,8 @@ __global__ void compute_transition(int *from_states, int *to_states, float *prob
 }
 
 __global__ void compute_final(int *final_states, float *final_probs,
-			      int num_finals,
-			      prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
+            int num_finals,
+            prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
   // To do: this should be a reduction instead
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   if (id < num_finals) {
@@ -90,9 +97,9 @@ __global__ void compute_final(int *final_states, float *final_probs,
 }
 
 __global__ void get_path(int *from_nodes,
-			 prob_ptr_t *viterbi,
-			 int input_length, int num_nodes,
-			 prob_ptr_t *path) {
+            prob_ptr_t *viterbi,
+            int input_length, int num_nodes,
+            prob_ptr_t *path) {
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   if (id == 0) {
     int state = unpack_ptr(path[input_length]);
@@ -104,6 +111,11 @@ __global__ void get_path(int *from_nodes,
   }
 }
 
+/* TODO
+ * 1. Pelajarin ini
+ * 2. Cari cara ngubahnya jadi max_active_statenya
+ */
+
 __global__ void set_states_in_beam(prob_ptr_t *viterbi, prob_ptr_t *viterbi_beam,int *to_states){
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   if(id < BEAM_SIZE){
@@ -113,15 +125,26 @@ __global__ void set_states_in_beam(prob_ptr_t *viterbi, prob_ptr_t *viterbi_beam
   }
 }
 
+/* TODO
+ * 1. Ganti Input Symbols jadi decodablenya
+ * 2. Ganti Resizenya jadi Batch Size
+ * 3. Konsep Beam Search disini beda, disini prune banyak state (sama dengan --max-active-state), di kaldi max prob
+ * 4. Input Offsets kayaknya gaperlu, semuanya dipake sekarang soalnya
+ * 5. set_states_in_beam (diliat diatas)
+ * 6. Kasih offset frame di fungsi utama
+ * 7. Compute Final ga harus dari final state. kalo misalnya dia ga nyampe final state maka cari yang terbaik.
+ * 8. Ganti yang dapet output symbol dari input symbol. SIZE ga harus sama.
+ * 9. Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
+ */
 prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &output_symbols) {
     int verbose=0;
 
     static thrust::device_vector<prob_ptr_t> viterbi;
-    viterbi.resize(input_symbols.size() * m.num_states);
+    viterbi.resize(input_symbols.size() * m.num_states); // TODO : instead of input symbols, kasih batch_size
     prob_ptr_t init_value = pack(-FLT_MAX, 0);
     thrust::fill(viterbi.begin(), viterbi.end(), init_value);
    
-    static thrust::device_vector<prob_ptr_t> viterbi_beam;
+    static thrust::device_vector<prob_ptr_t> viterbi_beam; // TODO : ini gatau masih dipake nggak
     viterbi_beam.resize(BEAM_SIZE * input_symbols.size());
     thrust::fill(viterbi_beam.begin(),viterbi_beam.end(),init_value);
 
@@ -142,7 +165,7 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
 
     if (verbose) {
       for (auto pp: viterbi)
-	      cout << unpack_prob(pp) << " ";
+        cout << unpack_prob(pp) << " ";
       cout << endl;
     }
 
@@ -160,8 +183,8 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
 
       compute_transition <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
         m.from_states.data().get(), 
-	      m.to_states.data().get(),
-	      m.probs.data().get(),
+        m.to_states.data().get(),
+        m.probs.data().get(),
         start_offset, end_offset,
         viterbi.data().get() + (t-1)*m.num_states,
         viterbi.data().get() + t*m.num_states);
@@ -179,9 +202,10 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
       set_states_in_beam <<<ceildiv(BEAM_SIZE, BLOCK_SIZE), BLOCK_SIZE>>> (viterbi.data().get() + (t*m.num_states), viterbi_beam.data().get()+ (t*BEAM_SIZE),m.to_states.data().get());
     }
 
+    // TODO : cari token yang terbaik terlebih dahulu instead of final token
     compute_final <<<ceildiv(m.final_states.size(), 1024), 1024>>> (
       m.final_states.data().get(),
-	    m.final_probs.data().get(),
+      m.final_probs.data().get(),
       m.final_states.size(),
       viterbi.data().get() + (input_symbols.size()-1)*m.num_states,
       (&path.back()).get());
@@ -201,6 +225,9 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
 
     thrust::host_vector<prob_ptr_t> h_path(path);
     output_symbols.resize(input_symbols.size());
+
+
+    // TODO : ini ga harus dapet dari sini, pasti lebih dikit soalnya (jumlah kata << jumlah fonem)
     for (int t=0; t<input_symbols.size(); t++) {
       output_symbols[t] = m.outputs[unpack_ptr(h_path[t])];
     }
