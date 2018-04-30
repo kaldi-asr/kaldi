@@ -120,6 +120,7 @@ struct MapTransitionUpdateConfig {
 };
 
 class TransitionModel {
+ private : struct Tuple;
 
  public:
   /// Initialize the object [e.g. at the start of training].

@@ -21,6 +21,7 @@
 // limitations under the License.
 
 #include "online/online-decodable.h"
+#include "iostream"
 
 namespace kaldi {
 
@@ -48,6 +49,7 @@ void OnlineDecodableDiagGmmScaled::CacheFrame(int32 frame) {
               << "for frame zero, check that the input is valid.";
   cur_feats_.CopyFromVec(features_->GetFrame(frame));
   cur_frame_ = frame;
+  //std::cerr << "cur_feats.size : " << cur_feats_.Dim() << ", cur_frame : " << cur_frame_ << std::endl;
 }
 
 BaseFloat OnlineDecodableDiagGmmScaled::LogLikelihood(int32 frame, int32 index) {
