@@ -1,13 +1,15 @@
 #!/bin/bash
 # Copyright 2017-2018  David Snyder
 #           2017-2018  Matthew Maciejewski
+#
 # Apache 2.0.
 #
-# This is still a work in progress, but implements something similar to
-# Greg Sell's and Daniel Garcia-Romero's iVector-based diarization system
-# in 'Speaker Diarization With PLDA I-Vector Scoring And Unsupervised
-# Calibration'.  The main difference is that we haven't implemented the
-# VB resegmentation yet.
+# This recipe demonstrates the use of x-vectors for speaker diarization.
+# The scripts are based on the recipe in ../v1/run.sh, but clusters x-vectors
+# instead of i-vectors.  It is similar to the x-vector-based diarization system
+# described in "Diarization is Hard: Some Experiences and Lessons Learned for
+# the JHU Team in the Inaugural DIHARD Challenge" by Sell et al.  The main
+# difference is that we haven't implemented the VB resegmentation yet.
 
 . ./cmd.sh
 . ./path.sh
@@ -20,11 +22,11 @@ nnet_dir=exp/xvector_nnet_1a/
 
 # Prepare datasets
 if [ $stage -le 0 ]; then
-  # Prepare a collection of NIST SRE data. This will be used to train the UBM,
-  # iVector extractor and PLDA model.
+  # Prepare a collection of NIST SRE data. This will be used to train,
+  # x-vector DNN and PLDA model.
   local/make_sre.sh $data_root data
 
-  # Prepare SWB for UBM and iVector extractor training.
+  # Prepare SWB for x-vector DNN training.
   local/make_swbd2_phase1.pl /export/corpora/LDC/LDC98S75 \
     data/swbd2_phase1_train
   local/make_swbd2_phase2.pl $data_root/LDC99S79 \
@@ -74,7 +76,7 @@ if [ $stage -le 1 ]; then
       utils/fix_data_dir.sh data/${name}_cmn
   done
 
-  # Create segments for ivector extraction for PLDA training data.
+  # Create segments for x-vector extraction for PLDA training data.
   echo "0.01" > data/sre_cmn/frame_shift
   diarization/vad_to_segments.sh --nj 40 --cmd "$train_cmd" \
     data/sre_cmn data/sre_cmn_segmented
@@ -190,9 +192,9 @@ local/nnet3/xvector/tuning/run_xvector_1a.sh --stage $stage --train-stage -1 \
   --data data/train_combined_cmn_no_sil --nnet-dir $nnet_dir \
   --egs-dir $nnet_dir/egs
 
-# Extract i-vectors
+# Extract x-vectors
 if [ $stage -le 8 ]; then
-  # Extract iVectors for the two partitions of callhome.
+  # Extract x-vectors for the two partitions of callhome.
   diarization/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 5G -l hostname='a*.clsp.jhu.edu'" \
     --nj 40 --window 1.5 --period 0.75 --apply-cmn false \
     --min-segment 0.5 $nnet_dir \
@@ -205,9 +207,9 @@ if [ $stage -le 8 ]; then
 
   # Reduce the amount of training data for the PLDA,
   utils/subset_data_dir.sh data/sre_cmn_segmented 128000 data/sre_cmn_segmented_128k
-  # Extract iVectors for the SRE, which is our PLDA training
+  # Extract x-vectors for the SRE, which is our PLDA training
   # data.  A long period is used here so that we don't compute too
-  # many iVectors for each recording.
+  # many x-vectors for each recording.
   diarization/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 10G -l hostname='a*.clsp.jhu.edu'" \
     --nj 40 --window 3.0 --period 10.0 --min-segment 1.5 --apply-cmn false \
     --hard-min true $nnet_dir \
@@ -217,7 +219,7 @@ fi
 # Train PLDA models
 if [ $stage -le 9 ]; then
   # Train a PLDA model on SRE, using callhome1 to whiten.
-  # We will later use this to score iVectors in callhome2.
+  # We will later use this to score x-vectors in callhome2.
   "$train_cmd" $nnet_dir/xvectors_callhome1/log/plda.log \
     ivector-compute-plda ark:$nnet_dir/xvectors_sre_segmented_128k/spk2utt \
       "ark:ivector-subtract-global-mean \
@@ -227,7 +229,7 @@ if [ $stage -le 9 ]; then
     $nnet_dir/xvectors_callhome1/plda || exit 1;
 
   # Train a PLDA model on SRE, using callhome2 to whiten.
-  # We will later use this to score iVectors in callhome1.
+  # We will later use this to score x-vectors in callhome1.
   "$train_cmd" $nnet_dir/xvectors_callhome2/log/plda.log \
     ivector-compute-plda ark:$nnet_dir/xvectors_sre_segmented_128k/spk2utt \
       "ark:ivector-subtract-global-mean \
@@ -242,7 +244,7 @@ if [ $stage -le 10 ]; then
   # Perform PLDA scoring on all pairs of segments for each recording.
   # The first directory contains the PLDA model that used callhome2
   # to perform whitening (recall that we're treating callhome2 as a
-  # held-out dataset).  The second directory contains the iVectors
+  # held-out dataset).  The second directory contains the x-vectors
   # for callhome1.
   diarization/nnet3/xvector/score_plda.sh --cmd "$train_cmd --mem 4G -l hostname='a*.clsp.jhu.edu'" \
     --nj 20 $nnet_dir/xvectors_callhome2 $nnet_dir/xvectors_callhome1 \

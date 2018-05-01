@@ -1,11 +1,12 @@
 #!/bin/bash
-# Copyright      2017   David Snyder
-#                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
-#                2017   Johns Hopkins University (Author: Daniel Povey)
+# Copyright      2018   David Snyder
+#                2018   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#                2018   Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
 
-# This script trains a DNN similar to the recipe described in
-# http://www.danielpovey.com/files/2017_interspeech_embeddings.pdf .
+# This script trains the x-vector DNN.  The recipe is similar to the one
+# described in "Diarization is Hard: Some Experiences and Lessons Learned
+# for the JHU Team in the Inaugural DIHARD Challenge" by Sell et al.
 
 . ./cmd.sh
 set -e
@@ -76,7 +77,7 @@ if [ $stage -le 5 ]; then
 
   # This chunk-size corresponds to the maximum number of frames the
   # stats layer is able to pool over.  In this script, it corresponds
-  # to 100 seconds.  If the input recording is greater than 100 seconds,
+  # to 4 seconds.  If the input recording is greater than 4 seconds,
   # we will compute multiple xvectors from the same recording and average
   # to produce the final xvector.
   max_chunk_size=400
