@@ -50,9 +50,13 @@ struct NnetChainSupervision {
   /// Be careful about the order of these indexes-- it is a little confusing.
   /// The indexes in the 'index' vector are ordered as: (frame 0 of each sequence);
   /// (frame 1 of each sequence); and so on.  But in the 'supervision' object,
-  /// the FST contains (sequence 0; sequence 1; ...).  So reordering is needed.
-  /// This is done for efficiency in the denominator computation (it helps memory
-  /// locality), as well as to match the ordering inside the neural net.
+  /// the FST contains (sequence 0; sequence 1; ...).  So reordering is needed
+  /// when doing the numerator computation.
+  /// We order 'indexes' in this way for efficiency in the denominator
+  /// computation (it helps memory locality), as well as to avoid the need for
+  /// the nnet to reorder things internally to match the requested output
+  /// (for layers inside the neural net, the ordering is (frame 0; frame 1 ...)
+  /// as this corresponds to the order you get when you sort a vector of Index).
   std::vector<Index> indexes;
 
 
@@ -101,7 +105,7 @@ struct NnetChainSupervision {
   bool operator == (const NnetChainSupervision &other) const;
 };
 
-/// NnetChainExample is like NnetExample, but specialized for 
+/// NnetChainExample is like NnetExample, but specialized for
 /// lattice-free (chain) training.
 struct NnetChainExample {
 
