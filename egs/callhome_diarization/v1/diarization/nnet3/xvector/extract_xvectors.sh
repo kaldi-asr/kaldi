@@ -5,15 +5,19 @@
 #               2017-2018  Matthew Maciejewski
 # Apache 2.0.
 
-# This script extracts xvectors over a sliding window for a
-# set of utterances, given features and a trained xvector
-# DNN. This is used for speaker diarization. This is done
-# using subsegmentation on the data directory. As a result, the
-# files containing "spk" (e.g. utt2spk) in the data directory
-# within the xvector directory are not referring to true speaker
-# labels, but are referring to recording labels. For example,
-# the spk2utt file contains a table mapping recording IDs to the
-# sliding-window subsegments generated for that recording.
+# This script is a modified version of diarization/extract_ivectors.sh
+# that extracts x-vectors instead of i-vectors for speaker diarization.
+#
+# The script assumes that the x-vector DNN has already been trained, and
+# a data directory that contains a segments file and features for the
+# x-vector DNN exists.  The segments file was most likely created by a
+# speech activity detection system that identified the speech segments in
+# the recordings.  This script performs a subsegmentation, that further
+# splits the speech segments into very short overlapping subsegments (e.g.,
+# 1.5 seconds, with a 0.75 overlap).  Finally, x-vectors are extracted
+# for each of the subsegments.  After this, you will most likely use
+# diarization/nnet3/xvector/score_plda.sh to compute the similarity
+# between all pairs of x-vectors in a recording.
 
 # Begin configuration section.
 nj=30
@@ -45,13 +49,17 @@ if [ $# != 3 ]; then
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --window <window|1.5>                            # Sliding window length in seconds"
   echo "  --period <period|0.75>                           # Period of sliding windows in seconds"
+  echo "  --pca-dim <n|-1>                                 # If provided, the whitening transform also"
+  echo "                                                   # performs dimension reduction"
   echo "  --min-segment <min|0.5>                          # Minimum segment length in seconds per xvector"
   echo "  --hard-min <bool|false>                          # Removes segments less than min-segment if true."
   echo "                                                   # Useful for extracting training xvectors."
+  echo "  --chunk-size <n|-1>                              # If provided, extracts embeddings with specified"
+  echo "                                                   # chunk size, and averages to produce final embedding"
+  echo "  --apply-cmn <true,false|true>                    # If true, apply sliding window cepstral mean"
+  echo "                                                   # normalization to features"
   echo "  --nj <n|10>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
-  echo "  --apply-cmn <true,false|true>                    # if true, apply sliding window cepstral mean"
-  echo "                                                   # normalization to features"
   exit 1;
 fi
 
@@ -62,7 +70,6 @@ dir=$3
 for f in $srcdir/final.raw $srcdir/min_chunk_size $srcdir/max_chunk_size $data/feats.scp ; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
-
 
 min_chunk_size=`cat $srcdir/min_chunk_size 2>/dev/null`
 max_chunk_size=`cat $srcdir/max_chunk_size 2>/dev/null`

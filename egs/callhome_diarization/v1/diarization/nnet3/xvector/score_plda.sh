@@ -3,8 +3,15 @@
 #            2017-2018  Matthew Maciejewski
 # Apache 2.0.
 
-# This script computes PLDA scores from pairs of ivectors extracted
-# from segments of a recording.
+# This script is a modified version of diarization/score_plda.sh
+# that replaces i-vectors with x-vectors.
+#
+# This script computes PLDA scores from pairs of x-vectors extracted
+# from segments of a recording.  These scores are in the form of
+# affinity matrices, one for each recording.  Most likely, the x-vectors
+# were computed using diarization/nnet3/xvector/extract_xvectors.sh.
+# The affinity matrices are most likely going to be clustered using
+# diarization/cluster.sh.
 
 # Begin configuration section.
 cmd="run.pl"
@@ -35,21 +42,21 @@ if [ $# != 3 ]; then
 fi
 
 pldadir=$1
-ivecdir=$2
+xvecdir=$2
 dir=$3
 
 mkdir -p $dir/tmp
 
-for f in $ivecdir/xvector.scp $ivecdir/spk2utt $ivecdir/utt2spk $ivecdir/segments $pldadir/plda $pldadir/mean.vec $pldadir/transform.mat; do
+for f in $xvecdir/xvector.scp $xvecdir/spk2utt $xvecdir/utt2spk $xvecdir/segments $pldadir/plda $pldadir/mean.vec $pldadir/transform.mat; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
-cp $ivecdir/xvector.scp $dir/tmp/feats.scp
-cp $ivecdir/spk2utt $dir/tmp/
-cp $ivecdir/utt2spk $dir/tmp/
-cp $ivecdir/segments $dir/tmp/
-cp $ivecdir/spk2utt $dir/
-cp $ivecdir/utt2spk $dir/
-cp $ivecdir/segments $dir/
+cp $xvecdir/xvector.scp $dir/tmp/feats.scp
+cp $xvecdir/spk2utt $dir/tmp/
+cp $xvecdir/utt2spk $dir/tmp/
+cp $xvecdir/segments $dir/tmp/
+cp $xvecdir/spk2utt $dir/
+cp $xvecdir/utt2spk $dir/
+cp $xvecdir/segments $dir/
 
 utils/fix_data_dir.sh $dir/tmp > /dev/null
 

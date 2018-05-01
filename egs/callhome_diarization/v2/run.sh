@@ -70,14 +70,23 @@ if [ $stage -le 1 ]; then
   cp data/train/{feats,vad}.scp data/sre/
   utils/fix_data_dir.sh data/sre
 
+  # This writes features to disk after applying the sliding window CMN.
+  # Although this is somewhat wasteful in terms of disk space, for diarization
+  # it ends up being preferable to performing the CMN in memory.  If the CMN
+  # were performed in memory (e.g., we used --apply-cmn true in
+  # diarization/nnet3/xvector/extract_xvectors.sh) it would need to be
+  # performed after the subsegmentation, which leads to poorer results.
   for name in sre callhome1 callhome2; do
     local/nnet3/xvector/prepare_feats.sh --nj 40 --cmd "$train_cmd" \
       data/$name data/${name}_cmn exp/${name}_cmn
       utils/fix_data_dir.sh data/${name}_cmn
   done
 
-  # Create segments for x-vector extraction for PLDA training data.
   echo "0.01" > data/sre_cmn/frame_shift
+  # Create segments to extract x-vectors from for PLDA training data.
+  # The segments are created using an energy-based speech activity
+  # detection (SAD) system, but this is not necessary.  You can replace
+  # this with segments computed from your favorite SAD.
   diarization/vad_to_segments.sh --nj 40 --cmd "$train_cmd" \
     data/sre_cmn data/sre_cmn_segmented
 fi
@@ -152,10 +161,9 @@ if [ $stage -le 2 ]; then
   utils/combine_data.sh data/train_combined data/train_aug_128k data/train
 fi
 
-
 # Now we prepare the features to generate examples for xvector training.
 if [ $stage -le 3 ]; then
-  # This script applies CMVN and removes nonspeech frames.  Note that this is somewhat
+  # This script applies CMN and removes nonspeech frames.  Note that this is somewhat
   # wasteful, as it roughly doubles the amount of training data on disk.  After
   # creating training examples, this can be removed.
   local/nnet3/xvector/prepare_feats_for_egs.sh --nj 40 --cmd "$train_cmd" \
