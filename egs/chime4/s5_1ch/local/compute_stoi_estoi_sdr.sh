@@ -2,6 +2,10 @@
 # Copyright 2017 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
 # Apache 2.0
 
+# This script creates the list of enhanced files and reference files and calls the 
+# matlab script "stoi_estoi_sdr.m" to get STOI, eSTOI and SDR scores
+# Eg. local/compute_stoi_estoi_sdr.sh --njobs 10 blstm_gev enhan/blstm_gev local/nn-gev/data/audio/16kHz/isolated_ext  
+
 . ./cmd.sh
 . ./path.sh
 set -e
@@ -16,8 +20,8 @@ cmd=run.pl
 if [ $# != 3 ]; then
    echo "Wrong #arguments ($#, expected 3)"
    echo "Usage: local/compute_stoi_estoi_sdr.sh [options] <enhancement-method> <enhancement-directory> <chime-rir-directory>"
-   echo "main options (for others, see top of script file)"
-   echo "  --njobs <njobs>                                # number of parallel jobs"
+   echo "options"
+   echo "  --njobs <njobs>                          # number of parallel jobs"
    echo "  --cmd <cmd>                              # Command to run in parallel with"
    exit 1;
 fi

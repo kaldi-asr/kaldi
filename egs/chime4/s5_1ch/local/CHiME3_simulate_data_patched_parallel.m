@@ -24,10 +24,6 @@ function CHiME3_simulate_data_patched_parallel(official,nj,chime4_dir,chime3_dir
 % version 3 (http://www.gnu.org/licenses/gpl.txt)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%if nargin < 1,
-%    official=true;
-%end
-
 utils_folder = sprintf('%s/tools/utils', chime4_dir);
 enhancement_folder = sprintf('%s/tools/enhancement/', chime3_dir);
 addpath(utils_folder,'-end');

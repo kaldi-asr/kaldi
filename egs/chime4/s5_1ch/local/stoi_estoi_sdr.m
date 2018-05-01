@@ -1,8 +1,22 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % Copyright 2017 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 function stoi_estoi_sdr(nj,enhancement_method,destination_directory,set)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+% "stoi_estoi_sdr" : this function computes the average STOI, eSTOI and SDR
+%                    scores by calling downloaded third party matlab functions
+%
+% Input:
+% nj: number of jobs
+% enhancement_method: the name of the enhacement method
+% destination_directory: the directory where the results have to be stored,
+%                        the list of the enhaced and reference files are
+%                        stored here before calling this function
+% set: name of the set to be evaluated ('et05' or 'dt05')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
+
 original_file_list=strcat(destination_directory,'/original_list');
 enhanced_file_list=strcat(destination_directory,'/enhanced_list');
 files1=textread(original_file_list,'%s');

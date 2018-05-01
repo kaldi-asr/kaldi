@@ -2,6 +2,12 @@
 # Copyright 2017 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
 # Apache 2.0
 
+# This script creates the average PESQ score of files in an enhanced directory with corresponding 
+# files in a reference directory.
+# Expects the PESQ third party executable in "local/PESQ"
+# PESQ source was dowloaded and compiled using "local/download_se_eval_tool.sh" 
+# Eg. local/compute_pesq.sh blstm_gev enhan/blstm_gev local/nn-gev/data/audio/16kHz/isolated_ext $PWD
+
 set -e
 set -u
 set -o pipefail
