@@ -56,7 +56,7 @@ if [ $stage -le 4 ]; then
   # dump egs.
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b{03,04,05,06}/$USER/kaldi-data/egs/sre16/v2/xvector-$(date +'%m_%d_%H_%M')/$egs_dir/storage $egs_dir/storage
+     /export/b{03,04,05,06}/$USER/kaldi-data/egs/callhome_diarization/v2/xvector-$(date +'%m_%d_%H_%M')/$egs_dir/storage $egs_dir/storage
   fi
   sid/nnet3/xvector/get_egs.sh --cmd "$train_cmd" \
     --nj 8 \
