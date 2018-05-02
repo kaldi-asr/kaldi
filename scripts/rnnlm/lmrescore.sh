@@ -72,6 +72,12 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
   print n": Interpolation weight should be in the range of [0, 1]"; exit 1;}}' \
   || exit 1;
 
+if ! head -n -1 $rnnlm_dir/config/words.txt | cmp $oldlang/words.txt -; then
+  # the last word of the RNNLM word list is an added <brk> word
+  echo "$0: Word lists mismatch for lattices and RNNLM."
+  exit 1
+fi
+
 oldlm_command="fstproject --project_output=true $oldlm |"
 
 special_symbol_opts=$(cat $rnnlm_dir/special_symbol_opts.txt)
