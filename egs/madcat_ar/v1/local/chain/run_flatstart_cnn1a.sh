@@ -30,7 +30,7 @@ tdnn_dim=450
 num_epochs=2
 num_jobs_initial=8
 num_jobs_final=16
-minibatch_size=150=150,100/300=100,75/600=75,64/1200=64,50
+minibatch_size=150=128,64/300=128,64/600=64,32/1200=32,16
 common_egs_dir=
 l2_regularize=0.00005
 frames_per_iter=1000000
