@@ -38,7 +38,7 @@ if num_iters is None:
 
 best_objf=-2000
 best_iter=-1
-for i in range(num_iters):
+for i in range(1, num_iters):
     this_logfile = "{0}/log/compute_prob.{1}.log".format(args.rnnlm_dir, i)
     try:
         f = open(this_logfile, 'r', encoding='utf-8')

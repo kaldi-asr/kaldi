@@ -3,12 +3,12 @@
 # chainali_1c is as chainali_1b except it uses l2-regularize
 # local/chain/compare_wer.sh exp/chain/cnn_chainali_1b exp/chain/cnn_chainali_1c
 # System                      cnn_chainali_1b cnn_chainali_1c
-# WER                             14.67     12.84
-# CER                              7.31      6.40
-# Final train prob               0.0042   -0.0120
-# Final valid prob              -0.0256   -0.0199
-# Final train prob (xent)       -0.6282   -0.9973
-# Final valid prob (xent)       -0.9096   -1.1537
+# WER                             14.38     12.72
+# CER                              7.14      5.99
+# Final train prob              -0.0113   -0.0291
+# Final valid prob              -0.0400   -0.0359
+# Final train prob (xent)       -0.6043   -0.9781
+# Final valid prob (xent)       -0.9030   -1.1544
 # Parameters                      3.96M     3.96M
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_chainali_1c
