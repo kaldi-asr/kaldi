@@ -77,6 +77,7 @@ class FasterArpaLm {
     int32 *word_ids_;
     int32 ngram_order_;
     LmState* next; // for colid
+    int32 lm_state_reco_;
   };
 
   // Class to build FasterArpaLm from Arpa format language model. It relies on the
@@ -99,7 +100,9 @@ class FasterArpaLm {
       lm_->SaveHashedState(ngram.words, lm_state, true);
     }
 
-    virtual void ReadComplete()  {  }
+    virtual void ReadComplete()  { 
+      lm_->SaveRecoState();
+    }
 
    private:
     FasterArpaLm *lm_;
@@ -197,6 +200,19 @@ class FasterArpaLm {
     return SaveHashedState(word_ids_arr, ngram_order, lm_state_pattern);
   }
 
+  inline void SaveRecoState() {
+    for (int i=0; i<ngrams_num_; i++) {
+      int32 *word_ids = ngrams_[i].word_ids_;
+      int32 ngram_order = ngrams_[i].ngram_order_;
+      int32 lm_state_idx;
+      if (ngram_order > ngram_order_-1) {
+        ngram_order--;
+        while(!GetHashedState(word_ids, ngram_order, &lm_state_idx)) ngram_order--;
+        assert(ngram_order>0);
+      } else lm_state_idx = i; 
+      ngrams_[i].lm_state_reco_ = lm_state_idx;
+    }
+  }
 
   inline const LmState* GetHashedState(const int32* word_ids, 
       int query_ngram_order, int32 *lm_state_idx=NULL) const {
@@ -271,6 +287,9 @@ class FasterArpaLm {
   */   
 #define IMPROVE_RECOMBINE
 #ifdef IMPROVE_RECOMBINE
+#if 1
+      *lm_state_idx = lm_state->lm_state_reco_;
+#else
       if (ngram_order > ngram_order_-1) {
         ngram_order = ngram_order_-1;
         // below code is to make sure the LmState exist, so un-exist states can be recombined to a same state; 
@@ -278,6 +297,7 @@ class FasterArpaLm {
         while(!GetHashedState(word_ids, ngram_order, lm_state_idx)) ngram_order--;
         assert(ngram_order>0);
       }
+#endif
 #endif
     } else {
       assert(ngram_order > 1); // thus we can do backoff
