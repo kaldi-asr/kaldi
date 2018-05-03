@@ -196,19 +196,19 @@ if [ $stage -le 3 ]; then
   utils/fix_data_dir.sh data/train_combined_cmn_no_sil
 fi
 
-local/nnet3/xvector/tuning/run_xvector_1a.sh --stage $stage --train-stage -1 \
+local/nnet3/xvector/tuning/run_xvector_1a.sh --stage $stage \
   --data data/train_combined_cmn_no_sil --nnet-dir $nnet_dir \
   --egs-dir $nnet_dir/egs
 
 # Extract x-vectors
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
   # Extract x-vectors for the two partitions of callhome.
-  diarization/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 5G -l hostname='a*.clsp.jhu.edu'" \
+  diarization/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 5G" \
     --nj 40 --window 1.5 --period 0.75 --apply-cmn false \
     --min-segment 0.5 $nnet_dir \
     data/callhome1_cmn $nnet_dir/xvectors_callhome1
 
-  diarization/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 5G -l hostname='a*.clsp.jhu.edu'" \
+  diarization/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 5G" \
     --nj 40 --window 1.5 --period 0.75 --apply-cmn false \
     --min-segment 0.5 $nnet_dir \
     data/callhome2_cmn $nnet_dir/xvectors_callhome2
@@ -218,14 +218,14 @@ if [ $stage -le 8 ]; then
   # Extract x-vectors for the SRE, which is our PLDA training
   # data.  A long period is used here so that we don't compute too
   # many x-vectors for each recording.
-  diarization/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 10G -l hostname='a*.clsp.jhu.edu'" \
+  diarization/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 10G" \
     --nj 40 --window 3.0 --period 10.0 --min-segment 1.5 --apply-cmn false \
     --hard-min true $nnet_dir \
     data/sre_cmn_segmented_128k $nnet_dir/xvectors_sre_segmented_128k
 fi
 
 # Train PLDA models
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   # Train a PLDA model on SRE, using callhome1 to whiten.
   # We will later use this to score x-vectors in callhome2.
   "$train_cmd" $nnet_dir/xvectors_callhome1/log/plda.log \
@@ -248,24 +248,24 @@ if [ $stage -le 9 ]; then
 fi
 
 # Perform PLDA scoring
-if [ $stage -le 10 ]; then
+if [ $stage -le 9 ]; then
   # Perform PLDA scoring on all pairs of segments for each recording.
   # The first directory contains the PLDA model that used callhome2
   # to perform whitening (recall that we're treating callhome2 as a
   # held-out dataset).  The second directory contains the x-vectors
   # for callhome1.
-  diarization/nnet3/xvector/score_plda.sh --cmd "$train_cmd --mem 4G -l hostname='a*.clsp.jhu.edu'" \
+  diarization/nnet3/xvector/score_plda.sh --cmd "$train_cmd --mem 4G" \
     --nj 20 $nnet_dir/xvectors_callhome2 $nnet_dir/xvectors_callhome1 \
     $nnet_dir/xvectors_callhome1/plda_scores
 
   # Do the same thing for callhome2.
-  diarization/nnet3/xvector/score_plda.sh --cmd "$train_cmd --mem 4G -l hostname='a*.clsp.jhu.edu'" \
+  diarization/nnet3/xvector/score_plda.sh --cmd "$train_cmd --mem 4G" \
     --nj 20 $nnet_dir/xvectors_callhome1 $nnet_dir/xvectors_callhome2 \
     $nnet_dir/xvectors_callhome2/plda_scores
 fi
 
 # Cluster the PLDA scores using a stopping threshold.
-if [ $stage -le 11 ]; then
+if [ $stage -le 10 ]; then
   # First, we find the threshold that minimizes the DER on each partition of
   # callhome.
   mkdir -p $nnet_dir/tuning
@@ -282,7 +282,7 @@ if [ $stage -le 11 ]; then
     # (callhome1 is heldout for callhome2 and vice-versa) using some reasonable
     # thresholds for a well-calibrated system.
     for threshold in -0.3 -0.2 -0.1 -0.05 0 0.05 0.1 0.2 0.3; do
-      diarization/cluster.sh --cmd "$train_cmd --mem 4G -l hostname='a*.clsp.jhu.edu'" --nj 20 \
+      diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
         --threshold $threshold $nnet_dir/xvectors_$dataset/plda_scores \
         $nnet_dir/xvectors_$dataset/plda_scores_t$threshold
 
@@ -304,13 +304,13 @@ if [ $stage -le 11 ]; then
   # Cluster callhome1 using the best threshold found for callhome2.  This way,
   # callhome2 is treated as a held-out dataset to discover a reasonable
   # stopping threshold for callhome1.
-  diarization/cluster.sh --cmd "$train_cmd --mem 4G -l hostname='a*.clsp.jhu.edu'" --nj 20 \
+  diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
     --threshold $(cat $nnet_dir/tuning/callhome2_best) \
     $nnet_dir/xvectors_callhome1/plda_scores $nnet_dir/xvectors_callhome1/plda_scores
 
   # Do the same thing for callhome2, treating callhome1 as a held-out dataset
   # to discover a stopping threshold.
-  diarization/cluster.sh --cmd "$train_cmd --mem 4G -l hostname='a*.clsp.jhu.edu'" --nj 20 \
+  diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
     --threshold $(cat $nnet_dir/tuning/callhome1_best) \
     $nnet_dir/xvectors_callhome2/plda_scores $nnet_dir/xvectors_callhome2/plda_scores
 
@@ -323,19 +323,20 @@ if [ $stage -le 11 ]; then
     > $nnet_dir/results/DER_threshold.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     $nnet_dir/results/DER_threshold.txt)
-  # Using supervised calibration, DER: 9.34%
+  # Using supervised calibration, DER: 8.39%
+  # Compare to 10.36% in ../v1/run.sh
   echo "Using supervised calibration, DER: $der%"
 fi
 
 # Cluster the PLDA scores using the oracle number of speakers
-if [ $stage -le 12 ]; then
+if [ $stage -le 11 ]; then
   # In this section, we show how to do the clustering if the number of speakers
   # (and therefore, the number of clusters) per recording is known in advance.
-  diarization/cluster.sh --cmd "$train_cmd --mem 4G -l hostname='a*.clsp.jhu.edu'" \
+  diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
     --reco2num-spk data/callhome1/reco2num_spk \
     $nnet_dir/xvectors_callhome1/plda_scores $nnet_dir/xvectors_callhome1/plda_scores_num_spk
 
-  diarization/cluster.sh --cmd "$train_cmd --mem 4G -l hostname='a*.clsp.jhu.edu'" \
+  diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
     --reco2num-spk data/callhome2/reco2num_spk \
     $nnet_dir/xvectors_callhome2/plda_scores $nnet_dir/xvectors_callhome2/plda_scores_num_spk
 
@@ -347,6 +348,7 @@ if [ $stage -le 12 ]; then
     > $nnet_dir/results/DER_num_spk.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     $nnet_dir/results/DER_num_spk.txt)
-  # Using the oracle number of speakers, DER: 7.45%
+  # Using the oracle number of speakers, DER: 7.12%
+  # Compare to 8.69% in ../v1/run.sh
   echo "Using the oracle number of speakers, DER: $der%"
 fi
