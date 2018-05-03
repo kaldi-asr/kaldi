@@ -29,7 +29,7 @@ mkdir -p data/{train,test,dev}
 if [ $stage -le 1 ]; then
   echo "$0: Processing dev, train and test data..."
   echo "Date: $(date)."
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.train.raw.lineid data/dev data/local/dev/images.scp || exit 1
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.dev.raw.lineid data/dev data/local/dev/images.scp || exit 1
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.test.raw.lineid data/test data/local/test/images.scp || exit 1
   local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.train.raw.lineid data/train data/local/train/images.scp || exit 1
 

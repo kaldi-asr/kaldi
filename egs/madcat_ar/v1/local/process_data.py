@@ -5,7 +5,7 @@
 """ This script reads MADCAT files and creates the following files (for the
     data subset selected via --dataset) :text, utt2spk, images.scp.
   Eg. local/process_data.py data/local /export/corpora/LDC/LDC2012T15 /export/corpora/LDC/LDC2013T09
-      /export/corpora/LDC/LDC2013T15 /home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
+      /export/corpora/LDC/LDC2013T15 data/download/data_splits/madcat.train.raw.lineid
       data/dev data/local/lines/images.scp
   Eg. text file: LDC0001_000404_NHR_ARB_20070113.0052_11_LDC0001_00z2 وجه وعقل غارق حتّى النخاع
       utt2spk file: LDC0001_000397_NHR_ARB_20070113.0052_11_LDC0001_00z1 LDC0001
