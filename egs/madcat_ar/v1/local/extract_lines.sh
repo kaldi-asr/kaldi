@@ -6,7 +6,7 @@ cmd=run.pl
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
-dataset_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.raw.lineid
+dataset_file=data/download/data_splits/madcat.dev.raw.lineid
 echo "$0 $@"
 
 . ./cmd.sh
