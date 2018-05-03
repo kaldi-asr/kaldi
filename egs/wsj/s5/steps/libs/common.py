@@ -14,7 +14,6 @@ import argparse
 import logging
 import math
 import os
-import re
 import subprocess
 import sys
 import threading

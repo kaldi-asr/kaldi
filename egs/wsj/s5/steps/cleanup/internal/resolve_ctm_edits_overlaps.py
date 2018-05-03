@@ -7,7 +7,7 @@
 
 """
 Script to combine ctms edits with overlapping segments obtained from
-smith-waterman alignment. This script is similar to resolve_ctm_edits.py,
+smith-waterman alignment. This script is similar to utils/ctm/resolve_ctm_edits.py,
 where the overlapping region is just split in two. The approach here is a
 little more advanced since we have access to the WER
 (w.r.t. the reference text). It finds the WER of the overlapped region

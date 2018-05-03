@@ -13,6 +13,8 @@ gmm_dir=
 ali_dir=
 lores_train_data_dir=
 
+num_leaves=6000
+
 # output directory names. They are also compulsory.
 lang=
 lat_dir=
@@ -74,7 +76,7 @@ if [ $stage -le 13 ]; then
   fi
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
-      --cmd "$train_cmd" 6000 ${lores_train_data_dir} $lang $ali_dir $tree_dir
+      --cmd "$train_cmd" $num_leaves ${lores_train_data_dir} $lang $ali_dir $tree_dir
 fi
 
 exit 0;

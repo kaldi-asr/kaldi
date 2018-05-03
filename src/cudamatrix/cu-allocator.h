@@ -54,7 +54,7 @@ struct CuAllocatorOptions {
   // is a constant overhead proportional to the number of buckets.
   BaseFloat delete_factor;
 
-  CuAllocatorOptions(): memory_factor(1.5),
+  CuAllocatorOptions(): memory_factor(1.3),
                         delete_factor(0.001) { }
 
   void Check() {

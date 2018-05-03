@@ -247,7 +247,6 @@ if [ $stage -le 10 ] && [ ! -z $megs_dir ]; then
   common_egs_dir="${multi_egs_dirs[@]} $megs_dir"
   steps/nnet3/multilingual/combine_egs.sh $egs_opts \
     --cmd "$decode_cmd" \
-    --samples-per-iter 400000 \
     $num_langs ${common_egs_dir[@]} || exit 1;
 fi
 

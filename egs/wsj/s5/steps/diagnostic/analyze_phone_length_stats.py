@@ -64,11 +64,10 @@ except Exception as e:
 
 
 # phone_length is a dict of dicts of dicts;
-# it's indexed
-# phone_length[boundary_type][
 # phone_lengths[boundary_type] for boundary_type in [ 'begin', 'end', 'all' ] is
-# a dict from a 2-tuple (phone, length) to a count of occurrences, where phone is
-# an integer phone-id, and length is the length of the phone instance in frames.
+# a dict indexed by phone, containing dicts from length to a count of occurrences.
+# Phones are ints and lengths are integers representing numbers of frames.
+# So: count == phone_lengths[boundary_type][phone][length].
 # note: for the 'begin' and 'end' boundary-types, we group all nonsilence phones
 # into phone-id zero.
 phone_lengths = dict()
@@ -229,11 +228,14 @@ total_frames['internal'] = total_frames['all'] - total_frames['begin'] - total_f
 total_phones['internal'] = total_phones['all'] - total_phones['begin'] - total_phones['end']
 
 internal_opt_sil_phone_lengths = dict(phone_lengths['all'][optional_silence_phone])
-for length in internal_opt_sil_phone_lengths.keys():
+# internal_opt_sil_phone_lenghts is a dict from length to count.
+for length in list(internal_opt_sil_phone_lengths.keys()):
     # subtract the counts for begin and end from the overall counts to get the
     # word-internal count.
     internal_opt_sil_phone_lengths[length] -= (phone_lengths['begin'][optional_silence_phone][length] +
                                                phone_lengths['end'][optional_silence_phone][length])
+    if internal_opt_sil_phone_lengths[length] == 0:
+        del internal_opt_sil_phone_lengths[length]
 
 if total_phones['internal'] != 0.0:
     total_internal_optsil_frames = sum([ float(l * c) for l,c in internal_opt_sil_phone_lengths.items() ])

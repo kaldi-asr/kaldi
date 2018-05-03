@@ -41,7 +41,7 @@ compress=true   # set this to false to disable compression (e.g. if you want to 
                 # results are affected).
 num_utts_subset=300     # number of utterances in validation and training
                         # subsets used for shrinkage and diagnostics.
-num_utts_subset_valid=  # number of utterances in validation 
+num_utts_subset_valid=  # number of utterances in validation
                         # subsets used for shrinkage and diagnostics
                         # if provided, overrides num-utts-subset
 num_utts_subset_train=  # number of utterances in training
@@ -55,8 +55,6 @@ samples_per_iter=400000 # this is the target number of egs in each archive of eg
                         # it egs_per_iter. This is just a guideline; it will pick
                         # a number that divides the number of samples in the
                         # entire data.
-
-transform_dir=
 
 stage=0
 nj=6         # This should be set to the maximum number of jobs you are
@@ -149,14 +147,6 @@ fi
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
    utils/shuffle_list.pl | head -$num_utts_subset_train | sort > $dir/train_subset_uttlist || exit 1;
 
-if [ -f $transform_dir/raw_trans.1 ]; then
-  echo "$0: using raw transforms from $transform_dir"
-  if [ $stage -le 0 ]; then
-    $cmd $dir/log/copy_transforms.log \
-      copy-feats "ark:cat $transform_dir/raw_trans.* |" "ark,scp:$dir/trans.ark,$dir/trans.scp"
-  fi
-fi
-
 ## Set up features.
 echo "$0: feature type is raw"
 
@@ -164,12 +154,6 @@ feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feat
 valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
 train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
 echo $cmvn_opts >$dir/cmvn_opts # caution: the top-level nnet training script should copy this to its own dir now.
-
-if [ -f $dir/trans.scp ]; then
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/trans.scp ark:- ark:- |"
-  valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
-  train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp ark:- ark:- |"
-fi
 
 if [ ! -z "$online_ivector_dir" ]; then
   steps/nnet2/get_ivector_id.sh $online_ivector_dir > $dir/info/final.ie.id || exit 1
@@ -291,7 +275,7 @@ case $target_type in
   "sparse")
     get_egs_program="nnet3-get-egs --num-pdfs=$num_targets"
     targets="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $targets_scp_split | ali-to-post scp:- ark:- |"
-    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |" 
+    valid_targets="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $targets_scp | ali-to-post scp:- ark:- |"
     train_subset_targets="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $targets_scp | ali-to-post scp:- ark:- |"
     ;;
   default)
@@ -455,8 +439,7 @@ if [ $stage -le 6 ]; then
     for f in $dir/egs.*.*.ark; do rm $f; done
   fi
   echo "$0: removing temporary stuff"
-  # Ignore errors below because trans.* might not exist.
-  rm -f $dir/trans.{ark,scp} $dir/targets.*.scp 2>/dev/null
+  rm -f $dir/targets.*.scp 2>/dev/null
 fi
 
 echo "$0: Finished preparing training examples"
