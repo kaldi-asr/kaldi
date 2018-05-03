@@ -22,6 +22,7 @@
 #include "nnet3/nnet-utils.h"
 #include "nnet3/nnet-graph.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-normalize-component.h"
 #include "nnet3/nnet-general-component.h"
 #include "nnet3/nnet-convolutional-component.h"
 #include "nnet3/nnet-parse.h"
@@ -485,15 +486,17 @@ void SetDropoutProportion(BaseFloat dropout_proportion,
         dynamic_cast<DropoutMaskComponent*>(nnet->GetComponent(c));
     if (mc != NULL)
       mc->SetDropoutProportion(dropout_proportion);
+    GeneralDropoutComponent *gdc =
+        dynamic_cast<GeneralDropoutComponent*>(nnet->GetComponent(c));
+    if (gdc != NULL)
+      gdc->SetDropoutProportion(dropout_proportion);
   }
 }
 
 bool HasBatchnorm(const Nnet &nnet) {
   for (int32 c = 0; c < nnet.NumComponents(); c++) {
     const Component *comp = nnet.GetComponent(c);
-    const BatchNormComponent *bc =
-        dynamic_cast<const BatchNormComponent*>(comp);
-    if (bc != NULL)
+    if (dynamic_cast<const BatchNormComponent*>(comp) != NULL)
       return true;
   }
   return false;
@@ -859,6 +862,159 @@ class SvdApplier {
   std::string component_name_pattern_;
 };
 
+/*
+  Does an update that moves M closer to being a (matrix with orthonormal rows)
+  times 'scale'.  Note: this will diverge if we start off with singular values
+  too far from 'scale'.
+
+  This function requires 'scale' to be nonzero.  If 'scale' is negative, then it
+  will be set internally to the value that ensures the change in M is orthogonal to
+  M (viewed as a vector).
+*/
+void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
+  KALDI_ASSERT(scale != 0.0);
+
+  // We'd like to enforce the rows of M to be orthonormal.
+  // define P = M M^T.  If P is unit then M has orthonormal rows.
+  // We actually want P to equal scale^2 * I, so that M's rows are
+  // orthogonal with 2-norms equal to 'scale'.
+  // We (notionally) add to the objective function, the value
+  // -alpha times the sum of squared elements of Q = (P - scale^2 * I).
+  int32 rows = M->NumRows(), cols = M->NumCols();
+  CuMatrix<BaseFloat> M_update(rows, cols);
+  CuMatrix<BaseFloat> P(rows, rows);
+  P.SymAddMat2(1.0, *M, kNoTrans, 0.0);
+  P.CopyLowerToUpper();
+
+  // The 'update_speed' is a constant that determines how fast we approach a
+  // matrix with the desired properties (larger -> faster).  Larger values will
+  // update faster but will be more prone to instability.  0.125 (1/8) is the
+  // value that gives us the fastest possible convergence when we are already
+  // close to be a semi-orthogonal matrix (in fact, it will lead to quadratic
+  // convergence).
+  // See  http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
+  // for more details.
+  BaseFloat update_speed = 0.125;
+
+  if (scale < 0.0) {
+    // If scale < 0.0 then it's like letting the scale "float",
+    // as in Sec. 2.3 of
+    // http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf,
+    // where 'scale' here is written 'alpha' in the paper.
+    //
+    // We pick the scale that will give us an update to M that is
+    // orthogonal to M (viewed as a vector): i.e., if we're doing
+    // an update M := M + X, then we want to have tr(M X^T) == 0.
+    // The following formula is what gives us that.
+    // With P = M M^T, our update formula is doing to be:
+    //  M := M + (-4 * alpha * (P - scale^2 I) * M).
+    // (The math below explains this update formula; for now, it's
+    // best to view it as an established fact).
+    // So X (the change in M) is -4 * alpha * (P - scale^2 I) * M,
+    // where alpha == update_speed / scale^2.
+    // We want tr(M X^T) == 0.  First, forget the -4*alpha, because
+    // we don't care about constant factors.  So we want:
+    //  tr(M * M^T * (P - scale^2 I)) == 0.
+    // Since M M^T == P, that means:
+    //  tr(P^2 - scale^2 P) == 0,
+    // or scale^2 = tr(P^2) / tr(P).
+    // Note: P is symmetric so it doesn't matter whether we use tr(P P) or
+    // tr(P^T P); we use tr(P^T P) because I believe it's faster to compute.
+
+    BaseFloat trace_P = P.Trace(), trace_P_P = TraceMatMat(P, P, kTrans);
+
+    scale = std::sqrt(trace_P_P / trace_P);
+
+    // The following is a tweak to avoid divergence when the eigenvalues aren't
+    // close to being the same.  trace_P is the sum of eigenvalues of P, and
+    // trace_P_P is the sum-square of eigenvalues of P.  Treat trace_P as a sum
+    // of positive values, and trace_P_P as their sumsq.  Then mean = trace_P /
+    // dim, and trace_P_P cannot be less than dim * (trace_P / dim)^2,
+    // i.e. trace_P_P >= trace_P^2 / dim.  If ratio = trace_P_P * dim /
+    // trace_P^2, then ratio >= 1.0, and the excess above 1.0 is a measure of
+    // how far we are from convergence.  If we're far from convergence, we make
+    // the learning rate slower to reduce the risk of divergence, since the
+    // update may not be stable for starting points far from equilibrium.
+    BaseFloat ratio = (trace_P_P * P.NumRows() / (trace_P * trace_P));
+    KALDI_ASSERT(ratio > 0.999);
+    if (ratio > 1.02) {
+      update_speed *= 0.5;  // Slow down the update speed to reduce the risk of divergence.
+    }
+  }
+
+  // see Sec. 2.2 of http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
+  // for explanation of the 1/(scale*scale) factor, but there is a difference in
+  // notation; 'scale' here corresponds to 'alpha' in the paper, and
+  // 'update_speed' corresponds to 'nu' in the paper.
+  BaseFloat alpha = update_speed / (scale * scale);
+
+  P.AddToDiag(-1.0 * scale * scale);
+
+  if (GetVerboseLevel() >= 1) {
+    BaseFloat error = P.FrobeniusNorm();
+    KALDI_VLOG(2) << "Error in orthogonality is " << error;
+  }
+
+  // At this point, the matrix P contains what, in the math, would be Q =
+  // P-scale^2*I.  The derivative of the objective function w.r.t. an element q(i,j)
+  // of Q is now equal to -2*alpha*q(i,j), i.e. we could write q_deriv(i,j)
+  // = -2*alpha*q(i,j) This is also the derivative of the objective function
+  // w.r.t. p(i,j): i.e. p_deriv(i,j) = -2*alpha*q(i,j).
+  // Suppose we have define this matrix as 'P_deriv'.
+  // The derivative of the objective w.r.t M equals
+  // 2 * P_deriv * M, which equals -4*alpha*(P-scale^2*I)*M.
+  // (Currently the matrix P contains what, in the math, is P-scale^2*I).
+  M_update.AddMatMat(-4.0 * alpha, P, kNoTrans, *M, kNoTrans, 0.0);
+  M->AddMat(1.0, M_update);
+}
+
+/**
+   This function, to be called after processing every minibatch, is responsible
+   for enforcing the orthogonality constraint for any components of type
+   LinearComponent or inheriting from AffineComponent that have the
+   "orthonormal_constraint" value set.
+ */
+void ConstrainOrthonormal(Nnet *nnet) {
+
+  for (int32 c = 0; c < nnet->NumComponents(); c++) {
+    Component *component = nnet->GetComponent(c);
+    LinearComponent *lc = dynamic_cast<LinearComponent*>(component);
+    if (lc != NULL && lc->OrthonormalConstraint() != 0.0) {
+      if (RandInt(0, 3) != 0)
+        continue;  // For efficiency, only do this every 4 minibatches-- it won't
+                   // stray far.
+      BaseFloat scale = lc->OrthonormalConstraint();
+
+      CuMatrixBase<BaseFloat> &params = lc->Params();
+      int32 rows = params.NumRows(), cols = params.NumCols();
+      if (rows <= cols) {
+        ConstrainOrthonormalInternal(scale, &params);
+      } else {
+        CuMatrix<BaseFloat> params_trans(params, kTrans);
+        ConstrainOrthonormalInternal(scale, &params_trans);
+        params.CopyFromMat(params_trans, kTrans);
+      }
+    }
+
+    AffineComponent *ac = dynamic_cast<AffineComponent*>(component);
+    if (ac != NULL && ac->OrthonormalConstraint() != 0.0) {
+      if (RandInt(0, 3) != 0)
+        continue;  // For efficiency, only do this every 4 minibatches-- it won't
+                   // stray far.
+      BaseFloat scale = ac->OrthonormalConstraint();
+      CuMatrixBase<BaseFloat> &params = ac->LinearParams();
+      int32 rows = params.NumRows(), cols = params.NumCols();
+      if (rows <= cols) {
+        ConstrainOrthonormalInternal(scale, &params);
+      } else {
+        CuMatrix<BaseFloat> params_trans(params, kTrans);
+        ConstrainOrthonormalInternal(scale, &params_trans);
+        params.CopyFromMat(params_trans, kTrans);
+      }
+    }
+  }
+}
+
 
 // This code has been broken out of ReadEditConfig as it's quite long.
 // It implements the internals of the edit directive 'reduce-rank'.
@@ -1074,11 +1230,16 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
              dynamic_cast<DropoutComponent*>(nnet->GetComponent(c));
           DropoutMaskComponent *mask_component =
              dynamic_cast<DropoutMaskComponent*>(nnet->GetComponent(c));
+          GeneralDropoutComponent *general_dropout_component =
+             dynamic_cast<GeneralDropoutComponent*>(nnet->GetComponent(c));
           if (dropout_component != NULL) {
             dropout_component->SetDropoutProportion(proportion);
             num_dropout_proportions_set++;
           } else if (mask_component != NULL){
             mask_component->SetDropoutProportion(proportion);
+            num_dropout_proportions_set++;
+          } else if (general_dropout_component != NULL){
+            general_dropout_component->SetDropoutProportion(proportion);
             num_dropout_proportions_set++;
           }
         }
@@ -1363,9 +1524,10 @@ class ModelCollapser {
   /**
      Tries to produce a component that's equivalent to running the component
      'component_index2' with input given by 'component_index1'.  This handles
-     the case where 'component_index1' is of type DropoutComponent, and where
-     'component_index2' is of type AffineComponent,
-     NaturalGradientAffineComponent or TimeHeightConvolutionComponent.
+     the case where 'component_index1' is of type DropoutComponent or
+     GeneralDropoutComponent, and where 'component_index2' is of type
+     AffineComponent, NaturalGradientAffineComponent or
+     TimeHeightConvolutionComponent.
 
      Returns -1 if this code can't produce a combined component (normally
      because the components have the wrong types).
@@ -1375,10 +1537,23 @@ class ModelCollapser {
     const DropoutComponent *dropout_component =
         dynamic_cast<const DropoutComponent*>(
             nnet_->GetComponent(component_index1));
-    if (dropout_component == NULL)
+    const GeneralDropoutComponent *general_dropout_component =
+        dynamic_cast<const GeneralDropoutComponent*>(
+            nnet_->GetComponent(component_index1));
+
+    if (dropout_component == NULL && general_dropout_component == NULL)
       return -1;
-    BaseFloat dropout_proportion = dropout_component->DropoutProportion();
-    BaseFloat scale = 1.0 / (1.0 - dropout_proportion);
+    BaseFloat scale;  // the scale we have to apply to correct for removing
+                      // this dropout comonent.
+    if (dropout_component != NULL) {
+      BaseFloat dropout_proportion = dropout_component->DropoutProportion();
+      scale = 1.0 / (1.0 - dropout_proportion);
+    } else {
+      // for GeneralDropoutComponent, it's done in such a way that the expectation
+      // is always 1.  (When it's nonzero, we give it a value 1/(1-dropout_proportion).
+      // So no scaling is needed.
+      scale = 1.0;
+    }
     // note: if the 2nd component is not of a type that we can scale, the
     // following function call will return -1, which is OK.
     return GetScaledComponentIndex(component_index2,
@@ -1711,19 +1886,7 @@ class ModelCollapser {
 void CollapseModel(const CollapseModelConfig &config,
                    Nnet *nnet) {
   ModelCollapser c(config, nnet);
-  std::string info_before_collapse;
-  if (GetVerboseLevel() >= 4)
-    info_before_collapse = nnet->Info();
   c.Collapse();
-  if (GetVerboseLevel() >= 4) {
-    std::string info_after_collapse = nnet->Info();
-    if (info_after_collapse != info_before_collapse) {
-      KALDI_VLOG(4) << "Collapsing model: info before collapse was: "
-                    << info_before_collapse
-                    << ", info after collapse was:"
-                    << info_after_collapse;
-    }
-  }
 }
 
 bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,

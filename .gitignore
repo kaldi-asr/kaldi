@@ -1,6 +1,7 @@
 # Compiled extensionless executable files in /src/*/
 # This stanza must precede wildcard patterns below!
 /src/*/*
+!/src/lm/test_data/
 !/src/*/?*.*
 !/src/doc/*
 !/src/*/Makefile
@@ -88,6 +89,8 @@ GSYMS
 /tools/openfst-1.3.4/
 /tools/openfst-1.4.1.tar.gz
 /tools/openfst-1.4.1/
+/tools/openfst-1.5.0.tar.gz
+/tools/openfst-1.5.0/
 /tools/openfst-1.5.4.tar.gz
 /tools/openfst-1.5.4/
 /tools/openfst-1.6.0.tar.gz
@@ -96,6 +99,11 @@ GSYMS
 /tools/openfst-1.6.1/
 /tools/openfst-1.6.2.tar.gz
 /tools/openfst-1.6.2/
+/tools/openfst-1.6.5.tar.gz
+/tools/openfst-1.6.5/
+/tools/BeamformIt/
+/tools/libsndfile-1.0.25.tar.gz
+/tools/libsndfile-1.0.25/
 /tools/pa_stable_v19_20111121.tgz
 /tools/portaudio/
 /tools/sctk-2.4.0-20091110-0958.tar.bz2
@@ -126,12 +134,9 @@ GSYMS
 /tools/srilm.tgz
 /tools/liblbfgs-1.10.tar.gz
 /tools/liblbfgs-1.10/
-/tools/openfst-1.5.0.tar.gz
-/tools/openfst-1.5.0/
 /tools/srilm-1.7.2-beta.tar.gz
 /tools/liblbfgs/
 /tools/sequitur-g2p/
-/tools/phonetisaurus-g2p
 /tools/phonetisaurus-g2p/
 /tools/mmseg-1.3.0.tar.gz
 /tools/mmseg-1.3.0/

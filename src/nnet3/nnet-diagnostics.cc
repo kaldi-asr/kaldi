@@ -83,7 +83,7 @@ void NnetComputeProb::Compute(const NnetExample &eg) {
   GetComputationRequest(nnet_, eg, need_model_derivative,
                         store_component_stats,
                         &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
   NnetComputer computer(config_.compute_config, *computation,
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
@@ -122,11 +122,11 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
         totals.tot_objective += tot_objf;
       }
       // May not be meaningful in non-classification tasks
-      if (config_.compute_accuracy) {  
+      if (config_.compute_accuracy) {
         BaseFloat tot_weight, tot_accuracy;
         PerDimObjectiveInfo &acc_totals = accuracy_info_[io.name];
 
-        if (config_.compute_per_dim_accuracy && 
+        if (config_.compute_per_dim_accuracy &&
             acc_totals.tot_objective_vec.Dim() == 0) {
           acc_totals.tot_objective_vec.Resize(output.NumCols());
           acc_totals.tot_weight_vec.Resize(output.NumCols());
@@ -134,9 +134,9 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
 
         ComputeAccuracy(io.features, output,
                         &tot_weight, &tot_accuracy,
-                        config_.compute_per_dim_accuracy ? 
+                        config_.compute_per_dim_accuracy ?
                           &acc_totals.tot_weight_vec : NULL,
-                        config_.compute_per_dim_accuracy ? 
+                        config_.compute_per_dim_accuracy ?
                           &acc_totals.tot_objective_vec : NULL);
         acc_totals.tot_weight += tot_weight;
         acc_totals.tot_objective += tot_accuracy;
@@ -149,7 +149,7 @@ void NnetComputeProb::ProcessOutputs(const NnetExample &eg,
 bool NnetComputeProb::PrintTotalStats() const {
   bool ans = false;
   { // First print regular objectives
-    unordered_map<std::string, SimpleObjectiveInfo, 
+    unordered_map<std::string, SimpleObjectiveInfo,
                   StringHasher>::const_iterator iter, end;
     iter = objf_info_.begin();
     end = objf_info_.end();
@@ -168,8 +168,8 @@ bool NnetComputeProb::PrintTotalStats() const {
         ans = true;
     }
   }
-  { 
-    unordered_map<std::string, PerDimObjectiveInfo, 
+  {
+    unordered_map<std::string, PerDimObjectiveInfo,
                   StringHasher>::const_iterator iter, end;
     // now print accuracies.
     iter = accuracy_info_.begin();
@@ -185,14 +185,14 @@ bool NnetComputeProb::PrintTotalStats() const {
         Vector<BaseFloat> accuracy_vec(info.tot_weight_vec.Dim());
         for (size_t j = 0; j < info.tot_weight_vec.Dim(); j++) {
           if (info.tot_weight_vec(j) !=  0) {
-            accuracy_vec(j) = info.tot_objective_vec(j) 
+            accuracy_vec(j) = info.tot_objective_vec(j)
                               / info.tot_weight_vec(j);
           } else {
             accuracy_vec(j) = -1.0;
           }
         }
 
-        KALDI_LOG << "Overall per-dim accuracy vector for '" << name 
+        KALDI_LOG << "Overall per-dim accuracy vector for '" << name
                   << "' is " << accuracy_vec << " per frame"
                   << ", over " << info.tot_weight << " frames.";
       }
@@ -306,15 +306,17 @@ const SimpleObjectiveInfo* NnetComputeProb::GetObjective(
     return NULL;
 }
 
-double NnetComputeProb::GetTotalObjective(double *tot_weight) const {
+double NnetComputeProb::GetTotalObjective(double *total_weight) const {
   double tot_objectives = 0.0;
-  *tot_weight = 0.0;
+  double tot_weight = 0.0;
   unordered_map<std::string, SimpleObjectiveInfo, StringHasher>::const_iterator
     iter = objf_info_.begin(), end = objf_info_.end();
   for (; iter != end; ++iter) {
     tot_objectives += iter->second.tot_objective;
-    (*tot_weight) += iter->second.tot_weight;
+    tot_weight += iter->second.tot_weight;
   }
+
+  if (total_weight) *total_weight = tot_weight;
   return tot_objectives;
 }
 

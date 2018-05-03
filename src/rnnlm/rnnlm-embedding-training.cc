@@ -77,12 +77,11 @@ void RnnlmEmbeddingTrainer::Train(
     if (l2_term != 0.0) {
       embedding_deriv->AddMat(l2_term, *embedding_mat_);
     }
-  } 
+  }
 
   BaseFloat scale = 1.0;
   if (config_.use_natural_gradient) {
-    preconditioner_.PreconditionDirections(embedding_deriv, NULL,
-                                           &scale);
+    preconditioner_.PreconditionDirections(embedding_deriv, &scale);
   }
   scale *= config_.learning_rate;
   num_minibatches_++;
@@ -114,6 +113,54 @@ void RnnlmEmbeddingTrainer::Train(
   }
 }
 
+void RnnlmEmbeddingTrainer::TrainBackstitch(
+    bool is_backstitch_step1,
+    CuMatrixBase<BaseFloat> *embedding_deriv) {
+
+  // backstitch training is incompatible with momentum > 0  
+  KALDI_ASSERT(config_.momentum == 0.0);
+  
+  // If relevant, do the following:
+  // "embedding_deriv += - 2 * l2_regularize * embedding_mat_"
+  // This is an approximate to the regular l2 regularization (add l2 regularization
+  // to the objective function).
+  if (config_.l2_regularize > 0.0 && !is_backstitch_step1) {
+    BaseFloat l2_term = -2 * config_.l2_regularize;
+    if (l2_term != 0.0) {
+      embedding_deriv->AddMat(1.0 / (1.0 + config_.backstitch_training_scale) *
+          l2_term, *embedding_mat_);
+    }
+  } 
+
+  BaseFloat scale = 1.0;
+  if (config_.use_natural_gradient) {
+    if (is_backstitch_step1) preconditioner_.Freeze(true);
+    preconditioner_.PreconditionDirections(embedding_deriv, &scale);
+  }
+  scale *= config_.learning_rate;
+  num_minibatches_++;
+  if (config_.max_param_change > 0.0) {
+    BaseFloat delta = scale * embedding_deriv->FrobeniusNorm();
+    // 'delta' is the 2-norm of the change in parameters.
+    if (delta > config_.max_param_change) {
+      BaseFloat max_change_scale = config_.max_param_change / delta;
+      KALDI_LOG << "Applying max-change with scale " << max_change_scale
+                << " since param-change=" << delta << " > "
+                << " --embedding.max-param-change="
+                << config_.max_param_change;
+      max_change_count_++;
+      scale *= max_change_scale;
+    }
+  }
+  if (is_backstitch_step1) {
+    scale *= -config_.backstitch_training_scale;
+    if (config_.use_natural_gradient) preconditioner_.Freeze(false);
+  } else {
+    scale *= 1.0 + config_.backstitch_training_scale;
+    num_minibatches_++;
+  }
+  embedding_mat_->AddMat(scale, *embedding_deriv);
+}
 
 void RnnlmEmbeddingTrainer::Train(
     const CuArrayBase<int32> &active_words,
@@ -128,13 +175,12 @@ void RnnlmEmbeddingTrainer::Train(
   if (config_.l2_regularize > 0.0) {
     BaseFloat l2_term = -2 * config_.l2_regularize;
     if (l2_term != 0.0) {
-      embedding_deriv->AddMat(l2_term, *embedding_mat_);
+      embedding_deriv->AddToRows(l2_term, active_words, embedding_mat_);
     }
-  } 
+  }
   BaseFloat scale = 1.0;
   if (config_.use_natural_gradient) {
-    preconditioner_.PreconditionDirections(embedding_deriv, NULL,
-                                           &scale);
+    preconditioner_.PreconditionDirections(embedding_deriv, &scale);
   }
   scale *= config_.learning_rate;
   num_minibatches_++;
@@ -166,6 +212,56 @@ void RnnlmEmbeddingTrainer::Train(
   }
 }
 
+void RnnlmEmbeddingTrainer::TrainBackstitch(
+    bool is_backstitch_step1, 
+    const CuArrayBase<int32> &active_words,
+    CuMatrixBase<BaseFloat> *embedding_deriv) {
+
+  // backstitch training is incompatible with momentum > 0
+  KALDI_ASSERT(config_.momentum == 0.0);
+
+  KALDI_ASSERT(active_words.Dim() == embedding_deriv->NumRows());
+
+  // If relevant, do the following:
+  // "embedding_deriv += - 2 * l2_regularize * embedding_mat_"
+  // This is an approximate to the regular l2 regularization (add l2 regularization
+  // to the objective function).
+  if (config_.l2_regularize > 0.0 && !is_backstitch_step1) {
+    BaseFloat l2_term = -2 * config_.l2_regularize;
+    if (l2_term != 0.0) {
+      embedding_deriv->AddMat(1.0 / (1.0 + config_.backstitch_training_scale) *
+          l2_term, *embedding_mat_);
+    }
+  } 
+  BaseFloat scale = 1.0;
+  if (config_.use_natural_gradient) {
+    if (is_backstitch_step1) preconditioner_.Freeze(true);
+    preconditioner_.PreconditionDirections(embedding_deriv, &scale);
+  }
+  scale *= config_.learning_rate;
+  if (config_.max_param_change > 0.0) {
+    BaseFloat delta = scale * embedding_deriv->FrobeniusNorm();
+    // 'delta' is the 2-norm of the change in parameters.
+    if (delta > config_.max_param_change) {
+      BaseFloat max_change_scale = config_.max_param_change / delta;
+      KALDI_LOG << "Applying max-change with scale " << max_change_scale
+                << " since param-change=" << delta << " > "
+                << " --embedding.max-param-change="
+                << config_.max_param_change;
+      max_change_count_++;
+      scale *= max_change_scale;
+    }
+  }
+  if (is_backstitch_step1) {
+    scale *= -config_.backstitch_training_scale;
+    if (config_.use_natural_gradient) preconditioner_.Freeze(false);
+  } else {
+    scale *= 1.0 + config_.backstitch_training_scale;
+    num_minibatches_++;
+  }
+  embedding_deriv->AddToRows(scale, active_words, embedding_mat_);
+}
+
 RnnlmEmbeddingTrainer::~RnnlmEmbeddingTrainer() {
   PrintStats();
 }
@@ -173,7 +269,10 @@ RnnlmEmbeddingTrainer::~RnnlmEmbeddingTrainer() {
 void RnnlmEmbeddingTrainer::PrintStats() {
   KALDI_LOG << "Processed a total of " << num_minibatches_ << " minibatches."
             << "max-change was enforced "
-            << (100.0 * max_change_count_) / num_minibatches_
+            << (100.0 * max_change_count_) /
+               (num_minibatches_ *
+               (config_.backstitch_training_scale == 0.0 ? 1.0 :
+               1.0 + 1.0 / config_.backstitch_training_interval))
             << " \% of the time.";
 
   Matrix<BaseFloat> delta_embedding_mat(*embedding_mat_);

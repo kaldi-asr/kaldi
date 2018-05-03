@@ -41,7 +41,7 @@ void TestGpuComputation() {
 
 int main(int argc, char *argv[]) try {
   char hostname[100] = "UNKNOWN-HOSTNAME";
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(__CYGWIN__)
   if (gethostname(hostname, 100)) {
     KALDI_WARN << "Cannot get hostname, " << strerror(errno);
   }

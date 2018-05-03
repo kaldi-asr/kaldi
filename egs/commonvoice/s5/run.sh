@@ -13,6 +13,8 @@ data_url=https://common-voice-data-download.s3.amazonaws.com/cv_corpus_v1.tar.gz
 
 stage=0
 
+. ./utils/parse_options.sh
+
 set -euo pipefail
 
 if [ $stage -le 0 ]; then

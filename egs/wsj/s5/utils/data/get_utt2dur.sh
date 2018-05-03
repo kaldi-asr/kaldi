@@ -11,6 +11,8 @@
 # files in entirely.)
 
 frame_shift=0.01
+cmd=run.pl
+nj=4
 
 . utils/parse_options.sh
 . ./path.sh
@@ -80,11 +82,23 @@ elif [ -f $data/wav.scp ]; then
       echo "... perturb_data_dir_speed_3way.sh."
     fi
 
-    if ! wav-to-duration --read-entire-file=$read_entire_file scp:$data/wav.scp ark,t:$data/utt2dur 2>&1 | grep -v 'nonzero return status'; then
-      echo "$0: there was a problem getting the durations; moving $data/utt2dur to $data/.backup/"
-      mkdir -p $data/.backup/
-      mv $data/utt2dur $data/.backup/
+
+    num_utts=$(wc -l <$data/utt2spk)
+    if [ $nj -gt $num_utts ]; then
+      nj=$num_utts
     fi
+
+    utils/data/split_data.sh --per-utt $data $nj
+    sdata=$data/split${nj}utt
+
+    $cmd JOB=1:$nj $data/log/get_durations.JOB.log \
+      wav-to-duration --read-entire-file=$read_entire_file \
+      scp:$sdata/JOB/wav.scp ark,t:$sdata/JOB/utt2dur || \
+        { echo "$0: there was a problem getting the durations"; exit 1; }
+
+    for n in `seq $nj`; do
+      cat $sdata/$n/utt2dur
+    done > $data/utt2dur
   fi
 elif [ -f $data/feats.scp ]; then
   echo "$0: wave file does not exist so getting durations from feats files"

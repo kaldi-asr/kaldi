@@ -5,8 +5,11 @@
 # Apache 2.0.
 
 """This script converts a segments and labels file to a NIST RTTM
-file. It handles overlapping segments (e.g. the output of a sliding-
-window diarization system).
+file. It creates flat segmentation (i.e. no overlapping regions)
+from overlapping segments, e.g. the output of a sliding-window
+diarization system. The speaker boundary between two overlapping
+segments by different speakers is placed at the midpoint between
+the end of the first segment and the start of the second segment.
 
 The segments file format is:
 <segment-id> <recording-id> <start-time> <end-time>

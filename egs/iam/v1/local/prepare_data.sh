@@ -18,6 +18,7 @@
 
 stage=0
 download_dir=data/download
+wellington_dir=
 username=
 password=       # username and password for downloading the IAM database
                 # if you have not already downloaded the database, please
@@ -43,6 +44,7 @@ xml=data/local/xml
 ascii=data/local/ascii
 bcorpus=data/local/browncorpus
 lobcorpus=data/local/lobcorpus
+wcorpus=data/local/wellingtoncorpus
 data_split_info=data/local/largeWriterIndependentTextLineRecognitionTask
 lines_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/lines/lines.tgz
 xml_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/xml/xml.tgz
@@ -50,6 +52,7 @@ data_split_info_url=http://www.fki.inf.unibe.ch/DBs/iamDB/tasks/largeWriterIndep
 ascii_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/ascii/ascii.tgz
 brown_corpus_url=http://www.sls.hawaii.edu/bley-vroman/brown.txt
 lob_corpus_url=http://ota.ox.ac.uk/text/0167.zip
+wellington_corpus_loc=/export/corpora5/Wellington/WWC/
 mkdir -p $download_dir data/local
 
 # download and extact images and transcription
@@ -122,6 +125,23 @@ else
     wget -P $bcorpus $brown_corpus_url || exit 1;
   fi
   echo "$0: Done downloading the Brown text corpus"
+fi
+
+if [ -d $wcorpus ]; then
+  echo "$0: Not copying Wellington corpus as it is already there."
+elif [ ! -z $wellington_dir ]; then
+  mkdir -p $wcorpus
+  cp -r $wellington_dir/. $wcorpus
+
+  # Combine Wellington corpora and replace some of their annotations
+  cat data/local/wellingtoncorpus/Section{A,B,C,D,E,F,G,H,J,K,L}.txt | \
+    cut -d' ' -f3- | sed "s/^[ \t]*//" > data/local/wellingtoncorpus/Wellington_annotated.txt
+
+  cat data/local/wellingtoncorpus/Wellington_annotated.txt | local/remove_wellington_annotations.py > data/local/wellingtoncorpus/Wellington_annotation_removed.txt
+
+  echo "$0: Done copying Wellington corpus"
+else
+  echo "$0: Wellington Corpus not included because wellington_dir not provided"
 fi
 
 mkdir -p data/{train,test,val}

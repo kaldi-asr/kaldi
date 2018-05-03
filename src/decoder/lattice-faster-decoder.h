@@ -3,6 +3,7 @@
 // Copyright 2009-2013  Microsoft Corporation;  Mirko Hannemann;
 //           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 //                2014  Guoguo Chen
+//                2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -232,7 +233,7 @@ class LatticeFasterDecoder {
   // links from it when we process the next frame.
   struct Token {
     BaseFloat tot_cost; // would equal weight.Value()... cost up to this point.
-    BaseFloat extra_cost; // >= 0.  This is used in pruning a way tokens.
+    BaseFloat extra_cost; // >= 0.  This is used in pruning away tokens.
     // there is a comment in lattice-faster-decoder.cc explaining this;
     // search for "a note on the definition of extra_cost".
 
@@ -339,12 +340,18 @@ class LatticeFasterDecoder {
 
   /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
   /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
-  BaseFloat ProcessEmitting(DecodableInterface *decodable);
+  /// Templated on FST type for speed; called via ProcessEmittingWrapper().
+  template <typename FstType> BaseFloat ProcessEmitting(DecodableInterface *decodable);
+
+  BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.  Called after
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
-  void ProcessNonemitting(BaseFloat cost_cutoff);
+  /// the templated design is similar to ProcessEmitting()
+  template <typename FstType> void ProcessNonemitting(BaseFloat cost_cutoff);
+
+  void ProcessNonemittingWrapper(BaseFloat cost_cutoff);
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of

@@ -263,18 +263,14 @@ void TimeHeightConvolutionComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("alpha-out", &alpha_out);
   cfl->GetValue("num-minibatches-history", &num_minibatches_history);
 
-  preconditioner_in_.SetAlpha(alpha_in);
-  preconditioner_out_.SetAlpha(alpha_out);
   int32 dim_in = linear_params_.NumCols() + 1,
       dim_out = linear_params_.NumRows();
-  if (rank_in < 0) {
+  if (rank_in < 0)
     rank_in = std::min<int32>(80, (dim_in + 1) / 2);
-    preconditioner_in_.SetRank(rank_in);
-  }
-  if (rank_out < 0) {
+  preconditioner_in_.SetRank(rank_in);
+  if (rank_out < 0)
     rank_out = std::min<int32>(80, (dim_out + 1) / 2);
-    preconditioner_out_.SetRank(rank_out);
-  }
+  preconditioner_out_.SetRank(rank_out);
   preconditioner_in_.SetNumMinibatchesHistory(num_minibatches_history);
   preconditioner_out_.SetNumMinibatchesHistory(num_minibatches_history);
 
@@ -360,29 +356,29 @@ void TimeHeightConvolutionComponent::UpdateNaturalGradient(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_deriv) {
 
-  CuVector<BaseFloat> bias_temp(bias_params_.Dim());
+  CuVector<BaseFloat> bias_deriv(bias_params_.Dim());
 
-  { // this block computes 'bias_temp', the derivative w.r.t. the bias.
+  { // this block computes 'bias_deriv', the derivative w.r.t. the bias.
     KALDI_ASSERT(out_deriv.Stride() == out_deriv.NumCols() &&
                  out_deriv.NumCols() ==
                  model_.height_out * model_.num_filters_out);
     CuSubMatrix<BaseFloat> out_deriv_reshaped(
         out_deriv.Data(), out_deriv.NumRows() * model_.height_out,
         model_.num_filters_out, model_.num_filters_out);
-    bias_temp.AddRowSumMat(1.0, out_deriv_reshaped);
+    bias_deriv.AddRowSumMat(1.0, out_deriv_reshaped);
   }
 
-  CuMatrix<BaseFloat> params_temp(linear_params_.NumRows(),
+  CuMatrix<BaseFloat> params_deriv(linear_params_.NumRows(),
                                   linear_params_.NumCols() + 1);
-  params_temp.CopyColFromVec(bias_temp, linear_params_.NumCols());
+  params_deriv.CopyColFromVec(bias_deriv, linear_params_.NumCols());
 
 
-  CuSubMatrix<BaseFloat> linear_params_temp(
-      params_temp, 0, linear_params_.NumRows(),
+  CuSubMatrix<BaseFloat> linear_params_deriv(
+      params_deriv, 0, linear_params_.NumRows(),
       0, linear_params_.NumCols());
 
   ConvolveBackwardParams(indexes.computation, in_value, out_deriv,
-                         1.0, &linear_params_temp);
+                         1.0, &linear_params_deriv);
 
   // the precondition-directions code outputs a scalar that
   // must be multiplied by its output (this saves one
@@ -393,22 +389,19 @@ void TimeHeightConvolutionComponent::UpdateNaturalGradient(
   // scalars are different across iterations, the scalars
   // will be pretty similar on different iterations
   BaseFloat scale1, scale2;
-  preconditioner_in_.PreconditionDirections(&params_temp, NULL,
-                                            &scale1);
+  preconditioner_in_.PreconditionDirections(&params_deriv, &scale1);
 
 
-  CuMatrix<BaseFloat> params_temp_transpose(params_temp, kTrans);
-  preconditioner_out_.PreconditionDirections(&params_temp_transpose,
-                                             NULL, &scale2);
-
+  CuMatrix<BaseFloat> params_deriv_transpose(params_deriv, kTrans);
+  preconditioner_out_.PreconditionDirections(&params_deriv_transpose, &scale2);
 
   linear_params_.AddMat(
       learning_rate_ * scale1 * scale2,
-      params_temp_transpose.RowRange(0, linear_params_.NumCols()),
+      params_deriv_transpose.RowRange(0, linear_params_.NumCols()),
       kTrans);
 
   bias_params_.AddVec(learning_rate_ * scale1 * scale2,
-                      params_temp_transpose.Row(linear_params_.NumCols()));
+                      params_deriv_transpose.Row(linear_params_.NumCols()));
 }
 
 

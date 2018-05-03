@@ -4,11 +4,11 @@
 #                2016  Vimal Manohar
 # Apache 2.0.
 
-# This script does forward propagation through a neural network. 
+# This script does forward propagation through a neural network.
 
 # Begin configuration section.
 stage=1
-nj=4 # number of jobs.  
+nj=4 # number of jobs.
 cmd=run.pl
 use_gpu=false
 frames_per_chunk=50
@@ -77,15 +77,10 @@ cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
 echo $nj > $dir/num_jobs
 
 ## Set up features.
-if [ -f $srcdir/final.mat ]; then 
+if [ -f $srcdir/final.mat ]; then
   echo "$0: ERROR: lda feature type is no longer supported." && exit 1
 fi
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-
-if grep 'transform-feats --utt2spk' $srcdir/log/train.1.log >&/dev/null; then
-  echo "$0: **WARNING**: you seem to be using a neural net system trained with transforms,"
-  echo "  but this is no longer supported."
-fi
 
 if [ ! -z "$online_ivector_dir" ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
