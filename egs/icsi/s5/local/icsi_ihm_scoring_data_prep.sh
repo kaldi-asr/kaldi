@@ -3,9 +3,9 @@
 
 # Copyright 2014  University of Edinburgh (Author: Pawel Swietojanski)
 #           2016  Johns Hopkins University (Author: Daniel Povey)
-# AMI Corpus training data preparation
+#           2018 Emotech LTD (Author: Pawel Swietojanski)
+# ICSI Corpus training data preparation
 # Apache 2.0
-
 # Note: this is called by ../run.sh.
 
 . ./path.sh
@@ -117,4 +117,4 @@ cp local/english.glm $odir/glm
 
 utils/validate_data_dir.sh --no-feats $odir || exit 1;
 
-echo AMI $SET set data preparation succeeded.
+echo ICSI $SET set data preparation succeeded.

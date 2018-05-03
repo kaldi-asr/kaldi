@@ -41,7 +41,7 @@ meetings=$wdir/meetings.list
 
 cat local/split_train.orig local/split_dev.orig local/split_eval.orig | sort > $meetings
 # Removing ``lost'' MDM session-ids : http://groups.inf.ed.ac.uk/ami/corpus/dataproblems.shtml
-mv $meetings{,.orig}; grep -v "IS1003b\|IS1007d" $meetings.orig >$meetings
+#mv $meetings{,.orig}; grep -v "IS1003b\|IS1007d" $meetings.orig >$meetings
 
 ch_inc=$((8/$numch))
 bmf=

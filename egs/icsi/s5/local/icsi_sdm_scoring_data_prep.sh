@@ -1,51 +1,54 @@
 #!/bin/bash
 
-# Switchboard-1 training data preparation customized for Edinburgh
-# Author:  Arnab Ghoshal (Jan 2013)
-
+# Copyright 2014 University of Edinburgh (Author: Pawel Swietojanski)
+#           2018 Emotech LTD (Author: Pawel Swietojanski)
+# ICSI Corpus training data preparation
+# Apache 2.0
 # To be run from one directory above this script.
-
-## The input is some directory containing the switchboard-1 release 2
-## corpus (LDC97S62).  Note: we don't make many assumptions about how
-## you unpacked this.  We are just doing a "find" command to locate
-## the .sph files.
 
 . path.sh
 
-#check existing directories
 if [ $# != 4 ]; then
-  echo "Usage: ami_sdm_scoring_data_prep_edin.sh /path/to/AMI rt09-seg-file set-name mic"
+  echo "Usage: icsi_sdm_scoring_data_prep_edin.sh /path/to/AMI seg-file set-name mic"
   exit 1; 
 fi 
 
-AMI_DIR=$1
+CORPUS_DIR=$1
 SEGS=$2 #assuming here all normalisation stuff was done
 SET=$3
-mic=$4
+MICNUM=$4
+mic="m$MICNUM"
 
-tmpdir=data/local/$mic/$SET
-dir=data/$mic/$SET
+tmpdir=data/local/sdm/$mic/$SET
+dir=data/sdm/$mic/$SET
+channels=data/local/channels.bmf
 
 mkdir -p $tmpdir
 
+if [ ! -f $channels ]; then
+  echo 'Meeting to channel mapping file missing'
+  exit 1;
+fi
+
 # Audio data directory check
-if [ ! -d $AMI_DIR ]; then
+if [ ! -d $CORPUS_DIR ]; then
   echo "Error: run.sh requires a directory argument"
-  exit 1; 
-fi  
+  exit 1;
+fi
 
-# find headset wav audio files only, here we again get all
-# the files in the corpora and filter only specific sessions
-# while building segments
+cut -d" " -f1,$(($MICNUM+1)) $channels | awk '{print $1".*"$2}' > $tmpdir/channels_regex
+# list all wav file you can
+find $CORPUS_DIR -iname "*.wav" | sort > $tmpdir/wav.flist.all
+# and keep only these we want
+grep -f $tmpdir/channels_regex $tmpdir/wav.flist.all > $tmpdir/wav.flist
 
-find $AMI_DIR -iname '*icsi_bmf.wav' | sort > $tmpdir/wav.flist
 n=`cat $tmpdir/wav.flist | wc -l`
 echo "In total, $n files were found."
 
 # (1a) Transcriptions preparation
-# here we start with rt09 transcriptions, hence not much to do
+# here we start with normalised transcripts
 
-awk '{meeting=$1; channel="MDM"; speaker=$3; stime=$4; etime=$5;
+awk '{meeting=$1; channel="SDM"; speaker=$3; stime=$4; etime=$5;
  printf("ICSI_%s_%s_%s_%07.0f_%07.0f", meeting, channel, speaker, int(100*stime+0.5), int(100*etime+0.5));
  for(i=6;i<=NF;i++) printf(" %s", $i); printf "\n"}' $SEGS | sort  > $tmpdir/text
 
@@ -59,13 +62,9 @@ awk '{
        print segment " " audioname " " startf/100 " " endf/100 " " 0
 }' < $tmpdir/text > $tmpdir/segments
 
-#EN2001a.Array1-01.wav
-#sed -e 's?.*/??' -e 's?.sph??' $dir/wav.flist | paste - $dir/wav.flist \
-#  > $dir/wav.scp
-
-sed -e 's?.*/??' -e 's?.wav??' $tmpdir/wav.flist | \
- perl -ne 'split; $_ =~ m/(.*)_icsi_bmf/; print "ICSI_$1_MDM\n"' | \
-  paste - $tmpdir/wav.flist > $tmpdir/wav.scp
+cat $tmpdir/wav.flist | \
+  perl -ne 'split; $_ =~ m/.*\/(B.*)\/.*\.wav$/ || die "Bad label $_"; print "ICSI_$1_SDM\n"' | \
+   paste - $tmpdir/wav.flist > $tmpdir/wav.scp
 
 #Keep only devset part of waves
 awk '{print $2}' $tmpdir/segments | sort -u | join - $tmpdir/wav.scp | sort -o $tmpdir/wav.scp
@@ -77,7 +76,7 @@ awk '{print $2}' $tmpdir/segments | sort -u | join - $tmpdir/wav.scp | sort -o $
 # be less obvious.  Later it will be needed for ctm scoring.
 
 awk '{print $1 $2}' $tmpdir/wav.scp | \
-  perl -ane '$_ =~ m:^(\S+MDM).*\/([B].*)\.wav$: || die "bad label $_"; 
+  perl -ane '$_ =~ m:^(\S+SDM).*\/(chan.*)\.wav$: || die "bad label $_"; 
        print "$1 $2 0\n"; '\
   > $tmpdir/reco2file_and_channel || exit 1;
 
@@ -96,6 +95,9 @@ awk '{print $1}' $tmpdir/segments | \
           print "$1$2$3 $1$2\n";'  \
     > $tmpdir/utt2spk_stm || exit 1;
 
+
+# We assume each conversation side is a separate speaker. 
+
 # Copy stuff into its final locations [this has been moved from the format_data
 # script]
 mkdir -p $dir
@@ -103,8 +105,8 @@ for f in spk2utt utt2spk utt2spk_stm wav.scp text segments reco2file_and_channel
   cp $tmpdir/$f $dir/$f || exit 1;
 done
 
-cp local/english.glm $dir/glm
 utils/convert2stm.pl $dir utt2spk_stm > $dir/stm
+cp local/english.glm $dir/glm
 
 echo ICSI $SET set data preparation succeeded.
 

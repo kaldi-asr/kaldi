@@ -26,11 +26,11 @@ nmics=$(echo $mic | sed 's/[a-z]//g') # e.g. 8 for mdm8.
 set -euo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-AMI_DIR=$PWD/wav_db # Default,
+ICSI_DIR=$PWD/wav_db # Default
 case $(hostname -d) in
-  fit.vutbr.cz) AMI_DIR=/mnt/matylda5/iveselyk/KALDI_AMI_WAV ;; # BUT,
-  clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
-  cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
+  fit.vutbr.cz) ICSI_DIR= ;; # BUT,
+  clsp.jhu.edu) ICSI_DIR= ;; # JHU,
+  cstr.ed.ac.uk) ICSI_DIR= ;; # Edinburgh,
 esac
 
 [ ! -r data/local/lm/final_lm ] && echo "Please, run 'run_prepare_shared.sh' first!" && exit 1
@@ -44,7 +44,7 @@ if [ "$base_mic" == "mdm" ]; then
   if [ $stage -le 1 ]; then
     # for MDM data, do beamforming
     ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; extras/install_beamformit.sh; cd -;'" && exit 1
-    local/ami_beamform.sh --cmd "$train_cmd" --nj 20 $nmics $AMI_DIR $PROCESSED_AMI_DIR
+    local/ami_beamform.sh --cmd "$train_cmd" --nj 20 $nmics $ICSI_DIR $PROCESSED_AMI_DIR
   fi
 else
   PROCESSED_AMI_DIR=$AMI_DIR
@@ -52,9 +52,9 @@ fi
 
 # Prepare original data directories data/ihm/train_orig, etc.
 if [ $stage -le 2 ]; then
-  local/ami_${base_mic}_data_prep.sh $PROCESSED_AMI_DIR $mic
-  local/ami_${base_mic}_scoring_data_prep.sh $PROCESSED_AMI_DIR $mic dev
-  local/ami_${base_mic}_scoring_data_prep.sh $PROCESSED_AMI_DIR $mic eval
+  local/icsi_${base_mic}_data_prep.sh $PROCESSED_AMI_DIR $mic
+  local/icsi_${base_mic}_scoring_data_prep.sh $PROCESSED_AMI_DIR $mic dev
+  local/icsi_${base_mic}_scoring_data_prep.sh $PROCESSED_AMI_DIR $mic eval
 fi
 
 if [ $stage -le 3 ]; then

@@ -3,6 +3,9 @@
 . ./cmd.sh
 . ./path.sh
 
+ICSI_TRANS= #where to find ICSI transcriptions [required]
+FISHER_TRANS= #where to find FISHER transcriptions [optional, for LM esimation]
+
 # Path to Fisher transcripts LM interpolation (if not defined only AMI transcript LM is built),
 case $(hostname -d) in
   fit.vutbr.cz) FISHER_TRANS=/mnt/matylda2/data/FISHER/fe_03_p1_tran ;; # BUT,
@@ -10,8 +13,6 @@ case $(hostname -d) in
   cstr.ed.ac.uk) FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher/part1 ;; # Edinburgh,
   us-west-2.compute.internal) FISHER_TRANS=../../ami/part1 ;;
 esac
-# Or select manually,
-# FISHER_TRANS=...
 
 . utils/parse_options.sh
 
@@ -35,13 +36,13 @@ fi
 # -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
 set -euxo pipefail
 
-# Download of annotations, pre-processing,
-local/icsi_text_prep.sh data/local/downloads
+#prepare annotationss
+local/icsi_text_prep.sh $ICSI_TRANS data/local/annotations
 
 local/icsi_prepare_dict.sh
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
-local/ami_train_lms.sh --fisher $FISHER_TRANS data/local/annotations/train.txt data/local/annotations/dev.txt data/local/dict/lexicon.txt data/local/lm
+local/icsi_train_lms.sh --fisher $FISHER_TRANS data/local/annotations/train.txt data/local/annotations/dev.txt data/local/dict/lexicon.txt data/local/lm
 
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7

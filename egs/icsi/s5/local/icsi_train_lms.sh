@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# Copyright 2013  Arnab Ghoshal, Pawel Swietojanski
+# Copyright 2013 Arnab Ghoshal, Pawel Swietojanski
+#           2018 Pawel Swietojanski
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +22,6 @@
 fisher=
 order=3
 swbd=
-google=
 web_sw=
 web_fsh=
 web_mtg=
@@ -75,12 +75,12 @@ sort -u $dir/wordlist.lex $dir/wordlist.train > $dir/wordlist
 
 ngram-count -text $dir/train.gz -order $order -limit-vocab -vocab $dir/wordlist \
   -unk -map-unk "<unk>" -kndiscount -interpolate -lm $dir/ami.o${order}g.kn.gz
-echo "PPL for AMI LM:"
+echo "PPL for ICSI LM:"
 ngram -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz
 ngram -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 >& $dir/ppl2
 mix_ppl="$dir/ppl2"
-mix_tag="ami"
-mix_lms=( "$dir/ami.o${order}g.kn.gz" )
+mix_tag="icsi"
+mix_lms=( "$dir/icsi.o${order}g.kn.gz" )
 num_lms=1
 
 if [ ! -z "$swbd" ]; then
@@ -125,20 +125,6 @@ if [ ! -z "$fisher" ]; then
   mix_ppl="$mix_ppl $dir/fisher/ppl2"
   mix_tag="${mix_tag}_fsh"
   mix_lms=("${mix_lms[@]}" "$dir/fisher/fisher.o${order}g.kn.gz")
-  num_lms=$[ num_lms + 1 ]
-fi
-
-if [ ! -z "$google1B" ]; then
-  mkdir -p $dir/google
-  wget -O $dir/google/cantab.lm3.bz2 http://vm.cantabresearch.com:6080/demo/cantab.lm3.bz2
-  wget -O $dir/google/150000.lex http://vm.cantabresearch.com:6080/demo/150000.lex
-
-  ngram -unk -limit-vocab -vocab $dir/wordlist -lm $dir/google.cantab.lm3.bz3 \
-     -write-lm $dir/google/google.o${order}g.kn.gz
-
-  mix_ppl="$mix_ppl $dir/goog1e/ppl2"
-  mix_tag="${mix_tag}_fsh"
-  mix_lms=("${mix_lms[@]}" "$dir/google/google.o${order}g.kn.gz")
   num_lms=$[ num_lms + 1 ]
 fi
 

@@ -23,17 +23,10 @@ grep -v ';;;' $dir/cmudict/cmudict.0.7a | \
   perl -ane '@A = split(" ", $_); for ($n = 1; $n<@A;$n++) { $A[$n] =~ s/[0-9]//g; } print join(" ", @A) . "\n";' | \
   sort | uniq > $dir/lexicon1_raw_nosil.txt || exit 1;
 
-#cat eddie_data/rt09.ami.ihmtrain09.v3.dct | sort > $dir/lexicon1_raw_nosil.txt
-
-# limit the vocabulary to the predefined 50k words
-wget -nv -O $dir/wordlist.50k.gz http://www.openslr.org/resources/9/wordlist.50k.gz
-gunzip -c $dir/wordlist.50k.gz > $dir/wordlist.50k
-join $dir/lexicon1_raw_nosil.txt $dir/wordlist.50k > $dir/lexicon1_raw_nosil_50k.txt
-
 # Add prons for laughter, noise, oov
 for w in `grep -v sil $dir/silence_phones.txt`; do
   echo "[$w] $w"
-done | cat - $dir/lexicon1_raw_nosil_50k.txt > $dir/lexicon2_raw_50k.txt || exit 1;
+done | cat - $dir/lexicon1_raw_nosil.txt > $dir/lexicon2_raw.txt || exit 1;
 
 # add some specific words, those are only with 100 missing occurences or more
 ( echo "MM M"; \
@@ -43,10 +36,10 @@ done | cat - $dir/lexicon1_raw_nosil_50k.txt > $dir/lexicon2_raw_50k.txt || exit
   echo "COLOURS  K AH L ER Z"; \
   echo "REMOTES  R IH M OW T Z"; \
   echo "FAVOURITE F EY V ER IH T"; \
-  echo "<unk> oov" ) | cat - $dir/lexicon2_raw_50k.txt \
-     | sort -u > $dir/lexicon3_extra_50k.txt
+  echo "<unk> oov" ) | cat - $dir/lexicon2_raw.txt \
+     | sort -u > $dir/lexicon3_extra.txt
 
-cp $dir/lexicon3_extra_50k.txt $dir/lexicon.txt
+cp $dir/lexicon3_extra.txt $dir/lexicon.txt
 rm $dir/lexiconp.txt 2>/dev/null; # can confuse later script if this exists.
 
 [ ! -f $dir/lexicon.txt ] && exit 1;
@@ -69,3 +62,5 @@ echo "*Highest-count OOVs are:"
 head -n 20 $dir/oov_counts.txt
 
 utils/validate_dict_dir.pl $dir
+
+echo ICSI dict preparation succeeded

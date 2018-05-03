@@ -2,7 +2,8 @@
 
 # Copyright 2014  University of Edinburgh (Author: Pawel Swietojanski)
 #           2016  Johns Hopkins University (Author: Daniel Povey)
-# AMI Corpus training data preparation
+#           2018 Emotech LTD (Author: Pawel Swietojanski)
+# ICSI Corpus training data preparation
 # Apache 2.0
 
 # Note: this is called by ../run.sh.
@@ -27,7 +28,7 @@ odir=data/ihm/train_orig
 mkdir -p $dir
 
 # Audio data directory check
-if [ ! -d $AMI_DIR ]; then
+if [ ! -d $ICSI_DIR ]; then
   echo "Error: $AMI_DIR directory does not exists."
   exit 1;
 fi
@@ -44,8 +45,8 @@ find $ICSI_DIR -name "*.wav" | sort > $dir/wav.flist
 
 # (1a) Transcriptions preparation
 # here we start with normalised transcriptions, the utt ids follow the convention
-# AMI_MEETING_CHAN_SPK_STIME_ETIME
-# AMI_ES2011a_H00_FEE041_0003415_0003484
+# ICSI_MEETING_CHAN_SPK_STIME_ETIME
+# ICSI_Buw001_chan1_fe016_0003415_0003484
 # we use uniq as some (rare) entries are doubled in transcripts
 
 cat $SEGS | grep -v NaN | awk '{meeting=$1; channel=$2; speaker=$3; stime=$4; etime=$5; if (etime>stime) {

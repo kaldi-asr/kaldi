@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Switchboard-1 training data preparation customized for Edinburgh
-# Author:  Arnab Ghoshal (Jan 2013)
+# Copyright 2014  University of Edinburgh (Author: Pawel Swietojanski)
+#           2016  Johns Hopkins University (Author: Daniel Povey)
+#           2018  Emotech LTD (Author: Pawel Swietojanski)
+# ICSI Corpus training data preparation
+# Apache 2.0
 
 # To be run from one directory above this script.
 

@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# Pawel Swietojanski, 2014
+# Apache 2.0
+
 #fix some issues with transcripts
-#1) In case of e.g. ISN'T- remove '-' and check for ISN'T in dict
+#1) In case of e.g. ISN'T- remove '-' and check for ISN'T in a dict
 #2) In case of e.g. ABO add '-' and check for ABO- in dict
 #3) In case of e.g. AIR-CRAFT splice two words and check in dict or
 #4) split AIR-CRAFT into two separate words

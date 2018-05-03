@@ -13,7 +13,7 @@ open(RF, "<$replace_file") || die "opening replace file $replace_file";
 open(SI, "<$seg_in") || die "opening input segment file $seg_in";
 open(SO, ">$seg_out") || die "opening output segment file $seg_out";
 
-my @segments = <SI>;
+my @segments =  <SI>;
 my $segments = join("", @segments);
 
 while(<RF>) {

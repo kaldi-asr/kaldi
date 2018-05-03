@@ -13,7 +13,7 @@ Mutliple distant microphones (mdm) setup is using only 4 PDA mics. Look below
 for more details, more on notations and a typical meeting layout ICSI followed.
 
 
-About ICSCI corpora and this particular recipe
+About ICSI corpora and this particular recipe
 =================================================================================
 
 This recipe builds ASR models using ICSI data, see [1] for a description, or [2]
@@ -26,13 +26,14 @@ to access the data. The correposning paper describing the ICSI corpora is [3]
     in Proc IEEE ICASSP, 2003, pp. 364-367
 
 
-ICSI data did not come with any pre-defined splits for train/valid/test sets as it was
-mostly used as a training data for NIST RT evaluations. Some portions of unrelased ICSI 
-data (as a part of corpora) can be found in, for example, NIST RT04 amd RT05 evaluation sets.
+ICSI data did not come with any pre-defined splits for train/valid/eval sets as it was
+mostly used as a training material for NIST RT evaluations. Some portions of unrelased ICSI 
+data (as a part of this corpora) can be found in, for example, NIST RT04 amd RT05 evaluation sets.
 
 This recipe, however, to be self-contained factors out development and evaluation sets
-in a way to minimise the speaker-overlap between different partitions. This recipe follows
-[4] where dev and eval sets use {Bmr021 and Bns00} and {Bmr013, Bmr018 and Bro021}, respectively.
+in a way to minimise the speaker-overlap between different partitions, and to avoid known issues
+with available recordings during evaluation. This recipe follows [4] where dev and eval sets are 
+making use of {Bmr021, Bns00} and {Bmr013, Bmr018, Bro021}, respectively.
 
 [4] S Renals and P Swietojanski, Neural networks for distant speech recognition. 
     in Proc IEEE HSCMA 2014 pp. 172-176. DOI:10.1109/HSCMA.2014.6843274
@@ -80,4 +81,13 @@ D3 - chan6
 D4 - chan7                                                                      
 PDA left - chanC                                                                
 PDA right - chanD 
+
+-----------
+Note (Pawel): The mapping for headsets is being extracted from mrt files. 
+In cases where IHM channels are missing for some speakers in some meetings, 
+in this recipe we either back off to distant channel (typically D2, default)
+or (optionally) skip this speaker's segments entirely from processing. 
+This is not the case for eval set, where all the channels come with the 
+expected recordings, and split is the same for all conditions (thus allowing 
+for direct comparisons between IHM, SDM and MDM settings).
 

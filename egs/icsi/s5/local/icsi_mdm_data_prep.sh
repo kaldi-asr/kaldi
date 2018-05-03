@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# Switchboard-1 training data preparation customized for Edinburgh
-# Author:  Arnab Ghoshal (Jan 2013)
+# Copyright 2014  University of Edinburgh (Author: Pawel Swietojanski)
+#           2016  Johns Hopkins University (Author: Daniel Povey)
+#           2018 Emotech LTD (Author: Pawel Swietojanski)
+# ICSI Corpus training data preparation
+# Apache 2.0
 
 # To be run from one directory above this script.
 
@@ -83,10 +86,6 @@ awk '{print $1}' $dir/segments | \
     > $dir/utt2spk || exit 1;
 
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
-
-# We assume each conversation side is a separate speaker. This is a very 
-# reasonable assumption for Switchboard. The actual speaker info file is at:
-# http://www.ldc.upenn.edu/Catalog/desc/addenda/swb-multi-annot.summary
 
 # Copy stuff into its final locations [this has been moved from the format_data
 # script]
