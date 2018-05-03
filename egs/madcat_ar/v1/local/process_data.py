@@ -6,7 +6,7 @@
     data subset selected via --dataset) :text, utt2spk, images.scp.
 
   Eg. local/process_data.py data/local /export/corpora/LDC/LDC2012T15 /export/corpora/LDC/LDC2013T09
-      /export/corpora/LDC/LDC2013T15 /home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid 
+      /export/corpora/LDC/LDC2013T15 data/download/data_splits/madcat.train.raw.lineid
       data/dev data/local/lines/images.scp
   Eg. text file: LDC0001_000404_NHR_ARB_20070113.0052_11_LDC0001_00z2 وجه وعقل غارق حتّى النخاع
       utt2spk file: LDC0001_000397_NHR_ARB_20070113.0052_11_LDC0001_00z1 LDC0001
@@ -50,7 +50,6 @@ def check_file_location():
         madcat_file_path (string): complete path and name of the madcat xml file
                                   corresponding to the page image.
     """
-
     madcat_file_path1 = os.path.join(args.database_path1, 'madcat', base_name + '.madcat.xml')
     madcat_file_path2 = os.path.join(args.database_path2, 'madcat', base_name + '.madcat.xml')
     madcat_file_path3 = os.path.join(args.database_path3, 'madcat', base_name + '.madcat.xml')
@@ -80,7 +79,6 @@ def parse_writing_conditions(writing_conditions):
     Returns:
         (dict): dictionary with key as page image name and value as writing condition.
     """
-
     with open(writing_conditions) as f:
         file_writing_cond = dict()
         for line in f:
@@ -98,7 +96,6 @@ def check_writing_condition(wc_dict):
     Returns:
         (bool): True if writing condition matches.
     """
-
     return True
     writing_condition = wc_dict[base_name].strip()
     if writing_condition != 'IUC':
@@ -115,7 +112,6 @@ def get_word_line_mapping(madcat_file_path):
 
     Returns:
     """
-
     doc = minidom.parse(madcat_file_path)
     zone = doc.getElementsByTagName('zone')
     for node in zone:
@@ -137,7 +133,6 @@ def read_text(madcat_file_path):
     Returns:
         dict: Mapping every word in the page image to a  corresponding line.
     """
-
     text_line_word_dict = dict()
     doc = minidom.parse(madcat_file_path)
     segment = doc.getElementsByTagName('segment')
