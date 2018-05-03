@@ -210,6 +210,8 @@ BaseFloat GenericNumeratorComputation::AlphaRemainingFrames(int seq,
 bool GenericNumeratorComputation::ForwardBackward(
                                  BaseFloat *total_loglike,
                                  CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+  KALDI_ASSERT(total_loglike != NULL);
+  KALDI_ASSERT(nnet_output_deriv != NULL);
   KALDI_ASSERT(nnet_output_deriv->NumCols() == nnet_output_.NumCols());
   KALDI_ASSERT(nnet_output_deriv->NumRows() == nnet_output_.NumRows());
 
