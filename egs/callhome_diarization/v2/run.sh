@@ -196,7 +196,7 @@ if [ $stage -le 3 ]; then
   utils/fix_data_dir.sh data/train_combined_cmn_no_sil
 fi
 
-local/nnet3/xvector/tuning/run_xvector_1a.sh --stage $stage \
+local/nnet3/xvector/tuning/run_xvector_1a.sh --stage $stage --train-stage -1 \
   --data data/train_combined_cmn_no_sil --nnet-dir $nnet_dir \
   --egs-dir $nnet_dir/egs
 
