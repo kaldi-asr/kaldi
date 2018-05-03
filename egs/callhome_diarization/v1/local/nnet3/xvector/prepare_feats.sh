@@ -2,9 +2,14 @@
 #
 # Apache 2.0.
 
-# This script applies sliding window cmvn and removes silence frames.  This
-# is performed on the raw features prior to generating examples for training
-# the xvector system.
+# This script applies sliding window CMVN and writes the features to disk.
+#
+# Although this kind of script isn't necessary in speaker recognition recipes,
+# it can be helpful in the diarization recipes.  The script
+# diarization/nnet3/xvector/extract_xvectors.sh extracts x-vectors from very
+# short (e.g., 1-2 seconds) segments.  Therefore, in order to apply the sliding
+# window CMVN in a meaningful way, it must be performed prior to performing
+# the subsegmentation.
 
 nj=40
 cmd="run.pl"
@@ -45,7 +50,7 @@ featdir=$(utils/make_absolute.sh $dir)
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
   utils/create_split_dir.pl \
-    /export/b{14,15,16,17}/$USER/kaldi-data/egs/sre16/v2/xvector-$(date +'%m_%d_%H_%M')/xvector_cmvn_feats/storage $featdir/storage
+    /export/b{14,15,16,17}/$USER/kaldi-data/egs/callhome_diarization/v2/xvector-$(date +'%m_%d_%H_%M')/xvector_cmvn_feats/storage $featdir/storage
 fi
 
 for n in $(seq $nj); do

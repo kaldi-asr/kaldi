@@ -2,9 +2,10 @@
 #
 # Apache 2.0.
 
-# This script applies sliding window cmvn and removes silence frames.  This
+# This script applies sliding window CMVN and removes silence frames.  This
 # is performed on the raw features prior to generating examples for training
-# the xvector system.
+# the x-vector system.  Once the training examples are generated, the features
+# created by this script can be removed.
 
 nj=40
 cmd="run.pl"
@@ -45,7 +46,7 @@ featdir=$(utils/make_absolute.sh $dir)
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
   utils/create_split_dir.pl \
-    /export/b{14,15,16,17}/$USER/kaldi-data/egs/sre16/v2/xvector-$(date +'%m_%d_%H_%M')/xvector_feats/storage $featdir/storage
+    /export/b{14,15,16,17}/$USER/kaldi-data/egs/callhome_diarization/v2/xvector-$(date +'%m_%d_%H_%M')/xvector_feats/storage $featdir/storage
 fi
 
 for n in $(seq $nj); do
