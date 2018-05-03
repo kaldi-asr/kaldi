@@ -459,7 +459,7 @@ def parse_writing_conditions(writing_conditions):
             file_writing_cond[line_list[0]] = line_list[3]
     return file_writing_cond
 
-def check_writing_condition(wc_dict):
+def check_writing_condition(wc_dict, base_name):
     """ Given writing condition dictionary, checks if a page image is writing
         in a specifed writing condition.
         It is used to create subset of dataset based on writing condition.
@@ -507,7 +507,7 @@ def main():
         if prev_base_name != base_name:
             prev_base_name = base_name
             madcat_file_path, image_file_path, wc_dict = check_file_location(base_name, wc_dict1, wc_dict2, wc_dict3)
-            if wc_dict is None or not check_writing_condition(wc_dict):
+            if wc_dict is None or not check_writing_condition(wc_dict, base_name):
                 continue
             if madcat_file_path is not None:
                 get_line_images_from_page_image(image_file_path, madcat_file_path, image_fh)
