@@ -29,7 +29,6 @@ done
 # split images.scp
 utils/split_scp.pl $scp $split_scps || exit 1;
 
-echo "$0: Preparing the test and train feature files..."
 $cmd JOB=1:$nj $logdir/extract_features.JOB.log \
   local/make_features.py $logdir/images.JOB.scp \
     --allowed_len_file_path data/train \
