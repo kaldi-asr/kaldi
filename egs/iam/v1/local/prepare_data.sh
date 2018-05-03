@@ -137,24 +137,7 @@ elif [ ! -z $wellington_dir ]; then
   cat data/local/wellingtoncorpus/Section{A,B,C,D,E,F,G,H,J,K,L}.txt | \
     cut -d' ' -f3- | sed "s/^[ \t]*//" > data/local/wellingtoncorpus/Wellington_annotated.txt
 
-  cat data/local/wellingtoncorpus/Wellington_annotated.txt | python3 <(
-  cat << 'EOF'
-import sys, io, re;
-from collections import OrderedDict;
-sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf8");
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf8");
-dict=OrderedDict([("^",""), ("|",""), ("_",""), ("*0",""), ("*1",""), ("*2",""), ("*3",""), ("*4",""),
-  ("*5",""), ("*6",""), ("*7",""), ("*8",""), ("*9",""), ("*@","°"), ("**=",""), ("*=",""),
-  ("*+$",""), ("$",""), ("*+","£"), ("*-","-"), ("*/","*"), ("*|",""), ("*{","{"), ("*}","}"),
-  ("**#",""), ("*#",""), ("*?",""), ("**\"","\""), ("*\"","\""), ("**'","'"), ("*'","'"),
-  ("*<",""), ("*>",""), ("**[",""), ("**]",""), ("**;",""), ("*;",""), ("**:",""), ("*:",""),
-  ("\\0",""), ("\\15",""), ("\\1",""), ("\\2",""), ("\\3",""), ("\\6",""), ("\\",""),
-  ("{0",""), ("{15",""), ("{1",""), ("{2",""), ("{3",""), ("{6","")]);
-pattern = re.compile("|".join(re.escape(key) for key in dict.keys()) + "|[^\\*]\\}");
-dict["}"]="";
-[sys.stdout.write(pattern.sub(lambda x: dict[x.group()[1:]] if re.match('[^\\*]\\}', x.group()) else dict[x.group()], line)) for line in sys.stdin];
-EOF
-) > data/local/wellingtoncorpus/Wellington_annotation_removed.txt
+  cat data/local/wellingtoncorpus/Wellington_annotated.txt | local/remove_wellington_annotations.py > data/local/wellingtoncorpus/Wellington_annotation_removed.txt
 
   echo "$0: Done copying Wellington corpus"
 else

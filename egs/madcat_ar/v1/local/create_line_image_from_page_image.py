@@ -8,8 +8,8 @@
 """ This module will be used for extracting line images from page image.
  Given the word segmentation (bounding box around a word) for every word, it will
  extract line segmentation. To extract line segmentation, it will take word bounding
- boxes of a line as input, will create a minimum area bounding box that will contain 
- all corner points of word bounding boxes. The obtained bounding box (will not necessarily 
+ boxes of a line as input, will create a minimum area bounding box that will contain
+ all corner points of word bounding boxes. The obtained bounding box (will not necessarily
  be vertically or horizontally aligned). Hence to extract line image from line bounding box,
  page image is rotated and line image is cropped and saved.
 """
@@ -38,7 +38,7 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 parser = argparse.ArgumentParser(description="Creates line images from page image",
-                                 epilog="E.g.  " + sys.argv[0] + "  data/LDC2012T15" 
+                                 epilog="E.g.  " + sys.argv[0] + "  data/LDC2012T15"
                                              " data/LDC2013T09 data/LDC2013T15 data/madcat.train.raw.lineid "
                                              " data/local/lines ",
                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -219,13 +219,13 @@ def minimum_bounding_box(points):
     min_rectangle['rectangle_center'] = to_xy_coordinates(min_rectangle['unit_vector_angle'], min_rectangle['rectangle_center'])
 
     return bounding_box_tuple(
-        area=min_rectangle['area'],
-        length_parallel=min_rectangle['length_parallel'],
-        length_orthogonal=min_rectangle['length_orthogonal'],
-        rectangle_center=min_rectangle['rectangle_center'],
-        unit_vector=min_rectangle['unit_vector'],
-        unit_vector_angle=min_rectangle['unit_vector_angle'],
-        corner_points=set(rectangle_corners(min_rectangle))
+        area = min_rectangle['area'],
+        length_parallel = min_rectangle['length_parallel'],
+        length_orthogonal = min_rectangle['length_orthogonal'],
+        rectangle_center = min_rectangle['rectangle_center'],
+        unit_vector = min_rectangle['unit_vector'],
+        unit_vector_angle = min_rectangle['unit_vector_angle'],
+        corner_points = set(rectangle_corners(min_rectangle))
     )
 
 
@@ -280,7 +280,7 @@ def rotated_points(bounding_box, center):
     """ Given the rectangle, returns corner points of rotated rectangle.
         It rotates the rectangle around the center by its smallest angle.
     Returns
-    ------- 
+    -------
     [(int, int)]: 4 corner points of rectangle.
     """
     p1, p2, p3, p4 = bounding_box.corner_points
@@ -310,8 +310,9 @@ def pad_image(image):
     -------
     image: page image
     """
-    padded_image = Image.new('RGB', (image.size[0] + padding, image.size[1] + padding), "white")
-    padded_image.paste(im=image, box=(offset, offset))
+    offset = int(args.padding // 2)
+    padded_image = Image.new('RGB', (image.size[0] + int(args.padding), image.size[1] + int(args.padding)), "white")
+    padded_image.paste(im = image, box = (offset, offset))
     return padded_image
 
 
@@ -322,6 +323,7 @@ def update_minimum_bounding_box_input(bounding_box_input):
     points [(float, float)]: points, a list or tuple of 2D coordinates
     """
     updated_minimum_bounding_box_input = []
+    offset = int(args.padding // 2)
     for point in bounding_box_input:
         x, y = point
         new_x = x + offset
@@ -332,23 +334,22 @@ def update_minimum_bounding_box_input(bounding_box_input):
     return updated_minimum_bounding_box_input
 
 
-def set_line_image_data(image, line_id, image_file_name):
+def set_line_image_data(image, line_id, image_file_name, image_fh):
     """ Given an image, saves a flipped line image. Line image file name
         is formed by appending the line id at the end page image name.
     """
 
     base_name = os.path.splitext(os.path.basename(image_file_name))[0]
-    image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_' + line_id.zfill(4)
     line_image_file_name = base_name + line_id + '.tif'
-    image_path = os.path.join(output_directory, line_image_file_name)
+    image_path = os.path.join(args.out_dir, line_image_file_name)
     imgray = image.convert('L')
     imgray_rev_arr = np.fliplr(imgray)
     imgray_rev = toimage(imgray_rev_arr)
     imgray_rev.save(image_path)
     image_fh.write(image_path + '\n')
 
-def get_line_images_from_page_image(image_file_name, madcat_file_path):
+def get_line_images_from_page_image(image_file_name, madcat_file_path, image_fh):
     """ Given a page image, extracts the line images from it.
     Inout
     -----
@@ -403,10 +404,9 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
             )
 
         rotation_angle_in_rad = get_smaller_angle(cropped_bounding_box)
-        img2 = region_initial.rotate(degrees(rotation_angle_in_rad), resample=Image.BICUBIC)
+        img2 = region_initial.rotate(degrees(rotation_angle_in_rad), resample = Image.BICUBIC)
         x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4 = rotated_points(
                 cropped_bounding_box, get_center(region_initial))
-
 
         min_x = int(min(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
         min_y = int(min(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
@@ -414,10 +414,10 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path):
         max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
         box = (min_x, min_y, max_x, max_y)
         region_final = img2.crop(box)
-        set_line_image_data(region_final, id, image_file_name)
+        set_line_image_data(region_final, id, image_file_name, image_fh)
 
 
-def check_file_location():
+def check_file_location(base_name, wc_dict1, wc_dict2, wc_dict3):
     """ Returns the complete path of the page image and corresponding
         xml file.
     Returns
@@ -426,13 +426,13 @@ def check_file_location():
     madcat_file_path (string): complete path and name of the madcat xml file
                                corresponding to the page image.
     """
-    madcat_file_path1 = os.path.join(data_path1, 'madcat', base_name + '.madcat.xml')
-    madcat_file_path2 = os.path.join(data_path2, 'madcat', base_name + '.madcat.xml')
-    madcat_file_path3 = os.path.join(data_path3, 'madcat', base_name + '.madcat.xml')
+    madcat_file_path1 = os.path.join(args.database_path1, 'madcat', base_name + '.madcat.xml')
+    madcat_file_path2 = os.path.join(args.database_path2, 'madcat', base_name + '.madcat.xml')
+    madcat_file_path3 = os.path.join(args.database_path3, 'madcat', base_name + '.madcat.xml')
 
-    image_file_path1 = os.path.join(data_path1, 'images', base_name + '.tif')
-    image_file_path2 = os.path.join(data_path2, 'images', base_name + '.tif')
-    image_file_path3 = os.path.join(data_path3, 'images', base_name + '.tif')
+    image_file_path1 = os.path.join(args.database_path1, 'images', base_name + '.tif')
+    image_file_path2 = os.path.join(args.database_path2, 'images', base_name + '.tif')
+    image_file_path3 = os.path.join(args.database_path3, 'images', base_name + '.tif')
 
     if os.path.exists(madcat_file_path1):
         return madcat_file_path1, image_file_path1, wc_dict1
@@ -459,7 +459,7 @@ def parse_writing_conditions(writing_conditions):
             file_writing_cond[line_list[0]] = line_list[3]
     return file_writing_cond
 
-def check_writing_condition(wc_dict):
+def check_writing_condition(wc_dict, base_name):
     """ Given writing condition dictionary, checks if a page image is writing
         in a specifed writing condition.
         It is used to create subset of dataset based on writing condition.
@@ -476,44 +476,42 @@ def check_writing_condition(wc_dict):
 
 ### main ###
 
-data_path1 = args.database_path1
-data_path2 = args.database_path2
-data_path3 = args.database_path3
+def main():
 
-writing_condition_folder_list = args.database_path1.split('/')
-writing_condition_folder1 = ('/').join(writing_condition_folder_list[:5])
+    writing_condition_folder_list = args.database_path1.split('/')
+    writing_condition_folder1 = ('/').join(writing_condition_folder_list[:5])
 
-writing_condition_folder_list = args.database_path2.split('/')
-writing_condition_folder2 = ('/').join(writing_condition_folder_list[:5])
+    writing_condition_folder_list = args.database_path2.split('/')
+    writing_condition_folder2 = ('/').join(writing_condition_folder_list[:5])
 
-writing_condition_folder_list = args.database_path3.split('/')
-writing_condition_folder3 = ('/').join(writing_condition_folder_list[:5])
+    writing_condition_folder_list = args.database_path3.split('/')
+    writing_condition_folder3 = ('/').join(writing_condition_folder_list[:5])
 
-splits_handle = open(args.data_splits, 'r')
-splits_data = splits_handle.read().strip().split('\n')
+    writing_conditions1 = os.path.join(writing_condition_folder1, 'docs', 'writing_conditions.tab')
+    writing_conditions2 = os.path.join(writing_condition_folder2, 'docs', 'writing_conditions.tab')
+    writing_conditions3 = os.path.join(writing_condition_folder3, 'docs', 'writing_conditions.tab')
 
-padding = int(args.padding)
-offset = int(padding // 2)
+    wc_dict1 = parse_writing_conditions(writing_conditions1)
+    wc_dict2 = parse_writing_conditions(writing_conditions2)
+    wc_dict3 = parse_writing_conditions(writing_conditions3)
 
-output_directory = args.out_dir
-image_file = os.path.join(output_directory, 'images.scp')
-image_fh = open(image_file, 'w', encoding='utf-8')
+    output_directory = args.out_dir
+    image_file = os.path.join(output_directory, 'images.scp')
+    image_fh = open(image_file, 'w', encoding='utf-8')
 
-writing_conditions1 = os.path.join(writing_condition_folder1, 'docs', 'writing_conditions.tab')
-writing_conditions2 = os.path.join(writing_condition_folder2, 'docs', 'writing_conditions.tab')
-writing_conditions3 = os.path.join(writing_condition_folder3, 'docs', 'writing_conditions.tab')
+    splits_handle = open(args.data_splits, 'r')
+    splits_data = splits_handle.read().strip().split('\n')
+    prev_base_name = ''
+    for line in splits_data:
+        base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
+        if prev_base_name != base_name:
+            prev_base_name = base_name
+            madcat_file_path, image_file_path, wc_dict = check_file_location(base_name, wc_dict1, wc_dict2, wc_dict3)
+            if wc_dict is None or not check_writing_condition(wc_dict, base_name):
+                continue
+            if madcat_file_path is not None:
+                get_line_images_from_page_image(image_file_path, madcat_file_path, image_fh)
 
-wc_dict1 = parse_writing_conditions(writing_conditions1)
-wc_dict2 = parse_writing_conditions(writing_conditions2)
-wc_dict3 = parse_writing_conditions(writing_conditions3)
 
-prev_base_name = ''
-for line in splits_data:
-    base_name = os.path.splitext(os.path.splitext(line.split(' ')[0])[0])[0]
-    if prev_base_name != base_name:
-        prev_base_name = base_name
-        madcat_file_path, image_file_path, wc_dict = check_file_location()
-        if wc_dict == None or not check_writing_condition(wc_dict):
-            continue
-        if madcat_file_path != None:
-            get_line_images_from_page_image(image_file_path, madcat_file_path)
+if __name__ == '__main__':
+      main()
