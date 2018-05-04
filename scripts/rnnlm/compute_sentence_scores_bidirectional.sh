@@ -3,11 +3,11 @@
 # Copyright 2017  Hainan Xu
 #           2017  Szu-Jui Chen
 
-# This script is very similar to utils/rnnlm_compute_scores.sh, and it computes
-# log-likelihoods from a Kaldi-RNNLM model instead of that of Mikolov's RNNLM.
-# Because Kaldi-RNNLM uses letter-features which does not need an <OOS> symbol,
-# we don't need the "unk.probs" file any more to add as a penalty term in sentence
-# likelihoods.
+# This script is very similar to rnnlm/compute_sentence_scores.sh, where it do the
+# same procedure for reversed data. And it computes log-likelihoods from a
+# Kaldi-RNNLM model instead of that of Mikolov's RNNLM. Because Kaldi-RNNLM uses
+# letter-features which does not need an <OOS> symbol, we don't need the "unk.probs"
+# file any more to add as a penalty term in sentence likelihoods.
 
 ensure_normalized_probs=false  # If true then the probabilities computed by the
                                # RNNLM will be correctly normalized. Note it is
