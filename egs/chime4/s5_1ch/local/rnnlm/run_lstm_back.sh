@@ -5,10 +5,12 @@
 #           2017  Hainan Xu
 #           2017  Szu-Jui Chen
 
+# This script trains LMs on the reversed Chime4 data, which we
+# call it backward model.
+
 # Begin configuration section.
 affix=1a
 dir=exp/rnnlm_lstm_${affix}_back
-enhan=$1
 embedding_dim=2048
 lstm_rpd=512
 lstm_nrpd=512
@@ -16,8 +18,6 @@ stage=-10
 train_stage=-10
 
 # variables for lattice rescoring
-ac_model_dir=exp/chain/tdnn1a_sp
-decode_dir_suffix=rnnlm_lstm_${affix}_back
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 

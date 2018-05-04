@@ -118,7 +118,7 @@ fi
 if [ $stage -le 4 ] && $use_backward_model; then
   local/rnnlm/run_lstm_back.sh --embedding-dim $embedding_dim \
     --lstm-rpd $lstm_rpd --lstm-nrpd $lstm_nrpd \
-    --ac-model-dir ${ac_model_dir} --affix $affix $enhan
+    --affix $affix
 fi
 
 # Since lattice-rescoring performs worse but faster than nbest-rescoring,
@@ -157,7 +157,7 @@ if [ $stage -le 6 ] && $run_nbest_rescore; then
     
     if $use_backward_model; then
       # Lattice rescoring
-      rnnlm/lmrescore_nbest_back.sh \
+      rnnlm/lmrescore_nbest_bidirectional.sh \
         --cmd "$train_cmd --mem 2G" --N $nbest \
         $rnnweight data/lang_test_$LM $dir \
         data/${decode_set}_${enhan}_chunked ${decode_dir} \
