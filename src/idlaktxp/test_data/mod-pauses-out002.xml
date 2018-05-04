@@ -1,0 +1,3 @@
+<?xml version="1.0"?><parent><ws col="0">
+</ws><break type="4" time="0.011" /><tk norm="hello" lc="true" uc="true">Hello<ws> </ws></tk><tk norm="there" pstpunc="," lc="true">there,<ws> </ws></tk><break type="3" time="0.2" /><tk norm="1" symbols="true">1<ws> </ws></tk><tk norm="2" symbols="true">2<ws> </ws></tk><tk norm="3" pstpunc="." symbols="true">3.<ws col="20">
+</ws></tk><break type="4" time="0.4" /></parent>

@@ -1,0 +1,1437 @@
+<?xml version="1.0"?>
+<parent>
+	<ws col="0">
+</ws>
+	<break type="4" time="0.011" />
+	<tk norm="helen" lc="true" uc="true">
+		Helen
+		<ws> </ws>
+	</tk>
+	<tk norm="duncan" lc="true" uc="true">
+		Duncan
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="tried" lc="true">
+		tried
+		<ws> </ws>
+	</tk>
+	<tk norm="under" lc="true">
+		under
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="witchcraft" lc="true" uc="true">
+		Witchcraft
+		<ws> </ws>
+	</tk>
+	<tk norm="act" lc="true" uc="true">
+		Act
+		<ws col="48">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="the" lc="true" uc="true">
+		The
+		<ws> </ws>
+	</tk>
+	<tk norm="family" lc="true">
+		family
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="last" lc="true">
+		last
+		<ws> </ws>
+	</tk>
+	<tk norm="person" lc="true">
+		person
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="uk" lc="true" uc="true">
+		UK
+		<ws> </ws>
+	</tk>
+	<tk norm="to" lc="true">
+		to
+		<ws> </ws>
+	</tk>
+	<tk norm="be" lc="true">
+		be
+		<ws> </ws>
+	</tk>
+	<tk norm="prosecuted" lc="true">
+		prosecuted
+		<ws> </ws>
+	</tk>
+	<tk norm="under" lc="true">
+		under
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="witchcraft" lc="true" uc="true">
+		Witchcraft
+		<ws> </ws>
+	</tk>
+	<tk norm="act" lc="true" uc="true">
+		Act
+		<ws> </ws>
+	</tk>
+	<tk norm="will" lc="true">
+		will
+		<ws> </ws>
+	</tk>
+	<tk norm="mark" lc="true">
+		mark
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="50th" lc="true" symbols="true">
+		50th
+		<ws> </ws>
+	</tk>
+	<tk norm="anniversary" lc="true">
+		anniversary
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="her" lc="true">
+		her
+		<ws> </ws>
+	</tk>
+	<tk norm="death" lc="true">
+		death
+		<ws> </ws>
+	</tk>
+	<tk norm="by" lc="true">
+		by
+		<ws> </ws>
+	</tk>
+	<tk norm="calling" lc="true">
+		calling
+		<ws> </ws>
+	</tk>
+	<tk norm="for" lc="true">
+		for
+		<ws> </ws>
+	</tk>
+	<tk norm="her" lc="true">
+		her
+		<ws> </ws>
+	</tk>
+	<tk norm="pardon" pstpunc="." lc="true">
+		pardon.
+		<ws col="153">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="medium" lc="true" uc="true">
+		Medium
+		<ws> </ws>
+	</tk>
+	<tk norm="helen" lc="true" uc="true">
+		Helen
+		<ws> </ws>
+	</tk>
+	<tk norm="duncan" pstpunc="," lc="true" uc="true">
+		Duncan,
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.2" />
+	<tk norm="who" lc="true">
+		who
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="born" lc="true">
+		born
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="callander" pstpunc="," lc="true" uc="true">
+		Callander,
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.2" />
+	<tk norm="perthshire" pstpunc="," lc="true" uc="true">
+		Perthshire,
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.2" />
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="imprisoned" lc="true">
+		imprisoned
+		<ws> </ws>
+	</tk>
+	<tk norm="using" lc="true">
+		using
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="law" lc="true">
+		law
+		<ws> </ws>
+	</tk>
+	<tk norm="during" lc="true">
+		during
+		<ws> </ws>
+	</tk>
+	<tk norm="world" lc="true" uc="true">
+		World
+		<ws> </ws>
+	</tk>
+	<tk norm="war" lc="true" uc="true">
+		War
+		<ws> </ws>
+	</tk>
+	<tk norm="ii" pstpunc="." lc="true" uc="true">
+		II.
+		<ws col="110">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="she" lc="true" uc="true">
+		She
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="targeted" lc="true">
+		targeted
+		<ws> </ws>
+	</tk>
+	<tk norm="by" lc="true">
+		by
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="government" lc="true">
+		government
+		<ws> </ws>
+	</tk>
+	<tk norm="after" lc="true">
+		after
+		<ws> </ws>
+	</tk>
+	<tk norm="revealing" lc="true">
+		revealing
+		<ws> </ws>
+	</tk>
+	<tk norm="to" lc="true">
+		to
+		<ws> </ws>
+	</tk>
+	<tk norm="a" lc="true">
+		a
+		<ws> </ws>
+	</tk>
+	<tk norm="seance" lc="true" foreign="true">
+		séance
+		<ws> </ws>
+	</tk>
+	<tk norm="audience" lc="true">
+		audience
+		<ws> </ws>
+	</tk>
+	<tk norm="that" lc="true">
+		that
+		<ws> </ws>
+	</tk>
+	<tk norm="a" lc="true">
+		a
+		<ws> </ws>
+	</tk>
+	<tk norm="warship" lc="true">
+		warship
+		<ws> </ws>
+	</tk>
+	<tk norm="had" lc="true">
+		had
+		<ws> </ws>
+	</tk>
+	<tk norm="sunk" lc="true">
+		sunk
+		<ws> </ws>
+	</tk>
+	<tk norm="before" lc="true">
+		before
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="news" lc="true">
+		news
+		<ws> </ws>
+	</tk>
+	<tk norm="had" lc="true">
+		had
+		<ws> </ws>
+	</tk>
+	<tk norm="been" lc="true">
+		been
+		<ws> </ws>
+	</tk>
+	<tk norm="released" lc="true">
+		released
+		<ws> </ws>
+	</tk>
+	<tk norm="to" lc="true">
+		to
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="public" pstpunc="." lc="true">
+		public.
+		<ws col="146">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="her" lc="true" uc="true">
+		Her
+		<ws> </ws>
+	</tk>
+	<tk norm="grand-daughter" lc="true" symbols="true">
+		grand-daughter
+		<ws> </ws>
+	</tk>
+	<tk norm="is" lc="true">
+		is
+		<ws> </ws>
+	</tk>
+	<tk norm="particularly" lc="true">
+		particularly
+		<ws> </ws>
+	</tk>
+	<tk norm="angry" lc="true">
+		angry
+		<ws> </ws>
+	</tk>
+	<tk norm="at" lc="true">
+		at
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="accusations" lc="true">
+		accusations
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="treason" pstpunc="." lc="true">
+		treason.
+		<ws col="72">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="mary" lc="true" uc="true">
+		Mary
+		<ws> </ws>
+	</tk>
+	<tk norm="martin" pstpunc="," lc="true" uc="true">
+		Martin,
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.2" />
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="edinburgh" pstpunc="," lc="true" uc="true">
+		Edinburgh,
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.2" />
+	<tk norm="said" lc="true">
+		said
+		<ws> </ws>
+	</tk>
+	<tk norm="mrs" lc="true" uc="true">
+		Mrs
+		<ws> </ws>
+	</tk>
+	<tk norm="duncan" lc="true" uc="true">
+		Duncan
+		<ws> </ws>
+	</tk>
+	<tk norm="had" lc="true">
+		had
+		<ws> </ws>
+	</tk>
+	<tk norm="been" lc="true">
+		been
+		<ws> </ws>
+	</tk>
+	<tk norm="accused" lc="true">
+		accused
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="being" lc="true">
+		being
+		<ws> </ws>
+	</tk>
+	<tk norm="a" lc="true">
+		a
+		<ws> </ws>
+	</tk>
+	<tk norm="traitor" pstpunc="." lc="true">
+		traitor.
+		<ws col="80">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk prepunc="&quot;" norm="when" lc="true" uc="true">
+		"When
+		<ws> </ws>
+	</tk>
+	<tk norm="she" lc="true">
+		she
+		<ws> </ws>
+	</tk>
+	<tk norm="first" lc="true">
+		first
+		<ws> </ws>
+	</tk>
+	<tk norm="came" lc="true">
+		came
+		<ws> </ws>
+	</tk>
+	<tk norm="back" lc="true">
+		back
+		<ws> </ws>
+	</tk>
+	<tk norm="home" lc="true">
+		home
+		<ws> </ws>
+	</tk>
+	<tk norm="after" lc="true">
+		after
+		<ws> </ws>
+	</tk>
+	<tk norm="prison" lc="true">
+		prison
+		<ws> </ws>
+	</tk>
+	<tk norm="she" lc="true">
+		she
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="never" lc="true">
+		never
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="same" pstpunc="." lc="true">
+		same.
+		<ws col="68">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk prepunc="&quot;" norm="she" lc="true" uc="true">
+		"She
+		<ws> </ws>
+	</tk>
+	<tk norm="always" lc="true">
+		always
+		<ws> </ws>
+	</tk>
+	<tk norm="had" lc="true">
+		had
+		<ws> </ws>
+	</tk>
+	<tk norm="a" lc="true">
+		a
+		<ws> </ws>
+	</tk>
+	<tk norm="bit" lc="true">
+		bit
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="a" lc="true">
+		a
+		<ws> </ws>
+	</tk>
+	<tk norm="glow" lc="true">
+		glow
+		<ws> </ws>
+	</tk>
+	<tk norm="about" lc="true">
+		about
+		<ws> </ws>
+	</tk>
+	<tk norm="her" lc="true">
+		her
+		<ws> </ws>
+	</tk>
+	<tk norm="but" lc="true">
+		but
+		<ws> </ws>
+	</tk>
+	<tk norm="she" lc="true">
+		she
+		<ws> </ws>
+	</tk>
+	<tk norm="seemed" lc="true">
+		seemed
+		<ws> </ws>
+	</tk>
+	<tk norm="to" lc="true">
+		to
+		<ws> </ws>
+	</tk>
+	<tk norm="have" lc="true">
+		have
+		<ws> </ws>
+	</tk>
+	<tk norm="lost" lc="true">
+		lost
+		<ws> </ws>
+	</tk>
+	<tk norm="that" pstpunc="." lc="true">
+		that.
+		<ws col="76">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk prepunc="&quot;" norm="some" lc="true" uc="true">
+		"Some
+		<ws> </ws>
+	</tk>
+	<tk norm="people" lc="true">
+		people
+		<ws> </ws>
+	</tk>
+	<tk norm="said" lc="true">
+		said
+		<ws> </ws>
+	</tk>
+	<tk norm="it" lc="true">
+		it
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="treason" pstpunc="." lc="true">
+		treason.
+		<ws> </ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="my" lc="true" uc="true">
+		My
+		<ws> </ws>
+	</tk>
+	<tk norm="grandmother" lc="true">
+		grandmother
+		<ws> </ws>
+	</tk>
+	<tk norm="had" lc="true">
+		had
+		<ws> </ws>
+	</tk>
+	<tk norm="two" lc="true">
+		two
+		<ws> </ws>
+	</tk>
+	<tk norm="sons" lc="true">
+		sons
+		<ws> </ws>
+	</tk>
+	<tk norm="and" lc="true">
+		and
+		<ws> </ws>
+	</tk>
+	<tk norm="two" lc="true">
+		two
+		<ws> </ws>
+	</tk>
+	<tk norm="son" lc="true">
+		son
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="laws" lc="true">
+		laws
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="forces" lc="true">
+		forces
+		<ws> </ws>
+	</tk>
+	<tk prepunc="...">
+		...
+		<ws> </ws>
+	</tk>
+	<tk norm="and" lc="true">
+		and
+		<ws> </ws>
+	</tk>
+	<tk norm="there" lc="true">
+		there
+		<ws> </ws>
+	</tk>
+	<tk norm="is" lc="true">
+		is
+		<ws> </ws>
+	</tk>
+	<tk norm="no" lc="true">
+		no
+		<ws> </ws>
+	</tk>
+	<tk norm="way" lc="true">
+		way
+		<ws> </ws>
+	</tk>
+	<tk norm="she" lc="true">
+		she
+		<ws> </ws>
+	</tk>
+	<tk norm="would" lc="true">
+		would
+		<ws> </ws>
+	</tk>
+	<tk norm="have" lc="true">
+		have
+		<ws> </ws>
+	</tk>
+	<tk norm="given" lc="true">
+		given
+		<ws> </ws>
+	</tk>
+	<tk norm="anybody" lc="true">
+		anybody
+		<ws> </ws>
+	</tk>
+	<tk norm="information" pstpunc=".&quot;" lc="true">
+		information."
+		<ws col="163">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="mrs" lc="true" uc="true">
+		Mrs
+		<ws> </ws>
+	</tk>
+	<tk norm="duncan" lc="true" uc="true">
+		Duncan
+		<ws> </ws>
+	</tk>
+	<tk norm="became" lc="true">
+		became
+		<ws> </ws>
+	</tk>
+	<tk norm="one" lc="true">
+		one
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="most" lc="true">
+		most
+		<ws> </ws>
+	</tk>
+	<tk norm="famous" lc="true">
+		famous
+		<ws> </ws>
+	</tk>
+	<tk norm="mediums" lc="true">
+		mediums
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="her" lc="true">
+		her
+		<ws> </ws>
+	</tk>
+	<tk norm="time" pstpunc="," lc="true">
+		time,
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.2" />
+	<tk norm="heading" lc="true">
+		heading
+		<ws> </ws>
+	</tk>
+	<tk norm="a" lc="true">
+		a
+		<ws> </ws>
+	</tk>
+	<tk norm="network" lc="true">
+		network
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="spiritualist" lc="true">
+		spiritualist
+		<ws> </ws>
+	</tk>
+	<tk norm="churches" pstpunc="." lc="true">
+		churches.
+		<ws col="106">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="during" lc="true" uc="true">
+		During
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="war" lc="true">
+		war
+		<ws> </ws>
+	</tk>
+	<tk norm="she" lc="true">
+		she
+		<ws> </ws>
+	</tk>
+	<tk norm="lived" lc="true">
+		lived
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="portsmouth" pstpunc="," lc="true" uc="true">
+		Portsmouth,
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.2" />
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="home" lc="true">
+		home
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="royal" lc="true" uc="true">
+		Royal
+		<ws> </ws>
+	</tk>
+	<tk norm="navy" pstpunc="." lc="true" uc="true">
+		Navy.
+		<ws col="68">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="she" lc="true" uc="true">
+		She
+		<ws> </ws>
+	</tk>
+	<tk norm="has" lc="true">
+		has
+		<ws> </ws>
+	</tk>
+	<tk norm="put" lc="true">
+		put
+		<ws> </ws>
+	</tk>
+	<tk norm="us" lc="true">
+		us
+		<ws> </ws>
+	</tk>
+	<tk norm="on" lc="true">
+		on
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="right" lc="true">
+		right
+		<ws> </ws>
+	</tk>
+	<tk norm="side" lc="true">
+		side
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="law" lc="true">
+		law
+		<ws> </ws>
+	</tk>
+	<tk norm="by" lc="true">
+		by
+		<ws> </ws>
+	</tk>
+	<tk norm="bringing" lc="true">
+		bringing
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="1952" symbols="true">
+		1952
+		<ws> </ws>
+	</tk>
+	<tk norm="act" pstpunc="." lc="true">
+		act.
+		<ws col="73">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="at" lc="true" uc="true">
+		At
+		<ws> </ws>
+	</tk>
+	<tk norm="a" lc="true">
+		a
+		<ws> </ws>
+	</tk>
+	<tk norm="seance" lc="true" foreign="true">
+		séance
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="1943" symbols="true">
+		1943
+		<ws> </ws>
+	</tk>
+	<tk norm="it" lc="true">
+		it
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="claimed" lc="true">
+		claimed
+		<ws> </ws>
+	</tk>
+	<tk norm="that" lc="true">
+		that
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="spirit" lc="true">
+		spirit
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="a" lc="true">
+		a
+		<ws> </ws>
+	</tk>
+	<tk norm="sailor" lc="true">
+		sailor
+		<ws> </ws>
+	</tk>
+	<tk norm="from" lc="true">
+		from
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="hms" lc="true" uc="true">
+		HMS
+		<ws> </ws>
+	</tk>
+	<tk norm="barham" lc="true" uc="true">
+		Barham
+		<ws> </ws>
+	</tk>
+	<tk norm="appeared" pstpunc="." lc="true">
+		appeared.
+		<ws col="94">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="the" lc="true" uc="true">
+		The
+		<ws> </ws>
+	</tk>
+	<tk norm="vessel" lc="true">
+		vessel
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="only" lc="true">
+		only
+		<ws> </ws>
+	</tk>
+	<tk norm="officially" lc="true">
+		officially
+		<ws> </ws>
+	</tk>
+	<tk norm="declared" lc="true">
+		declared
+		<ws> </ws>
+	</tk>
+	<tk norm="lost" lc="true">
+		lost
+		<ws> </ws>
+	</tk>
+	<tk norm="several" lc="true">
+		several
+		<ws> </ws>
+	</tk>
+	<tk norm="months" lc="true">
+		months
+		<ws> </ws>
+	</tk>
+	<tk norm="later" pstpunc="." lc="true">
+		later.
+		<ws col="67">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="she" lc="true" uc="true">
+		She
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="arrested" lc="true">
+		arrested
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="1944" symbols="true">
+		1944
+		<ws> </ws>
+	</tk>
+	<tk norm="and" lc="true">
+		and
+		<ws> </ws>
+	</tk>
+	<tk norm="sentenced" lc="true">
+		sentenced
+		<ws> </ws>
+	</tk>
+	<tk norm="to" lc="true">
+		to
+		<ws> </ws>
+	</tk>
+	<tk norm="nine" lc="true">
+		nine
+		<ws> </ws>
+	</tk>
+	<tk norm="months" lc="true">
+		months
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="prison" lc="true">
+		prison
+		<ws> </ws>
+	</tk>
+	<tk norm="at" lc="true">
+		at
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="old" lc="true" uc="true">
+		Old
+		<ws> </ws>
+	</tk>
+	<tk norm="bailey" lc="true" uc="true">
+		Bailey
+		<ws> </ws>
+	</tk>
+	<tk norm="for" lc="true">
+		for
+		<ws> </ws>
+	</tk>
+	<tk norm="crimes" lc="true">
+		crimes
+		<ws> </ws>
+	</tk>
+	<tk norm="under" lc="true">
+		under
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="witchcraft" lc="true" uc="true">
+		Witchcraft
+		<ws> </ws>
+	</tk>
+	<tk norm="act" lc="true" uc="true">
+		Act
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="1735" pstpunc="." symbols="true">
+		1735.
+		<ws col="127">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="while" lc="true" uc="true">
+		While
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="prison" lc="true">
+		prison
+		<ws> </ws>
+	</tk>
+	<tk norm="she" lc="true">
+		she
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="visited" lc="true">
+		visited
+		<ws> </ws>
+	</tk>
+	<tk norm="by" lc="true">
+		by
+		<ws> </ws>
+	</tk>
+	<tk norm="winston" lc="true" uc="true">
+		Winston
+		<ws> </ws>
+	</tk>
+	<tk norm="churchill" pstpunc="." lc="true" uc="true">
+		Churchill.
+		<ws col="54">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="when" lc="true" uc="true">
+		When
+		<ws> </ws>
+	</tk>
+	<tk norm="he" lc="true">
+		he
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="re-elected" lc="true" symbols="true">
+		re-elected
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="1951" symbols="true">
+		1951
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="witchcraft" lc="true" uc="true">
+		Witchcraft
+		<ws> </ws>
+	</tk>
+	<tk norm="act" lc="true" uc="true">
+		Act
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="repealed" lc="true">
+		repealed
+		<ws> </ws>
+	</tk>
+	<tk norm="and" lc="true">
+		and
+		<ws> </ws>
+	</tk>
+	<tk norm="three" lc="true">
+		three
+		<ws> </ws>
+	</tk>
+	<tk norm="years" lc="true">
+		years
+		<ws> </ws>
+	</tk>
+	<tk norm="later" lc="true">
+		later
+		<ws> </ws>
+	</tk>
+	<tk norm="spiritualism" lc="true">
+		spiritualism
+		<ws> </ws>
+	</tk>
+	<tk norm="was" lc="true">
+		was
+		<ws> </ws>
+	</tk>
+	<tk norm="officially" lc="true">
+		officially
+		<ws> </ws>
+	</tk>
+	<tk norm="recognised" lc="true">
+		recognised
+		<ws> </ws>
+	</tk>
+	<tk norm="as" lc="true">
+		as
+		<ws> </ws>
+	</tk>
+	<tk norm="a" lc="true">
+		a
+		<ws> </ws>
+	</tk>
+	<tk norm="religion" pstpunc="." lc="true">
+		religion.
+		<ws col="139">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="campaigners" lc="true" uc="true">
+		Campaigners
+		<ws> </ws>
+	</tk>
+	<tk norm="to" lc="true">
+		to
+		<ws> </ws>
+	</tk>
+	<tk norm="pardon" lc="true">
+		pardon
+		<ws> </ws>
+	</tk>
+	<tk norm="mrs" lc="true" uc="true">
+		Mrs
+		<ws> </ws>
+	</tk>
+	<tk norm="duncan" lc="true" uc="true">
+		Duncan
+		<ws> </ws>
+	</tk>
+	<tk norm="have" lc="true">
+		have
+		<ws> </ws>
+	</tk>
+	<tk norm="set" lc="true">
+		set
+		<ws> </ws>
+	</tk>
+	<tk norm="up" lc="true">
+		up
+		<ws> </ws>
+	</tk>
+	<tk norm="an" lc="true">
+		an
+		<ws> </ws>
+	</tk>
+	<tk norm="online" lc="true">
+		online
+		<ws> </ws>
+	</tk>
+	<tk norm="petition" pstpunc="." lc="true">
+		petition.
+		<ws col="65">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="the" lc="true" uc="true">
+		The
+		<ws> </ws>
+	</tk>
+	<tk norm="campaign" lc="true">
+		campaign
+		<ws> </ws>
+	</tk>
+	<tk norm="is" lc="true">
+		is
+		<ws> </ws>
+	</tk>
+	<tk norm="backed" lc="true">
+		backed
+		<ws> </ws>
+	</tk>
+	<tk norm="by" lc="true">
+		by
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="british" lc="true" uc="true">
+		British
+		<ws> </ws>
+	</tk>
+	<tk norm="society" lc="true" uc="true">
+		Society
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="paranormal" lc="true" uc="true">
+		Paranormal
+		<ws> </ws>
+	</tk>
+	<tk norm="studies" pstpunc="." lc="true" uc="true">
+		Studies.
+		<ws col="69">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+	<tk norm="medium" lc="true" uc="true">
+		Medium
+		<ws> </ws>
+	</tk>
+	<tk norm="mary" lc="true" uc="true">
+		Mary
+		<ws> </ws>
+	</tk>
+	<tk norm="armour" pstpunc="," lc="true" uc="true">
+		Armour,
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.2" />
+	<tk norm="who" lc="true">
+		who
+		<ws> </ws>
+	</tk>
+	<tk norm="wrote" lc="true">
+		wrote
+		<ws> </ws>
+	</tk>
+	<tk norm="her" lc="true">
+		her
+		<ws> </ws>
+	</tk>
+	<tk norm="biography" pstpunc="," lc="true">
+		biography,
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.2" />
+	<tk norm="said" pstpunc=":" lc="true">
+		said:
+		<ws> </ws>
+	</tk>
+	<break type="3" time="0.3" />
+	<tk prepunc="&quot;" norm="she" lc="true" uc="true">
+		"She
+		<ws> </ws>
+	</tk>
+	<tk norm="has" lc="true">
+		has
+		<ws> </ws>
+	</tk>
+	<tk norm="put" lc="true">
+		put
+		<ws> </ws>
+	</tk>
+	<tk norm="us" lc="true">
+		us
+		<ws> </ws>
+	</tk>
+	<tk norm="on" lc="true">
+		on
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="right" lc="true">
+		right
+		<ws> </ws>
+	</tk>
+	<tk norm="side" lc="true">
+		side
+		<ws> </ws>
+	</tk>
+	<tk norm="of" lc="true">
+		of
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="law" lc="true">
+		law
+		<ws> </ws>
+	</tk>
+	<tk norm="by" lc="true">
+		by
+		<ws> </ws>
+	</tk>
+	<tk norm="bringing" lc="true">
+		bringing
+		<ws> </ws>
+	</tk>
+	<tk norm="in" lc="true">
+		in
+		<ws> </ws>
+	</tk>
+	<tk norm="the" lc="true">
+		the
+		<ws> </ws>
+	</tk>
+	<tk norm="1952" symbols="true">
+		1952
+		<ws> </ws>
+	</tk>
+	<tk norm="act" pstpunc=".&quot;" lc="true">
+		act."
+		<ws col="126">
+</ws>
+	</tk>
+	<break type="4" time="0.4" />
+</parent>

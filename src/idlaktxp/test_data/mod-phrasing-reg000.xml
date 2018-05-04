@@ -1,0 +1,121 @@
+<?xml version="1.0"?>
+<parent>
+	<utt uttid="1" no_phrases="1">
+		<spt phraseid="1" no_wrds="2">
+			<ws col="0">
+</ws>
+			<lex pron="k+">
+				<break type="4" time="0.011" />
+				<tk norm="k" lc="true" uc="true" pos="NN" posset="1" wordid="1">K</tk>
+			</lex>
+			<ws> </ws>
+			<tk norm="an" lc="true" pos="DT" posset="3" wordid="2">
+				an
+				<ws col="5">
+
+</ws>
+			</tk>
+			<break type="4" time="0.2" />
+		</spt>
+	</utt>
+	<utt uttid="2" no_phrases="1">
+		<spt phraseid="1" no_wrds="1">
+			<break type="4" time="0.2" />
+			<tk norm="a" lc="true" pos="DT" posset="3" wordid="1">
+				a
+				<ws col="3">
+</ws>
+			</tk>
+			<break type="4" time="0.2" />
+		</spt>
+	</utt>
+	<utt uttid="3" no_phrases="2">
+		<spt phraseid="1" no_wrds="1">
+			<break type="4" time="0.2" />
+			<tk norm="http" pstpunc=":" lc="true" pos="NN" posset="1" wordid="1">http:</tk>
+			<break type="3" time="0.15" />
+		</spt>
+		<spt phraseid="2" no_wrds="1">
+			<break type="3" time="0.15" />
+			<tk norm="/" symbols="true" pos="NN" posset="1" wordid="1">/</tk>
+			<break type="4" time="0.2" />
+		</spt>
+	</utt>
+	<utt uttid="4" no_phrases="1">
+		<spt phraseid="1" no_wrds="1">
+			<break type="4" time="0.2" />
+			<tk norm="/" symbols="true" pos="NN" posset="1" wordid="1">/</tk>
+			<break type="4" time="0.2" />
+		</spt>
+	</utt>
+	<utt uttid="5" no_phrases="1">
+		<spt phraseid="1" no_wrds="1">
+			<break type="4" time="0.2" />
+			<tk norm="www" pstpunc="." lc="true" pos="NN" posset="1" wordid="1">
+				www.big.site
+				<ws> </ws>
+			</tk>
+			<break type="4" time="0.2" />
+		</spt>
+	</utt>
+	<utt uttid="6" no_phrases="1">
+		<spt phraseid="1" no_wrds="1">
+			<break type="4" time="0.2" />
+			<tk norm="big" pstpunc="." lc="true" pos="JJ" posset="1" wordid="1" />
+			<break type="4" time="0.2" />
+		</spt>
+	</utt>
+	<utt uttid="7" no_phrases="3">
+		<spt phraseid="1" no_wrds="7">
+			<break type="4" time="0.2" />
+			<tk norm="site" lc="true" pos="NN" posset="1" wordid="1" />
+			<tk norm="2" symbols="true" pos="NN" posset="1" wordid="2">2</tk>
+			<tk norm="=" symbols="true" pos="NN" posset="1" wordid="3">=</tk>
+			<tk norm="4-2" symbols="true" pos="NN" posset="1" wordid="4">
+				4-2
+				<ws> </ws>
+			</tk>
+			<tk norm="full" lc="true" uc="true" pos="JJ" posset="1" wordid="5">
+				FULL
+				<ws> </ws>
+			</tk>
+			<tk norm="power" lc="true" uc="true" pos="NN" posset="1" wordid="6">
+				Power
+				<ws> </ws>
+			</tk>
+			<tk norm="cafe" lc="true" foreign="true" pos="NN" posset="1" wordid="7">
+				café
+				<ws> </ws>
+			</tk>
+			<break type="2" time="0.05" />
+		</spt>
+		<spt phraseid="2" no_wrds="1">
+			<break type="2" time="0.05" />
+			<tk prepunc="&quot;" norm="okay" pstpunc="&quot;" lc="true" pos="NN" posset="1" wordid="1">
+				“okay”
+				<ws col="54">
+
+</ws>
+			</tk>
+			<break type="2" time="0.05" />
+		</spt>
+		<spt phraseid="3" no_wrds="3">
+			<break type="2" time="0.05" />
+			<tk norm="and" lc="true" uc="true" pos="CC" posset="3" wordid="1">
+				And
+				<ws> </ws>
+			</tk>
+			<tk norm="another" lc="true" pos="DT" posset="3" wordid="2">
+				another
+				<ws> </ws>
+			</tk>
+			<tk norm="sentence" pstpunc="." lc="true" pos="NN" posset="1" wordid="3">
+				sentence.
+				<ws col="23">
+
+</ws>
+			</tk>
+			<break type="4" time="0.4" />
+		</spt>
+	</utt>
+</parent>
