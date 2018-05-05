@@ -40,93 +40,66 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  steps/train_mono.sh --nj $nj \
-    data/train \
-    data/lang \
+  steps/train_mono.sh --nj $nj data/train data/lang \
     exp/mono
 fi
 
 if [ $stage -le 4 ]; then
-  utils/mkgraph.sh --mono data/lang \
-    exp/mono \
-    exp/mono/graph
-  steps/decode.sh --nj $nj --cmd $cmd \
-    exp/mono/graph \
-    data/test \
+  utils/mkgraph.sh --mono data/lang exp/mono exp/mono/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/mono/graph data/test \
     exp/mono/decode_test
 fi
 
 if [ $stage -le 5 ]; then
-  steps/align_si.sh --nj $nj \
-    data/train data/lang \
-    exp/mono \
-    exp/mono_ali
-  steps/train_deltas.sh \
-    500 20000 data/train data/lang \
-    exp/mono_ali \
-    exp/tri
+  steps/align_si.sh --nj $nj data/train data/lang \
+    exp/mono exp/mono_ali
+
+  steps/train_deltas.sh 500 20000 data/train data/lang \
+    exp/mono_ali exp/tri
 fi
 
 if [ $stage -le 6 ]; then
-  utils/mkgraph.sh data/lang \
-    exp/tri \
-    exp/tri/graph
-  steps/decode.sh --nj $nj --cmd $cmd \
-    exp/tri/graph \
-    data/test \
+  utils/mkgraph.sh data/lang exp/tri exp/tri/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/tri/graph data/test \
     exp/tri/decode_test
 fi
 
 if [ $stage -le 7 ]; then
-  steps/align_si.sh --nj $nj --cmd $cmd \
-    data/train data/lang \
-    exp/mono \
-    exp/mono_ali
+  steps/align_si.sh --nj $nj --cmd $cmd data/train data/lang \
+    exp/mono exp/mono_ali
+
   steps/train_lda_mllt.sh --cmd $cmd \
-    --splice-opts "--left-context=3 --right-context=3" \
-    500 20000 \
-    data/train data/lang \
-    exp/mono_ali exp/tri2
+    --splice-opts "--left-context=3 --right-context=3" 500 20000 \
+    data/train data/lang exp/mono_ali exp/tri2
 fi
 
 if [ $stage -le 8 ]; then
-  utils/mkgraph.sh data/lang \
-    exp/tri2 \
-    exp/tri2/graph
-  steps/decode.sh --nj $nj --cmd $cmd \
-    exp/tri2/graph \
-    data/test \
+  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
+
+  steps/decode.sh --nj $nj --cmd $cmd exp/tri2/graph data/test \
     exp/tri2/decode_test
 fi
 
 if [ $stage -le 9 ]; then
-  steps/align_fmllr.sh --nj $nj --cmd $cmd \
-    --use-graphs true \
-    data/train data/lang \
-    exp/tri2 \
-    exp/tri2_ali
-  steps/train_sat.sh --cmd $cmd \
-    500 20000 \
-    data/train data/lang \
-    exp/tri2_ali exp/tri3
+  steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
+    data/train data/lang exp/tri2 exp/tri2_ali
+
+  steps/train_sat.sh --cmd $cmd 500 20000 \
+    data/train data/lang exp/tri2_ali exp/tri3
 fi
 
 if [ $stage -le 10 ]; then
-  utils/mkgraph.sh data/lang \
-    exp/tri3 \
-    exp/tri3/graph
-  steps/decode_fmllr.sh --nj $nj --cmd $cmd \
-    exp/tri3/graph \
-    data/test \
-    exp/tri3/decode_test
+  utils/mkgraph.sh data/lang exp/tri3 exp/tri3/graph
+
+  steps/decode_fmllr.sh --nj $nj --cmd $cmd exp/tri3/graph \
+    data/test exp/tri3/decode_test
 fi
 
 if [ $stage -le 11 ]; then
-  steps/align_fmllr.sh --nj $nj --cmd $cmd \
-    --use-graphs true \
-    data/train data/lang \
-    exp/tri3 \
-    exp/tri3_ali
+  steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
+    data/train data/lang exp/tri3 exp/tri3_ali
 fi
 
 if [ $stage -le 12 ]; then
@@ -134,5 +107,5 @@ if [ $stage -le 12 ]; then
 fi
 
 if [ $stage -le 13 ]; then
-  local/chain/run_cnn_chainali_1b.sh --stage 2
+  local/chain/run_cnn_chainali_1a.sh --stage 2
 fi
