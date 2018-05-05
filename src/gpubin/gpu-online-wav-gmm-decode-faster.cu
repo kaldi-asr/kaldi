@@ -25,6 +25,8 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BLOCK_SIZE 192
 #define BEAM_SIZE 10
 
+#define EPS_SYM 0
+
 struct PointerComparison
 {
     __host__ __device__ bool operator()(const prob_ptr_t &x, const prob_ptr_t &y)
@@ -33,8 +35,7 @@ struct PointerComparison
         float prob_y = unpack_prob(y);
         return prob_x > prob_y;
     }
-};
-
+}; 
 
 __global__ void compute_initial(int *from_states, int *to_states, float *probs,
         int start_offset, int end_offset,
@@ -56,7 +57,6 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs,
       atomicMax(&viterbi[to_shared_states[threadIdx.x]], pack(shared_probs[threadIdx.x], offset));
     }
 }
-
 
 /* TODO:
  * 1. Ganti assignment pp di if itu (tambahin LogLikelihood)
@@ -165,8 +165,8 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
 
     if (verbose) {
       for (auto pp: viterbi)
-        cout << unpack_prob(pp) << " ";
-      cout << endl;
+        std::cout << unpack_prob(pp) << " ";
+      std::cout << std::endl;
     }
 
     for (int t=1; t<input_symbols.size(); t++) {
@@ -175,9 +175,9 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
       int end_offset = m.input_offsets[a+1];
 
       if (verbose) {
-        cerr << start_offset << " to " << end_offset << endl;
+        std::cerr << start_offset << " to " << end_offset << std::endl;
         for (int i=start_offset; i<end_offset; i++) {
-          cerr << m.from_states[i] << " " << m.to_states[i] << " " << m.probs[i] << endl;
+          std::cerr << m.from_states[i] << " " << m.to_states[i] << " " << m.probs[i] << std::endl;
         }
       }
 
@@ -191,8 +191,8 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
       
       if (verbose) {
         for (auto pp: viterbi)
-          cout << unpack_prob(pp) << " ";
-        cout << endl;
+          std::cout << unpack_prob(pp) << " ";
+        std::cout << std::endl;
       }
 
       thrust::sort(viterbi.begin()+(t*m.num_states),viterbi.begin()+((t+1)*m.num_states),PointerComparison());
@@ -219,18 +219,22 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
 
     cudaError_t e = cudaGetLastError();                                 
     if (e != cudaSuccess) {                                              
-      cerr << "CUDA failure: " << cudaGetErrorString(e) << endl;
+      std::cerr << "CUDA failure: " << cudaGetErrorString(e) << std::endl;
       exit(1);
     }
 
     thrust::host_vector<prob_ptr_t> h_path(path);
-    output_symbols.resize(input_symbols.size());
+    output_symbols.clear();
 
 
     // TODO : ini ga harus dapet dari sini, pasti lebih dikit soalnya (jumlah kata << jumlah fonem)
     for (int t=0; t<input_symbols.size(); t++) {
-      output_symbols[t] = m.outputs[unpack_ptr(h_path[t])];
+      int sym = m.outputs[unpack_ptr(h_path[t])];
+      if(sym != EPS_SYM){
+        output_symbols.push_back(t);
+      }
     }
+
 
     return unpack_prob(h_path.back());
 }

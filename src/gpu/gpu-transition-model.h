@@ -9,6 +9,8 @@
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 
+#include "gpu_commons/gpu_vector.hpp"
+
 #include "hmm/transition-model.h"
 
 namespace kaldi{
@@ -57,12 +59,12 @@ struct GPUTransitionModel{
   thrust::device_vector<int32> id2pdf_id_;
 
   /// For each transition-id, the corresponding log-prob.  Indexed by transition-id.
-  thrust::device_vector<BaseFloat> log_probs_; // Vector<BaseFloat> log_probs_;
+  GPUVector<BaseFloat> log_probs_;
 
   /// For each transition-state, the log of (1 - self-loop-prob).  Indexed by
   /// transition-state.
-  thrust::device_vector<BaseFloat> non_self_loop_log_probs_;// Vector<BaseFloat> non_self_loop_log_probs_;
 
+  GPUVector<BaseFloat> non_self_loop_log_probs_;
   /// This is actually one plus the highest-numbered pdf we ever got back from the
   /// tree (but the tree numbers pdfs contiguously from zero so this is the number
   /// of pdfs).
@@ -75,24 +77,9 @@ struct GPUTransitionModel{
     state2id_(t.state2id()),
     id2state_(t.id2state()),
     id2pdf_id_(t.id2pdf_id()),
-    num_pdfs_(t.NumPdfs())
-  {
-    const size_t log_probs_dim = t.log_probs().SizeInBytes() / sizeof(BaseFloat);
-    BaseFloat* log_probs_data = t.log_probs().Data();
-    thrust::copy(
-      log_probs_data,
-      log_probs_data + log_probs_dim,
-      log_probs_.begin()
-    );
-
-    const size_t non_self_loop_log_probs_dim = t.non_self_loop_log_probs().SizeInBytes() / sizeof(BaseFloat);
-    BaseFloat* non_self_loop_log_probs_data = t.non_self_loop_log_probs().Data();
-    thrust::copy(
-      non_self_loop_log_probs_data, 
-      non_self_loop_log_probs_data + non_self_loop_log_probs_dim, 
-      non_self_loop_log_probs_.begin()
-    );
-  }
+    num_pdfs_(t.NumPdfs()),
+    log_probs_(t.log_probs()),
+    non_self_loop_log_probs_(t.non_self_loop_log_probs()) {}
   
 };
 
