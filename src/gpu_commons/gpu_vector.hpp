@@ -16,6 +16,7 @@ template<typename Real>
 struct GPUVector{
   thrust::device_vector<Real> data_;
   int32 dim_;
+  Real* data;
 
   int32 Dim() const { return dim_; }
 
@@ -26,6 +27,7 @@ struct GPUVector{
     const size_t m_dim = M.SizeInBytes() / sizeof(Real);
     Real* m_data = M.Data();
     thrust::copy(m_data, m_data + m_dim, data_.begin());
+    data = data_.data().get();
   }
 
   GPUVector(const Vector<Real> &M) : dim_(M.Dim())
@@ -33,6 +35,7 @@ struct GPUVector{
     const size_t m_dim = M.SizeInBytes() / sizeof(Real);
     Real* m_data = M.Data();
     thrust::copy(m_data, m_data + m_dim, data_.begin());
+    data = data_.data().get();
   }
 };
 

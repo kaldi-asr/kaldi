@@ -36,7 +36,7 @@ struct GPUDiagGmm{
     /* BEGIN LogLikelihoods */
     int32 num_loglikes = gconsts_.Dim();
     BaseFloat* loglikes = new BaseFloat[num_loglikes];
-    for(int32 i = 0;i < num_loglikes; ++i) loglikes[i] = gconsts_.data_[i];
+    for(int32 i = 0;i < num_loglikes; ++i) loglikes[i] = gconsts_.data[i];
 
     if (num_data != Dim()) {
       KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
@@ -48,8 +48,8 @@ struct GPUDiagGmm{
 
     for(int i = 0;i < gconsts_.Dim(); ++i){
       for(int j = 0;j < num_data; ++j){
-        loglikes[i] += means_invvars_.data_[means_invvars_.Index(i, j)] * data[j];
-        loglikes[i] -= 0.5 * inv_vars_.data_[inv_vars_.Index(i, j)] * data_sq[j];
+        loglikes[i] += means_invvars_.data[means_invvars_.Index(i, j)] * data[j];
+        loglikes[i] -= 0.5 * inv_vars_.data[inv_vars_.Index(i, j)] * data_sq[j];
       }
     }
 

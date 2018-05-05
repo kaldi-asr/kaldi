@@ -16,6 +16,7 @@ template<typename Real>
 struct GPUMatrix{
   thrust::device_vector<Real> data_;
   int32 numrows_, numcols_, stride_;
+  Real* data;
 
   int32 NumRows() const { return numrows_; }
   int32 NumCols() const { return numcols_; }
@@ -34,6 +35,7 @@ struct GPUMatrix{
     Real* m_data = M.Data();
 
     thrust::copy(m_data, m_data + m_dim, data_.begin());
+    data = data_.data().get();
   }
 
   GPUMatrix(const Matrix<Real> &M)
@@ -45,6 +47,7 @@ struct GPUMatrix{
     Real* m_data = M.Data();
 
     thrust::copy(m_data, m_data + m_dim, data_.begin());
+    data = data_.data().get();
   }
 };
 
