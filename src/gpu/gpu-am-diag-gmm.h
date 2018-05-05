@@ -30,6 +30,11 @@ struct GPUAmDiagGmm{
       KALDI_ASSERT(gpugmm.Dim() == this->Dim());
     densities_.push_back(&gpugmm);
   }
+
+  __host__ __device__ BaseFloat LogLikelihood(const int32 pdf_index, BaseFloat* data, int32 num_data) const {
+    return densities_[pdf_index]->LogLikelihood(data, num_data);
+  }
+
 };
 
 }
