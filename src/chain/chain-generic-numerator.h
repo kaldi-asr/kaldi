@@ -182,6 +182,8 @@ class GenericNumeratorComputation {
 
   // a reference to the nnet output.
   const CuMatrixBase<BaseFloat> &nnet_output_;
+  int32 nnet_output_stride_;   // we keep the original stride extra
+                               // as the matrix can change before ForwardBackward
 
   // in_transitions_ lists all the incoming transitions for
   // each state of each numerator graph

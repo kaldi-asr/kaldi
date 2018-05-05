@@ -78,7 +78,7 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
     if (xent_output_deriv) {
       numerator_ok = numerator.ForwardBackward(&num_logprob_weighted,
                                                xent_output_deriv);
-      if (numerator_ok)
+      if (numerator_ok && nnet_output_deriv)
         nnet_output_deriv->AddMat(1.0, *xent_output_deriv);
     } else if (nnet_output_deriv) {
       numerator_ok = numerator.ForwardBackward(&num_logprob_weighted,
@@ -89,6 +89,8 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
     if (!numerator_ok)
         KALDI_WARN << "Numerator forward-backward failed.";
   }
+  numerator_ok = numerator_ok &&
+                 (num_logprob_weighted - num_logprob_weighted == 0);
 
   *objf = num_logprob_weighted - den_logprob_weighted;
   if (!((*objf) - (*objf) == 0) || !denominator_ok || !numerator_ok) {

@@ -70,6 +70,8 @@ GenericNumeratorComputation::GenericNumeratorComputation(
   offsets_.Resize(num_sequences);
   std::unordered_map<int, MatrixIndexT> pdf_to_index;
   int32 pdf_stride = nnet_output_.Stride();
+  int32 view_stride = nnet_output_.Stride() * num_sequences;
+  nnet_output_stride_ = pdf_stride;
   for (int seq = 0; seq < num_sequences; seq++) {
     for (int32 s = 0; s < supervision_.e2e_fsts[seq].NumStates(); s++) {
       final_probs_(seq, s)= -supervision_.e2e_fsts[seq].Final(s).Value();
@@ -96,6 +98,7 @@ GenericNumeratorComputation::GenericNumeratorComputation(
 
         // remap  to a unique index in the remapped space
         pdf_id = pdf_id + seq * pdf_stride;
+        KALDI_ASSERT(pdf_id < view_stride);
 
         if (pdf_to_index.find(pdf_id) == pdf_to_index.end()) {
           index_to_pdf_.push_back(pdf_id);
@@ -128,6 +131,7 @@ void GenericNumeratorComputation::CopySpecificPdfsIndirect(
                                     const CuMatrixBase<BaseFloat> &nnet_output,
                                     const std::vector<MatrixIndexT> &indices,
                                     Matrix<BaseFloat> *out) {
+  KALDI_ASSERT(nnet_output_stride_ == nnet_output_.Stride());
   const int32 num_sequences = supervision_.num_sequences,
               frames_per_sequence = supervision_.frames_per_sequence;
 
@@ -243,7 +247,6 @@ bool GenericNumeratorComputation::ForwardBackward(
   // Transfer and add the derivatives to the values in the matrix
   AddSpecificPdfsIndirect(&derivs, index_to_pdf_, nnet_output_deriv);
   *total_loglike = partial_loglike;
-  KALDI_LOG << "total_loglike: " << *total_loglike;
   return ok;
 }
 
@@ -357,6 +360,10 @@ void GenericNumeratorComputation::AddSpecificPdfsIndirect(
   std::vector<MatrixIndexT> indices_expanded(view_stride, -1);
   for (int i = 0; i < indices.size(); ++i) {
     int pdf_index = indices[i];
+    int sequence_local_pdf_index = pdf_index % nnet_output_stride_;
+    int sequence_index = pdf_index / nnet_output_stride_;
+    pdf_index = sequence_local_pdf_index
+                + sequence_index * output->Stride();
     KALDI_ASSERT(pdf_index < view_stride);
     KALDI_ASSERT(i < specific_pdfs.NumCols());
     indices_expanded[pdf_index] = i;
