@@ -1,0 +1,60 @@
+seMllL seM seE naMllL naM taMllL taM taE baM baMllL baE thM thE yaM yaMllL shMllL shM shE
+seBllL seB seA naB naBllL taB taA baB baBllL baA thB yaB yaBllL thA shBllL shB shA
+teE heE
+teA heA
+alE eeE yaEllL yaE
+alA eeA yaA
+laMllL laM keE
+laB keA
+ayB ghB hhA
+ayM ayMllL ghM
+ayE ghE
+ayA ghA
+aaE amE aeE ahE
+aaA amA aeA ahA
+toMllL toM dzM saMllL saM deM toEllL toE dzE saE deE
+toB dzB saB deBllL deB toA dzA saA deA
+raEllL raE zaEllL zaE
+raAllL raA zaA
+waEllL waE whE
+waA waAllL whA
+faMllL faM kaMllL kaM faE kaE
+faB kaB kaBllL faA kaA
+jaB haB khBllL khB
+jaM jaMllL haM haMllL khM
+jaE haE khE
+jaA haA khA
+daA daAllL dhA
+daE daEllL dhEllL dhE
+waEllL waE whE raEllL raE zaEllL zaE waAllL waA whA raAllL raA zaA
+waEllL waE whE raEllL raE zaEllL zaE waAllL waA whA raAllL raA zaA
+naE naA laEllL laE laA
+seBllL seB seMllL seM naBllL naB naMllL naM taB taMllL taM baB baBllL baMllL baM thB thM yaB yaBllL yaM yaMllL shBllL shB shMllL shM
+aaE amE aeE ahE aaA amA aeA ahA
+alA eeA yaA alE eeE yaEllL yaE
+jaB haB khBllL khB jaM jaMllL haMllL haM khM
+jaE haE khE jaA haA khA
+ayB ghB
+ayM ayMllL ghM
+ayE ghE
+ayA ghA
+daAllL daA dhA daEllL daE dhEllL dhE
+saMllL saM deM saB deBllL deB
+toMllL toM dzM toB dzB
+seE seA shE shA saE saA deE deA
+0A 1A 2A 6A 7A 8A 9A
+0A 1A 2A 6A 7A 8A 9A
+aaElaB aaElaM
+aaElaB aaElaM
+haMlaB haMmaMlaB haMllLnaB haMnaB
+haMlaB haMmaMlaB haMllLnaB haMnaB
+heBllL heB heM
+keBllL keB keMllL keM
+keBllL keB
+keMllL keM
+maMllL maM maBllL maB
+maMllL maM maE
+maBllL maB maAllL maA
+maAllL maA maE
+ayMllL baBllL baMllL daAllL daEllL deBllL dhEllL faMllL haMllL haMllLnaB heBllL jaMllL kaBllL kaMllL keBllL keMllL khBllL laEllL laMllL maAllL maBllL maMllL naBllL naMllL raAllL raEllL saMllL seBllL seMllL shBllL shMllL taMllL toEllL toMllL waAllL waEllL yaBllL yaEllL yaMllL zaEllL zaMllL
+ayMllL baBllL baMllL daAllL daEllL deBllL dhEllL faMllL haMllL haMllLnaB heBllL jaMllL kaBllL kaMllL keBllL keMllL khBllL laEllL laMllL maAllL maBllL maMllL naBllL naMllL raAllL raEllL saMllL seBllL seMllL shBllL shMllL taMllL toEllL toMllL waAllL waEllL yaBllL yaEllL yaMllL zaEllL zaMllL
