@@ -4,6 +4,11 @@
 // Uses Parallel Viterbi Beam Search Algorithm from Arturo Argueta and David Chiang's paper.
 
 #include "gpu/gpu-online-decodable.h"
+#include "gpu_commons/fst.hpp"
+#include "gpu_commons/gpu_fst.hpp"
+#include "gpu_commons/prob_ptr.hpp"
+#include "gpu_commons/numberizer.hpp"
+
 #include <vector>
 
 #include <thrust/sort.h>
@@ -24,6 +29,8 @@
 int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BLOCK_SIZE 192
 #define BEAM_SIZE 10
+#define BATCH_SIZE 27
+
 
 #define EPS_SYM 0
 
@@ -122,7 +129,7 @@ __global__ void get_path(int *from_nodes,
  * 8. Ganti yang dapet output symbol dari input symbol. SIZE ga harus sama.
  * 9. Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
-prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &output_symbols) {
+prob_t viterbi(gpu_fst &m, GPUOnlineDecodableDiagGmmScaled& gpu_decodable, vector<sym_t> &output_symbols) {
     int verbose=0;
 
     static thrust::device_vector<prob_ptr_t> viterbi;
@@ -196,7 +203,6 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
         output_symbols.push_back(t);
       }
     }
-
 
     return unpack_prob(h_path.back());
 }
@@ -368,6 +374,20 @@ int main(int argc, char *argv[]) {
       
       // TODO : Buat Loop Decodenya
       
+      auto read_start = std::chrono::steady_clock::now();
+      while(1){
+        std::vector<sym_t> output_symbols;
+
+        prob_t final_prob = viterbi(m, gpu_decodable, output_symbols);
+        std::cout << onr.join(output_symbols);
+        
+        // IF END BREAK;
+      }
+      std::cout << std::endl;
+      auto read_end = std::chrono::steady_clock::now();
+      std::chrono::duration<double> diff = read_end - read_start;
+      std::cout << "Time to decode sentence: " << diff.count()  << std::endl;
+
       delete feat_transform;
     }
     delete word_syms;
