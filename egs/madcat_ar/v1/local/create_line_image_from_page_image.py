@@ -4,7 +4,7 @@
 # Apache 2.0
 # minimum bounding box part in this script is originally from
 #https://github.com/BebeSparkelSparkel/MinimumBoundingBox
-
+#https://startupnextdoor.com/computing-convex-hull-in-python/
 """ This module will be used for extracting line images from page image.
  Given the word segmentation (bounding box around a word) for every word, it will
  extract line segmentation. To extract line segmentation, it will take word bounding
