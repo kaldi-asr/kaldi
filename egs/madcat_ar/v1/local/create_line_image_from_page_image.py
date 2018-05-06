@@ -406,9 +406,24 @@ def set_line_image_data(image, line_id, image_file_name, image_fh):
     image_fh.write(image_path + '\n')
 
 
+def paste_line_image_on_blank_image(im, line_image, height_offset, width_offset):
+    """ Given line image and its location on page image, return a page image
+        with only line image in ti.
+        It is done to remove noise that can occur due to MAR. 
+    :return: 
+    --------
+    image: page image containing only line image
+    """
+    image_width= im.size[0]
+    image_height = im.size[1]
+    stitched_image = Image.new('L', (image_width, image_height), "white")
+    stitched_image.paste(im=line_image, box=(width_offset, height_offset))
+    return stitched_image
+
+
 def get_line_images_from_page_image(image_file_name, madcat_file_path, image_fh):
     """ Given a page image, extracts the line images from it.
-    Inout
+    Input
     -----
     image_file_name (string): complete path and name of the page image.
     madcat_file_path (string): complete path and name of the madcat xml file
@@ -418,8 +433,22 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path, image_fh)
     im = pad_image(im_wo_pad)
     doc = minidom.parse(madcat_file_path)
     zone = doc.getElementsByTagName('zone')
+    offset = int(args.padding // 2)
     for node in zone:
         id = node.getAttribute('id')
+        line_point = node.getElementsByTagName('point')
+        col, row = [], []
+        max_col, max_row, min_col, min_row = 0, 0, 0, 0
+        for line_node in line_point:
+            col.append(int(line_node.getAttribute('x')) + offset)
+            row.append(int(line_node.getAttribute('y')) + offset)
+            max_col, max_row = max(col), max(row)
+            min_col, min_row = min(col), min(row)
+
+        box = (min_col, min_row, max_col, max_row)
+        region = im.crop(box)
+        image = paste_line_image_on_blank_image(im, region, min_row, min_col)
+        
         token_image = node.getElementsByTagName('token-image')
         minimum_bounding_box_input = []
         for token_node in token_image:
@@ -440,7 +469,7 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path, image_fh)
         max_x = int(max(x1, x2, x3, x4))
         max_y = int(max(y1, y2, y3, y4))
         box = (min_x, min_y, max_x, max_y)
-        region_initial = im.crop(box)
+        region_initial = image.crop(box)
         rot_points = []
         p1_new = (x1 - min_x, y1 - min_y)
         p2_new = (x2 - min_x, y2 - min_y)
