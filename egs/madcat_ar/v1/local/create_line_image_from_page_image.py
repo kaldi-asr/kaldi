@@ -397,7 +397,7 @@ def set_line_image_data(image, line_id, image_file_name, image_fh):
 
     base_name = os.path.splitext(os.path.basename(image_file_name))[0]
     line_id = '_' + line_id.zfill(4)
-    line_image_file_name = base_name + line_id + '.tif'
+    line_image_file_name = base_name + line_id + '.png'
     image_path = os.path.join(args.out_dir, line_image_file_name)
     imgray = image.convert('L')
     imgray_rev_arr = np.fliplr(imgray)
