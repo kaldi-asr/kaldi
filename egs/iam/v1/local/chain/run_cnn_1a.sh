@@ -9,12 +9,12 @@
 
 # local/chain/compare_wer.sh exp/chain/cnn_1a/
 # System                         cnn_1a
-# WER                             18.58
-# CER                             10.17
-# Final train prob              -0.0122
-# Final valid prob              -0.0999
-# Final train prob (xent)       -0.5652
-# Final valid prob (xent)       -0.9758
+# WER                             18.52
+# CER                             10.07
+# Final train prob              -0.0077
+# Final valid prob              -0.0970
+# Final train prob (xent)       -0.5484
+# Final valid prob (xent)       -0.9643
 # Parameters                      4.36M
 
 set -e -o pipefail
