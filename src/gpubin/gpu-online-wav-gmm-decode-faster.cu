@@ -112,20 +112,6 @@ __global__ void get_path(int *from_nodes,
 }
 
 /* TODO
- * 1. Pelajarin ini
- * 2. Cari cara ngubahnya jadi max_active_statenya
- */
-
-__global__ void set_states_in_beam(prob_ptr_t *viterbi, prob_ptr_t *viterbi_beam,int *to_states){
-  int id = blockIdx.x*blockDim.x+threadIdx.x;
-  if(id < BEAM_SIZE){
-    int state_unpacked = unpack_ptr(viterbi_beam[id]);
- 
-    viterbi[to_states[state_unpacked]] = viterbi_beam[id];
-  }
-}
-
-/* TODO
  * 1. Ganti Input Symbols jadi decodablenya
  * 2. Ganti Resizenya jadi Batch Size
  * 3. Konsep Beam Search disini beda, disini prune banyak state (sama dengan --max-active-state), di kaldi max prob
@@ -143,16 +129,8 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
     viterbi.resize(input_symbols.size() * m.num_states); // TODO : instead of input symbols, kasih batch_size
     prob_ptr_t init_value = pack(-FLT_MAX, 0);
     thrust::fill(viterbi.begin(), viterbi.end(), init_value);
-   
-    static thrust::device_vector<prob_ptr_t> viterbi_beam; // TODO : ini gatau masih dipake nggak
-    viterbi_beam.resize(BEAM_SIZE * input_symbols.size());
-    thrust::fill(viterbi_beam.begin(),viterbi_beam.end(),init_value);
 
     thrust::device_vector<prob_ptr_t> path(input_symbols.size()+1);
-
-    sym_t a = input_symbols[0];
-    int start_offset = m.input_offsets[a];
-    int end_offset = m.input_offsets[a+1];
 
     compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
       m.from_states.data().get(),
@@ -170,16 +148,6 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
     }
 
     for (int t=1; t<input_symbols.size(); t++) {
-      sym_t a = input_symbols[t];
-      int start_offset = m.input_offsets[a];
-      int end_offset = m.input_offsets[a+1];
-
-      if (verbose) {
-        std::cerr << start_offset << " to " << end_offset << std::endl;
-        for (int i=start_offset; i<end_offset; i++) {
-          std::cerr << m.from_states[i] << " " << m.to_states[i] << " " << m.probs[i] << std::endl;
-        }
-      }
 
       compute_transition <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
         m.from_states.data().get(), 
@@ -194,12 +162,6 @@ prob_t viterbi(gpu_fst &m, const vector<sym_t> &input_symbols, vector<sym_t> &ou
           std::cout << unpack_prob(pp) << " ";
         std::cout << std::endl;
       }
-
-      thrust::sort(viterbi.begin()+(t*m.num_states),viterbi.begin()+((t+1)*m.num_states),PointerComparison());
-      thrust::copy(viterbi.begin() + (t*m.num_states), viterbi.begin() + ((t*m.num_states)+ BEAM_SIZE), viterbi_beam.begin() + (t*BEAM_SIZE));
-
-      thrust::fill(viterbi.begin()+(t*m.num_states), viterbi.begin()+((t+1)*m.num_states), init_value);
-      set_states_in_beam <<<ceildiv(BEAM_SIZE, BLOCK_SIZE), BLOCK_SIZE>>> (viterbi.data().get() + (t*m.num_states), viterbi_beam.data().get()+ (t*BEAM_SIZE),m.to_states.data().get());
     }
 
     // TODO : cari token yang terbaik terlebih dahulu instead of final token

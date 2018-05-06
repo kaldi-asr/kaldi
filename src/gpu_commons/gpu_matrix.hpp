@@ -38,7 +38,7 @@ struct GPUMatrix{
     data = data_.data().get();
   }
 
-  GPUMatrix(const Matrix<Real> &M)
+  GPUMatrix(const Matrix<Real> &M) : 
     numcols_(M.NumCols()),  
     numrows_(M.NumRows()), 
     stride_(M.Stride()) 
