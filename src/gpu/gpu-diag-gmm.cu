@@ -9,14 +9,16 @@
 
 namespace kaldi{
 
-int32 _GPUDiagGmm::Dim() const { return means_invvars_.NumCols(); }
+int32 _GPUDiagGmm::Dim() const { return means_invvars_->NumCols(); }
 
 _GPUDiagGmm::_GPUDiagGmm(DiagGmm &d):
-  valid_gconsts_(d.valid_gconsts()),
-  gconsts_(d.gconsts()),
-  weights_(d.weights()),
-  inv_vars_(d.inv_vars()),
-  means_invvars_(d.means_invvars()) {}
+  valid_gconsts_(d.valid_gconsts())
+ {
+  gconsts_ = new GPUVector<BaseFloat>(d.gconsts()),
+  weights_ = new GPUVector<BaseFloat>(d.weights()),
+  inv_vars_ = new GPUMatrix<BaseFloat>(d.inv_vars()),
+  means_invvars_ = new GPUMatrix<BaseFloat>(d.means_invvars())
+ }
 
 // TODO : Implement this!
 __host__ __device__ BaseFloat _GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 num_data){
@@ -24,9 +26,9 @@ __host__ __device__ BaseFloat _GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 
     KALDI_ERR << "Must call ComputeGconsts() before computing likelihood";
 
   /* BEGIN LogLikelihoods */
-  int32 num_loglikes = gconsts_.Dim();
+  int32 num_loglikes = gconsts_->Dim();
   BaseFloat* loglikes = new BaseFloat[num_loglikes];
-  for(int32 i = 0;i < num_loglikes; ++i) loglikes[i] = gconsts_.data[i];
+  for(int32 i = 0;i < num_loglikes; ++i) loglikes[i] = gconsts_->data[i];
 
   if (num_data != Dim()) {
     KALDI_ERR << "DiagGmm::ComponentLogLikelihood, dimension "
@@ -36,10 +38,10 @@ __host__ __device__ BaseFloat _GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 
   BaseFloat* data_sq = new BaseFloat[num_data];
   for(int32 i = 0;i < num_data; ++i) data_sq[i] = data[i] * data[i];
 
-  for(int i = 0;i < gconsts_.Dim(); ++i){
+  for(int i = 0;i < gconsts_->Dim(); ++i){
     for(int j = 0;j < num_data; ++j){
-      loglikes[i] += means_invvars_.data[means_invvars_.Index(i, j)] * data[j];
-      loglikes[i] -= 0.5 * inv_vars_.data[inv_vars_.Index(i, j)] * data_sq[j];
+      loglikes[i] += means_invvars_->data[means_invvars_->Index(i, j)] * data[j];
+      loglikes[i] -= 0.5 * inv_vars_->data[inv_vars_->Index(i, j)] * data_sq[j];
     }
   }
 
@@ -61,8 +63,8 @@ __host__ __device__ BaseFloat _GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 
   BaseFloat log_sum = max_elem + Log(sum_relto_max_elem);
   /* End Log Sum Exp */
 
-  if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
-    KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
+  // if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
+  //   KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
 
   delete [] loglikes;
   delete [] data_sq;
