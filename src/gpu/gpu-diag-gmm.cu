@@ -9,7 +9,8 @@
 
 namespace kaldi{
 
-int32 _GPUDiagGmm::Dim() const { return means_invvars_->NumCols(); }
+__host__ __device__
+int32 _GPUDiagGmm::Dim() const { return means_invvars_.NumCols(); }
 
 _GPUDiagGmm::_GPUDiagGmm(DiagGmm &d):
   valid_gconsts_(d.valid_gconsts())

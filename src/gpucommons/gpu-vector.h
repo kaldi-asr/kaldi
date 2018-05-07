@@ -20,8 +20,10 @@ struct _GPUVector{
   int32 dim_;
   Real* data;
 
+  __host__ __device__
   int32 Dim() const;
 
+  __host__ __device__
   int32 Index(int32 idx) const;
 
   _GPUVector();

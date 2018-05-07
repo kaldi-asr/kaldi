@@ -21,11 +21,13 @@ _GPUVector<Real>::_GPUVector(const Vector<Real> &M) : dim_(M.Dim()){
   data = data_.data().get();
 }
 
+__host__ __device__
 template<typename Real>
 int32 _GPUVector<Real>::Dim() const {
   return dim_;
 }
 
+__host__ __device__
 template<typename Real>
 int32 _GPUVector<Real>::Index(int32 idx) const {
   return idx;

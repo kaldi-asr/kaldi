@@ -18,9 +18,13 @@ struct _GPUDiagGmm{
 
   bool valid_gconsts_;  // bool valid_gconsts_;   ///< Recompute gconsts_ if false
 
-  int32 Dim() const;
   _GPUDiagGmm(DiagGmm &d);
-  __host__ __device__ BaseFloat LogLikelihood(BaseFloat *data, int32 num_data);
+
+  __host__ __device__
+  int32 Dim() const;
+
+  __host__ __device__
+  BaseFloat LogLikelihood(BaseFloat *data, int32 num_data);
 
 };
 

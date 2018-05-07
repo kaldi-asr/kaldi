@@ -31,15 +31,19 @@ _GPUMatrix<Real>::_GPUMatrix(const Matrix<Real> &M) :
   data = data_.data().get();
 }
 
+__host__ __device__
 template<typename Real>
 int32 _GPUMatrix<Real>::NumRows() const { return numrows_; }
 
+__host__ __device__
 template<typename Real>
 int32 _GPUMatrix<Real>::NumCols() const { return numcols_; }
 
+__host__ __device__
 template<typename Real>
 int32 _GPUMatrix<Real>::Stride() const { return stride_; }
 
+__host__ __device__
 template<typename Real>
 int32 _GPUMatrix<Real>::Index(int32 r, int32 c) const { return r * stride_ + c; }
 

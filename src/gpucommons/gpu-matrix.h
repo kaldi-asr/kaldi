@@ -20,9 +20,16 @@ struct _GPUMatrix{
   int32 numrows_, numcols_, stride_;
   Real* data;
 
+  __host__ __device__
   int32 NumRows() const;
+
+  __host__ __device__
   int32 NumCols() const;
+
+  __host__ __device__
   int32 Stride() const;
+
+  __host__ __device__
   int32 Index(int32 r, int32 c) const;
 
   _GPUMatrix();
