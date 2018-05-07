@@ -11,7 +11,6 @@
 
 namespace kaldi{
 
-
 template<typename Real>
 struct GPUMatrix{
   thrust::device_vector<Real> data_;

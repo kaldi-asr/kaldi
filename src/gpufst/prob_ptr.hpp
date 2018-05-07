@@ -1,5 +1,5 @@
-#ifndef GPU_PACK_HPP
-#define GPU_PACK_HPP
+#ifndef GPUFST_GPUFST_GPU_PACK_HPP
+#define GPUFST_GPUFST_GPU_PACK_HPP
 
 #include <cstdint>
 #include <cassert>
@@ -8,6 +8,8 @@
 //typedef uint64_t prob_ptr_t;
 typedef unsigned long long int prob_ptr_t;
 typedef float prob_ptr_float_t;
+
+namespace gpufst{
 
 __host__ __device__ prob_ptr_t pack (float prob, int ptr) {
   //assert (!isnan(prob));
@@ -34,6 +36,8 @@ __host__ __device__ float unpack_prob (prob_ptr_t packed) {
 __host__ __device__ int unpack_ptr (prob_ptr_t packed) {
   //assert (!(packed & 0x80000000));
   return packed & 0x7FFFFFFF;
+}
+
 }
 
 #endif

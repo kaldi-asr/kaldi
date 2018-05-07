@@ -1,10 +1,12 @@
-#ifndef NUMBERIZER_HPP
-#define NUMBERIZER_HPP
+#ifndef GPUFST_GPUFST_NUMBERIZER_HPP
+#define GPUFST_GPUFST_NUMBERIZER_HPP
 
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
+
+namespace gpufst{
 
 class numberizer {
 public:
@@ -26,6 +28,8 @@ private:
 };
 
 numberizer read_numberizer(const std::string &filename);
+
+}
 
 #endif
 

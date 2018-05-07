@@ -9,7 +9,7 @@
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 
-#include "gpu_commons/gpu_vector.hpp"
+#include "gpucommons/gpu-vector.hpp"
 
 #include "hmm/transition-model.h"
 

@@ -2,15 +2,15 @@
 // https://bitbucket.org/aargueta2/parallel-decoding
 
 
-#ifndef FST_HPP
-#define FST_HPP
+#ifndef GPUFST_GPUFST_FST_HPP
+#define GPUFST_GPUFST_FST_HPP
 
 #include <vector>
 #include <tuple>
 #include <map>
 #include <string>
 #include <math.h>
-#include "numberizer.hpp"
+#include "gpufst/numberizer.hpp"
 
 typedef float prob_t;
 typedef int exponent;
@@ -21,6 +21,9 @@ typedef int sym_t;
 
 typedef std::tuple<state_t, state_t, sym_t, sym_t, prob_t> transition_t;
 typedef std::tuple<state_t, state_t, sym_t, sym_t, prob_t, exponent, mantissa> transition_float;
+
+namespace gpufst{
+
 
 struct fst {
   state_t initial;
@@ -83,4 +86,8 @@ void sort_by_input_tostate_fromstate(fst &m);
 void sort_by_input_em(fst_composed_probs &m);
 void sort_by_input_fromstate_tostate_em(fst_composed_probs &m);
 void sort_by_input_tostate_fromstate_em(fst_composed_probs &m);
+
+}
+
+
 #endif

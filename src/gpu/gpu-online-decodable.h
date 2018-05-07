@@ -3,7 +3,7 @@
 
 #include "online/online-decodable.h"
 
-#include "gpu_commons/gpu_vector.hpp"
+#include "gpucommons/gpu-vector.hpp"
 
 #include <vector>
 

@@ -2,16 +2,18 @@
 // https://bitbucket.org/aargueta2/parallel-decoding
 
 
-#ifndef GPU_FST_HPP
-#define GPU_FST_HPP
+#ifndef GPUFST_GPUFST_GPU_FST_HPP
+#define GPUFST_GPUFST_GPU_FST_HPP
 
 #include <thrust/device_vector.h>
 #include <vector>
 #include <iostream>
 #include <cfloat>
-#include "fst.hpp"
-#include "gpu_utils.hpp"
-#include "numberizer.hpp"
+#include "gpufst/fst.hpp"
+#include "gpufst/gpu_utils.hpp"
+#include "gpufst/numberizer.hpp"
+
+namespace gpufst{
 
 struct gpu_fst {
   state_t initial;
@@ -54,8 +56,8 @@ struct gpu_fst {
       prob_t p;
       std::tie(q, r, f, e, p) = m.transitions[i];
       while (f > f_last) {
-	f_last++;
-	input_offsets[f_last] = i;
+        f_last++;
+        input_offsets[f_last] = i;
       }
       outputs[i] = e;
     }
@@ -102,8 +104,8 @@ struct gpu_fst {
       mantissa m1;
       std::tie(q, r, f, e, p, ee, m1) = m.transition_f[i];
       while (f > f_last) {
-	f_last++;
-	input_offsets[f_last] = i;
+        f_last++;
+        input_offsets[f_last] = i;
       }
       outputs[i] = e;
     }
@@ -119,5 +121,7 @@ struct gpu_fst {
     if (verbose) std::cerr << "done.\n";
   }
 };
+
+}
 
 #endif

@@ -4,10 +4,10 @@
 // Uses Parallel Viterbi Beam Search Algorithm from Arturo Argueta and David Chiang's paper.
 
 #include "gpu/gpu-online-decodable.h"
-#include "gpu_commons/fst.hpp"
-#include "gpu_commons/gpu_fst.hpp"
-#include "gpu_commons/prob_ptr.hpp"
-#include "gpu_commons/numberizer.hpp"
+#include "gpufst/fst.hpp"
+#include "gpufst/gpu_fst.hpp"
+#include "gpufst/prob_ptr.hpp"
+#include "gpufst/numberizer.hpp"
 
 #include <vector>
 
@@ -33,6 +33,8 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 
 
 #define EPS_SYM 0
+
+using namespace gpufst;
 
 struct PointerComparison
 {

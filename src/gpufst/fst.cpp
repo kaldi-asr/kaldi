@@ -1,14 +1,15 @@
 #include <fstream>
 #include <sstream>
 
-#include "fst.hpp"
+#include "gpufst/fst.hpp"
+
+namespace gpufst{
 
 fst read_fst(const std::string &filename, const numberizer &inr, const numberizer &onr) {
-  using namespace std;
 
   fst m;
-  ifstream fst_file(filename);
-  string line;
+  std::ifstream fst_file(filename);
+  std::string line;
   bool first = true;
 
   m.num_inputs = inr.size();
@@ -16,16 +17,16 @@ fst read_fst(const std::string &filename, const numberizer &inr, const numberize
 
   while (getline(fst_file, line)) {
     // Count number of fields
-    istringstream iss(line);
-    string token;
-    vector<string> tokens;
+    std::istringstream iss(line);
+    std::string token;
+    std::vector<string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
     // Transition
     iss.str(line); iss.clear();
     state_t q, r;
-    string fstr, estr;
+    std::string fstr, estr;
     sym_t f, e;
     prob_t p;
 
@@ -34,8 +35,8 @@ fst read_fst(const std::string &filename, const numberizer &inr, const numberize
       f = inr.word_to_num(fstr);
       e = onr.word_to_num(estr);
       if (first) {
-	      m.initial = q;
-	      first = false;
+        m.initial = q;
+        first = false;
       }
       m.add_transition(q, r, f, e, log(p));
 
@@ -43,8 +44,8 @@ fst read_fst(const std::string &filename, const numberizer &inr, const numberize
     } else if (tokens.size() == 2) {
       iss >> q >> p;
       if (first) {
-	      m.initial = q;
-	      first = false;
+        m.initial = q;
+        first = false;
       }
       m.add_final(q, log(p));
 
@@ -55,12 +56,10 @@ fst read_fst(const std::string &filename, const numberizer &inr, const numberize
   return m;
 }
 
-fst read_fst_csc(const std::string &filename, const numberizer &inr, const numberizer &onr,float neg) {
-  using namespace std;
-
+fst read_fst_csc(const std::string &filename, const numberizer &inr, const numberizer &onr, float neg) {
   fst m;
-  ifstream fst_file(filename);
-  string line;
+  std::ifstream fst_file(filename);
+  std::string line;
   bool first = true;
 
   m.num_inputs = inr.size();
@@ -68,16 +67,16 @@ fst read_fst_csc(const std::string &filename, const numberizer &inr, const numbe
 
   while (getline(fst_file, line)) {
     // Count number of fields
-    istringstream iss(line);
-    string token;
-    vector<string> tokens;
+    std::istringstream iss(line);
+    std::string token;
+    std::vector<string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
     // Transition
     iss.str(line); iss.clear();
     state_t q, r;
-    string fstr, estr;
+    std::string fstr, estr;
     sym_t f, e;
     prob_t p;
 
@@ -110,11 +109,9 @@ fst read_fst_csc(const std::string &filename, const numberizer &inr, const numbe
 
 
 fst read_fst_noLog(const std::string &filename, const numberizer &inr, const numberizer &onr) {
-  using namespace std;
-
   fst m;
-  ifstream fst_file(filename);
-  string line;
+  std::ifstream fst_file(filename);
+  std::string line;
   bool first = true;
 
   m.num_inputs = inr.size();
@@ -122,16 +119,16 @@ fst read_fst_noLog(const std::string &filename, const numberizer &inr, const num
 
   while (getline(fst_file, line)) {
     // Count number of fields
-    istringstream iss(line);
-    string token;
-    vector<string> tokens;
+    std::istringstream iss(line);
+    std::string token;
+    std::vector<string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
     // Transition
     iss.str(line); iss.clear();
     state_t q, r;
-    string fstr, estr;
+    std::string fstr, estr;
     sym_t f, e;
     prob_t p;
 
@@ -140,8 +137,8 @@ fst read_fst_noLog(const std::string &filename, const numberizer &inr, const num
       f = inr.word_to_num(fstr);
       e = onr.word_to_num(estr);
       if (first) {
-	      m.initial = q;
-	      first = false;
+        m.initial = q;
+        first = false;
       }
       m.add_transition(q, r, f, e, p);
 
@@ -149,8 +146,8 @@ fst read_fst_noLog(const std::string &filename, const numberizer &inr, const num
     } else if (tokens.size() == 2) {
       iss >> q >> p;
       if (first) {
-	      m.initial = q;
-	      first = false;
+        m.initial = q;
+        first = false;
       }
       m.add_final(q, p);
 
@@ -162,18 +159,17 @@ fst read_fst_noLog(const std::string &filename, const numberizer &inr, const num
 }
 
 fst read_fst_noNumberizer(const std::string &filename) {
-  using namespace std;
-
+  
   fst m;
-  ifstream fst_file(filename);
-  string line;
+  std::ifstream fst_file(filename);
+  std::string line;
   bool first = true;
   
   while (getline(fst_file, line)) {
     // Count number of fields
-    istringstream iss(line);
-    string token;
-    vector<string> tokens;
+    std::istringstream iss(line);
+    std::string token;
+    std::vector<string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
@@ -188,8 +184,8 @@ fst read_fst_noNumberizer(const std::string &filename) {
       m.num_inputs = std::max(m.num_inputs, f + 1);
       m.num_outputs = std::max(m.num_outputs, e + 1);
       if (first) {
-	      m.initial = q;
-	      first = false;
+        m.initial = q;
+        first = false;
       }
       m.add_transition(q, r, f, e, log(p));
 
@@ -197,8 +193,8 @@ fst read_fst_noNumberizer(const std::string &filename) {
     } else if (tokens.size() == 2) {
       iss >> q >> p;
       if (first) {
-	      m.initial = q;
-	      first = false;
+        m.initial = q;
+        first = false;
       }
       m.add_final(q, log(p));
 
@@ -210,11 +206,10 @@ fst read_fst_noNumberizer(const std::string &filename) {
 }
 
 fst_composed_probs read_fst_exp_mantissa(const std::string &filename, const numberizer &inr, const numberizer &onr) {
-  using namespace std;
 
   fst_composed_probs m;
-  ifstream fst_file(filename);
-  string line;
+  std::ifstream fst_file(filename);
+  std::string line;
   bool first = true;
 
   m.num_inputs = inr.size();
@@ -222,16 +217,16 @@ fst_composed_probs read_fst_exp_mantissa(const std::string &filename, const numb
 
   while (getline(fst_file, line)) {
     // Count number of fields
-    istringstream iss(line);
-    string token;
-    vector<string> tokens;
+    std::istringstream iss(line);
+    std::string token;
+    std::vector<string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
     // Transition
     iss.str(line); iss.clear();
     state_t q, r;
-    string fstr, estr;
+    std::string fstr, estr;
     sym_t f, e;
     prob_t p;
     exponent ee;
@@ -243,8 +238,8 @@ fst_composed_probs read_fst_exp_mantissa(const std::string &filename, const numb
       f = inr.word_to_num(fstr);
       e = onr.word_to_num(estr);
       if (first) {
-	m.initial = q;
-	first = false;
+        m.initial = q;
+        first = false;
       }
       m.add_transition(q, r, f, e, p, ee, man);
 
@@ -253,8 +248,8 @@ fst_composed_probs read_fst_exp_mantissa(const std::string &filename, const numb
       iss >> q >> p;
       man = frexp(p,&ee);
       if (first) {
-	m.initial = q;
-	first = false;
+        m.initial = q;
+        first = false;
       }
       m.add_final(q, p, ee, man);
 
@@ -339,3 +334,6 @@ void sort_by_input_fromstate_tostate_em(fst_composed_probs &m) {
 void sort_by_input_tostate_fromstate_em(fst_composed_probs &m) {
   std::sort(m.transition_f.begin(), m.transition_f.end(), compare_input_tostate_fromstate_em);
 }
+
+}
+
