@@ -13,9 +13,9 @@
 namespace kaldi{
 
 __device__
-int32 _GPUDiagGmm::Dim() const { return means_invvars_.NumCols(); }
+int32 GPUDiagGmm::Dim() const { return means_invvars_.NumCols(); }
 
-_GPUDiagGmm::_GPUDiagGmm(DiagGmm &d):
+GPUDiagGmm::GPUDiagGmm(DiagGmm &d):
   valid_gconsts_(d.valid_gconsts())
  {
   gconsts_ = GPUVector<BaseFloat>(d.gconsts());
@@ -25,7 +25,7 @@ _GPUDiagGmm::_GPUDiagGmm(DiagGmm &d):
  }
 
 // TODO : Implement this!
-__device__ BaseFloat _GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 num_data){
+__device__ BaseFloat GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 num_data){
   const double kGPUMinLogDiffDouble = log(DBL_EPSILON);
   const float kGPUMinLogDiffFloat = log(FLT_EPSILON);
 

@@ -10,7 +10,7 @@
 
 namespace kaldi{
 
-struct _GPUDiagGmm{
+struct GPUDiagGmm{
   GPUVector<BaseFloat> gconsts_;
   GPUVector<BaseFloat> weights_;
   GPUMatrix<BaseFloat> inv_vars_;
@@ -18,7 +18,7 @@ struct _GPUDiagGmm{
 
   bool valid_gconsts_;  // bool valid_gconsts_;   ///< Recompute gconsts_ if false
 
-  _GPUDiagGmm(DiagGmm &d);
+  GPUDiagGmm(DiagGmm &d);
 
   __device__
   int32 Dim() const;
@@ -27,8 +27,6 @@ struct _GPUDiagGmm{
   BaseFloat LogLikelihood(BaseFloat *data, int32 num_data);
 
 };
-
-typedef struct _GPUDiagGmm GPUDiagGmm;
 
 }
 

@@ -15,7 +15,7 @@
 namespace kaldi{
 
 template<typename Real>
-struct _GPUVector{
+struct GPUVector{
   thrust::device_vector<Real> data_;
   int32 dim_;
   Real* data;
@@ -26,14 +26,10 @@ struct _GPUVector{
   __host__ __device__
   int32 Index(int32 idx) const;
 
-  _GPUVector();
-  _GPUVector(Vector<Real> &M);
-  _GPUVector(const Vector<Real> &M);
+  GPUVector();
+  GPUVector(Vector<Real> &M);
+  GPUVector(const Vector<Real> &M);
 };
-
-template<typename Real>
-using GPUVector = _GPUVector<Real>;
-
 }
 
 #endif
