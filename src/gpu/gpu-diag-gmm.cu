@@ -7,6 +7,8 @@
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 
+#include <math_functions.h>
+
 namespace kaldi{
 
 __host__ __device__
@@ -23,6 +25,9 @@ _GPUDiagGmm::_GPUDiagGmm(DiagGmm &d):
 
 // TODO : Implement this!
 __host__ __device__ BaseFloat _GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 num_data){
+  const double kGPUMinLogDiffDouble = Log(DBL_EPSILON);
+  const float kGPUMinLogDiffFloat = Log(FLT_EPSILON);
+
   if (!valid_gconsts_)
     KALDI_ERR << "Must call ComputeGconsts() before computing likelihood";
 
@@ -52,8 +57,8 @@ __host__ __device__ BaseFloat _GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 
   BaseFloat max_elem = *(std::max_element(loglikes, loglikes + num_loglikes));
 
   BaseFloat cutoff;
-  if (sizeof(BaseFloat) == 4) cutoff = max_elem + kMinLogDiffFloat;
-  else cutoff = max_elem + kMinLogDiffDouble;
+  if (sizeof(BaseFloat) == 4) cutoff = max_elem + kGPUMinLogDiffFloat;
+  else cutoff = max_elem + kGPUMinLogDiffDouble;
   double sum_relto_max_elem = 0.0;
 
   for (int32 i = 0; i < num_loglikes; i++) {
@@ -64,8 +69,8 @@ __host__ __device__ BaseFloat _GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 
   BaseFloat log_sum = max_elem + Log(sum_relto_max_elem);
   /* End Log Sum Exp */
 
-  // if (KALDI_ISNAN(log_sum) || KALDI_ISINF(log_sum))
-  //   KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
+  if (isnan(log_sum) || isinf(log_sum))
+    KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
 
   delete [] loglikes;
   delete [] data_sq;
