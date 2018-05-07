@@ -20,9 +20,9 @@ struct _GPUVector{
   int32 dim_;
   Real* data;
 
-  int32 Dim() const { return dim_; }
+  int32 Dim() const;
 
-  int32 Index(int32 idx) const { return idx; }
+  int32 Index(int32 idx) const;
 
   _GPUVector(Vector<Real> &M);
   _GPUVector(const Vector<Real> &M);

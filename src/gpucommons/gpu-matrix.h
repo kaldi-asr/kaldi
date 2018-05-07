@@ -26,7 +26,7 @@ struct _GPUMatrix{
   int32 Index(int32 r, int32 c) const;
 
   _GPUMatrix(Matrix<Real> &M);
-  _GPUMatrix(const Matrix<Real> &M)
+  _GPUMatrix(const Matrix<Real> &M);
 };
 
 template<typename Real>
