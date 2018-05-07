@@ -1,5 +1,7 @@
 #include "gpucommons/gpu-vector.h"
 
+namespace kaldi{
+
 template<typename Real>
 struct _GPUVector{
   thrust::device_vector<Real> data_;
@@ -26,3 +28,5 @@ struct _GPUVector{
     data = data_.data().get();
   }
 };
+
+}

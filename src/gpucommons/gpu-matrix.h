@@ -1,5 +1,5 @@
-#ifndef GPU_MATRIX_H
-#define GPU_MATRIX_H
+#ifndef KALDI_GPUCOMMONS_GPU_MATRIX_H
+#define KALDI_GPUCOMMONS_GPU_MATRIX_H
 
 #include <vector>
 
@@ -9,13 +9,16 @@
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 
+#include "matrix/kaldi-matrix.h"
+#include "base/kaldi-common.h"
+
 namespace kaldi{
 
 template<typename Real>
 struct _GPUMatrix;
 
 template<typename Real>
-typedef struct _GPUMatrix GPUMatrix;
+using GPUMatrix = _GPUMatrix<Real>;
 
 }
 

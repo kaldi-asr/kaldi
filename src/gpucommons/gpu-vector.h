@@ -9,13 +9,16 @@
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 
+#include "matrix/kaldi-vector.h"
+#include "base/kaldi-common.h"
+
 namespace kaldi{
 
 template<typename Real>
 struct _GPUVector;
 
 template<typename Real>
-typedef struct _GPUVector GPUVector;
+using GPUVector = _GPUVector<Real>;
 
 }
 
