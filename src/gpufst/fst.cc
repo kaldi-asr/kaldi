@@ -19,7 +19,7 @@ fst read_fst(const std::string &filename, const numberizer &inr, const numberize
     // Count number of fields
     std::istringstream iss(line);
     std::string token;
-    std::vector<string> tokens;
+    std::vector<std::string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
@@ -50,7 +50,7 @@ fst read_fst(const std::string &filename, const numberizer &inr, const numberize
       m.add_final(q, log(p));
 
     } else {
-      throw runtime_error("wrong number of fields in line");
+      throw std::runtime_error("wrong number of fields in line");
     }
   }
   return m;
@@ -69,7 +69,7 @@ fst read_fst_csc(const std::string &filename, const numberizer &inr, const numbe
     // Count number of fields
     std::istringstream iss(line);
     std::string token;
-    std::vector<string> tokens;
+    std::vector<std::string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
@@ -101,7 +101,7 @@ fst read_fst_csc(const std::string &filename, const numberizer &inr, const numbe
       m.add_final(q, neg*log(p));
 
     } else {
-      throw runtime_error("wrong number of fields in line");
+      throw std::runtime_error("wrong number of fields in line");
     }
   }
   return m;
@@ -121,7 +121,7 @@ fst read_fst_noLog(const std::string &filename, const numberizer &inr, const num
     // Count number of fields
     std::istringstream iss(line);
     std::string token;
-    std::vector<string> tokens;
+    std::vector<std::string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
@@ -152,24 +152,24 @@ fst read_fst_noLog(const std::string &filename, const numberizer &inr, const num
       m.add_final(q, p);
 
     } else {
-      throw runtime_error("wrong number of fields in line");
+      throw std::runtime_error("wrong number of fields in line");
     }
   }
   return m;
 }
 
 fst read_fst_noNumberizer(const std::string &filename) {
-  
+
   fst m;
   std::ifstream fst_file(filename);
   std::string line;
   bool first = true;
-  
+
   while (getline(fst_file, line)) {
     // Count number of fields
     std::istringstream iss(line);
     std::string token;
-    std::vector<string> tokens;
+    std::vector<std::string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
@@ -199,7 +199,7 @@ fst read_fst_noNumberizer(const std::string &filename) {
       m.add_final(q, log(p));
 
     } else {
-      throw runtime_error("wrong number of fields in line");
+      throw std::runtime_error("wrong number of fields in line");
     }
   }
   return m;
@@ -219,7 +219,7 @@ fst_composed_probs read_fst_exp_mantissa(const std::string &filename, const numb
     // Count number of fields
     std::istringstream iss(line);
     std::string token;
-    std::vector<string> tokens;
+    std::vector<std::string> tokens;
     while (iss >> token)
       tokens.push_back(token);
 
@@ -254,7 +254,7 @@ fst_composed_probs read_fst_exp_mantissa(const std::string &filename, const numb
       m.add_final(q, p, ee, man);
 
     } else {
-      throw runtime_error("wrong number of fields in line");
+      throw std::runtime_error("wrong number of fields in line");
     }
   }
   return m;
