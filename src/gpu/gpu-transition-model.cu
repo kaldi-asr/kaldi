@@ -4,14 +4,9 @@ namespace kaldi{
 
 GPUTransitionModel::GPUTransitionModel() {}
 GPUTransitionModel::GPUTransitionModel(TransitionModel& t) : 
-  topo_(t.GetTopo()),
-  tuples_(t.tuples()),
-  state2id_(t.state2id()),
-  id2state_(t.id2state()),
   id2pdf_id_(t.id2pdf_id()),
-  num_pdfs_(t.NumPdfs()),
-  log_probs_(t.log_probs()),
-  non_self_loop_log_probs_(t.non_self_loop_log_probs()) {
+  num_pdfs_(t.NumPdfs())
+  {
     id2pdf_id = id2pdf_id_.data().get();
   }
 
