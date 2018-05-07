@@ -23,10 +23,10 @@ struct GPUTransitionModel{
 
   GPUTransitionModel();
   GPUTransitionModel(TransitionModel& t);
-  
+
   __host__ __device__ int32 NumPdfs() const;
 
-  __device__ int32 TransitionIdToPdf(int32 trans_id);
+  __device__ int32 TransitionIdToPdf(int32 trans_id) const;
 
 };
 

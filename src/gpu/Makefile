@@ -1,11 +1,12 @@
 
 all:
 
+
 include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
-OBJFILES = 
+OBJFILES =
 ifeq ($(CUDA), true)
   OBJFILES += gpu-diag-gmm.o gpu-transition-model.o gpu-am-diag-gmm.o gpu-online-decodable.o
 endif
@@ -17,7 +18,7 @@ ADDLIBS = ../online/kaldi-online.a ../gpucommons/kaldi-gpucommons.a \
           ../feat/kaldi-feat.a ../transform/kaldi-transform.a \
           ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
           ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a 
+          ../base/kaldi-base.a
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
 ifeq ($(CUDA), true)
