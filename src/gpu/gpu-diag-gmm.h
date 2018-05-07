@@ -20,10 +20,10 @@ struct _GPUDiagGmm{
 
   _GPUDiagGmm(DiagGmm &d);
 
-  __host__ __device__
+  __device__
   int32 Dim() const;
 
-  __host__ __device__
+  __device__
   BaseFloat LogLikelihood(BaseFloat *data, int32 num_data);
 
 };
