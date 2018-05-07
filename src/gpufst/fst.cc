@@ -1,7 +1,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "gpufst/fst.hpp"
+#include "gpufst/fst.h"
 
 namespace gpufst{
 

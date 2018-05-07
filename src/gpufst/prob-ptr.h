@@ -1,5 +1,5 @@
-#ifndef GPUFST_GPUFST_GPU_PACK_HPP
-#define GPUFST_GPUFST_GPU_PACK_HPP
+#ifndef GPUFST_GPUFST_GPU_PACK_H
+#define GPUFST_GPUFST_GPU_PACK_H
 
 #include <cstdint>
 #include <cassert>

@@ -1,18 +1,7 @@
-#ifndef GPU_MATRIX_HPP
-#define GPU_MATRIX_HPP
-
-#include <vector>
-
-#include <thrust/sort.h>
-#include <thrust/copy.h>
-#include <thrust/device_vector.h>
-#include <thrust/execution_policy.h>
-#include <thrust/fill.h>
-
-namespace kaldi{
+#include "gpucommons/gpu-matrix.h"
 
 template<typename Real>
-struct GPUMatrix{
+struct _GPUMatrix{
   thrust::device_vector<Real> data_;
   int32 numrows_, numcols_, stride_;
   Real* data;
@@ -25,7 +14,7 @@ struct GPUMatrix{
     return r * stride_ + c;
   }
 
-  GPUMatrix(Matrix<Real> &M) : 
+  _GPUMatrix(Matrix<Real> &M) : 
     numcols_(M.NumCols()),  
     numrows_(M.NumRows()), 
     stride_(M.Stride()) 
@@ -37,7 +26,7 @@ struct GPUMatrix{
     data = data_.data().get();
   }
 
-  GPUMatrix(const Matrix<Real> &M) : 
+  _GPUMatrix(const Matrix<Real> &M) : 
     numcols_(M.NumCols()),  
     numrows_(M.NumRows()), 
     stride_(M.Stride()) 
@@ -49,7 +38,3 @@ struct GPUMatrix{
     data = data_.data().get();
   }
 };
-
-}
-
-#endif

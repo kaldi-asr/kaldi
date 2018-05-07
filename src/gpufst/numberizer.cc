@@ -2,7 +2,7 @@
 #include <fstream>
 #include <sstream>
 
-#include "gpufst/numberizer.hpp"
+#include "gpufst/numberizer.h"
 
 namespace gpufst{
 

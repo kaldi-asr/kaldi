@@ -2,16 +2,16 @@
 // https://bitbucket.org/aargueta2/parallel-decoding
 
 
-#ifndef GPUFST_GPUFST_GPU_FST_HPP
-#define GPUFST_GPUFST_GPU_FST_HPP
+#ifndef GPUFST_GPUFST_GPU_FST_H
+#define GPUFST_GPUFST_GPU_FST_H
 
 #include <thrust/device_vector.h>
 #include <vector>
 #include <iostream>
 #include <cfloat>
-#include "gpufst/fst.hpp"
-#include "gpufst/gpu_utils.hpp"
-#include "gpufst/numberizer.hpp"
+#include "gpufst/fst.h"
+#include "gpufst/gpu-utils.h"
+#include "gpufst/numberizer.h"
 
 namespace gpufst{
 

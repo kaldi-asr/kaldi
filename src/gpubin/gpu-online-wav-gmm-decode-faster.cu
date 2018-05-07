@@ -4,10 +4,10 @@
 // Uses Parallel Viterbi Beam Search Algorithm from Arturo Argueta and David Chiang's paper.
 
 #include "gpu/gpu-online-decodable.h"
-#include "gpufst/fst.hpp"
-#include "gpufst/gpu_fst.hpp"
-#include "gpufst/prob_ptr.hpp"
-#include "gpufst/numberizer.hpp"
+#include "gpufst/fst.h"
+#include "gpufst/gpu-fst.h"
+#include "gpufst/prob-ptr.h"
+#include "gpufst/numberizer.h"
 
 #include <vector>
 

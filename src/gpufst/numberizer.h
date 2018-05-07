@@ -1,5 +1,5 @@
-#ifndef GPUFST_GPUFST_NUMBERIZER_HPP
-#define GPUFST_GPUFST_NUMBERIZER_HPP
+#ifndef GPUFST_GPUFST_NUMBERIZER_H
+#define GPUFST_GPUFST_NUMBERIZER_H
 
 #include <string>
 #include <unordered_map>

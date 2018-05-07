@@ -2,15 +2,15 @@
 // https://bitbucket.org/aargueta2/parallel-decoding
 
 
-#ifndef GPUFST_GPUFST_FST_HPP
-#define GPUFST_GPUFST_FST_HPP
+#ifndef GPUFST_GPUFST_FST_H
+#define GPUFST_GPUFST_FST_H
 
 #include <vector>
 #include <tuple>
 #include <map>
 #include <string>
 #include <math.h>
-#include "gpufst/numberizer.hpp"
+#include "gpufst/numberizer.h"
 
 typedef float prob_t;
 typedef int exponent;

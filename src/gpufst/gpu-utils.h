@@ -1,11 +1,12 @@
-#define GPUFST_GPUFST_GPU_UTILS_HPP
+#ifndef GPUFST_GPUFST_GPU_UTILS_H
+#define GPUFST_GPUFST_GPU_UTILS_H
 
 #include <vector>
 #include <tuple>
 #include <cuda_runtime.h>
 #include <thrust/device_vector.h>
 
-namespace gpufst{
+namespace gpufst {
 
 template <int I, typename T, class... Types>
 void unzip_to_device(const std::vector<std::tuple<Types...>> &src, thrust::device_vector<T> &dst) {
@@ -185,3 +186,5 @@ __device__ void atomicAdd_exp_man(float* xm, int* xe,int ye,float val,float val2
 }
 
 }
+
+#endif

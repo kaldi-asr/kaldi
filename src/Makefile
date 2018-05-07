@@ -7,10 +7,11 @@ SHELL := /bin/bash
 
 SUBDIRS = base matrix util feat tree gmm transform \
           fstext hmm lm decoder lat kws cudamatrix nnet \
-          gpucommons gpu\
+          gpucommons gpufst gpu \
           bin fstbin gmmbin fgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 rnnlm chain nnet3bin nnet2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin gpubin
+          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin \
+          gpubin
 
 MEMTESTDIRS = base matrix util feat tree gmm transform \
           fstext hmm lm decoder lat nnet kws chain \
@@ -183,4 +184,4 @@ online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudama
 kws: base util hmm tree matrix lat
 gpucommons: base util hmm tree matrix lat
 gpu: base gmm hmm online gpucommons 
-gpubin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online gpu gpucommons
+gpubin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online gpu gpucommons gpufst

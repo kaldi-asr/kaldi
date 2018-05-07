@@ -1,19 +1,7 @@
-#ifndef GPU_VECTOR_HPP
-#define GPU_VECTOR_HPP
-
-#include <vector>
-
-#include <thrust/sort.h>
-#include <thrust/copy.h>
-#include <thrust/device_vector.h>
-#include <thrust/execution_policy.h>
-#include <thrust/fill.h>
-
-namespace kaldi{
-
+#include "gpucommons/gpu-vector.h"
 
 template<typename Real>
-struct GPUVector{
+struct _GPUVector{
   thrust::device_vector<Real> data_;
   int32 dim_;
   Real* data;
@@ -22,7 +10,7 @@ struct GPUVector{
 
   int32 Index(int32 idx) const { return idx; }
 
-  GPUVector(Vector<Real> &M) : dim_(M.Dim())
+  _GPUVector(Vector<Real> &M) : dim_(M.Dim())
   {
     const size_t m_dim = M.SizeInBytes() / sizeof(Real);
     Real* m_data = M.Data();
@@ -30,7 +18,7 @@ struct GPUVector{
     data = data_.data().get();
   }
 
-  GPUVector(const Vector<Real> &M) : dim_(M.Dim())
+  _GPUVector(const Vector<Real> &M) : dim_(M.Dim())
   {
     const size_t m_dim = M.SizeInBytes() / sizeof(Real);
     Real* m_data = M.Data();
@@ -38,7 +26,3 @@ struct GPUVector{
     data = data_.data().get();
   }
 };
-
-}
-
-#endif

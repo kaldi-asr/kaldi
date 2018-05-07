@@ -2,6 +2,8 @@ all:
 
 EXTRA_CXXFLAGS += -Wno-sign-compare -I../../tools/portaudio/install/include
 include ../kaldi.mk
+LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
 
 # The PA_RingBuffer interface is internal and is not exported in the .so libray
 # so we have to link against the static one
