@@ -13,7 +13,15 @@
 
 namespace kaldi{
 
-struct _GPUAmDiagGmm;
+struct _GPUAmDiagGmm{
+  thrust::device_vector<GPUDiagGmm*> densities_;
+  _GPUAmDiagGmm();
+  ~_GPUAmDiagGmm();
+
+  void AddPdf(const GPUDiagGmm &gpugmm);
+  __host__ __device__ BaseFloat LogLikelihood(const int32 pdf_index, BaseFloat* data, int32 num_data) const;
+};
+
 typedef struct _GPUAmDiagGmm GPUAmDiagGmm;
 
 }

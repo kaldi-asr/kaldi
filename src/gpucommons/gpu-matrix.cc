@@ -3,6 +3,9 @@
 namespace kaldi{
 
 template<typename Real>
+_GPUMatrix<Real>::_GPUMatrix() {}
+
+template<typename Real>
 _GPUMatrix<Real>::_GPUMatrix(Matrix<Real> &M) :
   numcols_(M.NumCols()),
   numrows_(M.NumRows()),

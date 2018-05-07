@@ -24,6 +24,7 @@ struct _GPUVector{
 
   int32 Index(int32 idx) const;
 
+  _GPUVector();
   _GPUVector(Vector<Real> &M);
   _GPUVector(const Vector<Real> &M);
 };

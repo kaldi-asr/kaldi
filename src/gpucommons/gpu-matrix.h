@@ -25,6 +25,7 @@ struct _GPUMatrix{
   int32 Stride() const;
   int32 Index(int32 r, int32 c) const;
 
+  _GPUMatrix();
   _GPUMatrix(Matrix<Real> &M);
   _GPUMatrix(const Matrix<Real> &M);
 };

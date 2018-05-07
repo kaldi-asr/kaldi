@@ -11,10 +11,10 @@
 namespace kaldi{
 
 struct _GPUDiagGmm{
-  GPUVector<BaseFloat>* gconsts_;
-  GPUVector<BaseFloat>* weights_;
-  GPUMatrix<BaseFloat>* inv_vars_;
-  GPUMatrix<BaseFloat>* means_invvars_;
+  GPUVector<BaseFloat> gconsts_;
+  GPUVector<BaseFloat> weights_;
+  GPUMatrix<BaseFloat> inv_vars_;
+  GPUMatrix<BaseFloat> means_invvars_;
 
   bool valid_gconsts_;  // bool valid_gconsts_;   ///< Recompute gconsts_ if false
 

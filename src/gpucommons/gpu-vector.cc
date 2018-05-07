@@ -3,6 +3,9 @@
 namespace kaldi{
 
 template<typename Real>
+_GPUVector<Real>::_GPUVector() {}
+
+template<typename Real>
 _GPUVector<Real>::_GPUVector(Vector<Real> &M) : dim_(M.Dim()){
   const size_t m_dim = M.SizeInBytes() / sizeof(Real);
   Real* m_data = M.Data();
