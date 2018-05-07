@@ -22,7 +22,7 @@ struct _GPUDiagGmm{
   int32 Dim() const { return means_invvars_.NumCols(); }
 
   _GPUDiagGmm(DiagGmm &d):
-    valid_gconsts_(d.valid_gconsts_()),
+    valid_gconsts_(d.valid_gconsts()),
     gconsts_(d.gconsts()),
     weights_(d.weights()),
     inv_vars_(d.inv_vars()),
@@ -59,7 +59,7 @@ struct _GPUDiagGmm{
     BaseFloat max_elem = *(std::max_element(loglikes, loglikes + num_loglikes));
 
     BaseFloat cutoff;
-    if (sizeof(Real) == 4) cutoff = max_elem + kMinLogDiffFloat;
+    if (sizeof(BaseFloat) == 4) cutoff = max_elem + kMinLogDiffFloat;
     else cutoff = max_elem + kMinLogDiffDouble;
     double sum_relto_max_elem = 0.0;
 
