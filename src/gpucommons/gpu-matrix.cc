@@ -3,42 +3,41 @@
 namespace kaldi{
 
 template<typename Real>
-struct _GPUMatrix{
-  thrust::device_vector<Real> data_;
-  int32 numrows_, numcols_, stride_;
-  Real* data;
+_GPUMatrix::_GPUMatrix(Matrix<Real> &M) :
+  numcols_(M.NumCols()),
+  numrows_(M.NumRows()),
+  stride_(M.Stride())
+{
+  const size_t m_dim = M.SizeInBytes() / sizeof(Real);
+  Real* m_data = M.Data();
 
-  int32 NumRows() const { return numrows_; }
-  int32 NumCols() const { return numcols_; }
-  int32 Stride() const { return stride_; }
+  thrust::copy(m_data, m_data + m_dim, data_.begin());
+  data = data_.data().get();
+}
 
-  int32 Index(int32 r, int32 c) const{
-    return r * stride_ + c;
-  }
+template<typename Real>
+_GPUMatrix::_GPUMatrix(const Matrix<Real> &M) :
+  numcols_(M.NumCols()),
+  numrows_(M.NumRows()),
+  stride_(M.Stride())
+{
+  const size_t m_dim = M.SizeInBytes() / sizeof(Real);
+  Real* m_data = M.Data();
 
-  _GPUMatrix(Matrix<Real> &M) :
-    numcols_(M.NumCols()),
-    numrows_(M.NumRows()),
-    stride_(M.Stride())
-  {
-    const size_t m_dim = M.SizeInBytes() / sizeof(Real);
-    Real* m_data = M.Data();
+  thrust::copy(m_data, m_data + m_dim, data_.begin());
+  data = data_.data().get();
+}
 
-    thrust::copy(m_data, m_data + m_dim, data_.begin());
-    data = data_.data().get();
-  }
+template<typename Real>
+int32 _GPUMatrix::NumRows() const { return numrows_; }
 
-  _GPUMatrix(const Matrix<Real> &M) :
-    numcols_(M.NumCols()),
-    numrows_(M.NumRows()),
-    stride_(M.Stride())
-  {
-    const size_t m_dim = M.SizeInBytes() / sizeof(Real);
-    Real* m_data = M.Data();
+template<typename Real>
+int32 _GPUMatrix::NumCols() const { return numcols_; }
 
-    thrust::copy(m_data, m_data + m_dim, data_.begin());
-    data = data_.data().get();
-  }
-};
+template<typename Real>
+int32 _GPUMatrix::Stride() const { return stride_; }
+
+template<typename Real>
+int32 _GPUMatrix::Index(int32 r, int32 c) const { return r * stride_ + c; }
 
 }

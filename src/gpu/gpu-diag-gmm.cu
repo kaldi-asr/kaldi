@@ -14,10 +14,10 @@ int32 _GPUDiagGmm::Dim() const { return means_invvars_->NumCols(); }
 _GPUDiagGmm::_GPUDiagGmm(DiagGmm &d):
   valid_gconsts_(d.valid_gconsts())
  {
-  gconsts_ = new GPUVector<BaseFloat>(d.gconsts()),
-  weights_ = new GPUVector<BaseFloat>(d.weights()),
-  inv_vars_ = new GPUMatrix<BaseFloat>(d.inv_vars()),
-  means_invvars_ = new GPUMatrix<BaseFloat>(d.means_invvars())
+  gconsts_ = new GPUVector<BaseFloat>(d.gconsts());
+  weights_ = new GPUVector<BaseFloat>(d.weights());
+  inv_vars_ = new GPUMatrix<BaseFloat>(d.inv_vars());
+  means_invvars_ = new GPUMatrix<BaseFloat>(d.means_invvars());
  }
 
 // TODO : Implement this!
