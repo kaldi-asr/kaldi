@@ -2,8 +2,8 @@
 #define KALDI_GMM_GPU_DIAG_GMM_H_ 1
 
 #include "gmm/diag-gmm.h"
-#include "gpucommons/gpu-matrix.hpp"
-#include "gpucommons/gpu-vector.hpp"
+#include "gpucommons/gpu-matrix.h"
+#include "gpucommons/gpu-vector.h"
 #include "base/kaldi-math.h"
 
 #include <algorithm>
