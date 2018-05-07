@@ -19,8 +19,8 @@ GPUOnlineDecodableDiagGmmScaled::GPUOnlineDecodableDiagGmmScaled(
 /* TODO Optimasi :
  * 1. Pake Cachenya sama Locknya berarti 
  */
-__host__ __device__ BaseFloat GPUOnlineDecodableDiagGmmScaled::LogLikelihood(int32 frame, int32 index){
-  KALDI_ASSERT(frame == cur_frame_);
+__device__ BaseFloat GPUOnlineDecodableDiagGmmScaled::LogLikelihood(int32 frame, int32 index){
+  // KALDI_ASSERT(frame == cur_frame_);
   int32 pdf_id = transition_model_.TransitionIdToPdf(index);
   // if (cache_[pdf_id].first == frame)
   //   return cache_[pdf_id].second;

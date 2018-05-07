@@ -43,7 +43,7 @@ struct GPUOnlineDecodableDiagGmmScaled {
 
   }
 
-  __host__ __device__ BaseFloat LogLikelihood(int32 frame, int32 index);
+  __device__ BaseFloat LogLikelihood(int32 frame, int32 index);
 };
 
 }

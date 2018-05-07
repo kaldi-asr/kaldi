@@ -15,10 +15,9 @@ GPUTransitionModel::GPUTransitionModel(TransitionModel& t) :
     id2pdf_id = id2pdf_id_.data().get();
   }
 
+__host__ __device__ int32 GPUTransitionModel::NumPdfs() const { return num_pdfs_; }
 
-int32 GPUTransitionModel::NumPdfs() const { return num_pdfs_; }
-
-__host__ __device__ int32 GPUTransitionModel::TransitionIdToPdf(int32 trans_id) const {
+__device__ int32 GPUTransitionModel::TransitionIdToPdf(int32 trans_id) const {
   return id2pdf_id[trans_id];
 }
 

@@ -9,7 +9,7 @@
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 
-#include "gpucommons/gpu-vector.hpp"
+#include "gpucommons/gpu-vector.h"
 
 #include "hmm/transition-model.h"
 
@@ -74,9 +74,9 @@ struct GPUTransitionModel{
   GPUTransitionModel();
   GPUTransitionModel(TransitionModel& t);
   
-  int32 NumPdfs() const;
+  __host__ __device__ int32 NumPdfs() const;
 
-  __host__ __device__ int32 TransitionIdToPdf(int32 trans_id);
+  __device__ int32 TransitionIdToPdf(int32 trans_id);
 
 };
 

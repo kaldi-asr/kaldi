@@ -20,12 +20,12 @@ _GPUAmDiagGmm::~_GPUAmDiagGmm(); {
 }
 
 void _GPUAmDiagGmm::AddPdf(const GPUDiagGmm &gpugmm){
-  if (densities_.size() != 0)  // not the first gmm
-    KALDI_ASSERT(gpugmm.Dim() == this->Dim());
+  // if (densities_.size() != 0)  // not the first gmm
+  //   KALDI_ASSERT(gpugmm.Dim() == this->Dim());
   densities_.push_back(&gpugmm);
 }
 
-__host__ __device__ BaseFloat LogLikelihood(const int32 pdf_index, BaseFloat* data, int32 num_data) const {
+__device__ BaseFloat LogLikelihood(const int32 pdf_index, BaseFloat* data, int32 num_data) const {
   return densities_[pdf_index]->LogLikelihood(data, num_data);
 }
 
