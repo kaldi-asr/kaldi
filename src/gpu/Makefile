@@ -13,8 +13,7 @@ endif
 
 LIBNAME = kaldi-gpu
 
-ADDLIBS = ../gpucommons/kaldi-gpucommons.a \
-          ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a \
+ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a \
           ../feat/kaldi-feat.a ../transform/kaldi-transform.a \
           ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
           ../matrix/kaldi-matrix.a \

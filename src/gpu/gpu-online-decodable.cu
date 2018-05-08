@@ -3,6 +3,7 @@
 namespace kaldi{
 
 GPUOnlineDecodableDiagGmmScaled::GPUOnlineDecodableDiagGmmScaled() {}
+
 GPUOnlineDecodableDiagGmmScaled::GPUOnlineDecodableDiagGmmScaled(
   const GPUAmDiagGmm& gpu_ac_model_,
   const GPUTransitionModel& gpu_transition_model_,

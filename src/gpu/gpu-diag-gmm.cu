@@ -16,13 +16,11 @@ __device__
 int32 GPUDiagGmm::Dim() const { return means_invvars_.NumCols(); }
 
 GPUDiagGmm::GPUDiagGmm(DiagGmm &d):
-  valid_gconsts_(d.valid_gconsts())
- {
-  gconsts_ = GPUVector<BaseFloat>(d.gconsts());
-  weights_ = GPUVector<BaseFloat>(d.weights());
-  inv_vars_ = GPUMatrix<BaseFloat>(d.inv_vars());
-  means_invvars_ = GPUMatrix<BaseFloat>(d.means_invvars());
- }
+  valid_gconsts_(d.valid_gconsts()),
+  gconsts_(d.gconsts()),
+  weights_(d.weights()),
+  inv_vars_(d.inv_vars()),
+  means_invvars_(d.means_invvars()) {}
 
 // TODO : Implement this!
 __device__ BaseFloat GPUDiagGmm::LogLikelihood(BaseFloat *data, int32 num_data){
