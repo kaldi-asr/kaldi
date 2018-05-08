@@ -211,9 +211,13 @@ int main(int argc, char *argv[]) {
     FasterArpaLmDeterministicFst old_lm_dfst(old_lm);
     ApplyProbabilityScale(-1.0, old_lm_dfst); // Negate old LM probs...
     */
+    int lm_num=(end_lm-start_lm+1)/2;
     std::vector<FasterArpaLm> lm_vec;
     std::vector<FasterArpaLmDeterministicFst> dlm_vec;
     std::vector<fst::ComposeDeterministicOnDemandFst<StdArc>> clm_vec;
+    lm_vec.reserve(lm_num);
+    dlm_vec.reserve(lm_num);
+    clm_vec.reserve(lm_num-1);
     for ( int i = start_lm; i < end_lm; i+=2 ) {
       std::string s_lm = po.GetArg(i);
       float w =  atof(po.GetArg(i+1).c_str());
@@ -221,7 +225,7 @@ int main(int argc, char *argv[]) {
       dlm_vec.emplace_back(lm_vec.back());
       if (i == start_lm) continue;
       else if (i == start_lm+2) {
-        clm_vec.emplace_back(&dlm_vec.at(dlm_vec.size()-2),&dlm_vec.back());
+        clm_vec.emplace_back(&dlm_vec.front(),&dlm_vec.back());
       } else {
         clm_vec.emplace_back(&clm_vec.back(),&dlm_vec.back());
       }
