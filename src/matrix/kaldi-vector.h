@@ -72,14 +72,14 @@ class VectorBase {
   inline const Real* Data() const { return data_; }
 
   /// Indexing  operator (const).
-  inline Real operator() (MatrixIndexT i) const {
+  KALDI_FORCE_INLINE Real operator() (MatrixIndexT i) const {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(dim_));
     return *(data_ + i);
   }
 
   /// Indexing operator (non-const).
-  inline Real & operator() (MatrixIndexT i) {
+  KALDI_FORCE_INLINE Real & operator() (MatrixIndexT i) {
     KALDI_PARANOID_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(dim_));
     return *(data_ + i);
