@@ -47,7 +47,7 @@ class OnlineDecodableDiagGmmScaled : public DecodableInterface {
   
   /// Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
-  Vector<BaseFloat> cur_feats() { return cur_feats_;} 
+  const Vector<BaseFloat>& cur_feats() { return cur_feats_;} 
 
  private:
   void CacheFrame(int32 frame);
