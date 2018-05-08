@@ -10,7 +10,7 @@
 
 #check existing directories
 if [ $# != 3 ]; then
-  echo "Usage: icsi_sdm_data_prep_edin.sh /path/to/AMI"
+  echo "Usage: icsi_sdm_data_prep_edin.sh /path/to/ICSI"
   exit 1; 
 fi 
 
@@ -37,7 +37,7 @@ fi
 cut -d" " -f1,$(($MICNUM+1)) $channels | awk '{print $1".*"$2}' > $dir/channels_regex
 
 # list all wav file you can
-find $CORPUS_DIR -iname "*.wav" | sort > $dir/wav.flist.all
+find $CORPUS_DIR -iname "*.sph" | sort > $dir/wav.flist.all
 # and keep only these we want
 grep -f $dir/channels_regex $dir/wav.flist.all > $dir/wav.flist
 
@@ -50,10 +50,6 @@ echo "In total, $n files were found."
 awk '{meeting=$1; channel="SDM"; speaker=$3; stime=$4; etime=$5;
  printf("ICSI_%s_%s_%s_%07.0f_%07.0f", meeting, channel, speaker, int(100*stime+0.5), int(100*etime+0.5));
  for(i=6;i<=NF;i++) printf(" %s", $i); printf "\n"}' $SEGS | sort  > $dir/text
-
-# **NOTE: swbd1_map_words.pl has been modified to make the pattern matches 
-# case insensitive
-#local/swbd1_map_words.pl -f 2- $dir/transcripts2.txt > $dir/text  # final transcripts
 
 # (1c) Make segment files from transcript
 #segments file format is: utt-id side-id start-time end-time, e.g.:
@@ -72,12 +68,6 @@ awk '{
 cat $dir/wav.flist | \
  perl -ne 'split; $_ =~ m/.*\/(B.*)\/.*\.wav/; print "ICSI_$1_SDM\n"' | \
   paste - $dir/wav.flist > $dir/wav.scp
-
-# this file reco2file_and_channel maps recording-id (e.g. sw02001-A)
-# to the file name sw02001 and the A, e.g.
-# sw02001-A  sw02001 A
-# In this case it's trivial, but in other corpora the information might
-# be less obvious.  Later it will be needed for ctm scoring.
 
 awk '{print $1 $2}' $dir/wav.scp | \
   perl -ane '$_ =~ m:^(\S+SDM).*\/(chan.*)\.wav$: || die "bad label $_"; 

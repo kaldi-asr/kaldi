@@ -18,7 +18,7 @@ trans=$1
 dict=$2
 odir=$3
 
-wdir=data/local/meetings/$odir
+wdir=$odir
 mkdir -p $wdir
 
 #make words lists
@@ -82,6 +82,5 @@ cp $trans $wdir/segments0
 
 local/icsi_agree_words_replace.pl $wdir/words_to_replace $wdir/segments0 $wdir/segments1
 local/icsi_agree_words_split.pl $wdir/words_to_split $wdir/segments1 $wdir/segments2
-
 
 

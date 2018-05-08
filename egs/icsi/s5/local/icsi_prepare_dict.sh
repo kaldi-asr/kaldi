@@ -32,10 +32,6 @@ done | cat - $dir/lexicon1_raw_nosil.txt > $dir/lexicon2_raw.txt || exit 1;
 ( echo "MM M"; \
   echo "HMM HH M"; \
   echo "MM-HMM M HH M"; \
-  echo "COLOUR  K AH L ER"; \
-  echo "COLOURS  K AH L ER Z"; \
-  echo "REMOTES  R IH M OW T Z"; \
-  echo "FAVOURITE F EY V ER IH T"; \
   echo "<unk> oov" ) | cat - $dir/lexicon2_raw.txt \
      | sort -u > $dir/lexicon3_extra.txt
 
@@ -44,22 +40,24 @@ rm $dir/lexiconp.txt 2>/dev/null; # can confuse later script if this exists.
 
 [ ! -f $dir/lexicon.txt ] && exit 1;
 
-# This is just for diagnostics:
-cat data/ihm/train/text  | \
-  awk '{for (n=2;n<=NF;n++){ count[$n]++; } } END { for(n in count) { print count[n], n; }}' | \
-  sort -nr > $dir/word_counts
+[ -f data/ihm/train/text ] && {
+  # This is just for diagnostics:
+  cat data/ihm/train/text  | \
+    awk '{for (n=2;n<=NF;n++){ count[$n]++; } } END { for(n in count) { print count[n], n; }}' | \
+    sort -nr > $dir/word_counts
 
-awk '{print $1}' $dir/lexicon.txt | \
-  perl -e '($word_counts)=@ARGV;
-   open(W, "<$word_counts")||die "opening word-counts $word_counts";
-   while(<STDIN>) { chop; $seen{$_}=1; }
-   while(<W>) {
-     ($c,$w) = split;
-     if (!defined $seen{$w}) { print; }
-   } ' $dir/word_counts > $dir/oov_counts.txt
+  awk '{print $1}' $dir/lexicon.txt | \
+    perl -e '($word_counts)=@ARGV;
+    open(W, "<$word_counts")||die "opening word-counts $word_counts";
+     while(<STDIN>) { chop; $seen{$_}=1; }
+     while(<W>) {
+      ($c,$w) = split;
+      if (!defined $seen{$w}) { print; }
+     } ' $dir/word_counts > $dir/oov_counts.txt
 
-echo "*Highest-count OOVs are:"
-head -n 20 $dir/oov_counts.txt
+  echo "*Highest-count OOVs are:"
+  head -n 20 $dir/oov_counts.txt
+}
 
 utils/validate_dict_dir.pl $dir
 

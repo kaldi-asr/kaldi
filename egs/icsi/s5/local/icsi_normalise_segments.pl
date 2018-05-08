@@ -7,13 +7,13 @@
 
 $field_begin=5;
 
-while (<>) {
+while (<>) {  
 
   chomp ($_);
   @A = split(" ", $_);
   if ($#A < $field_begin) { next; } #empty transcript
 
-  $text = join(" ", @A[$field_begin..$#A]); 
+  $text = join(" ", @A[$field_begin..$#A]);
   #make uppercase
   $text = uc $text;
   #remove censored captions
@@ -26,7 +26,7 @@ while (<>) {
   #change spelled words from X_M_L to X_M_L_, note the last sign, i.e. L may be the last one in line
   $text = "$text\n";
   $text =~ s/([A-Z][A-Z\_]*\_[A-Z\-])[\s\n]+/$1_ /g;
-  #and then renormalize to X. M. L., which fits RT09 dict
+  #and then renormalize to X. M. L.
   $text =~ s/\_/. /g;
   #there is couple of strange 1x, 2x...4x entries, I tried to listen to these, but cannot figure out what they mean - nullify them
   $text =~ s/\s*[1-4]X[\s\n]+//g;

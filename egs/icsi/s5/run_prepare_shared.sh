@@ -3,8 +3,8 @@
 . ./cmd.sh
 . ./path.sh
 
-ICSI_TRANS= #where to find ICSI transcriptions [required]
-FISHER_TRANS= #where to find FISHER transcriptions [optional, for LM esimation]
+ICSI_TRANS=/media/drive3/corpora/icsi_mr_transcr #where to find ICSI transcriptions [required]
+FISHER_TRANS=/media/drive3/corpora/LDC2004T19/fe_03_p1_tran #where to find FISHER transcriptions [optional, for LM esimation]
 
 # Path to Fisher transcripts LM interpolation (if not defined only AMI transcript LM is built),
 case $(hostname -d) in
@@ -36,11 +36,12 @@ fi
 # -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
 set -euxo pipefail
 
-#prepare annotationss
-local/icsi_text_prep.sh $ICSI_TRANS data/local/annotations
-
+#prepare dictionary and language resources
 local/icsi_prepare_dict.sh
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
+
+#prepare annotations, note: dict is assumed to exist when this is called
+local/icsi_text_prep.sh $ICSI_TRANS data/local/annotations
 
 local/icsi_train_lms.sh --fisher $FISHER_TRANS data/local/annotations/train.txt data/local/annotations/dev.txt data/local/dict/lexicon.txt data/local/lm
 

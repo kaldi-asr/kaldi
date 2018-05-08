@@ -74,10 +74,10 @@ gunzip -c $dir/train.gz | tr ' ' '\n' | grep -v ^$ | sort -u > $dir/wordlist.tra
 sort -u $dir/wordlist.lex $dir/wordlist.train > $dir/wordlist
 
 ngram-count -text $dir/train.gz -order $order -limit-vocab -vocab $dir/wordlist \
-  -unk -map-unk "<unk>" -kndiscount -interpolate -lm $dir/ami.o${order}g.kn.gz
+  -unk -map-unk "<unk>" -kndiscount -interpolate -lm $dir/icsi.o${order}g.kn.gz
 echo "PPL for ICSI LM:"
-ngram -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz
-ngram -unk -lm $dir/ami.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 >& $dir/ppl2
+ngram -unk -lm $dir/icsi.o${order}g.kn.gz -ppl $dir/dev.gz
+ngram -unk -lm $dir/icsi.o${order}g.kn.gz -ppl $dir/dev.gz -debug 2 >& $dir/ppl2
 mix_ppl="$dir/ppl2"
 mix_tag="icsi"
 mix_lms=( "$dir/icsi.o${order}g.kn.gz" )
@@ -153,7 +153,7 @@ if [ $num_lms -gt 1  ]; then
     | perl -e '$_=<>; s/.*\(//; s/\).*//; @A = split; for $i (@A) {print "$i\n";}' \
     > $dir/mix.weights
   weights=( `cat $dir/mix.weights` )
-  cmd="ngram -lm ${mix_lms[0]} -lambda 0.715759 -mix-lm ${mix_lms[1]}"
+  cmd="ngram -lm ${mix_lms[0]} -lambda ${weights[0]} -mix-lm ${mix_lms[1]}"
   for i in `seq 2 $((num_lms-1))`; do
     cmd="$cmd -mix-lm${i} ${mix_lms[$i]} -mix-lambda${i} ${weights[$i]}"
   done
