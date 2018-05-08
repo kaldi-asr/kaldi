@@ -61,11 +61,11 @@ if [ $stage -le 0 ]; then
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
 
-  head -5000 data/train/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  cat data/dev/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
 
   # use the training data as an additional data source.
   # we can later fold the dev data into this.
-  tail -n +5001 data/train/text | cut -d " " -f 2- >  ${dir}/data/text/madcat.txt
+  cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/madcat.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
