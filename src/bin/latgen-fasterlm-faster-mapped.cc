@@ -79,8 +79,9 @@ bool DecodeUtterance(LatticeBiglmFasterDecoder &decoder, // not const but is rea
     num_frames = alignment.size();
     if (words_writer->IsOpen())
       words_writer->Write(utt, words);
-    if (alignment_writer->IsOpen())
-      alignment_writer->Write(utt, alignment);
+    assert(!alignment_writer);
+    //if (alignment_writer->IsOpen())
+    //  alignment_writer->Write(utt, alignment);
     if (word_syms != NULL) {
       std::cerr << utt << ' ';
       for (size_t i = 0; i < words.size(); i++) {
@@ -184,20 +185,23 @@ int main(int argc, char *argv[]) {
     
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 6 || po.NumArgs() > 8) {
+    if (po.NumArgs() < 6 ) {
       po.PrintUsage();
       exit(1);
     }
-    
+   
+    int start_lm = 3;
+    int end_lm = po.NumArgs() - 3;
     std::string model_in_filename = po.GetArg(1),
         fst_in_str = po.GetArg(2),
-        old_lm_fst_rxfilename = po.GetArg(3),
-        new_lm_fst_rxfilename = po.GetArg(4),
-        feature_rspecifier = po.GetArg(5),
-        lattice_wspecifier = po.GetArg(6),
-        words_wspecifier = po.GetOptArg(7),
-        alignment_wspecifier = po.GetOptArg(8);
-    
+        feature_rspecifier = po.GetArg(po.NumArgs() - 2),
+        lattice_wspecifier = po.GetArg(po.NumArgs() - 1),
+        words_wspecifier = po.GetOptArg(po.NumArgs());
+ 
+    assert((end_lm - start_lm+1) % 2 == 0); // one lm one weight
+    //old_lm_fst_rxfilename = po.GetArg(3),
+    //new_lm_fst_rxfilename = po.GetArg(4),   
+
     TransitionModel trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
@@ -207,22 +211,23 @@ int main(int argc, char *argv[]) {
     FasterArpaLmDeterministicFst old_lm_dfst(old_lm);
     ApplyProbabilityScale(-1.0, old_lm_dfst); // Negate old LM probs...
     */
-#if 1
-    FasterArpaLm old_lm(arpa_options, old_lm_fst_rxfilename,  symbol_size, -1);
-    FasterArpaLmDeterministicFst old_lm_dfst(old_lm);
-#else
-    VectorFst<StdArc> *old_lm_fst = fst::CastOrConvertToVectorFst(
-        fst::ReadFstKaldiGeneric(old_lm_fst_rxfilename));
-    ApplyProbabilityScale(-1.0, old_lm_fst); // Negate old LM probs...
-    fst::BackoffDeterministicOnDemandFst<StdArc> old_lm_dfst(*old_lm_fst);
-#endif
-
-    FasterArpaLm new_lm(arpa_options, new_lm_fst_rxfilename, symbol_size);
-    FasterArpaLmDeterministicFst new_lm_dfst(new_lm);
-
-    fst::ComposeDeterministicOnDemandFst<StdArc> compose_dfst(&old_lm_dfst,
-                                                              &new_lm_dfst);
-    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&compose_dfst, 1e7);
+    std::vector<FasterArpaLm> lm_vec;
+    std::vector<FasterArpaLmDeterministicFst> dlm_vec;
+    std::vector<fst::ComposeDeterministicOnDemandFst<StdArc>> clm_vec;
+    for ( int i = start_lm; i < end_lm; i+=2 ) {
+      std::string s_lm = po.GetArg(i);
+      float w =  atof(po.GetArg(i+1).c_str());
+      lm_vec.emplace_back(arpa_options, s_lm, symbol_size, w);
+      dlm_vec.emplace_back(lm_vec.back());
+      if (i == start_lm) continue;
+      else if (i == start_lm+2) {
+        clm_vec.emplace_back(&dlm_vec.at(dlm_vec.size()-2),&dlm_vec.back());
+      } else {
+        clm_vec.emplace_back(&clm_vec.back(),&dlm_vec.back());
+      }
+    }
+    // multiple compose
+    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&clm_vec.back(), 1e7);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
@@ -234,7 +239,7 @@ int main(int argc, char *argv[]) {
 
     Int32VectorWriter words_writer(words_wspecifier);
 
-    Int32VectorWriter alignment_writer(alignment_wspecifier);
+    //Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") 
@@ -271,7 +276,7 @@ int main(int argc, char *argv[]) {
           double like;
           if (DecodeUtterance(decoder, decodable, trans_model, word_syms,
                               utt, acoustic_scale, determinize, allow_partial,
-                              &alignment_writer, &words_writer,
+                              NULL, &words_writer,
                               &compact_lattice_writer, &lattice_writer,
                               &like)) {
             tot_like += like;
