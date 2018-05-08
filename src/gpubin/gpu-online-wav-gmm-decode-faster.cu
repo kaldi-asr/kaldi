@@ -27,7 +27,7 @@
 #include "online/onlinebin-util.h"
 
 int ceildiv(int x, int y) { return (x-1)/y+1; }
-#define BLOCK_SIZE 192
+#define BLOCK_SIZE 512
 #define BEAM_SIZE 10
 #define BATCH_SIZE 27
 
@@ -35,6 +35,10 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define EPS_SYM 0
 
 using namespace gpufst;
+
+int frame_;
+int utt_frames_;
+
 
 struct PointerComparison
 {
@@ -51,20 +55,22 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs,
         state_t initial_state,
         prob_ptr_t *viterbi)
 {
-    int id = blockIdx.x*blockDim.x+threadIdx.x;
-    int offset = start_offset+id;
+  int id = blockIdx.x*blockDim.x+threadIdx.x;
+  int offset = start_offset+id;
 
-    __shared__ int from_shared_states[BLOCK_SIZE];
-    __shared__ int to_shared_states[BLOCK_SIZE];
-    __shared__ float shared_probs[BLOCK_SIZE];
+  __shared__ int from_shared_states[BLOCK_SIZE];
+  __shared__ int to_shared_states[BLOCK_SIZE];
+  __shared__ float shared_probs[BLOCK_SIZE];
+  __shared__ sym_t shared_inputs[BLOCK_SIZE];
 
-    from_shared_states[threadIdx.x] = from_states[offset];
-    to_shared_states[threadIdx.x] = to_states[offset];
-    shared_probs[threadIdx.x] = probs[offset];
+  from_shared_states[threadIdx.x] = from_states[offset];
+  to_shared_states[threadIdx.x] = to_states[offset];
+  shared_probs[threadIdx.x] = probs[offset];
+  shared_inputs[threadIdx.x] = inputs[offset];
 
-    if (offset < end_offset && from_shared_states[threadIdx.x] == initial_state) {
-      atomicMax(&viterbi[to_shared_states[threadIdx.x]], pack(shared_probs[threadIdx.x], offset));
-    }
+  if (offset < end_offset && from_shared_states[threadIdx.x] == initial_state && shared_inputs[threadIdx.x] == EPS_SYM) {
+    atomicMax(&viterbi[to_shared_states[threadIdx.x]], pack(shared_probs[threadIdx.x], offset));
+  }
 }
 
 /* TODO:
@@ -72,7 +78,7 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs,
  *    Perhatiin LogLikelihood bakal assign sesuatu di CUDA, jangan sampe kegedean
  */
 __global__ void compute_transition(int *from_states, int *to_states, float *probs,
-          int start_offset, int end_offset,
+          int start_offset, int end_offset, int frame,
           prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   int offset = start_offset+id;
@@ -81,13 +87,14 @@ __global__ void compute_transition(int *from_states, int *to_states, float *prob
   __shared__ int to_shared_states[BLOCK_SIZE];
   __shared__ prob_ptr_t viterbi_from_shared_states[BLOCK_SIZE];
   __shared__ float shared_probs[BLOCK_SIZE];
+  
 
   from_shared_states[threadIdx.x] = from_states[offset];
   to_shared_states[threadIdx.x] = to_states[offset];
   shared_probs[threadIdx.x] = probs[offset];
   viterbi_from_shared_states[threadIdx.x] = viterbi_prev[from_shared_states[threadIdx.x]];
 
-  if (offset < end_offset) {
+  if (offset < end_offset && from_shared_states[threadIdx.x] != EPS_SYM) {
     // TODO : GANTI assignment pp dibawah ini
     prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) + shared_probs[threadIdx.x], offset);
     atomicMax(&viterbi[/*to_register_state*/to_shared_states[threadIdx.x]], pp);
@@ -107,13 +114,13 @@ __global__ void compute_final(int *final_states, float *final_probs,
 
 __global__ void get_path(int *from_nodes,
             prob_ptr_t *viterbi,
-            int input_length, int num_nodes,
+            int batch_length, int num_nodes,
             prob_ptr_t *path) {
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   if (id == 0) {
-    int state = unpack_ptr(path[input_length]);
-    for (int t = input_length-1; t >= 0; t--) {
-      prob_ptr_t pp = viterbi[t*num_nodes+state];
+    int state = unpack_ptr(path[batch_length]);
+    for (int t = batch_length - 1; t >= 0; t--) {
+      prob_ptr_t pp = viterbi[t * num_nodes+state];
       path[t] = pp;
       state = from_nodes[unpack_ptr(pp)];
     }
@@ -124,89 +131,96 @@ __global__ void get_path(int *from_nodes,
  * 1. Ganti Input Symbols jadi decodablenya
  * 2. Ganti Resizenya jadi Batch Size
  * 3. Konsep Beam Search disini beda, disini prune banyak state (sama dengan --max-active-state), di kaldi max prob
- * 4. Input Offsets kayaknya gaperlu, semuanya dipake sekarang soalnya
- * 5. set_states_in_beam (diliat diatas)
- * 6. Kasih offset frame di fungsi utama
- * 7. Compute Final ga harus dari final state. kalo misalnya dia ga nyampe final state maka cari yang terbaik.
- * 8. Ganti yang dapet output symbol dari input symbol. SIZE ga harus sama.
- * 9. Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
+ * 4. (DONE) Input Offsets kayaknya gaperlu, semuanya dipake sekarang soalnya
+ * 5. Kasih offset frame di fungsi utama
+ * 6. Compute Final ga harus dari final stat e. kalo misalnya dia ga nyampe final state maka cari yang terbaik.
+ * 7. (DONE) Ganti yang dapet output symbol dari input symbol. SIZE ga harus sama.
+ * 8.  Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
-prob_t viterbi(gpu_fst &m, GPUOnlineDecodableDiagGmmScaled& gpu_decodable, vector<sym_t> &output_symbols) {
-    int verbose=0;
+prob_t viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, vector<sym_t> &output_symbols) {
+  int verbose=0;
 
-    static thrust::device_vector<prob_ptr_t> viterbi;
-    viterbi.resize(input_symbols.size() * m.num_states); // TODO : instead of input symbols, kasih batch_size
-    prob_ptr_t init_value = pack(-FLT_MAX, 0);
-    thrust::fill(viterbi.begin(), viterbi.end(), init_value);
+  int batch_frame = 0;
 
-    thrust::device_vector<prob_ptr_t> path(input_symbols.size()+1);
+  static thrust::device_vector<prob_ptr_t> viterbi;
+  viterbi.resize((BATCH_SIZE + 1) * m.num_states); // TODO : instead of input symbols, kasih batch_size
+  prob_ptr_t init_value = pack(-FLT_MAX, 0);
+  thrust::fill(viterbi.begin(), viterbi.end(), init_value);
 
-    compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
-      m.from_states.data().get(),
+  thrust::device_vector<prob_ptr_t> path(BATCH_SIZE + 1);
+  int start_offset = 0; 
+  int end_offset = m.input_offsets.back();
+
+  compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
+    m.from_states.data().get(),
+    m.to_states.data().get(),
+    m.probs.data().get(),
+    start_offset, end_offset,
+    m.initial,
+    viterbi.data().get()
+  );
+
+  if (verbose) {
+    for (auto pp: viterbi)
+      std::cout << unpack_prob(pp) << " ";
+    std::cout << std::endl;
+  }
+
+  for (; !decodable->IsLastFrame(frame_ - 1) && batch_frame < BATCH_SIZE;
+     ++frame_, ++utt_frames_, ++batch_frame) {
+
+    // DO SOMETHING HERE : update cur_feats
+    gpu_decodable.cur_feats_ = GPUVector<BaseFloat>(decodable->cur_feats());
+
+    compute_transition <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
+      m.from_states.data().get(), 
       m.to_states.data().get(),
       m.probs.data().get(),
-      start_offset, end_offset,
-      m.initial,
-      viterbi.data().get()
-    );
-
+      start_offset, end_offset, 
+      frame_,
+      viterbi.data().get() + t*m.num_states,
+      viterbi.data().get() + (t+1)*m.num_states);
+    
     if (verbose) {
       for (auto pp: viterbi)
         std::cout << unpack_prob(pp) << " ";
       std::cout << std::endl;
     }
+  }
 
-    for (int t=1; t<input_symbols.size(); t++) {
+  // TODO : cari token yang terbaik terlebih dahulu instead of final token
+  compute_final <<<ceildiv(m.final_states.size(), 1024), 1024>>> (
+    m.final_states.data().get(),
+    m.final_probs.data().get(),
+    m.final_states.size(),
+    viterbi.data().get() + batch_frame * m.num_states,
+    (&path.back()).get());
 
-      compute_transition <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
-        m.from_states.data().get(), 
-        m.to_states.data().get(),
-        m.probs.data().get(),
-        start_offset, end_offset,
-        viterbi.data().get() + (t-1)*m.num_states,
-        viterbi.data().get() + t*m.num_states);
-      
-      if (verbose) {
-        for (auto pp: viterbi)
-          std::cout << unpack_prob(pp) << " ";
-        std::cout << std::endl;
-      }
+  get_path <<<1,1>>> (
+    m.from_states.data().get(),
+    viterbi.data().get(), 
+    batch_frame + 1, m.num_states,
+    path.data().get()
+  );
+
+  cudaError_t e = cudaGetLastError();                                 
+  if (e != cudaSuccess) {                                              
+    std::cerr << "CUDA failure: " << cudaGetErrorString(e) << std::endl;
+    exit(1);
+  }
+
+  thrust::host_vector<prob_ptr_t> h_path(path);
+  output_symbols.clear();
+
+  // TODO : ini ga harus dapet dari sini, pasti lebih dikit soalnya (jumlah kata << jumlah fonem)
+  for (int t=0; t < batch_frame; t++) {
+    int sym = m.outputs[unpack_ptr(h_path[t])];
+    if(sym != EPS_SYM){
+      output_symbols.push_back(t);
     }
+  }
 
-    // TODO : cari token yang terbaik terlebih dahulu instead of final token
-    compute_final <<<ceildiv(m.final_states.size(), 1024), 1024>>> (
-      m.final_states.data().get(),
-      m.final_probs.data().get(),
-      m.final_states.size(),
-      viterbi.data().get() + (input_symbols.size()-1)*m.num_states,
-      (&path.back()).get());
-
-    get_path <<<1,1>>> (
-      m.from_states.data().get(),
-      viterbi.data().get(),
-      input_symbols.size(), m.num_states,
-      path.data().get()
-    );
-
-    cudaError_t e = cudaGetLastError();                                 
-    if (e != cudaSuccess) {                                              
-      std::cerr << "CUDA failure: " << cudaGetErrorString(e) << std::endl;
-      exit(1);
-    }
-
-    thrust::host_vector<prob_ptr_t> h_path(path);
-    output_symbols.clear();
-
-
-    // TODO : ini ga harus dapet dari sini, pasti lebih dikit soalnya (jumlah kata << jumlah fonem)
-    for (int t=0; t<input_symbols.size(); t++) {
-      int sym = m.outputs[unpack_ptr(h_path[t])];
-      if(sym != EPS_SYM){
-        output_symbols.push_back(t);
-      }
-    }
-
-    return unpack_prob(h_path.back());
+  return unpack_prob(h_path.back());
 }
 
 int main(int argc, char *argv[]) {
@@ -377,12 +391,12 @@ int main(int argc, char *argv[]) {
       // TODO : Buat Loop Decodenya
       
       auto read_start = std::chrono::steady_clock::now();
+      frame_ = 0;
       while(1){
         std::vector<sym_t> output_symbols;
 
-        prob_t final_prob = viterbi(m, gpu_decodable, output_symbols);
-        std::cout << onr.join(output_symbols);
-        
+        prob_t final_prob = viterbi(m, &decodable, &gpu_decodable, output_symbols);
+        std::cout << onr.join(output_symbols) << " "; 
         // IF END BREAK;
       }
       std::cout << std::endl;

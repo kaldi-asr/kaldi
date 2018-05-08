@@ -19,7 +19,7 @@ struct gpu_fst {
   state_t initial;
   std::vector<int> input_offsets;
   thrust::device_vector<state_t> from_states, to_states;
-  std::vector<sym_t> outputs;
+  std::vector<sym_t> inputs, outputs;
   thrust::device_vector<prob_t> probs;
   thrust::device_vector<exponent> probs_e;
   thrust::device_vector<mantissa> probs_m;
@@ -37,6 +37,7 @@ struct gpu_fst {
     input_offsets(m.num_inputs+1),
     from_states(m.transitions.size()),
     to_states(m.transitions.size()),
+    inputs(m.transitions.size()),
     outputs(m.transitions.size()),
     probs(m.transitions.size()),
     final_states(m.finals.size()),
@@ -59,10 +60,11 @@ struct gpu_fst {
         f_last++;
         input_offsets[f_last] = i;
       }
+      inputs[i] = f;
       outputs[i] = e;
     }
     input_offsets.back() = m.transitions.size();
-    if (verbose) std::cerr << "done.\ncopying to device...";
+    if (verbose) std::cerr << "done.\ncopying to device..." << std::endl;
     unzip_to_device<0>(m.transitions, from_states);
     unzip_to_device<1>(m.transitions, to_states);
     //unzip_to_device<3>(m.transitions, outputs);
@@ -81,6 +83,7 @@ struct gpu_fst {
     input_offsets(m.num_inputs+1),
     from_states(m.transition_f.size()),
     to_states(m.transition_f.size()),
+    inputs(m.transition_f.size()),
     outputs(m.transition_f.size()),
     probs(m.transition_f.size()),
     probs_e(m.transition_f.size()),
@@ -107,6 +110,7 @@ struct gpu_fst {
         f_last++;
         input_offsets[f_last] = i;
       }
+      inputs[i] = f;
       outputs[i] = e;
     }
     input_offsets.back() = m.transition_f.size();
