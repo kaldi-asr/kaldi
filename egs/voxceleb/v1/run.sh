@@ -1,14 +1,14 @@
 #!/bin/bash
-# Copyright      2017   David Snyder
-#                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
-#                2017   Johns Hopkins University (Author: Daniel Povey)
-#                2018   Ewald Enzinger
+# Copyright   2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#             2017   Johns Hopkins University (Author: Daniel Povey)
+#        2017-2018   David Snyder
+#             2018   Ewald Enzinger
 # Apache 2.0.
 #
 # Adapted from SRE16 v1 recipe (commit 3ea534070fd2cccd2e4ee21772132230033022ce)
 #
 # See ../README.txt for more info on data required.
-# Results (mostly EERs) are inline in comments below.
+# Results (mostly equal error-rates) are inline in comments below.
 
 . ./cmd.sh
 . ./path.sh
@@ -20,9 +20,7 @@ voxceleb1_trials=data/voxceleb1_test/trials
 voxceleb1_root=/export/corpora/VoxCeleb1
 voxceleb2_root=/export/corpora/VoxCeleb2
 
-stage=3
-
-#. utils/parse_options.sh
+stage=0
 
 if [ $stage -le 0 ]; then
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
@@ -63,7 +61,6 @@ fi
 if [ $stage -le 3 ]; then
   # Train the i-vector extractor.
   sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 20G" \
-    --stage 0 \
     --ivector-dim 400 --num-iters 5 \
     exp/full_ubm/final.ubm data/train \
     exp/extractor
@@ -111,5 +108,5 @@ fi
 if [ $stage -le 7 ]; then
   eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_voxceleb1_test) 2> /dev/null`
   echo "EER: ${eer}%"
-  # EER: 5.748%
+  # EER: 5.53%
 fi
