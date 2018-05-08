@@ -10,8 +10,7 @@ SUBDIRS = base matrix util feat tree gmm transform \
           gpucommons gpufst gpu \
           bin fstbin gmmbin fgmmbin featbin \
           nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 rnnlm chain nnet3bin nnet2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin \
-          gpubin
+          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin
 
 MEMTESTDIRS = base matrix util feat tree gmm transform \
           fstext hmm lm decoder lat nnet kws chain \
@@ -26,7 +25,7 @@ SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 KALDI_SONAME ?= libkaldi.so
 
 # Optional subdirectories
-EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
+EXT_SUBDIRS = online onlinebin gpubin # python-kaldi-decoding
 EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
 
 include kaldi.mk
@@ -183,5 +182,5 @@ online: decoder gmm transform feat matrix util base lat hmm tree
 online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudamatrix nnet2 nnet3 chain
 kws: base util hmm tree matrix lat
 gpucommons: base util hmm tree matrix lat
-gpu: base gmm hmm online gpucommons 
+gpu: base gmm hmm gpucommons 
 gpubin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online gpu gpucommons gpufst
