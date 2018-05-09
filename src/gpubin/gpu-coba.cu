@@ -26,6 +26,11 @@
 #include "online/online-faster-decoder.h"
 #include "online/onlinebin-util.h"
 
+#define CUDA_WARN(XXX) \
+    do { if (XXX != cudaSuccess) std::cerr << "CUDA Error: " << \
+        cudaGetErrorString(XXX) << ", at line " << __LINE__ \
+        << std::endl; cudaDeviceSynchronize(); } while (0)
+
 int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BLOCK_SIZE 512
 #define BEAM_SIZE 10
@@ -192,15 +197,10 @@ int main(int argc, char *argv[]) {
       
       // Copy AmDiagGmm ke GPUAmDiagGmm
       GPUAmDiagGmm gpu_am_gmm;
-      for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
-        GPUDiagGmm *gpu_gmm_h = new GPUDiagGmm(am_gmm.GetPdf(i));
-        GPUDiagGmm *gpu_gmm_d;
-        cudaMalloc((void **) &gpu_gmm_d, sizeof(GPUDiagGmm));
-        cudaMemcpy(gpu_gmm_d, gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
-        cobaGPUDiagGmm(gpu_gmm_h);
-        cobaGPUDiagGmm(gpu_gmm_d);
-        gpu_am_gmm.AddPdf(*gpu_gmm_h);
-      }
+      // for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
+      //   GPUDiagGmm *gpu_gmm_h = new GPUDiagGmm(am_gmm.GetPdf(i));
+      //   gpu_am_gmm.AddPdf(*gpu_gmm_h);
+      // }
       
       // Copy TransitionModel ke GPUTransitionModel
       GPUTransitionModel gpu_trans_model(trans_model);
@@ -211,6 +211,7 @@ int main(int argc, char *argv[]) {
       delete feat_transform;
     }
 
+    std::cerr << "SAMPE DI AKHIR BANGET" << std::endl;
 
     return 0;
   } catch(const std::exception& e) { 
