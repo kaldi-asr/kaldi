@@ -54,6 +54,10 @@ void cobaGPUDiagGmm(GPUDiagGmm *G){
 //  }
 }
 
+__global__ AddPdfToGPUAmGmm(GPUAmDiagGmm* gpu_am_gmm, int pdf_idx, GPUDiagGmm *gpu_gmm){
+  gpu_am_gmm.densities[pdf_idx] = gpu_gmm;
+}
+
 __global__ void tesAkhir(GPUOnlineDecodableDiagGmmScaled* gpu_decodable){
   printf("TES AKHIR\n");
   printf("Fase 1 : GPUAmDiagGmm\n");
@@ -220,11 +224,17 @@ int main(int argc, char *argv[]) {
       // Copy AmDiagGmm ke GPUAmDiagGmm
       GPUAmDiagGmm gpu_am_gmm_h;
       GPUAmDiagGmm *gpu_am_gmm_d;
+      gpu_am_gmm_h.densities_.resize(am_gmm.NumPdfs());
+      gpu_am_gmm_h.densities = gpu_am_gmm_h.densities_.data().get();
+
+      cudaMalloc((void**) &gpu_am_gmm_d, sizeof(GPUAmDiagGmm));
+      cudaMemcpy(gpu_am_gmm_d, &gpu_am_gmm_h, sizeof(GPUAmDiagGmm), cudaMemcpyHostToDevice);
+
       for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
         GPUDiagGmm gpu_gmm_h(am_gmm.GetPdf(i));
         if(i == 0){
           const Vector<BaseFloat>& gconstsh = am_gmm.GetPdf(i).gconsts();
-	  const BaseFloat* gconstsh_data = gconstsh.Data();
+          const BaseFloat* gconstsh_data = gconstsh.Data();
           for(int j = 0;j < gconstsh.Dim(); ++j){
             printf("HOST gconstsh[%d] : %.10f\n", j, gconstsh_data[j]);
           }
@@ -233,11 +243,8 @@ int main(int argc, char *argv[]) {
         GPUDiagGmm *gpu_gmm_d;
         cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
         cudaMemcpy(gpu_gmm_d, &gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
-        gpu_am_gmm_h.AddPdf(gpu_gmm_d);
+        AddPdfToGPUAmGmm<<<1,1>>>(gpu_am_gmm_d, i, gpu_gmm_d);
       }
-      cudaMalloc((void**) &gpu_am_gmm_d, sizeof(GPUAmDiagGmm));
-      cudaMemcpy(gpu_am_gmm_d, &gpu_am_gmm_h, sizeof(GPUAmDiagGmm), cudaMemcpyHostToDevice);
-
       // Copy TransitionModel ke GPUTransitionModel
       GPUTransitionModel gpu_trans_model_h(trans_model);
       GPUTransitionModel *gpu_trans_model_d;
@@ -253,10 +260,11 @@ int main(int argc, char *argv[]) {
       tesAkhir<<<1,1>>>(gpu_decodable_d);
       cudaFree(gpu_decodable_d);
       cudaFree(gpu_trans_model_d);
-      cudaFree(gpu_am_gmm_d);
       for(size_t i = 0;i < am_gmm.NumPdfs(); ++i){
-        cudaFree(gpu_am_gmm_h.densities_[i]);
+        cudaFree(gpu_am_gmm_d.densities_[i]);
       }
+      cudaFree(gpu_am_gmm_d);
+      
       delete feat_transform;
     }
 
