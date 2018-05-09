@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM nvidia/cuda:9.1-devel-ubuntu16.04
 
 MAINTAINER sih4sing5hong5
 
