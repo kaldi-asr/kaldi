@@ -254,6 +254,25 @@ static void UnitTestAddVecToColsSpeed() {
   CsvResult<Real>(__func__, sizes.size(), t.Elapsed(), "seconds");
 }
 
+template<typename Real>
+static void UnitTestVectorCallOperator() {
+  std::vector<MatrixIndexT> sizes;
+  for(int32 size = 1024, i = 0; i < 4; i++) {
+    sizes.push_back(size);
+    size *= 2;
+  }
+  for(MatrixIndexT size : sizes) {
+    Vector<Real> a(size);
+    Vector<Real> b(size);
+    b.SetZero();
+    Timer t;
+    for(size_t i = 0; i < size; i++) {
+      a(i) = b(i);
+    }
+    CsvResult<Real>("VectorBase::operator()", size, t.Elapsed(), "seconds");
+  }
+}
+
 template<typename Real> static void MatrixUnitSpeedTest() {
   UnitTestRealFftSpeed<Real>();
   UnitTestSplitRadixRealFftSpeed<Real>();
@@ -263,6 +282,7 @@ template<typename Real> static void MatrixUnitSpeedTest() {
   UnitTestAddColSumMatSpeed<Real>();
   UnitTestAddVecToRowsSpeed<Real>();
   UnitTestAddVecToColsSpeed<Real>();
+  UnitTestVectorCallOperator<Real>();
 }
 
 } // namespace kaldi

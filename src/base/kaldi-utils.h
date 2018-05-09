@@ -60,6 +60,15 @@
 #  define KALDI_MEMALIGN_FREE(x) free(x)
 #endif
 
+#ifdef _MSC_VER
+#  define KALDI_FORCE_INLINE __forceinline
+#elif defined(__GNUC__)
+#  define KALDI_FORCE_INLINE __attribute__((always_inline)) inline
+#else
+#  define KALDI_FORCE_INLINE inline
+#endif
+
+
 #ifdef __ICC
 #pragma warning(disable: 383)  // ICPC remark we don't want.
 #pragma warning(disable: 810)  // ICPC remark we don't want.
