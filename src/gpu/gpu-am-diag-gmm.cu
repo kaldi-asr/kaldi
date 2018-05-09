@@ -18,7 +18,7 @@ void GPUAmDiagGmm::AddPdf(GPUDiagGmm *gpugmm){
   // if (densities_.size() != 0)  // not the first gmm
   //   KALDI_ASSERT(gpugmm.Dim() == this->Dim());
   densities_.push_back(gpugmm);
-  densities = densities.data().get();
+  densities = densities_.data().get();
 }
 
 __device__ BaseFloat GPUAmDiagGmm::LogLikelihood(const int32 pdf_index, BaseFloat* data, int32 num_data) const {

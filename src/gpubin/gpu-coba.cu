@@ -223,9 +223,11 @@ int main(int argc, char *argv[]) {
       GPUTransitionModel *gpu_trans_model_d;
       cudaMalloc((void**) &gpu_trans_model_d, sizeof(GPUTransitionModel));
       cudaMemcpy(gpu_trans_model_d, &gpu_trans_model_h, sizeof(GPUTransitionModel), cudaMemcpyHostToDevice); 
+
       // Create GPUOnlineDecodableDiagGmmScaled
-      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm, gpu_trans_model, acoustic_scale);
+      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm_d, gpu_trans_model_d, acoustic_scale);
       GPUOnlineDecodableDiagGmmScaled* gpu_decodable_d;
+
       cudaMalloc((void**) &gpu_decodable_d, sizeof(GPUOnlineDecodableDiagGmmScaled));
       cudaMemcpy(gpu_decodable_d, &gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
 
