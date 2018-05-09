@@ -466,7 +466,6 @@ int main(int argc, char *argv[]) {
       GPUAmDiagGmm gpu_am_gmm;
       for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
         GPUDiagGmm *gpu_gmm = new GPUDiagGmm(am_gmm.GetPdf(i));
-        cudaMalloc(
         gpu_am_gmm.AddPdf(*gpu_gmm);
       }
       

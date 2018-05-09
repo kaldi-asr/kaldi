@@ -19,9 +19,8 @@ struct GPUAmDiagGmm{
   GPUDiagGmm** densities;
 
   GPUAmDiagGmm();
-  ~GPUAmDiagGmm();
 
-  void AddPdf(GPUDiagGmm &gpugmm);
+  void AddPdf(GPUDiagGmm *gpugmm);
   __device__ BaseFloat LogLikelihood(const int32 pdf_index, BaseFloat* data, int32 num_data) const;
 };
 

@@ -206,35 +206,37 @@ int main(int argc, char *argv[]) {
                                              &feature_matrix);
       
       // Copy AmDiagGmm ke GPUAmDiagGmm
-      GPUAmDiagGmm gpu_am_gmm;
+      GPUAmDiagGmm gpu_am_gmm_h;
+      GPUAmDiagGmm *gpu_am_gmm_d;
       for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
-        const DiagGmm& D = am_gmm.GetPdf(i);
-        const Vector<BaseFloat>& D_gconsts = D.gconsts();
-        const BaseFloat* D_data = D_gconsts.Data();
-        for(int j = 0;j < D_gconsts.Dim(); ++j){
-          fprintf(stderr, "HOST Data: D_gconsts[%d] : %.10f\n", j, D_data[j]);
-        }
         GPUDiagGmm gpu_gmm_h(am_gmm.GetPdf(i));
-        cobaGPUDiagGmm(&gpu_gmm_h);
-        std::cerr << "DEKLARASI" << std::endl;
         GPUDiagGmm *gpu_gmm_d;
-        std::cerr << "cudaMalloc" << std::endl;
         cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
-        std::cerr << "cudaMemcpy" << std::endl;
         cudaMemcpy(gpu_gmm_d, &gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
-        std::cerr << "Print Device" << std::endl;
-        cobaKernelGPUDiagGmm<<<1, 1>>>(gpu_gmm_d);
-        std::cerr << "cudaFree" << std::endl;
-        cudaFree(gpu_gmm_d);
-        //gpu_am_gmm.AddPdf(*gpu_gmm_h);
+        gpu_am_gmm_h.AddPdf(gpu_gmm_d);
       }
-      
-      // Copy TransitionModel ke GPUTransitionModel
-      GPUTransitionModel gpu_trans_model(trans_model);
-      
-      // Create GPUOnlineDecodableDiagGmmScaled
-      GPUOnlineDecodableDiagGmmScaled gpu_decodable(gpu_am_gmm, gpu_trans_model, acoustic_scale);
+      cudaMalloc((void**) &gpu_am_gmm_d, sizeof(GPUAmDiagGmm));
+      cudaMemcpy(gpu_am_gmm_d, &gpu_am_gmm_h, sizeof(GPUAmDiagGmm), cudaMemcpyHostToDevice);
 
+      // Copy TransitionModel ke GPUTransitionModel
+      GPUTransitionModel gpu_trans_model_h(trans_model);
+      GPUTransitionModel *gpu_trans_model_d;
+      cudaMalloc((void**) &gpu_trans_model_d, sizeof(GPUTransitionModel));
+      cudaMemcpy(gpu_trans_model_d, &gpu_trans_model_h, sizeof(GPUTransitionModel), cudaMemcpyHostToDevice); 
+      // Create GPUOnlineDecodableDiagGmmScaled
+      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm, gpu_trans_model, acoustic_scale);
+      GPUOnlineDecodableDiagGmmScaled* gpu_decodable_d;
+      cudaMalloc((void**) &gpu_decodable_d, sizeof(GPUOnlineDecodableDiagGmmScaled));
+      cudaMemcpy(gpu_decodable_d, &gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
+
+      // TODO : BARU MASUKIN VITERBINYA
+
+      cudaFree(gpu_decodable_d);
+      cudaFree(gpu_trans_model_d);
+      cudaFree(gpu_am_gmm_d);
+      for(size_t i = 0;i < am_gmm.NumPdfs(); ++i){
+        cudaFree(gpu_am_gmm_h.densities_[i]);
+      }
       delete feat_transform;
     }
 

@@ -19,8 +19,8 @@ struct GPUOnlineDecodableDiagGmmScaled {
 
   // nggak perlu masukin OnlineFeatureMatrixnya jadinya (parsial aja)
 
-  GPUAmDiagGmm ac_model_;
-  GPUTransitionModel transition_model_;
+  GPUAmDiagGmm* ac_model_;
+  GPUTransitionModel* transition_model_;
   BaseFloat ac_scale_;
   int32 feat_dim_;
 
@@ -30,8 +30,8 @@ struct GPUOnlineDecodableDiagGmmScaled {
 
   GPUOnlineDecodableDiagGmmScaled();
   GPUOnlineDecodableDiagGmmScaled(
-    const GPUAmDiagGmm& gpu_ac_model_,
-    const GPUTransitionModel& gpu_transition_model_,
+    GPUAmDiagGmm* gpu_ac_model_,
+    GPUTransitionModel* gpu_transition_model_,
     BaseFloat ac_scale_
   );
 

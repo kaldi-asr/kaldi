@@ -13,18 +13,12 @@ namespace kaldi{
 GPUAmDiagGmm::GPUAmDiagGmm() {
   densities = densities_.data().get();
 }
-GPUAmDiagGmm::~GPUAmDiagGmm() {
-  for(int i = 0;i < densities_.size(); ++i){
-    GPUDiagGmm* gpugmm = densities_[i];
-    delete gpugmm;
-  }
-  densities_.clear();
-}
 
-void GPUAmDiagGmm::AddPdf(GPUDiagGmm &gpugmm){
+void GPUAmDiagGmm::AddPdf(GPUDiagGmm *gpugmm){
   // if (densities_.size() != 0)  // not the first gmm
   //   KALDI_ASSERT(gpugmm.Dim() == this->Dim());
-  densities_.push_back(&gpugmm);
+  densities_.push_back(gpugmm);
+  densities = densities.data().get();
 }
 
 __device__ BaseFloat GPUAmDiagGmm::LogLikelihood(const int32 pdf_index, BaseFloat* data, int32 num_data) const {
