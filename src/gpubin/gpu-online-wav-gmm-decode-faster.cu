@@ -31,6 +31,8 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BEAM_SIZE 10
 #define BATCH_SIZE 27
 
+const int EPS_LAYER = 1;
+
 
 #define EPS_SYM 0
 
@@ -49,6 +51,61 @@ struct PointerComparison
         return prob_x > prob_y;
     }
 }; 
+
+// __device__ float LogLikelihood(int* id2pdf_id, 
+//   float* cur_feats, int num_cur_feats,
+//   int ac_scale, GPUDiagGmm **densities, 
+//   int frame, int index){
+
+//   int pdf_id = id2pdf_id[index];
+//   DiagGmm* density = densities[pdf_id];
+
+//   const double kGPUMinLogDiffDouble = log(DBL_EPSILON);
+//   const float kGPUMinLogDiffFloat = log(FLT_EPSILON);
+
+//   /* BEGIN LogLikelihoods */
+//   int32 num_loglikes = density->gconsts_.Dim();
+//   float* loglikes = new float[num_loglikes];
+//   for(int32 i = 0;i < num_loglikes; ++i) loglikes[i] = density->gconsts_.data[i];
+
+//   float* data_sq = new float[num_data];
+//   for(int32 i = 0;i < num_data; ++i) data_sq[i] = data[i] * data[i];
+
+//   for(int i = 0;i < density->gconsts_.Dim(); ++i){
+//     for(int j = 0;j < num_data; ++j){
+//       loglikes[i] += density->means_invvars_.data[density->means_invvars_.Index(i, j)] * data[j];
+//       loglikes[i] -= 0.5 * density->inv_vars_.data[density->inv_vars_.Index(i, j)] * data_sq[j];
+//     }
+//   }
+
+//   /* END LogLikelihoods */
+
+//   /* Begin Log Sum Exp */
+//   float max_elem = CUDART_MIN_DENORM_F;
+//   for(int32 i = 0;i < num_loglikes; ++i) {
+//     if(max_elem < loglikes[i]) max_elem = loglikes[i];
+//   }
+
+//   float cutoff;
+//   cutoff = max_elem + kGPUMinLogDiffFloat;
+//   double sum_relto_max_elem = 0.0;
+
+//   for (int32 i = 0; i < num_loglikes; i++) {
+//     BaseFloat f = loglikes[i];
+//     if (f >= cutoff)
+//       sum_relto_max_elem += exp(f - max_elem);
+//   }
+//   float log_sum = max_elem + log(sum_relto_max_elem);
+//   /* End Log Sum Exp */
+
+//   // if (isnan(log_sum) || isinf(log_sum))
+//   //   KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
+
+//   delete [] loglikes;
+//   delete [] data_sq;
+
+//   return log_sum * ac_scale;
+// }
 
 __global__ void compute_initial(int *from_states, int *to_states, float *probs,
         int start_offset, int end_offset,
@@ -73,13 +130,11 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs,
   }
 }
 
-/* TODO:
- * 1. Ganti assignment pp di if itu (tambahin LogLikelihood)
- *    Perhatiin LogLikelihood bakal assign sesuatu di CUDA, jangan sampe kegedean
- */
-__global__ void compute_transition(int *from_states, int *to_states, float *probs,
-          int start_offset, int end_offset, int frame,
-          prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
+
+__global__ void compute_emitting(int *from_states, int *to_states, float *probs,
+  int start_offset, int end_offset, int frame,
+  prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
+
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   int offset = start_offset+id;
 
@@ -87,7 +142,6 @@ __global__ void compute_transition(int *from_states, int *to_states, float *prob
   __shared__ int to_shared_states[BLOCK_SIZE];
   __shared__ prob_ptr_t viterbi_from_shared_states[BLOCK_SIZE];
   __shared__ float shared_probs[BLOCK_SIZE];
-  
 
   from_shared_states[threadIdx.x] = from_states[offset];
   to_shared_states[threadIdx.x] = to_states[offset];
@@ -95,10 +149,44 @@ __global__ void compute_transition(int *from_states, int *to_states, float *prob
   viterbi_from_shared_states[threadIdx.x] = viterbi_prev[from_shared_states[threadIdx.x]];
 
   if (offset < end_offset && from_shared_states[threadIdx.x] != EPS_SYM) {
-    // TODO : GANTI assignment pp dibawah ini
     prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) + shared_probs[threadIdx.x], offset);
     atomicMax(&viterbi[/*to_register_state*/to_shared_states[threadIdx.x]], pp);
   }
+
+}
+
+__global__ void compute_nonemitting(int *from_states, int *to_states, float *probs,
+  int start_offset, int end_offset, int frame,
+  prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi){
+
+   int id = blockIdx.x*blockDim.x+threadIdx.x;
+  int offset = start_offset+id;
+
+  __shared__ int from_shared_states[BLOCK_SIZE];
+  __shared__ int to_shared_states[BLOCK_SIZE];
+  __shared__ prob_ptr_t viterbi_from_shared_states[BLOCK_SIZE];
+  __shared__ float shared_probs[BLOCK_SIZE];
+
+  from_shared_states[threadIdx.x] = from_states[offset];
+  to_shared_states[threadIdx.x] = to_states[offset];
+  shared_probs[threadIdx.x] = probs[offset];
+  viterbi_from_shared_states[threadIdx.x] = viterbi_prev[from_shared_states[threadIdx.x]];
+
+  if (offset < end_offset && from_shared_states[threadIdx.x] == EPS_SYM) {
+    prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) + shared_probs[threadIdx.x], offset);
+    atomicMax(&viterbi[/*to_register_state*/to_shared_states[threadIdx.x]], pp);
+  }
+}
+
+
+/* TODO:
+ * 1. Ganti assignment pp di if itu (tambahin LogLikelihood)
+ *    Perhatiin LogLikelihood bakal assign sesuatu di CUDA, jangan sampe kegedean
+ */
+__global__ void compute_transition(int *from_states, int *to_states, float *probs,
+          int start_offset, int end_offset, int frame,
+          prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
+  
 }
 
 __global__ void compute_final(int *final_states, float *final_probs,
@@ -312,8 +400,7 @@ int main(int argc, char *argv[]) {
         am_gmm.Read(ki.Stream(), binary);
     }
 
-
-    gpu_fst m = read_fst_noNumberizer(fst_rspecifier) // harus berupa file text
+    gpu_fst m = read_fst_noNumberizer(fst_rspecifier); // harus berupa file text
     
     // We are not properly registering/exposing MFCC and frame extraction options,
     // because there are parts of the online decoding code, where some of these
@@ -379,17 +466,17 @@ int main(int argc, char *argv[]) {
       GPUAmDiagGmm gpu_am_gmm;
       for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
         GPUDiagGmm *gpu_gmm = new GPUDiagGmm(am_gmm.GetPdf(i));
+        cudaMalloc(
         gpu_am_gmm.AddPdf(*gpu_gmm);
       }
       
       // Copy TransitionModel ke GPUTransitionModel
-      GPUTransitionModel gpu_trans_model = GPUTransitionModel(trans_model);
+      GPUTransitionModel gpu_trans_model(trans_model);
       
       // Create GPUOnlineDecodableDiagGmmScaled
       GPUOnlineDecodableDiagGmmScaled gpu_decodable(gpu_am_gmm, gpu_trans_model, acoustic_scale);
-      
+
       // TODO : Buat Loop Decodenya
-      
       auto read_start = std::chrono::steady_clock::now();
       frame_ = 0;
       while(1){

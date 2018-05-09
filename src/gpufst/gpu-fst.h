@@ -19,7 +19,8 @@ struct gpu_fst {
   state_t initial;
   std::vector<int> input_offsets;
   thrust::device_vector<state_t> from_states, to_states;
-  std::vector<sym_t> inputs, outputs;
+  std::vector<sym_t> outputs;
+  thrust::device_vector<sym_t> inputs;
   thrust::device_vector<prob_t> probs;
   thrust::device_vector<exponent> probs_e;
   thrust::device_vector<mantissa> probs_m;

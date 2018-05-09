@@ -28,7 +28,7 @@ ifeq ($(UNAME), Darwin)
 endif
 
 
-BINFILES = gpu-online-wav-gmm-decode-faster
+BINFILES = gpu-coba gpu-online-wav-gmm-decode-faster
 
 OBJFILES =
 
@@ -36,7 +36,7 @@ OBJFILES =
 TESTFILES =
 
 
-ADDLIBS = ../gpu/kaldi-gpu.a ../gpu/kaldi-gpucommons ../online/kaldi-online.a ../decoder/kaldi-decoder.a \
+ADDLIBS = ../gpu/kaldi-gpu.a ../gpucommons/kaldi-gpucommons ../online/kaldi-online.a ../decoder/kaldi-decoder.a \
           ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../feat/kaldi-feat.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a \
