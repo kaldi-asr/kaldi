@@ -27,9 +27,9 @@ ifeq ($(UNAME), Darwin)
 endif
 
 
-BINFILES = gpu-online-wav-gmm-decode-faster
+BINFILES = gpu-coba
 
-OBJFILES = 
+OBJFILES =
 
 TESTFILES =
 

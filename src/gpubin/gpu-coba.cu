@@ -58,7 +58,7 @@ __global__ void tesAkhir(GPUOnlineDecodableDiagGmmScaled* gpu_decodable){
   printf("TES AKHIR\n");
   printf("Fase 1 : GPUAmDiagGmm\n");
   GPUAmDiagGmm* gpu_am_gmm = gpu_decodable->ac_model_;
-  float **densities = gpu_am_gmm->densities;
+  GPUDiagGmm **densities = gpu_am_gmm->densities;
   GPUDiagGmm* density = densities[0]; 
   cobaKernelGPUDiagGmm(density);
   printf("Fase 2 : GPUTransitionModel\n"); 
@@ -222,6 +222,14 @@ int main(int argc, char *argv[]) {
       GPUAmDiagGmm *gpu_am_gmm_d;
       for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
         GPUDiagGmm gpu_gmm_h(am_gmm.GetPdf(i));
+        if(i == 0){
+          const Vector<BaseFloat>& gconstsh = am_gmm.GetPdf(i).gconsts();
+	  const BaseFloat* gconstsh_data = gconstsh.Data();
+          for(int j = 0;j < gconstsh.Dim(); ++j){
+            printf("HOST gconstsh[%d] : %.10f\n", j, gconstsh_data[j]);
+          }
+        }
+
         GPUDiagGmm *gpu_gmm_d;
         cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
         cudaMemcpy(gpu_gmm_d, &gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
@@ -236,7 +244,7 @@ int main(int argc, char *argv[]) {
       cudaMalloc((void**) &gpu_trans_model_d, sizeof(GPUTransitionModel));
       cudaMemcpy(gpu_trans_model_d, &gpu_trans_model_h, sizeof(GPUTransitionModel), cudaMemcpyHostToDevice); 
       // Create GPUOnlineDecodableDiagGmmScaled
-      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm, gpu_trans_model, acoustic_scale);
+      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm_d, gpu_trans_model_d, acoustic_scale);
       GPUOnlineDecodableDiagGmmScaled* gpu_decodable_d;
       cudaMalloc((void**) &gpu_decodable_d, sizeof(GPUOnlineDecodableDiagGmmScaled));
       cudaMemcpy(gpu_decodable_d, &gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
