@@ -12,6 +12,8 @@
 #include "matrix/kaldi-vector.h"
 #include "base/kaldi-common.h"
 
+#include <iostream>
+
 namespace kaldi{
 
 template<typename Real>
@@ -38,7 +40,8 @@ template<typename Real>
 GPUVector<Real>::GPUVector(Vector<Real> &M) : dim_(M.Dim()){
   const size_t m_dim = M.SizeInBytes() / sizeof(Real);
   Real* m_data = M.Data();
-  thrust::copy(m_data, m_data + m_dim, data_.begin());
+  data_.resize(dim_);
+  thrust::copy(m_data, m_data + dim_, data_.begin());
   data = data_.data().get();
 }
 
@@ -46,7 +49,8 @@ template<typename Real>
 GPUVector<Real>::GPUVector(const Vector<Real> &M) : dim_(M.Dim()){
   const size_t m_dim = M.SizeInBytes() / sizeof(Real);
   const Real* m_data = M.Data();
-  thrust::copy(m_data, m_data + m_dim, data_.begin());
+  data_.resize(dim_);
+  thrust::copy(m_data, m_data + dim_, data_.begin());
   data = data_.data().get();
 }
 

@@ -49,7 +49,7 @@ GPUMatrix<Real>::GPUMatrix(Matrix<Real> &M) :
 {
   const size_t m_dim = M.SizeInBytes() / sizeof(Real);
   Real* m_data = M.Data();
-
+  data_.resize(m_dim);
   thrust::copy(m_data, m_data + m_dim, data_.begin());
   data = data_.data().get();
 }
@@ -62,7 +62,7 @@ GPUMatrix<Real>::GPUMatrix(const Matrix<Real> &M) :
 {
   const size_t m_dim = M.SizeInBytes() / sizeof(Real);
   const Real* m_data = M.Data();
-
+  data_.resize(m_dim);
   thrust::copy(m_data, m_data + m_dim, data_.begin());
   data = data_.data().get();
 }
