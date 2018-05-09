@@ -38,10 +38,20 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 
 using namespace kaldi;
 
-__global__ void cobaKernelGPUDiagGmm(GPUDiagGmm *G){}
+__global__ void cobaKernelGPUDiagGmm(GPUDiagGmm *G){ 
+  printf("DEVICE G->valid_gconsts_ : %d\n", G->valid_gconsts_);
+  printf("DEVICE G->gconsts_:\n");
+  for(int i = 0;i < G->gconsts_.Dim(); ++i){
+    printf("DEVICE G->gconsts[%d] : %.10f\n", i, G->gconsts_.data[i]);
+  }
+}
 
 void cobaGPUDiagGmm(GPUDiagGmm *G){
-  std::cerr << "G->valid_gconsts_ : " << G->valid_gconsts_ << std::endl;
+  fprintf(stderr, "HOST G->valid_gconsts_ : %d\n", G->valid_gconsts_);
+  fprintf(stderr, "HOST G->gconsts_:\n");
+//  for(int i = 0;i < G->gconsts_.Dim(); ++i){
+//    fprintf(stderr, "HOST G->gconsts[%d] : %.f\n", i, G->gconsts_.data[i]);
+//  }
 }
 
 int main(int argc, char *argv[]) {
@@ -197,10 +207,27 @@ int main(int argc, char *argv[]) {
       
       // Copy AmDiagGmm ke GPUAmDiagGmm
       GPUAmDiagGmm gpu_am_gmm;
-      // for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
-      //   GPUDiagGmm *gpu_gmm_h = new GPUDiagGmm(am_gmm.GetPdf(i));
-      //   gpu_am_gmm.AddPdf(*gpu_gmm_h);
-      // }
+      for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
+        const DiagGmm& D = am_gmm.GetPdf(i);
+        const Vector<BaseFloat>& D_gconsts = D.gconsts();
+        const BaseFloat* D_data = D_gconsts.Data();
+        for(int j = 0;j < D_gconsts.Dim(); ++j){
+          fprintf(stderr, "HOST Data: D_gconsts[%d] : %.10f\n", j, D_data[j]);
+        }
+        GPUDiagGmm gpu_gmm_h(am_gmm.GetPdf(i));
+        cobaGPUDiagGmm(&gpu_gmm_h);
+        std::cerr << "DEKLARASI" << std::endl;
+        GPUDiagGmm *gpu_gmm_d;
+        std::cerr << "cudaMalloc" << std::endl;
+        cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
+        std::cerr << "cudaMemcpy" << std::endl;
+        cudaMemcpy(gpu_gmm_d, &gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
+        std::cerr << "Print Device" << std::endl;
+        cobaKernelGPUDiagGmm<<<1, 1>>>(gpu_gmm_d);
+        std::cerr << "cudaFree" << std::endl;
+        cudaFree(gpu_gmm_d);
+        //gpu_am_gmm.AddPdf(*gpu_gmm_h);
+      }
       
       // Copy TransitionModel ke GPUTransitionModel
       GPUTransitionModel gpu_trans_model(trans_model);
