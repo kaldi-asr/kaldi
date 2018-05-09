@@ -18,6 +18,7 @@ struct GPUDiagGmm{
 
   bool valid_gconsts_;  // bool valid_gconsts_;   ///< Recompute gconsts_ if false
 
+  GPUDiagGmm() {}
   GPUDiagGmm(DiagGmm &d);
 
   __device__

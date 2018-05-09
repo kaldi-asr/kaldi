@@ -4,6 +4,7 @@
 // Uses Parallel Viterbi Beam Search Algorithm from Arturo Argueta and David Chiang's paper.
 
 #include "gpu/gpu-online-decodable.h"
+#include "gpu/gpu-diag-gmm.h"
 #include "gpufst/fst.h"
 #include "gpufst/gpu-fst.h"
 #include "gpufst/prob-ptr.h"
@@ -30,10 +31,16 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BEAM_SIZE 10
 #define BATCH_SIZE 27
 
+using namespace kaldi;
+
+__global__ void cobaKernelGPUDiagGmm(GPUDiagGmm *G){}
+
+void cobaGPUDiagGmm(GPUDiagGmm *G){
+  std::cerr << "G->valid_gconsts_ : " << G->valid_gconsts_ << std::endl;
+}
+
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-    using namespace fst;
 
     typedef kaldi::int32 int32;
     typedef OnlineFeInput<Mfcc> FeInput;
@@ -81,6 +88,7 @@ int main(int argc, char *argv[]) {
     po.Register("channel", &channel,
         "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
     po.Read(argc, argv);
+
     if (po.NumArgs() != 7 && po.NumArgs() != 8) {
       po.PrintUsage();
       return 1;
@@ -185,8 +193,13 @@ int main(int argc, char *argv[]) {
       // Copy AmDiagGmm ke GPUAmDiagGmm
       GPUAmDiagGmm gpu_am_gmm;
       for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
-        GPUDiagGmm *gpu_gmm = new GPUDiagGmm(am_gmm.GetPdf(i));
-        gpu_am_gmm.AddPdf(*gpu_gmm);
+        GPUDiagGmm *gpu_gmm_h = new GPUDiagGmm(am_gmm.GetPdf(i));
+        GPUDiagGmm *gpu_gmm_d;
+        cudaMalloc((void **) &gpu_gmm_d, sizeof(GPUDiagGmm));
+        cudaMemcpy(gpu_gmm_d, gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
+        cobaGPUDiagGmm(gpu_gmm_h);
+        cobaGPUDiagGmm(gpu_gmm_d);
+        gpu_am_gmm.AddPdf(*gpu_gmm_h);
       }
       
       // Copy TransitionModel ke GPUTransitionModel
@@ -200,7 +213,8 @@ int main(int argc, char *argv[]) {
 
 
     return 0;
-  } catch(const std::exception& e) {
+  } catch(const std::exception& e) { 
+    std::cerr << "MASUK CATCH" << std::endl;
     std::cerr << e.what();
     return -1;
   }

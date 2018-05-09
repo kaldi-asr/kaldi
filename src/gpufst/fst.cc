@@ -1,5 +1,6 @@
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
 #include "gpufst/fst.h"
 
@@ -30,7 +31,7 @@ fst read_fst(const std::string &filename, const numberizer &inr, const numberize
     sym_t f, e;
     prob_t p;
 
-    if (tokens.size() == 5) {
+    if (tokens.size() == 5 ) {
       iss >> q >> r >> fstr >> estr >> p;
       f = inr.word_to_num(fstr);
       e = onr.word_to_num(estr);
@@ -161,6 +162,8 @@ fst read_fst_noLog(const std::string &filename, const numberizer &inr, const num
 fst read_fst_noNumberizer(const std::string &filename) {
 
   fst m;
+  m.num_inputs = 0;
+  m.num_outputs = 0;
   std::ifstream fst_file(filename);
   std::string line;
   bool first = true;
@@ -179,24 +182,29 @@ fst read_fst_noNumberizer(const std::string &filename) {
     sym_t f, e;
     prob_t p;
 
-    if (tokens.size() == 5) {
-      iss >> q >> r >> f >> e >> p;
+//    std::cerr << "TOKEN SIZE: " << (int) tokens.size() << std::endl;
+    if (tokens.size() >= 4 && tokens.size() <= 5) {
+      iss >> q >> r >> f >> e;
+      if(tokens.size() == 5) iss >> p;
+      else p = 0.0;
       m.num_inputs = std::max(m.num_inputs, f + 1);
       m.num_outputs = std::max(m.num_outputs, e + 1);
       if (first) {
         m.initial = q;
         first = false;
       }
-      m.add_transition(q, r, f, e, log(p));
+      m.add_transition(q, r, f, e, p);
 
     // Final state
-    } else if (tokens.size() == 2) {
-      iss >> q >> p;
+    } else if (tokens.size() >= 1 && tokens.size() <= 2) {
+      iss >> q;
+      if(tokens.size() == 2) iss >> p;
+      else p = 0.0;
       if (first) {
         m.initial = q;
         first = false;
       }
-      m.add_final(q, log(p));
+      m.add_final(q, p);
 
     } else {
       throw std::runtime_error("wrong number of fields in line");
