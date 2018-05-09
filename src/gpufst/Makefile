@@ -10,7 +10,7 @@ ifeq ($(CUDA), true)
   OBJFILES += fst.o numberizer.o
 endif
 
-LIBNAME = kaldi-gpu
+LIBNAME = kaldi-gpufst
 
 ADDLIBS = 
 

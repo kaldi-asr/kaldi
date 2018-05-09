@@ -84,7 +84,7 @@ case $test_mode in
             bf=${bf%.wav}
             echo $bf $f >> $decode_dir/input.scp
         done
-        gpu-online-wav-gmm-decode-faster --verbose=1 --rt-min=0.8 --rt-max=0.85\
+        gpu-coba --verbose=1 --rt-min=0.8 --rt-max=0.85\
             --max-active=4000 --beam=12.0 --acoustic-scale=0.0769 \
             scp:$decode_dir/input.scp $ac_model/model $ac_model/HCLG.fst.txt \
             $ac_model/words.txt '1:2:3:4:5' ark,t:$decode_dir/trans.txt \

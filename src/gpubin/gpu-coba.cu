@@ -30,11 +30,10 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BEAM_SIZE 10
 #define BATCH_SIZE 27
 
-using namespace gpufst;
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
+    using namespace fst;
 
     typedef kaldi::int32 int32;
     typedef OnlineFeInput<Mfcc> FeInput;
@@ -120,8 +119,8 @@ int main(int argc, char *argv[]) {
         trans_model.Read(ki.Stream(), binary);
         am_gmm.Read(ki.Stream(), binary);
     }
-
-    gpu_fst m = read_fst_noNumberizer(fst_rspecifier); // harus berupa file text
+    
+    gpufst::gpu_fst m = gpufst::read_fst_noNumberizer(fst_rspecifier); // harus berupa file text
     
     // We are not properly registering/exposing MFCC and frame extraction options,
     // because there are parts of the online decoding code, where some of these
@@ -198,8 +197,8 @@ int main(int argc, char *argv[]) {
 
       delete feat_transform;
     }
-    delete word_syms;
-    delete decode_fst;
+
+
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();

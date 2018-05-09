@@ -1,6 +1,5 @@
 all:
 
-EXTRA_CXXFLAGS += -Wno-sign-compare -I../../tools/portaudio/install/include
 include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
@@ -28,18 +27,29 @@ ifeq ($(UNAME), Darwin)
 endif
 
 
-BINFILES = gpu-coba gpu-online-wav-gmm-decode-faster
+BINFILES = gpu-coba
 
-OBJFILES =
-
+OBJFILES = gpu-coba.o
 
 TESTFILES =
 
 
-ADDLIBS = ../gpu/kaldi-gpu.a ../gpucommons/kaldi-gpucommons ../online/kaldi-online.a ../decoder/kaldi-decoder.a \
+ADDLIBS = ../gpu/kaldi-gpu.a ../gpufst/kaldi-gpufst.a ../online/kaldi-online.a ../decoder/kaldi-decoder.a \
           ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a ../feat/kaldi-feat.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+
+# Make sure we have CUDA_ARCH from kaldi.mk,
+ifeq ($(CUDA), true)
+  ifndef CUDA_ARCH
+    $(error CUDA_ARCH is undefined, run 'src/configure')
+  endif
+endif
+
+# Implicit rule for kernel compilation,
+%.o : %.cu
+	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -std=c++11 -I../../tools/openfst/include -I../../tools/portaudio/install/include -lrt
+
 
 include ../makefiles/default_rules.mk
