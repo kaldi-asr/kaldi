@@ -38,7 +38,7 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 
 using namespace kaldi;
 
-__global__ void cobaKernelGPUDiagGmm(GPUDiagGmm *G){ 
+__device__ void cobaKernelGPUDiagGmm(GPUDiagGmm *G){ 
   printf("DEVICE G->valid_gconsts_ : %d\n", G->valid_gconsts_);
   printf("DEVICE G->gconsts_:\n");
   for(int i = 0;i < G->gconsts_.Dim(); ++i){
@@ -52,6 +52,18 @@ void cobaGPUDiagGmm(GPUDiagGmm *G){
 //  for(int i = 0;i < G->gconsts_.Dim(); ++i){
 //    fprintf(stderr, "HOST G->gconsts[%d] : %.f\n", i, G->gconsts_.data[i]);
 //  }
+}
+
+__global__ void tesAkhir(GPUOnlineDecodableDiagGmmScaled* gpu_decodable){
+  printf("TES AKHIR\n");
+  printf("Fase 1 : GPUAmDiagGmm\n");
+  GPUAmDiagGmm* gpu_am_gmm = gpu_decodable->ac_model_;
+  float **densities = gpu_am_gmm->densities;
+  GPUDiagGmm* density = densities[0]; 
+  cobaKernelGPUDiagGmm(density);
+  printf("Fase 2 : GPUTransitionModel\n"); 
+  printf("Fase 3 : AC Model\n");
+  printf("acoustic scale : %.10f\n", gpu_decodable->ac_scale_);
 }
 
 int main(int argc, char *argv[]) {
@@ -223,16 +235,14 @@ int main(int argc, char *argv[]) {
       GPUTransitionModel *gpu_trans_model_d;
       cudaMalloc((void**) &gpu_trans_model_d, sizeof(GPUTransitionModel));
       cudaMemcpy(gpu_trans_model_d, &gpu_trans_model_h, sizeof(GPUTransitionModel), cudaMemcpyHostToDevice); 
-
       // Create GPUOnlineDecodableDiagGmmScaled
-      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm_d, gpu_trans_model_d, acoustic_scale);
+      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm, gpu_trans_model, acoustic_scale);
       GPUOnlineDecodableDiagGmmScaled* gpu_decodable_d;
-
       cudaMalloc((void**) &gpu_decodable_d, sizeof(GPUOnlineDecodableDiagGmmScaled));
       cudaMemcpy(gpu_decodable_d, &gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
 
-      // TODO : BARU MASUKIN VITERBINYA
-
+      // TODO : BARU MASUKIN VITERBINYA 
+      tesAkhir<<<1,1>>>(gpu_decodable_d);
       cudaFree(gpu_decodable_d);
       cudaFree(gpu_trans_model_d);
       cudaFree(gpu_am_gmm_d);

@@ -36,7 +36,7 @@ const int EPS_LAYER = 1;
 
 #define EPS_SYM 0
 
-using namespace gpufst;
+using namespace kaldi;
 
 int frame_;
 int utt_frames_;
@@ -50,62 +50,7 @@ struct PointerComparison
         float prob_y = unpack_prob(y);
         return prob_x > prob_y;
     }
-}; 
-
-// __device__ float LogLikelihood(int* id2pdf_id, 
-//   float* cur_feats, int num_cur_feats,
-//   int ac_scale, GPUDiagGmm **densities, 
-//   int frame, int index){
-
-//   int pdf_id = id2pdf_id[index];
-//   DiagGmm* density = densities[pdf_id];
-
-//   const double kGPUMinLogDiffDouble = log(DBL_EPSILON);
-//   const float kGPUMinLogDiffFloat = log(FLT_EPSILON);
-
-//   /* BEGIN LogLikelihoods */
-//   int32 num_loglikes = density->gconsts_.Dim();
-//   float* loglikes = new float[num_loglikes];
-//   for(int32 i = 0;i < num_loglikes; ++i) loglikes[i] = density->gconsts_.data[i];
-
-//   float* data_sq = new float[num_data];
-//   for(int32 i = 0;i < num_data; ++i) data_sq[i] = data[i] * data[i];
-
-//   for(int i = 0;i < density->gconsts_.Dim(); ++i){
-//     for(int j = 0;j < num_data; ++j){
-//       loglikes[i] += density->means_invvars_.data[density->means_invvars_.Index(i, j)] * data[j];
-//       loglikes[i] -= 0.5 * density->inv_vars_.data[density->inv_vars_.Index(i, j)] * data_sq[j];
-//     }
-//   }
-
-//   /* END LogLikelihoods */
-
-//   /* Begin Log Sum Exp */
-//   float max_elem = CUDART_MIN_DENORM_F;
-//   for(int32 i = 0;i < num_loglikes; ++i) {
-//     if(max_elem < loglikes[i]) max_elem = loglikes[i];
-//   }
-
-//   float cutoff;
-//   cutoff = max_elem + kGPUMinLogDiffFloat;
-//   double sum_relto_max_elem = 0.0;
-
-//   for (int32 i = 0; i < num_loglikes; i++) {
-//     BaseFloat f = loglikes[i];
-//     if (f >= cutoff)
-//       sum_relto_max_elem += exp(f - max_elem);
-//   }
-//   float log_sum = max_elem + log(sum_relto_max_elem);
-//   /* End Log Sum Exp */
-
-//   // if (isnan(log_sum) || isinf(log_sum))
-//   //   KALDI_ERR << "Invalid answer (overflow or invalid variances/features?)";
-
-//   delete [] loglikes;
-//   delete [] data_sq;
-
-//   return log_sum * ac_scale;
-// }
+};
 
 __global__ void compute_initial(int *from_states, int *to_states, float *probs,
         int start_offset, int end_offset,
@@ -176,17 +121,6 @@ __global__ void compute_nonemitting(int *from_states, int *to_states, float *pro
     prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) + shared_probs[threadIdx.x], offset);
     atomicMax(&viterbi[/*to_register_state*/to_shared_states[threadIdx.x]], pp);
   }
-}
-
-
-/* TODO:
- * 1. Ganti assignment pp di if itu (tambahin LogLikelihood)
- *    Perhatiin LogLikelihood bakal assign sesuatu di CUDA, jangan sampe kegedean
- */
-__global__ void compute_transition(int *from_states, int *to_states, float *probs,
-          int start_offset, int end_offset, int frame,
-          prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
-  
 }
 
 __global__ void compute_final(int *final_states, float *final_probs,
@@ -313,8 +247,6 @@ prob_t viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDec
 
 int main(int argc, char *argv[]) {
   try {
-    using namespace kaldi;
-
     typedef kaldi::int32 int32;
     typedef OnlineFeInput<Mfcc> FeInput;
 
@@ -361,6 +293,7 @@ int main(int argc, char *argv[]) {
     po.Register("channel", &channel,
         "Channel to extract (-1 -> expect mono, 0 -> left, 1 -> right)");
     po.Read(argc, argv);
+
     if (po.NumArgs() != 7 && po.NumArgs() != 8) {
       po.PrintUsage();
       return 1;
@@ -399,8 +332,8 @@ int main(int argc, char *argv[]) {
         trans_model.Read(ki.Stream(), binary);
         am_gmm.Read(ki.Stream(), binary);
     }
-
-    gpu_fst m = read_fst_noNumberizer(fst_rspecifier); // harus berupa file text
+    
+    gpufst::gpu_fst m = gpufst::read_fst_noNumberizer(fst_rspecifier); // harus berupa file text
     
     // We are not properly registering/exposing MFCC and frame extraction options,
     // because there are parts of the online decoding code, where some of these
@@ -463,25 +396,38 @@ int main(int argc, char *argv[]) {
                                              &feature_matrix);
       
       // Copy AmDiagGmm ke GPUAmDiagGmm
-      GPUAmDiagGmm gpu_am_gmm;
+      GPUAmDiagGmm gpu_am_gmm_h;
+      GPUAmDiagGmm *gpu_am_gmm_d;
       for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
-        GPUDiagGmm *gpu_gmm = new GPUDiagGmm(am_gmm.GetPdf(i));
-        gpu_am_gmm.AddPdf(*gpu_gmm);
+        GPUDiagGmm gpu_gmm_h(am_gmm.GetPdf(i));
+        GPUDiagGmm *gpu_gmm_d;
+        cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
+        cudaMemcpy(gpu_gmm_d, &gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
+        gpu_am_gmm_h.AddPdf(gpu_gmm_d);
       }
-      
-      // Copy TransitionModel ke GPUTransitionModel
-      GPUTransitionModel gpu_trans_model(trans_model);
-      
-      // Create GPUOnlineDecodableDiagGmmScaled
-      GPUOnlineDecodableDiagGmmScaled gpu_decodable(gpu_am_gmm, gpu_trans_model, acoustic_scale);
+      cudaMalloc((void**) &gpu_am_gmm_d, sizeof(GPUAmDiagGmm));
+      cudaMemcpy(gpu_am_gmm_d, &gpu_am_gmm_h, sizeof(GPUAmDiagGmm), cudaMemcpyHostToDevice);
 
-      // TODO : Buat Loop Decodenya
+      // Copy TransitionModel ke GPUTransitionModel
+      GPUTransitionModel gpu_trans_model_h(trans_model);
+      GPUTransitionModel *gpu_trans_model_d;
+      cudaMalloc((void**) &gpu_trans_model_d, sizeof(GPUTransitionModel));
+      cudaMemcpy(gpu_trans_model_d, &gpu_trans_model_h, sizeof(GPUTransitionModel), cudaMemcpyHostToDevice); 
+
+      // Create GPUOnlineDecodableDiagGmmScaled
+      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm_d, gpu_trans_model_d, acoustic_scale);
+      GPUOnlineDecodableDiagGmmScaled* gpu_decodable_d;
+
+      cudaMalloc((void**) &gpu_decodable_d, sizeof(GPUOnlineDecodableDiagGmmScaled));
+      cudaMemcpy(gpu_decodable_d, &gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
+
+      /* MAIN LOOP PROGRAM */
       auto read_start = std::chrono::steady_clock::now();
       frame_ = 0;
       while(1){
         std::vector<sym_t> output_symbols;
 
-        prob_t final_prob = viterbi(m, &decodable, &gpu_decodable, output_symbols);
+        prob_t final_prob = viterbi(m, &decodable, gpu_decodable_d, output_symbols);
         std::cout << onr.join(output_symbols) << " "; 
         // IF END BREAK;
       }
@@ -490,10 +436,19 @@ int main(int argc, char *argv[]) {
       std::chrono::duration<double> diff = read_end - read_start;
       std::cout << "Time to decode sentence: " << diff.count()  << std::endl;
 
+      /* END LOOP DECODE */
+
+      cudaFree(gpu_decodable_d);
+      cudaFree(gpu_trans_model_d);
+      cudaFree(gpu_am_gmm_d);
+      for(size_t i = 0;i < am_gmm.NumPdfs(); ++i){
+        cudaFree(gpu_am_gmm_h.densities_[i]);
+      }
       delete feat_transform;
+
     }
-    delete word_syms;
-    delete decode_fst;
+
+    std::cerr << "SAMPE DI AKHIR BANGET" << std::endl;
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
