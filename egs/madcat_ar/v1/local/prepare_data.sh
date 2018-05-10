@@ -18,21 +18,20 @@ stage=0
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
-train_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
-test_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.test.raw.lineid
-dev_split_file=/home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.dev.raw.lineid
+data_splits=data/download/data_splits
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh || exit 1;
 
 mkdir -p data/{train,test,dev}
+
 if [ $stage -le 1 ]; then
   echo "$0: Processing dev, train and test data..."
   echo "Date: $(date)."
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $dev_split_file data/dev data/local/dev/images.scp || exit 1
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $test_split_file data/test data/local/test/images.scp || exit 1
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $train_split_file data/train data/local/train/images.scp || exit 1
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.dev.raw.lineid data/dev data/local/dev/images.scp || exit 1
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.test.raw.lineid data/test data/local/test/images.scp || exit 1
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.train.raw.lineid data/train data/local/train/images.scp || exit 1
 
   for dataset in dev test train; do
     echo "$0: Fixing data directory for dataset: $dataset"

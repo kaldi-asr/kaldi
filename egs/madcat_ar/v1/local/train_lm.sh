@@ -74,11 +74,7 @@ if [ $stage -le 0 ]; then
   # it as one of the data sources.
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
-  # get the wordlist from IAM text
-  #cat ${dir}/data/text/madcat.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
-  #cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
-  #cat $segments | tr ' ' '\n' | sed '/^$/d' | sort | uniq -c | sort -bnr | sed 's/^.//' > ${dir}/data/word_count
-  #cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
+  # get the wordlist from MADCAT text
   cat ${dir}/data/text/madcat.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
@@ -106,7 +102,6 @@ if [ $stage -le 1 ]; then
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
-  #log-prob: -5.05603614242 [perplexity = 156.967086371] over 19477.0 words
 
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.arpa.gz
