@@ -16,7 +16,7 @@ my $out_test_dir = "$out_dir/voxceleb1_test";
 my $out_train_dir = "$out_dir/voxceleb1_train";
 
 if (! -e "$data_base/voxceleb1_test.txt") {
-  system("wget -O $data_base/voxceleb1_test.txt http://www.robots.ox.ac.uk/~vgg/data/voxceleb/voxceleb1_test.txt");
+  system("wget -O $data_base/voxceleb1_test.txt http://www.openslr.org/resources/49/voxceleb1_test.txt");
 }
 
 if (system("mkdir -p $out_test_dir") != 0) {
