@@ -250,13 +250,14 @@ int main(int argc, char *argv[]) {
       cudaMalloc((void**) &gpu_am_gmm_d, sizeof(GPUAmDiagGmm));
       cudaMemcpy(gpu_am_gmm_d, &gpu_am_gmm_h, sizeof(GPUAmDiagGmm), cudaMemcpyHostToDevice);
 
-      std::vector<GPUDiagGmm> gpu_gmm_hs;
+      std::vector<GPUDiagGmm*> gpu_gmm_hs;
+      GPUDiagGmm* gpu_gmm_h;
       for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
-        GPUDiagGmm gpu_gmm_h(am_gmm.GetPdf(i));
+        gpu_gmm_h = new GPUDiagGmm(am_gmm.GetPdf(i));
         gpu_gmm_hs.push_back(gpu_gmm_h);
-        printf("MASUK PDF %lu!\n", i);
-        GPUVector<BaseFloat>& h_gconsts = gpu_gmm_h.gconsts_;
-        cobaGconstsFromHost<<<1,1>>>(h_gconsts.data, h_gconsts.Dim()); 
+        // printf("MASUK PDF %lu!\n", i);
+        // GPUVector<BaseFloat>& h_gconsts = gpu_gmm_h.gconsts_;
+        // cobaGconstsFromHost<<<1,1>>>(h_gconsts.data, h_gconsts.Dim()); 
 
         // GPUDiagGmm *gpu_gmm_d;
         // cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
@@ -264,6 +265,13 @@ int main(int argc, char *argv[]) {
         // cobaKernelGPUDiagGmmHost<<<1,1>>>(gpu_gmm_d);
         // AddPdfToGPUAmGmm<<<1,1>>>(gpu_am_gmm_d, i, gpu_gmm_d);
         // cobaKernelGPUAmDiagGmmHost<<<1,1>>>(gpu_am_gmm_d, i);
+      }
+
+      for(size_t i = 0;i < gpu_gmm_hs.size(); ++i){
+        GPUDiagGmm* gpu_gmm = gpu_gmm_hs[i];
+        printf("MASUK PDF %lu!\n", i);
+        GPUVector<BaseFloat>& h_gconsts = gpu_gmm->gconsts_;
+        cobaGconstsFromHost<<<1,1>>>(h_gconsts.data, h_gconsts.Dim());
       }
 
       // Copy TransitionModel ke GPUTransitionModel
@@ -279,7 +287,7 @@ int main(int argc, char *argv[]) {
       cudaMemcpy(gpu_decodable_d, &gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
 
       // TODO : BARU MASUKIN VITERBINYA 
-      tesAkhir<<<1,1>>>(gpu_decodable_d);
+      // tesAkhir<<<1,1>>>(gpu_decodable_d);
       cudaFree(gpu_decodable_d);
       cudaFree(gpu_trans_model_d);
 //      for(size_t i = 0;i < am_gmm.NumPdfs(); ++i){
