@@ -259,32 +259,25 @@ int main(int argc, char *argv[]) {
         GPUDiagGmm *gpu_gmm_d;
         cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
         cudaMemcpy(gpu_gmm_d, gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
-        cobaKernelGPUDiagGmmHost<<<1,1>>>(gpu_gmm_d);
+//        cobaKernelGPUDiagGmmHost<<<1,1>>>(gpu_gmm_d);
         AddPdfToGPUAmGmm<<<1,1>>>(gpu_am_gmm_d, i, gpu_gmm_d);
-        cobaKernelGPUAmDiagGmmHost<<<1,1>>>(gpu_am_gmm_d, i);
+//        cobaKernelGPUAmDiagGmmHost<<<1,1>>>(gpu_am_gmm_d, i);
       }
-
-      // for(size_t i = 0;i < gpu_gmm_hs.size(); ++i){
-      //   GPUDiagGmm* gpu_gmm = gpu_gmm_hs[i];
-      //   printf("MASUK PDF %lu!\n", i);
-      //   GPUVector<BaseFloat>& h_gconsts = gpu_gmm->gconsts_;
-      //   cobaGconstsFromHost<<<1,1>>>(h_gconsts.data, h_gconsts.Dim());
-      // }
 
       // Copy TransitionModel ke GPUTransitionModel
       
-      GPUTransitionModel gpu_trans_model_h(trans_model);
+      GPUTransitionModel *gpu_trans_model_h = new GPUTransitionModel(trans_model);
       GPUTransitionModel *gpu_trans_model_d;
       cudaMalloc((void**) &gpu_trans_model_d, sizeof(GPUTransitionModel));
-      cudaMemcpy(gpu_trans_model_d, &gpu_trans_model_h, sizeof(GPUTransitionModel), cudaMemcpyHostToDevice); 
+      cudaMemcpy(gpu_trans_model_d, gpu_trans_model_h, sizeof(GPUTransitionModel), cudaMemcpyHostToDevice); 
       // Create GPUOnlineDecodableDiagGmmScaled
-      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm_d, gpu_trans_model_d, acoustic_scale);
+      GPUOnlineDecodableDiagGmmScaled* gpu_decodable_h = new GPUOnlineDecodableDiagGmmScaled(gpu_am_gmm_d, gpu_trans_model_d, acoustic_scale);
       GPUOnlineDecodableDiagGmmScaled* gpu_decodable_d;
       cudaMalloc((void**) &gpu_decodable_d, sizeof(GPUOnlineDecodableDiagGmmScaled));
-      cudaMemcpy(gpu_decodable_d, &gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
+      cudaMemcpy(gpu_decodable_d, gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
 
       // TODO : BARU MASUKIN VITERBINYA 
-      // tesAkhir<<<1,1>>>(gpu_decodable_d);
+      tesAkhir<<<1,1>>>(gpu_decodable_d);
       cudaFree(gpu_decodable_d);
       cudaFree(gpu_trans_model_d);
 //      for(size_t i = 0;i < am_gmm.NumPdfs(); ++i){
@@ -292,6 +285,10 @@ int main(int argc, char *argv[]) {
 //      }
       cudaFree(gpu_am_gmm_d);
       
+      delete gpu_decodable_h;
+      delete gpu_trans_model_h;
+      for(size_t i = 0;i < gpu_gmm_hs.size(); ++i) delete gpu_gmm_hs[i];
+      gpu_gmm_hs.clear();
       delete feat_transform;
     }
 
