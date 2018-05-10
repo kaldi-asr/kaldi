@@ -46,6 +46,10 @@ __device__ void cobaKernelGPUDiagGmm(GPUDiagGmm *G){
   }
 }
 
+__global__ void cobaKernelGPUDiagGmmHost(GPUDiagGmm *G){
+  cobaKernelGPUDiagGmm(G);
+}
+
 void cobaGPUDiagGmm(GPUDiagGmm *G){
   fprintf(stderr, "HOST G->valid_gconsts_ : %d\n", G->valid_gconsts_);
   fprintf(stderr, "HOST G->gconsts_:\n");
@@ -54,8 +58,16 @@ void cobaGPUDiagGmm(GPUDiagGmm *G){
 //  }
 }
 
-__global__ AddPdfToGPUAmGmm(GPUAmDiagGmm* gpu_am_gmm, int pdf_idx, GPUDiagGmm *gpu_gmm){
-  gpu_am_gmm.densities[pdf_idx] = gpu_gmm;
+__global__ void AddPdfToGPUAmGmm(GPUAmDiagGmm* gpu_am_gmm, int pdf_idx, GPUDiagGmm *gpu_gmm){
+  gpu_am_gmm->densities[pdf_idx] = gpu_gmm;
+}
+
+__device__ void cobaKernelGPUAmDiagGmm(GPUAmDiagGmm *G){
+  cobaKernelGPUDiagGmm(G->densities[0]);
+}
+
+__global__ void cobaKernelGPUAmDiagGmmHost(GPUAmDiagGmm *G){
+  cobaKernelGPUAmDiagGmm(G);
 }
 
 __global__ void tesAkhir(GPUOnlineDecodableDiagGmmScaled* gpu_decodable){
@@ -243,9 +255,14 @@ int main(int argc, char *argv[]) {
         GPUDiagGmm *gpu_gmm_d;
         cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
         cudaMemcpy(gpu_gmm_d, &gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
+        if(i == 0){
+          cobaKernelGPUDiagGmmHost<<<1,1>>>(gpu_gmm_d);
+        }
         AddPdfToGPUAmGmm<<<1,1>>>(gpu_am_gmm_d, i, gpu_gmm_d);
       }
       // Copy TransitionModel ke GPUTransitionModel
+      cobaKernelGPUAmDiagGmmHost<<<1,1>>>(gpu_am_gmm_d);
+      
       GPUTransitionModel gpu_trans_model_h(trans_model);
       GPUTransitionModel *gpu_trans_model_d;
       cudaMalloc((void**) &gpu_trans_model_d, sizeof(GPUTransitionModel));
@@ -261,7 +278,7 @@ int main(int argc, char *argv[]) {
       cudaFree(gpu_decodable_d);
       cudaFree(gpu_trans_model_d);
       for(size_t i = 0;i < am_gmm.NumPdfs(); ++i){
-        cudaFree(gpu_am_gmm_d.densities_[i]);
+        cudaFree(gpu_am_gmm_h.densities_[i]);
       }
       cudaFree(gpu_am_gmm_d);
       
