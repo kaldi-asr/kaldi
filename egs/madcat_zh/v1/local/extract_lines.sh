@@ -3,8 +3,8 @@
 
 nj=4
 cmd=run.pl
-download_dir=data/download/tmp/LDC2014T13
-dataset_file=data/download/tmp/madcat_datasplit/zh-en/madcat.dev.raw.lineid
+download_dir=/export/corpora/LDC/LDC2014T13
+dataset_file=data/download/datasplits/madcat.dev.raw.lineid
 echo "$0 $@"
 
 . ./cmd.sh

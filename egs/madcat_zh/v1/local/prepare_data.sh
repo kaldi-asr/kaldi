@@ -5,7 +5,7 @@
 #                2017  Hossein Hadian
 # Apache 2.0
 
-# This script downloads the IAM handwriting database and prepares the training
+# This script downloads the Madcat Chinese handwriting database and prepares the training
 # and test data (i.e text, images.scp, utt2spk and spk2utt) by calling process_data.py.
 # It also downloads the LOB and Brown text corpora. It downloads the database files
 # only if they do not already exist in download directory.
@@ -17,10 +17,8 @@
 #      spk2utt file: 000 000_a01-000u-00 000_a01-000u-01 000_a01-000u-02 000_a01-000u-03
 
 stage=0
-download_dir=data/download/tmp/LDC2014T13
-train_split_file=data/download/tmp/madcat_datasplit/zh-en/madcat.train.raw.lineid
-test_split_file=data/download/tmp/madcat_datasplit/zh-en/madcat.test.raw.lineid
-dev_split_file=data/download/tmp/madcat_datasplit/zh-en/madcat.dev.raw.lineid
+download_dir=/export/corpora/LDC/LDC2014T13
+data_split_dir=data/download/datasplits
 
 . ./cmd.sh
 . ./path.sh
@@ -33,21 +31,13 @@ fi
 
 mkdir -p data/{train,test,dev}/lines
 if [ $stage -le 1 ]; then
-  local/process_data.py $download_dir $train_split_file data/train || exit 1
-  local/process_data.py $download_dir $test_split_file data/test || exit 1
-  local/process_data.py $download_dir $dev_split_file data/dev || exit 1
+  local/process_data.py $download_dir $data_split_dir/madcat.train.raw.lineid data/train || exit 1
+  local/process_data.py $download_dir $data_split_dir/madcat.test.raw.lineid data/test || exit 1
+  local/process_data.py $download_dir $data_split_dir/madcat.dev.raw.lineid data/dev || exit 1
 
   for dataset in train test dev; do
-    cp data/$dataset/utt2spk data/$dataset/utt2spk_tmp
-    cp data/$dataset/text data/$dataset/text_tmp
-    cp data/$dataset/images.scp data/$dataset/images_tmp.scp
-    sort data/$dataset/utt2spk_tmp > data/$dataset/utt2spk
-    sort data/$dataset/text_tmp > data/$dataset/text
-    sort data/$dataset/images_tmp.scp > data/$dataset/images.scp
-    rm data/$dataset/utt2spk_tmp data/$dataset/text_tmp data/$dataset/images_tmp.scp
+    echo "$0: Fixing data directory for dataset: $dataset"
+    echo "Date: $(date)."
+    image/fix_data_dir.sh data/$dataset
   done
-
-  utils/utt2spk_to_spk2utt.pl data/train/utt2spk > data/train/spk2utt
-  utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
-  utils/utt2spk_to_spk2utt.pl data/dev/utt2spk > data/dev/spk2utt
 fi

@@ -1,32 +1,18 @@
 #!/usr/bin/env python3
+
 # Copyright   2018 Ashish Arora
 # Apache 2.0
 # minimum bounding box part in this script is originally from
 #https://github.com/BebeSparkelSparkel/MinimumBoundingBox
+#https://startupnextdoor.com/computing-convex-hull-in-python/
 
 """ This module will be used for extracting line images from page image.
  Given the word segmentation (bounding box around a word) for  every word, it will
  extract line segmentation. To extract line segmentation, it will take word bounding
- boxes of a line as input, will create a minimum area bounding box that will contain 
- all corner points of word bounding boxes. The obtained bounding box (will not necessarily 
+ boxes of a line as input, will create a minimum area bounding box that will contain
+ all corner points of word bounding boxes. The obtained bounding box (will not necessarily
  be vertically or horizontally aligned). Hence to extract line image from line bounding box,
  page image is rotated and line image is cropped and saved.
- Args:
-  database_path1: Path to the downloaded (and extracted) madcat data directory 1
-          Eg. /export/corpora/LDC/LDC2012T15
-  database_path2: Path to the downloaded (and extracted) madcat data directory 2
-          Eg. /export/corpora/LDC/LDC2013T09
-  database_path3: Path to the downloaded (and extracted) madcat data directory 3
-          Eg. /export/corpora/LDC/LDC2013T15
-  data_splits: Path to file that contains the train,test or development split information.
-               There are total 3 split files. one of train, test and dev each.
-          Eg. /home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
-             groups.google.com_women1000_508c404bd84f8ba3_ARB_20060426_124900_3_LDC0188.madcat.xml s1
-             <xml file name> <scribe id>
-  out_dir: Directory location to write output files
-  Eg. local/create_line_image_from_page_image.py /export/corpora/LDC/LDC2012T15 /export/corpora/LDC/LDC2013T09 
-      /export/corpora/LDC/LDC2013T15 /home/kduh/proj/scale2018/data/madcat_datasplit/ar-en/madcat.train.raw.lineid
-      data/local/lines
 """
 
 import sys
@@ -42,8 +28,8 @@ from PIL import Image
 from scipy.misc import toimage
 
 parser = argparse.ArgumentParser(description="Creates line images from page image",
-                                 epilog="E.g.  " + sys.argv[0] + "  data/LDC2012T15" 
-                                             " data/LDC2013T09 data/LDC2013T15 data/madcat.train.raw.lineid "
+                                 epilog="E.g.  " + sys.argv[0] + "  data/LDC2012T15"
+                                             " data/madcat.train.raw.lineid "
                                              " data/local/lines ",
                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('database_path1', type=str,
@@ -241,13 +227,13 @@ def minimum_bounding_box(points):
     min_rectangle['rectangle_center'] = to_xy_coordinates(min_rectangle['unit_vector_angle'], min_rectangle['rectangle_center'])
 
     return bounding_box_tuple(
-        area=min_rectangle['area'],
-        length_parallel=min_rectangle['length_parallel'],
-        length_orthogonal=min_rectangle['length_orthogonal'],
-        rectangle_center=min_rectangle['rectangle_center'],
-        unit_vector=min_rectangle['unit_vector'],
-        unit_vector_angle=min_rectangle['unit_vector_angle'],
-        corner_points=set(rectangle_corners(min_rectangle))
+        area = min_rectangle['area'],
+        length_parallel = min_rectangle['length_parallel'],
+        length_orthogonal = min_rectangle['length_orthogonal'],
+        rectangle_center = min_rectangle['rectangle_center'],
+        unit_vector = min_rectangle['unit_vector'],
+        unit_vector_angle = min_rectangle['unit_vector_angle'],
+        corner_points = set(rectangle_corners(min_rectangle))
     )
 
 
@@ -389,7 +375,7 @@ def set_line_image_data(image, line_id, image_file_name):
     base_name = os.path.splitext(os.path.basename(image_file_name))[0]
     image_file_name_wo_tif, b = image_file_name.split('.tif')
     line_id = '_' + line_id.zfill(4)
-    line_image_file_name = base_name + line_id + '.tif'
+    line_image_file_name = base_name + line_id + '.png'
     image_path = os.path.join(output_directory, line_image_file_name)
     imgray = toimage(image.convert('L'))
     imgray.save(image_path)

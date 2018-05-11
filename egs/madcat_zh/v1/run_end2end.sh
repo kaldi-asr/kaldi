@@ -22,6 +22,11 @@ madcat_database=data/download/tmp/LDC2014T13/data
 #./local/check_tools.sh
 
 if [ $stage -le 0 ]; then
+  for dataset in train test dev; do
+    dataset_file=data/download/tmp/madcat_datasplit/zh-en/madcat.${dataset}.raw.lineid
+    local/extract_lines.sh --nj $nj --cmd $cmd --dataset-file $dataset_file data/${dataset}/lines
+  done
+
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$madcat_database"
 fi
@@ -72,5 +77,5 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
-  local/chain/run_flatstart_cnn1b.sh
+  local/chain/run_flatstart_cnn1a.sh
 fi

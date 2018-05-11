@@ -50,8 +50,6 @@ def check_file_location():
     if os.path.exists(madcat_file_path1):
         return madcat_file_path1, image_file_path1, wc_dict1
 
-    print(madcat_file_path1)
-    print("ERROR: path does not exist")
     return None, None, None
 
 
@@ -68,7 +66,7 @@ def parse_writing_conditions(writing_conditions):
         file_writing_cond = dict()
         for line in f:
             line_list = line.strip().split("\t")
-            file_writing_cond[line_list[0]]=line_list[3]
+            file_writing_cond[line_list[0]] = line_list[3]
     return file_writing_cond
 
 
@@ -174,9 +172,9 @@ with open(args.data_splits) as f:
         if prev_base_name != base_name:
             prev_base_name = base_name
             madcat_xml_path, image_file_path, wc_dict = check_file_location()
-            if wc_dict == None or not check_writing_condition(wc_dict):
+            if wc_dict is None or not check_writing_condition(wc_dict):
                 continue
-            if madcat_xml_path != None:
+            if madcat_xml_path is not None:
                 madcat_doc = minidom.parse(madcat_xml_path)
                 writer = madcat_doc.getElementsByTagName('writer')
                 writer_id = writer[0].getAttribute('id')
@@ -187,7 +185,7 @@ with open(args.data_splits) as f:
                 base_name = os.path.basename(image_file_path)
                 base_name, b = base_name.split('.tif')
                 for lineID in sorted(text_line_word_dict):
-                    updated_base_name = base_name + '_' + str(lineID).zfill(4) +'.tif'
+                    updated_base_name = base_name + '_' + str(lineID).zfill(4) +'.png'
                     location = image_loc_dict[updated_base_name]
                     image_file_path = os.path.join(location, updated_base_name)
                     line = text_line_word_dict[lineID]
