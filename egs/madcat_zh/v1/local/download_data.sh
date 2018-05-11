@@ -7,9 +7,9 @@
 # It also check if madcat chinese data is present or not.
 
 download_dir1=/export/corpora/LDC/LDC2014T13/data
-train_split_url=http://www.openslr.org/resources/51/madcat.train.raw.lineid
-test_split_url=http://www.openslr.org/resources/51/madcat.test.raw.lineid
-dev_split_url=http://www.openslr.org/resources/51/madcat.dev.raw.lineid
+train_split_url=http://www.openslr.org/resources/50/madcat.train.raw.lineid
+test_split_url=http://www.openslr.org/resources/50/madcat.test.raw.lineid
+dev_split_url=http://www.openslr.org/resources/50/madcat.dev.raw.lineid
 data_split_dir=data/download/datasplits
 
 . ./cmd.sh
