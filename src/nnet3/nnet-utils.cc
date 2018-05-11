@@ -2067,6 +2067,69 @@ bool PositiveUpdatableWeights(Nnet *nnet) {
   return true;
 }
 
+/// For Xvector
+void GetConstantOutput(const Nnet &nnet_const, const std::string &output_name,
+    Vector<BaseFloat> *output) {
+  Nnet nnet(nnet_const);
+  std::string input_name = "input";
+  int32 left_context,
+        right_context,
+        input_node_index = nnet.GetNodeIndex(input_name),
+        output_node_index = nnet.GetNodeIndex(output_name);
+  if (output_node_index == -1 && !nnet.IsOutputNode(output_node_index))
+    KALDI_ERR << "No output node called '" << output_name
+              << "' in the network.";
+  if (input_node_index == -1 && nnet.IsInputNode(input_node_index))
+    KALDI_ERR << "No input node called '" << input_name
+              << "' in the network.";
+  KALDI_ASSERT(output->Dim() == nnet.OutputDim(output_name));
+  ComputeSimpleNnetContext(nnet, &left_context, &right_context);
+
+  // It's difficult to get the output of the node
+  // directly.  Instead, we can create some fake input,
+  // propagate it through the network, and read out the
+  // output.
+  CuMatrix<BaseFloat> cu_feats(left_context + right_context + 1,
+      nnet.InputDim(input_name));
+  Matrix<BaseFloat> feats(cu_feats);
+
+  ComputationRequest request;
+  NnetIo nnet_io = NnetIo(input_name, 0, feats);
+  request.inputs.clear();
+  request.outputs.clear();
+  request.inputs.resize(1);
+  request.outputs.resize(1);
+  request.need_model_derivative = false;
+  request.store_component_stats = false;
+
+  std::vector<Index> output_indexes;
+  request.inputs[0].name = input_name;
+  request.inputs[0].indexes = nnet_io.indexes;
+  request.inputs[0].has_deriv = false;
+  output_indexes.resize(1);
+  output_indexes[0].n = 0;
+  output_indexes[0].t = 0;
+  request.outputs[0].name = output_name;
+  request.outputs[0].indexes = output_indexes;
+  request.outputs[0].has_deriv = false;
+
+  CachingOptimizingCompiler compiler(nnet, NnetOptimizeOptions());
+  std::shared_ptr<const NnetComputation> computation = compiler.Compile(request);
+  NnetComputer computer(NnetComputeOptions(), *computation,
+                        nnet, &nnet);
+
+  // check to see if something went wrong.
+  if (request.inputs.empty())
+    KALDI_ERR << "No input in computation request.";
+  if (request.outputs.empty())
+    KALDI_ERR << "No output in computation request.";
+
+  computer.AcceptInput("input", &cu_feats);
+  computer.Run();
+  const CuMatrixBase<BaseFloat> &output_mat = computer.GetOutput(output_name);
+  CuSubVector<BaseFloat> output_vec(output_mat, 0);
+  output->CopyFromVec(output_vec);
+}
 
 } // namespace nnet3
 } // namespace kaldi

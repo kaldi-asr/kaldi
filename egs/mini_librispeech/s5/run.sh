@@ -170,6 +170,7 @@ if [ $stage -le 7 ]; then
 
   utils/build_const_arpa_lm.sh \
     data/local/lm/lm_tglarge.arpa.gz data/lang data/lang_test_tglarge
+  exit 0
 
   steps/align_fmllr.sh --nj 5 --cmd "$train_cmd" \
     data/train_clean_5 data/lang exp/tri3b exp/tri3b_ali_train_clean_5
@@ -193,6 +194,7 @@ if [ $stage -le 8 ]; then
       data/$test exp/tri3b/decode_{tgsmall,tglarge}_$test
   done
 fi
+
 
 # Train a chain model
 if [ $stage -le 9 ]; then

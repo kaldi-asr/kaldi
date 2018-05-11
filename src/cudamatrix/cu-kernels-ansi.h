@@ -789,6 +789,15 @@ void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
                           MatrixDim dim, const uint8_t *src,
                           int src_stride, float scale);
 
+/// For Xvector
+void cudaD_compute_xvector_objf(dim3 Gr, dim3 Bl, const double *scores,
+                               MatrixDim scores_dim, double *obfj_terms,
+                               MatrixDim objf_dim, double *objf_derivs,
+                               MatrixDim derivs_dim);
+void cudaF_compute_xvector_objf(dim3 Gr, dim3 Bl, const float *scores,
+                               MatrixDim scores_dim, float *obfj_terms,
+                               MatrixDim objf_dim, float *objf_derivs,
+                               MatrixDim derivs_dim);
 
 
 } // extern "C"

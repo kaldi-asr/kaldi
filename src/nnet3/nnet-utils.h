@@ -506,6 +506,13 @@ int32 GetNumNvalues(const std::vector<NnetIo> &io_vec,
 */
 bool PositiveUpdatableWeights(Nnet *nnet);
 
+/// For Xvector
+/// This function assumes that the node named in 'output_node' is a constant
+/// function of the input features (e.g, a ConstantFunctionComponent is
+/// its input) and returns it in 'out'.
+void GetConstantOutput(const Nnet &nnet, const std::string &output_name,
+      Vector<BaseFloat> *out);
+
 
 } // namespace nnet3
 } // namespace kaldi

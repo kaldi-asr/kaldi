@@ -113,7 +113,9 @@ static void MergeIo(const std::vector<NnetExample> &src,
                                              names_end = names.end();
   std::vector<NnetExample>::const_iterator eg_iter = src.begin(),
     eg_end = src.end();
+  int32 n_offset = 0;
   for (int32 n = 0; eg_iter != eg_end; ++eg_iter, ++n) {
+    int32 max_source_n = 0;
     std::vector<NnetIo>::const_iterator io_iter = eg_iter->io.begin(),
       io_end = eg_iter->io.end();
     for (; io_iter != io_end; ++io_iter) {
@@ -139,12 +141,21 @@ static void MergeIo(const std::vector<NnetExample> &src,
       for (int32 i = this_offset; i < this_offset + this_size; i++) {
         // we could easily support merging already-merged egs, but I don't see a
         // need for it right now.
-        KALDI_ASSERT(output_iter[i].n == 0 &&
-                     "Merging already-merged egs?  Not currentlysupported.");
-        output_iter[i].n = n;
+        
+        // For fvector, the NnetIos in the same NnetExample may have the same
+        // name, however the index.ns of them are different.
+        //KALDI_ASSERT(output_iter[i].n == 0 &&
+        //             "Merging already-merged egs?  Not currentlysupported.");
+        //output_iter[i].n = n;
+        KALDI_ASSERT(output_iter[i].n >= 0);
+        if (output_iter[i].n > max_source_n) {
+          max_source_n = output_iter[i].n;
+        }
+        output_iter[i].n += n_offset;
       }
       this_offset += this_size;  // note: this_offset is a reference.
     }
+    n_offset += max_source_n + 1;
   }
   KALDI_ASSERT(cur_size == sizes);
   for (int32 f = 0; f < num_feats; f++) {

@@ -297,6 +297,37 @@ void DiffNormalizePerRow(const CuMatrixBase<Real> &in_value,
                          const CuMatrixBase<Real> &out_deriv,
                          const Real target_rms, const bool add_log_stddev,
                          CuMatrixBase<Real>* in_deriv);
+// For Xvector
+/*
+  This function is used in computing the objective function and derivatives
+  in xvector training.
+  @param [in] scores   'scores' is a symmetric matrix of scores which are to
+  be interpreted as log-odds (according to the model) of pairs coming from the
+  same class, so scores(i, j) is the model's log p(same/different) for
+  elements i and j of the original minibatch of input. We assume that the data
+  in 'scores' has been arranged in such a way that pairs of indexes of the form
+  (2k, 2k+1), e.g., (0, 1), (2, 3), (4, 5), etc, are from the same class, but
+  indexes of any other form, such as (0, 2), (1, 2), etc, are from different
+  classes.
+  @param [out] objf_terms   'objf_terms' is a matrix of the same dimension as
+  'scores' whose elements we will sum to get the objective function for this
+  minibatch. This function computes the appropriate contributions to the
+  objective function, as follows.
+    if i == j:
+      objf_terms(i, j)== 0       # the same exact element is not scored
+    elsif i%2 == j%2:
+      objf_terms(i, j) = log(p(same))
+                       = -log(1 + exp(-scores(i, j))
+    else:
+      objf_terms(i, j) = 1 / (scores.NumRows() - 2) * log(p(different))
+                       = -1/(scores.NumRows() - 2) * log(1+exp(scores(i,j))
+  @param [out] objf_derivs    Element (i,j) of this matrix is the derivative
+  of objf_terms(i,j) with respect to scores(i, j).
+*/
+void ComputeXvectorObjfFromScores(const CuMatrixBase<BaseFloat> &scores,
+                                  CuMatrixBase<BaseFloat> *objf_terms,
+                                  CuMatrixBase<BaseFloat> *objf_derivs);
+
 
 
 } // namespace cu

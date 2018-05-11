@@ -194,6 +194,15 @@ void CuPackedMatrix<Real>::CopyToPacked(PackedMatrix<Real> *dst) const {
   }
 }
 
+//For Xvector
+template<typename Real>
+void CuPackedMatrix<Real>::CopyFromVec(const CuVectorBase<Real> &vec) {
+  MatrixIndexT size = (NumRows() * (NumRows() + 1)) / 2;
+  KALDI_ASSERT(vec.Dim() == size);
+  CuSubVector<Real> this_as_vec(data_, (num_rows_ * (num_rows_ + 1)) / 2);
+  this_as_vec.CopyFromVec(vec);
+}
+
 /*
 template<typename Real>
 void CuPackedMatrix<Real>::CopyRowsFromPacked(int32 r, const CuPackedMatrix<Real> &src, int32 src_ro, int32 dst_ro) {

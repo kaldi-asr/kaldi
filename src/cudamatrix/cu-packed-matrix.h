@@ -99,6 +99,9 @@ class CuPackedMatrix {
   void CopyFromPacked(const PackedMatrix<Real> &src);
   void CopyToPacked(PackedMatrix<Real> *dst) const;
 
+  // For Xvector
+  void CopyFromVec(const CuVectorBase<Real> &vec);
+
   void Read(std::istream &in, bool binary);
   
   void Write(std::ostream &out, bool binary) const;
