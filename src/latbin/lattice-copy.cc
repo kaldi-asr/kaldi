@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
 
     RspecifierOptions opts;
     ClassifyRspecifier(lats_rspecifier, NULL, &opts);
-    bool sorted = opts.sorted || opts.called_sorted;
+    bool sorted = opts.sorted;
 
     int32 n_done = 0;
     
