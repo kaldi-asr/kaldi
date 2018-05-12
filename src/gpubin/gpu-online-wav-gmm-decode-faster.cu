@@ -31,31 +31,26 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BEAM_SIZE 10
 #define BATCH_SIZE 27
 
-const int EPS_LAYER = 1;
+const int NUM_EPS_LAYER = 1;
+const int NUM_LAYER = NUM_LAYER + 1;
+const int NUM_BIT_LAYER = __builtin_popcount(NUM_EPS_LAYER);
+const int NUM_BIT_SHL_LAYER = 31 - NUM_BIT_LAYER;
+const int OFFSET_EPS_BIT = NUM_EPS_LAYER << NUM_BIT_SHL_LAYER;
+const int OFFSET_AND_BIT = (1 << NUM_BIT_SHL_LAYER) - 1;
 
 
 #define EPS_SYM 0
 
 using namespace kaldi;
+using namespace gpufst;
 
 int frame_;
 int utt_frames_;
 
-
-struct PointerComparison
-{
-    __host__ __device__ bool operator()(const prob_ptr_t &x, const prob_ptr_t &y)
-    {
-        float prob_x = unpack_prob(x);
-        float prob_y = unpack_prob(y);
-        return prob_x > prob_y;
-    }
-};
-
 __global__ void compute_initial(int *from_states, int *to_states, float *probs,
         int start_offset, int end_offset,
         state_t initial_state,
-        prob_ptr_t *viterbi)
+        prob_ptr_t *viterbi, int num_states)
 {
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   int offset = start_offset+id;
@@ -71,14 +66,25 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs,
   shared_inputs[threadIdx.x] = inputs[offset];
 
   if (offset < end_offset && from_shared_states[threadIdx.x] == initial_state && shared_inputs[threadIdx.x] == EPS_SYM) {
-    atomicMax(&viterbi[to_shared_states[threadIdx.x]], pack(shared_probs[threadIdx.x], offset));
+    atomicMax(&viterbi[to_shared_states[threadIdx.x]], pack(-shared_probs[threadIdx.x], offset));
+  }
+
+  viterbi[initial_state] = pack(0.0f, 0);
+
+  __syncthreads();
+  if (offset < end_offset){
+    for(int i = 1;i <= NUM_EPS_LAYER; ++i){
+      viterbi[to_shared_states[threadIdx.x] + num_states * i] = viterbi[to_shared_states[threadIdx.x]];
+    }    
   }
 }
 
 
 __global__ void compute_emitting(int *from_states, int *to_states, float *probs,
   int start_offset, int end_offset, int frame,
-  prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
+  prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi, 
+  GPUOnlineDecodableDiagGmmScaled* gpu_decodable,
+  float* cur_feats, int cur_feats_dim) {
 
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   int offset = start_offset+id;
@@ -94,15 +100,17 @@ __global__ void compute_emitting(int *from_states, int *to_states, float *probs,
   viterbi_from_shared_states[threadIdx.x] = viterbi_prev[from_shared_states[threadIdx.x]];
 
   if (offset < end_offset && from_shared_states[threadIdx.x] != EPS_SYM) {
-    prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) + shared_probs[threadIdx.x], offset);
-    atomicMax(&viterbi[/*to_register_state*/to_shared_states[threadIdx.x]], pp);
+    int idxlayer = ((unpack_ptr(viterbi_from_shared_states[threadIdx.x]) >> NUM_BIT_SHL_LAYER) + 1) & NUM_EPS_LAYER; // dapat index layernya keberapa
+    float ac_cost = - gpu_decodable->LogLikelihood(frame, inputs[offset], cur_feats, cur_feats_dim);
+    prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x] - ac_cost, offset | (idxlayer << NUM_BIT_SHL_LAYER));
+    atomicMax(&viterbi[to_shared_states[threadIdx.x]], pp);
   }
 
 }
 
 __global__ void compute_nonemitting(int *from_states, int *to_states, float *probs,
-  int start_offset, int end_offset, int frame,
-  prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi){
+  int start_offset, int end_offset,                
+  prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi, int layer_idx){
 
    int id = blockIdx.x*blockDim.x+threadIdx.x;
   int offset = start_offset+id;
@@ -117,9 +125,12 @@ __global__ void compute_nonemitting(int *from_states, int *to_states, float *pro
   shared_probs[threadIdx.x] = probs[offset];
   viterbi_from_shared_states[threadIdx.x] = viterbi_prev[from_shared_states[threadIdx.x]];
 
-  if (offset < end_offset && from_shared_states[threadIdx.x] == EPS_SYM) {
-    prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) + shared_probs[threadIdx.x], offset);
-    atomicMax(&viterbi[/*to_register_state*/to_shared_states[threadIdx.x]], pp);
+  if (offset < end_offset){
+    atomicMax(&viterbi[to_shared_states[threadIdx.x]], viterbi_prev[to_shared_states[threadIdx.x]]);
+    if(from_shared_states[threadIdx.x] == EPS_SYM) {
+      prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x], offset | ((layer_idx - 1) << NUM_BIT_SHL_LAYER));
+      atomicMax(&viterbi[to_shared_states[threadIdx.x]], pp);
+    }
   }
 }
 
@@ -129,47 +140,66 @@ __global__ void compute_final(int *final_states, float *final_probs,
   // To do: this should be a reduction instead
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   if (id < num_finals) {
-    prob_ptr_t pp = pack(unpack_prob(viterbi_prev[final_states[id]]) + final_probs[id], final_states[id]);
+    prob_ptr_t pp = pack(unpack_prob(viterbi_prev[final_states[id]]) - final_probs[id], final_states[id]);
     atomicMax(viterbi, pp);
   }
 }
 
-__global__ void get_path(int *from_nodes,
-            prob_ptr_t *viterbi,
-            int batch_length, int num_nodes,
-            prob_ptr_t *path) {
+__global__ void compute_max(float *final_probs,
+            prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi,
+            int num_states) {
+  // To do: this should be a reduction instead
   int id = blockIdx.x*blockDim.x+threadIdx.x;
-  if (id == 0) {
-    int state = unpack_ptr(path[batch_length]);
-    for (int t = batch_length - 1; t >= 0; t--) {
-      prob_ptr_t pp = viterbi[t * num_nodes+state];
-      path[t] = pp;
-      state = from_nodes[unpack_ptr(pp)];
-    }
+  if (id < num_states) {
+    prob_ptr_t pp = pack(unpack_prob(viterbi_prev[id]), id);
+    atomicMax(viterbi, pp);
   }
 }
 
+__global__ int get_path(int *from_nodes,
+            prob_ptr_t *viterbi,
+            int batch_frame, int num_nodes,
+            prob_ptr_t *path) {
+  int id = blockIdx.x*blockDim.x+threadIdx.x;
+  int num_path = 0;
+  if (id == 0) {
+    int state = unpack_ptr(path[(batch_frame + 1) * NUM_LAYER]);
+    for (int t = batch_frame; t > 0; num_path++, t--) {
+      while(state >= (1 << NUM_BIT_SHL_LAYER)){
+        prob_pt_t pp = viterbi[(t * NUM_LAYER + (state >> NUM_BIT_SHL_LAYER)) * num_nodes + (state & OFFSET_AND_BIT)];
+        path[num_path] = pp; num_path++;
+        state = from_nodes[unpack_ptr(pp)];
+      }
+      prob_ptr_t pp = viterbi[t * NUM_LAYER * num_nodes+state];
+      path[num_path] = pp;
+      state = from_nodes[unpack_ptr(pp)];
+    }
+  }
+  return num_path;
+}
+
 /* TODO
- * 1. Ganti Input Symbols jadi decodablenya
- * 2. Ganti Resizenya jadi Batch Size
- * 3. Konsep Beam Search disini beda, disini prune banyak state (sama dengan --max-active-state), di kaldi max prob
+ * 1. (DONE) Ganti Input Symbols jadi decodablenya
+ * 2. (DONE) Ganti Resizenya jadi Batch Size
+ * 3. (HALF DONE) Konsep Beam Search disini beda, disini prune banyak state (sama dengan --max-active-state), di kaldi max prob
  * 4. (DONE) Input Offsets kayaknya gaperlu, semuanya dipake sekarang soalnya
  * 5. Kasih offset frame di fungsi utama
- * 6. Compute Final ga harus dari final stat e. kalo misalnya dia ga nyampe final state maka cari yang terbaik.
+ * 6. Compute Final ga harus dari final state. kalo misalnya dia ga nyampe final state maka cari yang terbaik.
  * 7. (DONE) Ganti yang dapet output symbol dari input symbol. SIZE ga harus sama.
  * 8.  Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
-prob_t viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, vector<sym_t> &output_symbols) {
+int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, vector<sym_t> &output_symbols) {
   int verbose=0;
 
   int batch_frame = 0;
 
   static thrust::device_vector<prob_ptr_t> viterbi;
-  viterbi.resize((BATCH_SIZE + 1) * m.num_states); // TODO : instead of input symbols, kasih batch_size
+  viterbi.resize((BATCH_SIZE + 1) * m.num_states * NUM_LAYER); // TODO : instead of input symbols, kasih batch_size
   prob_ptr_t init_value = pack(-FLT_MAX, 0);
   thrust::fill(viterbi.begin(), viterbi.end(), init_value);
 
-  thrust::device_vector<prob_ptr_t> path(BATCH_SIZE + 1);
+  thrust::device_vector<prob_ptr_t> path((BATCH_SIZE + 1) * NUM_LAYER + 1);
+
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
 
@@ -179,7 +209,8 @@ prob_t viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDec
     m.probs.data().get(),
     start_offset, end_offset,
     m.initial,
-    viterbi.data().get()
+    viterbi.data().get(),
+    m.num_states
   );
 
   if (verbose) {
@@ -188,20 +219,36 @@ prob_t viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDec
     std::cout << std::endl;
   }
 
-  for (; !decodable->IsLastFrame(frame_ - 1) && batch_frame < BATCH_SIZE;
-     ++frame_, ++utt_frames_, ++batch_frame) {
+  for (int t = NUM_LAYER; !decodable->IsLastFrame(frame_ - 1) && batch_frame < BATCH_SIZE;
+     ++frame_, ++utt_frames_, ++batch_frame, t += NUM_LAYER) {
 
     // DO SOMETHING HERE : update cur_feats
-    gpu_decodable.cur_feats_ = GPUVector<BaseFloat>(decodable->cur_feats());
+    GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
 
-    compute_transition <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
+    int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
+
+    // compute nonepsilon
+    compute_emitting <<<BLOCKS, BLOCK_SIZE>>> (
       m.from_states.data().get(), 
       m.to_states.data().get(),
       m.probs.data().get(),
       start_offset, end_offset, 
       frame_,
-      viterbi.data().get() + t*m.num_states,
-      viterbi.data().get() + (t+1)*m.num_states);
+      viterbi.data().get() + (t-1)*m.num_states,
+      viterbi.data().get() + t*m.num_states, gpu_decodable, gpu_cur_feats.data, gpu_cur_feats.Dim());
+
+    // compute epsilon
+    for(int i = 1; i <= NUM_EPS_LAYER; ++i){
+      compute_nonemitting <<<BLOCKS, BLOCK_SIZE>>> (
+        m.from_states.data().get(), 
+        m.to_states.data().get(),
+        m.probs.data().get(),
+        start_offset, end_offset, 
+        viterbi.data().get() + (t + i - 1) * m.num_states,
+        viterbi.data().get() + (t + i) * m.num_states,
+        i
+      );
+    }
     
     if (verbose) {
       for (auto pp: viterbi)
@@ -210,18 +257,17 @@ prob_t viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDec
     }
   }
 
-  // TODO : cari token yang terbaik terlebih dahulu instead of final token
-  compute_final <<<ceildiv(m.final_states.size(), 1024), 1024>>> (
-    m.final_states.data().get(),
-    m.final_probs.data().get(),
-    m.final_states.size(),
-    viterbi.data().get() + batch_frame * m.num_states,
-    (&path.back()).get());
+  compute_max<<<ceildiv(m.final_states.size(), 1024), 1024>>> (
+    m.probs.data().get(),
+    viterbi.data().get() + batch_frame * NUM_LAYER * m.num_states - 1,
+    (&path.back()).get(),
+    m.num_states
+  );
 
-  get_path <<<1,1>>> (
+  int num_path = get_path <<<1,1>>> (
     m.from_states.data().get(),
     viterbi.data().get(), 
-    batch_frame + 1, m.num_states,
+    batch_frame, m.num_states,
     path.data().get()
   );
 
@@ -235,14 +281,23 @@ prob_t viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDec
   output_symbols.clear();
 
   // TODO : ini ga harus dapet dari sini, pasti lebih dikit soalnya (jumlah kata << jumlah fonem)
-  for (int t=0; t < batch_frame; t++) {
+  for (int t= num_path - 1; t >= 0; t++) {
+
     int sym = m.outputs[unpack_ptr(h_path[t])];
     if(sym != EPS_SYM){
       output_symbols.push_back(t);
     }
   }
+  if(batch_frame != BATCH_SIZE){
+    return 2;
+  }
+  else{
+    return 1;
+  }
+}
 
-  return unpack_prob(h_path.back());
+__global__ void AddPdfToGPUAmGmm(GPUAmDiagGmm* gpu_am_gmm, int pdf_idx, GPUDiagGmm *gpu_gmm){
+  gpu_am_gmm->densities[pdf_idx] = gpu_gmm;
 }
 
 int main(int argc, char *argv[]) {
@@ -398,30 +453,40 @@ int main(int argc, char *argv[]) {
       // Copy AmDiagGmm ke GPUAmDiagGmm
       GPUAmDiagGmm gpu_am_gmm_h;
       GPUAmDiagGmm *gpu_am_gmm_d;
-      for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
-        GPUDiagGmm gpu_gmm_h(am_gmm.GetPdf(i));
-        GPUDiagGmm *gpu_gmm_d;
-        cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
-        cudaMemcpy(gpu_gmm_d, &gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
-        gpu_am_gmm_h.AddPdf(gpu_gmm_d);
-      }
+      gpu_am_gmm_h.densities_.resize(am_gmm.NumPdfs());
+      gpu_am_gmm_h.densities = gpu_am_gmm_h.densities_.data().get();
+
+
       cudaMalloc((void**) &gpu_am_gmm_d, sizeof(GPUAmDiagGmm));
       cudaMemcpy(gpu_am_gmm_d, &gpu_am_gmm_h, sizeof(GPUAmDiagGmm), cudaMemcpyHostToDevice);
 
+      std::vector<GPUDiagGmm*> gpu_gmm_hs;
+      GPUDiagGmm* gpu_gmm_h;
+      for(size_t i = 0; i < am_gmm.NumPdfs(); ++i){
+        gpu_gmm_h = new GPUDiagGmm(am_gmm.GetPdf(i));
+        gpu_gmm_hs.push_back(gpu_gmm_h);
+
+        GPUDiagGmm *gpu_gmm_d;
+        cudaMalloc((void**) &gpu_gmm_d, sizeof(GPUDiagGmm));
+        cudaMemcpy(gpu_gmm_d, gpu_gmm_h, sizeof(GPUDiagGmm), cudaMemcpyHostToDevice);
+        AddPdfToGPUAmGmm<<<1,1>>>(gpu_am_gmm_d, i, gpu_gmm_d);
+      }
+
       // Copy TransitionModel ke GPUTransitionModel
-      GPUTransitionModel gpu_trans_model_h(trans_model);
+      
+      GPUTransitionModel *gpu_trans_model_h = new GPUTransitionModel(trans_model);
       GPUTransitionModel *gpu_trans_model_d;
+      
       cudaMalloc((void**) &gpu_trans_model_d, sizeof(GPUTransitionModel));
-      cudaMemcpy(gpu_trans_model_d, &gpu_trans_model_h, sizeof(GPUTransitionModel), cudaMemcpyHostToDevice); 
-
+      cudaMemcpy(gpu_trans_model_d, gpu_trans_model_h, sizeof(GPUTransitionModel), cudaMemcpyHostToDevice); 
+      
       // Create GPUOnlineDecodableDiagGmmScaled
-      GPUOnlineDecodableDiagGmmScaled gpu_decodable_h(gpu_am_gmm_d, gpu_trans_model_d, acoustic_scale);
+      GPUOnlineDecodableDiagGmmScaled* gpu_decodable_h = new GPUOnlineDecodableDiagGmmScaled(gpu_am_gmm_d, gpu_trans_model_d, acoustic_scale);
       GPUOnlineDecodableDiagGmmScaled* gpu_decodable_d;
-
       cudaMalloc((void**) &gpu_decodable_d, sizeof(GPUOnlineDecodableDiagGmmScaled));
-      cudaMemcpy(gpu_decodable_d, &gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
+      cudaMemcpy(gpu_decodable_d, gpu_decodable_h, sizeof(GPUOnlineDecodableDiagGmmScaled), cudaMemcpyHostToDevice);
 
-      /* MAIN LOOP PROGRAM */
+      /* MAIN DECODE*/
       auto read_start = std::chrono::steady_clock::now();
       frame_ = 0;
       while(1){
@@ -429,21 +494,22 @@ int main(int argc, char *argv[]) {
 
         prob_t final_prob = viterbi(m, &decodable, gpu_decodable_d, output_symbols);
         std::cout << onr.join(output_symbols) << " "; 
-        // IF END BREAK;
       }
       std::cout << std::endl;
       auto read_end = std::chrono::steady_clock::now();
       std::chrono::duration<double> diff = read_end - read_start;
       std::cout << "Time to decode sentence: " << diff.count()  << std::endl;
+      /* END DECODE */
 
-      /* END LOOP DECODE */
-
+      // TODO : BARU MASUKIN VITERBINYA 
       cudaFree(gpu_decodable_d);
       cudaFree(gpu_trans_model_d);
       cudaFree(gpu_am_gmm_d);
-      for(size_t i = 0;i < am_gmm.NumPdfs(); ++i){
-        cudaFree(gpu_am_gmm_h.densities_[i]);
-      }
+      
+      delete gpu_decodable_h;
+      delete gpu_trans_model_h;
+      for(size_t i = 0;i < gpu_gmm_hs.size(); ++i) delete gpu_gmm_hs[i];
+      gpu_gmm_hs.clear();
       delete feat_transform;
 
     }

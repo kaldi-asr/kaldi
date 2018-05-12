@@ -24,8 +24,6 @@ struct GPUOnlineDecodableDiagGmmScaled {
   BaseFloat ac_scale_;
   int32 feat_dim_;
 
-  GPUVector<BaseFloat> cur_feats_;//Vector<BaseFloat> cur_feats_;
-
   int32 cur_frame_;
 
   GPUOnlineDecodableDiagGmmScaled();
@@ -35,7 +33,7 @@ struct GPUOnlineDecodableDiagGmmScaled {
     BaseFloat ac_scale_
   );
 
-  __device__ BaseFloat LogLikelihood(int32 frame, int32 index);
+  __device__ BaseFloat LogLikelihood(int32 frame, int32 index, BaseFloat* cur_feats, int cur_feats_dim);
 };
 
 }
