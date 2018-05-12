@@ -18,7 +18,7 @@ GPUOnlineDecodableDiagGmmScaled::GPUOnlineDecodableDiagGmmScaled(
  */
 __device__ BaseFloat GPUOnlineDecodableDiagGmmScaled::LogLikelihood(int32 frame, int32 index, BaseFloat* cur_feats, int cur_feats_dim){
   int32 pdf_id = transition_model_->TransitionIdToPdf(index);
-  BaseFloat ans = ac_model_->LogLikelihood(pdf_id, cur_feats, int cur_feats_dim) * ac_scale_;
+  BaseFloat ans = ac_model_->LogLikelihood(pdf_id, cur_feats, cur_feats_dim) * ac_scale_;
   return ans;
 }
 

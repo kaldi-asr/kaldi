@@ -28,6 +28,6 @@ endif
 
 # Implicit rule for kernel compilation,
 %.o : %.cu
-	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -std=c++11
+	$(CUDATKDIR)/bin/nvcc -dc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -std=c++11
 
 include ../makefiles/default_rules.mk

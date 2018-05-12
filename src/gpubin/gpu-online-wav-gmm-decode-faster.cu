@@ -32,10 +32,10 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BATCH_SIZE 27
 
 const int NUM_EPS_LAYER = 1;
-const int NUM_LAYER = NUM_LAYER + 1;
+const int NUM_LAYER = NUM_EPS_LAYER + 1;
 const int NUM_BIT_LAYER = __builtin_popcount(NUM_EPS_LAYER);
 const int NUM_BIT_SHL_LAYER = 31 - NUM_BIT_LAYER;
-const int OFFSET_EPS_BIT = NUM_EPS_LAYER << NUM_BIT_SHL_LAYER;
+
 const int OFFSET_AND_BIT = (1 << NUM_BIT_SHL_LAYER) - 1;
 
 
@@ -47,7 +47,7 @@ using namespace gpufst;
 int frame_;
 int utt_frames_;
 
-__global__ void compute_initial(int *from_states, int *to_states, float *probs,
+__global__ void compute_initial(int *from_states, int *to_states, float *probs, int* inputs,
         int start_offset, int end_offset,
         state_t initial_state,
         prob_ptr_t *viterbi, int num_states)
@@ -80,7 +80,7 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs,
 }
 
 
-__global__ void compute_emitting(int *from_states, int *to_states, float *probs,
+__global__ void compute_emitting(int *from_states, int *to_states, float *probs, int* inputs,
   int start_offset, int end_offset, int frame,
   prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi, 
   GPUOnlineDecodableDiagGmmScaled* gpu_decodable,
@@ -156,26 +156,26 @@ __global__ void compute_max(float *final_probs,
   }
 }
 
-__global__ int get_path(int *from_nodes,
+__global__ void get_path(int *from_nodes,
             prob_ptr_t *viterbi,
             int batch_frame, int num_nodes,
-            prob_ptr_t *path) {
+            prob_ptr_t *path, int* num_path) {
   int id = blockIdx.x*blockDim.x+threadIdx.x;
-  int num_path = 0;
+  int num_path_d = 0;
   if (id == 0) {
     int state = unpack_ptr(path[(batch_frame + 1) * NUM_LAYER]);
-    for (int t = batch_frame; t > 0; num_path++, t--) {
+    for (int t = batch_frame; t > 0; num_path_d++, t--) {
       while(state >= (1 << NUM_BIT_SHL_LAYER)){
-        prob_pt_t pp = viterbi[(t * NUM_LAYER + (state >> NUM_BIT_SHL_LAYER)) * num_nodes + (state & OFFSET_AND_BIT)];
-        path[num_path] = pp; num_path++;
+        prob_ptr_t pp = viterbi[(t * NUM_LAYER + (state >> NUM_BIT_SHL_LAYER)) * num_nodes + (state & OFFSET_AND_BIT)];
+        path[num_path_d] = pp; num_path_d++;
         state = from_nodes[unpack_ptr(pp)];
       }
       prob_ptr_t pp = viterbi[t * NUM_LAYER * num_nodes+state];
-      path[num_path] = pp;
+      path[num_path_d] = pp;
       state = from_nodes[unpack_ptr(pp)];
     }
+    *num_path = num_path_d;
   }
-  return num_path;
 }
 
 /* TODO
@@ -188,7 +188,7 @@ __global__ int get_path(int *from_nodes,
  * 7. (DONE) Ganti yang dapet output symbol dari input symbol. SIZE ga harus sama.
  * 8.  Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
-int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, vector<sym_t> &output_symbols) {
+int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, std::vector<sym_t> &output_symbols) {
   int verbose=0;
 
   int batch_frame = 0;
@@ -207,6 +207,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     m.from_states.data().get(),
     m.to_states.data().get(),
     m.probs.data().get(),
+    m.inputs.data().get(),
     start_offset, end_offset,
     m.initial,
     viterbi.data().get(),
@@ -232,10 +233,12 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
       m.from_states.data().get(), 
       m.to_states.data().get(),
       m.probs.data().get(),
+      m.inputs.data().get(),
       start_offset, end_offset, 
       frame_,
       viterbi.data().get() + (t-1)*m.num_states,
-      viterbi.data().get() + t*m.num_states, gpu_decodable, gpu_cur_feats.data, gpu_cur_feats.Dim());
+      viterbi.data().get() + t*m.num_states, 
+      gpu_decodable, gpu_cur_feats.data, gpu_cur_feats.Dim());
 
     // compute epsilon
     for(int i = 1; i <= NUM_EPS_LAYER; ++i){
@@ -264,12 +267,17 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     m.num_states
   );
 
-  int num_path = get_path <<<1,1>>> (
+  int* num_path_d;
+  cudaMalloc((void**) &num_path_d, sizeof(int));
+  get_path <<<1,1>>> (
     m.from_states.data().get(),
     viterbi.data().get(), 
     batch_frame, m.num_states,
-    path.data().get()
+    path.data().get(),
+    num_path_d
   );
+  int num_path;
+  cudaMemcpy(&num_path, num_path_d, sizeof(int), cudaMemcpyDeviceToHost);
 
   cudaError_t e = cudaGetLastError();                                 
   if (e != cudaSuccess) {                                              
@@ -362,7 +370,8 @@ int main(int argc, char *argv[]) {
         words_wspecifier = po.GetArg(6),
         alignment_wspecifier = po.GetArg(7),
         lda_mat_rspecifier = po.GetOptArg(8);
-
+    
+    const numberizer onr = read_numberizer(word_syms_filename);
     std::vector<int32> silence_phones;
     if (!SplitStringToIntegers(silence_phones_str, ":", false, &silence_phones))
         KALDI_ERR << "Invalid silence-phones string " << silence_phones_str;
@@ -492,8 +501,9 @@ int main(int argc, char *argv[]) {
       while(1){
         std::vector<sym_t> output_symbols;
 
-        prob_t final_prob = viterbi(m, &decodable, gpu_decodable_d, output_symbols);
+        int state = viterbi(m, &decodable, gpu_decodable_d, output_symbols);
         std::cout << onr.join(output_symbols) << " "; 
+        if(state == 2) break;
       }
       std::cout << std::endl;
       auto read_end = std::chrono::steady_clock::now();

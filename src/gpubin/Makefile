@@ -27,7 +27,7 @@ ifeq ($(UNAME), Darwin)
 endif
 
 
-BINFILES = gpu-coba
+BINFILES = gpu-online-wav-gmm-decode-faster
 
 OBJFILES =
 
@@ -49,7 +49,7 @@ endif
 
 # Implicit rule for kernel compilation,
 %.o : %.cu
-	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70 -I../ -std=c++11 -I../../tools/openfst/include -I../../tools/portaudio/install/include -lrt
+	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70 -I../ -std=c++11 -I../../tools/openfst/include -I../../tools/portaudio/install/include -lrt -dc
 
 
 include ../makefiles/default_rules.mk
