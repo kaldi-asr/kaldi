@@ -141,6 +141,8 @@ if [ $stage -le 9 ]; then
     $graph_dir data/$mic/eval exp/$mic/tri3/decode_eval_${LM}
 fi
 
+exit 1;
+
 if [ $stage -le 10 ]; then
   # The following script cleans the data and produces cleaned data
   # in data/$mic/train_cleaned, and a corresponding system
