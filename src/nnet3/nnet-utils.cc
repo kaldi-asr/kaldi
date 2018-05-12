@@ -1002,9 +1002,32 @@ void ConstrainOrthonormal(Nnet *nnet) {
         continue;  // For efficiency, only do this every 4 minibatches-- it won't
                    // stray far.
       BaseFloat scale = ac->OrthonormalConstraint();
+      const std::vector<int32> &orthonormal_row_ranges =
+          ac->OrthonormalRowRanges();
       CuMatrixBase<BaseFloat> &params = ac->LinearParams();
       int32 rows = params.NumRows(), cols = params.NumCols();
-      if (rows <= cols) {
+      if (!orthonormal_row_ranges.empty()) {
+        // This branch would only be taken if the user supplied the
+        // "orthonormal-row-ranges" option in the xconfig.  It's a kind of
+        // specialized use-case, where you want to apply the constraint
+        // on parts of the matrix; it might be useful with attention
+        // layers.
+        KALDI_ASSERT(orthonormal_row_ranges.size() % 2 == 0);
+        for (size_t i = 0; i * 2 < orthonormal_row_ranges.size(); i++) {
+          int32 row_range_start = orthonormal_row_ranges[i*2],
+              row_range_end = orthonormal_row_ranges[i*2 + 2];
+          CuSubMatrix<BaseFloat> params_part(
+              params.RowRange(row_range_start, row_range_end));
+          if (params_part.NumRows() <= cols) {
+            ConstrainOrthonormalInternal(scale, &params);
+          } else {
+            // reaching this branch is unlikely.
+            CuMatrix<BaseFloat> params_trans(params, kTrans);
+            ConstrainOrthonormalInternal(scale, &params_trans);
+            params.CopyFromMat(params_trans, kTrans);
+          }
+        }
+      } else if (rows <= cols) {
         ConstrainOrthonormalInternal(scale, &params);
       } else {
         CuMatrix<BaseFloat> params_trans(params, kTrans);

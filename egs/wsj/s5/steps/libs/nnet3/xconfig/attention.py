@@ -19,6 +19,11 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 #   self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
 #   learning-rate-factor=1.0   [This can be used to make the affine component
 #                               train faster or slower].
+#   TODO: most parameters are undocumented here.
+#   orthonormal-constraint=0.0  [E.g. you can set this to 1.0 to force
+#                               each group of parameter-matrix rows corresponding
+#                               to a single 'key' to be orthonormal.  This
+#                               may help it to train more completely.]
 #   Documentation for the rest of the parameters (related to the
 #   attention component) can be found in nnet-attention-component.h
 
@@ -45,6 +50,7 @@ class XconfigAttentionLayer(XconfigLayerBase):
                         'l2-regularize': 0.0,
                         'num-left-inputs-required': -1,
                         'num-right-inputs-required': -1,
+                        'orthonormal-constraint':0.0,
                         'output-context': True,
                         'time-stride': 1,
                         'num-heads': 1,
@@ -146,7 +152,6 @@ class XconfigAttentionLayer(XconfigLayerBase):
                               if learning_rate_factor != 1.0 else '')
         l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
                                 if l2_regularize != 0.0 else '')
-
         configs = []
         # First the affine node.
         line = ('component name={0}.affine'
@@ -154,10 +159,11 @@ class XconfigAttentionLayer(XconfigLayerBase):
                 ' input-dim={1}'
                 ' output-dim={2}'
                 ' max-change={3}'
-                ' {4} {5} {6} '
+                ' {4} {5} {6} {7}'
                 ''.format(self.name, input_dim, dim,
                           max_change, ng_affine_options,
-                          learning_rate_option, l2_regularize_option))
+                          learning_rate_option, l2_regularize_option,
+                          self.get_orthonormal_constraint_opts()))
         configs.append(line)
 
         line = ('component-node name={0}.affine'
@@ -246,3 +252,28 @@ class XconfigAttentionLayer(XconfigLayerBase):
             configs.append(line)
             cur_node = '{0}.{1}'.format(self.name, nonlinearity)
         return configs
+
+    # returns options relating to the orthonormal constraint, to be passed to
+    # the NaturalGradientAffineComponent.
+    def get_orthonormal_constraint_opts(self):
+        if self.config['orthonormal-constraint'] == 0.0:
+            return ''
+        orthonormal_constraint = self.config['orthonormal-constraint']
+        # the constraint won't be applied to the whole parameter matrix but to
+        # sub-matrices of it consisting of ranges of rows.
+        orthonormal_row_ranges = []
+        context_dim = (self.config['num-left-inputs'] +
+                       self.config['num-right-inputs'] + 1)
+        num_heads = self.config['num-heads']
+        key_dim = self.config['key-dim']
+        value_dim = self.config['value-dim']
+        query_dim = key_dim + context_dim;
+        per_head_dim = key_dim + value_dim + query_dim
+        for h in range(num_heads):
+            range_begin = h * per_head_dim
+            range_end = range_begin + key_dim
+            orthonormal_row_ranges.append(range_begin)
+            orthonormal_row_ranges.append(range_end)
+        return 'orthonormal-constraint={0} orthonormal-row-ranges={1}'.format(
+            orthonormal_constraint,
+            ','.join([str(x) for x in orthonormal_row_ranges]))

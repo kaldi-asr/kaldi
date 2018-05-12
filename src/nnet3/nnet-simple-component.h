@@ -381,16 +381,47 @@ class FixedScaleComponent;
 class PerElementScaleComponent;
 class PerElementOffsetComponent;
 
-// Affine means a linear function plus an offset.
-// Note: although this class can be instantiated, it also
-// functions as a base-class for more specialized versions of
-// AffineComponent.
+/*
+  Affine means a linear function plus an offset.
+  Note: although this class can be instantiated, it also
+  functions as a base-class for more specialized versions of
+  AffineComponent.
+
+  Parameters accepted on the config line, with default if applicable:
+
+     matrix   If specified, a filename containing the parameters of the class as
+              a single matrix containing the linear_params, plus the bias_params
+              as the last column
+
+     input-dim  The input dimension of the component
+     output-dim  The output dimension of the component
+     param-stddev=1/sqrt(input-dim)  The standard deviation of the elements of the linear parameters
+                      (they will have a Gaussian distribution with this standard deviation).
+     bias-stddev=1.0   The standard deviation of the elements of the bias parameters
+
+     orthonormal-constraint=0.0   Can be used to constrain the linear parameter matrix
+                       to be semi-orthogonal, see ConstraintOrhonormal() in nnet-utils.h,
+                       and http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf.
+     orthonormal-row-ranges     Only relevant if orthonormal-constraint is nonzero.
+                      May be set to a list of integers with an even number of elements, describing
+                      ranges of rows for which the orthonormal constraint is going to
+                      be applied independently.  The ranges are in (begin,end) format,
+                      where end is one past the last element.   E.g.
+                      orthonormal-row-ranges=0,10,30,40 would mean that we'd apply the
+                      orthonormal constraint separately on two matrices consisting of
+                      rows 0 through 9, and rows 30 through 39, of the linear_params_
+                      matrix.
+*/
 class AffineComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
   BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
+  const std::vector<int32> &OrthonormalRowRanges() const {
+    return orthonormal_row_ranges_;
+  }
+
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
 
@@ -468,7 +499,10 @@ class AffineComponent: public UpdatableComponent {
   const AffineComponent &operator = (const AffineComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
+  // see documentation at the top of this class for more information on the
+  // following.
   BaseFloat orthonormal_constraint_;
+  std::vector<int32> orthonormal_row_ranges_;
 };
 
 class RepeatedAffineComponent;
@@ -1386,6 +1420,11 @@ class ClipGradientComponent: public Component {
         for each feature/activation dimension i:
           output(row, i) = input(row, column_map_[i]).
 
+    The only config value it accepts is 'column-map', e.g.:
+            column-map=0,10,1,11,...,9,19
+    ... which should be a permutation of a contiguous block of integers
+    starting with 0 (i.e. something like '3,2,1,0' but not '0,4' or '0,0,2').
+    See the equation above for how it is used.
 */
 class PermuteComponent: public Component {
  public:
