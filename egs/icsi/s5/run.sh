@@ -16,7 +16,7 @@
 mic=ihm
 
 # Train systems,
-nj=30 # number of parallel jobs,
+nj=20 # number of parallel jobs,
 stage=1
 . utils/parse_options.sh
 
@@ -26,7 +26,8 @@ nmics=$(echo $mic | sed 's/[a-z]//g') # e.g. 8 for mdm8.
 set -euo pipefail
 
 # Path where AMI gets downloaded (or where locally available):
-ICSI_DIR=$PWD/wav_db # Default
+# Note: provde the path to a subdirectory with meeting folders (i.e. B* ones)
+ICSI_DIR=/media/drive3/corpora/meeting_speech/speech # Default
 case $(hostname -d) in
   fit.vutbr.cz) ICSI_DIR= ;; # BUT,
   clsp.jhu.edu) ICSI_DIR= ;; # JHU,
@@ -40,21 +41,21 @@ LM=$final_lm.pr1-7
 # This recipe assumes (so far) you obtained the corpus already (can do so from LDC or http://groups.inf.ed.ac.uk/ami/icsi/)
 
 if [ "$base_mic" == "mdm" ]; then
-  PROCESSED_AMI_DIR=$AMI_DIR/beamformed
+  PROCESSED_ICSI_DIR=$ICSI_DIR/beamformed
   if [ $stage -le 1 ]; then
     # for MDM data, do beamforming
     ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; extras/install_beamformit.sh; cd -;'" && exit 1
-    local/ami_beamform.sh --cmd "$train_cmd" --nj 20 $nmics $ICSI_DIR $PROCESSED_AMI_DIR
+    local/icsi_beamform.sh --cmd "$train_cmd" --nj 20 $nmics $ICSI_DIR $PROCESSED_ICSI_DIR
   fi
 else
-  PROCESSED_AMI_DIR=$AMI_DIR
+  PROCESSED_ICSI_DIR=$ICSI_DIR
 fi
 
 # Prepare original data directories data/ihm/train_orig, etc.
 if [ $stage -le 2 ]; then
-  local/icsi_${base_mic}_data_prep.sh $PROCESSED_AMI_DIR $mic
-  local/icsi_${base_mic}_scoring_data_prep.sh $PROCESSED_AMI_DIR $mic dev
-  local/icsi_${base_mic}_scoring_data_prep.sh $PROCESSED_AMI_DIR $mic eval
+  local/icsi_${base_mic}_data_prep.sh $PROCESSED_ICSI_DIR $mic
+  local/icsi_${base_mic}_scoring_data_prep.sh $PROCESSED_ICSI_DIR $mic dev
+  local/icsi_${base_mic}_scoring_data_prep.sh $PROCESSED_ICSI_DIR $mic eval
 fi
 
 if [ $stage -le 3 ]; then
@@ -147,12 +148,13 @@ if [ $stage -le 10 ]; then
   #
   # Note: local/run_cleanup_segmentation.sh defaults to using 50 jobs,
   # you can reduce it using the --nj option if you want.
-  local/run_cleanup_segmentation.sh --mic $mic
+  #local/run_cleanup_segmentation.sh --mic $mic
+  echo "For ICSI we do not clean segmentations, as those are manual by default."
 fi
 
 if [ $stage -le 11 ]; then
   ali_opt=
-  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali true"
+  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali false"
   local/chain/run_tdnn.sh $ali_opt --mic $mic
 fi
 
@@ -160,8 +162,8 @@ if [ $stage -le 12 ]; then
 #  the following shows how you would run the nnet3 system; we comment it out
 #  because it's not as good as the chain system.
 #  ali_opt=
-#  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali true"
-# local/nnet3/run_tdnn.sh $ali_opt --mic $mic
+  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali false"
+  local/nnet3/run_tdnn.sh $ali_opt --mic $mic 
 fi
 
 exit 0

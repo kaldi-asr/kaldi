@@ -5,7 +5,7 @@
 #meetid chan spk stime etime transcripts....
 #here we renormalize transcripts 
 
-$field_begin=5;
+$field_begin=6;
 
 while (<>) {  
 

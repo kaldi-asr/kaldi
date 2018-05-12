@@ -1,5 +1,9 @@
 #!/usr/bin/perl
 
+# Note from Pawel: This file has been modified from its original version to account for
+# extracting mappings for distant channels, as there are some exceptions in mapping between
+# micropones types and physical channels across some meetings.
+
 # An example ICSI file looks like this
 # <Meeting Session="Bed002" DateTimeStamp="2001-02-05-1500" Version="2" VersionDate="Jan 7 2004">
 # 
@@ -122,6 +126,19 @@ for my $p ($xmldoc->findnodes('/Meeting/Preamble/Participants/Participant')) {
 
 print 'Info: spk2chan hash : ', Dumper(\%spk2chan), "\n";
 
+#build mic2chan map
+my %mic2chan = ();
+for my $p ($xmldoc->findnodes('/Meeting/Preamble/Channels/Channel')) {
+   my $mic = $p->getAttribute("Mic");
+   my $chan = $p->getAttribute("Name");
+   if (!defined $mic2chan{$mic}) {
+     $mic2chan{$mic} = $chan;
+   } else {
+     $mic2chan{$mic} = "$mic2chan{$mic},$chan";
+   }
+}
+
+
 #parse segments and produce and store them in the list
 #MeetingId chan spk start end transcript
 
@@ -158,8 +175,9 @@ for my $i (0 .. $#segments) {
   my $etime = $segments[$i]->{'etime'};
   my $text = $segments[$i]->{'text'};
   my $chan = $spk2chan{$spk};
+  my $chanpzm = $mic2chan{"c2"}; #for ICSI recipe, we only use D* PZM mics (c2)
   
-  print W "$meetid $chan $spk $stime $etime $text \n";
+  print W "$meetid $chan $chanpzm $spk $stime $etime $text \n";
 }
 close(W);
 

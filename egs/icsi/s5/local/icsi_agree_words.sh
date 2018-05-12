@@ -23,7 +23,7 @@ mkdir -p $wdir
 
 #make words lists
 #if [[ ! -f $wdir/missing_words  ]]; then
-  cut -d" " -f6- $trans | tr " " "\n" | sort -u > $wdir/training_words
+  cut -d" " -f7- $trans | tr " " "\n" | sort -u > $wdir/training_words
   awk '{print $1}' $dict | sort -u > $wdir/dict_words
   comm -23 $wdir/training_words $wdir/dict_words > $wdir/missing_words
 #fi
