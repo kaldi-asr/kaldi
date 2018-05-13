@@ -41,13 +41,13 @@ data=$1
 
 
 if [ -s $data/reco2dur ] && \
-  [ $(cat $data/wav.scp | wc -l) -eq $(cat $data/reco2dur | wc -l) ]; then
+  [ $(wc -l < $data/wav.scp) -eq $(wc -l < $data/reco2dur) ]; then
   echo "$0: $data/reco2dur already exists with the expected length.  We won't recompute it."
   exit 0;
 fi
 
 if [ -s $data/utt2dur ] && \
-   [ $(cat $data/utt2spk | wc -l) -eq $(cat $data/utt2dur | wc -l) ] && \
+   [ $(wc -l < $data/utt2spk) -eq $(wc -l < $data/utt2dur) ] && \
    [ ! -s $data/segments ]; then
   
   echo "$0: $data/wav.scp indexed by utt-id; copying utt2dur to reco2dur"
@@ -88,7 +88,7 @@ elif [ -f $data/wav.scp ]; then
     fi
 
     read_entire_file=false
-    if cat $data/wav.scp | grep -q 'sox.*speed'; then
+    if grep -q 'sox.*speed' $data/wav.scp; then
       read_entire_file=true
       echo "$0: reading from the entire wav file to fix the problem caused by sox commands with speed perturbation. It is going to be slow."
       echo "... It is much faster if you call get_reco2dur.sh *before* doing the speed perturbation via e.g. perturb_data_dir_speed.sh or "
@@ -128,8 +128,8 @@ else
   exit 1
 fi
 
-len1=$(cat $data/wav.scp | wc -l)
-len2=$(cat $data/reco2dur | wc -l)
+len1=$(wc -l < $data/wav.scp)
+len2=$(wc -l < $data/reco2dur)
 if [ "$len1" != "$len2" ]; then
   echo "$0: warning: length of reco2dur does not equal that of wav.scp, $len2 != $len1"
   if [ $len1 -gt $[$len2*2] ]; then
