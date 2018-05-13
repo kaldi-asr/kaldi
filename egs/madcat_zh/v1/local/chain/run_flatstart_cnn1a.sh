@@ -3,9 +3,9 @@
 
 # local/chain/compare_wer.sh exp/chain/e2e_cnn_1afix1
 # System                      e2e_cnn_1afix1
-# WER                              6.98
-# Final train prob              -0.0447
-# Final valid prob              -0.0439
+# WER                             10.55
+# Final train prob              -0.0702
+# Final valid prob              -0.0578
 # Final train prob (xent)
 # Final valid prob (xent)
 
