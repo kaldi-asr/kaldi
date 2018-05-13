@@ -16,7 +16,7 @@
 mic=ihm
 
 # Train systems,
-nj=20 # number of parallel jobs,
+nj=30 # number of parallel jobs,
 stage=1
 . utils/parse_options.sh
 
@@ -113,8 +113,8 @@ if [ $stage -le 7 ]; then
     data/$mic/train data/lang exp/$mic/tri2 exp/$mic/tri2_ali
   # Decode
    graph_dir=exp/$mic/tri2/graph_${LM}
-  $decode_cmd --mem 4G $graph_dir/mkgraph.log \
-    utils/mkgraph.sh data/lang_${LM} exp/$mic/tri2 $graph_dir
+  #$decode_cmd --mem 4G $graph_dir/mkgraph.log \
+  #  utils/mkgraph.sh data/lang_${LM} exp/$mic/tri2 $graph_dir
   steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \
     $graph_dir data/$mic/dev exp/$mic/tri2/decode_dev_${LM}
   steps/decode.sh --nj $nj --cmd "$decode_cmd" --config conf/decode.conf \

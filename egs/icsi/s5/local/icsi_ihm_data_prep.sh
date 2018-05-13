@@ -89,8 +89,8 @@ join $dir/recids0 $dir/rec2meeting_and_channel | sort -k1 > $dir/recids
 awk -v icsidir=$ICSI_DIR '{
        recid=$1;
        meetid=$2;
-       split(recid,S,"[_]");
-       wavpath=icsidir"/"meetid"/"S[3]".sph";
+       chanid=$3;
+       wavpath=icsidir"/"meetid"/"chanid".sph";
        print recid " " wavpath
    }' < $dir/recids > $dir/sph.scp
 

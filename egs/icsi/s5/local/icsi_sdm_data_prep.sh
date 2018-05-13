@@ -10,7 +10,7 @@
 
 #check existing directories
 if [ $# != 3 ]; then
-  echo "Usage: icsi_sdm_data_prep_edin.sh /path/to/ICSI"
+  echo "Usage: icsi_sdm_data_prep.sh /path/to/ICSI set micid"
   exit 1; 
 fi 
 
