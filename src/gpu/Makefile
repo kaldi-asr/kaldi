@@ -7,8 +7,12 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 OBJFILES =
+OBJNONLINKEDFILES =
+
 ifeq ($(CUDA), true)
-  OBJFILES += gpu-diag-gmm.o gpu-transition-model.o gpu-am-diag-gmm.o gpu-online-decodable.o
+  OBJNONLINKEDFILES += gpu-diag-gmm.o gpu-transition-model.o gpu-am-diag-gmm.o gpu-online-decodable.o
+  OBJFILES += $(OBJNONLINKEDFILES)
+  OBJFILES += kaldi-gpu.dlink.o
 endif
 
 LIBNAME = kaldi-gpu
@@ -26,8 +30,11 @@ ifeq ($(CUDA), true)
   endif
 endif
 
+%.dlink.o :
+	$(CUDATKDIR)/bin/nvcc $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -dlink -o $@ $(OBJNONLINKEDFILES)
+
 # Implicit rule for kernel compilation,
 %.o : %.cu
-	$(CUDATKDIR)/bin/nvcc -dc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -std=c++11
+	$(CUDATKDIR)/bin/nvcc -dc $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -std=c++11
 
 include ../makefiles/default_rules.mk

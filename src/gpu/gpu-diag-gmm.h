@@ -21,10 +21,10 @@ struct GPUDiagGmm{
   GPUDiagGmm() {}
   GPUDiagGmm(DiagGmm &d);
 
-  __device__
+   __device__
   int32 Dim() const;
 
-  __device__
+   __device__
   BaseFloat LogLikelihood(BaseFloat *data, int32 num_data);
 
 };
