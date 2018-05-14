@@ -178,16 +178,16 @@ if [ $stage -le 5 ]; then
   done
 fi
 if [ $stage -le 6 ]; then
-  echo "$0: invoking rnnlm/compute_sentence_scores_bidirectional.sh which calls rnnlm to get RNN LM scores."
+  echo "$0: invoking rnnlm/compute_sentence_scores_back.sh which calls rnnlm to get RNN LM scores."
   $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \
-    rnnlm/compute_sentence_scores_bidirectional.sh $rnndir $adir.JOB/temp \
+    rnnlm/compute_sentence_scores_back.sh $rnndir $adir.JOB/temp \
                                    $adir.JOB/words_text $adir.JOB/lmwt.rnn 
 fi
 
 if [ $stage -le 7 ]; then
   echo "$0: doing average on forward and backward scores."
   for n in `seq $nj`; do
-    paste $adir.$n/lmwt.rnn $adir.$n/lmwt.rnn_back | awk -F' ' '{print $1,$2 * 0.5 + $4 * 0.5}' \
+    paste $indir/archives.$n/lmwt.rnn $adir.$n/lmwt.rnn | awk -F' ' '{print $1,$2 * 0.5 + $4 * 0.5}' \
     > $adir.$n/lmwt.rnn_bi
   done
 fi
