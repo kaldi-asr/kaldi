@@ -183,5 +183,5 @@ online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudama
 kws: base util hmm tree matrix lat
 # gpucommons: base util hmm tree matrix lat
 gpu: base gmm hmm
-gpubin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online gpu gpufst
+gpubin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online gpufst
 
