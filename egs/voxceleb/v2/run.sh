@@ -203,5 +203,5 @@ if [ $stage -le 12 ]; then
   echo "EER: ${eer}%"
   # EER: 3.224%
   # For reference, here's the ivector system from ../v1:
-  # EER: 5.53%
+  # EER: 5.419%
 fi

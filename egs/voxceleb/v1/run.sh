@@ -35,7 +35,8 @@ fi
 if [ $stage -le 1 ]; then
   # Make MFCCs and compute the energy-based VAD for each dataset
   for name in train voxceleb1_test; do
-    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+    steps/make_mfcc.sh --write-utt2num-frames true \
+      --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
       data/${name} exp/make_mfcc $mfccdir
     utils/fix_data_dir.sh data/${name}
     sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
@@ -58,15 +59,26 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
+  # In this stage, we train the i-vector extractor.
+  #
+  # Note that there are well over 1 million utterances in our training set,
+  # and it takes an extremely long time to train the extractor on all of this.
+  # Also, most of those utterances are very short.  Short utterances are
+  # harmful for training the i-vector extractor.  Therefore, to reduce the
+  # training time and improve performance, we will only train on the 100k
+  # longest utterances.
+  utils/subset_data_dir.sh \
+    --utt-list <(sort -n -k 2 data/train/utt2num_frames | tail -n 100000) \
+    data/train data/train_100k
   # Train the i-vector extractor.
-  sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 20G" \
+  sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 16G" \
     --ivector-dim 400 --num-iters 5 \
-    exp/full_ubm/final.ubm data/train \
+    exp/full_ubm/final.ubm data/train_100k \
     exp/extractor
 fi
 
 if [ $stage -le 4 ]; then
-  sid/extract_ivectors.sh --cmd "$train_cmd --mem 4G" --nj 40 \
+  sid/extract_ivectors.sh --cmd "$train_cmd --mem 4G" --nj 80 \
     exp/extractor data/train \
     exp/ivectors_train
 
@@ -107,5 +119,5 @@ fi
 if [ $stage -le 7 ]; then
   eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_voxceleb1_test) 2> /dev/null`
   echo "EER: ${eer}%"
-  # EER: 5.53%
+  # EER: 5.419%
 fi
