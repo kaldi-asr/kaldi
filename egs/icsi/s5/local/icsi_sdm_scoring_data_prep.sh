@@ -123,7 +123,7 @@ awk -v sph2pipe=sph2pipe '{
 # (1d) reco2file_and_channel
 cat $dir/sph.scp \
  | perl -ane '$_ =~ m:^ICSI_(\S+)_(\S+)\s+.*\/.*\/(.*)\.sph$: || die "sdm data prep: reco2file_and_channel bad label $_";
-              print "ICSI_$1_$2 $3 A\n"; ' > $dir/reco2file_and_channel || exit 1;
+              print "ICSI_$1_$2 $1_$3 A\n"; ' > $dir/reco2file_and_channel || exit 1;
 
 
 # icsi spk flags are "m", "f", "u", or "x" for male, female, unknonwn and computer generated
@@ -141,14 +141,14 @@ awk '{print $1}' $dir/segments | \
           print "$1$2$3 $1$2\n";'  \
     > $dir/utt2spk_stm || exit 1;
 
+local/convert2stm.pl $dir utt2spk_stm | sort -k1 > $dir/stm
+cp local/english.glm $dir/glm
+
 # Copy stuff into its final location
 mkdir -p $odir
-for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
+for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel stm glm; do
   cp $dir/$f $odir/$f || exit 1;
 done
-
-local/convert2stm.pl $dir utt2spk_stm > $dir/stm || exit 1;
-cp local/english.glm $dir/glm
 
 utils/validate_data_dir.sh --no-feats $odir || exit 1;
 

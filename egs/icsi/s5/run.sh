@@ -106,11 +106,11 @@ fi
 
 if [ $stage -le 7 ]; then
   # LDA_MLLT
-  #steps/train_lda_mllt.sh --cmd "$train_cmd" \
-  #  --splice-opts "--left-context=3 --right-context=3" \
-  #  5000 80000 data/$mic/train data/lang exp/$mic/tri1_ali exp/$mic/tri2
-  #steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-  #  data/$mic/train data/lang exp/$mic/tri2 exp/$mic/tri2_ali
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
+    --splice-opts "--left-context=3 --right-context=3" \
+    5000 80000 data/$mic/train data/lang exp/$mic/tri1_ali exp/$mic/tri2
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    data/$mic/train data/lang exp/$mic/tri2 exp/$mic/tri2_ali
   # Decode
   graph_dir=exp/$mic/tri2/graph_${LM}
   $decode_cmd --mem 4G $graph_dir/mkgraph.log \

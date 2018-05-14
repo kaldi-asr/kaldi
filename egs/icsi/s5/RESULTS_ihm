@@ -1,0 +1,10 @@
+
+# for d in exp/ihm/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+
+%WER 35.4 | 3331 23769 | 69.8 22.2 8.0 5.2 35.4 66.6 | -0.082 | exp/ihm/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev.ctm.filt.sys
+%WER 25.9 | 4176 32032 | 77.6 14.8 7.6 3.5 25.9 56.5 | -0.050 | exp/ihm/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_14/eval.ctm.filt.sys
+%WER 35.0 | 3331 23767 | 71.1 22.2 6.7 6.2 35.0 66.6 | -0.517 | exp/ihm/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev.ctm.filt.sys
+%WER 25.4 | 4176 32036 | 78.5 14.5 7.0 3.9 25.4 56.0 | -0.360 | exp/ihm/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_15/eval.ctm.filt.sys
+
+
+# for d in exp/ihm/chain_cleaned_rvb/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done

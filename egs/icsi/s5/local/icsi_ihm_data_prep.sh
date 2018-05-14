@@ -108,7 +108,7 @@ awk -v sph2pipe=sph2pipe '{
 # (1d) reco2file_and_channel
 cat $dir/wav.scp \
  | perl -ane '$_ =~ m:^ICSI_(\S+)_(\S+)\s+.*\/.*$: || die "ihm data prep: reco2file_and_channel bad label $_";
-              print "ICSI_$1_$2 $2 A\n"; ' > $dir/reco2file_and_channel || exit 1;
+              print "ICSI_$1_$2 $1_$2 A\n"; ' > $dir/reco2file_and_channel || exit 1;
 
 # icsi spk flags are "m", "f", "u", or "x" for male, female, unknonwn and computer generated
 awk '{print $1}' $dir/segments | \

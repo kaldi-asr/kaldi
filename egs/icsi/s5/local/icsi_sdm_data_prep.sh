@@ -122,7 +122,7 @@ awk -v sph2pipe=sph2pipe '{
 # (1d) reco2file_and_channel
 cat $dir/sph.scp \
  | perl -ane '$_ =~ m:^ICSI_(\S+)_(\S+)\s+.*\/.*\/(.*)\.sph$: || die "sdm data prep: reco2file_and_channel bad label $_";
-              print "ICSI_$1_$2 $3 A\n"; ' > $dir/reco2file_and_channel || exit 1;
+              print "ICSI_$1_$2 $1_$3 A\n"; ' > $dir/reco2file_and_channel || exit 1;
 
 #cat $dir/recids | \
 #   | awk '{ print }' > $dir/reco2file_and_channel || exit 1;
