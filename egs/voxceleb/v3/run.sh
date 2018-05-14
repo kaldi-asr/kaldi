@@ -1,8 +1,9 @@
 #!/bin/bash
-# Copyright      2017   David Snyder
-#                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
-#                2017   Johns Hopkins University (Author: Daniel Povey)
-#                2018   Ewald Enzinger
+# Copyright   2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#             2017   Johns Hopkins University (Author: Daniel Povey)
+#        2017-2018   David Snyder
+#             2018   Ewald Enzinger
+#
 # Apache 2.0.
 #
 # See ../README.txt for more info on data required.
