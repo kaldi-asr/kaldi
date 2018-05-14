@@ -335,7 +335,8 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   thrust::fill(viterbi.begin(), viterbi.end(), init_value);
 
   std::cerr << "FILL BERHASIL" << std::endl;
-  thrust::device_vector<prob_ptr_t> path((BATCH_SIZE + 1) * NUM_LAYER + 1);
+  static thrust::device_vector<prob_ptr_t> path((BATCH_SIZE + 1) * NUM_LAYER + 1);
+  thrust::fill(viterbi.begin(), viterbi.end(), init_value);
 
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
@@ -366,6 +367,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     std::cerr << "FRAME : " << frame_ << std::endl;
 
     // DO SOMETHING HERE : update cur_feats
+    decodable->CacheFrameFromGPU(frame_);
     GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
 
     int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);

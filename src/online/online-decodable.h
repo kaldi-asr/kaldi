@@ -39,19 +39,20 @@ class OnlineDecodableDiagGmmScaled : public DecodableInterface {
                                const BaseFloat scale,
                                OnlineFeatureMatrix *input_feats);
 
-  
+
   /// Returns the log likelihood, which will be negated in the decoder.
   virtual BaseFloat LogLikelihood(int32 frame, int32 index);
-  
+
   virtual bool IsLastFrame(int32 frame) const;
-  
+
   /// Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
-  const Vector<BaseFloat>& cur_feats() { return cur_feats_;} 
+  const Vector<BaseFloat>& cur_feats() { return cur_feats_;}
 
+  void CacheFrameFromGPU(int32 frame) { CacheFrame(frame); }
  private:
   void CacheFrame(int32 frame);
-  
+
   OnlineFeatureMatrix *features_;
   const AmDiagGmm &ac_model_;
   BaseFloat ac_scale_;
