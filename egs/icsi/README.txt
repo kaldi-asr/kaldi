@@ -10,7 +10,7 @@ and then
 where mic_type depends on whether you want to use individual headset mic (ihm),
 distant (but beamformed) multiple mics (mdm) or distant single mic (d1...d4, pda1, pda2).
 Mutliple distant microphones (mdm) setup is using only 4 PDA mics. Look below
-for more details, more on notations and a typical meeting layout ICSI followed.
+for more details, on notations and a typical meeting layout ICSI recordings followed.
 
 
 About ICSI corpora and this particular recipe
