@@ -37,7 +37,7 @@
 int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BLOCK_SIZE 512
 #define BEAM_SIZE 10
-#define BATCH_SIZE 54
+#define BATCH_SIZE 162
 
 const int NUM_EPS_LAYER = 1;
 const int NUM_LAYER = NUM_EPS_LAYER + 1;
@@ -45,7 +45,6 @@ const int NUM_BIT_LAYER = __builtin_popcount(NUM_EPS_LAYER);
 const int NUM_BIT_SHL_LAYER = 31 - NUM_BIT_LAYER;
 
 const int OFFSET_AND_BIT = (1 << NUM_BIT_SHL_LAYER) - 1;
-
 
 #define EPS_SYM 0
 
@@ -395,6 +394,8 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
         i
       );
     }
+
+    cudaDeviceSynchronize();
     
     if (verbose) {
       for (auto pp: viterbi)
@@ -657,6 +658,11 @@ int main(int argc, char *argv[]) {
 
         int state = viterbi(m, &decodable, gpu_decodable_d, output_symbols);
         std::cerr << "KELUAR DONG" << std::endl;
+        std::cerr << "OUTPUT SYMBOLS SIZE : " << output_symbols.size() << std::endl; 
+        for(size_t j = 0;j < output_symbols.size(); ++j){
+          std::cerr << output_symbols[j] << " ";
+        }
+        std::cerr << std::endl;
         std::cout << onr.join(output_symbols) << " "; 
         if(state == 2) break;
       }
