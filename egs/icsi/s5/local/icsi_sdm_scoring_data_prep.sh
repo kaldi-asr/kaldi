@@ -22,12 +22,11 @@ fi
 ICSI_DIR=$1
 mic=$2
 SET=$3
+micid=$(echo $mic | sed 's/[a-z]//g') # e.g. 8 for mdm8.
 
-micid=2 #default is D2, you can set it to 1,2,3 or 4
-micdir=$mic$micid
 SEGS=data/local/annotations/$SET.txt
-dir=data/local/$micdir/$SET
-odir=data/$micdir/${SET}_orig
+dir=data/local/$mic/$SET
+odir=data/$mic/${SET}_orig
 mkdir -p $dir
 
 # Audio data directory check
@@ -49,7 +48,7 @@ fi
 # we use uniq as some (rare) entries are doubled in transcripts
 
 cat $SEGS | \
-  awk -v micdir=$micdir \
+  awk -v micdir=$mic \
       '{meeting=$1; channel=$2; dchannel=$3; speaker=$4; stime=$5; etime=$6;
           if (etime > stime) {
             printf("ICSI_%s_%s_%s_%07.0f_%07.0f", meeting, micdir, speaker, int(100*stime+0.5), int(100*etime+0.5));
@@ -80,7 +79,7 @@ awk '{
 # annotation file for Bmr001, then we match this against the file on disk (could be chane),
 # we finally generate wav.scp with entries like: ICSI_Bmr001_sdm3 path/to/bmr001/chane.sph
 cat $SEGS | \
-  awk -v micid=$micid -v micdir=$micdir \
+  awk -v micid=$micid -v micdir=$mic \
       '{ meeting=$1; channel=$2; dchannel=$3; speaker=$4; stime=$5; etime=$6;
          split(dchannel, c, ",");
          chan=c[micid];
@@ -89,7 +88,7 @@ cat $SEGS | \
 
 find $ICSI_DIR/ -name "*.sph" | sort > $dir/sph.flist
 
-awk -F'/' -v micdir=$micdir '{
+awk -F'/' -v micdir=$mic '{
       chan_orig=substr($NF,1,5);
       chan_norm=substr($NF,1,4)toupper(substr($NF,5,1));
       meetid_orig=substr($(NF-1),1,6);
@@ -135,13 +134,20 @@ awk '{print $1}' $dir/segments | \
 
 utils/utt2spk_to_spk2utt.pl <$dir/utt2spk >$dir/spk2utt || exit 1;
 
+# but we want to properly score the overlapped segments, hence we generate the extra
+# utt2spk_stm file containing speakers ids used to generate the stms for mdm/sdm case
+awk '{print $1}' $dir/segments | \
+  perl -ane '$_ =~ m:^(\S+)([fmux][ne][0-9]{3})(\S+)$: || die "sdm data prep: utt2spk_stm bad label $_";
+          print "$1$2$3 $1$2\n";'  \
+    > $dir/utt2spk_stm || exit 1;
+
 # Copy stuff into its final location
 mkdir -p $odir
 for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
   cp $dir/$f $odir/$f || exit 1;
 done
 
-local/convert2stm.pl $dir utt2spk_stm > $dir/stm
+local/convert2stm.pl $dir utt2spk_stm > $dir/stm || exit 1;
 cp local/english.glm $dir/glm
 
 utils/validate_data_dir.sh --no-feats $odir || exit 1;

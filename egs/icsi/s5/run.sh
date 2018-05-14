@@ -6,12 +6,12 @@
 
 # You may set 'mic' to:
 #  ihm [individual headset mic- the default which gives best results]
-#  sdm1 [single distant microphone- the current script allows you only to select
-#        the 1st of 8 microphones]
-#  mdm8 [multiple distant microphones-- currently we only support averaging over
-#       the 8 source microphones].
+#  sdmN [single distant microphone- the current script allows you to select
+#        any of 4 PZM microphones, D1...D4 in a diagram, default should be 2]
+#  mdm4 [multiple distant microphones-- currently we only support averaging over
+#       the 4 source microphones].
 # ... by calling this script as, for example,
-# ./run.sh --mic sdm1
+# ./run.sh --mic sdm2
 # ./run.sh --mic mdm8
 mic=ihm
 
