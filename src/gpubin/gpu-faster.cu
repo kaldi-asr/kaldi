@@ -324,6 +324,7 @@ __global__ void get_path(int *from_nodes,
  * 8.  Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
 int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, std::vector<sym_t> &output_symbols) {
+  std::cerr << "MASUK VITERBI" << std::endl;
   int verbose=0;
 
   int batch_frame = 0;
@@ -333,11 +334,14 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   prob_ptr_t init_value = pack(-FLT_MAX, 0);
   thrust::fill(viterbi.begin(), viterbi.end(), init_value);
 
+  std::cerr << "FILL BERHASIL" << std::endl;
   thrust::device_vector<prob_ptr_t> path((BATCH_SIZE + 1) * NUM_LAYER + 1);
 
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
 
+
+  std::cerr << "COMPUTE INITIAL" << std::endl;
   compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
     m.from_states.data().get(),
     m.to_states.data().get(),
@@ -355,8 +359,10 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     std::cout << std::endl;
   }
 
+  std::cerr << "MASUK DECODE" << std::endl;
   for (int t = NUM_LAYER; !decodable->IsLastFrame(frame_ - 1) && batch_frame < BATCH_SIZE;
      ++frame_, ++utt_frames_, ++batch_frame, t += NUM_LAYER) {
+    std::cerr << "FRAME : " << frame_ << std::endl;
 
     // DO SOMETHING HERE : update cur_feats
     GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
@@ -394,7 +400,9 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
       std::cout << std::endl;
     }
   }
+  std::cerr << "KELUAR DECODE" << std::endl;
 
+  std::cerr << "COMPUTE MAX" << std::endl;
   compute_max<<<ceildiv(m.final_states.size(), 1024), 1024>>> (
     m.probs.data().get(),
     viterbi.data().get() + batch_frame * NUM_LAYER * m.num_states - 1,
@@ -402,6 +410,8 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     m.num_states
   );
 
+
+  std::cerr << "CUDA MALLOC" << std::endl;
   int* num_path_d;
   cudaMalloc((void**) &num_path_d, sizeof(int));
   get_path <<<1,1>>> (
@@ -414,6 +424,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   int num_path;
   cudaMemcpy(&num_path, num_path_d, sizeof(int), cudaMemcpyDeviceToHost);
 
+  cudaFree(num_path_d);
   cudaError_t e = cudaGetLastError();                                 
   if (e != cudaSuccess) {                                              
     std::cerr << "CUDA failure: " << cudaGetErrorString(e) << std::endl;
@@ -424,6 +435,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   output_symbols.clear();
 
   // TODO : ini ga harus dapet dari sini, pasti lebih dikit soalnya (jumlah kata << jumlah fonem)
+  std::cerr << "LOOP OUTPUT SYMBOLS" << std::endl;
   for (int t= num_path - 1; t >= 0; t++) {
 
     int sym = m.outputs[unpack_ptr(h_path[t])];
@@ -431,6 +443,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
       output_symbols.push_back(t);
     }
   }
+  std::cerr << "RETURN" << std::endl;
   if(batch_frame != BATCH_SIZE){
     return 2;
   }
@@ -634,9 +647,11 @@ int main(int argc, char *argv[]) {
       auto read_start = std::chrono::steady_clock::now();
       frame_ = 0;
       while(1){
+        std::cerr << "FRAME : " << frame_ << std::endl;
         std::vector<sym_t> output_symbols;
 
         int state = viterbi(m, &decodable, gpu_decodable_d, output_symbols);
+        std::cerr << "KELUAR DONG" << std::endl;
         std::cout << onr.join(output_symbols) << " "; 
         if(state == 2) break;
       }
