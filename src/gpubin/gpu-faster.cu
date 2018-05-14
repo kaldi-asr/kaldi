@@ -31,6 +31,9 @@
 #include "online/online-faster-decoder.h"
 #include "online/onlinebin-util.h"
 
+#include <math_functions.h>
+#include <math_constants.h>
+
 int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BLOCK_SIZE 512
 #define BEAM_SIZE 10
