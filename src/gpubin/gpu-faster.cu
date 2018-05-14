@@ -37,7 +37,7 @@
 int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BLOCK_SIZE 512
 #define BEAM_SIZE 10
-#define BATCH_SIZE 27
+#define BATCH_SIZE 54
 
 const int NUM_EPS_LAYER = 1;
 const int NUM_LAYER = NUM_EPS_LAYER + 1;
@@ -280,9 +280,10 @@ __global__ void compute_final(int *final_states, float *final_probs,
   }
 }
 
-__global__ void compute_max(float *final_probs,
-            prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi,
-            int num_states) {
+__global__ void compute_max(
+           prob_ptr_t *viterbi_prev, 
+           prob_ptr_t *viterbi,
+           int num_states) {
   // To do: this should be a reduction instead
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   if (id < num_states) {
@@ -316,12 +317,12 @@ __global__ void get_path(int *from_nodes,
 /* TODO
  * 1. (DONE) Ganti Input Symbols jadi decodablenya
  * 2. (DONE) Ganti Resizenya jadi Batch Size
- * 3. (HALF DONE) Konsep Beam Search disini beda, disini prune banyak state (sama dengan --max-active-state), di kaldi max prob
+ * 3. (DONE) Konsep Beam Search disini beda, disini prune banyak state (sama dengan --max-active-state), di kaldi max prob
  * 4. (DONE) Input Offsets kayaknya gaperlu, semuanya dipake sekarang soalnya
- * 5. Kasih offset frame di fungsi utama
- * 6. Compute Final ga harus dari final state. kalo misalnya dia ga nyampe final state maka cari yang terbaik.
+ * 5. (DONE) Kasih offset frame di fungsi utama
+ * 6. (DONE) Compute Final ga harus dari final state. kalo misalnya dia ga nyampe final state maka cari yang terbaik.
  * 7. (DONE) Ganti yang dapet output symbol dari input symbol. SIZE ga harus sama.
- * 8.  Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
+ * 8. (KAYAKNYA GA DEH) Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
 int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, std::vector<sym_t> &output_symbols) {
   std::cerr << "MASUK VITERBI" << std::endl;
@@ -339,7 +340,8 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
 
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
-
+  std::cerr << "START OFFSET : " << start_offset << std::endl;
+  std::cerr << "END OFFSET : " << end_offset << std::endl;
 
   std::cerr << "COMPUTE INITIAL" << std::endl;
   compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
@@ -403,13 +405,11 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   std::cerr << "KELUAR DECODE" << std::endl;
 
   std::cerr << "COMPUTE MAX" << std::endl;
-  compute_max<<<ceildiv(m.final_states.size(), 1024), 1024>>> (
-    m.probs.data().get(),
+  compute_max<<<ceildiv(end_offset - start_offset, 1024), 1024>>> (
     viterbi.data().get() + batch_frame * NUM_LAYER * m.num_states - 1,
     (&path.back()).get(),
     m.num_states
   );
-
 
   std::cerr << "CUDA MALLOC" << std::endl;
   int* num_path_d;
@@ -422,25 +422,30 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     num_path_d
   );
   int num_path;
-  cudaMemcpy(&num_path, num_path_d, sizeof(int), cudaMemcpyDeviceToHost);
+  std::cerr << "CUDA MEMCPY" << std::endl;
 
+  cudaMemcpy(&num_path, num_path_d, sizeof(int), cudaMemcpyDeviceToHost);
+  
+  std::cerr << "CUDA FREE" << std::endl;
   cudaFree(num_path_d);
+  std::cerr << "CUDA ERROR CHECK" << std::endl;
   cudaError_t e = cudaGetLastError();                                 
   if (e != cudaSuccess) {                                              
     std::cerr << "CUDA failure: " << cudaGetErrorString(e) << std::endl;
     exit(1);
   }
-
+  
+  std::cerr << "COPY HOST VECTOR" << std::endl;
   thrust::host_vector<prob_ptr_t> h_path(path);
   output_symbols.clear();
 
   // TODO : ini ga harus dapet dari sini, pasti lebih dikit soalnya (jumlah kata << jumlah fonem)
   std::cerr << "LOOP OUTPUT SYMBOLS" << std::endl;
-  for (int t= num_path - 1; t >= 0; t++) {
+  for (int t= num_path - 1; t >= 0; t--) {
 
-    int sym = m.outputs[unpack_ptr(h_path[t])];
+    int sym = m.outputs[unpack_ptr(h_path[t]) & OFFSET_AND_BIT];
     if(sym != EPS_SYM){
-      output_symbols.push_back(t);
+      output_symbols.push_back(sym);
     }
   }
   std::cerr << "RETURN" << std::endl;
