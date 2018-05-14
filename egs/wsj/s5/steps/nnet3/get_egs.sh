@@ -117,8 +117,8 @@ if ! [ $num_utts -gt $[$num_utts_subset*4] ]; then
 fi
 
 # Get list of validation utterances.
-awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
-    > $dir/valid_uttlist || exit 1;
+awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset \
+    > $dir/valid_uttlist
 
 if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
   echo "File $data/utt2uniq exists, so augmenting valid_uttlist to"
@@ -132,7 +132,7 @@ if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
 fi
 
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+   utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/train_subset_uttlist
 
 echo "$0: creating egs.  To ensure they are not deleted later you can do:  touch $dir/.nodelete"
 
