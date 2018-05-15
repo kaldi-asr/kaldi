@@ -37,7 +37,7 @@
 int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BLOCK_SIZE 512
 #define BEAM_SIZE 10
-#define BATCH_SIZE 27
+#define BATCH_SIZE 108
 
 const int NUM_EPS_LAYER = 1;
 const int NUM_LAYER = NUM_EPS_LAYER + 1;
@@ -87,7 +87,7 @@ struct GPUDiagGmm{
       }
     }
 
-    BaseFloat max_elem = (sizeof(BaseFloat) == 4) ? CUDART_MIN_DENORM_F : CUDART_MIN_DENORM;
+    BaseFloat max_elem = -CUDART_MAX_NORMAL_F;
     for(int32 i = 0;i < num_loglikes; ++i) {
       if(max_elem < loglikes[i]) max_elem = loglikes[i];
     }
@@ -168,6 +168,9 @@ struct GPUOnlineDecodableDiagGmmScaled {
 
   __device__ BaseFloat LogLikelihood(int32 frame, int32 index, BaseFloat* cur_feats, int cur_feats_dim) {
     int32 pdf_id = transition_model_->TransitionIdToPdf(index);
+    
+    // printf("GPUOnlineDecodable (%d,%d), cur_feats_dim : %d\n", frame, index, cur_feats_dim);
+    // for(int i = 0;i < cur_feats_dim; ++i) printf("cur_feats[%d] : %.10f\n", i, cur_feats[i]);
     BaseFloat ans = ac_model_->LogLikelihood(pdf_id, cur_feats, cur_feats_dim) * ac_scale_;
     return ans;
   }
@@ -244,6 +247,7 @@ __global__ void compute_emitting(int *from_states, int *to_states, float *probs,
   if (offset < end_offset && shared_inputs[threadIdx.x] != EPS_SYM) {
     int idxlayer = ((unpack_ptr(viterbi_from_shared_states[threadIdx.x]) >> NUM_BIT_SHL_LAYER) + 1) & NUM_EPS_LAYER; // dapat index layernya keberapa
     float ac_cost = - gpu_decodable->LogLikelihood(frame, shared_inputs[threadIdx.x], cur_feats, cur_feats_dim);
+    // printf("ACOUSTIC SCORE (%d,%d) : %.10f\n", frame, shared_inputs[threadIdx.x], ac_cost);
     prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x] - ac_cost, offset | (idxlayer << NUM_BIT_SHL_LAYER));
     atomicMax(&viterbi[to_shared_states[threadIdx.x]], pp);
   }
@@ -365,6 +369,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
 
     decodable->CacheFrameFromGPU(frame_);
     GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
+    // thrust::copy(gpu_cur_feats.data_.begin(), gpu_cur_feats.data_.end(), std::ostream_iterator<float>(std::cout, " "));
 
     int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
 
