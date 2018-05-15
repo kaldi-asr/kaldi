@@ -320,26 +320,21 @@ __global__ void get_path(int *from_nodes,
  * 8. (KAYAKNYA GA DEH) Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
 int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, std::vector<sym_t> &output_symbols) {
-  //std::cerr << "MASUK VITERBI" << std::endl;
   int verbose=0;
 
   int batch_frame = 0;
 
   static thrust::device_vector<prob_ptr_t> viterbi;
-  viterbi.resize((BATCH_SIZE + 1) * m.num_states * NUM_LAYER); // TODO : instead of input symbols, kasih batch_size
+  viterbi.resize((BATCH_SIZE + 1) * m.num_states * NUM_LAYER);
   prob_ptr_t init_value = pack(-FLT_MAX, 0);
   thrust::fill(viterbi.begin(), viterbi.end(), init_value);
 
-  //std::cerr << "FILL BERHASIL" << std::endl;
   static thrust::device_vector<prob_ptr_t> path((BATCH_SIZE + 1) * NUM_LAYER + 1);
   thrust::fill(path.begin(), path.end(), init_value);
 
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
-  //std::cerr << "START OFFSET : " << start_offset << std::endl;
-  //std::cerr << "END OFFSET : " << end_offset << std::endl;
 
-  //std::cerr << "COMPUTE INITIAL" << std::endl;
   compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
     m.from_states.data().get(),
     m.to_states.data().get(),
@@ -406,7 +401,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
 
   std::cerr << "COMPUTE MAX" << std::endl;
   compute_max<<<ceildiv(end_offset - start_offset, 1024), 1024>>> (
-    viterbi.data().get() + (batch_frame + 1) * NUM_LAYER * m.num_states - 1,
+    viterbi.data().get() + ((batch_frame + 1) * NUM_LAYER - 1) * m.num_states,
     (&path.back()).get(),
     m.num_states
   );
