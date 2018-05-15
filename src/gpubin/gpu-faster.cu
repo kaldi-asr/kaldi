@@ -211,6 +211,11 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs, 
       viterbi[to_shared_states[threadIdx.x] + num_states * i] = viterbi[to_shared_states[threadIdx.x]];
     }    
   }
+  if (id == 0){
+    for(int i = 1;i <= NUM_EPS_LAYER; ++i){
+      viterbi[initial_state + num_states * i] = viterbi[initial_state];
+    }
+  }
 }
 
 
@@ -347,8 +352,9 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   );
 
   if (verbose) {
+    std::cout << "VERBOSE SEBELUM MASUK DECODE" << std::endl;
     for (auto pp: viterbi)
-      std::cout << unpack_prob(pp) << " ";
+      if(unpack_prob(pp) != -FLT_MAX) std::cout << unpack_prob(pp) << " " << unpack_ptr(pp) << std::endl;
     std::cout << std::endl;
   }
 
@@ -392,9 +398,10 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     
     if (verbose) {
       for (auto pp: viterbi)
-        std::cout << unpack_prob(pp) << " ";
+        if(unpack_prob(pp) != -FLT_MAX) std::cout << unpack_prob(pp) << " " << unpack_ptr(pp) << std::endl; 
       std::cout << std::endl;
     }
+   
   }
   std::cerr << "KELUAR DECODE" << std::endl;
 
