@@ -1,13 +1,22 @@
 #!/bin/bash
+# Copyrigh       2017  Ignacio Viñals
+#           2017-2018  David Snyder
+#
+# This script prepares the SITW data.  It creates separate directories
+# for dev enroll, eval enroll, dev test, and eval test.  It also prepares
+# multiple trials files, in the test directories, but we usually only use the
+# core-core.lst list.
 
 if [  $# != 2 ]; then
-    echo "make_sitw.sh <SITW_PATH> <this_out_dir>"
+    echo "Usage: make_sitw.sh <SITW_PATH> <this_out_dir>"
+    echo "E.g.: make_sitw.sh /export/corpora/SRI/sitw data"
     exit 1
 fi
+
 in_dir=$1
 out_dir=$2
 
-#TRAIN
+# Prepare the enrollment data
 for mode in dev eval; do
   this_out_dir=${out_dir}/sitw_${mode}_enroll
   mkdir -p $this_out_dir 2>/dev/null
@@ -32,8 +41,8 @@ for mode in dev eval; do
   utils/fix_data_dir.sh $this_out_dir
 done
 
+# Prepare the test data
 for mode in dev eval; do
-  #EVAL
   this_out_dir=${out_dir}/sitw_${mode}_test
   mkdir -p $this_out_dir 2>/dev/null
   WAVFILE=$this_out_dir/wav.scp

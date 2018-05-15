@@ -4,6 +4,9 @@
 #           2018  David Snyder
 #
 # Usage: make_voxceleb1.pl /export/voxceleb1 data/
+# Note that this script also downloads a list of speakers that overlap
+# with our evaluation set, SITW.  These speakers are removed from VoxCeleb1
+# prior to preparing the dataset.
 
 if (@ARGV != 2) {
   print STDERR "Usage: $0 <path-to-voxceleb1> <path-to-data-dir>\n";
@@ -18,6 +21,20 @@ if (system("mkdir -p $out_dir") != 0) {
   die "Error making directory $out_dir";
 }
 
+# This file provides the list of speakers that overlap between SITW and VoxCeleb1.
+if (! -e "$out_dir/voxceleb1_sitw_overlap.txt") {
+  system("wget -O $out_dir/voxceleb1_sitw_overlap.txt http://www.openslr.org/resources/49/voxceleb1_sitw_overlap.txt");
+}
+
+# sitw_overlap contains the list of speakers that also exist in our evaluation set, SITW.
+my %sitw_overlap = ();
+open(OVERLAP, "<", "$out_dir/voxceleb1_sitw_overlap.txt") or die "Could not open the overlap file $out_dir/voxceleb1_sitw_overlap.txt";
+while (<OVERLAP>) {
+  chomp;
+  my $spkr_id = $_;
+  $sitw_overlap{$spkr_id} = ();
+}
+
 opendir my $dh, "$data_base/voxceleb1_wav" or die "Cannot open directory: $!";
 my @spkr_dirs = grep {-d "$data_base/voxceleb1_wav/$_" && ! /^\.{1,2}$/} readdir($dh);
 closedir $dh;
@@ -27,17 +44,20 @@ open(WAV, ">", "$out_dir/wav.scp") or die "Could not open the output file $out_d
 
 foreach (@spkr_dirs) {
   my $spkr_id = $_;
-  opendir my $dh, "$data_base/voxceleb1_wav/$spkr_id/" or die "Cannot open directory: $!";
-  my @files = map{s/\.[^.]+$//;$_}grep {/\.wav$/} readdir($dh);
-  closedir $dh;
-  foreach (@files) {
-    my $filename = $_;
-    my $rec_id = substr($filename, 0, 11);
-    my $segment = substr($filename, 12, 7);
-    my $utt_id = "$spkr_id-$rec_id-$segment";
-    my $wav = "$data_base/voxceleb1_wav/$spkr_id/$filename.wav";
-    print WAV "$utt_id", " $wav", "\n";
-    print SPKR "$utt_id", " $spkr_id", "\n";
+  # Only keep the speaker if it isn't in the overlap list.
+  if (not exists $sitw_overlap{$spkr_id}) {
+    opendir my $dh, "$data_base/voxceleb1_wav/$spkr_id/" or die "Cannot open directory: $!";
+    my @files = map{s/\.[^.]+$//;$_}grep {/\.wav$/} readdir($dh);
+    closedir $dh;
+    foreach (@files) {
+      my $filename = $_;
+      my $rec_id = substr($filename, 0, 11);
+      my $segment = substr($filename, 12, 7);
+      my $utt_id = "$spkr_id-$rec_id-$segment";
+      my $wav = "$data_base/voxceleb1_wav/$spkr_id/$filename.wav";
+      print WAV "$utt_id", " $wav", "\n";
+      print SPKR "$utt_id", " $spkr_id", "\n";
+    }
   }
 }
 

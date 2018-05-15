@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright    
+# Copyright
 #                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
 #                2017   Johns Hopkins University (Author: Daniel Povey)
 #                2018   Ewald Enzinger
@@ -17,38 +17,33 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
 
-voxceleb1_root=/expscratch/dsnyder/VoxCeleb1/
-voxceleb2_root=/expscratch/dgromero/corpora/vox2
-sitw_root=/export/common/data/corpora/NIST/SRE/sitw_database.v4
+voxceleb1_root=/export/corpora/VoxCeleb1
+voxceleb2_root=/export/corpora/VoxCeleb2
+sitw_root=/export/corpora/SRI/sitw
 nnet_dir=exp/xvector_nnet_1a
 musan_root=/expscratch/dgromero/corpora/musan/
 
 sitw_dev_trials_core=data/sitw_dev_test/trials/core-core.lst
 sitw_eval_trials_core=data/sitw_eval_test/trials/core-core.lst
-sitw_dev_trials_assist=data/sitw_dev_test/trials/assist-multi.lst
-sitw_eval_trials_assist=data/sitw_eval_test/trials/assist-multi.lst
 
 stage=0
 
 if [ $stage -le 0 ]; then
-  # ***** TODO: Before commiting, be sure to git checkout local/make_voxceleb2.pl, since it was edited
-  # to remove aac directory
+  # Prepare the VoxCeleb1 dataset.  The script also downloads a list from
+  # http://www.openslr.org/resources/49/voxceleb1_sitw_overlap.txt that
+  # contains the speakers that overlap between VoxCeleb1 and our evaluation
+  # set SITW.
+  local/make_voxceleb1.pl $voxceleb1_root data
 
+  # Prepare the VoxCeleb2 dataset.
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
   local/make_voxceleb2.pl $voxceleb2_root test data/voxceleb2_test
-
-  # This script reates data/voxceleb1_test and data/voxceleb1_train.
-  # Our evaluation set is the test portion of VoxCeleb1.
-  local/make_voxceleb1.pl $voxceleb1_root data
-  # TODO, this filter should be moved into the perl script above
-  utils/filter_scp.pl --exclude overlap.txt data/voxceleb1/spk2utt | utils/spk2utt_to_utt2spk.pl > data/voxceleb1/utt2spk
-  utils/fix_data_dir.sh data/voxceleb1
 
   # We'll train on all of VoxCeleb2, plus the training portion of VoxCeleb1.
   # This should give 7,351 speakers and 1,277,503 utterances.
   utils/combine_data.sh data/train data/voxceleb2_train data/voxceleb2_test data/voxceleb1
-  
-  # Prepare Speakers in the Wild.  This is our evaluation dataset. 
+
+  # Prepare Speakers in the Wild.  This is our evaluation dataset.
   local/make_sitw.sh $sitw_root data
 fi
 
@@ -178,13 +173,13 @@ if [ $stage -le 9 ]; then
    # Now we will extract x-vectors used for centering, LDA, and PLDA training.
    # Note that data/train_combined has well over 2 million utterances,
    # which is far more than is needed to train the generative PLDA model.
-   # In addition, many of the utterances are very short, which causes a 
+   # In addition, many of the utterances are very short, which causes a
    # mismatch with our evaluation conditions.  In the next command, we
    # create a data directory that contains the longest 200,000 recordings,
    # which we will use to train the backend.
    utils/subset_data_dir.sh \
      --utt-list <(sort -n -k 2 data/train_combined_no_sil/utt2num_frames | tail -n 200000) \
-     data/train_combined data/train_combined_200k  
+     data/train_combined data/train_combined_200k
 
    sid/nnet3/xvector/extract_xvectors.sh --cmd "$train_cmd --mem 4G" --nj 80 \
     $nnet_dir data/train_combined_200k \
@@ -227,8 +222,8 @@ if [ $stage -le 11 ]; then
     "ark:ivector-mean ark:data/sitw_dev_enroll/spk2utt scp:$nnet_dir/xvectors_sitw_dev_enroll/xvector.scp ark:- | ivector-subtract-global-mean $nnet_dir/xvectors_train_combined_200k/mean.vec ark:- ark:- | transform-vec $nnet_dir/xvectors_train_combined_200k/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "ark:ivector-subtract-global-mean $nnet_dir/xvectors_train_combined_200k/mean.vec scp:$nnet_dir/xvectors_sitw_dev_test/xvector.scp ark:- | transform-vec $nnet_dir/xvectors_train_combined_200k/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "cat '$sitw_dev_trials_core' | cut -d\  --fields=1,2 |" exp/scores/sitw_dev_core_scores || exit 1;
-  pooled_eer=$(paste $sitw_dev_trials_core exp/scores/sitw_dev_core_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
-  echo "SITW Dev Core: $pooled_eer";
+  eer=$(paste $sitw_dev_trials_core exp/scores/sitw_dev_core_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  echo "SITW Dev Core: $eer";
   # SITW Dev Core: 3.119
 fi
 
@@ -241,7 +236,7 @@ if [ $stage -le 12 ]; then
     "ark:ivector-mean ark:data/sitw_eval_enroll/spk2utt scp:$nnet_dir/xvectors_sitw_eval_enroll/xvector.scp ark:- | ivector-subtract-global-mean $nnet_dir/xvectors_train_combined_200k/mean.vec ark:- ark:- | transform-vec $nnet_dir/xvectors_train_combined_200k/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "ark:ivector-subtract-global-mean $nnet_dir/xvectors_train_combined_200k/mean.vec scp:$nnet_dir/xvectors_sitw_eval_test/xvector.scp ark:- | transform-vec $nnet_dir/xvectors_train_combined_200k/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "cat '$sitw_eval_trials_core' | cut -d\  --fields=1,2 |" exp/scores/sitw_eval_core_scores || exit 1;
-  pooled_eer=$(paste $sitw_eval_trials_core exp/scores/sitw_eval_core_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
-  echo "SITW Eval Core: $pooled_eer";
+  eer=$(paste $sitw_eval_trials_core exp/scores/sitw_eval_core_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  echo "SITW Eval Core: $eer";
   # SITW Eval Core: 3.581
 fi
