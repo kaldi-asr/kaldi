@@ -243,8 +243,8 @@ __global__ void compute_emitting(int *from_states, int *to_states, float *probs,
 
   if (offset < end_offset && shared_inputs[threadIdx.x] != EPS_SYM) {
     int idxlayer = ((unpack_ptr(viterbi_from_shared_states[threadIdx.x]) >> NUM_BIT_SHL_LAYER) + 1) & NUM_EPS_LAYER; // dapat index layernya keberapa
-//    float ac_cost = - gpu_decodable->LogLikelihood(frame, shared_inputs[threadIdx.x], cur_feats, cur_feats_dim);
-    prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x], offset | (idxlayer << NUM_BIT_SHL_LAYER));
+    float ac_cost = - gpu_decodable->LogLikelihood(frame, shared_inputs[threadIdx.x], cur_feats, cur_feats_dim);
+    prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x] - ac_cost, offset | (idxlayer << NUM_BIT_SHL_LAYER));
     atomicMax(&viterbi[to_shared_states[threadIdx.x]], pp);
   }
 
