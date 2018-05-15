@@ -21,7 +21,6 @@
 #include "nnet3/nnet-optimize-utils.h"
 #include "nnet3/nnet-optimize.h"
 
-
 namespace kaldi {
 namespace nnet3 {
 
@@ -697,18 +696,15 @@ void RenumberComputation(NnetComputation *computation) {
 }
 
 
+static bool IsNoop(const NnetComputation::Command &command) {
+  return command.command_type == kNoOperation;
+}
+
 void RemoveNoOps(NnetComputation *computation) {
-  std::vector<NnetComputation::Command>::iterator
-      input_iter = computation->commands.begin(),
-      input_end = computation->commands.end(),
-      output_iter = computation->commands.begin();
-  for (; input_iter != input_end; ++input_iter) {
-    if (input_iter->command_type != kNoOperation) {
-      *output_iter = *input_iter;
-      ++output_iter;
-    }
-  }
-  computation->commands.resize(output_iter - computation->commands.begin());
+  computation->commands.erase(
+      std::remove_if(computation->commands.begin(),
+                     computation->commands.end(),
+                     IsNoop), computation->commands.end());
 }
 
 
@@ -737,9 +733,7 @@ bool VariableMergingOptimizer::MergeVariables() {
     // potentially merge into a single variable.
     const NnetComputation::Command &c = computation_->commands[command_index];
     int32 s1 = -1, s2 = -1;
-    // TODO: add kScale command and remove the check for 1.0
     if (c.command_type == kMatrixCopy &&
-        //        c.alpha == 1.0 &&
         config_.remove_assignments) {
       s2 = c.arg1;  // s2 is the written-to matrix.
       s1 = c.arg2;
@@ -997,7 +991,7 @@ std::pair<bool,bool> VariableMergingOptimizer::MayBeMerged(
   if (!left && !right)  // save some time.
     return std::pair<bool,bool>(false,false);
   bool is_assignment = (computation_->commands[command_index].command_type ==
-                                                kMatrixCopy &&
+                        kMatrixCopy &&
                         computation_->commands[command_index].alpha == 1.0);
   ComputationAnalysis analysis(*computation_, analyzer_);
   if (is_assignment) {
@@ -1016,6 +1010,268 @@ std::pair<bool,bool> VariableMergingOptimizer::MayBeMerged(
   // failure.
   return std::pair<bool,bool>(false,false);
 }
+
+
+// This class is used inside the function
+// `void ExtendMatrices(NnetComputation *computation)`;
+// see that function's declaration in nnet-optimize-utils.h for
+// a summary of what this class does.
+class MatrixExtender {
+ public:
+  typedef NnetComputation::SubMatrixInfo SubMatrixInfo;
+  typedef NnetComputation::MatrixInfo MatrixInfo;
+
+  MatrixExtender(NnetComputation *computation);
+
+  void ExtendMatrices();
+
+ private:
+  // This function returns true if a copy command from 'src_submatrix'
+  // to 'dest_submatrix' has the properties we need to be able to
+  // extend its rows to cover all of the source matrix.
+  bool CanBeExtended(int32 dest_submatrix_index,
+                     int32 src_submatrix_index);
+
+  // This actually extends the matrices... it's called only if CanBeExtended()
+  // with the same args returned true.  It modifies 'dest_submatrix_index'
+  // and 'src_submatrix_index'.
+  void Extend(int32 *dest_submatrix_index, int32 *src_submatrix_index);
+
+  // This function modifies the computation to fix certain problems
+  // that might have been introduced by Extend()... allocation, deallocation,
+  void FixComputation();
+
+  // This function modifies the computation to fix the debug info; if needed,
+  // it's called from FixComputation().
+  void FixDebugInfo();
+
+  // don't extend a destination matrix if it wasn't already
+  // at least 'min_proportion' (80%) big enough to store the source.
+  BaseFloat min_proportion_;
+
+  NnetComputation *computation_;
+
+  // Indexed by matrix-index m, orig_num_rows_[m] is the value of
+  // computation_->matrices[m].num_rows when this class was initialized,
+  // i.e. before we changed anything.
+  std::vector<int32> orig_num_rows_;
+
+  // Indexed by matrix-index m, this vector contains true if matrix
+  // m is involved in any AcceptInput() or ProvideOutput() operations.
+  std::vector<bool> is_input_or_output_;
+};
+
+// note: the initializer for min_proportion_ below needs to be kept in sync with
+// the min_proportion variable in
+// ComputationChecker::CheckComputationUndefined() in nnet-analyze.cc.
+MatrixExtender::MatrixExtender(NnetComputation *computation):
+    min_proportion_(0.8),
+    computation_(computation) {
+  int32 num_matrices = computation_->matrices.size();
+
+  { // set up orig_num_rows_.
+    orig_num_rows_.resize(num_matrices);
+    // matrix 0 is not a real matrix so skip that index.
+    for (int32 m = 1; m < num_matrices; m++)
+      orig_num_rows_[m] = computation_->matrices[m].num_rows;
+  }
+  { // set up is_input_or_output_.
+    is_input_or_output_.resize(num_matrices, false);
+    std::vector<NnetComputation::Command>::iterator
+      command_iter = computation_->commands.begin(),
+      command_end = computation_->commands.end();
+    for (; command_iter != command_end; ++command_iter) {
+      const NnetComputation::Command &command = *command_iter;
+      // make sure there are no kSwapMatrix commands; they should not be present
+      // at this stage of optimization.
+      KALDI_ASSERT(command.command_type != kSwapMatrix);
+      if (command.command_type == kProvideOutput ||
+          command.command_type == kAcceptInput) {
+        int32 s = command.arg1,
+            m = computation_->submatrices[s].matrix_index;
+        is_input_or_output_[m] = true;
+      }
+    }
+  }
+}
+
+
+bool MatrixExtender::CanBeExtended(int32 dest_submatrix_index,
+                                   int32 src_submatrix_index) {
+  const SubMatrixInfo
+      &src_submatrix = computation_->submatrices[src_submatrix_index],
+      &dest_submatrix = computation_->submatrices[dest_submatrix_index];
+  if (src_submatrix.matrix_index == dest_submatrix.matrix_index)
+    return false;
+
+  // we can't resize the destination matrix if it's involved in input or output.
+  if (is_input_or_output_[dest_submatrix.matrix_index])
+    return false;
+
+  const MatrixInfo
+      &src_matrix = computation_->matrices[src_submatrix.matrix_index];
+
+  int32 dest_matrix_orig_num_rows = orig_num_rows_[dest_submatrix.matrix_index],
+      src_matrix_orig_num_rows = orig_num_rows_[src_submatrix.matrix_index];
+
+  if (src_submatrix.num_rows < min_proportion_ * src_matrix_orig_num_rows)
+    return false;
+
+  // The following checks that the source submatrix covers be all of the
+  // source matrix except a few final rows, and the destination submatrix goes
+  // to the final row of its matrix.
+  return (src_submatrix.col_offset == 0 &&
+          src_submatrix.num_cols == src_matrix.num_cols &&
+          src_submatrix.row_offset == 0 &&
+          src_submatrix.num_rows < src_matrix.num_rows &&
+          dest_submatrix.row_offset + dest_submatrix.num_rows ==
+          dest_matrix_orig_num_rows);
+}
+
+
+void MatrixExtender::Extend(int32 *dest_submatrix_index,
+                            int32 *src_submatrix_index) {
+  // copy the SubMatrixInfo to avoid iterator invalidation.
+  SubMatrixInfo
+      src_submatrix = computation_->submatrices[*src_submatrix_index],
+      dest_submatrix = computation_->submatrices[*dest_submatrix_index];
+
+  MatrixInfo  &src_matrix = computation_->matrices[src_submatrix.matrix_index],
+      &dest_matrix = computation_->matrices[dest_submatrix.matrix_index];
+
+  int32 new_dest_num_rows = dest_submatrix.row_offset + src_matrix.num_rows;
+
+  // extend the destination matrix so it has enough rows to fit the entire
+  // source matrix.  Note: doing this will break certain invariances in the
+  // computation, principally with allocation and deallocation commands, which
+  // we'll later fix up by calling FixComputation().
+  if (new_dest_num_rows > dest_matrix.num_rows) {
+    dest_matrix.num_rows = new_dest_num_rows;
+    // make sure there's a submatrix index covering the whole of the dest matrix.
+    computation_->submatrices.push_back(
+        SubMatrixInfo(dest_submatrix.matrix_index, 0, new_dest_num_rows,
+                      0, dest_matrix.num_cols));
+  }
+
+  // The following 3 statements create a new submatrix that will be
+  // the destination submatrix; it's the same as the original destination
+  // submatrix, but with a few extra rows.
+  *dest_submatrix_index = computation_->submatrices.size();
+  dest_submatrix.num_rows = src_matrix.num_rows;
+  computation_->submatrices.push_back(
+      SubMatrixInfo(dest_submatrix));
+
+  // The following 3 statements create a new submatrix that will be
+  // the source submatrix; it's the same as the original source
+  // submatrix, but with a few extra rows, and actually will cover
+  // the entire source matrix.
+  *src_submatrix_index = computation_->submatrices.size();
+  computation_->submatrices.push_back(
+      SubMatrixInfo(src_submatrix.matrix_index, 0, src_matrix.num_rows,
+                    0, src_matrix.num_cols));
+}
+
+void MatrixExtender::ExtendMatrices() {
+  std::vector<NnetComputation::Command>::iterator
+      command_iter = computation_->commands.begin(),
+      command_end = computation_->commands.end();
+  bool changed = false;
+  for (; command_iter != command_end; ++command_iter) {
+    NnetComputation::Command &command = *command_iter;
+    if (command.command_type == kMatrixCopy &&
+        command.alpha == 1.0) {
+      int32 dest_submatrix_index = command.arg1,
+          src_submatrix_index = command.arg2;
+      if (CanBeExtended(dest_submatrix_index, src_submatrix_index)) {
+        Extend(&command.arg1, &command.arg2);
+        changed = true;
+      }
+    }
+  }
+  if (changed)
+    FixComputation();
+}
+
+void MatrixExtender::FixComputation() {
+  // make sure that allocation and deallocation commands
+  // operate on whole matrix.
+  std::vector<NnetComputation::Command>::iterator
+      command_iter = computation_->commands.begin(),
+      command_end = computation_->commands.end();
+  std::vector<int32> whole_submatrices;
+  computation_->GetWholeSubmatrices(&whole_submatrices);
+  for (; command_iter != command_end; ++command_iter) {
+    NnetComputation::Command &command = *command_iter;
+    if (command.command_type == kAllocMatrix ||
+        command.command_type == kDeallocMatrix) {
+      int32 s = command.arg1,
+          m = computation_->submatrices[s].matrix_index,
+          new_s = whole_submatrices[m];
+      if (new_s != s) {
+        KALDI_ASSERT(
+            computation_->submatrices[s] == computation_->submatrices[new_s] ||
+            orig_num_rows_[m] != computation_->matrices[m].num_rows);
+        command.arg1 = new_s;
+      }
+    }
+    if (command.command_type == kSetConst && command.alpha == 0.0) {
+      int32 s = command.arg1,
+          m = computation_->submatrices[s].matrix_index,
+          new_s = whole_submatrices[m];
+      if (new_s != s) {
+        {
+          const NnetComputation::SubMatrixInfo &info = computation_->submatrices[
+              command.arg1];
+          const NnetComputation::MatrixInfo &mat_info = computation_->matrices[
+              info.matrix_index];
+          // If this command wasn't zeroing the the entirety of a matrix,
+          // (before we extended the matrix), we don't need to extend it.
+          if (!(info.row_offset == 0 && info.col_offset == 0 &&
+                info.num_cols == mat_info.num_cols &&
+                info.num_rows == orig_num_rows_[info.matrix_index]))
+            continue;
+          // I know doing this via 'continue' is odd, but it's done this way to
+          // avoid invalid iterators still being in scope; I think some runtimes
+          // check for it.
+        }
+        command.arg1 = new_s;
+      }
+    }
+  }
+  if (!computation_->matrix_debug_info.empty())
+    FixDebugInfo();
+  RenumberComputation(computation_);
+}
+
+void MatrixExtender::FixDebugInfo() {
+  int32 num_matrices = computation_->matrices.size();
+  // matrix zero is not a 'real' matrix.
+  for (int32 m = 1; m < num_matrices; m++) {
+    NnetComputation::MatrixDebugInfo &debug_info =
+        computation_->matrix_debug_info[m];
+    int32 new_num_rows = computation_->matrices[m].num_rows,
+        old_num_rows = debug_info.cindexes.size();
+    if (new_num_rows != old_num_rows) {
+      debug_info.cindexes.resize(new_num_rows);
+      int32 num_extra_rows = new_num_rows - old_num_rows;
+      // the following should be true because min_proportion_ > 0.5.
+      KALDI_ASSERT(num_extra_rows <= old_num_rows);
+      for (int32 r = old_num_rows; r < new_num_rows; r++) {
+        Cindex cindex = debug_info.cindexes[r - num_extra_rows];
+        // set the 't' value to kNoTime which indicates that it's not a 'real'
+        // time step, and may avoid errors in checking code.
+        cindex.second.t = kNoTime;
+        debug_info.cindexes[r] = cindex;
+      }
+    }
+  }
+}
+
+void ExtendMatrices(NnetComputation *computation) {
+  MatrixExtender ext(computation);
+  ext.ExtendMatrices();
+}
+
 
 
 /** This class is responsible for consolidating the model-update part of
@@ -2317,6 +2573,328 @@ bool SnipRowOps(NnetComputation *computation) {
 
 
 
+// This class implements the internals of the function SplitRowOps() which is
+// declared in nnet-optimize-utils.h.
+class RowOpsSplitter {
+ public:
+  RowOpsSplitter(NnetComputation *computation): computation_(computation) { }
+
+  // Attempts to perform the optimization.  Returns true if it made any change
+  // to the computation.
+  bool Split() {
+    return SplitIndexes() && SplitCommands();
+  }
+
+ private:
+
+  // This function sets up split_info_, which describes how we can split up
+  // the vectors that are elements of computation_->indexes_multi.
+  // It will return true if it successfully split at least one of those
+  // vectors, and false otherwise.
+  bool SplitIndexes();
+
+  // This function modifies the commands in the computation.  It returns
+  // true if it made any change.
+  bool SplitCommands();
+
+
+  // This function attempts to optimize the command in
+  // computation_->commands[command_index].  It returns true if it made any
+  // change.  If we are going to have to insert an extra command into the
+  // computation, this function will append an element to new_commands_.
+  bool SplitCommand(int32 command_index);
+
+  // Below, define a multi-index as an element of NnetComputation::indexes_multi,
+  // for example,
+  // const std::vector<std::pair<int32,int32> > &multi_index = computation_->indexes_multi[1];
+  // It is a list of pairs.
+
+  // This struct appears as an element of the list inside MultiIndexSplitInfo.
+  // It helps us describe how we can split up a multi-index (a list of pairs)
+  // into a sequence of ranges where the .first value is constant across the
+  // range.
+  struct SingleSplitInfo {
+    // 'offset' is the index into the vector of pairs that forms the
+    // start of this range.  In the example where we are splitting up
+    // ((10,2), (10,3), (10,4), (15,3), (15,5), (15,7))
+    // there would be two instances of struct SingleSplitInfo, with
+    // offset = 0 and offset = 3.
+    int32 offset;
+    // 'size' is the number of pairs in this range; in the example
+    // above, both 'size' elements would be 3.
+    int32 size;
+    // first_value is the value of the .first index throughout this range; in
+    // the example above, it would be 10 and 15 respectively.  It represents a
+    // submatrix index.
+    int32 first_value;
+
+    // initial_second_value is the minimum value of .second for any element in
+    // this range: it would be 2 and 3 respectively in the example above.
+    int32 min_second_value;
+
+    // second_value_range is the highest value of .second for any element in
+    // this range, plus one, minus min_second_value.  (It's the number of rows
+    // in the other submatrix of the operation).
+    int32 second_value_range;
+
+    // If the .second values in the range are consecutive then
+    // 'second_value_offsets' will be empty.  Otherwise it will
+    // be a vector of size 'size', containing numbers in the
+    // range 0 ... second_value_range - 1, such that
+    // min_second_value + second_value_offsets[i] gives
+    // the .second value at the corresponding position in the range.
+    // In the second range of the example above, the range
+    // consisting of ((15,3), (15,5), (15,7)), 'second_value_offsets
+    // would be the vector (0, 2, 4).
+    std::vector<int32> second_value_offsets;
+  };
+
+  // An instance of the struct MultiIndexSplitInfo will be created for each multi-index,
+  // i.e. for each element of  NnetComputation::indexes_multi.
+  struct MultiIndexSplitInfo {
+    // If we can split this multi-index into at most two ranges, this
+    // vector will be nonempty; otherwise it will be empty.
+    std::vector<SingleSplitInfo> splits;
+  };
+
+  // GetSplitInfo() attempts to take a range of a
+  // std::vector<std::pair<int32, int32> >, as represented by begin and end
+  // iterators, and to extract its information into an object of type
+  // SingleSplitInfo.  (all except for the .offset member, which will have
+  // been set by calling code).
+  // It return true if successful, and false otherwise.  The only reasons that
+  // it might return false are that the range contains -1's or does not contain
+  // all-identical .first members).
+  bool GetSplitInfo(std::vector<std::pair<int32, int32> >::const_iterator begin,
+                    std::vector<std::pair<int32, int32> >::const_iterator end,
+                    SingleSplitInfo *info);
+
+  // computation_ is the computation that we are modifying.
+  NnetComputation *computation_;
+  // split_info_ will contain information about how we can split up the members
+  // of computation_->indexes_multi into ranges.
+  std::vector<MultiIndexSplitInfo> split_info_;
+  // The following is a list of additional commands that we are going to insert
+  // into computation_, of the form (command-index, command) where command-index
+  // is a command index just before which we will insert the new command.
+  // (this is the format accepted by the function InsertCommands()).
+  std::vector<std::pair<int32, NnetComputation::Command> > new_commands_;
+
+};
+
+
+bool RowOpsSplitter::GetSplitInfo(
+    std::vector<std::pair<int32, int32> >::const_iterator begin,
+    std::vector<std::pair<int32, int32> >::const_iterator end,
+    SingleSplitInfo *info) {
+  // max_size_ratio must be > 1.0, and could in principle be a float.  It is
+  // there to prevent us from making changes to the computation which would end
+  // up wastefully launching too many kernels that would do nothing.
+  const int32 max_size_ratio = 2;
+
+  int32 size = end - begin;
+  KALDI_ASSERT(size != 0);
+  int32 first = begin->first;
+  if (first < 0)
+    return false;
+  info->size = size;
+  info->first_value = first;
+  int32 initial_second_value = begin->second,
+      min_second_value = initial_second_value,
+      max_second_value = initial_second_value;
+  info->second_value_offsets.resize(size);
+  bool is_consecutive = true;
+  for (int32 i = 0; i < size; i++) {
+    int32 second = begin[i].second;
+    if (begin[i].first != first || second < 0) return false;
+    info->second_value_offsets[i] = second;
+    if (second != initial_second_value + i)
+      is_consecutive = false;
+    if (second < min_second_value) min_second_value = second;
+    if (second > max_second_value) max_second_value = second;
+  }
+  info->min_second_value = min_second_value;
+  info->second_value_range = max_second_value + 1 - min_second_value;
+  if (info->second_value_range > size * max_size_ratio)
+    return false;
+  if (is_consecutive) {
+    info->second_value_offsets.clear();
+  } else {
+    for (int32 i = 0; i < size; i++)
+      info->second_value_offsets[i] -= min_second_value;
+  }
+  return true;
+}
+
+
+bool RowOpsSplitter::SplitIndexes() {
+  bool ans = false;
+  int32 num_indexes_multi = computation_->indexes_multi.size();
+  split_info_.resize(num_indexes_multi);
+  for (int32 i = 0; i < num_indexes_multi; i++) {
+    const std::vector<std::pair<int32,int32> > &multi_index =
+        computation_->indexes_multi[i];
+    MultiIndexSplitInfo &split_info = split_info_[i];
+
+    int32 num_pairs = multi_index.size();
+    KALDI_ASSERT(num_pairs > 0);
+    // 'split_point' will be set to the first index j for which
+    // multi_index[j-1].first != multi_index[j].first, or -1
+    // if no such j exists.
+    int32 split_point = -1, initial_first = multi_index[0].first;
+    for (int32 j = 1; j < num_pairs; j++) {
+      if (multi_index[j].first != initial_first) {
+        split_point = j;
+        break;
+      }
+    }
+    if (split_point == -1) {
+      split_info.splits.resize(1);
+      split_info.splits[0].offset = 0;
+      if (!GetSplitInfo(multi_index.begin(), multi_index.end(),
+                        &(split_info.splits[0]))) {
+        split_info.splits.clear();
+      } else {
+        ans = true;
+      }
+    } else {
+      split_info.splits.resize(2);
+      split_info.splits[0].offset = 0;
+      split_info.splits[1].offset = split_point;
+
+      std::vector<std::pair<int32,int32> >::const_iterator mid_iter =
+          multi_index.begin() + split_point;
+      if (!GetSplitInfo(multi_index.begin(), mid_iter,
+                        &(split_info.splits[0])) ||
+          !GetSplitInfo(mid_iter, multi_index.end(),
+                        &(split_info.splits[1]))) {
+        split_info.splits.clear();
+      } else {
+        ans = true;
+      }
+    }
+  }
+  return ans;
+}
+
+bool RowOpsSplitter::SplitCommand(int32 c) {
+  NnetComputation::Command &command = computation_->commands[c];
+  CommandType command_type = command.command_type;
+  // For commands that are not of the following four types, return false: we
+  // won't be changing these commands.
+  switch (command_type) {
+    case kAddRowsMulti: case kCopyRowsMulti:
+    case kAddToRowsMulti: case kCopyToRowsMulti: break;
+    default: return false;
+  }
+  int32 indexes_multi_index = command.arg2;
+  KALDI_ASSERT(indexes_multi_index <
+               static_cast<int32>(split_info_.size()));
+  const MultiIndexSplitInfo &split_info = split_info_[indexes_multi_index];
+  if (split_info.splits.empty())
+    return false;  // these indexes couldn't be split: e.g. they contained more
+                   // than two distinct .first elements, or there were other
+                   // reasons.
+
+  // we'll be splitting the command into either one or two pieces.
+  std::vector<NnetComputation::Command> split_commands(
+      split_info.splits.size());
+  for (size_t i = 0; i < split_info.splits.size(); i++) {
+    const SingleSplitInfo &split = split_info.splits[i];
+    NnetComputation::Command &command_out = split_commands[i];
+    command_out.alpha = command.alpha;
+    command_out.arg1 = computation_->NewSubMatrix(
+        command.arg1, split.offset, split.size, 0, -1);
+    command_out.arg2 = computation_->NewSubMatrix(
+        split.first_value, split.min_second_value,
+        split.second_value_range, 0, -1);
+
+    if (split.second_value_offsets.empty()) {
+      // The .second elements are consecutive.
+      switch (command_type) {
+        case kAddRowsMulti:
+          command_out.command_type = kMatrixAdd;
+          break;
+        case kCopyRowsMulti:
+          command_out.command_type = kMatrixCopy;
+          break;
+        case kAddToRowsMulti:
+          command_out.command_type = kMatrixAdd;
+          std::swap(command_out.arg1, command_out.arg2);
+          break;
+        case kCopyToRowsMulti:
+          command_out.command_type = kMatrixCopy;
+          std::swap(command_out.arg1, command_out.arg2);
+          break;
+        default:  // will never be reached.
+          break;
+      }
+    } else {
+      // Indexes are not consecutive: it needs to be a kAddRows or kCopyRows
+      // command.
+      command_out.arg3 = computation_->indexes.size();
+      switch (command_type) {
+        case kAddRowsMulti: case kCopyRowsMulti: {
+          command_out.command_type = (command_type == kAddRowsMulti ?
+                                      kAddRows : kCopyRows);
+          computation_->indexes.push_back(split.second_value_offsets);
+          break;
+        }
+        case kCopyToRowsMulti:  {
+          // We can't operate on this command because of what would happen
+          // with values of 'indexes' (see the variable in the block for
+          // kAddToRowsMulti) which were -1.  Rows of the output would be
+          // set to zero, which is not the behavior we want here; we'd want
+          // them to be unaffected.
+          return false;
+        }
+        case kAddToRowsMulti: {
+          command_out.command_type = kAddRows;
+          std::swap(command_out.arg1, command_out.arg2);
+          // invert the indexes.
+          std::vector<int32> indexes(split.second_value_range, -1);
+          for (int32 i = 0; i < split.size; i++) {
+            // the following assert should always succeed because the
+            // AddToRowsMulti and CopyToRowsMulti should never have
+            // duplicate destinations in their indexes.
+            KALDI_ASSERT(indexes[split.second_value_offsets[i]] >= 0);
+            indexes[split.second_value_offsets[i]] = i;
+          }
+          computation_->indexes.push_back(indexes);
+          break;
+        }
+        default:
+          KALDI_ERR << "Code error: un-handled case.";
+      }
+    }
+  }
+  command = split_commands[0];
+  // note: for now, split_commands.size() will be 1 or 2.
+  for (size_t i = 1; i < split_commands.size(); i++) {
+    new_commands_.resize(new_commands_.size() + 1);
+    // we'll want to insert this command right after command c,
+    // which is the same as just before command c + 1.
+    new_commands_.back().first = c + 1;
+    new_commands_.back().second = split_commands[i];
+  }
+  return true;  // We made a change.
+}
+
+bool RowOpsSplitter::SplitCommands() {
+  bool ans = false;
+  int32 num_commands = computation_->commands.size();
+  for (int32 c = 0; c < num_commands; c++)
+    if (SplitCommand(c))
+      ans = true;
+  if (!new_commands_.empty())
+    InsertCommands(&new_commands_, computation_);
+  return ans;
+}
+
+bool SplitRowOps(NnetComputation *computation) {
+  RowOpsSplitter splitter(computation);
+  return splitter.Split();
+}
 
 
 /*
@@ -2555,7 +3133,8 @@ static void ConvertNumNValues(int32 n_stride, int32 old_N, int32 new_N,
 
 // This class implements the internals of the ExpandComputation() function (used
 // in shortcut compilation); see comment by the declaration of
-// ExpandComputation() in nnet-optimize-utils.h for overview.
+// ExpandComputation() in nnet-optimize-utils.h for overview.  (It relates to
+// shortcut compilation).
 class ComputationExpander {
  public:
   ComputationExpander(const Nnet &nnet,
@@ -2952,6 +3531,7 @@ void ComputationExpander::ComputeCommands() {
       case kAddRowRanges:
         ExpandRowRangesCommand(c, &c_out);
         break;
+      case kCompressMatrix: case kDecompressMatrix:
       case kAcceptInput: case kProvideOutput: case kNoOperation:
       case kNoOperationPermanent: case kNoOperationMarker:
       case kNoOperationLabel: case kGotoLabel:
@@ -3466,13 +4046,12 @@ class ComputationLoopedOptimizer {
   /// expected to be command indexes of the kNoOperationMarker at segment
   /// boundaries, this function outputs for each of these command indexes a list
   /// of matrices which are 'active' at that point in time.  By 'active' we mean
-  /// that the matrix has been written to before that time (note, we don't count
-  /// initialization with zeros as being written to); and will be read after
-  /// that time.  These is the list of matrices that 'need to be in scope'
-  /// at those points in time.  '*active_matrices' is indexed by the
-  /// same index as 'splice_point_commands', and is then a list of active
-  /// matrices, in numerical order of matrix index.
-  /// Note: for each i, (*active_matrices)[i] will be sorted and unique.
+  /// that the matrix has been written to before that time (including zeroing),
+  /// and will be read after that time.  These is the list of matrices that
+  /// 'need to be in scope' at those points in time.  '*active_matrices' is
+  /// indexed by the same index as 'splice_point_commands', and is then a list
+  /// of active matrices, in numerical order of matrix index.  Note: for each i,
+  /// (*active_matrices)[i] will be sorted and unique.
   static void FindActiveMatrices(const NnetComputation &computation,
                                  const Analyzer &analyzer,
                                  const std::vector<int32> &splice_point_commands,
@@ -4043,6 +4622,450 @@ void RemoveCommandsForUnusedMatrix(const Analyzer &analyzer,
                  command.command_type == kSetConst);
     command.command_type = kNoOperation;
   }
+}
+
+
+
+// This comparison operator is used in the function InsertCommands()
+// to sort a list of these pairs by the .first element.
+struct CommandPairComparator {
+  // operator () should be viewed as a '<' operator that only looks at
+  // the .first element, treating the .second elements as equal.
+  bool operator () (const std::pair<int32, NnetComputation::Command> &p1,
+                    const std::pair<int32, NnetComputation::Command> &p2) const {
+    return p1.first < p2.first;
+  }
+};
+
+void InsertCommands(
+    std::vector<std::pair<int32, NnetComputation::Command> > *new_commands,
+    NnetComputation *computation) {
+  int32 num_new_commands = new_commands->size(),
+      num_old_commands = computation->commands.size();
+  if (num_new_commands == 0)
+    return;
+  CommandPairComparator comparison_operator;
+  // use std::stable_sort so that for entries in 'new_commands' that
+  // have the same .first value, they stay in the same order they were
+  // in before sorting.
+  std::stable_sort(new_commands->begin(), new_commands->end(),
+                   comparison_operator);
+
+  if (RandInt(0, 3) == 0) {   // check 'new_commands'
+    for (int32 i = 0; i + 1 < num_new_commands; i++) {
+      KALDI_ASSERT((*new_commands)[i].first <= (*new_commands)[i+1].first &&
+                   (*new_commands)[i].first >= 0 &&
+                   (*new_commands)[i+1].first <= num_old_commands);
+    }
+  }
+  std::vector<NnetComputation::Command> merged_commands;
+  merged_commands.reserve(num_old_commands + num_new_commands);
+
+  std::vector<std::pair<int32, NnetComputation::Command> >::const_iterator
+      new_commands_iter = new_commands->begin(),
+      new_commands_end = new_commands->end();
+
+  for (int32 old_command_index = 0; old_command_index <= num_old_commands;
+       old_command_index++) {
+    while (new_commands_iter != new_commands_end &&
+           new_commands_iter->first <= old_command_index) {
+      merged_commands.push_back(new_commands_iter->second);
+      ++new_commands_iter;
+    }
+    if (old_command_index < num_old_commands)
+      merged_commands.push_back(computation->commands[old_command_index]);
+  }
+  KALDI_ASSERT(merged_commands.size() == num_old_commands +
+               num_new_commands);
+  // copy to 'computation->commands' via shallow swap.
+  computation->commands.swap(merged_commands);
+  FixGotoLabel(computation);
+}
+
+/**
+   This class is used in the function OptimizeMemoryCompression(),
+   once we determine that there is some potential to do memory compression
+   for this computation.
+ */
+class MemoryCompressionOptimizer {
+ public:
+
+  /** @param [in] nnet         The neural net the computation is for.
+      @param [in] memory_compression_level.  The level of compression:
+         0 = no compression (the constructor should not be calle with this value).
+         1 = compression that doesn't affect the results (but still takes time).
+         2 = compression that affects the results only very slightly
+         3 = compression that affects the results a little more.
+      @param [in] middle_command  Must be the command-index of the
+          command of type kNoOperationMarker in 'computation'.
+      @param [in,out] computation  The computation we're optimizing.
+  */
+  MemoryCompressionOptimizer(const Nnet &nnet,
+                             int32 memory_compression_level,
+                             int32 middle_command,
+                             NnetComputation *computation):
+      nnet_(nnet), memory_compression_level_(memory_compression_level),
+      middle_command_(middle_command), computation_(computation) { }
+
+  void Optimize();
+ private:
+
+  // This function, called from Compress(), figures out whether we can compress
+  // matrix m, and if so, adds an entry to compress_info_.
+  void ProcessMatrix(int32 m);
+
+  // This function modifies the commands in '*computation_', taking
+  // as input the commands in compress_info_.
+  void ModifyComputation();
+
+  // While deciding what matrices to compress we will create a list of structs
+  // of type MatrixCompressInfo.  Later we copy-and-modify the commands in the
+  // computation, putting the compression commands into their appropriate place.
+  struct MatrixCompressInfo {
+    // m is the matrix-index of the matrix we're going to compress.
+    int32 m;
+    // compression_command_index is the command-index of the command
+    // *after* which we will place the compression command.  Normally
+    // this will be some type of propagation.
+    int32 compression_command_index;
+    // compression_command_index is the command-index of the command
+    // *before* which we will place the uncompression command.  Normally
+    // this will be some type of backprop.
+    int32 uncompression_command_index;
+    // 'compression_type' (e.g. kCompressedMatrixInt8) determines the type
+    // we compress the BaseFloats to.
+    CuCompressedMatrixType compression_type;
+    // 'range' determines range of values that the compressed values can
+    // be in: for signed types they are in [-range, range], for unsigned
+    // types, in [0, range].
+    // As a special case, range = 0 means that the compression just stores the
+    // sign (-1, 0 or 1) of the input, and decompresses it to -1, 0 or 1; this
+    // is useful for ReLUs.
+    BaseFloat range;
+    // this is provided to the initializer of CuCompressedMatrix; it should
+    // be true if the values being compressed are potentially outside of
+    // the representable range.
+    bool truncate;
+    MatrixCompressInfo(int32 m, int32 forward_command_index,
+                       int32 backward_command_index,
+                       CuCompressedMatrixType compression_type,
+                       BaseFloat range, bool truncate):
+        m(m), compression_command_index(forward_command_index),
+        uncompression_command_index(backward_command_index),
+        compression_type(compression_type), range(range),
+        truncate(truncate) { }
+
+  };
+  std::vector<MatrixCompressInfo> compress_info_;
+
+  const Nnet &nnet_;
+  int32 memory_compression_level_;
+  int32 middle_command_;
+  NnetComputation *computation_;
+  Analyzer analyzer_;
+};
+
+
+void MemoryCompressionOptimizer::ModifyComputation() {
+  // whole_submatrices[m] is the submatrix-index of the submatrix that
+  // represents the whole of matrix m.
+  std::vector<int32> whole_submatrices;
+  computation_->GetWholeSubmatrices(&whole_submatrices);
+
+  // 'pairs_to_insert' will be a list of pairs (command-index, command),
+  // meaning: (command-index just before which to insert this command; command
+  // to insert).
+  std::vector<std::pair<int32, NnetComputation::Command> >
+      pairs_to_insert;
+  pairs_to_insert.reserve(compress_info_.size() * 2);
+  for (size_t i = 0; i < compress_info_.size(); i++) {
+    const MatrixCompressInfo &info = compress_info_[i];
+    int32 s = whole_submatrices[info.m];
+    // below we use compression_command_index + 1 because we want the
+    // compression to go after the command in 'info.compression_command_index'
+    // (which might be, for instance, a forward propagation command).
+    std::pair<int32, NnetComputation::Command> p1(
+        info.compression_command_index + 1,
+        NnetComputation::Command(info.range, kCompressMatrix,
+                                 s, static_cast<int32>(info.compression_type),
+                                 info.truncate ? 1 : 0));
+    pairs_to_insert.push_back(p1);
+    std::pair<int32, NnetComputation::Command> p2(
+        info.uncompression_command_index,
+        NnetComputation::Command(1.0, kDecompressMatrix, s));
+    pairs_to_insert.push_back(p2);
+  }
+  InsertCommands(&pairs_to_insert,
+                 computation_);
+}
+
+
+void MemoryCompressionOptimizer::Optimize() {
+  analyzer_.Init(nnet_, *computation_);
+  // note: matrix zero is not really a matrix.
+  int32 num_matrices = computation_->matrices.size();
+  for (int32 m = 1; m < num_matrices; m++)
+    ProcessMatrix(m);
+  if (!compress_info_.empty())
+    ModifyComputation();
+}
+
+void MemoryCompressionOptimizer::ProcessMatrix(int32 m) {
+  if (analyzer_.matrix_accesses[m].is_output) {
+    return;  // We can't do this optimization for matrices that are going to be
+             // output to the user.
+  }
+
+  // 'accesses' list the commands that access this matrix.
+  const std::vector<Access> &accesses = analyzer_.matrix_accesses[m].accesses;
+  // the 'kReadAccess' below is actually a don't-care  This is just
+  // to find the position in 'accesses' that corresponds to command-index
+  // 'middle_command'.
+  Access middle_access(middle_command_, kReadAccess);
+  std::vector<Access>::const_iterator iter = std::lower_bound(accesses.begin(),
+                                                              accesses.end(),
+                                                              middle_access);
+  // At this point, 'iter' points to the first access in 'accesses'
+  // whose command index is >= 'middle_command_' (which separates the forward
+  // and backward passes), or accesses.end() if this matrix was not
+  // accessed during the backward pass.
+  if (iter == accesses.end()) {
+    return;  // There is nothing to do: this matrix was not accessed during the
+             // backward pass.
+  }
+  if (iter == accesses.begin()) {
+    return;  // There is nothing to do: this matrix was not accessed during the
+             // forward pass.
+  }
+  // 'backward_access' is the first access of the matrix in the backward
+  // pass of the computation, and
+  // 'forward_access' is the last access of the matrix in the forward pass
+  // of the computation.
+  const Access &backward_access = iter[0],
+      &forward_access = iter[-1];
+  KALDI_ASSERT(forward_access.command_index < middle_command_ &&
+               backward_access.command_index > middle_command_);
+
+  // 'backward_access_is_last_access' is going to be set to true if
+  // 'backward_access' is the last command to access the matrix (apart from
+  // deallocation or matrix-swap commands, which don't show up in the list of
+  // accesses).
+  bool backward_access_is_last_access = (accesses.end() == iter + 1);
+
+  int32 backward_command_index = backward_access.command_index,
+      forward_command_index = forward_access.command_index;
+  NnetComputation::Command
+      &backward_command = computation_->commands[backward_command_index];
+
+  if (memory_compression_level_ >= 1 &&
+      backward_access_is_last_access &&
+      backward_access.access_type == kReadAccess &&
+      backward_command.command_type == kBackprop) {
+    int32 component_index = backward_command.arg1;
+    const Component *component = nnet_.GetComponent(component_index);
+    // this is potentially a candidate for our optimization for ReLU units,
+    // where we only need to store the sign.
+    if (component->Type() == "RectifiedLinearComponent") {
+      compress_info_.push_back(
+          MatrixCompressInfo(m, forward_command_index,
+                             backward_command_index,
+                             kCompressedMatrixUint8, 0.0,
+                             true));
+      return;
+    }
+  }
+
+  // If memory_compression_level >= 2 (an "intermediate" level of compression),
+  // then we'll consider compressing quantities using 16 bits in the range
+  // [-10, 10].  Because of the way this compression works, exact zero will
+  // still be uncompressed as exact zero, so even if this is the output
+  // of a ReLU, it's OK.  (Having a few derivatives zero for ReLU outputs
+  // that were very close to zero is OK.)
+  if (memory_compression_level_ >= 2) {
+    compress_info_.push_back(
+        MatrixCompressInfo(m, forward_command_index,
+                           backward_command_index,
+                           kCompressedMatrixInt16, 10.0,
+                           true));
+    return;
+  }
+
+  // TODO: later maybe implement something for memory compression level = 3.
+}
+
+
+
+
+void OptimizeMemoryCompression(const Nnet &nnet,
+                               int32 memory_compression_level,
+                               NnetComputation *computation) {
+  if (memory_compression_level == 0 || computation->commands.empty())
+    return;
+  // don't apply this optimization to looped computations.
+  if (computation->commands.back().command_type == kGotoLabel)
+    return;
+
+  // 'middle_command' will be the index of the command of type
+  // 'kNoOperationMarker' that separates the forward and backward
+  // passes.  If it doesn't exist, it means this computation doesn't
+  // include
+  int32 middle_command = -1;
+  for (size_t i = 0; i < computation->commands.size(); i++) {
+    if (computation->commands[i].command_type == kNoOperationMarker) {
+      if (middle_command < 0) {
+        middle_command = static_cast<int32>(i);
+      } else {
+        KALDI_WARN << "Found more than one command of type kNoOperationMarker "
+            "in non-looped computation.";
+        // there are more than one command of this type... this wasn't expected.
+        // return (i.e. do nothing).
+        return;
+      }
+    }
+  }
+  if (middle_command == -1) {
+    return;  // This computation doesn't have a backprop pass.
+  }
+  if (memory_compression_level >= 1) {
+    int64 bytes_used_initial, bytes_used_final;
+    if (GetVerboseLevel() >= 2)
+      bytes_used_initial = GetMaxMemoryUse(*computation);
+
+    MemoryCompressionOptimizer opt(nnet, memory_compression_level,
+                                   middle_command, computation);
+    opt.Optimize();
+
+    if (GetVerboseLevel() >= 2) {
+      bytes_used_final = GetMaxMemoryUse(*computation);
+      if (bytes_used_final != bytes_used_initial) {
+        KALDI_VLOG(2) << "Memory compression reduced  memory use from "
+                      << bytes_used_initial << " to "
+                      << bytes_used_final << " bytes.";
+      }
+    }
+  }
+}
+
+
+std::shared_ptr<const NnetComputation> ComputationCache::Find(
+    const ComputationRequest &in_request) {
+  std::lock_guard<std::mutex> lock(mutex_);
+
+  CacheType::iterator iter = computation_cache_.find(&in_request);
+  if (iter == computation_cache_.end()) {
+    return NULL;
+  } else {
+    std::shared_ptr<const NnetComputation> ans = iter->second.first;
+    // Update access record by moving the accessed request to the end of the
+    // access queue, which declares that it's the most recently used.
+    access_queue_.splice(access_queue_.end(), access_queue_,
+                         iter->second.second);
+    return ans;
+  }
+}
+
+
+ComputationCache::ComputationCache(int32 cache_capacity):
+    cache_capacity_(cache_capacity) {
+  KALDI_ASSERT(cache_capacity > 0);
+}
+
+std::shared_ptr<const NnetComputation> ComputationCache::Insert(
+    const ComputationRequest &request_in,
+    const NnetComputation *computation_in) {
+
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (static_cast<int32>(computation_cache_.size()) >= cache_capacity_) {
+    //  Cache has reached capacity; purge the least-recently-accessed request
+    const CacheType::iterator iter =
+        computation_cache_.find(access_queue_.front());
+    KALDI_ASSERT(iter != computation_cache_.end());
+    const ComputationRequest *request = iter->first;
+    computation_cache_.erase(iter);
+    delete request;
+    // we don't need to delete the computation in iter->second.first, as the
+    // shared_ptr takes care of that automatically.
+    access_queue_.pop_front();
+  }
+
+  // Now insert the thing we need to insert.  We'll own the pointer 'request' in
+  // 'computation_cache_', so we need to allocate our own version.
+  ComputationRequest *request = new ComputationRequest(request_in);
+  // When we construct this shared_ptr, it takes ownership of the pointer
+  // 'computation_in'.
+  std::shared_ptr<const NnetComputation> computation(computation_in);
+
+  AqType::iterator ait = access_queue_.insert(access_queue_.end(), request);
+
+  std::pair<CacheType::iterator, bool> p = computation_cache_.insert(
+      std::make_pair(request, std::make_pair(computation, ait)));
+  if (!p.second) {
+    // if p.second is false, this pair was not inserted because
+    // a computation for the same computation-request already existed in
+    // the map. This is possible in multi-threaded operations, if two
+    // threads try to compile the same computation at the same time (only
+    // one of them will successfully add it).
+    // We need to erase the access-queue element that we just added, it's
+    // no longer going to be needed.
+    access_queue_.erase(ait);
+    delete request;
+  }
+  return computation;
+}
+
+
+void ComputationCache::Read(std::istream &is, bool binary) {
+  // Note: the object on disk doesn't have tokens like "<ComputationCache>"
+  // and "</ComputationCache>" for back-compatibility reasons.
+  int32 computation_cache_size;
+  ExpectToken(is, binary, "<ComputationCacheSize>");
+  ReadBasicType(is, binary, &computation_cache_size);
+  KALDI_ASSERT(computation_cache_size >= 0);
+  computation_cache_.clear();
+  access_queue_.clear();
+  ExpectToken(is, binary, "<ComputationCache>");
+  for (size_t c = 0; c < computation_cache_size; c++) {
+    ComputationRequest request;
+    request.Read(is, binary);
+    NnetComputation *computation = new NnetComputation();
+    computation->Read(is, binary);
+    Insert(request, computation);
+  }
+}
+
+void ComputationCache::Check(const Nnet &nnet) const {
+  CacheType::const_iterator iter = computation_cache_.begin(),
+      end = computation_cache_.end();
+  // We only need to explicitly delete the pointer to the ComputationRequest.
+  // The pointers to Computation are deleted automatically by std::shared_ptr
+  // when the reference count goes to zero.
+  for (; iter != end; ++iter) {
+    const NnetComputation &computation = *(iter->second.first);
+    CheckComputationOptions check_config;
+    ComputationChecker checker(check_config, nnet, computation);
+    checker.Check();
+  }
+}
+
+void ComputationCache::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ComputationCacheSize>");
+  WriteBasicType(os, binary, static_cast<int32>(computation_cache_.size()));
+  WriteToken(os, binary, "<ComputationCache>");
+  for (CacheType::const_iterator iter = computation_cache_.begin();
+           iter != computation_cache_.end(); ++iter) {
+    iter->first->Write(os, binary);
+    iter->second.first->Write(os, binary);
+  }
+}
+
+ComputationCache::~ComputationCache() {
+  CacheType::const_iterator iter = computation_cache_.begin(),
+      end = computation_cache_.end();
+  // We only need to explicitly delete the pointer to the ComputationRequest.
+  // The pointers to Computation are deleted automatically by std::shared_ptr
+  // when the reference count goes to zero.
+  for (; iter != end; ++iter)
+    delete iter->first;
 }
 
 } // namespace nnet3

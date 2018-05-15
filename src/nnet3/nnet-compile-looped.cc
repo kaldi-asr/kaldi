@@ -357,7 +357,6 @@ void CreateLoopedComputationRequestSimple(const Nnet &nnet,
                                           ComputationRequest *request1,
                                           ComputationRequest *request2,
                                           ComputationRequest *request3) {
-  bool has_ivector = (nnet.InputDim("ivector") > 0);
   int32 left_context, right_context;
   ComputeSimpleNnetContext(nnet, &left_context, &right_context);
 

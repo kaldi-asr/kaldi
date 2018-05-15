@@ -870,7 +870,7 @@ void LatticeFasterDecoder::ProcessNonemittingWrapper(BaseFloat cost_cutoff) {
   } else if (fst_.Type() == "vector") {
     return LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<Arc>>(cost_cutoff);
   } else {
-    return LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+    return LatticeFasterDecoder::ProcessNonemitting<fst::Fst<Arc>>(cost_cutoff);
   }
 }
 

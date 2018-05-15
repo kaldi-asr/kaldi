@@ -25,6 +25,7 @@
 #include <queue>
 #include <set>
 #include <unordered_map>
+#include <functional>
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "util/stl-utils.h"

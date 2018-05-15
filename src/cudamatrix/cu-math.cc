@@ -564,7 +564,6 @@ void CpuBackpropLstmNonlinearity(const MatrixBase<Real> &input,
   KALDI_ASSERT(deriv_sum_in.NumRows() == 5);
   KALDI_ASSERT(deriv_sum_in.NumCols() == cell_dim);
   KALDI_ASSERT(self_repair_config.Dim() == 10);
-  KALDI_ASSERT(count_in >= 0);
   if (input_deriv != NULL) {
     KALDI_ASSERT(SameDim(input, *input_deriv));
   }

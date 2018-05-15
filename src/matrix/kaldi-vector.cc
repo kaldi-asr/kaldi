@@ -691,9 +691,11 @@ void VectorBase<Real>::CopyDiagFromPacked(const PackedMatrix<Real> &M) {
 
 template<typename Real>
 Real VectorBase<Real>::Sum() const {
-  double sum = 0.0;
-  for (MatrixIndexT i = 0; i < dim_; i++) { sum += data_[i]; }
-  return sum;
+  // Do a dot-product with a size-1 array with a stride of 0 to
+  // implement sum. This allows us to access SIMD operations in a
+  // cross-platform way via your BLAS library.
+  Real one(1);
+  return cblas_Xdot(dim_, data_, 1, &one, 0);
 }
 
 template<typename Real>

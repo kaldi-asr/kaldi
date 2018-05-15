@@ -388,40 +388,38 @@ fst::VectorFst<fst::StdArc> *GetPdfToTransitionIdTransducer(const TransitionMode
 
 
 
-
-// this is the code that expands an FST from transition-states to
-// transition-ids, in the case where "reorder == true",
-// i.e. non-optional transition is before the self-loop.
-
-
-
 class TidToTstateMapper {
 public:
   // Function object used in MakePrecedingInputSymbolsSameClass and
-  // MakeFollowingInputSymbolsSameClass (as called by AddSelfLoopsBefore
-  // and AddSelfLoopsAfter).  It maps transition-ids to transition-states
-  // (and -1 to -1, 0 to 0 and disambiguation symbols to 0).  It also
-  // checks that there are no self-loops in the graph (i.e. in the labels
-  // it is called with).  This is just a convenient place to put this check.
+  // MakeFollowingInputSymbolsSameClass (as called by AddSelfLoopsReorder and
+  // AddSelfLoopsNoReorder).  It maps transition-ids to transition-states (and
+  // -1 to -1, 0 to 0 and disambiguation symbols to 0).  If check_no_self_loops
+  // == true, it also checks that there are no self-loops in the graph (i.e. in
+  // the labels it is called with).  This is just a convenient place to put this
+  // check.
 
   // This maps valid transition-ids to transition states, maps kNoLabel to -1, and
   // maps all other symbols (i.e. epsilon symbols and disambig symbols) to zero.
   // Its point is to provide an equivalence class on labels that's relevant to what
   // the self-loop will be on the following (or preceding) state.
   TidToTstateMapper(const TransitionModel &trans_model,
-                    const std::vector<int32> &disambig_syms):
+                    const std::vector<int32> &disambig_syms,
+                    bool check_no_self_loops):
       trans_model_(trans_model),
-      disambig_syms_(disambig_syms) { }
+      disambig_syms_(disambig_syms),
+      check_no_self_loops_(check_no_self_loops) { }
   typedef int32 Result;
   int32 operator() (int32 label) const {
     if (label == static_cast<int32>(fst::kNoLabel)) return -1;  // -1 -> -1
     else if (label >= 1 && label <= trans_model_.NumTransitionIds()) {
-      if (trans_model_.IsSelfLoop(label))
+      if (check_no_self_loops_ && trans_model_.IsSelfLoop(label))
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
       return trans_model_.TransitionIdToTransitionState(label);
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
       if (label != 0)
-        KALDI_ASSERT(std::binary_search(disambig_syms_.begin(), disambig_syms_.end(), label));  // or invalid label
+        KALDI_ASSERT(std::binary_search(disambig_syms_.begin(),
+                                        disambig_syms_.end(),
+                                        label));  // or invalid label
       return 0;
     }
   }
@@ -429,21 +427,28 @@ public:
 private:
   const TransitionModel &trans_model_;
   const std::vector<int32> &disambig_syms_;  // sorted.
+  bool check_no_self_loops_;
 };
 
-static void AddSelfLoopsBefore(const TransitionModel &trans_model,
-                               const std::vector<int32> &disambig_syms,
-                               BaseFloat self_loop_scale,
-                               fst::VectorFst<fst::StdArc> *fst) {
+// This is the code that expands an FST from transition-states to
+// transition-ids, in the case where reorder == true, i.e. the non-optional
+// transition is before the self-loop.
+static void AddSelfLoopsReorder(const TransitionModel &trans_model,
+                                const std::vector<int32> &disambig_syms,
+                                BaseFloat self_loop_scale,
+                                bool check_no_self_loops,
+                                fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
 
-  TidToTstateMapper f(trans_model, disambig_syms);
-  // Duplicate states as necessary so that each state has at most one self-loop
-  // on it.
+  TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
+  // Duplicate states as necessary so that each state will require at most one
+  // self-loop to be added to it.  Approximately this means that if a
+  // state has multiple different symbols on arcs entering it, it will be
+  // duplicated, with one copy per incoming symbol.
   MakePrecedingInputSymbolsSameClass(true, fst, f);
 
   int32 kNoTransState = f(kNoLabel);
@@ -508,13 +513,14 @@ static void AddSelfLoopsBefore(const TransitionModel &trans_model,
 
 
 // this is the code that expands an FST from transition-states to
-// transition-ids, in the case where "reorder == false", i.e. non-optional transition
-// is after the self-loop.
-
-static void AddSelfLoopsAfter(const TransitionModel &trans_model,
-                              const std::vector<int32> &disambig_syms,
-                              BaseFloat self_loop_scale,
-                              fst::VectorFst<fst::StdArc> *fst) {
+// transition-ids, in the case where reorder == false, i.e. non-optional
+// transition is after the self-loop.
+static void AddSelfLoopsNoReorder(
+    const TransitionModel &trans_model,
+    const std::vector<int32> &disambig_syms,
+    BaseFloat self_loop_scale,
+    bool check_no_self_loops,
+    fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Label Label;
@@ -523,7 +529,7 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
 
   // Duplicate states as necessary so that each state has at most one self-loop
   // on it.
-  TidToTstateMapper f(trans_model, disambig_syms);
+  TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
   MakeFollowingInputSymbolsSameClass(true, fst, f);
 
   StateId num_states = fst->NumStates();
@@ -559,13 +565,16 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
 void AddSelfLoops(const TransitionModel &trans_model,
                   const std::vector<int32> &disambig_syms,
                   BaseFloat self_loop_scale,
-                  bool reorder,  // true->dan-style, false->lukas-style.
+                  bool reorder,
+                  bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst) {
   KALDI_ASSERT(fst->Start() != fst::kNoStateId);
   if (reorder)
-    AddSelfLoopsBefore(trans_model, disambig_syms, self_loop_scale, fst);
+    AddSelfLoopsReorder(trans_model, disambig_syms, self_loop_scale,
+                        check_no_self_loops, fst);
   else
-    AddSelfLoopsAfter(trans_model, disambig_syms, self_loop_scale, fst);
+    AddSelfLoopsNoReorder(trans_model, disambig_syms, self_loop_scale,
+                          check_no_self_loops, fst);
 }
 
 // IsReordered returns true if the transitions were possibly reordered.  This reordering

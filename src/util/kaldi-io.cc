@@ -26,6 +26,8 @@
 #include "util/kaldi-holder.h"
 #include "util/kaldi-pipebuf.h"
 #include "util/kaldi-table.h"  // for Classify{W,R}specifier
+#include <stdio.h>
+#include <stdlib.h>
 
 #ifdef KALDI_CYGWIN_COMPAT
 #include "util/kaldi-cygwin-io-inl.h"
@@ -34,7 +36,8 @@
 #define MapOsPath(x) x
 #endif  // KALDI_CYGWIN_COMPAT
 
-#ifdef _MSC_VER
+
+#if defined(_MSC_VER) 
 static FILE *popen(const char* command, const char* mode) {
 #ifdef KALDI_CYGWIN_COMPAT
   return kaldi::CygwinCompatPopen(command, mode);
@@ -280,7 +283,7 @@ class PipeOutputImpl: public OutputImplBase {
     KALDI_ASSERT(wxfilename.length() != 0 && wxfilename[0] == '|');  // should
     // start with '|'
     std::string cmd_name(wxfilename, 1);
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__CYGWIN__)
     f_ = popen(cmd_name.c_str(), (binary ? "wb" : "w"));
 #else
     f_ = popen(cmd_name.c_str(), "w");
@@ -457,7 +460,7 @@ class PipeInputImpl: public InputImplBase {
     KALDI_ASSERT(rxfilename.length() != 0 &&
            rxfilename[rxfilename.length()-1] == '|');  // should end with '|'
     std::string cmd_name(rxfilename, 0, rxfilename.length()-1);
-#ifdef _MSC_VER
+#if defined(_MSC_VER) || defined(__CYGWIN__)
     f_ = popen(cmd_name.c_str(), (binary ? "rb" : "r"));
 #else
     f_ = popen(cmd_name.c_str(), "r");

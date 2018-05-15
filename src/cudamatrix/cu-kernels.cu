@@ -402,6 +402,26 @@ static void _apply_exp(Real* mat, MatrixDim d) {
 
 template<typename Real>
 __global__
+static void _apply_exp_limited(Real* mat, MatrixDim d,
+                               Real lower_limit, Real upper_limit) {
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  int32_cuda j = blockIdx.y * blockDim.y + threadIdx.y;
+  int32_cuda index = i + j * d.stride;
+  if (i < d.cols && j < d.rows) {
+    Real x = mat[index];
+    // I'm writing !(x >= lower_limit) instead of (x < lower_limit) so that
+    // nan's will be set to the lower-limit.
+    if (!(x >= lower_limit))
+      x = lower_limit;
+    else if (x > upper_limit)
+      x = upper_limit;
+    mat[index] = exp(x);
+  }
+}
+
+
+template<typename Real>
+__global__
 static void _scale_diag_packed(Real* mat, Real value, int dim) {
   int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
   int32_cuda index = ((i + 1) * (i + 2) / 2) - 1;
@@ -1986,6 +2006,23 @@ static void _add_rows(Real alpha, Real* dst, const Real *src,
 
 template<typename Real>
 __global__
+static void _mul_rows(Real* dst, const Real *src,
+                      const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
+                      int src_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
+  int j = blockIdx.y * blockDim.y + threadIdx.y;  // row index
+  if (i < dst_dim.cols && j < dst_dim.rows) {
+    int dst_index = j * dst_dim.stride + i;
+    if (reorder[j] >= 0) {
+      int src_index = reorder[j] * src_stride + i;
+      dst[dst_index] *= src[src_index];
+    }
+  }
+}
+
+
+template<typename Real>
+__global__
 static void _add_rows(Real alpha, Real* dst, const Real * const *src,
                       MatrixDim dst_dim) {
   int i = blockIdx.x * blockDim.x + threadIdx.x;  // col index
@@ -3558,6 +3595,104 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int have_dropout_m
   }
 }
 
+
+__global__
+static void _cuda_compress_uint8_sign(const BaseFloat *src, MatrixDim dim,
+                                      unsigned char *dest, int dest_stride) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dest_index = i + j * dest_stride,
+      src_index = i + j * dim.stride;
+  if (i < dim.cols && j < dim.rows) {
+    BaseFloat f = src[src_index];
+    dest[dest_index] = (f > 0.0 ? (unsigned char)1 : (unsigned char)0);
+  }
+}
+
+
+// The following inline templated functions are a workaround for the
+// fact that (I believe) std::numeric_limits is not available in CUDA;
+// they allow us to access the minimum and maximum elements of certain
+// types from templated code.
+template <typename I> __device__ static inline int minimum_integer_value();
+template <typename I> __device__ static inline int maximum_integer_value();
+
+template<> __device__ int maximum_integer_value<int8_t>() { return 127; }
+template<> __device__ int minimum_integer_value<int8_t>() { return -128; }
+template<> __device__ int maximum_integer_value<uint8_t>() { return 255; }
+template<> __device__ int minimum_integer_value<uint8_t>() { return 0; }
+template<> __device__ int maximum_integer_value<int16_t>() { return 32767; }
+template<> __device__ int minimum_integer_value<int16_t>() { return -32768; }
+template<> __device__ int maximum_integer_value<uint16_t>() { return 65535; }
+template<> __device__ int minimum_integer_value<uint16_t>() { return 0; }
+
+
+
+template <typename I>
+__global__
+static void _cuda_compress_bounds_check(const BaseFloat *src, MatrixDim dim,
+                                        I *dest, int dest_stride, float inv_scale) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dest_index = i + j * dest_stride,
+      src_index = i + j * dim.stride;
+  const int min_value = minimum_integer_value<I>(),
+      max_value = maximum_integer_value<I>();
+  int compressed_value;
+  int ok = (i < dim.cols && j < dim.rows);
+  if  (ok) {
+    float f = src[src_index];
+    // note: I'm not sure what __float2int_rn does if input is outside of
+    // integer range, but it doesn't matter much as in the situations where this
+    // type of compression would make sense, the input should be well inside the
+    // range of 'int', and if it fails, we've probably already catastrophically
+    // diverged.
+    int i = __float2int_rn(f * inv_scale);
+    if (i < min_value) compressed_value = min_value;
+    else if (i > max_value) compressed_value = max_value;
+    else compressed_value = i;
+  }
+  __syncthreads();
+  if (ok) {
+    dest[dest_index] = compressed_value;
+  }
+}
+
+
+template <typename I>
+__global__
+static void _cuda_compress_no_bounds_check(const BaseFloat *src, MatrixDim dim,
+                                           I *dest, int dest_stride,
+                                           float inv_scale) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int dest_index = i + j * dest_stride,
+      src_index = i + j * dim.stride;
+  if (i < dim.cols && j < dim.rows) {
+    float f = src[src_index];
+    int i = __float2int_rn(f * inv_scale);
+    I s = i;
+    dest[dest_index] = s;
+  }
+}
+
+template <typename I>
+__global__
+static void _cuda_uncompress(BaseFloat *dest, MatrixDim dim,
+                             const I *src, int src_stride,
+                             float scale) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int src_index = i + j * src_stride,
+      dest_index = i + j * dim.stride;
+  if (i < dim.cols && j < dim.rows) {
+    I s = src[src_index];
+    dest[dest_index] = float(s * scale);
+  }
+}
+
+
+
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
  */
@@ -3619,6 +3754,11 @@ void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d) {
   _apply_exp<<<Gr,Bl>>>(mat,d);
 }
 
+void cudaF_apply_exp_limited(dim3 Gr, dim3 Bl, float* mat, MatrixDim d,
+                             float lower_limit, float upper_limit) {
+  _apply_exp_limited<<<Gr,Bl>>>(mat, d, lower_limit, upper_limit);
+}
+
 void cudaF_apply_pow(dim3 Gr, dim3 Bl, float* mat, float power, MatrixDim d) {
   _apply_pow<<<Gr,Bl>>>(mat, power, d);
 }
@@ -3664,6 +3804,12 @@ void cudaF_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst, const float* src,
                     const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
                     int src_stride) {
   _add_rows<<<Gr,Bl>>>(alpha, dst, src, reorder, dst_dim, src_stride);
+}
+
+void cudaF_mul_rows(dim3 Gr, dim3 Bl, float* dst, const float* src,
+                    const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
+                    int src_stride) {
+  _mul_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
 void cudaF_add_rows_direct(dim3 Gr, dim3 Bl, float alpha, float* dst,
@@ -4309,6 +4455,13 @@ void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d) {
   _apply_exp<<<Gr,Bl>>>(mat,d);
 }
 
+void cudaD_apply_exp_limited(dim3 Gr, dim3 Bl, double* mat, MatrixDim d,
+                             double lower_limit, double upper_limit) {
+  _apply_exp_limited<<<Gr,Bl>>>(mat, d, lower_limit, upper_limit);
+}
+
+
+
 void cudaD_apply_pow(dim3 Gr, dim3 Bl, double* mat, double power, MatrixDim d) {
   _apply_pow<<<Gr,Bl>>>(mat, power, d);
 }
@@ -4354,6 +4507,12 @@ void cudaD_add_rows(dim3 Gr, dim3 Bl, double alpha, double* dst,
                     const double* src, const MatrixIndexT_cuda* reorder,
                     MatrixDim dst_dim, int src_stride) {
   _add_rows<<<Gr,Bl>>>(alpha, dst, src, reorder, dst_dim, src_stride);
+}
+
+void cudaD_mul_rows(dim3 Gr, dim3 Bl, double* dst,
+                    const double* src, const MatrixIndexT_cuda* reorder,
+                    MatrixDim dst_dim, int src_stride) {
+  _mul_rows<<<Gr,Bl>>>(dst, src, reorder, dst_dim, src_stride);
 }
 
 void cudaD_add_rows_direct(dim3 Gr, dim3 Bl, double alpha, double* dst,
@@ -5220,3 +5379,69 @@ void cudaF_apply_exp_special(dim3 Gr, dim3 Bl, float* out, MatrixDim out_dim,
   _apply_exp_special<<<Gr, Bl>>>(out, out_dim, in, in_stride);
 }
 
+void cuda_compress_uint8_sign(dim3 Gr, dim3 Bl, const BaseFloat *src, MatrixDim dim,
+                              unsigned char *dest, int dest_stride) {
+  _cuda_compress_uint8_sign<<<Gr, Bl>>>(src, dim, dest, dest_stride);
+}
+
+void cuda_compress_int16(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                         MatrixDim dim, int16_t *dest,
+                         int dest_stride, float inv_scale,
+                         bool bounds_check) {
+  if (bounds_check) {
+    _cuda_compress_bounds_check<<<Gr, Bl>>>(src, dim, dest, dest_stride, inv_scale);
+  } else {
+    _cuda_compress_no_bounds_check<<<Gr, Bl>>>(src, dim, dest, dest_stride, inv_scale);
+  }
+}
+void cuda_compress_uint16(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                         MatrixDim dim, uint16_t *dest,
+                         int dest_stride, float inv_scale,
+                         bool bounds_check) {
+  if (bounds_check) {
+    _cuda_compress_bounds_check<<<Gr, Bl>>>(src, dim, dest, dest_stride, inv_scale);
+  } else {
+    _cuda_compress_no_bounds_check<<<Gr, Bl>>>(src, dim, dest, dest_stride, inv_scale);
+  }
+}
+void cuda_compress_int8(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                         MatrixDim dim, int8_t *dest,
+                         int dest_stride, float inv_scale,
+                         bool bounds_check) {
+  if (bounds_check) {
+    _cuda_compress_bounds_check<<<Gr, Bl>>>(src, dim, dest, dest_stride, inv_scale);
+  } else {
+    _cuda_compress_no_bounds_check<<<Gr, Bl>>>(src, dim, dest, dest_stride, inv_scale);
+  }
+}
+void cuda_compress_uint8(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                         MatrixDim dim, uint8_t *dest,
+                         int dest_stride, float inv_scale,
+                         bool bounds_check) {
+  if (bounds_check) {
+    _cuda_compress_bounds_check<<<Gr, Bl>>>(src, dim, dest, dest_stride, inv_scale);
+  } else {
+    _cuda_compress_no_bounds_check<<<Gr, Bl>>>(src, dim, dest, dest_stride, inv_scale);
+  }
+}
+
+void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                           MatrixDim dim, const uint8_t *src,
+                           int src_stride, float scale) {
+  _cuda_uncompress<<<Gr, Bl>>>(dest, dim, src, src_stride, scale);
+}
+void cuda_uncompress_int8(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                           MatrixDim dim, const int8_t *src,
+                           int src_stride, float scale) {
+  _cuda_uncompress<<<Gr, Bl>>>(dest, dim, src, src_stride, scale);
+}
+void cuda_uncompress_uint16(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                            MatrixDim dim, const uint16_t *src,
+                            int src_stride, float scale) {
+  _cuda_uncompress<<<Gr, Bl>>>(dest, dim, src, src_stride, scale);
+}
+void cuda_uncompress_int16(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                           MatrixDim dim, const int16_t *src,
+                           int src_stride, float scale) {
+  _cuda_uncompress<<<Gr, Bl>>>(dest, dim, src, src_stride, scale);
+}

@@ -367,6 +367,14 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
     This is for outputs that are not really output "layers"
     (there is no affine transform or nonlinearity), they just directly map to an
     output-node in nnet3.
+
+    Parameters of the class, and their defaults:
+        input='[-1]'    :   Descriptor giving the input of the layer.
+        objective-type=linear   :   the only other choice currently is
+            'quadratic', for use in regression problems
+        output-delay=0    :  Can be used to shift the frames on the output, equivalent
+             to delaying labels by this many frames (positive value increases latency
+             in online decoding but may help if you're using unidirectional LSTMs.
     """
 
     def __init__(self, first_token, key_to_value, prev_names=None):
@@ -378,11 +386,17 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
 
         # note: self.config['input'] is a descriptor, '[-1]' means output
         # the most recent layer.
-        self.config = {'input': '[-1]', 'dim': -1}
+        self.config = {'input': '[-1]', 'dim': -1,
+                       'objective-type': 'linear',
+                       'output-delay': 0}
 
     def check_configs(self):
 
-        pass  # nothing to check; descriptor-parsing can't happen in this function.
+        if self.config['objective-type'] != 'linear' and \
+                self.config['objective-type'] != 'quadratic':
+            raise RuntimeError("In output, objective-type has"
+                               " invalid value {0}"
+                               "".format(self.config['objective-type']))
 
     def output_name(self, auxiliary_outputs=None):
 
@@ -402,8 +416,7 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
         # the input layers need to be printed in 'init.config' (which
         # initializes the neural network prior to the LDA), in 'ref.config',
         # which is a version of the config file used for getting left and right
-        # context (it doesn't read anything for the LDA-like transform and/or
-        # presoftmax-prior-scale components)
+        # context (it doesn't read anything for the LDA-like transform).
         # In 'full.config' we write everything, this is just for reference,
         # and also for cases where we don't use the LDA-like transform.
         ans = []
@@ -413,11 +426,19 @@ class XconfigTrivialOutputLayer(XconfigLayerBase):
         # by 'output-string' we mean a string that can appear in
         # config-files, i.e. it contains the 'final' names of nodes.
         descriptor_final_str = self.descriptors['input']['final-string']
+        objective_type = self.config['objective-type']
+        output_delay = self.config['output-delay']
 
-        for config_name in ['init', 'ref', 'final']:
+        if output_delay != 0:
+            descriptor_final_str = (
+                'Offset({0}, {1})'.format(descriptor_final_str, output_delay))
+
+        for config_name in ['ref', 'final']:
             ans.append((config_name,
-                        'output-node name={0} input={1}'.format(
-                            self.name, descriptor_final_str)))
+                        'output-node name={0} input={1} '
+                        'objective={2}'.format(
+                            self.name, descriptor_final_str,
+                            objective_type)))
         return ans
 
 
@@ -430,6 +451,9 @@ class XconfigOutputLayer(XconfigLayerBase):
     Parameters of the class, and their defaults:
         input='[-1]'    :   Descriptor giving the input of the layer.
         dim=None    :   Output dimension of layer, will normally equal the number of pdfs.
+        bottleneck-dim=None    :   Bottleneck dimension of layer: if supplied, instead of
+                        an affine component we'll have a linear then affine, so a linear
+                        bottleneck, with the linear part constrained to be orthonormal.
         include-log-softmax=true    :   setting it to false will omit the
             log-softmax component- useful for chain models.
         objective-type=linear   :   the only other choice currently is
@@ -441,16 +465,6 @@ class XconfigOutputLayer(XconfigLayerBase):
             learning-rate-factor=(0.5/xent_regularize),
             normally learning-rate-factor=5.0 since xent_regularize is
             normally 0.1.
-        presoftmax-scale-file=None  :   If set, a filename for a vector that
-            will be used to scale the output of the affine component before the
-            log-softmax (if include-log-softmax=true), or before the output
-            (if not).  This is helpful to avoid instability in training due to
-            some classes having much more data than others.  The way we normally
-            create this vector is to take the priors of the classes to the
-            power -0.25 and rescale them so the average is 1.0.  This factor
-            -0.25 is referred to as presoftmax_prior_scale_power in scripts. In
-            the scripts this would normally be set to
-            config_dir/presoftmax_prior_scale.vec
         max-change=1.5 :  Can be used to change the max-change parameter in the
             affine component; this affects how much the matrix can change on each
             iteration.
@@ -462,6 +476,9 @@ class XconfigOutputLayer(XconfigLayerBase):
         ng-affine-options=''  :   Can be used supply non-default options to the affine
              layer (intended for the natural gradient but can be an arbitrary string
              to be added to the config line.  e.g. 'update-period=2'.).
+        ng-linear-options=''  :   Options, like ng-affine-options, that are passed to
+             the LinearComponent, only in bottleneck layers (i.e. if bottleneck-dim
+             is supplied).
     """
 
     def __init__(self, first_token, key_to_value, prev_names=None):
@@ -475,13 +492,15 @@ class XconfigOutputLayer(XconfigLayerBase):
         # the most recent layer.
         self.config = {'input': '[-1]',
                        'dim': -1,
+                       'bottleneck-dim': -1,
+                       'orthonormal-constraint': 1.0,
+                            # orthonormal-constraint only matters if bottleneck-dim is set.
                        'include-log-softmax': True,
                             # this would be false for chain models
                        'objective-type': 'linear',
                             # see Nnet::ProcessOutputNodeConfigLine in
                             # nnet-nnet.cc for other options
                        'learning-rate-factor': 1.0,
-                       'presoftmax-scale-file': '',
                             # used in DNN (not RNN) training when using
                             # frame-level objfns,
                        'max-change': 1.5,
@@ -489,7 +508,8 @@ class XconfigOutputLayer(XconfigLayerBase):
                        'bias-stddev': 0.0,
                        'l2-regularize': 0.0,
                        'output-delay': 0,
-                       'ng-affine-options': ''
+                       'ng-affine-options': '',
+                       'ng-linear-options': ''    # only affects bottleneck output layers.
                       }
 
     def check_configs(self):
@@ -509,32 +529,54 @@ class XconfigOutputLayer(XconfigLayerBase):
                                " invalid value {0}"
                                "".format(self.config['learning-rate-factor']))
 
-    # you cannot access the output of this layer from other layers... see
-    # comment in output_name for the reason why.
     def auxiliary_outputs(self):
 
-        return []
+        auxiliary_outputs = ['affine']
+        if self.config['include-log-softmax']:
+            auxiliary_outputs.append('log-softmax')
 
-    def output_name(self, auxiliary_outputs=None):
+        return auxiliary_outputs
 
-        # Note: nodes of type output-node in nnet3 may not be accessed in
-        # Descriptors, so calling this with auxiliary_outputs=None doesn't
-        # make sense.  But it might make sense to make the output of the softmax
-        # layer and/or the output of the affine layer available as inputs to
-        # other layers, in some circumstances.
-        # we'll implement that when it's needed.
-        raise RuntimeError("Outputs of output-layer may not be used by other"
-                           " layers")
+    def output_name(self, auxiliary_output=None):
+
+        if auxiliary_output is None:
+            # Note: nodes of type output-node in nnet3 may not be accessed in
+            # Descriptors, so calling this with auxiliary_outputs=None doesn't
+            # make sense.
+            raise RuntimeError("Outputs of output-layer may not be used by other"
+                               " layers")
+
+        if auxiliary_output in self.auxiliary_outputs():
+            return '{0}.{1}'.format(self.name, auxiliary_output)
+        else:
+            raise RuntimeError("Unknown auxiliary output name {0}"
+                               "".format(auxiliary_output))
 
     def output_dim(self, auxiliary_output=None):
 
-        # see comment in output_name().
-        raise RuntimeError("Outputs of output-layer may not be used by other"
-                           " layers")
+        if auxiliary_output is None:
+            # Note: nodes of type output-node in nnet3 may not be accessed in
+            # Descriptors, so calling this with auxiliary_outputs=None doesn't
+            # make sense.
+            raise RuntimeError("Outputs of output-layer may not be used by other"
+                               " layers")
+        return self.config['dim']
 
     def get_full_config(self):
-
         ans = []
+        config_lines = self._generate_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in LSTM initialization
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+
+    def _generate_config(self):
+
+        configs = []
 
         # note: each value of self.descriptors is (descriptor, dim,
         # normalized-string, output-string).
@@ -543,10 +585,10 @@ class XconfigOutputLayer(XconfigLayerBase):
         descriptor_final_string = self.descriptors['input']['final-string']
         input_dim = self.descriptors['input']['dim']
         output_dim = self.config['dim']
+        bottleneck_dim = self.config['bottleneck-dim']
         objective_type = self.config['objective-type']
         learning_rate_factor = self.config['learning-rate-factor']
         include_log_softmax = self.config['include-log-softmax']
-        presoftmax_scale_file = self.config['presoftmax-scale-file']
         param_stddev = self.config['param-stddev']
         bias_stddev = self.config['bias-stddev']
         l2_regularize = self.config['l2-regularize']
@@ -558,64 +600,72 @@ class XconfigOutputLayer(XconfigLayerBase):
         l2_regularize_option = ('l2-regularize={0} '.format(l2_regularize)
                                 if l2_regularize != 0.0 else '')
 
-        # note: ref.config is used only for getting the left-context and
-        # right-context of the network;
-        # final.config is where we put the actual network definition.
-        for config_name in ['ref', 'final']:
-            # First the affine node.
-            line = ('component name={0}.affine'
-                    ' type=NaturalGradientAffineComponent'
-                    ' input-dim={1}'
-                    ' output-dim={2}'
-                    ' param-stddev={3}'
-                    ' bias-stddev={4}'
-                    ' max-change={5} {6} {7} {8}'
-                    ''.format(self.name, input_dim, output_dim,
-                              param_stddev, bias_stddev, max_change, ng_affine_options,
-                              learning_rate_option, l2_regularize_option))
-            ans.append((config_name, line))
+        cur_node = descriptor_final_string
+        cur_dim = input_dim
 
-            line = ('component-node name={0}.affine'
-                    ' component={0}.affine input={1}'
-                    ''.format(self.name, descriptor_final_string))
-            ans.append((config_name, line))
-            cur_node = '{0}.affine'.format(self.name)
+        if bottleneck_dim >= 0:
+            if bottleneck_dim == 0 or bottleneck_dim >= input_dim or bottleneck_dim >= output_dim:
+                raise RuntimeError("Bottleneck dim has value that does not make sense: {0}".format(
+                    bottleneck_dim))
+            # This is the bottleneck case (it doesn't necessarily imply we
+            # will be using the features from the bottleneck; it's just a factorization
+            # of the matrix into two pieces without a nonlinearity in between).
+            # We don't include the l2-regularize option because it's useless
+            # given the orthonormality constraint.
+            linear_options = self.config['ng-linear-options']
 
-            if presoftmax_scale_file is not '' and config_name == 'final':
-                # don't use the presoftmax-scale in 'ref.config' since that
-                # file won't exist at the time we evaluate it.
-                # (ref.config is used to find the left/right context).
-                line = ('component name={0}.fixed-scale'
-                        ' type=FixedScaleComponent scales={1}'
-                        ''.format(self.name, presoftmax_scale_file))
-                ans.append((config_name, line))
+            # note: by default the LinearComponent uses natural gradient.
+            line = ('component name={0}.linear type=LinearComponent '
+                    'orthonormal-constraint={1} param-stddev={2} '
+                    'input-dim={3} output-dim={4} max-change=0.75 {5}'
+                    ''.format(self.name, self.config['orthonormal-constraint'],
+                              self.config['orthonormal-constraint'] / math.sqrt(input_dim),
+                              input_dim, bottleneck_dim, linear_options))
+            configs.append(line)
+            line = ('component-node name={0}.linear component={0}.linear input={1}'
+                    ''.format(self.name, cur_node))
+            configs.append(line)
+            cur_node = '{0}.linear'.format(self.name)
+            cur_dim = bottleneck_dim
 
-                line = ('component-node name={0}.fixed-scale'
-                        ' component={0}.fixed-scale input={1}'
-                        ''.format(self.name, cur_node))
-                ans.append((config_name, line))
-                cur_node = '{0}.fixed-scale'.format(self.name)
 
-            if include_log_softmax:
-                line = ('component name={0}.log-softmax'
-                        ' type=LogSoftmaxComponent dim={1}'
-                        ''.format(self.name, output_dim))
-                ans.append((config_name, line))
+        line = ('component name={0}.affine'
+                ' type=NaturalGradientAffineComponent'
+                ' input-dim={1}'
+                ' output-dim={2}'
+                ' param-stddev={3}'
+                ' bias-stddev={4}'
+                ' max-change={5} {6} {7} {8}'
+                ''.format(self.name, cur_dim, output_dim,
+                          param_stddev, bias_stddev, max_change, ng_affine_options,
+                          learning_rate_option, l2_regularize_option))
+        configs.append(line)
+        line = ('component-node name={0}.affine'
+                ' component={0}.affine input={1}'
+                ''.format(self.name, cur_node))
+        configs.append(line)
+        cur_node = '{0}.affine'.format(self.name)
 
-                line = ('component-node name={0}.log-softmax'
-                        ' component={0}.log-softmax input={1}'
-                        ''.format(self.name, cur_node))
-                ans.append((config_name, line))
-                cur_node = '{0}.log-softmax'.format(self.name)
+        if include_log_softmax:
+            line = ('component name={0}.log-softmax'
+                    ' type=LogSoftmaxComponent dim={1}'
+                    ''.format(self.name, output_dim))
+            configs.append(line)
 
-            if output_delay != 0:
-                cur_node = 'Offset({0}, {1})'.format(cur_node, output_delay)
+            line = ('component-node name={0}.log-softmax'
+                    ' component={0}.log-softmax input={1}'
+                    ''.format(self.name, cur_node))
+            configs.append(line)
+            cur_node = '{0}.log-softmax'.format(self.name)
 
-            line = ('output-node name={0} input={1} '
-                    'objective={2}'.format(
-                        self.name, cur_node, objective_type))
-            ans.append((config_name, line))
-        return ans
+        if output_delay != 0:
+            cur_node = 'Offset({0}, {1})'.format(cur_node, output_delay)
+
+        line = ('output-node name={0} input={1} '
+                'objective={2}'.format(
+                    self.name, cur_node, objective_type))
+        configs.append(line)
+        return configs
 
 
 class XconfigBasicLayer(XconfigLayerBase):
@@ -637,7 +687,11 @@ class XconfigBasicLayer(XconfigLayerBase):
 
     Parameters of the class, and their defaults:
       input='[-1]'             [Descriptor giving the input of the layer.]
-      dim=None                   [Output dimension of layer, e.g. 1024]
+      dim=-1                   [Output dimension of layer, e.g. 1024]
+      bottleneck-dim=-1        [If you set this, a linear bottleneck is added, so
+                                we project to first bottleneck-dim then to dim.  The
+                                first of the two matrices is constrained to be
+                                orthonormal.]
       self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
       learning-rate-factor=1.0   [This can be used to make the affine component
                                   train faster or slower].
@@ -657,12 +711,19 @@ class XconfigBasicLayer(XconfigLayerBase):
         # the most recent layer.
         self.config = {'input': '[-1]',
                        'dim': -1,
+                       'bottleneck-dim': -1,
                        'self-repair-scale': 1.0e-05,
                        'target-rms': 1.0,
                        'ng-affine-options': '',
+                       'ng-linear-options': '',    # only affects bottleneck layers.
                        'dropout-proportion': 0.5,  # dropout-proportion only
                                                    # affects layers with
-                                                   # 'dropout' in the name.
+                                                   # 'dropout' in the name
+                       'dropout-per-dim': False,  # if dropout-per-dim=true, the dropout
+                                                  # mask is shared across time.
+                       'dropout-per-dim-continuous':  False, # if you set this, it's
+                                                    # like dropout-per-dim but with a
+                                                    # continuous-valued (not zero-one) mask.
                        'add-log-stddev': False,
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
@@ -674,6 +735,10 @@ class XconfigBasicLayer(XconfigLayerBase):
     def check_configs(self):
         if self.config['dim'] < 0:
             raise RuntimeError("dim has invalid value {0}".format(self.config['dim']))
+        b = self.config['bottleneck-dim']
+        if b >= 0 and (b >= self.config['dim'] or b == 0):
+            raise RuntimeError("bottleneck-dim has an invalid value {0}".format(b))
+
         if self.config['self-repair-scale'] < 0.0 or self.config['self-repair-scale'] > 1.0:
             raise RuntimeError("self-repair-scale has invalid value {0}"
                                .format(self.config['self-repair-scale']))
@@ -751,14 +816,41 @@ class XconfigBasicLayer(XconfigLayerBase):
                                    "there is a final 'renorm' component.")
 
         configs = []
-        # First the affine node.
+        cur_dim = input_dim
+        cur_node = input_desc
+
+        # First the affine node (or linear then affine, if bottleneck).
+        if self.config['bottleneck-dim'] > 0:
+            # This is the bottleneck case (it doesn't necessarily imply we
+            # will be using the features from the bottleneck; it's just a factorization
+            # of the matrix into two pieces without a nonlinearity in between).
+            # We don't include the l2-regularize option because it's useless
+            # given the orthonormality constraint.
+            linear_options = self.config['ng-linear-options']
+            for opt_name in [ 'max-change', 'learning-rate-factor' ]:
+                value = self.config[opt_name]
+                if value != '':
+                    linear_options += ' {0}={1}'.format(opt_name, value)
+
+            bottleneck_dim = self.config['bottleneck-dim']
+            # note: by default the LinearComponent uses natural gradient.
+            line = ('component name={0}.linear type=LinearComponent '
+                    'input-dim={1} orthonormal-constraint=1.0 output-dim={2} {3}'
+                    ''.format(self.name, input_dim, bottleneck_dim, linear_options))
+            configs.append(line)
+            line = ('component-node name={0}.linear component={0}.linear input={1}'
+                    ''.format(self.name, cur_node))
+            configs.append(line)
+            cur_node = '{0}.linear'.format(self.name)
+            cur_dim = bottleneck_dim
+
+
         line = ('component name={0}.affine type=NaturalGradientAffineComponent'
                 ' input-dim={1} output-dim={2} {3}'
-                ''.format(self.name, input_dim, output_dim, affine_options))
+                ''.format(self.name, cur_dim, output_dim, affine_options))
         configs.append(line)
-
         line = ('component-node name={0}.affine component={0}.affine input={1}'
-                ''.format(self.name, input_desc))
+                ''.format(self.name, cur_node))
         configs.append(line)
         cur_node = '{0}.affine'.format(self.name)
 
@@ -797,8 +889,7 @@ class XconfigBasicLayer(XconfigLayerBase):
 
             elif nonlinearity == 'batchnorm':
                 line = ('component name={0}.{1}'
-                        ' type=BatchNormComponent dim={2}'
-                        ' target-rms={3}'
+                        ' type=BatchNormComponent dim={2} target-rms={3}'
                         ''.format(self.name, nonlinearity, output_dim,
                                   target_rms))
 
@@ -808,11 +899,19 @@ class XconfigBasicLayer(XconfigLayerBase):
                         ''.format(self.name, nonlinearity, output_dim))
 
             elif nonlinearity == 'dropout':
-                line = ('component name={0}.{1} type=DropoutComponent '
-                        'dim={2} dropout-proportion={3}'.format(
-                            self.name, nonlinearity, output_dim,
-                            self.config['dropout-proportion']))
+                if not (self.config['dropout-per-dim'] or
+                        self.config['dropout-per-dim-continuous']):
+                    line = ('component name={0}.{1} type=DropoutComponent '
+                            'dim={2} dropout-proportion={3}'.format(
+                                self.name, nonlinearity, output_dim,
+                                self.config['dropout-proportion']))
+                else:
+                    continuous_opt='continuous=true' if self.config['dropout-per-dim-continuous'] else ''
 
+                    line = ('component name={0}.dropout type=GeneralDropoutComponent '
+                            'dim={1} dropout-proportion={2} {3}'.format(
+                                self.name, output_dim, self.config['dropout-proportion'],
+                                continuous_opt))
             else:
                 raise RuntimeError("Unknown nonlinearity type: {0}"
                                    .format(nonlinearity))

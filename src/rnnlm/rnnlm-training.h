@@ -124,6 +124,11 @@ class RnnlmTrainer {
   ///                       but this function consumes it destructively.
   void TrainWordEmbedding(CuMatrixBase<BaseFloat> *word_embedding_deriv);
 
+  /// The backstitch version of the above function.
+  void TrainBackstitchWordEmbedding(
+      bool is_backstitch_step1,
+      CuMatrixBase<BaseFloat> *word_embedding_deriv);
+
   /// This is the function-call that's run as the background thread which
   /// computes the derived parameters for each minibatch.
   void RunBackgroundThread();
@@ -243,6 +248,10 @@ class RnnlmTrainer {
   std::thread background_thread_;  // Background thread for computing 'derived'
                                    // parameters of a minibatch.
 
+  // This value is used in backstitch training when we need to ensure
+  // consistent dropout masks.  It's set to a value derived from rand()
+  // when the class is initialized.
+  int32 srand_seed_;
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(RnnlmTrainer);
 };

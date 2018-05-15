@@ -21,7 +21,9 @@ for x in train dev test; do
   cd $dir/data/$x
   rm -rf wav.scp utt2spk spk2utt word.txt phone.txt text
   echo "preparing scps and text in data/$x"
-  for nn in `find  $corpus_dir/$x/*.wav | sort -u | xargs -i basename {} .wav`; do
+  #updated new "for loop" figured out the compatibility issue with Mac     created by Xi Chen, in 03/06/2018
+  #for nn in `find  $corpus_dir/$x/*.wav | sort -u | xargs -i basename {} .wav`; do
+  for nn in `find  $corpus_dir/$x -name "*.wav" | sort -u | xargs -I {} basename {} .wav`; do
       spkid=`echo $nn | awk -F"_" '{print "" $1}'`
       spk_char=`echo $spkid | sed 's/\([A-Z]\).*/\1/'`
       spk_num=`echo $spkid | sed 's/[A-Z]\([0-9]\)/\1/'`
