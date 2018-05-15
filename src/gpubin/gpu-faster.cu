@@ -37,7 +37,7 @@
 int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BLOCK_SIZE 512
 #define BEAM_SIZE 10
-#define BATCH_SIZE 162
+#define BATCH_SIZE 27
 
 const int NUM_EPS_LAYER = 1;
 const int NUM_LAYER = NUM_EPS_LAYER + 1;
@@ -227,22 +227,25 @@ __global__ void compute_emitting(int *from_states, int *to_states, float *probs,
   __shared__ int to_shared_states[BLOCK_SIZE];
   __shared__ prob_ptr_t viterbi_from_shared_states[BLOCK_SIZE];
   __shared__ float shared_probs[BLOCK_SIZE];
-
+  __shared__ sym_t shared_inputs[BLOCK_SIZE];
+ 
   from_shared_states[threadIdx.x] = from_states[offset];
   to_shared_states[threadIdx.x] = to_states[offset];
   shared_probs[threadIdx.x] = probs[offset];
+  shared_inputs[threadIdx.x] = inputs[offset];
+  
   viterbi_from_shared_states[threadIdx.x] = viterbi_prev[from_shared_states[threadIdx.x]];
 
-  if (offset < end_offset && from_shared_states[threadIdx.x] != EPS_SYM) {
+  if (offset < end_offset && shared_inputs[threadIdx.x] != EPS_SYM) {
     int idxlayer = ((unpack_ptr(viterbi_from_shared_states[threadIdx.x]) >> NUM_BIT_SHL_LAYER) + 1) & NUM_EPS_LAYER; // dapat index layernya keberapa
-    float ac_cost = - gpu_decodable->LogLikelihood(frame, inputs[offset], cur_feats, cur_feats_dim);
-    prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x] - ac_cost, offset | (idxlayer << NUM_BIT_SHL_LAYER));
+//    float ac_cost = - gpu_decodable->LogLikelihood(frame, shared_inputs[threadIdx.x], cur_feats, cur_feats_dim);
+    prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x], offset | (idxlayer << NUM_BIT_SHL_LAYER));
     atomicMax(&viterbi[to_shared_states[threadIdx.x]], pp);
   }
 
 }
 
-__global__ void compute_nonemitting(int *from_states, int *to_states, float *probs,
+__global__ void compute_nonemitting(int *from_states, int *to_states, float *probs, int* inputs,
   int start_offset, int end_offset,                
   prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi, int layer_idx){
 
@@ -253,41 +256,32 @@ __global__ void compute_nonemitting(int *from_states, int *to_states, float *pro
   __shared__ int to_shared_states[BLOCK_SIZE];
   __shared__ prob_ptr_t viterbi_from_shared_states[BLOCK_SIZE];
   __shared__ float shared_probs[BLOCK_SIZE];
+  __shared__ sym_t shared_inputs[BLOCK_SIZE];
 
   from_shared_states[threadIdx.x] = from_states[offset];
   to_shared_states[threadIdx.x] = to_states[offset];
   shared_probs[threadIdx.x] = probs[offset];
+  shared_inputs[threadIdx.x] = inputs[offset];
   viterbi_from_shared_states[threadIdx.x] = viterbi_prev[from_shared_states[threadIdx.x]];
 
   if (offset < end_offset){
     atomicMax(&viterbi[to_shared_states[threadIdx.x]], viterbi_prev[to_shared_states[threadIdx.x]]);
-    if(from_shared_states[threadIdx.x] == EPS_SYM) {
+    if(shared_inputs[threadIdx.x] == EPS_SYM) {
       prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x], offset | ((layer_idx - 1) << NUM_BIT_SHL_LAYER));
       atomicMax(&viterbi[to_shared_states[threadIdx.x]], pp);
     }
   }
 }
 
-__global__ void compute_final(int *final_states, float *final_probs,
-            int num_finals,
-            prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi) {
-  // To do: this should be a reduction instead
-  int id = blockIdx.x*blockDim.x+threadIdx.x;
-  if (id < num_finals) {
-    prob_ptr_t pp = pack(unpack_prob(viterbi_prev[final_states[id]]) - final_probs[id], final_states[id]);
-    atomicMax(viterbi, pp);
-  }
-}
-
 __global__ void compute_max(
            prob_ptr_t *viterbi_prev, 
-           prob_ptr_t *viterbi,
+           prob_ptr_t *max_prob,
            int num_states) {
   // To do: this should be a reduction instead
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   if (id < num_states) {
     prob_ptr_t pp = pack(unpack_prob(viterbi_prev[id]), id);
-    atomicMax(viterbi, pp);
+    atomicMax(max_prob, pp);
   }
 }
 
@@ -299,16 +293,17 @@ __global__ void get_path(int *from_nodes,
   int num_path_d = 0;
   if (id == 0) {
     int state = unpack_ptr(path[(batch_frame + 1) * NUM_LAYER]);
-    printf("STATE MAX : %d\n", state);
+    float nilai = unpack_prob(path[(batch_frame + 1) * NUM_LAYER]);
+    printf("STATE MAX : %d, nilai : %.10f\n", state, nilai);
     for (int t = batch_frame; t > 0; num_path_d++, t--) {
       while(state >= (1 << NUM_BIT_SHL_LAYER)){
         prob_ptr_t pp = viterbi[(t * NUM_LAYER + (state >> NUM_BIT_SHL_LAYER)) * num_nodes + (state & OFFSET_AND_BIT)];
         path[num_path_d] = pp; num_path_d++;
-        state = from_nodes[unpack_ptr(pp)];
+        state = from_nodes[unpack_ptr(pp) & OFFSET_AND_BIT] + ((unpack_ptr(pp) >> NUM_BIT_SHL_LAYER) << NUM_BIT_SHL_LAYER);
       }
       prob_ptr_t pp = viterbi[t * NUM_LAYER * num_nodes+state];
       path[num_path_d] = pp;
-      state = from_nodes[unpack_ptr(pp)];
+      state = from_nodes[unpack_ptr(pp) & OFFSET_AND_BIT] + ((unpack_ptr(pp) >> NUM_BIT_SHL_LAYER) << NUM_BIT_SHL_LAYER);
     }
     *num_path = num_path_d;
   }
@@ -391,6 +386,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
         m.from_states.data().get(), 
         m.to_states.data().get(),
         m.probs.data().get(),
+        m.inputs.data().get(),
         start_offset, end_offset, 
         viterbi.data().get() + (t + i - 1) * m.num_states,
         viterbi.data().get() + (t + i) * m.num_states,
@@ -410,13 +406,13 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
 
   std::cerr << "COMPUTE MAX" << std::endl;
   compute_max<<<ceildiv(end_offset - start_offset, 1024), 1024>>> (
-    viterbi.data().get() + batch_frame * NUM_LAYER * m.num_states - 1,
+    viterbi.data().get() + (batch_frame + 1) * NUM_LAYER * m.num_states - 1,
     (&path.back()).get(),
     m.num_states
   );
 
 
-
+  std::cerr << "CUDA MALLOC" << std::endl;
   int* num_path_d;
   cudaMalloc((void**) &num_path_d, sizeof(int));
   get_path <<<1,1>>> (
@@ -428,6 +424,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   );
   int num_path;
   
+  std::cerr << "CUDA MEMCPY" << std::endl;
   cudaMemcpy(&num_path, num_path_d, sizeof(int), cudaMemcpyDeviceToHost);
   
   cudaFree(num_path_d);
