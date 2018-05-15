@@ -210,7 +210,7 @@ with open(args.data_splits) as f:
                 base_name = os.path.basename(image_file_path)
                 base_name, b = base_name.split('.tif')
                 for lineID in sorted(text_line_word_dict):
-                    updated_base_name = base_name + '_' + str(lineID).zfill(4) +'.tif'
+                    updated_base_name = base_name + '_' + str(lineID).zfill(4) +'.png'
                     location = image_loc_dict[updated_base_name]
                     image_file_path = os.path.join(location, updated_base_name)
                     line = text_line_word_dict[lineID]

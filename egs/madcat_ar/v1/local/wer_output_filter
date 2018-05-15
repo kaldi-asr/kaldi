@@ -1,7 +1,6 @@
 #!/usr/bin/env perl
 # Copyright 2012-2014  Johns Hopkins University (Author: Yenda Trmal)
 # Apache 2.0
-# Arabic-specific normalization
 
 use utf8;
 

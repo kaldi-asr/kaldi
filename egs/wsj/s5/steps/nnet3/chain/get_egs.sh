@@ -155,7 +155,7 @@ utils/data/get_utt2dur.sh $data
 
 cat $data/utt2dur | \
   awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
-  utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+  utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/valid_uttlist
 
 len_uttlist=`wc -l $dir/valid_uttlist | awk '{print $1}'`
 if [ $len_uttlist -lt $num_utts_subset ]; then
@@ -180,7 +180,7 @@ echo "$0: creating egs.  To ensure they are not deleted later you can do:  touch
 cat $data/utt2dur | \
   awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
    utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+   utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/train_subset_uttlist
 len_uttlist=`wc -l $dir/train_subset_uttlist | awk '{print $1}'`
 if [ $len_uttlist -lt $num_utts_subset ]; then
   echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
