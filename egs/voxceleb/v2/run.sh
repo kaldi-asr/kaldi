@@ -1,14 +1,12 @@
 #!/bin/bash
-# Copyright      2017   David Snyder
-#                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
-#                2017   Johns Hopkins University (Author: Daniel Povey)
-#                2018   Ewald Enzinger
+# Copyright   2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#             2017   Johns Hopkins University (Author: Daniel Povey)
+#        2017-2018   David Snyder
+#             2018   Ewald Enzinger
 # Apache 2.0.
 #
-# Adapted from SRE16 v2 recipe (commit 3ea534070fd2cccd2e4ee21772132230033022ce)
-#
 # See ../README.txt for more info on data required.
-# Results (mostly EERs) are inline in comments below.
+# Results (mostly equal error-rates) are inline in comments below.
 
 . ./cmd.sh
 . ./path.sh
@@ -17,6 +15,7 @@ mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
 
+# The trials file is downloaded by local/make_voxceleb1.pl.
 voxceleb1_trials=data/voxceleb1_test/trials
 voxceleb1_root=/export/corpora/VoxCeleb1
 voxceleb2_root=/export/corpora/VoxCeleb2
@@ -204,5 +203,5 @@ if [ $stage -le 12 ]; then
   echo "EER: ${eer}%"
   # EER: 3.224%
   # For reference, here's the ivector system from ../v1:
-  # EER: 5.748%
+  # EER: 5.419%
 fi

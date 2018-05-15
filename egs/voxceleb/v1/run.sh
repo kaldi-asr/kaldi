@@ -1,14 +1,12 @@
 #!/bin/bash
-# Copyright      2017   David Snyder
-#                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
-#                2017   Johns Hopkins University (Author: Daniel Povey)
-#                2018   Ewald Enzinger
+# Copyright   2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#             2017   Johns Hopkins University (Author: Daniel Povey)
+#        2017-2018   David Snyder
+#             2018   Ewald Enzinger
 # Apache 2.0.
 #
-# Adapted from SRE16 v1 recipe (commit 3ea534070fd2cccd2e4ee21772132230033022ce)
-#
 # See ../README.txt for more info on data required.
-# Results (mostly EERs) are inline in comments below.
+# Results (mostly equal error-rates) are inline in comments below.
 
 . ./cmd.sh
 . ./path.sh
@@ -16,13 +14,12 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
+# The trials file is downloaded by local/make_voxceleb1.pl.
 voxceleb1_trials=data/voxceleb1_test/trials
 voxceleb1_root=/export/corpora/VoxCeleb1
 voxceleb2_root=/export/corpora/VoxCeleb2
 
-stage=3
-
-#. utils/parse_options.sh
+stage=0
 
 if [ $stage -le 0 ]; then
   local/make_voxceleb2.pl $voxceleb2_root dev data/voxceleb2_train
@@ -38,7 +35,8 @@ fi
 if [ $stage -le 1 ]; then
   # Make MFCCs and compute the energy-based VAD for each dataset
   for name in train voxceleb1_test; do
-    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+    steps/make_mfcc.sh --write-utt2num-frames true \
+      --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
       data/${name} exp/make_mfcc $mfccdir
     utils/fix_data_dir.sh data/${name}
     sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
@@ -61,16 +59,26 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
+  # In this stage, we train the i-vector extractor.
+  #
+  # Note that there are well over 1 million utterances in our training set,
+  # and it takes an extremely long time to train the extractor on all of this.
+  # Also, most of those utterances are very short.  Short utterances are
+  # harmful for training the i-vector extractor.  Therefore, to reduce the
+  # training time and improve performance, we will only train on the 100k
+  # longest utterances.
+  utils/subset_data_dir.sh \
+    --utt-list <(sort -n -k 2 data/train/utt2num_frames | tail -n 100000) \
+    data/train data/train_100k
   # Train the i-vector extractor.
-  sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 20G" \
-    --stage 0 \
+  sid/train_ivector_extractor.sh --cmd "$train_cmd --mem 16G" \
     --ivector-dim 400 --num-iters 5 \
-    exp/full_ubm/final.ubm data/train \
+    exp/full_ubm/final.ubm data/train_100k \
     exp/extractor
 fi
 
 if [ $stage -le 4 ]; then
-  sid/extract_ivectors.sh --cmd "$train_cmd --mem 4G" --nj 40 \
+  sid/extract_ivectors.sh --cmd "$train_cmd --mem 4G" --nj 80 \
     exp/extractor data/train \
     exp/ivectors_train
 
@@ -111,5 +119,5 @@ fi
 if [ $stage -le 7 ]; then
   eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_voxceleb1_test) 2> /dev/null`
   echo "EER: ${eer}%"
-  # EER: 5.748%
+  # EER: 5.419%
 fi

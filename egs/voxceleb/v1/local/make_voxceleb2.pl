@@ -12,6 +12,11 @@ if (@ARGV != 3) {
   exit(1);
 }
 
+# Check that ffmpeg is installed.
+if (`which ffmpeg` eq "") {
+  die "Error: this script requires that ffmpeg is installed.";
+}
+
 ($data_base, $dataset, $out_dir) = @ARGV;
 
 if ("$dataset" ne "dev" && "$dataset" ne "test") {
