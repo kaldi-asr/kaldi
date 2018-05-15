@@ -3,8 +3,8 @@
 # Copyright 2017  Hainan Xu
 #           2017  Szu-Jui Chen
 
-# This script is very similar to steps/rnnlmrescore.sh, and it performs n-best
-# LM rescoring with Kaldi-RNNLM.
+# This script is very similar to scripts/rnnlm/lmrescore_nbest.sh, and it takes the results
+# from forward model then performs n-best LM rescoring based on backward model with Kaldi-RNNLM.
 
 # Begin configuration section.
 N=10
@@ -81,113 +81,34 @@ mkdir -p $dir/log
 # to the one we'll finally get the best WERs with.
 # Note: the lattice-rmali part here is just because we don't
 # need the alignments for what we're doing.
-if [ $stage -le 1 ]; then
-  echo "$0: converting lattices to N-best lists."
-  if $keep_ali; then
-    $cmd JOB=1:$nj $dir/log/lat2nbest.JOB.log \
-      lattice-to-nbest --acoustic-scale=$acwt --n=$N \
-      "ark:gunzip -c $indir/lat.JOB.gz|" \
-      "ark:|gzip -c >$dir/nbest1.JOB.gz" || exit 1;
-  else
-    $cmd JOB=1:$nj $dir/log/lat2nbest.JOB.log \
-      lattice-to-nbest --acoustic-scale=$acwt --n=$N \
-      "ark:gunzip -c $indir/lat.JOB.gz|" ark:- \|  \
-      lattice-rmali ark:- "ark:|gzip -c >$dir/nbest1.JOB.gz" || exit 1;
-  fi
-fi
-
-# next remove part of the old LM probs.
-if [ "$oldlm" == "$oldlang/G.fst" ]; then
-  if $use_phi; then
-    if [ $stage -le 2 ]; then
-      echo "$0: removing old LM scores."
-      # Use the phi-matcher style of composition.. this is appropriate
-      # if the old LM scores were added e.g. by lmrescore.sh, using
-      # phi-matcher composition.
-      $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
-        lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
-        lattice-compose --phi-label=$phi ark:- $oldlm ark:- \| \
-        lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- "ark:|gzip -c >$dir/nbest2.JOB.gz" \
-        || exit 1;
-    fi
-  else
-    if [ $stage -le 2 ]; then
-      echo "$0: removing old LM scores."
-      # this approach chooses the best path through the old LM FST, while
-      # subtracting the old scores.  If the lattices came straight from decoding,
-      # this is what we want.  Note here: each FST in "nbest1.JOB.gz" is a linear FST,
-      # it has no alternatives (the N-best format works by having multiple keys
-      # for each utterance).  When we do "lattice-1best" we are selecting the best
-      # path through the LM, there are no alternatives to consider within the
-      # original lattice.
-      $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
-        lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
-        lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
-        lattice-1best ark:- ark:- \| \
-        lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- "ark:|gzip -c >$dir/nbest2.JOB.gz" \
-        || exit 1;
-    fi
-  fi
-else
-  if [ $stage -le 2 ]; then
-    echo "$0: removing old LM scores."
-    $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
-      lattice-lmrescore-const-arpa --lm-scale=-1.0 \
-      "ark:gunzip -c $dir/nbest1.JOB.gz|" $oldlm \
-      "ark:|gzip -c >$dir/nbest2.JOB.gz"  || exit 1;
-  fi
-fi
-
-if [ $stage -le 3 ]; then
-# Decompose the n-best lists into 4 archives.
-  echo "$0: creating separate-archive form of N-best lists."
-  $cmd JOB=1:$nj $dir/log/make_new_archives.JOB.log \
-    mkdir -p $adir.JOB '&&' \
-    nbest-to-linear "ark:gunzip -c $dir/nbest2.JOB.gz|" \
-    "ark,t:$adir.JOB/ali" "ark,t:$adir.JOB/words" \
-    "ark,t:$adir.JOB/lmwt.nolm" "ark,t:$adir.JOB/acwt" || exit 1;
-fi
-
-if [ $stage -le 4 ]; then
-  echo "$0: doing the same with old LM scores."
-# Create an archive with the LM scores before we
-# removed the LM probs (will help us do interpolation).
-$cmd JOB=1:$nj $dir/log/make_old_archives.JOB.log \
-  nbest-to-linear "ark:gunzip -c $dir/nbest1.JOB.gz|" "ark:/dev/null" \
-  "ark:/dev/null" "ark,t:$adir.JOB/lmwt.withlm" "ark:/dev/null" || exit 1;
-fi
-
-if $test; then # This branch is a sanity check that at the acwt where we generated
-  # the N-best list, we get the same WER.
-  echo "$0 [testing branch]: generating lattices without changing scores."
-  $cmd JOB=1:$nj $dir/log/test.JOB.log \
-    linear-to-nbest "ark:$adir.JOB/ali" "ark:$adir.JOB/words" "ark:$adir.JOB/lmwt.withlm" \
-     "ark:$adir.JOB/acwt" ark:- \| \
-    nbest-to-lattice ark:- "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
-  exit 0;
-fi
-
 if [ $stage -le 5 ]; then
-  echo "$0: Creating archives with text-form of words, and LM scores without graph scores."
+  echo "$0: Copying needed information from $indir/archives to $adir"
     # Do some small tasks; for these we don't use the queue, it will only slow us down.
   for n in `seq $nj`; do
-    utils/int2sym.pl -f 2- $oldlang/words.txt < $adir.$n/words > $adir.$n/words_text || exit 1;
+    mkdir -p $adir.$n
+    cp $indir/archives.$n/ali $adir.$n/
+    cp $indir/archives.$n/words $adir.$n/
+    cp $indir/archives.$n/words_text $adir.$n/
+    cp $indir/archives.$n/lmwt.nolm $adir.$n/
+    cp $indir/archives.$n/acwt $adir.$n/
+    cp $indir/archives.$n/lmwt.withlm $adir.$n/
+    
     mkdir -p $adir.$n/temp
     paste $adir.$n/lmwt.nolm $adir.$n/lmwt.withlm | awk '{print $1, ($4-$2);}' > \
       $adir.$n/lmwt.lmonly || exit 1;
   done
 fi
 if [ $stage -le 6 ]; then
-  echo "$0: invoking rnnlm/compute_sentence_scores_bidirectional.sh which calls rnnlm to get RNN LM scores."
+  echo "$0: invoking rnnlm/compute_sentence_scores_back.sh which calls rnnlm to get RNN LM scores."
   $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \
-    rnnlm/compute_sentence_scores_bidirectional.sh $rnndir $adir.JOB/temp \
+    rnnlm/compute_sentence_scores_back.sh $rnndir $adir.JOB/temp \
                                    $adir.JOB/words_text $adir.JOB/lmwt.rnn 
 fi
 
 if [ $stage -le 7 ]; then
   echo "$0: doing average on forward and backward scores."
   for n in `seq $nj`; do
-    paste $adir.$n/lmwt.rnn $adir.$n/lmwt.rnn_back | awk -F' ' '{print $1,$2 * 0.5 + $4 * 0.5}' \
+    paste $indir/archives.$n/lmwt.rnn $adir.$n/lmwt.rnn | awk -F' ' '{print $1,$2 * 0.5 + $4 * 0.5}' \
     > $adir.$n/lmwt.rnn_bi
   done
 fi

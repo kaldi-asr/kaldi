@@ -154,31 +154,37 @@ if [ $stage -le 6 ] && $run_nbest_rescore; then
   echo "$0: Perform nbest-rescoring on $ac_model_dir"
   for decode_set in dt05_real dt05_simu et05_real et05_simu; do
     decode_dir=$tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${LM}
-    
+    (
+    # Lattice rescoring
+    rnnlm/lmrescore_nbest.sh \
+      --cmd "$train_cmd --mem 2G" --N $nbest \
+      $rnnweight data/lang_test_$LM $dir \
+      data/${decode_set}_${enhan}_chunked ${decode_dir} \
+      $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}
+
     if $use_backward_model; then
-      # Lattice rescoring
-      rnnlm/lmrescore_nbest_bidirectional.sh \
+      rnnlm/lmrescore_nbest_back.sh \
         --cmd "$train_cmd --mem 2G" --N $nbest \
-        $rnnweight data/lang_test_$LM $dir \
-        data/${decode_set}_${enhan}_chunked ${decode_dir} \
-        $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} &
-    else
-      # Lattice rescoring
-      rnnlm/lmrescore_nbest.sh \
-        --cmd "$train_cmd --mem 2G" --N $nbest \
-        $rnnweight data/lang_test_$LM $dir \
-        data/${decode_set}_${enhan}_chunked ${decode_dir} \
-        $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} &
+        $rnnweight data/lang_test_$LM ${dir}_back \
+        data/${decode_set}_${enhan}_chunked \
+        $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} \
+        $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}_bi
     fi
+    ) &
   done
-  
   wait
-  
   # calc wers for nbest-rescoring results
-  local/chime4_calc_wers.sh $tgtdir ${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} \
+  if $use_backward_model; then
+    local/chime4_calc_wers.sh $tgtdir ${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}_bi \
       $tgtdir/graph_tgpr_5k \
-      > $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}.result
-  head -n 15 $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}.result
+      > $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}_bi.result
+    head -n 15 $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}_bi.result
+  else
+    local/chime4_calc_wers.sh $tgtdir ${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} \
+        $tgtdir/graph_tgpr_5k \
+        > $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}.result
+    head -n 15 $tgtdir/best_wer_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}.result
+  fi
 fi
 
 exit 0

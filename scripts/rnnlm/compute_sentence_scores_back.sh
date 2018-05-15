@@ -36,39 +36,21 @@ else
   word_embedding="rnnlm-get-word-embedding $dir/word_feats.txt $dir/feat_embedding.final.mat -|"
 fi
 
-if [ -f ${dir}_back/word_embedding.final.mat ]; then
-  word_embedding_back=${dir}_back/word_embedding.final.mat
-else
-  [ ! -f ${dir}_back/feat_embedding.final.mat ] &&
-             echo "$0: expect file ${dir}_back/feat_embedding.final.mat to exit"
-  word_embedding_back="rnnlm-get-word-embedding ${dir}_back/word_feats.txt \
-    ${dir}_back/feat_embedding.final.mat -|"
-fi
-
 for x in final.raw config/words.txt; do
   if [ ! -f $dir/$x ]; then 
     echo "$0: expected file $dir/$x to exist."
     exit 1;
   fi
-  if [ ! -f ${dir}_back/$x ]; then 
-    echo "$0: expected file ${dir}_back/$x to exist."
-    exit 1;
-  fi
 done
 
 mkdir -p $tempdir
-cat $text_in | sym2int.pl -f 2- $dir/config/words.txt > $tempdir/text.int
-cat $text_in | sym2int.pl -f 2- ${dir}_back/config/words.txt | \
-    awk '{printf("%s ",$1);for(i=NF;i>1;i--) printf("%s ",$i); print""}' > $tempdir/text_back.int
+cat $text_in | sym2int.pl -f 2- $dir/config/words.txt | \
+    awk '{printf("%s ",$1);for(i=NF;i>1;i--) printf("%s ",$i); print""}' > $tempdir/text.int
     
-special_symbol_opts=$(cat $dir/special_symbol_opts.txt)
-special_symbol_opts_back=$(cat ${dir}_back/special_symbol_opts.txt)
+special_symbol_opts=$(cat ${dir}/special_symbol_opts.txt)
 
 rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
        $special_symbol_opts $dir/final.raw "$word_embedding" $tempdir/text.int > $tempdir/loglikes.rnn
-rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
-       $special_symbol_opts_back ${dir}_back/final.raw "$word_embedding_back" \
-       $tempdir/text_back.int > $tempdir/loglikes_back.rnn
 # Now $tempdir/loglikes.rnn has the following structure
 # utt-id log P(word1 | <s>) log P(word2 | <s> word1) ... log P(</s> | all word histories)
 # for example,
@@ -82,9 +64,6 @@ rnnlm-sentence-probs --normalize-probs=$ensure_normalized_probs \
 
 [ $(cat $tempdir/loglikes.rnn | wc -l) -ne $(cat $tempdir/text.int | wc -l) ] && \
   echo "$0: rnnlm rescoring failed" && exit 1;
-[ $(cat $tempdir/loglikes_back.rnn | wc -l) -ne $(cat $tempdir/text_back.int | wc -l) ] && \
-  echo "$0: rnnlm rescoring failed" && exit 1;
   
 # We need the negative log-probabilities
 cat $tempdir/loglikes.rnn | awk '{sum=0;for(i=2;i<=NF;i++)sum-=$i; print $1,sum}' >$scores_out
-cat $tempdir/loglikes_back.rnn | awk '{sum=0;for(i=2;i<=NF;i++)sum-=$i; print $1,sum}' >${scores_out}_back
