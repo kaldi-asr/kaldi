@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
@@ -9,7 +9,7 @@ use_gpu=true
 dir=exp/nnet2_online/nnet_ms_a
 
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

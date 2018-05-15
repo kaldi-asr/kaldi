@@ -108,6 +108,7 @@ fi
 
 num_utts=`cat $tmpdir/utts | wc -l`
 if [ -f $data/text ]; then
+  utils/validate_text.pl $data/text || exit 1;
   check_sorted_and_uniq $data/text
   text_len=`cat $data/text | wc -l`
   illegal_sym_list="<s> </s> #0"
@@ -140,6 +141,17 @@ fi
 if [ -f $data/wav.scp ]; then
   check_sorted_and_uniq $data/wav.scp
 
+  if grep -E -q '^\S+\s+~' $data/wav.scp; then
+    # note: it's not a good idea to have any kind of tilde in wav.scp, even if
+    # part of a command, as it would cause compatibility problems if run by
+    # other users, but this used to be not checked for so we let it slide unless
+    # it's something of the form "foo ~/foo.wav" (i.e. a plain file name) which
+    # would definitely cause problems as the fopen system call does not do
+    # tilde expansion.
+    echo "$0: Please do not use tilde (~) in your wav.scp."
+    exit 1;
+  fi
+
   if [ -f $data/segments ]; then
 
     check_sorted_and_uniq $data/segments
@@ -150,9 +162,10 @@ if [ -f $data/wav.scp ]; then
 
     segments_len=`cat $data/segments | wc -l`
     if [ -f $data/text ]; then
-      ! cmp -s $tmpdir/utts <(awk '{print $1}' <$data/text) && \
-        echo "$0: Utterance list differs between $data/text and $data/segments " && \
-        echo "$0: Lengths are $segments_len vs $num_utts";
+      ! cmp -s $tmpdir/utts <(awk '{print $1}' <$data/segments) && \
+        echo "$0: Utterance list differs between $data/utt2spk and $data/segments " && \
+        echo "$0: Lengths are $segments_len vs $num_utts" && \
+        exit 1
     fi
 
     cat $data/segments | awk '{print $2}' | sort | uniq > $tmpdir/recordings
@@ -258,7 +271,7 @@ fi
 if [ -f $data/spk2gender ]; then
   check_sorted_and_uniq $data/spk2gender
   ! cat $data/spk2gender | awk '{if (!((NF == 2 && ($2 == "m" || $2 == "f")))) exit 1; }' && \
-     echo "Mal-formed spk2gender file" && exit 1;
+     echo "$0: Mal-formed spk2gender file" && exit 1;
   cat $data/spk2gender | awk '{print $1}' > $tmpdir/speakers.spk2gender
   cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
   if ! cmp -s $tmpdir/speakers{,.spk2gender}; then
@@ -272,7 +285,7 @@ fi
 if [ -f $data/spk2warp ]; then
   check_sorted_and_uniq $data/spk2warp
   ! cat $data/spk2warp | awk '{if (!((NF == 2 && ($2 > 0.5 && $2 < 1.5)))){ print; exit 1; }}' && \
-     echo "Mal-formed spk2warp file" && exit 1;
+     echo "$0: Mal-formed spk2warp file" && exit 1;
   cat $data/spk2warp | awk '{print $1}' > $tmpdir/speakers.spk2warp
   cat $data/spk2utt | awk '{print $1}' > $tmpdir/speakers
   if ! cmp -s $tmpdir/speakers{,.spk2warp}; then
@@ -286,7 +299,7 @@ fi
 if [ -f $data/utt2warp ]; then
   check_sorted_and_uniq $data/utt2warp
   ! cat $data/utt2warp | awk '{if (!((NF == 2 && ($2 > 0.5 && $2 < 1.5)))){ print; exit 1; }}' && \
-     echo "Mal-formed spk2warp file" && exit 1;
+     echo "$0: Mal-formed utt2warp file" && exit 1;
   cat $data/utt2warp | awk '{print $1}' > $tmpdir/utts.utt2warp
   cat $data/utt2spk | awk '{print $1}' > $tmpdir/utts
   if ! cmp -s $tmpdir/utts{,.utt2warp}; then

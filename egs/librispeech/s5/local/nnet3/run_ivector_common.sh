@@ -16,6 +16,7 @@ train_set=train_960_cleaned    # you might set this to e.g. train_960
 gmm=tri6b_cleaned         # This specifies a GMM-dir from the features of the type you're training the system on;
                          # it should contain alignments for 'train_set'.
 num_threads_ubm=32
+num_processes=4
 nnet3_affix=_cleaned     # affix for exp/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/nnet3_cleaned or whatever.
 
@@ -75,7 +76,7 @@ if [ $stage -le 3 ]; then
   echo "$0: creating high-resolution MFCC features"
   mfccdir=data/${train_set}_sp_hires/data
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/mfcc/librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for datadir in ${train_set}_sp test_clean test_other dev_clean dev_other; do
@@ -161,7 +162,7 @@ if [ $stage -le 8 ]; then
   # this one has a fairly small dim (defaults to 100) so we don't use all of it,
   # we use just the 60k subset (about one fifth of the data, or 200 hours).
   echo "$0: training the iVector extractor"
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
+  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 --num-processes $num_processes \
     data/${train_set}_sp_mixed_hires_60k exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
@@ -169,7 +170,7 @@ if [ $stage -le 9 ]; then
   echo "$0: extracting iVectors for training data"
   ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
-    utils/create_split_dir.pl /export/b{09,10,11,12}/$USER/kaldi-data/egs/librispeech-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b{09,10,11,12}/$USER/kaldi-data/ivectors/librispeech-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
   # We extract iVectors on the speed-perturbed training data after combining
   # short segments, which will be what we train the system on.  With
@@ -181,7 +182,7 @@ if [ $stage -le 9 ]; then
   # handle per-utterance decoding well (iVector starts at zero).
   utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
     data/${train_set}_sp_hires_comb ${ivectordir}/${train_set}_sp_hires_comb_max2
-  
+
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
     ${ivectordir}/${train_set}_sp_hires_comb_max2 exp/nnet3${nnet3_affix}/extractor \
     $ivectordir || exit 1;

@@ -20,7 +20,7 @@ sdir=$1
 [ ! -d $sdir/data/references/eval03/english/cts ] \
   && echo Expecting directory $tdir/data/references/eval03/english/cts to be present && exit 1;
 
-. path.sh
+. ./path.sh
 
 dir=data/local/rt03
 mkdir -p $dir

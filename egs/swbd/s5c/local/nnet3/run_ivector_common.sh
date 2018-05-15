@@ -4,56 +4,47 @@
 set -e
 stage=1
 train_stage=-10
-generate_alignments=true # false if doing ctc training
+generate_alignments=true
 speed_perturb=true
 
 . ./path.sh
 . ./utils/parse_options.sh
 
-mkdir -p nnet3
-# perturbed data preparation
+mkdir -p exp/nnet3
 train_set=train_nodup
 
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
 
-if [ "$speed_perturb" == "true" ]; then
+if $speed_perturb; then
   if [ $stage -le 1 ]; then
-    #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
-    # _sp stands for speed-perturbed
+    # Although the nnet will be trained by high resolution data, we still have
+    # to perturb the normal data to get the alignments _sp stands for
+    # speed-perturbed
+    echo "$0: preparing directory for speed-perturbed data"
+    utils/data/perturb_data_dir_speed_3way.sh --always-include-prefix true \
+           data/${train_set} data/${train_set}_sp
 
-    for datadir in train_nodup; do
-      utils/perturb_data_dir_speed.sh 0.9 data/${datadir} data/temp1
-      utils/perturb_data_dir_speed.sh 1.1 data/${datadir} data/temp2
-      utils/combine_data.sh data/${datadir}_tmp data/temp1 data/temp2
-      utils/validate_data_dir.sh --no-feats data/${datadir}_tmp
-      rm -r data/temp1 data/temp2
-
-      mfccdir=mfcc_perturbed
-      steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
-        data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
-      steps/compute_cmvn_stats.sh data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
-      utils/fix_data_dir.sh data/${datadir}_tmp
-
-      utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- data/${datadir} data/temp0
-      utils/combine_data.sh data/${datadir}_sp data/${datadir}_tmp data/temp0
-      utils/fix_data_dir.sh data/${datadir}_sp
-      rm -r data/temp0 data/${datadir}_tmp
-    done
+    echo "$0: creating MFCC features for low-resolution speed-perturbed data"
+    mfccdir=mfcc_perturbed
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
+                       data/${train_set}_sp exp/make_mfcc/${train_set}_sp $mfccdir
+    steps/compute_cmvn_stats.sh data/${train_set}_sp exp/make_mfcc/${train_set}_sp $mfccdir
+    utils/fix_data_dir.sh data/${train_set}_sp
   fi
 
-  if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ]; then
-    #obtain the alignment of the perturbed data
+  if [ $stage -le 2 ] && $generate_alignments; then
+    # obtain the alignment of the perturbed data
     steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-      data/train_nodup_sp data/lang_nosp exp/tri4 exp/tri4_ali_nodup_sp || exit 1
+      data/${train_set}_sp data/lang exp/tri4 exp/tri4_ali_nodup_sp
   fi
-  train_set=train_nodup_sp
+  train_set=${train_set}_sp
 fi
 
 if [ $stage -le 3 ]; then
   mfccdir=mfcc_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     date=$(date +'%m_%d_%H_%M')
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$date/s5b/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/mfcc/swbd-$date/s5b/$mfccdir/storage $mfccdir/storage
   fi
 
   # the 100k_nodup directory is copied seperately, as
@@ -97,7 +88,7 @@ if [ $stage -le 5 ]; then
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
     5500 90000 data/train_100k_nodup_hires \
-    data/lang_nosp exp/tri2_ali_100k_nodup exp/nnet3/tri3b
+    data/lang exp/tri2_ali_100k_nodup exp/nnet3/tri3b
 fi
 
 if [ $stage -le 6 ]; then

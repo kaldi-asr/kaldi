@@ -15,16 +15,16 @@ TESTFILES = natural-gradient-online-test nnet-graph-test \
   nnet-common-test convolution-test attention-test
 
 OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
-  nnet-simple-component.o \
+  nnet-simple-component.o nnet-normalize-component.o \
   nnet-general-component.o nnet-parse.o natural-gradient-online.o \
   nnet-descriptor.o nnet-optimize.o nnet-computation.o \
   nnet-computation-graph.o nnet-graph.o am-nnet-simple.o \
   nnet-example.o nnet-nnet.o nnet-compile-utils.o \
   nnet-utils.o nnet-compute.o nnet-test-utils.o nnet-analyze.o \
   nnet-example-utils.o nnet-training.o \
-  nnet-diagnostics.o nnet-combine.o nnet-am-decodable-simple.o \
+  nnet-diagnostics.o nnet-am-decodable-simple.o \
   nnet-optimize-utils.o nnet-chain-example.o \
-  nnet-chain-training.o nnet-chain-diagnostics.o nnet-chain-combine.o \
+  nnet-chain-training.o nnet-chain-diagnostics.o \
   discriminative-supervision.o nnet-discriminative-example.o \
   nnet-discriminative-diagnostics.o \
   discriminative-training.o nnet-discriminative-training.o \

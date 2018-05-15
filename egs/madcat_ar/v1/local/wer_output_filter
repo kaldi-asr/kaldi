@@ -1,0 +1,46 @@
+#!/usr/bin/env perl
+# Copyright 2012-2014  Johns Hopkins University (Author: Yenda Trmal)
+# Apache 2.0
+
+use utf8;
+
+use open qw(:encoding(utf8));
+binmode STDIN, ":utf8";
+binmode STDOUT, ":utf8";
+binmode STDERR, ":utf8";
+
+# Arabic-specific normalization
+while (<>) {
+  @F = split " ";
+  print $F[0] . " ";
+  foreach $s (@F[1..$#F]) {
+    $s =~ s/\x{0623}/\x{0627}/g;
+    $s =~ s/\x{0625}/\x{0627}/g;
+    $s =~ s/\x{0622}/\x{0627}/g;
+    $s =~ s/\x{0624}/\x{0648}/g;
+    $s =~ s/\x{0626}/\x{064A}/g;
+    $s =~ s/\x{0649}/\x{064A}/g;
+    $s =~ s/\x{0629}/\x{0647}/g;
+    $s =~ s/\x{0660}/0/g;
+    $s =~ s/\x{0660}/1/g;
+    $s =~ s/\x{0660}/2/g;
+    $s =~ s/\x{0660}/3/g;
+    $s =~ s/\x{0660}/4/g;
+    $s =~ s/\x{0660}/5/g;
+    $s =~ s/\x{0660}/6/g;
+    $s =~ s/\x{0660}/7/g;
+    $s =~ s/\x{0660}/8/g;
+    $s =~ s/\x{0660}/9/g;
+    $s =~ s/\x{0621}//g;
+    $s =~ s/[\x{064b}-\x{0655}]//g;
+    $s =~ s/\x{0640}//g;
+    if ($s ne "") {
+      print "$s";
+    } else {
+      print "";
+    }
+    print " ";
+  }
+  print "\n";
+}
+

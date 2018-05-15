@@ -1,0 +1,16 @@
+#!/usr/bin/perl
+
+@filter_words = ('[NOISE]', '[LAUGHTER]', '[VOCALIZED-NOISE]', '<UNK>', '%HESITATION');
+foreach $w (@filter_words) { 
+  $bad{$w} = 1; $w = lc $w; $bad{$w} = 1; 
+}
+while(<STDIN>) { 
+  @A  = split(" ", $_); 
+  $id = shift @A; 
+  print "$id ";
+  
+  foreach $a (@A) { 
+    if (!defined $bad{$a}) { print "$a "; }
+  } 
+  print "\n"; 
+}

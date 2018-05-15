@@ -29,8 +29,8 @@ train_text=data/ihm/train/text
 nwords=9999
 heldout_sent=10000
 
-. path.sh
-. cmd.sh
+. ./path.sh
+. ./cmd.sh
 
 . utils/parse_options.sh
 

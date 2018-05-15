@@ -37,10 +37,12 @@
 #        # addition of the the --android-includes flag because the toolchains
 #        # produced by the Android NDK don't always include the C++ stdlib
 #        # headers in the normal cross compile include path.
+# --host=aarch64-linux-android
+#        # support for 64bit ARMv8(AArch64) architecture in Android.
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=6
+CONFIGURE_VERSION=7
 
 if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
@@ -409,6 +411,13 @@ function configure_cuda {
           MIN_UNSUPPORTED_GCC_VER="6.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=60000;
         ;;
+        9_*)
+          MIN_UNSUPPORTED_GCC_VER="7.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=70000;
+        ;;
+        *)
+          echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1;
+        ;;
       esac
       if [ $GCC_VER_NUM -ge $MIN_UNSUPPORTED_GCC_VER_NUM ]; then
         failure "CUDA $CUDA_VERSION does not support $CXX (g++-$GCC_VER).
@@ -417,10 +426,11 @@ function configure_cuda {
     fi
 
     case $CUDA_VERSION in
-      5_5) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
-      6_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
-      7_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
-      8_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
+      5_5) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
+      6_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
+      7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
+      8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
+      9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70" ;;
       *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
     esac
 
@@ -740,7 +750,7 @@ function linux_check_dynamic {
 function linux_configure_dynamic {
   if $threaded_atlas; then pt=t; else pt=s; fi # relevant to "fat" libraries, will change later for separate ones
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
+    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3,/x86_64-linux-gnu} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
       linux_check_dynamic && ATLASLIBDIR=$dir && ATLASLIBNAME=$atlas_libname
     done
@@ -790,6 +800,7 @@ function linux_configure_dynamic {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  echo ATLASLDFLAGS = -Wl,-rpath,$ATLASLIBDIR >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
@@ -841,7 +852,7 @@ mkl_threading=sequential
 android=false
 
 MATHLIB='ATLAS'
-ATLASROOT=`rel2abs ../tools/ATLAS/`
+ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
 FSTROOT=`rel2abs ../tools/openfst`
 
 # Save the command line to include in kaldi.mk
@@ -1015,11 +1026,11 @@ if is_set $HOST; then
   IFS='-' read -ra PARTS <<< "$HOST"
   # The first field in the PARTS list is the target architecture.
   TARGET_ARCH="$PARTS"
-  if [[ "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && "$TARGET_ARCH" != x86* ]] ; then
-    # We currently only support building for x86[_64], arm*, and ppc64le.
+  if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && "$TARGET_ARCH" != x86* ]] ; then
+    # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
     # If TARGET_ARCH was read from the HOST variable, it must be one of these.
     failure "$TARGET_ARCH is not a supported architecture.
-             Supported architectures: x86[_64], arm*, ppc64le."
+             Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
   fi
 else
   TARGET_ARCH="`uname -m`"
@@ -1091,7 +1102,7 @@ else
     OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
   else
     failure "Dynamic libraries are not supported on this platform.
-             Run configure with --static --static-fst=no flag."
+             Run configure with --static --static-fst flag."
   fi
 fi
 if [ ! -f "$OPENFSTLIBS" ]; then

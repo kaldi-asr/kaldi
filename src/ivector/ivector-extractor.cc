@@ -348,7 +348,8 @@ static double GetLogDetNoFailure(const SpMatrix<double> &var) {
   } catch (...) {
     Vector<double> eigs(var.NumRows());
     var.Eig(&eigs);
-    int32 floored = eigs.ApplyFloor(1.0e-20);
+    int32 floored;
+    eigs.ApplyFloor(1.0e-20, &floored);
     if (floored > 0)
       KALDI_WARN << "Floored " << floored << " eigenvalues of variance.";
     eigs.ApplyLog();
@@ -1579,7 +1580,8 @@ double IvectorExtractorStats::UpdatePrior(
   covar.Eig(&s, &P);
   KALDI_LOG << "Eigenvalues of iVector covariance range from "
             << s.Min() << " to " << s.Max();
-  int32 num_floored = s.ApplyFloor(1.0e-07);
+  int32 num_floored;
+  s.ApplyFloor(1.0e-07, &num_floored);
   if (num_floored > 0)
     KALDI_WARN << "Floored " << num_floored << " eigenvalues of covar "
                << "of iVectors.";

@@ -17,7 +17,7 @@ beam=8
 max_active=1000
 transform=   # Transformation matrix to apply on the input archives read from output.scp
 
-. path.sh
+. ./path.sh
 
 . utils/parse_options.sh
 

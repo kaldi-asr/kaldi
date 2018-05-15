@@ -6,6 +6,7 @@
 # while xconfig_layers.py contains the code specific to layer types.
 
 from __future__ import print_function
+from __future__ import division
 import re
 import sys
 
@@ -277,6 +278,12 @@ class Descriptor:
             return self.items[0].dim(layer_to_dim)
         elif self.operator == 'Append':
             return sum([ x.dim(layer_to_dim) for x in self.items])
+        elif self.operator == 'Scale':
+            # e.g. Scale(2.0, lstm1).  Return dim of 2nd arg.
+            return self.items[1].dim(layer_to_dim)
+        elif self.operator == 'Const':
+            # e.g. Const(0.5, 512).  Return 2nd arg, which is an int.
+            return self.items[1]
         else:
             raise RuntimeError("Unknown operator {0}".format(self.operator))
 
@@ -312,7 +319,8 @@ def parse_new_descriptor(tokens, pos, prev_names):
 
     # when reading this function, be careful to note the indent level,
     # there is an if-statement within an if-statement.
-    if first_token in [ 'Offset', 'Round', 'ReplaceIndex', 'Append', 'Sum', 'Switch', 'Failover', 'IfDefined' ]:
+    if first_token in [ 'Offset', 'Round', 'ReplaceIndex', 'Append', 'Sum',
+                        'Switch', 'Failover', 'IfDefined' ]:
         expect_token('(', tokens[pos], first_token + '()')
         pos += 1
         d.operator = first_token
@@ -392,6 +400,38 @@ def parse_new_descriptor(tokens, pos, prev_names):
             pos += 1
         else:
             raise RuntimeError("code error")
+    elif first_token in ['Scale', 'Const' ]:
+        # Parsing something like 'Scale(2.0, lstm1)' or 'Const(1.0, 512)'
+        expect_token('(', tokens[pos], first_token + '()')
+        pos += 1
+        d.operator = first_token
+        # First arg of Scale() and Const() is a float: the scale or value,
+        # respectively.
+        try:
+            value = float(tokens[pos])
+            pos += 1
+            d.items = [value]
+        except:
+            raise RuntimeError("Parsing {0}, expected float, got {1}".format(
+                first_token, tokens[pos]))
+        # Consume the comma.
+        expect_token(',', tokens[pos], first_token + '()')
+        pos += 1
+        if first_token == 'Scale':
+            # Second arg of Scale() is a Descriptor.
+            (desc, pos) = parse_new_descriptor(tokens, pos, prev_names)
+            d.items.append(desc)
+        else:
+            assert first_token == 'Const'
+            try:
+                dim = int(tokens[pos])
+                pos += 1
+                d.items.append(dim)
+            except:
+                raise RuntimeError("Parsing Const() expression, expected int, got {0}".format(
+                    tokens[pos]))
+        expect_token(')', tokens[pos], first_token)
+        pos += 1
     elif first_token in [ 'end of string', '(', ')', ',', '@' ]:
         raise RuntimeError("Expected descriptor, got " + first_token)
     elif is_valid_line_name(first_token) or first_token == '[':
@@ -455,7 +495,7 @@ def parse_new_descriptor(tokens, pos, prev_names):
 # If there are no such expressions in the string, it's OK if
 # prev_names == None (this is useful for testing).
 def replace_bracket_expressions_in_descriptor(descriptor_string,
-                                         prev_names = None):
+                                              prev_names = None):
     fields = re.split(r'(\[|\])\s*', descriptor_string)
     out_fields = []
     i = 0
@@ -489,6 +529,12 @@ def replace_bracket_expressions_in_descriptor(descriptor_string,
 # output nodes) is needed to process expressions like [-1] meaning the most
 # recent layer, or [-2] meaning the last layer but one.
 # The default None for prev_names is only supplied for testing purposes.
+# Called with 'Append(-1, 0, 1)' this would return
+# [ 'Append', '(',  '-1', ',', '0', ',', '1' ')' ].
+# for a more complicated example: if you call
+#   tokenize_descriptor('Append(-1, 0, 1, [-2]@0)', prev_names = ['a', 'b', 'c', 'd'])
+# the [-2] would get replaced with prev_names[-2] = 'c', returning:
+#  [ 'Append', '(', '-1', ',', '0', ',', '1', ',', 'c', '@', '0', ')' ]
 def tokenize_descriptor(descriptor_string,
                        prev_names = None):
     # split on '(', ')', ',', '@', and space.  Note: the parenthesis () in the
@@ -497,7 +543,7 @@ def tokenize_descriptor(descriptor_string,
     # tokens.
     fields = re.split(r'(\(|\)|@|,|\s)\s*',
                       replace_bracket_expressions_in_descriptor(descriptor_string,
-                                                            prev_names))
+                                                                prev_names))
     ans = []
     for f in fields:
         # don't include fields that are space, or are empty.
@@ -549,24 +595,30 @@ def parse_config_line(orig_config_line):
 
     rest_of_line = ' '.join(fields)
     # rest of the line can be of the form 'a=1 b=" x=1 y=2 " c=Append( i1, i2)'
-    positions = map(lambda x: x.start(), re.finditer('"', rest_of_line))
+    positions = list(map(lambda x: x.start(), re.finditer('"', rest_of_line)))
     if not len(positions) % 2 == 0:
         raise RuntimeError("Double-quotes should occur in pairs")
 
-    # add the " enclosed strings and corresponding keys to the dict
-    # and remove them from the rest_of_line
-    num_strings = len(positions) / 2
+    # Replace all the equals signs inside the "-enclosed strings
+    # with question marks ('?') [this is just an arbitrary character
+    # that won't otherwise be present, search above for 'banned'],
+    # and replace the quotation marks themselves with spaces.
+    # Then later on we'll convert all the question marks to
+    # equals signs in the values in the dicts.
+    num_strings = len(positions) // 2
     fields = []
     for i in range(num_strings):
         start = positions[i * 2]
         end = positions[i * 2 + 1]
-        rest_of_line_after = rest_of_line[end + 1:]
-        parts = rest_of_line[:start].split()
-        rest_of_line_before = ' '.join(parts[:-1])
-        assert(parts[-1][-1] == '=')
-        fields.append(parts[-1][:-1])
-        fields.append(rest_of_line[start + 1 : end])
-        rest_of_line = rest_of_line_before + ' ' + rest_of_line_after
+
+        line_before_start = rest_of_line[:start]
+        inside_quotes=rest_of_line[start+1:end].replace('=', '?')
+        line_after_end = rest_of_line[end + 1:]
+        # the reason why we include the spaces here, is to keep the length of
+        # rest_of_line the same, and the positions in 'positions' valid.
+        new_rest_of_line = line_before_start + ' ' + inside_quotes + ' ' + line_after_end
+        assert len(new_rest_of_line) == len(rest_of_line)
+        rest_of_line = new_rest_of_line
 
     # suppose rest_of_line is: 'input=Append(foo, bar) foo=bar'
     # then after the below we'll get
@@ -576,7 +628,7 @@ def parse_config_line(orig_config_line):
     if not (other_fields[0] == '' and len(other_fields) % 2 ==  1):
         raise RuntimeError("Could not parse config line.");
     fields += other_fields[1:]
-    num_variables = len(fields) / 2
+    num_variables = len(fields) // 2
     for i in range(num_variables):
         var_name = fields[i * 2]
         var_value = fields[i * 2 + 1]
@@ -586,7 +638,12 @@ def parse_config_line(orig_config_line):
         if var_name in ans_dict:
             raise RuntimeError("Config line has multiply defined variable {0}: {1}".format(
                 var_name, orig_config_line))
-        ans_dict[var_name] = var_value
+        # Teplace any '?' characters that we inserted above, with the original
+        # '=' characters.
+        # The 'strip()' is to remove initial and final spaces that we might
+        # have inserted while processing double-quotes above (search above
+        # for the string 'inside_quotes' to see what is meant by this).
+        ans_dict[var_name] = var_value.replace('?', '=').strip()
     return (first_token, ans_dict)
 
 
@@ -617,6 +674,8 @@ def test_library():
                   ('Append(-3,0,3)',
                    'Append(Offset(prev_layer, -3), prev_layer, Offset(prev_layer, 3))'),
                   ('[-1]', 'prev_layer'),
+                  ('Scale(2.0,foo)', 'Scale(2.0, foo)'),
+                  ('Const(0.5,500)', 'Const(0.5, 500)'),
                   ('[-2]', 'last_but_one_layer'),
                   ('[-2]@3',
                    'Offset(last_but_one_layer, 3)') ]:
@@ -625,7 +684,7 @@ def test_library():
 
 
     print(parse_config_line('affine-layer input=Append(foo, bar) foo=bar'))
-    print(parse_config_line('affine-layer input=Append(foo, bar) foo=bar opt2="a=1 b=2"'))
+    print(parse_config_line('affine-layer x="y z" input=Append(foo, bar) foo=bar opt2="a=1 b=2"'))
     print(parse_config_line('affine-layer1 input=Append(foo, bar) foo=bar'))
     print(parse_config_line('affine-layer'))
 

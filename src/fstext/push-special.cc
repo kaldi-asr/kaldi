@@ -1,7 +1,7 @@
 // fstext/push-special.cc
 
-// Copyright 2012  Johns Hopkins University (authors: Daniel Povey,
-//                 Ehsan Variani, Pegah Ghahrmani)
+// Copyright 2012      Johns Hopkins University (author: Daniel Povey)
+//           2012      Ehsan Variani, Pegah Ghahrmani
 
 // See ../../COPYING for clarification regarding multiple authors
 //

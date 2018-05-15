@@ -60,6 +60,7 @@ NnetChainComputeProb::NnetChainComputeProb(
     deriv_nnet_owned_(false),
     deriv_nnet_(nnet),
     num_minibatches_processed_(0) {
+  KALDI_ASSERT(den_graph_.NumPdfs() > 0);
   KALDI_ASSERT(nnet_config.store_component_stats && !nnet_config.compute_deriv);
 }
 
@@ -100,7 +101,7 @@ void NnetChainComputeProb::Compute(const NnetChainExample &chain_eg) {
   GetChainComputationRequest(nnet_, chain_eg, need_model_derivative,
                              store_component_stats, use_xent_regularization,
                              use_xent_derivative, &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
   NnetComputer computer(nnet_config_.compute_config, *computation,
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
@@ -217,15 +218,43 @@ const ChainObjectiveInfo* NnetChainComputeProb::GetObjective(
     return NULL;
 }
 
+double NnetChainComputeProb::GetTotalObjective(double *total_weight) const {
+  double tot_objectives = 0.0;
+  double tot_weight = 0.0;
+  unordered_map<std::string, ChainObjectiveInfo, StringHasher>::const_iterator
+    iter = objf_info_.begin(), end = objf_info_.end();
+  for (; iter != end; ++iter) {
+    tot_objectives += iter->second.tot_like + iter->second.tot_l2_term;
+    tot_weight += iter->second.tot_weight;
+  }
+
+  if (total_weight) *total_weight = tot_weight;
+  return tot_objectives;
+}
+
+static bool HasXentOutputs(const Nnet &nnet) {
+  const std::vector<std::string> node_names = nnet.GetNodeNames();
+  for (std::vector<std::string>::const_iterator it = node_names.begin();
+        it != node_names.end(); ++it) {
+    int32 node_index = nnet.GetNodeIndex(*it);
+    if (nnet.IsOutputNode(node_index) && 
+        it->find("-xent") != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void RecomputeStats(const std::vector<NnetChainExample> &egs,
                     const chain::ChainTrainingOptions &chain_config_in,
                     const fst::StdVectorFst &den_fst,
                     Nnet *nnet) {
   KALDI_LOG << "Recomputing stats on nnet (affects batch-norm)";
   chain::ChainTrainingOptions chain_config(chain_config_in);
-  if (nnet->GetNodeIndex("output-xent") != -1 &&
+  if (HasXentOutputs(*nnet) &&
       chain_config.xent_regularize == 0) {
-    // this forces it to compute the output for 'output-xent', which
+    // this forces it to compute the output for xent outputs, 
+    // usually 'output-xent', which
     // means that we'll be computing batch-norm stats for any
     // components in that branch that have batch-norm.
     chain_config.xent_regularize = 0.1;

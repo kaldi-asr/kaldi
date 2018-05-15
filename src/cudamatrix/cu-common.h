@@ -31,15 +31,39 @@
 
 #if HAVE_CUDA == 1
 #include <cublas_v2.h>
+#include <cusparse.h>
+#include <curand.h>
 #include <cuda_runtime_api.h>
-
-
 
 #define CU_SAFE_CALL(fun) \
 { \
   int32 ret; \
   if ((ret = (fun)) != 0) { \
     KALDI_ERR << "cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
+#define CUBLAS_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "cublasStatus_t " << ret << " : \"" << cublasGetStatusString((cublasStatus_t)ret) << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
+#define CUSPARSE_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "cusparseStatus_t " << ret << " : \"" << cusparseGetStatusString((cusparseStatus_t)ret) << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
+#define CURAND_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "curandStatus_t " << ret << " : \"" << curandGetStatusString((curandStatus_t)ret) << "\" returned from '" << #fun << "'"; \
   } \
 }
 
@@ -75,7 +99,14 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
                                            dim3 *dimGrid,
                                            dim3 *dimBlock);
 
+/** This is analogous to the CUDA function cudaGetErrorString(). **/
+const char* cublasGetStatusString(cublasStatus_t status);
 
+/** This is analogous to the CUDA function cudaGetErrorString(). **/
+const char* cusparseGetStatusString(cusparseStatus_t status);
+
+/** This is analogous to the CUDA function cudaGetErrorString(). **/
+const char* curandGetStatusString(curandStatus_t status);
 }
 
 #endif // HAVE_CUDA

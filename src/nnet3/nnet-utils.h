@@ -122,8 +122,8 @@ void SetNnetAsGradient(Nnet *nnet);
 /// stored stats).
 void AddNnet(const Nnet &src, BaseFloat alpha, Nnet *dest);
 
-/// Does *dest += alpha * src for updatable components (affect nnet parameters),
-/// and *dest += scale * src for other components (affect stored stats).
+/// Does *dest += alpha * src for updatable components (affects nnet parameters),
+/// and *dest += scale * src for other components (affects stored stats).
 /// Here, alphas is a vector of size equal to the number of updatable components
 void AddNnetComponents(const Nnet &src, const Vector<BaseFloat> &alphas,
                        BaseFloat scale, Nnet *dest);
@@ -168,8 +168,7 @@ std::string NnetInfo(const Nnet &nnet);
 void SetDropoutProportion(BaseFloat dropout_proportion, Nnet *nnet);
 
 
-/// Returns true if nnet has at least one component of type
-/// BatchNormComponent.
+/// Returns true if nnet has at least one component of type BatchNormComponent.
 bool HasBatchnorm(const Nnet &nnet);
 
 /// This function affects only components of type BatchNormComponent.
@@ -190,7 +189,7 @@ void RecomputeStats(const std::vector<NnetExample> &egs, Nnet *nnet);
 
 
 /// This function affects components of child-classes of
-/// RandomComponent( currently only DropoutComponent and DropoutMaskComponent).
+/// RandomComponent.
 /// It sets "test mode" on such components (if you call it with test_mode =
 /// true, otherwise it would set normal mode, but this wouldn't be needed often).
 /// "test mode" means that having a mask containing (1-dropout_prob) in all
@@ -251,7 +250,6 @@ struct CollapseModelConfig {
 void CollapseModel(const CollapseModelConfig &config,
                    Nnet *nnet);
 
-
 /**
    ReadEditConfig() reads a file with a similar-looking format to the config file
    read by Nnet::ReadConfig(), but this consists of a sequence of operations to
@@ -298,8 +296,26 @@ void CollapseModel(const CollapseModelConfig &config,
        'remove-orphans'.
 
     set-dropout-proportion [name=<name-pattern>] proportion=<dropout-proportion>
-       Sets the dropout rates for any components of type DropoutComponent whose
+       Sets the dropout rates for any components of type DropoutComponent,
+       DropoutMaskComponent or GeneralDropoutComponent whose
        names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
+
+    apply-svd name=<name-pattern> bottleneck-dim=<dim>
+       Locates all components with names matching <name-pattern>, which are
+       type AffineComponent or child classes thereof.  If <dim> is
+       less than the minimum of the (input or output) dimension of the component,
+       it does SVD on the components' parameters, retaining only the alrgest
+       <dim> singular values, replacing these components with sequences of two
+       components, of types LinearComponent and NaturalGradientAffineComponent.
+       See also 'reduce-rank'.
+
+    reduce-rank name=<name-pattern> rank=<dim>
+       Locates all components with names matching <name-pattern>, which are
+       type AffineComponent or child classes thereof.  Does SVD on the
+       components' parameters, retaining only the largest <dim> singular values,
+       and writes the reconstructed matrix back to the component.  See also
+       'apply-svd', which structurally breaks the component into two pieces.
+
    \endverbatim
 */
 void ReadEditConfig(std::istream &config_file, Nnet *nnet);
@@ -346,6 +362,7 @@ void ReadEditConfig(std::istream &config_file, Nnet *nnet);
                global max-change).
    @param [in] scale  This value, which will normally be 1.0, is a scaling
                factor used when adding to 'nnet', applied after any max-changes.
+               It is provided for backstitch-related purposes.
    @param [in,out] nnet  The nnet which we add to.
    @param [out] num_max_change_per_component_applied  We add to the elements of
                    this the count for each per-component max-change.
@@ -359,6 +376,126 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
                              std::vector<int32> *
                              num_max_change_per_component_applied,
                              int32 *num_max_change_global_applied);
+
+
+/**
+   This function is used as part of the regular training workflow, prior to
+   UpdateNnetWithMaxChange().
+
+   For each updatable component c in the neural net, suppose it has a
+   l2-regularization constant alpha set at the component level (see
+   UpdatableComponent::L2Regularization()), and a learning-rate
+   eta, then this function does (and this is not real code):
+
+        delta_nnet->c -= 2.0 * l2_regularize_scale * alpha * eta * nnet.c
+
+    The factor of -1.0 comes from the fact that we are maximizing, and we'd
+    add the l2 regularization term (of the form ||\theta||_2^2, i.e. squared
+    l2 norm) in the objective function with negative sign; the factor of 2.0
+    comes from the derivative of the squared parameters.  The factor
+    'l2_regularize_scale' is provided to this function, see below for an
+    explanation.
+
+    Note: the way we do it is a little bit approximate, due to the interaction
+    with natural gradient.  The issue is that the regular gradients are
+    multiplied by the inverse of the approximated, smoothed and factored inverse
+    Fisher matrix, but the l2 gradients are not.  This means that what we're
+    optimizing is not exactly the (regular objective plus the L2 term)-- we
+    could view it as optimizing (regular objective plus the l2 term times the
+    Fisher matrix)-- with the proviso that the Fisher matrix has been scaled in
+    such a way that the amount of parameter change is not affected, so this is
+    not an issue of affecting the overall strength of l2, just an issue of the
+    direction-wise weighting.  In effect, the l2 term will be larger, relative
+    to the gradient contribution, in directions where the Fisher matrix is
+    large.  This is probably not ideal-- but it's hard to judge without
+    experiments.  Anyway the l2 effect is small enough, and the Fisher matrix
+    sufficiently smoothed with the identity, that I doubt this makes much of a
+    difference.
+
+    @param [in] nnet  The neural net that is being trained; expected
+                      to be different from delta_nnet
+    @param [in] l2_regularize_scale   A scale on the l2 regularization.
+                      Usually this will be equal to the number of
+                      distinct examples (e.g. the number of chunks of
+                      speech-- more precisely, the number of distinct
+                      'n' values) in the minibatch, but this is
+                      multiplied by a configuration value
+                      --l2-regularize-factor passed in from the command
+                      line.  The reason for making l2 proportional to
+                      the number of elements in the minibatch is that
+                      we add the parameter gradients over the minibatch
+                      (we don't average), so multiplying the l2 factor by the
+                      number of elements in the minibatch is necessary to
+                      make the amount of l2 vs. gradient contribution stay
+                      the same when we vary the minibatch size.
+                      The --l2-regularize-factor option is provided so that the
+                      calling script can correct for the effects of
+                      parallelization via model-averaging (we'd normally set
+                      this to 1/num-parallel-jobs).
+    @param [out] delta_nnet  The neural net containing the parameter
+                      updates; this is a copy of 'nnet' that is used
+                      for purposes of momentum and applying max-change
+                      values.  This is what this code adds to.
+ */
+void ApplyL2Regularization(const Nnet &nnet,
+                           BaseFloat l2_regularize_scale,
+                           Nnet *delta_nnet);
+
+
+/**
+   This function scales the batchorm stats of any batchnorm components
+   (components of type BatchNormComponent) in 'nnet' by the scale
+   'batchnorm_stats_scale'.
+ */
+void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
+                         Nnet *nnet);
+
+
+/**
+   This function, to be called after processing every minibatch, is responsible
+   for enforcing the orthogonality constraint for any components of type
+   LinearComponent or inheriting from AffineComponent that have the
+   "orthonormal-constraint" value set to a nonzero value.
+
+   Technically what we are doing is constraining the parameter matrix M to be a
+   "semi-orthogonal" matrix times a constant alpha.  That is: if num-rows >
+   num-cols, this amounts to asserting that M M^T == alpha^2 I; otherwise, that
+   M^T M == alpha^2 I.
+
+   If, for a particular component, orthonormal-constraint > 0.0, then that value
+   becomes the "alpha" mentioned above.  If orthonormal-constraint == 0.0, then
+   nothing is done.  If orthonormal-constraint < 0.0, then it's like letting alpha
+   "float", i.e. we try to make M closer to (any constant alpha) times a
+   semi-orthogonal matrix.
+
+   In order to make it efficient on GPU, it doesn't make it completely orthonormal,
+   it just makes it closer to being orthonormal (times the 'orthonormal_constraint'
+   value).  Over multiple iterations this rapidly makes it almost exactly orthonormal.
+ */
+void ConstrainOrthonormal(Nnet *nnet);
+
+/** This utility function can be used to obtain the number of distinct 'n'
+    values in a training example.  This is the number of examples
+    (e.g. sequences) that have been combined into a single example.  (Actually
+    it returns the (largest - smallest + 1) of 'n' values, and assumes they are
+    consecutive).
+
+
+    @param [in] vec    The vector of NnetIo objects from the training example
+                       (NnetExample or NnetChainExample) for which we need the
+                       number of 'n' values
+    @param [in] exhaustive   If true, it will check exhaustively what largest
+                        and smallest 'n' values are.  If 'false' it does it in a
+                        fast way which will return the same answer as if
+                        exhaustive == true for all the types of eg we currently
+                        create (basically: correct if the last row of the input
+                        or supervision matrices has the last-numbered 'n'
+                        value), and will occasionally (randomly) do a test to
+                        check that this is the same as if we called it with
+                        'exhaustive=true'.
+ */
+int32 GetNumNvalues(const std::vector<NnetIo> &io_vec,
+                    bool exhaustive);
 
 
 } // namespace nnet3

@@ -169,6 +169,40 @@ already being used.  It is particularly useful with tables (see next section).
    - In certain cases the archive-reading code allows for limited type conversion, e.g.
      between float and double for matrices, or Lattice and CompactLattice for lattices.
 
+
+  \subsubsection io_tut_table_ranges Table I/O (with ranges)
+
+   It is now possible to specify row ranges and column ranges of matrices from scp files.
+   It is typical, when you dump feature files, to have them represented as an scp file
+   that looks something like:
+\verbatim
+ utt-00001  /some/dir/feats.scp:0
+ utt-00002  /some/dir/feats.scp:16402
+ ...
+\endverbatim
+ You can modify this scp file by adding row and column ranges, with a format similar to
+ MATLAB (except with zero-based indexes).  So, for instance, if you modify it to:
+\verbatim
+ utt-00001  /some/dir/feats.scp:0[0:9]
+ utt-00001  /some/dir/feats.scp:0[10:19]
+ ...
+\endverbatim
+ the first two lines would represent rows 0 through 9, and rows 10 through 19,
+ of utt-00001.  You can represent column indexes in a similar way:
+\verbatim
+ utt-00001  /some/dir/feats.scp:0[:,0:12]
+ utt-00001  /some/dir/feats.scp:0[:,13:25]
+ ...
+\endverbatim
+ would be columns 0 through 12, and columns 13 through 25, of that file.
+ You can also have combinations of row and column indexes: for instance,
+ \verbatim
+ utt-00001 /some/dir/feats.scp:0[10:19,0:12]
+\endverbatim
+
+
+
+
   \subsection io_tut_maps Utterance-to-speaker and speaker-to-utterance maps.
 
   Many Kaldi programs take utterance-to-speaker and speaker-to-utterances maps-- files

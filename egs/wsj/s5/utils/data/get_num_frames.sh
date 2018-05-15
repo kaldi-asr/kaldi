@@ -22,4 +22,4 @@ fi
 
 frame_shift=$(utils/data/get_frame_shift.sh $data) || exit 1
 
-awk -v s=$frame_shift '{n += $2} END{printf("%d\n", int(n / s))}' <$data/utt2dur
+awk -v s=$frame_shift '{n += $2} END{printf("%.0f\n", (n / s))}' <$data/utt2dur

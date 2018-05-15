@@ -25,6 +25,8 @@ config_to_layer = {
         'relu-batchnorm-dropout-layer' : xlayers.XconfigBasicLayer,
         'relu-dropout-layer': xlayers.XconfigBasicLayer,
         'relu-batchnorm-layer' : xlayers.XconfigBasicLayer,
+        'relu-batchnorm-so-layer' : xlayers.XconfigBasicLayer,
+        'batchnorm-so-relu-layer' : xlayers.XconfigBasicLayer,
         'sigmoid-layer' : xlayers.XconfigBasicLayer,
         'tanh-layer' : xlayers.XconfigBasicLayer,
         'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
@@ -32,24 +34,44 @@ config_to_layer = {
         'affine-layer' : xlayers.XconfigAffineLayer,
         'lstm-layer' : xlayers.XconfigLstmLayer,
         'lstmp-layer' : xlayers.XconfigLstmpLayer,
+        'lstmp-batchnorm-layer' : xlayers.XconfigLstmpLayer,
         'fast-lstm-layer' : xlayers.XconfigFastLstmLayer,
+        'fast-lstm-batchnorm-layer' : xlayers.XconfigFastLstmLayer,
         'fast-lstmp-layer' : xlayers.XconfigFastLstmpLayer,
+        'fast-lstmp-batchnorm-layer' : xlayers.XconfigFastLstmpLayer,
+        'lstmb-layer' : xlayers.XconfigLstmbLayer,
         'stats-layer': xlayers.XconfigStatsLayer,
         'relu-conv-layer': xlayers.XconfigConvLayer,
         'conv-layer': xlayers.XconfigConvLayer,
         'conv-relu-layer': xlayers.XconfigConvLayer,
+        'conv-renorm-layer': xlayers.XconfigConvLayer,
         'relu-conv-renorm-layer': xlayers.XconfigConvLayer,
+        'batchnorm-conv-layer': xlayers.XconfigConvLayer,
         'conv-relu-renorm-layer': xlayers.XconfigConvLayer,
         'batchnorm-conv-relu-layer': xlayers.XconfigConvLayer,
         'relu-batchnorm-conv-layer': xlayers.XconfigConvLayer,
+        'relu-batchnorm-noconv-layer': xlayers.XconfigConvLayer,
+        'relu-noconv-layer': xlayers.XconfigConvLayer,
         'conv-relu-batchnorm-layer': xlayers.XconfigConvLayer,
+        'conv-relu-batchnorm-so-layer': xlayers.XconfigConvLayer,
         'conv-relu-batchnorm-dropout-layer': xlayers.XconfigConvLayer,
         'conv-relu-dropout-layer': xlayers.XconfigConvLayer,
         'res-block': xlayers.XconfigResBlock,
+        'res2-block': xlayers.XconfigRes2Block,
         'channel-average-layer': xlayers.ChannelAverageLayer,
         'attention-renorm-layer': xlayers.XconfigAttentionLayer,
         'attention-relu-renorm-layer': xlayers.XconfigAttentionLayer,
-        'relu-renorm-attention-layer': xlayers.XconfigAttentionLayer
+        'attention-relu-batchnorm-layer': xlayers.XconfigAttentionLayer,
+        'relu-renorm-attention-layer': xlayers.XconfigAttentionLayer,
+        'gru-layer' : xlayers.XconfigGruLayer,
+        'pgru-layer' : xlayers.XconfigPgruLayer,
+        'opgru-layer' : xlayers.XconfigOpgruLayer,
+        'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
+        'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
+        'renorm-component': xlayers.XconfigRenormComponent,
+        'batchnorm-component': xlayers.XconfigBatchnormComponent,
+        'no-op-component': xlayers.XconfigNoOpComponent,
+        'linear-component': xlayers.XconfigLinearComponent
 }
 
 # Turn a config line and a list of previous layers into
@@ -74,7 +96,7 @@ def xconfig_line_to_object(config_line, prev_layers = None):
 
 
 def get_model_component_info(model_filename):
-    """ 
+    """
     This function reads existing model (*.raw or *.mdl) and returns array
     of XconfigExistingLayer one per {input,output}-node or component-node
     with same 'name' used in the raw model and 'dim' equal to 'output-dim'
@@ -143,7 +165,9 @@ def get_model_component_info(model_filename):
 # layers but are actual component node names from an existing neural net model
 # and created using get_model_component_info function).
 # 'existing' layers can be used as input to component-nodes in layers of xconfig file.
-def read_xconfig_file(xconfig_filename, existing_layers=[]):
+def read_xconfig_file(xconfig_filename, existing_layers=None):
+    if existing_layers is None:
+        existing_layers = []
     try:
         f = open(xconfig_filename, 'r')
     except Exception as e:

@@ -6,6 +6,7 @@
 //                       Johns Hopkins University (Author: Daniel Povey);
 //                       Haihua Xu; Wei Shi
 //                2015   Guoguo Chen
+//                2017   Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -26,7 +27,8 @@
 #include "util/stl-utils.h"
 #include <numeric>
 #include <time.h> // This is only needed for UnitTestSvdSpeed, you can
-// comment it (and that function) out if it causes problems.
+// comment it (and that function) out if it causes problems.  
+#include <matrix/cblas-wrappers.h>
 
 namespace kaldi {
 
@@ -1833,32 +1835,6 @@ template<typename Real> static void UnitTestMulElements() {
   }
 }
 
-
-template<typename Real> static void UnitTestSpLogExp() {
-  for (MatrixIndexT i = 0; i < 5; i++) {
-    MatrixIndexT dimM = 10 + Rand() % 10;
-
-    Matrix<Real> M(dimM, dimM);
-    InitRandNonsingular(&M);
-    SpMatrix<Real> B(dimM);
-    B.AddMat2(1.0, M, kNoTrans, 0.0);  // B = M*M^T -> positive definite (since M nonsingular).
-
-    SpMatrix<Real> B2(B);
-    B2.Log();
-    B2.Exp();
-    AssertEqual(B, B2);
-
-    SpMatrix<Real> B3(B);
-    B3.Log();
-    B3.Scale(0.5);
-    B3.Exp();
-    Matrix<Real> sqrt(B3);
-    SpMatrix<Real> B4(B.NumRows());
-    B4.AddMat2(1.0, sqrt, kNoTrans, 0.0);
-    AssertEqual(B, B4);
-  }
-}
-
 template<typename Real> static void UnitTestDotprod() {
   for (MatrixIndexT iter = 0;iter < 5;iter++) {
     MatrixIndexT dimM = 200 + Rand()%100;
@@ -1876,6 +1852,48 @@ template<typename Real> static void UnitTestDotprod() {
     KALDI_ASSERT(std::abs(f3-sum) < 0.001);
   }
 }
+
+
+template<class Real>
+void PlaceNansInGaps(Matrix<Real> *mat) {
+  int32 num_rows = mat->NumRows(), num_cols = mat->NumCols(),
+      stride = mat->Stride();
+  BaseFloat not_a_number = nan(" ");  // nan is from <cmath>
+  for (int32 r = 0; r + 1 < num_rows; r++) {
+    for (int32 j = num_cols; j < stride; j++) {
+      if (RandInt(0, 1) == 0)
+        (mat->RowData(r))[j] = not_a_number;
+      else
+        (mat->RowData(r))[j] = RandGauss() * 1.5e+31;
+    }
+  }
+}
+
+
+/**
+ * Make sure that when Resize() is called with resize_type = kCopyData
+ * and a stride_type different from this's stride_type, the resized
+ * matrix is equivalent to the original matrix (modulo the stride).
+ */
+template<typename Real>
+static void UnitTestResizeCopyDataDifferentStrideType() {
+  for (size_t i = 0; i < 10; i++) {
+    MatrixIndexT num_rows = Rand() % 10, num_cols = Rand() % 10;
+    if (num_rows * num_cols == 0) num_rows = num_cols = 0;
+    MatrixStrideType src_stride_type = (Rand() % 2 == 0) ?
+      kDefaultStride : kStrideEqualNumCols;
+    // Always pick the other stride type.
+    MatrixStrideType resize_stride_type = (src_stride_type == kDefaultStride) ?
+      kStrideEqualNumCols : kDefaultStride;
+    Matrix<Real> src(num_rows, num_cols, kSetZero, src_stride_type);
+    Matrix<Real> clone(src);
+    PlaceNansInGaps(&clone);
+    src.Resize(num_rows, num_cols, kCopyData, resize_stride_type);
+    PlaceNansInGaps(&src);
+    AssertEqual(src, clone);
+  }
+}
+
 
 template<typename Real>
 static void UnitTestResize() {
@@ -2270,8 +2288,10 @@ template<typename Real> static void  UnitTestFloorCeiling() {
     v.SetRandn();
     Real pivot = v(5);
     Vector<Real> f(v), f2(v), c(v), c2(v);
-    MatrixIndexT floored2 = f.ApplyFloor(pivot),
-        ceiled2 = c.ApplyCeiling(pivot);
+    MatrixIndexT floored2;
+    f.ApplyFloor(pivot, &floored2);
+    MatrixIndexT ceiled2;
+    c.ApplyCeiling(pivot, &ceiled2);
     MatrixIndexT floored = 0, ceiled = 0;
     for (MatrixIndexT d = 0; d < dimM; d++) {
       if (f2(d) < pivot) { f2(d) = pivot; floored++; }
@@ -2281,6 +2301,16 @@ template<typename Real> static void  UnitTestFloorCeiling() {
     AssertEqual(c, c2);
     KALDI_ASSERT(floored == floored2);
     KALDI_ASSERT(ceiled == ceiled2);
+
+    // Check that the non-counting variants are equivalent to the counting
+    // variants.
+    Vector<Real> f3(v);
+    f3.ApplyFloor(pivot);
+    AssertEqual(f2, f3);
+
+    Vector<Real> c3(v);
+    c3.ApplyCeiling(pivot);
+    AssertEqual(c2, c3);
   }
 }
 
@@ -2763,6 +2793,19 @@ template<typename Real> static void UnitTestMul() {
   }
 }
 
+template<typename Real> static void UnitTestApplyExpSpecial() {
+  int32 rows = RandInt(1, 10), cols = RandInt(1, 10);
+  Matrix<Real> mat(rows, cols);
+  mat.SetRandn();
+  Matrix<Real> A(mat), B(mat);
+  A.ApplyExp();
+  B.Add(1.0);
+  B.ApplyFloor(1.0);
+  A.Min(B); // min of exp(x) and max(1.0, x + 1).
+  mat.ApplyExpSpecial();
+  KALDI_LOG << "A is: " << A;
+  AssertEqual(mat, A);
+}
 
 template<typename Real> static void UnitTestInnerProd() {
 
@@ -3803,84 +3846,6 @@ void UnitTestAddVecCross() {
   }
 }
 
-template<typename Real> static void UnitTestMatrixExponential() {
-
-  for (MatrixIndexT p = 0; p < 10; p++) {
-    MatrixIndexT dim = 1 + Rand() % 5;
-    Matrix<Real> M(dim, dim);
-    InitRandNonsingular(&M);
-    {  // work out largest eig.
-      Real largest_eig = 0.0;
-      Vector<Real> real_eigs(dim), imag_eigs(dim);
-      M.Eig(NULL, &real_eigs, &imag_eigs);
-      for (MatrixIndexT i = 0; i < dim; i++) {
-        Real abs_eig =
-            std::sqrt(real_eigs(i)*real_eigs(i) + imag_eigs(i)*imag_eigs(i));
-        largest_eig = std::max(largest_eig, abs_eig);
-      }
-      if (largest_eig > 0.5) {  // limit largest eig to 0.5,
-        // so Taylor expansion will converge.
-        M.Scale(0.5 / largest_eig);
-      }
-    }
-
-    Matrix<Real> expM(dim, dim);
-    Matrix<Real> cur_pow(dim, dim);
-    cur_pow.SetUnit();
-    Real i_factorial = 1.0;
-    for (MatrixIndexT i = 0; i < 52; i++) {  // since max-eig = 0.5 and 2**52 == dbl eps.
-      if (i > 0) i_factorial *= i;
-      expM.AddMat(1.0/i_factorial, cur_pow);
-      Matrix<Real> tmp(dim, dim);
-      tmp.AddMatMat(1.0, cur_pow, kNoTrans, M, kNoTrans, 0.0);
-      cur_pow.CopyFromMat(tmp);
-    }
-    Matrix<Real> expM2(dim, dim);
-    MatrixExponential<Real> mexp;
-    mexp.Compute(M, &expM2);
-    AssertEqual(expM, expM2);
-  }
-}
-
-
-static void UnitTestMatrixExponentialBackprop() {
-  for (MatrixIndexT p = 0; p < 10; p++) {
-    MatrixIndexT dim = 1 + Rand() % 5;
-    // f is tr(N^T exp(M)).  backpropagating derivative
-    // of this function.
-    Matrix<double> M(dim, dim), N(dim, dim), delta(dim, dim);
-    InitRandNonsingular(&M);
-    InitRandNonsingular(&N);
-    InitRandNonsingular(&delta);
-    delta.Scale(0.00001);
-
-
-    Matrix<double> expM(dim, dim);
-    MatrixExponential<double> mexp;
-    mexp.Compute(M, &expM);
-
-    Matrix<double> expM2(dim, dim);
-    {
-      Matrix<double> M2(M);
-      M2.AddMat(1.0, delta, kNoTrans);
-      MatrixExponential<double> mexp2;
-      mexp2.Compute(M2, &expM2);
-    }
-    double f_before = TraceMatMat(expM, N, kTrans);
-    double f_after  = TraceMatMat(expM2, N, kTrans);
-
-    Matrix<double> Mdash(dim, dim);
-    mexp.Backprop(N, &Mdash);
-    // now Mdash should be df/dM
-
-    double f_diff = f_after - f_before;  // computed using method of differnces
-    double f_diff2 = TraceMatMat(Mdash, delta, kTrans);  // computed "analytically"
-    KALDI_LOG << "f_diff = " << f_diff;
-    KALDI_LOG << "f_diff2 = " << f_diff2;
-
-    KALDI_ASSERT(ApproxEqual(f_diff, f_diff2) || fabs(f_diff - f_diff2) < 1.0e-03);
-  }
-}
 template<typename Real>
 static void UnitTestPca(bool full_test) {
   // We'll test that we can exactly reconstruct the vectors, if
@@ -4530,22 +4495,6 @@ static void UnitTestRandCategorical() {
 }
 
 
-template<class Real>
-void PlaceNansInGaps(Matrix<Real> *mat) {
-  int32 num_rows = mat->NumRows(), num_cols = mat->NumCols(),
-      stride = mat->Stride();
-  BaseFloat not_a_number = nan(" ");  // nan is from <cmath>
-  for (int32 r = 0; r + 1 < num_rows; r++) {
-    for (int32 j = num_cols; j < stride; j++) {
-      if (RandInt(0, 1) == 0)
-        (mat->RowData(r))[j] = not_a_number;
-      else
-        (mat->RowData(r))[j] = RandGauss() * 1.5e+31;
-    }
-  }
-}
-
-
 template <class Real>
 static void UnitTestAddMatMatNans() {
   for (int32 i = 0; i < 200; i++) {
@@ -4651,8 +4600,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestCompressedMatrix2<Real>();
   UnitTestExtractCompressedMatrix<Real>();
   UnitTestResize<Real>();
-  UnitTestMatrixExponentialBackprop();
-  UnitTestMatrixExponential<Real>();
+  UnitTestResizeCopyDataDifferentStrideType<Real>();
   UnitTestNonsymmetricPower<Real>();
   UnitTestEigSymmetric<Real>();
   KALDI_LOG << " Point A";
@@ -4715,7 +4663,6 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestLimitCond<Real>();
   UnitTestMat2Vec<Real>();
   UnitTestFloorCeiling<Real>();
-  UnitTestSpLogExp<Real>();
   KALDI_LOG << " Point H";
   UnitTestCopyRowsAndCols<Real>();
   UnitTestSpliceRows<Real>();
@@ -4747,6 +4694,7 @@ template<typename Real> static void MatrixUnitTest(bool full_test) {
   UnitTestAddMatSelf<Real>();
   UnitTestMaxMin<Real>();
   UnitTestInnerProd<Real>();
+  UnitTestApplyExpSpecial<Real>();
   UnitTestScaleDiag<Real>();
   UnitTestSetDiag<Real>();
   UnitTestSetRandn<Real>();
@@ -4798,5 +4746,4 @@ int main() {
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);
   KALDI_LOG << "Tests succeeded.";
-
 }
