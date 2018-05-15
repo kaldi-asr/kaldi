@@ -357,13 +357,12 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
      ++frame_, ++utt_frames_, ++batch_frame, t += NUM_LAYER) {
     std::cerr << "FRAME : " << frame_ << std::endl;
 
-    // DO SOMETHING HERE : update cur_feats
     decodable->CacheFrameFromGPU(frame_);
     GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
 
     int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
 
-    // compute nonepsilon
+    // compute nonepsilon / emitting
     compute_emitting <<<BLOCKS, BLOCK_SIZE>>> (
       m.from_states.data().get(), 
       m.to_states.data().get(),
@@ -375,7 +374,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
       viterbi.data().get() + t*m.num_states, 
       gpu_decodable, gpu_cur_feats.data, gpu_cur_feats.Dim());
 
-    // compute epsilon
+    // compute epsilon / nonemitting, banyaknya loop tergantung banyaknya layer propagasi
     for(int i = 1; i <= NUM_EPS_LAYER; ++i){
       compute_nonemitting <<<BLOCKS, BLOCK_SIZE>>> (
         m.from_states.data().get(), 
