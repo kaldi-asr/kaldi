@@ -49,8 +49,11 @@ fi
 cmvn_opts=`cat $nnetdir/cmvn_opts`;
 bnf_nnet=$nnetdir/final.raw
 if [ ! -f $bnf_nnet ] ; then
-  echo "$0: No such file $bnf_nnet";
-  exit 1;
+  bnf_nnet=$nnetdir/final.mdl
+  if [ ! -f $bnf_nnet ] ; then
+    echo "$0: No such file $bnf_nnet";
+    exit 1;
+  fi
 fi
 
 if $use_gpu; then
@@ -92,7 +95,7 @@ if [ $stage -le 1 ]; then
   echo "$0: Generating bottleneck features using $bnf_nnet model as output of "
   echo "    component-node with name $bnf_name."
   echo "output-node name=output input=$bnf_name" > $bnf_data/output.config
-  modified_bnf_nnet="nnet3-copy --edits='remove-output-nodes name=output' $bnf_nnet - | nnet3-copy --nnet-config=$bnf_data/output.config - - |"
+  modified_bnf_nnet="nnet3-copy --nnet-config=$bnf_data/output.config $bnf_nnet - |"
   ivector_opts=
   if $use_ivector; then
     ivector_period=$(cat $ivector_dir/ivector_period) || exit 1;
