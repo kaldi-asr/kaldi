@@ -222,11 +222,21 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs, 
 }
 
 
+__global__ void compute_loglikelihoods(int frame, 
+  GPUOnlineDecodableDiagGmmScaled* gpu_decodable, 
+  float* loglikelihoods, int max_pdf_id,
+  float* cur_feats, int cur_feats_dim){
+
+  int id = blockIdx.x * blockDim.x + threadIdx.x;
+  if(id < max_pdf_id){
+    loglikelihoods[id] = gpu_decodable->LogLikelihood(frame, id, cur_feats, cur_feats_dim);
+  }
+} 
+
 __global__ void compute_emitting(int *from_states, int *to_states, float *probs, int* inputs,
   int start_offset, int end_offset, int frame,
-  prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi, 
-  GPUOnlineDecodableDiagGmmScaled* gpu_decodable,
-  float* cur_feats, int cur_feats_dim) {
+  prob_ptr_t *viterbi_prev, prob_ptr_t *viterbi,
+  GPUTransitionModel* transition_model, float* loglikelihoods) {
 
   int id = blockIdx.x*blockDim.x+threadIdx.x;
   int offset = start_offset+id;
@@ -246,12 +256,10 @@ __global__ void compute_emitting(int *from_states, int *to_states, float *probs,
 
   if (offset < end_offset && shared_inputs[threadIdx.x] != EPS_SYM) {
     int idxlayer = ((unpack_ptr(viterbi_from_shared_states[threadIdx.x]) >> NUM_BIT_SHL_LAYER) + 1) & NUM_EPS_LAYER; // dapat index layernya keberapa
-    float ac_cost = - gpu_decodable->LogLikelihood(frame, shared_inputs[threadIdx.x], cur_feats, cur_feats_dim);
-    // printf("ACOUSTIC SCORE (%d,%d) : %.10f\n", frame, shared_inputs[threadIdx.x], ac_cost);
+    float ac_cost = - loglikelihoods[transition_model->TransitionIdToPdf(shared_inputs[threadIdx.x])];
     prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x] - ac_cost, offset | (idxlayer << NUM_BIT_SHL_LAYER));
     atomicMax(&viterbi[to_shared_states[threadIdx.x]], pp);
   }
-
 }
 
 __global__ void compute_nonemitting(int *from_states, int *to_states, float *probs, int* inputs,
@@ -341,6 +349,10 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   static thrust::device_vector<prob_ptr_t> path((BATCH_SIZE + 1) * NUM_LAYER + 1);
   thrust::fill(path.begin(), path.end(), init_value);
 
+  int NUM_PDFS = gpu_decodable->transition_model_->NumPdfs();
+
+  static thrust::device_vector<float> loglikelihoods(NUM_PDFS);
+
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
 
@@ -356,13 +368,11 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   );
 
   if (verbose) {
-    std::cout << "VERBOSE SEBELUM MASUK DECODE" << std::endl;
     for (auto pp: viterbi)
       if(unpack_prob(pp) != -FLT_MAX) std::cout << unpack_prob(pp) << " " << unpack_ptr(pp) << std::endl;
     std::cout << std::endl;
   }
 
-  std::cerr << "MASUK DECODE" << std::endl;
   for (int t = NUM_LAYER; !decodable->IsLastFrame(frame_ - 1) && batch_frame < BATCH_SIZE;
      ++frame_, ++utt_frames_, ++batch_frame, t += NUM_LAYER) {
     std::cerr << "FRAME : " << frame_ << std::endl;
@@ -370,6 +380,17 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     decodable->CacheFrameFromGPU(frame_);
     GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
     // thrust::copy(gpu_cur_feats.data_.begin(), gpu_cur_feats.data_.end(), std::ostream_iterator<float>(std::cout, " "));
+
+    compute_loglikelihoods<<<ceildiv(NUM_PDFS, BLOCK_SIZE), BLOCK_SIZE>>> (
+      frame, 
+      gpu_decodable, 
+      loglikelihoods, 
+      NUM_PDFS,
+      gpu_cur_feats.data,
+      gpu_cur_feats.Dim()
+    );
+
+    cudaDeviceSynchronize();
 
     int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
 
@@ -383,7 +404,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
       frame_,
       viterbi.data().get() + (t-1)*m.num_states,
       viterbi.data().get() + t*m.num_states, 
-      gpu_decodable, gpu_cur_feats.data, gpu_cur_feats.Dim());
+      gpu_decodable->transition_model_, loglikelihoods);
 
     // compute epsilon / nonemitting, banyaknya loop tergantung banyaknya layer propagasi
     for(int i = 1; i <= NUM_EPS_LAYER; ++i){
@@ -408,17 +429,13 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     }
    
   }
-  std::cerr << "KELUAR DECODE" << std::endl;
 
-  std::cerr << "COMPUTE MAX" << std::endl;
   compute_max<<<ceildiv(end_offset - start_offset, 1024), 1024>>> (
     viterbi.data().get() + ((batch_frame + 1) * NUM_LAYER - 1) * m.num_states,
     (&path.back()).get(),
     m.num_states
   );
 
-
-  std::cerr << "CUDA MALLOC" << std::endl;
   int* num_path_d;
   cudaMalloc((void**) &num_path_d, sizeof(int));
   get_path <<<1,1>>> (
@@ -430,7 +447,6 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   );
   int num_path;
   
-  std::cerr << "CUDA MEMCPY" << std::endl;
   cudaMemcpy(&num_path, num_path_d, sizeof(int), cudaMemcpyDeviceToHost);
   
   cudaFree(num_path_d);
@@ -440,11 +456,9 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     exit(1);
   }
   
-  std::cerr << "COPY HOST VECTOR" << std::endl;
   thrust::host_vector<prob_ptr_t> h_path(path);
   output_symbols.clear();
 
-  std::cerr << "LOOP OUTPUT SYMBOLS" << std::endl;
   for (int t= num_path - 1; t >= 0; t--) {
 
     int sym = m.outputs[unpack_ptr(h_path[t]) & OFFSET_AND_BIT];
@@ -452,7 +466,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
       output_symbols.push_back(sym);
     }
   }
-  std::cerr << "RETURN" << std::endl;
+  
   if(batch_frame != BATCH_SIZE){
     return 2;
   }
