@@ -154,13 +154,13 @@ if [ $stage -le 6 ] && $run_nbest_rescore; then
   echo "$0: Perform nbest-rescoring on $ac_model_dir"
   for decode_set in dt05_real dt05_simu et05_real et05_simu; do
     decode_dir=$tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${LM}
-
+    (
     # Lattice rescoring
     rnnlm/lmrescore_nbest.sh \
       --cmd "$train_cmd --mem 2G" --N $nbest \
       $rnnweight data/lang_test_$LM $dir \
       data/${decode_set}_${enhan}_chunked ${decode_dir} \
-      $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} &
+      $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}
 
     if $use_backward_model; then
       rnnlm/lmrescore_nbest_back.sh \
@@ -168,8 +168,9 @@ if [ $stage -le 6 ] && $run_nbest_rescore; then
         $rnnweight data/lang_test_$LM ${dir}_back \
         data/${decode_set}_${enhan}_chunked \
         $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest} \
-        $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}_bi &
+        $tgtdir/decode_tgpr_5k_${decode_set}_${enhan}_${decode_dir_suffix}_w${rnnweight}_n${nbest}_bi
     fi
+    ) &
   done
   wait
   # calc wers for nbest-rescoring results
