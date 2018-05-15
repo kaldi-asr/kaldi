@@ -1,19 +1,18 @@
 #!/bin/bash
 
-# e2eali_1b is the same as e2eali_1a but uses unconstrained egs
+# e2eali_1d is the same as e2eali_1b, but uses a tree trained using 200-dim 
+# bottleneck features from cnn_e2e_1b
 
-# local/chain/compare_wer.sh /home/hhadian/kaldi-rnnlm/egs/iam/v1/exp/chain/cnn_e2eali_1a exp/chain/cnn_e2eali_1b
-# System                      cnn_e2eali_1a cnn_e2eali_1b
-# WER                             12.79     12.23
-# CER                              5.73      5.48
-# Final train prob              -0.0556   -0.0367
-# Final valid prob              -0.0795   -0.0592
-# Final train prob (xent)       -0.9178   -0.8382
-# Final valid prob (xent)       -1.0604   -0.9853
-# Parameters                      3.95M     3.95M
+# System                      cnn_e2eali_1d  cnn_e2eali_1a cnn_e2eali_1b
+# WER                             12.15              12.79     12.23
+# CER                              5.58               5.73      5.48
+# Final train prob              -0.0384            -0.0556   -0.0367
+# Final valid prob              -0.0591            -0.0795   -0.0592
+# Final train prob (xent)       -1.9691            -0.9178   -0.8382
+# Final valid prob (xent)       -2.1474            -1.0604   -0.9853
+# Parameters                      4.48M              3.95M     3.95M
 
-# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
-# exp/chain/cnn_e2eali_1b: num-iters=21 nj=2..4 num-params=4.0M dim=40->360 combine=-0.038->-0.038 (over 1) xent:train/valid[13,20,final]=(-1.34,-0.967,-0.838/-1.40,-1.07,-0.985) logprob:train/valid[13,20,final]=(-0.075,-0.054,-0.037/-0.083,-0.072,-0.059)
+# exp/chain/cnn_e2eali_1d_o1000/: num-iters=21 nj=2..4 num-params=4.5M dim=40->944 combine=-0.040->-0.040 (over 1) xent:train/valid[13,20,final]=(-4.56,-2.04,-1.97/-4.60,-2.19,-2.15) logprob:train/valid[13,20,final]=(-0.294,-0.047,-0.038/-0.300,-0.065,-0.059)
 
 set -e -o pipefail
 
@@ -36,7 +35,7 @@ xent_regularize=0.1
 frame_subsampling_factor=4
 # training chunk-options
 chunk_width=340,300,200,100
-num_leaves=500
+num_leaves=1000
 # we don't need extra left/right context for TDNN systems.
 chunk_left_context=0
 chunk_right_context=0
