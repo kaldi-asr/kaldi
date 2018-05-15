@@ -32,7 +32,7 @@ enhan=$1
 embedding_dim=2048
 lstm_rpd=512
 lstm_nrpd=512
-stage=6
+stage=-10
 train_stage=-10
 
 # variables for lattice rescoring
