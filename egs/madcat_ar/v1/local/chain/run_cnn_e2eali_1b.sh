@@ -1,6 +1,20 @@
 #!/bin/bash
 
-# e2eali_1b is the same as e2eali_1a but uses unconstrained egs
+# e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
+# lattice alignments and to build a tree
+
+# local/chain/compare_wer.sh exp/chain/exp/chain/cnn_e2eali_1b
+# System                      cnn_e2eali_1b
+# WER                             10.78
+# CER                              2.99
+# Final train prob              -0.0587
+# Final valid prob              -0.0609
+# Final train prob (xent)       -0.4471
+# Final valid prob (xent)       -0.4653
+# Parameters                      3.37M
+
+# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
+#exp/chain/cnn_e2eali_1b: num-iters=179 nj=8..16 num-params=3.4M dim=40->416 combine=-0.058->-0.058 (over 3) xent:train/valid[118,178,final]=(-0.463,-0.445,-0.447/-0.477,-0.462,-0.465) logprob:train/valid[118,178,final]=(-0.062,-0.059,-0.059/-0.063,-0.061,-0.061)
 
 set -e -o pipefail
 
