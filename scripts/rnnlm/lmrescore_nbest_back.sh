@@ -3,8 +3,8 @@
 # Copyright 2017  Hainan Xu
 #           2017  Szu-Jui Chen
 
-# This script is very similar to steps/rnnlmrescore.sh, and it performs n-best
-# LM rescoring with Kaldi-RNNLM.
+# This script is very similar to scripts/rnnlm/lmrescore_nbest.sh, and it takes the results
+# from forward model then performs n-best LM rescoring based on backward model with Kaldi-RNNLM.
 
 # Begin configuration section.
 N=10
