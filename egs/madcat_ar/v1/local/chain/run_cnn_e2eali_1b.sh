@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
+# e2eali_1b is the same as chainali_1a but uses the e2e chain model to get the
 # lattice alignments and to build a tree
 
 # local/chain/compare_wer.sh exp/chain/exp/chain/cnn_e2eali_1b
