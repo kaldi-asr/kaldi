@@ -299,6 +299,7 @@ __global__ void get_path(int *from_nodes,
   int num_path_d = 0;
   if (id == 0) {
     int state = unpack_ptr(path[(batch_frame + 1) * NUM_LAYER]);
+    printf("STATE MAX : %d\n", state);
     for (int t = batch_frame; t > 0; num_path_d++, t--) {
       while(state >= (1 << NUM_BIT_SHL_LAYER)){
         prob_ptr_t pp = viterbi[(t * NUM_LAYER + (state >> NUM_BIT_SHL_LAYER)) * num_nodes + (state & OFFSET_AND_BIT)];
@@ -324,7 +325,7 @@ __global__ void get_path(int *from_nodes,
  * 8. (KAYAKNYA GA DEH) Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
 int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, std::vector<sym_t> &output_symbols) {
-  std::cerr << "MASUK VITERBI" << std::endl;
+  //std::cerr << "MASUK VITERBI" << std::endl;
   int verbose=0;
 
   int batch_frame = 0;
@@ -334,16 +335,16 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   prob_ptr_t init_value = pack(-FLT_MAX, 0);
   thrust::fill(viterbi.begin(), viterbi.end(), init_value);
 
-  std::cerr << "FILL BERHASIL" << std::endl;
+  //std::cerr << "FILL BERHASIL" << std::endl;
   static thrust::device_vector<prob_ptr_t> path((BATCH_SIZE + 1) * NUM_LAYER + 1);
-  thrust::fill(viterbi.begin(), viterbi.end(), init_value);
+  thrust::fill(path.begin(), path.end(), init_value);
 
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
-  std::cerr << "START OFFSET : " << start_offset << std::endl;
-  std::cerr << "END OFFSET : " << end_offset << std::endl;
+  //std::cerr << "START OFFSET : " << start_offset << std::endl;
+  //std::cerr << "END OFFSET : " << end_offset << std::endl;
 
-  std::cerr << "COMPUTE INITIAL" << std::endl;
+  //std::cerr << "COMPUTE INITIAL" << std::endl;
   compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
     m.from_states.data().get(),
     m.to_states.data().get(),
@@ -414,7 +415,8 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     m.num_states
   );
 
-  std::cerr << "CUDA MALLOC" << std::endl;
+
+
   int* num_path_d;
   cudaMalloc((void**) &num_path_d, sizeof(int));
   get_path <<<1,1>>> (
@@ -425,13 +427,10 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
     num_path_d
   );
   int num_path;
-  std::cerr << "CUDA MEMCPY" << std::endl;
-
+  
   cudaMemcpy(&num_path, num_path_d, sizeof(int), cudaMemcpyDeviceToHost);
   
-  std::cerr << "CUDA FREE" << std::endl;
   cudaFree(num_path_d);
-  std::cerr << "CUDA ERROR CHECK" << std::endl;
   cudaError_t e = cudaGetLastError();                                 
   if (e != cudaSuccess) {                                              
     std::cerr << "CUDA failure: " << cudaGetErrorString(e) << std::endl;
@@ -442,7 +441,6 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   thrust::host_vector<prob_ptr_t> h_path(path);
   output_symbols.clear();
 
-  // TODO : ini ga harus dapet dari sini, pasti lebih dikit soalnya (jumlah kata << jumlah fonem)
   std::cerr << "LOOP OUTPUT SYMBOLS" << std::endl;
   for (int t= num_path - 1; t >= 0; t--) {
 
