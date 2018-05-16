@@ -44,6 +44,10 @@ const int NUM_LAYER = NUM_EPS_LAYER + 1;
 const int NUM_BIT_LAYER = __builtin_popcount(NUM_EPS_LAYER);
 const int NUM_BIT_SHL_LAYER = 31 - NUM_BIT_LAYER;
 
+const int NUM_FEATURE_ALLOCATE = 100;
+const int NUM_GCONSTS_ALLOCATE = 50;
+const int NUM_BUFFER_ALLOCATE =  NUM_BUFFER_ALLOCATE + NUM_GCONSTS_ALLOCATE;
+
 const int OFFSET_AND_BIT = (1 << NUM_BIT_SHL_LAYER) - 1;
 
 #define EPS_SYM 0
@@ -69,15 +73,13 @@ struct GPUDiagGmm{
   int32 Dim() const { return means_invvars_.NumCols();}
 
   __device__
-  BaseFloat LogLikelihood(BaseFloat *data, int32 num_data) {
+  BaseFloat LogLikelihood(BaseFloat *data, int32 num_data, BaseFloat* loglikes, BaseFloat* data_sq) {
     const double kGPUMinLogDiffDouble = log(DBL_EPSILON);
     const float kGPUMinLogDiffFloat = log(FLT_EPSILON);
 
     int32 num_loglikes = gconsts_.Dim();
-    BaseFloat* loglikes = new BaseFloat[num_loglikes];
     for(int32 i = 0;i < num_loglikes; ++i) loglikes[i] = gconsts_.data[i];
 
-    BaseFloat* data_sq = new BaseFloat[num_data];
     for(int32 i = 0;i < num_data; ++i) data_sq[i] = data[i] * data[i];
 
     for(int i = 0;i < gconsts_.Dim(); ++i){
@@ -103,9 +105,7 @@ struct GPUDiagGmm{
         sum_relto_max_elem += exp(f - max_elem);
     }
     BaseFloat log_sum = max_elem + log(sum_relto_max_elem);
-
-    delete [] loglikes;
-    delete [] data_sq;
+    
     return log_sum;
   }
 
@@ -118,8 +118,8 @@ struct GPUAmDiagGmm{
 
   GPUAmDiagGmm() { densities = densities_.data().get(); }
 
-  __device__ BaseFloat LogLikelihood(const int32 pdf_index, BaseFloat* data, int32 num_data) const {
-    return densities[pdf_index]->LogLikelihood(data, num_data);
+  __device__ BaseFloat LogLikelihood(const int32 pdf_index, BaseFloat* data, int32 num_data, BaseFloat* buffers) {
+    return densities[pdf_index]->LogLikelihood(data, num_data, buffers, buffers + NUM_FEATURE_ALLOCATE);
   }
 };
 
@@ -165,15 +165,6 @@ struct GPUOnlineDecodableDiagGmmScaled {
   ac_model_(gpu_ac_model_),
   transition_model_(gpu_transition_model_),
   ac_scale_(ac_scale_) {}
-
-  __device__ BaseFloat LogLikelihood(int32 frame, int32 index, BaseFloat* cur_feats, int cur_feats_dim) {
-    int32 pdf_id = transition_model_->TransitionIdToPdf(index);
-    
-    // printf("GPUOnlineDecodable (%d,%d), cur_feats_dim : %d\n", frame, index, cur_feats_dim);
-    // for(int i = 0;i < cur_feats_dim; ++i) printf("cur_feats[%d] : %.10f\n", i, cur_feats[i]);
-    BaseFloat ans = ac_model_->LogLikelihood(pdf_id, cur_feats, cur_feats_dim) * ac_scale_;
-    return ans;
-  }
 };
 
 }
@@ -225,11 +216,11 @@ __global__ void compute_initial(int *from_states, int *to_states, float *probs, 
 __global__ void compute_loglikelihoods(int frame, 
   GPUOnlineDecodableDiagGmmScaled* decodable, 
   float* loglikelihoods, int max_pdf_id,
-  float* cur_feats, int cur_feats_dim){
+  float* cur_feats, int cur_feats_dim, float* buffers){
 
   int id = blockIdx.x * blockDim.x + threadIdx.x;
   if(id < max_pdf_id){
-    loglikelihoods[id] = decodable->ac_model_->LogLikelihood(id, cur_feats, cur_feats_dim) * decodable->ac_scale_;
+    loglikelihoods[id] = decodable->ac_model_->LogLikelihood(id, cur_feats, cur_feats_dim, buffers + id * NUM_BUFFER_ALLOCATE) * decodable->ac_scale_;
   }
 
 } 
@@ -337,7 +328,11 @@ __global__ void get_path(int *from_nodes,
  * 7. (DONE) Ganti yang dapet output symbol dari input symbol. SIZE ga harus sama.
  * 8. (KAYAKNYA GA DEH) Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
-int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, int NUM_PDFS, std::vector<sym_t> &output_symbols) {
+int viterbi(gpu_fst &m, 
+  OnlineDecodableDiagGmmScaled* decodable, 
+  GPUOnlineDecodableDiagGmmScaled* gpu_decodable, 
+  int NUM_PDFS, 
+  std::vector<sym_t> &output_symbols) {
   int verbose=0;
 
   int batch_frame = 0;
@@ -351,6 +346,7 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   thrust::fill(path.begin(), path.end(), init_value);
 
   static thrust::device_vector<float> loglikelihoods(NUM_PDFS);
+  static thurst::device_vector<float> buffers(NUM_BUFFER_ALLOCATE * NUM_PDFS);
 
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
@@ -386,7 +382,8 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
       loglikelihoods.data().get(), 
       NUM_PDFS,
       gpu_cur_feats.data,
-      gpu_cur_feats.Dim()
+      gpu_cur_feats.Dim(),
+      buffers.data().get()
     );
 
     cudaDeviceSynchronize();
