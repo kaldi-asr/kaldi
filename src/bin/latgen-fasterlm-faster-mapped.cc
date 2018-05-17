@@ -150,11 +150,16 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Generate lattices using on-the-fly composition.\n"
+        "e.g. HCLG_1 - G_1 + (G_2a \\dynamic_int G_2b) \n"
         "User supplies LM used to generate decoding graph, and desired LM;\n"
         "this decoder applies the difference during decoding\n"
-        "Usage: latgen-biglm-faster-mapped [options] model-in (fst-in|fsts-rspecifier) "
-        "oldlm-fst-in newlm-fst-in features-rspecifier"
-        " lattice-wspecifier [ words-wspecifier [alignments-wspecifier] ]\n";
+        "Usage: latgen-fasterlm-faster-mapped [options] model-in(for ctc, the model is ignored) HCLG-1-fstin "
+        "G-1-oldlm G-1-weight G-2a-newlm G-2a-weight G-2b-newlm G-2b-weight G-2c... features-rspecifier"
+        " lattice-wspecifier  words-wspecifier \n"
+        "Notably, we always make G-1-weight = -1\n"
+        "ctc example: /fgfs/users/zhc00/works/dyn_dec/kaldi_ctc/README\n"
+        "hmm example: /fgfs/users/zhc00/works/dyn_dec/kaldi_minilibri/README\n"
+        ;
     ParseOptions po(usage);
     Timer timer;
     bool allow_partial = false;
