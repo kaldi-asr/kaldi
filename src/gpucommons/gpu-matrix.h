@@ -39,8 +39,6 @@ struct GPUMatrix{
   __host__ __device__
   Real* Data() const;
 
-  __host__ __device__
-  const Real* Data() const;
 };
 
 template<typename Real>
@@ -86,9 +84,6 @@ int32 GPUMatrix<Real>::Index(int32 r, int32 c) const { return r * stride_ + c; }
 
 template<typename Real>
 Real* GPUMatrix<Real>::Data() const { return data; }
-
-template<typename Real>
-const Real* GPUMatrix<Real>::Data() const { return data; }
 
 }
 

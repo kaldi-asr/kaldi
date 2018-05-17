@@ -35,9 +35,6 @@ struct GPUVector{
   __host__ __device__
   Real* Data() const;
 
-  __host__ __device__
-  const Real* Data() const;
-
 };
 
 template<typename Real>
@@ -68,10 +65,7 @@ template<typename Real>
 int32 GPUVector<Real>::Index(int32 idx) const { return idx; }
 
 template<typename Real>
-Real* GPUMatrix<Real>::Data() const { return data; }
-
-template<typename Real>
-const Real* GPUMatrix<Real>::Data() const { return data; }
+Real* GPUVector<Real>::Data() const { return data; }
 
 }
 
