@@ -31,6 +31,13 @@ struct GPUVector{
   GPUVector();
   GPUVector(Vector<Real> &M);
   GPUVector(const Vector<Real> &M);
+
+  __host__ __device__
+  Real* Data() const;
+
+  __host__ __device__
+  const Real* Data() const;
+
 };
 
 template<typename Real>
@@ -55,14 +62,16 @@ GPUVector<Real>::GPUVector(const Vector<Real> &M) : dim_(M.Dim()){
 }
 
 template<typename Real>
-int32 GPUVector<Real>::Dim() const {
-  return dim_;
-}
+int32 GPUVector<Real>::Dim() const { return dim_; }
 
 template<typename Real>
-int32 GPUVector<Real>::Index(int32 idx) const {
-  return idx;
-}
+int32 GPUVector<Real>::Index(int32 idx) const { return idx; }
+
+template<typename Real>
+Real* GPUMatrix<Real>::Data() const { return data; }
+
+template<typename Real>
+const Real* GPUMatrix<Real>::Data() const { return data; }
 
 }
 

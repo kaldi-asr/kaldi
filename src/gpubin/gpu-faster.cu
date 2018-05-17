@@ -3,6 +3,9 @@
 
 // Uses Parallel Viterbi Beam Search Algorithm from Arturo Argueta and David Chiang's paper.
 
+#include "base/kaldi-math.h"
+#include "cudamatrix/cublas-wrappers.h"
+#include "gmm/diag-gmm.h"
 
 #include "gpufst/fst.h"
 #include "gpufst/gpu-fst.h"
@@ -12,8 +15,9 @@
 #include "gpucommons/gpu-vector.h"
 #include "gpucommons/gpu-matrix.h"
 #include "hmm/transition-model.h"
-#include "gmm/diag-gmm.h"
-#include "base/kaldi-math.h"
+#include "matrix/matrix-common.h"
+
+#include <cublas_v2.h>
 
 #include <vector>
 
@@ -53,6 +57,19 @@ const int OFFSET_AND_BIT = (1 << NUM_BIT_SHL_LAYER) - 1;
 #define EPS_SYM 0
 
 namespace kaldi{
+
+inline __device__ void AddMatVecGPU(cublasHandle_t handle, BaseFloat* data, 
+                  const Real alpha,
+                  const GPUMatrix<Real> &M,
+                  MatrixTransposeType trans,
+                  const GPUVector<Real> &v,
+                  const Real beta){
+  cublas_gemv(handle,
+      (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
+      M.NumCols(), M.NumRows(), alpha, M.Data(),
+      M.Stride(), v.Data(), 1, beta, data, 1);
+}
+
 struct GPUDiagGmm{
   GPUVector<BaseFloat> gconsts_;
   GPUVector<BaseFloat> weights_;
@@ -82,13 +99,54 @@ struct GPUDiagGmm{
 
     for(int32 i = 0;i < num_data; ++i) data_sq[i] = data[i] * data[i];
 
-    for(int i = 0;i < gconsts_.Dim(); ++i){
-      for(int j = 0;j < num_data; ++j){
-        loglikes[i] += means_invvars_.data[means_invvars_.Index(i, j)] * data[j];
-        loglikes[i] -= 0.5 * inv_vars_.data[inv_vars_.Index(i, j)] * data_sq[j];
-      }
-    }
+    // for(int i = 0;i < gconsts_.Dim(); ++i){
+    //   for(int j = 0;j < num_data; ++j){
+    //     loglikes[i] += means_invvars_.data[means_invvars_.Index(i, j)] * data[j];
+    //     loglikes[i] -= 0.5 * inv_vars_.data[inv_vars_.Index(i, j)] * data_sq[j];
+    //   }
+    // }
 
+    cublasHandle_t handle;
+    cublasCreate(&handle);
+
+    AddMatVecGPU(handle, loglikes, 1.0, means_invvars_, kNoTrans, data, 1.0);
+    AddMatVecGPU(handle, loglikes, -0,5, inv_vars_, kNoTrans, data_sq, 1.0);
+
+    /* ACTUALLY YANG DIATAS ITU KAYAK GINI
+
+      Vector<BaseFloat> data_sq(data);
+      data_sq.ApplyPow(2.0);
+
+      // loglikes +=  means * inv(vars) * data.
+      loglikes->AddMatVec(1.0, means_invvars_, kNoTrans, data, 1.0);
+      // loglikes += -0.5 * inv(vars) * data_sq.
+      loglikes->AddMatVec(-0.5, inv_vars_, kNoTrans, data_sq, 1.0);
+    */
+
+    /*
+
+      void CuVectorBase<Real>::AddMatVec(const Real alpha,
+                                     const CuMatrixBase<Real> &M,
+                                     MatrixTransposeType trans,
+                                     const CuVectorBase<Real> &v,
+                                     const Real beta) 
+      cublas_gemv(GetCublasHandle(),
+      (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
+      M.NumCols(), M.NumRows(), alpha, M.Data(),
+      M.Stride(), v.Data(), 1, beta, data_, 1);
+
+      inline cublasStatus_t cublas_gemv(
+          cublasHandle_t handle, cublasOperation_t trans,
+          int m, int n, float alpha, const float* A, int lda, const float* x,
+          int incx, float beta, float* y, int incy) {
+        return cublasSgemv_v2(handle,trans,m,n,&alpha,A,lda,x,incx,&beta,y,incy);
+      }
+
+
+    */
+
+
+    cublasDestroy(handle); 
     BaseFloat max_elem = -CUDART_MAX_NORMAL_F;
     for(int32 i = 0;i < num_loglikes; ++i) {
       if(max_elem < loglikes[i]) max_elem = loglikes[i];
@@ -104,8 +162,9 @@ struct GPUDiagGmm{
       if (f >= cutoff)
         sum_relto_max_elem += exp(f - max_elem);
     }
+
     BaseFloat log_sum = max_elem + log(sum_relto_max_elem);
-    
+
     return log_sum;
   }
 
