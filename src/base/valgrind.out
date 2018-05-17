@@ -1,0 +1,8 @@
+kaldi-math-test
+/bin/bash: line 2: valgrind: command not found
+io-funcs-test
+/bin/bash: line 2: valgrind: command not found
+kaldi-error-test
+/bin/bash: line 2: valgrind: command not found
+timer-test
+/bin/bash: line 2: valgrind: command not found

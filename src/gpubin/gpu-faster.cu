@@ -58,21 +58,21 @@ const int OFFSET_AND_BIT = (1 << NUM_BIT_SHL_LAYER) - 1;
 
 namespace kaldi{
 
-inline __device__ cublasStatus_t cublas_gemv_gpu(
+__device__ cublasStatus_t cublas_gemv_gpu(
     cublasHandle_t handle, cublasOperation_t trans,
     int m, int n, float alpha, const float* A, int lda, const float* x,
     int incx, float beta, float* y, int incy) {
   return cublasSgemv_v2(handle,trans,m,n,&alpha,A,lda,x,incx,&beta,y,incy);
 }
 
-inline __device__ cublasStatus_t cublas_gemv_gpu(
+__device__ cublasStatus_t cublas_gemv_gpu(
     cublasHandle_t handle, cublasOperation_t trans,
     int m, int n, double alpha, const double* A, int lda, const double* x,
     int incx, double beta, double* y, int incy) {
   return cublasDgemv_v2(handle,trans,m,n,&alpha,A,lda,x,incx,&beta,y,incy);
 }
 
-inline __device__ void AddMatVecGPU(
+__device__ cublasStatus_t AddMatVecGPU(
                   cublasHandle_t handle,
                   BaseFloat* data, 
                   const BaseFloat alpha,
@@ -80,7 +80,7 @@ inline __device__ void AddMatVecGPU(
                   MatrixTransposeType trans,
                   BaseFloat* v,  
                   const BaseFloat beta){
-  cublas_gemv_gpu(handle,
+  return cublas_gemv_gpu(handle,
       (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
       M.NumCols(), M.NumRows(), alpha, M.Data(),
       M.Stride(), v, 1, beta, data, 1);
@@ -115,12 +115,18 @@ struct GPUDiagGmm{
 
     for(int32 i = 0;i < num_data; ++i) data_sq[i] = data[i] * data[i];
 
+    cublasStatus_t stat;
     cublasHandle_t handle;
     cublasCreate(&handle);
-
-    AddMatVecGPU(handle, loglikes, 1.0, means_invvars_, kNoTrans, data, 1.0);
+     
+    stat = AddMatVecGPU(handle, loglikes, 1.0, means_invvars_, kNoTrans, data, 1.0);
+    if(stat != CUBLAS_STATUS_SUCCESS){
+      printf("CUBLAS CALL ERROR 1\n");
+    }
     AddMatVecGPU(handle, loglikes, -0.5, inv_vars_, kNoTrans, data_sq, 1.0);
-
+    if(stat != CUBLAS_STATUS_SUCCESS){
+      printf("CUBLAS CALL ERROR 2\n");
+    }
     cublasDestroy(handle); 
     BaseFloat max_elem = -CUDART_MAX_NORMAL_F;
     for(int32 i = 0;i < num_loglikes; ++i) {
