@@ -72,7 +72,7 @@ const char* cublasGetErrorString(cublasStatus_t status)
         case CUBLAS_STATUS_EXECUTION_FAILED: return "CUBLAS_STATUS_EXECUTION_FAILED"; 
         case CUBLAS_STATUS_INTERNAL_ERROR: return "CUBLAS_STATUS_INTERNAL_ERROR"; 
     }
-    return "unknown error";
+    return "unknown status";
 }
 
 __device__ cublasStatus_t cublas_gemv_gpu(

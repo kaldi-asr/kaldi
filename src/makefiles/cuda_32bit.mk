@@ -7,7 +7,7 @@ endif
 
 CUDA_INCLUDE= -I$(CUDATKDIR)/include
 CUDA_FLAGS = -g -Xcompiler -fPIC --verbose --machine 32 -DHAVE_CUDA \
-             -ccbin $(CXX) -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) -lcublas -lcublas_device -lcudart -lcudadevrt
+             -ccbin $(CXX) -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION)
 CXXFLAGS += -DHAVE_CUDA -I$(CUDATKDIR)/include
 LDFLAGS += -L$(CUDATKDIR)/lib -Wl,-rpath=$(CUDATKDIR)/lib
-LDLIBS += -lcublas -lcusparse -lcudart -lcurand -lcudadevrt -lcublas_device #LDLIBS : The libs are loaded later than static libs in implicit rule
+LDLIBS += -lcublas -lcusparse -lcudart -lcurand -lcudadevrt#LDLIBS : The libs are loaded later than static libs in implicit rule
