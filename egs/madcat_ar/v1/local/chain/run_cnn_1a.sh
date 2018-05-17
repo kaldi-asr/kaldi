@@ -173,7 +173,7 @@ if [ $stage -le 5 ]; then
     --chain.alignment-subsampling-factor=$frame_subsampling_factor \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=2 \
+    --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1000000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=16 \

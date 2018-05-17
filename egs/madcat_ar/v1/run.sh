@@ -47,16 +47,13 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Preparing data..."
-  local/prepare_data.sh  --download_dir1 $download_dir1 \
-    --download_dir2 $download_dir2 --download_dir3 $download_dir3 \
-    --train_split_file $train_split_file --test_split_file $test_split_file \
-    --dev_split_file $dev_split_file
+  local/prepare_data.sh
 fi
 
 mkdir -p data/{train,test,dev}/data
 
 if [ $stage -le 3 ]; then
-  for dataset in test train dev; do
+  for dataset in test train; do
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
     steps/compute_cmvn_stats.sh data/$dataset || exit 1;
   done

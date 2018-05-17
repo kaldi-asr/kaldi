@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
+# e2eali_1b is the same as chainali_1a but uses the e2e chain model to get the
 # lattice alignments and to build a tree
 
 # local/chain/compare_wer.sh exp/chain/exp/chain/cnn_e2eali_1b
@@ -192,9 +192,9 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=2 \
+    --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1000000 \
-    --trainer.optimization.num-jobs-initial=8 \
+    --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=16 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \

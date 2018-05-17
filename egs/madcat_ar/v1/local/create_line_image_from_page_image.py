@@ -412,7 +412,7 @@ def set_line_image_data(image, line_id, image_file_name, image_fh):
 
 def get_line_images_from_page_image(image_file_name, madcat_file_path, image_fh):
     """ Given a page image, extracts the line images from it.
-    Inout
+    Input
     -----
     image_file_name (string): complete path and name of the page image.
     madcat_file_path (string): complete path and name of the madcat xml file
