@@ -160,11 +160,13 @@ int main(int argc, char *argv[]) {
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
     int32 symbol_size = 0;
+    bool ctc = false;
     LatticeBiglmFasterDecoderConfig config;
     config.Register(&po);
 
     ArpaParseOptions arpa_options;
     arpa_options.Register(&po);
+    po.Register("ctc", &ctc, "is ctc decoding");
     po.Register("symbol-size", &symbol_size, "symbol table size");
     po.Register("unk-symbol", &arpa_options.unk_symbol,
                 "Integer corresponds to unknown-word in language model. -1 if "
@@ -203,7 +205,8 @@ int main(int argc, char *argv[]) {
     //new_lm_fst_rxfilename = po.GetArg(4),   
 
     TransitionModel trans_model;
-    ReadKaldiObject(model_in_filename, &trans_model);
+    if (!ctc)
+        ReadKaldiObject(model_in_filename, &trans_model);
 
     /*
     FasterArpaLm old_lm;
@@ -274,11 +277,17 @@ int main(int argc, char *argv[]) {
             num_fail++;
             continue;
           }
-                
-          DecodableMatrixScaledMapped decodable(trans_model, features, acoustic_scale);
+         
+          DecodableInterface* decodable = NULL;
+          if (!ctc) 
+            decodable = new DecodableMatrixScaledMapped(trans_model, features, acoustic_scale);
+          else {
+            decodable = new DecodableMatrixScaledMappedCtc(features, acoustic_scale);
+            decoder.GetOptions().det_opts.phone_determinize = false; // disable DeterminizeLatticePhonePrunedFirstPass
+          }
 
           double like;
-          if (DecodeUtterance(decoder, decodable, trans_model, word_syms,
+          if (DecodeUtterance(decoder, *decodable, trans_model, word_syms,
                               utt, acoustic_scale, determinize, allow_partial,
                               NULL, &words_writer,
                               &compact_lattice_writer, &lattice_writer,

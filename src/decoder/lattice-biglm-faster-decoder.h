@@ -66,7 +66,7 @@ class LatticeBiglmFasterDecoder {
     toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
   }
   void SetOptions(const LatticeBiglmFasterDecoderConfig &config) { config_ = config; } 
-  LatticeBiglmFasterDecoderConfig GetOptions() { return config_; } 
+  LatticeBiglmFasterDecoderConfig& GetOptions() { return config_; } 
   ~LatticeBiglmFasterDecoder() {
     DeleteElems(toks_.Clear());    
     ClearActiveTokens();
