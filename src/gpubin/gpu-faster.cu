@@ -58,6 +58,23 @@ const int OFFSET_AND_BIT = (1 << NUM_BIT_SHL_LAYER) - 1;
 
 namespace kaldi{
 
+__device__
+const char* cublasGetErrorString(cublasStatus_t status)
+{
+    switch(status)
+    {
+        case CUBLAS_STATUS_SUCCESS: return "CUBLAS_STATUS_SUCCESS";
+        case CUBLAS_STATUS_NOT_INITIALIZED: return "CUBLAS_STATUS_NOT_INITIALIZED";
+        case CUBLAS_STATUS_ALLOC_FAILED: return "CUBLAS_STATUS_ALLOC_FAILED";
+        case CUBLAS_STATUS_INVALID_VALUE: return "CUBLAS_STATUS_INVALID_VALUE"; 
+        case CUBLAS_STATUS_ARCH_MISMATCH: return "CUBLAS_STATUS_ARCH_MISMATCH"; 
+        case CUBLAS_STATUS_MAPPING_ERROR: return "CUBLAS_STATUS_MAPPING_ERROR";
+        case CUBLAS_STATUS_EXECUTION_FAILED: return "CUBLAS_STATUS_EXECUTION_FAILED"; 
+        case CUBLAS_STATUS_INTERNAL_ERROR: return "CUBLAS_STATUS_INTERNAL_ERROR"; 
+    }
+    return "unknown error";
+}
+
 __device__ cublasStatus_t cublas_gemv_gpu(
     cublasHandle_t handle, cublasOperation_t trans,
     int m, int n, float alpha, const float* A, int lda, const float* x,
@@ -121,11 +138,11 @@ struct GPUDiagGmm{
      
     stat = AddMatVecGPU(handle, loglikes, 1.0, means_invvars_, kNoTrans, data, 1.0);
     if(stat != CUBLAS_STATUS_SUCCESS){
-      printf("CUBLAS CALL ERROR 1\n");
+      printf("CUBLAS CALL ERROR 1 : %s\n", cublasGetErrorString(stat));
     }
     AddMatVecGPU(handle, loglikes, -0.5, inv_vars_, kNoTrans, data_sq, 1.0);
     if(stat != CUBLAS_STATUS_SUCCESS){
-      printf("CUBLAS CALL ERROR 2\n");
+      printf("CUBLAS CALL ERROR 2 : %s\n", cublasGetErrorString(stat));
     }
     cublasDestroy(handle); 
     BaseFloat max_elem = -CUDART_MAX_NORMAL_F;
