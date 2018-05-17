@@ -296,6 +296,7 @@ int main(int argc, char *argv[]) {
             frame_count += features.NumRows();
             num_success++;
           } else num_fail++;
+          delete decodable;
         }
         elapsed = timer.Elapsed();
       }
