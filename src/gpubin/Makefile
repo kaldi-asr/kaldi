@@ -27,7 +27,7 @@ ifeq ($(UNAME), Darwin)
 endif
 
 
-BINFILES = gpu-faster-optimasi_0 gpu-faster-optimasi_1 gpu-faster-optimasi_2
+BINFILES = gpu-faster-optimasi_0 gpu-faster-optimasi_1 gpu-faster-optimasi_2 gpu-faster-optimasi_3
 
 TESTFILES =
 

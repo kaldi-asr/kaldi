@@ -370,8 +370,7 @@ int viterbi(gpu_fst &m,
 
   for (int t = NUM_LAYER; !decodable->IsLastFrame(frame_ - 1) && batch_frame < BATCH_SIZE;
      ++frame_, ++utt_frames_, ++batch_frame, t += NUM_LAYER) {
-    std::cerr << "FRAME : " << frame_ << std::endl;
-
+   
     decodable->CacheFrameFromGPU(frame_);
     GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
     // thrust::copy(gpu_cur_feats.data_.begin(), gpu_cur_feats.data_.end(), std::ostream_iterator<float>(std::cout, " "));
@@ -666,16 +665,9 @@ int main(int argc, char *argv[]) {
       auto read_start = std::chrono::steady_clock::now();
       frame_ = 0;
       while(1){
-        std::cerr << "FRAME : " << frame_ << std::endl;
         std::vector<sym_t> output_symbols;
 
         int state = viterbi(m, &decodable, gpu_decodable_d, gpu_trans_model_h->NumPdfs(), output_symbols);
-        std::cerr << "KELUAR DONG" << std::endl;
-        std::cerr << "OUTPUT SYMBOLS SIZE : " << output_symbols.size() << std::endl; 
-        for(size_t j = 0;j < output_symbols.size(); ++j){
-          std::cerr << output_symbols[j] << " ";
-        }
-        std::cerr << std::endl;
         std::cout << onr.join(output_symbols) << " "; 
         if(state == 2) break;
       }
@@ -698,7 +690,6 @@ int main(int argc, char *argv[]) {
 
     }
 
-    std::cerr << "SAMPE DI AKHIR BANGET" << std::endl;
     return 0;
   } catch(const std::exception& e) {
     std::cerr << e.what();
