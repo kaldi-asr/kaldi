@@ -12,6 +12,11 @@ if (@ARGV != 3) {
   exit(1);
 }
 
+# Check that ffmpeg is installed.
+if (`which ffmpeg` eq "") {
+  die "Error: this script requires that ffmpeg is installed.";
+}
+
 ($data_base, $dataset, $out_dir) = @ARGV;
 
 if ("$dataset" ne "dev" && "$dataset" ne "test") {
@@ -22,9 +27,10 @@ opendir my $dh, "$data_base/$dataset/aac" or die "Cannot open directory: $!";
 my @spkr_dirs = grep {-d "$data_base/$dataset/aac/$_" && ! /^\.{1,2}$/} readdir($dh);
 closedir $dh;
 
-if (! -d "$out_dir") {
-  mkdir($out_dir) or die "Could not create directory $!";
+if (system("mkdir -p $out_dir") != 0) {
+  die "Error making directory $out_dir";
 }
+
 open(SPKR, ">", "$out_dir/utt2spk") or die "Could not open the output file $out_dir/utt2spk";
 open(WAV, ">", "$out_dir/wav.scp") or die "Could not open the output file $out_dir/wav.scp";
 

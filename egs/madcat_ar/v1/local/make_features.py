@@ -105,7 +105,7 @@ else:
     out_fh = open(args.out_ark,'wb')
 
 allowed_lengths = None
-allowed_len_handle = '/'.join(filter(None, (args.allowed_len_file_path, 'allowed_lengths.txt')))
+allowed_len_handle = args.allowed_len_file_path
 if os.path.isfile(allowed_len_handle):
     print("Found 'allowed_lengths.txt' file...", file=sys.stderr)
     allowed_lengths = []

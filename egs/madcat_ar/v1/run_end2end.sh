@@ -61,7 +61,7 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  for dataset in test dev train; do
+  for dataset in test train; do
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. "
     echo "Date: $(date)."
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset

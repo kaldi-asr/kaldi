@@ -1,20 +1,20 @@
 #!/bin/bash
 
-# e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
-# lattice alignments and to build a tree
-
 set -e -o pipefail
 
 stage=0
 
 nj=70
 train_set=train
+gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
+                # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1a
+ali=tri3_ali
+chain_model_dir=exp/chain${nnet3_affix}/cnn_1a
 common_egs_dir=
 reporting_email=
-
+lats_affix=
 # chain options
 train_stage=-10
 xent_regularize=0.1
@@ -28,7 +28,7 @@ chunk_right_context=0
 tdnn_dim=450
 # training options
 srand=0
-remove_egs=true
+remove_egs=false
 lang_test=lang_test
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -47,17 +47,21 @@ where "nvcc" is installed.
 EOF
 fi
 
-ali_dir=exp/chain/e2e_ali_train
-lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats
-dir=exp/chain${nnet3_affix}/cnn_e2eali${affix}
+gmm_dir=exp/${gmm}
+ali_dir=exp/${ali}
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain_$lats_affix
+gmm_lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
+dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
 train_data_dir=data/${train_set}
-tree_dir=exp/chain${nnet3_affix}/tree_e2e
+tree_dir=exp/chain${nnet3_affix}/tree_chain_$lats_affix
 
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
 lang=data/lang_chain
-for f in $train_data_dir/feats.scp $ali_dir/ali.1.gz $ali_dir/final.mdl; do
+for f in $train_data_dir/feats.scp \
+    $train_data_dir/feats.scp $gmm_dir/final.mdl \
+    $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -91,8 +95,8 @@ if [ $stage -le 2 ]; then
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
                             --acoustic-scale 1.0 \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            ${train_data_dir} data/lang $e2echain_model_dir $lat_dir
-  echo "" >$lat_dir/splice_opts
+                            ${train_data_dir} data/lang $chain_model_dir $lat_dir
+  cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
 fi
 
 if [ $stage -le 3 ]; then
@@ -100,14 +104,12 @@ if [ $stage -le 3 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-  if [ -f $tree_dir/final.mdl ]; then
-    echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-    exit 1;
+   if [ -f $tree_dir/final.mdl ]; then
+     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+     exit 1;
   fi
-
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
-    --alignment-subsampling-factor 1 \
     --context-opts "--context-width=2 --central-position=1" \
     --cmd "$cmd" $num_leaves ${train_data_dir} \
     $lang $ali_dir $tree_dir
@@ -126,7 +128,6 @@ if [ $stage -le 4 ]; then
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
-
   conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
@@ -137,11 +138,9 @@ if [ $stage -le 4 ]; then
   relu-batchnorm-layer name=tdnn1 input=Append(-4,0,4) dim=$tdnn_dim
   relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
   relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
-
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
-
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
   # trained with a cross-entropy objective in the 'chain' mod?els... this
@@ -174,20 +173,17 @@ if [ $stage -le 5 ]; then
     --chain.lm-opts="--num-extra-lm-states=500" \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
     --chain.alignment-subsampling-factor=1 \
-    --chain.left-tolerance 3 \
-    --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=2 \
+    --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1000000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=16 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=96,64 \
+    --trainer.num-chunk-per-minibatch=64,32 \
     --trainer.optimization.momentum=0.0 \
-    --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \

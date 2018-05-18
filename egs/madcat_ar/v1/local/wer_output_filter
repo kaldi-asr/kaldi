@@ -12,7 +12,7 @@ binmode STDERR, ":utf8";
 # Arabic-specific normalization
 while (<>) {
   @F = split " ";
-  print $F[0] . " "; 
+  print $F[0] . " ";
   foreach $s (@F[1..$#F]) {
     $s =~ s/\x{0623}/\x{0627}/g;
     $s =~ s/\x{0625}/\x{0627}/g;

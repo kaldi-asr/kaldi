@@ -53,7 +53,7 @@ num_pdfs=$(awk '{print $2}' $data/utt2spk | sort | uniq -c | wc -l)
 # the number of archives and increases the number of examples per archive.
 # Decreasing this value increases the number of archives, while decreasing the
 # number of examples per archive.
-if [ $stage -le 4 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: Getting neural network training egs";
   # dump egs.
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
@@ -68,11 +68,11 @@ if [ $stage -le 4 ]; then
     --min-frames-per-chunk 200 \
     --max-frames-per-chunk 400 \
     --num-diagnostic-archives 3 \
-    --num-repeats 35 \
+    --num-repeats 50 \
     "$data" $egs_dir
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 7 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(wc -w $egs_dir/pdf2num | awk '{print $1}')
   feat_dim=$(cat $egs_dir/info/feat_dim)
@@ -129,7 +129,7 @@ fi
 
 dropout_schedule='0,0@0.20,0.1@0.50,0'
 srand=123
-if [ $stage -le 6 ]; then
+if [ $stage -le 8 ]; then
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
     --cmd="$train_cmd" \
     --trainer.optimization.proportional-shrink 10 \
