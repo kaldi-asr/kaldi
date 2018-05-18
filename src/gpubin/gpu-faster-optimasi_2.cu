@@ -349,8 +349,10 @@ int viterbi(gpu_fst &m,
 
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
+  int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
+  int LIKELIHOOD_BLOCKS = ceildiv(NUM_PDFS, BLOCK_SIZE);
 
-  compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
+  compute_initial <<<BLOCKS, BLOCK_SIZE>>> (
     m.from_states.data().get(),
     m.to_states.data().get(),
     m.probs.data().get(),
@@ -372,9 +374,8 @@ int viterbi(gpu_fst &m,
    
     decodable->CacheFrameFromGPU(frame_);
     GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
-    // thrust::copy(gpu_cur_feats.data_.begin(), gpu_cur_feats.data_.end(), std::ostream_iterator<float>(std::cout, " "));
-
-    compute_loglikelihoods<<<ceildiv(NUM_PDFS, BLOCK_SIZE), BLOCK_SIZE>>> (
+    
+    compute_loglikelihoods<<<LIKELIHOOD_BLOCKS, BLOCK_SIZE>>> (
       frame_, 
       gpu_decodable, 
       loglikelihoods.data().get(), 
@@ -385,8 +386,6 @@ int viterbi(gpu_fst &m,
     );
 
     cudaDeviceSynchronize();
-
-    int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
     
     // compute nonepsilon / emitting
     compute_emitting <<<BLOCKS, BLOCK_SIZE>>> (

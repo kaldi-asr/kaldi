@@ -244,10 +244,9 @@ __global__ void compute_emitting(int *from_states, int *to_states, float *probs,
   
   viterbi_from_shared_states[threadIdx.x] = viterbi_prev[from_shared_states[threadIdx.x]];
 
-  if (offset < end_offset && shared_inputs[threadIdx.x] != EPS_SYM) {
+  if (offset < end_offset && shared_inputs[threadIdx.x] != EPS_SYM && unpack_prob(viterbi_from_shared_states[threadIdx.x]) != -FLT_MAX) {
     int idxlayer = ((unpack_ptr(viterbi_from_shared_states[threadIdx.x]) >> NUM_BIT_SHL_LAYER) + 1) & NUM_EPS_LAYER; // dapat index layernya keberapa
     float ac_cost = - gpu_decodable->LogLikelihood(frame, shared_inputs[threadIdx.x], cur_feats, cur_feats_dim);
-    // printf("ACOUSTIC SCORE (%d,%d) : %.10f\n", frame, shared_inputs[threadIdx.x], ac_cost);
     prob_ptr_t pp = pack(unpack_prob(viterbi_from_shared_states[threadIdx.x]) - shared_probs[threadIdx.x] - ac_cost, offset | (idxlayer << NUM_BIT_SHL_LAYER));
     atomicMax(&viterbi[to_shared_states[threadIdx.x]], pp);
   }
@@ -343,7 +342,9 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
 
-  compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
+  int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
+
+  compute_initial <<<BLOCKS, BLOCK_SIZE>>> (
     m.from_states.data().get(),
     m.to_states.data().get(),
     m.probs.data().get(),
@@ -364,11 +365,9 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   for (int t = NUM_LAYER; !decodable->IsLastFrame(frame_ - 1) && batch_frame < BATCH_SIZE;
      ++frame_, ++utt_frames_, ++batch_frame, t += NUM_LAYER) {
   
+    std::cerr << "FRAME : " << frame_ << std::endl;
     decodable->CacheFrameFromGPU(frame_);
     GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
-    // thrust::copy(gpu_cur_feats.data_.begin(), gpu_cur_feats.data_.end(), std::ostream_iterator<float>(std::cout, " "));
-
-    int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
 
     // compute nonepsilon / emitting
     compute_emitting <<<BLOCKS, BLOCK_SIZE>>> (
