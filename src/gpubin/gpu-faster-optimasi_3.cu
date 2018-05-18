@@ -304,7 +304,6 @@ __global__ void get_path(int *from_nodes,
   if (id == 0) {
     int state = unpack_ptr(path[(batch_frame + 1) * NUM_LAYER]);
     float nilai = unpack_prob(path[(batch_frame + 1) * NUM_LAYER]);
-    printf("STATE MAX : %d, nilai : %.10f\n", state, nilai);
     for (int t = batch_frame; t > 0; num_path_d++, t--) {
       while(state >= (1 << NUM_BIT_SHL_LAYER)){
         prob_ptr_t pp = viterbi[(t * NUM_LAYER + (state >> NUM_BIT_SHL_LAYER)) * num_nodes + (state & OFFSET_AND_BIT)];
@@ -352,7 +351,7 @@ int viterbi(gpu_fst &m,
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
   int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
-  int LIKELIHOOD_BLOCKS = ceildiv(NUMPDFS, LIKELIHOOD_BLOCK_SIZE);
+  int LIKELIHOOD_BLOCKS = ceildiv(NUM_PDFS, LIKELIHOOD_BLOCK_SIZE);
   compute_initial <<<BLOCKS, BLOCK_SIZE>>> (
     m.from_states.data().get(),
     m.to_states.data().get(),

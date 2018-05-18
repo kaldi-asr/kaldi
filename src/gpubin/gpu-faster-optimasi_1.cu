@@ -312,7 +312,6 @@ __global__ void get_path(int *from_nodes,
   if (id == 0) {
     int state = unpack_ptr(path[(batch_frame + 1) * NUM_LAYER]);
     float nilai = unpack_prob(path[(batch_frame + 1) * NUM_LAYER]);
-    printf("STATE MAX : %d, nilai : %.10f\n", state, nilai);
     for (int t = batch_frame; t > 0; num_path_d++, t--) {
       while(state >= (1 << NUM_BIT_SHL_LAYER)){
         prob_ptr_t pp = viterbi[(t * NUM_LAYER + (state >> NUM_BIT_SHL_LAYER)) * num_nodes + (state & OFFSET_AND_BIT)];
