@@ -42,6 +42,7 @@ int ceildiv(int x, int y) { return (x-1)/y+1; }
 #define BLOCK_SIZE 512
 #define BEAM_SIZE 10
 #define BATCH_SIZE 216
+#define LIKELIHOOD_BLOCK_SIZE 128
 
 const int NUM_EPS_LAYER = 1;
 const int NUM_LAYER = NUM_EPS_LAYER + 1;
@@ -77,26 +78,26 @@ const char* cublasGetErrorString(cublasStatus_t status)
 
 __device__ cublasStatus_t cublas_gemv_gpu(
     cublasHandle_t handle, cublasOperation_t trans,
-    int m, int n, float alpha, const float* A, int lda, const float* x,
-    int incx, float beta, float* y, int incy) {
-  return cublasSgemv_v2(handle,trans,m,n,&alpha,A,lda,x,incx,&beta,y,incy);
+    int m, int n, float* alpha, const float* A, int lda, const float* x,
+    int incx, float* beta, float* y, int incy) {
+  return cublasSgemv_v2(handle,trans,m,n, alpha,A,lda,x,incx, beta,y,incy);
 }
 
 __device__ cublasStatus_t cublas_gemv_gpu(
     cublasHandle_t handle, cublasOperation_t trans,
-    int m, int n, double alpha, const double* A, int lda, const double* x,
-    int incx, double beta, double* y, int incy) {
-  return cublasDgemv_v2(handle,trans,m,n,&alpha,A,lda,x,incx,&beta,y,incy);
+    int m, int n, double* alpha, const double* A, int lda, const double* x,
+    int incx, double* beta, double* y, int incy) {
+  return cublasDgemv_v2(handle,trans,m,n, alpha,A,lda,x,incx, beta,y,incy);
 }
 
 __device__ cublasStatus_t AddMatVecGPU(
                   cublasHandle_t handle,
                   BaseFloat* data, 
-                  const BaseFloat alpha,
+                  BaseFloat* alpha,
                   const GPUMatrix<BaseFloat> &M,
                   MatrixTransposeType trans,
                   BaseFloat* v,  
-                  const BaseFloat beta){
+                  BaseFloat* beta){
   return cublas_gemv_gpu(handle,
       (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
       M.NumCols(), M.NumRows(), alpha, M.Data(),
@@ -136,14 +137,21 @@ struct GPUDiagGmm{
     cublasHandle_t handle;
     cublasCreate(&handle);
      
-    stat = AddMatVecGPU(handle, loglikes, 1.0, means_invvars_, kNoTrans, data, 1.0);
+    BaseFloat* beta = new BaseFloat(1.0);
+    BaseFloat* alpha_1 = new BaseFloat(1.0);
+    BaseFloat* alpha_2 = new BaseFloat(-0.5);
+
+    stat = AddMatVecGPU(handle, loglikes, alpha_1, means_invvars_, kNoTrans, data, beta);
     if(stat != CUBLAS_STATUS_SUCCESS){
       printf("CUBLAS CALL ERROR 1 : %s\n", cublasGetErrorString(stat));
     }
-    AddMatVecGPU(handle, loglikes, -0.5, inv_vars_, kNoTrans, data_sq, 1.0);
+    stat = AddMatVecGPU(handle, loglikes, alpha_2, inv_vars_, kNoTrans, data_sq, beta);
     if(stat != CUBLAS_STATUS_SUCCESS){
       printf("CUBLAS CALL ERROR 2 : %s\n", cublasGetErrorString(stat));
     }
+    delete alpha_1;
+    delete alpha_2;
+    delete beta;
     cublasDestroy(handle); 
     BaseFloat max_elem = -CUDART_MAX_NORMAL_F;
     for(int32 i = 0;i < num_loglikes; ++i) {
@@ -407,8 +415,9 @@ int viterbi(gpu_fst &m,
 
   int start_offset = 0; 
   int end_offset = m.input_offsets.back();
-
-  compute_initial <<<ceildiv(end_offset-start_offset, BLOCK_SIZE), BLOCK_SIZE>>> (
+  int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
+  int LIKELIHOOD_BLOCKS = ceildiv(NUM_PDFS, LIKELIHOOD_BLOCK_SIZE);
+  compute_initial <<<BLOCKS, BLOCK_SIZE>>> (
     m.from_states.data().get(),
     m.to_states.data().get(),
     m.probs.data().get(),
@@ -427,13 +436,12 @@ int viterbi(gpu_fst &m,
 
   for (int t = NUM_LAYER; !decodable->IsLastFrame(frame_ - 1) && batch_frame < BATCH_SIZE;
      ++frame_, ++utt_frames_, ++batch_frame, t += NUM_LAYER) {
-    std::cerr << "FRAME : " << frame_ << std::endl;
-
+   
     decodable->CacheFrameFromGPU(frame_);
     GPUVector<BaseFloat> gpu_cur_feats(decodable->cur_feats());
     // thrust::copy(gpu_cur_feats.data_.begin(), gpu_cur_feats.data_.end(), std::ostream_iterator<float>(std::cout, " "));
 
-    compute_loglikelihoods<<<ceildiv(NUM_PDFS, BLOCK_SIZE), BLOCK_SIZE>>> (
+    compute_loglikelihoods<<<LIKELIHOOD_BLOCKS, LIKELIHOOD_BLOCK_SIZE>>> (
       frame_, 
       gpu_decodable, 
       loglikelihoods.data().get(), 
@@ -445,7 +453,6 @@ int viterbi(gpu_fst &m,
 
     cudaDeviceSynchronize();
 
-    int BLOCKS = ceildiv(end_offset-start_offset, BLOCK_SIZE);
     
     // compute nonepsilon / emitting
     compute_emitting <<<BLOCKS, BLOCK_SIZE>>> (
