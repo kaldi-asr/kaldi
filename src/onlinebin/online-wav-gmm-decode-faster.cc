@@ -190,6 +190,7 @@ int main(int argc, char *argv[]) {
       int32 start_frame = 0;
       bool partial_res = false;
       decoder.InitDecoding();
+      auto read_start = std::chrono::steady_clock::now();
       while (1) {
         OnlineFasterDecoder::DecodeState dstate = decoder.Decode(&decodable);
         if (dstate & (decoder.kEndFeats | decoder.kEndUtt)) {
@@ -229,6 +230,9 @@ int main(int argc, char *argv[]) {
           }
         }
       }
+      auto read_end = std::chrono::steady_clock::now();
+      std::chrono::duration<double> diff = read_end - read_start;
+      std::cout << "Time to decode sentence: " << diff.count()  << std::endl;
       delete feat_transform;
     }
     delete word_syms;
