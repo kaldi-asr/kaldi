@@ -1,7 +1,6 @@
 #!/bin/bash
 # Copyright    2017  Hossein Hadian
 
-
 # This script does end2end chain training (i.e. from scratch)
 
 # local/chain/compare_wer.sh exp/chain/cnn_1a exp/chain/cnn_chainali_1c exp/chain/e2e_cnn_1a

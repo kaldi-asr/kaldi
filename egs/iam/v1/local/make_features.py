@@ -36,6 +36,7 @@ parser.add_argument('--padding', type=int, default=5,
                     help='Number of white pixels to pad on the left'
                     'and right side of the image.')
 
+
 args = parser.parse_args()
 
 
@@ -122,5 +123,5 @@ with open(data_list_path) as f:
         num_ok += 1
         write_kaldi_matrix(out_fh, data, image_id)
 
-print('Generated features for {} images. Failed for {} (image too '
+print('Generated features for {} images. Failed for {} (iamge too '
       'long).'.format(num_ok, num_fail), file=sys.stderr)

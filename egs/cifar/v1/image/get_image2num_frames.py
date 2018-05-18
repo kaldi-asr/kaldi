@@ -7,6 +7,7 @@
     The output is written to 'image2num_frames' in the given data dir. This
     file is later used by image/get_allowed_lengths.py to find a set of allowed lengths
     for the data dir. The output format is similar to utt2num_frames
+
 """
 
 import argparse

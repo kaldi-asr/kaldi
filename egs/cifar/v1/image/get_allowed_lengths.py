@@ -4,7 +4,6 @@
 # Apache 2.0
 
 
-
 """ This script finds a set of allowed lengths for a given OCR/HWR data dir.
     The allowed lengths are spaced by a factor (like 10%) and are written
     in an output file named "allowed_lengths.txt" in the output data dir. This
