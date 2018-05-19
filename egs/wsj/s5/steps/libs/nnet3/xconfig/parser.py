@@ -71,7 +71,8 @@ config_to_layer = {
         'renorm-component': xlayers.XconfigRenormComponent,
         'batchnorm-component': xlayers.XconfigBatchnormComponent,
         'no-op-component': xlayers.XconfigNoOpComponent,
-        'linear-component': xlayers.XconfigLinearComponent
+        'linear-component': xlayers.XconfigLinearComponent,
+        'scale-component':  xlayers.XconfigPerElementScaleComponent
 }
 
 # Turn a config line and a list of previous layers into
