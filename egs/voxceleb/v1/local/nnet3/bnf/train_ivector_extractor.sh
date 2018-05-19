@@ -147,6 +147,8 @@ if [ $stage -le -2 ]; then
     fgmm-global-init-from-accs --verbose=2 \
       "fgmm-global-sum-accs - $dir/fgmm_stats.*.acc |" $num_components \
       $dir/final.ubm || exit 1;
+
+  $cleanup && rm $dir/fgmm_stats.*.acc
 fi
 
 # Initialize the i-vector extractor using the FGMM input
