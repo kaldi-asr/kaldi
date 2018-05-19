@@ -46,7 +46,8 @@ if [ $stage -le 2 ]; then
   # Make MFCCs and compute the energy-based VAD for each dataset
   for name in train voxceleb1_test; do
     cp -r data/${name} data/${name}_hires
-    steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+    steps/make_mfcc.sh --write-utt2num-frames true \
+      --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
       data/${name} exp/make_mfcc $mfccdir
     utils/fix_data_dir.sh data/${name}
     sid/compute_vad_decision.sh --nj 40 --cmd "$train_cmd" \
@@ -62,9 +63,9 @@ fi
 if [ $stage -le 3 ]; then
   # Extract bottleneck features for each dataset
   for name in train voxceleb1_test; do
-    steps/nnet3/make_bottleneck_features.sh --nj 40 --cmd "$train_cmd" --use-gpu true \
+    steps/nnet3/make_bottleneck_features.sh --nj 40 --cmd "$train_cmd" \
       tdnn_bn.batchnorm data/${name}_hires data/${name}_bnf \
-      exp/nnet3 exp/make_bnf $bnfdir || exit 1;
+      exp/nnet3 exp/make_bnf $bnfdir
     cp data/${name}/vad.scp data/${name}_bnf/
     utils/fix_data_dir.sh data/${name}_bnf
   done
@@ -84,19 +85,32 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
+  # In this stage, we train the i-vector extractor.
+  #
+  # Note that there are well over 1 million utterances in our training set,
+  # and it takes an extremely long time to train the extractor on all of this.
+  # Also, most of those utterances are very short.  Short utterances are
+  # harmful for training the i-vector extractor.  Therefore, to reduce the
+  # training time and improve performance, we will only train on the 100k
+  # longest utterances.
+  utils/subset_data_dir.sh \
+    --utt-list <(sort -n -k 2 data/train/utt2num_frames | tail -n 100000) \
+    data/train data/train_100k
+  utils/subset_data_dir.sh --utt-list data/train_100k/utt2spk \
+    data/train_bnf data/train_bnf_100k
   # Train the i-vector extractor.
-  local/nnet3/bnf/train_ivector_extractor.sh --cmd "$train_cmd --mem 25G" \
+  local/nnet3/bnf/train_ivector_extractor.sh --cmd "$train_cmd --mem 16G" \
     --ivector-dim 600 --delta-window 3 --delta-order 2 --add-bnf true \
-    --num-iters 5 exp/full_ubm/final.ubm data/train data/train_bnf \
+    --num-iters 5 exp/full_ubm/final.ubm data/train_100k data/train_bnf_100k \
     exp/extractor_bnf
 fi
 
 if [ $stage -le 6 ]; then
-  local/nnet3/bnf/extract_ivectors.sh --cmd "$train_cmd --mem 4G" --nj 40 --add-bnf true \
+  local/nnet3/bnf/extract_ivectors.sh --cmd "$train_cmd --mem 8G" --nj 80 --add-bnf true \
     exp/extractor_bnf data/train data/train_bnf \
     exp/ivectors_train
 
-  local/nnet3/bnf/extract_ivectors.sh --cmd "$train_cmd --mem 4G" --nj 40 --add-bnf true \
+  local/nnet3/bnf/extract_ivectors.sh --cmd "$train_cmd --mem 8G" --nj 40 --add-bnf true \
     exp/extractor data/voxceleb1_test data/voxceleb1_test_bnf \
     exp/ivectors_voxceleb1_test
 fi
@@ -132,7 +146,17 @@ fi
 
 if [ $stage -le 9 ]; then
   eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_voxceleb1_test) 2> /dev/null`
-  echo "EER: ${eer}%"
+  mindcf1=`sid/compute_min_dcf.py --p-target 0.01 exp/scores_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  mindcf2=`sid/compute_min_dcf.py --p-target 0.001 exp/scores_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  echo "MFCC-BNF EER: ${eer}%"
+  echo "minDCF(p-target=0.01): $mindcf1"
+  echo "minDCF(p-target=0.001): $mindcf2"
+  # MFCC-BNF EER: 4.205%
+  # minDCF(p-target=0.01): 0.4509
+  # minDCF(p-target=0.001): 0.6528
+  #
   # For reference, here's the ivector system from ../v1:
-  # EER: 5.53%
+  # EER: 5.419%
+  # minDCF(p-target=0.01): 0.4701
+  # minDCF(p-target=0.001): 0.5981
 fi
