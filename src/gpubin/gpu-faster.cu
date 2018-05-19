@@ -4,6 +4,7 @@
 // Uses Parallel Viterbi Beam Search Algorithm from Arturo Argueta and David Chiang's paper.
 
 #include <cublas_v2.h>
+#include <cuda_runtime.h>
 
 #include "base/kaldi-math.h"
 #include "gmm/diag-gmm.h"
@@ -135,24 +136,35 @@ struct GPUDiagGmm{
 
     cublasStatus_t stat;
     cublasHandle_t handle;
-    cublasCreate(&handle);
-     
-    BaseFloat* beta = new BaseFloat(1.0);
-    BaseFloat* alpha_1 = new BaseFloat(1.0);
-    BaseFloat* alpha_2 = new BaseFloat(-0.5);
+    stat = cublasCreate(&handle);
+    if(stat != CUBLAS_STATUS_SUCCESS){
+      printf("CUBLAS CALL ERROR 0 : %s\n", cublasGetErrorString(stat));
+      for(int i = 0;i < gconsts_.Dim(); ++i){
+        for(int j = 0;j < num_data; ++j){
+          loglikes[i] += means_invvars_.data[means_invvars_.Index(i, j)] * data[j];
+          loglikes[i] -= 0.5 * inv_vars_.data[inv_vars_.Index(i, j)] * data_sq[j];
+        }
+      }
+    }
+    else {
+      BaseFloat* beta = new BaseFloat(1.0);
+      BaseFloat* alpha_1 = new BaseFloat(1.0);
+      BaseFloat* alpha_2 = new BaseFloat(-0.5);
 
-    stat = AddMatVecGPU(handle, loglikes, alpha_1, means_invvars_, kNoTrans, data, beta);
-    if(stat != CUBLAS_STATUS_SUCCESS){
-      printf("CUBLAS CALL ERROR 1 : %s\n", cublasGetErrorString(stat));
+      stat = AddMatVecGPU(handle, loglikes, alpha_1, means_invvars_, kNoTrans, data, beta);
+      if(stat != CUBLAS_STATUS_SUCCESS){
+        printf("CUBLAS CALL ERROR 1 : %s\n", cublasGetErrorString(stat));
+      }
+      stat = AddMatVecGPU(handle, loglikes, alpha_2, inv_vars_, kNoTrans, data_sq, beta);
+      if(stat != CUBLAS_STATUS_SUCCESS){
+        printf("CUBLAS CALL ERROR 2 : %s\n", cublasGetErrorString(stat));
+      }
+      delete alpha_1;
+      delete alpha_2;
+      delete beta;
+      cublasDestroy(handle); 
     }
-    stat = AddMatVecGPU(handle, loglikes, alpha_2, inv_vars_, kNoTrans, data_sq, beta);
-    if(stat != CUBLAS_STATUS_SUCCESS){
-      printf("CUBLAS CALL ERROR 2 : %s\n", cublasGetErrorString(stat));
-    }
-    delete alpha_1;
-    delete alpha_2;
-    delete beta;
-    cublasDestroy(handle); 
+
     BaseFloat max_elem = -CUDART_MAX_NORMAL_F;
     for(int32 i = 0;i < num_loglikes; ++i) {
       if(max_elem < loglikes[i]) max_elem = loglikes[i];

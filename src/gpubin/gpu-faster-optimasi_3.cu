@@ -35,7 +35,7 @@
 #include <math_constants.h>
 
 int ceildiv(int x, int y) { return (x-1)/y+1; }
-#define BLOCK_SIZE 512
+#define BLOCK_SIZE 1024
 #define BEAM_SIZE 10
 #define BATCH_SIZE 216
 #define LIKELIHOOD_BLOCK_SIZE 128
