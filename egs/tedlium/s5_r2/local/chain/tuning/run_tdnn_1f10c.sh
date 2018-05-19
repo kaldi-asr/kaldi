@@ -3,6 +3,16 @@
 # 1f10c is as 1f10b but adding bypass connections to the TDNN-F blocks,
 # in the big dims (1024).
 #  There is no clear difference.
+#  Note: the way I did this is slightly unusual and possibly problematic,
+# although I should investigate this empirically.  We add together the output
+# of the previous 2 blocks for input into the next block, but next time we add
+# it, we don't add to the previous sum but to the raw output of the block...
+# basically the sum doesn't go all the way through.
+# In the next experiment (1d) it's done differently (i.e. it goes all the
+# way through), but with a scale of 0.5 on the previous output to stop the sum
+# getting larger each time.  This may not be optimal.
+
+
 # local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10_sp_bi exp/chain_cleaned/tdnn1f10b_sp_bi exp/chain_cleaned/tdnn1f10c_sp_bi
 # System                tdnn1f10_sp_bi tdnn1f10b_sp_bi tdnn1f10c_sp_bi
 # WER on dev(orig)            8.4       8.3       8.4
