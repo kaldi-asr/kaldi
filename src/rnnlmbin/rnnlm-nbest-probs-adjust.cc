@@ -93,7 +93,8 @@ int main(int argc, char *argv[]) {
 
     std::string use_gpu = "no";
     bool batchnorm_test_mode = true, dropout_test_mode = true;
-    double unigram_weight = 0.0;
+    bool two_speaker_mode = true;
+    double correction_weight = 1.0;
 
     ParseOptions po(usage);
     rnnlm::RnnlmComputeStateComputationOptions opts;
@@ -104,7 +105,10 @@ int main(int argc, char *argv[]) {
     po.Register("dropout-test-mode", &dropout_test_mode,
                 "If true, set test-mode to true on any DropoutComponents and "
                 "DropoutMaskComponents.");
-    po.Register("unigram-weight", &unigram_weight, "Weight for unigram in combination");
+    po.Register("correction_weight", &correction_weight, "The weight on the "
+                "correction term of the RNNLM scores.");
+    po.Register("two_speaker_mode", &two_speaker_mode, "If true, use two "
+                "speaker's utterances to estimate cache models.");
     opts.Register(&po);
 
     po.Read(argc, argv);
@@ -153,19 +157,23 @@ int main(int argc, char *argv[]) {
     std::map<string, double> per_convo_sums;
     std::map<string, double> per_utt_sums;
 
+    int32 total_words = 0;
     {
       std::ifstream ifile(text_filename.c_str());
       std::string line;
       std::string utt_id;
       while (getline(ifile, line)) {
-//        std::cout << "line is " << line << std::endl;
         std::vector<int> v;
         GetNumbersFromLine(line, &utt_id, &v);
         std::string convo_id = utt2convo[utt_id];
-//        std::cout << convo_id << " " << utt_id << " " << v.size() << std::endl;
+        if (two_speaker_mode) {
+          std::string convo_id_2spk = std::string(convo_id.begin(), convo_id.end() - 2);
+          convo_id = convo_id_2spk;
+        }
 
         per_convo_sums[convo_id] += v.size();
         per_utt_sums[utt_id] += v.size();
+        total_words += v.size();
         for (int32 i = 0; i < v.size(); i++) {
           int32 word_id = v[i];
           per_convo_counts[convo_id][word_id]++;
@@ -173,63 +181,67 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-
-//    KALDI_LOG << "per convo size " << per_convo_counts.size();
-//    KALDI_LOG << "per utt size " << per_utt_counts.size();
-
+    
     {
       std::ifstream ifile(text_filename.c_str());
       std::string line;
       std::string utt_id;
+      double total_probs = 0.0;
       while (getline(ifile, line)) {
         std::vector<int> v;
         GetNumbersFromLine(line, &utt_id, &v);
         std::string convo_id = utt2convo[utt_id];
+        // Use convs of both speakers
+        if (two_speaker_mode) {
+          std::string convo_id_2spk = std::string(convo_id.begin(), convo_id.end() - 2);
+          convo_id = convo_id_2spk;
+        }
         map<int, double> unigram = per_convo_counts[convo_id];
         for (map<int, double>::iterator iter = per_utt_counts[utt_id].begin();
                                         iter != per_utt_counts[utt_id].end(); iter++) {
-          unigram[iter->first] =
-                   (unigram[iter->first] - iter->second); //
+          unigram[iter->first] = unigram[iter->first] - iter->second;
         }
-
         double sum = per_convo_sums[convo_id] - per_utt_sums[utt_id];
+
         double debug_sum = 0.0;
         for (map<int, double>::iterator iter = unigram.begin();
                                         iter != unigram.end(); iter++) {
           iter->second /= sum;
           debug_sum += iter->second;
         }
-
         KALDI_ASSERT(ApproxEqual(debug_sum, 1.0));
 
         RnnlmComputeState rnnlm_compute_state(info, opts.bos_index);
         for (int32 i = 1; i < v.size(); i++) {
           int32 word_id = v[i];
-//          std::cout << rnnlm_compute_state.LogProbOfWord(word_id) << " ";
           CuMatrix<BaseFloat> word_logprobs(1, word_embedding_mat.NumRows());
           rnnlm_compute_state.GetLogProbOfWords(&word_logprobs);
-//          std::cout << word_logprobs(0, word_id) << " "; // this should be exactly the same as the 3 lines above
-
-//          word_logprobs.ApplyLogSoftMaxPerRow(word_logprobs);
-//          std::cout << word_logprobs(0, word_id) << " ";
-          word_logprobs.ApplySoftMaxPerRow(word_logprobs);
-          // now every element is a legit probability
-          for (map<int, double>::iterator iter = unigram.begin();
-                                          iter != unigram.end(); iter++) {
-            double u = iter->second;  // already unigram probs
-            word_logprobs.Row(0).Range(iter->first, 1).Scale(1 - unigram_weight);
-            word_logprobs.Row(0).Range(iter->first, 1).Add(u * unigram_weight);
-          }
-
-          word_logprobs.ApplyLog();
           word_logprobs.ApplyLogSoftMaxPerRow(word_logprobs);
-          rnnlm_compute_state.AddWord(word_id);
+          // now every element is a legit probability
+          if (correction_weight > 0) {
+            for (map<int, double>::iterator iter = unigram.begin();
+                                          iter != unigram.end(); iter++) {
+                double u = iter->second;  // already unigram probs
 
-          std::cout << word_logprobs(0, word_id) << " ";
+                const double C = 0.0000001;
+                double correction = (u + C) / (original_unigram[iter->first] + C);
+                // smoothing by a background unigram distribution original_unigram
+                correction = 0.5 * correction + 0.5;
+                if (correction != 0) {
+                    word_logprobs.Row(0).Range(iter->first, 1).Add(Log(correction)
+                        * correction_weight);
+                }
+            }
+            word_logprobs.ApplyLogSoftMaxPerRow(word_logprobs);
+          }
+          rnnlm_compute_state.AddWord(word_id);
+          total_probs += word_logprobs(0, word_id);
         }
         int32 word_id = opts.eos_index;
-        std::cout << rnnlm_compute_state.LogProbOfWord(word_id) << std::endl;
+        total_probs += rnnlm_compute_state.LogProbOfWord(word_id);
       }
+      double ppl = Exp(-total_probs/total_words);
+      std::cout << "Perplexity: " << ppl << std::endl;
     }
 
 #if HAVE_CUDA==1

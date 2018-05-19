@@ -43,6 +43,7 @@ class KaldiRnnlmDeterministicFst
   // Does not take ownership.
   KaldiRnnlmDeterministicFst(int32 max_ngram_order,
       const RnnlmComputeStateInfo &info,
+      double correction_weight = 0.75,
       const std::map<int32, double> &unigrams = std::map<int32, double>(),
       const std::vector<double> &ori_unigrams = std::vector<double>());
   ~KaldiRnnlmDeterministicFst();
@@ -77,6 +78,7 @@ class KaldiRnnlmDeterministicFst
   std::vector<RnnlmComputeState*> state_to_rnnlm_state_;
   const std::map<int32, double> &unigrams_;
   const std::vector<double> &ori_unigrams_;
+  double correction_weight_;
 
 };
 
