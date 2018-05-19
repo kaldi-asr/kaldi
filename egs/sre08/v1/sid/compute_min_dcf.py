@@ -5,7 +5,7 @@
 # This script computes the minimum detection cost function, which is a common
 # error metric used in speaker recognition.  Compared to equal error-rate,
 # which assigns equal weight to false negatives and false positives, this
-# error-rate is usually used to asses performance in settings where achieving
+# error-rate is usually used to assess performance in settings where achieving
 # a low false positive rate is more important than achieving a low false
 # negative rate.  See the NIST 2016 Speaker Recognition Evaluation Plan at
 # https://www.nist.gov/sites/default/files/documents/2016/10/07/sre16_eval_plan_v1.3.pdf
