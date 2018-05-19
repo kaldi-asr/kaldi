@@ -1,28 +1,16 @@
 #!/bin/bash
 
-# e2eali_1b is the same as e2eali_1a but uses unconstrained egs
-
-# local/chain/compare_wer.sh /home/hhadian/kaldi-rnnlm/egs/iam/v1/exp/chain/cnn_e2eali_1a exp/chain/cnn_e2eali_1b
-# System                      cnn_e2eali_1a cnn_e2eali_1b
-# WER                             12.79     12.23
-# CER                              5.73      5.48
-# Final train prob              -0.0556   -0.0367
-# Final valid prob              -0.0795   -0.0592
-# Final train prob (xent)       -0.9178   -0.8382
-# Final valid prob (xent)       -1.0604   -0.9853
-# Parameters                      3.95M     3.95M
-
-# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
-# exp/chain/cnn_e2eali_1b: num-iters=21 nj=2..4 num-params=4.0M dim=40->360 combine=-0.038->-0.038 (over 1) xent:train/valid[13,20,final]=(-1.34,-0.967,-0.838/-1.40,-1.07,-0.985) logprob:train/valid[13,20,final]=(-0.075,-0.054,-0.037/-0.083,-0.072,-0.059)
+# e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
+# lattice alignments and to build a tree
 
 set -e -o pipefail
 
 stage=0
 
-nj=30
+nj=70
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1a
 common_egs_dir=
 reporting_email=
@@ -41,7 +29,7 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=true
-lang_test=lang_unk
+lang_test=lang_test
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -132,12 +120,9 @@ if [ $stage -le 4 ]; then
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  cnn_opts="l2-regularize=0.075"
-  tdnn_opts="l2-regularize=0.075"
-  output_opts="l2-regularize=0.1"
-  common1="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
-  common2="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
+  common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
+  common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
+  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
@@ -147,15 +132,15 @@ if [ $stage -le 4 ]; then
   conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
   conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
   conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn6 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
-  conv-relu-batchnorm-layer name=cnn7 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
-  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $tdnn_opts
-  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
-  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
+  conv-relu-batchnorm-layer name=cnn6 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
+  conv-relu-batchnorm-layer name=cnn7 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
+  relu-batchnorm-layer name=tdnn1 input=Append(-4,0,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $tdnn_opts
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
+  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -166,8 +151,8 @@ if [ $stage -le 4 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5 $tdnn_opts
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5 $output_opts
+  relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -193,22 +178,23 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=4 \
+    --trainer.num-epochs=2 \
     --trainer.frames-per-iter=1000000 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=4 \
+    --trainer.optimization.num-jobs-initial=3 \
+    --trainer.optimization.num-jobs-final=16 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=64,32 \
+    --trainer.num-chunk-per-minibatch=96,64 \
     --trainer.optimization.momentum=0.0 \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \
     --egs.chunk-left-context-initial=0 \
     --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
+    --egs.opts="--frames-overlap-per-eg 0" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \

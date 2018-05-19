@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script makes sure that only the segments present in
-# all of "feats.scp", "wav.scp" [if present], segments [if present]
+# all of "feats.scp", "images.scp" [if present], segments [if present]
 # text, and utt2spk are present in any of them.
 # It puts the original contents of data-dir into
 # data-dir/.backup
@@ -45,8 +45,8 @@ function check_sorted {
   fi
 }
 
-for x in utt2spk spk2utt feats.scp text segments wav.scp cmvn.scp vad.scp \
-    reco2file_and_channel spk2gender utt2lang utt2uniq utt2dur reco2dur utt2num_frames; do
+for x in utt2spk spk2utt feats.scp text segments images.scp cmvn.scp vad.scp \
+    reco2file_and_channel spk2gender utt2lang utt2uniq utt2dur utt2num_frames; do
   if [ -f $data/$x ]; then
     cp $data/$x $data/.backup/$x
     check_sorted $data/$x
@@ -74,19 +74,19 @@ function filter_recordings {
   # after.
 
   if [ -f $data/segments ]; then
-  # We have a segments file -> we need to filter this and the file wav.scp, and
+  # We have a segments file -> we need to filter this and the file images.scp, and
   # reco2file_and_utt, if it exists, to make sure they have the same list of
   # recording-ids.
 
-    if [ ! -f $data/wav.scp ]; then
-      echo "$0: $data/segments exists but not $data/wav.scp"
+    if [ ! -f $data/images.scp ]; then
+      echo "$0: $data/segments exists but not $data/images.scp"
       exit 1;
     fi
     awk '{print $2}' < $data/segments | sort | uniq > $tmpdir/recordings
     n1=$(cat $tmpdir/recordings | wc -l)
     [ ! -s $tmpdir/recordings ] && \
       echo "Empty list of recordings (bad file $data/segments)?" && exit 1;
-    utils/filter_scp.pl $data/wav.scp $tmpdir/recordings > $tmpdir/recordings.tmp
+    utils/filter_scp.pl $data/images.scp $tmpdir/recordings > $tmpdir/recordings.tmp
     mv $tmpdir/recordings.tmp $tmpdir/recordings
 
 
@@ -95,9 +95,9 @@ function filter_recordings {
     cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
     rm $data/segments.tmp
 
-    filter_file $tmpdir/recordings $data/wav.scp
+    filter_file $tmpdir/recordings $data/images.scp
     [ -f $data/reco2file_and_channel ] && filter_file $tmpdir/recordings $data/reco2file_and_channel
-    [ -f $data/reco2dur ] && filter_file $tmpdir/recordings $data/reco2dur
+    true
   fi
 }
 
@@ -142,11 +142,9 @@ function filter_utts {
       echo "utt2uniq is not in sorted order (fix this yourself)" && exit 1;
   fi
 
-  maybe_wav=
-  maybe_reco2dur=
-  [ ! -f $data/segments ] && maybe_wav=wav.scp # wav indexed by utts only if segments does not exist.
-  [ -s $data/reco2dur ] && [ ! -f $data/segments ] && maybe_reco2dur=reco2dur # reco2dur indexed by utts
-  for x in feats.scp text segments utt2lang $maybe_wav; do
+  maybe_image=
+  [ ! -f $data/segments ] && maybe_image=images.scp  # images indexed by utts only if segments does not exist.
+  for x in feats.scp text segments utt2lang $maybe_image; do
     if [ -f $data/$x ]; then
       utils/filter_scp.pl $data/$x $tmpdir/utts > $tmpdir/utts.tmp
       mv $tmpdir/utts.tmp $tmpdir/utts
@@ -166,7 +164,7 @@ function filter_utts {
     fi
   fi
 
-  for x in utt2spk utt2uniq feats.scp vad.scp text segments utt2lang utt2dur utt2num_frames $maybe_wav $maybe_reco2dur $utt_extra_files; do
+  for x in utt2spk utt2uniq feats.scp vad.scp text segments utt2lang utt2dur utt2num_frames $maybe_image $utt_extra_files; do
     if [ -f $data/$x ]; then
       cp $data/$x $data/.backup/$x
       if ! cmp -s $data/$x <( utils/filter_scp.pl $tmpdir/utts $data/$x ) ; then

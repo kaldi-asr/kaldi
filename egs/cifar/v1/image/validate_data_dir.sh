@@ -2,7 +2,7 @@
 
 
 no_feats=false
-no_wav=false
+no_image=false
 no_text=false
 no_spk_sort=false
 
@@ -15,8 +15,8 @@ for x in `seq 4`; do
     no_text=true
     shift;
   fi
-  if [ "$1" == "--no-wav" ]; then
-    no_wav=true
+  if [ "$1" == "--no-image" ]; then
+    no_image=true
     shift;
   fi
   if [ "$1" == "--no-spk-sort" ]; then
@@ -26,7 +26,7 @@ for x in `seq 4`; do
 done
 
 if [ $# -ne 1 ]; then
-  echo "Usage: $0 [--no-feats] [--no-text] [--no-wav] [--no-spk-sort] <data-dir>"
+  echo "Usage: $0 [--no-feats] [--no-text] [--no-image] [--no-spk-sort] <data-dir>"
   echo "The --no-xxx options mean that the script does not require "
   echo "xxx.scp to be present, but it will check it if it is present."
   echo "--no-spk-sort means that the script does not require the utt2spk to be "
@@ -127,28 +127,28 @@ if [ -f $data/text ]; then
   fi
 fi
 
-if [ -f $data/segments ] && [ ! -f $data/wav.scp ]; then
-  echo "$0: in directory $data, segments file exists but no wav.scp"
+if [ -f $data/segments ] && [ ! -f $data/images.scp ]; then
+  echo "$0: in directory $data, segments file exists but no images.scp"
   exit 1;
 fi
 
 
-if [ ! -f $data/wav.scp ] && ! $no_wav; then
-  echo "$0: no such file $data/wav.scp (if this is by design, specify --no-wav)"
+if [ ! -f $data/images.scp ] && ! $no_image; then
+  echo "$0: no such file $data/images.scp (if this is by design, specify --no-image)"
   exit 1;
 fi
 
-if [ -f $data/wav.scp ]; then
-  check_sorted_and_uniq $data/wav.scp
+if [ -f $data/images.scp ]; then
+  check_sorted_and_uniq $data/images.scp
 
-  if grep -E -q '^\S+\s+~' $data/wav.scp; then
-    # note: it's not a good idea to have any kind of tilde in wav.scp, even if
+  if grep -E -q '^\S+\s+~' $data/images.scp; then
+    # note: it's not a good idea to have any kind of tilde in images.scp, even if
     # part of a command, as it would cause compatibility problems if run by
     # other users, but this used to be not checked for so we let it slide unless
     # it's something of the form "foo ~/foo.wav" (i.e. a plain file name) which
     # would definitely cause problems as the fopen system call does not do
     # tilde expansion.
-    echo "$0: Please do not use tilde (~) in your wav.scp."
+    echo "$0: Please do not use tilde (~) in your images.scp."
     exit 1;
   fi
 
@@ -169,9 +169,9 @@ if [ -f $data/wav.scp ]; then
     fi
 
     cat $data/segments | awk '{print $2}' | sort | uniq > $tmpdir/recordings
-    awk '{print $1}' $data/wav.scp > $tmpdir/recordings.wav
+    awk '{print $1}' $data/images.scp > $tmpdir/recordings.wav
     if ! cmp -s $tmpdir/recordings{,.wav}; then
-      echo "$0: Error: in $data, recording-ids extracted from segments and wav.scp"
+      echo "$0: Error: in $data, recording-ids extracted from segments and images.scp"
       echo "$0: differ, partial diff is:"
       partial_diff $tmpdir/recordings{,.wav}
       exit 1;
@@ -202,10 +202,10 @@ if [ -f $data/wav.scp ]; then
       fi
     fi
   else
-    # No segments file -> assume wav.scp indexed by utterance.
-    cat $data/wav.scp | awk '{print $1}' > $tmpdir/utts.wav
+    # No segments file -> assume images.scp indexed by utterance.
+    cat $data/images.scp | awk '{print $1}' > $tmpdir/utts.wav
     if ! cmp -s $tmpdir/utts{,.wav}; then
-      echo "$0: Error: in $data, utterance lists extracted from utt2spk and wav.scp"
+      echo "$0: Error: in $data, utterance lists extracted from utt2spk and images.scp"
       echo "$0: differ, partial diff is:"
       partial_diff $tmpdir/utts{,.wav}
       exit 1;
@@ -333,29 +333,6 @@ if [ -f $data/utt2dur ]; then
     exit 1;
   fi
   cat $data/utt2dur | \
-    awk '{ if (NF != 2 || !($2 > 0)) { print "Bad line : " $0; exit(1) }}' || exit 1
-fi
-
-
-if [ -f $data/reco2dur ]; then
-  check_sorted_and_uniq $data/reco2dur
-  cat $data/reco2dur | awk '{print $1}' > $tmpdir/recordings.reco2dur
-  if [ -f $tempdir/recordings ]; then
-    if ! cmp -s $tmpdir/recordings{,.reco2dur}; then
-      echo "$0: Error: in $data, recording-ids extracted from segments and reco2dur file"
-      echo "$0: differ, partial diff is:"
-      partial_diff $tmpdir/recordings{,.reco2dur}
-    exit 1;
-    fi
-  else
-    if ! cmp -s $tmpdir/{utts,recordings.reco2dur}; then
-      echo "$0: Error: in $data, recording-ids extracted from wav.scp and reco2dur file"
-      echo "$0: differ, partial diff is:"
-      partial_diff $tmpdir/{utts,recordings.reco2dur}
-    exit 1;
-    fi
-  fi
-  cat $data/reco2dur | \
     awk '{ if (NF != 2 || !($2 > 0)) { print "Bad line : " $0; exit(1) }}' || exit 1
 fi
 
