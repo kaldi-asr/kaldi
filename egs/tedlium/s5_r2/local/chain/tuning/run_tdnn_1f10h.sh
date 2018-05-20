@@ -2,6 +2,19 @@
 
 # 1f10h is as 1f10g but taking out the proportional-shrink option,
 #  which was a mistake.
+# The difference is not really clear.
+
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10e_sp_bi exp/chain_cleaned/tdnn1f10g_sp_bi exp/chain_cleaned/tdnn1f10h_sp_bi
+# System                tdnn1f10e_sp_bi tdnn1f10g_sp_bi tdnn1f10h_sp_bi
+# WER on dev(orig)            8.1       8.1       8.1
+# WER on dev(rescored)        7.5       7.3       7.5
+# WER on test(orig)           8.2       8.2       8.1
+# WER on test(rescored)       7.7       7.7       7.7
+# Final train prob        -0.0838   -0.0819   -0.0603
+# Final valid prob        -0.0967   -0.0975   -0.0893
+# Final train prob (xent)   -1.0139   -1.0192   -0.8857
+# Final valid prob (xent)   -1.0888   -1.1002   -1.0092
+# Num-params                13426720   9953312   9953312
 
 # 1f10g is as 1f10e but futher reducing the 192's to 128's.
 #  fixing that inconsequential bug in the input of tdnn5l.

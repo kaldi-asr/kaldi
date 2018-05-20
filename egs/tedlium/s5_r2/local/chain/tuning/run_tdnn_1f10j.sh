@@ -1,20 +1,27 @@
 #!/bin/bash
 
+# 1f10j is as 1f10i but changing Scale(0.5,...) to Scale(0.66,...).
+
+# 1f10i is as 1f10h but reducing dim from 128 to 96.
+
+# 1f10h is as 1f10g but taking out the proportional-shrink option,
+#  which was a mistake.
+# The difference is not really clear.
+
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10e_sp_bi exp/chain_cleaned/tdnn1f10g_sp_bi exp/chain_cleaned/tdnn1f10h_sp_bi
+# System                tdnn1f10e_sp_bi tdnn1f10g_sp_bi tdnn1f10h_sp_bi
+# WER on dev(orig)            8.1       8.1       8.1
+# WER on dev(rescored)        7.5       7.3       7.5
+# WER on test(orig)           8.2       8.2       8.1
+# WER on test(rescored)       7.7       7.7       7.7
+# Final train prob        -0.0838   -0.0819   -0.0603
+# Final valid prob        -0.0967   -0.0975   -0.0893
+# Final train prob (xent)   -1.0139   -1.0192   -0.8857
+# Final valid prob (xent)   -1.0888   -1.1002   -1.0092
+# Num-params                13426720   9953312   9953312
+
 # 1f10g is as 1f10e but futher reducing the 192's to 128's.
 #  fixing that inconsequential bug in the input of tdnn5l.
-
-# Cool!  It seems a bit better.
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10e_sp_bi exp/chain_cleaned/tdnn1f10g_sp_bi
-# System                tdnn1f10e_sp_bi tdnn1f10g_sp_bi
-# WER on dev(orig)            8.1       8.1
-# WER on dev(rescored)        7.5       7.3
-# WER on test(orig)           8.2       8.2
-# WER on test(rescored)       7.7       7.7
-# Final train prob        -0.0838   -0.0819
-# Final valid prob        -0.0967   -0.0975
-# Final train prob (xent)   -1.0139   -1.0192
-# Final valid prob (xent)   -1.0888   -1.1002
-# Num-params                13426720   9953312
 
 # 1f10e is as 1f10d but changing all the 256's to 192's in the parts that are served
 # by bypass connections.
@@ -101,7 +108,7 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1f10g  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1f10j  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 remove_egs=true
 
@@ -212,44 +219,44 @@ if [ $stage -le 17 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-dropout-layer name=tdnn1 $opts dim=1024
-  linear-component name=tdnn2l0 dim=128 $linear_opts input=Append(-1,0)
-  linear-component name=tdnn2l dim=128 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn2l0 dim=96 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn2l dim=96 $linear_opts input=Append(-1,0)
   relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=1024
-  no-op-component name=tdnn2sum input=Sum(Scale(0.5,tdnn1),tdnn2)
-  linear-component name=tdnn3l dim=128 $linear_opts input=Append(-1,0)
+  no-op-component name=tdnn2sum input=Sum(Scale(0.66,tdnn1),tdnn2)
+  linear-component name=tdnn3l dim=96 $linear_opts input=Append(-1,0)
   relu-batchnorm-dropout-layer name=tdnn3 $opts dim=1024 input=Append(0,1)
-  no-op-component name=tdnn3sum input=Sum(Scale(0.5,tdnn2sum), tdnn3)
-  linear-component name=tdnn4l0 dim=128 $linear_opts input=Append(-1,0)
-  linear-component name=tdnn4l dim=128 $linear_opts input=Append(0,1)
+  no-op-component name=tdnn3sum input=Sum(Scale(0.66,tdnn2sum), tdnn3)
+  linear-component name=tdnn4l0 dim=96 $linear_opts input=Append(-1,0)
+  linear-component name=tdnn4l dim=96 $linear_opts input=Append(0,1)
   relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=1024
-  no-op-component name=tdnn4sum input=Sum(Scale(0.5,tdnn3sum), tdnn4)
-  linear-component name=tdnn5l dim=128 $linear_opts
+  no-op-component name=tdnn4sum input=Sum(Scale(0.66,tdnn3sum), tdnn4)
+  linear-component name=tdnn5l dim=96 $linear_opts
   relu-batchnorm-dropout-layer name=tdnn5 $opts dim=1024 input=Append(0, tdnn3l)
-  no-op-component name=tdnn5sum input=Sum(Scale(0.5,tdnn4sum), tdnn5)
-  linear-component name=tdnn6l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn6l dim=128 $linear_opts input=Append(-3,0)
+  no-op-component name=tdnn5sum input=Sum(Scale(0.66,tdnn4sum), tdnn5)
+  linear-component name=tdnn6l0 dim=96 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn6l dim=96 $linear_opts input=Append(-3,0)
   relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1024
-  no-op-component name=tdnn6sum input=Sum(Scale(0.5,tdnn5sum), tdnn6)
-  linear-component name=tdnn7l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn7l dim=128 $linear_opts input=Append(0,3)
+  no-op-component name=tdnn6sum input=Sum(Scale(0.66,tdnn5sum), tdnn6)
+  linear-component name=tdnn7l0 dim=96 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn7l dim=96 $linear_opts input=Append(0,3)
   relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1024
-  no-op-component name=tdnn7sum input=Sum(Scale(0.5,tdnn6sum), tdnn7)
-  linear-component name=tdnn8l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn8l dim=128 $linear_opts input=Append(0,3)
+  no-op-component name=tdnn7sum input=Sum(Scale(0.66,tdnn6sum), tdnn7)
+  linear-component name=tdnn8l0 dim=96 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn8l dim=96 $linear_opts input=Append(0,3)
   relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1024
-  no-op-component name=tdnn8sum input=Sum(Scale(0.5,tdnn7sum), tdnn8)
-  linear-component name=tdnn9l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn9l dim=128 $linear_opts input=Append(-3,0)
+  no-op-component name=tdnn8sum input=Sum(Scale(0.66,tdnn7sum), tdnn8)
+  linear-component name=tdnn9l0 dim=96 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn9l dim=96 $linear_opts input=Append(-3,0)
   relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=1024
-  no-op-component name=tdnn9sum input=Sum(Scale(0.5,tdnn8sum), tdnn9)
-  linear-component name=tdnn10l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn10l dim=128 $linear_opts input=Append(0,3)
+  no-op-component name=tdnn9sum input=Sum(Scale(0.66,tdnn8sum), tdnn9)
+  linear-component name=tdnn10l0 dim=96 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn10l dim=96 $linear_opts input=Append(0,3)
   relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1024
-  no-op-component name=tdnn10sum input=Sum(Scale(0.5,tdnn9sum), tdnn10)
-  linear-component name=tdnn11l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn11l dim=128 $linear_opts input=Append(-3,0)
+  no-op-component name=tdnn10sum input=Sum(Scale(0.66,tdnn9sum), tdnn10)
+  linear-component name=tdnn11l0 dim=96 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn11l dim=96 $linear_opts input=Append(-3,0)
   relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn9l,tdnn7l) dim=1024
-  no-op-component name=tdnn11sum input=Sum(Scale(0.5,tdnn10sum), tdnn11)
+  no-op-component name=tdnn11sum input=Sum(Scale(0.66,tdnn10sum), tdnn11)
   linear-component name=prefinal-l dim=256 $linear_opts
 
   relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1024
@@ -289,7 +296,6 @@ if [ $stage -le 18 ]; then
     --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 6 \
-    --trainer.optimization.proportional-shrink 20 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 12 \
     --trainer.optimization.initial-effective-lrate 0.0005 \
