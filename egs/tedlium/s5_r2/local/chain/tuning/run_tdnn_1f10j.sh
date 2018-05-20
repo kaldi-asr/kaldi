@@ -1,6 +1,18 @@
 #!/bin/bash
 
 # 1f10j is as 1f10i but changing Scale(0.5,...) to Scale(0.66,...).
+#  Seems better!
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10i_sp_bi exp/chain_cleaned/tdnn1f10j_sp_bi
+# System                tdnn1f10i_sp_bi tdnn1f10j_sp_bi
+# WER on dev(orig)            8.0       8.1
+# WER on dev(rescored)        7.6       7.5
+# WER on test(orig)           8.3       8.1
+# WER on test(rescored)       7.9       7.5
+# Final train prob        -0.0615   -0.0623
+# Final valid prob        -0.0887   -0.0900
+# Final train prob (xent)   -0.9129   -0.9213
+# Final valid prob (xent)   -1.0283   -1.0355
+# Num-params                 8265760   8265760
 
 # 1f10i is as 1f10h but reducing dim from 128 to 96.
 

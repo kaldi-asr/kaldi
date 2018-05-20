@@ -1,6 +1,19 @@
 #!/bin/bash
 
-# 1f10l is as 1f10k but reducing the small dim further from 129 to 96, as in h->i.
+# 1f10l is as 1f10k but reducing the small dim further from 128 to 96, as in h->i
+# Probably a little worse.
+#
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10k_sp_bi exp/chain_cleaned/tdnn1f10l_sp_bi
+# System                tdnn1f10k_sp_bi tdnn1f10l_sp_bi
+# WER on dev(orig)            8.1       8.0
+# WER on dev(rescored)        7.5       7.6
+# WER on test(orig)           8.1       8.3
+# WER on test(rescored)       7.7       7.8
+# Final train prob        -0.0585   -0.0612
+# Final valid prob        -0.0889   -0.0885
+# Final train prob (xent)   -0.8812   -0.9156
+# Final valid prob (xent)   -0.9981   -1.0156
+# Num-params                 9963552   8642592
 
 # 1f10k is as 1f10f but reducing the small dim from 192 to 128, as in g->h
 
@@ -238,7 +251,7 @@ if [ $stage -le 17 ]; then
   relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1024
    scale-component name=tdnn7scale input=tdnn7sum $scale_opts
   no-op-component name=tdnn8sum input=Sum(tdnn7scale, tdnn8)
-  linear-component name=tdnn9l0 dim=96 $linear_opts input=Append(-3,0)
+  linear-component name=tdnn9l0 adim=96 $linear_opts input=Append(-3,0)
   linear-component name=tdnn9l dim=96 $linear_opts input=Append(-3,0)
   relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=1024
    scale-component name=tdnn8scale input=tdnn8sum $scale_opts

@@ -1,6 +1,36 @@
 #!/bin/bash
 
-# 1f10k is as 1f10f but reducing the small dim from 192 to 128, as in g->h
+# 1f10k is as 1f10f but reducing the small dim from 192 to 128, as in e->g.
+#   But this is more directly comparable with 1f10h since that doesn't have the
+#   proportional-shrink option.  (1f10k differs from 1f10h only by learning
+#   the scales).
+#  Effect of dimension reduction is unclear; see below for the comparison with
+#  1h which doesn't have learnt scales.
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10f_sp_bi exp/chain_cleaned/tdnn1f10k_sp_bi
+# System                tdnn1f10f_sp_bi tdnn1f10k_sp_bi
+# WER on dev(orig)            7.9       8.1
+# WER on dev(rescored)        7.3       7.5
+# WER on test(orig)           8.3       8.1
+# WER on test(rescored)       7.8       7.7
+# Final train prob        -0.0577   -0.0585
+# Final valid prob        -0.0876   -0.0889
+# Final train prob (xent)   -0.8541   -0.8812
+# Final valid prob (xent)   -0.9730   -0.9981
+# Num-params                13436960   9963552
+
+# This is the comparison with 1h in which the scales are not learnt.
+#  Effect is unclear.
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10h_sp_bi exp/chain_cleaned/tdnn1f10k_sp_bi
+# System                tdnn1f10h_sp_bi tdnn1f10k_sp_bi
+# WER on dev(orig)            8.1       8.1
+# WER on dev(rescored)        7.5       7.5
+# WER on test(orig)           8.1       8.1
+# WER on test(rescored)       7.7       7.7
+# Final train prob        -0.0603   -0.0585
+# Final valid prob        -0.0893   -0.0889
+# Final train prob (xent)   -0.8857   -0.8812
+# Final valid prob (xent)   -1.0092   -0.9981
+# Num-params                 9953312   9963552
 
 # 1f10f is as 1f10e but introducing a PerElementScaleComponent to scale
 # the previous layer's batch-norm output.  Also removing the proportional-shrink
