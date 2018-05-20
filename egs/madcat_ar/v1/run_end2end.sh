@@ -74,8 +74,15 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: Preparing dictionary and lang..."
+  cut -d' ' -f2- data/train/text | python3 local/reverse.py | python3 local/prepend_words.py | python3 local/learn_bpe.py -s 700 > data/train/bpe.out
+  for set in test train dev ; do
+    cut -d' ' -f1 data/$set/text > data/$set/ids
+    cut -d' ' -f2- data/$set/text | python3 local/reverse.py | python3 local/prepend_words.py | python3 local/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/$set/bpe_text
+    mv data/$set/text data/$set/text.old
+    paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
+  done
   local/prepare_dict.sh
-  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.9999 \
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
                         data/local/dict "<sil>" data/lang/temp data/lang
 fi
 
@@ -95,7 +102,7 @@ fi
 if [ $stage -le 8 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   echo "Date: $(date)."
-  steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
+  steps/nnet3/align.sh --use-gpu false --nj $nj --cmd "$cmd" \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                        data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi

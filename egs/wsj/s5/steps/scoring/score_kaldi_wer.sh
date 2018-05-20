@@ -18,7 +18,7 @@ max_lmwt=17
 iter=final
 #end configuration section.
 
-echo "$0 $@"  # Print the command line for logging
+echo "EDITED $0 $@"  # Print the command line for logging
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;
 
@@ -48,7 +48,7 @@ ref_filtering_cmd="cat"
 [ -x local/wer_output_filter ] && ref_filtering_cmd="local/wer_output_filter"
 [ -x local/wer_ref_filter ] && ref_filtering_cmd="local/wer_ref_filter"
 hyp_filtering_cmd="cat"
-[ -x local/wer_output_filter ] && hyp_filtering_cmd="local/wer_output_filter"
+[ -x local/wer_output_filter ] && hyp_filtering_cmd="local/wer_output_filter | sed 's/ //g' | sed 's/|/ /g' "
 [ -x local/wer_hyp_filter ] && hyp_filtering_cmd="local/wer_hyp_filter"
 
 
@@ -60,7 +60,7 @@ fi
 
 
 mkdir -p $dir/scoring_kaldi
-cat $data/text | $ref_filtering_cmd > $dir/scoring_kaldi/test_filt.txt || exit 1;
+cat $data/text | $ref_filtering_cmd | sed 's/ //g' | sed 's/|/ /g' > $dir/scoring_kaldi/test_filt.txt || exit 1;
 if [ $stage -le 0 ]; then
 
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do

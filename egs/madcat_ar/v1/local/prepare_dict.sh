@@ -12,7 +12,7 @@ mkdir -p $dir
 
 local/prepare_lexicon.py $dir
 
-cut -d' ' -f2- $dir/lexicon.txt | tr ' ' '\n' | sort -u >$dir/nonsilence_phones.txt || exit 1;
+cut -d' ' -f2- $dir/lexicon.txt | sed 's/SIL//g' | tr ' ' '\n' | sort -u | sed '/^$/d' >$dir/nonsilence_phones.txt || exit 1;
 
 echo '<sil> SIL' >> $dir/lexicon.txt
 
