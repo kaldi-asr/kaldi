@@ -895,10 +895,11 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   // See  http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
   // for more details.
   BaseFloat update_speed = 0.125;
+  bool floating_scale = (scale < 0.0);
 
-  if (scale < 0.0) {
-    // If scale < 0.0 then it's like letting the scale "float",
-    // as in Sec. 2.3 of
+
+  if (floating_scale) {
+    // This (letting the scale "float) is described in Sec. 2.3 of
     // http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf,
     // where 'scale' here is written 'alpha' in the paper.
     //
@@ -939,7 +940,34 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
     KALDI_ASSERT(ratio > 0.999);
     if (ratio > 1.02) {
       update_speed *= 0.5;  // Slow down the update speed to reduce the risk of divergence.
+      if (ratio > 1.1) update_speed *= 0.5;  // Slow it down even more.
     }
+  }
+
+  P.AddToDiag(-1.0 * scale * scale);
+
+  // We may enable this 'safe' option later on if we have a problem with
+  // instability in setups with a non-floating orthonormal constraint.
+  bool safe = false;
+  if (!floating_scale && safe) {
+    // This is analogous to the stuff with 'ratio' above, but when we don't have
+    // a floating scale.  It reduces the chances of divergence when we have
+    // a bad initialization.
+    BaseFloat error = P.FrobeniusNorm(),
+        error_proportion = error * error / P.NumRows();
+    // 'error_proportion' is the sumsq of elements in (P - I) divided by the
+    // sumsq of elements of I.  It should be much less than one (i.e. close to
+    // zero) if the error is small.
+    if (error_proportion > 0.02) {
+      update_speed *= 0.5;
+      if (error_proportion > 0.1)
+        update_speed *= 0.5;
+    }
+  }
+
+  if (GetVerboseLevel() >= 1) {
+    BaseFloat error = P.FrobeniusNorm();
+    KALDI_VLOG(2) << "Error in orthogonality is " << error;
   }
 
   // see Sec. 2.2 of http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
@@ -947,13 +975,6 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
   // notation; 'scale' here corresponds to 'alpha' in the paper, and
   // 'update_speed' corresponds to 'nu' in the paper.
   BaseFloat alpha = update_speed / (scale * scale);
-
-  P.AddToDiag(-1.0 * scale * scale);
-
-  if (GetVerboseLevel() >= 1) {
-    BaseFloat error = P.FrobeniusNorm();
-    KALDI_VLOG(2) << "Error in orthogonality is " << error;
-  }
 
   // At this point, the matrix P contains what, in the math, would be Q =
   // P-scale^2*I.  The derivative of the objective function w.r.t. an element q(i,j)
@@ -1015,16 +1036,17 @@ void ConstrainOrthonormal(Nnet *nnet) {
         KALDI_ASSERT(orthonormal_row_ranges.size() % 2 == 0);
         for (size_t i = 0; i * 2 < orthonormal_row_ranges.size(); i++) {
           int32 row_range_start = orthonormal_row_ranges[i*2],
-              row_range_end = orthonormal_row_ranges[i*2 + 2];
+              row_range_end = orthonormal_row_ranges[i*2 + 1];
           CuSubMatrix<BaseFloat> params_part(
-              params.RowRange(row_range_start, row_range_end));
+              params.RowRange(row_range_start,
+                              row_range_end - row_range_start));
           if (params_part.NumRows() <= cols) {
-            ConstrainOrthonormalInternal(scale, &params);
+            ConstrainOrthonormalInternal(scale, &params_part);
           } else {
             // reaching this branch is unlikely.
-            CuMatrix<BaseFloat> params_trans(params, kTrans);
-            ConstrainOrthonormalInternal(scale, &params_trans);
-            params.CopyFromMat(params_trans, kTrans);
+            CuMatrix<BaseFloat> params_part_trans(params_part, kTrans);
+            ConstrainOrthonormalInternal(scale, &params_part_trans);
+            params_part.CopyFromMat(params_part_trans, kTrans);
           }
         }
       } else if (rows <= cols) {
