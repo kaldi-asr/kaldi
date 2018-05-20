@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Author: Rico Sennrich
+# Released under the MIT License.
 
 """Use byte pair encoding (BPE) to learn a variable-length encoding of the vocabulary in a text.
 Unlike the original BPE, it does not compress the plain text, but can be used to reduce the vocabulary

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 # Author: Rico Sennrich
+# Released under the MIT License.
 
 """Use operations learned with learn_bpe.py to encode a new text.
 The text will not be smaller, but use only a fixed vocabulary, with rare words
