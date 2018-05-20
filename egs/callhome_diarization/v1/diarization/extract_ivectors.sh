@@ -45,6 +45,8 @@ if [ $# != 3 ]; then
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --window <window|1.5>                            # Sliding window length in seconds"
   echo "  --period <period|0.75>                           # Period of sliding windows in seconds"
+  echo "  --pca-dim <n|-1>                                 # If provided, the whitening transform also"
+  echo "                                                   # performs dimension reduction."
   echo "  --min-segment <min|0.5>                          # Minimum segment length in seconds per ivector"
   echo "  --hard-min <bool|false>                          # Removes segments less than min-segment if true."
   echo "                                                   # Useful for extracting training ivectors."
@@ -65,7 +67,6 @@ dir=$3
 for f in $srcdir/final.ie $srcdir/final.ubm $data/feats.scp ; do
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
-
 
 sub_data=$dir/subsegments_data
 mkdir -p $sub_data
@@ -102,7 +103,6 @@ if $apply_cmn; then
 else
   feats="ark,s,cs:add-deltas $delta_opts scp:$sub_sdata/JOB/feats.scp ark:- |"
 fi
-
 
 if [ $stage -le 1 ]; then
   echo "$0: extracting iVectors"

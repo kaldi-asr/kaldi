@@ -9,7 +9,7 @@ train_set=train
 gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
                 # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 ali=tri3_ali
 chain_model_dir=exp/chain${nnet3_affix}/cnn_1a
 common_egs_dir=
@@ -175,9 +175,9 @@ if [ $stage -le 5 ]; then
     --chain.alignment-subsampling-factor=1 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=2 \
+    --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1000000 \
-    --trainer.optimization.num-jobs-initial=8 \
+    --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=16 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \

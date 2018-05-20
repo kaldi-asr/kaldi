@@ -21,6 +21,10 @@
 #include "chain/chain-generic-numerator.h"
 #include "chain/chain-kernels-ansi.h"
 
+#include <iterator>
+#include <limits>
+#include <algorithm>
+
 namespace kaldi {
 namespace chain {
 
@@ -33,59 +37,44 @@ GenericNumeratorComputation::GenericNumeratorComputation(
     const Supervision &supervision,
     const CuMatrixBase<BaseFloat> &nnet_output):
     supervision_(supervision),
-    nnet_output_deriv_transposed_(
-        nnet_output.NumCols(),
-        std::min<int32>(nnet_output.NumRows(),
-                        static_cast<int32>(kMaxDerivTimeSteps) *
-                        supervision.num_sequences)),
-    tot_prob_(supervision.num_sequences, kUndefined),
-    ok_(true) {
+    nnet_output_(nnet_output) {
   KALDI_ASSERT(supervision.num_sequences *
                supervision.frames_per_sequence == nnet_output.NumRows() &&
                supervision.label_dim == nnet_output.NumCols());
-  {
-    CuMatrix<BaseFloat> exp_nnet_output_transposed_gpu(nnet_output, kTrans);
-    exp_nnet_output_transposed_gpu.ApplyExp();
-    exp_nnet_output_transposed_.Resize(nnet_output.NumCols(),
-                                       nnet_output.NumRows(), kUndefined);
-    exp_nnet_output_transposed_.CopyFromMat(exp_nnet_output_transposed_gpu);
-  }
 
   using std::vector;
-  int32 B = supervision_.num_sequences,
-      num_frames = supervision_.frames_per_sequence;
-  KALDI_ASSERT(supervision_.e2e_fsts.size() == B);
+  int num_sequences = supervision_.num_sequences;
+  KALDI_ASSERT(supervision_.e2e_fsts.size() == num_sequences);
 
   // Find the maximum number of HMM states and then
   // initialize final probs, alpha, and beta.
-  max_num_hmm_states_ = 0;
-  for (int32 i = 0; i < B; i++) {
+  int max_num_hmm_states = 0;
+  for (int i = 0; i < num_sequences; i++) {
     KALDI_ASSERT(supervision_.e2e_fsts[i].Properties(fst::kIEpsilons, true)
                  == 0);
-    if (supervision_.e2e_fsts[i].NumStates() > max_num_hmm_states_)
-      max_num_hmm_states_ = supervision_.e2e_fsts[i].NumStates();
+    if (supervision_.e2e_fsts[i].NumStates() > max_num_hmm_states)
+      max_num_hmm_states = supervision_.e2e_fsts[i].NumStates();
   }
-  final_probs_.Resize(max_num_hmm_states_, B, kSetZero);
-  alpha_.Resize(num_frames + 1,
-                max_num_hmm_states_ * B + B,
-                kSetZero);
-  // The extra B is for storing alpha sums
-  beta_.Resize(2, max_num_hmm_states_ * B, kSetZero);
+  final_probs_.Resize(num_sequences, max_num_hmm_states);
 
   // Initialize incoming transitions for easy access
-  in_transitions_.resize(B); // indexed by seq, state
-  out_transitions_.resize(B); // indexed by seq, state
-  for (int32 seq = 0; seq < B; seq++) {
+  in_transitions_.resize(num_sequences);  // indexed by seq, state
+  out_transitions_.resize(num_sequences);  // indexed by seq, state
+  for (int seq = 0; seq < num_sequences; seq++) {
     in_transitions_[seq] = vector<vector<DenominatorGraphTransition> >(
         supervision_.e2e_fsts[seq].NumStates());
     out_transitions_[seq] = vector<vector<DenominatorGraphTransition> >(
         supervision_.e2e_fsts[seq].NumStates());
   }
 
-  offsets_.Resize(B);
-  for (int32 seq = 0; seq < B; seq++) {
+  offsets_.Resize(num_sequences);
+  std::unordered_map<int, MatrixIndexT> pdf_to_index;
+  int32 pdf_stride = nnet_output_.Stride();
+  int32 view_stride = nnet_output_.Stride() * num_sequences;
+  nnet_output_stride_ = pdf_stride;
+  for (int seq = 0; seq < num_sequences; seq++) {
     for (int32 s = 0; s < supervision_.e2e_fsts[seq].NumStates(); s++) {
-      final_probs_(s, seq) = exp(-supervision_.e2e_fsts[seq].Final(s).Value());
+      final_probs_(seq, s)= -supervision_.e2e_fsts[seq].Final(s).Value();
       BaseFloat offset = 0.0;
       if (s == 0) {
         for (fst::ArcIterator<fst::StdVectorFst> aiter(
@@ -98,13 +87,25 @@ GenericNumeratorComputation::GenericNumeratorComputation(
       }
 
       for (fst::ArcIterator<fst::StdVectorFst> aiter(
-               supervision_.e2e_fsts[seq], s);
+             supervision_.e2e_fsts[seq], s);
            !aiter.Done();
            aiter.Next()) {
         const fst::StdArc &arc = aiter.Value();
         DenominatorGraphTransition transition;
-        transition.transition_prob = exp(-(arc.weight.Value() - offset));
-        transition.pdf_id = arc.ilabel - 1;
+        transition.transition_prob = -(arc.weight.Value() - offset);
+
+        int32 pdf_id = arc.ilabel - 1;  // note: the FST labels were pdf-id plus one.
+
+        // remap  to a unique index in the remapped space
+        pdf_id = pdf_id + seq * pdf_stride;
+        KALDI_ASSERT(pdf_id < view_stride);
+
+        if (pdf_to_index.find(pdf_id) == pdf_to_index.end()) {
+          index_to_pdf_.push_back(pdf_id);
+          pdf_to_index[pdf_id] = index_to_pdf_.size() - 1;
+        }
+
+        transition.pdf_id = pdf_to_index[pdf_id];
         transition.hmm_state = s;
         in_transitions_[seq][arc.nextstate].push_back(transition);
         transition.hmm_state = arc.nextstate;
@@ -115,229 +116,273 @@ GenericNumeratorComputation::GenericNumeratorComputation(
 }
 
 
-void GenericNumeratorComputation::AlphaFirstFrame() {
-  const int32 num_sequences = supervision_.num_sequences,
-      num_states = max_num_hmm_states_;
-  // Set alpha_0(0) for all sequences to 1.0 and leave the rest to be 0.0.
-  double *first_frame_alpha = alpha_.RowData(0);
-  SubVector<double> alpha_hmm_state0(first_frame_alpha, num_sequences);
-  alpha_hmm_state0.Set(1.0);
-
-  // Now compute alpha-sums for t=0 which is obviously 1.0 for each sequence
-  SubVector<double> alpha_sum_vec(first_frame_alpha +
-                                  num_states * num_sequences,
-                                  num_sequences);
-  alpha_sum_vec.Set(1.0);
+void GenericNumeratorComputation::AlphaFirstFrame(int seq,
+                                                  Matrix<BaseFloat> *alpha) {
+  const int32 num_frames = supervision_.frames_per_sequence,
+              num_states = supervision_.e2e_fsts[seq].NumStates();
+  alpha->Resize(num_frames + 1,  num_states + 1, kSetZero);
+  alpha->Set(-std::numeric_limits<BaseFloat>::infinity());
+  (*alpha)(0, 0) = 0.0;
+  (*alpha)(0, num_states) = 0.0;
 }
 
+
+void GenericNumeratorComputation::CopySpecificPdfsIndirect(
+                                    const CuMatrixBase<BaseFloat> &nnet_output,
+                                    const std::vector<MatrixIndexT> &indices,
+                                    Matrix<BaseFloat> *out) {
+  KALDI_ASSERT(nnet_output_stride_ == nnet_output_.Stride());
+  const int32 num_sequences = supervision_.num_sequences,
+              frames_per_sequence = supervision_.frames_per_sequence;
+
+  const BaseFloat *starting_ptr = nnet_output.RowData(0);
+  const int view_stride = num_sequences * nnet_output.Stride();
+
+  const CuSubMatrix<BaseFloat> sequence_view(starting_ptr,
+                                             frames_per_sequence,
+                                             view_stride,
+                                             view_stride);
+
+  CuArray<MatrixIndexT> indices_gpu(indices);
+  CuMatrix<BaseFloat> required_pdfs(frames_per_sequence,
+                                        indices.size());
+
+  required_pdfs.CopyCols(sequence_view, indices_gpu);
+  out->Swap(&required_pdfs);
+}
 
 // The alpha computation for some 0 < t <= num_time_steps_.
-void GenericNumeratorComputation::AlphaGeneralFrame(int32 t) {
+BaseFloat GenericNumeratorComputation::AlphaRemainingFrames(int seq,
+                                              const Matrix<BaseFloat> &probs,
+                                              Matrix<BaseFloat> *alpha) {
   // Define some variables to make things nicer
-  const int32
-      num_sequences = supervision_.num_sequences,
-      num_frames = supervision_.frames_per_sequence,
-      num_pdfs = exp_nnet_output_transposed_.NumRows(),
-      num_states = max_num_hmm_states_;
-  KALDI_ASSERT(t > 0 && t <= num_frames);
+  const int32 num_sequences = supervision_.num_sequences,
+              num_frames = supervision_.frames_per_sequence;
 
-  SubMatrix<double> this_alpha(alpha_.RowData(t), num_states,
-                               num_sequences, num_sequences);
-  const SubMatrix<double> prev_alpha(alpha_.RowData(t - 1), num_states + 1,
-                                     num_sequences, num_sequences);
-  // 'probs' is the matrix of pseudo-likelihoods for frame t - 1.
-  SubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
-                             (t - 1) * num_sequences, num_sequences);
+  KALDI_ASSERT(seq >= 0 && seq < num_sequences);
 
-  for (int32 seq = 0; seq < num_sequences; seq++) {
-    double inv_arbitrary_scale = prev_alpha(num_states, seq);
+  SubMatrix<BaseFloat> alpha_view(*alpha,
+                                  0, alpha->NumRows(),
+                                  0, alpha->NumCols());
+
+  // variables for log_likelihood computation
+  double log_scale_product = 0,
+         log_prob_product = 0;
+
+  for (int t = 1; t <= num_frames; ++t) {
+    SubMatrix<BaseFloat> prev_alpha_t(alpha_view, t - 1, 1, 0,
+                                      alpha_view.NumCols() - 1);
+    SubMatrix<BaseFloat> this_alpha_t(alpha_view, t, 1, 0,
+                                      alpha_view.NumCols() - 1);
+
     for (int32 h = 0; h < supervision_.e2e_fsts[seq].NumStates(); h++) {
       for (auto tr = in_transitions_[seq][h].begin();
-           tr != in_transitions_[seq][h].end(); tr++) {
-        double transition_prob = tr->transition_prob;
-        int32 pdf_id = tr->pdf_id, prev_hmm_state = tr->hmm_state;
-        double prob = probs(pdf_id, seq);
-        this_alpha(h, seq) += prev_alpha(prev_hmm_state, seq) /
-            inv_arbitrary_scale * transition_prob * prob;
+          tr != in_transitions_[seq][h].end(); tr++) {
+        BaseFloat transition_prob = tr->transition_prob;
+        int32 pdf_id = tr->pdf_id,
+              prev_hmm_state = tr->hmm_state;
+        BaseFloat prob = probs(t-1, pdf_id);
+        alpha_view(t, h) = LogAdd(alpha_view(t, h),
+            alpha_view(t-1, prev_hmm_state) + transition_prob + prob);
       }
     }
+    double sum = alpha_view(t-1, alpha_view.NumCols() - 1);
+    this_alpha_t.Add(-sum);
+    sum = this_alpha_t.LogSumExp();
+
+    alpha_view(t, alpha_view.NumCols() - 1) = sum;
+    log_scale_product += sum;
   }
+  SubMatrix<BaseFloat> last_alpha(alpha_view, alpha_view.NumRows() - 1, 1,
+                                  0, alpha_view.NumCols() - 1);
+  SubVector<BaseFloat> final_probs(final_probs_.RowData(seq),
+                                   alpha_view.NumCols() - 1);
 
-  if (t == num_frames)  // last alpha
-    this_alpha.MulElements(final_probs_);
-  // Now compute alpha-sums for frame t:
-  SubVector<double> alpha_sum_vec(alpha_.RowData(t) + num_states * num_sequences,
-                                  num_sequences);
-  alpha_sum_vec.AddRowSumMat(1.0, this_alpha, 0.0);
+  // adjust last_alpha
+  double sum = alpha_view(alpha_view.NumRows() - 1, alpha_view.NumCols() - 1);
+  log_scale_product -= sum;
+  last_alpha.AddVecToRows(1.0, final_probs);
+  sum = last_alpha.LogSumExp();
+  alpha_view(alpha_view.NumRows() - 1, alpha_view.NumCols() - 1) = sum;
+
+  // second part of criterion
+  log_prob_product = sum - offsets_(seq);
+
+  return log_prob_product + log_scale_product;
 }
 
-BaseFloat GenericNumeratorComputation::Forward() {
-  AlphaFirstFrame();
-  for (int32 t = 1; t <= supervision_.frames_per_sequence; t++) {
-    AlphaGeneralFrame(t);
+bool GenericNumeratorComputation::ForwardBackward(
+                                 BaseFloat *total_loglike,
+                                 CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+  KALDI_ASSERT(total_loglike != NULL);
+  KALDI_ASSERT(nnet_output_deriv != NULL);
+  KALDI_ASSERT(nnet_output_deriv->NumCols() == nnet_output_.NumCols());
+  KALDI_ASSERT(nnet_output_deriv->NumRows() == nnet_output_.NumRows());
+
+  BaseFloat partial_loglike = 0;
+  const int32 num_sequences = supervision_.num_sequences;
+
+  bool ok = true;
+  Matrix<BaseFloat> alpha;
+  Matrix<BaseFloat> beta;
+  Matrix<BaseFloat> probs;
+  Matrix<BaseFloat> derivs;
+
+  // We selectively copy only those pdfs we need
+  CopySpecificPdfsIndirect(nnet_output_, index_to_pdf_, &probs);
+
+  derivs.Resize(probs.NumRows(), probs.NumCols());
+  derivs.Set(-std::numeric_limits<BaseFloat>::infinity());
+
+  for (int seq = 0; seq < num_sequences; ++seq) {
+    // Forward part
+    AlphaFirstFrame(seq, &alpha);
+    partial_loglike += AlphaRemainingFrames(seq, probs, &alpha);
+
+    // Backward part
+    BetaLastFrame(seq, alpha, &beta);
+    BetaRemainingFrames(seq, probs, alpha, &beta, &derivs);
+    ok = ok || CheckValues(seq, probs, alpha, beta, derivs);
   }
-  return ComputeTotLogLike();
+  // Transfer and add the derivatives to the values in the matrix
+  AddSpecificPdfsIndirect(&derivs, index_to_pdf_, nnet_output_deriv);
+  *total_loglike = partial_loglike;
+  return ok;
 }
 
-BaseFloat GenericNumeratorComputation::ComputeTotLogLike() {
-  const int32
-      num_sequences = supervision_.num_sequences,
-      num_frames = supervision_.frames_per_sequence,
-      num_states = max_num_hmm_states_;
+BaseFloat GenericNumeratorComputation::ComputeObjf() {
+  BaseFloat partial_loglike = 0;
+  const int32 num_sequences = supervision_.num_sequences;
 
-  // View the last alpha as a matrix of size num-hmm-states by num-sequences.
-  SubMatrix<double> last_alpha(alpha_.RowData(num_frames), num_states,
-                               num_sequences, num_sequences);
-  tot_prob_.AddRowSumMat(1.0, last_alpha, 0.0);
-  Vector<double> tot_log_probs(tot_prob_);
-  tot_log_probs.ApplyLog();
-  tot_log_probs.AddVec(-1.0, offsets_);
-  double tot_log_prob = tot_log_probs.Sum();
-  SubMatrix<double> inv_arbitrary_scales(alpha_, 0, num_frames,
-                                         num_sequences * num_states,
-                                         num_sequences);
-  Matrix<double> log_inv_arbitrary_scales(inv_arbitrary_scales);
-  log_inv_arbitrary_scales.ApplyLog();
-  double log_inv_arbitrary_scales_product =
-      log_inv_arbitrary_scales.Sum();
-  return tot_log_prob + log_inv_arbitrary_scales_product;
-}
+  Matrix<BaseFloat> alpha;
+  Matrix<BaseFloat> probs;
 
+  // We selectively copy only those pdfs we need
+  CopySpecificPdfsIndirect(nnet_output_, index_to_pdf_, &probs);
 
-bool GenericNumeratorComputation::Backward(
-    CuMatrixBase<BaseFloat> *nnet_output_deriv) {
-  const int32
-      num_sequences = supervision_.num_sequences,
-      num_frames = supervision_.frames_per_sequence,
-      num_pdfs = exp_nnet_output_transposed_.NumRows();
-  BetaLastFrame();
-  for (int32 t = num_frames - 1; t >= 0; t--) {
-    BetaGeneralFrame(t);
-    if (GetVerboseLevel() >= 1 || t == 0 || t == num_frames - 1)
-      BetaGeneralFrameDebug(t);
-    if (t % kMaxDerivTimeSteps == 0) {
-      // Commit the derivative stored in exp_nnet_output_transposed_ by adding
-      // its transpose to the appropriate sub-matrix of 'nnet_output_deriv'.
-      int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps),
-                                           num_frames - t);
-      SubMatrix<BaseFloat> transposed_deriv_part(
-          nnet_output_deriv_transposed_,
-          0, num_pdfs,
-          0, chunk_frames * num_sequences);
-      CuMatrix<BaseFloat> tmp(transposed_deriv_part);
-      CuSubMatrix<BaseFloat> output_deriv_part(
-          *nnet_output_deriv,
-          t * num_sequences, chunk_frames * num_sequences,
-          0, num_pdfs);
-      output_deriv_part.AddMat(supervision_.weight, tmp, kTrans);
-      if (t != 0)
-        transposed_deriv_part.SetZero();
-    }
+  for (int seq = 0; seq < num_sequences; ++seq) {
+    // Forward part
+    AlphaFirstFrame(seq, &alpha);
+    partial_loglike += AlphaRemainingFrames(seq, probs, &alpha);
   }
-  return ok_;
+  return partial_loglike;
 }
 
-void GenericNumeratorComputation::BetaLastFrame() {
+
+BaseFloat GenericNumeratorComputation::GetTotalProb(
+                                          const Matrix<BaseFloat> &alpha) {
+  return alpha(alpha.NumRows() - 1, alpha.NumCols() - 1);
+}
+
+void GenericNumeratorComputation::BetaLastFrame(int seq,
+                                                const Matrix<BaseFloat> &alpha,
+                                                Matrix<BaseFloat> *beta) {
   // Sets up the beta quantity on the last frame (frame ==
   // frames_per_sequence_).  Note that the betas we use here contain a
   // 1/(tot-prob) factor in order to simplify the backprop.
-  int32 t = supervision_.frames_per_sequence;
-  double *last_frame_beta = beta_.RowData(t % 2);
+  const int32 num_frames = supervision_.frames_per_sequence,
+              num_states = supervision_.e2e_fsts[seq].NumStates();
+  float tot_prob = GetTotalProb(alpha);
 
-  SubMatrix<double> beta_mat(last_frame_beta,
-                             max_num_hmm_states_,
-                             supervision_.num_sequences,
-                             supervision_.num_sequences);
+  beta->Resize(2, num_states);
+  beta->Set(-std::numeric_limits<BaseFloat>::infinity());
 
-  Vector<double> inv_tot_prob(tot_prob_);
-  inv_tot_prob.InvertElements();
+  SubVector<BaseFloat> beta_mat(beta->RowData(num_frames % 2), num_states);
+  SubVector<BaseFloat> final_probs(final_probs_.RowData(seq), num_states);
 
-  beta_mat.CopyRowsFromVec(inv_tot_prob);
-  beta_mat.MulElements(final_probs_);
+  BaseFloat inv_tot_prob = -tot_prob;
+  beta_mat.Set(inv_tot_prob);
+  beta_mat.AddVec(1.0, final_probs);
 }
 
-void GenericNumeratorComputation::BetaGeneralFrame(int32 t) {
+void GenericNumeratorComputation::BetaRemainingFrames(int seq,
+                                                const Matrix<BaseFloat> &probs,
+                                                const Matrix<BaseFloat> &alpha,
+                                                Matrix<BaseFloat> *beta,
+                                                Matrix<BaseFloat> *derivs) {
   const int32
       num_sequences = supervision_.num_sequences,
       num_frames = supervision_.frames_per_sequence,
-      num_pdfs = exp_nnet_output_transposed_.NumRows(),
-      num_states = max_num_hmm_states_;
-  KALDI_ASSERT(t >= 0 && t < num_frames);
+      num_states = supervision_.e2e_fsts[seq].NumStates();
+  KALDI_ASSERT(seq >= 0 && seq < num_sequences);
 
-  // t_wrapped gives us the time-index we use when indexing
-  // nnet_output_deriv_transposed_; to save memory we limit the size of the
-  // matrix, storing only chunks of frames at a time, and we add it to the
-  // non-transposed output whenever we finish a chunk.
-  int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps);
-  const SubMatrix<double> this_alpha(alpha_.RowData(t), num_states,
-                               num_sequences, num_sequences);
-  SubMatrix<double> this_beta(beta_.RowData(t % 2), num_states,
-                               num_sequences, num_sequences);
-  const SubMatrix<double> next_beta(beta_.RowData((t + 1) % 2), num_states,
-                               num_sequences, num_sequences);
+  SubMatrix<BaseFloat> log_prob_deriv(*derivs,
+                          0, derivs->NumRows(),
+                          0, derivs->NumCols());
 
-  SubMatrix<BaseFloat> probs(exp_nnet_output_transposed_, 0, num_pdfs,
-                             t * num_sequences, num_sequences),
-      log_prob_deriv(nnet_output_deriv_transposed_, 0, num_pdfs,
-                     t_wrapped * num_sequences, num_sequences);
+  for (int t = num_frames - 1; t >= 0; --t) {
+    SubVector<BaseFloat> this_beta(beta->RowData(t % 2), num_states);
+    const SubVector<BaseFloat> next_beta(beta->RowData((t + 1) % 2),
+                                         num_states);
 
-  for (int32 seq = 0; seq < num_sequences; seq++) {
+    BaseFloat inv_arbitrary_scale = alpha(t, num_states);
+
     for (int32 h = 0; h < supervision_.e2e_fsts[seq].NumStates(); h++) {
-      BaseFloat inv_arbitrary_scale = this_alpha(num_states, seq);
-      double tot_variable_factor = 0.0;
+      BaseFloat tot_variable_factor;
+      tot_variable_factor = -std::numeric_limits<BaseFloat>::infinity();
       for (auto tr = out_transitions_[seq][h].begin();
-           tr != out_transitions_[seq][h].end(); tr++) {
+               tr != out_transitions_[seq][h].end(); tr++) {
         BaseFloat transition_prob = tr->transition_prob;
         int32 pdf_id = tr->pdf_id,
             next_hmm_state = tr->hmm_state;
-        double variable_factor = transition_prob *
-            next_beta(next_hmm_state, seq) *
-            probs(pdf_id, seq) / inv_arbitrary_scale;
-        tot_variable_factor += variable_factor;
-        double occupation_prob = variable_factor * this_alpha(h, seq);
-        log_prob_deriv(pdf_id, seq) += occupation_prob;
+        BaseFloat variable_factor = transition_prob +
+            next_beta(next_hmm_state) +
+            probs(t, pdf_id) - inv_arbitrary_scale;
+        tot_variable_factor = LogAdd(tot_variable_factor,
+                                     variable_factor);
+
+        BaseFloat occupation_prob = variable_factor + alpha(t, h);
+        log_prob_deriv(t, pdf_id) = LogAdd(log_prob_deriv(t, pdf_id),
+                                           occupation_prob);
       }
-      this_beta(h, seq) = tot_variable_factor;
+      this_beta(h) = tot_variable_factor;
     }
   }
 }
 
-void GenericNumeratorComputation::BetaGeneralFrameDebug(int32 t) {
-  int32 alpha_beta_size = max_num_hmm_states_ * supervision_.num_sequences;
-  SubVector<double> this_alpha(alpha_.RowData(t), alpha_beta_size),
-      this_beta(beta_.RowData(t % 2), alpha_beta_size);
-  int32 t_wrapped = t % static_cast<int32>(kMaxDerivTimeSteps),
-        num_pdfs = exp_nnet_output_transposed_.NumRows();
-  SubMatrix<BaseFloat> this_log_prob_deriv(
-      nnet_output_deriv_transposed_, 0, num_pdfs,
-      t_wrapped * supervision_.num_sequences, supervision_.num_sequences);
-  double alpha_beta_product = VecVec(this_alpha,
-                                     this_beta),
-      this_log_prob_deriv_sum = this_log_prob_deriv.Sum();
-  if (!ApproxEqual(alpha_beta_product, supervision_.num_sequences)) {
-    KALDI_WARN << "On time " << t << ", alpha-beta product "
-               << alpha_beta_product << " != " << supervision_.num_sequences
-               << " alpha-sum = " << this_alpha.Sum()
-               << ", beta-sum = " << this_beta.Sum();
-    if (fabs(alpha_beta_product - supervision_.num_sequences) > 2.0
-        || alpha_beta_product - alpha_beta_product != 0) {
-      KALDI_WARN << "Excessive error detected, will abandon this minibatch";
-      ok_ = false;
-    }
+
+void GenericNumeratorComputation::AddSpecificPdfsIndirect(
+                                 Matrix<BaseFloat> *logprobs,
+                                 const std::vector<MatrixIndexT> &indices,
+                                 CuMatrixBase<BaseFloat> *output) {
+  const int32 num_sequences = supervision_.num_sequences,
+              frames_per_sequence = supervision_.frames_per_sequence;
+
+  const int view_stride = output->Stride() * num_sequences;
+
+  KALDI_ASSERT(frames_per_sequence * num_sequences == output->NumRows());
+
+  CuMatrix<BaseFloat> specific_pdfs;
+  specific_pdfs.Swap(logprobs);
+  specific_pdfs.ApplyExp();
+  specific_pdfs.Scale(supervision_.weight);
+
+  std::vector<MatrixIndexT> indices_expanded(view_stride, -1);
+  for (int i = 0; i < indices.size(); ++i) {
+    int pdf_index = indices[i];
+    int sequence_local_pdf_index = pdf_index % nnet_output_stride_;
+    int sequence_index = pdf_index / nnet_output_stride_;
+    pdf_index = sequence_local_pdf_index
+                + sequence_index * output->Stride();
+    KALDI_ASSERT(pdf_index < view_stride);
+    KALDI_ASSERT(i < specific_pdfs.NumCols());
+    indices_expanded[pdf_index] = i;
   }
-  // Use higher tolerance, since we are using randomized pruning for the
-  // log-prob derivatives.
-  if (!ApproxEqual(this_log_prob_deriv_sum,
-                   supervision_.num_sequences, 0.01)) {
-    KALDI_WARN << "On time " << t << ", log-prob-deriv sum "
-               << this_log_prob_deriv_sum << " != "
-               << supervision_.num_sequences;
-    if (fabs(this_log_prob_deriv_sum - supervision_.num_sequences) > 2.0 ||
-        this_log_prob_deriv_sum - this_log_prob_deriv_sum != 0) {
-      KALDI_WARN << "Excessive error detected, will abandon this minibatch";
-      ok_ = false;
-    }
-  }
+
+  CuArray<MatrixIndexT> cu_indices(indices_expanded);
+  CuSubMatrix<BaseFloat> out(output->Data(), frames_per_sequence,
+                             view_stride, view_stride);
+
+  out.AddCols(specific_pdfs, cu_indices);
+}
+
+bool GenericNumeratorComputation::CheckValues(int seq,
+                                            const Matrix<BaseFloat> &probs,
+                                            const Matrix<BaseFloat> &alpha,
+                                            const Matrix<BaseFloat> &beta,
+                                            const Matrix<BaseFloat> &derivs) const {
+  // empty checks for now
+  return true;
 }
 
 }  // namespace chain

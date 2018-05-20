@@ -247,11 +247,11 @@ fi
 # Now get some diagnostics about the evolution of the objective function.
 if [ $stage -le $[num_iters+1] ]; then
   (
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
+    logs=$(for iter in $(seq 1 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
     # in the non-sampling case the exact objf is printed and we plot that
     # in the sampling case we print the approximated objf for training.
     grep 'Overall objf' $logs | awk 'BEGIN{printf("Train objf: ")} /exact/{printf("%.2f ", $NF);next} {printf("%.2f ", $10)} END{print "";}'
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
+    logs=$(for iter in $(seq 1 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
     grep 'Overall objf' $logs | awk 'BEGIN{printf("Dev objf:   ")} {printf("%.2f ", $NF)} END{print "";}'
   ) > $dir/report.txt
   cat $dir/report.txt
