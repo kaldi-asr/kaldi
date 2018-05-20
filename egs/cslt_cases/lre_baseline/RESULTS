@@ -1,0 +1,60 @@
+# Obtained by Zhiyuan Tang in May 2018.
+
+Four baseline systems were trained on ap17_train-dev database for AP18-OLR, 
+namely i-vector, tdnn, lstm and ptn (todo). 
+AP18-OLR challenge sets three tasks, 
+and their descriptions and utterance-level results are as follows: 
+
+
+Task 0: test on original length 
+--------------------------------------
+      test set: ap17-olr test_all
+--------------------------------------
+  LID system      |  Cavg    |  EER%
+--------------------------------------
+  i-vector        |  0.0578  |  5.92 
+  i-vector + lda  |  0.0598  |  6.12 
+  i-vector + plda |  0.0596  |  5.86 
+  tdnn            |  0.1034  |  11.31
+  lstm            |  0.1154  |  12.76  
+  ptn             |        TODO
+--------------------------------------
+Note: this task is just for reference and won't be challenged.
+
+
+Task 1: test on short length (1s)
+--------------------------------------
+      test set: ap17-olr test_1s
+--------------------------------------
+  LID system      |  Cavg    |  EER%
+--------------------------------------
+  i-vector        |  0.1888  |  18.75
+  i-vector + lda  |  0.1784  |  18.04
+  i-vector + plda |  0.1746  |  17.51
+  tdnn            |  0.1282  |  14.04
+  lstm            |  0.1452  |  15.92  
+  ptn             |        TODO
+--------------------------------------
+
+
+Task 2: test on trials of ko-kr, zh-cn and ct-cn
+--------------------------------------------------
+test set: ap17-olr test_all (ko-kr, zh-cn and ct-cn)
+--------------------------------------------------
+                  |     Cavg      |     EER%
+--------------------------------------------------
+  LID system      | Fr.     Utt.   | Fr.    Utt.
+--------------------------------------------------
+  i-vector        | -       0.1446 | -      14.13 
+  i-vector + lda  | -       0.1550 | -      15.20 
+  i-vector + plda | -       0.1563 | -      15.64 
+  tdnn            | -       0.3752 | -      37.86 
+  lstm            | -       0.3902 | -      40.56
+  ptn             |              TODO
+--------------------------------------------------
+Note: this task aims to recognition languages that are hard to distinguish.
+
+
+Task 3: test with 8 interference languages
+This task will face 8 outside languages when recognizing the 10 target ones.
+

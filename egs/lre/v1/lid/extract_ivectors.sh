@@ -70,15 +70,15 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "$0: combining iVectors across jobs"
-  for j in $(seq $nj); do cat $dir/ivector.$j.scp; done >$dir/ivector.scp || exit 1;
+  for j in $(seq $nj); do cat $dir/ivector.$j.scp; done >$dir/vector.scp || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
   # Be careful here: the language-level iVectors are now length-normalized,
   # even if they are otherwise the same as the utterance-level ones.
-  echo "$0: computing mean of iVectors for each speaker and length-normalizing"
-  $cmd $dir/log/speaker_mean.log \
-    ivector-normalize-length scp:$dir/ivector.scp  ark:- \| \
-    ivector-mean "ark:utils/spk2utt_to_utt2spk.pl $data/utt2lang|" ark:- ark:- ark,t:$dir/num_utts.ark \| \
-    ivector-normalize-length ark:- ark,scp:$dir/lang_ivector.ark,$dir/lang_ivector.scp || exit 1;
+  echo "$0: computing mean of iVectors for each lang and length-normalizing"
+  $cmd $dir/log/lang_mean.log \
+    ivector-normalize-length scp:$dir/vector.scp  ark:- \| \
+    ivector-mean "ark:utils/utt2spk_to_spk2utt.pl $data/utt2lang|" ark:- ark:- ark,t:$dir/num_utts.ark \| \
+    ivector-normalize-length ark:- ark,scp:$dir/lang_vector.ark,$dir/lang_vector.scp || exit 1;
 fi

@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 # Copyright 2018  Tsinghua University (Author: Zhiyuan Tang)
@@ -34,51 +34,57 @@ def get_utt_len_dict_vad(data):
   return len_dict
 
 
-def get_spk_id_dict(data, dir):
-  '''Get spk id for each utt and spk num. Store spk2spk_id in dir.
+def get_lang_id_dict(data, dir):
+  '''Get lang id for each utt and lang num. Store lang2lang_id in dir.
   '''
   id = 0 # int id starts from 0
-  spk_dict = {}
-  min = 10000 # spoken by one spk
-  max = 0 # spoken by one spk
-  content = '' # spk2spk_id for writing
-  with open(data + '/spk2utt', 'r') as lines:
-    for spk2utts in [line.strip().split() for line in lines]:
-      if max < len(spk2utts) - 1:
-        max = len(spk2utts) - 1
-      if min > len(spk2utts) - 1:
-        min = len(spk2utts) - 1
-      for i in spk2utts[1:]:
-        spk_dict[i] = id
-      content += spk2utts[0] + ' ' + str(id) + '\n'
-      id += 1     
-  # store spk2spk_id in dir
-  spk2spk_id = open(dir + '/spk2spk_id', 'w')
-  spk2spk_id.write(content)
-  spk2spk_id.close()
-  print('max utts spoken by one person:')
+  lang_dict = {}
+  min = 10000 # of one lang
+  max = 0 # of one lang
+  content = '' # lang2lang_id for writing
+
+  # get lang2utt from utt2lang 
+  cmd = '. ./path.sh; utils/utt2spk_to_spk2utt.pl ' + data + '/utt2lang'
+  lang_utt = subprocess.check_output(cmd, shell=True)
+  lang_utt = lang_utt.strip().split('\n')
+  lang_utt.sort()
+
+  for lang2utts in [line.strip().split() for line in lang_utt]:
+    if max < len(lang2utts) - 1:
+      max = len(lang2utts) - 1
+    if min > len(lang2utts) - 1:
+      min = len(lang2utts) - 1
+    for i in lang2utts[1:]:
+      lang_dict[i] = id
+    content += lang2utts[0] + ' ' + str(id) + '\n'
+    id += 1     
+  # store lang2lang_id in dir
+  lang2lang_id = open(dir + '/lang2lang_id', 'w')
+  lang2lang_id.write(content)
+  lang2lang_id.close()
+  print('max utts of one language:')
   print(max)
-  print('min utts spoken by one person:')
+  print('min utts of one language:')
   print(min)
-  return spk_dict, id
+  return lang_dict, id
 
 
-def generate_spk_ali(spk_dict, spk_num, len_dict, dir):
-  '''Generate spk ali and store it in dir.
+def generate_lang_ali(lang_dict, lang_num, len_dict, dir):
+  '''Generate lang ali and store it in dir.
   '''
-  content = '' # spk ali of each utt for writing
-  counts = []  # total num of frames per spk
-  for n in range(0, spk_num):
+  content = '' # lang ali of each utt for writing
+  counts = []  # total num of frames per lang
+  for n in range(0, lang_num):
     counts.append(0)
   for i in len_dict.keys():
-    content += i + (' ' + str(spk_dict[i])) * int(len_dict[i]) + '\n'
-    counts[int(spk_dict[i])] += int(len_dict[i])
-  # write spk aligment, spk num, and total num of frames per spk
+    content += i + (' ' + str(lang_dict[i])) * int(len_dict[i]) + '\n'
+    counts[int(lang_dict[i])] += int(len_dict[i])
+  # write lang aligment, lang num, and total num of frames per lang
   ali = open(dir + '/ali.ark.tmp', 'w')
   num = open(dir + '/target_num', 'w')
   cou = open(dir + '/target_counts', 'w')
   ali.write(content)
-  num.write(str(spk_num))
+  num.write(str(lang_num))
   cou.write('[')
   for j in counts:
     cou.write(' ' + str(j))
@@ -95,10 +101,10 @@ def generate_spk_ali(spk_dict, spk_num, len_dict, dir):
   
 
 if __name__ == "__main__":
-  '''Get int spk id alignments on frame level for each utt with or without vad.
+  '''Get int lang id alignments on frame level for each utt with or without vad.
   '''
   if len(sys.argv) != 4 or (sys.argv[1] != '-vad' and sys.argv[1] != '-novad'):
-    print('usage: spk_ali.py [-vad|-novad] <data-dir> <spk-ali-dir>')
+    print('usage: lang_ali.py [-vad|-novad] <data-dir> <lang-ali-dir>')
     sys.exit()
   
   vad = sys.argv[1]
@@ -107,11 +113,11 @@ if __name__ == "__main__":
   if not os.path.exists(dir):
     os.makedirs(dir)
 
-  spk_dict, spk_num = get_spk_id_dict(data, dir)
+  lang_dict, lang_num = get_lang_id_dict(data, dir)
   if vad == '-vad':
     len_dict = get_utt_len_dict_vad(data)
   else:
     len_dict = get_utt_len_dict(data)
-  generate_spk_ali(spk_dict, spk_num, len_dict, dir)
-  print('Spk ali done.')
+  generate_lang_ali(lang_dict, lang_num, len_dict, dir)
+  print('Language ali done.')
 
