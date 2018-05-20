@@ -111,7 +111,7 @@ awk -v icsidir=$ICSI_DIR '{
 
 fsph=`head -n1 $dir/sph.scp | cut -f2 -d" "`
 [ ! -f $fsph ] \
-  && echo "File $f does not exist in expectetd location, make sure $ICSI_DIR is properly set" \
+  && echo "File $fsph does not exist in expectetd location, make sure $ICSI_DIR is properly set" \
   && exit 1;
 
 #add piping using sph2pipe
@@ -138,10 +138,9 @@ utils/utt2spk_to_spk2utt.pl <$dir/utt2spk >$dir/spk2utt || exit 1;
 # utt2spk_stm file containing speakers ids used to generate the stms for mdm/sdm case
 awk '{print $1}' $dir/segments | \
   perl -ane '$_ =~ m:^(\S+)([fmux][ne][0-9]{3})(\S+)$: || die "sdm data prep: utt2spk_stm bad label $_";
-          print "$1$2$3 $1$2\n";'  \
-    > $dir/utt2spk_stm || exit 1;
+          print "$1$2$3 $1$2\n";' > $dir/utt2spk_stm || exit 1;
 
-local/convert2stm.pl $dir utt2spk_stm | sort -k1 > $dir/stm
+local/convert2stm.pl $dir utt2spk_stm | sort +0 -1 +1 -2 +3nb -4 > $dir/stm
 cp local/english.glm $dir/glm
 
 # Copy stuff into its final location
@@ -152,4 +151,4 @@ done
 
 utils/validate_data_dir.sh --no-feats $odir || exit 1;
 
-echo "ICSI SDM $SET data preparation succeeded."
+echo "ICSI SDM for $SET data preparation succeeded."

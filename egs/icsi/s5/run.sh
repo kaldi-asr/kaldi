@@ -9,10 +9,11 @@
 #  sdmN [single distant microphone- the current script allows you to select
 #        any of 4 PZM microphones, D1...D4 in a diagram, default should be 2]
 #  mdm4 [multiple distant microphones-- currently we only support averaging over
-#       the 4 source microphones].
+#       the 2,3 or 4 single microphones].
 # ... by calling this script as, for example,
-# ./run.sh --mic sdm2
-# ./run.sh --mic mdm8
+# ./run.sh --mic ihm  (will build ihm systems from individual headsets)
+# ./run.sh --mic sdm2 (will build sdm systems from D2)
+# ./run.sh --mic mdm4 (will build mdm systems from D1...D4)
 mic=ihm
 
 # Train systems,
@@ -40,12 +41,13 @@ LM=$final_lm.pr1-7
 
 # This recipe assumes (so far) you obtained the corpus already (can do so from LDC or http://groups.inf.ed.ac.uk/ami/icsi/)
 
-if [ "$base_mic" == "mdm" ]; then
-  PROCESSED_ICSI_DIR=$ICSI_DIR/beamformed
+if [[ "$base_mic" =~ "mdm" ]]; then
+  echo "Running multi distant channel recipe with beamforming...."
+  PROCESSED_ICSI_DIR=$ICSI_DIR/../beamformed
   if [ $stage -le 1 ]; then
     # for MDM data, do beamforming
     ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; extras/install_beamformit.sh; cd -;'" && exit 1
-    local/icsi_beamform.sh --cmd "$train_cmd" --nj 20 $nmics $ICSI_DIR $PROCESSED_ICSI_DIR
+    local/icsi_beamform.sh --cmd "$train_cmd" --nj 20 $mic $ICSI_DIR $PROCESSED_ICSI_DIR
   fi
 else
   PROCESSED_ICSI_DIR=$ICSI_DIR

@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Copyright 2014  University of Edinburgh (Author: Pawel Swietojanski)
-#           2016  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2014 University of Edinburgh (Author: Pawel Swietojanski)
+#           2016 Johns Hopkins University (Author: Daniel Povey)
+#           2017 Milos Cernak
 #           2018 Emotech LTD (Author: Pawel Swietojanski)
 # ICSI Corpus training data preparation
 # Apache 2.0
@@ -126,7 +127,7 @@ for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
 done
 
 #Produce STMs for sclite scoring
-local/convert2stm.pl $dir > $odir/stm
+local/convert2stm.pl $dir | sort +0 -1 +1 -2 +3nb -4 > $odir/stm
 cp local/english.glm $odir/glm
 
 utils/validate_data_dir.sh --no-feats $odir || exit 1;

@@ -24,9 +24,11 @@ if [ $# != 3 ]; then
    exit 1;
 fi
 
-numch=$1
+mic=$1
+numch=$(echo $mic | sed 's/[a-z]//g')
 sdir=$2
 odir=$3
+segs=data/local/annotations/all_final.txt
 wdir=data/local/beamforming
 
 set -e
@@ -35,36 +37,53 @@ set -u
 mkdir -p $odir
 mkdir -p $wdir/log
 
-[ -e $odir/.done_beamforming ] && echo "Beamforming already done, skipping..." && exit 0
+[ -e $odir/.done_beamforming_$mic ] && echo "Beamforming already done, skipping..." && exit 0
+[ ! -f $segs ] && echo "Expected file $segs to exists, exiting." && exit 1;
+[ $numch -lt 1 ] || [ $numch -gt 4 ] && echo "For ICSI mdm channels should be in [1,4], got $numch." && exit 1;
 
 meetings=$wdir/meetings.list
 
 cat local/split_train.orig local/split_dev.orig local/split_eval.orig | sort > $meetings
-# Removing ``lost'' MDM session-ids : http://groups.inf.ed.ac.uk/ami/corpus/dataproblems.shtml
-#mv $meetings{,.orig}; grep -v "IS1003b\|IS1007d" $meetings.orig >$meetings
 
-ch_inc=$((8/$numch))
-bmf=
-for ch in `seq 1 $ch_inc 8`; do
-  bmf="$bmf $ch"
-done
+# generate channel files, note for Bsr001 annotation notes mention two PZM channels were not properly
+# ascribed labels during the meeting setting up, but channels exists physically and one can assume 
+# those are PZM mics, thus we use them anyway
 
-echo "Will use the following channels: $bmf"
+echo -e "Preparing channel file for $numch channels [1...$numch]....\n"
 
-# make the channel file,
-if [ -f $wdir/channels_$numch ]; then
-  rm $wdir/channels_$numch
-fi
-touch $wdir/channels_$numch
+cat $segs | \
+  awk '{ meeting=$1; channel=$2; dchannel=$3; speaker=$4; stime=$5; etime=$6;
+         if ( meeting=="Bsr001" ) {
+           dchannel=dchannel",chanE,chanF";
+         }
+         printf("%s %s\n", meeting, dchannel);
+       }' | sort -k1 | uniq > $wdir/meet2chans
 
-while read line;
-do
-  channels="$line "
-  for ch in $bmf; do
-    channels="$channels $line/audio/$line.Array1-0$ch.wav"
-  done
-  echo $channels >> $wdir/channels_$numch
-done < $meetings
+#agree lower/upper casing in filenames
+find $sdir/ -name "*.sph" | sort > $wdir/sph.flist
+
+awk -F'/' -v micdir=$mic '{
+      meetid_orig=substr($(NF-1),1,6);
+      meetid_norm="B"substr($(NF-1),2,6);
+      print meetid_norm" "meetid_orig;
+   }' $wdir/sph.flist | sort -k1 | uniq > $wdir/rec2meet
+
+join $wdir/rec2meet $wdir/meet2chans > $wdir/rec2info
+
+#row is rec2info is Bns001 bns001 chanA,chanB,chanC,chanD 
+# if 2nd col starts with 'b' we lowercase channel names
+awk -v nmics=$numch \
+    '{ meeting=$1; meeting_orig=$2; dchannel=$3;
+       if ( meeting_orig ~ /^b/ ) {
+         dchannel=tolower(dchannel);
+       }
+       N=split(dchannel, chans, ",");
+       printf("%s", meeting);
+       for (i=1; i<=nmics; i++) {
+         printf(" %s/%s.sph", meeting_orig, chans[i]);
+       }
+       printf("\n");
+     }' $wdir/rec2info > $wdir/channels_$mic
 
 # do noise cancellation,
 if [ $wiener_filtering == "true" ]; then
@@ -73,8 +92,10 @@ if [ $wiener_filtering == "true" ]; then
 fi
 
 # do beamforming,
-echo -e "Beamforming\n"
+echo -e "Beamforming (make take a while...)\n"
 $cmd JOB=1:$nj $wdir/log/beamform.JOB.log \
-     local/beamformit.sh $nj JOB $numch $meetings $sdir $odir
+     local/beamformit.sh $nj JOB $mic $meetings $sdir $odir
 
-touch $odir/.done_beamforming
+touch $odir/.done_beamforming_$mic
+
+echo "Beamforming stage with $mic succeeded."

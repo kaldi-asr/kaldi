@@ -110,7 +110,7 @@ awk -v icsidir=$ICSI_DIR '{
 
 fsph=`head -n1 $dir/sph.scp | cut -f2 -d" "`
 [ ! -f $fsph ] \
-  && echo "File $f does not exist in expectetd location, make sure $ICSI_DIR is properly set" \
+  && echo "File $fsph does not exist in expectetd location, make sure $ICSI_DIR is properly set" \
   && exit 1;
 
 #add piping using sph2pipe
@@ -123,10 +123,6 @@ awk -v sph2pipe=sph2pipe '{
 cat $dir/sph.scp \
  | perl -ane '$_ =~ m:^ICSI_(\S+)_(\S+)\s+.*\/.*\/(.*)\.sph$: || die "sdm data prep: reco2file_and_channel bad label $_";
               print "ICSI_$1_$2 $1_$3 A\n"; ' > $dir/reco2file_and_channel || exit 1;
-
-#cat $dir/recids | \
-#   | awk '{ print }' > $dir/reco2file_and_channel || exit 1;
-
 
 # icsi spk flags are "m", "f", "u", or "x" for male, female, unknonwn and computer generated
 # for distant case, we do not include speaker label

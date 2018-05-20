@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Copyright 2014  University of Edinburgh (Author: Pawel Swietojanski)
-#           2016  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2014 University of Edinburgh (Author: Pawel Swietojanski)
+#           2016 Johns Hopkins University (Author: Daniel Povey)
+#           2017 Milos Cernak
 #           2018 Emotech LTD (Author: Pawel Swietojanski)
 # ICSI Corpus training data preparation
 # Apache 2.0
@@ -96,7 +97,7 @@ awk -v icsidir=$ICSI_DIR '{
 
 fsph=`head -n1 $dir/sph.scp | cut -f2 -d" "`
 [ ! -f $fsph ] \
-  && echo "File $f does not exist in expectetd location, make sure $ICSI_DIR is properly set" \
+  && echo "File $fsph does not exist in expectetd location, make sure $ICSI_DIR is properly set" \
   && exit 1;
 
 #add piping using sph2pipe

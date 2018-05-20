@@ -1,106 +1,118 @@
 #!/bin/bash
 
-# Copyright 2014  University of Edinburgh (Author: Pawel Swietojanski)
-#           2016  Johns Hopkins University (Author: Daniel Povey)
+# Copyright 2014 University of Edinburgh (Author: Pawel Swietojanski)
+#           2016 Johns Hopkins University (Author: Daniel Povey)
 #           2018 Emotech LTD (Author: Pawel Swietojanski)
 # ICSI Corpus training data preparation
 # Apache 2.0
 
-. path.sh
+# Note: this is called by ../run.sh.
+
+# To be run from one directory above this script.
+
+. ./path.sh
 
 #check existing directories
-if [ $# != 4 ]; then
-  echo "Usage: ami_sdm_scoring_data_prep_edin.sh /path/to/AMI rt09-seg-file set-name mic"
-  exit 1; 
-fi 
+if [ $# -ne 3 ]; then
+  echo "Usage: $0 /path/to/ICSI mdmX set"
+  echo "e.g. $0 /foo/bar/ICSI mdm4 eval"
+  exit 1;
+fi
 
 ICSI_DIR=$1
-SEGS=$2 #assuming here all normalisation stuff was done
+mic=$2
+nmics=$(echo $mic | sed 's/[a-z]//g')
 SET=$3
-mic=$4
 
-tmpdir=data/local/$mic/$SET
-dir=data/$mic/$SET
-
-mkdir -p $tmpdir
+SEGS=data/local/annotations/$SET.txt
+dir=data/local/$mic/$SET
+odir=data/$mic/${SET}_orig
+mkdir -p $dir
 
 # Audio data directory check
 if [ ! -d $ICSI_DIR ]; then
-  echo "Error: run.sh requires a directory argument"
-  exit 1; 
-fi  
+  echo "Error: $ICSI_DIR directory does not exists."
+  exit 1;
+fi
 
-# find headset wav audio files only, here we again get all
-# the files in the corpora and filter only specific sessions
-# while building segments
-
-find $ICSI_DIR -iname '*icsi_bmf.wav' | sort > $tmpdir/wav.flist
-n=`cat $tmpdir/wav.flist | wc -l`
-echo "In total, $n files were found."
+# And transcripts check
+if [ ! -f $SEGS ]; then
+  echo "Error: File $SEGS no found (run icsi_text_prep.sh)."
+  exit 1;
+fi
 
 # (1a) Transcriptions preparation
-# here we start with rt09 transcriptions, hence not much to do
+# here we start with normalised transcriptions, the utt ids follow the convention
+# ICSI_MEETING_CHAN_SPK_STIME_ETIME
+# ICSI_Buw001_mdm4_fe016_0003415_0003484
+# we use uniq as some (rare) entries are doubled in transcripts
 
-awk '{meeting=$1; channel="MDM"; speaker=$3; stime=$4; etime=$5;
- printf("ICSI_%s_%s_%s_%07.0f_%07.0f", meeting, channel, speaker, int(100*stime+0.5), int(100*etime+0.5));
- for(i=6;i<=NF;i++) printf(" %s", $i); printf "\n"}' $SEGS | sort  > $tmpdir/text
+cat $SEGS | \
+  awk -v micdir=$mic \
+      '{meeting=$1; channel=$2; dchannel=$3; speaker=$4; stime=$5; etime=$6;
+          if (etime > stime) {
+            printf("ICSI_%s_%s_%s_%07.0f_%07.0f", meeting, micdir, speaker, int(100*stime+0.5), int(100*etime+0.5));
+            for(i=7;i<=NF;i++) printf(" %s", $i); printf "\n";
+          }
+       }' | sort -k1 | uniq > $dir/text
 
-# (1c) Make segment files from transcript
-#segments file format is: utt-id side-id start-time end-time, e.g.:
-#AMI_ES2011a_H00_FEE041_0003415_0003484
-awk '{ 
+# (1b) Make segment files from transcript
+awk '{
        segment=$1;
        split(segment,S,"[_]");
        audioname=S[1]"_"S[2]"_"S[3]; startf=S[5]; endf=S[6];
-       print segment " " audioname " " startf/100 " " endf/100 " " 0
-}' < $tmpdir/text > $tmpdir/segments
+       print segment " " audioname " " startf*10/1000 " " endf*10/1000 " "
+}' < $dir/text > $dir/segments
 
-#EN2001a.Array1-01.wav
-#sed -e 's?.*/??' -e 's?.sph??' $dir/wav.flist | paste - $dir/wav.flist \
-#  > $dir/wav.scp
+# (1c) prepare wav.scp
+#find $ICSI_DIR/ -name "*$mic.wav" | sort > $dir/wav.flist
 
-sed -e 's?.*/??' -e 's?.wav??' $tmpdir/wav.flist | \
- perl -ne 'split; $_ =~ m/(.*)_icsi_bmf/; print "ICSI_$1_MDM\n"' | \
-  paste - $tmpdir/wav.flist > $tmpdir/wav.scp
+awk -v icsidir=$ICSI_DIR -v mic=$mic \
+  '{ uttid=$1; recid=$2; start=$3; stop=$4;
+     split(recid, R, "[_]");
+     meetid=R[2]
+     wavpath=icsidir"/"meetid"/"meetid"_"mic".wav";
+     print recid " " wavpath
+   }' < $dir/segments | sort -k1 | uniq > $dir/wav.scp
 
-#Keep only devset part of waves
-awk '{print $2}' $tmpdir/segments | sort -u | join - $tmpdir/wav.scp | sort -o $tmpdir/wav.scp
+nws=`cat $dir/wav.scp | wc -l`
 
-# this file reco2file_and_channel maps recording-id (e.g. sw02001-A)
-# to the file name sw02001 and the A, e.g.
-# sw02001-A  sw02001 A
-# In this case it's trivial, but in other corpora the information might
-# be less obvious.  Later it will be needed for ctm scoring.
+#nwf=`cat $dir/wav.flist | wc -l`
+#[ $nws -ne $nwf ] && echo "Expected num of wavs@ $nws, got: $nwf. Check beamforming stage" && exit 1; 
 
-awk '{print $1 $2}' $tmpdir/wav.scp | \
-  perl -ane '$_ =~ m:^(\S+MDM).*\/([B].*)\.wav$: || die "bad label $_"; 
-       print "$1 $2 0\n"; '\
-  > $tmpdir/reco2file_and_channel || exit 1;
+fsph=`head -n1 $dir/wav.scp | cut -f2 -d" "`
+[ ! -f $fsph ] \
+  && echo "File $fsph does not exist in expectetd location, make sure $ICSI_DIR is properly set" \
+  && exit 1;
 
-# we assume we adapt to the session only
-awk '{print $1}' $tmpdir/segments | \
-  perl -ane '$_ =~ m:^(\S+)([xfm][a-z][0-9]{3})(\S+)$: || die "bad label $_"; 
-          print "$1$2$3 $1\n";'  \
-    > $tmpdir/utt2spk || exit 1;
+# (1d) reco2file_and_channel
+cat $dir/wav.scp \
+ | perl -ane '$_ =~ m:^ICSI_(\S+)_(\S+)\s+.*\.wav$: || die "mdm data prep: reco2file_and_channel bad label $_";
+              print "ICSI_$1_$2 $1_$2 A\n"; ' > $dir/reco2file_and_channel || exit 1;
 
-sort -k 2 $tmpdir/utt2spk | utils/utt2spk_to_spk2utt.pl > $tmpdir/spk2utt || exit 1;
+# icsi spk flags are "m", "f", "u", or "x" for male, female, unknonwn and computer generated
+# for distant case, we do not include speaker label
+awk '{print $1}' $dir/segments | \
+  perl -ane '$_ =~ m:^(\S+)([fmux][ne][0-9]{3})(\S+)$: || die "mdm data prep: utt2spk bad label $_";
+          print "$1$2$3 $1\n";' > $dir/utt2spk || exit 1;
+
+utils/utt2spk_to_spk2utt.pl <$dir/utt2spk >$dir/spk2utt || exit 1;
 
 # but we want to properly score the overlapped segments, hence we generate the extra
 # utt2spk_stm file containing speakers ids used to generate the stms for mdm/sdm case
-awk '{print $1}' $tmpdir/segments | \
-  perl -ane '$_ =~ m:^(\S+)([xfm][a-z][0-9]{3})(\S+)$: || die "bad label $_"; 
-          print "$1$2$3 $1$2\n";'  \
-    > $tmpdir/utt2spk_stm || exit 1;
+awk '{print $1}' $dir/segments | \
+  perl -ane '$_ =~ m:^(\S+)([fmux][ne][0-9]{3})(\S+)$: || die "mdm data prep: utt2spk_stm bad label $_";
+          print "$1$2$3 $1$2\n";' > $dir/utt2spk_stm || exit 1;
 
-# Copy stuff into its final locations [this has been moved from the format_data
-# script]
-mkdir -p $dir
-for f in spk2utt utt2spk utt2spk_stm wav.scp text segments reco2file_and_channel; do
-  cp $tmpdir/$f $dir/$f || exit 1;
+local/convert2stm.pl $dir utt2spk_stm | sort +0 -1 +1 -2 +3nb -4 > $dir/stm
+cp local/english.glm $dir/glm
+
+# Copy stuff into its final location
+mkdir -p $odir
+for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel stm glm; do
+  cp $dir/$f $odir/$f || exit 1;
 done
 
-cp local/english.glm $dir/glm
-local/convert2stm.pl $dir utt2spk_stm > $dir/stm
+utils/validate_data_dir.sh --no-feats $odir || exit 1;
 
-echo ICSI $SET set data preparation succeeded.
-
+echo "ICSI $mic for $SET data preparation succeeded."
