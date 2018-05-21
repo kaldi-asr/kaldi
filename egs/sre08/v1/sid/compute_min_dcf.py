@@ -24,7 +24,7 @@ def GetArgs():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--p-target', type=float, dest = "p_target",
         default = 0.01,
-        help='The the prior probability of the target speaker in a trial.')
+        help='The prior probability of the target speaker in a trial.')
     parser.add_argument('--c-miss', type=float, dest = "c_miss", default = 1,
         help='Cost of a missed detection.  This is usually not changed.')
     parser.add_argument('--c-fa', type=float, dest = "c_fa", default = 1,
