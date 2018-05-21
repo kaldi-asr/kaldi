@@ -6,7 +6,7 @@ cmd=run.pl
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
-dataset_file=data/download/data_splits/madcat.dev.raw.lineid
+data_split_file=data/download/data_splits/madcat.dev.raw.lineid
 echo "$0 $@"
 
 . ./cmd.sh
@@ -23,7 +23,7 @@ for n in $(seq $nj); do
     split_scps="$split_scps $log_dir/lines.$n.scp"
 done
 
-utils/split_scp.pl $dataset_file $split_scps || exit 1;
+utils/split_scp.pl $data_split_file $split_scps || exit 1;
 
 for n in $(seq $nj); do
   mkdir -p $data/$n

@@ -33,13 +33,14 @@ mkdir -p data/local/{train,test,dev}
 if [ $stage -le 0 ]; then
   echo "$0: Downloading data splits..."
   echo "Date: $(date)."
-  local/download_data.sh --data_splits $data_splits_dir
+  local/download_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
+                         --download_dir2 $download_dir2 --download_dir3 $download_dir3
 fi
 
 if [ $stage -le 1 ]; then
   for dataset in test train dev; do
-    dataset_file=$data_splits_dir/madcat.$dataset.raw.lineid
-    local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
+    data_split_file=$data_splits_dir/madcat.$dataset.raw.lineid
+    local/extract_lines.sh --nj $nj --cmd $cmd --data_split_file $data_split_file \
                            --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
                            --download_dir3 $download_dir3 data/local/$dataset
   done
@@ -47,7 +48,8 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Preparing data..."
-  local/prepare_data.sh
+  local/prepare_data.sh --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
+                        --download_dir3 $download_dir3 --images_scp_dir data/local 
 fi
 
 mkdir -p data/{train,test,dev}/data

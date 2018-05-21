@@ -52,6 +52,12 @@ parser.add_argument('data_splits', type=str,
                     help='Path to file that contains the train/test/dev split information')
 parser.add_argument('out_dir', type=str,
                     help='directory location to write output files')
+parser.add_argument('writing_condition1', type=str,
+                    help='Path to the downloaded (and extracted) writing conditions file 1')
+parser.add_argument('writing_condition2', type=str,
+                    help='Path to the downloaded (and extracted) writing conditions file 2')
+parser.add_argument('writing_condition3', type=str,
+                    help='Path to the downloaded (and extracted) writing conditions file 3')
 parser.add_argument('--padding', type=int, default=400,
                     help='padding across horizontal/verticle direction')
 args = parser.parse_args()
@@ -541,22 +547,9 @@ def check_writing_condition(wc_dict, base_name):
 
 def main():
 
-    writing_condition_folder_list = args.database_path1.split('/')
-    writing_condition_folder1 = ('/').join(writing_condition_folder_list[:5])
-
-    writing_condition_folder_list = args.database_path2.split('/')
-    writing_condition_folder2 = ('/').join(writing_condition_folder_list[:5])
-
-    writing_condition_folder_list = args.database_path3.split('/')
-    writing_condition_folder3 = ('/').join(writing_condition_folder_list[:5])
-
-    writing_conditions1 = os.path.join(writing_condition_folder1, 'docs', 'writing_conditions.tab')
-    writing_conditions2 = os.path.join(writing_condition_folder2, 'docs', 'writing_conditions.tab')
-    writing_conditions3 = os.path.join(writing_condition_folder3, 'docs', 'writing_conditions.tab')
-
-    wc_dict1 = parse_writing_conditions(writing_conditions1)
-    wc_dict2 = parse_writing_conditions(writing_conditions2)
-    wc_dict3 = parse_writing_conditions(writing_conditions3)
+    wc_dict1 = parse_writing_conditions(args.writing_condition_path1)
+    wc_dict2 = parse_writing_conditions(args.writing_condition_path2)
+    wc_dict3 = parse_writing_conditions(args.writing_condition_path3)
 
     output_directory = args.out_dir
     image_file = os.path.join(output_directory, 'images.scp')
