@@ -98,6 +98,7 @@ function filter_recordings {
     filter_file $tmpdir/recordings $data/wav.scp
     [ -f $data/reco2file_and_channel ] && filter_file $tmpdir/recordings $data/reco2file_and_channel
     [ -f $data/reco2dur ] && filter_file $tmpdir/recordings $data/reco2dur
+    true
   fi
 }
 
