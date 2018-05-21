@@ -79,7 +79,7 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  # Train the UBM.
+  # Train the UBM using bottleneck features.
   sid/train_diag_ubm.sh --cmd "$train_cmd --mem 4G" \
     --nj 40 --num-threads 8 --delta-order 0 --apply-cmn false \
     data/train_bnf 2048 \
@@ -93,6 +93,9 @@ fi
 
 if [ $stage -le 5 ]; then
   # In this stage, we train the i-vector extractor.
+  # We use bottleneck features and the UBM trained above to compute posterior
+  # probabilities. We compute i-vector stats using combined MFCC+bottleneck
+  # feature vectors (--add-bnf true).
   #
   # Note that there are well over 1 million utterances in our training set,
   # and it takes an extremely long time to train the extractor on all of this.
@@ -168,7 +171,13 @@ if [ $stage -le 9 ]; then
   # minDCF(p-target=0.001): 0.5981
 fi
 
+# Next, we evaluate another bottleneck feature system variant that uses
+# bottleneck features to compute posterior probabilities, but uses only
+# MFCC features to compute i-vector stats.
+
 if [ $stage -le 10 ]; then
+  # We use bottleneck features and the previously trained UBM to compute
+  # posterior probabilities. We compute i-vector stats using only MFCCs.
   local/nnet3/bnf/train_ivector_extractor.sh --cmd "$train_cmd --mem 16G" \
     --ivector-dim 600 --delta-window 3 --delta-order 2 \
     --num-iters 5 exp/full_ubm/final.ubm data/train_100k data/train_bnf_100k \
