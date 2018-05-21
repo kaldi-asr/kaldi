@@ -63,19 +63,7 @@ if [ $stage -le 3 ]; then
                      data/local/dict/lexicon.txt data/lang_test
 fi
 
-
 if [ $stage -le 4 ]; then
-  echo "$0: estimating phone language model for the denominator graph"
-  mkdir -p exp/chain/e2e_base/log
-  $cmd exp/chain/e2e_base/log/make_phone_lm.log \
-  cat data/train/text \| \
-    steps/nnet3/chain/e2e/text_to_phones.py data/lang \| \
-    utils/sym2int.pl -f 2- data/lang/phones.txt \| \
-    chain-est-phone-lm --num-extra-lm-states=1000 \
-                       ark:- exp/chain/e2e_base/phone_lm.fst
-fi
-
-if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
   local/chain/run_flatstart_cnn1a.sh
 fi

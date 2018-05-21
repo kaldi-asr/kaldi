@@ -20,8 +20,8 @@ affix=1afix1
 # training options
 tdnn_dim=450
 num_epochs=4
-num_jobs_initial=4
-num_jobs_final=8
+num_jobs_initial=8
+num_jobs_final=16
 minibatch_size=150=48,24/300=24,12/600=12,6/1200=4,4
 common_egs_dir=
 l2_regularize=0.00005
@@ -67,7 +67,12 @@ if [ $stage -le 1 ]; then
                                        --shared-phones true \
                                        --type mono \
                                        data/$train_set $lang $treedir
-  cp exp/chain/e2e_base/phone_lm.fst $treedir/
+  $cmd $treedir/log/make_phone_lm.log \
+  cat data/$train_set/text \| \
+    steps/nnet3/chain/e2e/text_to_phones.py data/lang \| \
+    utils/sym2int.pl -f 2- data/lang/phones.txt \| \
+    chain-est-phone-lm --num-extra-lm-states=500 \
+                       ark:- $treedir/phone_lm.fst
 fi
 
 if [ $stage -le 2 ]; then

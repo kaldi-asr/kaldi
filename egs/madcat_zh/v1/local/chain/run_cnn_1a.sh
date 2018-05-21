@@ -81,7 +81,7 @@ if [ $stage -le 1 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   if [ -d $lang ]; then
-    if [ $lang/L.fst -nt data/$lang_test/L.fst ]; then
+    if [ $lang/L.fst -nt data/lang/L.fst ]; then
       echo "$0: $lang already exists, not overwriting it; continuing"
     else
       echo "$0: $lang already exists and seems to be older than data/lang..."
@@ -89,7 +89,7 @@ if [ $stage -le 1 ]; then
       exit 1;
     fi
   else
-    cp -r data/$lang_test $lang
+    cp -r data/lang $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
@@ -102,7 +102,7 @@ if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj $nj --cmd "$cmd" ${train_data_dir} \
-    data/$lang_test $gmm_dir $lat_dir
+    data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -184,8 +184,8 @@ if [ $stage -le 5 ]; then
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1000000 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=4 \
+    --trainer.optimization.num-jobs-initial=8 \
+    --trainer.optimization.num-jobs-final=16 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
