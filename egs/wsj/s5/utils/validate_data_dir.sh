@@ -337,4 +337,27 @@ if [ -f $data/utt2dur ]; then
 fi
 
 
+if [ -f $data/reco2dur ]; then
+  check_sorted_and_uniq $data/reco2dur
+  cat $data/reco2dur | awk '{print $1}' > $tmpdir/recordings.reco2dur
+  if [ -f $tempdir/recordings ]; then
+    if ! cmp -s $tmpdir/recordings{,.reco2dur}; then
+      echo "$0: Error: in $data, recording-ids extracted from segments and reco2dur file"
+      echo "$0: differ, partial diff is:"
+      partial_diff $tmpdir/recordings{,.reco2dur}
+    exit 1;
+    fi
+  else
+    if ! cmp -s $tmpdir/{utts,recordings.reco2dur}; then
+      echo "$0: Error: in $data, recording-ids extracted from wav.scp and reco2dur file"
+      echo "$0: differ, partial diff is:"
+      partial_diff $tmpdir/{utts,recordings.reco2dur}
+    exit 1;
+    fi
+  fi
+  cat $data/reco2dur | \
+    awk '{ if (NF != 2 || !($2 > 0)) { print "Bad line : " $0; exit(1) }}' || exit 1
+fi
+
+
 echo "$0: Successfully validated data-directory $data"
