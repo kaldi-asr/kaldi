@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
                 "Scaling factor for acoustic likelihoods");
     po.Register("lm-scale", &lm_scale,
                 "Scaling factor for language model scores.");
-    po.Register("word_ins_penalty", &word_ins_penalty,
+    po.Register("word-ins-penalty", &word_ins_penalty,
                 "Word insertion penality.");
     
     po.Read(argc, argv);
