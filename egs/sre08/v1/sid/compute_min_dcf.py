@@ -83,7 +83,7 @@ def ComputeErrorRates(scores, labels):
       fnrs = [x / float(fnrs_norm) for x in fnrs]
 
       # Divide by the total number of corret positives to get the
-      # true positive rate.  Subtract 1 from these quantities to
+      # true positive rate.  Subtract these quantities from 1 to
       # get the false positive rates.
       fprs = [1 - x / float(fprs_norm) for x in fprs]
       return fnrs, fprs, thresholds
