@@ -1,6 +1,7 @@
 // nnet/nnet-component.h
 
 // Copyright 2011-2016  Brno University of Technology (Author: Karel Vesely)
+//           2018 Alibaba.Inc (Author: ShiLiang Zhang) 
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -84,7 +85,13 @@ class Component {
     kMaxPooling2DComponent,
     kFramePoolingComponent,
     kParallelComponent,
-    kMultiBasisComponent
+    kMultiBasisComponent,
+
+    //FSMN
+    kFsmn,
+    kDeepFsmn,
+    kUniFsmn,
+    kUniDeepFsmn,
   } ComponentType;
 
   /// A pair of type and marker,

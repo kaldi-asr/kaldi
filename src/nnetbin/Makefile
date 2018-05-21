@@ -15,7 +15,8 @@ BINFILES = nnet-train-frmshuff \
         nnet-forward nnet-copy nnet-info nnet-concat \
         transf-to-nnet cmvn-to-nnet nnet-initialize \
 	feat-to-post paste-post train-transitions \
-	cuda-gpu-available nnet-set-learnrate
+	cuda-gpu-available nnet-set-learnrate \
+	nnet-train-fsmn-streams
 
 OBJFILES =
 

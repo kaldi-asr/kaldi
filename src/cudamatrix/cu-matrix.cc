@@ -8,6 +8,8 @@
 //           2013-2015  Guoguo Chen
 //           2016-2017  Shiyin Kang
 //                2017  Hossein Hadian
+//                2018 Alibaba.Inc (Author: ShiLiang Zhang)
+
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -3422,6 +3424,208 @@ void CuMatrixBase<Real>::EqualElementMask(const CuMatrixBase<Real> &mat, CuMatri
   }
 }
 
+//////////////////////////////////////////////////////
+////           FSMN kernel functions          ///////
+////////////////////////////////////////////////////
+template<typename Real>
+void CuMatrixBase<Real>::GenMemory(const CuMatrixBase<Real>& in, const CuMatrixBase<Real>& l_filter, const CuMatrixBase<Real>& r_filter,
+                                   CuVectorBase<BaseFloat> &flags, int l_order, int r_order, int l_stride, int r_stride) {
+  // Check the inputs:
+  KALDI_ASSERT(in.NumRows() == NumRows() && in.NumCols() == NumCols());
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    KALDI_ASSERT(num_cols_ == in.NumCols());
+    KALDI_ASSERT(num_rows_ == in.NumRows());
+
+    dim3 dimBlock(CU1DBLOCK);
+
+    dim3 dimGrid(n_blocks(in.NumCols()*in.NumRows(), CU1DBLOCK));
+
+    cuda_gen_memory(dimGrid, dimBlock, this->data_, in.data_, l_filter.data_, r_filter.data_, flags.Data(), 
+        in.Dim(), l_order, r_order, l_stride, r_stride);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  }else
+#endif
+  {
+    Real *data = this->data_;
+    const Real *src_data = in.data_;
+    const Real *LF = l_filter.data_;
+    const Real *RF = r_filter.data_;
+    int shift_index = 0;
+    int rows = NumRows();
+    int cols = NumCols();
+    int stride = in.Stride();
+    for (int32 r = 0; r < rows; r++) {
+      for (int32 c = 0; c < cols; c++) {
+        int index = r*stride + c;
+        data[index] = src_data[index];
+        for (int order = 0; order < l_order; order++)
+        {
+          shift_index = r - order*l_stride;
+          if (shift_index >= 0)
+          {
+            data[index] += src_data[shift_index*stride + c] * LF[order*stride + c];
+          }
+        }
+        for (int order = 1; order < r_order + 1; order++)
+        {
+          shift_index = r + order*r_stride;
+          if (shift_index < rows)
+          {
+            data[index] += src_data[shift_index*stride + c] * RF[(order - 1)*stride + c];
+          }
+        }
+      }
+    }
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::MemoryErrBack(const CuMatrixBase<Real>& in, const CuMatrixBase<Real>& l_filter, const CuMatrixBase<Real>& r_filter,
+                                       CuVectorBase<BaseFloat> &flags, int l_order, int r_order, int l_stride, int r_stride) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    KALDI_ASSERT(num_cols_ == in.NumCols());
+    KALDI_ASSERT(num_rows_ == in.NumRows());
+
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(n_blocks(in.NumCols()*in.NumRows(), CU1DBLOCK));
+
+    cuda_memory_err_back(dimGrid, dimBlock, this->data_, in.data_, l_filter.data_, r_filter.data_, flags.Data(), 
+             in.Dim(), l_order, r_order, l_stride, r_stride);
+    
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  }else
+#endif
+  {
+    //add CPU function
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::GenUniMemory(const CuMatrixBase<Real>& in, const CuMatrixBase<Real>& l_filter, CuVectorBase<BaseFloat> &flags, 
+                                      int l_order, int l_stride) {
+
+  //Check the inputs:
+  KALDI_ASSERT(in.NumRows() == NumRows() && in.NumCols() == NumCols());
+
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    KALDI_ASSERT(num_cols_ == in.NumCols());
+    KALDI_ASSERT(num_rows_ == in.NumRows());
+
+    dim3 dimBlock(CU1DBLOCK);
+
+    dim3 dimGrid(n_blocks(in.NumCols()*in.NumRows(), CU1DBLOCK));
+
+    cuda_gen_uni_memory(dimGrid, dimBlock, this->data_, in.data_, l_filter.data_, flags.Data(), in.Dim(), l_order, l_stride);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  }
+  else
+#endif
+  {
+    Real *data = this->data_;
+    const Real *src_data = in.data_;
+    const Real *LF = l_filter.data_;
+    int shift_index = 0;
+    int rows = NumRows();
+    int cols = NumCols();
+    int stride = in.Stride();
+    for (int32 r = 0; r < rows; r++) {
+      for (int32 c = 0; c < cols; c++) {
+        int index = r*stride + c;
+        data[index] = src_data[index];
+        for (int order = 0; order < l_order; order++)
+        {
+          shift_index = r - order*l_stride;
+          if (shift_index >= 0)
+          {
+            data[index] += src_data[shift_index*stride + c] * LF[order*stride + c];
+          }
+        }
+      }
+    }
+  }
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::UniMemoryErrBack(const CuMatrixBase<Real>& in, const CuMatrixBase<Real>& l_filter, CuVectorBase<BaseFloat> &flags, 
+                                          int l_order, int l_stride) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    KALDI_ASSERT(num_cols_ == in.NumCols());
+    KALDI_ASSERT(num_rows_ == in.NumRows());
+
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(n_blocks(in.NumCols()*in.NumRows(), CU1DBLOCK));
+
+    cuda_uni_memory_err_back(dimGrid, dimBlock, this->data_, in.data_, l_filter.data_, flags.Data(), in.Dim(), l_order, l_stride);
+
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  }
+#endif
+}
+
+
+template<typename Real>
+void CuMatrixBase<Real>::GetLfilterErr(const CuMatrixBase<Real>& diff, const CuMatrixBase<Real>& in, CuVectorBase<BaseFloat> &flags, 
+                                       int l_order, int l_stride, float lr) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    KALDI_ASSERT(num_cols_ == diff.NumCols());
+    KALDI_ASSERT(num_rows_ == l_order);
+
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(diff.NumCols()*l_order);
+
+    cuda_get_l_filter_err(dimGrid, dimBlock, this->data_, diff.data_, in.data_, flags.Data(), diff.Dim(), l_order, l_stride, lr);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  }
+#endif
+}
+
+template<typename Real>
+void CuMatrixBase<Real>::GetRfilterErr(const CuMatrixBase<Real>& diff, const CuMatrixBase<Real>& in, CuVectorBase<BaseFloat> &flags, 
+                                       int r_order, int r_stride,  float lr) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    KALDI_ASSERT(num_cols_ == diff.NumCols());
+    KALDI_ASSERT(num_rows_ == r_order);
+
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(diff.NumCols()*r_order);
+
+    cuda_get_r_filter_err(dimGrid, dimBlock, this->data_, diff.data_, in.data_, flags.Data(), diff.Dim(), r_order, r_stride, lr);
+    
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  }
+#endif
+}
 
 /**
  * Print the matrix to stream
@@ -3445,11 +3649,6 @@ template class CuMatrix<float>;
 template class CuMatrix<double>;
 template class CuMatrixBase<float>;
 template class CuMatrixBase<double>;
-
-
-
-
-
 
 
 } // namespace kaldi

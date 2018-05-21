@@ -8,6 +8,8 @@
 //           2013-2015  Guoguo Chen
 //           2016-2017  Shiyin Kang
 //                2017  Hossein Hadian, Daniel Galvez
+//                2018 Alibaba.Inc (Author: ShiLiang Zhang)
+
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -5445,3 +5447,336 @@ void cuda_uncompress_int16(dim3 Gr, dim3 Bl, BaseFloat *dest,
                            int src_stride, float scale) {
   _cuda_uncompress<<<Gr, Bl>>>(dest, dim, src, src_stride, scale);
 }
+
+//////////////////////////////////////////////////////
+////           FSMN kernel functions          ///////
+////////////////////////////////////////////////////
+
+template<typename Real>
+__global__
+static void _gen_memory(Real* out, const Real* in, const Real *l_filter, const Real *r_filter, float *flags, MatrixDim d, 
+                        int l_order, int r_order, int l_stride, int r_stride)
+{
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  if(i < d.cols*d.rows)
+  {
+    int row = i/d.cols;
+    int col = i%d.cols;
+    Real value = 0.0;
+    int shift_index = 0;
+    int index = row*d.stride + col;
+    out[index] = in[index];
+    for (int order = 0; order < l_order; order++)
+    {
+      shift_index = row - order*l_stride;
+      if (shift_index >= 0 && flags[shift_index] == flags[row])
+      {
+        value += in[shift_index*d.stride + col] * l_filter[order*d.stride + col];
+      }
+    }
+    for (int order = 1; order <= r_order; order++)
+    {
+      shift_index = row + order*r_stride;
+      if (shift_index < d.rows && flags[shift_index] == flags[row])
+      {
+        value += in[shift_index*d.stride + col] * r_filter[(order - 1)*d.stride + col];
+      }
+    }
+    out[index] += value;
+  }
+}
+
+template<typename Real>
+__global__
+static void _memory_err_back(Real* out, const Real* in, const Real *l_filter, const Real *r_filter, float *flags, MatrixDim d, 
+                             int l_order, int r_order, int l_stride, int r_stride)
+{
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < d.cols*d.rows)
+  {
+    int row = i/d.cols;
+    int col = i%d.cols;
+    Real value = 0.0;
+    int shift_index = 0;
+    int index = row*d.stride + col;
+    out[index] = in[index];
+    for (int order = -r_order; order < 0; order++)
+    {
+      shift_index = row + order*r_stride;
+      if (shift_index >= 0 && flags[shift_index] == flags[row])
+      {
+        value += in[shift_index*d.stride + col] * r_filter[(-order - 1)*d.stride + col];
+      }
+    }
+    for (int order = 0; order < l_order; order++)
+    {
+      shift_index = row + order*l_stride;
+      if (shift_index < d.rows && flags[shift_index] == flags[row])
+      {
+        value += in[shift_index*d.stride + col] * l_filter[order*d.stride + col];
+      }
+    }
+    out[index] += value;
+  }
+}
+
+template<typename Real>
+__global__
+static void _gen_uni_memory(Real* out, const Real* in, const Real *l_filter, float *flags, MatrixDim d, int l_order, int l_stride)
+{
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < d.cols*d.rows)
+  {
+    int row = i / d.cols;
+    int col = i%d.cols;
+    Real value = 0.0;
+    int shift_index = 0;
+    int index = row*d.stride + col;
+    out[index] = in[index];
+    for (int order = 0; order < l_order; order++)
+    {
+      shift_index = row - order*l_stride;
+      if (shift_index >= 0 && flags[shift_index] == flags[row])
+      {
+        value += in[shift_index*d.stride + col] * l_filter[order*d.stride + col];
+      }
+    }
+    out[index] += value;
+  }
+}
+
+template<typename Real>
+__global__
+static void _uni_memory_err_back(Real* out, const Real* in, const Real *l_filter, float *flags, MatrixDim d, int l_order, int l_stride)
+{
+  int32_cuda i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i < d.cols*d.rows)
+  {
+    int row = i / d.cols;
+    int col = i%d.cols;
+    Real value = 0.0;
+    int shift_index = 0;
+    int index = row*d.stride + col;
+    out[index] = in[index];
+    for (int order = 0; order < l_order; order++)
+    {
+      shift_index = row + order*l_stride;
+      if (shift_index < d.rows && flags[shift_index] == flags[row])
+      {
+        value += in[shift_index*d.stride + col] * l_filter[order*d.stride + col];
+      }
+    }
+    out[index] += value;
+  }
+}
+
+template<typename Real>
+__global__
+static void _get_l_filter_err(Real* out, const Real* diff, const Real* in, float *flags, MatrixDim d, int l_order, int l_stride, float lr)
+{
+  int j = blockIdx.x;
+  int THREADS = blockDim.x;
+  if (j >= d.cols*l_order) return;
+
+  __shared__ Real aux[CU1DBLOCK];
+
+  int steps = (d.rows - 1)/THREADS + 1;
+  int order = j/d.cols;
+  int col   = j%d.cols;
+  int shift = order * l_stride; 
+  int index = order*d.stride + col;
+  //copy input to aux
+  int row = threadIdx.x - shift;
+
+  if (steps > 1)
+  {
+    if (row >= 0 && abs(flags[threadIdx.x] - flags[row])<1e-2)
+    {
+      aux[threadIdx.x] = in[col + row*d.stride] * diff[col + threadIdx.x*d.stride];
+    }
+    else
+    {
+      aux[threadIdx.x] = 0;
+    }
+    __syncthreads();
+    for (int i = 1; i<steps; ++i)
+    {
+      int index = threadIdx.x + i*THREADS;
+
+      if (index < d.rows && abs(flags[index] - flags[index - shift])<1e-2)
+        aux[threadIdx.x] += in[(index - shift)*d.stride + col] * diff[index*d.stride + col];
+    }
+    __syncthreads();
+  }
+  else
+  {
+    if (row >= 0 && threadIdx.x<d.rows && abs(flags[threadIdx.x] - flags[row])<1e-2)
+    {
+      aux[threadIdx.x] = in[col + row*d.stride] * diff[col + threadIdx.x*d.stride];
+    }
+    else
+    {
+      aux[threadIdx.x] = 0;
+    }
+    __syncthreads();
+  }
+
+    int nTotalThreads = THREADS;
+  __syncthreads();
+  while (nTotalThreads > 1) {
+    int halfPoint = ((1 + nTotalThreads) >> 1);   // divide by two
+    // only the first half of the threads will be active.
+    if (threadIdx.x < halfPoint)  {
+      // Get the shared value stored by another thread
+      if (threadIdx.x + halfPoint < nTotalThreads)
+        aux[threadIdx.x] += aux[threadIdx.x + halfPoint];
+    }
+    __syncthreads();
+    nTotalThreads = ((1 + nTotalThreads) >> 1);   // divide by two.
+  }
+    Real sum = aux[0];
+  __syncthreads();
+    out[index] = out[index]-lr*sum;
+}
+
+template<typename Real>
+__global__
+static void _get_r_filter_err(Real* out, const Real* diff, const Real* in, float *flags, MatrixDim d, int r_order, int r_stride, float lr)
+{
+  int j = blockIdx.x;
+  int THREADS = blockDim.x;
+  if (j >= d.cols*r_order) return;
+
+  __shared__ Real aux[CU1DBLOCK];
+
+  int steps = (d.rows - 1) / THREADS + 1;
+  int order = j/d.cols;
+  int col = j%d.cols;
+  int shift = (order + 1) * r_stride;
+  int index = order*d.stride + col;
+  //copy input to aux
+  int row = threadIdx.x + shift;
+  if (steps > 1)
+  {
+    if (row <d.rows && abs(flags[threadIdx.x] - flags[row])<1e-2)
+    {
+      aux[threadIdx.x] = in[row*d.stride + col] * diff[threadIdx.x *d.stride + col];
+    }
+    else
+    {
+      aux[threadIdx.x] = 0;
+    }
+    __syncthreads();
+    for (int i = 1; i<steps; ++i)
+    {
+      int index = threadIdx.x + i*THREADS;
+      if (index + shift < d.rows && abs(flags[index] - flags[index + shift])<1e-2)
+        aux[threadIdx.x] += in[(index + shift)*d.stride + col] * diff[index*d.stride + col];
+    }
+    __syncthreads();
+  }
+  else
+  {
+    if (row <d.rows &&threadIdx.x<d.rows&& abs(flags[threadIdx.x] - flags[row])<1e-2)
+    {
+      aux[threadIdx.x] = in[row*d.stride + col] * diff[threadIdx.x *d.stride + col];
+    }
+    else
+    {
+      aux[threadIdx.x] = 0;
+    }
+    __syncthreads();
+  }
+    int nTotalThreads = THREADS;
+  __syncthreads();
+  while (nTotalThreads > 1) {
+    int halfPoint = ((1 + nTotalThreads) >> 1);   // divide by two
+    // only the first half of the threads will be active.
+    if (threadIdx.x < halfPoint)  {
+      // Get the shared value stored by another thread
+      if (threadIdx.x + halfPoint < nTotalThreads)
+        aux[threadIdx.x] += aux[threadIdx.x + halfPoint];
+    }
+    __syncthreads();
+    nTotalThreads = ((1 + nTotalThreads) >> 1);   // divide by two.
+  }
+  
+    Real sum = aux[0];
+     __syncthreads();
+  out[index] = out[index]-lr*sum;
+}
+
+
+
+void cudaF_gen_memory(dim3 Gr, dim3 Bl, float *mat_out, const float* mat_in, const float *l_filter, const float* r_filter, 
+                      float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride)
+{
+  _gen_memory<<<Gr, Bl >>>(mat_out, mat_in, l_filter, r_filter, flags, d, l_order, r_order, l_stride, r_stride);
+}
+
+void cudaD_gen_memory(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, const double *l_filter, const double* r_filter, 
+                      float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride)
+{
+  _gen_memory <<<Gr, Bl >> >(mat_out, mat_in, l_filter, r_filter, flags, d, l_order, r_order, l_stride, r_stride);
+}
+
+void cudaF_memory_err_back(dim3 Gr, dim3 Bl, float *mat_out, const float* mat_in, const float *l_filter, const float* r_filter, 
+                           float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride)
+{
+  _memory_err_back<<<Gr, Bl >>>(mat_out, mat_in, l_filter, r_filter, flags, d, l_order, r_order, l_stride, r_stride);
+}
+
+void cudaD_memory_err_back(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, const double *l_filter, const double* r_filter, 
+                           float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride)
+{
+  _memory_err_back<<<Gr, Bl >>>(mat_out, mat_in, l_filter, r_filter, flags, d, l_order, r_order, l_stride, r_stride);
+}
+
+void cudaF_gen_uni_memory(dim3 Gr, dim3 Bl, float *mat_out, const float* mat_in, const float *l_filter, float* flags, MatrixDim d, 
+                          int l_order, int l_stride)
+{
+  _gen_uni_memory << <Gr, Bl >> >(mat_out, mat_in, l_filter, flags, d, l_order, l_stride);
+}
+
+void cudaD_gen_uni_memory(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, const double *l_filter, float* flags, MatrixDim d, 
+                          int l_order, int l_stride)
+{
+  _gen_uni_memory << <Gr, Bl >> >(mat_out, mat_in, l_filter, flags, d, l_order, l_stride);
+}
+
+void cudaF_uni_memory_err_back(dim3 Gr, dim3 Bl, float *mat_out, const float* mat_in, const float *l_filter, float* flags, MatrixDim d, 
+                               int l_order, int l_stride)
+{
+  _uni_memory_err_back << <Gr, Bl >> >(mat_out, mat_in, l_filter, flags, d, l_order, l_stride);
+}
+
+void cudaD_uni_memory_err_back(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, const double *l_filter, float* flags, MatrixDim d, 
+                               int l_order, int l_stride)
+{
+  _uni_memory_err_back << <Gr, Bl >> >(mat_out, mat_in, l_filter, flags, d, l_order, l_stride);
+}
+
+void cudaF_get_l_filter_err(dim3 Gr, dim3 Bl, float *mat_out, const float *diff, const float* mat_in, float* flags, MatrixDim d, 
+                            int l_order, int l_stride, float lr)
+{
+  _get_l_filter_err <<<Gr, Bl >>>(mat_out, diff, mat_in, flags, d, l_order, l_stride, lr);
+}
+
+void cudaD_get_l_filter_err(dim3 Gr, dim3 Bl, double *mat_out, const double *diff, const double* mat_in, float* flags, MatrixDim d, 
+                            int l_order, int l_stride, float lr)
+{
+  _get_l_filter_err <<<Gr, Bl >>>(mat_out, diff, mat_in, flags, d, l_order, l_stride, lr);
+}
+
+void cudaF_get_r_filter_err(dim3 Gr, dim3 Bl, float *mat_out, const float *diff, const float* mat_in, float* flags, MatrixDim d, 
+                            int r_order, int r_stride, float lr)
+{
+  _get_r_filter_err <<<Gr, Bl >>>(mat_out, diff, mat_in, flags, d, r_order, r_stride, lr);
+}
+
+void cudaD_get_r_filter_err(dim3 Gr, dim3 Bl, double *mat_out, const double *diff, const double* mat_in, float* flags, MatrixDim d, 
+                            int r_order, int r_stride, float lr)
+{
+  _get_r_filter_err <<<Gr, Bl >>>(mat_out, diff, mat_in, flags, d, r_order, r_stride, lr);
+}
+

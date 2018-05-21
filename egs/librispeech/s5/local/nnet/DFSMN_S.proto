@@ -1,0 +1,19 @@
+<NnetProto>
+<AffineTransform> <InputDim> 1020  <OutputDim> 1024 <MaxNorm> 0.000000 <Xavier> 1
+<ParametricRelu> <InputDim> 1024 <OutputDim> 1024
+<LinearTransform> <InputDim> 1024 <OutputDim> 384 <ParamStddev> 0.010000 <Xavier> 1
+<Fsmn> <InputDim> 384 <OutputDim> 384  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 384 <OutputDim> 384 <HidSize> 1024  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 384 <OutputDim> 384 <HidSize> 1024  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 384 <OutputDim> 384 <HidSize> 1024  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 384 <OutputDim> 384 <HidSize> 1024  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 384 <OutputDim> 384 <HidSize> 1024  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<AffineTransform> <InputDim> 384 <OutputDim> 1024 <Xavier> 1
+<ParametricRelu> <InputDim> 1024 <OutputDim> 1024
+<AffineTransform> <InputDim> 1024 <OutputDim> 1024 <Xavier> 1
+<ParametricRelu> <InputDim> 1024 <OutputDim> 1024
+<LinearTransform> <InputDim> 1024 <OutputDim> 384 <Xavier> 1
+<AffineTransform> <InputDim> 384 <OutputDim> 5777 <Xavier> 1
+<Softmax> <InputDim> 5777 <OutputDim> 5777
+</NnetProto>
+

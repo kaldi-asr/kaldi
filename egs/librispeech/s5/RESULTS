@@ -681,3 +681,117 @@
 %WER 14.64 [ 7664 / 52343, 818 ins, 956 del, 5890 sub ] exp/chain/tdnn_6z_sp_smbr/decode_test_other_tgsmall_epoch3/wer_13_0.0
 %WER 14.70 [ 7696 / 52343, 835 ins, 945 del, 5916 sub ] exp/chain/tdnn_6z_sp_smbr/decode_test_other_tgsmall_epoch6/wer_13_0.0
 %WER 14.75 [ 7722 / 52343, 892 ins, 849 del, 5981 sub ] exp/chain/tdnn_6z_sp_smbr/decode_test_other_tgsmall_epoch9/wer_12_0.0
+
+# Results with nnet DFMSN_S + CE
+# local/nnet/run_fsmn_ivector.sh DFSMN_S
+# Training on the "cleaned" data
+%WER 3.97 [ 2160 / 54402, 264 ins, 233 del, 1663 sub ] exp/tri7b_DFSMN_S/decode_fglarge_dev_clean/wer_10_1.0
+%WER 4.10 [ 2230 / 54402, 270 ins, 242 del, 1718 sub ] exp/tri7b_DFSMN_S/decode_tglarge_dev_clean/wer_12_0.5
+%WER 5.06 [ 2752 / 54402, 274 ins, 360 del, 2118 sub ] exp/tri7b_DFSMN_S/decode_tgmed_dev_clean/wer_13_0.5
+%WER 5.55 [ 3022 / 54402, 335 ins, 347 del, 2340 sub ] exp/tri7b_DFSMN_S/decode_tgsmall_dev_clean/wer_11_0.0
+
+%WER 4.61 [ 2423 / 52576, 313 ins, 288 del, 1822 sub ] exp/tri7b_DFSMN_S/decode_fglarge_test_clean/wer_12_1.0
+%WER 4.69 [ 2468 / 52576, 325 ins, 282 del, 1861 sub ] exp/tri7b_DFSMN_S/decode_tglarge_test_clean/wer_13_0.5
+%WER 5.69 [ 2992 / 52576, 370 ins, 344 del, 2278 sub ] exp/tri7b_DFSMN_S/decode_tgmed_test_clean/wer_11_0.5
+%WER 6.28 [ 3301 / 52576, 366 ins, 428 del, 2507 sub ] exp/tri7b_DFSMN_S/decode_tgsmall_test_clean/wer_12_0.5
+
+%WER 11.71 [ 5968 / 50948, 719 ins, 704 del, 4545 sub ] exp/tri7b_DFSMN_S/decode_fglarge_dev_other/wer_15_0.0
+%WER 12.19 [ 6209 / 50948, 700 ins, 866 del, 4643 sub ] exp/tri7b_DFSMN_S/decode_tglarge_dev_other/wer_17_0.0
+%WER 14.25 [ 7260 / 50948, 755 ins, 1011 del, 5494 sub ] exp/tri7b_DFSMN_S/decode_tgmed_dev_other/wer_15_0.0
+%WER 15.35 [ 7823 / 50948, 741 ins, 1165 del, 5917 sub ] exp/tri7b_DFSMN_S/decode_tgsmall_dev_other/wer_15_0.0
+
+%WER 12.01 [ 6289 / 52343, 649 ins, 930 del, 4710 sub ] exp/tri7b_DFSMN_S/decode_fglarge_test_other/wer_16_0.0
+%WER 12.45 [ 6519 / 52343, 688 ins, 929 del, 4902 sub ] exp/tri7b_DFSMN_S/decode_tglarge_test_other/wer_15_0.0
+%WER 14.56 [ 7622 / 52343, 715 ins, 1191 del, 5716 sub ] exp/tri7b_DFSMN_S/decode_tgmed_test_other/wer_15_0.0
+%WER 15.68 [ 8208 / 52343, 743 ins, 1321 del, 6144 sub ] exp/tri7b_DFSMN_S/decode_tgsmall_test_other/wer_15_0.0
+
+# Results with nnet DFMSN_S + CE + SMBR
+# local/nnet/run_fsmn_ivector.sh DFSMN_S
+# Training on the "cleaned" data
+%WER 3.77 [ 2053 / 54402, 233 ins, 274 del, 1546 sub ] exp/tri7b_DFSMN_S_smbr/decode_fglarge_dev_clean/wer_27_0.5
+%WER 3.86 [ 2102 / 54402, 231 ins, 264 del, 1607 sub ] exp/tri7b_DFSMN_S_smbr/decode_tglarge_dev_clean/wer_26_0.5
+%WER 4.77 [ 2597 / 54402, 230 ins, 366 del, 2001 sub ] exp/tri7b_DFSMN_S_smbr/decode_tgmed_dev_clean/wer_29_0.5
+%WER 5.21 [ 2836 / 54402, 290 ins, 329 del, 2217 sub ] exp/tri7b_DFSMN_S_smbr/decode_tgsmall_dev_clean/wer_26_0.0
+
+%WER 4.26 [ 2239 / 52576, 250 ins, 313 del, 1676 sub ] exp/tri7b_DFSMN_S_smbr/decode_fglarge_test_clean/wer_27_1.0
+%WER 4.34 [ 2282 / 52576, 265 ins, 306 del, 1711 sub ] exp/tri7b_DFSMN_S_smbr/decode_tglarge_test_clean/wer_29_0.5
+%WER 5.22 [ 2746 / 52576, 319 ins, 315 del, 2112 sub ] exp/tri7b_DFSMN_S_smbr/decode_tgmed_test_clean/wer_28_0.0
+%WER 5.81 [ 3055 / 52576, 357 ins, 329 del, 2369 sub ] exp/tri7b_DFSMN_S_smbr/decode_tgsmall_test_clean/wer_25_0.0
+
+%WER 11.77 [ 5996 / 50948, 734 ins, 767 del, 4495 sub ] exp/tri7b_DFSMN_S_smbr/decode_fglarge_dev_other/wer_30_0.0
+%WER 12.09 [ 6158 / 50948, 644 ins, 926 del, 4588 sub ] exp/tri7b_DFSMN_S_smbr/decode_tglarge_dev_other/wer_30_0.5
+%WER 13.92 [ 7090 / 50948, 763 ins, 1018 del, 5309 sub ] exp/tri7b_DFSMN_S_smbr/decode_tgmed_dev_other/wer_30_0.0
+%WER 14.85 [ 7564 / 50948, 749 ins, 1108 del, 5707 sub ] exp/tri7b_DFSMN_S_smbr/decode_tgsmall_dev_other/wer_30_0.0
+
+%WER 11.65 [ 6099 / 52343, 595 ins, 1001 del, 4503 sub ] exp/tri7b_DFSMN_S_smbr/decode_fglarge_test_other/wer_30_0.5
+%WER 12.09 [ 6329 / 52343, 686 ins, 907 del, 4736 sub ] exp/tri7b_DFSMN_S_smbr/decode_tglarge_test_other/wer_30_0.0
+%WER 14.17 [ 7418 / 52343, 729 ins, 1115 del, 5574 sub ] exp/tri7b_DFSMN_S_smbr/decode_tgmed_test_other/wer_30_0.0
+%WER 15.16 [ 7933 / 52343, 759 ins, 1228 del, 5946 sub ] exp/tri7b_DFSMN_S_smbr/decode_tgsmall_test_other/wer_30_0.0
+
+# Results with nnet DFMSN_M + CE
+# local/nnet/run_fsmn_ivector.sh DFSMN_M
+# Training on the "cleaned" data
+%WER 4.04 [ 2200 / 54402, 254 ins, 255 del, 1691 sub ] exp/tri7b_DFSMN_M/decode_fglarge_dev_clean/wer_12_1.0
+%WER 4.15 [ 2257 / 54402, 266 ins, 247 del, 1744 sub ] exp/tri7b_DFSMN_M/decode_tglarge_dev_clean/wer_13_0.5
+%WER 5.01 [ 2727 / 54402, 304 ins, 308 del, 2115 sub ] exp/tri7b_DFSMN_M/decode_tgmed_dev_clean/wer_12_0.5
+%WER 5.54 [ 3014 / 54402, 356 ins, 306 del, 2352 sub ] exp/tri7b_DFSMN_M/decode_tgsmall_dev_clean/wer_11_0.0
+
+%WER 4.50 [ 2367 / 52576, 328 ins, 263 del, 1776 sub ] exp/tri7b_DFSMN_M/decode_fglarge_test_clean/wer_13_0.5
+%WER 4.63 [ 2436 / 52576, 328 ins, 279 del, 1829 sub ] exp/tri7b_DFSMN_M/decode_tglarge_test_clean/wer_12_0.5
+%WER 5.50 [ 2894 / 52576, 331 ins, 373 del, 2190 sub ] exp/tri7b_DFSMN_M/decode_tgmed_test_clean/wer_13_0.5
+%WER 5.94 [ 3124 / 52576, 381 ins, 368 del, 2375 sub ] exp/tri7b_DFSMN_M/decode_tgsmall_test_clean/wer_13_0.0
+
+%WER 11.88 [ 6055 / 50948, 650 ins, 891 del, 4514 sub ] exp/tri7b_DFSMN_M/decode_fglarge_dev_other/wer_17_0.5
+%WER 12.24 [ 6236 / 50948, 746 ins, 811 del, 4679 sub ] exp/tri7b_DFSMN_M/decode_tglarge_dev_other/wer_17_0.0
+%WER 14.18 [ 7223 / 50948, 728 ins, 1056 del, 5439 sub ] exp/tri7b_DFSMN_M/decode_tgmed_dev_other/wer_17_0.0
+%WER 15.17 [ 7731 / 50948, 758 ins, 1139 del, 5834 sub ] exp/tri7b_DFSMN_M/decode_tgsmall_dev_other/wer_16_0.0
+
+%WER 12.23 [ 6404 / 52343, 716 ins, 908 del, 4780 sub ] exp/tri7b_DFSMN_M/decode_fglarge_test_other/wer_18_0.0
+%WER 12.61 [ 6598 / 52343, 736 ins, 890 del, 4972 sub ] exp/tri7b_DFSMN_M/decode_tglarge_test_other/wer_16_0.0
+%WER 14.55 [ 7614 / 52343, 710 ins, 1195 del, 5709 sub ] exp/tri7b_DFSMN_M/decode_tgmed_test_other/wer_17_0.0
+%WER 15.51 [ 8119 / 52343, 736 ins, 1272 del, 6111 sub ] exp/tri7b_DFSMN_M/decode_tgsmall_test_other/wer_16_0.0
+
+# Results with nnet DFMSN_L + CE
+# local/nnet/run_fsmn_ivector.sh DFSMN_L
+# Training on the "cleaned" data
+%WER 3.93 [ 2136 / 54402, 287 ins, 210 del, 1639 sub ] exp/tri7b_DFSMN_L/decode_fglarge_dev_clean/wer_12_0.5
+%WER 3.99 [ 2170 / 54402, 279 ins, 225 del, 1666 sub ] exp/tri7b_DFSMN_L/decode_tglarge_dev_clean/wer_12_0.5
+%WER 4.78 [ 2598 / 54402, 317 ins, 272 del, 2009 sub ] exp/tri7b_DFSMN_L/decode_tgmed_dev_clean/wer_12_0.0
+%WER 5.20 [ 2829 / 54402, 320 ins, 303 del, 2206 sub ] exp/tri7b_DFSMN_L/decode_tgsmall_dev_clean/wer_12_0.0
+
+%WER 4.36 [ 2294 / 52576, 285 ins, 267 del, 1742 sub ] exp/tri7b_DFSMN_L/decode_fglarge_test_clean/wer_14_0.5
+%WER 4.45 [ 2342 / 52576, 295 ins, 256 del, 1791 sub ] exp/tri7b_DFSMN_L/decode_tglarge_test_clean/wer_12_0.5
+%WER 5.29 [ 2782 / 52576, 320 ins, 326 del, 2136 sub ] exp/tri7b_DFSMN_L/decode_tgmed_test_clean/wer_12_0.5
+%WER 5.68 [ 2988 / 52576, 372 ins, 317 del, 2299 sub ] exp/tri7b_DFSMN_L/decode_tgsmall_test_clean/wer_11_0.0
+
+%WER 11.71 [ 5964 / 50948, 584 ins, 881 del, 4499 sub ] exp/tri7b_DFSMN_L/decode_fglarge_dev_other/wer_17_0.5
+%WER 12.13 [ 6179 / 50948, 668 ins, 822 del, 4689 sub ] exp/tri7b_DFSMN_L/decode_tglarge_dev_other/wer_17_0.0
+%WER 13.86 [ 7063 / 50948, 694 ins, 1051 del, 5318 sub ] exp/tri7b_DFSMN_L/decode_tgmed_dev_other/wer_17_0.0
+%WER 14.82 [ 7548 / 50948, 718 ins, 1075 del, 5755 sub ] exp/tri7b_DFSMN_L/decode_tgsmall_dev_other/wer_15_0.0
+
+%WER 12.00 [ 6281 / 52343, 724 ins, 813 del, 4744 sub ] exp/tri7b_DFSMN_L/decode_fglarge_test_other/wer_16_0.0
+%WER 12.43 [ 6505 / 52343, 719 ins, 858 del, 4928 sub ] exp/tri7b_DFSMN_L/decode_tglarge_test_other/wer_16_0.0
+%WER 13.99 [ 7323 / 52343, 688 ins, 1125 del, 5510 sub ] exp/tri7b_DFSMN_L/decode_tgmed_test_other/wer_17_0.0
+%WER 14.90 [ 7797 / 52343, 754 ins, 1106 del, 5937 sub ] exp/tri7b_DFSMN_L/decode_tgsmall_test_other/wer_15_0.0
+
+# Results with nnet DFMSN_L + CE + SMBR
+# Training on speed-perturbed and volumn-perturbed "cleaned" data
+%WER 3.60 [ 1959 / 54402, 243 ins, 171 del, 1545 sub ] exp/DFSMN_L_sp_vp_smbr/decode_fglarge_dev_clean/wer_26_0.0
+%WER 3.69 [ 2010 / 54402, 194 ins, 226 del, 1590 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tglarge_dev_clean/wer_25_1.0
+%WER 4.40 [ 2394 / 54402, 213 ins, 278 del, 1903 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tgmed_dev_clean/wer_25_0.5
+%WER 4.79 [ 2608 / 54402, 261 ins, 267 del, 2080 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tgsmall_dev_clean/wer_19_0.5
+
+%WER 3.96 [ 2083 / 52576, 280 ins, 177 del, 1626 sub ] exp/DFSMN_L_sp_vp_smbr/decode_fglarge_test_clean/wer_23_0.5
+%WER 4.09 [ 2152 / 52576, 243 ins, 238 del, 1671 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tglarge_test_clean/wer_25_1.0
+%WER 4.73 [ 2486 / 52576, 276 ins, 264 del, 1946 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tgmed_test_clean/wer_25_0.5
+%WER 5.10 [ 2682 / 52576, 304 ins, 279 del, 2099 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tgsmall_test_clean/wer_21_0.5
+
+%WER 10.21 [ 5203 / 50948, 531 ins, 650 del, 4022 sub ] exp/DFSMN_L_sp_vp_smbr/decode_fglarge_dev_other/wer_30_0.5
+%WER 10.77 [ 5485 / 50948, 554 ins, 697 del, 4234 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tglarge_dev_other/wer_29_0.5
+%WER 12.39 [ 6314 / 50948, 534 ins, 891 del, 4889 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tgmed_dev_other/wer_29_0.5
+%WER 13.01 [ 6630 / 50948, 608 ins, 885 del, 5137 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tgsmall_dev_other/wer_30_0.0
+
+%WER 10.39 [ 5439 / 52343, 560 ins, 637 del, 4242 sub ] exp/DFSMN_L_sp_vp_smbr/decode_fglarge_test_other/wer_30_0.5
+%WER 10.89 [ 5702 / 52343, 580 ins, 696 del, 4426 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tglarge_test_other/wer_30_0.5
+%WER 12.49 [ 6540 / 52343, 669 ins, 782 del, 5089 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tgmed_test_other/wer_30_0.0
+%WER 13.29 [ 6958 / 52343, 737 ins, 799 del, 5422 sub ] exp/DFSMN_L_sp_vp_smbr/decode_tgsmall_test_other/wer_26_0.0

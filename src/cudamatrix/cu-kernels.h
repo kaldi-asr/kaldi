@@ -7,6 +7,7 @@
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 //           2016-2017  Shiyin Kang
+//                2018 Alibaba.Inc (Author: ShiLiang Zhang)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -1547,6 +1548,80 @@ inline void cuda_mat_uncompress(dim3 Gr, dim3 Bl, BaseFloat *dest,
   cuda_uncompress_uint16(Gr, Bl, dest, dim, src, src_stride, scale);
 }
 
+//////////////////////////////////////////////////////
+////           FSMN kernel functions          ///////
+////////////////////////////////////////////////////
+inline void cuda_gen_memory(dim3 Gr, dim3 Bl, float *data, const float* in, const float *l_filter, const float* r_filter,  
+                            float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride)
+{
+  cudaF_gen_memory(Gr, Bl, data, in, l_filter, r_filter, flags, d, l_order, r_order, l_stride, r_stride);
+}
+
+inline void cuda_gen_memory(dim3 Gr, dim3 Bl, double *data, const double* in, const double *l_filter, const double* r_filter, 
+                            float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride)
+{
+  cudaD_gen_memory(Gr, Bl, data, in, l_filter, r_filter, flags, d, l_order, r_order, l_stride, r_stride);
+}
+
+inline void cuda_memory_err_back(dim3 Gr, dim3 Bl, float *data, const float* in, const float *l_filter, const float* r_filter, 
+                                 float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride)
+{
+  cudaF_memory_err_back(Gr, Bl, data, in, l_filter, r_filter, flags, d, l_order, r_order, l_stride, r_stride);
+}
+
+inline void cuda_memory_err_back(dim3 Gr, dim3 Bl, double *data, const double* in, const double *l_filter, const double* r_filter, 
+                                float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride)
+{
+  cudaD_memory_err_back(Gr, Bl, data, in, l_filter, r_filter, flags, d, l_order, r_order, l_stride, r_stride);
+}
+
+inline void cuda_gen_uni_memory(dim3 Gr, dim3 Bl, float *data, const float* in, const float *l_filter, float* flags, MatrixDim d, 
+                                int l_order, int l_stride)
+{
+  cudaF_gen_uni_memory(Gr, Bl, data, in, l_filter, flags, d, l_order, l_stride);
+}
+
+inline void cuda_gen_uni_memory(dim3 Gr, dim3 Bl, double *data, const double* in, const double *l_filter, float* flags, MatrixDim d, 
+                                int l_order, int l_stride)
+{
+  cudaD_gen_uni_memory(Gr, Bl, data, in, l_filter, flags, d, l_order, l_stride);
+}
+
+inline void cuda_uni_memory_err_back(dim3 Gr, dim3 Bl, float *data, const float* in, const float *l_filter, float* flags, MatrixDim d, 
+                                     int l_order, int l_stride)
+{
+  cudaF_uni_memory_err_back(Gr, Bl, data, in, l_filter, flags, d, l_order, l_stride);
+}
+
+inline void cuda_uni_memory_err_back(dim3 Gr, dim3 Bl, double *data, const double* in, const double *l_filter, float* flags, MatrixDim d, 
+                                     int l_order, int l_stride)
+{
+  cudaD_uni_memory_err_back(Gr, Bl, data, in, l_filter, flags, d, l_order, l_stride);
+}
+
+inline void cuda_get_l_filter_err(dim3 Gr, dim3 Bl, float *data, const float *diff, const float* in, float* flags, MatrixDim d, 
+                                  int l_order, int l_stride, float lr)
+{
+  cudaF_get_l_filter_err(Gr, Bl, data, diff, in, flags, d, l_order, l_stride, lr);
+}
+
+inline void cuda_get_l_filter_err(dim3 Gr, dim3 Bl, double *data, const double *diff, const double* in, float* flags, MatrixDim d, 
+                                  int l_order, int l_stride, float lr)
+{
+  cudaD_get_l_filter_err(Gr, Bl, data, diff, in, flags, d, l_order, l_stride, lr);
+}
+
+inline void cuda_get_r_filter_err(dim3 Gr, dim3 Bl, float *data, const float *diff, const float* in, float* flags, MatrixDim d,
+                                  int r_order, int r_stride, float lr)
+{
+  cudaF_get_r_filter_err(Gr, Bl, data, diff, in, flags, d, r_order, r_stride, lr);
+}
+
+inline void cuda_get_r_filter_err(dim3 Gr, dim3 Bl, double *data, const double *diff, const double* in, float* flags, MatrixDim d, 
+                                  int r_order, int r_stride, float lr)
+{
+  cudaD_get_r_filter_err(Gr, Bl, data, diff, in, flags, d, r_order, r_stride, lr);
+}
 
 } // namespace kaldi
 

@@ -1,6 +1,7 @@
 // nnet/nnet-linear-transform.h
 
 // Copyright 2011-2014  Brno University of Technology (author: Karel Vesely)
+//           2018 Alibaba.Inc (Author: ShiLiang Zhang) 
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -47,6 +48,7 @@ class LinearTransform : public UpdatableComponent {
   void InitData(std::istream &is) {
     // define options
     float param_stddev = 0.1;
+    int xavier_flag = 0;
     std::string read_matrix_file;
     // parse config
     std::string token;
@@ -55,8 +57,9 @@ class LinearTransform : public UpdatableComponent {
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
       else if (token == "<ReadMatrix>") ReadToken(is, false, &read_matrix_file);
       else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
+      else if (token == "<Xavier>") ReadBasicType(is, false, &xavier_flag);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                     << " (ParamStddev|ReadMatrix|LearnRateCoef)";
+                     << " (ParamStddev|ReadMatrix|LearnRateCoef|Xavier_flag)";
     }
 
     if (read_matrix_file != "") {  // load from file,
@@ -80,10 +83,17 @@ class LinearTransform : public UpdatableComponent {
 
     //
     // Initialize trainable parameters,
-    //
-    // Gaussian with given std_dev (mean = 0),
-    linearity_.Resize(OutputDim(), InputDim());
-    RandGauss(0.0, param_stddev, &linearity_);
+    //  if Xavier_flag=1, use the “Xavier” initialization
+    if(xavier_flag){
+      float range = sqrt(6)/sqrt(OutputDim() + InputDim());
+      linearity_.Resize(OutputDim(), InputDim(), kSetZero);
+      RandUniform(0.0, range, &linearity_); 
+    }
+    else{
+      // Gaussian with given std_dev (mean = 0),
+      linearity_.Resize(OutputDim(), InputDim());
+      RandGauss(0.0, param_stddev, &linearity_);
+    }
   }
 
   void ReadData(std::istream &is, bool binary) {

@@ -1,0 +1,23 @@
+<NnetProto>
+<AffineTransform> <InputDim> 1020  <OutputDim> 2048 <Xavier> 1
+<ParametricRelu> <InputDim> 2048 <OutputDim> 2048
+<LinearTransform> <InputDim> 2048 <OutputDim> 512 <Xavier> 1
+<Fsmn> <InputDim> 512 <OutputDim> 512  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<DeepFsmn> <InputDim> 512 <OutputDim> 512 <HidSize> 2048  <LOrder> 20 <ROrder> 20 <LStride> 2 <RStride> 2
+<AffineTransform> <InputDim> 512 <OutputDim> 2048 <Xavier> 1
+<ParametricRelu> <InputDim> 2048 <OutputDim> 2048
+<AffineTransform> <InputDim> 2048 <OutputDim> 2048 <Xavier> 1
+<ParametricRelu> <InputDim> 2048 <OutputDim> 2048
+<LinearTransform> <InputDim> 2048 <OutputDim> 512 <Xavier> 1
+<AffineTransform> <InputDim> 512 <OutputDim> 5777 <Xavier> 1
+<Softmax> <InputDim> 5777 <OutputDim> 5777
+</NnetProto>
+

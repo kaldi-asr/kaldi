@@ -6,6 +6,7 @@
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 //                2017  Shiyin Kang
+//                2018 Alibaba.Inc (Author: ShiLiang Zhang)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -693,14 +694,42 @@ class CuMatrixBase {
 
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
-  // interpreted the same as a regular matrix.  DON'T USE THESE UNLESS YOU KNOW
-  // WHAT YOU ARE DOING!
+  // interpreted the same as a regular matrix.  Don't use these unless you know
+  // what you are doing!
   inline const MatrixBase<Real> &Mat() const {
     return *(reinterpret_cast<const MatrixBase<Real>* >(this));
   }
   inline MatrixBase<Real> &Mat() {
     return *(reinterpret_cast<MatrixBase<Real>* >(this));
   }
+  
+  //////////////////////////////////////////////////////
+  ////           FSMN kernel functions          ///////
+  ////////////////////////////////////////////////////
+
+  // forward operation in memory block
+  void GenMemory(const CuMatrixBase<Real> &in, const CuMatrixBase<Real> &l_filter_, const CuMatrixBase<Real> &r_filter_, 
+		CuVectorBase<BaseFloat> &flags_, int l_order_, int r_order_, int l_stride_, int r_stride_);
+
+  // backward operation in memory block
+  void MemoryErrBack(const CuMatrixBase<Real> &in, const CuMatrixBase<Real> &l_filter_, const CuMatrixBase<Real> &r_filter_,
+		CuVectorBase<BaseFloat> &flags_, int l_order_, int r_order_, int l_stride_, int r_stride_);
+
+  // update the look-back filter in memory blcok
+  void GetLfilterErr(const CuMatrixBase<Real> &diff, const CuMatrixBase<Real> &in, CuVectorBase<BaseFloat> &flags_, 
+		int l_order_, int l_stride_, float lr);
+
+  // update the lookahead filter in memory blcok
+  void GetRfilterErr(const CuMatrixBase<Real> &diff, const CuMatrixBase<Real> &in, CuVectorBase<BaseFloat> &flags_,  
+		int r_order_, int r_stride_, float lr);
+ 
+  // forward operation in unidirectional memory block
+  void GenUniMemory(const CuMatrixBase<Real> &in, const CuMatrixBase<Real> &l_filter_, CuVectorBase<BaseFloat> &flags_, 
+		int l_order_, int l_stride_);
+
+  // backward operation in unidirectional memory block
+  void UniMemoryErrBack(const CuMatrixBase<Real> &in, const CuMatrixBase<Real> &l_filter_, CuVectorBase<BaseFloat> &flags_, 
+		int l_order_, int l_stride_);
 
  protected:
 

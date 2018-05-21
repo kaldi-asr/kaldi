@@ -1,6 +1,7 @@
 // nnet/nnet-nnet.cc
 
 // Copyright 2011-2016  Brno University of Technology (Author: Karel Vesely)
+//           2018 Alibaba.Inc (Author: ShiLiang Zhang)  
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -24,6 +25,10 @@
 #include "nnet/nnet-activation.h"
 #include "nnet/nnet-affine-transform.h"
 #include "nnet/nnet-various.h"
+#include "nnet/nnet-fsmn.h"
+#include "nnet/nnet-deep-fsmn.h"
+#include "nnet/nnet-uni-fsmn.h"
+#include "nnet/nnet-uni-deep-fsmn.h"
 
 namespace kaldi {
 namespace nnet1 {
@@ -515,6 +520,26 @@ void Nnet::SetTrainOptions(const NnetTrainOptions& opts) {
   }
 }
 
+void Nnet::SetFlags(const Vector<BaseFloat> &flags) {    
+  for (int32 c = 0; c < NumComponents(); c++) {
+    if (GetComponent(c).GetType() == Component::kFsmn) {
+      Fsmn& comp = dynamic_cast<Fsmn&>(GetComponent(c));
+      comp.SetFlags(flags);
+    }
+    if (GetComponent(c).GetType() == Component::kDeepFsmn) {
+      DeepFsmn& comp = dynamic_cast<DeepFsmn&>(GetComponent(c));
+      comp.SetFlags(flags);
+    }
+    if (GetComponent(c).GetType() == Component::kUniFsmn) {
+      UniFsmn& comp = dynamic_cast<UniFsmn&>(GetComponent(c));
+      comp.SetFlags(flags);
+    }
+    if (GetComponent(c).GetType() == Component::kUniDeepFsmn) {
+      UniDeepFsmn& comp = dynamic_cast<UniDeepFsmn&>(GetComponent(c));
+      comp.SetFlags(flags);
+    }
+  }
+}
 
 }  // namespace nnet1
 }  // namespace kaldi

@@ -294,6 +294,12 @@ int main(int argc, char *argv[]) {
       // 3) get the pre-softmax outputs from NN,
       // apply transform,
       nnet_transf.Feedforward(CuMatrix<BaseFloat>(mat), &feats_transf);
+
+      // set sent flag for fsmn component
+      Vector<BaseFloat> flags;
+      flags.Resize(num_frames, kSetZero);
+      nnet.SetFlags(flags);
+
       // propagate through the nnet (we know it's w/o softmax),
       nnet.Propagate(feats_transf, &nnet_out);
       // subtract the log_prior,

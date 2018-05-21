@@ -1,6 +1,7 @@
 // nnet/nnet-nnet.h
 
 // Copyright 2011-2016  Brno University of Technology (Author: Karel Vesely)
+//           2018 Alibaba.Inc (Author: ShiLiang Zhang) 
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -163,6 +164,9 @@ class Nnet {
   const NnetTrainOptions& GetTrainOptions() const {
     return opts_;
   }
+
+  /// For FSMN component
+  void SetFlags(const Vector<BaseFloat> &flags);
 
  private:
   /// Vector which contains all the components composing the neural network,

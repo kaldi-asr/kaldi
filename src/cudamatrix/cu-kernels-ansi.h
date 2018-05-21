@@ -6,6 +6,7 @@
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
 //           2016-2017  Shiyin Kang
+//                2018 Alibaba.Inc (Author: ShiLiang Zhang)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -790,7 +791,38 @@ void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
                           int src_stride, float scale);
 
 
+//////////////////////////////////////////////////////
+////           FSMN kernel functions          ///////
+////////////////////////////////////////////////////
+void cudaF_gen_memory(dim3 Gr, dim3 Bl, float *mat_out, const float* mat_in, const float *l_filter, const float* r_filter, 
+                      float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride);
+void cudaD_gen_memory(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, const double *l_filter, const double* r_filter,  
+                      float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride);
 
+void cudaF_memory_err_back(dim3 Gr, dim3 Bl, float *mat_out, const float* mat_in, const float *l_filter, const float* r_filter, 
+                           float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride);
+void cudaD_memory_err_back(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, const double *l_filter, const double* r_filter,  
+                           float* flags, MatrixDim d, int l_order, int r_order, int l_stride, int r_stride);
+
+void cudaF_gen_uni_memory(dim3 Gr, dim3 Bl, float *mat_out, const float* mat_in, const float *l_filter, float* flags, 
+                          MatrixDim d, int l_order, int l_stride);
+void cudaD_gen_uni_memory(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, const double *l_filter, float* flags, 
+                          MatrixDim d, int l_order, int l_stride);
+
+void cudaF_uni_memory_err_back(dim3 Gr, dim3 Bl, float *mat_out, const float* mat_in, const float *l_filter, float* flags, 
+                               MatrixDim d, int l_order, int l_stride);
+void cudaD_uni_memory_err_back(dim3 Gr, dim3 Bl, double *mat_out, const double* mat_in, const double *l_filter, float* flags, 
+                               MatrixDim d, int l_order, int l_stride);
+
+void cudaF_get_l_filter_err(dim3 Gr, dim3 Bl, float *mat_out, const float* diff, const float* mat_in, float* flags, MatrixDim d, 
+                            int l_order, int l_stride, float lr);
+void cudaD_get_l_filter_err(dim3 Gr, dim3 Bl, double *mat_out, const double* diff, const double* mat_in, float* flags, MatrixDim d, 
+                            int l_order, int l_stride, float lr);
+
+void cudaF_get_r_filter_err(dim3 Gr, dim3 Bl, float *mat_out, const float* diff, const float* mat_in, float* flags, MatrixDim d, 
+                            int r_order, int r_stride, float lr);
+void cudaD_get_r_filter_err(dim3 Gr, dim3 Bl, double *mat_out, const double* diff, const double* mat_in, float* flags, MatrixDim d, 
+                            int r_order, int r_stride, float lr);
 } // extern "C"
 
 #endif // HAVE_CUDA
