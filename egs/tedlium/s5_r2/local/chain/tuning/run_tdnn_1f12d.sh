@@ -2,6 +2,20 @@
 
 # 1f12d is as 1f12c but setting key-scale to 0.5 (default is 1/sqrt(key-dim), I think,
 # which in this case is 0.15.
+# Not better WER, although it optimizes a bit better and the affine component's
+# parameters change a bit faster, and it has lower entropy.
+
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10h_sp_bi exp/chain_cleaned/tdnn1f12_sp_bi exp/chain_cleaned/tdnn1f12b_sp_bi exp/chain_cleaned/tdnn1f12c_sp_bi exp/chain_cleaned/tdnn1f12d_sp_bi
+# System                tdnn1f10h_sp_bi tdnn1f12_sp_bi tdnn1f12b_sp_bi tdnn1f12c_sp_bi tdnn1f12d_sp_bi
+# WER on dev(orig)            8.1       8.1       8.3       8.0       8.1
+# WER on dev(rescored)        7.5       7.5       7.6       7.4       7.6
+# WER on test(orig)           8.1       8.2       8.2       8.0       8.2
+# WER on test(rescored)       7.7       7.8       7.6       7.7       7.8
+# Final train prob        -0.0603   -0.0601   -0.0612   -0.0605   -0.0598
+# Final valid prob        -0.0893   -0.0899   -0.0893   -0.0915   -0.0898
+# Final train prob (xent)   -0.8857   -0.8819   -0.8808   -0.8699   -0.8576
+# Final valid prob (xent)   -1.0092   -0.9872   -0.9811   -0.9814   -0.9829
+# Num-params                 9953312   9776912   9776912   9776912   9776912
 
 # 1f12c is as 1f12b but adding l2 regularization for the attention layer
 #  (which is fairly safe now that we have the orthonormal constraint).

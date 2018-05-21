@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 1f10o is as 1f10k but taking out the skip-layer connections, as in h->m.
+# 1f10n is as 1f10k but taking out the skip-layer connections, as in h->m.
 
 # 1f10k is as 1f10f but reducing the small dim from 192 to 128, as in e->g.
 #   But this is more directly comparable with 1f10h since that doesn't have the

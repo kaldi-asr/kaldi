@@ -2,7 +2,20 @@
 
 # 1f10m is as 1f10h but removing all the skip-layer connections
 #  that I previously had, that were done with Append... keeping only
-#  the relu-type connections.
+#  the resnet-type connections.
+
+# Wow... it seems to work the same!!
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10h_sp_bi exp/chain_cleaned/tdnn1f10m_sp_bi
+# System                tdnn1f10h_sp_bi tdnn1f10m_sp_bi
+# WER on dev(orig)            8.1       8.0
+# WER on dev(rescored)        7.5       7.5
+# WER on test(orig)           8.1       8.2
+# WER on test(rescored)       7.7       7.7
+# Final train prob        -0.0603   -0.0661
+# Final valid prob        -0.0893   -0.0900
+# Final train prob (xent)   -0.8857   -0.9194
+# Final valid prob (xent)   -1.0092   -1.0148
+# Num-params                 9953312   8642592
 
 # 1f10h is as 1f10g but taking out the proportional-shrink option,
 #  which was a mistake.

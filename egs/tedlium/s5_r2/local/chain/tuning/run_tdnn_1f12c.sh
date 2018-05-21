@@ -1,11 +1,22 @@
 #!/bin/bash
 
-# 1f12c is as 1f12b but adding l2 regularization for the attention layer
-#  (which is fairly safe now that we have the orthonormal constraint).
+# 1f12c is as 1f12{,b}, which are the same (note: 12b was supposed to be different
+# from 12a but was not, due to a mistake)... but adding l2 regularization for the attention layer
+# It seems to help very slightly in WER, and also overfit a bit more (so maybe it
+# helps optimization).
+#
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10h_sp_bi exp/chain_cleaned/tdnn1f12_sp_bi exp/chain_cleaned/tdnn1f12b_sp_bi exp/chain_cleaned/tdnn1f12c_sp_bi
+# System                tdnn1f10h_sp_bi tdnn1f12_sp_bi tdnn1f12b_sp_bi tdnn1f12c_sp_bi
+# WER on dev(orig)            8.1       8.1       8.3       8.0
+# WER on dev(rescored)        7.5       7.5       7.6       7.4
+# WER on test(orig)           8.1       8.2       8.2       8.0
+# WER on test(rescored)       7.7       7.8       7.6       7.7
+# Final train prob        -0.0603   -0.0601   -0.0612   -0.0605
+# Final valid prob        -0.0893   -0.0899   -0.0893   -0.0915
+# Final train prob (xent)   -0.8857   -0.8819   -0.8808   -0.8699
+# Final valid prob (xent)   -1.0092   -0.9872   -0.9811   -0.9814
+# Num-params                 9953312   9776912   9776912   9776912
 
-# 1f12b is as 1f12 but adding 'orthonormal-constraint=1.0' in the attention layer...
-# this is something that works only in this branch, it constrains each block of the
-# parameter matrix corresponding to the keys of one head, to be semi-orthonormal.
 
 # 1f12 is as 1f10h, but adding an attention layer at the end.
 # It's mostly a baseline for using the orthonormal constraint in attention.
