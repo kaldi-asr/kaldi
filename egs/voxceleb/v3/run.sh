@@ -6,6 +6,12 @@
 #
 # Apache 2.0.
 #
+# This recipe demonstrates an approach using bottleneck features (BNF),
+# full-covariance GMM-UBM, iVectors, and a PLDA backend. Two variants
+# are shown below, one using BNF for calculating posterior probabilities
+# and using MFCC+BNF as speaker ID features, and another using BNF for
+# calculating posterior probabilities but only MFCCs as speaker ID features.
+#
 # See ../README.txt for more info on data required.
 # Results (mostly equal error rates) are inline in comments below.
 
@@ -39,7 +45,8 @@ if [ $stage -le 1 ]; then
   local/make_voxceleb1.pl $voxceleb1_root data
   # We'll train on all of VoxCeleb2, plus the training portion of VoxCeleb1.
   # This should give 7,351 speakers and 1,277,503 utterances.
-  utils/combine_data.sh data/train data/voxceleb2_train data/voxceleb2_test data/voxceleb1_train
+  utils/combine_data.sh data/train data/voxceleb2_train \
+    data/voxceleb2_test data/voxceleb1_train
 fi
 
 if [ $stage -le 2 ]; then
@@ -154,6 +161,69 @@ if [ $stage -le 9 ]; then
   # MFCC-BNF EER: 4.205%
   # minDCF(p-target=0.01): 0.4509
   # minDCF(p-target=0.001): 0.6528
+  #
+  # For reference, here's the ivector system from ../v1:
+  # EER: 5.419%
+  # minDCF(p-target=0.01): 0.4701
+  # minDCF(p-target=0.001): 0.5981
+fi
+
+if [ $stage -le 10 ]; then
+  local/nnet3/bnf/train_ivector_extractor.sh --cmd "$train_cmd --mem 16G" \
+    --ivector-dim 600 --delta-window 3 --delta-order 2 \
+    --num-iters 5 exp/full_ubm/final.ubm data/train_100k data/train_bnf_100k \
+    exp/extractor_bnf_onlymfcc
+fi
+
+if [ $stage -le 11 ]; then
+  local/nnet3/bnf/extract_ivectors.sh --cmd "$train_cmd --mem 5G" --nj 80 \
+    exp/extractor_bnf_onlymfcc data/train data/train_bnf \
+    exp/ivectors_onlymfcc_train
+
+  local/nnet3/bnf/extract_ivectors.sh --cmd "$train_cmd --mem 5G" --nj 40 \
+    exp/extractor_bnf_onlymfcc data/voxceleb1_test data/voxceleb1_test_bnf \
+    exp/ivectors_onlymfcc_voxceleb1_test
+fi
+
+if [ $stage -le 12 ]; then
+  # Compute the mean vector for centering the evaluation i-vectors.
+  $train_cmd exp/ivectors_onlymfcc_train/log/compute_mean.log \
+    ivector-mean scp:exp/ivectors_onlymfcc_train/ivector.scp \
+    exp/ivectors_onlymfcc_train/mean.vec || exit 1;
+
+  # This script uses LDA to decrease the dimensionality prior to PLDA.
+  lda_dim=200
+  $train_cmd exp/ivectors_onlymfcc_train/log/lda.log \
+    ivector-compute-lda --total-covariance-factor=0.0 --dim=$lda_dim \
+    "ark:ivector-subtract-global-mean scp:exp/ivectors_onlymfcc_train/ivector.scp ark:- |" \
+    ark:data/train/utt2spk exp/ivectors_onlymfcc_train/transform.mat || exit 1;
+
+  # Train the PLDA model.
+  $train_cmd exp/ivectors_onlymfcc_train/log/plda.log \
+    ivector-compute-plda ark:data/train/spk2utt \
+    "ark:ivector-subtract-global-mean scp:exp/ivectors_onlymfcc_train/ivector.scp ark:- | transform-vec exp/ivectors_onlymfcc_train/transform.mat ark:- ark:- | ivector-normalize-length ark:-  ark:- |" \
+    exp/ivectors_onlymfcc_train/plda || exit 1;
+fi
+
+if [ $stage -le 13 ]; then
+  $train_cmd exp/scores/log/voxceleb1_test_onlymfcc_scoring.log \
+    ivector-plda-scoring --normalize-length=true \
+    "ivector-copy-plda --smoothing=0.0 exp/ivectors_onlymfcc_train/plda - |" \
+    "ark:ivector-subtract-global-mean exp/ivectors_onlymfcc_train/mean.vec scp:exp/ivectors_onlymfcc_voxceleb1_test/ivector.scp ark:- | transform-vec exp/ivectors_onlymfcc_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-subtract-global-mean exp/ivectors_onlymfcc_train/mean.vec scp:exp/ivectors_onlymfcc_voxceleb1_test/ivector.scp ark:- | transform-vec exp/ivectors_onlymfcc_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "cat '$voxceleb1_trials' | cut -d\  --fields=1,2 |" exp/scores_onlymfcc_voxceleb1_test || exit 1;
+fi
+
+if [ $stage -le 14 ]; then
+  eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_onlymfcc_voxceleb1_test) 2> /dev/null`
+  mindcf1=`sid/compute_min_dcf.py --p-target 0.01 exp/scores_onlymfcc_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  mindcf2=`sid/compute_min_dcf.py --p-target 0.001 exp/scores_onlymfcc_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  echo "only MFCC EER: ${eer}%"
+  echo "minDCF(p-target=0.01): $mindcf1"
+  echo "minDCF(p-target=0.001): $mindcf2"
+  # only MFCC EER: 4.608%
+  # minDCF(p-target=0.01): 0.4370
+  # minDCF(p-target=0.001): 0.6094
   #
   # For reference, here's the ivector system from ../v1:
   # EER: 5.419%
