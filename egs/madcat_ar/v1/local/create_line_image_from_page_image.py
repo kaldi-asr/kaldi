@@ -535,7 +535,7 @@ def check_writing_condition(wc_dict, base_name):
     Returns
     (bool): True if writing condition matches.
     """
-    return True
+    #return True
     writing_condition = wc_dict[base_name].strip()
     if writing_condition != 'IUC':
         return False

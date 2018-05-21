@@ -6,6 +6,9 @@ cmd=run.pl
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
+writing_condition1=/export/corpora/LDC/LDC2012T15/docs
+writing_condition2=/export/corpora/LDC/LDC2013T09/docs
+writing_condition3=/export/corpora/LDC/LDC2013T15/docs
 data_split_file=data/download/data_splits/madcat.dev.raw.lineid
 echo "$0 $@"
 
@@ -30,7 +33,8 @@ for n in $(seq $nj); do
 done
 
 $cmd JOB=1:$nj $log_dir/extract_lines.JOB.log \
-  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 $log_dir/lines.JOB.scp $data/JOB \
+  local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 \
+  $log_dir/lines.JOB.scp $data/JOB $writing_condition1 $writing_condition2 $writing_condition3 \
   || exit 1;
 
 ## concatenate the .scp files together.
