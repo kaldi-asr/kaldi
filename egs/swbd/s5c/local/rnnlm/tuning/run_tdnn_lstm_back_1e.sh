@@ -7,7 +7,8 @@
 
 # This script trains a backward LMs on the swbd LM-training data, and use it
 # to rescore either decoded lattices, or lattices that are just rescored with
-# a forward RNNLM
+# a forward RNNLM. In order to run this, you must first run the forward RNNLM
+# recipe at local/rnnlm/run_tdnn_lstm.sh
 
 # rnnlm/train_rnnlm.sh: best iteration (out of 35) was 34, linking it to final iteration.
 # rnnlm/train_rnnlm.sh: train/dev perplexity was 41.8 / 55.1.
@@ -120,7 +121,12 @@ fi
 LM=sw1_fsh_fg # using the 4-gram const arpa file as old lm
 if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
-#  LM=sw1_tg # if using the original 3-gram G.fst as old lm
+
+  if [ ! -d ${decode_dir}_${decode_dir_suffix_forward} ]; then
+    echo "$0: Must run the forward recipe first at local/rnnlm/run_tdnn_lstm.sh"
+    exit 1
+  fi
+
   for decode_set in eval2000; do
     decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}_looped
 
