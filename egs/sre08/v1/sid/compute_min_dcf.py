@@ -17,7 +17,6 @@ import sys, argparse, os
 def GetArgs():
     parser = argparse.ArgumentParser(description="Compute the minimum "
         "detection cost function along with the threshold at which it occurs. "
-        "This is an error metric commonly used in speaker recognition. "
         "Usage: sid/compute_min_dcf.py [options...] <scores-file> "
         "<trials-file> "
         "E.g., sid/compute_min_dcf.py --p-target 0.01 --c-miss 1 --c-fa 1 "
@@ -25,7 +24,7 @@ def GetArgs():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--p-target', type=float, dest = "p_target",
         default = 0.01,
-        help='In a trial, this is the prior probability of the target speaker')
+        help='The the prior probability of the target speaker in a trial.')
     parser.add_argument('--c-miss', type=float, dest = "c_miss", default = 1,
         help='Cost of a missed detection.  This is usually not changed.')
     parser.add_argument('--c-fa', type=float, dest = "c_fa", default = 1,
@@ -51,7 +50,7 @@ def CheckArgs(args):
     return args
 
 # Creates a list of false-negative rates, a list of false-positive rates
-# a list of decision thresholds that give those error-rates.
+# and a list of decision thresholds that give those error-rates.
 def ComputeErrorRates(scores, labels):
 
       # Sort the scores from smallest to largest, and also get the corresponding
