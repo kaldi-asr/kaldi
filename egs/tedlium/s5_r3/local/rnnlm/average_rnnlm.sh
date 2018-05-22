@@ -21,7 +21,7 @@ end=
 . utils/parse_options.sh # accept options
 
 # get the best iteration
-best_iter=$(rnnlm/get_best_model.py $dir)
+best_iter=$(rnnlm/get_best_model.py $rnnlm_dir)
 
 # get num_iters
 info=$(grep "num_iters" $rnnlm_dir/info.txt)
@@ -44,11 +44,14 @@ fi
 models=""
 embeddings=""
 for num in $(seq -s' ' $begin $end); do
-	models=$models" $rnnlm_dir/$num.raw"
-	embeddings=$embeddings" $rnnlm_dir/feat_embedding.$num.mat"
+    [ -f $rnnlm_dir/$num.raw ] && \
+        models=$models" $rnnlm_dir/$num.raw"
+	[ -f $rnnlm_dir/feat_embedding.$num.mat ] && \
+        embeddings=$embeddings" $rnnlm_dir/feat_embedding.$num.mat"
 done
 
 # merge list of files
+mkdir -p ${rnnlm_dir}_averaged
 nnet3-average $models ${rnnlm_dir}_averaged/final.raw
 matrix-sum --average=true $embeddings ${rnnlm_dir}_averaged/feat_embedding.final.mat
 
