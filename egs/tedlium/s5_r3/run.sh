@@ -28,7 +28,7 @@ nj=35
 decode_nj=30   # note: should not be >38 which is the number of speakers in the dev set
                # after applying --seconds-per-spk-max 180.  We decode with 4 threads, so
                # this will be too many jobs if you're using run.pl.
-stage=5
+stage=0
 train_rnnlm=false
 train_lm=false
 
@@ -74,8 +74,6 @@ fi
 if [ $stage -le 5 ]; then
   local/format_lms.sh
 fi
-
-exit
 
 # Feature extraction
 if [ $stage -le 6 ]; then
