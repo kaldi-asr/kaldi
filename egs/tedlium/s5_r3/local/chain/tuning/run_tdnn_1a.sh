@@ -1,19 +1,6 @@
 #!/bin/bash
 
-# run_tdnnf_1a.sh is the script which results are presented in the corpus release paper.
-# It use 2 to 6 jobs and add proportional-shrink 10.
-
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_1a exp/chain_cleaned/tdnnf_1a
-# System                    tdnn_1a   tdnnf_1a
-# WER on dev(orig)            8.2       7.9
-# WER on dev(rescored)        7.6       7.2
-# WER on test(orig)           8.1       8.0
-# WER on test(rescored)       7.7       7.5
-# Final train prob          -0.0802   -0.0779
-# Final valid prob          -0.0980   -0.0906
-# Final train prob (xent)   -1.1450   -0.9021
-# Final valid prob (xent)   -1.2498   -0.9971
-
+# See run_tdnnf_1a.sh for comparative results.
 
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
 ## otherwise call it directly in its location).
@@ -26,6 +13,8 @@
 # note, if you have already run the corresponding non-chain nnet3 system
 # (local/nnet3/run_tdnn.sh), you may want to run with --stage 14.
 
+# This script is like run_tdnn_1a.sh except it uses an xconfig-based mechanism
+# to get the configuration.
 
 set -e -o pipefail
 
@@ -45,8 +34,8 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1a  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=  # you can set this to use previously dumped egs.
+tdnn_affix=1f  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir=exp/chain_cleaned/egs  # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -54,6 +43,8 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+export CUDA_VISIBLE_DEVICES=0,1,2
 
 
 if ! cuda-compiled; then
@@ -151,32 +142,28 @@ if [ $stage -le 17 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $opts dim=1280
-  linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-layer name=tdnn2 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn3l dim=256 $linear_opts
-  relu-batchnorm-layer name=tdnn3 $opts dim=1280
-  linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
-  relu-batchnorm-layer name=tdnn4 $opts input=Append(0,1) dim=1280
-  linear-component name=tdnn5l dim=256 $linear_opts
-  relu-batchnorm-layer name=tdnn5 $opts dim=1280 input=Append(tdnn5l, tdnn3l)
-  linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn6 $opts input=Append(0,3) dim=1280
-  linear-component name=tdnn7l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
-  linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn8 $opts input=Append(0,3) dim=1280
-  linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn4l) dim=1280
-  linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn10 $opts input=Append(0,3) dim=1280
-  linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
-  relu-batchnorm-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn8l,tdnn6l) dim=1280
-  linear-component name=prefinal-l dim=256 $linear_opts
-  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1280
-  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
-  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1280
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
+  relu-batchnorm-layer name=tdnn1 dim=1024 self-repair-scale=1.0e-04
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1,2) dim=1024
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn6 input=Append(-6,-3,0) dim=1024
+
+  ## adding the layers for chain branch
+  relu-batchnorm-layer name=prefinal-chain input=tdnn6 dim=1024 target-rms=0.5
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+
+  # adding the layers for xent branch
+  # This block prints the configs for a separate output that will be
+  # trained with a cross-entropy objective in the 'chain' models... this
+  # has the effect of regularizing the hidden parts of the model.  we use
+  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+  # 0.5 / args.xent_regularize is suitable as it means the xent
+  # final-layer learns at a rate independent of the regularization
+  # constant; and the 0.5 was tuned so as to make the relative progress
+  # similar in the xent and regular final layers.
+  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=1024 target-rms=0.5
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
