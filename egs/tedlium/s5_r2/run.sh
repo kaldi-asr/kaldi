@@ -61,7 +61,7 @@ if [ $stage -le 4 ]; then
   # locally.
   local/ted_download_lm.sh
   # Uncomment this script to build the language models instead of
-  # downloading them from openslr.org.
+  # downloading them from kaldi-asr.org.
   # local/ted_train_lm.sh
 fi
 
