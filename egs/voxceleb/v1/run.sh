@@ -118,6 +118,12 @@ fi
 
 if [ $stage -le 7 ]; then
   eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_voxceleb1_test) 2> /dev/null`
-  echo "EER: ${eer}%"
+  mindcf1=`sid/compute_min_dcf.py --p-target 0.01 exp/scores_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  mindcf2=`sid/compute_min_dcf.py --p-target 0.001 exp/scores_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  echo "EER: $eer%"
+  echo "minDCF(p-target=0.01): $mindcf1"
+  echo "minDCF(p-target=0.001): $mindcf2"
   # EER: 5.419%
+  # minDCF(p-target=0.01): 0.4701
+  # minDCF(p-target=0.001): 0.5981
 fi
