@@ -57,7 +57,7 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  # Download the pre-built LMs from openslr.org instead of building them
+  # Download the pre-built LMs from kaldi-asr.org instead of building them
   # locally.
   local/ted_download_lm.sh
   # Uncomment this script to build the language models instead of
