@@ -40,9 +40,9 @@ if [ $stage -le 1 ]; then
     data_split_file=$data_splits_dir/madcat.$dataset.raw.lineid
     local/extract_lines.sh --nj $nj --cmd $cmd --data_split_file $data_split_file \
         --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
-        --download_dir3 $download_dir3 data/local/$dataset \
-        --writing_condition1 $writing_condition1 --writing_condition2 $writing_condition2 \
-        --writing_condition3 $writing_condition3
+        --download_dir3 $download_dir3 --writing_condition1 $writing_condition1 \
+        --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3 \
+        --data data/local/$dataset
   done
 fi
 

@@ -10,13 +10,13 @@ writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
 writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
 writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_split_file=data/download/data_splits/madcat.dev.raw.lineid
+data=data/local/dev
 echo "$0 $@"
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh || exit 1;
 
-data=$1
 log_dir=$data/log
 
 mkdir -p $log_dir
