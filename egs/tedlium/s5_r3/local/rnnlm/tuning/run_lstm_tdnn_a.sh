@@ -8,6 +8,14 @@
 # rnnlm/train_rnnlm.sh: best iteration (out of 1060) was 1050, linking it to final iteration.
 # rnnlm/train_rnnlm.sh: train/dev perplexity was 90.0 / 92.0.
 
+# System                    tdnn_1a   tdnnf_1a
+# WER on dev(orig)            8.2       7.9
+# WER on dev(ngram)           7.6       7.2
+# WER on dev(rnnlm)           6.3       6.1
+# WER on test(orig)           8.1       8.0
+# WER on test(ngram)          7.7       7.5
+# WER on test(rnnlm)          6.7       6.6
+
 # Begin configuration section.
 dir=exp/rnnlm_lstm_tdnn_a
 embedding_dim=800
