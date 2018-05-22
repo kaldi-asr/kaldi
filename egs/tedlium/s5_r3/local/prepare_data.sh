@@ -13,6 +13,9 @@
 
 export LC_ALL=C
 
+# Prepare LM data
+gunzip -c db/TEDLIUM_release-3/LM/*.en.gz | sed 's/ <\/s>//g' | gzip -c  > data/LM/train.txt
+
 # Prepare: test, train,
 for set in dev test train; do
   dir=data/$set.orig

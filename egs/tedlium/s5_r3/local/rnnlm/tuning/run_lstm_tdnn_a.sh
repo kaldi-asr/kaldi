@@ -30,7 +30,7 @@ epochs=20
 [ -z "$cmd" ] && cmd=$train_cmd
 
 text_from_audio=data/train/text
-text=data/rnnlm/train.txt.shuffled
+text=data/LM/train.txt
 wordlist=data/lang_chain/words.txt
 dev_sents=10000
 text_dir=data/rnnlm/text
