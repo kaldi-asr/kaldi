@@ -131,7 +131,7 @@ dropout_schedule='0,0@0.20,0.1@0.50,0'
 srand=123
 if [ $stage -le 8 ]; then
   steps/nnet3/train_raw_dnn.py --stage=$train_stage \
-    --cmd="$train_cmd_r5" \
+    --cmd="$train_cmd" \
     --trainer.optimization.proportional-shrink 10 \
     --trainer.optimization.momentum=0.5 \
     --trainer.optimization.num-jobs-initial=3 \

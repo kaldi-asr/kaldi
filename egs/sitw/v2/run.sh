@@ -1,14 +1,19 @@
 #!/bin/bash
-# Copyright
-#                2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
-#                2017   Johns Hopkins University (Author: Daniel Povey)
-#                2018   Ewald Enzinger
-#                2018   David Snyder
+# Copyright    2017   Johns Hopkins University (Author: Daniel Povey)
+#              2017   Johns Hopkins University (Author: Daniel Garcia-Romero)
+#              2018   Ewald Enzinger
+#              2018   David Snyder
 # Apache 2.0.
 #
-#
-# See ../README.txt for more info on data required.
-# Results (mostly EERs) are inline in comments below.
+# This is an x-vector-based recipe for Speakers in the Wild (SITW).
+# It is based on "X-vectors: Robust DNN Embeddings for Speaker Recognition"
+# by Snyder et al.  The recipe uses augmented VoxCeleb 1 and 2 for training.
+# The augmentation consists of MUSAN noises, music, and babble and
+# reverberation from the Room Impulse Response and Noise Database.  Note that
+# there are 60 speakers in VoxCeleb 1 that overlap with our evaluation
+# dataset, SITW.  The recipe removes those 60 speakers prior to training.
+# See ../README.txt for more info on data required.  The results are reported
+# in terms of EER and minDCF, and are inline in the comments below.
 
 . ./cmd.sh
 . ./path.sh
@@ -16,12 +21,11 @@ set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
 
-
 voxceleb1_root=/export/corpora/VoxCeleb1
 voxceleb2_root=/export/corpora/VoxCeleb2
 sitw_root=/export/corpora/SRI/sitw
 nnet_dir=exp/xvector_nnet_1a
-musan_root=/expscratch/dgromero/corpora/musan/
+musan_root=/export/corpora/JHU/musan
 
 sitw_dev_trials_core=data/sitw_dev_test/trials/core-core.lst
 sitw_eval_trials_core=data/sitw_eval_test/trials/core-core.lst
@@ -165,7 +169,7 @@ if [ $stage -le 5 ]; then
 fi
 
 # Stages 6 through 8 are handled in run_xvector.sh
-local/nnet3/xvector/run_xvector.sh --stage $stage --train-stage -1 \
+local/nnet3/xvector/run_xvector.sh --stage $stage --train-stage 30 \
   --data data/train_combined_no_sil --nnet-dir $nnet_dir \
   --egs-dir $nnet_dir/egs
 
@@ -200,7 +204,7 @@ if [ $stage -le 10 ]; then
     $nnet_dir/xvectors_train_combined_200k/mean.vec || exit 1;
 
   # Use LDA to decrease the dimensionality prior to PLDA.
-  lda_dim=150
+  lda_dim=128
   $train_cmd $nnet_dir/xvectors_train_combined_200k/log/lda.log \
     ivector-compute-lda --total-covariance-factor=0.0 --dim=$lda_dim \
     "ark:ivector-subtract-global-mean scp:$nnet_dir/xvectors_train_combined_200k/xvector.scp ark:- |" \
@@ -215,28 +219,47 @@ fi
 
 if [ $stage -le 11 ]; then
   # SITW dev core-core
-  $train_cmd exp/scores/log/sitw_dev_core_scoring.log \
+  $train_cmd $nnet_dir/scores/log/sitw_dev_core_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     --num-utts=ark:$nnet_dir/xvectors_sitw_dev_enroll/num_utts.ark \
     "ivector-copy-plda --smoothing=0.0 $nnet_dir/xvectors_train_combined_200k/plda - |" \
     "ark:ivector-mean ark:data/sitw_dev_enroll/spk2utt scp:$nnet_dir/xvectors_sitw_dev_enroll/xvector.scp ark:- | ivector-subtract-global-mean $nnet_dir/xvectors_train_combined_200k/mean.vec ark:- ark:- | transform-vec $nnet_dir/xvectors_train_combined_200k/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "ark:ivector-subtract-global-mean $nnet_dir/xvectors_train_combined_200k/mean.vec scp:$nnet_dir/xvectors_sitw_dev_test/xvector.scp ark:- | transform-vec $nnet_dir/xvectors_train_combined_200k/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "cat '$sitw_dev_trials_core' | cut -d\  --fields=1,2 |" exp/scores/sitw_dev_core_scores || exit 1;
-  eer=$(paste $sitw_dev_trials_core exp/scores/sitw_dev_core_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
-  echo "SITW Dev Core: $eer";
-  # SITW Dev Core: 3.119
+    "cat '$sitw_dev_trials_core' | cut -d\  --fields=1,2 |" $nnet_dir/scores/sitw_dev_core_scores || exit 1;
+
+  # SITW Dev Core:
+  # EER: 3.35%
+  # minDCF(p-target=0.01): 0.3134
+  # minDCF(p-target=0.001): 0.5149
+  echo "SITW Dev Core:"
+  eer=$(paste $sitw_dev_trials_core $nnet_dir/scores/sitw_dev_core_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  mindcf1=`sid/compute_min_dcf.py --p-target 0.01 $nnet_dir/scores/sitw_dev_core_scores $sitw_dev_trials_core 2> /dev/null`
+  mindcf2=`sid/compute_min_dcf.py --p-target 0.001 $nnet_dir/scores/sitw_dev_core_scores $sitw_dev_trials_core 2> /dev/null`
+  echo "EER: $eer%"
+  echo "minDCF(p-target=0.01): $mindcf1"
+  echo "minDCF(p-target=0.001): $mindcf2"
+  # SITW Dev Core: 3.35
 fi
 
 if [ $stage -le 12 ]; then
   # SITW eval core-core
-  $train_cmd exp/scores/log/sitw_eval_core_scoring.log \
+  $train_cmd $nnet_dir/scores/log/sitw_eval_core_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     --num-utts=ark:$nnet_dir/xvectors_sitw_eval_enroll/num_utts.ark \
     "ivector-copy-plda --smoothing=0.0 $nnet_dir/xvectors_train_combined_200k/plda - |" \
     "ark:ivector-mean ark:data/sitw_eval_enroll/spk2utt scp:$nnet_dir/xvectors_sitw_eval_enroll/xvector.scp ark:- | ivector-subtract-global-mean $nnet_dir/xvectors_train_combined_200k/mean.vec ark:- ark:- | transform-vec $nnet_dir/xvectors_train_combined_200k/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
     "ark:ivector-subtract-global-mean $nnet_dir/xvectors_train_combined_200k/mean.vec scp:$nnet_dir/xvectors_sitw_eval_test/xvector.scp ark:- | transform-vec $nnet_dir/xvectors_train_combined_200k/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
-    "cat '$sitw_eval_trials_core' | cut -d\  --fields=1,2 |" exp/scores/sitw_eval_core_scores || exit 1;
-  eer=$(paste $sitw_eval_trials_core exp/scores/sitw_eval_core_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
-  echo "SITW Eval Core: $eer";
-  # SITW Eval Core: 3.581
+    "cat '$sitw_eval_trials_core' | cut -d\  --fields=1,2 |" $nnet_dir/scores/sitw_eval_core_scores || exit 1;
+
+  # SITW Eval Core:
+  # EER: 3.609%
+  # minDCF(p-target=0.01): 0.3599
+  # minDCF(p-target=0.001): 0.5388
+  echo -e "\nSITW Eval Core:";
+  eer=$(paste $sitw_eval_trials_core $nnet_dir/scores/sitw_eval_core_scores | awk '{print $6, $3}' | compute-eer - 2>/dev/null)
+  mindcf1=`sid/compute_min_dcf.py --p-target 0.01 $nnet_dir/scores/sitw_eval_core_scores $sitw_eval_trials_core 2> /dev/null`
+  mindcf2=`sid/compute_min_dcf.py --p-target 0.001 $nnet_dir/scores/sitw_eval_core_scores $sitw_eval_trials_core 2> /dev/null`
+  echo "EER: $eer%"
+  echo "minDCF(p-target=0.01): $mindcf1"
+  echo "minDCF(p-target=0.001): $mindcf2"
 fi
