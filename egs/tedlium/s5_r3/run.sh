@@ -29,8 +29,8 @@ decode_nj=30   # note: should not be >38 which is the number of speakers in the 
                # after applying --seconds-per-spk-max 180.  We decode with 4 threads, so
                # this will be too many jobs if you're using run.pl.
 stage=5
-train_rnnlm=true
-train_lms=false
+train_rnnlm=false
+train_lm=false
 
 . utils/parse_options.sh # accept options
 
@@ -64,7 +64,7 @@ if [ $stage -le 4 ]; then
   # later on we'll change this script so you have the option to
   # download the pre-built LMs from openslr.org instead of building them
   # locally.
-  if $train_lms; then
+  if $train_lm; then
     local/ted_train_lm.sh
   else
     local/ted_download_lm.sh
@@ -195,12 +195,16 @@ fi
 
 
 if [ $stage -le 18 ]; then
-  # todo add option to choose between training and downloading
+  # You can either train your own rnnlm or download a pre-trained one
   if $train_rnnlm; then
     local/rnnlm/tuning/run_lstm_tdnn_a.sh
     local/rnnlm/average_rnnlm.sh
+  else
+    local/ted_download_rnnlm.sh
   fi
 fi
+
+
 
 
 if [ $stage -le 19 ]; then
@@ -211,7 +215,7 @@ if [ $stage -le 19 ]; then
 
   for dset in dev test; do
     data_dir=data/${set}_hires
-    decoding_dir=exp/chain/ # TODO path to tdnn dev and test decoding dirs
+    decoding_dir=exp/chain/tdnnf_1a
     suffix=$(basename $rnnlm_dir)
     output_dir=${decoding_dir}_$suffix
 
