@@ -190,7 +190,7 @@ fi
 if [ $stage -le 17 ]; then
   # This will only work if you have GPUs on your system (and note that it requires
   # you to have the queue set up the right way... see kaldi-asr.org/doc/queue.html)
-  local/chain/tuning/run_tdnn_PR2114.sh
+  local/chain/run_tdnnf.sh
 fi
 
 
