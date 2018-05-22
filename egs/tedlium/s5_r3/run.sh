@@ -176,7 +176,6 @@ if [ $stage -le 15 ]; then
   done
 fi
 
-
 if [ $stage -le 16 ]; then
   # this does some data-cleaning.  It actually degrades the GMM-level results
   # slightly, but the cleaned data should be useful when we add the neural net and chain
@@ -184,13 +183,11 @@ if [ $stage -le 16 ]; then
   local/run_cleanup_segmentation.sh
 fi
 
-
 if [ $stage -le 17 ]; then
   # This will only work if you have GPUs on your system (and note that it requires
   # you to have the queue set up the right way... see kaldi-asr.org/doc/queue.html)
   local/chain/run_tdnnf.sh
 fi
-
 
 if [ $stage -le 18 ]; then
   # You can either train your own rnnlm or download a pre-trained one
@@ -201,9 +198,6 @@ if [ $stage -le 18 ]; then
     local/ted_download_rnnlm.sh
   fi
 fi
-
-
-
 
 if [ $stage -le 19 ]; then
   # Here we rescore the lattices generated at stage 17
@@ -225,7 +219,6 @@ if [ $stage -le 19 ]; then
       $output_dir
   done
 fi
-
 
 echo "$0: success."
 exit 0
