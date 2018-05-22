@@ -34,8 +34,8 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1f  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-common_egs_dir=exp/chain_cleaned/egs  # you can set this to use previously dumped egs.
+tdnn_affix=_1a  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+common_egs_dir= # you can set this to use previously dumped egs.
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -43,8 +43,6 @@ echo "$0 $@"  # Print the command line for logging
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
-export CUDA_VISIBLE_DEVICES=0,1,2
 
 
 if ! cuda-compiled; then
