@@ -13,9 +13,9 @@ nj=70
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
-writing_condition1=/export/corpora/LDC/LDC2012T15/docs
-writing_condition2=/export/corpora/LDC/LDC2013T09/docs
-writing_condition3=/export/corpora/LDC/LDC2013T15/docs
+writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
+writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
+writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_splits_dir=data/download/data_splits
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
