@@ -6,6 +6,8 @@
 # Apache 2.0
 
 # Computes training alignments using nnet3 DNN
+# Warning: this script uses GPUs by default, and this is generally not
+# an efficient use of GPUs. Set --use-gpu false to make it run on CPU.
 
 # Begin configuration section.
 nj=4
@@ -32,6 +34,9 @@ echo "$0 $@"  # Print the command line for logging
 if [ $# != 4 ]; then
    echo "Usage: $0 <data-dir> <lang-dir> <src-dir> <align-dir>"
    echo "e.g.: $0 data/train data/lang exp/nnet4 exp/nnet4_ali"
+   echo "Warning: this script uses GPUs by default, and this is generally not"
+   echo "an efficient use of GPUs. Set --use-gpu false to make it run on CPU."
+   echo ""
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"

@@ -116,7 +116,7 @@ frames_per_eg=$(cat $data/allowed_lengths.txt | tr '\n' , | sed 's/,$//')
 
 cat $data/utt2len | \
   awk '{print $1}' | \
-  utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+  utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/valid_uttlist
 
 
 len_uttlist=`wc -l $dir/valid_uttlist | awk '{print $1}'`
@@ -141,7 +141,7 @@ fi
 cat $data/utt2len | \
   awk '{print $1}' | \
    utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
+   utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/train_subset_uttlist
 len_uttlist=`wc -l $dir/train_subset_uttlist | awk '{print $1}'`
 if [ $len_uttlist -lt $num_utts_subset ]; then
   echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;

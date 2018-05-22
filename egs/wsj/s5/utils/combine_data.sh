@@ -94,7 +94,7 @@ else
   echo "$0 [info]: not combining segments as it does not exist"
 fi
 
-for file in utt2spk utt2lang utt2dur feats.scp text cmvn.scp vad.scp reco2file_and_channel wav.scp spk2gender $extra_files; do
+for file in utt2spk utt2lang utt2dur reco2dur feats.scp text cmvn.scp vad.scp reco2file_and_channel wav.scp spk2gender $extra_files; do
   exists_somewhere=false
   absent_somewhere=false
   for d in $*; do

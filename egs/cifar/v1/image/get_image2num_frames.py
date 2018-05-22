@@ -14,7 +14,7 @@ import argparse
 import os
 import sys
 import numpy as np
-from scipy import misc
+from PIL import Image
 
 parser = argparse.ArgumentParser(description="""Computes the image lengths (i.e. width) in an image data dir
                                                 and writes them (by default) to image2num_frames.""")
@@ -33,8 +33,7 @@ args = parser.parse_args()
 
 def get_scaled_image_length(im):
     scale_size = args.feat_dim
-    sx = im.shape[1]
-    sy = im.shape[0]
+    sx, sy = im.size
     scale = (1.0 * scale_size) / sy
     nx = int(scale * sx)
     return nx
@@ -55,7 +54,7 @@ with open(data_list_path) as f:
         line_vect = line.split(' ')
         image_id = line_vect[0]
         image_path = line_vect[1]
-        im = misc.imread(image_path)
+        im = Image.open(image_path)
         im_len = get_scaled_image_length(im) + (args.padding * 2)
         print('{} {}'.format(image_id, im_len), file=out_fh)
 
