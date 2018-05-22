@@ -75,25 +75,22 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
     GenericNumeratorComputation numerator(supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from
     // the numerator object, as well as the returned logprob.
-    num_logprob_weighted = numerator.Forward();
-    KALDI_VLOG(2) << "Numerator logprob per frame: "
-                  << num_logprob_weighted / (*weight);
-    numerator_ok = (num_logprob_weighted - num_logprob_weighted == 0);
-    if (!numerator_ok)
-      KALDI_LOG << "Numerator forward failed.";
-
-    if (xent_output_deriv && numerator_ok) {
-      numerator_ok = numerator.Backward(xent_output_deriv);
-      if (!numerator_ok)
-        KALDI_LOG << "Numerator backward failed.";
-      if (nnet_output_deriv)
+    if (xent_output_deriv) {
+      numerator_ok = numerator.ForwardBackward(&num_logprob_weighted,
+                                               xent_output_deriv);
+      if (numerator_ok && nnet_output_deriv)
         nnet_output_deriv->AddMat(1.0, *xent_output_deriv);
-    } else if (nnet_output_deriv && numerator_ok) {
-      numerator_ok = numerator.Backward(nnet_output_deriv);
-      if (!numerator_ok)
-        KALDI_LOG << "Numerator backward failed.";
+    } else if (nnet_output_deriv) {
+      numerator_ok = numerator.ForwardBackward(&num_logprob_weighted,
+                                               nnet_output_deriv);
+    } else {
+      num_logprob_weighted = numerator.ComputeObjf();
     }
+    if (!numerator_ok)
+        KALDI_WARN << "Numerator forward-backward failed.";
   }
+  numerator_ok = numerator_ok &&
+                 (num_logprob_weighted - num_logprob_weighted == 0);
 
   *objf = num_logprob_weighted - den_logprob_weighted;
   if (!((*objf) - (*objf) == 0) || !denominator_ok || !numerator_ok) {
