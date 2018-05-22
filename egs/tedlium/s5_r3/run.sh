@@ -3,7 +3,7 @@
 # Based mostly on the Switchboard recipe. The training database is TED-LIUM,
 # it consists of TED talks with cleaned automatic transcripts:
 #
-# http://www-lium.univ-lemans.fr/en/content/ted-lium-corpus
+# https://lium.univ-lemans.fr/ted-lium3/
 # http://www.openslr.org/resources (Mirror).
 #
 # The data is distributed under 'Creative Commons BY-NC-ND 3.0' license,
@@ -28,8 +28,9 @@ nj=35
 decode_nj=30   # note: should not be >38 which is the number of speakers in the dev set
                # after applying --seconds-per-spk-max 180.  We decode with 4 threads, so
                # this will be too many jobs if you're using run.pl.
-stage=0
+stage=5
 train_rnnlm=true
+train_lms=false
 
 . utils/parse_options.sh # accept options
 
@@ -63,12 +64,18 @@ if [ $stage -le 4 ]; then
   # later on we'll change this script so you have the option to
   # download the pre-built LMs from openslr.org instead of building them
   # locally.
-  local/ted_train_lm.sh
+  if $train_lms; then
+    local/ted_train_lm.sh
+  else
+    local/ted_download_lm.sh
+  fi
 fi
 
 if [ $stage -le 5 ]; then
   local/format_lms.sh
 fi
+
+exit
 
 # Feature extraction
 if [ $stage -le 6 ]; then
@@ -202,7 +209,7 @@ if [ $stage -le 19 ]; then
   lang_dir=data/lang_chain
   ngram_order=4
 
-  for set in dev test; do
+  for dset in dev test; do
     data_dir=data/${set}_hires
     decoding_dir=exp/chain/ # TODO path to tdnn dev and test decoding dirs
     suffix=$(basename $rnnlm_dir)
