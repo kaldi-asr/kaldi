@@ -173,9 +173,9 @@ image_fh = open(image_file, 'w', encoding='utf-8')
 input_image_file = args.images_scp_path
 input_image_fh = open(input_image_file, 'r', encoding='utf-8')
 
-wc_dict1 = parse_writing_conditions(args.writing_condition_path1)
-wc_dict2 = parse_writing_conditions(args.writing_condition_path2)
-wc_dict3 = parse_writing_conditions(args.writing_condition_path3)
+wc_dict1 = parse_writing_conditions(args.writing_condition1)
+wc_dict2 = parse_writing_conditions(args.writing_condition2)
+wc_dict3 = parse_writing_conditions(args.writing_condition3)
 image_loc_dict = get_line_image_location()
 
 image_num = 0

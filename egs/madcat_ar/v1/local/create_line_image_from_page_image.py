@@ -547,9 +547,9 @@ def check_writing_condition(wc_dict, base_name):
 
 def main():
 
-    wc_dict1 = parse_writing_conditions(args.writing_condition_path1)
-    wc_dict2 = parse_writing_conditions(args.writing_condition_path2)
-    wc_dict3 = parse_writing_conditions(args.writing_condition_path3)
+    wc_dict1 = parse_writing_conditions(args.writing_condition1)
+    wc_dict2 = parse_writing_conditions(args.writing_condition2)
+    wc_dict3 = parse_writing_conditions(args.writing_condition3)
 
     output_directory = args.out_dir
     image_file = os.path.join(output_directory, 'images.scp')
