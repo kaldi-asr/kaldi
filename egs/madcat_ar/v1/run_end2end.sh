@@ -13,6 +13,9 @@ nj=70
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
+writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
+writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
+writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_splits_dir=data/download/data_splits
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
@@ -28,24 +31,27 @@ mkdir -p data/local/{train,test,dev}
 if [ $stage -le 0 ]; then
   echo "$0: Downloading data splits..."
   echo "Date: $(date)."
-  local/download_data.sh --data_splits $data_splits_dir
+  local/download_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
+                         --download_dir2 $download_dir2 --download_dir3 $download_dir3
 fi
 
 if [ $stage -le 1 ]; then
-  for dataset in test dev train; do
-    echo "$0: Extracting line images from page image for dataset:  $dataset. "
-    echo "Date: $(date)."
-    dataset_file=$data_splits_dir/madcat.$dataset.raw.lineid
-    local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
-                           --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
-                           --download_dir3 $download_dir3 data/local/$dataset
+  for dataset in test train dev; do
+    data_split_file=$data_splits_dir/madcat.$dataset.raw.lineid
+    local/extract_lines.sh --nj $nj --cmd $cmd --data_split_file $data_split_file \
+        --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
+        --download_dir3 $download_dir3 --writing_condition1 $writing_condition1 \
+        --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3 \
+        --data data/local/$dataset
   done
 fi
 
 if [ $stage -le 2 ]; then
-  echo "$0: Preparing dev train and eval data..."
-  echo "Date: $(date)."
-  local/prepare_data.sh
+  echo "$0: Preparing data..."
+  local/prepare_data.sh --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
+      --download_dir3 $download_dir3 --images_scp_dir data/local \
+      --data_splits_dir $data_splits_dir --writing_condition1 $writing_condition1 \
+      --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3
 fi
 
 if [ $stage -le 3 ]; then
