@@ -44,6 +44,7 @@ uint64  RandInt64() {
 #define HASH_REDUNDANT 0.5
 class FasterArpaLm {
  public:
+  typedef fst::StdArc::StateId StateId;
 
   // LmState in FasterArpaLm: the basic storage unit
   class LmState {
@@ -157,7 +158,7 @@ class FasterArpaLm {
     }
     return hashed_idx;
   }
-  inline void InsertHash(int32 hashed_idx, int32 ngrams_saved_num_) {
+  inline void InsertHash(int64 hashed_idx, int64 ngrams_saved_num_) {
     assert(hashed_idx < ngrams_map_.size());
     if (ngrams_map_.at(hashed_idx)) {
       LmState *lm_state = ngrams_map_[hashed_idx];
@@ -176,7 +177,7 @@ class FasterArpaLm {
   inline void SaveHashedState(const int32* word_ids, 
       int query_ngram_order, LmState &lm_state_pattern) {
     RAND_TYPE h_value=0;
-    int32 hashed_idx = GetHashedIdx(word_ids, query_ngram_order, &h_value);
+    int64 hashed_idx = GetHashedIdx(word_ids, query_ngram_order, &h_value);
     lm_state_pattern.h_value = h_value;
     int32 ngram_order = query_ngram_order;
     if (ngram_order == 1) {
@@ -204,7 +205,7 @@ class FasterArpaLm {
     for (int i=0; i<ngrams_num_; i++) {
       int32 *word_ids = ngrams_[i].word_ids_;
       int32 ngram_order = ngrams_[i].ngram_order_;
-      int32 lm_state_idx;
+      StateId lm_state_idx;
       if (ngram_order > ngram_order_-1) {
         ngram_order--;
         while(!GetHashedState(word_ids, ngram_order, &lm_state_idx)) ngram_order--;
@@ -215,10 +216,10 @@ class FasterArpaLm {
   }
 
   inline const LmState* GetHashedState(const int32* word_ids, 
-      int query_ngram_order, int32 *lm_state_idx=NULL) const {
+      int query_ngram_order, StateId *lm_state_idx=NULL) const {
     RAND_TYPE h_value;
     LmState *ret_lm_state = NULL;
-    int32 hashed_idx = GetHashedIdx(word_ids, query_ngram_order, &h_value);
+    int64 hashed_idx = GetHashedIdx(word_ids, query_ngram_order, &h_value);
     int32 ngram_order = query_ngram_order;
     if (ngram_order == 1) {
       ret_lm_state = &ngrams_[hashed_idx];
@@ -252,14 +253,14 @@ class FasterArpaLm {
   // if exist, get logprob_, else get backoff_logprob_
   // memcpy(n_wids+1, wids, len(wids)); n_wids[0] = cur_wrd;
   inline void GetWordIdsByLmStateIdx(int32 **word_ids, 
-      int32 *word_ngram_order, int32 lm_state_idx) const {
+      int32 *word_ngram_order, int64 lm_state_idx) const {
     *word_ids = ngrams_[lm_state_idx].word_ids_;
     *word_ngram_order = ngrams_[lm_state_idx].ngram_order_;
   }
 
   inline float GetNgramLogprob(const int32 *word_ids, 
       const int32 word_ngram_order, 
-      int32 *lm_state_idx) const {
+      StateId *lm_state_idx) const {
     float prob;
     int32 ngram_order = word_ngram_order;
     assert(ngram_order > 0);
@@ -329,9 +330,9 @@ class FasterArpaLm {
     ngram_order_ = ngram_count.size();
     srand(0);
     randint_per_word_gram_ = (RAND_TYPE **)malloc(ngram_order_ * sizeof(void*));
-    ngrams_hashed_size_ = (int32*)malloc(ngram_order_ * sizeof(int32));
-    int32 acc=0;
-    int32 acc_hashed=0;
+    ngrams_hashed_size_ = (int64*)malloc(ngram_order_ * sizeof(int64));
+    int64 acc=0;
+    int64 acc_hashed=0;
     for (int i=0; i< ngram_order_; i++) {
       if (i == 0) ngrams_hashed_size_[i] = symbol_size_; // uni-gram
       else {
@@ -396,14 +397,14 @@ class FasterArpaLm {
 
   // Memory blcok for storing N-gram; ngrams_[ngram_order][hashed_idx]
   LmState* ngrams_;
-  int32 ngrams_saved_num_;
-  int32 ngrams_num_;
+  int64 ngrams_saved_num_;
+  int64 ngrams_num_;
 
   std::vector<LmState *> ngrams_map_; // hash to ngrams_ index
   // used to obtain hash value; randint_per_word_gram_[ngram_order][word_id]
   RAND_TYPE** randint_per_word_gram_;
-  int32* ngrams_hashed_size_; //after init, it's an accumulate value
-  int32 hash_size_except_uni_;
+  int64* ngrams_hashed_size_; //after init, it's an accumulate value
+  int64 hash_size_except_uni_;
   int32 max_collision_;
 };
 
@@ -436,13 +437,13 @@ class FasterArpaLmDeterministicFst
   // not const.
   virtual Weight Final(StateId s) {
     // At this point, we should have created the state.
-    int32 lm_state_idx;
+    StateId lm_state_idx;
     float logprob = GetNgramLogprob(s, lm_.EosSymbol(), &lm_state_idx);
     return Weight(-logprob);
   }
 
-  float GetNgramLogprob(const int32 pre_lm_state_idx, int32 ilabel,
-      int32 *lm_state_idx) {
+  float GetNgramLogprob(const int64 pre_lm_state_idx, int32 ilabel,
+      StateId *lm_state_idx) {
     int32 *wseq;
     int32 wseq_order;
     lm_.GetWordIdsByLmStateIdx(&wseq, &wseq_order, pre_lm_state_idx);
@@ -461,7 +462,7 @@ class FasterArpaLmDeterministicFst
   virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
     // At this point, we should have created the state.
 
-    int32 lm_state_idx;
+    StateId lm_state_idx;
     float logprob = GetNgramLogprob(s, ilabel, &lm_state_idx);
     if (logprob == std::numeric_limits<float>::min()) {
       return false;
