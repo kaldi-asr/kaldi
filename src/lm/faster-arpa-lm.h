@@ -336,7 +336,7 @@ class FasterArpaLm {
     for (int i=0; i< ngram_order_; i++) {
       if (i == 0) ngrams_hashed_size_[i] = symbol_size_; // uni-gram
       else {
-        ngrams_hashed_size_[i] = (1<<(int)ceil(log(ngram_count[i]) / 
+        ngrams_hashed_size_[i] = (1<<(int64)ceil(log(ngram_count[i]) / 
                                  M_LN2 + HASH_REDUNDANT));
       }
       KALDI_VLOG(2) << "ngram: "<< i+1 <<" hashed_size/size = "<< 
