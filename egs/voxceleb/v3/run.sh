@@ -239,3 +239,111 @@ if [ $stage -le 14 ]; then
   # minDCF(p-target=0.01): 0.4701
   # minDCF(p-target=0.001): 0.5981
 fi
+
+if [ $stage -le 15 ]; then
+  local/nnet3/bnf/train_ivector_extractor_bnf.sh --cmd "$train_cmd --mem 18G" \
+    --ivector-dim 600 --delta-window 3 --delta-order 1 \
+    --num-iters 5 exp/full_ubm/final.ubm data/train_bnf_100k data/train_bnf_100k \
+    exp/extractor_bnf_onlybnf
+fi
+
+if [ $stage -le 16 ]; then
+  local/nnet3/bnf/extract_ivectors_bnf.sh --cmd "$train_cmd --mem 7G" --nj 80 \
+    exp/extractor_bnf_onlybnf data/train_bnf data/train_bnf \
+    exp/ivectors_onlybnf_train
+
+  local/nnet3/bnf/extract_ivectors_bnf.sh --cmd "$train_cmd --mem 7G" --nj 40 \
+    exp/extractor_bnf_onlybnf data/voxceleb1_test_bnf data/voxceleb1_test_bnf \
+    exp/ivectors_onlybnf_voxceleb1_test
+fi
+
+if [ $stage -le 17 ]; then
+  # Compute the mean vector for centering the evaluation i-vectors.
+  $train_cmd exp/ivectors_onlybnf_train/log/compute_mean.log \
+    ivector-mean scp:exp/ivectors_onlybnf_train/ivector.scp \
+    exp/ivectors_onlybnf_train/mean.vec || exit 1;
+
+  # This script uses LDA to decrease the dimensionality prior to PLDA.
+  lda_dim=200
+  $train_cmd exp/ivectors_onlybnf_train/log/lda.log \
+    ivector-compute-lda --total-covariance-factor=0.0 --dim=$lda_dim \
+    "ark:ivector-subtract-global-mean scp:exp/ivectors_onlybnf_train/ivector.scp ark:- |" \
+    ark:data/train_bnf/utt2spk exp/ivectors_onlybnf_train/transform.mat || exit 1;
+
+  # Train the PLDA model.
+  $train_cmd exp/ivectors_onlybnf_train/log/plda.log \
+    ivector-compute-plda ark:data/train_bnf/spk2utt \
+    "ark:ivector-subtract-global-mean scp:exp/ivectors_onlybnf_train/ivector.scp ark:- | transform-vec exp/ivectors_onlybnf_train/transform.mat ark:- ark:- | ivector-normalize-length ark:-  ark:- |" \
+    exp/ivectors_onlybnf_train/plda || exit 1;
+fi
+
+if [ $stage -le 18 ]; then
+  $train_cmd exp/scores/log/voxceleb1_test_onlybnf_scoring.log \
+    ivector-plda-scoring --normalize-length=true \
+    "ivector-copy-plda --smoothing=0.0 exp/ivectors_onlybnf_train/plda - |" \
+    "ark:ivector-subtract-global-mean exp/ivectors_onlybnf_train/mean.vec scp:exp/ivectors_onlybnf_voxceleb1_test/ivector.scp ark:- | transform-vec exp/ivectors_onlybnf_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-subtract-global-mean exp/ivectors_onlybnf_train/mean.vec scp:exp/ivectors_onlybnf_voxceleb1_test/ivector.scp ark:- | transform-vec exp/ivectors_onlybnf_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "cat '$voxceleb1_trials' | cut -d\  --fields=1,2 |" exp/scores_onlybnf_voxceleb1_test || exit 1;
+fi
+
+if [ $stage -le 19 ]; then
+  eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_onlybnf_voxceleb1_test) 2> /dev/null`
+  mindcf1=`sid/compute_min_dcf.py --p-target 0.01 exp/scores_onlybnf_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  mindcf2=`sid/compute_min_dcf.py --p-target 0.001 exp/scores_onlybnf_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  echo "only BNF EER: ${eer}%"
+  echo "minDCF(p-target=0.01): $mindcf1"
+  echo "minDCF(p-target=0.001): $mindcf2"
+  # only BNF EER:
+  # minDCF(p-target=0.01):
+  # minDCF(p-target=0.001):
+fi
+
+if [ $stage -le 20 ]; then
+  # Perform i-vector level fusion
+  for name in train voxceleb1_test; do
+    mkdir -p exp/ivectors_combined_${name}
+    $train_cmd exp/ivectors_combined_${name}/log/combine_ivectors.log \
+      paste-ivectors --print-args=false scp:exp/ivectors_${name}/ivector.scp \
+      scp:exp/ivectors_onlybnf_${name}/ivector.scp \
+      ark,scp:exp/ivectors_combined_${name}/ivector.ark,exp/ivectors_combined_${name}/ivector.scp
+  done
+
+  # Compute the mean vector for centering the evaluation i-vectors.
+  $train_cmd exp/ivectors_combined_train/log/compute_mean.log \
+    ivector-mean scp:exp/ivectors_combined_train/ivector.scp \
+    exp/ivectors_combined_train/mean.vec || exit 1;
+
+  # This script uses LDA to decrease the dimensionality prior to PLDA.
+  lda_dim=400
+  $train_cmd exp/ivectors_combined_train/log/lda.log \
+    ivector-compute-lda --total-covariance-factor=0.0 --dim=$lda_dim \
+    "ark:ivector-subtract-global-mean scp:exp/ivectors_combined_train/ivector.scp ark:- |" \
+    ark:data/train/utt2spk exp/ivectors_combined_train/transform.mat || exit 1;
+
+  # Train the PLDA model.
+  $train_cmd exp/ivectors_combined_train/log/plda.log \
+    ivector-compute-plda ark:data/train/spk2utt \
+    "ark:ivector-subtract-global-mean scp:exp/ivectors_combined_train/ivector.scp ark:- | transform-vec exp/ivectors_combined_train/transform.mat ark:- ark:- | ivector-normalize-length ark:-  ark:- |" \
+    exp/ivectors_combined_train/plda || exit 1;
+fi
+
+if [ $stage -le 21 ]; then
+  $train_cmd exp/scores/log/voxceleb1_test_combined_scoring.log \
+    ivector-plda-scoring --normalize-length=true \
+    "ivector-copy-plda --smoothing=0.0 exp/ivectors_combined_train/plda - |" \
+    "ark:ivector-subtract-global-mean exp/ivectors_combined_train/mean.vec scp:exp/ivectors_combined_voxceleb1_test/ivector.scp ark:- | transform-vec exp/ivectors_combined_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "ark:ivector-subtract-global-mean exp/ivectors_combined_train/mean.vec scp:exp/ivectors_combined_voxceleb1_test/ivector.scp ark:- | transform-vec exp/ivectors_combined_train/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+    "cat '$voxceleb1_trials' | cut -d\  --fields=1,2 |" exp/scores_combined_voxceleb1_test || exit 1;
+fi
+
+if [ $stage -le 22 ]; then
+  eer=`compute-eer <(local/prepare_for_eer.py $voxceleb1_trials exp/scores_combined_voxceleb1_test) 2> /dev/null`
+  mindcf1=`sid/compute_min_dcf.py --p-target 0.01 exp/scores_combined_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  mindcf2=`sid/compute_min_dcf.py --p-target 0.001 exp/scores_combined_voxceleb1_test $voxceleb1_trials 2> /dev/null`
+  echo "i-vector fusion EER: ${eer}%"
+  echo "minDCF(p-target=0.01): $mindcf1"
+  echo "minDCF(p-target=0.001): $mindcf2"
+  # only BNF EER:
+  # minDCF(p-target=0.01):
+  # minDCF(p-target=0.001):
+fi
