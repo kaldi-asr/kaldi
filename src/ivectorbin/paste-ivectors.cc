@@ -1,4 +1,4 @@
-// featbin/paste-ivectors.cc
+// ivectorbin/paste-ivectors.cc
 
 // Copyright 2012 Korbinian Riedhammer
 //           2013 Brno University of Technology (Author: Karel Vesely)
