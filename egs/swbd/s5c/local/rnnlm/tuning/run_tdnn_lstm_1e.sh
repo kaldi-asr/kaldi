@@ -132,10 +132,10 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
     # Lattice rescoring
     rnnlm/lmrescore$pruned.sh \
       --cmd "$decode_cmd --mem 4G" \
-      --weight 0.5 --max-ngram-order $ngram_order \
+      --weight 0.45 --max-ngram-order $ngram_order \
       data/lang_$LM $dir \
       data/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}_${decode_dir_suffix}
+      ${decode_dir}_${decode_dir_suffix}_0.45
   done
 fi
 

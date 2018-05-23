@@ -76,6 +76,7 @@ normalize_opt=
 if $normalize; then
   normalize_opt="--normalize-probs=true"
 fi
+oldlm_command="fstproject --project_output=true $oldlm |"
 special_symbol_opts=$(cat $rnnlm_dir/special_symbol_opts.txt)
 
 word_embedding=

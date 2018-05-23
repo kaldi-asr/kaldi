@@ -122,21 +122,20 @@ LM=sw1_fsh_fg # using the 4-gram const arpa file as old lm
 if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
 
-  if [ ! -d ${decode_dir}_${decode_dir_suffix_forward} ]; then
-    echo "$0: Must run the forward recipe first at local/rnnlm/run_tdnn_lstm.sh"
-    exit 1
-  fi
-
   for decode_set in eval2000; do
     decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}_looped
+    if [ ! -d ${decode_dir}_${decode_dir_suffix_forward} ]; then
+      echo "$0: Must run the forward recipe first at local/rnnlm/run_tdnn_lstm.sh"
+      exit 1
+    fi
 
     # Lattice rescoring
     rnnlm/lmrescore_back.sh \
       --cmd "$decode_cmd --mem 4G" \
-      --weight 0.5 --max-ngram-order $ngram_order \
+      --weight 0.45 --max-ngram-order $ngram_order \
       data/lang_$LM $dir \
-      data/${decode_set}_hires ${decode_dir}_${decode_dir_suffix_forward} \
-      ${decode_dir}_${decode_dir_suffix_backward}
+      data/${decode_set}_hires ${decode_dir}_${decode_dir_suffix_forward}_0.45 \
+      ${decode_dir}_${decode_dir_suffix_backward}_0.45
   done
 fi
 
