@@ -1,8 +1,8 @@
 #!/bin/bash
 # Copyright    2017  Hossein Hadian
 
-# local/chain/compare_wer.sh exp/chain/cnn_1a/ exp/chain/cnn_chainali_1b/ exp/chain/e2e_cnn_1afix1/
-# System                         cnn_1a cnn_chainali_1b e2e_cnn_1afix1
+# local/chain/compare_wer.sh exp/chain/cnn_1a/ exp/chain/cnn_chainali_1b/ exp/chain/e2e_cnn_1a/
+# System                         cnn_1a cnn_chainali_1b e2e_cnn_1a
 # WER                             13.51      6.76     10.55
 # Final train prob              -0.0291   -0.0138   -0.0702
 # Final valid prob              -0.0712   -0.0171   -0.0578
@@ -15,7 +15,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1afix1
+affix=1a
 
 # training options
 tdnn_dim=450

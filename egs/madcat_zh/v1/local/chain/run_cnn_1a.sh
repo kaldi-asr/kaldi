@@ -7,8 +7,8 @@
 # steps/info/chain_dir_info.pl exp/chain/cnn_1a/
 # exp/chain/cnn_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.021->-0.015 xent:train/valid[13,20,final]=(-1.05,-0.701,-0.591/-1.30,-1.08,-1.00) logprob:train/valid[13,20,final]=(-0.061,-0.034,-0.030/-0.107,-0.101,-0.098)
 
-# local/chain/compare_wer.sh exp/chain/cnn_1a/ exp/chain/cnn_chainali_1b/ exp/chain/e2e_cnn_1afix1/
-# System                         cnn_1a cnn_chainali_1b e2e_cnn_1afix1
+# local/chain/compare_wer.sh exp/chain/cnn_1a/ exp/chain/cnn_chainali_1b/ exp/chain/e2e_cnn_1a/
+# System                         cnn_1a cnn_chainali_1b e2e_cnn_1a
 # WER                             13.51      6.76     10.55
 # Final train prob              -0.0291   -0.0138   -0.0702
 # Final valid prob              -0.0712   -0.0171   -0.0578
