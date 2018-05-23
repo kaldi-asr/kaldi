@@ -137,7 +137,7 @@ class FasterArpaLm {
   int32 UnkSymbol() const { return unk_symbol_; }
   int32 NgramOrder() const { return ngram_order_; }
 
-  inline int32 GetHashedIdx(const int32* word_ids, 
+  inline int64 GetHashedIdx(const int32* word_ids, 
       int query_ngram_order, RAND_TYPE *h_value=NULL) const {
     assert(query_ngram_order > 0 && query_ngram_order <= ngram_order_);
     int32 ngram_order = query_ngram_order;
@@ -336,11 +336,13 @@ class FasterArpaLm {
     for (int i=0; i< ngram_order_; i++) {
       if (i == 0) ngrams_hashed_size_[i] = symbol_size_; // uni-gram
       else {
-        ngrams_hashed_size_[i] = (1<<(int)ceil(log(ngram_count[i]) / 
+        ngrams_hashed_size_[i] = ((int64)1<<(int64)ceil(log(ngram_count[i]) / 
                                  M_LN2 + HASH_REDUNDANT));
       }
+      assert(ngram_count[i] >= 0);
       KALDI_VLOG(2) << "ngram: "<< i+1 <<" hashed_size/size = "<< 
         1.0 * ngrams_hashed_size_[i] / ngram_count[i]<<" "<<ngram_count[i];
+      assert(ngrams_hashed_size_[i] >= 0);
       randint_per_word_gram_[i] = (RAND_TYPE* )malloc(symbol_size_ * sizeof(RAND_TYPE)) ;
       for (int j=0; j<symbol_size_; j++) {
         randint_per_word_gram_[i][j] = RandInt64(); 
@@ -358,6 +360,7 @@ class FasterArpaLm {
     ngrams_ = (LmState* )calloc(sizeof(LmState), acc); //use default constructo
     ngrams_num_ = acc;
     ngrams_saved_num_ = symbol_size_; // assume uni-gram is allocated
+    assert(hash_size_except_uni_ >= 0);
     ngrams_map_.resize(hash_size_except_uni_, NULL);
     is_built_ = true;
   }
