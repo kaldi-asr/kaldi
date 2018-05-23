@@ -412,6 +412,7 @@ int viterbi(gpu_fst &m,
   std::vector<sym_t> &output_symbols) {
   int verbose=0;
 
+  std::cerr << "NUM_PDFS : " << NUM_PDFS << std::endl;
   int batch_frame = 0;
 
   static thrust::device_vector<prob_ptr_t> viterbi;

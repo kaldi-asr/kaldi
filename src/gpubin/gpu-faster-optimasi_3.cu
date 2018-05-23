@@ -454,7 +454,7 @@ int viterbi(gpu_fst &m,
   
   thrust::host_vector<prob_ptr_t> h_path(path);
   output_symbols.clear();
-  input_symbols.resize(num_path)
+  input_symbols.resize(num_path);
   for (int t= num_path - 1; t >= 0; t--) {
 
     int trans_id = unpack_ptr(h_path[t] & OFFSET_AND_BIT);
