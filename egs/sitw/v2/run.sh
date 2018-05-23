@@ -238,7 +238,6 @@ if [ $stage -le 11 ]; then
   echo "EER: $eer%"
   echo "minDCF(p-target=0.01): $mindcf1"
   echo "minDCF(p-target=0.001): $mindcf2"
-  # SITW Dev Core: 3.35
 fi
 
 if [ $stage -le 12 ]; then
