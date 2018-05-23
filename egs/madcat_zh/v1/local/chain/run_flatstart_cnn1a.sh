@@ -1,13 +1,13 @@
 #!/bin/bash
 # Copyright    2017  Hossein Hadian
 
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1afix1
-# System                      e2e_cnn_1afix1
-# WER                             10.55
-# Final train prob              -0.0702
-# Final valid prob              -0.0578
-# Final train prob (xent)
-# Final valid prob (xent)
+# local/chain/compare_wer.sh exp/chain/cnn_1a/ exp/chain/cnn_chainali_1b/ exp/chain/e2e_cnn_1afix1/
+# System                         cnn_1a cnn_chainali_1b e2e_cnn_1afix1
+# WER                             13.51      6.76     10.55
+# Final train prob              -0.0291   -0.0138   -0.0702
+# Final valid prob              -0.0712   -0.0171   -0.0578
+# Final train prob (xent)       -0.3847   -0.4169
+# Final valid prob (xent)       -0.4962   -0.5040
 
 set -e
 
