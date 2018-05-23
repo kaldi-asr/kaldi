@@ -8,6 +8,22 @@
 # What's special is that Semi-orthogonal (http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf) is applied to DFSMN,
 # which is found to be beneficial to DFSMN.
 
+# Results:
+# System                dfsmn_1a_context_57_57_sp
+# WER on train_dev(tg)      14.19
+# WER on train_dev(fg)      13.25
+# WER on eval2000(tg)        16.9
+# WER on eval2000_swbd(tg)        11.5
+# WER on eval2000_callhm(tg)        22.2
+# WER on eval2000(fg)        15.7
+# WER on eval2000_swbd(fg)        10.4
+# WER on eval2000_callhm(fg)        21.0
+# Final train prob         -0.728
+# Final valid prob         -0.838
+# Final train accuracy          0.767
+# Final valid accuracy          0.749
+
+# Trying broader context and string-style chunk.
 stage=9
 affix=
 train_stage=-10

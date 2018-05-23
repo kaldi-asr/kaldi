@@ -278,7 +278,7 @@ class XconfigBlockSumLayer(XconfigLayerBase):
         self.config = {'input': '[-1]',
                        'dim': -1,
                        'max-change': 0.75,
-                       'glorot-init': True,
+                       'glorot-init': False, # no use for blocksum with scale factor
                        'l2-regularize': '' }
 
     def check_configs(self):
