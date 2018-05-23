@@ -218,7 +218,7 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ $stage -le 11 ]; then
-  # SITW dev core-core
+  # Compute PLDA scores for SITW dev core-core trials
   $train_cmd $nnet_dir/scores/log/sitw_dev_core_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     --num-utts=ark:$nnet_dir/xvectors_sitw_dev_enroll/num_utts.ark \
@@ -242,7 +242,7 @@ if [ $stage -le 11 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  # SITW eval core-core
+  # Compute PLDA scores for SITW eval core-core trials
   $train_cmd $nnet_dir/scores/log/sitw_eval_core_scoring.log \
     ivector-plda-scoring --normalize-length=true \
     --num-utts=ark:$nnet_dir/xvectors_sitw_eval_enroll/num_utts.ark \
