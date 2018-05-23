@@ -10,7 +10,8 @@ password=
 # already downloaded the database you can set it to a local directory
 # like "data/download" and follow the instructions
 # in "local/prepare_data.sh" to download the database:
-madcat_database=data/download/tmp/LDC2014T13/data 
+madcat_database=/export/corpora/LDC/LDC2014T13
+data_split_dir=data/download/datasplits
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -22,9 +23,13 @@ madcat_database=data/download/tmp/LDC2014T13/data
 #./local/check_tools.sh
 
 if [ $stage -le 0 ]; then
+  local/download_data.sh --download-dir1 $madcat_database/data --data-split-dir $data_splits_dir
+
   for dataset in train test dev; do
-    dataset_file=data/download/tmp/madcat_datasplit/zh-en/madcat.${dataset}.raw.lineid
-    local/extract_lines.sh --nj $nj --cmd $cmd --dataset-file $dataset_file data/${dataset}/lines
+    local/extract_lines.sh --nj $nj --cmd $cmd \
+      --download-dir $madcat_database \
+      --dataset-file $data_split_dir/madcat.${dataset}.raw.lineid \
+      data/${dataset}/lines
   done
 
   echo "$0: Preparing data..."
