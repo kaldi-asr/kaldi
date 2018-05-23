@@ -1,36 +1,37 @@
 #!/bin/bash
 
-# 1f12f is as 1f12e but removing the key-scale option since the entropy
-# of the attention heads was very low.
-# A bit worse.
+# 1f10r5 is as 1f40r2 but adding 2 more layers (one with time-stride = 1 and
+# two with time-strid = 3), and reducing the dim from 128 to 96.  Trying to see if greater depth
+# can compensate for skinnier bottlenecks.
 
-# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f12_sp_bi exp/chain_cleaned/tdnn1f12d_sp_bi exp/chain_cleaned/tdnn1f12e_sp_bi exp/chain_cleaned/tdnn1f12f_sp_bi
-# System                tdnn1f12_sp_bi tdnn1f12d_sp_bi tdnn1f12e_sp_bi tdnn1f12f_sp_bi
-# WER on dev(orig)            8.1       8.1       7.9       8.2
-# WER on dev(rescored)        7.5       7.6       7.4       7.5
-# WER on test(orig)           8.2       8.2       8.1       8.3
-# WER on test(rescored)       7.8       7.8       7.7       7.8
-# Final train prob        -0.0601   -0.0598   -0.0615   -0.0604
-# Final valid prob        -0.0899   -0.0898   -0.0908   -0.0894
-# Final train prob (xent)   -0.8819   -0.8576   -0.8853   -0.8682
-# Final valid prob (xent)   -0.9872   -0.9829   -0.9849   -0.9834
-# Num-params                 9776912   9776912   9776912   9776912
+# 1f10r2 is supposed to be the same as 1f10r but generating the configs a different
+#  way, using 'tdnnf-layer'.
 
-# 1f12e is as 1f12d but actually adding the orthonormal constraint, which
-#  I had previously omitted accidentally.
+# 1f10r is as 1f10q but changing all scales of 0.5 to 0.66, as in i->j (which
+# was helpful there).
 
-# 1f12d is as 1f12c but setting key-scale to 0.5 (default is 1/sqrt(key-dim), I think,
-# which in this case is 0.15.
+# 1f10q is as 1f10m but making the blocks more similar to each other
+# by consistently doing the middle splicing as (-1,0) or (-3,0) and never
+# (0,1) or (0,3).  This makes the network as a whole asymmetric (more left
+# than right context).  This is mostly in preparation to replace the blocks
+# with a specialized xconfig layer.
 
-# 1f12c is as 1f12b but adding l2 regularization for the attention layer
-#  (which is fairly safe now that we have the orthonormal constraint).
+# 1f10m is as 1f10h but removing all the skip-layer connections
+#  that I previously had, that were done with Append... keeping only
+#  the resnet-type connections.
 
-# 1f12b is as 1f12 but adding 'orthonormal-constraint=1.0' in the attention layer...
-# this is something that works only in this branch, it constrains each block of the
-# parameter matrix corresponding to the keys of one head, to be semi-orthonormal.
-
-# 1f12 is as 1f10h, but adding an attention layer at the end.
-# It's mostly a baseline for using the orthonormal constraint in attention.
+# Wow... it seems to work the same!!
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10h_sp_bi exp/chain_cleaned/tdnn1f10m_sp_bi
+# System                tdnn1f10h_sp_bi tdnn1f10m_sp_bi
+# WER on dev(orig)            8.1       8.0
+# WER on dev(rescored)        7.5       7.5
+# WER on test(orig)           8.1       8.2
+# WER on test(rescored)       7.7       7.7
+# Final train prob        -0.0603   -0.0661
+# Final valid prob        -0.0893   -0.0900
+# Final train prob (xent)   -0.8857   -0.9194
+# Final valid prob (xent)   -1.0092   -1.0148
+# Num-params                 9953312   8642592
 
 # 1f10h is as 1f10g but taking out the proportional-shrink option,
 #  which was a mistake.
@@ -136,7 +137,7 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=1f12f  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=1f10r5  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 remove_egs=true
 
@@ -232,8 +233,8 @@ if [ $stage -le 17 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
   opts="l2-regularize=0.004 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
-  attention_opts="l2-regularize=0.004 time-stride=3 num-heads=12 value-dim=60 key-dim=40 num-left-inputs=5 num-right-inputs=2 orthonormal-constraint=1.0"
   linear_opts="orthonormal-constraint=-1.0 l2-regularize=0.004"
+  tdnnf_opts="l2-regularize=0.004 dropout-proportion=0.0 bypass-scale=0.66"
   output_opts="l2-regularize=0.002"
 
   mkdir -p $dir/configs
@@ -248,53 +249,28 @@ if [ $stage -le 17 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-dropout-layer name=tdnn1 $opts dim=1024
-  linear-component name=tdnn2l0 dim=128 $linear_opts input=Append(-1,0)
-  linear-component name=tdnn2l dim=128 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=1024
-  no-op-component name=tdnn2sum input=Sum(Scale(0.5,tdnn1),tdnn2)
-  linear-component name=tdnn3l dim=128 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=1024 input=Append(0,1)
-  no-op-component name=tdnn3sum input=Sum(Scale(0.5,tdnn2sum), tdnn3)
-  linear-component name=tdnn4l0 dim=128 $linear_opts input=Append(-1,0)
-  linear-component name=tdnn4l dim=128 $linear_opts input=Append(0,1)
-  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=1024
-  no-op-component name=tdnn4sum input=Sum(Scale(0.5,tdnn3sum), tdnn4)
-  linear-component name=tdnn5l dim=128 $linear_opts
-  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=1024 input=Append(0, tdnn3l)
-  no-op-component name=tdnn5sum input=Sum(Scale(0.5,tdnn4sum), tdnn5)
-  linear-component name=tdnn6l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn6l dim=128 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1024
-  no-op-component name=tdnn6sum input=Sum(Scale(0.5,tdnn5sum), tdnn6)
-  linear-component name=tdnn7l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn7l dim=128 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1024
-  no-op-component name=tdnn7sum input=Sum(Scale(0.5,tdnn6sum), tdnn7)
-  linear-component name=tdnn8l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn8l dim=128 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1024
-  no-op-component name=tdnn8sum input=Sum(Scale(0.5,tdnn7sum), tdnn8)
-  linear-component name=tdnn9l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn9l dim=128 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=1024
-  no-op-component name=tdnn9sum input=Sum(Scale(0.5,tdnn8sum), tdnn9)
-  linear-component name=tdnn10l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn10l dim=128 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1024
-  no-op-component name=tdnn10sum input=Sum(Scale(0.5,tdnn9sum), tdnn10)
-  linear-component name=tdnn11l0 dim=128 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn11l dim=128 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn9l,tdnn7l) dim=1024
-  no-op-component name=tdnn11sum input=Sum(Scale(0.5,tdnn10sum), tdnn11)
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=0
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=1024 bottleneck-dim=96 time-stride=3
   linear-component name=prefinal-l dim=256 $linear_opts
 
-  attention-relu-renorm-layer name=attention1 $attention_opts
-
-  linear-component name=prefinal-chain-l input=attention1 dim=256 $linear_opts
+  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1024
+  linear-component name=prefinal-chain-l dim=256 $linear_opts
   batchnorm-component name=prefinal-chain-batchnorm
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  linear-component name=prefinal-xent-l input=attention1 dim=256 $linear_opts
+  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1024
+  linear-component name=prefinal-xent-l dim=256 $linear_opts
   batchnorm-component name=prefinal-xent-batchnorm
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF

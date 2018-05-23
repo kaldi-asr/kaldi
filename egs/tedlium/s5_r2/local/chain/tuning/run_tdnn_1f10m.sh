@@ -4,7 +4,9 @@
 #  that I previously had, that were done with Append... keeping only
 #  the resnet-type connections.
 
-# Wow... it seems to work the same!!
+# It seems to work the same.  (Although I did the same type of experiment
+# in  a setup with learnt scales in 1f10{k,n}, and in that case it was maybe
+# very slightly worse.)
 # local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10h_sp_bi exp/chain_cleaned/tdnn1f10m_sp_bi
 # System                tdnn1f10h_sp_bi tdnn1f10m_sp_bi
 # WER on dev(orig)            8.1       8.0

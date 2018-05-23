@@ -2,7 +2,23 @@
 
 # 1f10p is as 1f10l but increasing the large dim from 1024 to 1280,
 # in the middle part of the network (excluding the prefinal layers).
-
+#  Maybe a little bit better-- but not super clear.  Comparing also
+#  with 1f10k which has a small-dim of 128... the difference from that
+# experiment is unclear, while this one has fewer parameters.  So maybe
+# it suggests that having quite a big difference between the small
+# and big dims is helpful.
+#
+# local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f10k_sp_bi exp/chain_cleaned/tdnn1f10l_sp_bi exp/chain_cleaned/tdnn1f10p_sp_bi
+# System                tdnn1f10k_sp_bi tdnn1f10l_sp_bi tdnn1f10p_sp_bi
+# WER on dev(orig)            8.1       8.0       8.0
+# WER on dev(rescored)        7.5       7.6       7.5
+# WER on test(orig)           8.1       8.3       8.3
+# WER on test(rescored)       7.7       7.8       7.7
+# Final train prob        -0.0585   -0.0612   -0.0594
+# Final valid prob        -0.0889   -0.0885   -0.0886
+# Final train prob (xent)   -0.8812   -0.9156   -0.8863
+# Final valid prob (xent)   -0.9981   -1.0156   -1.0023
+# Num-params                 9963552   8642592   9582880
 
 # 1f10l is as 1f10k but reducing the small dim further from 128 to 96, as in h->i
 # Probably a little worse.
