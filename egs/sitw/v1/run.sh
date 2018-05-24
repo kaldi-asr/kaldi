@@ -36,7 +36,7 @@ if [ $stage -le 0 ]; then
   # Prepare the VoxCeleb1 dataset.  The script also downloads a list from
   # http://www.openslr.org/resources/49/voxceleb1_sitw_overlap.txt that
   # contains the speakers that overlap between VoxCeleb1 and our evaluation
-  # set SITW.
+  # set SITW.  The script removes the overlapping speakers from VoxCeleb1.
   local/make_voxceleb1.pl $voxceleb1_root data
 
   # Prepare the VoxCeleb2 dataset.
@@ -153,7 +153,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  # Take a 100k subset of the augmentations.  It already consists
+  # Take a 100k subset of the augmentations.
   utils/subset_data_dir.sh data/train_aug 100000 data/train_100k_aug
   utils/fix_data_dir.sh data/train_100k_aug
 
