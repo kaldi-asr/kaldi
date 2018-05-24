@@ -3,6 +3,15 @@
 # 1g20 is as 1g but adding the option "--constrained false" to --egs.opts.
 #   This is the new 'unconstrained egs' code where it uses the e2e examples.
 #
+# local/chain/compare_wer.sh exp/chain/tdnn1g_sp exp/chain/tdnn1g20_sp
+# System                tdnn1g_sp tdnn1g20_sp
+#WER dev_clean_2 (tgsmall)      13.55     13.55
+#WER dev_clean_2 (tglarge)       9.74      9.66
+# Final train prob        -0.0454   -0.0318
+# Final valid prob        -0.0920   -0.0800
+# Final train prob (xent)   -1.1679   -1.1831
+# Final valid prob (xent)   -1.4506   -1.5074
+# Num-params                 6227338   6227338
 
 # 1g is as 1f but adding dropout (well, something like dropout-- the mask
 #   is shared across time and it's continuous rather than zero-one), increasing
