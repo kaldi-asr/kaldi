@@ -23,7 +23,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         vector-sum matrix-sum-rows est-pca sum-lda-accs sum-mllt-accs \
         transform-vec align-text matrix-dim post-to-smat
 
-BINFILES += latgen-biglm-faster-mapped latgen-constlm-faster-mapped latgen-fasterlm-faster-mapped latgen-otfres-fasterlm-faster-mapped
+BINFILES += latgen-biglm-faster-mapped latgen-constlm-faster-mapped latgen-fasterlm-faster-mapped latgen-otfres-fasterlm-faster-mapped latgen-fasterlm-faster-mapped-parallel
 
 OBJFILES =
 
