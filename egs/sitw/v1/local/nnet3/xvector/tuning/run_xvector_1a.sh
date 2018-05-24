@@ -26,8 +26,6 @@ egs_dir=exp/xvector_nnet_1a/egs
 . ./cmd.sh
 . ./utils/parse_options.sh
 
-num_pdfs=$(awk '{print $2}' $data/utt2spk | sort | uniq -c | wc -l)
-
 # Now we create the nnet examples using sid/nnet3/xvector/get_egs.sh.
 # The argument --num-repeats is related to the number of times a speaker
 # repeats per archive.  If it seems like you're getting too many archives
