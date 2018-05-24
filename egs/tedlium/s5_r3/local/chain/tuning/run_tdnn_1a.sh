@@ -64,9 +64,9 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
-tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
+tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_bi_1024_ps10
+dir=exp/chain${nnet3_affix}/tdnn${tdnn_affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires

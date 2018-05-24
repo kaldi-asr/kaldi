@@ -75,7 +75,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
-tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
+tree_dir=exp/chain${nnet3_affix}/tree${tree_affix}
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
 dir=exp/chain${nnet3_affix}/tdnnf${tdnnf_affix}
 train_data_dir=data/${train_set}_sp_hires
