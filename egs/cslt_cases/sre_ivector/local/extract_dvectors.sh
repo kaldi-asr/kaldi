@@ -45,7 +45,7 @@ if [ $stage -le 0 ]; then
       --extra-left-context=$extra_left_context --extra-right-context=$extra_right_context \
       --extra-left-context-initial=$extra_left_context_initial --extra-right-context-final=$extra_right_context_final \
     $mdl ark:- ark:- \| \
-    matrix-sum-rows-mean ark:- ark,scp:$dir/dvector.JOB.ark,$dir/dvector.JOB.scp 
+    matrix-sum-rows ark:- ark,scp:$dir/dvector.JOB.ark,$dir/dvector.JOB.scp 
 
 fi
 
