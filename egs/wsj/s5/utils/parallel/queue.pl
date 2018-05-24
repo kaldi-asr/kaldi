@@ -395,6 +395,7 @@ print Q "# $qsub_cmd\n";
 if (!close(Q)) { # close was not successful... || die "Could not close script file $shfile";
   die "Failed to close the script file (full disk?)";
 }
+chmod 0755, $queue_scriptfile;
 
 # This block submits the job to the queue.
 for (my $try = 1; $try < 5; $try++) {
