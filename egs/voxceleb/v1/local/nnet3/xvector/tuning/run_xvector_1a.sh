@@ -8,7 +8,7 @@
 # Apache 2.0.
 
 # This script trains a DNN similar to the recipe described in
-# http://www.danielpovey.com/files/2017_interspeech_embeddings.pdf .
+# http://www.danielpovey.com/files/2018_icassp_xvectors.pdf
 
 . ./cmd.sh
 set -e
