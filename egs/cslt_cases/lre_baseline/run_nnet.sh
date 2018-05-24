@@ -32,7 +32,7 @@ for x in train test; do
 done
 
 ## if vad needed, uncomment following lines to make MFCC with energy and vad
-## and give dnn training and scoring with true vad option.
+## and do alignment, dnn training and scoring with true vad option.
 #rm -rf data/mfcc && mkdir -p data/mfcc && cp -r data/{train,test} data/mfcc
 #for x in train test; do
 #  steps/make_mfcc.sh --nj $n --cmd "$train_cmd" data/mfcc/$x
@@ -67,14 +67,13 @@ local/nnet3/run_score.sh --nj $n --cmd "$train_cmd" \
 
 # print frame and utt level eer and cavg
 for i in tdnn lstm; do
-#for i in lstm; do
-  eer=`compute-eer <(python local/nnet3/prepare_for_eer.py $trials exp/${i}_scores_1s/*frame) 2> /dev/null`
-  printf "%15s %5.2f \n" "$i frame level eer%:" $eer
-  cavg=`python local/compute_cavg.py -matrix $trials exp/${i}_scores_1s/*frame`
-  printf "%15s %7.4f \n" "$i frame level cavg:" $cavg
-  eer=`compute-eer <(python local/nnet3/prepare_for_eer.py $trials exp/${i}_scores_1s/*utt) 2> /dev/null`
+#  eer=`compute-eer <(python local/nnet3/prepare_for_eer.py $trials exp/${i}_scores/*frame) 2> /dev/null`
+#  printf "%15s %5.2f \n" "$i frame level eer%:" $eer
+#  cavg=`python local/compute_cavg.py -matrix $trials exp/${i}_scores/*frame`
+#  printf "%15s %7.4f \n" "$i frame level cavg:" $cavg
+  eer=`compute-eer <(python local/nnet3/prepare_for_eer.py $trials exp/${i}_scores/*utt) 2> /dev/null`
   printf "%15s %5.2f \n" "$i utt level eer%:" $eer
-  cavg=`python local/compute_cavg.py -matrix $trials exp/${i}_scores_1s/*utt`
+  cavg=`python local/compute_cavg.py -matrix $trials exp/${i}_scores/*utt`
   printf "%15s %7.4f \n" "$i utt level cavg:" $cavg
 done
 

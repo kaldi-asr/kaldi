@@ -2,7 +2,7 @@
 
 Four baseline systems were trained on ap17_train-dev database for AP18-OLR, 
 namely i-vector, tdnn, lstm and ptn (todo). 
-AP18-OLR challenge sets three tasks, 
+AP18-OLR challenge sets three tasks that will be evaluated and ranked separately,
 and their descriptions and utterance-level results are as follows: 
 
 
@@ -22,7 +22,7 @@ Task 0: test on original length
 Note: this task is just for reference and won't be challenged.
 
 
-Task 1: test on short length (1s)
+Task 1: test on short duration (1s)
 --------------------------------------
       test set: ap17-olr test_1s
 --------------------------------------
@@ -38,21 +38,20 @@ Task 1: test on short length (1s)
 
 
 Task 2: test on trials of ko-kr, zh-cn and ct-cn
---------------------------------------------------
-test set: ap17-olr test_all (ko-kr, zh-cn and ct-cn)
---------------------------------------------------
-                  |     Cavg      |     EER%
---------------------------------------------------
-  LID system      | Fr.     Utt.   | Fr.    Utt.
---------------------------------------------------
-  i-vector        | -       0.1446 | -      14.13 
-  i-vector + lda  | -       0.1550 | -      15.20 
-  i-vector + plda | -       0.1563 | -      15.64 
-  tdnn            | -       0.3752 | -      37.86 
-  lstm            | -       0.3902 | -      40.56
-  ptn             |              TODO
---------------------------------------------------
-Note: this task aims to recognition languages that are hard to distinguish.
+--------------------------------------
+      test set: ap17-olr test_all
+        (ko-kr, zh-cn and ct-cn)
+--------------------------------------
+  LID system      |  Cavg    |  EER%
+--------------------------------------
+  i-vector        |  0.1446  |  14.13 
+  i-vector + lda  |  0.1550  |  15.20 
+  i-vector + plda |  0.1563  |  15.64 
+  tdnn            |  0.3752  |  37.86 
+  lstm            |  0.3902  |  40.56
+  ptn             |        TODO
+--------------------------------------
+Note: this task aims to recognize languages that are hard to distinguish.
 
 
 Task 3: test with 8 interference languages

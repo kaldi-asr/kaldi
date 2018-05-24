@@ -50,7 +50,7 @@ lid/train_full_ubm.sh --cmd "$train_cmd" --nj $n \
   data/mfcc/train_36k $exp/diag_ubm $exp/full_ubm
 
 # train i-vetor extractor
-lid/train_ivector_extractor.sh --cmd "$train_cmd" --nj $n --stage 4 \
+lid/train_ivector_extractor.sh --cmd "$train_cmd" --nj $n \
   --num-processes 1 --num-threads 1 \
   --ivector-dim $ivector_dim --num-iters 5 \
   $exp/full_ubm/final.ubm data/mfcc/train $exp/extractor

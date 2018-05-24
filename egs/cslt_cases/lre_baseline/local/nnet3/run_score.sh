@@ -62,7 +62,7 @@ if [ $stage -le 0 ]; then
   fi
   for job in `seq $nj`; do
     cat $dir/raw_output.$job.ark >> $dir/output.ark.frame
-    # rm $dir/raw_output.$job.ark
+    rm $dir/raw_output.$job.ark
   done
   matrix-sum-rows-mean ark:$dir/output.ark.frame ark,t:$dir/output.ark.utt
 fi
