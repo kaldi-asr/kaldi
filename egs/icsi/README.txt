@@ -13,8 +13,8 @@ distant (but beamformed) multiple mics (mdm) or distant single mic (D1...D4, PDA
 Mutliple distant microphones (mdm) setup is using only up to 4 PZM mics. Look below
 for more details, on notations and a typical meeting layout that ICSI recordings followed.
 
-Allowed mic_types for now are (ihm, sdm[1..4], mdm[2...4]). sdm1 will use D1 for single
-distant mic, mdm4 will combine D1...D4 using beamformer, etc.
+Allowed mic_types for now are (ihm, sdm[1..4], mdm[2...4]). sdm4 will use D2 as a single
+distant mic (look below for details, and why), mdm4 will combine D1...D4 using beamformer, etc.
 
 About ICSI corpora and this particular recipe
 =================================================================================
@@ -78,12 +78,13 @@ PDA - The mockup PDA with two cheap microphones
 The following are the TYPICAL channel assignments, although a handful           
 of meetings (including Bmr003, Btr001, Btr002) differed in assignment.         
 
-The mapping from the above, to the actual waveform channels in the corpora is:
+The mapping from the above, to the actual waveform channels in the corpora,
+and (this recipe for a signle distant mic case) is:
                                                                                 
-D1 - chanE                                                                      
-D2 - chanF                                                                      
-D3 - chan6                                                                      
-D4 - chan7                                                                      
+D1 - chanE - (this recipe: sdm3)                                                                      
+D2 - chanF - (this recipe: sdm4)                                                                     
+D3 - chan6 - (this recipe: sdm1)                                                                     
+D4 - chan7 - (this recipe: sdm2)                                                                     
 PDA left - chanC                                                                
 PDA right - chanD 
 

@@ -7,13 +7,13 @@
 # You may set 'mic' to:
 #  ihm [individual headset mic- the default which gives best results]
 #  sdmN [single distant microphone- the current script allows you to select
-#        any of 4 PZM microphones, D1...D4 in a diagram, default should be 2]
+#        any of 4 PZM microphones, D1...D4 in a diagram, best results are with D2]
 #  mdm4 [multiple distant microphones-- currently we only support averaging over
 #       the 2,3 or 4 single microphones].
 # ... by calling this script as, for example,
-# ./run.sh --mic ihm  (will build ihm systems from individual headsets)
-# ./run.sh --mic sdm2 (will build sdm systems from D2)
-# ./run.sh --mic mdm4 (will build mdm systems from D1...D4)
+# ./run.sh --mic ihm  (will build ihm systems from individual headset mics)
+# ./run.sh --mic sdm4 (will build sdm systems from D2 mic - look ../README.txt if confused)
+# ./run.sh --mic mdm4 (will build mdm systems from D1...D4 mics)
 mic=ihm
 
 # Train systems,

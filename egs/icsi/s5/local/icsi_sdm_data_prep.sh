@@ -80,6 +80,9 @@ awk '{
 cat $SEGS | \
   awk -v micid=$micid -v micdir=$mic \
       '{ meeting=$1; channel=$2; dchannel=$3; speaker=$4; stime=$5; etime=$6;
+         if ( meeting=="Bsr001" ) {
+           dchannel=dchannel",chanE,chanF";
+         }
          split(dchannel, c, ",");
          chan=c[micid];
          printf("ICSI_%s_%s_%s\n", meeting, micdir, chan);

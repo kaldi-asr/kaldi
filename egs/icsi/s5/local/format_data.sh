@@ -5,7 +5,7 @@ if [ -f path.sh ]; then . path.sh; fi
 
 silprob=0.5
 
-arpa_lm=data/local/lm/icsi_ami_sw_fsh.o3g.kn.pr1-7.gz
+arpa_lm=data/local/lm/icsi_fsh.o3g.kn.pr1-7.gz
 [ ! -f $arpa_lm ] && echo No such file $arpa_lm && exit 1;
 
 cp -r data/lang data/lang_test

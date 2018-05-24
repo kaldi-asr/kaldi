@@ -1,12 +1,38 @@
 
-# for d in exp/sdm2/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+# In ICSI data distant mics are in large distance from each other, thus also large differences in accuracy using various mics (D1,...D4)
+# The mapping between the recipe ids and the actual layout is something like this (look also at ../README.txt):
+# sdm3: D1 - chanE                                                                      
+# sdm4: D2 - chanF                                                                      
+# sdm1: D3 - chan6                                                                      
+# sdm2: D4 - chan7 
 
+# Results for each distant PZM microphone are as follows:
+
+# GMM systems
+#for d in exp/sdm1/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+%WER 55.5 | 4836 23314 | 50.8 33.7 15.5 6.3 55.5 53.6 | 0.473 | exp/sdm1/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+%WER 52.6 | 4629 30660 | 53.0 30.3 16.7 5.6 52.6 65.5 | 0.532 | exp/sdm1/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+%WER 55.8 | 3183 23305 | 51.0 35.4 13.6 6.8 55.8 80.8 | 0.591 | exp/sdm1/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
+%WER 52.5 | 5217 30664 | 53.2 30.4 16.4 5.7 52.5 57.5 | 0.653 | exp/sdm1/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+
+# for d in exp/sdm2/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
 %WER 59.5 | 4838 23313 | 46.4 36.9 16.7 5.9 59.5 54.8 | 0.426 | exp/sdm2/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
 %WER 57.1 | 5228 30808 | 48.4 32.8 18.8 5.4 57.1 59.3 | 0.481 | exp/sdm2/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
-
-#note, splitting data into multiple 30s spk-like chunks as in the AMI recipe does seem to make resutls worse for SAT GMM systems
 %WER 60.3 | 4838 23315 | 46.2 38.7 15.1 6.4 60.3 55.0 | 0.572 | exp/sdm2/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
 %WER 57.3 | 4632 30665 | 48.0 33.1 18.9 5.3 57.3 65.9 | 0.613 | exp/sdm2/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
 
+#for d in exp/sdm3/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+%WER 57.4 | 3566 23304 | 48.9 35.2 15.9 6.2 57.4 74.1 | 0.455 | exp/sdm3/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+%WER 52.9 | 5714 30648 | 52.7 30.6 16.7 5.6 52.9 52.4 | 0.537 | exp/sdm3/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+%WER 56.7 | 3565 23308 | 50.0 36.2 13.8 6.7 56.7 72.7 | 0.591 | exp/sdm3/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
+%WER 52.4 | 4912 30659 | 52.9 30.5 16.7 5.2 52.4 59.9 | 0.648 | exp/sdm3/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
 
-# for d in exp/ihm/chain/tdnn_sp_bi/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+#for d in exp/sdm4/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+%WER 56.4 | 4835 23304 | 49.3 33.2 17.5 5.7 56.4 54.0 | 0.465 | exp/sdm4/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
+%WER 50.1 | 3829 30651 | 55.7 28.9 15.4 5.8 50.1 77.7 | 0.554 | exp/sdm4/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+%WER 56.3 | 4454 23302 | 51.1 35.9 13.0 7.4 56.3 58.6 | 0.603 | exp/sdm4/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_14/dev_o4.ctm.filt.sys
+%WER 50.0 | 5709 30663 | 55.6 29.1 15.4 5.6 50.0 51.1 | 0.663 | exp/sdm4/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+
+
+#Nnet3 systems
+# for d in exp/ihm/chain/tdnn/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
