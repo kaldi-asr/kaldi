@@ -1,0 +1,1 @@
+tuning/run_tdnn_aishell2_ft_3a.sh
