@@ -29,7 +29,7 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=7o_uc
+affix=7p
 suffix=
 $speed_perturb && suffix=_sp
 if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
