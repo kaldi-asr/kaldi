@@ -58,7 +58,9 @@ if [ $stage -le 0 ]; then
 
   for n in `seq $nj`; do
     cat $sdata/$n/subsegments
-  done | sort > $data/subsegments || exit 1;
+  done | sort | \
+  awk '{if (! (NF != 4 || $4 - $3 <= 0.25)) { print $0 }}' \
+  > $data/subsegments || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
