@@ -96,4 +96,4 @@ for (my $n = 1; $n <= $num_tries; $n++) {
 }
 
 print STDERR "$0: job failed $num_tries times; log is in $log_file\n";
-exit($return_status);
+exit(1);
