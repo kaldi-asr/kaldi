@@ -5,6 +5,7 @@ include ../kaldi.mk
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
+CXXFLAGS += -O3
 OBJFILES = 
 ifeq ($(CUDA), true)
   OBJFILES += fst.o numberizer.o
@@ -23,6 +24,6 @@ endif
 
 # Implicit rule for kernel compilation,
 %.o : %.cu
-	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../
+	$(CUDATKDIR)/bin/nvcc -c $< -O3 -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../
 
 include ../makefiles/default_rules.mk
