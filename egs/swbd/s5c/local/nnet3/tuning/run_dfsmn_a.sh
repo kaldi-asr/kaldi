@@ -24,6 +24,7 @@
 # Final valid accuracy          0.749
 
 # Trying broader context and string-style chunk.
+# Also. I'm setting up librispeech.
 stage=9
 affix=
 train_stage=-10
@@ -93,7 +94,7 @@ if [ $stage -le 9 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 input=Append(-1,0,1) dim=1536 $opts2
+  relu-batchnorm-layer name=tdnn1 input=Append(-1,0,1) dim=1536 $opts
   linear-component name=tdnn1l dim=512 $linear_opts
   
   blocksum-layer name=dfsmn1_blocksum input=Append(-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6) dim=512
@@ -134,7 +135,7 @@ if [ $stage -le 9 ]; then
 
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-ce1 input=dfsmn9_projection dim=512 target-rms=0.5 l2-regularize=0.0015 
-  relu-batchnorm-layer name=prefinal-ce2 input=prefinal-ce1 dim=1536 target-rms=0.5 $opts2
+  relu-batchnorm-layer name=prefinal-ce2 input=prefinal-ce1 dim=1536 target-rms=0.5 $opts
   output-layer name=output input=prefinal-ce2 dim=$num_targets max-change=1.5 $output_opts 
 
 EOF
