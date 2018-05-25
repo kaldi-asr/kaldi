@@ -229,7 +229,7 @@ if [ ! -z $decode_iter ]; then
 fi
 if [ $stage -le 15 ]; then
   rm $dir/.error 2>/dev/null || true
-  for decode_set in $maybe_rt03; do  # train_dev eval2000
+  for decode_set in train_dev eval2000 $maybe_rt03; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
