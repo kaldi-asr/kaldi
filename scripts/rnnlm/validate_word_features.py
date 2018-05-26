@@ -25,7 +25,7 @@ constant_feat_value = None
 unigram_feat_id = -1
 length_feat_id = -1
 max_feat_id = -1
-with open(args.features_file, 'r', encoding="utf-8") as f:
+with open(args.features_file, 'r', encoding="latin-1") as f:
     for line in f:
         fields = line.split()
         assert(len(fields) in [3, 4, 5])
@@ -49,7 +49,7 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
         if feat_id > max_feat_id:
             max_feat_id = feat_id
 
-with open(args.word_features_file, 'r', encoding="utf-8") as f:
+with open(args.word_features_file, 'r', encoding="latin-1") as f:
     for line in f:
         fields = line.split()
         assert len(fields) > 0 and len(fields) % 2 == 1

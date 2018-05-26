@@ -37,7 +37,7 @@ num_text_files = 0
 
 
 def check_text_file(text_file):
-    with open(text_file, 'r', encoding="utf-8") as f:
+    with open(text_file, 'r', encoding="latin-1") as f:
         found_nonempty_line = False
         lineno = 0
         if args.allow_internal_eos == 'true':
@@ -73,7 +73,7 @@ def check_text_file(text_file):
     # with some kind of utterance-id
     first_field_set = set()
     other_fields_set = set()
-    with open(text_file, 'r', encoding="utf-8") as f:
+    with open(text_file, 'r', encoding="latin-1") as f:
         for line in f:
             array = line.split()
             if len(array) > 0:

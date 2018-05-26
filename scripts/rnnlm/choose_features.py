@@ -8,7 +8,7 @@ import argparse
 import sys
 import math
 from collections import defaultdict
-sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
+sys.stdout = open(1, 'w', encoding='latin-1', closefd=False)
 
 
 parser = argparse.ArgumentParser(description="This script chooses the sparse feature representation of words. "
@@ -84,7 +84,7 @@ SPECIAL_SYMBOLS = ["<eps>", "<s>", "<brk>"]
 #  and 'wordlist' is a list indexed by integer id, that returns the string-valued word.
 def read_vocab(vocab_file):
     vocab = {}
-    with open(vocab_file, 'r', encoding="utf-8") as f:
+    with open(vocab_file, 'r', encoding="latin-1") as f:
         for line in f:
             fields = line.split()
             assert len(fields) == 2
@@ -113,7 +113,7 @@ def read_vocab(vocab_file):
 # id of the word, which evaluates to the unigram prob of the word.
 def read_unigram_probs(unigram_probs_file):
     unigram_probs = []
-    with open(unigram_probs_file, 'r', encoding="utf-8") as f:
+    with open(unigram_probs_file, 'r', encoding="latin-1") as f:
         for line in f:
             fields = line.split()
             assert len(fields) == 2

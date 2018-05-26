@@ -6,7 +6,7 @@
 import os
 import argparse
 import sys
-sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
+sys.stdout = open(1, 'w', encoding='latin-1', closefd=False)
 
 parser = argparse.ArgumentParser(description="This script get a vocab from unigram counts "
                                  "of words produced by get_unigram_counts.sh",
@@ -25,7 +25,7 @@ special_symbols = ['<s>', '<brk>', '<eps>']
 # Add the count for every word in counts_file
 # the result is written into word_counts
 def add_counts(word_counts, counts_file):
-    with open(counts_file, 'r', encoding="utf-8") as f:
+    with open(counts_file, 'r', encoding="latin-1") as f:
         for line in f:
             line = line.strip()
             word_and_count = line.split()

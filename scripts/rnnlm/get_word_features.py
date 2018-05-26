@@ -38,7 +38,7 @@ args = parser.parse_args()
 # return the vocab, which is a dict mapping the word to a integer id.
 def read_vocab(vocab_file):
     vocab = {}
-    with open(vocab_file, 'r', encoding="utf-8") as f:
+    with open(vocab_file, 'r', encoding="latin-1") as f:
         for line in f:
             fields = line.split()
             assert len(fields) == 2
@@ -59,7 +59,7 @@ def read_vocab(vocab_file):
 # return a list of unigram_probs, indexed by word id
 def read_unigram_probs(unigram_probs_file):
     unigram_probs = []
-    with open(unigram_probs_file, 'r', encoding="utf-8") as f:
+    with open(unigram_probs_file, 'r', encoding="latin-1") as f:
         for line in f:
             fields = line.split()
             assert len(fields) == 2
@@ -100,7 +100,7 @@ def read_features(features_file):
     feats['min_ngram_order'] = 10000
     feats['max_ngram_order'] = -1
 
-    with open(features_file, 'r', encoding="utf-8") as f:
+    with open(features_file, 'r', encoding="latin-1") as f:
         for line in f:
             fields = line.split()
             assert(len(fields) in [3, 4, 5])
