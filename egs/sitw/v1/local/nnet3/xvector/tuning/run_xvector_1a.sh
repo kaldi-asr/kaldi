@@ -26,8 +26,6 @@ egs_dir=exp/xvector_nnet_1a/egs
 . ./cmd.sh
 . ./utils/parse_options.sh
 
-num_pdfs=$(awk '{print $2}' $data/utt2spk | sort | uniq -c | wc -l)
-
 # Now we create the nnet examples using sid/nnet3/xvector/get_egs.sh.
 # The argument --num-repeats is related to the number of times a speaker
 # repeats per archive.  If it seems like you're getting too many archives
@@ -56,7 +54,7 @@ num_pdfs=$(awk '{print $2}' $data/utt2spk | sort | uniq -c | wc -l)
 if [ $stage -le 6 ]; then
   echo "$0: Getting neural network training egs";
   # dump egs.
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $egs_dir/storage ]; then
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
      /export/b{03,04,05,06}/$USER/kaldi-data/egs/voxceleb2/v2/xvector-$(date +'%m_%d_%H_%M')/$egs_dir/storage $egs_dir/storage
   fi
