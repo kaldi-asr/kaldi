@@ -9,7 +9,7 @@ affix=
 stage=10
 train_stage=-10
 get_egs_stage=-10
-dir=exp/chain/tdnn_1a  # Note: _sp will get added to this
+dir=exp/chain/tdnn_1g  # Note: _sp will get added to this
 decode_iter=
 
 # training options
@@ -19,8 +19,8 @@ final_effective_lrate=0.0001
 max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=2
-num_jobs_final=6
-nj=16
+num_jobs_final=4
+nj=10
 minibatch_size=128
 frames_per_eg=150,110,90
 remove_egs=true
@@ -94,9 +94,11 @@ fi
 
 if [ $stage -le 10 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
-
-  num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
+  num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  opts="l2-regularize=0.002"
+  linear_opts="orthonormal-constraint=1.0"
+  output_opts="l2-regularize=0.0005 bottleneck-dim=256"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -108,28 +110,34 @@ if [ $stage -le 10 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=625
-  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=625
-  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=625
-  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=625
-  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=625
-  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=625
+  relu-batchnorm-layer name=tdnn1 $opts dim=1280
+  linear-component name=tdnn2l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-layer name=tdnn2 $opts input=Append(0,1) dim=1280
+  linear-component name=tdnn3l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn3 $opts dim=1280
+  linear-component name=tdnn4l dim=256 $linear_opts input=Append(-1,0)
+  relu-batchnorm-layer name=tdnn4 $opts input=Append(0,1) dim=1280
+  linear-component name=tdnn5l dim=256 $linear_opts
+  relu-batchnorm-layer name=tdnn5 $opts dim=1280 input=Append(tdnn5l, tdnn3l)
+  linear-component name=tdnn6l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn6 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn7l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1280
+  linear-component name=tdnn8l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn8 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn9l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn4l) dim=1280
+  linear-component name=tdnn10l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn10 $opts input=Append(0,3) dim=1280
+  linear-component name=tdnn11l dim=256 $linear_opts input=Append(-3,0)
+  relu-batchnorm-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn8l,tdnn6l) dim=1280
+  linear-component name=prefinal-l dim=256 $linear_opts
 
-  ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain input=tdnn6 dim=625 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1280
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' models... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn6 dim=625 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1280
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/

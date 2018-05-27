@@ -1,1 +1,1 @@
-tuning/run_lstm_2a.sh
+tuning/run_lstm_1a.sh
