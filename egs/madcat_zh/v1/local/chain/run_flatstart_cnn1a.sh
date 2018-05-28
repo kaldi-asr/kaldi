@@ -20,8 +20,8 @@ affix=1a
 # training options
 tdnn_dim=450
 num_epochs=4
-num_jobs_initial=8
-num_jobs_final=16
+num_jobs_initial=3
+num_jobs_final=12
 minibatch_size=150=48,24/300=24,12/600=12,6/1200=4,4
 common_egs_dir=
 l2_regularize=0.00005

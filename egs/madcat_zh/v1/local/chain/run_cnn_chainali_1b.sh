@@ -108,6 +108,7 @@ if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
+                            --acoustic-scale 1.0 \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                             ${train_data_dir} data/lang $chain_model_dir $lat_dir
   cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
@@ -194,8 +195,8 @@ if [ $stage -le 5 ]; then
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
     --trainer.frames-per-iter=1000000 \
-    --trainer.optimization.num-jobs-initial=8 \
-    --trainer.optimization.num-jobs-final=16 \
+    --trainer.optimization.num-jobs-initial=3 \
+    --trainer.optimization.num-jobs-final=12 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
