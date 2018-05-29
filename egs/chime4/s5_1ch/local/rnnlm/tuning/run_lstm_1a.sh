@@ -64,8 +64,8 @@ done
 #prepare training and dev data
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
-  cp $srcdir/train.rnn $text_dir/chime4.txt
-  sed -i -e "s/<RNN_UNK>/<UNK>/g" $text_dir/chime4.txt
+  cp $srcdir/train.rnn $text_dir/chime4.txt.tmp
+  sed -e "s/<RNN_UNK>/<UNK>/g" $text_dir/chime4.txt.tmp > $text_dir/chime4.txt
   cp $srcdir/valid.rnn $text_dir/dev.txt
 fi
 
