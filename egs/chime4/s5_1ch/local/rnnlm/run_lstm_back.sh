@@ -40,8 +40,9 @@ done
 #prepare training and dev data
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
-  cat $srcdir/train.rnn | awk '{for(i=NF;i>0;i--) printf("%s ",$i); print""}'> $text_dir/chime4.txt
-  sed -i -e "s/<RNN_UNK>/<UNK>/g" $text_dir/chime4.txt
+  cat $srcdir/train.rnn | awk '{for(i=NF;i>0;i--) printf("%s ",$i); print""}'> $text_dir/chime4.txt.tmp
+  sed -e "s/<RNN_UNK>/<UNK>/g" $text_dir/chime4.txt.tmp > $text_dir/chime4.txt
+  rm $text_dir/chime4.txt.tmp
   cat $srcdir/valid.rnn | awk '{for(i=NF;i>0;i--) printf("%s ",$i); print""}'> $text_dir/dev.txt
 fi
 
