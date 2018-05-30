@@ -26,18 +26,16 @@
 
 namespace kaldi {
 
-using std::vector;
-using std::set;
-
-typedef unordered_set<fst::StdArc::Label> LabelSet;
+typedef fst::StdArc::Label Label;
+typedef std::vector<std::pair<Label, Label>> LabelPairVector;
 
 void ReadSymbolList(const std::string &rxfilename,
                     fst::SymbolTable *word_syms,
-                    LabelSet *lset) {
+                    LabelPairVector *lpairs) {
   Input ki(rxfilename);
   std::string line;
-  KALDI_ASSERT(lset != NULL);
-  lset->clear();
+  KALDI_ASSERT(lpairs != NULL);
+  lpairs->clear();
   while (getline(ki.Stream(), line)) {
     std::string sym;
     std::istringstream ss(line);
@@ -52,30 +50,7 @@ void ReadSymbolList(const std::string &rxfilename,
                 << line << ", file is: "
                 << PrintableRxfilename(rxfilename);
     }
-    lset->insert(lab);
-  }
-}
-
-void MapWildCards(const LabelSet &wildcards, fst::StdVectorFst *ofst) {
-  // map all wildcards symbols to epsilons
-  for (fst::StateIterator<fst::StdVectorFst> siter(*ofst);
-       !siter.Done(); siter.Next()) {
-    fst::StdArc::StateId s = siter.Value();
-    for (fst::MutableArcIterator<fst::StdVectorFst> aiter(ofst, s);
-         !aiter.Done();  aiter.Next()) {
-      fst::StdArc arc(aiter.Value());
-      LabelSet::const_iterator it = wildcards.find(arc.ilabel);
-      if (it != wildcards.end()) {
-        KALDI_VLOG(4) << "MapWildCards: mapping symbol " << arc.ilabel
-                      << " to epsilon" << std::endl;
-        arc.ilabel = 0;
-      }
-      it = wildcards.find(arc.olabel);
-      if (it != wildcards.end()) {
-        arc.olabel = 0;
-      }
-      aiter.SetValue(arc);
-    }
+    lpairs->emplace_back(lab, 0);
   }
 }
 
@@ -83,14 +58,14 @@ void MapWildCards(const LabelSet &wildcards, fst::StdVectorFst *ofst) {
 // also maps wildcard symbols to epsilons
 // then removes epsilons
 void ConvertLatticeToUnweightedAcceptor(const kaldi::Lattice &ilat,
-                                        const LabelSet &wildcards,
+                                        const LabelPairVector &wildcards,
                                         fst::StdVectorFst *ofst) {
   // first convert from  lattice to normal FST
   fst::ConvertLattice(ilat, ofst);
   // remove weights, project to output, sort according to input arg
   fst::Map(ofst, fst::RmWeightMapper<fst::StdArc>());
   fst::Project(ofst, fst::PROJECT_OUTPUT);  // The words are on the output side
-  MapWildCards(wildcards, ofst);
+  fst::Relabel(ofst, wildcards, wildcards);
   fst::RmEpsilon(ofst);   // Don't tolerate epsilons as they make it hard to
                           // tally errors
   fst::ArcSort(ofst, fst::StdILabelCompare());
@@ -259,7 +234,7 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Could not read symbol table from file "
                   << word_syms_filename;
 
-    LabelSet wildcards;
+    LabelPairVector wildcards;
     if (wild_syms_rxfilename != "") {
       KALDI_WARN << "--wildcard-symbols-list option deprecated.";
       KALDI_ASSERT(wildcard_symbols.empty() && "Do not use both "
@@ -275,7 +250,7 @@ int main(int argc, char *argv[]) {
                   << "--wildcard-symbols option, got: " << wildcard_symbols;
       }
       for (size_t i = 0; i < wildcard_symbols_vec.size(); i++)
-        wildcards.insert(wildcard_symbols_vec[i]);
+        wildcards.emplace_back(wildcard_symbols_vec[i], 0);
     }
 
     int32 n_done = 0, n_fail = 0;
@@ -301,9 +276,9 @@ int main(int argc, char *argv[]) {
       const std::vector<int32> &reference = reference_reader.Value(key);
       VectorFst<StdArc> reference_fst;
       MakeLinearAcceptor(reference, &reference_fst);
-      MapWildCards(wildcards, &reference_fst);  // Remove any wildcards in
-                                                // reference.
 
+      // Remove any wildcards in reference.
+      fst::Relabel(&reference_fst, wildcards, wildcards);
       CheckFst(reference_fst, "reference_fst_", key);
 
       // recreate edit distance fst if necessary
@@ -384,7 +359,10 @@ int main(int argc, char *argv[]) {
           CompactLattice clat;
           CompactLattice oracle_clat;
           ConvertLattice(lat, &clat);
-          fst::Compose(oracle_clat_mask, clat, &oracle_clat);
+          fst::Relabel(&clat, wildcards, LabelPairVector());
+          fst::Compose(oracle_clat_mask, clat, &oracle_clat_mask);
+          fst::ShortestPath(oracle_clat_mask, &oracle_clat);
+          fst::Project(&oracle_clat, fst::PROJECT_OUTPUT);
 
           if (oracle_clat.Start() == fst::kNoStateId) {
             KALDI_WARN << "Failed to find the oracle path in the original "
