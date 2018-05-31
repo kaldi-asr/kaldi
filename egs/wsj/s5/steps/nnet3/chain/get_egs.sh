@@ -374,7 +374,6 @@ if [ $stage -le 2 ]; then
     if $generate_egs_scp; then
       cat $dir/valid_combine.cegs $dir/train_combine.cegs | \
         nnet3-chain-copy-egs ark:- ark,scp:$dir/combine.cegs,$dir/combine.scp
-      rm $dir/{train,valid}_combine.scp
     else
       cat $dir/valid_combine.cegs $dir/train_combine.cegs > $dir/combine.cegs
     fi
