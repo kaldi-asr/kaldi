@@ -6,6 +6,7 @@ export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH
 
 # VoxForge data will be stored in:
 # export DATA_ROOT="$KALDI_ROOT/egs/voxforge/s5/voxforge"    # e.g. something like /media/secondary/voxforge
+export DATA_ROOT="$KALDI_ROOT/egs/voxforge/s5/voxforge"
 
 if [ -z $DATA_ROOT ]; then
   echo "You need to set \"DATA_ROOT\" variable in path.sh to point to the directory to host VoxForge's data"
