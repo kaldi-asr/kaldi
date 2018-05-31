@@ -675,7 +675,7 @@ int main(int argc, char *argv[]) {
         std::vector<sym_t> input_symbols;
 
         int state = viterbi(m, &decodable, gpu_decodable_d, gpu_trans_model_h->NumPdfs(), output_symbols, input_symbols);
-        std::cout << onr.join(output_symbols) << " ";
+        std::cout << onr.join(output_symbols) << " " << std::flush;
 
         std::stringstream res_key;
         res_key << wav_key << '_' << start_frame << '-' << frame_;

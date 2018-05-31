@@ -336,7 +336,11 @@ __global__ void get_path(int *from_nodes,
  * 7. (DONE) Ganti yang dapet output symbol dari input symbol. SIZE ga harus sama.
  * 8. (KAYAKNYA GA DEH) Abis batch frame, itu ga harus dari m.initial, ini harus coba dicari lagi mulainya dari mana.
  */
-int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecodableDiagGmmScaled* gpu_decodable, int NUM_PDFS, std::vector<sym_t> &output_symbols) {
+int viterbi(gpu_fst &m,
+    OnlineDecodableDiagGmmScaled* decodable, 
+    GPUOnlineDecodableDiagGmmScaled* gpu_decodable, int NUM_PDFS, 
+    std::vector<sym_t> &output_symbols,
+    std::vector<sym_t> &input_symbols) {
   int verbose=0;
 
   int batch_frame = 0;
@@ -457,12 +461,16 @@ int viterbi(gpu_fst &m, OnlineDecodableDiagGmmScaled* decodable, GPUOnlineDecoda
   thrust::host_vector<prob_ptr_t> h_path(path);
   output_symbols.clear();
 
+  input_symbols.resize(num_path);
   for (int t= num_path - 1; t >= 0; t--) {
 
-    int sym = m.outputs[unpack_ptr(h_path[t]) & OFFSET_AND_BIT];
-    if(sym != EPS_SYM){
-      output_symbols.push_back(sym);
+    int trans_id = unpack_ptr(h_path[t] & OFFSET_AND_BIT);
+    int out_sym = m.outputs[trans_id];
+    if(out_sym != EPS_SYM){
+      output_symbols.push_back(out_sym);
     }
+    int in_sym = m.inputs[trans_id];
+    input_symbols[num_path - t - 1] = in_sym;
   }
   
   if(batch_frame != BATCH_SIZE){
@@ -667,11 +675,21 @@ int main(int argc, char *argv[]) {
       /* MAIN DECODE*/
       auto read_start = std::chrono::steady_clock::now();
       frame_ = 0;
+      int start_frame = 0;
       while(1){
         std::vector<sym_t> output_symbols;
+        std::vector<sym_t> input_symbols;
 
-        int state = viterbi(m, &decodable, gpu_decodable_d, gpu_trans_model_h->NumPdfs(), output_symbols);
-        std::cout << onr.join(output_symbols) << " "; 
+        int state = viterbi(m, &decodable, gpu_decodable_d, gpu_trans_model_h->NumPdfs(), output_symbols, input_symbols);
+        std::cout << onr.join(output_symbols) << " " << std::flush; 
+
+        std::stringstream res_key;
+        res_key << wav_key << '_' << start_frame << '-' << frame_;
+        if (!output_symbols.empty())
+          words_writer.Write(res_key.str(), output_symbols);
+        alignment_writer.Write(res_key.str(), input_symbols);
+
+        start_frame = frame_;
         if(state == 2) break;
       }
       std::cout << std::endl;
