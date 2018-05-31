@@ -49,8 +49,12 @@ fi
 cmvn_opts=`cat $nnetdir/cmvn_opts`;
 bnf_nnet=$nnetdir/final.raw
 if [ ! -f $bnf_nnet ] ; then
-  echo "$0: No such file $bnf_nnet";
-  exit 1;
+  if [ ! -f $nnetdir/final.mdl ]; then
+    echo "$0: No such file $bnf_nnet or $nnetdir/final.mdl";
+    exit 1;
+  else
+    bnf_nnet=$nnetdir/final.mdl
+  fi
 fi
 
 if $use_gpu; then
@@ -77,6 +81,7 @@ mkdir -p $bnf_data
 mkdir -p $bnfdir
 echo $nj > $nnetdir/num_jobs
 
+[ ! -f $data/feats.scp ] && echo >&2 "The file $data/feats.scp does not exist!" && exit 1;
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
 use_ivector=false
@@ -89,10 +94,10 @@ feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdat
 ivector_feats="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $ivector_dir/ivector_online.scp |"
 
 if [ $stage -le 1 ]; then
-  echo "$0: Generating bottleneck features using $bnf_nnet model as output of "
+  echo "$0: Generating bottleneck (BNF) features using $bnf_nnet model as output of "
   echo "    component-node with name $bnf_name."
   echo "output-node name=output input=$bnf_name" > $bnf_data/output.config
-  modified_bnf_nnet="nnet3-copy --edits='remove-output-nodes name=output' $bnf_nnet - | nnet3-copy --nnet-config=$bnf_data/output.config - - |"
+  modified_bnf_nnet="nnet3-copy --nnet-config=$bnf_data/output.config $bnf_nnet - |"
   ivector_opts=
   if $use_ivector; then
     ivector_period=$(cat $ivector_dir/ivector_period) || exit 1;
@@ -107,7 +112,7 @@ fi
 N0=$(cat $data/feats.scp | wc -l)
 N1=$(cat $bnfdir/raw_bnfeat_$name.*.scp | wc -l)
 if [[ "$N0" != "$N1" ]]; then
-  echo "$0: Error happens when generating BNF for $name (Original:$N0  BNF:$N1)"
+  echo "$0: Error generating BNF features for $name (original:$N0 utterances, BNF:$N1 utterances)"
   exit 1;
 fi
 
@@ -121,6 +126,6 @@ done
 echo "$0: computing CMVN stats."
 steps/compute_cmvn_stats.sh $bnf_data
 
-echo "$0: done making BNF feats.scp."
+echo "$0: done making BNF features."
 
 exit 0;
