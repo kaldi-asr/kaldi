@@ -9,8 +9,8 @@
 # and renorm in its recurrence. Experiments show that the TDNN-NormOPGRU could achieve similar
 # results than TDNN-LSTMP and BLSTMP in both large or small data sets (80 ~ 2300 Hrs).
 
-# ./local/chain/compare_wer_general.sh tdnn_5b_sp tdnn_opgru_5a_sp
-# System                tdnn_5b_sp tdnn_opgru_5a_sp
+# ./local/chain/compare_wer_general.sh tdnn_5b_sp tdnn_opgru_1a_sp
+# System                tdnn_5b_sp tdnn_opgru_1a_sp
 # WER on eval2000(tg)        11.7      11.6
 # WER on eval2000(fg)        11.5      11.5
 # WER on rt03(tg)            11.9      11.5
@@ -21,27 +21,27 @@
 # Final valid prob (xent)   -0.9712   -1.0253
 # Num-parameters           34818416   37364848
 
-# ./steps/info/chain_dir_info.pl exp/multi_a/chain/tdnn_opgru_5a_sp
-# exp/multi_a/chain/tdnn_opgru_5a_sp: num-iters=2621 nj=3..16 num-params=37.4M dim=40+100->8504 combine=-0.082->-0.082 (over 2) 
+# ./steps/info/chain_dir_info.pl exp/multi_a/chain/tdnn_opgru_1a_sp
+# exp/multi_a/chain/tdnn_opgru_1a_sp: num-iters=2621 nj=3..16 num-params=37.4M dim=40+100->8504 combine=-0.082->-0.082 (over 2) 
 # xent:train/valid[1744,2620,final]=(-1.62,-1.05,-1.05/-1.56,-1.02,-1.03) 
 # logprob:train/valid[1744,2620,final]=(-0.118,-0.089,-0.088/-0.112,-0.089,-0.088)
 
 # online results
 # Eval2000
-# %WER 14.5 | 2628 21594 | 87.6 8.9 3.6 2.1 14.5 49.3 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
-# %WER 11.5 | 4459 42989 | 90.1 7.2 2.7 1.6 11.5 46.4 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_tg/score_8_1.0/eval2000_hires.ctm.filt.sys
-# %WER 8.4 | 1831 21395 | 92.8 5.3 1.9 1.1 8.4 41.8 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-# %WER 14.4 | 2628 21594 | 87.7 8.8 3.5 2.1 14.4 49.4 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
-# %WER 11.4 | 4459 42989 | 90.2 7.1 2.7 1.7 11.4 46.3 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_fg/score_8_1.0/eval2000_hires.ctm.filt.sys
-# %WER 8.3 | 1831 21395 | 92.9 5.2 1.9 1.2 8.3 41.1 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 14.5 | 2628 21594 | 87.6 8.9 3.6 2.1 14.5 49.3 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 11.5 | 4459 42989 | 90.1 7.2 2.7 1.6 11.5 46.4 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_tg/score_8_1.0/eval2000_hires.ctm.filt.sys
+# %WER 8.4 | 1831 21395 | 92.8 5.3 1.9 1.1 8.4 41.8 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 14.4 | 2628 21594 | 87.7 8.8 3.5 2.1 14.4 49.4 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 11.4 | 4459 42989 | 90.2 7.1 2.7 1.7 11.4 46.3 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_fg/score_8_1.0/eval2000_hires.ctm.filt.sys
+# %WER 8.3 | 1831 21395 | 92.9 5.2 1.9 1.2 8.3 41.1 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
 
 # RT03
-# %WER 9.3 | 3970 36721 | 91.6 5.3 3.1 0.9 9.3 40.0 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
-# %WER 11.4 | 8420 76157 | 89.8 6.7 3.5 1.2 11.4 42.1 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.filt.sys
-# %WER 13.3 | 4450 39436 | 88.1 7.9 4.0 1.4 13.3 43.9 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.5/rt03_hires.ctm.swbd.filt.sys
-# %WER 9.2 | 3970 36721 | 91.9 5.4 2.7 1.1 9.2 39.6 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
-# %WER 11.2 | 8420 76157 | 90.0 6.5 3.5 1.2 11.2 41.9 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
-# %WER 13.1 | 4450 39436 | 88.3 7.8 3.9 1.4 13.1 43.6 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
+# %WER 9.3 | 3970 36721 | 91.6 5.3 3.1 0.9 9.3 40.0 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.4 | 8420 76157 | 89.8 6.7 3.5 1.2 11.4 42.1 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.3 | 4450 39436 | 88.1 7.9 4.0 1.4 13.3 43.9 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.5/rt03_hires.ctm.swbd.filt.sys
+# %WER 9.2 | 3970 36721 | 91.9 5.4 2.7 1.1 9.2 39.6 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.2 | 8420 76157 | 90.0 6.5 3.5 1.2 11.2 41.9 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.1 | 4450 39436 | 88.3 7.8 3.9 1.4 13.1 43.6 | exp/multi_a/chain/tdnn_opgru_1a_sp_online/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
 
 
 
@@ -54,7 +54,7 @@ get_egs_stage=-10
 speed_perturb=true
 multi=multi_a
 gmm=tri5a
-dir=exp/multi_a/chain/tdnn_opgru_5a # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/multi_a/chain/tdnn_opgru_1a # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
 rescore=true # whether to rescore lattices
