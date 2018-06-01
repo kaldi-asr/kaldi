@@ -3,63 +3,81 @@
 #           2017 University of Chinese Academy of Sciences (UCAS) Gaofeng Cheng
 # Apache 2.0
 
-# Based on tdnn_7o from egs/swbd/s5c, with larger network dimensions and different regularization coefficients.
+# This is based on TDNN_LSTM_1b (from egs/swbd/s5c), but using the NormOPGRU to replace the LSTMP,
+# and adding chunk-{left,right}-context-initial=0
+# Different from the vanilla OPGRU, Norm-OPGRU adds batchnorm in its output (forward direction)
+# and renorm in its recurrence. Experiments show that the TDNN-NormOPGRU could achieve similar
+# results than TDNN-LSTMP and BLSTMP in both large or small data sets (80 ~ 2300 Hrs).
 
-# ./local/chain/compare_wer_general.sh tdnn_5b_sp
-# System                tdnn_5b_sp
-# WER on eval2000(tg)        11.7
-# WER on eval2000(fg)        11.5
-# WER on rt03(tg)            11.9
-# WER on rt03(fg)            11.5
-# Final train prob          -0.097
-# Final valid prob          -0.090
-# Final train prob (xent)   -1.042
-# Final valid prob (xent)   -0.9712
-# Num-parameters             34818416
+# ./local/chain/compare_wer_general.sh tdnn_5b_sp tdnn_opgru_5a_sp
+# System                tdnn_5b_sp tdnn_opgru_5a_sp
+# WER on eval2000(tg)        11.7      11.6
+# WER on eval2000(fg)        11.5      11.5
+# WER on rt03(tg)            11.9      11.5
+# WER on rt03(fg)            11.5      11.2
+# Final train prob          -0.097    -0.088
+# Final valid prob          -0.090    -0.088
+# Final train prob (xent)   -1.042    -1.048
+# Final valid prob (xent)   -0.9712   -1.0253
+# Num-parameters           34818416   37364848
 
-# %WER 14.5 | 2628 21594 | 87.6 8.7 3.7 2.1 14.5 49.5 | exp/multi_a/chain/tdnn_5b_sp/decode_eval2000_fsh_sw1_tg/score_9_0.0/eval2000_hires.ctm.callhm.filt.sys
-# %WER 11.7 | 4459 42989 | 90.0 7.3 2.7 1.7 11.7 47.1 | exp/multi_a/chain/tdnn_5b_sp/decode_eval2000_fsh_sw1_tg/score_9_0.0/eval2000_hires.ctm.filt.sys
-# %WER 8.8 | 1831 21395 | 92.4 5.6 2.1 1.2 8.8 43.4 | exp/multi_a/chain/tdnn_5b_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-# %WER 14.4 | 2628 21594 | 87.8 9.0 3.2 2.2 14.4 49.7 | exp/multi_a/chain/tdnn_5b_sp/decode_eval2000_fsh_sw1_fg/score_8_0.5/eval2000_hires.ctm.callhm.filt.sys
-# %WER 11.5 | 4459 42989 | 90.2 7.2 2.6 1.7 11.5 46.6 | exp/multi_a/chain/tdnn_5b_sp/decode_eval2000_fsh_sw1_fg/score_9_0.0/eval2000_hires.ctm.filt.sys
-# %WER 8.6 | 1831 21395 | 92.6 5.5 1.9 1.2 8.6 42.6 | exp/multi_a/chain/tdnn_5b_sp/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-# 
-# %WER 10.1 | 3970 36721 | 91.3 6.0 2.8 1.4 10.1 44.0 | exp/multi_a/chain/tdnn_5b_sp/decode_rt03_fsh_sw1_tg/score_7_1.0/rt03_hires.ctm.fsh.filt.sys
-# %WER 11.9 | 8420 76157 | 89.6 7.1 3.3 1.5 11.9 44.6 | exp/multi_a/chain/tdnn_5b_sp/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.filt.sys
-# %WER 13.5 | 4450 39436 | 88.0 8.0 4.0 1.5 13.5 44.8 | exp/multi_a/chain/tdnn_5b_sp/decode_rt03_fsh_sw1_tg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys
-# %WER 9.7 | 3970 36721 | 91.6 5.5 3.0 1.2 9.7 42.8 | exp/multi_a/chain/tdnn_5b_sp/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
-# %WER 11.5 | 8420 76157 | 89.8 6.5 3.7 1.3 11.5 43.9 | exp/multi_a/chain/tdnn_5b_sp/decode_rt03_fsh_sw1_fg/score_9_0.0/rt03_hires.ctm.filt.sys
-# %WER 13.3 | 4450 39436 | 88.3 7.8 4.0 1.5 13.3 44.7 | exp/multi_a/chain/tdnn_5b_sp/decode_rt03_fsh_sw1_fg/score_9_0.0/rt03_hires.ctm.swbd.filt.sys
+# ./steps/info/chain_dir_info.pl exp/multi_a/chain/tdnn_opgru_5a_sp
+# exp/multi_a/chain/tdnn_opgru_5a_sp: num-iters=2621 nj=3..16 num-params=37.4M dim=40+100->8504 combine=-0.082->-0.082 (over 2) 
+# xent:train/valid[1744,2620,final]=(-1.62,-1.05,-1.05/-1.56,-1.02,-1.03) 
+# logprob:train/valid[1744,2620,final]=(-0.118,-0.089,-0.088/-0.112,-0.089,-0.088)
+
+# online results
+# Eval2000
+# %WER 14.5 | 2628 21594 | 87.6 8.9 3.6 2.1 14.5 49.3 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 11.5 | 4459 42989 | 90.1 7.2 2.7 1.6 11.5 46.4 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_tg/score_8_1.0/eval2000_hires.ctm.filt.sys
+# %WER 8.4 | 1831 21395 | 92.8 5.3 1.9 1.1 8.4 41.8 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+# %WER 14.4 | 2628 21594 | 87.7 8.8 3.5 2.1 14.4 49.4 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
+# %WER 11.4 | 4459 42989 | 90.2 7.1 2.7 1.7 11.4 46.3 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_fg/score_8_1.0/eval2000_hires.ctm.filt.sys
+# %WER 8.3 | 1831 21395 | 92.9 5.2 1.9 1.2 8.3 41.1 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
+
+# RT03
+# %WER 9.3 | 3970 36721 | 91.6 5.3 3.1 0.9 9.3 40.0 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.4 | 8420 76157 | 89.8 6.7 3.5 1.2 11.4 42.1 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.3 | 4450 39436 | 88.1 7.9 4.0 1.4 13.3 43.9 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_tg/score_8_0.5/rt03_hires.ctm.swbd.filt.sys
+# %WER 9.2 | 3970 36721 | 91.9 5.4 2.7 1.1 9.2 39.6 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_fg/score_7_0.0/rt03_hires.ctm.fsh.filt.sys
+# %WER 11.2 | 8420 76157 | 90.0 6.5 3.5 1.2 11.2 41.9 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.filt.sys
+# %WER 13.1 | 4450 39436 | 88.3 7.8 3.9 1.4 13.1 43.6 | exp/multi_a/chain/tdnn_opgru_5a_sp_online/decode_rt03_fsh_sw1_fg/score_8_0.0/rt03_hires.ctm.swbd.filt.sys
+
+
 
 set -e
 
 # configs for 'chain'
 stage=1
-train_stage=-10
+train_stage=576
 get_egs_stage=-10
 speed_perturb=true
 multi=multi_a
 gmm=tri5a
-dir=exp/multi_a/chain/tdnn_5b # Note: _sp will get added to this if $speed_perturb == true.
+dir=exp/multi_a/chain/tdnn_opgru_5a # Note: _sp will get added to this if $speed_perturb == true.
 decode_iter=
 decode_dir_affix=
 rescore=true # whether to rescore lattices
+dropout_schedule='0,0@0.20,0.2@0.50,0'
 
 # training options
 leftmost_questions_truncate=-1
-num_epochs=3
-initial_effective_lrate=0.0005
-final_effective_lrate=0.00005
-max_param_change=2.0
-num_jobs_initial=3
-num_jobs_final=16
-minibatch_size=128
-frames_per_eg=150,110,100
+num_epochs=4
+chunk_width=150
+chunk_left_context=40
+chunk_right_context=0
+xent_regularize=0.025
+self_repair_scale=0.00001
+label_delay=5
+# decode options
+extra_left_context=50
+extra_right_context=0
+frames_per_chunk=
+
 remove_egs=false
 common_egs_dir=
-xent_regularize=0.1
-dropout_schedule='0,0@0.20,0.5@0.50,0'
 
+affix=
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -133,12 +151,9 @@ if [ $stage -le 12 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  opts="l2-regularize=0.0015 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
-  linear_opts="l2-regularize=0.0015 orthonormal-constraint=-1.0"
-  output_opts="l2-regularize=0.001"
+  gru_opts="dropout-per-frame=true dropout-proportion=0.0 "
 
   mkdir -p $dir/configs
-
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
@@ -146,49 +161,36 @@ if [ $stage -le 12 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2, ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $opts dim=1536
-  linear-component name=tdnn2l0 dim=320 $linear_opts input=Append(-1,0)
-  linear-component name=tdnn2l dim=320 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn2 $opts input=Append(0,1) dim=1536
-  linear-component name=tdnn3l dim=320 $linear_opts input=Append(-1,0)
-  relu-batchnorm-dropout-layer name=tdnn3 $opts dim=1536 input=Append(0,1)
-  linear-component name=tdnn4l0 dim=320 $linear_opts input=Append(-1,0)
-  linear-component name=tdnn4l dim=320 $linear_opts input=Append(0,1)
-  relu-batchnorm-dropout-layer name=tdnn4 $opts input=Append(0,1) dim=1536
-  linear-component name=tdnn5l dim=320 $linear_opts
-  relu-batchnorm-dropout-layer name=tdnn5 $opts dim=1536 input=Append(0, tdnn3l)
-  linear-component name=tdnn6l0 dim=320 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn6l dim=320 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn6 $opts input=Append(0,3) dim=1792
-  linear-component name=tdnn7l0 dim=320 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn7l dim=320 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn7 $opts input=Append(0,3,tdnn6l,tdnn4l,tdnn2l) dim=1536
-  linear-component name=tdnn8l0 dim=320 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn8l dim=320 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn8 $opts input=Append(0,3) dim=1792
-  linear-component name=tdnn9l0 dim=320 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn9l dim=320 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn9 $opts input=Append(0,3,tdnn8l,tdnn6l,tdnn5l) dim=1536
-  linear-component name=tdnn10l0 dim=320 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn10l dim=320 $linear_opts input=Append(0,3)
-  relu-batchnorm-dropout-layer name=tdnn10 $opts input=Append(0,3) dim=1792
-  linear-component name=tdnn11l0 dim=320 $linear_opts input=Append(-3,0)
-  linear-component name=tdnn11l dim=320 $linear_opts input=Append(-3,0)
-  relu-batchnorm-dropout-layer name=tdnn11 $opts input=Append(0,3,tdnn10l,tdnn9l,tdnn7l) dim=1536
-  linear-component name=prefinal-l dim=320 $linear_opts
+  relu-batchnorm-layer name=tdnn1 dim=1024
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
-  relu-batchnorm-layer name=prefinal-chain input=prefinal-l $opts dim=1792
-  linear-component name=prefinal-chain-l dim=320 $linear_opts
-  batchnorm-component name=prefinal-chain-batchnorm
-  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
+  # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
+  norm-opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  norm-opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  norm-opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
 
-  relu-batchnorm-layer name=prefinal-xent input=prefinal-l $opts dim=1792
-  linear-component name=prefinal-xent-l dim=320 $linear_opts
-  batchnorm-component name=prefinal-xent-batchnorm
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
+  ## adding the layers for chain branch
+  output-layer name=output input=opgru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
+
+  # adding the layers for xent branch
+  # This block prints the configs for a separate output that will be
+  # trained with a cross-entropy objective in the 'chain' models... this
+  # has the effect of regularizing the hidden parts of the model.  we use
+  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
+  # 0.5 / args.xent_regularize is suitable as it means the xent
+  # final-layer learns at a rate independent of the regularization
+  # constant; and the 0.5 was tuned so as to make the relative progress
+  # similar in the xent and regular final layers.
+  output-layer name=output-xent input=opgru3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -196,7 +198,7 @@ fi
 if [ $stage -le 13 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b{03,07,09,18}/$USER/kaldi-data/egs/multi-en-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,7,9,8}/$USER/kaldi-data/egs/multi-en-$(date +'%m_%d_%H_%M')/s5c/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \
@@ -208,22 +210,26 @@ if [ $stage -le 13 ]; then
     --chain.l2-regularize 0.0 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.num-chunk-per-minibatch 64 \
+    --trainer.frames-per-iter 1200000 \
+    --trainer.max-param-change 2.0 \
+    --trainer.num-epochs $num_epochs \
+    --trainer.optimization.shrink-value 0.99 \
+    --trainer.optimization.num-jobs-initial 3 \
+    --trainer.optimization.num-jobs-final 16 \
+    --trainer.optimization.initial-effective-lrate 0.001 \
+    --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.dropout-schedule $dropout_schedule \
-    --trainer.add-option="--optimization.memory-compression-level=2" \
-    --egs.dir "$common_egs_dir" \
+    --trainer.optimization.momentum 0.0 \
+    --trainer.deriv-truncate-margin 8 \
     --egs.stage $get_egs_stage \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width $frames_per_eg \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs $num_epochs \
-    --trainer.dropout-schedule $dropout_schedule \
-    --trainer.add-option="--optimization.memory-compression-level=2" \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.max-param-change $max_param_change \
+    --egs.chunk-width $chunk_width \
+    --egs.chunk-left-context $chunk_left_context \
+    --egs.chunk-right-context $chunk_right_context \
+    --egs.chunk-left-context-initial 0 \
+    --egs.chunk-right-context-final 0 \
+    --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --feat-dir data/${train_set}_hires \
     --tree-dir $treedir \
@@ -240,8 +246,11 @@ fi
 
 decode_suff=fsh_sw1_tg
 graph_dir=$dir/graph_fsh_sw1_tg
-
 if [ $stage -le 15 ]; then
+  rm $dir/.error 2>/dev/null || true
+  [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
+  [ -z $extra_right_context ] && extra_right_context=$chunk_right_context;
+  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
   if [ ! -z $decode_iter ]; then
     iter_opts=" --iter $decode_iter "
   fi
@@ -253,6 +262,11 @@ if [ $stage -le 15 ]; then
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
         --nj 50 --cmd "$decode_cmd" $iter_opts \
+        --extra-left-context $extra_left_context  \
+        --extra-right-context $extra_right_context  \
+        --extra-left-context-initial 0 \
+        --extra-right-context-final 0 \
+        --frames-per-chunk "$frames_per_chunk" \
         --online-ivector-dir exp/multi_a/nnet3/ivectors_${decode_set} \
         $graph_dir data/${decode_set}_hires \
         $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_${decode_suff} || exit 1;
@@ -261,8 +275,13 @@ if [ $stage -le 15 ]; then
           data/lang_${multi}_${gmm}_fsh_sw1_{tg,fg} data/${decode_set}_hires \
           $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
       fi
-      ) &
+      ) || touch $dir/.error &
   done
+  wait
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding"
+    exit 1
+  fi
 fi
 
 test_online_decoding=true
