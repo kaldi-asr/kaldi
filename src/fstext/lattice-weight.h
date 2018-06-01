@@ -621,9 +621,9 @@ class NaturalLess<CompactLatticeWeightTpl<LatticeWeightTpl<FloatType>, IntType> 
   }
 };
 template<>
-class NaturalLess<CompactLatticeWeightTpl<LatticeWeightTpl<float>, int> > {
+class NaturalLess<CompactLatticeWeightTpl<LatticeWeightTpl<float>, int32> > {
  public:
-  typedef CompactLatticeWeightTpl<LatticeWeightTpl<float>, int> Weight;
+  typedef CompactLatticeWeightTpl<LatticeWeightTpl<float>, int32> Weight;
 
   NaturalLess() {}
 
@@ -635,9 +635,9 @@ class NaturalLess<CompactLatticeWeightTpl<LatticeWeightTpl<float>, int> > {
   }
 };
 template<>
-class NaturalLess<CompactLatticeWeightTpl<LatticeWeightTpl<double>, int> > {
+class NaturalLess<CompactLatticeWeightTpl<LatticeWeightTpl<double>, int32> > {
  public:
-  typedef CompactLatticeWeightTpl<LatticeWeightTpl<double>, int> Weight;
+  typedef CompactLatticeWeightTpl<LatticeWeightTpl<double>, int32> Weight;
 
   NaturalLess() {}
 
