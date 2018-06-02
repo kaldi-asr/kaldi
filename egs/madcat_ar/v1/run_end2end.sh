@@ -74,16 +74,19 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: Preparing dictionary and lang..."
-  cut -d' ' -f2- data/train/text | python3 local/reverse.py | python3 local/prepend_words.py | python3 local/learn_bpe.py -s 700 > data/train/bpe.out
+  cut -d' ' -f2- data/train/text | python3 local/reverse.py | python3 local/prepend_words.py | python3 utils/lang/bpe/learn_bpe.py -s 700 > data/train/bpe.out
   for set in test train dev ; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
-    cut -d' ' -f2- data/$set/text | python3 local/reverse.py | python3 local/prepend_words.py | python3 local/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/$set/bpe_text
+    cut -d' ' -f2- data/$set/text | python3 local/reverse.py | python3 local/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/$set/bpe_text
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
   done
   local/prepare_dict.sh
+  # This recipe uses byte-pair encoding, the silences are part of the words' pronunciations.
+  # So we set --sil-prob to 0.0
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
                         data/local/dict "<sil>" data/lang/temp data/lang
+  utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
 fi
 
 if [ $stage -le 6 ]; then
