@@ -1,0 +1,63 @@
+ngram-merge(1)                                                  ngram-merge(1)
+
+
+
+NNAAMMEE
+       ngram-merge - merge N-gram counts
+
+SSYYNNOOPPSSIISS
+       nnggrraamm--mmeerrggee [ --hheellpp ] [ --wwrriittee _o_u_t_f_i_l_e ] [ --ffllooaatt--ccoouunnttss ] \
+            [ ---- ] _i_n_f_i_l_e_1 _i_n_f_i_l_e_2 ...
+
+DDEESSCCRRIIPPTTIIOONN
+       nnggrraamm--mmeerrggee  reads  two  or  more lexicographically sorted N-gram count
+       files (as produced by nnggrraamm--ccoouunntt --ssoorrtt) and outputs the merged, sorted
+       counts.  The output is thus suitable for subsequent merging steps.
+
+       The input format consists of one N-gram count per line,
+            _w_o_r_d_1 _w_o_r_d_2 ... _w_o_r_d_n _c_o_u_n_t
+       The  lines  must  be  sorted  lexicographically  on the words, leftmost
+       first.  The input may contain N-grams of different lengths.
+
+       Each filename argument can be a plain ASCII count file, or a compressed
+       file (name ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       nnggrraamm--mmeerrggee  is  recommended  in  cases where the full counts would far
+       exceed available real memory.  Although an arbitrary  number  of  input
+       count  files  is  accepted,  it  is best to use the program as follows.
+       First, partition the input text into the largest chunks so that  nnggrraamm--
+       ccoouunntt  can  run in real memory.  Then merge the resulting sorted counts
+       using nnggrraamm--mmeerrggee pairwise, and continue doing so in a binary tree pat-
+       tern  until  a  single count file containing all N-grams remains.  This
+       procedure is automated by the mmaakkee--bbaattcchh--ccoouunnttss and  mmeerrggee--bbaattcchh--ccoouunnttss
+       scripts.
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option and usage summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --wwrriittee _o_u_t_f_i_l_e
+              Write merged counts to _o_u_t_f_i_l_e, instead of standard output.
+
+       --ffllooaatt--ccoouunnttss
+              Process counts as floating point numbers.  By default counts are
+              assumed to be unsigned integers.
+
+       ----     Indicates  the  end of options, in case the first input filename
+              begins with ``-''.
+
+SSEEEE AALLSSOO
+       ngram-count(1), ngram(1), training-scripts(1).
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>
+       Copyright 1995-2004 SRI International
+
+
+
+SRILM Tools              $Date: 2007/12/20 19:13:52 $           ngram-merge(1)

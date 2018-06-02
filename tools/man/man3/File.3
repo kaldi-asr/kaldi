@@ -1,0 +1,75 @@
+.\" $Id: File.3,v 1.2 2007/12/19 22:01:46 stolcke Exp $
+.TH File 3 "$Date: 2007/12/19 22:01:46 $" SRILM
+.SH NAME
+File \-  Wrapper for stdio streams
+.SH SYNOPSIS
+.nf
+.B "#include <File.h>"
+.fi
+.SH DESCRIPTION
+The
+.B File
+class provides a simple wrapper around stdio streams for use
+with C++.
+It provides two kinds of convenience:
+Firstly, constructors and destructors manage opening and closing of the stream.
+The stream is checked for errors on closing, and the default behavior
+is to exit() with an error message if a problem was found.
+Secondly, the getline() method can be used for line-oriented input.
+It strips comments and keeps track of input line
+numbers for error reporting.
+.SH "CLASS MEMBERS"
+.TP
+.B "File(const char *\fIname\fP, const char *\fImode\fP, int \fIexitOnError\fP = 1)"
+.TP
+.B "File(FILE *\fIfp\fP = 0, int \fIexitOnError\fP = 1)"
+A File object can be initialized with either a filename or an existing
+stdio stream.
+In the first case, the file is opened according to \fImode\fP
+(as if by
+.BR fopen (3)).
+The \fIexitOnError\fP flag determines whether I/O errors should be treated
+as fatal.
+.TP
+.B ~File()
+Destroying a File object implies closing the associated stream.
+.TP
+.B "char *getline()"
+Returns the next line from the input, stored in a static buffer of 
+up to \fBmaxLineLength\fP characters.
+Empty lines and lines starting with \fB#\fP are skipped.
+.TP
+.B "int close()"
+Closes the stream without destroying the File object.
+Returns non-zero is an error condition occurs.
+.TP
+.B "int error()"
+Returns a non-zero value if an error condition occurred on the stream.
+.TP
+.B "operator FILE *()"
+A File object can be cast to \fBFILE *\fP to access the underlying stdio
+stream.
+.TP
+.B "ostream &position(ostream &\fIstream\fP = cerr)"
+Outputs the current line number on \fIstream\fP.
+The \fIstream\fP is returned so it can be used as the left operand
+of the \fB<<\fP operator.
+.TP
+.B "const char *name"
+The filename used in creating the File object.
+.TP
+.B "const unsigned lineno"
+The current line number as maintained by \fBgetline()\fP.
+.TP
+.B "int exitOnError"
+When set to \fBtrue\fP this causes errors on the
+stream to be handled by program termination (after printing an
+error message).
+.SH "SEE ALSO"
+stdio(3)
+.SH BUGS
+Many other potentially useful functions are not provided (yet).
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 1995, 1996 SRI International

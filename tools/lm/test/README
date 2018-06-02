@@ -1,0 +1,7 @@
+
+This directory contains regression tests for many of the SRILM tools.
+
+tests/		contains the test definitions
+outputs/	saved test outputs
+reference/	reference output files
+

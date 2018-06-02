@@ -1,0 +1,6 @@
+insert x 1 a
+insert y 2 b
+list
+find 3 a
+find 1 a
+quit

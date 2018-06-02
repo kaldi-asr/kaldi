@@ -1,0 +1,11 @@
+#!/bin/sh
+
+> empty.nbest-list
+
+nbest-lattice -debug 1 \
+	-use-mesh -hidden-vocab hidden.vocab \
+	-nbest empty.nbest-list \
+	-lattice-files mesh.files -write -
+
+rm -f empty.nbest-list
+	

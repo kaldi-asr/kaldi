@@ -1,0 +1,6 @@
+#!/bin/sh
+
+gunzip -c -f ../fngram-count/ch_lm_train100.noamp.decomposed.txt | \
+sed 's,:, ,g' | \
+ngram-count -text - -write1 - -sort | \
+${GAWK-gawk} '$2 > 1 { print $1 }' > train-gt1.vocab

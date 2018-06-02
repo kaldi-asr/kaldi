@@ -1,0 +1,23 @@
+#!/bin/sh
+
+if [ -f swbd.3grams.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+smooth=""
+
+# create LM from counts
+ngram-count -debug 1 \
+	$smooth \
+	-read swbd.3grams$gz \
+	-vocab eval2001.vocab \
+	-lm swbd.3bo.bin -write-binary-lm
+
+ngram -debug 0 \
+	-lm swbd.3bo.bin \
+	-ppl eval97.text
+
+# rm -f swbd.3bo$gz
+

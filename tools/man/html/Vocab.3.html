@@ -1,0 +1,265 @@
+<! $Id: Vocab.3,v 1.2 2007/12/19 22:01:46 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>Vocab</TITLE>
+<BODY>
+<H1>Vocab</H1>
+<H2> NAME </H2>
+Vocab - Vocabulary indexing for SRILM
+<H2> SYNOPSIS </H2>
+<PRE>
+<B> #include &lt;Vocab.h&gt; </B>
+</PRE>
+<H2> DESCRIPTION </H2>
+The 
+<B> Vocab </B>
+class represents sets of string tokens as typically used for vocabularies,
+word class names, etc.  Additionally, Vocab provides a mapping from
+such string tokens (type <B>VocabString</B>) to integers (type <B>VocabIndex</B>).
+VocabIndex values are typically used to index words in language models to
+conserve space and speed up comparisons etc.  Thus,
+<B>Vocab</B> essentially
+implements a symbol table into which strings can be ``interned.''
+<H2> TYPES </H2>
+<DL>
+<DT><B> VocabIndex </B>
+<DD>
+A non-negative integer for representing a string internally.
+<DT><B> VocabString </B>
+<DD>
+A character array representing a vocabulary item (e.g., a word).
+</DD>
+</DL>
+<H2> CONSTANTS </H2>
+<DL>
+<DT><B> maxWordLength </B>
+<DD>
+Maximum number of characters in a VocabString.
+<DT><B> Vocab_None </B>
+<DD>
+A special VocabIndex used to denote no vocabulary item and to 
+terminate VocabIndex arrays.
+<DT><B> Vocab_Unknown </B>
+<DD>
+<DT><B> Vocab_SentStart </B>
+<DD>
+<DT><B> Vocab_SentEnd </B>
+<DD>
+<DT><B> Vocab_Pause </B>
+<DD>
+Default VocabString values for some common, predefined vocabulary items:
+unknown word, sentence begin, sentence end, and pause, respectively.
+</DD>
+</DL>
+<H2> CLASS MEMBERS </H2>
+<DL>
+<DT><B> Vocab(VocabIndex <I>start</I> = 0, VocabIndex <I>end</I> = 0x7fffffff) </B>
+<DD>
+When initializing a Vocab object,
+<I>start</I> and <I>end</I> optionally set the minimum and maximum VocabIndex
+values assigned by the vocabulary.
+Indices are allocated in increasing order starting at <I>start</I>.
+<DT><B> VocabIndex addWord(VocabString <I>name</I>) </B>
+<DD>
+Looks up the index of a word string <I>name</I>, adding the word if not already
+part of the vocabulary.
+<DT><B> VocabString getWord(VocabIndex <I>index</I>) </B>
+<DD>
+Returns the VocabString for <I>index</I>, or 0 if the index isn't defined.
+<DT><B> getIndex(VocabString <I>name</I>) </B>
+<DD>
+Returns the VocabIndex for word <I>name</I>, or
+<B> Vocab_None </B>
+if the word isn't defined.
+(Unlike <B>addWord()</B>,
+this will not extend the vocabulary if the word is undefined.)
+<DT><B> void remove(VocabString <I>name</I>) </B>
+<DD>
+<DT><B> void remove(VocabIndex <I>index</I>) </B>
+<DD>
+Deletes a vocabulary item, either by name or by index.
+<DT><B> unsigned int numWords() </B>
+<DD>
+Returns the number of current vocabulary entries.
+<DT><B> VocabIndex highIndex() </B>
+<DD>
+Returns the highest VocabIndex value assigned so far.
+The next word added will receive an index that is one greater.
+When allocating various meaningful vocabulary subsets into 
+contiguous ranges, this function can be used to determine the
+corresponding boundaries in VocabIndex space, and then use these
+values to test subset membership etc.
+<DT><B> VocabIndex unkIndex </B>
+<DD>
+The index of the unknown word (by default assigned to <B>Vocab_Unknown</B>).
+<DT><B> VocabIndex ssIndex </B>
+<DD>
+The index of the sentence-start tag (by default assignedrto <B>Vocab_SentStart</B>).
+<DT><B> VocabIndex seIndex </B>
+<DD>
+The index of the sentence-end tag (by default assigned to <B>Vocab_SentEnd</B>).
+<DT><B> VocabIndex pauseIndex </B>
+<DD>
+The index of the pause tag (by default assigned to <B>Vocab_Pause</B>).
+<DT><B> Boolean unkIsWord </B>
+<DD>
+When <B>true</B>,
+the unknown word is considered a regular word (default <B>false</B>).
+<DT><B> Boolean toLower </B>
+<DD>
+When <B>true</B>, all word strings are mapped to lowercase.
+This is convenient to combine vocabularies, language models, etc.,
+whose vocabularies differ only in the case convention
+(default <B>false</B>).
+<DT><B> Boolean isNonEvent(VocabString <I>word</I>) </B>
+<DD>
+<DT><B> Boolean isNonEvent(VocabIndex <I>word</I>) </B>
+<DD>
+Tests a word string or index for being an ``non-event'', i.e., a
+token that is not assigned probability in a language model.
+By default, sentence-start, pauses, and unknown words are non-events.
+<DT><B> unsigned read(File &amp;<I>file</I>) </B>
+<DD>
+Reads word strings from a file and adds them to the vocabulary.
+For convenience, only the first word on each line is significant
+(so extra information could be contained in such a file).
+Returns the number of words read.
+<DT><B> void write(File &amp;<I>file</I>, Boolean <I>sorted</I> = true) </B>
+<DD>
+Write the vocabulary strings to a file in a format compatible with
+<B>read()</B>.
+The <I>sorted</I> argument controls whether the output is
+lexicographically sorted.
+</DD>
+</DL>
+<P>
+Often times one wants to manipulate not single vocabulary items, but
+strings of them, e.g., to represent sentences.
+Word strings are represented as self-delimiting arrays of type
+<B> VocabString * </B>
+or
+<B>VocabIndex *</B>.<B></B><B></B><B></B>
+The last element in a string is 0 or <B>Vocab_None</B>, respectively.
+<DL>
+<DT><B> unsigned getWords(const VocabIndex *<I>wids</I>, VocabString *<I>words</I>, unsigned <I>max</I>) </B>
+<DD>
+Extends <B>getWord()</B> to strings of word.
+The result is placed in <I>words</I>, which must have room for at least
+<I>max</I> words.
+Returns the actual number of indices in <I>wids</I>.
+<DT><B> unsigned addWords(const VocabString *<I>words</I>, VocabIndex *<I>wids</I>, unsigned <I>max</I>) </B>
+<DD>
+Extends <B>addWord()</B> to strings of indices.
+The result is placed in <I>wids</I>, which must have room for at least
+<I>max</I> indices.
+Returns the actual number of words in <I>words</I>.
+<DT><B> unsigned getIndices(const VocabString *<I>words</I>, VocabIndex *<I>wids</I>, unsigned <I>max</I>) </B>
+<DD>
+Extends <B>getIndex()</B> to strings of indices.
+The result is placed in <I>wids</I>, which must have room for at least
+<I>max</I> indices.
+Returns the actual number of words in <I>words</I>.
+</DD>
+</DL>
+<H2> FUNCTIONS </H2>
+The following static member functions are utilities to manipulate strings of
+vocabulary items, independent of a particular vocabulary.
+<DL>
+<DT><B> unsigned parseWords(char *<I>line</I>, VocabString *<I>words</I>, unsigned <I>max</I>) </B>
+<DD>
+Parses a character string <I>line</I> into whitespace-delimited words.
+On return, <I>words</I> contains pointers to null-terminated substrings of 
+<I>line</I> (whose contents is modified in the process).
+<I>words</I> must have room for at least <I>max</I> pointers.
+Returns the actual number of words parsed.
+<DT><B> unsigned length(const VocabIndex *<I>words</I>) </B>
+<DD>
+<DT><B> unsigned length(const VocabString *<I>words</I>) </B>
+<DD>
+Returns the number items in a word string.
+<DT><B> Boolean contains(const VocabIndex *<I>words</I>, VocabIndex <I>word</I>) </B>
+<DD>
+Returns <I>true</I> if the <I>word</I> occurs among <I>words</I>.
+<DT><B> VocabIndex *reverse(VocabIndex *<I>words</I>) </B>
+<DD>
+<DT><B> VocabString *reverse(VocabString *<I>words</I>) </B>
+<DD>
+Reverses a string of words in place (and returns it as a result).
+<DT><B> void write(File &amp;<I>file</I>, const VocabString *<I>words</I>) </B>
+<DD>
+Writes a string of space-delimited words to a file.
+<DT><B> int compare(VocabIndex <I>word1</I>, VocabIndex <I>word2</I>) </B>
+<DD>
+<DT><B> int compare(VocabString <I>word1</I>, VocabString <I>word2</I>) </B>
+<DD>
+Compares two vocabulary items lexicographically.
+Returns -1, 0, +1 for less than, equal, or greater than, respectively.
+<DT><B> int compare(const VocabIndex *<I>words1</I>, const VocabIndex *<I>words2</I>) </B>
+<DD>
+<DT><B> int compare(const VocabIndex *<I>words1</I>, const VocabIndex *<I>words2</I>) </B>
+<DD>
+Extends the order of <I>compare()</I> to strings of words.
+</DD>
+</DL>
+<P>
+For compatibilty with the C library calling conventions, <B>compare()</B>
+cannot be a member function of a Vocab object.
+For index-based comparisons the associated vocabulary needs to be 
+set globally.
+This is achieved by calling the <B>compareIndex()</B> member function
+of a Vocab object.
+<DL>
+<DT><B> ostream &amp;operator&lt;&lt; (ostream &amp;, const VocabString *<I>words</I>) </B>
+<DD>
+<DT><B> ostream &amp;operator&lt;&lt; (ostream &amp;, const VocabIndex *<I>words</I>) </B>
+<DD>
+These operators output strings of words to a stream.
+For the second variant, the Vocab object used for interpreting indices
+needs to be identified globally by calling the <I>use()</I> member function
+on the object.
+</DD>
+</DL>
+<H2> ITERATORS </H2>
+The
+<B> VocabIter </B>
+class provides iteration over vocabularies.
+An iteration returns the elements of a Vocab in some unspecified,
+but deterministic order.
+<P>
+When copied or used in initialization of other objects,
+VocabIter objects retain the current ``position'' in an iteration.
+This allows nested iterations that enumerate all pairs of distinct elements,
+etc.
+<P>
+NOTE: While an iteration over a Vocab object is ongoing, no modifications
+are allowed to the object, <I>except</I> removal of the
+``current'' vocabulary item.
+<DL>
+<DT><B> VocabIter(Vocab &amp;<I>vocab</I>, Boolean <I>sorted</I> = false) </B>
+<DD>
+Creates an iteration over <I>vocab</I>.
+If <I>sorted</I> is set to <B>true</B> the vocabulary items will
+be enumerated in lexicographic order.
+<DT><B> void init() </B>
+<DD>
+Reinitializes the iteration to its beginning.
+<DT><B> VocabString next() </B>
+<DD>
+<DT><B> VocabString next(VocabIndex &amp;<I>index</I>) </B>
+<DD>
+Steps the iteration and returns the next word string.
+Optionally, the associated word index is returned in <I>index</I>.
+Returns 0 if the vocabulary is exhausted.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="LM.3.html">LM(3)</A>, <A HREF="File.3.html">File(3)</A> 
+<H2> BUGS </H2>
+There is no good way to synchronize VocabIndex values across
+multiple Vocab objects.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1995, 1996 SRI International
+</BODY>
+</HTML>

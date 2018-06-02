@@ -1,0 +1,76 @@
+File(3)                                                                File(3)
+
+
+
+NNAAMMEE
+       File -  Wrapper for stdio streams
+
+SSYYNNOOPPSSIISS
+       ##iinncclluuddee <<FFiillee..hh>>
+
+DDEESSCCRRIIPPTTIIOONN
+       The  FFiillee  class provides a simple wrapper around stdio streams for use
+       with C++.  It provides two kinds of convenience: Firstly,  constructors
+       and  destructors  manage opening and closing of the stream.  The stream
+       is checked for errors on closing, and the default behavior is to exit()
+       with  an error message if a problem was found.  Secondly, the getline()
+       method can be used for line-oriented input.   It  strips  comments  and
+       keeps track of input line numbers for error reporting.
+
+CCLLAASSSS MMEEMMBBEERRSS
+       FFiillee((ccoonnsstt cchhaarr **_n_a_m_e,, ccoonnsstt cchhaarr **_m_o_d_e,, iinntt _e_x_i_t_O_n_E_r_r_o_r == 11))
+
+       FFiillee((FFIILLEE **_f_p == 00,, iinntt _e_x_i_t_O_n_E_r_r_o_r == 11))
+              A  File  object  can be initialized with either a filename or an
+              existing stdio stream.  In the first case, the  file  is  opened
+              according  to  _m_o_d_e  (as  if by ffooppeenn(3)).  The _e_x_i_t_O_n_E_r_r_o_r flag
+              determines whether I/O errors should be treated as fatal.
+
+       ~~FFiillee(())
+              Destroying a File object implies closing the associated stream.
+
+       cchhaarr **ggeettlliinnee(())
+              Returns the next line from the input, stored in a static  buffer
+              of up to mmaaxxLLiinneeLLeennggtthh characters.  Empty lines and lines start-
+              ing with ## are skipped.
+
+       iinntt cclloossee(())
+              Closes the stream without destroying the File  object.   Returns
+              non-zero is an error condition occurs.
+
+       iinntt eerrrroorr(())
+              Returns  a  non-zero value if an error condition occurred on the
+              stream.
+
+       ooppeerraattoorr FFIILLEE **(())
+              A File object can be cast to FFIILLEE **  to  access  the  underlying
+              stdio stream.
+
+       oossttrreeaamm &&ppoossiittiioonn((oossttrreeaamm &&_s_t_r_e_a_m == cceerrrr))
+              Outputs  the  current  line  number  on  _s_t_r_e_a_m.   The _s_t_r_e_a_m is
+              returned so it can be used as the left operand of the <<<<  opera-
+              tor.
+
+       ccoonnsstt cchhaarr **nnaammee
+              The filename used in creating the File object.
+
+       ccoonnsstt uunnssiiggnneedd lliinneennoo
+              The current line number as maintained by ggeettlliinnee(()).
+
+       iinntt eexxiittOOnnEErrrroorr
+              When  set to ttrruuee this causes errors on the stream to be handled
+              by program termination (after printing an error message).
+
+SSEEEE AALLSSOO
+       stdio(3)
+
+BBUUGGSS
+       Many other potentially useful functions are not provided (yet).
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1995, 1996 SRI International
+
+
+
+SRILM                    $Date: 2007/12/19 22:01:46 $                  File(3)

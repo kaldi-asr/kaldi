@@ -1,0 +1,8 @@
+reading 5 1-grams
+reading 5 2-grams
+Lattice::expandToLM: starting expansion to general LM (maxNodes = 0) ...
+Lattice::writeHTK: writing 6 nodes, 6 transitions
+reading 5 1-grams
+reading 5 2-grams
+Lattice::expandToLM: starting compact expansion to general LM (maxNodes = 0) ...
+Lattice::writeHTK: writing 10 nodes, 12 transitions

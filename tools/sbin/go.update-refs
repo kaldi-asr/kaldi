@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# go.update-refs --
+#	Update test output reference files based on actual test outputs
+#
+# $Header: /home/srilm/CVS/srilm/sbin/go.update-refs,v 1.1 2001/12/21 19:25:45 stolcke Exp $
+#
+
+dir=$1
+
+name=`basename $dir`
+
+for out in stdout stderr
+do
+	set -- output/$name.*.$out
+
+	firstoutput=$1
+	shift
+
+	sameoutput=yes
+	for output
+	do
+		cmp -s $firstoutput $output || sameoutput=
+	done
+
+	if [ -n "$sameoutput" ]; then
+		echo "$name: all $out outputs identical." >&2
+		cp $firstoutput reference/$name.$out
+	else
+		echo "$name: $out outputs differ." >&2
+		cp $firstoutput "$@" reference
+	fi
+done

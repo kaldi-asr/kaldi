@@ -1,0 +1,79 @@
+.\" $Id: pfsg-format.5,v 1.3 2007/12/19 22:08:05 stolcke Exp $
+.TH pfsg-format 5 "$Date: 2007/12/19 22:08:05 $" "SRILM File Formats"
+.SH NAME
+pfsg-format \- File format for Decipher(TM) probabilistic finite-state grammars
+.SH SYNOPSIS
+.nf
+\fBname\fP \fIname\fP
+\fBnodes\fP \fIN\fP \fIw1\fP ... \fIwN\fP
+\fBinitial\fP \fIi\fP
+\fBfinal\fP \fIf\fP
+\fBtransitions\fP \fIT\fP
+\fIn1\fP \fIn2\fP \fIp\fP
+\&...
+.fi
+.SH DESCRIPTION
+Probabilistic finite-state grammars (PFSGs) are a form of finite-state
+automaton or transducer used by the SRI Decipher(TM) recognizer.
+PFSGs emit words (outputs) at the nodes, not on the arcs.
+Certain types of language models manipulated by SRILM can be 
+translated into PFSGs for direct use in the recognizer.
+.PP
+Since it is usually fairly easy to convert between different
+finite-state network representations, PFSGs can serve as 
+an intermediate format for the generation of other finite-state formats.
+For example, PFSGs can be converted to the AT&T
+.BR fsm (5)
+format.
+.PP
+Each PFSGs is given a
+.IR name .
+The name is significant if PFSGs are to be composed, in which case the
+.I name 
+specifies the category it expands.
+.PP
+The
+.B nodes
+line gives the number of nodes in the state graph, followed by the
+word strings associated with each node.
+If the node represents a category expanded by another PFSG, then the
+name string of that PFSG is given here.
+The token
+.B NULL
+is special and designates the corresponding node as non-emitting.
+It is conventional to use lowercase strings for words, and uppercase
+for categories and PFSG names (``NULL'' must be avoided, of course).
+.PP
+The
+.B initial
+and
+.B final
+lines specify the start and end states of the grammar, respectively.
+Nodes are numbered starting at zero.
+.PP
+The 
+.B transitions
+line gives the number of arcs (transitions) between states.
+It is followed by as many lines, each specifying one transition
+by its 
+originating state
+.IR n1 ,
+its target state
+.IR n2 ,
+and the transition cost
+.IR p .
+The transition cost is usually interpreted as 10000.5 times the natural
+logarithm of a probability, and should be normalized and scaled
+accordingly.
+.SH "SEE ALSO"
+pfsg-scripts(1), fsm(1).
+.SH BUGS
+File formats are a matter of taste ...
+.br
+There is no way to specify words with embedded whitespace.
+.SH AUTHOR
+PFSGs were developed as part of SRI's Decipher(TM) recognition system.
+Manual page written by 
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 1999, 2004 SRI International

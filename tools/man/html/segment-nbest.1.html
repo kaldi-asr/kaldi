@@ -1,0 +1,211 @@
+<! $Id: segment-nbest.1,v 1.9 2007/12/20 19:13:52 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>segment-nbest</TITLE>
+<BODY>
+<H1>segment-nbest</H1>
+<H2> NAME </H2>
+segment-nbest - rescore and segment N-best lists using hidden segment N-gram model
+<H2> SYNOPSIS </H2>
+<PRE>
+\fsegment-nbest\fP [ <B>-help</B> ] <I>option</I> ... <I>nbest-file-list</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> segment-nbest </B>
+processes a series of consecutive N-best lists from a speech
+recognizer
+and applies a hidden segment N-gram language model to them.
+The language model is a standard backoff N-gram model in ARPA
+<A HREF="ngram-format.5.html">ngram-format(5)</A>
+modeling sentence segmentation using the boundary tags &lt;s&gt; and &lt;/s&gt;.
+The program reads in all N-best lists and outputs the 
+hypotheses that have the highest aggregate (combined acoustic 
+and language model) score.
+Hypothesized sentence boundaries are marked by &lt;s&gt; tags.
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-order</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the maximal N-gram order to be used, by default 3.
+NOTE: The order of the model is not set automatically when a model
+file is read, so the same file can be used at various orders.
+<DT><B>-debug</B><I> level</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the debugging output level (0 means no debugging output).
+Debugging messages are sent to stderr.
+<DT><B>-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read the N-gram model from
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B> -tolower </B>
+<DD>
+Map all vocabulary to lowercase.
+Useful if case conventions for N-best lists and language model differ.
+<DT><B>-mix-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a second, standard N-gram model for interpolation purposes.
+<DT><B>-lambda</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the weight of the main model when interpolating with
+<B>-mix-lm</B>.<B></B><B></B><B></B>
+Default value is 0.5.
+<DT><B>-bayes</B><I> length</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Interpolate the second and the main model using posterior probabilities
+for local N-gram-contexts of length
+<I>length</I>.<I></I><I></I><I></I>
+The 
+<B> -lambda </B>
+value is used as a prior mixture weight in this case.
+<DT><B>-bayes-scale</B><I> scale</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the exponential scale factor on the context likelihood in conjunction
+with the
+<B> -bayes </B>
+function.
+Default value is 1.0.
+<DT><B>-nbest-files</B><I> list</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies a list of N-best files.
+The file
+<I> list </I>
+should contain a list of filenames, one per line,
+each corresponding to an N-best file in one of the formats
+described in 
+<A HREF="nbest-format.5.html">nbest-format(5)</A>.
+The N-best files should correspond to consecutive speech waveforms
+in the order listed.
+<DT><B> -fb-rescore </B>
+<DD>
+Perform Forward-backward rescoring.
+This generates new N-best lists
+as output whose LM scores reflect the posterior probability of each
+hypothesis.
+The default is to perform Viterbi rescoring and output only the
+best combined hypothesis.
+<DT><B>-write-nbest-dir</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write rescored N-best lists to directory 
+<I> dir </I>
+instead of to stdout.
+The filenames from the input are preserved.
+<DT><B>-max-nbest</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limits the number of hypotheses read from each N-best list to the first
+<I>n</I>.<I></I><I></I><I></I>
+<DT><B>-max-rescore</B><I> m</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Only choose among the top 
+<I> m </I>
+hypotheses of each list (after reordering hypotheses, see below).
+This is an effective way to limit the quadratic computation 
+of the Viterbi or forward/backward dynamic programming.
+<DT><B> -no-reorder </B>
+<DD>
+Do not reorder the hypotheses before limiting the computation to
+the top
+<I>m</I>.<I></I><I></I><I></I>
+By default the hypotheses will first be sorted according to the 
+acoustic and language model scores recorded in the N-best lists.
+<DT><B>-rescore-lmw</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the language model weight to be use in combining
+acoustic and language model scores to select the best hypotheses.
+<DT><B>-rescore-wtw</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the word transition weight to be used in selecting the
+best hypotheses.
+<DT><B>-noise</B><I> noise-tag</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Designate
+<I> noise-tag </I>
+as a vocabulary item that is to be ignored by the LM.
+(This is typically used to identify a noise marker.)
+<DT><B>-noise-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read several noise tags from
+<I>file</I>,<I></I><I></I><I></I>
+instead of, or in addition to, the single noise tag specified by
+<B>-noise</B>.<B></B><B></B><B></B>
+<DT><B>-decipher-lm</B><I> model-file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Designates the N-gram backoff model (typically a bigram) that was used by the
+Decipher(TM) recognizer in computing composite scores.
+Used to compute acoustic scores from the composite scores if the
+N-best lists are in "NBestList1.0" format.
+<DT><B>-decipher-lmw</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the language model weight used by the recognizer.
+Used to compute acoustic scores from the composite scores.
+<DT><B>-decipher-wtw</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the word transition weight used by the recognizer.
+Used to compute acoustic scores from the composite scores.
+<DT><B>-stag</B><I> string</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use
+<I> string </I>
+to mark segment boundaries in the output.
+Default is the start-of-sentence symbol defined in the language model (&lt;s&gt;).
+<DT><B>-bias</B><I> b</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Make a segment boundary a priori more likely by a factor of
+<I>b</I>.<I></I><I></I><I></I>
+If
+<I> b </I>
+is 0, the dynamic program algorithm is restricted to never consider
+hidden sentence boundaries; this is useful when
+<B> segment-nbest </B>
+is used merely for its ability to apply the LM across N-best boundaries.
+<DT><B>-start-tag</B><I> string</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Insert a tag 
+<I> string </I>
+at the front of every N-best hypothesis read in.
+<DT><B>-end-tag</B><I> string</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Insert a tag 
+<I> string </I>
+at the end of every N-best hypothesis read in.
+This and the previous option are useful if the LM marks acoustic
+waveform boundaries with a special tag.
+</DD>
+</DL>
+<P>
+<B> segment-nbest </B>
+will also process any command line arguments following the options
+as lists of N-best lists, as with the 
+<B> -nbest-files </B>
+option.
+Each 
+<I> nbest-file-list </I>
+will be processed in turn,
+with individual output delimited by a line of the form
+<PRE>
+	&lt;nbestfile <I>nbest-file-list</I>&gt;
+</PRE>
+<H2> SEE ALSO </H2>
+<A HREF="ngram-count.1.html">ngram-count(1)</A>, <A HREF="segment.1.html">segment(1)</A>, <A HREF="ngram-format.5.html">ngram-format(5)</A>, <A HREF="nbest-format.5.html">nbest-format(5)</A>.
+<BR>
+A. Stolcke, ``Modeling Linguistic Segment and Turn Boundaries for N-best
+Rescoring of Spontaneous Speech,'' <I>Proc. Eurospeech</I>, 2779-2782, 1997.
+<H2> BUGS </H2>
+N-gram models of arbitrary order can be used, but the context at the 
+beginning of a hypothesis never extends beyond the words from the preceding
+N-best list.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1997-2004 SRI International
+</BODY>
+</HTML>

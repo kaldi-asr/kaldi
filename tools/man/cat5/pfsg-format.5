@@ -1,0 +1,65 @@
+pfsg-format(5)                                                  pfsg-format(5)
+
+
+
+NNAAMMEE
+       pfsg-format  -  File format for Decipher(TM) probabilistic finite-state
+       grammars
+
+SSYYNNOOPPSSIISS
+       nnaammee _n_a_m_e
+       nnooddeess _N _w_1 ... _w_N
+       iinniittiiaall _i
+       ffiinnaall _f
+       ttrraannssiittiioonnss _T
+       _n_1 _n_2 _p
+       ...
+
+DDEESSCCRRIIPPTTIIOONN
+       Probabilistic finite-state grammars (PFSGs) are a form of  finite-state
+       automaton or transducer used by the SRI Decipher(TM) recognizer.  PFSGs
+       emit words (outputs) at the nodes, not on the arcs.  Certain  types  of
+       language  models  manipulated by SRILM can be translated into PFSGs for
+       direct use in the recognizer.
+
+       Since it is usually fairly easy to convert  between  different  finite-
+       state  network representations, PFSGs can serve as an intermediate for-
+       mat for the generation of other  finite-state  formats.   For  example,
+       PFSGs can be converted to the AT&T ffssmm(5) format.
+
+       Each PFSGs is given a _n_a_m_e.  The name is significant if PFSGs are to be
+       composed, in which case the _n_a_m_e specifies the category it expands.
+
+       The nnooddeess line gives the number of nodes in the state  graph,  followed
+       by  the word strings associated with each node.  If the node represents
+       a category expanded by another PFSG, then the name string of that  PFSG
+       is  given  here.   The  token NNUULLLL is special and designates the corre-
+       sponding node as non-emitting.  It is  conventional  to  use  lowercase
+       strings  for  words,  and  uppercase  for  categories  and  PFSG  names
+       (``NULL'' must be avoided, of course).
+
+       The iinniittiiaall and ffiinnaall lines specify the start and  end  states  of  the
+       grammar, respectively.  Nodes are numbered starting at zero.
+
+       The  ttrraannssiittiioonnss  line  gives  the number of arcs (transitions) between
+       states.  It is followed by as many lines, each specifying  one  transi-
+       tion  by its originating state _n_1, its target state _n_2, and the transi-
+       tion cost _p.  The transition cost is  usually  interpreted  as  10000.5
+       times  the natural logarithm of a probability, and should be normalized
+       and scaled accordingly.
+
+SSEEEE AALLSSOO
+       pfsg-scripts(1), fsm(1).
+
+BBUUGGSS
+       File formats are a matter of taste ...
+       There is no way to specify words with embedded whitespace.
+
+AAUUTTHHOORR
+       PFSGs were developed as part of SRI's Decipher(TM) recognition  system.
+       Manual page written by Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1999, 2004 SRI International
+
+
+
+SRILM File Formats       $Date: 2007/12/19 22:08:05 $           pfsg-format(5)

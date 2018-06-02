@@ -1,0 +1,85 @@
+<! $Id: pfsg-format.5,v 1.3 2007/12/19 22:08:05 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>pfsg-format</TITLE>
+<BODY>
+<H1>pfsg-format</H1>
+<H2> NAME </H2>
+pfsg-format - File format for Decipher(TM) probabilistic finite-state grammars
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>name</B> <I>name</I>
+<B>nodes</B> <I>N</I> <I>w1</I> ... <I>wN</I>
+<B>initial</B> <I>i</I>
+<B>final</B> <I>f</I>
+<B>transitions</B> <I>T</I>
+<I>n1</I> <I>n2</I> <I>p</I>
+...
+</PRE>
+<H2> DESCRIPTION </H2>
+Probabilistic finite-state grammars (PFSGs) are a form of finite-state
+automaton or transducer used by the SRI Decipher(TM) recognizer.
+PFSGs emit words (outputs) at the nodes, not on the arcs.
+Certain types of language models manipulated by SRILM can be 
+translated into PFSGs for direct use in the recognizer.
+<P>
+Since it is usually fairly easy to convert between different
+finite-state network representations, PFSGs can serve as 
+an intermediate format for the generation of other finite-state formats.
+For example, PFSGs can be converted to the AT&amp;T
+<A HREF="fsm.5.html">fsm(5)</A>
+format.
+<P>
+Each PFSGs is given a
+<I>name</I>.<I></I><I></I><I></I>
+The name is significant if PFSGs are to be composed, in which case the
+<I> name </I>
+specifies the category it expands.
+<P>
+The
+<B> nodes </B>
+line gives the number of nodes in the state graph, followed by the
+word strings associated with each node.
+If the node represents a category expanded by another PFSG, then the
+name string of that PFSG is given here.
+The token
+<B> NULL </B>
+is special and designates the corresponding node as non-emitting.
+It is conventional to use lowercase strings for words, and uppercase
+for categories and PFSG names (``NULL'' must be avoided, of course).
+<P>
+The
+<B> initial </B>
+and
+<B> final </B>
+lines specify the start and end states of the grammar, respectively.
+Nodes are numbered starting at zero.
+<P>
+The 
+<B> transitions </B>
+line gives the number of arcs (transitions) between states.
+It is followed by as many lines, each specifying one transition
+by its 
+originating state
+<I>n1</I>,<I></I><I></I><I></I>
+its target state
+<I>n2</I>,<I></I><I></I><I></I>
+and the transition cost
+<I>p</I>.<I></I><I></I><I></I>
+The transition cost is usually interpreted as 10000.5 times the natural
+logarithm of a probability, and should be normalized and scaled
+accordingly.
+<H2> SEE ALSO </H2>
+<A HREF="pfsg-scripts.1.html">pfsg-scripts(1)</A>, <A HREF="fsm.1.html">fsm(1)</A>.
+<H2> BUGS </H2>
+File formats are a matter of taste ...
+<BR>
+There is no way to specify words with embedded whitespace.
+<H2> AUTHOR </H2>
+PFSGs were developed as part of SRI's Decipher(TM) recognition system.
+Manual page written by 
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1999, 2004 SRI International
+</BODY>
+</HTML>

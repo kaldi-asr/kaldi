@@ -1,0 +1,10 @@
+#!/bin/sh
+
+ngram-count -text train_tagged.txt -tagged -order 3 \
+	-lm train_tagged.lm -write-vocab -
+
+echo "Fritz/Bla lernt/Blo eine/Blubb Sprache/Bla ./Bloe" | \
+ngram -lm train_tagged.lm -tagged -ppl - -debug 2 
+
+rm -f train_tagged.lm
+

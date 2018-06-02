@@ -1,0 +1,27 @@
+#!/bin/sh
+
+data=../lattice-expansion-ppl
+
+mkdir -p tmp
+
+lattice-tool -debug 1 \
+                -in-lattice $data/test.htk \
+		-read-htk \
+                -out-lattice tmp/test-rescored.htk \
+		-write-htk \
+		-lm $data/test.lm -order 2
+
+lattice-tool -debug 1 \
+		-in-lattice tmp/test-rescored.htk -read-htk \
+	 	-word-posteriors-for-sentences $data/test.input
+
+echo "Now expand and compute posteriors in one run"
+
+lattice-tool -debug 1 \
+                -in-lattice $data/test.htk \
+		-read-htk \
+		-lm $data/test.lm -order 2 \
+	 	-word-posteriors-for-sentences $data/test.input
+
+rm -rf tmp
+

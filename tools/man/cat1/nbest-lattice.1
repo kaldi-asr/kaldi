@@ -1,0 +1,336 @@
+nbest-lattice(1)                                              nbest-lattice(1)
+
+
+
+NNAAMMEE
+       nbest-lattice - rescore N-best lists and lattices
+
+SSYYNNOOPPSSIISS
+       nnbbeesstt--llaattttiiccee [ --hheellpp ] _o_p_t_i_o_n ...
+
+DDEESSCCRRIIPPTTIIOONN
+       nnbbeesstt--llaattttiiccee rescores N-best lists or optimizes word-level recognition
+       scores (as opposed to sentence-level scores).  There are two  rescoring
+       modes.   In  _N_-_b_e_s_t  _w_o_r_d _e_r_r_o_r _m_i_n_i_m_i_z_a_t_i_o_n mode, the program computes
+       the posterior expected word error for each hypothesis relative  to  all
+       hypotheses in the N-best list, choosing the one with the lowest value.
+
+       In  _l_a_t_t_i_c_e _w_o_r_d _e_r_r_o_r _m_i_n_i_m_i_z_a_t_i_o_n mode, the program constructs a word
+       lattice from all the N-best hypotheses and extracts the path  with  the
+       lowest expected word error.  This is similar to N-best word error mini-
+       mization but allows hypotheses not contained in  the  N-best  list.   A
+       variant of this mode uses a word ``mesh'' instead of a word lattice, in
+       which all hypotheses are aligned into a grid of word positions, and one
+       is  allowed  to  chose a word from each grid position, thus allowing an
+       even greater number of potential hypotheses.
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --ddeebbuugg _l_e_v_e_l
+              Controls  the amount of output (the higher the _l_e_v_e_l, the more).
+              At level 1, the  expected  word  error  counts  for  the  chosen
+              hypotheses  are  printed.  At level 2, the word posterior proba-
+              bilities are printed in addition (only for lattice mode, similar
+              to --dduummpp--ppoosstteerriioorrss).
+
+       --wweerr   Chooses N-best word error minimization mode.
+
+       --llaattttiiccee--wweerr
+              Chooses lattice word error minimization mode (the default).
+
+       --uussee--mmeesshh
+              Choose the variant of lattice mode that uses word meshes instead
+              of simple lattices.
+
+       --ddeelleettiioonn--bbiiaass _D
+              Causes the probabilities of deletions to be biased by a factor _D
+              in  doing mesh-based word error minimization.  This controls the
+              trade-off between insertion and deletion errors.  The default is
+              1 (no bias).
+
+       --rreessccoorree _f_i_l_e
+              Reads  the N-best list from _f_i_l_e.  The N-best list can be in any
+              of the formats described in nnbbeesstt--ffoorrmmaatt(5).
+
+       --nnbbeesstt _f_i_l_e
+              A synonym for --rreessccoorree.
+
+       --wwrriittee--nnbbeesstt _f_i_l_e
+              Outputs the N-best list to a file, after sorting and  processing
+              (for validation or format conversion purposes).
+
+       --nnbbeesstt--ffiilleess _f_i_l_e_-_l_i_s_t
+              Rescores  multiple  N-best  lists  whose filenames are read from
+              _f_i_l_e_-_l_i_s_t.
+
+       --wwrriittee--nnbbeesstt--ddiirr _d_i_r_e_c_t_o_r_y
+              Outputs N-best lists to _d_i_r_e_c_t_o_r_y,  to  files  named  after  the
+              input N-best lists, for when multiple N-best lists are processed
+              (see --nnbbeesstt--ffiilleess).
+
+       --wwrriittee--vvooccaabb _f_i_l_e
+              Outputs vocabulary used in N-best list.
+
+       --ddeecciipphheerr--nnbbeesstt
+              Output N-best list in Decipher nnbbeesstt--ffoorrmmaatt(5), rather than  the
+              default  native  SRILM format.  (All N-best formats are accepted
+              for input regardless of this option.)
+
+       --nnoo--rreessccoorree
+              Suppress rescoring of lattices; useful if only the operations of
+              lattice/N-best list reading/writing are desired.
+
+       --mmaaxx--nnbbeesstt _n
+              Limits  the  number  of hypotheses read from each N-best list to
+              the first _n.
+
+       --mmaaxx--rreessccoorree _m
+              In N-best mode, only choose among  the  top  _m  hypotheses  when
+              optimizing  word error.  This is convenient to limit computation
+              for long N-best lists.  The cutoff is  made  after  reading  all
+              hypotheses (subject to --mmaaxx--nnbbeesstt) and reordering them according
+              to the posterior probabilities.
+              The worst-case time taken in N-best error minimization  is  pro-
+              portional to _m times _n, where _n is the length of the N-best list
+              (or the value given to --mmaaxx--nnbbeesstt).  However,  in  practice  the
+              average time per sentence is independent of _m, so this option is
+              usually not necessary.
+              In lattice mode, only align the top _m scoring hypotheses  (after
+              reweighting and sorting) into the lattice.
+
+       --ppoosstteerriioorr--pprruunnee _t_h_r_e_s_h_o_l_d
+              Don't process N-best hypotheses whose cumulative posterior prob-
+              ability is below _t_h_r_e_s_h_o_l_d.  This is another strategy  to  speed
+              up the algorithm.
+
+       --nnoo--rreeoorrddeerr
+              Process N-best hypotheses in the order in which they appear.  By
+              default, hypotheses are first sorted by their aggregate scores.
+
+       --nnbbeesstt--bbaacckkttrraaccee
+              Preserve backtrace information (word-level timemarks and scores)
+              when  reading  N-best  lists  containing  such  information (see
+              nnbbeesstt--ffoorrmmaatt(5)).  The default is to ignore  backtrace  informa-
+              tion  and record only sentence-level scores and the word identi-
+              ties.
+
+       --oouuttppuutt--ccttmm
+              Output word hypotheses in NIST CTM (conversation time mark) for-
+              mat.  Note that word start times will be relative to the segment
+              start times, the first column will contain the N-best  filename,
+              and  the  channel  field is always 1.  The word confidence field
+              contains posterior  probabilities.   This  option  also  implies
+              --nnbbeesstt--bbaacckkttrraaccee.
+
+       --rreessccoorree--llmmww _l_m_w
+              Sets  the  language  model weight used in combining the language
+              model log probabilities with acoustic  log  probabilities  (only
+              relevant if separate scores are given in the N-best input).
+
+       --rreessccoorree--wwttww _w_t_w
+              Sets  the  word  transition  weight used to weight the number of
+              words relative to the acoustic log probabilities (only  relevant
+              if separate scores are given in the N-best input).
+              If --nnoo--rreeoorrddeerr is not specified, and either _l_m_w or _w_t_w are spec-
+              ified to be non-zero, the aggregate scores are recomputed  using
+              those  weights; otherwise aggregate scores supplied in the input
+              N-best lists are used to sort hypotheses.
+
+       --ppoosstteerriioorr--ssccaallee _s_c_a_l_e
+              Divide the total weighted log score by _s_c_a_l_e when computing nor-
+              malized  posterior  probabilities.  This controls the peakedness
+              of the posterior distribution.  The default  value  is  whatever
+              was  chosen  for --rreessccoorree--llmmww, so that language model scores are
+              scaled to have weight 1, and acoustic scores have weight 1/_l_m_w.
+
+       --ppoosstteerriioorr--aammww _a_m_w
+              Sets the acoustic model weight  for  computing  posteriors;  the
+              default is 1.  This and the next two options allow posteriors to
+              be computed using a different weighting than that used in  rank-
+              ing and reordering the hypotheses.
+
+       --ppoosstteerriioorr--llmmww _l_m_w
+              Sets  the  language  model weight for computing posteriors.  The
+              default is to use whatever was specified for --rreessccoorree--llmmww.
+
+       --ppoosstteerriioorr--wwttww _w_t_w
+              Sets the word transition weight for computing  posteriors.   The
+              default is to use whatever was specified for --rreessccoorree--wwttww.
+              If all three of _a_m_w, _l_m_w, and _w_t_w are set to zero the posteriors
+              are computed directly from the aggregate scores stored in the N-
+              best input.
+
+       --vvooccaabb _f_i_l_e
+              Read  the  N-best  list  vocabulary  from  _f_i_l_e.  This option is
+              mostly redundant since words  found  in  the  N-best  input  are
+              implicitly added to the vocabulary.
+
+       --vvooccaabb--aalliiaasseess _f_i_l_e
+              Reads  vocabulary  alias  definitions  from  _f_i_l_e, consisting of
+              lines of the form
+                   _a_l_i_a_s _w_o_r_d
+              This causes all tokens _a_l_i_a_s to be mapped to _w_o_r_d.
+
+       --ttoolloowweerr
+              Map vocabulary to lowercase, eliminating case distinctions.
+
+       --mmuullttiiwwoorrddss
+              Split multiwords (words joined by  '_')  into  their  components
+              when reading N-best lists.
+
+       --mmuullttii--cchhaarr _C
+              Character  used  to  delimit  component  words in multiwords (an
+              underscore character by default).
+
+       --nnooiissee _n_o_i_s_e_-_t_a_g
+              Designate _n_o_i_s_e_-_t_a_g as a vocabulary item that is to  be  ignored
+              in  aligning  hypotheses  with each other (the same as the -pau-
+              word).  This is typically used to identify a noise marker.
+
+       --nnooiissee--vvooccaabb _f_i_l_e
+              Read several noise tags from _f_i_l_e, instead of,  or  in  addition
+              to, the single noise tag specified by --nnooiissee.
+
+       --kkeeeepp--nnooiissee
+              Do not remove pause or noise tokens from hypotheses. The default
+              is to preserve noise tags but still eliminate pauses.
+
+       --nnbbeesstt--eerrrroorr
+              Compute the N-best error (minimum word error) of the N-best list
+              read  with  --nnbbeesstt.   Pause  and noise tokens (as specified with
+              --nnooiissee) in the N-best list are ignored.
+
+       --dduummpp--ppoosstteerriioorrss
+              Output posterior probabilities of all N-best hypotheses  instead
+              of  choosing the best hypothesis.  In N-best mode, only the pos-
+              terior probability for each hypothesis is  output.   In  lattice
+              mode, the hyp posterior is followed by word posterior probabili-
+              ties for each (non-pause, non-noise) token  in  the  hypothesis.
+              The  --mmaaxx--rreessccoorree  option limits the number of hypotheses per N-
+              best list processed.
+
+       --dduummpp--eerrrroorrss
+              Output word correctness indicators  for  all  N-best  hypotheses
+              instead of choosing the best hypothesis.  For each hypothesis, a
+              line is output containing first the total number of  errors  and
+              the list of indicators of whether the corresponding word is cor-
+              rect, substituted or inserted relative to the reference  string.
+              The location of deleted words is also indicated by a correspond-
+              ing marker.   The  --mmaaxx--rreessccoorree  option  limits  the  number  of
+              hypotheses per N-best list processed.
+
+       --rreeffeerreennccee _w_1 _w_2 _._._.
+              Specifies  a  reference  word  string  for --dduummpp--eerrrroorrss, --nnbbeesstt--
+              eerrrroorr, and --llaattttiiccee--eerrrroorr options.  Additionally,  in  --uussee--mmeesshh
+              mode,  the reference words are recorded in the word mesh and can
+              be output with --wwrriittee, indicating which word in  each  alignment
+              position is the correct one.
+
+       --rreeffss _r_e_f_e_r_e_n_c_e_s
+              Read  a  table of reference transcripts from file _r_e_f_e_r_e_n_c_e, for
+              when multiple N-best lists  are  processed  (see  --nnbbeesstt--ffiilleess).
+              Each  line  in _r_e_f_e_r_e_n_c_e_s must contain the sentence ID (the last
+              component in the N-best filename path, minus any suffixes)  fol-
+              lowed by zero or more reference words.
+
+       The following options only affect lattice mode.
+
+       --rreeaadd _f_i_l_e
+              Reads an initial lattice from _f_i_l_e, to be merged with additional
+              paths constructed from the N-best hypotheses.
+
+       --llaattttiiccee--ffiilleess _f_i_l_e
+              Reads the names of one or more lattices  from  _f_i_l_e  and  aligns
+              those  lattices with the main lattice being built.  Each line of
+              _f_i_l_e must contain a lattice filename, optionally followed  by  a
+              weight.
+
+       --wwrriittee _f_i_l_e
+              Writes  the resulting word posterior lattice or mesh to _f_i_l_e, in
+              wwllaatt--ffoorrmmaatt(5).
+
+       --wwrriittee--ddiirr _d_i_r_e_c_t_o_r_y
+              Write the resulting N-best lattices to _d_i_r_e_c_t_o_r_y, in files named
+              after the input N-best lists, for when multiple N-best lists are
+              processed (see --nnbbeesstt--ffiilleess).
+
+       --pprriimmee--llaattttiiccee
+              Start building the lattice with  the  best  hypothesis  obtained
+              from  N-best  error minimization.  This produces slightly better
+              alignments and sometimes lower error rates.  The default  is  to
+              start with the top-scoring hypothesis.
+
+       --pprriimmee--wwiitthh--11bbeesstt
+              Similar  to  --pprriimmee--llaattttiiccee,  but  uses  the top-ranked sentence
+              hypothesis for  priming.   (Experience  shows  that  --nnoo--rreeoorrddeerr
+              --pprriimmee--llaattttiiccee gives best results.)
+
+       --pprriimmee--wwiitthh--rreeffss
+              Similar  to  --pprriimmee--llaattttiiccee,  but  uses  the reference words for
+              priming.
+
+       --nnoo--mmeerrggee
+              Build a lattice from the N-best hypotheses without merging edges
+              (string/lattice  alignment).   This  creates  a lattice with one
+              disjoint path per hypothesis, and is useful mainly for debugging
+              purposes.   This  option has no effect with --uussee--mmeesshh since word
+              meshes can represent only one word type per alignment position.
+
+       --llaattttiiccee--eerrrroorr
+              Compute the lattice error (minimum word error)  of  the  lattice
+              read with --rreeaadd or built with --nnbbeesstt.
+
+       --ddiiccttiioonnaarryy file
+              Use  word pronunciations listed in _f_i_l_e to construct word align-
+              ments when building word meshes.  This  will  use  an  alignment
+              cost  function that reflects the number of inserted/deleted/sub-
+              stituted phones, rather than words.  The dictionary _f_i_l_e  should
+              contain  one  pronunciation  per line, each naming a word in the
+              first field, followed by a string of phone symbols.
+
+       --hhiiddddeenn--vvooccaabb file
+              Read a subvocabulary from _f_i_l_e and constrain word meshes to only
+              align  those  words that are either all in or outside the subvo-
+              cabulary.  This may be used to keep ``hidden event''  tags  from
+              aligning with regular words.
+
+       --rreeccoorrdd--hhyyppss
+              Record  the ranks of the hyps contributing to each word hypothe-
+              sis in the resulting word lattice; the information  is  included
+              in --wwrriittee output.
+
+SSEEEE AALLSSOO
+       ngram(1),  nbest-optimize(1),  nbest-scripts(1), nbest-format(5), wlat-
+       format(5).
+       A. Stolcke, Y. Konig, and M. Weintraub, ``Explicit Word Error Minimiza-
+       tion in N-best List Rescoring,'' _P_r_o_c_. _E_u_r_o_s_p_e_e_c_h, 163-166, 1997.
+       The  ``word  meshes''  used here are equivalent to the ``confusion net-
+       works'' described in: L. Mangu, E. Brill,  and  A.  Stolcke,  ``Finding
+       Consensus  Among  Words: Lattice-based Word Error Minimization.'' _P_r_o_c_.
+       _E_u_r_o_s_p_e_e_c_h, vol. 1, 495-498, 1999.
+
+BBUUGGSS
+       Several functions are not uniformly implemented for all rescoring modes
+       (e.g.,  --llaattttiiccee--ffiilleess, --ddiiccttiioonnaarryy, --rreeccoorrdd--hhyyppss, and --nnbbeesstt--bbaacckkttrraaccee
+       are currently effective only in mesh-lattice mode).
+       It is a common mistake (not a bug) to use the default LM weight with N-
+       best lists directly from Decipher.  Decipher N-best lists have the rec-
+       ognizer's LM weight already built in, so they should be processed with
+            nbest-lattice -rescore-lmw 1 -posterior-scale _L_M_W
+       where _L_M_W is the LM weight during recognition.  This is not an issue if
+       the N-best lists have been rescored with rreessccoorree--ddeecciipphheerr.
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1996-2010 SRI International
+
+
+
+SRILM Tools              $Date: 2010/07/11 17:29:36 $         nbest-lattice(1)

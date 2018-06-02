@@ -1,0 +1,18 @@
+#!/bin/sh
+
+if [ -f ../ngram-count-gt/swbd.3bo.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+head -2 ../ngram-count-gt/eval97.text | \
+ngram -debug 1 \
+	-lm ../ngram-count-gt/swbd.3bo$gz -lambda 0.3 \
+	-mix-lm ../class-ngram-simple/train-400classes.3bo$gz \
+	-classes ../class-ngram-simple/train+unk.400classes$gz \
+	-simple-classes \
+	-mix-lm2 ../ngram-count-gt/swbd.3bo$gz -mix-lambda2 0.3 \
+	-loglinear-mix \
+	-ppl -
+

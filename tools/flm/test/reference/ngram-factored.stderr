@@ -1,0 +1,61 @@
+Language Model 0 --------------
+-- Level 3
+      Node: W-1,M-1,S-1 (0x7), Constraint: W-1 (0x1)
+         1 Children: M-1,S-1 (0x6)
+-- Level 2
+      Node: M-1,S-1 (0x6), Constraint: S-1 (0x4)
+         1 Children: M-1 (0x2)
+-- Level 1
+      Node: M-1 (0x2), Constraint: M-1 (0x2)
+         1 Children:  (0x0)
+-- Level 0
+      Node:  (0x0), Constraint:  (0x0)
+         0 Children:
+../fngram-count/ch_lm_train100.noamp.decomposed.txt.gz: line 22292: 
+LM(0) 22292 sentences, 168590 words, 0 OOVs
+0 zeroprobs, logprob= 0 ppl= 1 ppl1= 1
+Mod Kneser-Ney smoothing 0-grams
+n1 = 8772
+n2 = 2477
+n3 = 1101
+n4 = 627
+D1 = 0.639079
+D2 = 1.14781
+D3+ = 1.54422
+Mod Kneser-Ney smoothing 0x2-grams
+n1 = 43482
+n2 = 5646
+n3 = 1585
+n4 = 755
+D1 = 0.793844
+D2 = 1.33143
+D3+ = 1.48744
+Mod Kneser-Ney smoothing 0x6-grams
+n1 = 74228
+n2 = 2019
+n3 = 367
+n4 = 152
+D1 = 0.948407
+D2 = 1.48282
+D3+ = 1.4288
+Mod Kneser-Ney smoothing 0x7-grams
+n1 = 62432
+n2 = 7715
+n3 = 2519
+n4 = 1272
+D1 = 0.801829
+D2 = 1.21459
+D3+ = 1.38043
+warning: distributing 0.267684 left-over probability mass over 1 zeroton words
+discarded 43482 0x2-gram probs discounted to zero
+discarded 74228 0x6-gram probs discounted to zero
+discarded 62432 0x7-gram probs discounted to zero
+writing FLM to dev.lm.gz
+writing 15022 0x0-grams
+writing 0 0x1-grams
+writing 9836 0x2-grams
+writing 0 0x4-grams
+writing 0 0x3-grams
+writing 0 0x5-grams
+writing 2929 0x6-grams
+writing 14979 0x7-grams

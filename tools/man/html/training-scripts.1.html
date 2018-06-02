@@ -1,0 +1,393 @@
+<! $Id: training-scripts.1,v 1.26 2013/12/11 08:43:38 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>training-scripts</TITLE>
+<BODY>
+<H1>training-scripts</H1>
+<H2> NAME </H2>
+training-scripts, compute-oov-rate, continuous-ngram-count, get-gt-counts, make-abs-discount, make-batch-counts, make-big-lm, make-diacritic-map,  make-google-ngrams, make-gt-discounts, make-kn-counts, make-kn-discounts, merge-batch-counts, replace-unk-words, replace-words-with-classes, reverse-ngram-counts, split-tagged-ngrams, reverse-text, tolower-ngram-counts, uniform-classes, uniq-ngram-counts, vp2text - miscellaneous conveniences for language model training
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>get-gt-counts</B> <B>max=</B><I>K</I> <B>out=</B><I>name</I> [ <I>counts</I> ... ] <B>&gt;</B> <I>gtcounts</I>
+<B>make-abs-discount</B> <I>gtcounts</I>
+<B>make-gt-discounts</B> <B>min=</B><I>min</I> <B>max=</B><I>max</I> <I>gtcounts</I>
+<B>make-kn-counts</B> <B>order=</B><I>N</I> <B>max_per_file=</B><I>M</I> <B>output=</B><I>file</I> \
+	[ <B>no_max_order=1</B> ] <B>&gt;</B> <I>counts</I>
+<B>make-kn-discounts</B> <B>min=</B><I>min</I> <I>gtcounts</I>
+<B>make-batch-counts</B> <I>file-list</I> \
+	[ <I>batch-size</I> [ <I>filter</I> [ <I>count-dir</I> [ <I>options</I> ... ] ] ] ]
+<B>merge-batch-counts</B> [ <B>-float-counts</B> ] [ <B>-l</B> <I>N</I> ] <I>count-dir</I> [ <I>file-list</I>|<I>start-iter</I> ]
+<B>make-google-ngrams</B> [ <B>dir=</B><I>DIR</I> ] [ <B>per_file=</B><I>N</I> ] [ <B>gzip=0</B> ] \
+	[ <B>yahoo=1</B> ] [ <I>counts-file</I> ... ]
+<B>continuous-ngram-count</B> [ <B>order=</B><I>N</I> ] [ <I>textfile</I> ... ]
+<B>tolower-ngram-counts</B> [ <I>counts-file</I> ... ]
+<B>uniq-ngram-counts</B> [ <I>counts-file</I> ... ]
+<B>reverse-ngram-counts</B> [ <I>counts-file</I> ... ]
+<B>reverse-text</B> [ <I>textfile</I> ... ]
+<B>split-tagged-ngrams</B> [ <B>separator=</B><I>S</I> ] [ <I>counts-file</I> ... ]
+<B>make-big-lm</B> <B>-name</B> <I>name</I> <B>-read</B> <I>counts</I> <B>-lm</B> <I>new-model</I> \
+	[ <B>-trust-totals</B> ] [ <B>-max-per-file</B> <I>M</I> ] [ <B>-ngram-filter</B> <I>filter</I> ] \
+	[ \fB-text <I>file</I> ] [ <I>ngram-options</I> ... ]
+<B>replace-unk-words</B> <B>vocab=</B><I>vocab</I> [ <I>textfile</I> ... ]
+<B>replace-words-with-classes</B> <B>classes=</B><I>classes</I> [ <B>outfile=</B><I>counts</I> ] \
+	[ <B>normalize=0</B>|<B>1</B> ] [ <B>addone=</B><I>K</I> ] [ <B>have_counts=1</B> ] [ <B>partial=1</B> ] \
+	[ <I>textfile</I> ... ]
+<B>uniform-classes</B> <I>classes</I> <B>&gt;</B> <I>new-classes</I>
+<B>make-diacritic-map</B> <I>vocab</I>
+<B>vp2text</B> [ <I>textfile</I> ... ]
+<B>compute-oov-rate</B> <I>vocab</I> [ <I>counts</I> ... ]
+</PRE>
+<H2> DESCRIPTION </H2>
+These scripts perform convenience tasks associated with the training of
+language models.
+They complement and extend the basic N-gram model estimator in
+<A HREF="ngram-count.1.html">ngram-count(1)</A>.
+<P>
+Since these tools are implemented as scripts they don't automatically
+input or output compressed data files correctly, unlike the main
+SRILM tools.
+However, since most scripts work with data from standard input or
+to standard output (by leaving out the file argument, or specifying it 
+as ``-'') it is easy to combine them with 
+<A HREF="gunzip.1.html">gunzip(1)</A>
+or
+<A HREF="gzip.1.html">gzip(1)</A>
+on the command line.
+<P>
+Also note that many of the scripts take their options with the 
+<A HREF="gawk.1.html">gawk(1)</A>
+syntax
+<I>option</I><B>=</B><I>value</I><B></B><I></I><B></B><I></I>
+instead of the more common
+<B>-</B><I>option</I><B></B><I></I><B></B><I></I><B></B>
+<I>value</I>.<I></I><I></I><I></I>
+<P>
+<B> get-gt-counts </B>
+computes the counts-of-counts statistics needed in Good-Turing smoothing.
+The frequencies of counts up to
+<I> K </I>
+are computed (default is 10).
+The results are stored in a series of files with root
+<I>name</I>,<I></I><I></I><I></I>
+<B><I>name</I>.gt1counts</B>,<B></B><B></B><B></B>
+<B><I>name</I>.gt2counts</B>,<B></B><B></B><B></B>
+..., 
+<B><I>name</I>.gt<I>N</I>counts</B>.<B></B><B></B><B></B>
+It is assumed that the input counts have been properly merged, i.e.,
+that there are no duplicated N-grams.
+<P>
+<B> make-gt-discounts </B>
+takes one of the output files of
+<B> get-gt-counts </B>
+and computes the corresponding Good-Turing discounting factors.
+The output can then be passed to
+<A HREF="ngram-count.1.html">ngram-count(1)</A>
+via the 
+<B>-gt</B><I>n</I><B></B><I></I><B></B><I></I><B></B>
+options to control the smoothing during model estimation.
+Precomputing the GT discounting in this fashion has the advantage that the
+GT statistics are not affected by restricting N-grams to a limited vocabulary.
+Also, 
+<B>get-gt-counts</B>/<B>make-gt-discounts</B><B></B><B></B>
+can process arbitrarily large count files, since they do not need to
+read the counts into memory (unlike
+<B>ngram-count</B>).<B></B><B></B><B></B>
+<P>
+<B> make-abs-discount </B>
+computes the absolute discounting constant needed for the
+<B> ngram-count </B>
+<B>-cdiscount</B><I>n</I><B></B><I></I><B></B><I></I><B></B>
+options.
+Input is one of the files produced by 
+<B>get-gt-counts</B>.<B></B><B></B><B></B>
+<P>
+<B> make-kn-discount </B>
+computes the discounting constants used by the modified Kneser-Ney
+smoothing method.
+Input is one of the files produced by 
+<B>get-gt-counts</B>.<B></B><B></B><B></B>
+<P>
+<B> make-batch-counts </B>
+performs the first stage in the construction of very large N-gram count 
+files.
+<I> file-list </I>
+is a list of input text files.
+Lines starting with a `#' character are ignored.
+These files will be grouped into batches of size
+<I> batch-size </I>
+(default 10)
+that are then processed in one run of
+<B> ngram-count </B>
+each.
+For maximum performance,
+<I> batch-size </I>
+should be as large as possible without triggering paging.
+Optionally, a
+<I> filter </I>
+script or program can be given to condition the input texts.
+The N-gram count files are left in directory
+<I> count-dir </I>
+(``counts'' by default), where they can be found by a subsequent
+run of
+<B>merge-batch-counts</B>.<B></B><B></B><B></B>
+All following
+<I> options </I>
+are passed to 
+<B>ngram-count</B>,<B></B><B></B><B></B>
+e.g., to control N-gram order, vocabulary, etc.
+(no options triggering model estimation should be included).
+<P>
+<B> merge-batch-counts </B>
+completes the construction of large count files by merging the 
+batched counts left in 
+<I> count-dir </I>
+until a single count file is produced.
+Optionally, a
+<I> file-list </I>
+of count files to combine can be specified; otherwise all count files
+in
+<I> count-dir </I>
+from a prior run of
+<B> make-batch-counts </B>
+will be merged.
+A number as second argument restarts the merging process at iteration
+<I>start-iter</I>.<I></I><I></I><I></I>
+This is convenient if merging fails to complete for some reason
+(e.g., for temporary lack of disk space).
+The 
+<B> -float-counts </B>
+option should be specific if the counts are real-valued.
+The
+<B> -l </B>
+option specifies the number of files to merge in each iteration;
+the default is 2.
+<P>
+<B> make-google-ngrams </B>
+takes a sorted count file as input and creates an indexed directory
+structure, in a format developed by Google to store very large N-gram
+collections.
+The resulting directory can then be used with the
+<A HREF="ngram-count.1.html">ngram-count(1)</A>
+<B> -read-google </B>
+option.
+Optional arguments specify the output directory
+<I> dir </I>
+and the size
+<I> N </I>
+of individual N-gram files
+(default is 10 million N-grams per file).
+The 
+<B> gzip=0 </B>
+option writes plain, as opposed to compressed, files.
+The 
+<B> yahoo=1 </B>
+option may be used to read N-gram count files in Yahoo-GALE format.
+Note that the count files have to first be sorted lexicographically
+in a separate invocation of sort.
+<P>
+<B> continuous-ngram-count </B>
+generates N-grams that span line breaks (which are usually taken to
+be sentence boundaries).
+To count N-grams across line breaks use
+<PRE>
+	continuous-ngram-count <I>textfile</I> | ngram-count -read -
+</PRE>
+The argument
+<I> N </I>
+controls the order of N-grams counted (default 3), and
+should match  the argument of 
+<B> ngram-count </B>
+<B>-order</B>.<B></B><B></B><B></B>
+<P>
+<B> tolower-ngram-counts </B>
+maps an N-gram counts file to all-lowercase.
+No merging of N-grams that become identical in the process is done.
+<P>
+<B> uniq-ngram-counts </B>
+combines successive counts that pertain to the same N-gram into a single
+line.
+This only affects repeated N-grams that appear on successive lines, so a prior
+sort command is typically used, e.g.,
+<BR>
+	tolower-ngram-counts <I>INPUT</I> | sort | uniq-ngram-counts &gt; \fiOUTPUT\fP
+<BR>
+would do much of the same thing as
+<BR>
+	ngram-counts -read <I>INPUT</I> -tolower -sort -write <I>OUTPUT</I>
+<BR>
+but in a more memory-efficient manner (without reading all counts into memory).
+<P>
+<B> reverse-ngram-counts </B>
+reverses the word order of N-grams in a counts file or stream.
+For example, to recompute lower-order counts from higher-order ones,
+but do the summation over preceding words (rather than following words,
+as in 
+<A HREF="ngram-count.1.html">ngram-count(1)</A>),
+use
+<BR>
+	reverse-ngram-counts <I>count-file</I> | \
+<BR>
+	ngram-count -read - -recompute -write - | \
+<BR>
+	reverse-ngram-counts &gt; <I>new-counts</I>
+<P>
+<B> reverse-text </B>
+reverses the word order in text files, line-by-line.
+Start- and end-sentence tags, if present, will be preserved.
+This reversal is appropriate for preprocessing training data
+for LMs that are meant to be used with the 
+<B> ngram </B>
+<B>-reverse</B><B></B><B></B><B></B>
+option.
+<P>
+<B> split-tagged-ngrams </B>
+expands N-gram count of word/tag pairs into mixed N-grams 
+of words and tags.
+The optional 
+<B>separator=</B><I>S</I><B></B><I></I><B></B><I></I><B></B>
+argument allows the delimiting character, which defaults to "/",
+to be modified.
+<P>
+<B> make-big-lm </B>
+constructs large N-gram models in a more memory-efficient way than
+<B> ngram-count </B>
+by itself.
+It does so by precomputing the Good-Turing or Kneser-Ney smoothing parameters
+from the full set of counts, and then instructing
+<B> ngram-count </B>
+to store only a subset of the counts in memory,
+namely those of N-grams to be retained in the model.
+The
+<I> name </I>
+parameter is used to name various auxiliary files.
+<I> counts </I>
+contains the raw N-gram counts; it may be (and usually is) a compressed file.
+Unlike with
+<B>ngram-count</B>,<B></B><B></B><B></B>
+the
+<B> -read </B>
+option can be repeated to concatenate multiple count files, but the arguments
+must be regular files; reading from stdin is not supported.
+If Good-Turing smoothing is used and the file contains complete lower-order
+counts corresponding to the
+sums of higher-order counts, then the
+<B> -trust-totals </B>
+options may be given for efficiency.
+The
+<B> -text </B>
+option specifies a test set to which the LM is to be applied, and 
+builds the LM in such a way that only N-gram context occurring in the
+test data are included in the model, this saving space at the expense of
+generality.
+All other
+<I> options </I>
+are passed to 
+<B> ngram-count </B>
+(only options affecting model estimation should be given).
+Smoothing methods other than Good-Turing, modified Kneser-Ney and Witten-Bell are not
+supported by
+<B>make-big-lm</B>.<B></B><B></B><B></B>
+Kneser-Ney smoothing also requires enough disk space to compute and store the
+modified lower-order counts used by the KN method.
+This is done using the 
+<B> merge-batch-counts </B>
+command, and the
+<B> -max-per-file </B>
+option controls how many counts are to be stored per batch, and 
+should be chosen so that these batches fit in real memory.
+The 
+<B> -ngram-filter </B>
+option allows specification of a command through which the input N-gram
+counts are piped, e.g., to convert from some non-standard format.
+<P>
+<B> make-kn-counts </B>
+computes the modified lower-order counts used by the KN smoothing method.
+It is invoked as a helper scripts by 
+<B> make-big-lm . </B>
+<P>
+<B> replace-unk-words </B>
+replaces words not appearing in the 
+<I> vocab </I>
+file with the unknown word tag
+<B>&lt;unk&gt;</B>.<B></B><B></B><B></B>
+This is useful for preparing text data for LM training.
+Only the first token on each line in the 
+<I> vocab </I>
+file is significant, so both word lists and unigram count files may be used.
+<P>
+<B> replace-words-with-classes </B>
+replaces expansions of word classes with the corresponding class labels.
+<I> classes </I>
+specifies class expansions in 
+<A HREF="classes-format.5.html">classes-format(5)</A>.
+Substitutions are performed at each word position in left to right order,
+with the longest matching right-hand-side of any class expansion.
+If several classes match a pseudo-random choice is made.
+Optionally, the file
+<I> counts </I>
+will receive the expansion counts resulting from the replacements.
+<B> normalize=0 </B>
+or
+<B> 1 </B>
+indicates whether the counts should be normalized to probabilities
+(default is 1).
+The
+<B> addone </B>
+option may be used to smooth the expansion probabilities by adding 
+<I> K </I>
+to each count (default 1).
+The option 
+<B> have_counts=1 </B>
+indicates that the input consists of N-gram counts and that replacement
+should be performed on them.
+Note this will not merge counts that have been mapped to identical N-grams,
+since this is done automatically when 
+<A HREF="ngram-count.1.html">ngram-count(1)</A>
+reads count data.
+The option
+<B> partial=1 </B>
+prevents multi-word class expansions from being replaced when more than
+one space character occurs inbetween the words.
+<P>
+<B> uniform-classes </B>
+takes a file in
+<A HREF="classes-format.5.html">classes-format(5)</A>
+and adds uniform probabilities to expansions that don't have a probability
+explicitly stated.
+<P>
+<B> make-diacritic-map </B>
+constructs a map file that pairs an ASCII-fied version of the words in
+<I> vocab </I>
+with all the occurring non-ASCII word forms.
+Such a map file can then be used with
+<A HREF="disambig.1.html">disambig(1)</A>
+and a language model
+to reconstruct the non-ASCII word form with diacritics from an ASCII
+text.
+<P>
+<B> vp2text </B>
+is a reimplementation of the filter used in the DARPA Hub-3 and Hub-4 
+CSR evaluations to convert ``verbalized punctuation'' texts to
+language model training data.
+<P>
+<B> compute-oov-rate </B>
+determines the out-of-vocabulary rate of a corpus from its unigram
+<I> counts </I>
+and a target vocabulary list in
+<I>vocab</I>.<I></I><I></I><I></I>
+<H2> SEE ALSO </H2>
+<A HREF="ngram-count.1.html">ngram-count(1)</A>, <A HREF="ngram.1.html">ngram(1)</A>, <A HREF="classes-format.5.html">classes-format(5)</A>, <A HREF="disambig.1.html">disambig(1)</A>, <A HREF="select-vocab.1.html">select-vocab(1)</A>.
+<H2> BUGS </H2>
+Some of the tools could be generalized and/or made more robust to
+misuse.
+<BR>
+Several of these tools are gawk scripts and depending on prevailing locale
+settings might require an LC_NUMERIC=C environment variable.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;anstolck@microsoft.com&gt;
+<BR>
+Copyright 1995-2008 SRI International
+<BR>
+Copyright 2013 Microsoft Corp.
+</BODY>
+</HTML>

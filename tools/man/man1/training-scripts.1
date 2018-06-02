@@ -1,0 +1,387 @@
+.\" $Id: training-scripts.1,v 1.26 2013/12/11 08:43:38 stolcke Exp $
+.TH training-scripts 1 "$Date: 2013/12/11 08:43:38 $" "SRILM Tools"
+.SH NAME
+training-scripts, compute-oov-rate, continuous-ngram-count, get-gt-counts, make-abs-discount, make-batch-counts, make-big-lm, make-diacritic-map,  make-google-ngrams, make-gt-discounts, make-kn-counts, make-kn-discounts, merge-batch-counts, replace-unk-words, replace-words-with-classes, reverse-ngram-counts, split-tagged-ngrams, reverse-text, tolower-ngram-counts, uniform-classes, uniq-ngram-counts, vp2text \- miscellaneous conveniences for language model training
+.SH SYNOPSIS
+.nf
+\fBget-gt-counts\fP \fBmax=\fP\fIK\fP \fBout=\fP\fIname\fP [ \fIcounts\fP ... ] \fB>\fP \fIgtcounts\fP
+\fBmake-abs-discount\fP \fIgtcounts\fP
+\fBmake-gt-discounts\fP \fBmin=\fP\fImin\fP \fBmax=\fP\fImax\fP \fIgtcounts\fP
+\fBmake-kn-counts\fP \fBorder=\fP\fIN\fP \fBmax_per_file=\fP\fIM\fP \fBoutput=\fP\fIfile\fP \\
+	[ \fBno_max_order=1\fP ] \fB>\fP \fIcounts\fP
+\fBmake-kn-discounts\fP \fBmin=\fP\fImin\fP \fIgtcounts\fP
+\fBmake-batch-counts\fP \fIfile-list\fP \\
+	[ \fIbatch-size\fP [ \fIfilter\fP [ \fIcount-dir\fP [ \fIoptions\fP ... ] ] ] ]
+\fBmerge-batch-counts\fP [ \fB\-float-counts\fP ] [ \fB\-l\fP \fIN\fP ] \fIcount-dir\fP [ \fIfile-list\fP|\fIstart-iter\fP ]
+\fBmake-google-ngrams\fP [ \fBdir=\fP\fIDIR\fP ] [ \fBper_file=\fP\fIN\fP ] [ \fBgzip=0\fP ] \\
+	[ \fByahoo=1\fP ] [ \fIcounts-file\fP ... ]
+\fBcontinuous-ngram-count\fP [ \fBorder=\fP\fIN\fP ] [ \fItextfile\fP ... ]
+\fBtolower-ngram-counts\fP [ \fIcounts-file\fP ... ]
+\fBuniq-ngram-counts\fP [ \fIcounts-file\fP ... ]
+\fBreverse-ngram-counts\fP [ \fIcounts-file\fP ... ]
+\fBreverse-text\fP [ \fItextfile\fP ... ]
+\fBsplit-tagged-ngrams\fP [ \fBseparator=\fP\fIS\fP ] [ \fIcounts-file\fP ... ]
+\fBmake-big-lm\fP \fB\-name\fP \fIname\fP \fB\-read\fP \fIcounts\fP \fB\-lm\fP \fInew-model\fP \\
+	[ \fB\-trust-totals\fP ] [ \fB\-max-per-file\fP \fIM\fP ] [ \fB\-ngram-filter\fP \fIfilter\fP ] \\
+	[ \fB\-text \fIfile\fP ] [ \fIngram-options\fP ... ]
+\fBreplace-unk-words\fP \fBvocab=\fP\fIvocab\fP [ \fItextfile\fP ... ]
+\fBreplace-words-with-classes\fP \fBclasses=\fP\fIclasses\fP [ \fBoutfile=\fP\fIcounts\fP ] \\
+	[ \fBnormalize=0\fP|\fB1\fP ] [ \fBaddone=\fP\fIK\fP ] [ \fBhave_counts=1\fP ] [ \fBpartial=1\fP ] \\
+	[ \fItextfile\fP ... ]
+\fBuniform-classes\fP \fIclasses\fP \fB>\fP \fInew-classes\fP
+\fBmake-diacritic-map\fP \fIvocab\fP
+\fBvp2text\fP [ \fItextfile\fP ... ]
+\fBcompute-oov-rate\fP \fIvocab\fP [ \fIcounts\fP ... ]
+.fi
+.SH DESCRIPTION
+These scripts perform convenience tasks associated with the training of
+language models.
+They complement and extend the basic N-gram model estimator in
+.BR ngram-count (1).
+.PP
+Since these tools are implemented as scripts they don't automatically
+input or output compressed data files correctly, unlike the main
+SRILM tools.
+However, since most scripts work with data from standard input or
+to standard output (by leaving out the file argument, or specifying it 
+as ``-'') it is easy to combine them with 
+.BR gunzip (1)
+or
+.BR gzip (1)
+on the command line.
+.PP
+Also note that many of the scripts take their options with the 
+.BR gawk (1)
+syntax
+.IB option = value
+instead of the more common
+.BI - option
+.IR value .
+.PP
+.B get-gt-counts
+computes the counts-of-counts statistics needed in Good-Turing smoothing.
+The frequencies of counts up to
+.I K 
+are computed (default is 10).
+The results are stored in a series of files with root
+.IR name ,
+.BR \fIname\fP.gt1counts ,
+.BR \fIname\fP.gt2counts ,
+\&..., 
+.BR \fIname\fP.gt\fIN\fPcounts .
+It is assumed that the input counts have been properly merged, i.e.,
+that there are no duplicated N-grams.
+.PP
+.B make-gt-discounts
+takes one of the output files of
+.B get-gt-counts
+and computes the corresponding Good-Turing discounting factors.
+The output can then be passed to
+.BR ngram-count (1)
+via the 
+.BI \-gt n
+options to control the smoothing during model estimation.
+Precomputing the GT discounting in this fashion has the advantage that the
+GT statistics are not affected by restricting N-grams to a limited vocabulary.
+Also, 
+.BR get-gt-counts / make-gt-discounts
+can process arbitrarily large count files, since they do not need to
+read the counts into memory (unlike
+.BR ngram-count ).
+.PP
+.B make-abs-discount
+computes the absolute discounting constant needed for the
+.B ngram-count
+.BI \-cdiscount n
+options.
+Input is one of the files produced by 
+.BR get-gt-counts . 
+.PP
+.B make-kn-discount
+computes the discounting constants used by the modified Kneser-Ney
+smoothing method.
+Input is one of the files produced by 
+.BR get-gt-counts . 
+.PP
+.B make-batch-counts
+performs the first stage in the construction of very large N-gram count 
+files.
+.I file-list
+is a list of input text files.
+Lines starting with a `#' character are ignored.
+These files will be grouped into batches of size
+.I batch-size 
+(default 10)
+that are then processed in one run of
+.B ngram-count 
+each.
+For maximum performance,
+.I batch-size 
+should be as large as possible without triggering paging.
+Optionally, a
+.I filter
+script or program can be given to condition the input texts.
+The N-gram count files are left in directory
+.I count-dir
+(``counts'' by default), where they can be found by a subsequent
+run of
+.BR merge-batch-counts .
+All following
+.I options
+are passed to 
+.BR ngram-count ,
+e.g., to control N-gram order, vocabulary, etc.
+(no options triggering model estimation should be included).
+.PP
+.B merge-batch-counts
+completes the construction of large count files by merging the 
+batched counts left in 
+.I count-dir
+until a single count file is produced.
+Optionally, a
+.I file-list 
+of count files to combine can be specified; otherwise all count files
+in
+.I count-dir
+from a prior run of
+.B make-batch-counts
+will be merged.
+A number as second argument restarts the merging process at iteration
+.IR start-iter .
+This is convenient if merging fails to complete for some reason
+(e.g., for temporary lack of disk space).
+The 
+.B \-float-counts
+option should be specific if the counts are real-valued.
+The
+.B \-l
+option specifies the number of files to merge in each iteration;
+the default is 2.
+.PP
+.B make-google-ngrams
+takes a sorted count file as input and creates an indexed directory
+structure, in a format developed by Google to store very large N-gram
+collections.
+The resulting directory can then be used with the
+.BR ngram-count (1)
+.B \-read-google
+option.
+Optional arguments specify the output directory
+.I dir
+and the size
+.I N
+of individual N-gram files
+(default is 10 million N-grams per file).
+The 
+.B gzip=0 
+option writes plain, as opposed to compressed, files.
+The 
+.B yahoo=1
+option may be used to read N-gram count files in Yahoo-GALE format.
+Note that the count files have to first be sorted lexicographically
+in a separate invocation of sort.
+.PP
+.B continuous-ngram-count
+generates N-grams that span line breaks (which are usually taken to
+be sentence boundaries).
+To count N-grams across line breaks use
+.nf
+	continuous-ngram-count \fItextfile\fP | ngram-count -read -
+.fi
+The argument
+.I N
+controls the order of N-grams counted (default 3), and
+should match  the argument of 
+.B ngram-count
+.BR \-order .
+.PP
+.B tolower-ngram-counts
+maps an N-gram counts file to all-lowercase.
+No merging of N-grams that become identical in the process is done.
+.PP
+.B uniq-ngram-counts
+combines successive counts that pertain to the same N-gram into a single
+line.
+This only affects repeated N-grams that appear on successive lines, so a prior
+sort command is typically used, e.g.,
+.br
+	tolower-ngram-counts \fIINPUT\fP | sort | uniq-ngram-counts > \fiOUTPUT\fP
+.br
+would do much of the same thing as
+.br
+	ngram-counts -read \fIINPUT\fP -tolower -sort -write \fIOUTPUT\fP
+.br 
+but in a more memory-efficient manner (without reading all counts into memory).
+.PP
+.B reverse-ngram-counts
+reverses the word order of N-grams in a counts file or stream.
+For example, to recompute lower-order counts from higher-order ones,
+but do the summation over preceding words (rather than following words,
+as in 
+.BR ngram-count (1)),
+use
+.br
+	reverse-ngram-counts \fIcount-file\fP | \\
+.br
+	ngram-count -read - -recompute -write - | \\
+.br
+	reverse-ngram-counts > \fInew-counts\fP
+.PP
+.B reverse-text
+reverses the word order in text files, line-by-line.
+Start- and end-sentence tags, if present, will be preserved.
+This reversal is appropriate for preprocessing training data
+for LMs that are meant to be used with the 
+.B ngram
+.BR \-reverse
+option.
+.PP
+.B split-tagged-ngrams
+expands N-gram count of word/tag pairs into mixed N-grams 
+of words and tags.
+The optional 
+.BI separator= S
+argument allows the delimiting character, which defaults to "/",
+to be modified.
+.PP
+.B make-big-lm
+constructs large N-gram models in a more memory-efficient way than
+.B ngram-count
+by itself.
+It does so by precomputing the Good-Turing or Kneser-Ney smoothing parameters
+from the full set of counts, and then instructing
+.B ngram-count 
+to store only a subset of the counts in memory,
+namely those of N-grams to be retained in the model.
+The
+.I name
+parameter is used to name various auxiliary files.
+.I counts 
+contains the raw N-gram counts; it may be (and usually is) a compressed file.
+Unlike with
+.BR ngram-count ,
+the
+.B \-read
+option can be repeated to concatenate multiple count files, but the arguments
+must be regular files; reading from stdin is not supported.
+If Good-Turing smoothing is used and the file contains complete lower-order
+counts corresponding to the
+sums of higher-order counts, then the
+.B \-trust-totals 
+options may be given for efficiency.
+The
+.B \-text 
+option specifies a test set to which the LM is to be applied, and 
+builds the LM in such a way that only N-gram context occurring in the
+test data are included in the model, this saving space at the expense of
+generality.
+All other
+.I options
+are passed to 
+.B ngram-count 
+(only options affecting model estimation should be given).
+Smoothing methods other than Good-Turing, modified Kneser-Ney and Witten-Bell are not
+supported by
+.BR make-big-lm .
+Kneser-Ney smoothing also requires enough disk space to compute and store the
+modified lower-order counts used by the KN method.
+This is done using the 
+.B merge-batch-counts
+command, and the
+.B \-max-per-file
+option controls how many counts are to be stored per batch, and 
+should be chosen so that these batches fit in real memory.
+The 
+.B \-ngram-filter 
+option allows specification of a command through which the input N-gram
+counts are piped, e.g., to convert from some non-standard format.
+.PP
+.B make-kn-counts
+computes the modified lower-order counts used by the KN smoothing method.
+It is invoked as a helper scripts by 
+.B make-big-lm .
+.PP
+.B replace-unk-words
+replaces words not appearing in the 
+.I vocab
+file with the unknown word tag
+.BR <unk> .
+This is useful for preparing text data for LM training.
+Only the first token on each line in the 
+.I vocab
+file is significant, so both word lists and unigram count files may be used.
+.PP
+.B replace-words-with-classes
+replaces expansions of word classes with the corresponding class labels.
+.I classes
+specifies class expansions in 
+.BR classes-format (5).
+Substitutions are performed at each word position in left to right order,
+with the longest matching right-hand-side of any class expansion.
+If several classes match a pseudo-random choice is made.
+Optionally, the file
+.I counts
+will receive the expansion counts resulting from the replacements.
+.B normalize=0
+or
+.B 1
+indicates whether the counts should be normalized to probabilities
+(default is 1).
+The
+.B addone 
+option may be used to smooth the expansion probabilities by adding 
+.I K 
+to each count (default 1).
+The option 
+.B have_counts=1
+indicates that the input consists of N-gram counts and that replacement
+should be performed on them.
+Note this will not merge counts that have been mapped to identical N-grams,
+since this is done automatically when 
+.BR ngram-count (1)
+reads count data.
+The option
+.B partial=1
+prevents multi-word class expansions from being replaced when more than
+one space character occurs inbetween the words.
+.PP
+.B uniform-classes
+takes a file in
+.BR classes-format (5)
+and adds uniform probabilities to expansions that don't have a probability
+explicitly stated.
+.PP
+.B make-diacritic-map
+constructs a map file that pairs an ASCII-fied version of the words in
+.I vocab
+with all the occurring non-ASCII word forms.
+Such a map file can then be used with
+.BR disambig (1)
+and a language model
+to reconstruct the non-ASCII word form with diacritics from an ASCII
+text.
+.PP
+.B vp2text
+is a reimplementation of the filter used in the DARPA Hub-3 and Hub-4 
+CSR evaluations to convert ``verbalized punctuation'' texts to
+language model training data.
+.PP
+.B compute-oov-rate
+determines the out-of-vocabulary rate of a corpus from its unigram
+.I counts
+and a target vocabulary list in
+.IR vocab .
+.SH "SEE ALSO"
+ngram-count(1), ngram(1), classes-format(5), disambig(1), select-vocab(1).
+.SH BUGS
+Some of the tools could be generalized and/or made more robust to
+misuse.
+.br
+Several of these tools are gawk scripts and depending on prevailing locale
+settings might require an LC_NUMERIC=C environment variable.
+.SH AUTHOR
+Andreas Stolcke <anstolck@microsoft.com>
+.br
+Copyright 1995-2008 SRI International
+.br
+Copyright 2013 Microsoft Corp.

@@ -1,0 +1,641 @@
+.\" $Id: nbest-scripts.1,v 1.45 2016/09/20 18:50:46 stolcke Exp $
+.TH nbest-scripts 1 "$Date: 2016/09/20 18:50:46 $" "SRILM Tools"
+.SH NAME
+nbest-scripts, combine-rover-controls, compare-sclite, compute-best-rover-mix, compute-sclite-nbest, compute-sclite, fix-ctm, merge-nbest, nbest-error, nbest-posteriors, nbest-rover, nbest-vocab, nbest-words, nbest2-to-nbest1, rescore-acoustic, rescore-decipher, rescore-reweight, search-rover-combo, sentid-to-sclite \- rescore and evaluate N-best lists
+.SH SYNOPSIS
+.nf
+\fBrescore-decipher\fP [ \fB\-bytelog\fP ] [ \fB\-nodecipherlm\fP ] [ \fB\-multiwords\fP ] \\
+	[ \fB\-multi-char\fP \fIC\fP ] [ \fB\-pretty\fP \fImapfile\fP ] \\
+	[ \fB\-ngram-tool\fP \fIprogram\fP ][ \fB\-filter\fP \fIcommand\fP ] \\
+	[ \fB\-norescore\fP ] [ \fB\-lm-only\fP ] [ \fB\-count-oovs\fP ] [ \fB\-limit-vocab\fP ] \\
+	[ \fB\-vocab-aliases\fP \fImapfile\fP ] [ \fB\-fast\fP ] \\
+	\fInbest-file-list\fP \fIscore-dir\fP \fB\-lm\fP ... \fIlm-options\fP ...
+\fBrescore-acoustic\fP \fIold-nbest-dir\fP|\fIold-file-list\fP \fIold-ac-weight\fP \\
+	\fInew-score-dir1\fP \fInew-ac-weight1\fP ... \fInew-nbest-dir\fP [ \fImax-nbest\fP ]
+\fBrescore-reweight\fP [ \fB\-multiwords\fP ] [ \fB\-multi-char\fP \fIC\fP ] \fIscore-dir\fP|\fIfile-list\fP \\
+	[ \fIlmw\fP [ \fIwtw\fP [ \fIscore-dir1 score-weight1\fP ... ] [ \fImax-nbest\fP ]]]
+\fBrescore-minimize-wer\fP \fIscore-dir\fP [ \fIlmw\fP [ \fIwtw\fP [ \fImax-nbest\fP ]]]
+\fBnbest2-to-nbest1\fP [ \fInbest-file\fP ]
+\fBnbest-rover\fP [ \fIsentid-list\fP | \fB-\fP ] \fIcontrol-file\fP \\
+	[ \fIposterior-file\fP [ \fInbest-lattice-options\fP ] ]
+\fBcombine-rover-controls\fP [ \fBlambda=\fP\fIweights\fP ] [ \fBpostscale=\fP\fIS\fP ] \\
+	[ \fBkeeppaths=1\fP ] \fIrover-control\fP [ ... ]
+\fBcompute-best-rover-mix\fP [ \fBlambda=\fP\fIweights\fP ] [ \fBaddone=\fP\fIc\fP ] [ \fBprecision=\fP\fIp\fP ] \\
+	[ \fBwrite_weights=\fP\fIfile\fP ] \fIreference-posteriors-output\fP
+\fBsearch-rover-combo\fP [ \fB\-scorer\fP \fIscript\fP ] [ \fB\-datadir\fP \fIdir\fP ] \\
+	[ \fB\-weights\fP \fIweights\fP ] [ \fB\-sentids\fP \fIlist\fP ] \\
+	[ \fB\-refs\fP \fIrefs\fP ] [ \fB\-smooth-weight\fP \fIS\fP ] \\
+	[ \fB\-J\fP \fIn\fP ] \fIlist-of-control-files\fP
+\fBnbest-posteriors\fP [ \fBweight=\fP\fIW\fP ] [ \fBlmw=\fP\fIlmw\fP ] [ \fBwtw=\fP\fIwtw\fP ] [ \fBpostscale=\fP\fIS\fP ] \\
+	[ \fBmax_nbest=\fP\fIM\fP ] \fInbest-file\fP
+\fBmerge-nbest\fP [ \fBmultiwords=1\fP ] [ \fBmultichar=\fP\fIC\fP ] [ \fBnopauses=1\fP ] \\
+	[ \fBmax_nbest=\fP\fIM\fP ] \fInbest-file\fP ...
+\fBnbest-vocab\fP [ \fInbest-list\fP ... ]
+\fBnbest-words\fP [ \fInbest-list\fP ... ]
+\fBnbest-error\fP \fIscore-dir\fP|\fIfile-list\fP \fIrefs\fP [ \fInbest-lattice-option\fP ... ]
+\fBsentid-to-sclite\fP \fIhyps\fP
+\fBsentid-to-ctm\fP \fIhyps\fP
+\fBfix-ctm\fP \fIctmfile\fP
+\fBcompute-sclite\fP \fB\-r\fP \fIrefs\fP \fB\-h\fP \fIhyps\fP [ \fB\-h\fP \fIhyps\fP ... ] [ \fB\-S\fP \fIsubset\fP ... ] \\
+	[ \fB\-multiwords\fP|\fB\-M\fP ] [ \fB\-noperiods\fP ] [ \fB\-R\fP ] [ \fB\-g\fP \fIglmfile\fP ] [ \fB\-H\fP ] \\
+	[ \fB\-v\fP ] [ \fIsclite-options\fP ...]
+\fBcompute-sclite-nbest\fP \fIfile-list\fP \fIoutput-dir\fP -r \fIrefs\fP [ \fB\-filter\fP \fIscript\fP ] [ \fIsclite-options\fP ...]
+\fBcompare-sclite\fP \fB\-r\fP \fIrefs\fP \fB\-h1\fP \fIhyps1\fP \fB\-h2\fP \fIhyps2\fP [ \fB\-S\fP \fIsubset\fP ] \\
+	[ \fIcompute-sclite-options\fP ... ]
+.fi
+.SH DESCRIPTION
+These scripts perform common tasks on N-best hypotheses in 
+.BR nbest-format (5),
+especially those needed for rescoring and extracting and evaluating
+1-best hypotheses.
+.PP
+.B rescore-decipher
+applies a language model implemented by 
+.BR ngram (1)
+to the N-best lists listed in
+.IR nbest-file-list .
+The N-best files may be in compressed format.
+The rescored N-best lists are stored in directory
+.IR score-dir .
+All following arguments are passed to 
+.BR ngram (1)
+and are used to control the language model.
+The following options are handled by 
+.B rescore-decipher
+itself:
+.TP 20
+.B \-bytelog 
+causes scores to be output on the bytelog scale
+(see 
+.BR nbest-format (1)).
+.TP
+.B \-nodecipherlm
+indicates that the recognizer language model is not being provided
+(with
+.BR \-decipher-lm ).
+(This is only possible if the N-best lists are not in ``NBestList1.0'' format.)
+.TP
+.B \-multiwords
+specifies that N-best lists contain words joined by underscores, which are
+to be split into their component prior to rescoring.
+.TP
+.BI \-multi-char " C"
+defines a multiword separator character.
+The default is underscore ``_''.
+.TP
+.BI \-pretty " mapfile"
+specifies a word mapping file that allows individual words to be globally
+replaced by strings of zero or more other words, e.g., to remove vocabulary
+mismatches between the input N-best lists and the rescoring LM.
+The 
+.I mapfile
+contains one mapping per line, the first field specifying the word to be
+replaced and subsequent fields forming the replacement string.
+.TP
+.BI \-ngram-tool " program"
+specifies a non-standard
+.I program
+to perform the actual LM evaluation
+(by default, 
+.BR ngram (1)
+is used).
+Such a program must understand
+.BR ngram 's
+command-line options related to N-best rescoring.
+.TP
+.BI \-filter " command"
+specifies a
+.I command
+that is used to filter the N-best hypotheses prior to
+evaluating the language model.
+This may be used for more general textual rewriting so that non-standard
+LMs can be applied.
+The output N-best lists will contain the filtered hypotheses.
+.TP
+.B \-norescore
+causes N-best lists to be simply reformatted from one of the Decipher formats
+into the SRILM N-best format, separating acoustic and LM scores, without
+replacing the existing LM scores.
+In this case only the 
+.BR ngram (1)
+options
+.BR \-decipher-lmw
+and 
+.BR \-decipher-wtw
+are relevant, and others are ignored.
+.B \-norescore 
+and 
+.B \-filter
+may be used together to perform textual rewriting of N-best lists.
+.TP
+.B \-lm-only
+dumps out LM scores only, instead of complete N-best lists.
+.TP
+.BR \-count-oovs
+writes the count of out-of-vocabulary and zero-probability words to
+the output score files (instead of rescored N-best lists).
+.TP
+.B \-limit-vocab
+saves memory by arranging for
+.BR ngram (1) 
+to load only those N-gram parameters that are relevant to the vocabulary
+of the N-best lists to be rescored.
+After determining the N-best vocabulary the 
+.B \-limit-vocab
+option is passed to 
+.BR ngram (1).
+.TP
+.BI \-vocab-aliases " map"
+declares that certain words are to be treated as alternative spellings 
+of the same word for LM evaluation; see the same option for 
+.BR ngram (1).
+The 
+.I map
+is filtered of unused words when used in conjunction with
+.BR \-limit-vocab ,
+and then passed on to 
+.BR ngram (1).
+.TP
+.B \-fast
+performs rescoring using only functions built into
+.BR ngram (1).
+This avoids some computational and I/O overhead and therefore runs faster,
+but the options
+.BR \-filter ,
+.BR \-pretty ,
+and 
+.B \-lm-only
+are not supported, and 
+.B \-nodecipherlm
+is obligatory.
+.PP
+.B rescore-acoustic
+replaces the acoustic scores in a set of N-best lists by a weighted 
+combination of new scores.
+The old N-best lists are given by either a directory
+.I old-score-dir
+or a filelist
+.IR old-file-list ;
+.I old-ac-weight
+is the weight given to the old scores.
+Directories containing the new scores are listed alternating with the
+corresponding weights; each score directory must contain one 
+file per waveform segment, each having the same file basenames as 
+the original N-best lists.
+The new scores should appear in a single column per file, one per line.
+The N-best lists containing the new combined acoustic scores are written to 
+.IR new-nbest-dir .
+The optional
+.I max-nbest
+argument can be used to limit the length of the N-best lists output.
+Also, When a new score file is encountered containing fewer than
+.I max-nbest
+lines, the missing scores are set to the lowest score encountered so far.
+.PP
+.B rescore-reweight
+combines the scores in N-best lists with a set of weights and outputs
+the 1-best hypotheses.
+The N-best files are found in directory
+.I score-dir
+or listed in
+.IR file-list .
+Optional arguments set the language model weight
+.I lmw
+(default 8),
+the word transition weight
+.I wtw
+(default 0),
+and the maximum number
+.I max-nbest
+of hypotheses to consider (default all).
+Optionally, any number of additional score directories and associated
+weights
+.I "score-dir1 score-weight1 score-dir2 score-weight2"
+\&... can be specified, following the
+.I wtw
+parameter.
+These additional scores are combined with those contained in the
+N-best lists themselves as in
+.B rescore-acoustic 
+(using unit weight for the original acoustic scores).
+The
+.B \-multiwords
+and
+.B \-multi-char
+options have the same function as for
+.BR rescore-decipher .
+The output format for 1-best hypotheses is
+.nf
+	\fIsentid\fP \fIw1\fP \fIw2\fP ...
+.fi
+where
+.I sentid
+is the sentence ID derived from the N-best filename, followed by 
+the words.
+.PP
+.B rescore-minimize-wer
+is similar to 
+.B rescore-reweight
+but picks hypotheses using the word error minimization algorithm
+of 
+.BR nbest-lattice (1).
+.PP
+.B nbest2-to-nbest1
+converts an N-best list in ``NBestList2.0'' format to ``NBestlist1.0'',
+for the benefit of programs that have not yet been updated to deal with 
+the new format.
+.PP
+.B nbest-rover
+combines hypotheses from multiple N-best lists at the word level,
+by performing the same kind of word error minimization as 
+.BR nbest-lattice (1),
+in a generalization of the ROVER algorithm.
+.I sentid-list
+is a file listing sentence IDs.
+These must match the filenames in a set of N-best directories,
+which are specified in a
+.IR control-file .
+The format for the latter is
+.nf
+	\fIdir1\fP \fIlmw1\fP \fIwtw1\fP \fIw1\fP [\fIn1\fP [\fIs1\fP]]
+	\fIdir2\fP \fIlmw2\fP \fIwtw2\fP \fIw2\fP [\fIn2\fP [\fIs2\fP]]
+	...
+.fi
+Each line specifies an N-best directory, the language model and word transition
+weights to be used in score combination, and a weight to be applied to the
+posterior probabilities.
+An optional next-to-last parameter for each N-best list allows the lists to be 
+truncated to the top \fIn1\fP, \fIn2\fP, etc., hypotheses.
+The final optional parameter sets the posterior distribution scaling factor,
+which defaults to the language model weight.
+Optionally,
+.I control-file
+can also contain lines of the form
+.fi
+	\fIdir\fP \fIw\fP \fB+\fP
+.fi
+These indicate that additional score files can be found in directory
+.I dir
+and that the scores found therein should be added to the following 
+N-best list set with weight
+.IR w .
+Several lines of this form may occur preceding a regular N-best
+directory specification; the corresponding additive combination of multiple
+scores is performed.
+.br
+If ``\-'' is specified for
+.IR sentid-list ,
+the sentence IDs are inferred from
+the contents of the first directory \fIdir1\fP specified in
+.IR control-file .
+If
+.I posterior-file
+is specified on the command line, posterior word probability estimates are
+written to that file.
+Any additional arguments are passed as options to the underlying
+.BR nbest-lattice (1)
+invocation.
+.br
+.B nbest-rover
+can process N-best lists in any of the formats described in
+.BR nbest-format (5),
+\fIas long as all N-best lists for a given utterance are in the same format\fP.
+When Decipher formats are used only their acoustic scores are used.
+.PP
+.B combine-rover-controls
+takes one or more
+.B nbest-rover
+control files as arguments and outputs a new control file that specifies
+the combination of the input files.
+Directory names in the input files are adjusted to reflect the relative
+location of the input files,
+unless the 
+.B keeppaths=1
+option is used.
+Each input system is given equal weight,
+unless the optional
+.BI lambda= weights
+argument is used to specify a space-separated list of system weights
+(spaces in the weight vector need to be quoted on the command line).
+The 
+.BI postscale= S
+argument overrides the posterior scaling factor in all input systems with the value
+.IR S .
+.PP
+.B compute-best-rover-mix
+estimates the best weighting of a set of nbest system outputs for 
+combination with
+.BR nbest-rover .
+The required input file 
+.I reference-posteriors-output
+is produced by running 
+.B nbest-rover
+to record the posteriors of the reference word strings on a tuning set:
+.br
+	\fBnbest-rover \-\fP \fIcontrol-file\fP /dev/null \\
+.br
+	    \fB\-refs\fP \fIreferences\fP \\
+.br
+	    \fB\-write-ref-posteriors\f \fIreference-posteriors-output\fP
+.br
+Initial weights are specied with
+.BI lambda= weights.
+An additive constant for Laplace smoothing can be specified with 
+.BI addone= c.
+The estimated weight vector can optionally be written to a file using
+.BI write_weights= file.
+The weights can then be inserted into the original
+.IR control-file .
+.PP
+.B search-rover-combo
+searches for a good subset of systems to combine via 
+.BR nbest-rover .
+It performs a greedy search starting with the system that gives the lowest individual error, 
+and then adds one system at a time until no further error reduction is possible.
+The required argument \fIlist-of-control-files\fP is a file listing the nbest-rover control files
+representating the individual systems to be combined.
+An nbest-rover control file is written to stdout representing the combined system.
+Options are:
+.TP 20
+.BI \-scorer " script"
+Specifies a script that evaluates a hypothesis file.
+The script must take a single argument that is a hypothesis file in sentid format and output a single number
+(the error rate) to stdout.
+For example, the script could be based on parsing 
+.B  compute-sclite
+output, but must know where to find the reference file etc.
+.TP
+.BI \-weights " list-of-weights"
+Specifies the list of system weights to try when adding a system.
+By default this is just 1, but can be a space-separated list of weights, such as "1 0.5 0.2 0.1".
+.TP
+.BI \-sentids " list"
+A list of sentence IDs to perform the evaluation on (as in the first argument to
+.BR nbest-rover ),
+.TP
+.BI \-datadir " dir"
+Where to place auxiliary data files.
+By default this is 
+.B SEARCH-DATA
+in the current directory.
+.TP
+.BI \-refs " refs"
+Triggers system weight optimization using 
+.B compute-best-rover-mix
+for each system combination before evaluating
+its error rate.
+The file 
+.I refs
+should point to a reference file in sentid format.
+Note that these references are not used to evaluate the error rate of a system 
+(which is done within the scorer script, see above) but only to be 
+passed to 
+.BR compute-best-rover-mix .
+This option overrides the 
+.B \-weights
+option since system weights are estimated.
+.TP
+.BI \-smooth-weight " S"
+Enables hierarchical weight smoothing.
+Each weight estimate is interpolated with the previous estimate (with one fewer systems);
+the previous weight vector gets weight
+.IR S .
+.TP
+.BI \-J " n"
+Parallelize the evalation of system combinations with up to 
+.I n
+parallel jobs.
+This uses the included parallelization script
+.BR rexport.gnumake ,
+but the environment variable 
+.B REXPORT
+may be set to a command that takes a list of command lines as argument and executes them in an appropriate manner.
+.PP
+.B nbest-posteriors
+rescales the scores in an N-best list to reflect (weighted) posterior
+probabilities.
+The output is the same N-best list with acoustic scores set to
+the log (base 10) of the posterior hyp probabilities and LM scores set to zero.
+.BI postscale= S
+attenuates the posterior distribution by dividing combined log 
+scores by
+.I S
+(the default is
+.IR S = lmw ).
+If
+.BI weight= W
+is specified the posteriors are multiplied by
+.IR W .
+.BI max_nbest= M
+limits the number of hypotheses used to the top 
+.IR M .
+This script is used mostly as a helper in
+.BR nbest-rover .
+.PP
+.B merge-nbest
+merges hypotheses from one or more N-best lists into a single list,
+collapsing hypotheses that occur in more than one input list.
+If all input lists use the same 
+.BR nbest-format (5)
+then the output will also be in that format and contain the information
+from the first list in which a hypothesis was encountered.
+Otherwise, the output will be in SRI Decipher(TM) NBestList1.0 format
+and contain acoustic scores and word strings only.
+The
+.BI max_nbest= M
+option limits input to the first 
+.I M
+hypotheses from each input list.
+.B multiwords=1
+merges hypotheses that are identical after resolving multiwords, with 
+.BI multichar= C
+defining a non-default multiword separator character.
+.B nopauses=1
+merges hypotheses that are identical after removal of pause words.
+.PP
+.B nbest-vocab
+outputs the vocabulary used in a set of N-best lists.
+(The N-best files cannot be compressed, but may be concatenated and
+supplied via stdin.)
+.PP
+.B nbest-words
+strips any score and alignment information from N-best lists and outputs
+only the words, one hypothesis per line.
+.PP
+.B nbest-error
+computes the overall oracle word error rate of a set of N-best lists
+in directory
+.I score-dir
+or listed in
+.IR file-list .
+The reference answers are given in
+.I refs 
+in the format output by 
+.B rescore-reweight 
+(see above).
+Additional arguments are passed to the underlying invocation of
+.BR nbest-lattice (1),
+and can be used to limit the depth of the N-best list,
+compute lattice error rather than N-best error, etc.
+.PP
+.B sentid-to-sclite
+converts 1-best hypotheses and references in the format used here to
+the ``trn'' format expected by the NIST
+.BR sclite (1)
+scoring software.
+.PP
+.B sentid-to-ctm
+converts 1-best hypotheses and references in the format used here to NIST
+.BR ctm (5)
+format.
+The script relies on an encoding of conversation IDs, channel, and utterance
+time marks in the sentence IDs and may need adjustment to local conventions.
+.PP
+.B fix-ctm
+converts output produced by the
+.B \-output-ctm
+option of 
+.BR nbest-lattice (1)
+and
+.BR lattice-tool (1)
+to a format suitable for scoring with NIST
+.BR sclite (1).
+It, too, relies on information encoded in the sentids IDs and may need
+adjustments.
+.PP
+.B compute-sclite
+is a wrapper around 
+the NIST 
+.BR sclite (1)
+scoring tool.
+.I refs
+and
+.I hyps 
+are the reference and hypothesized transcripts, respectively. 
+The
+.I refs
+file can be either in "sentid" format or in 
+.BR stm (5) 
+format.  In the latter case,
+.I hyps
+will be converted to 
+.BR ctm (5)
+format using the 
+.B sentid-to-ctm
+helper script.
+The
+.I hyps
+file can be either in "sentid" format or in 
+.BR ctm (5)
+format.
+More than one 
+.B \-h 
+option can be given to combine the contents of multiple hypotheses files.
+Optionally, 
+.B \-S 
+specifies a
+sorted list of sentence IDs
+.I subset
+to score.
+Multiple 
+.B \-S 
+options may be given, to form the intersection of several subsets.
+.B \-multiwords 
+or
+.B \-M
+splits ``multiwords'' joined by underscores into their component words
+prior to scoring.
+.B \-noperiods
+deletes periods from the hypotheses prior to scoring
+(typically used to bridge different conventions for spelled letters).
+.B \-R
+preserves reject words in the hypotheses for scoring (as appropriate if
+references also contain rejects).
+.B \-g
+.I glmfile
+enables filtering of references and hypotheses by the NIST
+.B csrfilt.sh
+script, controlled by the filter file 
+.I glmfile 
+(this is only possible with an stm reference file).
+In that case, the
+.B \-H
+option causes hesitations (as defined by the filter)
+to be deleted from the output for scoring purposes.
+.B \-v 
+displays the complete command used to invoke
+.BR sclite .
+Any additional options are passed to
+.BR sclite ,
+e.g., to control its output actions or alignment mode.
+.PP
+.B compute-sclite-nbest
+runs 
+.B compute-sclite
+on a set of N-best lists specified by 
+.I file-list
+and deposits the error counts in a directory
+.IR output-dir .
+These error counts may be used with the 
+.BR nbest-optimize (1)
+.B \-errors
+option to specify the hypothesis-level errors explicitly.
+The references must be given in a file
+.I refs
+one per line, with the first word in each line matching
+the file basename of the corresponding N-best list.
+Additional options to be passed to 
+.B compute-sclite 
+(and ultimately to 
+.BR sclite (1))
+may be specified at the end of the command line.
+The
+.B \-filter 
+option specifies a filtering
+.I script
+that edits the hypotheses before error computation.
+.PP
+.B compare-sclite
+scores two sets of hypotheses 
+.I hyps1
+and
+.I hyps2
+for the same test set and computes in
+how many cases the first or second set had lower word error.
+The remaining options are as for
+.BR compute-sclite .
+The script ignores hypotheses for sentence that do not appear in both
+hypothesis files, to ensure comparable scoring results.
+.SH "SEE ALSO"
+nbest-format(5), ngram(1), nbest-lattice(1), nbest-optimize(1), sclite(1),
+stm(5), ctm(5).
+.br
+J.G. Fiscus, A Post-Processing System to Yield Reduced Word Error Rates:
+Recognizer Output Voting Error Reduction (ROVER),
+\fIProc. IEEE Automatic Speech Recognition and Understanding Workshop\fP,
+Santa Barbara, CA, 347\-352, 1997.
+.br
+A. Stolcke et al., "The SRI March 2000 Hub-5 Conversational Speech
+Transcription System",
+\fIProc. NIST Speech Transcription Workshop\fP, College Park, MD, 2000.
+.SH BUGS
+.B sentid-to-sclite
+has some assumptions about the structure of sentence IDs built-in and
+may need to be modified for 
+.B compute-sclite
+and 
+.B compare-sclite 
+to work.
+.PP
+.B rescore-decipher 
+.B \-pretty
+may not work correctly with the
+.B \-limit-vocab
+option if the word mapping adds to the vocabulary subset used in the N-best
+lists.
+.SH AUTHOR
+Andreas Stolcke <andreas.stolcke@microsoft.com>
+.br
+Copyright 1995-2006 SRI International
+.br
+Copyright 2011-2016 Microsoft Corp.

@@ -1,0 +1,96 @@
+nbest-mix(1)                                                      nbest-mix(1)
+
+
+
+NNAAMMEE
+       nbest-mix - interpolate N-best posterior probabilities
+
+SSYYNNOOPPSSIISS
+       nnbbeesstt--mmiixx [ --hheellpp ] _o_p_t_i_o_n ...  _w_e_i_g_h_t_1 _n_b_e_s_t_1 _w_e_i_g_h_t_2 _n_b_e_s_t_2 ...
+
+DDEESSCCRRIIPPTTIIOONN
+       nnbbeesstt--mmiixx  reads a number of N-best lists (which must contain identical
+       hypotheses), computes the hypothesis posterior probabilities for  each,
+       and computes a new posterior distribution that is a weighted mixture of
+       the input distributions.  The hypothesis with the highest combined pos-
+       terior probability is printed.
+
+       The  command  line  arguments form an alternating list of weight values
+       and N-best file names.
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --ddeebbuugg _l_e_v_e_l
+              Controls the amount of output (the higher the _l_e_v_e_l, the more).
+
+       --wwrriittee--nnbbeesstt _f_i_l_e
+              Output N-best lists containing scores that correspond to the log
+              of the combined posteriors of the  input  hypotheses.   The  log
+              posterior is assigned as the acoustic score and other scores are
+              set to zero.  This also suppresses the printing of the best hyp.
+
+       --mmaaxx--nnbbeesstt _n
+              Limits the number of hypotheses read from each  N-best  list  to
+              the first _n.
+
+       --rreessccoorree--llmmww _l_m_w
+              Sets  the  language  model weight used in combining the language
+              model log probabilities with acoustic  log  probabilities  (only
+              relevant if separate scores are given in the N-best input).
+
+       --rreessccoorree--wwttww _w_t_w
+              Sets  the  word  transition  weight used to weight the number of
+              words relative to the acoustic log probabilities (only  relevant
+              if separate scores are given in the N-best input).
+
+       --ppoosstteerriioorr--ssccaallee _s_c_a_l_e
+              Divide the total weighted log score by _s_c_a_l_e when computing nor-
+              malized posterior probabilities.  This controls  the  peakedness
+              of  the  posterior  distribution.  The default value is whatever
+              was chosen for _l_m_w, so that language model scores are scaled  to
+              have weight 1, and acoustic scores have weight 1/_l_m_w.
+
+       --sseett--llmm--ssccoorreess
+              In  conjunction with --wwrriittee--nnbbeesstt, output N-best lists that pre-
+              serve the acoustic scores and word counts of the (first of  the)
+              input  N-best lists, and encodes the combined log posteriors via
+              the LM scores.  The LM scores in the output  are  calculated  so
+              that,  when  combined  with  the  acoustic  scores and insertion
+              penalties (using the given LM weight and posterior scaling), the
+              result  is  the weighted, combined posteriors based on all input
+              N-best scores.  This option is useful if input N-best lists were
+              created  by  rescoring  with  different language models, and the
+              output N-best lists are to be combined with other scores  or  if
+              the score weighting is to be optimized with nnbbeesstt--ooppttiimmiizzee(1).
+
+       --sseett--aamm--ssccoorreess
+              Analogous to --sseett--llmm--ssccoorreess, except that the acoustic scores are
+              modified to reflect combined log posterior  probabiltities,  and
+              other  scores  are preserved.  This option is useful if input N-
+              best lists were created by  rescoring  with  different  acoustic
+              models.
+
+SSEEEE AALLSSOO
+       nbest-lattice(1), nbest-scripts(1), nbest-optimize(1).
+       A. Stolcke, K. Ries, N. Coccaro, E. Shriberg, R. Bates, D. Jurafsky, P.
+       Taylor, R. Martin, C. Van Ess-Dykema, & M. Meteer, ``Dialogue Act  Mod-
+       eling for Automatic Tagging and Recognition of Conversational Speech,''
+       _C_o_m_p_u_t_a_t_i_o_n_a_l _L_i_n_g_u_i_s_t_i_c_s 26(3), 339-373, 2000.
+
+BBUUGGSS
+       Hopefully not.
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1998-2004 SRI International
+
+
+
+SRILM Tools              $Date: 2007/12/20 19:13:52 $             nbest-mix(1)

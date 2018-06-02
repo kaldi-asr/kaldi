@@ -1,0 +1,42 @@
+#!/bin/sh
+
+smooth=""
+
+dir=../ngram-count-gt
+
+if [ -f $dir/swbd.3grams.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+# run single-threaded by default
+OMP_NUM_THREADS=${OMP_NUM_THREADS-1}
+export OMP_NUM_THREADS
+
+# create LM from counts
+ngram-count -debug 1 \
+	$smooth \
+	-read $dir/swbd.3grams$gz \
+	-vocab $dir/eval2001.vocab \
+	-unk \
+	-maxent -lm swbd.hme$gz 2> train.log
+
+head -200 train.log 1>&2
+
+if [ -f swbd.hme$gz ]; then
+    ngram -debug 0 \
+	-maxent \
+	-unk \
+	-lm swbd.hme$gz \
+	-ppl $dir/eval97.text
+
+    ngram -debug 0 \
+	-maxent-convert-to-arpa \
+	-unk \
+	-lm swbd.hme$gz \
+	-ppl $dir/eval97.text
+fi
+
+rm -f swbd.hme$gz train.log
+

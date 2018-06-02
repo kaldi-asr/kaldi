@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ -f train+unk.400classes.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+ngram -debug 1 \
+	-ppl ../ngram-count-gt/eval97.text \
+	-order 3 \
+	-lm train-400classes.3bo$gz \
+	-classes train+unk.400classes$gz -simple-classes
+

@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ -f ../ngram-count-gt/swbd.3bo.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+ngram -debug 1 \
+	-seed 1 \
+	-lm ../ngram-count-gt/swbd.3bo$gz \
+	-gen-prefixes test.prefixes

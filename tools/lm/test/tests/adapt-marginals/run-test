@@ -1,0 +1,25 @@
+#!/bin/sh
+
+if [ -f ../ngram-count-gt/swbd.3bo.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+baselm=../ngram-count-gt/swbd.3bo$gz
+basemarginals=basemarginals.1bo$gz
+
+marginals=marginals.1bo$gz
+test=../ngram-count-gt/eval97.text
+
+head -200 $test | \
+ngram -debug 0 -lm $baselm -ppl -
+
+#ngram -order 1 -lm $baselm -write-lm $basemarginals
+ngram-count -debug 1 -text $test -order 1 -wbdiscount1 -lm $marginals
+
+head -200 $test | \
+ngram -debug 0 -lm $baselm -adapt-marginals $marginals -ppl -
+
+rm -f $basemarginals $marginals
+

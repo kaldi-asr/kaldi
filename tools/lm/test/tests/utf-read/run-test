@@ -1,0 +1,35 @@
+#!/bin/sh
+
+
+## don't recreate data files
+if false; then
+
+# create an ascii text file
+echo 'a b c d e f g h i j k l m n o p q r s t u v w x y z' > foo
+cat foo foo > foo2
+
+# make it have some long lines
+paste foo2 foo2 foo2 foo2 > foo
+rm foo2
+
+# append a line without newline character
+echo -n 'a b c' >> foo
+
+# convert to UTF
+unix2dos -m < foo > foo.utf8.txt
+unix2dos -m < foo | iconv -t UTF-16LE > foo.utf16le.txt
+unix2dos -m < foo | iconv -t UTF-16BE > foo.utf16be.txt
+
+fi
+
+echo "=== ASCII ==="
+ngram-count -order 1 -text foo -sort
+
+echo "=== UTF8 ==="
+ngram-count -order 1 -text foo.utf8.txt -sort
+
+echo "=== UTF16LE ==="
+ngram-count -order 1 -text foo.utf16le.txt -sort
+
+echo "=== UTF16BE ==="
+ngram-count -order 1 -text foo.utf16be.txt -sort

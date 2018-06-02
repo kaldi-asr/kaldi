@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# Re-gzip the test data files unzipped by go.unzip
+#
+# $Header: /home/srilm/CVS/srilm/sbin/go.unzip,v 1.3 2009/12/02 19:15:38 stolcke Exp $
+#
+
+if [ -f GZ.files ]; then
+	sed 's,\.gz$,,' GZ.files | xargs gzip -f && \
+	rm -f GZ.files
+fi
+

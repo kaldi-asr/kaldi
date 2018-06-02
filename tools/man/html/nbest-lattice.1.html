@@ -1,0 +1,453 @@
+<! $Id: nbest-lattice.1,v 1.42 2010/07/11 17:29:36 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>nbest-lattice</TITLE>
+<BODY>
+<H1>nbest-lattice</H1>
+<H2> NAME </H2>
+nbest-lattice - rescore N-best lists and lattices
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>nbest-lattice</B> [ <B>-help</B> ] <I>option</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> nbest-lattice </B>
+rescores N-best lists or optimizes word-level recognition scores
+(as opposed to sentence-level scores).
+There are two rescoring modes.
+In
+<I> N-best word error minimization </I>
+mode, the program computes the posterior expected word error for each
+hypothesis relative to all hypotheses in the N-best list, choosing the one
+with the lowest value.
+<P>
+In
+<I> lattice word error minimization </I>
+mode, the program constructs a word lattice from all the N-best hypotheses
+and extracts the path with the lowest expected word error.
+This is similar to N-best word error minimization but allows 
+hypotheses not contained in the N-best list.
+A variant of this mode uses a word ``mesh'' instead of a word lattice,
+in which all hypotheses are aligned into a grid of word positions,
+and one is allowed to chose a word from each grid position, thus allowing an
+even greater number of potential hypotheses.
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-debug</B><I> level</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Controls the amount of output (the higher the
+<I>level</I>,<I></I><I></I><I></I>
+the more).
+At level 1, the expected word error counts for the chosen hypotheses
+are printed.
+At level 2, the word posterior probabilities are printed in addition
+(only for lattice mode, similar to 
+<B>-dump-posteriors</B>).<B></B><B></B><B></B>
+<DT><B> -wer </B>
+<DD>
+Chooses N-best word error minimization mode.
+<DT><B> -lattice-wer </B>
+<DD>
+Chooses lattice word error minimization mode (the default).
+<DT><B> -use-mesh </B>
+<DD>
+Choose the variant of lattice mode that uses word meshes
+instead of simple lattices.
+<DT><B>-deletion-bias</B><I> D</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Causes the probabilities of deletions to be biased by a factor
+<I> D </I>
+in doing mesh-based word error minimization.
+This controls the trade-off between insertion and deletion errors.
+The default is 1 (no bias).
+<DT><B>-rescore</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reads the N-best list from
+<I>file</I>.<I></I><I></I><I></I>
+The N-best list can be in any of the formats described in
+<A HREF="nbest-format.5.html">nbest-format(5)</A>.
+<DT><B>-nbest</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+A synonym for 
+<B>-rescore</B>.<B></B><B></B><B></B>
+<DT><B>-write-nbest</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Outputs the N-best list to a file, after sorting and processing 
+(for validation or format conversion purposes).
+<DT><B>-nbest-files</B><I> file-list</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Rescores multiple N-best lists whose filenames are read from
+<I>file-list</I>.<I></I><I></I><I></I>
+<DT><B>-write-nbest-dir</B><I> directory</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Outputs N-best lists to
+<I>directory</I>,<I></I><I></I><I></I>
+to files named after the input N-best lists,
+for when multiple N-best lists are processed (see
+<B>-nbest-files</B>).<B></B><B></B><B></B>
+<DT><B>-write-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Outputs vocabulary used in N-best list.
+<DT><B> -decipher-nbest </B>
+<DD>
+Output N-best list in Decipher
+<A HREF="nbest-format.5.html">nbest-format(5)</A>,
+rather than the default native SRILM format.
+(All N-best formats are accepted for input regardless of this option.)
+<DT><B> -no-rescore </B>
+<DD>
+Suppress rescoring of lattices;
+useful if only the operations of lattice/N-best list reading/writing
+are desired.
+<DT><B>-max-nbest</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limits the number of hypotheses read from each N-best list to the first
+<I>n</I>.<I></I><I></I><I></I>
+<DT><B>-max-rescore</B><I> m</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+In N-best mode, only choose among the top
+<I> m </I>
+hypotheses when optimizing word error.
+This is convenient to limit computation for long N-best lists.
+The cutoff is made after reading all hypotheses (subject to
+<B>-max-nbest</B>)<B></B><B></B><B></B>
+and reordering them according to the posterior probabilities.
+<BR>
+The worst-case time taken in N-best error minimization is proportional to 
+<I> m </I>
+times
+<I>n</I>,<I></I><I></I><I></I>
+where
+<I> n </I>
+is the length of the N-best list (or the value given to
+<B>-max-nbest</B>).<B></B><B></B><B></B>
+However, in practice the average time per sentence is independent of 
+<I>m</I>,<I></I><I></I><I></I>
+so this option is usually not necessary.
+<BR>
+In lattice mode, only align the top 
+<I> m </I>
+scoring hypotheses (after reweighting and sorting) into the lattice.
+<DT><B>-posterior-prune</B><I> threshold</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Don't process N-best hypotheses whose cumulative posterior probability
+is below
+<I>threshold</I>.<I></I><I></I><I></I>
+This is another strategy to speed up the algorithm.
+<DT><B> -no-reorder </B>
+<DD>
+Process N-best hypotheses in the order in which they appear.
+By default, hypotheses are first sorted by their aggregate scores.
+<DT><B> -nbest-backtrace </B>
+<DD>
+Preserve backtrace information (word-level timemarks and scores) when reading
+N-best lists containing such information (see 
+<A HREF="nbest-format.5.html">nbest-format(5)</A>).
+The default is to ignore backtrace information and record only sentence-level
+scores and the word identities.
+<DT><B> -output-ctm </B>
+<DD>
+Output word hypotheses in NIST CTM (conversation time mark) format.
+Note that word start times will be relative to the segment start times,
+the first column will contain the N-best filename, and the channel field
+is always 1.
+The word confidence field contains posterior probabilities.
+This option also implies
+<B>-nbest-backtrace</B>.<B></B><B></B><B></B>
+<DT><B>-rescore-lmw</B><I> lmw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the language model weight used in combining the language model log
+probabilities with acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+<DT><B>-rescore-wtw</B><I> wtw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the word transition weight used to weight the number of words relative to
+the acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+<BR>
+If
+<B> -no-reorder </B>
+is not specified, and either 
+<I> lmw </I>
+or
+<I> wtw </I>
+are specified to be non-zero, the aggregate scores are recomputed using 
+those weights; otherwise aggregate scores supplied in the input N-best lists
+are used to sort hypotheses.
+<DT><B>-posterior-scale</B><I> scale</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Divide the total weighted log score by 
+<I> scale </I>
+when computing normalized posterior probabilities.
+This controls the peakedness of the posterior distribution. 
+The default value is whatever was chosen for 
+<B>-rescore-lmw</B>,<B></B><B></B><B></B>
+so that language model scores are scaled to have weight 1,
+and acoustic scores have weight 1/<I>lmw</I>.
+<DT><B>-posterior-amw</B><I> amw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the acoustic model weight for computing posteriors; 
+the default is 1.
+This and the next two options allow posteriors to be computed using a 
+different weighting than that used in ranking and reordering the 
+hypotheses.
+<DT><B>-posterior-lmw</B><I> lmw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the language model weight for computing posteriors.
+The default is to use whatever was specified for
+<B>-rescore-lmw</B>.<B></B><B></B><B></B>
+<DT><B>-posterior-wtw</B><I> wtw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the word transition weight for computing posteriors.
+The default is to use whatever was specified for
+<B>-rescore-wtw</B>.<B></B><B></B><B></B>
+<BR>
+If all three of
+<I>amw</I>,<I></I><I></I><I></I>
+<I>lmw</I>,<I></I><I></I><I></I>
+and 
+<I> wtw </I>
+are set to zero the posteriors are computed directly from the 
+aggregate scores stored in the N-best input.
+<DT><B>-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read the N-best list vocabulary from 
+<I>file</I>.<I></I><I></I><I></I>
+This option is mostly redundant since words found in the N-best input
+are implicitly added to the vocabulary.
+<DT><B>-vocab-aliases</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reads vocabulary alias definitions from
+<I>file</I>,<I></I><I></I><I></I>
+consisting of lines of the form
+<PRE>
+	<I>alias</I> <I>word</I>
+</PRE>
+This causes all tokens
+<I> alias </I>
+to be mapped to
+<I>word</I>.<I></I><I></I><I></I>
+<DT><B> -tolower </B>
+<DD>
+Map vocabulary to lowercase, eliminating case distinctions.
+<DT><B> -multiwords </B>
+<DD>
+Split multiwords (words joined by '_') into their components when reading
+N-best lists.
+<DT><B>-multi-char</B><I> C</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Character used to delimit component words in multiwords
+(an underscore character by default).
+<DT><B>-noise</B><I> noise-tag</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Designate
+<I> noise-tag </I>
+as a vocabulary item that is to be ignored in aligning hypotheses with
+each other (the same as the -pau- word).
+This is typically used to identify a noise marker.
+<DT><B>-noise-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read several noise tags from
+<I>file</I>,<I></I><I></I><I></I>
+instead of, or in addition to, the single noise tag specified by
+<B>-noise</B>.<B></B><B></B><B></B>
+<DT><B> -keep-noise </B>
+<DD>
+Do not remove pause or noise tokens from hypotheses. The default
+is to preserve noise tags but still eliminate pauses.
+<DT><B>-nbest-error</B><I></I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Compute the N-best error (minimum word error) of the N-best list read with
+<B>-nbest</B>.<B></B><B></B><B></B>
+Pause and noise tokens (as specified with
+<B>-noise</B>)<B></B><B></B><B></B>
+in the N-best list are ignored.
+<DT><B> -dump-posteriors </B>
+<DD>
+Output posterior probabilities of all N-best hypotheses 
+instead of choosing the best hypothesis.
+In N-best mode, only the posterior probability for each hypothesis is output.
+In lattice mode, the hyp posterior is followed by word posterior probabilities
+for each (non-pause, non-noise) token in the hypothesis.
+The 
+<B> -max-rescore </B>
+option limits the number of hypotheses per N-best list processed.
+<DT><B> -dump-errors </B>
+<DD>
+Output word correctness indicators for all N-best hypotheses 
+instead of choosing the best hypothesis.
+For each hypothesis, a line is output containing first the total number of 
+errors and the list of indicators of whether the corresponding word is
+correct, substituted or inserted relative to the reference string.
+The location of deleted words is also indicated by a corresponding marker.
+The 
+<B> -max-rescore </B>
+option limits the number of hypotheses per N-best list processed.
+<DT><B>-reference</B><I> w1 w2 ...</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies a reference word string for 
+<B>-dump-errors</B>,<B></B><B></B><B></B>
+<B>-nbest-error</B>,<B></B><B></B><B></B>
+and
+<B> -lattice-error </B>
+options.
+Additionally, in 
+<B> -use-mesh </B>
+mode, the reference words are recorded in the word mesh and can be output
+with 
+<B>-write</B>,<B></B><B></B><B></B>
+indicating which word in each alignment position is the correct one.
+<DT><B>-refs</B><I> references</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a table of reference transcripts from file
+<I>reference</I>,<I></I><I></I><I></I>
+for when multiple N-best lists are processed (see
+<B>-nbest-files</B>).<B></B><B></B><B></B>
+Each line in 
+<I> references </I>
+must contain the sentence ID (the last component in the N-best filename
+path, minus any suffixes) followed by zero or more reference words.
+</DD>
+</DL>
+<P>
+The following options only affect lattice mode.
+<DL>
+<DT><B>-read</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reads an initial lattice from
+<I>file</I>,<I></I><I></I><I></I>
+to be merged with additional paths constructed from the 
+N-best hypotheses.
+<DT><B>-lattice-files</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reads the names of one or more lattices from 
+<I> file </I>
+and aligns those lattices with the main lattice being built.
+Each line of 
+<I> file </I>
+must contain a lattice filename, optionally followed by a weight.
+<DT><B>-write</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Writes the resulting word posterior lattice or mesh to
+<I>file</I>,<I></I><I></I><I></I>
+in
+<A HREF="wlat-format.5.html">wlat-format(5)</A>.
+<DT><B>-write-dir</B><I> directory</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write the resulting N-best lattices to 
+<I>directory</I>,<I></I><I></I><I></I>
+in files named after the input N-best lists,
+for when multiple N-best lists are processed (see
+<B>-nbest-files</B>).<B></B><B></B><B></B>
+<DT><B> -prime-lattice </B>
+<DD>
+Start building the lattice with the best hypothesis obtained from
+N-best error minimization.  This produces slightly better alignments
+and sometimes lower error rates.  The default is to start with the
+top-scoring hypothesis.
+<DT><B> -prime-with-1best </B>
+<DD>
+Similar to 
+<B>-prime-lattice</B>,<B></B><B></B><B></B>
+but uses the top-ranked sentence hypothesis for priming.
+(Experience shows that 
+<B> -no-reorder -prime-lattice </B>
+gives best results.)
+<DT><B> -prime-with-refs </B>
+<DD>
+Similar to 
+<B>-prime-lattice</B>,<B></B><B></B><B></B>
+but uses the reference words for priming.
+<DT><B> -no-merge </B>
+<DD>
+Build a lattice from the N-best hypotheses without merging edges
+(string/lattice alignment).  This creates a lattice with one disjoint path
+per hypothesis, and is useful mainly for debugging purposes.
+This option has no effect with
+<B> -use-mesh </B>
+since word meshes can represent only one word type per
+alignment position.
+<DT><B> -lattice-error </B>
+<DD>
+Compute the lattice error (minimum word error) of the lattice read with
+<B> -read </B>
+or built with 
+<B>-nbest</B>.<B></B><B></B><B></B>
+<DT><B>-dictionary</B> file<B></B><B></B><B></B>
+<DD>
+Use word pronunciations listed in 
+<I> file </I>
+to construct word alignments when building word meshes.
+This will use an alignment cost function that reflects the number of
+inserted/deleted/substituted phones, rather than words.
+The dictionary 
+<I> file </I>
+should contain one pronunciation per line, each naming a word in the first
+field, followed by a string of phone symbols.
+<DT><B>-hidden-vocab</B> file<B></B><B></B><B></B>
+<DD>
+Read a subvocabulary from
+<I> file </I>
+and constrain word meshes to only align those words that are either all
+in or outside the subvocabulary.
+This may be used to keep ``hidden event'' tags from aligning with
+regular words.
+<DT><B> -record-hyps </B>
+<DD>
+Record the ranks of the hyps contributing to each word hypothesis in the 
+resulting word lattice;
+the information is included in
+<B> -write </B>
+output.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="ngram.1.html">ngram(1)</A>, <A HREF="nbest-optimize.1.html">nbest-optimize(1)</A>, <A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>, <A HREF="nbest-format.5.html">nbest-format(5)</A>, <A HREF="wlat-format.5.html">wlat-format(5)</A>.
+<BR>
+A. Stolcke, Y. Konig, and M. Weintraub,
+``Explicit Word Error Minimization in N-best List Rescoring,''
+<I>Proc. Eurospeech</I>, 163-166, 1997.
+<BR>
+The ``word meshes'' used here are equivalent to the ``confusion networks''
+described in:
+L. Mangu, E. Brill, and A. Stolcke, ``Finding Consensus Among Words:
+Lattice-based Word Error Minimization.'' <I>Proc. Eurospeech</I>,
+vol. 1, 495-498, 1999.
+<H2> BUGS </H2>
+Several functions are not uniformly implemented for all rescoring modes
+(e.g., 
+<B>-lattice-files</B>,<B></B><B></B><B></B>
+<B>-dictionary</B>,<B></B><B></B><B></B>
+<B>-record-hyps</B>,<B></B><B></B><B></B>
+and 
+<B> -nbest-backtrace </B>
+are currently effective only in mesh-lattice mode).
+<BR>
+It is a common mistake (not a bug) to use the default LM weight with
+N-best lists directly from Decipher.
+Decipher N-best lists have the recognizer's LM weight already
+built in, so they should be processed with
+<PRE>
+	nbest-lattice -rescore-lmw 1 -posterior-scale <I>LMW</I>
+</PRE>
+where
+<I> LMW </I>
+is the LM weight during recognition.
+This is not an issue if the N-best lists have been rescored with
+<B>rescore-decipher</B>.<B></B><B></B><B></B>
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1996-2010 SRI International
+</BODY>
+</HTML>

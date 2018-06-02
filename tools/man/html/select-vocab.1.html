@@ -1,0 +1,93 @@
+<! $Id: select-vocab.1,v 1.6 2011/02/11 08:12:47 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>select-vocab</TITLE>
+<BODY>
+<H1>select-vocab</H1>
+<H2> NAME </H2>
+select-vocab - Select a maximum-likelihood vocabulary from a mixture of corpora.
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>select-vocab</B> [ <I>option</I> ... ] <B>-heldout</B> <I>file f1 f2</I> ... 
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> select-vocab </B>
+picks a vocabulary from the union of the vocabularies of files
+<I> f1 </I>
+through
+<I> fn </I>
+in order to maximize the likelihood of the heldout file.  When invoked
+as above, the program will print out (unsorted) the list of words in
+all of the input corpora together with their weights.  This list may
+subsequently be sorted to put the words in decreasing order of weight
+and a vocabulary may be chosen by picking a suitable threshold weight
+and ignoring words with weight less than this.
+
+A number of automatically detected formats are supported for the input
+files
+<I> f1 </I>
+through
+<I> fn. </I>
+They can be count files, which are characterized by each line ending
+in a number, ARPA language models in
+<A HREF="ngram-format.5.html">ngram-format(5)</A>,
+or simply text files.  If they are text-files, further, and
+their names end in ".sentid", it is assumed that the first field of
+each line is a sentence identifier that is then discarded.
+Furthermore, all of the input files can also be compressed (if gzip is
+installed and available on the system).
+
+<H2> OPTIONS </H2>
+<DL>
+<DT><B> -help </B>
+<DD>
+Prints a short help message.
+<DT><B>-heldout</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Likelihood maximization is performed on the contents of
+<I> file. </I>
+This file may also be in any of the formats supported for the input
+corpora, namely: text, counts, sentid, or ARPA-lm.
+<DT><B> -quiet </B>
+<DD>
+Suppresses printing of progress and other informative messages during
+execution.  By default the script writes these out to the output error
+stream.
+<DT><B>-scale</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The combined final counts are scaled by 
+<I> n </I>
+before being written out. This makes it possible to sort the output
+list numerically with <A HREF="sort.1.html">sort(1)</A>.  The default scale is 1e6.
+
+</DD>
+</DL>
+<H2> NOTES </H2>
+This implementation corrects a minor error in the algorithm
+specification in [1].  The paper describes corpus level interpolation,
+but the script actually does word-level interpolation.  
+
+The program is written in <A HREF="perl.1.html">perl(1)</A> and requires it to be installed in
+order to run.
+
+<H2> SEE ALSO </H2>
+<A HREF="ngram-count.1.html">ngram-count(1)</A>, <A HREF="ngram-format.5.html">ngram-format(5)</A>, <A HREF="training-scripts.1.html">training-scripts(1)</A>.
+<BR>
+[1] A. Venkataraman and W. Wang, "Techniques for effective vocabulary
+selection", in <I>Proceedings of Eurospeech</I>, Geneva, 2003.
+
+<H2> BUGS </H2>
+Probably.
+
+<H2> SOURCE </H2>
+Download as part of the SRILM toolkit, or stand-alone from
+<a href="http://www.speech.sri.com/people/anand/downloads/selvoc-v1.tar.gz">http://www.speech.sri.com/people/anand/downloads/selvoc-v1.tar.gz</a>
+
+<H2> AUTHORS </H2>
+Anand Venkataraman &lt;anand@speech.sri.com&gt;
+<BR>
+Wen Wang &lt;wwang@speech.dsri.com&gt;
+<BR>
+Copyright 2003 SRI International
+</BODY>
+</HTML>

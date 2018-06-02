@@ -1,0 +1,21 @@
+#!/bin/sh
+
+find ../nbest-rover/nbest-lists -type f -print | grep -v CVS | sort > nbest.files
+
+nbest-optimize -debug 0 \
+	-write-rover-control rover.control \
+	-init-lambdas "1 8 0 8 0" \
+	-init-amoeba-simplex "0.5 2 -1 2 1" \
+	-posterior-scale 8 \
+	-refs all.refs \
+	-noise-vocab noise.vocab \
+	-nbest-files nbest.files \
+	-converge 0.01 \
+	-maxiters 25 \
+	../nbest-rover/nbest-pron-scores \
+	../nbest-rover/nbest-dur-scores 
+
+echo "*** nbest-rover control file ***"
+cat rover.control
+rm -f rover.control nbest.files
+

@@ -1,0 +1,242 @@
+training-scripts(1)                                        training-scripts(1)
+
+
+
+NNAAMMEE
+       training-scripts,   compute-oov-rate,  continuous-ngram-count,  get-gt-
+       counts, make-abs-discount,  make-batch-counts,  make-big-lm,  make-dia-
+       critic-map,    make-google-ngrams,  make-gt-discounts,  make-kn-counts,
+       make-kn-discounts,  merge-batch-counts,   replace-unk-words,   replace-
+       words-with-classes, reverse-ngram-counts, split-tagged-ngrams, reverse-
+       text, tolower-ngram-counts, uniform-classes, uniq-ngram-counts, vp2text
+       - miscellaneous conveniences for language model training
+
+SSYYNNOOPPSSIISS
+       ggeett--ggtt--ccoouunnttss mmaaxx==_K oouutt==_n_a_m_e [ _c_o_u_n_t_s ... ] >> _g_t_c_o_u_n_t_s
+       mmaakkee--aabbss--ddiissccoouunntt _g_t_c_o_u_n_t_s
+       mmaakkee--ggtt--ddiissccoouunnttss mmiinn==_m_i_n mmaaxx==_m_a_x _g_t_c_o_u_n_t_s
+       mmaakkee--kknn--ccoouunnttss oorrddeerr==_N mmaaxx__ppeerr__ffiillee==_M oouuttppuutt==_f_i_l_e \
+            [ nnoo__mmaaxx__oorrddeerr==11 ] >> _c_o_u_n_t_s
+       mmaakkee--kknn--ddiissccoouunnttss mmiinn==_m_i_n _g_t_c_o_u_n_t_s
+       mmaakkee--bbaattcchh--ccoouunnttss _f_i_l_e_-_l_i_s_t \
+            [ _b_a_t_c_h_-_s_i_z_e [ _f_i_l_t_e_r [ _c_o_u_n_t_-_d_i_r [ _o_p_t_i_o_n_s ... ] ] ] ]
+       mmeerrggee--bbaattcchh--ccoouunnttss [ --ffllooaatt--ccoouunnttss ] [ --ll _N ] _c_o_u_n_t_-_d_i_r [ _f_i_l_e_-_l_i_s_t|_s_t_a_r_t_-_i_t_e_r ]
+       mmaakkee--ggooooggllee--nnggrraammss [ ddiirr==_D_I_R ] [ ppeerr__ffiillee==_N ] [ ggzziipp==00 ] \
+            [ yyaahhoooo==11 ] [ _c_o_u_n_t_s_-_f_i_l_e ... ]
+       ccoonnttiinnuuoouuss--nnggrraamm--ccoouunntt [ oorrddeerr==_N ] [ _t_e_x_t_f_i_l_e ... ]
+       ttoolloowweerr--nnggrraamm--ccoouunnttss [ _c_o_u_n_t_s_-_f_i_l_e ... ]
+       uunniiqq--nnggrraamm--ccoouunnttss [ _c_o_u_n_t_s_-_f_i_l_e ... ]
+       rreevveerrssee--nnggrraamm--ccoouunnttss [ _c_o_u_n_t_s_-_f_i_l_e ... ]
+       rreevveerrssee--tteexxtt [ _t_e_x_t_f_i_l_e ... ]
+       sspplliitt--ttaaggggeedd--nnggrraammss [ sseeppaarraattoorr==_S ] [ _c_o_u_n_t_s_-_f_i_l_e ... ]
+       mmaakkee--bbiigg--llmm --nnaammee _n_a_m_e --rreeaadd _c_o_u_n_t_s --llmm _n_e_w_-_m_o_d_e_l \
+            [ --ttrruusstt--ttoottaallss ] [ --mmaaxx--ppeerr--ffiillee _M ] [ --nnggrraamm--ffiilltteerr _f_i_l_t_e_r ] \
+            [ --tteexxtt _f_i_l_e ]] [[ _n_g_r_a_m_-_o_p_t_i_o_n_s ...... ]]
+       rreeppllaaccee--uunnkk--wwoorrddss vvooccaabb==_v_o_c_a_b [[ _t_e_x_t_f_i_l_e ...... ]]
+       rreeppllaaccee--wwoorrddss--wwiitthh--ccllaasssseess ccllaasssseess==_c_l_a_s_s_e_s [[ oouuttffiillee==_c_o_u_n_t_s ]] \\
+            [[ nnoorrmmaalliizzee==00||11 ]] [[ aaddddoonnee==_K ]] [[ hhaavvee__ccoouunnttss==11 ]] [[ ppaarrttiiaall==11 ]] \\
+            [[ _t_e_x_t_f_i_l_e ...... ]]
+       uunniiffoorrmm--ccllaasssseess _c_l_a_s_s_e_s >> _n_e_w_-_c_l_a_s_s_e_s
+       mmaakkee--ddiiaaccrriittiicc--mmaapp _v_o_c_a_b
+       vvpp22tteexxtt [[ _t_e_x_t_f_i_l_e ...... ]]
+       ccoommppuuttee--oooovv--rraattee _v_o_c_a_b [[ _c_o_u_n_t_s ...... ]]
+
+DDEESSCCRRIIPPTTIIOONN
+       These scripts perform convenience tasks associated with the training of
+       language models.  They complement and extend  the  basic  N-gram  model
+       estimator in nnggrraamm--ccoouunntt(1).
+
+       Since  these  tools are implemented as scripts they don't automatically
+       input or output compressed data files correctly, unlike the main  SRILM
+       tools.   However, since most scripts work with data from standard input
+       or to standard output (by leaving out the file argument, or  specifying
+       it  as  ``-'')  it is easy to combine them with gguunnzziipp(1) or ggzziipp(1) on
+       the command line.
+
+       Also note that many of the scripts take their options with the  ggaawwkk(1)
+       syntax _o_p_t_i_o_n==_v_a_l_u_e instead of the more common --_o_p_t_i_o_n _v_a_l_u_e.
+
+       ggeett--ggtt--ccoouunnttss  computes the counts-of-counts statistics needed in Good-
+       Turing smoothing.  The frequencies of  counts  up  to  _K  are  computed
+       (default is 10).  The results are stored in a series of files with root
+       _n_a_m_e,  _n_a_m_e..ggtt11ccoouunnttss,  _n_a_m_e..ggtt22ccoouunnttss,  ...,  _n_a_m_e..ggtt_Nccoouunnttss.   It  is
+       assumed  that  the  input  counts have been properly merged, i.e., that
+       there are no duplicated N-grams.
+
+       mmaakkee--ggtt--ddiissccoouunnttss takes one of the output files  of  ggeett--ggtt--ccoouunnttss  and
+       computes the corresponding Good-Turing discounting factors.  The output
+       can then be passed to nnggrraamm--ccoouunntt(1) via the --ggtt_n  options  to  control
+       the smoothing during model estimation.  Precomputing the GT discounting
+       in this fashion has the  advantage  that  the  GT  statistics  are  not
+       affected by restricting N-grams to a limited vocabulary.  Also, ggeett--ggtt--
+       ccoouunnttss/mmaakkee--ggtt--ddiissccoouunnttss can process  arbitrarily  large  count  files,
+       since  they  do  not need to read the counts into memory (unlike nnggrraamm--
+       ccoouunntt).
+
+       mmaakkee--aabbss--ddiissccoouunntt computes the absolute discounting constant needed for
+       the  nnggrraamm--ccoouunntt  --ccddiissccoouunntt_n  options.  Input is one of the files pro-
+       duced by ggeett--ggtt--ccoouunnttss.
+
+       mmaakkee--kknn--ddiissccoouunntt computes the discounting constants used by  the  modi-
+       fied  Kneser-Ney  smoothing method.  Input is one of the files produced
+       by ggeett--ggtt--ccoouunnttss.
+
+       mmaakkee--bbaattcchh--ccoouunnttss performs the first stage in the construction of  very
+       large  N-gram  count  files.   _f_i_l_e_-_l_i_s_t is a list of input text files.
+       Lines starting with a `#' character are ignored.  These files  will  be
+       grouped into batches of size _b_a_t_c_h_-_s_i_z_e (default 10) that are then pro-
+       cessed in one run of nnggrraamm--ccoouunntt each.  For maximum performance, _b_a_t_c_h_-
+       _s_i_z_e should be as large as possible without triggering paging.  Option-
+       ally, a _f_i_l_t_e_r script or program can be given to  condition  the  input
+       texts.   The  N-gram  count  files  are  left  in  directory  _c_o_u_n_t_-_d_i_r
+       (``counts'' by default), where they can be found by a subsequent run of
+       mmeerrggee--bbaattcchh--ccoouunnttss.   All  following _o_p_t_i_o_n_s are passed to nnggrraamm--ccoouunntt,
+       e.g., to control N-gram order, vocabulary, etc.  (no options triggering
+       model estimation should be included).
+
+       mmeerrggee--bbaattcchh--ccoouunnttss  completes  the construction of large count files by
+       merging the batched counts left in _c_o_u_n_t_-_d_i_r until a single count  file
+       is  produced.  Optionally, a _f_i_l_e_-_l_i_s_t of count files to combine can be
+       specified; otherwise all count files in _c_o_u_n_t_-_d_i_r from a prior  run  of
+       mmaakkee--bbaattcchh--ccoouunnttss will be merged.  A number as second argument restarts
+       the merging process at iteration _s_t_a_r_t_-_i_t_e_r.   This  is  convenient  if
+       merging  fails to complete for some reason (e.g., for temporary lack of
+       disk space).  The --ffllooaatt--ccoouunnttss option should be specific if the counts
+       are  real-valued.  The --ll option specifies the number of files to merge
+       in each iteration; the default is 2.
+
+       mmaakkee--ggooooggllee--nnggrraammss takes a sorted count file as input  and  creates  an
+       indexed  directory  structure, in a format developed by Google to store
+       very large N-gram collections.  The resulting  directory  can  then  be
+       used  with  the nnggrraamm--ccoouunntt(1) --rreeaadd--ggooooggllee option.  Optional arguments
+       specify the output directory _d_i_r and the size _N  of  individual  N-gram
+       files  (default  is  10  million  N-grams per file).  The ggzziipp==00 option
+       writes plain, as opposed to compressed, files.  The yyaahhoooo==11 option  may
+       be used to read N-gram count files in Yahoo-GALE format.  Note that the
+       count files have to first be sorted  lexicographically  in  a  separate
+       invocation of sort.
+
+       ccoonnttiinnuuoouuss--nnggrraamm--ccoouunntt  generates  N-grams that span line breaks (which
+       are usually taken to be sentence boundaries).  To count N-grams  across
+       line breaks use
+            continuous-ngram-count _t_e_x_t_f_i_l_e | ngram-count -read -
+       The  argument  _N controls the order of N-grams counted (default 3), and
+       should match  the argument of nnggrraamm--ccoouunntt --oorrddeerr.
+
+       ttoolloowweerr--nnggrraamm--ccoouunnttss maps an N-gram counts file to  all-lowercase.   No
+       merging of N-grams that become identical in the process is done.
+
+       uunniiqq--nnggrraamm--ccoouunnttss  combines  successive counts that pertain to the same
+       N-gram into a single line.  This only  affects  repeated  N-grams  that
+       appear  on successive lines, so a prior sort command is typically used,
+       e.g.,
+            tolower-ngram-counts _I_N_P_U_T | sort | uniq-ngram-counts > OUTPUT
+       would do much of the same thing as
+            ngram-counts -read _I_N_P_U_T -tolower -sort -write _O_U_T_P_U_T
+       but in a more memory-efficient manner (without reading all counts  into
+       memory).
+
+       rreevveerrssee--nnggrraamm--ccoouunnttss  reverses  the  word  order of N-grams in a counts
+       file or stream.  For example,  to  recompute  lower-order  counts  from
+       higher-order  ones,  but  do the summation over preceding words (rather
+       than following words, as in nnggrraamm--ccoouunntt(1)), use
+            reverse-ngram-counts _c_o_u_n_t_-_f_i_l_e | \
+            ngram-count -read - -recompute -write - | \
+            reverse-ngram-counts > _n_e_w_-_c_o_u_n_t_s
+
+       rreevveerrssee--tteexxtt reverses the  word  order  in  text  files,  line-by-line.
+       Start-  and  end-sentence  tags,  if  present, will be preserved.  This
+       reversal is appropriate for preprocessing training data  for  LMs  that
+       are meant to be used with the nnggrraamm --rreevveerrssee option.
+
+       sspplliitt--ttaaggggeedd--nnggrraammss  expands  N-gram count of word/tag pairs into mixed
+       N-grams of words and tags.  The optional  sseeppaarraattoorr==_S  argument  allows
+       the delimiting character, which defaults to "/", to be modified.
+
+       mmaakkee--bbiigg--llmm  constructs  large N-gram models in a more memory-efficient
+       way than nnggrraamm--ccoouunntt by itself.  It does so by precomputing  the  Good-
+       Turing  or Kneser-Ney smoothing parameters from the full set of counts,
+       and then instructing nnggrraamm--ccoouunntt to store only a subset of  the  counts
+       in  memory,  namely  those of N-grams to be retained in the model.  The
+       _n_a_m_e parameter is used to name various auxiliary  files.   _c_o_u_n_t_s  con-
+       tains  the  raw  N-gram counts; it may be (and usually is) a compressed
+       file.  Unlike with nnggrraamm--ccoouunntt, the --rreeaadd option  can  be  repeated  to
+       concatenate  multiple  count  files,  but the arguments must be regular
+       files; reading from stdin is not supported.  If  Good-Turing  smoothing
+       is used and the file contains complete lower-order counts corresponding
+       to the sums of higher-order counts, then the --ttrruusstt--ttoottaallss options  may
+       be  given  for  efficiency.   The  --tteexxtt option specifies a test set to
+       which the LM is to be applied, and builds the LM in  such  a  way  that
+       only  N-gram  context  occurring  in  the test data are included in the
+       model, this saving space at  the  expense  of  generality.   All  other
+       _o_p_t_i_o_n_s are passed to nnggrraamm--ccoouunntt (only options affecting model estima-
+       tion should be given).  Smoothing methods other than Good-Turing, modi-
+       fied  Kneser-Ney  and  Witten-Bell  are  not  supported by mmaakkee--bbiigg--llmm.
+       Kneser-Ney smoothing also requires enough disk  space  to  compute  and
+       store  the  modified lower-order counts used by the KN method.  This is
+       done using the mmeerrggee--bbaattcchh--ccoouunnttss command, and the --mmaaxx--ppeerr--ffiillee option
+       controls how many counts are to be stored per batch, and should be cho-
+       sen so that these batches fit in real memory.  The --nnggrraamm--ffiilltteerr option
+       allows specification of a command through which the input N-gram counts
+       are piped, e.g., to convert from some non-standard format.
+
+       mmaakkee--kknn--ccoouunnttss computes the modified lower-order counts used by the  KN
+       smoothing method.  It is invoked as a helper scripts by mmaakkee--bbiigg--llmm ..
+
+       rreeppllaaccee--uunnkk--wwoorrddss  replaces  words not appearing in the _v_o_c_a_b file with
+       the unknown word tag <<uunnkk>>.  This is useful for preparing text data for
+       LM  training.   Only  the first token on each line in the _v_o_c_a_b file is
+       significant, so both word lists and unigram count files may be used.
+
+       rreeppllaaccee--wwoorrddss--wwiitthh--ccllaasssseess replaces expansions of word classes with the
+       corresponding  class  labels.   _c_l_a_s_s_e_s  specifies  class expansions in
+       ccllaasssseess--ffoorrmmaatt(5).  Substitutions are performed at each  word  position
+       in  left  to  right order, with the longest matching right-hand-side of
+       any class expansion.  If several classes match a  pseudo-random  choice
+       is made.  Optionally, the file _c_o_u_n_t_s will receive the expansion counts
+       resulting from the replacements.  nnoorrmmaalliizzee==00 or  11  indicates  whether
+       the  counts  should be normalized to probabilities (default is 1).  The
+       aaddddoonnee option may be used to  smooth  the  expansion  probabilities  by
+       adding _K to each count (default 1).  The option hhaavvee__ccoouunnttss==11 indicates
+       that the input consists of N-gram counts and that replacement should be
+       performed  on  them.   Note  this  will not merge counts that have been
+       mapped to identical N-grams, since  this  is  done  automatically  when
+       nnggrraamm--ccoouunntt(1)  reads count data.  The option ppaarrttiiaall==11 prevents multi-
+       word class expansions from being replaced  when  more  than  one  space
+       character occurs inbetween the words.
+
+       uunniiffoorrmm--ccllaasssseess  takes  a  file  in  ccllaasssseess--ffoorrmmaatt(5) and adds uniform
+       probabilities to expansions that don't have  a  probability  explicitly
+       stated.
+
+       mmaakkee--ddiiaaccrriittiicc--mmaapp  constructs a map file that pairs an ASCII-fied ver-
+       sion of the words in _v_o_c_a_b with all the occurring non-ASCII word forms.
+       Such  a map file can then be used with ddiissaammbbiigg(1) and a language model
+       to reconstruct the non-ASCII word form with diacritics  from  an  ASCII
+       text.
+
+       vvpp22tteexxtt is a reimplementation of the filter used in the DARPA Hub-3 and
+       Hub-4 CSR evaluations to convert ``verbalized  punctuation''  texts  to
+       language model training data.
+
+       ccoommppuuttee--oooovv--rraattee determines the out-of-vocabulary rate of a corpus from
+       its unigram _c_o_u_n_t_s and a target vocabulary list in _v_o_c_a_b.
+
+SSEEEE AALLSSOO
+       ngram-count(1),  ngram(1),  classes-format(5),   disambig(1),   select-
+       vocab(1).
+
+BBUUGGSS
+       Some  of the tools could be generalized and/or made more robust to mis-
+       use.
+       Several of these tools are gawk scripts  and  depending  on  prevailing
+       locale settings might require an LC_NUMERIC=C environment variable.
+
+AAUUTTHHOORR
+       Andreas Stolcke <anstolck@microsoft.com>
+       Copyright 1995-2008 SRI International
+       Copyright 2013 Microsoft Corp.
+
+
+
+SRILM Tools              $Date: 2013/12/11 08:43:38 $      training-scripts(1)

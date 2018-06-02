@@ -1,0 +1,932 @@
+lattice-tool(1)                                                lattice-tool(1)
+
+
+
+NNAAMMEE
+       lattice-tool - manipulate word lattices
+
+SSYYNNOOPPSSIISS
+       llaattttiiccee--ttooooll [ --hheellpp ] _o_p_t_i_o_n ...
+
+DDEESSCCRRIIPPTTIIOONN
+       llaattttiiccee--ttooooll  performs operations on word lattices in ppffssgg--ffoorrmmaatt(5) or
+       in HTK Standard Lattice format (SLF).  Operations include  size  reduc-
+       tion,  pruning, null-node removal, weight assignment from language mod-
+       els, lattice word error computation, and decoding of the best  hypothe-
+       ses.
+
+       Each input lattice is processed in turn, and a series of optional oper-
+       ations is performed in a fixed sequence (regardless  of  the  order  in
+       which corresponding options are specified).  The sequence of operations
+       is as follows:
+
+       1.     Read input lattice.
+
+       2.     Score pronunciations (if dictionary was supplied).
+
+       3.     Split multiword word nodes.
+
+       4.     Posterior- and density-based pruning (before reduction).
+
+       5.     Write word posterior lattice.
+
+       6.     Viterbi-decode and ouptut 1-best hypothesis  (using  either  the
+              original or updated language model scores, see --oolldd--ddeeccooddiinngg).
+
+       7.     Generate  and  output  N-best list (using either the original or
+              updated language model scores, see --oolldd--ddeeccooddiinngg).
+
+       8.     Compute lattice density.
+
+       9.     Check lattice connectivity.
+
+       10.    Compute node entropy.
+
+       11.    Compute lattice word error.
+
+       12.    Output reference word posteriors.
+
+       13.    Remove null nodes.
+
+       14.    Lattice reduction.
+
+       15.    Posterior- and density-based pruning (after reduction).
+
+       16.    Remove pause nodes.
+
+       17.    Lattice reduction (post-pause removal).
+
+       18.    Language model replacement or expansion.
+
+       19.    Pause recovery or insertion.
+
+       20.    Lattice reduction (post-LM expansion).
+
+       21.    Multiword splitting (post-LM expansion).
+
+       22.    Merging of same-word nodes.
+
+       23.    Lattice algebra operations (or, concatenation).
+
+       24.    Perform word-posterior based decoding.
+
+       25.    Write word mesh (confusion network).
+
+       26.    Compute and output N-gram counts.
+
+       27.    Compute and output N-gram index.
+
+       28.    Word posterior computation.
+
+       29.    Lattice-LM perplexity computation.
+
+       30.    Writing output lattice.
+
+       The following options control which of these steps actually apply.
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --ddeebbuugg _l_e_v_e_l
+              Set  the  debugging  output level (0 means no debugging output).
+              Debugging messages are sent to stderr.
+
+       --iinn--llaattttiiccee _f_i_l_e
+              Read input lattice from _f_i_l_e.
+
+       --iinn--llaattttiiccee22 _f_i_l_e
+              Read additional input lattice (for  binary  lattice  operations)
+              from _f_i_l_e.
+
+       --iinn--llaattttiiccee--lliisstt _f_i_l_e
+              Read  list  of input lattices from _f_i_l_e.  Lattice operations are
+              applied to each filename listed in _f_i_l_e.
+
+       --sseett--llaattttiiccee--nnaammeess
+              Modify the lattice names embedded inside  the  lattice  file  to
+              reflect  the  input  filename.   This  allows the input filename
+              information to be propagated to the output in  cases  where  the
+              embedded names are not informative.
+
+       --oouutt--llaattttiiccee _f_i_l_e
+              Write result lattice to _f_i_l_e.
+
+       --oouutt--llaattttiiccee--ddiirr _d_i_r
+              Write  result  lattices  from  processing of --iinn--llaattttiiccee--lliisstt to
+              directory _d_i_r.
+
+       --rreeaadd--mmeesshh
+              Assume input lattices are in word mesh (confusion network)  for-
+              mat,  as described in wwllaatt--ffoorrmmaatt(5).  Word posterior probabili-
+              ties are converted to transition probabilities.   If  the  input
+              mesh  contains  acoustic information (time offsets, scores, pro-
+              nunciations) that information is attached to words and links and
+              output with --wwrriittee--hhttkk, as are the word posterior probabilities.
+              (Use --hhttkk--wwoorrddss--oonn--nnooddeess to output word start  times  since  HTK
+              format supports times only on nodes.)
+
+       --wwrriittee--iinntteerrnnaall
+              Write  output  lattices  with internal node numbering instead of
+              compact, consecutive numbering.
+
+       --oovveerrwwrriittee
+              Overwrite existing output lattice files.
+
+       --vvooccaabb _f_i_l_e
+              Initialize the vocabulary to words listed in _f_i_l_e.  This is use-
+              ful in conjunction with
+
+       --lliimmiitt--vvooccaabb
+              Discard  LM  parameters  on  reading  that do not pertain to the
+              words specified in the vocabulary.  The default  is  that  words
+              used  in the LM are automatically added to the vocabulary.  This
+              option can be used to reduce the memory requirements  for  large
+              LMs;  to  this  end, --vvooccaabb typically specifies the set of words
+              used in the lattices to be processed (which has to be  generated
+              beforehand, see ppffssgg--ssccrriippttss(1)).
+
+       --vvooccaabb--aalliiaasseess _f_i_l_e
+              Reads  vocabulary  alias  definitions  from  _f_i_l_e, consisting of
+              lines of the form
+                   _a_l_i_a_s _w_o_r_d
+              This causes all tokens _a_l_i_a_s to be mapped to _w_o_r_d.
+
+       --uunnkk   Map lattice words not contained in the known vocabulary with the
+              unknown word tag.  This is useful if the rescoring LM contains a
+              probability for the unknown word (i.e.,  is  an  open-vocabulary
+              LM).   The known vocabulary is given by what is specified by the
+              --vvooccaabb option, as well as all words in the LM used  for  rescor-
+              ing.
+
+       --mmaapp--uunnkk _w_o_r_d
+              Map  out-of-vocabulary  words  to  _w_o_r_d, rather than the default
+              <<uunnkk>> tag.
+
+       --kkeeeepp--uunnkk
+              Treat out-of-vocabulary words as <<uunnkk>> but preserve their labels
+              in lattice output.
+
+       --pprriinntt--sseenntt--ttaaggss
+              Preserve  begin/end sentence tags in output lattice format.  The
+              default is to represent these as NULL  node  labels,  since  the
+              begin/end of sentence is implicit in the lattice structure.
+
+       --ttoolloowweerr
+              Map all vocabulary to lowercase.
+
+       --nnoonneevveennttss _f_i_l_e
+              Read  a  list  of  words from _f_i_l_e that are used only as context
+              elements, and are not predicted by the LM, similar  to  ``<s>''.
+              If  --kkeeeepp--ppaauussee is also specified then pauses are not treated as
+              nonevents by default.
+
+       --mmaaxx--ttiimmee _T
+              Limit processing time per lattice to _T seconds.
+
+       Options controlling lattice operations:
+
+       --wwrriittee--ppoosstteerriioorrss _f_i_l_e
+              Compute the posteriors of lattice nodes and  transitions  (using
+              the  forward-backward  algorithm) and write out a word posterior
+              lattice in wwllaatt--ffoorrmmaatt(5).  This and other options based on pos-
+              terior  probabilities  make most sense if the input lattice con-
+              tains combined acoustic-language model weights.
+
+       --wwrriittee--ppoosstteerriioorrss--ddiirr _d_i_r
+              Similar to the above, but posterior lattices are written to sep-
+              arate files in directory _d_i_r, named after the utterance IDs.
+
+       --wwrriittee--mmeesshh _f_i_l_e
+              Construct  a word confusion network ("sausage") from the lattice
+              and write it to _f_i_l_e.  If reference words are available for  the
+              utterance  (specified by --rreeff--ffiillee or --rreeff--lliisstt) their alignment
+              will be recorded in the sausage.
+
+       --wwrriittee--mmeesshh--ddiirr _d_i_r
+              Similar, but write sausages to files  in  _d_i_r  named  after  the
+              utterance IDs.
+
+       --iinniitt--mmeesshh _f_i_l_e
+              Initialize  the  word  confusion  network by reading an existing
+              sausage from _f_i_l_e.  This effectively aligns  the  lattice  being
+              processed to the existing sausage.
+
+       --aaccoouussttiicc--mmeesshh
+              Preserve  word-level  acoustic  information  (times, scores, and
+              pronunciations) in sausages, encoded as described  in  wwllaatt--ffoorr--
+              mmaatt(5).
+
+       --ppoosstteerriioorr--pprruunnee _P
+              Prune  lattice nodes with posteriors less than _P times the high-
+              est posterior path.
+
+       --ddeennssiittyy--pprruunnee _D
+              Prune lattices such that the lattice density (non-null words per
+              second) does not exceed _D.
+
+       --nnooddeess--pprruunnee _N
+              Prune lattices such that the total number of non-null, non-pause
+              nodes does not exceed _N.
+
+       --ffaasstt--pprruunnee
+              Choose a faster pruning algorithm that does not recompute poste-
+              riors after each iteration.
+
+       --wwrriittee--nnggrraammss _f_i_l_e
+              Compute  posterior expected N-gram counts in lattices and output
+              them to _f_i_l_e.  The maximal N-gram length is given by the  --oorrddeerr
+              option  (see below).  The counts from all lattices processed are
+              accumulated and output in sorted order at the end (suitable  for
+              nnggrraamm--mmeerrggee(1)).
+
+       --wwrriittee--nnggrraamm--iinnddeexx _f_i_l_e
+              Output  an  index  file of all N-gram occurences in the lattices
+              processed, including their start times, durations, and posterior
+              probabilities.  The maximal N-gram length is given by the --oorrddeerr
+              option (see below).
+
+       --mmiinn--ccoouunntt _C
+              Prune N-grams with count less than _C from  output  with  --wwrriittee--
+              nnggrraammss  and --wwrriittee--nnggrraamm--iinnddeexx.  In the former case, the thresh-
+              old applies to the aggregate occurrence counts;  in  the  latter
+              case,  the  threshold applies to the posterior probability of an
+              individual occurence.
+
+       --mmaaxx--nnggrraamm--ppaauussee _T
+              Index only N-grams that contain internal pauses (between  words)
+              not  exceeding  _T  seconds (assuming time stamps are recorded in
+              the input lattice).
+
+       --nnggrraammss--ttiimmee--ttoolleerraannccee T
+              Merge N-gram occurrences less than _T seconds apart for  indexing
+              purposes (posterior probabilties are summed).
+
+       --ppoosstteerriioorr--ssccaallee _S
+              Scale the transition weights by dividing by _S for the purpose of
+              posterior probability computation.  If the input weights  repre-
+              sent combined acoustic-language model scores then this should be
+              approximately the language model weight  of  the  recognizer  in
+              order  to  avoid  overly peaked posteriors (the default value is
+              8).
+
+       --wwrriittee--vvooccaabb _f_i_l_e
+              Output the list of all words found in the lattice(s) to _f_i_l_e.
+
+       --rreedduuccee
+              Reduce lattice size by a single forward node merging pass.
+
+       --rreedduuccee--iitteerraattee _I
+              Reduce lattice size by up to  _I  forward-backward  node  merging
+              passes.
+
+       --oovveerrllaapp--rraattiioo _R
+              Perform  approximate  lattice  reduction  by  merging nodes that
+              share more than a fraction  _R  of  their  incoming  or  outgoing
+              nodes.   The default is 0, i.e., only exact lattice reduction is
+              performed.
+
+       --oovveerrllaapp--bbaassee _B
+              If _B is 0 (the default), then the overlap ratio _R is taken rela-
+              tive  to  the smaller set of transitions being compared.  If the
+              value is 1, the ratio is relative to the larger of the two sets.
+
+       --rreedduuccee--bbeeffoorree--pprruunniinngg
+              Perform lattice reduction before posterior-based  pruning.   The
+              default order is to first prune, then reduce.
+
+       --pprree--rreedduuccee--iitteerraattee _I
+              Perform  iterative  reduction  prior  to  lattice expansion, but
+              after pause elimination.
+
+       --ppoosstt--rreedduuccee--iitteerraattee _I
+              Perform iterative reduction after lattice  expansion  and  pause
+              node  recovery.  Note: this is not recommended as it changes the
+              weights assigned from the specified language model.
+
+       --nnoo--nnuullllss
+              Eliminate NULL nodes from lattices.
+
+       --nnoo--ppaauussee
+              Eliminate pause nodes from lattices (and  do  not  recover  them
+              after lattice expansion).
+
+       --ccoommppaacctt--ppaauussee
+              Use  compact encoding of pause nodes that saves nodes but allows
+              optional pauses where they might not have been included  in  the
+              original lattice.
+
+       --lloooopp--ppaauussee
+              Add self-loops on pause nodes.
+
+       --iinnsseerrtt--ppaauussee
+              Insert  optional  pauses  after  every word in the lattice.  The
+              structure of inserted pauses is affected by  --ccoommppaacctt--ppaauussee  and
+              --lloooopp--ppaauussee.
+
+       --ccoollllaappssee--ssaammee--wwoorrddss
+              Perform  an  operation  on the final lattices that collapses all
+              nodes with the same words, except null nodes,  pause  nodes,  or
+              nodes  with  noise words.  This can reduce the lattice size dra-
+              matically, but also introduces new paths.
+
+       --ccoonnnneeccttiivviittyy
+              Check the connectedness of lattices.
+
+       --ccoommppuuttee--nnooddee--eennttrrooppyy
+              Compute the node entropy of lattices.
+
+       --ccoommppuuttee--ppoosstteerriioorrss
+              Compute node posterior probabilities (which are included in  HTK
+              lattice output).
+
+       --ddeennssiittyy
+              Compute and output lattice densities.
+
+       --rreeff--lliisstt _f_i_l_e
+              Read  reference word strings from _f_i_l_e.  Each line starts with a
+              sentence ID (the basename of the lattice file name), followed by
+              the words.  This or the next option triggers computation of lat-
+              tice word errors (minimum word error counts of any path  through
+              a lattice).
+
+       --rreeff--ffiillee _f_i_l_e
+              Read  reference word strings from _f_i_l_e.  Lines must contain ref-
+              erence words only, and must be matched to input lattices in  the
+              order processed.
+
+       --wwrriittee--rreeffss _f_i_l_e
+              Write the references back to _f_i_l_e (for validation).
+
+       --aadddd--rreeffss _P
+              Add  the  reference  words as an additional path to the lattice,
+              with probability _P.  Unless  --nnoo--ppaauussee  is  specified,  optional
+              pause nodes between words are also added.  Note that this opera-
+              tion is performed before lattice reduction and expansion, so the
+              new path can be merged with existing ones, and the probabilities
+              for the new path can be reassigned from an LM later.
+
+       --nnooiissee--vvooccaabb _f_i_l_e
+              Read a list of ``noise''  words  from  _f_i_l_e.   These  words  are
+              ignored  when  computing  lattice word errors, when decoding the
+              best word sequence using --vviitteerrbbii--ddeeccooddee  or  --ppoosstteerriioorr--ddeeccooddee,
+              or when collapsing nodes with --ccoollllaappssee--ssaammee--wwoorrddss.
+
+       --kkeeeepp--ppaauussee
+              Causes  the  pause  word  ``-pau-'' to be treated like a regular
+              word.  It prevents pause from being implicitly added to the list
+              of noise words.
+
+       --iiggnnoorree--vvooccaabb _f_i_l_e
+              Read  a  list  of words that are to be ignored in lattice opera-
+              tions, similar to pause tokens.  Unlike noise words (see  above)
+              they  are  also  skipped during LM evaluation.  With this option
+              and --kkeeeepp--ppaauussee, pause words are not ignored by default.
+
+       --sspplliitt--mmuullttiiwwoorrddss
+              Split lattice nodes with multiwords into a sequence of  non-mul-
+              tiword nodes.  This option is necessary to compute lattice error
+              of multiword lattices against non-multiword references, but  may
+              be useful in its own right.
+
+       --sspplliitt--mmuullttiiwwoorrddss--aafftteerr--llmm
+              Perform  multiword  splitting  after lattice expansion using the
+              specified LM.  This should be used if the  LM  uses  multiwords,
+              but the final lattices are not supposed to contain multiwords.
+
+       --mmuullttiiwwoorrdd--ddiiccttiioonnaarryy _f_i_l_e
+              Read  a dictionary from _f_i_l_e containing multiword pronunciations
+              and word boundary markers (a  ``|''  phone  label).   Specifying
+              such  a  dictionary  allows  the  multiword splitting options to
+              infer accurate time marks and pronunciation information for  the
+              multiword components.
+
+       --mmuullttii--cchhaarr _C
+              Designate  _C as the character used for separating multiword com-
+              ponents.  The default is an underscore ``_''.
+
+       --ooppeerraattiioonn _O
+              Perform a lattice algebra operation _O on the lattice or lattices
+              processed,  with  the  second operand specified by --iinn--llaattttiiccee22.
+              Operations currently  supported  are  ccoonnccaatteennaattee  and  oorr,  for
+              serial  and  parallel lattice combination, respectively, and are
+              applied after all other lattices manipulations.
+
+       --vviitteerrbbii--ddeeccooddee
+              Print out the word sequence corresponding to the highest  proba-
+              bility path.
+
+       --ppoosstteerriioorr--ddeeccooddee
+              Print out the word sequence with lowest expected word error.
+
+       --oouuttppuutt--ccttmm
+              Output  word sequences in NIST CTM (conversation time mark) for-
+              mat.  Note that word start times will be relative to the lattice
+              start  time, the first column will contain the lattice name, and
+              the channel field is always 1.  The word confidence  field  con-
+              tains posterior probabilities if --ppoosstteerriioorr--ddeeccooddee is in effect.
+              This option also implies --aaccoouussttiicc--mmeesshh.
+
+       --hhiiddddeenn--vvooccaabb file
+              Read a subvocabulary from _f_i_l_e and constrain word meshes to only
+              align  those  words that are either all in or outside the subvo-
+              cabulary.  This may be used to keep ``hidden event''  tags  from
+              aligning with regular words.
+
+       --ddiiccttiioonnaarryy--aalliiggnn
+              Use  the dictionary pronunciations specified with --ddiiccttiioonnaarryy to
+              induce a word distance metric used for word mesh alignment.  See
+              the nnbbeesstt--llaattttiiccee(1) --ddiiccttiioonnaarryy option.
+
+       --nnbbeesstt--ddeeccooddee _N
+              Generate the up to _N highest scoring paths through a lattice and
+              write them out in nnbbeesstt--ffoorrmmaatt(5),  along  with  optional  addi-
+              tional  score  files  to  store knowledge sources encoded in the
+              lattice.  Further options are needed to specify the location  of
+              N-best  lists  and  score  files,  described below under "N-BEST
+              DECODING".  Duplicated Hypotheses that differ only in pause  and
+              words  specified  with --iiggnnoorree--vvooccaabb are removed from the N-best
+              output.  If the --mmuullttiiwwoorrddss option is specified, duplicates  due
+              to multiwords are also eliminated.
+
+       --oolldd--ddeeccooddiinngg
+              Decode  lattices  (in Viterbi or N-best mode) without applying a
+              new language model.   By  default,  if  --llmm  is  specified,  the
+              --vviitteerrbbii--ddeeccooddee  and  --nnbbeesstt--ddeeccooddee  options  will use the LM to
+              replace language model scores encoded in an  HTK-formatted  lat-
+              tice.  For PFSG lattices, the new LM scores will be added to the
+              original scores.
+
+       --nnbbeesstt--dduupplliiccaatteess _K
+              Allow up to _K duplicate word hypotheses to be output  in  N-best
+              decoding (implies --oolldd--ddeeccooddiinngg).
+
+       --nnbbeesstt--mmaaxx--ssttaacckk _M
+              Limits the depth of the hypothesis stack used in N-best decoding
+              to _M entries, which may be useful for limiting  memory  use  and
+              runtime.
+
+       --nnbbeesstt--vviitteerrbbii
+              Use  a Viterbi algorithm to generate N-best, rather than A-star.
+              This uses less memory but may  take  more  time  (implies  --oolldd--
+              ddeeccooddiinngg).
+
+       --ddeeccooddee--bbeeaammwwiiddtthh _B
+              Limits beamwidth in LM-based lattice decoding.  Default value is
+              1e30.
+
+       --ddeeccooddee--mmaaxx--ddeeggrreeee _D
+              Limits allowed in-degree in the decoding search  graph  for  LM-
+              based lattice decoding.  Default value is 0, meaning unlimited.
+
+       --ppppll _f_i_l_e
+              Read sentences from _f_i_l_e and compute the maximum probability (of
+              any path) assigned to  them  by  the  lattice  being  processed.
+              Effectively,  the  lattice  is treated as a (deficient) language
+              model.  The output detail is controlled by the
+
+       --wwoorrdd--ppoosstteerriioorrss--ffoorr--sseenntteenncceess _f_i_l_e
+              Read sentences from _f_i_l_e and compute and output the word  poste-
+              rior  probabilities  according  to a confusion network generated
+              from the lattice (as with --wwrriittee--mmeesshh).  If  there  is  no  path
+              through  the confusion network matching a sentence, the posteri-
+              ors output will be zero.
+
+       --ddeebbuugg option, similar to nnggrraamm --ppppll output.  (In particular, --ddeebbuugg  22
+              enables  tracing of lattice nodes corresponding to sentence pre-
+              fixes.)  Pause words in  _f_i_l_e are treated as regular  words  and
+              have to match pause nodes in the lattice, unless --nnooppaauussee speci-
+              fied, in which case pauses in both lattice and  input  sentences
+              are ignored.
+
+       The following options control transition weight assignment:
+
+       --oorrddeerr _n
+              Set  the  maximal  N-gram order to be used for transition weight
+              assignment (the default is 3).
+
+       --llmm _f_i_l_e
+              Read N-gram language model from _f_i_l_e.  This option also triggers
+              weight reassignment and lattice expansion.
+
+       --uussee--sseerrvveerr _S
+              Use  a network LM server (typically implemented by nnggrraamm(1) with
+              the --sseerrvveerr--ppoorrtt option) as the main model.   This  option  also
+              triggers  weight reassignment and lattice expansion.  The server
+              specification _S can be an unsigned integer port  number  (refer-
+              ring  to  a  server  port running on the local host), a hostname
+              (referring to default port 2525 on the named host), or a  string
+              of  the  form  _p_o_r_t@_h_o_s_t, where _p_o_r_t is a portnumber and _h_o_s_t is
+              either a hostname ("dukas.speech.sri.com") or IP number in  dot-
+              ted-quad format ("140.44.1.15").
+              For  server-based  LMs,  the  --oorrddeerr  option  limits the context
+              length of N-grams queried by the client (with 0 denoting  unlim-
+              ited  length).   Hence, the effective LM order is the mimimum of
+              the client-specified value and  any  limit  implemented  in  the
+              server.
+              When  --uussee--sseerrvveerr  is  specified,  the  arguments to the options
+              --mmiixx--llmm, --mmiixx--llmm22, etc.  are  also  interpreted  as  network  LM
+              server  specifications provided they contain a '@' character and
+              do not contain a '/' character.  This  allows  the  creation  of
+              mixtures of several file- and/or network-based LMs.
+
+       --ccaacchhee--sseerrvveedd--nnggrraammss
+              Enables  client-side  caching  of N-gram probabilities to elimi-
+              nated duplicate  network  queries,  in  conjunction  with  --uussee--
+              sseerrvveerr.   This may results in a substantial speedup but requires
+              memory in the client that may grow linearly with the  amount  of
+              data processed.
+
+       --nnoo--eexxppaannssiioonn
+              Suppress  lattice  expansion when a language model is specified.
+              This is useful if the LM is to be used only for lattice decoding
+              (see --vviitteerrbbii--ddeeccooddee and --nnbbeesstt--ddeeccooddee).
+
+       --mmuullttiiwwoorrddss
+              Resolve multiwords in the lattice without splitting nodes.  This
+              is useful in rescoring lattices containing multiwords with a  LM
+              does not use multiwords.
+
+       --zzeerroopprroobb--wwoorrdd _W
+              If  a  word  token  is assigned a probability of zero by the LM,
+              look up the word _W instead.  This is useful to avoid zero proba-
+              bilities  when processing lattices with an LM that is mismatched
+              in vocabulary.
+
+       --ccllaasssseess _f_i_l_e
+              Interpret the LM as an N-gram over word classes.  The expansions
+              of  the  classes are given in _f_i_l_e in ccllaasssseess--ffoorrmmaatt(5).  Tokens
+              in the LM that are not defined as classes in _f_i_l_e are assumed to
+              be  plain  words,  so that the LM can contain mixed N-grams over
+              both words and word classes.
+
+       --ssiimmppllee--ccllaasssseess
+              Assume a "simple" class model: each word is member  of  at  most
+              one word class, and class expansions are exactly one word long.
+
+       --mmiixx--llmm _f_i_l_e
+              Read a second N-gram model for interpolation purposes.  The sec-
+              ond and any additional interpolated models can also be class  N-
+              grams (using the same --ccllaasssseess definitions).
+
+       --ffaaccttoorreedd
+              Interpret  the files specified by --llmm, --mmiixx--llmm, etc. as factored
+              N-gram model specifications.  See nnggrraamm(1) for more details.
+
+       --llaammbbddaa _w_e_i_g_h_t
+              Set the weight of the main model when interpolating  with  --mmiixx--
+              llmm.  Default value is 0.5.
+
+       --mmiixx--llmm22 _f_i_l_e
+
+       --mmiixx--llmm33 _f_i_l_e
+
+       --mmiixx--llmm44 _f_i_l_e
+
+       --mmiixx--llmm55 _f_i_l_e
+
+       --mmiixx--llmm66 _f_i_l_e
+
+       --mmiixx--llmm77 _f_i_l_e
+
+       --mmiixx--llmm88 _f_i_l_e
+
+       --mmiixx--llmm99 _f_i_l_e
+              Up to 9 more N-gram models can be specified for interpolation.
+
+       --mmiixx--llaammbbddaa22 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa33 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa44 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa55 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa66 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa77 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa88 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa99 _w_e_i_g_h_t
+              These  are  the  weights  for the additional mixture components,
+              corresponding to --mmiixx--llmm22 through --mmiixx--llmm99.  The weight for  the
+              --mmiixx--llmm  model  is  1  minus the sum of --llaammbbddaa and --mmiixx--llaammbbddaa22
+              through --mmiixx--llaammbbddaa99.
+
+       --lloogglliinneeaarr--mmiixx
+              Implement a log-linear (rather than linear)  mixture  LM,  using
+              the parameters above.
+
+       --ccoonntteexxtt--pprriioorrss _f_i_l_e
+              Read  context-dependent  mixture  weight priors from _f_i_l_e.  Each
+              line in _f_i_l_e should contain a context N-gram (most  recent  word
+              first)  followed  by  a  vector  of mixture weights whose length
+              matches the number of LMs being  interpolated.   (This  and  the
+              following options currently only affect linear interpolation.)
+
+       --bbaayyeess _l_e_n_g_t_h
+              Interpolate  models  using  posterior probabilities based on the
+              likelihoods of local N-gram  contexts  of  length  _l_e_n_g_t_h.   The
+              --llaammbbddaa  values  are used as prior mixture weights in this case.
+              This option can also be combined with --ccoonntteexxtt--pprriioorrss, in  which
+              case  the  _l_e_n_g_t_h parameter also controls how many words of con-
+              text are maximally used to look up mixture  weights.   If  --ccoonn--
+              tteexxtt--pprriioorrss  is  used without --bbaayyeess, the context length used is
+              set by the --oorrddeerr option and Bayesian interpolation is disabled,
+              as when _s_c_a_l_e (see next) is zero.
+
+       --bbaayyeess--ssccaallee _s_c_a_l_e
+              Set  the  exponential  scale factor on the context likelihood in
+              conjunction with the --bbaayyeess function.  Default value is 1.0.
+
+       --ccoommppaacctt--eexxppaannssiioonn
+              Use a compact expansion algorithm that  uses  backoff  nodes  to
+              reduce  the  size  of  expanded  lattices  (see  paper reference
+              below).
+
+       --oolldd--eexxppaannssiioonn
+              Use older versions of the  lattice  expansion  algorithms  (both
+              regular  and  compact),  that  handle  only  trigram  models and
+              require elimination of null and pause nodes prior to  expansion.
+              Not  recommended,  but  useful if full backward compatibility is
+              required.
+
+       --mmaaxx--nnooddeess _M
+              Abort lattices expansion when the  number  of  nodes  (including
+              null  and  pause nodes) exceeds _M.  This is another mechanism to
+              avoid spending too much time on very large lattices.
+
+       --hhyypp--lliisstt _f_i_l_e
+              Read 1st ASR hypothesis  word  strings  from  _f_i_l_e.   Each  line
+              starts  with  a  sentence  ID  (the basename of the lattice file
+              name), followed by the words. The hypothesized words  are  added
+              into the word mesh (confusion network)
+
+       --hhyypp--ffiillee _f_i_l_e
+              Read 1st ASR hypothesis word strings from _f_i_l_e.  Lines must con-
+              tain hypothesized words only, and must be matched to input  lat-
+              tices  in  the order processed. The hypothesized words are added
+              into the word mesh (confusion network)
+
+       --hhyypp22--lliisstt _f_i_l_e
+              Read 2nd ASR hypothesis  word  strings  from  _f_i_l_e.   Each  line
+              starts  with  a  sentence  ID  (the basename of the lattice file
+              name), followed by the words. The hypothesized words  are  added
+              into the word mesh (confusion network)
+
+       --hhyypp22--ffiillee _f_i_l_e
+              Read 2nd ASR hypothesis word strings from _f_i_l_e.  Lines must con-
+              tain hypothesized words only, and must be matched to input  lat-
+              tices  in  the order processed. The hypothesized words are added
+              into the word mesh (confusion network)
+
+       --aadddd--hhyyppss _P
+              Add the hypothesized words as an additional  path  to  the  word
+              mesh (confusion network), with probability _P.
+
+LLAATTTTIICCEE EEXXPPAANNSSIIOONN AALLGGOORRIITTHHMMSS
+       llaattttiiccee--ttooooll  incorporates  several  different  algorithms  to apply LM
+       weights to lattices.  This section explains what algorithms are applied
+       given what options.
+
+       CCoommppaacctt LLMM eexxppaannssiioonn
+              This  expands  the  nodes  and  transitions to be able to assign
+              higher-order probabilities to transitions.  Backoffs in  the  LM
+              are exploited in the expansion, thereby minimizing the number of
+              added nodes (Weng et al., 1998).  This algorithm is triggered by
+              --ccoommppaacctt--eexxppaannssiioonn For the resulting lattices to work correctly,
+              backoff paths in the LM must have lower weight than  the  corre-
+              sponding  higher-order  paths.   (For  N-gram  LMs,  this can be
+              achieved using the nnggrraamm --pprruunnee--lloowwpprroobbss  option.)   Pauses  and
+              null  nodes  are handled during the expansion and do not have to
+              be removed and restored.
+
+       GGeenneerraall LLMM eexxppaannssiioonn
+              This expands the lattice to apply LMs of arbitrary order,  with-
+              out  use  of backoff transitions.  This algorithm is the default
+              (no --ccoommppaacctt--eexxppaannssiioonn).
+
+       UUnniiggrraamm wweeiigghhtt rreeppllaacceemmeenntt
+              This simply replaces the weights  on  lattice  transitions  with
+              unigram  log  probabilities.   No  modification  of  the lattice
+              structure is required.  This algorithm is used if --oolldd--eexxppaannssiioonn
+              and --oorrddeerr 11 are specified.
+
+       BBiiggrraamm wweeiigghhtt rreeppllaacceemmeenntt
+              This  replaces the transition weights with bigram log probabili-
+              ties.  Pause and null nodes have to be eliminated prior  to  the
+              operation,  and  are  restored  after  weight replacement.  This
+              algorithm is used if --oolldd--eexxppaannssiioonn and --oorrddeerr 22 are specified.
+
+HHTTKK LLAATTTTIICCEESS
+       llaattttiiccee--ttooooll can optionally read, process, and output lattices  in  HTK
+       Standard  Lattice  Format.   The  following options control HTK lattice
+       processing.
+
+       --rreeaadd--hhttkk
+              Read input lattices in HTK format.  All lattices are  internally
+              represented  as  PFSGs;  to  achieve this HTK lattices links are
+              mapped to PFSG nodes (with attached word and score information),
+              and  HTK  lattice  nodes are mapped to PFSG NULL nodes.  Transi-
+              tions are created so as to preserve  words  and  scores  of  all
+              paths  through the original lattice.  On output, this mapping is
+              reversed, so as to create a compact encoding of PFSGs containing
+              NULL nodes as HTK lattices.
+
+       --hhttkk--aaccssccaallee _S
+
+       --hhttkk--llmmssccaallee _S
+
+       --hhttkk--nnggssccaallee _S
+
+       --hhttkk--pprrssccaallee _S
+
+       --hhttkk--dduussccaallee _S
+
+       --hhttkk--xx11ssccaallee _S
+
+       --hhttkk--xx22ssccaallee _S
+              ...
+
+       --hhttkk--xx99ssccaallee _S
+
+       --hhttkk--wwddppeennaallttyy _S
+              These options specify the weights for acoustic, LM, N-gram, pro-
+              nunciation, and duration models, up to  nine  extra  scores,  as
+              well  as  word transition penalties to be used for combining the
+              various scores contained in HTK lattices.  The  combined  scores
+              are then used to compute the transition weights for the internal
+              PFSG representation.  Default  weights  are  obtained  from  the
+              specifications in the lattice files themselves.
+              Word  transition  penalties are scaled according to the log base
+              used.  Values specified on the command line are scaled according
+              to  --hhttkk--llooggbbaassee,  or the default 10.  Word transition penalties
+              specified in the lattice file are scaled according  to  the  log
+              base specified in the file, or the default _e.
+
+       --hhttkk--llooggzzeerroo _Z
+              Replace  HTK lattices score that are zero (minus infinity on the
+              log scale) by the log-base-10 score _Z.  This is  typically  used
+              after  rescoring  with a language model that assigns probability
+              zero to some words in the lattice, and allows meaningful  compu-
+              tation  of  posterior  probabilities  and 1-best hypotheses from
+              such lattices.
+
+       --nnoo--hhttkk--nnuullllss
+              Eliminate NULL nodes otherwise created by the conversion of  HTK
+              lattices to PFSGs.  This creates additional links and may or may
+              not reduce the overall processing time required.
+
+       --ddiiccttiioonnaarryy _f_i_l_e
+              Read a dictionary containing  pronunciation  probabilities  from
+              _f_i_l_e, and add or replace the pronunciation scores in the lattice
+              accordingly.  This requires  that  the  lattices  contain  phone
+              alignment information.
+
+       --iinnttllooggss
+              Assume  the dictionary contains log probabilities encoded on the
+              int-log scale, as used by the SRI Decipher system.
+
+       --wwrriittee--hhttkk
+              Write output lattices in HTK format.  If the input lattices were
+              in  PFSG  format the original PFSG weights will be output as HTK
+              acoustic scores.  However, LM rescoring will discard the  origi-
+              nal  PFSG  weights and the results will be encoded as LM scores.
+              Pronunciation scoring results will be encoded as  pronunciations
+              scores.  If the --ccoommppuuttee--ppoosstteerriioorrss was used in lattice process-
+              ing the output lattices will also contain node posterior  proba-
+              bilities.  If the input lattices were in HTK format, then acous-
+              tic and duration scores are preserved from the  input  lattices.
+              The score scaling factors in the lattice header will reflect the
+              --hhttkk--**ssccaallee options given above.
+
+       --hhttkk--llooggbbaassee _B
+              Modify the logarithm base in HTK lattices output.   The  default
+              is  to  use  logs base 10, as elsewhere in SRILM.  As value of 0
+              means to output  probabilities  instead  of  log  probabilities.
+              Note  that  the  log  base for input lattices is not affected by
+              this option; it is  encoded  in  the  lattices  themselves,  and
+              defaults to _e according to the HTK SLF definition.
+
+       --hhttkk--wwoorrddss--oonn--nnooddeess
+              Output  word  labels  and  other word-related information on HTK
+              lattice nodes, rather than links.  This option is provided  only
+              for  compatibility  with software that requires word information
+              to be attached specifically to nodes.
+
+       Note:  The options --nnoo--hhttkk--nnuullllss, --hhttkk--wwoorrddss--oonn--nnooddeess, and --hhttkk--ssccoorreess--
+              oonn--nnooddeess  defeat  the mapping of internal PFSG nodes back to HTK
+              transitions, and should therefore NOT be  used  when  a  compact
+              output representation is desired.
+
+       --hhttkk--qquuootteess
+              Enable  the  HTK string quoting mechanism that allows whitespace
+              and other non-printable  characters  to  be  included  in  words
+              labels and other fields.  This is disabled by default since PFSG
+              lattices and other SRILM tools don't support such  word  labels.
+              It affects both input and output format for HTK lattices.
+
+NN--BBEESSTT DDEECCOODDIINNGG
+       The option --nnbbeesstt--ddeeccooddee triggers generation of N-best lists, according
+       to the aggregate score of paths encoded in  the  lattice.   The  output
+       format  for  N-best lists and associated additional score files is com-
+       patible with other SRILM tools that process N-best lists, such as those
+       described  in  nnbbeesstt--llaattttiiccee(1)  and  nnbbeesstt--ssccrriippttss(1).   The following
+       options control the location of output files:
+
+       --oouutt--nnbbeesstt--ddiirr _d_i_r
+              The directory to which N-best list  files  are  written.   These
+              contain  acoustic  model  scores,  language  model  scores, word
+              counts, and the word hypotheses themselves, in SRILM  format  as
+              described in nnbbeesstt--ffoorrmmaatt(5).
+
+       --oouutt--nnbbeesstt--ddiirr--nnggrraamm _d_i_r
+              Output directory for separate N-gram LM scores as may be encoded
+              in HTK lattices.
+
+       --oouutt--nnbbeesstt--ddiirr--pprroonn _d_i_r
+              Output directory for pronunciation scores encoded  in  HTK  lat-
+              tices.
+
+       --oouutt--nnbbeesstt--ddiirr--dduurr _d_i_r
+              Output  directory  for duration model scores encoded in HTK lat-
+              tices.
+
+       --oouutt--nnbbeesstt--ddiirr--xxssccoorree11 _d_i_r
+
+       --oouutt--nnbbeesstt--ddiirr--xxssccoorree22 _d_i_r
+              ...
+
+       --oouutt--nnbbeesstt--ddiirr--xxssccoorree99 _d_i_r
+              Output score directories for up  to  nine  additional  knowledge
+              sources encoded in HTK lattices.
+
+       --oouutt--nnbbeesstt--ddiirr--rrttttmm _d_i_r
+              N-best hypotheses in NIST RTTM format.  This function is experi-
+              mental and makes assumptions about the input file naming conven-
+              tions to infer timing information.
+
+SSEEEE AALLSSOO
+       ngram(1),  ngram-merge(1), pfsg-scripts(1), nbest-lattice(1), pfsg-for-
+       mat(5), ngram-format(5), classes-format(5), wlat-format(5),  nbest-for-
+       mat(5).
+       F.  Weng, A. Stolcke, and A. Sankar, ``Efficient Lattice Representation
+       and Generation.''  _P_r_o_c_. _I_n_t_l_. _C_o_n_f_.  _o_n  _S_p_o_k_e_n  _L_a_n_g_u_a_g_e  _P_r_o_c_e_s_s_i_n_g,
+       vol. 6, pp. 2531-2534, Sydney, 1998.
+       S.    Young    et    al.,    _T_h_e    _H_T_K    _B_o_o_k,   HTK   version   3.1.
+       http://htk.eng.cam.ac.uk/prot-docs/htk_book.shtml
+
+BBUUGGSS
+       Not all LM types supported by nnggrraamm(1) are handled by llaattttiiccee--ttooooll..
+
+       Care must be taken when processing multiword  lattices  with  --uunnkk  and
+       --mmuullttiiwwoorrddss  or --sspplliitt--mmuullttiiwwoorrddss.  Multiwords not listed in the LM (or
+       the explicit vocabulary specified) will be considered ``unknown'', even
+       though their components might be in-vocabulary.
+
+       The  --nnbbeesstt--dduupplliiccaatteess  option  does  not  work  together  with --nnbbeesstt--
+       vviitteerrbbii.
+
+       When applying --ddeeccooddee--vviitteerrbbii or --ddeeccooddee--nnbbeesstt to  PFSG  lattices,  the
+       old  transition weights are effectively treated as acoustic scores, and
+       the new LM scores are added to them.  There is no way to replace old LM
+       scores  that  might  be part of the PFSG transition weights.  This is a
+       limitation of the format, since PFSGs cannot encode  separate  acoustic
+       and language scores.
+
+       Input  lattices in HTK format may contain node or link posterior infor-
+       mation.  However, this information is effectively discarded; posteriors
+       are always recomputed from scores when needed for pruning or output.
+
+       The  --nnoo--nnuullllss, --nnoo--ppaauussee and --ccoommppaacctt--ppaauussee options discard the acous-
+       tic information associated with NULL and pause  nodes  in  HTK  lattice
+       input,  and should therefore not be used if equivalent HTK lattice out-
+       put is intended.
+
+       The --kkeeeepp--uunnkk option currently only works for input/output in HTK  lat-
+       tice format.
+
+       When  rescoring HTK lattices with LMs the new scores are not taken into
+       account in subsequent operations based on word posterior  probabilities
+       (posterior  decoding, word mesh building, N-gram count generation).  To
+       work around this write the rescored lattices to files  and  invoke  the
+       program a second time.
+
+AAUUTTHHOORRSS
+       Fuliang Weng <fuliang@speech.sri.com>
+       Andreas Stolcke <andreas.stolcke@microsoft.com>
+       Dustin Hillard <hillard@ssli.ee.washington.edu>
+       Jing Zheng <zj@speech.sri.com>
+       Copyright 1997-2011 SRI International
+       Copyright 2012-2013 Microsoft Corp.
+
+
+
+
+SRILM Tools              $Date: 2014-01-30 00:31:34 $          lattice-tool(1)

@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# mk-new-version --
+#	move SRILM source tree to new version, leaving
+#	released files in tact.
+#
+
+newversion=${1-new}
+oldversion=${2-latest}
+
+if [ -f $newversion ]; then
+	echo "version $newversion already exists" >&2
+	exit 1
+fi
+
+if [ ! -d $oldversion/. ]; then
+	echo "version $oldversion doesn't exit" >&2
+	exit1
+fi
+
+mkdir $newversion
+
+excludefile=${TMPDIR-/tmp}/exclude$$
+(cd $oldversion
+find . -type d \( -name mips\* -o -name sparc\* -o -name alpha\* \) -print \
+		> $excludefile
+
+tar cfX - $excludefile . ) | (cd $newversion; tar xpf -)
+
+rm -f $excludefile

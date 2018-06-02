@@ -1,0 +1,27 @@
+#!/bin/sh
+
+smooth="-kndiscount1 -kndiscount2 -kndiscount3 -interpolate1 -interpolate2 -interpolate3 -gt3min 1"
+
+dir=../ngram-count-gt
+
+if [ -f $dir/swbd.3grams.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+# create LM from counts
+ngram-count -debug 1 \
+	$smooth \
+	-read $dir/swbd.3grams$gz \
+	-vocab $dir/eval2001.vocab \
+	-unk \
+	-lm swbd.3bo$gz
+
+ngram -debug 0 \
+	-lm swbd.3bo$gz \
+	-unk \
+	-ppl $dir/eval97.text
+
+rm -f swbd.3bo$gz
+

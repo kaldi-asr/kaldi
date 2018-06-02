@@ -1,0 +1,155 @@
+<! $Id: nbest-pron-score.1,v 1.7 2008/04/24 06:55:12 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>nbest-pron-score</TITLE>
+<BODY>
+<H1>nbest-pron-score</H1>
+<H2> NAME </H2>
+nbest-pron-score - score pronunciations and pauses in N-best hypotheses
+<H2> SYNOPSIS </H2>
+<B>nbest-pron-score</B> [ <B>-help</B> ] <I>option</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> nbest-pron-score </B>
+reads N-best lists and computes log probability scores for the pronunciations
+and pauses contained in them.
+Pronunciation scoring requires that the N-best lists
+contain phone backtraces in "NBestList2.0"
+<A HREF="nbest-format.5.html">nbest-format(5)</A>.
+<P>
+Pronunciation scores are computed from the probabilities in a dictionary.
+Pauses are binned into three length classes (none, short, long) and 
+scored according to a trigram language model that conditions the pause length
+on the left and right neighboring words, in that order (so that bigram
+backoff uses the left neighbor only).
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-debug</B><I> level</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Controls the amount of output (the higher the
+<I>level</I>,<I></I><I></I><I></I>
+the more).
+<DT><B> -tolower </B>
+<DD>
+Map all vocabulary to lowercase.
+Useful if case conventions for text/counts and language model differ.
+<DT><B> -multiwords </B>
+<DD>
+Deal with N-best lists containing multiwords joined by underscores.
+This only affects pause scoring: if a word adjacent to a pause is 
+a multiword and is not in the vocabulary of the pause LM, then it is split
+and only the component closest to the pause is conditioned on.
+<DT><B>-multi-char</B><I> C</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Character used to delimit component words in multiwords
+(an underscore character by default).
+<DT><B>-nbest</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Score the N-best hypothese in 
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-rescore</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Same as 
+<B>-nbest</B>.<B></B><B></B><B></B>
+<DT><B>-nbest-files</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Process all N-best list filenames listed in 
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-max-nbest</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limits the number of hypotheses read from an N-best list.
+Only the first
+<I> n </I>
+hypotheses are processed.
+<DT><B>-dictionary</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Enable pronunciation scoring, using the pronunciation dictionary 
+<I>file</I>.<I></I><I></I><I></I>
+Each line contains a pronunciation in the format
+<PRE>
+	<I>word</I> [<I>p</I>] <I>phone</I> ...
+</PRE>
+The optional value 
+<I> p </I>
+is the pronunciation probability.
+If the second field in a line is not a number the pronunciation is assumed
+to have probability one.
+<DT><B> -intlogs </B>
+<DD>
+Interpret probabilities in the dictionary as intlog-scaled log probabilities
+(as used in the SRI Decipher(TM) system), rather than straight probabilities.
+<DT><B>-pause-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Enable pause scoring, using the pause LM in
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-no-pause</B><I> tag</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The word used to represent the absence of a pause in the pause LM.
+<DT><B>-short-pause</B><I> tag</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The word used to represent a short pause in the pause LM.
+<DT><B>-long-pause</B><I> tag</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The word used to represent a long pause in the pause LM.
+<DT><B>-min-pause-dur</B><I> T</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The minimum duration, in seconds, for a non-speech region to be considered
+a (short) pause.
+<DT><B>-long-pause-dur</B><I> T</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The duration, in second, above which a non-speech region is considered a
+"long" pause.
+</DD>
+</DL>
+<P>
+The default values for pause tags and duration thresholds are printed by the
+<B> -help </B>
+option.
+<DL>
+<DT><B>-pron-score-dir</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write pronunciation scores to
+<I>dir</I><I></I><I></I><I></I>
+when processing multiple N-best lists,
+using output filenames derived from the input files.
+<DT><B>-pause-score-dir</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write pause scores to
+<I>dir</I><I></I><I></I><I></I>
+when processing multiple N-best lists,
+using output filenames derived from the input files.
+<DT><B>-pause-score-weight</B><I> W</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Add pause LM scores to the pronunciation scores after multiplying them
+by 
+<I>W</I>.<I></I><I></I><I></I>
+This creates a single weighted combination of both models.
+Pause scores can still be output separately by specifying 
+<B>-pause-score-dir</B>.<B></B><B></B><B></B>
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="nbest-format.5.html">nbest-format(5)</A>, <A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>, <A HREF="nbest-optimize.1.html">nbest-optimize(1)</A>, <A HREF="ngram.1.html">ngram(1)</A>.
+<BR>
+D. Vergyri, A. Stolcke, V. R. R. Gadde, L. Ferrer, &amp; E. Shriberg,
+``Prosodic Knowledge Sources for Automatic Speech Recognition''.
+<I>Proc. IEEE Intl. Conf. on Acoustics, Speech and Signal Processing</I>,
+Hong Kong, April 2003.
+<H2> BUGS </H2>
+The binning of pause lengths into three classes should be generalized.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 2002-2008 SRI International
+</BODY>
+</HTML>

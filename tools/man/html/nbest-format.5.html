@@ -1,0 +1,85 @@
+<! $Id: nbest-format.5,v 1.5 2007/12/19 22:08:05 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>nbest-format</TITLE>
+<BODY>
+<H1>nbest-format</H1>
+<H2> NAME </H2>
+nbest-format - File formats for N-best hypotheses lists
+<H2> DESCRIPTION </H2>
+SRILM currently understands three different formats for 
+lists of N-best hypotheses for rescoring or 1-best hypothesis extraction.
+The first two formats originated in the SRI Decipher(TM) recognition
+system, the third format is particular to SRILM.
+<P>
+The first format consists of the header
+<PRE>
+	NBestList1.0
+</PRE>
+followed by one or more lines of the form
+<PRE>
+	(<I>score</I>) <I>w1 w2 w3</I> ...
+</PRE>
+where
+<I> score </I>
+is a composite acoustic/language model score
+from the recognizer, on the bytelog scale.
+(A bytelog is a logarithm to base 1.0001, divided by 1024 and 
+rounded to an integer.)
+This format is output by the SRI Decipher(TM) recognizer,
+by the
+<B>ngram -nbest</B>,<B></B><B></B><B></B>
+and by
+<B>nbest-lattice -write-nbest -decipher-nbest</B>.<B></B><B></B><B></B>
+<P>
+The second Decipher(TM) format is an extension of the first format
+that encodes word-level scores and time alignments.
+It is marked by a header of the form
+<PRE>
+	NBestList2.0
+</PRE>
+The hypotheses are in the format
+<PRE>
+	(<I>score</I>) <I>w1</I> ( st: <I>st1</I> et: <I>et1</I> g: <I>g1</I> a: <I>a1</I> ) <I>w2</I> ...
+</PRE>
+where words are followed by start and end times, language model and 
+acoustic scores (bytelog-scaled), respectively.  
+This format may also contain scores and time marks for sub-word units
+(phones and HMM states), in the same format as above, but with the
+<I>w</I>'s<I></I><I></I><I></I>
+denoting phone and state names.  Sub-word units will have 
+time marks that are contained in the duration of the preceding word units,
+and may thus be easily identified.
+<P>
+The third format understood by SRILM lists
+hypotheses in the format
+<PRE>
+	<I>ascore</I> <I>lscore</I> <I>nwords</I> <I>w1 w2 w3</I> ...
+</PRE>
+where the first three columns contain the
+acoustic model log probability, the language model log probability,
+and the number of words in the hypothesis string, respectively.
+All scores are logarithms base 10.
+(This format must not be preceded by an ``NBestList'' header.)
+This format is output by the
+<B> ngram -rescore </B>
+and by
+<B> nbest-lattice -write-nbest </B>
+without the
+<B> -decipher-nbest </B>
+option.
+<H2> SEE ALSO </H2>
+<A HREF="ngram.1.html">ngram(1)</A>, <A HREF="nbest-lattice.1.html">nbest-lattice(1)</A>, <A HREF="segment-nbest.1.html">segment-nbest(1)</A>, <A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>, <A HREF="pfsg-scripts.1.html">pfsg-scripts(1)</A>.
+<H2> BUGS </H2>
+All these formats are somewhat ad hoc and could use a more rational
+design.
+The ``NBestList1.0'' format is particularly cumbersome because it 
+conflates acoustic and language model scores.
+<BR>
+A generalization to an arbitrary number of separate scores would be nice.
+<H2> AUTHOR </H2>
+Manual page written by Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1999-2001 SRI International
+</BODY>
+</HTML>

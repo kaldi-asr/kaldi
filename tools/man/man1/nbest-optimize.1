@@ -1,0 +1,601 @@
+.\" $Id: nbest-optimize.1,v 1.30 2016/05/03 05:56:59 stolcke Exp $
+.TH nbest-optimize 1 "$Date: 2016/05/03 05:56:59 $" "SRILM Tools"
+.SH NAME
+nbest-optimize \- optimize score combination for N-best word error minimization
+.SH SYNOPSIS
+.nf
+\fBnbest-optimize\fP [ \fB\-help\fP ] \fIoption\fP ... [ \fIscoredir\fP ... ]
+.fi
+.SH DESCRIPTION
+.B nbest-optimize
+reads a set of N-best lists, additional score files, and corresponding 
+reference transcripts and optimizes the score combination weights
+so as to minimize the word error of a classifier that performs
+word-level posterior probability maximization.
+The optimized weights are meant to be used with
+.BR nbest-lattice (1)
+and the
+.B \-use-mesh 
+option,
+or the 
+.B nbest-rover
+script (see
+.BR nbest-scripts (1)).
+.B nbest-optimize
+determines both the best relative weighting of knowledge source scores
+and the optimal 
+.B \-posterior-scale
+parameter that controls the peakedness of the posterior distribution.
+.PP
+Alternatively,
+.B nbest-optimize
+can also optimize weights for a standard, 1-best hypothesis rescoring that
+selects entire (sentence) hypotheses
+.RB ( \-1best
+option).
+In this mode sentence-level error counts may be read from external files,
+or computed on the fly from the reference strings.
+The weights obtained are meant to be used for N-best list rescoring with
+.B rescore-reweight
+(see 
+.BR nbest-scripts (1)).
+.PP
+A third optimization criterion is the BLEU score used in machine translation.
+This also requires the associated scores to be read from external files.
+.PP
+One of three optimization algorithms are available:
+.TP
+1.
+The default optimization method is gradient descent on a smoothed (sigmoidal)
+approximation of the true 0/1 word error function (Katagiri et al. 1990).
+Therefore, the result can only be expected to be a
+.I local
+minimum of the error surface.
+(A more global search can be attempted by specifying different starting
+points.)
+Another approximation is that the error function is computed assuming a fixed
+multiple alignment of all N-best hypotheses and the reference string,
+which tends to slightly overestimate the true pairwise error between any 
+single hypothesis and the reference.
+.TP
+2.
+An alternative search strategy uses a simplex-based "Amoeba" search on
+the (non-smoothed) error function (Press et al. 1988).
+The search is restarted multiple times to avoid local minima.
+.TP
+3.
+A third algorithm uses Powell search (Press et al. 1988)
+on the (non-smoothed) error function.
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-debug " level"
+Controls the amount of output (the higher the
+.IR level ,
+the more).
+At level 1, error statistics at each iteration are printed.
+At level 2, word alignments are printed.
+At level 3, full score matrix is printed.
+At level 4, detailed information about word hypothesis ranking is printed
+for each training iteration and sample.
+.TP
+.BI \-nbest-files " file-list"
+Specifies the set of N-best files as a list of filenames.
+Three sets of standard scores are extracted from the N-best files:
+the acoustic model score, the language model score, and the number of 
+words (for insertion penalty computation).
+See 
+.BR nbest-format (5)
+for details.
+.br
+In BLEU optimization mode, since there is no acoustic score, the
+position
+of the first score is taken by the "ac-replacement" score, which can be
+any score used by the machine translation system.
+A typical example is a score measuring
+word order distortion between the source and target languages.
+.TP
+.BI \-xval-files " file-list"
+Use the N-best files listed in 
+.I file-list
+for cross-validation.
+Optimization stops once no improvement is found on the cross-validation set
+(while the direction of the search is obtained from the training set).
+This is only supported with the gradient-descent and Amoeba optimization
+methods.
+.TP
+.BI \-srinterp-format 
+Parse n-best list in SRInterp format, which has 
+features and text in the same line. n-best optimize will also generate
+rover-control file in SRInterp format, where each line is in the form of:
+.nf
+	\fIF1=V1\fP \fIF2=V2\fP ... \fIFm=Vm\fP \fIW1\fP \fIW2\fP ...\fIWn\fP
+.fi
+where
+.I F1
+through
+.I Fm
+are feature names,
+.I V1
+through
+.I Vm
+are feature values,
+.I W1
+through
+.I Wn
+are words.
+Also generate SRInterp control file, in the format of:
+.nf
+	\fIF1:S1\fP \fIF2:S2\fP ... \fIFm:Sm\fP
+.fi
+where 
+.I S1
+through
+.I Sm
+are scaling factors (weights) for feature 
+.I F1
+through
+.I Fm
+.
+.TP
+.BI \-refs " references"
+Specifies the reference transcripts.
+Each line in 
+.I references
+must contain the sentence ID (the last component in the N-best filename
+path, minus any suffixes) followed by zero or more reference words.
+.TP
+.BI \-insertion-weight " W"
+Weight insertion errors by a factor 
+.IR W .
+This may be useful to optimize for keyword spotting tasks where
+insertions have a cost different from deletion and substitution errors.
+.TP
+.BI \-word-weights " file"
+Read a table of words and weights from
+.IR file .
+Each word error is weighted according to the word-specific weight.
+The default weight is 1, and used if a word has no specified weight.
+Also, when this option is used, substitution errors are counted 
+as the sum of a deletion and an insertion error, as opposed to counting
+as 1 error as in traditional word error computation.
+.TP
+.BI \-anti-refs " file"
+Read a file of "anti-references" for use with the 
+.B \-anti-ref-weight 
+option (see below).
+.TP
+.BI \-anti-ref-weight " W"
+Compute the hypothesis errors for 1-best optimization by adding the
+edit distance with respect to the "anti-references" times the weight
+.I W
+to the regular error count.
+If 
+.I W
+is negative this will tend to generate hypotheses that are different from
+the anti-references (hence the name).
+.TP
+.B \-1best
+Select optimization for standard sentence-level hypothesis selection.
+.TP
+.B \-1best-first
+Optimized first using 
+.B \-1best
+mode, then switch to full optimization.
+This is an effective way to quickly bring the score weights near an
+optimal point, and then fine-tune them jointly with the posterior scale
+parameter.
+.TP
+.BI \-errors " dir"
+In 1-best mode, optimize for error counts that are stored in separate files
+in directory
+.IR dir .
+Each N-best list must have a matching error counts file of the same 
+basename in 
+.IR dir .
+Each file contains 7 columns of numbers in the format
+.nf
+	\fIwcr\fP \fIwer\fP \fInsub\fP \fIndel\fP \fInins\fP \fInerr\fP \fInw\fP
+.fi
+Only the last two columns (number of errors and words, respectively) are used.
+.br
+If this option is omitted, errors will be computed from the N-best hypotheses
+and the reference transcripts.
+.TP
+.BI \-bleu-counts " dir"
+Perform BLEU optimization, reading BLEU reference counts from directory 
+.IR dir .
+Each N-best list must have a matching counts file of the same 
+basename in 
+.IR dir ,
+containing the following information:
+.nf
+	\fIN\fP \fIM\fP \fIL1\fP ... \fILM\fP
+.fi
+where
+.I N
+is the number of hypotheses in the N-best list,
+.I M
+is the number of references for the utterance,
+and 
+.I L1
+through
+.I LM
+are the reference lengths (word counts) for each reference.
+Following this line, there are 
+.I N
+lines of the form
+.nf
+	\fIK\fP \fIC1\fP \fIC2\fP ... \fICm\fP
+.fi
+where 
+.I K
+is the number of words in the hypothesis and
+.I C1
+through
+.I Cm
+are the N-gram counts occurring in the references for each N-gram order
+1, ...,
+.IR m .
+Currently,
+.I m 
+is limited to 4.
+.TP
+.B \-minimum-bleu-reference
+Use shortest reference length to compute the BLEU brevity penalty.
+.TP
+.B \-closest-bleu-reference
+Use closest reference length for each translation hypothesis to compute
+the BLEU brevity penalty.
+.TP
+.B \-average-bleu-reference
+Use average reference length to compute the BLEU brevity penalty.
+.TP
+.B \-error-bleu-ratio " R"
+Specifies the weight of error rate when combined with BLEU as optimization
+objective: \fI(1-BLEU) + ERR x R\fP. 
+.I ERR 
+is error rate computed by #errors/#references.
+.TP
+.BI \-max-nbest " n"
+Limits the number of hypotheses read from each N-best list to the first
+.IR n .
+.TP
+.BI \-rescore-lmw " lmw"
+Sets the language model weight used in combining the language model log
+probabilities with acoustic log probabilities.
+This is used to compute initial aggregate hypotheses scores.
+.TP
+.BI \-rescore-wtw " wtw"
+Sets the word transition weight used to weight the number of words relative to
+the acoustic log probabilities.
+This is used to compute initial aggregate hypotheses scores.
+.TP
+.BI \-posterior-scale " scale"
+Initial value for scaling log posteriors.
+The total weighted log score is divided by 
+.I scale
+when computing normalized posterior probabilities.
+This controls the peakedness of the posterior distribution. 
+The default value is whatever was chosen for 
+.BR \-rescore-lmw , 
+so that language model scores are scaled to have weight 1,
+and acoustic scores have weight 1/\fIlmw\fP.
+.TP
+.B \-combine-linear
+Compute aggregate scores by linear combination, rather than log-linear
+combination.
+(This is appropriate if the input scores represent log-posterior probabilities.)
+.TP
+.B \-non-negative
+Constrain search to non-negative weight values.
+.TP
+.BI \-vocab " file"
+Read the N-best list vocabulary from 
+.IR file .
+This option is mostly redundant since words found in the N-best input
+are implicitly added to the vocabulary.
+.TP
+.B \-tolower
+Map vocabulary to lowercase, eliminating case distinctions.
+.TP
+.B \-multiwords
+Split multiwords (words joined by '_') into their components when reading
+N-best lists.
+.TP
+.BI \-multi-char " C"
+Character used to delimit component words in multiwords
+(an underscore character by default).
+.TP
+.B \-no-reorder
+Do not reorder the hypotheses for alignment, and start the alignment with
+the reference words.
+The default is to first align hypotheses by order of decreasing scores
+(according to the initial score weighting) and then the reference,
+which is more compatible with how 
+.BR nbest-lattice (1)
+operates.
+.TP
+.BI \-noise " noise-tag"
+Designate
+.I noise-tag
+as a vocabulary item that is to be ignored in aligning hypotheses with
+each other (the same as the -pau- word).
+This is typically used to identify a noise marker.
+.TP
+.BI \-noise-vocab " file"
+Read several noise tags from
+.IR file ,
+instead of, or in addition to, the single noise tag specified by
+.BR \-noise .
+.TP
+.BR \-hidden-vocab " file"
+Read a subvocabulary from
+.I file
+and constrain word alignments to only group those words that are either all
+in or outside the subvocabulary.
+This may be used to keep ``hidden event'' tags from aligning with
+regular words.
+.TP
+.BR \-dictionary " file"
+Use word pronunciations listed in 
+.I file
+to construct word alignments when building word meshes.
+This will use an alignment cost function that reflects the number of
+inserted/deleted/substituted phones, rather than words.
+The dictionary 
+.I file
+should contain one pronunciation per line, each naming a word in the first
+field, followed by a string of phone symbols.
+.TP
+.BR \-distances " file"
+Use the word distance matrix in 
+.I file
+as a cost function for word alignments.
+Each line in 
+.I file
+defines a row of the distance matrix.
+The first field contains the word that is the row index,
+followed by one or more word/number pairs, where the word represents the 
+column index and the number the distance value.
+.TP
+.BI \-init-lambdas " 'w1 w2 ...'"
+Initialize the score weights to the values specified
+(zeros are filled in for missing values).
+The default is to set the initial acoustic model weight to 1,
+the language model weight from
+.BR \-rescore-lmw ,
+the word transition weight from
+.BR \-rescore-wtw ,
+and all remaining weights to zero initially.
+Prefixing a value with an equal sign (`=')
+holds the value constant during optimization.
+(All values should be enclosed in quotes to form a single command-line
+argument.)
+.br
+Hypotheses are aligned using the initial weights; thus, it makes sense
+to reoptimize with initial weights from a previous optimization in order
+to obtain alignments closer to the optimimum.
+.TP
+.BI \-alpha " a"
+Controls the error function smoothness; 
+the sigmoid slope parameter is set to
+.IR a .
+.TP
+.BI \-epsilon " e"
+The step-size used in gradient descent (the multiple of the gradient vector).
+.TP
+.BI \-min-loss " x"
+Sets the loss function for a sample effectively to zero when its value falls
+below 
+.IR x .
+.TP
+.BI \-max-delta " d"
+Ignores the contribution of a sample to the gradient if the derivative
+exceeds
+.IR d .
+This helps avoid numerical problems.
+.TP
+.BI \-maxiters " m"
+Stops optimization after 
+.I m
+iterations.
+In Amoeba search, this limits the total number of points in the parameter space
+that are evaluated.
+.TP
+.BR \-max-bad-iters " n"
+Stops optimization after 
+.I n
+iterations during which the actual (non-smoothed) error has not decreased.
+.TP
+.BR \-max-amoeba-restarts " r"
+Perform only up to
+.I r
+repeated Amoeba searches.
+The default is to search until 
+.I D
+searches give the same results, where
+.I D 
+is the dimensionality of the problem.
+.TP
+.BI \-max-time " T"
+Abort search if new lower-error point isn't found in 
+.I T
+seconds.
+.TP
+.BI \-epsilon-stepdown " s"
+.TP
+.BI \-min-epsilon " m"
+If 
+.I s
+is a value greater than zero, the learning rate will be multiplied by 
+.I s
+every time the error does not decrease after a number of iterations
+specified by
+.BR \-max-bad-iters .
+Training stops when the learning rate falls below
+.I m
+in this manner.
+.TP
+.BI \-converge " x"
+Stops optimization when the (smoothed) loss function changes relatively by less 
+than 
+.I x
+from one iteration to the next.
+.TP
+.B \-quickprop
+Use the approximate second-order method known as "QuickProp" (Fahlman 1989).
+.TP
+.BI \-init-amoeba-simplex " 's1 s2 ...'"
+Perform Amoeba simplex search.
+The argument defines the step size for the initial Amoeba simplex.
+One value for each non-fixed search dimension should be specified,
+plus optionally a value for the posterior scaling parameter
+(which is searched as an added dimension).
+.TP
+.BI \-init-powell-range " 'a1" , "b1 a2" , "b2 ...'"
+Perform Powell search.
+The argment initializes the weight ranges for Powell search.
+One comma-separated pair of values for each search dimension should
+be specified. For each dimension, if the upper bound equals lower bound
+and initial lambda, that dimension will be fixed, even if not so specified by 
+.B \-init-lambda .
+.TP
+.BI \-num-powell-runs " N"
+Sets the number of random runs for quick Powell grid search
+(default value is 20).
+.TP
+.B \-dynamic-random-series
+Use time and process ID to initialize seed for pseudo random series used
+in Powell search.
+This will make results unrepeatable but may yield better results through
+multiple trials.
+.TP
+.BI \-print-hyps " file"
+Write the best word hypotheses to 
+.I file
+after optimization.
+.TP
+.BI \-print-top-n " N"
+Write out the top 
+.I N
+rescored hypotheses.
+In this case
+.B \-print-hyps 
+specifies a directory (not a file)
+and one file per N-best list is generated.
+.TP
+.B \-print-unique-hyps
+Eliminate duplicate hypotheses when writing out N-best hypotheses.
+.TP
+.B \-print-old-ranks
+Output the original hypothesis ranks when writing out N-best hypotheses.
+.TP
+.B \-compute-oracle
+Find the lowest error rate or the highest BLEU score achievable by choosing
+among all N-best hypotheses.
+.TP
+.BI \-print-oracle-hyps " file"
+Print output oracle hyps to
+.IR file .
+.TP
+.BI \-write-rover-control " file"
+Writes a control file for 
+.B nbest-rover
+to 
+.IR file ,
+reflecting the names of the input directories and the optimized parameter
+values.
+The format of
+.I file
+is described in
+.BR nbest-scripts (1).
+The file is rewritten for each new minimal error weight combination found.
+.br
+In BLEU optimization, the weight for the ac-replacement score will be written
+in the place of the posterior scale,
+since posterior scaling is not used in BLEU optimization.
+.TP
+.B \-skipopt
+Skip optimization altogether, such as when only the 
+.B \-print-hyps 
+function is to be exercised.
+.TP
+.B \--
+Signals the end of options, such that following command-line arguments are 
+interpreted as additional scorefiles even if they start with `-'.
+.TP
+.IR scoredir " ..."
+Any additional arguments name directories containing further score files.
+In each directory, there must exist one file named after the sentence 
+ID it corresponds to (the file may also end in ``.gz'' and contain compressed
+data).
+The total number of score dimensions is thus 3 (for the standard scores from
+the N-best list) plus the number of additional score directories specified.
+.SH "SEE ALSO"
+nbest-lattice(1), nbest-scripts(1), nbest-format(5).
+.br
+S. Katagiri, C.H. Lee, & B.-H. Juang, "A Generalized Probabilistic Descent
+Method", in
+\fIProceedings of the Acoustical Society of Japan, Fall Meeting\fP,
+pp. 141-142, 1990.
+.br
+S. E. Fahlman, "Faster-Learning Variations on Back-Propagation: An
+Empirical Study", in D. Touretzky, G. Hinton, & T. Sejnowski (eds.), 
+\fIProceedings of the 1988 Connectionist Models Summer School\fP, pp. 38-51,
+Morgan Kaufmann, 1989.
+.br
+W. H. Press, B. P. Flannery, S. A. Teukolsky, & W. T. Vetterling,
+\fINumerical Recipes in C: The Art of Scientific Computing\fP,
+Cambridge University Press, 1988.
+.br
+.SH BUGS
+Gradient-based optimization is not supported (yet) in 1-best or BLEU mode
+or in conjunction with the 
+.B \-combine-linear
+or 
+.B \-non-negative
+options;
+use simplex or Powell search instead.
+.br
+The N-best directory in the control file output by
+.B \-write-rover-control
+is inferred from the
+first N-best filename specified with
+.BR \-nbest-files ,
+and will therefore only work if all N-best lists are placed in the same
+directory.
+.PP
+The
+.B \-insertion-weight
+and 
+.B \-word-weights
+options only affect the word error computation, not the construction 
+of hypothesis alignments. 
+Also, they only apply to sausage-based, not 1-best error optimization.
+(1-best errors may be explicitly specified using the 
+.B \-errors
+option).
+.PP
+The 
+.B \-anti-refs
+and
+.B \-anti-ref-weight
+options do not work for sausage-based or BLEU optimization.
+.SH AUTHORS
+Andreas Stolcke <andreas.stolcke@microsoft.com>
+.br
+Dimitra Vergyri <dverg@speech.sri.com>
+.br
+Jing Zheng <zj@speech.sri.com>
+.br
+Copyright (c) 2000\-2012 SRI International, 2012-2016 Microsoft Corp.

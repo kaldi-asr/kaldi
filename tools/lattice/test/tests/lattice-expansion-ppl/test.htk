@@ -1,0 +1,14 @@
+VERSION=1.1
+base=10
+dir=f
+lmscale=1 wdpenalty=0
+start=0 end=3
+N=4 L=4
+I=0 t=0.0
+I=1 t=0.1
+I=2 t=0.2
+I=3 t=0.3
+J=0 S=0 E=1 W=a   a=-1
+J=1 S=1 E=2 W=!NULL a=-2
+J=2 S=1 E=2 W=c   a=-2
+J=3 S=2 E=3 W=b   a=-3

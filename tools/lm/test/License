@@ -1,0 +1,230 @@
+
+                      SRILM Research Community License
+                                 Version 1.0
+
+1. DEFINITIONS
+
+    1.1. "Community" means the Initial Developer and each and every one of
+You.
+
+    1.2. "Contributor" means each individual or legal entity that creates or
+contributes to the creation of Modifications.
+
+    1.3. "Distribute" means to transfer, publish, or otherwise provide or
+make available a copy of software to any third party.
+
+    1.4. "Distributor" means each individual or legal entity exercising a
+right to Distribute Licensed Software under this License.
+
+    1.5. "Distributor Code" means, collectively, (a) the Original Source
+Code and (b) the Licensed Software that is Distributed by a particular
+Distributor.
+
+    1.6. "Distributor IP" means all patent claims, copyright, and trade
+secrets owned or licensable by a Distributor that are embodied in or
+necessarily practiced by the Distributor Code of that particular
+Distributor.
+
+    1.7. "Electronic Distribution Mechanism" means a mechanism generally
+accepted in the software development community for the electronic transfer
+of data.
+
+    1.8. "Executable" means software in any form other than Source Code.
+
+    1.9. "Initial Developer" means SRI International ("SRI"), a California
+nonprofit public benefit corporation having offices in Menlo Park,
+California.
+
+    1.10. "Initial Developer IP" means all patent claims, copyright, and
+trade secrets owned or licensable by the Initial Developer which are
+embodied in or necessarily practiced by the unmodified Original Source Code.
+
+    1.11. "License" means this agreement, the SRILM Research Community
+License Version 1.0.
+
+    1.12. "Licensed Purpose" means the exercise of rights under this
+License: (a) by an official governmental agency, strictly for
+non-commercial, public benefit purposes, or (b) solely for non-commercial
+research purposes in exchange for which no financially valuable
+consideration (including but not limited to sales or license revenue,
+service revenue, and advertising revenue, and further including but not
+limited to monetary, equity, and in-kind forms of consideration) is
+received, except for research funding received from an official government
+agency sponsor.
+
+    1.13. "Licensed Software" means any copy of the Original Source Code,
+the Modifications, and/or Executable versions thereof, as to which You are
+exercising any rights under this License.
+
+    1.14. "Modifications" means any derivative work of either the Original
+Source Code or of existing Modifications.Including header files or calls to
+Licensed Software library functions or Executable programs in an application
+program shall not in and of itself cause that application program to be
+deemed a Modification, provided that the Licensed Software so included shall
+in any case remain subject to the terms of this License.
+
+    1.15. "Original Source Code" means the Source Code for the SRI Language
+Modeling Toolkit as made available for download by SRI International from
+URL http://www.speech.sri.com/ or ftp://ftp.speech.sri.com/ as of July 1,
+1999.
+
+    1.16. "Source Code" means the preferred form of software for making
+modifications to it, including all modules it contains, plus any associated
+interface definition files, scripts used to control compilation and
+installation of an Executable, or a list of source code differential
+comparisons against either the Original Source Code or another well known,
+available Modification of the Contributor's choice. The Source Code can be
+in a compressed or archival form, provided the appropriate decompression or
+de-archiving software is widely available for no charge.
+
+    1.17. "You" means an individual or a legal entity exercising rights
+under this License. For legal entities, "You" includes any entity that
+controls, is controlled by, or is under common control with You. For
+purposes of this definition, "control" means (a) the power, direct or
+indirect, to cause the direction or management of such entity, whether by
+contract or otherwise, or (b) ownership of fifty percent (50%) or more of
+the outstanding shares or beneficial ownership of such entity.
+
+2. SOFTWARE LICENSE GRANTS
+
+    2.1. The Initial Developer Grant. The Initial Developer hereby grants
+the Community worldwide, royalty-free, non-exclusive rights, solely for the
+Licensed Purpose and subject to the terms and conditions of this
+License(including without limitation the Contributor and Distributor grants
+set forth in Section 2 and the Distribution Obligations set forth in Section
+3), as follows:
+
+    (a) A license under the Initial Developer IP to modify, copy, use, and
+Distribute the Original Source Code and Modifications.
+    (b) A license to copy, use and Distribute Executable versions of the
+Original Source Code and Modifications.
+
+    2.2. Distributor Grant. If You are a Distributor, You hereby grant the
+Community a worldwide, royalty-free, non-exclusive license under the
+Distributor IP, solely for the Licensed Purpose and subject to the terms and
+conditions of this License, to modify copy, use, and Distribute the
+Distributor Code and Modifications.
+
+    2.3. Sublicenses. The license rights that are granted under this Section
+2 may be sublicensed only by Distributing Licensed Software in compliance
+with all applicable terms and conditions of this License. No other
+sublicensing of intellectual property rights granted under this License is
+permitted.
+
+    2.4. No Other Rights. Except as expressly set forth in this section 2,
+no other license rights are implied or otherwise granted under this License.
+
+3. DISTRIBUTION OBLIGATIONS
+
+The right to Distribute Licensed Software set forth above, whether to a
+government sponsor or to any other recipient, is subject to the following
+obligations:
+
+    3.1. Notice of License to Recipients.Any publication or other
+Distribution of Licensed Software must be made expressly subject to this
+License.You must include a prominent copy of the notice set forth in Exhibit
+A with all Licensed Software that you Distribute: (a) in all notices or
+documentation in which You describe the origin or ownership of the software
+or the recipient's rights thereto, and (b) in each Source Code file. You
+hereby agree to indemnify the Initial Developer and every Contributor to the
+Licensed Software for any and all liability or damages they may incur if
+caused by Your violation of this Section. Except as expressly authorized by
+this License, no right is granted to use the name of SRI in any advertising,
+news release, other publication, or product documentation, without the prior
+express written consent of SRI.
+
+    3.2. Required Availability of Source Code. If You Distribute Licensed
+Software for which you are a Contributor, You must make the Source Code for
+all Modifications to which you contribute publicly available to the
+Community, under the terms of this License and at no additional restriction
+or cost, via an accepted Electronic Distribution Mechanism for a period of
+at least twelve (12) months following the date You first Distribute the
+Licensed Software.You must also include with the Source Code a file
+documenting any changes You made to create each Modification, and the dates
+of such changes.
+
+    3.3. Licensee Registration. Before You Distribute any Licensed Software
+under this License, You must first register by sending email to the Initial
+Developer addressed to srilm@speech.sri.com, including a statement
+confirming that you accept the terms and conditions of this License and
+describing the specific Electronic Distribution Mechanism you are using
+(e.g., identify the URL) to make Source Code available under Section 3.2
+where applicable.
+
+4. DISCLAIMER OF WARRANTY
+
+LICENSED SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EITHER
+EXPRESSED OR IMPLIED, INCLUDING, WITHOUT LIMITATION, WARRANTIES THAT THE
+LICENSED SOFTWARE IS FREE OF DEFECTS, MERCHANTABLE, FIT FOR A PARTICULAR
+PURPOSE OR NON-INFRINGING. THE ENTIRE RISK AS TO THE QUALITY AND PERFORMANCE
+OF THE LICENSED SOFTWARE IS WITH YOU. SHOULD ANY LICENSED SOFTWARE PROVE
+DEFECTIVE IN ANY RESPECT, YOU (NOT THE INITIAL DEVELOPER OR ANY CONTRIBUTOR)
+ASSUME THE COST OF ANY NECESSARY SERVICING, REPAIR OR CORRECTION. THIS
+DISCLAIMER OF WARRANTY CONSTITUTES AN ESSENTIAL PART OF THIS LICENSE. NO USE
+OF ANY LICENSED SOFTWARE IS AUTHORIZED HEREUNDER EXCEPT UNDER THIS
+DISCLAIMER.
+ 
+5. LIMITATION OF LIABILITY
+
+UNDER NO CIRCUMSTANCES AND UNDER NO LEGAL THEORY, WHETHER TORT (INCLUDING
+NEGLIGENCE), CONTRACT, OR OTHERWISE, SHALL THE INITIAL DEVELOPER, ANY
+CONTRIBUTOR, OR ANY DISTRIBUTOR OF LICENSED SOFTWARE, OR ANY SUPPLIER OF ANY
+OF SUCH PARTIES, BE LIABLE TO YOU OR ANY OTHER PERSON FOR ANY INDIRECT,
+SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES OF ANY CHARACTER INCLUDING,
+WITHOUT LIMITATION, DAMAGES FOR LOSS OF GOODWILL, WORK STOPPAGE, COMPUTER
+FAILURE OR MALFUNCTION, OR ANY AND ALL OTHER COMMERCIAL DAMAGES OR LOSSES,
+EVEN IF SUCH PARTY SHALL HAVE BEEN INFORMED OF THE POSSIBILITY OF SUCH
+DAMAGES. THIS LIMITATION OF LIABILITY SHALL NOT APPLY TO LIABILITY FOR DEATH
+OR PERSONAL INJURY RESULTING FROM SUCH PARTY'S NEGLIGENCE TO THE EXTENT
+APPLICABLE LAW PROHIBITS SUCH LIMITATION. SOME JURISDICTIONS DO NOT ALLOW
+THE EXCLUSION OR LIMITATION OF INCIDENTAL OR CONSEQUENTIAL DAMAGES, SO THAT
+EXCLUSION AND LIMITATION MAY NOT APPLY TO YOU.
+
+6. RESPONSIBILITY FOR CLAIMS.
+
+You are responsible for damages arising, directly or indirectly, out of Your
+exercise of rights under this License, based on the number of copies of
+Licensed Software you made available, the revenues you received from
+utilizing such rights, and other relevant factors. You agree to work with
+affected parties to distribute responsibility on an equitable basis.
+
+7. U.S. GOVERNMENT END USERS.
+
+The Licensed Software is a "commercial item," as that term is defined in 48
+C.F.R. 2.101 (Oct. 1995), consisting of "commercial computer software" and
+"commercial computer software documentation," as such terms are used in 48
+C.F.R. 12.212 (Sept. 1995). Consistent with 48 C.F.R. 12.212 and 48 C.F.R.
+227.7202-1 through 227.7202-4 (June 1995), all U.S. Government End Users
+acquire Licensed Software with only those rights set forth herein.
+
+8. MISCELLANEOUS.
+
+This License represents the complete agreement concerning subject matter
+hereof. If any provision of this License is held to be unenforceable, such
+provision shall be reformed only to the extent necessary to make it
+enforceable. This License shall be governed by California law provisions
+(except to the extent applicable law, if any, provides otherwise), excluding
+its conflict-of-law provisions. With respect to disputes in which at least
+one party is a citizen of, or an entity chartered or registered to do
+business in, the United States of America any litigation relating to this
+Agreement shall be subject to personal jurisdiction and venue in the Federal
+Courts of the Northern District of California, and in the California state
+courts of San Mateo County, California, with the losing party responsible
+for costs, including without limitation, court costs and reasonable
+attorneys fees and expenses. The application of the United Nations
+Convention on Contracts for the International Sale of Goods is expressly
+excluded. Any law or regulation which provides that the language of a
+contract shall be construed against the drafter shall not apply to this
+License.
+
+                                 EXHIBIT A.
+
+The contents of this file are subject to the SRILM Community Research
+License Version 1.0 (the "License"); you may not use this file except in
+compliance with the License. You may obtain a copy of the License at
+http://www.speech.sri.com/srilm/. Software distributed under the License is
+distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY KIND, either
+express or implied. See the License for the specific language governing
+rights and limitations under the License. Portions of the software are
+Copyright (c) SRI International, 1995-2011.  All rights reserved.
+

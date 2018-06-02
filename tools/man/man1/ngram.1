@@ -1,0 +1,1164 @@
+.\" $Id: ngram.1,v 1.84 2015-10-13 21:08:30 stolcke Exp $
+.TH ngram 1 "$Date: 2015-10-13 21:08:30 $" "SRILM Tools"
+.SH NAME
+ngram \- apply N-gram language models
+.SH SYNOPSIS
+.nf
+\fBngram\fP [ \fB\-help\fP ] \fIoption\fP ...
+.fi
+.SH DESCRIPTION
+.B ngram
+performs various operations with N-gram-based and related language models,
+including sentence scoring, perplexity computation, sentences generation,
+and various types of model interpolation.
+The N-gram language models are read from files in ARPA
+.BR ngram-format (5);
+various extended language model formats are described with the options
+below.
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-order " n"
+Set the maximal N-gram order to be used, by default 3.
+NOTE: The order of the model is not set automatically when a model
+file is read, so the same file can be used at various orders.
+To use models of order higher than 3 it is always necessary to specify this
+option.
+.TP
+.BI \-debug " level"
+Set the debugging output level (0 means no debugging output).
+Debugging messages are sent to stderr, with the exception of 
+.B \-ppl 
+output as explained below.
+.TP
+.B \-memuse
+Print memory usage statistics for the LM.
+.PP
+The following options determine the type of LM to be used.
+.TP
+.B \-null
+Use a `null' LM as the main model (one that gives probability 1 to all words).
+This is useful in combination with mixture creation or for debugging.
+.TP
+.BI \-use-server " S"
+Use a network LM server (typically implemented by 
+.B ngram
+with the 
+.B \-server-port
+option) as the main model.
+The server specification
+.I S
+can be an unsigned integer port number (referring to a server port running on
+the local host),
+a hostname (referring to default port 2525 on the named host),
+or a string of the form 
+.IR port @ host ,
+where
+.I port 
+is a portnumber and 
+.I host
+is either a hostname ("dukas.speech.sri.com")
+or IP number in dotted-quad format ("140.44.1.15").
+.br
+For server-based LMs, the
+.B \-order
+option limits the context length of N-grams queried by the client
+(with 0 denoting unlimited length).
+Hence, the effective LM order is the mimimum of the client-specified value
+and any limit implemented in the server.
+.br
+When
+.B \-use-server 
+is specified, the arguments to the options
+.BR \-mix-lm ,
+.BR \-mix-lm2 ,
+etc. are also interpreted as network LM server specifications provided
+they contain a '@' character and do not contain a '/' character.
+This allows the creation of mixtures of several file- and/or
+network-based LMs.
+.TP
+.B \-cache-served-ngrams
+Enables client-side caching of N-gram probabilities to eliminated duplicate
+network queries, in conjunction with
+.BR \-use-server .
+This results in a substantial speedup for typical tasks (especially N-best
+rescoring) but requires memory in the client that may grow linearly with the
+amount of data processed.
+.TP
+.BI \-lm " file"
+Read the (main) N-gram model from
+.IR file .
+This option is always required, unless 
+.B \-null
+was chosen.
+Unless modified by other options, the 
+.I file
+is assumed to contain an N-gram backoff language model in
+.BR ngram-format (5).
+.TP
+.B \-tagged
+Interpret the LM as containing word/tag N-grams.
+.TP
+.B \-skip
+Interpret the LM as a ``skip'' N-gram model.
+.TP
+.BI \-hidden-vocab " file"
+Interpret the LM as an N-gram model containing hidden events between words.
+The list of hidden event tags is read from
+.IR file .
+.br
+Hidden event definitions may also follow the N-gram definitions in 
+the LM file (the argument to 
+.BR \-lm ).
+The format for such definitions is
+.nf
+	\fIevent\fP [\fB\-delete\fP \fID\fP] [\fB\-repeat\fP \fIR\fP] [\fB\-insert\fP \fIw\fP] [\fB\-observed\fP] [\fB\-omit\fP]
+.fi
+The optional flags after the event name modify the default behavior of 
+hidden events in the model.
+By default events are unobserved pseudo-words of which at most one can occur
+between regular words, and which are added to the context to predict
+following words and events.
+(A typical use would be to model hidden sentence boundaries.)
+.B \-delete
+indicates that upon encountering the event,
+.I D 
+words are deleted from the next word's context.
+.B \-repeat
+indicates that after the event the next
+.I R
+words from the context are to be repeated.
+.B \-insert
+specifies that an (unobserved) word 
+.I w
+is to be inserted into the history.
+.B \-observed 
+specifies the event tag is not hidden, but observed in the word stream.
+.B \-omit
+indicates that the event tag itself is not to be added to the history for
+predicting the following words.
+.br
+The hidden event mechanism represents a generalization of the disfluency
+LM enabled by 
+.BR \-df .
+.TP
+.BI \-hidden-not
+Modifies processing of hidden event N-grams for the case that 
+the event tags are embedded in the word stream, as opposed to inferred 
+through dynamic programming.
+.TP
+.B \-df
+Interpret the LM as containing disfluency events.
+This enables an older form of hidden-event LM used in
+Stolcke & Shriberg (1996).
+It is roughly equivalent to a hidden-event LM with
+.nf
+	UH -observed -omit		(filled pause)
+	UM -observed -omit		(filled pause)
+	@SDEL -insert <s>		(sentence restart)
+	@DEL1 -delete 1 -omit	(1-word deletion)
+	@DEL2 -delete 2 -omit	(2-word deletion)
+	@REP1 -repeat 1 -omit	(1-word repetition)
+	@REP2 -repeat 2 -omit	(2-word repetition)
+.fi
+.TP
+.BI \-classes " file"
+Interpret the LM as an N-gram over word classes.
+The expansions of the classes are given in
+.IR file 
+in 
+.BR classes-format (5).
+Tokens in the LM that are not defined as classes in
+.I file 
+are assumed to be plain words, so that the LM can contain mixed N-grams over
+both words and word classes.
+.br
+Class definitions may also follow the N-gram definitions in the 
+LM file (the argument to 
+.BR \-lm ).
+In that case 
+.BR "\-classes /dev/null"
+should be specified to trigger interpretation of the LM as a class-based model.
+Otherwise, class definitions specified with this option override any
+definitions found in the LM file itself.
+.TP
+.BR \-simple-classes
+Assume a "simple" class model: each word is member of at most one word class,
+and class expansions are exactly one word long.
+.TP
+.BI \-expand-classes " k"
+Replace the read class-N-gram model with an (approximately) equivalent
+word-based N-gram.
+The argument
+.I k
+limits the length of the N-grams included in the new model
+(\c
+.IR k =0
+allows N-grams of arbitrary length).
+.TP
+.BI \-expand-exact " k"
+Use a more exact (but also more expensive) algorithm to compute the 
+conditional probabilities of N-grams expanded from classes, for
+N-grams of length
+.I k
+or longer
+(\c
+.IR k =0
+is a special case and the default, it disables the exact algorithm for all
+N-grams).
+The exact algorithm is recommended for class-N-gram models that contain
+multi-word class expansions, for N-gram lengths exceeding the order of 
+the underlying class N-grams.
+.TP
+.BI \-codebook " file"
+Read a codebook for quantized log probabilies from 
+.IR file .
+The parameters in an N-gram language model file specified by 
+.B \-lm 
+are then assumed to represent codebook indices instead of 
+log probabilities.
+.TP
+.B \-decipher
+Use the N-gram model exactly as the Decipher(TM) recognizer would,
+i.e., choosing the backoff path if it has a higher probability than
+the bigram transition, and rounding log probabilities to bytelog
+precision.
+.TP
+.B \-factored
+Use a factored N-gram model, i.e., a model that represents words as 
+vectors of feature-value pairs and models sequences of words by a set of 
+conditional dependency relations between factors.
+Individual dependencies are modeled by standard N-gram LMs, allowing
+however for a generalized backoff mechanism to combine multiple backoff
+paths (Bilmes and Kirchhoff 2003).
+The 
+.BR \-lm ,
+.BR \-mix-lm ,
+etc. options name FLM specification files in the format described in
+Kirchhoff et al. (2002).
+.TP
+.B \-hmm
+Use an HMM of N-grams language model.
+The 
+.B \-lm
+option specifies a file that describes a probabilistic graph, with each
+line corresponding to a node or state.
+A line has the format:
+.nf
+	\fIstatename\fP \fIngram-file\fP \fIs1\fP \fIp1\fP \fIs2\fP \fIp2\fP ...
+.fi
+where 
+.I statename 
+is a string identifying the state,
+.I ngram-file
+names a file containing a backoff N-gram model,
+.IR s1 , s2 ,
+\&... are names of follow-states, and 
+.IR p1 , p2 ,
+\&... are the associated transition probabilities.
+A filename of ``-'' can be used to indicate the N-gram model data
+is included in the HMM file, after the current line.
+(Further HMM states may be specified after the N-gram data.)
+.br
+The names
+.B INITIAL
+and
+.B FINAL
+denote the start and end states, respectively, and have no associated
+N-gram model (\c
+.I ngram-file
+must be specified as ``.'' for these).
+The 
+.B \-order
+option specifies the maximal N-gram length in the component models.
+.br
+The semantics of an HMM of N-grams is as follows: as each state is visited,
+words are emitted from the associated N-gram model.
+The first state (corresponding to the start-of-sentence) is
+.BR INITIAL .
+A state is left with the probability of the end-of-sentence token
+in the respective model, and the next state is chosen according to
+the state transition probabilities.
+Each state has to emit at least one word.
+The actual end-of-sentence is emitted if and only if the
+.B FINAL
+state is reached.
+Each word probability is conditioned on all preceding words, regardless 
+of whether they were emitted in the same or a previous state.
+.TP
+.BI \-count-lm 
+Use a count-based interpolated LM.
+The 
+.B \-lm
+option specifies a file that describes a set of N-gram counts along with
+interpolation weights, based on which Jelinek-Mercer smoothing in the
+formulation of Chen and Goodman (1998) is performed.
+The file format is
+.nf
+	\fBorder\fP \fIN\fP
+	\fBvocabsize\fP \fIV\fP
+	\fBtotalcount\fP \fIC\fP
+	\fBmixweights\fP \fIM\fP
+	 \fIw01\fP \fIw02\fP ... \fIw0N\fP
+	 \fIw11\fP \fIw12\fP ... \fIw1N\fP
+	 ...
+	 \fIwM1\fP \fIwM2\fP ... \fIwMN\fP
+	\fBcountmodulus\fP \fIm\fP
+	\fBgoogle-counts\fP \fIdir\fP
+	\fBcounts\fP \fIfile\fP
+.fi
+Here 
+.I N
+is the model order (maximal N-gram length), although as with backoff models,
+the actual value used is overridden by the
+.B \-order
+command line when the model is read in.
+.I V
+gives the vocabulary size and
+.I C 
+the sum of all unigram counts.
+.I M
+specifies the number of mixture weight bins (minus 1).
+.I m
+is the width of a mixture weight bin.
+Thus, 
+.I wij
+is the mixture weight used to interpolate an
+.IR j -th
+order maximum-likelihood estimate with lower-order estimates given that
+the (\fIj\fP-1)-gram context has been seen with a frequency
+between
+.IR i * m
+and
+.RI ( i +1)* m -1
+times.
+(For contexts with frequency greater than 
+.IR M * m ,
+the 
+.IR i = M
+weights are used.)
+The N-gram counts themselves are given in an
+indexed directory structure rooted at
+.IR dir ,
+in an external
+.IR file ,
+or, if 
+.I file
+is the string 
+.BR -  ,
+starting on the line following the
+.B counts
+keyword.
+.TP
+.B \-msweb-lm 
+Use a Microsoft Web N-gram language model.
+The 
+.B \-lm
+option specifies a file that contains the parameters for retrieving 
+N-gram probabilities from the service described at
+http://web-ngram.research.microsoft.com/ and in Gao et al. (2010).
+The 
+.B \-cache-served-ngrams
+option applies, and causes N-gram probabilities
+retrieved from the server to be stored for later reuse.
+The file format expected by 
+.B \-lm
+is as follows, with default values listed after each parameter name:
+.nf
+	\fBservername\fP web-ngram.research.microsoft.com
+	\fBserverport\fP 80
+	\fBurlprefix\fP /rest/lookup.svc
+	\fBusertoken\fP \fIxxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx\fP
+	\fBcatalog\fP bing-body
+	\fBversion\fP jun09
+	\fBmodelorder\fP \fIN\fP
+	\fBcacheorder\fP 0 (\fIN\fP with \fB\-cache-served-ngrams\fP)
+	\fBmaxretries\fP 2
+.fi
+The string following 
+.B usertoken
+is obligatory and is a user-specific key that must be obtained by emailing
+<webngram@microsoft.com>.
+The language model order 
+.I N
+defaults to the value of the
+.BR \-order 
+option.
+It is recommended that
+.B modelorder
+be specified in case the
+.BR \-order 
+argument exceeds the server's model order.
+Note also that the LM thus created will have no predefined vocabulary.
+Any operations that rely on the vocabulary being known (such as sentence
+generation) will require one to be specified explicitly with
+.BR \-vocab .
+.TP
+.B \-maxent
+Read a maximum entropy N-gram model.
+The model file is specified by 
+.BR \-lm .
+.TP
+.B \-mix-maxent
+Indicates that all mixture model components specified by 
+.B \-mix-lm 
+and related options are maxent models.
+Without this option, an interpolation of a single 
+maxent model (specified by 
+.BR \-lm )
+with standard backoff models (specified by
+.B \-mix-lm 
+etc.) is performed.
+The option
+.BI \-bayes " N"
+should also be given,
+unless used in combination with 
+.B \-maxent-convert-to-arpa
+(see below).
+.TP
+.BI \-maxent-convert-to-arpa
+Indicates that the
+.B \-lm
+option specifies a maxent model file, but 
+that the model is to be converted to a backoff model
+using the algorithm by Wu (2002).
+This option also triggers conversion of maxent models used with
+.BR \-mix-maxent .
+.TP
+.BI \-vocab " file"
+Initialize the vocabulary for the LM from
+.IR file .
+This is especially useful if the LM itself does not specify a complete
+vocabulary, e.g., as with
+.BR \-null .
+.TP
+.BI \-vocab-aliases " file"
+Reads vocabulary alias definitions from
+.IR file ,
+consisting of lines of the form
+.nf
+	\fIalias\fP \fIword\fP
+.fi
+This causes all tokens
+.I alias
+to be mapped to
+.IR word .
+.TP
+.BI \-nonevents " file"
+Read a list of words from
+.I file
+that are to be considered non-events, i.e., that
+should only occur in LM contexts, but not as predictions.
+Such words are excluded from sentence generation
+.RB ( \-gen )
+and
+probability summation
+.RB ( "\-ppl \-debug 3" ).
+.TP
+.B \-limit-vocab
+Discard LM parameters on reading that do not pertain to the words 
+specified in the vocabulary.
+The default is that words used in the LM are automatically added to the 
+vocabulary.
+This option can be used to reduce the memory requirements for large LMs 
+that are going to be evaluated only on a small vocabulary subset.
+.TP
+.B \-unk
+Indicates that the LM contains the unknown word, i.e., is an open-class LM.
+.TP
+.BI \-map-unk " word"
+Map out-of-vocabulary words to 
+.IR word ,
+rather than the default
+.B <unk>
+tag.
+.TP
+.B \-tolower
+Map all vocabulary to lowercase.
+Useful if case conventions for text/counts and language model differ.
+.TP
+.B \-multiwords
+Split input words consisting of multiwords joined by underscores
+into their components, before evaluating LM probabilities.
+.TP
+.BI \-multi-char " C"
+Character used to delimit component words in multiwords
+(an underscore character by default).
+.TP
+.BI \-zeroprob-word " W"
+If a word token is assigned a probability of zero by the LM,
+look up the word 
+.I W
+instead.
+This is useful to avoid zero probabilities when processing input
+with an LM that is mismatched in vocabulary.
+.TP
+.BI \-mix-lm " file"
+Read a second N-gram model for interpolation purposes.
+The second and any additional interpolated models can also be class N-grams
+(using the same
+.B \-classes 
+definitions), but are otherwise constrained to be standard N-grams, i.e.,
+the options
+.BR \-df ,
+.BR \-tagged ,
+.BR \-skip ,
+and
+.B \-hidden-vocab 
+do not apply to them.
+.br
+.B NOTE:
+Unless 
+.B \-bayes
+(see below) is specified,
+.B \-mix-lm
+triggers a static interpolation of the models in memory.
+In most cases a more efficient, dynamic interpolation is sufficient, requested
+by 
+.BR "\-bayes 0" .
+Also, mixing models of different type (e.g., word-based and class-based)
+will
+.I only
+work correctly with dynamic interpolation.
+.TP
+.BI \-lambda " weight"
+Set the weight of the main model when interpolating with
+.BR \-mix-lm .
+Default value is 0.5.
+.TP
+.BI \-mix-lm2 " file"
+.TP
+.BI \-mix-lm3 " file"
+.TP
+.BI \-mix-lm4 " file"
+.TP
+.BI \-mix-lm5 " file"
+.TP
+.BI \-mix-lm6 " file"
+.TP
+.BI \-mix-lm7 " file"
+.TP
+.BI \-mix-lm8 " file"
+.TP
+.BI \-mix-lm9 " file"
+Up to 9 more N-gram models can be specified for interpolation.
+.TP
+.BI \-mix-lambda2 " weight"
+.TP
+.BI \-mix-lambda3 " weight"
+.TP
+.BI \-mix-lambda4 " weight"
+.TP
+.BI \-mix-lambda5 " weight"
+.TP
+.BI \-mix-lambda6 " weight"
+.TP
+.BI \-mix-lambda7 " weight"
+.TP
+.BI \-mix-lambda8 " weight"
+.TP
+.BI \-mix-lambda9 " weight"
+These are the weights for the additional mixture components, corresponding
+to
+.B \-mix-lm2
+through
+.BR \-mix-lm9 .
+The weight for the
+.B \-mix-lm 
+model is 1 minus the sum of 
+.B \-lambda
+and 
+.B \-mix-lambda2
+through
+.BR \-mix-lambda9 .
+.TP
+.B \-loglinear-mix
+Implement a log-linear (rather than linear) mixture LM, using the 
+parameters above.
+.TP
+.BR \-context-priors " file"
+Read context-dependent mixture weight priors from
+.IR file .
+Each line in 
+.I file 
+should contain a context N-gram (most recent word first) followed by a vector 
+of mixture weights whose length matches the number of LMs being interpolated.
+(This and the following options currently only apply to linear interpolation.)
+.TP
+.BI \-bayes " length"
+Interpolate models using posterior probabilities
+based on the likelihoods of local N-gram contexts of length
+.IR length .
+The 
+.B \-lambda 
+values are used as prior mixture weights in this case.
+This option can also be combined with
+.BR \-context-priors ,
+in which case the 
+.I length
+parameter also controls how many words of context are maximally used to look up
+mixture weights.
+If 
+.BR \-context-priors
+is used without 
+.BR \-bayes ,
+the context length used is set by the
+.B \-order 
+option and a merged (statically interpolated) N-gram model is created.
+.TP
+.BI \-bayes-scale " scale"
+Set the exponential scale factor on the context likelihoods in conjunction
+with the
+.B \-bayes
+function.
+Default value is 1.0.
+.TP
+.B \-read-mix-lms
+Read a list of linearly interpolated (mixture) LMs and their weights from the
+.I file
+specified with 
+.BR \-lm ,
+instead of gathering this information from the command line options above.
+Each line in 
+.I file
+starts with the filename containing the component LM, followed by zero or more
+component-specific options:
+.RS
+.TP 15
+.BI \-weight " W" 
+the prior weight given to the component LM
+.TP
+.BI \-order " N" 
+the maximal ngram order to use
+.TP
+.BI \-type " T"
+the LM type, one of 
+.B ARPA
+(the default), 
+.BR COUNTLM ,
+.BR MAXENT ,
+.BR LMCLIENT ,
+or
+.B MSWEBLM 
+.TP
+.BI \-classes " C"
+the word class definitions for the component LM (which must be of type ARPA)
+.TP
+.B \-cache-served-ngrams
+enables client-side caching for LMs of type LMCLIENT or MSWEBLM.
+.PP
+The global options 
+.BR \-bayes ,
+.BR \-bayes-scale ,
+and 
+.B \-context-priors 
+still apply with
+.BR \-read-mix-lms .
+When
+.BR \-bayes 
+is NOT used, the interpolation is static by ngram merging, and forces all 
+component LMs to be of type ARPA or MAXENT.
+.RE
+.TP
+.BI \-cache " length"
+Interpolate the main LM (or the one resulting from operations above) with
+a unigram cache language model based on a history of
+.I length
+words.
+.TP
+.BI \-cache-lambda " weight"
+Set interpolation weight for the cache LM.
+Default value is 0.05.
+.TP
+.BI \-dynamic
+Interpolate the main LM (or the one resulting from operations above) with
+a dynamically changing LM.
+LM changes are indicated by the tag ``<LMstate>'' starting a line in the
+input to
+.BR -ppl ,
+.BR -counts ,
+or
+.BR -rescore ,
+followed by a filename containing the new LM.
+.TP
+.BI \-dynamic-lambda " weight"
+Set interpolation weight for the dynamic LM.
+Default value is 0.05.
+.TP
+.BI \-adapt-marginals " LM"
+Use an LM obtained by adapting the unigram marginals to the values specified
+in the
+.I LM
+in
+.BR ngram-format (5),
+using the method described in Kneser et al. (1997).
+The LM to be adapted is that constructed according to the other options.
+.TP
+.BI \-base-marginals " LM"
+Specify the baseline unigram marginals in a separate file 
+.IR LM ,
+which must be in
+.BR ngram-format (5)
+as well.
+If not specified, the baseline marginals are taken from the model to be
+adapted, but this might not be desirable, e.g., when Kneser-Ney smoothing
+was used.
+.TP
+.BI \-adapt-marginals-beta " B"
+The exponential weight given to the ratio between adapted and baseline
+marginals.
+The default is 0.5.
+.TP
+.BI \-adapt-marginals-ratios
+Compute and output only the log ratio between the adapted and the baseline
+LM probabilities.
+These can be useful as a separate knowledge source in N-best rescoring.
+.PP
+The following options specify the operations performed on/with the LM
+constructed as per the options above.
+.TP
+.B \-renorm
+Renormalize the main model by recomputing backoff weights for the given
+probabilities.
+.TP
+.BI \-prune " threshold"
+Prune N-gram probabilities if their removal causes (training set)
+perplexity of the model to increase by less than
+.I threshold
+relative.
+.TP
+.BI \-prune-history-lm " L" 
+Read a separate LM from file
+.I L
+and use it to obtain the history marginal probabilities required for 
+computing the entropy loss incurred by pruning an N-gram.
+The LM needs to only be of an order one less than the LM being pruned.
+If this option is not used the LM being pruned is used to compute 
+history marginals.
+This option is useful because, as pointed out by Chelba et al. (2010),
+the lower-order N-gram probabilities in Kneser-Ney smoothed LMs are
+unsuitable for this purpose.
+.TP
+.B \-prune-lowprobs
+Prune N-gram probabilities that are lower than the corresponding
+backed-off estimates.
+This generates N-gram models that can be correctly
+converted into probabilistic finite-state networks.
+.TP
+.BI \-minprune " n"
+Only prune N-grams of length at least
+.IR n .
+The default (and minimum allowed value) is 2, i.e., only unigrams are excluded
+from pruning.
+This option applies to both
+.B \-prune
+and
+.BR \-prune-lowprobs .
+.TP
+.BI \-rescore-ngram " file"
+Read an N-gram LM from 
+.I file
+and recompute its N-gram probabilities using the LM specified by the
+other options; then renormalize and evaluate the resulting new N-gram LM.
+.TP
+.BI \-write-lm " file"
+Write a model back to
+.IR file .
+The output will be in the same format as read by
+.BR \-lm ,
+except if operations such as 
+.B \-mix-lm
+or 
+.B \-expand-classes 
+were applied, in which case the output will contain the generated
+single N-gram backoff model in ARPA
+.BR ngram-format (5).
+.TP
+.BI \-write-bin-lm " file"
+Write a model to
+.I file
+using a binary data format.
+This is only supported by certain model types, specifically, 
+those based on N-gram backoff models and N-gram counts.
+Binary model files are recognized automatically by the
+.B \-read
+function.
+If an LM class does not provide a binary format the default (text) format
+will be output instead.
+.TP
+.BI \-write-vocab " file"
+Write the LM's vocabulary to
+.IR file .
+.TP
+.BI \-gen " number"
+Generate
+.I number
+random sentences from the LM.
+.TP
+.BI \-gen-prefixes " file"
+Read a list of sentence prefixes from 
+.I file
+and generate random word strings conditioned on them, one per line.
+(Note: The start-of-sentence tag
+.B <s> 
+is not automatically added to these prefixes.)
+.TP
+.BI \-seed " value"
+Initialize the random number generator used for sentence generation
+using seed
+.IR value .
+The default is to use a seed that should be close to unique for each
+invocation of the program.
+.TP
+.BI \-ppl " textfile"
+Compute sentence scores (log probabilities) and perplexities from
+the sentences in
+.IR textfile ,
+which should contain one sentence per line.
+The
+.B \-debug
+option controls the level of detail printed, even though output is
+to stdout (not stderr).
+.RS
+.TP 10
+.B "\-debug 0"
+Only summary statistics for the entire corpus are printed,
+as well as partial statistics for each input portion delimited by 
+escaped lines (see
+.BR \-escape ).
+These statistics include the number of sentences, words, out-of-vocabulary
+words and zero-probability tokens in the input,
+as well as its total log probability and perplexity.
+Perplexity is given with two different normalizations: counting all
+input tokens (``ppl'') and excluding end-of-sentence tags (``ppl1'').
+.TP
+.B "\-debug 1"
+Statistics for individual sentences are printed.
+.TP
+.B "\-debug 2"
+Probabilities for each word, plus LM-dependent details about backoff
+used etc., are printed.
+.TP
+.B "\-debug 3"
+Probabilities for all words are summed in each context, and
+the sum is printed.
+If this differs significantly from 1, a warning message
+to stderr will be issued.
+.TP
+.B "\-debug 4"
+Outputs ranking statistics (number of times the actual word's probability
+was ranked in top 1, 5, 10 among all possible words,
+both excluding and including end-of-sentence tokens),
+as well as quadratic and absolute loss averages (based on 
+how much actual word probability differs from 1).
+.RE
+.TP
+.B \-text-has-weights
+Treat the first field on each
+.B \-ppl
+input line as a weight factor by
+which the statistics for that sentence are to be multiplied.
+.TP
+.BI \-nbest " file"
+Read an N-best list in
+.BR nbest-format (5)
+and rerank the hypotheses using the specified LM.
+The reordered N-best list is written to stdout.
+If the N-best list is given in
+``NBestList1.0'' format and contains 
+composite acoustic/language model scores, then
+.B \-decipher-lm
+and the recognizer language model and word transition weights (see below)
+need to be specified so the original acoustic scores can be recovered.
+.TP
+.BI \-nbest-files " filelist"
+Process multiple N-best lists whose filenames are listed in
+.IR filelist .
+.TP
+.BI \-write-nbest-dir " dir"
+Deposit rescored N-best lists into directory 
+.IR dir ,
+using filenames derived from the input ones.
+.TP
+.B \-decipher-nbest
+Output rescored N-best lists in Decipher 1.0 format, rather than 
+SRILM format.
+.TP
+.B \-no-reorder
+Output rescored N-best lists without sorting the hypotheses by their
+new combined scores.
+.TP
+.B \-split-multiwords
+Split multiwords into their components when reading N-best lists;
+the rescored N-best lists thus no longer contain multiwords.
+(Note this is different from the
+.B \-multiwords
+option, which leaves the input word stream unchanged and splits
+multiwords only for the purpose of LM probability computation.)
+.TP
+.BI \-max-nbest " n"
+Limits the number of hypotheses read from an N-best list.
+Only the first
+.I n
+hypotheses are processed.
+.TP
+.BI \-rescore " file"
+Similar to
+.BR \-nbest ,
+but the input is processed as a stream of N-best hypotheses (without header).
+The output consists of the rescored hypotheses in
+SRILM format (the third of the formats described in
+.BR nbest-format (5)).
+.TP
+.BI \-decipher-lm " model-file"
+Designates the N-gram backoff model (typically a bigram) that was used by the
+Decipher(TM) recognizer in computing composite scores for the hypotheses fed to
+.B \-rescore
+or
+.BR \-nbest .
+Used to compute acoustic scores from the composite scores.
+.TP
+.BI \-decipher-order " N"
+Specifies the order of the Decipher N-gram model used (default is 2).
+.TP
+.B \-decipher-nobackoff 
+Indicates that the Decipher N-gram model does not contain backoff nodes,
+i.e., all recognizer LM scores are correct up to rounding. 
+.TP
+.BI \-decipher-lmw " weight"
+Specifies the language model weight used by the recognizer.
+Used to compute acoustic scores from the composite scores.
+.TP
+.BI \-decipher-wtw " weight"
+Specifies the word transition weight used by the recognizer.
+Used to compute acoustic scores from the composite scores.
+.TP
+.BI \-escape " string"
+Set an ``escape string'' for the
+.BR \-ppl ,
+.BR \-counts ,
+and
+.B \-rescore
+computations.
+Input lines starting with
+.I string
+are not processed as sentences and passed unchanged to stdout instead.
+This allows associated information to be passed to scoring scripts etc.
+.TP
+.BI \-counts " countsfile"
+Perform a computation similar to 
+.BR \-ppl ,
+but based only on the N-gram counts found in 
+.IR countsfile .
+Probabilities are computed for the last word of each N-gram, using the
+other words as contexts, and scaling by the associated N-gram count.
+Summary statistics are output at the end, as well as before each
+escaped input line if 
+.B \-debug 
+level 1 or higher is set.
+.TP
+.BI \-count-order " n"
+Use only counts up to order
+.I n
+in the
+.B \-counts
+computation.
+The default value is the order of the LM (the value specified by 
+.BR \-order ).
+.TP
+.B \-float-counts
+Allow processing of fractional counts with
+.BR \-counts .
+.TP
+.B \-counts-entropy
+Weight the log probabilities for 
+.B \-counts
+processing by the join probabilities of the N-grams.
+This effectively computes the sum over p(w,h) log p(w|h),
+i.e., the entropy of the model.
+In debugging mode, both the conditional log probabilities and the 
+corresponding joint probabilities are output.
+.TP
+.BI \-server-port " P"
+Start a network server that listens on port 
+.I P
+and returns N-gram probabilities.
+The server will write a one-line "ready" message and then read N-grams, 
+one per line.
+For each N-gram, a conditional log probability is computed as specified by 
+other options, and written back to the client (in text format).
+The server will continue accepting connections until killed by an external
+signal.
+.TP
+.BI \-server-maxclients " M"
+Limits the number of simultaneous connections accepted by the network LM
+server to 
+.IR M .
+Once the limit is reached, additional connection requests
+(e.g., via 
+.BR ngram
+.BR \-use-server )
+will hang until another client terminates its connection.
+.TP
+.B \-skipoovs
+Instruct the LM to skip over contexts that contain out-of-vocabulary
+words, instead of using a backoff strategy in these cases.
+.TP
+.BI \-noise " noise-tag"
+Designate
+.I noise-tag
+as a vocabulary item that is to be ignored by the LM.
+(This is typically used to identify a noise marker.)
+Note that the LM specified by
+.B \-decipher-lm
+does NOT ignore this
+.I noise-tag
+since the DECIPHER recognizer treats noise as a regular word.
+.TP
+.BI \-noise-vocab " file"
+Read several noise tags from
+.IR file ,
+instead of, or in addition to, the single noise tag specified by
+.BR \-noise .
+.TP
+.B \-reverse
+Reverse the words in a sentence for LM scoring purposes.
+(This assumes the LM used is a ``right-to-left'' model.)
+Note that the LM specified by
+.B \-decipher-lm
+is always applied to the original, left-to-right word sequence.
+.TP
+.B \-no-sos
+Disable the automatic insertion of start-of-sentence tokens for 
+sentence probability computation.
+The probability of the initial word is thus computed with an empty context.
+.TP
+.B \-no-eos
+Disable the automatic insertion of end-of-sentence tokens for 
+sentence probability computation.
+End-of-sentence is thus excluded from the total probability.
+.SH "SEE ALSO"
+ngram-count(1), ngram-class(1), lm-scripts(1), ppl-scripts(1),
+pfsg-scripts(1), nbest-scripts(1),
+ngram-format(5), nbest-format(5), classes-format(5).
+.br
+J. A. Bilmes and K. Kirchhoff, ``Factored Language Models and Generalized
+Parallel Backoff,'' \fIProc. HLT-NAACL\fP, pp. 4\-6, Edmonton, Alberta, 2003.
+.br
+C. Chelba,  T. Brants, W. Neveitt, and P. Xu,
+``Study on Interaction Between Entropy Pruning and Kneser-Ney Smoothing,''
+\fIProc. Interspeech\fP, pp. 2422-2425, Makuhari, Japan, 2010.
+.br
+S. F. Chen and J. Goodman, ``An Empirical Study of Smoothing Techniques for
+Language Modeling,'' TR-10-98, Computer Science Group, Harvard Univ., 1998.
+.br
+J. Gao, P. Nguyen, X. Li, C. Thrasher, M. Li, and K. Wang,
+``A Comparative Study of Bing Web N-gram Language Models for Web Search
+and Natural Language Processing,'' Proc. SIGIR, July 2010.
+.br 
+K. Kirchhoff et al., ``Novel Speech Recognition Models for Arabic,''
+Johns Hopkins University Summer Research Workshop 2002, Final Report.
+.br
+R. Kneser, J. Peters and D. Klakow,
+``Language Model Adaptation Using Dynamic Marginals'',
+\fIProc. Eurospeech\fP, pp. 1971\-1974, Rhodes, 1997.
+.br
+A. Stolcke and E. Shriberg, ``Statistical language modeling for speech
+disfluencies,'' Proc. IEEE ICASSP, pp. 405\-409, Atlanta, GA, 1996.
+.br
+A. Stolcke,`` Entropy-based Pruning of Backoff Language Models,''
+\fIProc. DARPA Broadcast News Transcription and Understanding Workshop\fP,
+pp. 270\-274, Lansdowne, VA, 1998.
+.br
+A. Stolcke et al., ``Automatic Detection of Sentence Boundaries and
+Disfluencies based on Recognized Words,'' \fIProc. ICSLP\fP, pp. 2247\-2250,
+Sydney, 1998.
+.br
+M. Weintraub et al., ``Fast Training and Portability,''
+in Research Note No. 1, Center for Language and Speech Processing,
+Johns Hopkins University, Baltimore, Feb. 1996.
+.br
+J. Wu (2002), ``Maximum Entropy Language Modeling with Non-Local Dependencies,''
+doctoral dissertation, Johns Hopkins University, 2002.
+.SH BUGS
+Some LM types (such as Bayes-interpolated and factored LMs) currently do
+not support the 
+.B \-write-lm 
+function.
+.PP
+For the 
+.B \-limit-vocab
+option to work correctly with hidden event and class N-gram LMs, the
+event/class vocabularies have to be specified by options (\c
+.B \-hidden-vocab 
+and
+.BR \-classes ,
+respectively).
+Embedding event/class definitions in the LM file only will not work correctly.
+.PP
+Sentence generation is slow and takes time proportional to the vocabulary
+size.
+.PP
+The file given by 
+.B \-classes 
+is read multiple times if
+.B \-limit-vocab
+is in effect or if a mixture of LMs is specified.
+This will lead to incorrect behavior if the argument of
+.B \-classes 
+is stdin (``-'').
+.PP
+Also, 
+.B \-limit-vocab 
+will not work correctly with LM operations that require the entire
+vocabulary to be enumerated, such as 
+.B \-adapt-marginals 
+or perplexity computation with
+.BR "\-debug 3" .
+.PP
+The
+.B \-multiword
+option implicitly adds all word strings to the vocabulary.
+Therefore, no OOVs are reported, only zero probability words.
+.PP
+Operations that require enumeration of the entire LM vocabulary will
+not currently work with 
+.BR \-use-server , 
+since the client side only has knowledge of words it has already processed.
+This affects the 
+.B \-gen
+and 
+.B \-adapt-marginals 
+options, as well as
+.B \-ppl 
+with
+.BR "\-debug 3" .
+A workaround is to specify the complete vocabulary with 
+.B \-vocab
+on the client side.
+.PP
+The reading of quantized LM parameters with the
+.B \-codebook
+option is currently only supported for N-gram LMs in
+.BR ngram-format (5).
+.SH AUTHORS
+Andreas Stolcke <andreas.stolcke@microsoft.com>
+.br
+Jing Zheng <zj@speech.sri.com>
+.br
+Tanel Alumae <tanel.alumae@phon.ioc.ee>
+.br
+Copyright (c) 1995\-2012 SRI International
+.br
+Copyright (c) 2009\-2013 Tanel Alumae
+.br
+Copyright (c) 2012\-2015 Microsoft Corp.

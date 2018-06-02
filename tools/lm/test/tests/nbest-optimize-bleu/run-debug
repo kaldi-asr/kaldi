@@ -1,0 +1,23 @@
+#!/bin/sh
+
+find tune.scores -type f -print | grep -v CVS | sort > nbestfiles
+
+$SRILM/lm/bin/i686-gcc4/nbest-optimize -maxiters 5 \
+	-converge 0.01 \
+	-debug 1 \
+	-posterior-scale 1 \
+	-nbest-files nbestfiles \
+	-minimum-bleu-reference \
+	-write-rover-control test.rover-control \
+	-compute-oracle -print-oracle-hyps oracle.hyps \
+	-print-hyps 1best.hyps \
+	-bleu-counts tune.counts \
+	-init-lambdas "0 1.0 0 0.2 0.2 0.2 0.2 0" \
+	-init-amoeba-simplex "0.5 0.5 0.5 0.5 0.5 0.5 0.5 0.5" \
+	tune-f0.scores tune-f1.scores tune-f2.scores tune-f3.scores 
+
+exit
+
+head -10 test.rover-control oracle.hyps 1best.hyps
+
+rm -f test.rover-control oracle.hyps 1best.hyps nbestfiles

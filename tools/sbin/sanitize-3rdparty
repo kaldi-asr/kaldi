@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# Remove third-party code from source files
+#
+# $Header: /home/srilm/CVS/srilm/sbin/sanitize-3rdparty,v 1.2 2008/09/27 22:03:47 stolcke Exp $
+#
+
+egrep -l EXCLUDE_CONTRIB "$@" | \
+while read file
+do
+	# avoid processing the same file twice
+	if [ -f $file.3rdparty ]; then 
+		continue;
+	fi
+
+	echo "sanitizing $file" >&2
+
+	mv $file $file.3rdparty
+	sed -e '/EXCLUDE_CONTRIB/,/EXCLUDE_CONTRIB_END/d' \
+	    -e '/INCLUDE_CONTRIB/d' \
+			$file.3rdparty > $file
+done
+

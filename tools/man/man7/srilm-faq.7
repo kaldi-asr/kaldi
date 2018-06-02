@@ -1,0 +1,736 @@
+.\" $Id: srilm-faq.7,v 1.11 2014-01-07 00:10:10 stolcke Exp $
+.TH SRILM-FAQ 1 "$Date: 2014-01-07 00:10:10 $" "SRILM Miscellaneous"
+.SH NAME
+SRILM-FAQ \- Frequently asked questions about SRI LM tools
+.SH SYNOPSIS
+.nf
+man srilm-faq
+.fi
+.SH DESCRIPTION
+This document tries to answer some of the most frequently asked questions
+about SRILM.
+.SS Build issues
+.TP 4
+.B A1) I ran ``make World'' but the $SRILM/bin/$MACHINE_TYPE directory is empty.
+Building the binaries can fail for a variety of reasons.
+Check the following:
+.RS
+.IP a)
+Make sure the SRILM environment variable is set, or specified on the 
+make command line, e.g.:
+.nf
+	make SRILM=$PWD
+.fi
+.IP b)
+Make sure the
+.B $SRILM/sbin/machine-type
+script returns a valid string for the platform you are trying to build on.
+Known platforms have machine-specific makefiles called 
+.nf
+	$SRILM/common/Makefile.machine.$MACHINE_TYPE
+.fi
+If
+.B machine-type
+does not work for some reason, you can override its output on the command line:
+.nf
+	make MACHINE_TYPE=xyz
+.fi
+If you are building for an unsupported platform create a new machine-specific
+makefile and mail it to stolcke@speech.sri.com.
+.IP c)
+Make sure your compiler works and is invoked correctly.
+You will probably have to edit the
+.B CC
+and
+.B CXX
+variables in the platform-specific makefile.
+If you have questions about compiler invocation and best options
+consult a local expert; these things differ widely between sites.
+.IP d)
+The default is to compile with Tcl support.
+This is in fact only used for some testing binaries (which are
+not built by default),
+so it can be turned off if Tcl is not available or presents problems.
+Edit the machine-specific makefile accordingly.
+To use Tcl, locate the
+.B tcl.h 
+header file and the library itself, and set (for example)
+.nf
+	TCL_INCLUDE = -I/path/to/include
+	TCL_LIBRARY = -L/path/to/lib -ltcl8.4
+.fi
+To disable Tcl support set
+.nf
+	NO_TCL = X
+	TCL_INCLUDE = 
+	TCL_LIBRARY = 
+.fi
+.IP e)
+Make sure you have the C-shell (/bin/csh) installed on your system.
+Otherwise you will see something like
+.nf
+	make: /sbin/machine-type: Command not found
+.fi
+early in the build process.
+On Ubuntu Linux and Cygwin systems "csh" or "tcsh" needs to be installed
+as an optional package.
+.IP f)
+If you cannot get SRILM to build, save the make output to a file
+.nf
+	make World >& make.output
+.fi
+and look for messages indicating errors.
+If you still cannot figure out what the problem is, send the error message
+and immediately preceding lines to the srilm-user list.
+Also include information about your operating system ("uname -a" output) 
+and compiler version ("gcc -v" or equivalent for other compilers).
+.RE
+.TP
+.B A2) The regression test outputs differ for all tests.  What did I do wrong?
+Most likely the binaries didn't get built or aren't executable
+for some reason.
+Check issue A1).
+.TP
+.B A3) I get differing outputs for some of the regression tests. Is that OK?
+It might be.
+The comparison of reference to actual output allows for small numerical
+differences, but
+some of the algorithms make hard decisions based on floating-point computations
+that can result in different outputs as a result of different compiler
+optimizations, machine floating point precisions (Intel versus IEEE format),
+and math libraries.
+Test of this nature include 
+.BR ngram-class ,
+.BR disambig ,
+and
+.BR nbest-rover .
+When encountering differences, diff the output in the
+$SRILM/test/outputs/\fITEST\fP.$MACHINE_TYPE.stdout file to the corresponding
+$SRILM/test/reference/\fITEST\fP.stdout, where 
+.I TEST
+is the name of the test that failed.
+Also compare the corresponding .stderr files;
+differences there usually indicate operating-system related problems.
+.SS Large data and memory issues
+.TP 4
+.B B1) I'm getting a message saying ``Assertion `body != 0' failed.''
+You are running out of memory.
+See subsequent questions depending on what you are trying to do.
+.IP Note:
+The above message means you are running
+out of "virtual" memory on your computer, which could be because of 
+limits in swap space, administrative resource limits, or limitations of 
+the machine architecture (a 32-bit machine cannot address more than
+4GB no matter how many resources your system has).
+Another symptom of not enough memory is that your program runs, but 
+very, very slowly, i.e., it is "paging" or "swapping" as it tries to
+use more memory than the machine has RAM installed.
+.TP
+.B B2) I am trying to count N-grams in a text file and running out of memory.
+Don't use
+.B ngram-count
+directly to count N-grams.
+Instead, use the
+.B make-batch-counts
+and
+.B merge-batch-counts
+scripts described in
+.BR training-scripts (1).
+That way you can create N-gram counts limited only by the maximum file size
+on your system.
+.TP
+.B B3) I am trying to build an N-gram LM and ngram-count runs out of memory.
+You are running out of memory either because of the size of ngram counts,
+or of the LM being built. The following are strategies for reducing the
+memory requirements for training LMs.
+.RS
+.IP a)
+Assuming you are using Good-Turing or Kneser-Ney discounting, don't use
+.B ngram-count
+in "raw" form.
+Instead, use the
+.B make-big-lm
+wrapper script described in the
+.BR training-scripts (1)
+man page.
+.IP b)
+Switch to using the "_c" or "_s" versions of the SRI binaries.
+For
+instructions on how to build them, see the INSTALL file.
+Once built, set your executable search path accordingly, and try 
+.B make-big-lm
+again.
+.IP c)
+Raise the minimum counts for N-grams included in the LM, i.e.,
+the values of the options
+.BR \-gt2min ,
+.BR \-gt3min ,
+.BR \-gt4min ,
+etc.
+The higher order N-grams typically get higher minimum counts.
+.IP d)
+Get a machine with more memory.
+If you are hitting the limitations of a 32-bit machine architecture,
+get a 64-bit machine and recompile SRILM to take advantage of the expanded
+address space.
+(The MACHINE_TYPE=i686-m64 setting is for systems based on
+64-bit AMD processors, as well as recent compatibles from Intel.)
+Note that 64-bit pointers will require a memory overhead in 
+themselves, so you will need a machine with significantly, not just a
+little, more memory than 4GB.
+.RE
+.TP
+.B B4) I am trying to apply a large LM to some data and am running out of memory.
+Again, there are several strategies to reduce memory requirements.
+.RS
+.IP a)
+Use the "_c" or "_s" versions of the SRI binaries.
+See 3b) above.
+.IP b)
+Precompute the vocabulary of your test data and use the
+.B "ngram \-limit-vocab"
+option to load only the N-gram parameters relevant to your data.
+This approach should allow you to use arbitrarily 
+large LMs provided the data is divided into small enough chunks.
+.IP c)
+If the LM can be built on a large machine, but then is to be used on
+machines with limited memory, use
+.B "ngram \-prune"
+to remove the less important parameters of the model.
+This usually gives huge size reductions with relatively modest performance
+degradation.
+The tradeoff is adjustable by varying the pruning parameter.
+.RE
+.TP
+.B B5) How can I reduce the time it takes to load large LMs into memory?
+The techniques described in 4b) and 4c) above also reduce the load time
+of the LM.
+Additional steps to try are:
+.RS
+.IP a)
+Convert the LM into binary format, using 
+.nf
+		ngram -order \fIN\fP -lm \fIOLDLM\fP -write-bin-lm \fINEWLM\fP
+.fi
+(This is currently only supported for N-gram-based LMs.)
+You can also generate the LM directly in binary format, using
+.nf
+		ngram-count ... -lm \fINEWLM\fP -write-binary-lm
+.fi
+The resulting
+.I NEWLM
+file (which should not be compressed) can be used
+in place of a textual LM file with all compiled SRILM tools
+(but not with
+.BR lm-scripts (1)).
+The format is machine-independent, i.e., it can be read on machines with
+different word sizes or byte-order.
+Loading binary LMs is faster because
+(1) it reduces the overhead of parsing the input data, and
+(2) in combination with
+.B \-limit-vocab 
+(see 4b)
+it is much faster to skip sections of the LM that are out-of-vocabulary.
+.IP Note:
+There is also a binary format for N-gram counts.
+It can be generated using 
+.nf
+		ngram-count -write-binary \fICOUNTS\fP
+.fi
+and has similar advantages as binary LM files.
+.IP b)
+Start a "probability server" that loads the LM ahead of time, and
+then have "LM clients" query the server instead of computing the 
+probabilities themselves.
+.br
+The server is started on a machine named
+.I HOST
+using 
+.nf
+		ngram \fILMOPTIONS\fP -server-port \fIP\fP &
+.fi
+where
+.I P
+is an integer < 2^16 that specifies the TCP/IP port number the
+server will listen on, and
+.I LMOPTIONS
+are whatever options necessary to define the LM to be used.
+.br
+One or more clients (programs such as
+.BR ngram (1),
+.BR disambig (1),
+.BR lattice-tool (1))
+can then query the server using the options
+.nf
+		-use-server \fIP\fP@\fIHOST\fP -cache-served-ngrams
+.fi
+instead of the usual "-lm \fIFILE\fP".
+The
+.B \-cache-served-ngrams
+option is not required but often speeds up performance dramatically by
+saving the results of server lookups in the client for reuse.
+Server-based LMs may be combined with file-based LMs by interpolation;
+see 
+.BR ngram (1)
+for details.
+.RE
+.TP
+.B B6) How can I use the Google Web N-gram corpus to build an LM?
+Google has made a corpus of 5-grams extracted from 1 tera-words of web data
+available via LDC.
+However, the data is too large to build a standard backoff N-gram, even
+using the techniques described above.
+Instead, we recommend a "count-based" LM smoothed with deleted interpolation.
+Such an LM computes probabilities on the fly from the counts, of which only
+the subsets needed for a given test set need to be loaded into memory.
+LM construction proceeds in the following steps:
+.RS
+.IP a)
+Make sure you have built SRI binaries either for a 64-bit machine 
+(e.g., MACHINE_TYPE=i686-m64 OPTION=_c) or using 64-bit counts (OPTION=_l).
+This is necessary because the data contains N-gram counts exceeding
+the range of 32-bit integers.
+Be sure to invoke all commands below using the path to the appropriate
+binary executable directory.
+.IP b)
+Prepare mapping file for some vocabulary mismatches and call this
+.BR google.aliases :
+.nf
+	<S> <s>
+	</S> </s>
+	<UNK> <unk>
+.fi
+.IP c)
+Prepare an initial count-LM parameter file 
+.BR google.countlm.0 :
+.nf
+	order 5
+	vocabsize 13588391
+	totalcount 1024908267229
+	countmodulus 40
+	mixweights 15
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	 0.5 0.5 0.5 0.5 0.5
+	google-counts \fIPATH\fP
+.fi
+where
+.I PATH
+points to the location of the Google N-grams, i.e., the directory containing 
+subdirectories "1gms", "2gms", etc.
+Note that the
+.B vocabsize
+and
+.B totalcount
+were obtained from the 1gms/vocab.gz and 1gms/total files, respectively.
+(Check that they match and modify as needed.)
+For an explanation of the parameters see the
+.BR ngram (1)
+.B \-count-lm 
+option.
+.IP d)
+Prepare a text file 
+.B tune.text 
+containing data for estimating the mixture weights.
+This data should be representative of, but different from your test data.
+Compute the vocabulary of this data using
+.nf
+	ngram-count -text tune.text -write-vocab tune.vocab
+.fi
+The vocabulary size should not exceed a few thousand to keep memory 
+requirements in the following steps manageable.
+.IP e)
+Estimate the mixture weights:
+.nf
+	ngram-count -debug 1 -order 5 -count-lm  \\
+		-text tune.text -vocab tune.vocab \\
+		-vocab-aliases google.aliases \\
+		-limit-vocab \\
+		-init-lm google.countlm.0 \\
+		-em-iters 100 \\
+		-lm google.countlm
+.fi
+This will write the estimated LM to 
+.BR google.countlm .
+The output will be identical to the initial LM file, except for the 
+updated interpolation weights.
+.IP f)
+Prepare a test data file 
+.BR test.text ,
+and its vocabulary
+.B test.vocab
+as in Step d) above.
+Then apply the LM to the test data:
+.nf
+	ngram -debug 2 -order 5 -count-lm \\
+		-lm google.countlm \\
+		-vocab test.vocab \\
+		-vocab-aliases google.aliases \\
+		-limit-vocab \\
+		-ppl test.text > test.ppl
+.fi
+The perplexity output will appear in 
+.B test.ppl.
+.IP g)
+Note that the Google data uses mixed case spellings.
+To apply the LM to lowercase data one needs to prepare a much more 
+extensive vocabulary mapping table for the
+.B \-vocab-aliases
+option, namely, one that maps all 
+upper- and mixed-case spellings to lowercase strings.
+This mapping file should be restricted to the words appearing in 
+.B tune.text
+and
+.BR test.text ,
+respectively, to avoid defeating the effect of 
+.B \-limit-vocab .
+.RE
+.SS "Smoothing issues"
+.TP 4
+.B C1) What is smoothing and discounting all about?
+.I Smoothing
+refers to methods that assign probabilities to events (N-grams) that
+do not occur in the training data.
+According to a pure maximum-likelihood estimator these events would have 
+probability zero, which is plainly wrong since previously unseen events
+in general do occur in independent test data.
+Because the probability mass is redistributed away from the seen events
+toward the unseen events the resulting model is "smoother" (closer to uniform)
+than the ML model.
+.I Discounting
+refers to the approach used by many smoothing methods of adjusting the 
+empirical counts of seen events downwards.
+The ML estimator (count divided by total number of events) is then applied
+to the discounted count, resulting in a smoother estimate.
+.TP
+.B C2) What smoothing methods are there?
+There are many, and SRILM implements are fairly large selection of the 
+most popular ones.
+A detailed discussion of these is found in a separate document,
+.BR ngram-discount (7).
+.TP
+.B C3) Why am I getting errors or warnings from the smoothing method I'm using?
+The Good-Turing and Kneser-Ney smoothing methods rely on statistics called
+"count-of-counts", the number of words occurring one, twice, three times, etc.
+The formulae for these methods become undefined if the counts-of-counts
+are zero, or not strictly decreasing.
+Some conditions are fatal (such as when the count of singleton words is zero),
+others lead to less smoothing (and warnings).
+To avoid these problems, check for the following possibilities:
+.RS
+.IP a)
+The data could be very sparse, i.e., the training corpus very small.
+Try using the Witten-Bell discounting method.
+.IP b)
+The vocabulary could be very small, such as when training an LM based on
+characters or parts-of-speech.
+Smoothing is less of an issue in those cases, and the Witten-Bell method
+should work well.
+.IP c)
+The data was manipulated in some way, or artificially generated.
+For example, duplicating data eliminates the odd-numbered counts-of-counts.
+.IP d)
+The vocabulary is limited during counts collection using the 
+.BR ngram-count
+.B \-vocab
+option, with the effect that many low-frequency N-grams are eliminated.
+The proper approach is to compute smoothing parameters on the full vocabulary.
+This happens automatically in the 
+.B make-big-lm
+wrapper script, which is preferable to direct use of 
+.BR ngram-count 
+for other reasons (see issue B3-a above).
+.IP e)
+You are estimating an LM from N-gram counts that have been truncated beforehand,
+e.g., by removing singleton events.
+If you cannot go back to the original data and recompute the counts
+there is a heuristic to extrapolate low counts-of-counts from higher ones.
+The heuristic is invoked automatically (and an informational message is output)
+when 
+.B make-big-lm 
+is used to estimate LMs with Kneser-Ney smoothing.
+For details see the paper by W. Wang et al. in ASRU-2007, listed under
+"SEE ALSO".
+.RE
+.TP
+.B C4) How does discounting work in the case of unigrams?
+First, unigrams are discounted using the same method as higher-order 
+N-grams, using the specified method.
+The probability mass freed up in this way
+is then either spread evenly over all word types  
+that would otherwise have zero probability (this is essentially  
+simulating a backoff to zero-grams), or
+if all unigrams already have non-zero probabilities, the  
+left-over mass is added to
+.I all
+unigrams.
+In either case all unigram probabilty probabilities will sum to 1.
+An informational message from
+.B ngram-count
+will tell which case applies.
+.SS "Out-of-vocabulary, zeroprob, and `unknown' words"
+.TP 4
+.B D1) What is the perplexity of an OOV (out of vocabulary) word?
+By default any word not observed in the training data is considered
+OOV and OOV words are silently ignored by the
+.BR ngram (1)
+during perplexity (ppl) calculation.
+For example:
+.nf
+
+	$ ngram-count -text turkish.train -lm turkish.lm
+	$ ngram -lm turkish.lm -ppl turkish.test
+	file turkish.test: 61031 sentences, 1000015 words, 34153 OOVs
+	0 zeroprobs, logprob= -3.20177e+06 ppl= 1311.97 ppl1= 2065.09
+
+.fi
+The statistics printed in the last two lines have the following meanings:
+.RS
+.TP
+.B "34153 OOVs"
+This is the number of unknown word tokens, i.e. tokens
+that appear in
+.B turkish.test
+but not in
+.B turkish.train
+from which
+.B turkish.lm
+was generated.
+.TP
+.B "logprob= -3.20177e+06"
+This gives us the total logprob ignoring the 34153 unknown word tokens.
+The logprob does include the probabilities
+assigned to </s> tokens which are introduced by
+.BR ngram-count (1).
+Thus the total number of tokens which this logprob is based on is 
+.nf
+	words - OOVs + sentences = 1000015 - 34153 + 61031
+.fi
+.TP
+.B "ppl = 1311.97"
+This gives us the geometric average of 1/probability of
+each token, i.e., perplexity.
+The exact expression is: 
+.nf
+	ppl = 10^(-logprob / (words - OOVs + sentences))
+.fi
+.TP
+.B "ppl1 = 2065.09"
+This gives us the average perplexity per word excluding the </s> tokens.
+The exact expression is:
+.nf
+	ppl1 = 10^(-logprob / (words - OOVs))
+.fi
+.RE
+You can verify these numbers by running the
+.B ngram
+program with the
+.B "\-debug 2"
+option, which gives the probability assigned to each token.
+.TP
+.B D2) What happens when the OOV word is in the context of an N-gram?
+Exact details depend on the discounting algorithm used, but typically
+the backed-off probability from a lower order N-gram is used.  If the
+.B \-unk
+option is used as explained below, an <unk> token is assumed to
+take the place of the OOV word and no back-off may be necessary
+if a corresponding N-gram containing <unk> is found in the LM.
+.TP
+.B D3) Isn't it wrong to assign 0 logprob to OOV words?
+That depends on the application.
+If you are comparing multiple language
+models which all consider the same set of words as OOV it may be OK to
+ignore OOV words.
+Note that perplexity comparisons are only ever meaningful
+if the vocabularies of all LMs are the same.
+Therefore, to compare LMs with different sets of OOV words
+(such as when using different tokenization strategies for morphologically
+complex languages) then it becomes important
+to take into account the true cost of the OOV words, or to model all words,
+including OOVs.
+.TP
+.B D4) How do I take into account the true cost of the OOV words?
+A simple strategy is to "explode" the OOV words, i.e., split them into
+characters in the training and test data.
+Typically words that appear more than once in the training data are
+considered to be vocabulary words.
+All other words are split into their characters and the
+individual characters are considered tokens.
+Assuming that all characters occur at least once in the training data there
+will be no OOV tokens in the test data.
+Note that this strategy changes the number of tokens in the data set,
+so even though logprob is meaningful be careful when reporting ppl results.
+.TP
+.B D5) What if I want to model the OOV words explicitly?
+Maybe a better strategy is to have a separate "letter" model for OOV words.
+This can be easily created using SRILM by using a training
+file listing the OOV words one per line with their characters
+separated by spaces.
+The
+.B ngram-count
+options
+.B \-ukndiscount
+and
+.B "\-order 7"
+seem to work well for this purpose.
+The final logprob results are obtained in two steps.
+First do regular training and testing on your data using
+.B \-vocab
+and
+.B \-unk
+options.
+The resulting logprob will include the cost of the vocabulary words and an
+<unk> token for each OOV word.
+Then apply the letter model to each OOV word in the test set.
+Add the logprobs.
+Here is an example:
+.nf
+
+	# Determine vocabulary:
+	ngram-count -text turkish.train -write-order 1 -write turkish.train.1cnt
+	awk '$2>1'  turkish.train.1cnt | cut -f1 | sort > turkish.train.vocab
+	awk '$2==1' turkish.train.1cnt | cut -f1 | sort > turkish.train.oov
+
+	# Word model:
+	ngram-count -kndiscount -interpolate -order 4 -vocab turkish.train.vocab -unk -text turkish.train -lm turkish.train.model
+	ngram -order 4 -unk -lm turkish.train.model -ppl turkish.test > turkish.test.ppl
+
+	# Letter model:
+	perl -C -lne 'print join(" ", split(""))' turkish.train.oov > turkish.train.oov.split
+	ngram-count -ukndiscount -interpolate -order 7 -text turkish.train.oov.split -lm turkish.train.oov.model
+	perl -pe 's/\\s+/\\n/g' turkish.test | sort > turkish.test.words
+	comm -23 turkish.test.words turkish.train.vocab > turkish.test.oov
+	perl -C -lne 'print join(" ", split(""))' turkish.test.oov > turkish.test.oov.split
+	ngram -order 7 -ppl turkish.test.oov.split -lm turkish.train.oov.model > turkish.test.oov.ppl
+
+	# Add the logprobs in turkish.test.ppl and turkish.test.oov.ppl.
+
+.fi
+Again, perplexities are not directly meaningful as computed by SRILM, but you
+can recompute them by hand using the combined logprob value, and the number of 
+original word tokens in the test set.
+.TP
+.B D6) What are zeroprob words and when do they occur?
+In-vocabulary words that get zero probability are counted as  
+"zeroprobs" in the ppl output.
+Just as OOV words, they are excluded from the perplexity  
+computation since otherwise the perplexity value would be infinity.  
+There are three reasons why zeroprobs could occur in a
+closed vocabulary setting (the default for SRILM):
+.RS
+.IP a)
+If the same vocabulary is used at test time as was used during  
+training, and smoothing is enabled, then the occurrence of zeroprobs  
+indicates an anomalous condition and, possibly, a broken language model.
+.IP b)
+If smoothing has been disabled (e.g., by using the option
+.BR "\-cdiscount 0" ),
+then the LM will use maximum likelihood estimates for  
+the N-grams and then any unseen N-gram is a zeroprob.
+.IP c)
+If a different vocabulary file is specified at test time than  
+the one used in training, then the definition of what counts as an OOV  
+will change.
+In particular, a word that wasn't seen in the training data (but is in the  
+test vocabulary) will
+.I not
+be mapped to
+.B <unk>
+and, therefore, not  
+count as an OOV in the perplexity computation.
+However, it will still get zero probability and, therefore, be tallied
+as a zeroprob.
+.RE
+.TP
+.B D7) What is the point of using the \fB<unk>\fP token?
+Using
+.B <unk>
+is a practical convenience employed by SRILM.
+Words not in the specified vocabulary are mapped to
+.BR <unk> ,
+which is equivalent to performing the same mapping 
+in a data pre-processing step outside of SRILM.
+Other than that,
+for both LM estimation and evaluation purposes,
+.B <unk>
+is treated like any other word.
+(In particular, in the computation of discounted probabilities
+there is no special handling of
+.BR <unk> .)
+.TP
+.B D8) So how do I train an open-vocabulary LM with \fB<unk>\fP?
+First, make sure to use the
+.B ngram-count 
+.B \-unk
+option, which simply indicates that the
+.B <unk> 
+word should be included in the LM vocabulary, as required for an
+open-vocabulary LM.
+Without this option, N-grams containing 
+.B <unk>
+would simply be discarded.
+An "open vocabulary" LM is simply one that contains 
+.BR <unk> ,
+and can therefore (by virtue of the mapping of OOVs to
+.BR <unk> )
+assign a non-zero probability to them.
+Next, we need to ensure there are actual occurrences of 
+.B <unk> 
+N-grams 
+in the training data so we can obtain meaningful probability estimates
+for them
+(otherwise 
+.B <unk>
+would only get probabilty via unigram discounting, see item C4).
+To get a proper estimate  
+of the
+.B <unk>
+probability, we need to explicitly specify a vocabulary that is not 
+a superset of the training data.
+One way to do that is to extract the vocabulary from an independent
+data set, or by only including words with some minimum count (greater than 1)
+in the training data.
+.TP
+.B D9) Doesn't ngram-count \-addsmooth deal with OOV words by adding a constant to occurrence counts?
+No, all smoothing is applied when building the LM at training time,
+so it must use the
+.B <unk>
+mechanism to assign probability to words that are first seen in the 
+test data.
+Furthermore, even add-constant smoothing requires a fixed, finite
+vocabulary to compute the denominator of its estimator.
+.SH "SEE ALSO"
+ngram(1), ngram-count(1), training-scripts(1), ngram-discount(7).
+.br
+$SRILM/INSTALL
+.br
+http://www.speech.sri.com/projects/srilm/mail-archive/srilm-user/
+.br
+http://www.ldc.upenn.edu/Catalog/CatalogEntry.jsp?catalogId=LDC2006T13
+.br
+W. Wang, A. Stolcke, & J. Zheng,
+Reranking Machine Translation Hypotheses With Structured and Web-based Language Models. Proc. IEEE Automatic Speech Recognition and Understanding Workshop, pp. 159-164, Kyoto, 2007.
+http://www.speech.sri.com/cgi-bin/run-distill?papers/asru2007-mt-lm.ps.gz
+.SH BUGS
+This document is work in progress.
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>
+.br
+Deniz Yuret <dyuret@ku.edu.tr>
+.br
+Nitin Madnani <nmadnani@umiacs.umd.edu>
+.br
+Copyright 2007-2010 SRI International

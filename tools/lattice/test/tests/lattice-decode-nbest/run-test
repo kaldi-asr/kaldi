@@ -1,0 +1,36 @@
+#!/bin/sh
+
+data=../lattice-expansion-ppl
+
+lm="$data/test.lm"
+
+lattice-tool -in-lattice $data/test.htk -read-htk \
+		-out-lattice test.pfsg
+
+mkdir -p nbest
+
+for order in 1 2
+do
+    lattice-tool -debug 1 \
+                -in-lattice $data/test.htk \
+		-read-htk \
+		-nbest-decode 5 \
+		-out-nbest-dir nbest \
+		-no-expansion \
+		-htk-lmscale 2 \
+		-lm $lm -order $order
+
+    gunzip -c -f nbest/test.htk
+
+    lattice-tool -debug 1 \
+                -in-lattice test.pfsg \
+		-nbest-decode 5 \
+		-out-nbest-dir nbest \
+		-no-expansion \
+		-htk-lmscale 2 \
+		-lm $lm -order $order
+
+    gunzip -c -f nbest/test.htk
+done
+
+rm -rf test.pfsg nbest

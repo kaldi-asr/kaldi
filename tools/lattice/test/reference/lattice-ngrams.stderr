@@ -1,0 +1,8 @@
+reading 5 1-grams
+reading 5 2-grams
+Lattice::expandToLM: starting expansion to general LM (maxNodes = 0) ...
+Lattice::writeHTK: writing 6 nodes, 6 transitions
+Lattice::computeForwardBackward: processing (posterior scale = 8)
+Lattice::computeForwardBackward: unnormalized posterior = -3.70265 max-min path posterior = -3.82507
+Lattice::countNgrams: computing ngram counts
+writing ngram counts to -

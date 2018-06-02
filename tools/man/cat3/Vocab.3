@@ -1,0 +1,241 @@
+Vocab(3)                                                              Vocab(3)
+
+
+
+NNAAMMEE
+       Vocab - Vocabulary indexing for SRILM
+
+SSYYNNOOPPSSIISS
+       ##iinncclluuddee <<VVooccaabb..hh>>
+
+DDEESSCCRRIIPPTTIIOONN
+       The  VVooccaabb class represents sets of string tokens as typically used for
+       vocabularies, word class names, etc.  Additionally,  Vocab  provides  a
+       mapping  from  such  string tokens (type VVooccaabbSSttrriinngg) to integers (type
+       VVooccaabbIInnddeexx).  VocabIndex values are typically used to  index  words  in
+       language  models to conserve space and speed up comparisons etc.  Thus,
+       VVooccaabb essentially implements a symbol table into which strings  can  be
+       ``interned.''
+
+TTYYPPEESS
+       VVooccaabbIInnddeexx
+              A non-negative integer for representing a string internally.
+
+       VVooccaabbSSttrriinngg
+              A character array representing a vocabulary item (e.g., a word).
+
+CCOONNSSTTAANNTTSS
+       mmaaxxWWoorrddLLeennggtthh
+              Maximum number of characters in a VocabString.
+
+       VVooccaabb__NNoonnee
+              A  special  VocabIndex  used to denote no vocabulary item and to
+              terminate VocabIndex arrays.
+
+       VVooccaabb__UUnnkknnoowwnn
+
+       VVooccaabb__SSeennttSSttaarrtt
+
+       VVooccaabb__SSeennttEEnndd
+
+       VVooccaabb__PPaauussee
+              Default VocabString values for some common,  predefined  vocabu-
+              lary  items:  unknown  word,  sentence  begin, sentence end, and
+              pause, respectively.
+
+CCLLAASSSS MMEEMMBBEERRSS
+       VVooccaabb((VVooccaabbIInnddeexx _s_t_a_r_t == 00,, VVooccaabbIInnddeexx _e_n_d == 00xx77ffffffffffffff))
+              When initializing a Vocab object, _s_t_a_r_t and _e_n_d  optionally  set
+              the minimum and maximum VocabIndex values assigned by the vocab-
+              ulary.  Indices are allocated in increasing  order  starting  at
+              _s_t_a_r_t.
+
+       VVooccaabbIInnddeexx aaddddWWoorrdd((VVooccaabbSSttrriinngg _n_a_m_e))
+              Looks up the index of a word string _n_a_m_e, adding the word if not
+              already part of the vocabulary.
+
+       VVooccaabbSSttrriinngg ggeettWWoorrdd((VVooccaabbIInnddeexx _i_n_d_e_x))
+              Returns the VocabString for _i_n_d_e_x,  or  0  if  the  index  isn't
+              defined.
+
+       ggeettIInnddeexx((VVooccaabbSSttrriinngg _n_a_m_e))
+              Returns  the VocabIndex for word _n_a_m_e, or VVooccaabb__NNoonnee if the word
+              isn't defined.  (Unlike aaddddWWoorrdd(()),  this  will  not  extend  the
+              vocabulary if the word is undefined.)
+
+       vvooiidd rreemmoovvee((VVooccaabbSSttrriinngg _n_a_m_e))
+
+       vvooiidd rreemmoovvee((VVooccaabbIInnddeexx _i_n_d_e_x))
+              Deletes a vocabulary item, either by name or by index.
+
+       uunnssiiggnneedd iinntt nnuummWWoorrddss(())
+              Returns the number of current vocabulary entries.
+
+       VVooccaabbIInnddeexx hhiigghhIInnddeexx(())
+              Returns  the highest VocabIndex value assigned so far.  The next
+              word added will receive an index  that  is  one  greater.   When
+              allocating various meaningful vocabulary subsets into contiguous
+              ranges, this function can be used to determine the corresponding
+              boundaries  in  VocabIndex  space,  and then use these values to
+              test subset membership etc.
+
+       VVooccaabbIInnddeexx uunnkkIInnddeexx
+              The  index  of  the  unknown  word  (by  default   assigned   to
+              VVooccaabb__UUnnkknnoowwnn).
+
+       VVooccaabbIInnddeexx ssssIInnddeexx
+              The  index  of  the  sentence-start  tag (by default assignedrto
+              VVooccaabb__SSeennttSSttaarrtt).
+
+       VVooccaabbIInnddeexx sseeIInnddeexx
+              The index of  the  sentence-end  tag  (by  default  assigned  to
+              VVooccaabb__SSeennttEEnndd).
+
+       VVooccaabbIInnddeexx ppaauusseeIInnddeexx
+              The index of the pause tag (by default assigned to VVooccaabb__PPaauussee).
+
+       BBoooolleeaann uunnkkIIssWWoorrdd
+              When  ttrruuee,  the  unknown  word  is  considered  a  regular word
+              (default ffaallssee).
+
+       BBoooolleeaann ttooLLoowweerr
+              When ttrruuee, all word strings are mapped to  lowercase.   This  is
+              convenient to combine vocabularies, language models, etc., whose
+              vocabularies differ only in the case convention (default ffaallssee).
+
+       BBoooolleeaann iissNNoonnEEvveenntt((VVooccaabbSSttrriinngg _w_o_r_d))
+
+       BBoooolleeaann iissNNoonnEEvveenntt((VVooccaabbIInnddeexx _w_o_r_d))
+              Tests a word string or index for being an ``non-event'', i.e., a
+              token  that is not assigned probability in a language model.  By
+              default, sentence-start, pauses,  and  unknown  words  are  non-
+              events.
+
+       uunnssiiggnneedd rreeaadd((FFiillee &&_f_i_l_e))
+              Reads  word strings from a file and adds them to the vocabulary.
+              For convenience, only the first word on each line is significant
+              (so  extra  information  could  be  contained  in  such a file).
+              Returns the number of words read.
+
+       vvooiidd wwrriittee((FFiillee &&_f_i_l_e,, BBoooolleeaann _s_o_r_t_e_d == ttrruuee))
+              Write the vocabulary strings to a file in  a  format  compatible
+              with rreeaadd(()).  The _s_o_r_t_e_d argument controls whether the output is
+              lexicographically sorted.
+
+       Often times one wants to manipulate not single  vocabulary  items,  but
+       strings of them, e.g., to represent sentences.  Word strings are repre-
+       sented as self-delimiting arrays of type VVooccaabbSSttrriinngg ** or VVooccaabbIInnddeexx **.
+       The last element in a string is 0 or VVooccaabb__NNoonnee, respectively.
+
+       uunnssiiggnneedd  ggeettWWoorrddss((ccoonnsstt VVooccaabbIInnddeexx **_w_i_d_s,, VVooccaabbSSttrriinngg **_w_o_r_d_s,, uunnssiiggnneedd
+       _m_a_x))
+              Extends ggeettWWoorrdd(()) to strings of word.  The result is  placed  in
+              _w_o_r_d_s, which must have room for at least _m_a_x words.  Returns the
+              actual number of indices in _w_i_d_s.
+
+       uunnssiiggnneedd aaddddWWoorrddss((ccoonnsstt VVooccaabbSSttrriinngg **_w_o_r_d_s,, VVooccaabbIInnddeexx **_w_i_d_s,,  uunnssiiggnneedd
+       _m_a_x))
+              Extends  aaddddWWoorrdd(())  to strings of indices.  The result is placed
+              in _w_i_d_s, which must have room for at least _m_a_x indices.  Returns
+              the actual number of words in _w_o_r_d_s.
+
+       uunnssiiggnneedd   ggeettIInnddiicceess((ccoonnsstt   VVooccaabbSSttrriinngg   **_w_o_r_d_s,,  VVooccaabbIInnddeexx  **_w_i_d_s,,
+       uunnssiiggnneedd _m_a_x))
+              Extends ggeettIInnddeexx(()) to strings of indices.  The result is  placed
+              in _w_i_d_s, which must have room for at least _m_a_x indices.  Returns
+              the actual number of words in _w_o_r_d_s.
+
+FFUUNNCCTTIIOONNSS
+       The following static  member  functions  are  utilities  to  manipulate
+       strings of vocabulary items, independent of a particular vocabulary.
+
+       uunnssiiggnneedd ppaarrsseeWWoorrddss((cchhaarr **_l_i_n_e,, VVooccaabbSSttrriinngg **_w_o_r_d_s,, uunnssiiggnneedd _m_a_x))
+              Parses  a character string _l_i_n_e into whitespace-delimited words.
+              On return, _w_o_r_d_s contains pointers to null-terminated substrings
+              of _l_i_n_e (whose contents is modified in the process).  _w_o_r_d_s must
+              have room for at least _m_a_x pointers.  Returns the actual  number
+              of words parsed.
+
+       uunnssiiggnneedd lleennggtthh((ccoonnsstt VVooccaabbIInnddeexx **_w_o_r_d_s))
+
+       uunnssiiggnneedd lleennggtthh((ccoonnsstt VVooccaabbSSttrriinngg **_w_o_r_d_s))
+              Returns the number items in a word string.
+
+       BBoooolleeaann ccoonnttaaiinnss((ccoonnsstt VVooccaabbIInnddeexx **_w_o_r_d_s,, VVooccaabbIInnddeexx _w_o_r_d))
+              Returns _t_r_u_e if the _w_o_r_d occurs among _w_o_r_d_s.
+
+       VVooccaabbIInnddeexx **rreevveerrssee((VVooccaabbIInnddeexx **_w_o_r_d_s))
+
+       VVooccaabbSSttrriinngg **rreevveerrssee((VVooccaabbSSttrriinngg **_w_o_r_d_s))
+              Reverses  a  string  of  words  in  place  (and  returns it as a
+              result).
+
+       vvooiidd wwrriittee((FFiillee &&_f_i_l_e,, ccoonnsstt VVooccaabbSSttrriinngg **_w_o_r_d_s))
+              Writes a string of space-delimited words to a file.
+
+       iinntt ccoommppaarree((VVooccaabbIInnddeexx _w_o_r_d_1,, VVooccaabbIInnddeexx _w_o_r_d_2))
+
+       iinntt ccoommppaarree((VVooccaabbSSttrriinngg _w_o_r_d_1,, VVooccaabbSSttrriinngg _w_o_r_d_2))
+              Compares two vocabulary items lexicographically.  Returns -1, 0,
+              +1 for less than, equal, or greater than, respectively.
+
+       iinntt ccoommppaarree((ccoonnsstt VVooccaabbIInnddeexx **_w_o_r_d_s_1,, ccoonnsstt VVooccaabbIInnddeexx **_w_o_r_d_s_2))
+
+       iinntt ccoommppaarree((ccoonnsstt VVooccaabbIInnddeexx **_w_o_r_d_s_1,, ccoonnsstt VVooccaabbIInnddeexx **_w_o_r_d_s_2))
+              Extends the order of _c_o_m_p_a_r_e_(_) to strings of words.
+
+       For compatibilty with the C library calling conventions, ccoommppaarree(()) can-
+       not be a member function of a Vocab object.   For  index-based  compar-
+       isons  the  associated  vocabulary  needs  to be set globally.  This is
+       achieved by calling the  ccoommppaarreeIInnddeexx(())  member  function  of  a  Vocab
+       object.
+
+       oossttrreeaamm &&ooppeerraattoorr<<<< ((oossttrreeaamm &&,, ccoonnsstt VVooccaabbSSttrriinngg **_w_o_r_d_s))
+
+       oossttrreeaamm &&ooppeerraattoorr<<<< ((oossttrreeaamm &&,, ccoonnsstt VVooccaabbIInnddeexx **_w_o_r_d_s))
+              These  operators  output  strings of words to a stream.  For the
+              second variant, the Vocab object used for  interpreting  indices
+              needs  to  be  identified  globally  by calling the _u_s_e_(_) member
+              function on the object.
+
+IITTEERRAATTOORRSS
+       The VVooccaabbIItteerr class provides iteration over vocabularies.  An iteration
+       returns  the elements of a Vocab in some unspecified, but deterministic
+       order.
+
+       When copied or used  in  initialization  of  other  objects,  VocabIter
+       objects  retain  the current ``position'' in an iteration.  This allows
+       nested iterations that enumerate all pairs of distinct elements, etc.
+
+       NOTE: While an iteration over a Vocab object is ongoing,  no  modifica-
+       tions  are  allowed  to  the  object, _e_x_c_e_p_t removal of the ``current''
+       vocabulary item.
+
+       VVooccaabbIItteerr((VVooccaabb &&_v_o_c_a_b,, BBoooolleeaann _s_o_r_t_e_d == ffaallssee))
+              Creates an iteration over _v_o_c_a_b.  If _s_o_r_t_e_d is set to  ttrruuee  the
+              vocabulary items will be enumerated in lexicographic order.
+
+       vvooiidd iinniitt(())
+              Reinitializes the iteration to its beginning.
+
+       VVooccaabbSSttrriinngg nneexxtt(())
+
+       VVooccaabbSSttrriinngg nneexxtt((VVooccaabbIInnddeexx &&_i_n_d_e_x))
+              Steps  the  iteration and returns the next word string.  Option-
+              ally, the associated word index is returned in _i_n_d_e_x.  Returns 0
+              if the vocabulary is exhausted.
+
+SSEEEE AALLSSOO
+       LM(3), File(3)
+
+BBUUGGSS
+       There  is  no good way to synchronize VocabIndex values across multiple
+       Vocab objects.
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1995, 1996 SRI International
+
+
+
+SRILM                    $Date: 2007/12/19 22:01:46 $                 Vocab(3)

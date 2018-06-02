@@ -1,0 +1,428 @@
+<! $Id: disambig.1,v 1.32 2013/03/09 04:13:59 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>disambig</TITLE>
+<BODY>
+<H1>disambig</H1>
+<H2> NAME </H2>
+disambig - disambiguate text tokens using an N-gram model
+<H2> SYNOPSIS </H2>
+<B> disambig </B>
+[<B>-help</B>]<B></B><B></B><B></B>
+<I> option </I>
+...
+<H2> DESCRIPTION </H2>
+<B> disambig </B>
+translates a stream of tokens from a vocabulary V1 to a corresponding stream
+of tokens from a vocabulary V2, 
+according to a probabilistic, 1-to-many mapping.
+Ambiguities in the mapping are resolved by finding the V2 sequence with
+the highest posterior probability given the V1 sequence.
+This probability is computed from pairwise conditional probabilities P(V1|V2),
+as well as a language model for sequences over V2.
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-text</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the file containing the V1 sentences.
+<DT><B>-map</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the file containing the V1-to-V2 mapping information.
+Each line of
+<I> file </I>
+contains the mapping for a single word in V1:
+<PRE>
+	<I>w1</I>	<I>w21</I> [<I>p21</I>] <I>w22</I> [<I>p22</I>] ...
+</PRE>
+where
+<I> w1 </I>
+is a word from V1, which has possible mappings
+<I>w21</I>,<I></I><I></I><I></I>
+<I>w22</I>,<I></I><I></I><I></I>
+... from V2.
+Optionally, each of these can be followed by a numeric string for the
+probability
+<I>p21</I>,<I></I><I></I><I></I>
+which defaults to 1.
+The number is used as the conditional probability P(<I>w1</I>|<I>w21</I>),
+but the program does not depend on these numbers being properly normalized.
+<DT><B>-escape</B><I> string</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set an ``escape string.''
+Input lines starting with
+<I> string </I>
+are not processed and passed unchanged to stdout instead.
+This allows associated information to be passed to scoring scripts etc.
+<DT><B>-text-map</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Processes a combined text/map file.
+The format of
+<I> file </I>
+is the same as for
+<B>-map</B>,<B></B><B></B><B></B>
+except that the 
+<I> w1 </I>
+field on each line is interpreted as a word 
+<I> token </I>
+rather than a word 
+<I>type</I>.<I></I><I></I><I></I>
+Hence, the V1 text input consists of all words in column 1 of
+<I> file </I>
+in order of appearance.
+This is convenient if different instances of a word have different mappings.
+There is no implicit insertion of begin/end sentence tokens in this 
+mode.  Sentence boundaries should be indicated explicitly by 
+lines of the form
+<PRE>
+	&lt;/s&gt;	&lt;/s&gt;
+	&lt;s&gt;	&lt;s&gt;
+</PRE>
+An escaped line (see 
+<B>-escape</B>)<B></B><B></B><B></B>
+also implicitly marks a sentence boundary.
+<DT><B>-classes</B> file<B></B><B></B><B></B>
+<DD>
+Specifies the V1-to-V2 mapping information in 
+<A HREF="classes-format.5.html">classes-format(5)</A>.
+Class labels are interpreted as V2 words, and expansions as V1 words.
+Multi-word expansions are not allowed.
+<DT><B> -scale </B>
+<DD>
+Interpret the numbers in the mapping as P(<I>w21</I>|<I>w1</I>).
+This is done by dividing probabilities by the unigram probabilities of
+<I>w21</I>,<I></I><I></I><I></I>
+obtained from the V2 language model.
+<DT><B> -logmap </B>
+<DD>
+Interpret numeric values in map file as log probabilities, not probabilities.
+<DT><B>-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the V2 language model as a standard ARPA N-gram backoff model file
+<A HREF="ngram-format.5.html">ngram-format(5)</A>.
+The default is not to use a language model, i.e., choose V2 tokens
+based only on the probabilities in the map file.
+<DT><B>-use-server</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use a network LM server (typically implemented by 
+<A HREF="ngram.1.html">ngram(1)</A>
+with the 
+<B> -server-port </B>
+option) as the main model.
+The server specification
+<I> S </I>
+can be an unsigned integer port number (referring to a server port running on
+the local host),
+a hostname (referring to default port 2525 on the named host),
+or a string of the form 
+<I>port</I>@<I>host</I>,<I></I><I></I>
+where
+<I> port </I>
+is a portnumber and 
+<I> host </I>
+is either a hostname ("dukas.speech.sri.com")
+or IP number in dotted-quad format ("140.44.1.15").
+<BR>
+For server-based LMs, the
+<B> -order </B>
+option limits the context length of N-grams queried by the client
+(with 0 denoting unlimited length).
+Hence, the effective LM order is the mimimum of the client-specified value
+and any limit implemented in the server.
+<BR>
+When
+<B> -use-server </B>
+is specified, the arguments to the options
+<B>-mix-lm</B>,<B></B><B></B><B></B>
+<B>-mix-lm2</B>,<B></B><B></B><B></B>
+etc. are also interpreted as network LM server specifications provided
+they contain a '@' character and do not contain a '/' character.
+This allows the creation of mixtures of several file- and/or
+network-based LMs.
+<DT><B> -cache-served-ngrams </B>
+<DD>
+Enables client-side caching of N-gram probabilities to eliminated duplicate
+network queries, in conjunction with
+<B>-use-server</B>.<B></B><B></B><B></B>
+This may result  in a substantial speedup
+but requires memory in the client that may grow linearly with the
+amount of data processed.
+<DT><B>-order</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the effective N-gram order used by the language model to
+<I>n</I>.<I></I><I></I><I></I>
+Default is 2 (use a bigram model).
+<DT><B>-mix-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a second N-gram model for interpolation purposes.
+<DT><B> -factored </B>
+<DD>
+Interpret the files specified by 
+<B>-lm</B><B></B><B></B><B></B>
+and
+<B> -mix-lm </B>
+as a factored N-gram model specification.
+See 
+<A HREF="ngram.1.html">ngram(1)</A>
+for details.
+<DT><B>-count-lm</B><B></B><B></B><B></B>
+<DD>
+Interpret the model specified by
+<B>-lm</B><B></B><B></B><B></B>
+(but not
+<B>-mix-lm</B>)<B></B><B></B><B></B>
+as a count-based LM.
+See
+<A HREF="ngram.1.html">ngram(1)</A>
+for details.
+<DT><B>-lambda</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the weight of the main model when interpolating with
+<B>-mix-lm</B>.<B></B><B></B><B></B>
+Default value is 0.5.
+<DT><B>-mix-lm2</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm3</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm4</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm5</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm6</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm7</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm8</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm9</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Up to 9 more N-gram models can be specified for interpolation.
+<DT><B>-mix-lambda2</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda3</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda4</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda5</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda6</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda7</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda8</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda9</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+These are the weights for the additional mixture components, corresponding
+to
+<B> -mix-lm2 </B>
+through
+<B>-mix-lm9</B>.<B></B><B></B><B></B>
+The weight for the
+<B> -mix-lm </B>
+model is 1 minus the sum of 
+<B> -lambda </B>
+and 
+<B> -mix-lambda2 </B>
+through
+<B>-mix-lambda9</B>.<B></B><B></B><B></B>
+<DT><B>-context-priors</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read context-dependent mixture weight priors from
+<I>file</I>.<I></I><I></I><I></I>
+Each line in 
+<I> file </I>
+should contain a context N-gram (most recent word first) followed by a vector 
+of mixture weights whose length matches the number of LMs being interpolated.
+<DT><B>-bayes</B><I> length</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Interpolate models using posterior probabilities
+based on the likelihoods of local N-gram contexts of length
+<I>length</I>.<I></I><I></I><I></I>
+The 
+<B> -lambda </B>
+values are used as prior mixture weights in this case.
+This option can also be combined with
+<B>-context-priors</B>,<B></B><B></B><B></B>
+in which case the 
+<I> length </I>
+parameter also controls how many words of context are maximally used to look up
+mixture weights.
+If 
+<B>-context-priors</B><B></B><B></B><B></B>
+is used without 
+<B>-bayes</B>,<B></B><B></B><B></B>
+the context length used is set by the
+<B> -order </B>
+option and Bayesian interpolation is disabled, as when
+<I> scale </I>
+(see next) is zero.
+<DT><B>-bayes-scale</B><I> scale</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the exponential scale factor on the context likelihood in conjunction
+with the
+<B> -bayes </B>
+function.
+Default value is 1.0.
+<DT><B>-lmw</B><I> W</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Scales the language model probabilities by a factor 
+<I>W</I>.<I></I><I></I><I></I>
+Default language model weight is 1.
+<DT><B>-mapw</B><I> W</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Scales the likelihood map probability by a factor
+<I>W</I>.<I></I><I></I><I></I>
+Default map weight is 1.
+Note: For Viterbi decoding (the default) it is equivalent to use
+<B>-lmw</B><I> W</I><B></B><I></I><B></B><I></I><B></B>
+or 
+<B>-mapw</B><I> 1/W",</I><B></B><I></I><B></B><I></I><B></B>
+but not for forward-backward computation.
+<DT><B> -tolower1 </B>
+<DD>
+Map input vocabulary (V1) to lowercase, removing case distinctions.
+<DT><B> -tolower2 </B>
+<DD>
+Map output vocabulary (V2) to lowercase, removing case distinctions.
+<DT><B> -keep-unk </B>
+<DD>
+Do not map unknown input words to the &lt;unk&gt; token.
+Instead, output the input word unchanged.
+This is like having an implicit default mapping for unknown words to
+themselves, except that the word will still be treated as &lt;unk&gt; by the language
+model.
+Also, with this option the LM is assumed to be open-vocabulary
+(the default is close-vocabulary).
+<DT><B>-vocab-aliases</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reads vocabulary alias definitions from
+<I>file</I>,<I></I><I></I><I></I>
+consisting of lines of the form
+<PRE>
+	<I>alias</I> <I>word</I>
+</PRE>
+This causes all V2 tokens
+<I> alias </I>
+to be mapped to
+<I>word</I>,<I></I><I></I><I></I>
+and is useful for adapting mismatched language models.
+<DT><B> -no-eos </B>
+<DD>
+Do no assume that each input line contains a complete sentence.
+This prevents end-of-sentence tokens &lt;/s&gt; from being appended automatically.
+<DT><B> -continuous </B>
+<DD>
+Process all words in the input as one sequence of words, irrespective of
+line breaks.
+Normally each line is processed separately as a sentence.
+V2 tokens are output one-per-line.
+This option also prevents sentence start/end tokens (&lt;s&gt; and &lt;/s&gt;)
+from being added to the input.
+<DT><B> -fb </B>
+<DD>
+Perform forward-backward decoding of the input (V1) token sequence.
+Outputs the V2 tokens that have the highest posterior probability,
+for each position.
+The default is to use Viterbi decoding, i.e., the output is the
+V2 sequence with the higher joint posterior probability.
+<DT><B> -fw-only </B>
+<DD>
+Similar to 
+<B>-fb</B>,<B></B><B></B><B></B>
+but uses only the forward probabilities for computing posteriors.
+This may be used to simulate on-line prediction of tags, without the
+benefit of future context.
+<DT><B> -totals </B>
+<DD>
+Output the total string probability for each input sentence.
+<DT><B> -posteriors </B>
+<DD>
+Output the table of posterior probabilities for each 
+input (V1) token and each V2 token, in the same format as
+required for the
+<B> -map </B>
+file.
+If
+<B> -fb </B>
+is also specified the posterior probabilities will be computed using
+forward-backward probabilities; otherwise an approximation will be used
+that is based on the probability of the most likely path containing 
+a given V2 token at given position.
+<DT><B>-nbest</B><I> N</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Output the
+<I> N </I>
+best hypotheses instead of just the first best when
+doing Viterbi search.
+If
+<I>N</I>&gt;1,<I></I><I></I><I></I>
+then each hypothesis is prefixed by the tag
+<B>NBEST_</B><I>n</I><B> </B><I>x</I><B>,</B><I></I><B></B>
+where
+<I> n </I>
+is the rank of the hypothesis in the N-best list and
+<I> x </I>
+its score, the negative log of the combined probability of transitions
+and observations of the corresponding HMM path.
+<DT><B>-write-counts</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Outputs the V2-V1 bigram counts corresponding to the tagging performed on
+the input data.
+If 
+<B> -fb </B>
+was specified these are expected counts, and otherwise they reflect the 1-best
+tagging decisions.
+<DT><B>-write-vocab1</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Writes the input vocabulary from the map (V1) to
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-write-vocab2</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Writes the output vocabulary from the map (V2) to
+<I>file</I>.<I></I><I></I><I></I>
+The vocabulary will also include the words specified in the language model.
+<DT><B>-write-map</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Writes the map back to a file for validation purposes.
+<DT><B> -debug </B>
+<DD>
+Sets debugging output level.
+</DD>
+</DL>
+<P>
+Each filename argument can be an ASCII file, or a compressed
+file  (name  ending  in  .Z  or  .gz),  or ``-'' to indicate
+stdin/stdout.
+<H2> BUGS </H2>
+The
+<B> -continuous </B>
+and 
+<B> -text-map </B>
+options effectively disable
+<B>-keep-unk</B>,<B></B><B></B><B></B>
+i.e., unknown input words are always mapped to &lt;unk&gt;.
+Also, 
+<B> -continuous </B>
+doesn't preserve the positions of escaped input lines relative to
+the input.
+<H2> SEE ALSO </H2>
+<A HREF="ngram-count.1.html">ngram-count(1)</A>, <A HREF="ngram.1.html">ngram(1)</A>, <A HREF="hidden-ngram.1.html">hidden-ngram(1)</A>, <A HREF="training-scripts.1.html">training-scripts(1)</A>,
+<A HREF="ngram-format.5.html">ngram-format(5)</A>, <A HREF="classes-format.5.html">classes-format(5)</A>.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;,
+<BR>
+Anand Venkataraman &lt;anand@speech.sri.com&gt;.
+<BR>
+Copyright 1995-2007 SRI International
+</BODY>
+</HTML>

@@ -1,0 +1,19 @@
+#!/bin/sh
+
+baselm=../ngram-count-gt/swbd.3bo.gz
+basemarginals=basemarginals.1bo.gz
+
+marginals=marginals.1bo.gz
+test=../ngram-count-gt/eval97.text
+
+head -200 $test | \
+ngram -debug 0 -lm $baselm -ppl -
+
+#ngram -order 1 -lm $baselm -write-lm $basemarginals
+ngram-count -debug 1 -text $test -order 1 -wbdiscount1 -lm $marginals
+
+head -1000 $test | \
+/home/srilm/devel/bin/i686/ngram -debug 1 -lm $baselm -adapt-marginals $marginals -ppl -  > foo.ppl
+
+rm -f $basemarginals $marginals
+

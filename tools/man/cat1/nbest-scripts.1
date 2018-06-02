@@ -1,0 +1,305 @@
+nbest-scripts(1)                                              nbest-scripts(1)
+
+
+
+NNAAMMEE
+       nbest-scripts,  combine-rover-controls, compare-sclite, compute-sclite,
+       fix-ctm,  merge-nbest,  nbest-error,   nbest-posteriors,   nbest-rover,
+       nbest-vocab,   nbest2-to-nbest1,   rescore-acoustic,  rescore-decipher,
+       rescore-reweight, sentid-to-sclite - rescore and evaluate N-best lists
+
+SSYYNNOOPPSSIISS
+       rreessccoorree--ddeecciipphheerr [ --bbyytteelloogg ] [ --nnooddeecciipphheerrllmm ] [ --mmuullttiiwwoorrddss ] \
+            [ --mmuullttii--cchhaarr _C ] [ --pprreettttyy _m_a_p_f_i_l_e ] \
+            [ --nnggrraamm--ttooooll _p_r_o_g_r_a_m ][ --ffiilltteerr _c_o_m_m_a_n_d ] \
+            [ --nnoorreessccoorree ] [ --llmm--oonnllyy ] [ --ccoouunntt--oooovvss ] [ --lliimmiitt--vvooccaabb ] \
+            [ --vvooccaabb--aalliiaasseess _m_a_p_f_i_l_e ] [ --ffaasstt ] \
+            _n_b_e_s_t_-_f_i_l_e_-_l_i_s_t _s_c_o_r_e_-_d_i_r --llmm ... _l_m_-_o_p_t_i_o_n_s ...
+       rreessccoorree--aaccoouussttiicc _o_l_d_-_n_b_e_s_t_-_d_i_r|_o_l_d_-_f_i_l_e_-_l_i_s_t _o_l_d_-_a_c_-_w_e_i_g_h_t \
+            _n_e_w_-_s_c_o_r_e_-_d_i_r_1 _n_e_w_-_a_c_-_w_e_i_g_h_t_1 ... _n_e_w_-_n_b_e_s_t_-_d_i_r [ _m_a_x_-_n_b_e_s_t ]
+       rreessccoorree--rreewweeiigghhtt [ --mmuullttiiwwoorrddss ] [ --mmuullttii--cchhaarr _C ] _s_c_o_r_e_-_d_i_r|_f_i_l_e_-_l_i_s_t \
+            [ _l_m_w [ _w_t_w [ _s_c_o_r_e_-_d_i_r_1 _s_c_o_r_e_-_w_e_i_g_h_t_1 ... ] [ _m_a_x_-_n_b_e_s_t ]]]
+       rreessccoorree--mmiinniimmiizzee--wweerr _s_c_o_r_e_-_d_i_r [ _l_m_w [ _w_t_w [ _m_a_x_-_n_b_e_s_t ]]]
+       nnbbeesstt22--ttoo--nnbbeesstt11 [ _n_b_e_s_t_-_f_i_l_e ]
+       nnbbeesstt--rroovveerr [ _s_e_n_t_i_d_-_l_i_s_t | -- ] _c_o_n_t_r_o_l_-_f_i_l_e \
+            [ _p_o_s_t_e_r_i_o_r_-_f_i_l_e [ _n_b_e_s_t_-_l_a_t_t_i_c_e_-_o_p_t_i_o_n_s ] ]
+       ccoommbbiinnee--rroovveerr--ccoonnttrroollss [ llaammbbddaa==_w_e_i_g_h_t_s ] _r_o_v_e_r_-_c_o_n_t_r_o_l [ ... ]
+       nnbbeesstt--ppoosstteerriioorrss [ wweeiigghhtt==_W ] [ llmmww==_l_m_w ] [ wwttww==_w_t_w ] [ ppoossttssccaallee==_S ] \
+            [ mmaaxx__nnbbeesstt==_M ] _n_b_e_s_t_-_f_i_l_e
+       mmeerrggee--nnbbeesstt [ mmuullttiiwwoorrddss==11 ] [ mmuullttiicchhaarr==_C ] [ nnooppaauusseess==11 ] \
+            [ mmaaxx__nnbbeesstt==_M ] _n_b_e_s_t_-_f_i_l_e ...
+       nnbbeesstt--vvooccaabb [ _n_b_e_s_t_-_l_i_s_t ... ]
+       nnbbeesstt--eerrrroorr _s_c_o_r_e_-_d_i_r|_f_i_l_e_-_l_i_s_t _r_e_f_s [ _n_b_e_s_t_-_l_a_t_t_i_c_e_-_o_p_t_i_o_n ... ]
+       sseennttiidd--ttoo--sscclliittee _h_y_p_s
+       sseennttiidd--ttoo--ccttmm _h_y_p_s
+       ffiixx--ccttmm _c_t_m_f_i_l_e
+       ccoommppuuttee--sscclliittee --rr _r_e_f_s --hh _h_y_p_s [ --hh _h_y_p_s ... ] [ --SS _s_u_b_s_e_t ... ] \
+            [ --mmuullttiiwwoorrddss|--MM ] [ --nnooppeerriiooddss ] [ --RR ] [ --gg _g_l_m_f_i_l_e ] [ --HH ] \
+            [ --vv ] [ _s_c_l_i_t_e_-_o_p_t_i_o_n_s ...]
+       ccoommppaarree--sscclliittee --rr _r_e_f_s --hh11 _h_y_p_s_1 --hh22 _h_y_p_s_2 [ --SS _s_u_b_s_e_t ] \
+            [ _c_o_m_p_u_t_e_-_s_c_l_i_t_e_-_o_p_t_i_o_n_s ... ]
+
+DDEESSCCRRIIPPTTIIOONN
+       These scripts perform common tasks on N-best hypotheses  in  nnbbeesstt--ffoorr--
+       mmaatt(5), especially those needed for rescoring and extracting and evalu-
+       ating 1-best hypotheses.
+
+       rreessccoorree--ddeecciipphheerr applies a language model implemented  by  nnggrraamm(1)  to
+       the N-best lists listed in _n_b_e_s_t_-_f_i_l_e_-_l_i_s_t.  The N-best files may be in
+       compressed format.  The rescored N-best lists are stored  in  directory
+       _s_c_o_r_e_-_d_i_r.  All following arguments are passed to nnggrraamm(1) and are used
+       to control the language model.  The following options  are  handled  by
+       rreessccoorree--ddeecciipphheerr itself:
+
+       --bbyytteelloogg            causes  scores  to  be  output on the bytelog scale
+                           (see nnbbeesstt--ffoorrmmaatt(1)).
+
+       --nnooddeecciipphheerrllmm       indicates that the recognizer language model is not
+                           being  provided (with --ddeecciipphheerr--llmm).  (This is only
+                           possible  if  the   N-best   lists   are   not   in
+                           ``NBestList1.0'' format.)
+
+       --mmuullttiiwwoorrddss         specifies that N-best lists contain words joined by
+                           underscores, which are to be split into their  com-
+                           ponent prior to rescoring.
+
+       --mmuullttii--cchhaarr _C       defines   a  multiword  separator  character.   The
+                           default is underscore ``_''.
+
+       --pprreettttyy _m_a_p_f_i_l_e     specifies a word mapping file that allows  individ-
+                           ual  words  to  be  globally replaced by strings of
+                           zero or more other words, e.g., to  remove  vocabu-
+                           lary  mismatches between the input N-best lists and
+                           the rescoring LM.  The _m_a_p_f_i_l_e contains one mapping
+                           per line, the first field specifying the word to be
+                           replaced and subsequent fields forming the replace-
+                           ment string.
+
+       --nnggrraamm--ttooooll _p_r_o_g_r_a_m specifies  a  non-standard  _p_r_o_g_r_a_m  to perform the
+                           actual  LM  evaluation  (by  default,  nnggrraamm(1)  is
+                           used).  Such a program must understand nnggrraamm's com-
+                           mand-line options related to N-best rescoring.
+
+       --ffiilltteerr _c_o_m_m_a_n_d     specifies a _c_o_m_m_a_n_d that is used to filter  the  N-
+                           best  hypotheses  prior  to evaluating the language
+                           model.  This may be used for more  general  textual
+                           rewriting  so that non-standard LMs can be applied.
+                           The output N-best lists will contain  the  filtered
+                           hypotheses.
+
+       --nnoorreessccoorree          causes  N-best  lists to be simply reformatted from
+                           one of the Decipher formats into the  SRILM  N-best
+                           format,  separating acoustic and LM scores, without
+                           replacing the existing LM  scores.   In  this  case
+                           only  the nnggrraamm(1) options --ddeecciipphheerr--llmmww and --ddeeccii--
+                           pphheerr--wwttww are  relevant,  and  others  are  ignored.
+                           --nnoorreessccoorree and --ffiilltteerr may be used together to per-
+                           form textual rewriting of N-best lists.
+
+       --llmm--oonnllyy            dumps out LM scores only, instead  of  complete  N-
+                           best lists.
+
+       --ccoouunntt--oooovvss         writes  the  count  of  out-of-vocabulary and zero-
+                           probability  words  to  the  output   score   files
+                           (instead of rescored N-best lists).
+
+       --lliimmiitt--vvooccaabb        saves memory by arranging for nnggrraamm(1) to load only
+                           those N-gram parameters that are  relevant  to  the
+                           vocabulary  of  the  N-best  lists  to be rescored.
+                           After determining the N-best vocabulary the --lliimmiitt--
+                           vvooccaabb option is passed to nnggrraamm(1).
+
+       --vvooccaabb--aalliiaasseess _m_a_p  declares  that  certain  words are to be treated as
+                           alternative spellings of the same word for LM eval-
+                           uation;  see the same option for nnggrraamm(1).  The _m_a_p
+                           is filtered of unused words when used  in  conjunc-
+                           tion  with  --lliimmiitt--vvooccaabb,  and  then  passed  on to
+                           nnggrraamm(1).
+
+       --ffaasstt               performs rescoring using only functions built  into
+                           nnggrraamm(1).   This  avoids some computational and I/O
+                           overhead and therefore runs faster, but the options
+                           --ffiilltteerr,  --pprreettttyy,  and --llmm--oonnllyy are not supported,
+                           and --nnooddeecciipphheerrllmm is obligatory.
+
+       rreessccoorree--aaccoouussttiicc replaces the acoustic scores in a set of N-best  lists
+       by  a  weighted  combination  of  new scores.  The old N-best lists are
+       given by either a directory _o_l_d_-_s_c_o_r_e_-_d_i_r or a filelist  _o_l_d_-_f_i_l_e_-_l_i_s_t;
+       _o_l_d_-_a_c_-_w_e_i_g_h_t  is the weight given to the old scores.  Directories con-
+       taining the new scores are listed alternating  with  the  corresponding
+       weights;  each  score directory must contain one file per waveform seg-
+       ment, each having the same file basenames as the original N-best lists.
+       The new scores should appear in a single column per file, one per line.
+       The N-best lists containing the new combined acoustic scores are  writ-
+       ten  to  _n_e_w_-_n_b_e_s_t_-_d_i_r.  The optional _m_a_x_-_n_b_e_s_t argument can be used to
+       limit the length of the N-best lists output.  Also, When  a  new  score
+       file  is encountered containing fewer than _m_a_x_-_n_b_e_s_t lines, the missing
+       scores are set to the lowest score encountered so far.
+
+       rreessccoorree--rreewweeiigghhtt combines the scores in N-best  lists  with  a  set  of
+       weights  and outputs the 1-best hypotheses.  The N-best files are found
+       in directory _s_c_o_r_e_-_d_i_r or listed in _f_i_l_e_-_l_i_s_t.  Optional arguments  set
+       the  language  model weight _l_m_w (default 8), the word transition weight
+       _w_t_w (default 0), and the maximum number _m_a_x_-_n_b_e_s_t of hypotheses to con-
+       sider (default all).  Optionally, any number of additional score direc-
+       tories  and  associated  weights  _s_c_o_r_e_-_d_i_r_1  _s_c_o_r_e_-_w_e_i_g_h_t_1  _s_c_o_r_e_-_d_i_r_2
+       _s_c_o_r_e_-_w_e_i_g_h_t_2 ... can be specified, following the _w_t_w parameter.  These
+       additional scores are combined with those contained in the N-best lists
+       themselves  as  in rreessccoorree--aaccoouussttiicc (using unit weight for the original
+       acoustic scores).  The --mmuullttiiwwoorrddss and  --mmuullttii--cchhaarr  options  have  the
+       same  function  as  for rreessccoorree--ddeecciipphheerr.  The output format for 1-best
+       hypotheses is
+            _s_e_n_t_i_d _w_1 _w_2 ...
+       where _s_e_n_t_i_d is the sentence ID derived from the N-best filename,  fol-
+       lowed by the words.
+
+       rreessccoorree--mmiinniimmiizzee--wweerr  is similar to rreessccoorree--rreewweeiigghhtt but picks hypothe-
+       ses using the word error minimization algorithm of nnbbeesstt--llaattttiiccee(1).
+
+       nnbbeesstt22--ttoo--nnbbeesstt11 converts an N-best list in ``NBestList2.0'' format  to
+       ``NBestlist1.0'',  for  the  benefit of programs that have not yet been
+       updated to deal with the new format.
+
+       nnbbeesstt--rroovveerr combines hypotheses from multiple N-best lists at the  word
+       level, by performing the same kind of word error minimization as nnbbeesstt--
+       llaattttiiccee(1), in a generalization of the ROVER algorithm.  _s_e_n_t_i_d_-_l_i_s_t is
+       a  file  listing sentence IDs.  These must match the filenames in a set
+       of N-best directories, which are specified in a _c_o_n_t_r_o_l_-_f_i_l_e.  The for-
+       mat for the latter is
+            _d_i_r_1 _l_m_w_1 _w_t_w_1 _w_1 [_n_1 [_s_1]]
+            _d_i_r_2 _l_m_w_2 _w_t_w_2 _w_2 [_n_2 [_s_2]]
+            ...
+       Each  line  specifies  an N-best directory, the language model and word
+       transition weights to be used in score combination, and a weight to  be
+       applied  to  the  posterior  probabilities.   An  optional next-to-last
+       parameter for each N-best list allows the lists to be truncated to  the
+       top  _n_1,  _n_2,  etc., hypotheses.  The final optional parameter sets the
+       posterior distribution scaling factor, which defaults to  the  language
+       model  weight.   Optionally, _c_o_n_t_r_o_l_-_f_i_l_e can also contain lines of the
+       form
+            _d_i_r _w ++
+       These indicate that additional score files can be  found  in  directory
+       _d_i_r  and that the scores found therein should be added to the following
+       N-best list set with weight _w.  Several lines of this  form  may  occur
+       preceding  a  regular N-best directory specification; the corresponding
+       additive combination of multiple scores is performed.
+       If ``-'' is specified for _s_e_n_t_i_d_-_l_i_s_t, the sentence  IDs  are  inferred
+       from  the  contents  of  the first directory _d_i_r_1 specified in _c_o_n_t_r_o_l_-
+       _f_i_l_e.  If _p_o_s_t_e_r_i_o_r_-_f_i_l_e is specified on the  command  line,  posterior
+       word  probability  estimates  are written to that file.  Any additional
+       arguments are passed as  options  to  the  underlying  nnbbeesstt--llaattttiiccee(1)
+       invocation.
+       nnbbeesstt--rroovveerr can process N-best lists in any of the formats described in
+       nnbbeesstt--ffoorrmmaatt(5), _a_s _l_o_n_g _a_s _a_l_l _N_-_b_e_s_t _l_i_s_t_s _f_o_r _a _g_i_v_e_n _u_t_t_e_r_a_n_c_e  _a_r_e
+       _i_n _t_h_e _s_a_m_e _f_o_r_m_a_t.  When Decipher formats are used only their acoustic
+       scores are used.
+
+       ccoommbbiinnee--rroovveerr--ccoonnttrroollss takes one or more nnbbeesstt--rroovveerr control  files  as
+       arguments and outputs a new control file that specifies the combination
+       of the input files.  Each input system is given equal  weight.   Direc-
+       tory  names  in  the  input  files are adjusted to reflect the relative
+       location of the input files.  The optional llaammbbddaa== argument may be used
+       to  specify  a  space-separated  list  of  system  weights; the default
+       weights are uniform.
+
+       nnbbeesstt--ppoosstteerriioorrss rescales the scores  in  an  N-best  list  to  reflect
+       (weighted) posterior probabilities.  The output is the same N-best list
+       with acoustic scores set to the log (base  10)  of  the  posterior  hyp
+       probabilities  and  LM  scores set to zero.  ppoossttssccaallee==_S attenuates the
+       posterior distribution by  dividing  combined  log  scores  by  _S  (the
+       default  is _S=_l_m_w).  If wweeiigghhtt==_W is specified the posteriors are multi-
+       plied by _W.  mmaaxx__nnbbeesstt==_M limits the number of hypotheses  used  to  the
+       top _M.  This script is used mostly as a helper in nnbbeesstt--rroovveerr.
+
+       mmeerrggee--nnbbeesstt merges hypotheses from one or more N-best lists into a sin-
+       gle list, collapsing hypotheses that occur in more than one input list.
+       If  all  input  lists use the same nnbbeesstt--ffoorrmmaatt(5) then the output will
+       also be in that format and contain the information from the first  list
+       in  which  a hypothesis was encountered.  Otherwise, the output will be
+       in SRI Decipher(TM) NBestList1.0 format and contain acoustic scores and
+       word  strings only.  The mmaaxx__nnbbeesstt==_M option limits input to the first _M
+       hypotheses from each input list.  mmuullttiiwwoorrddss==11 merges  hypotheses  that
+       are  identical  after resolving multiwords, with mmuullttiicchhaarr==_C defining a
+       non-default multiword separator character.  nnooppaauusseess==11 merges  hypothe-
+       ses that are identical after removal of pause words.
+
+       nnbbeesstt--vvooccaabb outputs the vocabulary used in a set of N-best lists.  (The
+       N-best files cannot be compressed, but may be concatenated and supplied
+       via stdin.)
+
+       nnbbeesstt--eerrrroorr  computes the overall oracle word error rate of a set of N-
+       best lists in directory _s_c_o_r_e_-_d_i_r or listed in _f_i_l_e_-_l_i_s_t.   The  refer-
+       ence answers are given in _r_e_f_s in the format output by rreessccoorree--rreewweeiigghhtt
+       (see above).  Additional arguments are passed to the underlying invoca-
+       tion  of nnbbeesstt--llaattttiiccee(1), and can be used to limit the depth of the N-
+       best list, compute lattice error rather than N-best error, etc.
+
+       sseennttiidd--ttoo--sscclliittee converts 1-best hypotheses and references in the  for-
+       mat  used  here  to  the  ``trn'' format expected by the NIST sscclliittee(1)
+       scoring software.
+
+       sseennttiidd--ttoo--ccttmm converts 1-best hypotheses and references in  the  format
+       used  here  to NIST ccttmm(5) format.  The script relies on an encoding of
+       conversation IDs, channel, and utterance time marks in the sentence IDs
+       and may need adjustment to local conventions.
+
+       ffiixx--ccttmm  converts  output  produced by the --oouuttppuutt--ccttmm option of nnbbeesstt--
+       llaattttiiccee(1) and llaattttiiccee--ttooooll(1) to a format suitable  for  scoring  with
+       NIST  sscclliittee(1).  It, too, relies on information encoded in the sentids
+       IDs and may need adjustments.
+
+       ccoommppuuttee--sscclliittee is a wrapper around the  NIST  sscclliittee(1)  scoring  tool.
+       _r_e_f_s  and  _h_y_p_s are the reference and hypothesized transcripts, respec-
+       tively.  The _r_e_f_s file can be either in "sentid" format  or  in  ssttmm(5)
+       format.   In  the  latter case, _h_y_p_s will be converted to ccttmm(5) format
+       using the sseennttiidd--ttoo--ccttmm helper script.  The _h_y_p_s file can be either  in
+       "sentid"  format  or  in ccttmm(5) format.  More than one --hh option can be
+       given to combine the contents of multiple  hypotheses  files.   Option-
+       ally, --SS specifies a sorted list of sentence IDs _s_u_b_s_e_t to score.  Mul-
+       tiple --SS options may be given, to form the intersection of several sub-
+       sets.   --mmuullttiiwwoorrddss  or  --MM splits ``multiwords'' joined by underscores
+       into their component words prior to scoring.  --nnooppeerriiooddss deletes  peri-
+       ods from the hypotheses prior to scoring (typically used to bridge dif-
+       ferent conventions for spelled letters).  --RR preserves reject words  in
+       the  hypotheses  for scoring (as appropriate if references also contain
+       rejects).  --gg _g_l_m_f_i_l_e enables filtering of references and hypotheses by
+       the NIST ccssrrffiilltt..sshh script, controlled by the filter file _g_l_m_f_i_l_e (this
+       is only possible with an stm reference file).  In  that  case,  the  --HH
+       option causes hesitations (as defined by the filter) to be deleted from
+       the output for scoring purposes.  --vv displays the complete command used
+       to  invoke  sscclliittee.  Any additional options are passed to sscclliittee, e.g.,
+       to control its output actions or alignment mode.
+
+       ccoommppaarree--sscclliittee scores two sets of hypotheses _h_y_p_s_1 and  _h_y_p_s_2  for  the
+       same  test  set  and computes in how many cases the first or second set
+       had lower word error.  The remaining options are as for ccoommppuuttee--sscclliittee.
+       The  script  ignores hypotheses for sentence that do not appear in both
+       hypothesis files, to ensure comparable scoring results.
+
+SSEEEE AALLSSOO
+       nbest-format(5),   ngram(1),    nbest-lattice(1),    nbest-optimize(1),
+       sclite(1), stm(5), ctm(5).
+       J.G.  Fiscus,  A  Post-Processing  System  to  Yield Reduced Word Error
+       Rates: Recognizer Output Voting Error  Reduction  (ROVER),  _P_r_o_c_.  _I_E_E_E
+       _A_u_t_o_m_a_t_i_c _S_p_e_e_c_h _R_e_c_o_g_n_i_t_i_o_n _a_n_d _U_n_d_e_r_s_t_a_n_d_i_n_g _W_o_r_k_s_h_o_p, Santa Barbara,
+       CA, 347-352, 1997.
+       A. Stolcke et al., "The SRI  March  2000  Hub-5  Conversational  Speech
+       Transcription  System",  _P_r_o_c_. _N_I_S_T _S_p_e_e_c_h _T_r_a_n_s_c_r_i_p_t_i_o_n _W_o_r_k_s_h_o_p, Col-
+       lege Park, MD, 2000.
+
+BBUUGGSS
+       sseennttiidd--ttoo--sscclliittee has some assumptions about the structure  of  sentence
+       IDs  built-in  and  may need to be modified for ccoommppuuttee--sscclliittee and ccoomm--
+       ppaarree--sscclliittee to work.
+
+       rreessccoorree--ddeecciipphheerr --pprreettttyy may not work correctly with  the  --lliimmiitt--vvooccaabb
+       option if the word mapping adds to the vocabulary subset used in the N-
+       best lists.
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1995-2006 SRI International
+
+
+
+SRILM Tools              $Date: 2008/05/10 17:00:50 $         nbest-scripts(1)

@@ -1,0 +1,96 @@
+<! $Id: Prob.3,v 1.2 2007/12/19 22:01:46 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>Prob</TITLE>
+<BODY>
+<H1>Prob</H1>
+<H2> NAME </H2>
+Prob - Probabilities for SRILM
+<H2> SYNOPSIS </H2>
+<PRE>
+<B> #include &lt;Prob.h&gt; </B>
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> Prob </B>
+is a collection of types, constants and utility functions for handling
+probabilities in the SRILM library.
+<H2> TYPES </H2>
+<DL>
+<DT><B> Prob </B>
+<DD>
+A floating point number representing a probability.
+<DT><B> LogP </B>
+<DD>
+Logarithm to base 10 of a probability.
+</DD>
+</DL>
+<H2> CONSTANTS </H2>
+<DL>
+<DT><B> LogP_Zero </B>
+<DD>
+Log of probability 0.
+<DT><B> LogP_Inf </B>
+<DD>
+Log of probability infinity (not a legal probability, of course).
+<DT><B> LogP_One </B>
+<DD>
+Log of probability 1.
+<DT><B> LogP_Precision </B>
+<DD>
+The number of significant digits in a LogP
+<DT><B> Prob_Epsilon </B>
+<DD>
+A positive value close to 0; probability sums less than this should be
+considered effectively zero.
+</DD>
+</DL>
+<H2> FUNCTIONS </H2>
+<DL>
+<DT><B> Boolean parseLogP(const char *<I>string</I>, LogP &amp;<I>prob</I>) </B>
+<DD>
+Converts a floating point string representation into a LogP.
+Returns
+<B> true </B>
+iff the number was parsed correctly.
+This function should be much faster than generic C library functions
+for floating point parsing.
+Also, it parses singular LogP's (plus/minus infinity) correctly.
+<DT><B> Prob LogPtoPPL(LogP <I>prob</I>) </B>
+<DD>
+Converts a LogP into a perplexity (PPL).
+<DT><B> ProbToLogP(Prob \fPprob\fP) </B>
+<DD>
+Converts a probability into a LogP.
+<DT><B> LogP MixLogP(LogP <I>prob1</I>, LogP <I>prob2</I>, double <I>lambda</I>) </B>
+<DD>
+Computes the LogP resulting from interpolating two LogP's.
+If <I>p1</I> and <I>p2</I> are probabilities corresponding to <I>prob1</I>
+and <I>prob2</I>, respectively, then the result is the LogP corresponding
+to <I>lambda</I> * <I>p1</I> + (1 - <I>lambda</I>) * <I>p2</I>.
+</DD>
+</DL>
+<P>
+The following functions deal with <I>bytelogs</I>.
+Bytelogs are logarithms scaled to represent probabilties and likelihoods
+as a short integer in SRI's DECIPHER(TM) recognizer
+(bytelog(<I>p</I>) = log(<I>p</I>) * 10000.5 / 1024).
+<DL>
+<DT><B> double ProbToBytelog(Prob <I>prob</I>) </B>
+<DD>
+Converts a probability to a bytelog.
+<DT><B> double LogPtoBytelog(LogP <I>prob</I>) </B>
+<DD>
+Convert a LogP to a bytelog.
+<DT><B> LogP BytelogToLogP(double <I>bytelog</I>) </B>
+<DD>
+Convert a bytelog to a LogP.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<H2> BUGS </H2>
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1995, 1996 SRI International
+</BODY>
+</HTML>

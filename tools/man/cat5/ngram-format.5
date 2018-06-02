@@ -1,0 +1,89 @@
+ngram-format(5)                                                ngram-format(5)
+
+
+
+NNAAMMEE
+       ngram-format - File format for ARPA backoff N-gram models
+
+SSYYNNOOPPSSIISS
+       \\ddaattaa\\
+       nnggrraamm 11==_n_1
+       nnggrraamm 22==_n_2
+       ...
+       nnggrraamm _N==_n_N
+
+       \\11--ggrraammss::
+       _p    _w         [_b_o_w]
+       ...
+
+       \\22--ggrraammss::
+       _p    _w_1 _w_2          [_b_o_w]
+       ...
+
+       \\_N--ggrraammss::
+       _p    _w_1 ... _w_N
+       ...
+
+       \\eenndd\\
+
+DDEESSCCRRIIPPTTIIOONN
+       The  so-called  ARPA  (or  Doug  Paul) format for N-gram backoff models
+       starts with a header, introduced by the  keyword  \\ddaattaa\\,  listing  the
+       number  of  N-grams of each length.  Following that, N-grams are listed
+       one per line, grouped into sections by length,  each  section  starting
+       with the keyword \\_N--ggrraamm::, where _N is the length of the N-grams to fol-
+       low.  Each N-gram line starts with the logarithm (base  10)  of  condi-
+       tional probability _p of that N-gram, followed by the words _w_1..._w_N mak-
+       ing up the N-gram.  These are  optionally  followed  by  the  logarithm
+       (base 10) of the backoff weight for the N-gram.  The keyword \\eenndd\\ con-
+       cludes the model representation.
+
+       Backoff weights are required only for those N-grams that form a  prefix
+       of  longer N-grams in the model.  The highest-order N-grams in particu-
+       lar will not need backoff weights (they would be useless).
+
+       Since log(0) (minus infinity) has no portable representation, such val-
+       ues  are  mapped  to  a large negative number.  However, the designated
+       dummy value (-99 in SRILM) is interpreted as log(0) when read back from
+       file into memory.
+
+       The  correctness  of the N-gram counts _n_1, _n_2, ... in the header is not
+       enforced by SRILM software when reading models (although a  warning  is
+       printed  when  an inconsistency is encountered).  This allows easy tex-
+       tual insertion or deletion of parameters in a model file.   The  proper
+       format can be recovered by passsing the model through the command
+            ngram -order _N -lm _i_n_p_u_t -write-lm _o_u_t_p_u_t
+
+       Note that the format is self-delimiting, allowing multiple models to be
+       stored in one file, or to be surrounded by ancillary information.  Some
+       extensions  of N-gram models in SRILM store additional parameters after
+       a basic N-gram section in the standard format.
+
+SSEEEE AALLSSOO
+       ngram(1), ngram-count(1), lm-scripts(1), pfsg-scripts(1).
+
+BBUUGGSS
+       The ARPA format does not allow N-grams that have only a backoff  weight
+       associated  with  them, but no conditional probability.  This makes the
+       format less general than would otherwise be useful  (e.g.,  to  support
+       pruned  models,  or  ones  containing a mix of words and classes).  The
+       nnggrraamm--ccoouunntt(1) tool satisfies this constraint by inserting dummy proba-
+       bilities where necessary.
+
+       For  simplicity,  an  N-gram model containing N-grams up to length _N is
+       referred to in the SRILM programs as  an  _N-th  order  model,  although
+       techncally it represents a Markov model of order _N-1.
+
+BBUUGGSS
+       There is no way to specify words with embedded whitespace.
+
+AAUUTTHHOORR
+       The  ARPA backoff format was developed by Doug Paul at MIT Lincoln Labs
+       for research sponsored by  the  U.S.  Department  of  Defense  Advanced
+       Research Project Agency (ARPA).
+       Man page by Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1999, 2004 SRI International
+
+
+
+SRILM File Formats       $Date: 2007/12/19 22:08:05 $          ngram-format(5)

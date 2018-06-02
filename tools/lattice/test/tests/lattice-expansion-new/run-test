@@ -1,0 +1,32 @@
+#!/bin/sh
+
+lmdir=../../../../lm/test/tests/class-ngram
+
+if [ -f $lmdir/spine2000+2001-gridlabel+spell.4bo.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+
+lm="$lmdir/spine2000+2001-gridlabel+spell.4bo$gz \
+	-classes $lmdir/newlabels+spell.classes \
+	-simple-classes \
+	-multiwords "
+
+mkdir -p tmp
+
+ls ../lattice-expansion/g07a01_unpr_A_* > lattice-list
+
+lattice-tool -debug 1 \
+                -in-lattice-list lattice-list \
+		-compact-expansion \
+                -out-lattice-dir tmp \
+                -overwrite \
+                -reduce-iterate 2 \
+		-lm $lm -order 3
+
+gunzip -f -c tmp/g07a01_unpr_A_0015080_0015309
+
+rm -rf tmp lattice-list
+

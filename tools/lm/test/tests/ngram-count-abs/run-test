@@ -1,0 +1,30 @@
+#!/bin/sh
+
+dir=../ngram-count-gt
+
+if [ -f $dir/swbd.3grams.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+#gunzip -c $dir/swbd.3grams$gz | \
+#get-gt-counts out=swbd
+
+smooth="-cdiscount1 `make-abs-discount swbd.gt1counts` \
+	-cdiscount2 `make-abs-discount swbd.gt2counts` \
+	-cdiscount3 `make-abs-discount swbd.gt3counts` "
+
+# create LM from counts
+ngram-count -debug 1 \
+	$smooth \
+	-read $dir/swbd.3grams$gz \
+	-vocab $dir/eval2001.vocab \
+	-lm swbd.3bo$gz
+
+ngram -debug 0 \
+	-lm swbd.3bo$gz \
+	-ppl $dir/eval97.text
+
+rm -f swbd.3bo$gz
+

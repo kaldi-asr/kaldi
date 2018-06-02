@@ -1,0 +1,96 @@
+.\" $Id: segment.1,v 1.7 2007/12/20 19:13:52 stolcke Exp $
+.TH segment 1 "$Date: 2007/12/20 19:13:52 $" "SRILM Tools"
+.SH NAME
+segment \- segment text using N-gram language model
+.SH SYNOPSIS
+.nf
+\fBsegment\fP [ \fB\-help\fP ] \fIoption\fP ...
+.fi
+.SH DESCRIPTION
+.B segment
+infers a most likely segmentation (location of segment boundaries)
+from a text, based on a segment language model.
+The language model is a standard backoff N-gram model in ARPA
+.BR ngram-format (5),
+modeling segmentation using the boundary tags <s> and </s>.
+The program reads in a word sequence, finds the most likely locations 
+of segment boundaries according to the language model, and 
+outputs the word sequence with segment boundaries marked by <s> tags.
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-order " n"
+Set the maximal N-gram order to be used, by default 3.
+NOTE: The order of the model is not set automatically when a model
+file is read, so the same file can be used at various orders.
+.TP
+.BI \-debug " level"
+Set the debugging output level (0 means no debugging output).
+Debugging messages are sent to stderr.
+.TP
+.BI \-lm " file"
+Read the N-gram model from
+.IR file .
+.TP
+.BI \-text " file"
+Find the text to be segmented in 
+.IR file .
+Default input is stdin.
+.TP
+.B \-continuous
+Process all words in the input as one sequence of words, irrespective of
+line breaks.
+Normally each line is processed separately as a word sequence.
+.TP
+.B \-posteriors
+Use a forward-backward algorithm to compute the posterior probabilities
+of a segment boundary at each word transition, and hypothesize a boundary
+whenever the probability exceeds 0.5.
+By default a Viterbi algorithm is used that computes
+the globally most likely segmentation.
+.br
+If
+.B \-continuous 
+is specified as well,
+then this option will produce one line of output per word, containing,
+respectively, the <s> tag (if appropriate), the word itself, and the 
+posterior probability for a boundary preceding the word.
+.TP
+.B \-unk
+Output the unknown word token <unk> for each input word not in the 
+language model vocabulary.
+The default is to output the input word unchanged.
+.TP
+.BI \-stag " string"
+Use
+.I string
+to mark segment boundaries in the output.
+Default is the start-of-sentence symbol defined in the language model (<s>).
+.TP
+.BI \-bias " b"
+Make a segment boundary a priori more likely by a factor of
+.IR b .
+This allows balancing of false detection/rejection errors.
+The default is 1.
+.SH "SEE ALSO"
+ngram-count(1), ngram-format(5).
+.br
+A. Stolcke and E. Shriberg, ``Automatic Linguistic Segmentation of
+Spontaneous Speech,'' \fIProc. ICSLP\fP, 1005\-1008, 1996.
+.SH BUGS
+Only N-grams models up to trigram order are used accurately.
+For higher-order models use the more general 
+.BR hidden-ngram (1).
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 1997\-2004 SRI International

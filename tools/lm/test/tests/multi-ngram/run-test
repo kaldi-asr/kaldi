@@ -1,0 +1,27 @@
+#!/bin/sh
+
+# expand LM to use multiwords, using trigram probabilities
+
+model=train-all
+
+if [ -f $model.3bo.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+multi-ngram -debug 1 \
+	-order 3 \
+	-lm $model.3bo$gz \
+	-vocab multi-words.vocab \
+	-multi-order 2 \
+	-write-lm $model-multi.2bo$gz
+
+echo "i've got a bad feeling" | \
+ngram -lm $model.3bo$gz -debug 2 -ppl -
+
+echo "i've_got_a bad feeling" | \
+ngram -lm $model-multi.2bo$gz -debug 2 -ppl -
+
+rm -f $model-multi.2bo$gz
+

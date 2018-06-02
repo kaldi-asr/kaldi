@@ -1,0 +1,23 @@
+#!/bin/sh
+
+dir=../lattice-expansion-ppl
+
+lm="$dir/test.lm"
+
+mkdir -p tmp
+
+lattice-tool -debug 1 \
+                -in-lattice $dir/test.htk \
+		-read-htk \
+                -out-lattice test-rescored.htk \
+		-write-htk \
+		-lm $lm -order 2
+
+lattice-tool -debug 1 \
+		-in-lattice test-rescored.htk \
+		-read-htk \
+		-order 5 \
+		-write-ngrams -
+
+rm -rf test-rescored.htk tmp
+		

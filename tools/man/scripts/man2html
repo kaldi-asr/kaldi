@@ -1,0 +1,10 @@
+#!/bin/sh
+#
+# man2html --
+#	Translates nroff -man source to html
+#
+# $Header: /home/srilm/CVS/srilm/man/scripts/man2html,v 1.1 1996/07/10 07:18:17 stolcke Exp $
+#
+
+sed -f $0.sed "$@" | \
+gawk -f $0.gawk

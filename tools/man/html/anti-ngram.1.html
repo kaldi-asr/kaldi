@@ -1,0 +1,146 @@
+<! $Id: anti-ngram.1,v 1.8 2008/04/24 07:39:29 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>anti-ngram</TITLE>
+<BODY>
+<H1>anti-ngram</H1>
+<H2> NAME </H2>
+anti-ngram - count posterior-weighted N-grams in N-best lists
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>anti-ngram</B> [ <B>-help</B> ] <I>option</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> anti-ngram </B>
+counts the N-grams in a set of N-best hypotheses lists.
+The N-gram counts are weighted by the posterior probabilities of the
+hypotheses they occur in.
+Thus, 
+<B> anti-ngram </B>
+can be used to construct language models of word sequences
+that are acoustically confusable with correct hypotheses.
+The counts output should be processed with
+<B> ngram-count -float-counts </B>
+to estimate a language model.
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-refs</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read the reference transcripts from 
+<I>file</I>.<I></I><I></I><I></I>
+Each line should contain an utterance ID followed by the transcript words.
+<DT><B>-nbest-files</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+List of N-best files.
+The base components of filenames must correspond to the utterance IDs found
+in the reference file.
+<DT><B>-max-nbest</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limits the number of hypotheses read from each N-best list to the first
+<I>n</I>.<I></I><I></I><I></I>
+<DT><B>-order</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the maximal order (length) of N-grams to count.
+The default order is 3.
+<DT><B>-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reads an ARPA language model from 
+<I> file </I>
+and rescores the N-best lists with it prior to counting N-grams.
+<DT><B>-classes</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Interpret the LM as a class-based N-gram and read class definitions
+in 
+<A HREF="classes-format.5.html">classes-format(5)</A>
+from
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B> -tolower </B>
+<DD>
+Map vocabulary to lowercase, eliminating case distinctions.
+<DT><B> -multiwords </B>
+<DD>
+Split multiwords (words joined by '_') into their components when
+reading N-best lists.
+<DT><B>-multi-char</B><I> C</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Character used to delimit component words in multiwords
+(an underscore character by default).
+<DT><B>-rescore-lmw</B><I> lmw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the language model weight used in combining the language model log
+probabilities with acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+<DT><B>-rescore-wtw</B><I> wtw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the word transition weight used to weight the number of words relative to
+the acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+<DT><B>-posterior-scale</B><I> scale</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Divide the total weighted log score by 
+<I> scale </I>
+when computing normalized posterior probabilities.
+This controls the peakedness of the posterior distribution. 
+The default value is whatever was chosen for 
+<B>-rescore-lmw</B>,<B></B><B></B><B></B>
+so that language model scores are scaled to have weight 1,
+and acoustic scores have weight 1/<I>lmw</I>.
+<DT><B> -all-ngrams </B>
+<DD>
+Causes even N-grams that occur in the reference string to be counted.
+By default N-best N-grams that also occur in the corresponding reference 
+are excluded.
+<DT><B>-min-count</B><I> C</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Prune all N-grams from the output that have counts less than
+<I>C</I>.<I></I><I></I><I></I>
+<DT><B>-read-counts</B><I> countsfile</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read N-gram counts from a file.
+Each line contains an N-gram of 
+words, followed by an integer or fractional count, all separated by whitespace.
+Repeated counts for the same N-gram are added.
+N-grams from N-best lists are added to those read with this option.
+<DT><B>-write-counts</B><I> countsfile</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Writes total N-gram counts to
+<I>countsfile</I>.<I></I><I></I><I></I>
+The default is to write to stdout.
+<DT><B> -sort </B>
+<DD>
+Output counts in lexicographic order, as required for
+<A HREF="ngram-merge.1.html">ngram-merge(1)</A>.
+<DT><B>-debug</B><I> level</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set debugging output level.
+Level 0 means no debugging.
+Debugging messages are written to stderr.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="ngram.1.html">ngram(1)</A>, <A HREF="ngram-merge.1.html">ngram-merge(1)</A>, <A HREF="ngram-count.1.html">ngram-count(1)</A>, <A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>,
+<A HREF="classes-format.5.html">classes-format(5)</A>,
+<BR>
+A. Stolcke et al., "The SRI March 2000 Hub-5 Conversational Speech
+Transcription System",
+<I>Proc. NIST Speech Transcription Workshop</I>, College Park, MD, 2000.
+<H2> BUGS </H2>
+There is no
+<B> -vocab </B>
+option to limit the vocabulary.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 2000-2008 SRI International
+</BODY>
+</HTML>

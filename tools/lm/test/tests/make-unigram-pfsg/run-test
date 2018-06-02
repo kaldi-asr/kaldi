@@ -1,0 +1,8 @@
+#!/bin/sh
+
+# unset LC_COLLATE to make character ranges in add-pauses-to-pfsg work
+LC_COLLATE=
+export LC_COLLATE
+
+make-ngram-pfsg test.lm
+

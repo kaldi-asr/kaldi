@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Restore third-party code
+#
+# $Header: /home/srilm/CVS/srilm/sbin/desanitize-3rdparty,v 1.1 2004/12/03 02:43:38 stolcke Exp $
+#
+
+for file
+do
+	if [ -f $file.3rdparty ]; then
+		echo "restoring $file" >&2
+
+		mv $file.3rdparty $file
+	fi
+done
+

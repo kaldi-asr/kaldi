@@ -1,0 +1,105 @@
+<! $Id: segment.1,v 1.7 2007/12/20 19:13:52 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>segment</TITLE>
+<BODY>
+<H1>segment</H1>
+<H2> NAME </H2>
+segment - segment text using N-gram language model
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>segment</B> [ <B>-help</B> ] <I>option</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> segment </B>
+infers a most likely segmentation (location of segment boundaries)
+from a text, based on a segment language model.
+The language model is a standard backoff N-gram model in ARPA
+<A HREF="ngram-format.5.html">ngram-format(5)</A>,
+modeling segmentation using the boundary tags &lt;s&gt; and &lt;/s&gt;.
+The program reads in a word sequence, finds the most likely locations 
+of segment boundaries according to the language model, and 
+outputs the word sequence with segment boundaries marked by &lt;s&gt; tags.
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-order</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the maximal N-gram order to be used, by default 3.
+NOTE: The order of the model is not set automatically when a model
+file is read, so the same file can be used at various orders.
+<DT><B>-debug</B><I> level</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the debugging output level (0 means no debugging output).
+Debugging messages are sent to stderr.
+<DT><B>-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read the N-gram model from
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-text</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Find the text to be segmented in 
+<I>file</I>.<I></I><I></I><I></I>
+Default input is stdin.
+<DT><B> -continuous </B>
+<DD>
+Process all words in the input as one sequence of words, irrespective of
+line breaks.
+Normally each line is processed separately as a word sequence.
+<DT><B> -posteriors </B>
+<DD>
+Use a forward-backward algorithm to compute the posterior probabilities
+of a segment boundary at each word transition, and hypothesize a boundary
+whenever the probability exceeds 0.5.
+By default a Viterbi algorithm is used that computes
+the globally most likely segmentation.
+<BR>
+If
+<B> -continuous </B>
+is specified as well,
+then this option will produce one line of output per word, containing,
+respectively, the &lt;s&gt; tag (if appropriate), the word itself, and the 
+posterior probability for a boundary preceding the word.
+<DT><B> -unk </B>
+<DD>
+Output the unknown word token &lt;unk&gt; for each input word not in the 
+language model vocabulary.
+The default is to output the input word unchanged.
+<DT><B>-stag</B><I> string</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use
+<I> string </I>
+to mark segment boundaries in the output.
+Default is the start-of-sentence symbol defined in the language model (&lt;s&gt;).
+<DT><B>-bias</B><I> b</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Make a segment boundary a priori more likely by a factor of
+<I>b</I>.<I></I><I></I><I></I>
+This allows balancing of false detection/rejection errors.
+The default is 1.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="ngram-count.1.html">ngram-count(1)</A>, <A HREF="ngram-format.5.html">ngram-format(5)</A>.
+<BR>
+A. Stolcke and E. Shriberg, ``Automatic Linguistic Segmentation of
+Spontaneous Speech,'' <I>Proc. ICSLP</I>, 1005-1008, 1996.
+<H2> BUGS </H2>
+Only N-grams models up to trigram order are used accurately.
+For higher-order models use the more general 
+<A HREF="hidden-ngram.1.html">hidden-ngram(1)</A>.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1997-2004 SRI International
+</BODY>
+</HTML>

@@ -1,0 +1,238 @@
+.\" $Id: Vocab.3,v 1.2 2007/12/19 22:01:46 stolcke Exp $
+.TH Vocab 3 "$Date: 2007/12/19 22:01:46 $" SRILM
+.SH NAME
+Vocab \- Vocabulary indexing for SRILM
+.SH SYNOPSIS
+.nf
+.B "#include <Vocab.h>"
+.fi
+.SH DESCRIPTION
+The 
+.B Vocab
+class represents sets of string tokens as typically used for vocabularies,
+word class names, etc.  Additionally, Vocab provides a mapping from
+such string tokens (type \fBVocabString\fP) to integers (type \fBVocabIndex\fP).
+VocabIndex values are typically used to index words in language models to
+conserve space and speed up comparisons etc.  Thus,
+\fBVocab\fP essentially
+implements a symbol table into which strings can be ``interned.''
+.SH TYPES
+.TP
+.B VocabIndex
+A non-negative integer for representing a string internally.
+.TP
+.B VocabString
+A character array representing a vocabulary item (e.g., a word).
+.SH CONSTANTS
+.TP
+.B maxWordLength
+Maximum number of characters in a VocabString.
+.TP
+.B Vocab_None
+A special VocabIndex used to denote no vocabulary item and to 
+terminate VocabIndex arrays.
+.TP
+.B Vocab_Unknown
+.TP
+.B Vocab_SentStart
+.TP
+.B Vocab_SentEnd
+.TP
+.B Vocab_Pause
+Default VocabString values for some common, predefined vocabulary items:
+unknown word, sentence begin, sentence end, and pause, respectively.
+.SH "CLASS MEMBERS"
+.TP
+.B "Vocab(VocabIndex \fIstart\fP = 0, VocabIndex \fIend\fP = 0x7fffffff)"
+When initializing a Vocab object,
+\fIstart\fP and \fIend\fP optionally set the minimum and maximum VocabIndex
+values assigned by the vocabulary.
+Indices are allocated in increasing order starting at \fIstart\fP.
+.TP
+.B "VocabIndex addWord(VocabString \fIname\fP)"
+Looks up the index of a word string \fIname\fP, adding the word if not already
+part of the vocabulary.
+.TP
+.B "VocabString getWord(VocabIndex \fIindex\fP)"
+Returns the VocabString for \fIindex\fP, or 0 if the index isn't defined.
+.TP
+.B "getIndex(VocabString \fIname\fP)"
+Returns the VocabIndex for word \fIname\fP, or
+.B Vocab_None
+if the word isn't defined.
+(Unlike \fBaddWord()\fP,
+this will not extend the vocabulary if the word is undefined.)
+.TP
+.B "void remove(VocabString \fIname\fP)"
+.TP
+.B "void remove(VocabIndex \fIindex\fP)"
+Deletes a vocabulary item, either by name or by index.
+.TP
+.B "unsigned int numWords()"
+Returns the number of current vocabulary entries.
+.TP
+.B "VocabIndex highIndex()"
+Returns the highest VocabIndex value assigned so far.
+The next word added will receive an index that is one greater.
+When allocating various meaningful vocabulary subsets into 
+contiguous ranges, this function can be used to determine the
+corresponding boundaries in VocabIndex space, and then use these
+values to test subset membership etc.
+.TP
+.B "VocabIndex unkIndex"
+The index of the unknown word (by default assigned to \fBVocab_Unknown\fP).
+.TP
+.B "VocabIndex ssIndex"
+The index of the sentence-start tag (by default assignedrto \fBVocab_SentStart\fP).
+.TP
+.B "VocabIndex seIndex"
+The index of the sentence-end tag (by default assigned to \fBVocab_SentEnd\fP).
+.TP
+.B "VocabIndex pauseIndex"
+The index of the pause tag (by default assigned to \fBVocab_Pause\fP).
+.TP
+.B "Boolean unkIsWord"
+When \fBtrue\fP,
+the unknown word is considered a regular word (default \fBfalse\fP).
+.TP
+.B "Boolean toLower"
+When \fBtrue\fP, all word strings are mapped to lowercase.
+This is convenient to combine vocabularies, language models, etc.,
+whose vocabularies differ only in the case convention
+(default \fBfalse\fP).
+.TP
+.B "Boolean isNonEvent(VocabString \fIword\fP)"
+.TP
+.B "Boolean isNonEvent(VocabIndex \fIword\fP)"
+Tests a word string or index for being an ``non-event'', i.e., a
+token that is not assigned probability in a language model.
+By default, sentence-start, pauses, and unknown words are non-events.
+.TP
+.B "unsigned read(File &\fIfile\fP)"
+Reads word strings from a file and adds them to the vocabulary.
+For convenience, only the first word on each line is significant
+(so extra information could be contained in such a file).
+Returns the number of words read.
+.TP
+.B "void write(File &\fIfile\fP, Boolean \fIsorted\fP = true)"
+Write the vocabulary strings to a file in a format compatible with
+\fBread()\fP.
+The \fIsorted\fP argument controls whether the output is
+lexicographically sorted.
+.PP
+Often times one wants to manipulate not single vocabulary items, but
+strings of them, e.g., to represent sentences.
+Word strings are represented as self-delimiting arrays of type
+.B "VocabString *"
+or
+.BR "VocabIndex *" .
+The last element in a string is 0 or \fBVocab_None\fP, respectively.
+.TP
+.B "unsigned getWords(const VocabIndex *\fIwids\fP, VocabString *\fIwords\fP, unsigned \fImax\fP)"
+Extends \fBgetWord()\fP to strings of word.
+The result is placed in \fIwords\fP, which must have room for at least
+\fImax\fP words.
+Returns the actual number of indices in \fIwids\fP.
+.TP
+.B "unsigned addWords(const VocabString *\fIwords\fP, VocabIndex *\fIwids\fP, unsigned \fImax\fP)"
+Extends \fBaddWord()\fP to strings of indices.
+The result is placed in \fIwids\fP, which must have room for at least
+\fImax\fP indices.
+Returns the actual number of words in \fIwords\fP.
+.TP
+.B "unsigned getIndices(const VocabString *\fIwords\fP, VocabIndex *\fIwids\fP, unsigned \fImax\fP)"
+Extends \fBgetIndex()\fP to strings of indices.
+The result is placed in \fIwids\fP, which must have room for at least
+\fImax\fP indices.
+Returns the actual number of words in \fIwords\fP.
+.SH FUNCTIONS
+The following static member functions are utilities to manipulate strings of
+vocabulary items, independent of a particular vocabulary.
+.TP
+.B "unsigned parseWords(char *\fIline\fP, VocabString *\fIwords\fP, unsigned \fImax\fP)"
+Parses a character string \fIline\fP into whitespace-delimited words.
+On return, \fIwords\fP contains pointers to null-terminated substrings of 
+\fIline\fP (whose contents is modified in the process).
+\fIwords\fP must have room for at least \fImax\fP pointers.
+Returns the actual number of words parsed.
+.TP
+.B "unsigned length(const VocabIndex *\fIwords\fP)"
+.TP
+.B "unsigned length(const VocabString *\fIwords\fP)"
+Returns the number items in a word string.
+.TP
+.B "Boolean contains(const VocabIndex *\fIwords\fP, VocabIndex \fIword\fP)
+Returns \fItrue\fP if the \fIword\fP occurs among \fIwords\fP.
+.TP
+.B "VocabIndex *reverse(VocabIndex *\fIwords\fP)"
+.TP
+.B "VocabString *reverse(VocabString *\fIwords\fP)"
+Reverses a string of words in place (and returns it as a result).
+.TP
+.B "void write(File &\fIfile\fP, const VocabString *\fIwords\fP)"
+Writes a string of space-delimited words to a file.
+.TP
+.B "int compare(VocabIndex \fIword1\fP, VocabIndex \fIword2\fP)"
+.TP
+.B "int compare(VocabString \fIword1\fP, VocabString \fIword2\fP)"
+Compares two vocabulary items lexicographically.
+Returns -1, 0, +1 for less than, equal, or greater than, respectively.
+.TP
+.B "int compare(const VocabIndex *\fIwords1\fP, const VocabIndex *\fIwords2\fP)"
+.TP
+.B "int compare(const VocabIndex *\fIwords1\fP, const VocabIndex *\fIwords2\fP)"
+Extends the order of \fIcompare()\fP to strings of words.
+.PP
+For compatibilty with the C library calling conventions, \fBcompare()\fP
+cannot be a member function of a Vocab object.
+For index-based comparisons the associated vocabulary needs to be 
+set globally.
+This is achieved by calling the \fBcompareIndex()\fP member function
+of a Vocab object.
+.TP
+.B "ostream &operator<< (ostream &, const VocabString *\fIwords\fP)"
+.TP
+.B "ostream &operator<< (ostream &, const VocabIndex *\fIwords\fP)"
+These operators output strings of words to a stream.
+For the second variant, the Vocab object used for interpreting indices
+needs to be identified globally by calling the \fIuse()\fP member function
+on the object.
+.SH ITERATORS
+The
+.B VocabIter
+class provides iteration over vocabularies.
+An iteration returns the elements of a Vocab in some unspecified,
+but deterministic order.
+.PP
+When copied or used in initialization of other objects,
+VocabIter objects retain the current ``position'' in an iteration.
+This allows nested iterations that enumerate all pairs of distinct elements,
+etc.
+.PP
+NOTE: While an iteration over a Vocab object is ongoing, no modifications
+are allowed to the object, \fIexcept\fP removal of the
+``current'' vocabulary item.
+.TP
+.B "VocabIter(Vocab &\fIvocab\fP, Boolean \fIsorted\fP = false)"
+Creates an iteration over \fIvocab\fP.
+If \fIsorted\fP is set to \fBtrue\fP the vocabulary items will
+be enumerated in lexicographic order.
+.TP
+.B "void init()"
+Reinitializes the iteration to its beginning.
+.TP
+.B "VocabString next()"
+.TP
+.B "VocabString next(VocabIndex &\fIindex\fP)"
+Steps the iteration and returns the next word string.
+Optionally, the associated word index is returned in \fIindex\fP.
+Returns 0 if the vocabulary is exhausted.
+.SH "SEE ALSO"
+LM(3), File(3) 
+.SH BUGS
+There is no good way to synchronize VocabIndex values across
+multiple Vocab objects.
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 1995, 1996 SRI International

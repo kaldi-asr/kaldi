@@ -1,0 +1,157 @@
+<! $Id: lm-scripts.1,v 1.8 2007/12/20 19:13:52 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>lm-scripts</TITLE>
+<BODY>
+<H1>lm-scripts</H1>
+<H2> NAME </H2>
+lm-scripts, add-dummy-bows, change-lm-vocab, empty-sentence-lm, get-unigram-probs, make-hiddens-lm, make-lm-subset, make-sub-lm, remove-lowprob-ngrams, reverse-lm, sort-lm - manipulate N-gram language models
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>add-dummy-bows</B> [ <I>lm-file</I> ] <B>&gt;</B> <I>new-lm-file</I>
+<B>change-lm-vocab</B> <B>-vocab</B> <I>vocab</I> <B>-lm</B> <I>lm-file</I> <B>-write-lm</B> <I>new-lm-file</I> \
+	[ <B>-tolower</B> ] [ <B>-subset</B> ] [ <I>ngram-options</I> ... ]
+<B>empty-sentence-lm</B> <B>-prob</B> <I>p</I> <B>-lm</B> <I>lm-file</I> <B>-write-lm</B> <I>new-lm-file</I> \
+	[ <I>ngram-options</I> ... ]
+<B>get-unigram-probs</B> [ <B>linear=1</B> ] [ <I>lm-file</I> ]
+<B>make-hiddens-lm</B> [ <I>lm-file</I> ] <B>&gt;</B> <I>hiddens-lm-file</I>
+<B>make-lm-subset</B> <I>count-file</I>|<B>-</B> [ lm-file |<B>-</B> ] <B>&gt;</B> <I>new-lm-file</I>
+<B>make-sub-lm</B> [ <B>maxorder=</B><I>N</I> ] [ <I>lm-file</I> ] <B>&gt;</B> <I>new-lm-file</I>
+<B>remove-lowprob-ngrams</B> [ <I>lm-file</I> ] <B>&gt;</B> <I>new-lm-file</I>
+<B>reverse-lm</B>  [ <I>lm-file</I> ] <B>&gt;</B> <I>new-lm-file</I>
+<B>sort-lm</B> [ <I>lm-file</I> ] <B>&gt;</B> <I>sorted-lm-file</I>
+</PRE>
+<H2> DESCRIPTION </H2>
+These scripts perform various useful manipulations on N-gram models
+in their textual representation.
+Most operate on backoff N-grams in ARPA
+<A HREF="ngram-format.5.html">ngram-format(5)</A>.
+<P>
+Since these tools are implemented as scripts they don't automatically
+input or output compressed model files correctly, unlike the main
+SRILM tools.
+However, since most scripts work with data from standard input or
+to standard output (by leaving out the file argument, or specifying it 
+as ``-'') it is easy to combine them with 
+<A HREF="gunzip.1.html">gunzip(1)</A>
+or
+<A HREF="gzip.1.html">gzip(1)</A>
+on the command line.
+<P>
+Also note that many of the scripts take their options with the 
+<A HREF="gawk.1.html">gawk(1)</A>
+syntax
+<I>option</I><B>=</B><I>value</I><B></B><I></I><B></B><I></I>
+instead of the more common
+<B>-</B><I>option</I><B></B><I></I><B></B><I></I><B></B>
+<I>value</I>.<I></I><I></I><I></I>
+<P>
+<B> add-dummy-bows </B>
+adds dummy backoff weights to N-grams, even where they 
+are not required, to satisfy some broken software that expects
+backoff weights on all N-grams (except those of highest order).
+<P>
+<B> change-lm-vocab </B>
+modifies the vocabulary of an LM to be that in 
+<I>vocab</I>.<I></I><I></I><I></I>
+Any N-grams containing out-of-vocabulary words are removed,
+new words receive a unigram probability, and the model
+is renormalized.
+The 
+<B> -tolower </B>
+option causes case distinctions to be ignored.
+<B> -subset </B>
+only removes words from the LM vocabulary, without adding any.
+Any remaining
+<I> ngram-options </I>
+are passes to
+<A HREF="ngram.1.html">ngram(1)</A>,
+and can be used to set debugging level, N-gram order, etc.
+<P>
+<B> empty-sentence-lm </B>
+modifies an LM so that it allows the empty sentence with 
+probability
+<I>p</I>.<I></I><I></I><I></I>
+This is useful to modify existing LMs that are trained on non-empty
+sentences only.
+<I> ngram-options </I>
+are passes to
+<A HREF="ngram.1.html">ngram(1)</A>,
+and can be used to set debugging level, N-gram order, etc.
+<P>
+<B> make-hiddens-lm </B>
+constructs an N-gram model that can be used with the
+<B> ngram -hiddens </B>
+option.
+The new model contains intra-utterance sentence boundary
+tags ``&lt;#s&gt;'' with the same probability as the original model
+had final sentence tags &lt;/s&gt;.
+Also, utterance-initial words are not conditioned on &lt;s&gt; and
+there is no penalty associated with utterance-final &lt;/s&gt;.
+Such as model might work better it the test corpus is segmented 
+at places other than proper &lt;s&gt; boundaries.
+<P>
+<B> make-lm-subset </B>
+forms a new LM containing only the N-grams found in the 
+<I>count-file</I>,<I></I><I></I><I></I>
+in 
+<A HREF="ngram-count.1.html">ngram-count(1)</A>
+format.
+The result still needs to be renormalized with
+<B> ngram -renorm </B>
+(which will also adjust the N-gram counts in the header).
+<P>
+<B> make-sub-lm </B>
+removes N-grams of order exceeding
+<I>N</I>.<I></I><I></I><I></I>
+This function is now redundant, since
+all SRILM tools can do this implicitly (without using extra memory 
+and very small time overhead) when reading N-gram models
+with the appropriate
+<B> -order </B>
+parameter.
+<P>
+<B> remove-lowprob-ngrams </B>
+eliminates N-grams whose probability is lower than that which they
+would receive through backoff.
+This is useful when building finite-state networks for N-gram
+models.
+However, this function is now performed much faster by 
+<A HREF="ngram.1.html">ngram(1)</A>
+with the
+<B> -prune-lowprobs </B>
+option.
+<P>
+<B> reverse-lm </B>
+produces a new LM that generates sentences with probabilities equal
+to the reversed sentences in the input model.
+<P>
+<B> sort-lm </B>
+sorts the n-grams in an LM in lexicographic order (left-most words being
+the most significant).
+This is not a requirement for SRILM, but might be necessary for some 
+other LM software.
+(The LMs output by SRILM are sorted somewhat differently, reflecting 
+the internal data structures used; that is also the order that should give
+best cache utilization when using SRILM to read models.)
+<P>
+<B> get-unigram-probs </B>
+extracts the unigram probabilities in a simple table format
+from a backoff language model.
+The 
+<B> linear=1 </B>
+option causes probabilities to be output on a linear (instead of log) scale.
+<H2> SEE ALSO </H2>
+<A HREF="ngram-format.5.html">ngram-format(5)</A>, <A HREF="ngram.1.html">ngram(1)</A>.
+<H2> BUGS </H2>
+These are quick-and-dirty scripts, what do you expect?
+<BR>
+<B> reverse-lm </B>
+supports only bigram LMs, and can produce improper probability estimates 
+as a result of inconsistent marginals in the input model.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1995-2006 SRI International
+</BODY>
+</HTML>

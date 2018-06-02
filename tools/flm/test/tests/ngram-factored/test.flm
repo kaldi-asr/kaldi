@@ -1,0 +1,76 @@
+##
+##
+##
+## Factord Language Model File: 
+##
+## Current set of Node Options
+## 
+## gtmin [num]
+## gtmax [num]
+## gt [fileName string]
+## cdiscount [double]
+## ndiscount []
+## wbdiscount []
+## kndiscount []
+## ukndiscount []
+## kn-counts-modified []
+## kn-counts-modify-at-end []
+## kn [fileName string]
+## kn-count-parent [parent spec]
+## interpolate []
+## write [fileName string]
+## 
+## ## The next set of options are active only when there
+## ## are multiple backoff paths (backoff-graph children) possible.
+## 
+## strategy [option]
+##    where [option] is one of:
+##            counts_no_norm
+##            counts_sum_counts_norm <default>
+##            counts_sum_num_words_norm
+##            counts_prod_card_norm
+##            counts_sum_card_norm
+##            counts_sum_log_card_norm
+##            bog_node_prob
+## combine [option]
+##    where [option] is one of:
+##               max <default>
+##               min
+##               sum
+##               avg||mean
+##               prod
+##               gmean
+##               wmean { <node_spec  weight> <node_spec weight> ... }
+##
+## 
+##
+## Factors that are currently available in the files in this directory:
+##
+##     W - word (about 14k)
+##     M - morphological class (about 1279)
+##     S - stem  (about 5281)
+##     R - root  (about 3346)
+##     P - pattern (about 1516)
+##
+
+1
+
+## bigram w. general backoff that gets better than trigram.
+## logprob= -84967 ppl= 168.703 ppl1= 439.536
+W : 3 W(-1) M(-1) S(-1)  dev.count.gz dev.lm.gz 5
+  W1,M1,S1  W1 kndiscount gtmin 2 interpolate
+  M1,S1     S1 kndiscount gtmin 2 interpolate
+  M1        M1 kndiscount gtmin 2 interpolate
+  S1        S1 kndiscount gtmin 1 interpolate
+  0         0  kndiscount gtmin 1 
+
+## bigram w. general backoff that gets better than trigram.
+## logprob= -84967 ppl= 168.703 ppl1= 439.536
+W : 3 W(-1) M(-1) S(-1)  dev.count.gz dev.lm.gz 5
+  W1,M1,S1  W1 kndiscount gtmin 2 interpolate
+  M1,S1     S1,M1 kndiscount gtmin 100000000 combine mean
+  M1        M1 kndiscount gtmin 3 kn-count-parent W1,M1,S1
+  S1        S1 kndiscount gtmin 1 kn-count-parent W1,M1,S1
+  0         0  kndiscount gtmin 1 kn-count-parent W1,M1,S1
+
+

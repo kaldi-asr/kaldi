@@ -1,0 +1,26 @@
+#!/bin/sh
+
+data=../lattice-expansion-ppl
+
+lm="$data/test.lm"
+
+lattice-tool -in-lattice $data/test.htk -read-htk \
+		-out-lattice test.pfsg
+
+for order in 1 2
+do
+    lattice-tool -debug 1 \
+                -in-lattice $data/test.htk \
+		-read-htk \
+		-viterbi-decode \
+		-no-expansion \
+		-lm $lm -order $order
+
+    lattice-tool -debug 1 \
+                -in-lattice test.pfsg \
+		-viterbi-decode \
+		-no-expansion \
+		-lm $lm -order $order
+done
+
+rm -f test.pfsg

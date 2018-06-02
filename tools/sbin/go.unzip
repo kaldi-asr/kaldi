@@ -1,0 +1,16 @@
+#!/bin/sh
+#
+# Run this script before attempting test suit on a platform that doesn't 
+# support compressed file I/O (such as MSVC)
+#
+# $Header: /home/srilm/CVS/srilm/sbin/go.unzip,v 1.6 2013/03/19 20:11:12 stolcke Exp $
+#
+
+if ngram -version | egrep 'Support for compressed|Support for gzipped'
+then
+	: no need for uncompressing data
+else
+	echo "Compressed file i/o not supported; uncompressing data files" >&2
+	find tests -name \*.gz -print | tee GZ.files | xargs gunzip -f 
+fi
+

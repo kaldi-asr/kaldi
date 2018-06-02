@@ -1,0 +1,108 @@
+lm-scripts(1)                                                    lm-scripts(1)
+
+
+
+NNAAMMEE
+       lm-scripts,  add-dummy-bows,  change-lm-vocab,  empty-sentence-lm, get-
+       unigram-probs, make-hiddens-lm,  make-lm-subset,  make-sub-lm,  remove-
+       lowprob-ngrams, reverse-lm, sort-lm - manipulate N-gram language models
+
+SSYYNNOOPPSSIISS
+       aadddd--dduummmmyy--bboowwss [ _l_m_-_f_i_l_e ] >> _n_e_w_-_l_m_-_f_i_l_e
+       cchhaannggee--llmm--vvooccaabb --vvooccaabb _v_o_c_a_b --llmm _l_m_-_f_i_l_e --wwrriittee--llmm _n_e_w_-_l_m_-_f_i_l_e \
+            [ --ttoolloowweerr ] [ --ssuubbsseett ] [ _n_g_r_a_m_-_o_p_t_i_o_n_s ... ]
+       eemmppttyy--sseenntteennccee--llmm --pprroobb _p --llmm _l_m_-_f_i_l_e --wwrriittee--llmm _n_e_w_-_l_m_-_f_i_l_e \
+            [ _n_g_r_a_m_-_o_p_t_i_o_n_s ... ]
+       ggeett--uunniiggrraamm--pprroobbss [ lliinneeaarr==11 ] [ _l_m_-_f_i_l_e ]
+       mmaakkee--hhiiddddeennss--llmm [ _l_m_-_f_i_l_e ] >> _h_i_d_d_e_n_s_-_l_m_-_f_i_l_e
+       mmaakkee--llmm--ssuubbsseett _c_o_u_n_t_-_f_i_l_e|-- [ lm-file |-- ] >> _n_e_w_-_l_m_-_f_i_l_e
+       mmaakkee--ssuubb--llmm [ mmaaxxoorrddeerr==_N ] [ _l_m_-_f_i_l_e ] >> _n_e_w_-_l_m_-_f_i_l_e
+       rreemmoovvee--lloowwpprroobb--nnggrraammss [ _l_m_-_f_i_l_e ] >> _n_e_w_-_l_m_-_f_i_l_e
+       rreevveerrssee--llmm  [ _l_m_-_f_i_l_e ] >> _n_e_w_-_l_m_-_f_i_l_e
+       ssoorrtt--llmm [ _l_m_-_f_i_l_e ] >> _s_o_r_t_e_d_-_l_m_-_f_i_l_e
+
+DDEESSCCRRIIPPTTIIOONN
+       These  scripts perform various useful manipulations on N-gram models in
+       their textual representation.  Most operate on backoff N-grams in  ARPA
+       nnggrraamm--ffoorrmmaatt(5).
+
+       Since  these  tools are implemented as scripts they don't automatically
+       input or output compressed model files correctly, unlike the main SRILM
+       tools.   However, since most scripts work with data from standard input
+       or to standard output (by leaving out the file argument, or  specifying
+       it  as  ``-'')  it is easy to combine them with gguunnzziipp(1) or ggzziipp(1) on
+       the command line.
+
+       Also note that many of the scripts take their options with the  ggaawwkk(1)
+       syntax _o_p_t_i_o_n==_v_a_l_u_e instead of the more common --_o_p_t_i_o_n _v_a_l_u_e.
+
+       aadddd--dduummmmyy--bboowwss  adds  dummy backoff weights to N-grams, even where they
+       are not required, to satisfy some broken software that expects  backoff
+       weights on all N-grams (except those of highest order).
+
+       cchhaannggee--llmm--vvooccaabb  modifies  the vocabulary of an LM to be that in _v_o_c_a_b.
+       Any N-grams containing out-of-vocabulary words are removed,  new  words
+       receive  a  unigram  probability,  and  the model is renormalized.  The
+       --ttoolloowweerr option causes case distinctions to be ignored.   --ssuubbsseett  only
+       removes  words from the LM vocabulary, without adding any.  Any remain-
+       ing _n_g_r_a_m_-_o_p_t_i_o_n_s are passes to nnggrraamm(1), and can be used to set debug-
+       ging level, N-gram order, etc.
+
+       eemmppttyy--sseenntteennccee--llmm  modifies  an LM so that it allows the empty sentence
+       with probability _p.  This is useful to modify  existing  LMs  that  are
+       trained  on  non-empty  sentences  only.   _n_g_r_a_m_-_o_p_t_i_o_n_s  are passes to
+       nnggrraamm(1), and can be used to set debugging level, N-gram order, etc.
+
+       mmaakkee--hhiiddddeennss--llmm constructs an N-gram model that can be  used  with  the
+       nnggrraamm --hhiiddddeennss option.  The new model contains intra-utterance sentence
+       boundary tags ``<#s>'' with the same probability as the original  model
+       had  final  sentence  tags </s>.  Also, utterance-initial words are not
+       conditioned on <s> and there is no penalty associated  with  utterance-
+       final </s>.  Such as model might work better it the test corpus is seg-
+       mented at places other than proper <s> boundaries.
+
+       mmaakkee--llmm--ssuubbsseett forms a new LM containing only the N-grams found in  the
+       _c_o_u_n_t_-_f_i_l_e,  in  nnggrraamm--ccoouunntt(1)  format.   The result still needs to be
+       renormalized with nnggrraamm --rreennoorrmm (which  will  also  adjust  the  N-gram
+       counts in the header).
+
+       mmaakkee--ssuubb--llmm removes N-grams of order exceeding _N.  This function is now
+       redundant, since all SRILM tools can do this implicitly (without  using
+       extra  memory  and very small time overhead) when reading N-gram models
+       with the appropriate --oorrddeerr parameter.
+
+       rreemmoovvee--lloowwpprroobb--nnggrraammss eliminates N-grams  whose  probability  is  lower
+       than  that  which  they  would receive through backoff.  This is useful
+       when building finite-state networks for N-gram models.   However,  this
+       function  is now performed much faster by nnggrraamm(1) with the --pprruunnee--llooww--
+       pprroobbss option.
+
+       rreevveerrssee--llmm produces a new LM that generates sentences  with  probabili-
+       ties equal to the reversed sentences in the input model.
+
+       ssoorrtt--llmm  sorts  the  n-grams in an LM in lexicographic order (left-most
+       words being the most significant).   This  is  not  a  requirement  for
+       SRILM,  but  might  be  necessary for some other LM software.  (The LMs
+       output by SRILM are sorted somewhat differently, reflecting the  inter-
+       nal  data structures used; that is also the order that should give best
+       cache utilization when using SRILM to read models.)
+
+       ggeett--uunniiggrraamm--pprroobbss extracts the unigram probabilities in a simple  table
+       format from a backoff language model.  The lliinneeaarr==11 option causes prob-
+       abilities to be output on a linear (instead of log) scale.
+
+SSEEEE AALLSSOO
+       ngram-format(5), ngram(1).
+
+BBUUGGSS
+       These are quick-and-dirty scripts, what do you expect?
+       rreevveerrssee--llmm supports only bigram LMs, and can produce improper probabil-
+       ity estimates as a result of inconsistent marginals in the input model.
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1995-2006 SRI International
+
+
+
+SRILM Tools              $Date: 2007/12/20 19:13:52 $            lm-scripts(1)

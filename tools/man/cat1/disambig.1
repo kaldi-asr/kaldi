@@ -1,0 +1,300 @@
+disambig(1)                                                        disambig(1)
+
+
+
+NNAAMMEE
+       disambig - disambiguate text tokens using an N-gram model
+
+SSYYNNOOPPSSIISS
+       ddiissaammbbiigg [--hheellpp] _o_p_t_i_o_n ...
+
+DDEESSCCRRIIPPTTIIOONN
+       ddiissaammbbiigg translates a stream of tokens from a vocabulary V1 to a corre-
+       sponding stream of tokens from a vocabulary V2, according to  a  proba-
+       bilistic,  1-to-many  mapping.  Ambiguities in the mapping are resolved
+       by finding the V2 sequence with the highest posterior probability given
+       the  V1  sequence.   This  probability is computed from pairwise condi-
+       tional  probabilities  P(V1|V2),  as  well  as  a  language  model  for
+       sequences over V2.
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --tteexxtt _f_i_l_e
+              Specifies the file containing the V1 sentences.
+
+       --mmaapp _f_i_l_e
+              Specifies the file containing the V1-to-V2 mapping  information.
+              Each line of _f_i_l_e contains the mapping for a single word in V1:
+                   _w_1   _w_2_1 [_p_2_1] _w_2_2 [_p_2_2] ...
+              where  _w_1  is  a  word from V1, which has possible mappings _w_2_1,
+              _w_2_2, ... from V2.  Optionally, each of these can be followed  by
+              a  numeric  string for the probability _p_2_1, which defaults to 1.
+              The number is used as the conditional probability P(_w_1|_w_2_1), but
+              the program does not depend on these numbers being properly nor-
+              malized.
+
+       --eessccaappee _s_t_r_i_n_g
+              Set an ``escape string.''  Input lines starting with _s_t_r_i_n_g  are
+              not  processed  and  passed  unchanged  to stdout instead.  This
+              allows associated information to be passed  to  scoring  scripts
+              etc.
+
+       --tteexxtt--mmaapp _f_i_l_e
+              Processes  a  combined text/map file.  The format of _f_i_l_e is the
+              same as for --mmaapp, except that the  _w_1  field  on  each  line  is
+              interpreted as a word _t_o_k_e_n rather than a word _t_y_p_e.  Hence, the
+              V1 text input consists of all words in column 1 of _f_i_l_e in order
+              of  appearance.   This is convenient if different instances of a
+              word have different mappings.  There is no implicit insertion of
+              begin/end  sentence  tokens  in  this mode.  Sentence boundaries
+              should be indicated explicitly by lines of the form
+                   </s> </s>
+                   <s>  <s>
+              An escaped line (see --eessccaappee) also implicitly marks  a  sentence
+              boundary.
+
+       --ccllaasssseess file
+              Specifies the V1-to-V2 mapping information in ccllaasssseess--ffoorrmmaatt(5).
+              Class labels are interpreted as V2 words, and expansions  as  V1
+              words.  Multi-word expansions are not allowed.
+
+       --ssccaallee Interpret the numbers in the mapping as P(_w_2_1|_w_1).  This is done
+              by dividing probabilities by the unigram probabilities  of  _w_2_1,
+              obtained from the V2 language model.
+
+       --llooggmmaapp
+              Interpret  numeric  values in map file as log probabilities, not
+              probabilities.
+
+       --llmm _f_i_l_e
+              Specifies the V2 language model as a standard ARPA N-gram  back-
+              off  model  file  nnggrraamm--ffoorrmmaatt(5).   The default is not to use a
+              language model, i.e., choose V2 tokens based only on the  proba-
+              bilities in the map file.
+
+       --uussee--sseerrvveerr _S
+              Use  a network LM server (typically implemented by nnggrraamm(1) with
+              the --sseerrvveerr--ppoorrtt option) as the main model.  The server specifi-
+              cation  _S can be an unsigned integer port number (referring to a
+              server port running on the local host), a hostname (referring to
+              default  port  2525  on the named host), or a string of the form
+              _p_o_r_t@_h_o_s_t, where _p_o_r_t is a portnumber and _h_o_s_t is either a host-
+              name ("dukas.speech.sri.com") or IP number in dotted-quad format
+              ("140.44.1.15").
+              For server-based LMs,  the  --oorrddeerr  option  limits  the  context
+              length  of N-grams queried by the client (with 0 denoting unlim-
+              ited length).  Hence, the effective LM order is the  mimimum  of
+              the  client-specified  value  and  any  limit implemented in the
+              server.
+              When --uussee--sseerrvveerr is specified,  the  arguments  to  the  options
+              --mmiixx--llmm,  --mmiixx--llmm22,  etc.  are  also  interpreted  as network LM
+              server specifications provided they contain a '@' character  and
+              do  not  contain  a  '/' character.  This allows the creation of
+              mixtures of several file- and/or network-based LMs.
+
+       --ccaacchhee--sseerrvveedd--nnggrraammss
+              Enables client-side caching of N-gram  probabilities  to  elimi-
+              nated  duplicate  network  queries,  in  conjunction  with --uussee--
+              sseerrvveerr.  This may result  in a substantial speedup but  requires
+              memory  in  the client that may grow linearly with the amount of
+              data processed.
+
+       --oorrddeerr _n
+              Set the effective N-gram order used by the language model to  _n.
+              Default is 2 (use a bigram model).
+
+       --mmiixx--llmm _f_i_l_e
+              Read a second N-gram model for interpolation purposes.
+
+       --ffaaccttoorreedd
+              Interpret  the  files specified by --llmm and --mmiixx--llmm as a factored
+              N-gram model specification.  See nnggrraamm(1) for details.
+
+       --ccoouunntt--llmm
+              Interpret the model specified by --llmm  (but  not  --mmiixx--llmm)  as  a
+              count-based LM.  See nnggrraamm(1) for details.
+
+       --llaammbbddaa _w_e_i_g_h_t
+              Set  the  weight of the main model when interpolating with --mmiixx--
+              llmm.  Default value is 0.5.
+
+       --mmiixx--llmm22 _f_i_l_e
+
+       --mmiixx--llmm33 _f_i_l_e
+
+       --mmiixx--llmm44 _f_i_l_e
+
+       --mmiixx--llmm55 _f_i_l_e
+
+       --mmiixx--llmm66 _f_i_l_e
+
+       --mmiixx--llmm77 _f_i_l_e
+
+       --mmiixx--llmm88 _f_i_l_e
+
+       --mmiixx--llmm99 _f_i_l_e
+              Up to 9 more N-gram models can be specified for interpolation.
+
+       --mmiixx--llaammbbddaa22 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa33 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa44 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa55 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa66 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa77 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa88 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa99 _w_e_i_g_h_t
+              These are the weights for  the  additional  mixture  components,
+              corresponding  to --mmiixx--llmm22 through --mmiixx--llmm99.  The weight for the
+              --mmiixx--llmm model is 1 minus the sum  of  --llaammbbddaa  and  --mmiixx--llaammbbddaa22
+              through --mmiixx--llaammbbddaa99.
+
+       --ccoonntteexxtt--pprriioorrss _f_i_l_e
+              Read  context-dependent  mixture  weight priors from _f_i_l_e.  Each
+              line in _f_i_l_e should contain a context N-gram (most  recent  word
+              first)  followed  by  a  vector  of mixture weights whose length
+              matches the number of LMs being interpolated.
+
+       --bbaayyeess _l_e_n_g_t_h
+              Interpolate models using posterior probabilities  based  on  the
+              likelihoods  of  local  N-gram  contexts  of length _l_e_n_g_t_h.  The
+              --llaammbbddaa values are used as prior mixture weights in  this  case.
+              This  option can also be combined with --ccoonntteexxtt--pprriioorrss, in which
+              case the _l_e_n_g_t_h parameter also controls how many words  of  con-
+              text  are  maximally  used to look up mixture weights.  If --ccoonn--
+              tteexxtt--pprriioorrss is used without --bbaayyeess, the context length  used  is
+              set by the --oorrddeerr option and Bayesian interpolation is disabled,
+              as when _s_c_a_l_e (see next) is zero.
+
+       --bbaayyeess--ssccaallee _s_c_a_l_e
+              Set the exponential scale factor on the  context  likelihood  in
+              conjunction with the --bbaayyeess function.  Default value is 1.0.
+
+       --llmmww _W Scales  the language model probabilities by a factor _W.  Default
+              language model weight is 1.
+
+       --mmaappww _W
+              Scales the likelihood map probability by a  factor  _W.   Default
+              map weight is 1.  Note: For Viterbi decoding (the default) it is
+              equivalent to use --llmmww _W or --mmaappww _1_/_W,, but not for forward-back-
+              ward computation.
+
+       --ttoolloowweerr11
+              Map  input  vocabulary (V1) to lowercase, removing case distinc-
+              tions.
+
+       --ttoolloowweerr22
+              Map output vocabulary (V2) to lowercase, removing case  distinc-
+              tions.
+
+       --kkeeeepp--uunnkk
+              Do  not  map  unknown  input words to the <unk> token.  Instead,
+              output the  input  word  unchanged.   This  is  like  having  an
+              implicit default mapping for unknown words to themselves, except
+              that the word will still be treated as  <unk>  by  the  language
+              model.   Also,  with  this  option the LM is assumed to be open-
+              vocabulary (the default is close-vocabulary).
+
+       --vvooccaabb--aalliiaasseess _f_i_l_e
+              Reads vocabulary alias  definitions  from  _f_i_l_e,  consisting  of
+              lines of the form
+                   _a_l_i_a_s _w_o_r_d
+              This  causes  all  V2  tokens _a_l_i_a_s to be mapped to _w_o_r_d, and is
+              useful for adapting mismatched language models.
+
+       --nnoo--eeooss
+              Do no assume that each input line contains a complete  sentence.
+              This  prevents  end-of-sentence  tokens </s> from being appended
+              automatically.
+
+       --ccoonnttiinnuuoouuss
+              Process all words in the input as one sequence of  words,  irre-
+              spective  of line breaks.  Normally each line is processed sepa-
+              rately as a sentence.  V2 tokens are output one-per-line.   This
+              option  also  prevents  sentence start/end tokens (<s> and </s>)
+              from being added to the input.
+
+       --ffbb    Perform  forward-backward  decoding  of  the  input  (V1)  token
+              sequence.  Outputs the V2 tokens that have the highest posterior
+              probability, for each position.  The default is to  use  Viterbi
+              decoding,  i.e.,  the  output is the V2 sequence with the higher
+              joint posterior probability.
+
+       --ffww--oonnllyy
+              Similar to --ffbb, but uses only the forward probabilities for com-
+              puting posteriors.  This may be used to simulate on-line predic-
+              tion of tags, without the benefit of future context.
+
+       --ttoottaallss
+              Output the total string probability for each input sentence.
+
+       --ppoosstteerriioorrss
+              Output the table of posterior probabilities for each input  (V1)
+              token  and each V2 token, in the same format as required for the
+              --mmaapp file.  If --ffbb is also specified the posterior probabilities
+              will be computed using forward-backward probabilities; otherwise
+              an approximation will be used that is based on  the  probability
+              of  the  most  likely  path containing a given V2 token at given
+              position.
+
+       --nnbbeesstt _N
+              Output the _N best hypotheses instead of just the first best when
+              doing  Viterbi search.  If _N>1, then each hypothesis is prefixed
+              by the tag NNBBEESSTT___n _x,, where _n is the rank of the  hypothesis  in
+              the  N-best  list  and _x its score, the negative log of the com-
+              bined probability of transitions and observations of the  corre-
+              sponding HMM path.
+
+       --wwrriittee--ccoouunnttss _f_i_l_e
+              Outputs  the  V2-V1  bigram  counts corresponding to the tagging
+              performed on the input data.  If --ffbb  was  specified  these  are
+              expected  counts,  and otherwise they reflect the 1-best tagging
+              decisions.
+
+       --wwrriittee--vvooccaabb11 _f_i_l_e
+              Writes the input vocabulary from the map (V1) to _f_i_l_e.
+
+       --wwrriittee--vvooccaabb22 _f_i_l_e
+              Writes the output vocabulary from the map  (V2)  to  _f_i_l_e.   The
+              vocabulary will also include the words specified in the language
+              model.
+
+       --wwrriittee--mmaapp _f_i_l_e
+              Writes the map back to a file for validation purposes.
+
+       --ddeebbuugg Sets debugging output level.
+
+       Each filename argument can be an  ASCII  file,  or  a  compressed  file
+       (name  ending  in  .Z  or  .gz),  or ``-'' to indicate stdin/stdout.
+
+BBUUGGSS
+       The  --ccoonnttiinnuuoouuss  and  --tteexxtt--mmaapp options effectively disable --kkeeeepp--uunnkk,
+       i.e., unknown input words are always mapped to <unk>.  Also,  --ccoonnttiinnuu--
+       oouuss  doesn't  preserve the positions of escaped input lines relative to
+       the input.
+
+SSEEEE AALLSSOO
+       ngram-count(1), ngram(1), hidden-ngram(1), training-scripts(1),  ngram-
+       format(5), classes-format(5).
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>,
+       Anand Venkataraman <anand@speech.sri.com>.
+       Copyright 1995-2007 SRI International
+
+
+
+SRILM Tools              $Date: 2013/03/09 04:13:59 $              disambig(1)

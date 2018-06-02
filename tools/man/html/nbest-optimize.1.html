@@ -1,0 +1,604 @@
+<! $Id: nbest-optimize.1,v 1.29 2012/07/04 23:47:53 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>nbest-optimize</TITLE>
+<BODY>
+<H1>nbest-optimize</H1>
+<H2> NAME </H2>
+nbest-optimize - optimize score combination for N-best word error minimization
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>nbest-optimize</B> [ <B>-help</B> ] <I>option</I> ... [ <I>scoredir</I> ... ]
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> nbest-optimize </B>
+reads a set of N-best lists, additional score files, and corresponding 
+reference transcripts and optimizes the score combination weights
+so as to minimize the word error of a classifier that performs
+word-level posterior probability maximization.
+The optimized weights are meant to be used with
+<A HREF="nbest-lattice.1.html">nbest-lattice(1)</A>
+and the
+<B> -use-mesh </B>
+option,
+or the 
+<B> nbest-rover </B>
+script (see
+<A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>).
+<B> nbest-optimize </B>
+determines both the best relative weighting of knowledge source scores
+and the optimal 
+<B> -posterior-scale </B>
+parameter that controls the peakedness of the posterior distribution.
+<P>
+Alternatively,
+<B> nbest-optimize </B>
+can also optimize weights for a standard, 1-best hypothesis rescoring that
+selects entire (sentence) hypotheses
+(<B>-1best</B><B></B><B></B>
+option).
+In this mode sentence-level error counts may be read from external files,
+or computed on the fly from the reference strings.
+The weights obtained are meant to be used for N-best list rescoring with
+<B> rescore-reweight </B>
+(see 
+<A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>).
+<P>
+A third optimization criterion is the BLEU score used in machine translation.
+This also requires the associated scores to be read from external files.
+<P>
+One of three optimization algorithms are available:
+<DL>
+<DT>1.
+<DD>
+The default optimization method is gradient descent on a smoothed (sigmoidal)
+approximation of the true 0/1 word error function (Katagiri et al. 1990).
+Therefore, the result can only be expected to be a
+<I> local </I>
+minimum of the error surface.
+(A more global search can be attempted by specifying different starting
+points.)
+Another approximation is that the error function is computed assuming a fixed
+multiple alignment of all N-best hypotheses and the reference string,
+which tends to slightly overestimate the true pairwise error between any 
+single hypothesis and the reference.
+<DT>2.
+<DD>
+An alternative search strategy uses a simplex-based "Amoeba" search on
+the (non-smoothed) error function (Press et al. 1988).
+The search is restarted multiple times to avoid local minima.
+<DT>3.
+<DD>
+A third algorithm uses Powell search (Press et al. 1988)
+on the (non-smoothed) error function.
+</DD>
+</DL>
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-debug</B><I> level</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Controls the amount of output (the higher the
+<I>level</I>,<I></I><I></I><I></I>
+the more).
+At level 1, error statistics at each iteration are printed.
+At level 2, word alignments are printed.
+At level 3, full score matrix is printed.
+At level 4, detailed information about word hypothesis ranking is printed
+for each training iteration and sample.
+<DT><B>-nbest-files</B><I> file-list</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the set of N-best files as a list of filenames.
+Three sets of standard scores are extracted from the N-best files:
+the acoustic model score, the language model score, and the number of 
+words (for insertion penalty computation).
+See 
+<A HREF="nbest-format.5.html">nbest-format(5)</A>
+for details.
+<BR>
+In BLEU optimization mode, since there is no acoustic score, the
+position
+of the first score is taken by the "ac-replacement" score, which can be
+any score used by the machine translation system.
+A typical example is a score measuring
+word order distortion between the source and target languages.
+<DT><B>-srinterp-format</B><I></I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Parse n-best list in SRInterp format, which has 
+features and text in the same line. n-best optimize will also generate
+rover-control file in SRInterp format, where each line is in the form of:
+<PRE>
+	<I>F1=V1</I> <I>F2=V2</I> ... <I>Fm=Vm</I> <I>W1</I> <I>W2</I> ...<I>Wn</I>
+</PRE>
+where
+<I> F1 </I>
+through
+<I> Fm </I>
+are feature names,
+<I> V1 </I>
+through
+<I> Vm </I>
+are feature values,
+<I> W1 </I>
+through
+<I> Wn </I>
+are words.
+Also generate SRInterp control file, in the format of:
+<PRE>
+	<I>F1:S1</I> <I>F2:S2</I> ... <I>Fm:Sm</I>
+</PRE>
+where 
+<I> S1 </I>
+through
+<I> Sm </I>
+are scaling factors (weights) for feature 
+<I> F1 </I>
+through
+<I> Fm </I>
+.
+<DT><B>-refs</B><I> references</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the reference transcripts.
+Each line in 
+<I> references </I>
+must contain the sentence ID (the last component in the N-best filename
+path, minus any suffixes) followed by zero or more reference words.
+<DT><B>-insertion-weight</B><I> W</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Weight insertion errors by a factor 
+<I>W</I>.<I></I><I></I><I></I>
+This may be useful to optimize for keyword spotting tasks where
+insertions have a cost different from deletion and substitution errors.
+<DT><B>-word-weights</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a table of words and weights from
+<I>file</I>.<I></I><I></I><I></I>
+Each word error is weighted according to the word-specific weight.
+The default weight is 1, and used if a word has no specified weight.
+Also, when this option is used, substitution errors are counted 
+as the sum of a deletion and an insertion error, as opposed to counting
+as 1 error as in traditional word error computation.
+<DT><B>-anti-refs</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a file of "anti-references" for use with the 
+<B> -anti-ref-weight </B>
+option (see below).
+<DT><B>-anti-ref-weight</B><I> W</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Compute the hypothesis errors for 1-best optimization by adding the
+edit distance with respect to the "anti-references" times the weight
+<I> W </I>
+to the regular error count.
+If 
+<I> W </I>
+is negative this will tend to generate hypotheses that are different from
+the anti-references (hence the name).
+<DT><B> -1best </B>
+<DD>
+Select optimization for standard sentence-level hypothesis selection.
+<DT><B> -1best-first </B>
+<DD>
+Optimized first using 
+<B> -1best </B>
+mode, then switch to full optimization.
+This is an effective way to quickly bring the score weights near an
+optimal point, and then fine-tune them jointly with the posterior scale
+parameter.
+<DT><B>-errors</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+In 1-best mode, optimize for error counts that are stored in separate files
+in directory
+<I>dir</I>.<I></I><I></I><I></I>
+Each N-best list must have a matching error counts file of the same 
+basename in 
+<I>dir</I>.<I></I><I></I><I></I>
+Each file contains 7 columns of numbers in the format
+<PRE>
+	<I>wcr</I> <I>wer</I> <I>nsub</I> <I>ndel</I> <I>nins</I> <I>nerr</I> <I>nw</I>
+</PRE>
+Only the last two columns (number of errors and words, respectively) are used.
+<BR>
+If this option is omitted, errors will be computed from the N-best hypotheses
+and the reference transcripts.
+<DT><B>-bleu-counts</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Perform BLEU optimization, reading BLEU reference counts from directory 
+<I>dir</I>.<I></I><I></I><I></I>
+Each N-best list must have a matching counts file of the same 
+basename in 
+<I>dir</I>,<I></I><I></I><I></I>
+containing the following information:
+<PRE>
+	<I>N</I> <I>M</I> <I>L1</I> ... <I>LM</I>
+</PRE>
+where
+<I> N </I>
+is the number of hypotheses in the N-best list,
+<I> M </I>
+is the number of references for the utterance,
+and 
+<I> L1 </I>
+through
+<I> LM </I>
+are the reference lengths (word counts) for each reference.
+Following this line, there are 
+<I> N </I>
+lines of the form
+<PRE>
+	<I>K</I> <I>C1</I> <I>C2</I> ... <I>Cm</I>
+</PRE>
+where 
+<I> K </I>
+is the number of words in the hypothesis and
+<I> C1 </I>
+through
+<I> Cm </I>
+are the N-gram counts occurring in the references for each N-gram order
+1, ...,
+<I>m</I>.<I></I><I></I><I></I>
+Currently,
+<I> m </I>
+is limited to 4.
+<DT><B> -minimum-bleu-reference </B>
+<DD>
+Use shortest reference length to compute the BLEU brevity penalty.
+<DT><B> -closest-bleu-reference </B>
+<DD>
+Use closest reference length for each translation hypothesis to compute
+the BLEU brevity penalty.
+<DT><B> -average-bleu-reference </B>
+<DD>
+Use average reference length to compute the BLEU brevity penalty.
+<DT><B> -error-bleu-ratio  R </B>
+<DD>
+Specifies the weight of error rate when combined with BLEU as optimization
+objective: <I>(1-BLEU) + ERR x R</I>. 
+<I> ERR </I>
+is error rate computed by #errors/#references.
+<DT><B>-max-nbest</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limits the number of hypotheses read from each N-best list to the first
+<I>n</I>.<I></I><I></I><I></I>
+<DT><B>-rescore-lmw</B><I> lmw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the language model weight used in combining the language model log
+probabilities with acoustic log probabilities.
+This is used to compute initial aggregate hypotheses scores.
+<DT><B>-rescore-wtw</B><I> wtw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the word transition weight used to weight the number of words relative to
+the acoustic log probabilities.
+This is used to compute initial aggregate hypotheses scores.
+<DT><B>-posterior-scale</B><I> scale</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Initial value for scaling log posteriors.
+The total weighted log score is divided by 
+<I> scale </I>
+when computing normalized posterior probabilities.
+This controls the peakedness of the posterior distribution. 
+The default value is whatever was chosen for 
+<B>-rescore-lmw</B>,<B></B><B></B><B></B>
+so that language model scores are scaled to have weight 1,
+and acoustic scores have weight 1/<I>lmw</I>.
+<DT><B> -combine-linear </B>
+<DD>
+Compute aggregate scores by linear combination, rather than log-linear
+combination.
+(This is appropriate if the input scores represent log-posterior probabilities.)
+<DT><B> -non-negative </B>
+<DD>
+Constrain search to non-negative weight values.
+<DT><B>-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read the N-best list vocabulary from 
+<I>file</I>.<I></I><I></I><I></I>
+This option is mostly redundant since words found in the N-best input
+are implicitly added to the vocabulary.
+<DT><B> -tolower </B>
+<DD>
+Map vocabulary to lowercase, eliminating case distinctions.
+<DT><B> -multiwords </B>
+<DD>
+Split multiwords (words joined by '_') into their components when reading
+N-best lists.
+<DT><B>-multi-char</B><I> C</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Character used to delimit component words in multiwords
+(an underscore character by default).
+<DT><B> -no-reorder </B>
+<DD>
+Do not reorder the hypotheses for alignment, and start the alignment with
+the reference words.
+The default is to first align hypotheses by order of decreasing scores
+(according to the initial score weighting) and then the reference,
+which is more compatible with how 
+<A HREF="nbest-lattice.1.html">nbest-lattice(1)</A>
+operates.
+<DT><B>-noise</B><I> noise-tag</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Designate
+<I> noise-tag </I>
+as a vocabulary item that is to be ignored in aligning hypotheses with
+each other (the same as the -pau- word).
+This is typically used to identify a noise marker.
+<DT><B>-noise-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read several noise tags from
+<I>file</I>,<I></I><I></I><I></I>
+instead of, or in addition to, the single noise tag specified by
+<B>-noise</B>.<B></B><B></B><B></B>
+<DT><B>-hidden-vocab</B> file<B></B><B></B><B></B>
+<DD>
+Read a subvocabulary from
+<I> file </I>
+and constrain word alignments to only group those words that are either all
+in or outside the subvocabulary.
+This may be used to keep ``hidden event'' tags from aligning with
+regular words.
+<DT><B>-dictionary</B> file<B></B><B></B><B></B>
+<DD>
+Use word pronunciations listed in 
+<I> file </I>
+to construct word alignments when building word meshes.
+This will use an alignment cost function that reflects the number of
+inserted/deleted/substituted phones, rather than words.
+The dictionary 
+<I> file </I>
+should contain one pronunciation per line, each naming a word in the first
+field, followed by a string of phone symbols.
+<DT><B>-distances</B> file<B></B><B></B><B></B>
+<DD>
+Use the word distance matrix in 
+<I> file </I>
+as a cost function for word alignments.
+Each line in 
+<I> file </I>
+defines a row of the distance matrix.
+The first field contains the word that is the row index,
+followed by one or more word/number pairs, where the word represents the 
+column index and the number the distance value.
+<DT><B>-init-lambdas</B><I> 'w1 w2 ...'</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Initialize the score weights to the values specified
+(zeros are filled in for missing values).
+The default is to set the initial acoustic model weight to 1,
+the language model weight from
+<B>-rescore-lmw</B>,<B></B><B></B><B></B>
+the word transition weight from
+<B>-rescore-wtw</B>,<B></B><B></B><B></B>
+and all remaining weights to zero initially.
+Prefixing a value with an equal sign (`=')
+holds the value constant during optimization.
+(All values should be enclosed in quotes to form a single command-line
+argument.)
+<BR>
+Hypotheses are aligned using the initial weights; thus, it makes sense
+to reoptimize with initial weights from a previous optimization in order
+to obtain alignments closer to the optimimum.
+<DT><B>-alpha</B><I> a</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Controls the error function smoothness; 
+the sigmoid slope parameter is set to
+<I>a</I>.<I></I><I></I><I></I>
+<DT><B>-epsilon</B><I> e</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The step-size used in gradient descent (the multiple of the gradient vector).
+<DT><B>-min-loss</B><I> x</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the loss function for a sample effectively to zero when its value falls
+below 
+<I>x</I>.<I></I><I></I><I></I>
+<DT><B>-max-delta</B><I> d</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Ignores the contribution of a sample to the gradient if the derivative
+exceeds
+<I>d</I>.<I></I><I></I><I></I>
+This helps avoid numerical problems.
+<DT><B>-maxiters</B><I> m</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Stops optimization after 
+<I> m </I>
+iterations.
+In Amoeba search, this limits the total number of points in the parameter space
+that are evaluated.
+<DT><B>-max-bad-iters</B> n<B></B><B></B><B></B>
+<DD>
+Stops optimization after 
+<I> n </I>
+iterations during which the actual (non-smoothed) error has not decreased.
+<DT><B>-max-amoeba-restarts</B> r<B></B><B></B><B></B>
+<DD>
+Perform only up to
+<I> r </I>
+repeated Amoeba searches.
+The default is to search until 
+<I> D </I>
+searches give the same results, where
+<I> D </I>
+is the dimensionality of the problem.
+<DT><B>-max-time</B><I> T</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Abort search if new lower-error point isn't found in 
+<I> T </I>
+seconds.
+<DT><B>-epsilon-stepdown</B><I> s</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-min-epsilon</B><I> m</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+If 
+<I> s </I>
+is a value greater than zero, the learning rate will be multiplied by 
+<I> s </I>
+every time the error does not decrease after a number of iterations
+specified by
+<B>-max-bad-iters</B>.<B></B><B></B><B></B>
+Training stops when the learning rate falls below
+<I> m </I>
+in this manner.
+<DT><B>-converge</B><I> x</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Stops optimization when the (smoothed) loss function changes relatively by less 
+than 
+<I> x </I>
+from one iteration to the next.
+<DT><B> -quickprop </B>
+<DD>
+Use the approximate second-order method known as "QuickProp" (Fahlman 1989).
+<DT><B>-init-amoeba-simplex</B><I> 's1 s2 ...'</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Perform Amoeba simplex search.
+The argument defines the step size for the initial Amoeba simplex.
+One value for each non-fixed search dimension should be specified,
+plus optionally a value for the posterior scaling parameter
+(which is searched as an added dimension).
+<DT><B>-init-powell-range</B><I> 'a1</I><B>,</B><I>b1 a2</I><B>,</B><I>b2 ...'</I><B></B>
+<DD>
+Perform Powell search.
+The argment initializes the weight ranges for Powell search.
+One comma-separated pair of values for each search dimension should
+be specified. For each dimension, if the upper bound equals lower bound
+and initial lambda, that dimension will be fixed, even if not so specified by 
+<B> -init-lambda . </B>
+<DT><B>-num-powell-runs</B><I> N</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the number of random runs for quick Powell grid search
+(default value is 20).
+<DT><B> -dynamic-random-series </B>
+<DD>
+Use time and process ID to initialize seed for pseudo random series used
+in Powell search.
+This will make results unrepeatable but may yield better results through
+multiple trials.
+<DT><B>-print-hyps</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write the best word hypotheses to 
+<I> file </I>
+after optimization.
+<DT><B>-print-top-n</B><I> N</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write out the top 
+<I> N </I>
+rescored hypotheses.
+In this case
+<B> -print-hyps </B>
+specifies a directory (not a file)
+and one file per N-best list is generated.
+<DT><B> -print-unique-hyps </B>
+<DD>
+Eliminate duplicate hypotheses when writing out N-best hypotheses.
+<DT><B> -print-old-ranks </B>
+<DD>
+Output the original hypothesis ranks when writing out N-best hypotheses.
+<DT><B> -compute-oracle </B>
+<DD>
+Find the lowest error rate or the highest BLEU score achievable by choosing
+among all N-best hypotheses.
+<DT><B>-print-oracle-hyps</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Print output oracle hyps to
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-write-rover-control</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Writes a control file for 
+<B> nbest-rover </B>
+to 
+<I>file</I>,<I></I><I></I><I></I>
+reflecting the names of the input directories and the optimized parameter
+values.
+The format of
+<I> file </I>
+is described in
+<A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>.
+The file is rewritten for each new minimal error weight combination found.
+<BR>
+In BLEU optimization, the weight for the ac-replacement score will be written
+in the place of the posterior scale,
+since posterior scaling is not used in BLEU optimization.
+<DT><B> -skipopt </B>
+<DD>
+Skip optimization altogether, such as when only the 
+<B> -print-hyps </B>
+function is to be exercised.
+<DT><B> -- </B>
+<DD>
+Signals the end of options, such that following command-line arguments are 
+interpreted as additional scorefiles even if they start with `-'.
+<DT><I>scoredir</I> ...<I></I><I></I><I></I>
+<DD>
+Any additional arguments name directories containing further score files.
+In each directory, there must exist one file named after the sentence 
+ID it corresponds to (the file may also end in ``.gz'' and contain compressed
+data).
+The total number of score dimensions is thus 3 (for the standard scores from
+the N-best list) plus the number of additional score directories specified.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="nbest-lattice.1.html">nbest-lattice(1)</A>, <A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>, <A HREF="nbest-format.5.html">nbest-format(5)</A>.
+<BR>
+S. Katagiri, C.H. Lee, &amp; B.-H. Juang, "A Generalized Probabilistic Descent
+Method", in
+<I>Proceedings of the Acoustical Society of Japan, Fall Meeting</I>,
+pp. 141-142, 1990.
+<BR>
+S. E. Fahlman, "Faster-Learning Variations on Back-Propagation: An
+Empirical Study", in D. Touretzky, G. Hinton, &amp; T. Sejnowski (eds.), 
+<I>Proceedings of the 1988 Connectionist Models Summer School</I>, pp. 38-51,
+Morgan Kaufmann, 1989.
+<BR>
+W. H. Press, B. P. Flannery, S. A. Teukolsky, &amp; W. T. Vetterling,
+<I>Numerical Recipes in C: The Art of Scientific Computing</I>,
+Cambridge University Press, 1988.
+<BR>
+<H2> BUGS </H2>
+Gradient-based optimization is not supported (yet) in 1-best or BLEU mode
+or in conjunction with the 
+<B> -combine-linear </B>
+or 
+<B> -non-negative </B>
+options;
+use simplex or Powell search instead.
+<BR>
+The N-best directory in the control file output by
+<B> -write-rover-control </B>
+is inferred from the
+first N-best filename specified with
+<B>-nbest-files</B>,<B></B><B></B><B></B>
+and will therefore only work if all N-best lists are placed in the same
+directory.
+<P>
+The
+<B> -insertion-weight </B>
+and 
+<B> -word-weights </B>
+options only affect the word error computation, not the construction 
+of hypothesis alignments. 
+Also, they only apply to sausage-based, not 1-best error optimization.
+(1-best errors may be explicitly specified using the 
+<B> -errors </B>
+option).
+<P>
+The 
+<B> -anti-refs </B>
+and
+<B> -anti-ref-weight </B>
+options do not work for sausage-based or BLEU optimization.
+<H2> AUTHORS </H2>
+Andreas Stolcke &lt;andreas.stolcke@microsoft.com&gt;
+<BR>
+Dimitra Vergyri &lt;dverg@speech.sri.com&gt;
+<BR>
+Jing Zheng &lt;zj@speech.sri.com&gt;
+<BR>
+Copyright (c) 2000-2012 SRI International, 2012 Microsoft Corp.
+</BODY>
+</HTML>

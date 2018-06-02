@@ -1,0 +1,13 @@
+reading 5 1-grams
+reading 5 2-grams
+Lattice::expandToLM: starting expansion to general LM (maxNodes = 0) ...
+Lattice::writeHTK: writing 6 nodes, 6 transitions
+Lattice::alignLattice: aligning test.htk with 12 nodes
+Lattice::computeForwardBackward: processing (posterior scale = 8)
+Lattice::computeForwardBackward: unnormalized posterior = -3.70265 max-min path posterior = -3.82507
+reading 5 1-grams
+reading 5 2-grams
+Lattice::expandToLM: starting expansion to general LM (maxNodes = 0) ...
+Lattice::alignLattice: aligning test.htk with 9 nodes
+Lattice::computeForwardBackward: processing (posterior scale = 8)
+Lattice::computeForwardBackward: unnormalized posterior = -2.95265 max-min path posterior = -3.07507

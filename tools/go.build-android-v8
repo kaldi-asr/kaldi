@@ -1,0 +1,18 @@
+#!/bin/csh -fx
+
+set target = World
+if ($#argv > 0) then
+set target=$1
+endif
+
+set HERE=`pwd`
+
+setenv SRILM $HERE
+setenv SRILM_OPTION _c
+setenv MACHINE_TYPE android-arm64-v8a
+
+sed -i -e 's/ANDROID_VERSION ?= android-4/ANDROID_VERSION ?= android-23/g' common/Makefile.core.android
+sed -i -e 's/ANDROID_TOOLCHAIN_VERSION := 4.6/ANDROID_TOOLCHAIN_VERSION := 4.9/g' common/Makefile.core.android
+sed -i -e 's/-DNEED_RAND48 -DNO_TLS$/-DNEED_RAND48 -DNO_TLS -DNO_BLOCK_MALLOC/g' common/Makefile.core.android
+
+make -j 8 MACHINE_TYPE=${MACHINE_TYPE} OPTION=_c MAKE_PIC=yes NO_TCL="X" $target

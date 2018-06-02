@@ -1,0 +1,4 @@
+Perplexity on file: ../fngram-count/ch_lm_dev.noamp.decomposed.txt.gz
+Language model: 0
+6003 sentences, 32148 words, 0 OOVs
+0 zeroprobs, logprob= -80707.8 ppl= 130.462 ppl1= 323.972

@@ -1,0 +1,37 @@
+classes-format(5)                                            classes-format(5)
+
+
+
+NNAAMMEE
+       classes-format - File format for word class definitions
+
+SSYYNNOOPPSSIISS
+       _c_l_a_s_s [_p] _w_o_r_d_1 _w_o_r_d_2 ...
+
+DDEESSCCRRIIPPTTIIOONN
+       Various  programs  dealing  with word classes use this format to define
+       the posssible expansions of classes and their respective probabilities.
+       Each  expansion  appears  on  a separate line as in the synopsis, where
+       _c_l_a_s_s names a word class, _p gives the probability for the class  expan-
+       sion,  and  _w_o_r_d_1  _w_o_r_d_2  _._._.   defines  the word string that the class
+       expands to.  If _p is omitted it is assumed to  be  1.   (All  expansion
+       probabilities for a given class should sum to one, although this is not
+       necessarily enforced by the software and would lead  to  improper  mod-
+       els.)
+
+       Note  that  the  concept  of  word class here is generalized to include
+       ``multi-words'', or phrases consisting of  more  than  one  word.   All
+       expansions  must  have  at least one word.  Certain models might impose
+       more restrictive formats.
+
+SSEEEE AALLSSOO
+       ngram(1),  ngram-class(1),  disambig(1),   training-scripts(1),   pfsg-
+       scripts(5).
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1999 SRI International
+
+
+
+SRILM File Formats       $Date: 2007/12/19 22:08:05 $        classes-format(5)

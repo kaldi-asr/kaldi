@@ -1,0 +1,137 @@
+.\" $Id: anti-ngram.1,v 1.8 2008/04/24 07:39:29 stolcke Exp $
+.TH anti-ngram 1 "$Date: 2008/04/24 07:39:29 $" "SRILM Tools"
+.SH NAME
+anti-ngram \- count posterior-weighted N-grams in N-best lists
+.SH SYNOPSIS
+.nf
+\fBanti-ngram\fP [ \fB\-help\fP ] \fIoption\fP ...
+.fi
+.SH DESCRIPTION
+.B anti-ngram
+counts the N-grams in a set of N-best hypotheses lists.
+The N-gram counts are weighted by the posterior probabilities of the
+hypotheses they occur in.
+Thus, 
+.B anti-ngram 
+can be used to construct language models of word sequences
+that are acoustically confusable with correct hypotheses.
+The counts output should be processed with
+.B "ngram-count \-float-counts"
+to estimate a language model.
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-refs " file"
+Read the reference transcripts from 
+.IR file .
+Each line should contain an utterance ID followed by the transcript words.
+.TP
+.BI \-nbest-files " file"
+List of N-best files.
+The base components of filenames must correspond to the utterance IDs found
+in the reference file.
+.TP
+.BI \-max-nbest " n"
+Limits the number of hypotheses read from each N-best list to the first
+.IR n .
+.TP
+.BI \-order " n"
+Set the maximal order (length) of N-grams to count.
+The default order is 3.
+.TP
+.BI \-lm " file"
+Reads an ARPA language model from 
+.I file
+and rescores the N-best lists with it prior to counting N-grams.
+.TP
+.BI \-classes " file"
+Interpret the LM as a class-based N-gram and read class definitions
+in 
+.BR classes-format (5)
+from
+.IR file .
+.TP
+.B \-tolower
+Map vocabulary to lowercase, eliminating case distinctions.
+.TP
+.B \-multiwords
+Split multiwords (words joined by '_') into their components when
+reading N-best lists.
+.TP
+.BI \-multi-char " C"
+Character used to delimit component words in multiwords
+(an underscore character by default).
+.TP
+.BI \-rescore-lmw " lmw"
+Sets the language model weight used in combining the language model log
+probabilities with acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+.TP
+.BI \-rescore-wtw " wtw"
+Sets the word transition weight used to weight the number of words relative to
+the acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+.TP
+.BI \-posterior-scale " scale"
+Divide the total weighted log score by 
+.I scale
+when computing normalized posterior probabilities.
+This controls the peakedness of the posterior distribution. 
+The default value is whatever was chosen for 
+.BR \-rescore-lmw , 
+so that language model scores are scaled to have weight 1,
+and acoustic scores have weight 1/\fIlmw\fP.
+.TP
+.B \-all-ngrams
+Causes even N-grams that occur in the reference string to be counted.
+By default N-best N-grams that also occur in the corresponding reference 
+are excluded.
+.TP
+.BI \-min-count " C"
+Prune all N-grams from the output that have counts less than
+.IR C .
+.TP
+.BI \-read-counts " countsfile"
+Read N-gram counts from a file.
+Each line contains an N-gram of 
+words, followed by an integer or fractional count, all separated by whitespace.
+Repeated counts for the same N-gram are added.
+N-grams from N-best lists are added to those read with this option.
+.TP
+.BI \-write-counts " countsfile"
+Writes total N-gram counts to
+.IR countsfile .
+The default is to write to stdout.
+.TP
+.B \-sort
+Output counts in lexicographic order, as required for
+.BR ngram-merge (1).
+.TP
+.BI \-debug " level"
+Set debugging output level.
+Level 0 means no debugging.
+Debugging messages are written to stderr.
+.SH "SEE ALSO"
+ngram(1), ngram-merge(1), ngram-count(1), nbest-scripts(1),
+classes-format(5),
+.br
+A. Stolcke et al., "The SRI March 2000 Hub-5 Conversational Speech
+Transcription System",
+\fIProc. NIST Speech Transcription Workshop\fP, College Park, MD, 2000.
+.SH BUGS
+There is no
+.B \-vocab
+option to limit the vocabulary.
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 2000\-2008 SRI International
