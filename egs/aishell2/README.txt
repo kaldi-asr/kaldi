@@ -1,6 +1,6 @@
 # AISHELL-2
 
-AISHELL-2 is by far the largest open-source speech corpus available for Mandarin ASR research.
+AISHELL-2 is by far the largest free speech corpus available for Mandarin ASR research.
 ## 1. DATA
 ### training data
 * 1000 hours of speech data (around 1 million utterances)
@@ -9,10 +9,10 @@ AISHELL-2 is by far the largest open-source speech corpus available for Mandarin
 * read speech
 * reading prompts from various domain: entertainment, finance, technology, sports, control command, place of interest etc.
 * near field recording via 3 parallel channels(iOS, Android, Microphone).
-* data from iOS channel is open-sourced for research community
+* iOS data is free for non-commercial research and education use (e.g. universities and colleges)
 
 ### evaluation data:
-Currently we open-sourced AISHELL2-2018A-EVAL, containing:
+Currently we release AISHELL2-2018A-EVAL, containing:
 * dev: 2500 utterances from 5 speaker
 * test: 5000 utterances from 10 speakers
 
@@ -26,18 +26,25 @@ Based on Kaldi standard system, AISHELL-2 provides a self-contained Mandarin ASR
 * a word segmentation module, which is a must-have component for Chinese ASR systems
 * an open-sourced Mandarin lexicon(DaCiDian)
 * a simplified GMM training recipe
-* 80-dim FBank without pitch as NN input feature
-* slightly different data augmentation setup(tempo perturbation, max-volume perturbation)
 * acoustic channel adaptation recipe(AM fine-tuning)
-* a real-time streaming ASR demo via laptop microphone (tested on MacOS)
 
 # CONTACT
 AISHELL foundation is a non-profit online organization, with members from speech industry and research institutes.
 
-We hope the corpus and recipes that we open-sourced could be beneficial to the entire speech community.
+We hope AISHELL-2 corpus and recipe could be beneficial to the entire speech community.
 
-Due to the scale of AISHELL-2 (more than 100G data for the open-sourced iOS channel), we have decided to distribute AISHELL-2 via hard-disk delivery.
+Depends on your location and internet speed, we distribute the corpus in two ways:
+* hard-disk delivery
+* cloud-disk downloading
 
-To apply for the AISHELL-2 disk, or you come across any problem with the recipe, contact us via:
+To apply for AISHELL-2 corpus for free, you need to fill in a very simple application form, confirming that:
+* university department / education institute info
+* only for non-commercial research / education use
+
+After comfirmation, AISHELL-foundation will covers all fees (including the corpus, hard-disk cost etc)
+
+Data re-distribution inside your university department is OK for convenience. However, users are not supposed to re-distribute AISHELL-2 to other universities or education institutes.
+
+To get the application form, or you come across any problem with the recipe, contact us via:
 
 aishell.foundation@gmail.com

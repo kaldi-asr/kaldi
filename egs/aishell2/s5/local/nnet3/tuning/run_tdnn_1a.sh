@@ -41,6 +41,9 @@ where "nvcc" is installed.
 EOF
 fi
 
+# we use 40-dim high-resolution mfcc features (w/o pitch and ivector) for nn training
+# no utt- and spk- level cmvn
+
 dir=exp/nnet3/tdnn_sp${affix:+_$affix}
 gmm_dir=exp/tri3
 test_sets="dev test"
@@ -48,13 +51,12 @@ train_set=train
 ali_dir=${gmm_dir}_ali
 graph_dir=$gmm_dir/graph
 
-# we apply only 80-dim fbank feature (without pitch and ivector)
 if [ $stage -le 6 ]; then
-  fbankdir=fbank_hires
+  mfccdir=mfcc_hires
   for datadir in ${train_set} ${test_sets}; do
     utils/copy_data_dir.sh data/${datadir} data/${datadir}_hires
     utils/data/perturb_data_dir_volume.sh data/${datadir}_hires || exit 1;
-    steps/make_fbank.sh --fbank-config conf/fbank.conf --nj $nj data/${datadir}_hires exp/make_fbank/ ${fbankdir}
+    steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj data/${datadir}_hires exp/make_mfcc/ ${mfccdir}
   done
 fi
 
@@ -65,7 +67,7 @@ if [ $stage -le 7 ]; then
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
-  input dim=80 name=input
+  input dim=40 name=input
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable

@@ -11,19 +11,14 @@
 #  utt2spk
 #  text
 #
-# It generates the files which are used for perturbing the speed/tempo of the original data.
-
-perturb_mode=speed  # speed or tempo
+# It generates the files which are used for perturbing the speed of the original data.
 
 . utils/parse_options.sh
 
 if [ $# != 3 ]; then
-  echo "Usage: perturb_data_dir_speed.sh [options] <warping-factor> <srcdir> <destdir>"
+  echo "Usage: perturb_data_dir_speed.sh <warping-factor> <srcdir> <destdir>"
   echo "e.g.:"
   echo " $0 0.9 data/train_si284 data/train_si284p"
-  echo " $0 --perturb-mode tempo 0.9 data/train_si284 data/train_si284p"
-  echo "Options:"
-  echo "  --perturb-mode [speed|tempo] # default=speed"
   exit 1
 fi
 
@@ -79,11 +74,11 @@ if [ -f $srcdir/segments ]; then
         '{printf("%s %s %.2f %.2f\n", $1, $2, $3/factor, $4/factor);}' >$destdir/segments
 
   utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
-    # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename"
-    awk -v factor=$factor -v mode=$perturb_mode \
-        '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - " mode factor " |"}
-          else if (match($0, /:[0-9]+$/)) {print wid " wav-copy" $_ " - | sox -t wav - -t wav - " mode factor " |" }
-          else  {print wid " sox -t wav" $_ " -t wav - " mode factor " |"}}' > $destdir/wav.scp
+    # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename" 
+    awk -v factor=$factor \
+        '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"}
+          else if (match($0, /:[0-9]+$/)) {print wid " wav-copy" $_ " - | sox -t wav - -t wav - speed " factor " |" } 
+          else  {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
   if [ -f $srcdir/reco2file_and_channel ]; then
     utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
   fi
@@ -92,11 +87,11 @@ if [ -f $srcdir/segments ]; then
 else # no segments->wav indexed by utterance.
   if [ -f $srcdir/wav.scp ]; then
     utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
-     # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename"
-     awk -v factor=$factor -v mode=$perturb_mode \
-       '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - " mode factor " |"}
-         else if (match($0, /:[0-9]+$/)) {print wid " wav-copy" $_ " - | sox -t wav - -t wav - " mode factor " |" }
-         else {print wid " sox -t wav" $_ " -t wav - " mode factor " |"}}' > $destdir/wav.scp
+     # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename" 
+     awk -v factor=$factor \
+       '{wid=$1; $1=""; if ($NF=="|") {print wid $_ " sox -t wav - -t wav - speed " factor " |"}
+         else if (match($0, /:[0-9]+$/)) {print wid " wav-copy" $_ " - | sox -t wav - -t wav - speed " factor " |" } 
+         else {print wid " sox -t wav" $_ " -t wav - speed " factor " |"}}' > $destdir/wav.scp
   fi
 fi
 

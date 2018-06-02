@@ -15,29 +15,15 @@ write_reco2vol=     # File to write volume-scales applied to the recordings.
                     # Can be passed to --reco2vol to use the same volumes for 
                     # another data directory. 
                     # e.g. the unperturbed data directory.
-
-perturb_mode=scale  # scale or absvol
-
-# scale perturbation
-# scaling factors between [scale_low, scale_high] are applied to wavs
 scale_low=0.125
 scale_high=2
-
-# absvol perturbation
-# absolute volume of output wavs will be bounded in [abs_low, abs_high]
-abs_low=800
-abs_high=25000
-
-local_seed=1234
 
 . utils/parse_options.sh
 
 if [ $# != 1 ]; then
-  echo "Usage: $0 [options] <datadir>"
+  echo "Usage: $0 <datadir>"
   echo "e.g.:"
   echo " $0 data/train"
-  echo "Options:"
-  echo "  --perturb-mode [absvol|scale] # perturbation via scale(default) or absolute-volume controlling"
   exit 1
 fi
 
@@ -80,19 +66,6 @@ print 'false'
 if $volume_perturb_done; then
   echo "$0: It looks like the data was already volume perturbed.  Not doing anything."
   exit 0
-fi
-
-if [ $perturb_mode == absvol ]; then
-  reco2vol=$data/reco2vol
-  wav-to-volume scp:$data/wav.scp ark,t:- | awk -v awk_seed=${local_seed}  \
-    -v awk_low=${abs_low} -v awk_high=${abs_high}                          \
-    -v awk_out=${reco2vol}                                                 \
-    'BEGIN{ srand(awk_seed); }                                             \
-    {                                                                      \
-      dst_vol=int(rand() * (awk_high - awk_low) + awk_low);                \
-      scale=(dst_vol * 1.0) / ($2 * 1.0);                                  \
-      print $1,scale > awk_out;                                            \
-    }'
 fi
 
 cat $data/wav.scp | utils/data/internal/perturb_volume.py \
