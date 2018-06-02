@@ -97,6 +97,9 @@ class SparseVector {
   SparseVector(MatrixIndexT dim,
                const std::vector<std::pair<MatrixIndexT, Real> > &pairs);
 
+  // constructor from a VectorBase that keeps only the nonzero elements of 'vec'.
+  explicit SparseVector(const VectorBase<Real> &vec);
+
   /// Resizes to this dimension.  resize_type == kUndefined
   /// behaves the same as kSetZero.
   void Resize(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero);
@@ -135,6 +138,12 @@ class SparseMatrix {
 
   Real FrobeniusNorm() const;
 
+
+  /// This constructor creates a SparseMatrix that just contains the nonzero
+  /// elements of 'mat'.
+  explicit SparseMatrix(const MatrixBase<Real> &mat);
+
+  /// Copy to matrix.  It must already have the correct size.
   template <class OtherReal>
   void CopyToMat(MatrixBase<OtherReal> *other,
                  MatrixTransposeType t = kNoTrans) const;
