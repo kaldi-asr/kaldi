@@ -23,6 +23,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/lattice-functions.h"
 
 namespace kaldi {
 
@@ -360,9 +361,11 @@ int main(int argc, char *argv[]) {
           CompactLattice oracle_clat;
           ConvertLattice(lat, &clat);
           fst::Relabel(&clat, wildcards, LabelPairVector());
+          fst::ArcSort(&clat, fst::ILabelCompare<CompactLatticeArc>());
           fst::Compose(oracle_clat_mask, clat, &oracle_clat_mask);
           fst::ShortestPath(oracle_clat_mask, &oracle_clat);
           fst::Project(&oracle_clat, fst::PROJECT_OUTPUT);
+          TopSortCompactLatticeIfNeeded(&oracle_clat);
 
           if (oracle_clat.Start() == fst::kNoStateId) {
             KALDI_WARN << "Failed to find the oracle path in the original "
