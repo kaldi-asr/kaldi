@@ -94,7 +94,7 @@ if [ $stage -le 9 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 input=Append(-1,0,1) dim=1536 $opts
+  relu-batchnorm-layer name=tdnn1 input=Append(-1,0,1) dim=1536
   linear-component name=tdnn1l dim=512 $linear_opts
   
   blocksum-layer name=dfsmn1_blocksum input=Append(-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6) dim=512
