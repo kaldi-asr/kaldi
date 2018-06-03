@@ -241,7 +241,7 @@ if [ $stage -le 15 ]; then
           --extra-right-context-final 0 \
           --frames-per-chunk $frames_per_chunk \
           --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
-          --online-ivector-dir exp/nnet3/ivectors_${data} \
+          --online-ivector-dir exp/nnet3/ivectors_${data}_hires \
           $tree_dir/graph data/${data}_hires ${dir}/decode_${data} || exit 1
     ) || touch $dir/.error &
   done
