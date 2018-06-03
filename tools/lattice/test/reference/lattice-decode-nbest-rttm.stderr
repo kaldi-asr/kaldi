@@ -1,0 +1,3 @@
+reading 5 1-grams
+reading 5 2-grams
+Lattice::expandToLM: starting expansion to general LM (maxNodes = 0) ...

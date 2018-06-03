@@ -1,0 +1,64 @@
+nbest-format(5)                                                nbest-format(5)
+
+
+
+NNAAMMEE
+       nbest-format - File formats for N-best hypotheses lists
+
+DDEESSCCRRIIPPTTIIOONN
+       SRILM currently understands three different formats for lists of N-best
+       hypotheses for rescoring or 1-best hypothesis  extraction.   The  first
+       two  formats originated in the SRI Decipher(TM) recognition system, the
+       third format is particular to SRILM.
+
+       The first format consists of the header
+            NBestList1.0
+       followed by one or more lines of the form
+            (_s_c_o_r_e) _w_1 _w_2 _w_3 ...
+       where _s_c_o_r_e is a composite acoustic/language model score from the  rec-
+       ognizer,  on  the  bytelog  scale.   (A  bytelog is a logarithm to base
+       1.0001, divided by 1024 and rounded to an  integer.)   This  format  is
+       output  by the SRI Decipher(TM) recognizer, by the nnggrraamm --nnbbeesstt, and by
+       nnbbeesstt--llaattttiiccee --wwrriittee--nnbbeesstt --ddeecciipphheerr--nnbbeesstt.
+
+       The second Decipher(TM) format is an extension of the first format that
+       encodes  word-level  scores  and  time  alignments.   It is marked by a
+       header of the form
+            NBestList2.0
+       The hypotheses are in the format
+            (_s_c_o_r_e) _w_1 ( st: _s_t_1 et: _e_t_1 g: _g_1 a: _a_1 ) _w_2 ...
+       where words are followed by start and end  times,  language  model  and
+       acoustic  scores  (bytelog-scaled), respectively.  This format may also
+       contain scores and time  marks  for  sub-word  units  (phones  and  HMM
+       states),  in  the same format as above, but with the _w's denoting phone
+       and state names.  Sub-word units will have time  marks  that  are  con-
+       tained  in  the  duration  of the preceding word units, and may thus be
+       easily identified.
+
+       The third format understood by SRILM lists hypotheses in the format
+            _a_s_c_o_r_e _l_s_c_o_r_e _n_w_o_r_d_s _w_1 _w_2 _w_3 ...
+       where the first three columns contain the acoustic model log  probabil-
+       ity, the language model log probability, and the number of words in the
+       hypothesis string, respectively.  All scores are  logarithms  base  10.
+       (This  format  must  not be preceded by an ``NBestList'' header.)  This
+       format is output by the nnggrraamm --rreessccoorree  and  by  nnbbeesstt--llaattttiiccee  --wwrriittee--
+       nnbbeesstt without the --ddeecciipphheerr--nnbbeesstt option.
+
+SSEEEE AALLSSOO
+       ngram(1),  nbest-lattice(1),  segment-nbest(1), nbest-scripts(1), pfsg-
+       scripts(1).
+
+BBUUGGSS
+       All these formats are somewhat ad hoc and could  use  a  more  rational
+       design.  The ``NBestList1.0'' format is particularly cumbersome because
+       it conflates acoustic and language model scores.
+       A generalization to an arbitrary number of  separate  scores  would  be
+       nice.
+
+AAUUTTHHOORR
+       Manual page written by Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1999-2001 SRI International
+
+
+
+SRILM File Formats       $Date: 2007/12/19 22:08:05 $          nbest-format(5)

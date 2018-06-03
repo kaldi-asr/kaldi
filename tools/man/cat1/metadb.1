@@ -1,0 +1,103 @@
+metadb(1)                                                            metadb(1)
+
+
+
+NNAAMMEE
+       metadb - retrieve configuration information
+
+SSYYNNOOPPSSIISS
+       mmeettaaddbb [ _-_o_p_t_i_o_n_s ...]  _k_e_y [ ... ]
+
+DDEESSCCRRIIPPTTIIOONN
+       mmeettaaddbb  retrieves  string  values associates with keys in configuration
+       files.  The key(s) to be retrieved are  specified  as  arguments.   The
+       configuration   file   is   located  through  the  enviroment  variable
+       MMEETTAADDBB__CCOONNFFIIGG, possibly overridden by the --ccoonnffiigg option.
+
+       Scripts and programs that need to operate on a variety of data or  with
+       different  parameters  should  retrieve  all  variable  information via
+       mmeettaaddbb.
+
+CCOONNFFIIGG FFIILLEE SSYYNNTTAAXX
+       The format of a line in the configuration file is
+            _k_e_y _v_a_l_u_e
+       where _k_e_y is the first word in a line.  Anything starting with the sec-
+       ond  word  is  the  _v_a_l_u_e  associated  with the _k_e_y.  Initial and final
+       whitespace is removed, but otherwise whitespace can be embedded in  the
+       _v_a_l_u_e.   Only the first of multiple lines with the same _k_e_y is signifi-
+       cant for a lookup, unless the --aallll flag was given.
+
+       The special key IINNCCLLUUDDEE is used to perform file inclusions:
+            IINNCCLLUUDDEE /some/other/config/file
+       allowing config files to ``inherit'' from  other  config  files.   Note
+       that  key-value pairs preceding an inclusion override any identical key
+       in the included file.
+
+       The AALLIIAASS keyword redirects a lookup for one key _k_e_y_1 by another lookup
+       for _k_e_y_2:
+            AALLIIAASS _k_e_y_1 _k_e_y_2
+
+       The  AALLIIAASS__SSUUFFFFIIXX  keyword  redirects  a lookup for any key with suffix
+       _s_u_f_f_i_x_1 to another lookup with the suffix replaced by _s_u_f_f_i_x_2:
+            AALLIIAASS__SSUUFFFFIIXX _s_u_f_f_i_x_1 _s_u_f_f_i_x_2
+       This is a convenient way to apply a string mapping to an entire  family
+       of  keys.   To  avoid  infinite  recursions and ambiguities in matching
+       keys, the prefix of the key that is matched by _s_u_f_f_i_x_1 must no  contain
+       any underscore characters.
+
+       Lines  containing  only  whitespace  or  starting with a pound sign are
+       ignored:
+            # this is a comment
+
+       There is also a primitive macro facility:
+            DDEEFFIINNEE _s_t_r_i_n_g _s_t_r_i_n_g_2
+       causes _s_t_r_i_n_g to be replaced by _s_t_r_i_n_g_2 in the output.
+            SSDDEEFFIINNEE _s_t_r_i_n_g _c_o_m_a_n_d _a_r_g_1 _a_r_g_2 ...
+       defines _s_t_r_i_n_g as a macro expanding to the first line of output of _c_o_m_-
+       _m_a_n_d.  This also allows ``importing'' environment variables:
+            SSDDEEFFIINNEE MACHINE_TYPE printenv MACHINE_TYPE
+       (but  note  the expansion of macros inside the config file does not use
+       dollar signs).
+       The directive
+            MMDDEEFFIINNEE _s_t_r_i_n_g _k_e_y
+       defines _s_t_r_i_n_g as a macro expanding to the result  of  looking  up  _k_e_y
+       using  mmeettaaddbb  itself  in  the current configuration file.  This allows
+       piecing together of strings from various key values,  and  other  back-
+       handed uses.
+            UUNNDDEEFF _s_t_r_i_n_g
+       undoes the definition of _s_t_r_i_n_g.
+
+       Macros  are  expanded in key values, include filenames, and the defini-
+       tions of other macros (at the time of definition).
+
+OOPPTTIIOONNSS
+       --ccoonnffiigg _f_i_l_e
+              Use _f_i_l_e as the configuration file, instead of $$MMEETTAADDBB__CCOONNFFIIGG.
+
+       --aallll   Return all key values, instead of the first value.  This  allows
+              using multiple instances of a key to construct lists of strings.
+
+       --dduummpp  Output  all  key-value  pairs found in the config file (prior to
+              any values indexed by command line arguments).
+
+       --iinncclluuddeess
+              Trace the names of INCLUDEd files.
+
+       --ee     Print an error message and exit with error status if a requested
+              key value is undefined or empty.
+
+       --qq     Check for the presence of a key and do not output key values.  A
+              program exit status of 0 (``true'' to the shell) indicates  that
+              at  least  one of the keys is present in the configuration file.
+              Otherwise, a status of 1 (``false'' to the shell) is returned.
+
+BBUUGGSS
+       Probably.
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1999-2011 SRI International
+
+
+
+SRILM Tools              $Date: 2011/11/26 06:11:24 $                metadb(1)

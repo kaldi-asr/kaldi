@@ -1,0 +1,12 @@
+#!/bin/sed -f
+#
+# $Header: /home/srilm/CVS/srilm/sbin/stringify-copyright,v 1.1 2004/12/03 20:33:46 stolcke Exp $:
+#
+1i\
+#define SRILM_COPYRIGHT "\\n\\
+s,hese files are,his software is,
+s,hese files,his software,
+s,",\\",g
+s,.*,&\\n\\,
+$a\
+"

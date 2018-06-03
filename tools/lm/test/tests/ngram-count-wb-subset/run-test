@@ -1,0 +1,30 @@
+#!/bin/sh
+
+smooth="-wbdiscount1 -wbdiscount2 -wbdiscount3"
+
+dir=../ngram-count-gt
+
+if [ -f $dir/swbd.3grams.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+# extract ngram context from test set
+ngram-count -order 2 -text $dir/eval97.text -sort -write test.contexts
+
+# create LM from counts subset
+gunzip -cf $dir/swbd.3grams$gz | \
+subset-context-ngrams contexts=test.contexts | \
+ngram-count -debug 1 \
+	$smooth \
+	-read - \
+	-vocab $dir/eval2001.vocab \
+	-lm swbd.3bo$gz
+
+ngram -debug 0 \
+	-lm swbd.3bo$gz \
+	-ppl $dir/eval97.text
+
+rm -f swbd.3bo$gz test.contexts
+

@@ -1,0 +1,558 @@
+SRILM-FAQ(1)                                                      SRILM-FAQ(1)
+
+
+
+NNAAMMEE
+       SRILM-FAQ - Frequently asked questions about SRI LM tools
+
+SSYYNNOOPPSSIISS
+       man srilm-faq
+
+DDEESSCCRRIIPPTTIIOONN
+       This  document  tries to answer some of the most frequently asked ques-
+       tions about SRILM.
+
+   BBuuiilldd iissssuueess
+       AA11)) II rraann ````mmaakkee WWoorrlldd'''' bbuutt tthhee $$SSRRIILLMM//bbiinn//$$MMAACCHHIINNEE__TTYYPPEE ddiirreeccttoorryy  iiss
+       eemmppttyy..
+           Building the binaries can fail for a variety of reasons.  Check the
+           following:
+
+           a)     Make sure the SRILM environment variable is set,  or  speci-
+                  fied on the make command line, e.g.:
+                       make SRILM=$PWD
+
+           b)     Make  sure  the  $$SSRRIILLMM//ssbbiinn//mmaacchhiinnee--ttyyppee  script  returns a
+                  valid string for the platform you are trying  to  build  on.
+                  Known platforms have machine-specific makefiles called
+                       $SRILM/common/Makefile.machine.$MACHINE_TYPE
+                  If mmaacchhiinnee--ttyyppee does not work for some reason, you can over-
+                  ride its output on the command line:
+                       make MACHINE_TYPE=xyz
+                  If you are building for an unsupported platform create a new
+                  machine-specific    makefile    and   mail   it   to   stol-
+                  cke@speech.sri.com.
+
+           c)     Make sure your compiler works and is invoked correctly.  You
+                  will  probably  have to edit the CCCC and CCXXXX variables in the
+                  platform-specific makefile.  If  you  have  questions  about
+                  compiler invocation and best options consult a local expert;
+                  these things differ widely between sites.
+
+           d)     The default is to compile with Tcl support.  This is in fact
+                  only  used for some testing binaries (which are not built by
+                  default), so it can be turned off if Tcl is not available or
+                  presents   problems.   Edit  the  machine-specific  makefile
+                  accordingly.  To use Tcl, locate the ttccll..hh header  file  and
+                  the library itself, and set (for example)
+                       TCL_INCLUDE = -I/path/to/include
+                       TCL_LIBRARY = -L/path/to/lib -ltcl8.4
+                  To disable Tcl support set
+                       NO_TCL = X
+                       TCL_INCLUDE =
+                       TCL_LIBRARY =
+
+           e)     Make  sure you have the C-shell (/bin/csh) installed on your
+                  system.  Otherwise you will see something like
+                       make: /sbin/machine-type: Command not found
+                  early in the build process.  On Ubuntu Linux and Cygwin sys-
+                  tems  "csh"  or  "tcsh" needs to be installed as an optional
+                  package.
+
+           f)     If you cannot get SRILM to build, save the make output to  a
+                  file
+                       make World >& make.output
+                  and  look for messages indicating errors.  If you still can-
+                  not figure out what the problem is, send the  error  message
+                  and  immediately  preceding  lines  to  the srilm-user list.
+                  Also include information about your operating system ("uname
+                  -a" output) and compiler version ("gcc -v" or equivalent for
+                  other compilers).
+
+       AA22)) TThhee rreeggrreessssiioonn tteesstt oouuttppuuttss ddiiffffeerr ffoorr aallll tteessttss..  WWhhaatt  ddiidd  II  ddoo
+       wwrroonngg??
+           Most  likely the binaries didn't get built or aren't executable for
+           some reason.  Check issue A1).
+
+       AA33)) II ggeett ddiiffffeerriinngg oouuttppuuttss ffoorr ssoommee ooff tthhee rreeggrreessssiioonn tteessttss..  IIss  tthhaatt
+       OOKK??
+           It  might  be.  The comparison of reference to actual output allows
+           for small numerical differences, but some of  the  algorithms  make
+           hard decisions based on floating-point computations that can result
+           in different outputs as a result of  different  compiler  optimiza-
+           tions,  machine  floating  point precisions (Intel versus IEEE for-
+           mat), and math libraries.  Test of this nature include nnggrraamm--ccllaassss,
+           ddiissaammbbiigg, and nnbbeesstt--rroovveerr.  When encountering differences, diff the
+           output in the $SRILM/test/outputs/_T_E_S_T.$MACHINE_TYPE.stdout file to
+           the  corresponding $SRILM/test/reference/_T_E_S_T.stdout, where _T_E_S_T is
+           the name of the test that failed.  Also compare  the  corresponding
+           .stderr  files; differences there usually indicate operating-system
+           related problems.
+
+   LLaarrggee ddaattaa aanndd mmeemmoorryy iissssuueess
+       BB11)) II''mm ggeettttiinngg aa mmeessssaaggee ssaayyiinngg ````AAsssseerrttiioonn ``bbooddyy !!== 00'' ffaaiilleedd..''''
+           You are running out of memory.  See subsequent questions  depending
+           on what you are trying to do.
+
+       Note:
+           The  above message means you are running out of "virtual" memory on
+           your computer, which could be because  of  limits  in  swap  space,
+           administrative  resource  limits,  or  limitations  of  the machine
+           architecture (a 32-bit machine cannot address more than 4GB no mat-
+           ter  how  many  resources your system has).  Another symptom of not
+           enough memory is that your program runs,  but  very,  very  slowly,
+           i.e.,  it  is "paging" or "swapping" as it tries to use more memory
+           than the machine has RAM installed.
+
+       BB22)) II aamm ttrryyiinngg ttoo ccoouunntt NN--ggrraammss iinn aa tteexxtt ffiillee aanndd rruunnnniinngg oouutt ooff mmeemm--
+       oorryy..
+           Don't  use nnggrraamm--ccoouunntt directly to count N-grams.  Instead, use the
+           mmaakkee--bbaattcchh--ccoouunnttss  and  mmeerrggee--bbaattcchh--ccoouunnttss  scripts  described   in
+           ttrraaiinniinngg--ssccrriippttss(1).  That way you can create N-gram counts limited
+           only by the maximum file size on your system.
+
+       BB33)) II aamm ttrryyiinngg ttoo bbuuiilldd aann NN--ggrraamm LLMM aanndd nnggrraamm--ccoouunntt rruunnss oouutt ooff  mmeemm--
+       oorryy..
+           You  are  running out of memory either because of the size of ngram
+           counts, or of the LM being built. The following are strategies  for
+           reducing the memory requirements for training LMs.
+
+           a)     Assuming  you  are using Good-Turing or Kneser-Ney discount-
+                  ing, don't use nnggrraamm--ccoouunntt in "raw" form.  Instead, use  the
+                  mmaakkee--bbiigg--llmm   wrapper  script  described  in  the  ttrraaiinniinngg--
+                  ssccrriippttss(1) man page.
+
+           b)     Switch to using the "_c" or "_s" versions of the  SRI  bina-
+                  ries.   For  instructions  on  how  to  build  them, see the
+                  INSTALL file.  Once built, set your executable  search  path
+                  accordingly, and try mmaakkee--bbiigg--llmm again.
+
+           c)     Raise  the  minimum  counts  for N-grams included in the LM,
+                  i.e., the values of the options --ggtt22mmiinn,  --ggtt33mmiinn,  --ggtt44mmiinn,
+                  etc.   The higher order N-grams typically get higher minimum
+                  counts.
+
+           d)     Get a machine with more memory.  If you are hitting the lim-
+                  itations  of  a  32-bit  machine  architecture, get a 64-bit
+                  machine  and  recompile  SRILM  to  take  advantage  of  the
+                  expanded  address space.  (The MACHINE_TYPE=i686-m64 setting
+                  is for systems based on 64-bit AMD processors,  as  well  as
+                  recent  compatibles  from Intel.)  Note that 64-bit pointers
+                  will require a memory overhead in themselves,  so  you  will
+                  need  a  machine with significantly, not just a little, more
+                  memory than 4GB.
+
+       BB44)) II aamm ttrryyiinngg ttoo aappppllyy aa llaarrggee LLMM ttoo ssoommee ddaattaa aanndd aamm rruunnnniinngg oouutt  ooff
+       mmeemmoorryy..
+           Again, there are several strategies to reduce memory requirements.
+
+           a)     Use  the "_c" or "_s" versions of the SRI binaries.  See 3b)
+                  above.
+
+           b)     Precompute the vocabulary of your  test  data  and  use  the
+                  nnggrraamm --lliimmiitt--vvooccaabb option to load only the N-gram parameters
+                  relevant to your data.  This approach should  allow  you  to
+                  use  arbitrarily large LMs provided the data is divided into
+                  small enough chunks.
+
+           c)     If the LM can be built on a large machine, but then is to be
+                  used  on  machines  with limited memory, use nnggrraamm --pprruunnee to
+                  remove the less important parameters  of  the  model.   This
+                  usually  gives  huge  size reductions with relatively modest
+                  performance degradation.   The  tradeoff  is  adjustable  by
+                  varying the pruning parameter.
+
+       BB55)) HHooww ccaann II rreedduuccee tthhee ttiimmee iitt ttaakkeess ttoo llooaadd llaarrggee LLMMss iinnttoo mmeemmoorryy??
+           The  techniques described in 4b) and 4c) above also reduce the load
+           time of the LM.  Additional steps to try are:
+
+           a)     Convert the LM into binary format, using
+                            ngram -order _N -lm _O_L_D_L_M -write-bin-lm _N_E_W_L_M
+                  (This is currently only  supported  for  N-gram-based  LMs.)
+                  You  can  also  generate  the  LM directly in binary format,
+                  using
+                            ngram-count ... -lm _N_E_W_L_M -write-binary-lm
+                  The resulting _N_E_W_L_M file (which should  not  be  compressed)
+                  can  be used in place of a textual LM file with all compiled
+                  SRILM tools (but not with  llmm--ssccrriippttss(1)).   The  format  is
+                  machine-independent,  i.e.,  it can be read on machines with
+                  different word sizes or byte-order.  Loading binary  LMs  is
+                  faster  because  (1)  it reduces the overhead of parsing the
+                  input data, and (2) in combination  with  --lliimmiitt--vvooccaabb  (see
+                  4b)  it  is  much faster to skip sections of the LM that are
+                  out-of-vocabulary.
+
+           Note:  There is also a binary format for N-gram counts.  It can  be
+                  generated using
+                            ngram-count -write-binary _C_O_U_N_T_S
+                  and has similar advantages as binary LM files.
+
+           b)     Start  a  "probability  server"  that  loads the LM ahead of
+                  time, and then have "LM clients" query the server instead of
+                  computing the probabilities themselves.
+                  The server is started on a machine named _H_O_S_T using
+                            ngram _L_M_O_P_T_I_O_N_S -server-port _P &
+                  where  _P is an integer < 2^16 that specifies the TCP/IP port
+                  number the server will listen on, and _L_M_O_P_T_I_O_N_S are whatever
+                  options necessary to define the LM to be used.
+                  One or more clients (programs such as nnggrraamm(1), ddiissaammbbiigg(1),
+                  llaattttiiccee--ttooooll(1)) can then query the server using the options
+                            -use-server _P@_H_O_S_T -cache-served-ngrams
+                  instead of the usual "-lm _F_I_L_E".   The  --ccaacchhee--sseerrvveedd--nnggrraammss
+                  option  is not required but often speeds up performance dra-
+                  matically by saving the results of  server  lookups  in  the
+                  client  for  reuse.   Server-based  LMs may be combined with
+                  file-based LMs by interpolation; see nnggrraamm(1) for details.
+
+       BB66)) HHooww ccaann II uussee tthhee GGooooggllee WWeebb NN--ggrraamm ccoorrppuuss ttoo bbuuiilldd aann LLMM??
+           Google has made a corpus of 5-grams extracted from 1 tera-words  of
+           web  data  available  via  LDC.   However, the data is too large to
+           build  a  standard  backoff  N-gram,  even  using  the   techniques
+           described above.  Instead, we recommend a "count-based" LM smoothed
+           with deleted interpolation.  Such an LM computes  probabilities  on
+           the  fly  from  the  counts, of which only the subsets needed for a
+           given test set need to be loaded into memory.  LM construction pro-
+           ceeds in the following steps:
+
+           a)     Make  sure  you  have built SRI binaries either for a 64-bit
+                  machine (e.g.,  MACHINE_TYPE=i686-m64  OPTION=_c)  or  using
+                  64-bit  counts  (OPTION=_l).   This is necessary because the
+                  data contains N-gram counts exceeding the  range  of  32-bit
+                  integers.   Be  sure  to invoke all commands below using the
+                  path to the appropriate binary executable directory.
+
+           b)     Prepare mapping file for some vocabulary mismatches and call
+                  this ggooooggllee..aalliiaasseess:
+                       <S> <s>
+                       </S> </s>
+                       <UNK> <unk>
+
+           c)     Prepare an initial count-LM parameter file ggooooggllee..ccoouunnttllmm..00:
+                       order 5
+                       vocabsize 13588391
+                       totalcount 1024908267229
+                       countmodulus 40
+                       mixweights 15
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                        0.5 0.5 0.5 0.5 0.5
+                       google-counts _P_A_T_H
+                  where  _P_A_T_H  points  to  the location of the Google N-grams,
+                  i.e.,  the  directory  containing   subdirectories   "1gms",
+                  "2gms",  etc.   Note  that the vvooccaabbssiizzee and ttoottaallccoouunntt were
+                  obtained  from  the  1gms/vocab.gz  and  1gms/total   files,
+                  respectively.  (Check that they match and modify as needed.)
+                  For an  explanation  of  the  parameters  see  the  nnggrraamm(1)
+                  --ccoouunntt--llmm option.
+
+           d)     Prepare a text file ttuunnee..tteexxtt containing data for estimating
+                  the mixture weights.  This data should be representative of,
+                  but  different  from your test data.  Compute the vocabulary
+                  of this data using
+                       ngram-count -text tune.text -write-vocab tune.vocab
+                  The vocabulary size should not exceed a few thousand to keep
+                  memory requirements in the following steps manageable.
+
+           e)     Estimate the mixture weights:
+                       ngram-count -debug 1 -order 5 -count-lm  \
+                            -text tune.text -vocab tune.vocab \
+                            -vocab-aliases google.aliases \
+                            -limit-vocab \
+                            -init-lm google.countlm.0 \
+                            -em-iters 100 \
+                            -lm google.countlm
+                  This  will  write  the  estimated LM to ggooooggllee..ccoouunnttllmm.  The
+                  output will be identical to the initial LM file, except  for
+                  the updated interpolation weights.
+
+           f)     Prepare  a  test  data  file  tteesstt..tteexxtt,  and its vocabulary
+                  tteesstt..vvooccaabb as in Step d) above.  Then apply the  LM  to  the
+                  test data:
+                       ngram -debug 2 -order 5 -count-lm \
+                            -lm google.countlm \
+                            -vocab test.vocab \
+                            -vocab-aliases google.aliases \
+                            -limit-vocab \
+                            -ppl test.text > test.ppl
+                  The perplexity output will appear in tteesstt..ppppll..
+
+           g)     Note  that  the  Google  data uses mixed case spellings.  To
+                  apply the LM to lowercase data one needs to prepare  a  much
+                  more  extensive  vocabulary  mapping  table  for the --vvooccaabb--
+                  aalliiaasseess option, namely, one that maps all upper- and  mixed-
+                  case  spellings  to  lowercase  strings.   This mapping file
+                  should be restricted to the words appearing in ttuunnee..tteexxtt and
+                  tteesstt..tteexxtt,  respectively,  to  avoid defeating the effect of
+                  --lliimmiitt--vvooccaabb ..
+
+   SSmmooootthhiinngg iissssuueess
+       CC11)) WWhhaatt iiss ssmmooootthhiinngg aanndd ddiissccoouunnttiinngg aallll aabboouutt??
+           _S_m_o_o_t_h_i_n_g refers to methods that assign probabilities to events (N-
+           grams) that do not occur in the training data.  According to a pure
+           maximum-likelihood estimator these events  would  have  probability
+           zero, which is plainly wrong since previously unseen events in gen-
+           eral do occur in independent test data.   Because  the  probability
+           mass  is  redistributed away from the seen events toward the unseen
+           events the resulting model is "smoother" (closer to  uniform)  than
+           the  ML  model.   _D_i_s_c_o_u_n_t_i_n_g  refers  to the approach used by many
+           smoothing methods of adjusting the empirical counts of seen  events
+           downwards.   The  ML  estimator  (count  divided by total number of
+           events) is then applied to the discounted  count,  resulting  in  a
+           smoother estimate.
+
+       CC22)) WWhhaatt ssmmooootthhiinngg mmeetthhooddss aarree tthheerree??
+           There  are many, and SRILM implements are fairly large selection of
+           the most popular ones.  A detailed discussion of these is found  in
+           a separate document, nnggrraamm--ddiissccoouunntt(7).
+
+       CC33))  WWhhyy  aamm II ggeettttiinngg eerrrroorrss oorr wwaarrnniinnggss ffrroomm tthhee ssmmooootthhiinngg mmeetthhoodd II''mm
+       uussiinngg??
+           The Good-Turing and Kneser-Ney smoothing methods rely on statistics
+           called "count-of-counts", the number of words occurring one, twice,
+           three times, etc.  The formulae for these methods become  undefined
+           if the counts-of-counts are zero, or not strictly decreasing.  Some
+           conditions are fatal (such as when the count of singleton words  is
+           zero),  others  lead  to  less  smoothing (and warnings).  To avoid
+           these problems, check for the following possibilities:
+
+           a)     The data could be very sparse,  i.e.,  the  training  corpus
+                  very small.  Try using the Witten-Bell discounting method.
+
+           b)     The vocabulary could be very small, such as when training an
+                  LM based on characters  or  parts-of-speech.   Smoothing  is
+                  less  of an issue in those cases, and the Witten-Bell method
+                  should work well.
+
+           c)     The data was manipulated in some way, or artificially gener-
+                  ated.  For example, duplicating data eliminates the odd-num-
+                  bered counts-of-counts.
+
+           d)     The vocabulary is limited during counts collection using the
+                  nnggrraamm--ccoouunntt  --vvooccaabb  option,  with the effect that many low-
+                  frequency N-grams are eliminated.  The proper approach is to
+                  compute  smoothing  parameters on the full vocabulary.  This
+                  happens automatically in  the  mmaakkee--bbiigg--llmm  wrapper  script,
+                  which  is  preferable to direct use of nnggrraamm--ccoouunntt for other
+                  reasons (see issue B3-a above).
+
+           e)     You are estimating an LM from N-gram counts that  have  been
+                  truncated  beforehand,  e.g.,  by removing singleton events.
+                  If you cannot go back to the original data and recompute the
+                  counts  there  is  a heuristic to extrapolate low counts-of-
+                  counts from higher ones.  The heuristic is invoked automati-
+                  cally  (and  an  informational message is output) when mmaakkee--
+                  bbiigg--llmm is used to estimate LMs  with  Kneser-Ney  smoothing.
+                  For  details  see  the paper by W. Wang et al. in ASRU-2007,
+                  listed under "SEE ALSO".
+
+       CC44)) HHooww ddooeess ddiissccoouunnttiinngg wwoorrkk iinn tthhee ccaassee ooff uunniiggrraammss??
+           First, unigrams are discounted using the  same  method  as  higher-
+           order  N-grams,  using  the specified method.  The probability mass
+           freed up in this way is then either spread  evenly  over  all  word
+           types  that  would  otherwise have zero probability (this is essen-
+           tially simulating a backoff to  zero-grams),  or  if  all  unigrams
+           already have non-zero probabilities, the left-over mass is added to
+           _a_l_l unigrams.  In either case all unigram probabilty  probabilities
+           will sum to 1.  An informational message from nnggrraamm--ccoouunntt will tell
+           which case applies.
+
+   OOuutt--ooff--vvooccaabbuullaarryy,, zzeerroopprroobb,, aanndd ``uunnkknnoowwnn'' wwoorrddss
+       DD11)) WWhhaatt iiss tthhee ppeerrpplleexxiittyy ooff aann OOOOVV ((oouutt ooff vvooccaabbuullaarryy)) wwoorrdd??
+           By default any word not observed in the training data is considered
+           OOV  and OOV words are silently ignored by the nnggrraamm(1) during per-
+           plexity (ppl) calculation.  For example:
+
+                $ ngram-count -text turkish.train -lm turkish.lm
+                $ ngram -lm turkish.lm -ppl turkish.test
+                file turkish.test: 61031 sentences, 1000015 words, 34153 OOVs
+                0 zeroprobs, logprob= -3.20177e+06 ppl= 1311.97 ppl1= 2065.09
+
+           The statistics printed in the last two  lines  have  the  following
+           meanings:
+
+           3344115533 OOOOVVss
+                  This  is the number of unknown word tokens, i.e. tokens that
+                  appear in ttuurrkkiisshh..tteesstt but not in ttuurrkkiisshh..ttrraaiinn  from  which
+                  ttuurrkkiisshh..llmm was generated.
+
+           llooggpprroobb== --33..2200117777ee++0066
+                  This  gives  us the total logprob ignoring the 34153 unknown
+                  word tokens.  The logprob  does  include  the  probabilities
+                  assigned  to  </s>  tokens  which  are  introduced by nnggrraamm--
+                  ccoouunntt(1).  Thus the total number of tokens which  this  log-
+                  prob is based on is
+                       words - OOVs + sentences = 1000015 - 34153 + 61031
+
+           ppppll == 11331111..9977
+                  This gives us the geometric average of 1/probability of each
+                  token, i.e., perplexity.  The exact expression is:
+                       ppl = 10^(-logprob / (words - OOVs + sentences))
+
+           ppppll11 == 22006655..0099
+                  This gives us the average perplexity per word excluding  the
+                  </s> tokens.  The exact expression is:
+                       ppl1 = 10^(-logprob / (words - OOVs))
+       You  can  verify  these  numbers  by running the nnggrraamm program with the
+       --ddeebbuugg 22 option, which gives the probability assigned to each token.
+
+       DD22)) WWhhaatt hhaappppeennss wwhheenn tthhee OOOOVV wwoorrdd iiss iinn tthhee ccoonntteexxtt ooff aann NN--ggrraamm??
+           Exact details depend on the discounting algorithm used,  but  typi-
+           cally the backed-off probability from a lower order N-gram is used.
+           If the --uunnkk option is used as explained below, an  <unk>  token  is
+           assumed  to  take  the place of the OOV word and no back-off may be
+           necessary if a corresponding N-gram containing <unk>  is  found  in
+           the LM.
+
+       DD33)) IIssnn''tt iitt wwrroonngg ttoo aassssiiggnn 00 llooggpprroobb ttoo OOOOVV wwoorrddss??
+           That  depends  on  the  application.  If you are comparing multiple
+           language models which all consider the same set of words as OOV  it
+           may  be  OK  to ignore OOV words.  Note that perplexity comparisons
+           are only ever meaningful if the vocabularies of  all  LMs  are  the
+           same.   Therefore,  to compare LMs with different sets of OOV words
+           (such as when using different tokenization strategies  for  morpho-
+           logically complex languages) then it becomes important to take into
+           account the true cost of the OOV words,  or  to  model  all  words,
+           including OOVs.
+
+       DD44)) HHooww ddoo II ttaakkee iinnttoo aaccccoouunntt tthhee ttrruuee ccoosstt ooff tthhee OOOOVV wwoorrddss??
+           A  simple  strategy is to "explode" the OOV words, i.e., split them
+           into characters in the training and  test  data.   Typically  words
+           that  appear  more than once in the training data are considered to
+           be vocabulary words.  All other words are split into their  charac-
+           ters and the individual characters are considered tokens.  Assuming
+           that all characters occur at least once in the training data  there
+           will  be  no  OOV tokens in the test data.  Note that this strategy
+           changes the number of tokens in the data set, so even  though  log-
+           prob is meaningful be careful when reporting ppl results.
+
+       DD55)) WWhhaatt iiff II wwaanntt ttoo mmooddeell tthhee OOOOVV wwoorrddss eexxpplliicciittllyy??
+           Maybe  a  better  strategy is to have a separate "letter" model for
+           OOV words.  This can be easily  created  using  SRILM  by  using  a
+           training file listing the OOV words one per line with their charac-
+           ters separated by spaces.  The nnggrraamm--ccoouunntt options --uukknnddiissccoouunntt and
+           --oorrddeerr  77  seem  to  work well for this purpose.  The final logprob
+           results are obtained in two steps.  First do regular  training  and
+           testing  on your data using --vvooccaabb and --uunnkk options.  The resulting
+           logprob will include the cost of the vocabulary words and an  <unk>
+           token  for  each OOV word.  Then apply the letter model to each OOV
+           word in the test set.  Add the logprobs.  Here is an example:
+
+                # Determine vocabulary:
+                ngram-count -text turkish.train -write-order 1 -write turkish.train.1cnt
+                awk '$2>1'  turkish.train.1cnt | cut -f1 | sort > turkish.train.vocab
+                awk '$2==1' turkish.train.1cnt | cut -f1 | sort > turkish.train.oov
+
+                # Word model:
+                ngram-count -kndiscount -interpolate -order 4 -vocab turkish.train.vocab -unk -text turkish.train -lm turkish.train.model
+                ngram -order 4 -unk -lm turkish.train.model -ppl turkish.test > turkish.test.ppl
+
+                # Letter model:
+                perl -C -lne 'print join(" ", split(""))' turkish.train.oov > turkish.train.oov.split
+                ngram-count -ukndiscount -interpolate -order 7 -text turkish.train.oov.split -lm turkish.train.oov.model
+                perl -pe 's/\s+/\n/g' turkish.test | sort > turkish.test.words
+                comm -23 turkish.test.words turkish.train.vocab > turkish.test.oov
+                perl -C -lne 'print join(" ", split(""))' turkish.test.oov > turkish.test.oov.split
+                ngram -order 7 -ppl turkish.test.oov.split -lm turkish.train.oov.model > turkish.test.oov.ppl
+
+                # Add the logprobs in turkish.test.ppl and turkish.test.oov.ppl.
+
+           Again, perplexities are not  directly  meaningful  as  computed  by
+           SRILM,  but  you can recompute them by hand using the combined log-
+           prob value, and the number of original word tokens in the test set.
+
+       DD66)) WWhhaatt aarree zzeerroopprroobb wwoorrddss aanndd wwhheenn ddoo tthheeyy ooccccuurr??
+           In-vocabulary words that get zero probability are counted as "zero-
+           probs"  in  the  ppl  output.  Just as OOV words, they are excluded
+           from the perplexity  computation  since  otherwise  the  perplexity
+           value  would  be  infinity.   There are three reasons why zeroprobs
+           could occur in a closed vocabulary setting (the default for SRILM):
+
+           a)     If the same vocabulary is used at test time as was used dur-
+                  ing  training, and smoothing is enabled, then the occurrence
+                  of zeroprobs indicates an anomalous condition and, possibly,
+                  a broken language model.
+
+           b)     If  smoothing  has  been disabled (e.g., by using the option
+                  --ccddiissccoouunntt 00), then the LM will use maximum likelihood esti-
+                  mates  for the N-grams and then any unseen N-gram is a zero-
+                  prob.
+
+           c)     If a different vocabulary file is  specified  at  test  time
+                  than  the  one used in training, then the definition of what
+                  counts as an OOV will change.  In particular,  a  word  that
+                  wasn't seen in the training data (but is in the test vocabu-
+                  lary) will _n_o_t be mapped to <<uunnkk>> and, therefore, not  count
+                  as  an  OOV in the perplexity computation.  However, it will
+                  still get zero probability and, therefore, be tallied  as  a
+                  zeroprob.
+
+       DD77)) WWhhaatt iiss tthhee ppooiinntt ooff uussiinngg tthhee <<uunnkk>> ttookkeenn??
+           Using  <<uunnkk>>  is  a practical convenience employed by SRILM.  Words
+           not in the specified vocabulary  are  mapped  to  <<uunnkk>>,  which  is
+           equivalent  to performing the same mapping in a data pre-processing
+           step outside of SRILM.  Other than that, for both LM estimation and
+           evaluation  purposes,  <<uunnkk>>  is  treated like any other word.  (In
+           particular, in the computation of discounted probabilities there is
+           no special handling of <<uunnkk>>.)
+
+       DD88)) SSoo hhooww ddoo II ttrraaiinn aann ooppeenn--vvooccaabbuullaarryy LLMM wwiitthh <<uunnkk>>??
+           First,  make  sure to use the nnggrraamm--ccoouunntt --uunnkk option, which simply
+           indicates that the <<uunnkk>> word should be included in the LM  vocabu-
+           lary,  as required for an open-vocabulary LM.  Without this option,
+           N-grams containing <<uunnkk>>  would  simply  be  discarded.   An  "open
+           vocabulary" LM is simply one that contains <<uunnkk>>, and can therefore
+           (by virtue of the mapping of OOVs to <<uunnkk>>) assign a non-zero prob-
+           ability  to  them.  Next, we need to ensure there are actual occur-
+           rences of <<uunnkk>> N-grams in the training data so we can obtain mean-
+           ingful  probability  estimates for them (otherwise <<uunnkk>> would only
+           get probabilty via unigram discounting, see item  C4).   To  get  a
+           proper  estimate  of  the  <<uunnkk>> probability, we need to explicitly
+           specify a vocabulary that is not a superset of the  training  data.
+           One way to do that is to extract the vocabulary from an independent
+           data set, or by  only  including  words  with  some  minimum  count
+           (greater than 1) in the training data.
+
+       DD99)) DDooeessnn''tt nnggrraamm--ccoouunntt --aaddddssmmooootthh ddeeaall wwiitthh OOOOVV wwoorrddss bbyy aaddddiinngg aa ccoonn--
+       ssttaanntt ttoo ooccccuurrrreennccee ccoouunnttss??
+           No, all smoothing is applied when building the LM at training time,
+           so  it  must use the <<uunnkk>> mechanism to assign probability to words
+           that are first seen in the test data.  Furthermore,  even  add-con-
+           stant  smoothing requires a fixed, finite vocabulary to compute the
+           denominator of its estimator.
+
+SSEEEE AALLSSOO
+       ngram(1), ngram-count(1), training-scripts(1), ngram-discount(7).
+       $SRILM/INSTALL
+       http://www.speech.sri.com/projects/srilm/mail-archive/srilm-user/
+       http://www.ldc.upenn.edu/Catalog/CatalogEntry.jsp?catalogId=LDC2006T13
+       W. Wang, A. Stolcke, & J. Zheng, Reranking Machine Translation Hypothe-
+       ses With Structured and Web-based Language Models. Proc. IEEE Automatic
+       Speech Recognition and  Understanding  Workshop,  pp.  159-164,  Kyoto,
+       2007.                        http://www.speech.sri.com/cgi-bin/run-dis-
+       till?papers/asru2007-mt-lm.ps.gz
+
+BBUUGGSS
+       This document is work in progress.
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>
+       Deniz Yuret <dyuret@ku.edu.tr>
+       Nitin Madnani <nmadnani@umiacs.umd.edu>
+       Copyright 2007-2010 SRI International
+
+
+
+SRILM Miscellaneous      $Date: 2014-01-07 00:10:10 $             SRILM-FAQ(1)

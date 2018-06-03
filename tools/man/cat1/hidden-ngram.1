@@ -1,0 +1,307 @@
+hidden-ngram(1)                                                hidden-ngram(1)
+
+
+
+NNAAMMEE
+       hidden-ngram - tag hidden events between words
+
+SSYYNNOOPPSSIISS
+       hhiiddddeenn--nnggrraamm [ --hheellpp ] _o_p_t_i_o_n ...
+
+DDEESSCCRRIIPPTTIIOONN
+       hhiiddddeenn--nnggrraamm  tags a stream of word tokens with hidden events occurring
+       between words.  For example, an unsegmented text could  be  tagged  for
+       sentence  boundaries  (the  hidden events in this case being `boundary'
+       and `no-boundary').  The most likely  hidden  tag  sequence  consistent
+       with  the  given word sequence is found according to an N-gram language
+       model over both words and hidden tags.
+
+       hhiiddddeenn--nnggrraamm is a generalization of sseeggmmeenntt(1).
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --tteexxtt _f_i_l_e
+              Specifies  the  file  containing the word sequences to be tagged
+              (one sentence per line).  Start- and  end-of-sentence  tags  are
+              _n_o_t added by the program, but should be included in the input if
+              the language model uses them.
+
+       --eessccaappee _s_t_r_i_n_g
+              Set an ``escape string.''  Input lines starting with _s_t_r_i_n_g  are
+              not  processed  and  passed  unchanged  to stdout instead.  This
+              allows associated information to be passed  to  scoring  scripts
+              etc.
+
+       --tteexxtt--mmaapp _f_i_l_e
+              Read  the input words from a map file contain both the words and
+              additional likelihoods of events following each word.  Each line
+              contains  one  input word, plus optional hidden-event/likelihood
+              pairs in the format
+                   _w    _e_1 [_p_1] _e_2 [_p_2] ...
+              If a _p value is omitted a  likelihood  of  1  is  assumed.   All
+              events  not  explicitly  listed  are given likelihood 0, and are
+              hence  excluded  for  that  word.   In  particular,  the   label
+              **nnooeevveenntt**  must  be  listed  to allow absence of a hidden event.
+              Input  word  strings  are  assembled  from  multiple  lines   of
+              --tteexxtt--mmaapp  input  until  either an end-of-sentence token </s> is
+              found, or an escaped line (see --eessccaappee) is encountered.
+
+       --llooggmmaapp
+              Interpret numeric values in the --tteexxtt--mmaapp file as log probabili-
+              ties, rather than probabilities.
+
+       --llmm _f_i_l_e
+              Specifies  the word/tag language model as a standard ARPA N-gram
+              backoff model file in nnggrraamm--ffoorrmmaatt(5).
+
+       --uussee--sseerrvveerr _S
+              Use a network LM server (typically implemented by nnggrraamm(1)  with
+              the --sseerrvveerr--ppoorrtt option) as the main model.  The server specifi-
+              cation _S can be an unsigned integer port number (referring to  a
+              server port running on the local host), a hostname (referring to
+              default port 2525 on the named host), or a string  of  the  form
+              _p_o_r_t@_h_o_s_t, where _p_o_r_t is a portnumber and _h_o_s_t is either a host-
+              name ("dukas.speech.sri.com") or IP number in dotted-quad format
+              ("140.44.1.15").
+              For  server-based  LMs,  the  --oorrddeerr  option  limits the context
+              length of N-grams queried by the client (with 0 denoting  unlim-
+              ited  length).   Hence, the effective LM order is the mimimum of
+              the client-specified value and  any  limit  implemented  in  the
+              server.
+              When  --uussee--sseerrvveerr  is  specified,  the  arguments to the options
+              --mmiixx--llmm, --mmiixx--llmm22, etc.  are  also  interpreted  as  network  LM
+              server  specifications provided they contain a '@' character and
+              do not contain a '/' character.  This  allows  the  creation  of
+              mixtures of several file- and/or network-based LMs.
+
+       --ccaacchhee--sseerrvveedd--nnggrraammss
+              Enables  client-side  caching  of N-gram probabilities to elimi-
+              nated duplicate  network  queries,  in  conjunction  with  --uussee--
+              sseerrvveerr.   This can results in a substantial speedup but requires
+              memory in the client that may grow linearly with the  amount  of
+              data processed.
+
+       --oorrddeerr _n
+              Set  the effective N-gram order used by the language model to _n.
+              Default is 3 (use a trigram model).
+
+       --ccllaasssseess _f_i_l_e
+              Interpret the LM as an N-gram over word classes.  The expansions
+              of  the  classes are given in _f_i_l_e in ccllaasssseess--ffoorrmmaatt(5).  Tokens
+              in the LM that are not defined as classes in _f_i_l_e are assumed to
+              be  plain  words,  so that the LM can contain mixed N-grams over
+              both words and word classes.
+
+       --ssiimmppllee--ccllaasssseess
+              Assume a "simple" class model: each word is member  of  at  most
+              one word class, and class expansions are exactly one word long.
+
+       --mmiixx--llmm _f_i_l_e
+              Read a second N-gram model for interpolation purposes.  The sec-
+              ond and any additional interpolated models can also be class  N-
+              grams (using the same --ccllaasssseess definitions).
+
+       --ffaaccttoorreedd
+              Interpret  the files specified by --llmm, --mmiixx--llmm, etc. as factored
+              N-gram model specifications.  See nnggrraamm(1) for more details.
+
+       --llaammbbddaa _w_e_i_g_h_t
+              Set the weight of the main model when interpolating  with  --mmiixx--
+              llmm.  Default value is 0.5.
+
+       --mmiixx--llmm22 _f_i_l_e
+
+       --mmiixx--llmm33 _f_i_l_e
+
+       --mmiixx--llmm44 _f_i_l_e
+
+       --mmiixx--llmm55 _f_i_l_e
+
+       --mmiixx--llmm66 _f_i_l_e
+
+       --mmiixx--llmm77 _f_i_l_e
+
+       --mmiixx--llmm88 _f_i_l_e
+
+       --mmiixx--llmm99 _f_i_l_e
+              Up to 9 more N-gram models can be specified for interpolation.
+
+       --mmiixx--llaammbbddaa22 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa33 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa44 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa55 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa66 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa77 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa88 _w_e_i_g_h_t
+
+       --mmiixx--llaammbbddaa99 _w_e_i_g_h_t
+              These  are  the  weights  for the additional mixture components,
+              corresponding to --mmiixx--llmm22 through --mmiixx--llmm99.  The weight for  the
+              --mmiixx--llmm  model  is  1  minus the sum of --llaammbbddaa and --mmiixx--llaammbbddaa22
+              through --mmiixx--llaammbbddaa99.
+
+       --ccoonntteexxtt--pprriioorrss _f_i_l_e
+              Read context-dependent mixture weight priors  from  _f_i_l_e.   Each
+              line  in  _f_i_l_e should contain a context N-gram (most recent word
+              first) followed by a vector  of  mixture  weights  whose  length
+              matches the number of LMs being interpolated.
+
+       --bbaayyeess _l_e_n_g_t_h
+              Interpolate  models  using  posterior probabilities based on the
+              likelihoods of local N-gram  contexts  of  length  _l_e_n_g_t_h.   The
+              --llaammbbddaa  values  are used as prior mixture weights in this case.
+              This option can also be combined with --ccoonntteexxtt--pprriioorrss, in  which
+              case  the  _l_e_n_g_t_h parameter also controls how many words of con-
+              text are maximally used to look up mixture  weights.   If  --ccoonn--
+              tteexxtt--pprriioorrss  is  used without --bbaayyeess, the context length used is
+              set by the --oorrddeerr option and Bayesian interpolation is disabled,
+              as when _s_c_a_l_e (see next) is zero.
+
+       --bbaayyeess--ssccaallee _s_c_a_l_e
+              Set  the  exponential  scale factor on the context likelihood in
+              conjunction with the --bbaayyeess function.  Default value is 1.0.
+
+       --llmmww _W Scales the language model probabilities by a factor _W.   Default
+              language model weight is 1.
+
+       --mmaappww _W
+              Scales  the  likelihood  map probability by a factor _W.  Default
+              map weight is 1.
+
+       --ttoolloowweerr
+              Map vocabulary to lowercase, removing case distinctions.
+
+       --vvooccaabb _f_i_l_e
+              Initialize the vocabulary for the LM from _f_i_l_e.  This is  useful
+              in conjunction with --lliimmiitt--vvooccaabb.
+
+       --vvooccaabb--aalliiaasseess _f_i_l_e
+              Reads  vocabulary  alias  definitions  from  _f_i_l_e, consisting of
+              lines of the form
+                   _a_l_i_a_s _w_o_r_d
+              This causes all tokens _a_l_i_a_s to be mapped to _w_o_r_d.
+
+       --hhiiddddeenn--vvooccaabb _f_i_l_e
+              Read the list of hidden tags from _f_i_l_e.  Note: This is a  subset
+              of the vocabulary contained in the language model.
+
+       --lliimmiitt--vvooccaabb
+              Discard  LM  parameters  on  reading  that do not pertain to the
+              words specified in the vocabulary, either by --vvooccaabb or  --hhiiddddeenn--
+              vvooccaabb.   The  default is that words used in the LM are automati-
+              cally added to the vocabulary.   This  option  can  be  used  to
+              reduce  the  memory requirements for large LMs that are going to
+              be evaluated only on a small vocabulary subset.
+
+       --ffoorrccee--eevveenntt
+              Forces a non-default event after every word.  This is useful for
+              language models that represent the default event explicitly with
+              a tag, rather than implicitly by the absence of  a  tag  between
+              words (which is the default).
+
+       --kkeeeepp--uunnkk
+              Do  not  map  unknown  input words to the <unk> token.  Instead,
+              output the input word unchanged.  Also, with this option the  LM
+              is  assumed  to be open-vocabulary (the default is close-vocabu-
+              lary).
+
+       --ffbb    Perform forward-backward decoding of the input  token  sequence.
+              Outputs  the  tags  that have the highest posterior probability,
+              for each position.  The default  is  to  use  Viterbi  decoding,
+              i.e., the output is the tag sequence with the highest joint pos-
+              terior probability.
+
+       --ffww--oonnllyy
+              Similar to --ffbb, but uses only the forward probabilities for com-
+              puting posteriors.  This may be used to simulate on-line predic-
+              tion of tags, without the benefit of future context.
+
+       --ccoonnttiinnuuoouuss
+              Process all words in the input as one sequence of  words,  irre-
+              spective  of line breaks.  Normally each line is processed sepa-
+              rately as a sentence.  Input  tokens  are  output  one-per-line,
+              followed by event tokens.
+
+       --ppoosstteerriioorrss
+              Output  the  table of posterior probabilities for each tag posi-
+              tion.  If --ffbb is also specified the posterior probabilities will
+              be  computed  using forward-backward probabilities; otherwise an
+              approximation will be used that is based on the  probability  of
+              the most likely path containing a given tag at given position.
+
+       --ttoottaallss
+              Output the total string probability for each input sentence.  If
+              --ffbb is also specified this probability is  obtained  by  summing
+              over  all  hidden  event  sequences;  otherwise it is calculated
+              (i.e., underestimated) using  the  most  probably  hidden  event
+              sequence.
+
+       --nnbbeesstt _N
+              Output the _N best hypotheses instead of just the first best when
+              doing Viterbi search.  If _N>1, then each hypothesis is  prefixed
+              by  the  tag NNBBEESSTT___n _x,, where _n is the rank of the hypothesis in
+              the N-best list and _x its score, the negative log  of  the  com-
+              bined  probability of transitions and observations of the corre-
+              sponding HMM path.
+
+       --wwrriittee--ccoouunnttss _f_i_l_e
+              Write the posterior weighted counts of n-grams, including  those
+              with  hidden  tags,  summed over the entire input data, to _f_i_l_e.
+              The posterior probabilities should normally be computed with the
+              forward-backward  algorithm  (instead  of  Viterbi),  so the --ffbb
+              option is usually also specified.  Only n-grams  whose  contexts
+              occur in the language model are output.
+
+       --uunnkk--pprroobb _L
+              Specifies  that unknown words and other words having zero proba-
+              bility in the language model be assigned a log probability of _L.
+              This  is -100 by default but might be set to 0, e.g., to compute
+              perplexities excluding unknown words.
+
+       --ddeebbuugg Sets debugging output level.
+
+       Each filename argument can be an  ASCII  file,  or  a  compressed  file
+       (name  ending  in  .Z  or  .gz),  or ``-'' to indicate stdin/stdout.
+
+BBUUGGSS
+       The  --ccoonnttiinnuuoouuss  and  --tteexxtt--mmaapp options effectively disable --kkeeeepp--uunnkk,
+       i.e., unknown input words are always mapped to <unk>.  Also,  --ccoonnttiinnuu--
+       oouuss  doesn't  preserve the positions of escaped input lines relative to
+       the input.
+       The dynamic programming for event decoding is  not  efficiently  inter-
+       leaved  with  that required to evaluate class N-gram models; therefore,
+       the state space generated in decoding  with  --ccllaasssseess  quickly  becomes
+       infeasibly large unless --ssiimmppllee--ccllaasssseess is also specified.
+
+       The file given by --ccllaasssseess is read multiple times if --lliimmiitt--vvooccaabb is in
+       effect or if a mixture of LMs is specified.  This will lead  to  incor-
+       rect behavior if the argument of --ccllaasssseess is stdin (``-'').
+
+SSEEEE AALLSSOO
+       ngram(1),  ngram-count(1),  disambig(1),  segment(1),  ngram-format(5),
+       classes-format(5).
+       A. Stolcke et al., ``Automatic Detection  of  Sentence  Boundaries  and
+       Disfluencies  based on Recognized Words,'' _P_r_o_c_. _I_C_S_L_P, 2247-2250, Syd-
+       ney.
+
+AAUUTTHHOORRSS
+       Andreas Stolcke <stolcke@speech.sri.com>,
+       Anand Venkataraman <anand@speech.sri.com>.
+       Copyright 1998-2006 SRI International
+
+
+
+SRILM Tools              $Date: 2013/03/09 04:13:59 $          hidden-ngram(1)

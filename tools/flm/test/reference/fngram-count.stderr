@@ -1,0 +1,76 @@
+Language Model 0 --------------
+-- Level 3
+      Node: W-1,M-1,S-1 (0x7), Constraint: W-1 (0x1)
+         1 Children: M-1,S-1 (0x6)
+-- Level 2
+      Node: M-1,S-1 (0x6), Constraint: M-1,S-1 (0x6)
+         2 Children: S-1 (0x4); M-1 (0x2)
+-- Level 1
+      Node: M-1 (0x2), Constraint: M-1 (0x2)
+         1 Children:  (0x0)
+      Node: S-1 (0x4), Constraint: S-1 (0x4)
+         1 Children:  (0x0)
+-- Level 0
+      Node:  (0x0), Constraint:  (0x0)
+         0 Children:
+ch_lm_train100.noamp.decomposed.txt.gz: line 22292: 
+LM(0) 22292 sentences, 168590 words, 0 OOVs
+0 zeroprobs, logprob= 0 ppl= 1 ppl1= 1
+Mod Kneser-Ney smoothing 0-grams
+n1 = 8685
+n2 = 2440
+n3 = 1097
+n4 = 627
+D1 = 0.640251
+D2 = 1.13645
+D3+ = 1.53624
+Mod Kneser-Ney smoothing 0x2-grams
+n1 = 43409
+n2 = 5684
+n3 = 1601
+n4 = 766
+D1 = 0.792468
+D2 = 1.33036
+D3+ = 1.48337
+Mod Kneser-Ney smoothing 0x4-grams
+n1 = 58628
+n2 = 5435
+n3 = 1239
+n4 = 516
+D1 = 0.843593
+D2 = 1.42307
+D3+ = 1.59469
+Mod Kneser-Ney smoothing 0x6-grams
+n1 = 74228
+n2 = 2019
+n3 = 367
+n4 = 152
+D1 = 0.948407
+D2 = 1.48282
+D3+ = 1.4288
+Mod Kneser-Ney smoothing 0x7-grams
+n1 = 62432
+n2 = 7715
+n3 = 2519
+n4 = 1272
+D1 = 0.801829
+D2 = 1.21459
+D3+ = 1.38043
+warning: distributing 0.18495 left-over probability mass over 1 zeroton words
+discarded 1 0x2-gram probs predicting pseudo-events
+discarded 49093 0x2-gram probs discounted to zero
+discarded 1 0x4-gram probs predicting pseudo-events
+discarded 1 0x6-gram probs predicting pseudo-events
+discarded 77157 0x6-gram probs discounted to zero
+Finished estimation of multi-child graph-backoff node: LM 0 Node 0x6
+discarded 1 0x7-gram probs predicting pseudo-events
+discarded 62432 0x7-gram probs discounted to zero
+writing FLM to dev.lm.gz
+writing 15022 0x0-grams
+writing 0 0x1-grams
+writing 4225 0x2-grams
+writing 66753 0x4-grams
+writing 0 0x3-grams
+writing 0 0x5-grams
+writing 0 0x6-grams
+writing 14979 0x7-grams

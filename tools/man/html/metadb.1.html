@@ -1,0 +1,177 @@
+<! $Id: metadb.1,v 1.11 2011/11/26 06:11:24 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>metadb</TITLE>
+<BODY>
+<H1>metadb</H1>
+<H2> NAME </H2>
+metadb - retrieve configuration information
+<H2> SYNOPSIS </H2>
+<B> metadb </B>
+[
+<I> -options </I>
+...]
+<I> key </I>
+[ ... ]
+<H2> DESCRIPTION </H2>
+<B> metadb </B>
+retrieves string values associates with keys in configuration files.
+The key(s) to be retrieved are specified as arguments.
+The configuration file is located through the enviroment variable
+<B>METADB_CONFIG</B>,<B></B><B></B><B></B>
+possibly overridden by the 
+<B> -config </B>
+option.
+<P>
+Scripts and programs that need to operate on a variety of data
+or with different parameters should retrieve all variable information
+via 
+<B>metadb</B>.<B></B><B></B><B></B>
+<H2> CONFIG FILE SYNTAX </H2>
+The format of a line in the configuration file is 
+<BR>
+	<I>key</I> <I>value</I>
+<BR>
+where
+<I> key </I>
+is the first word in a line.
+Anything starting with the second
+word is the
+<I> value </I>
+associated with the
+<I>key</I>.<I></I><I></I><I></I>
+Initial and final whitespace
+is removed, but otherwise whitespace can be embedded in the
+<I>value</I>.<I></I><I></I><I></I>
+Only the first of multiple lines with the same
+<I> key </I>
+is significant for a lookup, unless the
+<B> -all </B>
+flag was given.
+<P>
+The special key
+<B> INCLUDE </B>
+is used to perform file inclusions:
+<BR>
+	<B>INCLUDE</B> /some/other/config/file
+<BR>
+allowing config files to ``inherit'' from other config files.
+Note that key-value pairs preceding an inclusion override any identical
+key in the included file.
+<P>
+The 
+<B> ALIAS </B>
+keyword redirects a lookup for one key
+<I> key1 </I>
+by another lookup for 
+<I>key2</I>:<I></I><I></I><I></I>
+<BR>
+	<B>ALIAS</B> <I>key1</I> <I>key2</I>
+<BR>
+<P>
+The 
+<B> ALIAS_SUFFIX </B>
+keyword redirects a lookup for any key
+with suffix
+<I> suffix1 </I>
+to another lookup with the suffix replaced by 
+<I>suffix2</I>:<I></I><I></I><I></I>
+<BR>
+	<B>ALIAS_SUFFIX</B> <I>suffix1</I> <I>suffix2</I>
+<BR>
+This is a convenient way to apply a string mapping to an entire
+family of keys.
+To avoid infinite recursions and ambiguities in matching keys,
+the prefix of the key that is matched by
+<I> suffix1 </I>
+must no contain any underscore characters.
+<P>
+Lines containing only whitespace or starting with a pound sign are ignored:
+<BR>
+	# this is a comment
+<BR>
+<P>
+There is also a primitive macro facility:
+<BR>
+	<B>DEFINE</B> <I>string</I> <I>string2</I>
+<BR>
+causes
+<I> string </I>
+to be replaced by
+<I> string2 </I>
+in the output.
+<BR>
+	<B>SDEFINE</B> <I>string</I> <I>comand</I> <I>arg1</I> <I>arg2</I> ...
+<BR>
+defines
+<I> string </I>
+as a macro expanding to the first line of output of
+<I>command</I>.<I></I><I></I><I></I>
+This also allows ``importing'' environment variables:
+<BR>
+	<B>SDEFINE</B> MACHINE_TYPE printenv MACHINE_TYPE
+<BR>
+(but note the expansion of macros inside the config file does not use
+dollar signs).
+<BR>
+The directive
+<BR>
+	<B>MDEFINE</B> <I>string</I> <I>key</I>
+<BR>
+defines
+<I> string </I>
+as a macro expanding to the result of looking up 
+<I> key </I>
+using 
+<B> metadb </B>
+itself in the current configuration file.
+This allows piecing together of strings from various key values,
+and other back-handed uses.
+<BR>
+	<B>UNDEF</B> <I>string</I>
+<BR>
+undoes the definition of
+<I>string</I>.<I></I><I></I><I></I>
+<P>
+Macros are expanded in key values, include filenames, and the definitions
+of other macros (at the time of definition).
+<H2> OPTIONS </H2>
+<DL>
+<DT><B>-config</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use
+<I> file </I>
+as the configuration file, instead of 
+<B>$METADB_CONFIG</B>.<B></B><B></B><B></B>
+<DT><B> -all </B>
+<DD>
+Return all key values, instead of the first value.
+This allows using multiple instances of a key to construct lists of strings.
+<DT><B> -dump </B>
+<DD>
+Output all key-value pairs found in the config file (prior to
+any values indexed by command line arguments).
+<DT><B> -includes </B>
+<DD>
+Trace the names of INCLUDEd files.
+<DT><B> -e </B>
+<DD>
+Print an error message and exit with error status if a requested key value
+is undefined or empty.
+<DT><B> -q </B>
+<DD>
+Check for the presence of a key and do not output key values.
+A program exit status of 0 (``true'' to the shell)
+indicates that at least one of the keys is present
+in the configuration file.
+Otherwise, a status of 1 (``false'' to the shell) is returned.
+</DD>
+</DL>
+<H2> BUGS </H2>
+Probably.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1999-2011 SRI International
+</BODY>
+</HTML>

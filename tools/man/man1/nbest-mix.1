@@ -1,0 +1,102 @@
+.\" $Id: nbest-mix.1,v 1.7 2007/12/20 19:13:52 stolcke Exp $
+.TH nbest-mix 1 "$Date: 2007/12/20 19:13:52 $" "SRILM Tools"
+.SH NAME
+nbest-mix \- interpolate N-best posterior probabilities
+.SH SYNOPSIS
+\fBnbest-mix\fP [ \fB\-help\fP ] \fIoption\fP ... \fI weight1 nbest1 weight2 nbest2\fP ...
+.fi
+.SH DESCRIPTION
+.B nbest-mix
+reads a number of N-best lists (which must contain identical
+hypotheses), computes the hypothesis posterior probabilities for each,
+and computes a new posterior distribution that is a
+weighted mixture of the input distributions.
+The hypothesis with the highest combined posterior probability is
+printed.
+.PP
+The command line arguments form an alternating list of 
+weight values and N-best file names.
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-debug " level"
+Controls the amount of output (the higher the
+.IR level ,
+the more).
+.TP
+.BI \-write-nbest " file"
+Output N-best lists containing scores that correspond to the log of
+the combined posteriors of the input hypotheses.
+The log posterior is assigned as the acoustic score and other scores
+are set to zero.
+This also suppresses the printing of the best hyp.
+.TP
+.BI \-max-nbest " n"
+Limits the number of hypotheses read from each N-best list to the first
+.IR n .
+.TP
+.BI \-rescore-lmw " lmw"
+Sets the language model weight used in combining the language model log
+probabilities with acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+.TP
+.BI \-rescore-wtw " wtw"
+Sets the word transition weight used to weight the number of words relative to
+the acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+.TP
+.BI \-posterior-scale " scale"
+Divide the total weighted log score by 
+.I scale
+when computing normalized posterior probabilities.
+This controls the peakedness of the posterior distribution. 
+The default value is whatever was chosen for 
+.IR lmw ,
+so that language model scores are scaled to have weight 1,
+and acoustic scores have weight 1/\fIlmw\fP.
+.TP
+.B \-set-lm-scores
+In conjunction with
+.BR \-write-nbest ,
+output N-best lists that preserve the acoustic scores and word counts 
+of the (first of the) input N-best lists, and encodes the combined 
+log posteriors via the LM scores.
+The LM scores in the output are calculated so that, when combined with
+the acoustic scores and insertion penalties (using the given LM weight
+and posterior scaling), the result is the weighted, combined posteriors based
+on all input N-best scores.
+This option is useful if input N-best lists were created by rescoring with
+different language models, and the output N-best lists are to be combined
+with other scores or if the score weighting is to be optimized with
+.BR nbest-optimize (1).
+.TP
+.B \-set-am-scores
+Analogous to 
+.BR \-set-lm-scores ,
+except that the acoustic scores are modified to reflect combined log posterior
+probabiltities, and other scores are preserved.
+This option is useful if input N-best lists were created by rescoring with
+different acoustic models.
+.SH "SEE ALSO"
+nbest-lattice(1), nbest-scripts(1), nbest-optimize(1).
+.br
+A. Stolcke, K. Ries, N. Coccaro, E. Shriberg, R. Bates, D. Jurafsky, P. Taylor,
+R. Martin, C. Van Ess-Dykema, & M. Meteer,
+``Dialogue Act Modeling for Automatic Tagging and Recognition of Conversational
+Speech,''
+\fIComputational Linguistics\fP 26(3), 339-373, 2000.
+.SH BUGS
+Hopefully not.
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 1998\-2004 SRI International

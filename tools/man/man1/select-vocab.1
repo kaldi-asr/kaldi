@@ -1,0 +1,84 @@
+.\" $Id: select-vocab.1,v 1.6 2011/02/11 08:12:47 stolcke Exp $
+.TH select-vocab 1 "$Date: 2011/02/11 08:12:47 $" "SRILM Tools"
+.SH NAME
+select-vocab \- Select a maximum-likelihood vocabulary from a mixture of corpora.
+.SH SYNOPSIS
+.nf
+\fBselect-vocab\fP [ \fIoption\fP ... ] \fB\-heldout\fP \fIfile f1 f2\fP ... 
+.fi
+.SH DESCRIPTION
+.B select-vocab
+picks a vocabulary from the union of the vocabularies of files
+.I f1
+through
+.I fn
+in order to maximize the likelihood of the heldout file.  When invoked
+as above, the program will print out (unsorted) the list of words in
+all of the input corpora together with their weights.  This list may
+subsequently be sorted to put the words in decreasing order of weight
+and a vocabulary may be chosen by picking a suitable threshold weight
+and ignoring words with weight less than this.
+
+A number of automatically detected formats are supported for the input
+files
+.I f1
+through
+.I fn.
+They can be count files, which are characterized by each line ending
+in a number, ARPA language models in
+.BR ngram-format (5),
+or simply text files.  If they are text-files, further, and
+their names end in ".sentid", it is assumed that the first field of
+each line is a sentence identifier that is then discarded.
+Furthermore, all of the input files can also be compressed (if gzip is
+installed and available on the system).
+
+.SH OPTIONS
+.TP
+.B \-help
+Prints a short help message.
+.TP
+.BI \-heldout " file"
+Likelihood maximization is performed on the contents of
+.I file.
+This file may also be in any of the formats supported for the input
+corpora, namely: text, counts, sentid, or ARPA-lm.
+.TP
+.B \-quiet
+Suppresses printing of progress and other informative messages during
+execution.  By default the script writes these out to the output error
+stream.
+.TP
+.BI \-scale " n"
+The combined final counts are scaled by 
+.I n
+before being written out. This makes it possible to sort the output
+list numerically with sort(1).  The default scale is 1e6.
+
+.SH NOTES
+This implementation corrects a minor error in the algorithm
+specification in [1].  The paper describes corpus level interpolation,
+but the script actually does word-level interpolation.  
+
+The program is written in perl(1) and requires it to be installed in
+order to run.
+
+.SH "SEE ALSO"
+ngram-count(1), ngram-format(5), training-scripts(1).
+.br
+[1] A. Venkataraman and W. Wang, "Techniques for effective vocabulary
+selection", in \fIProceedings of Eurospeech\fP, Geneva, 2003.
+
+.SH BUGS
+Probably.
+
+.SH SOURCE
+Download as part of the SRILM toolkit, or stand-alone from
+http://www.speech.sri.com/people/anand/downloads/selvoc-v1.tar.gz
+
+.SH AUTHORS
+Anand Venkataraman <anand@speech.sri.com>
+.br
+Wen Wang <wwang@speech.dsri.com>
+.br
+Copyright 2003 SRI International

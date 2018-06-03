@@ -1,0 +1,29 @@
+#!/bin/sh
+
+data=../lattice-expansion-ppl
+
+lm="$data/test.lm"
+
+mkdir -p nbest rttm
+
+newname=corpus_sess_A_10000_12000
+
+# copy the lattice to a name that can be parsed by rttm code
+cp $data/test.htk $newname
+
+for order in 2
+do
+    lattice-tool -debug 1 \
+                -in-lattice $newname \
+		-read-htk \
+		-nbest-decode 5 \
+		-out-nbest-dir nbest \
+		-out-nbest-dir-rttm rttm \
+		-htk-lmscale 2 \
+		-lm $lm -order $order
+
+    gunzip -c -f nbest/$newname
+    gunzip -c -f rttm/$newname
+done
+
+rm -rf $newname nbest rttm

@@ -1,0 +1,208 @@
+****() Installing IRSTLM
+Cloning into 'irstlm'...
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+/usr/share/aclocal-1.15/ar-lib.m4:13: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+/usr/share/aclocal-1.15/ar-lib.m4:13: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+/usr/share/aclocal-1.15/ar-lib.m4:13: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+/usr/share/aclocal-1.15/ar-lib.m4:13: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: error: required file './ar-lib' not found
+configure.ac:10:   'automake --add-missing' can install 'ar-lib'
+configure.ac:3: error: required file './compile' not found
+configure.ac:3:   'automake --add-missing' can install 'compile'
+configure.ac:5: error: required file './config.guess' not found
+configure.ac:5:   'automake --add-missing' can install 'config.guess'
+configure.ac:5: error: required file './config.sub' not found
+configure.ac:5:   'automake --add-missing' can install 'config.sub'
+configure.ac:2: error: required file './install-sh' not found
+configure.ac:2:   'automake --add-missing' can install 'install-sh'
+configure.ac:5: error: required file './ltmain.sh' not found
+configure.ac:2: error: required file './missing' not found
+configure.ac:2:   'automake --add-missing' can install 'missing'
+src/Makefile.am: error: required file './depcomp' not found
+src/Makefile.am:   'automake --add-missing' can install 'depcomp'
+autoreconf: automake failed with exit status: 1
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:9118: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: installing './ar-lib'
+configure.ac:3: installing './compile'
+configure.ac:5: installing './config.guess'
+configure.ac:5: installing './config.sub'
+configure.ac:2: installing './install-sh'
+configure.ac:2: installing './missing'
+src/Makefile.am: installing './depcomp'
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+/usr/share/aclocal-1.15/ar-lib.m4:13: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+/usr/share/aclocal-1.15/ar-lib.m4:13: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+/usr/share/aclocal-1.15/ar-lib.m4:13: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+/usr/share/aclocal-1.15/ar-lib.m4:13: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: LT_INIT was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+configure.ac:10: warning: AC_PROG_LIBTOOL was called before AM_PROG_AR
+aclocal.m4:70: AM_PROG_AR is expanded from...
+configure.ac:10: the top level
+lmtable.cpp: In member function ‘void irstlm::lmtable::loadtxt_mmap(std::istream&, const char*, const char*)’:
+lmtable.cpp:622:36: warning: ignoring return value of ‘int ftruncate(int, __off64_t)’, declared with attribute warn_unused_result [-Wunused-result]
+      ftruncate(fileno(fd),filesize);
+                                    ^
+lmtable.cpp:724:14: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system(cmd);
+              ^
+lmtable.cpp:728:14: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system(cmd);
+              ^
+lmtable.cpp: In member function ‘void irstlm::lmtable::expand_level_mmap(int, table_entry_pos_t, const char*)’:
+lmtable.cpp:887:33: warning: ignoring return value of ‘int ftruncate(int, __off64_t)’, declared with attribute warn_unused_result [-Wunused-result]
+   ftruncate(fileno(fd),filesize);
+                                 ^
+lmtable.cpp: In member function ‘void irstlm::lmtable::concatenate_single_level(int, const char*, const char*)’:
+lmtable.cpp:1785:14: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system(cmd);
+              ^
+lmtable.cpp: In member function ‘void irstlm::lmtable::compact_single_level(int, const char*)’:
+lmtable.cpp:1856:14: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system(cmd);
+              ^
+lmtable.cpp: In member function ‘void irstlm::lmtable::resize_level_mmap(int, const char*)’:
+lmtable.cpp:1889:33: warning: ignoring return value of ‘int ftruncate(int, __off64_t)’, declared with attribute warn_unused_result [-Wunused-result]
+   ftruncate(fileno(fd),filesize);
+                                 ^
+lmtable.cpp: In member function ‘void irstlm::lmtable::loadbin(std::istream&, const char*, const char*, int)’:
+lmtable.cpp:1996:29: warning: ignoring return value of ‘ssize_t read(int, void*, size_t)’, declared with attribute warn_unused_result [-Wunused-result]
+    read(diskid,miniheader,4);
+                             ^
+ngramtable.cpp: In member function ‘char* ngramtable::mtable(node)’:
+ngramtable.cpp:1810:22: warning: dereferencing type-punned pointer will break strict-aliasing rules [-Wstrict-aliasing]
+     return *(table *)v;
+                      ^
+mdiadapt.cpp: In member function ‘int irstlm::mdiadaptlm::saveASR(char*, int, char*)’:
+mdiadapt.cpp:758:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp:915:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp:1031:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp: In member function ‘int irstlm::mdiadaptlm::saveMT(char*, int, char*, int, double)’:
+mdiadapt.cpp:1070:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp: In member function ‘int irstlm::mdiadaptlm::saveBIN_per_word(char*, int, char*, int)’:
+mdiadapt.cpp:1175:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp:1461:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp: In member function ‘int irstlm::mdiadaptlm::saveBIN_per_level(char*, int, char*, int)’:
+mdiadapt.cpp:1471:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp:1519:18: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+    system("date");
+                  ^
+mdiadapt.cpp: In member function ‘int irstlm::mdiadaptlm::saveARPA_per_word(char*, int, char*)’:
+mdiadapt.cpp:1706:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp:1926:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp: In member function ‘int irstlm::mdiadaptlm::saveARPA_per_level(char*, int, char*)’:
+mdiadapt.cpp:1936:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+mdiadapt.cpp:2144:17: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   system("date");
+                 ^
+cplsa.cpp: In member function ‘int irstlm::plsa::initH()’:
+cplsa.cpp:144:54: warning: ignoring return value of ‘int ftruncate(int, __off64_t)’, declared with attribute warn_unused_result [-Wunused-result]
+             ftruncate(fileno(fd),len * sizeof(float));
+                                                      ^
+cplsa.cpp: In member function ‘int irstlm::plsa::train(char*, char*, int, float, int)’:
+cplsa.cpp:491:48: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+         if (trset->numdoc()> 10) system("date");
+                                                ^
+cswam.cpp: In member function ‘int irstlm::cswam::train(char*, char*, char*, int, int)’:
+cswam.cpp:1013:52: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+         if (srcdata->numdoc()>10000) system("date");
+                                                    ^
+ar: `u' modifier ignored since `D' is the default (see `U')
+tlm.cpp: In function ‘int main(int, char**)’:
+tlm.cpp:529:31: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+      system("echo > .tlmlock");
+                               ^
+tlm.cpp:543:27: warning: ignoring return value of ‘int system(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+      system("rm .tlmlock");
+                           ^
+IRSTLM config is already in env.sh
+***() Installation of IRSTLM finished successfully
+***() Please source the tools/extras/env.sh in your path.sh to enable it

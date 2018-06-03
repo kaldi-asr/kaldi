@@ -1,0 +1,143 @@
+.\" $Id: nbest-pron-score.1,v 1.7 2008/04/24 06:55:12 stolcke Exp $
+.TH nbest-pron-score 1 "$Date: 2008/04/24 06:55:12 $" "SRILM Tools"
+.SH NAME
+nbest-pron-score \- score pronunciations and pauses in N-best hypotheses
+.SH SYNOPSIS
+\fBnbest-pron-score\fP [ \fB\-help\fP ] \fIoption\fP ...
+.fi
+.SH DESCRIPTION
+.B nbest-pron-score
+reads N-best lists and computes log probability scores for the pronunciations
+and pauses contained in them.
+Pronunciation scoring requires that the N-best lists
+contain phone backtraces in "NBestList2.0"
+.BR nbest-format (5).
+.PP
+Pronunciation scores are computed from the probabilities in a dictionary.
+Pauses are binned into three length classes (none, short, long) and 
+scored according to a trigram language model that conditions the pause length
+on the left and right neighboring words, in that order (so that bigram
+backoff uses the left neighbor only).
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-debug " level"
+Controls the amount of output (the higher the
+.IR level ,
+the more).
+.TP
+.B \-tolower
+Map all vocabulary to lowercase.
+Useful if case conventions for text/counts and language model differ.
+.TP
+.B \-multiwords
+Deal with N-best lists containing multiwords joined by underscores.
+This only affects pause scoring: if a word adjacent to a pause is 
+a multiword and is not in the vocabulary of the pause LM, then it is split
+and only the component closest to the pause is conditioned on.
+.TP
+.BI \-multi-char " C"
+Character used to delimit component words in multiwords
+(an underscore character by default).
+.TP
+.BI \-nbest " file"
+Score the N-best hypothese in 
+.IR file .
+.TP
+.BI \-rescore " file"
+Same as 
+.BR \-nbest .
+.TP
+.BI \-nbest-files " file"
+Process all N-best list filenames listed in 
+.IR file .
+.TP
+.BI \-max-nbest " n"
+Limits the number of hypotheses read from an N-best list.
+Only the first
+.I n
+hypotheses are processed.
+.TP
+.BI \-dictionary " file"
+Enable pronunciation scoring, using the pronunciation dictionary 
+.IR file .
+Each line contains a pronunciation in the format
+.nf
+	\fIword\fP [\fIp\fP] \fIphone\fP ...
+.fi
+The optional value 
+.I p
+is the pronunciation probability.
+If the second field in a line is not a number the pronunciation is assumed
+to have probability one.
+.TP
+.B \-intlogs
+Interpret probabilities in the dictionary as intlog-scaled log probabilities
+(as used in the SRI Decipher(TM) system), rather than straight probabilities.
+.TP
+.BI \-pause-lm " file"
+Enable pause scoring, using the pause LM in
+.IR file .
+.TP
+.BI \-no-pause " tag"
+The word used to represent the absence of a pause in the pause LM.
+.TP
+.BI \-short-pause " tag"
+The word used to represent a short pause in the pause LM.
+.TP
+.BI \-long-pause " tag"
+The word used to represent a long pause in the pause LM.
+.TP
+.BI \-min-pause-dur " T"
+The minimum duration, in seconds, for a non-speech region to be considered
+a (short) pause.
+.TP
+.BI \-long-pause-dur " T"
+The duration, in second, above which a non-speech region is considered a
+"long" pause.
+.PP
+The default values for pause tags and duration thresholds are printed by the
+.B \-help
+option.
+.TP
+.BI \-pron-score-dir " dir"
+Write pronunciation scores to
+.IR dir 
+when processing multiple N-best lists,
+using output filenames derived from the input files.
+.TP
+.BI \-pause-score-dir " dir"
+Write pause scores to
+.IR dir 
+when processing multiple N-best lists,
+using output filenames derived from the input files.
+.TP
+.BI \-pause-score-weight " W"
+Add pause LM scores to the pronunciation scores after multiplying them
+by 
+.IR W .
+This creates a single weighted combination of both models.
+Pause scores can still be output separately by specifying 
+.BR \-pause-score-dir .
+.SH "SEE ALSO"
+nbest-format(5), nbest-scripts(1), nbest-optimize(1), ngram(1).
+.br
+D. Vergyri, A. Stolcke, V. R. R. Gadde, L. Ferrer, & E. Shriberg,
+``Prosodic Knowledge Sources for Automatic Speech Recognition''.
+\fIProc. IEEE Intl. Conf. on Acoustics, Speech and Signal Processing\fP,
+Hong Kong, April 2003.
+.SH BUGS
+The binning of pause lengths into three classes should be generalized.
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 2002\-2008 SRI International

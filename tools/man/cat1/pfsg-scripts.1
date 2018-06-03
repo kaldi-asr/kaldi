@@ -1,0 +1,219 @@
+pfsg-scripts(1)                                                pfsg-scripts(1)
+
+
+
+NNAAMMEE
+       pfsg-scripts,  add-classes-to-pfsg, add-pauses-to-pfsg, classes-to-fsm,
+       fsm-to-pfsg, htklat-vocab, make-nbest-pfsg, make-ngram-pfsg, pfsg-from-
+       ngram,  pfsg-to-dot,  pfsg-to-fsm, pfsg-vocab, wlat-stats, wlat-to-dot,
+       wlat-to-pfsg - create and manipulate finite-state networks
+
+SSYYNNOOPPSSIISS
+       mmaakkee--nnggrraamm--ppffssgg [ mmaaxxoorrddeerr==_N ] [ cchheecckk__bboowwss==00|11 ] [ nnoo__eemmppttyy__bboo==11 ] \
+            [ vveerrssiioonn==11 ] [ ttoopp__lleevveell__nnaammee==_n_a_m_e ] [ nnuullll==_s_t_r_i_n_g ] \
+            [ _l_m_-_f_i_l_e ] >> _p_f_s_g_-_f_i_l_e
+       aadddd--ppaauusseess--ttoo--ppffssgg [ vvooccaabb==_f_i_l_e ] [ ppaauusseellaasstt==11 ] [ wwoorrddwwrraapp==00 ] \
+            [ ppaauussee==_p_a_u_s_e_w_o_r_d ] [ vveerrssiioonn==11 ] [ ttoopp__lleevveell__nnaammee==_n_a_m_e ] \
+            [ nnuullll==_s_t_r_i_n_g ] [ _p_f_s_g_-_f_i_l_e ] >> _n_e_w_-_p_f_s_g_-_f_i_l_e
+       aadddd--ccllaasssseess--ttoo--ppffssgg ccllaasssseess==_c_l_a_s_s_e_s [ nnuullll==_s_t_r_i_n_g ] \
+            [ _p_f_s_g_-_f_i_l_e ] >> _n_e_w_-_p_f_s_g_-_f_i_l_e
+       ppffssgg--ffrroomm--nnggrraamm [ _l_m_-_f_i_l_e ] >> _p_f_s_g_-_f_i_l_e
+       mmaakkee--nnbbeesstt--ppffssgg [ nnoottrreeee==00|11 ] [ ssccaallee==_S ] [ aammww==_A ] [ llmmww==_L ] \
+            [ wwttww==_W ] [ _n_b_e_s_t_-_f_i_l_e ] >> _p_f_s_g_-_f_i_l_e
+       ppffssgg--vvooccaabb [ _p_f_s_g_-_f_i_l_e ... ]
+       hhttkkllaatt--vvooccaabb [ qquuootteess==11 ] [ _h_t_k_-_l_a_t_t_i_c_e_-_f_i_l_e ... ]
+       ppffssgg--ttoo--ddoott [ sshhooww__pprroobbss==00|11 ] [sshhooww__llooggss==00|11 ] [ sshhooww__nnuummss==00|11 ] \
+            [ _p_f_s_g_-_f_i_l_e ] >> _d_o_t_-_f_i_l_e
+       ppffssgg--ttoo--ffssmm [ ssyymmbboollffiillee==_s_y_m_b_o_l_s ] [ ssyymmbboolliicc==00|11 ] \
+            [ ssccaallee==_S ] [ ffiinnaall__oouuttppuutt==_E ] [ _p_f_s_g_-_f_i_l_e ] >> _f_s_m_-_f_i_l_e
+       ffssmm--ttoo--ppffssgg [ ppffssgg__nnaammee==_n_a_m_e ] [ ttrraannssdduucceerr==00|11 ] [ ssccaallee==_S ] \
+            [ mmaapp__eeppssiilloonn==_E ] [ _f_s_m_-_f_i_l_e ] >> _p_f_s_g_-_f_i_l_e
+       ccllaasssseess--ttoo--ffssmm vvooccaabb==_v_o_c_a_b [ ssyymmbboolliicc==00|11 ] [ iissyymmbboollffiillee==_i_s_y_m_b_o_l_s ] \
+            [ oossyymmbboollffiillee==_o_s_y_m_b_o_l_s ] [ _c_l_a_s_s_e_s ] >> _f_s_m_-_f_i_l_e
+       wwllaatt--ttoo--ppffssgg [ _w_l_a_t_-_f_i_l_e ] >> _p_f_s_g_-_f_i_l_e
+       wwllaatt--ttoo--ddoott [ sshhooww__pprroobbss==00|11 ] [ sshhooww__nnuummss==00|11 ] \
+            [ _w_l_a_t_-_f_i_l_e ] >> _d_o_t_-_f_i_l_e
+       wwllaatt--ssttaattss [ _w_l_a_t_-_f_i_l_e ]
+
+DDEESSCCRRIIPPTTIIOONN
+       These scripts create and manipulate various forms of finite-state  net-
+       works.    Note   that   they  take  options  with  the  ggaawwkk(1)  syntax
+       _o_p_t_i_o_n==_v_a_l_u_e instead of the more common --_o_p_t_i_o_n _v_a_l_u_e.
+
+       Also, since these tools are implemented as scripts they don't automati-
+       cally input or output compressed model files correctly, unlike the main
+       SRILM tools.  However, since most scripts work with data from  standard
+       input or to standard output (by leaving out the file argument, or spec-
+       ifying it as ``-'') it is  easy  to  combine  them  with  gguunnzziipp(1)  or
+       ggzziipp(1) on the command line.
+
+       mmaakkee--nnggrraamm--ppffssgg  encodes a backoff N-gram model in nnggrraamm--ffoorrmmaatt(5) as a
+       finite-state network in ppffssgg--ffoorrmmaatt(5).  mmaaxxoorrddeerr==_N limits  the  N-gram
+       length  used  in  PFSG  construction to _N; the default is to use all N-
+       grams occurring in the input model.  cchheecckk__bboowwss==11 enables a  check  for
+       conditional probabilities that are smaller than the corresponding back-
+       off probabilities.  Such transitions should first be removed  from  the
+       model  with  nnggrraamm --pprruunnee--lloowwpprroobbss.  nnoo__eemmppttyy__bboo==11 Prevents empty paths
+       through the PFSG resulting from transitions through the unigram backoff
+       node.
+
+       aadddd--ppaauusseess--ttoo--ppffssgg  replaces  the word nodes in an input PFSG with sub-
+       PFSGs that allow an optional pause before each word.  It  also  inserts
+       an  optional  pause following the last word in the sentence.  A typical
+       usage is
+            make-ngram-pfsg _n_g_r_a_m | \
+            add-pauses-to-pfsg >_f_i_n_a_l_-_p_f_s_g
+       The result is a PFSG suitable for use  in  a  speech  recognizer.   The
+       option  ppaauusseellaasstt==11  switches the order of words and pause nodes in the
+       sub-PFSGs; wwoorrddwwrraapp==00 disables the insertion of sub-PFSGs altogether.
+
+       The options ppaauussee==_p_a_u_s_e_w_o_r_d and ttoopp__lleevveell__nnaammee==_n_a_m_e allow changing  the
+       default  names  of  the  pause  word and the top-level grammar, respec-
+       tively.  vveerrssiioonn==11 inserts a version line at the top of the  output  as
+       required  by  the  Nuance  recognition  system (see NUANCE COMPATIBILTY
+       below).  aadddd--ppaauusseess--ttoo--ppffssgg uses a heuristic to distinguish word  nodes
+       in  the  input  PFSG  from other nodes (NULL or sub-PFSGs).  The option
+       vvooccaabb==_f_i_l_e lets one specify a vocabulary  of  word  names  to  override
+       these heuristics.
+
+       aadddd--ccllaasssseess--ttoo--ppffssgg  extends  an  input  PFSG  with expansions for word
+       classes, defined in _c_l_a_s_s_e_s.  _p_f_s_g_-_f_i_l_e should contain a PFSG generated
+       from  the  N-gram  portion of a class N-gram model.  A typical usage is
+       thus
+            make-ngram-pfsg _c_l_a_s_s_-_n_g_r_a_m | \
+            add-classes-to-pfsg classes=_c_l_a_s_s_e_s | \
+            add-pauses-to-pfsg >_f_i_n_a_l_-_p_f_s_g
+
+       ppffssgg--ffrroomm--nnggrraamm is a wrapper script that combines removal of low-proba-
+       bility  N-grams,  conversion  to PFSG, and adding of optional pauses to
+       create a PFSG for recognition.
+
+       mmaakkee--nnbbeesstt--ppffssgg converts an N-best list in nnbbeesstt--ffoorrmmaatt(5) into a  PFSG
+       which,  when  used  in  recognition, allows exactly the hypotheses con-
+       tained in the N-best list.  nnoottrreeee==11 creates separate  PFSG  nodes  for
+       all  word  instances;  the default is to construct a prefix-tree struc-
+       tured PFSG.  ssccaallee==_S multiplies the total hypothesis scores by  _S;  the
+       default is 0, meaning that all hypotheses have identical probability in
+       the PFSG.  Three options, aammww==_A, llmmww==_L, and wwttww==_W,  control  the  score
+       weighting  in  N-best lists that contain separate acoustic and language
+       model scores, setting the acoustic model  weight  to  _A_,  the  language
+       model weight to _L, and the word transition weight to _W.
+
+       ppffssgg--vvooccaabb  extracts the vocabulary used in one or more PFSGs.  hhttkkllaatt--
+       vvooccaabb does the same for lattices in HTK standard lattice  format.   The
+       qquuootteess==11 option enables processing of HTK quotes.
+
+       ppffssgg--ttoo--ddoott  renders  a  PFSG  in  ddoott(1) format for subsequent layout,
+       printing, etc.  sshhooww__pprroobbss==11 includes transition probabilities  in  the
+       output.  sshhooww__llooggss==11 includes log (base 10) transition probabilities in
+       the output.  sshhooww__nnuummss==11 includes node numbers in the output.
+
+       ppffssgg--ttoo--ffssmm converts a finite-state network in ppffssgg--ffoorrmmaatt(5)  into  an
+       equivalent  network in AT&T ffssmm(5) format.  This involves moving output
+       actions from nodes to transitions.  If ssyymmbboollffiillee==_s_y_m_b_o_l_s is specified,
+       the mapping from FSM output symbols is written to _s_y_m_b_o_l_s for later use
+       with the --ii or --oo options of ffssmm(1) tools.   ssyymmbboolliicc==11  preserves  the
+       word  strings  in  the  resulting  FSA.   ssccaallee==_S scales the transition
+       weights by a factor _S; the default is -1 (to conform to the default FSM
+       semiring).   ffiinnaall__oouuttppuutt==_E  forces  the  final FSA node to have output
+       label _S; this also forces creation of a unique final FSA node, which is
+       otherwise unnecessary if the final node has a null output.
+
+       ffssmm--ttoo--ppffssgg  conversely  transforms  ffssmm(5) format into ppffssgg--ffoorrmmaatt(5).
+       This involves moving output actions from transitions to nodes, and gen-
+       erally requires an increase in the number of nodes.  (The conversion is
+       done such that ppffssgg--ttoo--ffssmm and ffssmm--ttoo--ppffssgg are exact inverses  of  each
+       other.)   The  _n_a_m_e  parameter  sets the name field of the output PFSG.
+       ttrraannssdduucceerr==11  indicates  that  the  input  is  a  transducer  and  that
+       input:output pairs should be preserved in the PFSG.  ssccaallee==_S scales the
+       transition weights by a factor _S; the default is -1 (to conform to  the
+       default  FSM  semiring).   mmaapp__eeppssiilloonn==_E  specifies a string _E that FSM
+       epsilon symbols are to be mapped to.
+
+       ccllaasssseess--ttoo--ffssmm converts a ccllaasssseess--ffoorrmmaatt(5) file into a  transducer  in
+       ffssmm(5)  format, such that composing the transducer with an FSA encoding
+       a class language model results in an FSA for the word  language  model.
+       The word vocabulary needs to be given in file _v_o_c_a_b.  iissyymmbboollffiillee==_i_s_y_m_-
+       _b_o_l_s and oossyymmbboollffiillee==_o_s_y_m_b_o_l_s allow saving the input and output  symbol
+       tables  of the transducer for later use.  ssyymmbboolliicc==11 preserves the word
+       strings in the resulting FSA.
+
+       The following commands show the creation of an FSA encoding  the  class
+       N-gram  grammar  ``test.bo''  with  vocabulary ``test.vocab'' and class
+       expansions ``test.classes'':
+            classes-to-fsm vocab=test.vocab symbolic=1 \
+                 isymbolfile=CLASSES.inputs \
+                 osymbolfile=CLASSES.outputs \
+                 test.classes >CLASSES.fsm
+
+            make-ngram-pfsg test.bo | \
+            pfsg-to-fsm symbolic=1 >test.fsm
+            fsmcompile -i CLASSES.inputs test.fsm  >test.fsmc
+
+            fsmcompile -t -i CLASSES.inputs -o CLASSES.outputs \
+                 CLASSES.fsm >CLASSES.fsmc
+            fsmcompose test.fsmc CLASSES.fsmc >result.fsmc
+
+       wwllaatt--ttoo--ppffssgg converts a word posterior lattice or mesh  ("sausage")  in
+       wwllaatt--ffoorrmmaatt(5) into ppffssgg--ffoorrmmaatt(5).
+
+       wwllaatt--ttoo--ddoott  renders a wwllaatt--ffoorrmmaatt(5) word lattice in ddoott(1) format for
+       subsequent layout, printing, etc.  sshhooww__pprroobbss==11 includes node posterior
+       probabilities  in the output.  sshhooww__nnuummss==11 includes node indices in the
+       output.
+
+       wwllaatt--ssttaattss computes statistics of word  posterior  lattices,  including
+       the  number  of  word hypotheses, the entropy (log base 10) of the sen-
+       tence hypothesis set represented, and the posterior expected number  of
+       words.   For  word  meshes  that have been aligned with references, the
+       1-best and oracle lattice error rates are also computed.
+
+NNUUAANNCCEE CCOOMMPPAATTIIBBIILLIITTYY
+       The Nuance recognizer (as of version 6.2) understands a variant of  the
+       PFSG  format;  hence  the  scripts  above  should be useful in building
+       recognition systems for that recognizer.
+
+       A suitable PFSG can be generated from an N-gram backoff model  in  ARPA
+       nnggrraamm--ffoorrmmaatt(5) using the following command:
+            ngram -debug 1 -order _N -lm _L_M_._b_o -prune-lowprobs -write-lm - | \
+            make-ngram-pfsg | \
+            add-pauses-to-pfsg version=1 pauselast=1 pause=_pau_ top_level_name=.TOP_LEVEL >_L_M_._p_f_s_g
+       assuming  the  pause  word  in  the  dictionary  is ``_pau_''.  Certain
+       restrictions on the naming of words (e.g., no hyphens are allowed) have
+       to be respected.
+
+       The  resulting  PFSG  can  then be referenced in a Nuance grammar file,
+       e.g.,
+            .TOP [NGRAM_PFSG]
+            NGRAM_PFSG:lm _L_M_._p_f_s_g
+
+       In newer Nuance versions the name for a non-emitting node  was  changed
+       to  NNUULLNNOODD,  and  inter-word optional pauses are automatically added to
+       the grammar.  This means that the PFSG should be create using
+            ngram -debug 1 -order _N -lm _L_M_._b_o -prune-lowprobs -write-lm - | \
+            make-ngram-pfsg version=1 top_level_name=.TOP_LEVEL null=NULNOD >_L_M_._p_f_s_g
+       The nnuullll==NNUULLNNOODD option should also be passed to aadddd--ccllaasssseess--ttoo--ppffssgg.
+
+       Starting with version 8, Nuance supports N-gram LMs.  However, you  can
+       still  use  SRILM  to  create  LMs, as described above.  The syntax for
+       inclusion of a PFSG has changed to
+            NGRAM_PFSG:slm _L_M_._p_f_s_g
+
+       Caveat: Compatibility with Nuance is purely due to  historical  circum-
+       stance and not supported.
+
+SSEEEE AALLSSOO
+       lattice-tool(1),  ngram(1),  ngram-format(5), pfsg-format(5), wlat-for-
+       mat(5), nbest-format(5), classes-format(5), fsm(5), dot(1).
+
+BBUUGGSS
+       mmaakkee--nnggrraamm--ppffssgg should be reimplemented in C++ for speed and some  size
+       optimizations that require more global operations on the PFSG.
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1995-2005 SRI International
+
+
+
+SRILM Tools              $Date: 2009/09/08 18:21:54 $          pfsg-scripts(1)

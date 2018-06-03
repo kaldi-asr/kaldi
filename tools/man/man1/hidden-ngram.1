@@ -1,0 +1,428 @@
+.\" $Id: hidden-ngram.1,v 1.33 2013/03/09 04:13:59 stolcke Exp $
+.TH hidden-ngram 1 "$Date: 2013/03/09 04:13:59 $" "SRILM Tools"
+.SH NAME
+hidden-ngram \- tag hidden events between words
+.SH SYNOPSIS
+.nf
+\fBhidden-ngram\fP [ \fB\-help\fP ] \fIoption\fP ...
+.fi
+.SH DESCRIPTION
+.B hidden-ngram
+tags a stream of word tokens with hidden events occurring between words.
+For example, an unsegmented text could be tagged for sentence boundaries
+(the hidden events in this case being `boundary' and `no-boundary').
+The most likely hidden tag sequence consistent with the given word
+sequence is found according to an N-gram language model over both
+words and hidden tags.
+.PP
+.B hidden-ngram 
+is a generalization of 
+.BR segment (1).
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-text " file"
+Specifies the file containing the word sequences to be tagged
+(one sentence per line).
+Start- and end-of-sentence tags are 
+.I not
+added by the program, but should be included in the input if the 
+language model uses them.
+.TP
+.BI \-escape " string"
+Set an ``escape string.''
+Input lines starting with
+.I string
+are not processed and passed unchanged to stdout instead.
+This allows associated information to be passed to scoring scripts etc.
+.TP
+.BI \-text\-map " file"
+Read the input words from a map file contain both the words and
+additional likelihoods of events following each word.
+Each line contains one input word, plus optional hidden-event/likelihood
+pairs in the format
+.nf
+	\fIw\fP	\fIe1\fP [\fIp1\fP] \fIe2\fP [\fIp2\fP] ...
+.fi
+If a \fIp\fP value is omitted a likelihood of 1 is assumed.
+All events not explicitly listed are given likelihood 0, and are
+hence excluded for that word.
+In particular, the label 
+.B *noevent*
+must be listed to allow absence of a hidden event.
+Input word strings are assembled from multiple lines of
+.B \-text\-map
+input until either an end-of-sentence token </s> is found, or an escaped 
+line (see 
+.BR \-escape )
+is encountered.
+.TP
+.B \-logmap
+Interpret numeric values in the
+.B \-text\-map
+file as log probabilities, rather
+than probabilities.
+.TP
+.BI \-lm " file"
+Specifies the word/tag language model as a standard ARPA N-gram backoff model
+file in
+.BR ngram-format (5).
+.TP
+.BI \-use-server " S"
+Use a network LM server (typically implemented by 
+.BR ngram (1)
+with the 
+.B \-server-port
+option) as the main model.
+The server specification
+.I S
+can be an unsigned integer port number (referring to a server port running on
+the local host),
+a hostname (referring to default port 2525 on the named host),
+or a string of the form 
+.IR port @ host ,
+where
+.I port 
+is a portnumber and 
+.I host
+is either a hostname ("dukas.speech.sri.com")
+or IP number in dotted-quad format ("140.44.1.15").
+.br
+For server-based LMs, the
+.B \-order
+option limits the context length of N-grams queried by the client
+(with 0 denoting unlimited length).
+Hence, the effective LM order is the mimimum of the client-specified value
+and any limit implemented in the server.
+.br
+When
+.B \-use-server 
+is specified, the arguments to the options
+.BR \-mix-lm ,
+.BR \-mix-lm2 ,
+etc. are also interpreted as network LM server specifications provided
+they contain a '@' character and do not contain a '/' character.
+This allows the creation of mixtures of several file- and/or
+network-based LMs.
+.TP
+.B \-cache-served-ngrams
+Enables client-side caching of N-gram probabilities to eliminated duplicate
+network queries, in conjunction with
+.BR \-use-server .
+This can results in a substantial speedup
+but requires memory in the client that may grow linearly with the
+amount of data processed.
+.TP
+.BI \-order " n"
+Set the effective N-gram order used by the language model to
+.IR n .
+Default is 3 (use a trigram model).
+.TP
+.BI \-classes " file"
+Interpret the LM as an N-gram over word classes.
+The expansions of the classes are given in
+.IR file 
+in 
+.BR classes-format (5).
+Tokens in the LM that are not defined as classes in
+.I file 
+are assumed to be plain words, so that the LM can contain mixed N-grams over
+both words and word classes.
+.TP
+.BR \-simple-classes
+Assume a "simple" class model: each word is member of at most one word class,
+and class expansions are exactly one word long.
+.TP
+.BI \-mix-lm " file"
+Read a second N-gram model for interpolation purposes.
+The second and any additional interpolated models can also be class N-grams
+(using the same
+.B \-classes 
+definitions).
+.TP
+.B \-factored
+Interpret the files specified by 
+.BR \-lm ,
+.BR \-mix-lm ,
+etc. as factored N-gram model specifications.
+See 
+.BR ngram (1)
+for more details.
+.TP
+.BI \-lambda " weight"
+Set the weight of the main model when interpolating with
+.BR \-mix-lm .
+Default value is 0.5.
+.TP
+.BI \-mix-lm2 " file"
+.TP
+.BI \-mix-lm3 " file"
+.TP
+.BI \-mix-lm4 " file"
+.TP
+.BI \-mix-lm5 " file"
+.TP
+.BI \-mix-lm6 " file"
+.TP
+.BI \-mix-lm7 " file"
+.TP
+.BI \-mix-lm8 " file"
+.TP
+.BI \-mix-lm9 " file"
+Up to 9 more N-gram models can be specified for interpolation.
+.TP
+.BI \-mix-lambda2 " weight"
+.TP
+.BI \-mix-lambda3 " weight"
+.TP
+.BI \-mix-lambda4 " weight"
+.TP
+.BI \-mix-lambda5 " weight"
+.TP
+.BI \-mix-lambda6 " weight"
+.TP
+.BI \-mix-lambda7 " weight"
+.TP
+.BI \-mix-lambda8 " weight"
+.TP
+.BI \-mix-lambda9 " weight"
+These are the weights for the additional mixture components, corresponding
+to
+.B \-mix-lm2
+through
+.BR \-mix-lm9 .
+The weight for the
+.B \-mix-lm 
+model is 1 minus the sum of 
+.B \-lambda
+and 
+.B \-mix-lambda2
+through
+.BR \-mix-lambda9 .
+.TP
+.BI \-context-priors " file"
+Read context-dependent mixture weight priors from
+.IR file .
+Each line in 
+.I file 
+should contain a context N-gram (most recent word first) followed by a vector 
+of mixture weights whose length matches the number of LMs being interpolated.
+.TP
+.BI \-bayes " length"
+Interpolate models using posterior probabilities
+based on the likelihoods of local N-gram contexts of length
+.IR length .
+The 
+.B \-lambda 
+values are used as prior mixture weights in this case.
+This option can also be combined with
+.BR \-context-priors ,
+in which case the 
+.I length
+parameter also controls how many words of context are maximally used to look up
+mixture weights.
+If 
+.BR \-context-priors
+is used without 
+.BR \-bayes ,
+the context length used is set by the
+.B \-order 
+option and Bayesian interpolation is disabled, as when
+.I scale
+(see next) is zero.
+.TP
+.BI \-bayes-scale " scale"
+Set the exponential scale factor on the context likelihood in conjunction
+with the
+.B \-bayes
+function.
+Default value is 1.0.
+.TP
+.BI \-lmw " W"
+Scales the language model probabilities by a factor 
+.IR W .
+Default language model weight is 1.
+.TP
+.BI \-mapw " W"
+Scales the likelihood map probability by a factor
+.IR W .
+Default map weight is 1.
+.TP
+.B \-tolower
+Map vocabulary to lowercase, removing case distinctions.
+.TP
+.BI \-vocab " file"
+Initialize the vocabulary for the LM from
+.IR file .
+This is useful in conjunction with
+.BR \-limit-vocab .
+.TP
+.BI \-vocab-aliases " file"
+Reads vocabulary alias definitions from
+.IR file ,
+consisting of lines of the form
+.nf
+	\fIalias\fP \fIword\fP
+.fi
+This causes all tokens
+.I alias
+to be mapped to
+.IR word .
+.TP
+.BI \-hidden-vocab " file"
+Read the list of hidden tags from
+.IR file .
+Note: This is a subset of the vocabulary contained in the language model.
+.TP
+.B \-limit-vocab
+Discard LM parameters on reading that do not pertain to the words 
+specified in the vocabulary, either by 
+.B \-vocab
+or
+.BR \-hidden-vocab .
+The default is that words used in the LM are automatically added to the 
+vocabulary.
+This option can be used to reduce the memory requirements for large LMs 
+that are going to be evaluated only on a small vocabulary subset.
+.TP
+.B \-force-event
+Forces a non-default event after every word.
+This is useful for language models that represent the default event
+explicitly with a tag, rather than implicitly by the absence of a tag
+between words (which is the default).
+.TP
+.B \-keep-unk
+Do not map unknown input words to the <unk> token.
+Instead, output the input word unchanged.
+Also, with this option the LM is assumed to be open-vocabulary
+(the default is close-vocabulary).
+.TP
+.B \-fb
+Perform forward-backward decoding of the input token sequence.
+Outputs the tags that have the highest posterior probability,
+for each position.
+The default is to use Viterbi decoding, i.e., the output is the
+tag sequence with the highest joint posterior probability.
+.TP
+.B \-fw-only
+Similar to 
+.BR \-fb ,
+but uses only the forward probabilities for computing posteriors.
+This may be used to simulate on-line prediction of tags, without the
+benefit of future context.
+.TP
+.B \-continuous
+Process all words in the input as one sequence of words, irrespective of
+line breaks.
+Normally each line is processed separately as a sentence.
+Input tokens are output one-per-line, followed by event tokens.
+.TP
+.B \-posteriors
+Output the table of posterior probabilities for each 
+tag position.
+If
+.B \-fb
+is also specified the posterior probabilities will be computed using
+forward-backward probabilities; otherwise an approximation will be used
+that is based on the probability of the most likely path containing 
+a given tag at given position.
+.TP
+.B \-totals
+Output the total string probability for each input sentence.
+If
+.B \-fb
+is also specified this probability is obtained by summing over all
+hidden event sequences; otherwise it is calculated (i.e., underestimated)
+using the most probably hidden event sequence.
+.TP
+.BI \-nbest " N"
+Output the
+.I N
+best hypotheses instead of just the first best when
+doing Viterbi search.
+If
+.IR N >1,
+then each hypothesis is prefixed by the tag
+.BI NBEST_ n " " x ,
+where
+.I n
+is the rank of the hypothesis in the N-best list and
+.I x 
+its score, the negative log of the combined probability of transitions
+and observations of the corresponding HMM path.
+.TP
+.BI \-write-counts " file"
+Write the posterior weighted counts of n-grams, including those
+with hidden tags, summed over the entire input data, to
+.IR file .
+The posterior probabilities should normally be computed with the
+forward-backward algorithm (instead of Viterbi), so the
+.B \-fb 
+option is usually also specified.
+Only n-grams whose contexts occur in the language model are output.
+.TP
+.BI \-unk-prob " L"
+Specifies that unknown words and other words having zero probability in
+the language model be assigned a log probability of 
+.IR L .
+This is -100 by default but might be set to 0, e.g., to compute 
+perplexities excluding unknown words.
+.TP
+.B \-debug
+Sets debugging output level.
+.PP
+Each filename argument can be an ASCII file, or a compressed
+file  (name  ending  in  .Z  or  .gz),  or ``-'' to indicate
+stdin/stdout.
+.SH BUGS
+The
+.B \-continuous
+and
+.B \-text\-map
+options effectively disable
+.BR \-keep-unk ,
+i.e., unknown input words are always mapped to <unk>.
+Also, 
+.B \-continuous
+doesn't preserve the positions of escaped input lines relative to
+the input.
+.br
+The dynamic programming for event decoding is not efficiently interleaved
+with that required to evaluate class N-gram models;
+therefore, the state space generated 
+in decoding with 
+.BR \-classes
+quickly becomes infeasibly large unless 
+.BR \-simple-classes
+is also specified.
+.PP
+The file given by 
+.B \-classes 
+is read multiple times if
+.B \-limit-vocab
+is in effect or if a mixture of LMs is specified.
+This will lead to incorrect behavior if the argument of
+.B \-classes 
+is stdin (``-'').
+.SH "SEE ALSO"
+ngram(1), ngram-count(1), disambig(1), segment(1),
+ngram-format(5), classes-format(5).
+.br
+A. Stolcke et al., ``Automatic Detection of Sentence Boundaries and
+Disfluencies based on Recognized Words,''
+\fIProc. ICSLP\fP, 2247\-2250, Sydney.
+.SH AUTHORS
+Andreas Stolcke <stolcke@speech.sri.com>,
+.br
+Anand Venkataraman <anand@speech.sri.com>.
+.br
+Copyright 1998\-2006 SRI International

@@ -1,0 +1,111 @@
+<! $Id: nbest-mix.1,v 1.7 2007/12/20 19:13:52 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>nbest-mix</TITLE>
+<BODY>
+<H1>nbest-mix</H1>
+<H2> NAME </H2>
+nbest-mix - interpolate N-best posterior probabilities
+<H2> SYNOPSIS </H2>
+<B>nbest-mix</B> [ <B>-help</B> ] <I>option</I> ... <I> weight1 nbest1 weight2 nbest2</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> nbest-mix </B>
+reads a number of N-best lists (which must contain identical
+hypotheses), computes the hypothesis posterior probabilities for each,
+and computes a new posterior distribution that is a
+weighted mixture of the input distributions.
+The hypothesis with the highest combined posterior probability is
+printed.
+<P>
+The command line arguments form an alternating list of 
+weight values and N-best file names.
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-debug</B><I> level</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Controls the amount of output (the higher the
+<I>level</I>,<I></I><I></I><I></I>
+the more).
+<DT><B>-write-nbest</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Output N-best lists containing scores that correspond to the log of
+the combined posteriors of the input hypotheses.
+The log posterior is assigned as the acoustic score and other scores
+are set to zero.
+This also suppresses the printing of the best hyp.
+<DT><B>-max-nbest</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limits the number of hypotheses read from each N-best list to the first
+<I>n</I>.<I></I><I></I><I></I>
+<DT><B>-rescore-lmw</B><I> lmw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the language model weight used in combining the language model log
+probabilities with acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+<DT><B>-rescore-wtw</B><I> wtw</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Sets the word transition weight used to weight the number of words relative to
+the acoustic log probabilities
+(only relevant if separate scores are given in the N-best input).
+<DT><B>-posterior-scale</B><I> scale</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Divide the total weighted log score by 
+<I> scale </I>
+when computing normalized posterior probabilities.
+This controls the peakedness of the posterior distribution. 
+The default value is whatever was chosen for 
+<I>lmw</I>,<I></I><I></I><I></I>
+so that language model scores are scaled to have weight 1,
+and acoustic scores have weight 1/<I>lmw</I>.
+<DT><B> -set-lm-scores </B>
+<DD>
+In conjunction with
+<B>-write-nbest</B>,<B></B><B></B><B></B>
+output N-best lists that preserve the acoustic scores and word counts 
+of the (first of the) input N-best lists, and encodes the combined 
+log posteriors via the LM scores.
+The LM scores in the output are calculated so that, when combined with
+the acoustic scores and insertion penalties (using the given LM weight
+and posterior scaling), the result is the weighted, combined posteriors based
+on all input N-best scores.
+This option is useful if input N-best lists were created by rescoring with
+different language models, and the output N-best lists are to be combined
+with other scores or if the score weighting is to be optimized with
+<A HREF="nbest-optimize.1.html">nbest-optimize(1)</A>.
+<DT><B> -set-am-scores </B>
+<DD>
+Analogous to 
+<B>-set-lm-scores</B>,<B></B><B></B><B></B>
+except that the acoustic scores are modified to reflect combined log posterior
+probabiltities, and other scores are preserved.
+This option is useful if input N-best lists were created by rescoring with
+different acoustic models.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="nbest-lattice.1.html">nbest-lattice(1)</A>, <A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>, <A HREF="nbest-optimize.1.html">nbest-optimize(1)</A>.
+<BR>
+A. Stolcke, K. Ries, N. Coccaro, E. Shriberg, R. Bates, D. Jurafsky, P. Taylor,
+R. Martin, C. Van Ess-Dykema, &amp; M. Meteer,
+``Dialogue Act Modeling for Automatic Tagging and Recognition of Conversational
+Speech,''
+<I>Computational Linguistics</I> 26(3), 339-373, 2000.
+<H2> BUGS </H2>
+Hopefully not.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1998-2004 SRI International
+</BODY>
+</HTML>

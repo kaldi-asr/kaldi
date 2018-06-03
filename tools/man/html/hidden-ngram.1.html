@@ -1,0 +1,437 @@
+<! $Id: hidden-ngram.1,v 1.33 2013/03/09 04:13:59 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>hidden-ngram</TITLE>
+<BODY>
+<H1>hidden-ngram</H1>
+<H2> NAME </H2>
+hidden-ngram - tag hidden events between words
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>hidden-ngram</B> [ <B>-help</B> ] <I>option</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> hidden-ngram </B>
+tags a stream of word tokens with hidden events occurring between words.
+For example, an unsegmented text could be tagged for sentence boundaries
+(the hidden events in this case being `boundary' and `no-boundary').
+The most likely hidden tag sequence consistent with the given word
+sequence is found according to an N-gram language model over both
+words and hidden tags.
+<P>
+<B> hidden-ngram </B>
+is a generalization of 
+<A HREF="segment.1.html">segment(1)</A>.
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-text</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the file containing the word sequences to be tagged
+(one sentence per line).
+Start- and end-of-sentence tags are 
+<I> not </I>
+added by the program, but should be included in the input if the 
+language model uses them.
+<DT><B>-escape</B><I> string</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set an ``escape string.''
+Input lines starting with
+<I> string </I>
+are not processed and passed unchanged to stdout instead.
+This allows associated information to be passed to scoring scripts etc.
+<DT><B>-text-map</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read the input words from a map file contain both the words and
+additional likelihoods of events following each word.
+Each line contains one input word, plus optional hidden-event/likelihood
+pairs in the format
+<PRE>
+	<I>w</I>	<I>e1</I> [<I>p1</I>] <I>e2</I> [<I>p2</I>] ...
+</PRE>
+If a <I>p</I> value is omitted a likelihood of 1 is assumed.
+All events not explicitly listed are given likelihood 0, and are
+hence excluded for that word.
+In particular, the label 
+<B> *noevent* </B>
+must be listed to allow absence of a hidden event.
+Input word strings are assembled from multiple lines of
+<B> -text-map </B>
+input until either an end-of-sentence token &lt;/s&gt; is found, or an escaped 
+line (see 
+<B>-escape</B>)<B></B><B></B><B></B>
+is encountered.
+<DT><B> -logmap </B>
+<DD>
+Interpret numeric values in the
+<B> -text-map </B>
+file as log probabilities, rather
+than probabilities.
+<DT><B>-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies the word/tag language model as a standard ARPA N-gram backoff model
+file in
+<A HREF="ngram-format.5.html">ngram-format(5)</A>.
+<DT><B>-use-server</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use a network LM server (typically implemented by 
+<A HREF="ngram.1.html">ngram(1)</A>
+with the 
+<B> -server-port </B>
+option) as the main model.
+The server specification
+<I> S </I>
+can be an unsigned integer port number (referring to a server port running on
+the local host),
+a hostname (referring to default port 2525 on the named host),
+or a string of the form 
+<I>port</I>@<I>host</I>,<I></I><I></I>
+where
+<I> port </I>
+is a portnumber and 
+<I> host </I>
+is either a hostname ("dukas.speech.sri.com")
+or IP number in dotted-quad format ("140.44.1.15").
+<BR>
+For server-based LMs, the
+<B> -order </B>
+option limits the context length of N-grams queried by the client
+(with 0 denoting unlimited length).
+Hence, the effective LM order is the mimimum of the client-specified value
+and any limit implemented in the server.
+<BR>
+When
+<B> -use-server </B>
+is specified, the arguments to the options
+<B>-mix-lm</B>,<B></B><B></B><B></B>
+<B>-mix-lm2</B>,<B></B><B></B><B></B>
+etc. are also interpreted as network LM server specifications provided
+they contain a '@' character and do not contain a '/' character.
+This allows the creation of mixtures of several file- and/or
+network-based LMs.
+<DT><B> -cache-served-ngrams </B>
+<DD>
+Enables client-side caching of N-gram probabilities to eliminated duplicate
+network queries, in conjunction with
+<B>-use-server</B>.<B></B><B></B><B></B>
+This can results in a substantial speedup
+but requires memory in the client that may grow linearly with the
+amount of data processed.
+<DT><B>-order</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the effective N-gram order used by the language model to
+<I>n</I>.<I></I><I></I><I></I>
+Default is 3 (use a trigram model).
+<DT><B>-classes</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Interpret the LM as an N-gram over word classes.
+The expansions of the classes are given in
+<I>file</I><I></I><I></I><I></I>
+in 
+<A HREF="classes-format.5.html">classes-format(5)</A>.
+Tokens in the LM that are not defined as classes in
+<I> file </I>
+are assumed to be plain words, so that the LM can contain mixed N-grams over
+both words and word classes.
+<DT><B>-simple-classes</B><B></B><B></B><B></B>
+<DD>
+Assume a "simple" class model: each word is member of at most one word class,
+and class expansions are exactly one word long.
+<DT><B>-mix-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a second N-gram model for interpolation purposes.
+The second and any additional interpolated models can also be class N-grams
+(using the same
+<B> -classes </B>
+definitions).
+<DT><B> -factored </B>
+<DD>
+Interpret the files specified by 
+<B>-lm</B>,<B></B><B></B><B></B>
+<B>-mix-lm</B>,<B></B><B></B><B></B>
+etc. as factored N-gram model specifications.
+See 
+<A HREF="ngram.1.html">ngram(1)</A>
+for more details.
+<DT><B>-lambda</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the weight of the main model when interpolating with
+<B>-mix-lm</B>.<B></B><B></B><B></B>
+Default value is 0.5.
+<DT><B>-mix-lm2</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm3</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm4</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm5</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm6</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm7</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm8</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm9</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Up to 9 more N-gram models can be specified for interpolation.
+<DT><B>-mix-lambda2</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda3</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda4</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda5</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda6</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda7</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda8</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda9</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+These are the weights for the additional mixture components, corresponding
+to
+<B> -mix-lm2 </B>
+through
+<B>-mix-lm9</B>.<B></B><B></B><B></B>
+The weight for the
+<B> -mix-lm </B>
+model is 1 minus the sum of 
+<B> -lambda </B>
+and 
+<B> -mix-lambda2 </B>
+through
+<B>-mix-lambda9</B>.<B></B><B></B><B></B>
+<DT><B>-context-priors</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read context-dependent mixture weight priors from
+<I>file</I>.<I></I><I></I><I></I>
+Each line in 
+<I> file </I>
+should contain a context N-gram (most recent word first) followed by a vector 
+of mixture weights whose length matches the number of LMs being interpolated.
+<DT><B>-bayes</B><I> length</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Interpolate models using posterior probabilities
+based on the likelihoods of local N-gram contexts of length
+<I>length</I>.<I></I><I></I><I></I>
+The 
+<B> -lambda </B>
+values are used as prior mixture weights in this case.
+This option can also be combined with
+<B>-context-priors</B>,<B></B><B></B><B></B>
+in which case the 
+<I> length </I>
+parameter also controls how many words of context are maximally used to look up
+mixture weights.
+If 
+<B>-context-priors</B><B></B><B></B><B></B>
+is used without 
+<B>-bayes</B>,<B></B><B></B><B></B>
+the context length used is set by the
+<B> -order </B>
+option and Bayesian interpolation is disabled, as when
+<I> scale </I>
+(see next) is zero.
+<DT><B>-bayes-scale</B><I> scale</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the exponential scale factor on the context likelihood in conjunction
+with the
+<B> -bayes </B>
+function.
+Default value is 1.0.
+<DT><B>-lmw</B><I> W</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Scales the language model probabilities by a factor 
+<I>W</I>.<I></I><I></I><I></I>
+Default language model weight is 1.
+<DT><B>-mapw</B><I> W</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Scales the likelihood map probability by a factor
+<I>W</I>.<I></I><I></I><I></I>
+Default map weight is 1.
+<DT><B> -tolower </B>
+<DD>
+Map vocabulary to lowercase, removing case distinctions.
+<DT><B>-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Initialize the vocabulary for the LM from
+<I>file</I>.<I></I><I></I><I></I>
+This is useful in conjunction with
+<B>-limit-vocab</B>.<B></B><B></B><B></B>
+<DT><B>-vocab-aliases</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reads vocabulary alias definitions from
+<I>file</I>,<I></I><I></I><I></I>
+consisting of lines of the form
+<PRE>
+	<I>alias</I> <I>word</I>
+</PRE>
+This causes all tokens
+<I> alias </I>
+to be mapped to
+<I>word</I>.<I></I><I></I><I></I>
+<DT><B>-hidden-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read the list of hidden tags from
+<I>file</I>.<I></I><I></I><I></I>
+Note: This is a subset of the vocabulary contained in the language model.
+<DT><B> -limit-vocab </B>
+<DD>
+Discard LM parameters on reading that do not pertain to the words 
+specified in the vocabulary, either by 
+<B> -vocab </B>
+or
+<B>-hidden-vocab</B>.<B></B><B></B><B></B>
+The default is that words used in the LM are automatically added to the 
+vocabulary.
+This option can be used to reduce the memory requirements for large LMs 
+that are going to be evaluated only on a small vocabulary subset.
+<DT><B> -force-event </B>
+<DD>
+Forces a non-default event after every word.
+This is useful for language models that represent the default event
+explicitly with a tag, rather than implicitly by the absence of a tag
+between words (which is the default).
+<DT><B> -keep-unk </B>
+<DD>
+Do not map unknown input words to the &lt;unk&gt; token.
+Instead, output the input word unchanged.
+Also, with this option the LM is assumed to be open-vocabulary
+(the default is close-vocabulary).
+<DT><B> -fb </B>
+<DD>
+Perform forward-backward decoding of the input token sequence.
+Outputs the tags that have the highest posterior probability,
+for each position.
+The default is to use Viterbi decoding, i.e., the output is the
+tag sequence with the highest joint posterior probability.
+<DT><B> -fw-only </B>
+<DD>
+Similar to 
+<B>-fb</B>,<B></B><B></B><B></B>
+but uses only the forward probabilities for computing posteriors.
+This may be used to simulate on-line prediction of tags, without the
+benefit of future context.
+<DT><B> -continuous </B>
+<DD>
+Process all words in the input as one sequence of words, irrespective of
+line breaks.
+Normally each line is processed separately as a sentence.
+Input tokens are output one-per-line, followed by event tokens.
+<DT><B> -posteriors </B>
+<DD>
+Output the table of posterior probabilities for each 
+tag position.
+If
+<B> -fb </B>
+is also specified the posterior probabilities will be computed using
+forward-backward probabilities; otherwise an approximation will be used
+that is based on the probability of the most likely path containing 
+a given tag at given position.
+<DT><B> -totals </B>
+<DD>
+Output the total string probability for each input sentence.
+If
+<B> -fb </B>
+is also specified this probability is obtained by summing over all
+hidden event sequences; otherwise it is calculated (i.e., underestimated)
+using the most probably hidden event sequence.
+<DT><B>-nbest</B><I> N</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Output the
+<I> N </I>
+best hypotheses instead of just the first best when
+doing Viterbi search.
+If
+<I>N</I>&gt;1,<I></I><I></I><I></I>
+then each hypothesis is prefixed by the tag
+<B>NBEST_</B><I>n</I><B> </B><I>x</I><B>,</B><I></I><B></B>
+where
+<I> n </I>
+is the rank of the hypothesis in the N-best list and
+<I> x </I>
+its score, the negative log of the combined probability of transitions
+and observations of the corresponding HMM path.
+<DT><B>-write-counts</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write the posterior weighted counts of n-grams, including those
+with hidden tags, summed over the entire input data, to
+<I>file</I>.<I></I><I></I><I></I>
+The posterior probabilities should normally be computed with the
+forward-backward algorithm (instead of Viterbi), so the
+<B> -fb </B>
+option is usually also specified.
+Only n-grams whose contexts occur in the language model are output.
+<DT><B>-unk-prob</B><I> L</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Specifies that unknown words and other words having zero probability in
+the language model be assigned a log probability of 
+<I>L</I>.<I></I><I></I><I></I>
+This is -100 by default but might be set to 0, e.g., to compute 
+perplexities excluding unknown words.
+<DT><B> -debug </B>
+<DD>
+Sets debugging output level.
+</DD>
+</DL>
+<P>
+Each filename argument can be an ASCII file, or a compressed
+file  (name  ending  in  .Z  or  .gz),  or ``-'' to indicate
+stdin/stdout.
+<H2> BUGS </H2>
+The
+<B> -continuous </B>
+and
+<B> -text-map </B>
+options effectively disable
+<B>-keep-unk</B>,<B></B><B></B><B></B>
+i.e., unknown input words are always mapped to &lt;unk&gt;.
+Also, 
+<B> -continuous </B>
+doesn't preserve the positions of escaped input lines relative to
+the input.
+<BR>
+The dynamic programming for event decoding is not efficiently interleaved
+with that required to evaluate class N-gram models;
+therefore, the state space generated 
+in decoding with 
+<B>-classes</B><B></B><B></B><B></B>
+quickly becomes infeasibly large unless 
+<B>-simple-classes</B><B></B><B></B><B></B>
+is also specified.
+<P>
+The file given by 
+<B> -classes </B>
+is read multiple times if
+<B> -limit-vocab </B>
+is in effect or if a mixture of LMs is specified.
+This will lead to incorrect behavior if the argument of
+<B> -classes </B>
+is stdin (``-'').
+<H2> SEE ALSO </H2>
+<A HREF="ngram.1.html">ngram(1)</A>, <A HREF="ngram-count.1.html">ngram-count(1)</A>, <A HREF="disambig.1.html">disambig(1)</A>, <A HREF="segment.1.html">segment(1)</A>,
+<A HREF="ngram-format.5.html">ngram-format(5)</A>, <A HREF="classes-format.5.html">classes-format(5)</A>.
+<BR>
+A. Stolcke et al., ``Automatic Detection of Sentence Boundaries and
+Disfluencies based on Recognized Words,''
+<I>Proc. ICSLP</I>, 2247-2250, Sydney.
+<H2> AUTHORS </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;,
+<BR>
+Anand Venkataraman &lt;anand@speech.sri.com&gt;.
+<BR>
+Copyright 1998-2006 SRI International
+</BODY>
+</HTML>

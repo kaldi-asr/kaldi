@@ -1,0 +1,147 @@
+.\" $Id: LM.3,v 1.5 2007/12/19 22:01:46 stolcke Exp $
+.TH LM 3 "$Date: 2007/12/19 22:01:46 $" SRILM
+.SH NAME
+LM \- Generic language model
+.SH SYNOPSIS
+.nf
+.B "#include <LM.h>"
+.fi
+.SH DESCRIPTION
+The
+.B LM
+class specifies a minimal language model interface and
+provides some generic utilities.
+.PP
+.B LM
+inherits from
+.BR Debug ,
+and the debugging level of an LM object determines if and how much
+verbose information various is printed by various functions.
+.SH "CLASS MEMBERS"
+.TP
+.B "LM(Vocab &\fIvocab\fP)"
+Initializeing an LM object requries specifying the vocabulary 
+over which the LM is defined.
+The \fIvocab\fP object can be shared among different LM instances.
+The LM object can modify \fIvocab\fP as a side-effect, e.g., as a result
+of reading an LM from a file.
+.TP
+.B "LogP wordProb(VocabIndex \fIword\fP, const VocabIndex *\fIcontext\fP)"
+.TP
+.B "LogP wordProb(VocabString \fIword\fP, const VocabString *\fIcontext\fP)"
+Returns the conditional log probability of \fIword\fP given a history.
+The history is given in reversed order (most recent word first) in 
+\fIcontext\fP, and terminated by \fBVocab_None\fP.
+Word or history can be specified either by strings or indices.
+All functional LM subclasses have to implement at least the first version.
+.TP
+.B "LogP wordProbRecompute(VocabIndex \fIword\fP, const VocabIndex *\fIcontext\fP)"
+Returns the same conditional log probability as \fBwordProb()\fP,
+but on the promise that \fIcontext\fP is identical to the last call
+to \fBwordProb()\fP.
+This often allows for efficient implementation to speed up repeated 
+lookups in the same context.
+.TP
+.B "LogP sentenceProb(const VocabIndex *\fIsentence\fP, TextStats &\fIstats\fP)"
+.TP
+.B "LogP sentenceProb(const VocabString *\fIsentence\fP, TextStats &\fIstats\fP)"
+Returns the total log probability of a string of word (a sentence).
+The data in the \fIstats\fP object is incremented to reflect the
+statistics of the sentence.
+.TP
+.B "unsigned pplFile(File &\fIfile\fP, TextStats &\fIstats\fP, const char *\fIescapeString\fP = 0)"
+Reads sentences from \fIfile\fP, computing their probabilities and
+aggregate perplexity, and updating the \fIstats\fP.
+The debugging state of the LM object determines how much information is
+printed to stderr.
+debuglevel 0: total statistics only;
+debuglevel 1: per-sentence statistics;
+debuglevel 2: word probabilities;
+debuglevel 3 and greater: LM specific information.
+.br
+Lines in \fIfile\fP that start with \fIescapeString\fP are copied to
+the output.
+This allows extra information in the input file to be passed through
+unchanged.
+.TP
+.B "unsigned rescoreFile(File &\fIfile\fP, double \fIlmScale\fP, double \fIwtScale\fP, LM &\fIoldLM\fP, double \fIoldLmScale\fP, double \fIoldWtScale\fP, const char *\fIescapeString\fP = 0)"
+Reads N-best hypotheses and scores from \fIfile\fP, replaces the
+LM scores with new ones computed from the current model, and prints
+the new scores (including hypotheses) to stdout.
+\fIlmScale\fP and \fIwtScore\fP are the LM and word transition weights,
+respectively.
+\fIoldLM\fP is the LM whose scores are included in the aggregate scores
+read from the input (provided so that they can be subtracted out),
+and \fIoldLmScale\fP and \fIoldWtScale\fP are the old LM and word 
+transition weights, respectively.
+.br
+Lines in \fIfile\fP that start with \fIescapeString\fP are copied to
+the output.
+.TP
+.B "void setState(const char *\fIstate\fP)"
+This is a generic interface to change the internal ``state'' of a LM.
+The default implementation of this function does nothing, but certain
+LM subclass implementation may interpret the \fIstate\fP string to
+assume different internal configurations.
+.TP
+.B "Prob wordProbSum(const VocabIndex *\fIcontext\fP)"
+Returns the sum of all word probabilities in \fIcontext\fP.
+Useful for checking the well-definedness of a model.
+.TP
+.B "VocabIndex generateWord(const VocabIndex *\fIcontext\fP)"
+Returns a word index from the vocabulary, randomly generated 
+according to the conditional probabilities in \fIcontext\fP.
+.TP
+.B "VocabIndex *generateSentence(unsigned \fImaxWords\fP = maxWordsPerLine, VocabIndex *\fIsentence\fP = 0)"
+.TP
+.B "VocabString *generateSentence(unsigned \fImaxWords\fP = maxWordsPerLine, VocabString *\fIsentence\fP = 0)"
+Generates a random sentence of length up to \fImaxWords\fP.
+The result is placed in \fIsentence\fP if specified, or in a
+static buffer otherwise.
+.TP
+.B "void *contextID(const VocabIndex *\fIcontext\fP)"
+Returns an implementation-dependent value that identifies a the
+word context used to compute a conditional probability.
+(The context actually used may be shorted that what is specified
+in \fIcontext\fP).
+.TP
+.B "Boolean isNonWord(VocabIndex \fIword\fP)"
+Return \fBtrue\fP if \fIword\fP is a regular word in the LM, i.e.,
+one that the LM computes probabilities for (as opposed to
+non-event tag such as sentence-start).
+.TP
+.B "Boolean read(File &\fIfile\fP, Boolean \fIlimitVocab\fP = false)"
+Read a LM from \fIfile\fP.
+Return \fBtrue\fP is the file contents was formated correctly and 
+an internal LM representation could be successfully constructed from it.
+The optional 2nd argument controls whether words not already in the vocabulary
+are to be added automatically.
+.TP
+.B "void write(File &\fIfile\fP)"
+Writes the LM to \fIfile\fP in a format that can be read back by
+\fBread()\fP.
+.TP
+.B "Vocab &vocab"
+The vocabulary object associated with LM (set at initialization).
+.TP
+.B "VocabIndex noiseIndex"
+The index of the noise tag, i.e., a word that is skipped when
+computing probabilities.
+.TP
+.B "const char *stateTag"
+A string introducing ``state'' information that should be passed to the LM.
+Input lines starting with this tag are handed to \fBsetState()\fB
+by \fBpplFile()\fP and \fBrescoreFile()\fP.
+.TP
+.B "Boolean reverseWords"
+If set to \fBtrue\fP, the LM reverses word order before computing 
+sentence probabilities.
+This means \fBwordProb()\fP is expected to compute conditional
+probabilities based on \fIright\fP contexts.
+.SH "SEE ALSO"
+Vocab(3).
+.SH BUGS
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 1995, 1996 SRI International

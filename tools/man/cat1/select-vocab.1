@@ -1,0 +1,80 @@
+select-vocab(1)                                                select-vocab(1)
+
+
+
+NNAAMMEE
+       select-vocab - Select a maximum-likelihood vocabulary from a mixture of
+       corpora.
+
+SSYYNNOOPPSSIISS
+       sseelleecctt--vvooccaabb [ _o_p_t_i_o_n ... ] --hheellddoouutt _f_i_l_e _f_1 _f_2 ...
+
+DDEESSCCRRIIPPTTIIOONN
+       sseelleecctt--vvooccaabb picks a vocabulary from the union of the  vocabularies  of
+       files  _f_1 through _f_n in order to maximize the likelihood of the heldout
+       file.  When invoked as above, the program will print out (unsorted) the
+       list  of words in all of the input corpora together with their weights.
+       This list may subsequently be sorted to put  the  words  in  decreasing
+       order  of  weight  and a vocabulary may be chosen by picking a suitable
+       threshold weight and ignoring words with weight less than this.
+
+       A number of automatically detected formats are supported for the  input
+       files  _f_1 through _f_n_.  They can be count files, which are characterized
+       by each line ending in a number, ARPA  language  models  in  nnggrraamm--ffoorr--
+       mmaatt(5),  or  simply  text  files.  If they are text-files, further, and
+       their names end in ".sentid", it is assumed that  the  first  field  of
+       each  line  is  a sentence identifier that is then discarded.  Further-
+       more, all of the input  files  can  also  be  compressed  (if  gzip  is
+       installed and available on the system).
+
+
+OOPPTTIIOONNSS
+       --hheellpp  Prints a short help message.
+
+       --hheellddoouutt _f_i_l_e
+              Likelihood  maximization  is  performed on the contents of _f_i_l_e_.
+              This file may also be in any of the formats  supported  for  the
+              input corpora, namely: text, counts, sentid, or ARPA-lm.
+
+       --qquuiieett Suppresses  printing  of progress and other informative messages
+              during execution.  By default the script writes these out to the
+              output error stream.
+
+       --ssccaallee _n
+              The  combined  final counts are scaled by _n before being written
+              out. This makes it possible to sort the output list  numerically
+              with sort(1).  The default scale is 1e6.
+
+
+NNOOTTEESS
+       This  implementation corrects a minor error in the algorithm specifica-
+       tion in [1].  The paper describes corpus level interpolation,  but  the
+       script actually does word-level interpolation.
+
+       The  program  is  written in perl(1) and requires it to be installed in
+       order to run.
+
+
+SSEEEE AALLSSOO
+       ngram-count(1), ngram-format(5), training-scripts(1).
+       [1] A. Venkataraman and W. Wang, "Techniques for  effective  vocabulary
+       selection", in _P_r_o_c_e_e_d_i_n_g_s _o_f _E_u_r_o_s_p_e_e_c_h, Geneva, 2003.
+
+
+BBUUGGSS
+       Probably.
+
+
+SSOOUURRCCEE
+       Download   as   part   of   the  SRILM  toolkit,  or  stand-alone  from
+       http://www.speech.sri.com/people/anand/downloads/selvoc-v1.tar.gz
+
+
+AAUUTTHHOORRSS
+       Anand Venkataraman <anand@speech.sri.com>
+       Wen Wang <wwang@speech.dsri.com>
+       Copyright 2003 SRI International
+
+
+
+SRILM Tools              $Date: 2011/02/11 08:12:47 $          select-vocab(1)

@@ -1,0 +1,18 @@
+Subdirectories of srilm
+
+	common/		shared makefiles (from the SRI DECIPHER(TM) system)
+	bin/		released programs
+	lib/		released libraries
+	include/	released header files
+	misc/		miscellaneous C and C++ convenience library
+	dstruct/	C++ data structures
+	lm/		language model library and tools
+	flm/		factored language model library and tools
+	lattice/	lattice library and tool
+	utils/		miscellaneous utility scripts using the LM tools
+	doc/		documentation
+	man/		man pages
+
+See INSTALL for build instructions.
+
+$Header: /home/srilm/CVS/srilm/README,v 1.9 2009/12/02 19:35:49 stolcke Exp $

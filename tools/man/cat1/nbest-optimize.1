@@ -1,0 +1,435 @@
+nbest-optimize(1)                                            nbest-optimize(1)
+
+
+
+NNAAMMEE
+       nbest-optimize - optimize score combination for N-best word error mini-
+       mization
+
+SSYYNNOOPPSSIISS
+       nnbbeesstt--ooppttiimmiizzee [ --hheellpp ] _o_p_t_i_o_n ... [ _s_c_o_r_e_d_i_r ... ]
+
+DDEESSCCRRIIPPTTIIOONN
+       nnbbeesstt--ooppttiimmiizzee reads a set of N-best lists, additional score files, and
+       corresponding reference transcripts and optimizes the score combination
+       weights so as to minimize the word error of a classifier that  performs
+       word-level  posterior  probability maximization.  The optimized weights
+       are meant to be used with nnbbeesstt--llaattttiiccee(1) and the --uussee--mmeesshh option, or
+       the  nnbbeesstt--rroovveerr  script (see nnbbeesstt--ssccrriippttss(1)).  nnbbeesstt--ooppttiimmiizzee deter-
+       mines both the best relative weighting of knowledge source  scores  and
+       the  optimal --ppoosstteerriioorr--ssccaallee parameter that controls the peakedness of
+       the posterior distribution.
+
+       Alternatively, nnbbeesstt--ooppttiimmiizzee can also optimize weights for a standard,
+       1-best  hypothesis  rescoring that selects entire (sentence) hypotheses
+       (--11bbeesstt option).  In this mode sentence-level error counts may be  read
+       from external files, or computed on the fly from the reference strings.
+       The weights obtained are meant to be used  for  N-best  list  rescoring
+       with rreessccoorree--rreewweeiigghhtt (see nnbbeesstt--ssccrriippttss(1)).
+
+       A third optimization criterion is the BLEU score used in machine trans-
+       lation.  This also requires the  associated  scores  to  be  read  from
+       external files.
+
+       One of three optimization algorithms are available:
+
+       1.     The  default  optimization  method  is  gradient  descent  on  a
+              smoothed (sigmoidal) approximation of the true  0/1  word  error
+              function (Katagiri et al. 1990).  Therefore, the result can only
+              be expected to be a _l_o_c_a_l minimum of the error surface.  (A more
+              global  search can be attempted by specifying different starting
+              points.)  Another approximation is that the  error  function  is
+              computed  assuming  a  fixed  multiple  alignment  of all N-best
+              hypotheses and the reference string,  which  tends  to  slightly
+              overestimate the true pairwise error between any single hypothe-
+              sis and the reference.
+
+       2.     An alternative search strategy  uses  a  simplex-based  "Amoeba"
+              search on the (non-smoothed) error function (Press et al. 1988).
+              The search is restarted multiple times to avoid local minima.
+
+       3.     A third algorithm uses Powell search (Press et al. 1988) on  the
+              (non-smoothed) error function.
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --ddeebbuugg _l_e_v_e_l
+              Controls the amount of output (the higher the _l_e_v_e_l, the  more).
+              At  level 1, error statistics at each iteration are printed.  At
+              level 2, word alignments are printed.  At level  3,  full  score
+              matrix  is printed.  At level 4, detailed information about word
+              hypothesis ranking is printed for each  training  iteration  and
+              sample.
+
+       --nnbbeesstt--ffiilleess _f_i_l_e_-_l_i_s_t
+              Specifies the set of N-best files as a list of filenames.  Three
+              sets of standard scores are extracted from the N-best files: the
+              acoustic  model  score, the language model score, and the number
+              of words (for insertion penalty  computation).   See  nnbbeesstt--ffoorr--
+              mmaatt(5) for details.
+              In BLEU optimization mode, since there is no acoustic score, the
+              position of the first score is  taken  by  the  "ac-replacement"
+              score,  which  can  be any score used by the machine translation
+              system.  A typical example is a score measuring word order  dis-
+              tortion between the source and target languages.
+
+       --ssrriinntteerrpp--ffoorrmmaatt
+              Parse  n-best  list  in  SRInterp format, which has features and
+              text in the same line. n-best optimize will also generate rover-
+              control  file in SRInterp format, where each line is in the form
+              of:
+                   _F_1_=_V_1 _F_2_=_V_2 ... _F_m_=_V_m _W_1 _W_2 ..._W_n
+              where _F_1 through _F_m are feature names, _V_1 through _V_m are feature
+              values, _W_1 through _W_n are words.  Also generate SRInterp control
+              file, in the format of:
+                   _F_1_:_S_1 _F_2_:_S_2 ... _F_m_:_S_m
+              where _S_1 through _S_m are scaling factors (weights) for feature _F_1
+              through _F_m
+
+       --rreeffss _r_e_f_e_r_e_n_c_e_s
+              Specifies  the  reference  transcripts.  Each line in _r_e_f_e_r_e_n_c_e_s
+              must contain the sentence ID (the last component in  the  N-best
+              filename path, minus any suffixes) followed by zero or more ref-
+              erence words.
+
+       --iinnsseerrttiioonn--wweeiigghhtt _W
+              Weight insertion errors by a factor _W.  This may  be  useful  to
+              optimize for keyword spotting tasks where insertions have a cost
+              different from deletion and substitution errors.
+
+       --wwoorrdd--wweeiigghhttss _f_i_l_e
+              Read a table of words and weights from _f_i_l_e.  Each word error is
+              weighted  according  to  the  word-specific weight.  The default
+              weight is 1, and used if a word has no specified weight.   Also,
+              when this option is used, substitution errors are counted as the
+              sum of a deletion and an insertion error, as opposed to counting
+              as 1 error as in traditional word error computation.
+
+       --aannttii--rreeffss _f_i_l_e
+              Read  a  file  of  "anti-references" for use with the --aannttii--rreeff--
+              wweeiigghhtt option (see below).
+
+       --aannttii--rreeff--wweeiigghhtt _W
+              Compute the hypothesis errors for 1-best optimization by  adding
+              the  edit  distance  with respect to the "anti-references" times
+              the weight _W to the regular error count.  If _W is negative  this
+              will  tend  to  generate  hypotheses that are different from the
+              anti-references (hence the name).
+
+       --11bbeesstt Select  optimization  for  standard  sentence-level   hypothesis
+              selection.
+
+       --11bbeesstt--ffiirrsstt
+              Optimized first using --11bbeesstt mode, then switch to full optimiza-
+              tion.  This is an effective  way  to  quickly  bring  the  score
+              weights  near  an optimal point, and then fine-tune them jointly
+              with the posterior scale parameter.
+
+       --eerrrroorrss _d_i_r
+              In 1-best mode, optimize for error counts  that  are  stored  in
+              separate  files  in directory _d_i_r.  Each N-best list must have a
+              matching error counts file of the same basename  in  _d_i_r.   Each
+              file contains 7 columns of numbers in the format
+                   _w_c_r _w_e_r _n_s_u_b _n_d_e_l _n_i_n_s _n_e_r_r _n_w
+              Only  the  last two columns (number of errors and words, respec-
+              tively) are used.
+              If this option is omitted, errors will be computed from  the  N-
+              best hypotheses and the reference transcripts.
+
+       --bblleeuu--ccoouunnttss _d_i_r
+              Perform  BLEU  optimization,  reading BLEU reference counts from
+              directory _d_i_r.  Each N-best list must  have  a  matching  counts
+              file  of  the  same  basename  in  _d_i_r, containing the following
+              information:
+                   _N _M _L_1 ... _L_M
+              where _N is the number of hypotheses in the N-best list, _M is the
+              number  of  references  for the utterance, and _L_1 through _L_M are
+              the reference lengths (word counts) for each reference.  Follow-
+              ing this line, there are _N lines of the form
+                   _K _C_1 _C_2 ... _C_m
+              where  _K is the number of words in the hypothesis and _C_1 through
+              _C_m are the N-gram counts occurring in the references for each N-
+              gram order 1, ..., _m.  Currently, _m is limited to 4.
+
+       --mmiinniimmuumm--bblleeuu--rreeffeerreennccee
+              Use  shortest  reference  length  to  compute  the  BLEU brevity
+              penalty.
+
+       --cclloosseesstt--bblleeuu--rreeffeerreennccee
+              Use closest reference length for each translation hypothesis  to
+              compute the BLEU brevity penalty.
+
+       --aavveerraaggee--bblleeuu--rreeffeerreennccee
+              Use  average  reference  length  to  compute  the  BLEU  brevity
+              penalty.
+
+       --eerrrroorr--bblleeuu--rraattiioo  RR
+              Specifies the weight of error rate when combined  with  BLEU  as
+              optimization  objective:  _(_1_-_B_L_E_U_) _+ _E_R_R _x _R.  _E_R_R is error rate
+              computed by #errors/#references.
+
+       --mmaaxx--nnbbeesstt _n
+              Limits the number of hypotheses read from each  N-best  list  to
+              the first _n.
+
+       --rreessccoorree--llmmww _l_m_w
+              Sets  the  language  model weight used in combining the language
+              model log probabilities with acoustic log  probabilities.   This
+              is used to compute initial aggregate hypotheses scores.
+
+       --rreessccoorree--wwttww _w_t_w
+              Sets  the  word  transition  weight used to weight the number of
+              words relative to the acoustic log probabilities.  This is  used
+              to compute initial aggregate hypotheses scores.
+
+       --ppoosstteerriioorr--ssccaallee _s_c_a_l_e
+              Initial  value  for  scaling log posteriors.  The total weighted
+              log score is divided by _s_c_a_l_e when computing  normalized  poste-
+              rior  probabilities.  This controls the peakedness of the poste-
+              rior distribution.  The default value is whatever was chosen for
+              --rreessccoorree--llmmww,  so  that language model scores are scaled to have
+              weight 1, and acoustic scores have weight 1/_l_m_w.
+
+       --ccoommbbiinnee--lliinneeaarr
+              Compute aggregate scores by linear combination, rather than log-
+              linear  combination.   (This  is appropriate if the input scores
+              represent log-posterior probabilities.)
+
+       --nnoonn--nneeggaattiivvee
+              Constrain search to non-negative weight values.
+
+       --vvooccaabb _f_i_l_e
+              Read the N-best list  vocabulary  from  _f_i_l_e.   This  option  is
+              mostly  redundant  since  words  found  in  the N-best input are
+              implicitly added to the vocabulary.
+
+       --ttoolloowweerr
+              Map vocabulary to lowercase, eliminating case distinctions.
+
+       --mmuullttiiwwoorrddss
+              Split multiwords (words joined by  '_')  into  their  components
+              when reading N-best lists.
+
+       --mmuullttii--cchhaarr _C
+              Character  used  to  delimit  component  words in multiwords (an
+              underscore character by default).
+
+       --nnoo--rreeoorrddeerr
+              Do not reorder the  hypotheses  for  alignment,  and  start  the
+              alignment  with  the  reference  words.  The default is to first
+              align hypotheses by order of decreasing scores (according to the
+              initial  score  weighting) and then the reference, which is more
+              compatible with how nnbbeesstt--llaattttiiccee(1) operates.
+
+       --nnooiissee _n_o_i_s_e_-_t_a_g
+              Designate _n_o_i_s_e_-_t_a_g as a vocabulary item that is to  be  ignored
+              in  aligning  hypotheses  with each other (the same as the -pau-
+              word).  This is typically used to identify a noise marker.
+
+       --nnooiissee--vvooccaabb _f_i_l_e
+              Read several noise tags from _f_i_l_e, instead of,  or  in  addition
+              to, the single noise tag specified by --nnooiissee.
+
+       --hhiiddddeenn--vvooccaabb file
+              Read  a subvocabulary from _f_i_l_e and constrain word alignments to
+              only group those words that are either all  in  or  outside  the
+              subvocabulary.   This  may be used to keep ``hidden event'' tags
+              from aligning with regular words.
+
+       --ddiiccttiioonnaarryy file
+              Use word pronunciations listed in _f_i_l_e to construct word  align-
+              ments  when  building  word  meshes.  This will use an alignment
+              cost function that reflects the number of  inserted/deleted/sub-
+              stituted  phones, rather than words.  The dictionary _f_i_l_e should
+              contain one pronunciation per line, each naming a  word  in  the
+              first field, followed by a string of phone symbols.
+
+       --ddiissttaanncceess file
+              Use the word distance matrix in _f_i_l_e as a cost function for word
+              alignments.  Each line in _f_i_l_e defines a  row  of  the  distance
+              matrix.   The  first  field  contains  the  word that is the row
+              index, followed by one or more word/number pairs, where the word
+              represents the column index and the number the distance value.
+
+       --iinniitt--llaammbbddaass _'_w_1 _w_2 _._._._'
+              Initialize  the score weights to the values specified (zeros are
+              filled in for missing values).  The default is to set  the  ini-
+              tial  acoustic model weight to 1, the language model weight from
+              --rreessccoorree--llmmww, the word transition weight from --rreessccoorree--wwttww,  and
+              all remaining weights to zero initially.  Prefixing a value with
+              an equal sign (`=') holds the value  constant  during  optimiza-
+              tion.  (All values should be enclosed in quotes to form a single
+              command-line argument.)
+              Hypotheses are aligned using the initial weights; thus, it makes
+              sense  to  reoptimize with initial weights from a previous opti-
+              mization in order to obtain alignments closer to the optimimum.
+
+       --aallpphhaa _a
+              Controls the error function smoothness; the sigmoid slope param-
+              eter is set to _a.
+
+       --eeppssiilloonn _e
+              The step-size used in gradient descent (the multiple of the gra-
+              dient vector).
+
+       --mmiinn--lloossss _x
+              Sets the loss function for a sample effectively to zero when its
+              value falls below _x.
+
+       --mmaaxx--ddeellttaa _d
+              Ignores  the contribution of a sample to the gradient if the de-
+              rivative exceeds _d.  This helps avoid numerical problems.
+
+       --mmaaxxiitteerrss _m
+              Stops optimization after _m iterations.  In Amoeba  search,  this
+              limits  the  total  number of points in the parameter space that
+              are evaluated.
+
+       --mmaaxx--bbaadd--iitteerrss n
+              Stops optimization after _n iterations during  which  the  actual
+              (non-smoothed) error has not decreased.
+
+       --mmaaxx--aammooeebbaa--rreessttaarrttss r
+              Perform  only  up to _r repeated Amoeba searches.  The default is
+              to search until _D searches give the same results, where _D is the
+              dimensionality of the problem.
+
+       --mmaaxx--ttiimmee _T
+              Abort search if new lower-error point isn't found in _T seconds.
+
+       --eeppssiilloonn--sstteeppddoowwnn _s
+
+       --mmiinn--eeppssiilloonn _m
+              If  _s  is  a  value greater than zero, the learning rate will be
+              multiplied by _s every time the error does not decrease  after  a
+              number  of  iterations  specified  by  --mmaaxx--bbaadd--iitteerrss.  Training
+              stops when the learning rate falls below _m in this manner.
+
+       --ccoonnvveerrggee _x
+              Stops optimization when the  (smoothed)  loss  function  changes
+              relatively by less than _x from one iteration to the next.
+
+       --qquuiicckkpprroopp
+              Use  the  approximate  second-order  method known as "QuickProp"
+              (Fahlman 1989).
+
+       --iinniitt--aammooeebbaa--ssiimmpplleexx _'_s_1 _s_2 _._._._'
+              Perform Amoeba simplex search.  The argument  defines  the  step
+              size  for  the  initial Amoeba simplex.  One value for each non-
+              fixed search dimension should be specified,  plus  optionally  a
+              value  for the posterior scaling parameter (which is searched as
+              an added dimension).
+
+       --iinniitt--ppoowweellll--rraannggee _'_a_1,,_b_1 _a_2,,_b_2 _._._._'
+              Perform Powell  search.   The  argment  initializes  the  weight
+              ranges  for  Powell  search.  One comma-separated pair of values
+              for each search dimension should be specified. For  each  dimen-
+              sion,  if the upper bound equals lower bound and initial lambda,
+              that dimension will be fixed, even if not so specified by --iinniitt--
+              llaammbbddaa ..
+
+       --nnuumm--ppoowweellll--rruunnss _N
+              Sets  the  number  of  random  runs for quick Powell grid search
+              (default value is 20).
+
+       --ddyynnaammiicc--rraannddoomm--sseerriieess
+              Use time and process ID to initialize  seed  for  pseudo  random
+              series  used in Powell search.  This will make results unrepeat-
+              able but may yield better results through multiple trials.
+
+       --pprriinntt--hhyyppss _f_i_l_e
+              Write the best word hypotheses to _f_i_l_e after optimization.
+
+       --pprriinntt--ttoopp--nn _N
+              Write out the top _N rescored hypotheses.  In this  case  --pprriinntt--
+              hhyyppss  specifies a directory (not a file) and one file per N-best
+              list is generated.
+
+       --pprriinntt--uunniiqquuee--hhyyppss
+              Eliminate duplicate hypotheses when writing out N-best  hypothe-
+              ses.
+
+       --pprriinntt--oolldd--rraannkkss
+              Output  the  original  hypothesis  ranks when writing out N-best
+              hypotheses.
+
+       --ccoommppuuttee--oorraaccllee
+              Find the lowest error rate or the highest BLEU score  achievable
+              by choosing among all N-best hypotheses.
+
+       --pprriinntt--oorraaccllee--hhyyppss _f_i_l_e
+              Print output oracle hyps to _f_i_l_e.
+
+       --wwrriittee--rroovveerr--ccoonnttrrooll _f_i_l_e
+              Writes  a  control  file for nnbbeesstt--rroovveerr to _f_i_l_e, reflecting the
+              names of the input directories and the optimized parameter  val-
+              ues.   The format of _f_i_l_e is described in nnbbeesstt--ssccrriippttss(1).  The
+              file is rewritten for each new minimal error weight  combination
+              found.
+              In  BLEU  optimization,  the weight for the ac-replacement score
+              will be written in the place of the posterior scale, since  pos-
+              terior scaling is not used in BLEU optimization.
+
+       --sskkiippoopptt
+              Skip  optimization altogether, such as when only the --pprriinntt--hhyyppss
+              function is to be exercised.
+
+       ----     Signals the end of options,  such  that  following  command-line
+              arguments  are interpreted as additional scorefiles even if they
+              start with `-'.
+
+       _s_c_o_r_e_d_i_r ...
+              Any additional arguments  name  directories  containing  further
+              score files.  In each directory, there must exist one file named
+              after the sentence ID it corresponds to (the file may  also  end
+              in  ``.gz''  and  contain compressed data).  The total number of
+              score dimensions is thus 3 (for the standard scores from the  N-
+              best list) plus the number of additional score directories spec-
+              ified.
+
+SSEEEE AALLSSOO
+       nbest-lattice(1), nbest-scripts(1), nbest-format(5).
+       S. Katagiri, C.H. Lee, &  B.-H.  Juang,  "A  Generalized  Probabilistic
+       Descent  Method",  in  _P_r_o_c_e_e_d_i_n_g_s  _o_f _t_h_e _A_c_o_u_s_t_i_c_a_l _S_o_c_i_e_t_y _o_f _J_a_p_a_n_,
+       _F_a_l_l _M_e_e_t_i_n_g, pp. 141-142, 1990.
+       S. E. Fahlman,  "Faster-Learning  Variations  on  Back-Propagation:  An
+       Empirical  Study",  in  D. Touretzky, G. Hinton, & T. Sejnowski (eds.),
+       _P_r_o_c_e_e_d_i_n_g_s _o_f _t_h_e _1_9_8_8 _C_o_n_n_e_c_t_i_o_n_i_s_t _M_o_d_e_l_s _S_u_m_m_e_r _S_c_h_o_o_l, pp.  38-51,
+       Morgan Kaufmann, 1989.
+       W.  H.  Press,  B.  P.  Flannery,  S. A. Teukolsky, & W. T. Vetterling,
+       _N_u_m_e_r_i_c_a_l _R_e_c_i_p_e_s _i_n _C_: _T_h_e _A_r_t _o_f _S_c_i_e_n_t_i_f_i_c _C_o_m_p_u_t_i_n_g, Cambridge Uni-
+       versity Press, 1988.
+
+BBUUGGSS
+       Gradient-based  optimization  is  not supported (yet) in 1-best or BLEU
+       mode or  in  conjunction  with  the  --ccoommbbiinnee--lliinneeaarr  or  --nnoonn--nneeggaattiivvee
+       options; use simplex or Powell search instead.
+       The N-best directory in the control file output by --wwrriittee--rroovveerr--ccoonnttrrooll
+       is inferred from the first N-best filename specified with --nnbbeesstt--ffiilleess,
+       and will therefore only work if all N-best lists are placed in the same
+       directory.
+
+       The --iinnsseerrttiioonn--wweeiigghhtt and --wwoorrdd--wweeiigghhttss options only  affect  the  word
+       error  computation,  not  the  construction  of  hypothesis alignments.
+       Also, they only apply to sausage-based, not 1-best error  optimization.
+       (1-best errors may be explicitly specified using the --eerrrroorrss option).
+
+       The  --aannttii--rreeffss  and  --aannttii--rreeff--wweeiigghhtt options do not work for sausage-
+       based or BLEU optimization.
+
+AAUUTTHHOORRSS
+       Andreas Stolcke <andreas.stolcke@microsoft.com>
+       Dimitra Vergyri <dverg@speech.sri.com>
+       Jing Zheng <zj@speech.sri.com>
+       Copyright (c) 2000-2012 SRI International, 2012 Microsoft Corp.
+
+
+
+SRILM Tools              $Date: 2012/07/04 23:47:53 $        nbest-optimize(1)

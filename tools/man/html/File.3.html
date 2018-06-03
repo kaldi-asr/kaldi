@@ -1,0 +1,84 @@
+<! $Id: File.3,v 1.2 2007/12/19 22:01:46 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>File</TITLE>
+<BODY>
+<H1>File</H1>
+<H2> NAME </H2>
+File -  Wrapper for stdio streams
+<H2> SYNOPSIS </H2>
+<PRE>
+<B> #include &lt;File.h&gt; </B>
+</PRE>
+<H2> DESCRIPTION </H2>
+The
+<B> File </B>
+class provides a simple wrapper around stdio streams for use
+with C++.
+It provides two kinds of convenience:
+Firstly, constructors and destructors manage opening and closing of the stream.
+The stream is checked for errors on closing, and the default behavior
+is to exit() with an error message if a problem was found.
+Secondly, the getline() method can be used for line-oriented input.
+It strips comments and keeps track of input line
+numbers for error reporting.
+<H2> CLASS MEMBERS </H2>
+<DL>
+<DT><B> File(const char *<I>name</I>, const char *<I>mode</I>, int <I>exitOnError</I> = 1) </B>
+<DD>
+<DT><B> File(FILE *<I>fp</I> = 0, int <I>exitOnError</I> = 1) </B>
+<DD>
+A File object can be initialized with either a filename or an existing
+stdio stream.
+In the first case, the file is opened according to <I>mode</I>
+(as if by
+<A HREF="fopen.3.html">fopen(3)</A>).
+The <I>exitOnError</I> flag determines whether I/O errors should be treated
+as fatal.
+<DT><B> ~File() </B>
+<DD>
+Destroying a File object implies closing the associated stream.
+<DT><B> char *getline() </B>
+<DD>
+Returns the next line from the input, stored in a static buffer of 
+up to <B>maxLineLength</B> characters.
+Empty lines and lines starting with <B>#</B> are skipped.
+<DT><B> int close() </B>
+<DD>
+Closes the stream without destroying the File object.
+Returns non-zero is an error condition occurs.
+<DT><B> int error() </B>
+<DD>
+Returns a non-zero value if an error condition occurred on the stream.
+<DT><B> operator FILE *() </B>
+<DD>
+A File object can be cast to <B>FILE *</B> to access the underlying stdio
+stream.
+<DT><B> ostream &amp;position(ostream &amp;<I>stream</I> = cerr) </B>
+<DD>
+Outputs the current line number on <I>stream</I>.
+The <I>stream</I> is returned so it can be used as the left operand
+of the <B>&lt;&lt;</B> operator.
+<DT><B> const char *name </B>
+<DD>
+The filename used in creating the File object.
+<DT><B> const unsigned lineno </B>
+<DD>
+The current line number as maintained by <B>getline()</B>.
+<DT><B> int exitOnError </B>
+<DD>
+When set to <B>true</B> this causes errors on the
+stream to be handled by program termination (after printing an
+error message).
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="stdio.3.html">stdio(3)</A>
+<H2> BUGS </H2>
+Many other potentially useful functions are not provided (yet).
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1995, 1996 SRI International
+</BODY>
+</HTML>

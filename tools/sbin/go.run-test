@@ -1,0 +1,74 @@
+#!/bin/sh
+# 
+# go.run-test --
+#	run a regression test
+#
+# $Header: /home/srilm/CVS/srilm/sbin/go.run-test,v 1.16 2013/03/09 06:51:05 stolcke Exp $
+#
+
+dir=$1
+
+if [ -z "$MACHINE_TYPE" ]; then
+	MACHINE_TYPE=unknown
+fi
+
+name=`basename $dir`
+
+#diff=cmp
+# ignore different whitespace and EOL conventions
+diff="${GAWK-gawk} -f $SRILM/sbin/compare-outputs 2>/dev/null"
+
+test -d output || mkdir output
+
+echo "" >&2
+echo "*** Running test $name ***" >&2
+
+if [ ! -d $dir ]; then
+	echo "$name: no such test" >&2
+	exit 2
+fi
+
+time sh -c "(cd $dir; rm -f core; ./run-test) \
+		> output/$name.$MACHINE_TYPE.stdout \
+		2> output/$name.$MACHINE_TYPE.stderr"
+
+# remove differences due to SRILM path
+for suffix in stderr stdout
+do
+	sed "s,$SRILM,SRILM,g" output/$name.$MACHINE_TYPE.$suffix \
+			> output/$name.$MACHINE_TYPE.$suffix.new &&
+	mv output/$name.$MACHINE_TYPE.$suffix.new \
+			output/$name.$MACHINE_TYPE.$suffix
+done
+
+for out in stdout stderr
+do
+	pass=
+
+	for file in reference/$name.$out reference/$name.*.$out
+	do
+		version=`echo $file | sed -e "s,reference/$name[.],," -e "s,$out\$,," -e 's,[.]$,,' `
+
+	        if [ ! -f $file ]; then
+			:
+		elif eval $diff $file output/$name.$MACHINE_TYPE.$out 
+		then
+			if [ -n "$version" ]; then
+			    echo "$name: $out output IDENTICAL ($version version)."
+			else
+			    echo "$name: $out output IDENTICAL."
+			fi
+			pass=yes
+			break
+		else
+			pass=no
+		fi
+	done
+
+	if [ "$pass" = no ]; then
+		echo "$name: $out output DIFFERS."
+	elif [ -z "$pass" ]; then
+		echo "$name: no $out reference found." >&2
+	fi
+done
+

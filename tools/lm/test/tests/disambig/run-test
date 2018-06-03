@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ -f Spanish-8k.2bo.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+disambig -debug 1 \
+	-keep-unk \
+	-map Spanish.diacmap \
+	-lm Spanish-8k.2bo$gz \
+	-text newdevtest.ascii
+

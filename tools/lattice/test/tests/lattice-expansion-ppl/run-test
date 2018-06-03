@@ -1,0 +1,33 @@
+#!/bin/sh
+
+lm="test.lm"
+
+mkdir -p tmp
+
+lattice-tool -debug 1 \
+                -in-lattice test.htk \
+		-read-htk \
+                -out-lattice tmp/test-rescored.htk \
+		-write-htk \
+		-lm $lm -order 2
+
+lattice-tool -debug 2 \
+		-in-lattice tmp/test-rescored.htk -read-htk \
+		-htk-acscale 0 \
+	 	-ppl test.input
+
+lattice-tool -debug 1 \
+                -in-lattice test.htk \
+		-read-htk \
+                -out-lattice tmp/test-rescored-compact.htk \
+		-write-htk \
+		-lm $lm -order 2 \
+		-compact-expansion
+
+lattice-tool -debug 2 \
+		-in-lattice tmp/test-rescored-compact.htk -read-htk \
+		-htk-acscale 0 \
+	 	-ppl test.input
+
+rm -rf tmp
+

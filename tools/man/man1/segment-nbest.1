@@ -1,0 +1,202 @@
+.\" $Id: segment-nbest.1,v 1.9 2007/12/20 19:13:52 stolcke Exp $
+.TH segment-nbest 1 "$Date: 2007/12/20 19:13:52 $" "SRILM Tools"
+.SH NAME
+segment-nbest \- rescore and segment N-best lists using hidden segment N-gram model
+.SH SYNOPSIS
+.nf
+\fsegment-nbest\fP [ \fB\-help\fP ] \fIoption\fP ... \fInbest-file-list\fP ...
+.fi
+.SH DESCRIPTION
+.B segment-nbest
+processes a series of consecutive N-best lists from a speech
+recognizer
+and applies a hidden segment N-gram language model to them.
+The language model is a standard backoff N-gram model in ARPA
+.BR ngram-format (5)
+modeling sentence segmentation using the boundary tags <s> and </s>.
+The program reads in all N-best lists and outputs the 
+hypotheses that have the highest aggregate (combined acoustic 
+and language model) score.
+Hypothesized sentence boundaries are marked by <s> tags.
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-order " n"
+Set the maximal N-gram order to be used, by default 3.
+NOTE: The order of the model is not set automatically when a model
+file is read, so the same file can be used at various orders.
+.TP
+.BI \-debug " level"
+Set the debugging output level (0 means no debugging output).
+Debugging messages are sent to stderr.
+.TP
+.BI \-lm " file"
+Read the N-gram model from
+.IR file .
+.TP
+.B \-tolower
+Map all vocabulary to lowercase.
+Useful if case conventions for N-best lists and language model differ.
+.TP
+.BI \-mix-lm " file"
+Read a second, standard N-gram model for interpolation purposes.
+.TP
+.BI \-lambda " weight"
+Set the weight of the main model when interpolating with
+.BR \-mix-lm .
+Default value is 0.5.
+.TP
+.BI \-bayes " length"
+Interpolate the second and the main model using posterior probabilities
+for local N-gram-contexts of length
+.IR length .
+The 
+.B \-lambda 
+value is used as a prior mixture weight in this case.
+.TP
+.BI \-bayes-scale " scale"
+Set the exponential scale factor on the context likelihood in conjunction
+with the
+.B \-bayes
+function.
+Default value is 1.0.
+.TP
+.BI \-nbest-files " list"
+Specifies a list of N-best files.
+The file
+.I list
+should contain a list of filenames, one per line,
+each corresponding to an N-best file in one of the formats
+described in 
+.BR nbest-format (5).
+The N-best files should correspond to consecutive speech waveforms
+in the order listed.
+.TP
+.B \-fb-rescore
+Perform Forward-backward rescoring.
+This generates new N-best lists
+as output whose LM scores reflect the posterior probability of each
+hypothesis.
+The default is to perform Viterbi rescoring and output only the
+best combined hypothesis.
+.TP
+.BI \-write-nbest-dir " dir"
+Write rescored N-best lists to directory 
+.I dir
+instead of to stdout.
+The filenames from the input are preserved.
+.TP
+.BI \-max-nbest " n"
+Limits the number of hypotheses read from each N-best list to the first
+.IR n .
+.TP
+.BI \-max-rescore " m"
+Only choose among the top 
+.I m
+hypotheses of each list (after reordering hypotheses, see below).
+This is an effective way to limit the quadratic computation 
+of the Viterbi or forward/backward dynamic programming.
+.TP
+.B \-no-reorder
+Do not reorder the hypotheses before limiting the computation to
+the top
+.IR m .
+By default the hypotheses will first be sorted according to the 
+acoustic and language model scores recorded in the N-best lists.
+.TP
+.BI \-rescore-lmw " weight"
+Specifies the language model weight to be use in combining
+acoustic and language model scores to select the best hypotheses.
+.TP
+.BI \-rescore-wtw " weight"
+Specifies the word transition weight to be used in selecting the
+best hypotheses.
+.TP
+.BI \-noise " noise-tag"
+Designate
+.I noise-tag
+as a vocabulary item that is to be ignored by the LM.
+(This is typically used to identify a noise marker.)
+.TP
+.BI \-noise-vocab " file"
+Read several noise tags from
+.IR file ,
+instead of, or in addition to, the single noise tag specified by
+.BR \-noise .
+.TP
+.BI \-decipher-lm " model-file"
+Designates the N-gram backoff model (typically a bigram) that was used by the
+Decipher(TM) recognizer in computing composite scores.
+Used to compute acoustic scores from the composite scores if the
+N-best lists are in "NBestList1.0" format.
+.TP
+.BI \-decipher-lmw " weight"
+Specifies the language model weight used by the recognizer.
+Used to compute acoustic scores from the composite scores.
+.TP
+.BI \-decipher-wtw " weight"
+Specifies the word transition weight used by the recognizer.
+Used to compute acoustic scores from the composite scores.
+.TP
+.BI \-stag " string"
+Use
+.I string
+to mark segment boundaries in the output.
+Default is the start-of-sentence symbol defined in the language model (<s>).
+.TP
+.BI \-bias " b"
+Make a segment boundary a priori more likely by a factor of
+.IR b .
+If
+.I b
+is 0, the dynamic program algorithm is restricted to never consider
+hidden sentence boundaries; this is useful when
+.B segment-nbest 
+is used merely for its ability to apply the LM across N-best boundaries.
+.TP
+.BI \-start-tag " string"
+Insert a tag 
+.I string
+at the front of every N-best hypothesis read in.
+.TP
+.BI \-end-tag " string"
+Insert a tag 
+.I string
+at the end of every N-best hypothesis read in.
+This and the previous option are useful if the LM marks acoustic
+waveform boundaries with a special tag.
+.PP
+.B segment-nbest
+will also process any command line arguments following the options
+as lists of N-best lists, as with the 
+.B \-nbest-files
+option.
+Each 
+.I nbest-file-list
+will be processed in turn,
+with individual output delimited by a line of the form
+.nf
+	<nbestfile \fInbest-file-list\fP>
+.fi
+.SH "SEE ALSO"
+ngram-count(1), segment(1), ngram-format(5), nbest-format(5).
+.br
+A. Stolcke, ``Modeling Linguistic Segment and Turn Boundaries for N-best
+Rescoring of Spontaneous Speech,'' \fIProc. Eurospeech\fP, 2779\-2782, 1997.
+.SH BUGS
+N-gram models of arbitrary order can be used, but the context at the 
+beginning of a hypothesis never extends beyond the words from the preceding
+N-best list.
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 1997\-2004 SRI International

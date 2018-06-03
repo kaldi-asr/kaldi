@@ -1,0 +1,117 @@
+
+ACKNOWLEDGEMENTS:
+
+SRILM includes the following open-source software:
+
+
+Cfuncproto:  Provides C prototype compatibility.
+
+Copyright 1990 Regents of the University of California.
+
+Permission to use, copy, modify, and distribute this
+software and its documentation for any purpose and without
+fee is hereby granted, provided that the above copyright
+notice appear in all copies.  The University of California
+makes no representations about the suitability of this
+software for any purpose.  It is provided "as is" without
+express or implied warranty.
+
+
+Option: Command line parsing.
+
+Copyright 1988, 1991 Regents of the University of California.
+
+Permission to use, copy, modify, and distribute this
+software and its documentation for any purpose and without
+fee is hereby granted, provided that the above copyright
+notice appear in all copies.  The University of California
+makes no representations about the suitability of this
+software for any purpose.  It is provided "as is" without
+express or implied warranty.
+
+
+BlockMalloc:  Memory management.
+
+Copyright 2011, Andreas Stolcke.  
+
+Permission to use, copy, modify, and distribute this
+software and its documentation for any purpose and without
+fee is hereby granted, provided that the above copyright
+notice appear in all copies.  The author
+makes no representations about the suitability of this
+software for any purpose.  It is provided "as is" without
+express or implied warranty.
+
+Zlib:  General purpose data compression library.
+
+Version 1.2.7 from http://zlib.net, with a small modification to support
+a vprintf-style output function, gzvprintf().  The patch to the orignal
+code can be found in zlib/src/README.SRILM.
+
+
+Zlib is Copyright (c) 1995-2012 Jean-loup Gailly and Mark Adler.
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+
+
+cumbin:  calculates probability over the tail of a binomial distribution
+
+This program is in the public domain.  It was written by Brett Kessler
+and David Gelbart.
+
+
+libLBFGS:
+
+SRILM may optionally be linked to libLBFGS (available from
+http://www.chokkan.org/software/liblbfgs or
+https://github.com/chokkan/liblbfgs), a C port of the implementation of
+Limited-memory Broyden-Fletcher-Goldfarb-Shanno (L-BFGS) method written
+by Jorge Nocedal.  The original FORTRAN source code is available at:
+http://www.ece.northwestern.edu/~nocedal/lbfgs.html, and is released
+under the BSD license.
+
+libLBFGS is licensed under the MIT license as follows:
+
+The MIT License
+
+Copyright (c) 1990 Jorge Nocedal
+Copyright (c) 2007-2010 Naoaki Okazaki
+
+Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"),
+to deal in the Software without restriction, including without limitation
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+and/or sell copies of the Software, and to permit persons to whom the
+Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+The original fortran software is available under the following license:
+
+This software is freely available for educational or commercial
+purposes. We expect that all publications describing work using this
+software quote at least one of the references given below. This software
+is released under the BSD License

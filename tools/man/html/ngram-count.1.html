@@ -1,0 +1,591 @@
+<! $Id: ngram-count.1,v 1.47 2013-02-22 17:41:07 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>ngram-count</TITLE>
+<BODY>
+<H1>ngram-count</H1>
+<H2> NAME </H2>
+ngram-count - count N-grams and estimate language models
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>ngram-count</B> [ <B>-help</B> ] <I>option</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> ngram-count </B>
+generates and manipulates N-gram counts, and estimates N-gram language
+models from them.
+The program first builds an internal N-gram count set, either
+by reading counts from a file, or by scanning text input.
+Following that, the resulting counts can be output back to a file
+or used for building an N-gram language model in ARPA
+<A HREF="ngram-format.5.html">ngram-format(5)</A>.
+Each of these actions is triggered by corresponding options, as
+described below.
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-order</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the maximal order (length) of N-grams to count.
+This also determines the order of the estimated LM, if any.
+The default order is 3.
+<DT><B>-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a vocabulary from file.
+Subsequently, out-of-vocabulary words in both counts or text are
+replaced with the unknown-word token.
+If this option is not specified all words found are implicitly added
+to the vocabulary.
+<DT><B>-vocab-aliases</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reads vocabulary alias definitions from
+<I>file</I>,<I></I><I></I><I></I>
+consisting of lines of the form
+<PRE>
+	<I>alias</I> <I>word</I>
+</PRE>
+This causes all tokens
+<I> alias </I>
+to be mapped to
+<I>word</I>.<I></I><I></I><I></I>
+<DT><B>-write-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write the vocabulary built in the counting process to
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-write-vocab-index</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write the internal word-to-integer mapping to 
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B> -tagged </B>
+<DD>
+Interpret text and N-grams as consisting of word/tag pairs.
+<DT><B> -tolower </B>
+<DD>
+Map all vocabulary to lowercase.
+<DT><B> -memuse </B>
+<DD>
+Print memory usage statistics.
+</DD>
+</DL>
+<H3> Counting Options </H3>
+<DL>
+<DT><B>-text</B><I> textfile</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Generate N-gram counts from text file.
+<I> textfile </I>
+should contain one sentence unit per line.
+Begin/end sentence tokens are added if not already present.
+Empty lines are ignored.
+<DT><B> -text-has-weights </B>
+<DD>
+Treat the first field in each text input line as a weight factor by
+which the N-gram counts for that line are to be multiplied.
+<DT><B> -no-sos </B>
+<DD>
+Disable the automatic insertion of start-of-sentence tokens 
+in N-gram counting.
+<DT><B> -no-eos </B>
+<DD>
+Disable the automatic insertion of end-of-sentence tokens
+in N-gram counting.
+<DT><B>-read</B><I> countsfile</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read N-gram counts from a file.
+Ascii count files contain one N-gram of 
+words per line, followed by an integer count, all separated by whitespace.
+Repeated counts for the same N-gram are added.
+Thus several count files can be merged by using 
+<A HREF="cat.1.html">cat(1)</A>
+and feeding the result to 
+<B>ngram-count -read -</B><B></B><B></B><B></B>
+(but see
+<A HREF="ngram-merge.1.html">ngram-merge(1)</A>
+for merging counts that exceed available memory).
+Counts collected by 
+<B> -text </B>
+and 
+<B> -read </B>
+are additive as well.
+Binary count files (see below) are also recognized.
+<DT><B>-read-google</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read N-grams counts from an indexed directory structure rooted in
+<B>dir</B>,<B></B><B></B><B></B>
+in a format developed by
+Google to store very large N-gram collections.
+The corresponding directory structure can be created using the script
+<B> make-google-ngrams </B>
+described in
+<A HREF="training-scripts.1.html">training-scripts(1)</A>.
+<DT><B>-intersect</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limit reading of counts via
+<B> -read </B>
+and
+<B> -read-google </B>
+to a subset of N-grams defined by another count 
+<I>file</I>.<I></I><I></I><I></I>
+(The counts in 
+<I> file </I>
+are ignored, only the N-grams are relevant.)
+<DT><B>-write</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write total counts to
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-write-binary</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write total counts to 
+<I> file </I>
+in binary format.
+Binary count files cannot be compressed and are typically
+larger than compressed ascii count files.
+However, they can be loaded faster, especially when the
+<B> -limit-vocab </B>
+option is used.
+<DT><B>-write-order</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Order of counts to write.
+The default is 0, which stands for N-grams of all lengths.
+<DT><B>-write</B><I>n file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Writes only counts of the indicated order to
+<I>file</I>.<I></I><I></I><I></I>
+This is convenient to generate counts of different orders 
+separately in a single pass.
+<DT><B> -sort </B>
+<DD>
+Output counts in lexicographic order, as required for
+<A HREF="ngram-merge.1.html">ngram-merge(1)</A>.
+<DT><B> -recompute </B>
+<DD>
+Regenerate lower-order counts by summing the highest-order counts for 
+each N-gram prefix.
+<DT><B> -limit-vocab </B>
+<DD>
+Discard N-gram counts on reading that do not pertain to the words 
+specified in the vocabulary.
+The default is that words used in the count files are automatically added to
+the vocabulary.
+</DD>
+</DL>
+<H3> LM Options </H3>
+<DL>
+<DT><B>-lm</B><I> lmfile</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Estimate a language model from the total counts and write it to
+<I>lmfile</I>.<I></I><I></I><I></I>
+This option applies to several LM model types (see below) but the default is to
+estimate a backoff N-gram model, and write it in
+<A HREF="ngram-format.5.html">ngram-format(5)</A>.
+<DT><B> -write-binary-lm </B>
+<DD>
+Output 
+<I> lmfile </I>
+in binary format.
+If an LM class does not provide a binary format the default (text) format
+will be output instead.
+<DT><B>-nonevents</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a list of words from
+<I> file </I>
+that are to be considered non-events, i.e., that
+can only occur in the context of an N-gram.
+Such words are given zero probability mass in model estimation.
+<DT><B> -float-counts </B>
+<DD>
+Enable manipulation of fractional counts.
+Only certain discounting methods support non-integer counts.
+<DT><B> -skip </B>
+<DD>
+Estimate a ``skip'' N-gram model, which predicts a word by
+an interpolation of the immediate context and the context one word prior.
+This also triggers N-gram counts to be generated that are one word longer 
+than the indicated order.
+The following four options control the EM estimation algorithm used for
+skip-N-grams.
+<DT><B>-init-lm</B><I> lmfile</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Load an LM to initialize the parameters of the skip-N-gram.
+<DT><B>-skip-init</B><I> value</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The initial skip probability for all words.
+<DT><B>-em-iters</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The maximum number of EM iterations.
+<DT><B>-em-delta</B><I> d</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The convergence criterion for EM: if the relative change in log likelihood
+falls below the given value, iteration stops.
+<DT><B> -count-lm </B>
+<DD>
+Estimate a count-based interpolated LM using Jelinek-Mercer smoothing
+(Chen &amp; Goodman, 1998).
+Several of the options for skip-N-gram LMs (above) apply.
+An initial count-LM in the format described in 
+<A HREF="ngram.1.html">ngram(1)</A>
+needs to be specified using
+<B>-init-lm</B>.<B></B><B></B><B></B>
+The options
+<B> -em-iters </B>
+and
+<B> -em-delta </B>
+control termination of the EM algorithm.
+Note that the N-gram counts used to estimate the maximum-likelihood
+estimates come from the 
+<B> -init-lm </B>
+model.
+The counts specified with
+<B> -read </B>
+or
+<B> -text </B>
+are used only to estimate the smoothing (interpolation weights).
+<DT><B> -maxent </B>
+<DD>
+Estimate a maximum entropy N-gram model.
+The model is written to the file specifed by the
+<B> -lm </B>
+option.
+<BR>
+If 
+<B>-init-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+is also specified then use an existing maxent model from
+<I> file </I>
+as prior and adapt it using the given data.
+<DT><B>-maxent-alpha</B><I> A</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use the L1 regularization constant
+<I> A </I>
+for maxent estimation.
+The default value is 0.5.
+<DT><B>-maxent-sigma2</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use the L2 regularization constant
+<I> S </I>
+for maxent estimation.
+The default value is 6 for estimation and 0.5 for adaptation.
+<DT><B> -maxent-convert-to-arpa </B>
+<DD>
+Convert the maxent model to
+<A HREF="ngram-format.5.html">ngram-format(5)</A>
+before writing it out, using the algorithm by Wu (2002).
+<DT><B> -unk </B>
+<DD>
+Build an ``open vocabulary'' LM, i.e., one that contains the unknown-word
+token as a regular word.
+The default is to remove the unknown word.
+<DT><B>-map-unk</B><I> word</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Map out-of-vocabulary words to 
+<I>word</I>,<I></I><I></I><I></I>
+rather than the default
+<B> &lt;unk&gt; </B>
+tag.
+<DT><B> -trust-totals </B>
+<DD>
+Force the lower-order counts to be used as total counts in estimating
+N-gram probabilities.
+Usually these totals are recomputed from the higher-order counts.
+<DT><B>-prune</B><I> threshold</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Prune N-gram probabilities if their removal causes (training set)
+perplexity of the model to increase by less than
+<I> threshold </I>
+relative.
+<DT><B>-minprune</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Only prune N-grams of length at least
+<I>n</I>.<I></I><I></I><I></I>
+The default (and minimum allowed value) is 2, i.e., only unigrams are excluded
+from pruning.
+<DT><B>-debug</B><I> level</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set debugging output from estimated LM at
+<I>level</I>.<I></I><I></I><I></I>
+Level 0 means no debugging.
+Debugging messages are written to stderr.
+<DT><B>-gt<I>n</I>min</B><I> count</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Set the minimal count of N-grams of order
+<I> n </I>
+that will be included in the LM.
+All N-grams with frequency lower than that will effectively be discounted to 0.
+If 
+<I> n </I>
+is omitted the parameter for N-grams of order &gt; 9 is set.
+<BR>
+NOTE: This option affects not only the default Good-Turing discounting
+but the alternative discounting methods described below as well.
+<DT><B>-gt<I>n</I>max</B><I> count</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Set the maximal count of N-grams of order
+<I> n </I>
+that are discounted under Good-Turing.
+All N-grams more frequent than that will receive
+maximum likelihood estimates.
+Discounting can be effectively disabled by setting this to 0.
+If 
+<I> n </I>
+is omitted the parameter for N-grams of order &gt; 9 is set.
+</DD>
+</DL>
+<P>
+In the following discounting parameter options, the order
+<I> n </I>
+may be omitted, in which case a default for all N-gram orders is
+set.
+The corresponding discounting method then becomes the default method
+for all orders, unless specifically overridden by an option with
+<I>n</I>.<I></I><I></I><I></I>
+If no discounting method is specified, Good-Turing is used.
+<DL>
+<DT><B>-gt<I>n</I></B><I> gtfile</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Save or retrieve Good-Turing parameters
+(cutoffs and discounting factors) in/from
+<I>gtfile</I>.<I></I><I></I><I></I>
+This is useful as GT parameters should always be determined from
+unlimited vocabulary counts, whereas the eventual LM may use a
+limited vocabulary.
+The parameter files may also be hand-edited.
+If an
+<B> -lm </B>
+option is specified the GT parameters are read from
+<I>gtfile</I>,<I></I><I></I><I></I>
+otherwise they are computed from the current counts and saved in
+<I>gtfile</I>.<I></I><I></I><I></I>
+<DT><B>-cdiscount<I>n</I></B><I> discount</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use Ney's absolute discounting for N-grams of 
+order
+<I>n</I>,<I></I><I></I><I></I>
+using
+<I> discount </I>
+as the constant to subtract.
+<DT><B> -wbdiscount<I>n</I> </B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use Witten-Bell discounting for N-grams of order
+<I>n</I>.<I></I><I></I><I></I>
+(This is the estimator where the first occurrence of each word is
+taken to be a sample for the ``unseen'' event.)
+<DT><B> -ndiscount<I>n</I> </B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use Ristad's natural discounting law for N-grams of order
+<I>n</I>.<I></I><I></I><I></I>
+<DT><B>-addsmooth<I>n</I></B><I> delta</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Smooth by adding 
+<I> delta </I>
+to each N-gram count.
+This is usually a poor smoothing method and included mainly for instructional
+purposes.
+<DT><B> -kndiscount<I>n</I> </B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use Chen and Goodman's modified Kneser-Ney discounting for N-grams of order
+<I>n</I>.<I></I><I></I><I></I>
+<DT><B> -kn-counts-modified </B>
+<DD>
+Indicates that input counts have already been modified for Kneser-Ney 
+smoothing.
+If this option is not given, the KN discounting method modifies counts
+(except those of highest order) in order to estimate the backoff distributions.
+When using the 
+<B> -write </B>
+and related options the output will reflect the modified counts.
+<DT><B> -kn-modify-counts-at-end </B>
+<DD>
+Modify Kneser-Ney counts after estimating discounting constants, rather than
+before as is the default.
+<DT><B>-kn<I>n</I></B><I> knfile</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Save or retrieve Kneser-Ney parameters
+(cutoff and discounting constants) in/from
+<I>knfile</I>.<I></I><I></I><I></I>
+This is useful as smoothing parameters should always be determined from
+unlimited vocabulary counts, whereas the eventual LM may use a
+limited vocabulary.
+The parameter files may also be hand-edited.
+If an
+<B> -lm </B>
+option is specified the KN parameters are read from
+<I>knfile</I>,<I></I><I></I><I></I>
+otherwise they are computed from the current counts and saved in
+<I>knfile</I>.<I></I><I></I><I></I>
+<DT><B> -ukndiscount<I>n</I> </B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use the original (unmodified) Kneser-Ney discounting method for N-grams of
+order
+<I>n</I>.<I></I><I></I><I></I>
+<DT><B> -interpolate<I>n</I> </B>
+<DD>
+where
+<I> n </I>
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Causes the discounted N-gram probability estimates at the specified order 
+<I> n </I>
+to be interpolated with lower-order estimates.
+(The result of the interpolation is encoded as a standard backoff
+model and can be evaluated as such -- the interpolation happens at
+estimation time.)
+This sometimes yields better models with some smoothing methods
+(see Chen &amp; Goodman, 1998).
+Only Witten-Bell, absolute discounting, and
+(original or modified) Kneser-Ney smoothing
+currently support interpolation.
+<DT><B>-meta-tag</B><I> string</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Interpret words starting with 
+<I> string </I>
+as count-of-count (meta-count) tags.
+For example, an N-gram
+<PRE>
+	a b <I>string</I>3	4
+</PRE>
+means that there were 4 trigrams starting with "a b"
+that occurred 3 times each.
+Meta-tags are only allowed in the last position of an N-gram.
+<BR>
+Note: when using 
+<B> -tolower </B>
+the meta-tag
+<I> string </I>
+must not contain any uppercase characters.
+<DT><B> -read-with-mincounts </B>
+<DD>
+Save memory by eliminating N-grams with counts that fall below the thresholds
+set by
+<B>-gt</B><I>N</I><B>min</B><I></I><B></B><I></I><B></B>
+options during 
+<B> -read </B>
+operation 
+(this assumes the input counts contain no duplicate N-grams).
+Also, if
+<B> -meta-tag </B>
+is defined,
+these low-count N-grams will be converted to count-of-count N-grams,
+so that smoothing methods that need this information still work correctly.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="ngram-merge.1.html">ngram-merge(1)</A>, <A HREF="ngram.1.html">ngram(1)</A>, <A HREF="ngram-class.1.html">ngram-class(1)</A>, <A HREF="training-scripts.1.html">training-scripts(1)</A>, <A HREF="lm-scripts.1.html">lm-scripts(1)</A>,
+<A HREF="ngram-format.5.html">ngram-format(5)</A>.
+<BR>
+T. Alumäe and M. Kurimo, ``Efficient Estimation of Maximum Entropy
+Language Models with N-gram features: an SRILM extension,''
+<I>Proc. Interspeech</I>, 1820-1823, 2010.
+<BR>
+S. F. Chen and J. Goodman, ``An Empirical Study of Smoothing Techniques for
+Language Modeling,'' TR-10-98, Computer Science Group, Harvard Univ., 1998.
+<BR>
+S. M. Katz, ``Estimation of Probabilities from Sparse Data for the
+Language Model Component of a Speech Recognizer,'' <I>IEEE Trans. ASSP</I> 35(3),
+400-401, 1987.
+<BR>
+R. Kneser and H. Ney, ``Improved backing-off for M-gram language modeling,''
+<I>Proc. ICASSP</I>, 181-184, 1995.
+<BR>
+H. Ney and U. Essen, ``On Smoothing Techniques for Bigram-based Natural
+Language Modelling,'' <I>Proc. ICASSP</I>, 825-828, 1991.
+<BR>
+E. S. Ristad, ``A Natural Law of Succession,'' CS-TR-495-95,
+Comp. Sci. Dept., Princeton Univ., 1995.
+<BR>
+I. H. Witten and T. C. Bell, ``The Zero-Frequency Problem: Estimating the
+Probabilities of Novel Events in Adaptive Text Compression,''
+<I>IEEE Trans. Information Theory</I> 37(4), 1085-1094, 1991.
+<BR>
+J. Wu (2002), ``Maximum Entropy Language Modeling with Non-Local Dependencies,''
+doctoral dissertation, Johns Hopkins University, 2002.
+<H2> BUGS </H2>
+Several of the LM types supported by 
+<A HREF="ngram.1.html">ngram(1)</A>
+don't have explicit support in
+<B>ngram-count</B>.<B></B><B></B><B></B>
+Instead, they are built by separately manipulating N-gram counts, 
+followed by standard N-gram model estimation.
+<BR>
+LM support for tagged words is incomplete.
+<BR>
+Only absolute and Witten-Bell discounting currently support fractional counts.
+<BR>
+The combination of 
+<B> -read-with-mincounts </B>
+and 
+<B> -meta-tag </B>
+preserves enough count-of-count information for
+<I> applying </I>
+discounting parameters to the input counts, but it does not 
+necessarily allow the parameters to be correctly 
+<I>estimated</I>.<I></I><I></I><I></I>
+Therefore, discounting parameters should always be estimated from full 
+counts (e.g., using the helper 
+<A HREF="training-scripts.1.html">training-scripts(1)</A>),
+and then read from files.
+<BR>
+Smoothing with 
+<B> -kndiscount </B>
+or 
+<B> -ukndiscount </B>
+has a side-effect on the N-gram counts, since
+the lower-order counts are destructively modified according to the KN smoothing approach
+(Kneser &amp; Ney, 1995).
+The
+<B>-write</B><B></B><B></B><B></B>
+option will output these modified counts, and count cutoffs specified by
+<B>-gt</B><I>N</I><B>min</B><I></I><B></B><I></I><B></B>
+operate on the modified counts, potentially leading to a different set of N-grams
+being retained than with other discounting methods.
+This can be considered either a feature or a bug.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;
+<BR>
+Tanel Alumäe &lt;tanel.alumae@phon.ioc.ee&gt;
+<BR>
+Copyright (c) 1995-2011 SRI International
+<BR>
+Copyright (c) 2009-2013 Tanel Alumäe
+<BR>
+Copyright (c) 2012-2013 Microsoft Corp.
+</BODY>
+</HTML>

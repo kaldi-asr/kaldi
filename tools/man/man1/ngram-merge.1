@@ -1,0 +1,77 @@
+.\" $Id: ngram-merge.1,v 1.8 2007/12/20 19:13:52 stolcke Exp $
+.TH ngram-merge 1 "$Date: 2007/12/20 19:13:52 $"  "SRILM Tools"
+.SH NAME
+ngram-merge \- merge N-gram counts
+.SH SYNOPSIS
+.nf
+\fBngram-merge\fP [ \fB\-help\fP ] [ \fB\-write\fP \fIoutfile\fP ] [ \fB\-float-counts\fP ] \\
+	[ \fB--\fP ] \fIinfile1 infile2\fP ...
+.fi
+.SH DESCRIPTION
+.B ngram-merge 
+reads two or more lexicographically sorted N-gram count files
+(as produced by 
+.BR "ngram-count -sort" )
+and outputs the merged, sorted counts.
+The output is thus suitable for subsequent merging steps.
+.PP
+The input format consists of one N-gram count per line,
+.br
+.nf
+	\fIword1 word2\fP ... \fIwordn count\fP
+.fi
+.br
+The lines must be sorted lexicographically on the words, leftmost first.
+The input may contain N-grams of different lengths.
+.PP
+Each filename argument can be a plain ASCII count file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.PP
+.B ngram-merge 
+is recommended in cases where the full counts would far exceed 
+available real memory.
+Although an arbitrary number of input count files is accepted,
+it is best to use the program as follows.
+First, partition the input text into the largest chunks so that
+.B ngram-count
+can run in real memory.
+Then merge the resulting sorted counts using
+.B ngram-merge
+pairwise, and continue doing so in a binary tree pattern until a
+single count file containing all N-grams remains.
+This procedure is automated by the
+.B make-batch-counts
+and
+.B merge-batch-counts
+scripts.
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option and usage summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-write " outfile"
+Write merged counts to
+.IR outfile ,
+instead of standard output.
+.TP
+.B \-float-counts
+Process counts as floating point numbers.
+By default counts are assumed to be unsigned integers.
+.TP
+.B \-\-
+Indicates the end of options, in case the first input filename begins
+with ``-''.
+.SH "SEE ALSO"
+ngram-count(1), ngram(1), training-scripts(1).
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>
+.br
+Copyright 1995\-2004 SRI International

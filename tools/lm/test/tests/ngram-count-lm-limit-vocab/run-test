@@ -1,0 +1,106 @@
+#!/bin/sh
+
+# avoid trouble for sort/join
+LC_COLLATE=C
+export LC_COLLATE
+
+order=3
+
+dir=../ngram-count-gt
+
+if [ -f $dir/swbd.3grams.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+counts=$dir/swbd.3grams$gz
+
+#
+# Extract unigram counts
+#
+ngram-count -order 1 -read $counts -write swbd.1grams$gz
+
+#
+#
+# Set up count-LM template (see ngram(1) man page -count-lm option);
+# use unigrams counts to save space + time
+#
+
+cat >swbd.3countlm <<EOF
+mixweights 5
+.5 .5 .5
+.5 .5 .5
+.5 .5 .5
+.5 .5 .5
+.5 .5 .5
+.5 .5 .5
+counts swbd.1grams$gz
+EOF
+
+#
+# Let ngram fill in vocabulary size and total counts (based on unigram counts)
+#
+ngram-count \
+	-order $order \
+	-count-lm \
+	-vocab $dir/eval2001.vocab \
+	-init-lm swbd.3countlm \
+	-em-iters 0 \
+	-lm swbd.1countlm
+
+#
+# Replace unigrams with full counts
+#
+grep -v '^counts' swbd.1countlm > swbd.3countlm
+echo "counts $counts" >> swbd.3countlm
+
+#
+# Create intersection of test set and training vocabularies
+# (gawk converts MSDOS newlines if needed) 
+#
+ngram-count -text $dir/eval97.text -write-vocab - | \
+${GAWK-gawk} '{ print $1 }' | \
+join - $dir/eval2001.vocab > eval97.vocab
+
+#
+# Estimate mixture weights from held-out data
+# use only vocabulary use on held-out data
+#
+ngram-count -debug 1 \
+	-order $order \
+	-count-lm \
+	-text $dir/eval97.text \
+	-vocab eval97.vocab \
+	-limit-vocab \
+	-init-lm swbd.3countlm \
+	-em-iters 10 \
+	-lm swbd.3countlm.reest
+
+#
+# Test perplexity (cheating, since using same data as above)
+# use only vocabulary use on test data
+#
+ngram -debug 0 \
+	-order $order \
+	-count-lm \
+	-lm swbd.3countlm.reest \
+	-vocab eval97.vocab \
+	-limit-vocab \
+	-ppl $dir/eval97.text
+
+#
+# Test perplexity of interpolation with backoff LM
+#
+ngram -debug 0 \
+	-order $order \
+	-count-lm \
+	-lm swbd.3countlm.reest \
+	-mix-lm $dir/swbd.3bo$gz \
+	-lambda 0.5 -bayes 0 \
+	-vocab eval97.vocab \
+	-limit-vocab \
+	-ppl $dir/eval97.text
+
+rm -f swbd.1grams$gz swbd.1countlm swbd.3countlm swbd.3countlm.reest eval97.vocab
+

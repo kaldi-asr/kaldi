@@ -1,0 +1,156 @@
+<! $Id: LM.3,v 1.5 2007/12/19 22:01:46 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>LM</TITLE>
+<BODY>
+<H1>LM</H1>
+<H2> NAME </H2>
+LM - Generic language model
+<H2> SYNOPSIS </H2>
+<PRE>
+<B> #include &lt;LM.h&gt; </B>
+</PRE>
+<H2> DESCRIPTION </H2>
+The
+<B> LM </B>
+class specifies a minimal language model interface and
+provides some generic utilities.
+<P>
+<B> LM </B>
+inherits from
+<B>Debug</B>,<B></B><B></B><B></B>
+and the debugging level of an LM object determines if and how much
+verbose information various is printed by various functions.
+<H2> CLASS MEMBERS </H2>
+<DL>
+<DT><B> LM(Vocab &amp;<I>vocab</I>) </B>
+<DD>
+Initializeing an LM object requries specifying the vocabulary 
+over which the LM is defined.
+The <I>vocab</I> object can be shared among different LM instances.
+The LM object can modify <I>vocab</I> as a side-effect, e.g., as a result
+of reading an LM from a file.
+<DT><B> LogP wordProb(VocabIndex <I>word</I>, const VocabIndex *<I>context</I>) </B>
+<DD>
+<DT><B> LogP wordProb(VocabString <I>word</I>, const VocabString *<I>context</I>) </B>
+<DD>
+Returns the conditional log probability of <I>word</I> given a history.
+The history is given in reversed order (most recent word first) in 
+<I>context</I>, and terminated by <B>Vocab_None</B>.
+Word or history can be specified either by strings or indices.
+All functional LM subclasses have to implement at least the first version.
+<DT><B> LogP wordProbRecompute(VocabIndex <I>word</I>, const VocabIndex *<I>context</I>) </B>
+<DD>
+Returns the same conditional log probability as <B>wordProb()</B>,
+but on the promise that <I>context</I> is identical to the last call
+to <B>wordProb()</B>.
+This often allows for efficient implementation to speed up repeated 
+lookups in the same context.
+<DT><B> LogP sentenceProb(const VocabIndex *<I>sentence</I>, TextStats &amp;<I>stats</I>) </B>
+<DD>
+<DT><B> LogP sentenceProb(const VocabString *<I>sentence</I>, TextStats &amp;<I>stats</I>) </B>
+<DD>
+Returns the total log probability of a string of word (a sentence).
+The data in the <I>stats</I> object is incremented to reflect the
+statistics of the sentence.
+<DT><B> unsigned pplFile(File &amp;<I>file</I>, TextStats &amp;<I>stats</I>, const char *<I>escapeString</I> = 0) </B>
+<DD>
+Reads sentences from <I>file</I>, computing their probabilities and
+aggregate perplexity, and updating the <I>stats</I>.
+The debugging state of the LM object determines how much information is
+printed to stderr.
+debuglevel 0: total statistics only;
+debuglevel 1: per-sentence statistics;
+debuglevel 2: word probabilities;
+debuglevel 3 and greater: LM specific information.
+<BR>
+Lines in <I>file</I> that start with <I>escapeString</I> are copied to
+the output.
+This allows extra information in the input file to be passed through
+unchanged.
+<DT><B> unsigned rescoreFile(File &amp;<I>file</I>, double <I>lmScale</I>, double <I>wtScale</I>, LM &amp;<I>oldLM</I>, double <I>oldLmScale</I>, double <I>oldWtScale</I>, const char *<I>escapeString</I> = 0) </B>
+<DD>
+Reads N-best hypotheses and scores from <I>file</I>, replaces the
+LM scores with new ones computed from the current model, and prints
+the new scores (including hypotheses) to stdout.
+<I>lmScale</I> and <I>wtScore</I> are the LM and word transition weights,
+respectively.
+<I>oldLM</I> is the LM whose scores are included in the aggregate scores
+read from the input (provided so that they can be subtracted out),
+and <I>oldLmScale</I> and <I>oldWtScale</I> are the old LM and word 
+transition weights, respectively.
+<BR>
+Lines in <I>file</I> that start with <I>escapeString</I> are copied to
+the output.
+<DT><B> void setState(const char *<I>state</I>) </B>
+<DD>
+This is a generic interface to change the internal ``state'' of a LM.
+The default implementation of this function does nothing, but certain
+LM subclass implementation may interpret the <I>state</I> string to
+assume different internal configurations.
+<DT><B> Prob wordProbSum(const VocabIndex *<I>context</I>) </B>
+<DD>
+Returns the sum of all word probabilities in <I>context</I>.
+Useful for checking the well-definedness of a model.
+<DT><B> VocabIndex generateWord(const VocabIndex *<I>context</I>) </B>
+<DD>
+Returns a word index from the vocabulary, randomly generated 
+according to the conditional probabilities in <I>context</I>.
+<DT><B> VocabIndex *generateSentence(unsigned <I>maxWords</I> = maxWordsPerLine, VocabIndex *<I>sentence</I> = 0) </B>
+<DD>
+<DT><B> VocabString *generateSentence(unsigned <I>maxWords</I> = maxWordsPerLine, VocabString *<I>sentence</I> = 0) </B>
+<DD>
+Generates a random sentence of length up to <I>maxWords</I>.
+The result is placed in <I>sentence</I> if specified, or in a
+static buffer otherwise.
+<DT><B> void *contextID(const VocabIndex *<I>context</I>) </B>
+<DD>
+Returns an implementation-dependent value that identifies a the
+word context used to compute a conditional probability.
+(The context actually used may be shorted that what is specified
+in <I>context</I>).
+<DT><B> Boolean isNonWord(VocabIndex <I>word</I>) </B>
+<DD>
+Return <B>true</B> if <I>word</I> is a regular word in the LM, i.e.,
+one that the LM computes probabilities for (as opposed to
+non-event tag such as sentence-start).
+<DT><B> Boolean read(File &amp;<I>file</I>, Boolean <I>limitVocab</I> = false) </B>
+<DD>
+Read a LM from <I>file</I>.
+Return <B>true</B> is the file contents was formated correctly and 
+an internal LM representation could be successfully constructed from it.
+The optional 2nd argument controls whether words not already in the vocabulary
+are to be added automatically.
+<DT><B> void write(File &amp;<I>file</I>) </B>
+<DD>
+Writes the LM to <I>file</I> in a format that can be read back by
+<B>read()</B>.
+<DT><B> Vocab &amp;vocab </B>
+<DD>
+The vocabulary object associated with LM (set at initialization).
+<DT><B> VocabIndex noiseIndex </B>
+<DD>
+The index of the noise tag, i.e., a word that is skipped when
+computing probabilities.
+<DT><B> const char *stateTag </B>
+<DD>
+A string introducing ``state'' information that should be passed to the LM.
+Input lines starting with this tag are handed to \fBsetState()\fB
+by <B>pplFile()</B> and <B>rescoreFile()</B>.
+<DT><B> Boolean reverseWords </B>
+<DD>
+If set to <B>true</B>, the LM reverses word order before computing 
+sentence probabilities.
+This means <B>wordProb()</B> is expected to compute conditional
+probabilities based on <I>right</I> contexts.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="Vocab.3.html">Vocab(3)</A>.
+<H2> BUGS </H2>
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;.
+<BR>
+Copyright 1995, 1996 SRI International
+</BODY>
+</HTML>

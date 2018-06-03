@@ -1,0 +1,37 @@
+#!/bin/sh
+
+smooth="-wbdiscount1 -gt1min 0.25 -wbdiscount2 -gt2min 0.25 -wbdiscount3 -gt3min 0.3"
+
+dir=../ngram-count-gt
+
+if [ -f $dir/swbd.3grams.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+fcounts=swbd-float.3grams
+
+# make some fractional counts
+if [ ! -f $fcounts ]; then
+    gunzip -cf $dir/swbd.3grams$gz | \
+    ${GAWK-gawk} '{
+	$NF *= 0.25;
+	print;
+    }'  > $fcounts
+fi
+
+# create LM from counts
+ngram-count -debug 1 \
+	$smooth \
+	-float-counts \
+	-read $fcounts \
+	-vocab $dir/eval2001.vocab \
+	-lm swbd.3bo$gz
+
+ngram -debug 0 \
+	-lm swbd.3bo$gz \
+	-ppl $dir/eval97.text
+
+rm -f swbd.3bo$gz $fcounts
+

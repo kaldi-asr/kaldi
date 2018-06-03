@@ -1,0 +1,4 @@
+Fritz/Bla lernt/Blo Chinesisch/Bla ./Bloe
+Fritz/Bla lernt/Blo eine/Blubb andere/Blae Sprache/Bla ./Bloe
+Karla/Bla lernt/Blo Spanisch/Bla ./Bloe
+Karla/Bla spricht/Blo Chinesisch/Bla ./Bloe

@@ -1,0 +1,31 @@
+#!/bin/sh
+
+set -e
+
+if [ -f ../ngram-count-gt/swbd.3grams.gz ]; then
+	gz=.gz
+	gzip=1
+else
+	gz=
+	gzip=0
+fi
+
+ngram-count -read ../ngram-count-gt/swbd.3grams$gz -sort -write - | \
+make-google-ngrams dir=google per_file=10000 gzip=$gzip
+
+${GAWK-gawk} 'NR % 100 == 0' ../ngram-count-gt/eval2001.vocab > use.vocab
+
+ngram-count -read ../ngram-count-gt/swbd.3grams$gz \
+		-vocab use.vocab -limit-vocab \
+		-sort -write a
+
+ngram-count -debug 1 -read-google google \
+		-vocab use.vocab -limit-vocab \
+		-sort -write b
+
+cmp a b
+
+wc -l b
+
+rm -r a b google use.vocab
+

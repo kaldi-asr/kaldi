@@ -1,0 +1,62 @@
+numaligns 60
+posterior 0.950051
+align 0 we 0.949683 *DELETE* 0.000367858
+align 1 *noevent* 0.947128 <S> 0.00255557 *DELETE* 0.000367858
+align 2 were 0.94935 we're 0.000367858 are 0.000333603
+align 3 *noevent* 0.947854 <S> 0.00219749
+align 4 talking 0.950051
+align 5 *noevent* 0.947569 <S> 0.00248266
+align 6 about 0.950051
+align 7 *noevent* 0.928684 <S> 0.0213669
+align 8 how 0.950051
+align 9 *DELETE* 0.941737 *noevent* 0.0081796 <S> 0.000134256
+align 10 *DELETE* 0.941737 the 0.00426037 uh 0.00168649 we 0.000915862 will 0.000642777 we're 0.000424825 you 0.000383539
+align 11 *noevent* 0.945122 <S> 0.00492909
+align 12 at 0.903571 with 0.0381596 it 0.0040814 *DELETE* 0.00317232 but 0.000389709 that 0.000345677 what 0.000331658
+align 13 *noevent* 0.940494 <S> 0.00638452 *DELETE* 0.00317232
+align 14 the 0.950051
+align 15 *noevent* 0.949554 <S> 0.00049733
+align 16 beach 0.950051
+align 17 *noevent* 0.928907 <S> 0.0211447
+align 18 for 0.950051
+align 19 *noevent* 0.943668 <S> 0.00638329
+align 20 some 0.950051
+align 21 *noevent* 0.948199 <S> 0.0018526
+align 22 reason 0.950051
+align 23 *DELETE* 0.948204 *noevent* 0.00181334 <S> 3.35715e-05
+align 24 *DELETE* 0.948204 and 0.00184692
+align 25 *noevent* 0.678069 <S> 0.271982
+align 26 they 0.950051
+align 27 *noevent* 0.926868 <S> 0.0231829
+align 28 they 0.950051
+align 29 *noevent* 0.942264 <S> 0.00778687
+align 30 seem 0.947034 seemed 0.00301698
+align 31 *noevent* 0.948892 <S> 0.00115914
+align 32 to 0.950051
+align 33 *noevent* 0.946999 <S> 0.0030524
+align 34 really 0.950051
+align 35 *noevent* 0.941805 <S> 0.00824634
+align 36 play 0.950051
+align 37 *noevent* 0.948358 <S> 0.00169334
+align 38 up 0.931645 at 0.00971165 out 0.00869453
+align 39 *DELETE* 0.948856 *noevent* 0.0011805 <S> 1.46106e-05
+align 40 *DELETE* 0.948856 to 0.00119511
+align 41 *noevent* 0.909848 <S> 0.0397782 *DELETE* 0.000425118
+align 42 *DELETE* 0.949477 to 0.000573905
+align 43 *DELETE* 0.949477 *noevent* 0.000561244 <S> 1.26614e-05
+align 44 the 0.934257 to 0.0153691 *DELETE* 0.000425118
+align 45 *noevent* 0.945595 <S> 0.00445658
+align 46 santa 0.950051
+align 47 *noevent* 0.932604 <S> 0.017447
+align 48 claus 0.947202 clause 0.00284941
+align 49 *noevent* 0.947148 <S> 0.00290351
+align 50 aspect 0.950051
+align 51 *noevent* 0.919206 <S> 0.0308448
+align 52 of 0.950051
+align 53 *noevent* 0.948686 <S> 0.00136487
+align 54 christmas 0.950051
+align 55 <S> 0.672966 *noevent* 0.274324 *DELETE* 0.00276128
+align 56 and 0.813014 in 0.0329611 yeah 0.0256388 uh 0.0252429 then 0.0214277 *DELETE* 0.0155759 you 0.00446891 i 0.00252254 or 0.00209516 so 0.0019901 though 0.00186972 that 0.00157416 too 0.000883345 at 0.000787154
+align 57 *noevent* 0.730357 <S> 0.206879 *DELETE* 0.0128146
+align 58 *DELETE* 0.943631 know 0.00446891 and 0.00195097
+align 59 *DELETE* 0.943631 *noevent* 0.00568661 <S> 0.000733261

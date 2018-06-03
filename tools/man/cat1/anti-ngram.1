@@ -1,0 +1,122 @@
+anti-ngram(1)                                                    anti-ngram(1)
+
+
+
+NNAAMMEE
+       anti-ngram - count posterior-weighted N-grams in N-best lists
+
+SSYYNNOOPPSSIISS
+       aannttii--nnggrraamm [ --hheellpp ] _o_p_t_i_o_n ...
+
+DDEESSCCRRIIPPTTIIOONN
+       aannttii--nnggrraamm counts the N-grams in a set of N-best hypotheses lists.  The
+       N-gram counts are  weighted  by  the  posterior  probabilities  of  the
+       hypotheses  they  occur  in.  Thus, aannttii--nnggrraamm can be used to construct
+       language models of word sequences that are acoustically confusable with
+       correct  hypotheses.  The counts output should be processed with nnggrraamm--
+       ccoouunntt --ffllooaatt--ccoouunnttss to estimate a language model.
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --rreeffss _f_i_l_e
+              Read the reference transcripts from _f_i_l_e.  Each line should con-
+              tain an utterance ID followed by the transcript words.
+
+       --nnbbeesstt--ffiilleess _f_i_l_e
+              List of N-best files.  The base  components  of  filenames  must
+              correspond to the utterance IDs found in the reference file.
+
+       --mmaaxx--nnbbeesstt _n
+              Limits  the  number  of hypotheses read from each N-best list to
+              the first _n.
+
+       --oorrddeerr _n
+              Set the maximal order (length) of N-grams to count.  The default
+              order is 3.
+
+       --llmm _f_i_l_e
+              Reads  an  ARPA language model from _f_i_l_e and rescores the N-best
+              lists with it prior to counting N-grams.
+
+       --ccllaasssseess _f_i_l_e
+              Interpret the LM as a class-based N-gram and read class  defini-
+              tions in ccllaasssseess--ffoorrmmaatt(5) from _f_i_l_e.
+
+       --ttoolloowweerr
+              Map vocabulary to lowercase, eliminating case distinctions.
+
+       --mmuullttiiwwoorrddss
+              Split  multiwords  (words  joined  by '_') into their components
+              when reading N-best lists.
+
+       --mmuullttii--cchhaarr _C
+              Character used to delimit  component  words  in  multiwords  (an
+              underscore character by default).
+
+       --rreessccoorree--llmmww _l_m_w
+              Sets  the  language  model weight used in combining the language
+              model log probabilities with acoustic  log  probabilities  (only
+              relevant if separate scores are given in the N-best input).
+
+       --rreessccoorree--wwttww _w_t_w
+              Sets  the  word  transition  weight used to weight the number of
+              words relative to the acoustic log probabilities (only  relevant
+              if separate scores are given in the N-best input).
+
+       --ppoosstteerriioorr--ssccaallee _s_c_a_l_e
+              Divide the total weighted log score by _s_c_a_l_e when computing nor-
+              malized posterior probabilities.  This controls  the  peakedness
+              of  the  posterior  distribution.  The default value is whatever
+              was chosen for --rreessccoorree--llmmww, so that language model  scores  are
+              scaled to have weight 1, and acoustic scores have weight 1/_l_m_w.
+
+       --aallll--nnggrraammss
+              Causes  even  N-grams  that  occur in the reference string to be
+              counted.  By default N-best N-grams that also occur in the  cor-
+              responding reference are excluded.
+
+       --mmiinn--ccoouunntt _C
+              Prune all N-grams from the output that have counts less than _C.
+
+       --rreeaadd--ccoouunnttss _c_o_u_n_t_s_f_i_l_e
+              Read N-gram counts from a file.  Each line contains an N-gram of
+              words, followed by an integer or fractional count, all separated
+              by  whitespace.   Repeated counts for the same N-gram are added.
+              N-grams from N-best lists are added  to  those  read  with  this
+              option.
+
+       --wwrriittee--ccoouunnttss _c_o_u_n_t_s_f_i_l_e
+              Writes  total  N-gram  counts  to _c_o_u_n_t_s_f_i_l_e.  The default is to
+              write to stdout.
+
+       --ssoorrtt  Output counts in lexicographic order,  as  required  for  nnggrraamm--
+              mmeerrggee(1).
+
+       --ddeebbuugg _l_e_v_e_l
+              Set debugging output level.  Level 0 means no debugging.  Debug-
+              ging messages are written to stderr.
+
+SSEEEE AALLSSOO
+       ngram(1), ngram-merge(1),  ngram-count(1),  nbest-scripts(1),  classes-
+       format(5),
+       A.  Stolcke  et  al.,  "The  SRI March 2000 Hub-5 Conversational Speech
+       Transcription System", _P_r_o_c_. _N_I_S_T _S_p_e_e_c_h _T_r_a_n_s_c_r_i_p_t_i_o_n  _W_o_r_k_s_h_o_p,  Col-
+       lege Park, MD, 2000.
+
+BBUUGGSS
+       There is no --vvooccaabb option to limit the vocabulary.
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 2000-2008 SRI International
+
+
+
+SRILM Tools              $Date: 2008/04/24 07:39:29 $            anti-ngram(1)

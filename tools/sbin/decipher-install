@@ -1,0 +1,146 @@
+#!/bin/sh
+#
+#    File:   decipher-install
+#    Author: Tom Kuhn (original by Victor Abrash)
+#    Date:   Fri Aug 26 12:41:03 1994
+#
+#    Description:
+#	This script installs files for submodules of the DECIPHER (TM) system,	
+#	when using the make release-* targets.  
+#
+#	It takes a variable number of arguments with this convention:  
+#
+#		decipher-install <mode> <file1> ... <fileN> <directory>
+#
+#    Copyright (c) 1994-2011 SRI International.  All Rights Reserved.
+#
+#    RCS ID: $Id: decipher-install,v 1.8 2011/10/21 21:25:58 stolcke Exp $
+#
+
+# By using this flag, the script runs through all error checking and
+# reports all errors before exiting
+error=
+
+if [ "$1" = -p ]; then
+	p_option=-p
+	shift
+fi
+
+usage() {
+    echo "Usage:  `basename $0` [-p] <mode> <file1> ... <fileN> <directory>"	>&2
+    echo "	mode:                 file permission mode, in octal"		>&2
+    echo "	file1 ... fileN:      files to be installed"			>&2
+    echo "	directory:            where the files should be installed"	>&2
+    echo ""									>&2
+    echo "files = " $FILES							>&2
+    echo "directory = " $DIR							>&2
+    echo "mode = " $MODE							>&2
+    echo ""									>&2
+    exit 1
+}
+
+# Get the arguments, check usage.  Have to bail completely if there
+# aren't enough arguments.
+if [ $# -lt 3 ]; then
+	usage
+	exit -1
+fi
+
+MODE=$1
+shift
+
+FILES=
+
+while [ $# -gt 1 ]; do
+	FILES="$FILES $1"
+	shift
+done
+
+DIR=$1
+
+# we should check that these are valid:
+# First, check the mode
+case "$MODE" in
+0[1-7][0-7][0-7]) ;;
+*)	echo "ERROR: Mode ($MODE) is not a valid permission setting"	>&2
+	exit 1
+esac
+
+# Now check each file
+for file in $FILES
+do
+   if [ ! -f $file ]; then
+      echo "ERROR:  File to be installed ($file) does not exist."	>&2
+      error=1
+   elif [ -z $file ]; then
+      echo "ERROR:  File to be installed ($file) is zero length."	>&2
+      error=1
+   elif [ ! -f $file ]; then
+      echo "ERROR:  File to be installed ($file) is not a plain file."	>&2
+      error=1
+   fi
+done
+
+if [ ! -d $DIR ]; then
+   echo "WARNING: creating directory ${DIR}"	>&2
+   mkdir ${DIR}
+fi
+
+# Now check the directory
+if [ ! -d $DIR ]; then
+   echo "ERROR:  Installation directory ($DIR) does not exist or is not a directory."	>&2
+   error=1
+elif [ ! -w $DIR ]; then
+   echo "ERROR:  Don't have write permission in installation directory ($DIR)."	>&2
+   error=1
+fi
+
+# check that $DIR is a valid destination: 
+# currently, this means we should be able to install files under
+# /include, /bin/, and /lib/ directories under /home/decipher:
+
+case "$DIR" in
+*/bin|*/bin/*|*/include|*/lib/*)	;;
+*)
+   echo "ERROR:  You can install files only in .../include, .../bin/, or .../lib/ directories."	>&2
+   error=1
+   ;;
+esac
+
+# Bail out if there have been errors:
+if [ -n "$error" ]; then
+    usage
+fi
+
+# Install the files:
+
+#echo "ginstall -p -m ${MODE} ${FILES} ${DIR}"
+#ginstall -p -m ${MODE} ${FILES} ${DIR} 
+
+for file in $FILES
+do
+	base=`basename $file`
+
+	# remove executable backups not accessed in one day
+	find $DIR -name "$base.~[0-9]*" -perm -0500 -atime +1 -print | \
+	while read file2
+	do
+	    echo "removing old backup $file2"
+	    rm -f $file2
+	done
+
+	# backup executables accessed within the last day
+	find $DIR -name $base -perm -0500 -atime -1 -print | \
+	while read file2
+	do
+	    echo "$file2 is in use; backing up to $file2.~$$"
+	    mv $file2 $file2.~$$
+	done
+
+	rm -f $DIR/$base
+	cp $p_option $file $DIR
+	chmod $MODE $DIR/$base
+done
+
+exit 0
+

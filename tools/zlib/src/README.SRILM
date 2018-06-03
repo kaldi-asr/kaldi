@@ -1,0 +1,81 @@
+
+SRILM uses zlib as of release 1.4.1 to read/write .gz files,
+replacing the zio method that uses pipes to gzip processes.
+
+The zlib code originally was version 1.2.7 from http://zlib.net/ 
+with a small modification to support a vprintf-style output
+function, gzvprintf().   The patch to the orignal code
+appears below.  This patch has been incorporated in zlib 1.2.8,
+so that SRILM now uses the distributed version.
+
+A. Stolcke
+Aug. 31, 2016
+
+
+*** ../orig/zlib.h	2012-05-02 21:12:35.000000000 -0700
+--- zlib.h	2013-03-18 20:45:02.006272000 -0700
+***************
+*** 33,38 ****
+--- 33,42 ----
+  
+  #include "zconf.h"
+  
++ #ifdef Z_HAVE_STDARG_H
++ #include <stdarg.h>
++ #endif
++ 
+  #ifdef __cplusplus
+  extern "C" {
+  #endif
+***************
+*** 1330,1335 ****
+--- 1334,1340 ----
+  */
+  
+  ZEXTERN int ZEXPORTVA gzprintf Z_ARG((gzFile file, const char *format, ...));
++ ZEXTERN int ZEXPORTVA gzvprintf Z_ARG((gzFile file, const char *format, va_list va));
+  /*
+       Converts, formats, and writes the arguments to the compressed file under
+     control of the format string, as in fprintf.  gzprintf returns the number of
+*** ../orig/gzwrite.c	2012-03-03 09:28:00.000000000 -0800
+--- gzwrite.c	2013-03-18 21:03:07.604379500 -0700
+***************
+*** 302,311 ****
+  /* -- see zlib.h -- */
+  int ZEXPORTVA gzprintf (gzFile file, const char *format, ...)
+  {
+      int size, len;
+      gz_statep state;
+      z_streamp strm;
+-     va_list va;
+  
+      /* get internal structure */
+      if (file == NULL)
+--- 302,318 ----
+  /* -- see zlib.h -- */
+  int ZEXPORTVA gzprintf (gzFile file, const char *format, ...)
+  {
++     va_list va;
++ 
++     va_start(va, format);
++     return gzvprintf(file, format, va);
++ }
++ 
++ int ZEXPORTVA gzvprintf (gzFile file, const char *format, va_list va)
++ {
+      int size, len;
+      gz_statep state;
+      z_streamp strm;
+  
+      /* get internal structure */
+      if (file == NULL)
+***************
+*** 335,341 ****
+      /* do the printf() into the input buffer, put length in len */
+      size = (int)(state->size);
+      state->in[size - 1] = 0;
+-     va_start(va, format);
+  #ifdef NO_vsnprintf
+  #  ifdef HAS_vsprintf_void
+      (void)vsprintf((char *)(state->in), format, va);
+--- 342,347 ----

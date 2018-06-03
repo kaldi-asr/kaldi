@@ -1,0 +1,2 @@
+file ../fngram-count/ch_lm_dev.noamp.decomposed.txt.gz: 6003 sentences, 32148 words, 0 OOVs
+0 zeroprobs, logprob= -86223.3 ppl= 181.992 ppl1= 480.92

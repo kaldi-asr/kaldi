@@ -1,0 +1,27 @@
+#!/bin/sh
+
+if [ -f ../ngram-count-gt/swbd.3bo.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+sentid=sw_40008_A_0015814_0016128
+
+echo $sentid > test.sentids
+
+mkdir -p tmpdir
+
+TMPDIR=tmpdir
+export TMPDIR
+
+nbest-rover test.sentids rover.control posteriors.out > hyps.out \
+		-nbest-backtrace \
+		-write-dir sausages \
+		-refs ../nbest-optimize/all.refs
+
+gunzip -f -c sausages/$sentid$gz
+
+rm -f test.sentids hyps.out posteriors.out
+rm -rf sausages tmpdir
+

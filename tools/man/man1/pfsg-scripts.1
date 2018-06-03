@@ -1,0 +1,341 @@
+.\" $Id: pfsg-scripts.1,v 1.24 2009/09/08 18:21:54 stolcke Exp $
+.TH pfsg-scripts 1 "$Date: 2009/09/08 18:21:54 $" "SRILM Tools"
+.SH NAME
+pfsg-scripts, add-classes-to-pfsg, add-pauses-to-pfsg, classes-to-fsm, fsm-to-pfsg, htklat-vocab, make-nbest-pfsg, make-ngram-pfsg, pfsg-from-ngram, pfsg-to-dot, pfsg-to-fsm, pfsg-vocab, wlat-stats, wlat-to-dot, wlat-to-pfsg \- create and manipulate finite-state networks
+.SH SYNOPSIS
+.nf
+\fBmake-ngram-pfsg\fP [ \fBmaxorder=\fP\fIN\fP ] [ \fBcheck_bows=0\fP|\fB1\fP ] [ \fBno_empty_bo=1\fP ] \\
+	[ \fBversion=1\fP ] [ \fBtop_level_name=\fP\fIname\fP ] [ \fBnull=\fP\fIstring\fP ] \\
+	[ \fIlm-file\fP ] \fB>\fP \fIpfsg-file\fP
+\fBadd-pauses-to-pfsg\fP [ \fBvocab=\fP\fIfile\fP ] [ \fBpauselast=1\fP ] [ \fBwordwrap=0\fP ] \\
+	[ \fBpause=\fP\fIpauseword\fP ] [ \fBversion=1\fP ] [ \fBtop_level_name=\fP\fIname\fP ] \\
+	[ \fBnull=\fP\fIstring\fP ] [ \fIpfsg-file\fP ] \fB>\fP \fInew-pfsg-file\fP
+\fBadd-classes-to-pfsg\fP \fBclasses=\fP\fIclasses\fP [ \fBnull=\fP\fIstring\fP ] \\
+	[ \fIpfsg-file\fP ] \fB>\fP \fInew-pfsg-file\fP
+\fBpfsg-from-ngram\fP [ \fIlm-file\fP ] \fB>\fP \fIpfsg-file\fP
+\fBmake-nbest-pfsg\fP [ \fBnotree=0\fP|\fB1\fP ] [ \fBscale=\fP\fIS\fP ] [ \fBamw=\fP\fIA\fP ] [ \fBlmw=\fP\fIL\fP ] \\
+	[ \fBwtw=\fP\fIW\fP ] [ \fInbest-file\fP ] \fB>\fP \fIpfsg-file\fP
+\fBpfsg-vocab\fP [ \fIpfsg-file\fP ... ]
+\fBhtklat-vocab\fP [ \fBquotes=1\fP ] [ \fIhtk-lattice-file\fP ... ]
+\fBpfsg-to-dot\fP [ \fBshow_probs=0\fP|\fB1\fP ] [\fBshow_logs=0\fP|\fB1\fP ] [ \fBshow_nums=0\fP|\fB1\fP ] \\
+	[ \fIpfsg-file\fP ] \fB>\fP \fIdot-file\fP
+\fBpfsg-to-fsm\fP [ \fBsymbolfile=\fP\fIsymbols\fP ] [ \fBsymbolic=0\fP|\fB1\fP ] \\
+	[ \fBscale=\fP\fIS\fP ] [ \fBfinal_output=\fP\fIE\fP ] [ \fIpfsg-file\fP ] \fB>\fP \fIfsm-file\fP
+\fBfsm-to-pfsg\fP [ \fBpfsg_name=\fP\fIname\fP ] [ \fBtransducer=0\fP|\fB1\fP ] [ \fBscale=\fP\fIS\fP ] \\
+	[ \fBmap_epsilon=\fP\fIE\fP ] [ \fIfsm-file\fP ] \fB>\fP \fIpfsg-file\fP
+\fBclasses-to-fsm\fP \fBvocab=\fP\fIvocab\fP [ \fBsymbolic=0\fP|\fB1\fP ] [ \fBisymbolfile=\fP\fIisymbols\fP ] \\
+	[ \fBosymbolfile=\fP\fIosymbols\fP ] [ \fIclasses\fP ] \fB>\fP \fIfsm-file\fP
+\fBwlat-to-pfsg\fP [ \fIwlat-file\fP ] \fB>\fP \fIpfsg-file\fP
+\fBwlat-to-dot\fP [ \fBshow_probs=0\fP|\fB1\fP ] [ \fBshow_nums=0\fP|\fB1\fP ] \\
+	[ \fIwlat-file\fP ] \fB>\fP \fIdot-file\fP
+\fBwlat-stats\fP [ \fIwlat-file\fP ]
+.fi
+.SH DESCRIPTION
+These scripts create and manipulate various forms of finite-state networks.
+Note that they take options with the 
+.BR gawk (1)
+syntax
+.IB option = value
+instead of the more common
+.BI - option
+.IR value .
+.PP
+Also, since these tools are implemented as scripts they don't automatically
+input or output compressed model files correctly, unlike the main
+SRILM tools.
+However, since most scripts work with data from standard input or
+to standard output (by leaving out the file argument, or specifying it 
+as ``-'') it is easy to combine them with 
+.BR gunzip (1)
+or
+.BR gzip (1)
+on the command line.
+.PP
+.B make-ngram-pfsg
+encodes a backoff N-gram model in
+.BR ngram-format (5)
+as a finite-state network in
+.BR pfsg-format (5).
+.BI maxorder= N
+limits the N-gram length used in PFSG construction to 
+.IR N ;
+the default is to use all N-grams occurring in the input model.
+.B check_bows=1
+enables a check for conditional probabilities that are smaller than the
+corresponding backoff probabilities.
+Such transitions should first be removed from the model with 
+.BR "ngram \-prune-lowprobs" .
+.B no_empty_bo=1
+Prevents empty paths through the PFSG resulting from transitions 
+through the unigram backoff node.
+.PP
+.B add-pauses-to-pfsg
+replaces the word nodes in an input PFSG with sub-PFSGs that 
+allow an optional pause before each word.
+It also inserts an optional pause following the last word in the sentence.
+A typical usage is 
+.nf
+	make-ngram-pfsg \fIngram\fP | \\
+	add-pauses-to-pfsg >\fIfinal-pfsg\fP
+.fi
+The result is a PFSG suitable for use in a speech recognizer.
+The option
+.B pauselast=1
+switches the order of words and pause nodes in the sub-PFSGs;
+.B wordwrap=0
+disables the insertion of sub-PFSGs altogether.
+.PP
+The options
+.BI pause= pauseword 
+and 
+.BI top_level_name= name
+allow changing the default names of the pause word and the top-level
+grammar, respectively.
+.B version=1
+inserts a version line at the top of the output as required by 
+the Nuance recognition system (see NUANCE COMPATIBILTY below).
+.B add-pauses-to-pfsg
+uses a heuristic to distinguish word nodes in the input PFSG from
+other nodes (NULL or sub-PFSGs).
+The option
+.BI vocab= file
+lets one specify a vocabulary of word names to override these heuristics.
+.PP
+.B add-classes-to-pfsg
+extends an input PFSG with expansions for word classes, defined in
+.IR classes .
+.IR pfsg-file
+should contain a PFSG generated from the N-gram portion of a class N-gram
+model.
+A typical usage is thus
+.nf
+	make-ngram-pfsg \fIclass-ngram\fP | \\
+	add-classes-to-pfsg classes=\fIclasses\fP | \\
+	add-pauses-to-pfsg >\fIfinal-pfsg\fP
+.fi
+.PP
+.B pfsg-from-ngram
+is a wrapper script that combines removal of low-probability N-grams,
+conversion to PFSG, and adding of optional pauses to create a PFSG
+for recognition.
+.PP
+.B make-nbest-pfsg
+converts an N-best list in 
+.BR nbest-format (5)
+into a PFSG which, when used in recognition,
+allows exactly the hypotheses contained in the N-best list.
+.B notree=1
+creates separate PFSG nodes for all word instances; the default is to
+construct a prefix-tree structured PFSG.
+.BI scale= S
+multiplies the total hypothesis scores by 
+.IR S ;
+the default is 0, meaning that all hypotheses have identical probability
+in the PFSG.
+Three options,
+.BR amw=\fIA\fP ,
+.BR lmw=\fIL\fP ,
+and
+.BR wtw=\fIW\fP ,
+control the score weighting in N-best lists that contain
+separate acoustic and language model scores, setting the 
+acoustic model weight to
+.IR A,
+the language model weight to
+.IR L ,
+and the word transition weight to
+.IR W .
+.PP
+.B pfsg-vocab
+extracts the vocabulary used in one or more PFSGs.
+.B htklat-vocab
+does the same for lattices in HTK standard lattice format.
+The
+.B quotes=1
+option enables processing of HTK quotes.
+.PP
+.B pfsg-to-dot
+renders a PFSG in
+.BR dot (1)
+format for subsequent layout, printing, etc.
+.B show_probs=1
+includes transition probabilities in the output.
+.B show_logs=1
+includes log (base 10) transition probabilities in the output.
+.B show_nums=1
+includes node numbers in the output.
+.PP
+.B pfsg-to-fsm
+converts a finite-state network in 
+.BR pfsg-format (5)
+into an equivalent network in AT&T
+.BR fsm (5)
+format.
+This involves moving output actions from nodes to transitions.
+If 
+.BI symbolfile= symbols
+is specified, the mapping from FSM output symbols is written to
+.IR symbols 
+for later use with the
+.B \-i
+or 
+.B \-o
+options of 
+.BR fsm (1)
+tools.
+.B symbolic=1
+preserves the word strings in the resulting FSA.
+.BI scale= S
+scales the transition weights by a factor
+.IR S ;
+the default is -1 (to conform to the default FSM semiring).
+.BI final_output= E
+forces the final FSA node to have output label
+.IR S ;
+this also forces creation of a unique final FSA node, which is
+otherwise unnecessary if the final node has a null output.
+.PP
+.B fsm-to-pfsg
+conversely transforms 
+.BR fsm (5)
+format into
+.BR pfsg-format (5).
+This involves moving output actions from transitions to nodes, and
+generally requires an increase in the number of nodes.
+(The conversion is done such that
+.B pfsg-to-fsm
+and
+.B fsm-to-pfsg
+are exact inverses of each other.)
+The
+.I name
+parameter sets the name field of the output PFSG.
+.B transducer=1
+indicates that the input is a transducer and that input:output pairs should
+be preserved in the PFSG.
+.BI scale= S
+scales the transition weights by a factor
+.IR S ;
+the default is -1 (to conform to the default FSM semiring).
+.BI map_epsilon= E
+specifies a string 
+.I E
+that FSM epsilon symbols are to be mapped to.
+.PP
+.B classes-to-fsm
+converts a
+.BR classes-format (5)
+file into a transducer in
+.BR fsm (5)
+format, such that composing the transducer with
+an FSA encoding a class language model results in an FSA for the
+word language model.
+The word vocabulary needs to be given in file
+.IR vocab .
+.BI isymbolfile= isymbols
+and
+.BI osymbolfile= osymbols
+allow saving the input and output symbol tables of the transducer for
+later use.
+.B symbolic=1
+preserves the word strings in the resulting FSA.
+.PP
+The following commands show the creation of an FSA encoding the class N-gram
+grammar ``test.bo'' with vocabulary ``test.vocab'' and class expansions
+``test.classes'':
+.nf
+	classes-to-fsm vocab=test.vocab symbolic=1 \\
+        	isymbolfile=CLASSES.inputs \\
+		osymbolfile=CLASSES.outputs \\
+		test.classes >CLASSES.fsm
+
+	make-ngram-pfsg test.bo | \\
+	pfsg-to-fsm symbolic=1 >test.fsm
+	fsmcompile -i CLASSES.inputs test.fsm  >test.fsmc
+
+	fsmcompile -t -i CLASSES.inputs -o CLASSES.outputs \\
+		CLASSES.fsm >CLASSES.fsmc
+	fsmcompose test.fsmc CLASSES.fsmc >result.fsmc
+.fi
+.PP
+.B wlat-to-pfsg
+converts a word posterior lattice or mesh ("sausage") in 
+.BR wlat-format (5)
+into 
+.BR pfsg-format (5).
+.PP
+.B wlat-to-dot
+renders a
+.BR wlat-format (5)
+word lattice in 
+.BR dot (1)
+format for subsequent layout, printing, etc.
+.B show_probs=1
+includes node posterior probabilities in the output.
+.B show_nums=1
+includes node indices in the output.
+.PP
+.B wlat-stats
+computes statistics of word posterior lattices, including the number of 
+word hypotheses, the entropy (log base 10) of the sentence hypothesis
+set represented, and the posterior expected number of words.
+For word meshes that have been aligned with references, the 1-best and 
+oracle lattice error rates are also computed.
+.SH "NUANCE COMPATIBILITY"
+.PP
+The Nuance recognizer (as of version 6.2) understands a variant of the 
+PFSG format; hence the scripts above should be useful in building
+recognition systems for that recognizer.
+.PP
+A suitable PFSG can be generated from an N-gram backoff model
+in ARPA
+.BR ngram-format (5)
+using the following command:
+.nf
+	ngram -debug 1 -order \fIN\fP -lm \fILM.bo\fP -prune-lowprobs -write-lm - | \\
+	make-ngram-pfsg | \\
+	add-pauses-to-pfsg version=1 pauselast=1 pause=_pau_ top_level_name=.TOP_LEVEL >\fILM.pfsg\fP
+.fi
+assuming the pause word in the dictionary is ``_pau_''.
+Certain restrictions on the naming of words (e.g., no hyphens are allowed)
+have to be respected.
+.PP
+The resulting PFSG can then be referenced in a Nuance grammar file, e.g.,
+.nf
+	.TOP [NGRAM_PFSG]
+	NGRAM_PFSG:lm \fILM.pfsg\fP
+.fi
+.PP
+In newer Nuance versions the name for a non-emitting node was changed to
+.BR NULNOD ,
+and inter-word optional pauses are automatically added to the grammar.
+This means that the PFSG should be create using
+.nf
+	ngram -debug 1 -order \fIN\fP -lm \fILM.bo\fP -prune-lowprobs -write-lm - | \\
+	make-ngram-pfsg version=1 top_level_name=.TOP_LEVEL null=NULNOD >\fILM.pfsg\fP
+.fi
+The 
+.B null=NULNOD 
+option should also be passed to
+.BR add-classes-to-pfsg .
+.PP
+Starting with version 8, Nuance supports N-gram LMs.
+However, you can still use SRILM to create LMs, as described above.
+The syntax for inclusion of a PFSG has changed to
+.nf
+	NGRAM_PFSG:slm \fILM.pfsg\fP
+.fi
+.PP
+Caveat: Compatibility with Nuance is purely due to historical circumstance and
+not supported.
+.SH "SEE ALSO"
+lattice-tool(1), ngram(1), ngram-format(5), pfsg-format(5), wlat-format(5),
+nbest-format(5), classes-format(5), fsm(5), dot(1).
+.SH BUGS
+.B make-ngram-pfsg
+should be reimplemented in C++ for speed and some size optimizations that
+require more global operations on the PFSG.
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 1995-2005 SRI International

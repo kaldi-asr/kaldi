@@ -1,0 +1,13 @@
+
+challenge
+
+SArray
+time ../bin/mips-elf/testMap 10000 0
+5.761u 0.039s 0:05.90 98.1% 0+0k 0+0io 0pf+0w
+
+LHash
+time ../bin/mips-elf/testMap 10000 0
+0.246u 0.038s 0:00.31 87.0% 0+0k 0+0io 0pf+0w
+time ../bin/mips-elf/testMap 100000 0
+2.484u 0.098s 0:02.65 96.9% 0+0k 0+0io 0pf+0w
+

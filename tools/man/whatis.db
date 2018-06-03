@@ -1,0 +1,37 @@
+File(3)                  - Wrapper for stdio streams
+LM(3)                    - Generic language model
+Prob(3)                  - Probabilities for SRILM
+TEMPLATE(1), XXX(1)      - XXX
+TEMPLATE(3), XXX(3)      - XXX
+TEMPLATE(5), XXX(5)      - XXX
+TEMPLATE(7), XXX(7)      - XXX
+Vocab(3)                 - Vocabulary indexing for SRILM
+anti-ngram(1)            - count posterior-weighted N-grams in N-best lists
+classes-format(5)        - File format for word class definitions
+disambig(1)              - disambiguate text tokens using an N-gram model
+hidden-ngram(1)          - tag hidden events between words
+lattice-tool(1)          - manipulate word lattices
+lm-scripts(1), add-dummy-bows(1), change-lm-vocab(1), empty-sentence-lm(1), get-unigram-probs(1), make-hiddens-lm(1), make-lm-subset(1), make-sub-lm(1), remove-lowprob-ngrams(1), reverse-lm(1), sort-lm(1) - manipulate N-gram language models
+metadb(1)                - retrieve configuration information
+multi-ngram(1)           - build multiword N-gram models
+nbest-format(5)          - File formats for N-best hypotheses lists
+nbest-lattice(1)         - rescore N-best lists and lattices
+nbest-mix(1)             - interpolate N-best posterior probabilities
+nbest-optimize(1)        - optimize score combination for N-best word error minimization
+nbest-pron-score(1)      - score pronunciations and pauses in N-best hypotheses
+nbest-scripts(1), combine-rover-controls(1), compare-sclite(1), compute-sclite(1), fix-ctm(1), merge-nbest(1), nbest-error(1), nbest-posteriors(1), nbest-rover(1), nbest-vocab(1), nbest2-to-nbest1(1), rescore-acoustic(1), rescore-decipher(1), rescore-reweight(1), sentid-to-sclite(1) - rescore and evaluate N-best lists
+ngram(1)                 - apply N-gram language models
+ngram-class(1)           - induce word classes from N-gram statistics
+ngram-count(1)           - count N-grams and estimate language models
+ngram-discount(7)        - notes on the N-gram smoothing implementations in SRILM
+ngram-format(5)          - File format for ARPA backoff N-gram models
+ngram-merge(1)           - merge N-gram counts
+pfsg-format(5)           - File format for Decipher(TM) probabilistic finite-state grammars
+pfsg-scripts(1), add-classes-to-pfsg(1), add-pauses-to-pfsg(1), classes-to-fsm(1), fsm-to-pfsg(1), htklat-vocab(1), make-nbest-pfsg(1), make-ngram-pfsg(1), pfsg-from-ngram(1), pfsg-to-dot(1), pfsg-to-fsm(1), pfsg-vocab(1), wlat-stats(1), wlat-to-dot(1), wlat-to-pfsg(1) - create and manipulate finite-state networks
+ppl-scripts(1), add-ppls(1), compare-ppls(1), compute-best-mix(1), compute-best-sentence-mix(1), jilter-event-counts(1), hits-from-log(1), ppl-from-log(1), subtract-ppls(1) - manipulate perplexities
+segment(1)               - segment text using N-gram language model
+segment-nbest(1)         - rescore and segment N-best lists using hidden segment N-gram model
+select-vocab(1)          - Select a maximum-likelihood vocabulary from a mixture of corpora
+srilm-faq(7), SRILM-FAQ(7) - Frequently asked questions about SRI LM tools
+training-scripts(1), compute-oov-rate(1), continuous-ngram-count(1), get-gt-counts(1), make-abs-discount(1), make-batch-counts(1), make-big-lm(1), make-diacritic-map(1),  make-google-ngrams(1), make-gt-discounts(1), make-kn-counts(1), make-kn-discounts(1), merge-batch-counts(1), replace-words-with-classes(1), reverse-ngram-counts(1), split-tagged-ngrams(1), reverse-text(1), tolower-ngram-counts(1), uniform-classes(1), uniq-ngram-counts(1), vp2text(1) - miscellaneous conveniences for language model training
+wlat-format(5)           - File format for SRILM word posterior lattices

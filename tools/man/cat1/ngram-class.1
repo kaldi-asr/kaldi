@@ -1,0 +1,143 @@
+ngram-class(1)                                                  ngram-class(1)
+
+
+
+NNAAMMEE
+       ngram-class - induce word classes from N-gram statistics
+
+SSYYNNOOPPSSIISS
+       nnggrraamm--ccllaassss [ --hheellpp ] _o_p_t_i_o_n ...
+
+DDEESSCCRRIIPPTTIIOONN
+       nnggrraamm--ccllaassss  induces word classes from distributional statistics, so as
+       to minimize perplexity of a class-based N-gram model given the provided
+       word  N-gram counts.  Presently, only bigram statistics are used, i.e.,
+       the induced classes are best suited for a class-bigram language model.
+
+       The program generates the class  N-gram  counts  and  class  expansions
+       needed  by  nnggrraamm--ccoouunntt(1)  and  nnggrraamm(1), respectively to train and to
+       apply the class N-gram model.
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --ddeebbuugg _l_e_v_e_l
+              Set  debugging  output  at  _l_e_v_e_l.   Level 0 means no debugging.
+              Debugging messages are written to stderr.   A  useful  level  to
+              trace the formation of classes is 2.
+
+   IInnppuutt OOppttiioonnss
+       --vvooccaabb _f_i_l_e
+              Read  a  vocabulary  from file.  Subsequently, out-of-vocabulary
+              words in both counts or text are replaced with the  unknown-word
+              token.   If  this  option  is  not specified all words found are
+              implicitly added to the vocabulary.
+
+       --ttoolloowweerr
+              Map the vocabulary to lowercase.
+
+       --ccoouunnttss _f_i_l_e
+              Read N-gram counts from a file.  Each line contains an N-gram of
+              words,  followed  by  an  integer count, all separated by white-
+              space.  Repeated counts for the same N-gram are  added.   Counts
+              collected by --tteexxtt and --ccoouunnttss are additive as well.
+              Note that the input should contain consistent lower- and higher-
+              order counts (i.e., unigrams and bigrams), as would be generated
+              by nnggrraamm--ccoouunntt(1).
+
+       --tteexxtt _t_e_x_t_f_i_l_e
+              Generate  N-gram counts from text file.  _t_e_x_t_f_i_l_e should contain
+              one sentence unit per line.  Begin/end sentence tokens are added
+              if not already present.  Empty lines are ignored.
+
+   CCllaassss MMeerrggiinngg
+       --nnuummccllaasssseess _C
+              The  target  number  of classes to induce.  A zero argument sup-
+              presses automatic class merging altogether (e.g., for  use  with
+              --iinntteerraacctt))..
+
+       --ffuullll  Perform  full  greedy merging over all classes starting with one
+              class per word.  This is the O(V^3) algorithm described in Brown
+              et al. (1992).
+
+       --iinnccrreemmeennttaall
+              Perform incremental greedy merging, starting with one class each
+              for the _C most frequent words, and then adding  one  word  at  a
+              time.   This is the O(V*C^2) algorithm described in Brown et al.
+              (1992); it is the default.
+
+       --mmaaxxwwoorrddssppeerrccllaassss  MM
+              Limits the number of words in a class to _M in incremental  merg-
+              ing.  By default there is no such limit.
+
+       --iinntteerraacctt
+              Enter a primitive interactive interface when done with automatic
+              class induction, allowing  manual  specification  of  additional
+              merging steps.
+
+       --nnooccllaassss--vvooccaabb _f_i_l_e
+              Read  a  list  of  vocabulary  items  from  _f_i_l_e  that are to be
+              excluded from classes.  These words or tags do no undergo  class
+              merging,  but  their N-gram counts still affect the optimization
+              of model perplexity.
+              The default is to exclude the sentence begin/end tags  (<s>  and
+              </s>)  from  class merging; this can be suppressed by specifying
+              --nnooccllaassss--vvooccaabb //ddeevv//nnuullll.
+
+       --rreeaadd _f_i_l_e
+              Read initial class memberships  from  _f_i_l_e.   Class  memberships
+              need  to be stored in ccllaasssseess--ffoorrmmaatt(5) with the additional con-
+              dition that probabilities are obligatory and that  each  member-
+              ship definition must specify exactly one word.
+
+   OOuuttppuutt OOppttiioonnss
+       --ccllaassss--ccoouunnttss _f_i_l_e
+              Write  class N-gram counts to _f_i_l_e when done.  The format is the
+              same as for word N-gram  counts,  and  can  be  read  by  nnggrraamm--
+              ccoouunntt(1) to estimate a class-N-gram model.
+
+       --ccllaasssseess _f_i_l_e
+              Write  class  definitions (member words and their probabilities)
+              to _f_i_l_e when done.  The output format is the same as required by
+              the --ccllaasssseess option of nnggrraamm(1).
+
+       --ssaavvee _S
+              Save  the  class  counts and/or class definitions every _S itera-
+              tions during induction.  The filenames  are  obtained  from  the
+              --ccllaassss--ccoouunnttss  and  --ccllaasssseess options, respectively, by appending
+              the iteration number.  This is convenient for producing sets  of
+              classes  at  different  granularities  during the same run.  The
+              saved class memberships can also be used with the  --rreeaadd  option
+              to  restart  class  merging  at a later time.  _S=0 (the default)
+              suppresses the saving actions.
+
+       --ssaavvee--mmaaxxccllaasssseess _K
+              Modifies the action of --ssaavvee so as to only start saving once the
+              number of classes reaches _K.  (The iteration numbers embedded in
+              filenames will start at 0 from that point.)
+
+SSEEEE AALLSSOO
+       ngram-count(1), ngram(1), classes-format(5).
+       P. F. Brown, V. J. Della Pietra, P. V. deSouza, J. C.  Lai  and  R.  L.
+       Mercer,  ``Class-Based  n-gram  Models  of Natural Language,'' _C_o_m_p_u_t_a_-
+       _t_i_o_n_a_l _L_i_n_g_u_i_s_t_i_c_s 18(4), 467-479, 1992.
+
+BBUUGGSS
+       Classes are optimized only for bigram models at present.
+
+AAUUTTHHOORR
+       Andreas Stolcke <andreas.stolcke@microsoft.com>
+       Seppo Enarvi <seppo.enarvi@aalto.fi>
+       Copyright (c) 1999-2010 SRI International
+       Copyright (c) 2012-2014 Microsoft Corp.
+       Copyright (c) 2013-2014 Seppo Enarvi
+
+
+
+SRILM Tools              $Date: 2014/01/30 22:03:59 $           ngram-class(1)

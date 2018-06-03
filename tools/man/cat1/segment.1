@@ -1,0 +1,89 @@
+segment(1)                                                          segment(1)
+
+
+
+NNAAMMEE
+       segment - segment text using N-gram language model
+
+SSYYNNOOPPSSIISS
+       sseeggmmeenntt [ --hheellpp ] _o_p_t_i_o_n ...
+
+DDEESSCCRRIIPPTTIIOONN
+       sseeggmmeenntt  infers  a most likely segmentation (location of segment bound-
+       aries) from a text, based on a segment language  model.   The  language
+       model  is a standard backoff N-gram model in ARPA nnggrraamm--ffoorrmmaatt(5), mod-
+       eling segmentation using the boundary tags <s> and </s>.   The  program
+       reads  in  a  word sequence, finds the most likely locations of segment
+       boundaries according to  the  language  model,  and  outputs  the  word
+       sequence with segment boundaries marked by <s> tags.
+
+OOPPTTIIOONNSS
+       Each filename argument can be an ASCII file, or a compressed file (name
+       ending in .Z or .gz), or ``-'' to indicate stdin/stdout.
+
+       --hheellpp  Print option summary.
+
+       --vveerrssiioonn
+              Print version information.
+
+       --oorrddeerr _n
+              Set the maximal N-gram order to be used, by  default  3.   NOTE:
+              The  order  of  the  model is not set automatically when a model
+              file is read, so the same file can be used at various orders.
+
+       --ddeebbuugg _l_e_v_e_l
+              Set the debugging output level (0 means  no  debugging  output).
+              Debugging messages are sent to stderr.
+
+       --llmm _f_i_l_e
+              Read the N-gram model from _f_i_l_e.
+
+       --tteexxtt _f_i_l_e
+              Find the text to be segmented in _f_i_l_e.  Default input is stdin.
+
+       --ccoonnttiinnuuoouuss
+              Process  all  words in the input as one sequence of words, irre-
+              spective of line breaks.  Normally each line is processed  sepa-
+              rately as a word sequence.
+
+       --ppoosstteerriioorrss
+              Use a forward-backward algorithm to compute the posterior proba-
+              bilities of a segment boundary  at  each  word  transition,  and
+              hypothesize a boundary whenever the probability exceeds 0.5.  By
+              default a Viterbi algorithm is used that computes  the  globally
+              most likely segmentation.
+              If  --ccoonnttiinnuuoouuss is specified as well, then this option will pro-
+              duce one line of output per word, containing, respectively,  the
+              <s>  tag  (if  appropriate),  the word itself, and the posterior
+              probability for a boundary preceding the word.
+
+       --uunnkk   Output the unknown word token <unk> for each input word  not  in
+              the  language  model  vocabulary.   The default is to output the
+              input word unchanged.
+
+       --ssttaagg _s_t_r_i_n_g
+              Use _s_t_r_i_n_g to mark segment boundaries in the output.  Default is
+              the  start-of-sentence  symbol  defined  in  the  language model
+              (<s>).
+
+       --bbiiaass _b
+              Make a segment boundary a priori more likely by a factor  of  _b.
+              This  allows balancing of false detection/rejection errors.  The
+              default is 1.
+
+SSEEEE AALLSSOO
+       ngram-count(1), ngram-format(5).
+       A. Stolcke and E.  Shriberg,  ``Automatic  Linguistic  Segmentation  of
+       Spontaneous Speech,'' _P_r_o_c_. _I_C_S_L_P, 1005-1008, 1996.
+
+BBUUGGSS
+       Only  N-grams  models  up  to  trigram  order are used accurately.  For
+       higher-order models use the more general hhiiddddeenn--nnggrraamm(1).
+
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1997-2004 SRI International
+
+
+
+SRILM Tools              $Date: 2007/12/20 19:13:52 $               segment(1)

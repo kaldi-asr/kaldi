@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ -f conll.lm.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+hidden-ngram -debug 1 \
+	-lm conll.lm$gz \
+	-order 4 \
+	-hidden-vocab conll.voc \
+        -text conll.txt.100
+

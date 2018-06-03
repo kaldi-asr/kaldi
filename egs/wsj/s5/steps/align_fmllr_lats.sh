@@ -118,7 +118,7 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: computing fMLLR transforms"
   if [ "$alimdl" != "$mdl" ]; then
-    $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
+    $cmd --num-threads 6 JOB=1:$nj $dir/log/fmllr.JOB.log \
       ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
       gmm-post-to-gpost $alimdl "$sifeats" ark:- ark:- \| \
@@ -126,7 +126,7 @@ if [ $stage -le 2 ]; then
       --spk2utt=ark:$sdata/JOB/spk2utt $mdl "$sifeats" \
       ark,s,cs:- ark:$dir/trans.JOB || exit 1;
   else
-    $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
+    $cmd --num-threads 6 JOB=1:$nj $dir/log/fmllr.JOB.log \
       ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
       gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \

@@ -1,0 +1,5 @@
+a (1) b (1) (Average posterior: 1)
+a (1) c (0.754351) b (1) (Average posterior: 0.918117)
+Now expand and compute posteriors in one run
+a (1) b (1) (Average posterior: 1)
+a (1) c (0.754351) b (1) (Average posterior: 0.918117)

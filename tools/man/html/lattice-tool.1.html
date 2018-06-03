@@ -1,0 +1,1232 @@
+<! $Id: lattice-tool.1,v 1.83 2014-01-30 00:31:34 wilson Exp $>
+<HTML>
+<HEADER>
+<TITLE>lattice-tool</TITLE>
+<BODY>
+<H1>lattice-tool</H1>
+<H2> NAME </H2>
+lattice-tool - manipulate word lattices
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>lattice-tool</B> [ <B>-help</B> ] <I>option</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> lattice-tool </B>
+performs operations on word lattices in 
+<A HREF="pfsg-format.5.html">pfsg-format(5)</A>
+or in HTK Standard Lattice format (SLF).
+Operations include size reduction, pruning, null-node removal,
+weight assignment from
+language models, lattice word error computation, and decoding of the 
+best hypotheses.
+<P>
+Each input lattice is processed in turn, and a series of optional
+operations is performed in a fixed sequence (regardless of the order
+in which corresponding options are specified).
+The sequence of operations is as follows:
+<DL>
+<DT>1.
+<DD>
+Read input lattice.
+<DT>2.
+<DD>
+Score pronunciations (if dictionary was supplied).
+<DT>3.
+<DD>
+Split multiword word nodes.
+<DT>4.
+<DD>
+Posterior- and density-based pruning (before reduction).
+<DT>5.
+<DD>
+Write word posterior lattice.
+<DT>6.
+<DD>
+Viterbi-decode and ouptut 1-best hypothesis
+(using either the original or updated language model scores, see 
+<B>-old-decoding</B>).<B></B><B></B><B></B>
+<DT>7.
+<DD>
+Generate and output N-best list
+(using either the original or updated language model scores, see 
+<B>-old-decoding</B>).<B></B><B></B><B></B>
+<DT>8.
+<DD>
+Compute lattice density.
+<DT>9.
+<DD>
+Check lattice connectivity.
+<DT>10.
+<DD>
+Compute node entropy.
+<DT>11.
+<DD>
+Compute lattice word error.
+<DT>12.
+<DD>
+Output reference word posteriors.
+<DT>13.
+<DD>
+Remove null nodes.
+<DT>14.
+<DD>
+Lattice reduction.
+<DT>15.
+<DD>
+Posterior- and density-based pruning (after reduction).
+<DT>16.
+<DD>
+Remove pause nodes.
+<DT>17.
+<DD>
+Lattice reduction (post-pause removal).
+<DT>18.
+<DD>
+Language model replacement or expansion.
+<DT>19.
+<DD>
+Pause recovery or insertion.
+<DT>20.
+<DD>
+Lattice reduction (post-LM expansion).
+<DT>21.
+<DD>
+Multiword splitting (post-LM expansion).
+<DT>22.
+<DD>
+Merging of same-word nodes.
+<DT>23.
+<DD>
+Lattice algebra operations (or, concatenation).
+<DT>24.
+<DD>
+Perform word-posterior based decoding.
+<DT>25.
+<DD>
+Write word mesh (confusion network).
+<DT>26.
+<DD>
+Compute and output N-gram counts.
+<DT>27.
+<DD>
+Compute and output N-gram index.
+<DT>28.
+<DD>
+Word posterior computation.
+<DT>29.
+<DD>
+Lattice-LM perplexity computation.
+<DT>30.
+<DD>
+Writing output lattice.
+</DD>
+</DL>
+<P>
+The following options control which of these steps actually apply.
+<H2> OPTIONS </H2>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-debug</B><I> level</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the debugging output level (0 means no debugging output).
+Debugging messages are sent to stderr.
+<DT><B>-in-lattice</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read input lattice from
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-in-lattice2</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read additional input lattice (for binary lattice operations) from
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-in-lattice-list</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read list of input lattices from
+<I>file</I>.<I></I><I></I><I></I>
+Lattice operations are applied to each filename listed in 
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B> -set-lattice-names </B>
+<DD>
+Modify the lattice names embedded inside the lattice file to reflect the input filename.
+This allows the input filename information to be propagated to the output in cases where the
+embedded names are not informative.
+<DT><B>-out-lattice</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write result lattice to 
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B>-out-lattice-dir</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write result lattices from processing of 
+<B> -in-lattice-list </B>
+to directory
+<I>dir</I>.<I></I><I></I><I></I>
+<DT><B> -read-mesh </B>
+<DD>
+Assume input lattices are in word mesh (confusion network) format, as described
+in
+<A HREF="wlat-format.5.html">wlat-format(5)</A>.
+Word posterior probabilities are converted to transition probabilities.
+If the input mesh contains acoustic information (time offsets, scores, pronunciations)
+that information is attached to words and links and output with
+<B>-write-htk</B>,<B></B><B></B><B></B>
+as are the word posterior probabilities.
+(Use 
+<B> -htk-words-on-nodes </B>
+to output word start times since HTK format supports times only on nodes.)
+<DT><B> -write-internal </B>
+<DD>
+Write output lattices with internal node numbering instead of compact,
+consecutive numbering.
+<DT><B> -overwrite </B>
+<DD>
+Overwrite existing output lattice files.
+<DT><B>-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Initialize the vocabulary to words listed in
+<I>file</I>.<I></I><I></I><I></I>
+This is useful in conjunction with 
+<DT><B> -limit-vocab </B>
+<DD>
+Discard LM parameters on reading that do not pertain to the words 
+specified in the vocabulary.
+The default is that words used in the LM are automatically added to the 
+vocabulary.
+This option can be used to reduce the memory requirements for large LMs;
+to this end,
+<B> -vocab </B>
+typically specifies the set of words used in the lattices to be 
+processed (which has to be generated beforehand, see 
+<A HREF="pfsg-scripts.1.html">pfsg-scripts(1)</A>).
+<DT><B>-vocab-aliases</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reads vocabulary alias definitions from
+<I>file</I>,<I></I><I></I><I></I>
+consisting of lines of the form
+<PRE>
+	<I>alias</I> <I>word</I>
+</PRE>
+This causes all tokens
+<I> alias </I>
+to be mapped to
+<I>word</I>.<I></I><I></I><I></I>
+<DT><B> -unk </B>
+<DD>
+Map lattice words not contained in the known vocabulary with the 
+unknown word tag.
+This is useful if the rescoring LM contains a probability for the unknown
+word (i.e., is an open-vocabulary LM).
+The known vocabulary is given by what is specified by the
+<B> -vocab </B>
+option, as well as all words in the LM used for rescoring.
+<DT><B>-map-unk</B><I> word</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Map out-of-vocabulary words to 
+<I>word</I>,<I></I><I></I><I></I>
+rather than the default
+<B> &lt;unk&gt; </B>
+tag.
+<DT><B> -keep-unk </B>
+<DD>
+Treat out-of-vocabulary words as
+<B> &lt;unk&gt; </B>
+but preserve their labels in lattice output.
+<DT><B> -print-sent-tags </B>
+<DD>
+Preserve begin/end sentence tags in output lattice format.
+The default is to represent these as NULL node labels, since 
+the begin/end of sentence is implicit in the lattice structure.
+<B>
+<DT><B> -tolower </B>
+<DD>
+Map all vocabulary to lowercase.
+<DT><B>-nonevents</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a list of words from
+<I> file </I>
+that are used only as context elements, and are not predicted by the LM,
+similar to ``&lt;s&gt;''.
+If
+<B> -keep-pause </B>
+is also specified then pauses are not treated as nonevents by default.
+<DT><B>-max-time</B><I> T</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limit processing time per lattice to
+<I> T </I>
+seconds.
+</DD>
+</DL>
+<P>
+Options controlling lattice operations:
+<DL>
+<DT><B>-write-posteriors</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Compute the posteriors of lattice nodes and transitions (using the
+forward-backward algorithm) and write out a word posterior lattice
+in
+<A HREF="wlat-format.5.html">wlat-format(5)</A>.
+This and other options based on posterior probabilities make most sense
+if the input lattice contains combined acoustic-language model weights.
+<DT><B>-write-posteriors-dir</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Similar to the above, but posterior lattices are written to
+separate files in directory 
+<I>dir</I>,<I></I><I></I><I></I>
+named after the utterance IDs.
+<DT><B>-write-mesh</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Construct a word confusion network ("sausage") from the lattice and 
+write it to 
+<I>file</I>.<I></I><I></I><I></I>
+If reference words are available for the utterance (specified by
+<B> -ref-file </B>
+or
+<B>-ref-list</B>)<B></B><B></B><B></B>
+their alignment will be recorded in the sausage.
+<DT><B>-write-mesh-dir</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Similar, but write sausages to files in
+<I> dir </I>
+named after the utterance IDs.
+<DT><B>-init-mesh</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Initialize the word confusion network by reading an existing sausage from
+<I>file</I>.<I></I><I></I><I></I>
+This effectively aligns the lattice being processed to the existing
+sausage.
+<DT><B>-acoustic-mesh</B><I></I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Preserve word-level acoustic information (times, scores, and pronunciations) 
+in sausages, encoded as described in
+<A HREF="wlat-format.5.html">wlat-format(5)</A>.
+<DT><B>-posterior-prune</B><I> P</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Prune lattice nodes with posteriors less than
+<I> P </I>
+times the highest posterior path.
+<DT><B>-density-prune</B><I> D</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Prune lattices such that the lattice density (non-null words per second)
+does not exceed 
+<I>D</I>.<I></I><I></I><I></I>
+<DT><B>-nodes-prune</B><I> N</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Prune lattices such that the total number of non-null, non-pause nodes
+does not exceed
+<I>N</I>.<I></I><I></I><I></I>
+<DT><B> -fast-prune </B>
+<DD>
+Choose a faster pruning algorithm that does not recompute posteriors
+after each iteration.
+<DT><B>-write-ngrams</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Compute posterior expected N-gram counts in lattices and output them
+to
+<I>file</I>.<I></I><I></I><I></I>
+The maximal N-gram length is given by the
+<B> -order </B>
+option (see below).
+The counts from all lattices processed are accumulated and output in 
+sorted order at the end (suitable for
+<A HREF="ngram-merge.1.html">ngram-merge(1)</A>).
+<DT><B>-write-ngram-index</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Output an index file of all N-gram occurences in the lattices processed,
+including their start times, durations, and posterior probabilities.
+The maximal N-gram length is given by the
+<B> -order </B>
+option (see below).
+<DT><B>-min-count</B><I> C</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Prune N-grams with count less than 
+<I> C </I>
+from output with 
+<B> -write-ngrams </B>
+and
+<B>-write-ngram-index</B>.<B></B><B></B><B></B>
+In the former case, the threshold applies to the aggregate occurrence counts;
+in the latter case, the threshold applies to the posterior probability of
+an individual occurence.
+<DT><B>-max-ngram-pause</B><I> T</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Index only N-grams that contain internal pauses (between words) not exceeding
+<I> T </I>
+seconds (assuming time stamps are recorded in the input lattice).
+<DT><B>-ngrams-time-tolerance</B> T<B></B><B></B><B></B>
+<DD>
+Merge N-gram occurrences less than
+<I> T </I>
+seconds apart for indexing purposes (posterior probabilties are summed).
+<DT><B>-posterior-scale</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Scale the transition weights by dividing by
+<I> S </I>
+for the purpose of posterior probability computation.
+If the input weights represent combined acoustic-language model scores
+then this should be approximately the language model weight of the 
+recognizer in order to avoid overly peaked posteriors (the default value is 8).
+<DT><B>-write-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Output the list of all words found in the lattice(s) to 
+<I>file</I>.<I></I><I></I><I></I>
+<DT><B> -reduce </B>
+<DD>
+Reduce lattice size by a single forward node merging pass.
+<DT><B>-reduce-iterate</B><I> I</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Reduce lattice size by up to
+<I> I </I>
+forward-backward node merging passes.
+<DT><B>-overlap-ratio</B><I> R</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Perform approximate lattice reduction by merging nodes that share 
+more than a fraction
+<I> R </I>
+of their incoming or outgoing nodes.
+The default is 0, i.e., only exact lattice reduction is performed.
+<DT><B>-overlap-base</B><I> B</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+If 
+<I> B </I>
+is 0 (the default), then the overlap ratio
+<I> R </I>
+is taken relative to the smaller set of transitions being compared.
+If the value is 1, the ratio is relative to the larger of the two sets.
+<DT><B> -reduce-before-pruning </B>
+<DD>
+Perform lattice reduction before posterior-based pruning.
+The default order is to first prune, then reduce.
+<DT><B>-pre-reduce-iterate</B><I> I</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Perform iterative reduction prior to lattice expansion, but after 
+pause elimination.
+<DT><B>-post-reduce-iterate</B><I> I</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Perform iterative reduction after lattice expansion and pause node recovery.
+Note: this is not recommended as it changes the weights assigned from
+the specified language model.
+<DT><B> -no-nulls </B>
+<DD>
+Eliminate NULL nodes from lattices.
+<DT><B> -no-pause </B>
+<DD>
+Eliminate pause nodes from lattices
+(and do not recover them after lattice expansion).
+<DT><B> -compact-pause </B>
+<DD>
+Use compact encoding of pause nodes that saves nodes but allows 
+optional pauses where they might not have been included in the original
+lattice.
+<DT><B> -loop-pause </B>
+<DD>
+Add self-loops on pause nodes.
+<DT><B> -insert-pause </B>
+<DD>
+Insert optional pauses after every word in the lattice.
+The structure of inserted pauses is affected by
+<B> -compact-pause </B>
+and
+<B>-loop-pause</B>.<B></B><B></B><B></B>
+<DT><B> -collapse-same-words </B>
+<DD>
+Perform an operation on the final lattices that collapses all nodes 
+with the same words, except null nodes, pause nodes, or nodes with 
+noise words.
+This can reduce the lattice size dramatically, but also introduces new 
+paths.
+<DT><B> -connectivity </B>
+<DD>
+Check the connectedness of lattices.
+<DT><B> -compute-node-entropy </B>
+<DD>
+Compute the node entropy of lattices.
+<DT><B> -compute-posteriors </B>
+<DD>
+Compute node posterior probabilities
+(which are included in HTK lattice output).
+<DT><B> -density </B>
+<DD>
+Compute and output lattice densities.
+<DT><B>-ref-list</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read reference word strings from 
+<I>file</I>.<I></I><I></I><I></I>
+Each line starts with a sentence ID (the basename of the lattice file name),
+followed by the words.
+This or the next option triggers computation of lattice word errors
+(minimum word error counts of any path through a lattice).
+<DT><B>-ref-file</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read reference word strings from
+<I>file</I>.<I></I><I></I><I></I>
+Lines must contain reference words only, and must be matched to input
+lattices in the order processed.
+<DT><B>-write-refs</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write the references back to 
+<I> file </I>
+(for validation).
+<DT><B>-add-refs</B><I> P</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Add the reference words as an additional path to the lattice,
+with probability 
+<I>P</I>.<I></I><I></I><I></I>
+Unless 
+<B> -no-pause </B>
+is specified, optional pause nodes between words are also added.
+Note that this operation is performed before lattice reduction and 
+expansion, so the new path can be merged with existing ones, and the
+probabilities for the new path can be reassigned from an LM later.
+<DT><B>-noise-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a list of ``noise'' words from
+<I>file</I>.<I></I><I></I><I></I>
+These words are ignored when computing lattice word errors,
+when decoding the best word sequence using
+<B> -viterbi-decode </B>
+or
+<B>-posterior-decode</B>,<B></B><B></B><B></B>
+or when collapsing nodes with
+<B>-collapse-same-words</B>.<B></B><B></B><B></B>
+<DT><B> -keep-pause </B>
+<DD>
+Causes the pause word ``-pau-'' to be treated like a regular word.
+It prevents pause from being implicitly added to the list of noise
+words.
+<DT><B>-ignore-vocab</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a list of words that are to be ignored in
+lattice operations, similar to pause tokens.
+Unlike noise words (see above) they are also skipped during LM evaluation.
+With this option and
+<B>-keep-pause</B>,<B></B><B></B><B></B>
+pause words are not ignored by default.
+<DT><B>-split-multiwords</B><I></I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Split lattice nodes with multiwords into a sequence of non-multiword
+nodes.
+This option is necessary to compute lattice error of multiword lattices
+against non-multiword references, but may be useful in its own right.
+<DT><B>-split-multiwords-after-lm</B><I></I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Perform multiword splitting after lattice expansion using the specified LM.
+This should be used if the LM uses multiwords, but the final lattices
+are not supposed to contain multiwords.
+<DT><B>-multiword-dictionary</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a dictionary from 
+<I> file </I>
+containing multiword pronunciations and word boundary markers (a ``|'' phone
+label).
+Specifying such a dictionary allows the multiword splitting options
+to infer accurate time marks and pronunciation information for the
+multiword components.
+<DT><B>-multi-char</B><I> C</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Designate 
+<I> C </I>
+as the character used for separating multiword components.
+The default is an underscore ``_''.
+<DT><B>-operation</B><I> O</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Perform a lattice algebra operation
+<I> O </I>
+on the lattice or lattices processed, with
+the second operand specified by 
+<B>-in-lattice2</B>.<B></B><B></B><B></B>
+Operations currently supported are
+<B> concatenate </B>
+and
+<B>or</B>,<B></B><B></B><B></B>
+for serial and parallel lattice combination, respectively,
+and are applied after all other lattices manipulations.
+<DT><B> -viterbi-decode </B>
+<DD>
+Print out the word sequence corresponding to the highest probability path.
+<DT><B> -posterior-decode </B>
+<DD>
+Print out the word sequence with lowest expected word error.
+<DT><B> -output-ctm </B>
+<DD>
+Output word sequences in NIST CTM (conversation time mark) format.
+Note that word start times will be relative to the lattice start time,
+the first column will contain the lattice name, and the channel field
+is always 1.
+The word confidence field contains posterior probabilities if 
+<B>-posterior-decode</B><B></B><B></B><B></B>
+is in effect.
+This option also implies
+<B>-acoustic-mesh</B>.<B></B><B></B><B></B>
+<DT><B>-hidden-vocab</B> file<B></B><B></B><B></B>
+<DD>
+Read a subvocabulary from
+<I> file </I>
+and constrain word meshes to only align those words that are either all
+in or outside the subvocabulary.
+This may be used to keep ``hidden event'' tags from aligning with
+regular words.
+<DT><B> -dictionary-align </B>
+<DD>
+Use the dictionary pronunciations specified with
+<B> -dictionary </B>
+to induce a word distance metric used for word mesh alignment.
+See the 
+<A HREF="nbest-lattice.1.html">nbest-lattice(1)</A>
+<B> -dictionary </B>
+option.
+<DT><B>-nbest-decode</B><I> N</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Generate the up to
+<I> N </I>
+highest scoring paths through a lattice and write them out in 
+<A HREF="nbest-format.5.html">nbest-format(5)</A>,
+along with optional additional score files to store knowledge sources encoded
+in the lattice.
+Further options are needed to specify the location of N-best lists and 
+score files, described below under "N-BEST DECODING".
+Duplicated Hypotheses that differ only in pause and words specified with
+<B> -ignore-vocab </B>
+are removed from the N-best output.
+If the
+<B> -multiwords </B>
+option is specified, duplicates due to multiwords are also eliminated.
+<DT><B> -old-decoding </B>
+<DD>
+Decode lattices (in Viterbi or N-best mode) without applying a new language
+model.
+By default, if
+<B> -lm </B>
+is specified,
+the 
+<B> -viterbi-decode </B>
+and 
+<B> -nbest-decode </B>
+options will use the LM to replace language model scores encoded in
+an HTK-formatted lattice.
+For PFSG lattices, the new LM scores will be added to the original scores.
+<DT><B>-nbest-duplicates</B><I> K</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Allow up to
+<I> K </I>
+duplicate word hypotheses to be output in N-best decoding
+(implies
+<B>-old-decoding</B>).<B></B><B></B><B></B>
+<DT><B>-nbest-max-stack</B><I> M</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limits the depth of the hypothesis stack used in N-best decoding to
+<I> M </I>
+entries, 
+which may be useful for limiting memory use and runtime.
+<DT><B> -nbest-viterbi </B>
+<DD>
+Use a Viterbi algorithm to generate N-best, rather than A-star.
+This uses less memory but may take more time
+(implies
+<B>-old-decoding</B>).<B></B><B></B><B></B>
+<DT><B>-decode-beamwidth</B><I> B</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limits beamwidth in LM-based lattice decoding.
+Default value is 1e30.
+<DT><B>-decode-max-degree</B><I> D</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Limits allowed in-degree in the decoding search graph for LM-based lattice
+decoding.
+Default value is 0, meaning unlimited.
+<DT><B>-ppl</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read sentences from
+<I> file </I>
+and compute the maximum probability (of any path) assigned to them by the
+lattice being processed.
+Effectively, the lattice is treated as a (deficient) language model.
+The output detail is controlled by the 
+<DT><B>-word-posteriors-for-sentences</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read sentences from 
+<I> file </I>
+and compute and output the word posterior probabilities according to a
+confusion network generated from the lattice (as with
+<B>-write-mesh</B>).<B></B><B></B><B></B>
+If there is no path through the confusion network matching a sentence,
+the posteriors output will be zero.
+<DT><B> -debug </B>
+<DD>
+option, similar to
+<B> ngram -ppl </B>
+output.
+(In particular, 
+<B> -debug 2 </B>
+enables tracing of lattice nodes corresponding to sentence prefixes.)
+Pause words in 
+<I>  file </I>
+are treated as regular words and have to match pause nodes in the 
+lattice, unless 
+<B> -nopause </B>
+specified, in which case pauses in both lattice and input sentences
+are ignored.
+</DD>
+</DL>
+<P>
+The following options control transition weight assignment:
+<DL>
+<DT><B>-order</B><I> n</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the maximal N-gram order to be used for transition weight assignment
+(the default is 3).
+<DT><B>-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read N-gram language model from 
+<I>file</I>.<I></I><I></I><I></I>
+This option also triggers weight reassignment and lattice expansion.
+<DT><B>-use-server</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use a network LM server (typically implemented by 
+<A HREF="ngram.1.html">ngram(1)</A>
+with the 
+<B> -server-port </B>
+option) as the main model.
+This option also triggers weight reassignment and lattice expansion.
+The server specification
+<I> S </I>
+can be an unsigned integer port number (referring to a server port running on
+the local host),
+a hostname (referring to default port 2525 on the named host),
+or a string of the form 
+<I>port</I>@<I>host</I>,<I></I><I></I>
+where
+<I> port </I>
+is a portnumber and 
+<I> host </I>
+is either a hostname ("dukas.speech.sri.com")
+or IP number in dotted-quad format ("140.44.1.15").
+<BR>
+For server-based LMs, the
+<B> -order </B>
+option limits the context length of N-grams queried by the client
+(with 0 denoting unlimited length).
+Hence, the effective LM order is the mimimum of the client-specified value
+and any limit implemented in the server.
+<BR>
+When
+<B> -use-server </B>
+is specified, the arguments to the options
+<B>-mix-lm</B>,<B></B><B></B><B></B>
+<B>-mix-lm2</B>,<B></B><B></B><B></B>
+etc. are also interpreted as network LM server specifications provided
+they contain a '@' character and do not contain a '/' character.
+This allows the creation of mixtures of several file- and/or
+network-based LMs.
+<DT><B> -cache-served-ngrams </B>
+<DD>
+Enables client-side caching of N-gram probabilities to eliminated duplicate
+network queries, in conjunction with
+<B>-use-server</B>.<B></B><B></B><B></B>
+This may results in a substantial speedup
+but requires memory in the client that may grow linearly with the
+amount of data processed.
+<DT><B> -no-expansion </B>
+<DD>
+Suppress lattice expansion when a language model is specified.
+This is useful if the LM is to be used only for lattice decoding
+(see
+<B> -viterbi-decode </B>
+and
+<B>-nbest-decode</B>).<B></B><B></B><B></B>
+<DT><B> -multiwords </B>
+<DD>
+Resolve multiwords in the lattice without splitting nodes.
+This is useful in rescoring lattices containing multiwords with a
+LM does not use multiwords.
+<DT><B>-zeroprob-word</B><I> W</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+If a word token is assigned a probability of zero by the LM,
+look up the word 
+<I> W </I>
+instead.
+This is useful to avoid zero probabilities when processing lattices
+with an LM that is mismatched in vocabulary.
+<DT><B>-classes</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Interpret the LM as an N-gram over word classes.
+The expansions of the classes are given in
+<I>file</I><I></I><I></I><I></I>
+in 
+<A HREF="classes-format.5.html">classes-format(5)</A>.
+Tokens in the LM that are not defined as classes in
+<I> file </I>
+are assumed to be plain words, so that the LM can contain mixed N-grams over
+both words and word classes.
+<DT><B>-simple-classes</B><B></B><B></B><B></B>
+<DD>
+Assume a "simple" class model: each word is member of at most one word class,
+and class expansions are exactly one word long.
+<DT><B>-mix-lm</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a second N-gram model for interpolation purposes.
+The second and any additional interpolated models can also be class N-grams
+(using the same
+<B> -classes </B>
+definitions).
+<DT><B> -factored </B>
+<DD>
+Interpret the files specified by 
+<B>-lm</B>,<B></B><B></B><B></B>
+<B>-mix-lm</B>,<B></B><B></B><B></B>
+etc. as factored N-gram model specifications.
+See 
+<A HREF="ngram.1.html">ngram(1)</A>
+for more details.
+<DT><B>-lambda</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the weight of the main model when interpolating with
+<B>-mix-lm</B>.<B></B><B></B><B></B>
+Default value is 0.5.
+<DT><B>-mix-lm2</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm3</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm4</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm5</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm6</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm7</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm8</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lm9</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Up to 9 more N-gram models can be specified for interpolation.
+<DT><B>-mix-lambda2</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda3</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda4</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda5</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda6</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda7</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda8</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-mix-lambda9</B><I> weight</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+These are the weights for the additional mixture components, corresponding
+to
+<B> -mix-lm2 </B>
+through
+<B>-mix-lm9</B>.<B></B><B></B><B></B>
+The weight for the
+<B> -mix-lm </B>
+model is 1 minus the sum of 
+<B> -lambda </B>
+and 
+<B> -mix-lambda2 </B>
+through
+<B>-mix-lambda9</B>.<B></B><B></B><B></B>
+<DT><B> -loglinear-mix </B>
+<DD>
+Implement a log-linear (rather than linear) mixture LM, using the 
+parameters above.
+<DT><B>-context-priors</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read context-dependent mixture weight priors from
+<I>file</I>.<I></I><I></I><I></I>
+Each line in 
+<I> file </I>
+should contain a context N-gram (most recent word first) followed by a vector 
+of mixture weights whose length matches the number of LMs being interpolated.
+(This and the following options currently only affect linear interpolation.)
+<DT><B>-bayes</B><I> length</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Interpolate models using posterior probabilities
+based on the likelihoods of local N-gram contexts of length
+<I>length</I>.<I></I><I></I><I></I>
+The 
+<B> -lambda </B>
+values are used as prior mixture weights in this case.
+This option can also be combined with
+<B>-context-priors</B>,<B></B><B></B><B></B>
+in which case the 
+<I> length </I>
+parameter also controls how many words of context are maximally used to look up
+mixture weights.
+If 
+<B>-context-priors</B><B></B><B></B><B></B>
+is used without 
+<B>-bayes</B>,<B></B><B></B><B></B>
+the context length used is set by the
+<B> -order </B>
+option and Bayesian interpolation is disabled, as when
+<I> scale </I>
+(see next) is zero.
+<DT><B>-bayes-scale</B><I> scale</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Set the exponential scale factor on the context likelihood in conjunction
+with the
+<B> -bayes </B>
+function.
+Default value is 1.0.
+<DT><B>-compact-expansion</B><I></I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use a compact expansion algorithm that uses backoff nodes to reduce the 
+size of expanded lattices (see paper reference below).
+<DT><B>-old-expansion</B><I></I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Use older versions of the lattice expansion algorithms (both regular and
+compact), that handle only trigram models and require elimination of
+null and pause nodes prior to expansion.
+Not recommended, but useful if full backward compatibility is required.
+<DT><B>-max-nodes</B><I> M</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Abort lattices expansion when the number of nodes (including null and pause
+nodes) exceeds 
+<I>M</I>.<I></I><I></I><I></I>
+This is another mechanism to avoid spending too much time on very large
+lattices.
+<DT><B>-hyp-list</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read 1st ASR hypothesis word strings from 
+<I>file</I>.<I></I><I></I><I></I>
+Each line starts with a sentence ID (the basename of the lattice file name),
+followed by the words. The hypothesized words are added into the word mesh (confusion network)
+<DT><B>-hyp-file</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read 1st ASR hypothesis word strings from
+<I>file</I>.<I></I><I></I><I></I>
+Lines must contain hypothesized words only, and must be matched to input
+lattices in the order processed. The hypothesized words are added into the word mesh (confusion network)
+<DT><B>-hyp2-list</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read 2nd ASR hypothesis word strings from 
+<I>file</I>.<I></I><I></I><I></I>
+Each line starts with a sentence ID (the basename of the lattice file name),
+followed by the words. The hypothesized words are added into the word mesh (confusion network)
+<DT><B>-hyp2-file</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read 2nd ASR hypothesis word strings from
+<I>file</I>.<I></I><I></I><I></I>
+Lines must contain hypothesized words only, and must be matched to input
+lattices in the order processed. The hypothesized words are added into the word mesh (confusion network)
+<DT><B>-add-hyps</B><I> P</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Add the hypothesized words as an additional path to the word mesh (confusion network),
+with probability 
+<I>P</I>.<I></I><I></I><I></I>
+</DD>
+</DL>
+<H2> LATTICE EXPANSION ALGORITHMS </H2>
+<B> lattice-tool </B>
+incorporates several different algorithms to apply LM weights to
+lattices.
+This section explains what algorithms are applied given what options.
+<DL>
+<DT><B> Compact LM expansion </B>
+<DD>
+This expands the nodes and transitions to be able to assign
+higher-order probabilities to transitions.
+Backoffs in the LM are exploited in the expansion, thereby 
+minimizing the number of added nodes (Weng et al., 1998).
+This algorithm is triggered by
+<B>-compact-expansion</B><B></B><B></B><B></B>
+For the resulting lattices to work correctly, backoff paths in the LM
+must have lower weight than the corresponding higher-order paths.
+(For N-gram LMs, this can be achieved using the
+<B> ngram -prune-lowprobs </B>
+option.)
+Pauses and null nodes are handled during the expansion and do
+not have to be removed and restored.
+<DT><B> General LM expansion </B>
+<DD>
+This expands the lattice to apply LMs of arbitrary order, 
+without use of backoff transitions.
+This algorithm is the default (no
+<B>-compact-expansion</B>).<B></B><B></B><B></B>
+<DT><B> Unigram weight replacement </B>
+<DD>
+This simply replaces the weights on lattice transitions with 
+unigram log probabilities.
+No modification of the lattice structure is required.
+This algorithm is used if 
+<B> -old-expansion </B>
+and
+<B> -order 1 </B>
+are specified.
+<DT><B> Bigram weight replacement </B>
+<DD>
+This replaces the transition weights with bigram log probabilities.
+Pause and null nodes have to be eliminated prior to the operation,
+and are restored after weight replacement.
+This algorithm is used if 
+<B> -old-expansion </B>
+and
+<B> -order 2 </B>
+are specified.
+</DD>
+</DL>
+<H2> HTK LATTICES </H2>
+<P>
+<B> lattice-tool </B>
+can optionally read, process, and output lattices in 
+HTK Standard Lattice Format.
+The following options control HTK lattice processing.
+<DL>
+<DT><B> -read-htk </B>
+<DD>
+Read input lattices in HTK format.
+All lattices are internally represented as PFSGs;
+to achieve this HTK lattices links
+are mapped to PFSG nodes (with attached word and score information), and 
+HTK lattice nodes are mapped to PFSG NULL nodes.
+Transitions are created so as to preserve words and scores of all paths
+through the original lattice.
+On output, this mapping is reversed, so as to create a compact encoding
+of PFSGs containing NULL nodes as HTK lattices.
+<DT><B>-htk-acscale</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-htk-lmscale</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-htk-ngscale</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-htk-prscale</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-htk-duscale</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-htk-x1scale</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-htk-x2scale</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+...
+<DT><B>-htk-x9scale</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-htk-wdpenalty</B><I> S</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+These options specify the weights for
+acoustic, LM, N-gram, pronunciation, and duration models,
+up to nine extra scores, as well as 
+word transition penalties to be used for combining the various scores
+contained in HTK lattices.
+The combined scores are then used to compute the transition weights for
+the internal PFSG representation.
+Default weights are obtained from the specifications in the lattice files
+themselves.
+<BR>
+Word transition penalties are scaled according to the log base used.
+Values specified on the command line are scaled according to 
+<B>-htk-logbase</B>,<B></B><B></B><B></B>
+or the default 10.
+Word transition penalties specified in the lattice file are scaled 
+according to the log base specified in the file, or the default 
+<I>e</I>.<I></I><I></I><I></I>
+<DT><B>-htk-logzero</B><I> Z</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Replace HTK lattices score that are zero (minus infinity on the log scale)
+by the log-base-10 score 
+<I>Z</I>.<I></I><I></I><I></I>
+This is typically used after rescoring with a language model that assigns 
+probability zero to some words in the lattice, and allows meaningful 
+computation of posterior probabilities and 1-best hypotheses from such
+lattices.
+<DT><B> -no-htk-nulls </B>
+<DD>
+Eliminate NULL nodes otherwise created by the conversion of HTK lattices
+to PFSGs.
+This creates additional links and may or may not reduce the overall
+processing time required.
+<DT><B>-dictionary</B><I> file</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Read a dictionary containing pronunciation probabilities from 
+<I>file</I>,<I></I><I></I><I></I>
+and add or replace the pronunciation scores in the lattice accordingly.
+This requires that the lattices contain phone alignment information.
+<DT><B> -intlogs </B>
+<DD>
+Assume the dictionary contains log probabilities encoded on the int-log scale,
+as used by the SRI Decipher system.
+<DT><B> -write-htk </B>
+<DD>
+Write output lattices in HTK format.
+If the input lattices were in PFSG format the original PFSG weights will be
+output as HTK acoustic scores.
+However, LM rescoring will discard the original PFSG weights and
+the results will be encoded as LM scores.
+Pronunciation scoring results will be encoded as pronunciations scores.
+If the 
+<B> -compute-posteriors </B>
+was used in lattice processing the output lattices will also contain
+node posterior probabilities.
+If the input lattices were in HTK format, then
+acoustic and duration scores are preserved from the input lattices.
+The score scaling factors in the lattice header will reflect the 
+<B> -htk-*scale </B>
+options given above.
+<DT><B>-htk-logbase</B><I> B</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Modify the logarithm base in HTK lattices output.
+The default is to use logs base 10, as elsewhere in SRILM.
+As value of 0 means to output probabilities instead of log probabilities.
+Note that the log base for input lattices is not affected by this 
+option; it is encoded in the lattices themselves,
+and defaults to
+<I> e </I>
+according to the HTK SLF definition.
+<DT><B> -htk-words-on-nodes </B>
+<DD>
+Output word labels and other word-related information on HTK lattice nodes,
+rather than links.
+This option is provided only for compatibility with software that requires
+word information to be attached specifically to nodes.
+<DT>Note:
+<DD>
+The options
+<B>-no-htk-nulls</B>,<B></B><B></B><B></B>
+<B>-htk-words-on-nodes</B>,<B></B><B></B><B></B>
+and
+<B>-htk-scores-on-nodes</B><B></B><B></B><B></B>
+defeat the mapping of internal PFSG nodes back to HTK transitions, and should
+therefore NOT be used when a compact output representation is desired.
+<DT><B> -htk-quotes </B>
+<DD>
+Enable the HTK string quoting mechanism that allows whitespace and other
+non-printable characters to be included in words labels and other fields.
+This is disabled by default since PFSG lattices and other SRILM tools don't
+support such word labels.
+It affects both input and output format for HTK lattices.
+</DD>
+</DL>
+<H2> N-BEST DECODING </H2>
+The option
+<B> -nbest-decode </B>
+triggers generation of N-best lists, according to the 
+aggregate score of paths encoded in the lattice.
+The output format for N-best lists and associated additional score files
+is compatible with other SRILM tools that process N-best lists,
+such as those described in 
+<A HREF="nbest-lattice.1.html">nbest-lattice(1)</A>
+and 
+<A HREF="nbest-scripts.1.html">nbest-scripts(1)</A>.
+The following options control the location of output files:
+<DL>
+<DT><B>-out-nbest-dir</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+The directory to which N-best list files are written.
+These contain acoustic model scores, language model scores,
+word counts, and the word hypotheses themselves,
+in SRILM format as described in
+<A HREF="nbest-format.5.html">nbest-format(5)</A>.
+<DT><B>-out-nbest-dir-ngram</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Output directory for separate N-gram LM scores as may be encoded in 
+HTK lattices.
+<DT><B>-out-nbest-dir-pron</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Output directory for pronunciation scores encoded in HTK lattices.
+<DT><B>-out-nbest-dir-dur</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Output directory for duration model scores encoded in HTK lattices.
+<DT><B>-out-nbest-dir-xscore1</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+<DT><B>-out-nbest-dir-xscore2</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+...
+<DT><B>-out-nbest-dir-xscore9</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Output score directories for up to nine additional knowledge sources
+encoded in HTK lattices.
+<DT><B>-out-nbest-dir-rttm</B><I> dir</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+N-best hypotheses in NIST RTTM format.
+This function is experimental and makes assumptions about the input 
+file naming conventions to infer timing information.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="ngram.1.html">ngram(1)</A>, <A HREF="ngram-merge.1.html">ngram-merge(1)</A>, <A HREF="pfsg-scripts.1.html">pfsg-scripts(1)</A>, <A HREF="nbest-lattice.1.html">nbest-lattice(1)</A>,
+<A HREF="pfsg-format.5.html">pfsg-format(5)</A>, <A HREF="ngram-format.5.html">ngram-format(5)</A>, <A HREF="classes-format.5.html">classes-format(5)</A>, <A HREF="wlat-format.5.html">wlat-format(5)</A>,
+<A HREF="nbest-format.5.html">nbest-format(5)</A>.
+<BR>
+F. Weng, A. Stolcke, and A. Sankar,
+``Efficient Lattice Representation and Generation.''
+<I>Proc. Intl. Conf. on Spoken Language Processing</I>, vol. 6, pp. 2531-2534,
+Sydney, 1998.
+<BR>
+S. Young et al., <I>The HTK Book</I>, HTK version 3.1.
+<a href="http://htk.eng.cam.ac.uk/prot-docs/htk_book.shtml">http://htk.eng.cam.ac.uk/prot-docs/htk_book.shtml</a>
+<H2> BUGS </H2>
+Not all LM types supported by 
+<A HREF="ngram.1.html">ngram(1)</A>
+are handled by 
+<B> lattice-tool. </B>
+<P>
+Care must be taken when processing multiword lattices with 
+<B> -unk </B>
+and 
+<B> -multiwords </B>
+or 
+<B>-split-multiwords</B>.<B></B><B></B><B></B>
+Multiwords not listed in the LM (or the explicit vocabulary specified) will
+be considered ``unknown'', even though their components might be 
+in-vocabulary.
+<P>
+The 
+<B> -nbest-duplicates </B>
+option does not work together with
+<B>-nbest-viterbi</B>.<B></B><B></B><B></B>
+<P>
+When applying 
+<B> -decode-viterbi </B>
+or
+<B> -decode-nbest </B>
+to PFSG lattices, the old transition weights are effectively treated as
+acoustic scores, and the new LM scores are added to them.
+There is no way to replace old LM scores that might be part of the
+PFSG transition weights.
+This is a limitation of the
+format, since PFSGs cannot encode separate acoustic and language scores.
+<P>
+Input lattices in HTK format may contain node or link posterior information.
+However, this information is effectively discarded; posteriors are always
+recomputed from scores when needed for pruning or output.
+<P>
+The 
+<B>-no-nulls</B>,<B></B><B></B><B></B>
+<B> -no-pause </B>
+and
+<B> -compact-pause </B>
+options discard the acoustic information associated with NULL and pause
+nodes in HTK lattice input, and should therefore not be used if 
+equivalent HTK lattice output is intended.
+<P>
+The
+<B> -keep-unk </B>
+option currently only works for input/output in HTK lattice format.
+<P>
+When rescoring HTK lattices with LMs the new scores are not taken into
+account in subsequent operations based on word posterior probabilities
+(posterior decoding, word mesh building, N-gram count generation).
+To work around this write the rescored lattices to files and invoke 
+the program a second time.
+<H2> AUTHORS </H2>
+Fuliang Weng &lt;fuliang@speech.sri.com&gt;
+<BR>
+Andreas Stolcke &lt;andreas.stolcke@microsoft.com&gt;
+<BR>
+Dustin Hillard &lt;hillard@ssli.ee.washington.edu&gt;
+<BR>
+Jing Zheng &lt;zj@speech.sri.com&gt;
+<BR>
+Copyright 1997-2011 SRI International
+<BR>
+Copyright 2012-2013 Microsoft Corp.
+
+</BODY>
+</HTML>

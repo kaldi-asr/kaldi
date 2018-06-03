@@ -1,0 +1,573 @@
+.\" $Id: ngram-count.1,v 1.48 2016/06/02 23:43:28 stolcke Exp $
+.TH ngram-count 1 "$Date: 2016/06/02 23:43:28 $" "SRILM Tools"
+.SH NAME
+ngram-count \- count N-grams and estimate language models
+.SH SYNOPSIS
+.nf
+\fBngram-count\fP [ \fB\-help\fP ] \fIoption\fP ...
+.fi
+.SH DESCRIPTION
+.B ngram-count
+generates and manipulates N-gram counts, and estimates N-gram language
+models from them.
+The program first builds an internal N-gram count set, either
+by reading counts from a file, or by scanning text input.
+Following that, the resulting counts can be output back to a file
+or used for building an N-gram language model in ARPA
+.BR ngram-format (5).
+Each of these actions is triggered by corresponding options, as
+described below.
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-order " n"
+Set the maximal order (length) of N-grams to count.
+This also determines the order of the estimated LM, if any.
+The default order is 3.
+.TP
+.BI \-vocab " file"
+Read a vocabulary from file.
+Subsequently, out-of-vocabulary words in both counts or text are
+replaced with the unknown-word token.
+If this option is not specified all words found are implicitly added
+to the vocabulary.
+.TP
+.BI \-vocab-aliases " file"
+Reads vocabulary alias definitions from
+.IR file ,
+consisting of lines of the form
+.nf
+	\fIalias\fP \fIword\fP
+.fi
+This causes all tokens
+.I alias
+to be mapped to
+.IR word .
+.TP
+.BI \-write-vocab " file"
+Write the vocabulary built in the counting process to
+.IR file .
+.TP
+.BI \-write-vocab-index " file"
+Write the internal word-to-integer mapping to 
+.IR file .
+.TP
+.B \-tagged
+Interpret text and N-grams as consisting of word/tag pairs.
+.TP
+.B \-tolower
+Map all vocabulary to lowercase.
+.TP
+.B \-memuse
+Print memory usage statistics.
+.SS Counting Options
+.TP
+.BI \-text " textfile"
+Generate N-gram counts from text file.
+.I textfile
+should contain one sentence unit per line.
+Begin/end sentence tokens are added if not already present.
+Empty lines are ignored.
+.TP
+.B \-text-has-weights
+Treat the first field in each text input line as a weight factor by
+which the N-gram counts for that line are to be multiplied.
+.TP
+.B \-no-sos
+Disable the automatic insertion of start-of-sentence tokens 
+in N-gram counting.
+.TP
+.B \-no-eos
+Disable the automatic insertion of end-of-sentence tokens
+in N-gram counting.
+.TP
+.BI \-read " countsfile"
+Read N-gram counts from a file.
+Ascii count files contain one N-gram of 
+words per line, followed by an integer count, all separated by whitespace.
+Repeated counts for the same N-gram are added.
+Thus several count files can be merged by using 
+.BR cat (1)
+and feeding the result to 
+.BR "ngram-count \-read \-" 
+(but see
+.BR ngram-merge (1)
+for merging counts that exceed available memory).
+Counts collected by 
+.B \-text
+and 
+.B \-read
+are additive as well.
+Binary count files (see below) are also recognized.
+.TP
+.BI \-read-google " dir"
+Read N-grams counts from an indexed directory structure rooted in
+.BR dir ,
+in a format developed by
+Google to store very large N-gram collections.
+The corresponding directory structure can be created using the script
+.B make-google-ngrams
+described in
+.BR training-scripts (1).
+.TP
+.BI \-intersect " file"
+Limit reading of counts via
+.B \-read 
+and
+.B \-read-google
+to a subset of N-grams defined by another count 
+.IR file .
+(The counts in 
+.I file
+are ignored, only the N-grams are relevant.)
+.TP
+.BI \-write " file"
+Write total counts to
+.IR file .
+.TP
+.BI \-write-binary " file"
+Write total counts to 
+.I file 
+in binary format.
+Binary count files cannot be compressed and are typically
+larger than compressed ascii count files.
+However, they can be loaded faster, especially when the
+.B \-limit-vocab 
+option is used.
+.TP
+.BI \-write-order " n"
+Order of counts to write.
+The default is 0, which stands for N-grams of all lengths.
+.TP
+.BI -write "n file"
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Writes only counts of the indicated order to
+.IR file .
+This is convenient to generate counts of different orders 
+separately in a single pass.
+.TP
+.B \-sort
+Output counts in lexicographic order, as required for
+.BR ngram-merge (1).
+.TP
+.B \-recompute
+Regenerate lower-order counts by summing the highest-order counts for 
+each N-gram prefix.
+.TP
+.B \-limit-vocab
+Discard N-gram counts on reading that do not pertain to the words 
+specified in the vocabulary.
+The default is that words used in the count files are automatically added to
+the vocabulary.
+.SS LM Options
+.TP
+.BI \-lm " lmfile"
+Estimate a language model from the total counts and write it to
+.IR lmfile .
+This option applies to several LM model types (see below) but the default is to
+estimate a backoff N-gram model, and write it in
+.BR ngram-format (5).
+.TP
+.B \-write-binary-lm
+Output 
+.I lmfile
+in binary format.
+If an LM class does not provide a binary format the default (text) format
+will be output instead.
+.TP
+.BI \-nonevents " file"
+Read a list of words from
+.I file
+that are to be considered non-events, i.e., that
+can only occur in the context of an N-gram.
+Such words are given zero probability mass in model estimation.
+.TP
+.B \-float-counts
+Enable manipulation of fractional counts.
+Only certain discounting methods support non-integer counts.
+.TP
+.B \-skip
+Estimate a ``skip'' N-gram model, which predicts a word by
+an interpolation of the immediate context and the context one word prior.
+This also triggers N-gram counts to be generated that are one word longer 
+than the indicated order.
+The following four options control the EM estimation algorithm used for
+skip-N-grams.
+.TP
+.BI \-init-lm " lmfile"
+Load an LM to initialize the parameters of the skip-N-gram.
+.TP
+.BI \-skip-init " value"
+The initial skip probability for all words.
+.TP
+.BI \-em-iters " n"
+The maximum number of EM iterations.
+.TP
+.BI \-em-delta " d"
+The convergence criterion for EM: if the relative change in log likelihood
+falls below the given value, iteration stops.
+.TP
+.B \-count-lm
+Estimate a count-based interpolated LM using Jelinek-Mercer smoothing
+(Chen & Goodman, 1998).
+Several of the options for skip-N-gram LMs (above) apply.
+An initial count-LM in the format described in 
+.BR ngram (1)
+needs to be specified using
+.BR \-init-lm .
+The options
+.B \-em-iters
+and
+.B \-em-delta
+control termination of the EM algorithm.
+Note that the N-gram counts used to estimate the maximum-likelihood
+estimates come from the 
+.B \-init-lm
+model.
+The counts specified with
+.B \-read
+or
+.B \-text
+are used only to estimate the smoothing (interpolation weights).
+.TP
+.B \-maxent
+Estimate a maximum entropy N-gram model.
+The model is written to the file specifed by the
+.B \-lm 
+option.
+.br
+If 
+.BI \-init-lm " file"
+is also specified then use an existing maxent model from
+.I file
+as prior and adapt it using the given data.
+.TP
+.BI \-maxent-alpha " A"
+Use the L1 regularization constant
+.I A
+for maxent estimation.
+The default value is 0.5.
+.TP
+.BI \-maxent-sigma2 " S"
+Use the L2 regularization constant
+.I S
+for maxent estimation.
+The default value is 6 for estimation and 0.5 for adaptation.
+.TP
+.B \-maxent-convert-to-arpa
+Convert the maxent model to
+.BR ngram-format (5)
+before writing it out, using the algorithm by Wu (2002).
+.TP
+.B \-unk
+Build an ``open vocabulary'' LM, i.e., one that contains the unknown-word
+token as a regular word.
+The default is to remove the unknown word.
+.TP
+.BI \-map-unk " word"
+Map out-of-vocabulary words to 
+.IR word ,
+rather than the default
+.B <unk>
+tag.
+.TP
+.B \-trust-totals
+Force the lower-order counts to be used as total counts in estimating
+N-gram probabilities.
+Usually these totals are recomputed from the higher-order counts.
+.TP
+.BI \-prune " threshold"
+Prune N-gram probabilities if their removal causes (training set)
+perplexity of the model to increase by less than
+.I threshold
+relative.
+.TP
+.BI \-minprune " n"
+Only prune N-grams of length at least
+.IR n .
+The default (and minimum allowed value) is 2, i.e., only unigrams are excluded
+from pruning.
+.TP
+.BI \-debug " level"
+Set debugging output from estimated LM at
+.IR level .
+Level 0 means no debugging.
+Debugging messages are written to stderr.
+.TP
+.BI \-gt\fIn\fPmin " count"
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Set the minimal count of N-grams of order
+.I n
+that will be included in the LM.
+All N-grams with frequency lower than that will effectively be discounted to 0.
+If 
+.I n 
+is omitted the parameter for N-grams of order > 9 is set.
+.br
+NOTE: This option affects not only the default Good-Turing discounting
+but the alternative discounting methods described below as well.
+.TP
+.BI \-gt\fIn\fPmax " count"
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Set the maximal count of N-grams of order
+.I n
+that are discounted under Good-Turing.
+All N-grams more frequent than that will receive
+maximum likelihood estimates.
+Discounting can be effectively disabled by setting this to 0.
+If 
+.I n 
+is omitted the parameter for N-grams of order > 9 is set.
+.PP
+In the following discounting parameter options, the order
+.I n
+may be omitted, in which case a default for all N-gram orders is
+set.
+The corresponding discounting method then becomes the default method
+for all orders, unless specifically overridden by an option with
+.IR n .
+If no discounting method is specified, Good-Turing is used.
+.TP
+.BI \-gt\fIn\fP " gtfile"
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Save or retrieve Good-Turing parameters
+(cutoffs and discounting factors) in/from
+.IR gtfile .
+This is useful as GT parameters should always be determined from
+unlimited vocabulary counts, whereas the eventual LM may use a
+limited vocabulary.
+The parameter files may also be hand-edited.
+If an
+.B \-lm
+option is specified the GT parameters are read from
+.IR gtfile ,
+otherwise they are computed from the current counts and saved in
+.IR gtfile .
+.TP
+.BI \-cdiscount\fIn\fP " discount"
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use Ney's absolute discounting for N-grams of 
+order
+.IR n ,
+using
+.I discount
+as the constant to subtract.
+.TP
+.B \-wbdiscount\fIn\fP
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use Witten-Bell discounting for N-grams of order
+.IR n .
+(This is the estimator where the first occurrence of each word is
+taken to be a sample for the ``unseen'' event.)
+.TP
+.B \-ndiscount\fIn\fP
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use Ristad's natural discounting law for N-grams of order
+.IR n .
+.TP
+.BI \-addsmooth\fIn\fP " delta"
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Smooth by adding 
+.I delta
+to each N-gram count.
+This is usually a poor smoothing method and included mainly for instructional
+purposes.
+.TP
+.B \-kndiscount\fIn\fP
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use Chen and Goodman's modified Kneser-Ney discounting for N-grams of order
+.IR n .
+.TP
+.B \-kn-counts-modified
+Indicates that input counts have already been modified for Kneser-Ney 
+smoothing.
+If this option is not given, the KN discounting method modifies counts
+(except those of highest order) in order to estimate the backoff distributions.
+When using the 
+.B \-write
+and related options the output will reflect the modified counts.
+.TP
+.B \-kn-modify-counts-at-end
+Modify Kneser-Ney counts after estimating discounting constants, rather than
+before as is the default.
+.TP
+.BI \-kn\fIn\fP " knfile"
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Save or retrieve Kneser-Ney parameters
+(cutoff and discounting constants) in/from
+.IR knfile .
+This is useful as smoothing parameters should always be determined from
+unlimited vocabulary counts, whereas the eventual LM may use a
+limited vocabulary.
+The parameter files may also be hand-edited.
+If an
+.B \-lm
+option is specified the KN parameters are read from
+.IR knfile ,
+otherwise they are computed from the current counts and saved in
+.IR knfile .
+.TP
+.B \-ukndiscount\fIn\fP
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Use the original (unmodified) Kneser-Ney discounting method for N-grams of
+order
+.IR n .
+.TP
+.B \-interpolate\fIn\fP
+where
+.I n
+is 1, 2, 3, 4, 5, 6, 7, 8, or 9.
+Causes the discounted N-gram probability estimates at the specified order 
+.I n
+to be interpolated with lower-order estimates.
+(The result of the interpolation is encoded as a standard backoff
+model and can be evaluated as such -- the interpolation happens at
+estimation time.)
+This sometimes yields better models with some smoothing methods
+(see Chen & Goodman, 1998).
+Only Witten-Bell, absolute discounting, and
+(original or modified) Kneser-Ney smoothing
+currently support interpolation.
+.TP
+.BI \-meta-tag " string"
+Interpret words starting with 
+.I string
+as count-of-count (meta-count) tags.
+For example, an N-gram
+.nf
+	a b \fIstring\fP3	4
+.fi
+means that there were 4 trigrams starting with "a b"
+that occurred 3 times each.
+Meta-tags are only allowed in the last position of an N-gram.
+.br
+Note: when using 
+.B \-tolower
+the meta-tag
+.I string 
+must not contain any uppercase characters.
+.TP
+.B \-read-with-mincounts
+Save memory by eliminating N-grams with counts that fall below the thresholds
+set by
+.BI \-gt N min
+options during 
+.B \-read 
+operation 
+(this assumes the input counts contain no duplicate N-grams).
+Also, if
+.B \-meta-tag 
+is defined,
+these low-count N-grams will be converted to count-of-count N-grams,
+so that smoothing methods that need this information still work correctly.
+.SH "SEE ALSO"
+ngram-merge(1), ngram(1), ngram-class(1), training-scripts(1), lm-scripts(1),
+ngram-format(5).
+.br
+T. Alumäe and M. Kurimo, ``Efficient Estimation of Maximum Entropy
+Language Models with N-gram features: an SRILM extension,''
+\fIProc. Interspeech\fP, 1820\-1823, 2010.
+.br
+S. F. Chen and J. Goodman, ``An Empirical Study of Smoothing Techniques for
+Language Modeling,'' TR-10-98, Computer Science Group, Harvard Univ., 1998.
+.br
+S. M. Katz, ``Estimation of Probabilities from Sparse Data for the
+Language Model Component of a Speech Recognizer,'' \fIIEEE Trans. ASSP\fP 35(3),
+400\-401, 1987.
+.br
+R. Kneser and H. Ney, ``Improved backing-off for M-gram language modeling,''
+\fIProc. ICASSP\fP, 181-184, 1995.
+.br
+H. Ney and U. Essen, ``On Smoothing Techniques for Bigram-based Natural
+Language Modelling,'' \fIProc. ICASSP\fP, 825\-828, 1991.
+.br
+E. S. Ristad, ``A Natural Law of Succession,'' CS-TR-495-95,
+Comp. Sci. Dept., Princeton Univ., 1995.
+.br
+I. H. Witten and T. C. Bell, ``The Zero-Frequency Problem: Estimating the
+Probabilities of Novel Events in Adaptive Text Compression,''
+\fIIEEE Trans. Information Theory\fP 37(4), 1085\-1094, 1991.
+.br
+J. Wu (2002), ``Maximum Entropy Language Modeling with Non-Local Dependencies,''
+doctoral dissertation, Johns Hopkins University, 2002.
+.SH BUGS
+Several of the LM types supported by 
+.BR ngram (1)
+don't have explicit support in
+.BR ngram-count .
+Instead, they are built by separately manipulating N-gram counts, 
+followed by standard N-gram model estimation.
+.br
+LM support for tagged words is incomplete.
+.br
+Only absolute and Witten-Bell discounting currently support fractional counts.
+.br
+The combination of 
+.B \-read-with-mincounts
+and 
+.B \-meta-tag 
+preserves enough count-of-count information for
+.I applying 
+discounting parameters to the input counts, but it does not 
+necessarily allow the parameters to be correctly 
+.IR estimated .
+Therefore, discounting parameters should always be estimated from full 
+counts (e.g., using the helper 
+.BR training-scripts (1)),
+and then read from files.
+.br
+Smoothing with 
+.B \-kndiscount 
+or 
+.B \-ukndiscount
+has a side-effect on the N-gram counts, since
+the lower-order counts are destructively modified according to the KN smoothing approach
+(Kneser & Ney, 1995).
+The
+.BR \-write
+option will output these modified counts, and count cutoffs specified by
+.BI \-gt N min
+operate on the modified counts, potentially leading to a different set of N-grams
+being retained than with other discounting methods.
+This can be considered either a feature or a bug.
+.SH AUTHOR
+Andreas Stolcke <andreas.stolcke@microsoft.com>
+.br
+Tanel Alumäe <tanel.alumae@phon.ioc.ee>
+.br
+Copyright (c) 1995\-2011 SRI International
+.br
+Copyright (c) 2009\-2013 Tanel Alumäe
+.br
+Copyright (c) 2012\-2013 Microsoft Corp.

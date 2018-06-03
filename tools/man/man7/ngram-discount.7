@@ -1,0 +1,673 @@
+.\" $Id: ngram-discount.7,v 1.4 2008/01/02 06:26:15 stolcke Exp $
+.TH ngram-discount 7 "$Date: 2008/01/02 06:26:15 $" "SRILM Miscellaneous"
+.SH NAME
+ngram-discount \- notes on the N-gram smoothing implementations in SRILM
+.SH NOTATION
+.TP 10
+.IR a _ z
+An N-gram where
+.I a
+is the first word,
+.I z
+is the last word, and "_" represents 0 or more words in between.
+.TP
+.IR p ( a _ z )
+The estimated conditional probability of the \fIn\fPth word
+.I z
+given the first \fIn\fP-1 words
+.RI ( a _)
+of an N-gram.
+.TP
+.IR a _ 
+The \fIn\fP-1 word prefix of the N-gram
+.IR a _ z .
+.TP
+.RI _ z
+The \fIn\fP-1 word suffix of the N-gram
+.IR a _ z .
+.TP
+.IR c ( a _ z )
+The count of N-gram
+.IR a _ z
+in the training data.
+.TP
+.IR n (*_ z )
+The number of unique N-grams that match a given pattern.
+``(*)'' represents a wildcard matching a single word.
+.TP
+.IR n1 , n [1]
+The number of unique N-grams with count = 1.
+.SH DESCRIPTION
+.PP
+N-gram models try to estimate the probability of a word
+.I z
+in the context of the previous \fIn\fP-1 words
+.RI ( a _),
+i.e.,
+.IR Pr ( z | a _).
+We will
+denote this conditional probability using
+.IR p ( a _ z )
+for convenience.
+One way to estimate
+.IR p ( a _ z )
+is to look at the number of times word
+.I z
+has followed the previous \fIn\fP-1 words
+.RI ( a _):
+.nf
+
+(1)	\fIp\fP(\fIa\fP_\fIz\fP) = \fIc\fP(\fIa\fP_\fIz\fP)/\fIc\fP(\fIa\fP_)
+
+.fi
+This is known as the maximum likelihood (ML) estimate.
+Unfortunately it does not work very well because it assigns zero probability to
+N-grams that have not been observed in the training data.
+To avoid the zero probabilities, we take some probability mass from the observed
+N-grams and distribute it to unobserved N-grams.
+Such redistribution is known as smoothing or discounting.
+.PP
+Most existing smoothing algorithms can be described by the following equation:
+.nf
+
+(2)	\fIp\fP(\fIa\fP_\fIz\fP) = (\fIc\fP(\fIa\fP_\fIz\fP) > 0) ? \fIf\fP(\fIa\fP_\fIz\fP) : bow(\fIa\fP_) \fIp\fP(_\fIz\fP)
+
+.fi
+If the N-gram
+.IR a _ z
+has been observed in the training data, we use the
+distribution
+.IR f ( a _ z ).
+Typically
+.IR f ( a _ z )
+is discounted to be less than
+the ML estimate so we have some leftover probability for the
+.I z
+words unseen in the context
+.RI ( a _).
+Different algorithms mainly differ on how
+they discount the ML estimate to get
+.IR f ( a _ z ).
+.PP
+If the N-gram
+.IR a _ z
+has not been observed in the training data, we use
+the lower order distribution
+.IR p (_ z ).
+If the context has never been
+observed (\fIc\fP(\fIa\fP_) = 0),
+we can use the lower order distribution directly (bow(\fIa\fP_) = 1).
+Otherwise we need to compute a backoff weight (bow) to
+make sure probabilities are normalized:
+.fi
+
+	Sum_\fIz\fP \fIp\fP(\fIa\fP_\fIz\fP) = 1
+
+.fi
+.PP
+Let
+.I Z
+be the set of all words in the vocabulary,
+.I Z0
+be the set of all words with \fIc\fP(\fIa\fP_\fIz\fP) = 0, and
+.I Z1
+be the set of all words with \fIc\fP(\fIa\fP_\fIz\fP) > 0.
+Given
+.IR f ( a _ z ),
+.RI bow( a _)
+can be determined as follows:
+.nf
+
+(3)	Sum_\fIZ\fP  \fIp\fP(\fIa\fP_\fIz\fP) = 1
+	Sum_\fIZ1\fP \fIf\fP(\fIa\fP_\fIz\fP) + Sum_\fIZ0\fP bow(\fIa\fP_) \fIp\fP(_\fIz\fP) = 1
+	bow(\fIa\fP_) = (1 - Sum_\fIZ1\fP \fIf\fP(\fIa\fP_\fIz\fP)) / Sum_\fIZ0\fP \fIp\fP(_\fIz\fP)
+	        = (1 - Sum_\fIZ1\fP \fIf\fP(\fIa\fP_\fIz\fP)) / (1 - Sum_\fIZ1\fP \fIp\fP(_\fIz\fP))
+	        = (1 - Sum_\fIZ1\fP \fIf\fP(\fIa\fP_\fIz\fP)) / (1 - Sum_\fIZ1\fP \fIf\fP(_\fIz\fP))
+
+.fi
+.PP
+Smoothing is generally done in one of two ways.
+The backoff models compute
+.IR p ( a _ z )
+based on the N-gram counts
+.IR c ( a _ z )
+when \fIc\fP(\fIa\fP_\fIz\fP) > 0, and
+only consider lower order counts
+.IR c (_ z )
+when \fIc\fP(\fIa\fP_\fIz\fP) = 0.
+Interpolated models take lower order counts into account when
+\fIc\fP(\fIa\fP_\fIz\fP) > 0 as well.
+A common way to express an interpolated model is:
+.nf
+
+(4)	\fIp\fP(\fIa\fP_\fIz\fP) = \fIg\fP(\fIa\fP_\fIz\fP) + bow(\fIa\fP_) \fIp\fP(_\fIz\fP)
+
+.fi
+Where \fIg\fP(\fIa\fP_\fIz\fP) = 0 when \fIc\fP(\fIa\fP_\fIz\fP) = 0
+and it is discounted to be less than
+the ML estimate when \fIc\fP(\fIa\fP_\fIz\fP) > 0
+to reserve some probability mass for
+the unseen
+.I z
+words.
+Given
+.IR g ( a _ z ),
+.RI bow( a _)
+can be determined as follows:
+.nf
+
+(5)	Sum_\fIZ\fP  \fIp(\fP\fIa_\fP\fIz)\fP = 1
+	Sum_\fIZ1\fP \fIg(\fP\fIa_\fP\fIz\fP) + Sum_\fIZ\fP bow(\fIa\fP_) \fIp\fP(_\fIz\fP) = 1
+	bow(\fIa\fP_) = 1 - Sum_\fIZ1\fP \fIg\fP(\fIa\fP_\fIz\fP)
+
+.fi
+.PP
+An interpolated model can also be expressed in the form of equation
+(2), which is the way it is represented in the ARPA format model files
+in SRILM:
+.nf
+
+(6)	\fIf\fP(\fIa\fP_\fIz\fP) = \fIg\fP(\fIa\fP_\fIz\fP) + bow(\fIa\fP_) \fIp\fP(_\fIz\fP)
+	\fIp\fP(\fIa\fP_\fIz\fP) = (\fIc\fP(\fIa\fP_\fIz\fP) > 0) ? \fIf\fP(\fIa\fP_\fIz\fP) : bow(\fIa\fP_) \fIp\fP(_\fIz\fP)
+
+.fi
+.PP
+Most algorithms in SRILM have both backoff and interpolated versions.
+Empirically, interpolated algorithms usually do better than the backoff
+ones, and Kneser-Ney does better than others.
+
+.SH OPTIONS
+.PP
+This section describes the formulation of each discounting option in
+.BR ngram-count (1).
+After giving the motivation for each discounting method,
+we will give expressions for
+.IR f ( a _ z )
+and
+.RI bow( a _)
+of Equation 2 in terms of the counts.
+Note that some counts may not be included in the model
+file because of the
+.B \-gtmin
+options; see Warning 4 in the next section.
+.PP
+Backoff versions are the default but interpolated versions of most
+models are available using the
+.B \-interpolate
+option.
+In this case we will express
+.IR g ( a _z )
+and
+.RI bow( a _)
+of Equation 4 in terms of the counts as well.
+Note that the ARPA format model files store the interpolated
+models and the backoff models the same way using
+.IR f ( a _ z )
+and
+.RI bow( a _);
+see Warning 3 in the next section.
+The conversion between backoff and
+interpolated formulations is given in Equation 6.
+.PP
+The discounting options may be followed by a digit (1-9) to indicate
+that only specific N-gram orders be affected.
+See
+.BR ngram-count (1)
+for more details.
+.TP
+.BI \-cdiscount " D"
+Ney's absolute discounting using
+.I D
+as the constant to subtract.
+.I D
+should be between 0 and 1.
+If
+.I Z1
+is the set
+of all words
+.I z
+with \fIc\fP(\fIa\fP_\fIz\fP) > 0:
+.nf
+
+	\fIf\fP(\fIa\fP_\fIz\fP)  = (\fIc\fP(\fIa\fP_\fIz\fP) - \fID\fP) / \fIc\fP(\fIa\fP_)
+	\fIp\fP(\fIa\fP_\fIz\fP)  = (\fIc\fP(\fIa\fP_\fIz\fP) > 0) ? \fIf\fP(\fIa\fP_\fIz\fP) : bow(\fIa\fP_) \fIp\fP(_\fIz\fP)    ; Eqn.2
+	bow(\fIa\fP_) = (1 - Sum_\fIZ1\fP f(\fIa\fP_\fIz\fP)) / (1 - Sum_\fIZ1\fP \fIf\fP(_\fIz\fP)) ; Eqn.3
+
+.fi
+With the
+.B \-interpolate
+option we have:
+.nf
+
+	\fIg\fP(\fIa\fP_\fIz\fP)  = max(0, \fIc\fP(\fIa\fP_\fIz\fP) - \fID\fP) / \fIc\fP(\fIa\fP_)
+	\fIp\fP(\fIa\fP_\fIz\fP)  = \fIg\fP(\fIa\fP_\fIz\fP) + bow(\fIa\fP_) \fIp\fP(_\fIz\fP)	; Eqn.4
+	bow(\fIa\fP_) = 1 - Sum_\fIZ1\fP \fIg\fP(\fIa\fP_\fIz\fP)		; Eqn.5
+	        = \fID\fP \fIn\fP(\fIa\fP_*) / \fIc\fP(\fIa\fP_)
+
+.fi
+The suggested discount factor is:
+.nf
+
+	\fID\fP = \fIn1\fP / (\fIn1\fP + 2*\fIn2\fP)
+
+.fi
+where
+.I n1
+and
+.I n2
+are the total number of N-grams with exactly one and
+two counts, respectively.
+Different discounting constants can be
+specified for different N-gram orders using options
+.BR \-cdiscount1 ,
+.BR \-cdiscount2 ,
+etc.
+.TP
+.BR \-kndiscount " and " \-ukndiscount
+Kneser-Ney discounting.
+This is similar to absolute discounting in
+that the discounted probability is computed by subtracting a constant
+.I D
+from the N-gram count.
+The options
+.B \-kndiscount
+and
+.B \-ukndiscount
+differ as to how this constant is computed.
+.br
+The main idea of Kneser-Ney is to use a modified probability estimate
+for lower order N-grams used for backoff.
+Specifically, the modified
+probability for a lower order N-gram is taken to be proportional to the
+number of unique words that precede it in the training data.
+With discounting and normalization we get:
+.nf
+
+	\fIf\fP(\fIa\fP_\fIz\fP) = (\fIc\fP(\fIa\fP_\fIz\fP) - \fID0\fP) / \fIc\fP(\fIa\fP_) 	;; for highest order N-grams
+	\fIf\fP(_\fIz\fP)  = (\fIn\fP(*_\fIz\fP) - \fID1\fP) / \fIn\fP(*_*)	;; for lower order N-grams
+
+.fi
+where the
+.IR n (*_ z )
+notation represents the number of unique N-grams that
+match a given pattern with (*) used as a wildcard for a single word.
+.I D0
+and
+.I D1
+represent two different discounting constants, as each N-gram
+order uses a different discounting constant.
+The resulting
+conditional probability and the backoff weight is calculated as given
+in equations (2) and (3):
+.nf
+
+	\fIp\fP(\fIa\fP_\fIz\fP)  = (\fIc\fP(\fIa\fP_\fIz\fP) > 0) ? \fIf\fP(\fIa\fP_\fIz\fP) : bow(\fIa\fP_) \fIp\fP(_\fIz\fP)     ; Eqn.2
+	bow(\fIa\fP_) = (1 - Sum_\fIZ1\fP f(\fIa\fP_\fIz\fP)) / (1 - Sum_\fIZ1\fP \fIf\fP(_\fIz\fP))  ; Eqn.3
+
+.fi
+The option
+.B \-interpolate
+is used to create the interpolated versions of
+.B \-kndiscount
+and
+.BR \-ukndiscount .
+In this case we have:
+.nf
+
+	\fIp\fP(\fIa\fP_\fIz\fP) = \fIg\fP(\fIa\fP_\fIz\fP) + bow(\fIa\fP_) \fIp\fP(_\fIz\fP)  ; Eqn.4
+
+.fi
+Let
+.I Z1
+be the set {\fIz\fP: \fIc\fP(\fIa\fP_\fIz\fP) > 0}.
+For highest order N-grams we have:
+.nf
+
+	\fIg\fP(\fIa\fP_\fIz\fP)  = max(0, \fIc\fP(\fIa\fP_\fIz\fP) - \fID\fP) / \fIc\fP(\fIa\fP_)
+	bow(\fIa\fP_) = 1 - Sum_\fIZ1\fP \fIg\fP(\fIa\fP_\fIz\fP)
+	        = 1 - Sum_\fIZ1\fP \fIc\fP(\fIa\fP_\fIz\fP) / \fIc\fP(\fIa\fP_) + Sum_\fIZ1\fP \fID\fP / \fIc\fP(\fIa\fP_)
+	        = \fID\fP \fIn\fP(\fIa\fP_*) / \fIc\fP(\fIa\fP_)
+
+.fi
+Let
+.I Z2
+be the set {\fIz\fP: \fIn\fP(*_\fIz\fP) > 0}.
+For lower order N-grams we have:
+.nf
+
+	\fIg\fP(_\fIz\fP)  = max(0, \fIn\fP(*_\fIz\fP) - \fID\fP) / \fIn\fP(*_*)
+	bow(_) = 1 - Sum_\fIZ2\fP \fIg\fP(_\fIz\fP)
+	       = 1 - Sum_\fIZ2\fP \fIn\fP(*_\fIz\fP) / \fIn\fP(*_*) + Sum_\fIZ2\fP \fID\fP / \fIn\fP(*_*)
+	       = \fID\fP \fIn\fP(_*) / \fIn\fP(*_*)
+
+.fi
+The original Kneser-Ney discounting
+.RB ( \-ukndiscount )
+uses one discounting constant for each N-gram order.
+These constants are estimated as
+.nf
+
+	\fID\fP = \fIn1\fP / (\fIn1\fP + 2*\fIn2\fP)
+
+.fi
+where
+.I n1
+and
+.I n2
+are the total number of N-grams with exactly one and
+two counts, respectively.
+.br
+Chen and Goodman's modified Kneser-Ney discounting
+.RB ( \-kndiscount )
+uses three discounting constants for each N-gram order, one for one-count
+N-grams, one for two-count N-grams, and one for three-plus-count N-grams:
+.nf
+
+	\fIY\fP   = \fIn1\fP/(\fIn1\fP+2*\fIn2\fP)
+	\fID1\fP  = 1 - 2\fIY\fP(\fIn2\fP/\fIn1\fP)
+	\fID2\fP  = 2 - 3\fIY\fP(\fIn3\fP/\fIn2\fP)
+	\fID3+\fP = 3 - 4\fIY\fP(\fIn4\fP/\fIn3\fP)
+
+.fi
+.TP
+.B Warning:
+SRILM implements Kneser-Ney discounting by actually modifying the
+counts of the lower order N-grams.  Thus, when the
+.B \-write
+option is
+used to write the counts with
+.B \-kndiscount
+or
+.BR \-ukndiscount ,
+only the highest order N-grams and N-grams that start with <s> will have their
+regular counts
+.IR c ( a _ z ),
+all others will have the modified counts
+.IR n (*_ z )
+instead.
+See Warning 2 in the next section.
+.TP
+.B \-wbdiscount
+Witten-Bell discounting.
+The intuition is that the weight given
+to the lower order model should be proportional to the probability of
+observing an unseen word in the current context
+.RI ( a _).
+Witten-Bell computes this weight as:
+.nf
+
+	bow(\fIa\fP_) = \fIn\fP(\fIa\fP_*) / (\fIn\fP(\fIa\fP_*) + \fIc\fP(\fIa\fP_))
+
+.fi
+Here
+.IR n ( a _*)
+represents the number of unique words following the
+context
+.RI ( a _)
+in the training data.
+Witten-Bell is originally an interpolated discounting method.
+So with the
+.B \-interpolate
+option we get:
+.nf
+
+	\fIg\fP(\fIa\fP_\fIz\fP) = \fIc\fP(\fIa\fP_\fIz\fP) / (\fIn\fP(\fIa\fP_*) + \fIc\fP(\fIa\fP_))
+	\fIp\fP(\fIa\fP_\fIz\fP) = \fIg\fP(\fIa\fP_\fIz\fP) + bow(\fIa\fP_) \fIp\fP(_\fIz\fP)    ; Eqn.4
+
+.fi
+Without the
+.B \-interpolate
+option we have the backoff version which is
+implemented by taking
+.IR f ( a _ z )
+to be the same as the interpolated
+.IR g ( a _ z ).
+.nf
+
+	\fIf\fP(\fIa\fP_\fIz\fP)  = \fIc\fP(\fIa\fP_\fIz\fP) / (\fIn\fP(\fIa\fP_*) + \fIc\fP(\fIa\fP_))
+	\fIp\fP(\fIa\fP_\fIz\fP)  = (\fIc\fP(\fIa\fP_\fIz\fP) > 0) ? \fIf\fP(\fIa\fP_\fIz\fP) : bow(\fIa\fP_) \fIp\fP(_\fIz\fP)    ; Eqn.2
+	bow(\fIa\fP_) = (1 - Sum_\fIZ1\fP \fIf\fP(\fIa\fP_\fIz\fP)) / (1 - Sum_\fIZ1\fP \fIf\fP(_\fIz\fP)) ; Eqn.3
+
+.fi
+.TP
+.B \-ndiscount
+Ristad's natural discounting law.
+See Ristad's technical report "A natural law of succession"
+for a justification of the discounting factor.
+The
+.B \-interpolate
+option has no effect, only a backoff version has been implemented.
+.nf
+
+	          \fIc\fP(\fIa\fP_\fIz\fP)  \fIc\fP(\fIa\fP_) (\fIc\fP(\fIa\fP_) + 1) + \fIn\fP(\fIa\fP_*) (1 - \fIn\fP(\fIa\fP_*))
+	\fIf\fP(\fIa\fP_\fIz\fP)  = ------  ---------------------------------------
+	          \fIc\fP(\fIa\fP_)        \fIc\fP(\fIa\fP_)^2 + \fIc\fP(\fIa\fP_) + 2 \fIn\fP(\fIa\fP_*)
+
+	\fIp\fP(\fIa\fP_\fIz\fP)  = (\fIc\fP(\fIa\fP_\fIz\fP) > 0) ? \fIf\fP(\fIa\fP_\fIz\fP) : bow(\fIa\fP_) \fIp\fP(_\fIz\fP)    ; Eqn.2
+	bow(\fIa\fP_) = (1 - Sum_\fIZ1\fP f(\fIa\fP_\fIz\fP)) / (1 - Sum_\fIZ1\fP \fIf\fP(_\fIz\fP)) ; Eqn.3
+
+.fi
+.TP
+.B \-count-lm
+Estimate a count-based interpolated LM using Jelinek-Mercer smoothing
+(Chen & Goodman, 1998), also known as "deleted interpolation."
+Note that this does not produce a backoff model; instead of 
+count-LM parameter file in the format described in 
+.BR ngram (1)
+needs to be specified using
+.BR \-init-lm ,
+and a reestimated file in the same format is produced.
+In the process, the mixture weights that interpolate the ML estimates
+at all levels of N-grams are estimated using an expectation-maximization (EM)
+algorithm.
+The options
+.B \-em-iters
+and
+.B \-em-delta
+control termination of the EM algorithm.
+Note that the N-gram counts used to estimate the maximum-likelihood
+estimates are specified in the 
+.B \-init-lm
+model file.
+The counts specified with
+.B \-read
+or
+.B \-text
+are used only to estimate the interpolation weights.
+\" ???What does this all mean in terms of the math???
+.TP
+.BI \-addsmooth " D"
+Smooth by adding 
+.I D
+to each N-gram count.
+This is usually a poor smoothing method,
+included mainly for instructional purposes.
+.nf
+
+	\fIp\fP(\fIa\fP_\fIz\fP) = (\fIc\fP(\fIa\fP_\fIz\fP) + \fID\fP) / (\fIc\fP(\fIa\fP_) + \fID\fP \fIn\fP(*))
+
+.fi
+.TP
+default
+If the user does not specify any discounting options,
+.B ngram-count
+uses Good-Turing discounting (aka Katz smoothing) by default.
+The Good-Turing estimate states that for any N-gram that occurs
+.I r
+times, we should pretend that it occurs
+.IR r '
+times where
+.nf
+
+	\fIr\fP' = (\fIr\fP+1) \fIn\fP[\fIr\fP+1]/\fIn\fP[\fIr\fP]
+
+.fi
+Here
+.IR n [ r ]
+is the number of N-grams that occur exactly
+.I r
+times in the training data.  
+.br
+Large counts are taken to be reliable, thus they are not subject to
+any discounting.
+By default unigram counts larger than 1 and other N-gram counts larger
+than 7 are taken to be reliable and maximum
+likelihood estimates are used.
+These limits can be modified using the
+.BI \-gt n max
+options.
+.nf
+
+	\fIf\fP(\fIa\fP_\fIz\fP) = (\fIc\fP(\fIa\fP_\fIz\fP) / \fIc\fP(\fIa\fP_))  if \fIc\fP(\fIa\fP_\fIz\fP) > \fIgtmax\fP
+
+.fi
+The lower counts are discounted proportional to the Good-Turing
+estimate with a small correction
+.I A
+to account for the high-count N-grams not being discounted.
+If 1 <= \fIc\fP(\fIa\fP_\fIz\fP) <= \fIgtmax\fP:
+.nf
+
+                   \fIn\fP[\fIgtmax\fP + 1]
+  \fIA\fP = (\fIgtmax\fP + 1) --------------
+                      \fIn\fP[1]
+
+                          \fIn\fP[\fIc\fP(\fIa\fP_\fIz\fP) + 1]
+  \fIc\fP'(\fIa\fP_\fIz\fP) = (\fIc\fP(\fIa\fP_\fIz\fP) + 1) ---------------
+                            \fIn\fP[\fIc\fP(\fIa\fP_\fIz\fP)]
+
+            \fIc\fP(\fIa\fP_\fIz\fP)   (\fIc\fP'(\fIa\fP_\fIz\fP) / \fIc\fP(\fIa\fP_\fIz\fP) - \fIA\fP)
+  \fIf\fP(\fIa\fP_\fIz\fP) = --------  ----------------------
+             \fIc\fP(\fIa\fP_)         (1 - \fIA\fP)
+
+.fi
+The
+.B \-interpolate
+option has no effect in this case, only a backoff
+version has been implemented, thus:
+.nf
+
+	\fIp\fP(\fIa\fP_\fIz\fP)  = (\fIc\fP(\fIa\fP_\fIz\fP) > 0) ? \fIf\fP(\fIa\fP_\fIz\fP) : bow(\fIa\fP_) \fIp\fP(_\fIz\fP)    ; Eqn.2
+	bow(\fIa\fP_) = (1 - Sum_\fIZ1\fP \fIf\fP(\fIa\fP_\fIz\fP)) / (1 - Sum_\fIZ1\fP \fIf\fP(_\fIz\fP)) ; Eqn.3
+
+.fi
+.SH "FILE FORMATS"
+SRILM can generate simple N-gram counts from plain text files with the
+following command:
+.nf
+	ngram-count -order \fIN\fP -text \fIfile.txt\fP -write \fIfile.cnt\fP
+.fi
+The
+.B \-order
+option determines the maximum length of the N-grams.
+The file
+.I file.txt
+should contain one sentence per line with tokens
+separated by whitespace.
+The output
+.I file.cnt
+contains the N-gram
+tokens followed by a tab and a count on each line:
+.nf
+
+	\fIa\fP_\fIz\fP <tab> \fIc\fP(\fIa\fP_\fIz\fP)
+
+.fi
+A couple of warnings:
+.TP
+.B "Warning 1"
+SRILM implicitly assumes an <s> token in the beginning of each line
+and an </s> token at the end of each line and counts N-grams that start
+with <s> and end with </s>.
+You do not need to include these tags in
+.IR file.txt .
+.TP
+.B "Warning 2"
+When
+.B \-kndiscount
+or
+.B \-ukndiscount
+options are used, the count file contains modified counts.
+Specifically, all N-grams of the maximum
+order, and all N-grams that start with <s> have their regular counts
+.IR c ( a _ z ),
+but shorter N-grams that do not start with <s> have the number
+of unique words preceding them
+.IR n (* a _ z )
+instead.
+See the description of
+.B \-kndiscount
+and
+.B \-ukndiscount
+for details.
+.PP
+For most smoothing methods (except
+.BR \-count-lm )
+SRILM generates and uses N-gram model files in the ARPA format.
+A typical command to generate a model file would be:
+.nf
+	ngram-count -order \fIN\fP -text \fIfile.txt\fP -lm \fIfile.lm\fP
+.fi
+The ARPA format output
+.I file.lm
+will contain the following information about an N-gram on each line:
+.nf
+
+	log10(\fIf\fP(\fIa\fP_\fIz\fP)) <tab> \fIa\fP_\fIz\fP <tab> log10(bow(\fIa\fP_\fIz\fP))
+
+.fi
+Based on Equation 2, the first entry represents the base 10 logarithm
+of the conditional probability (logprob) for the N-gram
+.IR a _ z .
+This is followed by the actual words in the N-gram separated by spaces.
+The last and optional entry is the base-10 logarithm of the backoff weight
+for (\fIn\fP+1)-grams starting with
+.IR a _ z .
+.TP
+.B "Warning 3"
+Both backoff and interpolated models are represented in the same
+format.
+This means interpolation is done during model building and
+represented in the ARPA format with logprob and backoff weight using
+equation (6).
+.TP
+.B "Warning 4"
+Not all N-grams in the count file necessarily end up in the model file.
+The options
+.BR \-gtmin ,
+.BR \-gt1min ,
+\&...,
+.B \-gt9min
+specify the minimum counts
+for N-grams to be included in the LM (not only for Good-Turing
+discounting but for the other methods as well).
+By default all unigrams and bigrams
+are included, but for higher order N-grams only those with count >= 2 are
+included.
+Some exceptions arise, because if one N-gram is included in
+the model file, all its prefix N-grams have to be included as well.
+This causes some higher order 1-count N-grams to be included when using
+KN discounting, which uses modified counts as described in Warning 2.
+.TP
+.B "Warning 5"
+Not all N-grams in the model file have backoff weights.
+The highest order N-grams do not need a backoff weight.
+For lower order N-grams
+backoff weights are only recorded for those that appear as the prefix
+of a longer N-gram included in the model.
+For other lower order N-grams
+the backoff weight is implicitly 1 (or 0, in log representation).
+
+.SH "SEE ALSO"
+ngram(1), ngram-count(1), ngram-format(5),
+.br
+S. F. Chen and J. Goodman, ``An Empirical Study of Smoothing Techniques for
+Language Modeling,'' TR-10-98, Computer Science Group, Harvard Univ., 1998.
+.SH BUGS
+Work in progress.
+.SH AUTHOR
+Deniz Yuret <dyuret@ku.edu.tr>
+.br
+Andreas Stolcke <stolcke@speech.sri.com>
+.br
+Copyright 2007 SRI International

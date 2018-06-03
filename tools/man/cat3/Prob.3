@@ -1,0 +1,79 @@
+Prob(3)                                                                Prob(3)
+
+
+
+NNAAMMEE
+       Prob - Probabilities for SRILM
+
+SSYYNNOOPPSSIISS
+       ##iinncclluuddee <<PPrroobb..hh>>
+
+DDEESSCCRRIIPPTTIIOONN
+       PPrroobb is a collection of types, constants and utility functions for han-
+       dling probabilities in the SRILM library.
+
+TTYYPPEESS
+       PPrroobb   A floating point number representing a probability.
+
+       LLooggPP   Logarithm to base 10 of a probability.
+
+CCOONNSSTTAANNTTSS
+       LLooggPP__ZZeerroo
+              Log of probability 0.
+
+       LLooggPP__IInnff
+              Log  of  probability  infinity  (not  a  legal  probability,  of
+              course).
+
+       LLooggPP__OOnnee
+              Log of probability 1.
+
+       LLooggPP__PPrreecciissiioonn
+              The number of significant digits in a LogP
+
+       PPrroobb__EEppssiilloonn
+              A  positive  value  close  to 0; probability sums less than this
+              should be considered effectively zero.
+
+FFUUNNCCTTIIOONNSS
+       BBoooolleeaann ppaarrsseeLLooggPP((ccoonnsstt cchhaarr **_s_t_r_i_n_g,, LLooggPP &&_p_r_o_b))
+              Converts a floating point string  representation  into  a  LogP.
+              Returns ttrruuee iff the number was parsed correctly.  This function
+              should be much faster  than  generic  C  library  functions  for
+              floating   point  parsing.   Also,  it  parses  singular  LogP's
+              (plus/minus infinity) correctly.
+
+       PPrroobb LLooggPPttooPPPPLL((LLooggPP _p_r_o_b))
+              Converts a LogP into a perplexity (PPL).
+
+       PPrroobbTTooLLooggPP((PPrroobb prob))
+              Converts a probability into a LogP.
+
+       LLooggPP MMiixxLLooggPP((LLooggPP _p_r_o_b_1,, LLooggPP _p_r_o_b_2,, ddoouubbllee _l_a_m_b_d_a))
+              Computes the LogP resulting from interpolating two  LogP's.   If
+              _p_1  and  _p_2  are probabilities corresponding to _p_r_o_b_1 and _p_r_o_b_2,
+              respectively, then the  result  is  the  LogP  corresponding  to
+              _l_a_m_b_d_a * _p_1 + (1 - _l_a_m_b_d_a) * _p_2.
+
+       The  following  functions  deal with _b_y_t_e_l_o_g_s.  Bytelogs are logarithms
+       scaled to represent probabilties and likelihoods as a short integer  in
+       SRI's DECIPHER(TM) recognizer (bytelog(_p) = log(_p) * 10000.5 / 1024).
+
+       ddoouubbllee PPrroobbTTooBByytteelloogg((PPrroobb _p_r_o_b))
+              Converts a probability to a bytelog.
+
+       ddoouubbllee LLooggPPttooBByytteelloogg((LLooggPP _p_r_o_b))
+              Convert a LogP to a bytelog.
+
+       LLooggPP BByytteellooggTTooLLooggPP((ddoouubbllee _b_y_t_e_l_o_g))
+              Convert a bytelog to a LogP.
+
+SSEEEE AALLSSOO
+BBUUGGSS
+AAUUTTHHOORR
+       Andreas Stolcke <stolcke@speech.sri.com>.
+       Copyright 1995, 1996 SRI International
+
+
+
+SRILM                    $Date: 2007/12/19 22:01:46 $                  Prob(3)

@@ -1,0 +1,86 @@
+<! $Id: ngram-merge.1,v 1.8 2007/12/20 19:13:52 stolcke Exp $>
+<HTML>
+<HEADER>
+<TITLE>ngram-merge</TITLE>
+<BODY>
+<H1>ngram-merge</H1>
+<H2> NAME </H2>
+ngram-merge - merge N-gram counts
+<H2> SYNOPSIS </H2>
+<PRE>
+<B>ngram-merge</B> [ <B>-help</B> ] [ <B>-write</B> <I>outfile</I> ] [ <B>-float-counts</B> ] \
+	[ <B>--</B> ] <I>infile1 infile2</I> ...
+</PRE>
+<H2> DESCRIPTION </H2>
+<B> ngram-merge </B>
+reads two or more lexicographically sorted N-gram count files
+(as produced by 
+<B>ngram-count -sort</B>)<B></B><B></B><B></B>
+and outputs the merged, sorted counts.
+The output is thus suitable for subsequent merging steps.
+<P>
+The input format consists of one N-gram count per line,
+<BR>
+<PRE>
+	<I>word1 word2</I> ... <I>wordn count</I>
+</PRE>
+<BR>
+The lines must be sorted lexicographically on the words, leftmost first.
+The input may contain N-grams of different lengths.
+<P>
+Each filename argument can be a plain ASCII count file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<P>
+<B> ngram-merge </B>
+is recommended in cases where the full counts would far exceed 
+available real memory.
+Although an arbitrary number of input count files is accepted,
+it is best to use the program as follows.
+First, partition the input text into the largest chunks so that
+<B> ngram-count </B>
+can run in real memory.
+Then merge the resulting sorted counts using
+<B> ngram-merge </B>
+pairwise, and continue doing so in a binary tree pattern until a
+single count file containing all N-grams remains.
+This procedure is automated by the
+<B> make-batch-counts </B>
+and
+<B> merge-batch-counts </B>
+scripts.
+<H2> OPTIONS </H2>
+<P>
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+<DL>
+<DT><B> -help </B>
+<DD>
+Print option and usage summary.
+<DT><B> -version </B>
+<DD>
+Print version information.
+<DT><B>-write</B><I> outfile</I><B></B><I></I><B></B><I></I><B></B>
+<DD>
+Write merged counts to
+<I>outfile</I>,<I></I><I></I><I></I>
+instead of standard output.
+<DT><B> -float-counts </B>
+<DD>
+Process counts as floating point numbers.
+By default counts are assumed to be unsigned integers.
+<DT><B> -- </B>
+<DD>
+Indicates the end of options, in case the first input filename begins
+with ``-''.
+</DD>
+</DL>
+<H2> SEE ALSO </H2>
+<A HREF="ngram-count.1.html">ngram-count(1)</A>, <A HREF="ngram.1.html">ngram(1)</A>, <A HREF="training-scripts.1.html">training-scripts(1)</A>.
+<H2> AUTHOR </H2>
+Andreas Stolcke &lt;stolcke@speech.sri.com&gt;
+<BR>
+Copyright 1995-2004 SRI International
+</BODY>
+</HTML>

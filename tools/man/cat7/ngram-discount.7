@@ -1,0 +1,414 @@
+ngram-discount(7)                                            ngram-discount(7)
+
+
+
+NNAAMMEE
+       ngram-discount - notes on the N-gram smoothing implementations in SRILM
+
+NNOOTTAATTIIOONN
+       _a__z       An  N-gram where _a is the first word, _z is the last word, and
+                 "_" represents 0 or more words in between.
+
+       _p(_a__z)    The estimated conditional probability of the _nth word _z given
+                 the first _n-1 words (_a_) of an N-gram.
+
+       _a_        The _n-1 word prefix of the N-gram _a__z.
+
+       __z        The _n-1 word suffix of the N-gram _a__z.
+
+       _c(_a__z)    The count of N-gram _a__z in the training data.
+
+       _n(*__z)    The  number  of  unique  N-grams  that match a given pattern.
+                 ``(*)'' represents a wildcard matching a single word.
+
+       _n_1,_n[1]   The number of unique N-grams with count = 1.
+
+DDEESSCCRRIIPPTTIIOONN
+       N-gram models try to estimate the probability of a word _z in  the  con-
+       text  of  the  previous _n-1 words (_a_), i.e., _P_r(_z|_a_).  We will denote
+       this conditional probability using _p(_a__z) for convenience.  One way  to
+       estimate  _p(_a__z)  is to look at the number of times word _z has followed
+       the previous _n-1 words (_a_):
+
+       (1)  _p(_a__z) = _c(_a__z)/_c(_a_)
+
+       This is known as the maximum likelihood (ML)  estimate.   Unfortunately
+       it  does  not  work very well because it assigns zero probability to N-
+       grams that have not been observed in the training data.  To  avoid  the
+       zero  probabilities, we take some probability mass from the observed N-
+       grams and distribute it to unobserved N-grams.  Such redistribution  is
+       known as smoothing or discounting.
+
+       Most  existing  smoothing  algorithms can be described by the following
+       equation:
+
+       (2)  _p(_a__z) = (_c(_a__z) > 0) ? _f(_a__z) : bow(_a_) _p(__z)
+
+       If the N-gram _a__z has been observed in the training data,  we  use  the
+       distribution  _f(_a__z).   Typically  _f(_a__z) is discounted to be less than
+       the ML estimate so we have some leftover probability for  the  _z  words
+       unseen  in the context (_a_).  Different algorithms mainly differ on how
+       they discount the ML estimate to get _f(_a__z).
+
+       If the N-gram _a__z has not been observed in the training  data,  we  use
+       the  lower  order  distribution  _p(__z).   If the context has never been
+       observed (_c(_a_) = 0), we can use the lower order distribution  directly
+       (bow(_a_)  = 1).  Otherwise we need to compute a backoff weight (bow) to
+       make sure probabilities are normalized:
+
+            Sum__z _p(_a__z) = 1
+
+
+       Let _Z be the set of all words in the vocabulary, _Z_0 be the set  of  all
+       words  with _c(_a__z) = 0, and _Z_1 be the set of all words with _c(_a__z) > 0.
+       Given _f(_a__z), bow(_a_) can be determined as follows:
+
+       (3)  Sum__Z  _p(_a__z) = 1
+            Sum__Z_1 _f(_a__z) + Sum__Z_0 bow(_a_) _p(__z) = 1
+            bow(_a_) = (1 - Sum__Z_1 _f(_a__z)) / Sum__Z_0 _p(__z)
+                    = (1 - Sum__Z_1 _f(_a__z)) / (1 - Sum__Z_1 _p(__z))
+                    = (1 - Sum__Z_1 _f(_a__z)) / (1 - Sum__Z_1 _f(__z))
+
+
+       Smoothing is generally done in one of two  ways.   The  backoff  models
+       compute  _p(_a__z)  based on the N-gram counts _c(_a__z) when _c(_a__z) > 0, and
+       only consider lower order counts _c(__z) when _c(_a__z) =  0.   Interpolated
+       models take lower order counts into account when _c(_a__z) > 0 as well.  A
+       common way to express an interpolated model is:
+
+       (4)  _p(_a__z) = _g(_a__z) + bow(_a_) _p(__z)
+
+       Where _g(_a__z) = 0 when _c(_a__z) = 0 and it is discounted to be  less  than
+       the  ML  estimate  when _c(_a__z) > 0 to reserve some probability mass for
+       the unseen _z words.  Given _g(_a__z), bow(_a_) can be  determined  as  fol-
+       lows:
+
+       (5)  Sum__Z  _p_(_a___z_) = 1
+            Sum__Z_1 _g_(_a___z) + Sum__Z bow(_a_) _p(__z) = 1
+            bow(_a_) = 1 - Sum__Z_1 _g(_a__z)
+
+
+       An  interpolated  model  can  also be expressed in the form of equation
+       (2), which is the way it is represented in the ARPA format model  files
+       in SRILM:
+
+       (6)  _f(_a__z) = _g(_a__z) + bow(_a_) _p(__z)
+            _p(_a__z) = (_c(_a__z) > 0) ? _f(_a__z) : bow(_a_) _p(__z)
+
+
+       Most  algorithms  in SRILM have both backoff and interpolated versions.
+       Empirically, interpolated algorithms usually do better than the backoff
+       ones, and Kneser-Ney does better than others.
+
+
+OOPPTTIIOONNSS
+       This  section  describes  the formulation of each discounting option in
+       nnggrraamm--ccoouunntt(1).  After  giving  the  motivation  for  each  discounting
+       method,  we  will give expressions for _f(_a__z) and bow(_a_) of Equation 2
+       in terms of the counts.  Note that some counts may not be  included  in
+       the model file because of the --ggttmmiinn options; see Warning 4 in the next
+       section.
+
+       Backoff versions are the default but interpolated versions of most mod-
+       els  are available using the --iinntteerrppoollaattee option.  In this case we will
+       express _g(_a_z_) and bow(_a_) of Equation 4 in  terms  of  the  counts  as
+       well.   Note  that  the  ARPA format model files store the interpolated
+       models and the backoff models the same way using  _f(_a__z)  and  bow(_a_);
+       see  Warning 3 in the next section.  The conversion between backoff and
+       interpolated formulations is given in Equation 6.
+
+       The discounting options may be followed by a digit  (1-9)  to  indicate
+       that  only  specific N-gram orders be affected.  See nnggrraamm--ccoouunntt(1) for
+       more details.
+
+       --ccddiissccoouunntt _D
+              Ney's absolute discounting using _D as the constant to  subtract.
+              _D  should  be  between 0 and 1.  If _Z_1 is the set of all words _z
+              with _c(_a__z) > 0:
+
+                   _f(_a__z)  = (_c(_a__z) - _D) / _c(_a_)
+                   _p(_a__z)  = (_c(_a__z) > 0) ? _f(_a__z) : bow(_a_) _p(__z)    ; Eqn.2
+                   bow(_a_) = (1 - Sum__Z_1 f(_a__z)) / (1 - Sum__Z_1 _f(__z)) ; Eqn.3
+
+              With the --iinntteerrppoollaattee option we have:
+
+                   _g(_a__z)  = max(0, _c(_a__z) - _D) / _c(_a_)
+                   _p(_a__z)  = _g(_a__z) + bow(_a_) _p(__z)   ; Eqn.4
+                   bow(_a_) = 1 - Sum__Z_1 _g(_a__z)        ; Eqn.5
+                           = _D _n(_a_*) / _c(_a_)
+
+              The suggested discount factor is:
+
+                   _D = _n_1 / (_n_1 + 2*_n_2)
+
+              where _n_1 and _n_2 are the total number of N-grams with exactly one
+              and  two  counts, respectively.  Different discounting constants
+              can be specified  for  different  N-gram  orders  using  options
+              --ccddiissccoouunntt11, --ccddiissccoouunntt22, etc.
+
+       --kknnddiissccoouunntt and --uukknnddiissccoouunntt
+              Kneser-Ney discounting.  This is similar to absolute discounting
+              in that the discounted probability is computed by subtracting  a
+              constant  _D  from the N-gram count.  The options --kknnddiissccoouunntt and
+              --uukknnddiissccoouunntt differ as to how this constant is computed.
+              The main idea of Kneser-Ney is to  use  a  modified  probability
+              estimate  for  lower  order  N-grams used for backoff.  Specifi-
+              cally, the modified probability for  a  lower  order  N-gram  is
+              taken to be proportional to the number of unique words that pre-
+              cede it in the training data.  With discounting  and  normaliza-
+              tion we get:
+
+                   _f(_a__z) = (_c(_a__z) - _D_0) / _c(_a_)     ;; for highest order N-grams
+                   _f(__z)  = (_n(*__z) - _D_1) / _n(*_*)    ;; for lower order N-grams
+
+              where  the  _n(*__z)  notation  represents the number of unique N-
+              grams that match a given pattern with (*) used as a wildcard for
+              a  single  word.   _D_0 and _D_1 represent two different discounting
+              constants, as each N-gram order  uses  a  different  discounting
+              constant.  The resulting conditional probability and the backoff
+              weight is calculated as given in equations (2) and (3):
+
+                   _p(_a__z)  = (_c(_a__z) > 0) ? _f(_a__z) : bow(_a_) _p(__z)     ; Eqn.2
+                   bow(_a_) = (1 - Sum__Z_1 f(_a__z)) / (1 - Sum__Z_1 _f(__z))  ; Eqn.3
+
+              The option --iinntteerrppoollaattee is used to create the interpolated  ver-
+              sions of --kknnddiissccoouunntt and --uukknnddiissccoouunntt.  In this case we have:
+
+                   _p(_a__z) = _g(_a__z) + bow(_a_) _p(__z)  ; Eqn.4
+
+              Let _Z_1 be the set {_z: _c(_a__z) > 0}.  For highest order N-grams we
+              have:
+
+                   _g(_a__z)  = max(0, _c(_a__z) - _D) / _c(_a_)
+                   bow(_a_) = 1 - Sum__Z_1 _g(_a__z)
+                           = 1 - Sum__Z_1 _c(_a__z) / _c(_a_) + Sum__Z_1 _D / _c(_a_)
+                           = _D _n(_a_*) / _c(_a_)
+
+              Let _Z_2 be the set {_z: _n(*__z) > 0}.  For lower order  N-grams  we
+              have:
+
+                   _g(__z)  = max(0, _n(*__z) - _D) / _n(*_*)
+                   bow(_) = 1 - Sum__Z_2 _g(__z)
+                          = 1 - Sum__Z_2 _n(*__z) / _n(*_*) + Sum__Z_2 _D / _n(*_*)
+                          = _D _n(_*) / _n(*_*)
+
+              The original Kneser-Ney discounting (--uukknnddiissccoouunntt) uses one dis-
+              counting constant for each N-gram order.   These  constants  are
+              estimated as
+
+                   _D = _n_1 / (_n_1 + 2*_n_2)
+
+              where _n_1 and _n_2 are the total number of N-grams with exactly one
+              and two counts, respectively.
+              Chen and Goodman's modified Kneser-Ney discounting (--kknnddiissccoouunntt)
+              uses  three discounting constants for each N-gram order, one for
+              one-count N-grams, one for two-count N-grams, and one for three-
+              plus-count N-grams:
+
+                   _Y   = _n_1/(_n_1+2*_n_2)
+                   _D_1  = 1 - 2_Y(_n_2/_n_1)
+                   _D_2  = 2 - 3_Y(_n_3/_n_2)
+                   _D_3_+ = 3 - 4_Y(_n_4/_n_3)
+
+
+       WWaarrnniinngg::
+              SRILM  implements  Kneser-Ney  discounting by actually modifying
+              the counts of the lower order N-grams.  Thus,  when  the  --wwrriittee
+              option  is used to write the counts with --kknnddiissccoouunntt or --uukknnddiiss--
+              ccoouunntt, only the highest order N-grams  and  N-grams  that  start
+              with  <s> will have their regular counts _c(_a__z), all others will
+              have the modified counts _n(*__z) instead.  See Warning 2  in  the
+              next section.
+
+       --wwbbddiissccoouunntt
+              Witten-Bell discounting.  The intuition is that the weight given
+              to the lower order model should be proportional to the probabil-
+              ity  of  observing  an  unseen word in the current context (_a_).
+              Witten-Bell computes this weight as:
+
+                   bow(_a_) = _n(_a_*) / (_n(_a_*) + _c(_a_))
+
+              Here _n(_a_*) represents the number of unique words following  the
+              context (_a_) in the training data.  Witten-Bell is originally an
+              interpolated  discounting  method.   So  with  the  --iinntteerrppoollaattee
+              option we get:
+
+                   _g(_a__z) = _c(_a__z) / (_n(_a_*) + _c(_a_))
+                   _p(_a__z) = _g(_a__z) + bow(_a_) _p(__z)    ; Eqn.4
+
+              Without  the  --iinntteerrppoollaattee  option  we  have the backoff version
+              which is implemented by taking _f(_a__z) to  be  the  same  as  the
+              interpolated _g(_a__z).
+
+                   _f(_a__z)  = _c(_a__z) / (_n(_a_*) + _c(_a_))
+                   _p(_a__z)  = (_c(_a__z) > 0) ? _f(_a__z) : bow(_a_) _p(__z)    ; Eqn.2
+                   bow(_a_) = (1 - Sum__Z_1 _f(_a__z)) / (1 - Sum__Z_1 _f(__z)) ; Eqn.3
+
+
+       --nnddiissccoouunntt
+              Ristad's natural discounting law.  See Ristad's technical report
+              "A natural law of succession" for a justification  of  the  dis-
+              counting  factor.  The --iinntteerrppoollaattee option has no effect, only a
+              backoff version has been implemented.
+
+                             _c(_a__z)  _c(_a_) (_c(_a_) + 1) + _n(_a_*) (1 - _n(_a_*))
+                   _f(_a__z)  = ------  ---------------------------------------
+                             _c(_a_)        _c(_a_)^2 + _c(_a_) + 2 _n(_a_*)
+
+                   _p(_a__z)  = (_c(_a__z) > 0) ? _f(_a__z) : bow(_a_) _p(__z)    ; Eqn.2
+                   bow(_a_) = (1 - Sum__Z_1 f(_a__z)) / (1 - Sum__Z_1 _f(__z)) ; Eqn.3
+
+
+       --ccoouunntt--llmm
+              Estimate a  count-based  interpolated  LM  using  Jelinek-Mercer
+              smoothing  (Chen & Goodman, 1998), also known as "deleted inter-
+              polation."  Note that this does not  produce  a  backoff  model;
+              instead  of  count-LM  parameter file in the format described in
+              nnggrraamm(1) needs to be specified using --iinniitt--llmm, and a reestimated
+              file  in  the same format is produced.  In the process, the mix-
+              ture weights that interpolate the ML estimates at all levels  of
+              N-grams  are  estimated  using  an expectation-maximization (EM)
+              algorithm.  The options --eemm--iitteerrss and --eemm--ddeellttaa control termina-
+              tion  of  the EM algorithm.  Note that the N-gram counts used to
+              estimate the maximum-likelihood estimates are specified  in  the
+              --iinniitt--llmm  model  file.  The counts specified with --rreeaadd or --tteexxtt
+              are used only to estimate the interpolation weights.
+
+
+       --aaddddssmmooootthh _D
+              Smooth by adding _D to each N-gram count.  This is usually a poor
+              smoothing method, included mainly for instructional purposes.
+
+                   _p(_a__z) = (_c(_a__z) + _D) / (_c(_a_) + _D _n(*))
+
+
+       default
+              If  the  user  does  not specify any discounting options, nnggrraamm--
+              ccoouunntt uses  Good-Turing  discounting  (aka  Katz  smoothing)  by
+              default.   The  Good-Turing  estimate states that for any N-gram
+              that occurs _r times, we should pretend that it occurs  _r'  times
+              where
+
+                   _r' = (_r+1) _n[_r+1]/_n[_r]
+
+              Here _n[_r] is the number of N-grams that occur exactly _r times in
+              the training data.
+              Large counts are taken to be reliable, thus they are not subject
+              to any discounting.  By default unigram counts larger than 1 and
+              other N-gram counts larger than 7 are taken to be  reliable  and
+              maximum likelihood estimates are used.  These limits can be mod-
+              ified using the --ggtt_nmmaaxx options.
+
+                   _f(_a__z) = (_c(_a__z) / _c(_a_))  if _c(_a__z) > _g_t_m_a_x
+
+              The lower counts are discounted proportional to the  Good-Turing
+              estimate with a small correction _A to account for the high-count
+              N-grams not being discounted.  If 1 <= _c(_a__z) <= _g_t_m_a_x:
+
+                                 _n[_g_t_m_a_x + 1]
+                _A = (_g_t_m_a_x + 1) --------------
+                                    _n[1]
+
+                                        _n[_c(_a__z) + 1]
+                _c'(_a__z) = (_c(_a__z) + 1) ---------------
+                                          _n[_c(_a__z)]
+
+                          _c(_a__z)   (_c'(_a__z) / _c(_a__z) - _A)
+                _f(_a__z) = --------  ----------------------
+                           _c(_a_)         (1 - _A)
+
+              The --iinntteerrppoollaattee option has no effect in this case, only a back-
+              off version has been implemented, thus:
+
+                   _p(_a__z)  = (_c(_a__z) > 0) ? _f(_a__z) : bow(_a_) _p(__z)    ; Eqn.2
+                   bow(_a_) = (1 - Sum__Z_1 _f(_a__z)) / (1 - Sum__Z_1 _f(__z)) ; Eqn.3
+
+
+FFIILLEE FFOORRMMAATTSS
+       SRILM  can generate simple N-gram counts from plain text files with the
+       following command:
+            ngram-count -order _N -text _f_i_l_e_._t_x_t -write _f_i_l_e_._c_n_t
+       The --oorrddeerr option determines the maximum length of  the  N-grams.   The
+       file  _f_i_l_e_._t_x_t  should  contain one sentence per line with tokens sepa-
+       rated by whitespace.  The output _f_i_l_e_._c_n_t contains  the  N-gram  tokens
+       followed by a tab and a count on each line:
+
+            _a__z <tab> _c(_a__z)
+
+       A couple of warnings:
+
+       WWaarrnniinngg 11
+              SRILM  implicitly  assumes an <s> token in the beginning of each
+              line and an </s> token at the end of each  line  and  counts  N-
+              grams that start with <s> and end with </s>.  You do not need to
+              include these tags in _f_i_l_e_._t_x_t.
+
+       WWaarrnniinngg 22
+              When --kknnddiissccoouunntt or --uukknnddiissccoouunntt options  are  used,  the  count
+              file contains modified counts.  Specifically, all N-grams of the
+              maximum order, and all N-grams that start with  <s>  have  their
+              regular  counts  _c(_a__z),  but  shorter N-grams that do not start
+              with <s> have the number of unique words preceding them  _n(*_a__z)
+              instead.   See  the  description of --kknnddiissccoouunntt and --uukknnddiissccoouunntt
+              for details.
+
+       For most smoothing methods (except --ccoouunntt--llmm) SRILM generates and  uses
+       N-gram model files in the ARPA format.  A typical command to generate a
+       model file would be:
+            ngram-count -order _N -text _f_i_l_e_._t_x_t -lm _f_i_l_e_._l_m
+       The ARPA format output _f_i_l_e_._l_m will contain the  following  information
+       about an N-gram on each line:
+
+            log10(_f(_a__z)) <tab> _a__z <tab> log10(bow(_a__z))
+
+       Based  on  Equation 2, the first entry represents the base 10 logarithm
+       of the conditional probability (logprob) for the N-gram _a__z.   This  is
+       followed  by  the  actual words in the N-gram separated by spaces.  The
+       last and optional entry is the base-10 logarithm of the backoff  weight
+       for (_n+1)-grams starting with _a__z.
+
+       WWaarrnniinngg 33
+              Both backoff and interpolated models are represented in the same
+              format.  This means interpolation is done during model  building
+              and  represented  in  the  ARPA  format with logprob and backoff
+              weight using equation (6).
+
+       WWaarrnniinngg 44
+              Not all N-grams in the count file  necessarily  end  up  in  the
+              model  file.   The options --ggttmmiinn, --ggtt11mmiinn, ..., --ggtt99mmiinn specify
+              the minimum counts for N-grams to be included  in  the  LM  (not
+              only  for  Good-Turing  discounting but for the other methods as
+              well).  By default all unigrams and bigrams  are  included,  but
+              for  higher  order  N-grams  only  those  with  count  >=  2 are
+              included.  Some exceptions  arise,  because  if  one  N-gram  is
+              included  in  the  model file, all its prefix N-grams have to be
+              included as well.  This causes some higher order 1-count N-grams
+              to  be  included  when using KN discounting, which uses modified
+              counts as described in Warning 2.
+
+       WWaarrnniinngg 55
+              Not all N-grams in the model file  have  backoff  weights.   The
+              highest  order  N-grams do not need a backoff weight.  For lower
+              order N-grams backoff weights are only recorded for  those  that
+              appear  as  the prefix of a longer N-gram included in the model.
+              For other lower order N-grams the backoff weight is implicitly 1
+              (or 0, in log representation).
+
+
+SSEEEE AALLSSOO
+       ngram(1), ngram-count(1), ngram-format(5),
+       S. F. Chen and J. Goodman, ``An Empirical Study of Smoothing Techniques
+       for Language Modeling,''  TR-10-98,  Computer  Science  Group,  Harvard
+       Univ., 1998.
+
+BBUUGGSS
+       Work in progress.
+
+AAUUTTHHOORR
+       Deniz Yuret <dyuret@ku.edu.tr>
+       Andreas Stolcke <stolcke@speech.sri.com>
+       Copyright 2007 SRI International
+
+
+
+SRILM Miscellaneous      $Date: 2008/01/02 06:26:15 $        ngram-discount(7)

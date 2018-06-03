@@ -1,0 +1,15 @@
+#!/bin/sh
+
+mkdir -p tmpdir
+
+TMPDIR=tmpdir
+export TMPDIR
+
+ls ../nbest-rover/nbest-lists | grep -v CVS | \
+sed -e 's,\.gz$,,' -e 's,\.score$,,' > ids
+
+nbest-rover ids ../nbest-rover/rover.control posteriors.out > hyps.out
+cat posteriors.out
+
+rm -rf hyps.out posteriors.out tmpdir ids
+

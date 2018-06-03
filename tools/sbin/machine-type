@@ -1,0 +1,98 @@
+#!/bin/sh
+#
+#    File:   machine-type
+#    Author: The SRI DECIPHER (TM) System
+#    Date:   Thu Apr 13 17:01:24 1995
+#
+#    Description:
+#      Determine machine type (sparc, mips, etc.) by
+#      running a program common to all UNIX systems,
+#      which will query the machine and return its
+#      identity. (Based on the Corona script of the same name)
+#
+#
+#    Copyright (c) 1995-2012 SRI International, 2013 Microsoft Corp.  All Rights Reserved.
+#
+#    RCS ID: $Id: machine-type,v 1.13 2013/08/02 21:55:10 stolcke Exp $
+#
+
+##    NOTE:  (tmk 950414)
+##	  Usually this script is called in a line like 
+##		> setenv MACHINE_TYPE `$DECIPHER/bin/machine-type`
+##	  So you want to generate a visible warning if this script can't
+##	  figure out the right string to return.  Returning a string
+##	  like "ERROR: Unsupported machine type: "$RESULT will silently
+##	  push the problem further down the line, as now the environment
+##	  variable MACHINE_TYPE is defined as "ERROR:....."  The
+##	  approach I've taken generates the message 
+##	  "MACHINE_TYPE: Undefined variable."
+##	  and leaves the MACHINE_TYPE variable defined as a null string.
+
+
+set -- `uname -a`
+
+if [ $# -gt 0 ]; then
+    case "$5" in
+    IP*)    # "IP" is an Iris processor
+	    case $3 in
+	    4.*)    MACHINE_TYPE=mips
+		    ;;
+	    [56].*) MACHINE_TYPE=mips-elf
+		    ;;
+	    esac
+	    ;;
+    sun4*)
+	    case $3 in
+	    4.*)    MACHINE_TYPE=sparc
+		    ;;
+	    5.*)    MACHINE_TYPE=sparc-elf
+		    ;;
+	    esac
+	    ;;
+    i86pc)  if [ -f /usr/bin/isainfo ]; then
+		MACHINE_TYPE=`/usr/bin/isainfo -k`-solaris
+	    else
+		MACHINE_TYPE=i386-solaris
+	    fi
+	    ;;
+    alpha)	MACHINE_TYPE=alpha
+	    ;;
+    *)
+	    case "`uname -s`" in
+	    CYGWIN*)	
+			case "`uname -m`" in
+			x86_64) MACHINE_TYPE=cygwin64;;
+			*)	MACHINE_TYPE=cygwin;;
+			esac
+			;;
+	    FreeBSD*)	MACHINE_TYPE=freebsd
+			;;
+	    Darwin)	MACHINE_TYPE=macosx
+			;;
+	    *)
+		case "`uname -m`" in
+		ppc64)	MACHINE_TYPE=ppc64
+			;;
+		i686)	MACHINE_TYPE=i686
+			;;
+		x86_64) MACHINE_TYPE=i686-m64
+			;;
+		esac
+		;;
+	    esac
+	    ;;
+    esac
+fi
+
+## NOTE:  If we couldn't figure out the MACHINE_TYPE by this point, the
+##        following line generates an error, rather than returning a
+##	  string containing the word "ERROR".  This is still not great 
+##	  error handling, but it's slightly better.  
+
+if [ -z "$MACHINE_TYPE" ]; then
+    echo "could not determine MACHINE_TYPE"
+    exit 1
+else
+    echo $MACHINE_TYPE
+fi
+

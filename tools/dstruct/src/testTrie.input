@@ -1,0 +1,9 @@
+insert x 1
+insert y 2
+insert xx 1 1
+insert xy 1 2
+prefix 1 2
+prefix 1 3
+prefix 3
+list
+quit

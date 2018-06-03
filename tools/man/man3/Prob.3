@@ -1,0 +1,78 @@
+.\" $Id: Prob.3,v 1.2 2007/12/19 22:01:46 stolcke Exp $
+.TH Prob 3 "$Date: 2007/12/19 22:01:46 $" SRILM
+.SH NAME
+Prob \- Probabilities for SRILM
+.SH SYNOPSIS
+.nf
+.B "#include <Prob.h>"
+.fi
+.SH DESCRIPTION
+.B Prob
+is a collection of types, constants and utility functions for handling
+probabilities in the SRILM library.
+.SH TYPES
+.TP
+.B Prob
+A floating point number representing a probability.
+.TP
+.B LogP
+Logarithm to base 10 of a probability.
+.SH CONSTANTS
+.TP
+.B LogP_Zero
+Log of probability 0.
+.TP
+.B LogP_Inf
+Log of probability infinity (not a legal probability, of course).
+.TP
+.B LogP_One
+Log of probability 1.
+.TP
+.B LogP_Precision
+The number of significant digits in a LogP
+.TP 
+.B Prob_Epsilon
+A positive value close to 0; probability sums less than this should be
+considered effectively zero.
+.SH FUNCTIONS
+.TP
+.B "Boolean parseLogP(const char *\fIstring\fP, LogP &\fIprob\fP)"
+Converts a floating point string representation into a LogP.
+Returns
+.B true
+iff the number was parsed correctly.
+This function should be much faster than generic C library functions
+for floating point parsing.
+Also, it parses singular LogP's (plus/minus infinity) correctly.
+.TP
+.B "Prob LogPtoPPL(LogP \fIprob\fP)"
+Converts a LogP into a perplexity (PPL).
+.TP
+.B "ProbToLogP(Prob \fPprob\fP)"
+Converts a probability into a LogP.
+.TP
+.B "LogP MixLogP(LogP \fIprob1\fP, LogP \fIprob2\fP, double \fIlambda\fP)"
+Computes the LogP resulting from interpolating two LogP's.
+If \fIp1\fP and \fIp2\fP are probabilities corresponding to \fIprob1\fP
+and \fIprob2\fP, respectively, then the result is the LogP corresponding
+to \fIlambda\fP * \fIp1\fP + (1 - \fIlambda\fP) * \fIp2\fP.
+.PP
+The following functions deal with \fIbytelogs\fP.
+Bytelogs are logarithms scaled to represent probabilties and likelihoods
+as a short integer in SRI's DECIPHER(TM) recognizer
+(bytelog(\fIp\fP) = log(\fIp\fP) * 10000.5 / 1024).
+.TP
+.B "double ProbToBytelog(Prob \fIprob\fP)"
+Converts a probability to a bytelog.
+.TP
+.B "double LogPtoBytelog(LogP \fIprob\fP)"
+Convert a LogP to a bytelog.
+.TP
+.B "LogP BytelogToLogP(double \fIbytelog\fP)"
+Convert a bytelog to a LogP.
+.SH "SEE ALSO"
+.SH BUGS
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>.
+.br
+Copyright 1995, 1996 SRI International

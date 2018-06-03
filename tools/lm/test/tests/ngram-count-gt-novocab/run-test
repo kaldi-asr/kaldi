@@ -1,0 +1,22 @@
+#!/bin/sh
+
+if [ -f ../ngram-count-gt/swbd.3grams.gz ]; then
+	gz=.gz
+else
+	gz=
+fi
+
+smooth=""
+
+# create LM from counts
+ngram-count -debug 1 \
+	$smooth \
+	-read ../ngram-count-gt/swbd.3grams$gz \
+	-lm swbd.3bo$gz
+
+ngram -debug 0 \
+	-lm swbd.3bo$gz \
+	-ppl ../ngram-count-gt/eval97.text
+
+rm -f swbd.3bo$gz
+

@@ -1,0 +1,2025 @@
+
+Version History
+
+0.90	29 Jun 95	first working code, n-gram models only
+
+0.91	02 Aug 95	snapshot for fosler@icsi, minor bug fixes
+
+0.92	13 Aug 95	added BayesMix, VarNgram LMs
+
+0.93	27 Aug 95	included all LM95 code
+
+0.94	13 Oct 95
+	* new directory structure mirroring DECIPHER layout.
+	* man pages added
+	* added support for Decipher N-best list rescoring
+	* added Null LM
+	* added new utility scripts
+	* bug fixes
+
+0.95	08 Sep 96	as of WS96
+	* added Trellis class, disambig program
+	* added support for pause tokens (-pau-) in sentences
+	  (these are ignored for sentence prob computation)
+	* added -tolower mapping
+	* added word reversal
+	* made Ngram model reading much faster (optimized floating point parsing)
+	* added template class for ngram count tries (to use either integer or
+	  float count value)
+	* added optional noise tag skipping
+	* added SkipNgram model
+	* added Witten-Bell backoff
+	* ported to native Sun and SGI C++ compilers (see doc/c++porting-notes),
+	* suppress log10(0.0) warnings
+
+0.96	05 Jun 97
+	* Honor -gtNmin parameter even when discounting of higher counts
+	  is effectively disabled.  (Allows building maximum likelihood LMs
+	  smoothed only by low-count ngram elimination.)
+	* Ignore pauses and noise in nbest-lattice alignments (also added 
+	  -noise option).
+	* ngram now supports mixtures of up to 6 ngram models.
+	* added HiddenSNgram LM.
+	* warn about multiple uses of '-' file for input or output
+	* zio now handles incomplete reading of compressed file without error
+	* Fixed interaction between deletion and iterations
+	* Fixed handling of OOVs in cache model
+	* Fixed decipher N-best rescoring: we now duplicate even the 
+	  roundoff errors incurred by bytelogs.  Also added -decipher flag
+	  to ngram to allow replication of recognizer LM scores.
+	  Also, takes into account that Decipher (incorrectly) applies WTW
+	  even to pauses.
+	* Enhanced decipher-rescore script to deal with NBestList2.0 format,
+	  with -bytelog and -nodecipherlm options .
+	* Added tools to convert bigram and trigram backoff LMs into 
+	  Decipher PFSG format (pfsg-from-ngram).
+	* Enable DecipherNgram models order higher than bigram
+	  (ngram -decipher-order flag).  Default is still bigram.
+	* Fixed bug that caused float command line arguments to be parsed
+	  incorrectly on SunOS4 systems (missing declaration in system header).
+
+0.97 	30 Aug 97	as of WS97
+	* New programs: segment and segment-nbest (moved here from
+	  development code).
+	* Made low-level NgramLM access functions public
+	  (findProb, findBOW, insertProb, insertBOW).
+	* Fixed nbest-lattice to use normalized posterior word
+	  probabilities in lattice.
+	* NBest, nbest-lattice: added N-best error computation.
+	* WordLattice, nbest-lattice: added lattice error computation.
+	* WordLattice: base all alignments on edit distance costs defined
+	  in WordAlign.h.
+	* contextID() now also returns length of context used.
+	  Added contextID() implementations for NullLM and BayesMix.
+	* Fixed contextID() for Ngram: don't truncate context if BOW = 1.
+	* Fixed SArray, LHash to avoid assignment operator on remove().
+	* Fixed add-ppls, subtract-ppls to handle -ppl -debug 2 output.
+	* Lots of memory management fixes.
+	* SArrayIter and LHashIter now work even while underlying object is
+	  being moved (as when containing data structure is enlarged).
+	* Added HTK Lattice tool interface (htk/ directory).
+	* Made Trellis into a template class.
+	* Allow arbitrary n-gram orders with disambig(1).
+	* Added forward-backward decoding and posterior probability computation
+	  to disambig(1).
+	* Added disambig -lmw and -mapw options.
+	* Added HMMofNGrams model (ngram -hmm option).
+	* VocabMap reader now warns about duplicate entries
+
+0.98	18 April 98
+	* Allow ngram to disable Decipher LM backoff hack, for rescoring
+	  new exact lattices (ngram -decipher-nobackoff).
+	* N-best list vocabulary is now always expanded dynamically
+	  (no more OOVs in N-best lists).
+	* Added wrapper script for nbest-lattice to compute N-best error rate
+	  (nbest-error).
+	* Skip ngrams exceeding model order when reading.
+	* Fixed memory bug in generateSentence().
+	* Changed libmisc to work with Tcl version > 7.
+	* Compute word error correctly for empty N-best list.
+	* Added ngram pruning based on model perplexity change
+	  (ngram-count -prune and ngram -prune).
+	* Old ngram -prune option renamed -varprune.
+	* New lattice word error minimization (nbest-lattice -lattice-wer).
+	* Fixed ngram -gen bug due to omissions in SunOS4 header files.
+	* merge-batch-counts removes merged source files
+	* Added ngram -prune-lowprobs function to do the work of
+	  remove-lowprob-ngrams, but much faster and using less memory.
+	* Added support for new Decipher NBestList2.0 format.
+	* Added word error count and posterior probability fields to NBestHyp
+	  structure.
+	* Added optional factor argument to countSentence() (convenient
+	  to compute fractional sufficient statistics for alternative
+	  training methods).
+	* Don't make special symbols (<s>, </s>, <unk>) member of SubVocab
+	  by default.
+	* Ported to gcc 2.8.1 .
+
+0.99	31 July 1999
+	* Added hidden-ngram (word-boundary tagger).
+	* Removed line length limit for File object.
+	* Added disambig -continuous flag.
+	* Fixed backward computation in disambig (again).
+	* Generalized compute-best-mix to N > 2 models
+	* Added AdaptiveMix LM class
+	* Added nbest-mix utility (interpolation of N-best posteriors)
+	* Added ngram -unk flag to handle open-class LMs
+	* Added disambig and hidden-ngram -text-map option
+	* Script enhancements:
+	  - New script to convert nbest-lattice word graphs to PFSG
+	    (wlat-to-pfsg)
+	  - Added switches include probabilities in wlat-to-dot and pfsg-to-dot
+	    output.
+	  - Conversion to/from AT&T FSM format: fsm-to-pfsg and pfsg-to-fsm
+	* ngram -rescore and associated scripts no longer set a hyp 
+	   probability to zero if it contains OOVs. Instead, the probability
+	   is computed ignoring those words (more useful in practice).
+	   A warning is output as always.
+	* Added ngram-count -float-counts option.
+	* Added build support for Linux/i686 platform.
+
+1.00 	8 June 2000
+	* Added ClassNgram class and ngram -classes option.
+	* Capability to convert class ngrams into word ngrams.
+	* New program ngram-class for automatic word class induction.
+	* Fixed interaction of ngram -mix-lm -bayes with non-standard n-grams:
+	  can now build an interpolation of the non-standard (hidden-event,
+	  class-based, etc.) n-gram with the additional, standard n-grams.
+	* Replaced LM.noiseTag with LM.noiseVocab (list of noise tags to
+	  be ignored).  Tools now take -noise-vocab option (as well as -noise
+	  for backward compatibility).
+	* Made ngram -counts work for non-n-gram models.
+	* Added nbest-lattice -posterior-{amw,lmw,wtw} options to compute
+	  word posteriors with different weightings from the one used in
+	  hypothesis ranking.  Also added -deletion-bias flag for explicit
+	  control of del/ins errors (-use-mesh mode only).
+	* NBest rescoring methods now have optional acoustic model weight
+	  (defaulting to 1 as before).
+	* New class RefList (list of reference transcripts).
+	* New class NBestSet (set of N-Best lists).
+	* NBest, NBestSet, and nbest-lattice optionally split multiwords into
+	  their components on reading (-multiwords option).
+	* New nbest-optimize tool for finding near-optimal score combination
+	  weights for word error minimizing N-best rescoring.
+	* New anti-ngram program, for computing posterior-weighted N-gram
+	  counts from N-best lists.
+	* New nbest-rover script allows ROVER-style combination of hypotheses
+	  from multiple N-best lists.
+	* New rescore-decipher -norescore option, to reformat N-best lists
+	  without LM rescoring.
+	* Fixed bugs related to missing <s> and </s> in change-lm-vocab and
+	  make-ngram-pfsg.
+	* Significant speedups in LMs involving dynamic programming
+	  (HiddenNgram, DFNgram, HMMofNgrams) when interpolating with other 
+	  models or running in "ngram -debug 2" mode.
+	* Allow absolute discounting on fractional counts, for more
+	  effective construction of models from fractional counts.
+	* Added ngram-merge -float-counts option, and allow "-" (stdin) as
+	  input file.
+	* ngram-count ensures <s> unigram (with prob 0) is defined to avoid
+	  breaking other programs.
+	* Added make-abs-discount script to compute absolute discounting 
+	  constants from Good-Turing statistics.
+	* compute-sclite and compare-sclite now take -multiwords option to
+	  split compound words prior to scoring.
+	* Changed option handling so that unsigned option arguments are forced
+	  to be non-negative.
+	* Added Map2 (2D Map) class to libdstruct.
+	* Much better string hash function (borrowed from Tcl).
+	* New man pages: training-scripts(1), lm-scripts(1), ppl-scripts(1),
+	  pfsg-scripts(1), nbest-scripts(1), lm-format(5), classes-format(5),
+	  pfsg-format(5), nbest-format(5).
+
+1.0.1	12 July 2000
+
+	Functionality:
+
+	* wordError() and nbest-lattice -dump-errors now also output the
+	  location of deletions in the alignment (NOTE: possible code
+	  incompatibility).
+	* New reverse-ngram-counts script.
+
+	Bug fixes:
+
+	* Workarounds for shortcomings in Linux gcc, math library, and linker.
+	* make-ngram-pfsg: don't ignore bigram states with zero BOW (bugfix).
+	* nbest-rover: fixed problem with handling of + lines.
+
+1.1	21 May 2001
+
+	Functionality:
+
+	* HiddenNgram class generalized to deal with disfluency-type events
+	  that manipulate the N-gram context.
+	* rescore-reweight script now accepts additional score directories
+	  (and associated score weights) for combination of an arbitrary number
+	  of knowledge sources.
+	* Enhanced rescore-decipher functionality:
+	  - Option -lm-only to produce output containing LM scores only
+	  - Option -pretty to perform word mapping on the fly.
+	  - Warn about and handle LM scores that are NaN.
+	* New class VocabMultiMap, implementing dictionary-style mappings of
+	  words to strings from another vocabulary.
+	* Added support for pronunciation-based word alignments in
+	  WordMesh and nbest-lattice -use-mesh .
+	* Added nbest-lattice -keep-noise option to preserve pauses and noises
+	  in alignments.
+	* Support for multiwords: - make-multiword-pfsg expands PFSGs to use
+	  multiwords (using AT&T FSM tools).
+	  - multi-ngram expands N-gram LM to include multiwords.
+	* Added support for Decipher Intlog scaled log probabilities.
+	* Added ngram -seed option to initialize random sentence generation
+	  (contributed by Eric Fosler).
+	* New add-pauses-to-pfsg pause= and version= options to allow
+	  generation of Nuance-compatible PFSGs (see man page for details).
+	* The NBest class and scripts handle NBestList2.0 format containing
+	  phone and/or state backtraces (by ignoring them).
+	* Added Amoeba search option to nbest-optimize (contributed by
+	  Dimitra Vergyri).
+	* Added standard 1-best optimization mode to nbest-optimize.
+	* wlat-to-pfsg script now also processes confusion networks output by
+	  nbest-lattice -use-mesh .
+
+	Bug fixes:
+
+	* ngram -decipher-nobackoff now applies to the -lm ngram as well if
+	  option -decipher is also specified.
+	* ngram -expand-classes no longer dumps core when handling
+	  "context-free" class expansions (though those aren't supported).
+	* gawk path in scripts is now adjusted prior to installation
+	  (/usr/bin/gawk for Linux, /usr/local/bin/gawk elsewhere).
+	* Fixed numerical problems in nbest-rover/nbest-posteriors.
+	* ngram-counts -float-counts behaved differently from equivalent
+	  integer-count estimation;  both integer and float counts now use
+	  the same estimation code.
+	* Reduced memory requirements of nbest-optimize by about 25%.
+	* Minor changes for gcc-2.95.3.
+
+1.1.1	20 July 2001
+
+	Functionality:
+
+	* WordMesh: new interface to record reference word string in alignment.
+	* nbest-lattice: confusion networks can now record reference words
+	  if specified with -reference, and are preserved by -write/-read.
+	* replace-words-with-classes now has option to process ngram count
+	  files (have_counts=1).
+	* merge-nbest: new utility to merge N-best hyps from multiple lists.
+	* wlat-stats: new utility to compute statistics of word posterior
+	  lattices.
+
+	Bug fixes:
+
+	* GT discounting: fixed anomaly due to different floating point
+	  precision on x86 platforms.
+	* anti-ngram(1): documented options previously omitted.
+	* WordMesh: reading/writing of confusion networks now preserves 
+	  total posterior mass.
+	* Changed the hypothesis alignment order in nbest-optimize to be
+	  more compatible with decoding in nbest-lattice: first align nbest
+	  hyps in order of decreasing (initial) scores, then align reference.
+	  nbest-optimize -no-reorder keeps the old behavior (with references
+	  anchoring the alignment).  All scores and initial lambdas are now
+	  used to compute initial posterior hyp probabilities to guide the
+	  hypothesis alignment; thus, it now makes sense to restart an
+	  optimization with partially optimized weights to revised the
+	  alignments.
+	* nbest-optimize now warns about missing or incomplete score files.
+	* Fixed a memory access error in nbest-optimize -1best.
+	* Fixed weight normalization in nbest-optimize when first element is 0.
+	* Miscellaneous fixes for compile under RH Linux 7.0.
+
+1.2	20 November 2001
+	
+	Functionality:
+
+	* nbest-lattice -dictionary allows word alignments to be guided by
+	  dictionary pronunciations.
+	* nbest-lattice -use-mesh -record-hyps records the rank of N-best hyps
+	  contributing to each word hypothesis in the confusion network.
+	* nbest-lattice -no-rescore and -decipher-format options make it
+	  more convenient as an N-best format conversion tool.
+	* VocabDistance: new class and subclasses to represent distance metrics
+	  (e.g., phonetic distance) over vocabularies.
+	* WordMesh: output word hyps in order of decreasing posteriors.
+	* WordMesh: reading/writing of confusion networks now includes hyp IDs
+	  from alignment.
+	* NBest/MultiAlign/WordMesh: support for keeping extra word-level 
+	  information (NBeSTWordInfo).
+	* nbest-lattice: unified single and multiple file processing.
+	  New option -write-dir to write multiple output lattices.
+	  New option -refs to supply multiple references.
+	  Options -nbest-errors and -lattice-errors are replaced by 
+	  switches -nbest-error/-lattice-error, in conjunction with
+	  -references/-refs.  Outputs are now prefixed by utterance IDs
+	  when processing multiple files.
+	* nbest-lattice -nbest-backtrace enables processing of backtrace 
+	  information from N-best lists; combined with -use-mesh this produces
+	  sausages that contain word-level scores and alignment information,
+	  as well as phone backtraces (see new wlat-format(5) man page).
+	* wlat-stats script now also computes error statistics when processing
+	  confusion networks with references.
+	* nbest-rover now handles N-best lists in Decipher format.
+	* hidden-ngram and disambig: new option -fw-only to use only forward
+	  probabilities for posterior computation.
+	* rescore-decipher -filter option to apply textual rewriting filters
+	  to hypotheses before rescoring.
+	* segment-nbest -write-nbest-dir option for dumping rescored N-best
+	  lists to a directory instead of to stdout.
+	* segment-nbest -start-tag and -end-tag options to insert tags at
+	  margins of N-best hyps.
+
+	Bug fixes:
+		
+	* WordMesh: computation of deletion costs using a dictionary distance
+	  was completely bogus (only affected undocumented nbest-lattice
+	  -dictionary option).
+	* nbest-lattice: correctly process -nbest-files using -dictionary in
+	  alignment.
+	* nbest-rover: fixed to work on Linux 
+	* hidden-ngram: don't abort when an event posterior is 0.
+	* hidden-ngram: avoid abort when *noevent* occurs in -hidden-vocab list.
+	* segment-nbest: now correctly uses ngram contexts longer than trigram.
+	* segment-nbest: optimized -bias 0 case by disallowing sentence
+	  boundary states altogether.
+	* multi-ngram -prune-unseen-ngrams prevents insertion of multiword
+	  N-grams whose component N-grams were not in the original model.
+	* ngram: fixed computation of mixture lambda for second LM when three
+	  or more models are interpolated.
+	* nbest-posterior (and thus nbest-rover) no longer split multiwords by
+	  themselves.  To split multiwords with nbest-rover, append the
+	  -multiwords option to the argument list, which is passed on to
+	  nbest-lattice to achieve the desired effect.
+	* ngram -renorm now applies BEFORE class expansion or pruning of 
+	  model (in case input model is unnormalized).
+	* make-nbest-pfsg bug involving transition into final node fixed.
+	* Minor script changes to avoid warnings with gawk 3.1.0.
+
+1.3	11 February 2002
+	
+	Functionality:
+
+	* Trellis class, disambig and hidden-ngram tools: added support for
+	  N-best decoding (contributed by Anand Venkataraman).
+
+	* MultiwordLM wrapper LM class as a convenient way to split multiwords
+	  prior to LM evaluation.
+
+	* New MultiwordVocab class to support MultiwordLM.
+
+	* Added ngram -multiwords option (based on MultiwordLM wrapper).
+
+	* Added support for Chen & Goodman's Modified Kneser-Ney smoothing
+	  and interpolated backoff estimates.  See ngram-count options
+	  -kndiscount[1-6], -kn[1-6], and interpolate[1-6].
+
+	* New library and tool for lattice manipulation: lattice-tool.
+
+	* New nbest-mix -set-am-scores and -set-lm-scores options. These allow
+	setting either the AM or the LM scores in the N-best output to simulate
+	the combined posteriors, while preserving the other scores.
+
+	* Added some regression tests (test/ subdirectory).
+
+	* Support for Windows via CYGWIN porting layer (MACHINE_TYPE=cygwin).
+	See doc/README.windows for details.
+
+	Bug fixes:
+
+	* Trellis: deallocate old trellis nodes on demand in init(), rather
+	  than preemptively in clear().  Greatly speeds up forward computation
+	  for trellis-based LMs (e.g., ClassNgram).
+
+	* Textstats: fix to handle zero denominator in ppl computation.
+
+	* disambig: fixed off-by-one error indexing into trellis.
+
+	* Miscellaneous small fixes for compilation and operation under Windows
+	(using the CYGWIN environment).
+
+	Warning: See doc/README.x86 about a gcc compiler bug that might 
+	affect you on Intel platforms.
+
+1.3.1	25 June 2002
+
+	Functionality:
+
+	* nbest-optimize -write-rover-control option conveniently dumps a
+	control file for nbest-rover that encodes the optimized parameters.
+	* New regression tests for nbest-rover (i.e., nbest-lattice) and
+	nbest-optimize.
+	* nbest-posteriors, combine-acoustic-scores now all handle and
+	preserve Decipher N-best formats.  This allows nbest-rover to
+	generate sausages with backtrace information if input N-best lists
+	contain it (using -nbest-backtrace option).
+	* New tool nbest-pron-score for computing pronunciation and pause LM
+	scores from N-best hypotheses.
+	* Added disambig -totals option to compute total string probabilities
+	(same as in hidden-ngram).
+	* reverse-lm: simple filter to reverse a bigram backoff LM.
+	* lattice-tool -collapse-same-words reduces lattices by merging all
+	nodes with identical words (but also creates new paths in lattice).
+	* nbest-lattice -prime-with-refs option uses reference strings
+	to improve sausage alignment.
+	* compute-best-sentence-mix: new script to optimize sentence-level
+	interpolation of LMs.
+	* nbest-lattice -lattice-files option to align multiple word lattices;
+	currently only works with -use-mesh (sausages).
+	* hidden-ngram now supports mixture and class N-gram LMs.
+	* New class SimpleClassNgram, a more efficient implementation of 
+ 	ClassNgram's where each word is assumed to belong to at most one
+	class and class expansions are exactly one word long.
+	Enabled by -simple-classes switch in ngram, lattice-tool, and 
+	hidden-ngram.
+	* ngram -counts now handles escaped input lines and LM state change
+	directives embedded in the input.
+	* New tool nbest-pron-score for scoring pronunciations and pauses in
+	N-best hypotheses.
+	* NgramStats::parseNgram() new function to parse N-gram counts from
+	a character string.
+	* LM::pplCountsFile() new function to evaluate LM on counts read from
+	a file.
+
+	Bug fixes:
+
+	* make-ngram-pfsg is no longer limited to trigram models.
+	* Avoid NaN values in disambig and hidden-ngram, in cases where lmw or
+	mapw are zero and the corresponding log probabilities are -Infinity.
+	* Avoid numerical problems in N-best posterior computation by using
+	AddLogP() to compute normalizer.
+	* anti-ngram no longer requires -refs argument with -all-ngrams.
+	* Fixed bug removing noise from N-best lists with backtrace.
+	* Code fixes for clean compiles with gcc 3.x.
+	* nbest-rover more efficient by using a single invocation of
+	nbest-lattice for all input N-best lists.
+	* ClassNgram: fixed handling of words that appear as members of a class
+	with zero probability, or have zero membership probability.
+	* nbest-lattice -record-hyps now outputs hyp ids according to the 
+	original N-best order, rather than the sorted one.
+	* make-hiddens-lm now gives proper unigram probability to hidden-S tag.
+	* Compute acoustic scores in Decipher N-best-2 format by subtracting
+	token LM scores from total score.  This deals correctly with cases where
+	the total scores have been adjusted by summing merged hyps, and are no
+	longer the sum of all AC and LM word scores.
+	* Gawk scripts that test for alphabetic or lowercase characters are
+	more portable and handle non-ascii and multibyte characters.
+
+	The package now includes a paper on SRILM, to appear in ICSLP-2002,
+	that gives an overview of the software and its design (doc/paper.ps).
+
+1.3.2	3 September 2002
+
+	New functionality:
+	
+	* Added ngram-count and ngram-count -nonevents option to specify a 
+	subset of words that are to be non-events, i.e., tokens that can only
+	occur in contexts (such as <s>).
+	* Extended ngram-count discounting options for up to 9-grams.
+	* Added support in Vocab and Ngram classes for processing meta-counts
+	(counts-of-counts).
+	* Added ngram-count -meta-tag and -kn-counts-modified options to
+	support make-big-lm.
+	* Added ngram-count -read-with-mincounts flag to suppress counts
+	below cuttoff thresholds at reading time.  This dramatically lowers
+	memory consumption, and speeds up make-big-lm operation (which used 
+	to use a gawk script for the same purpose).
+	* Added option to specify vocabulary to add-pauses-to-pfsg for cases
+	where heuristics fail.
+	* lattice-tool can now handle arbitrary order LMs for expanding 
+	lattices.  The old trigram expansion algorithm is still available 
+	with -old-expansion; the compact trigram algorithm is unchanged with
+	-compact-expansion.
+	* To better support lattice expansion, two new functions have been
+	added to the LM interface: contextID() takes an optional word
+	argument, to compute the context needed to predict a specific word,
+	and contextBOW() is a new interface to compute the backoff weight
+	associated with truncating a history.
+	* Added makefile support to generate executable versions that use
+	"compact" data structures.  See item 9 in INSTALL for details, and
+	doc/time-space-tradeoff for a simple benchmark result.
+
+	Bug fixes:
+
+	* Convert pseudo-log(0) value (-99) in DARPA backoff models back to
+	true log(0) on reading.  This ensures that non-event words in the
+	input are treated as zeroprobs (by the perplexity computation and
+	otherwise).
+	* Avoid NaN floating point results in N-best rescoring and
+	nbest-optimize, by handling 0 * log(0) more carefully.
+	* Handle -Inf AM and LM scores in SRILM N-best format.
+	* make-big-lm was reworked to support KN in addition to GT discounting.
+	Warning: the modified lower-order counts for KN are created using
+	merge-batch-counts and can get almost as big as the original counts.
+	Beware of the additional disk space and run time requirement!
+	* Clear out old parameters before reading or estimating N-gram models.
+	* Reading in new class definitions into ClassNgram object now deletes
+	old definitions (unless classes file is empty).
+	* Destructors for Ngram and ClassNgram now free N-gram and class 
+	definition memory.
+	* nbest-pron-score: avoid core dump when pronunciation information is
+	missing from N-best list.
+	* make-ngram-pfsg: fixed generation of unigram PFSGs.
+	* Avoid use of toupper() in add-pauses-to-pfsg.
+	* Handle ngram-count -order 0 and print warning.
+	* Avoid using zcat in scripts since it behaves differently on different
+	systems and depending on PATH setting.
+	* nbest-lattice and nbest-optimize no longer strip a filename part
+	following '.' to derive utterance ids; only known file suffixes
+	are removed.
+	* Fixed bugs in member declarations that were preventing TaggedVocab,
+	TaggedNgramStats, and StopNgramStats from working correctly.
+	* compute-sclite now ignores utterances with a reference of 
+	"ignore_time_segment_in_scoring", consistent with NIST STM scoring.
+	* Vocab.h now defines SArray_compareKey() for strings over VocabIndex,
+	allowing use as keys in sorted arrays.
+	* ClassNgram now uses the processed words as the context after an OOV.
+	This works better when the input contains context cue tags.
+	* i386-solaris platform was not being detected by machine-type script.
+
+1.3.3	2 March 2003
+
+	New functionality:
+
+	* Increased maximum number of interpolated LMs in ngram, hidden-ngram,
+	and lattice-tool to 10.
+	* ngram now computes static interpolation (N-gram merging) of up to 10
+	input LMs (consistent with handling of dynamic interpolation).
+	* ngram and lattice-tool -limit-vocab option limits LM reading to
+	those parameters that pertain to words specified by -vocab.
+	The LM:read() function got an optional second argument for this
+	purpose.  
+	ngram -limit-vocab -renorm now effectively does the same as the 
+	change-lm-vocab script.  However, the main purpose of -limit-vocab
+	is to save memory by discarding N-grams that are not relevant to a 
+	test set.
+	* rescore-decipher -limit-vocab precomputes the vocabulary used by
+	N-best lists and invokes ngram -limit-vocab to allow rescoring with 
+	very large models on machines with little memory.
+	* Ngram::mixProbs() now has version that destructively merges an Ngram
+	into an existing model.  ngram -mix-lm now uses this version, instead
+	of the old, non-destructive one, thereby achieving considerable time
+	and space savings (only two models, rather than 3, have to be kept in
+	memory at a time).
+	* ngram-count and ngram -map-unk option, to change the "unknown" word
+	token string.
+	* compute-sclite, compare-sclite now understand multiple -S options to
+	specify intersections of several utterance subsets for scoring.
+	* make-batch-counts now ignores lines in input file list that start 
+	with # (allowing comments in the file list).
+	* Added replace-words-with-classes partial=1 option to prevent 
+	multi-word replacements that include multiple whitespace characters
+	(i.e., "a b" is only replaced with a single space between the words).
+	* New LM script: sort-lm, reorders N-grams lexicographically, as 
+	required by some other software (e.g., Sphinx3, pointed out by 
+	Mikko Kurimo <mikkok@james.hut.fi>).
+	* New training script: reverse-text, reverses word order in text file.
+	* New pfsg script: pfsg-vocab, extracts vocabulary used in PFSGs.
+
+	Bug fixes:
+
+	* disambig and hidden-ngram -keep-unk now also causes LM to be
+	treated as  open-vocabulary.
+	* HiddenNgram class (debug level 2) was omitting the event after
+	the last word from the Viterbi backtrace.
+	* ngram -expand-classes was including -pau- word in expanded LM.
+	* Made backoff computation in Ngram:wordProbBO() more efficient,
+	avoiding multiple lookups in the context trie.  Gives about a 30%
+	speedup in ngram -debug 3 -ppl.
+	* ngram -lm reading is faster by about 8% due to a code optimization.
+	* ngram-count -order 2 -kndiscount3 no longer aborts with an error.  
+	The -order option effectively limits the discounting parameters
+	computed, so that the model order can be changed without having to
+	adjust the smoothing options.
+	* make-big-lm -trust-totals option is ignored with KN discounting,
+	they don't work well together.
+	* make-big-lm now checks that input counts files are not stdin.
+	* Reading N-best lists in Decipher format now sets the number-of-words
+	score, so that weight rescoring, optimization etc. can use them.
+	* ngram-count normalizes the N-gram probabilities for a context to 1
+	if the backoff distribution for that context has probability mass 0.
+	The latter can happen e.g. if all N-grams for a context have been
+	observed and received discounted probabilities.  The fix ensures that
+	the overall distribution is normalized in this case.
+	* rescore-reweight now accepts Decipher N-best lists.
+	* nbest-posteriors and nbest-rover now handle Decipher version 2
+	N-best lists better (allowing LM and WT weights to be applied).
+	* Initialize locale in all top-level programs.  disambig, hidden-ngram,
+	segment, and segment-nbest were missing it, causing potential problems
+	with non-ASCII characters.
+	* nbest-lattice -write-vocab option to find vocabulary used in N-best
+	list.
+	* nbest-pron-score now uses idFromFilename() function to avoid 
+	over-truncating filenames when inferring sentence ids.
+	* Added more strippable filename suffixes in idFromFilename() function.
+	* NBest: correctly read in phone backtraces that are time-reversed.
+	* compute-oov-rate ignores -pau- tokens.
+	* Various N-best scripts now process input directories containing links
+	(rather than plain files) correctly.
+	* Lattice class takes care to limit range of intlog transition
+	probabilities in PFSG output, so as to avoid overflow when converting
+	to bytelog scale.
+	* make-ngram-pfsg removes temporary file (now placed in /tmp) even
+	when killed by signal.
+	* Hidden-event and DF N-gram models are documented in detail in ngram
+	man page.
+	* Test suite result comparisons against reference output now use a 
+	script that ignores small numerical discrepancies, so as to produce 
+	fewer false alarms.
+
+	Portability:
+
+	* Compiles under MacOS X (MACHINE_TYPE=macosx), thanks to help from
+	wooters@icsi.berkeley.edu and jean-philippe.demoulin@enst.fr.
+
+1.4	14 February 2004
+
+	New functionality:
+
+	* Added support for factored language models, developed by Katrin
+	Kirchhoff and Jeff Bilmes, and implemented by Jeff Bilmes.
+	A new library, libflm.a, and two new tools, fngram-count and fngram
+	are built in the flm/ directory.  A conference paper and a technical
+	report are included as documentation in flm/doc/.  Questions and bug
+	reports should be directed to bilmes@ee.washington.edu.
+	FLM support has also been integrated into some of the standard 
+	tools (ngram and hidden-ngram) and is enabled by the -factored option.
+
+	* Added support in lattice-tool to read/write and rescore HTK lattices.
+	See lattice-tool man page for details.
+	* The lattice expansion algorithm for general LMs now preserves
+	pause and null nodes.  Consequently, lattice-tool no longer eliminates
+	pause and null nodes prior to applying this algorithm, unless 
+	-no-pause or -compact-pause was specified. 
+	* Implemented a new algorithm to build word meshes (confusion networks,
+	sausages) from lattices, that is faster than the original Mangu et al.
+	method.  lattice-tool -posterior-decode uses this to extract 1-best
+	word hypotheses, and lattice-tool -write-mesh allows writing of
+	sausages to file.
+	* The "compact" lattice expansion algorithm that uses backoff nodes
+	(described in Weng et al. 1998) has been generalized to handle
+	LMs of arbitrary order.  As before, this algorithm is triggered by	
+	lattice-tool -compact-expansion.  (To get the old version, which
+	handles only trigrams and produces non-identical results, use
+	lattice-tool -compact-expansion -old-expansion.)
+	* lattice-tool -density allows pruning of lattices to a specified 
+	density (in addition to the posterior threshold).
+	* lattice-tool -multi-char option allows designating characters other
+	than underscore as multiword delimiters.
+	* Added a "LatticeLM" class that emulates a language model using the
+	transition probabilities in a lattice.  This is useful for debugging
+	and comparing the probabilities assigned by lattices to corresponding
+	LM probabiltiies.  A new option lattice-tool -ppl makes use of this
+	class (analogous to ngram -ppl).
+	* lattice-tool lattice algebra operations (or, concatenate) can now
+	be applied to multiple input lattices, always using the same lattice
+	as second operand.
+
+	* ngram has enhanced N-best rescoring functionality, allowing 
+	multiple input lists to be rescored (-nbest-files, -write-nbest-dir,
+	-decipher-nbest, -no-reorder, -split-multiwords).
+	* rescore-decipher -fast enables a faster rescoring mode that uses 
+	only the built-in functions of ngram, thus running much faster.
+	* New option ngram -rescore-ngram to recompute the probabilities in
+	an N-gram model using an arbitrary other LM.
+
+	* Added original (unmodified) Kneser-Ney discounting (ngram-count
+	-ukndiscountN options). Contributed by Jeff Bilmes.
+	* New disambig -classes option to read vocabulary maps in
+	classes-format(5).
+	* New disambig -write-counts option to output word/class substitution
+	bigram counts (useful to reestimate class membership probabilities).
+	* nbest-pron-score -pause-score-weight creates weighted combination
+	of pronunciation and pause LM scores.
+	* compute-sclite -noperiods option to delete periods from hyps
+	for scoring purposes.
+	* New script empty-sentence-lm to modify existing LM to allow
+	the empty sentence with a given probability.
+	* compute-sclite handles CTM files in RT-03 format.
+	* ngram-class -debug 2 prints the initial word-to-class assignments,
+	so that the entire class tree can be reconstructed from the output.
+	* RefList class has option to read and look up reference words without
+	associated ID strings (indexed by integers).
+	* Enhanced WordMesh and WordLattice classes to have an optional
+	"name" field, used to record utterance ids. 
+	* New select-vocab command to implement likelihood-optimizing
+	vocabulary selection from multiple corpura.  Contributed by 
+	Anand Venkataraman and Wen Wang. See man page for details.
+	
+	Bug fixes:
+
+	* ngram avoids reading classes file multiple times if -limit-vocab
+	is not being used (otherwise it is unavoidable, and will lead to
+	errors if the reading is from stdin).
+	* Fixed some bugs in compare-sclite and compute-sclite.
+	* Modified ngram and compute-best-mix so that the latter works
+	with ngram -counts output.  ngram -counts now outputs the count
+	values != 1 for each N-gram so that compute-best-mix can take them
+	into account in the optimization.
+	* rescore-reweight and nbest-rover were not handling Decipher N-best
+	lists correctly when additional score directories are given.
+	* nbest-rover -wer disables use of nbest-lattice -use-mesh option,
+	so nbest-rover can be used for old-style word error minimization
+	(or even 1-best rescoring, by also specifying -max-rescore 1).
+	* lattice-tool -ref-file and -ref-list were being ignored when
+	processing only a single input lattice.  Fixed so that lattice error
+	can now be computed with either -input-lattice or -input-lattice-list.
+	* Enhanced MultiwordLM class with new contextID() and contextBOW()
+	versions that better reflect the backoff behavior of the wrapped LM
+	class.  Makes it much more efficient to use the lattice-tool -multiword
+	option, i.e., expand a multiword lattice with a non-multiword LM.
+	* rescore-decipher -pretty had a bug that caused mapping to be applied
+	to the score fields as well, potentially corrupting the format.
+	* Fixed bugs in mixture lambda computation (ngram, hidden-ngram,
+	lattice-tool), triggered by more than one lambda being zero, or using
+	more than 5 mixtures.
+	* lattice-tool algebra operations used to crash if operand lattices
+	contained NULL nodes.
+	* Non-compressed files ending in .gz can now be read successfully.
+	* Catch a possible 0/0 problem in the Good-Turing discount estimator.
+	* Fixed memory management for strings returned by TaggedVocab::getWord()
+	thereby avoiding garbled results.
+	* lattice-tool -pre-reduce-iterate and post-reduce-iterate arguments
+	where not being used to control number of lattice reduction iterations.
+	* Fixed an unitialized memory bug that could produce random results
+	in posterior probability computation (and hence in lattice pruning).
+	* Fixed a bug in lattice pruning triggered by unnormalized posteriors
+	greater than 1.
+
+	Portability:
+
+	* Fixed some problems compiling with gcc-3.2.2; eliminated compile-
+	time warnings about division by zero in constant definitions.
+	* Rewrote some code to work around limitations and warnings in the
+	Intel C++ compiler.  (In return, got compiled code that runs 10-20%
+	faster!)  For processor-specific optimizations, use
+		make MACHINE_TYPE=i686-p4	.
+	* Fixed some script problems that surfaced in latest gawk version.
+	* Fixed some problems compiling with Tcl/Tk-8.4.1.
+	* FreeBSD support (contributed by Zhang Le <ejoy@peoplemail.com.cn>).
+	* Updated Nuance-related features in PFSG scripts and man page.
+	* Note: Integration of FLM support required some changes to the 
+	Vocab and Ngram class interface.  In particular, several member
+	variables (e.g., Boolean Vocab::unkIndex) have been replaced by virtual
+	member functions that return references to the variables (e.g.,
+	Boolean &Vocab::unkIndex()).  This requires, albeit trivial, changes
+	to any client code that accesses these variables.
+
+1.4.1	9 May 2004
+
+	Functionality:
+
+	* New option lattice-tool -htk-quotes to enable the HTK quoting 
+	mechanism that allows whitespace and non-printable characters to be
+	used in word labels.  (This is disabled by default since other SRILM
+	tools don't allow such word strings.)
+	* New option lattice-tool -add-refs to add a path corresponding to
+	the reference word string to each lattice.
+	* New option ngram -counts-entropy to compute entropy (log probabilties
+	weighted by joint N-gram probability) from counts.
+
+	Bugs fixed:
+
+	* nbest-lattice could core dump if references where not supplied.
+	* FLM/ProductVocab: fixed problems with mapping of <s> and </s> to
+	factored form.
+	* Lattice algebra operations (or, concatenate) now preserve HTK link
+	information and lattice names.
+	* Fixed LM::contextProb() handling of <s> and other non-event tokens.
+	This also allowed Ngram:computeContextProb() to be eliminated.
+	* LatticeFollowIter iterator no longer takes lookahead parameter --
+	lookahead is unlimited and cycles are avoided by keeping a table of
+	visited nodes.  This also greatly speeds up lattice expansion in
+	some cases.
+	* Detect negative discounts in modified Kneser-Ney method, arising 
+	from non-monotonic counts-of-counts.
+	* Fixed various debugging output messages in the Lattice class.
+
+	Portability:
+
+	* Matthias Thomae <thomae@ei.tum.de> found that make-ngram-pfsg
+	(and probably other gawk scripts) may not work correctly with recent
+	versions of gawk unless the environment is set to LC_NUMERIC=C.
+
+1.4.2	19 October 2004
+
+	Functionality:
+
+	* lattice-tool -factored option to handle factored LMs (analogous
+	to ngram and hidden-ngram).
+	* lattice-tool -nbest-decode generates N-best lists from lattices
+	(contributed by Dustin Hillard, University of Washington).
+	* lattice-tool -output-ctm option to generate CTM-formatted 1-best
+	output, either with -viterbi-decode or with -posterior-decode.
+	Of course this requires HTK input lattices containing timemarks.
+	* Added version of WordMesh::minimizeWordError() that returns acoustic
+	information in a NBestWordInfo array, to support the above.
+	* lattice-tool -insert-pause option to insert optional pause nodes in
+	lattices.
+	* lattice-tool -unk will map unknown words to <unk> instead of 
+	automatically augmenting the vocabulary (the -map-unk option allows
+	the mapping of unknown words to be customized).
+	* lattice-tool -acoustic-mesh records word times, scores, and phone
+	alignments when confusion networks are built.
+	* lattice-tool -ignore-vocab option to define the set of words that
+	are ignored in LM processing (like pause nodes).
+	* lattice-tool -write-ngrams option to compute expected N-gram counts
+	from lattices.
+	* HTK lattices now supports up to three "extra" score fields (x1..x3),
+	which can be used to rescore hypotheses with arbitrary non-standard
+	knowledge sources.
+	* Added support for the "s" key in HTK lattices (used to encode
+	state alignment info).
+	* anti-ngram -min-count option to prune N-grams with expected frequency
+	below specified threshold.
+	* ngram -adapt-marginals and related options to trigger use of
+	unigram marginals adaptation, following Kneser et al. (Eurospeech 97).
+	* New LM class AdaptMarginals to support the above.
+	* nbest-lattice and lattice-tool -hidden-vocab option allows specifying
+	a subvocabulary that should not be aligned with regular words when
+	building confusion networks.
+	* New VocabDistance subclass SubvocabDistance, to support the above.
+	* nbest-optimize -combine-linear and -non-negative options, useful to
+	optimize linear combinations of posterior probability scores.
+
+	Bugs fixed:
+
+	* lattice-tool: Avoid disconnecting lattice in density pruning.
+	* Utility script installation was not working for Cygwin hosts.
+	* ProductNgram::contextID() now returns hash code of context used,
+	instead of zero, and limits context-used length to order-1.
+	* HTK lattice output was omitting wdpenalty value.
+	* Improved collision-prone hash function for VocabIndex arrays.
+	* Documented order of operations in lattice-tool(1).
+	* Fixed excessive /tmp space usage in nbest-rover script, so as to
+	avoid frequent incomplete output with large N-best data as a result
+	of running out of disk space.
+	* Fixed bug in compute-sclite that would garble STM references without
+	the optional 6th field.
+	* Fixed bug in Trie::insert(), which would always set foundP = true,
+	even if a new entry was created.
+	* Preserve Lattice:limitIntlogs flags in lattice algebra operations.
+	* Use sorted node map iteration in lattice-tool expansion algorithms,
+	so that results are not subject to pseudo-random hash table ordering.
+	* HTK lattice output no longer has more nodes/links than input
+	(provided -no-htk-nulls, -htk-scores-on-nodes, or -htk-words-on-nodes
+	are NOT used).
+	* Take default lattice name from input filename, rather than output
+	filename (which may not be defined), however:
+	* The embedded names of output lattices from binary lattice operations
+	are derived from the output file name.
+	* Fixed bug in reading of word meshes (confusion networks) introduced
+	in release 1.4.
+	* Fixed a bug in alignments of multiple confusion networks, affecting
+	cases where the inputs have posterior masses != 1.
+
+1.4.3	3 December 2004
+
+	Functionality:
+
+	* Increased the number of extra scores supported in HTK lattices
+	(x1, x2, ... x9).
+	* lattice-tool -nbest-viterbi option to use Viterbi N-best algorithm,
+	which uses less memory (contributed by Jing Zheng).  
+	* Added nbest-lattice -output-ctm analoguous to lattice-tool.
+	* Make -output-ctm output word posteriors in the confidence field.
+	* Extend the meaning of the nbest-lattice -max-rescore option so that,
+	in lattice mode, it limits the number of hypotheses that are aligned.
+	(The meaning of -max-rescore was previously only defined in N-best
+	rescoring mode).
+	* Added -version option to all top-level programs.
+
+	Bug fixes:
+
+	* Improved efficiency and duplicate elimination in A-star N-best
+	generation (contributed by Jing Zheng).
+	* Worked around a problem with gawk scripts in Linux handling of
+	/dev/stderr device which can cause a file to be truncated if stderr is
+	redirected to it.
+	* MultiAlign::addWords() was not preserving NBestWordInfo.
+
+	Other:
+
+	* Various small code changes for compilation with gcc 3.4.3.
+	* Maintenance scripts moved to $SRILM/sbin/.
+	* Support for commercial releases excluding third-party code
+	contributions.
+
+1.4.4	6 May 2005
+
+	Functionality:
+
+	* ngram-count now allows use of -wbdiscount, -kndiscount, etc.,
+	without a specified N-gram order, to set the default discounting
+	method for all N-gram orders.  As before, this can be overridden by
+	-wbdiscount[1-9], -kndiscount[1-9], etc., for specific N-gram
+	lengths (suggested by Anand).
+	* lattice-tool -keep-pause has additional side-effects if used with
+	-nonevents and -ignore-vocab (making pauses behave like regular words).
+	* lattice-tool -dictionary-align option triggers use of dictionary
+	pronunciations for word mesh alignment (contributed by Dustin Hillard).
+	* New option lattice-tool -nbest-duplicates allows control over the
+	number of duplicate word hypotheses to output (from Dustin Hillard).
+	* Update to the FLM tools from Kevin Duh, to make fngram-count use the
+	-vocab option to limit the vocabulary of the estimated model.
+	* Added nbest-optimize -hidden-vocab option to constrain the alignment
+	of a subvocabulary (analogous to nbest-lattice -hidden-vocab).
+	* wlat-stats computes the posterior expected number of words in the
+	input lattice.
+
+	Bug fixes:
+
+	* ngram -unk maps unknown words in N-best hyps to <unk> instead of
+	adding them to the vocabulary.
+	* lattice-tool: Don't punt when encountering a NULL word node with
+	pronunciation, output a warning instead.
+	* lattice-tool -nbest-decode now uses a double-ended heap data
+	structure, and -nbest-max-stack drops hypotheses from the bottom
+	of the heap instead of the top (contributed by Dustin Hillard).
+	* lattice-tool -nbest-decode now does more thorough duplicate removal
+	(not just adjacent duplicates are removed).
+	* lattice-tool no longer gives an error if input lattice has posteriors
+	specified on nodes (even though they are effectively ignored).
+	* select-vocab: miscellaneous bug fixes from Anand.
+	* nbest-lattice: fixed various bugs with -nbest-backtrace option.
+	* compute-sclite: work around bug in csrfilt.sh -dh affecting waveform
+	names containing hyphens.
+	* Minor tweaks for MacOSX build.
+
+1.4.5	28 August 2005
+
+	Functionality:
+
+	* ngram -debug 0 -ppl now outputs statistics for each input section
+	delimited by escape lines, in addition to overall results (based on
+	a modification by Dustin Hillard).  ngram -debug 1 and higher behave as
+	before.
+	* ngram -loglinear-mix implements log-linear mixture LMs.
+	* LoglinearMix: new class to support the above.
+	* VocabMap: added remove(.) method to remove all entries for given
+	source word.
+	* WordMesh: added wordColumn() function to return confusion set at
+	given position (contributed by Dustin).
+	* Lattice: added readMesh() function to read in confusion networks
+	(from Dustin).
+	* lattice-tool -read-mesh allows handling in confusion network format
+	(from Dustin).
+	* nbest-optimize -1best-first implements a heuristic strategy whereby
+	the relative score weights are first optimized in -1best mode, followed
+	by full optimization together with posterior scale.
+	* nbest-optimize -max-time forces search to time out if new best
+	weights aren't found within a certain number of seconds.
+	* New script combine-rover-controls to merge multiple nbest-rover
+	control files for system combination.
+
+	Bug fixes:
+
+	* disambig clears old map entries when encountering a duplicate
+	definition for a source word.
+	* nbest-optimize: posterior scaling of fixed weights was broken.
+	* WordMesh, nbest-lattice: do better error checking on reading
+	confusion network files, handle numalign and posterior specs out of
+	order.
+	* lattice-tool had a bug in the handling of HTK format lattices that
+	do not contain an explicit specification of initial/final nodes.
+	* Added proper copy constructors and assignment operators for
+	Array, SArray, and LHash classes.  This in turn makes the copy
+	constructor for NgramLM and other classes work properly.
+	(Assignment still doesn't work for some higher-level classes because
+	of reference (&) variable members.)
+	* Fixed minor bug in the ngram -skipoovs implementation, found by
+	Alexandre Patry.
+
+	Portability:
+
+	* Port to win32-mingw platform (by Jing Zheng).  Doesn't support
+	compressed file i/o, or the -max-time options in nbest-optimize and
+	lattice-tool.
+	* Minor tweaks for compilation with gcc-4.0.1.
+	* Renamed HTKLink class to HTKWordInfo, which is more appropriate and
+	avoids a naming conflict with SRI's Decipher software.
+
+1.4.6	20 January 2006
+
+	Functionality:
+
+	* Added support for reading/writing files compressed with bzip2
+	(file suffix .bz2).  Requires that the bzip2/bunzip2 binaries be
+	installed.
+
+	Bug fixes:
+
+	* Lattice class now creates completely empty lattices (no nodes).
+	This avoids having to first remove a node when reading an actual
+	lattice.  Empty lattices can be output, but not read (because at
+	least an initial/final node has to be defined).
+	* lattice-tool -ignore-vocab was not being used in conjunction with
+	-viterbi-decode, -posterior-decode, -collapse-same-words, and lattice
+	error computation.  Words to be ignored are now treated same as 
+	-noice-vocab in those operations.
+	* Fixed a bug in lattice expansion whereby backoff weights were 
+	dropped at NULL nodes (problem noticed by Teemu Hirsimaki).
+	* Fixed bug in reading of node-specific posterior probabilities
+	in word meshes.
+	* Fixed a bug in lattice-tool -read-mesh, which was not creating
+	sentence initial/final tags on initial/final lattice nodes.
+	* Fixed a bug in the LatticeFollowIter class that could cause incorrect
+	results in LatticeLM (lattice-tool -ppl).
+	* When outputting PFSG lattices in HTK format, map PFSG weights to
+	HTK acoustic scores.  (But, as before, LM rescoring discards input
+	PFSG weights and causes the probabilities to be output as LM scores.)
+	* Scale wdpenalty values specified in lattice according to log-base.
+	Also, scale -htk-wdpenalty specified on command line according to
+	-htk-logbase (or default 10).
+	* Correctly handle HTK score output with -htk-logbase 0.
+
+	Portability:
+
+	* Added workaround for compilers that don't support arrays of
+	non-constant size (such as SunStudio and Visual C++). On these 
+	systems, Array will be used instead.
+
+	* Added a new compilation option "_s" that triggers use of 2-byte 
+	integers for vocabulary indices and counts.  With compilers that
+	implement __attribute__((packed)) correctly, this causes N-gram counts
+	to use 1/3 less memory than in the default option, at some limitations
+	in functionality.  First, only vocabularies of up to 64k words may
+	be used.  Second, only up to 32k counts exceeding 32k may be stored.
+	The latter is typically not a problem because in most natural data
+	the number of very frequent words is small.
+	Unfortunately, gcc does not currently handle __attribute__((packed))
+	correctly, but Intel's icc does.
+
+	* Tested on Linux for PowerPC-64bit.
+
+	* Tested on Linux for x86_64, using gcc.
+
+	* Minor tweaks for Intel icc 8.0.
+
+	* Tested on Solaris-x86 using Sun Studio 11 compiler.
+	Compilation still generates lots of warnings, but the resulting
+	binaries work correctly.
+
+	* Ported to Microsoft Visual C 7.0 (by Jing Zheng);
+	See doc/README.windows-mscv.
+
+	* gcc versions older than 3.4.3 are no longer supported, though
+	they might still work.
+
+1.5.0	31 July 2006
+
+	Functionality:
+
+	* Added support for a binary data format for N-gram backoff models
+	which speeds up the reading of model files by a factor of 2 
+	for full models, and by an order of magnitude if -limit-vocab is used.
+	Note that the binary format is machine architecture dependent.
+	See the ngram -write-bin-lm option (contributed by Jing Zheng).
+
+	* disambig now support Bayesian or standard interpolation of up to 
+	10 LMs, just like ngram and hidden-ngram.
+
+	* Added disambig -factored option to support factored hidden tag LMs.
+
+	* Added disambig -escape option to pass information unprocessed to 
+	the output, similar to hidden-ngram.
+
+	* New utility script: split-tagged-ngrams, see training-scripts(1)
+	man page.
+
+	* New function Vocab::checkWords() for more efficient implementation
+	of the ngram -limit-vocab functionality.
+
+	* Modified compute-sclite to support scoring of overlapped speech 
+	with asclite program.
+
+	* New NgramCountLM class implementing a mixture of count-based 
+	maximum-likelihood estimators (aka deleted interpolation aka
+	Jelinek-Mercer smoothing).
+
+	* ngram-count and ngram -count-lm options to implement deleted 
+	estimation and evaluation of NgramCountLM models.
+	This option is also supported by hidden-ngram, disambig, and
+	lattice-tool.
+
+	* Added support for ngram counts stored in an indexed directory
+	structure, based on a format developed by Thorsten Brants for data
+	delivered to LDC by Google.  This data format can be used in
+	conjunction with the NgramCountLM class, and may be generated
+	from standard ngram count files using the make-google-ngrams script
+	(see training-scripts(1)).
+
+	* Added NgramStats::clear() function.
+
+	* Added the limitVocab option to the NgramStats::read() function.
+	In conjunction with NgramCountLM, this allows use of arbitrarily 
+	large N-gram statistic on limited test sets.
+
+	* Added ngram-count -limit-vocab option.
+
+	* Added hidden-ngram -vocab and limit-vocab options.
+	Possible incompatibility: the -hidden-vocab wordlist must not contain
+	the *noevent* word; it is added implicitly.
+
+	* Added lattice-tool -write-vocab option to extract vocabulary from
+	lattice files.
+
+	* Added lattice-tool -init-mesh option to align lattice to preexisting
+	confusion network.
+
+	* Added an interface for vocabulary aliasing (name mapping) to
+	the Vocab class, and the option -vocab-aliases to the programs
+	disambig, hidden-ngram, lattice-tool, nbest-lattice,
+	ngram-count, and ngram.  This allows direct use of LMs with
+	slightly mismatched vocabularies relative to some test data.
+	Also, added handling of the -vocab-aliases option to the
+	rescore-decipher script, so that large name mapping files can
+	be subsetted when -limit-vocab is in effect (so that only the
+	relevant portions of an LM are loaded).
+
+	* disambig now automatically limits LM reading to the words found in
+	the map file (suggested by Jing Zheng).
+
+	* hidden-ngram -bayes and -bayes-length options added to give more
+	control over interpolation.
+
+	* The default count type is now "unsigned long" intead of
+	"unsigned int".  This makes no difference on 32-bit platforms,
+	but on 64-bit platforms it allows the handling of data upwards of
+	4.3 billion tokens (which would causes integer overflow on 32bit
+	machines).
+
+	* For 32-bit platforms, added a compile option "_l", which triggers
+	use of 64-bit "long long" integers for count storage.
+	This uses the XCount class to avoid needing extra memory for count
+	storage, assuming that large count values will be sparse.
+
+	Bug fixes:
+
+	* Fixed a bug in the handling of -mix-lm[789] options in ngram,
+	hidden-ngram and lattice-tool.  (With the -bayes option in effect,
+	the -mix-lm6 argument was used for -mix-lm[789].)
+
+	* Fixed memory management in the XCount implementation, which was 
+	giving incorrect results when compiling with OPTION=_s.
+
+	* disambig no longer adds <s> and </s> tokens if input already 
+	contains them (consistent with ngram).
+	
+	* lattice-tool -read-mesh was broken in the previous release, now
+	works again.
+
+	* lattice-tool -density-prune and -nodes-prune now work without
+	-posterior-prune being specified.
+
+	* The -debug option was being ignored with ngram -null .
+
+	* Fixed a bug in Vocab::remove(VocabString) that could be triggered by
+	interactions between ngam -vocab and -vocab-aliases .
+
+	* Tweaks to MACHINE_TYPE=msvc compilation.  updated documentation in
+	doc/README.windows-cygwin and doc/README.windows-mscv.
+	
+	* Tweaked compiler flags for Solaris to handle files larger than 2^31.
+
+	* Prevent possible NaN probabilities in ClassNgram.
+
+	* Fixed a problem in make-ngram-pfsg triggered by a word named "BO".
+
+	* Support long int key values in data structures.
+
+	* rescore-decipher -filter option now works correctly in conjunction
+	with -limit-vocab.
+
+1.5.1	20 November 2006
+
+	Functionality:
+
+	* ngram-count -write-binary is a new option to create binary count 
+	files, which load much faster.  They are recognized automatically by
+	ngram-count -read, and can be used in count-based LMs.
+
+	* Revised binary backoff LM format (ngram -write-bin-lm) to use only
+	a single data file and be machine-independent and somewhat more
+	compact.  Reading the 1.5.0 binary format is still supported, but not
+	writing it.
+
+	* Added lattice-tool -bayes and -bayes-scale options for compatibility
+	with ngram and other programs.
+
+	* New lattice-tool -write-ngram-index option to generate an index of
+	N-gram occurrences in a lattice.
+
+	* New lattice-tool -multiword-dictionary option enables accurate 
+	handling of acoustic information (timestamps, pronunciations) when the
+	-split-multiwords option is used (contributed by Dustin Hillard).
+
+	* New nbest-optimize -insertion-weight and -word-weights options to
+	implement weighted forms of word error optimization.
+
+	* New option make-ngram-pfsg no_empty_bo=1 to disallow an empty (null)
+	path through the PFSG via the unigram backoff.
+
+	* New script get-unigram-probs to extract unigram probabilities from
+	an LM file.
+
+	Bug fixes:
+	
+	* Enabled large-file (64bit offsets) handling for Linux 32bit 
+	compilation.
+
+	* Fixed utility and test scripts to support platforms that don't 
+	support compressed file I/O.  Check test/README for instructions.
+
+	* Fixed bug in compute-sclite that could lead to failure if 
+	waveform names contain hyphens, or sort differently after mapping to
+	lowercase.
+
+	* Fixed another bug in compute-sclite that was preventing
+	compare-sclite from working.
+
+	* Fixed a typo-bug in Ngram::estimate that could cause problems in
+	handling discounting errors, but in practice seems to have been
+	harmless (from Federico Cesari).
+
+	* Improved MSVC portability:
+	  - fixed header file usage
+	  - enabled binary file i/o for binary LMs
+	  - fixed miscellaneous compiler warnings
+	  - simplified build (see doc/README.windows-mscv)
+	  - workaround in WordMesh.cc to avoid a compiler bug (from
+	    Federico Cesari).
+
+	* Fixed win32 (Windows gcc, not cygwin) build.
+
+1.5.2	6 March 2007
+
+	Functionality:
+
+	* Support binary LM formats (based on Ngram binary format) for most
+	LM classes.
+
+	* New lattice-tool -htk-logzero option to set a dummy score to 
+	replace zero scores found in HTK lattices.
+
+	Bug fixes:
+
+	* Make sure Google ngrams can be read in both compressed and
+	uncompressed format if platform supports both.
+
+	* Make sure the file pointer is updated when reading binary Ngram LM.
+	This enables reading multiple LMs from one file, and avoids errors
+	reading binary class-LMs.
+
+	* Avoid NaN values when a lattice score is infinity and the
+	corresponding scale factor is 0 (the score is ignored in that case).
+
+	* Avoid degenerate decoding results if lattice hypotheses contain
+	-infinity scores. (Effectively, -infinity is replaced by a large
+	negative log score, thus allowing the decoder to rank hypotheses based
+	on their non-infinity components.)
+
+	* Updated lattice-tool man page to clarify the interaction of 
+	LM rescoring and lattice decoding.
+
+	Portability:
+
+	* Added configuration for Solaris amd64 platform with 
+	Sun C compiler (amd64-solaris_spro).
+
+	* Updated instructions for MSVC build (see doc/EADME.windows-msvc),
+	based on imput from Mike Frandsen.
+	Merge MSVC .manifest files into binary before installation.
+
+1.5.3	28 July 2007
+
+	Functionality:
+
+	* New ngram-count -write-binary-lm option to output LM in binary format
+	(avoids the need to dump ascii format first, and then convert to
+ 	binary using ngram tool).
+
+	* New make-google-ngrams yahoo=1 option to read Yahoo ngram corpus
+	(which needs to be sorted first, however).
+
+	* New make-big-lm -ngram-filter option to pipe input counts through
+	an arbitrary filter program (e.g., for format conversion).
+
+	* The make-kn-discount utility will now try to estimate missing
+	counts-of-counts based on their global statistics, using an empirical
+	law: 		log f(k) - log f(k+1) = C / k for some constant C.
+	Note this functionality is not implemented in the C++ code for KN
+	discounting.  Therefore, it is only available when building LMs with
+	make-big-lm.
+
+	* New scripts tolower-ngram-counts and uniq-ngram-counts to help 
+	manipulate counts files.
+
+	* New option ngram-count -write-vocab-index (for debugging).
+
+	* Vocab.h: Increased maxWordLength constant from 256 to 1024.
+
+	* Trie class can now initialize root node size with optional constructor
+	argument (similar to other container classes).
+
+	* LHash and SArray classes have a new function to preallocate space
+	following construction (but before any data is inserted).
+
+	* The platform "i686-p4" has been renamed "i686-icc" (Linux x86 with
+	Intel compiler) for consistency.
+
+	Bugs:
+
+	* Fixed a buffer overrun problem triggered by nbest rescoring of
+	empty hypotheses.
+
+	* Fixed problem in compute-sclite with extraction of speaker labels
+	from ctm files.
+
+	* NBest class (affecting nbest-pron-score): strip Decipher-specific
+	phone diacritic labels separated by underscores from pronunciation
+	strings.
+
+	* Fixed memory leak in Trie::removeTrie().  This was causing a leak
+	in NgramLM deallocation.
+
+	* Fixed a performance bug which caused the building of unigram
+	hash tables to have quadratic time complexity (due to an unfortunate 
+	interaction between hash table iterators and hash functions).
+
+    	* Made make-big-lm detect missing -read option and print usage message.
+	Also, handles degenerate -kndiscount with -order 1 now.
+
+	* Workaround for icc compiler error: optimization disabled for some
+	files when using MACHINE_TYPE=i686-m64-icc.
+
+1.5.4 	2 November 2007
+
+	Functionality:
+
+	* New option ngram-count -addsmooth for additive smoothing.
+	A corresponding new discounting subclass "AddSmooth" is defined in 
+	Discount.h.
+
+	* New option ngram -server-port to start a "probability server"
+	(based on a contribution by Elad Dinur).
+
+	* WordLattice: print lattice name in warning messages.
+
+	* lattice-tool -keep-unk option to preserve labels of OOV words in
+	LM rescoring (currently works only for HTK lattices).
+
+	* New option nbest-optimize -anti-refs and -anti-ref-weight to 
+	decorrelate errors with another set of hypotheses.
+
+	* New support in nbest-optimize for BLEU optimization and Powell search
+	(from Jing Zheng).
+
+	* New option ngram-class -save-maxclasses to start the saving of 
+	intermediate results when a specified number classes is reached
+	(suggested by Shlomo Wavrow and Mats Svenson).
+
+	Bugs:
+
+	* Fixed incorrect reference output for test "nbest-rover-acoustic".
+
+	* Fixed a possible problem with tests "ngram-class" and
+	"ngram-count-lm-limit-vocab" in non-C locales.
+
+	* nbest-lattice: Avoid aligning reference words with -dump-errors or
+	-wer, which would cause crash because no lattice is being generated
+	internally.
+
+	* make-batch-counts, merge-batch-counts: be more portable by dynamically
+	finding the right options to use with xargs.
+
+	* add-pauses-to-pfsg: Avoid using a regular expression construct that
+	causes a gawk error in UTF-8 locales.  However, to ensure this works
+	correctly a gawk version of 3.1.5 should be used. See note in
+	doc/README.linux.  If the test "make-ngram-pfsg" fails a workaround is
+	to set LANG=C or LANG=en_US and avoid UTF-8.
+
+	* Fixes an uninitialized member variable in the unary constructor for
+	class File, which was causing garbage to be return on the first
+	getline().
+
+	* common/Makefile.machine.macos: Updated Tcl linking instructions
+	(from Chuck Wooters).
+	
+	* Makefile: exit immediately if any of the subdirectories result in
+	build errors.
+
+1.5.5	6 November 2007
+
+	Bug fixes:
+
+	* Fixed Makefile problem in binaries depending on libraries that was 
+	preventing executables being generated on some platforms.
+
+	* Fixed a compilation problem with MSVC for nbest-optimize.
+
+	* Use MSVC _getpid() in ngram -generate random seed initialization.
+
+1.5.6	2 January 2008
+
+	Functionality:
+
+	* New ngram -use-server option to run the client side of a network LM
+	server as implemented by ngram -server-port.  Optionally, probabilities
+	may be cached in the client (option -cache-served-ngrams).
+	Mixtures of one or more network and file-based LMs are also possible.
+
+	* Likewise, disambig, hidden-gram, and lattice-tool understand the
+	-use-server option.
+
+	* New LMClient class to implement the above (a stub LM subclass that
+	queries a server for LM probabilities).
+
+	* ngram -server-port now behaves like a true server daemon: it handles
+	multiple simultaneous or sequential clients, and never exits (unless
+	killed).  The number of simultaneous clients may be limited with the
+	-server-maxclients option.
+
+	* Support for 7-zip compressed files (suggested by Alexy Khrabrov).
+
+	* lattice-tool -split-multiwords will now print a warning message
+	about multiwords that were not split because their LM probability was
+	non-zero.
+
+	* LoglinearMix LM class supports n-way mixtures directly, giving more
+	efficient implementation for n > 2 than recursive object construction
+	in ngram (contributed by Tanel Alumae).
+
+	Bug fixes:
+
+	* MultiwordLM now implicitly adds all words to the vocabulary, so that
+	previously unseen multiwords get split.  This has the side effect that
+	OOVs will appear as zeroprob words.
+
+	Documentation:
+
+	* The doc/FAQ file has been expanded and reformated as a man page.
+	It can be viewed with "man srilm-faq" or online at
+	http://www.speech.sri.com/projects/srilm/manpages/srilm-faq.html .
+	The major content additions are questions about the build
+	process, how to build a "Google N-gram LM", smoothing issues,
+	and OOV-handling (the latter by Deniz Yuret).  Corrections and
+	additions to this document are most welcome!
+
+	* A new manual page ngram-discount(7) gives a detailed overview of
+	smoothing methods found in SRILM (contributed by Deniz Yuret).
+
+	* The conversion of man pages to html has been enhanced to better
+	handle code samples and nested itemized lists.
+
+1.5.7	14 October 2008
+
+	Functionality:
+
+	* make-big-lm -text option allows building of LMs that only contain
+	N-gram contexts that are needed for a given test set, thus saving
+	space.
+
+	* ngram-count -intersect option allows reading of counts to be
+	restricted to an N-gram subset.
+
+	* NgramStats added a Boolean switch "intersect" and a method
+	setCount(), used for implementing the above.
+
+	* Allow changing the character used to compound multiwords, using the
+	new option -multi-char with ngram, anti-ngram, nbest-lattice,
+	nbest-optimize, nbest-pron-score, and several of the nbest-scripts.
+
+	* New options -no-sos and -no-eos for ngram-count and ngram tools,
+	to control the insertion of <s> and </s> tokens around sentences.
+
+	* New lattice-tool -no-expansion option to decode a lattice with a
+	new LM without first expanding the lattice (contributed by Jing Zheng).
+
+	* New CachedMem mix-in class to implement a caching memory allocator
+	(contributed by Jing Zheng).
+
+	* Added lattice-tool -print-sent-tags option to preserve <s> and </s>
+	tags in lattice output format, instead of mapping them to null nodes.
+
+	Documentation:
+
+	* Added redirecting http links to non-SRILM program documentation
+	in manual pages.
+	
+	Portability:
+
+	* Removed SRI-specific paths etc. from common/Makefile.machine.* .
+	Added a mechanism that allows site-specific customizations to be 
+	recorded in common/Makefile.site.$MACHINE_TYPE to override definitions
+	in common/Makefile.machine.$MACHINE_TYPE, without a need to change the
+	latter.
+
+	Bug fixes:
+
+	* Always output the elements of binary count files and ngram LMs
+	in index-sorted order (same as the _c program version).  This avoids
+	poor performance when reading the data back in.
+
+	* Fixed LMClient.h so it compiles on win32 and msvc platforms (even
+	though it still doesn't do anything, since Unix sockets are not
+	supported).
+
+	* Process ngram-count -writeN options after applying count smoothing,
+	so that the effect of any count modifications (e.g., by KN) is seen,
+	and consistent with the -write option.
+
+	* Fixed the timestamps on initial and final nodes of lattice-tool
+	-operation or (bug found by gaojie@hccl.ioa.ac.cn).
+
+	* NgramLM: Handle cases where interpolated discounting leaves no
+	backoff probability mass.
+
+	* AdaptiveMarginals: Now handles words that are added after LM was
+	created. This can happen in N-best rescoring and would previously
+	cause an assertion failure.
+
+	* Fixed bugs in IntervalHeap memory allocation, which could
+	cause problems in N-best generation from lattices  (from Jing Zheng).
+
+	* Set LC_NUMERIC=C in make-big-lm to avoid problems with non-C 
+	locales for gawk scripts that compute discounting parameters.
+
+1.5.8	10 May 2009
+
+	Functionality:
+
+	* merge-batch-counts -float-counts option for merging of fractional
+	counts.
+
+	* compare-sclite now includes statistical significance computation
+	based on a matched-pair Sign test.
+
+	* Added a Perl tool to compute the cumulative binomial distribution,
+	contributed by Brett Kessler and David Gelbart.
+
+	* Don't output LM server banner message for ngram -use-server -debug 0.
+
+	* The LM::generateSentence() function now takes option argument to 
+	specify sentence prefix that is to be used to condition subsequent
+	word generation (suggested by Alexy Khrabrov).  The default is to
+	condition on <s> as before, or an empty context if no start-of-sentence
+	tag is defined.
+
+	* A new option ngram -gen-prefixes to read conditioning prefixes
+	from a file, and generate random sentences based on them.
+
+	* New options in nbest-optimize that modify -print-hyps output so that
+	only unique hypotheses are included (-print-unique-hyps), and to print
+	the original ranks of hypotheses (-print-old-ranks) (from Jing Zheng).
+
+	* The -version option reports whether support for compressed files
+	is available.
+
+	* Added merge-batch-count -l option to control how many files to merge
+	in each iteration.
+
+	Bug fixes:
+
+	* ngram-count, NgramLM: disable the Doug Paul smoothing hack (add one
+	to denominator when smoothing results in 0 backoff mass) in contexts
+	where the entire vocabulary has been observed.
+
+	* nbest-optimize fixes to the -minimum-bleu-reference functionality
+ 	(from Jing Zheng).
+
+	* Fixed nbest-optimize bug that was causing incorrect log output with
+	gcc 4.x.
+
+	* Output vocabulary index map in binary ngram count and LM format
+	in numerical index order.  This avoids a performance bug whereby
+	reading the data structures back into _c binary version could take
+	a long time due to inefficient insertion order.
+
+	* Fix ngram -counts with -use-server (from Ergun Bicici).
+
+	* Fixed memory allocation bug in FLM tag vocabulary handling that could
+	lead to crash when interpolating several FLMs.
+	
+	* Rewrote make-batch-counts scripts to
+	  - avoid problems with limits on command line length
+	  - support systems that don't have compressed file I/O.
+	
+	* Modified merge-batch-counts script to
+	  - ensure that unmerged files are always merged in the next iteration,
+	  to avoid file size imbalance (suggested by Alex Marin)
+	  - support systems that don't have compressed file I/O.
+
+	* Fixed a portability issue with Intel icc version 7.0.
+
+	* compute-sclite fixed to invoke csrfilt.sh script with -t option.
+
+1.5.9	24 August 2009
+
+	Functionality:
+	
+	* Added ngram-count -text-has-weights option to scale counts on a 
+	per-sentence basis.
+
+	* LMStats::countString() and NgramStats::countSentence() methods 
+	generalized to take optional weight string argument (to support the
+	above change).
+
+ 	* Added compile-time option to generate position-independent code 
+	(make MAKE_PIC=yes, see INSTALL file).
+
+	* Added support for xz-compressed files (.xz files offer better
+	compression than .gz at the expense of time and memory).
+	The xz tool has to be installed separately (http://tukaani.org/xz).
+
+	Bug fixes:
+
+	* wlat-to-pfsg generates NULL output labels for initial/final nodes
+	with sentence start/end tags (because PFSGs encode those implicitly).
+
+	* TaggedVocab: check and report if number of tags/words exceeds max.
+	Make number of bits allocated for tags/words proportional to 
+	word size. Parse word/tag strings such that last (not the first)
+	slash (/) character is treated as the delimiter.
+
+	* Documented the lattice-tool -ngrams-time-tolerance option that had
+	been previously implemented but omitted from the man page.
+
+1.5.10	7 Jan 2010
+	
+	Functionality:
+
+	* New option ngram -float-counts to allow the -counts option to
+	process fractional counts.
+
+	* The LM::pplCountsFile() and LM::countsProb() have been templatized
+	(as a function of count type), and the TextStats class now uses double
+	float counts, all in support of the above change.
+
+	* New option lattice-tool -word-posteriors-for-sentences for computing
+	word posteriors based on confusion networks (contributed by Jing Zheng).
+
+	* lattice-tool now performs confusion network decoding and ngram 
+	computation AFTER rescoring or expansion with LMs.  Therefore the two
+	operations can be combined in a single run where previously two
+	invocations were necessary.
+
+	* Added fsm-to-pfsg map_epsilon= option, to translate FSM <eps> symbols
+	to another label.
+
+	* New script filter-event-counts to preprocess a count file for use 
+	with ngram -counts .
+
+	* lattice-tool continues processing when one of the lattices specified
+	with -in-lattice-list cannot be opened.
+
+	* Regression tests have been moved to module subdirectories
+	(lm/test, flm/test, lattice/test) and can now be run from the 
+	top-level with "make test".  Decompression of data files for platforms
+	that don't support compressed file I/O is now automatic.
+
+	Documentation:
+
+	* Added new FAQ items covering handling of OOVs and zeroprob words,
+	based on input from Nitin Madnani.
+
+	* Correction to the man page description of the ngram -count-order
+	option:  It limits the maximal order of processed ngrams.
+
+	* Corrected and updated ordered list of processing steps in
+	lattice-tool man page.
+
+	Bug fixes:
+
+	* Use double precision to record log probs in TextStats object.
+
+	* Workaround for a deficiency in Intel's 7.00 C++ compiler.
+
+	* lattice-tool was not handling PFSG lattices in (1best or N-best) 
+	decoding with a LM.
+
+	* lattice-tool will exit with a non-zero status if any of the lattice
+	operations fail.
+
+	* Fixed some format string/argument mismatches that could bite on
+	64-bit platforms.
+
+	* Updated usage of sort with key specification to conform to latest
+	POSIX standard.  The old syntax was no longer working with recent
+	GNU sort versions.
+
+1.5.11	16 June 2010
+
+	Functionality:
+
+	* New program "maxalloc" to find the maximum amount of memory that
+	can be allocated by a user process in the current environment.
+	May be useful to debug out-of-memory conditions.
+
+	Bug fixes:
+
+	* Avoid deleting low-posterior null tokens when aligning lattices into
+	word meshes.
+
+	* Map explicit start/end-of-sentence tags in HTK lattices to null, 
+	since they are already implicitly attached to the start/end nodes
+	of the lattice (LM scoring gives anomalous results on repeated tags).
+
+	* option.[ch]: fixed declaration issues to avoid compiler warnings.
+
+	* Moved man page for the option library functions to misc/doc.
+
+	Bug fixes:
+
+	* Fixes to compile cleanly with gcc -Wall -Wno-unused-variable
+	-Wno-uninitialized.
+	* Fixed a problem with gcc-4.4 compiles.
+	* Fixed a problem with macro definition of fseeko() ftello().
+	* Fixed a problem with the lm/ngram-count-wb-subset test, which could
+	fail after the test data is uncompressed.
+	* Use gzip -d to read gzipped files, avoids shell wrapper overhead.
+
+1.5.12  20 Jan 2011
+
+	Functionality:
+
+	* Enable lattice-tool -old-decoding if -nbest-duplicates is specified
+	(and warn about it).  
+	* Support make-big-lm -wbdiscount option.
+	* New option ngram -prune-history-lm, for specifying a separate LM that
+	computes the history marginal probablities needed for N-gram pruning
+	purposes.  Inspired by C. Chelba et al., "Study on Interaction Between
+	Entropy Pruning and Kneser-Ney Smoothing", Proc. Interspeech-2010.
+	* Added optional limitVocab argument to VocabMultiMap::read() function.
+	This is now used by lattice-tool -limit-vocab to avoid reading parts of
+	the dictionary that are not used in the input.
+	* Added an option -zeroprob-word to ngram and lattice-tool. It
+	specifies a word that should be used as a replacement if the current
+	word has probability zero.  This is different from -map-unk which only
+	applies to OOV words and actually replaces the word label in the output
+	lattice, if any.
+	* Added new wrapper LM class NonzeroLM, to implement the above.
+
+	Portability:
+
+	* New MACHINE_TYPE values for Android-ARM platform: android-armeabi and
+	android-armeabi-v7a (from Mike Frandsen).
+	* Deleted the htk directory from distribution; it was obsolete and not
+	documented.
+
+	Bug fixes:
+
+	* Prob.h: guard against under/overflow in intlog and bytelog
+	conversions.
+	* Replaced gunzip with gzip -d in all scripts (for efficiency).
+	* Better option checking in make-big-lm, disallowing mixing of
+	discounting methods and use of discounting flags that are not supported.
+	* Undefine max() macro in Trellis.h to avoid conflict with some system
+	header files.
+	* Better support for recent MSVC versions in
+	common/Makefile.machine.msvc (from Mile Frandsen).
+	* add-pauses-to-pfsg: prevent existing pause nodes from being processed.
+
+1.6.0  8 December 2011
+
+	Functionality:
+
+	* Added lattice-tool -loglinear-mix option.
+	* Add platform-independent strtok_r() function, and replaced all
+	instances of strtok().
+	  Eventual goal is thread safety and re-entrance.
+	* Modified File object to allow I/O to/from strings as well as files.
+	* Modified code for reading and writing HTK lattices and NBest lists to
+	enable I/O to/from strings as well as files, for in-memory processing.
+	* Added special-purpose malloc/free implementation for SArray and LHash
+	data structures, to reduce overhead for small allocation chunks.  Also
+	added some allocation statistics reporting (enabled by ngram -memuse
+	-debug 1).
+	* Added the metadb config file lookup tool.
+	* Cumulative binomial script (cumbin) command accepts optional 3rd
+	argument to set p parameter.
+
+	Bug fixes:
+	
+	* Correctly handle lattice-tool -use-server when generating nbest lists
+	(server- based LM was previously ignored).
+	* lattice-tool -split-multiwords no longer splits words appearing in 
+	-ignore-vocab.
+	* lattice-tool allowed to operate on HTK lattices containing unrecognized
+	header fields (but warn about them).
+	* Updated reference output for many build platforms to avoid spurious
+	test failures.
+	* Avoid abnormal backoff weights when lower-order probabilities sum to
+	almost one.
+	* Avoid test failures for merge-batch-counts and make-ngram-pfsg due to
+	locale differences.
+	* Fix maxalloc for 64bit systems where "long" is still 32 bits.
+
+	Building:
+
+	* Added Microsoft Visual Studio 2005 projects, see
+	doc/README.windows-msvc-visual-studio for more information.
+	* Added new Makefile targets superclean and pristine to return
+	SRILM to pre-build state.
+	* Add Makefiles for MACHINE_TYPE macosx-m32 and macosx-m64 to
+	allow explicit 32- or 64-bit compilation on MacOS X 10.6.  Updated
+	GAWK location to allow tests to succeed.
+	* Replaced various C-shell helper scripts in sbin/ with Bourne-shell 
+	versions, for greater portability.
+	* New MACHINE_TYPE=msvc64 for 64bit builds with Visual Studio.
+
+	Documentation:
+
+	* Added doc/asru2011-srilm.pdf, a paper describing SRILM updates since
+	2002.  Old ICSLP paper renamed to doc/icslp2002-srilm.pdf .
+
+1.7.0	23 December 2012
+
+	Functionality:
+
+	* ngram -codebook option for reading of Ngram LMs with quantized parameters
+	(contributed by Microsoft).
+	* ngram -msweb-lm option for obtaining LM probabilities from the Microsoft
+	Web N-gram service (web-ngram.research.microsoft.com). You need to obtain
+	a user ID to use this service, see man ngram for details (contributed by
+	Microsoft).
+	* Added support for dictionary-induced word distance metrics to
+	nbest-optimize (-dictionary option).
+	* Added support for matrix-defined word distance metrics to
+	nbest-optimize (-distances option).
+	* ngram -debug 4 -ppl outputs ranking statistics (number of times correct 
+	word was in top 1, 5, 10), as well as quadratic and absolute loss averages
+	(based on code from Omid Madani).
+	* nbest-optimize accepts n-best list in SRInterp format and generates
+	SRInterp format rover-control file (weights file), when -srinterp-format
+	is specified. 
+	* nbest-optimize accepts SRInterp counts file that contains BLEU and TER
+	counts info.
+	* lattice-tool -read-mesh will try to preserve acoustic information
+	(times, scores, pronunciations) if they are encoded in the input confusion
+	network.
+	* Support reading of text files in UTF-8 and UTF-16 encodings.  All string
+	data is internally represented, and output, as ASCII/UTF-8 (contributed
+	by Microsoft).
+	This feature uses the iconv library.  Support for this feature can be
+	disabled by compiling with "NO_ICONV=anything" on the make command line.
+
+	Portability:
+
+	* Ported LM client/server code to Winsock API (native socket library in
+	Windows), enabling this functionality for mingw and MSVC platforms
+	(contributed by Microsoft).
+	* Let machine-type script return 64bit platform names for Linux and Solaris
+	x86 when appropriate.  This implies that 64bit binaries are built by
+	default on machines that support them.
+	* Array.h tweak for clang compiler (from kutlak.roman@gmail.com).
+	* Work around a namespace problem in C++11 (from kutlak.roman@gmail.com).
+	* Use size_t for hash codes to ensure word width matches pointer type.
+	* Fixes for mingw32 build, using Windows APIs for sockets and UTF
+	conversion (contributed by Microsoft).
+	* Support for 64bit mingw build (MACHINE_TYPE=win64).
+	* Updates for MacOSX (MACHINE_TYPE=macosx, thanks to Chuck Wooters).
+	* Deal with nonportability of isfinite() and isnan().
+	* Changes for thread-safety (by Kyle McIntyre). See doc/README-THREADS
+	for details.
+	- Modified the remove() methods in various container classes to return 
+	Boolean instead of a pointer to the removed element.  The removed element
+	can be gotten with an optional reference argument. This eliminates the 
+	need for a global static variable.
+	- Use STL sort() instead of qsort() in LHash and SArray sorted iterations.
+	- Replaced all static variables with thread-local storage via the TLSWrapper
+	class, requiring the pthread library. This is available on most platforms, 
+	but can be disabled at compile-time with -DNO_TLS.
+
+	Bug fixes:
+
+	* NgramLM backoff computation fixed to avoid spurious insertion of nonzero	
+	unigram probabilities and non-unity backoff weights (resulting from
+	numerator/denominator values below Prob_Epsilon).
+	* lattice-tool does a better job inferring the lattice basename from the 
+	UTTERANCE string embedded in HTK lattices.
+	* Trellis class: use a secondary sorting criterion to make N-best output
+	deterministic.
+	* WordMesh class: use posterior word probability to decide which acoustic
+	information to keep when merging hyps, instead of duration-normalized
+	acoustic stores as before.  This leads to fewer words with out-of-order
+	timestamps when extracting one-best from confusion networks.
+	* fix-ctm script: Check for out-of-order word timestamps and adjust them
+	minimally as needed to produce a monotonic sequence, as required for
+	CTM sorting.
+	* Fixed bug in NgramCountLM estimation procedure reported by ariya@jhu.edu.
+	* Allow ngram -hidden-vocab to read hidden event properties described in
+	man page.
+	* Fixed bug in ngram -hidden-vocab -write-lm output.
+	* Avoid crash when ngram -hidden-not -ppl is used with debug level 2.
+	* Fixed (very rare) bug by which ngram -prune might remove all ngrams
+	sharing a common context.
+	* Improved ngram -prune-lowprobs by also removing backoff weights that
+	have become useless (suggested by Arlo Faria).
+	* Check for successful search for HTK lattice start/end nodes, if not
+	explicitly specified (reported by nshmyrev@yandex.ru).
+	* Handle infinity scores in lattice rescoring, and catch NaN scores when
+	reading HTK lattices.
+	* make-kn-discounts checks for negative discount values and reports
+	error if appropriate.
+	* nbest-optimize accepts combined BLEU and error rate objective via switch
+	-error-bleu-ratio R (R specifies the error rate weight).
+	* lattice-tool -timeout option now uses sigsetjmp/siglongjmp to handle
+	timeout alarms.  This is necessary in Linux-compatible (including cygwin)
+	systems to handle alarms repeatedly.
+	* Fixed a bug reading NBestList2.0 format without phone information (led
+	to malformed confusion network output).
+	* Fixed a bug in Ngram::contextID() that was causing incorrect expansion
+	of lattices with pruned backoff models.
+	* Fixed a bug in the lattice-tool -keep-unk implementation that was
+	sometimes allowing an OOV word label to be output as <unk>.
+	* Removed some pseudo-randomness in ngram-class so that results are more
+	invariant to OPTION setting and platform properties.
+	* Avoid differences due to machine arithmetic in word mesh alignment,
+	making confusion network building and posterior decoding more stable 
+	across platforms.
+	* Exclude metatags when writing out the vocabulary of binary Ngram LMs.
+	* Fixed some missing dependencies in Visual Studio solution file.
+
+1.7.1	4 June 2014
+
+	* Updated INSTALL, Copyright.  Added ACKNOWLEDGEMENTS.
+
+	Functionality:
+
+	* Integrated the maximum entropy extension by Tanel Alumae, described
+	at http://www.phon.ioc.ee/~tanela/srilm-me/ .
+	Please cite Tanel's paper (copied here in doc/is2010-maxent.pdf) if you
+	use this functionality in your research.
+	* Enable LM server to process multiple commands in a single message
+	(separated by newlines).  This capability was never documented, but
+	existed in the first implementation that used read/write system calls,
+	but was lost when we switched to recv/send calls.
+	* Generalized the BayesMix LM class to allow an arbitrary number of
+	mixture components, similar to LoglinearMix.
+	* Added the ngram -context-priors option to read context-dependent
+	mixture weight priors from a file.
+	* Added the ngram -read-mix-lms option to read the list of interpolated
+	LMs, weights and options from a file, specified by the -lm option.
+	* Use zlib for I/O from/to gzipped files. Benefits are: (a) works with
+	native Windows binaries, (b) avoids subprocess, (c) allows reading
+	(though still not writing) of gzipped binary LM and count files.
+	* ngram-count -gtNmin options accept floating point values for more
+	flexibility with LM estimation from fractional counts.
+	* Added lattice-tool -set-lattice-names option to preserve input 
+	filenames inside lattices.
+	* New script replace-unk-words, for replacing OOV words relative to
+	a vocabulary with <unk> tag.
+	* Added new lattice-tool options -hyp-list -hyp-file -hyp2-list
+	-hyp2-file -add-hyps to add ASR hypotheses into word mesh (confusion
+	network). The added options are similar to -ref-list -ref-file -add-refs,
+	except that the added hypothesized words will not be indicated as 
+	reference words in the word mesh.
+	* Added a function in WordMesh to compute slot-to-slot alignment
+	between two confusion networks.
+	* Added ngram-class option to limit number of words per class (from
+	seppo.enarvi@aalto.fi).
+
+	Portability:
+
+	* Added support for 64bit cygwin builds (MACHINE_TYPE=cygwin64).
+
+	Bug fixes:
+
+	* ngram -rescore-ngram was not setting the handling of special word
+	tokens (<s>, </s>) if the rescored LM was being evaluated in the same
+	run.
+	* ngram-count -skip needs to read counts one order higher than specified
+	by -order .
+	* SkipNgram will now try to reestimate the discounting parameters from 
+	expected counts on each EM iteration (but fall back on initial parameters
+	if that fails, e.g., for discounting methods that cannot handle float
+	counts).
+	* SubVocab instances' handling of metatags and nonevent words is now
+	tied to the base Vocab instance.
+	* Avoid anomalies in random word generation due to nonzero probabilities
+	for nonwords.
+	* Cleaned-up select-vocab script from Anand Venkataraman.  Now works
+	with perl 5.12 and gives consistent results on different platforms.
+	Added a test case.
+	* Fixed removeTrie() bug that was leading to memory leak in Ngram 
+	destructor.
+	* Fixed bug in LHash iterator that lead to potential double enumeration
+	of items after deletions, and could affect Ngram pruning results.
+	* Allow number of ngrams in ARPA LM to exceed 2^31. (Vocabulary size
+	is still limited to 2^32.)
+	* Initialize key and data objects in SArray and LHash containers after 
+	allocation.
+	* Pass Trellis state parameters by reference to avoid copying of
+	potentially complex objects.
+	* Fixed memory access error in Ngram::clear() for order-1 models.
+	* Fixed a problem handling null string states in Trellis.
+	* Fix to preserve double precision in NBest acoustic and LM scores.
+	* Fixed an error concerning the use of -gtNmin options in the srilm-faq(7)
+	man page pointed out by dugast@systran.fr.
+        * If a lattice-tool input lattice is a word mesh, avoid calling
+	alignLattice() since the input is already a word mesh.
+	* Fixes to reading/writing of quantization codebook files.
+	* Fixed header comment and test program for Map2::remove().
+
+$Date: 2014-06-04 20:34:24 $
+

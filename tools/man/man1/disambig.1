@@ -1,0 +1,420 @@
+.\" $Id: disambig.1,v 1.32 2013/03/09 04:13:59 stolcke Exp $
+.TH disambig 1 "$Date: 2013/03/09 04:13:59 $" "SRILM Tools"
+.SH NAME
+disambig \- disambiguate text tokens using an N-gram model
+.SH SYNOPSIS
+.B disambig 
+[\c
+.BR \-help ]
+.I option
+\&...
+.SH DESCRIPTION
+.B disambig
+translates a stream of tokens from a vocabulary V1 to a corresponding stream
+of tokens from a vocabulary V2, 
+according to a probabilistic, 1-to-many mapping.
+Ambiguities in the mapping are resolved by finding the V2 sequence with
+the highest posterior probability given the V1 sequence.
+This probability is computed from pairwise conditional probabilities P(V1|V2),
+as well as a language model for sequences over V2.
+.SH OPTIONS
+.PP
+Each filename argument can be an ASCII file, or a 
+compressed file (name ending in .Z or .gz), or ``-'' to indicate
+stdin/stdout.
+.TP
+.B \-help
+Print option summary.
+.TP
+.B \-version
+Print version information.
+.TP
+.BI \-text " file"
+Specifies the file containing the V1 sentences.
+.TP
+.BI \-map " file"
+Specifies the file containing the V1-to-V2 mapping information.
+Each line of
+.I file
+contains the mapping for a single word in V1:
+.nf
+	\fIw1\fP	\fIw21\fP [\fIp21\fP] \fIw22\fP [\fIp22\fP] ...
+.fi
+where
+.I w1
+is a word from V1, which has possible mappings
+.IR w21 ,
+.IR w22 ,
+\&... from V2.
+Optionally, each of these can be followed by a numeric string for the
+probability
+.IR p21 ,
+which defaults to 1.
+The number is used as the conditional probability P(\fIw1\fP|\fIw21\fP),
+but the program does not depend on these numbers being properly normalized.
+.TP
+.BI \-escape " string"
+Set an ``escape string.''
+Input lines starting with
+.I string
+are not processed and passed unchanged to stdout instead.
+This allows associated information to be passed to scoring scripts etc.
+.TP
+.BI \-text\-map " file"
+Processes a combined text/map file.
+The format of
+.I file
+is the same as for
+.BR \-map ,
+except that the 
+.I w1
+field on each line is interpreted as a word 
+.I token 
+rather than a word 
+.IR type .
+Hence, the V1 text input consists of all words in column 1 of
+.I file
+in order of appearance.
+This is convenient if different instances of a word have different mappings.
+There is no implicit insertion of begin/end sentence tokens in this 
+mode.  Sentence boundaries should be indicated explicitly by 
+lines of the form
+.nf
+	</s>	</s>
+	<s>	<s>
+.fi
+An escaped line (see 
+.BR \-escape )
+also implicitly marks a sentence boundary.
+.TP
+.BR \-classes " file"
+Specifies the V1-to-V2 mapping information in 
+.BR classes-format (5).
+Class labels are interpreted as V2 words, and expansions as V1 words.
+Multi-word expansions are not allowed.
+.TP
+.B \-scale
+Interpret the numbers in the mapping as P(\fIw21\fP|\fIw1\fP).
+This is done by dividing probabilities by the unigram probabilities of
+.IR w21 ,
+obtained from the V2 language model.
+.TP
+.B \-logmap
+Interpret numeric values in map file as log probabilities, not probabilities.
+.TP
+.BI \-lm " file"
+Specifies the V2 language model as a standard ARPA N-gram backoff model file
+.BR ngram-format (5).
+The default is not to use a language model, i.e., choose V2 tokens
+based only on the probabilities in the map file.
+.TP
+.BI \-use-server " S"
+Use a network LM server (typically implemented by 
+.BR ngram (1)
+with the 
+.B \-server-port
+option) as the main model.
+The server specification
+.I S
+can be an unsigned integer port number (referring to a server port running on
+the local host),
+a hostname (referring to default port 2525 on the named host),
+or a string of the form 
+.IR port @ host ,
+where
+.I port 
+is a portnumber and 
+.I host
+is either a hostname ("dukas.speech.sri.com")
+or IP number in dotted-quad format ("140.44.1.15").
+.br
+For server-based LMs, the
+.B \-order
+option limits the context length of N-grams queried by the client
+(with 0 denoting unlimited length).
+Hence, the effective LM order is the mimimum of the client-specified value
+and any limit implemented in the server.
+.br
+When
+.B \-use-server 
+is specified, the arguments to the options
+.BR \-mix-lm ,
+.BR \-mix-lm2 ,
+etc. are also interpreted as network LM server specifications provided
+they contain a '@' character and do not contain a '/' character.
+This allows the creation of mixtures of several file- and/or
+network-based LMs.
+.TP
+.B \-cache-served-ngrams
+Enables client-side caching of N-gram probabilities to eliminated duplicate
+network queries, in conjunction with
+.BR \-use-server .
+This may result  in a substantial speedup
+but requires memory in the client that may grow linearly with the
+amount of data processed.
+.TP
+.BI \-order " n"
+Set the effective N-gram order used by the language model to
+.IR n .
+Default is 2 (use a bigram model).
+.TP
+.BI \-mix-lm " file"
+Read a second N-gram model for interpolation purposes.
+.TP
+.B \-factored
+Interpret the files specified by 
+.BR \-lm
+and
+.B \-mix-lm
+as a factored N-gram model specification.
+See 
+.BR ngram (1)
+for details.
+.TP
+.BR \-count-lm
+Interpret the model specified by
+.BR \-lm
+(but not
+.BR \-mix-lm )
+as a count-based LM.
+See
+.BR ngram (1)
+for details.
+.TP
+.BI \-lambda " weight"
+Set the weight of the main model when interpolating with
+.BR \-mix-lm .
+Default value is 0.5.
+.TP
+.BI \-mix-lm2 " file"
+.TP
+.BI \-mix-lm3 " file"
+.TP
+.BI \-mix-lm4 " file"
+.TP
+.BI \-mix-lm5 " file"
+.TP
+.BI \-mix-lm6 " file"
+.TP
+.BI \-mix-lm7 " file"
+.TP
+.BI \-mix-lm8 " file"
+.TP
+.BI \-mix-lm9 " file"
+Up to 9 more N-gram models can be specified for interpolation.
+.TP
+.BI \-mix-lambda2 " weight"
+.TP
+.BI \-mix-lambda3 " weight"
+.TP
+.BI \-mix-lambda4 " weight"
+.TP
+.BI \-mix-lambda5 " weight"
+.TP
+.BI \-mix-lambda6 " weight"
+.TP
+.BI \-mix-lambda7 " weight"
+.TP
+.BI \-mix-lambda8 " weight"
+.TP
+.BI \-mix-lambda9 " weight"
+These are the weights for the additional mixture components, corresponding
+to
+.B \-mix-lm2
+through
+.BR \-mix-lm9 .
+The weight for the
+.B \-mix-lm 
+model is 1 minus the sum of 
+.B \-lambda
+and 
+.B \-mix-lambda2
+through
+.BR \-mix-lambda9 .
+.TP
+.BI \-context-priors " file"
+Read context-dependent mixture weight priors from
+.IR file .
+Each line in 
+.I file 
+should contain a context N-gram (most recent word first) followed by a vector 
+of mixture weights whose length matches the number of LMs being interpolated.
+.TP
+.BI \-bayes " length"
+Interpolate models using posterior probabilities
+based on the likelihoods of local N-gram contexts of length
+.IR length .
+The 
+.B \-lambda 
+values are used as prior mixture weights in this case.
+This option can also be combined with
+.BR \-context-priors ,
+in which case the 
+.I length
+parameter also controls how many words of context are maximally used to look up
+mixture weights.
+If 
+.BR \-context-priors
+is used without 
+.BR \-bayes ,
+the context length used is set by the
+.B \-order 
+option and Bayesian interpolation is disabled, as when
+.I scale
+(see next) is zero.
+.TP
+.BI \-bayes-scale " scale"
+Set the exponential scale factor on the context likelihood in conjunction
+with the
+.B \-bayes
+function.
+Default value is 1.0.
+.TP
+.BI \-lmw " W"
+Scales the language model probabilities by a factor 
+.IR W .
+Default language model weight is 1.
+.TP
+.BI \-mapw " W"
+Scales the likelihood map probability by a factor
+.IR W .
+Default map weight is 1.
+Note: For Viterbi decoding (the default) it is equivalent to use
+.BI \-lmw " W"
+or 
+.BI \-mapw " 1/W",
+but not for forward-backward computation.
+.TP
+.B \-tolower1
+Map input vocabulary (V1) to lowercase, removing case distinctions.
+.TP
+.B \-tolower2
+Map output vocabulary (V2) to lowercase, removing case distinctions.
+.TP
+.B \-keep-unk
+Do not map unknown input words to the <unk> token.
+Instead, output the input word unchanged.
+This is like having an implicit default mapping for unknown words to
+themselves, except that the word will still be treated as <unk> by the language
+model.
+Also, with this option the LM is assumed to be open-vocabulary
+(the default is close-vocabulary).
+.TP
+.BI \-vocab-aliases " file"
+Reads vocabulary alias definitions from
+.IR file ,
+consisting of lines of the form
+.nf
+	\fIalias\fP \fIword\fP
+.fi
+This causes all V2 tokens
+.I alias
+to be mapped to
+.IR word ,
+and is useful for adapting mismatched language models.
+.TP
+.B \-no-eos
+Do no assume that each input line contains a complete sentence.
+This prevents end-of-sentence tokens </s> from being appended automatically.
+.TP
+.B \-continuous
+Process all words in the input as one sequence of words, irrespective of
+line breaks.
+Normally each line is processed separately as a sentence.
+V2 tokens are output one-per-line.
+This option also prevents sentence start/end tokens (<s> and </s>)
+from being added to the input.
+.TP
+.B \-fb
+Perform forward-backward decoding of the input (V1) token sequence.
+Outputs the V2 tokens that have the highest posterior probability,
+for each position.
+The default is to use Viterbi decoding, i.e., the output is the
+V2 sequence with the higher joint posterior probability.
+.TP
+.B \-fw-only
+Similar to 
+.BR \-fb ,
+but uses only the forward probabilities for computing posteriors.
+This may be used to simulate on-line prediction of tags, without the
+benefit of future context.
+.TP
+.B \-totals
+Output the total string probability for each input sentence.
+.TP
+.B \-posteriors
+Output the table of posterior probabilities for each 
+input (V1) token and each V2 token, in the same format as
+required for the
+.B \-map
+file.
+If
+.B \-fb
+is also specified the posterior probabilities will be computed using
+forward-backward probabilities; otherwise an approximation will be used
+that is based on the probability of the most likely path containing 
+a given V2 token at given position.
+.TP
+.BI \-nbest " N"
+Output the
+.I N
+best hypotheses instead of just the first best when
+doing Viterbi search.
+If
+.IR N >1,
+then each hypothesis is prefixed by the tag
+.BI NBEST_ n " " x ,
+where
+.I n
+is the rank of the hypothesis in the N-best list and
+.I x 
+its score, the negative log of the combined probability of transitions
+and observations of the corresponding HMM path.
+.TP
+.BI \-write-counts " file"
+Outputs the V2-V1 bigram counts corresponding to the tagging performed on
+the input data.
+If 
+.B \-fb
+was specified these are expected counts, and otherwise they reflect the 1-best
+tagging decisions.
+.TP
+.BI \-write-vocab1 " file"
+Writes the input vocabulary from the map (V1) to
+.IR file .
+.TP
+.BI \-write-vocab2 " file"
+Writes the output vocabulary from the map (V2) to
+.IR file .
+The vocabulary will also include the words specified in the language model.
+.TP
+.BI \-write-map " file"
+Writes the map back to a file for validation purposes.
+.TP
+.B \-debug
+Sets debugging output level.
+.PP
+Each filename argument can be an ASCII file, or a compressed
+file  (name  ending  in  .Z  or  .gz),  or ``-'' to indicate
+stdin/stdout.
+.SH BUGS
+The
+.B \-continuous
+and 
+.B \-text\-map
+options effectively disable
+.BR \-keep-unk ,
+i.e., unknown input words are always mapped to <unk>.
+Also, 
+.B \-continuous
+doesn't preserve the positions of escaped input lines relative to
+the input.
+.SH "SEE ALSO"
+ngram-count(1), ngram(1), hidden-ngram(1), training-scripts(1),
+ngram-format(5), classes-format(5).
+.SH AUTHOR
+Andreas Stolcke <stolcke@speech.sri.com>,
+.br
+Anand Venkataraman <anand@speech.sri.com>.
+.br
+Copyright 1995\-2007 SRI International
