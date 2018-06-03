@@ -154,6 +154,13 @@ def get_args():
                         steps/nnet3/get_saturation.pl) exceeds this threshold
                         we scale the parameter matrices with the
                         shrink-value.""")
+    parser.add_argument("--trainer.optimization.backstitch-training-scale", type=float,
+                        dest='backstitch_training_scale', default=0.0,
+                        help="""backstitch training factor. if 0 then in the normal training mode.""")
+    parser.add_argument("--trainer.optimization.backstitch-training-interval",
+                        type=int,
+                        dest='backstitch_training_interval', default=1,
+                        help="""do backstitch training with the specified interval of minibatches.""")   
     # RNN-specific training options
     parser.add_argument("--trainer.deriv-truncate-margin", type=int,
                         dest='deriv_truncate_margin', default=None,
