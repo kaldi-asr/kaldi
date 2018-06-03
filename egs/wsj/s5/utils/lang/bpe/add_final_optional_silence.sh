@@ -11,9 +11,9 @@ if [ $# -ne 1 ]; then
   echo "Usage: $0  <lang>"
   echo " Add final optional silence to lexicon FSTs (L.fst and L_disambig.fst) in  "
   echo " lang/ directory <lang>."
-  echo "This can be useful in systems with byte-pair encoded (BPE) lexicons, in which"
-  echo "the word-initial silence is part of the lexicon, so we turn off the standard optional"
-  echo " silence in the lexicon"
+  echo " This can be useful in systems with byte-pair encoded (BPE) lexicons, in which"
+  echo " the word-initial silence is part of the lexicon, so we turn off the standard"
+  echo " optional silence in the lexicon"
   echo "options:"
   echo "   --final-sil-prob <final silence probability>		# default 0.5"
   exit 1;
