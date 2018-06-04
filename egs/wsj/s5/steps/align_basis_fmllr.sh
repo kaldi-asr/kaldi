@@ -13,7 +13,7 @@
 # case the number of jobs must match the source directory.
 
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
@@ -75,7 +75,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) sifeats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir    
+    cp $srcdir/final.mat $dir
    ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
@@ -88,7 +88,7 @@ else
   alimdl=$srcdir/final.mdl
 fi
 [ ! -f $mdl ] && echo "$0: no such model $mdl" && exit 1;
-alimdl_cmd="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/boost_phones.csl` $alimdl - |"
+alimdl_cmd="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $alimdl - |"
 mdl_cmd="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_silence.csl` $mdl - |"
 
 ## Work out where we're getting the graphs from.
@@ -101,7 +101,7 @@ else
   graphdir=$dir
   if [ $stage -le 0 ]; then
     echo "$0: compiling training graphs"
-    tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";   
+    tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
     $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
       compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
         "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
@@ -138,7 +138,7 @@ if [ $stage -le 2 ]; then
   fi
 fi
 
-feats="$sifeats transform-feats ark:$dir/pre_trans.JOB ark:- ark:- |"
+feats="$sifeats transform-feats ark:$dir/trans.JOB ark:- ark:- |"
 
 if [ $stage -le 3 ]; then
   echo "$0: doing final alignment."

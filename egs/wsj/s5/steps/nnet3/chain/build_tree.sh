@@ -22,9 +22,11 @@ cmd=run.pl
 context_opts=  # e.g. set this to "--context-width 5 --central-position 2" for quinphone.
 cluster_thresh=-1  # for build-tree control final bottom-up clustering of leaves
 frame_subsampling_factor=1
-leftmost_questions_truncate=10
+alignment_subsampling_factor=
+leftmost_questions_truncate=-1  # note: this option is deprecated and has no effect
 tree_stats_opts=
 cluster_phones_opts=
+repeat_frames=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -33,12 +35,29 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 5 ]; then
-  echo "Usage: steps/train_sat.sh <#leaves> <data> <lang> <ali-dir> <exp-dir>"
-  echo " e.g.: steps/train_sat.sh 2500 15000 data/train_si84 data/lang exp/tri2b_ali_si84 exp/tri3b"
+  echo "Usage: $0 <#leaves> <data> <lang> <ali-dir> <exp-dir>"
+  echo " e.g.: $0 --frame-subsampling-factor 3 \\"
+  echo "   --context-opts '--context-width=2 --central-position=1'  \\"
+  echo "    3500 data/train_si84 data/lang_chain exp/tri3b_ali_si284_sp exp/chain/tree_a_sp"
   echo "Main options (for others, see top of script file)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
   echo "  --stage <stage>                                  # stage to do partial re-run from."
+  echo "  --repeat-frames <true|false>                     # Only affects alignment conversion at"
+  echo "                                                   # the end. If true, generate an "
+  echo "                                                   # alignment using the frame-subsampled "
+  echo "                                                   # topology that is repeated "
+  echo "                                                   # --frame-subsampling-factor times "
+  echo "                                                   # and interleaved, to be the same "
+  echo "                                                   # length as the original alignment "
+  echo "                                                   # (useful for cross-entropy training "
+  echo "                                                   # of reduced frame rate systems)."
+  echo "  --context-opts <option-string>                   # Options controlling phonetic context;"
+  echo "                                                   # we suggest '--context-width=2 --central-position=1',"
+  echo "                                                   # which is left bigram."
+  echo "  --frame-subsampling-factor <factor>              # Factor (e.g. 3) controlling frame subsampling"
+  echo "                                                   # at the neural net output, so the frame rate at"
+  echo "                                                   # the output is less than at the input."
   exit 1;
 fi
 
@@ -56,7 +75,6 @@ oov=`cat $lang/oov.int`
 nj=`cat $alidir/num_jobs` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl`
 ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
-sdata=$data/split$nj;
 splice_opts=`cat $alidir/splice_opts 2>/dev/null` # frame-splicing options.
 cmvn_opts=`cat $alidir/cmvn_opts 2>/dev/null`
 delta_opts=`cat $alidir/delta_opts 2>/dev/null`
@@ -70,7 +88,13 @@ utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exi
 cp $lang/phones.txt $dir || exit 1;
 
 echo $nj >$dir/num_jobs
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+if [ -f $alidir/per_utt ]; then
+  sdata=$data/split${nj}utt
+  utils/split_data.sh --per-utt $data $nj
+else
+  sdata=$data/split$nj
+  utils/split_data.sh $data $nj
+fi
 
 # Set up features.
 
@@ -98,6 +122,10 @@ if [ $frame_subsampling_factor -gt 1 ]; then
   feats="$feats subsample-feats --n=$frame_subsampling_factor ark:- ark:- |"
 fi
 
+if [ -z $alignment_subsampling_factor ]; then
+  alignment_subsampling_factor=$frame_subsampling_factor
+fi
+
 if [ $stage -le -5 ]; then
   echo "$0: Initializing monophone model (for alignment conversion, in case topology changed)"
 
@@ -115,12 +143,11 @@ if [ $stage -le -5 ]; then
       $dir/mono.mdl $dir/mono.tree || exit 1;
 fi
 
-
 if [ $stage -le -4 ]; then
   # Get tree stats.
   echo "$0: Accumulating tree stats"
   $cmd JOB=1:$nj $dir/log/acc_tree.JOB.log \
-     convert-ali --frame-subsampling-factor=$frame_subsampling_factor \
+     convert-ali --frame-subsampling-factor=$alignment_subsampling_factor \
          $alidir/final.mdl $dir/mono.mdl $dir/mono.tree "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       acc-tree-stats $context_opts $tree_stats_opts --ci-phones=$ciphonelist $dir/mono.mdl \
          "$feats" ark:- $dir/JOB.treeacc || exit 1;
@@ -138,17 +165,8 @@ if [ $stage -le -3 ] && $train_tree; then
      $lang/phones/sets.int $dir/questions.int || exit 1;
   cat $lang/phones/extra_questions.int >> $dir/questions.int
   $cmd $dir/log/compile_questions.log \
-    compile-questions --leftmost-questions-truncate=$leftmost_questions_truncate \
-      $context_opts $lang/topo $dir/questions.int $dir/questions.qst || exit 1;
-
-  # questions_truncated.int will be needed later on when we build the phone
-  # language model for 'chain' training.  It's a mechanism of keeping the graph
-  # small.
-  if [ $leftmost_questions_truncate -gt 0 ]; then
-     head -n $leftmost_questions_truncate $dir/questions.int > $dir/questions_truncated.int
-  else
-    cp $dir/questions.int $dir/questions_truncated.int
-  fi
+    compile-questions $context_opts $lang/topo \
+      $dir/questions.int $dir/questions.qst || exit 1;
 
   echo "$0: Building the tree"
   $cmd $dir/log/build_tree.log \
@@ -167,16 +185,16 @@ fi
 
 if [ $stage -le -1 ]; then
   # Convert the alignments to the new tree.  Note: we likely will not use these
-  # converted alignments in the CTC system directly, but they could be useful
+  # converted alignments in the chain system directly, but they could be useful
   # for other purposes.
   echo "$0: Converting alignments from $alidir to use current tree"
   $cmd JOB=1:$nj $dir/log/convert.JOB.log \
-    convert-ali --frame-subsampling-factor=$frame_subsampling_factor \
-       $alidir/final.mdl $dir/1.mdl $dir/tree \
-     "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+    convert-ali --repeat-frames=$repeat_frames \
+      --frame-subsampling-factor=$alignment_subsampling_factor \
+      $alidir/final.mdl $dir/1.mdl $dir/tree \
+      "ark:gunzip -c $alidir/ali.JOB.gz|" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi
 
 cp $dir/1.mdl $dir/final.mdl
 
 echo $0: Done building tree
-

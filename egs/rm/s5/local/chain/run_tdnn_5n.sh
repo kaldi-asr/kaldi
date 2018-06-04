@@ -17,7 +17,6 @@ dir=exp/chain/tdnn_5n
 num_epochs=12
 initial_effective_lrate=0.005
 final_effective_lrate=0.0005
-leftmost_questions_truncate=-1
 max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=2
@@ -25,11 +24,12 @@ num_jobs_final=4
 minibatch_size=128
 frames_per_eg=150
 remove_egs=false
-
+#common_egs_dir=exp/chain/tdnn_5g/egs/
+common_egs_dir=
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -76,7 +76,6 @@ fi
 if [ $stage -le 6 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-    --leftmost-questions-truncate $leftmost_questions_truncate \
     --cmd "$train_cmd" 1200 data/train $lang $ali_dir $treedir
 fi
 
@@ -121,7 +120,7 @@ if [ $stage -le 8 ]; then
     --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
     --trainer.max-param-change $max_param_change \
-    --cleanup.remove-egs true \
+    --cleanup.remove-egs $remove_egs \
     --feat-dir data/train \
     --tree-dir $treedir \
     --lat-dir exp/tri3b_lats \

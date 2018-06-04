@@ -1,0 +1,17 @@
+
+# monophone system (shortest 10k)
+%WER 75.81 [ 8989 / 11858, 421 ins, 2691 del, 5877 sub ] exp/mono/decode_dev/wer_10_0.0
+# delta + delta-delta triphone system
+%WER 55.97 [ 6637 / 11858, 494 ins, 1664 del, 4479 sub ] exp/tri1/decode_dev/wer_14_0.5
+# LDA+MLLT system
+%WER 50.98 [ 6045 / 11858, 439 ins, 1564 del, 4042 sub ] exp/tri2b/decode_dev/wer_12_0.5
+# LDA+MLLT+SAT system
+%WER 51.76 [ 6138 / 11858, 627 ins, 1276 del, 4235 sub ] exp/tri3b/decode_dev/wer_12_0.0
+# LDA+MLLT+SAT system with silence probabilities 
+%WER 51.75 [ 6137 / 11858, 622 ins, 1282 del, 4233 sub ] exp/tri3b/decode_sp_dev/wer_12_0.5
+
+# chain tdnn system
+%WER 33.29 [ 3948 / 11858, 480 ins, 787 del, 2681 sub ] exp/chain/tdnn1a_sp/decode_dev/wer_9_1.0
+%WER 32.15 [ 3735 / 11617, 394 ins, 803 del, 2538 sub ] exp/chain/tdnn1a_sp/decode_test/wer_11_0.5
+%WER 33.20 [ 3937 / 11858, 514 ins, 734 del, 2689 sub ] exp/chain/tdnn1a_sp_online/decode_dev/wer_10_0.5
+%WER 32.04 [ 3722 / 11617, 451 ins, 723 del, 2548 sub ] exp/chain/tdnn1a_sp_online/decode_test/wer_10_0.5

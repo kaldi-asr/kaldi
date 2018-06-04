@@ -28,7 +28,7 @@ set -euo pipefail
 # Path where AMI gets downloaded (or where locally available):
 AMI_DIR=$PWD/wav_db # Default,
 case $(hostname -d) in
-  fit.vutbr.cz) AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV ;; # BUT,
+  fit.vutbr.cz) AMI_DIR=/mnt/matylda5/iveselyk/KALDI_AMI_WAV ;; # BUT,
   clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
   cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
 esac
@@ -56,7 +56,7 @@ if [ "$base_mic" == "mdm" ]; then
   PROCESSED_AMI_DIR=$AMI_DIR/beamformed
   if [ $stage -le 1 ]; then
     # for MDM data, do beamforming
-    ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
+    ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; extras/install_beamformit.sh; cd -;'" && exit 1
     local/ami_beamform.sh --cmd "$train_cmd" --nj 20 $nmics $AMI_DIR $PROCESSED_AMI_DIR
   fi
 else
@@ -78,6 +78,11 @@ if [ $stage -le 3 ]; then
     seconds_per_spk_max=30
     [ "$mic" == "ihm" ] && seconds_per_spk_max=120  # speaker info for ihm is real,
                                                     # so organize into much bigger chunks.
+
+    # Note: the 30 on the next line should have been $seconds_per_spk_max
+    # (thanks: Pavel Denisov.  This is a bug but before fixing it we'd have to
+    # test the WER impact.  I suspect it will be quite small and maybe hard to
+    # measure consistently.
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 30 \
       data/$mic/${dset}_orig data/$mic/$dset
   done

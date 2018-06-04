@@ -214,9 +214,8 @@ int main() {
     kaldi::CuRandGaussianVectorSpeedTest<double>(iter);
     fprintf(stderr, "--- ELAPSED %fs.\n\n", t.Elapsed());
 #if HAVE_CUDA == 1
-  } // NO for loop if 'HAVE_CUDA != 1',
-
+  } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 }

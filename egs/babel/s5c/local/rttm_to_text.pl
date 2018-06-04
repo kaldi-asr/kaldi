@@ -64,7 +64,7 @@ while ( <rttm_f> ) {
     @times = ();
     $filename = $_filename;
   }
- 
+
   #I don't really know what is the distinction between all
   #of these. Let's throw away the SPEAKER, as it does not
   #really contain information that is to be found in the transcript
@@ -91,12 +91,12 @@ while ( <rttm_f> ) {
     my $B = $times[-1][0];
     my $Aend = $times[-2][1];
     my $Bend = $times[-1][1];
-    
+
     #print  "WARNING: Elements in the RTTM file are not sorted for FILENAME $filename!\n";
     #print $times[-2][0] . " " . $times[-2][1] - $times[-2][0]. " " . $times[-2][2] . "\n";
     #print $times[-1][0] . " " . $times[-1][1] - $times[-1][0]. " " . $times[-1][2] . "\n";
     #print "\n";
-   
+
     my @sorted =  sort {$a <=> $b} ($A, $B, $Aend, $Bend);
     #print Dumper(\@sorted);
     $times[-1][0] = $sorted[0];
@@ -129,7 +129,7 @@ while ( <segments_f> ) {
   #if ($segmentname ne "10470_A_20111118_172644_000000" ) {
   #  next;
   #}
-  
+
   #print $filename . "\n";
 
   #print Dumper(\@times);

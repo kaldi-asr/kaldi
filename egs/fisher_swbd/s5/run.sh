@@ -1,12 +1,18 @@
 #!/bin/bash
 
 # It's best to run the commands in this one by one.
-
 . ./cmd.sh
 . ./path.sh
 mfccdir=mfcc
 set -e
 rescore=true
+
+# check for kaldi_lm
+which get_word_map.pl > /dev/null
+if [ $? -ne 0 ]; then
+  echo "This recipe requires installation of tools/kaldi_lm. Please run extras/kaldi_lm.sh in tools/" && exit 1;
+fi
+
 # prepare fisher data and put it under data/train_fisher
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
@@ -40,7 +46,7 @@ for f in spk2utt utt2spk wav.scp text segments reco2file_and_channel; do
 done
 
 # LM for train_all
-local/fisher_train_lms.sh 
+local/fisher_train_lms.sh
 #local/fisher_create_test_lang.sh
 # Compiles G for trigram LM
 LM=data/local/lm/3gram-mincount/lm_unpruned.gz
@@ -58,7 +64,7 @@ fi
 
 #local/eval2000_data_prep.sh /scail/group/deeplearning/speech/datasets/LDC2002S09/hub5e_00/ /scail/group/deeplearning/speech/datasets/LDC2002T43 || exit 1
 local/eval2000_data_prep.sh /export/corpora/LDC/LDC2002S09/hub5e_00 /export/corpora/LDC/LDC2002T43 || exit 1
- 
+
 #local/rt03_data_prep.sh /scail/group/deeplearning/speech/datasets/rt_03 || exit 1
 local/rt03_data_prep.sh /export/corpora/LDC/LDC2007S10 || exit 1
 
@@ -66,6 +72,12 @@ utils/fix_data_dir.sh data/train_all
 
 
 # Make MFCCs for the training set
+# spread the mfccs over various machines, as this data-set is quite large.
+if [[  $(hostname -f) ==  *.clsp.jhu.edu ]]; then
+  mfcc=$(basename $mfccdir) # in case was absolute pathname (unlikely), get basename.
+  utils/create_split_dir.pl /export/b{05,06,07,08}/$USER/kaldi-data/egs/fisher_swbd/s5/$mfcc/storage \
+    $mfccdir/storage
+fi
 steps/make_mfcc.sh --nj 100 --cmd "$train_cmd" data/train_all exp/make_mfcc/train_all $mfccdir || exit 1;
 utils/fix_data_dir.sh data/train_all
 utils/validate_data_dir.sh data/train_all
@@ -111,31 +123,31 @@ utils/data/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup
 utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
 utils/data/remove_dup_utts.sh 300 data/train data/train_nodup
 
-# The next commands are not necessary for the scripts to run, but increase 
-# efficiency of data access by putting the mfcc's of the subset 
+# The next commands are not necessary for the scripts to run, but increase
+# efficiency of data access by putting the mfcc's of the subset
 # in a contiguous place in a file.
-( . path.sh; 
+( . ./path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_10k_nodup/feats.scp{,.bak} 
+  cp data/train_10k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_10k_nodup.ark,$mfccdir/kaldi_fish_10k_nodup.scp \
   && cp $mfccdir/kaldi_fish_10k_nodup.scp data/train_10k_nodup/feats.scp
 )
-( . path.sh; 
+( . ./path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_30k_nodup/feats.scp{,.bak} 
+  cp data/train_30k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_30k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_30k_nodup.ark,$mfccdir/kaldi_fish_30k_nodup.scp \
   && cp $mfccdir/kaldi_fish_30k_nodup.scp data/train_30k_nodup/feats.scp
 )
-( . path.sh; 
+( . ./path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_100k_nodup/feats.scp{,.bak} 
+  cp data/train_100k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_100k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_100k_nodup.ark,$mfccdir/kaldi_fish_100k_nodup.scp \
   && cp $mfccdir/kaldi_fish_100k_nodup.scp data/train_100k_nodup/feats.scp
 )
 
 # Start training on the Switchboard subset, which has cleaner alignments
 steps/train_mono.sh --nj 3 --cmd "$train_cmd" \
-  data/train_10k_nodup data/lang_nosp exp/mono0a 
+  data/train_10k_nodup data/lang_nosp exp/mono0a
 
 steps/align_si.sh --nj 10 --cmd "$train_cmd" \
    data/train_30k_nodup data/lang_nosp exp/mono0a exp/mono0a_ali || exit 1;
@@ -171,8 +183,8 @@ steps/align_si.sh --nj 50 --cmd "$train_cmd" \
 steps/train_deltas.sh --cmd "$train_cmd" \
     5500 90000 data/train_100k_nodup data/lang_nosp exp/tri1b_ali exp/tri2 || exit 1;
  #used to be 2500 20000 on 30k
-( 
-  graph_dir=exp/tri2/graph_nosp_fsh_sw1_tg 
+(
+  graph_dir=exp/tri2/graph_nosp_fsh_sw1_tg
   utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri2 $graph_dir || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/eval2000 exp/tri2/decode_eval2000_nosp_fsh_sw1_tg || exit 1;
@@ -180,7 +192,7 @@ steps/train_deltas.sh --cmd "$train_cmd" \
    $graph_dir data/rt03 exp/tri2/decode_rt03_nosp_fsh_sw1_tg || exit 1;
 )&
 
-# Train tri3a, the last speaker-independent triphone stage, 
+# Train tri3a, the last speaker-independent triphone stage,
 # on the whole Switchboard training set
 steps/align_si.sh --nj 100 --cmd "$train_cmd" \
    data/train_swbd data/lang_nosp exp/tri2 exp/tri2_ali || exit 1;
@@ -189,8 +201,8 @@ steps/train_deltas.sh --cmd "$train_cmd" \
     11500 200000 data/train_swbd data/lang_nosp exp/tri2_ali exp/tri3a || exit 1;
  #used to be 2500 20000
 
-( 
-  graph_dir=exp/tri3a/graph_nosp_fsh_sw1_tg 
+(
+  graph_dir=exp/tri3a/graph_nosp_fsh_sw1_tg
   utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri3a $graph_dir || exit 1;
   steps/decode.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/eval2000 exp/tri3a/decode_eval2000_nosp_fsh_sw1_tg || exit 1;
@@ -205,8 +217,8 @@ steps/align_si.sh --nj 100 --cmd "$train_cmd" \
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
    --splice-opts "--left-context=3 --right-context=3" \
    11500 400000 data/train_nodup data/lang_nosp exp/tri3a_ali exp/tri3b || exit 1;
-( 
-  graph_dir=exp/tri3b/graph_nosp_fsh_sw1_tg 
+(
+  graph_dir=exp/tri3b/graph_nosp_fsh_sw1_tg
   utils/mkgraph.sh data/lang_nosp_fsh_sw1_tg exp/tri3b $graph_dir || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/eval2000 exp/tri3b/decode_eval2000_nosp_fsh_sw1_tg || exit 1;
@@ -232,16 +244,16 @@ if [ $rescore ]; then
   utils/build_const_arpa_lm.sh $LM_fg data/lang data/lang_fsh_sw1_fg
 fi
 
-( 
+(
   graph_dir=exp/tri3b/graph_fsh_sw1_tg
   utils/mkgraph.sh data/lang_fsh_sw1_tg exp/tri3b $graph_dir || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/eval2000 exp/tri3b/decode_eval2000_fsh_sw1_tg || exit 1;
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
    $graph_dir data/rt03 exp/tri3b/decode_rt03_fsh_sw1_tg || exit 1;
-) &
+)&
 
-# Next we'll use fMLLR and train with SAT (i.e. on 
+# Next we'll use fMLLR and train with SAT (i.e. on
 # fMLLR features)
 
 steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
@@ -250,7 +262,7 @@ steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
 steps/train_sat.sh  --cmd "$train_cmd" \
   11500 800000 data/train_nodup data/lang exp/tri3b_ali  exp/tri4a || exit 1;
 
-( 
+(
   graph_dir=exp/tri4a/graph_fsh_sw1_tg
   utils/mkgraph.sh data/lang_fsh_sw1_tg exp/tri4a $graph_dir
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
@@ -272,11 +284,10 @@ fi
 steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri4a exp/tri4a_ali || exit 1;
 
-
 steps/train_sat.sh  --cmd "$train_cmd" \
   11500 1600000 data/train_nodup data/lang exp/tri4a_ali  exp/tri5a || exit 1;
 
-( 
+(
   graph_dir=exp/tri5a/graph_fsh_sw1_tg
   utils/mkgraph.sh data/lang_fsh_sw1_tg exp/tri5a $graph_dir
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
@@ -308,7 +319,7 @@ steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
 steps/train_sat.sh  --cmd "$train_cmd" \
   11500 3200000 data/train_nodup data/lang exp/tri5a_ali  exp/tri6a || exit 1;
 
-( 
+(
   graph_dir=exp/tri6a/graph_fsh_sw1_tg
   utils/mkgraph.sh data/lang_fsh_sw1_tg exp/tri6a $graph_dir
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
@@ -331,9 +342,6 @@ fi
 #steps/align_fmllr.sh --nj 200 --cmd "$train_cmd" \
 #  data/train_nodup data/lang exp/tri6a exp/tri6a_ali || exit 1;
 
-
-# # The following is the current online-nnet2 recipe, with "multi-splice".
+# The following is the current online-nnet2 recipe, with "multi-splice".
 # local/online/run_nnet2_ms.sh
 local/online/run_nnet2_ms.sh
-
-

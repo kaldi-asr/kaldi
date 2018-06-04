@@ -419,7 +419,7 @@ export PATH=$PWD/utils/:$KALDI_ROOT/src/bin:$KALDI_ROOT/tools/openfst/bin:$KALDI
 export DATA_ROOT="/home/{user}/kaldi-trunk/egs/digits/digits_audio"
 
 # Enable SRILM
-source $KALDI_ROOT/tools/env.sh
+. $KALDI_ROOT/tools/env.sh
 
 # Variable needed for proper data sorting
 export LC_ALL=C

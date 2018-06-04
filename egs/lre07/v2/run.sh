@@ -1,15 +1,15 @@
 #!/bin/bash
-# Copyright  2016  Go-Vivace Inc. (Author: Mousmita Sarma)
+# Copyright  2016-2017  Go-Vivace Inc. (Author: Mousmita Sarma)
 #
 # Apache 2.0.
 #
 # This script runs the NIST 2007 General Language Recognition Closed-Set
 # evaluation.
 # This example script shows how to replace the GMM-UBM
-# with a DNN trained for ASR. 
+# with a DNN trained for ASR.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 mfccdir=`pwd`/mfcc
@@ -57,7 +57,7 @@ src_list="data/sre08_train_10sec_female \
   data/sre08_train_8conv_male data/sre08_train_short2_male \
   data/sre08_train_short2_female data/ldc96* data/lid05d1 \
   data/lid05e1 data/lid96d1 data/lid96e1 data/lre03 \
-  data/lre07 data/lre09"
+  data/ldc2009* data/lre09"
 # Remove any spk2gender files that we have: since not all data
 # sources have this info, it will cause problems with combine_data.sh
 for d in $src_list; do rm -f $d/spk2gender 2>/dev/null; done
@@ -73,12 +73,6 @@ local/split_long_utts.sh --max-utt-len 120 data/train_unsplit data/train
 
 echo "**Language count in i-Vector extractor training (after splitting long utterances):**"
 awk '{print $2}' data/train/utt2lang | sort | uniq -c | sort -nr
-
-# This commented script is an alternative to the above utterance
-# splitting method. Here we split the utterance based on the number of
-# frames which are voiced, rather than the total number of frames.
-# max_voiced=3000
-# local/vad_split_utts.sh --max-voiced $max_voiced data/train_unsplit $mfccdir data/train
 
 use_vtln=true
 if $use_vtln; then
@@ -157,16 +151,17 @@ utils/fix_data_dir.sh data/train_dnn_32k
 # Initialize a full GMM from the DNN posteriors and language recognition
 # features. This can be used both alone, as a UBM, or to initialize the
 # i-vector extractor in a DNN-based system.
-lid/init_full_ubm_from_dnn.sh --nj 40 --cmd "$train_cmd -l mem_free=6G,ram_free=6G" \
+lid/init_full_ubm_from_dnn.sh --nj 8 --cmd "$train_cmd --mem 6G" \
   data/train_32k \
   data/train_dnn_32k $nnet exp/full_ubm
 
 # Train an i-vector extractor based on the DNN-UBM.
-lid/train_ivector_extractor_dnn.sh --cmd "$train_cmd -l mem_free=80G,ram_free=80G" \
+lid/train_ivector_extractor_dnn.sh \
+  --cmd "$train_cmd --mem 80G" --nnet-job-opt "--mem 4G" \
   --min-post 0.015 \
   --ivector-dim 600 \
   --num-iters 5 \
-  --nj 40 --num-processes 1 exp/full_ubm/final.ubm $nnet \
+  --nj 5 exp/full_ubm/final.ubm $nnet \
   data/train \
   data/train_dnn \
   exp/extractor_dnn
@@ -189,15 +184,15 @@ echo "**Language count for logistic regression training (after splitting long ut
 awk '{print $2}' data/train_lr_dnn/utt2lang | sort | uniq -c | sort -nr
 
 # Extract i-vectors using the extractor with the DNN-UBM
-lid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=30G,ram_free=30G" \ 
-  --nj 40 exp/extractor_dnn \
+lid/extract_ivectors_dnn.sh --cmd "$train_cmd --mem 30G" \
+  --nj 5 exp/extractor_dnn \
   $nnet \
   data/train_lr \
   data/train_lr_dnn \
   exp/ivectors_train
 
-lid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=30G,ram_free=30G" \
-  --nj 40 exp/extractor_dnn \
+lid/extract_ivectors_dnn.sh --cmd "$train_cmd --mem 30G" \
+  --nj 5 exp/extractor_dnn \
   $nnet \
   data/lre07 \
   data/lre07_dnn \
@@ -205,12 +200,12 @@ lid/extract_ivectors_dnn.sh --cmd "$train_cmd -l mem_free=30G,ram_free=30G" \
 
 # Train a logistic regression model on top of i-Vectors
 lid/run_logistic_regression.sh --prior-scale 0.70 \
-  --conf conf/logistic-regression.conf 
+  --conf conf/logistic-regression.conf
 
 # General LR 2007 closed-set eval
 local/lre07_eval/lre07_eval.sh exp/ivectors_lre07 \
   local/general_lr_closed_set_langs.txt
 
 #Duration (sec):    avg      3     10     30
-#        ER (%):   5.36  12.98   2.69   0.42
-#     C_avg (%):   3.19   7.73   1.61   0.24
+#        ER (%):  16.18  31.43  12.38   4.73
+#     C_avg (%):  10.27  19.67   7.84   3.31

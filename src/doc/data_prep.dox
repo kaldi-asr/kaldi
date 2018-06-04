@@ -74,7 +74,7 @@ As an example of the "data" part of the data preparation, look at the directory
 "data/train" in one of the example directories (assuming you have already run
 the scripts there).  Note: there is nothing special about the directory name
 "data/train".  There are other directories such as "data/eval2000" (for a test set)
-that have essentially the same format ("essentially" because we may have an "sgm" and
+that have essentially the same format ("essentially" because we may have an "stm" and
 "glm" file in the test directory, to enable sclite scoring).
 The specific example we'll look at the Switchboard recipe
 in egs/swbd/s5.

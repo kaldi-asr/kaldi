@@ -24,16 +24,12 @@
 #
 use strict;
 use warnings;
-use utf8;
 use List::Util qw[max];
 use Getopt::Long;
 use Pod::Usage;
 
 
 #use Data::Dumper;
-
-binmode STDIN, ":utf8";
-binmode STDOUT, ":utf8";
 
 my $special_symbol= "<eps>";
 my $separator=";";
@@ -72,9 +68,56 @@ sub cjustify {
   return sprintf("%s%s%s", " " x $left_spaces,  $str, " " x $right_spaces);
 }
 
-while (<STDIN>) {
-  chomp;
-  (my $utt_id, my $alignment) = split (" ", $_, 2);
+# this function reads the opened file (supplied as a first
+# parameter) into an array of lines. For each
+# line, it tests whether it's a valid utf-8 compatible
+# line. If all lines are valid utf-8, it returns the lines 
+# decoded as utf-8, otherwise it assumes the file's encoding
+# is one of those 1-byte encodings, such as ISO-8859-x
+# or Windows CP-X.
+# Please recall we do not really care about
+# the actually encoding, we just need to 
+# make sure the length of the (decoded) string 
+# is correct (to make the output formatting looking right).
+sub get_utf8_or_bytestream {
+  use Encode qw(decode encode);
+  my $is_utf_compatible = 1;
+  my @unicode_lines;
+  my @raw_lines;
+  my $raw_text;
+  my $lineno = 0;
+  my $file = shift;
+
+  while (<$file>) {
+    $raw_text = $_;
+    last unless $raw_text;
+    if ($is_utf_compatible) {
+      my $decoded_text = eval { decode("UTF-8", $raw_text, Encode::FB_CROAK) } ;
+      $is_utf_compatible = $is_utf_compatible && defined($decoded_text); 
+      push @unicode_lines, $decoded_text;
+    }
+    push @raw_lines, $raw_text;
+    $lineno += 1;
+  }
+
+  if (!$is_utf_compatible) {
+    print STDERR "$0: Note: handling as byte stream\n";
+    return (0, @raw_lines);
+  } else {
+    print STDERR "$0: Note: handling as utf-8 text\n";
+    return (1, @unicode_lines);
+  }
+}
+
+(my $is_utf8, my @text) = get_utf8_or_bytestream(\*STDIN);
+if ($is_utf8) {
+  binmode(STDOUT, ":utf8");
+}
+
+while (@text) {
+  my $line = shift @text;
+  chomp $line;
+  (my $utt_id, my $alignment) = split (" ", $line, 2);
   my @alignment_pairs = split(" ", $alignment); #splits on spaces, does not create empty fields
  
   my @HYP;

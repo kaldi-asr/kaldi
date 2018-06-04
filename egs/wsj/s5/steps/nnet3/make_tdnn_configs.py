@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
+# This script is deprecated, please use ../xconfig_to_configs.py
+
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 import re, os, argparse, sys, math, warnings
-
 
 
 parser = argparse.ArgumentParser(description="Writes config files and variables "
@@ -90,7 +91,7 @@ try:
         right_context += int_list[-1]
         splice_array.append(int_list)
 except ValueError as e:
-    sys.exit("invalid --splice-indexes argument " + args.splice_indexes + e)
+    sys.exit("invalid --splice-indexes argument " + args.splice_indexes + str(e))
 left_context = max(0, left_context)
 right_context = max(0, right_context)
 num_hidden_layers = len(splice_array)

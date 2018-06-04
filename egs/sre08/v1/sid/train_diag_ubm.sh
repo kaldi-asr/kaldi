@@ -31,6 +31,7 @@ remove_low_count_gaussians=true # set this to false if you need #gauss to stay f
 num_threads=32
 delta_window=3
 delta_order=2
+apply_cmn=true # If true, apply sliding window cepstral mean normalization
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -60,7 +61,7 @@ if [ $# != 3 ]; then
   echo "                                                   # in initialization phase (then split)"
   echo " --num-threads <n|32>                              # number of threads to use in initialization"
   echo "                                                   # phase (must match with parallel-opts option)"
-  echo " --parallel-opts <string|'-pe smp 32'>             # Option should match number of threads in"
+  echo " --parallel-opts <string|'--num-threads 32'>       # Option should match number of threads in"
   echo "                                                   # --num-threads option above"
   echo " --min-gaussian-weight <weight|0.0001>             # min Gaussian weight allowed in GMM"
   echo "                                                   # initialization (this relatively high"
@@ -68,6 +69,8 @@ if [ $# != 3 ]; then
   echo " --delta-window <n|3>                              # number of frames of context used to"
   echo "                                                   # calculate delta"
   echo " --delta-order <n|2>                               # number of delta features"
+  echo " --apply-cmn <true,false|true>                     # if true, apply sliding window cepstral mean"
+  echo "                                                   # normalization to features"
   exit 1;
 fi
 
@@ -85,14 +88,19 @@ for f in $data/feats.scp $data/vad.scp; do
    [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1
 done
 
-parallel_opts="-pe smp $num_threads"
+parallel_opts="--num-threads $num_threads"
 delta_opts="--delta-window=$delta_window --delta-order=$delta_order"
 echo $delta_opts > $dir/delta_opts
 
 # Note: there is no point subsampling all_feats, because gmm-global-init-from-feats
 # effectively does subsampling itself (it keeps a random subset of the features).
-all_feats="ark,s,cs:add-deltas $delta_opts scp:$data/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$data/vad.scp ark:- |"
-feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+if $apply_cmn; then
+  all_feats="ark,s,cs:add-deltas $delta_opts scp:$data/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$data/vad.scp ark:- |"
+  feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | apply-cmvn-sliding --norm-vars=false --center=true --cmn-window=300 ark:- ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+else
+  all_feats="ark,s,cs:add-deltas $delta_opts scp:$data/feats.scp ark:- | select-voiced-frames ark:- scp,s,cs:$data/vad.scp ark:- |"
+  feats="ark,s,cs:add-deltas $delta_opts scp:$sdata/JOB/feats.scp ark:- | select-voiced-frames ark:- scp,s,cs:$sdata/JOB/vad.scp ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+fi
 
 num_gauss_init=$(perl -e "print int($initial_gauss_proportion * $num_gauss); ");
 ! [ $num_gauss_init -gt 0 ] && echo "Invalid num-gauss-init $num_gauss_init" && exit 1;
@@ -135,10 +143,11 @@ for x in `seq 0 $[$num_iters-1]`; do
     $cmd $dir/log/update.$x.log \
       gmm-global-est $opt --min-gaussian-weight=$min_gaussian_weight $dir/$x.dubm "gmm-global-sum-accs - $dir/$x.*.acc|" \
       $dir/$[$x+1].dubm || exit 1;
-    rm $dir/$x.*.acc $dir/$x.dubm
+    $cleanup && rm $dir/$x.*.acc $dir/$x.dubm
   fi
 done
 
-rm $dir/gselect.*.gz
+$cleanup && rm $dir/gselect.*.gz
+
 mv $dir/$num_iters.dubm $dir/final.dubm || exit 1;
 exit 0;

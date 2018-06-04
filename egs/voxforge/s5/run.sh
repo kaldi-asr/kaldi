@@ -5,8 +5,9 @@
 
 # NOTE: You will want to download the data set first, before executing this script.
 #       This can be done for example by:
-#       1. Setting the DATA_ROOT variable to point to a directory with enough free
-#          space (at least 20-25GB currently (Feb 2014))
+#       1. Setting the variable DATA_ROOT in path.sh to point to a
+#          directory with enough free space (at least 20-25GB
+#          currently (Feb 2014))
 #       2. Running "getdata.sh"
 
 # The second part of this script comes mostly from egs/rm/s5/run.sh

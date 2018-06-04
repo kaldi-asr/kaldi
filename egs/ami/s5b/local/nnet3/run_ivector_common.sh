@@ -17,12 +17,12 @@ train_set=train   # you might set this to e.g. train_cleaned.
 gmm=tri3          # This specifies a GMM-dir from the features of the type you're training the system on;
                   # it should contain alignments for 'train_set'.
 
-
 num_threads_ubm=32
+ivector_transform_type=lda
 nnet3_affix=_cleaned     # affix for exp/$mic/nnet3 directory to put iVector stuff in, so it
                          # becomes exp/$mic/nnet3_cleaned or whatever.
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -30,7 +30,7 @@ nnet3_affix=_cleaned     # affix for exp/$mic/nnet3 directory to put iVector stu
 gmmdir=exp/${mic}/${gmm}
 
 
-for f in data/${mic}/${train_set}/feats.scp ${gmmdir}/final.mdl; do
+for f in data/${mic}/${train_set}/feats.scp ; do
   if [ ! -f $f ]; then
     echo "$0: expected file $f to exist"
     exit 1
@@ -60,7 +60,7 @@ if [ $stage -le 2 ]; then
   # them overwrite each other.
   mfccdir=data/$mic/${train_set}_sp_hires/data
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/mfcc/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for datadir in ${train_set}_sp dev eval; do
@@ -110,19 +110,35 @@ if [ $stage -le 4 ]; then
     echo "$0: warning: number of feats $n1 != $n2, if these are very different it could be bad."
   fi
 
-  echo "$0: training a system on the hires data for its LDA+MLLT transform, in order to produce the diagonal GMM."
-  if [ -e exp/$mic/nnet3${nnet3_affix}/tri5/final.mdl ]; then
-    # we don't want to overwrite old stuff, ask the user to delete it.
-    echo "$0: exp/$mic/nnet3${nnet3_affix}/tri5/final.mdl already exists: "
-    echo " ... please delete and then rerun, or use a later --stage option."
-    exit 1;
-  fi
-  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 7 --mllt-iters "2 4 6" \
-     --splice-opts "--left-context=3 --right-context=3" \
-     3000 10000 $temp_data_root/${train_set}_hires data/lang \
-      $gmmdir exp/$mic/nnet3${nnet3_affix}/tri5
+  case $ivector_transform_type in
+    lda)
+      if [ ! -f ${gmmdir}/final.mdl ]; then
+        echo "$0: expected file ${gmmdir}/final.mdl to exist"
+        exit 1;
+      fi
+      echo "$0: training a system on the hires data for its LDA+MLLT transform, in order to produce the diagonal GMM."
+      if [ -e exp/$mic/nnet3${nnet3_affix}/tri5/final.mdl ]; then
+        # we don't want to overwrite old stuff, ask the user to delete it.
+        echo "$0: exp/$mic/nnet3${nnet3_affix}/tri5/final.mdl already exists: "
+        echo " ... please delete and then rerun, or use a later --stage option."
+        exit 1;
+      fi
+      steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 7 --mllt-iters "2 4 6" \
+        --splice-opts "--left-context=3 --right-context=3" \
+        3000 10000 $temp_data_root/${train_set}_hires data/lang \
+        $gmmdir exp/$mic/nnet3${nnet3_affix}/tri5
+      ;;
+    pca)
+      echo "$0: computing a PCA transform from the hires data."
+      steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
+        --splice-opts "--left-context=3 --right-context=3" \
+        --max-utts 10000 --subsample 2 \
+        $temp_data_root/${train_set}_hires \
+        exp/$mic/nnet3${nnet3_affix}/tri5
+      ;;
+    *) echo "$0: invalid iVector transform type $ivector_transform_type" && exit 1;
+  esac
 fi
-
 
 if [ $stage -le 5 ]; then
   echo "$0: computing a subset of data to train the diagonal UBM."
@@ -163,7 +179,7 @@ if [ $stage -le 7 ]; then
   # valid for the non-'max2' data, the utterance list is the same.
   ivectordir=exp/$mic/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/ivectors/ami-$mic-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
   # We extract iVectors on the speed-perturbed training data after combining
   # short segments, which will be what we train the system on.  With

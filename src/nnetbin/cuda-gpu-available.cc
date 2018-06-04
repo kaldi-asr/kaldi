@@ -24,24 +24,55 @@
 
 #include "base/kaldi-common.h"
 #include "cudamatrix/cu-device.h"
+#include "cudamatrix/cu-matrix.h"
 
 using namespace kaldi;
 
+#if HAVE_CUDA == 1
+/**
+ * With incorrect CUDA setup, this will trigger "invalid device function" error.
+ */
+void TestGpuComputation() {
+  CuMatrix<BaseFloat> m(100,100);
+  m.SetRandn();
+  m.ApplySoftMaxPerRow(m);
+}
+#endif
+
 int main(int argc, char *argv[]) try {
   char hostname[100] = "UNKNOWN-HOSTNAME";
-#ifndef _MSC_VER
+#if !defined(_MSC_VER) && !defined(__CYGWIN__)
   if (gethostname(hostname, 100)) {
     KALDI_WARN << "Cannot get hostname, " << strerror(errno);
   }
 #endif
-  std::cerr
-    << "### IS CUDA GPU AVAILABLE? '"
-    << hostname << "' ###" << std::endl;
+  KALDI_LOG << std::endl << std::endl
+    << "### IS CUDA GPU AVAILABLE? '" << hostname << "' ###";
 #if HAVE_CUDA == 1
   CuDevice::Instantiate().SelectGpuId("yes");
-  std::cerr
-    << "### HURRAY, WE GOT A CUDA GPU FOR COMPUTATION!!! ###"
-    << std::endl;
+  fprintf(stderr, "### HURRAY, WE GOT A CUDA GPU FOR COMPUTATION!!! ##\n\n");
+  fprintf(stderr, "### Testing CUDA setup with a small computation "
+                  "(setup = cuda-toolkit + gpu-driver + kaldi):\n");
+  // the test of setup by computation,
+  try {
+    TestGpuComputation();
+  } catch (const std::exception &e) {
+    fprintf(stderr, "%s\n", e.what());
+    KALDI_LOG << "...\n"
+      << "### The CUDA setup is wrong! "
+      << "(\"invalid device function\" == problem with 'compute capability' "
+      << "in compiled kaldi)\n"
+      << "### Before posting the error to forum, please try following:\n"
+      << "### 1) update kaldi & cuda-toolkit (& GPU driver),\n"
+      << "### 2) re-run 'src/configure',\n"
+      << "### 3) re-compile kaldi by 'make clean; make -j depend; make -j'\n"
+      << "###\n"
+      << "### If the problem persists, please send us your:\n"
+      << "### - GPU model name, cuda-toolkit version, driver version "
+      << "(run nvidia-smi), variable $(CUDA_ARCH) from src/kaldi.mk";
+    return -1;
+  }
+  fprintf(stderr, "### Test OK!\n");
   return 0;
 #else
   std::cerr
@@ -51,26 +82,17 @@ int main(int argc, char *argv[]) try {
   return 1;
 #endif
 } catch (const std::exception &e) {
-  std::cerr << e.what();
-  std::cerr
-    << "### WE DID NOT GET A CUDA GPU!!! ###" << std::endl
-    << "### If it's your 1st experiment with CUDA, try reinstalling "
-    << "'CUDA toolkit' from NVidia web (it contains the drivers)."
-    << std::endl
-    << "### In other cases run 'nvidia-smi' in terminal "
-    << "(gets installed with display drivers) :"
-    << std::endl
-    << "### - Check that you see your GPU."
-    << std::endl
-    << "### - Bad GPUs are reporting error or disappear from the list "
-    << "until reboot."
-    << std::endl
-    << "### - Check 'Memory-Usage' and 'GPU fan', "
-    << "which will tell you if the GPU was taken by other process."
-    << std::endl
-    << "### - Check there is same version of 'NVIDIA-SMI' and "
-    << "'Driver', and that it is not too old for your GPU."
-    << std::endl;
+  fprintf(stderr, "%s\n", e.what());
+  KALDI_LOG << "...\n"
+    << "### WE DID NOT GET A CUDA GPU!!! ###\n"
+    << "### If your system has a 'free' CUDA GPU, try re-installing "
+    << "latest 'CUDA toolkit' from NVidia (this updates GPU drivers too).\n"
+    << "### Otherwise 'nvidia-smi' shows the status of GPUs:\n"
+    << "### - The versions should match ('NVIDIA-SMI' and 'Driver Version'), "
+    << "otherwise reboot or reload kernel module,\n"
+    << "### - The GPU should be unused "
+    << "(no 'process' in list, low 'memory-usage' (<100MB), low 'gpu-fan' (<30%)),\n"
+    << "### - You should see your GPU (burnt GPUs may disappear from the list until reboot),";
   return -1;
 }
 

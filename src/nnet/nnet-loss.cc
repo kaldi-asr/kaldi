@@ -20,6 +20,7 @@
 #include <sstream>
 #include <iterator>
 #include <algorithm>
+#include <iomanip>
 
 #include "nnet/nnet-loss.h"
 #include "nnet/nnet-utils.h"
@@ -124,8 +125,7 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
   entropy_.AddRowSumMat(-1.0, CuMatrix<double>(entropy_aux_));
 
   // progressive loss reporting
-  {
-    static const int32 progress_step = 3600*100;  // 1h
+  if (opts_.loss_report_frames > 0) {
     frames_progress_ += frame_weights_.Sum();
     xentropy_progress_ += -xentropy_aux_.Sum();
     entropy_progress_ += -entropy_aux_.Sum();
@@ -133,14 +133,25 @@ void Xent::Eval(const VectorBase<BaseFloat> &frame_weights,
     KALDI_ASSERT(KALDI_ISFINITE(xentropy_progress_));
     KALDI_ASSERT(KALDI_ISFINITE(entropy_progress_));
 
-    if (frames_progress_ > progress_step) {
+    if (frames_progress_ > opts_.loss_report_frames) {
+      // loss value,
       double progress_value =
         (xentropy_progress_ - entropy_progress_) / frames_progress_;
+
+      // time-related info (fps is weighted),
+      double time_now = timer_.Elapsed();
+      double fps = frames_progress_ / (time_now - elapsed_seconds_);
+      double elapsed_hours = time_now / 3600;
+      elapsed_seconds_ = time_now; // store,
+
       // print,
-      KALDI_VLOG(1) << "ProgressLoss[last "
-                    << static_cast<int>(frames_progress_/100/3600) << "h of "
-                    << static_cast<int>(frames_.Sum()/100/3600) << "h]: "
-                    << progress_value << " (Xent)";
+      KALDI_LOG << "ProgressLoss[last "
+                << static_cast<int>(frames_progress_/100/3600) << "h of "
+                << static_cast<int>(frames_.Sum()/100/3600) << "h]: "
+                << progress_value << " (Xent)"
+                << ", fps=" << fps
+                << std::setprecision(3)
+                << ", elapsed " << elapsed_hours << "h";
       // store,
       loss_vec_.push_back(progress_value);
       // reset,
@@ -251,15 +262,14 @@ void Mse::Eval(const VectorBase<BaseFloat> &frame_weights,
   frames_ += num_frames;
 
   // progressive loss reporting
-  {
-    static const int32 progress_step = 3600*100;  // 1h
+  if (opts_.loss_report_frames > 0) {
     frames_progress_ += num_frames;
     loss_progress_ += mean_square_error;
-    if (frames_progress_ > progress_step) {
-      KALDI_VLOG(1) << "ProgressLoss[last "
-                    << static_cast<int>(frames_progress_/100/3600) << "h of "
-                    << static_cast<int>(frames_/100/3600) << "h]: "
-                    << loss_progress_/frames_progress_ << " (Mse)";
+    if (frames_progress_ > opts_.loss_report_frames) {
+      KALDI_LOG << "ProgressLoss[last "
+                << static_cast<int>(frames_progress_/100/3600) << "h of "
+                << static_cast<int>(frames_/100/3600) << "h]: "
+                << loss_progress_/frames_progress_ << " (Mse)";
       // store
       loss_vec_.push_back(loss_progress_/frames_progress_);
       // reset
@@ -317,9 +327,9 @@ void MultiTaskLoss::InitFromString(const std::string& s) {
   for ( ; it != v.end(); ++it) {
     // type,
     if (*it == "xent") {
-      loss_vec_.push_back(new Xent());
+      loss_vec_.push_back(new Xent(opts_));
     } else if (*it == "mse") {
-      loss_vec_.push_back(new Mse());
+      loss_vec_.push_back(new Mse(opts_));
     } else {
       KALDI_ERR << "Unknown objective function code : " << *it;
     }
@@ -367,17 +377,41 @@ void MultiTaskLoss::Eval(const VectorBase<BaseFloat> &frame_weights,
   // allocate diff matrix,
   diff->Resize(num_frames, num_output);
 
+  /// One vector of frame_weights per loss-function,
+  /// The original frame weights are multiplied with
+  /// a mask of `defined targets' according to the 'Posterior'.
+  std::vector<Vector<BaseFloat> > frmwei_have_tgt;
+  for (int32 l = 0; l < loss_vec_.size(); l++) {
+    // copy original weights,
+    frmwei_have_tgt.push_back(Vector<BaseFloat>(frame_weights));
+    // We need to mask-out the frames for which the 'posterior' is not defined (= is empty):
+    int32 loss_beg = loss_dim_offset_[l];   // first column of loss target,
+    int32 loss_end = loss_dim_offset_[l+1]; // (last+1) column of loss target,
+    for (int32 f = 0; f < num_frames; f++) {
+      bool tgt_defined = false;
+      for (int32 p = 0; p < post[f].size(); p++) {
+        if (post[f][p].first >= loss_beg && post[f][p].first < loss_end) {
+          tgt_defined = true;
+          break;
+        }
+      }
+      if (!tgt_defined) {
+        frmwei_have_tgt[l](f) = 0.0; // set zero_weight for the frame with no targets!
+      }
+    }
+  }
+
   // call the vector of loss functions,
   CuMatrix<BaseFloat> diff_aux;
-  for (int32 i = 0; i < loss_vec_.size(); i++) {
-    loss_vec_[i]->Eval(frame_weights,
-      net_out.ColRange(loss_dim_offset_[i], loss_dim_[i]),
-      tgt_mat_.ColRange(loss_dim_offset_[i], loss_dim_[i]),
+  for (int32 l = 0; l < loss_vec_.size(); l++) {
+    loss_vec_[l]->Eval(frmwei_have_tgt[l],
+      net_out.ColRange(loss_dim_offset_[l], loss_dim_[l]),
+      tgt_mat_.ColRange(loss_dim_offset_[l], loss_dim_[l]),
       &diff_aux);
     // Scale the gradients,
-    diff_aux.Scale(loss_weights_[i]);
+    diff_aux.Scale(loss_weights_[l]);
     // Copy to diff,
-    diff->ColRange(loss_dim_offset_[i], loss_dim_[i]).CopyFromMat(diff_aux);
+    diff->ColRange(loss_dim_offset_[l], loss_dim_[l]).CopyFromMat(diff_aux);
   }
 }
 

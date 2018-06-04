@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Hub-5 Eval 2000 data preparation 
+# Hub-5 Eval 2000 data preparation
 # Author:  Arnab Ghoshal (Jan 2013)
 
 # To be run from one directory above this script.
 
-# The input is two directory names (possibly the same) containing the 
+# The input is two directory names (possibly the same) containing the
 # 2000 Hub5 english evaluation test set and transcripts, which are
 # respectively: LDC2002S09  LDC2002T43
 # e.g. see
@@ -35,7 +35,7 @@ tdir=$2
 [ ! -d $tdir/reference ] \
   && echo Expecting directory $tdir/reference to be present && exit 1;
 
-. path.sh 
+. ./path.sh
 
 dir=data/local/eval2000
 mkdir -p $dir
@@ -49,7 +49,7 @@ sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
   && echo "Could not execute the sph2pipe program at $sph2pipe" && exit 1;
 
 awk -v sph2pipe=$sph2pipe '{
-  printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2); 
+  printf("%s-A %s -f wav -p -c 1 %s |\n", $1, sph2pipe, $2);
   printf("%s-B %s -f wav -p -c 2 %s |\n", $1, sph2pipe, $2);
 }' < $dir/sph.scp | sort > $dir/wav.scp || exit 1;
 #side A - channel 1, side B - channel 2
@@ -58,8 +58,8 @@ awk -v sph2pipe=$sph2pipe '{
 # segments file format is: utt-id side-id start-time end-time, e.g.:
 # sw02001-A_000098-001156 sw02001-A 0.98 11.56
 pem=$sdir/english/hub5e_00.pem
-[ ! -f $pem ] && echo "No such file $pem" && exit 1;
-# pem file has lines like: 
+[ ! -f $pem ] && echo "$0: No such file $pem" && exit 1;
+# pem file has lines like:
 # en_4156 A unknown_speaker 301.85 302.48
 
 # we ignore the warnings below for now, although they seem to indicate some problems
@@ -72,7 +72,7 @@ grep -v ';;' $pem \
   | sort -u | local/extend_segments.pl 0.1 > $dir/segments
 
 # stm file has lines like:
-# en_4156 A en_4156_A 357.64 359.64 <O,en,F,en-F>  HE IS A POLICE OFFICER 
+# en_4156 A en_4156_A 357.64 359.64 <O,en,F,en-F>  HE IS A POLICE OFFICER
 # TODO(arnab): We should really be lowercasing this since the Edinburgh
 # recipe uses lowercase. This is not used in the actual scoring.
 grep -v ';;' $tdir/reference/hub5e00.english.000405.stm \
@@ -94,10 +94,10 @@ cp $tdir/reference/en20000405_hub5.glm  $dir/glm
    echo "Segments from pem file and stm file do not match." && exit 1;
 
 grep -v IGNORE_TIME_SEGMENT_ $dir/text.all > $dir/text
-   
+
 # create an utt2spk file that assumes each conversation side is
 # a separate speaker.
-awk '{print $1,$2;}' $dir/segments > $dir/utt2spk  
+awk '{print $1,$2;}' $dir/segments > $dir/utt2spk
 utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
 
 # cp $dir/segments $dir/segments.tmp

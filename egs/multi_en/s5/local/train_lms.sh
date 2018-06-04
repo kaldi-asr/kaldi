@@ -6,7 +6,6 @@
 # Changes made:
 #  - Specified path to path.sh
 #  - Modified paths to match multi_en naming conventions
-#  - Disabled 4-gram LM creation
 ###########################################################################################
 
 # To be run from one directory above this script.
@@ -28,28 +27,12 @@ done
 
 dir=data/local/lm
 mkdir -p $dir
-export LC_ALL=C # You'll get errors about things being not sorted, if you
-# have a different locale.
-export PATH=$PATH:`pwd`/../../../tools/kaldi_lm
-( # First make sure the kaldi_lm toolkit is installed.
- cd ../../../tools || exit 1;
- if [ -d kaldi_lm ]; then
-   echo Not installing the kaldi_lm toolkit since it is already there.
- else
-   echo Downloading and installing the kaldi_lm tools
-   if [ ! -f kaldi_lm.tar.gz ]; then
-     wget http://www.danielpovey.com/files/kaldi/kaldi_lm.tar.gz ||
-     wget http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz || exit 1;
-   fi
-   tar -xvzf kaldi_lm.tar.gz || exit 1;
-   cd kaldi_lm
-   make || exit 1;
-   echo Done making the kaldi_lm tools
- fi
-) || exit 1;
 
-mkdir -p $dir
-
+kaldi_lm=`which train_lm.sh`
+if [ ! -x $kaldi_lm ]; then
+  echo "train_lm.sh is not found. Look at tools/extra/install_kaldi_lm.sh"
+  exit 1
+fi
 
 cleantext=$dir/text.no_oov
 
@@ -80,7 +63,7 @@ cat $cleantext | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]
 
 train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
 # Perplexity over 88307.000000 words (excluding 691.000000 OOVs) is 71.241332
-#train_lm.sh --arpa --lmtype 4gram-mincount $dir || exit 1;
+train_lm.sh --arpa --lmtype 4gram-mincount $dir || exit 1;
 
 # note: output is
 # data/local/lm/3gram-mincount/lm_unpruned.gz 

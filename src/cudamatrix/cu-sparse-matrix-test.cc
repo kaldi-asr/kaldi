@@ -1,6 +1,7 @@
 // cudamatrix/cu-sparse-matrix-test.cc
 
 // Copyright 2015      Guoguo Chen
+//           2017      Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -25,7 +26,101 @@
 #include "util/common-utils.h"
 #include "cudamatrix/cu-matrix-lib.h"
 
+using namespace kaldi;
+
 namespace kaldi {
+
+template<typename Real>
+static void UnitTestCuSparseMatrixConstructFromIndexes() {
+  for (int32 i = 0; i < 2; i++) {
+    MatrixIndexT row = 10 + Rand() % 40;
+    MatrixIndexT col = 10 + Rand() % 50;
+
+    MatrixTransposeType trans = (i % 2 == 0 ? kNoTrans : kTrans);
+
+    std::vector<int32> idx(row);
+    Vector<Real> weights(row);
+    for (int i = 0; i < row; ++i) {
+      idx[i] = Rand() % col;
+      weights(i) = Rand() % 100;
+    }
+    CuArray<int32> cuidx(idx);
+    CuVector<Real> cuweights(weights);
+
+    // construct smat
+    SparseMatrix<Real> smat1(idx, col, trans);
+    CuSparseMatrix<Real> cusmat1(cuidx, col, trans);
+
+    // copy to mat
+    Matrix<Real> mat1(smat1.NumRows(), smat1.NumCols());
+    smat1.CopyToMat(&mat1);
+    CuMatrix<Real> cumat1(cusmat1.NumRows(), cusmat1.NumCols());
+    cusmat1.CopyToMat(&cumat1);
+
+    // compare
+    Matrix<Real> mat1ver2(cumat1);
+    AssertEqual(mat1, mat1ver2, 0.00001);
+
+    // construct smat with weights
+    SparseMatrix<Real> smat2(idx, weights, col, trans);
+    CuSparseMatrix<Real> cusmat2(cuidx, cuweights, col, trans);
+
+    // copy to mat
+    Matrix<Real> mat2(smat2.NumRows(), smat2.NumCols());
+    smat2.CopyToMat(&mat2);
+    CuMatrix<Real> cumat2(cusmat2.NumRows(), cusmat2.NumCols());
+    cusmat2.CopyToMat(&cumat2);
+
+    // compare
+    Matrix<Real> mat2ver2(cumat2);
+    AssertEqual(mat2, mat2ver2, 0.00001);
+  }
+}
+
+
+template <typename Real>
+static void UnitTestCuSparseMatrixSelectRowsAndTranspose() {
+  for (int32 i = 0; i < 2; i++) {
+    MatrixIndexT row = 10 + Rand() % 40;
+    MatrixIndexT col = 10 + Rand() % 50;
+
+    SparseMatrix<Real> sp_input(row, col);
+    sp_input.SetRandn(0.8);
+    CuSparseMatrix<Real> cusp_input(sp_input);
+
+    std::vector<int32> idx(row + col);
+    for (auto && e : idx) {
+      e = Rand() % row;
+    }
+    CuArray<int32> cu_idx(idx);
+
+    // select on cpu
+    SparseMatrix<Real> sp_selected2;
+    sp_selected2.SelectRows(idx, sp_input);
+    // select on gpu
+    CuSparseMatrix<Real> cusp_selected;
+    cusp_selected.SelectRows(cu_idx, cusp_input);
+
+    // transpose by CopyToMat
+    CuSparseMatrix<Real> cusp_selected2(sp_selected2);
+    CuMatrix<Real> cu_selected2_trans(cusp_selected2.NumCols(),
+                                      cusp_selected2.NumRows());
+    cusp_selected2.CopyToMat(&cu_selected2_trans, kTrans);
+    // transpose by Constructor
+    CuSparseMatrix<Real> cusp_selected_trans(cusp_selected, kTrans);
+    CuMatrix<Real> cu_selected_trans(cusp_selected_trans.NumRows(),
+                                     cusp_selected_trans.NumCols());
+    cusp_selected_trans.CopyToMat(&cu_selected_trans);
+
+    CuMatrix<Real> cu_selected(row+col, col);
+    CuMatrix<Real> cu_selected2(row+col, col);
+    cusp_selected.CopyToMat(&cu_selected);
+    cusp_selected2.CopyToMat(&cu_selected2);
+
+    AssertEqual(cu_selected, cu_selected2, 0.00001);
+    AssertEqual(cu_selected_trans, cu_selected2_trans, 0.00001);
+  }
+}
 
 template <typename Real>
 static void UnitTestCuSparseMatrixTraceMatSmat() {
@@ -44,7 +139,8 @@ static void UnitTestCuSparseMatrixTraceMatSmat() {
     SparseMatrix<Real> smat2(col, row);
     smat1.SetRandn(0.8);
     smat2.SetRandn(0.8);
-    CuSparseMatrix<Real> cu_smat1(smat1);
+    CuSparseMatrix<Real> cu_smat1x(smat1);
+    CuSparseMatrix<Real> cu_smat1(cu_smat1x);  // Test constructor.
     CuSparseMatrix<Real> cu_smat2(smat2);
 
     cu_smat1.CopyToMat(&mat1);
@@ -173,6 +269,8 @@ static void UnitTestCuSparseMatrixSwap() {
 
 template <typename Real>
 void CudaSparseMatrixUnitTest() {
+  UnitTestCuSparseMatrixConstructFromIndexes<Real>();
+  UnitTestCuSparseMatrixSelectRowsAndTranspose<Real>();
   UnitTestCuSparseMatrixTraceMatSmat<Real>();
   UnitTestCuSparseMatrixSum<Real>();
   UnitTestCuSparseMatrixFrobeniusNorm<Real>();
@@ -185,19 +283,20 @@ void CudaSparseMatrixUnitTest() {
 
 
 int main() {
-  for (kaldi::int32 loop = 0; loop < 2; loop++) {
+  int32 loop = 0;
 #if HAVE_CUDA == 1
-    kaldi::CuDevice::Instantiate().SetDebugStrideMode(true);
+  for (; loop < 2; loop++) {
+    CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)
-      kaldi::CuDevice::Instantiate().SelectGpuId("no");
+      CuDevice::Instantiate().SelectGpuId("no");
     else
-      kaldi::CuDevice::Instantiate().SelectGpuId("yes");
+      CuDevice::Instantiate().SelectGpuId("yes");
 #endif
 
     kaldi::CudaSparseMatrixUnitTest<float>();
 
 #if HAVE_CUDA == 1
-    if (kaldi::CuDevice::Instantiate().DoublePrecisionSupported()) {
+    if (CuDevice::Instantiate().DoublePrecisionSupported()) {
       kaldi::CudaSparseMatrixUnitTest<double>();
     } else {
       KALDI_WARN << "Double precision not supported";
@@ -210,10 +309,10 @@ int main() {
       KALDI_LOG << "Tests without GPU use succeeded.";
     else
       KALDI_LOG << "Tests with GPU use (if available) succeeded.";
-  }
-  kaldi::SetVerboseLevel(4);
+    SetVerboseLevel(4);
 #if HAVE_CUDA == 1
-  kaldi::CuDevice::Instantiate().PrintProfile();
+  }
+  CuDevice::Instantiate().PrintProfile();
 #endif
   return 0;
 }

@@ -7,7 +7,7 @@
 # This example script demonstrates how speed perturbation of the data helps the nnet training in the SWB setup.
 
 . ./cmd.sh
-set -e 
+set -e
 stage=0
 train_stage=-10
 use_gpu=true
@@ -20,13 +20,13 @@ common_egs_dir=
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
   # the _a is in case I want to change the parameters.
@@ -35,7 +35,7 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 dir=exp/$nnet2_online/nnet_a
@@ -47,13 +47,13 @@ if [ $stage -le 0 ]; then
     date=$(date +'%m_%d_%H_%M')
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/swbd-$date/s5b/$mfccdir/storage $mfccdir/storage
   fi
-  
+
   utils/copy_data_dir.sh data/train data/train_hires
   steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
       --cmd "$train_cmd" data/train_hires exp/make_hires/train $mfccdir;
   steps/compute_cmvn_stats.sh data/train_hires exp/make_hires/train $mfccdir;
 
-  # Remove the small number of utterances that couldn't be extracted for some 
+  # Remove the small number of utterances that couldn't be extracted for some
   # reason (e.g. too short; no such file).
   utils/fix_data_dir.sh data/train_hires;
 
@@ -63,7 +63,7 @@ if [ $stage -le 0 ]; then
       data/eval2000_hires exp/make_hires/eval2000 $mfccdir;
   steps/compute_cmvn_stats.sh data/eval2000_hires exp/make_hires/eval2000 $mfccdir;
     utils/fix_data_dir.sh data/eval2000_hires  # remove segments with problems
-    
+
   # Use the first 4k sentences as dev set.  Note: when we trained the LM, we used
   # the 1st 10k sentences as dev set, so the 1st 4k won't have been used in the
   # LM training data.   However, they will be in the lexicon, plus speakers
@@ -88,7 +88,7 @@ if [ $stage -le 1 ]; then
   # We need to build a small system just because we need the LDA+MLLT transform
   # to train the diag-UBM on top of.  We use --num-iters 13 because after we get
   # the transform (12th iter is the last), any further training is pointless.
-  # this decision is based on fisher_english 
+  # this decision is based on fisher_english
   steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
     --splice-opts "--left-context=3 --right-context=3" \
     5500 90000 data/train_hires_100k_nodup data/lang exp/tri2_ali_100k_nodup exp/$nnet2_online/tri3b
@@ -116,7 +116,7 @@ if [ $stage -le 4 ]; then
   utils/perturb_data_dir_speed.sh 1.1 data/train_nodup data/temp3
   utils/combine_data.sh data/train_nodup_perturbed data/temp1 data/temp2 data/temp3
   rm -r data/temp1 data/temp2 data/temp3
- 
+
   mfccdir=mfcc_perturbed
   for x in train_nodup_perturbed; do
     steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
@@ -167,7 +167,7 @@ if [ $stage -le 8 ]; then
   # Because we have a lot of data here and we don't want the training to take
   # too long so we reduce the number of epochs from the defaults (15 + 5) to (5
   # + 2), and the (initial,final) learning rate from the defaults (0.04, 0.004)
-  # to (0.01, 0.001). 
+  # to (0.01, 0.001).
   # decided to let others run their jobs too (we only have 10 GPUs on our queue
   # at JHU).  The number of parameters is smaller than the baseline system we had in
   # mind (../nnet2/run_5d_gpu.sh, which had pnorm input/output dim 3000/300 and
@@ -226,7 +226,7 @@ if [ $stage -le 11 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  # do the actual online decoding with iVectors, carrying info forward from 
+  # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
   for lm_suffix in tg fsh_tgpr; do
     graph_dir=exp/tri4b/graph_sw1_${lm_suffix}

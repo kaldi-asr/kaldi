@@ -10,7 +10,7 @@
 # two files: lexiconp.txt (this is the lexicon format that has pronunciation
 # probabilities; the words in the original lexicon have probability one), and
 # oov2prob, which says how the OOV mass is distributed among the new OOV words
-# in the lexicon.  
+# in the lexicon.
 
 # It assumes that the syllables in pronunciations in the input lexicon.txt are
 # separated by tabs, as is normal for the BABEL setup; the syllable boundaries
@@ -39,7 +39,7 @@
 # because we felt that this would make the mapping harder for g2p to learn.
 # Instead we mapped the phones to unique letters; this is what the "phone_map"
 # file is about.  Furthermore, in BABEL we have the concept of tags on the
-# phones, e.g. in a tonal language, ay_3 might be the phone "ay" with tone 3.  
+# phones, e.g. in a tonal language, ay_3 might be the phone "ay" with tone 3.
 # As far as Kaldi is concerned, ay_3 is a single phone.  To avoid the number of
 # letters blowing up too much, we make these tags separate letters when generating
 # phone_map, so ay_3 might be mapped to kX with ay mapping to k and 3 mapping to
@@ -79,7 +79,7 @@
 # equal to 0.33 times the probability listed in oov2prob.  However, that script
 # will not allow the unigram probability of any OOV word to be more probable than
 # the least probable word which was originally in the ARPA file (not counting <s>,
-# which generally has probability -99); this is applied as a ceiling on the 
+# which generally has probability -99); this is applied as a ceiling on the
 # unknown-word probabilities.  Note: the --unk-fraction should probably be
 # similar to the OOV rate in that language.  Calculating the OOV rate on some
 # dev data is one reasonable way to set this; see the commands at the very
@@ -113,7 +113,7 @@ cleanup=true
 echo "$0 $@"  # Print the command line for logging
 
 . utils/parse_options.sh
-. path.sh
+. ./path.sh
 
 if [ $# -ne 2 ] && [ $# -ne 3 ]; then
   echo "$0: usage: extend_lexicon.sh [options] <lexicon-in> <working-dir> [dev_text]"
@@ -149,7 +149,7 @@ cp $input_lexicon $toplevel_dir/input_lexicon.txt  # just to have a record of wh
 loc=`which ngram-count`;
 if [ -z $loc ]; then
   if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-    sdir=`pwd`/../../../tools/srilm/bin/i686-m64 
+    sdir=`pwd`/../../../tools/srilm/bin/i686-m64
   else
     sdir=`pwd`/../../../tools/srilm/bin/i686
   fi
@@ -256,21 +256,21 @@ if [ $stage -le -1 ]; then
   rm $dir/probs.* 2>/dev/null
 
   echo '#!/usr/bin/perl
-while(1) { 
+while(1) {
  $sent = <>; $line=<>; if ($line !~ m/sentences/) { $sent =~ m/^file/ || die "Bad sent $sent"; exit(0); }
- $line = <>; if ($line !~ m/logprob= (\S+)/) { die "Bad line $line"; } print "$1 $sent"; 
+ $line = <>; if ($line !~ m/logprob= (\S+)/) { die "Bad line $line"; } print "$1 $sent";
  $line = <>; $line eq "\n" || die "expected blank line"; }' >$dir/temp.pl
   chmod +x $dir/temp.pl
 
   $cmd JOB=1:$nj $dir/log/compute_prob.JOB.log \
     $ngram -debug 1 -lm $dir/lm.gz -ppl $dir/sents.JOB  \| $dir/temp.pl \| sort -gr \> $dir/probs.JOB || exit 1;
 
-  if $cleanup; then 
-    rm $dir/sents.*; 
+  if $cleanup; then
+    rm $dir/sents.*;
   fi
   sort -m -gr $dir/probs.* | uniq | head -n $num_prons > $dir/probs
-  if $cleanup; then 
-    rm $dir/probs.*; 
+  if $cleanup; then
+    rm $dir/probs.*;
   fi
 
   mass=$(cat $dir/probs | awk '{x += exp($1 * log(10));} END{print x}')
@@ -296,7 +296,7 @@ fi
 # We may lose a little information by doing this, though, because the segmentation
 # into phonemes may be ambiguous.  So we create a mapping from the original phonemes
 # and tags to letters of the alphabet.  Note: tags are things like s_3 for a phone: here
-# s is the phone and _3 is the tag. 
+# s is the phone and _3 is the tag.
 
 
 if [ $stage -le 0 ]; then
@@ -375,10 +375,10 @@ if [ $stage -le $[$g2p_iters+1] ]; then
      awk '{if (NF >= 4) {printf("%s %s ", $1, $3); for (n=4;n<=NF;n++) {printf("%s", $n);} printf("\n"); }}' | \
       sort | uniq > $dir/pron2spelling
 
-  # Now remove from pron2spelling, any words that appear in $dir/lexiconp_in.txt 
+  # Now remove from pron2spelling, any words that appear in $dir/lexiconp_in.txt
   # (this also contains the excluded words like <unk>).
   cat $dir/pron2spelling | \
-   perl -e 'open(F, $ARGV[0]) || die "opening $ARGV[0]"; while(<F>) { @A=split; $seen_word{$A[0]}=1; } 
+   perl -e 'open(F, $ARGV[0]) || die "opening $ARGV[0]"; while(<F>) { @A=split; $seen_word{$A[0]}=1; }
         while(<STDIN>) { @A=split; if (! $seen_word{$A[2]}) { print; }} ' $dir/lexiconp_in.txt > $dir/pron2spelling.excluded
   # $dir/pron2spelling.excluded contains lines like
   #ab<a 0.957535 aba
@@ -389,11 +389,11 @@ if [ $stage -le $[$g2p_iters+1] ]; then
   echo " changed length of list from $n1 to $n2"
 
 
-  # Now combine probs and pron2spelling to create a file words_and_prons with entries 
+  # Now combine probs and pron2spelling to create a file words_and_prons with entries
   # <word> <prob> syllable1 syllable2 ...
   # e.g.
   # Kuku 0.000002642 k>&u k>&u
-    
+
   cat $dir/probs | \
      perl -e ' while(<STDIN>){ @A = split; $prob = shift @A; $pron=join("", @A);
          $pron =~ tr/,//d; print "$pron $_"; } '> $dir/probs.with_pron
@@ -402,7 +402,7 @@ if [ $stage -le $[$g2p_iters+1] ]; then
    # This is so we can get the pronunciation in the same form that we put it in, for
    # the p2g training, for easier comparison with the lines in $dir/pron2spelling.excluded
 
-   perl -e ' ($p2s, $probs_with_pron) = @ARGV; 
+   perl -e ' ($p2s, $probs_with_pron) = @ARGV;
      open(P2S, "<$p2s" || die);  open(PROBS, "<$probs_with_pron")||die;
     while (<P2S>) {
       @A = split;
@@ -487,7 +487,7 @@ if [ $stage -le $[$g2p_iters+1] ]; then
         print L "$word\t$pronprob\t$pron";
       } close(L); close(W); # wait for sort to finish. ' \
         $dir/lexiconp_oov.txt $dir/oov2prob
-    
+
    # lexiconp_oov.txt contains lines like:
    #leyanga	0.96471840417664	l 3	 j_" a_"	 N a
    #leyanga	1	l 3	 j_" a_"	 N g a
@@ -497,7 +497,7 @@ if [ $stage -le $[$g2p_iters+1] ]; then
    #Adlule 9.62418179264897e-08
    #Afuna 2.23048402109824e-06
 fi
-  
+
 if [ $stage -le $[$g2p_iters+2] ]; then
   # put it to the output directory $localdir e.g. data/local/
   cat $dir/lexiconp_in.txt $dir/lexiconp_oov.txt | \
@@ -526,7 +526,7 @@ if [ ! -z $dev_text ]; then
     $oov_rate = 100.0 * (1.0 - ($invoc / $tot));
     printf("Seen $invoc out of $tot tokens; token OOV rate is %.2f\n", $oov_rate);' \
     $toplevel_dir/lexiconp.txt > $toplevel_dir/new_oov_rates
-  
+
   # Original type OOV rate
   cat $dev_text | awk '{for(n=2;n<=NF;n++) { print $n; }}' | sort -u |\
   perl -e '$lex = shift @ARGV; open(L, "<$lex")||die; while(<L>){ @A=split; $seen{$A[0]}=1;}
@@ -549,7 +549,7 @@ exit 0;
 ###BELOW HERE IS JUST COMMENTS ###########
 
 #cat /export/babel/data/206-zulu/release-current/conversational/reference_materials/lexicon.sub-train.txt | \
-for x in data/local/filtered_lexicon.txt data/local/lexiconp.txt; do 
+for x in data/local/filtered_lexicon.txt data/local/lexiconp.txt; do
 cat /export/babel/data/206-zulu/release-current/conversational/reference_materials/lexicon.txt  | \
  perl -e '$lex = shift @ARGV; open(L, "<$lex")||die; while(<L>){ @A=split; $seen{$A[0]}=1;}
    while(<STDIN>) { @A=split; $word=$A[0]; $tot++; if(defined $seen{$word}) { $invoc++; }}
@@ -559,7 +559,7 @@ done
 #Seen 13675 out of 60613 tokens; OOV rate is 77.44
 #Seen 26936 out of 60613 tokens; OOV rate is 55.56
 
-for x in data/local/filtered_lexicon.txt data/local/lexiconp.txt; do 
+for x in data/local/filtered_lexicon.txt data/local/lexiconp.txt; do
 cat data/dev10h/text | awk '{for(n=2;n<=NF;n++) { print $n; }}' | \
  perl -e '$lex = shift @ARGV; open(L, "<$lex")||die; while(<L>){ @A=split; $seen{$A[0]}=1;}
    while(<STDIN>) { @A=split; $word=$A[0]; $tot++; if(defined $seen{$word}) { $invoc++; }}

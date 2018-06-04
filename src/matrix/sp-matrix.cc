@@ -70,32 +70,6 @@ Real SpMatrix<Real>::MaxAbsEig() const {
   return std::max(s.Max(), -s.Min());
 }
 
-template<typename Real>
-void SpMatrix<Real>::Log() {
-  KALDI_ASSERT(this->NumRows() != 0);
-  Vector<Real> s(this->NumRows());
-  Matrix<Real> P(this->NumRows(), this->NumRows());
-  SymPosSemiDefEig(&s, &P);
-  s.ApplyLog();  // Per-element log.
-  // this <-- P * diag(s) * P^T
-  this->AddMat2Vec(1.0, P, kNoTrans, s, 0.0);
-}
-
-template<typename Real>
-void SpMatrix<Real>::Exp() {
-  // The most natural way to do this would be to do a symmetric eigenvalue
-  // decomposition, but in order to work with basic ATLAS without CLAPACK, we
-  // don't have symmetric eigenvalue decomposition code (correction: didn't have
-  // it).  Instead we use the MatrixExponential class which expands it out as a
-  // Taylor series (with a pre-scaling trick to make it reasonably fast).
-
-  KALDI_ASSERT(this->NumRows() != 0);
-  Matrix<Real> M(*this), expM(this->NumRows(), this->NumRows());
-  MatrixExponential<Real> me;
-  me.Compute(M, &expM);  // compute exp(M)
-  this->CopyFromMat(expM);  // by default, checks it's symmetric.
-}
-
 // returns true if positive definite--uses cholesky.
 template<typename Real>
 bool SpMatrix<Real>::IsPosDef() const {
@@ -250,13 +224,15 @@ void SpMatrix<Real>::Invert(Real *logdet, Real *det_sign, bool need_inverse) {
   Real *p_work;  // workspace for the lapack function
   void *temp;
   if ((p_work = static_cast<Real*>(
-          KALDI_MEMALIGN(16, sizeof(Real) * rows, &temp))) == NULL)
+          KALDI_MEMALIGN(16, sizeof(Real) * rows, &temp))) == NULL) {
+    delete[] p_ipiv;
     throw std::bad_alloc();
+  }
 #ifdef HAVE_OPENBLAS
   memset(p_work, 0, sizeof(Real) * rows); // gets rid of a probably
   // spurious Valgrind warning about jumps depending upon uninitialized values.
 #endif
-  
+
 
   // NOTE: Even though "U" is for upper, lapack assumes column-wise storage
   // of the data. We have a row-wise storage, therefore, we need to "invert"
@@ -604,7 +580,7 @@ Real SpMatrix<Real>::LogDet(Real *det_sign) const {
   Real log_det;
   SpMatrix<Real> tmp(*this);
   // false== output not needed (saves some computation).
-  tmp.Invert(&log_det, det_sign, false);  
+  tmp.Invert(&log_det, det_sign, false);
   return log_det;
 }
 
@@ -735,7 +711,7 @@ template<> double SolveQuadraticProblem(const SpMatrix<double> &H,
 
 template<> float SolveQuadraticProblem(const SpMatrix<float> &H,
                                        const VectorBase<float> &g,
-                                       const SolverOptions &opts, 
+                                       const SolverOptions &opts,
                                        VectorBase<float> *x) {
   KALDI_ASSERT(H.NumRows() == g.Dim() && g.Dim() == x->Dim() && x->Dim() != 0);
   SpMatrix<double> Hd(H);
@@ -753,13 +729,13 @@ Real
 SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
                             const MatrixBase<Real> &Y,
                             const SpMatrix<Real> &SigmaInv,
-                            const SolverOptions &opts, 
+                            const SolverOptions &opts,
                             MatrixBase<Real> *M) {
   KALDI_ASSERT(Q.NumRows() == M->NumCols() &&
                SigmaInv.NumRows() == M->NumRows() && Y.NumRows() == M->NumRows()
                && Y.NumCols() == M->NumCols() && M->NumCols() != 0);
   opts.Check();
-  MatrixIndexT rows = M->NumRows(), cols = M->NumCols();  
+  MatrixIndexT rows = M->NumRows(), cols = M->NumCols();
   if (Q.IsZero(0.0)) {
     KALDI_WARN << "Zero quadratic term in quadratic matrix problem for "
                << opts.name << ": leaving it unchanged.";
@@ -791,7 +767,7 @@ SolveQuadraticMatrixProblem(const SpMatrix<Real> &Q,
     M->MulColsVec(Q_diag_inv_sqrt);
     return ans;
   }
-  
+
   Matrix<Real> Ybar(Y);
   if (opts.optimize_delta) {
     Matrix<Real> Qfull(Q);
@@ -1010,7 +986,7 @@ void SpMatrix<Real>::AddMat2Sp(
     KALDI_ASSERT(M.NumCols() == A.NumRows() && M.NumRows() == this->num_rows_);
   } else {
     KALDI_ASSERT(M.NumRows() == A.NumRows() && M.NumCols() == this->num_rows_);
-  }  
+  }
   Vector<Real> tmp_vec(A.NumRows());
   Real *tmp_vec_data = tmp_vec.Data();
   SpMatrix<Real> tmp_A;
@@ -1020,9 +996,9 @@ void SpMatrix<Real>::AddMat2Sp(
       M_same_dim = (transM == kNoTrans ? M.NumRows() : M.NumCols()),
       M_stride = M.Stride(), dim = this->NumRows();
   KALDI_ASSERT(M_same_dim == dim);
-  
+
   const Real *M_data = M.Data();
-  
+
   if (this->Data() <= A.Data() + A.SizeInBytes() &&
       this->Data() + this->SizeInBytes() >= A.Data()) {
     // Matrices A and *this overlap. Make copy of A
@@ -1059,7 +1035,7 @@ void SpMatrix<Real>::AddSmat2Sp(
     KALDI_ASSERT(M.NumRows() == A.NumRows() && M.NumCols() == this->num_rows_);
   }
   MatrixIndexT Adim = A.NumRows(), dim = this->num_rows_;
-                                           
+
   Matrix<Real> temp_A(A); // represent A as full matrix.
   Matrix<Real> temp_MA(dim, Adim);
   temp_MA.AddSmatMat(1.0, M, transM, temp_A, kNoTrans, 0.0);
@@ -1076,9 +1052,9 @@ void SpMatrix<Real>::AddSmat2Sp(
   // for i = 0... dim-1,
   //   [the i'th row of *this] = beta * [the i'th row of *this] + alpha *
   //                               temp_MA * [the i'th column of M].
-  // Of course, we only process the first 0 ... i elements of this row, 
+  // Of course, we only process the first 0 ... i elements of this row,
   // as that's all that are kept in the symmetric packed format.
-  
+
   Matrix<Real> temp_this(*this);
   Real *data = this->data_;
   const Real *Mdata = M.Data(), *MAdata = temp_MA.Data();
@@ -1135,11 +1111,11 @@ void SpMatrix<Real>::AddMat2(const Real alpha, const MatrixBase<Real> &M,
                              MatrixTransposeType transM, const Real beta)  {
   KALDI_ASSERT((transM == kNoTrans && this->NumRows() == M.NumRows())
                || (transM == kTrans && this->NumRows() == M.NumCols()));
-  
+
   // Cblas has no function *sprk (i.e. symmetric packed rank-k update), so we
   // use as temporary storage a regular matrix of which we only access its lower
   // triangle
-  
+
   MatrixIndexT this_dim = this->NumRows(),
       m_other_dim = (transM == kNoTrans ? M.NumCols() : M.NumRows());
 
@@ -1215,7 +1191,7 @@ template double SolveQuadraticMatrixProblem(const SpMatrix<double> &Q,
                                             const SpMatrix<double> &SigmaInv,
                                             const SolverOptions &opts,
                                             MatrixBase<double> *M);
-                                            
+
 // Instantiate the template above.
 template float SolveDoubleQuadraticMatrixProblem(
     const MatrixBase<float> &G,
@@ -1225,7 +1201,7 @@ template float SolveDoubleQuadraticMatrixProblem(
     const SpMatrix<float> &Q2,
     const SolverOptions &opts,
     MatrixBase<float> *M);
-    
+
 template double SolveDoubleQuadraticMatrixProblem(
     const MatrixBase<double> &G,
     const SpMatrix<double> &P1,
@@ -1234,7 +1210,7 @@ template double SolveDoubleQuadraticMatrixProblem(
     const SpMatrix<double> &Q2,
     const SolverOptions &opts,
     MatrixBase<double> *M);
-    
+
 
 
 } // namespace kaldi

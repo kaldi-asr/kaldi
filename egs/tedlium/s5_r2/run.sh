@@ -17,8 +17,8 @@
 # Apache 2.0
 #
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 
 
 set -e -o pipefail -u
@@ -57,10 +57,12 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  # later on we'll change this script so you have the option to
-  # download the pre-built LMs from openslr.org instead of building them
+  # Download the pre-built LMs from kaldi-asr.org instead of building them
   # locally.
-  local/ted_train_lm.sh
+  local/ted_download_lm.sh
+  # Uncomment this script to build the language models instead of
+  # downloading them from kaldi-asr.org.
+  # local/ted_train_lm.sh
 fi
 
 if [ $stage -le 5 ]; then
@@ -185,7 +187,7 @@ fi
 if [ $stage -le 17 ]; then
   # This will only work if you have GPUs on your system (and note that it requires
   # you to have the queue set up the right way... see kaldi-asr.org/doc/queue.html)
-  local/chain/run_tdnn.sh --train-set train --gmm tri3 --nnet3-affix ""
+  local/chain/run_tdnn.sh
 fi
 
 # The nnet3 TDNN recipe:

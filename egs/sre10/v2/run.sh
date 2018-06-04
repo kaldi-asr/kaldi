@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2015-2016   David Snyder
+# Copyright 2015-2017   David Snyder
 #                2015   Johns Hopkins University (Author: Daniel Garcia-Romero)
 #                2015   Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0.
@@ -11,8 +11,8 @@
 # with a DNN trained for ASR. It also demonstrates the
 # using the DNN to create a supervised-GMM.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc
@@ -47,10 +47,10 @@ utils/combine_data.sh data/train \
   data/swbd_cellular1_train data/swbd_cellular2_train \
   data/swbd2_phase2_train data/swbd2_phase3_train data/sre
 
-cp -r data/train data/train_dnn
-cp -r data/sre data/sre_dnn
-cp -r data/sre10_train data/sre10_train_dnn
-cp -r data/sre10_test data/sre10_test_dnn
+utils/copy_data_dir.sh data/train data/train_dnn
+utils/copy_data_dir.sh data/sre data/sre_dnn
+utils/copy_data_dir.sh data/sre10_train data/sre10_train_dnn
+utils/copy_data_dir.sh data/sre10_test data/sre10_test_dnn
 
 # Extract speaker recogntion features.
 steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
@@ -105,62 +105,61 @@ utils/fix_data_dir.sh data/train_32k
 # Initialize a full GMM from the DNN posteriors and speaker recognition
 # features. This can be used both alone, as a UBM, or to initialize the
 # i-vector extractor in a DNN-based system.
-sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd -l mem_free=6G,ram_free=6G" \
+sid/init_full_ubm_from_dnn.sh --cmd "$train_cmd --mem 15G" \
   data/train_32k \
   data/train_dnn_32k $nnet exp/full_ubm
 
 # Train an i-vector extractor based on just the supervised-GMM.
 sid/train_ivector_extractor.sh \
-  --cmd "$train_cmd -l mem_free=70G,ram_free=70G" \
+  --cmd "$train_cmd --mem 120G" \
   --ivector-dim 600 \
   --num-iters 5 exp/full_ubm/final.ubm data/train \
   exp/extractor_sup_gmm
 
 # Train an i-vector extractor based on the DNN-UBM.
 sid/train_ivector_extractor_dnn.sh \
-  --cmd "$train_cmd -l mem_free=80G,ram_free=80G" \
-  --min-post 0.015 \
-  --ivector-dim 600 \
-  --num-iters 5 exp/full_ubm/final.ubm $nnet \
+  --cmd "$train_cmd --mem 100G" --nnet-job-opt "--mem 4G" \
+  --min-post 0.015 --ivector-dim 600 --num-iters 5 \
+  exp/full_ubm/final.ubm $nnet \
   data/train \
   data/train_dnn \
   exp/extractor_dnn
 
 # Extract i-vectors from the extractor with the sup-GMM UBM.
 sid/extract_ivectors.sh \
-  --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 40 \
+  --cmd "$train_cmd --mem 12G" --nj 40 \
   exp/extractor_sup_gmm data/sre10_train \
   exp/ivectors_sre10_train_sup_gmm
 
 sid/extract_ivectors.sh \
-  --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 40 \
+  --cmd "$train_cmd --mem 12G" --nj 40 \
   exp/extractor_sup_gmm data/sre10_test \
   exp/ivectors_sre10_test_sup_gmm
 
 sid/extract_ivectors.sh \
-  --cmd "$train_cmd -l mem_free=8G,ram_free=8G" --nj 40 \
+  --cmd "$train_cmd --mem 12G" --nj 40 \
   exp/extractor_sup_gmm data/sre \
   exp/ivectors_sre_sup_gmm
 
 # Extract i-vectors using the extractor with the DNN-UBM.
 sid/extract_ivectors_dnn.sh \
-  --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
+  --cmd "$train_cmd --mem 15G" --nj 10 \
   exp/extractor_dnn \
   $nnet \
   data/sre10_test \
   data/sre10_test_dnn \
   exp/ivectors10_test_dnn
 
-sid/extract_ivectors_dnn.sh
-  --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
+sid/extract_ivectors_dnn.sh \
+   --cmd "$train_cmd --mem 15G" --nj 10 \
   exp/extractor_dnn \
   $nnet \
   data/sre10_train \
   data/sre10_train_dnn \
   exp/ivectors10_train_dnn
 
-sid/extract_ivectors_dnn.sh
-  --cmd "$train_cmd -l mem_free=10G,ram_free=10G" --nj 40 \
+sid/extract_ivectors_dnn.sh \
+  --cmd "$train_cmd --mem 15G" --nj 10 \
   exp/extractor_dnn \
   $nnet \
   data/sre \
@@ -183,87 +182,90 @@ local/scoring_common.sh data/sre data/sre10_train data/sre10_test \
 #
 # local/cosine_scoring.sh data/sre10_train data/sre10_test \
 #   exp/ivectors_sre10_train exp/ivectors_sre10_test $trials \
-#   local/scores_gmm_2048_ind_pooled
+#   exp/scores_gmm_2048_ind_pooled
 # local/lda_scoring.sh data/sre data/sre10_train data/sre10_test \
 #   exp/ivectors_sre exp/ivectors_sre10_train exp/ivectors_sre10_test \
-#   $trials local/scores_gmm_2048_ind_pooled
+#   $trials exp/scores_gmm_2048_ind_pooled
 
 # Create a gender independent PLDA model and do scoring with the sup-GMM system.
 local/plda_scoring.sh data/sre data/sre10_train data/sre10_test \
   exp/ivectors_sre_sup_gmm exp/ivectors_sre10_train_sup_gmm \
-  exp/ivectors_sre10_test_sup_gmm $trials local/scores_sup_gmm_ind_pooled
+  exp/ivectors_sre10_test_sup_gmm $trials exp/scores_sup_gmm_ind_pooled
 local/plda_scoring.sh --use-existing-models true data/sre data/sre10_train_female data/sre10_test_female \
   exp/ivectors_sre_sup_gmm exp/ivectors_sre10_train_sup_gmm_female \
-  exp/ivectors_sre10_test_sup_gmm_female $trials_female local/scores_sup_gmm_ind_female
+  exp/ivectors_sre10_test_sup_gmm_female $trials_female exp/scores_sup_gmm_ind_female
 local/plda_scoring.sh --use-existing-models true data/sre data/sre10_train_male data/sre10_test_male \
   exp/ivectors_sre_sup_gmm exp/ivectors_sre10_train_sup_gmm_male \
-  exp/ivectors_sre10_test_sup_gmm_male $trials_male local/scores_sup_gmm_ind_male
+  exp/ivectors_sre10_test_sup_gmm_male $trials_male exp/scores_sup_gmm_ind_male
 
 # Create gender dependent PLDA models and do scoring with the sup-GMM system.
 local/plda_scoring.sh data/sre_female data/sre10_train_female data/sre10_test_female \
   exp/ivectors_sre_sup_gmm exp/ivectors_sre10_train_sup_gmm_female \
-  exp/ivectors_sre10_test_sup_gmm_female $trials_female local/scores_sup_gmm_dep_female
+  exp/ivectors_sre10_test_sup_gmm_female $trials_female exp/scores_sup_gmm_dep_female
 local/plda_scoring.sh data/sre_male data/sre10_train_male data/sre10_test_male \
   exp/ivectors_sre_sup_gmm exp/ivectors_sre10_train_sup_gmm_male \
-  exp/ivectors_sre10_test_sup_gmm_male $trials_male local/scores_sup_gmm_dep_male
-mkdir -p local/scores_sup_gmm_dep_pooled
-cat local/scores_sup_gmm_dep_male/plda_scores local/scores_sup_gmm_dep_female/plda_scores \
-  > local/scores_sup_gmm_dep_pooled/plda_scores
+  exp/ivectors_sre10_test_sup_gmm_male $trials_male exp/scores_sup_gmm_dep_male
+
+# Pool the gender dependent results
+mkdir -p exp/scores_sup_gmm_dep_pooled
+cat exp/scores_sup_gmm_dep_male/plda_scores exp/scores_sup_gmm_dep_female/plda_scores \
+  > exp/scores_sup_gmm_dep_pooled/plda_scores
 
 # Create a gender independent PLDA model and do scoring with the DNN system.
 local/plda_scoring.sh data/sre data/sre10_train data/sre10_test \
   exp/ivectors_sre_dnn exp/ivectors_sre10_train_dnn \
-  exp/ivectors_sre10_test_dnn $trials local/scores_dnn_ind_pooled
+  exp/ivectors_sre10_test_dnn $trials exp/scores_dnn_ind_pooled
 local/plda_scoring.sh --use-existing-models true data/sre data/sre10_train_female data/sre10_test_female \
   exp/ivectors_sre_dnn exp/ivectors_sre10_train_dnn_female \
-  exp/ivectors_sre10_test_dnn_female $trials_female local/scores_dnn_ind_female
+  exp/ivectors_sre10_test_dnn_female $trials_female exp/scores_dnn_ind_female
 local/plda_scoring.sh --use-existing-models true data/sre data/sre10_train_male data/sre10_test_male \
   exp/ivectors_sre_dnn exp/ivectors_sre10_train_dnn_male \
-  exp/ivectors_sre10_test_dnn_male $trials_male local/scores_dnn_ind_male
+  exp/ivectors_sre10_test_dnn_male $trials_male exp/scores_dnn_ind_male
 
 # Create gender dependent PLDA models and do scoring with the DNN system.
 local/plda_scoring.sh data/sre_female data/sre10_train_female data/sre10_test_female \
   exp/ivectors_sre_dnn exp/ivectors_sre10_train_dnn_female \
-  exp/ivectors_sre10_test_dnn_female $trials_female local/scores_dnn_dep_female
+  exp/ivectors_sre10_test_dnn_female $trials_female exp/scores_dnn_dep_female
 local/plda_scoring.sh data/sre_male data/sre10_train_male data/sre10_test_male \
   exp/ivectors_sre_dnn exp/ivectors_sre10_train_dnn_male \
-  exp/ivectors_sre10_test_dnn_male $trials_male local/scores_dnn_dep_male
-mkdir -p local/scores_dnn_dep_pooled
-cat local/scores_dnn_dep_male/plda_scores local/scores_dnn_dep_female/plda_scores \
-  > local/scores_dnn_dep_pooled/plda_scores
+  exp/ivectors_sre10_test_dnn_male $trials_male exp/scores_dnn_dep_male
+
+mkdir -p exp/scores_dnn_dep_pooled
+cat exp/scores_dnn_dep_male/plda_scores exp/scores_dnn_dep_female/plda_scores \
+  > exp/scores_dnn_dep_pooled/plda_scores
 
 # Sup-GMM PLDA EER
 # ind pooled: 1.72
 # ind female: 1.81
-# ind male:   1.56
-# dep female: 1.89
-# dep male:   1.39
-# dep pooled: 1.65
-echo "Sup-GMM-$num_components EER"
+# ind male:   1.70
+# dep female: 2.03
+# dep male:   1.50
+# dep pooled: 1.79
+echo "Sup-GMM EER"
 for x in ind dep; do
   for y in female male pooled; do
-    eer=`compute-eer <(python local/prepare_for_eer.py $trials local/scores_sup_gmm_${x}_${y}/plda_scores) 2> /dev/null`
+    eer=`compute-eer <(python local/prepare_for_eer.py $trials exp/scores_sup_gmm_${x}_${y}/plda_scores) 2> /dev/null`
     echo "${x} ${y}: $eer"
   done
 done
 
-# DNN PLDA EER
-# ind pooled: 1.05
-# ind female: 1.33
-# ind male:   0.75
-# dep female: 1.41
-# dep male:   0.64
-# dep pooled: 1.02
-echo "DNN-$num_components EER"
+# DNN-UBM EER
+# ind pooled: 1.01
+# ind female: 1.16
+# ind male:   0.78
+# dep female: 1.27
+# dep male:   0.61
+# dep pooled: 0.96
+echo "DNN-UBM EER"
 for x in ind dep; do
   for y in female male pooled; do
-    eer=`compute-eer <(python local/prepare_for_eer.py $trials local/scores_dnn_${x}_${y}/plda_scores) 2> /dev/null`
+    eer=`compute-eer <(python local/prepare_for_eer.py $trials exp/scores_dnn_${x}_${y}/plda_scores) 2> /dev/null`
     echo "${x} ${y}: $eer"
   done
 done
 
 # In comparison, here is the EER for an unsupervised GMM-based system
-# with 5297 components (the same as the number of senones in the DNN):
+# with 5297 components (about the same as the number of senones in the DNN):
 # GMM-5297 PLDA EER
 # ind pooled: 2.25
 # ind female: 2.33

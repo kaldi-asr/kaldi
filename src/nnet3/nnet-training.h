@@ -36,18 +36,27 @@ struct NnetTrainerOptions {
   int32 print_interval;
   bool debug_computation;
   BaseFloat momentum;
+  BaseFloat l2_regularize_factor;
+  BaseFloat backstitch_training_scale;
+  int32 backstitch_training_interval;
+  BaseFloat batchnorm_stats_scale;
   std::string read_cache;
   std::string write_cache;
   bool binary_write_cache;
   BaseFloat max_param_change;
   NnetOptimizeOptions optimize_config;
   NnetComputeOptions compute_config;
+  CachingOptimizingCompilerOptions compiler_config;
   NnetTrainerOptions():
       zero_component_stats(true),
       store_component_stats(true),
       print_interval(100),
       debug_computation(false),
       momentum(0.0),
+      l2_regularize_factor(1.0),
+      backstitch_training_scale(0.0),
+      backstitch_training_interval(1),
+      batchnorm_stats_scale(0.8),
       binary_write_cache(true),
       max_param_change(2.0) { }
   void Register(OptionsItf *opts) {
@@ -60,27 +69,47 @@ struct NnetTrainerOptions {
     opts->Register("print-interval", &print_interval, "Interval (measured in "
                    "minibatches) after which we print out objective function "
                    "during training\n");
-    opts->Register("max-param-change", &max_param_change, "The maximum change in"
-                   "parameters allowed per minibatch, measured in Frobenius norm "
+    opts->Register("max-param-change", &max_param_change, "The maximum change in "
+                   "parameters allowed per minibatch, measured in Euclidean norm "
                    "over the entire model (change will be clipped to this value)");
-    opts->Register("momentum", &momentum, "momentum constant to apply during "
+    opts->Register("momentum", &momentum, "Momentum constant to apply during "
                    "training (help stabilize update).  e.g. 0.9.  Note: we "
                    "automatically multiply the learning rate by (1-momenum) "
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
-    opts->Register("read-cache", &read_cache, "the location where we can read "
-                   "the cached computation from");
-    opts->Register("write-cache", &write_cache, "the location where we want to "
-                   "write the cached computation to");
+    opts->Register("l2-regularize-factor", &l2_regularize_factor, "Factor that "
+                   "affects the strength of l2 regularization on model "
+                   "parameters.  The primary way to specify this type of "
+                   "l2 regularization is via the 'l2-regularize'"
+                   "configuration value at the config-file level. "
+                   " --l2-regularize-factor will be multiplied by the component-level "
+                   "l2-regularize values and can be used to correct for effects "
+                   "related to parallelization by model averaging.");
+    opts->Register("batchnorm-stats-scale", &batchnorm_stats_scale,
+                   "Factor by which we scale down the accumulated stats of batchnorm "
+                   "layers after processing each minibatch.  Ensure that the final "
+                   "model we write out has batchnorm stats that are fairly fresh.");
+    opts->Register("backstitch-training-scale", &backstitch_training_scale,
+                   "backstitch training factor. "
+                   "if 0 then in the normal training mode. It is referred as "
+                   "'\\alpha' in our publications.");
+    opts->Register("backstitch-training-interval",
+                   &backstitch_training_interval,
+                   "do backstitch training with the specified interval of "
+                   "minibatches. It is referred as 'n' in our publications.");
+    opts->Register("read-cache", &read_cache, "The location from which to read "
+                   "the cached computation.");
+    opts->Register("write-cache", &write_cache, "The location to which to write "
+                   "the cached computation.");
     opts->Register("binary-write-cache", &binary_write_cache, "Write "
                    "computation cache in binary mode");
 
     // register the optimization options with the prefix "optimization".
     ParseOptions optimization_opts("optimization", opts);
     optimize_config.Register(&optimization_opts);
-
-
+    ParseOptions compiler_opts("compiler", opts);
+    compiler_config.Register(&compiler_opts);
     // register the compute options with the prefix "computation".
     ParseOptions compute_opts("computation", opts);
     compute_config.Register(&compute_opts);
@@ -92,7 +121,9 @@ struct NnetTrainerOptions {
 // Also see struct AccuracyInfo, in nnet-diagnostics.h.
 struct ObjectiveFunctionInfo {
   int32 current_phase;
-
+  int32 minibatches_this_phase; // The number of minibatches' worth of stats that
+                                // we accumulated in the phase numbered
+                                // 'current_phase'.
   double tot_weight;
   double tot_objf;
   double tot_aux_objf;  // An 'auxiliary' objective function that is optional-
@@ -105,6 +136,7 @@ struct ObjectiveFunctionInfo {
 
   ObjectiveFunctionInfo():
       current_phase(0),
+      minibatches_this_phase(0),
       tot_weight(0.0), tot_objf(0.0), tot_aux_objf(0.0),
       tot_weight_this_phase(0.0), tot_objf_this_phase(0.0),
       tot_aux_objf_this_phase(0.0) { }
@@ -121,8 +153,12 @@ struct ObjectiveFunctionInfo {
                    BaseFloat this_minibatch_tot_aux_objf = 0.0);
 
   // Prints stats for the current phase.
+  // Note: 'phase' will normally be this->current_phase + 1, but may under
+  // unusual circumstances (e.g. multilingual training, where not all outputs
+  // are seen on all minibatches) be larger than that.
   void PrintStatsForThisPhase(const std::string &output_name,
-                              int32 minibatches_per_phase) const;
+                              int32 minibatches_per_phase,
+                              int32 phase) const;
   // Prints total stats, and returns true if total stats' weight was nonzero.
   bool PrintTotalStats(const std::string &output_name) const;
 };
@@ -157,21 +193,25 @@ class NnetTrainer {
 
   ~NnetTrainer();
  private:
-  void ProcessOutputs(const NnetExample &eg,
-                      NnetComputer *computer);
+  // The internal function for doing one step of conventional SGD training.
+  void TrainInternal(const NnetExample &eg,
+                     const NnetComputation &computation);
 
-  // Applies per-component max-change and global max-change to all updatable
-  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
-  // in *nnet_.
-  void UpdateParamsWithMaxChange();
+  // The internal function for doing one step of backstitch training. Depending
+  // on whether is_backstitch_step1 is true, It could be either the first
+  // (backward) step, or the second (forward) step of backstitch.
+  void TrainInternalBackstitch(const NnetExample &eg,
+                               const NnetComputation &computation,
+                               bool is_backstitch_step1);
+
+  void ProcessOutputs(bool is_backstitch_step2, const NnetExample &eg,
+                      NnetComputer *computer);
 
   const NnetTrainerOptions config_;
   Nnet *nnet_;
-  Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
-                      // 0.0.  nnet representing accumulated parameter-change
-                      // (we'd call this gradient_nnet_, but due to
-                      // natural-gradient update, it's better to consider it as
-                      // a delta-parameter nnet.
+  Nnet *delta_nnet_;  // nnet representing parameter-change for this minibatch
+                      // (or, when using momentum, the moving weighted average
+                      // of this).
   CachingOptimizingCompiler compiler_;
 
   // This code supports multiple output layers, even though in the
@@ -184,6 +224,11 @@ class NnetTrainer {
   int32 num_max_change_global_applied_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
+
+  // This value is used in backstitch training when we need to ensure
+  // consistent dropout masks.  It's set to a value derived from rand()
+  // when the class is initialized.
+  int32 srand_seed_;
 };
 
 /**

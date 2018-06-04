@@ -21,7 +21,7 @@ EOF
 
 . utils/parse_options.sh
 
-parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 alidir=exp/nnet5a_ali_100k_nodup
 if [ ! -f $alidir/.done ]; then

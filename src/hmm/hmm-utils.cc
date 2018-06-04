@@ -388,40 +388,38 @@ fst::VectorFst<fst::StdArc> *GetPdfToTransitionIdTransducer(const TransitionMode
 
 
 
-
-// this is the code that expands an FST from transition-states to
-// transition-ids, in the case where "reorder == true",
-// i.e. non-optional transition is before the self-loop.
-
-
-
 class TidToTstateMapper {
 public:
   // Function object used in MakePrecedingInputSymbolsSameClass and
-  // MakeFollowingInputSymbolsSameClass (as called by AddSelfLoopsBefore
-  // and AddSelfLoopsAfter).  It maps transition-ids to transition-states
-  // (and -1 to -1, 0 to 0 and disambiguation symbols to 0).  It also
-  // checks that there are no self-loops in the graph (i.e. in the labels
-  // it is called with).  This is just a convenient place to put this check.
+  // MakeFollowingInputSymbolsSameClass (as called by AddSelfLoopsReorder and
+  // AddSelfLoopsNoReorder).  It maps transition-ids to transition-states (and
+  // -1 to -1, 0 to 0 and disambiguation symbols to 0).  If check_no_self_loops
+  // == true, it also checks that there are no self-loops in the graph (i.e. in
+  // the labels it is called with).  This is just a convenient place to put this
+  // check.
 
   // This maps valid transition-ids to transition states, maps kNoLabel to -1, and
   // maps all other symbols (i.e. epsilon symbols and disambig symbols) to zero.
   // Its point is to provide an equivalence class on labels that's relevant to what
   // the self-loop will be on the following (or preceding) state.
   TidToTstateMapper(const TransitionModel &trans_model,
-                    const std::vector<int32> &disambig_syms):
+                    const std::vector<int32> &disambig_syms,
+                    bool check_no_self_loops):
       trans_model_(trans_model),
-      disambig_syms_(disambig_syms) { }
+      disambig_syms_(disambig_syms),
+      check_no_self_loops_(check_no_self_loops) { }
   typedef int32 Result;
   int32 operator() (int32 label) const {
     if (label == static_cast<int32>(fst::kNoLabel)) return -1;  // -1 -> -1
     else if (label >= 1 && label <= trans_model_.NumTransitionIds()) {
-      if (trans_model_.IsSelfLoop(label))
+      if (check_no_self_loops_ && trans_model_.IsSelfLoop(label))
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
       return trans_model_.TransitionIdToTransitionState(label);
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
       if (label != 0)
-        KALDI_ASSERT(std::binary_search(disambig_syms_.begin(), disambig_syms_.end(), label));  // or invalid label
+        KALDI_ASSERT(std::binary_search(disambig_syms_.begin(),
+                                        disambig_syms_.end(),
+                                        label));  // or invalid label
       return 0;
     }
   }
@@ -429,21 +427,28 @@ public:
 private:
   const TransitionModel &trans_model_;
   const std::vector<int32> &disambig_syms_;  // sorted.
+  bool check_no_self_loops_;
 };
 
-static void AddSelfLoopsBefore(const TransitionModel &trans_model,
-                               const std::vector<int32> &disambig_syms,
-                               BaseFloat self_loop_scale,
-                               fst::VectorFst<fst::StdArc> *fst) {
+// This is the code that expands an FST from transition-states to
+// transition-ids, in the case where reorder == true, i.e. the non-optional
+// transition is before the self-loop.
+static void AddSelfLoopsReorder(const TransitionModel &trans_model,
+                                const std::vector<int32> &disambig_syms,
+                                BaseFloat self_loop_scale,
+                                bool check_no_self_loops,
+                                fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
 
-  TidToTstateMapper f(trans_model, disambig_syms);
-  // Duplicate states as necessary so that each state has at most one self-loop
-  // on it.
+  TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
+  // Duplicate states as necessary so that each state will require at most one
+  // self-loop to be added to it.  Approximately this means that if a
+  // state has multiple different symbols on arcs entering it, it will be
+  // duplicated, with one copy per incoming symbol.
   MakePrecedingInputSymbolsSameClass(true, fst, f);
 
   int32 kNoTransState = f(kNoLabel);
@@ -508,13 +513,14 @@ static void AddSelfLoopsBefore(const TransitionModel &trans_model,
 
 
 // this is the code that expands an FST from transition-states to
-// transition-ids, in the case where "reorder == false", i.e. non-optional transition
-// is after the self-loop.
-
-static void AddSelfLoopsAfter(const TransitionModel &trans_model,
-                              const std::vector<int32> &disambig_syms,
-                              BaseFloat self_loop_scale,
-                              fst::VectorFst<fst::StdArc> *fst) {
+// transition-ids, in the case where reorder == false, i.e. non-optional
+// transition is after the self-loop.
+static void AddSelfLoopsNoReorder(
+    const TransitionModel &trans_model,
+    const std::vector<int32> &disambig_syms,
+    BaseFloat self_loop_scale,
+    bool check_no_self_loops,
+    fst::VectorFst<fst::StdArc> *fst) {
   using namespace fst;
   typedef StdArc Arc;
   typedef Arc::Label Label;
@@ -523,7 +529,7 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
 
   // Duplicate states as necessary so that each state has at most one self-loop
   // on it.
-  TidToTstateMapper f(trans_model, disambig_syms);
+  TidToTstateMapper f(trans_model, disambig_syms, check_no_self_loops);
   MakeFollowingInputSymbolsSameClass(true, fst, f);
 
   StateId num_states = fst->NumStates();
@@ -559,13 +565,16 @@ static void AddSelfLoopsAfter(const TransitionModel &trans_model,
 void AddSelfLoops(const TransitionModel &trans_model,
                   const std::vector<int32> &disambig_syms,
                   BaseFloat self_loop_scale,
-                  bool reorder,  // true->dan-style, false->lukas-style.
+                  bool reorder,
+                  bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst) {
   KALDI_ASSERT(fst->Start() != fst::kNoStateId);
   if (reorder)
-    AddSelfLoopsBefore(trans_model, disambig_syms, self_loop_scale, fst);
+    AddSelfLoopsReorder(trans_model, disambig_syms, self_loop_scale,
+                        check_no_self_loops, fst);
   else
-    AddSelfLoopsAfter(trans_model, disambig_syms, self_loop_scale, fst);
+    AddSelfLoopsNoReorder(trans_model, disambig_syms, self_loop_scale,
+                          check_no_self_loops, fst);
 }
 
 // IsReordered returns true if the transitions were possibly reordered.  This reordering
@@ -772,18 +781,38 @@ static inline void ConvertAlignmentForPhone(
 }
 
 
+
 /**
-   This function, called from ConvertAlignment(), works out suitable new lengths
-   of phones in the case where subsample_factor != 1.  The input vectors
+   This function, called from ConvertAlignmentInternal(), works out suitable new
+   lengths of phones in the case where subsample_factor != 1.  The input vectors
    'mapped_phones' and 'old_lengths' must be the same size-- the length of the
    phone sequence.  The 'topology' object and 'mapped_phones' are needed to
    work out the minimum length of each phone in the sequence.
-   Returns true only if it could not assign lengths (because the topology was
+   Returns false only if it could not assign lengths (because the topology was
    too long relative to the number of frames).
+
+   @param topology [in]         The new phone lengths are computed with
+                                regard to this topology
+   @param mapped_phones [in]    The phones for which this function computes
+                                new lengths
+   @param old_lengths     [in]  The old lengths
+   @param conversion_shift [in] This will normally equal subsample_factor - 1
+                                but may be less than that if the 'repeat_frames'
+                                option is true; it's used for generating
+                                'frame-shifted' versions of alignments that
+                                we will later interpolate. This helps us keep
+                                the phone boundaries of the subsampled and
+                                interpolated alignments the same as
+                                the original alignment.
+   @param subsample_factor [in] The frame subsampling factor... normally 1, but
+                                might be > 1 if we're converting to a
+                                reduced-frame-rate system.
+   @param new_lengths [out]     The vector for storing new lengths.
 */
 static bool ComputeNewPhoneLengths(const HmmTopology &topology,
                                    const std::vector<int32> &mapped_phones,
                                    const std::vector<int32> &old_lengths,
+                                   int32 conversion_shift,
                                    int32 subsample_factor,
                                    std::vector<int32> *new_lengths) {
   int32 phone_sequence_length = old_lengths.size();
@@ -797,10 +826,10 @@ static bool ComputeNewPhoneLengths(const HmmTopology &topology,
     // the subsampled alignments have the same length as features
     // subsampled with 'subsample-feats'.
     int32 subsampled_time =
-        (cur_time_elapsed + subsample_factor - 1) / subsample_factor;
+        (cur_time_elapsed + conversion_shift) / subsample_factor;
     cur_time_elapsed += old_lengths[i];
     int32 next_subsampled_time =
-        (cur_time_elapsed + subsample_factor - 1) / subsample_factor;
+        (cur_time_elapsed + conversion_shift) / subsample_factor;
     (*new_lengths)[i] = next_subsampled_time - subsampled_time;
   }
   bool changed = true;
@@ -850,14 +879,23 @@ static bool ComputeNewPhoneLengths(const HmmTopology &topology,
   return true;
 }
 
-bool ConvertAlignment(const TransitionModel &old_trans_model,
+/**
+  This function is the same as 'ConvertAligment',
+  but instead of the 'repeat_frames' option it supports the 'conversion_shift'
+  option; see the documentation of ComputeNewPhoneLengths() for what
+  'conversion_shift' is for.
+*/
+
+static bool ConvertAlignmentInternal(const TransitionModel &old_trans_model,
                       const TransitionModel &new_trans_model,
                       const ContextDependencyInterface &new_ctx_dep,
                       const std::vector<int32> &old_alignment,
+                      int32 conversion_shift,
                       int32 subsample_factor,
                       bool new_is_reordered,
                       const std::vector<int32> *phone_map,
                       std::vector<int32> *new_alignment) {
+  KALDI_ASSERT(0 <= conversion_shift && conversion_shift < subsample_factor);
   bool old_is_reordered = IsReordered(old_trans_model, old_alignment);
   KALDI_ASSERT(new_alignment != NULL);
   new_alignment->clear();
@@ -893,7 +931,7 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
     for (int32 i = 0; i < phone_sequence_length; i++)
       old_lengths[i] = old_split[i].size();
     if (!ComputeNewPhoneLengths(new_trans_model.GetTopo(),
-                                mapped_phones, old_lengths,
+                                mapped_phones, old_lengths, conversion_shift,
                                 subsample_factor, &new_lengths)) {
       KALDI_WARN << "Failed to produce suitable phone lengths";
       return false;
@@ -931,7 +969,58 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
     }
   }
   KALDI_ASSERT(new_alignment->size() ==
-               (old_alignment.size() + subsample_factor - 1)/subsample_factor);
+               (old_alignment.size() + conversion_shift)/subsample_factor);
+  return true;
+}
+
+bool ConvertAlignment(const TransitionModel &old_trans_model,
+                      const TransitionModel &new_trans_model,
+                      const ContextDependencyInterface &new_ctx_dep,
+                      const std::vector<int32> &old_alignment,
+                      int32 subsample_factor,
+                      bool repeat_frames,
+                      bool new_is_reordered,
+                      const std::vector<int32> *phone_map,
+                      std::vector<int32> *new_alignment) {
+  if (!repeat_frames || subsample_factor == 1) {
+    return ConvertAlignmentInternal(old_trans_model,
+                                    new_trans_model,
+                                    new_ctx_dep,
+                                    old_alignment,
+                                    subsample_factor - 1,
+                                    subsample_factor,
+                                    new_is_reordered,
+                                    phone_map,
+                                    new_alignment);
+   // The value "subsample_factor - 1" for conversion_shift above ensures the
+   // alignments have the same length as the output of 'subsample-feats'
+  } else {
+    std::vector<std::vector<int32> > shifted_alignments(subsample_factor);
+    for (int32 conversion_shift = subsample_factor - 1;
+         conversion_shift >= 0; conversion_shift--) {
+      if (!ConvertAlignmentInternal(old_trans_model,
+                                    new_trans_model,
+                                    new_ctx_dep,
+                                    old_alignment,
+                                    conversion_shift,
+                                    subsample_factor,
+                                    new_is_reordered,
+                                    phone_map,
+                                    &shifted_alignments[conversion_shift]))
+        return false;
+    }
+    KALDI_ASSERT(new_alignment != NULL);
+    new_alignment->clear();
+    new_alignment->reserve(old_alignment.size());
+    int32 max_shifted_ali_length = (old_alignment.size() / subsample_factor)
+                                   + (old_alignment.size() % subsample_factor);
+    for (int32 i = 0; i < max_shifted_ali_length; i++)
+      for (int32 conversion_shift = subsample_factor - 1;
+           conversion_shift >= 0; conversion_shift--)
+        if (i < static_cast<int32>(shifted_alignments[conversion_shift].size()))
+          new_alignment->push_back(shifted_alignments[conversion_shift][i]);
+  }
+  KALDI_ASSERT(new_alignment->size() == old_alignment.size());
   return true;
 }
 

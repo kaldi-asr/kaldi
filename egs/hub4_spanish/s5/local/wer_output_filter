@@ -1,0 +1,28 @@
+#!/bin/bash
+# Copyright (c) 2017  Johns Hopkins University (Author: Yenda Trmal <jtrmal@gmail.com>)
+# Apache 2.0
+
+
+## Filter for scoring of the STT results. Convert everything to lowercase
+## and add some ad-hoc fixes for errors in transcripts
+
+perl -e '
+   while(<STDIN>) { 
+     @A  = split(" ", $_); 
+     $id = shift @A; print "$id "; 
+     foreach $a (@A) {
+       print lc($a) . " " unless $a =~ /\<.*\>/;
+     }
+     print "\n";
+    }' | sed \
+'
+  s/futbol/fútbol/g;
+  s/maria/maría/g;
+  s/aun/aún/g;
+  s/dé/de/g;
+  s/golan/golán/g;
+  s/paris/parís/g;
+' 
+    
+#| uconv -f  utf-8  -t utf-8 -x Latin-ASCII
+

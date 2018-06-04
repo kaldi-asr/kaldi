@@ -18,6 +18,9 @@ normdict = {".": "",
             }
 #removes all the above signs
 
+from_chars = ''.join(normdict.keys())
+to_chars = ''.join(normdict.values())
+
 t_table = str.maketrans(normdict)
 
 ## Main
@@ -25,13 +28,15 @@ t_table = str.maketrans(normdict)
 transcript = codecs.open(sys.argv[1], "r", "utf8")
 outtext = codecs.open(sys.argv[2], "w", "utf8")
 
-for line in transcript:
-	line = line.replace(".\Punkt", ".")
-	line = line.replace(",\Komma", ",")
-	normtext1 = line.translate(t_table)
-	normtext2 = re.sub(r'  +', ' ', normtext1.strip())
-	outtext.write(normtext2.upper() + "\n")
+#TODO: Add number normalisation and remove uppercasing
 
+for line in transcript:
+    line = line.replace(".\Punkt", ".")
+    line = line.replace(",\Komma", ",")
+    normtext1 = re.sub(r'[\.,:;\?]', '', line)
+    normtext2 = re.sub(r'[\t\\]', ' ', normtext1)
+    normtext3 = re.sub(r'  +', ' ', normtext2.strip())
+    outtext.write(normtext3.upper())
 
 transcript.close()
 outtext.close()

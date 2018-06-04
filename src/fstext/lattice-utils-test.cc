@@ -30,11 +30,7 @@ template<class Weight, class Int> void TestConvert(bool invert) {
     VectorFst<Arc> *fst = RandFst<Arc>();
     std::cout << "FST before converting to compact-arc is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
-#else
-      FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<CompactArc> ofst;
@@ -42,25 +38,17 @@ template<class Weight, class Int> void TestConvert(bool invert) {
 
     std::cout << "FST after converting is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
       FstPrinter<CompactArc> fstprinter(ofst, NULL, NULL, NULL, false, true, "\t");
-#else
-      FstPrinter<CompactArc> fstprinter(ofst, NULL, NULL, NULL, false, true);
-#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> origfst;
     ConvertLattice<Weight, Int>(ofst, &origfst, invert);
     std::cout << "FST after back conversion is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
       FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true, "\t");
-#else
-      FstPrinter<Arc> fstprinter(origfst, NULL, NULL, NULL, false, true);
-#endif
       fstprinter.Print(&std::cout, "standard output");
     }
-    
+
     assert(RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
     delete fst;
   }
@@ -78,11 +66,7 @@ template<class Weight, class Int> void TestShortestPath() {
       std::cout << "Testing shortest path\n";
       std::cout << "FST before converting to compact-arc is:\n";
       {
-#ifdef HAVE_OPENFST_GE_10400
         FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
-#else
-        FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-#endif
         fstprinter.Print(&std::cout, "standard output");
       }
       VectorFst<CompactArc> cfst;
@@ -96,8 +80,8 @@ template<class Weight, class Int> void TestShortestPath() {
         ShortestPath(*fst, &nbest_fst_2, 3);
         VectorFst<Arc> nbest_fst_1b;
         ShortestPath(nbest_fst_2, &nbest_fst_1b, 1);
-      
-      
+
+
         assert(ApproxEqual(ShortestDistance(nbest_fst_1),
                            ShortestDistance(nbest_fst_1b)));
 
@@ -112,7 +96,7 @@ template<class Weight, class Int> void TestShortestPath() {
         ShortestPath(cfst, &nbest_fst_2, 3);
         VectorFst<CompactArc> nbest_fst_1b;
         ShortestPath(nbest_fst_2, &nbest_fst_1b, 1);
-      
+
         assert(ApproxEqual(ShortestDistance(nbest_fst_1),
                            ShortestDistance(nbest_fst_1b)));
         // since semiring is idempotent, this should succeed too.
@@ -122,7 +106,7 @@ template<class Weight, class Int> void TestShortestPath() {
 
       delete fst;
     }
-  }  
+  }
 }
 
 
@@ -132,7 +116,7 @@ template<class Int> void TestConvert2() {
   typedef ArcTpl<LatticeWeightTpl<double> > ArcD;
   typedef ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<float>, Int> > CArcF;
   typedef ArcTpl<CompactLatticeWeightTpl<LatticeWeightTpl<double>, Int> > CArcD;
-  
+
   for(int i = 0; i < 2; i++) {
     {
       VectorFst<ArcF> *fst1 = RandPairFst<ArcF>();
@@ -197,7 +181,7 @@ template<class Int> void TestConvert2() {
       assert(RandEquivalent(*fst1, fst2, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
       delete fst1;
     }
-    
+
     {
       VectorFst<ArcD> *fst1 = RandPairFst<ArcD>();
       VectorFst<CArcF> cfst1;
@@ -209,7 +193,7 @@ template<class Int> void TestConvert2() {
     }
   }
 }
-    
+
 
 // use TestConvertPair when the Weight can be constructed from
 // a pair of floats.
@@ -239,7 +223,7 @@ template<class Weight, class Int> void TestConvertPair(bool invert) {
       fstprinter.Print(&std::cout, "standard output");
       }*/
 
-    assert(RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));    
+    assert(RandEquivalent(*fst, origfst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
     delete fst;
   }
 }
@@ -268,7 +252,7 @@ template<class Weight, class Int> void TestScalePair(bool invert) {
     scale2[1][0] = -0.25;
   }
 
-  
+
   typedef ArcTpl<Weight> Arc;
   typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
   for(int i = 0; i < 2; i++) {
@@ -331,7 +315,7 @@ int main() {
   }
   {
     typedef LatticeWeightTpl<double> LatticeWeight;
-    TestShortestPath<LatticeWeight, int32>();    
+    TestShortestPath<LatticeWeight, int32>();
     TestConvert2<int32>();
     for(int i = 0; i < 2; i++) {
       bool invert = (i % 2);

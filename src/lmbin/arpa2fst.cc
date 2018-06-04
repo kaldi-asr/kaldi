@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 
     fst::SymbolTable* symbols;
     if (!read_syms_filename.empty()) {
-      // Use existing symbols. Required symbolds must be in the table.
+      // Use existing symbols. Required symbols must be in the table.
       kaldi::Input kisym(read_syms_filename);
       symbols = fst::SymbolTable::ReadText(
           kisym.Stream(), PrintableWxfilename(read_syms_filename));
@@ -118,7 +118,10 @@ int main(int argc, char *argv[]) {
     // Actually compile LM.
     KALDI_ASSERT (symbols != NULL);
     ArpaLmCompiler lm_compiler(options, disambig_symbol_id, symbols);
-    ReadKaldiObject(arpa_rxfilename, &lm_compiler);
+    {
+      Input ki(arpa_rxfilename);
+      lm_compiler.Read(ki.Stream());
+    }
 
     // Sort the FST in-place if requested by options.
     if (ilabel_sort) {

@@ -3,9 +3,12 @@
 #           2014-2015   Vimal Manohar
 # Apache 2.0.
 
-# Create denominator lattices for MMI/MPE training.
+# Create denominator lattices for MMI/MPE training [deprecated].
 # This version uses the neural-net models (version 3, i.e. the nnet3 code).
 # Creates its output in $dir/lat.*.gz
+# Note: the more recent discriminative training scripts will not use this
+# script at all, they'll use get_degs.sh which combines the decoding
+# and egs-dumping into one script (to save disk space and disk I/O).
 
 # Begin configuration section.
 nj=4
@@ -18,11 +21,10 @@ self_loop_scale=0.1
 acwt=0.1
 max_active=5000
 min_active=200
-transform_dir=
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
 # by something like 5 or 10 to get real bytes (not sure why so large)
-num_threads=1 # Fixed to 1 for now
+num_threads=1 # number of threads of decoder [only applicable if not looped, for now]
 online_ivector_dir=
 determinize=true
 minimize=false
@@ -31,8 +33,6 @@ extra_left_context=0
 extra_right_context=0
 extra_left_context_initial=-1
 extra_right_context_final=-1
-feat_type=  # you can set this in order to run on top of delta features, although we don't
-            # normally want to do this.
 # End configuration section.
 
 
@@ -46,8 +46,6 @@ num_threads=1 # Fixed to 1 for now
 if [ $# != 4 ]; then
   echo "Usage: steps/nnet3/make_denlats.sh [options] <data-dir> <lang-dir> <src-dir> <exp-dir>"
   echo "  e.g.: steps/nnet3/make_denlats.sh data/train data/lang exp/nnet4 exp/nnet4_denlats"
-  echo "Works for (delta|lda) features, and (with --transform-dir option) such features"
-  echo " plus transforms."
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
@@ -56,7 +54,6 @@ if [ $# != 4 ]; then
   echo "  --sub-split <n-split>                            # e.g. 40; use this for "
   echo "                           # large databases so your jobs will be smaller and"
   echo "                           # will (individually) finish reasonably soon."
-  echo "  --transform-dir <transform-dir>   # directory to find fMLLR transforms."
   echo "  --num-threads  <n>                # number of threads per decoding job"
   exit 1;
 fi
@@ -110,48 +107,9 @@ fi
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 cp $srcdir/cmvn_opts $dir 2>/dev/null
 
-if [ -z "$feat_type" ]; then
-  if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=raw; fi
-fi
-echo "$0: feature type is $feat_type"
+echo "$0: feature type is raw"
 
-case $feat_type in
-  delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas ark:- ark:- |";;
-  raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-   ;;
-  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
-    cp $srcdir/final.mat $dir
-   ;;
-  *) echo "Invalid feature type $feat_type" && exit 1;
-esac
-
-if [ ! -z "$transform_dir" ]; then
-  echo "$0: using transforms from $transform_dir"
-  [ ! -s $transform_dir/num_jobs ] && \
-    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
-  nj_orig=$(cat $transform_dir/num_jobs)
-
-  if [ $feat_type == "raw" ]; then trans=raw_trans;
-  else trans=trans; fi
-  if [ $feat_type == "lda" ] && ! cmp $transform_dir/final.mat $srcdir/final.mat; then
-    echo "$0: LDA transforms differ between $srcdir and $transform_dir"
-    exit 1;
-  fi
-  if [ ! -f $transform_dir/$trans.1 ]; then
-    echo "$0: expected $transform_dir/$trans.1 to exist (--transform-dir option)"
-    exit 1;
-  fi
-  if [ $nj -ne $nj_orig ]; then
-    # Copy the transforms into an archive with an index.
-    for n in $(seq $nj_orig); do cat $transform_dir/$trans.$n; done | \
-       copy-feats ark:- ark,scp:$dir/$trans.ark,$dir/$trans.scp || exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/$trans.scp ark:- ark:- |"
-  else
-    # number of jobs matches with alignment dir.
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/$trans.JOB ark:- ark:- |"
-  fi
-fi
-
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 
 # if this job is interrupted by the user, we want any background jobs to be
 # killed too.
@@ -174,7 +132,7 @@ fi
 
 lattice_determinize_cmd=
 if $determinize; then
-  lattice_determinize_cmd="lattice-determinize-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=$minimize --prune --beam=$beam ark:- ark:- |"
+  lattice_determinize_cmd="lattice-determinize-non-compact --acoustic-scale=$acwt --max-mem=$max_mem --minimize=$minimize --prune=true --beam=$lattice_beam ark:- ark:- |"
 fi
 
 if [ $sub_split -eq 1 ]; then
@@ -211,7 +169,7 @@ else
       split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split${sub_split}utt/JOB/:g`
+      feats_subset=`echo $feats | sed s:JOB/:$n/split${sub_split}utt/JOB/:g`
 
       $cmd --num-threads $num_threads JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \
         nnet3-latgen-faster$thread_string $ivector_opts $frame_subsampling_opt \
@@ -248,4 +206,3 @@ fi
 
 
 echo "$0: done generating denominator lattices."
-

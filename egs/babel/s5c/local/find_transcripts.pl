@@ -21,7 +21,7 @@
 # It takes as
 # Extracts from the dot files the transcripts for a given
 # dataset (represented by a file list).
-# 
+#
 
 @ARGV == 1 || die "find_transcripts.pl dot_files_flist < utterance_ids > transcripts";
 $dot_flist = shift @ARGV;
@@ -36,7 +36,7 @@ while(<L>){
 
 
 
-while(<STDIN>){ 
+while(<STDIN>){
     chop;
     $uttid = $_;
     $uttid =~ m:(\w{6})\w\w: || die "Bad utterance id $_";

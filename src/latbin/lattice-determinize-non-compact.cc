@@ -56,9 +56,9 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
       KALDI_WARN << "Detected empty lattice, skipping " << key;
       return false;
     }
-    
-    // The work gets done in the next line.  
-    if (DeterminizeLattice(lat, clat, lat_opts, NULL)) { 
+
+    // The work gets done in the next line.
+    if (DeterminizeLattice(lat, clat, lat_opts, NULL)) {
       if (prune) PruneLattice(cur_beam, clat);
       return true;
     } else { // failed to determinize..
@@ -90,101 +90,6 @@ bool DeterminizeLatticeWrapper(const Lattice &lat,
   return false;
 }
 
-void ComputeAcousticScoresMap(
-    const Lattice &lat, 
-    unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>, 
-                                        PairHasher<int32> > *acoustic_scores) {
-  acoustic_scores->clear();
-
-  std::vector<int32> state_times;
-  LatticeStateTimes(lat, &state_times);
-  
-  KALDI_ASSERT(lat.Start() == 0);
-
-  for (StateId s = 0; s < lat.NumStates(); s++) {
-    int32 t = state_times[s];
-    for (fst::ArcIterator<Lattice> aiter(lat, s); !aiter.Done();
-          aiter.Next()) {
-      const Arc &arc = aiter.Value();
-      const LatticeWeight &weight = arc.weight;
-
-      int32 tid = arc.ilabel;
-
-      if (tid != 0) {
-        unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>, 
-          PairHasher<int32> >::iterator it = acoustic_scores->find(std::make_pair(t, tid));
-        if (it == acoustic_scores->end()) {
-          acoustic_scores->insert(std::make_pair(std::make_pair(t, tid), 
-                                          std::make_pair(weight.Value2(), 1)));
-        } else {
-          if (it->second.second == 2 
-                && it->second.first / it->second.second != weight.Value2()) {
-            KALDI_VLOG(2) << "Transitions on the same frame have different "
-                          << "acoustic costs for tid " << tid << "; " 
-                          << it->second.first / it->second.second 
-                          << " vs " << weight.Value2();
-          }
-          it->second.first += weight.Value2();
-          it->second.second++;
-        }
-      } else {
-        // Arcs with epsilon input label (tid) must have 0 acoustic cost
-        KALDI_ASSERT(weight.Value2() == 0);
-      }
-    }
-
-    LatticeWeight f = lat.Final(s);
-    if (f != LatticeWeight::Zero()) {
-      // Final acoustic cost must be 0 as we are reading from 
-      // non-determinized, non-compact lattice
-      KALDI_ASSERT(f.Value2() == 0.0);
-    }
-  }
-}
-
-void ReplaceAcousticScoresFromMap(
-    const unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>, 
-                                        PairHasher<int32> > &acoustic_scores,
-    Lattice *lat) {
-  fst::TopSort(lat);
-  
-  std::vector<int32> state_times;
-  LatticeStateTimes(*lat, &state_times);
-  
-  KALDI_ASSERT(lat->Start() == 0);
-
-  for (StateId s = 0; s < lat->NumStates(); s++) {
-    int32 t = state_times[s];
-    for (fst::MutableArcIterator<Lattice> aiter(lat, s); 
-          !aiter.Done(); aiter.Next()) {
-      Arc arc(aiter.Value());
- 
-      int32 tid = arc.ilabel;
-      if (tid != 0) {
-        unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>, 
-          PairHasher<int32> >::const_iterator it = acoustic_scores.find(std::make_pair(t, tid));
-        if (it == acoustic_scores.end()) {
-          KALDI_ERR << "Could not find tid " << tid << " at time " << t
-                    << " in the acoustic scores map.";
-        } else {
-          arc.weight.SetValue2(it->second.first / it->second.second);
-        }
-      } else {
-        // For epsilon arcs, set acoustic cost to 0.0
-        arc.weight.SetValue2(0.0);
-      }
-      aiter.SetValue(arc);
-    }
-
-    LatticeWeight f = lat->Final(s);
-    if (f != LatticeWeight::Zero()) {
-      // Set final acoustic cost to 0.0
-      f.SetValue2(0.0);
-      lat->SetFinal(s, f);
-    }
-  }
-}
-
 }
 
 int main(int argc, char *argv[]) {
@@ -207,7 +112,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: lattice-determinize-non-compact [options] lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-determinize-non-compact --acoustic-scale=0.1 --beam=15.0 ark:1.lats ark:det.lats\n";
-      
+
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat beam = 10.0;
@@ -218,7 +123,7 @@ int main(int argc, char *argv[]) {
     BaseFloat delta = fst::kDelta;
     bool prune = false;
     bool minimize = false;
-    
+
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
     po.Register("beam", &beam,
@@ -238,7 +143,7 @@ int main(int argc, char *argv[]) {
                 "decrease beam by beam-ratio if determinization fails.");
     po.Register("minimize", &minimize,
                 "If true, push and minimize after determinization");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -252,11 +157,15 @@ int main(int argc, char *argv[]) {
     // Read as regular lattice-- this is the form we need it in for efficient
     // pruning.
     SequentialLatticeReader lattice_reader(lats_rspecifier);
-    
+
     // Write as regular lattice.
-    LatticeWriter lattice_writer(lats_wspecifier); 
+    LatticeWriter lattice_writer(lats_wspecifier);
 
     int32 n_done = 0, n_error = 0;
+
+    // depth stats (for diagnostics).
+    double sum_depth_in = 0.0,
+          sum_depth_out = 0.0, sum_t = 0.0;
 
     if (acoustic_scale == 0.0)
       KALDI_ERR << "Do not use a zero acoustic scale (cannot be inverted)";
@@ -265,21 +174,21 @@ int main(int argc, char *argv[]) {
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
       std::string key = lattice_reader.Key();
       Lattice lat = lattice_reader.Value();
-      
+
       lattice_reader.FreeCurrent();
-      
+
       fst::TopSort(&lat);
-      
+
       fst::ScaleLattice(fst::AcousticLatticeScale(acoustic_scale), &lat);
 
 
-      // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count) 
-      unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>, 
+      // Compute a map from each (t, tid) to (sum_of_acoustic_scores, count)
+      unordered_map<std::pair<int32,int32>, std::pair<BaseFloat, int32>,
                                           PairHasher<int32> > acoustic_scores;
       ComputeAcousticScoresMap(lat, &acoustic_scores);
-      
+
       Invert(&lat); // make it so word labels are on the input.
-      
+
       CompactLattice clat;
       if (DeterminizeLatticeWrapper(lat, key, prune,
                                     beam, beam_ratio, max_mem, max_loop,
@@ -290,6 +199,13 @@ int main(int argc, char *argv[]) {
           MinimizeCompactLattice(&clat);
         }
 
+        int32 t;
+        TopSortCompactLatticeIfNeeded(&clat);
+        double depth = CompactLatticeDepth(clat, &t);
+        sum_depth_in += lat.NumStates();
+        sum_depth_out += depth * t;
+        sum_t += t;
+
         Lattice out_lat;
         fst::ConvertLattice(clat, &out_lat);
         fst::TopSort(&out_lat);
@@ -298,7 +214,7 @@ int main(int argc, char *argv[]) {
         // the computed map
         ReplaceAcousticScoresFromMap(acoustic_scores, &out_lat);
 
-        fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale), 
+        fst::ScaleLattice(fst::AcousticLatticeScale(1.0/acoustic_scale),
                           &out_lat);
         lattice_writer.Write(key, out_lat);
         n_done++;
@@ -307,6 +223,12 @@ int main(int argc, char *argv[]) {
       }
     }
 
+    if (sum_t != 0.0) {
+      KALDI_LOG << "Average input-lattice depth (measured at at state level) is "
+                << (sum_depth_in / sum_t) << ", output depth is "
+                << (sum_depth_out / sum_t) << ", over " << sum_t <<  "frames "
+                << " (average num-frames = " << (sum_t / n_done) << ").";
+    }
     KALDI_LOG << "Done " << n_done << " lattices, errors on " << n_error;
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
@@ -314,4 +236,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

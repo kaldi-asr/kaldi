@@ -8,7 +8,7 @@
 # stuff, that you don't want to change, but 
 
 # Begin configuration.
-stage=0 # This allows restarting after partway, when something when wrong.
+stage=0 # This allows restarting after partway, when something went wrong.
 cmd=run.pl
 iter=final
 # End configuration.
@@ -39,7 +39,7 @@ done
 
 
 dir_as_given=$dir
-dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
+dir=$(utils/make_absolute.sh $dir) # Convert $dir to an absolute pathname, so that the
                         # configuration files we write will contain absolute
                         # pathnames.
 mkdir -p $dir/conf $dir/log

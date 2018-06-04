@@ -11,8 +11,8 @@ output_bit=16
 DBname=OPENAIR
 file_splitter=  #script to generate job scripts given the command file
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 . ./utils/parse_options.sh
 
 if [ $# != 3 ]; then
@@ -29,7 +29,7 @@ log_dir=$3
 
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
-  RIR_home_abs=`readlink -e $RIR_home`
+  RIR_home_abs=`utils/make_absolute.sh $RIR_home`
   #HamiltonMuseum 
   #http://www.openairlib.net/auralizationdb/content/hamilton-mausoleum 
   echo "">$log_dir/${DBname}_download_commands.sh

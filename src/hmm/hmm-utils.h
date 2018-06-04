@@ -158,12 +158,23 @@ void GetIlabelMapping (const std::vector<std::vector<int32> > &ilabel_info_old,
   * @param self_loop_scale [in] Transition-probability scale for self-loops; c.f.
   *                    \ref hmm_scale
   * @param reorder [in] If true, reorders the transitions (see \ref hmm_reorder).
+  *                     You'll normally want this to be true.
+  * @param check_no_self_loops [in]  If true, it will check that there are no
+  *                      self-loops in the original graph; you'll normally want
+  *                      this to be true.  If false, it will allow them, and
+  *                      will add self-loops after the original self-loop
+  *                      transitions, assuming reorder==true... this happens to
+  *                      be what we want when converting normal to unconstrained
+  *                      chain examples.  WARNING: this was added in 2018;
+  *                      if you get a compilation error, add this as 'true',
+  *                      which emulates the behavior of older code.
   * @param  fst [in, out] The FST to be modified.
   */
 void AddSelfLoops(const TransitionModel &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
                   BaseFloat self_loop_scale,
-                  bool reorder,  // true->dan-style, false->lukas-style.
+                  bool reorder,
+                  bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst);
 
 /**
@@ -245,6 +256,15 @@ bool SplitToPhones(const TransitionModel &trans_model,
    @param subsample_factor [in] The frame subsampling factor... normally 1, but
                                 might be > 1 if we're converting to a reduced-frame-rate
                                 system.
+   @param repeat_frames [in]    Only relevant when subsample_factor != 1
+                                If true, repeat frames of alignment by
+                                'subsample_factor' after alignment
+                                conversion, to keep the alignment the same
+                                length as the input alignment.
+                                [note: we actually do this by interpolating
+                                'subsample_factor' separately generated
+                                alignments, to keep the phone boundaries
+                                the same as the input where possible.]
    @param reorder [in]          True if you want the pdf-ids on the new alignment to
                                 be 'reordered'. (vs. the way they appear in
                                 the HmmTopology object)
@@ -257,6 +277,7 @@ bool ConvertAlignment(const TransitionModel &old_trans_model,
                       const ContextDependencyInterface &new_ctx_dep,
                       const std::vector<int32> &old_alignment,
                       int32 subsample_factor,  // 1 in the normal case -> no subsampling.
+                      bool repeat_frames,
                       bool reorder,
                       const std::vector<int32> *phone_map,  // may be NULL
                       std::vector<int32> *new_alignment);

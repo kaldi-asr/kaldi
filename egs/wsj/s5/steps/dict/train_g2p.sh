@@ -44,8 +44,9 @@ mkdir -p $wdir/log
 
 # Optionally remove words that are mapped to a single silence phone from the lexicon.
 if $only_words && [ ! -z "$silence_phones" ]; then
-  awk 'NR==FNR{a[$1] = 1; next} {s=$2;for(i=3;i<=NF;i++) s=s" "$i;a[$1]=s;if(!(s in a)) print $1" "s}' \
-    $silence_phones > $wdir/lexicon_onlywords.txt
+  awk -v s=$silence_phones \
+    'BEGIN{while((getline<s)>0) {for(i=1;i<=NF;i++) sil[$i]=1;}}
+    {if (!(NF == 2 && $2 in sil)) print;}' $lexicon > $wdir/lexicon_onlywords.txt
   lexicon=$wdir/lexicon_onlywords.txt
 fi
 

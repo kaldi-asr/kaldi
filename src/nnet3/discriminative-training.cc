@@ -594,7 +594,7 @@ void DiscriminativeObjectiveInfo::Print(const std::string &criterion,
   } else if (criterion == "mpfe") {
     double avg_gradients = (tot_num_count + tot_den_count) / tot_t_weighted;
     double objf = tot_objf / tot_t_weighted;
-    KALDI_LOG << "Average modulus of MPFE gradients is " << avg_gradients
+    KALDI_LOG << "Average num+den count of MPFE stats is " << avg_gradients
               << " per frame, over "
               << tot_t_weighted << " frames";
     KALDI_LOG << "MPFE objective function is " << objf
@@ -602,7 +602,7 @@ void DiscriminativeObjectiveInfo::Print(const std::string &criterion,
   } else if (criterion == "smbr") {
     double avg_gradients = (tot_num_count + tot_den_count) / tot_t_weighted;
     double objf = tot_objf / tot_t_weighted;
-    KALDI_LOG << "Average modulus of SMBR gradients is " << avg_gradients
+    KALDI_LOG << "Average num+den count of SMBR stats is " << avg_gradients
               << " per frame, over "
               << tot_t_weighted << " frames";
     KALDI_LOG << "SMBR objective function is " << objf
@@ -642,4 +642,3 @@ void DiscriminativeObjectiveInfo::PrintAvgGradientForPdf(int32 pdf_id) const {
 
 }  // namespace discriminative
 }  // namespace kaldi
-

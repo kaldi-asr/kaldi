@@ -1,0 +1,50 @@
+%WER  57.9  |  21875  111957  |  45.4  42.3  12.3  3.2  57.9  36.7  |  -1.203  |  exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER  50.3  |  21875  111957  |  53.2  37.3  9.5   3.5  50.3  35.8  |  -0.917  |  exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_9/dev10h.pem.ctm.sys
+%WER  47.4  |  21875  111957  |  55.1  32.8  12.1  2.6  47.4  35.7  |  -0.642  |  exp/tri6_nnet/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+%WER  48.6  |  21875  111957  |  54.3  35.9  9.8   2.9  48.6  35.4  |  -0.769  |  exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_15/dev10h.pem.ctm.sys
+%WER  50.4  |  21875  111957  |  51.3  32.4  16.2  1.8  50.4  35.7  |  -0.487  |  exp_bnf/tri7_nnet/decode_dev10h.pem/score_15/dev10h.pem.ctm.sys
+
+#############################################################################################################################
+
+#KWS on the dev kwlist -- IV only
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/kws_9/metrics.txt:MTWV       =  0.4488,  THRESHOLD  =  0.601
+exp/tri6_nnet/decode_dev10h.pem/kws_10/metrics.txt:MTWV                     =  0.4926,  THRESHOLD  =  0.576
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/kws_15/metrics.txt:MTWV  =  0.4589,  THRESHOLD  =  0.635
+exp_bnf/tri7_nnet/decode_dev10h.pem/kws_15/metrics.txt:MTWV                 =  0.4477,  THRESHOLD  =  0.591
+
+#KWS on the dev kwlist -- OOV only
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/oov_kws_8/metrics.txt:MTWV       =  0.0001,  THRESHOLD  =  0.778
+exp/tri6_nnet/decode_dev10h.pem/oov_kws_11/metrics.txt:MTWV                     =  0.0024,  THRESHOLD  =  0.581
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it1/oov_kws_16/metrics.txt:MTWV  =  0.0012,  THRESHOLD  =  0.596
+exp_bnf/tri7_nnet/decode_dev10h.pem/oov_kws_15/metrics.txt:MTWV                 =  0.0017,  THRESHOLD  =  0.817
+
+############################################################################################################################
+
+#KWS on the IARPA-babel107b-v0.7_conv-dev.kwlist2.xml kwlist -- IV only
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it3/dev_kws_8/metrics.txt:MTWV       =  0.2886,  THRESHOLD  =  0.513
+exp/tri6_nnet/decode_dev10h.pem/dev_kws_11/metrics.txt:MTWV                     =  0.3672,  THRESHOLD  =  0.693
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it3/dev_kws_15/metrics.txt:MTWV  =  0.2999,  THRESHOLD  =  0.792
+exp_bnf/tri7_nnet/decode_dev10h.pem/dev_kws_15/metrics.txt:MTWV                 =  0.3041,  THRESHOLD  =  0.693
+
+#KWS on the IARPA-babel107b-v0.7_conv-dev.kwlist2.xml kwlist -- OOV only
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it1/dev_oov_kws_10/metrics.txt:MTWV      =  0.0000,  THRESHOLD  =  0
+exp/tri6_nnet/decode_dev10h.pem/dev_oov_kws_10/metrics.txt:MTWV                     =  0.0050,  THRESHOLD  =  0.873
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it1/dev_oov_kws_15/metrics.txt:MTWV  =  0.0050,  THRESHOLD  =  0.214
+exp_bnf/tri7_nnet/decode_dev10h.pem/dev_oov_kws_15/metrics.txt:MTWV                 =  0.0050,  THRESHOLD  =  0.831
+
+############################################################################################################################
+
+#KWS on the IARPA-babel107b-v0.7_conv-dev.kwlist3.xml kwlist -- IV only
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it2/eval_kws_9/metrics.txt:MTWV       =  0.3791,  THRESHOLD  =  0.564
+exp/tri6_nnet/decode_dev10h.pem/eval_kws_12/metrics.txt:MTWV                     =  0.4444,  THRESHOLD  =  0.406
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/eval_kws_15/metrics.txt:MTWV  =  0.3780,  THRESHOLD  =  0.609
+exp_bnf/tri7_nnet/decode_dev10h.pem/eval_kws_15/metrics.txt:MTWV                 =  0.3904,  THRESHOLD  =  0.51
+
+#KWS on the IARPA-babel107b-v0.7_conv-dev.kwlist3.xml kwlist -- OOV only
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it1/eval_oov_kws_10/metrics.txt:MTWV      =  0.0021,  THRESHOLD  =  0.724
+exp/tri6_nnet/decode_dev10h.pem/eval_oov_kws_10/metrics.txt:MTWV                     =  0.0040,  THRESHOLD  =  0.491
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it1/eval_oov_kws_15/metrics.txt:MTWV  =  0.0032,  THRESHOLD  =  0.867
+exp_bnf/tri7_nnet/decode_dev10h.pem/eval_oov_kws_15/metrics.txt:MTWV                 =  0.0039,  THRESHOLD  =  0.105
+
+############################################################################################################################
+

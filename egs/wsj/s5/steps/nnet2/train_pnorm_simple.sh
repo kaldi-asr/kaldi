@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey). 
+# Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey).
 #           2013  Xiaohui Zhang
 #           2013  Guoguo Chen
 #           2014  Vimal Manohar
@@ -12,14 +12,14 @@
 # (especially on GPUs).  The difference is that the learning-rate schedule is
 # simpler, with the learning rate exponentially decreasing during training,
 # and no phase where the learning rate is constant.
-# 
+#
 # Also, the final model-combination is done a bit differently: we combine models
 # over typically a whole epoch, and because that would be too many iterations to
 # easily be able to combine over, we arrange the iterations into groups (20
 # groups by default) and average over each group.
 #
 # [Vimal Manohar - Oct 2014]
-# The script now supports realignment during training, which can be done by 
+# The script now supports realignment during training, which can be done by
 # specifying realign_epochs.
 
 # Begin configuration section.
@@ -29,12 +29,12 @@ num_epochs=15      # Number of epochs of training;
 initial_learning_rate=0.04
 final_learning_rate=0.004
 bias_stddev=0.5
-pnorm_input_dim=3000 
+pnorm_input_dim=3000
 pnorm_output_dim=300
 p=2
 minibatch_size=128 # by default use a smallish minibatch size for neural net
                    # training; this controls instability which would otherwise
-                   # be a problem with multi-threaded update. 
+                   # be a problem with multi-threaded update.
 
 samples_per_iter=400000 # each iteration of training, see this many samples
                         # per job.  This option is passed to get_egs.sh
@@ -61,7 +61,7 @@ add_layers_period=2 # by default, add new layers every 2 iterations.
 num_hidden_layers=3
 stage=-4
 
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.   These don't
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 randprune=4.0 # speeds up LDA.
 alpha=4.0 # relates to preconditioning.
@@ -74,7 +74,7 @@ precondition_rank_out=80 # relates to online preconditioning
 mix_up=0 # Number of components to mix up to (should be > #tree leaves, if
         # specified.)
 num_threads=16
-parallel_opts="--num-threads 16 --mem 1G" 
+parallel_opts="--num-threads 16 --mem 1G"
   # by default we use 16 threads; this lets the queue know.
   # note: parallel_opts doesn't automatically get adjusted if you adjust num-threads.
 combine_num_threads=8
@@ -85,7 +85,7 @@ lda_opts=
 lda_dim=
 egs_opts=
 transform_dir=     # If supplied, overrides alidir
-cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.  
+cmvn_opts=  # will be passed to get_lda.sh and get_egs.sh, if supplied.
             # only relevant for "raw" features, not lda.
 feat_type=  # Can be used to force "raw" features.
 prior_subset_size=10000 # 10k samples per job, for computing priors.  Should be
@@ -127,7 +127,7 @@ if [ $# != 4 ]; then
   echo "                                                   # this, you may want to decrease the batch size."
   echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
   echo "                                                   # use multiple threads... "
-  echo "  --io-opts <opts|\"-tc 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
+  echo "  --io-opts <opts|\"--max-jobs-run 10\">                      # Options given to e.g. queue.pl for jobs that do a lot of I/O."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -143,7 +143,7 @@ if [ $# != 4 ]; then
   echo "  --stage <stage|-4>                               # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
 
-  
+
   exit 1;
 fi
 
@@ -241,7 +241,7 @@ SoftmaxComponent dim=$num_leaves
 EOF
 
   # to hidden.config it will write the part of the config corresponding to a
-  # single hidden layer; we need this to add new layers. 
+  # single hidden layer; we need this to add new layers.
   cat >$dir/hidden.config <<EOF
 AffineComponentPreconditionedOnline input-dim=$pnorm_output_dim output-dim=$pnorm_input_dim $online_preconditioning_opts learning-rate=$initial_learning_rate param-stddev=$stddev bias-stddev=$bias_stddev
 PnormComponent input-dim=$pnorm_input_dim output-dim=$pnorm_output_dim p=$p
@@ -306,7 +306,7 @@ done
 cur_egs_dir=$egs_dir
 
 while [ $x -lt $num_iters ]; do
-    
+
   if [ ! -z "${realign_this_iter[$x]}" ]; then
     prev_egs_dir=$cur_egs_dir
     cur_egs_dir=$dir/egs_${realign_this_iter[$x]}
@@ -348,7 +348,7 @@ while [ $x -lt $num_iters ]; do
         steps/nnet2/remove_egs.sh $prev_egs_dir
       fi
     fi
-    
+
     # Set off jobs doing some diagnostics, in the background.
     # Use the egs dir from the previous iteration for the diagnostics
     $cmd $dir/log/compute_prob_valid.$x.log \
@@ -409,7 +409,7 @@ while [ $x -lt $num_iters ]; do
       n=$(perl -e '($nj,$pat)=@ARGV; $best_n=1; $best_logprob=-1.0e+10; for ($n=1;$n<=$nj;$n++) {
           $fn = sprintf($pat,$n); open(F, "<$fn") || die "Error opening log file $fn";
           undef $logprob; while (<F>) { if (m/log-prob-per-frame=(\S+)/) { $logprob=$1; } }
-          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob; 
+          close(F); if (defined $logprob && $logprob > $best_logprob) { $best_logprob=$logprob;
           $best_n=$n; } } print "$best_n\n"; ' $num_jobs_nnet $dir/log/train.$x.%d.log) || exit 1;
       [ -z "$n" ] && echo "Error getting best model" && exit 1;
       $cmd $dir/log/select.$x.log \
@@ -446,7 +446,7 @@ if [ $stage -le $num_iters ]; then
     cur_offset=0 # current offset from first_model_combine.
     for n in $(seq $max_models_combine); do
       next_offset=$[($n*$num_models_combine)/$max_models_combine]
-      sub_list="" 
+      sub_list=""
       for o in $(seq $cur_offset $[$next_offset-1]); do
         iter=$[$first_model_combine+$o]
         mdl=$dir/$iter.mdl

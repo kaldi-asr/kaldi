@@ -20,10 +20,10 @@
 
 #include "base/kaldi-math.h"
 #ifndef _MSC_VER
-#include <pthread.h>
 #include <stdlib.h>
 #endif
 #include <string>
+#include <mutex>
 
 namespace kaldi {
 // These routines are tested in matrix/matrix-test.cc
@@ -39,24 +39,18 @@ int32 RoundUpToNearestPowerOfTwo(int32 n) {
   return n+1;
 }
 
-#ifndef _MSC_VER
-static pthread_mutex_t _RandMutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
+static std::mutex _RandMutex;
 
 int Rand(struct RandomState* state) {
-#ifdef _MSC_VER
-  // On Windows, just call Rand()
+#if defined(_MSC_VER) || defined(__CYGWIN__)
+  // On Windows and Cygwin, just call Rand()
   return rand();
 #else
   if (state) {
     return rand_r(&(state->seed));
   } else {
-    int rs = pthread_mutex_lock(&_RandMutex);
-    KALDI_ASSERT(rs == 0);
-    int val = rand();
-    rs = pthread_mutex_unlock(&_RandMutex);
-    KALDI_ASSERT(rs == 0);
-    return val;
+    std::lock_guard<std::mutex> lock(_RandMutex);
+    return rand();
   }
 #endif
 }
@@ -167,5 +161,3 @@ void RandGauss2(double *a, double *b, RandomState *state) {
 
 
 }  // end namespace kaldi
-
-

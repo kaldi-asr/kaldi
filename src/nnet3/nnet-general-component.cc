@@ -177,7 +177,7 @@ void DistributeComponent::ComputeInputPointers(
 
 
 // virtual
-void DistributeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
+void* DistributeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
                                     const CuMatrixBase<BaseFloat> &in,
                                     CuMatrixBase<BaseFloat> *out) const {
   KALDI_ASSERT(indexes != NULL &&
@@ -187,6 +187,7 @@ void DistributeComponent::Propagate(const ComponentPrecomputedIndexes *indexes,
   ComputeInputPointers(indexes, in, num_output_rows, &input_pointers);
   CuArray<const BaseFloat*> input_pointers_cuda(input_pointers);
   out->CopyRows(input_pointers_cuda);
+  return NULL;
 }
 
 // virtual
@@ -195,6 +196,7 @@ void DistributeComponent::Backprop(const std::string &debug_info,
                                    const CuMatrixBase<BaseFloat> &, // in_value,
                                    const CuMatrixBase<BaseFloat> &, // out_value
                                    const CuMatrixBase<BaseFloat> &out_deriv,
+                                   void *memo,
                                    Component *, // to_update,
                                    CuMatrixBase<BaseFloat> *in_deriv) const {
   if (in_deriv == NULL) return;
@@ -442,7 +444,7 @@ void StatisticsExtractionComponent::GetInputIndexes(
 }
 
 
-void StatisticsExtractionComponent::Propagate(
+void* StatisticsExtractionComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes_in,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
@@ -468,6 +470,7 @@ void StatisticsExtractionComponent::Propagate(
                   input_dim_).AddRowRanges(in_squared,
                                            indexes->forward_indexes);
   }
+  return NULL;
 }
 
 void StatisticsExtractionComponent::Backprop(
@@ -476,6 +479,7 @@ void StatisticsExtractionComponent::Backprop(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &, // out_value,
     const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(indexes_in != NULL);
@@ -764,7 +768,7 @@ StatisticsPoolingComponent::PrecomputeIndexes(
   return ans;
 }
 
-void StatisticsPoolingComponent::Propagate(
+void* StatisticsPoolingComponent::Propagate(
     const ComponentPrecomputedIndexes *indexes_in,
     const CuMatrixBase<BaseFloat> &in,
     CuMatrixBase<BaseFloat> *out) const {
@@ -810,6 +814,7 @@ void StatisticsPoolingComponent::Propagate(
     // compute the standard deviation via square root.
     variance.ApplyPow(0.5);
   }
+  return NULL;
 }
 
 void StatisticsPoolingComponent::Backprop(
@@ -818,6 +823,7 @@ void StatisticsPoolingComponent::Backprop(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_value,
     const CuMatrixBase<BaseFloat> &out_deriv_in,
+    void *memo,
     Component *, // to_update,
     CuMatrixBase<BaseFloat> *in_deriv) const {
   KALDI_ASSERT(indexes_in != NULL);
@@ -888,7 +894,15 @@ void BackpropTruncationComponent::Read(std::istream &is, bool binary) {
   ExpectOneOrTwoTokens(is, binary, "<BackpropTruncationComponent>",
                        "<Dim>");
   ReadBasicType(is, binary, &dim_);
-  ExpectToken(is, binary, "<ClippingThreshold>");
+  std::string tok;
+  ReadToken(is, binary, &tok);
+  if (tok == "<Scale>") {
+    ReadBasicType(is, binary, &scale_);
+    ReadToken(is, binary, &tok);
+  } else {
+    scale_ = 1.0;
+  }
+  KALDI_ASSERT(tok == "<ClippingThreshold>");
   ReadBasicType(is, binary, &clipping_threshold_);
   ExpectToken(is, binary, "<ZeroingThreshold>");
   ReadBasicType(is, binary, &zeroing_threshold_);
@@ -912,6 +926,8 @@ void BackpropTruncationComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<BackpropTruncationComponent>");
   WriteToken(os, binary, "<Dim>");
   WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<Scale>");
+  WriteBasicType(os, binary, scale_);
   WriteToken(os, binary, "<ClippingThreshold>");
   WriteBasicType(os, binary, clipping_threshold_);
   WriteToken(os, binary, "<ZeroingThreshold>");
@@ -958,11 +974,14 @@ void BackpropTruncationComponentPrecomputedIndexes::Read(std::istream &istream,
 std::string BackpropTruncationComponent::Info() const {
   std::ostringstream stream;
   stream << Type() << ", dim=" << dim_
+         << ", scale=" << scale_
          << ", count=" << std::setprecision(3) << count_ << std::setprecision(6)
+         << ", recurrence-interval=" << recurrence_interval_
          << ", clipping-threshold=" << clipping_threshold_
          << ", clipped-proportion="
          << (count_ > 0.0 ? num_clipped_ / count_ : 0)
          << ", zeroing-threshold=" << zeroing_threshold_
+         << ", zeroing-interval=" << zeroing_interval_
          << ", zeroed-proportion="
          << (count_zeroing_boundaries_ > 0.0 ?
              num_zeroed_ / count_zeroing_boundaries_ : 0)
@@ -971,14 +990,15 @@ std::string BackpropTruncationComponent::Info() const {
   return stream.str();
 }
 
-void BackpropTruncationComponent::Init(int32 dim,
-                                 BaseFloat clipping_threshold,
-                                 BaseFloat zeroing_threshold,
-                                 int32 zeroing_interval,
-                                 int32 recurrence_interval) {
+void BackpropTruncationComponent::Init(
+    int32 dim, BaseFloat scale, BaseFloat clipping_threshold,
+    BaseFloat zeroing_threshold, int32 zeroing_interval,
+    int32 recurrence_interval) {
   KALDI_ASSERT(clipping_threshold >= 0 && zeroing_threshold >= 0 &&
-      zeroing_interval > 0 && recurrence_interval > 0 && dim > 0);
+               scale > 0.0 && zeroing_interval > 0 &&
+               recurrence_interval > 0 && dim > 0);
   dim_ = dim;
+  scale_ = scale;
   clipping_threshold_ = clipping_threshold;
   zeroing_threshold_ = zeroing_threshold;
   zeroing_interval_ = zeroing_interval;
@@ -993,9 +1013,11 @@ void BackpropTruncationComponent::Init(int32 dim,
 void BackpropTruncationComponent::InitFromConfig(ConfigLine *cfl) {
   int32 dim = 0;
   bool ok = cfl->GetValue("dim", &dim);
-  BaseFloat clipping_threshold = 30.0;
-  BaseFloat zeroing_threshold = 15.0;
+  BaseFloat scale = 1.0,
+      clipping_threshold = 30.0,
+      zeroing_threshold = 15.0;
   int32 zeroing_interval = 20, recurrence_interval = 1;
+  cfl->GetValue("scale", &scale);
   cfl->GetValue("clipping-threshold", &clipping_threshold);
   cfl->GetValue("zeroing-threshold", &zeroing_threshold);
   cfl->GetValue("zeroing-interval", &zeroing_interval);
@@ -1005,7 +1027,7 @@ void BackpropTruncationComponent::InitFromConfig(ConfigLine *cfl) {
       recurrence_interval < 1 || dim <= 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
-  Init(dim, clipping_threshold, zeroing_threshold,
+  Init(dim, scale, clipping_threshold, zeroing_threshold,
       zeroing_interval, recurrence_interval);
 }
 
@@ -1013,6 +1035,7 @@ void BackpropTruncationComponent::InitFromConfig(ConfigLine *cfl) {
 Component* BackpropTruncationComponent::Copy() const {
   BackpropTruncationComponent *ans = new BackpropTruncationComponent();
   ans->dim_ = dim_;
+  ans->scale_ = scale_;
   ans->clipping_threshold_ = clipping_threshold_;
   ans->zeroing_threshold_ = zeroing_threshold_;
   ans->zeroing_interval_ = zeroing_interval_;
@@ -1061,11 +1084,14 @@ BackpropTruncationComponent::PrecomputeIndexes(
 }
 
 // virtual
-void BackpropTruncationComponent::Propagate(
+void* BackpropTruncationComponent::Propagate(
                                  const ComponentPrecomputedIndexes *indexes,
                                  const CuMatrixBase<BaseFloat> &in,
                                  CuMatrixBase<BaseFloat> *out) const {
   out->CopyFromMat(in);
+  if (scale_ != 1.0)
+    out->Scale(scale_);
+  return NULL;
 }
 
 // virtual
@@ -1074,6 +1100,7 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
                              const CuMatrixBase<BaseFloat> &, //in_value
                              const CuMatrixBase<BaseFloat> &,
                              const CuMatrixBase<BaseFloat> &out_deriv,
+                             void *memo,
                              Component *to_update_in, // may be NULL; may be
                              // identical to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
@@ -1084,6 +1111,8 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
   // the following statement will do nothing if in_deriv and out_deriv have same
   // memory.
   in_deriv->CopyFromMat(out_deriv);
+  if (scale_ != 1.0)
+    in_deriv->Scale(scale_);
 
   BackpropTruncationComponent *to_update =
       dynamic_cast<BackpropTruncationComponent*>(to_update_in);
@@ -1098,7 +1127,8 @@ void BackpropTruncationComponent::Backprop(const std::string &debug_info,
                               kNoTrans, 0.0);
   // now clipping_scales contains the squared (norm of each row divided by
   //  clipping_threshold)
-  int32 num_not_scaled = clipping_scales.ApplyFloor(1.0);
+  int32 num_not_scaled;
+  clipping_scales.ApplyFloor(1.0, &num_not_scaled);
   // now clipping_scales contains min(1, squared-(norm/clipping_threshold))
   clipping_scales.ApplyPow(-0.5);
   // now clipping_scales contains max(1, clipping_threshold/vector_norm)
@@ -1167,6 +1197,590 @@ void BackpropTruncationComponent::Add(BaseFloat alpha,
   num_clipped_ += alpha * other->num_clipped_;
   num_zeroed_ += alpha * other->num_zeroed_;
 }
+
+
+std::string ConstantComponent::Info() const {
+  std::ostringstream stream;
+  stream << UpdatableComponent::Info()
+         << ", " << Type()
+         << ", output-dim=" << OutputDim()
+         << ", is-updatable=" << std::boolalpha << is_updatable_
+         << ", use-natural-gradient=" << std::boolalpha
+         << use_natural_gradient_;
+  PrintParameterStats(stream, "output", output_, true);
+  return stream.str();
+}
+
+ConstantComponent::ConstantComponent():
+    UpdatableComponent(), is_updatable_(true),
+    use_natural_gradient_(true) { }
+
+ConstantComponent::ConstantComponent(
+    const ConstantComponent &other):
+    UpdatableComponent(other), output_(other.output_),
+    is_updatable_(other.is_updatable_),
+    use_natural_gradient_(other.use_natural_gradient_),
+    preconditioner_(other.preconditioner_) { }
+
+void* ConstantComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  out->CopyRowsFromVec(output_);
+  return NULL;
+}
+
+void ConstantComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &, // in_value
+    const CuMatrixBase<BaseFloat> &, // out_value
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
+    Component *to_update_in,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  // we don't update in_deriv, since we set the flag
+  // kBackpropAdds, and the output doesn't depend on the
+  // input, so the input-derivative is zero.
+  if (to_update_in) {
+    ConstantComponent *to_update =
+      dynamic_cast<ConstantComponent*>(to_update_in);
+    if (to_update->is_updatable_) {
+      // only do the update if the is_updatable_ flag is set.
+      KALDI_ASSERT(to_update && to_update->is_updatable_);
+      if (to_update->use_natural_gradient_ && !to_update->is_gradient_) {
+        CuMatrix<BaseFloat> out_deriv_copy(out_deriv);
+        BaseFloat scale = 1.0;
+        to_update->preconditioner_.PreconditionDirections(&out_deriv_copy,
+                                                          &scale);
+        to_update->output_.AddRowSumMat(scale * to_update->learning_rate_,
+                                        out_deriv_copy);
+      } else {
+        to_update->output_.AddRowSumMat(to_update->learning_rate_,
+                                        out_deriv);
+      }
+    }
+  }
+}
+
+void ConstantComponent::Read(std::istream &is, bool binary) {
+  std::string token;
+  ReadToken(is, binary, &token);
+  if (token == "<ConstantComponent>") {
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<LearningRateFactor>") {
+    ReadBasicType(is, binary, &learning_rate_factor_);
+    ReadToken(is, binary, &token);
+  } else {
+    learning_rate_factor_ = 1.0;
+  }
+  if (token == "<IsGradient>") {
+    ReadBasicType(is, binary, &is_gradient_);
+    ReadToken(is, binary, &token);
+  } else {
+    is_gradient_ = false;
+  }
+  if (token == "<MaxChange>") {
+    ReadBasicType(is, binary, &max_change_);
+    ReadToken(is, binary, &token);
+  } else {
+    max_change_ = 0.0;
+  }
+  if (token == "<LearningRate>") {
+    ReadBasicType(is, binary, &learning_rate_);
+    ReadToken(is, binary, &token);
+  } else {
+    learning_rate_ = 0.001;
+  }
+  if (token != "<Output>") {
+    KALDI_ERR << "Expected token <Output>, got " << token;
+  }
+  output_.Read(is, binary);
+  ExpectToken(is, binary, "<IsUpdatable>");
+  ReadBasicType(is, binary, &is_updatable_);
+  ExpectToken(is, binary, "<UseNaturalGradient>");
+  ReadBasicType(is, binary, &use_natural_gradient_);
+  ExpectToken(is, binary, "</ConstantComponent>");
+}
+
+void ConstantComponent::Write(std::ostream &os, bool binary) const {
+  WriteUpdatableCommon(os, binary);  // Write the opening tag and learning rate
+  WriteToken(os, binary, "<Output>");
+  output_.Write(os, binary);
+  WriteToken(os, binary, "<IsUpdatable>");
+  WriteBasicType(os, binary, is_updatable_);
+  WriteToken(os, binary, "<UseNaturalGradient>");
+  WriteBasicType(os, binary, use_natural_gradient_);
+  WriteToken(os, binary, "</ConstantComponent>");
+}
+
+Component* ConstantComponent::Copy() const {
+  return new ConstantComponent(*this);
+}
+
+void ConstantComponent::Scale(BaseFloat scale) {
+  if (is_updatable_) {
+    if (scale == 0.0) {
+      output_.SetZero();
+    } else {
+      output_.Scale(scale);
+    }
+  }
+}
+
+void ConstantComponent::Add(BaseFloat alpha, const Component &other_in) {
+  if (is_updatable_) {
+    const ConstantComponent *other =
+        dynamic_cast<const ConstantComponent*>(&other_in);
+    KALDI_ASSERT(other != NULL);
+    output_.AddVec(alpha, other->output_);
+  }
+}
+
+void ConstantComponent::PerturbParams(BaseFloat stddev) {
+  CuVector<BaseFloat> temp_output(output_.Dim(), kUndefined);
+  temp_output.SetRandn();
+  output_.AddVec(stddev, temp_output);
+}
+
+BaseFloat ConstantComponent::DotProduct(
+    const UpdatableComponent &other_in) const {
+  KALDI_ASSERT(is_updatable_);
+  const ConstantComponent *other =
+      dynamic_cast<const ConstantComponent*>(&other_in);
+  KALDI_ASSERT(other != NULL);
+  return VecVec(output_, other->output_);
+}
+
+void ConstantComponent::InitFromConfig(ConfigLine *cfl) {
+  int32 output_dim = 0;
+  InitLearningRatesFromConfig(cfl);
+  bool ok = cfl->GetValue("output-dim", &output_dim);
+  cfl->GetValue("is-updatable", &is_updatable_);
+  cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
+  BaseFloat output_mean = 0.0, output_stddev = 0.0;
+  cfl->GetValue("output-mean", &output_mean);
+  cfl->GetValue("output-stddev", &output_stddev);
+  if (!ok || cfl->HasUnusedValues() || output_dim <= 0) {
+    KALDI_ERR << "Bad initializer " << cfl->WholeLine();
+  }
+  Vector<BaseFloat> output(output_dim);
+  output.SetRandn();
+  output.Scale(output_stddev);
+  output.Add(output_mean);
+  output_ = output;
+}
+
+int32 ConstantComponent::NumParameters() const {
+  KALDI_ASSERT(is_updatable_);
+  return output_.Dim();
+}
+
+void ConstantComponent::Vectorize(VectorBase<BaseFloat> *params) const {
+  params->CopyFromVec(output_);
+}
+
+void ConstantComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
+  output_.CopyFromVec(params);
+}
+
+
+
+std::string DropoutMaskComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type()
+         << ", output-dim=" << output_dim_
+         << ", dropout-proportion=" << dropout_proportion_;
+  if (continuous_)
+    stream << ", continuous=true";
+  return stream.str();
+}
+
+DropoutMaskComponent::DropoutMaskComponent():
+    output_dim_(-1), dropout_proportion_(0.5), continuous_(false) { }
+
+DropoutMaskComponent::DropoutMaskComponent(
+    const DropoutMaskComponent &other):
+    output_dim_(other.output_dim_),
+    dropout_proportion_(other.dropout_proportion_),
+    continuous_(other.continuous_) { }
+
+void* DropoutMaskComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+  KALDI_ASSERT(in.NumRows() == 0 && out->NumCols() == output_dim_);
+  BaseFloat dropout_proportion = dropout_proportion_;
+  KALDI_ASSERT(dropout_proportion >= 0.0 && dropout_proportion <= 1.0);
+
+  if (dropout_proportion == 0) {
+    out->Set(1.0);
+    return NULL;
+  }
+
+  if (continuous_) {
+    if (test_mode_) {
+      out->Set(1.0);
+    } else {
+      const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
+      out->Scale(dropout_proportion * 4.0);
+      // make the expected value 1.0.
+      out->Add(1.0 - (2.0 * dropout_proportion));
+    }
+    return NULL;
+  }
+
+  if (test_mode_) {
+    out->Set(1.0 - dropout_proportion);
+    return NULL;
+  }
+
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(out);
+  out->Add(-dropout_proportion);
+  out->ApplyHeaviside();
+
+  if (out->NumCols() == 2 || out->NumCols() == 3) {
+    // This is a kind of special case relevant to LSTms.
+    // To generate data where it's never the case that both of the dimensions
+    // for a row are zero, we generate uniformly distributed data (call this u_i),
+    // and for row i, set (*out)(i, 0) = (0 if u_i < dropout_proportion else 1)
+    //                and (*out)(i, 1) = (0 if u_i > 1-dropout_proportion else 1)
+    int32 num_rows = out->NumRows();
+    // later we may make this a bit more efficient.
+    CuVector<BaseFloat> temp(num_rows, kUndefined);
+    const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(&temp);
+    temp.Add(-dropout_proportion);
+    out->CopyColFromVec(temp, 0);
+    temp.Add(-1.0 + (2.0 * dropout_proportion));
+    // Now, 'temp' contains the original uniformly-distributed data plus
+    // -(1 - dropout_proportion).
+    temp.Scale(-1.0);
+    out->CopyColFromVec(temp, 1);
+    out->ApplyHeaviside();
+  }
+  return NULL;
+}
+
+
+void DropoutMaskComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<DropoutMaskComponent>", "<OutputDim>");
+  ReadBasicType(is, binary, &output_dim_);
+  ExpectToken(is, binary, "<DropoutProportion>");
+  ReadBasicType(is, binary, &dropout_proportion_);
+  if (PeekToken(is, binary) == 'T') {
+    ExpectToken(is, binary, "<TestMode>");
+    ReadBasicType(is, binary, &test_mode_);  // read test mode
+  } else {
+    test_mode_ = false;
+  }
+  if (PeekToken(is, binary) == 'C') {
+    ExpectToken(is, binary, "<Continuous>");
+    continuous_ = true;
+  } else {
+    continuous_ = false;
+  }
+  ExpectToken(is, binary, "</DropoutMaskComponent>");
+}
+
+
+void DropoutMaskComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<DropoutMaskComponent>");
+  WriteToken(os, binary, "<OutputDim>");
+  WriteBasicType(os, binary, output_dim_);
+  WriteToken(os, binary, "<DropoutProportion>");
+  WriteBasicType(os, binary, dropout_proportion_);
+  WriteToken(os, binary, "<TestMode>");
+  WriteBasicType(os, binary, test_mode_);
+  if (continuous_)
+    WriteToken(os, binary, "<Continuous>");
+  WriteToken(os, binary, "</DropoutMaskComponent>");
+}
+
+Component* DropoutMaskComponent::Copy() const {
+  return new DropoutMaskComponent(*this);
+}
+
+void DropoutMaskComponent::InitFromConfig(ConfigLine *cfl) {
+  output_dim_ = 0;
+  bool ok = cfl->GetValue("output-dim", &output_dim_);
+  KALDI_ASSERT(ok && output_dim_ > 0);
+  dropout_proportion_ = 0.5;
+  cfl->GetValue("dropout-proportion", &dropout_proportion_);
+  continuous_ = false;
+  cfl->GetValue("continuous", &continuous_);
+  test_mode_ = false;
+  cfl->GetValue("test-mode", &test_mode_);
+}
+
+
+std::string GeneralDropoutComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type()
+         << ", dim=" << dim_
+         << ", block-dim=" << block_dim_
+         << ", dropout-proportion=" << dropout_proportion_;
+  if (continuous_)
+    stream << ", continuous=true";
+  if (time_period_ > 0)
+    stream << ", time-period=" << time_period_;
+  return stream.str();
+}
+
+GeneralDropoutComponent::GeneralDropoutComponent():
+    dim_(-1), block_dim_(-1), time_period_(0),
+    dropout_proportion_(0.5), continuous_(false) { }
+
+GeneralDropoutComponent::GeneralDropoutComponent(
+    const GeneralDropoutComponent &other):
+    dim_(other.dim_),
+    block_dim_(other.block_dim_),
+    time_period_(other.time_period_),
+    dropout_proportion_(other.dropout_proportion_),
+    continuous_(other.continuous_) { }
+
+void* GeneralDropoutComponent::Propagate(
+    const ComponentPrecomputedIndexes *indexes_in,
+    const CuMatrixBase<BaseFloat> &in,
+    CuMatrixBase<BaseFloat> *out) const {
+
+  KALDI_ASSERT(SameDim(in, *out));
+
+  // The following will do nothing if 'out' and 'in' refer to the same data.
+  out->CopyFromMat(in);
+
+  if (test_mode_ || dropout_proportion_ == 0.0)
+    return NULL;
+
+  const GeneralDropoutComponentPrecomputedIndexes *indexes =
+    dynamic_cast<const GeneralDropoutComponentPrecomputedIndexes*>(indexes_in);
+  KALDI_ASSERT(indexes != NULL);
+
+  CuMatrix<BaseFloat> *mask = GetMemo(indexes->num_mask_rows);
+
+  if (block_dim_ < dim_) {
+    KALDI_ASSERT(out->Stride() == out->NumCols());
+    int32 num_rows = out->NumRows(),
+        dim_multiple = dim_  / block_dim_,
+        num_rows_reshaped = num_rows * dim_multiple;
+    CuSubMatrix<BaseFloat> out_reshaped(out->Data(), num_rows_reshaped,
+                                        block_dim_, block_dim_);
+    out_reshaped.MulRows(*mask, indexes->indexes);
+  } else {
+    out->MulRows(*mask, indexes->indexes);
+  }
+  return mask;
+}
+
+void GeneralDropoutComponent::Backprop(
+    const std::string &debug_info,
+    const ComponentPrecomputedIndexes *indexes_in,
+    const CuMatrixBase<BaseFloat> &, // in_value
+    const CuMatrixBase<BaseFloat> &, // out_value
+    const CuMatrixBase<BaseFloat> &out_deriv,
+    void *memo,
+    Component *to_update,
+    CuMatrixBase<BaseFloat> *in_deriv) const {
+  KALDI_ASSERT(in_deriv != NULL && SameDim(*in_deriv, out_deriv));
+
+  // The following will do no work if in_deriv->Data() == out_deriv.Data().
+  in_deriv->CopyFromMat(out_deriv);
+
+  if (test_mode_ || dropout_proportion_ == 0.0) {
+    KALDI_ASSERT(memo == NULL);
+    return;
+  }
+
+  const GeneralDropoutComponentPrecomputedIndexes *indexes =
+     dynamic_cast<const GeneralDropoutComponentPrecomputedIndexes*>(indexes_in);
+  KALDI_ASSERT(indexes != NULL && memo != NULL);
+  CuMatrix<BaseFloat> *mask = reinterpret_cast<CuMatrix<BaseFloat>*>(memo);
+
+  if (block_dim_ < dim_) {
+    KALDI_ASSERT(in_deriv->Stride() == in_deriv->NumCols());
+    int32 num_rows = in_deriv->NumRows(),
+        dim_multiple = dim_  / block_dim_,
+        num_rows_reshaped = num_rows * dim_multiple;
+    CuSubMatrix<BaseFloat> in_deriv_reshaped(in_deriv->Data(),
+                                             num_rows_reshaped,
+                                             block_dim_, block_dim_);
+    in_deriv_reshaped.MulRows(*mask, indexes->indexes);
+  } else {
+    in_deriv->MulRows(*mask, indexes->indexes);
+  }
+}
+
+void GeneralDropoutComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<GeneralDropoutComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+  ExpectToken(is, binary, "<BlockDim>");
+  ReadBasicType(is, binary, &block_dim_);
+  ExpectToken(is, binary, "<TimePeriod>");
+  ReadBasicType(is, binary, &time_period_);
+  ExpectToken(is, binary, "<DropoutProportion>");
+  ReadBasicType(is, binary, &dropout_proportion_);
+  if (PeekToken(is, binary) == 'T') {
+    ExpectToken(is, binary, "<TestMode>");
+    test_mode_ = true;
+  } else {
+    test_mode_ = false;
+  }
+  if (PeekToken(is, binary) == 'C') {
+    ExpectToken(is, binary, "<Continuous>");
+    continuous_ = true;
+  } else {
+    continuous_ = false;
+  }
+  ExpectToken(is, binary, "</GeneralDropoutComponent>");
+}
+
+
+void GeneralDropoutComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<GeneralDropoutComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<BlockDim>");
+  WriteBasicType(os, binary, block_dim_);
+  WriteToken(os, binary, "<TimePeriod>");
+  WriteBasicType(os, binary, time_period_);
+  WriteToken(os, binary, "<DropoutProportion>");
+  WriteBasicType(os, binary, dropout_proportion_);
+  if (test_mode_)
+    WriteToken(os, binary, "<TestMode>");
+  if (continuous_)
+    WriteToken(os, binary, "<Continuous>");
+  WriteToken(os, binary, "</GeneralDropoutComponent>");
+}
+
+Component* GeneralDropoutComponent::Copy() const {
+  return new GeneralDropoutComponent(*this);
+}
+
+void GeneralDropoutComponent::InitFromConfig(ConfigLine *cfl) {
+  dim_ = 0;
+  bool ok = cfl->GetValue("dim", &dim_);
+  KALDI_ASSERT(ok && dim_ > 0);
+  block_dim_ = dim_;
+  cfl->GetValue("block-dim", &block_dim_);
+  if (!(block_dim_ > 0 && dim_ % block_dim_ == 0))
+    KALDI_ERR << "Invalid configuration dim=" << dim_
+              << ", block-dim=" << block_dim_;
+  time_period_ = 0;
+  cfl->GetValue("time-period", &time_period_);
+  dropout_proportion_ = 0.5;
+  cfl->GetValue("dropout-proportion", &dropout_proportion_);
+  continuous_ = false;
+  cfl->GetValue("continuous", &continuous_);
+  test_mode_ = false;
+  cfl->GetValue("test-mode", &test_mode_);
+}
+
+
+CuMatrix<BaseFloat>* GeneralDropoutComponent::GetMemo(
+    int32 num_mask_rows) const {
+  KALDI_ASSERT(num_mask_rows > 0 && !test_mode_ &&
+               dropout_proportion_ > 0.0);
+  CuMatrix<BaseFloat> *ans = new CuMatrix<BaseFloat>(num_mask_rows, block_dim_);
+  BaseFloat dropout_proportion = dropout_proportion_;
+
+  // This const_cast is only safe assuming you don't attempt
+  // to use multi-threaded code with the GPU.
+  const_cast<CuRand<BaseFloat>&>(random_generator_).RandUniform(ans);
+
+  if (!continuous_) {
+    ans->Add(-dropout_proportion);
+    // now, a proportion "dropout_proportion" will be < 0.0. After applying the
+    // function (x>0?1:0), a proportion "dropout_proportion" will be zero and (1 -
+    // dropout_proportion) will be 1.0.
+    ans->ApplyHeaviside();
+    ans->Scale(1.0 / dropout_proportion);
+  } else {
+    ans->Scale(dropout_proportion * 4.0);
+    // make the expected value 1.0.
+    ans->Add(1.0 - (2.0 * dropout_proportion));
+  }
+  return ans;
+}
+
+ComponentPrecomputedIndexes* GeneralDropoutComponent::PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const {
+  KALDI_ASSERT(input_indexes == output_indexes);
+
+  GeneralDropoutComponentPrecomputedIndexes *ans = new
+      GeneralDropoutComponentPrecomputedIndexes;
+  int32 size = input_indexes.size(), time_period = time_period_,
+      cur_row = 0;
+  std::vector<int32> indexes(size);
+  // the map 'm' will map from a pair from (n, t) value to the row-index of the
+  // dropout-mask matrix*.   However, the 't' isn't a real 't' value;
+  // if time_period_ == 0, the 't' value will just be zero; otherwise,
+  // it will be t divided by time_period_ (rounding towards negative infinity).
+
+  // *before considering effects related to when block_dim_ != dim_.
+
+  std::unordered_map<std::pair<int32,int32>, int32, PairHasher<int32> > m;
+  for (int32 i = 0; i < size; i++) {
+    int32 n = input_indexes[i].n,
+        t = (time_period == 0 ? 0 : DivideRoundingDown(input_indexes[i].t,
+                                                       time_period));
+    std::pair<int32, int32> p(n, t);
+
+    std::unordered_map<std::pair<int32,int32>, int32,
+                       PairHasher<int32> >::const_iterator
+        iter = m.find(p);
+    if (iter != m.end()) {
+      indexes[i] = iter->second;
+    } else {
+      m[p] = cur_row;
+      indexes[i] = cur_row;
+      cur_row++;
+    }
+  }
+  int32 multiple = dim_ / block_dim_;
+  ans->num_mask_rows = cur_row;
+  if (multiple == 1) {
+    ans->indexes.CopyFromVec(indexes);
+  } else {
+    ans->num_mask_rows = cur_row * multiple;
+    std::vector<int32> repeated_indexes;
+    repeated_indexes.reserve(size * multiple);
+    for (int32 i = 0; i < size; i++) {
+      int32 row = indexes[i];
+      for (int32 j = 0; j < multiple; j++)
+        repeated_indexes.push_back(row);
+    }
+    ans->indexes.CopyFromVec(repeated_indexes);
+  }
+  return ans;
+}
+
+void GeneralDropoutComponentPrecomputedIndexes::Write(std::ostream &os,
+    bool binary) const {
+  WriteToken(os, binary,
+             "<GeneralDropoutComponentPrecomputedIndexes>");
+  WriteToken(os, binary, "<NumMaskRows>");
+  WriteBasicType(os, binary, num_mask_rows);
+  WriteToken(os, binary, "<Indexes>");
+  indexes.Write(os, binary);
+  WriteToken(os, binary,
+             "</GeneralDropoutComponentPrecomputedIndexes>");
+}
+
+void GeneralDropoutComponentPrecomputedIndexes::Read(std::istream &is,
+    bool binary) {
+  ExpectOneOrTwoTokens(is, binary,
+                       "<GeneralDropoutComponentPrecomputedIndexes>",
+                       "<NumMaskRows>");
+  ReadBasicType(is, binary, &num_mask_rows);
+  ExpectToken(is, binary, "<Indexes>");
+  indexes.Read(is, binary);
+  ExpectToken(is, binary,
+              "</GeneralDropoutComponentPrecomputedIndexes>");
+}
+
 
 } // namespace nnet3
 } // namespace kaldi

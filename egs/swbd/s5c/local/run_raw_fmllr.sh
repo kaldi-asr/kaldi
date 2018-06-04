@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 set -e
 
 #-steps/align_raw_fmllr.sh --nj 30 --cmd "$train_cmd" --use-graphs true \

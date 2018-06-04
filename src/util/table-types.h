@@ -169,6 +169,17 @@ typedef RandomAccessTableReader<TokenVectorHolder>
                                 RandomAccessTokenVectorReader;
 
 
+typedef TableWriter<KaldiObjectHolder<GeneralMatrix> >
+                                      GeneralMatrixWriter;
+typedef SequentialTableReader<KaldiObjectHolder<GeneralMatrix> >
+                              SequentialGeneralMatrixReader;
+typedef RandomAccessTableReader<KaldiObjectHolder<GeneralMatrix> >
+                                RandomAccessGeneralMatrixReader;
+typedef RandomAccessTableReaderMapped<KaldiObjectHolder<GeneralMatrix> >
+                                      RandomAccessGeneralMatrixReaderMapped;
+
+
+
 /// @}
 
 // Note: for FST reader/writer, see ../fstext/fstext-utils.h

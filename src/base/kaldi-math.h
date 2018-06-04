@@ -107,7 +107,7 @@ inline float Log1p(float x) {  return log1pf(x); }
 inline double Log1p(double x) {
   const double cutoff = 1.0e-08;
   if (x < cutoff)
-    return x - 2 * x * x;
+    return x - 0.5 * x * x;
   else
     return Log(1.0 + x);
 }
@@ -115,7 +115,7 @@ inline double Log1p(double x) {
 inline float Log1p(float x) {
   const float cutoff = 1.0e-07;
   if (x < cutoff)
-    return x - 2 * x * x;
+    return x - 0.5 * x * x;
   else
     return Log(1.0 + x);
 }
@@ -138,8 +138,8 @@ struct RandomState {
   unsigned seed;
 };
 
-// Returns a random integer between min and max inclusive.
-int32 RandInt(int32 min, int32 max, struct RandomState* state = NULL);
+// Returns a random integer between first and last inclusive.
+int32 RandInt(int32 first, int32 last, struct RandomState* state = NULL);
 
 // Returns true with probability "prob",
 bool WithProb(BaseFloat prob, struct RandomState* state = NULL);
@@ -183,6 +183,7 @@ inline Float RandPrune(Float post, BaseFloat prune_thresh,
 
 inline double LogAdd(double x, double y) {
   double diff;
+
   if (x < y) {
     diff = x - y;
     x = y;
@@ -203,6 +204,7 @@ inline double LogAdd(double x, double y) {
 
 inline float LogAdd(float x, float y) {
   float diff;
+
   if (x < y) {
     diff = x - y;
     x = y;

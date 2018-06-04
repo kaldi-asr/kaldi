@@ -1,0 +1,1 @@
+../chain/run_ivector_common.sh

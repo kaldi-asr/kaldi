@@ -1,1 +1,1 @@
-tuning/run_blstm_6j.sh
+tuning/run_blstm_6k.sh

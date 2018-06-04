@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# THIS SCRIPT IS DEPRECATED, see ./train_dnn.py
+
 # note, TDNN is the same as what we used to call multisplice.
 
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey).
@@ -81,6 +83,7 @@ frames_per_eg=8 # to be passed on to get_egs.sh
 
 trap 'for pid in $(jobs -pr); do kill -KILL $pid; done' INT QUIT TERM
 
+echo "$0: THIS SCRIPT IS DEPRECATED"
 echo "$0 $@"  # Print the command line for logging
 
 if [ -f path.sh ]; then . ./path.sh; fi
@@ -106,9 +109,9 @@ if [ $# != 4 ]; then
   echo "  --num-threads <num-threads|16>                   # Number of parallel threads per job, for CPU-based training (will affect"
   echo "                                                   # results as well as speed; may interact with batch size; if you increase"
   echo "                                                   # this, you may want to decrease the batch size."
-  echo "  --parallel-opts <opts|\"-pe smp 16 -l ram_free=1G,mem_free=1G\">      # extra options to pass to e.g. queue.pl for processes that"
-  echo "                                                   # use multiple threads... note, you might have to reduce mem_free,ram_free"
-  echo "                                                   # versus your defaults, because it gets multiplied by the -pe smp argument."
+  echo "  --parallel-opts <opts|\"--num-threads 16 --mem 1G\">      # extra options to pass to e.g. queue.pl for processes that"
+  echo "                                                   # use multiple threads... note, you might have to reduce --mem"
+  echo "                                                   # versus your defaults, because it gets multiplied by the --num-threads argument."
   echo "  --minibatch-size <minibatch-size|128>            # Size of minibatch to process (note: product with --num-threads"
   echo "                                                   # should not get too large, e.g. >2k)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
@@ -145,6 +148,9 @@ for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
+# Copy phones.txt from ali-dir to dir. Later, steps/nnet3/decode.sh will
+# use it to check compatibility between training and decoding phone-sets.
+cp $alidir/phones.txt $dir
 
 # Set some variables.
 num_leaves=`tree-info $alidir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1
@@ -654,6 +660,6 @@ if $cleanup; then
   done
 fi
 
-steps/info/nnet3_dir_info.sh $dir
+steps/info/nnet3_dir_info.pl $dir
 
 exit 0

@@ -11,6 +11,8 @@
 # files in entirely.)
 
 frame_shift=0.01
+cmd=run.pl
+nj=4
 
 . utils/parse_options.sh
 . ./path.sh
@@ -30,14 +32,14 @@ export LC_ALL=C
 data=$1
 
 if [ -s $data/utt2dur ] && \
-  [ $(cat $data/utt2spk | wc -l) -eq $(cat $data/utt2dur | wc -l) ]; then
+  [ $(wc -l < $data/utt2spk) -eq $(wc -l < $data/utt2dur) ]; then
   echo "$0: $data/utt2dur already exists with the expected length.  We won't recompute it."
   exit 0;
 fi
 
-if [ -f $data/segments ]; then
+if [ -s $data/segments ]; then
   echo "$0: working out $data/utt2dur from $data/segments"
-  cat $data/segments | awk '{len=$4-$3; print $1, len;}' > $data/utt2dur
+  awk '{len=$4-$3; print $1, len;}' < $data/segments  > $data/utt2dur
 elif [ -f $data/wav.scp ]; then
   echo "$0: segments file does not exist so getting durations from wave files"
 
@@ -73,18 +75,30 @@ elif [ -f $data/wav.scp ]; then
     fi
 
     read_entire_file=false
-    if cat $data/wav.scp | grep -q 'sox.*speed'; then
+    if grep -q 'sox.*speed' $data/wav.scp; then
       read_entire_file=true
       echo "$0: reading from the entire wav file to fix the problem caused by sox commands with speed perturbation. It is going to be slow."
       echo "... It is much faster if you call get_utt2dur.sh *before* doing the speed perturbation via e.g. perturb_data_dir_speed.sh or "
       echo "... perturb_data_dir_speed_3way.sh."
     fi
 
-    if ! wav-to-duration --read-entire-file=$read_entire_file scp:$data/wav.scp ark,t:$data/utt2dur 2>&1 | grep -v 'nonzero return status'; then
-      echo "$0: there was a problem getting the durations; moving $data/utt2dur to $data/.backup/"
-      mkdir -p $data/.backup/
-      mv $data/utt2dur $data/.backup/
+
+    num_utts=$(wc -l <$data/utt2spk)
+    if [ $nj -gt $num_utts ]; then
+      nj=$num_utts
     fi
+
+    utils/data/split_data.sh --per-utt $data $nj
+    sdata=$data/split${nj}utt
+
+    $cmd JOB=1:$nj $data/log/get_durations.JOB.log \
+      wav-to-duration --read-entire-file=$read_entire_file \
+      scp:$sdata/JOB/wav.scp ark,t:$sdata/JOB/utt2dur || \
+        { echo "$0: there was a problem getting the durations"; exit 1; }
+
+    for n in `seq $nj`; do
+      cat $sdata/$n/utt2dur
+    done > $data/utt2dur
   fi
 elif [ -f $data/feats.scp ]; then
   echo "$0: wave file does not exist so getting durations from feats files"
@@ -94,8 +108,8 @@ else
   exit 1
 fi
 
-len1=$(cat $data/utt2spk | wc -l)
-len2=$(cat $data/utt2dur | wc -l)
+len1=$(wc -l < $data/utt2spk)
+len2=$(wc -l < $data/utt2dur)
 if [ "$len1" != "$len2" ]; then
   echo "$0: warning: length of utt2dur does not equal that of utt2spk, $len2 != $len1"
   if [ $len1 -gt $[$len2*2] ]; then
