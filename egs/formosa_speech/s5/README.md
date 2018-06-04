@@ -3,12 +3,14 @@ This recips is based ont the "NER-Trs-Vol1" corpus (selected from National Educa
 project.
 
 *  Before you run this recips, please apply, download and put or make a link of the corpus under this folder.
-*  Tehn, you could start from "run.sh". There are many switchs in this sceript (flag "true" to "false") to bypass centain steps.
+
+*  Then, you excute "run.sh" to train models and decode test data. There are many switchs in this sceript (flag "true" or "false"). you could set them to "false" to bypass centain steps.
 ), for example:    
 
-    true && (    
-    local/prepare_dict.sh || exit 1;    
+    true && (
+        local/prepare_dict.sh || exit 1;    
     ).   
+
 *  Finally, run "result.sh" to collect all results. 
 
 ## Results:
