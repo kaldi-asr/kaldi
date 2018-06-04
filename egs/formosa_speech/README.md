@@ -2,9 +2,7 @@
 
 "Formosa Speech in the Wild (FSW)" corpus is a Large-Scale database of Real-Life/Multi-Gene/Taiwanese Spontaneous Speech Collected and Transcribed from various sources which is organozed by Yuan-Fu Liao @ National Taipei University of Technology.
 
-The language habits of Taiwanese people are different from other Mandarin speakers (both accents and cultures).
-The current general-purpose automatic Mandarin speech recognition solutions are not suitable for supporting Taiwanese
-people's daily life. Therefore, in order to boost the development of Taiwan-specific speech recognition techniques. We will continue to release relateed corpora and baseline recips for everyone, especially for students.
+The main purpose of this project is to boost the development of Taiwan-specific speech recognition techniques. We will continue to release relateed corpora and baseline recips for everyone, especially for students.
 
 *  Her is the first wave of FSW corpus (NER: National Education Radio @ Taiwan)
 
