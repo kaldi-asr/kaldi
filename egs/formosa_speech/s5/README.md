@@ -17,7 +17,7 @@ project.
     ).   
 
 
-## RESULTs:
+## Results:
 
 WER: 
 * %WER 61.32 [ 83373 / 135972, 5458 ins, 19156 del, 58759 sub ] exp/mono/decode_test/wer_11_0.0
