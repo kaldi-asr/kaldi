@@ -11,7 +11,7 @@ project.
         local/prepare_dict.sh || exit 1;    
     ).   
 
-*  Finally, run "result.sh" to collect all results. 
+*  Finally, run "result.sh" to collect all decoding results. 
 
 ## Results:
 
