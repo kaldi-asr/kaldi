@@ -1,4 +1,4 @@
-This recips is based ont the NER-Trs-Vol1 corpus which could be be applied for Non-Commenrical Use Only. For more details, please visit [Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw)
+This recips is based ont the "NER-Trs-Vol1" corpus which could be be applied for Non-Commenrical Use Only. For more details, please visit [Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw)
 project.
 
 *  Here is a brief description of the NER-Trs-Vol1 corpus
