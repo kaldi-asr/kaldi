@@ -1,0 +1,19 @@
+#!/usr/bin/env perl
+
+@filters=('<SIL>');
+
+foreach $w (@filters) {
+  $bad{$w} = 1;
+}
+
+while(<STDIN>) {
+  @A  = split(" ", $_);
+  $id = shift @A;
+  print "$id ";
+  foreach $a (@A) {
+    if (!defined $bad{$a}) {
+      print "$a ";
+    }
+  }
+  print "\n";
+}

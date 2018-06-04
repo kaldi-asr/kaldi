@@ -1,0 +1,129 @@
+#!/bin/bash
+# Copyright 2015-2016  Sarah Flora Juan
+# Copyright 2016  Johns Hopkins University (Author: Yenda Trmal)
+# Apache 2.0
+
+dict_dir=data/local/dict
+rm -rf $dict_dir
+mkdir -p $dict_dir
+
+#
+# silence phones
+#
+
+# sk
+rm -f $dict_dir/silence_phones.txt.sk
+touch $dict_dir/silence_phones.txt.sk
+echo "spn"	>> $dict_dir/silence_phones.txt.sk
+echo "spk"	>> $dict_dir/silence_phones.txt.sk
+echo "fil"	>> $dict_dir/silence_phones.txt.sk
+echo "int"	>> $dict_dir/silence_phones.txt.sk
+
+# en
+rm -f $dict_dir/silence_phones.txt.en
+touch $dict_dir/silence_phones.txt.en
+echo "SPN"	>> $dict_dir/silence_phones.txt.en
+echo "SIL"	>> $dict_dir/silence_phones.txt.en
+
+# tw
+rm -f $dict_dir/silence_phones.txt.tw
+touch $dict_dir/silence_phones.txt.tw
+echo "SPN"	>> $dict_dir/silence_phones.txt.tw
+echo "SIL"	>> $dict_dir/silence_phones.txt.tw
+
+# all
+rm -f $dict_dir/silence_phones.txt
+touch $dict_dir/silence_phones.txt
+cat $dict_dir/silence_phones.txt.sk | awk '{print $1"_sk"}'	>> $dict_dir/silence_phones.txt
+cat $dict_dir/silence_phones.txt.en | awk '{print $1"_en"}'	>> $dict_dir/silence_phones.txt
+cat $dict_dir/silence_phones.txt.tw | awk '{print $1"_tw"}'	>> $dict_dir/silence_phones.txt
+echo "sp"							>> $dict_dir/silence_phones.txt
+echo "spn"							>> $dict_dir/silence_phones.txt
+
+#
+# silence words
+#
+
+rm -f $dict_dir/silence_words.txt.sk
+touch $dict_dir/silence_words.txt.sk
+echo "[fil]"		>> $dict_dir/silence_words.txt.sk
+echo "[int]"		>> $dict_dir/silence_words.txt.sk
+echo "[spk]"		>> $dict_dir/silence_words.txt.sk
+echo "<SPOKEN_NOISE>"	>> $dict_dir/silence_words.txt.sk
+echo "<UNK>"		>> $dict_dir/silence_words.txt.sk
+
+#
+rm -f $dict_dir/silence_words.txt.en
+touch $dict_dir/silence_words.txt.en
+echo "!SIL"		>> $dict_dir/silence_words.txt.en
+echo "<SPOKEN_NOISE>"	>> $dict_dir/silence_words.txt.en
+echo "<UNK>"		>> $dict_dir/silence_words.txt.en
+
+#
+touch $dict_dir/silence_words.txt
+cat $dict_dir/silence_words.txt.sk $dict_dir/silence_words.txt.en | sort -u > $dict_dir/silence_words.txt
+
+#
+# lexicon
+#
+
+touch $dict_dir/unknow.txt
+echo "<UNK>		spn"  > $dict_dir/unknow.txt
+echo "<SPOKEN_NOISE>	spn" >> $dict_dir/unknow.txt
+
+touch $dict_dir/lexicon.txt.sk
+touch $dict_dir/lexicon.txt.en
+touch $dict_dir/lexicon.txt
+
+cat      ../../Slovak/s5/data/local/dict/lexicon.txt | grep -v -F -f $dict_dir/silence_words.txt.sk | sort -u |  awk '{printf "%s_sk", $1; for (i=2; i<NF; i++) printf " "$i"_sk"; if (NF) printf " %s_sk\n", $NF}' > $dict_dir/nonsilence_lexicon.txt.sk
+cat ../../librispeech/s5/data/local/dict/lexicon.txt | grep -v -F -f $dict_dir/silence_words.txt.en | sort -u |  awk '{printf "%s_en", $1; for (i=2; i<NF; i++) printf " "$i"_en"; if (NF) printf " %s_en\n", $NF}' > $dict_dir/nonsilence_lexicon.txt.en
+
+cat      ../../Slovak/s5/data/local/dict/lexicon.txt | grep -F -f $dict_dir/silence_words.txt.sk | sort -u |  awk '{printf "%s_sk", $1; for (i=2; i<NF; i++) printf " "$i"_sk"; if (NF) printf " %s_sk\n", $NF}' > $dict_dir/silence_lexicon.txt.sk
+cat ../../librispeech/s5/data/local/dict/lexicon.txt | grep -F -f $dict_dir/silence_words.txt.en | sort -u |  awk '{printf "%s_en", $1; for (i=2; i<NF; i++) printf " "$i"_en"; if (NF) printf " %s_en\n", $NF}' > $dict_dir/silence_lexicon.txt.en
+
+cat $dict_dir/nonsilence_lexicon.txt.sk  $dict_dir/nonsilence_lexicon.txt.en | sort -u	 > $dict_dir/lexicon.txt
+cat $dict_dir/silence_lexicon.txt.sk  $dict_dir/silence_lexicon.txt.en | sort -u	>> $dict_dir/lexicon.txt
+cat $dict_dir/unknow.txt								>> $dict_dir/lexicon.txt
+
+#
+# nonsilence phones
+#
+touch $dict_dir/nonsilence_phones.txt.sk
+cat $dict_dir/nonsilence_lexicon.txt.sk | \
+    perl -ane 'print join("\n", @F[1..$#F]) . "\n"; '  | \
+    sort -u > $dict_dir/nonsilence_phones.txt.sk
+
+touch $dict_dir/nonsilence_phones.txt.en
+cat $dict_dir/nonsilence_lexicon.txt.en | \
+    perl -ane 'print join("\n", @F[1..$#F]) . "\n"; '  | \
+    sort -u > $dict_dir/nonsilence_phones.txt.en
+
+#
+#
+#
+touch $dict_dir/optional_silence.txt
+echo "sp"	 > $dict_dir/optional_silence.txt
+echo "SIL"	>> $dict_dir/optional_silence.txt
+echo "SIL_en"	>> $dict_dir/optional_silence.txt
+
+#
+# nonsilence phones
+#
+touch $dict_dir/nonsilence_phones.txt
+cat $dict_dir/lexicon.txt | \
+    perl -ane 'print join("\n", @F[1..$#F]) . "\n"; '  | \
+    sort -u | grep -v -F -f $dict_dir/silence_phones.txt | sed '/^\s*$/d' > $dict_dir/nonsilence_phones.txt
+
+touch $dict_dir/optional_silence.txt
+echo "sp"   > $dict_dir/optional_silence.txt
+
+#
+#
+#
+cat $dict_dir/silence_phones.txt | awk '{printf("%s ", $1);} END{printf "\n";}' > $dict_dir/extra_questions.txt || exit 1;
+cat $dict_dir/nonsilence_phones.txt.sk | awk '{printf("%s ", $1);} END{printf "\n";}' >> $dict_dir/extra_questions.txt || exit 1;
+cat $dict_dir/nonsilence_phones.txt.en | awk '{printf("%s ", $1);} END{printf "\n";}' >> $dict_dir/extra_questions.txt || exit 1;
+
+echo "Dictionary preparation succeeded"
+exit 0;
+
