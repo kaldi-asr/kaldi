@@ -1,4 +1,5 @@
-This recips is based ont the "NER-Trs-Vol1" corpus which could be be applied for Non-Commenrical Use Only. For more details, please visit [Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw)
+## Introduction
+This recips is based ont the "NER-Trs-Vol1" corpus (selected from National Education Radio archive, which you could applied for "Non-Commenrical Use Only". For more details, please visit [Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw)
 project.
 
 *  Here is a brief description of the NER-Trs-Vol1 corpus
@@ -6,21 +7,19 @@ project.
     |Corpus|Abbreviation|Source|Hours|Remark|
     |:---|:---|:---:|---:|:--|
     |NER Manual Transcription corpus Vol. 1|NER-Trs-Vol1 |NER| 107.4 | manual, word sequences|
-  
-        *   NER: National Education Radio @ Taiwan
 
 Before you try this recips, please apply, download and put or make a link of the corpus under this folder.
 
-you could start from "run.sh". There are many switchs in this sceript, for example:
+* you could start from "run.sh". There are many switchs in this sceript, for example:    
 
-    true && (
-    local/prepare_dict.sh || exit 1;
-    )
+    true && (    
+    local/prepare_dict.sh || exit 1;    
+    ).   
 
-you could change the flag "true" to "false" to bypass centain steps.
+Here the flag "true" to "false" to bypass centain steps.
 
 
-* Reference RESULTs:
+## Reference RESULTs:
 
 WER: 
 * %WER 61.32 [ 83373 / 135972, 5458 ins, 19156 del, 58759 sub ] exp/mono/decode_test/wer_11_0.0
