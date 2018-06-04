@@ -1,8 +1,8 @@
 ## Welcome to the demo recips of the Formosa Speech in the Wild (FSW)Project
 
-"[Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw)" corpus is a Large-Scale database of Real-Life/Multi-Gene/Taiwanese Spontaneous Speech Collected and Transcribed from various sources which is organozed by Yuan-Fu Liao @ National Taipei University of Technology.
+[Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw) corpus is a Large-Scale database of Real-Life/Multi-Gene/Taiwanese Spontaneous Speech Collected and Transcribed from various sources organozed by Yuan-Fu Liao @ National Taipei University of Technology.
 
-The main purpose of this project is to boost the development of Taiwan-specific speech recognition techniques. We will continue to release relateed corpora and baseline recips for everyone, especially for students.
+The main purpose of this project is to boost the development of Taiwan-specific speech recognition techniques. We will continue to collect, transcribing, release corpora and baseline recips for everyone, especially for students.
 
 *  Her is the first wave of FSW corpus (NER: National Education Radio @ Taiwan)
 
