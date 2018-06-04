@@ -1,29 +1,22 @@
 #!/bin/bash
 
-# Copyright 2017 Beijing Shell Shell Tech. Co. Ltd. (Authors: Hui Bu)
-#           2017 Jiayu Du
-#           2017 Xingyu Na
-#           2017 Bengu Wu
-#           2017 Hao Zheng
-# Apache 2.0
-
+#
+# Copyright 2018 Yuan-Fu Liao @ National Taipei University of Technology
+#
 # This is a shell script, but it's recommended that you run the commands one by
 # one by copying and pasting into the shell.
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 # should run this on a machine that has sufficient memory.
 
 #
-# set -x		在运行结果之前，先输出执行的那一行命令。
-# set -e		一旦脚本中有命令的返回值为非0，则脚本立即退出，后续命令不再执行;
-# set -o pipefail	在管道连接的命令序列中，只要有任何一个命令返回非0值，则整个管道返回非0值，即使最后一个命令返回0.
+# shell options
 #
+
 set -e -o pipefail
 
 #
+# jobs configuration
 #
-#
-
-#data_url=www.openslr.org/resources/33
 
 . ./cmd.sh
 
@@ -42,7 +35,7 @@ echo
 echo "========== prepare_dict: Lexicon Preparation =========="
 echo
 
-false && (
+true && (
 
 local/prepare_dict.sh || exit 1;
 
@@ -60,7 +53,7 @@ echo
 echo "========== prepare_data: Data Preparation =========="
 echo
 
-false && (
+true && (
 
 local/prepare_data.sh || exit 1;
 
@@ -78,7 +71,7 @@ echo
 echo "========== prepare_lang: Phone Sets, questions, L compilation =========="
 echo
 
-false && (
+true && (
 
 rm -rf data/lang
 utils/prepare_lang.sh --position-dependent-phones false data/local/dict \
@@ -98,7 +91,7 @@ echo
 echo "========== train_lms: LM training =========="
 echo
 
-false && (
+true && (
 
 rm -rf data/local/lm/3gram-mincount
 local/train_lms.sh || exit 1;
@@ -117,7 +110,7 @@ echo
 echo "========== format_lm: G compilation, check LG composition =========="
 echo
 
-false && (
+true && (
 utils/format_lm.sh data/lang data/local/lm/3gram-mincount/lm_unpruned.gz \
     data/local/dict/lexicon.txt data/lang_test || exit 1;
 
@@ -141,7 +134,7 @@ echo
 echo "========== make_mfcc_pitch: mfcc =========="
 echo
 
-false && (
+true && (
 
 for x in train test; do
   steps/make_mfcc_pitch.sh --cmd "$train_cmd" --nj $numjobs data/$x exp/make_mfcc/$x $mfccdir || exit 1;
@@ -369,7 +362,7 @@ echo "========== tri5 done =========="
 echo
 
 #
-# nnet3
+# nnet3 tdnn models
 #
 
 echo
@@ -378,8 +371,10 @@ echo
 
 true && (
 
-#local/nnet3/run_tdnn.sh --stage 8 --train_stage 0
-#local/nnet3/run_tdnn.sh --stage 9
+# option to bypass certain steps, for example
+# local/nnet3/run_tdnn.sh --stage 8 --train_stage 0
+# local/nnet3/run_tdnn.sh --stage 9
+#
 local/nnet3/run_tdnn.sh
 
 )
@@ -389,7 +384,7 @@ echo "========== nnet3 done =========="
 echo
 
 #
-# chain
+# chain model
 #
 
 echo
@@ -398,8 +393,9 @@ echo
 
 true && (
 
-local/chain/run_tdnn.sh --stage 7
-#local/chain/run_tdnn.sh --stage 11 --train_stage 0
+# There are options to bypass certain steps, for example
+# local/chain/run_tdnn.sh --stage 11 --train_stage 0
+local/chain/run_tdnn.sh
 
 )
 
@@ -408,7 +404,7 @@ echo "========== chain done =========="
 echo
 
 #
-# getting results (see RESULTS file)
+# nnet3 getting results (see RESULTS file)
 #
 
 echo
