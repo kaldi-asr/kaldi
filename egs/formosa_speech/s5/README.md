@@ -2,20 +2,14 @@
 This recips is based ont the "NER-Trs-Vol1" corpus (selected from National Education Radio archive, which could be applied for "Non-Commenrical Use Only". For more details, please visit [Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw)
 project.
 
-*  Here is a brief description of the NER-Trs-Vol1 corpus. Before you run this recips, please apply, download and put or make a link of the corpus under this folder.
-
-
-    |Corpus|Abbreviation|Source|Hours|Remark|
-    |:---|:---|:---:|---:|:--|
-    |NER Manual Transcription corpus Vol. 1|NER-Trs-Vol1 |NER| 107.4 | manual, word sequences|
-
-* you could start from "run.sh". There are many switchs in this sceript (flag "true" to "false") to bypass centain steps.
+*  Before you run this recips, please apply, download and put or make a link of the corpus under this folder.
+*  Tehn, you could start from "run.sh". There are many switchs in this sceript (flag "true" to "false") to bypass centain steps.
 ), for example:    
 
     true && (    
     local/prepare_dict.sh || exit 1;    
     ).   
-
+*  Finally, run "result.sh" to collect all results. 
 
 ## Results:
 
