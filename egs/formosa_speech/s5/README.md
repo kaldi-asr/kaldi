@@ -9,9 +9,18 @@ project.
   
         *   NER: National Education Radio @ Taiwan
 
-Before you try this recips, please apply, download and put or make a link of the corpus here.
+Before you try this recips, please apply, download and put or make a link of the corpus under this folder.
 
-Reference RESULTs:
+you could start from "run.sh". There are many switchs in this sceript, for example:
+
+    true && (
+    local/prepare_dict.sh || exit 1;
+    )
+
+you could change the flag "true" to "false" to bypass centain steps.
+
+
+* Reference RESULTs:
 
 WER: 
 * %WER 61.32 [ 83373 / 135972, 5458 ins, 19156 del, 58759 sub ] exp/mono/decode_test/wer_11_0.0
