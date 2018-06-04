@@ -14,6 +14,6 @@ In order to boost the development of Taiwan-specific speech recognition techniqu
     |:---|:---|:---:|---:|:--|
     |NER Manual Transcription corpus Vol. 1|NER-Trs-Vol1 |NER| 107.4 | manual, word sequences|
   
-        *   PTS: Taiwan Public Television Service
+        *   NER: National Education Radio @ Taiwan
 
 This corpus can be applied for Non-Commenrical Use Only. For more details, please visit [Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw) project.
