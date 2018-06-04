@@ -1,8 +1,8 @@
 ## Introduction
-This recips is based ont the "NER-Trs-Vol1" corpus (selected from National Education Radio archive, which you could applied for "Non-Commenrical Use Only". For more details, please visit [Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw)
+This recips is based ont the "NER-Trs-Vol1" corpus (selected from National Education Radio archive, which could be applied for "Non-Commenrical Use Only". For more details, please visit [Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw)
 project.
 
-*  Here is a brief description of the NER-Trs-Vol1 corpus. Before you try this recips, please apply, download and put or make a link of the corpus under this folder.
+*  Here is a brief description of the NER-Trs-Vol1 corpus. Before you run this recips, please apply, download and put or make a link of the corpus under this folder.
 
 
     |Corpus|Abbreviation|Source|Hours|Remark|
