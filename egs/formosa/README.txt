@@ -14,4 +14,5 @@ Yuan-Fu Liao (廖元甫)
 Associate Professor
 Department of electronic Engineering,
 National Taipei University of Technology
-yfliao@mail.ntut.edu.tw, http://www.ntut.edu.tw/~yfliao
+http://www.ntut.edu.tw/~yfliao
+yfliao@mail.ntut.edu.tw
