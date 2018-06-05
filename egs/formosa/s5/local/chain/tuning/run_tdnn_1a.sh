@@ -173,7 +173,7 @@ fi
 
 graph_dir=$dir/graph
 if [ $stage -le 13 ]; then
-  for test_set in dev test; do
+  for test_set in test; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
       --nj 10 --cmd "$decode_cmd" \
       --online-ivector-dir exp/nnet3/ivectors_$test_set \
