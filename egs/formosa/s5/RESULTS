@@ -1,10 +1,16 @@
 #
 # Reference results
 #
-
+# Experimental settings:
 #
 # training set:	show CS, BG, DA, QG, SR, SY and WK,	in total 18977 utt., 1,088,948 words
 # test set:	show JZ, GJ, KX and YX,			in total  2112 utt.,   135,972 words
+#
+# lexicon: 274,036 words
+# Phones (IPA):  196 (tonal)
+##
+# TDNN: 6 layers * 850 Relu neurons
+#	Features: 43-dom MFCCs * 5 frames + 100-dom  ivector (with LDA)
 #
 
 #
