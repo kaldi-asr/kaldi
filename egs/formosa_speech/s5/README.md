@@ -2,12 +2,12 @@
 This recips is based ont the "NER-Trs-Vol1" corpus (selected from National Education Radio archive, which could be applied for "Non-Commenrical Use Only". For more details, please visit [Formosa Speech in the Wild (FSW)](https://sites.google.com/speech.ntut.edu.tw/fsw)
 project.
 
-*  Before you run this recips, please apply, download and put or make a link of the corpus under this folder.
+*  Before you run this recips, please apply, download and put or make a link of the corpus under this folder (folder name: "NER-Trs-Vol1").
 
 *  Then, you could excute "run.sh" to train models and decode test data. There are many switchs in this sceript (flag "true" or "false"). you could set them to "false" to bypass centain steps.
 ), for example:    
 
-    true && (
+    false && (
         local/prepare_dict.sh || exit 1;    
     ).   
 
@@ -37,5 +37,3 @@ CER:
 * %WER 24.21 [ 52232 / 215718, 6425 ins, 11543 del, 34264 sub ] exp/tri5a/decode_test/cer_15_0.0
 * %WER 27.83 [ 60025 / 215718, 6628 ins, 12107 del, 41290 sub ] exp/tri5a/decode_test.si/cer_12_0.0
 * %WER 17.07 [ 36829 / 215718, 4734 ins, 9938 del, 22157 sub ] exp/nnet3/tdnn_sp/decode_test/cer_12_0.0
-
-
