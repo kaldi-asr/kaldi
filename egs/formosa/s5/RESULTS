@@ -7,10 +7,12 @@
 # test set:	show JZ, GJ, KX and YX,			in total  2112 utt.,   135,972 words
 #
 # lexicon: 274,036 words
-# Phones (IPA):  196 (tonal)
-##
-# TDNN: 6 layers * 850 Relu neurons
-#	Features: 43-dom MFCCs * 5 frames + 100-dom  ivector (with LDA)
+# phones (IPA):  196 (tonal)
+#
+# tdnn:	6 layers * 850 Relu neurons
+#		Features: 43-dom MFCCs * 5 frames + 100-dom  ivector (with LDA)
+# chain:	6 layers * 625 Relu neurons
+#		Features: 43-dom MFCCs * 3 frames + 100-dom  ivector (with LDA)
 #
 
 #
