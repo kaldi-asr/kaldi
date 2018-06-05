@@ -4,7 +4,7 @@ project.
 
 *  Before you run this recips, please apply, download and put or make a link of the corpus under this folder.
 
-*  Then, you excute "run.sh" to train models and decode test data. There are many switchs in this sceript (flag "true" or "false"). you could set them to "false" to bypass centain steps.
+*  Then, you could excute "run.sh" to train models and decode test data. There are many switchs in this sceript (flag "true" or "false"). you could set them to "false" to bypass centain steps.
 ), for example:    
 
     true && (
