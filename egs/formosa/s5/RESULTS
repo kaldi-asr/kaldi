@@ -25,6 +25,7 @@
 %WER 38.67 [ 52574 / 135972, 6855 ins, 11250 del, 34469 sub ] exp/tri3a/decode_test/wer_15_0.0
 %WER 35.70 [ 48546 / 135972, 7197 ins,  9717 del, 31632 sub ] exp/tri4a/decode_test/wer_17_0.0
 %WER 32.11 [ 43661 / 135972, 6112 ins, 10185 del, 27364 sub ] exp/tri5a/decode_test/wer_17_0.5
+%WER 31.36 [ 42639 / 135972, 6846 ins, 8860 del, 26933 sub ] exp/tri5a_cleaned/decode_test/wer_17_0.5
 %WER 24.43 [ 33218 / 135972, 5524 ins,  7583 del, 20111 sub ] exp/nnet3/tdnn_sp/decode_test/wer_12_0.0
 %WER 23.97 [ 32599 / 135972, 4313 ins, 10590 del, 17696 sub ] exp/chain/tdnn_1a_sp/decode_test/wer_10_0.0
 
@@ -38,6 +39,7 @@
 %WER 30.40 [  65583 / 215718, 6729 ins, 13115 del, 45739 sub ] exp/tri3a/decode_test/cer_12_0.0
 %WER 27.53 [  59389 / 215718, 6311 ins, 13008 del, 40070 sub ] exp/tri4a/decode_test/cer_15_0.0
 %WER 24.21 [  52232 / 215718, 6425 ins, 11543 del, 34264 sub ] exp/tri5a/decode_test/cer_15_0.0
+%WER 23.41 [ 50492 / 215718, 6645 ins, 10997 del, 32850 sub ] exp/tri5a_cleaned/decode_test/cer_17_0.0
 %WER 17.07 [  36829 / 215718, 4734 ins,  9938 del, 22157 sub ] exp/nnet3/tdnn_sp/decode_test/cer_12_0.0
 %WER 16.86 [  36365 / 215718, 4545 ins, 11277 del, 20543 sub ] exp/chain/tdnn_1a_sp/decode_test/cer_9_0.0
 
