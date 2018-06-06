@@ -41,7 +41,8 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: nnet3-compute [options] <nnet-in> <features-rspecifier> <matrix-wspecifier>\n"
         " e.g.: nnet3-compute final.raw scp:feats.scp ark:nnet_prediction.ark\n"
-        "See also: nnet3-compute-from-egs\n";
+        "See also: nnet3-compute-from-egs, nnet3-chain-compute-post\n"
+        "Note: this program does not currently make very efficient use of the GPU.\n";
 
     ParseOptions po(usage);
     Timer timer;
@@ -52,7 +53,6 @@ int main(int argc, char *argv[]) {
     bool apply_exp = false, use_priors = false;
     std::string use_gpu = "yes";
 
-    std::string word_syms_filename;
     std::string ivector_rspecifier,
                 online_ivector_rspecifier,
                 utt2spk_rspecifier;

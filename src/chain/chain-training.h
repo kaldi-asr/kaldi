@@ -53,6 +53,7 @@ struct ChainTrainingOptions {
   // B, with transition from A to B, so we don't have to consider epsilon loops-
   // or just imagine the coefficient is small enough that we can ignore the
   // epsilon loops.
+  // Note: we generally set leaky_hmm_coefficient to 0.1.
   BaseFloat leaky_hmm_coefficient;
 
 
