@@ -28,7 +28,7 @@ endif
 
 BINFILES = online-net-client online-server-gmm-decode-faster online-gmm-decode-faster \
            online-wav-gmm-decode-faster online-audio-server-decode-faster \
-           online-audio-client
+           online-audio-client online-wav-gmm-decode-faster-notrace
 
 OBJFILES =
 

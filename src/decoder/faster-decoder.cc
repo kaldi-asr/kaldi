@@ -345,6 +345,48 @@ void FasterDecoder::ProcessNonemitting(double cutoff) {
   }
 }
 
+void FasterDecoder::ProcessNonemittingNoTrace(double cutoff) {
+  // Processes nonemitting arcs for one frame. 
+  KALDI_ASSERT(queue_.empty());
+  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
+    queue_.push_back(e->key);
+  while (!queue_.empty()) {
+    StateId state = queue_.back();
+    queue_.pop_back();
+    Token *tok = toks_.Find(state)->val;  // would segfault if state not
+    // in toks_ but this can't happen.
+    if (tok->cost_ > cutoff) { // Don't bother processing successors.
+      continue;
+    }
+    KALDI_ASSERT(tok != NULL && state == tok->arc_.nextstate);
+    for (fst::ArcIterator<fst::Fst<Arc> > aiter(fst_, state);
+         !aiter.Done();
+         aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      if (arc.ilabel == 0) {  // propagate nonemitting only...
+        Token *new_tok = new Token(arc, tok);
+        if (new_tok->cost_ > cutoff) {  // prune
+          Token::TokenDelete(new_tok);
+        } else {
+          Elem *e_found = toks_.Find(arc.nextstate);
+          if (e_found == NULL) {
+            toks_.Insert(arc.nextstate, new_tok);
+            //queue_.push_back(arc.nextstate);
+          } else {
+            if ( *(e_found->val) < *new_tok ) {
+              Token::TokenDelete(e_found->val);
+              e_found->val = new_tok;
+              //queue_.push_back(arc.nextstate);
+            } else {
+              Token::TokenDelete(new_tok);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 void FasterDecoder::ClearToks(Elem *list) {
   for (Elem *e = list, *e_tail; e != NULL; e = e_tail) {
     Token::TokenDelete(e->val);

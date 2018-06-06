@@ -43,7 +43,7 @@ struct OnlineFasterDecoderOpts : public FasterDecoderOptions {
   BaseFloat max_beam_update; // maximum rate of beam adjustment
 
   OnlineFasterDecoderOpts() :
-    rt_min(.7), rt_max(.75), batch_size(27),
+    rt_min(.7), rt_max(.75), batch_size(216),
     inter_utt_sil(50), max_utt_len_(1500),
     update_interval(3), beam_update(.01),
     max_beam_update(0.05) {}
@@ -86,6 +86,7 @@ class OnlineFasterDecoder : public FasterDecoder {
         state_(kEndFeats), frame_(0), utt_frames_(0) {}
 
   DecodeState Decode(DecodableInterface *decodable);
+  DecodeState DecodeNoTrace(DecodableInterface *decodable);
   
   // Makes a linear graph, by tracing back from the last "immortal" token
   // to the previous one

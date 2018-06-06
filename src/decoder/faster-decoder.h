@@ -163,6 +163,7 @@ class FasterDecoder {
 
   // TODO: first time we go through this, could avoid using the queue.
   void ProcessNonemitting(double cutoff);
+  void ProcessNonemittingNoTrace(double cutoff);
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
