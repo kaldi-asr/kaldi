@@ -66,28 +66,24 @@
 		</spt>
 	</utt>
 	<utt uttid="7" no_phrases="3">
-		<spt phraseid="1" no_wrds="8">
+		<spt phraseid="1" no_wrds="7">
 			<break type="4" time="0.2" />
 			<tk norm="site" lc="true" pos="NN" posset="1" wordid="1" pron="s ay1 t" />
 			<tk norm="2" symbols="true" pos="NN" posset="1" wordid="2" pron="t uw1">2</tk>
 			<tk norm="=" symbols="true" pos="NN" posset="1" wordid="3" pron="iy1 k w ah0 l z">=</tk>
-			<tk norm="4" symbols="true" pos="NN" posset="1" wordid="4" pron="f ao1 r">
-				4
-				<ws>-</ws>
-			</tk>
-			<tk norm="2" symbols="true" pos="NN" posset="1" wordid="5" pron="t uw1">
-				2
+			<tk norm="4-2" symbols="true" pos="NN" posset="1" wordid="4" pron="f ao1 r t uw1">
+				4-2
 				<ws> </ws>
 			</tk>
-			<tk norm="full" lc="true" uc="true" pos="JJ" posset="1" wordid="6" pron="f uh1 l">
+			<tk norm="full" lc="true" uc="true" pos="JJ" posset="1" wordid="5" pron="f uh1 l">
 				FULL
 				<ws> </ws>
 			</tk>
-			<tk norm="power" lc="true" uc="true" pos="NN" posset="1" wordid="7" pron="p aw1 er0">
+			<tk norm="power" lc="true" uc="true" pos="NN" posset="1" wordid="6" pron="p aw1 er0">
 				Power
 				<ws> </ws>
 			</tk>
-			<tk norm="cafe" lc="true" foreign="true" pos="NN" posset="1" wordid="8" pron="k ah0 f ey1" altprons="k ae0 f ey1, k ah0 f ey1">
+			<tk norm="cafe" lc="true" foreign="true" pos="NN" posset="1" wordid="7" pron="k ah0 f ey1" altprons="k ae0 f ey1, k ah0 f ey1">
 				café
 				<ws> </ws>
 			</tk>

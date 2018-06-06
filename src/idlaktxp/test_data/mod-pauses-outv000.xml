@@ -36,12 +36,8 @@
 	<tk norm="site" lc="true" />
 	<tk norm="2" symbols="true">2</tk>
 	<tk norm="=" symbols="true">=</tk>
-	<tk norm="4" symbols="true">
-		4
-		<ws>-</ws>
-	</tk>
-	<tk norm="2" symbols="true">
-		2
+	<tk norm="4-2" symbols="true">
+		4-2
 		<ws> </ws>
 	</tk>
 	<tk norm="full" lc="true" uc="true">

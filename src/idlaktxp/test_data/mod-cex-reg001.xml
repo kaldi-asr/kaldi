@@ -32,7 +32,7 @@
 			<break type="4" time="0.011">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+hh=eh 0 0 0 0 1 PAU PAU NN 0 0 2 0 0 2 8 LL</phon>
+						<phon val="pau">^0~0-pau+hh=eh 0 0 0 0 1 PAU PAU NN 0 0 2 0 0 2 8 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -40,8 +40,8 @@
 				Helen
 				<ws> </ws>
 				<syl val="hh+eh1" stress="1" sylid="1" nophons="2">
-					<phon val="hh" type="onset" phonid="1">^0~0-hh+eh=l 0 1 0 1 0 PAU NN NN 0 2 3 0 2 2 8 LL</phon>
-					<phon val="eh" type="nucleus" phonid="2">^0~hh-eh+l=ah 1 0 0 1 0 PAU NN NN 0 2 3 0 2 2 8 LL</phon>
+					<phon val="hh" type="onset" phonid="1">^0~pau-hh+eh=l 0 1 0 1 0 PAU NN NN 0 2 3 0 2 2 8 LL</phon>
+					<phon val="eh" type="nucleus" phonid="2">^pau~hh-eh+l=ah 1 0 0 1 0 PAU NN NN 0 2 3 0 2 2 8 LL</phon>
 				</syl>
 				<syl val="l+ah0+n" stress="0" sylid="2" nophons="3">
 					<phon val="l" type="onset" phonid="1">^hh~eh-l+ah=n 0 2 1 0 1 PAU NN NN 2 3 3 0 2 2 8 LL</phon>
@@ -124,14 +124,14 @@
 </ws>
 				<syl val="ae1+k_t" stress="1" sylid="1" nophons="3">
 					<phon val="ae" type="nucleus" phonid="1">^f~t-ae+k=t 0 2 1 1 0 NN NN PAU 5 3 0 2 1 0 8 LL</phon>
-					<phon val="k" type="coda" phonid="2">^t~ae-k+t=0 1 1 1 1 0 NN NN PAU 5 3 0 2 1 0 8 LL</phon>
-					<phon val="t" type="coda" phonid="3">^ae~k-t+0=0 2 0 1 1 0 NN NN PAU 5 3 0 2 1 0 8 LL</phon>
+					<phon val="k" type="coda" phonid="2">^t~ae-k+t=pau 1 1 1 1 0 NN NN PAU 5 3 0 2 1 0 8 LL</phon>
+					<phon val="t" type="coda" phonid="3">^ae~k-t+pau=pau 2 0 1 1 0 NN NN PAU 5 3 0 2 1 0 8 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^k~t-0+0=0 0 0 1 0 0 NN PAU PAU 3 0 0 1 0 0 8 LL</phon>
+						<phon val="pau">^k~t-pau+pau=0 0 0 1 0 0 NN PAU PAU 3 0 0 1 0 0 8 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -142,7 +142,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+dh=ah 0 0 0 0 0 PAU PAU DT 0 0 2 0 0 1 29 LL</phon>
+						<phon val="pau">^0~pau-pau+dh=ah 0 0 0 0 0 PAU PAU DT 0 0 2 0 0 1 29 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -150,8 +150,8 @@
 				The
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^0~0-dh+ah=f 0 1 0 0 1 PAU DT RB 0 2 2 0 1 3 29 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^0~dh-ah+f=ae 1 0 0 0 1 PAU DT RB 0 2 2 0 1 3 29 LL</phon>
+					<phon val="dh" type="onset" phonid="1">^pau~pau-dh+ah=f 0 1 0 0 1 PAU DT RB 0 2 2 0 1 3 29 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^pau~dh-ah+f=ae 1 0 0 0 1 PAU DT RB 0 2 2 0 1 3 29 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="family" lc="true" pos="RB" posset="1" wordid="2" pron="f ae1 m ah0 l iy0" altprons="f ae1 m l iy0, f ae1 m ah0 l iy0" spron="f+ae1|m+ah0|l+iy0|" nosyl="3">
@@ -249,27 +249,27 @@
 					<phon val="iy" type="nucleus" phonid="2">^uw~b-iy+p=r 1 0 1 1 1 TO VB VVN 2 2 3 1 1 4 29 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="prosecuted" lc="true" pos="VVN" posset="1" wordid="12" pron="p r aa1 s ih0 k y uw2 t ih0 d" spron="p_r+aa1|s+ih0+k|y+uw2|t+ih0+d|" nosyl="4">
+			<tk norm="prosecuted" lc="true" pos="VVN" posset="1" wordid="12" pron="p r aa1 s ih0 k y uw2 t ih0 d" spron="p_r+aa1|s+ih0|k_y+uw2|t+ih0+d|" nosyl="4">
 				prosecuted
 				<ws> </ws>
 				<syl val="p_r+aa1" stress="1" sylid="1" nophons="3">
-					<phon val="p" type="onset" phonid="1">^b~iy-p+r=aa 0 2 1 1 0 VB VVN IN 2 3 3 1 4 2 29 LL</phon>
-					<phon val="r" type="onset" phonid="2">^iy~p-r+aa=s 1 1 1 1 0 VB VVN IN 2 3 3 1 4 2 29 LL</phon>
-					<phon val="aa" type="nucleus" phonid="3">^p~r-aa+s=ih 2 0 1 1 0 VB VVN IN 2 3 3 1 4 2 29 LL</phon>
+					<phon val="p" type="onset" phonid="1">^b~iy-p+r=aa 0 2 1 1 0 VB VVN IN 2 3 2 1 4 2 29 LL</phon>
+					<phon val="r" type="onset" phonid="2">^iy~p-r+aa=s 1 1 1 1 0 VB VVN IN 2 3 2 1 4 2 29 LL</phon>
+					<phon val="aa" type="nucleus" phonid="3">^p~r-aa+s=ih 2 0 1 1 0 VB VVN IN 2 3 2 1 4 2 29 LL</phon>
 				</syl>
-				<syl val="s+ih0+k" stress="0" sylid="2" nophons="3">
-					<phon val="s" type="onset" phonid="1">^r~aa-s+ih=k 0 2 1 0 1 VB VVN IN 3 3 2 1 4 2 29 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^aa~s-ih+k=y 1 1 1 0 1 VB VVN IN 3 3 2 1 4 2 29 LL</phon>
-					<phon val="k" type="coda" phonid="3">^s~ih-k+y=uw 2 0 1 0 1 VB VVN IN 3 3 2 1 4 2 29 LL</phon>
+				<syl val="s+ih0" stress="0" sylid="2" nophons="2">
+					<phon val="s" type="onset" phonid="1">^r~aa-s+ih=k 0 1 1 0 1 VB VVN IN 3 2 3 1 4 2 29 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^aa~s-ih+k=y 1 0 1 0 1 VB VVN IN 3 2 3 1 4 2 29 LL</phon>
 				</syl>
-				<syl val="y+uw2" stress="2" sylid="3" nophons="2">
-					<phon val="y" type="onset" phonid="1">^ih~k-y+uw=t 0 1 0 1 0 VB VVN IN 3 2 3 1 4 2 29 LL</phon>
-					<phon val="uw" type="nucleus" phonid="2">^k~y-uw+t=ih 1 0 0 1 0 VB VVN IN 3 2 3 1 4 2 29 LL</phon>
+				<syl val="k_y+uw2" stress="2" sylid="3" nophons="3">
+					<phon val="k" type="onset" phonid="1">^s~ih-k+y=uw 0 2 0 1 0 VB VVN IN 2 3 3 1 4 2 29 LL</phon>
+					<phon val="y" type="onset" phonid="2">^ih~k-y+uw=t 1 1 0 1 0 VB VVN IN 2 3 3 1 4 2 29 LL</phon>
+					<phon val="uw" type="nucleus" phonid="3">^k~y-uw+t=ih 2 0 0 1 0 VB VVN IN 2 3 3 1 4 2 29 LL</phon>
 				</syl>
 				<syl val="t+ih0+d" stress="0" sylid="4" nophons="3">
-					<phon val="t" type="onset" phonid="1">^y~uw-t+ih=d 0 2 1 0 1 VB VVN IN 2 3 2 1 4 2 29 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^uw~t-ih+d=ah 1 1 1 0 1 VB VVN IN 2 3 2 1 4 2 29 LL</phon>
-					<phon val="d" type="coda" phonid="3">^t~ih-d+ah=n 2 0 1 0 1 VB VVN IN 2 3 2 1 4 2 29 LL</phon>
+					<phon val="t" type="onset" phonid="1">^y~uw-t+ih=d 0 2 1 0 1 VB VVN IN 3 3 2 1 4 2 29 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^uw~t-ih+d=ah 1 1 1 0 1 VB VVN IN 3 3 2 1 4 2 29 LL</phon>
+					<phon val="d" type="coda" phonid="3">^t~ih-d+ah=n 2 0 1 0 1 VB VVN IN 3 3 2 1 4 2 29 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="under" lc="true" pos="IN" posset="3" wordid="13" pron="ah1 n d er0" spron="ah1+n|d+er0|" nosyl="2">
@@ -340,54 +340,58 @@
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^r~k-dh+ah=f 0 1 1 0 1 NN DT NN 4 2 2 1 1 3 29 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^k~dh-ah+f=ay 1 0 1 0 1 NN DT NN 4 2 2 1 1 3 29 LL</phon>
+					<phon val="dh" type="onset" phonid="1">^r~k-dh+ah=f 0 1 1 0 1 NN DT NN 4 2 2 1 1 4 29 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^k~dh-ah+f=ay 1 0 1 0 1 NN DT NN 4 2 2 1 1 4 29 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="50th" lc="true" symbols="true" pos="NN" posset="1" wordid="20" pron="f ay1 v ow1 t iy1 ey1 ch" spron="f+ay1|v+ow1|t+iy1+ey1_ch|" nosyl="3">
+			<tk norm="50th" lc="true" symbols="true" pos="NN" posset="1" wordid="20" pron="f ay1 v ow1 t iy1 ey1 ch" spron="f+ay1|v+ow1|t+iy1|ey1+ch|" nosyl="4">
 				50th
 				<ws> </ws>
 				<syl val="f+ay1" stress="1" sylid="1" nophons="2">
-					<phon val="f" type="onset" phonid="1">^dh~ah-f+ay=v 0 1 0 1 1 DT NN NN 2 2 2 1 3 4 29 LL</phon>
-					<phon val="ay" type="nucleus" phonid="2">^ah~f-ay+v=ow 1 0 0 1 1 DT NN NN 2 2 2 1 3 4 29 LL</phon>
+					<phon val="f" type="onset" phonid="1">^dh~ah-f+ay=v 0 1 0 1 1 DT NN NN 2 2 2 1 4 5 29 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^ah~f-ay+v=ow 1 0 0 1 1 DT NN NN 2 2 2 1 4 5 29 LL</phon>
 				</syl>
 				<syl val="v+ow1" stress="1" sylid="2" nophons="2">
-					<phon val="v" type="onset" phonid="1">^f~ay-v+ow=t 0 1 1 1 1 DT NN NN 2 2 4 1 3 4 29 LL</phon>
-					<phon val="ow" type="nucleus" phonid="2">^ay~v-ow+t=iy 1 0 1 1 1 DT NN NN 2 2 4 1 3 4 29 LL</phon>
+					<phon val="v" type="onset" phonid="1">^f~ay-v+ow=t 0 1 1 1 1 DT NN NN 2 2 2 1 4 5 29 LL</phon>
+					<phon val="ow" type="nucleus" phonid="2">^ay~v-ow+t=iy 1 0 1 1 1 DT NN NN 2 2 2 1 4 5 29 LL</phon>
 				</syl>
-				<syl val="t+iy1+ey1_ch" stress="1" sylid="3" nophons="4">
-					<phon val="t" type="onset" phonid="1">^v~ow-t+iy=ey 0 3 1 1 1 DT NN NN 2 4 1 1 3 4 29 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^ow~t-iy+ey=ch 1 2 1 1 1 DT NN NN 2 4 1 1 3 4 29 LL</phon>
-					<phon val="ey" type="nucleus" phonid="3">^t~iy-ey+ch=ae 2 1 1 1 1 DT NN NN 2 4 1 1 3 4 29 LL</phon>
-					<phon val="ch" type="nucleus" phonid="4">^iy~ey-ch+ae=n 3 0 1 1 1 DT NN NN 2 4 1 1 3 4 29 LL</phon>
+				<syl val="t+iy1" stress="1" sylid="3" nophons="2">
+					<phon val="t" type="onset" phonid="1">^v~ow-t+iy=ey 0 1 1 1 1 DT NN NN 2 2 2 1 4 5 29 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^ow~t-iy+ey=ch 1 0 1 1 1 DT NN NN 2 2 2 1 4 5 29 LL</phon>
+				</syl>
+				<syl val="ey1+ch" stress="1" sylid="4" nophons="2">
+					<phon val="ey" type="nucleus" phonid="1">^t~iy-ey+ch=ae 0 1 1 1 1 DT NN NN 2 2 1 1 4 5 29 LL</phon>
+					<phon val="ch" type="coda" phonid="2">^iy~ey-ch+ae=n 1 0 1 1 1 DT NN NN 2 2 1 1 4 5 29 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="anniversary" lc="true" pos="NN" posset="1" wordid="21" pron="ae2 n ah0 v er1 s er0 iy0" spron="ae2|n+ah0|v+er1|s+er0+iy0|" nosyl="4">
+			<tk norm="anniversary" lc="true" pos="NN" posset="1" wordid="21" pron="ae2 n ah0 v er1 s er0 iy0" spron="ae2|n+ah0|v+er1|s+er0|iy0|" nosyl="5">
 				anniversary
 				<ws> </ws>
 				<syl val="ae2" stress="2" sylid="1" nophons="1">
-					<phon val="ae" type="nucleus" phonid="1">^ey~ch-ae+n=ah 0 0 1 1 0 NN NN IN 4 1 2 3 4 1 29 LL</phon>
+					<phon val="ae" type="nucleus" phonid="1">^ey~ch-ae+n=ah 0 0 1 1 0 NN NN IN 2 1 2 4 5 1 29 LL</phon>
 				</syl>
 				<syl val="n+ah0" stress="0" sylid="2" nophons="2">
-					<phon val="n" type="onset" phonid="1">^ch~ae-n+ah=v 0 1 1 0 1 NN NN IN 1 2 2 3 4 1 29 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ae~n-ah+v=er 1 0 1 0 1 NN NN IN 1 2 2 3 4 1 29 LL</phon>
+					<phon val="n" type="onset" phonid="1">^ch~ae-n+ah=v 0 1 1 0 1 NN NN IN 1 2 2 4 5 1 29 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ae~n-ah+v=er 1 0 1 0 1 NN NN IN 1 2 2 4 5 1 29 LL</phon>
 				</syl>
 				<syl val="v+er1" stress="1" sylid="3" nophons="2">
-					<phon val="v" type="onset" phonid="1">^n~ah-v+er=s 0 1 0 1 0 NN NN IN 2 2 3 3 4 1 29 LL</phon>
-					<phon val="er" type="nucleus" phonid="2">^ah~v-er+s=er 1 0 0 1 0 NN NN IN 2 2 3 3 4 1 29 LL</phon>
+					<phon val="v" type="onset" phonid="1">^n~ah-v+er=s 0 1 0 1 0 NN NN IN 2 2 2 4 5 1 29 LL</phon>
+					<phon val="er" type="nucleus" phonid="2">^ah~v-er+s=er 1 0 0 1 0 NN NN IN 2 2 2 4 5 1 29 LL</phon>
 				</syl>
-				<syl val="s+er0+iy0" stress="0" sylid="4" nophons="3">
-					<phon val="s" type="onset" phonid="1">^v~er-s+er=iy 0 2 1 0 1 NN NN IN 2 3 2 3 4 1 29 LL</phon>
-					<phon val="er" type="nucleus" phonid="2">^er~s-er+iy=ah 1 1 1 0 1 NN NN IN 2 3 2 3 4 1 29 LL</phon>
-					<phon val="iy" type="nucleus" phonid="3">^s~er-iy+ah=v 2 0 1 0 1 NN NN IN 2 3 2 3 4 1 29 LL</phon>
+				<syl val="s+er0" stress="0" sylid="4" nophons="2">
+					<phon val="s" type="onset" phonid="1">^v~er-s+er=iy 0 1 1 0 0 NN NN IN 2 2 1 4 5 1 29 LL</phon>
+					<phon val="er" type="nucleus" phonid="2">^er~s-er+iy=ah 1 0 1 0 0 NN NN IN 2 2 1 4 5 1 29 LL</phon>
+				</syl>
+				<syl val="iy0" stress="0" sylid="5" nophons="1">
+					<phon val="iy" type="nucleus" phonid="1">^s~er-iy+ah=v 0 0 0 0 1 NN NN IN 2 1 2 4 5 1 29 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="of" lc="true" pos="IN" posset="3" wordid="22" pron="ah1 v" altprons="ah0 v, ah1 v" spron="ah1+v|" nosyl="1">
 				of
 				<ws> </ws>
 				<syl val="ah1+v" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^er~iy-ah+v=hh 0 1 0 1 0 NN IN PP$ 3 2 2 4 1 1 29 LL</phon>
-					<phon val="v" type="coda" phonid="2">^iy~ah-v+hh=er 1 0 0 1 0 NN IN PP$ 3 2 2 4 1 1 29 LL</phon>
+					<phon val="ah" type="nucleus" phonid="1">^er~iy-ah+v=hh 0 1 0 1 0 NN IN PP$ 1 2 2 5 1 1 29 LL</phon>
+					<phon val="v" type="coda" phonid="2">^iy~ah-v+hh=er 1 0 0 1 0 NN IN PP$ 1 2 2 5 1 1 29 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="her" lc="true" pos="PP$" posset="3" wordid="23" pron="hh er0" altprons="hh er1, hh er0" spron="hh+er0|" nosyl="1">
@@ -456,14 +460,14 @@
 				</syl>
 				<syl val="d+ah0+n" stress="0" sylid="2" nophons="3">
 					<phon val="d" type="onset" phonid="1">^aa~r-d+ah=n 0 2 1 0 0 PP$ NN PAU 3 3 0 1 2 0 29 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^r~d-ah+n=0 1 1 1 0 0 PP$ NN PAU 3 3 0 1 2 0 29 LL</phon>
-					<phon val="n" type="coda" phonid="3">^d~ah-n+0=0 2 0 1 0 0 PP$ NN PAU 3 3 0 1 2 0 29 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^r~d-ah+n=pau 1 1 1 0 0 PP$ NN PAU 3 3 0 1 2 0 29 LL</phon>
+					<phon val="n" type="coda" phonid="3">^d~ah-n+pau=pau 2 0 1 0 0 PP$ NN PAU 3 3 0 1 2 0 29 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~n-0+0=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 29 LL</phon>
+						<phon val="pau">^ah~n-pau+pau=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 29 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -474,55 +478,57 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+m=iy 0 0 0 0 1 PAU PAU NN 0 0 2 0 0 2 3 LL</phon>
+						<phon val="pau">^0~pau-pau+m=iy 0 0 0 0 1 PAU PAU NN 0 0 2 0 0 3 3 LH</phon>
 					</syl>
 				</tk>
 			</break>
-			<tk norm="medium" lc="true" uc="true" pos="NN" posset="1" wordid="1" pron="m iy1 d iy0 ah0 m" spron="m+iy1|d+iy0+ah0_m|" nosyl="2">
+			<tk norm="medium" lc="true" uc="true" pos="NN" posset="1" wordid="1" pron="m iy1 d iy0 ah0 m" spron="m+iy1|d+iy0|ah0+m|" nosyl="3">
 				Medium
 				<ws> </ws>
 				<syl val="m+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="m" type="onset" phonid="1">^0~0-m+iy=d 0 1 0 1 0 PAU NN NN 0 2 4 0 2 2 3 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^0~m-iy+d=iy 1 0 0 1 0 PAU NN NN 0 2 4 0 2 2 3 LL</phon>
+					<phon val="m" type="onset" phonid="1">^pau~pau-m+iy=d 0 1 0 1 0 PAU NN NN 0 2 2 0 3 2 3 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^pau~m-iy+d=iy 1 0 0 1 0 PAU NN NN 0 2 2 0 3 2 3 LH</phon>
 				</syl>
-				<syl val="d+iy0+ah0_m" stress="0" sylid="2" nophons="4">
-					<phon val="d" type="onset" phonid="1">^m~iy-d+iy=ah 0 3 1 0 1 PAU NN NN 2 4 2 0 2 2 3 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ah=m 1 2 1 0 1 PAU NN NN 2 4 2 0 2 2 3 LL</phon>
-					<phon val="ah" type="nucleus" phonid="3">^d~iy-ah+m=hh 2 1 1 0 1 PAU NN NN 2 4 2 0 2 2 3 LL</phon>
-					<phon val="m" type="nucleus" phonid="4">^iy~ah-m+hh=eh 3 0 1 0 1 PAU NN NN 2 4 2 0 2 2 3 LL</phon>
+				<syl val="d+iy0" stress="0" sylid="2" nophons="2">
+					<phon val="d" type="onset" phonid="1">^m~iy-d+iy=ah 0 1 1 0 0 PAU NN NN 2 2 2 0 3 2 3 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ah=m 1 0 1 0 0 PAU NN NN 2 2 2 0 3 2 3 LH</phon>
+				</syl>
+				<syl val="ah0+m" stress="0" sylid="3" nophons="2">
+					<phon val="ah" type="nucleus" phonid="1">^d~iy-ah+m=hh 0 1 0 0 1 PAU NN NN 2 2 2 0 3 2 3 LH</phon>
+					<phon val="m" type="coda" phonid="2">^iy~ah-m+hh=eh 1 0 0 0 1 PAU NN NN 2 2 2 0 3 2 3 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="helen" lc="true" uc="true" pos="NN" posset="1" wordid="2" pron="hh eh1 l ah0 n" spron="hh+eh1|l+ah0+n|" nosyl="2">
 				Helen
 				<ws> </ws>
 				<syl val="hh+eh1" stress="1" sylid="1" nophons="2">
-					<phon val="hh" type="onset" phonid="1">^ah~m-hh+eh=l 0 1 0 1 0 NN NN NN 4 2 3 2 2 2 3 LL</phon>
-					<phon val="eh" type="nucleus" phonid="2">^m~hh-eh+l=ah 1 0 0 1 0 NN NN NN 4 2 3 2 2 2 3 LL</phon>
+					<phon val="hh" type="onset" phonid="1">^ah~m-hh+eh=l 0 1 0 1 0 NN NN NN 2 2 3 3 2 2 3 LH</phon>
+					<phon val="eh" type="nucleus" phonid="2">^m~hh-eh+l=ah 1 0 0 1 0 NN NN NN 2 2 3 3 2 2 3 LH</phon>
 				</syl>
 				<syl val="l+ah0+n" stress="0" sylid="2" nophons="3">
-					<phon val="l" type="onset" phonid="1">^hh~eh-l+ah=n 0 2 1 0 1 NN NN NN 2 3 3 2 2 2 3 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^eh~l-ah+n=d 1 1 1 0 1 NN NN NN 2 3 3 2 2 2 3 LL</phon>
-					<phon val="n" type="coda" phonid="3">^l~ah-n+d=ah 2 0 1 0 1 NN NN NN 2 3 3 2 2 2 3 LL</phon>
+					<phon val="l" type="onset" phonid="1">^hh~eh-l+ah=n 0 2 1 0 1 NN NN NN 2 3 3 3 2 2 3 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^eh~l-ah+n=d 1 1 1 0 1 NN NN NN 2 3 3 3 2 2 3 LH</phon>
+					<phon val="n" type="coda" phonid="3">^l~ah-n+d=ah 2 0 1 0 1 NN NN NN 2 3 3 3 2 2 3 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="duncan" pstpunc="," lc="true" uc="true" pos="NN" posset="1" wordid="3" pron="d ah1 ng k ah0 n" spron="d+ah1+ng|k+ah0+n|" nosyl="2">
 				Duncan,
 				<ws> </ws>
 				<syl val="d+ah1+ng" stress="1" sylid="1" nophons="3">
-					<phon val="d" type="onset" phonid="1">^ah~n-d+ah=ng 0 2 0 1 0 NN NN PAU 3 3 3 2 2 0 3 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^n~d-ah+ng=k 1 1 0 1 0 NN NN PAU 3 3 3 2 2 0 3 LL</phon>
-					<phon val="ng" type="coda" phonid="3">^d~ah-ng+k=ah 2 0 0 1 0 NN NN PAU 3 3 3 2 2 0 3 LL</phon>
+					<phon val="d" type="onset" phonid="1">^ah~n-d+ah=ng 0 2 0 1 0 NN NN PAU 3 3 3 2 2 0 3 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^n~d-ah+ng=k 1 1 0 1 0 NN NN PAU 3 3 3 2 2 0 3 LH</phon>
+					<phon val="ng" type="coda" phonid="3">^d~ah-ng+k=ah 2 0 0 1 0 NN NN PAU 3 3 3 2 2 0 3 LH</phon>
 				</syl>
 				<syl val="k+ah0+n" stress="0" sylid="2" nophons="3">
-					<phon val="k" type="onset" phonid="1">^ah~ng-k+ah=n 0 2 1 0 0 NN NN PAU 3 3 0 2 2 0 3 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ng~k-ah+n=0 1 1 1 0 0 NN NN PAU 3 3 0 2 2 0 3 LL</phon>
-					<phon val="n" type="coda" phonid="3">^k~ah-n+0=0 2 0 1 0 0 NN NN PAU 3 3 0 2 2 0 3 LL</phon>
+					<phon val="k" type="onset" phonid="1">^ah~ng-k+ah=n 0 2 1 0 0 NN NN PAU 3 3 0 2 2 0 3 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ng~k-ah+n=pau 1 1 1 0 0 NN NN PAU 3 3 0 2 2 0 3 LH</phon>
+					<phon val="n" type="coda" phonid="3">^k~ah-n+pau=pau 2 0 1 0 0 NN NN PAU 3 3 0 2 2 0 3 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~n-0+0=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 3 LL</phon>
+						<phon val="pau">^ah~n-pau+pau=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 3 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -531,7 +537,7 @@
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+hh=uw 0 0 0 0 1 PAU PAU WP 0 0 2 0 0 1 5 LH</phon>
+						<phon val="pau">^0~pau-pau+hh=uw 0 0 0 0 1 PAU PAU WP 0 0 2 0 0 1 5 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -539,8 +545,8 @@
 				who
 				<ws> </ws>
 				<syl val="hh+uw1" stress="1" sylid="1" nophons="2">
-					<phon val="hh" type="onset" phonid="1">^0~0-hh+uw=w 0 1 0 1 1 PAU WP VBD 0 2 3 0 1 1 5 LH</phon>
-					<phon val="uw" type="nucleus" phonid="2">^0~hh-uw+w=aa 1 0 0 1 1 PAU WP VBD 0 2 3 0 1 1 5 LH</phon>
+					<phon val="hh" type="onset" phonid="1">^pau~pau-hh+uw=w 0 1 0 1 1 PAU WP VBD 0 2 3 0 1 1 5 LH</phon>
+					<phon val="uw" type="nucleus" phonid="2">^pau~hh-uw+w=aa 1 0 0 1 1 PAU WP VBD 0 2 3 0 1 1 5 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="was" lc="true" pos="VBD" posset="3" wordid="2" pron="w aa1 z" altprons="w ah1 z, w ah0 z, w ao1 z, w aa1 z" spron="w+aa1+z|" nosyl="1">
@@ -583,14 +589,14 @@
 					<phon val="n" type="coda" phonid="3">^l~ah-n+d=er 2 0 1 0 0 IN NN PAU 2 3 2 1 3 0 5 LH</phon>
 				</syl>
 				<syl val="d+er0" stress="0" sylid="3" nophons="2">
-					<phon val="d" type="onset" phonid="1">^ah~n-d+er=0 0 1 0 0 0 IN NN PAU 3 2 0 1 3 0 5 LH</phon>
-					<phon val="er" type="nucleus" phonid="2">^n~d-er+0=0 1 0 0 0 0 IN NN PAU 3 2 0 1 3 0 5 LH</phon>
+					<phon val="d" type="onset" phonid="1">^ah~n-d+er=pau 0 1 0 0 0 IN NN PAU 3 2 0 1 3 0 5 LH</phon>
+					<phon val="er" type="nucleus" phonid="2">^n~d-er+pau=pau 1 0 0 0 0 IN NN PAU 3 2 0 1 3 0 5 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^d~er-0+0=0 0 0 0 0 0 NN PAU PAU 2 0 0 3 0 0 5 LH</phon>
+						<phon val="pau">^d~er-pau+pau=0 0 0 0 0 0 NN PAU PAU 2 0 0 3 0 0 5 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -599,7 +605,7 @@
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+p=er 0 0 0 0 1 PAU PAU NN 0 0 5 0 0 3 1 LH</phon>
+						<phon val="pau">^0~pau-pau+p=er 0 0 0 0 1 PAU PAU NN 0 0 5 0 0 3 1 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -607,8 +613,8 @@
 				Perthshire,
 				<ws> </ws>
 				<syl val="p+er1+th_hh_s" stress="1" sylid="1" nophons="5">
-					<phon val="p" type="onset" phonid="1">^0~0-p+er=th 0 4 0 1 1 PAU NN PAU 0 5 2 0 3 0 1 LH</phon>
-					<phon val="er" type="nucleus" phonid="2">^0~p-er+th=hh 1 3 0 1 1 PAU NN PAU 0 5 2 0 3 0 1 LH</phon>
+					<phon val="p" type="onset" phonid="1">^pau~pau-p+er=th 0 4 0 1 1 PAU NN PAU 0 5 2 0 3 0 1 LH</phon>
+					<phon val="er" type="nucleus" phonid="2">^pau~p-er+th=hh 1 3 0 1 1 PAU NN PAU 0 5 2 0 3 0 1 LH</phon>
 					<phon val="th" type="coda" phonid="3">^p~er-th+hh=s 2 2 0 1 1 PAU NN PAU 0 5 2 0 3 0 1 LH</phon>
 					<phon val="hh" type="coda" phonid="4">^er~th-hh+s=hh 3 1 0 1 1 PAU NN PAU 0 5 2 0 3 0 1 LH</phon>
 					<phon val="s" type="coda" phonid="5">^th~hh-s+hh=iy 4 0 0 1 1 PAU NN PAU 0 5 2 0 3 0 1 LH</phon>
@@ -618,14 +624,14 @@
 					<phon val="iy" type="nucleus" phonid="2">^s~hh-iy+r=eh 1 0 1 1 1 PAU NN PAU 5 2 2 0 3 0 1 LH</phon>
 				</syl>
 				<syl val="r+eh1" stress="1" sylid="3" nophons="2">
-					<phon val="r" type="onset" phonid="1">^hh~iy-r+eh=0 0 1 1 1 0 PAU NN PAU 2 2 0 0 3 0 1 LH</phon>
-					<phon val="eh" type="nucleus" phonid="2">^iy~r-eh+0=0 1 0 1 1 0 PAU NN PAU 2 2 0 0 3 0 1 LH</phon>
+					<phon val="r" type="onset" phonid="1">^hh~iy-r+eh=pau 0 1 1 1 0 PAU NN PAU 2 2 0 0 3 0 1 LH</phon>
+					<phon val="eh" type="nucleus" phonid="2">^iy~r-eh+pau=pau 1 0 1 1 0 PAU NN PAU 2 2 0 0 3 0 1 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^r~eh-0+0=0 0 0 1 0 0 NN PAU PAU 2 0 0 3 0 0 1 LH</phon>
+						<phon val="pau">^r~eh-pau+pau=0 0 0 1 0 0 NN PAU PAU 2 0 0 3 0 0 1 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -634,7 +640,7 @@
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+w=aa 0 0 0 0 1 PAU PAU VBD 0 0 3 0 0 1 9 LH</phon>
+						<phon val="pau">^0~pau-pau+w=aa 0 0 0 0 1 PAU PAU VBD 0 0 3 0 0 1 9 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -642,104 +648,106 @@
 				was
 				<ws> </ws>
 				<syl val="w+aa1+z" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^0~0-w+aa=z 0 2 0 1 0 PAU VBD VVN 0 3 2 0 1 3 9 LH</phon>
-					<phon val="aa" type="nucleus" phonid="2">^0~w-aa+z=ih 1 1 0 1 0 PAU VBD VVN 0 3 2 0 1 3 9 LH</phon>
-					<phon val="z" type="coda" phonid="3">^w~aa-z+ih=m 2 0 0 1 0 PAU VBD VVN 0 3 2 0 1 3 9 LH</phon>
+					<phon val="w" type="onset" phonid="1">^pau~pau-w+aa=z 0 2 0 1 0 PAU VBD VVN 0 3 2 0 1 3 9 LL</phon>
+					<phon val="aa" type="nucleus" phonid="2">^pau~w-aa+z=ih 1 1 0 1 0 PAU VBD VVN 0 3 2 0 1 3 9 LL</phon>
+					<phon val="z" type="coda" phonid="3">^w~aa-z+ih=m 2 0 0 1 0 PAU VBD VVN 0 3 2 0 1 3 9 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="imprisoned" lc="true" pos="VVN" posset="1" wordid="2" pron="ih0 m p r ih1 z ah0 n d" spron="ih0+m|p_r+ih1|z+ah0+n_d|" nosyl="3">
 				imprisoned
 				<ws> </ws>
 				<syl val="ih0+m" stress="0" sylid="1" nophons="2">
-					<phon val="ih" type="nucleus" phonid="1">^aa~z-ih+m=p 0 1 1 0 1 VBD VVN VVG 3 2 3 1 3 2 9 LH</phon>
-					<phon val="m" type="coda" phonid="2">^z~ih-m+p=r 1 0 1 0 1 VBD VVN VVG 3 2 3 1 3 2 9 LH</phon>
+					<phon val="ih" type="nucleus" phonid="1">^aa~z-ih+m=p 0 1 1 0 1 VBD VVN VVG 3 2 3 1 3 2 9 LL</phon>
+					<phon val="m" type="coda" phonid="2">^z~ih-m+p=r 1 0 1 0 1 VBD VVN VVG 3 2 3 1 3 2 9 LL</phon>
 				</syl>
 				<syl val="p_r+ih1" stress="1" sylid="2" nophons="3">
-					<phon val="p" type="onset" phonid="1">^ih~m-p+r=ih 0 2 0 1 0 VBD VVN VVG 2 3 4 1 3 2 9 LH</phon>
-					<phon val="r" type="onset" phonid="2">^m~p-r+ih=z 1 1 0 1 0 VBD VVN VVG 2 3 4 1 3 2 9 LH</phon>
-					<phon val="ih" type="nucleus" phonid="3">^p~r-ih+z=ah 2 0 0 1 0 VBD VVN VVG 2 3 4 1 3 2 9 LH</phon>
+					<phon val="p" type="onset" phonid="1">^ih~m-p+r=ih 0 2 0 1 0 VBD VVN VVG 2 3 4 1 3 2 9 LL</phon>
+					<phon val="r" type="onset" phonid="2">^m~p-r+ih=z 1 1 0 1 0 VBD VVN VVG 2 3 4 1 3 2 9 LL</phon>
+					<phon val="ih" type="nucleus" phonid="3">^p~r-ih+z=ah 2 0 0 1 0 VBD VVN VVG 2 3 4 1 3 2 9 LL</phon>
 				</syl>
 				<syl val="z+ah0+n_d" stress="0" sylid="3" nophons="4">
-					<phon val="z" type="onset" phonid="1">^r~ih-z+ah=n 0 3 1 0 1 VBD VVN VVG 3 4 2 1 3 2 9 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ih~z-ah+n=d 1 2 1 0 1 VBD VVN VVG 3 4 2 1 3 2 9 LH</phon>
-					<phon val="n" type="coda" phonid="3">^z~ah-n+d=y 2 1 1 0 1 VBD VVN VVG 3 4 2 1 3 2 9 LH</phon>
-					<phon val="d" type="coda" phonid="4">^ah~n-d+y=uw 3 0 1 0 1 VBD VVN VVG 3 4 2 1 3 2 9 LH</phon>
+					<phon val="z" type="onset" phonid="1">^r~ih-z+ah=n 0 3 1 0 1 VBD VVN VVG 3 4 2 1 3 2 9 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ih~z-ah+n=d 1 2 1 0 1 VBD VVN VVG 3 4 2 1 3 2 9 LL</phon>
+					<phon val="n" type="coda" phonid="3">^z~ah-n+d=y 2 1 1 0 1 VBD VVN VVG 3 4 2 1 3 2 9 LL</phon>
+					<phon val="d" type="coda" phonid="4">^ah~n-d+y=uw 3 0 1 0 1 VBD VVN VVG 3 4 2 1 3 2 9 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="using" lc="true" pos="VVG" posset="1" wordid="3" pron="y uw1 z ih0 ng" spron="y+uw1|z+ih0+ng|" nosyl="2">
 				using
 				<ws> </ws>
 				<syl val="y+uw1" stress="1" sylid="1" nophons="2">
-					<phon val="y" type="onset" phonid="1">^n~d-y+uw=z 0 1 0 1 0 VVN VVG DT 4 2 3 3 2 1 9 LH</phon>
-					<phon val="uw" type="nucleus" phonid="2">^d~y-uw+z=ih 1 0 0 1 0 VVN VVG DT 4 2 3 3 2 1 9 LH</phon>
+					<phon val="y" type="onset" phonid="1">^n~d-y+uw=z 0 1 0 1 0 VVN VVG DT 4 2 3 3 2 1 9 LL</phon>
+					<phon val="uw" type="nucleus" phonid="2">^d~y-uw+z=ih 1 0 0 1 0 VVN VVG DT 4 2 3 3 2 1 9 LL</phon>
 				</syl>
 				<syl val="z+ih0+ng" stress="0" sylid="2" nophons="3">
-					<phon val="z" type="onset" phonid="1">^y~uw-z+ih=ng 0 2 1 0 0 VVN VVG DT 2 3 2 3 2 1 9 LH</phon>
-					<phon val="ih" type="nucleus" phonid="2">^uw~z-ih+ng=dh 1 1 1 0 0 VVN VVG DT 2 3 2 3 2 1 9 LH</phon>
-					<phon val="ng" type="coda" phonid="3">^z~ih-ng+dh=ah 2 0 1 0 0 VVN VVG DT 2 3 2 3 2 1 9 LH</phon>
+					<phon val="z" type="onset" phonid="1">^y~uw-z+ih=ng 0 2 1 0 0 VVN VVG DT 2 3 2 3 2 1 9 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^uw~z-ih+ng=dh 1 1 1 0 0 VVN VVG DT 2 3 2 3 2 1 9 LL</phon>
+					<phon val="ng" type="coda" phonid="3">^z~ih-ng+dh=ah 2 0 1 0 0 VVN VVG DT 2 3 2 3 2 1 9 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="the" lc="true" pos="DT" posset="3" wordid="4" pron="dh ah0" altprons="dh ah1, dh iy0, dh ah0" spron="dh+ah0|" nosyl="1">
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^ih~ng-dh+ah=l 0 1 0 0 1 VVG DT NN 3 2 2 2 1 1 9 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ng~dh-ah+l=ao 1 0 0 0 1 VVG DT NN 3 2 2 2 1 1 9 LH</phon>
+					<phon val="dh" type="onset" phonid="1">^ih~ng-dh+ah=l 0 1 0 0 1 VVG DT NN 3 2 2 2 1 1 9 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ng~dh-ah+l=ao 1 0 0 0 1 VVG DT NN 3 2 2 2 1 1 9 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="law" lc="true" pos="NN" posset="1" wordid="5" pron="l ao1" altprons="l aa1, l ao1" spron="l+ao1|" nosyl="1">
 				law
 				<ws> </ws>
 				<syl val="l+ao1" stress="1" sylid="1" nophons="2">
-					<phon val="l" type="onset" phonid="1">^dh~ah-l+ao=d 0 1 0 1 1 DT NN IN 2 2 2 1 1 2 9 LH</phon>
-					<phon val="ao" type="nucleus" phonid="2">^ah~l-ao+d=uh 1 0 0 1 1 DT NN IN 2 2 2 1 1 2 9 LH</phon>
+					<phon val="l" type="onset" phonid="1">^dh~ah-l+ao=d 0 1 0 1 1 DT NN IN 2 2 2 1 1 2 9 LL</phon>
+					<phon val="ao" type="nucleus" phonid="2">^ah~l-ao+d=uh 1 0 0 1 1 DT NN IN 2 2 2 1 1 2 9 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="during" lc="true" pos="IN" posset="3" wordid="6" pron="d uh1 r ih0 ng" altprons="d y uh1 r ih0 ng, d er1 ih0 ng, d uh1 r ih0 ng" spron="d+uh1|r+ih0+ng|" nosyl="2">
 				during
 				<ws> </ws>
 				<syl val="d+uh1" stress="1" sylid="1" nophons="2">
-					<phon val="d" type="onset" phonid="1">^l~ao-d+uh=r 0 1 1 1 0 NN IN NN 2 2 3 1 2 1 9 LH</phon>
-					<phon val="uh" type="nucleus" phonid="2">^ao~d-uh+r=ih 1 0 1 1 0 NN IN NN 2 2 3 1 2 1 9 LH</phon>
+					<phon val="d" type="onset" phonid="1">^l~ao-d+uh=r 0 1 1 1 0 NN IN NN 2 2 3 1 2 1 9 LL</phon>
+					<phon val="uh" type="nucleus" phonid="2">^ao~d-uh+r=ih 1 0 1 1 0 NN IN NN 2 2 3 1 2 1 9 LL</phon>
 				</syl>
 				<syl val="r+ih0+ng" stress="0" sylid="2" nophons="3">
-					<phon val="r" type="onset" phonid="1">^d~uh-r+ih=ng 0 2 1 0 1 NN IN NN 2 3 4 1 2 1 9 LH</phon>
-					<phon val="ih" type="nucleus" phonid="2">^uh~r-ih+ng=w 1 1 1 0 1 NN IN NN 2 3 4 1 2 1 9 LH</phon>
-					<phon val="ng" type="coda" phonid="3">^r~ih-ng+w=er 2 0 1 0 1 NN IN NN 2 3 4 1 2 1 9 LH</phon>
+					<phon val="r" type="onset" phonid="1">^d~uh-r+ih=ng 0 2 1 0 1 NN IN NN 2 3 4 1 2 1 9 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^uh~r-ih+ng=w 1 1 1 0 1 NN IN NN 2 3 4 1 2 1 9 LL</phon>
+					<phon val="ng" type="coda" phonid="3">^r~ih-ng+w=er 2 0 1 0 1 NN IN NN 2 3 4 1 2 1 9 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="world" lc="true" uc="true" pos="NN" posset="1" wordid="7" pron="w er1 l d" spron="w+er1+l_d|" nosyl="1">
 				World
 				<ws> </ws>
 				<syl val="w+er1+l_d" stress="1" sylid="1" nophons="4">
-					<phon val="w" type="onset" phonid="1">^ih~ng-w+er=l 0 3 0 1 1 IN NN NN 3 4 3 2 1 1 9 LH</phon>
-					<phon val="er" type="nucleus" phonid="2">^ng~w-er+l=d 1 2 0 1 1 IN NN NN 3 4 3 2 1 1 9 LH</phon>
-					<phon val="l" type="coda" phonid="3">^w~er-l+d=w 2 1 0 1 1 IN NN NN 3 4 3 2 1 1 9 LH</phon>
-					<phon val="d" type="coda" phonid="4">^er~l-d+w=ao 3 0 0 1 1 IN NN NN 3 4 3 2 1 1 9 LH</phon>
+					<phon val="w" type="onset" phonid="1">^ih~ng-w+er=l 0 3 0 1 1 IN NN NN 3 4 3 2 1 1 9 LL</phon>
+					<phon val="er" type="nucleus" phonid="2">^ng~w-er+l=d 1 2 0 1 1 IN NN NN 3 4 3 2 1 1 9 LL</phon>
+					<phon val="l" type="coda" phonid="3">^w~er-l+d=w 2 1 0 1 1 IN NN NN 3 4 3 2 1 1 9 LL</phon>
+					<phon val="d" type="coda" phonid="4">^er~l-d+w=ao 3 0 0 1 1 IN NN NN 3 4 3 2 1 1 9 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="war" lc="true" uc="true" pos="NN" posset="1" wordid="8" pron="w ao1 r" spron="w+ao1+r|" nosyl="1">
 				War
 				<ws> </ws>
 				<syl val="w+ao1+r" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^l~d-w+ao=r 0 2 1 1 0 NN NN NN 4 3 2 1 1 1 9 LH</phon>
-					<phon val="ao" type="nucleus" phonid="2">^d~w-ao+r=iy 1 1 1 1 0 NN NN NN 4 3 2 1 1 1 9 LH</phon>
-					<phon val="r" type="coda" phonid="3">^w~ao-r+iy=ih 2 0 1 1 0 NN NN NN 4 3 2 1 1 1 9 LH</phon>
+					<phon val="w" type="onset" phonid="1">^l~d-w+ao=r 0 2 1 1 1 NN NN NN 4 3 1 1 1 2 9 LL</phon>
+					<phon val="ao" type="nucleus" phonid="2">^d~w-ao+r=iy 1 1 1 1 1 NN NN NN 4 3 1 1 1 2 9 LL</phon>
+					<phon val="r" type="coda" phonid="3">^w~ao-r+iy=ih 2 0 1 1 1 NN NN NN 4 3 1 1 1 2 9 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="ii" pstpunc="." lc="true" uc="true" pos="NN" posset="1" wordid="9" pron="iy1 ih0" lts="true" spron="iy1+ih0|" nosyl="1">
+			<tk norm="ii" pstpunc="." lc="true" uc="true" pos="NN" posset="1" wordid="9" pron="iy1 ih0" lts="true" spron="iy1|ih0|" nosyl="2">
 				II.
 				<ws col="110">
 </ws>
-				<syl val="iy1+ih0" stress="0" sylid="1" nophons="2">
-					<phon val="iy" type="nucleus" phonid="1">^ao~r-iy+ih=0 0 1 1 0 0 NN NN PAU 3 2 0 1 1 0 9 LH</phon>
-					<phon val="ih" type="nucleus" phonid="2">^r~iy-ih+0=0 1 0 1 0 0 NN NN PAU 3 2 0 1 1 0 9 LH</phon>
+				<syl val="iy1" stress="1" sylid="1" nophons="1">
+					<phon val="iy" type="nucleus" phonid="1">^ao~r-iy+ih=pau 0 0 1 1 0 NN NN PAU 3 1 1 1 2 0 9 LL</phon>
+				</syl>
+				<syl val="ih0" stress="0" sylid="2" nophons="1">
+					<phon val="ih" type="nucleus" phonid="1">^r~iy-ih+pau=pau 0 0 1 0 0 NN NN PAU 1 1 0 1 2 0 9 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^iy~ih-0+0=0 0 0 0 0 0 NN PAU PAU 2 0 0 1 0 0 9 LH</phon>
+						<phon val="pau">^iy~ih-pau+pau=0 0 0 0 0 0 NN PAU PAU 1 0 0 2 0 0 9 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -750,7 +758,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 26 LL</phon>
+						<phon val="pau">^0~pau-pau+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 26 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -758,8 +766,8 @@
 				She
 				<ws> </ws>
 				<syl val="sh+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="sh" type="onset" phonid="1">^0~0-sh+iy=w 0 1 0 1 1 PAU PP VBD 0 2 3 0 1 1 26 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^0~sh-iy+w=aa 1 0 0 1 1 PAU PP VBD 0 2 3 0 1 1 26 LL</phon>
+					<phon val="sh" type="onset" phonid="1">^pau~pau-sh+iy=w 0 1 0 1 1 PAU PP VBD 0 2 3 0 1 1 26 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^pau~sh-iy+w=aa 1 0 0 1 1 PAU PP VBD 0 2 3 0 1 1 26 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="was" lc="true" pos="VBD" posset="3" wordid="2" pron="w aa1 z" altprons="w ah1 z, w ah0 z, w ao1 z, w aa1 z" spron="w+aa1+z|" nosyl="1">
@@ -864,41 +872,45 @@
 				a
 				<ws> </ws>
 				<syl val="ah0" stress="0" sylid="1" nophons="1">
-					<phon val="ah" type="nucleus" phonid="1">^t~uw-ah+s=ey 0 0 1 0 0 TO DT NN 2 1 5 1 1 1 26 LL</phon>
+					<phon val="ah" type="nucleus" phonid="1">^t~uw-ah+s=ey 0 0 1 0 1 TO DT NN 2 1 2 1 1 2 26 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="seance" lc="true" foreign="true" pos="NN" posset="1" wordid="11" pron="s ey1 aa0 n s" spron="s+ey1+aa0_n_s|" nosyl="1">
+			<tk norm="seance" lc="true" foreign="true" pos="NN" posset="1" wordid="11" pron="s ey1 aa0 n s" spron="s+ey1|aa0+n_s|" nosyl="2">
 				séance
 				<ws> </ws>
-				<syl val="s+ey1+aa0_n_s" stress="0" sylid="1" nophons="5">
-					<phon val="s" type="onset" phonid="1">^uw~ah-s+ey=aa 0 4 0 0 1 DT NN NN 1 5 1 1 1 2 26 LL</phon>
-					<phon val="ey" type="nucleus" phonid="2">^ah~s-ey+aa=n 1 3 0 0 1 DT NN NN 1 5 1 1 1 2 26 LL</phon>
-					<phon val="aa" type="nucleus" phonid="3">^s~ey-aa+n=s 2 2 0 0 1 DT NN NN 1 5 1 1 1 2 26 LL</phon>
-					<phon val="n" type="nucleus" phonid="4">^ey~aa-n+s=aa 3 1 0 0 1 DT NN NN 1 5 1 1 1 2 26 LL</phon>
-					<phon val="s" type="nucleus" phonid="5">^aa~n-s+aa=d 4 0 0 0 1 DT NN NN 1 5 1 1 1 2 26 LL</phon>
+				<syl val="s+ey1" stress="1" sylid="1" nophons="2">
+					<phon val="s" type="onset" phonid="1">^uw~ah-s+ey=aa 0 1 0 1 0 DT NN NN 1 2 3 1 2 3 26 LL</phon>
+					<phon val="ey" type="nucleus" phonid="2">^ah~s-ey+aa=n 1 0 0 1 0 DT NN NN 1 2 3 1 2 3 26 LL</phon>
+				</syl>
+				<syl val="aa0+n_s" stress="0" sylid="2" nophons="3">
+					<phon val="aa" type="nucleus" phonid="1">^s~ey-aa+n=s 0 2 1 0 1 DT NN NN 2 3 1 1 2 3 26 LL</phon>
+					<phon val="n" type="coda" phonid="2">^ey~aa-n+s=aa 1 1 1 0 1 DT NN NN 2 3 1 1 2 3 26 LL</phon>
+					<phon val="s" type="coda" phonid="3">^aa~n-s+aa=d 2 0 1 0 1 DT NN NN 2 3 1 1 2 3 26 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="audience" lc="true" pos="NN" posset="1" wordid="12" pron="aa1 d iy0 ah0 n s" altprons="ao1 d iy0 ah0 n s, aa1 d iy0 ah0 n s" spron="aa1|d+iy0+ah0_n_s|" nosyl="2">
+			<tk norm="audience" lc="true" pos="NN" posset="1" wordid="12" pron="aa1 d iy0 ah0 n s" altprons="ao1 d iy0 ah0 n s, aa1 d iy0 ah0 n s" spron="aa1|d+iy0|ah0+n_s|" nosyl="3">
 				audience
 				<ws> </ws>
 				<syl val="aa1" stress="1" sylid="1" nophons="1">
-					<phon val="aa" type="nucleus" phonid="1">^n~s-aa+d=iy 0 0 0 1 0 NN NN IN/that 5 1 5 1 2 1 26 LL</phon>
+					<phon val="aa" type="nucleus" phonid="1">^n~s-aa+d=iy 0 0 0 1 0 NN NN IN/that 3 1 2 2 3 1 26 LL</phon>
 				</syl>
-				<syl val="d+iy0+ah0_n_s" stress="0" sylid="2" nophons="5">
-					<phon val="d" type="onset" phonid="1">^s~aa-d+iy=ah 0 4 1 0 1 NN NN IN/that 1 5 3 1 2 1 26 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^aa~d-iy+ah=n 1 3 1 0 1 NN NN IN/that 1 5 3 1 2 1 26 LL</phon>
-					<phon val="ah" type="nucleus" phonid="3">^d~iy-ah+n=s 2 2 1 0 1 NN NN IN/that 1 5 3 1 2 1 26 LL</phon>
-					<phon val="n" type="nucleus" phonid="4">^iy~ah-n+s=dh 3 1 1 0 1 NN NN IN/that 1 5 3 1 2 1 26 LL</phon>
-					<phon val="s" type="nucleus" phonid="5">^ah~n-s+dh=ae 4 0 1 0 1 NN NN IN/that 1 5 3 1 2 1 26 LL</phon>
+				<syl val="d+iy0" stress="0" sylid="2" nophons="2">
+					<phon val="d" type="onset" phonid="1">^s~aa-d+iy=ah 0 1 1 0 0 NN NN IN/that 1 2 3 2 3 1 26 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^aa~d-iy+ah=n 1 0 1 0 0 NN NN IN/that 1 2 3 2 3 1 26 LL</phon>
+				</syl>
+				<syl val="ah0+n_s" stress="0" sylid="3" nophons="3">
+					<phon val="ah" type="nucleus" phonid="1">^d~iy-ah+n=s 0 2 0 0 1 NN NN IN/that 2 3 3 2 3 1 26 LL</phon>
+					<phon val="n" type="coda" phonid="2">^iy~ah-n+s=dh 1 1 0 0 1 NN NN IN/that 2 3 3 2 3 1 26 LL</phon>
+					<phon val="s" type="coda" phonid="3">^ah~n-s+dh=ae 2 0 0 0 1 NN NN IN/that 2 3 3 2 3 1 26 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="that" lc="true" pos="IN/that" posset="3" wordid="13" pron="dh ae1 t" altprons="dh ah0 t, dh ae1 t" spron="dh+ae1+t|" nosyl="1">
 				that
 				<ws> </ws>
 				<syl val="dh+ae1+t" stress="1" sylid="1" nophons="3">
-					<phon val="dh" type="onset" phonid="1">^n~s-dh+ae=t 0 2 0 1 0 NN IN/that DT 5 3 1 2 1 1 26 LL</phon>
-					<phon val="ae" type="nucleus" phonid="2">^s~dh-ae+t=ah 1 1 0 1 0 NN IN/that DT 5 3 1 2 1 1 26 LL</phon>
-					<phon val="t" type="coda" phonid="3">^dh~ae-t+ah=w 2 0 0 1 0 NN IN/that DT 5 3 1 2 1 1 26 LL</phon>
+					<phon val="dh" type="onset" phonid="1">^n~s-dh+ae=t 0 2 0 1 0 NN IN/that DT 3 3 1 3 1 1 26 LL</phon>
+					<phon val="ae" type="nucleus" phonid="2">^s~dh-ae+t=ah 1 1 0 1 0 NN IN/that DT 3 3 1 3 1 1 26 LL</phon>
+					<phon val="t" type="coda" phonid="3">^dh~ae-t+ah=w 2 0 0 1 0 NN IN/that DT 3 3 1 3 1 1 26 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="a" lc="true" pos="DT" posset="3" wordid="14" pron="ah0" altprons="ey1, ah0" spron="ah0|" nosyl="1">
@@ -1030,14 +1042,14 @@
 				<syl val="b_l+ih0+k" stress="0" sylid="2" nophons="4">
 					<phon val="b" type="onset" phonid="1">^p~ah-b+l=ih 0 3 1 0 0 DT JJ PAU 2 4 0 1 2 0 26 LL</phon>
 					<phon val="l" type="onset" phonid="2">^ah~b-l+ih=k 1 2 1 0 0 DT JJ PAU 2 4 0 1 2 0 26 LL</phon>
-					<phon val="ih" type="nucleus" phonid="3">^b~l-ih+k=0 2 1 1 0 0 DT JJ PAU 2 4 0 1 2 0 26 LL</phon>
-					<phon val="k" type="coda" phonid="4">^l~ih-k+0=0 3 0 1 0 0 DT JJ PAU 2 4 0 1 2 0 26 LL</phon>
+					<phon val="ih" type="nucleus" phonid="3">^b~l-ih+k=pau 2 1 1 0 0 DT JJ PAU 2 4 0 1 2 0 26 LL</phon>
+					<phon val="k" type="coda" phonid="4">^l~ih-k+pau=pau 3 0 1 0 0 DT JJ PAU 2 4 0 1 2 0 26 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ih~k-0+0=0 0 0 0 0 0 JJ PAU PAU 4 0 0 2 0 0 26 LL</phon>
+						<phon val="pau">^ih~k-pau+pau=0 0 0 0 0 0 JJ PAU PAU 4 0 0 2 0 0 26 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1048,7 +1060,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+hh=er 0 0 0 0 0 PAU PAU PP$ 0 0 2 0 0 1 10 LL</phon>
+						<phon val="pau">^0~pau-pau+hh=er 0 0 0 0 0 PAU PAU PP$ 0 0 2 0 0 1 10 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1056,51 +1068,61 @@
 				Her
 				<ws> </ws>
 				<syl val="hh+er0" stress="0" sylid="1" nophons="2">
-					<phon val="hh" type="onset" phonid="1">^0~0-hh+er=jh 0 1 0 0 1 PAU PP$ NN 0 2 3 0 1 7 10 LL</phon>
-					<phon val="er" type="nucleus" phonid="2">^0~hh-er+jh=iy 1 0 0 0 1 PAU PP$ NN 0 2 3 0 1 7 10 LL</phon>
+					<phon val="hh" type="onset" phonid="1">^pau~pau-hh+er=jh 0 1 0 0 1 PAU PP$ NN 0 2 2 0 1 7 10 LL</phon>
+					<phon val="er" type="nucleus" phonid="2">^pau~hh-er+jh=iy 1 0 0 0 1 PAU PP$ NN 0 2 2 0 1 7 10 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="grand-daughter" lc="true" symbols="true" pos="NN" posset="1" wordid="2" pron="jh iy1 aa1 r ah0 eh1 n d iy1 d iy1 ah0 y uw1 jh iy1 ey1 ch t iy1 iy1 aa1 r" spron="jh+iy1+aa1|r+ah0+eh1_n|d+iy1|d+iy1+ah0|y+uw1|jh+iy1+ey1_ch|t+iy1+iy1|aa1+r|" nosyl="8">
+			<tk norm="grand-daughter" lc="true" symbols="true" pos="NN" posset="1" wordid="2" pron="jh iy1 aa1 r ah0 eh1 n d iy1 d iy1 ah0 y uw1 jh iy1 ey1 ch t iy1 iy1 aa1 r" spron="jh+iy1|aa1|r+ah0|eh1+n|d+iy1|d+iy1|ah0|y+uw1|jh+iy1|ey1+ch|t+iy1|iy1|aa1+r|" nosyl="13">
 				grand-daughter
 				<ws> </ws>
-				<syl val="jh+iy1+aa1" stress="1" sylid="1" nophons="3">
-					<phon val="jh" type="onset" phonid="1">^hh~er-jh+iy=aa 0 2 0 1 1 PP$ NN VBZ 2 3 4 1 7 1 10 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^er~jh-iy+aa=r 1 1 0 1 1 PP$ NN VBZ 2 3 4 1 7 1 10 LL</phon>
-					<phon val="aa" type="nucleus" phonid="3">^jh~iy-aa+r=ah 2 0 0 1 1 PP$ NN VBZ 2 3 4 1 7 1 10 LL</phon>
+				<syl val="jh+iy1" stress="1" sylid="1" nophons="2">
+					<phon val="jh" type="onset" phonid="1">^hh~er-jh+iy=aa 0 1 0 1 1 PP$ NN VBZ 2 2 1 1 7 1 10 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^er~jh-iy+aa=r 1 0 0 1 1 PP$ NN VBZ 2 2 1 1 7 1 10 LL</phon>
 				</syl>
-				<syl val="r+ah0+eh1_n" stress="1" sylid="2" nophons="4">
-					<phon val="r" type="onset" phonid="1">^iy~aa-r+ah=eh 0 3 1 1 1 PP$ NN VBZ 3 4 2 1 7 1 10 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^aa~r-ah+eh=n 1 2 1 1 1 PP$ NN VBZ 3 4 2 1 7 1 10 LL</phon>
-					<phon val="eh" type="nucleus" phonid="3">^r~ah-eh+n=d 2 1 1 1 1 PP$ NN VBZ 3 4 2 1 7 1 10 LL</phon>
-					<phon val="n" type="nucleus" phonid="4">^ah~eh-n+d=iy 3 0 1 1 1 PP$ NN VBZ 3 4 2 1 7 1 10 LL</phon>
+				<syl val="aa1" stress="1" sylid="2" nophons="1">
+					<phon val="aa" type="nucleus" phonid="1">^jh~iy-aa+r=ah 0 0 1 1 0 PP$ NN VBZ 2 1 2 1 7 1 10 LL</phon>
 				</syl>
-				<syl val="d+iy1" stress="1" sylid="3" nophons="2">
-					<phon val="d" type="onset" phonid="1">^eh~n-d+iy=d 0 1 1 1 0 PP$ NN VBZ 4 2 3 1 7 1 10 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^n~d-iy+d=iy 1 0 1 1 0 PP$ NN VBZ 4 2 3 1 7 1 10 LL</phon>
+				<syl val="r+ah0" stress="0" sylid="3" nophons="2">
+					<phon val="r" type="onset" phonid="1">^iy~aa-r+ah=eh 0 1 1 0 1 PP$ NN VBZ 1 2 2 1 7 1 10 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^aa~r-ah+eh=n 1 0 1 0 1 PP$ NN VBZ 1 2 2 1 7 1 10 LL</phon>
 				</syl>
-				<syl val="d+iy1+ah0" stress="0" sylid="4" nophons="3">
-					<phon val="d" type="onset" phonid="1">^d~iy-d+iy=ah 0 2 1 0 1 PP$ NN VBZ 2 3 2 1 7 1 10 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ah=y 1 1 1 0 1 PP$ NN VBZ 2 3 2 1 7 1 10 LL</phon>
-					<phon val="ah" type="nucleus" phonid="3">^d~iy-ah+y=uw 2 0 1 0 1 PP$ NN VBZ 2 3 2 1 7 1 10 LL</phon>
+				<syl val="eh1+n" stress="1" sylid="4" nophons="2">
+					<phon val="eh" type="nucleus" phonid="1">^r~ah-eh+n=d 0 1 0 1 1 PP$ NN VBZ 2 2 2 1 7 1 10 LL</phon>
+					<phon val="n" type="coda" phonid="2">^ah~eh-n+d=iy 1 0 0 1 1 PP$ NN VBZ 2 2 2 1 7 1 10 LL</phon>
 				</syl>
-				<syl val="y+uw1" stress="1" sylid="5" nophons="2">
-					<phon val="y" type="onset" phonid="1">^iy~ah-y+uw=jh 0 1 0 1 1 PP$ NN VBZ 3 2 4 1 7 1 10 LL</phon>
-					<phon val="uw" type="nucleus" phonid="2">^ah~y-uw+jh=iy 1 0 0 1 1 PP$ NN VBZ 3 2 4 1 7 1 10 LL</phon>
+				<syl val="d+iy1" stress="1" sylid="5" nophons="2">
+					<phon val="d" type="onset" phonid="1">^eh~n-d+iy=d 0 1 1 1 1 PP$ NN VBZ 2 2 2 1 7 1 10 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^n~d-iy+d=iy 1 0 1 1 1 PP$ NN VBZ 2 2 2 1 7 1 10 LL</phon>
 				</syl>
-				<syl val="jh+iy1+ey1_ch" stress="1" sylid="6" nophons="4">
-					<phon val="jh" type="onset" phonid="1">^y~uw-jh+iy=ey 0 3 1 1 1 PP$ NN VBZ 2 4 3 1 7 1 10 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^uw~jh-iy+ey=ch 1 2 1 1 1 PP$ NN VBZ 2 4 3 1 7 1 10 LL</phon>
-					<phon val="ey" type="nucleus" phonid="3">^jh~iy-ey+ch=t 2 1 1 1 1 PP$ NN VBZ 2 4 3 1 7 1 10 LL</phon>
-					<phon val="ch" type="nucleus" phonid="4">^iy~ey-ch+t=iy 3 0 1 1 1 PP$ NN VBZ 2 4 3 1 7 1 10 LL</phon>
+				<syl val="d+iy1" stress="1" sylid="6" nophons="2">
+					<phon val="d" type="onset" phonid="1">^d~iy-d+iy=ah 0 1 1 1 0 PP$ NN VBZ 2 2 1 1 7 1 10 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ah=y 1 0 1 1 0 PP$ NN VBZ 2 2 1 1 7 1 10 LL</phon>
 				</syl>
-				<syl val="t+iy1+iy1" stress="1" sylid="7" nophons="3">
-					<phon val="t" type="onset" phonid="1">^ey~ch-t+iy=iy 0 2 1 1 1 PP$ NN VBZ 4 3 2 1 7 1 10 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^ch~t-iy+iy=aa 1 1 1 1 1 PP$ NN VBZ 4 3 2 1 7 1 10 LL</phon>
-					<phon val="iy" type="nucleus" phonid="3">^t~iy-iy+aa=r 2 0 1 1 1 PP$ NN VBZ 4 3 2 1 7 1 10 LL</phon>
+				<syl val="ah0" stress="0" sylid="7" nophons="1">
+					<phon val="ah" type="nucleus" phonid="1">^d~iy-ah+y=uw 0 0 1 0 1 PP$ NN VBZ 2 1 2 1 7 1 10 LL</phon>
 				</syl>
-				<syl val="aa1+r" stress="1" sylid="8" nophons="2">
-					<phon val="aa" type="nucleus" phonid="1">^iy~iy-aa+r=ih 0 1 1 1 1 PP$ NN VBZ 3 2 2 1 7 1 10 LL</phon>
-					<phon val="r" type="coda" phonid="2">^iy~aa-r+ih=z 1 0 1 1 1 PP$ NN VBZ 3 2 2 1 7 1 10 LL</phon>
+				<syl val="y+uw1" stress="1" sylid="8" nophons="2">
+					<phon val="y" type="onset" phonid="1">^iy~ah-y+uw=jh 0 1 0 1 1 PP$ NN VBZ 1 2 2 1 7 1 10 LL</phon>
+					<phon val="uw" type="nucleus" phonid="2">^ah~y-uw+jh=iy 1 0 0 1 1 PP$ NN VBZ 1 2 2 1 7 1 10 LL</phon>
+				</syl>
+				<syl val="jh+iy1" stress="1" sylid="9" nophons="2">
+					<phon val="jh" type="onset" phonid="1">^y~uw-jh+iy=ey 0 1 1 1 1 PP$ NN VBZ 2 2 2 1 7 1 10 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^uw~jh-iy+ey=ch 1 0 1 1 1 PP$ NN VBZ 2 2 2 1 7 1 10 LL</phon>
+				</syl>
+				<syl val="ey1+ch" stress="1" sylid="10" nophons="2">
+					<phon val="ey" type="nucleus" phonid="1">^jh~iy-ey+ch=t 0 1 1 1 1 PP$ NN VBZ 2 2 2 1 7 1 10 LL</phon>
+					<phon val="ch" type="coda" phonid="2">^iy~ey-ch+t=iy 1 0 1 1 1 PP$ NN VBZ 2 2 2 1 7 1 10 LL</phon>
+				</syl>
+				<syl val="t+iy1" stress="1" sylid="11" nophons="2">
+					<phon val="t" type="onset" phonid="1">^ey~ch-t+iy=iy 0 1 1 1 1 PP$ NN VBZ 2 2 1 1 7 1 10 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^ch~t-iy+iy=aa 1 0 1 1 1 PP$ NN VBZ 2 2 1 1 7 1 10 LL</phon>
+				</syl>
+				<syl val="iy1" stress="1" sylid="12" nophons="1">
+					<phon val="iy" type="nucleus" phonid="1">^t~iy-iy+aa=r 0 0 1 1 1 PP$ NN VBZ 2 1 2 1 7 1 10 LL</phon>
+				</syl>
+				<syl val="aa1+r" stress="1" sylid="13" nophons="2">
+					<phon val="aa" type="nucleus" phonid="1">^iy~iy-aa+r=ih 0 1 1 1 1 PP$ NN VBZ 1 2 2 1 7 1 10 LL</phon>
+					<phon val="r" type="coda" phonid="2">^iy~aa-r+ih=z 1 0 1 1 1 PP$ NN VBZ 1 2 2 1 7 1 10 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="is" lc="true" pos="VBZ" posset="3" wordid="3" pron="ih1 z" altprons="ih0 z, ih1 z" spron="ih1+z|" nosyl="1">
@@ -1111,26 +1133,26 @@
 					<phon val="z" type="coda" phonid="2">^r~ih-z+p=aa 1 0 1 1 1 NN VBZ RB 2 2 3 7 1 5 10 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="particularly" lc="true" pos="RB" posset="1" wordid="4" pron="p aa2 r t ih1 k y ah0 l er0 l iy0" altprons="p er0 t ih1 k y ah0 l er0 l iy0, p aa2 r t ih1 k y ah0 l er0 l iy0" spron="p+aa2+r|t+ih1+k|y+ah0|l+er0|l+iy0|" nosyl="5">
+			<tk norm="particularly" lc="true" pos="RB" posset="1" wordid="4" pron="p aa2 r t ih1 k y ah0 l er0 l iy0" altprons="p er0 t ih1 k y ah0 l er0 l iy0, p aa2 r t ih1 k y ah0 l er0 l iy0" spron="p+aa2+r|t+ih1|k_y+ah0|l+er0|l+iy0|" nosyl="5">
 				particularly
 				<ws> </ws>
 				<syl val="p+aa2+r" stress="2" sylid="1" nophons="3">
-					<phon val="p" type="onset" phonid="1">^ih~z-p+aa=r 0 2 1 1 1 VBZ RB NN 2 3 3 1 5 2 10 LL</phon>
-					<phon val="aa" type="nucleus" phonid="2">^z~p-aa+r=t 1 1 1 1 1 VBZ RB NN 2 3 3 1 5 2 10 LL</phon>
-					<phon val="r" type="coda" phonid="3">^p~aa-r+t=ih 2 0 1 1 1 VBZ RB NN 2 3 3 1 5 2 10 LL</phon>
+					<phon val="p" type="onset" phonid="1">^ih~z-p+aa=r 0 2 1 1 1 VBZ RB NN 2 3 2 1 5 2 10 LL</phon>
+					<phon val="aa" type="nucleus" phonid="2">^z~p-aa+r=t 1 1 1 1 1 VBZ RB NN 2 3 2 1 5 2 10 LL</phon>
+					<phon val="r" type="coda" phonid="3">^p~aa-r+t=ih 2 0 1 1 1 VBZ RB NN 2 3 2 1 5 2 10 LL</phon>
 				</syl>
-				<syl val="t+ih1+k" stress="1" sylid="2" nophons="3">
-					<phon val="t" type="onset" phonid="1">^aa~r-t+ih=k 0 2 1 1 0 VBZ RB NN 3 3 2 1 5 2 10 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^r~t-ih+k=y 1 1 1 1 0 VBZ RB NN 3 3 2 1 5 2 10 LL</phon>
-					<phon val="k" type="coda" phonid="3">^t~ih-k+y=ah 2 0 1 1 0 VBZ RB NN 3 3 2 1 5 2 10 LL</phon>
+				<syl val="t+ih1" stress="1" sylid="2" nophons="2">
+					<phon val="t" type="onset" phonid="1">^aa~r-t+ih=k 0 1 1 1 0 VBZ RB NN 3 2 3 1 5 2 10 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^r~t-ih+k=y 1 0 1 1 0 VBZ RB NN 3 2 3 1 5 2 10 LL</phon>
 				</syl>
-				<syl val="y+ah0" stress="0" sylid="3" nophons="2">
-					<phon val="y" type="onset" phonid="1">^ih~k-y+ah=l 0 1 1 0 0 VBZ RB NN 3 2 2 1 5 2 10 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^k~y-ah+l=er 1 0 1 0 0 VBZ RB NN 3 2 2 1 5 2 10 LL</phon>
+				<syl val="k_y+ah0" stress="0" sylid="3" nophons="3">
+					<phon val="k" type="onset" phonid="1">^t~ih-k+y=ah 0 2 1 0 0 VBZ RB NN 2 3 2 1 5 2 10 LL</phon>
+					<phon val="y" type="onset" phonid="2">^ih~k-y+ah=l 1 1 1 0 0 VBZ RB NN 2 3 2 1 5 2 10 LL</phon>
+					<phon val="ah" type="nucleus" phonid="3">^k~y-ah+l=er 2 0 1 0 0 VBZ RB NN 2 3 2 1 5 2 10 LL</phon>
 				</syl>
 				<syl val="l+er0" stress="0" sylid="4" nophons="2">
-					<phon val="l" type="onset" phonid="1">^y~ah-l+er=l 0 1 0 0 0 VBZ RB NN 2 2 2 1 5 2 10 LL</phon>
-					<phon val="er" type="nucleus" phonid="2">^ah~l-er+l=iy 1 0 0 0 0 VBZ RB NN 2 2 2 1 5 2 10 LL</phon>
+					<phon val="l" type="onset" phonid="1">^y~ah-l+er=l 0 1 0 0 0 VBZ RB NN 3 2 2 1 5 2 10 LL</phon>
+					<phon val="er" type="nucleus" phonid="2">^ah~l-er+l=iy 1 0 0 0 0 VBZ RB NN 3 2 2 1 5 2 10 LL</phon>
 				</syl>
 				<syl val="l+iy0" stress="0" sylid="5" nophons="2">
 					<phon val="l" type="onset" phonid="1">^l~er-l+iy=ae 0 1 0 0 1 VBZ RB NN 2 2 2 1 5 2 10 LL</phon>
@@ -1162,24 +1184,24 @@
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^ae~t-dh+ah=ae 0 1 1 0 1 IN DT NNS 2 2 2 1 1 4 10 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^t~dh-ah+ae=k 1 0 1 0 1 IN DT NNS 2 2 2 1 1 4 10 LL</phon>
+					<phon val="dh" type="onset" phonid="1">^ae~t-dh+ah=ae 0 1 1 0 1 IN DT NNS 2 2 1 1 1 4 10 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^t~dh-ah+ae=k 1 0 1 0 1 IN DT NNS 2 2 1 1 1 4 10 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="accusations" lc="true" pos="NNS" posset="1" wordid="8" pron="ae2 k y ah0 z ey1 sh ah0 n z" altprons="ae2 k y uw0 z ey1 sh ah0 n z, ae2 k y ah0 z ey1 sh ah0 n z" spron="ae2+k|y+ah0|z+ey1|sh+ah0+n_z|" nosyl="4">
+			<tk norm="accusations" lc="true" pos="NNS" posset="1" wordid="8" pron="ae2 k y ah0 z ey1 sh ah0 n z" altprons="ae2 k y uw0 z ey1 sh ah0 n z, ae2 k y ah0 z ey1 sh ah0 n z" spron="ae2|k_y+ah0|z+ey1|sh+ah0+n_z|" nosyl="4">
 				accusations
 				<ws> </ws>
-				<syl val="ae2+k" stress="2" sylid="1" nophons="2">
-					<phon val="ae" type="nucleus" phonid="1">^dh~ah-ae+k=y 0 1 0 1 0 DT NNS IN 2 2 2 1 4 1 10 LL</phon>
-					<phon val="k" type="coda" phonid="2">^ah~ae-k+y=ah 1 0 0 1 0 DT NNS IN 2 2 2 1 4 1 10 LL</phon>
+				<syl val="ae2" stress="2" sylid="1" nophons="1">
+					<phon val="ae" type="nucleus" phonid="1">^dh~ah-ae+k=y 0 0 0 1 0 DT NNS IN 2 1 3 1 4 1 10 LL</phon>
 				</syl>
-				<syl val="y+ah0" stress="0" sylid="2" nophons="2">
-					<phon val="y" type="onset" phonid="1">^ae~k-y+ah=z 0 1 1 0 1 DT NNS IN 2 2 2 1 4 1 10 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^k~y-ah+z=ey 1 0 1 0 1 DT NNS IN 2 2 2 1 4 1 10 LL</phon>
+				<syl val="k_y+ah0" stress="0" sylid="2" nophons="3">
+					<phon val="k" type="onset" phonid="1">^ah~ae-k+y=ah 0 2 1 0 1 DT NNS IN 1 3 2 1 4 1 10 LL</phon>
+					<phon val="y" type="onset" phonid="2">^ae~k-y+ah=z 1 1 1 0 1 DT NNS IN 1 3 2 1 4 1 10 LL</phon>
+					<phon val="ah" type="nucleus" phonid="3">^k~y-ah+z=ey 2 0 1 0 1 DT NNS IN 1 3 2 1 4 1 10 LL</phon>
 				</syl>
 				<syl val="z+ey1" stress="1" sylid="3" nophons="2">
-					<phon val="z" type="onset" phonid="1">^y~ah-z+ey=sh 0 1 0 1 0 DT NNS IN 2 2 4 1 4 1 10 LL</phon>
-					<phon val="ey" type="nucleus" phonid="2">^ah~z-ey+sh=ah 1 0 0 1 0 DT NNS IN 2 2 4 1 4 1 10 LL</phon>
+					<phon val="z" type="onset" phonid="1">^y~ah-z+ey=sh 0 1 0 1 0 DT NNS IN 3 2 4 1 4 1 10 LL</phon>
+					<phon val="ey" type="nucleus" phonid="2">^ah~z-ey+sh=ah 1 0 0 1 0 DT NNS IN 3 2 4 1 4 1 10 LL</phon>
 				</syl>
 				<syl val="sh+ah0+n_z" stress="0" sylid="4" nophons="4">
 					<phon val="sh" type="onset" phonid="1">^z~ey-sh+ah=n 0 3 1 0 1 DT NNS IN 2 4 2 1 4 1 10 LL</phon>
@@ -1207,14 +1229,14 @@
 				</syl>
 				<syl val="z+ah0+n" stress="0" sylid="2" nophons="3">
 					<phon val="z" type="onset" phonid="1">^r~iy-z+ah=n 0 2 1 0 0 IN NN PAU 3 3 0 1 2 0 10 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^iy~z-ah+n=0 1 1 1 0 0 IN NN PAU 3 3 0 1 2 0 10 LL</phon>
-					<phon val="n" type="coda" phonid="3">^z~ah-n+0=0 2 0 1 0 0 IN NN PAU 3 3 0 1 2 0 10 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^iy~z-ah+n=pau 1 1 1 0 0 IN NN PAU 3 3 0 1 2 0 10 LL</phon>
+					<phon val="n" type="coda" phonid="3">^z~ah-n+pau=pau 2 0 1 0 0 IN NN PAU 3 3 0 1 2 0 10 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~n-0+0=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 10 LL</phon>
+						<phon val="pau">^ah~n-pau+pau=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 10 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1225,7 +1247,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+m=eh 0 0 0 0 1 PAU PAU NN 0 0 2 0 0 2 2 LL</phon>
+						<phon val="pau">^0~pau-pau+m=eh 0 0 0 0 1 PAU PAU NN 0 0 2 0 0 2 2 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1233,32 +1255,32 @@
 				Mary
 				<ws> </ws>
 				<syl val="m+eh1" stress="1" sylid="1" nophons="2">
-					<phon val="m" type="onset" phonid="1">^0~0-m+eh=r 0 1 0 1 0 PAU NN NN 0 2 2 0 2 2 2 LL</phon>
-					<phon val="eh" type="nucleus" phonid="2">^0~m-eh+r=iy 1 0 0 1 0 PAU NN NN 0 2 2 0 2 2 2 LL</phon>
+					<phon val="m" type="onset" phonid="1">^pau~pau-m+eh=r 0 1 0 1 0 PAU NN NN 0 2 2 0 2 2 2 LH</phon>
+					<phon val="eh" type="nucleus" phonid="2">^pau~m-eh+r=iy 1 0 0 1 0 PAU NN NN 0 2 2 0 2 2 2 LH</phon>
 				</syl>
 				<syl val="r+iy0" stress="0" sylid="2" nophons="2">
-					<phon val="r" type="onset" phonid="1">^m~eh-r+iy=m 0 1 1 0 1 PAU NN NN 2 2 3 0 2 2 2 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^eh~r-iy+m=aa 1 0 1 0 1 PAU NN NN 2 2 3 0 2 2 2 LL</phon>
+					<phon val="r" type="onset" phonid="1">^m~eh-r+iy=m 0 1 1 0 1 PAU NN NN 2 2 3 0 2 2 2 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^eh~r-iy+m=aa 1 0 1 0 1 PAU NN NN 2 2 3 0 2 2 2 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="martin" pstpunc="," lc="true" uc="true" pos="NN" posset="1" wordid="2" pron="m aa1 r t ah0 n" altprons="m aa1 r t ih0 n, m aa1 r t ah0 n" spron="m+aa1+r|t+ah0+n|" nosyl="2">
 				Martin,
 				<ws> </ws>
 				<syl val="m+aa1+r" stress="1" sylid="1" nophons="3">
-					<phon val="m" type="onset" phonid="1">^r~iy-m+aa=r 0 2 0 1 0 NN NN PAU 2 3 3 2 2 0 2 LL</phon>
-					<phon val="aa" type="nucleus" phonid="2">^iy~m-aa+r=t 1 1 0 1 0 NN NN PAU 2 3 3 2 2 0 2 LL</phon>
-					<phon val="r" type="coda" phonid="3">^m~aa-r+t=ah 2 0 0 1 0 NN NN PAU 2 3 3 2 2 0 2 LL</phon>
+					<phon val="m" type="onset" phonid="1">^r~iy-m+aa=r 0 2 0 1 0 NN NN PAU 2 3 3 2 2 0 2 LH</phon>
+					<phon val="aa" type="nucleus" phonid="2">^iy~m-aa+r=t 1 1 0 1 0 NN NN PAU 2 3 3 2 2 0 2 LH</phon>
+					<phon val="r" type="coda" phonid="3">^m~aa-r+t=ah 2 0 0 1 0 NN NN PAU 2 3 3 2 2 0 2 LH</phon>
 				</syl>
 				<syl val="t+ah0+n" stress="0" sylid="2" nophons="3">
-					<phon val="t" type="onset" phonid="1">^aa~r-t+ah=n 0 2 1 0 0 NN NN PAU 3 3 0 2 2 0 2 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^r~t-ah+n=0 1 1 1 0 0 NN NN PAU 3 3 0 2 2 0 2 LL</phon>
-					<phon val="n" type="coda" phonid="3">^t~ah-n+0=0 2 0 1 0 0 NN NN PAU 3 3 0 2 2 0 2 LL</phon>
+					<phon val="t" type="onset" phonid="1">^aa~r-t+ah=n 0 2 1 0 0 NN NN PAU 3 3 0 2 2 0 2 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^r~t-ah+n=pau 1 1 1 0 0 NN NN PAU 3 3 0 2 2 0 2 LH</phon>
+					<phon val="n" type="coda" phonid="3">^t~ah-n+pau=pau 2 0 1 0 0 NN NN PAU 3 3 0 2 2 0 2 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~n-0+0=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 2 LL</phon>
+						<phon val="pau">^ah~n-pau+pau=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 2 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1267,7 +1289,7 @@
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+ah=v 0 0 0 0 1 PAU PAU IN 0 0 2 0 0 1 2 LH</phon>
+						<phon val="pau">^0~pau-pau+ah=v 0 0 0 0 1 PAU PAU IN 0 0 2 0 0 1 2 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1275,31 +1297,33 @@
 				of
 				<ws> </ws>
 				<syl val="ah1+v" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^0~0-ah+v=eh 0 1 0 1 1 PAU IN NN 0 2 1 0 1 3 2 LH</phon>
-					<phon val="v" type="coda" phonid="2">^0~ah-v+eh=d 1 0 0 1 1 PAU IN NN 0 2 1 0 1 3 2 LH</phon>
+					<phon val="ah" type="nucleus" phonid="1">^pau~pau-ah+v=eh 0 1 0 1 1 PAU IN NN 0 2 1 0 1 4 2 LH</phon>
+					<phon val="v" type="coda" phonid="2">^pau~ah-v+eh=d 1 0 0 1 1 PAU IN NN 0 2 1 0 1 4 2 LH</phon>
 				</syl>
 			</tk>
-			<tk norm="edinburgh" pstpunc="," lc="true" uc="true" pos="NN" posset="1" wordid="2" pron="eh1 d ah0 n b er0 ow0" spron="eh1|d+ah0+n|b+er0+ow0|" nosyl="3">
+			<tk norm="edinburgh" pstpunc="," lc="true" uc="true" pos="NN" posset="1" wordid="2" pron="eh1 d ah0 n b er0 ow0" spron="eh1|d+ah0+n|b+er0|ow0|" nosyl="4">
 				Edinburgh,
 				<ws> </ws>
 				<syl val="eh1" stress="1" sylid="1" nophons="1">
-					<phon val="eh" type="nucleus" phonid="1">^ah~v-eh+d=ah 0 0 1 1 0 IN NN PAU 2 1 3 1 3 0 2 LH</phon>
+					<phon val="eh" type="nucleus" phonid="1">^ah~v-eh+d=ah 0 0 1 1 0 IN NN PAU 2 1 3 1 4 0 2 LH</phon>
 				</syl>
 				<syl val="d+ah0+n" stress="0" sylid="2" nophons="3">
-					<phon val="d" type="onset" phonid="1">^v~eh-d+ah=n 0 2 1 0 0 IN NN PAU 1 3 3 1 3 0 2 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^eh~d-ah+n=b 1 1 1 0 0 IN NN PAU 1 3 3 1 3 0 2 LH</phon>
-					<phon val="n" type="coda" phonid="3">^d~ah-n+b=er 2 0 1 0 0 IN NN PAU 1 3 3 1 3 0 2 LH</phon>
+					<phon val="d" type="onset" phonid="1">^v~eh-d+ah=n 0 2 1 0 0 IN NN PAU 1 3 2 1 4 0 2 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^eh~d-ah+n=b 1 1 1 0 0 IN NN PAU 1 3 2 1 4 0 2 LH</phon>
+					<phon val="n" type="coda" phonid="3">^d~ah-n+b=er 2 0 1 0 0 IN NN PAU 1 3 2 1 4 0 2 LH</phon>
 				</syl>
-				<syl val="b+er0+ow0" stress="0" sylid="3" nophons="3">
-					<phon val="b" type="onset" phonid="1">^ah~n-b+er=ow 0 2 0 0 0 IN NN PAU 3 3 0 1 3 0 2 LH</phon>
-					<phon val="er" type="nucleus" phonid="2">^n~b-er+ow=0 1 1 0 0 0 IN NN PAU 3 3 0 1 3 0 2 LH</phon>
-					<phon val="ow" type="nucleus" phonid="3">^b~er-ow+0=0 2 0 0 0 0 IN NN PAU 3 3 0 1 3 0 2 LH</phon>
+				<syl val="b+er0" stress="0" sylid="3" nophons="2">
+					<phon val="b" type="onset" phonid="1">^ah~n-b+er=ow 0 1 0 0 0 IN NN PAU 3 2 1 1 4 0 2 LH</phon>
+					<phon val="er" type="nucleus" phonid="2">^n~b-er+ow=pau 1 0 0 0 0 IN NN PAU 3 2 1 1 4 0 2 LH</phon>
+				</syl>
+				<syl val="ow0" stress="0" sylid="4" nophons="1">
+					<phon val="ow" type="nucleus" phonid="1">^b~er-ow+pau=pau 0 0 0 0 0 IN NN PAU 2 1 0 1 4 0 2 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^er~ow-0+0=0 0 0 0 0 0 NN PAU PAU 3 0 0 3 0 0 2 LH</phon>
+						<phon val="pau">^er~ow-pau+pau=0 0 0 0 0 0 NN PAU PAU 1 0 0 4 0 0 2 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1308,7 +1332,7 @@
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+s=eh 0 0 0 0 1 PAU PAU VVD 0 0 3 0 0 1 10 LH</phon>
+						<phon val="pau">^0~pau-pau+s=eh 0 0 0 0 1 PAU PAU VVD 0 0 3 0 0 1 10 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1316,93 +1340,95 @@
 				said
 				<ws> </ws>
 				<syl val="s+eh1+d" stress="1" sylid="1" nophons="3">
-					<phon val="s" type="onset" phonid="1">^0~0-s+eh=d 0 2 0 1 1 PAU VVD NNS 0 3 2 0 1 2 10 LH</phon>
-					<phon val="eh" type="nucleus" phonid="2">^0~s-eh+d=m 1 1 0 1 1 PAU VVD NNS 0 3 2 0 1 2 10 LH</phon>
-					<phon val="d" type="coda" phonid="3">^s~eh-d+m=ih 2 0 0 1 1 PAU VVD NNS 0 3 2 0 1 2 10 LH</phon>
+					<phon val="s" type="onset" phonid="1">^pau~pau-s+eh=d 0 2 0 1 0 PAU VVD NN 0 3 2 0 1 2 10 LL</phon>
+					<phon val="eh" type="nucleus" phonid="2">^pau~s-eh+d=m 1 1 0 1 0 PAU VVD NN 0 3 2 0 1 2 10 LL</phon>
+					<phon val="d" type="coda" phonid="3">^s~eh-d+m=iy 2 0 0 1 0 PAU VVD NN 0 3 2 0 1 2 10 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1" wordid="2" pron="m ih1 s ih0 z" spron="m+ih1|s+ih0+z|" nosyl="2">
+			<tk norm="missis" pos="NN" posset="1" wordid="2" pron="m iy0 s iy0 s" lts="true" spron="m+iy0|s+iy0+s|" nosyl="2">
 				Mrs
 				<ws> </ws>
-				<syl val="m+ih1" stress="1" sylid="1" nophons="2">
-					<phon val="m" type="onset" phonid="1">^eh~d-m+ih=s 0 1 1 1 0 VVD NNS NN 3 2 3 1 2 2 10 LH</phon>
-					<phon val="ih" type="nucleus" phonid="2">^d~m-ih+s=ih 1 0 1 1 0 VVD NNS NN 3 2 3 1 2 2 10 LH</phon>
+				<syl val="m+iy0" stress="0" sylid="1" nophons="2">
+					<phon val="m" type="onset" phonid="1">^eh~d-m+iy=s 0 1 1 0 0 VVD NN NN 3 2 3 1 2 2 10 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^d~m-iy+s=iy 1 0 1 0 0 VVD NN NN 3 2 3 1 2 2 10 LL</phon>
 				</syl>
-				<syl val="s+ih0+z" stress="0" sylid="2" nophons="3">
-					<phon val="s" type="onset" phonid="1">^m~ih-s+ih=z 0 2 1 0 1 VVD NNS NN 2 3 3 1 2 2 10 LH</phon>
-					<phon val="ih" type="nucleus" phonid="2">^ih~s-ih+z=d 1 1 1 0 1 VVD NNS NN 2 3 3 1 2 2 10 LH</phon>
-					<phon val="z" type="coda" phonid="3">^s~ih-z+d=ah 2 0 1 0 1 VVD NNS NN 2 3 3 1 2 2 10 LH</phon>
+				<syl val="s+iy0+s" stress="0" sylid="2" nophons="3">
+					<phon val="s" type="onset" phonid="1">^m~iy-s+iy=s 0 2 0 0 1 VVD NN NN 2 3 3 1 2 2 10 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~s-iy+s=d 1 1 0 0 1 VVD NN NN 2 3 3 1 2 2 10 LL</phon>
+					<phon val="s" type="coda" phonid="3">^s~iy-s+d=ah 2 0 0 0 1 VVD NN NN 2 3 3 1 2 2 10 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="duncan" lc="true" uc="true" pos="NN" posset="1" wordid="3" pron="d ah1 ng k ah0 n" spron="d+ah1+ng|k+ah0+n|" nosyl="2">
 				Duncan
 				<ws> </ws>
 				<syl val="d+ah1+ng" stress="1" sylid="1" nophons="3">
-					<phon val="d" type="onset" phonid="1">^ih~z-d+ah=ng 0 2 0 1 0 NNS NN VHD 3 3 3 2 2 1 10 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^z~d-ah+ng=k 1 1 0 1 0 NNS NN VHD 3 3 3 2 2 1 10 LH</phon>
-					<phon val="ng" type="coda" phonid="3">^d~ah-ng+k=ah 2 0 0 1 0 NNS NN VHD 3 3 3 2 2 1 10 LH</phon>
+					<phon val="d" type="onset" phonid="1">^iy~s-d+ah=ng 0 2 0 1 0 NN NN VHD 3 3 3 2 2 1 10 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^s~d-ah+ng=k 1 1 0 1 0 NN NN VHD 3 3 3 2 2 1 10 LL</phon>
+					<phon val="ng" type="coda" phonid="3">^d~ah-ng+k=ah 2 0 0 1 0 NN NN VHD 3 3 3 2 2 1 10 LL</phon>
 				</syl>
 				<syl val="k+ah0+n" stress="0" sylid="2" nophons="3">
-					<phon val="k" type="onset" phonid="1">^ah~ng-k+ah=n 0 2 1 0 1 NNS NN VHD 3 3 3 2 2 1 10 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ng~k-ah+n=hh 1 1 1 0 1 NNS NN VHD 3 3 3 2 2 1 10 LH</phon>
-					<phon val="n" type="coda" phonid="3">^k~ah-n+hh=ae 2 0 1 0 1 NNS NN VHD 3 3 3 2 2 1 10 LH</phon>
+					<phon val="k" type="onset" phonid="1">^ah~ng-k+ah=n 0 2 1 0 1 NN NN VHD 3 3 3 2 2 1 10 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ng~k-ah+n=hh 1 1 1 0 1 NN NN VHD 3 3 3 2 2 1 10 LL</phon>
+					<phon val="n" type="coda" phonid="3">^k~ah-n+hh=ae 2 0 1 0 1 NN NN VHD 3 3 3 2 2 1 10 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="had" lc="true" pos="VHD" posset="3" wordid="4" pron="hh ae1 d" spron="hh+ae1+d|" nosyl="1">
 				had
 				<ws> </ws>
 				<syl val="hh+ae1+d" stress="1" sylid="1" nophons="3">
-					<phon val="hh" type="onset" phonid="1">^ah~n-hh+ae=d 0 2 0 1 1 NN VHD VBN 3 3 3 2 1 1 10 LH</phon>
-					<phon val="ae" type="nucleus" phonid="2">^n~hh-ae+d=b 1 1 0 1 1 NN VHD VBN 3 3 3 2 1 1 10 LH</phon>
-					<phon val="d" type="coda" phonid="3">^hh~ae-d+b=ih 2 0 0 1 1 NN VHD VBN 3 3 3 2 1 1 10 LH</phon>
+					<phon val="hh" type="onset" phonid="1">^ah~n-hh+ae=d 0 2 0 1 1 NN VHD VBN 3 3 3 2 1 1 10 LL</phon>
+					<phon val="ae" type="nucleus" phonid="2">^n~hh-ae+d=b 1 1 0 1 1 NN VHD VBN 3 3 3 2 1 1 10 LL</phon>
+					<phon val="d" type="coda" phonid="3">^hh~ae-d+b=ih 2 0 0 1 1 NN VHD VBN 3 3 3 2 1 1 10 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="been" lc="true" pos="VBN" posset="3" wordid="5" pron="b ih1 n" altprons="b ah0 n, b ih0 n, b ih1 n" spron="b+ih1+n|" nosyl="1">
 				been
 				<ws> </ws>
 				<syl val="b+ih1+n" stress="1" sylid="1" nophons="3">
-					<phon val="b" type="onset" phonid="1">^ae~d-b+ih=n 0 2 1 1 0 VHD VBN VVN 3 3 2 1 1 2 10 LH</phon>
-					<phon val="ih" type="nucleus" phonid="2">^d~b-ih+n=ah 1 1 1 1 0 VHD VBN VVN 3 3 2 1 1 2 10 LH</phon>
-					<phon val="n" type="coda" phonid="3">^b~ih-n+ah=k 2 0 1 1 0 VHD VBN VVN 3 3 2 1 1 2 10 LH</phon>
+					<phon val="b" type="onset" phonid="1">^ae~d-b+ih=n 0 2 1 1 0 VHD VBN VVN 3 3 1 1 1 2 10 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^d~b-ih+n=ah 1 1 1 1 0 VHD VBN VVN 3 3 1 1 1 2 10 LL</phon>
+					<phon val="n" type="coda" phonid="3">^b~ih-n+ah=k 2 0 1 1 0 VHD VBN VVN 3 3 1 1 1 2 10 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="accused" lc="true" pos="VVN" posset="1" wordid="6" pron="ah0 k y uw1 z d" spron="ah0+k|y+uw1+z_d|" nosyl="2">
+			<tk norm="accused" lc="true" pos="VVN" posset="1" wordid="6" pron="ah0 k y uw1 z d" spron="ah0|k_y+uw1+z_d|" nosyl="2">
 				accused
 				<ws> </ws>
-				<syl val="ah0+k" stress="0" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^ih~n-ah+k=y 0 1 1 0 1 VBN VVN IN 3 2 4 1 2 1 10 LH</phon>
-					<phon val="k" type="coda" phonid="2">^n~ah-k+y=uw 1 0 1 0 1 VBN VVN IN 3 2 4 1 2 1 10 LH</phon>
+				<syl val="ah0" stress="0" sylid="1" nophons="1">
+					<phon val="ah" type="nucleus" phonid="1">^ih~n-ah+k=y 0 0 1 0 1 VBN VVN IN 3 1 5 1 2 1 10 LL</phon>
 				</syl>
-				<syl val="y+uw1+z_d" stress="1" sylid="2" nophons="4">
-					<phon val="y" type="onset" phonid="1">^ah~k-y+uw=z 0 3 0 1 1 VBN VVN IN 2 4 2 1 2 1 10 LH</phon>
-					<phon val="uw" type="nucleus" phonid="2">^k~y-uw+z=d 1 2 0 1 1 VBN VVN IN 2 4 2 1 2 1 10 LH</phon>
-					<phon val="z" type="coda" phonid="3">^y~uw-z+d=ah 2 1 0 1 1 VBN VVN IN 2 4 2 1 2 1 10 LH</phon>
-					<phon val="d" type="coda" phonid="4">^uw~z-d+ah=v 3 0 0 1 1 VBN VVN IN 2 4 2 1 2 1 10 LH</phon>
+				<syl val="k_y+uw1+z_d" stress="1" sylid="2" nophons="5">
+					<phon val="k" type="onset" phonid="1">^n~ah-k+y=uw 0 4 0 1 1 VBN VVN IN 1 5 2 1 2 1 10 LL</phon>
+					<phon val="y" type="onset" phonid="2">^ah~k-y+uw=z 1 3 0 1 1 VBN VVN IN 1 5 2 1 2 1 10 LL</phon>
+					<phon val="uw" type="nucleus" phonid="3">^k~y-uw+z=d 2 2 0 1 1 VBN VVN IN 1 5 2 1 2 1 10 LL</phon>
+					<phon val="z" type="coda" phonid="4">^y~uw-z+d=ah 3 1 0 1 1 VBN VVN IN 1 5 2 1 2 1 10 LL</phon>
+					<phon val="d" type="coda" phonid="5">^uw~z-d+ah=v 4 0 0 1 1 VBN VVN IN 1 5 2 1 2 1 10 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="of" lc="true" pos="IN" posset="3" wordid="7" pron="ah1 v" altprons="ah0 v, ah1 v" spron="ah1+v|" nosyl="1">
 				of
 				<ws> </ws>
 				<syl val="ah1+v" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^z~d-ah+v=b 0 1 1 1 0 VVN IN VBG 4 2 4 2 1 1 10 LH</phon>
-					<phon val="v" type="coda" phonid="2">^d~ah-v+b=iy 1 0 1 1 0 VVN IN VBG 4 2 4 2 1 1 10 LH</phon>
+					<phon val="ah" type="nucleus" phonid="1">^z~d-ah+v=b 0 1 1 1 1 VVN IN VBG 5 2 2 2 1 2 10 LL</phon>
+					<phon val="v" type="coda" phonid="2">^d~ah-v+b=iy 1 0 1 1 1 VVN IN VBG 5 2 2 2 1 2 10 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="being" lc="true" pos="VBG" posset="2" wordid="8" pron="b iy1 ih0 ng" spron="b+iy1+ih0_ng|" nosyl="1">
+			<tk norm="being" lc="true" pos="VBG" posset="2" wordid="8" pron="b iy1 ih0 ng" spron="b+iy1|ih0+ng|" nosyl="2">
 				being
 				<ws> </ws>
-				<syl val="b+iy1+ih0_ng" stress="0" sylid="1" nophons="4">
-					<phon val="b" type="onset" phonid="1">^ah~v-b+iy=ih 0 3 1 0 0 IN VBG DT 2 4 1 1 1 1 10 LH</phon>
-					<phon val="iy" type="nucleus" phonid="2">^v~b-iy+ih=ng 1 2 1 0 0 IN VBG DT 2 4 1 1 1 1 10 LH</phon>
-					<phon val="ih" type="nucleus" phonid="3">^b~iy-ih+ng=ah 2 1 1 0 0 IN VBG DT 2 4 1 1 1 1 10 LH</phon>
-					<phon val="ng" type="nucleus" phonid="4">^iy~ih-ng+ah=t 3 0 1 0 0 IN VBG DT 2 4 1 1 1 1 10 LH</phon>
+				<syl val="b+iy1" stress="1" sylid="1" nophons="2">
+					<phon val="b" type="onset" phonid="1">^ah~v-b+iy=ih 0 1 1 1 0 IN VBG DT 2 2 2 1 2 1 10 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^v~b-iy+ih=ng 1 0 1 1 0 IN VBG DT 2 2 2 1 2 1 10 LL</phon>
+				</syl>
+				<syl val="ih0+ng" stress="0" sylid="2" nophons="2">
+					<phon val="ih" type="nucleus" phonid="1">^b~iy-ih+ng=ah 0 1 1 0 0 IN VBG DT 2 2 1 1 2 1 10 LL</phon>
+					<phon val="ng" type="coda" phonid="2">^iy~ih-ng+ah=t 1 0 1 0 0 IN VBG DT 2 2 1 1 2 1 10 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="a" lc="true" pos="DT" posset="3" wordid="9" pron="ah0" altprons="ey1, ah0" spron="ah0|" nosyl="1">
 				a
 				<ws> </ws>
 				<syl val="ah0" stress="0" sylid="1" nophons="1">
-					<phon val="ah" type="nucleus" phonid="1">^ih~ng-ah+t=r 0 0 0 0 1 VBG DT NN 4 1 3 1 1 2 10 LH</phon>
+					<phon val="ah" type="nucleus" phonid="1">^ih~ng-ah+t=r 0 0 0 0 1 VBG DT NN 2 1 3 2 1 2 10 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="traitor" pstpunc="." lc="true" pos="NN" posset="1" wordid="10" pron="t r ey1 t er0" spron="t_r+ey1|t+er0|" nosyl="2">
@@ -1410,19 +1436,19 @@
 				<ws col="80">
 </ws>
 				<syl val="t_r+ey1" stress="1" sylid="1" nophons="3">
-					<phon val="t" type="onset" phonid="1">^ng~ah-t+r=ey 0 2 0 1 0 DT NN PAU 1 3 2 1 2 0 10 LH</phon>
-					<phon val="r" type="onset" phonid="2">^ah~t-r+ey=t 1 1 0 1 0 DT NN PAU 1 3 2 1 2 0 10 LH</phon>
-					<phon val="ey" type="nucleus" phonid="3">^t~r-ey+t=er 2 0 0 1 0 DT NN PAU 1 3 2 1 2 0 10 LH</phon>
+					<phon val="t" type="onset" phonid="1">^ng~ah-t+r=ey 0 2 0 1 0 DT NN PAU 1 3 2 1 2 0 10 LL</phon>
+					<phon val="r" type="onset" phonid="2">^ah~t-r+ey=t 1 1 0 1 0 DT NN PAU 1 3 2 1 2 0 10 LL</phon>
+					<phon val="ey" type="nucleus" phonid="3">^t~r-ey+t=er 2 0 0 1 0 DT NN PAU 1 3 2 1 2 0 10 LL</phon>
 				</syl>
 				<syl val="t+er0" stress="0" sylid="2" nophons="2">
-					<phon val="t" type="onset" phonid="1">^r~ey-t+er=0 0 1 1 0 0 DT NN PAU 3 2 0 1 2 0 10 LH</phon>
-					<phon val="er" type="nucleus" phonid="2">^ey~t-er+0=0 1 0 1 0 0 DT NN PAU 3 2 0 1 2 0 10 LH</phon>
+					<phon val="t" type="onset" phonid="1">^r~ey-t+er=pau 0 1 1 0 0 DT NN PAU 3 2 0 1 2 0 10 LL</phon>
+					<phon val="er" type="nucleus" phonid="2">^ey~t-er+pau=pau 1 0 1 0 0 DT NN PAU 3 2 0 1 2 0 10 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^t~er-0+0=0 0 0 0 0 0 NN PAU PAU 2 0 0 2 0 0 10 LH</phon>
+						<phon val="pau">^t~er-pau+pau=0 0 0 0 0 0 NN PAU PAU 2 0 0 2 0 0 10 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1433,7 +1459,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+w=eh 0 0 0 0 1 PAU PAU WRB 0 0 3 0 0 1 13 LL</phon>
+						<phon val="pau">^0~pau-pau+w=eh 0 0 0 0 1 PAU PAU WRB 0 0 3 0 0 1 13 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1441,8 +1467,8 @@
 				"When
 				<ws> </ws>
 				<syl val="w+eh1+n" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^0~0-w+eh=n 0 2 0 1 1 PAU WRB PP 0 3 2 0 1 1 13 LL</phon>
-					<phon val="eh" type="nucleus" phonid="2">^0~w-eh+n=sh 1 1 0 1 1 PAU WRB PP 0 3 2 0 1 1 13 LL</phon>
+					<phon val="w" type="onset" phonid="1">^pau~pau-w+eh=n 0 2 0 1 1 PAU WRB PP 0 3 2 0 1 1 13 LL</phon>
+					<phon val="eh" type="nucleus" phonid="2">^pau~w-eh+n=sh 1 1 0 1 1 PAU WRB PP 0 3 2 0 1 1 13 LL</phon>
 					<phon val="n" type="coda" phonid="3">^w~eh-n+sh=iy 2 0 0 1 1 PAU WRB PP 0 3 2 0 1 1 13 LL</phon>
 				</syl>
 			</tk>
@@ -1560,14 +1586,14 @@
 </ws>
 				<syl val="s+ey1+m" stress="1" sylid="1" nophons="3">
 					<phon val="s" type="onset" phonid="1">^dh~ah-s+ey=m 0 2 0 1 0 DT JJ PAU 2 3 0 1 1 0 13 LL</phon>
-					<phon val="ey" type="nucleus" phonid="2">^ah~s-ey+m=0 1 1 0 1 0 DT JJ PAU 2 3 0 1 1 0 13 LL</phon>
-					<phon val="m" type="coda" phonid="3">^s~ey-m+0=0 2 0 0 1 0 DT JJ PAU 2 3 0 1 1 0 13 LL</phon>
+					<phon val="ey" type="nucleus" phonid="2">^ah~s-ey+m=pau 1 1 0 1 0 DT JJ PAU 2 3 0 1 1 0 13 LL</phon>
+					<phon val="m" type="coda" phonid="3">^s~ey-m+pau=pau 2 0 0 1 0 DT JJ PAU 2 3 0 1 1 0 13 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ey~m-0+0=0 0 0 1 0 0 JJ PAU PAU 3 0 0 1 0 0 13 LL</phon>
+						<phon val="pau">^ey~m-pau+pau=0 0 0 1 0 0 JJ PAU PAU 3 0 0 1 0 0 13 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1578,7 +1604,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 17 LL</phon>
+						<phon val="pau">^0~pau-pau+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 17 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1586,8 +1612,8 @@
 				"She
 				<ws> </ws>
 				<syl val="sh+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="sh" type="onset" phonid="1">^0~0-sh+iy=ao 0 1 0 1 1 PAU PP RB 0 2 2 0 1 2 17 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^0~sh-iy+ao=l 1 0 0 1 1 PAU PP RB 0 2 2 0 1 2 17 LL</phon>
+					<phon val="sh" type="onset" phonid="1">^pau~pau-sh+iy=ao 0 1 0 1 1 PAU PP RB 0 2 2 0 1 2 17 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^pau~sh-iy+ao=l 1 0 0 1 1 PAU PP RB 0 2 2 0 1 2 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="always" lc="true" pos="RB" posset="1" wordid="2" pron="ao1 l w ey2 z" altprons="ao1 l w iy0 z, ao1 l w ey2 z" spron="ao1+l|w+ey2+z|" nosyl="2">
@@ -1732,14 +1758,14 @@
 </ws>
 				<syl val="dh+ae1+t" stress="1" sylid="1" nophons="3">
 					<phon val="dh" type="onset" phonid="1">^s~t-dh+ae=t 0 2 1 1 0 NN IN/that PAU 4 3 0 1 1 0 17 LL</phon>
-					<phon val="ae" type="nucleus" phonid="2">^t~dh-ae+t=0 1 1 1 1 0 NN IN/that PAU 4 3 0 1 1 0 17 LL</phon>
-					<phon val="t" type="coda" phonid="3">^dh~ae-t+0=0 2 0 1 1 0 NN IN/that PAU 4 3 0 1 1 0 17 LL</phon>
+					<phon val="ae" type="nucleus" phonid="2">^t~dh-ae+t=pau 1 1 1 1 0 NN IN/that PAU 4 3 0 1 1 0 17 LL</phon>
+					<phon val="t" type="coda" phonid="3">^dh~ae-t+pau=pau 2 0 1 1 0 NN IN/that PAU 4 3 0 1 1 0 17 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ae~t-0+0=0 0 0 1 0 0 IN/that PAU PAU 3 0 0 1 0 0 17 LL</phon>
+						<phon val="pau">^ae~t-pau+pau=0 0 0 1 0 0 IN/that PAU PAU 3 0 0 1 0 0 17 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1750,7 +1776,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+s=ah 0 0 0 0 1 PAU PAU DT 0 0 3 0 0 1 6 LL</phon>
+						<phon val="pau">^0~pau-pau+s=ah 0 0 0 0 1 PAU PAU DT 0 0 3 0 0 1 6 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1758,8 +1784,8 @@
 				"Some
 				<ws> </ws>
 				<syl val="s+ah1+m" stress="1" sylid="1" nophons="3">
-					<phon val="s" type="onset" phonid="1">^0~0-s+ah=m 0 2 0 1 1 PAU DT NNS 0 3 2 0 1 2 6 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^0~s-ah+m=p 1 1 0 1 1 PAU DT NNS 0 3 2 0 1 2 6 LL</phon>
+					<phon val="s" type="onset" phonid="1">^pau~pau-s+ah=m 0 2 0 1 1 PAU DT NNS 0 3 2 0 1 2 6 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^pau~s-ah+m=p 1 1 0 1 1 PAU DT NNS 0 3 2 0 1 2 6 LL</phon>
 					<phon val="m" type="coda" phonid="3">^s~ah-m+p=iy 2 0 0 1 1 PAU DT NNS 0 3 2 0 1 2 6 LL</phon>
 				</syl>
 			</tk>
@@ -1812,14 +1838,14 @@
 				</syl>
 				<syl val="z+ah0+n" stress="0" sylid="2" nophons="3">
 					<phon val="z" type="onset" phonid="1">^r~iy-z+ah=n 0 2 1 0 0 VBD NN PAU 3 3 0 1 2 0 6 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^iy~z-ah+n=0 1 1 1 0 0 VBD NN PAU 3 3 0 1 2 0 6 LL</phon>
-					<phon val="n" type="coda" phonid="3">^z~ah-n+0=0 2 0 1 0 0 VBD NN PAU 3 3 0 1 2 0 6 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^iy~z-ah+n=pau 1 1 1 0 0 VBD NN PAU 3 3 0 1 2 0 6 LL</phon>
+					<phon val="n" type="coda" phonid="3">^z~ah-n+pau=pau 2 0 1 0 0 VBD NN PAU 3 3 0 1 2 0 6 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~n-0+0=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 6 LL</phon>
+						<phon val="pau">^ah~n-pau+pau=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 6 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1830,7 +1856,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+m=ay 0 0 0 0 1 PAU PAU PP$ 0 0 2 0 0 1 25 LL</phon>
+						<phon val="pau">^0~pau-pau+m=ay 0 0 0 0 1 PAU PAU PP$ 0 0 2 0 0 1 25 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -1838,8 +1864,8 @@
 				My
 				<ws> </ws>
 				<syl val="m+ay1" stress="1" sylid="1" nophons="2">
-					<phon val="m" type="onset" phonid="1">^0~0-m+ay=g 0 1 0 1 1 PAU PP$ NN 0 2 5 0 1 3 25 LL</phon>
-					<phon val="ay" type="nucleus" phonid="2">^0~m-ay+g=r 1 0 0 1 1 PAU PP$ NN 0 2 5 0 1 3 25 LL</phon>
+					<phon val="m" type="onset" phonid="1">^pau~pau-m+ay=g 0 1 0 1 1 PAU PP$ NN 0 2 5 0 1 3 25 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^pau~m-ay+g=r 1 0 0 1 1 PAU PP$ NN 0 2 5 0 1 3 25 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="grandmother" lc="true" pos="NN" posset="1" wordid="2" pron="g r ae1 n d m ah2 dh er0" altprons="g r ae1 n m ah2 dh er0, g r ae1 m ah2 dh er0, g r ae1 n d m ah2 dh er0" spron="g_r+ae1+n_d|m+ah2|dh+er0|" nosyl="3">
@@ -1951,147 +1977,146 @@
 				forces
 				<ws> </ws>
 				<syl val="f+ao1+r" stress="1" sylid="1" nophons="3">
-					<phon val="f" type="onset" phonid="1">^dh~ah-f+ao=r 0 2 0 1 0 DT NNS MD 2 3 3 1 2 1 25 LL</phon>
-					<phon val="ao" type="nucleus" phonid="2">^ah~f-ao+r=s 1 1 0 1 0 DT NNS MD 2 3 3 1 2 1 25 LL</phon>
-					<phon val="r" type="coda" phonid="3">^f~ao-r+s=ih 2 0 0 1 0 DT NNS MD 2 3 3 1 2 1 25 LL</phon>
+					<phon val="f" type="onset" phonid="1">^dh~ah-f+ao=r 0 2 0 1 0 DT NNS MD 2 3 3 1 2 0 25 LL</phon>
+					<phon val="ao" type="nucleus" phonid="2">^ah~f-ao+r=s 1 1 0 1 0 DT NNS MD 2 3 3 1 2 0 25 LL</phon>
+					<phon val="r" type="coda" phonid="3">^f~ao-r+s=ih 2 0 0 1 0 DT NNS MD 2 3 3 1 2 0 25 LL</phon>
 				</syl>
 				<syl val="s+ih0+z" stress="0" sylid="2" nophons="3">
-					<phon val="s" type="onset" phonid="1">^ao~r-s+ih=z 0 2 1 0 0 DT NNS MD 3 3 3 1 2 1 25 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^r~s-ih+z=ah 1 1 1 0 0 DT NNS MD 3 3 3 1 2 1 25 LL</phon>
-					<phon val="z" type="coda" phonid="3">^s~ih-z+ah=n 2 0 1 0 0 DT NNS MD 3 3 3 1 2 1 25 LL</phon>
+					<phon val="s" type="onset" phonid="1">^ao~r-s+ih=z 0 2 1 0 0 DT NNS MD 3 3 3 1 2 0 25 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^r~s-ih+z=ah 1 1 1 0 0 DT NNS MD 3 3 3 1 2 0 25 LL</phon>
+					<phon val="z" type="coda" phonid="3">^s~ih-z+ah=n 2 0 1 0 0 DT NNS MD 3 3 3 1 2 0 25 LL</phon>
 				</syl>
 			</tk>
-			<tk prepunc="..." pos="MD" posset="3" wordid="14" pron="" spron="ah0+n_d|" nosyl="1">
+			<tk prepunc="..." pos="MD" posset="3" wordid="14" pron="" spron="">
 				...
 				<ws> </ws>
-				<syl val="ah0+n_d" stress="0" sylid="1" nophons="3">
-					<phon val="ah" type="nucleus" phonid="1">^ih~z-ah+n=d 0 2 0 0 1 NNS MD CC 3 3 3 2 1 1 25 LL</phon>
-					<phon val="n" type="coda" phonid="2">^z~ah-n+d=dh 1 1 0 0 1 NNS MD CC 3 3 3 2 1 1 25 LL</phon>
-					<phon val="d" type="coda" phonid="3">^ah~n-d+dh=eh 2 0 0 0 1 NNS MD CC 3 3 3 2 1 1 25 LL</phon>
-				</syl>
 			</tk>
-			<tk norm="and" lc="true" pos="CC" posset="3" wordid="15" pron="ah0 n d" altprons="ae1 n d, ah0 n d" spron="dh+eh1+r|" nosyl="1">
+			<tk norm="and" lc="true" pos="CC" posset="3" wordid="15" pron="ah0 n d" altprons="ae1 n d, ah0 n d" spron="ah0+n_d|" nosyl="1">
 				and
 				<ws> </ws>
-				<syl val="dh+eh1+r" stress="1" sylid="1" nophons="3">
-					<phon val="dh" type="onset" phonid="1">^n~d-dh+eh=r 0 2 0 1 1 MD CC EX 3 3 2 1 1 1 25 LL</phon>
-					<phon val="eh" type="nucleus" phonid="2">^d~dh-eh+r=ih 1 1 0 1 1 MD CC EX 3 3 2 1 1 1 25 LL</phon>
-					<phon val="r" type="coda" phonid="3">^dh~eh-r+ih=z 2 0 0 1 1 MD CC EX 3 3 2 1 1 1 25 LL</phon>
+				<syl val="ah0+n_d" stress="0" sylid="1" nophons="3">
+					<phon val="ah" type="nucleus" phonid="1">^ih~z-ah+n=d 0 2 0 0 1 MD CC EX 3 3 3 0 1 1 25 LL</phon>
+					<phon val="n" type="coda" phonid="2">^z~ah-n+d=dh 1 1 0 0 1 MD CC EX 3 3 3 0 1 1 25 LL</phon>
+					<phon val="d" type="coda" phonid="3">^ah~n-d+dh=eh 2 0 0 0 1 MD CC EX 3 3 3 0 1 1 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="there" lc="true" pos="EX" posset="3" wordid="16" pron="dh eh1 r" spron="ih1+z|" nosyl="1">
+			<tk norm="there" lc="true" pos="EX" posset="3" wordid="16" pron="dh eh1 r" spron="dh+eh1+r|" nosyl="1">
 				there
 				<ws> </ws>
-				<syl val="ih1+z" stress="1" sylid="1" nophons="2">
-					<phon val="ih" type="nucleus" phonid="1">^eh~r-ih+z=n 0 1 1 1 1 CC EX VBZ 3 2 2 1 1 1 25 LL</phon>
-					<phon val="z" type="coda" phonid="2">^r~ih-z+n=ow 1 0 1 1 1 CC EX VBZ 3 2 2 1 1 1 25 LL</phon>
+				<syl val="dh+eh1+r" stress="1" sylid="1" nophons="3">
+					<phon val="dh" type="onset" phonid="1">^n~d-dh+eh=r 0 2 0 1 1 CC EX VBZ 3 3 2 1 1 1 25 LL</phon>
+					<phon val="eh" type="nucleus" phonid="2">^d~dh-eh+r=ih 1 1 0 1 1 CC EX VBZ 3 3 2 1 1 1 25 LL</phon>
+					<phon val="r" type="coda" phonid="3">^dh~eh-r+ih=z 2 0 0 1 1 CC EX VBZ 3 3 2 1 1 1 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="is" lc="true" pos="VBZ" posset="3" wordid="17" pron="ih1 z" altprons="ih0 z, ih1 z" spron="n+ow1|" nosyl="1">
+			<tk norm="is" lc="true" pos="VBZ" posset="3" wordid="17" pron="ih1 z" altprons="ih0 z, ih1 z" spron="ih1+z|" nosyl="1">
 				is
 				<ws> </ws>
-				<syl val="n+ow1" stress="1" sylid="1" nophons="2">
-					<phon val="n" type="onset" phonid="1">^ih~z-n+ow=w 0 1 1 1 1 EX VBZ DT 2 2 2 1 1 1 25 LL</phon>
-					<phon val="ow" type="nucleus" phonid="2">^z~n-ow+w=ey 1 0 1 1 1 EX VBZ DT 2 2 2 1 1 1 25 LL</phon>
+				<syl val="ih1+z" stress="1" sylid="1" nophons="2">
+					<phon val="ih" type="nucleus" phonid="1">^eh~r-ih+z=n 0 1 1 1 1 EX VBZ DT 3 2 2 1 1 1 25 LL</phon>
+					<phon val="z" type="coda" phonid="2">^r~ih-z+n=ow 1 0 1 1 1 EX VBZ DT 3 2 2 1 1 1 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="no" lc="true" pos="DT" posset="3" wordid="18" pron="n ow1" spron="w+ey1|" nosyl="1">
+			<tk norm="no" lc="true" pos="DT" posset="3" wordid="18" pron="n ow1" spron="n+ow1|" nosyl="1">
 				no
 				<ws> </ws>
-				<syl val="w+ey1" stress="1" sylid="1" nophons="2">
-					<phon val="w" type="onset" phonid="1">^n~ow-w+ey=sh 0 1 1 1 1 VBZ DT NN 2 2 2 1 1 1 25 LL</phon>
-					<phon val="ey" type="nucleus" phonid="2">^ow~w-ey+sh=iy 1 0 1 1 1 VBZ DT NN 2 2 2 1 1 1 25 LL</phon>
+				<syl val="n+ow1" stress="1" sylid="1" nophons="2">
+					<phon val="n" type="onset" phonid="1">^ih~z-n+ow=w 0 1 1 1 1 VBZ DT NN 2 2 2 1 1 1 25 LL</phon>
+					<phon val="ow" type="nucleus" phonid="2">^z~n-ow+w=ey 1 0 1 1 1 VBZ DT NN 2 2 2 1 1 1 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="way" lc="true" pos="NN" posset="1" wordid="19" pron="w ey1" spron="sh+iy1|" nosyl="1">
+			<tk norm="way" lc="true" pos="NN" posset="1" wordid="19" pron="w ey1" spron="w+ey1|" nosyl="1">
 				way
 				<ws> </ws>
-				<syl val="sh+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="sh" type="onset" phonid="1">^w~ey-sh+iy=w 0 1 1 1 1 DT NN PP 2 2 3 1 1 1 25 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^ey~sh-iy+w=uh 1 0 1 1 1 DT NN PP 2 2 3 1 1 1 25 LL</phon>
+				<syl val="w+ey1" stress="1" sylid="1" nophons="2">
+					<phon val="w" type="onset" phonid="1">^n~ow-w+ey=sh 0 1 1 1 1 DT NN PP 2 2 2 1 1 1 25 LL</phon>
+					<phon val="ey" type="nucleus" phonid="2">^ow~w-ey+sh=iy 1 0 1 1 1 DT NN PP 2 2 2 1 1 1 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="she" lc="true" pos="PP" posset="3" wordid="20" pron="sh iy1" spron="w+uh1+d|" nosyl="1">
+			<tk norm="she" lc="true" pos="PP" posset="3" wordid="20" pron="sh iy1" spron="sh+iy1|" nosyl="1">
 				she
 				<ws> </ws>
-				<syl val="w+uh1+d" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^sh~iy-w+uh=d 0 2 1 1 1 NN PP MD 2 3 3 1 1 1 25 LL</phon>
-					<phon val="uh" type="nucleus" phonid="2">^iy~w-uh+d=hh 1 1 1 1 1 NN PP MD 2 3 3 1 1 1 25 LL</phon>
-					<phon val="d" type="coda" phonid="3">^w~uh-d+hh=ae 2 0 1 1 1 NN PP MD 2 3 3 1 1 1 25 LL</phon>
+				<syl val="sh+iy1" stress="1" sylid="1" nophons="2">
+					<phon val="sh" type="onset" phonid="1">^w~ey-sh+iy=w 0 1 1 1 1 NN PP MD 2 2 3 1 1 1 25 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^ey~sh-iy+w=uh 1 0 1 1 1 NN PP MD 2 2 3 1 1 1 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="would" lc="true" pos="MD" posset="3" wordid="21" pron="w uh1 d" spron="hh+ae1+v|" nosyl="1">
+			<tk norm="would" lc="true" pos="MD" posset="3" wordid="21" pron="w uh1 d" spron="w+uh1+d|" nosyl="1">
 				would
 				<ws> </ws>
-				<syl val="hh+ae1+v" stress="1" sylid="1" nophons="3">
-					<phon val="hh" type="onset" phonid="1">^uh~d-hh+ae=v 0 2 1 1 1 PP MD VHP 3 3 2 1 1 2 25 LL</phon>
-					<phon val="ae" type="nucleus" phonid="2">^d~hh-ae+v=g 1 1 1 1 1 PP MD VHP 3 3 2 1 1 2 25 LL</phon>
-					<phon val="v" type="coda" phonid="3">^hh~ae-v+g=ih 2 0 1 1 1 PP MD VHP 3 3 2 1 1 2 25 LL</phon>
+				<syl val="w+uh1+d" stress="1" sylid="1" nophons="3">
+					<phon val="w" type="onset" phonid="1">^sh~iy-w+uh=d 0 2 1 1 1 PP MD VHP 2 3 3 1 1 1 25 LL</phon>
+					<phon val="uh" type="nucleus" phonid="2">^iy~w-uh+d=hh 1 1 1 1 1 PP MD VHP 2 3 3 1 1 1 25 LL</phon>
+					<phon val="d" type="coda" phonid="3">^w~uh-d+hh=ae 2 0 1 1 1 PP MD VHP 2 3 3 1 1 1 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="have" lc="true" pos="VHP" posset="3" wordid="22" pron="hh ae1 v" spron="g+ih1|v+ah0+n|" nosyl="2">
+			<tk norm="have" lc="true" pos="VHP" posset="3" wordid="22" pron="hh ae1 v" spron="hh+ae1+v|" nosyl="1">
 				have
 				<ws> </ws>
-				<syl val="g+ih1" stress="1" sylid="1" nophons="2">
-					<phon val="g" type="onset" phonid="1">^ae~v-g+ih=v 0 1 1 1 0 MD VHP VVN 3 2 3 1 2 4 25 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^v~g-ih+v=ah 1 0 1 1 0 MD VHP VVN 3 2 3 1 2 4 25 LL</phon>
-				</syl>
-				<syl val="v+ah0+n" stress="0" sylid="2" nophons="3">
-					<phon val="v" type="onset" phonid="1">^g~ih-v+ah=n 0 2 1 0 1 MD VHP VVN 2 3 1 1 2 4 25 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ih~v-ah+n=eh 1 1 1 0 1 MD VHP VVN 2 3 1 1 2 4 25 LL</phon>
-					<phon val="n" type="coda" phonid="3">^v~ah-n+eh=n 2 0 1 0 1 MD VHP VVN 2 3 1 1 2 4 25 LL</phon>
+				<syl val="hh+ae1+v" stress="1" sylid="1" nophons="3">
+					<phon val="hh" type="onset" phonid="1">^uh~d-hh+ae=v 0 2 1 1 1 MD VHP VVN 3 3 2 1 1 2 25 LL</phon>
+					<phon val="ae" type="nucleus" phonid="2">^d~hh-ae+v=g 1 1 1 1 1 MD VHP VVN 3 3 2 1 1 2 25 LL</phon>
+					<phon val="v" type="coda" phonid="3">^hh~ae-v+g=ih 2 0 1 1 1 MD VHP VVN 3 3 2 1 1 2 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="given" lc="true" pos="VVN" posset="1" wordid="23" pron="g ih1 v ah0 n" altprons="g ih1 v ih0 n, g ih1 v ah0 n" spron="eh1|n+iy0|b+ah0|d+iy0|" nosyl="4">
+			<tk norm="given" lc="true" pos="VVN" posset="1" wordid="23" pron="g ih1 v ah0 n" altprons="g ih1 v ih0 n, g ih1 v ah0 n" spron="g+ih1|v+ah0+n|" nosyl="2">
 				given
 				<ws> </ws>
-				<syl val="eh1" stress="1" sylid="1" nophons="1">
-					<phon val="eh" type="nucleus" phonid="1">^ah~n-eh+n=iy 0 0 0 1 0 VHP VVN NN 3 1 2 2 4 4 25 LL</phon>
+				<syl val="g+ih1" stress="1" sylid="1" nophons="2">
+					<phon val="g" type="onset" phonid="1">^ae~v-g+ih=v 0 1 1 1 0 VHP VVN NN 3 2 3 1 2 4 25 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^v~g-ih+v=ah 1 0 1 1 0 VHP VVN NN 3 2 3 1 2 4 25 LL</phon>
 				</syl>
-				<syl val="n+iy0" stress="0" sylid="2" nophons="2">
-					<phon val="n" type="onset" phonid="1">^n~eh-n+iy=b 0 1 1 0 0 VHP VVN NN 1 2 2 2 4 4 25 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^eh~n-iy+b=ah 1 0 1 0 0 VHP VVN NN 1 2 2 2 4 4 25 LL</phon>
-				</syl>
-				<syl val="b+ah0" stress="0" sylid="3" nophons="2">
-					<phon val="b" type="onset" phonid="1">^n~iy-b+ah=d 0 1 0 0 0 VHP VVN NN 2 2 2 2 4 4 25 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^iy~b-ah+d=iy 1 0 0 0 0 VHP VVN NN 2 2 2 2 4 4 25 LL</phon>
-				</syl>
-				<syl val="d+iy0" stress="0" sylid="4" nophons="2">
-					<phon val="d" type="onset" phonid="1">^b~ah-d+iy=ih 0 1 0 0 1 VHP VVN NN 2 2 2 2 4 4 25 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^ah~d-iy+ih=n 1 0 0 0 1 VHP VVN NN 2 2 2 2 4 4 25 LL</phon>
+				<syl val="v+ah0+n" stress="0" sylid="2" nophons="3">
+					<phon val="v" type="onset" phonid="1">^g~ih-v+ah=n 0 2 1 0 1 VHP VVN NN 2 3 1 1 2 4 25 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ih~v-ah+n=eh 1 1 1 0 1 VHP VVN NN 2 3 1 1 2 4 25 LL</phon>
+					<phon val="n" type="coda" phonid="3">^v~ah-n+eh=n 2 0 1 0 1 VHP VVN NN 2 3 1 1 2 4 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="anybody" lc="true" pos="NN" posset="1" wordid="24" pron="eh1 n iy0 b ah0 d iy0" spron="ih2+n|f+er0|m+ey1|sh+ah0+n|" nosyl="4">
+			<tk norm="anybody" lc="true" pos="NN" posset="1" wordid="24" pron="eh1 n iy0 b ah0 d iy0" spron="eh1|n+iy0|b+ah0|d+iy0|" nosyl="4">
 				anybody
 				<ws> </ws>
-				<syl val="ih2+n" stress="2" sylid="1" nophons="2">
-					<phon val="ih" type="nucleus" phonid="1">^d~iy-ih+n=f 0 1 0 1 0 VVN NN NN 2 2 2 4 4 0 25 LL</phon>
-					<phon val="n" type="coda" phonid="2">^iy~ih-n+f=er 1 0 0 1 0 VVN NN NN 2 2 2 4 4 0 25 LL</phon>
+				<syl val="eh1" stress="1" sylid="1" nophons="1">
+					<phon val="eh" type="nucleus" phonid="1">^ah~n-eh+n=iy 0 0 0 1 0 VVN NN NN 3 1 2 2 4 4 25 LL</phon>
 				</syl>
-				<syl val="f+er0" stress="0" sylid="2" nophons="2">
-					<phon val="f" type="onset" phonid="1">^ih~n-f+er=m 0 1 1 0 1 VVN NN NN 2 2 2 4 4 0 25 LL</phon>
-					<phon val="er" type="nucleus" phonid="2">^n~f-er+m=ey 1 0 1 0 1 VVN NN NN 2 2 2 4 4 0 25 LL</phon>
+				<syl val="n+iy0" stress="0" sylid="2" nophons="2">
+					<phon val="n" type="onset" phonid="1">^n~eh-n+iy=b 0 1 1 0 0 VVN NN NN 1 2 2 2 4 4 25 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^eh~n-iy+b=ah 1 0 1 0 0 VVN NN NN 1 2 2 2 4 4 25 LL</phon>
 				</syl>
-				<syl val="m+ey1" stress="1" sylid="3" nophons="2">
-					<phon val="m" type="onset" phonid="1">^f~er-m+ey=sh 0 1 0 1 0 VVN NN NN 2 2 3 4 4 0 25 LL</phon>
-					<phon val="ey" type="nucleus" phonid="2">^er~m-ey+sh=ah 1 0 0 1 0 VVN NN NN 2 2 3 4 4 0 25 LL</phon>
+				<syl val="b+ah0" stress="0" sylid="3" nophons="2">
+					<phon val="b" type="onset" phonid="1">^n~iy-b+ah=d 0 1 0 0 0 VVN NN NN 2 2 2 2 4 4 25 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^iy~b-ah+d=iy 1 0 0 0 0 VVN NN NN 2 2 2 2 4 4 25 LL</phon>
 				</syl>
-				<syl val="sh+ah0+n" stress="0" sylid="4" nophons="3">
-					<phon val="sh" type="onset" phonid="1">^m~ey-sh+ah=n 0 2 1 0 0 VVN NN NN 2 3 0 4 4 0 25 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ey~sh-ah+n=0 1 1 1 0 0 VVN NN NN 2 3 0 4 4 0 25 LL</phon>
-					<phon val="n" type="coda" phonid="3">^sh~ah-n+0=0 2 0 1 0 0 VVN NN NN 2 3 0 4 4 0 25 LL</phon>
+				<syl val="d+iy0" stress="0" sylid="4" nophons="2">
+					<phon val="d" type="onset" phonid="1">^b~ah-d+iy=ih 0 1 0 0 1 VVN NN NN 2 2 2 2 4 4 25 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^ah~d-iy+ih=n 1 0 0 0 1 VVN NN NN 2 2 2 2 4 4 25 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="information" pstpunc=".&quot;" lc="true" pos="NN" posset="1" wordid="25" pron="ih2 n f er0 m ey1 sh ah0 n" altprons="ih0 n f ao1 r m ey1 sh ah0 n, ih2 n f er0 m ey1 sh ah0 n" spron="" nosyl="0">
+			<tk norm="information" pstpunc=".&quot;" lc="true" pos="NN" posset="1" wordid="25" pron="ih2 n f er0 m ey1 sh ah0 n" altprons="ih0 n f ao1 r m ey1 sh ah0 n, ih2 n f er0 m ey1 sh ah0 n" spron="ih2+n|f+er0|m+ey1|sh+ah0+n|" nosyl="4">
 				information."
 				<ws col="163">
 </ws>
-				<syl />
+				<syl val="ih2+n" stress="2" sylid="1" nophons="2">
+					<phon val="ih" type="nucleus" phonid="1">^d~iy-ih+n=f 0 1 0 1 0 NN NN PAU 2 2 2 4 4 0 25 LL</phon>
+					<phon val="n" type="coda" phonid="2">^iy~ih-n+f=er 1 0 0 1 0 NN NN PAU 2 2 2 4 4 0 25 LL</phon>
+				</syl>
+				<syl val="f+er0" stress="0" sylid="2" nophons="2">
+					<phon val="f" type="onset" phonid="1">^ih~n-f+er=m 0 1 1 0 1 NN NN PAU 2 2 2 4 4 0 25 LL</phon>
+					<phon val="er" type="nucleus" phonid="2">^n~f-er+m=ey 1 0 1 0 1 NN NN PAU 2 2 2 4 4 0 25 LL</phon>
+				</syl>
+				<syl val="m+ey1" stress="1" sylid="3" nophons="2">
+					<phon val="m" type="onset" phonid="1">^f~er-m+ey=sh 0 1 0 1 0 NN NN PAU 2 2 3 4 4 0 25 LL</phon>
+					<phon val="ey" type="nucleus" phonid="2">^er~m-ey+sh=ah 1 0 0 1 0 NN NN PAU 2 2 3 4 4 0 25 LL</phon>
+				</syl>
+				<syl val="sh+ah0+n" stress="0" sylid="4" nophons="3">
+					<phon val="sh" type="onset" phonid="1">^m~ey-sh+ah=n 0 2 1 0 0 NN NN PAU 2 3 0 4 4 0 25 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ey~sh-ah+n=pau 1 1 1 0 0 NN NN PAU 2 3 0 4 4 0 25 LL</phon>
+					<phon val="n" type="coda" phonid="3">^sh~ah-n+pau=pau 2 0 1 0 0 NN NN PAU 2 3 0 4 4 0 25 LL</phon>
+				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~n-0+0=0 0 0 0 0 0 NN PAU PAU 0 0 0 0 0 0 25 LL</phon>
+						<phon val="pau">^ah~n-pau+pau=0 0 0 0 0 0 NN PAU PAU 3 0 0 4 0 0 25 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2102,142 +2127,144 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+m=ih 0 0 0 0 1 PAU PAU NNS 0 0 2 0 0 2 12 LL</phon>
+						<phon val="pau">^0~pau-pau+m=iy 0 0 0 0 0 PAU PAU NN 0 0 2 0 0 2 12 LH</phon>
 					</syl>
 				</tk>
 			</break>
-			<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1" wordid="1" pron="m ih1 s ih0 z" spron="m+ih1|s+ih0+z|" nosyl="2">
+			<tk norm="missis" pos="NN" posset="1" wordid="1" pron="m iy0 s iy0 s" lts="true" spron="m+iy0|s+iy0+s|" nosyl="2">
 				Mrs
 				<ws> </ws>
-				<syl val="m+ih1" stress="1" sylid="1" nophons="2">
-					<phon val="m" type="onset" phonid="1">^0~0-m+ih=s 0 1 0 1 0 PAU NNS NN 0 2 3 0 2 2 12 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^0~m-ih+s=ih 1 0 0 1 0 PAU NNS NN 0 2 3 0 2 2 12 LL</phon>
+				<syl val="m+iy0" stress="0" sylid="1" nophons="2">
+					<phon val="m" type="onset" phonid="1">^pau~pau-m+iy=s 0 1 0 0 0 PAU NN NN 0 2 3 0 2 2 12 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^pau~m-iy+s=iy 1 0 0 0 0 PAU NN NN 0 2 3 0 2 2 12 LH</phon>
 				</syl>
-				<syl val="s+ih0+z" stress="0" sylid="2" nophons="3">
-					<phon val="s" type="onset" phonid="1">^m~ih-s+ih=z 0 2 1 0 1 PAU NNS NN 2 3 3 0 2 2 12 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^ih~s-ih+z=d 1 1 1 0 1 PAU NNS NN 2 3 3 0 2 2 12 LL</phon>
-					<phon val="z" type="coda" phonid="3">^s~ih-z+d=ah 2 0 1 0 1 PAU NNS NN 2 3 3 0 2 2 12 LL</phon>
+				<syl val="s+iy0+s" stress="0" sylid="2" nophons="3">
+					<phon val="s" type="onset" phonid="1">^m~iy-s+iy=s 0 2 0 0 1 PAU NN NN 2 3 3 0 2 2 12 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~s-iy+s=d 1 1 0 0 1 PAU NN NN 2 3 3 0 2 2 12 LH</phon>
+					<phon val="s" type="coda" phonid="3">^s~iy-s+d=ah 2 0 0 0 1 PAU NN NN 2 3 3 0 2 2 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="duncan" lc="true" uc="true" pos="NN" posset="1" wordid="2" pron="d ah1 ng k ah0 n" spron="d+ah1+ng|k+ah0+n|" nosyl="2">
 				Duncan
 				<ws> </ws>
 				<syl val="d+ah1+ng" stress="1" sylid="1" nophons="3">
-					<phon val="d" type="onset" phonid="1">^ih~z-d+ah=ng 0 2 0 1 0 NNS NN NN 3 3 3 2 2 2 12 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^z~d-ah+ng=k 1 1 0 1 0 NNS NN NN 3 3 3 2 2 2 12 LL</phon>
-					<phon val="ng" type="coda" phonid="3">^d~ah-ng+k=ah 2 0 0 1 0 NNS NN NN 3 3 3 2 2 2 12 LL</phon>
+					<phon val="d" type="onset" phonid="1">^iy~s-d+ah=ng 0 2 0 1 0 NN NN NN 3 3 3 2 2 2 12 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^s~d-ah+ng=k 1 1 0 1 0 NN NN NN 3 3 3 2 2 2 12 LH</phon>
+					<phon val="ng" type="coda" phonid="3">^d~ah-ng+k=ah 2 0 0 1 0 NN NN NN 3 3 3 2 2 2 12 LH</phon>
 				</syl>
 				<syl val="k+ah0+n" stress="0" sylid="2" nophons="3">
-					<phon val="k" type="onset" phonid="1">^ah~ng-k+ah=n 0 2 1 0 0 NNS NN NN 3 3 2 2 2 2 12 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ng~k-ah+n=b 1 1 1 0 0 NNS NN NN 3 3 2 2 2 2 12 LL</phon>
-					<phon val="n" type="coda" phonid="3">^k~ah-n+b=ih 2 0 1 0 0 NNS NN NN 3 3 2 2 2 2 12 LL</phon>
+					<phon val="k" type="onset" phonid="1">^ah~ng-k+ah=n 0 2 1 0 0 NN NN NN 3 3 2 2 2 2 12 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ng~k-ah+n=b 1 1 1 0 0 NN NN NN 3 3 2 2 2 2 12 LH</phon>
+					<phon val="n" type="coda" phonid="3">^k~ah-n+b=ih 2 0 1 0 0 NN NN NN 3 3 2 2 2 2 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="became" lc="true" pos="NN" posset="1" wordid="3" pron="b ih0 k ey1 m" altprons="b iy0 k ey1 m, b ih0 k ey1 m" spron="b+ih0|k+ey1+m|" nosyl="2">
 				became
 				<ws> </ws>
 				<syl val="b+ih0" stress="0" sylid="1" nophons="2">
-					<phon val="b" type="onset" phonid="1">^ah~n-b+ih=k 0 1 0 0 1 NN NN CD 3 2 3 2 2 1 12 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^n~b-ih+k=ey 1 0 0 0 1 NN NN CD 3 2 3 2 2 1 12 LL</phon>
+					<phon val="b" type="onset" phonid="1">^ah~n-b+ih=k 0 1 0 0 1 NN NN CD 3 2 3 2 2 1 12 LH</phon>
+					<phon val="ih" type="nucleus" phonid="2">^n~b-ih+k=ey 1 0 0 0 1 NN NN CD 3 2 3 2 2 1 12 LH</phon>
 				</syl>
 				<syl val="k+ey1+m" stress="1" sylid="2" nophons="3">
-					<phon val="k" type="onset" phonid="1">^b~ih-k+ey=m 0 2 0 1 1 NN NN CD 2 3 3 2 2 1 12 LL</phon>
-					<phon val="ey" type="nucleus" phonid="2">^ih~k-ey+m=w 1 1 0 1 1 NN NN CD 2 3 3 2 2 1 12 LL</phon>
-					<phon val="m" type="coda" phonid="3">^k~ey-m+w=ah 2 0 0 1 1 NN NN CD 2 3 3 2 2 1 12 LL</phon>
+					<phon val="k" type="onset" phonid="1">^b~ih-k+ey=m 0 2 0 1 1 NN NN CD 2 3 3 2 2 1 12 LH</phon>
+					<phon val="ey" type="nucleus" phonid="2">^ih~k-ey+m=w 1 1 0 1 1 NN NN CD 2 3 3 2 2 1 12 LH</phon>
+					<phon val="m" type="coda" phonid="3">^k~ey-m+w=ah 2 0 0 1 1 NN NN CD 2 3 3 2 2 1 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="one" lc="true" pos="CD" posset="3" wordid="4" pron="w ah1 n" altprons="hh w ah1 n, w ah1 n" spron="w+ah1+n|" nosyl="1">
 				one
 				<ws> </ws>
 				<syl val="w+ah1+n" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^ey~m-w+ah=n 0 2 1 1 1 NN CD IN 3 3 2 2 1 1 12 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^m~w-ah+n=ah 1 1 1 1 1 NN CD IN 3 3 2 2 1 1 12 LL</phon>
-					<phon val="n" type="coda" phonid="3">^w~ah-n+ah=v 2 0 1 1 1 NN CD IN 3 3 2 2 1 1 12 LL</phon>
+					<phon val="w" type="onset" phonid="1">^ey~m-w+ah=n 0 2 1 1 1 NN CD IN 3 3 2 2 1 1 12 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^m~w-ah+n=ah 1 1 1 1 1 NN CD IN 3 3 2 2 1 1 12 LH</phon>
+					<phon val="n" type="coda" phonid="3">^w~ah-n+ah=v 2 0 1 1 1 NN CD IN 3 3 2 2 1 1 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="of" lc="true" pos="IN" posset="3" wordid="5" pron="ah1 v" altprons="ah0 v, ah1 v" spron="ah1+v|" nosyl="1">
 				of
 				<ws> </ws>
 				<syl val="ah1+v" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^ah~n-ah+v=dh 0 1 1 1 0 CD IN DT 3 2 2 1 1 1 12 LL</phon>
-					<phon val="v" type="coda" phonid="2">^n~ah-v+dh=ah 1 0 1 1 0 CD IN DT 3 2 2 1 1 1 12 LL</phon>
+					<phon val="ah" type="nucleus" phonid="1">^ah~n-ah+v=dh 0 1 1 1 0 CD IN DT 3 2 2 1 1 1 12 LH</phon>
+					<phon val="v" type="coda" phonid="2">^n~ah-v+dh=ah 1 0 1 1 0 CD IN DT 3 2 2 1 1 1 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="the" lc="true" pos="DT" posset="3" wordid="6" pron="dh ah0" altprons="dh ah1, dh iy0, dh ah0" spron="dh+ah0|" nosyl="1">
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^ah~v-dh+ah=m 0 1 1 0 1 IN DT RBS 2 2 4 1 1 1 12 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^v~dh-ah+m=ow 1 0 1 0 1 IN DT RBS 2 2 4 1 1 1 12 LL</phon>
+					<phon val="dh" type="onset" phonid="1">^ah~v-dh+ah=m 0 1 1 0 1 IN DT RBS 2 2 4 1 1 1 12 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^v~dh-ah+m=ow 1 0 1 0 1 IN DT RBS 2 2 4 1 1 1 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="most" lc="true" pos="RBS" posset="2" wordid="7" pron="m ow1 s t" altprons="m ow1 s, m ow1 s t" spron="m+ow1+s_t|" nosyl="1">
 				most
 				<ws> </ws>
 				<syl val="m+ow1+s_t" stress="1" sylid="1" nophons="4">
-					<phon val="m" type="onset" phonid="1">^dh~ah-m+ow=s 0 3 0 1 1 DT RBS JJ 2 4 2 1 1 2 12 LL</phon>
-					<phon val="ow" type="nucleus" phonid="2">^ah~m-ow+s=t 1 2 0 1 1 DT RBS JJ 2 4 2 1 1 2 12 LL</phon>
-					<phon val="s" type="coda" phonid="3">^m~ow-s+t=f 2 1 0 1 1 DT RBS JJ 2 4 2 1 1 2 12 LL</phon>
-					<phon val="t" type="coda" phonid="4">^ow~s-t+f=ey 3 0 0 1 1 DT RBS JJ 2 4 2 1 1 2 12 LL</phon>
+					<phon val="m" type="onset" phonid="1">^dh~ah-m+ow=s 0 3 0 1 1 DT RBS JJ 2 4 2 1 1 2 12 LH</phon>
+					<phon val="ow" type="nucleus" phonid="2">^ah~m-ow+s=t 1 2 0 1 1 DT RBS JJ 2 4 2 1 1 2 12 LH</phon>
+					<phon val="s" type="coda" phonid="3">^m~ow-s+t=f 2 1 0 1 1 DT RBS JJ 2 4 2 1 1 2 12 LH</phon>
+					<phon val="t" type="coda" phonid="4">^ow~s-t+f=ey 3 0 0 1 1 DT RBS JJ 2 4 2 1 1 2 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="famous" lc="true" pos="JJ" posset="1" wordid="8" pron="f ey1 m ah0 s" spron="f+ey1|m+ah0+s|" nosyl="2">
 				famous
 				<ws> </ws>
 				<syl val="f+ey1" stress="1" sylid="1" nophons="2">
-					<phon val="f" type="onset" phonid="1">^s~t-f+ey=m 0 1 1 1 0 RBS JJ NNS 4 2 3 1 2 2 12 LL</phon>
-					<phon val="ey" type="nucleus" phonid="2">^t~f-ey+m=ah 1 0 1 1 0 RBS JJ NNS 4 2 3 1 2 2 12 LL</phon>
+					<phon val="f" type="onset" phonid="1">^s~t-f+ey=m 0 1 1 1 0 RBS JJ NNS 4 2 3 1 2 3 12 LH</phon>
+					<phon val="ey" type="nucleus" phonid="2">^t~f-ey+m=ah 1 0 1 1 0 RBS JJ NNS 4 2 3 1 2 3 12 LH</phon>
 				</syl>
 				<syl val="m+ah0+s" stress="0" sylid="2" nophons="3">
-					<phon val="m" type="onset" phonid="1">^f~ey-m+ah=s 0 2 1 0 1 RBS JJ NNS 2 3 2 1 2 2 12 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ey~m-ah+s=m 1 1 1 0 1 RBS JJ NNS 2 3 2 1 2 2 12 LL</phon>
-					<phon val="s" type="coda" phonid="3">^m~ah-s+m=iy 2 0 1 0 1 RBS JJ NNS 2 3 2 1 2 2 12 LL</phon>
+					<phon val="m" type="onset" phonid="1">^f~ey-m+ah=s 0 2 1 0 1 RBS JJ NNS 2 3 2 1 2 3 12 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ey~m-ah+s=m 1 1 1 0 1 RBS JJ NNS 2 3 2 1 2 3 12 LH</phon>
+					<phon val="s" type="coda" phonid="3">^m~ah-s+m=iy 2 0 1 0 1 RBS JJ NNS 2 3 2 1 2 3 12 LH</phon>
 				</syl>
 			</tk>
-			<tk norm="mediums" lc="true" pos="NNS" posset="1" wordid="9" pron="m iy1 d iy0 ah0 m z" spron="m+iy1|d+iy0+ah0_m_z|" nosyl="2">
+			<tk norm="mediums" lc="true" pos="NNS" posset="1" wordid="9" pron="m iy1 d iy0 ah0 m z" spron="m+iy1|d+iy0|ah0+m_z|" nosyl="3">
 				mediums
 				<ws> </ws>
 				<syl val="m+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="m" type="onset" phonid="1">^ah~s-m+iy=d 0 1 0 1 0 JJ NNS IN 3 2 5 2 2 1 12 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^s~m-iy+d=iy 1 0 0 1 0 JJ NNS IN 3 2 5 2 2 1 12 LL</phon>
+					<phon val="m" type="onset" phonid="1">^ah~s-m+iy=d 0 1 0 1 0 JJ NNS IN 3 2 2 2 3 1 12 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^s~m-iy+d=iy 1 0 0 1 0 JJ NNS IN 3 2 2 2 3 1 12 LH</phon>
 				</syl>
-				<syl val="d+iy0+ah0_m_z" stress="0" sylid="2" nophons="5">
-					<phon val="d" type="onset" phonid="1">^m~iy-d+iy=ah 0 4 1 0 1 JJ NNS IN 2 5 2 2 2 1 12 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ah=m 1 3 1 0 1 JJ NNS IN 2 5 2 2 2 1 12 LL</phon>
-					<phon val="ah" type="nucleus" phonid="3">^d~iy-ah+m=z 2 2 1 0 1 JJ NNS IN 2 5 2 2 2 1 12 LL</phon>
-					<phon val="m" type="nucleus" phonid="4">^iy~ah-m+z=ah 3 1 1 0 1 JJ NNS IN 2 5 2 2 2 1 12 LL</phon>
-					<phon val="z" type="nucleus" phonid="5">^ah~m-z+ah=v 4 0 1 0 1 JJ NNS IN 2 5 2 2 2 1 12 LL</phon>
+				<syl val="d+iy0" stress="0" sylid="2" nophons="2">
+					<phon val="d" type="onset" phonid="1">^m~iy-d+iy=ah 0 1 1 0 0 JJ NNS IN 2 2 3 2 3 1 12 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ah=m 1 0 1 0 0 JJ NNS IN 2 2 3 2 3 1 12 LH</phon>
+				</syl>
+				<syl val="ah0+m_z" stress="0" sylid="3" nophons="3">
+					<phon val="ah" type="nucleus" phonid="1">^d~iy-ah+m=z 0 2 0 0 1 JJ NNS IN 2 3 2 2 3 1 12 LH</phon>
+					<phon val="m" type="coda" phonid="2">^iy~ah-m+z=ah 1 1 0 0 1 JJ NNS IN 2 3 2 2 3 1 12 LH</phon>
+					<phon val="z" type="coda" phonid="3">^ah~m-z+ah=v 2 0 0 0 1 JJ NNS IN 2 3 2 2 3 1 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="of" lc="true" pos="IN" posset="3" wordid="10" pron="ah1 v" altprons="ah0 v, ah1 v" spron="ah1+v|" nosyl="1">
 				of
 				<ws> </ws>
 				<syl val="ah1+v" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^m~z-ah+v=hh 0 1 0 1 0 NNS IN PP$ 5 2 2 2 1 1 12 LL</phon>
-					<phon val="v" type="coda" phonid="2">^z~ah-v+hh=er 1 0 0 1 0 NNS IN PP$ 5 2 2 2 1 1 12 LL</phon>
+					<phon val="ah" type="nucleus" phonid="1">^m~z-ah+v=hh 0 1 0 1 0 NNS IN PP$ 3 2 2 3 1 1 12 LH</phon>
+					<phon val="v" type="coda" phonid="2">^z~ah-v+hh=er 1 0 0 1 0 NNS IN PP$ 3 2 2 3 1 1 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="her" lc="true" pos="PP$" posset="3" wordid="11" pron="hh er0" altprons="hh er1, hh er0" spron="hh+er0|" nosyl="1">
 				her
 				<ws> </ws>
 				<syl val="hh+er0" stress="0" sylid="1" nophons="2">
-					<phon val="hh" type="onset" phonid="1">^ah~v-hh+er=t 0 1 1 0 1 IN PP$ NN 2 2 3 1 1 1 12 LL</phon>
-					<phon val="er" type="nucleus" phonid="2">^v~hh-er+t=ay 1 0 1 0 1 IN PP$ NN 2 2 3 1 1 1 12 LL</phon>
+					<phon val="hh" type="onset" phonid="1">^ah~v-hh+er=t 0 1 1 0 1 IN PP$ NN 2 2 3 1 1 1 12 LH</phon>
+					<phon val="er" type="nucleus" phonid="2">^v~hh-er+t=ay 1 0 1 0 1 IN PP$ NN 2 2 3 1 1 1 12 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="time" pstpunc="," lc="true" pos="NN" posset="1" wordid="12" pron="t ay1 m" spron="t+ay1+m|" nosyl="1">
 				time,
 				<ws> </ws>
 				<syl val="t+ay1+m" stress="1" sylid="1" nophons="3">
-					<phon val="t" type="onset" phonid="1">^hh~er-t+ay=m 0 2 0 1 0 PP$ NN PAU 2 3 0 1 1 0 12 LL</phon>
-					<phon val="ay" type="nucleus" phonid="2">^er~t-ay+m=0 1 1 0 1 0 PP$ NN PAU 2 3 0 1 1 0 12 LL</phon>
-					<phon val="m" type="coda" phonid="3">^t~ay-m+0=0 2 0 0 1 0 PP$ NN PAU 2 3 0 1 1 0 12 LL</phon>
+					<phon val="t" type="onset" phonid="1">^hh~er-t+ay=m 0 2 0 1 0 PP$ NN PAU 2 3 0 1 1 0 12 LH</phon>
+					<phon val="ay" type="nucleus" phonid="2">^er~t-ay+m=pau 1 1 0 1 0 PP$ NN PAU 2 3 0 1 1 0 12 LH</phon>
+					<phon val="m" type="coda" phonid="3">^t~ay-m+pau=pau 2 0 0 1 0 PP$ NN PAU 2 3 0 1 1 0 12 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ay~m-0+0=0 0 0 1 0 0 NN PAU PAU 3 0 0 1 0 0 12 LL</phon>
+						<phon val="pau">^ay~m-pau+pau=0 0 0 1 0 0 NN PAU PAU 3 0 0 1 0 0 12 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2246,7 +2273,7 @@
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+hh=eh 0 0 0 0 1 PAU PAU VVG 0 0 2 0 0 2 6 LH</phon>
+						<phon val="pau">^0~pau-pau+hh=eh 0 0 0 0 1 PAU PAU VVG 0 0 2 0 0 2 6 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2254,69 +2281,69 @@
 				heading
 				<ws> </ws>
 				<syl val="hh+eh1" stress="1" sylid="1" nophons="2">
-					<phon val="hh" type="onset" phonid="1">^0~0-hh+eh=d 0 1 0 1 0 PAU VVG DT 0 2 3 0 2 1 6 LH</phon>
-					<phon val="eh" type="nucleus" phonid="2">^0~hh-eh+d=ih 1 0 0 1 0 PAU VVG DT 0 2 3 0 2 1 6 LH</phon>
+					<phon val="hh" type="onset" phonid="1">^pau~pau-hh+eh=d 0 1 0 1 0 PAU VVG DT 0 2 3 0 2 1 6 LL</phon>
+					<phon val="eh" type="nucleus" phonid="2">^pau~hh-eh+d=ih 1 0 0 1 0 PAU VVG DT 0 2 3 0 2 1 6 LL</phon>
 				</syl>
 				<syl val="d+ih0+ng" stress="0" sylid="2" nophons="3">
-					<phon val="d" type="onset" phonid="1">^hh~eh-d+ih=ng 0 2 1 0 0 PAU VVG DT 2 3 1 0 2 1 6 LH</phon>
-					<phon val="ih" type="nucleus" phonid="2">^eh~d-ih+ng=ah 1 1 1 0 0 PAU VVG DT 2 3 1 0 2 1 6 LH</phon>
-					<phon val="ng" type="coda" phonid="3">^d~ih-ng+ah=n 2 0 1 0 0 PAU VVG DT 2 3 1 0 2 1 6 LH</phon>
+					<phon val="d" type="onset" phonid="1">^hh~eh-d+ih=ng 0 2 1 0 0 PAU VVG DT 2 3 1 0 2 1 6 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^eh~d-ih+ng=ah 1 1 1 0 0 PAU VVG DT 2 3 1 0 2 1 6 LL</phon>
+					<phon val="ng" type="coda" phonid="3">^d~ih-ng+ah=n 2 0 1 0 0 PAU VVG DT 2 3 1 0 2 1 6 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="a" lc="true" pos="DT" posset="3" wordid="2" pron="ah0" altprons="ey1, ah0" spron="ah0|" nosyl="1">
 				a
 				<ws> </ws>
 				<syl val="ah0" stress="0" sylid="1" nophons="1">
-					<phon val="ah" type="nucleus" phonid="1">^ih~ng-ah+n=eh 0 0 0 0 1 VVG DT NN 3 1 2 2 1 2 6 LH</phon>
+					<phon val="ah" type="nucleus" phonid="1">^ih~ng-ah+n=eh 0 0 0 0 1 VVG DT NN 3 1 2 2 1 2 6 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="network" lc="true" pos="NN" posset="1" wordid="3" pron="n eh1 t w er2 k" spron="n+eh1|t_w+er2+k|" nosyl="2">
 				network
 				<ws> </ws>
 				<syl val="n+eh1" stress="1" sylid="1" nophons="2">
-					<phon val="n" type="onset" phonid="1">^ng~ah-n+eh=t 0 1 0 1 1 DT NN IN 1 2 4 1 2 1 6 LH</phon>
-					<phon val="eh" type="nucleus" phonid="2">^ah~n-eh+t=w 1 0 0 1 1 DT NN IN 1 2 4 1 2 1 6 LH</phon>
+					<phon val="n" type="onset" phonid="1">^ng~ah-n+eh=t 0 1 0 1 1 DT NN IN 1 2 4 1 2 1 6 LL</phon>
+					<phon val="eh" type="nucleus" phonid="2">^ah~n-eh+t=w 1 0 0 1 1 DT NN IN 1 2 4 1 2 1 6 LL</phon>
 				</syl>
 				<syl val="t_w+er2+k" stress="2" sylid="2" nophons="4">
-					<phon val="t" type="onset" phonid="1">^n~eh-t+w=er 0 3 1 1 1 DT NN IN 2 4 2 1 2 1 6 LH</phon>
-					<phon val="w" type="onset" phonid="2">^eh~t-w+er=k 1 2 1 1 1 DT NN IN 2 4 2 1 2 1 6 LH</phon>
-					<phon val="er" type="nucleus" phonid="3">^t~w-er+k=ah 2 1 1 1 1 DT NN IN 2 4 2 1 2 1 6 LH</phon>
-					<phon val="k" type="coda" phonid="4">^w~er-k+ah=v 3 0 1 1 1 DT NN IN 2 4 2 1 2 1 6 LH</phon>
+					<phon val="t" type="onset" phonid="1">^n~eh-t+w=er 0 3 1 1 1 DT NN IN 2 4 2 1 2 1 6 LL</phon>
+					<phon val="w" type="onset" phonid="2">^eh~t-w+er=k 1 2 1 1 1 DT NN IN 2 4 2 1 2 1 6 LL</phon>
+					<phon val="er" type="nucleus" phonid="3">^t~w-er+k=ah 2 1 1 1 1 DT NN IN 2 4 2 1 2 1 6 LL</phon>
+					<phon val="k" type="coda" phonid="4">^w~er-k+ah=v 3 0 1 1 1 DT NN IN 2 4 2 1 2 1 6 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="of" lc="true" pos="IN" posset="3" wordid="4" pron="ah1 v" altprons="ah0 v, ah1 v" spron="ah1+v|" nosyl="1">
 				of
 				<ws> </ws>
 				<syl val="ah1+v" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^er~k-ah+v=s 0 1 1 1 1 NN IN NN 4 2 3 2 1 5 6 LH</phon>
-					<phon val="v" type="coda" phonid="2">^k~ah-v+s=p 1 0 1 1 1 NN IN NN 4 2 3 2 1 5 6 LH</phon>
+					<phon val="ah" type="nucleus" phonid="1">^er~k-ah+v=s 0 1 1 1 1 NN IN NN 4 2 3 2 1 5 6 LL</phon>
+					<phon val="v" type="coda" phonid="2">^k~ah-v+s=p 1 0 1 1 1 NN IN NN 4 2 3 2 1 5 6 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="spiritualist" lc="true" pos="NN" posset="1" wordid="5" pron="s p ih1 r ih0 ch ah0 w ah0 l ih0 s t" spron="s_p+ih1|r+ih0|ch+ah0|w+ah0|l+ih0+s_t|" nosyl="5">
 				spiritualist
 				<ws> </ws>
 				<syl val="s_p+ih1" stress="1" sylid="1" nophons="3">
-					<phon val="s" type="onset" phonid="1">^ah~v-s+p=ih 0 2 1 1 0 IN NN NNS 2 3 2 1 5 2 6 LH</phon>
-					<phon val="p" type="onset" phonid="2">^v~s-p+ih=r 1 1 1 1 0 IN NN NNS 2 3 2 1 5 2 6 LH</phon>
-					<phon val="ih" type="nucleus" phonid="3">^s~p-ih+r=ih 2 0 1 1 0 IN NN NNS 2 3 2 1 5 2 6 LH</phon>
+					<phon val="s" type="onset" phonid="1">^ah~v-s+p=ih 0 2 1 1 0 IN NN NNS 2 3 2 1 5 2 6 LL</phon>
+					<phon val="p" type="onset" phonid="2">^v~s-p+ih=r 1 1 1 1 0 IN NN NNS 2 3 2 1 5 2 6 LL</phon>
+					<phon val="ih" type="nucleus" phonid="3">^s~p-ih+r=ih 2 0 1 1 0 IN NN NNS 2 3 2 1 5 2 6 LL</phon>
 				</syl>
 				<syl val="r+ih0" stress="0" sylid="2" nophons="2">
-					<phon val="r" type="onset" phonid="1">^p~ih-r+ih=ch 0 1 1 0 0 IN NN NNS 3 2 2 1 5 2 6 LH</phon>
-					<phon val="ih" type="nucleus" phonid="2">^ih~r-ih+ch=ah 1 0 1 0 0 IN NN NNS 3 2 2 1 5 2 6 LH</phon>
+					<phon val="r" type="onset" phonid="1">^p~ih-r+ih=ch 0 1 1 0 0 IN NN NNS 3 2 2 1 5 2 6 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^ih~r-ih+ch=ah 1 0 1 0 0 IN NN NNS 3 2 2 1 5 2 6 LL</phon>
 				</syl>
 				<syl val="ch+ah0" stress="0" sylid="3" nophons="2">
-					<phon val="ch" type="onset" phonid="1">^r~ih-ch+ah=w 0 1 0 0 0 IN NN NNS 2 2 2 1 5 2 6 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ih~ch-ah+w=ah 1 0 0 0 0 IN NN NNS 2 2 2 1 5 2 6 LH</phon>
+					<phon val="ch" type="onset" phonid="1">^r~ih-ch+ah=w 0 1 0 0 0 IN NN NNS 2 2 2 1 5 2 6 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ih~ch-ah+w=ah 1 0 0 0 0 IN NN NNS 2 2 2 1 5 2 6 LL</phon>
 				</syl>
 				<syl val="w+ah0" stress="0" sylid="4" nophons="2">
-					<phon val="w" type="onset" phonid="1">^ch~ah-w+ah=l 0 1 0 0 0 IN NN NNS 2 2 4 1 5 2 6 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ah~w-ah+l=ih 1 0 0 0 0 IN NN NNS 2 2 4 1 5 2 6 LH</phon>
+					<phon val="w" type="onset" phonid="1">^ch~ah-w+ah=l 0 1 0 0 0 IN NN NNS 2 2 4 1 5 2 6 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ah~w-ah+l=ih 1 0 0 0 0 IN NN NNS 2 2 4 1 5 2 6 LL</phon>
 				</syl>
 				<syl val="l+ih0+s_t" stress="0" sylid="5" nophons="4">
-					<phon val="l" type="onset" phonid="1">^w~ah-l+ih=s 0 3 0 0 1 IN NN NNS 2 4 2 1 5 2 6 LH</phon>
-					<phon val="ih" type="nucleus" phonid="2">^ah~l-ih+s=t 1 2 0 0 1 IN NN NNS 2 4 2 1 5 2 6 LH</phon>
-					<phon val="s" type="coda" phonid="3">^l~ih-s+t=ch 2 1 0 0 1 IN NN NNS 2 4 2 1 5 2 6 LH</phon>
-					<phon val="t" type="coda" phonid="4">^ih~s-t+ch=er 3 0 0 0 1 IN NN NNS 2 4 2 1 5 2 6 LH</phon>
+					<phon val="l" type="onset" phonid="1">^w~ah-l+ih=s 0 3 0 0 1 IN NN NNS 2 4 2 1 5 2 6 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^ah~l-ih+s=t 1 2 0 0 1 IN NN NNS 2 4 2 1 5 2 6 LL</phon>
+					<phon val="s" type="coda" phonid="3">^l~ih-s+t=ch 2 1 0 0 1 IN NN NNS 2 4 2 1 5 2 6 LL</phon>
+					<phon val="t" type="coda" phonid="4">^ih~s-t+ch=er 3 0 0 0 1 IN NN NNS 2 4 2 1 5 2 6 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="churches" pstpunc="." lc="true" pos="NNS" posset="1" wordid="6" pron="ch er1 ch ah0 z" altprons="ch er1 ch ih0 z, ch er1 ch ah0 z" spron="ch+er1|ch+ah0+z|" nosyl="2">
@@ -2324,19 +2351,19 @@
 				<ws col="106">
 </ws>
 				<syl val="ch+er1" stress="1" sylid="1" nophons="2">
-					<phon val="ch" type="onset" phonid="1">^s~t-ch+er=ch 0 1 0 1 0 NN NNS PAU 4 2 3 5 2 0 6 LH</phon>
-					<phon val="er" type="nucleus" phonid="2">^t~ch-er+ch=ah 1 0 0 1 0 NN NNS PAU 4 2 3 5 2 0 6 LH</phon>
+					<phon val="ch" type="onset" phonid="1">^s~t-ch+er=ch 0 1 0 1 0 NN NNS PAU 4 2 3 5 2 0 6 LL</phon>
+					<phon val="er" type="nucleus" phonid="2">^t~ch-er+ch=ah 1 0 0 1 0 NN NNS PAU 4 2 3 5 2 0 6 LL</phon>
 				</syl>
 				<syl val="ch+ah0+z" stress="0" sylid="2" nophons="3">
-					<phon val="ch" type="onset" phonid="1">^ch~er-ch+ah=z 0 2 1 0 0 NN NNS PAU 2 3 0 5 2 0 6 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^er~ch-ah+z=0 1 1 1 0 0 NN NNS PAU 2 3 0 5 2 0 6 LH</phon>
-					<phon val="z" type="coda" phonid="3">^ch~ah-z+0=0 2 0 1 0 0 NN NNS PAU 2 3 0 5 2 0 6 LH</phon>
+					<phon val="ch" type="onset" phonid="1">^ch~er-ch+ah=z 0 2 1 0 0 NN NNS PAU 2 3 0 5 2 0 6 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^er~ch-ah+z=pau 1 1 1 0 0 NN NNS PAU 2 3 0 5 2 0 6 LL</phon>
+					<phon val="z" type="coda" phonid="3">^ch~ah-z+pau=pau 2 0 1 0 0 NN NNS PAU 2 3 0 5 2 0 6 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~z-0+0=0 0 0 0 0 0 NNS PAU PAU 3 0 0 2 0 0 6 LH</phon>
+						<phon val="pau">^ah~z-pau+pau=0 0 0 0 0 0 NNS PAU PAU 3 0 0 2 0 0 6 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2347,7 +2374,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+d=uh 0 0 0 0 1 PAU PAU IN 0 0 2 0 0 2 7 LL</phon>
+						<phon val="pau">^0~pau-pau+d=uh 0 0 0 0 1 PAU PAU IN 0 0 2 0 0 2 7 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2355,78 +2382,78 @@
 				During
 				<ws> </ws>
 				<syl val="d+uh1" stress="1" sylid="1" nophons="2">
-					<phon val="d" type="onset" phonid="1">^0~0-d+uh=r 0 1 0 1 0 PAU IN DT 0 2 3 0 2 1 7 LL</phon>
-					<phon val="uh" type="nucleus" phonid="2">^0~d-uh+r=ih 1 0 0 1 0 PAU IN DT 0 2 3 0 2 1 7 LL</phon>
+					<phon val="d" type="onset" phonid="1">^pau~pau-d+uh=r 0 1 0 1 0 PAU IN DT 0 2 3 0 2 1 7 LH</phon>
+					<phon val="uh" type="nucleus" phonid="2">^pau~d-uh+r=ih 1 0 0 1 0 PAU IN DT 0 2 3 0 2 1 7 LH</phon>
 				</syl>
 				<syl val="r+ih0+ng" stress="0" sylid="2" nophons="3">
-					<phon val="r" type="onset" phonid="1">^d~uh-r+ih=ng 0 2 1 0 0 PAU IN DT 2 3 2 0 2 1 7 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^uh~r-ih+ng=dh 1 1 1 0 0 PAU IN DT 2 3 2 0 2 1 7 LL</phon>
-					<phon val="ng" type="coda" phonid="3">^r~ih-ng+dh=ah 2 0 1 0 0 PAU IN DT 2 3 2 0 2 1 7 LL</phon>
+					<phon val="r" type="onset" phonid="1">^d~uh-r+ih=ng 0 2 1 0 0 PAU IN DT 2 3 2 0 2 1 7 LH</phon>
+					<phon val="ih" type="nucleus" phonid="2">^uh~r-ih+ng=dh 1 1 1 0 0 PAU IN DT 2 3 2 0 2 1 7 LH</phon>
+					<phon val="ng" type="coda" phonid="3">^r~ih-ng+dh=ah 2 0 1 0 0 PAU IN DT 2 3 2 0 2 1 7 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="the" lc="true" pos="DT" posset="3" wordid="2" pron="dh ah0" altprons="dh ah1, dh iy0, dh ah0" spron="dh+ah0|" nosyl="1">
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^ih~ng-dh+ah=w 0 1 0 0 1 IN DT NN 3 2 3 2 1 1 7 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ng~dh-ah+w=ao 1 0 0 0 1 IN DT NN 3 2 3 2 1 1 7 LL</phon>
+					<phon val="dh" type="onset" phonid="1">^ih~ng-dh+ah=w 0 1 0 0 1 IN DT NN 3 2 3 2 1 1 7 LH</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ng~dh-ah+w=ao 1 0 0 0 1 IN DT NN 3 2 3 2 1 1 7 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="war" lc="true" pos="NN" posset="1" wordid="3" pron="w ao1 r" spron="w+ao1+r|" nosyl="1">
 				war
 				<ws> </ws>
 				<syl val="w+ao1+r" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^dh~ah-w+ao=r 0 2 0 1 1 DT NN PP 2 3 2 1 1 1 7 LL</phon>
-					<phon val="ao" type="nucleus" phonid="2">^ah~w-ao+r=sh 1 1 0 1 1 DT NN PP 2 3 2 1 1 1 7 LL</phon>
-					<phon val="r" type="coda" phonid="3">^w~ao-r+sh=iy 2 0 0 1 1 DT NN PP 2 3 2 1 1 1 7 LL</phon>
+					<phon val="w" type="onset" phonid="1">^dh~ah-w+ao=r 0 2 0 1 1 DT NN PP 2 3 2 1 1 1 7 LH</phon>
+					<phon val="ao" type="nucleus" phonid="2">^ah~w-ao+r=sh 1 1 0 1 1 DT NN PP 2 3 2 1 1 1 7 LH</phon>
+					<phon val="r" type="coda" phonid="3">^w~ao-r+sh=iy 2 0 0 1 1 DT NN PP 2 3 2 1 1 1 7 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="she" lc="true" pos="PP" posset="3" wordid="4" pron="sh iy1" spron="sh+iy1|" nosyl="1">
 				she
 				<ws> </ws>
 				<syl val="sh+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="sh" type="onset" phonid="1">^ao~r-sh+iy=l 0 1 1 1 1 NN PP VVN 3 2 4 1 1 1 7 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^r~sh-iy+l=ay 1 0 1 1 1 NN PP VVN 3 2 4 1 1 1 7 LL</phon>
+					<phon val="sh" type="onset" phonid="1">^ao~r-sh+iy=l 0 1 1 1 1 NN PP VVN 3 2 4 1 1 1 7 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^r~sh-iy+l=ay 1 0 1 1 1 NN PP VVN 3 2 4 1 1 1 7 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="lived" lc="true" pos="VVN" posset="1" wordid="5" pron="l ay1 v d" altprons="l ih1 v d, l ay1 v d" spron="l+ay1+v_d|" nosyl="1">
 				lived
 				<ws> </ws>
 				<syl val="l+ay1+v_d" stress="1" sylid="1" nophons="4">
-					<phon val="l" type="onset" phonid="1">^sh~iy-l+ay=v 0 3 1 1 0 PP VVN IN 2 4 2 1 1 1 7 LL</phon>
-					<phon val="ay" type="nucleus" phonid="2">^iy~l-ay+v=d 1 2 1 1 0 PP VVN IN 2 4 2 1 1 1 7 LL</phon>
-					<phon val="v" type="coda" phonid="3">^l~ay-v+d=ih 2 1 1 1 0 PP VVN IN 2 4 2 1 1 1 7 LL</phon>
-					<phon val="d" type="coda" phonid="4">^ay~v-d+ih=n 3 0 1 1 0 PP VVN IN 2 4 2 1 1 1 7 LL</phon>
+					<phon val="l" type="onset" phonid="1">^sh~iy-l+ay=v 0 3 1 1 0 PP VVN IN 2 4 2 1 1 1 7 LH</phon>
+					<phon val="ay" type="nucleus" phonid="2">^iy~l-ay+v=d 1 2 1 1 0 PP VVN IN 2 4 2 1 1 1 7 LH</phon>
+					<phon val="v" type="coda" phonid="3">^l~ay-v+d=ih 2 1 1 1 0 PP VVN IN 2 4 2 1 1 1 7 LH</phon>
+					<phon val="d" type="coda" phonid="4">^ay~v-d+ih=n 3 0 1 1 0 PP VVN IN 2 4 2 1 1 1 7 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="in" lc="true" pos="IN" posset="3" wordid="6" pron="ih0 n" altprons="ih1 n, ih0 n" spron="ih0+n|" nosyl="1">
 				in
 				<ws> </ws>
 				<syl val="ih0+n" stress="0" sylid="1" nophons="2">
-					<phon val="ih" type="nucleus" phonid="1">^v~d-ih+n=p 0 1 1 0 1 VVN IN NN 4 2 4 1 1 2 7 LL</phon>
-					<phon val="n" type="coda" phonid="2">^d~ih-n+p=ao 1 0 1 0 1 VVN IN NN 4 2 4 1 1 2 7 LL</phon>
+					<phon val="ih" type="nucleus" phonid="1">^v~d-ih+n=p 0 1 1 0 1 VVN IN NN 4 2 4 1 1 2 7 LH</phon>
+					<phon val="n" type="coda" phonid="2">^d~ih-n+p=ao 1 0 1 0 1 VVN IN NN 4 2 4 1 1 2 7 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="portsmouth" pstpunc="," lc="true" uc="true" pos="NN" posset="1" wordid="7" pron="p ao1 r t s m ah0 th" spron="p+ao1+r_t|s_m+ah0+th|" nosyl="2">
 				Portsmouth,
 				<ws> </ws>
 				<syl val="p+ao1+r_t" stress="1" sylid="1" nophons="4">
-					<phon val="p" type="onset" phonid="1">^ih~n-p+ao=r 0 3 0 1 0 IN NN PAU 2 4 4 1 2 0 7 LL</phon>
-					<phon val="ao" type="nucleus" phonid="2">^n~p-ao+r=t 1 2 0 1 0 IN NN PAU 2 4 4 1 2 0 7 LL</phon>
-					<phon val="r" type="coda" phonid="3">^p~ao-r+t=s 2 1 0 1 0 IN NN PAU 2 4 4 1 2 0 7 LL</phon>
-					<phon val="t" type="coda" phonid="4">^ao~r-t+s=m 3 0 0 1 0 IN NN PAU 2 4 4 1 2 0 7 LL</phon>
+					<phon val="p" type="onset" phonid="1">^ih~n-p+ao=r 0 3 0 1 0 IN NN PAU 2 4 4 1 2 0 7 LH</phon>
+					<phon val="ao" type="nucleus" phonid="2">^n~p-ao+r=t 1 2 0 1 0 IN NN PAU 2 4 4 1 2 0 7 LH</phon>
+					<phon val="r" type="coda" phonid="3">^p~ao-r+t=s 2 1 0 1 0 IN NN PAU 2 4 4 1 2 0 7 LH</phon>
+					<phon val="t" type="coda" phonid="4">^ao~r-t+s=m 3 0 0 1 0 IN NN PAU 2 4 4 1 2 0 7 LH</phon>
 				</syl>
 				<syl val="s_m+ah0+th" stress="0" sylid="2" nophons="4">
-					<phon val="s" type="onset" phonid="1">^r~t-s+m=ah 0 3 1 0 0 IN NN PAU 4 4 0 1 2 0 7 LL</phon>
-					<phon val="m" type="onset" phonid="2">^t~s-m+ah=th 1 2 1 0 0 IN NN PAU 4 4 0 1 2 0 7 LL</phon>
-					<phon val="ah" type="nucleus" phonid="3">^s~m-ah+th=0 2 1 1 0 0 IN NN PAU 4 4 0 1 2 0 7 LL</phon>
-					<phon val="th" type="coda" phonid="4">^m~ah-th+0=0 3 0 1 0 0 IN NN PAU 4 4 0 1 2 0 7 LL</phon>
+					<phon val="s" type="onset" phonid="1">^r~t-s+m=ah 0 3 1 0 0 IN NN PAU 4 4 0 1 2 0 7 LH</phon>
+					<phon val="m" type="onset" phonid="2">^t~s-m+ah=th 1 2 1 0 0 IN NN PAU 4 4 0 1 2 0 7 LH</phon>
+					<phon val="ah" type="nucleus" phonid="3">^s~m-ah+th=pau 2 1 1 0 0 IN NN PAU 4 4 0 1 2 0 7 LH</phon>
+					<phon val="th" type="coda" phonid="4">^m~ah-th+pau=pau 3 0 1 0 0 IN NN PAU 4 4 0 1 2 0 7 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~th-0+0=0 0 0 0 0 0 NN PAU PAU 4 0 0 2 0 0 7 LL</phon>
+						<phon val="pau">^ah~th-pau+pau=0 0 0 0 0 0 NN PAU PAU 4 0 0 2 0 0 7 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2435,7 +2462,7 @@
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+dh=ah 0 0 0 0 0 PAU PAU DT 0 0 2 0 0 1 6 LH</phon>
+						<phon val="pau">^0~pau-pau+dh=ah 0 0 0 0 0 PAU PAU DT 0 0 2 0 0 1 6 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2443,43 +2470,45 @@
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^0~0-dh+ah=hh 0 1 0 0 1 PAU DT NN 0 2 3 0 1 1 6 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^0~dh-ah+hh=ow 1 0 0 0 1 PAU DT NN 0 2 3 0 1 1 6 LH</phon>
+					<phon val="dh" type="onset" phonid="1">^pau~pau-dh+ah=hh 0 1 0 0 1 PAU DT NN 0 2 3 0 1 1 6 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^pau~dh-ah+hh=ow 1 0 0 0 1 PAU DT NN 0 2 3 0 1 1 6 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="home" lc="true" pos="NN" posset="1" wordid="2" pron="hh ow1 m" spron="hh+ow1+m|" nosyl="1">
 				home
 				<ws> </ws>
 				<syl val="hh+ow1+m" stress="1" sylid="1" nophons="3">
-					<phon val="hh" type="onset" phonid="1">^dh~ah-hh+ow=m 0 2 0 1 1 DT NN IN 2 3 2 1 1 1 6 LH</phon>
-					<phon val="ow" type="nucleus" phonid="2">^ah~hh-ow+m=ah 1 1 0 1 1 DT NN IN 2 3 2 1 1 1 6 LH</phon>
-					<phon val="m" type="coda" phonid="3">^hh~ow-m+ah=v 2 0 0 1 1 DT NN IN 2 3 2 1 1 1 6 LH</phon>
+					<phon val="hh" type="onset" phonid="1">^dh~ah-hh+ow=m 0 2 0 1 1 DT NN IN 2 3 2 1 1 1 6 LL</phon>
+					<phon val="ow" type="nucleus" phonid="2">^ah~hh-ow+m=ah 1 1 0 1 1 DT NN IN 2 3 2 1 1 1 6 LL</phon>
+					<phon val="m" type="coda" phonid="3">^hh~ow-m+ah=v 2 0 0 1 1 DT NN IN 2 3 2 1 1 1 6 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="of" lc="true" pos="IN" posset="3" wordid="3" pron="ah1 v" altprons="ah0 v, ah1 v" spron="ah1+v|" nosyl="1">
 				of
 				<ws> </ws>
 				<syl val="ah1+v" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^ow~m-ah+v=dh 0 1 1 1 0 NN IN DT 3 2 2 1 1 1 6 LH</phon>
-					<phon val="v" type="coda" phonid="2">^m~ah-v+dh=ah 1 0 1 1 0 NN IN DT 3 2 2 1 1 1 6 LH</phon>
+					<phon val="ah" type="nucleus" phonid="1">^ow~m-ah+v=dh 0 1 1 1 0 NN IN DT 3 2 2 1 1 1 6 LL</phon>
+					<phon val="v" type="coda" phonid="2">^m~ah-v+dh=ah 1 0 1 1 0 NN IN DT 3 2 2 1 1 1 6 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="the" lc="true" pos="DT" posset="3" wordid="4" pron="dh ah0" altprons="dh ah1, dh iy0, dh ah0" spron="dh+ah0|" nosyl="1">
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^ah~v-dh+ah=r 0 1 1 0 0 IN DT JJ 2 2 4 1 1 1 6 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^v~dh-ah+r=oy 1 0 1 0 0 IN DT JJ 2 2 4 1 1 1 6 LH</phon>
+					<phon val="dh" type="onset" phonid="1">^ah~v-dh+ah=r 0 1 1 0 1 IN DT JJ 2 2 2 1 1 2 6 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^v~dh-ah+r=oy 1 0 1 0 1 IN DT JJ 2 2 2 1 1 2 6 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="royal" lc="true" uc="true" pos="JJ" posset="1" wordid="5" pron="r oy1 ah0 l" spron="r+oy1+ah0_l|" nosyl="1">
+			<tk norm="royal" lc="true" uc="true" pos="JJ" posset="1" wordid="5" pron="r oy1 ah0 l" spron="r+oy1|ah0+l|" nosyl="2">
 				Royal
 				<ws> </ws>
-				<syl val="r+oy1+ah0_l" stress="0" sylid="1" nophons="4">
-					<phon val="r" type="onset" phonid="1">^dh~ah-r+oy=ah 0 3 0 0 1 DT JJ NN 2 4 2 1 1 2 6 LH</phon>
-					<phon val="oy" type="nucleus" phonid="2">^ah~r-oy+ah=l 1 2 0 0 1 DT JJ NN 2 4 2 1 1 2 6 LH</phon>
-					<phon val="ah" type="nucleus" phonid="3">^r~oy-ah+l=n 2 1 0 0 1 DT JJ NN 2 4 2 1 1 2 6 LH</phon>
-					<phon val="l" type="nucleus" phonid="4">^oy~ah-l+n=ey 3 0 0 0 1 DT JJ NN 2 4 2 1 1 2 6 LH</phon>
+				<syl val="r+oy1" stress="1" sylid="1" nophons="2">
+					<phon val="r" type="onset" phonid="1">^dh~ah-r+oy=ah 0 1 0 1 0 DT JJ NN 2 2 2 1 2 2 6 LL</phon>
+					<phon val="oy" type="nucleus" phonid="2">^ah~r-oy+ah=l 1 0 0 1 0 DT JJ NN 2 2 2 1 2 2 6 LL</phon>
+				</syl>
+				<syl val="ah0+l" stress="0" sylid="2" nophons="2">
+					<phon val="ah" type="nucleus" phonid="1">^r~oy-ah+l=n 0 1 1 0 1 DT JJ NN 2 2 2 1 2 2 6 LL</phon>
+					<phon val="l" type="coda" phonid="2">^oy~ah-l+n=ey 1 0 1 0 1 DT JJ NN 2 2 2 1 2 2 6 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="navy" pstpunc="." lc="true" uc="true" pos="NN" posset="1" wordid="6" pron="n ey1 v iy0" spron="n+ey1|v+iy0|" nosyl="2">
@@ -2487,18 +2516,18 @@
 				<ws col="68">
 </ws>
 				<syl val="n+ey1" stress="1" sylid="1" nophons="2">
-					<phon val="n" type="onset" phonid="1">^ah~l-n+ey=v 0 1 0 1 0 JJ NN PAU 4 2 2 1 2 0 6 LH</phon>
-					<phon val="ey" type="nucleus" phonid="2">^l~n-ey+v=iy 1 0 0 1 0 JJ NN PAU 4 2 2 1 2 0 6 LH</phon>
+					<phon val="n" type="onset" phonid="1">^ah~l-n+ey=v 0 1 0 1 0 JJ NN PAU 2 2 2 2 2 0 6 LL</phon>
+					<phon val="ey" type="nucleus" phonid="2">^l~n-ey+v=iy 1 0 0 1 0 JJ NN PAU 2 2 2 2 2 0 6 LL</phon>
 				</syl>
 				<syl val="v+iy0" stress="0" sylid="2" nophons="2">
-					<phon val="v" type="onset" phonid="1">^n~ey-v+iy=0 0 1 1 0 0 JJ NN PAU 2 2 0 1 2 0 6 LH</phon>
-					<phon val="iy" type="nucleus" phonid="2">^ey~v-iy+0=0 1 0 1 0 0 JJ NN PAU 2 2 0 1 2 0 6 LH</phon>
+					<phon val="v" type="onset" phonid="1">^n~ey-v+iy=pau 0 1 1 0 0 JJ NN PAU 2 2 0 2 2 0 6 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^ey~v-iy+pau=pau 1 0 1 0 0 JJ NN PAU 2 2 0 2 2 0 6 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^v~iy-0+0=0 0 0 0 0 0 NN PAU PAU 2 0 0 2 0 0 6 LH</phon>
+						<phon val="pau">^v~iy-pau+pau=0 0 0 0 0 0 NN PAU PAU 2 0 0 2 0 0 6 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2509,7 +2538,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 17 LL</phon>
+						<phon val="pau">^0~pau-pau+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 17 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2517,8 +2546,8 @@
 				She
 				<ws> </ws>
 				<syl val="sh+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="sh" type="onset" phonid="1">^0~0-sh+iy=hh 0 1 0 1 1 PAU PP VHZ 0 2 3 0 1 1 17 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^0~sh-iy+hh=ae 1 0 0 1 1 PAU PP VHZ 0 2 3 0 1 1 17 LL</phon>
+					<phon val="sh" type="onset" phonid="1">^pau~pau-sh+iy=hh 0 1 0 1 1 PAU PP VHZ 0 2 3 0 1 1 17 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^pau~sh-iy+hh=ae 1 0 0 1 1 PAU PP VHZ 0 2 3 0 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="has" lc="true" pos="VHZ" posset="3" wordid="2" pron="hh ae1 z" altprons="hh ah0 z, hh ae1 z" spron="hh+ae1+z|" nosyl="1">
@@ -2666,20 +2695,20 @@
 					<phon val="uw" type="nucleus" phonid="2">^v~t-uw+ae=k 1 0 1 1 1 DT NN NN 3 2 3 1 4 1 17 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="act" pstpunc="." lc="true" pos="NN" posset="1" wordid="17" pron="ae1 k t" spron="ae1_k_t|" nosyl="1">
+			<tk norm="act" pstpunc="." lc="true" pos="NN" posset="1" wordid="17" pron="ae1 k t" spron="ae1+k_t|" nosyl="1">
 				act.
 				<ws col="73">
 </ws>
-				<syl val="ae1_k_t" stress="1" sylid="1" nophons="3">
+				<syl val="ae1+k_t" stress="1" sylid="1" nophons="3">
 					<phon val="ae" type="nucleus" phonid="1">^t~uw-ae+k=t 0 2 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LL</phon>
-					<phon val="k" type="nucleus" phonid="2">^uw~ae-k+t=0 1 1 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LL</phon>
-					<phon val="t" type="nucleus" phonid="3">^ae~k-t+0=0 2 0 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LL</phon>
+					<phon val="k" type="coda" phonid="2">^uw~ae-k+t=pau 1 1 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LL</phon>
+					<phon val="t" type="coda" phonid="3">^ae~k-t+pau=pau 2 0 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^k~t-0+0=0 0 0 1 0 0 NN PAU PAU 3 0 0 1 0 0 17 LL</phon>
+						<phon val="pau">^k~t-pau+pau=0 0 0 1 0 0 NN PAU PAU 3 0 0 1 0 0 17 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2690,7 +2719,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+ae=t 0 0 0 0 1 PAU PAU IN 0 0 2 0 0 1 19 LL</phon>
+						<phon val="pau">^0~pau-pau+ae=t 0 0 0 0 1 PAU PAU IN 0 0 2 0 0 1 19 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2698,34 +2727,36 @@
 				At
 				<ws> </ws>
 				<syl val="ae1+t" stress="1" sylid="1" nophons="2">
-					<phon val="ae" type="nucleus" phonid="1">^0~0-ae+t=ah 0 1 0 1 0 PAU IN DT 0 2 1 0 1 1 19 LL</phon>
-					<phon val="t" type="coda" phonid="2">^0~ae-t+ah=s 1 0 0 1 0 PAU IN DT 0 2 1 0 1 1 19 LL</phon>
+					<phon val="ae" type="nucleus" phonid="1">^pau~pau-ae+t=ah 0 1 0 1 0 PAU IN DT 0 2 1 0 1 1 19 LL</phon>
+					<phon val="t" type="coda" phonid="2">^pau~ae-t+ah=s 1 0 0 1 0 PAU IN DT 0 2 1 0 1 1 19 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="a" lc="true" pos="DT" posset="3" wordid="2" pron="ah0" altprons="ey1, ah0" spron="ah0|" nosyl="1">
 				a
 				<ws> </ws>
 				<syl val="ah0" stress="0" sylid="1" nophons="1">
-					<phon val="ah" type="nucleus" phonid="1">^ae~t-ah+s=ey 0 0 1 0 0 IN DT NN 2 1 5 1 1 1 19 LL</phon>
+					<phon val="ah" type="nucleus" phonid="1">^ae~t-ah+s=ey 0 0 1 0 1 IN DT NN 2 1 2 1 1 2 19 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="seance" lc="true" foreign="true" pos="NN" posset="1" wordid="3" pron="s ey1 aa0 n s" spron="s+ey1+aa0_n_s|" nosyl="1">
+			<tk norm="seance" lc="true" foreign="true" pos="NN" posset="1" wordid="3" pron="s ey1 aa0 n s" spron="s+ey1|aa0+n_s|" nosyl="2">
 				séance
 				<ws> </ws>
-				<syl val="s+ey1+aa0_n_s" stress="0" sylid="1" nophons="5">
-					<phon val="s" type="onset" phonid="1">^t~ah-s+ey=aa 0 4 0 0 0 DT NN IN 1 5 2 1 1 1 19 LL</phon>
-					<phon val="ey" type="nucleus" phonid="2">^ah~s-ey+aa=n 1 3 0 0 0 DT NN IN 1 5 2 1 1 1 19 LL</phon>
-					<phon val="aa" type="nucleus" phonid="3">^s~ey-aa+n=s 2 2 0 0 0 DT NN IN 1 5 2 1 1 1 19 LL</phon>
-					<phon val="n" type="nucleus" phonid="4">^ey~aa-n+s=ih 3 1 0 0 0 DT NN IN 1 5 2 1 1 1 19 LL</phon>
-					<phon val="s" type="nucleus" phonid="5">^aa~n-s+ih=n 4 0 0 0 0 DT NN IN 1 5 2 1 1 1 19 LL</phon>
+				<syl val="s+ey1" stress="1" sylid="1" nophons="2">
+					<phon val="s" type="onset" phonid="1">^t~ah-s+ey=aa 0 1 0 1 0 DT NN IN 1 2 3 1 2 1 19 LL</phon>
+					<phon val="ey" type="nucleus" phonid="2">^ah~s-ey+aa=n 1 0 0 1 0 DT NN IN 1 2 3 1 2 1 19 LL</phon>
+				</syl>
+				<syl val="aa0+n_s" stress="0" sylid="2" nophons="3">
+					<phon val="aa" type="nucleus" phonid="1">^s~ey-aa+n=s 0 2 1 0 0 DT NN IN 2 3 2 1 2 1 19 LL</phon>
+					<phon val="n" type="coda" phonid="2">^ey~aa-n+s=ih 1 1 1 0 0 DT NN IN 2 3 2 1 2 1 19 LL</phon>
+					<phon val="s" type="coda" phonid="3">^aa~n-s+ih=n 2 0 1 0 0 DT NN IN 2 3 2 1 2 1 19 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="in" lc="true" pos="IN" posset="3" wordid="4" pron="ih0 n" altprons="ih1 n, ih0 n" spron="ih0+n|" nosyl="1">
 				in
 				<ws> </ws>
 				<syl val="ih0+n" stress="0" sylid="1" nophons="2">
-					<phon val="ih" type="nucleus" phonid="1">^n~s-ih+n=w 0 1 0 0 1 NN IN NN 5 2 3 1 1 4 19 LL</phon>
-					<phon val="n" type="coda" phonid="2">^s~ih-n+w=ah 1 0 0 0 1 NN IN NN 5 2 3 1 1 4 19 LL</phon>
+					<phon val="ih" type="nucleus" phonid="1">^n~s-ih+n=w 0 1 0 0 1 NN IN NN 3 2 3 2 1 4 19 LL</phon>
+					<phon val="n" type="coda" phonid="2">^s~ih-n+w=ah 1 0 0 0 1 NN IN NN 3 2 3 2 1 4 19 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="1943" symbols="true" pos="NN" posset="1" wordid="5" pron="w ah1 n n ay1 n f ao1 r th r iy1" spron="w+ah1+n|n+ay1+n|f+ao1+r|th_r+iy1|" nosyl="4">
@@ -2889,14 +2920,14 @@
 				<syl val="p+ih1+r_d" stress="1" sylid="2" nophons="4">
 					<phon val="p" type="onset" phonid="1">^m~ah-p+ih=r 0 3 0 1 0 NN VVN PAU 1 4 0 2 2 0 19 LL</phon>
 					<phon val="ih" type="nucleus" phonid="2">^ah~p-ih+r=d 1 2 0 1 0 NN VVN PAU 1 4 0 2 2 0 19 LL</phon>
-					<phon val="r" type="coda" phonid="3">^p~ih-r+d=0 2 1 0 1 0 NN VVN PAU 1 4 0 2 2 0 19 LL</phon>
-					<phon val="d" type="coda" phonid="4">^ih~r-d+0=0 3 0 0 1 0 NN VVN PAU 1 4 0 2 2 0 19 LL</phon>
+					<phon val="r" type="coda" phonid="3">^p~ih-r+d=pau 2 1 0 1 0 NN VVN PAU 1 4 0 2 2 0 19 LL</phon>
+					<phon val="d" type="coda" phonid="4">^ih~r-d+pau=pau 3 0 0 1 0 NN VVN PAU 1 4 0 2 2 0 19 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^r~d-0+0=0 0 0 1 0 0 VVN PAU PAU 4 0 0 2 0 0 19 LL</phon>
+						<phon val="pau">^r~d-pau+pau=0 0 0 1 0 0 VVN PAU PAU 4 0 0 2 0 0 19 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2907,7 +2938,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+dh=ah 0 0 0 0 0 PAU PAU DT 0 0 2 0 0 1 10 LL</phon>
+						<phon val="pau">^0~pau-pau+dh=ah 0 0 0 0 0 PAU PAU DT 0 0 2 0 0 1 10 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -2915,8 +2946,8 @@
 				The
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^0~0-dh+ah=v 0 1 0 0 1 PAU DT NN 0 2 2 0 1 2 10 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^0~dh-ah+v=eh 1 0 0 0 1 PAU DT NN 0 2 2 0 1 2 10 LL</phon>
+					<phon val="dh" type="onset" phonid="1">^pau~pau-dh+ah=v 0 1 0 0 1 PAU DT NN 0 2 2 0 1 2 10 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^pau~dh-ah+v=eh 1 0 0 0 1 PAU DT NN 0 2 2 0 1 2 10 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="vessel" lc="true" pos="NN" posset="1" wordid="2" pron="v eh1 s ah0 l" spron="v+eh1|s+ah0+l|" nosyl="2">
@@ -3031,14 +3062,14 @@
 					<phon val="ey" type="nucleus" phonid="2">^s~l-ey+t=er 1 0 1 1 0 NNS RBR PAU 5 2 2 1 2 0 10 LL</phon>
 				</syl>
 				<syl val="t+er0" stress="0" sylid="2" nophons="2">
-					<phon val="t" type="onset" phonid="1">^l~ey-t+er=0 0 1 1 0 0 NNS RBR PAU 2 2 0 1 2 0 10 LL</phon>
-					<phon val="er" type="nucleus" phonid="2">^ey~t-er+0=0 1 0 1 0 0 NNS RBR PAU 2 2 0 1 2 0 10 LL</phon>
+					<phon val="t" type="onset" phonid="1">^l~ey-t+er=pau 0 1 1 0 0 NNS RBR PAU 2 2 0 1 2 0 10 LL</phon>
+					<phon val="er" type="nucleus" phonid="2">^ey~t-er+pau=pau 1 0 1 0 0 NNS RBR PAU 2 2 0 1 2 0 10 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^t~er-0+0=0 0 0 0 0 0 RBR PAU PAU 2 0 0 2 0 0 10 LL</phon>
+						<phon val="pau">^t~er-pau+pau=0 0 0 0 0 0 RBR PAU PAU 2 0 0 2 0 0 10 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3049,7 +3080,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 24 LL</phon>
+						<phon val="pau">^0~pau-pau+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 24 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3057,39 +3088,41 @@
 				She
 				<ws> </ws>
 				<syl val="sh+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="sh" type="onset" phonid="1">^0~0-sh+iy=w 0 1 0 1 1 PAU PP VBD 0 2 3 0 1 1 24 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^0~sh-iy+w=aa 1 0 0 1 1 PAU PP VBD 0 2 3 0 1 1 24 LL</phon>
+					<phon val="sh" type="onset" phonid="1">^pau~pau-sh+iy=w 0 1 0 1 1 PAU PP VBD 0 2 3 0 1 1 24 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^pau~sh-iy+w=aa 1 0 0 1 1 PAU PP VBD 0 2 3 0 1 1 24 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="was" lc="true" pos="VBD" posset="3" wordid="2" pron="w aa1 z" altprons="w ah1 z, w ah0 z, w ao1 z, w aa1 z" spron="w+aa1+z|" nosyl="1">
 				was
 				<ws> </ws>
 				<syl val="w+aa1+z" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^sh~iy-w+aa=z 0 2 1 1 1 PP VBD VVN 2 3 2 1 1 2 24 LL</phon>
-					<phon val="aa" type="nucleus" phonid="2">^iy~w-aa+z=er 1 1 1 1 1 PP VBD VVN 2 3 2 1 1 2 24 LL</phon>
-					<phon val="z" type="coda" phonid="3">^w~aa-z+er=eh 2 0 1 1 1 PP VBD VVN 2 3 2 1 1 2 24 LL</phon>
+					<phon val="w" type="onset" phonid="1">^sh~iy-w+aa=z 0 2 1 1 0 PP VBD VVN 2 3 1 1 1 3 24 LL</phon>
+					<phon val="aa" type="nucleus" phonid="2">^iy~w-aa+z=er 1 1 1 1 0 PP VBD VVN 2 3 1 1 1 3 24 LL</phon>
+					<phon val="z" type="coda" phonid="3">^w~aa-z+er=eh 2 0 1 1 0 PP VBD VVN 2 3 1 1 1 3 24 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="arrested" lc="true" pos="VVN" posset="1" wordid="3" pron="er0 eh1 s t ah0 d" altprons="er0 eh1 s t ih0 d, er0 eh1 s t ah0 d" spron="er0+eh1|s_t+ah0+d|" nosyl="2">
+			<tk norm="arrested" lc="true" pos="VVN" posset="1" wordid="3" pron="er0 eh1 s t ah0 d" altprons="er0 eh1 s t ih0 d, er0 eh1 s t ah0 d" spron="er0|eh1|s_t+ah0+d|" nosyl="3">
 				arrested
 				<ws> </ws>
-				<syl val="er0+eh1" stress="1" sylid="1" nophons="2">
-					<phon val="er" type="nucleus" phonid="1">^aa~z-er+eh=s 0 1 1 1 0 VBD VVN IN 3 2 4 1 2 1 24 LL</phon>
-					<phon val="eh" type="nucleus" phonid="2">^z~er-eh+s=t 1 0 1 1 0 VBD VVN IN 3 2 4 1 2 1 24 LL</phon>
+				<syl val="er0" stress="0" sylid="1" nophons="1">
+					<phon val="er" type="nucleus" phonid="1">^aa~z-er+eh=s 0 0 1 0 1 VBD VVN IN 3 1 1 1 3 1 24 LL</phon>
 				</syl>
-				<syl val="s_t+ah0+d" stress="0" sylid="2" nophons="4">
-					<phon val="s" type="onset" phonid="1">^er~eh-s+t=ah 0 3 1 0 0 VBD VVN IN 2 4 2 1 2 1 24 LL</phon>
-					<phon val="t" type="onset" phonid="2">^eh~s-t+ah=d 1 2 1 0 0 VBD VVN IN 2 4 2 1 2 1 24 LL</phon>
-					<phon val="ah" type="nucleus" phonid="3">^s~t-ah+d=ih 2 1 1 0 0 VBD VVN IN 2 4 2 1 2 1 24 LL</phon>
-					<phon val="d" type="coda" phonid="4">^t~ah-d+ih=n 3 0 1 0 0 VBD VVN IN 2 4 2 1 2 1 24 LL</phon>
+				<syl val="eh1" stress="1" sylid="2" nophons="1">
+					<phon val="eh" type="nucleus" phonid="1">^z~er-eh+s=t 0 0 0 1 0 VBD VVN IN 1 1 4 1 3 1 24 LL</phon>
+				</syl>
+				<syl val="s_t+ah0+d" stress="0" sylid="3" nophons="4">
+					<phon val="s" type="onset" phonid="1">^er~eh-s+t=ah 0 3 1 0 0 VBD VVN IN 1 4 2 1 3 1 24 LL</phon>
+					<phon val="t" type="onset" phonid="2">^eh~s-t+ah=d 1 2 1 0 0 VBD VVN IN 1 4 2 1 3 1 24 LL</phon>
+					<phon val="ah" type="nucleus" phonid="3">^s~t-ah+d=ih 2 1 1 0 0 VBD VVN IN 1 4 2 1 3 1 24 LL</phon>
+					<phon val="d" type="coda" phonid="4">^t~ah-d+ih=n 3 0 1 0 0 VBD VVN IN 1 4 2 1 3 1 24 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="in" lc="true" pos="IN" posset="3" wordid="4" pron="ih0 n" altprons="ih1 n, ih0 n" spron="ih0+n|" nosyl="1">
 				in
 				<ws> </ws>
 				<syl val="ih0+n" stress="0" sylid="1" nophons="2">
-					<phon val="ih" type="nucleus" phonid="1">^ah~d-ih+n=w 0 1 0 0 1 VVN IN NN 4 2 3 2 1 4 24 LL</phon>
-					<phon val="n" type="coda" phonid="2">^d~ih-n+w=ah 1 0 0 0 1 VVN IN NN 4 2 3 2 1 4 24 LL</phon>
+					<phon val="ih" type="nucleus" phonid="1">^ah~d-ih+n=w 0 1 0 0 1 VVN IN NN 4 2 3 3 1 4 24 LL</phon>
+					<phon val="n" type="coda" phonid="2">^d~ih-n+w=ah 1 0 0 0 1 VVN IN NN 4 2 3 3 1 4 24 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="1944" symbols="true" pos="NN" posset="1" wordid="5" pron="w ah1 n n ay1 n f ao1 r f ao1 r" spron="w+ah1+n|n+ay1+n|f+ao1+r|f+ao1+r|" nosyl="4">
@@ -3326,14 +3359,14 @@
 				</syl>
 				<syl val="f+ay1+v" stress="1" sylid="5" nophons="3">
 					<phon val="f" type="onset" phonid="1">^r~iy-f+ay=v 0 2 1 1 0 IN NN PAU 3 3 0 1 5 0 24 LL</phon>
-					<phon val="ay" type="nucleus" phonid="2">^iy~f-ay+v=0 1 1 1 1 0 IN NN PAU 3 3 0 1 5 0 24 LL</phon>
-					<phon val="v" type="coda" phonid="3">^f~ay-v+0=0 2 0 1 1 0 IN NN PAU 3 3 0 1 5 0 24 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^iy~f-ay+v=pau 1 1 1 1 0 IN NN PAU 3 3 0 1 5 0 24 LL</phon>
+					<phon val="v" type="coda" phonid="3">^f~ay-v+pau=pau 2 0 1 1 0 IN NN PAU 3 3 0 1 5 0 24 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ay~v-0+0=0 0 0 1 0 0 NN PAU PAU 3 0 0 5 0 0 24 LL</phon>
+						<phon val="pau">^ay~v-pau+pau=0 0 0 1 0 0 NN PAU PAU 3 0 0 5 0 0 24 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3344,7 +3377,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+w=ay 0 0 0 0 1 PAU PAU IN 0 0 3 0 0 1 9 LL</phon>
+						<phon val="pau">^0~pau-pau+w=ay 0 0 0 0 1 PAU PAU IN 0 0 3 0 0 1 9 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3352,8 +3385,8 @@
 				While
 				<ws> </ws>
 				<syl val="w+ay1+l" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^0~0-w+ay=l 0 2 0 1 0 PAU IN IN 0 3 2 0 1 1 9 LL</phon>
-					<phon val="ay" type="nucleus" phonid="2">^0~w-ay+l=ih 1 1 0 1 0 PAU IN IN 0 3 2 0 1 1 9 LL</phon>
+					<phon val="w" type="onset" phonid="1">^pau~pau-w+ay=l 0 2 0 1 0 PAU IN IN 0 3 2 0 1 1 9 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^pau~w-ay+l=ih 1 1 0 1 0 PAU IN IN 0 3 2 0 1 1 9 LL</phon>
 					<phon val="l" type="coda" phonid="3">^w~ay-l+ih=n 2 0 0 1 0 PAU IN IN 0 3 2 0 1 1 9 LL</phon>
 				</syl>
 			</tk>
@@ -3446,14 +3479,14 @@
 				</syl>
 				<syl val="ch+ih0+l" stress="0" sylid="2" nophons="3">
 					<phon val="ch" type="onset" phonid="1">^ch~er-ch+ih=l 0 2 1 0 0 NN NN PAU 2 3 0 2 2 0 9 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^er~ch-ih+l=0 1 1 1 0 0 NN NN PAU 2 3 0 2 2 0 9 LL</phon>
-					<phon val="l" type="coda" phonid="3">^ch~ih-l+0=0 2 0 1 0 0 NN NN PAU 2 3 0 2 2 0 9 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^er~ch-ih+l=pau 1 1 1 0 0 NN NN PAU 2 3 0 2 2 0 9 LL</phon>
+					<phon val="l" type="coda" phonid="3">^ch~ih-l+pau=pau 2 0 1 0 0 NN NN PAU 2 3 0 2 2 0 9 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ih~l-0+0=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 9 LL</phon>
+						<phon val="pau">^ih~l-pau+pau=0 0 0 0 0 0 NN PAU PAU 3 0 0 2 0 0 9 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3464,7 +3497,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+w=eh 0 0 0 0 1 PAU PAU WRB 0 0 3 0 0 1 22 LL</phon>
+						<phon val="pau">^0~pau-pau+w=eh 0 0 0 0 1 PAU PAU WRB 0 0 3 0 0 1 22 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3472,8 +3505,8 @@
 				When
 				<ws> </ws>
 				<syl val="w+eh1+n" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^0~0-w+eh=n 0 2 0 1 1 PAU WRB PP 0 3 2 0 1 1 22 LL</phon>
-					<phon val="eh" type="nucleus" phonid="2">^0~w-eh+n=hh 1 1 0 1 1 PAU WRB PP 0 3 2 0 1 1 22 LL</phon>
+					<phon val="w" type="onset" phonid="1">^pau~pau-w+eh=n 0 2 0 1 1 PAU WRB PP 0 3 2 0 1 1 22 LL</phon>
+					<phon val="eh" type="nucleus" phonid="2">^pau~w-eh+n=hh 1 1 0 1 1 PAU WRB PP 0 3 2 0 1 1 22 LL</phon>
 					<phon val="n" type="coda" phonid="3">^w~eh-n+hh=iy 2 0 0 1 1 PAU WRB PP 0 3 2 0 1 1 22 LL</phon>
 				</syl>
 			</tk>
@@ -3494,36 +3527,40 @@
 					<phon val="z" type="coda" phonid="3">^w~aa-z+aa=r 2 0 1 1 1 PP VBD VVN 2 3 1 1 1 7 22 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="re-elected" lc="true" symbols="true" pos="VVN" posset="1" wordid="4" pron="aa1 r iy1 iy1 eh1 l iy1 s iy1 t iy1 iy1 d iy1" spron="aa1|r+iy1+iy1|eh1|l+iy1|s+iy1|t+iy1+iy1|d+iy1|" nosyl="7">
+			<tk norm="re-elected" lc="true" symbols="true" pos="VVN" posset="1" wordid="4" pron="aa1 r iy1 iy1 eh1 l iy1 s iy1 t iy1 iy1 d iy1" spron="aa1|r+iy1|iy1|eh1|l+iy1|s+iy1|t+iy1|iy1|d+iy1|" nosyl="9">
 				re-elected
 				<ws> </ws>
 				<syl val="aa1" stress="1" sylid="1" nophons="1">
-					<phon val="aa" type="nucleus" phonid="1">^aa~z-aa+r=iy 0 0 1 1 1 VBD VVN IN 3 1 3 1 7 1 22 LL</phon>
+					<phon val="aa" type="nucleus" phonid="1">^aa~z-aa+r=iy 0 0 1 1 1 VBD VVN IN 3 1 2 1 7 1 22 LL</phon>
 				</syl>
-				<syl val="r+iy1+iy1" stress="1" sylid="2" nophons="3">
-					<phon val="r" type="onset" phonid="1">^z~aa-r+iy=iy 0 2 1 1 1 VBD VVN IN 1 3 1 1 7 1 22 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^aa~r-iy+iy=eh 1 1 1 1 1 VBD VVN IN 1 3 1 1 7 1 22 LL</phon>
-					<phon val="iy" type="nucleus" phonid="3">^r~iy-iy+eh=l 2 0 1 1 1 VBD VVN IN 1 3 1 1 7 1 22 LL</phon>
+				<syl val="r+iy1" stress="1" sylid="2" nophons="2">
+					<phon val="r" type="onset" phonid="1">^z~aa-r+iy=iy 0 1 1 1 1 VBD VVN IN 1 2 1 1 7 1 22 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^aa~r-iy+iy=eh 1 0 1 1 1 VBD VVN IN 1 2 1 1 7 1 22 LL</phon>
 				</syl>
-				<syl val="eh1" stress="1" sylid="3" nophons="1">
-					<phon val="eh" type="nucleus" phonid="1">^iy~iy-eh+l=iy 0 0 1 1 1 VBD VVN IN 3 1 2 1 7 1 22 LL</phon>
+				<syl val="iy1" stress="1" sylid="3" nophons="1">
+					<phon val="iy" type="nucleus" phonid="1">^r~iy-iy+eh=l 0 0 1 1 1 VBD VVN IN 2 1 1 1 7 1 22 LL</phon>
 				</syl>
-				<syl val="l+iy1" stress="1" sylid="4" nophons="2">
+				<syl val="eh1" stress="1" sylid="4" nophons="1">
+					<phon val="eh" type="nucleus" phonid="1">^iy~iy-eh+l=iy 0 0 1 1 1 VBD VVN IN 1 1 2 1 7 1 22 LL</phon>
+				</syl>
+				<syl val="l+iy1" stress="1" sylid="5" nophons="2">
 					<phon val="l" type="onset" phonid="1">^iy~eh-l+iy=s 0 1 1 1 1 VBD VVN IN 1 2 2 1 7 1 22 LL</phon>
 					<phon val="iy" type="nucleus" phonid="2">^eh~l-iy+s=iy 1 0 1 1 1 VBD VVN IN 1 2 2 1 7 1 22 LL</phon>
 				</syl>
-				<syl val="s+iy1" stress="1" sylid="5" nophons="2">
-					<phon val="s" type="onset" phonid="1">^l~iy-s+iy=t 0 1 1 1 1 VBD VVN IN 2 2 3 1 7 1 22 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^iy~s-iy+t=iy 1 0 1 1 1 VBD VVN IN 2 2 3 1 7 1 22 LL</phon>
+				<syl val="s+iy1" stress="1" sylid="6" nophons="2">
+					<phon val="s" type="onset" phonid="1">^l~iy-s+iy=t 0 1 1 1 1 VBD VVN IN 2 2 2 1 7 1 22 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~s-iy+t=iy 1 0 1 1 1 VBD VVN IN 2 2 2 1 7 1 22 LL</phon>
 				</syl>
-				<syl val="t+iy1+iy1" stress="1" sylid="6" nophons="3">
-					<phon val="t" type="onset" phonid="1">^s~iy-t+iy=iy 0 2 1 1 1 VBD VVN IN 2 3 2 1 7 1 22 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^iy~t-iy+iy=d 1 1 1 1 1 VBD VVN IN 2 3 2 1 7 1 22 LL</phon>
-					<phon val="iy" type="nucleus" phonid="3">^t~iy-iy+d=iy 2 0 1 1 1 VBD VVN IN 2 3 2 1 7 1 22 LL</phon>
+				<syl val="t+iy1" stress="1" sylid="7" nophons="2">
+					<phon val="t" type="onset" phonid="1">^s~iy-t+iy=iy 0 1 1 1 1 VBD VVN IN 2 2 1 1 7 1 22 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~t-iy+iy=d 1 0 1 1 1 VBD VVN IN 2 2 1 1 7 1 22 LL</phon>
 				</syl>
-				<syl val="d+iy1" stress="1" sylid="7" nophons="2">
-					<phon val="d" type="onset" phonid="1">^iy~iy-d+iy=ih 0 1 1 1 0 VBD VVN IN 3 2 2 1 7 1 22 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ih=n 1 0 1 1 0 VBD VVN IN 3 2 2 1 7 1 22 LL</phon>
+				<syl val="iy1" stress="1" sylid="8" nophons="1">
+					<phon val="iy" type="nucleus" phonid="1">^t~iy-iy+d=iy 0 0 1 1 1 VBD VVN IN 2 1 2 1 7 1 22 LL</phon>
+				</syl>
+				<syl val="d+iy1" stress="1" sylid="9" nophons="2">
+					<phon val="d" type="onset" phonid="1">^iy~iy-d+iy=ih 0 1 1 1 0 VBD VVN IN 1 2 2 1 7 1 22 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ih=n 1 0 1 1 0 VBD VVN IN 1 2 2 1 7 1 22 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="in" lc="true" pos="IN" posset="3" wordid="5" pron="ih0 n" altprons="ih1 n, ih0 n" spron="ih0+n|" nosyl="1">
@@ -3534,7 +3571,7 @@
 					<phon val="n" type="coda" phonid="2">^iy~ih-n+w=ah 1 0 1 0 1 VVN IN NN 2 2 3 7 1 4 22 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="1951" symbols="true" pos="NN" posset="1" wordid="6" pron="w ah1 n n ay1 n f ay1 v w ah1 n" spron="w+ah1+n|n+ay1+n|f+ay1+v|w+ah1+n|" nosyl="4">
+			<tk norm="1951" symbols="true" pos="NN" posset="1" wordid="6" pron="w ah1 n n ay1 n f ay1 v w ah1 n" spron="w+ah1+n|n+ay1+n|f+ay1|v_w+ah1+n|" nosyl="4">
 				1951
 				<ws> </ws>
 				<syl val="w+ah1+n" stress="1" sylid="1" nophons="3">
@@ -3543,27 +3580,27 @@
 					<phon val="n" type="coda" phonid="3">^w~ah-n+n=ay 2 0 0 1 1 IN NN DT 2 3 3 1 4 1 22 LL</phon>
 				</syl>
 				<syl val="n+ay1+n" stress="1" sylid="2" nophons="3">
-					<phon val="n" type="onset" phonid="1">^ah~n-n+ay=n 0 2 1 1 1 IN NN DT 3 3 3 1 4 1 22 LL</phon>
-					<phon val="ay" type="nucleus" phonid="2">^n~n-ay+n=f 1 1 1 1 1 IN NN DT 3 3 3 1 4 1 22 LL</phon>
-					<phon val="n" type="coda" phonid="3">^n~ay-n+f=ay 2 0 1 1 1 IN NN DT 3 3 3 1 4 1 22 LL</phon>
+					<phon val="n" type="onset" phonid="1">^ah~n-n+ay=n 0 2 1 1 1 IN NN DT 3 3 2 1 4 1 22 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^n~n-ay+n=f 1 1 1 1 1 IN NN DT 3 3 2 1 4 1 22 LL</phon>
+					<phon val="n" type="coda" phonid="3">^n~ay-n+f=ay 2 0 1 1 1 IN NN DT 3 3 2 1 4 1 22 LL</phon>
 				</syl>
-				<syl val="f+ay1+v" stress="1" sylid="3" nophons="3">
-					<phon val="f" type="onset" phonid="1">^ay~n-f+ay=v 0 2 1 1 1 IN NN DT 3 3 3 1 4 1 22 LL</phon>
-					<phon val="ay" type="nucleus" phonid="2">^n~f-ay+v=w 1 1 1 1 1 IN NN DT 3 3 3 1 4 1 22 LL</phon>
-					<phon val="v" type="coda" phonid="3">^f~ay-v+w=ah 2 0 1 1 1 IN NN DT 3 3 3 1 4 1 22 LL</phon>
+				<syl val="f+ay1" stress="1" sylid="3" nophons="2">
+					<phon val="f" type="onset" phonid="1">^ay~n-f+ay=v 0 1 1 1 1 IN NN DT 3 2 4 1 4 1 22 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^n~f-ay+v=w 1 0 1 1 1 IN NN DT 3 2 4 1 4 1 22 LL</phon>
 				</syl>
-				<syl val="w+ah1+n" stress="1" sylid="4" nophons="3">
-					<phon val="w" type="onset" phonid="1">^ay~v-w+ah=n 0 2 1 1 0 IN NN DT 3 3 2 1 4 1 22 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^v~w-ah+n=dh 1 1 1 1 0 IN NN DT 3 3 2 1 4 1 22 LL</phon>
-					<phon val="n" type="coda" phonid="3">^w~ah-n+dh=ah 2 0 1 1 0 IN NN DT 3 3 2 1 4 1 22 LL</phon>
+				<syl val="v_w+ah1+n" stress="1" sylid="4" nophons="4">
+					<phon val="v" type="onset" phonid="1">^f~ay-v+w=ah 0 3 1 1 0 IN NN DT 2 4 2 1 4 1 22 LL</phon>
+					<phon val="w" type="onset" phonid="2">^ay~v-w+ah=n 1 2 1 1 0 IN NN DT 2 4 2 1 4 1 22 LL</phon>
+					<phon val="ah" type="nucleus" phonid="3">^v~w-ah+n=dh 2 1 1 1 0 IN NN DT 2 4 2 1 4 1 22 LL</phon>
+					<phon val="n" type="coda" phonid="4">^w~ah-n+dh=ah 3 0 1 1 0 IN NN DT 2 4 2 1 4 1 22 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="the" lc="true" pos="DT" posset="3" wordid="7" pron="dh ah0" altprons="dh ah1, dh iy0, dh ah0" spron="dh+ah0|" nosyl="1">
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^ah~n-dh+ah=w 0 1 1 0 1 NN DT NN 3 2 3 4 1 2 22 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^n~dh-ah+w=ih 1 0 1 0 1 NN DT NN 3 2 3 4 1 2 22 LL</phon>
+					<phon val="dh" type="onset" phonid="1">^ah~n-dh+ah=w 0 1 1 0 1 NN DT NN 4 2 3 4 1 2 22 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^n~dh-ah+w=ih 1 0 1 0 1 NN DT NN 4 2 3 4 1 2 22 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="witchcraft" lc="true" uc="true" pos="NN" posset="1" wordid="8" pron="w ih1 ch k r ae2 f t" spron="w+ih1+ch|k_r+ae2+f_t|" nosyl="2">
@@ -3756,14 +3793,14 @@
 				</syl>
 				<syl val="jh+ah0+n" stress="0" sylid="3" nophons="3">
 					<phon val="jh" type="onset" phonid="1">^l~ih-jh+ah=n 0 2 1 0 0 DT NN PAU 2 3 0 1 3 0 22 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ih~jh-ah+n=0 1 1 1 0 0 DT NN PAU 2 3 0 1 3 0 22 LL</phon>
-					<phon val="n" type="coda" phonid="3">^jh~ah-n+0=0 2 0 1 0 0 DT NN PAU 2 3 0 1 3 0 22 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ih~jh-ah+n=pau 1 1 1 0 0 DT NN PAU 2 3 0 1 3 0 22 LL</phon>
+					<phon val="n" type="coda" phonid="3">^jh~ah-n+pau=pau 2 0 1 0 0 DT NN PAU 2 3 0 1 3 0 22 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~n-0+0=0 0 0 0 0 0 NN PAU PAU 3 0 0 3 0 0 22 LL</phon>
+						<phon val="pau">^ah~n-pau+pau=0 0 0 0 0 0 NN PAU PAU 3 0 0 3 0 0 22 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3774,7 +3811,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+k=ae 0 0 0 0 0 PAU PAU NNS 0 0 3 0 0 3 11 LL</phon>
+						<phon val="pau">^0~pau-pau+k=ae 0 0 0 0 0 PAU PAU NNS 0 0 3 0 0 3 11 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3782,8 +3819,8 @@
 				Campaigners
 				<ws> </ws>
 				<syl val="k+ae0+m" stress="0" sylid="1" nophons="3">
-					<phon val="k" type="onset" phonid="1">^0~0-k+ae=m 0 2 0 0 1 PAU NNS TO 0 3 2 0 3 1 11 LL</phon>
-					<phon val="ae" type="nucleus" phonid="2">^0~k-ae+m=p 1 1 0 0 1 PAU NNS TO 0 3 2 0 3 1 11 LL</phon>
+					<phon val="k" type="onset" phonid="1">^pau~pau-k+ae=m 0 2 0 0 1 PAU NNS TO 0 3 2 0 3 1 11 LL</phon>
+					<phon val="ae" type="nucleus" phonid="2">^pau~k-ae+m=p 1 1 0 0 1 PAU NNS TO 0 3 2 0 3 1 11 LL</phon>
 					<phon val="m" type="coda" phonid="3">^k~ae-m+p=ey 2 0 0 0 1 PAU NNS TO 0 3 2 0 3 1 11 LL</phon>
 				</syl>
 				<syl val="p+ey1" stress="1" sylid="2" nophons="2">
@@ -3808,41 +3845,41 @@
 				pardon
 				<ws> </ws>
 				<syl val="p+aa1+r" stress="1" sylid="1" nophons="3">
-					<phon val="p" type="onset" phonid="1">^t~uw-p+aa=r 0 2 1 1 0 TO NN NNS 2 3 3 1 2 2 11 LL</phon>
-					<phon val="aa" type="nucleus" phonid="2">^uw~p-aa+r=d 1 1 1 1 0 TO NN NNS 2 3 3 1 2 2 11 LL</phon>
-					<phon val="r" type="coda" phonid="3">^p~aa-r+d=ah 2 0 1 1 0 TO NN NNS 2 3 3 1 2 2 11 LL</phon>
+					<phon val="p" type="onset" phonid="1">^t~uw-p+aa=r 0 2 1 1 0 TO NN NN 2 3 3 1 2 2 11 LL</phon>
+					<phon val="aa" type="nucleus" phonid="2">^uw~p-aa+r=d 1 1 1 1 0 TO NN NN 2 3 3 1 2 2 11 LL</phon>
+					<phon val="r" type="coda" phonid="3">^p~aa-r+d=ah 2 0 1 1 0 TO NN NN 2 3 3 1 2 2 11 LL</phon>
 				</syl>
 				<syl val="d+ah0+n" stress="0" sylid="2" nophons="3">
-					<phon val="d" type="onset" phonid="1">^aa~r-d+ah=n 0 2 1 0 1 TO NN NNS 3 3 2 1 2 2 11 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^r~d-ah+n=m 1 1 1 0 1 TO NN NNS 3 3 2 1 2 2 11 LL</phon>
-					<phon val="n" type="coda" phonid="3">^d~ah-n+m=ih 2 0 1 0 1 TO NN NNS 3 3 2 1 2 2 11 LL</phon>
+					<phon val="d" type="onset" phonid="1">^aa~r-d+ah=n 0 2 1 0 0 TO NN NN 3 3 2 1 2 2 11 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^r~d-ah+n=m 1 1 1 0 0 TO NN NN 3 3 2 1 2 2 11 LL</phon>
+					<phon val="n" type="coda" phonid="3">^d~ah-n+m=iy 2 0 1 0 0 TO NN NN 3 3 2 1 2 2 11 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1" wordid="4" pron="m ih1 s ih0 z" spron="m+ih1|s+ih0+z|" nosyl="2">
+			<tk norm="missis" pos="NN" posset="1" wordid="4" pron="m iy0 s iy0 s" lts="true" spron="m+iy0|s+iy0+s|" nosyl="2">
 				Mrs
 				<ws> </ws>
-				<syl val="m+ih1" stress="1" sylid="1" nophons="2">
-					<phon val="m" type="onset" phonid="1">^ah~n-m+ih=s 0 1 0 1 0 NN NNS NN 3 2 3 2 2 2 11 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^n~m-ih+s=ih 1 0 0 1 0 NN NNS NN 3 2 3 2 2 2 11 LL</phon>
+				<syl val="m+iy0" stress="0" sylid="1" nophons="2">
+					<phon val="m" type="onset" phonid="1">^ah~n-m+iy=s 0 1 0 0 0 NN NN NN 3 2 3 2 2 2 11 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^n~m-iy+s=iy 1 0 0 0 0 NN NN NN 3 2 3 2 2 2 11 LL</phon>
 				</syl>
-				<syl val="s+ih0+z" stress="0" sylid="2" nophons="3">
-					<phon val="s" type="onset" phonid="1">^m~ih-s+ih=z 0 2 1 0 1 NN NNS NN 2 3 3 2 2 2 11 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^ih~s-ih+z=d 1 1 1 0 1 NN NNS NN 2 3 3 2 2 2 11 LL</phon>
-					<phon val="z" type="coda" phonid="3">^s~ih-z+d=ah 2 0 1 0 1 NN NNS NN 2 3 3 2 2 2 11 LL</phon>
+				<syl val="s+iy0+s" stress="0" sylid="2" nophons="3">
+					<phon val="s" type="onset" phonid="1">^m~iy-s+iy=s 0 2 0 0 1 NN NN NN 2 3 3 2 2 2 11 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~s-iy+s=d 1 1 0 0 1 NN NN NN 2 3 3 2 2 2 11 LL</phon>
+					<phon val="s" type="coda" phonid="3">^s~iy-s+d=ah 2 0 0 0 1 NN NN NN 2 3 3 2 2 2 11 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="duncan" lc="true" uc="true" pos="NN" posset="1" wordid="5" pron="d ah1 ng k ah0 n" spron="d+ah1+ng|k+ah0+n|" nosyl="2">
 				Duncan
 				<ws> </ws>
 				<syl val="d+ah1+ng" stress="1" sylid="1" nophons="3">
-					<phon val="d" type="onset" phonid="1">^ih~z-d+ah=ng 0 2 0 1 0 NNS NN VHP 3 3 3 2 2 1 11 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^z~d-ah+ng=k 1 1 0 1 0 NNS NN VHP 3 3 3 2 2 1 11 LL</phon>
-					<phon val="ng" type="coda" phonid="3">^d~ah-ng+k=ah 2 0 0 1 0 NNS NN VHP 3 3 3 2 2 1 11 LL</phon>
+					<phon val="d" type="onset" phonid="1">^iy~s-d+ah=ng 0 2 0 1 0 NN NN VHP 3 3 3 2 2 1 11 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^s~d-ah+ng=k 1 1 0 1 0 NN NN VHP 3 3 3 2 2 1 11 LL</phon>
+					<phon val="ng" type="coda" phonid="3">^d~ah-ng+k=ah 2 0 0 1 0 NN NN VHP 3 3 3 2 2 1 11 LL</phon>
 				</syl>
 				<syl val="k+ah0+n" stress="0" sylid="2" nophons="3">
-					<phon val="k" type="onset" phonid="1">^ah~ng-k+ah=n 0 2 1 0 1 NNS NN VHP 3 3 3 2 2 1 11 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ng~k-ah+n=hh 1 1 1 0 1 NNS NN VHP 3 3 3 2 2 1 11 LL</phon>
-					<phon val="n" type="coda" phonid="3">^k~ah-n+hh=ae 2 0 1 0 1 NNS NN VHP 3 3 3 2 2 1 11 LL</phon>
+					<phon val="k" type="onset" phonid="1">^ah~ng-k+ah=n 0 2 1 0 1 NN NN VHP 3 3 3 2 2 1 11 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ng~k-ah+n=hh 1 1 1 0 1 NN NN VHP 3 3 3 2 2 1 11 LL</phon>
+					<phon val="n" type="coda" phonid="3">^k~ah-n+hh=ae 2 0 1 0 1 NN NN VHP 3 3 3 2 2 1 11 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="have" lc="true" pos="VHP" posset="3" wordid="6" pron="hh ae1 v" spron="hh+ae1+v|" nosyl="1">
@@ -3906,14 +3943,14 @@
 				</syl>
 				<syl val="sh+ah0+n" stress="0" sylid="3" nophons="3">
 					<phon val="sh" type="onset" phonid="1">^t~ih-sh+ah=n 0 2 1 0 0 RB NN PAU 2 3 0 2 3 0 11 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ih~sh-ah+n=0 1 1 1 0 0 RB NN PAU 2 3 0 2 3 0 11 LL</phon>
-					<phon val="n" type="coda" phonid="3">^sh~ah-n+0=0 2 0 1 0 0 RB NN PAU 2 3 0 2 3 0 11 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ih~sh-ah+n=pau 1 1 1 0 0 RB NN PAU 2 3 0 2 3 0 11 LL</phon>
+					<phon val="n" type="coda" phonid="3">^sh~ah-n+pau=pau 2 0 1 0 0 RB NN PAU 2 3 0 2 3 0 11 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^ah~n-0+0=0 0 0 0 0 0 NN PAU PAU 3 0 0 3 0 0 11 LL</phon>
+						<phon val="pau">^ah~n-pau+pau=0 0 0 0 0 0 NN PAU PAU 3 0 0 3 0 0 11 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3924,7 +3961,7 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+dh=ah 0 0 0 0 0 PAU PAU DT 0 0 2 0 0 1 11 LL</phon>
+						<phon val="pau">^0~pau-pau+dh=ah 0 0 0 0 0 PAU PAU DT 0 0 2 0 0 1 11 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -3932,8 +3969,8 @@
 				The
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^0~0-dh+ah=k 0 1 0 0 0 PAU DT NN 0 2 3 0 1 2 11 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^0~dh-ah+k=ae 1 0 0 0 0 PAU DT NN 0 2 3 0 1 2 11 LL</phon>
+					<phon val="dh" type="onset" phonid="1">^pau~pau-dh+ah=k 0 1 0 0 0 PAU DT NN 0 2 3 0 1 2 11 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^pau~dh-ah+k=ae 1 0 0 0 0 PAU DT NN 0 2 3 0 1 2 11 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="campaign" lc="true" pos="NN" posset="1" wordid="2" pron="k ae0 m p ey1 n" spron="k+ae0+m|p+ey1+n|" nosyl="2">
@@ -3988,39 +4025,41 @@
 				British
 				<ws> </ws>
 				<syl val="b_r+ih1" stress="1" sylid="1" nophons="3">
-					<phon val="b" type="onset" phonid="1">^dh~ah-b+r=ih 0 2 0 1 0 DT JJ NN 2 3 3 1 2 3 11 LL</phon>
-					<phon val="r" type="onset" phonid="2">^ah~b-r+ih=t 1 1 0 1 0 DT JJ NN 2 3 3 1 2 3 11 LL</phon>
-					<phon val="ih" type="nucleus" phonid="3">^b~r-ih+t=ih 2 0 0 1 0 DT JJ NN 2 3 3 1 2 3 11 LL</phon>
+					<phon val="b" type="onset" phonid="1">^dh~ah-b+r=ih 0 2 0 1 0 DT JJ NN 2 3 3 1 2 4 11 LL</phon>
+					<phon val="r" type="onset" phonid="2">^ah~b-r+ih=t 1 1 0 1 0 DT JJ NN 2 3 3 1 2 4 11 LL</phon>
+					<phon val="ih" type="nucleus" phonid="3">^b~r-ih+t=ih 2 0 0 1 0 DT JJ NN 2 3 3 1 2 4 11 LL</phon>
 				</syl>
 				<syl val="t+ih0+sh" stress="0" sylid="2" nophons="3">
-					<phon val="t" type="onset" phonid="1">^r~ih-t+ih=sh 0 2 1 0 0 DT JJ NN 3 3 2 1 2 3 11 LL</phon>
-					<phon val="ih" type="nucleus" phonid="2">^ih~t-ih+sh=s 1 1 1 0 0 DT JJ NN 3 3 2 1 2 3 11 LL</phon>
-					<phon val="sh" type="coda" phonid="3">^t~ih-sh+s=ah 2 0 1 0 0 DT JJ NN 3 3 2 1 2 3 11 LL</phon>
+					<phon val="t" type="onset" phonid="1">^r~ih-t+ih=sh 0 2 1 0 0 DT JJ NN 3 3 2 1 2 4 11 LL</phon>
+					<phon val="ih" type="nucleus" phonid="2">^ih~t-ih+sh=s 1 1 1 0 0 DT JJ NN 3 3 2 1 2 4 11 LL</phon>
+					<phon val="sh" type="coda" phonid="3">^t~ih-sh+s=ah 2 0 1 0 0 DT JJ NN 3 3 2 1 2 4 11 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="society" lc="true" uc="true" pos="NN" posset="1" wordid="8" pron="s ah0 s ay1 ah0 t iy0" spron="s+ah0|s+ay1+ah0|t+iy0|" nosyl="3">
+			<tk norm="society" lc="true" uc="true" pos="NN" posset="1" wordid="8" pron="s ah0 s ay1 ah0 t iy0" spron="s+ah0|s+ay1|ah0|t+iy0|" nosyl="4">
 				Society
 				<ws> </ws>
 				<syl val="s+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="s" type="onset" phonid="1">^ih~sh-s+ah=s 0 1 0 0 0 JJ NN IN 3 2 3 2 3 1 11 LL</phon>
-					<phon val="ah" type="nucleus" phonid="2">^sh~s-ah+s=ay 1 0 0 0 0 JJ NN IN 3 2 3 2 3 1 11 LL</phon>
+					<phon val="s" type="onset" phonid="1">^ih~sh-s+ah=s 0 1 0 0 1 JJ NN IN 3 2 2 2 4 1 11 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^sh~s-ah+s=ay 1 0 0 0 1 JJ NN IN 3 2 2 2 4 1 11 LL</phon>
 				</syl>
-				<syl val="s+ay1+ah0" stress="0" sylid="2" nophons="3">
-					<phon val="s" type="onset" phonid="1">^s~ah-s+ay=ah 0 2 0 0 0 JJ NN IN 2 3 2 2 3 1 11 LL</phon>
-					<phon val="ay" type="nucleus" phonid="2">^ah~s-ay+ah=t 1 1 0 0 0 JJ NN IN 2 3 2 2 3 1 11 LL</phon>
-					<phon val="ah" type="nucleus" phonid="3">^s~ay-ah+t=iy 2 0 0 0 0 JJ NN IN 2 3 2 2 3 1 11 LL</phon>
+				<syl val="s+ay1" stress="1" sylid="2" nophons="2">
+					<phon val="s" type="onset" phonid="1">^s~ah-s+ay=ah 0 1 0 1 0 JJ NN IN 2 2 1 2 4 1 11 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^ah~s-ay+ah=t 1 0 0 1 0 JJ NN IN 2 2 1 2 4 1 11 LL</phon>
 				</syl>
-				<syl val="t+iy0" stress="0" sylid="3" nophons="2">
-					<phon val="t" type="onset" phonid="1">^ay~ah-t+iy=ah 0 1 0 0 1 JJ NN IN 3 2 2 2 3 1 11 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^ah~t-iy+ah=v 1 0 0 0 1 JJ NN IN 3 2 2 2 3 1 11 LL</phon>
+				<syl val="ah0" stress="0" sylid="3" nophons="1">
+					<phon val="ah" type="nucleus" phonid="1">^s~ay-ah+t=iy 0 0 1 0 0 JJ NN IN 2 1 2 2 4 1 11 LL</phon>
+				</syl>
+				<syl val="t+iy0" stress="0" sylid="4" nophons="2">
+					<phon val="t" type="onset" phonid="1">^ay~ah-t+iy=ah 0 1 0 0 1 JJ NN IN 1 2 2 2 4 1 11 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^ah~t-iy+ah=v 1 0 0 0 1 JJ NN IN 1 2 2 2 4 1 11 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="of" lc="true" pos="IN" posset="3" wordid="9" pron="ah1 v" altprons="ah0 v, ah1 v" spron="ah1+v|" nosyl="1">
 				of
 				<ws> </ws>
 				<syl val="ah1+v" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^t~iy-ah+v=p 0 1 0 1 0 NN IN JJ 2 2 2 3 1 4 11 LL</phon>
-					<phon val="v" type="coda" phonid="2">^iy~ah-v+p=eh 1 0 0 1 0 NN IN JJ 2 2 2 3 1 4 11 LL</phon>
+					<phon val="ah" type="nucleus" phonid="1">^t~iy-ah+v=p 0 1 0 1 0 NN IN JJ 2 2 2 4 1 4 11 LL</phon>
+					<phon val="v" type="coda" phonid="2">^iy~ah-v+p=eh 1 0 0 1 0 NN IN JJ 2 2 2 4 1 4 11 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="paranormal" lc="true" uc="true" pos="JJ" posset="1" wordid="10" pron="p eh0 r ah0 n ao1 r m ah0 l" spron="p+eh0|r+ah0|n+ao1+r|m+ah0+l|" nosyl="4">
@@ -4056,14 +4095,14 @@
 				</syl>
 				<syl val="d+iy0+z" stress="0" sylid="2" nophons="3">
 					<phon val="d" type="onset" phonid="1">^t~ah-d+iy=z 0 2 1 0 0 JJ NNS PAU 3 3 0 4 2 0 11 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^ah~d-iy+z=0 1 1 1 0 0 JJ NNS PAU 3 3 0 4 2 0 11 LL</phon>
-					<phon val="z" type="coda" phonid="3">^d~iy-z+0=0 2 0 1 0 0 JJ NNS PAU 3 3 0 4 2 0 11 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^ah~d-iy+z=pau 1 1 1 0 0 JJ NNS PAU 3 3 0 4 2 0 11 LL</phon>
+					<phon val="z" type="coda" phonid="3">^d~iy-z+pau=pau 2 0 1 0 0 JJ NNS PAU 3 3 0 4 2 0 11 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^iy~z-0+0=0 0 0 0 0 0 NNS PAU PAU 3 0 0 2 0 0 11 LL</phon>
+						<phon val="pau">^iy~z-pau+pau=0 0 0 0 0 0 NNS PAU PAU 3 0 0 2 0 0 11 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -4074,52 +4113,54 @@
 			<break type="4" time="0.2">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+m=iy 0 0 0 0 1 PAU PAU NN 0 0 2 0 0 2 3 LL</phon>
+						<phon val="pau">^0~pau-pau+m=iy 0 0 0 0 1 PAU PAU NN 0 0 2 0 0 3 3 LH</phon>
 					</syl>
 				</tk>
 			</break>
-			<tk norm="medium" lc="true" uc="true" pos="NN" posset="1" wordid="1" pron="m iy1 d iy0 ah0 m" spron="m+iy1|d+iy0+ah0_m|" nosyl="2">
+			<tk norm="medium" lc="true" uc="true" pos="NN" posset="1" wordid="1" pron="m iy1 d iy0 ah0 m" spron="m+iy1|d+iy0|ah0+m|" nosyl="3">
 				Medium
 				<ws> </ws>
 				<syl val="m+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="m" type="onset" phonid="1">^0~0-m+iy=d 0 1 0 1 0 PAU NN NN 0 2 4 0 2 2 3 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^0~m-iy+d=iy 1 0 0 1 0 PAU NN NN 0 2 4 0 2 2 3 LL</phon>
+					<phon val="m" type="onset" phonid="1">^pau~pau-m+iy=d 0 1 0 1 0 PAU NN NN 0 2 2 0 3 2 3 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^pau~m-iy+d=iy 1 0 0 1 0 PAU NN NN 0 2 2 0 3 2 3 LH</phon>
 				</syl>
-				<syl val="d+iy0+ah0_m" stress="0" sylid="2" nophons="4">
-					<phon val="d" type="onset" phonid="1">^m~iy-d+iy=ah 0 3 1 0 1 PAU NN NN 2 4 2 0 2 2 3 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ah=m 1 2 1 0 1 PAU NN NN 2 4 2 0 2 2 3 LL</phon>
-					<phon val="ah" type="nucleus" phonid="3">^d~iy-ah+m=m 2 1 1 0 1 PAU NN NN 2 4 2 0 2 2 3 LL</phon>
-					<phon val="m" type="nucleus" phonid="4">^iy~ah-m+m=eh 3 0 1 0 1 PAU NN NN 2 4 2 0 2 2 3 LL</phon>
+				<syl val="d+iy0" stress="0" sylid="2" nophons="2">
+					<phon val="d" type="onset" phonid="1">^m~iy-d+iy=ah 0 1 1 0 0 PAU NN NN 2 2 2 0 3 2 3 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^iy~d-iy+ah=m 1 0 1 0 0 PAU NN NN 2 2 2 0 3 2 3 LH</phon>
+				</syl>
+				<syl val="ah0+m" stress="0" sylid="3" nophons="2">
+					<phon val="ah" type="nucleus" phonid="1">^d~iy-ah+m=m 0 1 0 0 1 PAU NN NN 2 2 2 0 3 2 3 LH</phon>
+					<phon val="m" type="coda" phonid="2">^iy~ah-m+m=eh 1 0 0 0 1 PAU NN NN 2 2 2 0 3 2 3 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="mary" lc="true" uc="true" pos="NN" posset="1" wordid="2" pron="m eh1 r iy0" spron="m+eh1|r+iy0|" nosyl="2">
 				Mary
 				<ws> </ws>
 				<syl val="m+eh1" stress="1" sylid="1" nophons="2">
-					<phon val="m" type="onset" phonid="1">^ah~m-m+eh=r 0 1 0 1 0 NN NN NN 4 2 2 2 2 2 3 LL</phon>
-					<phon val="eh" type="nucleus" phonid="2">^m~m-eh+r=iy 1 0 0 1 0 NN NN NN 4 2 2 2 2 2 3 LL</phon>
+					<phon val="m" type="onset" phonid="1">^ah~m-m+eh=r 0 1 0 1 0 NN NN NN 2 2 2 3 2 2 3 LH</phon>
+					<phon val="eh" type="nucleus" phonid="2">^m~m-eh+r=iy 1 0 0 1 0 NN NN NN 2 2 2 3 2 2 3 LH</phon>
 				</syl>
 				<syl val="r+iy0" stress="0" sylid="2" nophons="2">
-					<phon val="r" type="onset" phonid="1">^m~eh-r+iy=aa 0 1 1 0 1 NN NN NN 2 2 2 2 2 2 3 LL</phon>
-					<phon val="iy" type="nucleus" phonid="2">^eh~r-iy+aa=r 1 0 1 0 1 NN NN NN 2 2 2 2 2 2 3 LL</phon>
+					<phon val="r" type="onset" phonid="1">^m~eh-r+iy=aa 0 1 1 0 1 NN NN NN 2 2 2 3 2 2 3 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^eh~r-iy+aa=r 1 0 1 0 1 NN NN NN 2 2 2 3 2 2 3 LH</phon>
 				</syl>
 			</tk>
-			<tk norm="armour" pstpunc="," lc="true" uc="true" pos="NN" posset="1" wordid="3" pron="aa1 r m er0" spron="aa1_r|m+er0|" nosyl="2">
+			<tk norm="armour" pstpunc="," lc="true" uc="true" pos="NN" posset="1" wordid="3" pron="aa1 r m er0" spron="aa1+r|m+er0|" nosyl="2">
 				Armour,
 				<ws> </ws>
-				<syl val="aa1_r" stress="1" sylid="1" nophons="2">
-					<phon val="aa" type="nucleus" phonid="1">^r~iy-aa+r=m 0 1 0 1 0 NN NN PAU 2 2 2 2 2 0 3 LL</phon>
-					<phon val="r" type="nucleus" phonid="2">^iy~aa-r+m=er 1 0 0 1 0 NN NN PAU 2 2 2 2 2 0 3 LL</phon>
+				<syl val="aa1+r" stress="1" sylid="1" nophons="2">
+					<phon val="aa" type="nucleus" phonid="1">^r~iy-aa+r=m 0 1 0 1 0 NN NN PAU 2 2 2 2 2 0 3 LH</phon>
+					<phon val="r" type="coda" phonid="2">^iy~aa-r+m=er 1 0 0 1 0 NN NN PAU 2 2 2 2 2 0 3 LH</phon>
 				</syl>
 				<syl val="m+er0" stress="0" sylid="2" nophons="2">
-					<phon val="m" type="onset" phonid="1">^aa~r-m+er=0 0 1 1 0 0 NN NN PAU 2 2 0 2 2 0 3 LL</phon>
-					<phon val="er" type="nucleus" phonid="2">^r~m-er+0=0 1 0 1 0 0 NN NN PAU 2 2 0 2 2 0 3 LL</phon>
+					<phon val="m" type="onset" phonid="1">^aa~r-m+er=pau 0 1 1 0 0 NN NN PAU 2 2 0 2 2 0 3 LH</phon>
+					<phon val="er" type="nucleus" phonid="2">^r~m-er+pau=pau 1 0 1 0 0 NN NN PAU 2 2 0 2 2 0 3 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^m~er-0+0=0 0 0 0 0 0 NN PAU PAU 2 0 0 2 0 0 3 LL</phon>
+						<phon val="pau">^m~er-pau+pau=0 0 0 0 0 0 NN PAU PAU 2 0 0 2 0 0 3 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -4128,7 +4169,7 @@
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+hh=uw 0 0 0 0 1 PAU PAU WP 0 0 2 0 0 1 4 LH</phon>
+						<phon val="pau">^0~pau-pau+hh=uw 0 0 0 0 1 PAU PAU WP 0 0 2 0 0 1 4 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -4136,8 +4177,8 @@
 				who
 				<ws> </ws>
 				<syl val="hh+uw1" stress="1" sylid="1" nophons="2">
-					<phon val="hh" type="onset" phonid="1">^0~0-hh+uw=r 0 1 0 1 1 PAU WP NN 0 2 3 0 1 1 4 LH</phon>
-					<phon val="uw" type="nucleus" phonid="2">^0~hh-uw+r=ow 1 0 0 1 1 PAU WP NN 0 2 3 0 1 1 4 LH</phon>
+					<phon val="hh" type="onset" phonid="1">^pau~pau-hh+uw=r 0 1 0 1 1 PAU WP NN 0 2 3 0 1 1 4 LH</phon>
+					<phon val="uw" type="nucleus" phonid="2">^pau~hh-uw+r=ow 1 0 0 1 1 PAU WP NN 0 2 3 0 1 1 4 LH</phon>
 				</syl>
 			</tk>
 			<tk norm="wrote" lc="true" pos="NN" posset="1" wordid="2" pron="r ow1 t" spron="r+ow1+t|" nosyl="1">
@@ -4153,32 +4194,34 @@
 				her
 				<ws> </ws>
 				<syl val="hh+er0" stress="0" sylid="1" nophons="2">
-					<phon val="hh" type="onset" phonid="1">^ow~t-hh+er=b 0 1 1 0 1 NN PP$ NN 3 2 3 1 1 3 4 LH</phon>
-					<phon val="er" type="nucleus" phonid="2">^t~hh-er+b=ay 1 0 1 0 1 NN PP$ NN 3 2 3 1 1 3 4 LH</phon>
+					<phon val="hh" type="onset" phonid="1">^ow~t-hh+er=b 0 1 1 0 0 NN PP$ NN 3 2 2 1 1 4 4 LH</phon>
+					<phon val="er" type="nucleus" phonid="2">^t~hh-er+b=ay 1 0 1 0 0 NN PP$ NN 3 2 2 1 1 4 4 LH</phon>
 				</syl>
 			</tk>
-			<tk norm="biography" pstpunc="," lc="true" pos="NN" posset="1" wordid="4" pron="b ay0 aa1 g r ah0 f iy0" spron="b+ay0+aa1|g_r+ah0|f+iy0|" nosyl="3">
+			<tk norm="biography" pstpunc="," lc="true" pos="NN" posset="1" wordid="4" pron="b ay0 aa1 g r ah0 f iy0" spron="b+ay0|aa1|g_r+ah0|f+iy0|" nosyl="4">
 				biography,
 				<ws> </ws>
-				<syl val="b+ay0+aa1" stress="1" sylid="1" nophons="3">
-					<phon val="b" type="onset" phonid="1">^hh~er-b+ay=aa 0 2 0 1 0 PP$ NN PAU 2 3 3 1 3 0 4 LH</phon>
-					<phon val="ay" type="nucleus" phonid="2">^er~b-ay+aa=g 1 1 0 1 0 PP$ NN PAU 2 3 3 1 3 0 4 LH</phon>
-					<phon val="aa" type="nucleus" phonid="3">^b~ay-aa+g=r 2 0 0 1 0 PP$ NN PAU 2 3 3 1 3 0 4 LH</phon>
+				<syl val="b+ay0" stress="0" sylid="1" nophons="2">
+					<phon val="b" type="onset" phonid="1">^hh~er-b+ay=aa 0 1 0 0 1 PP$ NN PAU 2 2 1 1 4 0 4 LH</phon>
+					<phon val="ay" type="nucleus" phonid="2">^er~b-ay+aa=g 1 0 0 0 1 PP$ NN PAU 2 2 1 1 4 0 4 LH</phon>
 				</syl>
-				<syl val="g_r+ah0" stress="0" sylid="2" nophons="3">
-					<phon val="g" type="onset" phonid="1">^ay~aa-g+r=ah 0 2 1 0 0 PP$ NN PAU 3 3 2 1 3 0 4 LH</phon>
-					<phon val="r" type="onset" phonid="2">^aa~g-r+ah=f 1 1 1 0 0 PP$ NN PAU 3 3 2 1 3 0 4 LH</phon>
-					<phon val="ah" type="nucleus" phonid="3">^g~r-ah+f=iy 2 0 1 0 0 PP$ NN PAU 3 3 2 1 3 0 4 LH</phon>
+				<syl val="aa1" stress="1" sylid="2" nophons="1">
+					<phon val="aa" type="nucleus" phonid="1">^b~ay-aa+g=r 0 0 0 1 0 PP$ NN PAU 2 1 3 1 4 0 4 LH</phon>
 				</syl>
-				<syl val="f+iy0" stress="0" sylid="3" nophons="2">
-					<phon val="f" type="onset" phonid="1">^r~ah-f+iy=0 0 1 0 0 0 PP$ NN PAU 3 2 0 1 3 0 4 LH</phon>
-					<phon val="iy" type="nucleus" phonid="2">^ah~f-iy+0=0 1 0 0 0 0 PP$ NN PAU 3 2 0 1 3 0 4 LH</phon>
+				<syl val="g_r+ah0" stress="0" sylid="3" nophons="3">
+					<phon val="g" type="onset" phonid="1">^ay~aa-g+r=ah 0 2 1 0 0 PP$ NN PAU 1 3 2 1 4 0 4 LH</phon>
+					<phon val="r" type="onset" phonid="2">^aa~g-r+ah=f 1 1 1 0 0 PP$ NN PAU 1 3 2 1 4 0 4 LH</phon>
+					<phon val="ah" type="nucleus" phonid="3">^g~r-ah+f=iy 2 0 1 0 0 PP$ NN PAU 1 3 2 1 4 0 4 LH</phon>
+				</syl>
+				<syl val="f+iy0" stress="0" sylid="4" nophons="2">
+					<phon val="f" type="onset" phonid="1">^r~ah-f+iy=pau 0 1 0 0 0 PP$ NN PAU 3 2 0 1 4 0 4 LH</phon>
+					<phon val="iy" type="nucleus" phonid="2">^ah~f-iy+pau=pau 1 0 0 0 0 PP$ NN PAU 3 2 0 1 4 0 4 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^f~iy-0+0=0 0 0 0 0 0 NN PAU PAU 2 0 0 3 0 0 4 LH</phon>
+						<phon val="pau">^f~iy-pau+pau=0 0 0 0 0 0 NN PAU PAU 2 0 0 4 0 0 4 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -4187,7 +4230,7 @@
 			<break type="3" time="0.1">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+s=eh 0 0 0 0 1 PAU PAU VVD 0 0 3 0 0 1 1 LH</phon>
+						<phon val="pau">^0~pau-pau+s=eh 0 0 0 0 1 PAU PAU VVD 0 0 3 0 0 1 1 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -4195,15 +4238,15 @@
 				said:
 				<ws> </ws>
 				<syl val="s+eh1+d" stress="1" sylid="1" nophons="3">
-					<phon val="s" type="onset" phonid="1">^0~0-s+eh=d 0 2 0 1 0 PAU VVD PAU 0 3 0 0 1 0 1 LH</phon>
-					<phon val="eh" type="nucleus" phonid="2">^0~s-eh+d=0 1 1 0 1 0 PAU VVD PAU 0 3 0 0 1 0 1 LH</phon>
-					<phon val="d" type="coda" phonid="3">^s~eh-d+0=0 2 0 0 1 0 PAU VVD PAU 0 3 0 0 1 0 1 LH</phon>
+					<phon val="s" type="onset" phonid="1">^pau~pau-s+eh=d 0 2 0 1 0 PAU VVD PAU 0 3 0 0 1 0 1 LH</phon>
+					<phon val="eh" type="nucleus" phonid="2">^pau~s-eh+d=pau 1 1 0 1 0 PAU VVD PAU 0 3 0 0 1 0 1 LH</phon>
+					<phon val="d" type="coda" phonid="3">^s~eh-d+pau=pau 2 0 0 1 0 PAU VVD PAU 0 3 0 0 1 0 1 LH</phon>
 				</syl>
 			</tk>
 			<break type="3" time="0.15">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^eh~d-0+0=0 0 0 1 0 0 VVD PAU PAU 3 0 0 1 0 0 1 LH</phon>
+						<phon val="pau">^eh~d-pau+pau=0 0 0 1 0 0 VVD PAU PAU 3 0 0 1 0 0 1 LH</phon>
 					</syl>
 				</tk>
 			</break>
@@ -4212,7 +4255,7 @@
 			<break type="3" time="0.15">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^0~0-0+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 17 LH</phon>
+						<phon val="pau">^0~pau-pau+sh=iy 0 0 0 0 1 PAU PAU PP 0 0 2 0 0 1 17 LL</phon>
 					</syl>
 				</tk>
 			</break>
@@ -4220,169 +4263,169 @@
 				"She
 				<ws> </ws>
 				<syl val="sh+iy1" stress="1" sylid="1" nophons="2">
-					<phon val="sh" type="onset" phonid="1">^0~0-sh+iy=hh 0 1 0 1 1 PAU PP VHZ 0 2 3 0 1 1 17 LH</phon>
-					<phon val="iy" type="nucleus" phonid="2">^0~sh-iy+hh=ae 1 0 0 1 1 PAU PP VHZ 0 2 3 0 1 1 17 LH</phon>
+					<phon val="sh" type="onset" phonid="1">^pau~pau-sh+iy=hh 0 1 0 1 1 PAU PP VHZ 0 2 3 0 1 1 17 LL</phon>
+					<phon val="iy" type="nucleus" phonid="2">^pau~sh-iy+hh=ae 1 0 0 1 1 PAU PP VHZ 0 2 3 0 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="has" lc="true" pos="VHZ" posset="3" wordid="2" pron="hh ae1 z" altprons="hh ah0 z, hh ae1 z" spron="hh+ae1+z|" nosyl="1">
 				has
 				<ws> </ws>
 				<syl val="hh+ae1+z" stress="1" sylid="1" nophons="3">
-					<phon val="hh" type="onset" phonid="1">^sh~iy-hh+ae=z 0 2 1 1 1 PP VHZ NN 2 3 3 1 1 1 17 LH</phon>
-					<phon val="ae" type="nucleus" phonid="2">^iy~hh-ae+z=p 1 1 1 1 1 PP VHZ NN 2 3 3 1 1 1 17 LH</phon>
-					<phon val="z" type="coda" phonid="3">^hh~ae-z+p=uh 2 0 1 1 1 PP VHZ NN 2 3 3 1 1 1 17 LH</phon>
+					<phon val="hh" type="onset" phonid="1">^sh~iy-hh+ae=z 0 2 1 1 1 PP VHZ NN 2 3 3 1 1 1 17 LL</phon>
+					<phon val="ae" type="nucleus" phonid="2">^iy~hh-ae+z=p 1 1 1 1 1 PP VHZ NN 2 3 3 1 1 1 17 LL</phon>
+					<phon val="z" type="coda" phonid="3">^hh~ae-z+p=uh 2 0 1 1 1 PP VHZ NN 2 3 3 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="put" lc="true" pos="NN" posset="1" wordid="3" pron="p uh1 t" spron="p+uh1+t|" nosyl="1">
 				put
 				<ws> </ws>
 				<syl val="p+uh1+t" stress="1" sylid="1" nophons="3">
-					<phon val="p" type="onset" phonid="1">^ae~z-p+uh=t 0 2 1 1 1 VHZ NN PP 3 3 2 1 1 1 17 LH</phon>
-					<phon val="uh" type="nucleus" phonid="2">^z~p-uh+t=ah 1 1 1 1 1 VHZ NN PP 3 3 2 1 1 1 17 LH</phon>
-					<phon val="t" type="coda" phonid="3">^p~uh-t+ah=s 2 0 1 1 1 VHZ NN PP 3 3 2 1 1 1 17 LH</phon>
+					<phon val="p" type="onset" phonid="1">^ae~z-p+uh=t 0 2 1 1 1 VHZ NN PP 3 3 2 1 1 1 17 LL</phon>
+					<phon val="uh" type="nucleus" phonid="2">^z~p-uh+t=ah 1 1 1 1 1 VHZ NN PP 3 3 2 1 1 1 17 LL</phon>
+					<phon val="t" type="coda" phonid="3">^p~uh-t+ah=s 2 0 1 1 1 VHZ NN PP 3 3 2 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="us" lc="true" pos="PP" posset="3" wordid="4" pron="ah1 s" altprons="y uw1 eh1 s, ah1 s" spron="ah1+s|" nosyl="1">
 				us
 				<ws> </ws>
 				<syl val="ah1+s" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^uh~t-ah+s=aa 0 1 1 1 1 NN PP RB 3 2 2 1 1 1 17 LH</phon>
-					<phon val="s" type="coda" phonid="2">^t~ah-s+aa=n 1 0 1 1 1 NN PP RB 3 2 2 1 1 1 17 LH</phon>
+					<phon val="ah" type="nucleus" phonid="1">^uh~t-ah+s=aa 0 1 1 1 1 NN PP RB 3 2 2 1 1 1 17 LL</phon>
+					<phon val="s" type="coda" phonid="2">^t~ah-s+aa=n 1 0 1 1 1 NN PP RB 3 2 2 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="on" lc="true" pos="RB" posset="1" wordid="5" pron="aa1 n" altprons="ao1 n, aa1 n" spron="aa1+n|" nosyl="1">
 				on
 				<ws> </ws>
 				<syl val="aa1+n" stress="1" sylid="1" nophons="2">
-					<phon val="aa" type="nucleus" phonid="1">^ah~s-aa+n=dh 0 1 1 1 0 PP RB DT 2 2 2 1 1 1 17 LH</phon>
-					<phon val="n" type="coda" phonid="2">^s~aa-n+dh=ah 1 0 1 1 0 PP RB DT 2 2 2 1 1 1 17 LH</phon>
+					<phon val="aa" type="nucleus" phonid="1">^ah~s-aa+n=dh 0 1 1 1 0 PP RB DT 2 2 2 1 1 1 17 LL</phon>
+					<phon val="n" type="coda" phonid="2">^s~aa-n+dh=ah 1 0 1 1 0 PP RB DT 2 2 2 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="the" lc="true" pos="DT" posset="3" wordid="6" pron="dh ah0" altprons="dh ah1, dh iy0, dh ah0" spron="dh+ah0|" nosyl="1">
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^aa~n-dh+ah=r 0 1 1 0 1 RB DT NN 2 2 3 1 1 1 17 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^n~dh-ah+r=ay 1 0 1 0 1 RB DT NN 2 2 3 1 1 1 17 LH</phon>
+					<phon val="dh" type="onset" phonid="1">^aa~n-dh+ah=r 0 1 1 0 1 RB DT NN 2 2 3 1 1 1 17 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^n~dh-ah+r=ay 1 0 1 0 1 RB DT NN 2 2 3 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="right" lc="true" pos="NN" posset="1" wordid="7" pron="r ay1 t" spron="r+ay1+t|" nosyl="1">
 				right
 				<ws> </ws>
 				<syl val="r+ay1+t" stress="1" sylid="1" nophons="3">
-					<phon val="r" type="onset" phonid="1">^dh~ah-r+ay=t 0 2 0 1 1 DT NN NN 2 3 3 1 1 1 17 LH</phon>
-					<phon val="ay" type="nucleus" phonid="2">^ah~r-ay+t=s 1 1 0 1 1 DT NN NN 2 3 3 1 1 1 17 LH</phon>
-					<phon val="t" type="coda" phonid="3">^r~ay-t+s=ay 2 0 0 1 1 DT NN NN 2 3 3 1 1 1 17 LH</phon>
+					<phon val="r" type="onset" phonid="1">^dh~ah-r+ay=t 0 2 0 1 1 DT NN NN 2 3 3 1 1 1 17 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^ah~r-ay+t=s 1 1 0 1 1 DT NN NN 2 3 3 1 1 1 17 LL</phon>
+					<phon val="t" type="coda" phonid="3">^r~ay-t+s=ay 2 0 0 1 1 DT NN NN 2 3 3 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="side" lc="true" pos="NN" posset="1" wordid="8" pron="s ay1 d" spron="s+ay1+d|" nosyl="1">
 				side
 				<ws> </ws>
 				<syl val="s+ay1+d" stress="1" sylid="1" nophons="3">
-					<phon val="s" type="onset" phonid="1">^ay~t-s+ay=d 0 2 1 1 1 NN NN IN 3 3 2 1 1 1 17 LH</phon>
-					<phon val="ay" type="nucleus" phonid="2">^t~s-ay+d=ah 1 1 1 1 1 NN NN IN 3 3 2 1 1 1 17 LH</phon>
-					<phon val="d" type="coda" phonid="3">^s~ay-d+ah=v 2 0 1 1 1 NN NN IN 3 3 2 1 1 1 17 LH</phon>
+					<phon val="s" type="onset" phonid="1">^ay~t-s+ay=d 0 2 1 1 1 NN NN IN 3 3 2 1 1 1 17 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^t~s-ay+d=ah 1 1 1 1 1 NN NN IN 3 3 2 1 1 1 17 LL</phon>
+					<phon val="d" type="coda" phonid="3">^s~ay-d+ah=v 2 0 1 1 1 NN NN IN 3 3 2 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="of" lc="true" pos="IN" posset="3" wordid="9" pron="ah1 v" altprons="ah0 v, ah1 v" spron="ah1+v|" nosyl="1">
 				of
 				<ws> </ws>
 				<syl val="ah1+v" stress="1" sylid="1" nophons="2">
-					<phon val="ah" type="nucleus" phonid="1">^ay~d-ah+v=dh 0 1 1 1 0 NN IN DT 3 2 2 1 1 1 17 LH</phon>
-					<phon val="v" type="coda" phonid="2">^d~ah-v+dh=ah 1 0 1 1 0 NN IN DT 3 2 2 1 1 1 17 LH</phon>
+					<phon val="ah" type="nucleus" phonid="1">^ay~d-ah+v=dh 0 1 1 1 0 NN IN DT 3 2 2 1 1 1 17 LL</phon>
+					<phon val="v" type="coda" phonid="2">^d~ah-v+dh=ah 1 0 1 1 0 NN IN DT 3 2 2 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="the" lc="true" pos="DT" posset="3" wordid="10" pron="dh ah0" altprons="dh ah1, dh iy0, dh ah0" spron="dh+ah0|" nosyl="1">
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^ah~v-dh+ah=l 0 1 1 0 1 IN DT NN 2 2 2 1 1 1 17 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^v~dh-ah+l=ao 1 0 1 0 1 IN DT NN 2 2 2 1 1 1 17 LH</phon>
+					<phon val="dh" type="onset" phonid="1">^ah~v-dh+ah=l 0 1 1 0 1 IN DT NN 2 2 2 1 1 1 17 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^v~dh-ah+l=ao 1 0 1 0 1 IN DT NN 2 2 2 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="law" lc="true" pos="NN" posset="1" wordid="11" pron="l ao1" altprons="l aa1, l ao1" spron="l+ao1|" nosyl="1">
 				law
 				<ws> </ws>
 				<syl val="l+ao1" stress="1" sylid="1" nophons="2">
-					<phon val="l" type="onset" phonid="1">^dh~ah-l+ao=b 0 1 0 1 1 DT NN IN 2 2 2 1 1 1 17 LH</phon>
-					<phon val="ao" type="nucleus" phonid="2">^ah~l-ao+b=ay 1 0 0 1 1 DT NN IN 2 2 2 1 1 1 17 LH</phon>
+					<phon val="l" type="onset" phonid="1">^dh~ah-l+ao=b 0 1 0 1 1 DT NN IN 2 2 2 1 1 1 17 LL</phon>
+					<phon val="ao" type="nucleus" phonid="2">^ah~l-ao+b=ay 1 0 0 1 1 DT NN IN 2 2 2 1 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="by" lc="true" pos="IN" posset="3" wordid="12" pron="b ay1" spron="b+ay1|" nosyl="1">
 				by
 				<ws> </ws>
 				<syl val="b+ay1" stress="1" sylid="1" nophons="2">
-					<phon val="b" type="onset" phonid="1">^l~ao-b+ay=b 0 1 1 1 1 NN IN VVG 2 2 4 1 1 2 17 LH</phon>
-					<phon val="ay" type="nucleus" phonid="2">^ao~b-ay+b=r 1 0 1 1 1 NN IN VVG 2 2 4 1 1 2 17 LH</phon>
+					<phon val="b" type="onset" phonid="1">^l~ao-b+ay=b 0 1 1 1 1 NN IN VVG 2 2 4 1 1 2 17 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^ao~b-ay+b=r 1 0 1 1 1 NN IN VVG 2 2 4 1 1 2 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="bringing" lc="true" pos="VVG" posset="1" wordid="13" pron="b r ih1 ng ih0 ng" spron="b_r+ih1+ng|ih0+ng|" nosyl="2">
 				bringing
 				<ws> </ws>
 				<syl val="b_r+ih1+ng" stress="1" sylid="1" nophons="4">
-					<phon val="b" type="onset" phonid="1">^b~ay-b+r=ih 0 3 1 1 0 IN VVG IN 2 4 2 1 2 1 17 LH</phon>
-					<phon val="r" type="onset" phonid="2">^ay~b-r+ih=ng 1 2 1 1 0 IN VVG IN 2 4 2 1 2 1 17 LH</phon>
-					<phon val="ih" type="nucleus" phonid="3">^b~r-ih+ng=ih 2 1 1 1 0 IN VVG IN 2 4 2 1 2 1 17 LH</phon>
-					<phon val="ng" type="coda" phonid="4">^r~ih-ng+ih=ng 3 0 1 1 0 IN VVG IN 2 4 2 1 2 1 17 LH</phon>
+					<phon val="b" type="onset" phonid="1">^b~ay-b+r=ih 0 3 1 1 0 IN VVG IN 2 4 2 1 2 1 17 LL</phon>
+					<phon val="r" type="onset" phonid="2">^ay~b-r+ih=ng 1 2 1 1 0 IN VVG IN 2 4 2 1 2 1 17 LL</phon>
+					<phon val="ih" type="nucleus" phonid="3">^b~r-ih+ng=ih 2 1 1 1 0 IN VVG IN 2 4 2 1 2 1 17 LL</phon>
+					<phon val="ng" type="coda" phonid="4">^r~ih-ng+ih=ng 3 0 1 1 0 IN VVG IN 2 4 2 1 2 1 17 LL</phon>
 				</syl>
 				<syl val="ih0+ng" stress="0" sylid="2" nophons="2">
-					<phon val="ih" type="nucleus" phonid="1">^ih~ng-ih+ng=ih 0 1 1 0 0 IN VVG IN 4 2 2 1 2 1 17 LH</phon>
-					<phon val="ng" type="coda" phonid="2">^ng~ih-ng+ih=n 1 0 1 0 0 IN VVG IN 4 2 2 1 2 1 17 LH</phon>
+					<phon val="ih" type="nucleus" phonid="1">^ih~ng-ih+ng=ih 0 1 1 0 0 IN VVG IN 4 2 2 1 2 1 17 LL</phon>
+					<phon val="ng" type="coda" phonid="2">^ng~ih-ng+ih=n 1 0 1 0 0 IN VVG IN 4 2 2 1 2 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="in" lc="true" pos="IN" posset="3" wordid="14" pron="ih0 n" altprons="ih1 n, ih0 n" spron="ih0+n|" nosyl="1">
 				in
 				<ws> </ws>
 				<syl val="ih0+n" stress="0" sylid="1" nophons="2">
-					<phon val="ih" type="nucleus" phonid="1">^ih~ng-ih+n=dh 0 1 0 0 0 VVG IN DT 2 2 2 2 1 1 17 LH</phon>
-					<phon val="n" type="coda" phonid="2">^ng~ih-n+dh=ah 1 0 0 0 0 VVG IN DT 2 2 2 2 1 1 17 LH</phon>
+					<phon val="ih" type="nucleus" phonid="1">^ih~ng-ih+n=dh 0 1 0 0 0 VVG IN DT 2 2 2 2 1 1 17 LL</phon>
+					<phon val="n" type="coda" phonid="2">^ng~ih-n+dh=ah 1 0 0 0 0 VVG IN DT 2 2 2 2 1 1 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="the" lc="true" pos="DT" posset="3" wordid="15" pron="dh ah0" altprons="dh ah1, dh iy0, dh ah0" spron="dh+ah0|" nosyl="1">
 				the
 				<ws> </ws>
 				<syl val="dh+ah0" stress="0" sylid="1" nophons="2">
-					<phon val="dh" type="onset" phonid="1">^ih~n-dh+ah=w 0 1 0 0 1 IN DT NN 2 2 3 1 1 4 17 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^n~dh-ah+w=ah 1 0 0 0 1 IN DT NN 2 2 3 1 1 4 17 LH</phon>
+					<phon val="dh" type="onset" phonid="1">^ih~n-dh+ah=w 0 1 0 0 1 IN DT NN 2 2 3 1 1 4 17 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^n~dh-ah+w=ah 1 0 0 0 1 IN DT NN 2 2 3 1 1 4 17 LL</phon>
 				</syl>
 			</tk>
 			<tk norm="1952" symbols="true" pos="NN" posset="1" wordid="16" pron="w ah1 n n ay1 n f ay1 v t uw1" spron="w+ah1+n|n+ay1+n|f+ay1+v|t+uw1|" nosyl="4">
 				1952
 				<ws> </ws>
 				<syl val="w+ah1+n" stress="1" sylid="1" nophons="3">
-					<phon val="w" type="onset" phonid="1">^dh~ah-w+ah=n 0 2 0 1 1 DT NN NN 2 3 3 1 4 1 17 LH</phon>
-					<phon val="ah" type="nucleus" phonid="2">^ah~w-ah+n=n 1 1 0 1 1 DT NN NN 2 3 3 1 4 1 17 LH</phon>
-					<phon val="n" type="coda" phonid="3">^w~ah-n+n=ay 2 0 0 1 1 DT NN NN 2 3 3 1 4 1 17 LH</phon>
+					<phon val="w" type="onset" phonid="1">^dh~ah-w+ah=n 0 2 0 1 1 DT NN NN 2 3 3 1 4 1 17 LL</phon>
+					<phon val="ah" type="nucleus" phonid="2">^ah~w-ah+n=n 1 1 0 1 1 DT NN NN 2 3 3 1 4 1 17 LL</phon>
+					<phon val="n" type="coda" phonid="3">^w~ah-n+n=ay 2 0 0 1 1 DT NN NN 2 3 3 1 4 1 17 LL</phon>
 				</syl>
 				<syl val="n+ay1+n" stress="1" sylid="2" nophons="3">
-					<phon val="n" type="onset" phonid="1">^ah~n-n+ay=n 0 2 1 1 1 DT NN NN 3 3 3 1 4 1 17 LH</phon>
-					<phon val="ay" type="nucleus" phonid="2">^n~n-ay+n=f 1 1 1 1 1 DT NN NN 3 3 3 1 4 1 17 LH</phon>
-					<phon val="n" type="coda" phonid="3">^n~ay-n+f=ay 2 0 1 1 1 DT NN NN 3 3 3 1 4 1 17 LH</phon>
+					<phon val="n" type="onset" phonid="1">^ah~n-n+ay=n 0 2 1 1 1 DT NN NN 3 3 3 1 4 1 17 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^n~n-ay+n=f 1 1 1 1 1 DT NN NN 3 3 3 1 4 1 17 LL</phon>
+					<phon val="n" type="coda" phonid="3">^n~ay-n+f=ay 2 0 1 1 1 DT NN NN 3 3 3 1 4 1 17 LL</phon>
 				</syl>
 				<syl val="f+ay1+v" stress="1" sylid="3" nophons="3">
-					<phon val="f" type="onset" phonid="1">^ay~n-f+ay=v 0 2 1 1 1 DT NN NN 3 3 2 1 4 1 17 LH</phon>
-					<phon val="ay" type="nucleus" phonid="2">^n~f-ay+v=t 1 1 1 1 1 DT NN NN 3 3 2 1 4 1 17 LH</phon>
-					<phon val="v" type="coda" phonid="3">^f~ay-v+t=uw 2 0 1 1 1 DT NN NN 3 3 2 1 4 1 17 LH</phon>
+					<phon val="f" type="onset" phonid="1">^ay~n-f+ay=v 0 2 1 1 1 DT NN NN 3 3 2 1 4 1 17 LL</phon>
+					<phon val="ay" type="nucleus" phonid="2">^n~f-ay+v=t 1 1 1 1 1 DT NN NN 3 3 2 1 4 1 17 LL</phon>
+					<phon val="v" type="coda" phonid="3">^f~ay-v+t=uw 2 0 1 1 1 DT NN NN 3 3 2 1 4 1 17 LL</phon>
 				</syl>
 				<syl val="t+uw1" stress="1" sylid="4" nophons="2">
-					<phon val="t" type="onset" phonid="1">^ay~v-t+uw=ae 0 1 1 1 1 DT NN NN 3 2 3 1 4 1 17 LH</phon>
-					<phon val="uw" type="nucleus" phonid="2">^v~t-uw+ae=k 1 0 1 1 1 DT NN NN 3 2 3 1 4 1 17 LH</phon>
+					<phon val="t" type="onset" phonid="1">^ay~v-t+uw=ae 0 1 1 1 1 DT NN NN 3 2 3 1 4 1 17 LL</phon>
+					<phon val="uw" type="nucleus" phonid="2">^v~t-uw+ae=k 1 0 1 1 1 DT NN NN 3 2 3 1 4 1 17 LL</phon>
 				</syl>
 			</tk>
-			<tk norm="act" pstpunc=".&quot;" lc="true" pos="NN" posset="1" wordid="17" pron="ae1 k t" spron="ae1_k_t|" nosyl="1">
+			<tk norm="act" pstpunc=".&quot;" lc="true" pos="NN" posset="1" wordid="17" pron="ae1 k t" spron="ae1+k_t|" nosyl="1">
 				act."
 				<ws col="126">
 </ws>
-				<syl val="ae1_k_t" stress="1" sylid="1" nophons="3">
-					<phon val="ae" type="nucleus" phonid="1">^t~uw-ae+k=t 0 2 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LH</phon>
-					<phon val="k" type="nucleus" phonid="2">^uw~ae-k+t=0 1 1 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LH</phon>
-					<phon val="t" type="nucleus" phonid="3">^ae~k-t+0=0 2 0 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LH</phon>
+				<syl val="ae1+k_t" stress="1" sylid="1" nophons="3">
+					<phon val="ae" type="nucleus" phonid="1">^t~uw-ae+k=t 0 2 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LL</phon>
+					<phon val="k" type="coda" phonid="2">^uw~ae-k+t=pau 1 1 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LL</phon>
+					<phon val="t" type="coda" phonid="3">^ae~k-t+pau=0 2 0 1 1 0 NN NN PAU 2 3 0 4 1 0 17 LL</phon>
 				</syl>
 			</tk>
 			<break type="4" time="0.4">
 				<tk pron="pau">
 					<syl val="pau">
-						<phon val="pau">^k~t-0+0=0 0 0 1 0 0 NN PAU PAU 3 0 0 1 0 0 17 LH</phon>
+						<phon val="pau">^k~t-pau+0=0 0 0 1 0 0 NN PAU PAU 3 0 0 1 0 0 17 LL</phon>
 					</syl>
 				</tk>
 			</break>

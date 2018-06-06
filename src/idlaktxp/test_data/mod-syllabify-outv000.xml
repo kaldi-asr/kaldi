@@ -111,7 +111,7 @@
 		</spt>
 	</utt>
 	<utt uttid="7" no_phrases="3">
-		<spt phraseid="1" no_wrds="8">
+		<spt phraseid="1" no_wrds="7">
 			<break type="4" time="0.2" />
 			<tk norm="site" lc="true" pos="NN" posset="1" wordid="1" pron="s ay1 t" spron="s+ay1+t|" nosyl="1">
 				<syl val="s+ay1+t" stress="1" sylid="1" nophons="3">
@@ -140,24 +140,20 @@
 					<phon val="z" type="coda" phonid="5" />
 				</syl>
 			</tk>
-			<tk norm="4" symbols="true" pos="NN" posset="1" wordid="4" pron="f ao1 r" spron="f+ao1+r|" nosyl="1">
-				4
-				<ws>-</ws>
+			<tk norm="4-2" symbols="true" pos="NN" posset="1" wordid="4" pron="f ao1 r t uw1" spron="f+ao1+r|t+uw1|" nosyl="2">
+				4-2
+				<ws> </ws>
 				<syl val="f+ao1+r" stress="1" sylid="1" nophons="3">
 					<phon val="f" type="onset" phonid="1" />
 					<phon val="ao" type="nucleus" phonid="2" />
 					<phon val="r" type="coda" phonid="3" />
 				</syl>
-			</tk>
-			<tk norm="2" symbols="true" pos="NN" posset="1" wordid="5" pron="t uw1" spron="t+uw1|" nosyl="1">
-				2
-				<ws> </ws>
-				<syl val="t+uw1" stress="1" sylid="1" nophons="2">
+				<syl val="t+uw1" stress="1" sylid="2" nophons="2">
 					<phon val="t" type="onset" phonid="1" />
 					<phon val="uw" type="nucleus" phonid="2" />
 				</syl>
 			</tk>
-			<tk norm="full" lc="true" uc="true" pos="JJ" posset="1" wordid="6" pron="f uh1 l" spron="f+uh1+l|" nosyl="1">
+			<tk norm="full" lc="true" uc="true" pos="JJ" posset="1" wordid="5" pron="f uh1 l" spron="f+uh1+l|" nosyl="1">
 				FULL
 				<ws> </ws>
 				<syl val="f+uh1+l" stress="1" sylid="1" nophons="3">
@@ -166,7 +162,7 @@
 					<phon val="l" type="coda" phonid="3" />
 				</syl>
 			</tk>
-			<tk norm="power" lc="true" uc="true" pos="NN" posset="1" wordid="7" pron="p aw1 er0" spron="p+aw1|er0|" nosyl="2">
+			<tk norm="power" lc="true" uc="true" pos="NN" posset="1" wordid="6" pron="p aw1 er0" spron="p+aw1|er0|" nosyl="2">
 				Power
 				<ws> </ws>
 				<syl val="p+aw1" stress="1" sylid="1" nophons="2">
@@ -177,7 +173,7 @@
 					<phon val="er" type="nucleus" phonid="1" />
 				</syl>
 			</tk>
-			<tk norm="cafe" lc="true" foreign="true" pos="NN" posset="1" wordid="8" pron="k ah0 f ey1" altprons="k ae0 f ey1, k ah0 f ey1" spron="k+ah0|f+ey1|" nosyl="2">
+			<tk norm="cafe" lc="true" foreign="true" pos="NN" posset="1" wordid="7" pron="k ah0 f ey1" altprons="k ae0 f ey1, k ah0 f ey1" spron="k+ah0|f+ey1|" nosyl="2">
 				café
 				<ws> </ws>
 				<syl val="k+ah0" stress="0" sylid="1" nophons="2">

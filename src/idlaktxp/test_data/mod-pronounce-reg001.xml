@@ -444,7 +444,7 @@
 				said
 				<ws> </ws>
 			</tk>
-			<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1" wordid="2" pron="m ih1 s ih0 z">
+			<tk norm="missis" pos="NN" posset="1" wordid="2" pron="m iy0 s iy0 s" lts="true">
 				Mrs
 				<ws> </ws>
 			</tk>
@@ -758,7 +758,7 @@
 	<utt uttid="11" no_phrases="2">
 		<spt phraseid="1" no_wrds="12">
 			<break type="4" time="0.2" />
-			<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1" wordid="1" pron="m ih1 s ih0 z">
+			<tk norm="missis" pos="NN" posset="1" wordid="1" pron="m iy0 s iy0 s" lts="true">
 				Mrs
 				<ws> </ws>
 			</tk>
@@ -1362,7 +1362,7 @@
 				pardon
 				<ws> </ws>
 			</tk>
-			<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1" wordid="4" pron="m ih1 s ih0 z">
+			<tk norm="missis" pos="NN" posset="1" wordid="4" pron="m iy0 s iy0 s" lts="true">
 				Mrs
 				<ws> </ws>
 			</tk>

@@ -391,7 +391,7 @@
 		said
 		<ws> </ws>
 	</tk>
-	<tk norm="mrs" lc="true" uc="true">
+	<tk norm="missis">
 		Mrs
 		<ws> </ws>
 	</tk>
@@ -675,7 +675,7 @@
 		<ws col="163">
 </ws>
 	</tk>
-	<tk norm="mrs" lc="true" uc="true">
+	<tk norm="missis">
 		Mrs
 		<ws> </ws>
 	</tk>
@@ -1223,7 +1223,7 @@
 		pardon
 		<ws> </ws>
 	</tk>
-	<tk norm="mrs" lc="true" uc="true">
+	<tk norm="missis">
 		Mrs
 		<ws> </ws>
 	</tk>

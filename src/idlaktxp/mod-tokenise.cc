@@ -26,7 +26,8 @@ bool TxpTokenise::Init(const TxpParseOptions &opts) {
   opts_ = &opts;
   tpdb_ = opts.GetTpdb();
   nrules_.Init(opts, std::string(opts_->GetValue(GetName().c_str(), "arch")));
-  return nrules_.Parse(tpdb_);
+  abbrev_.Init(opts, std::string(GetOptValue("arch")));
+  return nrules_.Parse(tpdb_) && abbrev_.Parse(tpdb_);
 }
 
 bool TxpTokenise::Process(pugi::xml_document* input) {
@@ -34,7 +35,8 @@ bool TxpTokenise::Process(pugi::xml_document* input) {
   int32 n = 0;
   int32 offset, col = 0;
   std::string token, wspace, tmp;
-  pugi::xml_node tkroot, tk, ws, ntxt;
+  pugi::xml_node tkroot, tk, tkcopy, ws, ntxt, lex;
+  TxpAbbrevInfo * abbrev_info;
   // all text nodes are tokenised
   pugi::xpath_node_set text =
       input->document_element().select_nodes("//text()");
@@ -55,7 +57,41 @@ bool TxpTokenise::Process(pugi::xml_document* input) {
         ntxt.set_value(token.c_str());
         n += 1;
         nrules_.ReplaceUtf8Punc(token, &tmp);
-        SetPuncCaseInfo(&tmp, &tk);
+        /// check for full token matches without partial punctuation
+        /// i.e. :-) but not (US) 
+        abbrev_info = abbrev_.LookupAbbrev(token.c_str());
+        if (abbrev_info) {
+          for(int32 i = 0; i < abbrev_info->expansions.size(); i++) {
+            if (!i) {
+              tk.append_attribute("norm");
+              tk.attribute("norm").set_value(abbrev_info->expansions[0].c_str());
+              if (!abbrev_info->lexentries[0].empty()) {
+                lex = tk.parent().insert_child_after("lex", tk);
+                lex.append_attribute("type").set_value(abbrev_info->lexentries[0].c_str());
+                tkcopy = lex.append_copy(tk);
+                tk.parent().remove_child(tk);
+                tk = tkcopy;
+              }
+            }
+            else {
+              if  (!abbrev_info->lexentries[i].empty()) {
+                lex = tk.parent().insert_child_after("lex", tk);
+                lex.append_attribute("type").set_value(abbrev_info->lexentries[i].c_str());
+                tk = lex.append_child("tk");
+                tk.append_attribute("norm").set_value(abbrev_info->expansions[i].c_str());
+                tk = lex; //so we add new tokens after the lex tag not inside it
+              }
+              else {
+                tk = tk.parent().insert_child_after("tk", tk);
+                tk.append_attribute("norm").set_value(abbrev_info->expansions[i].c_str());
+              }
+            }
+          }
+        }
+        // if no full match of an abbreviation unpack punctuation
+        else {
+          SetPuncCaseInfo(&tmp, &tk);
+        }
       }
       if (wspace.length()) {
         if (token.length())
@@ -88,35 +124,82 @@ bool TxpTokenise::Process(pugi::xml_document* input) {
 int32 TxpTokenise::SetPuncCaseInfo(std::string* tkin, pugi::xml_node* tk) {
   const char* p;
   TxpCaseInfo caseinfo;
-  pugi::xml_node node;
+  pugi::xml_node node, lex, tkcopy;
   int32 n = 0;
   std::string token;
   std::string prepunc;
   std::string pstpunc;
+  TxpAbbrevInfo * abbrev_info;
   p = tkin->c_str();
   while (*p) {
     p = nrules_.ConsumePunc(p, &prepunc, &token, &pstpunc);
     if (n) {
       *tk = tk->parent().insert_child_after("tk", *tk);
     }
-    if (prepunc.length()) {
-      tk->append_attribute("prepunc");
-      tk->attribute("prepunc").set_value(prepunc.c_str());
+    // check to see if there is an abbreviation that matches the token and
+    // completely or partially matches the punctuation
+    abbrev_info = abbrev_.LookupAbbrev(token.c_str(), prepunc.c_str(), pstpunc.c_str());
+    if (abbrev_info) {
+      // trim punctuation as appropriate
+      prepunc = prepunc.substr(0, prepunc.size() - abbrev_.CheckPrePunc(prepunc.c_str(), abbrev_info));
+      pstpunc = pstpunc.substr(abbrev_.CheckPstPunc(pstpunc.c_str(), abbrev_info),
+                                                    pstpunc.size() - abbrev_.CheckPstPunc(pstpunc.c_str(),
+                                                                                          abbrev_info));
+      for(int32 i = 0; i < abbrev_info->expansions.size(); i++) {
+        if (!i) {
+          tk->append_attribute("norm");
+          tk->attribute("norm").set_value(abbrev_info->expansions[0].c_str());
+          if (!abbrev_info->lexentries[0].empty()) {
+            lex = tk->parent().insert_child_after("lex", *tk);
+            lex.append_attribute("type").set_value(abbrev_info->lexentries[0].c_str());
+            tkcopy = lex.append_copy(*tk);
+            tk->parent().remove_child(*tk);
+            *tk = tkcopy;
+          }
+          if (prepunc.length()) {
+            tk->append_attribute("prepunc");
+            tk->attribute("prepunc").set_value(prepunc.c_str());
+          }
+        }
+        else {
+          if  (!abbrev_info->lexentries[i].empty()) {
+            lex = tk->parent().insert_child_after("lex", *tk);
+            lex.append_attribute("type").set_value(abbrev_info->lexentries[i].c_str());
+            *tk = lex.append_child("tk");
+            tk->append_attribute("norm").set_value(abbrev_info->expansions[i].c_str());
+            *tk = lex;
+          }
+          else {
+            *tk = tk->parent().insert_child_after("tk", *tk);
+            tk->append_attribute("norm").set_value(abbrev_info->expansions[i].c_str());
+          }
+        }
+      }
+      if (pstpunc.length()) {
+        tk->append_attribute("pstpunc");
+        tk->attribute("pstpunc").set_value(pstpunc.c_str());
+      }
     }
-    if (token.length()) {
-      tk->append_attribute("norm");
-      nrules_.NormCaseCharacter(&token, caseinfo);
-      tk->attribute("norm").set_value(token.c_str());
+    else {
+      if (prepunc.length()) {
+        tk->append_attribute("prepunc");
+        tk->attribute("prepunc").set_value(prepunc.c_str());
+      }
+      if (token.length()) {
+        tk->append_attribute("norm");
+        nrules_.NormCaseCharacter(&token, caseinfo);
+        tk->attribute("norm").set_value(token.c_str());
+      }
+      if (pstpunc.length()) {
+        tk->append_attribute("pstpunc");
+        tk->attribute("pstpunc").set_value(pstpunc.c_str());
+      }
+      if (caseinfo.lowercase) tk->append_attribute("lc").set_value("true");
+      if (caseinfo.uppercase) tk->append_attribute("uc").set_value("true");
+      if (caseinfo.foreign) tk->append_attribute("foreign").set_value("true");
+      if (caseinfo.symbols) tk->append_attribute("symbols").set_value("true");
+      if (caseinfo.capitalised) tk->append_attribute("caps").set_value("true");
     }
-    if (pstpunc.length()) {
-      tk->append_attribute("pstpunc");
-      tk->attribute("pstpunc").set_value(pstpunc.c_str());
-    }
-    if (caseinfo.lowercase) tk->append_attribute("lc").set_value("true");
-    if (caseinfo.uppercase) tk->append_attribute("uc").set_value("true");
-    if (caseinfo.foreign) tk->append_attribute("foreign").set_value("true");
-    if (caseinfo.symbols) tk->append_attribute("symbols").set_value("true");
-    if (caseinfo.capitalised) tk->append_attribute("caps").set_value("true");
     n++;
   }
   return true;

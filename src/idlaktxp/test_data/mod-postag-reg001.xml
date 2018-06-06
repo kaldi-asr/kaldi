@@ -402,7 +402,7 @@
 		said
 		<ws> </ws>
 	</tk>
-	<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1">
+	<tk norm="missis" pos="NN" posset="1">
 		Mrs
 		<ws> </ws>
 	</tk>
@@ -691,7 +691,7 @@
 </ws>
 	</tk>
 	<break type="4" time="0.4" />
-	<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1">
+	<tk norm="missis" pos="NN" posset="1">
 		Mrs
 		<ws> </ws>
 	</tk>
@@ -1249,7 +1249,7 @@
 		pardon
 		<ws> </ws>
 	</tk>
-	<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1">
+	<tk norm="missis" pos="NN" posset="1">
 		Mrs
 		<ws> </ws>
 	</tk>

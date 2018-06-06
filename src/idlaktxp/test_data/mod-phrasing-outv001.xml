@@ -367,49 +367,45 @@
 		</spt>
 	</utt>
 	<utt uttid="5" no_phrases="1">
-		<spt phraseid="1" no_wrds="11">
+		<spt phraseid="1" no_wrds="10">
 			<break type="4" time="0.2" />
 			<tk norm="her" lc="true" uc="true" pos="PP$" posset="3" wordid="1">
 				Her
 				<ws> </ws>
 			</tk>
-			<tk norm="grand" lc="true" pos="NN" posset="1" wordid="2">
-				grand
-				<ws>-</ws>
-			</tk>
-			<tk norm="daughter" lc="true" pos="NN" posset="1" wordid="3">
-				daughter
+			<tk norm="grand-daughter" lc="true" symbols="true" pos="NN" posset="1" wordid="2">
+				grand-daughter
 				<ws> </ws>
 			</tk>
-			<tk norm="is" lc="true" pos="VBZ" posset="3" wordid="4">
+			<tk norm="is" lc="true" pos="VBZ" posset="3" wordid="3">
 				is
 				<ws> </ws>
 			</tk>
-			<tk norm="particularly" lc="true" pos="RB" posset="1" wordid="5">
+			<tk norm="particularly" lc="true" pos="RB" posset="1" wordid="4">
 				particularly
 				<ws> </ws>
 			</tk>
-			<tk norm="angry" lc="true" pos="NN" posset="1" wordid="6">
+			<tk norm="angry" lc="true" pos="NN" posset="1" wordid="5">
 				angry
 				<ws> </ws>
 			</tk>
-			<tk norm="at" lc="true" pos="IN" posset="3" wordid="7">
+			<tk norm="at" lc="true" pos="IN" posset="3" wordid="6">
 				at
 				<ws> </ws>
 			</tk>
-			<tk norm="the" lc="true" pos="DT" posset="3" wordid="8">
+			<tk norm="the" lc="true" pos="DT" posset="3" wordid="7">
 				the
 				<ws> </ws>
 			</tk>
-			<tk norm="accusations" lc="true" pos="NNS" posset="1" wordid="9">
+			<tk norm="accusations" lc="true" pos="NNS" posset="1" wordid="8">
 				accusations
 				<ws> </ws>
 			</tk>
-			<tk norm="of" lc="true" pos="IN" posset="3" wordid="10">
+			<tk norm="of" lc="true" pos="IN" posset="3" wordid="9">
 				of
 				<ws> </ws>
 			</tk>
-			<tk norm="treason" pstpunc="." lc="true" pos="NN" posset="1" wordid="11">
+			<tk norm="treason" pstpunc="." lc="true" pos="NN" posset="1" wordid="10">
 				treason.
 				<ws col="72">
 </ws>
@@ -448,7 +444,7 @@
 				said
 				<ws> </ws>
 			</tk>
-			<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1" wordid="2">
+			<tk norm="missis" pos="NN" posset="1" wordid="2">
 				Mrs
 				<ws> </ws>
 			</tk>
@@ -762,7 +758,7 @@
 	<utt uttid="11" no_phrases="2">
 		<spt phraseid="1" no_wrds="12">
 			<break type="4" time="0.2" />
-			<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1" wordid="1">
+			<tk norm="missis" pos="NN" posset="1" wordid="1">
 				Mrs
 				<ws> </ws>
 			</tk>
@@ -1257,7 +1253,7 @@
 		</spt>
 	</utt>
 	<utt uttid="18" no_phrases="1">
-		<spt phraseid="1" no_wrds="23">
+		<spt phraseid="1" no_wrds="22">
 			<break type="4" time="0.2" />
 			<tk norm="when" lc="true" uc="true" pos="WRB" posset="3" wordid="1">
 				When
@@ -1271,83 +1267,79 @@
 				was
 				<ws> </ws>
 			</tk>
-			<tk norm="re" lc="true" pos="NN" posset="1" wordid="4">
-				re
-				<ws>-</ws>
-			</tk>
-			<tk norm="elected" lc="true" pos="VVN" posset="1" wordid="5">
-				elected
+			<tk norm="re-elected" lc="true" symbols="true" pos="VVN" posset="1" wordid="4">
+				re-elected
 				<ws> </ws>
 			</tk>
-			<tk norm="in" lc="true" pos="IN" posset="3" wordid="6">
+			<tk norm="in" lc="true" pos="IN" posset="3" wordid="5">
 				in
 				<ws> </ws>
 			</tk>
-			<tk norm="1951" symbols="true" pos="NN" posset="1" wordid="7">
+			<tk norm="1951" symbols="true" pos="NN" posset="1" wordid="6">
 				1951
 				<ws> </ws>
 			</tk>
-			<tk norm="the" lc="true" pos="DT" posset="3" wordid="8">
+			<tk norm="the" lc="true" pos="DT" posset="3" wordid="7">
 				the
 				<ws> </ws>
 			</tk>
-			<tk norm="witchcraft" lc="true" uc="true" pos="NN" posset="1" wordid="9">
+			<tk norm="witchcraft" lc="true" uc="true" pos="NN" posset="1" wordid="8">
 				Witchcraft
 				<ws> </ws>
 			</tk>
-			<tk norm="act" lc="true" uc="true" pos="NN" posset="1" wordid="10">
+			<tk norm="act" lc="true" uc="true" pos="NN" posset="1" wordid="9">
 				Act
 				<ws> </ws>
 			</tk>
-			<tk norm="was" lc="true" pos="VBD" posset="3" wordid="11">
+			<tk norm="was" lc="true" pos="VBD" posset="3" wordid="10">
 				was
 				<ws> </ws>
 			</tk>
-			<tk norm="repealed" lc="true" pos="VVN" posset="1" wordid="12">
+			<tk norm="repealed" lc="true" pos="VVN" posset="1" wordid="11">
 				repealed
 				<ws> </ws>
 			</tk>
-			<tk norm="and" lc="true" pos="CC" posset="3" wordid="13">
+			<tk norm="and" lc="true" pos="CC" posset="3" wordid="12">
 				and
 				<ws> </ws>
 			</tk>
-			<tk norm="three" lc="true" pos="CD" posset="3" wordid="14">
+			<tk norm="three" lc="true" pos="CD" posset="3" wordid="13">
 				three
 				<ws> </ws>
 			</tk>
-			<tk norm="years" lc="true" pos="NNS" posset="1" wordid="15">
+			<tk norm="years" lc="true" pos="NNS" posset="1" wordid="14">
 				years
 				<ws> </ws>
 			</tk>
-			<tk norm="later" lc="true" pos="RBR" posset="1" wordid="16">
+			<tk norm="later" lc="true" pos="RBR" posset="1" wordid="15">
 				later
 				<ws> </ws>
 			</tk>
-			<tk norm="spiritualism" lc="true" pos="NN" posset="1" wordid="17">
+			<tk norm="spiritualism" lc="true" pos="NN" posset="1" wordid="16">
 				spiritualism
 				<ws> </ws>
 			</tk>
-			<tk norm="was" lc="true" pos="VBD" posset="3" wordid="18">
+			<tk norm="was" lc="true" pos="VBD" posset="3" wordid="17">
 				was
 				<ws> </ws>
 			</tk>
-			<tk norm="officially" lc="true" pos="RB" posset="1" wordid="19">
+			<tk norm="officially" lc="true" pos="RB" posset="1" wordid="18">
 				officially
 				<ws> </ws>
 			</tk>
-			<tk norm="recognised" lc="true" pos="VVN" posset="1" wordid="20">
+			<tk norm="recognised" lc="true" pos="VVN" posset="1" wordid="19">
 				recognised
 				<ws> </ws>
 			</tk>
-			<tk norm="as" lc="true" pos="IN" posset="3" wordid="21">
+			<tk norm="as" lc="true" pos="IN" posset="3" wordid="20">
 				as
 				<ws> </ws>
 			</tk>
-			<tk norm="a" lc="true" pos="DT" posset="3" wordid="22">
+			<tk norm="a" lc="true" pos="DT" posset="3" wordid="21">
 				a
 				<ws> </ws>
 			</tk>
-			<tk norm="religion" pstpunc="." lc="true" pos="NN" posset="1" wordid="23">
+			<tk norm="religion" pstpunc="." lc="true" pos="NN" posset="1" wordid="22">
 				religion.
 				<ws col="139">
 </ws>
@@ -1370,7 +1362,7 @@
 				pardon
 				<ws> </ws>
 			</tk>
-			<tk norm="mrs" lc="true" uc="true" pos="NNS" posset="1" wordid="4">
+			<tk norm="missis" pos="NN" posset="1" wordid="4">
 				Mrs
 				<ws> </ws>
 			</tk>

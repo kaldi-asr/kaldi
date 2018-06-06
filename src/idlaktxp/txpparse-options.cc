@@ -32,6 +32,7 @@ const std::string txpconfigdefault =
     "--general-spk=\n"
     "--tokenise-arch=default\n"
     "--tokenise-processing-mode=lax\n"
+    "--abbrevexp-arch=default\n"
     "--pauses-arch=default\n"
     "--pauses-hzone=True\n"
     "--pauses-hzone-start=60\n"

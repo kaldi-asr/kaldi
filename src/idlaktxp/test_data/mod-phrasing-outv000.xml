@@ -66,28 +66,24 @@
 		</spt>
 	</utt>
 	<utt uttid="7" no_phrases="3">
-		<spt phraseid="1" no_wrds="8">
+		<spt phraseid="1" no_wrds="7">
 			<break type="4" time="0.2" />
 			<tk norm="site" lc="true" pos="NN" posset="1" wordid="1" />
 			<tk norm="2" symbols="true" pos="NN" posset="1" wordid="2">2</tk>
 			<tk norm="=" symbols="true" pos="NN" posset="1" wordid="3">=</tk>
-			<tk norm="4" symbols="true" pos="NN" posset="1" wordid="4">
-				4
-				<ws>-</ws>
-			</tk>
-			<tk norm="2" symbols="true" pos="NN" posset="1" wordid="5">
-				2
+			<tk norm="4-2" symbols="true" pos="NN" posset="1" wordid="4">
+				4-2
 				<ws> </ws>
 			</tk>
-			<tk norm="full" lc="true" uc="true" pos="JJ" posset="1" wordid="6">
+			<tk norm="full" lc="true" uc="true" pos="JJ" posset="1" wordid="5">
 				FULL
 				<ws> </ws>
 			</tk>
-			<tk norm="power" lc="true" uc="true" pos="NN" posset="1" wordid="7">
+			<tk norm="power" lc="true" uc="true" pos="NN" posset="1" wordid="6">
 				Power
 				<ws> </ws>
 			</tk>
-			<tk norm="cafe" lc="true" foreign="true" pos="NN" posset="1" wordid="8">
+			<tk norm="cafe" lc="true" foreign="true" pos="NN" posset="1" wordid="7">
 				café
 				<ws> </ws>
 			</tk>

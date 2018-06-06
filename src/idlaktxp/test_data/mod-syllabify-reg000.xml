@@ -162,13 +162,15 @@
 					<phon val="l" type="coda" phonid="3" />
 				</syl>
 			</tk>
-			<tk norm="power" lc="true" uc="true" pos="NN" posset="1" wordid="6" pron="p aw1 er0" spron="p+aw1+er0|" nosyl="1">
+			<tk norm="power" lc="true" uc="true" pos="NN" posset="1" wordid="6" pron="p aw1 er0" spron="p+aw1|er0|" nosyl="2">
 				Power
 				<ws> </ws>
-				<syl val="p+aw1+er0" stress="0" sylid="1" nophons="3">
+				<syl val="p+aw1" stress="1" sylid="1" nophons="2">
 					<phon val="p" type="onset" phonid="1" />
 					<phon val="aw" type="nucleus" phonid="2" />
-					<phon val="er" type="nucleus" phonid="3" />
+				</syl>
+				<syl val="er0" stress="0" sylid="2" nophons="1">
+					<phon val="er" type="nucleus" phonid="1" />
 				</syl>
 			</tk>
 			<tk norm="cafe" lc="true" foreign="true" pos="NN" posset="1" wordid="7" pron="k ah0 f ey1" altprons="k ae0 f ey1, k ah0 f ey1" spron="k+ah0|f+ey1|" nosyl="2">

@@ -342,12 +342,8 @@
 		Her
 		<ws> </ws>
 	</tk>
-	<tk norm="grand" lc="true">
-		grand
-		<ws>-</ws>
-	</tk>
-	<tk norm="daughter" lc="true">
-		daughter
+	<tk norm="grand-daughter" lc="true" symbols="true">
+		grand-daughter
 		<ws> </ws>
 	</tk>
 	<tk norm="is" lc="true">
@@ -406,7 +402,7 @@
 		said
 		<ws> </ws>
 	</tk>
-	<tk norm="mrs" lc="true" uc="true">
+	<tk norm="missis">
 		Mrs
 		<ws> </ws>
 	</tk>
@@ -695,7 +691,7 @@
 </ws>
 	</tk>
 	<break type="4" time="0.4" />
-	<tk norm="mrs" lc="true" uc="true">
+	<tk norm="missis">
 		Mrs
 		<ws> </ws>
 	</tk>
@@ -1163,12 +1159,8 @@
 		was
 		<ws> </ws>
 	</tk>
-	<tk norm="re" lc="true">
-		re
-		<ws>-</ws>
-	</tk>
-	<tk norm="elected" lc="true">
-		elected
+	<tk norm="re-elected" lc="true" symbols="true">
+		re-elected
 		<ws> </ws>
 	</tk>
 	<tk norm="in" lc="true">
@@ -1257,7 +1249,7 @@
 		pardon
 		<ws> </ws>
 	</tk>
-	<tk norm="mrs" lc="true" uc="true">
+	<tk norm="missis">
 		Mrs
 		<ws> </ws>
 	</tk>
