@@ -58,7 +58,7 @@ if [ $stage -le 0 ]; then
 
   rm ${dir}/data/text/* 2>/dev/null || true
 
-  # Unzip TEDLIUM 6 data sources, normalize apostrophe+suffix to previous word, gzip the result.
+  # Unzip TEDLIUM 6 data sources, remove </s>, gzip the result.
   gunzip -c db/TEDLIUM_release-3/LM/*.en.gz | sed 's/ <\/s>//g' | gzip -c  > ${dir}/data/text/train.txt.gz
   # use a subset of the annotated training data as the dev set .
   # Note: the name 'dev' is treated specially by pocolm, it automatically

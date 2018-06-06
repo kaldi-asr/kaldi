@@ -1,1 +1,1 @@
-score_sclite.sh
+score_basic.sh

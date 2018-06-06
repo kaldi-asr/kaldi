@@ -13,9 +13,6 @@
 
 export LC_ALL=C
 
-# Prepare LM data
-gunzip -c db/TEDLIUM_release-3/LM/*.en.gz | sed 's/ <\/s>//g' | gzip -c  > data/LM/train.txt
-
 # Prepare: test, train,
 for set in dev test train; do
   dir=data/$set.orig
@@ -40,7 +37,7 @@ for set in dev test train; do
     cat db/TEDLIUM_release-3/legacy/$set/stm/*.stm | sort -k1,1 -k2,2 -k4,4n | \
       sed -e 's:([^ ]*)$::' | \
       awk '{ $2 = "A"; print $0; }'
-  } > data/$set.orig/stm
+  } | local/join_suffix.py > data/$set.orig/stm
 
   # Prepare 'text' file
   # - {NOISE} -> [NOISE] : map the tags to match symbols in dictionary
