@@ -39,9 +39,9 @@ if [ $stage -le 1 ]; then
   utils/data/perturb_data_dir_speed_3way.sh data/${train_set} data/${train_set}_sp
   echo "$0: making MFCC features for low-resolution speed-perturbed data"
   steps/make_mfcc_pitch.sh --cmd "$train_cmd" --nj 70 data/${train_set}_sp \
-    exp/make_mfcc/train_sp mfcc_perturbed || exit 1;
+    exp/make_mfcc/${train_set}_sp mfcc_perturbed || exit 1;
   steps/compute_cmvn_stats.sh data/${train_set}_sp \
-    exp/make_mfcc/train_sp mfcc_perturbed || exit 1;
+    exp/make_mfcc/${train_set}_sp mfcc_perturbed || exit 1;
   utils/fix_data_dir.sh data/${train_set}_sp
 fi
 
@@ -116,8 +116,6 @@ if [ $stage -le 5 ]; then
      exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
-train_set=train_sp
-
 if [ $stage -le 6 ]; then
   # We extract iVectors on the speed-perturbed training data after combining
   # short segments, which will be what we train the system on.  With
@@ -129,7 +127,7 @@ if [ $stage -le 6 ]; then
   # that's the data we extract the ivectors from, as it's still going to be
   # valid for the non-'max2' data, the utterance list is the same.
 
-  ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}
+  ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
     utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/ivectors/aishell-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
@@ -138,7 +136,7 @@ if [ $stage -le 6 ]; then
   # handle per-utterance decoding well (iVector starts at zero).
   temp_data_root=${ivectordir}
   utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
-    data/${train_set}_hires_nopitch ${temp_data_root}/${train_set}_sp_hires_nopitch_max2
+    data/${train_set}_sp_hires_nopitch ${temp_data_root}/${train_set}_sp_hires_nopitch_max2
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 30 \
     ${temp_data_root}/${train_set}_sp_hires_nopitch_max2 \
     exp/nnet3${nnet3_affix}/extractor $ivectordir
