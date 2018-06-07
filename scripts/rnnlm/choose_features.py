@@ -10,6 +10,8 @@ import math
 from collections import defaultdict
 sys.stdout = open(1, 'w', encoding='latin-1', closefd=False)
 
+import re
+tab_or_space = re.compile('[ \t]')
 
 parser = argparse.ArgumentParser(description="This script chooses the sparse feature representation of words. "
                                              "To be more specific, it chooses the set of features-- you compute "
@@ -86,7 +88,7 @@ def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="latin-1") as f:
         for line in f:
-            fields = line.split()
+            fields = re.split(tab_or_space, line)
             assert len(fields) == 2
             if fields[0] in vocab:
                 sys.exit(sys.argv[0] + ": duplicated word({0}) in vocab: {1}"
@@ -115,7 +117,7 @@ def read_unigram_probs(unigram_probs_file):
     unigram_probs = []
     with open(unigram_probs_file, 'r', encoding="latin-1") as f:
         for line in f:
-            fields = line.split()
+            fields = re.split(tab_or_space, line)
             assert len(fields) == 2
             idx = int(fields[0])
             if idx >= len(unigram_probs):

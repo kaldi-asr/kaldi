@@ -8,6 +8,9 @@ import argparse
 import sys
 sys.stdout = open(1, 'w', encoding='latin-1', closefd=False)
 
+import re
+tab_or_space = re.compile('[ \t]')
+
 parser = argparse.ArgumentParser(description="This script turns the word features to a human readable format.",
                                  epilog="E.g. " + sys.argv[0] + "exp/rnnlm/word_feats.txt exp/rnnlm/features.txt "
                                         "> exp/rnnlm/word_feats.str.txt",
@@ -29,7 +32,7 @@ def read_feature_type_and_key(features_file):
 
     with open(features_file, 'r', encoding="latin-1") as f:
         for line in f:
-            fields = line.split()
+            fields = re.split(tab_or_space, line)
             assert(len(fields) in [2, 3, 4])
 
             feat_id = int(fields[0])
@@ -46,7 +49,7 @@ feat_type_and_key = read_feature_type_and_key(args.features_file)
 num_word_feats = 0
 with open(args.word_features_file, 'r', encoding="latin-1") as f:
     for line in f:
-        fields = line.split()
+        fields = re.split(tab_or_space, line)
         assert len(fields) % 2 == 1
 
         print(int(fields[0]), end='\t')

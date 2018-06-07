@@ -7,6 +7,9 @@ import os
 import argparse
 import sys
 
+import re
+tab_or_space = re.compile('[ \t]')
+
 parser = argparse.ArgumentParser(description="Validates word features file, produced by rnnlm/get_word_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " --features-file=exp/rnnlm/features.txt "
                                         "exp/rnnlm/word_feats.txt",
@@ -27,7 +30,7 @@ length_feat_id = -1
 max_feat_id = -1
 with open(args.features_file, 'r', encoding="latin-1") as f:
     for line in f:
-        fields = line.split()
+        fields = re.split(tab_or_space, line)
         assert(len(fields) in [3, 4, 5])
 
         feat_id = int(fields[0])
@@ -51,7 +54,7 @@ with open(args.features_file, 'r', encoding="latin-1") as f:
 
 with open(args.word_features_file, 'r', encoding="latin-1") as f:
     for line in f:
-        fields = line.split()
+        fields = re.split(tab_or_space, line)
         assert len(fields) > 0 and len(fields) % 2 == 1
         word_id = int(fields[0])
 

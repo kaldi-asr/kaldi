@@ -7,6 +7,9 @@ import os
 import argparse
 import sys
 
+import re
+tab_or_space = re.compile('[ \t]')
+
 parser = argparse.ArgumentParser(description="Validates features file, produced by rnnlm/choose_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " exp/rnnlm/features.txt",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -30,7 +33,7 @@ with open(args.features_file, 'r', encoding="latin-1") as f:
     final_feats = {}
     word_feats = {}
     for line in f:
-        fields = line.split()
+        fields = re.split(tab_or_space, line)
         assert(len(fields) in [3, 4, 5])
 
         assert idx == int(fields[0])
