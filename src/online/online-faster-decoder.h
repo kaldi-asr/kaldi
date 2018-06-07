@@ -96,6 +96,8 @@ class OnlineFasterDecoder : public FasterDecoder {
   // to the last immortal token. This method is meant to be invoked at the end
   // of an utterance in order to get the last chunk of the hypothesis
   void FinishTraceBack(fst::MutableFst<LatticeArc> *fst_out);
+  void FinishTraceBackAllTokens(fst::MutableFst<LatticeArc> *fst_out);
+
 
   // Returns "true" if the best current hypothesis ends with long enough silence
   bool EndOfUtterance();

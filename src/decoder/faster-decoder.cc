@@ -146,6 +146,49 @@ bool FasterDecoder::GetBestPath(fst::MutableFst<LatticeArc> *fst_out,
   return true;
 }
 
+bool FasterDecoder::GetBestPathAllTokens(fst::MutableFst<LatticeArc> *fst_out) {
+  // GetBestPath gets the decoding output.  If "use_final_probs" is true
+  // AND we reached a final state, it limits itself to final states;
+  // otherwise it gets the most likely token not taking into
+  // account final-probs.  fst_out will be empty (Start() == kNoStateId) if
+  // nothing was available.  It returns true if it got output (thus, fst_out
+  // will be nonempty).
+  fst_out->DeleteStates();
+  Token *best_tok = NULL;
+  for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail)
+    if (best_tok == NULL || *best_tok < *(e->val) )
+      best_tok = e->val;
+  if (best_tok == NULL) return false;  // No output.
+
+  std::vector<LatticeArc> arcs_reverse;  // arcs in reverse order.
+
+  for (Token *tok = best_tok; tok != NULL; tok = tok->prev_) {
+    BaseFloat tot_cost = tok->cost_ -
+        (tok->prev_ ? tok->prev_->cost_ : 0.0),
+        graph_cost = tok->arc_.weight.Value(),
+        ac_cost = tot_cost - graph_cost;
+    LatticeArc l_arc(tok->arc_.ilabel,
+                     tok->arc_.olabel,
+                     LatticeWeight(graph_cost, ac_cost),
+                     tok->arc_.nextstate);
+    arcs_reverse.push_back(l_arc);
+  }
+  KALDI_ASSERT(arcs_reverse.back().nextstate == fst_.Start());
+  arcs_reverse.pop_back();  // that was a "fake" token... gives no info.
+
+  StateId cur_state = fst_out->AddState();
+  fst_out->SetStart(cur_state);
+  for (ssize_t i = static_cast<ssize_t>(arcs_reverse.size())-1; i >= 0; i--) {
+    LatticeArc arc = arcs_reverse[i];
+    arc.nextstate = fst_out->AddState();
+    fst_out->AddArc(cur_state, arc);
+    cur_state = arc.nextstate;
+  }
+  fst_out->SetFinal(cur_state, LatticeWeight::One());
+  RemoveEpsLocal(fst_out);
+  return true;
+}
+
 
 // Gets the weight cutoff.  Also counts the active tokens.
 double FasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,

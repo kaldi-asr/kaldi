@@ -86,7 +86,7 @@ class FasterDecoder {
   /// no tokens survived).
   bool GetBestPath(fst::MutableFst<LatticeArc> *fst_out,
                    bool use_final_probs = true);
-
+  bool GetBestPathAllTokens(fst::MutableFst<LatticeArc> *fst_out);
   /// As a new alternative to Decode(), you can call InitDecoding
   /// and then (possibly multiple times) AdvanceDecoding().
   void InitDecoding();

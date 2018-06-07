@@ -154,6 +154,14 @@ OnlineFasterDecoder::FinishTraceBack(fst::MutableFst<LatticeArc> *out_fst) {
   MakeLattice(best_tok, immortal_tok_, out_fst);
 }
 
+void
+OnlineFasterDecoder::FinishTraceBackAllTokens(fst::MutableFst<LatticeArc> *out_fst) {
+  Token *best_tok = NULL;
+  for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail)
+    if (best_tok == NULL || *best_tok < *(e->val) )
+      best_tok = e->val;
+  MakeLattice(best_tok, immortal_tok_, out_fst);
+}
 
 void
 OnlineFasterDecoder::TracebackNFrames(int32 nframes,

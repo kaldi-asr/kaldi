@@ -193,42 +193,29 @@ int main(int argc, char *argv[]) {
       auto read_start = std::chrono::steady_clock::now();
       while (1) {
         OnlineFasterDecoder::DecodeState dstate = decoder.DecodeNoTrace(&decodable);
-        if (dstate & (decoder.kEndFeats | decoder.kEndUtt)) {
-          std::vector<int32> word_ids;
-          decoder.FinishTraceBack(&out_fst);
-          fst::GetLinearSymbolSequence(out_fst,
-                                       static_cast<vector<int32> *>(0),
-                                       &word_ids,
-                                       static_cast<LatticeArc::Weight*>(0));
-          PrintPartialResult(word_ids, word_syms, partial_res || word_ids.size());
-          partial_res = false;
+        std::vector<int32> word_ids;
+        decoder.FinishTraceBackAllTokens(&out_fst);
+        fst::GetLinearSymbolSequence(out_fst,
+                                     static_cast<vector<int32> *>(0),
+                                     &word_ids,
+                                     static_cast<LatticeArc::Weight*>(0));
+        PrintPartialResult(word_ids, word_syms, partial_res || word_ids.size());
+        partial_res = false;
 
-          decoder.GetBestPath(&out_fst);
-          std::vector<int32> tids;
-          fst::GetLinearSymbolSequence(out_fst,
-                                       &tids,
-                                       &word_ids,
-                                       static_cast<LatticeArc::Weight*>(0));
-          std::stringstream res_key;
-          res_key << wav_key << '_' << start_frame << '-' << decoder.frame();
-          if (!word_ids.empty())
-            words_writer.Write(res_key.str(), word_ids);
-          alignment_writer.Write(res_key.str(), tids);
-          if (dstate == decoder.kEndFeats)
-            break;
-          start_frame = decoder.frame();
-        } else {
-          std::vector<int32> word_ids;
-          if (decoder.PartialTraceback(&out_fst)) {
-            fst::GetLinearSymbolSequence(out_fst,
-                                        static_cast<vector<int32> *>(0),
-                                        &word_ids,
-                                        static_cast<LatticeArc::Weight*>(0));
-            PrintPartialResult(word_ids, word_syms, false);
-            if (!partial_res)
-              partial_res = (word_ids.size() > 0);
-          }
-        }
+        decoder.GetBestPathAllTokens(&out_fst);
+        std::vector<int32> tids;
+        fst::GetLinearSymbolSequence(out_fst,
+                                     &tids,
+                                     &word_ids,
+                                     static_cast<LatticeArc::Weight*>(0));
+        std::stringstream res_key;
+        res_key << wav_key << '_' << start_frame << '-' << decoder.frame();
+        if (!word_ids.empty())
+          words_writer.Write(res_key.str(), word_ids);
+        alignment_writer.Write(res_key.str(), tids);
+        if (dstate == decoder.kEndFeats)
+          break;
+        start_frame = decoder.frame();
       }
       auto read_end = std::chrono::steady_clock::now();
       std::chrono::duration<double> diff = read_end - read_start;
