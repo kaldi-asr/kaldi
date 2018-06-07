@@ -12,7 +12,6 @@ set -euo pipefail
 
 stage=0
 train_set=train
-#test_sets="dev test"
 test_sets="dev_tw test_tw dev_matbn test_matbn"
 gmm=tri5a
 
@@ -127,7 +126,7 @@ if [ $stage -le 6 ]; then
   # that's the data we extract the ivectors from, as it's still going to be
   # valid for the non-'max2' data, the utterance list is the same.
 
-  ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+  ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
     utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/ivectors/aishell-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
