@@ -42,7 +42,7 @@ fi
 
 dir=exp/nnet3/tdnn_sp${affix:+_$affix}
 gmm_dir=exp/tri5a
-train_set=train_sp
+train_set=train
 ali_dir=${gmm_dir}_sp_ali
 graph_dir=$gmm_dir/graph
 
@@ -96,7 +96,7 @@ if [ $stage -le 8 ]; then
     --cleanup.remove-egs $remove_egs \
     --cleanup.preserve-model-interval 500 \
     --use-gpu true \
-    --feat-dir=data/${train_set}_hires \
+    --feat-dir=data/${train_set}_sp_hires \
     --ali-dir $ali_dir \
     --lang data/lang \
     --reporting.email="$reporting_email" \
