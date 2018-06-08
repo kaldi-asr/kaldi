@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
         "See http://kaldi-asr.org/doc/hmm.html#transition_model_identifiers for an\n"
         "explanation of these types of indexes.\n"
         "\n"
-        "See also: weight-post, post-to-weights, reverse-weights\n"
+        "See also: post-to-tacc, weight-post, post-to-weights, reverse-weights\n"
         "\n"
         "Usage:  get-post-on-ali [options] <posteriors-rspecifier> <ali-rspecifier> <weights-wspecifier>\n"
         "e.g.: get-post-on-ali ark:post.ark ark,s,cs:ali.ark ark:weights.ark\n";
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     SequentialPosteriorReader posterior_reader(posteriors_rspecifier);
     RandomAccessInt32VectorReader alignments_reader(alignments_rspecifier);
     BaseFloatVectorWriter confidences_writer(confidences_wspecifier);
-    
+
     for (; !posterior_reader.Done(); posterior_reader.Next()) {
       std::string key = posterior_reader.Key();
       if (!alignments_reader.HasKey(key)) {
@@ -108,7 +108,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-
-
-

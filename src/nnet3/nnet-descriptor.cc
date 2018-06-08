@@ -499,7 +499,7 @@ bool Descriptor::Parse(const std::vector<std::string> &node_names,
   }
   if (**next_token != "end of input")
     KALDI_ERR << "Parsing Descriptor, expected end of input but got "
-              << "'" <<  *next_token << "'";
+              << "'" <<  **next_token << "'";
   Descriptor *desc = gen_desc->ConvertToDescriptor();
   *this = *desc;
   delete desc;

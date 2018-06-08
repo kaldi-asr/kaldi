@@ -27,7 +27,7 @@
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    typedef kaldi::int32 int32;  
+    typedef kaldi::int32 int32;
 
     const char *usage =
         "From posteriors, compute transition-accumulators\n"
@@ -35,7 +35,8 @@ int main(int argc, char *argv[]) {
         "Note: the model is only read in order to get the size of the vector\n"
         "\n"
         "Usage: post-to-tacc [options] <model> <post-rspecifier> <accs>\n"
-        " e.g.: post-to-tacc --binary=false 1.mdl \"ark:ali-to-post 1.ali|\" 1.tacc\n";
+        " e.g.: post-to-tacc --binary=false 1.mdl \"ark:ali-to-post 1.ali|\" 1.tacc\n"
+        "See also: get-post-on-ali\n";
 
     bool binary = true;
     bool per_pdf = false;
@@ -49,25 +50,25 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-      
+
     std::string model_rxfilename = po.GetArg(1),
         post_rspecifier = po.GetArg(2),
         accs_wxfilename = po.GetArg(3);
 
     kaldi::SequentialPosteriorReader posterior_reader(post_rspecifier);
-    
+
     int32 num_transition_ids;
-    
+
       bool binary_in;
       Input ki(model_rxfilename, &binary_in);
       TransitionModel trans_model;
       trans_model.Read(ki.Stream(), binary_in);
       num_transition_ids = trans_model.NumTransitionIds();
-    
+
     Vector<double> transition_accs(num_transition_ids+1); // +1 because they're
     // 1-based; position zero is empty.  We'll write as float.
-    int32 num_done = 0;      
-    
+    int32 num_done = 0;
+
     for (; !posterior_reader.Done(); posterior_reader.Next()) {
       const kaldi::Posterior &posterior = posterior_reader.Value();
       int32 num_frames = static_cast<int32>(posterior.size());
@@ -109,4 +110,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

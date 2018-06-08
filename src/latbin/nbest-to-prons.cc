@@ -42,17 +42,17 @@ int main(int argc, char *argv[]) {
         "      lattice-align-words data/lang/phones/word_boundary.int exp/dir/final.mdl ark:- ark:- | \\\n"
         "      nbest-to-prons exp/dir/final.mdl ark:- 1.prons\n"
         "Note: the type of the model doesn't matter as only the transition-model is read.\n";
-    
+
     ParseOptions po(usage);
 
     bool print_lengths_per_phone = false;
-    po.Register("print-lengths-per-phone", &print_lengths_per_phone, 
+    po.Register("print-lengths-per-phone", &print_lengths_per_phone,
                 "If true, in place of the length of the word, "
                 "print out a comma-separated list of the lengths of each phone in the word.");
 
 
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -65,13 +65,13 @@ int main(int argc, char *argv[]) {
 
     TransitionModel trans_model;
     ReadKaldiObject(model_rxfilename, &trans_model);
-    
+
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
-    
+
     int32 n_done = 0, n_err = 0;
 
     Output ko(wxfilename, false); // false == non-binary write mode.
-    
+
     for (; !clat_reader.Done(); clat_reader.Next()) {
       std::string utt = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
@@ -96,16 +96,16 @@ int main(int argc, char *argv[]) {
 
           if (!print_lengths_per_phone)
             ko.Stream() << utt << ' ' << times[i] << ' ' << lengths[i] << ' '
-                      << words[i];
+                        << words[i];
           else {
             ko.Stream() << utt << ' ' << times[i] << ' ';
             for (size_t pl = 0; pl < phone_lengths[i].size()-1; pl++)
-              ko.Stream() << phone_lengths[i][pl] << ',';   
+              ko.Stream() << phone_lengths[i][pl] << ',';
             ko.Stream() << phone_lengths[i][phone_lengths[i].size()-1]
-                      << ' ' << words[i];
-          }  
-        for (size_t j = 0; j < prons[i].size(); j++)
-          ko.Stream() << ' ' << prons[i][j];
+                        << ' ' << words[i];
+          }
+          for (size_t j = 0; j < prons[i].size(); j++)
+            ko.Stream() << ' ' << prons[i][j];
           ko.Stream() << std::endl;
         }
         n_done++;
@@ -115,7 +115,7 @@ int main(int argc, char *argv[]) {
     // we just let them go out of scope and it happens automatically.
     // We do it this time in order to avoid wrongly printing out a success message
     // if the stream was going to fail to close
-            
+
     KALDI_LOG << "Printed prons for " << n_done << " linear lattices; "
               << n_err  << " had errors.";
     return (n_done != 0 ? 0 : 1);
