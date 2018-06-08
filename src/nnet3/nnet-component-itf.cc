@@ -68,6 +68,8 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new RestrictedAttentionComponent::PrecomputedIndexes();
   } else if (cpi_type == "GeneralDropoutComponentPrecomputedIndexes") {
     ans = new GeneralDropoutComponentPrecomputedIndexes();
+  } else if (cpi_type == "TdnnComponentPrecomputedIndexes") {
+    ans = new TdnnComponent::PrecomputedIndexes();
   }
   if (ans != NULL) {
     KALDI_ASSERT(cpi_type == ans->Type());
@@ -134,6 +136,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new ElementwiseProductComponent();
   } else if (component_type == "ConvolutionComponent") {
     ans = new ConvolutionComponent();
+  } else if (component_type == "TdnnComponent") {
+    ans = new TdnnComponent();
   } else if (component_type == "MaxpoolingComponent") {
     ans = new MaxpoolingComponent();
   } else if (component_type == "PermuteComponent") {

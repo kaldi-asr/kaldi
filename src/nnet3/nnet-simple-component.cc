@@ -2855,6 +2855,11 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("update-period", &update_period);
 
+  if (rank_in < 0)
+    rank_in = std::min<int32>(20, (InputDim() + 1) / 2);
+  if (rank_out < 0)
+    rank_out = std::min<int32>(80, (OutputDim() + 1) / 2);
+
   preconditioner_in_.SetNumSamplesHistory(num_samples_history);
   preconditioner_out_.SetNumSamplesHistory(num_samples_history);
   preconditioner_in_.SetAlpha(alpha);
