@@ -149,17 +149,14 @@ fi
 mkdir -p $dir/log $dir/info
 
 # Get list of validation utterances.
-
 frame_shift=$(utils/data/get_frame_shift.sh $data) || exit 1
-utils/data/get_utt2dur.sh $data
 
-cat $data/utt2dur | \
-  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+awk '{print $1}' $data/utt2spk | \
   utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/valid_uttlist
 
-len_uttlist=`wc -l $dir/valid_uttlist | awk '{print $1}'`
+len_uttlist=$(wc -l < $dir/valid_uttlist)
 if [ $len_uttlist -lt $num_utts_subset ]; then
-  echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
+  echo "Number of utterances is very small. Please check your data." && exit 1;
 fi
 
 if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
@@ -177,13 +174,12 @@ fi
 
 echo "$0: creating egs.  To ensure they are not deleted later you can do:  touch $dir/.nodelete"
 
-cat $data/utt2dur | \
-  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+awk '{print $1}' $data/utt2spk | \
    utils/filter_scp.pl --exclude $dir/valid_uttlist | \
    utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/train_subset_uttlist
-len_uttlist=`wc -l $dir/train_subset_uttlist | awk '{print $1}'`
+len_uttlist=$(wc -l <$dir/train_subset_uttlist)
 if [ $len_uttlist -lt $num_utts_subset ]; then
-  echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
+  echo "Number of utterances is very small. Please check your data." && exit 1;
 fi
 
 ## Set up features.
