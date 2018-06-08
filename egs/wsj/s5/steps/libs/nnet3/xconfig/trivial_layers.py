@@ -253,3 +253,78 @@ class XconfigLinearComponent(XconfigLayerBase):
             self.name, input_desc))
         configs.append(line)
         return configs
+
+
+class XconfigPerElementScaleComponent(XconfigLayerBase):
+    """This class is for parsing lines like
+     'scale-component name=scale1 input=Append(-3,0,3)'
+    which will produce just a single component, of type NaturalGradientPerElementScaleComponent, with
+    output-dim 1024 in this case, and input-dim determined by the dimension of the input .
+
+    Parameters of the class, and their defaults:
+      input='[-1]'             [Descriptor giving the input of the layer.]
+
+    The following (shown with their effective defaults) are just passed through
+    to the component's config line.  (These defaults are mostly set in the
+    code).
+
+      max-change=0.75
+      l2-regularize=0.0
+      param-mean=1.0   # affects initialization
+      param-stddev=0.0  # affects initialization
+      learning-rate-factor=1.0
+    """
+    def __init__(self, first_token, key_to_value, prev_names=None):
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input': '[-1]',
+                       'l2-regularize': '',
+                       'max-change': 0.75,
+                       'param-mean': '',
+                       'param-stddev': '',
+                       'learning-rate-factor': '' }
+
+    def check_configs(self):
+        pass
+
+    def output_name(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        return self.name
+
+    def output_dim(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        return self.descriptors['input']['dim']
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self._generate_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in this layer
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    def _generate_config(self):
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        input_desc = self.descriptors['input']['final-string']
+        dim = self.descriptors['input']['dim']
+
+        opts = ''
+        for opt_name in ['learning-rate-factor', 'max-change', 'l2-regularize', 'param-mean',
+                         'param-stddev' ]:
+            value = self.config[opt_name]
+            if value != '':
+                opts += ' {0}={1}'.format(opt_name, value)
+
+        configs = []
+        line = ('component name={0} type=NaturalGradientPerElementScaleComponent dim={1} {2} '
+                ''.format(self.name, dim, opts))
+        configs.append(line)
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
+        configs.append(line)
+        return configs
