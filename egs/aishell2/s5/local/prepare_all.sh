@@ -1,17 +1,19 @@
 #!/bin/bash
 # Copyright 2018 AIShell-Foundation(Authors:Jiayu DU, Xingyu NA, Bengu WU, Hao ZHENG)
 #           2018 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU)
+#           2018 Emotech LTD (Author: Xuechen LIU)
 # Apache 2.0
 
-corpus=
 stage=1
+corpus=
 
 . ./cmd.sh
 . ./path.sh
+. ./utils/parse_options.sh
 
 if [ $# -ne 1 ]; then
 	echo "prepare.sh <corpus-data-dir>"
-	echo " e.g prepare.sh /home/data/corpus/AISHELL-2/iOS/data"
+	echo " e.g prepare.sh /home/data/corpus/AISHELL-2/"
 	exit 1;
 fi
 
@@ -24,7 +26,8 @@ fi
 
 # wav.scp, text(word-segmented), utt2spk, spk2utt
 if [ $stage -le 2 ]; then
-	local/prepare_data.sh $corpus data/local/dict data/train || exit 1;
+  local/prepare_eval_data.sh $corpus data/local/dict || exit 1;	
+  local/prepare_data.sh $corpus/iOS/data data/local/dict data/train || exit 1;
 fi
 
 # L

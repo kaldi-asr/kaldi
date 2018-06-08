@@ -15,9 +15,11 @@ corpus=
 
 nj=20
 stage=1
+gmm_stage=0
 
 . ./cmd.sh
 . ./path.sh
+. ./utils/parse_options.sh
 
 # we should probably move jieba(for word segmentation) into 
 # Kaldi's "tools" dir with Dan's approval
@@ -31,7 +33,7 @@ fi
 
 # GMM
 if [ $stage -le 2 ]; then
-	local/run_gmm.sh --nj $nj
+	local/run_gmm.sh --nj $nj --stage $gmm_stage
 fi
 
 # xent
