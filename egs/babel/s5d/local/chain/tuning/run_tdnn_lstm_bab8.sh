@@ -2,21 +2,19 @@
 
 
 # by default, with cleanup
-# this is basically the same as the run_tdnn_lstm_bab7.sh
-# with dropout and backstitch (+more iterations as the convergence with dropout and backstitch is slower)
 # please note that the language(s) was not selected for any particular reason (other to represent the various sizes of babel datasets)
-# 304-lithuanian   | %WER 38.1 | 20041 61492 | 64.5 26.1 9.4 2.6 38.1 28.1 | -0.242 | exp/chain_cleaned/tdnn_lstm_bab7_bs_sp/decode_dev10h.pem/score_9/dev10h.pem.ctm.sys
-#                  num-iters=120 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.161->-0.151
-#                  xent:train/valid[79,119,final]=(-2.35,-1.73,-1.71/-2.49,-2.04,-2.03)
-#                  logprob:train/valid[79,119,final]=(-0.191,-0.138,-0.136/-0.225,-0.201,-0.202)
-# 206-zulu         | %WER 50.7 | 22805 52162 | 53.1 36.8 10.0 3.8 50.7 30.5 | -0.553 | exp/chain_cleaned/tdnn_lstm_bab7_bs_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
-#                  num-iters=167 nj=2..12 num-params=36.7M dim=43+100->3274 combine=-0.197->-0.190
-#                  xent:train/valid[110,166,final]=(-2.44,-1.85,-1.83/-2.55,-2.14,-2.13)
-#                  logprob:train/valid[110,166,final]=(-0.230,-0.171,-0.170/-0.269,-0.244,-0.245)
-# 104-pashto       | %WER 38.5 | 21825 101803 | 65.4 24.6 10.0 3.8 38.5 29.7 | -0.418 | exp/chain_cleaned/tdnn_lstm_bab7_bs_sp/decode_dev10h.pem/score_9/dev10h.pem.ctm.sys
-#                  num-iters=214 nj=2..12 num-params=36.8M dim=43+100->3328 combine=-0.173->-0.168
-#                  xent:train/valid[141,213,final]=(-2.37,-1.69,-1.69/-2.54,-2.05,-2.05)
-#                  logprob:train/valid[141,213,final]=(-0.208,-0.151,-0.151/-0.256,-0.224,-0.224)
+# 304-lithuanian   | %WER 39.9 | 20041 61492 | 62.7 27.3 10.0 2.6 39.9 28.6 | -0.268 | exp/chain_cleaned/tdnn_lstm_bab7_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+#                  num-iters=48 nj=2..12 num-params=36.7M dim=43+100->3273 combine=-0.204->-0.179
+#                  xent:train/valid[31,47,final]=(-2.35,-1.89,-1.86/-2.49,-2.19,-2.17)
+#                  logprob:train/valid[31,47,final]=(-0.199,-0.158,-0.154/-0.236,-0.221,-0.222)
+# 206-zulu         | %WER 52.2 | 22805 52162 | 51.6 38.2 10.2 3.8 52.2 30.7 | -0.629 | exp/chain_cleaned/tdnn_lstm_bab7_sp/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#                  num-iters=66 nj=2..12 num-params=36.7M dim=43+100->3274 combine=-0.237->-0.215
+#                  xent:train/valid[43,65,final]=(-2.42,-1.96,-1.94/-2.53,-2.25,-2.24)
+#                  logprob:train/valid[43,65,final]=(-0.239,-0.188,-0.186/-0.279,-0.267,-0.266)
+# 104-pashto       | %WER 40.2 | 21825 101803 | 63.8 25.8 10.4 3.9 40.2 29.8 | -0.438 | exp/chain_cleaned/tdnn_lstm_bab7_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+#                  num-iters=85 nj=2..12 num-params=36.8M dim=43+100->3328 combine=-0.203->-0.189
+#                  xent:train/valid[55,84,final]=(-2.27,-1.81,-1.79/-2.46,-2.18,-2.17)
+#                  logprob:train/valid[55,84,final]=(-0.213,-0.166,-0.163/-0.264,-0.249,-0.250)
 
 set -e -o pipefail
 
@@ -24,7 +22,6 @@ set -e -o pipefail
 # (some of which are also used in this script directly).
 stage=17
 nj=30
-dropout_schedule='0,0@0.20,0.3@0.50,0'
 train_set=train_cleaned
 gmm=tri5_cleaned  # the gmm for the target data
 langdir=data/langp/tri5_ali
@@ -35,8 +32,10 @@ nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix="_bab7_bs"  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix="_bab8"  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=exp/chain_cleaned/tdnn_lstm_sp/egs  # you can set this to use previously dumped egs.
+dropout_schedule='0,0@0.20,0.3@0.50,0'
+chunk_width=150,120,90,75
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -131,7 +130,7 @@ if [ $stage -le 17 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  lstm_opts="decay-time=20 dropout-proportion=0.0"
+  lstm_opts="decay-time=20 dropout-proportion=0.0 "
   label_delay=5
 
   mkdir -p $dir/configs
@@ -145,17 +144,17 @@ if [ $stage -le 17 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=1024
-  relu-renorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
-  relu-renorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn1 dim=1024
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
 
   # check steps/libs/nnet3/xconfig/lstm.py for the other options and defaults
   fast-lstmp-layer name=fastlstm1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
   fast-lstmp-layer name=fastlstm2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
-  relu-renorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
-  relu-renorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
   fast-lstmp-layer name=fastlstm3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $lstm_opts
 
   ## adding the layers for chain branch
@@ -196,7 +195,7 @@ if [ $stage -le 18 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
+    --egs.chunk-width $chunk_width \
     --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 10 \
