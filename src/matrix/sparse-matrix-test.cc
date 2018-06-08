@@ -172,6 +172,29 @@ void UnitTestSparseMatrixAddToMat() {
 }
 
 template <typename Real>
+void UnitTestSparseMatrixConstructor() {
+  int32 num_rows = RandInt(1, 10),
+      num_cols = RandInt(0, 10);
+  if (num_cols == 0)
+    num_rows = 0;
+
+  Matrix<Real> mat(num_rows, num_cols);
+
+  for (int32 r = 0; r < num_rows; r++) {
+    for (int32 c = 0; c < num_cols; c++) {
+      if (RandInt(0, 5) == 0)
+        mat(r, c) = RandGauss();
+    }
+  }
+  SparseMatrix<Real> smat(mat);
+
+  Matrix<Real> mat2(num_rows, num_cols);
+  mat2.SetRandn();
+  smat.CopyToMat(&mat2);
+  AssertEqual(mat, mat2);
+}
+
+template <typename Real>
 void UnitTestSparseMatrixTraceMatSmat() {
   for (int32 i = 0; i < 10; i++) {
     MatrixIndexT row = 10 + Rand() % 40;
@@ -300,6 +323,8 @@ void SparseMatrixUnitTest() {
   UnitTestSparseMatrixFrobeniusNorm<Real>();
   UnitTestSparseMatrixAddToMat<Real>();
   UnitTestSparseMatrixTraceMatSmat<Real>();
+  for (int32 i = 0; i < 30; i++)
+    UnitTestSparseMatrixConstructor<Real>();
 
 
   // Matrix functions involving sparse matrices.

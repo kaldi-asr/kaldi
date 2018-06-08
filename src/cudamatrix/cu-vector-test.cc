@@ -345,7 +345,16 @@ template<typename Real> void CuVectorUnitTestSum() {
     A.SetRandn();
     ones.Set(1.0);
 
-    AssertEqual(VecVec(A, ones), A.Sum());
+    Real x = VecVec(A, ones);
+    Real y = A.Sum();
+    Real diff = std::abs(x - y);
+    // Note: CuVectorBase<> does not have an ApplyAbs() member
+    // function, so we copy back to a host vector for simplicity in
+    // this test case.
+    Vector<Real> A_host(A);
+    A_host.ApplyAbs();
+    Real s = A_host.Sum();
+    KALDI_ASSERT ( diff <= 1.0e-04 * s);
   }
 }
 

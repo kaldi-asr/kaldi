@@ -94,7 +94,8 @@ sub caught_signal {
   if ( defined $sge_job_id ) { # Signal trapped after submitting jobs
     my $signal = $!;
     system ("qdel $sge_job_id");
-    die "Caught a signal: $signal , deleting SGE task: $sge_job_id and exiting\n";
+    print STDERR "Caught a signal: $signal , deleting SGE task: $sge_job_id and exiting\n";
+    exit(2);
   }
 }
 
@@ -395,6 +396,7 @@ print Q "# $qsub_cmd\n";
 if (!close(Q)) { # close was not successful... || die "Could not close script file $shfile";
   die "Failed to close the script file (full disk?)";
 }
+chmod 0755, $queue_scriptfile;
 
 # This block submits the job to the queue.
 for (my $try = 1; $try < 5; $try++) {

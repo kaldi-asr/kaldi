@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+use warnings; #sed replacement for -w perl parameter
 #
 # Copyright   2013   Daniel Povey
 # Apache 2.0
@@ -67,7 +68,6 @@ while (<CS>) {
     }
   }
 }
-
 
 close(WAV) || die;
 close(SPKR) || die;
