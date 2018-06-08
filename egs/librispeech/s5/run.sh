@@ -353,7 +353,7 @@ local/run_cleanup_segmentation.sh
 
 
 # train nnet3 tdnn models on the entire data with data-cleaning (xent and chain)
-local/chain/run_tdnn.sh # set "--stage 11" if you have already run local/nnet3/run_tdnn.sh
+#local/chain/run_tdnn.sh # set "--stage 11" if you have already run local/nnet3/run_tdnn.sh
 
 # The nnet3 TDNN recipe:
 # local/nnet3/run_tdnn.sh # set "--stage 11" if you have already run local/chain/run_tdnn.sh

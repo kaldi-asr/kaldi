@@ -40,7 +40,7 @@ lrate=0.00001
 dir=exp/tri7b_${dnn_model}
 data_fbk=data_fbank
 if [ $stage -le 3 ]; then
-	proto=local/nnet/${dnn_model}.proto
+	proto=proto/${dnn_model}.proto
 
         cat exp/nnet3_cleaned/ivectors_train_960_cleaned_hires/ivector_online.scp exp/nnet3_cleaned/ivectors_dev_clean_hires/ivector_online.scp \
             exp/nnet3_cleaned/ivectors_dev_other_hires/ivector_online.scp > exp/nnet3_cleaned/ivectors_train_960_dev_hires/ivector_online.scp
@@ -64,8 +64,7 @@ if [ $stage -le 4 ]; then
   	for set in $dataset
   	do
   	  	steps/nnet/decode.sh --nj 16 --cmd "$decode_cmd" \
-		scoring_opts "--min-lmwt 10 --max-lmwt 30" \
-      		--config conf/decode.config --acwt $acwt \
+      		--acwt $acwt \
 		$gmm/graph_tgsmall \
         	$data_fbk/$set $dir/decode_tgsmall_${set}
 
@@ -73,29 +72,23 @@ if [ $stage -le 4 ]; then
         	$data_fbk/$set $dir/decode_{tgsmall,tgmed}_${set}
         	
 		steps/lmrescore_const_arpa.sh \
-		scoring_opts "--min-lmwt 10 --max-lmwt 30" \
         	--cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
        		$data_fbk/$set $dir/decode_{tgsmall,tglarge}_${set}
         	
 		steps/lmrescore_const_arpa.sh \
-		scoring_opts "--min-lmwt 10 --max-lmwt 30" \
         	--cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
         	$data_fbk/$set $dir/decode_{tgsmall,fglarge}_${set}
   	done
-
-	for set in $dataset; 
-	do 
-	for lm in fglarge tglarge tgmed tgsmall; 
-	do 
-		grep WER $dir/decode_${lm}_${set}*/wer* | ./utils/best_wer.sh 
-	done
+	for x in $dir/decode_*;
+	do
+        	grep WER $x/wer_* | utils/best_wer.sh
 	done
 fi
 
 nj=32
 if [ $stage -le 5 ]; then
         steps/nnet/align.sh --nj $nj --cmd "$train_cmd" $data_fbk/train_960_cleaned data/lang $dir ${dir}_ali
-        steps/nnet/make_denlats.sh --nj $nj --cmd "$decode_cmd" --config conf/decode_dnn.config --acwt $acwt \
+        steps/nnet/make_denlats.sh --nj $nj --cmd "$decode_cmd" --acwt $acwt \
         $data_fbk/train_960_cleaned data/lang $dir ${dir}_denlats
 fi
 
@@ -104,7 +97,6 @@ if [ $stage -le 5 ]; then
         steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 2 --learn-rate 0.0000002 --acwt $acwt --do-smbr true \
         $data_fbk/train_960_cleaned data/lang $dir ${dir}_ali ${dir}_denlats ${dir}_smbr
 fi
-
 ###decode
 dir=${dir}_smbr
 acwt=0.03
@@ -114,8 +106,7 @@ if [ $stage -le 6 ]; then
         for set in $dataset
         do
                 steps/nnet/decode.sh --nj 16 --cmd "$decode_cmd" \
-		scoring_opts "--min-lmwt 10 --max-lmwt 30" \
-                --config conf/decode_dnn.config --acwt $acwt \
+                --acwt $acwt \
                 $gmm/graph_tgsmall \
                 $data_fbk/$set $dir/decode_tgsmall_${set}
 
@@ -123,22 +114,16 @@ if [ $stage -le 6 ]; then
                 $data_fbk/$set $dir/decode_{tgsmall,tgmed}_${set}
 
                 steps/lmrescore_const_arpa.sh \
-		scoring_opts "--min-lmwt 10 --max-lmwt 30" \
                 --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
                 $data_fbk/$set $dir/decode_{tgsmall,tglarge}_${set}
 
                 steps/lmrescore_const_arpa.sh \
-		scoring_opts "--min-lmwt 10 --max-lmwt 30" \
                 --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
                 $data_fbk/$set $dir/decode_{tgsmall,fglarge}_${set}
         done
-	for set in $dataset;
+        for x in $dir/decode_*;
         do
-        for lm in fglarge tglarge tgmed tgsmall;
-        do
-                grep WER $dir/decode_${lm}_${set}*/wer* | ./utils/best_wer.sh
+                grep WER $x/wer_* | utils/best_wer.sh
         done
-        done
-
 fi
 
