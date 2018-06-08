@@ -391,7 +391,8 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
 
      time-offsets     E.g. time-offsets=-1,0,1 or time-offsets=-3,0,3.
                       The time offsets that we require at the input to produce a given output.
-                      comparable to the offsets used in TDNNs.
+                      comparable to the offsets used in TDNNs.  They
+                      must be unique (no repeats).
      use-bias         Defaults to true, but set to false if you want this to
                       be linear rather than affine in its input.
 
@@ -566,6 +567,9 @@ class TdnnComponent: public UpdatableComponent {
       int32 num_output_rows,
       int32 row_stride,
       int32 row_offset);
+
+  // see the definition for more explanation.
+  static void ModifyComputationIo(time_height_convolution::ConvolutionComputationIo *io);
 
   void Check() const;
 

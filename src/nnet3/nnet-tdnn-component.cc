@@ -52,7 +52,9 @@ TdnnComponent::TdnnComponent(
 void TdnnComponent::Check() const {
   KALDI_ASSERT(linear_params_.NumRows() > 0 &&
                !time_offsets_.empty() &&
-               IsSortedAndUniq(time_offsets_) &&
+               std::set<int32>(time_offsets_.begin(),
+                               time_offsets_.end()).size() ==
+               time_offsets_.size() &&
                linear_params_.NumCols() % time_offsets_.size() == 0 &&
                (bias_params_.Dim() == 0 ||
                 bias_params_.Dim() == linear_params_.NumRows()));
@@ -103,21 +105,24 @@ void TdnnComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("time-offsets", &time_offsets) &&
       cfl->GetValue("input-dim", &input_dim) &&
       cfl->GetValue("output-dim", &output_dim);
-  // It's not really important that time_offsets_ be sorted and unique, it's
-  // just an expectation, because repeating elements doesn't make sense from a
-  // modeling perspective, and it seems natural to sort them.
   if (!ok || input_dim <= 0 || output_dim <= 0 ||
       !SplitStringToIntegers(time_offsets, ",", false, &time_offsets_) ||
-      time_offsets_.empty() || !IsSortedAndUniq(time_offsets_)) {
+      time_offsets_.empty()) {
     KALDI_ERR << "Bad initializer: there is a problem with "
         "time-offsets, input-dim or output-dim (not defined?): "
         << cfl->WholeLine();
   }
 
+  if (std::set<int32>(time_offsets_.begin(),
+                      time_offsets_.end()).size() != time_offsets_.size()) {
+    KALDI_ERR << "Bad initializer: repeated time-offsets: "
+              << cfl->WholeLine();
+  }
+
   // 3. Parameter-initialization configs, "has-bias", and
   // orthonormal-constraint.
   orthonormal_constraint_ = 0.0;
-  BaseFloat param_stddev = -1, bias_stddev = 0.0;
+  BaseFloat param_stddev = -1, bias_stddev = 1.0;
   bool use_bias = true;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
@@ -165,6 +170,9 @@ void TdnnComponent::InitFromConfig(ConfigLine *cfl) {
 
   preconditioner_in_.SetAlpha(alpha_in);
   preconditioner_out_.SetAlpha(alpha_out);
+
+  preconditioner_in_.SetUpdatePeriod(4);
+  preconditioner_out_.SetUpdatePeriod(4);
 }
 
 void* TdnnComponent::Propagate(
@@ -344,6 +352,7 @@ void TdnnComponent::ReorderIndexes(
   // situations).
   ConvolutionComputationIo io;
   GetComputationIo(*input_indexes, *output_indexes, &io);
+  ModifyComputationIo(&io);
 
   std::vector<Index> modified_input_indexes,
       modified_output_indexes;
@@ -421,6 +430,9 @@ void TdnnComponent::Read(std::istream &is, bool binary) {
   preconditioner_out_.SetRank(rank_out);
   preconditioner_in_.SetNumSamplesHistory(num_samples_history);
   preconditioner_out_.SetNumSamplesHistory(num_samples_history);
+  // the update periods are not configurable.
+  preconditioner_in_.SetUpdatePeriod(4);
+  preconditioner_out_.SetUpdatePeriod(4);
   ExpectToken(is, binary, "</TdnnComponent>");
   Check();
 }
@@ -475,13 +487,37 @@ CuSubMatrix<BaseFloat> TdnnComponent::GetInputPart(
       int32 row_offset) {
   KALDI_ASSERT(row_offset >= 0 && row_stride >= 1 &&
                input_matrix.NumRows() >=
-               row_offset + (row_stride * num_output_rows));
+               row_offset + (row_stride * num_output_rows) - (row_stride - 1));
   // constructor takes args: (data, num_rows, num_cols, stride).
   return CuSubMatrix<BaseFloat>(
       input_matrix.Data() + input_matrix.Stride() * row_offset,
       num_output_rows,
       input_matrix.NumCols(),
       input_matrix.Stride() * row_stride);
+}
+
+void TdnnComponent::ModifyComputationIo(
+    time_height_convolution::ConvolutionComputationIo *io) {
+  if (io->t_step_out == 0) {
+    // the 't_step' values may be zero if there was only one (input or output)
+    // index so the time-stride could not be determined.  This code fixes them
+    // up in that case.  (If there was only one value, the stride is a
+    // don't-care actually).
+    if (io->t_step_in == 0)
+      io->t_step_in = 1;
+    io->t_step_out = io->t_step_in;
+  }
+  // At this point the t_step_{in,out} values will be nonzero.
+  KALDI_ASSERT(io->t_step_out % io->t_step_in == 0);
+  // The following affects the ordering of the input indexes; it allows us to
+  // reshape the input matrix in the way that we need to, in cases where there
+  // is subsampling.  See the explanation where the variable was declared in
+  // class ConvolutionComputationIo.
+  io->reorder_t_in = io->t_step_out / io->t_step_in;
+
+  // make sure that num_t_in is a multiple of io->reorder_t_in by rounding up.
+  int32 n = io->reorder_t_in;
+  io->num_t_in = n * ((io->num_t_in + n - 1) / n);
 }
 
 ComponentPrecomputedIndexes* TdnnComponent::PrecomputeIndexes(
@@ -495,6 +531,7 @@ ComponentPrecomputedIndexes* TdnnComponent::PrecomputeIndexes(
   // situations).
   ConvolutionComputationIo io;
   GetComputationIo(input_indexes, output_indexes, &io);
+  ModifyComputationIo(&io);
 
   if (RandInt(0, 10) == 0) {
     // Spot check that the provided indexes have the required properties;
@@ -510,20 +547,8 @@ ComponentPrecomputedIndexes* TdnnComponent::PrecomputeIndexes(
   }
 
 
-  if (io.t_step_out == 0) {
-    // the 't_step' values may be zero if there was only one (input or output)
-    // index so the time-stride could not be determined.  This code fixes them
-    // up in that case.  (If there was only one value, the stride is a
-    // don't-care actually).
-    if (io.t_step_in == 0)
-      io.t_step_in = 1;
-    io.t_step_out = io.t_step_in;
-  }
-  // At this point the t_step_{in,out} values will be nonzero.
-  KALDI_ASSERT(io.t_step_out % io.t_step_in == 0);
-
   PrecomputedIndexes *ans = new PrecomputedIndexes();
-  ans->row_stride = io.t_step_out / io.t_step_in;
+  ans->row_stride = io.reorder_t_in;
   int32 num_offsets = time_offsets_.size();
   ans->row_offsets.resize(num_offsets);
   for (int32 i = 0; i < num_offsets; i++) {
@@ -532,9 +557,25 @@ ComponentPrecomputedIndexes* TdnnComponent::PrecomputeIndexes(
     // row of the corresponding sub-part of the input.
     int32 time_offset = time_offsets_[i],
         required_input_t = io.start_t_out + time_offset,
-        input_row = (required_input_t - io.start_t_in) / io.t_step_in;
-    KALDI_ASSERT(required_input_t == io.start_t_in + io.t_step_in * input_row);
-    ans->row_offsets[i] = input_row;
+        input_t = (required_input_t - io.start_t_in) / io.t_step_in;
+
+    KALDI_ASSERT(required_input_t == io.start_t_in + io.t_step_in * input_t);
+    // input_t is a kind of normalized time offset in the input, relative to the
+    // first 't' value in the input and divided by the t-step in the input, so
+    // it's the numbering "as if" the input 't' values were numbered from 0,1,2.
+    // To turn input_t into an input row we need to take account of 'reorder_t_in'.
+    // If this is 1 then the input row is input_t times io.num_images.
+    // Otherwise it's a little more complicated and to understand it you should
+    // read the comment where 'reorder_t_in' is declared in convolution.h.
+    // Briefly: the part that is an integer multiple of 'reorder_t_in' gets
+    // multiplied by io.num_images; the remainder does not.
+
+    int32 n = io.reorder_t_in,
+        input_t_multiple = n * (input_t / n), input_t_remainder = input_t % n;
+    // note: input_t == input_t_multiple + input_t_remainder .
+    int32 input_row_offset = input_t_multiple * io.num_images +
+        input_t_remainder;
+    ans->row_offsets[i] = input_row_offset;
   }
   return ans;
 }

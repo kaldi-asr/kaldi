@@ -137,7 +137,6 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
   } else if (component_type == "ConvolutionComponent") {
     ans = new ConvolutionComponent();
   } else if (component_type == "TdnnComponent") {
-    KALDI_LOG <<"Creating new TdnnComponent";
     ans = new TdnnComponent();
   } else if (component_type == "MaxpoolingComponent") {
     ans = new MaxpoolingComponent();
