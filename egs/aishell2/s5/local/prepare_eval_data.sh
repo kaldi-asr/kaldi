@@ -26,7 +26,7 @@ dict_dir=$2
 if [ ! -d $corpus/DEV ] || [ ! -d $corpus/TEST ] || [ ! -d $corpus/evalT ]; then
   wget https://aishell-eval.oss-cn-beijing.aliyuncs.com/DEV.tar.gz -P $corpus && tar -xvzf $corpus/DEV.tar.gz -C $corpus || exit 1;
   wget https://aishell-eval.oss-cn-beijing.aliyuncs.com/TEST.tar.gz -P $corpus && tar -xvzf $corpus/TEST.tar.gz -C $corpus || exit 1;
-  wget https://aishell-eval.oss-cn-beijing.aliyuncs.com/TEST.tar.gz -P $corpus && unar $corpus/evalT.rar $corpus || exit 1;
+  wget https://aishell20170628.oss-cn-beijing.aliyuncs.com/evalT.rar -P $corpus && unar $corpus/evalT.rar $corpus || exit 1;
 fi
 
 # prepare wav.scp
