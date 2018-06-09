@@ -81,7 +81,7 @@ done
 
 # for LM training
 echo "cp data/train/text data/local/train/text for language model training"
-cp data/train/text data/local/train/
+cat data/train/text | awk '{$1=""}1;' | awk '{$1=$1}1;' > data/local/train/text
 
 echo "Data preparation completed."
 
