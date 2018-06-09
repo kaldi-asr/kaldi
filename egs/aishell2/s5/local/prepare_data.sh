@@ -7,19 +7,21 @@
 
 . ./path.sh || exit 1;
 
-expected_num_files=1009223
 tmp=data/local/train
 dir=data/train
 
-if [ $# != 3 ]; then
-  echo "Usage: $0 <corpus-data-dir> <dict-dir> <output-dir>"
-  echo " $0 /export/AISHELL-2/iOS/data data/local/dict data/train"
+if [ $# != 4 ]; then
+  echo "Usage: $0 <corpus-data-dir> <dict-dir> <tmp-dir> <output-dir>"
+  echo " $0 /export/AISHELL-2/iOS/train data/local/dict data/local/train data/train"
   exit 1;
 fi
 
 corpus=$1
 dict_dir=$2
-dir=$3
+tmp=$3
+dir=$4
+
+echo "local/prepare_data.sh preparing data in $corpus"
 
 mkdir -p $tmp
 mkdir -p $dir
@@ -28,15 +30,6 @@ mkdir -p $dir
 if [ ! -d $corpus ] || [ ! -f $corpus/wav.scp ] || [ ! -f $corpus/trans.txt ]; then
   echo "Error: $0 requires wav.scp and trans.txt under $corpus directory."
   exit 1;
-fi
-
-# check file number
-num_wav=`sed '/^[[space]]*$/d' $corpus/wav.scp | wc -l`
-num_trans=`sed '/^[[space]]*$/d' $corpus/trans.txt | wc -l`
-if [ $num_wav -ne $expected_num_files ] || [ $num_trans -ne $expected_num_files ]; then
-  echo "Warning:"
-  echo "  There are $expected_num_files files in AISHELL-2 corpus"
-  echo "  Found $num_wav wavs in wav.scp and $num_trans trans in trans.txt"
 fi
 
 # validate utt-key list
