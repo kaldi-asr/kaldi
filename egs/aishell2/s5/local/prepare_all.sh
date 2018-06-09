@@ -18,6 +18,7 @@ if [ $# -ne 1 ]; then
 fi
 
 corpus=$1
+eval_corpus=$2
 
 # lexicon and word segmentation tool
 if [ $stage -le 1 ]; then
@@ -26,7 +27,7 @@ fi
 
 # wav.scp, text(word-segmented), utt2spk, spk2utt
 if [ $stage -le 2 ]; then
-  local/prepare_eval_data.sh $corpus data/local/dict || exit 1;	
+  local/prepare_eval_data.sh $eval_corpus data/local/dict || exit 1;	
   local/prepare_data.sh $corpus/iOS/data data/local/dict data/train || exit 1;
 fi
 

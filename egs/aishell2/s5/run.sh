@@ -8,10 +8,12 @@
 #  * a Mandarin speech corpus (~1000hrs), free for non-commercial research/education use
 #  * an industrial recipe setup for large scale Mandarin ASR system
 # For more details, read $KALDI_ROOT/egs/aishell2/README.txt
+# Sample run: ./run.sh --nj 30 --stage 1 --gmm-stage 0 --corpus /corpora/AISHELL-2/iOS/data --eval-corpus /corpora/AISHELL-2/eval
 
-# modify this to your AISHELL-2 corpus data path
+# modify the below two variables to your AISHELL-2 corpus data path
 # e.g /disk10/data/AISHELL-2/iOS/data
 corpus=
+eval_corpus=
 
 nj=20
 stage=1
@@ -28,7 +30,7 @@ gmm_stage=0
 
 # prepare data, lexicon, and lang etc
 if [ $stage -le 1 ]; then
-	local/prepare_all.sh $corpus || exit 1;
+	local/prepare_all.sh $corpus $eval_corpus || exit 1;
 fi
 
 # GMM
