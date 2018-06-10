@@ -6,12 +6,17 @@
 
 # AISHELL-2 provides:
 #  * a Mandarin speech corpus (~1000hrs), free for non-commercial research/education use
-#  * an industrial recipe setup for large scale Mandarin ASR system
+#  * a baseline recipe setup for large scale Mandarin ASR system
 # For more details, read $KALDI_ROOT/egs/aishell2/README.txt
 
-# modify this to your AISHELL-2 data path
-# e.g /disk10/data/AISHELL-2/iOS/
-corpus=/Volumes/WD2TB/data/audio/AISHELL-2/iOS
+# modify this to your AISHELL-2 training data path
+# e.g:
+# trn_set=/disk10/data/AISHELL-2/iOS/train
+# dev_set=/disk10/data/AISHELL-2/iOS/dev
+# tst_set=/disk10/data/AISHELL-2/iOS/test
+trn_set=/Volumes/WD2TB/data/audio/AISHELL-2/iOS/train
+dev_set=/Volumes/WD2TB/data/audio/AISHELL-2/iOS/dev
+tst_set=/Volumes/WD2TB/data/audio/AISHELL-2/iOS/test
 
 nj=20
 stage=1
@@ -19,17 +24,16 @@ gmm_stage=1
 
 . ./cmd.sh
 . ./path.sh
+. ./utils/parse_options.sh
 
 # we should probably move jieba(for word segmentation) into 
 # Kaldi's "tools" dir with Dan's approval
 # before you run the entire recipe, run the following command
 # local/install_jieba.sh local/jieba
 
-. ./utils/parse_options.sh
-
-# prepare data, lexicon, and lang etc
+# prepare trn/dev/tst data, lexicon, lang etc
 if [ $stage -le 1 ]; then
-  local/prepare_all.sh $corpus || exit 1;
+  local/prepare_all.sh ${trn_set} ${dev_set} ${tst_set} || exit 1;
 fi
 
 # GMM

@@ -53,7 +53,7 @@ sed -e 's:\.wav::g' $tmp/wav.list | \
 utils/filter_scp.pl -f 1 $tmp/utt.list $tmp/tmp_utt2spk | sort -k 1 | uniq > $tmp/utt2spk
 utils/utt2spk_to_spk2utt.pl $tmp/utt2spk | sort -k 1 | uniq > $tmp/spk2utt
 
-# copy prepared resouces from tmp_dir to train dir (data/train)
+# copy prepared resources from tmp_dir to target dir
 mkdir -p $dir
 for f in wav.scp text spk2utt utt2spk; do
   cp $tmp/$f $dir/$f || exit 1;
