@@ -3,24 +3,22 @@
 #           2018 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU)
 # Apache 2.0
 
-# To be run from one directory above this script.
 . ./path.sh
+. ./utils/parse_options.sh
 
-text=data/local/train/text
-lexicon=data/local/dict/lexicon.txt
+if [ $# -ne 3 ]; then
+  echo "train_lms.sh <lexicon> <word-segmented-text> <dir>"
+  echo " e.g train_lms.sh data/local/dict/lexicon.txt data/local/train/text data/local/lm"
+  exit 1;
+fi
+
+lexicon=$1
+text=$2
+dir=$3
 
 for f in "$text" "$lexicon"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
 done
-
-# train language model for ASR
-# This script takes no arguments.  It assumes you have already run
-# aishell_data_prep.sh.
-# It takes as input the files
-# data/local/train/text
-# data/local/dict/lexicon.txt
-dir=data/local/lm
-mkdir -p $dir
 
 kaldi_lm=`which train_lm.sh`
 if [ -z $kaldi_lm ]; then
@@ -30,6 +28,7 @@ if [ -z $kaldi_lm ]; then
   exit 1
 fi
 
+mkdir -p $dir
 cleantext=$dir/text.no_oov
 
 cat $text | awk -v lex=$lexicon 'BEGIN{while((getline<lex) >0){ seen[$1]=1; } }
@@ -57,13 +56,10 @@ cat $cleantext | awk -v wmap=$dir/word_map 'BEGIN{while((getline<wmap)>0)map[$1]
 
 train_lm.sh --arpa --lmtype 3gram-mincount $dir || exit 1;
 
-# LM is small enough that we don't need to prune it (only about 0.7M N-grams).
-# Perplexity over 128254.000000 words is 90.446690
-
 # note: output is
 # data/local/lm/3gram-mincount/lm_unpruned.gz
 
-echo "local/aishell_train_lms.sh succeeded"
+echo "local/train_lms.sh succeeded"
 exit 0
 
 
@@ -91,5 +87,5 @@ ngram -lm $sdir/srilm.o3g.kn.gz -ppl $sdir/heldout
 ngram -lm $dir/3gram-mincount/lm_unpruned.gz  -ppl $sdir/heldout
 # 0 zeroprobs, logprob= -250913 ppl= 90.4439 ppl1= 132.379
 
-echo "local/aishell_train_lms.sh succeeded"
+echo "local/train_lms.sh succeeded"
 exit 0
