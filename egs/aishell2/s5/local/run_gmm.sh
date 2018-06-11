@@ -14,6 +14,10 @@ stage=1
 [ -f ./path.sh ] && . ./path.sh;
 . ./utils/parse_options.sh
 
+# nj for dev and test
+dev_nj=$(wc -l data/dev/utt2spk | awk '${print $1}' || exit 1;)
+test_nj=$(wc -l data/test/utt2spk | awk '${print $1}' || exit 1;)
+
 
 # Now make MFCC plus pitch features.
 if [ $stage -le 1 ]; then
@@ -39,9 +43,9 @@ if [ $stage -le 2 ]; then
 
   # decoding
   utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph || exit 1;
-  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj $nj \
+  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${dev_nj} \
     exp/mono/graph data/dev exp/mono/decode_dev
-  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj $nj \
+  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${test_nj} \
     exp/mono/graph data/test exp/mono/decode_test
   
   # alignment
@@ -57,9 +61,9 @@ if [ $stage -le 3 ]; then
   
   # decoding
   utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph || exit 1;
-  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${nj} \
+  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${dev_nj} \
     exp/tri1/graph data/dev exp/tri1/decode_dev
-  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${nj} \
+  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${test_nj} \
     exp/tri1/graph data/test exp/tri1/decode_test
   
   # alignment
@@ -75,9 +79,9 @@ if [ $stage -le 4 ]; then
 
   # decoding
   utils/mkgraph.sh data/lang_test exp/tri2 exp/tri2/graph
-  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${nj} \
+  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${dev_nj} \
     exp/tri2/graph data/dev exp/tri2/decode_dev
-  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${nj} \
+  steps/decode.sh --cmd "$decode_cmd" --config conf/decode.conf --nj ${test_nj} \
     exp/tri2/graph data/test exp/tri2/decode_test
   
   # alignment
@@ -93,9 +97,9 @@ if [ $stage -le 5 ]; then
 
   # decoding
   utils/mkgraph.sh data/lang_test exp/tri3 exp/tri3/graph || exit 1;
-  steps/decode.sh --cmd "$decode_cmd" --nj ${nj} --config conf/decode.conf \
+  steps/decode.sh --cmd "$decode_cmd" --nj ${dev_nj} --config conf/decode.conf \
     exp/tri3/graph data/dev exp/tri3/decode_dev
-  steps/decode.sh --cmd "$decode_cmd" --nj ${nj} --config conf/decode.conf \
+  steps/decode.sh --cmd "$decode_cmd" --nj ${test_nj} --config conf/decode.conf \
     exp/tri3/graph data/test exp/tri3/decode_test
   
   # alignment
@@ -108,3 +112,4 @@ fi
 
 echo "local/run_gmm.sh succeeded"
 exit 0;
+

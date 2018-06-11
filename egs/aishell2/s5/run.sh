@@ -14,9 +14,9 @@
 # trn_set=/disk10/data/AISHELL-2/iOS/train
 # dev_set=/disk10/data/AISHELL-2/iOS/dev
 # tst_set=/disk10/data/AISHELL-2/iOS/test
-trn_set=/Volumes/WD2TB/data/audio/AISHELL-2/iOS/train
-dev_set=/Volumes/WD2TB/data/audio/AISHELL-2/iOS/dev
-tst_set=/Volumes/WD2TB/data/audio/AISHELL-2/iOS/test
+trn_set=
+dev_set=
+tst_set=
 
 nj=20
 stage=1
@@ -54,3 +54,4 @@ fi
 local/show_results.sh
 
 exit 0;
+
