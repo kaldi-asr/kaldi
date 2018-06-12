@@ -9,29 +9,36 @@
 # What's special is that Semi-orthogonal (http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf) is applied to DFSMN,
 # which is found beneficial to DFSMN.
 
+# This is based on 1a, but a uniform l2 value is used.
+
 # ./steps/info/nnet3_dir_info.pl exp/nnet3_cleaned/dfsmn_1a_sp/
 # exp/nnet3_cleaned/dfsmn_1a_sp/: num-iters=818 nj=3..16 num-params=26.4M dim=40+100->5800 combine=-0.47->-0.47 (over 13) loglike:train/valid[544,817,combined]=(-0.52,-0.45,-0.44/-0.49,-0.46,-0.46) accuracy:train/valid[544,817,combined]=(0.826,0.845,0.846/0.835,0.846,0.844)
 
-# for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge tgmed tgsmall; do grep WER exp/nnet3_cleaned/dfsmn_1a_sp/decode_${test}_${lm}/wer* | best_wer.sh; done; echo; done
-# %WER 4.06 [ 2211 / 54402, 293 ins, 233 del, 1685 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_dev_clean_fglarge/wer_13_0.5
-# %WER 4.20 [ 2286 / 54402, 322 ins, 223 del, 1741 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_dev_clean_tglarge/wer_13_0.0
-# %WER 5.18 [ 2818 / 54402, 370 ins, 290 del, 2158 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_dev_clean_tgmed/wer_12_0.0
-# %WER 5.77 [ 3140 / 54402, 379 ins, 342 del, 2419 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_dev_clean_tgsmall/wer_12_0.0
+# ./steps/info/nnet3_dir_info.pl exp/nnet3_cleaned/dfsmn_1a_sp/
+# exp/nnet3_cleaned/dfsmn_1b_sp/: num-iters=818 nj=3..16 num-params=26.4M dim=40+100->5800 combine=-0.46->-0.46 (over 6) loglike:train/valid[544,817,combined]=(-0.53,-0.46,-0.45/-0.51,-0.46,-0.46) accuracy:train/valid[544,817,combined]=(0.826,0.847,0.847/0.829,0.851,0.851)
 
-# %WER 4.60 [ 2418 / 52576, 350 ins, 225 del, 1843 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_test_clean_fglarge/wer_12_0.5
-# %WER 4.72 [ 2484 / 52576, 324 ins, 269 del, 1891 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_test_clean_tglarge/wer_11_1.0
-# %WER 5.75 [ 3025 / 52576, 376 ins, 337 del, 2312 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_test_clean_tgmed/wer_12_0.5
-# %WER 6.30 [ 3312 / 52576, 430 ins, 355 del, 2527 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_test_clean_tgsmall/wer_12_0.0
 
-# %WER 11.11 [ 5658 / 50948, 745 ins, 606 del, 4307 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_dev_other_fglarge/wer_14_0.0
-# %WER 11.60 [ 5910 / 50948, 735 ins, 683 del, 4492 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_dev_other_tglarge/wer_15_0.0
-# %WER 13.46 [ 6857 / 50948, 702 ins, 984 del, 5171 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_dev_other_tgmed/wer_16_0.0
-# %WER 14.63 [ 7453 / 50948, 735 ins, 1098 del, 5620 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_dev_other_tgsmall/wer_15_0.0
+# for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge tgmed tgsmall; do grep WER exp/nnet3_cleaned/dfsmn_1b_sp/decode_${test}_${lm}/wer* | best_wer.sh; done; echo; done
 
-# %WER 11.50 [ 6021 / 52343, 638 ins, 829 del, 4554 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_test_other_fglarge/wer_15_0.5
-# %WER 11.84 [ 6195 / 52343, 627 ins, 894 del, 4674 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_test_other_tglarge/wer_15_0.5
-# %WER 13.74 [ 7192 / 52343, 716 ins, 999 del, 5477 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_test_other_tgmed/wer_14_0.0
-# %WER 14.84 [ 7767 / 52343, 738 ins, 1135 del, 5894 sub ] exp/nnet3_cleaned/dfsmn_1a_sp/decode_test_other_tgsmall/wer_14_0.0
+# %WER 4.06 [ 2207 / 54402, 304 ins, 215 del, 1688 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_dev_clean_fglarge/wer_12_0.5
+# %WER 4.16 [ 2264 / 54402, 299 ins, 230 del, 1735 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_dev_clean_tglarge/wer_11_0.5
+# %WER 5.13 [ 2789 / 54402, 343 ins, 286 del, 2160 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_dev_clean_tgmed/wer_12_0.0
+# %WER 5.68 [ 3092 / 54402, 352 ins, 350 del, 2390 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_dev_clean_tgsmall/wer_12_0.0
+
+# %WER 11.14 [ 5678 / 50948, 641 ins, 711 del, 4326 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_dev_other_fglarge/wer_14_0.5
+# %WER 11.53 [ 5873 / 50948, 720 ins, 698 del, 4455 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_dev_other_tglarge/wer_15_0.0
+# %WER 13.57 [ 6916 / 50948, 733 ins, 974 del, 5209 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_dev_other_tgmed/wer_15_0.0
+# %WER 14.54 [ 7407 / 50948, 715 ins, 1105 del, 5587 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_dev_other_tgsmall/wer_15_0.0
+
+# %WER 4.61 [ 2426 / 52576, 326 ins, 267 del, 1833 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_test_clean_fglarge/wer_12_1.0
+# %WER 4.73 [ 2489 / 52576, 363 ins, 243 del, 1883 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_test_clean_tglarge/wer_11_0.5
+# %WER 5.73 [ 3014 / 52576, 426 ins, 298 del, 2290 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_test_clean_tgmed/wer_12_0.0
+# %WER 6.28 [ 3302 / 52576, 442 ins, 334 del, 2526 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_test_clean_tgsmall/wer_11_0.0
+
+# %WER 11.40 [ 5969 / 52343, 750 ins, 650 del, 4569 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_test_other_fglarge/wer_13_0.0
+# %WER 11.77 [ 6162 / 52343, 725 ins, 737 del, 4700 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_test_other_tglarge/wer_14_0.0
+# %WER 13.77 [ 7210 / 52343, 744 ins, 983 del, 5483 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_test_other_tgmed/wer_14_0.0
+# %WER 14.92 [ 7812 / 52343, 741 ins, 1132 del, 5939 sub ] exp/nnet3_cleaned/dfsmn_1b_sp/decode_test_other_tgsmall/wer_14_0.0
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
@@ -78,7 +85,7 @@ EOF
 fi
 
 
-dir=exp/nnet3_cleaned/dfsmn_1a_sp
+dir=exp/nnet3_cleaned/dfsmn_1b_sp
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
 gmm_dir=exp/${gmm}
 graph_dir=$gmm_dir/graph_tgsmall
@@ -117,7 +124,7 @@ if [ $stage -le 11 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 input=Append(-1,0,1) dim=1536
+  relu-batchnorm-layer name=tdnn1 input=Append(-1,0,1) dim=1536 $opts
   linear-component name=tdnn1l dim=512 $linear_opts
   
   blocksum-layer name=dfsmn1_blocksum input=Append(-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6) dim=512
@@ -157,8 +164,8 @@ if [ $stage -le 11 ]; then
   linear-component name=dfsmn9_projection dim=512  $linear_opts
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-ce1 input=dfsmn9_projection dim=512 target-rms=0.5 l2-regularize=0.0015 
-  relu-batchnorm-layer name=prefinal-ce2 input=prefinal-ce1 dim=1536 target-rms=0.5 $opts2
+  relu-batchnorm-layer name=prefinal-ce1 input=dfsmn9_projection dim=512 target-rms=0.5 $opts
+  relu-batchnorm-layer name=prefinal-ce2 input=prefinal-ce1 dim=1536 target-rms=0.5 $opts
   output-layer name=output input=prefinal-ce2 dim=$num_targets max-change=1.5 $output_opts 
 
 EOF
