@@ -12,7 +12,7 @@ set -euo pipefail
 
 stage=0
 train_set=train
-test_sets="dev_tw test_tw dev_matbn test_matbn"
+test_sets=test
 gmm=tri5a
 
 nnet3_affix=
