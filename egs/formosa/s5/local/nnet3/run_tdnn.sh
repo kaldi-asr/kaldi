@@ -21,7 +21,7 @@ final_effective_lrate=0.00015
 num_epochs=4
 num_jobs_initial=2
 num_jobs_final=12
-remove_egs=true
+remove_egs=false
 
 # feature options
 use_ivectors=true
