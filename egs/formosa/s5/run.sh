@@ -409,7 +409,7 @@ true && (
 # There are options to bypass certain steps, for example
 # local/chain/run_tdnn.sh --stage 8			--> bypass feature extraction, if you have already run "local/nnet3/run_tdnn.sh"
 # local/chain/run_tdnn.sh --stage 11 --train_stage 120	--> continue the training from iteration 120
-local/chain/run_tdnn.sh -stage 8
+local/chain/run_tdnn.sh --stage 8
 
 )
 
