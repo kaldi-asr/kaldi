@@ -38,6 +38,21 @@ cat data/dev/transcripts.txt | \
   local/cleanup_transcripts.pl | \
   local/create_datafiles.pl data/dev/
 
+language=swahili
+language_affix=sw
+if [ "$language" == "tagalog" ]; then language_affix="tl"; fi
+MOSES=/home/pkoehn/moses
+SOURCE_TC_MODEL=/home/pkoehn/experiment/material-${language_affix}-en/truecaser/truecase-model.1.${language_affix}
 
+for i in train dev; do
+  cat data/$i/text | cut -d " " -f2- > data/$i/text.notruecase
+  cat data/$i/text | cut -d " " -f1  > data/$i/uttids
+  # Truecase
+  $MOSES/scripts/recaser/truecase.perl -model $SOURCE_TC_MODEL \
+    < data/$i/text.notruecase | sed "s=<= <=g" > data/$i/text.truecase
+#  cat data/$i/text.truecase | sed 's/&apos; //g' | sed 's/&apos//g' | sed 's/&#91//g' | sed 's/&#93//g' | sed 's/&quot; //g' | sed 's/&quot //g' | sed 's/&amp; //g' | sed 's/@-@ //g' | sed 's/://g' | sed 's/\///g' | sed 's/%//g' | sed 's/+//g' | sed 's/( //g' | sed 's/) //g' | sed 's/\, //g' | sed 's/ \.//g' | sed 's/\?//g' | sed 's/\!//g' | sed 's/\;//g' > data/$i/text.nopunc
+  cat data/$i/text.truecase > data/$i/text.nopunc
+  paste -d " " data/$i/uttids data/$i/text.nopunc > data/$i/text
+done
 
 

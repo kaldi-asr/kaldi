@@ -174,6 +174,9 @@ if [ $stage -le 5 ]; then
       $adir.$n/lmwt.lmonly || exit 1;
   done
 fi
+
+exit
+
 if [ $stage -le 6 ]; then
   echo "$0: invoking rnnlm/compute_sentence_scores.sh which calls rnnlm to get RNN LM scores."
   $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \

@@ -18,17 +18,34 @@ fi
 data=$1
 
 lexicon=$data/conversational/reference_materials/lexicon.txt
-[ ! -f $lexicon ] && echo "Lexicon $lexicon does not exist!" && exit 1;
 
+mkdir -p data/local
+cat $lexicon | awk '{print $1}' > data/local/lexicon_words
+cat $lexicon | cut -f2-  > data/local/lexicon_phns
+
+language=swahili
+language_affix=sw
+if [ "$language" == "tagalog" ]; then language_affix="tl"; fi
+MOSES=/home/pkoehn/moses
+SOURCE_TC_MODEL=/home/pkoehn/experiment/material-${language_affix}-en/truecaser/truecase-model.1.${language_affix}
+  $MOSES/scripts/recaser/truecase.perl -model $SOURCE_TC_MODEL \
+    < data/local/lexicon_words > data/local/lexicon_words_tc
+
+paste data/local/lexicon_words_tc data/local/lexicon_phns | sort > data/local/lexicon_tc
+
+lexicon=data/local/lexicon_tc
+
+[ ! -f $lexicon ] && echo "Lexicon $lexicon does not exist!" && exit 1;
+echo $0: using lexicon $lexicon
 mkdir -p data/local/dict_nosp/
 cat data/train/text | cut -f 2- -d ' ' | \
-  sed 's/ /\n/g' | sort -u > data/local/dict_nosp/wordlist
+  sed 's/ /\n/g' | grep . | sort -u > data/local/dict_nosp/wordlist
 
 local/convert_lexicon.pl <(echo -e "<unk>\t<unk>\n<sil>\t<sil>\n<noise>\t<noise>\n<spnoise>\t<spnoise>" | cat - $lexicon ) data/local/dict_nosp/wordlist | sort -u > data/local/dict_nosp/lexicon.txt
 [ -f  data/local/dict_nosp/lexiconp.txt ] && rm data/local/dict_nosp/lexiconp.txt
 
 cat data/local/dict_nosp/lexicon.txt | sed 's/\t/ /g' | \
-  cut -f 2- -d ' ' | sed 's/ /\n/g' | sort -u > data/local/dict_nosp/phones.txt
+  cut -f 2- -d ' ' | sed 's/ /\n/g' | grep . | sort -u > data/local/dict_nosp/phones.txt
 
 
 grep "^<.*>$" data/local/dict_nosp/phones.txt  > data/local/dict_nosp/silence_phones.txt
