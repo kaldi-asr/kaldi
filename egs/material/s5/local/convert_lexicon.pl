@@ -37,17 +37,17 @@ my %lexicon;
 while (<$lexicon_file>) {
   chomp;
   (my $word, my $prons) = split " ", $_, 2;
-  $lexicon{$word} = $prons;
+  $lexicon{uc $word} = $prons;
 }
 
 while (<$wordlist_file>) {
   chomp;
   my $word = $_;
-  print "Cannot find word $word in lexicon\n" unless defined($lexicon{$word});
+  print "Cannot find word $word in lexicon\n" unless defined($lexicon{uc $word});
 
   #print "$word $lexicon{$word}\n";
 
-  my @prons = split "\t", $lexicon{$word};
+  my @prons = split "\t", $lexicon{uc $word};
   foreach my $pron (@prons) {
     my @phones = split " ", $pron;
     my $stress_mark = 0;

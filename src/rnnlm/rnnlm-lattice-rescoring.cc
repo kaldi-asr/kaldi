@@ -77,6 +77,7 @@ fst::StdArc::Weight KaldiRnnlmDeterministicFst::Final(StateId s) {
 
 bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
                                         fst::StdArc *oarc) {
+  KALDI_LOG << "computing state, arc: " << s << " " << ilabel;
   /// At this point, we have created the state.
   KALDI_ASSERT(static_cast<size_t>(s) < state_to_wseq_.size());
 

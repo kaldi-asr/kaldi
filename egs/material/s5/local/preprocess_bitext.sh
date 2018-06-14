@@ -12,6 +12,8 @@ srctext_bitext=data/bitext/text
 . ./path.sh
 . ./utils/parse_options.sh
 
+output=$1
+
 set -e -o pipefail
 set -o nounset                              # Treat unset variables as an error
 
@@ -29,5 +31,5 @@ $MOSES/scripts/recaser/truecase.perl -model $SOURCE_TC_MODEL \
   < ${srctext_bitext}.tok > ${srctext_bitext}.tc
 
 # Remove punctuation
-cat ${srctext_bitext}.tc | sed 's/&apos; //g' | sed 's/&apos//g' | sed 's/&#91//g' | sed 's/&#93//g' | sed 's/&quot; //g' | sed 's/&quot //g' | sed 's/&amp; //g' | sed 's/@-@ //g' | sed 's/-//g' | sed 's/://g' | sed 's/\///g' | sed 's/%//g' | sed 's/+//g' | sed 's/( //g' | sed 's/) //g' | sed 's/\, //g' | sed 's/ \.//g' | sed 's/\?//g' | sed 's/\!//g' | sed 's/\;//g'
+cat ${srctext_bitext}.tc | sed 's/&apos; //g' | sed 's/&apos//g' | sed 's/&#91//g' | sed 's/&#93//g' | sed 's/&quot; //g' | sed 's/&quot //g' | sed 's/&amp; //g' | sed 's/@-@ //g' | sed 's/-//g' | sed 's/://g' | sed 's/\///g' | sed 's/%//g' | sed 's/+//g' | sed 's/( //g' | sed 's/) //g' | sed 's/\, //g' | sed 's/ \.//g' | sed 's/\?//g' | sed 's/\!//g' | sed 's/\;//g' > $output
 
