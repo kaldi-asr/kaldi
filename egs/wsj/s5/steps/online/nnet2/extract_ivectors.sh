@@ -182,7 +182,7 @@ if [ $sub_speaker_frames -gt 0 ]; then
     cat $data/spk2utt | python -c "
 import sys
 utt_counts = {}
-trash = map(lambda x: utt_counts.update({x.split()[0]:float(x.split()[1])}), open('$dir/utt_counts').readlines())
+trash = list(map(lambda x: utt_counts.update({x.split()[0]:float(x.split()[1])}), open('$dir/utt_counts').readlines()))
 sub_speaker_frames = $sub_speaker_frames
 lines = sys.stdin.readlines()
 total_counts = {}
