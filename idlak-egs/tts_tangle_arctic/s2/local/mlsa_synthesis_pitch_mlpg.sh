@@ -182,7 +182,7 @@ if [ "$synth" = "cere" ]; then
 elif [ "$synth" = "excitation" ]; then
     echo "generating in $tmpdir"
     x2x +af $mcep > $mcep.float
-    mlsacheck -l $fftlen -c 2 -r 0 -P 5 -m $order -a $alpha < $mcep.float > $mcep.float.stable
+    mlsacheck 2> /dev/null -l $fftlen -c 2 -r 0 -P 5 -m $order -a $alpha < $mcep.float > $mcep.float.stable
     psize=`echo "$period * $srate / 1000" | bc`
     # We have to drop the first few F0 frames to match SPTK behaviour
     #cat $f0 | awk -v srate=$srate '(NR > 2){if ($1 > 0) print srate / $1; else print 0.0}' | x2x +af \
@@ -214,7 +214,7 @@ elif [ "$synth" = "WORLD" ]; then
     echo $world/synth $fftlen $srate $f0.double $mcep.sp.double $bap.double $out_wav
     $world/synth $fftlen $srate $f0.double $mcep.sp.double $bap.double $out_wav
 else
-    x2x +af $mcep | mlsacheck -l $fftlen -c 2 -r 0 -P 5 -m $order -a $alpha > $mcep.float
+    x2x +af $mcep | mlsacheck 2> /dev/null -l $fftlen -c 2 -r 0 -P 5 -m $order -a $alpha > $mcep.float
     psize=`echo "$period * $srate / 1000" | bc`
     # We have to drop the first few F0 frames to match SPTK behaviour
     cat $f0 | awk -v srate=$srate '(NR > 2){if ($1 > 0) print srate / $1; else print 0.0}' | x2x +af \
