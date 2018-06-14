@@ -51,6 +51,8 @@ fi
 wav_path=
 if [ $(basename $datadev) == 'analysis1' ]; then
   wav_path=${audio_path_analysis1}/src
+elif [ $(basename $datadev) == 'analysis2' ]; then
+  wav_path=${audio_path_analysis2}/src
 elif [ $(basename $datadev) == 'test_dev' ]; then
   wav_path=${audio_path_dev}/src
 elif [ $(basename $datadev) == 'eval1' ]; then
@@ -58,7 +60,7 @@ elif [ $(basename $datadev) == 'eval1' ]; then
 elif [ $(basename $datadev) == 'eval2' ]; then
   wav_path=${audio_path_eval2}/src
 fi
-[ -z ${wav_path} ] && echo "$0: test data should be either analysis1, test_dev, eval1 or eval2." && exit 1
+[ -z ${wav_path} ] && echo "$0: test data should be either analysis1, analysis2, test_dev, eval1 or eval2." && exit 1
 
 find ${wav_path} -name "*.wav" \
   | while read file; do id=$(basename $file | awk '{gsub(".wav","");print}'); \
