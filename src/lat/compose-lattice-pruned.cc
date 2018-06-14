@@ -545,7 +545,6 @@ void PrunedCompactLatticeComposer::ComputeDeltaBackwardCosts(
     // At this point expected_cost_offset may be infinite, if arc_delta_cost was
     // infinite (reflecting that we processed all the arcs, and the final-state
     // if applicable, of the lattice state corresponding to this composed state.
-
     if (expected_cost_offset < current_cutoff) {
       queue_elements.push_back(std::pair<BaseFloat, int32>(
           expected_cost_offset, composed_state_index));
@@ -629,13 +628,10 @@ void PrunedCompactLatticeComposer::AddFirstState() {
   composed_state.sorted_arc_index = 0;
   composed_state.arc_delta_cost = 0.0; // the first arc_delta_cost is always 0.0
                                        // due to sorting; no need to look it up.
-//  composed_state.arc_delta_cost = avg_diff_ * best_path_.size();
-
   lat_state_info_[0].composed_states.push_back(state_id);
   accessed_lat_states_.insert(state_id);
   pair_to_state_[std::pair<int32, int32>(0, det_fst_->Start())] = state_id;
 
-//  BaseFloat expected_cost_offset = avg_diff_ * best_path_.size();
   BaseFloat expected_cost_offset = 0.0;  // the formula simplifies to zero
                                          // in this case.
   composed_state_queue_.push(
@@ -874,8 +870,6 @@ void PrunedCompactLatticeComposer::Compose() {
     while (num_arcs_out_ < this_iter_arc_limit &&
            !composed_state_queue_.empty()) {
       int32 src_composed_state = composed_state_queue_.top().second;
-      double cost = composed_state_queue_.top().first;
-      KALDI_LOG << "popping state and cost: " << src_composed_state << " " << cost << " " << current_cutoff_;
       composed_state_queue_.pop();
       ProcessQueueElement(src_composed_state);
     }
@@ -924,7 +918,6 @@ void ComposeCompactLatticePruned(
     const CompactLattice &clat,
     fst::DeterministicOnDemandFst<fst::StdArc> *det_fst,
     CompactLattice* composed_clat) {
-
   PrunedCompactLatticeComposer composer(opts, clat, det_fst, composed_clat);
   composer.Compose();
 }
