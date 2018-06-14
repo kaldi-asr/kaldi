@@ -6,7 +6,6 @@
 # For more detail, please check:
 # 1. Formosa Speech in the Wild (FSW) project (https://sites.google.com/speech.ntut.edu.tw/fsw/home/corpus)
 # 2. Formosa Speech Recognition Challenge (FSW) 2018 (https://sites.google.com/speech.ntut.edu.tw/fsw/home/challenge)
-#
 
 # shell options
 set -e -o pipefail
