@@ -48,7 +48,6 @@ class PrunedCompactLatticeComposer {
  public:
   PrunedCompactLatticeComposer(
       const ComposeLatticePrunedOptions &opts,
-      BaseFloat avg_diff, const std::vector<int32> &best_path,
       const CompactLattice &clat,
       fst::DeterministicOnDemandFst<fst::StdArc> *det_fst,
       CompactLattice* composed_clat);
@@ -294,8 +293,6 @@ class PrunedCompactLatticeComposer {
   // lattice.
   bool output_reached_final_;
   const ComposeLatticePrunedOptions &opts_;
-  BaseFloat avg_diff_;
-  const std::vector<int32> &best_path_;
   const CompactLattice &clat_in_;
   fst::DeterministicOnDemandFst<fst::StdArc> *det_fst_;
   CompactLattice *clat_out_;
@@ -605,12 +602,10 @@ void PrunedCompactLatticeComposer::ComputeLatticeStateInfo() {
 
 PrunedCompactLatticeComposer::PrunedCompactLatticeComposer(
       const ComposeLatticePrunedOptions &opts,
-      BaseFloat avg_diff, const std::vector<int32> &best_path,
       const CompactLattice &clat_in,
       fst::DeterministicOnDemandFst<fst::StdArc> *det_fst,
       CompactLattice* composed_clat): output_reached_final_(false),
-    opts_(opts), avg_diff_(avg_diff),
-    best_path_(best_path), clat_in_(clat_in), det_fst_(det_fst),
+    opts_(opts), clat_in_(clat_in), det_fst_(det_fst),
     clat_out_(composed_clat),
     num_arcs_out_(0),
     output_best_cost_(std::numeric_limits<double>::infinity()),
@@ -647,21 +642,6 @@ void PrunedCompactLatticeComposer::AddFirstState() {
       std::pair<BaseFloat, int32>(expected_cost_offset,
                                   state_id));  // actually (0.0, 0).
 
-  int32 size = best_path_.size();
-  composed_state_info_.resize(size);
-
-  for (int32 i = 0; i < size; i++) {
-    ComposedStateInfo &composed_state = composed_state_info_[i];
-    composed_state.lat_state = 0;
-    composed_state.lm_state = det_fst_->Start();
-    composed_state.forward_cost = 0.0;
-    composed_state.backward_cost = std::numeric_limits<double>::infinity();
-    composed_state.delta_backward_cost = 0.0;
-    composed_state.prev_composed_state = -1;
-    composed_state.sorted_arc_index = 0;
-    composed_state.arc_delta_cost = 0.0; // the first arc_delta_cost is always 0.0
-    
-  }
 }
 
 
@@ -945,29 +925,7 @@ void ComposeCompactLatticePruned(
     fst::DeterministicOnDemandFst<fst::StdArc> *det_fst,
     CompactLattice* composed_clat) {
 
-  CompactLattice clat_copy = clat;
-
-  CompactLattice clat_best_path, composed_clat_bestpath;
-  CompactLatticeShortestPath(clat, &clat_best_path);
-
-  std::vector<std::vector<double> > scale(2, std::vector<double>(2, 0.0));
-  fst::ScaleLattice(scale, &clat_best_path);
-  ComposeCompactLatticeDeterministic(clat_best_path, det_fst, &composed_clat_bestpath);
-  Lattice best_path;                                                        
-  ConvertLattice(composed_clat_bestpath, &best_path);
-
-  LatticeWeight tot_weight;
-  std::vector<int32> alignment;                                           
-  std::vector<int32> words;
-  GetLinearSymbolSequence(best_path, &alignment, &words, &tot_weight);
-//  GetLinearSymbolSequence(best_path, NULL, NULL, &tot_weight);
-  KALDI_LOG << "length and diff are " << words.size() << " " << tot_weight;
-//  BaseFloat avg_diff = tot_weight.Value1() / words.size();
-
-  BaseFloat avg_diff = 0;
-//  std::vector<int32> words(1);
-
-  PrunedCompactLatticeComposer composer(opts, avg_diff, words, clat, det_fst, composed_clat);
+  PrunedCompactLatticeComposer composer(opts, clat, det_fst, composed_clat);
   composer.Compose();
 }
 
