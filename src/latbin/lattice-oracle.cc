@@ -46,7 +46,7 @@ void ReadSymbolList(const std::string &rxfilename,
                 << ", file is: " << PrintableRxfilename(rxfilename);
     }
     fst::StdArc::Label lab = word_syms->Find(sym.c_str());
-    if (lab == fst::SymbolTable::kNoSymbol) {
+    if (lab == -1) { // fst::kNoSymbol
       KALDI_ERR << "Can't find symbol in symbol table: "
                 << line << ", file is: "
                 << PrintableRxfilename(rxfilename);

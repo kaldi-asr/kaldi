@@ -20,8 +20,8 @@ initial_effective_lrate=0.0015
 final_effective_lrate=0.00015
 num_epochs=4
 num_jobs_initial=2
-num_jobs_final=12
-remove_egs=true
+num_jobs_final=8
+remove_egs=false
 
 # feature options
 use_ivectors=true
@@ -42,11 +42,9 @@ fi
 
 dir=exp/nnet3/tdnn_sp${affix:+_$affix}
 gmm_dir=exp/tri5a
-train_set=train
+train_set=train_sp
 ali_dir=${gmm_dir}_sp_ali
 graph_dir=$gmm_dir/graph
-
-echo "... stage= $stage, train_stage= $train_stage"
 
 local/nnet3/run_ivector_common.sh --stage $stage || exit 1;
 
@@ -96,7 +94,7 @@ if [ $stage -le 8 ]; then
     --cleanup.remove-egs $remove_egs \
     --cleanup.preserve-model-interval 500 \
     --use-gpu true \
-    --feat-dir=data/${train_set}_sp_hires \
+    --feat-dir=data/${train_set}_hires \
     --ali-dir $ali_dir \
     --lang data/lang \
     --reporting.email="$reporting_email" \
@@ -107,9 +105,7 @@ if [ $stage -le 9 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
 
-#  for decode_set in dev test dev_sk test_sk dev_en test_en; do
-#  for decode_set in dev_tw test_tw dev_matbn test_matbn; do
-  for decode_set in dev_tw test_tw dev_matbn test_matbn; do
+  for decode_set in test; do
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
     decode_dir=${dir}/decode_$decode_set
     steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
