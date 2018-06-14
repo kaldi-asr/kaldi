@@ -324,9 +324,9 @@ class XconfigBlockSumLayer(XconfigLayerBase):
         if self.config['glorot-init'] is True:
             param_mean =  1.0 / ( input_dim / output_dim ) 
             param_stddev = 1.0 / math.sqrt(input_dim / output_dim)
-            ng_per_element_scale_options += "param-mean={0} param-stddev={1}".format(param_mean, param_stddev)
+            ng_per_element_scale_options += " param-mean={0} param-stddev={1}".format(param_mean, param_stddev)
         else:
-            ng_per_element_scale_options += "param-mean=0 param-stddev=1"
+            ng_per_element_scale_options += " param-mean=0 param-stddev=1"
         
         pes_str = ng_per_element_scale_options
         blocksum_scale = output_dim * 1.0 / input_dim
