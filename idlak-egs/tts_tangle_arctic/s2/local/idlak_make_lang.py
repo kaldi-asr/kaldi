@@ -427,10 +427,11 @@ def idlak_make_lang(textfile, datadir, langdir):
                 chars[c] = 1
             # get phone set from transcription lexicon
             for p in prons:
-                pp = p.split()
-                for phone in pp:
-                    phones[phone] = 1
-                fplex.write(("%s %s\n" % (utf8w, p)).encode('utf-8'))
+                if len(p):
+                    pp = p.split()
+                    for phone in pp:
+                        phones[phone] = 1
+                    fplex.write(("%s %s\n" % (utf8w, p)).encode('utf-8'))
             if handler.oov.has_key(w):
                 fpoov.write(("%s %s\n" % (utf8w, prons[0])).encode('utf-8'))
         fplex.close()
