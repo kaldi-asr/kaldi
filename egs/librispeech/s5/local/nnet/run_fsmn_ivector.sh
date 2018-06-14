@@ -10,7 +10,20 @@ set -o pipefail
 
 dnn_model=$1
 
-stage=1
+stage=0
+
+if [ $stage -le 0 ]; then
+ min_seg_len=1.55
+ train_set=train_960_cleaned
+ gmm=tri6b_cleaned
+ nnet3_affix=_cleaned
+ local/nnet3/run_ivector_common.sh --stage $stage \
+                                   --min-seg-len $min_seg_len \
+                                   --train-set $train_set \
+                                   --gmm $gmm \
+                                   --num-threads-ubm 6 --num-processes 3 \
+                                   --nnet3-affix "$nnet3_affix" || exit 1;
+then
 
 ##Make fbank features
 if [ $stage -le 1 ]; then
@@ -20,7 +33,7 @@ if [ $stage -le 1 ]; then
   fbankdir=fbank/$x
   
   cp -r data/$x data_fbank/$x
-  steps/make_fbank.sh --nj 30 --cmd "$train_cmd"  --fbank-config conf/fbank.cfg \
+  steps/make_fbank.sh --nj 30 --cmd "$train_cmd"  --fbank-config conf/fbank.conf \
     data_fbank/$x exp/make_fbank/$x $fbankdir
   steps/compute_cmvn_stats.sh data_fbank/$x exp/make_fbank/$x $fbankdir
 done
