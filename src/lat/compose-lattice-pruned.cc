@@ -159,7 +159,8 @@ class PrunedCompactLatticeComposer {
     int32 lat_state;
     int32 lm_state;
 
-    // the distance between the state from the start state
+    // the number of arcs on the path from the start state to this state, in the
+    // composed lattice, by which this state was first reached.
     int32 depth;
 
     // If you have just called RecomputePruningInfo(), then
@@ -301,7 +302,7 @@ class PrunedCompactLatticeComposer {
   // in a depth-first way. Once we find a path reaching a final state, this
   // variable will be reset to 0.
   // The reason we do this is because the beam-search depends on a good estimate
-  // of the composed-best-cost, which before we reach a fina state, we instead
+  // of the composed-best-cost, which before we reach a final state, we instead
   // borrow the value from best-cost from the input lattice, which is usually
   // systematically worse than the RNNLM scores, and makes the algorithm spend
   // a lot of time before reaching any final state, especially if the input
