@@ -194,7 +194,7 @@ std::string ErrorContext(const std::string &str);
    "[percentiles(0,1,2,5 10,20,50,80,90 95,98,99,100)=(0.001,0.003,0.003,0.004 \
       0.005,0.01,0.07,0.11,0.14 0.18,0.24,0.29,0.39), mean=0.0745, stddev=0.0611]"
 */
-std::string SummarizeVector(const VectorBase<BaseFloat> &vec);
+std::string SummarizeVector(const VectorBase<float> &vec);
 
 std::string SummarizeVector(const VectorBase<double> &vec);
 
