@@ -29,7 +29,7 @@ mkdir -p $workdir
 echo 'Gathering missing words...'
 cat data/*/train/text | \
   local/count_oovs.pl $lexicon | \
-  awk '{for(i=4; i<NF; i++) printf "%s",$i OFS; if(NF) printf "%s",$NF; printf ORS}' | \
+  awk '{if (NF > 3 ) {for(i=4; i<NF; i++) printf "%s ",$i; print $NF;}}' | \
   perl -ape 's/\s/\n/g;' | \
   sort | uniq > $workdir/missing.txt
 cat $workdir/missing.txt | \

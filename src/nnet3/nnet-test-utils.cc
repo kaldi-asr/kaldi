@@ -1329,7 +1329,7 @@ void ComputeExampleComputationRequestSimple(
 
   int32 num_output_frames = 1 + Rand() % 10,
       output_start_frame = Rand() % 10,
-      num_examples = 1 + Rand() % 10,
+      num_examples = 1 + Rand() % 4,
       output_end_frame = output_start_frame + num_output_frames,
       input_start_frame = output_start_frame - left_context - (Rand() % 3),
       input_end_frame = output_end_frame + right_context + (Rand() % 3),
