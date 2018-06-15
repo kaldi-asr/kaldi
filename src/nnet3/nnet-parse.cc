@@ -481,7 +481,7 @@ static void PrintFloatSuccinctly(std::ostream &os, BaseFloat f) {
 
 // Returns a string that summarizes a vector fairly succintly, for
 // printing stats in info lines.
-std::string SummarizeVector(const VectorBase<BaseFloat> &vec) {
+std::string SummarizeVector(const VectorBase<float> &vec) {
   std::ostringstream os;
   if (vec.Dim() < 10) {
     os << "[ ";
