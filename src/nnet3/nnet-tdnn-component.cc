@@ -122,10 +122,11 @@ void TdnnComponent::InitFromConfig(ConfigLine *cfl) {
   // 3. Parameter-initialization configs, "has-bias", and
   // orthonormal-constraint.
   orthonormal_constraint_ = 0.0;
-  BaseFloat param_stddev = -1, bias_stddev = 1.0;
+  BaseFloat param_stddev = -1, bias_mean = 0.0, bias_stddev = 1.0;
   bool use_bias = true;
   cfl->GetValue("param-stddev", &param_stddev);
   cfl->GetValue("bias-stddev", &bias_stddev);
+  cfl->GetValue("bias-mean", &bias_mean);
   cfl->GetValue("use-bias", &use_bias);
   cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
   if (param_stddev < 0.0) {
@@ -141,6 +142,7 @@ void TdnnComponent::InitFromConfig(ConfigLine *cfl) {
     bias_params_.Resize(output_dim);
     bias_params_.SetRandn();
     bias_params_.Scale(bias_stddev);
+    bias_params_.Add(bias_mean);
   } else {
     bias_params_.Resize(0);
   }

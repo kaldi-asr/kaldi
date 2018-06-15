@@ -1595,6 +1595,12 @@ class PerElementScaleComponent: public UpdatableComponent {
                       which does not support natural gradient directly-- in that
                       case you have to use NaturalGradientPerElementScaleComponent
                       if you want to use natural gradient update.
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
 */
 class PerElementOffsetComponent: public UpdatableComponent {
  public:

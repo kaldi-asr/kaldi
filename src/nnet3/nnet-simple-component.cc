@@ -2847,7 +2847,7 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   // Set natural-gradient configs.
   BaseFloat num_samples_history = 2000.0,
       alpha = 4.0;
-  int32 rank_in = 20, rank_out = 80,
+  int32 rank_in = -1, rank_out = -1,
       update_period = 4;
   cfl->GetValue("num-samples-history", &num_samples_history);
   cfl->GetValue("alpha", &alpha);
@@ -3065,7 +3065,7 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
     params_.Scale(param_stddev);
   }
   // Read various natural-gradient-related configs.
-  int32 rank_in = 20, rank_out = 80, update_period = 4;
+  int32 rank_in = -1, rank_out = -1, update_period = 4;
   BaseFloat alpha = 4.0,
       num_samples_history = 2000.0;
 
@@ -3077,6 +3077,11 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("update-period", &update_period);
   cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
+
+  if (rank_in < 0)
+    rank_in = std::min<int32>(20, (InputDim() + 1) / 2);
+  if (rank_out < 0)
+    rank_out = std::min<int32>(80, (OutputDim() + 1) / 2);
 
   preconditioner_in_.SetAlpha(alpha);
   preconditioner_out_.SetAlpha(alpha);
