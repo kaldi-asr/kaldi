@@ -13,23 +13,23 @@
 # of phone_lm.fst (in stage 1 below)
 
 # local/chain/compare_wer.sh exp/chain/e2e_tdnn_1a
-# System                e2e_tdnn_1a
-#WER dev93 (tgpr)                9.70
-#WER dev93 (tg)                  9.05
-#WER dev93 (big-dict,tgpr)       7.20
-#WER dev93 (big-dict,fg)         6.36
-#WER eval92 (tgpr)               5.88
-#WER eval92 (tg)                 5.32
-#WER eval92 (big-dict,tgpr)      3.67
-#WER eval92 (big-dict,fg)        3.05
-# Final train prob        -0.0741
-# Final valid prob        -0.0951
+# System                   e2e_tdnn_1a
+#WER dev93 (tgpr)                9.63
+#WER dev93 (tg)                  9.07
+#WER dev93 (big-dict,tgpr)       7.41
+#WER dev93 (big-dict,fg)         6.55
+#WER eval92 (tgpr)               5.90
+#WER eval92 (tg)                 5.17
+#WER eval92 (big-dict,tgpr)      3.56
+#WER eval92 (big-dict,fg)        2.85
+# Final train prob        -0.0726
+# Final valid prob        -0.0884
 # Final train prob (xent)
 # Final valid prob (xent)
-# Num-params                 5562234
+# Num-params                 3740934
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_tdnn_1a
-# exp/chain/e2e_tdnn_1a: num-iters=68 nj=2..5 num-params=5.6M dim=40->84 combine=-0.094->-0.094 logprob:train/valid[44,67,final]=(-0.083,-0.073,-0.072/-0.097,-0.095,-0.095)
+# exp/chain/e2e_tdnn_1a: num-iters=102 nj=2..5 num-params=3.7M dim=40->84 combine=-0.117->-0.116 (over 3) logprob:train/valid[67,101,final]=(-0.080,-0.073,-0.073/-0.090,-0.089,-0.088)
 
 set -e
 
@@ -37,7 +37,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1a_dim450
+affix=1a
 
 # training options
 num_epochs=4
@@ -85,10 +85,18 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
+  echo "$0: Estimating a phone language model for the denominator graph..."
+  mkdir -p $treedir/log
+  $train_cmd $treedir/log/make_phone_lm.log \
+             cat data/$train_set/text \| \
+             steps/nnet3/chain/e2e/text_to_phones.py --between-silprob 0.1 \
+             data/lang_nosp \| \
+             utils/sym2int.pl -f 2- data/lang_nosp/phones.txt \| \
+             chain-est-phone-lm --num-extra-lm-states=2000 \
+             ark:- $treedir/phone_lm.fst
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
                                        --shared-phones true \
                                        data/$train_set $lang $treedir
-  cp exp/chain/e2e_base/phone_lm.fst $treedir/
 fi
 
 if [ $stage -le 2 ]; then
