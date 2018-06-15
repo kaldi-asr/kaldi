@@ -514,11 +514,9 @@ echo "
 *********************
 ** Congratulations **
 *********************
-TTS-DNN trained and sample synthesis done.
+TTS-DNN trained.
 
-Samples can be found in $dnndir/tst_forward/wav_mlpg/*.wav.
-
-More synthesis can be performed using the utils/synthesis_test.sh utility,
+Synthesis can be performed using the utils/synthesis_test.sh utility,
 e.g.: echo 'Test 1 2 3' | utils/synthesis_test-48k.sh
 "
 echo "#### Step 6: packaging DNN voice ####"
@@ -527,6 +525,6 @@ local/make_dnn_voice_pitch.sh --spk $spk --srate $srate --mcep_order $order --bn
 
 echo "Voice packaged successfully. Portable models have been stored in ${spk}_pmdl."
 echo "Synthesis can be performed using:
-         echo \"This is a demo of D N N synthesis\" | local/synthesis_voice_pitch.sh ${spk}_pmdl <out_wav>"
+         echo \"This is a demo of D N N synthesis\" | local/synthesis_voice_pitch.sh ${spk}_pmdl <out_dir>"
 
 
