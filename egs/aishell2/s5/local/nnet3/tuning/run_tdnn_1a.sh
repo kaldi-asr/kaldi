@@ -8,6 +8,14 @@
 # At this script level we don't support not running on GPU, as it would be painfully slow.
 # If you want to run without GPU you'd have to call train_tdnn.sh with --gpu false,
 # --num-threads 16 and --minibatch-size 128.
+
+# results
+# local/nnet3/compare_wer.sh exp/nnet3/tdnn_sp/
+# Model                  tdnn_sp
+# WER(%)                    11.02
+# Final train prob        -1.1265
+# Final valid prob        -1.2600
+
 set -e
 
 stage=0
@@ -20,7 +28,7 @@ initial_effective_lrate=0.0015
 final_effective_lrate=0.00015
 num_epochs=4
 num_jobs_initial=2
-num_jobs_final=6
+num_jobs_final=12
 nj=30
 remove_egs=true
 
@@ -41,7 +49,7 @@ where "nvcc" is installed.
 EOF
 fi
 
-# we use 40-dim high-resolution mfcc features (w/o pitch and ivector) for nn training
+# we use 43-dim high-resolution mfcc features (w pitch and w/o ivector) for nn training
 # no utt- and spk- level cmvn
 
 dir=exp/nnet3/tdnn_sp${affix:+_$affix}
@@ -49,14 +57,15 @@ gmm_dir=exp/tri3
 test_sets="dev test"
 train_set=train
 ali_dir=${gmm_dir}_ali
-graph_dir=$gmm_dir/graph
+graph_dir=${gmm_dir}/graph
 
 if [ $stage -le 6 ]; then
   mfccdir=mfcc_hires
   for datadir in ${train_set} ${test_sets}; do
     utils/copy_data_dir.sh data/${datadir} data/${datadir}_hires
     utils/data/perturb_data_dir_volume.sh data/${datadir}_hires || exit 1;
-    steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj data/${datadir}_hires exp/make_mfcc/ ${mfccdir}
+    steps/make_mfcc_pitch.sh --mfcc-config conf/mfcc_hires.conf --pitch-config conf/pitch.conf \
+      --nj $nj data/${datadir}_hires exp/make_mfcc/ ${mfccdir}
   done
 fi
 
@@ -64,10 +73,11 @@ if [ $stage -le 7 ]; then
   echo "$0: creating neural net configs";
 
   num_targets=$(tree-info $ali_dir/tree |grep num-pdfs|awk '{print $2}')
+  input_dim=$(feat-to-dim scp:data/${train_set}_hires/feats.scp -)  
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
-  input dim=40 name=input
+  input dim=$input_dim name=input
 
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
