@@ -1180,18 +1180,30 @@ class FixedBiasComponent: public Component {
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedBiasComponent);
 };
 
-/** NoOpComponent just duplicates its input.  We don't anticipate this being used
-    very often, but it may sometimes make your life easier
-    The only config parameter it accepts is 'dim', e.g. 'dim=400'.
+/**
+   NoOpComponent just duplicates its input.  We don't anticipate this being used
+    very often, but it may sometimes make your life easier.  Config parameters:
+
+      dim               E.g. dim=1024.  Required.
+      backprop-scale    Defaults to 1.0.  May be set to a different value to scale
+                        the derivatives being backpropagated.
 */
-class NoOpComponent: public NonlinearComponent {
+class NoOpComponent: public Component {
  public:
-  explicit NoOpComponent(const NoOpComponent &other): NonlinearComponent(other) { }
+  explicit NoOpComponent(const NoOpComponent &other):
+      dim_(other.dim_), backprop_scale_(other.backprop_scale_) { }
   NoOpComponent() { }
   virtual std::string Type() const { return "NoOpComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kPropagateInPlace;
+    return kSimpleComponent|kPropagateInPlace|kBackpropInPlace;
   }
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual Component *Copy() { return new NoOpComponent(*this); }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
   virtual Component* Copy() const { return new NoOpComponent(*this); }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                           const CuMatrixBase<BaseFloat> &in,
@@ -1205,6 +1217,9 @@ class NoOpComponent: public NonlinearComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
  private:
+  int32 dim_;
+  BaseFloat backprop_scale_;
+
   NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
 };
 
