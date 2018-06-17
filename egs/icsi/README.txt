@@ -1,6 +1,6 @@
 
 To train models, for an arbitrary mic, go to s5 run something like (after you
-set ICSI_DIR and ICSI_TRANS variables in either of below scripts:
+set ICSI_DIR and/or ICSI_TRANS variables in the  below scripts):
 
 ./run_prepare_shared.sh
 
@@ -24,8 +24,8 @@ See [1] for a description, or [2,3] to access the data. The correposning paper
 describing the ICSI corpora is [4]
 
 [1] http://www1.icsi.berkeley.edu/Speech/mr/
-[2] http://groups.inf.ed.ac.uk/ami/icsi/
-[3] LDC: LDC2004S02 for audio, and LDC2004T04 for transcripts
+[2] http://groups.inf.ed.ac.uk/ami/icsi/ (for now, looks like only ihm data is available)
+[3] LDC: LDC2004S02 for audio, and LDC2004T04 for transcripts (used in this recipe)
 [4] A Janin, D Baron, J Edwards, D Ellis, D Gelbart, N Morgan, B Peskin,
     T Pfau, E Shriberg, A Stolcke, and C Wooters, The ICSI meeting corpus. 
     in Proc IEEE ICASSP, 2003, pp. 364-367
@@ -38,7 +38,7 @@ data (as a part of this corpora) can be found in, for example, NIST RT04 amd RT0
 This recipe, however, to be self-contained factors out development and evaluation sets
 in a way to minimise the speaker-overlap between different partitions, and to avoid known issues
 with available recordings during evaluation. This recipe follows [5] where dev and eval sets are 
-making use of {Bmr021, Bns00} and {Bmr013, Bmr018, Bro021}, respectively.
+making use of {Bmr021, Bns00} and {Bmr013, Bmr018, Bro021} meetings, respectively.
 
 [5] S Renals and P Swietojanski, Neural networks for distant speech recognition. 
     in Proc IEEE HSCMA 2014 pp. 172-176. DOI:10.1109/HSCMA.2014.6843274

@@ -34,5 +34,10 @@
 %WER 50.0 | 5709 30663 | 55.6 29.1 15.4 5.6 50.0 51.1 | 0.663 | exp/sdm4/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
 
 
-#Nnet3 systems
-# for d in exp/ihm/chain/tdnn/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+#Nnet3 systems, sdm4 mic
+# for d in exp/sdm4/chain*/tdnn*/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
+
+#those use alignments from ihm setup
+%WER 31.8 | 4454 23319 | 71.4 16.3 12.3 3.3 31.8 50.0 | 0.616 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 29.1 | 3843 30796 | 73.9 14.6 11.4 3.0 29.1 66.5 | 0.680 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+

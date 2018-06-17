@@ -18,7 +18,7 @@ mic=ihm
 
 # Train systems,
 nj=30 # number of parallel jobs,
-stage=1
+stage=11
 . utils/parse_options.sh
 
 base_mic=$(echo $mic | sed 's/[0-9]//g') # sdm, ihm or mdm
@@ -143,8 +143,6 @@ if [ $stage -le 9 ]; then
     $graph_dir data/$mic/eval exp/$mic/tri3/decode_eval_${LM}
 fi
 
-exit 1;
-
 if [ $stage -le 10 ]; then
   # The following script cleans the data and produces cleaned data
   # in data/$mic/train_cleaned, and a corresponding system
@@ -153,21 +151,23 @@ if [ $stage -le 10 ]; then
   # Note: local/run_cleanup_segmentation.sh defaults to using 50 jobs,
   # you can reduce it using the --nj option if you want.
   #local/run_cleanup_segmentation.sh --mic $mic
-  echo "For ICSI we do not clean segmentations, as those are manual by default."
+  echo "For ICSI we do not clean segmentations, as those are manual by default, so should be OK."
+  #but perhaps running such experiment would make sense, for no I want to keep this recipe as
+  #close to baseline as possibe
 fi
 
 if [ $stage -le 11 ]; then
   ali_opt=
   [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali false"
-  local/chain/run_tdnn.sh $ali_opt --mic $mic
+  local/chain/run_tdnn.sh $ali_opt --mic $mic --stage 15
 fi
 
-if [ $stage -le 12 ]; then
+#if [ $stage -le 12 ]; then
 #  the following shows how you would run the nnet3 system; we comment it out
 #  because it's not as good as the chain system.
 #  ali_opt=
-  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali false"
-  local/nnet3/run_tdnn.sh $ali_opt --mic $mic 
-fi
+#  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali false"
+#  local/nnet3/run_tdnn.sh $ali_opt --mic $mic 
+#fi
 
 exit 0
