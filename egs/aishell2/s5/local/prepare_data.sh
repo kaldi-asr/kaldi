@@ -7,8 +7,8 @@
 
 . ./path.sh || exit 1;
 
-tmp=data/local/train
-dir=data/train
+tmp=
+dir=
 
 if [ $# != 4 ]; then
   echo "Usage: $0 <corpus-data-dir> <dict-dir> <tmp-dir> <output-dir>"
@@ -21,7 +21,7 @@ dict_dir=$2
 tmp=$3
 dir=$4
 
-echo "local/prepare_data.sh preparing data in $corpus"
+echo "prepare_data.sh: Preparing data in $corpus"
 
 mkdir -p $tmp
 mkdir -p $dir

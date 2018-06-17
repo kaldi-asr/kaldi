@@ -11,7 +11,7 @@
 
 # modify this to your AISHELL-2 training data path
 # e.g:
-# trn_set=/disk10/data/AISHELL-2/iOS/train
+# trn_set=/disk10/data/AISHELL-2/iOS/data
 # dev_set=/disk10/data/AISHELL-2/iOS/dev
 # tst_set=/disk10/data/AISHELL-2/iOS/test
 trn_set=
