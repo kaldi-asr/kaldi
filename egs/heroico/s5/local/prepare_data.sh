@@ -25,7 +25,7 @@ usma_transcripts=$datadir/transcripts/usma-prompts.txt
 
 tmpdir=data/local/tmp
 download_dir=$tmpdir/speech
-data_dir=$download_dir/LDC2006S37/data
+datadir=$download_dir/LDC2006S37/data
 
 # make acoustic model training  lists
 mkdir -p $tmpdir/heroico $tmpdir/usma
@@ -38,14 +38,14 @@ export LC_ALL=en_US.UTF-8
 cat $answers_transcripts | iconv -f ISO-8859-1 -t UTF-8 | sed -e s/// | \
   local/heroico_answers_make_lists.pl
 
-utils/fix_data_dir.sh $tmpdir/heroico/answers
+utils/fix_datadir.sh $tmpdir/heroico/answers
 
 cat $recordings_transcripts | iconv -f ISO-8859-1 -t UTF-8 | sed -e s/// | \
   local/heroico_recordings_make_lists.pl
 
-utils/fix_data_dir.sh $tmpdir/heroico/recordings/train
+utils/fix_datadir.sh $tmpdir/heroico/recordings/train
 
-utils/fix_data_dir.sh $tmpdir/heroico/recordings/devtest
+utils/fix_datadir.sh $tmpdir/heroico/recordings/devtest
 
 # consolidate heroico lists
 mkdir -p $tmpdir/heroico/lists/train
