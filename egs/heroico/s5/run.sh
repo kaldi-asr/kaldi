@@ -15,49 +15,22 @@ lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
 speech="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
 
 tmpdir=data/local/tmp
-
-# where to put the downloaded speech corpus
-download_dir=$tmpdir/speech
-data_dir=$download_dir/LDC2006S37/data
-# If you already have the corpus, put the path  here
-datadir=$data_dir
-
 # location of subs text data
 subsdata="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip"
 
 if [ $stage -le 0 ]; then
   mkdir -p $tmpdir/heroico $tmpdir/usma $download_dir
-
   # download the corpus from openslr
-  if [ ! -f $download_dir/LDC2006S37.tar.gz ]; then
-    wget -O $download_dir/LDC2006S37.tar.gz $speech
-
-  (
-    #run in shell, so we don't have to remember the path
-    cd $download_dir
-    tar -xzf LDC2006S37.tar.gz
-  )
-  local/prepare_data.sh $data_dir
-  else
-    local/prepare_data.sh $datadir
-  fi
+  local/heroico_download.sh
 fi
 
 if [ $stage -le 1 ]; then
-  mkdir -p data/local/dict $tmpdir/dict
-
-  # download the dictionary from openslr
-  if [ ! -f $tmpdir/dict/santiago.tar.gz ]; then
-    wget -O $tmpdir/dict/santiago.tar.gz $lexicon
-  fi
+  # Make lists for building models.
+  local/prepare_data.sh
 fi
 
 if [ $stage -le 2 ]; then
-  (
-    cd $tmpdir/dict
-    tar -xzf santiago.tar.gz
-  )
-
+  mkdir -p data/local/dict $tmpdir/dict
   local/prepare_dict.sh
 fi
 
@@ -66,18 +39,11 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
+  # Get data for lm training
   local/subs_download.sh
+fi
 
   local/subs_prepare_data.pl
-    
-  # use am training text to train lm
-  #mkdir -p $tmpdir/heroico/lm
-
-  # get the text from data/train/text
-  #cut -d " " -f 2- data/train/text > $tmpdir/heroico/lm/train.txt
-
-  # build lm
-  #local/prepare_lm.sh $tmpdir/heroico/lm/train.txt
 fi
 
 if [ $stage -le 5 ]; then
