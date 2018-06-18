@@ -19,7 +19,7 @@ tmpdir=data/local/tmp
 subsdata="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip"
 
 if [ $stage -le 0 ]; then
-  mkdir -p $tmpdir/heroico $tmpdir/usma $download_dir
+  mkdir -p $tmpdir/heroico $tmpdir/usma
   # download the corpus from openslr
   local/heroico_download.sh
 fi
