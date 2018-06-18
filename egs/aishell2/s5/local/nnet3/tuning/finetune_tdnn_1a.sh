@@ -6,9 +6,7 @@
 . ./cmd.sh
 
 data_set=finetune
-
 data_dir=data/${data_set}
-feat_dir=data/${data_set}_hires
 ali_dir=exp/${data_set}_ali
 src_dir=exp/nnet3/tdnn_sp
 dir=${src_dir}_${data_set}
@@ -34,14 +32,14 @@ if [ $stage -le 1 ]; then
   utils/fix_data_dir.sh ${data_dir} || exit 1;
   steps/align_si.sh --cmd "$train_cmd" --nj ${nj} ${data_dir} data/lang exp/tri3 ${ali_dir}
 
-  # extract fbank for AM finetuning
-  utils/copy_data_dir.sh ${data_dir} ${feat_dir}
-  rm -f ${feat_dir}/{cmvn.scp,feats.scp}
-  utils/data/perturb_data_dir_volume.sh ${feat_dir} || exit 1;
-  steps/make_fbank.sh \
-    --cmd "$train_cmd" --nj $nj --fbank-config conf/fbank.conf \
-    ${feat_dir} exp/make_fbank/${data_set} fbank
-  steps/compute_cmvn_stats.sh ${feat_dir} exp/make_fbank/${data_set} fbank
+  # extract mfcc_hires for AM finetuning
+  utils/copy_data_dir.sh ${data_dir} ${data_dir}_hires
+  rm -f ${data_dir}_hires/{cmvn.scp,feats.scp}
+  #utils/data/perturb_data_dir_volume.sh ${data_dir}_hires || exit 1;
+  steps/make_mfcc.sh \
+    --cmd "$train_cmd" --nj $nj --mfcc-config conf/mfcc_hires.conf \
+    ${data_dir}_hires exp/make_mfcc/${data_set}_hires mfcc_hires
+  steps/compute_cmvn_stats.sh ${data_dir}_hires exp/make_mfcc/${data_set}_hires mfcc_hires
 fi
 
 if [ $stage -le 2 ]; then
@@ -59,7 +57,7 @@ if [ $stage -le 3 ]; then
     --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
     --trainer.optimization.minibatch-size $minibatch_size \
-    --feat-dir ${feat_dir} \
+    --feat-dir ${data_dir}_hires \
     --lang data/lang \
     --ali-dir ${ali_dir} \
     --dir $dir || exit 1;
