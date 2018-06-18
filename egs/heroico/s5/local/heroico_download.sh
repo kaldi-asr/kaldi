@@ -10,7 +10,7 @@ tmpdir=data/local/tmp
 download_dir=$tmpdir/speech
 data_dir=$download_dir/LDC2006S37/data
 
-mkdir -p $tmpdir/heroico $tmpdir/usma $download_dir
+mkdir -p $download_dir
 
 # download the corpus from openslr
 if [ ! -f $download_dir/LDC2006S37.tar.gz ]; then
