@@ -43,10 +43,9 @@ if [ $stage -le 4 ]; then
   local/subs_download.sh
 fi
 
-  local/subs_prepare_data.pl
-fi
-
 if [ $stage -le 5 ]; then
+  local/subs_prepare_data.pl
+
   local/prepare_lm.sh $tmpdir/subs/lm/in_vocabulary.txt
 
   # make the grammar fst
