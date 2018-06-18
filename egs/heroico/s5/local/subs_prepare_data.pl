@@ -19,50 +19,44 @@ my $ub = 16;
 
 # input and output files
 my $c = "data/local/tmp/subs/OpenSubtitles2016.en-es.es";
-my $symtab = "data/lang/words.txt";
+my $symtab = "data/local/lang/words.txt";
 my $rl = "data/local/tmp/subs/lm/es.txt";
 my $oo = "data/local/tmp/subs/lm/oovs.txt";
 my $iv = "data/local/tmp/subs/lm/in_vocabulary.txt";
 
 open my $C, '<', $c or croak "problems with $c $!";
-
 system "mkdir -p data/local/tmp/subs/lm";
-
 open my $RL, '+>:utf8', $rl or croak "problems with $rl $!";
 
-LINE: while ( my $line = <$C> ) {
-    $line = decode_utf8 $line;
-    chomp $line;
+if ( -s $rl ) {
+    croak "$rl already exists.";
+} else {
+  LINE: while ( my $line = <$C> ) {
+      $line = decode_utf8 $line;
+      chomp $line;
 
-    my @tokens = split /\s+/, $line;
+      my @tokens = split /\s+/, $line;
 
-    next LINE if ( ($#tokens < $lb) or ($#tokens > $ub ));
+      next LINE if ( ($#tokens < $lb) or ($#tokens > $ub ));
 
-    #remove control characters
-    #$line =~ s/(\p{Other})/ /g;
-    #$line =~ s/(\p{Control})/ /g;
-    #$line =~ s/(\p{Format})/ /g;
-    #$line =~ s/(\p{Private_Use})/ /g;
-    #$line =~ s/(\p{Surrogate})/ /g;
+      # remove punctuation
+      $line =~ s/(\p{Punctuation}+|\p{Dash_Punctuation}+|\p{Close_Punctuation}+|\p{Open_Punctuation}+|\p{Initial_Punctuation}+|\p{Final_Punctuation}+|\p{Connector_Punctuation}+|\p{Other_Punctuation}+|[	 ]+)/ /msxg;
+      #convert tabs to white space
+      $line =~ s/\t/ /g;
+      #hard to soft space
+      $line =~ s/ / /g;
+      #squeeze white space
+      $line =~ s/\s+/ /g;
+      #initial and final white space
+      $line =~ s/^\p{Separator}+//;
+      $line =~ s/\p{Separator}+$//;
+      #down case
+      $line = lc $line;
 
-    # punctuation
-    $line =~ s/(\p{Punctuation}+|\p{Dash_Punctuation}+|\p{Close_Punctuation}+|\p{Open_Punctuation}+|\p{Initial_Punctuation}+|\p{Final_Punctuation}+|\p{Connector_Punctuation}+|\p{Other_Punctuation}+|[	 ]+)/ /msxg;
-#convert tabs to white space
-    $line =~ s/\t/ /g;
-    #hard to soft space
-    $line =~ s/ / /g;
-#squeeze white space
-    $line =~ s/\s+/ /g;
-#initial and final white space
-    $line =~ s/^\p{Separator}+//;
-    $line =~ s/\p{Separator}+$//;
-#down case
-    $line = lc $line;
-
-
-    print $RL "$line\n";
-
+      print $RL "$line\n";
+  }
 }
+
 
 close $C;
 close $RL;
@@ -83,6 +77,7 @@ while( my $line = <$F>) {
     $sym2int{$s} = $i;
 }
 close $F;
+
 
 open my $I, '<', $rl or croak "problem with $rl $!";
 open my $OO, '+>', $oo or croak "problems with $oo $!";
