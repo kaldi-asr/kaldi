@@ -37,25 +37,16 @@ if [ $stage -le 1 ]; then
     utils/data/perturb_data_dir_speed_3way.sh \
 	data/${train_set} \
 	data/${train_set}_sp
-    echo "$0: making PLP_PITCH features for low-resolution speed-perturbed data"
-    steps/make_plp_pitch.sh \
-	--cmd "$train_cmd" \
-	--nj 10 \
-	data/${train_set}_sp || exit 1;
-    steps/compute_cmvn_stats.sh \
-	data/${train_set}_sp || exit 1;
-    utils/fix_data_dir.sh \
-	data/${train_set}_sp
+    echo "$0: making mfcc features for low-resolution speed-perturbed data"
+    steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/${train_set}_sp || exit 1;
+    steps/compute_cmvn_stats.sh data/${train_set}_sp || exit 1;
+    utils/fix_data_dir.sh data/${train_set}_sp
 fi
 
 if [ $stage -le 2 ]; then
     echo "$0: aligning with the perturbed low-resolution data"
     steps/align_fmllr.sh \
-	--nj 20 \
-	--cmd "$train_cmd" \
-	data/${train_set}_sp \
-	data/lang \
-	$gmm_dir \
+	--nj 20 --cmd "$train_cmd" data/${train_set}_sp data/lang $gmm_dir \
 	$ali_dir || exit 1
 fi
 
