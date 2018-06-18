@@ -77,36 +77,30 @@ if [ $stage -le 4 ]; then
   #cut -d " " -f 2- data/train/text > $tmpdir/heroico/lm/train.txt
 
   # build lm
-  local/prepare_lm.sh $tmpdir/heroico/lm/train.txt
+  #local/prepare_lm.sh $tmpdir/heroico/lm/train.txt
+fi
+
+if [ $stage -le 5 ]; then
+  local/prepare_lm.sh $tmpdir/subs/lm/in_vocabulary.txt
 
   # make the grammar fst
   utils/format_lm.sh \
     data/local/lang data/local/lm/threegram.arpa.gz data/local/dict/lexicon.txt \
     data/lang
-
-fi
-
-if [ $stage -le 5 ]; then
-  # extract acoustic features
-  mkdir -p exp
-
-  for fld in native nonnative test devtest train; do
-    if [ -e data/$fld/cmvn.scp ]; then
-      rm data/$fld/cmvn.scp
-    fi
-
-    steps/make_plp_pitch.sh \
-      --cmd "$train_cmd" --nj 4 data/$fld exp/make_plp_pitch/$fld plp_pitch
-
-    utils/fix_data_dir.sh data/$fld
-
-    steps/compute_cmvn_stats.sh data/$fld exp/make_plp_pitch plp_pitch
-
-    utils/fix_data_dir.sh data/$fld
-  done
 fi
 
 if [ $stage -le 6 ]; then
+  # extract acoustic features
+  for fld in native nonnative test devtest train; do
+      steps/make_mfcc.sh --cmd "$train_cmd" data/$fld exp/make_mfcc/$fld mfcc
+
+    utils/fix_data_dir.sh data/$fld
+
+    steps/compute_cmvn_stats.sh data/$fld exp/make_mfcc mfcc
+
+    utils/fix_data_dir.sh data/$fld
+  done
+
   echo "$0 monophone training"
   steps/train_mono.sh --nj 4 --cmd "$train_cmd" data/train data/lang exp/mono
 fi
