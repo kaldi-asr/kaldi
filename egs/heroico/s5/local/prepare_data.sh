@@ -13,6 +13,10 @@ stage=0
 set -e
 set -o pipefail
 
+tmpdir=data/local/tmp
+download_dir=$tmpdir/speech
+datadir=$download_dir/LDC2006S37/data
+
 # acoustic models are trained on the heroico corpus
 # testing is done on the usma corpus
 # heroico consists of 2 parts: answers and recordings (recited)
@@ -22,10 +26,6 @@ recordings_transcripts=$datadir/transcripts/heroico-recordings.txt
 
 # usma is all recited
 usma_transcripts=$datadir/transcripts/usma-prompts.txt
-
-tmpdir=data/local/tmp
-download_dir=$tmpdir/speech
-datadir=$download_dir/LDC2006S37/data
 
 # make acoustic model training  lists
 mkdir -p $tmpdir/heroico $tmpdir/usma
