@@ -66,11 +66,15 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
+  local/subs_download.sh
+
+  local/subs_prepare_data.pl
+    
   # use am training text to train lm
-  mkdir -p $tmpdir/heroico/lm
+  #mkdir -p $tmpdir/heroico/lm
 
   # get the text from data/train/text
-  cut -d " " -f 2- data/train/text > $tmpdir/heroico/lm/train.txt
+  #cut -d " " -f 2- data/train/text > $tmpdir/heroico/lm/train.txt
 
   # build lm
   local/prepare_lm.sh $tmpdir/heroico/lm/train.txt
