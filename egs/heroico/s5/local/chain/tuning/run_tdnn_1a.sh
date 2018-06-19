@@ -259,10 +259,7 @@ if [ $stage -le 15 ]; then
   # Note: it's not important to give mkgraph.sh the lang directory with the
   # matched topology (since it gets the topology file from the model).
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 \
-    data/lang_test \
-    $tree_dir \
-    $tree_dir/graph || exit 1;
+    --self-loop-scale 1.0 data/lang $tree_dir $tree_dir/graph || exit 1;
 fi
 
 if [ $stage -le 16 ]; then
