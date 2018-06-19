@@ -177,8 +177,8 @@ if [ $stage -le 13 ]; then
   #output_opts="l2-regularize=0.0025"
   output_opts=""
 
-  mkdir -p $dir/configss
-  cat <<EOF > $dir/configs/network.xconfig
+  mkdir -p $dir/configs
+  cat <<-EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
 
