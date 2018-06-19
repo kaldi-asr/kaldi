@@ -578,7 +578,7 @@ def train(args, run_opts):
                                      "{0}/final.mdl".format(args.dir))
             chain_lib.compute_train_cv_probabilities(
                 dir=args.dir, iter=num_iters, egs_dir=egs_dir,
-                l2_regularize=l2_regularize, xent_regularize=xent_regularize,
+                l2_regularize=args.l2_regularize, xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 run_opts=run_opts,
                 use_multitask_egs=use_multitask_egs)
