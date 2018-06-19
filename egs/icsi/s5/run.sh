@@ -18,7 +18,7 @@ mic=ihm
 
 # Train systems,
 nj=30 # number of parallel jobs,
-stage=11
+stage=0
 . utils/parse_options.sh
 
 base_mic=$(echo $mic | sed 's/[0-9]//g') # sdm, ihm or mdm
@@ -158,8 +158,8 @@ fi
 
 if [ $stage -le 11 ]; then
   ali_opt=
-  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali false"
-  local/chain/run_tdnn.sh $ali_opt --mic $mic --stage 15
+  [ "$mic" != "ihm" ] && ali_opt="--use-ihm-ali true"
+  local/chain/run_tdnn.sh $ali_opt --mic $mic
 fi
 
 #if [ $stage -le 12 ]; then
