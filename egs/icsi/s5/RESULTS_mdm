@@ -5,3 +5,12 @@
 %WER 50.9 | 4836 23310 | 56.5 32.2 11.3 7.3 50.9 52.3 | 0.629 | exp/mdm4/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
 %WER 46.2 | 4629 30663 | 59.1 26.4 14.5 5.3 46.2 62.1 | 0.670 | exp/mdm4/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_14/eval_o4.ctm.filt.sys
 
+#for d in exp/mdm4/chain_1a/tdnn_*/decode_*; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+
+#local/chain/tuning/run_tdnn_1a.sh --use-ihm-ali false --mic mdm4
+%WER 29.4 | 4835 23319 | 74.2 15.8 10.0 3.6 29.4 45.3 | 0.664 | exp/mdm4/chain_1a/tdnn_sp/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 27.1 | 5141 30798 | 76.0 14.0 10.0 3.1 27.1 49.1 | 0.693 | exp/mdm4/chain_1a/tdnn_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1a.sh --use-ihm-ali true --mic mdm4
+%WER 29.6 | 3567 23325 | 74.2 16.8 9.0 3.8 29.6 60.8 | 0.647 | exp/mdm4/chain_1a/tdnn_sp_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 26.6 | 3847 30791 | 76.5 14.2 9.3 3.1 26.6 65.2 | 0.662 | exp/mdm4/chain_1a/tdnn_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys

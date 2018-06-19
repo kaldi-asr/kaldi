@@ -34,10 +34,15 @@
 %WER 50.0 | 5709 30663 | 55.6 29.1 15.4 5.6 50.0 51.1 | 0.663 | exp/sdm4/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_12/eval_o4.ctm.filt.sys
 
 
-#Nnet3 systems, sdm4 mic
+#Nnet3 systems
+
 # for d in exp/sdm4/chain*/tdnn*/decode_*; do grep Sum $d/*sc*/*ys | utils/best_wer.sh; done
 
-#those use alignments from ihm setup
-%WER 31.8 | 4454 23319 | 71.4 16.3 12.3 3.3 31.8 50.0 | 0.616 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
-%WER 29.1 | 3843 30796 | 73.9 14.6 11.4 3.0 29.1 66.5 | 0.680 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+#local/chain/tuning/run_tdnn_1a.sh --use-ihm-ali false --mic sdm4
+%WER 31.3 | 3566 23324 | 72.7 17.2 10.2 4.0 31.3 62.2 | 0.639 | exp/sdm4/chain_1a/tdnn_sp/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 28.4 | 4338 30795 | 74.8 14.5 10.7 3.1 28.4 58.3 | 0.675 | exp/sdm4/chain_1a/tdnn_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1a.sh --use-ihm-ali true --mic sdm4
+%WER 30.2 | 4835 23317 | 73.2 16.7 10.1 3.4 30.2 45.1 | 0.601 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 27.9 | 4341 30798 | 75.2 14.8 10.0 3.1 27.9 57.8 | 0.643 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 

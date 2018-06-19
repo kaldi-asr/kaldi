@@ -3,9 +3,6 @@
 # Pawel: this one starts from the best tdnn model for ami, those are fairly similar
 # datasets so I would expect similar modelling tricks will work for both
 
-# local/chain/tuning/run_tdnn_1a.sh --mic ihm --train-set train_cleaned  --gmm tri3_cleaned
-
-
 set -e -o pipefail
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
@@ -55,8 +52,8 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 if $use_ihm_ali; then
   gmm_dir=exp/ihm/${ihm_gmm}
-  ali_dir=exp/${mic}/${ihm_gmm}_ali_${train_set}_sp
-  lores_train_data_dir=data/$mic/${train_set}_sp
+  ali_dir=exp/${mic}/${ihm_gmm}_ali_${train_set}_sp_ihmdata
+  lores_train_data_dir=data/$mic/${train_set}_ihmdata_sp
   tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}_ihmdata
   lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats_ihmdata
   dir=exp/$mic/chain${nnet3_affix}/tdnn${tdnn_affix}_sp_ihmali
@@ -76,10 +73,38 @@ train_ivector_dir=exp/$mic/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
+if $use_ihm_ali; then
+  # the lores features (and alignments) for matched scenario are extracted anyway
+  # by local/nnet3/run_ivector_common.sh for ivector training.
+  # We only re-extract them from ihm data for mic in [sdmX, mdmX], if the ihm
+  # alignments were explicitly requested to be used in either sdmX or mdmX scenarios
+  local/prepare_parallel_train_data.sh $mic
+  # Note: the first stage of the following script is stage 7
+  local/nnet3/prepare_lores_feats.sh --stage $stage \
+                                   --mic $mic \
+                                   --nj $nj \
+                                   --min-seg-len $min_seg_len \
+                                   --use-ihm-ali $use_ihm_ali \
+                                   --train-set $train_set
+fi
+
 for f in $gmm_dir/final.mdl $lores_train_data_dir/feats.scp \
    $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
+
+# note, we only need to get alignments if using ihm alignments, otherwise
+# those were already generated in run_ivector_common.sh for $mic of choice
+if $use_ihm_ali && [ $stage -le 11 ]; then
+  if [ -f $ali_dir/ali.1.gz ]; then
+    echo "$0: alignments in $ali_dir appear to already exist.  Please either remove them "
+    echo " ... or use a later --stage option."
+    exit 1
+  fi
+  echo "$0: aligning perturbed, short-segment-combined ${maybe_ihm}data"
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    ${lores_train_data_dir} data/lang $gmm_dir $ali_dir
+fi
 
 [ ! -f $ali_dir/ali.1.gz ] && echo  "$0: expected $ali_dir/ali.1.gz to exist" && exit 1
 
@@ -109,7 +134,7 @@ fi
 if [ $stage -le 13 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
+  steps/align_fmllr_lats.sh --nj 35 --cmd "$train_cmd" ${lores_train_data_dir} \
     data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
