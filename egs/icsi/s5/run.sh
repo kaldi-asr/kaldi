@@ -3,7 +3,6 @@
 . ./cmd.sh
 . ./path.sh
 
-
 # You may set 'mic' to:
 #  ihm [individual headset mic- the default which gives best results]
 #  sdmN [single distant microphone- the current script allows you to select
