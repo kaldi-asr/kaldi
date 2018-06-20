@@ -19,7 +19,7 @@ Currently we release AISHELL2-2018A-EVAL, containing:
 you can download above evaluation set from:
 http://www.aishelltech.com/aishell_eval
 
-we may update and release other evaluation sets on the website later, targeting on different applications and senarios. 
+we may update and release other evaluation sets on the website later, targeting on different applications and senarios.
 
 ## 2. RECIPE
 Based on Kaldi standard system, AISHELL-2 provides a self-contained Mandarin ASR recipe, with:
@@ -41,7 +41,7 @@ To apply for AISHELL-2 corpus for free, you need to fill in a very simple applic
 * university department / education institute info
 * only for non-commercial research / education use
 
-After comfirmation, AISHELL-foundation will covers all fees (including the corpus, hard-disk cost etc)
+AISHELL-foundation covers all data distribution fees (including the corpus, hard-disk cost etc)
 
 Data re-distribution inside your university department is OK for convenience. However, users are not supposed to re-distribute AISHELL-2 to other universities or education institutes.
 

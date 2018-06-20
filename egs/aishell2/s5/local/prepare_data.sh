@@ -42,6 +42,8 @@ awk -F'\t' -v path_prefix=$corpus '{printf("%s\t%s/%s\n",$1,path_prefix,$2)}' $c
 utils/filter_scp.pl -f 1 $tmp/utt.list $tmp/tmp_wav.scp | sort -k 1 | uniq > $tmp/wav.scp
 
 # text
+python -c "import jieba" 2>/dev/null || \
+  (echo "jieba is not found. Use tools/extra/install_jieba.sh to install it." && exit 1;)
 utils/filter_scp.pl -f 1 $tmp/utt.list $corpus/trans.txt | sort -k 1 | uniq > $tmp/trans.txt
 awk '{print $1}' $dict_dir/lexicon.txt | sort | uniq | awk 'BEGIN{idx=0}{print $1,idx++}'> $tmp/vocab.txt
 python local/word_segmentation.py $tmp/vocab.txt $tmp/trans.txt > $tmp/text

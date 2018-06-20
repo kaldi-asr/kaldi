@@ -26,11 +26,6 @@ gmm_stage=1
 . ./path.sh
 . ./utils/parse_options.sh
 
-# we should probably move jieba(for word segmentation) into 
-# Kaldi's "tools" dir with Dan's approval
-# before you run the entire recipe, run the following command
-# local/install_jieba.sh local/jieba
-
 # prepare trn/dev/tst data, lexicon, lang etc
 if [ $stage -le 1 ]; then
   local/prepare_all.sh ${trn_set} ${dev_set} ${tst_set} || exit 1;
@@ -41,17 +36,12 @@ if [ $stage -le 2 ]; then
   local/run_gmm.sh --nj $nj --stage $gmm_stage
 fi
 
-# xent
+# nnet3 & chain
 if [ $stage -le 3 ]; then
-  local/nnet3/run_tdnn.sh --nj $nj
-fi
-
-# chain
-if [ $stage -le 4 ]; then
+  # local/nnet3/run_tdnn.sh --nj $nj
   local/chain/run_tdnn.sh --nj $nj
 fi
 
 local/show_results.sh
 
 exit 0;
-

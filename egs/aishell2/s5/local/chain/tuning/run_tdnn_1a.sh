@@ -1,6 +1,14 @@
 #!/bin/bash
 
 # This script is based on run_tdnn_7h.sh in swbd chain recipe.
+# results
+# local/chain/compare_wer.sh exp/chain/tdnn_1a_sp/
+# Model                tdnn_1a_sp
+# WER(%)                     9.89
+# Final train prob        -0.0653
+# Final valid prob        -0.0765
+# Final train prob (xent)   -0.7340
+# Final valid prob (xent)   -0.8030
 
 set -e
 
@@ -9,7 +17,7 @@ affix=
 stage=10
 train_stage=-10
 get_egs_stage=-10
-dir=exp/chain/tdnn_1g  # Note: _sp will get added to this
+dir=exp/chain/tdnn_1a  # Note: _sp will get added to this
 decode_iter=
 
 # training options

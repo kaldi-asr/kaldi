@@ -3,8 +3,8 @@
 # _1d is as _1c, but with dropout schedule added, referenced from wsj
 
 # results:
-# local/chain/compare_wer.sh exp/chain/tdnn_1d_all_sp
-# Model                tdnn_1d_all_sp
+# local/chain/compare_wer.sh exp/chain/tdnn_1d_sp
+# Model                tdnn_1d_sp
 # WER(%)                     8.84
 # Final train prob        -0.0696
 # Final valid prob        -0.0714
@@ -92,7 +92,7 @@ if [ $stage -le 6 ]; then
     --dim $(feat-to-dim scp:${temp_data_root}/${train_set}_subset/feats.scp -) \
     ${temp_data_root}/${train_set}_subset \
     exp/chain/pca_transform_${affix}
-  
+
   echo "$0: training the diagonal UBM."
   # Use 512 Gaussians in the UBM.
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj $nj \
@@ -100,17 +100,17 @@ if [ $stage -le 6 ]; then
     --num-threads 8 \
     ${temp_data_root}/${train_set}_subset 512 \
     exp/chain/pca_transform_${affix} exp/chain/diag_ubm_${affix}
-  
+
   echo "$0: training the iVector extractor"
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj $nj \
     data/${train_set}_hires exp/chain/diag_ubm_${affix} \
     exp/chain/extractor_${affix} || exit 1;
-  
+
   for datadir in ${train_set} ${test_sets}; do
     steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${datadir}_hires data/${datadir}_hires_max2
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
       data/${datadir}_hires_max2 exp/chain/extractor_${affix} exp/chain/ivectors_${datadir}_${affix} || exit 1;
-  done  
+  done
 fi
 
 if [ $stage -le 7 ]; then
