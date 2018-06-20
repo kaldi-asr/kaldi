@@ -58,23 +58,17 @@ set_names() {
 
 
 
-echo -n "# System               "
+echo -n "# System                 "
 for x in $*; do   printf "% 10s" " $(basename $x)";   done
 echo
 
-strings=(
-    "#WER devtest  "
-    "#WER native  "
-    nonnative
-  "#WER test  ")
+test_sets=(devtest test native nonnative)
 
-for n in 0 1 2 3; do
-   echo -n "${strings[$n]}"
+for t in ${test_sets[@]}; do
+   printf '# %%WER % 14s  ' $t
    for x in $*; do
      set_names $x  # sets $dirname and $epoch_infix
-    decode_names=(devtest native nonnative test)
-
-     wer=$(cat $dirname/decode_${decode_names[$n]}/wer_* | utils/best_wer.sh | awk '{print $2}')
+     wer=$(cat $dirname/decode_$t/wer_* | utils/best_wer.sh | awk '{print $2}')
      printf "% 10s" $wer
    done
    echo
@@ -82,7 +76,7 @@ for n in 0 1 2 3; do
      echo -n "#             [looped:]    "
      for x in $*; do
        set_names $x  # sets $dirname and $epoch_infix
-       wer=$(cat $dirname/decode_looped_${decode_names[$n]}/wer_* | utils/best_wer.sh | awk '{print $2}')
+       wer=$(cat $dirname/decode_looped_$t/wer_* | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo
@@ -91,7 +85,7 @@ for n in 0 1 2 3; do
      echo -n "#             [online:]    "
      for x in $*; do
        set_names $x  # sets $dirname and $epoch_infix
-       wer=$(cat ${dirname}_online/decode_${decode_names[$n]}/wer_* | utils/best_wer.sh | awk '{print $2}')
+       wer=$(cat ${dirname}_online/decode_$t/wer_* | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo
@@ -104,14 +98,14 @@ if $used_epochs; then
 fi
 
 
-echo -n "# Final train prob     "
+echo -n "# Final train prob       "
 for x in $*; do
   prob=$(grep Overall $x/log/compute_prob_train.final.log | grep -v xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
 done
 echo
 
-echo -n "# Final valid prob     "
+echo -n "# Final valid prob       "
 for x in $*; do
   prob=$(grep Overall $x/log/compute_prob_valid.final.log | grep -v xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
@@ -129,5 +123,11 @@ echo -n "# Final valid prob (xent)"
 for x in $*; do
   prob=$(grep Overall $x/log/compute_prob_valid.final.log | grep -w xent | awk '{printf("%.4f", $8)}')
   printf "% 10s" $prob
+done
+echo
+
+echo -n "# Num-params              "
+for x in $*; do
+  printf "% 10s" $(grep num-parameters $x/log/progress.1.log | awk '{print $2}')
 done
 echo

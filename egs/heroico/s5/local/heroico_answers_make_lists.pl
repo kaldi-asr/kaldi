@@ -62,7 +62,7 @@ LINE: while ( my $line = <$W> ) {
   if ( exists $p{$rid} ) {
     print $T "$rid $p{$rid}\n";
   } elsif ( defined $rid ) {
-    warn  "problem\t$rid";
+    warn  "warning: problem\t$rid";
     next LINE;
   } else {
     croak "$line";
