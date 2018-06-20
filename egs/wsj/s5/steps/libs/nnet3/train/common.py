@@ -535,7 +535,10 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
     return scaled_counts
 
 
-def prepare_initial_network(dir, run_opts, srand=-3):
+def prepare_initial_network(dir, run_opts, srand=-3, input_model=None):
+    if input_model is not None:
+        shutil.copy2(input_model, "{0}/0.raw".format(dir))
+        return
     if os.path.exists(dir+"/configs/init.config"):
         common_lib.execute_command(
             """{command} {dir}/log/add_first_layer.log \
