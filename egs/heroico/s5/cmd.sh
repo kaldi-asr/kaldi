@@ -10,6 +10,9 @@
 # conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
-export train_cmd="queue.pl --mem 2G"
-export decode_cmd="queue.pl --mem 4G"
-export mkgraph_cmd="queue.pl --mem 8G"
+export train_cmd="retry.pl queue.pl"
+export decode_cmd="retry.pl queue.pl --mem 2G"
+
+#  queue_conf=$HOME/queue_conf/default.conf # see example /homes/kazi/iveselyk/queue_conf/default.conf,
+#  export train_cmd="queue.pl --config $queue_conf --mem 2G --matylda 0.2"
+#  export decode_cmd="queue.pl --config $queue_conf --mem 3G --matylda 0.1"
