@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2017 John Morgan
+# Apache 2.0.
+
 tmpdir=data/local/tmp
 download_dir=$tmpdir/subs
 mkdir -p $download_dir
