@@ -4,7 +4,7 @@
 
 . ./path.sh
 stage=0
-. ./utils/parse_options.sh
+. utils/parse_options.sh
 
 set -e
 set -o pipefail
