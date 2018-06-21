@@ -15,4 +15,3 @@ if [ ! -f $download_dir/subs.zip ]; then
   else
     echo "$0: subs file already downloaded."
 fi
-
