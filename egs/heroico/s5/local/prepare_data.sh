@@ -14,118 +14,111 @@ set -e
 set -o pipefail
 
 tmpdir=data/local/tmp
-download_dir=$tmpdir/speech
-datadir=$download_dir/LDC2006S37/data
+datadir=$tmpdir/LDC2006S37
 
 # acoustic models are trained on the heroico corpus
 # testing is done on the usma corpus
 # heroico consists of 2 parts: answers and recordings (recited)
 
-answers_transcripts=$datadir/transcripts/heroico-answers.txt
-recordings_transcripts=$datadir/transcripts/heroico-recordings.txt
+answers_transcripts=$datadir/data/transcripts/heroico-answers.txt
+recordings_transcripts=$datadir/data/transcripts/heroico-recordings.txt
 
 # usma is all recited
-usma_transcripts=$datadir/transcripts/usma-prompts.txt
+usma_transcripts=$datadir/data/transcripts/usma-prompts.txt
 
 # make acoustic model training  lists
-mkdir -p $tmpdir/heroico $tmpdir/usma
+if [ $stage -le 0 ]; then
+  mkdir -p $tmpdir/heroico $tmpdir/usma
 
-local/get_wav_list.sh $datadir
+  local/get_wav_list.sh $datadir/data
 
-# make separate lists for heroico answers and recordings
-# the transcripts are converted to UTF8
-export LC_ALL=en_US.UTF-8
-cat $answers_transcripts | iconv -f ISO-8859-1 -t UTF-8 | sed -e s/// | \
-  local/heroico_answers_make_lists.pl
+  # make separate lists for heroico answers and recordings
+  # the transcripts are converted to UTF8
+  export LC_ALL=en_US.UTF-8
+  cat $answers_transcripts  | iconv -f ISO-8859-1 -t UTF-8 | \
+    sed -e 's/\r//' |  local/heroico_answers_make_lists.pl
 
-utils/fix_data_dir.sh $tmpdir/heroico/answers
+  utils/fix_data_dir.sh $tmpdir/heroico/answers
 
-cat $recordings_transcripts | iconv -f ISO-8859-1 -t UTF-8 | sed -e s/// | \
-  local/heroico_recordings_make_lists.pl
+  cat $recordings_transcripts | iconv -f ISO-8859-1 -t UTF-8 | \
+    sed -e 's/\r//' | local/heroico_recordings_make_lists.pl
 
-utils/fix_data_dir.sh $tmpdir/heroico/recordings/train
+  utils/fix_data_dir.sh $tmpdir/heroico/recordings/train
+  utils/fix_data_dir.sh $tmpdir/heroico/recordings/devtest
 
-utils/fix_data_dir.sh $tmpdir/heroico/recordings/devtest
-
-# consolidate heroico lists
-mkdir -p $tmpdir/heroico/lists/train
-mkdir -p $tmpdir/heroico/lists/devtest
-
-for x in wav.scp utt2spk text; do
-  cat $tmpdir/heroico/answers/$x $tmpdir/heroico/recordings/train/$x | \
-    sed -e s/// > $tmpdir/heroico/lists/train/$x
-done
-
-for x in wav.scp utt2spk text; do
-  cat $tmpdir/heroico/recordings/devtest/$x | sed -e s/// > \
-    $tmpdir/heroico/lists/devtest/$x
-done
-
-utils/fix_data_dir.sh $tmpdir/heroico/lists/train
-
-utils/fix_data_dir.sh $tmpdir/heroico/lists/devtest
-
-#  make separate lists for usma native and nonnative
-cat $usma_transcripts | iconv -f ISO-8859-1 -t UTF-8 | sed -e s/// | \
-  local/usma_native_make_lists.pl
-
-cat $usma_transcripts | iconv -f ISO-8859-1 -t UTF-8 | sed -e s/// | \
-  local/usma_nonnative_make_lists.pl
-
-for n in native nonnative; do
-  mkdir -p $tmpdir/usma/$n/lists
+  # consolidate heroico lists
+  mkdir -p $tmpdir/heroico/lists/train $tmpdir/heroico/lists/devtest
 
   for x in wav.scp utt2spk text; do
-    cat $tmpdir/usma/$n/$x > $tmpdir/usma/$n/lists/$x
+    cat $tmpdir/heroico/answers/$x $tmpdir/heroico/recordings/train/$x | \
+      sed -e 's/\r//' | sort -k1,1 -u >$tmpdir/heroico/lists/train/$x
   done
 
-  utils/fix_data_dir.sh $tmpdir/usma/$n/lists
-done
-
-mkdir -p data/train $tmpdir/lists/train data/devtest $tmpdir/lists/devtest
-
-# get training lists
-for x in wav.scp utt2spk text; do
-  cat $tmpdir/heroico/answers/${x} $tmpdir/heroico/recordings/train/${x} | \
-    sed -e s/// > $tmpdir/lists/train/$x
-
-  sort $tmpdir/lists/train/$x > data/train/$x
-done
-
-# get devtest lists
-for x in wav.scp utt2spk text; do
-  cat $tmpdir/heroico/lists/devtest/$x | sed -e s/// > $tmpdir/lists/devtest/$x
-
-  sort $tmpdir/lists/devtest/$x > data/devtest/$x
-done
-
-utils/utt2spk_to_spk2utt.pl data/train/utt2spk | sort > data/train/spk2utt
-
-utils/utt2spk_to_spk2utt.pl data/devtest/utt2spk | sort > data/devtest/spk2utt
-
-utils/fix_data_dir.sh data/train
-
-utils/fix_data_dir.sh data/devtest
-
-# make testing  lists
-
-mkdir -p data/test data/native data/nonnative $tmpdir/usma/lists
-
-for x in wav.scp text utt2spk; do
-  # get testing lists
-  for n in native nonnative; do
-    cat $tmpdir/usma/$n/lists/$x >> $tmpdir/usma/lists/$x
+  for x in wav.scp utt2spk text; do
+    cat $tmpdir/heroico/recordings/devtest/$x | sed -e 's/\r//' | \
+      sort -k1,1 -u >$tmpdir/heroico/lists/devtest/$x
   done
 
-  cat $tmpdir/usma/lists/$x > data/test/$x
+  utils/fix_data_dir.sh $tmpdir/heroico/lists/train
+  utils/fix_data_dir.sh $tmpdir/heroico/lists/devtest
+fi
+
+if [ $stage -le 1 ]; then
+  #  make separate lists for usma (US military academy) native and nonnative
+  cat $usma_transcripts | iconv -f ISO-8859-1 -t UTF-8 | \
+    sed -e 's/\r//' | local/usma_native_make_lists.pl
+
+  cat $usma_transcripts | iconv -f ISO-8859-1 -t UTF-8 | \
+    sed -e 's/\r//' | local/usma_nonnative_make_lists.pl
 
   for n in native nonnative; do
-    sort $tmpdir/usma/$n/$x > data/$n/$x
+    mkdir -p $tmpdir/usma/$n/lists
+    for x in wav.scp utt2spk text; do
+      sort $tmpdir/usma/$n/$x >$tmpdir/usma/$n/lists/$x
+    done
+
+    utils/fix_data_dir.sh  $tmpdir/usma/$n/lists
   done
-done
 
-for n in native nonnative test; do
-  utils/utt2spk_to_spk2utt.pl data/$n/utt2spk | sort > data/$n/spk2utt
+  mkdir -p data/train $tmpdir/lists/train data/devtest $tmpdir/lists/devtest
 
-  utils/fix_data_dir.sh data/$n
-done
+  # get training lists
+  for x in wav.scp utt2spk text; do
+    cat $tmpdir/heroico/answers/${x} $tmpdir/heroico/recordings/train/${x} | \
+      sed -e 's/\r//' >$tmpdir/lists/train/$x
+    sort $tmpdir/lists/train/$x >data/train/$x
+  done
+
+  # get devtest lists
+  for x in wav.scp utt2spk text; do
+    cat $tmpdir/heroico/lists/devtest/$x | \
+      sed -e 's/\r//' >$tmpdir/lists/devtest/$x
+    sort $tmpdir/lists/devtest/$x >data/devtest/$x
+  done
+
+  utils/utt2spk_to_spk2utt.pl data/train/utt2spk | sort >data/train/spk2utt
+  utils/utt2spk_to_spk2utt.pl data/devtest/utt2spk | sort >data/devtest/spk2utt
+
+  utils/fix_data_dir.sh data/train
+  utils/fix_data_dir.sh data/devtest
+
+  # make testing  lists
+  mkdir -p data/test data/native data/nonnative $tmpdir/usma/lists
+
+  for x in wav.scp text utt2spk; do
+    for n in native nonnative; do
+      cat $tmpdir/usma/$n/lists/$x
+    done >$tmpdir/usma/lists/$x
+
+    cat $tmpdir/usma/lists/$x >data/test/$x
+
+    for n in native nonnative; do
+      sort $tmpdir/usma/$n/$x >data/$n/$x
+    done
+  done
+
+  for n in native nonnative test; do
+    utils/utt2spk_to_spk2utt.pl data/$n/utt2spk | sort >data/$n/spk2utt
+    utils/fix_data_dir.sh data/$n
+  done
+fi
