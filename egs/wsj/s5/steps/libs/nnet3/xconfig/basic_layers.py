@@ -529,6 +529,11 @@ class XconfigOutputLayer(XconfigLayerBase):
                                " invalid value {0}"
                                "".format(self.config['learning-rate-factor']))
 
+        if self.config['orthonormal-constraint'] <= 0.0:
+            raise RuntimeError("output-layer does not support negative (floating) "
+                               "orthonormal constraint; use a separate linear-component "
+                               "followed by batchnorm-component.")
+
     def auxiliary_outputs(self):
 
         auxiliary_outputs = ['affine']
