@@ -19,7 +19,7 @@ my $ub = 16;
 
 # input and output files
 my $c = "data/local/tmp/subs/OpenSubtitles2016.en-es.es";
-my $symtab = "data/local/lang.txt";
+my $symtab = "data/lang.txt";
 my $rl = "data/local/tmp/subs/lm/es.txt";
 my $oo = "data/local/tmp/subs/lm/oovs.txt";
 my $iv = "data/local/tmp/subs/lm/in_vocabulary.txt";
