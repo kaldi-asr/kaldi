@@ -22,6 +22,12 @@ meet=`head -n1 $outdir/meetlist`
   && echo "$0. $meet.mrt expected to exists, make sure $icsi_trans_dir/transcripts/$meet.mrt is available. " \
   && exit 1;
 
+perl -e 'use XML::LibXML; use Data::Dumper;' || {
+  echo "At least one of the expected perl libs {XML::LibXML, Data::Dumber} is missing. "
+  echo "To install, type in cmd line: cpan, then install XML::LibXML"
+  exit 1;
+}
+
 echo "Extracting meetings...."
 #extract easily parsable stuff out of mrt files
 rm -f $outdir/all.txt
