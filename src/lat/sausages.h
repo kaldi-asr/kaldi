@@ -83,10 +83,18 @@ class MinimumBayesRisk {
                    MinimumBayesRiskOptions opts = MinimumBayesRiskOptions());
 
   // Uses the provided <words> as <R_> instead of using the lattice best path.
+  // Note that the default value of opts.decode_mbr is true. If you provide 1-best
+  // hypothesis from MAP decoding, the output ctm from MBR decoding may be
+  // mismatched with the provided <words> (<words> would be used as the starting
+  // point of optimization).
   MinimumBayesRisk(const CompactLattice &clat,
                    const std::vector<int32> &words,
                    MinimumBayesRiskOptions opts = MinimumBayesRiskOptions());
   // Uses the provided <words> as <R_> and <times> of bins instead of using the lattice best path.
+  // Note that the default value of opts.decode_mbr is true. If you provide 1-best
+  // hypothesis from MAP decoding, the output ctm from MBR decoding may be
+  // mismatched with the provided <words> (<words> would be used as the starting
+  // point of optimization).
   MinimumBayesRisk(const CompactLattice &clat,
                    const std::vector<int32> &words,
                    const std::vector<std::pair<BaseFloat,BaseFloat> > &times,

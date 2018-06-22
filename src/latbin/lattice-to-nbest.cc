@@ -51,7 +51,8 @@ int main(int argc, char *argv[]) {
     po.Register("lm-scale", &lm_scale, "Scaling factor for language model scores.");
     po.Register("n", &n, "Number of distinct paths");
     po.Register("random", &random,
-                "If true, generate n random paths instead of n-best paths");
+                "If true, generate n random paths instead of n-best paths"
+                "In this case, all costs in generated paths will be zero.");
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(only relevant if --random=true)");
 

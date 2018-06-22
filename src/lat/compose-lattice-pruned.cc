@@ -159,6 +159,10 @@ class PrunedCompactLatticeComposer {
     int32 lat_state;
     int32 lm_state;
 
+    // the number of arcs on the path from the start state to this state, in the
+    // composed lattice, by which this state was first reached.
+    int32 depth;
+
     // If you have just called RecomputePruningInfo(), then
     // 'forward_cost' will equal the cost of the best path from the start-state
     // to this state, in the composed output.
@@ -292,6 +296,18 @@ class PrunedCompactLatticeComposer {
   // it always follows an automatic schedule based on the num-arcs of the output
   // lattice.
   bool output_reached_final_;
+
+  // This variable, which we set initially to -1000, makes sure that in the
+  // beginning of the algorithm, we always prioritize exploring the lattice
+  // in a depth-first way. Once we find a path reaching a final state, this
+  // variable will be reset to 0.
+  // The reason we do this is because the beam-search depends on a good estimate
+  // of the composed-best-cost, which before we reach a final state, we instead
+  // borrow the value from best-cost from the input lattice, which is usually
+  // systematically worse than the RNNLM scores, and makes the algorithm spend
+  // a lot of time before reaching any final state, especially if the input
+  // lattices are large.
+  float depth_penalty_;
   const ComposeLatticePrunedOptions &opts_;
   const CompactLattice &clat_in_;
   fst::DeterministicOnDemandFst<fst::StdArc> *det_fst_;
@@ -419,6 +435,8 @@ void PrunedCompactLatticeComposer::ComputeForwardCosts(
   std::vector<ComposedStateInfo>::iterator
       state_iter = composed_state_info_.begin(),
       state_end = composed_state_info_.end();
+
+  state_iter->depth = 0;  // start state has depth 0
   ++state_iter;  // Skip over the start state.
   // Set all other forward_cost fields to infinity and prev_composed_state to
   // -1.
@@ -448,6 +466,7 @@ void PrunedCompactLatticeComposer::ComputeForwardCosts(
       if (next_info.forward_cost > next_forward_cost) {
         next_info.forward_cost = next_forward_cost;
         next_info.prev_composed_state = composed_state_index;
+        next_info.depth = composed_state_info_[composed_state_index].depth + 1;
       }
     }
   }
@@ -500,7 +519,7 @@ void PrunedCompactLatticeComposer::ComputeDeltaBackwardCosts(
     // backward_cost was +infinity.  This is OK; we'll set them all to
     // finite values later in this function.
     info.delta_backward_cost =
-        info.backward_cost - lat_state_info_[lat_state].backward_cost;
+        info.backward_cost - lat_state_info_[lat_state].backward_cost + info.depth * depth_penalty_;
   }
 
   // 'queue_elements' is a list of items (expected_cost_offset,
@@ -530,7 +549,7 @@ void PrunedCompactLatticeComposer::ComputeDeltaBackwardCosts(
         // Check that prev_info.delta_backward_cost is finite.
         KALDI_ASSERT(prev_info.delta_backward_cost -
                      prev_info.delta_backward_cost == 0.0);
-        info.delta_backward_cost = prev_info.delta_backward_cost;
+        info.delta_backward_cost = prev_info.delta_backward_cost + depth_penalty_;
       }
     }
     double lat_backward_cost = lat_state_info_[info.lat_state].backward_cost;
@@ -610,6 +629,7 @@ PrunedCompactLatticeComposer::PrunedCompactLatticeComposer(
     output_best_cost_(std::numeric_limits<double>::infinity()),
     current_cutoff_(std::numeric_limits<double>::infinity()) {
   clat_out_->DeleteStates();
+  depth_penalty_ = -1000;
 }
 
 
@@ -621,6 +641,7 @@ void PrunedCompactLatticeComposer::AddFirstState() {
   ComposedStateInfo &composed_state = composed_state_info_[0];
   composed_state.lat_state = 0;
   composed_state.lm_state = det_fst_->Start();
+  composed_state.depth = 0;
   composed_state.forward_cost = 0.0;
   composed_state.backward_cost = std::numeric_limits<double>::infinity();
   composed_state.delta_backward_cost = 0.0;
@@ -718,6 +739,7 @@ void PrunedCompactLatticeComposer::ProcessQueueElement(
         src_composed_state_info.backward_cost = final_cost;
       if (!output_reached_final_) {
         output_reached_final_ = true;
+        depth_penalty_ = 0.0;
         RecomputePruningInfo();
       }
     }
@@ -793,13 +815,14 @@ void PrunedCompactLatticeComposer::ProcessTransition(int32 src_composed_state,
       dest_lat_state_info.composed_states.push_back(new_composed_state);
       dest_info->lat_state = dest_lat_state;
       dest_info->lm_state = dest_lm_state;
+      dest_info->depth = src_info->depth + 1;
       dest_info->forward_cost =
           src_info->forward_cost +
           ConvertToCost(lat_arc.weight) + lm_arc.weight.Value();
       dest_info->backward_cost =
           std::numeric_limits<double>::infinity();
       dest_info->delta_backward_cost =
-          src_info->delta_backward_cost;
+          src_info->delta_backward_cost + dest_info->depth * depth_penalty_;
       // The 'prev_composed_state' field will not be read again until after it's
       // overwritten; we set it as below only for debugging purposes (the
       // negation is also for debugging purposes).

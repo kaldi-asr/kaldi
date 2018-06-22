@@ -34,7 +34,7 @@
 set -e
 
 # configs for 'chain'
-stage=13
+stage=1
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true

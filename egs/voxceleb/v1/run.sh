@@ -123,7 +123,7 @@ if [ $stage -le 7 ]; then
   echo "EER: $eer%"
   echo "minDCF(p-target=0.01): $mindcf1"
   echo "minDCF(p-target=0.001): $mindcf2"
-  # EER: 5.419%
-  # minDCF(p-target=0.01): 0.4701
-  # minDCF(p-target=0.001): 0.5981
+  # EER: 5.329%
+  # minDCF(p-target=0.01): 0.4933
+  # minDCF(p-target=0.001): 0.6168
 fi
