@@ -206,8 +206,8 @@ if [ $stage -le 19 ]; then
   ngram_order=4
 
   for dset in dev test; do
-    data_dir=data/${set}_hires
-    decoding_dir=exp/chain/tdnnf_1a
+    data_dir=data/${dset}_hires
+    decoding_dir=exp/chain_cleaned/tdnnf_1a
     suffix=$(basename $rnnlm_dir)
     output_dir=${decoding_dir}_$suffix
 
