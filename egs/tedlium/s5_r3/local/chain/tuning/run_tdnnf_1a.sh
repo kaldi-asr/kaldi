@@ -4,15 +4,18 @@
 # It use 2 to 6 jobs and add proportional-shrink 10.
 
 # local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_1a exp/chain_cleaned/tdnnf_1a
-# System                    tdnn_1a   tdnnf_1a
-# WER on dev(orig)            8.2       7.9
-# WER on dev(rescored)        7.6       7.2
-# WER on test(orig)           8.1       8.0
-# WER on test(rescored)       7.7       7.5
-# Final train prob          -0.0802   -0.0779
-# Final valid prob          -0.0980   -0.0906
-# Final train prob (xent)   -1.1450   -0.9021
-# Final valid prob (xent)   -1.2498   -0.9971
+# System                      tdnn_1a   tdnnf_1a   tdnnf_1a
+# Scoring script	       sclite    sclite   score_basic
+# WER on dev(orig)              8.2       7.9         7.9
+# WER on dev(rescored ngram)    7.6       7.4         7.5
+# WER on dev(rescored rnnlm)    6.3       6.2         6.2
+# WER on test(orig)             8.1       8.0         8.2
+# WER on test(rescored ngram)   7.7       7.7         7.9
+# WER on test(rescored rnnlm)   6.7       6.7         6.8
+# Final train prob            -0.0802   -0.0899
+# Final valid prob            -0.0980   -0.0974
+# Final train prob (xent)     -1.1450   -0.9449
+# Final valid prob (xent)     -1.2498   -1.0002
 
 
 ## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
@@ -63,6 +66,7 @@ If you want to use GPUs (and have them), go to src/, and configure and make on a
 where "nvcc" is installed.
 EOF
 fi
+
 
 local/nnet3/run_ivector_common.sh --stage $stage \
                                   --nj $nj \
@@ -216,8 +220,6 @@ if [ $stage -le 18 ]; then
     --lat-dir $lat_dir \
     --dir $dir
 fi
-
-
 
 if [ $stage -le 19 ]; then
   # Note: it might appear that this data/lang_chain directory is mismatched, and it is as
