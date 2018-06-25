@@ -179,7 +179,7 @@ for iter in $(seq -w $max_iters); do
   [ $iter -le $keep_lr_iters ] && continue
 
   # no learn-rate halving yet, if keep_lr_iters set accordingly
-  if [ $iter -le $start_half_lr ];then
+  if [ $iter -ge $start_half_lr ];then
      halving=1
      echo $halving >$dir/.halving
   fi
