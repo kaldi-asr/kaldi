@@ -65,9 +65,6 @@ if [ $stage -le 6 ]; then
   utils/format_lm.sh \
     data/lang data/local/lm/trigram.arpa.gz data/local/dict/lexicon.txt \
     data/lang_test
-
-  # delete temporary work
-  rm -rf data/local/tmp
 fi
 
 if [ $stage -le 7 ]; then
