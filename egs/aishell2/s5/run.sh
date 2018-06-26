@@ -2,7 +2,6 @@
 
 # Copyright 2018 AIShell-Foundation(Authors:Jiayu DU, Xingyu NA, Bengu WU, Hao ZHENG)
 #           2018 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU)
-#           2018 Emotech LTD (Author: Xuechen LIU)
 # Apache 2.0
 
 # AISHELL-2 provides:
