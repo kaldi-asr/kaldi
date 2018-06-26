@@ -24,14 +24,13 @@ set -e # exit on error
 # chime5 main directory path
 # please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
+chime5_corpus=/export/b02/watanabe/work/201711chime5/data/data_final/CHiME5
 json_dir=${chime5_corpus}/transcriptions
 audio_dir=${chime5_corpus}/audio
 
 # training and test data
 train_set=train_worn_u100k
-test_sets="dev_worn dev_${enhancement}_ref"
-# use the below once you obtain the evaluation data. Also remove the comment #eval# in the lines below
-#eval#test_sets="dev_worn dev_${enhancement}_ref eval_${enhancement}_ref"
+test_sets="dev_worn dev_${enhancement}_ref eval_${enhancement}_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
 ./local/check_tools.sh || exit 1
@@ -42,7 +41,6 @@ if [ $stage -le 1 ]; then
     local/prepare_data.sh --mictype ${mictype} \
 			  ${audio_dir}/train ${json_dir}/train data/train_${mictype}
   done
-  #eval#for dataset in dev eval; do
   for dataset in dev; do
     for mictype in worn; do
       local/prepare_data.sh --mictype ${mictype} \
@@ -76,8 +74,7 @@ if [ $stage -le 4 ]; then
   # Beamforming using reference arrays
   # enhanced WAV directory
   enhandir=enhan
-  #eval#for dset in dev eval; do
-  for dset in dev; do
+  for dset in dev eval; do
     for mictype in u01 u02 u03 u04 u05 u06; do
       local/run_beamformit.sh --cmd "$train_cmd" \
 			      ${audio_dir}/${dset} \
@@ -86,8 +83,7 @@ if [ $stage -le 4 ]; then
     done
   done
 
-  #eval#for dset in dev eval; do
-  for dset in dev; do
+  for dset in dev eval; do
     local/prepare_data.sh --mictype ref "$PWD/${enhandir}/${dset}_${enhancement}_u0*" \
 			  ${json_dir}/${dset} data/${dset}_${enhancement}_ref
   done
@@ -109,7 +105,6 @@ if [ $stage -le 5 ]; then
 
   # only use left channel for worn mic recognition
   # you can use both left and right channels for training
-  #eval#for dset in train dev eval; do
   for dset in train dev; do
     utils/copy_data_dir.sh data/${dset}_worn data/${dset}_worn_stereo
     grep "\.L-" data/${dset}_worn_stereo/text > data/${dset}_worn/text
@@ -203,4 +198,11 @@ fi
 if [ $stage -le 17 ]; then
   # chain TDNN
   local/chain/run_tdnn.sh --nj ${nj} --train-set ${train_set}_cleaned --test-sets "$test_sets" --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned
+fi
+
+if [ $stage -le 18 ]; then
+  # final scoring to get the official challenge result
+  local/score_for_submit.sh \
+      --dev exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_dev_${enhancement}_ref \
+      --eval exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_eval_${enhancement}_ref
 fi
