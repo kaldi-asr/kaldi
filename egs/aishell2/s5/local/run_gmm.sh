@@ -9,6 +9,7 @@ set -euxo pipefail
 # number of jobs
 nj=20
 stage=1
+academic=false # Option on whether we wanna use academic script or normal one. Should be either false or true
 
 . ./cmd.sh
 [ -f ./path.sh ] && . ./path.sh;
@@ -18,13 +19,20 @@ stage=1
 dev_nj=$(wc -l data/dev/utt2spk | awk '${print $1}' || exit 1;)
 test_nj=$(wc -l data/test/utt2spk | awk '${print $1}' || exit 1;)
 
-
-# Now make MFCC plus pitch features.
+# Now make MFCC features.
+# For normal use where academic=false, we produce mfcc feats;
+# For academic use, we use mfcc+pitch feats from beginning through end
 if [ $stage -le 1 ]; then
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
   for x in train dev test; do
-    steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj data/$x exp/make_mfcc/$x mfcc || exit 1;
+    if [ $academic == "false" ]; then
+      steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj \
+        data/$x exp/make_mfcc/$x mfcc || exit 1;
+    else
+      steps/make_mfcc_pitch.sh --pitch-config conf/pitch.conf --cmd "$train_cmd" --nj $nj \
+        data/$x exp/make_mfcc/$x mfcc || exit 1;
+    fi
     steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x mfcc || exit 1;
     utils/fix_data_dir.sh data/$x || exit 1;
   done

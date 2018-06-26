@@ -20,6 +20,7 @@ tst_set=
 
 nj=20
 stage=1
+academic=false
 gmm_stage=1
 
 . ./cmd.sh
@@ -33,13 +34,13 @@ fi
 
 # GMM
 if [ $stage -le 2 ]; then
-  local/run_gmm.sh --nj $nj --stage $gmm_stage
+  local/run_gmm.sh --nj $nj --stage $gmm_stage --academic $academic
 fi
 
 # nnet3 & chain
 if [ $stage -le 3 ]; then
-  # local/nnet3/run_tdnn.sh --nj $nj
-  local/chain/run_tdnn.sh --nj $nj
+  [ $academic == "false" ] && local/chain/run_tdnn.sh --nj $nj --stage 5 || \
+    local/chain/tuning/run_tdnn_1d.sh --nj $nj --stage 5
 fi
 
 local/show_results.sh
