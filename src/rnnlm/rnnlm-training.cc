@@ -42,9 +42,6 @@ RnnlmTrainer::RnnlmTrainer(bool train_embedding,
     embedding_trainer_(NULL),
     word_feature_mat_(word_feature_mat),
     num_minibatches_processed_(0),
-    end_of_input_(false),
-    previous_minibatch_empty_(1),
-    current_minibatch_empty_(1),
     srand_seed_(RandInt(0, 100000)) {
 
 
@@ -75,13 +72,6 @@ RnnlmTrainer::RnnlmTrainer(bool train_embedding,
                 << embedding_mat_->NumRows() << " (mismatch).";
     }
   }
-
-  // Start a thread that calls run_background_thread(this).
-  // That thread will be responsible for computing derived variables of
-  // the minibatch, since that can be done independently of the main
-  // training process.
-  background_thread_ = std::thread(run_background_thread, this);
-
 }
 
 
@@ -92,19 +82,44 @@ void RnnlmTrainer::Train(RnnlmExample *minibatch) {
                 << VocabSize() << ", got "
                 << minibatch->vocab_size;
 
-  // hand over 'minibatch' to the background thread to have its derived variable
-  // computed, via the class variable 'current_minibatch_'.
-  current_minibatch_empty_.Wait();
+  KALDI_LOG << "BLOCK A";
   current_minibatch_.Swap(minibatch);
-  current_minibatch_full_.Signal();
+
+  KALDI_LOG << "BLOCK B";
   num_minibatches_processed_++;
-  if (num_minibatches_processed_ == 1) {
-    return;  // The first time this function is called, return immediately
-             // because there is no previous minibatch to train on.
+  if (num_minibatches_processed_ != 1) {
+
+    KALDI_LOG << "BLOCK C";
+    TrainInternal();
   }
-  previous_minibatch_full_.Wait();
-  TrainInternal();
-  previous_minibatch_empty_.Signal();
+
+  KALDI_LOG << "BLOCK D";
+  RnnlmExampleDerived derived;
+  CuArray<int32> active_words_cuda;
+  CuSparseMatrix<BaseFloat> active_word_features;
+  CuSparseMatrix<BaseFloat> active_word_features_trans;
+
+  if (!current_minibatch_.sampled_words.empty()) {
+    std::vector<int32> active_words;
+    RenumberRnnlmExample(&current_minibatch_, &active_words);
+    active_words_cuda.CopyFromVec(active_words);
+
+    if (word_feature_mat_ != NULL) {
+      active_word_features.SelectRows(active_words_cuda,
+                                      *word_feature_mat_);
+      active_word_features_trans.CopyFromSmat(active_word_features,
+                                              kTrans);
+    }
+  }
+  GetRnnlmExampleDerived(current_minibatch_, train_embedding_,
+                         &derived);
+
+  KALDI_LOG << "BLOCK E";
+  previous_minibatch_.Swap(&current_minibatch_);
+  derived_.Swap(&derived);
+  active_words_.Swap(&active_words_cuda);
+  active_word_features_.Swap(&active_word_features);
+  active_word_features_trans_.Swap(&active_word_features_trans);
 }
 
 
@@ -265,60 +280,12 @@ int32 RnnlmTrainer::VocabSize() {
   else return embedding_mat_->NumRows();
 }
 
-void RnnlmTrainer::RunBackgroundThread() {
-  while (true) {
-    current_minibatch_full_.Wait();
-    if (end_of_input_)
-      return;
-    RnnlmExampleDerived derived;
-    CuArray<int32> active_words_cuda;
-    CuSparseMatrix<BaseFloat> active_word_features;
-    CuSparseMatrix<BaseFloat> active_word_features_trans;
-
-    if (!current_minibatch_.sampled_words.empty()) {
-      std::vector<int32> active_words;
-      RenumberRnnlmExample(&current_minibatch_, &active_words);
-      active_words_cuda.CopyFromVec(active_words);
-
-      if (word_feature_mat_ != NULL) {
-        active_word_features.SelectRows(active_words_cuda,
-                                        *word_feature_mat_);
-        active_word_features_trans.CopyFromSmat(active_word_features,
-                                                kTrans);
-      }
-    }
-    GetRnnlmExampleDerived(current_minibatch_, train_embedding_,
-                           &derived);
-
-    // Wait until the main thread is not currently processing
-    // previous_minibatch_; once we get this semaphore we are free to write to
-    // it and other related variables such as 'derived_'.
-    previous_minibatch_empty_.Wait();
-    previous_minibatch_.Swap(&current_minibatch_);
-    derived_.Swap(&derived);
-    active_words_.Swap(&active_words_cuda);
-    active_word_features_.Swap(&active_word_features);
-    active_word_features_trans_.Swap(&active_word_features_trans);
-
-    // The following statement signals that 'previous_minibatch_'
-    // and related variables have been written to by this thread.
-    previous_minibatch_full_.Signal();
-    // The following statement signals that 'current_minibatch_'
-    // has been consumed by this thread and is no longer needed.
-    current_minibatch_empty_.Signal();
-  }
-}
-
 RnnlmTrainer::~RnnlmTrainer() {
-  // Train on the last minibatch, because Train() always trains on the previously
-  // provided one (for threading reasons).
   if (num_minibatches_processed_ > 0) {
-    previous_minibatch_full_.Wait();
+    KALDI_LOG << "BLOCK F";
     TrainInternal();
   }
-  end_of_input_ = true;
-  current_minibatch_full_.Signal();
-  background_thread_.join();
+  KALDI_LOG << "BLOCK G";
 
   // Note: the following delete statements may cause some diagnostics to be
   // issued, from the destructors of those classes.
