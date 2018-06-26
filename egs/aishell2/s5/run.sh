@@ -2,6 +2,7 @@
 
 # Copyright 2018 AIShell-Foundation(Authors:Jiayu DU, Xingyu NA, Bengu WU, Hao ZHENG)
 #           2018 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU)
+#           2018 Emotech LTD (Author: Xuechen LIU)
 # Apache 2.0
 
 # AISHELL-2 provides:
@@ -20,7 +21,9 @@ tst_set=
 
 nj=20
 stage=1
-academic=false
+academic=false        # whether we wanna train models for normal or academic use. The academic 
+                      # chain model includes pitch feats, i-vector and dropout, having stronger
+                      # baseline results in terms of CER
 gmm_stage=1
 
 . ./cmd.sh
