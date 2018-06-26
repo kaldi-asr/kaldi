@@ -163,15 +163,10 @@ class RnnlmTrainer {
 
   RnnlmExample current_minibatch_;
 
-  // previous_minibatch_ is the previous minibatch that was provided to Train(),
-  // but the minibatch that we're currently trainig on.
-  RnnlmExample previous_minibatch_;
-  // The variables derived_ and active_words_ [and more that I'll add, TODO] are in the same
-  // group as previous_minibatch_ from the point of view
-  // of threading and access control.
+  // The variables derived_ and active_words_ corresponds to group as current_minibatch_.
   RnnlmExampleDerived derived_;
   // Only if we are doing subsampling (depends on the eg), active_words_
-  // contains the list of active words for the minibatch 'previous_minibatch_';
+  // contains the list of active words for the minibatch 'current_minibatch_';
   // it is a CUDA version of the 'active_words' output by
   // RenumberRnnlmExample().  Otherwise it is empty.
   CuArray<int32> active_words_;

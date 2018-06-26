@@ -82,18 +82,8 @@ void RnnlmTrainer::Train(RnnlmExample *minibatch) {
                 << VocabSize() << ", got "
                 << minibatch->vocab_size;
 
-  KALDI_LOG << "BLOCK A";
   current_minibatch_.Swap(minibatch);
-
-  KALDI_LOG << "BLOCK B";
   num_minibatches_processed_++;
-  if (num_minibatches_processed_ != 1) {
-
-    KALDI_LOG << "BLOCK C";
-    TrainInternal();
-  }
-
-  KALDI_LOG << "BLOCK D";
   RnnlmExampleDerived derived;
   CuArray<int32> active_words_cuda;
   CuSparseMatrix<BaseFloat> active_word_features;
@@ -114,18 +104,18 @@ void RnnlmTrainer::Train(RnnlmExample *minibatch) {
   GetRnnlmExampleDerived(current_minibatch_, train_embedding_,
                          &derived);
 
-  KALDI_LOG << "BLOCK E";
-  previous_minibatch_.Swap(&current_minibatch_);
   derived_.Swap(&derived);
   active_words_.Swap(&active_words_cuda);
   active_word_features_.Swap(&active_word_features);
   active_word_features_trans_.Swap(&active_word_features_trans);
+
+  TrainInternal();
 }
 
 
 void RnnlmTrainer::GetWordEmbedding(CuMatrix<BaseFloat> *word_embedding_storage,
                                     CuMatrix<BaseFloat> **word_embedding) {
-  RnnlmExample &minibatch = previous_minibatch_;
+  RnnlmExample &minibatch = current_minibatch_;
   bool sampling = !minibatch.sampled_words.empty();
 
   if (word_feature_mat_ == NULL) {
@@ -163,7 +153,7 @@ void RnnlmTrainer::GetWordEmbedding(CuMatrix<BaseFloat> *word_embedding_storage,
 
 void RnnlmTrainer::TrainWordEmbedding(
     CuMatrixBase<BaseFloat> *word_embedding_deriv) {
-  RnnlmExample &minibatch = previous_minibatch_;
+  RnnlmExample &minibatch = current_minibatch_;
   bool sampling = !minibatch.sampled_words.empty();
 
   if (word_feature_mat_ == NULL) {
@@ -201,7 +191,7 @@ void RnnlmTrainer::TrainWordEmbedding(
 void RnnlmTrainer::TrainBackstitchWordEmbedding(
     bool is_backstitch_step1,
     CuMatrixBase<BaseFloat> *word_embedding_deriv) {
-  RnnlmExample &minibatch = previous_minibatch_;
+  RnnlmExample &minibatch = current_minibatch_;
   bool sampling = !minibatch.sampled_words.empty();
 
   if (word_feature_mat_ == NULL) {
@@ -254,7 +244,7 @@ void RnnlmTrainer::TrainInternal() {
       srand_seed_ % core_config_.backstitch_training_interval) {
     bool is_backstitch_step1 = true;
     srand(srand_seed_ + num_minibatches_processed_);
-    core_trainer_->TrainBackstitch(is_backstitch_step1, previous_minibatch_,
+    core_trainer_->TrainBackstitch(is_backstitch_step1, current_minibatch_,
         derived_, *word_embedding,
         (train_embedding_ ? &word_embedding_deriv : NULL));
     if (train_embedding_)
@@ -262,13 +252,13 @@ void RnnlmTrainer::TrainInternal() {
 
     is_backstitch_step1 = false;
     srand(srand_seed_ + num_minibatches_processed_);
-    core_trainer_->TrainBackstitch(is_backstitch_step1, previous_minibatch_,
+    core_trainer_->TrainBackstitch(is_backstitch_step1, current_minibatch_,
         derived_, *word_embedding,
         (train_embedding_ ? &word_embedding_deriv : NULL));
     if (train_embedding_)
       TrainBackstitchWordEmbedding(is_backstitch_step1, &word_embedding_deriv);
   } else {
-    core_trainer_->Train(previous_minibatch_, derived_, *word_embedding,
+    core_trainer_->Train(current_minibatch_, derived_, *word_embedding,
                          (train_embedding_ ? &word_embedding_deriv : NULL));
     if (train_embedding_)
       TrainWordEmbedding(&word_embedding_deriv);
@@ -281,12 +271,6 @@ int32 RnnlmTrainer::VocabSize() {
 }
 
 RnnlmTrainer::~RnnlmTrainer() {
-  if (num_minibatches_processed_ > 0) {
-    KALDI_LOG << "BLOCK F";
-    TrainInternal();
-  }
-  KALDI_LOG << "BLOCK G";
-
   // Note: the following delete statements may cause some diagnostics to be
   // issued, from the destructors of those classes.
   if (core_trainer_)
