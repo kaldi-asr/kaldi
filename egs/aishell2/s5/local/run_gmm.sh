@@ -9,8 +9,8 @@ set -euxo pipefail
 # number of jobs
 nj=20
 stage=1
-academic=false        # Option on whether we wanna use academic script or normal one
-                      # Should be either false or true
+mode=normal        # Option on whether we wanna use academic script or normal one
+                   # Should be either false or true
 
 . ./cmd.sh
 [ -f ./path.sh ] && . ./path.sh;
@@ -27,14 +27,14 @@ if [ $stage -le 1 ]; then
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
   for x in train dev test; do
-    if [ $academic == "false" ]; then
+    if [ $mode == "simple" ]; then
       steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj \
         data/$x exp/make_mfcc/$x mfcc || exit 1;
-    elif [ $academic == "true" ]; then
+    elif [ $mode == "normal" ]; then
       steps/make_mfcc_pitch.sh --pitch-config conf/pitch.conf --cmd "$train_cmd" --nj $nj \
         data/$x exp/make_mfcc/$x mfcc || exit 1;
     else
-      echo "the variable 'academic' shall be either false or true" && exit 0;
+      echo "mode should be either 'normal' or 'simple'" && exit 0;
     fi
     steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x mfcc || exit 1;
     utils/fix_data_dir.sh data/$x || exit 1;
