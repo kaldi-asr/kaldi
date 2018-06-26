@@ -9,8 +9,7 @@ set -euxo pipefail
 # number of jobs
 nj=20
 stage=1
-mode=normal        # Option on whether we wanna use academic script or normal one
-                   # Should be either false or true
+mode=normal        # Please refer to ../run.sh for comments. should be either 'normal' or 'simple'
 
 . ./cmd.sh
 [ -f ./path.sh ] && . ./path.sh;
