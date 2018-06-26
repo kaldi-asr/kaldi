@@ -70,8 +70,8 @@ if [ $stage -le 2 ]; then
 
   # 12 in the following command means the allowed lengths are spaced
   # by 12% change in length.
-  python utils/data/perturb_speed_to_allowed_lengths.py 12 data/${trainset} \
-         data/${trainset}_spe2e_hires
+  utils/data/perturb_speed_to_allowed_lengths.py 12 data/${trainset} \
+                                                 data/${trainset}_spe2e_hires
   cat data/${trainset}_spe2e_hires/utt2dur | \
     awk '{print $1 " " substr($1,5)}' >data/${trainset}_spe2e_hires/utt2uniq
   utils/fix_data_dir.sh data/${trainset}_spe2e_hires
@@ -85,17 +85,6 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  echo "$0: estimating phone language model for the denominator graph"
-  mkdir -p exp/chain/e2e_base/log
-  $train_cmd exp/chain/e2e_base/log/make_phone_lm.log \
-  cat data/$trainset/text \| \
-    steps/nnet3/chain/e2e/text_to_phones.py data/lang_nosp \| \
-    utils/sym2int.pl -f 2- data/lang_nosp/phones.txt \| \
-    chain-est-phone-lm --num-extra-lm-states=2000 \
-                       ark:- exp/chain/e2e_base/phone_lm.fst
-fi
-
-if [ $stage -le 5 ]; then
   echo "$0: calling the flat-start chain recipe..."
   local/chain/e2e/run_tdnn_flatstart.sh
 fi

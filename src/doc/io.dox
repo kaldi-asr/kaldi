@@ -73,10 +73,10 @@ namespace kaldi {
 \code
   // we suppose that class_member_ is of type int32.
   void SomeKaldiClass::Read(std::istream &is, bool binary) {
-    ReadBasicType(binary, &class_member_);
+    ReadBasicType(is, binary, &class_member_);
   }
-  void SomeKaldiClass::Write(std::ostream &is, bool binary) const {
-    WriteBasicType(binary, class_member_);
+  void SomeKaldiClass::Write(std::ostream &os, bool binary) const {
+    WriteBasicType(os, binary, class_member_);
   }
 \endcode
   We have assumed that \c class_member_ is of type int32, which is a type of known

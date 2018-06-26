@@ -693,8 +693,8 @@ class CuMatrixBase {
 
   // The following two functions should only be called if we did not compile
   // with CUDA or could not get a CUDA card; in that case the contents are
-  // interpreted the same as a regular matrix.  Don't use these unless you know
-  // what you are doing!
+  // interpreted the same as a regular matrix.  DON'T USE THESE UNLESS YOU KNOW
+  // WHAT YOU ARE DOING!
   inline const MatrixBase<Real> &Mat() const {
     return *(reinterpret_cast<const MatrixBase<Real>* >(this));
   }

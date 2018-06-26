@@ -10,7 +10,7 @@ RUN \
     git bzip2 wget \
     g++ make python python3 \
     zlib1g-dev automake autoconf libtool subversion \
-    libatlas-dev libatlas-base-dev
+    libatlas-base-dev
 
 
 WORKDIR /usr/local/

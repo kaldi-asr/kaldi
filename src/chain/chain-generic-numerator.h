@@ -1,6 +1,7 @@
 // chain/chain-generic-numerator.h
 
 // Copyright       2017  Hossein Hadian
+//                 2018 Johns Hopkins University (Jan "Yenda" Trmal)
 
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -66,10 +67,38 @@ namespace chain {
    training). It is the same as DenominatorComputation with 2 differences:
    [1] it runs on CPU
    [2] it does not use leakyHMM
+   The F-B computation is done in log-domain.
 
    When the 'e2e' flag of a supervision is set, the ComputeChainObjfAndDeriv
    function in chain-training.cc uses GenericNumeratorComputation (instead
    of NumeratorCompuation) to compute the numerator derivatives.
+
+   The implementation tries to optimize the memory transfers. The optimization
+   uses the observation that for each supervision graph, only very limited
+   number of pdfs is needed to evaluate the possible transitions from state
+   to state. That means that for the F-B, we don't have to transfer the whole
+   neural network output, we can copy only the limited set of pdfs activation
+   values that will be needed for F-B on the given graph.
+
+   To streamline things, in the constructor of this class, we remap the pdfs
+   indices to a new space and store the bookkeeping info in the index_to_pdf_
+   structure. This can be seen as if for each FST we create a subspace that
+   has only the pdfs that are needed for the given FST (possibly ordered
+   differently).
+
+   Morover, we optimize memory transfers. The matrix of nnet outputs can be
+   reshaped (viewed) as a matrix of dimensions
+   (frames_per_sequence) x (num_sequences * pdf_stride), where the pdf_stride
+   is the stride of the original matrix and pdf_stride >= num_pdfs.
+   When the matrix is viewed this way, it becomes obvious that the pdfs of the
+   k-th supervision sequence  have column index k * pdf_stride + original_pdf_index
+   Once this is understood, the way how copy all pdfs in one shot should become
+   obvious.
+
+   The complete F-B is then done in this remapped space and only
+   when copying the activation values from the GPU memory or copying
+   the computed derivatives to GPU memory, we use the bookkeeping info to
+   map the values correctly.
  */
 
 
@@ -81,90 +110,94 @@ namespace chain {
 // and the numerator FSTs are stored in 'e2e_fsts' instead of 'fst'
 
 class GenericNumeratorComputation {
-
  public:
-
   /// Initializes the object.
   GenericNumeratorComputation(const Supervision &supervision,
                               const CuMatrixBase<BaseFloat> &nnet_output);
 
-  // Does the forward computation.  Returns the total log-prob multiplied
-  // by supervision_.weight.
-  BaseFloat Forward();
-
-  // Does the backward computation and (efficiently) adds the derivative of the
+  // Does the forward-backward computation. Returns the total log-prob
+  // multiplied by supervision_.weight.
+  // In the backward computation, add (efficiently) the derivative of the
   // nnet output w.r.t. the (log-prob times supervision_.weight times
   // deriv_weight) to 'nnet_output_deriv'.
-  bool Backward(CuMatrixBase<BaseFloat> *nnet_output_deriv);
+  bool ForwardBackward(BaseFloat *total_loglike,
+                       CuMatrixBase<BaseFloat> *nnet_output_deriv);
 
+  BaseFloat ComputeObjf();
  private:
+  // For the remapped FSTs, copy the appropriate activations to CPU memory.
+  // For explanation of what remapped FST is, see the large comment in the
+  // beginning of the file
+  void CopySpecificPdfsIndirect(
+                             const CuMatrixBase<BaseFloat> &nnet_output,
+                             const std::vector<MatrixIndexT> &indices,
+                             Matrix<BaseFloat> *output);
 
-  // Defining this constant as an enum is easier.  it controls a memory/speed
-  // tradeoff, determining how many frames' worth of the transposed derivative
-  // we store at a time.  It's not very critical; the only disadvantage from
-  // setting it small is that we have to invoke an AddMat kernel more times.
-  enum { kMaxDerivTimeSteps = 8 };
+  // For the remapped FSTs, copy the computed values back to gpu,
+  // expand to the original shape and add to the output matrix.
+  // For explanation of what remapped FST is, see the large comment in the
+  // beginning of the file.
+  void AddSpecificPdfsIndirect(
+                             Matrix<BaseFloat> *logprobs,
+                             const std::vector<MatrixIndexT> &indices,
+                             CuMatrixBase<BaseFloat> *output);
 
   // sets up the alpha for frame t = 0.
-  void AlphaFirstFrame();
+  void AlphaFirstFrame(int seq, Matrix<BaseFloat> *alpha);
 
-  // the alpha computation for some 0 < t <= num_time_steps_.
-  void AlphaGeneralFrame(int32 t);
+  // the alpha computation for 0 < t <= supervision_.frames_per_sequence
+  // for some 0 <= seq < supervision_.num_sequences.
+  BaseFloat AlphaRemainingFrames(int seq,
+                              const Matrix<BaseFloat> &probs,
+                              Matrix<BaseFloat> *alpha);
 
-  BaseFloat ComputeTotLogLike();
+  // the beta computation for 0 <= t < supervision_.frames_per_sequence
+  // for some 0 <= seq < supervision_.num_sequences.
+  void BetaRemainingFrames(int32 seq,
+                        const Matrix<BaseFloat> &probs,
+                        const Matrix<BaseFloat> &alpha,
+                        Matrix<BaseFloat> *beta,
+                        Matrix<BaseFloat> *derivs);
 
-  // sets up the beta for frame t = num_time_steps_.
-  void BetaLastFrame();
+  // the beta computation for t = supervision_.frames_per_sequence
+  void BetaLastFrame(int seq,
+                     const Matrix<BaseFloat> &alpha,
+                     Matrix<BaseFloat> *beta);
 
-  // the beta computation for 0 <= beta < num_time_steps_.
-  void BetaGeneralFrame(int32 t);
+  // returns total prob for the given matrix alpha (assumes the alpha
+  // matrix was computed using AlphaFirstFrame() and AlphaRemainingFrames()
+  // (it's exactly like 'tot_probe_' in DenominatorComputation)
+  BaseFloat GetTotalProb(const Matrix<BaseFloat> &alpha);
 
   // some checking that we can do if debug mode is activated, or on frame zero.
-  // Sets ok_ to false if a bad problem is detected.
-  void BetaGeneralFrameDebug(int32 t);
+  // Returns false if a bad problem is detected.
+  bool CheckValues(int32 seq,
+                   const Matrix<BaseFloat> &probs,
+                   const Matrix<BaseFloat> &alpha,
+                   const Matrix<BaseFloat> &beta,
+                   const Matrix<BaseFloat> &derivs) const;
 
 
   const Supervision &supervision_;
 
-  // the transposed neural net output.
-  Matrix<BaseFloat> exp_nnet_output_transposed_;
+  // a reference to the nnet output.
+  const CuMatrixBase<BaseFloat> &nnet_output_;
+  int32 nnet_output_stride_;   // we keep the original stride extra
+                               // as the matrix can change before ForwardBackward
 
   // in_transitions_ lists all the incoming transitions for
   // each state of each numerator graph
   // out_transitions_ does the same but for the outgoing transitions
-  std::vector<std::vector<std::vector<DenominatorGraphTransition> > >
-  in_transitions_, out_transitions_;
+  typedef std::vector<std::vector<DenominatorGraphTransition> > TransitionMap;
+  std::vector<TransitionMap> in_transitions_, out_transitions_;
+  std::vector<MatrixIndexT> index_to_pdf_;
 
   // final probs for each state of each numerator graph
-  Matrix<double> final_probs_; // indexed by seq, state
+  Matrix<BaseFloat> final_probs_;  // indexed by seq, state
 
   // an offset subtracted from the logprobs of transitions out of the first
-  // state of each graph to help reduce numerical problems. Note the
-  // generic forward-backward computations cannot be done in log-space.
+  // state of each graph to help reduce numerical problems.
   Vector<BaseFloat> offsets_;
-
-  // maximum number of states among all the numerator graphs
-  // (it is used as a stride in alpha_ and beta_)
-  int32 max_num_hmm_states_;
-
-  // the derivs w.r.t. the nnet outputs (transposed)
-  // (the dimensions and functionality is the same as in
-  // DenominatorComputation)
-  Matrix<BaseFloat> nnet_output_deriv_transposed_;
-
-  // forward and backward probs matrices. These have the
-  // same dimension and functionality as alpha_ and beta_
-  // in DenominatorComputation except here we don't use beta
-  // sums (becasue we don't use leakyHMM). However, we use
-  // alpha sums to help avoid numerical issues.
-  Matrix<double> alpha_;
-  Matrix<double> beta_;
-
-  // vector of total probs (i.e. for all the sequences)
-  // (it's exactly like 'tot_probe_' in DenominatorComputation)
-  Vector<double> tot_prob_;
-
-  bool ok_;
 };
 
 }  // namespace chain

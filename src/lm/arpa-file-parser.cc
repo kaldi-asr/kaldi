@@ -209,7 +209,7 @@ void ArpaFileParser::Read(std::istream &is) {
             word = symbols_->AddSymbol(col[1 + index]);
           } else {
             word = symbols_->Find(col[1 + index]);
-            if (word == fst::SymbolTable::kNoSymbol) {
+            if (word == -1) { // fst::kNoSymbol
               switch (options_.oov_handling) {
                 case ArpaParseOptions::kReplaceWithUnk:
                   word = options_.unk_symbol;

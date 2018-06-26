@@ -39,7 +39,7 @@ if [ -z "$cv_spk_list" ]; then
   # Select 'cv_spk_percent' speakers randomly,
   cat $src_data/spk2utt | awk '{ print $1; }' | utils/shuffle_list.pl --srand $seed >$tmp/speakers
   n_spk=$(wc -l <$tmp/speakers)
-  n_spk_cv=$((cv_spk_percent * n_spk / 100))
+  n_spk_cv=$(perl -e "print int($cv_spk_percent * $n_spk / 100); ")
   #
   head -n $n_spk_cv $tmp/speakers >$tmp/speakers_cv
   tail -n+$((n_spk_cv+1)) $tmp/speakers >$tmp/speakers_trn

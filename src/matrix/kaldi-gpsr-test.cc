@@ -37,11 +37,11 @@ template<typename Real> static void InitRand(MatrixBase<Real> *M) {
   for (MatrixIndexT i = 0;i < M->NumRows();i++)
     for (MatrixIndexT j = 0;j < M->NumCols();j++)
       (*M)(i, j) = RandGauss();
-    if (M->NumRows() != 0 && M->Cond() > 100) {
-      KALDI_WARN << "Condition number of random matrix large" << M->Cond()
-                 << ": trying again (this is normal)";
-      goto start;
-    }
+  if (M->NumRows() != 0 && M->Cond() > 100) {
+    KALDI_WARN << "Condition number of random matrix large" << M->Cond()
+               << ": trying again (this is normal)";
+    goto start;
+  }
 }
 
 template<typename Real> static void InitRand(SpMatrix<Real> *M) {
