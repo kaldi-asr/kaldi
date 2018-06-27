@@ -83,10 +83,13 @@ void EvaluateComputationRequest(
   }
 }
 
-// this non-exported function is used in ComputeSimpleNnetContext
+// This non-exported function is used in ComputeSimpleNnetContext
 // to compute the left and right context of the nnet for a particular
 // window size and shift-length.
-static void ComputeSimpleNnetContextForShift(
+// It returns false if no outputs were computable, meaning the left and
+// right context could not be computed.  (Normally this means the window
+// size is too small).
+static bool ComputeSimpleNnetContextForShift(
     const Nnet &nnet,
     int32 input_start,
     int32 window_size,
@@ -118,7 +121,6 @@ static void ComputeSimpleNnetContextForShift(
     ivector.indexes.push_back(Index(n, t));
   }
 
-
   ComputationRequest request;
   request.inputs.push_back(input);
   request.outputs.push_back(output);
@@ -135,9 +137,10 @@ static void ComputeSimpleNnetContextForShift(
   int32 first_not_ok = std::find(iter, output_ok.end(), false) -
       output_ok.begin();
   if (first_ok == window_size || first_not_ok <= first_ok)
-    KALDI_ERR << "No outputs were computable (perhaps not a simple nnet?)";
+    return false;
   *left_context = first_ok;
   *right_context = window_size - first_not_ok;
+  return true;
 }
 
 void ComputeSimpleNnetContext(const Nnet &nnet,
@@ -154,24 +157,43 @@ void ComputeSimpleNnetContext(const Nnet &nnet,
   std::vector<int32> left_contexts(modulus + 1);
   std::vector<int32> right_contexts(modulus + 1);
 
-  // This will crash if the total context (left + right) is greater
-  // than window_size.
-  int32 window_size = 200;
+  // window_size is a number which needs to be greater than the total context
+  // of the nnet, else we won't be able to work out the context.  Large window
+  // size will make this code slow, so we start off with small window size, and
+  // if it isn't enough, we keep doubling it up to a maximum.
+  int32 window_size = 40, max_window_size = 800;
 
-  // by going "<= modulus" instead of "< modulus" we do one more computation
-  // than we really need; it becomes a sanity check.
-  for (int32 input_start = 0; input_start <= modulus; input_start++)
-    ComputeSimpleNnetContextForShift(nnet, input_start, window_size,
-                                     &(left_contexts[input_start]),
-                                     &(right_contexts[input_start]));
-  KALDI_ASSERT(left_contexts[0] == left_contexts[modulus] &&
-               "nnet does not have the properties we expect.");
-  KALDI_ASSERT(right_contexts[0] == right_contexts[modulus] &&
-               "nnet does not have the properties we expect.");
-  *left_context =
-      *std::max_element(left_contexts.begin(), left_contexts.end());
-  *right_context =
-      *std::max_element(right_contexts.begin(), right_contexts.end());
+  while (window_size < max_window_size) {
+
+    // by going "<= modulus" instead of "< modulus" we do one more computation
+    // than we really need; it becomes a sanity check.
+    int32 input_start;
+    for (input_start = 0; input_start <= modulus; input_start++) {
+      if (!ComputeSimpleNnetContextForShift(nnet, input_start, window_size,
+                                            &(left_contexts[input_start]),
+                                            &(right_contexts[input_start])))
+        break;
+    }
+    if (input_start <= modulus) {
+      // We broke from the loop over 'input_start', which means there was
+      // a failure in ComputeSimpleNnextContextForShift-- we assume at
+      // this point that it was because window_size was too small.
+      window_size *= 2;
+      continue;
+    }
+
+    KALDI_ASSERT(left_contexts[0] == left_contexts[modulus] &&
+                 "nnet does not have the properties we expect.");
+    KALDI_ASSERT(right_contexts[0] == right_contexts[modulus] &&
+                 "nnet does not have the properties we expect.");
+    *left_context =
+        *std::max_element(left_contexts.begin(), left_contexts.end());
+    *right_context =
+        *std::max_element(right_contexts.begin(), right_contexts.end());
+    // Success.
+    return;
+  }
+  KALDI_ERR << "Failure in ComputeSimpleNnetContext (perhaps not a simple nnet?)";
 }
 
 void PerturbParams(BaseFloat stddev,
