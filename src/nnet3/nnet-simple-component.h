@@ -402,15 +402,6 @@ class PerElementOffsetComponent;
      orthonormal-constraint=0.0   Can be used to constrain the linear parameter matrix
                        to be semi-orthogonal, see ConstraintOrhonormal() in nnet-utils.h,
                        and http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf.
-     orthonormal-row-ranges     Only relevant if orthonormal-constraint is nonzero.
-                      May be set to a list of integers with an even number of elements, describing
-                      ranges of rows for which the orthonormal constraint is going to
-                      be applied independently.  The ranges are in (begin,end) format,
-                      where end is one past the last element.   E.g.
-                      orthonormal-row-ranges=0,10,30,40 would mean that we'd apply the
-                      orthonormal constraint separately on two matrices consisting of
-                      rows 0 through 9, and rows 30 through 39, of the linear_params_
-                      matrix.
 */
 class AffineComponent: public UpdatableComponent {
  public:
@@ -418,9 +409,6 @@ class AffineComponent: public UpdatableComponent {
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
   BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
-  const std::vector<int32> &OrthonormalRowRanges() const {
-    return orthonormal_row_ranges_;
-  }
 
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
@@ -503,7 +491,6 @@ class AffineComponent: public UpdatableComponent {
   // see documentation at the top of this class for more information on the
   // following.
   BaseFloat orthonormal_constraint_;
-  std::vector<int32> orthonormal_row_ranges_;
 };
 
 class RepeatedAffineComponent;

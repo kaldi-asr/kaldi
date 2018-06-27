@@ -1023,7 +1023,6 @@ void ConstrainOrthonormal(Nnet *nnet) {
     Component *component = nnet->GetComponent(c);
     CuMatrixBase<BaseFloat> *params = NULL;
     BaseFloat orthonormal_constraint = 0.0;
-    std::vector<int32> orthonormal_row_ranges;
 
     LinearComponent *lc = dynamic_cast<LinearComponent*>(component);
     if (lc != NULL && lc->OrthonormalConstraint() != 0.0) {
@@ -1034,7 +1033,6 @@ void ConstrainOrthonormal(Nnet *nnet) {
     if (ac != NULL && ac->OrthonormalConstraint() != 0.0) {
       orthonormal_constraint = ac->OrthonormalConstraint();
       params = &(ac->LinearParams());
-      orthonormal_row_ranges = ac->OrthonormalRowRanges();
     }
     TdnnComponent *tc = dynamic_cast<TdnnComponent*>(component);
     if (tc != NULL && tc->OrthonormalConstraint() != 0.0) {
@@ -1048,31 +1046,7 @@ void ConstrainOrthonormal(Nnet *nnet) {
     }
 
     int32 rows = params->NumRows(), cols = params->NumCols();
-    if (!orthonormal_row_ranges.empty()) {
-      // This branch would only be taken if the user supplied the
-      // "orthonormal-row-ranges" option in the xconfig.  It's a kind of
-      // specialized use-case, where you want to apply the constraint
-      // on parts of the matrix; it might be useful with attention
-      // layers.
-      KALDI_ASSERT(orthonormal_row_ranges.size() % 2 == 0);
-      for (size_t i = 0; i * 2 < orthonormal_row_ranges.size(); i++) {
-        int32 row_range_start = orthonormal_row_ranges[i*2],
-            row_range_end = orthonormal_row_ranges[i*2 + 1];
-        CuSubMatrix<BaseFloat> params_part(
-            params->RowRange(row_range_start,
-                             row_range_end - row_range_start));
-        if (params_part.NumRows() <= cols) {
-          ConstrainOrthonormalInternal(orthonormal_constraint,
-                                       &params_part);
-        } else {
-          // reaching this branch is unlikely.
-          CuMatrix<BaseFloat> params_part_trans(params_part, kTrans);
-          ConstrainOrthonormalInternal(orthonormal_constraint,
-                                       &params_part_trans);
-          params_part.CopyFromMat(params_part_trans, kTrans);
-        }
-      }
-    } else if (rows <= cols) {
+    if (rows <= cols) {
       ConstrainOrthonormalInternal(orthonormal_constraint, params);
     } else {
       CuMatrix<BaseFloat> params_trans(*params, kTrans);

@@ -1112,8 +1112,7 @@ AffineComponent::AffineComponent(const AffineComponent &component):
     UpdatableComponent(component),
     linear_params_(component.linear_params_),
     bias_params_(component.bias_params_),
-    orthonormal_constraint_(component.orthonormal_constraint_),
-    orthonormal_row_ranges_(component.orthonormal_row_ranges_) { }
+    orthonormal_constraint_(component.orthonormal_constraint_) { }
 
 AffineComponent::AffineComponent(const CuMatrixBase<BaseFloat> &linear_params,
                                  const CuVectorBase<BaseFloat> &bias_params,
@@ -1148,13 +1147,6 @@ std::string AffineComponent::Info() const {
   stream << UpdatableComponent::Info();
   if (orthonormal_constraint_ != 0.0)
     stream << ", orthonormal-constraint=" << orthonormal_constraint_;
-  if (!orthonormal_row_ranges_.empty()) {
-    stream << ", orthonormal-row-ranges=";
-    for (size_t i = 0; i < orthonormal_row_ranges_.size(); i++) {
-      if (i > 0) stream << ',';
-      stream << orthonormal_row_ranges_[i];
-    }
-  }
   PrintParameterStats(stream, "linear-params", linear_params_,
                       false, // include_mean
                       true, // include_row_norms
@@ -1222,18 +1214,6 @@ void AffineComponent::InitFromConfig(ConfigLine *cfl) {
          param_stddev, bias_stddev);
   }
   cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
-
-  std::string s;
-  if (cfl->GetValue("orthonormal-row-ranges", &s)) {
-    if (!SplitStringToIntegers(s, ",", false, &orthonormal_row_ranges_))
-      KALDI_ERR << "Error in option orthonormal-row-ranges=" << s;
-    if (!orthonormal_row_ranges_.empty()) {
-      KALDI_ASSERT(orthonormal_row_ranges_.size() % 2 == 0 &&
-                   IsSorted(orthonormal_row_ranges_) &&
-                   orthonormal_row_ranges_.front() >= 0 &&
-                   orthonormal_row_ranges_.back() <= OutputDim());
-    }
-  }
 
   if (cfl->HasUnusedValues())
     KALDI_ERR << "Could not process these elements in initializer: "
@@ -1306,10 +1286,6 @@ void AffineComponent::Read(std::istream &is, bool binary) {
   if (PeekToken(is, binary) == 'O') {
     ExpectToken(is, binary, "<OrthonormalConstraint>");
     ReadBasicType(is, binary, &orthonormal_constraint_);
-    if (PeekToken(is, binary) == 'O') {
-      ExpectToken(is, binary, "<OrthonormalRowRanges>");
-      ReadIntegerVector(is, binary, &orthonormal_row_ranges_);
-    }
   } else {
     orthonormal_constraint_ = 0.0;
   }
@@ -1325,10 +1301,6 @@ void AffineComponent::Write(std::ostream &os, bool binary) const {
   if (orthonormal_constraint_ != 0.0) {
     WriteToken(os, binary, "<OrthonormalConstraint>");
     WriteBasicType(os, binary, orthonormal_constraint_);
-    if (!orthonormal_row_ranges_.empty()) {
-      WriteToken(os, binary, "<OrthonormalRowRanges>");
-      WriteIntegerVector(os, binary, orthonormal_row_ranges_);
-    }
   }
   WriteToken(os, binary, "</AffineComponent>");
 }
@@ -2791,10 +2763,6 @@ void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   if (PeekToken(is, binary) == 'O') {
     ExpectToken(is, binary, "<OrthonormalConstraint>");
     ReadBasicType(is, binary, &orthonormal_constraint_);
-    if (PeekToken(is, binary) == 'O') {
-      ExpectToken(is, binary, "<OrthonormalRowRanges>");
-      ReadIntegerVector(is, binary, &orthonormal_row_ranges_);
-    }
   } else {
     orthonormal_constraint_ = 0.0;
   }
@@ -2908,18 +2876,6 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   orthonormal_constraint_ = 0.0;
   cfl->GetValue("orthonormal-constraint", &orthonormal_constraint_);
 
-  std::string s;
-  if (cfl->GetValue("orthonormal-row-ranges", &s)) {
-    if (!SplitStringToIntegers(s, ",", false, &orthonormal_row_ranges_))
-      KALDI_ERR << "Error in option orthonormal-row-ranges=" << s;
-    if (!orthonormal_row_ranges_.empty()) {
-      KALDI_ASSERT(orthonormal_row_ranges_.size() % 2 == 0 &&
-                   IsSorted(orthonormal_row_ranges_) &&
-                   orthonormal_row_ranges_.front() >= 0 &&
-                   orthonormal_row_ranges_.back() <= OutputDim());
-    }
-  }
-
   // Set natural-gradient configs.
   BaseFloat num_samples_history = 2000.0,
       alpha = 4.0;
@@ -2966,10 +2922,6 @@ void NaturalGradientAffineComponent::Write(std::ostream &os,
   if (orthonormal_constraint_ != 0.0) {
     WriteToken(os, binary, "<OrthonormalConstraint>");
     WriteBasicType(os, binary, orthonormal_constraint_);
-    if (!orthonormal_row_ranges_.empty()) {
-      WriteToken(os, binary, "<OrthonormalRowRanges>");
-      WriteIntegerVector(os, binary, orthonormal_row_ranges_);
-    }
   }
   WriteToken(os, binary, "<UpdatePeriod>");
   WriteBasicType(os, binary, preconditioner_in_.GetUpdatePeriod());
