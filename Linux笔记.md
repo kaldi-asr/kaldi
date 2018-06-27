@@ -1,5 +1,4 @@
-### --
-  利用两个连续的连字符 --，显式地告诉前者到此为止。
+### -- : 利用两个连续的连字符 --，显式地告诉前者到此为止。
   
   参考https://liam0205.me/2016/11/11/ways-to-parse-arguments-in-shell-script/
   
@@ -11,3 +10,6 @@
     ls -lrt -- -foobar
     
   利用两个连续的连字符`--`，显式地告诉`getopts`：到这为止！然后，`ls`会读入`-foobar`作为文件名，显示它的相关信息。
+
+### export : 有点像拷贝一份变量
+  参考http://roclinux.cn/?p=1277
