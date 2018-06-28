@@ -10,7 +10,7 @@
 dir=data/local/dict_nosp
 mkdir -p $dir
 
-srcdict=db//TEDLIUM_release-3/TEDLIUM.152k.dic
+srcdict=db/TEDLIUM_release-3/TEDLIUM.152k.dic
 
 [ ! -r $srcdict ] && echo "Missing $srcdict" && exit 1
 

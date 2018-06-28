@@ -11,8 +11,6 @@
 
 . ./path.sh
 
-export LC_ALL=C
-
 # Prepare: test, train,
 for set in dev test train; do
   dir=data/$set.orig
