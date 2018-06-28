@@ -14,7 +14,7 @@ n：int 实验次数;   pvals：长度序列，表示每次的概率p;   size : 
     np.random.multinomial(100, [1/7.]*5 + [2/7.])
     array([11, 16, 14, 17, 16, 26])
 
-3.
+3.size
     
     >>> np.random.multinomial(20, [1/6.]*6, size=2)
             array([[3, 4, 3, 3, 4, 3],
