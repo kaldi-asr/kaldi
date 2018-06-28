@@ -118,10 +118,8 @@ struct RnnlmExample {
   // Shallow swap.
   void Swap(RnnlmExample *other);
 
-  // TODO: implement this.
   void Write(std::ostream &os, bool binary) const;
 
-  // TODO: implement this.
   void Read(std::istream &is, bool binary);
 };
 
