@@ -1,0 +1,8 @@
+# Results with mfcc feats: 'simple' mode
+%WER 49.20 [ 24368 / 49527, 471 ins, 1849 del, 22048 sub ] exp/mono/decode_test/cer_8_0.0
+%WER 27.01 [ 13376 / 49527, 466 ins, 715 del, 12195 sub ] exp/tri1/decode_test/cer_10_0.0
+%WER 25.31 [ 12534 / 49527, 427 ins, 716 del, 11391 sub ] exp/tri2/decode_test/cer_11_0.0
+%WER 21.44 [ 10620 / 49527, 352 ins, 599 del, 9669 sub ] exp/tri3/decode_test/cer_12_0.0
+
+# Results with pitch mfcc feats: 'normal' mode
+
