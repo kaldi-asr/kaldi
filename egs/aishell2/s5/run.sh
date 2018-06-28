@@ -43,15 +43,9 @@ if [ $stage -le 2 ]; then
   local/run_gmm.sh --nj $nj --stage $gmm_stage --mode $mode
 fi
 
-# nnet3 & chain
-# so far _1d is the SoTA chain recipe for normal use. If better model get
-# trained & tested it will hopefully be manually updated in later PRs
+# chain
 if [ $stage -le 3 ]; then
-  if [ $mode == "simple" ]; then
-    local/chain/run_tdnn.sh --nj $nj --stage 5
-  else
-    local/chain/tuning/run_tdnn_1d.sh --nj $nj --stage 5
-  fi
+  local/chain/run_tdnn_${mode}.sh --nj $nj --stage 5
 fi
 
 local/show_results.sh
