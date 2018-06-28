@@ -47,8 +47,11 @@ fi
 # so far _1d is the SoTA chain recipe for normal use. If better model get
 # trained & tested it will hopefully be manually updated in later PRs
 if [ $stage -le 3 ]; then
-  [ $mode == "simple" ] && local/chain/run_tdnn.sh --nj $nj --stage 5 || \
+  if [ $mode == "simple" ]; then
+    local/chain/run_tdnn.sh --nj $nj --stage 5
+  else
     local/chain/tuning/run_tdnn_1d.sh --nj $nj --stage 5
+  fi
 fi
 
 local/show_results.sh

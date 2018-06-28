@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# _1d is as _1a, but with i-vector and dropout schedule added, referenced from wsj
+# _1d is as _1a, but with pitch feats, i-vector and dropout schedule added, referenced from wsj
 
 # results:
 # local/chain/compare_wer.sh exp/chain/tdnn_1d_sp

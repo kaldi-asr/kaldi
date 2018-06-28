@@ -20,8 +20,8 @@ dev_nj=$(wc -l data/dev/utt2spk | awk '${print $1}' || exit 1;)
 test_nj=$(wc -l data/test/utt2spk | awk '${print $1}' || exit 1;)
 
 # Now make MFCC features.
-# For normal use where academic=false, we produce mfcc feats;
-# For academic use, we use mfcc+pitch feats from beginning through end
+# For normal use where mode=simple, it produces mfcc feats;
+# For pure research use, set mode=normal and it uses mfcc+pitch feats from beginning through end
 if [ $stage -le 1 ]; then
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
