@@ -26,6 +26,7 @@
 #include <string>
 #include "idlaktxp/txpmodule.h"
 #include "idlaktxp/txpnrules.h"
+#include "idlaktxp/txpabbrev.h"
 
 namespace kaldi {
 
@@ -46,6 +47,10 @@ class TxpTokenise : public TxpModule {
   /// Currently this data will be loaded muliple times across
   /// multiple modules
   TxpNRules nrules_;
+  /// Abbreviation data. This overides normalisation by directly
+  /// replacing matching tokens with normalised results
+  /// i.e. Dr. -> doctor
+  TxpAbbrev abbrev_;
 };
 
 }  // namespace kaldi

@@ -25,7 +25,7 @@ echo "****(1) Installing expat"
   else
     tar -xovzf expat-2.1.0.tar.gz || exit 1
     cd expat-2.1.0
-    ./configure --prefix=`pwd` || exit 1
+    CFLAGS="-fPIC -O2" ./configure --prefix=`pwd` || exit 1
     make || exit 1
     make install || exit 1
     cd ..
@@ -56,14 +56,14 @@ echo "****(2) Installing pugixml"
       osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"\."); print a[1] "." a[2]; }'`
       echo "Configuring for OS X version $osx_ver ..."
       if [ "$osx_ver" == "10.9" ]; then
-        cmake -DCMAKE_CXX_FLAGS=-stdlib=libstdc++
+        cmake -DCMAKE_CXX_FLAGS="-stdlib=libstdc++ -fPIC -O2" .
       elif [ "$osx_ver" == "10.10" ]; then
-        cmake -DCMAKE_CXX_FLAGS=-stdlib=libstdc++
+        cmake -DCMAKE_CXX_FLAGS="-stdlib=libstdc++ -fPIC -O2" .
       else
-        cmake .
+        cmake -DCMAKE_CXX_FLAGS="-fPIC -O2" .
       fi
     else
-      cmake . || exit 1
+      cmake -DCMAKE_CXX_FLAGS="-fPIC -O2" . || exit 1
     fi
     make || exit 1
     cd ../..
@@ -86,7 +86,7 @@ echo "****(3) Installing pcre with utf8 support"
   else
     tar -xovjf pcre-8.20.tar.bz2 || exit 1
     cd pcre-8.20
-    ./configure --enable-utf8 --enable-unicode-properties --enable-newline-is-anycrlf --prefix=`pwd` || exit 1
+    CFLAGS="-fPIC -O2" ./configure --enable-utf8 --enable-unicode-properties --enable-newline-is-anycrlf --prefix=`pwd` || exit 1
     make || exit 1
     make install || exit 1
     cd ..
@@ -109,7 +109,7 @@ echo "****(4) Installing SPTK"
 	mkdir -p SPTK
 	tar -xovzf SPTK-3.9.tar.gz || exit 1
 	cd SPTK-3.9
-	./configure --prefix=`pwd`/../SPTK || exit 1
+	CFLAGS="-fPIC -O2" ./configure --prefix=`pwd`/../SPTK || exit 1
 	make || exit 1
 	make install || exit 1
     cd ..
@@ -121,7 +121,32 @@ if [ $ok_sptk -ne 0 ]; then
   exit 1
 fi
 
-echo "****(5) Installing phonetisaurus"
+echo "****(5) Installing opengrm"
+(
+    OGRM_VER=1.3.4
+    stem=opengrm-ngram-${OGRM_VER}
+    rm -f $stem.tar.gz 2>/dev/null
+    wget -T 10 -t 3 http://www.opengrm.org/twiki/pub/GRM/NGramDownload/$stem.tar.gz
+    if [ ! -e $stem.tar.gz ]; then
+        echo "****download of $stem.tar.gz failed."
+        exit 1
+    else
+        tar -xovzf $stem.tar.gz || exit 1
+        cd $stem
+        CPPFLAGS="-std=gnu++11 -I`pwd`/../openfst/include" LDFLAGS=-L`pwd`/../openfst/lib ./configure --prefix=`pwd` || exit 1
+        make || exit 1
+        make install || exit 1
+    cd ..
+  fi
+)
+ok_ogrm=$?
+if [ $ok_ogrm -ne 0 ]; then
+  echo "****opengrm install failed."
+  exit 1
+fi
+
+
+#echo "****(5) Installing phonetisaurus"
 #(
 #    rm -f Phonetisaurus
 #    git clone https://github.com/AdolfVonKleist/Phonetisaurus.git

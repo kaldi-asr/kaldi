@@ -1,0 +1,9 @@
+<?xml version="1.0"?><parent><ws col="0">
+</ws><lex pron="k+"><tk norm="k" lc="true" uc="true">K</tk></lex><ws> </ws><tk norm="an" lc="true">an<ws col="5">
+
+</ws></tk><tk norm="a" lc="true">a<ws col="3">
+</ws></tk><tk norm="http" pstpunc=":" lc="true">http:</tk><tk norm="/" symbols="true">/</tk><tk norm="/" symbols="true">/</tk><tk norm="www" pstpunc="." lc="true">www.big.site<ws> </ws></tk><tk norm="big" pstpunc="." lc="true" /><tk norm="site" lc="true" /><tk norm="2" symbols="true">2</tk><tk norm="=" symbols="true">=</tk><tk norm="4-2" symbols="true">4-2<ws> </ws></tk><tk norm="full" lc="true" uc="true">FULL<ws> </ws></tk><tk norm="power" lc="true" uc="true">Power<ws> </ws></tk><tk norm="cafe" lc="true" foreign="true">café<ws> </ws></tk><tk prepunc="&quot;" norm="okay" pstpunc="&quot;" lc="true">“okay”<ws col="54">
+
+</ws></tk><tk norm="and" lc="true" uc="true">And<ws> </ws></tk><tk norm="another" lc="true">another<ws> </ws></tk><tk norm="sentence" pstpunc="." lc="true">sentence.<ws col="23">
+
+</ws></tk></parent>

@@ -8,7 +8,7 @@
     to deal with hypenation.
   </comment>
   <exp>
-    <![CDATA[^([ \n\t\r\-]+)]]>
+    <![CDATA[^([ \n\t\r]+)]]>
   </exp>
 </regex>
 
