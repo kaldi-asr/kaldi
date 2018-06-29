@@ -4,7 +4,7 @@
     bash: line 1: copy-feats: command not found
     bash: line 1: compute-mfcc-feats: command not found
 
-解决：path.sh导入script中。
+解决：`path.sh`导入script中。
 
     xielongdeMBP:s5 yelong$ . ./run.sh    //注意，. .中间有空格
 法二：
