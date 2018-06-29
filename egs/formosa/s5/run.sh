@@ -6,6 +6,9 @@
 # For more detail, please check:
 # 1. Formosa Speech in the Wild (FSW) project (https://sites.google.com/speech.ntut.edu.tw/fsw/home/corpus)
 # 2. Formosa Speech Recognition Challenge (FSW) 2018 (https://sites.google.com/speech.ntut.edu.tw/fsw/home/challenge)
+stage=-2
+train_stage=-10
+num_jobs=20
 
 # shell options
 set -e -o pipefail
@@ -14,9 +17,6 @@ set -e -o pipefail
 . ./utils/parse_options.sh
 
 # configure number of jobs running in parallel, you should adjust these numbers according to your machines
-stage=-2
-num_jobs=20
-
 # data preparation
 if [ $stage -le -2 ]; then
 
@@ -69,7 +69,7 @@ if [ $stage -le 0 ]; then
   echo "$0: train mono model"
   # Make some small data subsets for early system-build stages.
   echo "$0: make training subsets"
-  utils/subset_data_dir.sh --shortest	data/train   3000  data/train_mono
+  utils/subset_data_dir.sh --shortest data/train 3000 data/train_mono
 
   # train mono
   steps/train_mono.sh --boost-silence 1.25 --cmd "$train_cmd" --nj $num_jobs \
@@ -197,7 +197,7 @@ fi
 if [ $stage -le 6 ]; then
 
   echo "$0: train nnet3 model"
-  local/nnet3/run_tdnn.sh
+  local/nnet3/run_tdnn.sh --stage $train_stage
 
 fi
 
@@ -205,7 +205,7 @@ fi
 if [ $stage -le 7 ]; then
 
   echo "$0: train chain model"
-  local/chain/run_tdnn.sh
+  local/chain/run_tdnn.sh --stage $train_stage
 
 fi
 
