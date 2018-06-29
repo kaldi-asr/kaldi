@@ -24,11 +24,9 @@ set -e # exit on error
 # chime5 main directory path
 # please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
-chime5_corpus=/export/b02/watanabe/work/201711chime5/data/data_final/CHiME5
 ####
 echo "test. This line should be replaced"
 json_dir=${chime5_corpus}/transcriptions
-json_dir=${chime5_corpus}/transcriptions_notext
 audio_dir=${chime5_corpus}/audio
 
 # training and test data
