@@ -52,3 +52,8 @@ head -number 后面接地址 能输出文件的前number行
 
 ## -
 用 "-" 来表示标准输入输出。 
+
+
+## ./
+./运行shell脚本，不能直接test.sh，直接写 test.sh，linux 系统会去 PATH 里寻找有没有叫 test.sh 的，而只有 /bin, /sbin, /usr/bin，/usr/sbin 等在 PATH 里，你的当前目录通常不在 PATH 里，所以写成 test.sh 是会找不到命令的，要用 ./test.sh 告诉系统说，就在当前目录找。
+这是作为可执行文件的运行shell脚本方法，还有作为解释器参数运行shell脚本，此时 `/bin/sh test.sh`  和 `/bin/php test.php`
