@@ -1,10 +1,11 @@
 #!/bin/bash
 
-# _1d is as _1a, but with pitch feats, i-vector and dropout schedule added, referenced from wsj
+# _1b is as _1a, but with pitch feats, i-vector and dropout schedule added, referenced from wsj
+# this script is for 'normal' mode
 
 # results:
-# local/chain/compare_wer.sh exp/chain/tdnn_1d_sp
-# Model                tdnn_1d_sp
+# local/chain/compare_wer.sh exp/chain/tdnn_1b_sp
+# Model                tdnn_1b_sp
 # WER(%)                     8.84
 # Final train prob        -0.0696
 # Final valid prob        -0.0714
@@ -18,7 +19,7 @@ affix=all
 stage=10
 train_stage=-10
 get_egs_stage=-10
-dir=exp/chain/tdnn_1d  # Note: _sp will get added to this
+dir=exp/chain/tdnn_1b  # Note: _sp will get added to this
 decode_iter=
 
 # training options
