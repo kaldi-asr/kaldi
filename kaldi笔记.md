@@ -39,3 +39,21 @@
     vim ~/.bash_profile
     export PATH=${PATH}:/Users/yelong/kaldi/egs/thchs30/s5
     退出后source ~/.bash_profile 
+
+## src、ark
+    xielongdeMacBook-Pro:train yelong$ head feats.scp 
+    A02_000 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:8
+    A02_001 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:12868
+    A02_002 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:26222
+    A02_003 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:38029
+    A02_004 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:50239
+    A02_005 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:62865
+    A02_006 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:75322
+    A02_007 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:86401
+    A02_008 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:96102
+    A02_009 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:110912
+    xielongdeMacBook-Pro:train yelong$ copy-matrix ark:/Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:8 ark,t:-
+    
+    
+ ## run.sh
+ 把run.sh看懂，然后在把aishell的nnet3搬到thchs30跑一遍。
