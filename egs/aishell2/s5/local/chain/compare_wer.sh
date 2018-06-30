@@ -32,6 +32,14 @@ for x in $*; do
 done
 echo
 
+# print number of parameters
+echo -n "# Num. of params        "
+for x in $*; do
+  set_names $x
+  params=$(steps/info/chain_dir_info.pl "$x" | grep -o 'num-params=[0-9]*\.[0-9]*M' | cut -d'=' -f2-)
+  printf "% 10s\n" $params
+done
+
 # print decode WER results
 echo -n "# WER(%)               "
 for x in $*; do

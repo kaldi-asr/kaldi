@@ -3,9 +3,14 @@
 # _1b is as _1a, but with pitch feats, i-vector and dropout schedule added, referenced from wsj
 # this script is for 'normal' mode
 
+# basic info:
+# steps/info/chain_dir_info.pl exp/chain/tdnn_1b_all_sp/
+# exp/chain/tdnn_1b_all_sp/: num-iters=1446 nj=2..2 num-params=19.3M dim=43+100->4456 combine=-0.079->-0.075 (over 9) xent:train/valid[962,1445,final]=(-0.922,-0.795,-0.746/-0.960,-0.840,-0.785) logprob:train/valid[962,1445,final]=(-0.084,-0.072,-0.070/-0.085,-0.075,-0.071)
+
 # results:
-# local/chain/compare_wer.sh exp/chain/tdnn_1b_sp
-# Model                tdnn_1b_sp
+# local/chain/compare_wer.sh exp/chain/tdnn_1d_all_sp/
+# Model                tdnn_1d_all_sp
+# Num. of params             19.3M
 # WER(%)                     8.84
 # Final train prob        -0.0696
 # Final valid prob        -0.0714
