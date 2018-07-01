@@ -921,7 +921,7 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
 
 
   if (floating_scale) {
-    // This (letting the scale "float) is described in Sec. 2.3 of
+    // This (letting the scale "float") is described in Sec. 2.3 of
     // http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf,
     // where 'scale' here is written 'alpha' in the paper.
     //
@@ -968,10 +968,11 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
 
   P.AddToDiag(-1.0 * scale * scale);
 
-  // We may enable this 'safe' option later on if we have a problem with
-  // instability in setups with a non-floating orthonormal constraint.
-  bool safe = false;
-  if (!floating_scale && safe) {
+  // We may want to un-comment the following code block later on if we have a
+  // problem with instability in setups with a non-floating orthonormal
+  // constraint.
+  /*
+  if (!floating_scale) {
     // This is analogous to the stuff with 'ratio' above, but when we don't have
     // a floating scale.  It reduces the chances of divergence when we have
     // a bad initialization.
@@ -986,6 +987,7 @@ void ConstrainOrthonormalInternal(BaseFloat scale, CuMatrixBase<BaseFloat> *M) {
         update_speed *= 0.5;
     }
   }
+  */
 
   if (GetVerboseLevel() >= 1) {
     BaseFloat error = P.FrobeniusNorm();
