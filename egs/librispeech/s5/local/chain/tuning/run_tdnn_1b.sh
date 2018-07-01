@@ -43,7 +43,6 @@ set -e
 # (some of which are also used in this script directly).
 stage=0
 decode_nj=50
-min_seg_len=1.55
 train_set=train_960_cleaned
 gmm=tri6b_cleaned # the gmm for the target data
 nnet3_affix=_cleaned  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
@@ -86,20 +85,19 @@ fi
 # nnet3 setup, and you can skip them by setting "--stage 11" if you have already
 # run those things.
 local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
 gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
+ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
 dir=exp/chain${nnet3_affix}/tdnn${affix:+_$affix}_sp
-train_data_dir=data/${train_set}_sp_hires_comb
-lores_train_data_dir=data/${train_set}_sp_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+train_data_dir=data/${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
     $lores_train_data_dir/feats.scp $ali_dir/ali.1.gz; do
@@ -130,12 +128,12 @@ if [ $stage -le 14 ]; then
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
-  
+
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
-  
+
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-layer name=tdnn1 dim=$relu_dim
   relu-batchnorm-layer name=tdnn2 dim=$relu_dim input=Append(-1,0,1,2)
@@ -147,7 +145,7 @@ if [ $stage -le 14 ]; then
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$relu_dim target-rms=0.5
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
-  
+
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
   # trained with a cross-entropy objective in the 'chain' models... this
