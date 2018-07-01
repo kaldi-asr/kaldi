@@ -79,8 +79,7 @@ std::string TimeHeightConvolutionComponent::Info() const {
            << preconditioner_in_.GetNumMinibatchesHistory()
            << ", rank-in=" << preconditioner_in_.GetRank()
            << ", rank-out=" << preconditioner_out_.GetRank()
-           << ", alpha-in=" << preconditioner_in_.GetAlpha()
-           << ", alpha-out=" << preconditioner_out_.GetAlpha();
+           << ", alpha=" << preconditioner_in_.GetAlpha();
   }
   return stream.str();
 }

@@ -54,7 +54,7 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
                 << kaldi::PrintableRxfilename(rxfilename);
     } else {
       KALDI_WARN << "We fail to read FST header from "
-                 << kaldi::PrintableRxfilename(rxfilename) 
+                 << kaldi::PrintableRxfilename(rxfilename)
                  << ". A NULL pointer is returned.";
       return NULL;
     }
@@ -92,16 +92,15 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
 }
 
 VectorFst<StdArc> *CastOrConvertToVectorFst(Fst<StdArc> *fst) {
-  // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>         
+  // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>
   std::string real_type = fst->Type();
   KALDI_ASSERT(real_type == "vector" || real_type == "const");
   if (real_type == "vector") {
     return dynamic_cast<VectorFst<StdArc> *>(fst);
   } else {
-    // As the 'fst' can't cast to VectorFst, I'm creating a new 
-    // VectorFst<StdArc> initialized by 'fst', and deletes 'fst'.
+    // As the 'fst' can't cast to VectorFst, we carete a new
+    // VectorFst<StdArc> initialized by 'fst', and delete 'fst'.
     VectorFst<StdArc> *new_fst = new VectorFst<StdArc>(*fst);
-    KALDI_WARN << "The 'fst' is deleted.";
     delete fst;
     return new_fst;
   }

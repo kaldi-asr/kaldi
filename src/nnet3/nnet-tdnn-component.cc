@@ -87,7 +87,8 @@ std::string TdnnComponent::Info() const {
            << ", rank-out=" << preconditioner_out_.GetRank()
            << ", num-samples-history=" << preconditioner_in_.GetNumSamplesHistory()
            << ", update-period=" << preconditioner_in_.GetUpdatePeriod()
-           << ", alpha=" << preconditioner_in_.GetAlpha();
+           << ", alpha-in=" << preconditioner_in_.GetAlpha()
+           << ", alpha-out=" << preconditioner_out_.GetAlpha();
   }
   return stream.str();
 }
@@ -420,9 +421,20 @@ void TdnnComponent::Read(std::istream &is, bool binary) {
       num_samples_history;
   ExpectToken(is, binary, "<NumSamplesHistory>");
   ReadBasicType(is, binary, &num_samples_history);
-  ExpectToken(is, binary, "<AlphaInOut>");
-  ReadBasicType(is, binary, &alpha_in);
-  ReadBasicType(is, binary, &alpha_out);
+  { // This can be simplified after a while.  It's to read a format of the model
+    // that was never checked into master, but with which I (Dan) did many of
+    // the experiments while tuning the resnet TDNN-F.
+    std::string token;
+    ReadToken(is, binary, &token);
+    if (token == "<AlphaInOut>") {
+      ReadBasicType(is, binary, &alpha_in);
+      ReadBasicType(is, binary, &alpha_out);
+    } else {
+      KALDI_ASSERT(token == "<Alpha>");
+      ReadBasicType(is, binary, &alpha_in);
+      alpha_out = alpha_in;
+    }
+  }
   preconditioner_in_.SetAlpha(alpha_in);
   preconditioner_out_.SetAlpha(alpha_out);
   ExpectToken(is, binary, "<RankInOut>");
