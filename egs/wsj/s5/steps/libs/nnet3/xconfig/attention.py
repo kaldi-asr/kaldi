@@ -19,9 +19,9 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 #   self-repair-scale=1.0e-05  [Affects relu, sigmoid and tanh layers.]
 #   learning-rate-factor=1.0   [This can be used to make the affine component
 #                               train faster or slower].
-#   TODO: most parameters are undocumented here.
 #   Documentation for the rest of the parameters (related to the
 #   attention component) can be found in nnet-attention-component.h
+
 
 class XconfigAttentionLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
