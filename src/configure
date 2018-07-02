@@ -88,7 +88,7 @@ Configuration options:
   --speex-incdir=DIR    SPEEX include directory
   --host=HOST           Host triple in the format 'cpu-vendor-os'
                         If provided, it is prepended to all toolchain programs.
-  --android-incdir=DIR  Andraid include directory
+  --android-incdir=DIR  Android include directory
 
 Following environment variables can be used to override the default toolchain.
   CXX         C++ compiler [default=g++]
