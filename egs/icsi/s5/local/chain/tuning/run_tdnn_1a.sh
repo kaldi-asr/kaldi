@@ -13,7 +13,6 @@ use_ihm_ali=false
 train_set=train
 gmm=tri3  # the gmm for the target data
 ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
-num_threads_ubm=3
 nnet3_affix=_1a  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 num_epochs=9
 

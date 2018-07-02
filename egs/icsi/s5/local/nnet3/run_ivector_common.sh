@@ -13,7 +13,6 @@ mic=ihm
 train_set=train
 test_sets="dev eval"
 gmm=tri3
-num_threads_ubm=2
 nj=10
 
 nnet3_affix=
