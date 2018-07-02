@@ -1,20 +1,32 @@
 #!/bin/bash
 
-# 1g is as 1f but moving to a factorized TDNN (TDNN-F) model, and re-tuning it.
-#  (Note: I don't believe the Tedlium TDNN models were, previously,
-#  very well-tuned).
+# 1g is as 1f but moving to a factorized TDNN (TDNN-F) model, re-tuning it, and
+#  switching to unconstrained egs (the last of which gives around 0.1%
+#  improvement).  (Note: I don't believe the Tedlium TDNN models were,
+#  previously, very well-tuned).
 
 # local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn1f_sp_bi exp/chain_cleaned/tdnn1g_sp
 # System                tdnn1f_sp_bi tdnn1g_sp
-# WER on dev(orig)            8.9       8.0
+# WER on dev(orig)            8.9       7.9
 # WER on dev(rescored)        8.1       7.3
-# WER on test(orig)           9.1       8.1
+# WER on test(orig)           9.1       8.0
 # WER on test(rescored)       8.6       7.6
-# Final train prob        -0.1026   -0.0761
-# Final valid prob        -0.1031   -0.0876
-# Final train prob (xent)   -1.4370   -0.9888
-# Final valid prob (xent)   -1.4670   -1.0032
+# Final train prob        -0.1026   -0.0637
+# Final valid prob        -0.1031   -0.0750
+# Final train prob (xent)   -1.4370   -0.9792
+# Final valid prob (xent)   -1.4670   -0.9951
 # Num-params                 6994800   9431072
+
+# steps/info/chain_dir_info.pl exp/chain_cleaned/tdnn1g_sp
+# exp/chain_cleaned/tdnn1g_sp: num-iters=108 nj=3..12 num-params=9.4M dim=40+100->3600 combine=-0.060->-0.060 (over 2) xent:train/valid[71,107,final]=(-1.30,-0.985,-0.979/-1.29,-1.00,-0.995) logprob:train/valid[71,107,final]=(-0.098,-0.065,-0.064/-0.100,-0.075,-0.075)
+
+## how you run this (note: this assumes that the run_tdnn.sh soft link points here;
+## otherwise call it directly in its location).
+# by default, with cleanup:
+# local/chain/run_tdnn.sh
+
+# without cleanup:
+# local/chain/run_tdnn.sh  --train-set train --gmm tri3 --nnet3-affix "" &
 
 set -e -o pipefail
 
@@ -191,7 +203,7 @@ if [ $stage -le 18 ]; then
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.dir "$common_egs_dir" \
-    --egs.opts "--frames-overlap-per-eg 0" \
+    --egs.opts "--frames-overlap-per-eg 0 --constrained false" \
     --egs.chunk-width 150,110,100 \
     --trainer.num-chunk-per-minibatch 64 \
     --trainer.frames-per-iter 5000000 \
