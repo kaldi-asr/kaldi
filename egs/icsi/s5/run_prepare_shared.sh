@@ -6,12 +6,11 @@
 ICSI_TRANS=/media/drive3/corpora/icsi_mr_transcr #where to find ICSI transcriptions [required]
 FISHER_TRANS=/media/drive3/corpora/LDC2004T19/fe_03_p1_tran #where to find FISHER transcriptions [optional, for LM esimation]
 
-# Path to Fisher transcripts LM interpolation (if not defined only AMI transcript LM is built),
+# Path to Fisher transcripts LM interpolation (if not defined only ICSI transcript LM is built),
 case $(hostname -d) in
-  fit.vutbr.cz) FISHER_TRANS=/mnt/matylda2/data/FISHER/fe_03_p1_tran ;; # BUT,
-  clsp.jhu.edu) FISHER_TRANS=/export/corpora4/ami/fisher_trans/part1 ;; # JHU,
-  cstr.ed.ac.uk) FISHER_TRANS=`pwd`/eddie_data/lm/data/fisher/part1 ;; # Edinburgh,
-  us-west-2.compute.internal) FISHER_TRANS=../../ami/part1 ;;
+  fit.vutbr.cz) FISHER_TRANS=;; # BUT,
+  clsp.jhu.edu) FISHER_TRANS=;; # JHU,
+  cstr.ed.ac.uk) FISHER_TRANS=;; # Edinburgh,
 esac
 
 . utils/parse_options.sh

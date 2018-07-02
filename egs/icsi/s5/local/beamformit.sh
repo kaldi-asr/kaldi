@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
+# Copyright 2018, Emotech LTD (Author: Pawel Swietojanski)
+# Apache 2.0
 
 . ./path.sh
 

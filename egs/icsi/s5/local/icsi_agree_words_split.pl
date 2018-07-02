@@ -1,7 +1,10 @@
 #!/usr/bin/perl
 
+# Pawel Swietojanski, 2014
+# Apache 2.0
+
 if (@ARGV != 3) {
-  print STDERR "Usage: ami_agree_words_split.pl <split-file> <in-segments> <out-segments>\n";
+  print STDERR "Usage: icsi_agree_words_split.pl <split-file> <in-segments> <out-segments>\n";
   exit(1);
 }
 

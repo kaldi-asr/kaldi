@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
+# Copyright 2018, Emotech LTD (Author: Pawel Swietojanski)
 # Apache 2.0
 
 wiener_filtering=false
@@ -15,8 +16,8 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 3 ]; then
    echo "Wrong #arguments ($#, expected 4)"
-   echo "Usage: steps/ami_beamform.sh [options] <num-mics> <ami-dir> <wav-out-dir>"
-   echo "e.g. steps/ami_beamform.sh 8 /foo/bar/AMI /foo/bar/AMI/beamformed"
+   echo "Usage: local/icsi_beamform.sh [options] <mic> <icsi-dir> <wav-out-dir>"
+   echo "e.g. local/icsi_beamform.sh mdm4 /foo/bar/ICSI /foo/bar/ICSI/beamformed"
    echo "main options (for others, see top of script file)"
    echo "  --nj <nj>                                # number of parallel jobs"
    echo "  --cmd <cmd>                              # Command to run in parallel with"
@@ -70,8 +71,9 @@ awk -F'/' -v micdir=$mic '{
 
 join $wdir/rec2meet $wdir/meet2chans > $wdir/rec2info
 
-#row is rec2info is Bns001 bns001 chanA,chanB,chanC,chanD 
-# if 2nd col starts with 'b' we lowercase channel names
+# row in rec2info file is Bns001 bns001 chanA,chanB,chanC,chanD 
+# if 2nd col starts with 'b' we lowercase the channel names, as
+# this is how their corresponding filenames are on disk 
 awk -v nmics=$numch \
     '{ meeting=$1; meeting_orig=$2; dchannel=$3;
        if ( meeting_orig ~ /^b/ ) {

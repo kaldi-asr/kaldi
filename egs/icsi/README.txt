@@ -1,5 +1,5 @@
 
-About ICSI corpora and this particular recipe
+About the ICSI corpora and this particular recipe
 =================================================================================
 
 This recipe builds ASR models using ICSI data [3] (available from LDC) and where possible 

@@ -9,13 +9,11 @@ set -e -o pipefail
 stage=0
 mic=ihm
 nj=30
-min_seg_len=1.55
 use_ihm_ali=false
 train_set=train
 gmm=tri3  # the gmm for the target data
 ihm_gmm=tri3  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=3
-ivector_transform_type=pca
 nnet3_affix=_1a  # cleanup affix for nnet3 and chain dirs, e.g. _cleaned
 num_epochs=9
 
@@ -83,7 +81,6 @@ if $use_ihm_ali; then
   local/nnet3/prepare_lores_feats.sh --stage $stage \
                                    --mic $mic \
                                    --nj $nj \
-                                   --min-seg-len $min_seg_len \
                                    --use-ihm-ali $use_ihm_ali \
                                    --train-set $train_set
 fi
@@ -206,7 +203,7 @@ fi
 if [ $stage -le 16 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/ami-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
+     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/icsi-$(date +'%m_%d_%H_%M')/s5b/$dir/egs/storage $dir/egs/storage
   fi
 
   steps/nnet3/chain/train.py --stage $train_stage \

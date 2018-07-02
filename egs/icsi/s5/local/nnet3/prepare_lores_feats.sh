@@ -14,9 +14,6 @@ set -e -o pipefail
 stage=0
 mic=ihm
 nj=30
-min_seg_len=1.55  # min length in seconds... we do this because chain training
-                  # will discard segments shorter than 1.5 seconds.  Must remain in
-                  # sync with the same option given to run_ivector_common.sh.
 use_ihm_ali=false # If true, we use alignments from the IHM data (which is better..
                   # don't set this to true if $mic is set to ihm.)
 train_set=train   # you might set this to e.g. train_cleaned.
@@ -68,17 +65,5 @@ if [ $stage -le 8 ]; then
   echo ".. speed-perturbed segments were too short."
   utils/fix_data_dir.sh data/${mic}/${train_set}${ihm_suffix}_sp
 fi
-
-#we do not combine segments here by default, as have not done experiment if it helps
-#if [ $stage -le 9 ]; then
-#  echo "$0: combining short segments of 13-dimensional speed-perturbed ${maybe_ihm}MFCC data"
-#  src=data/${mic}/${train_set}${ihm_suffix}_sp
-#  dest=data/${mic}/${train_set}${ihm_suffix}_sp_comb
-#  utils/data/combine_short_segments.sh $src $min_seg_len $dest
-  # re-use the CMVN stats from the source directory, since it seems to be slow to
-  # re-compute them after concatenating short segments.
-#  cp $src/cmvn.scp $dest/
-#  utils/fix_data_dir.sh $dest
-#fi
 
 exit 0;
