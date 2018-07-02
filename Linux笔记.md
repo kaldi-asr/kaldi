@@ -87,8 +87,7 @@ UID       PID       PPID      C     STIME    TTY       TIME         CMD
     TIME   ：使用掉的CPU时间。
     CMD   ：所下达的是什么指令
 
-## -n
-  
+## -n 
   1.  `echo -n "test"` / `echo -n 'test'`输出后不换行
   2.  字符串运算符-n。检测字符串长度是否为0，不为0返回 true。[ -n "$a"]返回 true。
       
