@@ -78,11 +78,11 @@ head -number 后面接地址 能输出文件的前number行
 UID       PID       PPID      C     STIME    TTY       TIME         CMD
 501       6096      5976      0     11:50上午 ttys006    0:00.00    grep java
 
-  **UID      ：程序被该 UID 所拥有
+    ID      ：程序被该 UID 所拥有
     PID      ：就是这个程序的 ID 
     PPID    ：则是其上级父程序的ID
     C          ：CPU使用的资源百分比
     STIME ：系统启动时间
     TTY     ：登入者的终端机位置
     TIME   ：使用掉的CPU时间。
-    CMD   ：所下达的是什么指令**
+    CMD   ：所下达的是什么指令
