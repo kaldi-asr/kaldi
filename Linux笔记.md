@@ -57,3 +57,32 @@ head -number 后面接地址 能输出文件的前number行
 ## ./
 ./运行shell脚本，不能直接test.sh，直接写 test.sh，linux 系统会去 PATH 里寻找有没有叫 test.sh 的，而只有 /bin, /sbin, /usr/bin，/usr/sbin 等在 PATH 里，你的当前目录通常不在 PATH 里，所以写成 test.sh 是会找不到命令的，要用 ./test.sh 告诉系统说，就在当前目录找。
 这是作为可执行文件的运行shell脚本方法，还有作为解释器参数运行shell脚本，此时 `/bin/sh test.sh`  和 `/bin/php test.php`
+
+参考 http://www.runoob.com/linux/linux-shell-basic-operators.html
+
+## ps -ef |grep 
+`ps`命令将某个进程显示出来；
+
+`-e`：显示所有进程。
+
+`-f`：全格式。
+
+`ps -e `列出程序时，显示每个程序所使用的环境变量。
+
+`ps -f` 用ASCII字符显示树状结构，表达程序间的相互关系
+
+`ps -ef |grep -c "ssh"` 返回1
+
+`ps -ef |grep java`：检查java进程是否存在；`ps -ef | grep httpd`：检查httpd进程是否存在
+字段含义如下：
+UID       PID       PPID      C     STIME    TTY       TIME         CMD
+501       6096      5976      0     11:50上午 ttys006    0:00.00    grep java
+
+  **UID      ：程序被该 UID 所拥有
+    PID      ：就是这个程序的 ID 
+    PPID    ：则是其上级父程序的ID
+    C          ：CPU使用的资源百分比
+    STIME ：系统启动时间
+    TTY     ：登入者的终端机位置
+    TIME   ：使用掉的CPU时间。
+    CMD   ：所下达的是什么指令**
