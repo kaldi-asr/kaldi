@@ -60,7 +60,7 @@ head -number 后面接地址 能输出文件的前number行
 
 参考 http://www.runoob.com/linux/linux-shell-basic-operators.html
 
-## .filename
+## . filename
 Shell 文件包含，使用 . 号来引用.sh 文件 
 
     . filename   # 注意点号(.)和文件名中间有一空格
