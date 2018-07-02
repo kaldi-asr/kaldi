@@ -16,8 +16,8 @@ mode=normal        # Please refer to ../run.sh for comments. should be either 'n
 . ./utils/parse_options.sh
 
 # nj for dev and test
-dev_nj=$(wc -l data/dev/utt2spk | awk '${print $1}' || exit 1;)
-test_nj=$(wc -l data/test/utt2spk | awk '${print $1}' || exit 1;)
+dev_nj=$(wc -l data/dev/spk2utt | awk '${print $1}' || exit 1;)
+test_nj=$(wc -l data/test/spk2utt | awk '${print $1}' || exit 1;)
 
 # Now make MFCC features.
 # For normal use where mode=simple, it produces mfcc feats;
