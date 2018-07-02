@@ -60,6 +60,17 @@ head -number 后面接地址 能输出文件的前number行
 
 参考 http://www.runoob.com/linux/linux-shell-basic-operators.html
 
+## .filename
+Shell 文件包含，使用 . 号来引用.sh 文件 
+
+    . filename   # 注意点号(.)和文件名中间有一空格
+    或
+    source filename
+直接执行./test.sh是不行的，没有权限Permission denied，所以要为test.sh 添加可执行权限，就可以执行了。
+
+    $ chmod +x test.sh
+    $ ./test.sh 
+参考 http://www.runoob.com/linux/linux-shell-include-file.html
 ## ps -ef |grep 
 `ps`命令将某个进程显示出来；
 
@@ -88,7 +99,7 @@ UID       PID       PPID      C     STIME    TTY       TIME         CMD
     CMD   ：所下达的是什么指令
 
 ## -n 
-  1.  `echo -n "test"` / `echo -n 'test'`输出后不换行
+  1.  `echo -n "test"` / `echo -n 'test'`表示输出后**不换行**。
   2.  字符串运算符-n。检测字符串长度是否为0，不为0返回 true。[ -n "$a"]返回 true。
       
     if [ -n "$a" ]
@@ -97,3 +108,5 @@ UID       PID       PPID      C     STIME    TTY       TIME         CMD
     else
        echo "-n $a : 字符串长度为 0"
     fi
+
+
