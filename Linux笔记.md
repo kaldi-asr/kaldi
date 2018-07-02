@@ -86,3 +86,15 @@ UID       PID       PPID      C     STIME    TTY       TIME         CMD
     TTY     ：登入者的终端机位置
     TIME   ：使用掉的CPU时间。
     CMD   ：所下达的是什么指令
+
+## -n
+  
+  1.  `echo -n "test"` / `echo -n 'test'`输出后不换行
+  2.  字符串运算符-n。检测字符串长度是否为0，不为0返回 true。[ -n "$a"]返回 true。
+      
+    if [ -n "$a" ]
+    then
+       echo "-n $a : 字符串长度不为 0"
+    else
+       echo "-n $a : 字符串长度为 0"
+    fi
