@@ -8,117 +8,22 @@
 #  well on smaller datasets, and we adopt this style here also for consistency.
 
 # local/chain/compare_wer_general.sh --rt03 tdnn7p_sp tdnn7q_sp
-# System                tdnn7p_sp tdnn7q_sp [rerun:tdnn7q_sp]
-# WER on train_dev(tg)      11.80    11.77    11.93
-# WER on train_dev(fg)      10.77     10.85    10.95
-# WER on eval2000(tg)        14.4     14.5    14.5
-# WER on eval2000(fg)        13.0     13.0    13.1
-# WER on rt03(tg)            17.5     17.5    17.4
-# WER on rt03(fg)            15.3     15.3    15.2
-# Final train prob         -0.057     -0.057   -0.058
-# Final valid prob         -0.069      -0.071   -0.072
-# Final train prob (xent)        -0.886    -0.886   -0.885
-# Final valid prob (xent)       -0.9005    -0.8979   -0.8977
-# Num-parameters               22865188  21356836  21356836
+# System                tdnn7p_sp tdnn7q_sp
+# WER on train_dev(tg)      11.80     11.79
+# WER on train_dev(fg)      10.77     10.84
+# WER on eval2000(tg)        14.4      14.3
+# WER on eval2000(fg)        13.0      12.9
+# WER on rt03(tg)            17.5      17.6
+# WER on rt03(fg)            15.3      15.2
+# Final train prob         -0.057    -0.058
+# Final valid prob         -0.069    -0.073
+# Final train prob (xent)        -0.886    -0.894
+# Final valid prob (xent)       -0.9005   -0.9106
+# Num-parameters               22865188  18702628
 
-# 7p10q is as 7p10m but with larger frames-per-iter (1.5->5million), a bit more
-#  than double the l2-regularize on non-final layers, and a bit less than half
-#  the final learning rate.  (A change similar to this worked well on tedlium).
-#
-# 7p10m is as 7p10l but making several changes (I'll start tuning and experimenting again,
-#  as it's too many changes to know what made the difference).
-#  - Reducing num-chunk-per-minibatch from 128 to 64.
-#  - Reducing num-epochs from 8 to 6.
-#  - Using tdnnf6-layer, which lacks the internal splicing.
-#  - Changing the extra time-stride=1 layer introduced in 7p10l to time-stride=3.
-# It's a bit worse; seems to be underfitting.
-# local/chain/compare_wer_general.sh --rt03 tdnn7p_sp tdnn7p10l_sp tdnn7p10m_sp
-# System                tdnn7p_sp tdnn7p10l_sp tdnn7p10m_sp
-# WER on train_dev(tg)      11.80     11.73     11.73
-# WER on train_dev(fg)      10.77     10.79     10.85
-# WER on eval2000(tg)        14.4      14.3      14.6
-# WER on eval2000(fg)        13.0      13.1      13.2
-# WER on rt03(tg)            17.5      17.5      17.7
-# WER on rt03(fg)            15.3      15.2      15.5
-# Final train prob         -0.057    -0.053    -0.056
-# Final valid prob         -0.069    -0.066    -0.071
-# Final train prob (xent)        -0.886    -0.822    -0.867
-# Final valid prob (xent)       -0.9005   -0.8526   -0.8828
-# Num-parameters               22865188  22315300  21356836
-
-# 7p10l is as 7p10g but adding two more layers: one with stride 1, one with stride 3.
-# 7p10g is as 7p10b but adding two more layers.
-# It does seem to help-- and results now match 10p.
-# local/chain/compare_wer_general.sh --rt03 tdnn7p_sp tdnn7p10b_sp tdnn7p10g_sp
-# System                tdnn7p_sp tdnn7p10b_sp tdnn7p10g_sp
-# WER on train_dev(tg)      11.80     11.82     11.80
-# WER on train_dev(fg)      10.77     10.98     10.83
-# WER on eval2000(tg)        14.4      14.4      14.4
-# WER on eval2000(fg)        13.0      13.1      13.1
-# WER on rt03(tg)            17.5      17.7      17.5
-# WER on rt03(fg)            15.3      15.5      15.2
-# Final train prob         -0.057    -0.056    -0.053
-# Final valid prob         -0.069    -0.070    -0.067
-# Final train prob (xent)        -0.886    -0.895    -0.843
-# Final valid prob (xent)       -0.9005   -0.9311   -0.8815
-# Num-parameters               22865188  17295652  19805476
-
-
-# local/chain/compare_wer_general.sh --rt03 tdnn7p_sp tdnn7p10b_sp tdnn7p10g_sp
-# System                tdnn7p_sp tdnn7p10b_sp tdnn7p10g_sp
-# WER on train_dev(tg)      11.80     11.82     11.80
-# WER on train_dev(fg)      10.77     10.98     10.83
-# WER on eval2000(tg)        14.4      14.4      14.4
-# WER on eval2000(fg)        13.0      13.1      13.1
-# WER on rt03(tg)            17.5      17.7      17.5
-# WER on rt03(fg)            15.3      15.5      15.2
-# Final train prob         -0.057    -0.056    -0.053
-# Final valid prob         -0.069    -0.070    -0.067
-# Final train prob (xent)        -0.886    -0.895    -0.843
-# Final valid prob (xent)       -0.9005   -0.9311   -0.8815
-# Num-parameters               22865188  17295652  19805476
-
-# 7p10b is as 7p10 but increasing the size: 1024->1536, 128->192.
-#  Because I think it will exhaust memory, running only on bigger-memory machines.
-# It's better than 7p10 but no better than the original 7p.
-# local/chain/compare_wer_general.sh --rt03 tdnn7p_sp tdnn7p10_sp tdnn7p10b_sp
-# System                tdnn7p_sp tdnn7p10_sp tdnn7p10b_sp
-# WER on train_dev(tg)      11.80     12.17     11.82
-# WER on train_dev(fg)      10.77     11.37     10.98
-# WER on eval2000(tg)        14.4      15.1      14.4
-# WER on eval2000(fg)        13.0      13.6      13.1
-# WER on rt03(tg)            17.5      18.4      17.7
-# WER on rt03(fg)            15.3      15.9      15.5
-# Final train prob         -0.057    -0.062    -0.056
-# Final valid prob         -0.069    -0.075    -0.070
-# Final train prob (xent)        -0.886    -0.984    -0.895
-# Final valid prob (xent)       -0.9005   -1.0033   -0.9311
-# Num-parameters               22865188   9926436  17295652
-
-# 7p10 is as 7p but like the run_tdnn_1f10r2 experiment in tedlium (naming may
-# change)... it uses 'tdnnf-layer' and bottleneck dim of 128.
-
-# 7p is as 7o but adding the option "--constrained false" to --egs.opts.
-# This is the new 'unconstrained egs' code where it uses the e2e examples.
-# This leads to ~40% speed-up in egs generation.
-#
-#
-# local/chain/compare_wer_general.sh --rt03 tdnn7o_sp tdnn7p_sp
-# System                tdnn7o_sp tdnn7p_sp
-# WER on train_dev(tg)      11.74     11.75
-# WER on train_dev(fg)      10.69     10.83
-# WER on eval2000(tg)        14.6      14.1
-# WER on eval2000(fg)        13.1      12.8
-# WER on rt03(tg)            17.5      17.3
-# WER on rt03(fg)            15.4      15.0
-# Final train prob         -0.070    -0.055
-# Final valid prob         -0.084    -0.069
-# Final train prob (xent)        -0.883    -0.872
-# Final valid prob (xent)       -0.9110   -0.9020
-# Num-parameters               22865188  22886776
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn7q_sp
-# exp/chain/tdnn7q_sp: num-iters=394 nj=3..16 num-params=21.4M dim=40+100->6034 combine=-0.057->-0.057 (over 8) xent:train/valid[261,393,final]=(-1.19,-0.886,-0.885/-1.22,-0.904,-0.898) logprob:train/valid[261,393,final]=(-0.089,-0.059,-0.058/-0.101,-0.072,-0.072)
+# exp/chain/tdnn7q_sp: num-iters=394 nj=3..16 num-params=18.7M dim=40+100->6034 combine=-0.058->-0.057 (over 8) xent:train/valid[261,393,final]=(-1.20,-0.897,-0.894/-1.20,-0.919,-0.911) logprob:train/valid[261,393,final]=(-0.090,-0.059,-0.058/-0.098,-0.073,-0.073)
 
 set -e
 
@@ -233,20 +138,20 @@ if [ $stage -le 12 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=1536
-  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=1
-  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=1
-  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=1
-  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=0
-  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
-  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
-  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
-  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
-  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
-  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
-  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
-  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
-  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
-  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=1536 bottleneck-dim=192 time-stride=3
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
   linear-component name=prefinal-l dim=256 $linear_opts
 
   prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1536 small-dim=256
