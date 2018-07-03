@@ -2,6 +2,7 @@
 
 # Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 #           2014  Tom Ko
+#           2018  Emotech LTD (author: Pawel Swietojanski)
 # Apache 2.0
 
 # This script operates on a directory, such as in data/train/,
@@ -10,6 +11,8 @@
 #  spk2utt
 #  utt2spk
 #  text
+#  utt2dur
+#  reco2dur
 #
 # It generates the files which are used for perturbing the speed of the original data.
 
