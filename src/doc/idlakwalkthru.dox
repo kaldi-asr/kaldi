@@ -1,0 +1,96 @@
+// doc/idlakwalkthru.dox
+
+// Copyright 2013 CereProc Ltd.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+/**
+ \page idlakwalkthru A Walk through the Idlak System
+
+ @section idlakwalkthru_intro Introduction
+
+ Idlak is currently under construction. As elements become completed
+ they are added here with a brief description of their functionality
+ and an example of running the module or executable on some example
+ data.
+
+ @section idlakwalkthru_idlaktxp Idlak Text Processing Front End
+
+ An alpha version of this module is now available for General American
+ English Accent based on the CMU lexicon. A idlaktxp 'voice' is
+ checked in to idlak-data that convert graphemes to phonemes as well
+ as marking up syllable and phrase structure. Although tokenisation is
+ complete no normalisation rules, nor the rule interpreter has
+ currently been implemented.
+
+ To try the front end:
+ \verbatim
+ src/idlaktxpbin/idlaktxp -h
+ \endverbatim
+ Will print out the options.
+ \verbatim
+ src/idlaktxpbin/idlaktxp --pretty --tpdb=idlak-data/en/ga src/idlaktxp/test_data/mod-test002.xml -
+ \endverbatim
+ Will process the text below to standard output
+ \verbatim
+<parent>
+Hello there, 1 2 3.
+</parent>
+ \endverbatim
+
+ See \ref idlaktxp for more information.
+
+ @section idlakwalkthru_idlakcex Idlak Full Context Extraction
+
+ Current approaches to parametric TTS are based on full context phone
+ models. These are models which do not just take into account phone
+ context (such as triphones and quinphones) but also take into account
+ many more linguistic features scuh as syllable stress, position in
+ phrase, part of speech etc.
+
+ idlakcex takes input from idlaktxp and generates full context model
+ names for each phone in the style of those uesed in HTS. To try the
+ context extraction: 
+
+ \verbatim 
+ src/idlaktxpbin/idlakcex -h
+ \endverbatim
+
+ Will print out the options.  
+
+ \verbatim
+src/idlaktxpbin/idlaktxp --pretty --tpdb=idlak-data/en/ga src/idlaktxp/test_data/mod-test002.xml - | src/idlaktxpbin/idlakcex --pretty --tpdb=idlak-data/en/ga - - 
+ \endverbatim 
+
+ Will process the text below through idlaktxp and then idlakcex to
+ standard output 
+
+ \verbatim 
+<parent> 
+Hello there, 1 2 3.  
+</parent>
+ \endverbatim 
+
+ Full context models are added as text items for each <phone> tag. An
+ XML parser can be used to extract these models say for use with
+ HTS. For more details see \ref idlakcex and the cex definition file
+ used in this example idlak-data/en/ga/cex-default.xml
+
+ @section idlakwalkthru_vbalign Voice Building: Aligner
+
+ Coming Soon!
+
+*/
