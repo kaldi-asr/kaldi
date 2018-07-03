@@ -25,7 +25,7 @@ nmics=$(echo $mic | sed 's/[a-z]//g') # e.g. 8 for mdm8.
 
 set -euo pipefail
 
-# Path where AMI gets downloaded (or where locally available):
+# Path where ICSI gets downloaded (or where locally available):
 # Note: provde the path to a subdirectory with meeting folders (i.e. B* ones)
 ICSI_DIR=/media/drive3/corpora/meeting_speech/speech # Default
 case $(hostname -d) in
