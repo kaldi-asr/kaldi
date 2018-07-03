@@ -1,3 +1,4 @@
+## Linux命令大全：http://man.linuxde.net/
 ## -- : 利用两个连续的连字符 --，显式地告诉前者到此为止。
   
 参考https://liam0205.me/2016/11/11/ways-to-parse-arguments-in-shell-script/
@@ -109,4 +110,18 @@ UID       PID       PPID      C     STIME    TTY       TIME         CMD
        echo "-n $a : 字符串长度为 0"
     fi
 
+## mkdir -p 创建文件夹
+`mkdir -p data/{train,dev,test}`创建了三个文件夹
+-p, --parents 可以是一个路径名称。此时若路径中的某些目录尚不存在,加上此选项后,系统将自动建立好那些尚不存在的目录,即一次可以建立多个目录;
 
+## xargs -I {} basename {} .wav
+**xargs**用作替换工具，读取输入数据重新格式化后输出。
+参考 http://man.linuxde.net/xargs
+xargs的一个选项-I，使用-I指定一个替换字符串{}，这个字符串在xargs扩展时会被替换掉，当-I与xargs结合使用，每一个参数命令都会被执行一次：
+
+    cat arg.txt | xargs -I {} ./sk.sh -p {} -l
+
+    -p aaa -l
+    -p bbb -l
+    -p ccc -l
+    ##  "{}"字符串被  "-p {} -l" 替换了
