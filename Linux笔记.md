@@ -125,3 +125,9 @@ xargs的一个选项-I，使用-I指定一个替换字符串{}，这个字符串
     -p bbb -l
     -p ccc -l
     ##  "{}"字符串被  "-p {} -l" 替换了
+
+## .scp文件 ark:number
+比如 `raw_mfcc_dev.1.scp`里的`FNLP0_si1308 /Users/yelong/kaldi/egs/timit/s5/mfcc/raw_mfcc_test.3.ark:13`意思是，打开存档(archive)文件，fseek()定位 到 13(字节)，然后开始读数据。terance
+
+## 执行.sh
+先要给执行许可`chmod +x test.sh`,然后1. 到该路径下`./test.sh`。`./`是当前路径的意思；2. `a/test.sh`.sh不在当前路径，跳到该路径再执行，所以只是前面路径不同，但都是要`/test.sh`才能执行，直接`test.sh`不能执行的。
