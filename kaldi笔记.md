@@ -18,8 +18,11 @@
 经过漫长的安装后，装好了。cd到s5里，运行
         
         $ . ./path.sh       ##系统执行时，只会从path路径里找，每次./执行时，会重新开一个shell，所以就不在当前path了，要想让系统能找到当前path，就需要开头的. 这是让系统添加进当前的path，相当于export或者source ./path.sh。要导入kaldi的路径。
-        $ copy-             ##然后按tab（不是回车），copy是打印输出流。见https://blog.csdn.net/by21010/article/details/51776447
+        $ copy-             ##然后按tab（不是回车），copy是打印输出流。
+参考https://blog.csdn.net/by21010/article/details/51776447
 
+有一组 **copy*** 命令，可以用来查看文件。
+    
 库一般放在`tools`里，常用的库：openfst（解码时需要用到）
 
 说明：`/egs`里一般存放执行的脚本，`.sh`文件，讲了每一步要执行什么操作，而真正的算法程序部分，在`/src`里的`.cc`、`.h`文件里。
@@ -46,6 +49,7 @@
 .scp格式是text-only的格式，每行是个key（一般是句子的标识符（id））后接空格，接这个句子特征数据的路径 。
 
 .ark格式可以是text或binary格式，（你可以写为text格式，命令行要加‘t’，binary是默认的格式）文件里面数据的格式是：key（如句子的id）空格后接数据。
+
     xielongdeMacBook-Pro:train yelong$ head feats.scp 
     A02_000 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:8
     A02_001 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:12868
@@ -58,15 +62,16 @@
     A02_008 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:96102
     A02_009 /Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:110912
     xielongdeMacBook-Pro:train yelong$ copy-matrix ark:/Users/yelong/kaldi/egs/thchs30/s5/mfcc/train/raw_mfcc_train.1.ark:8 ark,t:-
+注意，要使用`copy-matrix/copy-feats`等时，要先cd到s5先`$ . ./path.sh`一下。
     
     
  ## run.sh
  把run.sh看懂，然后在把aishell的nnet3搬到thchs30跑一遍。
  
  ## 流程
- 首先进行准备prepare，自动生成`/s5/data`里的文件，这里面的文件是匹配信息，语音信息-说话人是哪个的信息-文件位置 动态生成这种文件。然后`run.sh`中的每个算法（从单音子、三音子，到nnet3等算法）都跑一边。每个算法都会用EM算法迭代多次。
+首先进行准备prepare，自动生成`/s5/data`里的文件，这里面的文件是匹配信息，语音信息-说话人是哪个的信息-文件位置 动态生成这种文件。然后`run.sh`中的每个算法（从单音子、三音子，到nnet3等算法）都跑一边。每个算法都会用EM算法迭代多次。
  
- 翻译模型 lexicon 是匹配字对应的音素，解码时，用 语言模型*lexicon*声学模型，声学模型是训练出来的，语言模型是一开始就建立好的。比如50帧，50个观测状态，最后要输出50个状态（隐状态），解码就是在一个状态网络里走，从起点开始走50步，对应50帧，每一步找概率最大的那个路径，所谓的走一步，其实下一步可以仍然是和上一步一样的状态，就是比如声学模型中走到本身概率0.6，转移0.4，在语言模型中，每一处的下一步有很多分支可以走，不同概率，与声学模型概率相乘，得到最大概率的路径。最后输出一个50帧的状态序列（隐），从这个**状态序列**，匹配对应的文字。（文字和观测状态没有对应关系）
+翻译模型 lexicon 是匹配字对应的音素，解码时，用 语言模型*lexicon*声学模型，声学模型是训练出来的，语言模型是一开始就建立好的。比如50帧，50个观测状态，最后要输出50个状态（隐状态），解码就是在一个状态网络里走，从起点开始走50步，对应50帧，每一步找概率最大的那个路径，所谓的走一步，其实下一步可以仍然是和上一步一样的状态，就是比如声学模型中走到本身概率0.6，转移0.4，在语言模型中，每一处的下一步有很多分支可以走，不同概率，与声学模型概率相乘，得到最大概率的路径。最后输出一个50帧的状态序列（隐），从这个**状态序列**，匹配对应的文字。（文字和观测状态没有对应关系）
  
  有**wav**语音，还有对应的 **wav.trn 标注**，训练是以标注作为评判标准。
 
