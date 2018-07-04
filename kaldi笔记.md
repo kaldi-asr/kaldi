@@ -85,3 +85,5 @@
 2. 运行到SGMM2就停止了。这是因为run.sh里SGMM2里有一个`exit0`，运行到这一行就退出了。它建议我们`From this point you can run Karel's DNN : local/nnet/run_dnn.sh`，也可以直接注释掉，再跑。
 
 3. 要怎么继续已经断开的训练呢？：把之前训练好的模型**注释**掉，从这一个模型的地方开始训练。不这样的话，会重新替换之前训练好的模型的。
+
+## fst：加权有限状态
