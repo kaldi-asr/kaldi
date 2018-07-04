@@ -1,3 +1,53 @@
+#!/usr/bin/env python
+#
+# Copyright 2018 author: Alex Brouwer
+#                Cereproc Ltd. (author: David A. Braude)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+# WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+# MERCHANTABLITY OR NON-INFRINGEMENT.
+# See the Apache 2 License for the specific language governing permissions and
+# limitations under the License.
+
+# NOTE This script is under development and should not be used yet
+
+"""
+Minimum Viable Product - In order
+"""
+
+# TODO : Split into 3 scripts:
+#            1. Generating text statistics into XML from text database
+#            2. Converting statistics and text database into recording scripts
+#            3. Create Wikipedia text database this script should be in
+#               https://github.com/Idlak/idlak_resources repo
+
+# TODO : Use argparse module for terminal inputs and outputs
+
+# TODO : Input for scripts should be list of files (Kaldi format)
+
+# TODO : Replace Festival with IDLAK normaliser
+
+# TODO : Save script as XML
+
+"""
+General TODOs - No particular order
+"""
+# TODO : Needs to run in Windows 10 Python 2.7 (Urgent)
+# TODO : Use logging module for tracking progress
+# TODO : Docstrings
+# TODO : Ensure works with Python 2 and 3
+# TODO : Follow PEP-8 format (pylinter)
+# TODO : Add to CI tests
+# TODO : pip requirements
+# TODO : option to use Binary JSONs for speed https://pypi.org/project/bson/
+
 import os
 import re
 import json
