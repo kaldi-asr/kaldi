@@ -17,7 +17,7 @@
 # Final train prob (xent)   -0.7458
 # Final valid prob (xent)   -0.7854
 
-set -euxo pipefail
+set -e
 
 # configs for 'chain'
 affix=all

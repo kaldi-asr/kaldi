@@ -4,7 +4,7 @@
 #           2018 Emotech LTD (Author: Xuechen LIU)
 # Apache 2.0
 
-set -euxo pipefail
+set -e
 
 # number of jobs
 nj=20
