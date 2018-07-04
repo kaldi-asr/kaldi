@@ -42,7 +42,8 @@ before_script:
 env:
   - CI_TARGETS="all"     # Job1: Build main programs.
   - CI_TARGETS="ext"     # Job2: Build extra programs
-  - CI_TARGETS="test"    # Job3: Test libraries. #### ext_test? adds 5min compile, runs 1 test.
+  - CI_TARGETS="test"    # Job3: Test libraries.
+  #### ext_test? adds 5min compile, runs 1 test.
 
 script:
   # See http://petereisentraut.blogspot.com/2011/05/ccache-and-clang.html and
