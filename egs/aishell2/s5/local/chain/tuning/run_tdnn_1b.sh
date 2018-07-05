@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # _1b is as _1a, but with pitch feats, i-vector and dropout schedule added, referenced from wsj
-# this script is for 'normal' mode
 
 # basic info:
 # steps/info/chain_dir_info.pl exp/chain/tdnn_1b_all_sp/

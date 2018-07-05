@@ -20,18 +20,11 @@ tst_set=
 
 nj=20
 stage=1
-mode=normal        # whether we wanna train simple or normal models. The 'normal' chain
-                   # model includes pitch feats, i-vector and dropout, having stronger
-                   # baseline results in terms of CER. Should be either 'normal' or 'simple'
 gmm_stage=1
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
-# check mode option
-[ "$mode" != "normal" ] && [ "$mode" != "simple" ] && \
-  echo "mode should be either 'normal' or 'simple'" && exit 0;
 
 # prepare trn/dev/tst data, lexicon, lang etc
 if [ $stage -le 1 ]; then
@@ -40,12 +33,12 @@ fi
 
 # GMM
 if [ $stage -le 2 ]; then
-  local/run_gmm.sh --nj $nj --stage $gmm_stage --mode $mode
+  local/run_gmm.sh --nj $nj --stage $gmm_stage
 fi
 
 # chain
 if [ $stage -le 3 ]; then
-  local/chain/run_tdnn_${mode}.sh --nj $nj --stage 5
+  local/chain/run_tdnn.sh --nj $nj --stage 5
 fi
 
 local/show_results.sh

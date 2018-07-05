@@ -9,7 +9,6 @@ set -e
 # number of jobs
 nj=20
 stage=1
-mode=normal        # Please refer to ../run.sh for comments. should be either 'normal' or 'simple'
 
 . ./cmd.sh
 [ -f ./path.sh ] && . ./path.sh;
@@ -20,21 +19,12 @@ dev_nj=$(wc -l data/dev/spk2utt | awk '{print $1}' || exit 1;)
 test_nj=$(wc -l data/test/spk2utt | awk '{print $1}' || exit 1;)
 
 # Now make MFCC features.
-# For normal use where mode=simple, it produces mfcc feats;
-# For pure research use, set mode=normal and it uses mfcc+pitch feats from beginning through end
 if [ $stage -le 1 ]; then
   # mfccdir should be some place with a largish disk where you
   # want to store MFCC features.
   for x in train dev test; do
-    if [ $mode == "simple" ]; then
-      steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj \
-        data/$x exp/make_mfcc/$x mfcc || exit 1;
-    elif [ $mode == "normal" ]; then
-      steps/make_mfcc_pitch.sh --pitch-config conf/pitch.conf --cmd "$train_cmd" --nj $nj \
-        data/$x exp/make_mfcc/$x mfcc || exit 1;
-    else
-      echo "mode should be either 'normal' or 'simple'" && exit 0;
-    fi
+    steps/make_mfcc_pitch.sh --pitch-config conf/pitch.conf --cmd "$train_cmd" --nj $nj \
+      data/$x exp/make_mfcc/$x mfcc || exit 1;
     steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x mfcc || exit 1;
     utils/fix_data_dir.sh data/$x || exit 1;
   done
