@@ -1,8 +1,6 @@
 #!/bin/bash
 
-# Copyright 2012-2013  	Arnab Ghoshal
-#                      	Johns Hopkins University (authors: Daniel Povey, Sanjeev Khudanpur)
-#           2018        Tien-Hong Lo
+# Copyright 2018        Tien-Hong Lo
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -111,44 +109,44 @@ if [ ! -z "$online_ivector_dir" ]; then
     ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 fi   
 
-  for f in $data/feats.scp $model $extra_files; do
-    [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
-  done
+for f in $data/feats.scp $model $extra_files; do
+  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
+done
 
-  if [ ! -z "$output_name" ] && [ "$output_name" != "output" ]; then
-    echo "$0: Using output-name $output_name"
-    model="nnet3-copy --edits='remove-output-nodes name=output;rename-node old-name=$output_name new-name=output' $model - |"
-  fi
+if [ ! -z "$output_name" ] && [ "$output_name" != "output" ]; then
+  echo "$0: Using output-name $output_name"
+  model="nnet3-copy --edits='remove-output-nodes name=output;rename-node old-name=$output_name new-name=output' $model - |"
+fi
 
-  ## Set up features.
-  if [ -f $srcdir/final.mat ]; then
+## Set up features.
+if [ -f $srcdir/final.mat ]; then
     echo "$0: ERROR: lda feature type is no longer supported." && exit 1
-  fi
+fi
   
-  sdata=$data/split$nj;
-  cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
+sdata=$data/split$nj;
+cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
   
-  feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 
-  frame_subsampling_opt=
-  if [ $frame_subsampling_factor -ne 1 ]; then
-    # e.g. for 'chain' systems
-    frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
-  fi
+frame_subsampling_opt=
+if [ $frame_subsampling_factor -ne 1 ]; then
+  # e.g. for 'chain' systems
+  frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
+fi
 
-  if $apply_exp; then
-    output_wspecifier="ark:| copy-matrix --apply-exp ark:- ark:-"
-  else
-    output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:-"
-  fi
+if $apply_exp; then
+  output_wspecifier="ark:| copy-matrix --apply-exp ark:- ark:-"
+else
+  output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:-"
+fi
 
-  gpu_opt="--use-gpu=no"
-  gpu_queue_opt=
+gpu_opt="--use-gpu=no"
+gpu_queue_opt=
 
-  if $use_gpu; then
-    gpu_queue_opt="--gpu 1"
-    gpu_opt="--use-gpu=yes"
-  fi
+if $use_gpu; then
+  gpu_queue_opt="--gpu 1"
+  gpu_opt="--use-gpu=yes"
+fi
 
 # convert $dir to absolute pathname
 fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
@@ -207,10 +205,10 @@ echo $nj > $dir/num_jobs
 if [ $stage -le 0 ]; then  
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     matrix-sum --average=$average "${models[@]}" ark:- \| \
-	latgen-faster-mapped$thread_string --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
+    latgen-faster-mapped$thread_string --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
 	 --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
-     --word-symbol-table=$graphdir/words.txt ${extra_opts} "$model" \
-     $graphdir/HCLG.fst ark:- "$lat_wspecifier"
+         --word-symbol-table=$graphdir/words.txt ${extra_opts} \
+	 "$model" $graphdir/HCLG.fst ark:- "$lat_wspecifier"
 fi
 
 if [ $stage -le 1 ]; then
