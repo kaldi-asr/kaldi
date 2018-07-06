@@ -1,24 +1,29 @@
 #!/bin/bash
 
-# _1d is as _1c, but with dropout schedule added, referenced from wsj
+# _1b is as _1a, but with pitch feats, i-vector and dropout schedule added, referenced from wsj
+
+# basic info:
+# steps/info/chain_dir_info.pl exp/chain/tdnn_1b_all_sp/
+# exp/chain/tdnn_1b_all_sp/: num-iters=1446 nj=2..2 num-params=19.3M dim=43+100->4456 combine=-0.079->-0.075 (over 9) xent:train/valid[962,1445,final]=(-0.922,-0.795,-0.746/-0.960,-0.840,-0.785) logprob:train/valid[962,1445,final]=(-0.084,-0.072,-0.070/-0.085,-0.075,-0.071)
 
 # results:
-# local/chain/compare_wer.sh exp/chain/tdnn_1d_sp
-# Model                tdnn_1d_sp
+# local/chain/compare_wer.sh exp/chain/tdnn_1d_all_sp/
+# Model                tdnn_1d_all_sp
+# Num. of params             19.3M
 # WER(%)                     8.84
 # Final train prob        -0.0696
 # Final valid prob        -0.0714
 # Final train prob (xent)   -0.7458
 # Final valid prob (xent)   -0.7854
 
-set -euxo pipefail
+set -e
 
 # configs for 'chain'
 affix=all
-stage=10
+stage=0
 train_stage=-10
 get_egs_stage=-10
-dir=exp/chain/tdnn_1d  # Note: _sp will get added to this
+dir=exp/chain/tdnn_1b  # Note: _sp will get added to this
 decode_iter=
 
 # training options
