@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Copyright 2018        Tien-Hong Lo
+# Copyright 2012-2013  	Arnab Ghoshal
+#                      	Johns Hopkins University (authors: Daniel Povey, Sanjeev Khudanpur)
+#           2018        Tien-Hong Lo
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -107,49 +109,16 @@ done
 if [ ! -z "$online_ivector_dir" ]; then
     ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
     ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
-fi   
-
-for f in $data/feats.scp $model $extra_files; do
-  [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
-done
-
-if [ ! -z "$output_name" ] && [ "$output_name" != "output" ]; then
-  echo "$0: Using output-name $output_name"
-  model="nnet3-copy --edits='remove-output-nodes name=output;rename-node old-name=$output_name new-name=output' $model - |"
-fi
-
-## Set up features.
-if [ -f $srcdir/final.mat ]; then
-    echo "$0: ERROR: lda feature type is no longer supported." && exit 1
-fi
-  
-sdata=$data/split$nj;
-cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
-  
-feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-
-frame_subsampling_opt=
-if [ $frame_subsampling_factor -ne 1 ]; then
-  # e.g. for 'chain' systems
-  frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
-fi
-
-if $apply_exp; then
-  output_wspecifier="ark:| copy-matrix --apply-exp ark:- ark:-"
-else
-  output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:-"
-fi
-
-gpu_opt="--use-gpu=no"
-gpu_queue_opt=
-
-if $use_gpu; then
-  gpu_queue_opt="--gpu 1"
-  gpu_opt="--use-gpu=yes"
 fi
 
 # convert $dir to absolute pathname
 fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
+
+# Possibly use multi-threaded decoder
+thread_string=
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
+
+mkdir -p $dir/temp
 
 for i in `seq 0 $[num_sys-1]`; do
   srcdir=${model_dirs[$i]}
@@ -157,6 +126,59 @@ for i in `seq 0 $[num_sys-1]`; do
   model=$srcdir/$iter.mdl
   if [ ! -f $srcdir/$iter.mdl ]; then
     echo "$0: ERROR: no such file $srcdir/$iter.raw. Trying $srcdir/$iter.mdl exit" && exit 1;
+  fi
+  
+  # check that they have the same tree
+  show-transitions $graphdir/phones.txt $model > $dir/temp/transition.${i}.txt
+  cmp_tree=`diff -q $dir/temp/transition.0.txt $dir/temp/transition.${i}.txt | awk '{print $5}'`
+  if [ ! -z $cmp_tree ]; then
+    echo "$0 tree must be the same."
+    exit 0;
+  fi
+  
+  # check that they have the same frame-subsampling-factor
+  if [ $frame_subsampling_factor -ne `cat $srcdir/frame_subsampling_factor` ]; then
+    echo "$0 frame_subsampling_factor must be the same."
+    exit 0;
+  fi
+  
+    for f in $data/feats.scp $model $extra_files; do
+    [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
+  done
+
+  if [ ! -z "$output_name" ] && [ "$output_name" != "output" ]; then
+    echo "$0: Using output-name $output_name"
+    model="nnet3-copy --edits='remove-output-nodes name=output;rename-node old-name=$output_name new-name=output' $model - |"
+  fi
+
+  ## Set up features.
+  if [ -f $srcdir/final.mat ]; then
+    echo "$0: ERROR: lda feature type is no longer supported." && exit 1
+  fi
+  
+  sdata=$data/split$nj;
+  cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
+  
+  feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
+
+  frame_subsampling_opt=
+  if [ $frame_subsampling_factor -ne 1 ]; then
+    # e.g. for 'chain' systems
+    frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
+  fi
+
+  if $apply_exp; then
+    output_wspecifier="ark:| copy-matrix --apply-exp ark:- ark:-"
+  else
+    output_wspecifier="ark:| copy-feats --compress=$compress ark:- ark:-"
+  fi
+
+  gpu_opt="--use-gpu=no"
+  gpu_queue_opt=
+
+  if $use_gpu; then
+    gpu_queue_opt="--gpu 1"
+    gpu_opt="--use-gpu=yes"
   fi
 
   echo "$i $model";
@@ -169,9 +191,11 @@ for i in `seq 0 $[num_sys-1]`; do
      '$model' '$feats' '$output_wspecifier' |"
 done
 
+# remove tempdir
+rm -rf $dir/temp
 
 # Assume the nnet trained by 
-# the same GMM, frame_shift and frame subsampling factor.
+# the same tree and frame subsampling factor.
 mkdir -p $dir/log
 
 if [ -f $model ]; then
@@ -205,10 +229,10 @@ echo $nj > $dir/num_jobs
 if [ $stage -le 0 ]; then  
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     matrix-sum --average=$average "${models[@]}" ark:- \| \
-    latgen-faster-mapped$thread_string --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
+	latgen-faster-mapped$thread_string --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
 	 --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
-         --word-symbol-table=$graphdir/words.txt ${extra_opts} \
-	 "$model" $graphdir/HCLG.fst ark:- "$lat_wspecifier"
+     --word-symbol-table=$graphdir/words.txt ${extra_opts} "$model" \
+     $graphdir/HCLG.fst ark:- "$lat_wspecifier"
 fi
 
 if [ $stage -le 1 ]; then
