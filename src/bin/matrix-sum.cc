@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
         " matrix-sum [options] <matrix-in-rxfilename1> <matrix-in-rxfilename2> ..."
         " <matrix-out-wxfilename>\n"
         " e.g.: matrix-sum --binary=false 1.mat 2.mat 3.mat sum.mat\n"
-        "See also: matrix-sum-rows\n";
+        "See also: matrix-sum-rows, copy-matrix\n";
 
 
     BaseFloat scale1 = 1.0, scale2 = 1.0;
