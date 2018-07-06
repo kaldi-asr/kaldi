@@ -56,6 +56,7 @@ max_lmwt=15
 parallel_opts="--num-threads 3"
 scoring_opts=
 minimize=false
+skip_scoring=false
 
 word_determinize=false  # If set to true, then output lattice does not retain
                         # alternate paths a sequence of words (with alternate pronunciations).
@@ -252,7 +253,4 @@ if ! $skip_scoring ; then
   fi
 fi
 
-
-exit 0
-
-
+exit 0;
