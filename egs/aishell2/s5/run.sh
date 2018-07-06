@@ -38,7 +38,7 @@ fi
 
 # chain
 if [ $stage -le 3 ]; then
-  local/chain/run_tdnn.sh --nj $nj --stage 5
+  local/chain/run_tdnn.sh --nj $nj
 fi
 
 local/show_results.sh
