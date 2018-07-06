@@ -110,6 +110,12 @@ if [ ! -z "$online_ivector_dir" ]; then
     ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 fi
 
+frame_subsampling_opt=
+if [ $frame_subsampling_factor -ne 1 ]; then
+  # e.g. for 'chain' systems
+  frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
+fi
+
 # convert $dir to absolute pathname
 fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
 
@@ -160,12 +166,6 @@ for i in `seq 0 $[num_sys-1]`; do
   
   feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
 
-  frame_subsampling_opt=
-  if [ $frame_subsampling_factor -ne 1 ]; then
-    # e.g. for 'chain' systems
-    frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
-  fi
-
   if $apply_exp; then
     output_wspecifier="ark:| copy-matrix --apply-exp ark:- ark:-"
   else
@@ -192,6 +192,11 @@ done
 
 # remove tempdir
 rm -rf $dir/temp
+
+# split data to nj
+[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+echo $nj > $dir/num_jobs
+
 
 # Assume the nnet trained by 
 # the same tree and frame subsampling factor.
@@ -223,7 +228,6 @@ else
   lat_wspecifier="$lat_wspecifier lattice-scale --acoustic-scale=$post_decode_acwt --write-compact=$write_compact ark:- ark:- | gzip -c >$dir/lat.JOB.gz"
 fi
 
-echo $nj > $dir/num_jobs
 
 if [ $stage -le 0 ]; then  
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
@@ -253,4 +257,6 @@ if ! $skip_scoring ; then
   fi
 fi
 
-exit 0;
+
+exit 0
+
