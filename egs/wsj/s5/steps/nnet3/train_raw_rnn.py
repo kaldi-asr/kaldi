@@ -360,7 +360,7 @@ def train(args, run_opts):
 
     if args.stage <= -1:
         logger.info("Preparing the initial network.")
-        common_train_lib.prepare_initial_network(args.dir, run_opts, args.input_model)
+        common_train_lib.prepare_initial_network(args.dir, run_opts, args.srand, args.input_model)
 
     # set num_iters so that as close as possible, we process the data
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==
