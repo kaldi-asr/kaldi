@@ -1,0 +1,1459 @@
+<?xml version="1.0"?>
+<lexicon name="cmudict.0.7a">
+<lex pron="@1" entry="full" default="true">a</lex>
+<lex pron="a1" entry="1" default="false">a</lex>
+<lex pron="a1 b" entry="full" default="true">ab</lex>
+<lex pron="a1 bj d @0 s l a2 m" entry="full" default="true" >abdeslam</lex>
+<lex pron="a1 b @0 rj" entry="full" default="true">abair</lex>
+<lex pron="@0 v a1 lj @0" entry="full" default="true">abhaile</lex>
+<lex pron="au1 i0 nj" entry="full" default="true">abhainn</lex>
+<lex pron="a1 k a0 d i0 v" entry="full" default="true">acadaimh</lex>
+<lex pron="a1 x" entry="full" default="true">ach</lex>
+<lex pron="a1 x t" entry="full" default="true">acht</lex>
+<lex pron="a0 k uh1" entry="full" default="true">acu</lex>
+<lex pron="a1 dj e0 rj" entry="full" default="true">adeir</lex>
+<lex pron="ai1 l @0 k h @0" entry="full" default="true">adhlactha</lex>
+<lex pron="a1 d v i@0 mj" entry="full" default="true">admhaím</lex>
+<lex pron="eey1 rj" entry="full" default="true">aer</lex>
+<lex pron="eey1 rj" entry="full" default="true">aeir</lex>
+<lex pron="e1 g" entry="full" default="true">ag</lex>
+<lex pron="a0 g i1 v" entry="full" default="true">agaibh</lex>
+<lex pron="a0 g i1 nj" entry="full" default="true">againn</lex>
+<lex pron="a0 g i1 nj @2" entry="full" default="true">againne</lex>
+<lex pron="a0 g @1 m" entry="full" default="true">agam</lex>
+<lex pron="a0 g @1 m s @0" entry="full" default="true">agamsa</lex>
+<lex pron="a0 g @1 t" entry="full" default="true">agat</lex>
+<lex pron="ai1 gj" entry="full" default="true">aghaidh</lex>
+<lex pron="a1 g @0 s" entry="full" default="true">agus</lex>
+<lex pron="a1 bj rj aa0 n" entry="full" default="true">aibreán</lex>
+<lex pron="a1 kj i0" entry="full" default="true">aici</lex>
+<lex pron="ai1 mj" entry="full" default="true">aidhm</lex>
+<lex pron="a0 gj e1" entry="full" default="true">aige</lex>
+<lex pron="a1 gj nj @0" entry="full" default="true">aigne</lex>
+<lex pron="ai1 nj i0 sh" entry="full" default="true">aighnis</lex>
+<lex pron="ai1 mj sh @0 rj" entry="full" default="true">aimsir</lex>
+<lex pron="ai1 mj sh i0 rj @2" entry="full" default="true">aimsire</lex>
+<lex pron="ai1 mj sh uu0" entry="full" default="true">aimsiú</lex>
+<lex pron="a1 nj @0 mj" entry="full" default="true">ainm</lex>
+<lex pron="a1 nj oy0 nj" entry="full" default="true">ainneoin</lex>
+<lex pron="e1 rj" entry="full" default="true">air</lex>
+<lex pron="a1 rj dj" entry="full" default="true">aird</lex>
+<lex pron="a1 rj dj @0" entry="full" default="true">airde</lex>
+<lex pron="a1 rj @0" entry="full" default="true">aire</lex>
+<lex pron="a1 rj @0 gj @2 d" entry="full" default="true">airgead</lex>
+<lex pron="a1 rj @0 gj @2 d i2 sh" entry="full" default="true">airgeadais</lex>
+<lex pron="a1 rj @0 gj i2 dj" entry="full" default="true">airgid</lex>
+<lex pron="a1 rj tj @0 g @2 l" entry="full" default="true">airteagal</lex>
+<lex pron="a1 sh" entry="full" default="true">ais</lex>
+<lex pron="a1 sh i@2 k @0" entry="full" default="true">aisíocadh</lex>
+<lex pron="a1 sh tj rj uu0" entry="full" default="true">aistriú</lex>
+<lex pron="a1 h i0 nj tj" entry="full" default="true">aithint</lex>
+<lex pron="a1 h @0 nj @2" entry="full" default="true">aithne</lex>
+<lex pron="a1 l t" entry="full" default="true">alt</lex>
+<lex pron="a1 l t oy0 rj" entry="full" default="true">altóir</lex>
+<lex pron="a1 l z ai2 m @0 r" entry="full" default="true">alzheimer</lex>
+<lex pron="au1 m" entry="full" default="true">am</lex>
+<lex pron="au1 m @0" entry="full" default="true">ama</lex>
+<lex pron="a0 m a1 x" entry="full" default="true">amach</lex>
+<lex pron="a1 m @0 d aa2 n" entry="full" default="true">amadán</lex>
+<lex pron="au1 @0 lj" entry="full" default="true">amhail</lex>
+<lex pron="au1 @0 r k" entry="full" default="true">amharc</lex>
+<lex pron="au1 l i0 gj" entry="full" default="true">amhlaidh</lex>
+<lex pron="au1 r @0 s" entry="full" default="true">amhras</lex>
+<lex pron="au1 r aa2 n" entry="full" default="true">amhrán</lex>
+<lex pron="@0 v aa1 i0 nj" entry="full" default="true">amháin</lex>
+<lex pron="@0 m uh1" entry="full" default="true">amuigh</lex>
+<lex pron="@0 m aa1 r @0 x" entry="full" default="true">amárach</lex>
+<lex pron="@1 n" entry="full" default="true">an</lex>
+<lex pron="a1 n @0 m" entry="full" default="true">anam</lex>
+<lex pron="@0 nj i@1 r" entry="full" default="true">aniar</lex>
+<lex pron="au1 n" entry="full" default="true">ann</lex>
+<lex pron="@0 n o1 x t" entry="full" default="true">anocht</lex>
+<lex pron="@0 n i1 sh" entry="full" default="true">anois</lex>
+<lex pron="@0 n o1 n" entry="full" default="true">anonn</lex>
+<lex pron="a1 n s @0 n" entry="full" default="true">ansan</lex>
+<lex pron="a0 n s uh1" entry="full" default="true">anseo</lex>
+<lex pron="a0 n sh i1 n" entry="full" default="true">ansin</lex>
+<lex pron="@0 n u@1 s" entry="full" default="true">anuas</lex>
+<lex pron="@0 n uh1 r @2" entry="full" default="true">anuraidh</lex>
+<lex pron="@0 nj ee1  s" entry="full" default="true">aníos</lex>
+<lex pron="eey1" entry="full" default="true">aodh</lex>
+<lex pron="eey1 d aa0 nj" entry="full" default="true">aodháin</lex>
+<lex pron="eey1 d aa0 n" entry="full" default="true">aodhán</lex>
+<lex pron="eey1 g aa2 n" entry="full" default="true">aogán</lex>
+<lex pron="ee1 nj @0" entry="full" default="true">aoine</lex>
+<lex pron="ee1 sh" entry="full" default="true">aois</lex>
+<lex pron="eey1 n" entry="full" default="true">aon</lex>
+<lex pron="eey1 n @0 rj" entry="full" default="true">aonair</lex>
+<lex pron="eey1 n t i0 sh" entry="full" default="true">aontais</lex>
+<lex pron="eey1 n t i0 h @2" entry="full" default="true">aontaithe</lex>
+<lex pron="eey1 n t i@0 mj" entry="full" default="true">aontaím</lex>
+<lex pron="eey1 n t @0 s" entry="full" default="true">aontas</lex>
+<lex pron="e1 r" entry="full" default="true">ar</lex>
+<lex pron="a1 r i0 nj" entry="full" default="true">arainn</lex>
+<lex pron="a1 r @0 n" entry="full" default="true">arann</lex>
+<lex pron="a0 r eey1 @0 n" entry="full" default="true">araon</lex>
+<lex pron="a1 r d" entry="full" default="true">ard</lex>
+<lex pron="a1 r d fj rj uh1 n s @0" entry="full" default="true">ardphrionsa</lex>
+<lex pron="a1 r d uu0" entry="full" default="true">ardú</lex>
+<lex pron="a0 rj i@1 v" entry="full" default="true">ariamh</lex>
+<lex pron="a2 rj @0 z oy1 n @0" entry="full" default="true">arizona</lex>
+<lex pron="a1 r @0 m" entry="full" default="true">arm</lex>
+<lex pron="a1 r n @0" entry="full" default="true">arna</lex>
+<lex pron="e1 r s @0" entry="full" default="true">arsa</lex>
+<lex pron="a0 r aa1 n" entry="full" default="true">arán</lex>
+<lex pron="a0 r eey1 rj" entry="full" default="true">aréir</lex>
+<lex pron="@0 rj ee1 sh" entry="full" default="true">arís</lex>
+<lex pron="a0 r uu1" entry="full" default="true">arú</lex>
+<lex pron="a1 s" entry="full" default="true">as</lex>
+<lex pron="a1 s t uh0" entry="full" default="true">astu</lex>
+<lex pron="a1 h @0" entry="full" default="true">atha</lex>
+<lex pron="a1 h @0 rj" entry="full" default="true">athair</lex>
+<lex pron="a1 h v rj e0" entry="full" default="true">athbhreith</lex>
+<lex pron="a1 h r uu0" entry="full" default="true">athrú</lex>
+<lex pron="@0 t aa1" entry="full" default="true">atá</lex>
+<lex pron="aa1 t oy0 m a2 t i0 k" entry="full" default="true">automatic</lex>
+<lex pron="b ee1" entry="full" default="true">b</lex>
+<lex pron="b i1 dj @0" entry="full" default="true">b'fhaide</lex>
+<lex pron="b @1" entry="full" default="true">ba</lex>
+<lex pron="b a1 lj @0" entry="full" default="true">baile</lex>
+<lex pron="b ee1 lj" entry="full" default="true">baill</lex>
+<lex pron="b i1 nj @0" entry="full" default="true">baineadh</lex>
+<lex pron="b i1 nj @0 n" entry="full" default="true">baineann</lex>
+<lex pron="b a1 nj i0 sh tj o2 rj" entry="full" default="true">bainisteoir</lex>
+<lex pron="b i1 nj tj" entry="full" default="true">baint</lex>
+<lex pron="b i1 nj tj @0" entry="full" default="true">bainte</lex>
+<lex pron="b au1 l" entry="full" default="true">ball</lex>
+<lex pron="b au1 l s t aa1 tj" entry="full" default="true">ballstáit</lex>
+<lex pron="b eey1 @0 l" entry="full" default="true">baol</lex>
+<lex pron="b a1 r" entry="full" default="true">barr</lex>
+<lex pron="bj a1 x oy2" entry="full" default="true">beachóg</lex>
+<lex pron="bj @1 g" entry="full" default="true">beag</lex>
+<lex pron="bj @1 g @0" entry="full" default="true">beaga</lex>
+<lex pron="bj @0 g n a1 x" entry="full" default="true">beagnach</lex>
+<lex pron="bj @0 g aa1 n" entry="full" default="true">beagán</lex>
+<lex pron="bj a1 l @0 x" entry="full" default="true">bealach</lex>
+<lex pron="bj a1 l i0 gj" entry="full" default="true">bealaigh</lex>
+<lex pron="bj au1 l t i0 nj @0" entry="full" default="true">bealtaine</lex>
+<lex pron="bj a1 n" entry="full" default="true">bean</lex>
+<lex pron="bj a1 r t @0" entry="full" default="true">bearta</lex>
+<lex pron="bj a1 h @0" entry="full" default="true">beatha</lex>
+<lex pron="bj a1 h @2 x" entry="full" default="true">beathach</lex>
+<lex pron="bj e1 gj" entry="full" default="true">beidh</lex>
+<lex pron="bj uh1 rj tj" entry="full" default="true">beirt</lex>
+<lex pron="bj oy1" entry="full" default="true">beo</lex>
+<lex pron="v a1 lj @0" entry="full" default="true">bhaile</lex>
+<lex pron="v a1 r" entry="full" default="true">bharr</lex>
+<lex pron="v a1 l @0 x" entry="full" default="true">bhealach</lex>
+<lex pron="v e1" entry="full" default="true">bheith</lex>
+<lex pron="vj oy1" entry="full" default="true">bheo</lex>
+<lex pron="v a1 k @0" entry="full" default="true">bhfaca</lex>
+<lex pron="vj a1 r" entry="full" default="true">bhfear</lex>
+<lex pron="v u@1 rj" entry="full" default="true">bhfuair</lex>
+<lex pron="v i1 lj" entry="full" default="true">bhfuil</lex>
+<lex pron="vj lj i@1 n t uu2 lj" entry="full" default="true">bhliantúil</lex>
+<lex pron="v r @1 b uu2 s" entry="full" default="true">bhrabús</lex>
+<lex pron="v u@1 x @2 lj" entry="full" default="true">bhuachaill</lex>
+<lex pron="v u@1 n" entry="full" default="true">bhuan</lex>
+<lex pron="v uh1 n @0 x @2 r" entry="full" default="true">bhunachar</lex>
+<lex pron="v aa1 s" entry="full" default="true">bhás</lex>
+<lex pron="v aa1 s i0 gj" entry="full" default="true">bhásaigh</lex>
+<lex pron="v eey1 l" entry="full" default="true">bhéal</lex>
+<lex pron="v ee1" entry="full" default="true">bhí</lex>
+<lex pron="v i@1 x" entry="full" default="true">bhíodh</lex>
+<lex pron="v i@1 n" entry="full" default="true">bhíonn</lex>
+<lex pron="bj i@1" entry="full" default="true">bia</lex>
+<lex pron="bj i1" entry="full" default="true">bith</lex>
+<lex pron="bj lj i@1 nj" entry="full" default="true">bliain</lex>
+<lex pron="bj lj i@1 n @0" entry="full" default="true">bliana</lex>
+<lex pron="bj lj i@1 n t @0" entry="full" default="true">blianta</lex>
+<lex pron="b l uu1 m" entry="full" default="true">bloom</lex>
+<lex pron="b uh1 x t" entry="full" default="true">bocht</lex>
+<lex pron="b au1 n" entry="full" default="true">bonn</lex>
+<lex pron="b o1 r d" entry="full" default="true">bord</lex>
+<lex pron="b uh1 h aa0 n" entry="full" default="true">bothán</lex>
+<lex pron="bj e1 lj" entry="full" default="true">bpeil</lex>
+<lex pron="b o1 b @0 l" entry="full" default="true">bpobal</lex>
+<lex pron="b aa1 rj kj" entry="full" default="true">bpáirc</lex>
+<lex pron="b oy1 s @2 x" entry="full" default="true">bpósfadh</lex>
+<lex pron="b r a1" entry="full" default="true">brath</lex>
+<lex pron="bj rj au1 n d aa2 n" entry="full" default="true">breandán</lex>
+<lex pron="bj rj a1 t i0 nj @0" entry="full" default="true">breataine</lex>
+<lex pron="bj rj a1 h n uu0" entry="full" default="true">breathnú</lex>
+<lex pron="bj rj e1 sh" entry="full" default="true">breis</lex>
+<lex pron="bj rj e1 sh @0" entry="full" default="true">breise</lex>
+<lex pron="bj rj e1" entry="full" default="true">breith</lex>
+<lex pron="bj rj e0 h uu1 n @0 s" entry="full" default="true">breithiúnas</lex>
+<lex pron="bj rj aa1" entry="full" default="true">breá</lex>
+<lex pron="bj rj i@1 n" entry="full" default="true">brian</lex>
+<lex pron="bj rj i1 sh @0" entry="full" default="true">briseadh</lex>
+<lex pron="b r oy1 g @0" entry="full" default="true">bróga</lex>
+<lex pron="b r uu1" entry="full" default="true">brú</lex>
+<lex pron="b u@1" entry="full" default="true">bua</lex>
+<lex pron="b u@1 x @2 lj" entry="full" default="true">buachaill</lex>
+<lex pron="b u@1 lj tj @0" entry="full" default="true">buailte</lex>
+<lex pron="b u@1 l @0" entry="full" default="true">bualadh</lex>
+<lex pron="b uh1 n" entry="full" default="true">bun</lex>
+<lex pron="b uh1 n i0 h @2" entry="full" default="true">bunaithe</lex>
+<lex pron="b uh1 n i@2 x" entry="full" default="true">bunaíodh</lex>
+<lex pron="b uh1 n uu0" entry="full" default="true">bunú</lex>
+<lex pron="b uh1 s" entry="full" default="true">bus</lex>
+<lex pron="b ee1" entry="full" default="true">buí</lex>
+<lex pron="b aa1 d" entry="full" default="true">bád</lex>
+<lex pron="b aa1 n" entry="full" default="true">bán</lex>
+<lex pron="b aa1 s" entry="full" default="true">bás</lex>
+<lex pron="bj aa1 s @0 h @0" entry="full" default="true">básaithe</lex>
+<lex pron="b aa1 h @0" entry="full" default="true">báthadh</lex>
+<lex pron="bj eey1 l" entry="full" default="true">béal</lex>
+<lex pron="bj i1 r l @0" entry="full" default="true">béarla</lex>
+<lex pron="bj ee1" entry="full" default="true">bí</lex>
+<lex pron="bj i@1 x" entry="full" default="true">bídh</lex>
+<lex pron="bj i@1 n" entry="full" default="true">bíonn</lex>
+<lex pron="b oy1 h @0 r" entry="full" default="true">bóthar</lex>
+<lex pron="s ee1" entry="full" default="true">c</lex>
+<lex pron="k au1 @0 rj" entry="full" default="true">cabhair</lex>
+<lex pron="k a1 d" entry="full" default="true">cad</lex>
+<lex pron="k a0 dj eey1" entry="full" default="true">caidé</lex>
+<lex pron="k a1 lj ee0 n" entry="full" default="true">cailín</lex>
+<lex pron="k ai1 lj tj @0" entry="full" default="true">caillte</lex>
+<lex pron="k ai1 n tj" entry="full" default="true">caint</lex>
+<lex pron="k ai1 n tj @0" entry="full" default="true">cainte</lex>
+<lex pron="k a1 tj @0" entry="full" default="true">caite</lex>
+<lex pron="k a1 h @0" entry="full" default="true">caitheadh</lex>
+<lex pron="k a1 h @0 v" entry="full" default="true">caitheamh</lex>
+<lex pron="k a1 h fj @0 r" entry="full" default="true">caithfear</lex>
+<lex pron="k a1 h h i0 gj" entry="full" default="true">caithfidh</lex>
+<lex pron="k a1 n ee0" entry="full" default="true">canney</lex>
+<lex pron="k ee1 rj i0 gj" entry="full" default="true">caoirigh</lex>
+<lex pron="k eey1 r @0 x" entry="full" default="true">caorach</lex>
+<lex pron="k a1 s @0" entry="full" default="true">casadh</lex>
+<lex pron="k eey1 s ee0" entry="full" default="true">casey</lex>
+<lex pron="k a1 h r @0 x" entry="full" default="true">cathrach</lex>
+<lex pron="kj a1 d" entry="full" default="true">cead</lex>
+<lex pron="kj a1 l" entry="full" default="true">ceal</lex>
+<lex pron="kj au1 n" entry="full" default="true">ceann</lex>
+<lex pron="kj a1 n i0 sh" entry="full" default="true">ceannais</lex>
+<lex pron="kj au1 n t @0 rj" entry="full" default="true">ceantair</lex>
+<lex pron="kj au1 n t @0 r" entry="full" default="true">ceantar</lex>
+<lex pron="kj a1 p @0" entry="full" default="true">ceapadh</lex>
+<lex pron="kj a1 r t" entry="full" default="true">ceart</lex>
+<lex pron="kj a1 r t @0" entry="full" default="true">cearta</lex>
+<lex pron="kj a1 h @0 r" entry="full" default="true">ceathar</lex>
+<lex pron="kj e1 sh tj" entry="full" default="true">ceist</lex>
+<lex pron="kj e1 sh tj @0 n @0" entry="full" default="true">ceisteanna</lex>
+<lex pron="kj e1 rj @0" entry="full" default="true">ceithre</lex>
+<lex pron="kj oy1 lj" entry="full" default="true">ceoil</lex>
+<lex pron="kj oy1 l" entry="full" default="true">ceol</lex>
+<lex pron="x ai1 lj @1 x" entry="full" default="true">chailleach</lex>
+<lex pron="h a1 n @0" entry="full" default="true">cheana</lex>
+<lex pron="x au1 n" entry="full" default="true">cheann</lex>
+<lex pron="x a1 r t @0" entry="full" default="true">chearta</lex>
+<lex pron="x lj i1 gj" entry="full" default="true">chloig</lex>
+<lex pron="x o1 d l i1 gj" entry="full" default="true">chodlaigh</lex>
+<lex pron="x oo1 mj i0 sh i0 nj eey1 r @0" entry="full" default="true">choimisinéara</lex>
+<lex pron="x o1 rj p" entry="full" default="true">choirp</lex>
+<lex pron="x o1 l" entry="full" default="true">chol</lex>
+<lex pron="x oy1" entry="full" default="true">chomh</lex>
+<lex pron="x oy1 a1 r h ee2" entry="full" default="true">chomharthaí</lex>
+<lex pron="x oy1 lj i@1 n @0" entry="full" default="true">chomhlíona</lex>
+<lex pron="x oy1 f uh0 b @0 lj" entry="full" default="true">chomhphobail</lex>
+<lex pron="x o1 n i0 k" entry="full" default="true">chonaic</lex>
+<lex pron="x o1 n r @1" entry="full" default="true">chonradh</lex>
+<lex pron="x o1 n s p oy1 dj" entry="full" default="true">chonspóid</lex>
+<lex pron="x o1 s uu1 lj" entry="full" default="true">chosúil</lex>
+<lex pron="x r eey1 l @0" entry="full" default="true">chraoladh</lex>
+<lex pron="x rj e1 dj" entry="full" default="true">chreid</lex>
+<lex pron="x r o1 x @1" entry="full" default="true">chrochadh</lex>
+<lex pron="x r o1 m @1" entry="full" default="true">chromadh</lex>
+<lex pron="x r i1 nj i2 gj" entry="full" default="true">chruinnigh</lex>
+<lex pron="x u@1 gj" entry="full" default="true">chuaigh</lex>
+<lex pron="x uu1 i0 nj" entry="full" default="true">chugainn</lex>
+<lex pron="x uu1 @0 m" entry="full" default="true">chugam</lex>
+<lex pron="x i1 dj" entry="full" default="true">chuid</lex>
+<lex pron="x i1 dj uu1" entry="full" default="true">chuidiú</lex>
+<lex pron="x i1 gj @1" entry="full" default="true">chuige</lex>
+<lex pron="x i1 lj @1" entry="full" default="true">chuile</lex>
+<lex pron="x uh1 rj" entry="full" default="true">chuir</lex>
+<lex pron="x uh1 lj t uu2 rj" entry="full" default="true">chultúir</lex>
+<lex pron="x uh1 nj" entry="full" default="true">chun</lex>
+<lex pron="x aa1 r t ee2" entry="full" default="true">chártaí</lex>
+<lex pron="x eey1 d" entry="full" default="true">chéad</lex>
+<lex pron="x eey1 s t @0" entry="full" default="true">chéasta</lex>
+<lex pron="x eey1 lj @0" entry="full" default="true">chéile</lex>
+<lex pron="x eey1 mj" entry="full" default="true">chéim</lex>
+<lex pron="x uu1 sh" entry="full" default="true">chúis</lex>
+<lex pron="kj i@1 l i@2 n" entry="full" default="true">ciallaíonn</lex>
+<lex pron="kj i0 bj eey1" entry="full" default="true">cibé</lex>
+<lex pron="kj i1 lj" entry="full" default="true">cill</lex>
+<lex pron="kj i1 lj @0" entry="full" default="true">cille</lex>
+<lex pron="kj i1 nj aa0 l" entry="full" default="true">cineál</lex>
+<lex pron="kj ee1 nj" entry="full" default="true">cinn</lex>
+<lex pron="kj i1 nj @0" entry="full" default="true">cinneadh</lex>
+<lex pron="kj i1 nj uu2 n @2 x" entry="full" default="true">cinniúnach</lex>
+<lex pron="kj i1 nj tj @0" entry="full" default="true">cinnte</lex>
+<lex pron="kj uh1 n" entry="full" default="true">cion</lex>
+<lex pron="kj uh1 n" entry="full" default="true">cionn</lex>
+<lex pron="kj uh1 n t @2 x" entry="full" default="true">ciontach</lex>
+<lex pron="kj uu1 nj" entry="full" default="true">ciúin</lex>
+<lex pron="k l au1 n" entry="full" default="true">clann</lex>
+<lex pron="kj lj i@1" entry="full" default="true">cliath</lex>
+<lex pron="k l i1 cc @0" entry="full" default="true">cluiche</lex>
+<lex pron="k l i1 cc ee0" entry="full" default="true">cluichí</lex>
+<lex pron="k l aa1 r" entry="full" default="true">clár</lex>
+<lex pron="k o1 g @0" entry="full" default="true">cogadh</lex>
+<lex pron="k i1 lj @0" entry="full" default="true">coille</lex>
+<lex pron="k o0 mj i1 sh i0 nj eey1 rj" entry="full" default="true">coimisinéir</lex>
+<lex pron="k o0 mj i1 sh uu2 n" entry="full" default="true">coimisiún</lex>
+<lex pron="k @0 nj ee1 l @0 x @0" entry="full" default="true">coinníollacha</lex>
+<lex pron="k o1 sh" entry="full" default="true">cois</lex>
+<lex pron="k i1 sh tj @0" entry="full" default="true">coiste</lex>
+<lex pron="k @0 tj i@1 n t @0" entry="full" default="true">coitianta</lex>
+<lex pron="k o1 l m" entry="full" default="true">colm</lex>
+<lex pron="k @0 l aa1 sh tj @2" entry="full" default="true">coláiste</lex>
+<lex pron="k o1 rj lj @2" entry="full" default="true">comhairle</lex>
+<lex pron="k oy1 eey2 n t uu0" entry="full" default="true">comhaontú</lex>
+<lex pron="k oy1 l @0 x t" entry="full" default="true">comhlacht</lex>
+<lex pron="k oy1 l @0 x t @0" entry="full" default="true">comhlachta</lex>
+<lex pron="k oy1 r aa0" entry="full" default="true">comhrá</lex>
+<lex pron="k o1 m aa0 nj" entry="full" default="true">comáin</lex>
+<lex pron="k o0 m oy1 r @2" entry="full" default="true">comóradh</lex>
+<lex pron="k o0 m oy1 r t @0 s" entry="full" default="true">comórtas</lex>
+<lex pron="k o1 n @0 s" entry="full" default="true">conas</lex>
+<lex pron="k r uh1 x uu0 rj" entry="full" default="true">conchúir</lex>
+<lex pron="k o1 n r @0" entry="full" default="true">conradh</lex>
+<lex pron="k uu1 n d eey0" entry="full" default="true">contae</lex>
+<lex pron="k o1 r p" entry="full" default="true">corp</lex>
+<lex pron="k o0 s uu1 lj" entry="full" default="true">cosúil</lex>
+<lex pron="k o0 s uu1 l @2 x t" entry="full" default="true">cosúlacht</lex>
+<lex pron="k o1 h r @0 m" entry="full" default="true">cothrom</lex>
+<lex pron="k rj e1 dj i0 mj" entry="full" default="true">creidim</lex>
+<lex pron="k r ee1" entry="full" default="true">croí</lex>
+<lex pron="k r u@1" entry="full" default="true">crua</lex>
+<lex pron="k r ee1 nj" entry="full" default="true">cruinn</lex>
+<lex pron="k r i1 nj uu0" entry="full" default="true">cruinniú</lex>
+<lex pron="k r uh1 h i@2 n" entry="full" default="true">cruthaíonn</lex>
+<lex pron="kj rj i@1 x @0" entry="full" default="true">críocha</lex>
+<lex pron="k u@1 rj tj" entry="full" default="true">cuairt</lex>
+<lex pron="k i1 dj" entry="full" default="true">cuid</lex>
+<lex pron="k i1 dj @0 x t @0" entry="full" default="true">cuideachta</lex>
+<lex pron="k i1 dj uu0" entry="full" default="true">cuidiú</lex>
+<lex pron="k i1 v i0 nj" entry="full" default="true">cuimhin</lex>
+<lex pron="k uh1 rj" entry="full" default="true">cuir</lex>
+<lex pron="k uh1 rj @0" entry="full" default="true">cuireadh</lex>
+<lex pron="k uh1 rj @0 n" entry="full" default="true">cuireann</lex>
+<lex pron="k uh1 rj fj @0 r" entry="full" default="true">cuirfear</lex>
+<lex pron="k uh1 rj h i0 gj" entry="full" default="true">cuirfidh</lex>
+<lex pron="k uh1 rj tj @0 r" entry="full" default="true">cuirtear</lex>
+<lex pron="k uh1 m @0" entry="full" default="true">cuma</lex>
+<lex pron="k uh1 m @0 n" entry="full" default="true">cumann</lex>
+<lex pron="k uh1 m @0 s" entry="full" default="true">cumas</lex>
+<lex pron="k uu1 n t @0 s" entry="full" default="true">cuntas</lex>
+<lex pron="k uh1 r" entry="full" default="true">cur</lex>
+<lex pron="k uh1 r h @0" entry="full" default="true">curtha</lex>
+<lex pron="k ee1" entry="full" default="true">cuí</lex>
+<lex pron="k aa1" entry="full" default="true">cá</lex>
+<lex pron="k aa1 nj tj @0" entry="full" default="true">cáinte</lex>
+<lex pron="k aa1 pj eey0 sh" entry="full" default="true">cáipéis</lex>
+<lex pron="k aa1 n @0 x" entry="full" default="true">cánach</lex>
+<lex pron="k aa1 r t ee0" entry="full" default="true">cártaí</lex>
+<lex pron="k aa1 s" entry="full" default="true">cás</lex>
+<lex pron="kj eey1" entry="full" default="true">cé</lex>
+<lex pron="kj eey1 d" entry="full" default="true">céad</lex>
+<lex pron="kj eey1 n @0" entry="full" default="true">céanna</lex>
+<lex pron="kj e1 r d" entry="full" default="true">céard</lex>
+<lex pron="kj eey1 dj i0 gj" entry="full" default="true">céidigh</lex>
+<lex pron="kj eey1 mj" entry="full" default="true">céim</lex>
+<lex pron="kj eey1 nj" entry="full" default="true">cén</lex>
+<lex pron="k o1 i0 rj" entry="full" default="true">cóir</lex>
+<lex pron="k oy1 sh tj @0" entry="full" default="true">cóiste</lex>
+<lex pron="k oy1 n ee0" entry="full" default="true">cónaí</lex>
+<lex pron="k o1 r @0 s" entry="full" default="true">córas</lex>
+<lex pron="k uu1" entry="full" default="true">cú</lex>
+<lex pron="k uu1 i0 gj" entry="full" default="true">cúig</lex>
+<lex pron="k uh1 rj tj @0" entry="full" default="true">cúirte</lex>
+<lex pron="k uu1 sh" entry="full" default="true">cúis</lex>
+<lex pron="k uu1 sh @0" entry="full" default="true">cúise</lex>
+<lex pron="k uu1 sh i0 h @0" entry="full" default="true">cúisithe</lex>
+<lex pron="k uu1 l" entry="full" default="true">cúl</lex>
+<lex pron="k uu1 n @0 v" entry="full" default="true">cúnamh</lex>
+<lex pron="k uu1 p l @0" entry="full" default="true">cúpla</lex>
+<lex pron="k uh1 r @0 m" entry="full" default="true">cúram</lex>
+<lex pron="k uh1 r s @0" entry="full" default="true">cúrsa</lex>
+<lex pron="k uh1 r s ee0" entry="full" default="true">cúrsaí</lex>
+<lex pron="d ee1" entry="full" default="true">d</lex>
+<lex pron="d ee1 sh" entry="full" default="true">d'aois</lex>
+<lex pron="d a1 n" entry="full" default="true">d'fhan</lex>
+<lex pron="d i@1 fj r i0 gj" entry="full" default="true">d'fhiafraigh</lex>
+<lex pron="d i@1 r" entry="full" default="true">d'iarr</lex>
+<lex pron="d i1 mj i0 gj" entry="full" default="true">d'imigh</lex>
+<lex pron="d i1 lj aa0 n" entry="full" default="true">d'oileán</lex>
+<lex pron="d a1 ngj @0 n" entry="full" default="true">daingean</lex>
+<lex pron="d au1 s @0" entry="full" default="true">damhsa</lex>
+<lex pron="d ee1 nj @0" entry="full" default="true">daoine</lex>
+<lex pron="d eey1 @0 n @0" entry="full" default="true">daonna</lex>
+<lex pron="d a1 r" entry="full" default="true">dar</lex>
+<lex pron="d a1 r @0" entry="full" default="true">dara</lex>
+<lex pron="d a1" entry="full" default="true">dath</lex>
+<lex pron="dj @1" entry="full" default="true">de</lex>
+<lex pron="dj a1 r v i@2 n" entry="full" default="true">dearbhaíonn</lex>
+<lex pron="dj a1 k @0 rj" entry="full" default="true">deacair</lex>
+<lex pron="dj a1 r @0" entry="full" default="true">deara</lex>
+<lex pron="dj a1 r k @0" entry="full" default="true">dearcadh</lex>
+<lex pron="dj a1 r @0 g" entry="full" default="true">dearg</lex>
+<lex pron="dj a0 r uu1 d" entry="full" default="true">dearmad</lex>
+<lex pron="dj a1 s" entry="full" default="true">deas</lex>
+<lex pron="dj e1" entry="full" default="true">deich</lex>
+<lex pron="dj ai1 nj" entry="full" default="true">deimhin</lex>
+<lex pron="dj ai2 nj ee1 @0 x" entry="full" default="true">deimhníodh</lex>
+<lex pron="dj e1 rj" entry="full" default="true">deir</lex>
+<lex pron="dj e1 rj @0" entry="full" default="true">deireadh</lex>
+<lex pron="dj e1 rj n @2 x" entry="full" default="true">deireanach</lex>
+<lex pron="dj e1 rj i0 gj" entry="full" default="true">deiridh</lex>
+<lex pron="dj e1 rj tj @0 r" entry="full" default="true">deirtear</lex>
+<lex pron="dj e1 sh" entry="full" default="true">deis</lex>
+<lex pron="dj e1 sh kj @0 r t" entry="full" default="true">deisceart</lex>
+<lex pron="dj e1 nj" entry="full" default="true">den</lex>
+<lex pron="dj oy1" entry="full" default="true">deo</lex>
+<lex pron="dj uh1 x" entry="full" default="true">deoch</lex>
+<lex pron="j i@1" entry="full" default="true">dhiaidh</lex>
+<lex pron="gg i1 rj @0" entry="full" default="true">dhoire</lex>
+<lex pron="gg r i@1 x t" entry="full" default="true">dhraíocht</lex>
+<lex pron="gg r i1 mj sh @0" entry="full" default="true">dhroimse</lex>
+<lex pron="j eey1 n @0 v" entry="full" default="true">dhéanamh</lex>
+<lex pron="j i@1 v" entry="full" default="true">dhíobh</lex>
+<lex pron="j i@1 l" entry="full" default="true">dhíol</lex>
+<lex pron="gg uu1 nj" entry="full" default="true">dhún</lex>
+<lex pron="dj ee1" entry="full" default="true">di</lex>
+<lex pron="dj i@1" entry="full" default="true">dia</lex>
+<lex pron="dj i@1 l" entry="full" default="true">diabhal</lex>
+<lex pron="dj lj ee1" entry="full" default="true">dlí</lex>
+<lex pron="d @1" entry="full" default="true">do</lex>
+<lex pron="d o1 rj" entry="full" default="true">dobhair</lex>
+<lex pron="d o1 x @0 r" entry="full" default="true">dochar</lex>
+<lex pron="d o1 x t" entry="full" default="true">docht</lex>
+<lex pron="d o0 x t uu1 rj" entry="full" default="true">dochtúir</lex>
+<lex pron="d i1 rj @0 n" entry="full" default="true">doireann</lex>
+<lex pron="d o1 m" entry="full" default="true">dom</lex>
+<lex pron="d au1 i0 nj" entry="full" default="true">domhain</lex>
+<lex pron="d au1 @0 n" entry="full" default="true">domhan</lex>
+<lex pron="d au1 @0 n d @0" entry="full" default="true">domhanda</lex>
+<lex pron="d au1 n @0 x" entry="full" default="true">domhnach</lex>
+<lex pron="d au1 n i0 gj" entry="full" default="true">domhnaigh</lex>
+<lex pron="d o1 n" entry="full" default="true">don</lex>
+<lex pron="d o1 n @0" entry="full" default="true">dona</lex>
+<lex pron="d o1 r @0 s" entry="full" default="true">doras</lex>
+<lex pron="d r au1 i@2 l @0" entry="full" default="true">dramhaíola</lex>
+<lex pron="d rj a1 x" entry="full" default="true">dreach</lex>
+<lex pron="dj rj au1 m" entry="full" default="true">dream</lex>
+<lex pron="d r uh1 g ee0" entry="full" default="true">drugaí</lex>
+<lex pron="d r aa1 m @0" entry="full" default="true">dráma</lex>
+<lex pron="d r eey1 x t" entry="full" default="true">dréacht</lex>
+<lex pron="d uu1 r @2 x" entry="full" default="true">dtabharfadh</lex>
+<lex pron="d a1 g r ee0 tj @2 r" entry="full" default="true">dtagraítear</lex>
+<lex pron="dj au1 n t @0" entry="full" default="true">dteannta</lex>
+<lex pron="dj i1 tj i0 mj" entry="full" default="true">dtitim</lex>
+<lex pron="d t o1 l" entry="full" default="true">dtoll</lex>
+<lex pron="d rj uh0 m oy1 x" entry="full" default="true">dtriomódh</lex>
+<lex pron="d ee1" entry="full" default="true">dtí</lex>
+<lex pron="d u@1 sh" entry="full" default="true">duais</lex>
+<lex pron="d uh1 v" entry="full" default="true">dubh</lex>
+<lex pron="d i1 v @0" entry="full" default="true">duibhe</lex>
+<lex pron="d i1 nj @0" entry="full" default="true">duine</lex>
+<lex pron="d i1 tj" entry="full" default="true">duit</lex>
+<lex pron="d uh1 l" entry="full" default="true">dul</lex>
+<lex pron="d aa1" entry="full" default="true">dá</lex>
+<lex pron="d aa1 lj" entry="full" default="true">dáil</lex>
+<lex pron="d aa1 rj i1 rj @0" entry="full" default="true">dáiríre</lex>
+<lex pron="d aa1 l @0" entry="full" default="true">dála</lex>
+<lex pron="d aa1 n" entry="full" default="true">dán</lex>
+<lex pron="d aa1 r" entry="full" default="true">dár</lex>
+<lex pron="d aa1 t @0" entry="full" default="true">dáta</lex>
+<lex pron="dj eey1" entry="full" default="true">dé</lex>
+<lex pron="dj eey1 g" entry="full" default="true">déag</lex>
+<lex pron="dj eey1 n" entry="full" default="true">déan</lex>
+<lex pron="dj eey1 n @0 v" entry="full" default="true">déanamh</lex>
+<lex pron="dj eey1 n @0 n" entry="full" default="true">déanann</lex>
+<lex pron="dj eey1 n ee0" entry="full" default="true">déanaí</lex>
+<lex pron="dj eey1 n i0 gj" entry="full" default="true">déanfaidh</lex>
+<lex pron="dj eey1 n f @0 r" entry="full" default="true">déanfar</lex>
+<lex pron="dj eey1 n t @0" entry="full" default="true">déanta</lex>
+<lex pron="dj eey1 n t @0 r" entry="full" default="true">déantar</lex>
+<lex pron="dj eey1 r f aa0" entry="full" default="true">déarfá</lex>
+<lex pron="dj eey1 rj kj @0" entry="full" default="true">déirce</lex>
+<lex pron="d ee1 dj @0 n" entry="full" default="true">dídean</lex>
+<lex pron="dj i@1 v" entry="full" default="true">díobh</lex>
+<lex pron="d i@1 fj @0" entry="full" default="true">díofa</lex>
+<lex pron="dj i@1 l" entry="full" default="true">díol</lex>
+<lex pron="d i@1 t" entry="full" default="true">díot</lex>
+<lex pron="dj ee1 rj @0 x" entry="full" default="true">díreach</lex>
+<lex pron="d oy1" entry="full" default="true">dó</lex>
+<lex pron="d oy1 x @0" entry="full" default="true">dócha</lex>
+<lex pron="d oy1 i0 v" entry="full" default="true">dóibh</lex>
+<lex pron="d oy1 i0 gj" entry="full" default="true">dóigh</lex>
+<lex pron="d uu1 x i0 sh" entry="full" default="true">dúchais</lex>
+<lex pron="d uu1 lj" entry="full" default="true">dúil</lex>
+<lex pron="d uu1 i0 nj" entry="full" default="true">dúinn</lex>
+<lex pron="d uu1 rj tj" entry="full" default="true">dúirt</lex>
+<lex pron="d uu1 n" entry="full" default="true">dún</lex>
+<lex pron="d uu1 n v @2 r i0 h @0" entry="full" default="true">dúnmharaithe</lex>
+<lex pron="d uu1 n t @0" entry="full" default="true">dúnta</lex>
+<lex pron="d uu1 r @0" entry="full" default="true">dúradh</lex>
+<lex pron="ee1" entry="full" default="true">e</lex>
+<lex pron="a1" entry="full" default="true">ea</lex>
+<lex pron="a1 x" entry="full" default="true">each</lex>
+<lex pron="a1 k n @0 m i@2 x t @0" entry="full" default="true">eacnamaíochta</lex>
+<lex pron="a1 d r aa2 n ee0" entry="full" default="true">eadránaí</lex>
+<lex pron="a1 g l @0" entry="full" default="true">eagla</lex>
+<lex pron="a1 g l i0 sh" entry="full" default="true">eaglais</lex>
+<lex pron="a1 g r i@0 x t" entry="full" default="true">eagraíocht</lex>
+<lex pron="a1 l ee0 nj @2" entry="full" default="true">ealaíne</lex>
+<lex pron="a1 l i@0 n" entry="full" default="true">ealaíon</lex>
+<lex pron="a1 n i0 rj" entry="full" default="true">eanáir</lex>
+<lex pron="a1 r ee0" entry="full" default="true">earraí</lex>
+<lex pron="a1 s k @0 rj tj" entry="full" default="true">eascairt</lex>
+<lex pron="a1 s p @0" entry="full" default="true">easpa</lex>
+<lex pron="a1 s p oy0 r t aa2 lj tj @0 r" entry="full" default="true">easpórtáiltear</lex>
+<lex pron="a1 t @0 r h @2" entry="full" default="true">eatarthu</lex>
+<lex pron="e1 x" entry="full" default="true">eich</lex>
+<lex pron="e0 k ee1 nj tj" entry="full" default="true">eicínt</lex>
+<lex pron="e1 lj @0" entry="full" default="true">eile</lex>
+<lex pron="oy1" entry="full" default="true">eo</lex>
+<lex pron="oy1 nj" entry="full" default="true">eoin</lex>
+<lex pron="oy1 l" entry="full" default="true">eol</lex>
+<lex pron="oy1 l i0 sh" entry="full" default="true">eolais</lex>
+<lex pron="oy1 l @0 s" entry="full" default="true">eolas</lex>
+<lex pron="j o1 r @0 pj" entry="full" default="true">eoraip</lex>
+<lex pron="j o1 r p @0 x" entry="full" default="true">eorpach</lex>
+<lex pron="j o1 r p i0 gj" entry="full" default="true">eorpaigh</lex>
+<lex pron="j uh1 r oy0" entry="full" default="true">euro</lex>
+<lex pron="e1 f" entry="full" default="true">f</lex>
+<lex pron="f eey1 s b uh2 k" entry="full" default="true">facebook</lex>
+<lex pron="f a1 d" entry="full" default="true">fad</lex>
+<lex pron="f a1 d @0" entry="full" default="true">fada</lex>
+<lex pron="f ai1 b" entry="full" default="true">fadhb</lex>
+<lex pron="f ai1 b @0 n @0" entry="full" default="true">fadhbanna</lex>
+<lex pron="f a0 d oy1" entry="full" default="true">fadó</lex>
+<lex pron="f a1 dj @0" entry="full" default="true">faide</lex>
+<lex pron="f ai1 gj tj @0" entry="full" default="true">faighte</lex>
+<lex pron="f a1 rj @0" entry="full" default="true">faire</lex>
+<lex pron="f a1 n @0 x t" entry="full" default="true">fanacht</lex>
+<lex pron="f ee1" entry="full" default="true">faoi</lex>
+<lex pron="f ee1 nj" entry="full" default="true">faoin</lex>
+<lex pron="f ee1 nj @0" entry="full" default="true">faoina</lex>
+<lex pron="f a1 r @0 gj @2" entry="full" default="true">farraige</lex>
+<lex pron="f a1 r" entry="full" default="true">fear</lex>
+<lex pron="fj a1 r" entry="full" default="true">fearr</lex>
+<lex pron="fj a1 s t @0" entry="full" default="true">feasta</lex>
+<lex pron="fj e1 kj aa0 lj" entry="full" default="true">feiceáil</lex>
+<lex pron="f ai1 mj" entry="full" default="true">feidhm</lex>
+<lex pron="f ai1 mj @0" entry="full" default="true">feidhme</lex>
+<lex pron="f ai1 mj @0 n" entry="full" default="true">feidhmeann</lex>
+<lex pron="fj e1 rj mj o2 rj ee0" entry="full" default="true">feirmeoirí</lex>
+<lex pron="fj e1 rj s tj @0" entry="full" default="true">feirste</lex>
+<lex pron="a1 k @0" entry="full" default="true">fhaca</lex>
+<lex pron="a1 r" entry="full" default="true">fhearr</lex>
+<lex pron="au1 l @0 mj" entry="full" default="true">fhoghlaim</lex>
+<lex pron="uh1 r b @0 rj tj" entry="full" default="true">fhorbairt</lex>
+<lex pron="rj a1 g @0 rj tj" entry="full" default="true">fhreagairt</lex>
+<lex pron="aa1 g" entry="full" default="true">fhág</lex>
+<lex pron="aa1 lj" entry="full" default="true">fháil</lex>
+<lex pron="aa1 n @0 d @0" entry="full" default="true">fhánada</lex>
+<lex pron="h eey1 nj" entry="full" default="true">fhéin</lex>
+<lex pron="fj i@1 f r i@2 x" entry="full" default="true">fiafraíodh</lex>
+<lex pron="fj i@1 n @0 sh @2" entry="full" default="true">fianaise</lex>
+<lex pron="fj i@1 n @0" entry="full" default="true">fianna</lex>
+<lex pron="fj i1 cc @0" entry="full" default="true">fiche</lex>
+<lex pron="f i1 cc uu0" entry="full" default="true">fichiú</lex>
+<lex pron="fj i2 gj uu1 rj ee0" entry="full" default="true">figiúirí</lex>
+<lex pron="fj i1 lj @0" entry="full" default="true">file</lex>
+<lex pron="fj i1 lj @0" entry="full" default="true">filleadh</lex>
+<lex pron="fj uh1 n" entry="full" default="true">fionn</lex>
+<lex pron="fj i1 s" entry="full" default="true">fios</lex>
+<lex pron="fj i1 s r oy2 i0 gj" entry="full" default="true">fiosróidh</lex>
+<lex pron="fj i1 s r uu2 x aa2 n" entry="full" default="true">fiosrúchán</lex>
+<lex pron="fj i1 rj" entry="full" default="true">fir</lex>
+<lex pron="fj uu1" entry="full" default="true">fiú</lex>
+<lex pron="f o1 k @0 lj" entry="full" default="true">focail</lex>
+<lex pron="f o1 k @0 l" entry="full" default="true">focal</lex>
+<lex pron="f uh1 x oy0 l @0 x t" entry="full" default="true">fochomhlacht</lex>
+<lex pron="f au1 l @0 mj" entry="full" default="true">foghlaim</lex>
+<lex pron="f ai1 lj sh i@0 x" entry="full" default="true">foilsíodh</lex>
+<lex pron="f ee1 nj sh @0" entry="full" default="true">foinse</lex>
+<lex pron="f i1 rj @0 n" entry="full" default="true">foireann</lex>
+<lex pron="f o1 rj fj @0" entry="full" default="true">foirfe</lex>
+<lex pron="f i1 rj nj @0" entry="full" default="true">foirne</lex>
+<lex pron="f o1 l @0" entry="full" default="true">fola</lex>
+<lex pron="f au1 n" entry="full" default="true">fonn</lex>
+<lex pron="f uh1 r b @0 rj tj" entry="full" default="true">forbairt</lex>
+<lex pron="f uh2 r b @1 r h @0" entry="full" default="true">forbartha</lex>
+<lex pron="f o0 r v oy1 r" entry="full" default="true">formhór</lex>
+<lex pron="f o2 r aa1 l @0 x @0" entry="full" default="true">forálacha</lex>
+<lex pron="f o1 s t @0" entry="full" default="true">fosta</lex>
+<lex pron="f o1 s t i@0 x t" entry="full" default="true">fostaíocht</lex>
+<lex pron="fj rj a1 g r @0" entry="full" default="true">freagra</lex>
+<lex pron="fj rj a1 s t @0 l" entry="full" default="true">freastal</lex>
+<lex pron="fj rj e1 sh i0 nj" entry="full" default="true">freisin</lex>
+<lex pron="f u@1 rj" entry="full" default="true">fuair</lex>
+<lex pron="f u@1 r" entry="full" default="true">fuar</lex>
+<lex pron="f u@1 r h @2 s" entry="full" default="true">fuarthas</lex>
+<lex pron="f aa1" entry="full" default="true">fá</lex>
+<lex pron="f aa1 g h @0" entry="full" default="true">fágtha</lex>
+<lex pron="f aa1 lj" entry="full" default="true">fáil</lex>
+<lex pron="f aa1 lj tj @2" entry="full" default="true">fáilte</lex>
+<lex pron="f aa1 n" entry="full" default="true">fán</lex>
+<lex pron="f aa1 s" entry="full" default="true">fás</lex>
+<lex pron="f aa1" entry="full" default="true">fáth</lex>
+<lex pron="fj eey1" entry="full" default="true">fé</lex>
+<lex pron="fj eey1 x" entry="full" default="true">féach</lex>
+<lex pron="fj eey1 x @0 nj tj" entry="full" default="true">féachaint</lex>
+<lex pron="fj eey1 d i0 gj" entry="full" default="true">féadfaidh</lex>
+<lex pron="f eey1 s oy0 g" entry="full" default="true">féasóg</lex>
+<lex pron="fj eey1 dj i0 rj" entry="full" default="true">féidir</lex>
+<lex pron="fj eey1 lj @0" entry="full" default="true">féile</lex>
+<lex pron="fj eey1 nj" entry="full" default="true">féin</lex>
+<lex pron="f eey1 rj" entry="full" default="true">féir</lex>
+<lex pron="fj eey1 h oy0 g" entry="full" default="true">féitheog</lex>
+<lex pron="fj i@1 r" entry="full" default="true">fíor</lex>
+<lex pron="fj i@1 r v i@0 x" entry="full" default="true">fíorbhuíoch</lex>
+<lex pron="fj i@1 rj a0 l i@2 n t @0" entry="full" default="true">fíorealaíonta</lex>
+<lex pron="fj i@1 r f r a2 tj i0 kj uu2 lj" entry="full" default="true">fíorphraiticiúil</lex>
+<lex pron="fj ee1 rj i0 nj @2" entry="full" default="true">fírinne</lex>
+<lex pron="f oy1 g r @0" entry="full" default="true">fógra</lex>
+<lex pron="f oy1 lj" entry="full" default="true">fóill</lex>
+<lex pron="f oy1 @0 rj" entry="full" default="true">fómhair</lex>
+<lex pron="f oy1 s" entry="full" default="true">fós</lex>
+<lex pron="f uu1 h @0" entry="full" default="true">fúthu</lex>
+<lex pron="dj ee1" entry="full" default="true">g</lex>
+<lex pron="g au1" entry="full" default="true">gabh</lex>
+<lex pron="g au0 aa1 lj" entry="full" default="true">gabháil</lex>
+<lex pron="g a1 x" entry="full" default="true">gach</lex>
+<lex pron="g eey1 lj" entry="full" default="true">gaeil</lex>
+<lex pron="g eey1 lj gj @2" entry="full" default="true">gaeilge</lex>
+<lex pron="g eey1 lj" entry="full" default="true">gael</lex>
+<lex pron="g eey1 lj t @0 x t @0" entry="full" default="true">gaeltachta</lex>
+<lex pron="g a1 lj i0 v" entry="full" default="true">gaillimh</lex>
+<lex pron="g a1 lj i0 v @2" entry="full" default="true">gaillimhe</lex>
+<lex pron="g a1 rj i0 dj" entry="full" default="true">gairid</lex>
+<lex pron="g a1 sh k i@2 x" entry="full" default="true">gaiscíoch</lex>
+<lex pron="g a1 l @0 r" entry="full" default="true">galar</lex>
+<lex pron="g a1 n" entry="full" default="true">gan</lex>
+<lex pron="g a1 r" entry="full" default="true">gar</lex>
+<lex pron="g a1 s uu0 r" entry="full" default="true">gasúr</lex>
+<lex pron="g a1 z a0" entry="full" default="true">gaza</lex>
+<lex pron="g a1 rj eey0 l" entry="full" default="true">gcairéal</lex>
+<lex pron="g a1 tj @0 x @0 s" entry="full" default="true">gcaiteachas</lex>
+<lex pron="g a1 hj @0 v" entry="full" default="true">gcaitheamh</lex>
+<lex pron="g a1 fj ee1" entry="full" default="true">gcaithfí</lex>
+<lex pron="g e1 sh tj" entry="full" default="true">gceist</lex>
+<lex pron="g i1 nj aa0 l" entry="full" default="true">gcineál</lex>
+<lex pron="g l i1 cc @0" entry="full" default="true">gcluiche</lex>
+<lex pron="g l aa1 r" entry="full" default="true">gclár</lex>
+<lex pron="g i1 nj x a0 p" entry="full" default="true">gcoincheap</lex>
+<lex pron="g i1 nj o1 x" entry="full" default="true">gcoinneodh</lex>
+<lex pron="g oy1 gg u@1 l i@2 x t" entry="full" default="true">gcomhghuallaíocht</lex>
+<lex pron="g i1 dj" entry="full" default="true">gcuid</lex>
+<lex pron="gj eey1 d" entry="full" default="true">gcéad</lex>
+<lex pron="g oy1 n ee0" entry="full" default="true">gcónaí</lex>
+<lex pron="g oy1 r @0 s" entry="full" default="true">gcóras</lex>
+<lex pron="gj a1 l" entry="full" default="true">geal</lex>
+<lex pron="gj a1 n s ee2" entry="full" default="true">geansaí</lex>
+<lex pron="gj a1 r" entry="full" default="true">gearr</lex>
+<lex pron="gj a1 r h @0" entry="full" default="true">gearrtha</lex>
+<lex pron="gj a1 r aa0 n" entry="full" default="true">gearán</lex>
+<lex pron="gj a1 r oy0 dj" entry="full" default="true">gearóid</lex>
+<lex pron="gg eey1 lj gj @0" entry="full" default="true">ghaeilge</lex>
+<lex pron="gg eey1 l t @2 x t" entry="full" default="true">ghaeltacht</lex>
+<lex pron="gg eey1 l t @2 x t @0" entry="full" default="true">ghaeltachta</lex>
+<lex pron="gg aa1 rj dj ee0 nj" entry="full" default="true">ghairdín</lex>
+<lex pron="gg l a1 k aa0 nj" entry="full" default="true">ghlacáin</lex>
+<lex pron="gg l u@1 sh tj aa2 n" entry="full" default="true">ghluaisteán</lex>
+<lex pron="gj i1 nj @0 r aa2 l t @0" entry="full" default="true">ginearálta</lex>
+<lex pron="gj uh1 tj @0" entry="full" default="true">giota</lex>
+<lex pron="g l a1 k @0" entry="full" default="true">glacadh</lex>
+<lex pron="g l a1 n" entry="full" default="true">glan</lex>
+<lex pron="g l eey1 x" entry="full" default="true">glaoch</lex>
+<lex pron="g l a1 s" entry="full" default="true">glas</lex>
+<lex pron="g l u@1 sh @0 x" entry="full" default="true">gluaiseach</lex>
+<lex pron="gj nj ee1 v i@2 x t ee0" entry="full" default="true">gníomhaíochtaí</lex>
+<lex pron="gj nj ee1 v uu0" entry="full" default="true">gníomhú</lex>
+<lex pron="g n oy1" entry="full" default="true">gnó</lex>
+<lex pron="g @1" entry="full" default="true">go</lex>
+<lex pron="g o1 r t i@0 x" entry="full" default="true">gortaíodh</lex>
+<lex pron="gj rj ai1 mj" entry="full" default="true">greim</lex>
+<lex pron="g r aa1" entry="full" default="true">grá</lex>
+<lex pron="g r aa1 nj" entry="full" default="true">gráin</lex>
+<lex pron="gj rj eey1 nj @0" entry="full" default="true">gréine</lex>
+<lex pron="g r uu1 p @0" entry="full" default="true">grúpa</lex>
+<lex pron="g uh1 r" entry="full" default="true">gur</lex>
+<lex pron="g uh1 r b" entry="full" default="true">gurb</lex>
+<lex pron="g uh1 r v" entry="full" default="true">gurbh</lex>
+<lex pron="g aa1" entry="full" default="true">gá</lex>
+<lex pron="g aa1 rj @2" entry="full" default="true">gáire</lex>
+<lex pron="gj eey1 r" entry="full" default="true">géar</lex>
+<lex pron="eey1 tj" entry="full" default="true">h</lex>
+<lex pron="h e1 rj f o2 rj tj" entry="full" default="true">haerfoirt</lex>
+<lex pron="h ai1 gj" entry="full" default="true">haghaidh</lex>
+<lex pron="h a1 l @0" entry="full" default="true">halla</lex>
+<lex pron="h a1 l v i0 nj" entry="full" default="true">halmhain</lex>
+<lex pron="h ee1 sh" entry="full" default="true">haois</lex>
+<lex pron="h eey1 n" entry="full" default="true">haon</lex>
+<lex pron="h a1 l i@0 n t oy2 rj ee0" entry="full" default="true">healaíontóirí</lex>
+<lex pron="hj o1 r p @0" entry="full" default="true">heorpa</lex>
+<lex pron="h i1 mj i0 rj tj" entry="full" default="true">himirt</lex>
+<lex pron="h uh1 m l aa2 n" entry="full" default="true">hiomlán</lex>
+<lex pron="h uh1 n s @0 h @0" entry="full" default="true">hionsaithe</lex>
+<lex pron="h i1 p n oy2 sh" entry="full" default="true">hiopnóis</lex>
+<lex pron="h o1 x t" entry="full" default="true">hocht</lex>
+<lex pron="h i1 fj i0 gj uu2 lj" entry="full" default="true">hoifigiúil</lex>
+<lex pron="h ee1 hj @0" entry="full" default="true">hoíche</lex>
+<lex pron="h o1 s pj i0 dj eey1 l" entry="full" default="true">hospidéal</lex>
+<lex pron="h u@1 x t @0 rj" entry="full" default="true">huachtair</lex>
+<lex pron="h u@1 rj @0" entry="full" default="true">huaire</lex>
+<lex pron="h aa1 rj i2 h @0" entry="full" default="true">háirithe</lex>
+<lex pron="h aa1 tj" entry="full" default="true">háit</lex>
+<lex pron="h aa1 tj @2" entry="full" default="true">háite</lex>
+<lex pron="h aa1 r i0 nj" entry="full" default="true">hárainn</lex>
+<lex pron="h eey1" entry="full" default="true">hé</lex>
+<lex pron="h eey1 lj @0 k a2 p t @0 r" entry="full" default="true">héileacaptar</lex>
+<lex pron="h eey1 rj @0 n" entry="full" default="true">héireann</lex>
+<lex pron="i1" entry="full" default="true">i</lex>
+<lex pron="ai1" entry="1" default="false">i</lex>
+<lex pron="i@1 d" entry="full" default="true">iad</lex>
+<lex pron="i@1 r" entry="full" default="true">iarr</lex>
+<lex pron="i@1 r @0 x t" entry="full" default="true">iarracht</lex>
+<lex pron="i@1 r i0 gj" entry="full" default="true">iarraidh</lex>
+<lex pron="i@1 r @0 t i2 sh" entry="full" default="true">iarratais</lex>
+<lex pron="i@1 r @0 t @2 s" entry="full" default="true">iarratas</lex>
+<lex pron="i@1 r f @0 s" entry="full" default="true">iarrfas</lex>
+<lex pron="i@1 r t @0 r" entry="full" default="true">iarrtar</lex>
+<lex pron="i@1 r s k o2 lj @0" entry="full" default="true">iarscoile</lex>
+<lex pron="i@1 r h @0 r" entry="full" default="true">iarthar</lex>
+<lex pron="i@1 r h u@2 sh kj @0 r t" entry="full" default="true">iarthuaisceart</lex>
+<lex pron="i1 dj i0 rj" entry="full" default="true">idir</lex>
+<lex pron="i2 dj i0 rj n aa1 sh uu2 n t @0" entry="full" default="true">idirnáisiúnta</lex>
+<lex pron="ee1 mj" entry="full" default="true">im</lex>
+<lex pron="i0 mj a1 x t" entry="full" default="true">imeacht</lex>
+<lex pron="i0 mj a1 x t @0" entry="full" default="true">imeachta</lex>
+<lex pron="i0 mj a0 x t ee2" entry="full" default="true">imeachtaí</lex>
+<lex pron="i1 mj i0 gj" entry="full" default="true">imigh</lex>
+<lex pron="i1 mj @0 rj tj" entry="full" default="true">imirt</lex>
+<lex pron="i1 mj i0 h @2" entry="full" default="true">imithe</lex>
+<lex pron="i1 mj nj ee0" entry="full" default="true">imní</lex>
+<lex pron="i1 mj ai2 bj rj o2 rj ee0" entry="full" default="true">imoibreoirí</lex>
+<lex pron="i2 mj rj oy1 f @0 r" entry="full" default="true">imreofar</lex>
+<lex pron="i2 mj rj oy1 i0 gj" entry="full" default="true">imreoidh</lex>
+<lex pron="i1 nj" entry="full" default="true">in</lex>
+<lex pron="i1 n @0" entry="full" default="true">ina</lex>
+<lex pron="i1 n @0 r" entry="full" default="true">inar</lex>
+<lex pron="i1 nj @0 l t oy2 rj" entry="full" default="true">innealtóir</lex>
+<lex pron="i0 nj eey1" entry="full" default="true">inné</lex>
+<lex pron="i2 nj e0 sh tj i@1 x t @0" entry="full" default="true">infheistíochta</lex>
+<lex pron="i1 nj i0 sh" entry="full" default="true">inis</lex>
+<lex pron="i2 nj uu1 x @0 x" entry="full" default="true">iniúchadh</lex>
+<lex pron="i0 nj uh1 v" entry="full" default="true">inniu</lex>
+<lex pron="i1 nj s" entry="full" default="true">ins</lex>
+<lex pron="ee1 nj sh i0 nj tj" entry="full" default="true">insint</lex>
+<lex pron="i2 nj s tj i1 tj uu0 dj" entry="full" default="true">institiúid</lex>
+<lex pron="i1 nj tj i0" entry="full" default="true">inti</lex>
+<lex pron="i1 nj tj i0 nj" entry="full" default="true">intinn</lex>
+<lex pron="i1 n aa2 r" entry="full" default="true">inár</lex>
+<lex pron="i1 nj ee0 n" entry="full" default="true">iníon</lex>
+<lex pron="i1 d aa0 lj" entry="full" default="true">iodáil</lex>
+<lex pron="uh1 m ee0" entry="full" default="true">iomaí</lex>
+<lex pron="uh1 m x ee0" entry="full" default="true">iomchuí</lex>
+<lex pron="uh1 m l aa2 n" entry="full" default="true">iomlán</lex>
+<lex pron="uh1 m p @0 r" entry="full" default="true">iompar</lex>
+<lex pron="uh1 m p @0 rj" entry="full" default="true">iompair</lex>
+<lex pron="uh1 n @0 d" entry="full" default="true">ionad</lex>
+<lex pron="uh1 n @0 dj" entry="full" default="true">ionaid</lex>
+<lex pron="uu1 n @0" entry="full" default="true">ionadh</lex>
+<lex pron="uh1 n @0 n" entry="full" default="true">ionann</lex>
+<lex pron="uh1 n @0 s" entry="full" default="true">ionas</lex>
+<lex pron="uh1 n s ee0" entry="full" default="true">ionsaí</lex>
+<lex pron="uu1 n t @0 x" entry="full" default="true">iontach</lex>
+<lex pron="uu1 n t @0 s" entry="full" default="true">iontas</lex>
+<lex pron="uh1 n t @0" entry="full" default="true">iontu</lex>
+<lex pron="i1 s" entry="full" default="true">is</lex>
+<lex pron="i1 sh @0" entry="full" default="true">ise</lex>
+<lex pron="i0 sh tj a1 x" entry="full" default="true">isteach</lex>
+<lex pron="i1 sh tj i0 gj" entry="full" default="true">istigh</lex>
+<lex pron="i1 h @0" entry="full" default="true">ithe</lex>
+<lex pron="uu1 lj" entry="full" default="true">iúil</lex>
+<lex pron="uu1 l" entry="full" default="true">iúl</lex>
+<lex pron="dj eey1" entry="full" default="true">j</lex>
+<lex pron="dj a1 k" entry="full" default="true">jack</lex>
+<lex pron="dj o1 n" entry="full" default="true">john</lex>
+<lex pron="k eey1" entry="full" default="true">k</lex>
+<lex pron="k a1 r @0 tj i2 n" entry="full" default="true">karaczyn</lex>
+<lex pron="k a1 r @0 n" entry="full" default="true">karen</lex>
+<lex pron="k e0 n ee1 l ee0" entry="full" default="true">kenneally</lex>
+<lex pron="k e1 n ee0" entry="full" default="true">kenny</lex>
+<lex pron="e1 l" entry="full" default="true">l</lex>
+<lex pron="l au1 rj" entry="full" default="true">labhair</lex>
+<lex pron="l au1 rj tj" entry="full" default="true">labhairt</lex>
+<lex pron="l eey1" entry="full" default="true">lae</lex>
+<lex pron="l eey1 h @0 n t @0" entry="full" default="true">laethanta</lex>
+<lex pron="l ai1 d" entry="full" default="true">laghad</lex>
+<lex pron="l ai0 d uu1" entry="full" default="true">laghdú</lex>
+<lex pron="l ai1 n" entry="full" default="true">laighean</lex>
+<lex pron="l a1 sh tj i0 gj" entry="full" default="true">laistigh</lex>
+<lex pron="l a1 s m uh0" entry="full" default="true">lasmuigh</lex>
+<lex pron="lj e1" entry="full" default="true">le</lex>
+<lex pron="lj a1 b @0" entry="full" default="true">leaba</lex>
+<lex pron="lj au1 rj" entry="full" default="true">leabhair</lex>
+<lex pron="lj au1 r" entry="full" default="true">leabhar</lex>
+<lex pron="lj a1 g" entry="full" default="true">leag</lex>
+<lex pron="lj a1 g @0 n" entry="full" default="true">leagan</lex>
+<lex pron="lj a1 g h @0" entry="full" default="true">leagtha</lex>
+<lex pron="lj a1 n" entry="full" default="true">lean</lex>
+<lex pron="lj a1 n @0 s" entry="full" default="true">leanas</lex>
+<lex pron="lj a1 n ee0" entry="full" default="true">leanaí</lex>
+<lex pron="lj a1 n @0 v" entry="full" default="true">leanbh</lex>
+<lex pron="lj a1 n uu0 nj tj" entry="full" default="true">leanúint</lex>
+<lex pron="lj a1 r f o2 l" entry="full" default="true">learpholl</lex>
+<lex pron="lj a1 s" entry="full" default="true">leas</lex>
+<lex pron="lj a1 s @0" entry="full" default="true">leasa</lex>
+<lex pron="lj a1 s uu0" entry="full" default="true">leasú</lex>
+<lex pron="lj a1 t" entry="full" default="true">leat</lex>
+<lex pron="lj a1" entry="full" default="true">leath</lex>
+<lex pron="lj a1 h @0 n" entry="full" default="true">leathan</lex>
+<lex pron="lj a1 h @0 n @2 x" entry="full" default="true">leathanach</lex>
+<lex pron="lj a1 v i1 lj uu2 n" entry="full" default="true">leathmhilliún</lex>
+<lex pron="lj a1 h u@2 rj" entry="full" default="true">leathuair</lex>
+<lex pron="lj e0 v eey1 l" entry="full" default="true">leibhéal</lex>
+<lex pron="lj e1 kj tj rj @0 x" entry="full" default="true">leictreach</lex>
+<lex pron="lj ai1 s" entry="full" default="true">leigheas</lex>
+<lex pron="lj ai1 sh" entry="full" default="true">leighis</lex>
+<lex pron="lj e1 sh" entry="full" default="true">leis</lex>
+<lex pron="lj e1" entry="full" default="true">leith</lex>
+<lex pron="lj e0 h eey1 dj" entry="full" default="true">leithéid</lex>
+<lex pron="lj e1 n @0" entry="full" default="true">lena</lex>
+<lex pron="lj oy1" entry="full" default="true">leo</lex>
+<lex pron="lj oy1 f @0" entry="full" default="true">leofa</lex>
+<lex pron="lj o1 r" entry="full" default="true">leor</lex>
+<lex pron="lj i@1 m" entry="full" default="true">liam</lex>
+<lex pron="lj i1 gj" entry="full" default="true">lig</lex>
+<lex pron="lj i1 gj @0 n" entry="full" default="true">ligean</lex>
+<lex pron="lj i1 nj" entry="full" default="true">linn</lex>
+<lex pron="lj i1 nj @0" entry="full" default="true" >linne</lex>
+<lex pron="lj uh1 m" entry="full" default="true">liom</lex>
+<lex pron="lj i1 m b oy0" entry="full" default="true">liombó</lex>
+<lex pron="lj uh1 m s @0" entry="full" default="true">liomsa</lex>
+<lex pron="lj i1 s t @0" entry="full" default="true">liosta</lex>
+<lex pron="lj i1 tj i0 rj" entry="full" default="true">litir</lex>
+<lex pron="lj i1 tj rj ee0 @0 x t" entry="full" default="true">litríocht</lex>
+<lex pron="l o1 x" entry="full" default="true">loch</lex>
+<lex pron="l uh1 n d @0 nj" entry="full" default="true">londain</lex>
+<lex pron="l o1 ng" entry="full" default="true">long</lex>
+<lex pron="l uh1 r @0 g" entry="full" default="true">lorg</lex>
+<lex pron="l u@1 x" entry="full" default="true">luach</lex>
+<lex pron="l u@1 h @0" entry="full" default="true">luaithe</lex>
+<lex pron="l u@1" entry="full" default="true">lua</lex>
+<lex pron="l u@1 s" entry="full" default="true">luas</lex>
+<lex pron="l u@1" entry="full" default="true">luath</lex>
+<lex pron="l uh1 x t" entry="full" default="true">lucht</lex>
+<lex pron="l uh1 x oy0 g" entry="full" default="true">luchóg</lex>
+<lex pron="l ee1" entry="full" default="true">luí</lex>
+<lex pron="l aa1" entry="full" default="true">lá</lex>
+<lex pron="l aa1 i0 dj i2 rj" entry="full" default="true">láidir</lex>
+<lex pron="l aa1 i0 v" entry="full" default="true">láimh</lex>
+<lex pron="l aa1 i0 v @2" entry="full" default="true">láimhe</lex>
+<lex pron="l aa1 rj @2 x" entry="full" default="true">láithreach</lex>
+<lex pron="l aa1 v" entry="full" default="true">lámh</lex>
+<lex pron="l aa1 v @0" entry="full" default="true">lámha</lex>
+<lex pron="l aa1 n" entry="full" default="true">lán</lex>
+<lex pron="l aa1 r" entry="full" default="true">lár</lex>
+<lex pron="l aa1 h @0 rj" entry="full" default="true">láthair</lex>
+<lex pron="lj eey1 v" entry="full" default="true">léamh</lex>
+<lex pron="lj eey1" entry="full" default="true">léi</lex>
+<lex pron="lj eey1 mj" entry="full" default="true">léim</lex>
+<lex pron="lj eey1 nj" entry="full" default="true">léinn</lex>
+<lex pron="lj eey1 rj" entry="full" default="true">léir</lex>
+<lex pron="lj eey1 rj i0 gj" entry="full" default="true">léirigh</lex>
+<lex pron="lj eey1 rj uu0" entry="full" default="true">léiriú</lex>
+<lex pron="lj eey1 rj ee0 @0 n" entry="full" default="true">léiríonn</lex>
+<lex pron="lj ee1 nj @0" entry="full" default="true">líne</lex>
+<lex pron="lj ee1 @0 n" entry="full" default="true">líon</lex>
+<lex pron="l uu1" entry="full" default="true">lú</lex>
+<lex pron="l uu1 n @0 s @0" entry="full" default="true">lúnasa</lex>
+<lex pron="e1 m" entry="full" default="true">m</lex>
+<lex pron="m a1 k" entry="full" default="true">mac</lex>
+<lex pron="m a1 dj i0 nj" entry="full" default="true">maidin</lex>
+<lex pron="m a1 dj i0 rj" entry="full" default="true">maidir</lex>
+<lex pron="m a1" entry="full" default="true">maith</lex>
+<lex pron="m au1 l" entry="full" default="true">mall</lex>
+<lex pron="m a0 l oy1 n ee0" entry="full" default="true">maloney</lex>
+<lex pron="m a1 r" entry="full" default="true">mar</lex>
+<lex pron="m a1 r @0" entry="full" default="true">mara</lex>
+<lex pron="m a1 r @0 v" entry="full" default="true">marbh</lex>
+<lex pron="m a0 r ee1 n oy0" entry="full" default="true">marino</lex>
+<lex pron="m a1 r oy0 g" entry="full" default="true">maróg</lex>
+<lex pron="m a1 lj @0" entry="full" default="true">mbaile</lex>
+<lex pron="m a1 n" entry="full" default="true">mban</lex>
+<lex pron="mj eey1 l" entry="full" default="true">mbaol</lex>
+<lex pron="mj e1 gj" entry="full" default="true">mbeidh</lex>
+<lex pron="mj uh1 rj tj" entry="full" default="true">mbeirt</lex>
+<lex pron="mj i1" entry="full" default="true">mbith</lex>
+<lex pron="mj lj i@1 n @0" entry="full" default="true">mbliana</lex>
+<lex pron="mj a1 s" entry="full" default="true">meas</lex>
+<lex pron="mj a1 s @0" entry="full" default="true">measa</lex>
+<lex pron="mj a1 s k" entry="full" default="true">measc</lex>
+<lex pron="m e2 n i0 n dj ee1 t i0 sh" entry="full" default="true">meiningítis</lex>
+<lex pron="mj e1 rj i0 kj aa2" entry="full" default="true">meiriceá</lex>
+<lex pron="mj e1 h @0 v" entry="full" default="true">meitheamh</lex>
+<lex pron="mj oy1 n" entry="full" default="true">meon</lex>
+<lex pron="mj a1 nj" entry="full" default="true">meáin</lex>
+<lex pron="mj a1 n" entry="full" default="true">meán</lex>
+<lex pron="v ee1 nj uu2" entry="full" default="true">mhaoiniú</lex>
+<lex pron="v a1 r uu0" entry="full" default="true">mharú</lex>
+<lex pron="v i1 lj uu0 n" entry="full" default="true">mhilliún</lex>
+<lex pron="v eey1 r" entry="full" default="true">mhéar</lex>
+<lex pron="v oy1 r" entry="full" default="true">mhór</lex>
+<lex pron="v oy1 r x oy2 n ee2" entry="full" default="true">mhórchónaí</lex>
+<lex pron="mj i@1 n" entry="full" default="true">mian</lex>
+<lex pron="mj i1 kj" entry="full" default="true">mic</lex>
+<lex pron="mj i1 hj aa0 l" entry="full" default="true">micheál</lex>
+<lex pron="m i1 lj uu0 n" entry="full" default="true">milliún</lex>
+<lex pron="mj i1 nj i0 kj" entry="full" default="true">minic</lex>
+<lex pron="mj i1 sh @0" entry="full" default="true">mise</lex>
+<lex pron="m @0 n aa1" entry="full" default="true">mná</lex>
+<lex pron="m @1" entry="full" default="true">mo</lex>
+<lex pron="m o1 l @0" entry="full" default="true">moladh</lex>
+<lex pron="m o1 l t ee0" entry="full" default="true">moltaí</lex>
+<lex pron="m i1 dj" entry="full" default="true">muid</lex>
+<lex pron="m ee1 nj tj i0 rj" entry="full" default="true">muintir</lex>
+<lex pron="m uh1 n @0" entry="full" default="true">muna</lex>
+<lex pron="m uh1 r @0" entry="full" default="true">mura</lex>
+<lex pron="m aa1" entry="full" default="true">má</lex>
+<lex pron="m aa1 rj @2" entry="full" default="true">máire</lex>
+<lex pron="m aa1 rj tj ee2 nj" entry="full" default="true">máirtín</lex>
+<lex pron="m aa1rj @0 x @0 sh" entry="full" default="true">máithreachais</lex>
+<lex pron="m aa1 r t @0" entry="full" default="true">márta</lex>
+<lex pron="m aa1 s" entry="full" default="true">más</lex>
+<lex pron="m aa1 h @0 rj" entry="full" default="true">máthair</lex>
+<lex pron="mj eey1" entry="full" default="true">mé</lex>
+<lex pron="mj eey1 d uu0" entry="full" default="true">méadú</lex>
+<lex pron="mj eey1 dj" entry="full" default="true">méid</lex>
+<lex pron="mj ee1" entry="full" default="true">mí</lex>
+<lex pron="m ee1 hj aa0 l" entry="full" default="true">mícheál</lex>
+<lex pron="mj ee1 lj @0" entry="full" default="true">míle</lex>
+<lex pron="m ee1 n aa2 d uu0 r" entry="full" default="true">mínádúr</lex>
+<lex pron="mj ee1 rj" entry="full" default="true">mír</lex>
+<lex pron="m ee1 rj @0 n @0" entry="full" default="true">míreanna</lex>
+<lex pron="m ee1 h aa0 s @2 v" entry="full" default="true">míshásamh</lex>
+<lex pron="m oy1" entry="full" default="true">mó</lex>
+<lex pron="m o1 r" entry="full" default="true">mór</lex>
+<lex pron="m o1 r @0" entry="full" default="true">móra</lex>
+<lex pron="m o1 r aa2 n" entry="full" default="true">mórán</lex>
+<lex pron="m uu1 nj tj o2 rj" entry="full" default="true">múinteoir</lex>
+<lex pron="m uu1 nj tj o2 rj ee0" entry="full" default="true">múinteoirí</lex>
+<lex pron="e1 n" entry="full" default="true">n</lex>
+<lex pron="n @1" entry="full" default="true">na</lex>
+<lex pron="n a1 x" entry="full" default="true">nach</lex>
+<lex pron="n ee1" entry="full" default="true">naoi</lex>
+<lex pron="n eey1 v" entry="full" default="true">naomh</lex>
+<lex pron="n a0 t a1 lj a0" entry="full" default="true">natalia</lex>
+<lex pron="nj eey1 n i0 gj" entry="full" default="true">ndéanfaidh</lex>
+<lex pron="n oy1 ee0 gj" entry="full" default="true">ndóigh</lex>
+<lex pron="n uu1 n" entry="full" default="true">ndún</lex>
+<lex pron="n uu1 n t @0" entry="full" default="true">ndúnta</lex>
+<lex pron="nj a1 v u@2 r h @0" entry="full" default="true">neamhbhuartha</lex>
+<lex pron="nj a1 v sh pj lj aa0" entry="full" default="true">neamhspleá</lex>
+<lex pron="nj a1 v sh pj lj aa0 x" entry="full" default="true">neamhspleách</lex>
+<lex pron="nj a1 v sh pj lj aa0 gj" entry="full" default="true">neamhspleáigh</lex>
+<lex pron="nj a1 r t" entry="full" default="true">neart</lex>
+<lex pron="ng a1 x" entry="full" default="true">ngach</lex>
+<lex pron="ng eey1 l t @0 x t" entry="full" default="true">ngaeltacht</lex>
+<lex pron="ng a1 lj i1 v" entry="full" default="true">ngaillimh</lex>
+<lex pron="ng a1 rj dj ee0 nj" entry="full" default="true">ngairdín</lex>
+<lex pron="ng au1 l" entry="full" default="true">ngall</lex>
+<lex pron="nj i1 kj" entry="full" default="true">nic</lex>
+<lex pron="nj i1 h @0" entry="full" default="true">nithe</lex>
+<lex pron="n uh1 l @0 g" entry="full" default="true">nollag</lex>
+<lex pron="n uh1 l i0 gj" entry="full" default="true">nollaig</lex>
+<lex pron="n u@1" entry="full" default="true">nua</lex>
+<lex pron="n u@1 x t" entry="full" default="true">nuacht</lex>
+<lex pron="n u@1 rj" entry="full" default="true">nuair</lex>
+<lex pron="n aa1" entry="full" default="true">ná</lex>
+<lex pron="n aa1 d uu0 r" entry="full" default="true">nádúr</lex>
+<lex pron="n aa1 d uu0 r h @0" entry="full" default="true">nádúrtha</lex>
+<lex pron="n aa1 sh uu2 n t @0" entry="full" default="true">náisiúnta</lex>
+<lex pron="n aa1 r" entry="full" default="true">nár</lex>
+<lex pron="n aa1 r v" entry="full" default="true">nárbh</lex>
+<lex pron="n eey1 r oy0 g" entry="full" default="true">néaróg</lex>
+<lex pron="nj ee1" entry="full" default="true">ní</lex>
+<lex pron="nj ee1 lj" entry="full" default="true">níl</lex>
+<lex pron="nj ee1 r" entry="full" default="true">níor</lex>
+<lex pron="nj ee1 r v" entry="full" default="true">níorbh</lex>
+<lex pron="nj ee1 @0 s" entry="full" default="true">níos</lex>
+<lex pron="n oy1" entry="full" default="true">nó</lex>
+<lex pron="n oy1 x @0" entry="full" default="true">nócha</lex>
+<lex pron="n oy1 mj eey1 d" entry="full" default="true">nóiméad</lex>
+<lex pron="n oy1 s" entry="full" default="true">nós</lex>
+<lex pron="oy1" entry="full" default="true">o</lex>
+<lex pron="o2 n ee1 l" entry="full" default="true">o'neill</lex>
+<lex pron="o1 b @0 rj" entry="full" default="true">obair</lex>
+<lex pron="o1 x t oy0" entry="full" default="true">ochtó</lex>
+<lex pron="i1 bj rj @0" entry="full" default="true">oibre</lex>
+<lex pron="i2 dj @1 x i0 sh" entry="full" default="true">oideachais</lex>
+<lex pron="i2 dj @1 x @0 s" entry="full" default="true">oideachas</lex>
+<lex pron="ai1 rj @0 x t" entry="full" default="true">oidhreacht</lex>
+<lex pron="i1 fj i0 gj" entry="full" default="true">oifig</lex>
+<lex pron="i1 fj i0 gj @2 x" entry="full" default="true">oifigeach</lex>
+<lex pron="i1 fj i0 gj uu2 lj" entry="full" default="true">oifigiúil</lex>
+<lex pron="i1 lj aa0 nj" entry="full" default="true">oileáin</lex>
+<lex pron="i1 lj aa0 n" entry="full" default="true">oileán</lex>
+<lex pron="i1 rj @0 d" entry="full" default="true">oiread</lex>
+<lex pron="o1 rj h u@2 sh kj @0 r t" entry="full" default="true">oirthuaisceart</lex>
+<lex pron="o1 rj h u@2 sh kj @0 rj tj" entry="full" default="true">oirthuaiscirt</lex>
+<lex pron="o1 l s k @0 lj" entry="full" default="true">ollscoil</lex>
+<lex pron="o1 n oy0 rj" entry="full" default="true">onóir</lex>
+<lex pron="o1 r i0 nj" entry="full" default="true">orainn</lex>
+<lex pron="o1 r d oy0 g" entry="full" default="true">ordóg</lex>
+<lex pron="o1 r d uu0" entry="full" default="true">ordú</lex>
+<lex pron="o0 r g aa1 n i0 gj" entry="full" default="true">orgánaigh</lex>
+<lex pron="o1 r l ee0" entry="full" default="true">orlaí</lex>
+<lex pron="o1 r @0 m" entry="full" default="true">orm</lex>
+<lex pron="o1 r t" entry="full" default="true">ort</lex>
+<lex pron="o1 r h uh0" entry="full" default="true">orthu</lex>
+<lex pron="oy1 s" entry="full" default="true">os</lex>
+<lex pron="o1 s k @0 lj" entry="full" default="true">oscail</lex>
+<lex pron="o1 s k @0 lj tj" entry="full" default="true">oscailt</lex>
+<lex pron="o1 s k @0 lj tj @2" entry="full" default="true">oscailte</lex>
+<lex pron="o1 s pj i0 dj eey1 l" entry="full" default="true">ospidéal</lex>
+<lex pron="ee1 hj @0" entry="full" default="true">oíche</lex>
+<lex pron="p ee1" entry="full" default="true">p</lex>
+<lex pron="p a1 d r i0 gj" entry="full" default="true">padraig</lex>
+<lex pron="p a1 r l @0 mj i2 nj tj" entry="full" default="true">parlaimint</lex>
+<lex pron="pj a1 d @0 r" entry="full" default="true">peadar</lex>
+<lex pron="pj a1 r s @0 n t @0" entry="full" default="true">pearsanta</lex>
+<lex pron="p e1 lj @0" entry="full" default="true">peile</lex>
+<lex pron="fj i1 ngj i0 nj" entry="full" default="true">phingin</lex>
+<lex pron="fj lj a1 n @0 n @0" entry="full" default="true">phleananna</lex>
+<lex pron="fj lj a1 n aa0 lj" entry="full" default="true">phleanáil</lex>
+<lex pron="fj lj eey1 d aa0 lj" entry="full" default="true">phléadáil</lex>
+<lex pron="f ee1 n i0 k s" entry="full" default="true">phoenix</lex>
+<lex pron="f ai1 bj lj ee0" entry="full" default="true">phoiblí</lex>
+<lex pron="f o1 r tj uh0 n k uh2 l @0" entry="full" default="true">phortiuncula</lex>
+<lex pron="f uh1 n t @0" entry="full" default="true">phunta</lex>
+<lex pron="pj i1 ngj i0 nj" entry="full" default="true">pingin</lex>
+<lex pron="p l a1 n d ee0" entry="full" default="true">plandaí</lex>
+<lex pron="pj lj a1 n" entry="full" default="true">plean</lex>
+<lex pron="pj lj a1 n aa2 l @0" entry="full" default="true">pleanála</lex>
+<lex pron="pj lj eey1" entry="full" default="true">plé</lex>
+<lex pron="pj lj eey1 sh uu2 rj" entry="full" default="true">pléisiúir</lex>
+<lex pron="p o1 b @0 lj" entry="full" default="true">pobail</lex>
+<lex pron="p o1 b @0 l" entry="full" default="true">pobal</lex>
+<lex pron="p ai1 bj lj ee2" entry="full" default="true">poiblí</lex>
+<lex pron="p i1 sh tj" entry="full" default="true">poist</lex>
+<lex pron="p oy1 l @0 nj i2 sh" entry="full" default="true">polainnis</lex>
+<lex pron="p o1 l @0 tj ee2 @0 x t @0" entry="full" default="true">polaitíochta</lex>
+<lex pron="p o1 l @0 s ee2" entry="full" default="true">polasaí</lex>
+<lex pron="p o1 n k" entry="full" default="true">ponc</lex>
+<lex pron="p o1 s t" entry="full" default="true">post</lex>
+<lex pron="p o1 t ee0" entry="full" default="true">potaí</lex>
+<lex pron="pj rj ee1 s uu2 nj" entry="full" default="true">príosúin</lex>
+<lex pron="p uh1 t oy0 g" entry="full" default="true">putóg</lex>
+<lex pron="p aa1 d r i0 gj" entry="full" default="true">pádraig</lex>
+<lex pron="p aa1 dj ee0 nj" entry="full" default="true">páidín</lex>
+<lex pron="p aa1 rj tj" entry="full" default="true">páirt</lex>
+<lex pron="p aa1 rj tj @2 x" entry="full" default="true">páirteach</lex>
+<lex pron="p aa1 rj tj i2 h @0" entry="full" default="true">páirtithe</lex>
+<lex pron="p aa1 rj tj ee2" entry="full" default="true">páirtí</lex>
+<lex pron="p aa1 sh tj @2" entry="full" default="true">páiste</lex>
+<lex pron="p aa1 sh tj ee2" entry="full" default="true">páistí</lex>
+<lex pron="pj eey1" entry="full" default="true">pé</lex>
+<lex pron="pj i@1 s @0" entry="full" default="true">píosa</lex>
+<lex pron="p oy1 l" entry="full" default="true">pól</lex>
+<lex pron="p oy1 s i0 gj" entry="full" default="true">pósfaidh</lex>
+<lex pron="p oy1 s t @0" entry="full" default="true">pósta</lex>
+<lex pron="kj uu1" entry="full" default="true">q</lex>
+<lex pron="aa1 r" entry="full" default="true">r</lex>
+<lex pron="r e1 v" entry="full" default="true">rabh</lex>
+<lex pron="r a1 x i0 gj" entry="full" default="true">rachaidh</lex>
+<lex pron="r ai1 @0 r k" entry="full" default="true">radharc</lex>
+<lex pron="r e1 v" entry="full" default="true">raibh</lex>
+<lex pron="r a1 dj ee0 oy2" entry="full" default="true">raidió</lex>
+<lex pron="r a1 ng" entry="full" default="true">rang</lex>
+<lex pron="r a1 n oy0" entry="full" default="true">rannó</lex>
+<lex pron="rj a1 x t ee0 @2 x t" entry="full" default="true">reachtaíocht</lex>
+<lex pron="rj a1 h @0" entry="full" default="true">reatha</lex>
+<lex pron="rj i@1 x t @0 n @2 x" entry="full" default="true">riachtanach</lex>
+<lex pron="rj i@1 x t @0 n @2 sh" entry="full" default="true">riachtanais</lex>
+<lex pron="rj i@1 l @0 x @0" entry="full" default="true">rialacha</lex>
+<lex pron="rj i@1 l t @0" entry="full" default="true">rialta</lex>
+<lex pron="rj i@1 l t i0 sh" entry="full" default="true">rialtais</lex>
+<lex pron="rj i@1 l t @0 s" entry="full" default="true">rialtas</lex>
+<lex pron="rj i@1 v" entry="full" default="true">riamh</lex>
+<lex pron="rj i1 nj @0" entry="full" default="true">rinne</lex>
+<lex pron="rj i1 nj @0" entry="full" default="true">rinneadh</lex>
+<lex pron="rj i1" entry="full" default="true">rith</lex>
+<lex pron="r au1 @0" entry="full" default="true">rogha</lex>
+<lex pron="r au1 n i0 gj" entry="full" default="true">roghnaigh</lex>
+<lex pron="r i1 v" entry="full" default="true">roimh</lex>
+<lex pron="r i1 v @0" entry="full" default="true">roimhe</lex>
+<lex pron="r ai1 nj" entry="full" default="true">roinn</lex>
+<lex pron="r ai1 nj tj" entry="full" default="true">roinnt</lex>
+<lex pron="r o1 s" entry="full" default="true">ros</lex>
+<lex pron="r o1 h i@0 x t @0" entry="full" default="true">rothaíochta</lex>
+<lex pron="r u@1" entry="full" default="true">rua</lex>
+<lex pron="r uh1 d" entry="full" default="true">rud</lex>
+<lex pron="r uh1 d ee0" entry="full" default="true">rudaí</lex>
+<lex pron="r uh1 g" entry="full" default="true">rug</lex>
+<lex pron="r uh1 g @0" entry="full" default="true">rugadh</lex>
+<lex pron="r aa1" entry="full" default="true">rá</lex>
+<lex pron="r aa1 tj @2" entry="full" default="true">ráite</lex>
+<lex pron="r aa1 tj @2 s" entry="full" default="true">ráiteas</lex>
+<lex pron="rj eey1" entry="full" default="true">ré</lex>
+<lex pron="rj eey2 v v au1 t @0" entry="full" default="true">réamhbhabhta</lex>
+<lex pron="rj eey1 v s k o2 lj @0" entry="full" default="true">réamhscoile</lex>
+<lex pron="rj eey1 gj" entry="full" default="true">réidh</lex>
+<lex pron="rj eey1 gj uu2 n" entry="full" default="true">réigiún</lex>
+<lex pron="rj eey1 mj sh @0" entry="full" default="true">réimse</lex>
+<lex pron="rj eey1 rj" entry="full" default="true">réir</lex>
+<lex pron="rj eey1 tj @0 x" entry="full" default="true">réiteach</lex>
+<lex pron="rj ee1" entry="full" default="true">rí</lex>
+<lex pron="r oy1 l" entry="full" default="true">ról</lex>
+<lex pron="r uu1 n" entry="full" default="true">rún</lex>
+<lex pron="e1 s" entry="full" default="true">s</lex>
+<lex pron="s @1" entry="full" default="true">sa</lex>
+<lex pron="s a1 g @0 r t" entry="full" default="true">sagart</lex>
+<lex pron="s ai1 s" entry="full" default="true">saghas</lex>
+<lex pron="s ai1 dj uu0 rj" entry="full" default="true">saighdiúir</lex>
+<lex pron="s a1 l a0" entry="full" default="true">salah</lex>
+<lex pron="s aa1 l s b uh0 r ee2" entry="full" default="true">salisbury</lex>
+<lex pron="s au1 r @0" entry="full" default="true">samhradh</lex>
+<lex pron="s au1 m p l @0" entry="full" default="true">sampla</lex>
+<lex pron="s @1 n" entry="full" default="true">san</lex>
+<lex pron="s ee1 rj @0" entry="full" default="true">saoire</lex>
+<lex pron="s ee1 rj sh @0" entry="full" default="true">saoirse</lex>
+<lex pron="s eey1 l" entry="full" default="true">saol</lex>
+<lex pron="s eey1 r" entry="full" default="true">saor</lex>
+<lex pron="s eey1 h @2 r" entry="full" default="true">saothar</lex>
+<lex pron="s a1 s @0 n @0" entry="full" default="true">sasana</lex>
+<lex pron="s k a1 rj tj" entry="full" default="true">scairt</lex>
+<lex pron="s k a1 n aa2 n" entry="full" default="true">scannán</lex>
+<lex pron="s k a1 n aa2 n i@2 x t @0" entry="full" default="true">scannánaíochta</lex>
+<lex pron="s k ee1 lj" entry="full" default="true">scaoil</lex>
+<lex pron="s k ee1 lj @0" entry="full" default="true">scaoileadh</lex>
+<lex pron="sh kj i1 lj @0 n @0" entry="full" default="true">scileanna</lex>
+<lex pron="sh kj uh1 b oy2 l" entry="full" default="true">scioból</lex>
+<lex pron="s k o1 lj" entry="full" default="true">scoil</lex>
+<lex pron="s k o1 lj @0" entry="full" default="true">scoile</lex>
+<lex pron="s k o1 lj @0 n @0" entry="full" default="true">scoileanna</lex>
+<lex pron="s k o1 r oy0 g" entry="full" default="true">scoróg</lex>
+<lex pron="sh kj rj ee1 nj o0 rj" entry="full" default="true">scríbhneoir</lex>
+<lex pron="sh kj rj ee1 v" entry="full" default="true">scríobh</lex>
+<lex pron="sh k rj ee1 v @2" entry="full" default="true">scríobhadh</lex>
+<lex pron="sh kj rj ee1 f @0" entry="full" default="true">scríofa</lex>
+<lex pron="s k r uu1 d uu0" entry="full" default="true">scrúdú</lex>
+<lex pron="sh kj eey1 l" entry="full" default="true">scéal</lex>
+<lex pron="sh kj eey1 l t @0" entry="full" default="true">scéalta</lex>
+<lex pron="sh kj eey1 lj" entry="full" default="true">scéil</lex>
+<lex pron="sh kj eey1 mj" entry="full" default="true">scéim</lex>
+<lex pron="s k oy1 r" entry="full" default="true">scór</lex>
+<lex pron="sh a1" entry="full" default="true">sea</lex>
+<lex pron="sh au1 @0 k" entry="full" default="true">seabhac</lex>
+<lex pron="sh a1 x @0 s" entry="full" default="true">seachas</lex>
+<lex pron="sh a1 x t" entry="full" default="true">seacht</lex>
+<lex pron="sh a1 x t @0 nj" entry="full" default="true">seachtain</lex>
+<lex pron="sh a1 x t @0 nj @0" entry="full" default="true">seachtaine</lex>
+<lex pron="sh a1 l" entry="full" default="true">seal</lex>
+<lex pron="sh a1 n v u@2 t @0 sh ee0" entry="full" default="true">seanbhuataisí</lex>
+<lex pron="sh a1 n s" entry="full" default="true">seans</lex>
+<lex pron="sh a1 s @0 v" entry="full" default="true">seasamh</lex>
+<lex pron="sh e1 lj v" entry="full" default="true">seilbh</lex>
+<lex pron="sh e2 rj v ee1 sh" entry="full" default="true">seirbhís</lex>
+<lex pron="sh e2 rj v ee1 sh @0" entry="full" default="true">seirbhíse</lex>
+<lex pron="sh e2 rj v ee1 sh ee0" entry="full" default="true">seirbhísí</lex>
+<lex pron="sh e1 sh @0 n" entry="full" default="true">seisean</lex>
+<lex pron="sh @1" entry="full" default="true">seo</lex>
+<lex pron="sh oy1 l @0" entry="full" default="true">seoladh</lex>
+<lex pron="sh oy1 l f @2 r" entry="full" default="true">seolfar</lex>
+<lex pron="sh oy1 l t @0" entry="full" default="true">seolta</lex>
+<lex pron="sh oy1 m r @0" entry="full" default="true">seomra</lex>
+<lex pron="sh aa1 n" entry="full" default="true">seán</lex>
+<lex pron="h au1 n @0" entry="full" default="true">shamhna</lex>
+<lex pron="sh eey1" entry="full" default="true">shay</lex>
+<lex pron="hj a1 s" entry="full" default="true">sheas</lex>
+<lex pron="hj oy1 l" entry="full" default="true">sheol</lex>
+<lex pron="hj i1 nj" entry="full" default="true">shin</lex>
+<lex pron="hj uu1 lj" entry="full" default="true">shiúil</lex>
+<lex pron="hj lj i1 gj i0 gj" entry="full" default="true">shligigh</lex>
+<lex pron="hj lj uh0 x t" entry="full" default="true">shliocht</lex>
+<lex pron="h o2 l aa1 h @0 r" entry="full" default="true">sholáthar</lex>
+<lex pron="h r a1 h @0 rj" entry="full" default="true">shrathair</lex>
+<lex pron="h i1 gj" entry="full" default="true">shuigh</lex>
+<lex pron="h oy1 sh @0 r i2 gj" entry="full" default="true">shóisearaigh</lex>
+<lex pron="h aa1" entry="full" default="true">sháith</lex>
+<lex pron="hj ee1 lj" entry="full" default="true">shíl</lex>
+<lex pron="sh i@1 d" entry="full" default="true">siad</lex>
+<lex pron="sh i@1 m s i@2 x t" entry="full" default="true">siamsaíocht</lex>
+<lex pron="sh i@1 r" entry="full" default="true">siar</lex>
+<lex pron="sh i1 v" entry="full" default="true">sibh</lex>
+<lex pron="sh i1 nj" entry="full" default="true">sin</lex>
+<lex pron="sh ee1 nj" entry="full" default="true">sinn</lex>
+<lex pron="sh uh1 p @0" entry="full" default="true">siopa</lex>
+<lex pron="sh i1 sh @0" entry="full" default="true">sise</lex>
+<lex pron="sh ee2 oy1 g @0" entry="full" default="true">sióga</lex>
+<lex pron="sh uu1 d" entry="full" default="true">siúd</lex>
+<lex pron="sh uu1 lj" entry="full" default="true">siúil</lex>
+<lex pron="sh uu1 l" entry="full" default="true">siúl</lex>
+<lex pron="s l u@1" entry="full" default="true">slua</lex>
+<lex pron="s l aa1 nj tj @2" entry="full" default="true">sláinte</lex>
+<lex pron="s l aa1 n" entry="full" default="true">slán</lex>
+<lex pron="sh lj ee1" entry="full" default="true">slí</lex>
+<lex pron="s m a1 x t" entry="full" default="true">smacht</lex>
+<lex pron="s m ee1 nj @0 v" entry="full" default="true">smaoineamh</lex>
+<lex pron="s m ee1 nj tj @0" entry="full" default="true">smaointe</lex>
+<lex pron="s n @1" entry="full" default="true">sna</lex>
+<lex pron="s o1" entry="full" default="true">so</lex>
+<lex pron="s o1 k r uu0" entry="full" default="true">socrú</lex>
+<lex pron="s o0 lj eey1 rj" entry="full" default="true">soiléir</lex>
+<lex pron="s o1 l @0 s" entry="full" default="true">solas</lex>
+<lex pron="s o0 l aa1 h @0 r" entry="full" default="true">soláthar</lex>
+<lex pron="s o1 n" entry="full" default="true">son</lex>
+<lex pron="s o1 n r ee0" entry="full" default="true">sonraí</lex>
+<lex pron="sh pj e1 sh i@0 l t @0" entry="full" default="true">speisialta</lex>
+<lex pron="sh pj rj a1 g @0" entry="full" default="true">spreagadh</lex>
+<lex pron="sh pj eey1 rj" entry="full" default="true">spéir</lex>
+<lex pron="sh pj eey1 sh" entry="full" default="true">spéis</lex>
+<lex pron="s p oy1 rj tj" entry="full" default="true">spóirt</lex>
+<lex pron="s r a1" entry="full" default="true">sraith</lex>
+<lex pron="s r aa1 dj" entry="full" default="true">sráid</lex>
+<lex pron="s t a1 d" entry="full" default="true">stad</lex>
+<lex pron="s t a1 dj eey0 r" entry="full" default="true">staidéar</lex>
+<lex pron="s t a1 rj" entry="full" default="true">stair</lex>
+<lex pron="s tj uu1 r h oy1 rj" entry="full" default="true">stiúrthóir</lex>
+<lex pron="s t o1 p" entry="full" default="true">stop</lex>
+<lex pron="s t r aa1 kj ee0" entry="full" default="true">stráicí</lex>
+<lex pron="s t aa1  sh uu2 n" entry="full" default="true">stáisiún</lex>
+<lex pron="s t aa1 tj" entry="full" default="true">stáit</lex>
+<lex pron="s t aa1 t" entry="full" default="true">stát</lex>
+<lex pron="s u@1 s" entry="full" default="true">suas</lex>
+<lex pron="s i1 mj" entry="full" default="true">suim</lex>
+<lex pron="s i1 tj @0" entry="full" default="true">suite</lex>
+<lex pron="s uh1 l @0" entry="full" default="true">sula</lex>
+<lex pron="s uh1 l @0 r" entry="full" default="true">sular</lex>
+<lex pron="s ee1" entry="full" default="true">suí</lex>
+<lex pron="s i@1 x aa2 n" entry="full" default="true">suíochán</lex>
+<lex pron="s i@1 v" entry="full" default="true">suíomh</lex>
+<lex pron="s aa1 s t @0" entry="full" default="true">sásta</lex>
+<lex pron="sh eey1" entry="full" default="true">sé</lex>
+<lex pron="sh eey1 m @0 s" entry="full" default="true">séamas</lex>
+<lex pron="sh eey1 m @0 s" entry="full" default="true">séamus</lex>
+<lex pron="sh ee1" entry="full" default="true">sí</lex>
+<lex pron="sh ee1 lj @0" entry="full" default="true">síle</lex>
+<lex pron="sh ee1 lj i0 mj" entry="full" default="true">sílim</lex>
+<lex pron="sh ee1 nj @0" entry="full" default="true">síne</lex>
+<lex pron="sh ee1 nj i@2 x" entry="full" default="true">síníodh</lex>
+<lex pron="sh i@1 x aa2 n @0" entry="full" default="true">síochána</lex>
+<lex pron="sh ee1 s" entry="full" default="true">síos</lex>
+<lex pron="s oy1 sh i@2 l t @0" entry="full" default="true">sóisialta</lex>
+<lex pron="s o1 r t" entry="full" default="true">sórt</lex>
+<lex pron="s uu1 lj" entry="full" default="true">súil</lex>
+<lex pron="s uu1 lj @2" entry="full" default="true">súile</lex>
+<lex pron="t ee1" entry="full" default="true">t</lex>
+<lex pron="t uu1 rj" entry="full" default="true">tabhair</lex>
+<lex pron="t uu1 rj tj" entry="full" default="true">tabhairt</lex>
+<lex pron="t uu1 r i2 gj" entry="full" default="true">tabharfaidh</lex>
+<lex pron="t a1 k @0 rj" entry="full" default="true">tacair</lex>
+<lex pron="t a1 k ee0 @2 x t" entry="full" default="true">tacaíocht</lex>
+<lex pron="t a1 x t" entry="full" default="true">tacht</lex>
+<lex pron="t a1 d @0" entry="full" default="true">tada</lex>
+<lex pron="t ai1 g" entry="full" default="true">tadhg</lex>
+<lex pron="t eey1" entry="full" default="true">tae</lex>
+<lex pron="t a1 g @0 rj tj" entry="full" default="true">tagairt</lex>
+<lex pron="t a1 g @0 n" entry="full" default="true">tagann</lex>
+<lex pron="t a1 g h @0" entry="full" default="true">tagtha</lex>
+<lex pron="t ai1 dj @0" entry="full" default="true">taighde</lex>
+<lex pron="t a1 rj @0" entry="full" default="true">taire</lex>
+<lex pron="t a1 sh pj aa0 n t @0" entry="full" default="true">taispeánta</lex>
+<lex pron="t a1 h ee0" entry="full" default="true">taithí</lex>
+<lex pron="t a1 l i0 v" entry="full" default="true">talaimh</lex>
+<lex pron="t a1 l @0 v" entry="full" default="true">talamh</lex>
+<lex pron="t a1 l uu0 n" entry="full" default="true">talún</lex>
+<lex pron="t a1 m @0 lj" entry="full" default="true">tamaill</lex>
+<lex pron="t a1 m @0 l" entry="full" default="true">tamall</lex>
+<lex pron="t a1 n ee0" entry="full" default="true">tanaí</lex>
+<lex pron="t eey1 v" entry="full" default="true">taobh</lex>
+<lex pron="t a1 r i0 ngj tj" entry="full" default="true">tarraingt</lex>
+<lex pron="t a1 r i0 ngj tj @2 x" entry="full" default="true">tarraingteach</lex>
+<lex pron="tj a1 x" entry="full" default="true">teach</lex>
+<lex pron="tj a1 x t" entry="full" default="true">teacht</lex>
+<lex pron="tj ai1 l @0 x" entry="full" default="true">teaghlach</lex>
+<lex pron="tj ai1 l i0 gj" entry="full" default="true">teaghlaigh</lex>
+<lex pron="tj a1 ng @0" entry="full" default="true">teanga</lex>
+<lex pron="tj a1 s t @0 sh" entry="full" default="true">teastais</lex>
+<lex pron="tj a0 s t aa1 lj" entry="full" default="true">teastáil</lex>
+<lex pron="tj e1 dj @0 l" entry="full" default="true">teideal</lex>
+<lex pron="tj e2 lj i0 fj ee1 sh @0" entry="full" default="true">teilifíse</lex>
+<lex pron="tj o1 r @0 n t @0" entry="full" default="true">teoranta</lex>
+<lex pron="h a1 r l @0" entry="full" default="true">tharla</lex>
+<lex pron="hj a1 s t i@2 n" entry="full" default="true">theastaíonn</lex>
+<lex pron="hj uh1 k @0 x" entry="full" default="true">thiocfadh</lex>
+<lex pron="hj i1 tj" entry="full" default="true">thit</lex>
+<lex pron="h o1 rj" entry="full" default="true">thoir</lex>
+<lex pron="h o1 r ee0" entry="full" default="true">thoraí</lex>
+<lex pron="hj rj ee1" entry="full" default="true">thrí</lex>
+<lex pron="h uh1 g" entry="full" default="true">thug</lex>
+<lex pron="h aa1 nj i0 gj" entry="full" default="true">tháinig</lex>
+<lex pron="h oy1 g" entry="full" default="true">thóg</lex>
+<lex pron="tj i@1 r n @0" entry="full" default="true">tiarna</lex>
+<lex pron="tj i1 gj" entry="full" default="true">tigh</lex>
+<lex pron="tj ee1 mj pj @0 l" entry="full" default="true">timpeall</lex>
+<lex pron="tj ee1 mj pj @0 l @2 x t" entry="full" default="true">timpeallacht</lex>
+<lex pron="tj i1 nj @0" entry="full" default="true">tine</lex>
+<lex pron="tj uu1 n x @2 r" entry="full" default="true">tionchar</lex>
+<lex pron="tj uh0 n oy1 sh kj" entry="full" default="true">tionóisc</lex>
+<lex pron="tj i1 h @0" entry="full" default="true">tithe</lex>
+<lex pron="tj i1 tj i0 mj" entry="full" default="true">titim</lex>
+<lex pron="tj uh1 v" entry="full" default="true">tiubh</lex>
+<lex pron="t o1 sh kj" entry="full" default="true">toisc</lex>
+<lex pron="t o1 m" entry="full" default="true">tom</lex>
+<lex pron="t o1 m aa2 s" entry="full" default="true">tomás</lex>
+<lex pron="t o1 r @0" entry="full" default="true">toradh</lex>
+<lex pron="t o1 r h ee0" entry="full" default="true">torthaí</lex>
+<lex pron="t o1 s i0 gj" entry="full" default="true">tosaigh</lex>
+<lex pron="t o1 s uu0" entry="full" default="true">tosú</lex>
+<lex pron="t r a1 dj i0 sh uu2 n" entry="full" default="true">traidisiún</lex>
+<lex pron="t r a1 s n @0" entry="full" default="true">trasna</lex>
+<lex pron="tj rj o1 rj" entry="full" default="true">treoir</lex>
+<lex pron="tj rj uu1 r" entry="full" default="true">triúr</lex>
+<lex pron="t r i1 dj" entry="full" default="true">troid</lex>
+<lex pron="t r u@1" entry="full" default="true">trua</lex>
+<lex pron="t r aa1" entry="full" default="true">trá</lex>
+<lex pron="t r aa1 x t" entry="full" default="true">trácht</lex>
+<lex pron="t r aa1" entry="full" default="true">tráth</lex>
+<lex pron="t r aa0 n oy1 n @0" entry="full" default="true">tráthnóna</lex>
+<lex pron="tj rj eey1 v sh @0" entry="full" default="true">tréimhse</lex>
+<lex pron="tj rj ee1" entry="full" default="true">trí</lex>
+<lex pron="tj rj ee1 dj" entry="full" default="true">tríd</lex>
+<lex pron="t rj uh1 x @0" entry="full" default="true">tríocha</lex>
+<lex pron="tj rj ee1 nj @0" entry="full" default="true">trína</lex>
+<lex pron="tj rj ee1 uu0" entry="full" default="true">tríú</lex>
+<lex pron="t ee1 lj" entry="full" default="true">tsaoil</lex>
+<lex pron="tj e2 rj v ee1 s" entry="full" default="true">tseirbhís</lex>
+<lex pron="tj nj a1 x t @0" entry="full" default="true">tsneachta</lex>
+<lex pron="t uu1 lj" entry="full" default="true">tsúil</lex>
+<lex pron="t u@1 rj i0 mj" entry="full" default="true">tuairim</lex>
+<lex pron="t u@1 rj i0 sh kj" entry="full" default="true">tuairisc</lex>
+<lex pron="t u@1 sh kj @0 r t" entry="full" default="true">tuaisceart</lex>
+<lex pron="t u@1 h @0" entry="full" default="true">tuaithe</lex>
+<lex pron="t u@2 r @0 s k aa1 lj" entry="full" default="true">tuarascáil</lex>
+<lex pron="t u@1" entry="full" default="true">tuath</lex>
+<lex pron="t uh1 g @0" entry="full" default="true">tugadh</lex>
+<lex pron="t uh1 g @0 n" entry="full" default="true">tugann</lex>
+<lex pron="t uh1 g t @0 r" entry="full" default="true">tugtar</lex>
+<lex pron="t uh1 g h @0" entry="full" default="true">tugtha</lex>
+<lex pron="t i1 lj @0" entry="full" default="true">tuilleadh</lex>
+<lex pron="t i1 sh kj i0 nj tj" entry="full" default="true">tuiscint</lex>
+<lex pron="t i1 sh mj i0 h o2 rj" entry="full" default="true">tuismitheoir</lex>
+<lex pron="t uh1 r @0 s" entry="full" default="true">turas</lex>
+<lex pron="t uh1 s @0" entry="full" default="true">tusa</lex>
+<lex pron="t ee1" entry="full" default="true">tuí</lex>
+<lex pron="t aa1" entry="full" default="true">tá</lex>
+<lex pron="t aa1 v @0 x t" entry="full" default="true">tábhacht</lex>
+<lex pron="t aa1 v @0 x t @2 x" entry="full" default="true">tábhachtach</lex>
+<lex pron="t aa1 mj" entry="full" default="true">táim</lex>
+<lex pron="t aa1 mj ee2 dj" entry="full" default="true">táimid</lex>
+<lex pron="t aa1 s t aa0 lj" entry="full" default="true">tástáil</lex>
+<lex pron="tj eey1" entry="full" default="true">té</lex>
+<lex pron="tj eey1 n" entry="full" default="true">téann</lex>
+<lex pron="tj eey1 r m @0" entry="full" default="true">téarma</lex>
+<lex pron="tj ee1" entry="full" default="true">tí</lex>
+<lex pron="tj i@1 r h @0" entry="full" default="true">tíortha</lex>
+<lex pron="tj ee1 rj" entry="full" default="true">tír</lex>
+<lex pron="tj ee1 rj @0" entry="full" default="true">tíre</lex>
+<lex pron="t oy1 g @0" entry="full" default="true">tógadh</lex>
+<lex pron="t uu1" entry="full" default="true">tú</lex>
+<lex pron="t uu1 s" entry="full" default="true">tús</lex>
+<lex pron="j uu1" entry="full" default="true">u</lex>
+<lex pron="u@1 x t @0 r" entry="full" default="true">uachtar</lex>
+<lex pron="u@1 x t @0 r l @2 n" entry="full" default="true">uachtarlann</lex>
+<lex pron="u@1 x t @0 r aa2 n" entry="full" default="true">uachtarán</lex>
+<lex pron="u@1 i0 gj" entry="full" default="true">uaidh</lex>
+<lex pron="u@1 mj" entry="full" default="true">uaim</lex>
+<lex pron="u@1 rj" entry="full" default="true">uair</lex>
+<lex pron="u@1 rj @0 n t @0" entry="full" default="true">uaireanta</lex>
+<lex pron="u@1 tj" entry="full" default="true">uait</lex>
+<lex pron="u@1 h i0" entry="full" default="true">uaithi</lex>
+<lex pron="u@1 f aa0 s" entry="full" default="true">uafás</lex>
+<lex pron="u@1 s @0 l" entry="full" default="true">uasal</lex>
+<lex pron="u@1 h uh0" entry="full" default="true">uathu</lex>
+<lex pron="i1 lj @0" entry="full" default="true">uile</lex>
+<lex pron="i1 lj i0 gj" entry="full" default="true">uilig</lex>
+<lex pron="i1 v i0 rj" entry="full" default="true">uimhir</lex>
+<lex pron="i1 rj hj i0" entry="full" default="true">uirthi</lex>
+<lex pron="i1 sh kj @0" entry="full" default="true">uisce</lex>
+<lex pron="uh1 l @0" entry="full" default="true">uladh</lex>
+<lex pron="uh1 l @0 v uu2" entry="full" default="true">ullmhú</lex>
+<lex pron="uh1 l t @0 sh @0" entry="full" default="true">ultaise</lex>
+<lex pron="uh1 m" entry="full" default="true">um</lex>
+<lex pron="ee1" entry="full" default="true">uí</lex>
+<lex pron="v ee1" entry="full" default="true">v</lex>
+<lex pron="d uh1 b @0 l j uu0" entry="full" default="true">w</lex>
+<lex pron="e1 k s" entry="full" default="true">x</lex>
+<lex pron="v ai1" entry="full" default="true">y</lex>
+<lex pron="z e1 d" entry="full" default="true">z</lex>
+<lex pron="z o1 p i0 t @2 r" entry="full" default="true">zopitar</lex>
+<lex pron="z uh1 k @0 r b @2 r g" entry="full" default="true">zuckerberg</lex>
+<lex pron="aa1" entry="full" default="true">á</lex>
+<lex pron="a2 f a1 d @0" entry="1" default="false">á</lex>
+<lex pron="aa1 b @0 l t @0" entry="full" default="true">ábalta</lex>
+<lex pron="aa1 v @0 rj" entry="full" default="true">ábhair</lex>
+<lex pron="aa1 v @0 r" entry="full" default="true">ábhar</lex>
+<lex pron="aa1 f @0 x" entry="full" default="true">áfach</lex>
+<lex pron="aa1 rj @2 v" entry="full" default="true">áireamh</lex>
+<lex pron="aa1 rj i2 h @0" entry="full" default="true">áirithe</lex>
+<lex pron="aa1 tj" entry="full" default="true">áit</lex>
+<lex pron="aa1 tj @2 n @0" entry="full" default="true">áiteanna</lex>
+<lex pron="aa1 tj uu2 lj" entry="full" default="true">áitiúil</lex>
+<lex pron="aa1 tj uu2 l @0" entry="full" default="true">áitiúla</lex>
+<lex pron="aa1 l i0 nj" entry="full" default="true">álainn</lex>
+<lex pron="aa1 r" entry="full" default="true">ár</lex>
+<lex pron="aa1 h @0" entry="full" default="true">átha</lex>
+<lex pron="eey1" entry="full" default="true">é</lex>
+<lex pron="ee2 f a1 d @0" entry="1" default="false">é</lex>
+<lex pron="eey1 g s uu0 l @0" entry="full" default="true">éagsúla</lex>
+<lex pron="eey1 gj @0 n" entry="full" default="true">éigean</lex>
+<lex pron="eey1 gj @0 n d aa2 l @0" entry="full" default="true">éigeandála</lex>
+<lex pron="eey1 gj i0 nj" entry="full" default="true">éigin</lex>
+<lex pron="eey1 lj @0 v" entry="full" default="true">éileamh</lex>
+<lex pron="eey1 nj @0 x t" entry="full" default="true">éineacht</lex>
+<lex pron="eey1 nj @0" entry="full" default="true">éinne</lex>
+<lex pron="eey1 rj @0" entry="full" default="true">éire</lex>
+<lex pron="eey1 rj @0 n" entry="full" default="true">éireann</lex>
+<lex pron="eey1 rj @0 n @2 x" entry="full" default="true">éireannach</lex>
+<lex pron="ai1 rj i0 gj" entry="full" default="true">éirigh</lex>
+<lex pron="eey1 rj i0 nj" entry="full" default="true">éirinn</lex>
+<lex pron="ai1 rj ee0" entry="full" default="true">éirí</lex>
+<lex pron="ai1 rj ee0 @0 n" entry="full" default="true">éiríonn</lex>
+<lex pron="eey1 sh tj @0 x t" entry="full" default="true">éisteacht</lex>
+<lex pron="ee1" entry="full" default="true">í</lex>
+<lex pron="ai2 f a1 d @0" entry="1" default="false">í</lex>
+<lex pron="i@1 k" entry="full" default="true">íoc</lex>
+<lex pron="i@1 x t @0 rj" entry="full" default="true">íochtair</lex>
+<lex pron="i@1 x t @0 r" entry="full" default="true">íochtar</lex>
+<lex pron="oy1" entry="full" default="true">ó</lex>
+<lex pron="oy2 f a1 d @0" entry="1" default="false">ó</lex>
+<lex pron="oy1 k aa1 i0 dj" entry="full" default="true">ócáid</lex>
+<lex pron="oy1 g" entry="full" default="true">óg</lex>
+<lex pron="oy1 g @0" entry="full" default="true">óga</lex>
+<lex pron="oy1 gj @2" entry="full" default="true">óige</lex>
+<lex pron="oy1 rj" entry="full" default="true">óir</lex>
+<lex pron="oy1 l" entry="full" default="true">ól</lex>
+<lex pron="oy1 n" entry="full" default="true">ón</lex>
+<lex pron="oy1 n @0" entry="full" default="true">óna</lex>
+<lex pron="oy1 s" entry="full" default="true">ós</lex>
+<lex pron="j uu2 f a1 d @0" entry="full" default="true">ú</lex>
+<lex pron="uu1 d" entry="full" default="true">úd</lex>
+<lex pron="uu1 d @0 r" entry="full" default="true">údar</lex>
+<lex pron="uu2 d @0 r aa1 sh" entry="full" default="true">údaráis</lex>
+<lex pron="uu1 d @0 r aa2 s" entry="full" default="true">údarás</lex>
+<lex pron="uu1 nj eey0 rj" entry="full" default="true">úinéir</lex>
+<lex pron="uu1 r" entry="full" default="true">úr</lex>
+<lex pron="uu1 r sh kj eey0 l" entry="full" default="true">úrscéal</lex>
+<lex pron="uu0 s aa1 dj" entry="full" default="true">úsáid</lex>
+<lex pron="uu0 s aa1 dj tj @2 r" entry="full" default="true">úsáidtear</lex>
+</lexicon>
