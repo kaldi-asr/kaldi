@@ -31,8 +31,8 @@ nnet3_affix=_cleaned
 srcdir=exp/nnet3${nnet3_affix}/tdnn_sp
 gmm_dir=exp/${gmm}
 graph_dir=$gmm_dir/graph_tgsmall
-train_data_dir=data/${train_set}_sp_hires_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+train_data_dir=data/${train_set}_sp_hires
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 degs_dir=                     # If provided, will skip the degs directory creation
 lats_dir=                     # If provided, will skip denlats creation
 

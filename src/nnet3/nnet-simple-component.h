@@ -381,16 +381,35 @@ class FixedScaleComponent;
 class PerElementScaleComponent;
 class PerElementOffsetComponent;
 
-// Affine means a linear function plus an offset.
-// Note: although this class can be instantiated, it also
-// functions as a base-class for more specialized versions of
-// AffineComponent.
+/*
+  Affine means a linear function plus an offset.
+  Note: although this class can be instantiated, it also
+  functions as a base-class for more specialized versions of
+  AffineComponent.
+
+  Parameters accepted on the config line, with default if applicable:
+
+     matrix   If specified, a filename containing the parameters of the class as
+              a single matrix containing the linear_params, plus the bias_params
+              as the last column
+
+     input-dim  The input dimension of the component
+     output-dim  The output dimension of the component
+     param-stddev=1/sqrt(input-dim)  The standard deviation of the elements of the linear parameters
+                      (they will have a Gaussian distribution with this standard deviation).
+     bias-stddev=1.0   The standard deviation of the elements of the bias parameters
+
+     orthonormal-constraint=0.0   Can be used to constrain the linear parameter matrix
+                       to be semi-orthogonal, see ConstraintOrhonormal() in nnet-utils.h,
+                       and http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf.
+*/
 class AffineComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return linear_params_.NumCols(); }
   virtual int32 OutputDim() const { return linear_params_.NumRows(); }
 
   BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
+
   virtual std::string Info() const;
   virtual void InitFromConfig(ConfigLine *cfl);
 
@@ -434,6 +453,7 @@ class AffineComponent: public UpdatableComponent {
   virtual void SetParams(const CuVectorBase<BaseFloat> &bias,
                          const CuMatrixBase<BaseFloat> &linear);
   const CuVector<BaseFloat> &BiasParams() const { return bias_params_; }
+  CuVector<BaseFloat> &BiasParams() { return bias_params_; }
   const CuMatrix<BaseFloat> &LinearParams() const { return linear_params_; }
   CuMatrix<BaseFloat> &LinearParams() { return linear_params_; }
   explicit AffineComponent(const AffineComponent &other);
@@ -468,6 +488,8 @@ class AffineComponent: public UpdatableComponent {
   const AffineComponent &operator = (const AffineComponent &other); // Disallow.
   CuMatrix<BaseFloat> linear_params_;
   CuVector<BaseFloat> bias_params_;
+  // see documentation at the top of this class for more information on the
+  // following.
   BaseFloat orthonormal_constraint_;
 };
 
@@ -1145,18 +1167,30 @@ class FixedBiasComponent: public Component {
   KALDI_DISALLOW_COPY_AND_ASSIGN(FixedBiasComponent);
 };
 
-/** NoOpComponent just duplicates its input.  We don't anticipate this being used
-    very often, but it may sometimes make your life easier
-    The only config parameter it accepts is 'dim', e.g. 'dim=400'.
+/**
+   NoOpComponent just duplicates its input.  We don't anticipate this being used
+    very often, but it may sometimes make your life easier.  Config parameters:
+
+      dim               E.g. dim=1024.  Required.
+      backprop-scale    Defaults to 1.0.  May be set to a different value to scale
+                        the derivatives being backpropagated.
 */
-class NoOpComponent: public NonlinearComponent {
+class NoOpComponent: public Component {
  public:
-  explicit NoOpComponent(const NoOpComponent &other): NonlinearComponent(other) { }
+  explicit NoOpComponent(const NoOpComponent &other):
+      dim_(other.dim_), backprop_scale_(other.backprop_scale_) { }
   NoOpComponent() { }
   virtual std::string Type() const { return "NoOpComponent"; }
   virtual int32 Properties() const {
-    return kSimpleComponent|kPropagateInPlace;
+    return kSimpleComponent|kPropagateInPlace|kBackpropInPlace;
   }
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual Component *Copy() { return new NoOpComponent(*this); }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
   virtual Component* Copy() const { return new NoOpComponent(*this); }
   virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                           const CuMatrixBase<BaseFloat> &in,
@@ -1170,6 +1204,9 @@ class NoOpComponent: public NonlinearComponent {
                         Component *to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
  private:
+  int32 dim_;
+  BaseFloat backprop_scale_;
+
   NoOpComponent &operator = (const NoOpComponent &other); // Disallow.
 };
 
@@ -1386,6 +1423,11 @@ class ClipGradientComponent: public Component {
         for each feature/activation dimension i:
           output(row, i) = input(row, column_map_[i]).
 
+    The only config value it accepts is 'column-map', e.g.:
+            column-map=0,10,1,11,...,9,19
+    ... which should be a permutation of a contiguous block of integers
+    starting with 0 (i.e. something like '3,2,1,0' but not '0,4' or '0,0,2').
+    See the equation above for how it is used.
 */
 class PermuteComponent: public Component {
  public:
@@ -1555,6 +1597,12 @@ class PerElementScaleComponent: public UpdatableComponent {
                       which does not support natural gradient directly-- in that
                       case you have to use NaturalGradientPerElementScaleComponent
                       if you want to use natural gradient update.
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
 */
 class PerElementOffsetComponent: public UpdatableComponent {
  public:
