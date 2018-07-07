@@ -28,8 +28,8 @@ namespace kaldi {
   int32 CopySubsetLattices(std::string filename, 
       SequentialLatticeReader *lattice_reader,
       LatticeWriter *lattice_writer,
-      bool include = true, bool ignore_missing = false
-      ) {
+      bool include = true, bool ignore_missing = false,
+      bool sorted = false) {
     unordered_set<std::string, StringHasher> subset;
     std::set<std::string> subset_list; 
 
@@ -50,7 +50,8 @@ namespace kaldi {
     int32 num_total = 0;
     size_t num_success = 0;
     for (; !lattice_reader->Done(); lattice_reader->Next(), num_total++) {
-      if (include && lattice_reader->Key() > *(subset_list.rbegin())) {
+      if (include && sorted && subset_list.size() > 0 
+              && lattice_reader->Key() > *(subset_list.rbegin())) {
         KALDI_LOG << "The utterance " << lattice_reader->Key()
                   << " is larger than "
                   << "the last key in the include list. Not reading further.";
@@ -78,11 +79,11 @@ namespace kaldi {
   int32 CopySubsetLattices(std::string filename, 
       SequentialCompactLatticeReader *lattice_reader,
       CompactLatticeWriter *lattice_writer,
-      bool include = true, bool ignore_missing = false
-      ) {
+      bool include = true, bool ignore_missing = false,
+      bool sorted = false) {
     unordered_set<std::string, StringHasher> subset;
     std::set<std::string> subset_list; 
-    
+
     bool binary;
     Input ki(filename, &binary);
     KALDI_ASSERT(!binary);
@@ -100,7 +101,8 @@ namespace kaldi {
     int32 num_total = 0;
     size_t num_success = 0;
     for (; !lattice_reader->Done(); lattice_reader->Next(), num_total++) {
-      if (include && lattice_reader->Key() > *(subset_list.rbegin())) {
+      if (include && sorted && subset_list.size() > 0 
+              && lattice_reader->Key() > *(subset_list.rbegin())) {
         KALDI_LOG << "The utterance " << lattice_reader->Key()
                   << " is larger than "
                   << "the last key in the include list. Not reading further.";
@@ -174,6 +176,10 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
 
+    RspecifierOptions opts;
+    ClassifyRspecifier(lats_rspecifier, NULL, &opts);
+    bool sorted = opts.sorted;
+
     int32 n_done = 0;
     
     if (write_compact) {
@@ -186,7 +192,7 @@ int main(int argc, char *argv[]) {
         }
         return CopySubsetLattices(include_rxfilename,  
             &lattice_reader, &lattice_writer,
-            true, ignore_missing);
+            true, ignore_missing, sorted);
       } else if (exclude_rxfilename != "") {
         return CopySubsetLattices(exclude_rxfilename, 
             &lattice_reader, &lattice_writer,
@@ -205,7 +211,7 @@ int main(int argc, char *argv[]) {
         }
         return CopySubsetLattices(include_rxfilename,
             &lattice_reader, &lattice_writer,
-            true, ignore_missing);
+            true, ignore_missing, sorted);
       } else if (exclude_rxfilename != "") {
         return CopySubsetLattices(exclude_rxfilename,
             &lattice_reader, &lattice_writer,
