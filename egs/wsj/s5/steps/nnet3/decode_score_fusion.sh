@@ -130,7 +130,7 @@ for i in `seq 0 $[num_sys-1]`; do
   
   model=$srcdir/$iter.mdl
   if [ ! -f $srcdir/$iter.mdl ]; then
-    echo "$0: ERROR: no such file $srcdir/$iter.raw. Trying $srcdir/$iter.mdl exit" && exit 1;
+    echo "$0: Error: no such file $srcdir/$iter.raw. Trying $srcdir/$iter.mdl exit" && exit 1;
   fi
   
   # check that they have the same tree
@@ -158,7 +158,7 @@ for i in `seq 0 $[num_sys-1]`; do
 
   ## Set up features.
   if [ -f $srcdir/final.mat ]; then
-    echo "$0: ERROR: lda feature type is no longer supported." && exit 1
+    echo "$0: Error: lda feature type is no longer supported." && exit 1
   fi
   
   sdata=$data/split$nj;
