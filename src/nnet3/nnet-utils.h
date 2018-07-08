@@ -471,6 +471,8 @@ void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
    In order to make it efficient on GPU, it doesn't make it completely orthonormal,
    it just makes it closer to being orthonormal (times the 'orthonormal_constraint'
    value).  Over multiple iterations this rapidly makes it almost exactly orthonormal.
+
+   See http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
  */
 void ConstrainOrthonormal(Nnet *nnet);
 

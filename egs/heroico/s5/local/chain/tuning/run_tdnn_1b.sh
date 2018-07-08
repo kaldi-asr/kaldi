@@ -1,19 +1,23 @@
 #!/bin/bash
 
-# local/chain/compare_wer.sh exp/chain/tdnn1a_sp
-# System                  tdnn1a_sp
-# %WER        devtest       53.07
-# %WER           test       59.25
-# %WER         native       54.47
-# %WER      nonnative       63.01
-# Final train prob          -0.0253
-# Final valid prob          -0.0687
-# Final train prob (xent)   -0.7715
-# Final valid prob (xent)   -1.0719
-# Num-params                 6567648
+# 1b is as 1a but a re-tuned model with quite a few changes, including moving to
+#   a resnet-style factored TDNN-F model.
+#
+# local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp
+# System                  tdnn1a_sp tdnn1b_sp
+# %WER        devtest       53.07     52.54
+# %WER           test       59.25     53.70
+# %WER         native       54.47     48.76
+# %WER      nonnative       63.01     57.66
+# Final train prob          -0.0253   -0.0547
+# Final valid prob          -0.0687   -0.0694
+# Final train prob (xent)   -0.7715   -0.9502
+# Final valid prob (xent)   -1.0719   -1.0849
+# Num-params                 6567648   3321312
 
-# steps/info/chain_dir_info.pl  exp/chain/tdnn1a_sp/
-#exp/chain/tdnn1a_sp/: num-iters=105 nj=1..1 num-params=6.6M dim=40+100->1392 combine=-0.040->-0.033 (over 7) xent:train/valid[69,104,final]=(-1.12,-0.880,-0.771/-1.33,-1.21,-1.07) logprob:train/valid[69,104,final]=(-0.050,-0.031,-0.025/-0.079,-0.080,-0.069)
+
+# steps/info/chain_dir_info.pl  exp/chain/tdnn1b_sp
+# exp/chain/tdnn1b_sp: num-iters=34 nj=2..5 num-params=3.3M dim=40+100->1392 combine=-0.059->-0.059 (over 1) xent:train/valid[21,33,final]=(-1.28,-0.986,-0.950/-1.38,-1.10,-1.08) logprob:train/valid[21,33,final]=(-0.085,-0.063,-0.055/-0.090,-0.074,-0.069)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -29,7 +33,7 @@ nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1a   # affix for the TDNN directory name
+affix=1b   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
@@ -41,8 +45,7 @@ num_leaves=3500
 # training chunk-options
 chunk_width=140,100,160
 # we don't need extra left/right context for TDNN systems.
-chunk_left_context=0
-chunk_right_context=0
+dropout_schedule='0,0@0.20,0.3@0.50,0'
 common_egs_dir=
 xent_regularize=0.1
 
@@ -150,8 +153,11 @@ if [ $stage -le 13 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  opts="l2-regularize=0.01"
-  output_opts="l2-regularize=0.0025"
+  affine_opts="l2-regularize=0.03 dropout-proportion=0.0 dropout-per-dim-continuous=true"
+  tdnnf_opts="l2-regularize=0.03 dropout-proportion=0.0 bypass-scale=0.66"
+  linear_opts="l2-regularize=0.03 orthonormal-constraint=-1.0"
+  prefinal_opts="l2-regularize=0.03"
+  output_opts="l2-regularize=0.015"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -161,33 +167,29 @@ if [ $stage -le 13 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 $opts dim=512
-  relu-batchnorm-layer name=tdnn2 $opts dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 $opts dim=512
-  relu-batchnorm-layer name=tdnn4 $opts dim=512 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 $opts dim=512
-  relu-batchnorm-layer name=tdnn6 $opts dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 $opts dim=512 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 $opts dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-dropout-layer name=tdnn1 $affine_opts dim=768
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
+  linear-component name=prefinal-l dim=192 $linear_opts
 
-  # adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain $opts dim=512 target-rms=0.5
-  output-layer name=output $output_opts include-log-softmax=false dim=$num_targets max-change=1.5
+  ## adding the layers for chain branch
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=768 small-dim=192
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
   # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' models... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent $opts input=tdnn8 dim=512 target-rms=0.5
-  output-layer name=output-xent $output_opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=768 small-dim=192
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -201,25 +203,21 @@ if [ $stage -le 14 ]; then
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.00005 \
+    --chain.l2-regularize=0.0 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=7 \
+    --trainer.num-epochs=8 \
     --trainer.frames-per-iter=3000000 \
-    --trainer.optimization.num-jobs-initial=1 \
-    --trainer.optimization.num-jobs-final=1 \
+    --trainer.optimization.num-jobs-initial=2 \
+    --trainer.optimization.num-jobs-final=5 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
-    --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=256,128,64 \
-    --trainer.optimization.momentum=0.0 \
+    --trainer.num-chunk-per-minibatch=128,64 \
     --egs.chunk-width=$chunk_width \
-    --egs.chunk-left-context=$chunk_left_context \
-    --egs.chunk-right-context=$chunk_right_context \
-    --egs.chunk-left-context-initial=0 \
-    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0" \
     --cleanup.remove-egs=$remove_egs \
@@ -251,10 +249,6 @@ if [ $stage -le 16 ]; then
     steps/nnet3/decode.sh \
       --acwt 1.0 \
       --post-decode-acwt 10.0 \
-      --extra-left-context $chunk_left_context \
-      --extra-right-context $chunk_right_context \
-      --extra-left-context-initial 0 \
-      --extra-right-context-final 0 \
       --frames-per-chunk $frames_per_chunk \
       --nj $nspk \
       --cmd "$decode_cmd" \
