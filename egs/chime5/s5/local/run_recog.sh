@@ -24,8 +24,6 @@ set -e # exit on error
 # chime5 main directory path
 # please change the path accordingly
 chime5_corpus=/export/corpora4/CHiME5
-####
-echo "test. This line should be replaced"
 json_dir=${chime5_corpus}/transcriptions
 audio_dir=${chime5_corpus}/audio
 
@@ -56,11 +54,28 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 6 ]; then
+  # fix speaker ID issue (thanks to Dr. Naoyuki Kanda)
+  # add array ID to the speaker ID to avoid the use of other array information to meet regulations
+  # Before this fix
+  # $ head -n 2 data/eval_beamformit_ref_nosplit/utt2spk
+  # P01_S01_U02_KITCHEN.ENH-0000192-0001278 P01
+  # P01_S01_U02_KITCHEN.ENH-0001421-0001481 P01
+  # After this fix
+  # $ head -n 2 data/eval_beamformit_ref_nosplit_fix/utt2spk
+  # P01_S01_U02_KITCHEN.ENH-0000192-0001278 P01_U02
+  # P01_S01_U02_KITCHEN.ENH-0001421-0001481 P01_U02
+  for dset in ${test_sets}; do
+    utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
+    mkdir -p data/${dset}_nosplit_fix
+    cp data/${dset}_nosplit/{segments,text,wav.scp} data/${dset}_nosplit_fix/
+    awk -F "_" '{print $0 "_" $3}' data/${dset}_nosplit/utt2spk > data/${dset}_nosplit_fix/utt2spk
+    utils/utt2spk_to_spk2utt.pl data/${dset}_nosplit_fix/utt2spk > data/${dset}_nosplit_fix/spk2utt
+  done
+
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
   for dset in ${test_sets}; do
-    utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
-    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit data/${dset}
+    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit_fix data/${dset}
   done
 fi
 
@@ -141,6 +156,8 @@ fi
 
 if [ $stage -le 20 ]; then
   # final scoring to get the official challenge result
+  # please specify both dev and eval set directories so that the search parameters
+  # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh \
       --dev exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_dev_${enhancement}_ref \
       --eval exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_eval_${enhancement}_ref

@@ -26,8 +26,8 @@ adir=$1
 jdir=$2
 dir=$3
 
-json_count=$(find $jdir -name "*.json" | wc -l)
-wav_count=$(find $adir -name "*.wav" | wc -l)
+json_count=$(find -L $jdir -name "*.json" | wc -l)
+wav_count=$(find -L $adir -name "*.wav" | wc -l)
 
 if [ "$json_count" -eq 0 ]; then
   echo >&2 "We expect that the directory $jdir will contain json files."
@@ -56,7 +56,7 @@ if [ $mictype == "worn" ]; then
   # convert the filenames to wav.scp format, use the basename of the file
   # as a the wav.scp key, add .L and .R for left and right channel
   # i.e. each file will have two entries (left and right channel)
-  find $adir -name  "S[0-9]*_P[0-9]*.wav" | \
+  find -L $adir -name  "S[0-9]*_P[0-9]*.wav" | \
     perl -ne '{
       chomp;
       $path = $_;
@@ -81,7 +81,7 @@ elif [ $mictype == "ref" ]; then
   # first get a text, which will be used to extract reference arrays
   perl -ne 's/-/.ENH-/;print;' $dir/text.orig | sort > $dir/text
 
-  find $adir | grep "\.wav" | sort > $dir/wav.flist
+  find -L $adir | grep "\.wav" | sort > $dir/wav.flist
   # following command provide the argument for grep to extract only reference arrays
   grep `cut -f 1 -d"-" $dir/text | awk -F"_" '{print $2 "_" $3}' | sed -e "s/\.ENH//" | sort | uniq | sed -e "s/^/ -e /" | tr "\n" " "` $dir/wav.flist > $dir/wav.flist2
   paste -d" " \
@@ -91,7 +91,7 @@ else
   # array mic case
   # convert the filenames to wav.scp format, use the basename of the file
   # as a the wav.scp key
-  find $adir -name "*.wav" -ipath "*${mictype}*" |\
+  find -L $adir -name "*.wav" -ipath "*${mictype}*" |\
     perl -ne '$p=$_;chomp $_;@F=split "/";$F[$#F]=~s/\.wav//;print "$F[$#F] $p";' |\
     sort -u > $dir/wav.scp
 

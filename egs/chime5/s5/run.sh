@@ -112,6 +112,24 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
+  # fix speaker ID issue (thanks to Dr. Naoyuki Kanda)
+  # add array ID to the speaker ID to avoid the use of other array information to meet regulations
+  # Before this fix
+  # $ head -n 2 data/eval_beamformit_ref_nosplit/utt2spk
+  # P01_S01_U02_KITCHEN.ENH-0000192-0001278 P01
+  # P01_S01_U02_KITCHEN.ENH-0001421-0001481 P01
+  # After this fix
+  # $ head -n 2 data/eval_beamformit_ref_nosplit_fix/utt2spk
+  # P01_S01_U02_KITCHEN.ENH-0000192-0001278 P01_U02
+  # P01_S01_U02_KITCHEN.ENH-0001421-0001481 P01_U02
+  for dset in ${test_sets}; do
+    utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
+    mkdir -p data/${dset}_nosplit_fix
+    cp data/${dset}_nosplit/{segments,text,wav.scp} data/${dset}_nosplit_fix/
+    awk -F "_" '{print $0 "_" $3}' data/${dset}_nosplit/utt2spk > data/${dset}_nosplit_fix/utt2spk
+    utils/utt2spk_to_spk2utt.pl data/${dset}_nosplit_fix/utt2spk > data/${dset}_nosplit_fix/spk2utt
+  done
+
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
   for dset in ${train_set} ${test_sets}; do
@@ -201,6 +219,8 @@ fi
 
 if [ $stage -le 18 ]; then
   # final scoring to get the official challenge result
+  # please specify both dev and eval set directories so that the search parameters
+  # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh \
       --dev exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_dev_${enhancement}_ref \
       --eval exp/chain_${train_set}_cleaned/tdnn1a_sp/decode_eval_${enhancement}_ref
