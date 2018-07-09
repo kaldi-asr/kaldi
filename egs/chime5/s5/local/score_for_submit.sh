@@ -1,6 +1,12 @@
 #!/bin/bash
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey, Yenda Trmal)
 # Apache 2.0
+#
+# This script provides official CHiME-5 challenge submission scores per room and session.
+# It first calculates the best search parameter configurations by using the dev set
+# and also create the transcriptions for dev and eval sets to be submitted.
+# The default setup does not calculate scores of the evaluation set since
+# the evaluation transcription is not distributed (July 9 2018)
 
 cmd=run.pl
 dev=exp/chain_train_worn_u100k_cleaned/tdnn1a_sp/decode_dev_beamformit_ref
@@ -12,9 +18,12 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# -ne 0 ]; then
-    echo "Usage: $0 [--cmd (run.pl|queue.pl...)] <data-dir> <lang-dir|graph-dir> <decode-dir>"
+    echo "Usage: $0 [--cmd (run.pl|queue.pl...)]"
+    echo "This script provides official CHiME-5 challenge submission scores"
     echo " Options:"
     echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
+    echo "    --dev <dev-decode-dir>          # dev set decoding directory"
+    echo "    --eval <eval-decode-dir>        # eval set decoding directory"
     exit 1;
 fi
 
@@ -97,7 +106,7 @@ if $do_eval; then
     echo -n "#errors $nerr, "
     echo "wer $wer %"
 else
-    echo "skip evalution scoring"
+    echo "skip evaluation scoring"
     echo ""
     echo "==== when you submit your result to the CHiME-5 challenge ===="
     echo "Please rename your recognition results of "
