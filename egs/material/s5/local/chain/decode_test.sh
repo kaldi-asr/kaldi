@@ -15,6 +15,7 @@ dir=exp/chain/tdnn1b_sp
 lang=data/lang_combined_chain
 tree_dir=exp/chain/tree_sp
 cmd=queue.pl
+graph_affix=_combined
 
 # training options
 chunk_width=140,100,160
@@ -99,11 +100,10 @@ if [ $stage -le 3 ]; then
         --skip-scoring true \
         --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
         --online-ivector-dir exp/nnet3/ivectors_${data}_segmented_hires \
-        $tree_dir/graph_combined ${datadir}_segmented_hires ${decode_dir} || exit 1
+        $tree_dir/graph${graph_affix} ${datadir}_segmented_hires ${decode_dir} || exit 1
 
       # resolve ctm overlaping regions, and compute wer
-      cp ${datadir}/reftext ${datadir}_segmented_hires
-      local/postprocess_test.sh ${data}_segmented ${tree_dir}/graph_combined \
+      local/postprocess_test.sh ${data}_segmented ${tree_dir}/graph${graph_affix} \
         ${decode_dir}
     ) || touch $dir/.error &
   done
@@ -165,11 +165,11 @@ if [ $stage -le 5 ]; then
         --skip-scoring true \
         --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
         --online-ivector-dir exp/nnet3/ivectors_${data}_segmented_reseg_hires \
-        $tree_dir/graph_combined ${datadir}_segmented_reseg_hires ${decode_dir} || exit 1
+        $tree_dir/graph${graph_affix} ${datadir}_segmented_reseg_hires ${decode_dir} || exit 1
 
       # resolve ctm overlaping regions, and compute wer
       cp ${datadir}/reftext ${datadir}_segmented_reseg_hires
-      local/postprocess_test.sh ${data}_segmented_reseg $tree_dir/graph_combined \
+      local/postprocess_test.sh ${data}_segmented_reseg $tree_dir/graph${graph_affix} \
         ${decode_dir}
     ) || touch $dir/.error &
   done
