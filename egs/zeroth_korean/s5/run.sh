@@ -1,9 +1,8 @@
 #!/bin/bash
 #
-# Based mostly on the WSJ/Librispeech recipe. The training database is #####,
-# it consists of 51hrs korean speech with cleaned automatic transcripts:
-#
-# http://www.openslr.org/resources (Mirror).
+# Based mostly on the WSJ/Librispeech recipe. 
+# The training/testing database is described in http://www.openslr.org/40/
+# This corpus consists of 51hrs korean speech with cleaned automatic transcripts:
 #
 # Copyright  2018  Atlas Guide (Author : Lucas Jo)
 #            2018  Gridspace Inc. (Author: Wonkyum Lee)
@@ -12,13 +11,17 @@
 #
 
 # Check list before start
-# 1. locale setup
-# 2. pre-installed package: awscli, Morfessor-2.0.1, flac, sox, same cuda library, unzip
-# 3. pre-install or symbolic link for easy going: rirs_noises.zip (takes pretty long time)
-# 4. parameters: nCPU, num_jobs_initial, num_jobs_final, --max-noises-per-minute
+# 1. locale setup (see egs/zeroth_korean/s5/path.sh; you need this "export LC_ALL=ko_KR.UTF-8" )
+# 2. required software: Morfessor-2.0.1 (see tools/extras/install_morfessor.sh)
 
+stage=0
 db_dir=./db
-nCPU=16
+nj=16
+
+chain_train=true
+decode=true # set false if you don't want to decode each GMM model
+decode_rescoring=true # set false if you don't want to rescore with large language model
+test_set="test_clean"
 
 . ./cmd.sh
 . ./path.sh
@@ -26,169 +29,237 @@ nCPU=16
 # you might not want to do this for interactive shells.
 set -e
 
-startTime=$(date +'%F-%H-%M')
-echo "started at" $startTime
-
-# download the data.  
-local/download_and_untar.sh $db_dir
-
-# format the data as Kaldi data directories
-for part in train_data_01 test_data_01; do
-	# use underscore-separated names in data directories.
-	local/data_prep.sh $db_dir/$part data/$(echo $part | sed s/-/_/g)
-done
-
-# update segmentation of transcripts
-for part in train_data_01 test_data_01; do
-	local/updateSegmentation.sh data/$part data/local/lm
-done
-
-# prepare dictionary and language model 
-local/prepare_dict.sh data/local/lm data/local/dict_nosp
-
-utils/prepare_lang.sh data/local/dict_nosp \
-	"<UNK>" data/local/lang_tmp_nosp data/lang_nosp
-
-local/format_lms.sh --src-dir data/lang_nosp data/local/lm
-
-# Create ConstArpaLm format language model for full 3-gram and 4-gram LMs
-# it takes long time and do this again after computing silence prob.
-# you can do comment out here this time
-
-#utils/build_const_arpa_lm.sh data/local/lm/zeroth.lm.tg.arpa.gz \
-#	data/lang_nosp data/lang_nosp_test_tglarge
-#utils/build_const_arpa_lm.sh data/local/lm/zeroth.lm.fg.arpa.gz \
-#	  data/lang_nosp data/lang_nosp_test_fglarge
-
-# Feature extraction (MFCC)
-mfccdir=mfcc
-hostInAtlas="ares hephaestus jupiter neptune"
-if [[ ! -z $(echo $hostInAtlas | grep -o $(hostname -f)) ]]; then
-  mfcc=$(basename mfccdir) # in case was absolute pathname (unlikely), get basename.
-  utils/create_split_dir.pl /mnt/{ares,hephaestus,jupiter,neptune}/$USER/kaldi-data/zeroth-kaldi/s5/$mfcc/storage \
-    $mfccdir/storage
+if [ $stage -le 0 ]; then
+  # download the data.  
+  local/download_and_untar.sh $db_dir
 fi
-for part in train_data_01 test_data_01; do
-	steps/make_mfcc.sh --cmd "$train_cmd" --nj $nCPU data/$part exp/make_mfcc/$part $mfccdir
-	steps/compute_cmvn_stats.sh data/$part exp/make_mfcc/$part $mfccdir
-done
 
-# ... and then combine data sets into one (for later extension)
-utils/combine_data.sh \
-  data/train_clean data/train_data_01
+if [ $stage -le 1 ]; then
+  # format the data as Kaldi data directories
+  for part in train_data_01 test_data_01; do
+  	# use underscore-separated names in data directories.
+  	local/data_prep.sh $db_dir/$part data/$part
+  done
+fi
 
-utils/combine_data.sh \
-  data/test_clean data/test_data_01
+if [ $stage -le 2 ]; then
+  # update segmentation of transcripts
+  for part in train_data_01 test_data_01; do
+  	local/updateSegmentation.sh data/$part data/local/lm
+  done
+fi
 
-# Make some small data subsets for early system-build stages.
-utils/subset_data_dir.sh --shortest data/train_clean 2000 data/train_2kshort
-utils/subset_data_dir.sh data/train_clean 5000 data/train_5k
-utils/subset_data_dir.sh data/train_clean 10000 data/train_10k
+if [ $stage -le 3 ]; then
+  # prepare dictionary and language model 
+  local/prepare_dict.sh data/local/lm data/local/dict_nosp
+  
+  utils/prepare_lang.sh data/local/dict_nosp \
+  	"<UNK>" data/local/lang_tmp_nosp data/lang_nosp
+fi
 
-echo "#### Monophone Training ###########"
-# train a monophone system & align
-steps/train_mono.sh --boost-silence 1.25 --nj $nCPU --cmd "$train_cmd" \
-	data/train_2kshort data/lang_nosp exp/mono
-steps/align_si.sh --boost-silence 1.25 --nj $nCPU --cmd "$train_cmd" \
-	data/train_5k data/lang_nosp exp/mono exp/mono_ali_5k
+if [ $stage -le 4 ]; then
+  # build testing language model
+  local/format_lms.sh --src-dir data/lang_nosp data/local/lm
 
-echo "#### Triphone Training, delta + delta-delta ###########"
-# train a first delta + delta-delta triphone system on a subset of 5000 utterancesa
-# number of maximum pdf, gaussian (under/over fitting)
-#  recognition result 
-steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-    2000 10000 data/train_5k data/lang_nosp exp/mono_ali_5k exp/tri1
-steps/align_si.sh --nj $nCPU --cmd "$train_cmd" \
-  data/train_10k data/lang_nosp exp/tri1 exp/tri1_ali_10k
-
-echo "#### Triphone Training, LDA+MLLT ###########"
-# train an LDA+MLLT system.
-steps/train_lda_mllt.sh --cmd "$train_cmd" \
-   --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
-   data/train_10k data/lang_nosp exp/tri1_ali_10k exp/tri2b
-
-# Align a 10k utts subset using the tri2b model
-steps/align_si.sh  --nj $nCPU --cmd "$train_cmd" --use-graphs true \
-  data/train_clean data/lang_nosp exp/tri2b exp/tri2b_ali_train_clean
-
-echo "#### Triphone Training, LDA+MLLT+SAT ###########"
-# Train tri3b, which is LDA+MLLT+SAT on 10k utts
-#steps/train_sat.sh --cmd "$train_cmd" 3000 25000 \
-steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
-  data/train_clean data/lang_nosp exp/tri2b_ali_train_clean exp/tri3b
-
-# Now we compute the pronunciation and silence probabilities from training data,
-# and re-create the lang directory.
-# silence transition probability ...
-steps/get_prons.sh --cmd "$train_cmd" \
-      data/train_clean data/lang_nosp exp/tri3b
-
-utils/dict_dir_add_pronprobs.sh --max-normalize true \
-      data/local/dict_nosp \
-        exp/tri3b/pron_counts_nowb.txt exp/tri3b/sil_counts_nowb.txt \
-          exp/tri3b/pron_bigram_counts_nowb.txt data/local/dict
-
-utils/prepare_lang.sh data/local/dict \
-      "<UNK>" data/local/lang_tmp data/lang
-
-local/format_lms.sh --src-dir data/lang data/local/lm
-
-utils/build_const_arpa_lm.sh \
-      data/local/lm/zeroth.lm.tg.arpa.gz data/lang data/lang_test_tglarge
-utils/build_const_arpa_lm.sh \
-      data/local/lm/zeroth.lm.fg.arpa.gz data/lang data/lang_test_fglarge
-
-# align the entire train_clean using the tri3b model
-steps/align_fmllr.sh --nj $nCPU --cmd "$train_cmd" \
-  data/train_clean data/lang exp/tri3b exp/tri3b_ali_train_clean
-
-echo "#### SAT again on train_clean ###########"
-# train another LDA+MLLT+SAT system on the entire subset
-steps/train_sat.sh  --cmd "$train_cmd" 4200 40000 \
-  data/train_clean data/lang exp/tri3b_ali_train_clean exp/tri4b
-
-# decode using the tri4b model with pronunciation and silence probabilities
-utils/mkgraph.sh \
-  data/lang_test_tgsmall exp/tri4b exp/tri4b/graph_tgsmall
-
-# the size is properly set?
-utils/subset_data_dir.sh data/test_clean 200 data/test_200
-
-for test in test_200; do
-  nspk=$(wc -l <data/${test}/spk2utt)
-  steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd" \
-    exp/tri4b/graph_tgsmall data/$test \
-    exp/tri4b/decode_tgsmall_$test
-  #steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
-  #  data/$test exp/tri4b/decode_{tgsmall,tgmed}_$test
-  steps/lmrescore_const_arpa.sh \
-    --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
-    data/$test exp/tri4b/decode_{tgsmall,tglarge}_$test
-  steps/lmrescore_const_arpa.sh \
-    --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
-    data/$test exp/tri4b/decode_{tgsmall,fglarge}_$test
-done
-
-# align train_clean_100 using the tri4b model
-steps/align_fmllr.sh --nj $nCPU --cmd "$train_cmd" \
-	  data/train_clean data/lang exp/tri4b exp/tri4b_ali_train_clean
-
-finishTime=$(date +'%F-%H-%M')
-echo "GMM trainig is finished at" $finishTime
-exit
-## online chain recipe using only clean data set
-echo "#### online chain training  ###########"
-## check point: sudo nvidia-smi --compute-mode=3 if you have multiple GPU's
-#local/chain/run_tdnn_1a.sh
-#local/chain/run_tdnn_1b.sh
-#local/chain/multi_condition/run_tdnn_lstm_1e.sh --nj $nCPU
-local/chain/multi_condition/run_tdnn_1n.sh --nj $nCPU 
-#local/chain/run_tdnn_opgru_1c.sh --nj $nCPU
+  # re-scoring language model
+  if $decode_rescoring ; then
+    utils/build_const_arpa_lm.sh data/local/lm/zeroth.lm.tg.arpa.gz \
+    	data/lang_nosp data/lang_nosp_test_tglarge
+    utils/build_const_arpa_lm.sh data/local/lm/zeroth.lm.fg.arpa.gz \
+    	  data/lang_nosp data/lang_nosp_test_fglarge
+  fi
+fi
 
 
-finishTime=$(date +'%F-%H-%M')
-echo "DNN trainig is finished at" $finishTime
-echo "started at" $startTime
-echo "finished at" $finishTime
+if [ $stage -le 5 ]; then
+  # Feature extraction (MFCC)
+  mfccdir=mfcc
+  for part in train_data_01 test_data_01; do
+  	steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj data/$part exp/make_mfcc/$part $mfccdir
+  	steps/compute_cmvn_stats.sh data/$part exp/make_mfcc/$part $mfccdir
+  done
+  
+  # ... and then combine data sets into one (for later extension)
+  utils/combine_data.sh \
+    data/train_clean data/train_data_01
+  
+  utils/combine_data.sh \
+    data/test_clean data/test_data_01
+  
+  # Make some small data subsets for early system-build stages.
+  utils/subset_data_dir.sh --shortest data/train_clean 2000 data/train_2kshort
+  utils/subset_data_dir.sh data/train_clean 5000 data/train_5k
+  utils/subset_data_dir.sh data/train_clean 10000 data/train_10k
+fi
+
+if [ $stage -le 5 ]; then
+  echo "#### Monophone Training ###########"
+  # train a monophone system & align
+  steps/train_mono.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
+  	data/train_2kshort data/lang_nosp exp/mono
+  if $decode; then
+    utils/mkgraph.sh data/lang_nosp_test_tgsmall exp/mono exp/mono/graph_nosp_tgsmall
+    nspk=$(wc -l <data/${test_set}/spk2utt)
+    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+      exp/mono/graph_nosp_tgsmall data/${test_set} exp/mono/decode_nosp_tgsmall_${test_set}
+    if $decode_rescoring; then
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tglarge} \
+        data/$test_set exp/mono/decode_nosp_{tgsmall,tglarge}_$test_set
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,fglarge} \
+        data/$test_set exp/mono/decode_nosp_{tgsmall,fglarge}_$test_set
+    fi 
+  fi
+fi
+
+if [ $stage -le 6 ]; then
+  echo "#### Triphone Training, delta + delta-delta ###########"
+  steps/align_si.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
+  	data/train_5k data/lang_nosp exp/mono exp/mono_ali_5k
+  # train a first delta + delta-delta triphone system on a subset of 5000 utterancesa
+  # number of maximum pdf, gaussian (under/over fitting)
+  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
+      2000 10000 data/train_5k data/lang_nosp exp/mono_ali_5k exp/tri1
+  if $decode; then
+    utils/mkgraph.sh data/lang_nosp_test_tgsmall exp/tri1 exp/tri1/graph_nosp_tgsmall
+    nspk=$(wc -l <data/${test_set}/spk2utt)
+    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+      exp/tri1/graph_nosp_tgsmall data/${test_set} exp/tri1/decode_nosp_tgsmall_${test_set}
+    if $decode_rescoring; then
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tglarge} \
+        data/$test_set exp/tri1/decode_nosp_{tgsmall,tglarge}_$test_set
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,fglarge} \
+        data/$test_set exp/tri1/decode_nosp_{tgsmall,fglarge}_$test_set
+    fi
+  fi
+fi
+
+if [ $stage -le 7 ]; then
+  echo "#### Triphone Training, LDA+MLLT ###########"
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+    data/train_10k data/lang_nosp exp/tri1 exp/tri1_ali_10k
+  # train an LDA+MLLT system.
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
+     --splice-opts "--left-context=3 --right-context=3" 2500 15000 \
+     data/train_10k data/lang_nosp exp/tri1_ali_10k exp/tri2
+  if $decode; then
+    utils/mkgraph.sh data/lang_nosp_test_tgsmall exp/tri2 exp/tri2/graph_nosp_tgsmall
+    nspk=$(wc -l <data/${test_set}/spk2utt)
+    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+      exp/tri2/graph_nosp_tgsmall data/${test_set} exp/tri2/decode_nosp_tgsmall_${test_set}
+    if $decode_rescoring; then
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tglarge} \
+        data/$test_set exp/tri2/decode_nosp_{tgsmall,tglarge}_$test_set
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,fglarge} \
+        data/$test_set exp/tri2/decode_nosp_{tgsmall,fglarge}_$test_set
+    fi
+  fi
+fi
+
+
+if [ $stage -le 8 ]; then
+  echo "#### Triphone Training, LDA+MLLT+SAT ###########"
+  # Align the entire train_clean using the tri2 model
+  steps/align_si.sh  --nj $nj --cmd "$train_cmd" --use-graphs true \
+    data/train_clean data/lang_nosp exp/tri2 exp/tri2_ali_train_clean
+  
+  # Train tri3, which is LDA+MLLT+SAT on the entire train_clean
+  steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
+    data/train_clean data/lang_nosp exp/tri2_ali_train_clean exp/tri3
+  if $decode; then
+    utils/mkgraph.sh data/lang_nosp_test_tgsmall exp/tri3 exp/tri3/graph_nosp_tgsmall
+    nspk=$(wc -l <data/${test_set}/spk2utt)
+    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+      exp/tri3/graph_nosp_tgsmall data/${test_set} exp/tri3/decode_nosp_tgsmall_${test_set}
+    if $decode_rescoring; then
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,tglarge} \
+        data/$test_set exp/tri3/decode_nosp_{tgsmall,tglarge}_$test_set
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_test_{tgsmall,fglarge} \
+        data/$test_set exp/tri3/decode_nosp_{tgsmall,fglarge}_$test_set
+    fi
+  fi
+fi 
+
+if [ $stage -le 9 ]; then
+  echo "#### Re-computing pronunciation model using tri3 model ###########"
+  # Now we compute the pronunciation and silence probabilities from training data,
+  # and re-create the lang directory.
+  # silence transition probability ...
+  steps/get_prons.sh --cmd "$train_cmd" \
+        data/train_clean data/lang_nosp exp/tri3
+  
+  utils/dict_dir_add_pronprobs.sh --max-normalize true \
+        data/local/dict_nosp \
+          exp/tri3/pron_counts_nowb.txt exp/tri3/sil_counts_nowb.txt \
+            exp/tri3/pron_bigram_counts_nowb.txt data/local/dict
+  
+  utils/prepare_lang.sh data/local/dict \
+        "<UNK>" data/local/lang_tmp data/lang
+  
+  local/format_lms.sh --src-dir data/lang data/local/lm
+  
+  utils/build_const_arpa_lm.sh \
+        data/local/lm/zeroth.lm.tg.arpa.gz data/lang data/lang_test_tglarge
+  utils/build_const_arpa_lm.sh \
+        data/local/lm/zeroth.lm.fg.arpa.gz data/lang data/lang_test_fglarge
+
+  if $decode; then
+    utils/mkgraph.sh data/lang_test_tgsmall exp/tri3 exp/tri3/graph_tgsmall
+    nspk=$(wc -l <data/${test_set}/spk2utt)
+    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+      exp/tri3/graph_tgsmall data/${test_set} exp/tri3/decode_tgsmall_${test_set}
+    if $decode_rescoring; then
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
+        data/$test_set exp/tri3/decode_{tgsmall,tglarge}_$test_set
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+        data/$test_set exp/tri3/decode_{tgsmall,fglarge}_$test_set
+    fi
+  fi
+fi
+
+if [ $stage -le 10 ]; then
+
+  echo "#### SAT again on train_clean ###########"
+  # align the entire train_clean using the tri3 model
+  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
+    data/train_clean data/lang exp/tri3 exp/tri3_ali_train_clean
+  
+  # train another LDA+MLLT+SAT system on the entire train_clean
+  steps/train_sat.sh  --cmd "$train_cmd" 4200 40000 \
+    data/train_clean data/lang exp/tri3_ali_train_clean exp/tri4
+ 
+  if $decode; then
+    utils/mkgraph.sh data/lang_test_tgsmall exp/tri4 exp/tri4/graph_tgsmall
+    nspk=$(wc -l <data/${test_set}/spk2utt)
+    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+      exp/tri4/graph_tgsmall data/${test_set} exp/tri4/decode_tgsmall_${test_set}
+    if $decode_rescoring; then
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_test_{tgsmall,tglarge} \
+        data/$test_set exp/tri4/decode_{tgsmall,tglarge}_$test_set
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_test_{tgsmall,fglarge} \
+        data/$test_set exp/tri4/decode_{tgsmall,fglarge}_$test_set
+    fi
+  fi 
+fi 
+
+echo "GMM trainig is Done"
+
+if $chain_train; then
+  ## online chain recipe using only clean data set
+  echo "#### chain training  ###########"
+  local/chain/run_tdnn.sh
+fi 
+
 exit 0;
 

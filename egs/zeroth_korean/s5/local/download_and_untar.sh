@@ -26,7 +26,7 @@ if [ ! -f $dir/db.tar.gz ]; then
   if [ ! -d $dir ]; then 
     mkdir -p $dir
   fi
-  wget -O $dir/db.tar.gz https://storage.googleapis.com/zeroth_project/zeroth_korean.tar.gz 
+  wget -O $dir/db.tar.gz http://www.openslr.org/resources/40/zeroth_korean.tar.gz 
 else
   echo "  $dir/db.tar.gz already exist"
 fi

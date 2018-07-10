@@ -13,7 +13,8 @@ exists(){
 
 # check morfessor installation 
 if ! exists morfessor; then
-	echo "Please, install Morfessor"
+	echo "You appear to not have Morfessor installed, either on your path."
+    echo "See tools/extras/install_morfessor.sh installation instructions."
 	exit 1
 fi
 
@@ -33,19 +34,3 @@ cut -d' ' -f2- $trans".old" |\
 	| paste -d" " $trans"_tmp_index" - > $trans
 rm -f $trans"_tmp_index"
 
-#transcripList=$(find $dataDir -name "*.norm.txt" -type f | sort)
-#for transcript in $transcripList;
-#do
-#	echo "read: " $transcript
-#	cat $transcript | awk '{print $1;}' > tmp
-#	cat $transcript | awk '{$1="";print $0;}' | \
-#	local/strip.py | \
-#	#morfessor -l $lmDir/data/_lexicon_/mergedCorpus.model4.reduced -T - -o tmp2 --output-format '{analysis} ' --output-newlines
-#	morfessor -l $lmDir/zeroth_morfessor.seg -T - -o tmp2 --output-format '{analysis} ' --output-newlines
-#	#$lmDir/data/_lm_/seg2sentence.py tmp2 > tmp3
-#
-#	array=(${transcript//\./ })
-#	echo "write: " ${array[0]}.${array[1]}.txt
-#	paste -d" " tmp tmp2 > ${array[0]}.${array[1]}.txt
-#done
-#rm -f tmp*

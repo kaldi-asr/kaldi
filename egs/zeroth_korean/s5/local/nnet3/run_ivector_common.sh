@@ -5,7 +5,7 @@
 
 
 stage=0
-gmmdir=exp/tri4b
+gmmdir=exp/tri4
 speed_perturb=false
 trainset=train_clean
 
@@ -55,9 +55,6 @@ if [ $stage -le 3 ]; then
   # have multiple copies of Kaldi checked out and run the same recipe, not to let
   # them overwrite each other.
   mfccdir=mfcc_hires
-  #if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-  #  utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
-  #fi
 
   for datadir in ${trainset} ; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
@@ -84,7 +81,7 @@ if [ $stage -le 4 ]; then
     --realign-iters "" \
     --splice-opts "--left-context=3 --right-context=3" \
     3000 10000 data/${trainset}_hires data/lang_nosp \
-    ${gmmdir}_ali_${trainset} exp/nnet3/tri2b
+    ${gmmdir}_ali_${trainset} exp/nnet3/tri2
 fi
 
 
@@ -92,13 +89,10 @@ if [ $stage -le 5 ]; then
   # To train a diagonal UBM we don't need very much data, so use a small subset
   # (actually, it's not that small: still around 100 hours).
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 700000 \
-    data/train_30k_hires 512 exp/nnet3/tri2b exp/nnet3/diag_ubm
+    data/train_30k_hires 512 exp/nnet3/tri2 exp/nnet3/diag_ubm
 fi
 
 if [ $stage -le 6 ]; then
-  # iVector extractors can in general be sensitive to the amount of data, but
-  # this one has a fairly small dim (defaults to 100) so we don't use all of it,
-  # we use just the 3k subset (about one fifth of the data, or 200 hours).
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
     data/${trainset}_hires exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
 fi

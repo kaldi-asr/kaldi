@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# Copyright 2014  Vassil Panayotov
-#           2014  Johns Hopkins University (author: Daniel Povey)
+# Copyright  2018  Atlas Guide (Author : Lucas Jo)
+#            2018  Gridspace Inc. (Author: Wonkyum Lee)
 # Apache 2.0
 
 # Modified by Lucas Jo 2017 (Altas Guide)
 
 if [ "$#" -ne 2 ]; then
   echo "Usage: $0 <src-dir> <dst-dir>"
-  echo "e.g.: $0 /export/a15/vpanayotov/data/LibriSpeech/dev-clean data/dev-clean"
+  echo "e.g.: $0 ./db/train_data_01 data/train_data_01"
   exit 1
 fi
 
@@ -63,9 +63,7 @@ for scriptid_dir in $(find -L $src -mindepth 1 -maxdepth 1 -type d | sort); do
     [ ! -f  $reader_trans ] && echo "$0: expected file $reader_trans to exist" && exit 1
     cat $reader_trans >>$trans
 
-    # NOTE: For now we are using per-chapter utt2spk. That is each chapter is considered
-    #       to be a different speaker. This is done for simplicity and because we want
-    #       e.g. the CMVN to be calculated per-chapter
+    # NOTE: Each chapter is dedicated to each speaker. 
     awk -v "reader=$reader" -v "scriptid=$scriptid" '{printf "%s %s_%s\n", $1, reader, scriptid}' \
       <$reader_trans >>$utt2spk || exit 1
     

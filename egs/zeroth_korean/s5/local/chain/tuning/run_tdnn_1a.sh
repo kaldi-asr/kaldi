@@ -8,13 +8,13 @@ stage=0
 nj=30
 train_set=train_clean
 speed_perturb=true
-test_sets="test_200"
-gmm=tri4b        # this is the source gmm-dir that we'll use for alignments; it
+test_sets="test_clean"
+gmm=tri4        # this is the source gmm-dir that we'll use for alignments; it
                  # should have alignments for the specified training data.
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1n  #affix for TDNN directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1a  #affix for TDNN directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 
 # LSTM/chain options
@@ -27,8 +27,8 @@ get_egs_stage=-10
 chunk_width=150,110,100
 
 # training options
-num_jobs_initial=2
-num_jobs_final=12
+num_jobs_initial=3
+num_jobs_final=16
 num_epochs=6
 minibatch_size=128
 initial_effective_lrate=0.001

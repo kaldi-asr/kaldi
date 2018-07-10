@@ -7,8 +7,9 @@ set -e -o pipefail
 stage=0
 nj=30
 train_set=train_clean
-test_sets="test_200"
-gmm=tri4b        # this is the source gmm-dir that we'll use for alignments; it
+speed_perturb=true
+test_sets="test_clean"
+gmm=tri4        # this is the source gmm-dir that we'll use for alignments; it
                  # should have alignments for the specified training data.
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
@@ -16,25 +17,30 @@ nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=1a  #affix for TDNN directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 
-# LSTM/chain options
+# OPGRU/chain options
 train_stage=-10
+get_egs_stage=-10
 xent_regularize=0.1
+label_delay=5
 max_param_change=2.0
 
 # training chunk-options
 chunk_width=150
-# we don't need extra left/right context for TDNN systems.
-chunk_left_context=0
+chunk_left_context=40
 chunk_right_context=0
+frames_per_chunk=
+
+extra_left_context=50
+extra_right_context=0
 
 # training options
 srand=0
 num_jobs_initial=2
 num_jobs_final=12
-num_epochs=4
-minibatch_size=128
+num_epochs=8
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
+dropout_schedule='0,0@0.20,0.2@0.50,0'
 remove_egs=true
 
 
@@ -58,11 +64,17 @@ where "nvcc" is installed.
 EOF
 fi
 
-local/nnet3/run_ivector_common.sh --stage $stage 
+local/nnet3/run_ivector_common.sh --stage $stage --speed-perturb ${speed_perturb}
+
+suffix=
+if [ "$speed_perturb" == "true" ]; then
+  train_set=${train_set}_sp
+  suffix=_sp
+fi
 
 gmm_dir=exp/${gmm}
 lat_dir=exp/chain/${gmm}_${train_set}_lats
-dir=exp/chain/tdnn${affix}
+dir=exp/chain/tdnn_opgru_${affix}${suffix}
 train_data_dir=data/${train_set}_hires
 train_ivector_dir=exp/nnet3/ivectors_${train_set}_hires
 lores_train_data_dir=data/${train_set}
@@ -136,11 +148,11 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ $stage -le 11 ]; then
-  mkdir -p $dir
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  gru_opts="dropout-per-frame=true dropout-proportion=0.0"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -150,19 +162,26 @@ if [ $stage -le 11 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=512
-  relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  relu-renorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
-  relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn6 dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 dim=1024
+  relu-batchnorm-layer name=tdnn2 input=Append(-1,0,1) dim=1024
+  relu-batchnorm-layer name=tdnn3 input=Append(-1,0,1) dim=1024
+
+  # check steps/libs/nnet3/xconfig/gru.py for the other options and defaults
+  norm-opgru-layer name=opgru1 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
+  relu-batchnorm-layer name=tdnn4 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn5 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn6 input=Append(-3,0,3) dim=1024
+  norm-opgru-layer name=opgru2 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
+  relu-batchnorm-layer name=tdnn7 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn8 input=Append(-3,0,3) dim=1024
+  relu-batchnorm-layer name=tdnn9 input=Append(-3,0,3) dim=1024
+  norm-opgru-layer name=opgru3 cell-dim=1024 recurrent-projection-dim=256 non-recurrent-projection-dim=256 delay=-3 $gru_opts
 
   ## adding the layers for chain branch
-  relu-renorm-layer name=prefinal-chain dim=512 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  output-layer name=output input=opgru3 output-delay=$label_delay include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -173,10 +192,11 @@ if [ $stage -le 11 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-renorm-layer name=prefinal-xent input=tdnn6 dim=512 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  output-layer name=output-xent input=opgru3 output-delay=$label_delay dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
+
 fi
 
 
@@ -185,36 +205,41 @@ if [ $stage -le 12 ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/wsj-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
-
-  steps/nnet3/chain/train.py --stage $train_stage \
+ steps/nnet3/chain/train.py --stage $train_stage \
     --cmd "$decode_cmd" \
-    --feat.online-ivector-dir=$train_ivector_dir \
+    --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \
     --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
-    --trainer.srand $srand \
-    --trainer.max-param-change $max_param_change \
-    --trainer.num-epochs $num_epochs \
+    --egs.dir "$common_egs_dir" \
+    --egs.opts "--frames-overlap-per-eg 0" \
+    --egs.chunk-width $chunk_width \
+    --egs.chunk-left-context $chunk_left_context \
+    --egs.chunk-right-context $chunk_right_context \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.optimization.backstitch-training-scale 0.3 \
+    --trainer.optimization.backstitch-training-interval 1 \
+    --egs.chunk-left-context-initial 0 \
+    --egs.chunk-right-context-final 0 \
+    --trainer.num-chunk-per-minibatch 64,32 \
     --trainer.frames-per-iter 1500000 \
+    --trainer.num-epochs $num_epochs \
+    --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial $num_jobs_initial \
     --trainer.optimization.num-jobs-final $num_jobs_final \
     --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
     --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.num-chunk-per-minibatch $minibatch_size \
-    --egs.chunk-width $chunk_width \
-    --egs.chunk-left-context $chunk_left_context \
-    --egs.chunk-right-context $chunk_right_context \
-    --egs.dir "$common_egs_dir" \
-    --egs.opts "--frames-overlap-per-eg 0" \
-    --cleanup.remove-egs $remove_egs \
-    --use-gpu true \
+    --trainer.max-param-change $max_param_change \
+    --trainer.deriv-truncate-margin 8 \
+    --cleanup.remove-egs true \
     --feat-dir $train_data_dir \
     --tree-dir $tree_dir \
     --lat-dir $lat_dir \
-    --dir $dir  || exit 1;
+    --dir $dir
+
 fi
 
 if [ $stage -le 13 ]; then
