@@ -293,8 +293,8 @@ template<typename Real> void TestCuVectorApplyFloorNoCount(int32 dim) {
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuVector::ApplyFloor (no count variety)" << NameOf<Real>()
-	    << ", for dim = " << dim << ", speed was " << gflops
-	    << " gigaflops.";
+            << ", for dim = " << dim << ", speed was " << gflops
+            << " gigaflops.";
 
 }
 
@@ -335,8 +335,8 @@ template<typename Real> void TestCuVectorApplyCeilingNoCount(int32 dim) {
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuVector::ApplyCeiling (no count variety)" << NameOf<Real>()
-	    << ", for dim = " << dim << ", speed was " << gflops
-	    << " gigaflops.";
+            << ", for dim = " << dim << ", speed was " << gflops
+            << " gigaflops.";
 
 }
 

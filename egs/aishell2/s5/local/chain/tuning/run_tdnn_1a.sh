@@ -1,6 +1,7 @@
 #!/bin/bash
 
-# This script is based on run_tdnn_7h.sh in swbd chain recipe.
+# this is the original baseline scripts, which is supposed to be deprecated.
+
 # results
 # local/chain/compare_wer.sh exp/chain/tdnn_1a_sp/
 # Model                tdnn_1a_sp
