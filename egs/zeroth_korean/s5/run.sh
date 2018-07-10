@@ -25,6 +25,7 @@ test_set="test_clean"
 
 . ./cmd.sh
 . ./path.sh
+. utils/parse_options.sh  # e.g. this parses the --stage option if supplied.
 
 # you might not want to do this for interactive shells.
 set -e
@@ -92,7 +93,7 @@ if [ $stage -le 5 ]; then
   utils/subset_data_dir.sh data/train_clean 10000 data/train_10k
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   echo "#### Monophone Training ###########"
   # train a monophone system & align
   steps/train_mono.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
@@ -100,7 +101,7 @@ if [ $stage -le 5 ]; then
   if $decode; then
     utils/mkgraph.sh data/lang_nosp_test_tgsmall exp/mono exp/mono/graph_nosp_tgsmall
     nspk=$(wc -l <data/${test_set}/spk2utt)
-    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+    steps/decode.sh --nj $nspk --cmd "$decode_cmd" \
       exp/mono/graph_nosp_tgsmall data/${test_set} exp/mono/decode_nosp_tgsmall_${test_set}
     if $decode_rescoring; then
       steps/lmrescore_const_arpa.sh \
@@ -113,7 +114,7 @@ if [ $stage -le 5 ]; then
   fi
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   echo "#### Triphone Training, delta + delta-delta ###########"
   steps/align_si.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
   	data/train_5k data/lang_nosp exp/mono exp/mono_ali_5k
@@ -124,7 +125,7 @@ if [ $stage -le 6 ]; then
   if $decode; then
     utils/mkgraph.sh data/lang_nosp_test_tgsmall exp/tri1 exp/tri1/graph_nosp_tgsmall
     nspk=$(wc -l <data/${test_set}/spk2utt)
-    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+    steps/decode.sh --nj $nspk --cmd "$decode_cmd" \
       exp/tri1/graph_nosp_tgsmall data/${test_set} exp/tri1/decode_nosp_tgsmall_${test_set}
     if $decode_rescoring; then
       steps/lmrescore_const_arpa.sh \
@@ -137,7 +138,7 @@ if [ $stage -le 6 ]; then
   fi
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 8 ]; then
   echo "#### Triphone Training, LDA+MLLT ###########"
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
     data/train_10k data/lang_nosp exp/tri1 exp/tri1_ali_10k
@@ -148,7 +149,7 @@ if [ $stage -le 7 ]; then
   if $decode; then
     utils/mkgraph.sh data/lang_nosp_test_tgsmall exp/tri2 exp/tri2/graph_nosp_tgsmall
     nspk=$(wc -l <data/${test_set}/spk2utt)
-    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+    steps/decode.sh --nj $nspk --cmd "$decode_cmd" \
       exp/tri2/graph_nosp_tgsmall data/${test_set} exp/tri2/decode_nosp_tgsmall_${test_set}
     if $decode_rescoring; then
       steps/lmrescore_const_arpa.sh \
@@ -162,7 +163,7 @@ if [ $stage -le 7 ]; then
 fi
 
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 9 ]; then
   echo "#### Triphone Training, LDA+MLLT+SAT ###########"
   # Align the entire train_clean using the tri2 model
   steps/align_si.sh  --nj $nj --cmd "$train_cmd" --use-graphs true \
@@ -174,7 +175,7 @@ if [ $stage -le 8 ]; then
   if $decode; then
     utils/mkgraph.sh data/lang_nosp_test_tgsmall exp/tri3 exp/tri3/graph_nosp_tgsmall
     nspk=$(wc -l <data/${test_set}/spk2utt)
-    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd" \
       exp/tri3/graph_nosp_tgsmall data/${test_set} exp/tri3/decode_nosp_tgsmall_${test_set}
     if $decode_rescoring; then
       steps/lmrescore_const_arpa.sh \
@@ -187,7 +188,7 @@ if [ $stage -le 8 ]; then
   fi
 fi 
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 10 ]; then
   echo "#### Re-computing pronunciation model using tri3 model ###########"
   # Now we compute the pronunciation and silence probabilities from training data,
   # and re-create the lang directory.
@@ -213,7 +214,7 @@ if [ $stage -le 9 ]; then
   if $decode; then
     utils/mkgraph.sh data/lang_test_tgsmall exp/tri3 exp/tri3/graph_tgsmall
     nspk=$(wc -l <data/${test_set}/spk2utt)
-    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd" \
       exp/tri3/graph_tgsmall data/${test_set} exp/tri3/decode_tgsmall_${test_set}
     if $decode_rescoring; then
       steps/lmrescore_const_arpa.sh \
@@ -226,7 +227,7 @@ if [ $stage -le 9 ]; then
   fi
 fi
 
-if [ $stage -le 10 ]; then
+if [ $stage -le 11 ]; then
 
   echo "#### SAT again on train_clean ###########"
   # align the entire train_clean using the tri3 model
@@ -240,7 +241,7 @@ if [ $stage -le 10 ]; then
   if $decode; then
     utils/mkgraph.sh data/lang_test_tgsmall exp/tri4 exp/tri4/graph_tgsmall
     nspk=$(wc -l <data/${test_set}/spk2utt)
-    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd"
+    steps/decode_fmllr.sh --nj $nspk --cmd "$decode_cmd" \
       exp/tri4/graph_tgsmall data/${test_set} exp/tri4/decode_tgsmall_${test_set}
     if $decode_rescoring; then
       steps/lmrescore_const_arpa.sh \
