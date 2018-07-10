@@ -1,5 +1,6 @@
 #!/bin/bash
 # Copyright 2013  Johns Hopkins University (authors: Yenda Trmal)
+#           2018  Vimal Manohar
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License.
 
+# This scoring script is copied from Babel and modified.
 # This is a scoring script for the CTMS in <decode-dir>/score_<LMWT>/${name}.ctm
 # it tries to mimic the NIST scoring setup as much as possible (and usually does a good job)
 
@@ -58,6 +60,10 @@ ScoringProgram=`which sclite` || ScoringProgram=$KALDI_ROOT/tools/sctk/bin/sclit
 SortingProgram=`which hubscr.pl` || SortingProgram=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
 [ ! -x $ScoringProgram ] && echo "Cannot find scoring program at $ScoringProgram" && exit 1;
 
+stm_filter_cmd=cat
+[ -x local/stm_filter ] && stm_filter_cmd=local/stm_filter
+ctm_filter_cmd=cat
+[ -x local/ctm_filter ] && ctm_filter_cmd=local/ctm_filter
 
 for f in $data/stm  ; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
@@ -74,8 +80,8 @@ if [ $stage -le 0 ] ; then
     mkdir -p $dir/scoring/penalty_$wip/log
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/penalty_$wip/log/score.LMWT.log \
       set -e';' set -o pipefail';' \
-      grep -i -v -E '"<noise|unk|spnoise|sil>"' $dir/score_LMWT_${wip}/${name}.ctm '>' $dir/score_LMWT_${wip}/${name}.ctm.unsorted '&&' \
-      cp -f $data/stm $dir/score_LMWT_${wip}/stm.unsorted '&&' \
+      cat $dir/score_LMWT_${wip}/${name}.ctm \| $ctm_filter_cmd '>' $dir/score_LMWT_${wip}/${name}.ctm.unsorted '&&' \
+      cat $data/stm \| $stm_filter_cmd '>' $dir/score_LMWT_${wip}/stm.unsorted '&&' \
       $SortingProgram sortSTM \<$dir/score_LMWT_${wip}/stm.unsorted          \>$dir/score_LMWT_${wip}/stm.sorted '&&' \
       $SortingProgram sortCTM \<$dir/score_LMWT_${wip}/${name}.ctm.unsorted  \>$dir/score_LMWT_${wip}/${name}.ctm.sorted '&&' \
       paste -d ' ' \<\(cut -f 1-5 -d ' ' $dir/score_LMWT_${wip}/stm.sorted \) \
@@ -102,4 +108,3 @@ fi
 
 echo "Finished scoring on" `date`
 exit 0
-

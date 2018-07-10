@@ -84,26 +84,12 @@ if [ $stage -le 3 ]; then
   if [ $dataset == "analysis1" ] || [ $dataset == "analysis2" ]; then
     cat data/local/$dataset/all_list | awk '{print $1" <"$2",O>"}' > \
       data/local/$dataset/all_list_labels
-    perl -ane 'my $utt_id = shift @F; 
-    for (my $i = 0; $i <= $#F; $i++) {
-      my $w = $F[$i];
-      if ($w =~ m/^(\S+-)$/ || $w =~ m/^(-\S+)$/) {
-        $F[$i] = "(" . $w . ")";
-      }
-
-      if ($w =~ m/<(unk|noise|spnoise|sil)>/) {
-        $F[$i] = "";
-      }
-    }
-    my $text = join(" ", @F); 
-    print "$utt_id $text\n"' $datadev/text > \
-      data/local/$dataset/text_for_stm
-
+    
     awk '{print $2" "$1" "$3" "$4" "$1}' $datadev/segments | \
       utils/apply_map.pl -f 1 $datadev/reco2file_and_channel | \
       utils/apply_map.pl -f 3 $datadev/utt2spk | \
       awk '{print $1" "$2" "$3" "$4" "$5" "$1" "$6}' | \
-      utils/apply_map.pl -f 7 data/local/$dataset/text_for_stm | \
+      utils/apply_map.pl -f 7 $datadev/text | \
       utils/apply_map.pl -f 6 data/local/$dataset/all_list_labels | \
       sort +0 -1 +1 -2 +3nb -4 > \
       $datadev/stm

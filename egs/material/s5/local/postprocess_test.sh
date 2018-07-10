@@ -8,7 +8,7 @@ stage=0
 . ./path.sh
 . ./utils/parse_options.sh
 
-if [ $stage -le 3 ]; then
+if [ $# -ne 3 ]; then
   echo "Usage: $0 <data-id> <graph-dir> <decode-dir>"
   echo " e.g.: $0 analysis1 exp/chain/tdnn/graph exp/chain/tdnn/decode_analysis1_segmented"
   exit 1
@@ -38,6 +38,6 @@ if [ $stage -le 2 ]; then
   # compute WER              
   local/score_stm.sh --min-lmwt 10 --max-lmwt 10 --word-ins-penalty 0.0 \
     --cmd "$decode_cmd" data/${data}_hires $graph_dir ${decode_dir}
+
+  grep -H Sum ${decode_dir}/score*/*.sys | utils/best_wer.sh
 fi
-
-
