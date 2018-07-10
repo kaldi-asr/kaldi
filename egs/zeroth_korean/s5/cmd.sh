@@ -10,16 +10,8 @@
 # conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
-export train_cmd="run.pl --mem 2G"
-export decode_cmd="run.pl --mem 4G"
-export mkgraph_cmd="run.pl --mem 8G"
-export normalize_cmd="run.pl --mem 4G"
+export train_cmd="queue.pl --mem 2G"
+export decode_cmd="queue.pl --mem 4G"
+export mkgraph_cmd="queue.pl --mem 8G"
+export normalize_cmd="queue.pl --mem 4G"
 
-hostInAtlas="ares hephaestus jupiter neptune"
-if [[ ! -z $(echo $hostInAtlas | grep -o $(hostname -f)) ]]; then
-    queue_conf=conf/queue.conf
-    export train_cmd="queue.pl --config $queue_conf --mem 4G"
-    export decode_cmd="queue.pl --config $queue_conf --mem 8G"
-    export mkgraph_cmd="queue.pl --config $queue_conf --mem 16G"
-    export normalize_cmd="queue.pl --config $queue_conf --mem 4G"
-fi
