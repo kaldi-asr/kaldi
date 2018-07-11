@@ -7,11 +7,12 @@
 from __future__ import print_function
 import argparse
 import sys
+import math
 
-parser = argparse.ArgumentParser(description="This script evaluates the log probabilty (10 based) of each sentence "
-                                             "from data (in text form), given a language model in arpa form"
+parser = argparse.ArgumentParser(description="This script evaluates the log probabilty (default log base is e) of each sentence "
+                                             "from data (in text form), given a language model in arpa form "
                                              "and a specific ngram order.",
-                                 epilog="e.g. ./compute_sentence_probs_arpa.py ARPA_LM NGRAM_ORDER TEXT_IN PROB_FILE",
+                                 epilog="e.g. ./compute_sentence_probs_arpa.py ARPA_LM NGRAM_ORDER TEXT_IN PROB_FILE --log-base=LOG_BASE",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("arpa_lm", type=str,
                     help="Input language model in arpa form.")
@@ -21,11 +22,15 @@ parser.add_argument("text_in", type=str,
                     help="Filename of input text file (each line will be interpreted as a sentence).")
 parser.add_argument("prob_file", type=str,
                     help="Filename of output probability file.")
+parser.add_argument("--log-base", type=float, default=math.exp(1),
+                    help="Log base for log porbability")
 args = parser.parse_args()
 
 def check_args(args):
     args.text_in_handle = sys.stdin if args.text_in == "-" else open(args.text_in, "r")
     args.prob_file_handle = sys.stdout if args.prob_file == "-" else open(args.prob_file, "w")
+    if args.log_base <= 0:
+        sys.exit("compute_sentence_probs_arpa.py: Invalid log base (must be greater than 0)")
 
 def is_logprob(input):
     if input[0] == "-":
@@ -57,7 +62,7 @@ def load_model(model_file):
 
         # check arpa form
         if lines[0][:-1] != "\\data\\":
-            sys.exit("get_sentece_prob.py: Please make sure that language model is in arpa form.")
+            sys.exit("compute_sentence_probs_arpa.py: Please make sure that language model is in arpa form.")
 
         # read line
         for line in lines:
@@ -66,19 +71,19 @@ def load_model(model_file):
                 if is_logprob(line_split[-1]):
                     ngram_key = " ".join(line_split[1:-1])
                     if ngram_key in ngram_dict:
-                        sys.exit("get_sentence_prob.py: Duplicate ngram in arpa language model: {}.".format(ngram_key))
+                        sys.exit("compute_sentence_probs_arpa.py: Duplicated ngram in arpa language model: {}.".format(ngram_key))
                     ngram_dict[ngram_key] = (line_split[0], line_split[-1])
                 else:
                     ngram_key = " ".join(line_split[1:])
                     if ngram_key in ngram_dict:
-                        sys.exit("get_sentence_prob.py: Duplicate ngram in arpa language model: {}.".format(ngram_key))
+                        sys.exit("compute_sentence_probs_arpa.py: Duplicated ngram in arpa language model: {}.".format(ngram_key))
                     ngram_dict[ngram_key] = (line_split[0],)
 
     return ngram_dict, len(ngram_dict)
 
 def compute_sublist_prob(sub_list):
     if len(sub_list) == 0:
-        sys.exit("get_sentence_prob.py: Ngram substring not found in arpa language model, please check.")
+        sys.exit("compute_sentence_probs_arpa.py: Ngram substring not found in arpa language model, please check.")
 
     sub_string = " ".join(sub_list)
     if sub_string in ngram_dict:
@@ -130,7 +135,8 @@ def output_result(text_in_handle, output_file_handle, ngram_order):
     for line in lines:
         new_line = "<s> " + line[:-1] + " </s>"
         logprob = compute_sentence_prob(new_line, ngram_order)
-        output_file_handle.write("{}\n".format(logprob))
+        new_logprob = logprob * math.log(10, args.log_base)
+        output_file_handle.write("{}\n".format(new_logprob))
         index += 1
     text_in_handle.close()
     output_file_handle.close()
@@ -142,9 +148,9 @@ if __name__ == "__main__":
 
     num_valid, max_ngram_order = check_number(args.arpa_lm, tot_num)
     if not num_valid:
-        sys.exit("get_sentence_prob.py: Wrong loading model.")
+        sys.exit("compute_sentence_probs_arpa.py: Wrong loading model.")
     if args.ngram_order <= 0 or args.ngram_order > max_ngram_order:
-        sys.exit("get_sentence_prob.py: " +   
+        sys.exit("compute_sentence_probs_arpa.py: " +   
             "Invalid ngram_order (either negative or greater than maximum ngram number ({}) allowed").format(max_ngram_order)
 
     output_result(args.text_in_handle, args.prob_file_handle, args.ngram_order)
