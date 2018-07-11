@@ -8,7 +8,7 @@ from __future__ import print_function
 import argparse
 import sys
 
-parser = argparse.ArgumentParser(description="This script evaluates the lob probabilty (10 based) of each sentence "
+parser = argparse.ArgumentParser(description="This script evaluates the log probabilty (10 based) of each sentence "
                                              "from data (in text form), given a language model in arpa form"
                                              "and a specific ngram order.",
                                  epilog="e.g. ./compute_sentence_probs_arpa.py ARPA_LM NGRAM_ORDER TEXT_IN PROB_FILE",
@@ -101,7 +101,7 @@ def compute_begin_prob(sub_list):
 # The first element of tuple is probablity and the second is backoff probability (if exists).
 # If the particular ngram (word_1 ... word_N) is not in the dictionary, then
 # p(word_N | word_N-1 ... word_1) = p(word_N | word_(N-1) ... word_2) * backoff_weight(word_(N-1) | word_(N-2) ... word_1) 
-# If the sequence (word_(N-1) ... word_1) is not in the dictionary, then the backoff_weight gets replaced with 1.0
+# If the sequence (word_(N-1) ... word_1) is not in the dictionary, then the backoff_weight gets replaced with 0.0 (log1)
 # More details can be found in https://cmusphinx.github.io/wiki/arpaformat/
 def compute_sentence_prob(sentence, ngram_order):
     sentence_split = sentence.split()
