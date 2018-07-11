@@ -58,13 +58,15 @@ fi
 
 local/nnet3/run_ivector_common.sh --stage $stage --speed-perturb ${speed_perturb}
 
+suffix=
 if [ "$speed_perturb" == "true" ]; then
   train_set=${train_set}_sp
+  suffix=_sp
 fi
 
 gmm_dir=exp/${gmm}
 lat_dir=exp/chain/${gmm}_${train_set}_lats
-dir=exp/chain/tdnn${affix}
+dir=exp/chain/tdnn_${affix}${suffix}
 train_data_dir=data/${train_set}_hires
 train_ivector_dir=exp/nnet3/ivectors_${train_set}_hires
 lores_train_data_dir=data/${train_set}

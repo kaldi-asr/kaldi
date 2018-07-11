@@ -95,7 +95,7 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "#### Monophone Training ###########"
-  # train a monophone system & align
+  # train a monophone system with 2k short utts
   steps/train_mono.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
   	data/train_2kshort data/lang_nosp exp/mono
   if $decode; then
@@ -118,8 +118,7 @@ if [ $stage -le 7 ]; then
   echo "#### Triphone Training, delta + delta-delta ###########"
   steps/align_si.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
   	data/train_5k data/lang_nosp exp/mono exp/mono_ali_5k
-  # train a first delta + delta-delta triphone system on a subset of 5000 utterancesa
-  # number of maximum pdf, gaussian (under/over fitting)
+  # train a first delta + delta-delta triphone system on a subset of 5000 utterances
   steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
       2000 10000 data/train_5k data/lang_nosp exp/mono_ali_5k exp/tri1
   if $decode; then
@@ -257,7 +256,7 @@ fi
 echo "GMM trainig is Done"
 
 if $chain_train; then
-  ## online chain recipe using only clean data set
+  ## Training Chain Acoustic model using clean data set
   echo "#### chain training  ###########"
   local/chain/run_tdnn.sh
 fi 
