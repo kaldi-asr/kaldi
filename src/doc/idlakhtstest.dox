@@ -1,0 +1,206 @@
+// doc/idlaktxp.dox
+
+// Copyright 2014 CereProc Ltd.
+
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+
+
+/**
+ \page idlakhtstest Testing the Idlak Front End with HTS
+
+ @section idlaktxp_intro Introduction
+
+ HTS (H triple S - Hidden Markov Speech Synthesis System) is the
+ leading open source parametric speech synthesis. As different parts of
+ Idlak are added it is useful to feed information from them into HTS to
+ see how these new modules are performing. In this document we outline
+ the steps required to carry out these tests.
+
+ When possible these tests are automated, but as they rely on
+ substantial third party releases it is quite possible the automatic
+ scripts will fail dues to future changes in other releases. The
+ automatic scripts intend to also act as a transparent sequence of
+ commands, so if there is a problem you will need to refer back to
+ these and determine which step has failed.
+
+ Currently these tests are carried out on:
+
+ http://hts.sp.nitech.ac.jp/archives/2.3alpha/HTS-demo_CMU-ARCTIC-SLT.tar.bz2
+
+ Using hts_engine output. This is not the best output you can achieve
+ from HTS see http://hts.sp.nitech.ac.jp/ for details of what's
+ available and recent work on HTS.
+
+ The first test uses the Kaldi front end to drive the HTS system,
+ other tests will follow as additional modules are added to Idlak. It
+ is assumed you have already downloaded and built the Idlak branch
+ from Kaldi.
+
+ @section idlaktxp_downloadhts Downloading HTS
+
+ All tests require downloading and building the HTS-demo. In order to
+ do this you must register to get a userid and password to allow you
+ to download HTK at http://htk.eng.cam.ac.uk/register.shtml once you
+ have the userid and password you are ready to download the
+ HTS-demo. Using the script install_HTS_demo.sh:
+
+\verbatim
+cd idlak-voice-build/utils
+./install_HTS_demo.sh <HTKID> <HTK PASSWORD> <INSTALL LOCATION> STRAIGHT
+\endverbatim
+or
+\verbatim
+./install_HTS_demo.sh <HTKID> <HTK PASSWORD> <INSTALL LOCATION> NOSTRAIGHT
+\endverbatim
+
+ Avoid installing HTS within an AFS directory unless you understand how
+ to generate long life tokens. Initially we recommend an install
+ location on a local scratch drive and avoiding installing within the
+ Kaldi directory structure.
+
+ For testing with the STRAIGHT demo you will need to arrange access to
+ the MATLAB STRAIGHT code distributed by Professor Kawahara. The
+ latest release (STRAIGHTV40_007d) does not currently produce correct
+ output synthesis but (STRAIGHTV40_005b) has been tested with this
+ setup.
+
+ Reported results are based on Idlak version r3764 with non-STRAIGHT
+ HTS-demo.
+
+ To test the HTS download:
+
+\verbatim
+cd <INSTALL LOCATION>/HTS-demo_CMU-ARCTIC-SLT
+source config.txt
+make
+\endverbatim
+
+config.txt has the appropriate configuration set by the install_HTS_demo.sh script.
+
+make will run data extraction and train models (which can take 24 hours).
+
+ @section idlaktxp_arcticstl Downloading Arctic STL data
+
+ The HTS demo we are using here used the stl arctic corpus. (see
+ http://festvox.org/cmu_arctic). In order to build the front end to
+ produce Kaldi generated context model we need to install this corpus
+ into Kaldi.
+
+\verbatim
+cd idlak-voice-build/utils
+python prepare_arctic_slt.py
+\endverbatim
+
+ This will install arctic stl corpus into idlak-data/en/ga/stl.
+
+ @section idlaktxp_buikldcex Building Full Context Models
+
+  A full context model in Kaldi is a series of integers, in HTK it is
+  a long string with delimited values. To build these models we need
+  to carry out linguistic and pronunciation analysis on the stl
+  corpus.
+
+\verbatim
+cd idlak-voice-build
+python modules/alignsetup_def.py --buildid=<ISO DATE> --spkconf=speaker_conf/slt.xml
+python modules/align_def.py --buildid=<ISO DATE> --spkconf=speaker_conf/slt.xml
+python modules/cex_def.py --buildid=<ISO DATE> --spkconf=speaker_conf/slt.xml --hts
+\endverbatim
+
+ Where the build id is used to allow multiple builds and is typically
+ and ISO date in the form YYYMMDD.
+
+ This will automatically run alignment using Kaldi, aligning CMU
+ lexicon style phone names and determine pause positions. 
+
+ By default output from this process will be stored in:
+\verbatim
+ idlak-voice-build/idlak-scratch/en/ga/slt/cex_def/<BUILD ID>/output/
+\endverbatim
+
+
+ The system generates full context models for each pause separated
+ chunk of speech in the corpus (htslab), and an hts question file for
+ building the decision trees (questions-kaldi-en-ga.hed) in HTK and
+ the start and end times of each pause separated chunk of speech in
+ the original corpus waveforms (spt_times.dat).
+  
+ @section idlaktxp_htsintegration Integrating KALDI CEX output with HTS
+
+ In contrast to HTS which defaults to using whole utterances for
+ building models Idlak uses silence delimited chunks of
+ speech. Therefore we need to replace the original raw wavfiles in the
+ HTS-demo with wave files cut up appropriately, as well as replacing
+ the model label files and question file with those generated from
+ Idlak.
+
+ HTS defaults to using 48khz input wav files and the arctic corpus
+ that is available to download is 16Khz. Therefore we need to cut up
+ the HTS-demo wavs appropriately rather than the wavs downloaded to
+ build the alignment and context models.
+
+\verbatim
+cd idlak-voice-build
+python modules/hts_test.py --buildid=<ISO DATE> --spkconf=speaker_conf/slt.xml --htsdemodir=<INSTALL LOCATION>
+\endverbatim
+
+ @section idlaktxp_htsgeneration Creating Models for Speech Generation
+
+ The hts engine that will synthesis output also requires full context
+ models. These need to be generated using the Kaldi front end from XML
+ text. The HTS demo uses the opening text from Alice in Wonderland
+ although the actual text and the edition used is not specified. To
+ directly compare output you can use the same text downloaded from
+ librivox (http://www.gutenberg.org/etext/11)
+
+\verbatim
+mv <INSTALL LOCATION>/HTS-demo_CMU-ARCTIC-SLT/data/labels/gen <INSTALL LOCATION>/HTS-demo_CMU-ARCTIC-SLT/data/labels/gen.orig
+mkdir <INSTALL LOCATION>/HTS-demo_CMU-ARCTIC-SLT/data/labels/gen
+cd idlak-voice-build/utils
+cat ../../idlak-data/en/testdata/alice.xml | \
+../../src/idlaktxpbin/idlaktxp --pretty --tpdb=../../idlak-data/en/ga/slt - - | \
+../../src/idlaktxpbin/idlakcex --pretty --cex-arch=hts --tpdb=../../idlak-data/en/ga/slt - - |\
+python output_hts_test_labs.py  <INSTALL LOCATION>/HTS-demo_CMU-ARCTIC-SLT/data/labels/gen alice
+\endverbatim
+
+ If you would like to generate different output replace alice.xml.
+
+
+ @section idlaktxp_htstraining HTS training
+
+ You are now ready to train models based on Kaldi output in HTS. TO do
+ this you need to bypass the usual HTS demo stage of label generation
+ and need to make the system as follows:
+
+\verbatim
+cd <INSTALL LOCATION>/HTS-demo_CMU-ARCTIC-SLT/data
+make analysis
+make mlf list scp
+cd ..
+make voice
+\endverbatim
+
+Output from the Kaldi based HTS system will be generated into: 
+\verbatim
+<INSTALL LOCATION>/gen/qst001/ver1/hts_engine
+\endverbatim
+
+In order to run HTS-demo with paths set to the tools you have
+downloaded you will need to run make within the HTS-demo directory
+configured appropriately. The download script has added a file
+config.txt to this directory which has an example of the appropriate
+settings.
+
+*/
