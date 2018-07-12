@@ -151,6 +151,6 @@ if __name__ == "__main__":
         sys.exit("compute_sentence_probs_arpa.py: Wrong loading model.")
     if args.ngram_order <= 0 or args.ngram_order > max_ngram_order:
         sys.exit("compute_sentence_probs_arpa.py: " +   
-            "Invalid ngram_order (either negative or greater than maximum ngram number ({}) allowed").format(max_ngram_order)
+            "Invalid ngram_order (either negative or greater than maximum ngram number ({}) allowed)".format(max_ngram_order))
 
     output_result(args.text_in_handle, args.prob_file_handle, args.ngram_order)
