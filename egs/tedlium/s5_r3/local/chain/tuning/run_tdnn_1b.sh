@@ -1,7 +1,13 @@
 #!/bin/bash
 
 # run_tdnn_1b.sh is the script which results are presented in the corpus release paper.
-# It use 2 to 6 jobs and add proportional-shrink 10.
+# It uses 2 to 6 jobs and add proportional-shrink 10.
+
+# WARNING
+# This script is flawed and misses key elements to optimize the tdnnf setup.
+# You can run it as is to reproduce results from the corpus release paper,
+# but a more up-to-date version should be looked at in other egs until another
+# setup is added here.
 
 # local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_1a exp/chain_cleaned/tdnn_1b
 # System                      tdnn_1a   tdnn_1b   tdnn_1b
