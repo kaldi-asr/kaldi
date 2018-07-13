@@ -1,7 +1,43 @@
 #!/bin/bash
 
-# Pawel: this one starts from the best tdnn model for ami, those are fairly similar
-# datasets so I would expect similar modelling tricks will work for both
+# same as 1a, but sets frames per eg to 150,110,100 in _b (instead of 150)
+
+# Note: the difference in params between ihm, mdm and sdm models below 
+# is because of different trees between microphone conditions. Otherwise 
+# models are the same architecture-wise
+
+# Mic ihm 
+# local/chain/compare_wer.sh exp/ihm/chain_1a/tdnn_sp exp/ihm/chain_1a/tdnn_b_sp
+# System                  tdnn_sp tdnn_b_sp
+#WER dev       19.7      19.6
+#WER eval       12.7      12.6
+# Final train prob        -0.0473   -0.0520
+# Final valid prob        -0.1167   -0.1257
+# Final train prob (xent)   -1.0451   -1.0492
+# Final valid prob (xent)   -1.3301   -1.3701
+# Num-params                 7920704   7920704
+
+#Mic mdm4
+# local/chain/compare_wer.sh exp/mdm4/chain_1a/tdnn_sp_ihmali exp/mdm4/chain_1a/tdnn_b_sp_ihmali
+# System                tdnn_sp_ihmali tdnn_b_sp_ihmali
+#WER dev       29.6      28.7
+#WER eval       26.6      26.3
+# Final train prob        -0.1015   -0.1160
+# Final valid prob        -0.2071   -0.2102
+# Final train prob (xent)   -1.7321   -1.7933
+# Final valid prob (xent)   -2.1652   -2.2102
+# Num-params                 7928822   7928822
+
+# Mic sdm4
+# local/chain/compare_wer.sh exp/sdm4/chain_1a/tdnn_sp_ihmali exp/sdm4/chain_1a/tdnn_b_sp_ihmali
+# System                tdnn_sp_ihmali tdnn_b_sp_ihmali
+#WER dev       30.2      30.4
+#WER eval       27.9      27.4
+# Final train prob        -0.1079   -0.1279
+# Final valid prob        -0.2181   -0.2283
+# Final train prob (xent)   -1.8791   -1.9735
+# Final valid prob (xent)   -2.3350   -2.3826
+# Num-params                 7936038   7936038
 
 set -e -o pipefail
 # First the options that are passed through to run_ivector_common.sh
@@ -20,8 +56,9 @@ num_epochs=9
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
+tdnn_affix=_b  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
+frames_per_eg=150,110,100
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -215,7 +252,7 @@ if [ $stage -le 16 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
-    --egs.chunk-width 150 \
+    --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch 128 \
     --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs $num_epochs \

@@ -63,16 +63,16 @@ for x in $*; do   printf "% 10s" " $(basename $x)";   done
 echo
 
 strings=(
-  "#WER dev_clean_2 (tgsmall) "
-  "#WER dev_clean_2 (tglarge) ")
+  "#WER dev "
+  "#WER eval ")
 
 for n in 0 1; do
    echo -n "${strings[$n]}"
    for x in $*; do
      set_names $x  # sets $dirname and $epoch_infix
-    decode_names=(tgsmall_dev_clean_2 tglarge_dev_clean_2)
+    decode_names=(dev eval)
 
-     wer=$(cat $dirname/decode_${decode_names[$n]}/wer_* | utils/best_wer.sh | awk '{print $2}')
+     wer=$(grep Sum $dirname/decode_${decode_names[$n]}/*sc*/*ys | utils/best_wer.sh | awk '{print $2}')
      printf "% 10s" $wer
    done
    echo
@@ -80,7 +80,7 @@ for n in 0 1; do
      echo -n "#             [looped:]    "
      for x in $*; do
        set_names $x  # sets $dirname and $epoch_infix
-       wer=$(cat $dirname/decode_looped_${decode_names[$n]}/wer_* | utils/best_wer.sh | awk '{print $2}')
+       wer=$(grep Sum $dirname/decode_looped_${decode_names[$n]}/*sc*/*ys | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo
@@ -89,7 +89,7 @@ for n in 0 1; do
      echo -n "#             [online:]    "
      for x in $*; do
        set_names $x  # sets $dirname and $epoch_infix
-       wer=$(cat ${dirname}_online/decode_${decode_names[$n]}/wer_* | utils/best_wer.sh | awk '{print $2}')
+       wer=$(grep Sum ${dirname}_online/decode_${decode_names[$n]}/*sc*/*ys | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo

@@ -151,8 +151,8 @@ if [ $stage -le 10 ]; then
   # you can reduce it using the --nj option if you want.
   #local/run_cleanup_segmentation.sh --mic $mic
   echo "For ICSI we do not clean segmentations, as those are manual by default, so should be OK."
-  #but perhaps running such experiment would make sense, for no I want to keep this recipe as
-  #close to baseline as possibe
+  #but perhaps running such experiment would make sense, for now I want to keep this recipe as
+  #close to the baseline one as possibe
 fi
 
 if [ $stage -le 11 ]; then

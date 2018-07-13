@@ -7,11 +7,11 @@ follows the best practises from AMI s5b recipe (look also at: ../ami/s5b).
 
 ICSI data comprises around 72 hours of natural, meeting-style overlapped English speech 
 recorded at International Computer Science Institute (ICSI), Berkley. 
-Speech is captured using set of parallel microphones, including close-talk headsets,
+Speech is captured using the set of parallel microphones, including close-talk headsets,
 and several distant independent microhones (i.e. mics that do not form any explicitly 
 known geometry, see below for an example layout). Recordings are sampled at 16kHz.
 
-See [1] for a more details on ICSI, or [2,3] to access the data. 
+See [1] for more details on ICSI, or [2,3] to access the data. 
 The correpodning paper describing the ICSI corpora is [4]
 
 [1] http://www1.icsi.berkeley.edu/Speech/mr/
@@ -23,7 +23,7 @@ The correpodning paper describing the ICSI corpora is [4]
 
 
 ICSI data did not come with any pre-defined splits for train/valid/eval sets as it was
-mostly used as a training material for NIST RT evaluations. Some portions of unrelased ICSI 
+mostly used as a training material for NIST RT evaluations. Some portions of the unrelased ICSI 
 data (as a part of this corpora) can be found in, for example, NIST RT04 amd RT05 evaluation sets.
 
 This recipe, however, to be self-contained factors out training (67.5 hours), development (2.2 hours 

@@ -46,3 +46,7 @@
 %WER 30.2 | 4835 23317 | 73.2 16.7 10.1 3.4 30.2 45.1 | 0.601 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
 %WER 27.9 | 4341 30798 | 75.2 14.8 10.0 3.1 27.9 57.8 | 0.643 | exp/sdm4/chain_1a/tdnn_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 
+#local/chain/tuning/run_tdnn_1b.sh --use-ihm-ali true --mic sdm4
+%WER 30.4 | 4454 23317 | 73.6 17.7 8.8 3.9 30.4 49.0 | 0.629 | exp/sdm4/chain_1a/tdnn_b_sp_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 27.4 | 5141 30796 | 75.6 15.1 9.3 3.0 27.4 47.9 | 0.642 | exp/sdm4/chain_1a/tdnn_b_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
