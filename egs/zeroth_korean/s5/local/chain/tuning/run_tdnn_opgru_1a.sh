@@ -20,32 +20,24 @@ common_egs_dir=
 # OPGRU/chain options
 train_stage=-10
 get_egs_stage=-10
-xent_regularize=0.1
-label_delay=5
-max_param_change=2.0
 
-# training chunk-options
-chunk_width=150
+xent_regularize=0.1
+dropout_schedule='0,0@0.20,0.2@0.50,0'
+
+chunk_width=140,100,160
 chunk_left_context=40
 chunk_right_context=0
-frames_per_chunk=
+label_delay=5
 
-extra_left_context=50
-extra_right_context=0
-
-# training options
-srand=0
-num_jobs_initial=2
-num_jobs_final=12
-num_epochs=8
-initial_effective_lrate=0.001
-final_effective_lrate=0.0001
-dropout_schedule='0,0@0.20,0.2@0.50,0'
 remove_egs=true
 
 
 #decode options
 test_online_decoding=true  # if true, it will run the last decoding stage.
+
+# decode options
+extra_left_context=50
+frames_per_chunk=
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -74,7 +66,7 @@ fi
 
 gmm_dir=exp/${gmm}
 lat_dir=exp/chain/${gmm}_${train_set}_lats
-dir=exp/chain/tdnn_opgru_${affix}${suffix}
+dir=exp/chain/tdnn_opgru${affix}${suffix}
 train_data_dir=data/${train_set}_hires
 train_ivector_dir=exp/nnet3/ivectors_${train_set}_hires
 lores_train_data_dir=data/${train_set}
@@ -225,14 +217,14 @@ if [ $stage -le 12 ]; then
     --egs.chunk-left-context-initial 0 \
     --egs.chunk-right-context-final 0 \
     --trainer.num-chunk-per-minibatch 64,32 \
-    --trainer.frames-per-iter 1500000 \
-    --trainer.num-epochs $num_epochs \
+    --trainer.frames-per-iter 2000000 \
+    --trainer.num-epochs=8 \
     --trainer.optimization.shrink-value 0.99 \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
-    --trainer.optimization.initial-effective-lrate $initial_effective_lrate \
-    --trainer.optimization.final-effective-lrate $final_effective_lrate \
-    --trainer.max-param-change $max_param_change \
+    --trainer.optimization.num-jobs-initial 2 \
+    --trainer.optimization.num-jobs-final 12 \
+    --trainer.optimization.initial-effective-lrate 0.001 \
+    --trainer.optimization.final-effective-lrate 0.0001 \
+    --trainer.max-param-change 2.0 \
     --trainer.deriv-truncate-margin 8 \
     --cleanup.remove-egs true \
     --feat-dir $train_data_dir \
@@ -275,6 +267,7 @@ if $test_online_decoding && [ $stage -le 14 ]; then
       for lmtype in tgsmall; do
         steps/online/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
+		  --extra-left-context-initial 0 \
           --nj $nspk --cmd "$decode_cmd" \
           $tree_dir/graph_${lmtype} data/${data} ${dir}_online/decode_${lmtype}_test_${data_affix} || exit 1
       done
