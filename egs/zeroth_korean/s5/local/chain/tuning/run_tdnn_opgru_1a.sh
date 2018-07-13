@@ -284,6 +284,7 @@ if $test_online_decoding && [ $stage -le 14 ]; then
       for lmtype in tgsmall; do
         steps/online/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
+          --frames-per-chunk 140 \
 		  --extra-left-context-initial 0 \
           --nj $nspk --cmd "$decode_cmd" \
           $tree_dir/graph_${lmtype} data/${data} ${dir}_online/decode_${lmtype}_test_${data_affix} || exit 1
