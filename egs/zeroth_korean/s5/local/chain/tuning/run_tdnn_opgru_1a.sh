@@ -42,8 +42,6 @@ xent_regularize=0.1
 dropout_schedule='0,0@0.20,0.2@0.50,0'
 
 chunk_width=140,100,160
-chunk_left_context=40
-chunk_right_context=0
 label_delay=5
 
 remove_egs=true
@@ -226,8 +224,8 @@ if [ $stage -le 12 ]; then
     --egs.dir "$common_egs_dir" \
     --egs.opts "--frames-overlap-per-eg 0" \
     --egs.chunk-width $chunk_width \
-    --egs.chunk-left-context $chunk_left_context \
-    --egs.chunk-right-context $chunk_right_context \
+    --egs.chunk-left-context 40 \
+    --egs.chunk-right-context 0 \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.backstitch-training-scale 0.3 \
     --trainer.optimization.backstitch-training-interval 1 \
