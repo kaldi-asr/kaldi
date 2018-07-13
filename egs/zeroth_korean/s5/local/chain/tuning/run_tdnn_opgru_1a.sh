@@ -2,6 +2,23 @@
 
 set -e -o pipefail
 
+# This is recipe using TDNN+Norm-OPGRU. 
+# The recipe is based on AMI example.(egs/ami/s5b/local/chain/tuning/run_tdnn_opgru_1c.sh) 
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn_opgru1a_sp
+# exp/chain/tdnn_opgru1a_sp: num-iters=99 nj=2..12 num-params=38.0M dim=40+100->3040 combine=-0.045->-0.045 (over 1) xent:train/valid[65,98,final]=(-1.19,-0.661,-0.647/-1.21,-0.696,-0.680) logprob:train/valid[65,98,final]=(-0.080,-0.039,-0.038/-0.076,-0.039,-0.038)
+
+# ./local/chain/compare_wer.sh exp/chain/tdnn_opgru1a_sp
+# System                tdnn_opgru1a_sp
+#WER test_clean (tgsmall)               15.17
+#WER test_clean (fglarge)                  9.14
+# Final train prob        -0.0380
+# Final valid prob        -0.0378
+# Final train prob (xent)   -0.6470
+# Final valid prob (xent)   -0.6805
+# Num-params                37970368
+
+
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
 stage=0

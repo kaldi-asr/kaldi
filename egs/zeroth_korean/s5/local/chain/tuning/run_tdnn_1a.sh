@@ -2,6 +2,23 @@
 
 set -e -o pipefail
 
+# This recipe trains TDNN-F AM
+# The training recipe is from WSJ example(egs/wsj/s5/local/chain/tuning/run_tdnn_1g.sh)
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
+# exp/chain/tdnn1a_sp: num-iters=174 nj=2..8 num-params=8.4M dim=40+100->3040 combine=-0.049->-0.048 (over 3) xent:train/valid[115,173,final]=(-1.23,-0.838,-0.839/-1.22,-0.863,-0.859) logprob:train/valid[115,173,final]=(-0.091,-0.053,-0.053/-0.087,-0.056,-0.055)
+
+# ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp
+# System                tdnn1a_sp
+#WER test_clean (tgsmall)               19.11
+#WER test_clean (fglarge)                 11.06
+# Final train prob        -0.0527
+# Final valid prob        -0.0545
+# Final train prob (xent)   -0.8395
+# Final valid prob (xent)   -0.8590
+# Num-params                 8426432
+
+
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
 stage=0
