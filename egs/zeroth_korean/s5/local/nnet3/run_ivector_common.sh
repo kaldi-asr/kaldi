@@ -54,13 +54,12 @@ if [ $stage -le 3 ]; then
   # MFCC dir across multiple locations.  You might want to be careful here, if you
   # have multiple copies of Kaldi checked out and run the same recipe, not to let
   # them overwrite each other.
-  mfccdir=mfcc_hires
 
   for datadir in ${trainset} ; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
     steps/make_mfcc.sh --nj 40 --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" data/${datadir}_hires exp/make_hires/$datadir $mfccdir || exit 1;
-    steps/compute_cmvn_stats.sh data/${datadir}_hires exp/make_hires/$datadir $mfccdir || exit 1;
+      --cmd "$train_cmd" data/${datadir}_hires  || exit 1;
+    steps/compute_cmvn_stats.sh data/${datadir}_hires  || exit 1;
   done
 
   # We need to build a small system just because we need the LDA+MLLT transform
