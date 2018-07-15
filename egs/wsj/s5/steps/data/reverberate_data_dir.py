@@ -61,6 +61,8 @@ def GetArgs():
     parser.add_argument("--noise-smoothing-weight", type=float, default = 0.3,
                         help="Smoothing weight for the noise probabilties, e.g. 0 <= p <= 1. If p = 0, no smoothing will be done. "
                         "The noise distribution will be mixed with a uniform distribution according to the smoothing weight")
+    parser.add_argument("--max-bg-noises", type=int, default = 1,
+                        help="This controls the maximum number of point-source noises that could be added to a recording according to its duration")
     parser.add_argument("--max-noises-per-minute", type=int, default = 2,
                         help="This controls the maximum number of point-source noises that could be added to a recording according to its duration")
     parser.add_argument('--random-seed', type=int, default=0, help='seed to be used in the randomization of impulses and noises')
@@ -113,6 +115,9 @@ def CheckArgs(args):
 
     if args.max_noises_per_minute < 0:
         raise Exception("--max-noises-per-minute cannot be negative")
+
+    if args.max_bg_noises < 0:
+        raise Exception("--max-bg-noises cannot be negative")
 
     if args.source_sampling_rate is not None and args.source_sampling_rate <= 0:
         raise Exception("--source-sampling-rate cannot be non-positive")
@@ -203,11 +208,13 @@ def CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, include_origina
 def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the information of the noise added
                         room,  # the room selected
                         pointsource_noise_list, # the point source noise list
+                        bg_noise_list, # bg noise list
                         pointsource_noise_addition_probability, # Probability of adding point-source noises
                         foreground_snrs, # the SNR for adding the foreground noises
                         background_snrs, # the SNR for adding the background noises
                         speech_dur,  # duration of the recording
-                        max_noises_recording  # Maximum number of point-source noises that can be added
+                        max_noises_recording, # maximum number of point-source noises that can be added
+                        max_bg_noises # maximum number of background noises
                         ):
     if len(pointsource_noise_list) > 0 and random.random() < pointsource_noise_addition_probability and max_noises_recording >= 1:
         for k in range(random.randint(1, max_noises_recording)):
@@ -216,14 +223,26 @@ def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the in
             noise_rir = PickItemWithProbability(room.rir_list)
             # If it is a background noise, the noise will be extended and be added to the whole speech
             # if it is a foreground noise, the noise will not extended and be added at a random time of the speech
-            if noise.bg_fg_type == "background":
-                noise_rvb_command = """wav-reverberate --impulse-response="{0}" --duration={1}""".format(noise_rir.rir_rspecifier, speech_dur)
-                noise_addition_descriptor['start_times'].append(0)
-                noise_addition_descriptor['snrs'].append(background_snrs.next())
+            noise_rvb_command = """wav-reverberate --impulse-response="{0}" """.format(noise_rir.rir_rspecifier)
+            noise_addition_descriptor['start_times'].append(round(random.random() * speech_dur, 2))
+            noise_addition_descriptor['snrs'].append(foreground_snrs.next())
+
+            # check if the rspecifier is a pipe or not
+            if len(noise.noise_rspecifier.split()) == 1:
+                noise_addition_descriptor['noise_io'].append("{1} {0} - |".format(noise.noise_rspecifier, noise_rvb_command))
             else:
-                noise_rvb_command = """wav-reverberate --impulse-response="{0}" """.format(noise_rir.rir_rspecifier)
-                noise_addition_descriptor['start_times'].append(round(random.random() * speech_dur, 2))
-                noise_addition_descriptor['snrs'].append(foreground_snrs.next())
+                noise_addition_descriptor['noise_io'].append("{0} {1} - - |".format(noise.noise_rspecifier, noise_rvb_command))
+
+    if len(bg_noise_list) > 0 and random.random() < pointsource_noise_addition_probability and max_bg_noises >= 1:
+        for k in range(random.randint(1, max_bg_noises)):
+            # pick the RIR to reverberate the point-source noise
+            noise = PickItemWithProbability(bg_noise_list)
+            noise_rir = PickItemWithProbability(room.rir_list)
+            # If it is a background noise, the noise will be extended and be added to the whole speech
+            # if it is a foreground noise, the noise will not extended and be added at a random time of the speech
+            noise_rvb_command = """wav-reverberate --impulse-response="{0}" --duration={1}""".format(noise_rir.rir_rspecifier, speech_dur)
+            noise_addition_descriptor['start_times'].append(0)
+            noise_addition_descriptor['snrs'].append(background_snrs.next())
 
             # check if the rspecifier is a pipe or not
             if len(noise.noise_rspecifier.split()) == 1:
@@ -240,13 +259,15 @@ def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the in
 def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                               pointsource_noise_list, # the point source noise list
                               iso_noise_dict, # the isotropic noise dictionary
+                              bg_noise_list, # bg noise list
                               foreground_snrs, # the SNR for adding the foreground noises
                               background_snrs, # the SNR for adding the background noises
                               speech_rvb_probability, # Probability of reverberating a speech signal
                               isotropic_noise_addition_probability, # Probability of adding isotropic noises
                               pointsource_noise_addition_probability, # Probability of adding point-source noises
                               speech_dur,  # duration of the recording
-                              max_noises_recording  # Maximum number of point-source noises that can be added
+                              max_noises_recording,  # Maximum number of point-source noises that can be added
+                              max_bg_noises # Maximum bg noises
                               ):
     reverberate_opts = ""
     noise_addition_descriptor = {'noise_io': [],
@@ -279,11 +300,13 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
     noise_addition_descriptor = AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the information of the noise added
                                                     room,  # the room selected
                                                     pointsource_noise_list, # the point source noise list
+                                                    bg_noise_list, # bg noise list
                                                     pointsource_noise_addition_probability, # Probability of adding point-source noises
                                                     foreground_snrs, # the SNR for adding the foreground noises
                                                     background_snrs, # the SNR for adding the background noises
-                                                    speech_dur,  # duration of the recording
-                                                    max_noises_recording  # Maximum number of point-source noises that can be added
+                                                    speech_dur, # duration of the recording
+                                                    max_noises_recording, # Maximum number of point-source noises that can be added
+                                                    max_bg_noises # Maximum bg noises
                                                     )
 
     assert len(noise_addition_descriptor['noise_io']) == len(noise_addition_descriptor['start_times'])
@@ -317,6 +340,7 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
                                room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                                pointsource_noise_list, # the point source noise list
                                iso_noise_dict, # the isotropic noise dictionary
+                               bg_noise_list, # bg noise list
                                foreground_snr_array, # the SNR for adding the foreground noises
                                background_snr_array, # the SNR for adding the background noises
                                num_replicas, # Number of replicate to generated for the data
@@ -326,7 +350,8 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
                                shift_output, # option whether to shift the output waveform
                                isotropic_noise_addition_probability, # Probability of adding isotropic noises
                                pointsource_noise_addition_probability, # Probability of adding point-source noises
-                               max_noises_per_minute # maximum number of point-source noises that can be added to a recording according to its duration
+                               max_noises_per_minute, # maximum number of point-source noises that can be added to a recording according to its duration
+                               max_bg_noises # maximum number of background noises
                                ):
     foreground_snrs = list_cyclic_iterator(foreground_snr_array)
     background_snrs = list_cyclic_iterator(background_snr_array)
@@ -350,13 +375,15 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
             reverberate_opts = GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                                                          pointsource_noise_list, # the point source noise list
                                                          iso_noise_dict, # the isotropic noise dictionary
+                                                         bg_noise_list, # the bg noise list
                                                          foreground_snrs, # the SNR for adding the foreground noises
                                                          background_snrs, # the SNR for adding the background noises
                                                          speech_rvb_probability, # Probability of reverberating a speech signal
                                                          isotropic_noise_addition_probability, # Probability of adding isotropic noises
                                                          pointsource_noise_addition_probability, # Probability of adding point-source noises
-                                                         speech_dur,  # duration of the recording
-                                                         max_noises_recording  # Maximum number of point-source noises that can be added
+                                                         speech_dur, # duration of the recording
+                                                         max_noises_recording, # maximum number of point-source noises that can be added
+                                                         max_bg_noises # maximum bg noises
                                                          )
 
             # prefix using index 0 is reserved for original data e.g. rvb0_swb0035 corresponds to the swb0035 recording in original data
@@ -398,6 +425,7 @@ def CreateReverberatedCopy(input_dir,
                            room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                            pointsource_noise_list, # the point source noise list
                            iso_noise_dict, # the isotropic noise dictionary
+                           bg_noise_list, # the bg noise list
                            foreground_snr_string, # the SNR for adding the foreground noises
                            background_snr_string, # the SNR for adding the background noises
                            num_replicas, # Number of replicate to generated for the data
@@ -407,7 +435,8 @@ def CreateReverberatedCopy(input_dir,
                            shift_output, # option whether to shift the output waveform
                            isotropic_noise_addition_probability, # Probability of adding isotropic noises
                            pointsource_noise_addition_probability, # Probability of adding point-source noises
-                           max_noises_per_minute  # maximum number of point-source noises that can be added to a recording according to its duration
+                           max_noises_per_minute,  # maximum number of point-source noises that can be added to a recording according to its duration
+                           max_bg_noises # Maximum number of background noises
                            ):
 
     wav_scp = ParseFileToDict(input_dir + "/wav.scp", value_processor = lambda x: " ".join(x))
@@ -424,10 +453,10 @@ def CreateReverberatedCopy(input_dir,
     foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
     background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
 
-    GenerateReverberatedWavScp(wav_scp, durations, output_dir, room_dict, pointsource_noise_list, iso_noise_dict,
+    GenerateReverberatedWavScp(wav_scp, durations, output_dir, room_dict, pointsource_noise_list, iso_noise_dict, bg_noise_list,
                foreground_snr_array, background_snr_array, num_replicas, include_original, prefix,
                speech_rvb_probability, shift_output, isotropic_noise_addition_probability,
-               pointsource_noise_addition_probability, max_noises_per_minute)
+               pointsource_noise_addition_probability, max_noises_per_minute, max_bg_noises)
 
     AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replicas, include_original, prefix, field = [0,1])
     data_lib.RunKaldiCommand("utils/utt2spk_to_spk2utt.pl <{output_dir}/utt2spk >{output_dir}/spk2utt"
@@ -590,10 +619,12 @@ def ParseNoiseList(noise_set_para_array, smoothing_weight, sampling_rate = None)
     set_list = ParseSetParameterStrings(noise_set_para_array)
 
     pointsource_noise_list = []
+    bg_noise_list = []
     iso_noise_dict = {}
     for noise_set in set_list:
         current_noise_list = map(lambda x: noise_parser.parse_args(shlex.split(x.strip())),open(noise_set.filename))
         current_pointsource_noise_list = []
+        current_bg_noise_list = []
         for noise in current_noise_list:
             if sampling_rate is not None:
                 # check if the rspecifier is a pipe or not
@@ -609,13 +640,18 @@ def ParseNoiseList(noise_set_para_array, smoothing_weight, sampling_rate = None)
                     if noise.room_linkage not in iso_noise_dict:
                         iso_noise_dict[noise.room_linkage] = []
                     iso_noise_dict[noise.room_linkage].append(noise)
+            elif noise.bg_fg_type == "background":
+                current_bg_noise_list.append(noise)
             else:
                 current_pointsource_noise_list.append(noise)
 
         pointsource_noise_list += SmoothProbabilityDistribution(current_pointsource_noise_list, smoothing_weight, noise_set.probability)
+        bg_noise_list += SmoothProbabilityDistribution(current_bg_noise_list, smoothing_weight, noise_set.probability)
 
     # ensure the point-source noise probabilities sum to 1
     pointsource_noise_list = SmoothProbabilityDistribution(pointsource_noise_list, smoothing_weight, 1.0)
+    bg_noise_list = SmoothProbabilityDistribution(bg_noise_list, smoothing_weight, 1.0)
+
     if len(pointsource_noise_list) > 0:
         assert almost_equal(sum(noise.probability for noise in pointsource_noise_list), 1.0)
 
@@ -624,7 +660,7 @@ def ParseNoiseList(noise_set_para_array, smoothing_weight, sampling_rate = None)
         iso_noise_dict[key] = SmoothProbabilityDistribution(iso_noise_dict[key])
         assert almost_equal(sum(noise.probability for noise in iso_noise_dict[key]), 1.0)
 
-    return (pointsource_noise_list, iso_noise_dict)
+    return (pointsource_noise_list, iso_noise_dict, bg_noise_list)
 
 
 def Main():
@@ -635,9 +671,10 @@ def Main():
     pointsource_noise_list = []
     iso_noise_dict = {}
     if args.noise_set_para_array is not None:
-        pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_set_para_array, args.noise_smoothing_weight, args.source_sampling_rate)
+        pointsource_noise_list, iso_noise_dict, bg_noise_list = ParseNoiseList(args.noise_set_para_array, args.noise_smoothing_weight, args.source_sampling_rate)
         print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
         print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
+        print("Number of bg noises is {0}".format(len(bg_noise_list)))
     room_dict = MakeRoomDict(rir_list)
 
     if args.include_original_data == "true":
@@ -650,6 +687,7 @@ def Main():
                            room_dict = room_dict,
                            pointsource_noise_list = pointsource_noise_list,
                            iso_noise_dict = iso_noise_dict,
+                           bg_noise_list = bg_noise_list,
                            foreground_snr_string = args.foreground_snr_string,
                            background_snr_string = args.background_snr_string,
                            num_replicas = args.num_replicas,
@@ -659,7 +697,8 @@ def Main():
                            shift_output = args.shift_output,
                            isotropic_noise_addition_probability = args.isotropic_noise_addition_probability,
                            pointsource_noise_addition_probability = args.pointsource_noise_addition_probability,
-                           max_noises_per_minute = args.max_noises_per_minute)
+                           max_noises_per_minute = args.max_noises_per_minute, 
+                           max_bg_noises = args.max_bg_noises)
 
 if __name__ == "__main__":
     Main()
