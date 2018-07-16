@@ -59,7 +59,7 @@ fi
 if [ $stage -le 6 ]; then
   echo "point 1"
   # build lm
-  local/prepare_lm.sh  $tmpdir/subs/lm/es.txt
+  local/prepare_lm.sh  $tmpdir/subs/lm/in_vocabulary.txt
 
   echo "point 2"
   utils/format_lm.sh \
