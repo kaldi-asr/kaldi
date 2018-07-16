@@ -9,15 +9,16 @@ speech="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
 
 tmpdir=data/local/tmp
 data_dir=$tmpdir/LDC2006S37/data
+downloaddir=$(pwd)
 
 mkdir -p $tmpdir
 
 # download the corpus from openslr
-if [ ! -f $tmpdir/LDC2006S37.tar.gz ]; then
-  wget -O $tmpdir/LDC2006S37.tar.gz $speech
+if [ ! -f $downloaddir/LDC2006S37.tar.gz ]; then
+  wget -O $downloaddir/LDC2006S37.tar.gz $speech
 
   (
-    cd $tmpdir
+    cd $downloaddir
     tar -xzf LDC2006S37.tar.gz
   )
 fi
@@ -25,11 +26,11 @@ fi
 mkdir -p data/local/dict $tmpdir/dict
 
 # download the dictionary from openslr
-if [ ! -f $tmpdir/dict/santiago.tar.gz ]; then
-    wget -O $tmpdir/dict/santiago.tar.gz $lexicon
+if [ ! -f $downloaddir/dict/santiago.tar.gz ]; then
+    wget -O $downloaddir/dict/santiago.tar.gz $lexicon
 fi
 
 (
-  cd $tmpdir/dict
+  cd $downloaddir/dict
   tar -xzf santiago.tar.gz
 )
