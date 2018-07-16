@@ -4,7 +4,7 @@
 # Apache 2.0.
 
 tmpdir=data/local/tmp
-download_dir=$tmpdir/subs
+download_dir=$(pwd)
 mkdir -p $download_dir
 subs_src="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip"
 

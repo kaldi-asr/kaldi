@@ -18,7 +18,7 @@ my $ub = 16;
 # only segments with fewer than $ub words will be written
 
 # input and output files
-my $c = "data/local/tmp/subs/OpenSubtitles2016.en-es.es";
+my $c = "OpenSubtitles2016.en-es.es";
 my $symtab = "data/lang/words.txt";
 my $rl = "data/local/tmp/subs/lm/es.txt";
 my $oo = "data/local/tmp/subs/lm/oovs.txt";
