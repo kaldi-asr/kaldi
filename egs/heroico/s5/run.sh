@@ -24,7 +24,7 @@ subsdata="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.z
 # don't change tmpdir, the location is used explicitly in scripts in local/.
 tmpdir=data/local/tmp
 
-if [ $stage -le 0 ]; then
+if [ $stage -le -1 ]; then
   # download the corpus from openslr
   local/heroico_download.sh
 fi
