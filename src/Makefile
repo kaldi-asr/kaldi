@@ -25,7 +25,7 @@ SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 KALDI_SONAME ?= libkaldi.so
 
 # Optional subdirectories
-EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
+EXT_SUBDIRS = online onlinebin pyIdlak # python-kaldi-decoding
 EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
 
 include kaldi.mk
@@ -135,6 +135,7 @@ depend: $(addsuffix /depend, $(SUBDIRS))
 
 
 ext_depend: check_portaudio
+	$(MAKE) -C pyIdlak wrapper
 	-for x in $(EXT_SUBDIRS); do $(MAKE) -C $$x depend; done
 
 
@@ -183,3 +184,5 @@ online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudama
 kws: base util hmm tree matrix lat
 idlaktxp: base util matrix
 idlakfeat: base util hmm feat transform
+pyIdlak: base
+
