@@ -195,7 +195,7 @@ template<typename Real> void TestCuVectorAddDiagMat2OnVariousShapes(
     int32 dim, MatrixTransposeType trans) {
   BaseFloat time_in_secs = 0.02;
   int32 size = 1024 * 32;
-  CuVector<Real> v(std::max(dim, size / dim));
+  CuVector<Real> v(trans == kNoTrans ? size / dim : dim);
   v.SetRandn();
   CuMatrix<Real> N(size / dim, dim);
   N.SetRandn();
@@ -443,4 +443,3 @@ int main() {
 #endif
   KALDI_LOG << "Tests succeeded.";
 }
-
