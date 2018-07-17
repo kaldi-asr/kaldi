@@ -57,9 +57,6 @@ fi
 oldlm=$oldlang/G.fst
 if [ -f $oldlang/G.carpa ]; then
   oldlm=$oldlang/G.carpa
-elif [ ! -f $oldlm ]; then
-  echo "$0: expecting either $oldlang/G.fst or $oldlang/G.carpa to exist" &&\
-    exit 1;
 fi
 
 [ ! -f $oldlm ] && echo "$0: Missing file $oldlm" && exit 1;
