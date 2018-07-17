@@ -43,7 +43,7 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 pruned_rescore=true
 
 ac_model_dir=exp/chain/tdnn1b_sp
-decode_sets="dev analysis1_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg eval2_segmented_reseg"
+decode_sets="dev analysis1_segmented_reseg analysis2_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg eval2_segmented_reseg"
 dir=exp/rnnlm_lstm_1a
 text_dir=data/rnnlm/text
 train_text=data/lm/train.txt
