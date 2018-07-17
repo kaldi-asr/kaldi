@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 
       ///only for nnet with fsmn component
       Vector<BaseFloat> flags;
-      flags.Resize(feats_transf.NumRows(), kSetZero);
+      flags.Resize(feats.NumRows(), kSetZero);
       flags.Set(1.0);
       nnet.SetFlags(flags);
 
