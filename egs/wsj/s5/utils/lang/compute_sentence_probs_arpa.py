@@ -130,14 +130,13 @@ def compute_sentence_prob(sentence, ngram_order):
         
 
 def output_result(text_in_handle, output_file_handle, ngram_order):
-    index = 1
     lines = text_in_handle.readlines()
+    logbase_modifier = math.log(10, args.log_base)
     for line in lines:
         new_line = "<s> " + line[:-1] + " </s>"
         logprob = compute_sentence_prob(new_line, ngram_order)
-        new_logprob = logprob * math.log(10, args.log_base)
+        new_logprob = logprob * logbase_modifier
         output_file_handle.write("{}\n".format(new_logprob))
-        index += 1
     text_in_handle.close()
     output_file_handle.close()
      
