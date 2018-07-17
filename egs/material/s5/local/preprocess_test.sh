@@ -31,6 +31,7 @@ elif [ $(basename $datadev) == 'eval1' ]; then
 elif [ $(basename $datadev) == 'eval2' ]; then
   audio_path=${audio_path_eval2}
 fi
+[ -z ${wav_path} ] && echo "$0: test data should be either analysis[12], test_dev, eval1 or eval2." && exit 1
 
 [ -z ${audio_path} ] && echo "$0: test data should be either analysis1, analysis2, test_dev, eval1 or eval2." && exit 1
 

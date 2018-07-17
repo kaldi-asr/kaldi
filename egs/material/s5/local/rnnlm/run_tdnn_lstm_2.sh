@@ -45,6 +45,7 @@ pruned_rescore=true
 ac_model_dir=exp/chain/tdnn1b_sp_2
 #decode_sets="dev analysis1_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg eval2_segmented_reseg"
 decode_sets="dev analysis1_segmented test_dev_segmented eval1_segmented eval2_segmented"
+decode_sets="analysis2_segmented"
 #decode_sets="dev eval1_segmented eval2_segmented"
 dir=exp/rnnlm_lstm_1a
 text_dir=data/rnnlm/text
@@ -169,11 +170,11 @@ if [ $stage -le 5 ]; then
         0.5 data/lang_$LM $dir data/${decode_set}_hires \
         ${decode_dir}_${decode_dir_suffix}_rescore ${decode_dir}_${decode_dir_suffix}_rescore_nbest || exit 1
 
-#      if [ ${decode_set} != "dev" ]; then
-#        local/postprocess_test.sh ${decode_set} ${tree_dir}/graph_combined_2 \
-#          ${decode_dir}_${decode_dir_suffix}_rescore_nbest
-#      fi
-    ) || touch $dir/.error &
+      if [ ${decode_set} != "dev" ]; then
+        local/postprocess_test.sh ${decode_set} ${tree_dir}/graph_combined_2 \
+          ${decode_dir}_${decode_dir_suffix}_rescore_nbest
+      fi
+    ) || touch $dir/.error 
   done
 fi
 

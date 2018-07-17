@@ -10,17 +10,10 @@ set -euo pipefail
 
 language=swahili
 stage=0
-
 datadev="data/analysis1 data/analysis2 data/test_dev data/eval1 data/eval2"
 dir=exp/chain/tdnn1b_sp
 lang=data/lang_combined_chain
 tree_dir=exp/chain/tree_sp
-
-
-
-
-
-
 cmd=queue.pl
 graph_affix=_combined
 
