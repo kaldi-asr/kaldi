@@ -20,6 +20,12 @@
 #ifndef KALDI_PYIDLAK_PYTHON_API_H_
 #define KALDI_PYIDLAK_PYTHON_API_H_
 
-int hello();
+// TxpParseOptions wrappers
+typedef struct PyTxpParseOptions PyTxpParseOptions;
+
+PyTxpParseOptions * PyTxpParseOptions_new(const char *usage);
+void PyTxpParseOptions_delete(PyTxpParseOptions * pypo);
+
+void PyTxpParseOptions_PrintUsage(PyTxpParseOptions * pypo, bool print_command_line = false);
 
 #endif // KALDI_PYIDLAK_PYTHON_API_H_

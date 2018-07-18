@@ -5,8 +5,10 @@ OBJFILES = python-api.o pyIdlak_wrap.o
 
 LIBNAME = _pyIdlak
 
-EXTRA_CXXFLAGS = -fPIC -I$(PYTHONDEVINC)
-EXTRA_LDLIBS = -lpython2.7
+ADDLIBS = ../idlaktxp/idlak-txp.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+
+EXTRA_CXXFLAGS = -fPIC -I$(PYTHONDEVINC) -I$(PCREROOT)/include -I$(EXPATROOT)/include -I$(PUJIXMLROOT)/src
+EXTRA_LDLIBS = -lpython2.7 -Wl,-rpath,"$(PCREROOT)/lib" $(PCREROOT)/lib/libpcre.so $(EXPATROOT)/lib/libexpat.so
 
 include ../makefiles/default_rules.mk
 
@@ -30,16 +32,17 @@ ifeq ($(KALDI_FLAVOR), dynamic)
   endif
 else
   ifeq ($(shell uname), Darwin)
-	$(CXX) -dynamiclib -o _pyIdlak.dylib -install_name @rpath/_pyIdlak.a $(LDFLAGS) $(OBJFILES) $(LDLIBS)
+	$(CXX) -dynamiclib -o _pyIdlak.dylib -install_name @rpath/_pyIdlak.a $(LDFLAGS) $(LDLIBS)
   else ifeq ($(shell uname), Linux)
 	# Building shared library from static (static was compiled with -fPIC)
-	$(CXX) -shared -o _pyIdlak.so -Wl,--no-undefined -Wl,--as-needed  -Wl,-soname=_pyIdlak.so,--whole-archive _pyIdlak.a -Wl,--no-whole-archive $(LDFLAGS) $(LDLIBS)
+	$(CXX) -shared -o _pyIdlak.so -Wl,--no-undefined -Wl,--as-needed \
+		-Wl,-soname=_pyIdlak.so,--whole-archive _pyIdlak.a $(ADDLIBS) $(PUJIXMLROOT)/scripts/libpugixml.a -Wl,--no-whole-archive $(LDFLAGS) $(LDLIBS)
   else  # Platform not supported
 	$(error Dynamic libraries not supported on this platform '$(shell uname)'. Python wrapper cannot be built.)
   endif
 endif
 
 clean:
-	-rm -f *.o *.a *.so pyIdlak.py pyIdlak.pyc
+	-rm -f *.o *.a *.so pyIdlak.py pyIdlak.pyc pyIdlak_wrap.cc
 
 all: wrapper sharedlib

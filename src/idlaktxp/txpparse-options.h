@@ -29,6 +29,7 @@
 #include <string>
 #include <map>
 #include <utility>
+#include "base/kaldi-common.h"
 #include "util/parse-options.h"
 #include "idlaktxp/idlak-common.h"
 

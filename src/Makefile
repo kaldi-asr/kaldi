@@ -184,5 +184,5 @@ online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudama
 kws: base util hmm tree matrix lat
 idlaktxp: base util matrix
 idlakfeat: base util hmm feat transform
-pyIdlak: base
+pyIdlak: base util matrix idlaktxp
 

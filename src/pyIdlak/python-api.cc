@@ -17,23 +17,34 @@
 // limitations under the License.
 //
 
+#include "idlaktxp/idlaktxp.h"
+
 #include "python-api.h"
 
-#include <time.h>
- double My_variable = 3.0;
- 
- int fact(int n) {
-     if (n <= 1) return 1;
-     else return n*fact(n-1);
- }
- 
- int my_mod(int x, int y) {
-     return (x%y);
- }
-        
- char *get_time()
- {
-     time_t ltime;
-     time(&ltime);
-     return ctime(&ltime);
- }
+struct PyTxpParseOptions {
+  kaldi::TxpParseOptions * po_;
+};
+
+
+PyTxpParseOptions * PyTxpParseOptions_new(const char *usage)
+{
+  PyTxpParseOptions * pypo = new PyTxpParseOptions;
+  pypo->po_ = new kaldi::TxpParseOptions(usage);
+  return pypo;
+}
+
+
+void PyTxpParseOptions_delete(PyTxpParseOptions * pypo)
+{
+  if (pypo) {
+    delete pypo->po_;
+    delete pypo;
+  }
+}
+
+void PyTxpParseOptions_PrintUsage(PyTxpParseOptions * pypo, bool print_command_line)
+{
+  if (pypo) {
+    pypo->po_->PrintUsage(print_command_line);
+  }
+}
