@@ -27,7 +27,7 @@ if [ $# -ne 2 ]; then
   echo "    --stage (0|1)  # start script from part-way through"
   echo "    --cmd (run.pl|queue.pl...)  # specify how to run the sub-processes"
   echo "    --segmentation-opts '--opt1 opt1val --opt2 opt2val' # options for segmentation.pl"
-  echo "    --min-duration <m> # min duration in seconds for segments (smaller ones are discarded)
+  echo "    --min-duration <m> # min duration in seconds for segments (smaller ones are discarded)"
   echo "e.g.:"
   echo "$0 data/train data/train_segmented"
   exit 1;

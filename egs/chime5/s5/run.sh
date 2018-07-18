@@ -122,7 +122,7 @@ if [ $stage -le 6 ]; then
   # $ head -n 2 data/eval_beamformit_ref_nosplit_fix/utt2spk
   # P01_S01_U02_KITCHEN.ENH-0000192-0001278 P01_U02
   # P01_S01_U02_KITCHEN.ENH-0001421-0001481 P01_U02
-  for dset in ${test_sets}; do
+  for dset in dev_${enhancement}_ref eval_${enhancement}_ref; do
     utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
     mkdir -p data/${dset}_nosplit_fix
     cp data/${dset}_nosplit/{segments,text,wav.scp} data/${dset}_nosplit_fix/
@@ -132,11 +132,11 @@ if [ $stage -le 6 ]; then
 
   # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
   # lets us use more jobs for decoding etc.
-  for dset in ${train_set}; do
+  for dset in ${train_set} dev_worn; do
     utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit data/${dset}
   done
-  for dset in ${test_sets}; do
+  for dset in dev_${enhancement}_ref eval_${enhancement}_ref; do
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit_fix data/${dset}
   done
 fi
