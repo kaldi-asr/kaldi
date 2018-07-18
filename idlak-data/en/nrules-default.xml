@@ -4,8 +4,8 @@
 
 <regex name="whitespace">
   <comment>
-    Overide default to regard hypens as wspace until norm rules added
-    to deal with hypenation.
+    Used by the tokeniser.
+    Whitespace characters.
   </comment>
   <exp>
     <![CDATA[^([ \n\t\r]+)]]>
@@ -14,7 +14,6 @@
 
   <regex name="separators">
     <comment>
-      Important: DO NOT REMOVE
       It is used by the tokeniser to tokenise these characters separately
     </comment>
     <exp>
@@ -24,14 +23,35 @@
 
   <regex name="alpha">
     <comment>
-      Important: Do not delete this regex, as it is used by the normaliser
-      internally.
-      Also, extend it with the language-specific letters.
+      Used by the tokeniser.
+      Also, extend it with the language-specific letters as required.
     </comment>
     <exp>
       <![CDATA[^[a-zA-Z_']+$]]>
     </exp>
   </regex>
+
+  <regex name="punc_strip">
+    <comment>
+      Used by the tokeniser.
+      Strip punctuation of the front and back and leave the rest as a token.
+    </comment>
+    <exp>
+      <![CDATA[^([()\[\]{}"'!?.,;:|]*)(.*?)([()\[\]{}"'!?.,;:|]*$)]]>
+    </exp>
+  </regex>
+
+  <!-- <regex name="punc_strip">
+    <comment>
+      Used by the tokeniser.      
+      Decompose tokens into separate tokens seprated by punctuation
+      Currently this will break number normalisation. e.g. 12,345 -> '12' ',' '345'
+    </comment>
+    <exp>
+      <![CDATA[^([()\[\]{}"'!?.,;:|]*)([^()\[\]{}"'!?.,;:|]*)([()\[\]{}"'!?.,;:|]*)]]>
+    </exp>
+  </regex> -->
+
 
   <lookup name="downcase">
     <comment>
