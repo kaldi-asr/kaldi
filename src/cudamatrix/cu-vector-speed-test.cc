@@ -191,6 +191,31 @@ template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim,
 }
 
 
+template<typename Real> void TestCuVectorAddDiagMat2OnVariousShapes(
+    int32 dim, MatrixTransposeType trans) {
+  BaseFloat time_in_secs = 0.02;
+  int32 size = 1024 * 32;
+  CuVector<Real> v(trans == kNoTrans ? size / dim : dim);
+  v.SetRandn();
+  CuMatrix<Real> N(size / dim, dim);
+  N.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    v.AddDiagMat2(1.0, N, trans, 0.0);
+  }
+
+  BaseFloat fdim = size;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::AddDiagMat2Shapes" << NameOf<Real>()
+            << (trans == kTrans ? "[trans]" : "[no-trans]") << ", for dim = ("
+            << size / dim << ", " << dim  << "), speed was " << gflops << " gigaflops.";
+}
+
+
+
 template<typename Real> void TestCuVectorAddDiagMat2(int32 dim, MatrixTransposeType trans) {
   BaseFloat time_in_secs = 0.02;
   CuVector<Real> v(dim);
@@ -343,7 +368,6 @@ template<typename Real> void TestCuVectorApplyCeilingNoCount(int32 dim) {
 
 template<typename Real> void CudaVectorSpeedTest() {
   std::vector<int32> sizes;
-  sizes.push_back(16);
   sizes.push_back(32);
   sizes.push_back(64);
   sizes.push_back(128);
@@ -368,6 +392,10 @@ template<typename Real> void CudaVectorSpeedTest() {
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kNoTrans, kTrans);
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kNoTrans);
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kTrans);
+  }
+  for (int32 s = 0; s < ns; s++) {
+    TestCuVectorAddDiagMat2OnVariousShapes<Real>(sizes[s], kNoTrans);
+    TestCuVectorAddDiagMat2OnVariousShapes<Real>(sizes[s], kTrans);
   }
   for (int32 s = 0; s < ns; s++) {
     TestCuVectorAddDiagMat2<Real>(sizes[s], kNoTrans);
@@ -415,4 +443,3 @@ int main() {
 #endif
   KALDI_LOG << "Tests succeeded.";
 }
-
