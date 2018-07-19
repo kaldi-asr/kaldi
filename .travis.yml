@@ -42,10 +42,10 @@ before_script:
 
 env:
   - CI_TARGETS="depend"     # Job1: Build main programs.
-  - CI_TARGETS="all"        # Job1: Build main programs.
-  - CI_TARGETS="ext_depend" # Job2: Build extra programs
-  - CI_TARGETS="ext"        # Job2: Build extra programs
-  - CI_TARGETS="test"       # Job3: Test libraries.
+  - CI_TARGETS="all"        # Job2: Build main programs.
+  - CI_TARGETS="ext_depend" # Job3: Build extra programs
+  - CI_TARGETS="ext"        # Job4: Build extra programs
+  - CI_TARGETS="test"       # Job5: Test libraries.
   #### ext_test? adds 5min compile, runs 1 test.
 
 script:
