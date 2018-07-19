@@ -59,7 +59,7 @@ if [ -f $oldlang/G.carpa ]; then
   oldlm=$oldlang/G.carpa
 fi
 
-[ ! -f $oldlm ] && echo "$0: Missing file $oldlm" && exit 1;
+[ ! -f $oldlm ] && echo "$0: expecting either $oldlang/G.fst or $oldlang/G.carpa to exist" && exit 1;
 [ ! -f $rnnlm_dir/rnnlm ] && echo "$0: Missing file $rnnlm_dir/rnnlm" && exit 1;
 [ ! -f $rnnlm_dir/unk.probs ] &&\
   echo "$0: Missing file $rnnlm_dir/unk.probs" && exit 1;
