@@ -78,10 +78,10 @@ local/nnet3/run_ivector_common.sh \
 
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
-tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}_2
-lang_combined_2=data/lang_combined_2_chain
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats_2
-dir=exp/chain${nnet3_affix}/tdnn${affix}_sp_2
+tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
+lang_combined=data/lang_combined_chain
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
@@ -93,25 +93,25 @@ for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
 done
 
 if [ $stage -le 7 ]; then
-  echo "$0: creating lang directory $lang_combined_2 with chain-type topology"
+  echo "$0: creating lang directory $lang_combined with chain-type topology"
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
-  if [ -d $lang_combined_2 ]; then
-    if [ $lang_combined_2/L.fst -nt data/lang_combined_2_test/L.fst ]; then
-      echo "$0: $lang_combined_2 already exists, not overwriting it; continuing"
+  if [ -d $lang_combined ]; then
+    if [ $lang_combined/L.fst -nt data/lang_combined_test/L.fst ]; then
+      echo "$0: $lang_combined already exists, not overwriting it; continuing"
     else
-      echo "$0: $lang_combined_2 already exists and seems to be older than data/lang_combined_2_test ..."
+      echo "$0: $lang_combined already exists and seems to be older than data/lang_combined_test ..."
       echo " ... not sure what to do.  Exiting."
       exit 1;
     fi
   else
-    cp -r data/lang_combined_2_test $lang_combined_2
-    silphonelist=$(cat $lang_combined_2/phones/silence.csl) || exit 1;
-    nonsilphonelist=$(cat $lang_combined_2/phones/nonsilence.csl) || exit 1;
+    cp -r data/lang_combined_test $lang_combined
+    silphonelist=$(cat $lang_combined/phones/silence.csl) || exit 1;
+    nonsilphonelist=$(cat $lang_combined/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
     # topology.
-    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang_combined_2/topo
+    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang_combined/topo
   fi
 fi
 
@@ -119,7 +119,7 @@ if [ $stage -le 8 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj 75 --cmd "$train_cmd" ${lores_train_data_dir} \
-    data/lang_combined_2 $gmm_dir $lat_dir
+    data/lang_combined $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 
@@ -136,7 +136,7 @@ if [ $stage -le 9 ]; then
     --frame-subsampling-factor 3 \
     --context-opts "--context-width=2 --central-position=1" \
     --cmd "$train_cmd" 6000 ${lores_train_data_dir} \
-    $lang_combined_2 $ali_dir $tree_dir
+    $lang_combined $ali_dir $tree_dir
 fi
 
 
@@ -255,8 +255,8 @@ if [ $stage -le 12 ]; then
   # Note: it's not important to give mkgraph.sh the lang directory with the
   # matched topology (since it gets the topology file from the model).
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/lang_combined_2_test \
-    $tree_dir ${tree_dir}/graph_combined_2 || exit 1;
+    --self-loop-scale 1.0 data/lang_combined_test \
+    $tree_dir ${tree_dir}/graph_combined || exit 1;
 fi
 
 if [ $stage -le 13 ]; then
@@ -274,7 +274,7 @@ if [ $stage -le 13 ]; then
           --frames-per-chunk $frames_per_chunk \
           --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-          $tree_dir/graph_combined_2 data/${data}_hires ${dir}/decode_${data} || exit 1
+          $tree_dir/graph_combined data/${data}_hires ${dir}/decode_${data} || exit 1
     ) || touch $dir/.error &
   done
   wait

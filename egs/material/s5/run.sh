@@ -258,7 +258,7 @@ if [ $stage -le 19 ]; then
   cat ${srctext_mono}.processed1 ${srctext_bitext}.processed > ${srctext_mono}.processed
 fi
 
-g2p_workdir=data/local/g2p_phonetisarus_2
+g2p_workdir=data/local/g2p_phonetisarus
 if [ $stage -le 20 ]; then
   echo 'Gathering missing words...'
   mkdir -p ${g2p_workdir}
@@ -276,7 +276,7 @@ if [ $stage -le 21 ]; then
     "data/local/dict/silence_phones.txt" data/local/dict_nosp exp/g2p || touch exp/g2p/.error
 fi
 
-dict_root=data/local/dict_combined_2
+dict_root=data/local/dict_combined
 if [ $stage -le 22 ]; then
   if [ -f exp/g2p/.error ]; then
     rm exp/g2p/.error || true
@@ -291,23 +291,23 @@ if [ $stage -le 22 ]; then
   utils/validate_dict_dir.pl ${dict_root}_nosp
 fi
 
-lang_root=data/lang_combined_2
+lang_root=data/lang_combined
 if [ $stage -le 23 ]; then
-  utils/prepare_lang.sh ${dict_root}_nosp "<unk>" data/local/lang_combined_2_nosp ${lang_root}_nosp
+  utils/prepare_lang.sh ${dict_root}_nosp "<unk>" data/local/lang_combined_nosp ${lang_root}_nosp
   utils/validate_lang.pl ${lang_root}_nosp
 fi
 
 # prepare the new LM with bitext data and the new lexicon,
 # as in the new test lang directory ${lang_root}_nosp_test
 if [ $stage -le 24 ]; then
-  mkdir -p data/lm_combined_2
+  mkdir -p data/lm_combined
   # train a new lm located in data/lm_combine
-  cat data/lm/train_text ${srctext_mono}.processed > data/lm_combined_2/train_text
-  cat data/lm/dev_text > data/lm_combined_2/dev_text
+  cat data/lm/train_text ${srctext_mono}.processed > data/lm_combined/train_text
+  cat data/lm/dev_text > data/lm_combined/dev_text
   local/train_lms_srilm.sh --oov-symbol "<unk>" --words-file ${lang_root}_nosp/words.txt \
-    --train-text data/lm_combined_2/train_text --dev-text data/lm_combined_2/dev_text \
-    data data/lm_combined_2
-  utils/format_lm.sh ${lang_root}_nosp data/lm_combined_2/lm.gz \
+    --train-text data/lm_combined/train_text --dev-text data/lm_combined/dev_text \
+    data data/lm_combined
+  utils/format_lm.sh ${lang_root}_nosp data/lm_combined/lm.gz \
     ${dict_root}_nosp/lexiconp.txt ${lang_root}_nosp_test
   utils/validate_lang.pl ${lang_root}_nosp_test
 fi
@@ -320,9 +320,9 @@ if [ $stage -le 25 ]; then
     ${dict_root}_nosp \
     exp/tri3/pron_counts_nowb.txt exp/tri3/sil_counts_nowb.txt \
     exp/tri3/pron_bigram_counts_nowb.txt ${dict_root}
-  utils/prepare_lang.sh ${dict_root} "<unk>" data/local/lang_combined_2 ${lang_root}
+  utils/prepare_lang.sh ${dict_root} "<unk>" data/local/lang_combined ${lang_root}
 
-  utils/format_lm.sh ${lang_root} data/lm_combined_2/lm.gz \
+  utils/format_lm.sh ${lang_root} data/lm_combined/lm.gz \
     ${dict_root}/lexiconp.txt ${lang_root}_test
 fi
 
