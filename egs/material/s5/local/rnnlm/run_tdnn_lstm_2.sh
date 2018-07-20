@@ -42,7 +42,7 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
               # exploding exponentially
 pruned_rescore=true
 
-ac_model_dir=exp/chain/tdnn1b_sp_2
+ac_model_dir=exp/chain/tdnn1b_sp
 #decode_sets="dev analysis1_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg eval2_segmented_reseg"
 decode_sets="dev analysis1_segmented test_dev_segmented eval1_segmented eval2_segmented"
 decode_sets="analysis2_segmented"
@@ -52,8 +52,8 @@ text_dir=data/rnnlm/text
 train_text=data/lm/train.txt
 dev_text=data/lm/dev.txt
 bitext=data/bitext/text.txt
-lang=data/lang_combined_2_chain
-tree_dir=exp/chain/tree_sp_2
+lang=data/lang_combined_chain
+tree_dir=exp/chain/tree_sp
 
 . ./cmd.sh
 . ./utils/parse_options.sh
@@ -120,7 +120,7 @@ if [ $stage -le 3 ]; then
                   --stage $train_stage --num-epochs $epochs --cmd "$train_cmd" $dir
 fi
 
-LM=combined_2_chain
+LM=combined_chain
 if [ $stage -le 4 ] && $run_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
   pruned=
@@ -143,7 +143,7 @@ if [ $stage -le 4 ] && $run_rescore; then
         ${decode_dir} ${decode_dir}_${decode_dir_suffix}_rescore || exit 1
 
       if [ ${decode_set} != "dev" ]; then
-        local/postprocess_test.sh ${decode_set} ${tree_dir}/graph_combined_2 \
+        local/postprocess_test.sh ${decode_set} ${tree_dir}/graph_combined \
           ${decode_dir}_${decode_dir_suffix}_rescore
       fi
     ) || touch $dir/.error &
@@ -171,7 +171,7 @@ if [ $stage -le 5 ]; then
         ${decode_dir}_${decode_dir_suffix}_rescore ${decode_dir}_${decode_dir_suffix}_rescore_nbest || exit 1
 
       if [ ${decode_set} != "dev" ]; then
-        local/postprocess_test.sh ${decode_set} ${tree_dir}/graph_combined_2 \
+        local/postprocess_test.sh ${decode_set} ${tree_dir}/graph_combined \
           ${decode_dir}_${decode_dir_suffix}_rescore_nbest
       fi
     ) || touch $dir/.error 
