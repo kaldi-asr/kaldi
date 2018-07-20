@@ -1,6 +1,7 @@
 // decoder/decoder-wrappers.h
 
 // Copyright   2014  Johns Hopkins University (author: Daniel Povey)
+//             2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -20,6 +21,8 @@
 #ifndef KALDI_DECODER_DECODER_WRAPPERS_H_
 #define KALDI_DECODER_DECODER_WRAPPERS_H_
 
+#include "base/timer.h"
+#include "util/kaldi-thread.h"
 #include "itf/options-itf.h"
 #include "decoder/lattice-faster-decoder.h"
 #include "decoder/lattice-simple-decoder.h"
@@ -96,7 +99,7 @@ void ModifyGraphForCarefulAlignment(
 // GPU decoding interface of decoding and lattice processing
 bool DecodeUtteranceLatticeFasterCuda(
   LatticeFasterDecoderCuda &decoder, // not const but is really an input.
-  DecodableInterface &decodable, // not const but is really an input.
+  MatrixChunker &decodable, // not const but is really an input.
   const TransitionModel &trans_model,
   const fst::SymbolTable *word_syms,
   std::string utt,
@@ -115,7 +118,7 @@ bool DecodeUtteranceLatticeFasterCuda(
 // e.g. using #pragma omp critical { }
 bool DecodeUtteranceLatticeFasterCudaOutput(
   LatticeFasterDecoderCuda &decoder, // not const but is really an input.
-  DecodableInterface &decodable, // not const but is really an input.
+  MatrixChunker &decodable, // not const but is really an input.
   const TransitionModel &trans_model,
   const fst::SymbolTable *word_syms,
   std::string utt,
@@ -127,7 +130,8 @@ bool DecodeUtteranceLatticeFasterCudaOutput(
   CompactLatticeWriter *compact_lattice_writer,
   LatticeWriter *lattice_writer,
   double *like_ptr,
-  Lattice& lat);
+  Lattice& lat,
+  std::mutex *examples_mutex_ = NULL);
 #endif
 
 /// This function DecodeUtteranceLatticeFaster is used in several decoders, and

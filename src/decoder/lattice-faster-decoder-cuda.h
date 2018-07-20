@@ -45,7 +45,7 @@ class LatticeFasterDecoderCuda {
   typedef CudaLatticeDecoder::LatLink LatLink;
 
   // instantiate this class once for each thing you have to decode.
-  LatticeFasterDecoderCuda(const CudaFst &fst,
+  LatticeFasterDecoderCuda(const CudaFst &fst, const TransitionModel &trans_model, 
                            const CudaLatticeDecoderConfig &config);
   // This version of the initializer "takes ownership" of the fst,
   // and will delete it when this object is destroyed.
@@ -64,7 +64,7 @@ class LatticeFasterDecoderCuda {
   // Returns true if any kind of traceback is available (not necessarily from a
   // final state).
   // the main procedure is done in GPU
-  bool Decode(DecodableInterface *decodable);
+  bool Decode(MatrixChunker *decodable);
 
   // the same to the version in lattice-faster-decoder.h
   // says whether a final-state was active on the last frame.  If it was not, the
@@ -119,6 +119,7 @@ class LatticeFasterDecoderCuda {
   // Returns the number of frames decoded so far.  The value returned changes
   // whenever we call ProcessEmitting().
   inline int32 NumFramesDecoded() const { return active_toks_.size() - 1; }
+  
 
  private:
 
@@ -283,11 +284,12 @@ class LatticeFasterDecoderCuda {
   // as we pre-allocate all the token memory, we do not really clear them
   void ClearActiveTokens();
 
+
  private:
+  const CudaLatticeDecoderConfig &config_;
   const CudaFst& fst_;
   bool delete_fst_;
 
-  const CudaLatticeDecoderConfig &config_;
   int32 num_toks_; // current total number of toks allocated
   int32 num_frames_decoded_;
   CudaLatticeDecoder decoder_; // GPU decoder

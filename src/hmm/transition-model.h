@@ -245,6 +245,7 @@ class TransitionModel {
   /// returns true if all the integer class members are identical (but does not
   /// compare the transition probabilities.
   bool Compatible(const TransitionModel &other) const;
+  const std::vector<int32>& GetId2pdf() const { return id2pdf_id_; }
 
  private:
   void MleUpdateShared(const Vector<double> &stats,

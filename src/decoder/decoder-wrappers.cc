@@ -1,6 +1,7 @@
 // decoder/decoder-wrappers.cc
 
-// Copyright 2014  Johns Hopkins University (author: Daniel Povey)
+// Copyright   2014  Johns Hopkins University (author: Daniel Povey)
+//             2018  Zhehuai Chen
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -31,10 +32,6 @@
 
 
 namespace kaldi {
-
-
-
-
 
 DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
   LatticeFasterDecoder *decoder,
@@ -210,7 +207,7 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
 // e.g. using #pragma omp critical { }
 bool DecodeUtteranceLatticeFasterCuda(
   LatticeFasterDecoderCuda &decoder, // not const but is really an input.
-  DecodableInterface &decodable, // not const but is really an input.
+  MatrixChunker &decodable, // not const but is really an input.
   const TransitionModel &trans_model,
   const fst::SymbolTable *word_syms,
   std::string utt,
@@ -243,37 +240,7 @@ bool DecodeUtteranceLatticeFasterCuda(
 
   PUSH_RANGE("post_decoding", 0);
   Timer timer;
-  double likelihood;
-  LatticeWeight weight;
-  int32 num_frames;
-  {
-    // First do some stuff with word-level traceback...
-    VectorFst<LatticeArc> decoded;
-    PUSH_RANGE("get_lattice_shortest", 5);
-    if (!decoder.GetBestPath(&decoded))
-      // Shouldn't really reach this point as already checked success.
-      KALDI_WARN << "Failed to get traceback for utterance " << utt;
-    POP_RANGE
-    std::vector<int32> alignment;
-    std::vector<int32> words;
-    GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
-    num_frames = alignment.size();
-    if (words_writer->IsOpen())
-      words_writer->Write(utt, words);
-    if (alignment_writer->IsOpen())
-      alignment_writer->Write(utt, alignment);
-    if (word_syms != NULL) {
-      std::cerr << utt << ' ';
-      for (size_t i = 0; i < words.size(); i++) {
-        std::string s = word_syms->Find(words[i]);
-        if (s == "")
-          KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
-        std::cerr << s << ' ';
-      }
-      std::cerr << '\n';
-    }
-    likelihood = -(weight.Value1() + weight.Value2());
-  }
+
   // Get lattice, and do determinization if requested.
   PUSH_RANGE("get_lattice", 1);
   Lattice& lat = *olat;
@@ -286,12 +253,7 @@ bool DecodeUtteranceLatticeFasterCuda(
   double t4 = timer.Elapsed();
   KALDI_VLOG(1) << "post_decoding: " << t4;
 
-  KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
-            << (likelihood / num_frames) << " over "
-            << num_frames << " frames.";
-  KALDI_VLOG(2) << "Cost for utterance " << utt << " is "
-                << weight.Value1() << " + " << weight.Value2();
-  *like_ptr = likelihood;
+
   POP_RANGE
 
   return true;
@@ -302,7 +264,7 @@ bool DecodeUtteranceLatticeFasterCuda(
 // e.g. using #pragma omp critical { }
 bool DecodeUtteranceLatticeFasterCudaOutput(
   LatticeFasterDecoderCuda &decoder, // not const but is really an input.
-  DecodableInterface &decodable, // not const but is really an input.
+  MatrixChunker &decodable, // not const but is really an input.
   const TransitionModel &trans_model,
   const fst::SymbolTable *word_syms,
   std::string utt,
@@ -314,7 +276,49 @@ bool DecodeUtteranceLatticeFasterCudaOutput(
   CompactLatticeWriter *compact_lattice_writer,
   LatticeWriter *lattice_writer,
   double *like_ptr,
-  Lattice& lat) {
+  Lattice& lat,
+  std::mutex *examples_mutex_) {
+  using fst::VectorFst;
+  // First do some stuff with word-level traceback...
+  VectorFst<LatticeArc> decoded;
+  double likelihood;
+  LatticeWeight weight;
+  int32 num_frames;
+  {
+    likelihood = -(weight.Value1() + weight.Value2());
+  }
+
+  PUSH_RANGE("get_lattice_shortest", 5);
+  if (!decoder.GetBestPath(&decoded))
+    // Shouldn't really reach this point as already checked success.
+    KALDI_WARN << "Failed to get traceback for utterance " << utt;
+  POP_RANGE
+  std::vector<int32> alignment;
+  std::vector<int32> words;
+  GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
+  num_frames = alignment.size();
+  if (examples_mutex_) examples_mutex_->lock();
+  if (words_writer->IsOpen())
+    words_writer->Write(utt, words);
+  if (alignment_writer->IsOpen())
+    alignment_writer->Write(utt, alignment);
+  if (examples_mutex_) examples_mutex_->unlock();
+  if (word_syms != NULL) {
+    std::cerr << utt << ' ';
+    for (size_t i = 0; i < words.size(); i++) {
+      std::string s = word_syms->Find(words[i]);
+      if (s == "")
+        KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
+      std::cerr << s << ' ';
+    }
+    std::cerr << '\n';
+  }
+  KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
+            << (likelihood / num_frames) << " over "
+            << num_frames << " frames.";
+  KALDI_VLOG(2) << "Cost for utterance " << utt << " is "
+                << weight.Value1() << " + " << weight.Value2();
+  *like_ptr = likelihood;
   if (determinize) {
     CompactLattice clat;
     if (!DeterminizeLatticePhonePrunedWrapper(
@@ -328,14 +332,18 @@ bool DecodeUtteranceLatticeFasterCudaOutput(
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
+    if (examples_mutex_) examples_mutex_->lock();
     compact_lattice_writer->Write(utt, clat);
+    if (examples_mutex_) examples_mutex_->unlock();
 
   } else {
     PUSH_RANGE("write_lat", 0);
     // We'll write the lattice without acoustic scaling.
     if (acoustic_scale != 0.0)
       fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &lat);
+    if (examples_mutex_) examples_mutex_->lock();
     lattice_writer->Write(utt, lat);
+    if (examples_mutex_) examples_mutex_->unlock();
     POP_RANGE
   }
   return true;

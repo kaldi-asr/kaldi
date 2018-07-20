@@ -31,7 +31,7 @@ LDLIBS += -lnvToolsExt -lcuda
 CXXFLAGS += -fopenmp
 LDFLAGS += -fopenmp
 LDFLAGS += ../cudamatrix/libkaldi-cudamatrix.so
-BINFILES += latgen-faster-mapped-cuda
+BINFILES += latgen-faster-mapped-cuda decode-faster-mapped-cuda
 endif
 
 OBJFILES =

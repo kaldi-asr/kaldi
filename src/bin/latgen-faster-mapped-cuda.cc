@@ -49,13 +49,10 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     Timer timer;
     bool allow_partial = false;
-    BaseFloat acoustic_scale = 0.1;
     CudaLatticeDecoderConfig config;
 
     std::string word_syms_filename;
     config.Register(&po);
-    po.Register("acoustic-scale", &acoustic_scale,
-                "Scaling factor for acoustic likelihoods");
     po.Register("word-symbol-table", &word_syms_filename,
                 "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial,
@@ -112,7 +109,7 @@ int main(int argc, char *argv[]) {
       CudaFst decode_fst_cuda;
       decode_fst_cuda.Initialize(*decode_fst);
 
-      LatticeFasterDecoderCuda decoder(decode_fst_cuda, config);
+      LatticeFasterDecoderCuda decoder(decode_fst_cuda, trans_model, config);
       {
 
         for (; !loglike_reader.Done(); loglike_reader.Next()) {
@@ -127,14 +124,14 @@ int main(int argc, char *argv[]) {
             num_fail++;
             continue;
           }
-          DecodableMatrixScaledMapped decodable(trans_model, loglikes, acoustic_scale);
+          MatrixChunker decodable(loglikes, config.chunk_len);
           POP_RANGE
 
           double like;
           Lattice lat;
           if (DecodeUtteranceLatticeFasterCuda(
                 decoder, decodable, trans_model, word_syms, utt,
-                acoustic_scale, determinize, allow_partial, &alignment_writer,
+                config.acoustic_scale, determinize, allow_partial, &alignment_writer,
                 &words_writer, &compact_lattice_writer, &lattice_writer,
                 &like, &lat)) {
             tot_like += like;
@@ -147,7 +144,7 @@ int main(int argc, char *argv[]) {
             get_free_memory_stat("");
           DecodeUtteranceLatticeFasterCudaOutput(
             decoder, decodable, trans_model, word_syms, utt,
-            acoustic_scale, determinize, allow_partial, &alignment_writer,
+            config.acoustic_scale, determinize, allow_partial, &alignment_writer,
             &words_writer, &compact_lattice_writer, &lattice_writer,
             &like, lat);
           POP_RANGE

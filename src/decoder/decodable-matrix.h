@@ -29,7 +29,6 @@
 
 namespace kaldi {
 
-
 class DecodableMatrixScaledMapped: public DecodableInterface {
  public:
   // This constructor creates an object that will not delete "likes"
