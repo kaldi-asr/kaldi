@@ -569,8 +569,13 @@ void CuVectorBase<Real>::AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     MatrixTransposeType other_trans = (trans == kTrans ? kNoTrans : kTrans);
-    this->AddDiagMatMat(alpha, M, trans,
-                        M, other_trans, beta);
+    KALDI_ASSERT(dim_ == (trans == kNoTrans ? M.NumRows() : M.NumCols()));
+    if (trans == kTrans && M.NumCols() < 512 && M.NumRows() > 8192) {
+      CuMatrix<Real> MT(M, kTrans);
+      this->AddDiagMatMat(alpha, MT, other_trans, MT, trans, beta);
+    } else {
+      this->AddDiagMatMat(alpha, M, trans, M, other_trans, beta);
+    }
   } else
 #endif
   {

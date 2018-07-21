@@ -188,7 +188,7 @@ if [ $stage -le 13 ]; then
     --egs.opts "--frames-overlap-per-eg 0 --constrained false" \
     --egs.chunk-width $frames_per_eg \
     --trainer.num-chunk-per-minibatch 64 \
-    --trainer.frames-per-iter 5000000 \
+    --trainer.frames-per-iter 1500000 \
     --trainer.num-epochs 6 \
     --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
