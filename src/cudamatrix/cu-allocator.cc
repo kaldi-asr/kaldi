@@ -123,6 +123,60 @@ void* CuMemoryAllocator::MallocPitchInternal(size_t row_bytes,
   return ans;
 }
 
+
+std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
+  // WARNING! the CUDA API is inconsistent accross versions!
+#ifdef _MSC_VER
+  size_t mem_free, mem_total;
+  cuMemGetInfo_v2(&mem_free, &mem_total);
+#else
+#if (CUDA_VERSION >= 3020)
+  // define the function signature type
+  size_t mem_free, mem_total;
+#else
+  unsigned int mem_free, mem_total;
+#endif
+  {
+    // we will load cuMemGetInfo_v2 dynamically from libcuda.so
+    // pre-fill ``safe'' values that will not cause problems
+    mem_free = 1; mem_total = 1;
+    // open libcuda.so
+    void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
+    if (NULL == libcuda) {
+      KALDI_WARN << "cannot open libcuda.so";
+    } else {
+      // define the function signature type
+      // and get the symbol
+#if (CUDA_VERSION >= 3020)
+      typedef CUresult (*cu_fun_ptr)(size_t*, size_t*);
+      cu_fun_ptr dl_cuMemGetInfo = (cu_fun_ptr)dlsym(libcuda,"cuMemGetInfo_v2");
+#else
+      typedef CUresult (*cu_fun_ptr)(int*, int*);
+      cu_fun_ptr dl_cuMemGetInfo = (cu_fun_ptr)dlsym(libcuda,"cuMemGetInfo");
+#endif
+      if (NULL == dl_cuMemGetInfo) {
+        KALDI_WARN << "cannot load cuMemGetInfo from libcuda.so";
+      } else {
+        // call the function
+        dl_cuMemGetInfo(&mem_free, &mem_total);
+      }
+      // close the library
+      dlclose(libcuda);
+    }
+  }
+#endif
+  // copy the output values outside
+  if (NULL != free) *free = mem_free;
+  if (NULL != total) *total = mem_total;
+  // prepare the text output
+  std::ostringstream os;
+  os << "free:" << mem_free/(1024*1024) << "M, "
+     << "used:" << (mem_total-mem_free)/(1024*1024) << "M, "
+     << "total:" << mem_total/(1024*1024) << "M, "
+     << "free/total:" << mem_free/(float)mem_total;
+  return os.str();
+}
+
 void CuMemoryAllocator::PrintMemoryUsage() const {
   KALDI_LOG << "Memory usage: " << cur_bytes_allocated_
             << " bytes currently allocated (max: "
@@ -130,7 +184,8 @@ void CuMemoryAllocator::PrintMemoryUsage() const {
             << " currently in use by user (max: " << max_bytes_used_ << ")"
             << "; " << num_system_allocations_ << '/'
             << num_user_allocations_ << " calls to Malloc* resulted in "
-            << "CUDA calls.";
+            << "CUDA calls; device memory info: "
+            << GetFreeMemory(NULL, NULL);
   if (GetVerboseLevel() >= 1) {
     // CuTimer only accumulates stats at verbose level 1 or above.
     KALDI_LOG << "Time taken in cudaMallocPitch=" << tot_time_taken_in_cuda_malloc_pitch_
@@ -140,8 +195,8 @@ void CuMemoryAllocator::PrintMemoryUsage() const {
   }
 }
 
-CuMemoryAllocator::CuMemoryAllocator(CuAllocatorOptions opts):
-    opts_(opts),
+CuMemoryAllocator::CuMemoryAllocator():
+    opts_(CuAllocatorOptions()),
     caches_(40),
     cur_bytes_allocated_(0),
     max_bytes_allocated_(0),

@@ -39,6 +39,8 @@ namespace kaldi {
 
 
 // For now we don't give the user a way to modify these from the command line.
+// or the code, it just documents what the default options are, and to change
+// the values you have to do it in the code.
 struct CuAllocatorOptions {
   // memory_factor is the total amount of (allocated + cached) memory that we
   // allow to be held, relative to the max amount of memory the program has ever
@@ -108,7 +110,8 @@ class CuMemoryAllocator {
 
   void PrintMemoryUsage() const;
 
-  CuMemoryAllocator(CuAllocatorOptions opts);
+  CuMemoryAllocator();
+
  private:
 
   void FreeSomeCachedMemory(size_t bytes_to_free);
@@ -243,6 +246,13 @@ class CuMemoryAllocator {
 
 };
 
+
+// Thsi function returns some printable information about the memory used
+// as a string: an example showing the format is:
+//  "free: 10M, used: 490M, total: 500M: free/total: 0.02"
+// In addition, if the pointers 'free' and 'total' are non-NULL, it will
+// output to them the free memory and the total memory of the device.
+std::string CuDevice::GetFreeMemory(int64* free, int64* total) const;
 
 }  // namespace
 
