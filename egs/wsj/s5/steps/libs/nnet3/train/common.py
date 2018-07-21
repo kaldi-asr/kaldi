@@ -978,6 +978,10 @@ class CommonParser(object):
                                  iterations.
                                  If 0 and reporting mail has been specified
                                  then only failure notifications are sent""")
+        self.parser.add_argument("--reporting.output_layer",
+                                 dest="reporting_output_layer",
+                                 type=str, default="output",
+                                 help="A regular expression of output layer.")
 
 
 if __name__ == '__main__':

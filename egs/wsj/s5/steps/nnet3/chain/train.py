@@ -550,7 +550,7 @@ def train(args, run_opts):
                     # lets do some reporting
                     [report, times, data] = (
                         nnet3_log_parse.generate_acc_logprob_report(
-                            args.dir, "log-probability"))
+                            args.dir, "log-probability", args.reporting_output_layer))
                     message = report
                     subject = ("Update : Expt {dir} : "
                                "Iter {iter}".format(dir=args.dir, iter=iter))
@@ -604,7 +604,7 @@ def train(args, run_opts):
 
     # do some reporting
     [report, times, data] = nnet3_log_parse.generate_acc_logprob_report(
-        args.dir, "log-probability")
+        args.dir, "log-probability", args.reporting_output_layer)
     if args.email is not None:
         common_lib.send_mail(report, "Update : Expt {0} : "
                                      "complete".format(args.dir), args.email)
