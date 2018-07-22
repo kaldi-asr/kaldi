@@ -28,6 +28,10 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#ifndef _MSC_VER
+#include <dlfcn.h>
+#endif
+
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-matrix.h"
@@ -124,8 +128,7 @@ void* CuMemoryAllocator::MallocPitchInternal(size_t row_bytes,
 }
 
 
-std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
-  // WARNING! the CUDA API is inconsistent accross versions!
+std::string GetFreeGpuMemory(int64* free, int64* total) {
 #ifdef _MSC_VER
   size_t mem_free, mem_total;
   cuMemGetInfo_v2(&mem_free, &mem_total);
@@ -141,7 +144,7 @@ std::string CuDevice::GetFreeMemory(int64* free, int64* total) const {
     // pre-fill ``safe'' values that will not cause problems
     mem_free = 1; mem_total = 1;
     // open libcuda.so
-    void* libcuda = dlopen("libcuda.so",RTLD_LAZY);
+    void* libcuda = dlopen("libcuda.so", RTLD_LAZY);
     if (NULL == libcuda) {
       KALDI_WARN << "cannot open libcuda.so";
     } else {
@@ -185,7 +188,7 @@ void CuMemoryAllocator::PrintMemoryUsage() const {
             << "; " << num_system_allocations_ << '/'
             << num_user_allocations_ << " calls to Malloc* resulted in "
             << "CUDA calls; device memory info: "
-            << GetFreeMemory(NULL, NULL);
+            << GetFreeGpuMemory(NULL, NULL);
   if (GetVerboseLevel() >= 1) {
     // CuTimer only accumulates stats at verbose level 1 or above.
     KALDI_LOG << "Time taken in cudaMallocPitch=" << tot_time_taken_in_cuda_malloc_pitch_

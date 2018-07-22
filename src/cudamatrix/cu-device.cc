@@ -184,7 +184,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   }
 
   // Double check that we have the context
-  KALDI_ASSERT(cudaSuccess == cudaThreadSynchronize());
+  KALDI_ASSERT(cudaSuccess == cudaDeviceSynchronize());
 
   // Check if the machine use compute exclusive mode
   if (IsComputeExclusive()) {
@@ -196,7 +196,7 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     KALDI_WARN << "Not in compute-exclusive mode.  Suggestion: use "
         "'nvidia-smi -c 3' to set compute exclusive mode";
     // We want to choose the device more carefully, so release the CUDA context.
-    e = cudaThreadExit(); // deprecated, but for legacy reason not cudaDeviceReset
+    e = cudaDeviceReset();
     if (e != cudaSuccess) {
       KALDI_CUDA_ERR(e, "Failed to release CUDA context on a GPU");
     }
@@ -242,12 +242,12 @@ void CuDevice::FinalizeActiveGpu() {
 
     // Notify the user which GPU is being userd.
     char name[128];
-    DeviceGetName(name,128,act_gpu_id);
+    DeviceGetName(name,128, device_id);
 
-    CU_SAFE_CALL(cudaGetDeviceProperties(&properties_, act_gpu_id));
+    CU_SAFE_CALL(cudaGetDeviceProperties(&properties_, device_id));
 
-    KALDI_LOG << "The active GPU is [" << act_gpu_id << "]: " << name << "\t"
-              << GetFreeMemory(&free_memory_at_startup_, NULL) << " version "
+    KALDI_LOG << "The active GPU is [" << device_id << "]: " << name << "\t"
+              << GetFreeGpuMemory(&free_memory_at_startup_, NULL) << " version "
               << properties_.major << "." << properties_.minor;
   }
   return;
@@ -262,7 +262,7 @@ bool CuDevice::DoublePrecisionSupported() {
 
 bool CuDevice::IsComputeExclusive() {
   // assume we already have an CUDA context created
-  KALDI_ASSERT(cudaSuccess == cudaThreadSynchronize());
+  KALDI_ASSERT(cudaSuccess == cudaDeviceSynchronize());
 
   // get the device-id and its device-properties
   int gpu_id = -1;
@@ -319,29 +319,30 @@ bool CuDevice::SelectGpuIdAuto() {
     switch(ret) {
       case cudaSuccess : {
         // create the CUDA context for the thread
-        cudaThreadSynchronize(); // deprecated, but for legacy not cudaDeviceSynchronize
+        cudDeviceSynchronize();
         // get GPU name
         char name[128];
         DeviceGetName(name,128,n);
         // get GPU memory stats
         int64 free, total;
         std::string mem_stats;
-        mem_stats = GetFreeMemory(&free, &total);
+        mem_stats = GetFreeGpuMemory(&free, &total);
         // log
         KALDI_LOG << "cudaSetDevice(" << n << "): "
                   << name << "\t" << mem_stats;
 
-        // We have seen that in some cases GetFreeMemory returns zero
+        // We have seen that in some cases GetFreeGpuMemory returns zero
         // That will produce nan after division, which might confuse
         // the sorting routine. Or maybe not, but let's keep it clean
         if (total <= 0) {
-          KALDI_LOG << "Total memory reported for device " << n << " is zero (or less).";
+          KALDI_LOG << "Total memory reported for device " << n
+                    << " is zero (or less).";
         }
         float mem_ratio = total > 0 ? free/(float)total : 0;
         free_mem_ratio[n] = std::make_pair(n, mem_ratio);
 
         // destroy the CUDA context for the thread
-        cudaThreadExit(); // deprecated, but for legacy reason not cudaDeviceReset
+        cudaDeviceReset();
       } break;
 
 #if (CUDA_VERSION > 3020)
@@ -383,7 +384,7 @@ bool CuDevice::SelectGpuIdAuto() {
       KALDI_WARN << "Cannot select this device: return code " << e
                  << ", Error message: \"" << cudaGetErrorString(e) << "\"";
     } else {
-      e = cudaThreadSynchronize(); // deprecated, but for legacy not cudaDeviceSynchronize
+      e = cudaDeviceSynchronize();
       if (e != cudaSuccess) {
         KALDI_WARN << "Cannot select this device: return code " << e
                    << ", Error message: \"" << cudaGetErrorString(e) << "\"";
@@ -404,27 +405,16 @@ bool CuDevice::SelectGpuIdAuto() {
 void CuDevice::AccuProfile(const char *function_name,
                            const CuTimer &timer) {
   if (GetVerboseLevel() >= 1) {
-    std::unique_lock lock;
+    std::unique_lock<std::mutex> lock(profile_mutex_, std::defer_lock_t());
     if (multi_threaded_)
-      lock.lock(profile_mutex_);
+      lock.lock();
     std::string key(function_name);
-    cudaDeviceSynchronize();
+    // by passing 0 as the stream to cudaStreamSynchronize, we are using the
+    // per-thread default stream.  Since we compile with
+    // -DCUDA_API_PER_THREAD_DEFAULT_STREAM, this equates to a per-thread
+    // stream.
+    cudaStreamSynchronize(0);
     double elapsed = timer.Elapsed();
-    if (profile_map_.find(key) == profile_map_.end())
-      profile_map_[key] = elapsed;
-    else
-      profile_map_[key] += elapsed;
-  }
-}
-
-
-void CuDevice::AccuProfile(const char *function_name,
-                           const CuTimer &timer) {
-  if (GetVerboseLevel() >= 1) {
-    std::string key(function_name);
-    cudaDeviceSynchronize();
-    double elapsed = timer.Elapsed();
-
     if (profile_map_.find(key) == profile_map_.end())
       profile_map_[key] = elapsed;
     else
@@ -516,30 +506,31 @@ void CuDevice::CheckGpuHealth() {
 CuDevice::CuDevice():
     initialized_(false),
     device_id_copy_(-1),
-    cublas_handle_(NULL_),
+    cublas_handle_(NULL),
     cusparse_handle_(NULL) { }
 
 
 CuDevice::~CuDevice() {
   if (cublas_handle_)
-    CUBLAS_SAFE_CALL(cublasDestroy(&cublas_handle_));
+    CUBLAS_SAFE_CALL(cublasDestroy(cublas_handle_));
   if (cusparse_handle_)
-    CUSPARSE_SAFE_CALL(cusparseDestroy(&cusparse_handle_));
+    CUSPARSE_SAFE_CALL(cusparseDestroy(cusparse_handle_));
 }
 
 
 // Each thread has its own copy of the CuDevice object.
-static thread_local CuDevice CuDevice::this_thread_device_;
+// Note: this was declared "static".
+thread_local CuDevice CuDevice::this_thread_device_;
 
 // define and initialize the static members of the CuDevice object.
-static CuMemoryAllocator CuDevice::allocator_;
-static int32 CuDevice::device_id_ = -1;
-static bool CuDevice::multi_threaded_ = false;
-static unordered_map<std::string, double, StringHasher> CuDevice::profile_map_;
-static std::mutex CuDevice::profile_mutex_;
-static int64 CuDevice::free_memory_at_startup_;
-static cudaDeviceProp CuDevice::properties_;
-static bool CuDevice::debug_stride_mode_ = false;
+CuMemoryAllocator CuDevice::allocator_;
+int32 CuDevice::device_id_ = -1;
+bool CuDevice::multi_threaded_ = false;
+unordered_map<std::string, double, StringHasher> CuDevice::profile_map_;
+std::mutex CuDevice::profile_mutex_;
+int64 CuDevice::free_memory_at_startup_;
+cudaDeviceProp CuDevice::properties_;
+bool CuDevice::debug_stride_mode_ = false;
 
 }
 

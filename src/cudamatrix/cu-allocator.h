@@ -247,12 +247,12 @@ class CuMemoryAllocator {
 };
 
 
-// Thsi function returns some printable information about the memory used
+// This function returns some printable information about the memory used
 // as a string: an example showing the format is:
 //  "free: 10M, used: 490M, total: 500M: free/total: 0.02"
 // In addition, if the pointers 'free' and 'total' are non-NULL, it will
 // output to them the free memory and the total memory of the device.
-std::string CuDevice::GetFreeMemory(int64* free, int64* total) const;
+std::string GetFreeGpuMemory(int64* free, int64* total);
 
 }  // namespace
 

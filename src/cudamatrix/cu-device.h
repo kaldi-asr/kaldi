@@ -84,7 +84,7 @@ class CuDevice {
       // "% 8" ensures that any 8 adjacent allocations have different pitches
       // if their original pitches are same in the normal mode.
       return allocator_.MallocPitch(
-          row_bytes + 512 * ((num_debug_stride_allocations_++) % 8), num_rows,
+          row_bytes + 512 * RandInt(0, 4), num_rows,
           pitch);
     } else {
       return allocator_.MallocPitch(row_bytes, num_rows, pitch);
@@ -278,6 +278,10 @@ class CuTimer: public Timer {
 inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetCublasHandle(); }
 // A more convenient way to get the handle to use cuSPARSE APIs.
 inline cusparseHandle_t GetCusparseHandle() { return CuDevice::Instantiate().GetCusparseHandle(); }
+
+
+void SynchronizeGpu();
+
 
 }  // namespace
 
