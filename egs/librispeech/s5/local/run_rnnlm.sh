@@ -13,7 +13,7 @@ rnnlm_ver=faster-rnnlm
 
 echo "$0 $@"  # Print the command line for logging
 
-. path.sh
+. ./path.sh
 . utils/parse_options.sh
 
 set -e

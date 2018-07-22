@@ -1,6 +1,7 @@
 // cudamatrix/cublas-wrappers.h
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey);
+//           2017  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -199,6 +200,86 @@ inline cublasStatus_t cublas_spr(cublasHandle_t handle, cublasFillMode_t uplo,
                                  double *AP) {
   return cublasDspr_v2(handle, uplo, n, &alpha, x, incx, AP);
 }
+
+//
+// cuSPARSE wrappers
+//
+
+inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
+                                         int nnz, const float *csrVal,
+                                         const int *csrRowPtr,
+                                         const int *csrColInd, float *cscVal,
+                                         int *cscRowInd, int *cscColPtr,
+                                         cusparseAction_t copyValues,
+                                         cusparseIndexBase_t idxBase) {
+  return cusparseScsr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
+                          cscVal, cscRowInd, cscColPtr, copyValues, idxBase);
+}
+inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
+                                         int nnz, const double *csrVal,
+                                         const int *csrRowPtr,
+                                         const int *csrColInd, double *cscVal,
+                                         int *cscRowInd, int *cscColPtr,
+                                         cusparseAction_t copyValues,
+                                         cusparseIndexBase_t idxBase) {
+  return cusparseDcsr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
+                          cscVal, cscRowInd, cscColPtr, copyValues, idxBase);
+}
+
+inline cusparseStatus_t cusparse_csrmm(cusparseHandle_t handle,
+                                       cusparseOperation_t transA, int m, int n,
+                                       int k, int nnz, const float *alpha,
+                                       const cusparseMatDescr_t descrA,
+                                       const float *csrValA,
+                                       const int *csrRowPtrA,
+                                       const int *csrColIndA, const float *B,
+                                       int ldb, const float *beta, float *C,
+                                       int ldc) {
+  return cusparseScsrmm(handle, transA, m, n, k, nnz, alpha, descrA, csrValA,
+                        csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc);
+}
+inline cusparseStatus_t cusparse_csrmm(cusparseHandle_t handle,
+                                       cusparseOperation_t transA, int m, int n,
+                                       int k, int nnz, const double *alpha,
+                                       const cusparseMatDescr_t descrA,
+                                       const double *csrValA,
+                                       const int *csrRowPtrA,
+                                       const int *csrColIndA, const double *B,
+                                       int ldb, const double *beta, double *C,
+                                       int ldc) {
+  return cusparseDcsrmm(handle, transA, m, n, k, nnz, alpha, descrA, csrValA,
+                        csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc);
+}
+
+inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
+                                        cusparseOperation_t transA,
+                                        cusparseOperation_t transB, int m,
+                                        int n, int k, int nnz,
+                                        const float *alpha,
+                                        const cusparseMatDescr_t descrA,
+                                        const float *csrValA,
+                                        const int *csrRowPtrA,
+                                        const int *csrColIndA, const float *B,
+                                        int ldb, const float *beta, float *C,
+                                        int ldc) {
+  return cusparseScsrmm2(handle, transA, transB, m, n, k, nnz, alpha, descrA,
+                         csrValA, csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc);
+}
+inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
+                                        cusparseOperation_t transA,
+                                        cusparseOperation_t transB, int m,
+                                        int n, int k, int nnz,
+                                        const double *alpha,
+                                        const cusparseMatDescr_t descrA,
+                                        const double *csrValA,
+                                        const int *csrRowPtrA,
+                                        const int *csrColIndA, const double *B,
+                                        int ldb, const double *beta, double *C,
+                                        int ldc) {
+  return cusparseDcsrmm2(handle, transA, transB, m, n, k, nnz, alpha, descrA,
+                         csrValA, csrRowPtrA, csrColIndA, B, ldb, beta, C, ldc);
+}
+
 
 #endif
 }

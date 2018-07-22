@@ -19,7 +19,7 @@ fi
 
 tdir=$1
 eval_num=$2
-. path.sh
+. ./path.sh
 
 dir=data/local/$eval_num
 mkdir -p $dir

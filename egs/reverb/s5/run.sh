@@ -284,7 +284,7 @@ if [ $stage -le 10 ]; then
       mkdir -p exp/$recog/decode_mbr_$decode_suff
       cp exp/$recog/decode_$decode_suff/lat.*.gz exp/$recog/decode_mbr_$decode_suff
       local/score_mbr.sh --cmd "$decode_cmd" \
-	$dataset data/lang_test_$lm/ exp/$recog/decode_mbr_$decode_suff &
+        $dataset data/lang_test_$lm/ exp/$recog/decode_mbr_$decode_suff &
     done
     wait
 
@@ -310,7 +310,7 @@ if [ $stage -le 11 ]; then
     steps/get_fmllr_basis.sh --cmd "$train_cmd" --per-utt true data/$tr_dataset data/lang exp/$recog
     for dataset in data/REVERB_*{dt,et}/*; do
       (
-	decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
+        decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
         steps/decode_basis_fmllr.sh --nj $nj_decode --cmd "$decode_cmd" \
           $graph $dataset \
           exp/$recog/decode_basis_fmllr_$decode_suff

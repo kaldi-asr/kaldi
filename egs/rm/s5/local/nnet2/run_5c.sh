@@ -11,7 +11,7 @@
 
 stage=0
 train_stage=-100
-. cmd.sh || exit 1;
+. ./cmd.sh || exit 1;
 . utils/parse_options.sh || exit 1;
 
 # We increase the beam relative to the defaults; this is just for this RM setup,

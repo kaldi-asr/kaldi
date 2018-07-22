@@ -11,12 +11,12 @@ unzip api.ai-kaldi-asr-model.zip || ( echo "Unable to extract api.ai-kaldi-asr-m
 
 echo "Moving model to exp/api.ai-model/"
 if [ ! -d exp ]; then
-	mkdir exp;
+  mkdir exp;
 fi;
 
 if [ -d exp/api.ai-model ]; then
-	echo "Found existing model, removing";
-	rm -rf exp/api.ai-model/
+  echo "Found existing model, removing";
+  rm -rf exp/api.ai-model/
 fi
 
 mv api.ai-kaldi-asr-model exp/api.ai-model || ( echo "Unable to move model to exp/" && exit 1 )

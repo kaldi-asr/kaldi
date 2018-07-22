@@ -14,7 +14,7 @@ set -e
 set -o pipefail
 
 tmpdir=data/local/tmp
-datadir=$tmpdir/LDC2006S37
+datadir=$(pwd)/LDC2006S37
 
 # acoustic models are trained on the heroico corpus
 # testing is done on the usma corpus

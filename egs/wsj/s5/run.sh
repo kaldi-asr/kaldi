@@ -128,7 +128,7 @@ if [ $stage -le 2 ]; then
 
       # test various modes of LM rescoring (4 is the default one).
       # This is just confirming they're equivalent.
-      for mode in 1 2 3 4; do
+      for mode in 1 2 3 4 5; do
         steps/lmrescore.sh --mode $mode --cmd "$decode_cmd" \
           data/lang_nosp_test_{tgpr,tg} data/test_${data} \
           exp/tri1/decode_nosp_tgpr_${data} \
@@ -147,7 +147,6 @@ if [ $stage -le 2 ]; then
     #  exp/tri1/decode_nosp_tgpr_dev93_aligned || exit 1;
   fi
 fi
-
 
 if [ $stage -le 3 ]; then
   # tri2b.  there is no special meaning in the "b"-- it's historical.
@@ -365,10 +364,6 @@ local/nnet/run_dnn.sh
 #local/run_bnf.sh
 #local/run_bnf_sgmm.sh
 
-
-# You probably want to try KL-HMM
-#local/run_kl_hmm.sh
-
 # Getting results [see RESULTS file]
 # for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
 
@@ -402,7 +397,7 @@ local/nnet/run_dnn.sh
 # local/nnet3/run_lstm.sh  # lstm recipe
 # bidirectional lstm recipe
 # local/nnet3/run_lstm.sh --affix bidirectional \
-#	                  --lstm-delay " [-1,1] [-2,2] [-3,3] " \
+#                         --lstm-delay " [-1,1] [-2,2] [-3,3] " \
 #                         --label-delay 0 \
 #                         --cell-dim 640 \
 #                         --recurrent-projection-dim 128 \

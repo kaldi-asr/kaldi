@@ -5,7 +5,7 @@
 
 # note: run_nnet2_ms.sh gives better results, but it's slower to train.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -14,7 +14,7 @@ use_gpu=true
 dir=exp/nnet2_online/nnet_a
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

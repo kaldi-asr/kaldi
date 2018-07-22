@@ -179,11 +179,11 @@ if [ $stage -le 11 ]; then
         ivector_opts=
       fi
       steps/nnet3/decode.sh --nj 250 --cmd "$decode_cmd" \
-          $ivector_opts $model_opts \
-          --extra-left-context $extra_left_context  \
-	        --extra-right-context $extra_right_context  \
-          --frames-per-chunk "$frames_per_chunk" \
-         $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
+        $ivector_opts $model_opts \
+        --extra-left-context $extra_left_context  \
+        --extra-right-context $extra_right_context  \
+        --frames-per-chunk "$frames_per_chunk" \
+        $graph_dir data/$mic/${decode_set}_hires $decode_dir || exit 1;
       ) &
   done
 fi

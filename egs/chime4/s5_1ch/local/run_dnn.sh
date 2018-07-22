@@ -14,7 +14,7 @@
 
 # Config:
 nj=30
-stage=0 # resume training with --stage=N
+stage=0 # resume training with --stage N
 train=noisy
 eval_flag=true # make it true when the evaluation data are released
 
@@ -147,7 +147,7 @@ srcdir=exp/tri4a_dnn_tr05_multi_${train}
 acwt=0.1
 
 # First we generate lattices and alignments:
-# gawk must be installed to perform awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }' in
+# awk -v FS="/" '{ NF_nosuffix=$NF; sub(".gz","",NF_nosuffix); print NF_nosuffix gunzip -c "$0" |"; }' in
 # steps/nnet/make_denlats.sh
 if [ $stage -le 7 ]; then
   steps/nnet/align.sh --nj $nj --cmd "$train_cmd" \

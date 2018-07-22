@@ -370,7 +370,9 @@ def Nnet3ComponentNodeToDot(parsed_config):
                                                        GetDotNodeName(parsed_config['name'])['node']))
     return dot_graph
 
-def GroupConfigs(configs, node_prefixes = []):
+def GroupConfigs(configs, node_prefixes = None):
+    if node_prefixes is None:
+        node_prefixes = []
     # we make the assumption that nodes belonging to the same sub-graph have a
     # commong prefix.
     grouped_configs = {}
@@ -388,7 +390,9 @@ def GroupConfigs(configs, node_prefixes = []):
 
     return grouped_configs
 
-def ParseConfigLines(lines, node_prefixes = [], component_attributes = None ):
+def ParseConfigLines(lines, node_prefixes = None, component_attributes = None ):
+    if node_prefixes is None:
+        node_prefixes = []
     config_lines = []
     dot_graph=[]
     configs = []

@@ -86,7 +86,7 @@ for x in train dev test; do
     > $tmpdir/${x}_phn.uttids
   while read line; do
     [ -f $line ] || error_exit "Cannot find transcription file '$line'";
-    cut -f3 -d' ' "$line" | tr '\n' ' ' | sed -e 's: *$:\n:'
+    cut -f3 -d' ' "$line" | tr '\n' ' ' | perl -ape 's: *$:\n:;'
   done < $tmpdir/${x}_phn.flist > $tmpdir/${x}_phn.trans
   paste $tmpdir/${x}_phn.uttids $tmpdir/${x}_phn.trans \
     | sort -k1,1 > ${x}.trans
@@ -113,7 +113,7 @@ for x in train dev test; do
      print ";; LABEL \"F\" \"Female\" \"Female speakers\"";
      print ";; LABEL \"M\" \"Male\" \"Male speakers\"";
    }
-   { wav=$1; spk=gensub(/_.*/,"",1,wav); $1=""; ref=$0;
+   { wav=$1; spk=wav; sub(/_.*/,"",spk); $1=""; ref=$0;
      gender=(substr(spk,0,1) == "f" ? "F" : "M");
      printf("%s 1 %s 0.0 %f <O,%s> %s\n", wav, spk, durH[wav], gender, ref);
    }

@@ -23,7 +23,7 @@ dir=exp/nnet2_online_wsj/nnet_ms_a
 use_gpu=true
 set -e
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

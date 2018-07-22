@@ -1,0 +1,105 @@
+GMM-2048 EER for fame_complete_3sec_eval
+python local/prepare_for_eer.py data/fame_complete_3sec_eval_test/trials local/scores_gmm_2048_ind_female_complete_3sec_eval/plda_scores
+ind female: 25.88
+python local/prepare_for_eer.py data/fame_complete_3sec_eval_test/trials local/scores_gmm_2048_ind_male_complete_3sec_eval/plda_scores
+ind male: 16.95
+python local/prepare_for_eer.py data/fame_complete_3sec_eval_test/trials local/scores_gmm_2048_ind_pooled_complete_3sec_eval/plda_scores
+ind pooled: 21.9
+GMM-2048 EER for fame_complete_10sec_eval
+python local/prepare_for_eer.py data/fame_complete_10sec_eval_test/trials local/scores_gmm_2048_ind_female_complete_10sec_eval/plda_scores
+ind female: 18.14
+python local/prepare_for_eer.py data/fame_complete_10sec_eval_test/trials local/scores_gmm_2048_ind_male_complete_10sec_eval/plda_scores
+ind male: 9.454
+python local/prepare_for_eer.py data/fame_complete_10sec_eval_test/trials local/scores_gmm_2048_ind_pooled_complete_10sec_eval/plda_scores
+ind pooled: 14.15
+GMM-2048 EER for fame_complete_30sec_eval
+python local/prepare_for_eer.py data/fame_complete_30sec_eval_test/trials local/scores_gmm_2048_ind_female_complete_30sec_eval/plda_scores
+ind female: 15.49
+python local/prepare_for_eer.py data/fame_complete_30sec_eval_test/trials local/scores_gmm_2048_ind_male_complete_30sec_eval/plda_scores
+ind male: 6.985
+python local/prepare_for_eer.py data/fame_complete_30sec_eval_test/trials local/scores_gmm_2048_ind_pooled_complete_30sec_eval/plda_scores
+ind pooled: 11.51
+GMM-2048 EER for fame_ageing_3sec_eval
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_test/trials local/scores_gmm_2048_ind_female_ageing_3sec_eval/plda_scores
+ind female: 25.03
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_test/trials local/scores_gmm_2048_ind_male_ageing_3sec_eval/plda_scores
+ind male: 18.38
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_test/trials local/scores_gmm_2048_ind_pooled_ageing_3sec_eval/plda_scores
+ind pooled: 22.87
+GMM-2048 EER for fame_ageing_10sec_eval
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_test/trials local/scores_gmm_2048_ind_female_ageing_10sec_eval/plda_scores
+ind female: 16.31
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_test/trials local/scores_gmm_2048_ind_male_ageing_10sec_eval/plda_scores
+ind male: 10.4
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_test/trials local/scores_gmm_2048_ind_pooled_ageing_10sec_eval/plda_scores
+ind pooled: 14.51
+GMM-2048 EER for fame_ageing_30sec_eval
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_test/trials local/scores_gmm_2048_ind_female_ageing_30sec_eval/plda_scores
+ind female: 11.53
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_test/trials local/scores_gmm_2048_ind_male_ageing_30sec_eval/plda_scores
+ind male: 6.869
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_test/trials local/scores_gmm_2048_ind_pooled_ageing_30sec_eval/plda_scores
+ind pooled: 10.76
+GMM-2048 EER for fame_ageing_3sec_eval_1t3
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_1t3_test/trials local/scores_gmm_2048_ind_female_ageing_3sec_eval_1t3/plda_scores
+ind female: 25.28
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_1t3_test/trials local/scores_gmm_2048_ind_male_ageing_3sec_eval_1t3/plda_scores
+ind male: 14.07
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_1t3_test/trials local/scores_gmm_2048_ind_pooled_ageing_3sec_eval_1t3/plda_scores
+ind pooled: 21.08
+GMM-2048 EER for fame_ageing_3sec_eval_4t10
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_4t10_test/trials local/scores_gmm_2048_ind_female_ageing_3sec_eval_4t10/plda_scores
+ind female: 23.81
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_4t10_test/trials local/scores_gmm_2048_ind_male_ageing_3sec_eval_4t10/plda_scores
+ind male: 17.2
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_4t10_test/trials local/scores_gmm_2048_ind_pooled_ageing_3sec_eval_4t10/plda_scores
+ind pooled: 21.57
+GMM-2048 EER for fame_ageing_3sec_eval_mt10
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_mt10_test/trials local/scores_gmm_2048_ind_female_ageing_3sec_eval_mt10/plda_scores
+ind female: 26.47
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_mt10_test/trials local/scores_gmm_2048_ind_male_ageing_3sec_eval_mt10/plda_scores
+ind male: 22.74
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_mt10_test/trials local/scores_gmm_2048_ind_pooled_ageing_3sec_eval_mt10/plda_scores
+ind pooled: 25.9
+GMM-2048 EER for fame_ageing_10sec_eval_1t3
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_1t3_test/trials local/scores_gmm_2048_ind_female_ageing_10sec_eval_1t3/plda_scores
+ind female: 15.91
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_1t3_test/trials local/scores_gmm_2048_ind_male_ageing_10sec_eval_1t3/plda_scores
+ind male: 7.064
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_1t3_test/trials local/scores_gmm_2048_ind_pooled_ageing_10sec_eval_1t3/plda_scores
+ind pooled: 13.5
+GMM-2048 EER for fame_ageing_10sec_eval_4t10
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_4t10_test/trials local/scores_gmm_2048_ind_female_ageing_10sec_eval_4t10/plda_scores
+ind female: 14.36
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_4t10_test/trials local/scores_gmm_2048_ind_male_ageing_10sec_eval_4t10/plda_scores
+ind male: 10.5
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_4t10_test/trials local/scores_gmm_2048_ind_pooled_ageing_10sec_eval_4t10/plda_scores
+ind pooled: 13.41
+GMM-2048 EER for fame_ageing_10sec_eval_mt10
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_mt10_test/trials local/scores_gmm_2048_ind_female_ageing_10sec_eval_mt10/plda_scores
+ind female: 18.26
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_mt10_test/trials local/scores_gmm_2048_ind_male_ageing_10sec_eval_mt10/plda_scores
+ind male: 11.93
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_mt10_test/trials local/scores_gmm_2048_ind_pooled_ageing_10sec_eval_mt10/plda_scores
+ind pooled: 16.59
+GMM-2048 EER for fame_ageing_30sec_eval_1t3
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_1t3_test/trials local/scores_gmm_2048_ind_female_ageing_30sec_eval_1t3/plda_scores
+ind female: 13.16
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_1t3_test/trials local/scores_gmm_2048_ind_male_ageing_30sec_eval_1t3/plda_scores
+ind male: 4.425
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_1t3_test/trials local/scores_gmm_2048_ind_pooled_ageing_30sec_eval_1t3/plda_scores
+ind pooled: 10.38
+GMM-2048 EER for fame_ageing_30sec_eval_4t10
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_4t10_test/trials local/scores_gmm_2048_ind_female_ageing_30sec_eval_4t10/plda_scores
+ind female: 9.536
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_4t10_test/trials local/scores_gmm_2048_ind_male_ageing_30sec_eval_4t10/plda_scores
+ind male: 6.826
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_4t10_test/trials local/scores_gmm_2048_ind_pooled_ageing_30sec_eval_4t10/plda_scores
+ind pooled: 9.692
+GMM-2048 EER for fame_ageing_30sec_eval_mt10
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_mt10_test/trials local/scores_gmm_2048_ind_female_ageing_30sec_eval_mt10/plda_scores
+ind female: 9.677
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_mt10_test/trials local/scores_gmm_2048_ind_male_ageing_30sec_eval_mt10/plda_scores
+ind male: 7.983
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_mt10_test/trials local/scores_gmm_2048_ind_pooled_ageing_30sec_eval_mt10/plda_scores
+ind pooled: 11.99

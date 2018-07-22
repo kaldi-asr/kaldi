@@ -218,7 +218,7 @@ void UnitTestNnetModelDerivatives() {
               << predicted_objf_change_vec;
     KALDI_LOG << "Vector of measured objf-change is: "
               << measured_objf_change_vec;
-    BaseFloat delta_thresh_warn = 0.05, delta_thresh_fail = 0.15;
+    BaseFloat delta_thresh_warn = 0.05, delta_thresh_fail = 0.25;
     if (limit_deriv_times) {
       KALDI_LOG << "Not checking that predicted/measured changes matched "
                 << "because we limited times of derivatives.";
@@ -423,7 +423,7 @@ int main() {
   using namespace kaldi::nnet3;
   SetVerboseLevel(3);
 #if HAVE_CUDA == 1
-  int32 loop = 0;
+  kaldi::int32 loop = 0;
   for (loop = 0; loop < 2; loop++) {
     CuDevice::Instantiate().SetDebugStrideMode(true);
     if (loop == 0)

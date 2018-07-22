@@ -11,8 +11,8 @@ output_bit=16
 DBname=MARDY
 file_splitter=  #script to generate job scripts given the command file
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 . ./utils/parse_options.sh
 
 if [ $# != 3 ]; then

@@ -85,7 +85,8 @@ struct NnetSimpleComputationOptions {
                    "models) is less than the frame-rate of the original "
                    "alignment.");
     opts->Register("acoustic-scale", &acoustic_scale,
-                   "Scaling factor for acoustic log-likelihoods");
+                   "Scaling factor for acoustic log-likelihoods (caution: is a no-op "
+                   "if set in the program nnet3-compute");
     opts->Register("frames-per-chunk", &frames_per_chunk,
                    "Number of frames in each chunk that is separately evaluated "
                    "by the neural net.  Measured before any subsampling, if the "

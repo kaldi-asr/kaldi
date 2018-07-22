@@ -89,26 +89,23 @@ open(SEGMENTS, $segmentsFile)
     || die "Unable to read segments file $segmentsFile";
 $numSegments = 0;
 while ($line=<SEGMENTS>) {
-    @tokens = split(/\s+/, $line);
-    unless ($#tokens == 3) {
-      $num_failed_parses+=1;
-      print STDERR "$0: Couldn't parse line $. in $segmentsFile\n"
-        if ($num_failed_parses == 1);
-      print STDERR ("\tLine: $line")
-        if ($num_failed_parses le $num_failed_parses_max);
-      print STDERR "$0: Maximal threshold for failed line parses reached. Not warning anymore\n"
-        if ($num_failed_parses eq $num_failed_parses_max);
-    	next;
-    }
-    $segmentID = shift @tokens;
-    if (exists $fileID{$segmentID}) {
-      print STDERR ("$0: Skipping duplicate segment ID $segmentID in $segmentsFile\n");
-    	next;
-    }
-    $fileID{$segmentID}    = shift @tokens;
-    $startTime{$segmentID} = shift @tokens;
-    $endTime{$segmentID}   = shift @tokens;
-    ++$numSegments;
+  @tokens = split(/\s+/, $line);
+  unless ($#tokens == 3) {
+    $num_failed_parses+=1;
+    print STDERR "$0: Couldn't parse line $. in $segmentsFile\n" if ($num_failed_parses == 1);
+    print STDERR ("\tLine: $line") if ($num_failed_parses le $num_failed_parses_max);
+    print STDERR "$0: Maximal threshold for failed line parses reached. Not warning anymore\n" if ($num_failed_parses eq $num_failed_parses_max);
+    next;
+  }
+  $segmentID = shift @tokens;
+  if (exists $fileID{$segmentID}) {
+    print STDERR ("$0: Skipping duplicate segment ID $segmentID in $segmentsFile\n");
+    next;
+  }
+  $fileID{$segmentID}    = shift @tokens;
+  $startTime{$segmentID} = shift @tokens;
+  $endTime{$segmentID}   = shift @tokens;
+  ++$numSegments;
 }
 close(SEGMENTS);
 print STDERR ("$0: Read info about $numSegments segment IDs from $segmentsFile\n");
@@ -125,8 +122,8 @@ $num_failed_parses=0;
 while ($line=<SCP>) {
     chomp;
     if ($line =~ m:^\s*(\S+)\s+(.+)$:) {
-	$recordingID  = $1;
-	$waveformFile = $2;
+        $recordingID  = $1;
+        $waveformFile = $2;
     } else {
       $num_failed_parses+=1;
       print STDERR ("$0: Couldn't parse line $. in $scpFile\n")
@@ -138,21 +135,21 @@ while ($line=<SCP>) {
       next;
     }
     if (exists $waveform{$recordingID}) {
-	print STDERR ("$0: Skipping duplicate recording ID $recordingID in $scpFile\n");
-	# BUG ALERT: This check may need to be turned off for multi-channel recordings,
-	#            since the same recording may appear with with different channels?
-	next;
+        print STDERR ("$0: Skipping duplicate recording ID $recordingID in $scpFile\n");
+        # BUG ALERT: This check may need to be turned off for multi-channel recordings,
+        #            since the same recording may appear with with different channels?
+        next;
     }
     if ($waveformFile =~ m:^\S+$:) {
       # This is a single filename, no shp2pipe or gunzip for reading waveforms
       $waveform{$recordingID} = $waveformFile;
     } elsif (($waveformFile =~ m:(sph2pipe|gunzip|gzip|cat|zcat)\s+:) &&
-	     ($waveformFile =~ m:\s+(\S+)\s*\|$:)) {
+             ($waveformFile =~ m:\s+(\S+)\s*\|$:)) {
       # HACK ALERT: the filename is *assumed* to be at the END of the command
       $waveform{$recordingID} = $1;
       $channel{$recordingID}  = $1 if ($waveformFile =~ m:sph2pipe\s+.*\-c\s+(\S+)\s+.+:);
     } elsif (($waveformFile =~ m:(sox)\s+:) &&
-	     ($waveformFile =~ m:\s+(\S+)\s*\|$:)) {
+             ($waveformFile =~ m:\s+(\S+)\s*\|$:)) {
       # HACK ALERT: the first element that does ends with '.wav' is assumed to
       # be the original filename
       @elems=split(/\s+/, $waveformFile);
@@ -203,8 +200,8 @@ while ($line=<UTT2SPK>) {
     }
     $segmentID = shift @tokens;
     if (exists $speakerID{$segmentID}) {
-	print STDERR ("$0: Skipping duplicate segment ID $segmentID in $utt2spkFile\n");
-	next;
+        print STDERR ("$0: Skipping duplicate segment ID $segmentID in $utt2spkFile\n");
+        next;
     }
     $speakerID{$segmentID} = shift @tokens;
     ++$numSegments;
@@ -224,8 +221,8 @@ $num_failed_parses = 0;
 while ($line=<TEXT>) {
     chomp;
     if ($line =~ m:^(\S+)\s+(.+)$:) {
-	$segmentID   = $1;
-	$text          = $2;
+        $segmentID   = $1;
+        $text          = $2;
     } else {
       $num_failed_parses+=1;
       print STDERR ("$0: Couldn't parse line $. in $textFile\n")
@@ -237,8 +234,8 @@ while ($line=<TEXT>) {
       next;
     }
     if (exists $transcription{$segmentID}) {
-	print STDERR ("$0: Skipping duplicate segment ID $segmentID in $segmentsFile\n");
-	next;
+        print STDERR ("$0: Skipping duplicate segment ID $segmentID in $segmentsFile\n");
+        next;
     }
     $transcription{$segmentID} = "";
     @tokens = split(/\s+/, $text);
@@ -246,23 +243,23 @@ while ($line=<TEXT>) {
     # E.g. remove noise tokens, mark non-scoring segments, etc.
     # HACK ALERT: Current version does this is an ad hoc manner!
     while ($w = shift(@tokens)) {
-	# Substitute OOV tokens specific to the Babel data
-	$w = $OOV_symbol if ($w eq "(())");
-	# Remove fragMarkers, if provided, from either end of the word
-	$w =~ s:(^[$fragMarkers]|[$fragMarkers]$)::g if ($fragMarkers);
-	# Omit non-speech symbols such as <cough>, <breath>, etc.
-	$w =~ s:^<[^>]+>$:: unless (($w eq $OOV_symbol) || ($w eq $Hesitation));
-	next if ($w eq "");
-	$transcription{$segmentID} .= " $w";
-	$numWords++;
+        # Substitute OOV tokens specific to the Babel data
+        $w = $OOV_symbol if ($w eq "(())");
+        # Remove fragMarkers, if provided, from either end of the word
+        $w =~ s:(^[$fragMarkers]|[$fragMarkers]$)::g if ($fragMarkers);
+        # Omit non-speech symbols such as <cough>, <breath>, etc.
+        $w =~ s:^<[^>]+>$:: unless (($w eq $OOV_symbol) || ($w eq $Hesitation));
+        next if ($w eq "");
+        $transcription{$segmentID} .= " $w";
+        $numWords++;
     }
     $transcription{$segmentID} =~ s:^\s+::;  # Remove leading white space
     $transcription{$segmentID} =~ s:\s+$::;  # Remove training white space
     $transcription{$segmentID} =~ s:\s+: :g; # Normalize remaining white space
     # Transcriptions containing no words, or only OOVs and hesitations are not scored
     $transcription{$segmentID} = "IGNORE_TIME_SEGMENT_IN_SCORING"
-	if (($transcription{$segmentID} eq "") ||
-	    ($transcription{$segmentID} =~ m:^(($OOV_symbol|$Hesitation)\s*)+$:));
+      if (($transcription{$segmentID} eq "") ||
+          ($transcription{$segmentID} =~ m:^(($OOV_symbol|$Hesitation)\s*)+$:));
     ++$numSegments;
 }
 close(TEXT);
@@ -280,17 +277,17 @@ open(STM, "| sort +0 -1 +1 -2 +3nb -4 > $stmFile")
 $numSegments = 0;
 foreach $segmentID (sort keys %fileID) {
     if (exists $waveform{$fileID{$segmentID}}) {
-	printf STM ("%s %s %s %.2f %.2f",
-		    $waveform{$fileID{$segmentID}},
-		    $channel{$fileID{$segmentID}},
-		    $speakerID{$segmentID},
-		    $startTime{$segmentID},
-		    $endTime{$segmentID});
-	printf STM (" <%s>", $attributes{$segmentID}) if (exists $attributes{$segmentID});
-	printf STM (" %s\n", $transcription{$segmentID});
-	++$numSegments;
+        printf STM ("%s %s %s %.2f %.2f",
+                    $waveform{$fileID{$segmentID}},
+                    $channel{$fileID{$segmentID}},
+                    $speakerID{$segmentID},
+                    $startTime{$segmentID},
+                    $endTime{$segmentID});
+        printf STM (" <%s>", $attributes{$segmentID}) if (exists $attributes{$segmentID});
+        printf STM (" %s\n", $transcription{$segmentID});
+        ++$numSegments;
     } else {
-	print STDERR ("$0: No waveform found for segment $segmentID, file $fileID{$segmentID}\n");
+        print STDERR ("$0: No waveform found for segment $segmentID, file $fileID{$segmentID}\n");
     }
 }
 close(STM);
@@ -312,8 +309,8 @@ while ($line=<STM>) {
     @tokens = split(/\s+/, $line);
     # The first 5 tokens are filename, channel, speaker, start- and end-time
     for ($n=0; $n<5; $n++) {
-	$w = shift @tokens;
-	print CHARSTM ("$w ");
+        $w = shift @tokens;
+        print CHARSTM ("$w ");
     }
     # CER is used only for some scripts, e.g. CJK.  So only non-ASCII characters
     # in the remaining tokens should be split into individual tokens.

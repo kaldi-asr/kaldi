@@ -8,8 +8,8 @@
 # This example script is still a bit of a mess, and needs to be
 # cleaned up, but it shows you all the basic ingredients.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 mfccdir=`pwd`/mfcc
 vaddir=`pwd`/mfcc

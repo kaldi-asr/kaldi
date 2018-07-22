@@ -4,11 +4,10 @@
   <PropertyGroup Label="UserMacros">
     <!-- Change the following paths so they are correct on your machine -->
     <!-- Do not modify anything before this line -->
-    <MKLDIR>C:\Program Files (x86)\Intel\Composer XE\mkl</MKLDIR>
+    <MKLDIR>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\</MKLDIR>
     <OPENBLASDIR>C:\Users\Yenda\Downloads\kaldi-svn\tools\OpenBLAS-v0.2.14-Win64-int32</OPENBLASDIR>
-    <PTHREADW>C:\Users\Yenda\Downloads\kaldi-svn\tools\pthread-win32\Pre-built.2</PTHREADW>
-    <OPENFST>C:\Users\Yenda\Downloads\kaldi-svn\tools\openfstwin-1.3.4\</OPENFST>
-    <OPENFSTLIB>C:\Users\Yenda\Downloads\kaldi-svn\tools\openfstwin-1.3.4\MSVC12\x64\</OPENFSTLIB>
+    <OPENFST>C:\Users\jtrmal\Documents\openfst\</OPENFST>
+    <OPENFSTLIB>C:\Users\jtrmal\Documents\openfst\build64\lib</OPENFSTLIB>
     <!-- Do not modify anything after this line -->
   </PropertyGroup>
   <PropertyGroup />
@@ -16,10 +15,6 @@
   <ItemGroup>
     <BuildMacro Include="OPENBLASDIR">
       <Value>$(OPENBLASDIR)</Value>
-      <EnvironmentVariable>true</EnvironmentVariable>
-    </BuildMacro>
-    <BuildMacro Include="PTHREADW">
-      <Value>$(PTHREADW)</Value>
       <EnvironmentVariable>true</EnvironmentVariable>
     </BuildMacro>
     <BuildMacro Include="OPENFST">

@@ -1,13 +1,13 @@
 #!/bin/bash
 #
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
-# The input is the Callhome Spanish Dataset. (*.sph files) 
-# In addition the transcripts are needed as well. 
+# The input is the Callhome Spanish Dataset. (*.sph files)
+# In addition the transcripts are needed as well.
 # To be run from one directory above this script.
 
 # Note: when creating your own data preparation scripts, it's a good idea
 # to make sure that the speaker id (if present) is a prefix of the utterance
-# id, that the output scp file is sorted on utterance id, and that the 
+# id, that the output scp file is sorted on utterance id, and that the
 # transcription file is exactly the same length as the scp file and is also
 # sorted on utterance id (missing transcriptions should be removed from the
 # scp file using e.g. scripts/filter_scp.pl)
@@ -68,83 +68,51 @@ fi
 speech_train=$dir/links/LDC96S35/CALLHOME/SPANISH/SPEECH/TRAIN
 speech_dev=$dir/links/LDC96S35/CALLHOME/SPANISH/SPEECH/DEVTEST
 speech_test=$dir/links/LDC96S35/CALLHOME/SPANISH/SPEECH/EVLTEST
-transcripts_train=$dir/links/LDC96T17/callhome_spanish_trans_970711/transcrp/train 
-transcripts_dev=$dir/links/LDC96T17/callhome_spanish_trans_970711/transcrp/devtest 
-transcripts_test=$dir/links/LDC96T17/callhome_spanish_trans_970711/transcrp/evltest 
-                                                                                   
-fcount_train=`find ${speech_train} -iname '*.SPH' | wc -l` 
-fcount_dev=`find ${speech_dev} -iname '*.SPH' | wc -l`                                             
-fcount_test=`find ${speech_test} -iname '*.SPH' | wc -l`                                             
-fcount_t_train=`find ${transcripts_train} -iname '*.txt' | wc -l` 
-fcount_t_dev=`find ${transcripts_dev} -iname '*.txt' | wc -l` 
-fcount_t_test=`find ${transcripts_test} -iname '*.txt' | wc -l` 
+transcripts_train=$dir/links/LDC96T17/callhome_spanish_trans_970711/transcrp/train
+transcripts_dev=$dir/links/LDC96T17/callhome_spanish_trans_970711/transcrp/devtest
+transcripts_test=$dir/links/LDC96T17/callhome_spanish_trans_970711/transcrp/evltest
+
+fcount_train=`find ${speech_train} -iname '*.SPH' | wc -l`
+fcount_dev=`find ${speech_dev} -iname '*.SPH' | wc -l`
+fcount_test=`find ${speech_test} -iname '*.SPH' | wc -l`
+fcount_t_train=`find ${transcripts_train} -iname '*.txt' | wc -l`
+fcount_t_dev=`find ${transcripts_dev} -iname '*.txt' | wc -l`
+fcount_t_test=`find ${transcripts_test} -iname '*.txt' | wc -l`
 
 #Now check if we got all the files that we needed
-if [ $fcount_train != 80 -o $fcount_dev != 20 -o $fcount_test != 20 -o $fcount_t_train != 80 -o $fcount_t_dev != 20 -o $fcount_t_test != 20 ];                 
-then                                                                               
-        echo "Incorrect number of files in the data directories"                   
+if [ $fcount_train != 80 -o $fcount_dev != 20 -o $fcount_test != 20 -o $fcount_t_train != 80 -o $fcount_t_dev != 20 -o $fcount_t_test != 20 ];
+then
+        echo "Incorrect number of files in the data directories"
         echo "The paritions should contain 80/20/20 files"
-        exit 1;                                                                    
-fi   
+        exit 1;
+fi
 
 if [ $stage -le 0 ]; then
-	#Gather all the speech files together to create a file list
-	(
-	    find $speech_train -iname '*.sph';
-	    find $speech_dev -iname '*.sph';
-	    find $speech_test -iname '*.sph';
-	)  > $tmpdir/callhome_train_sph.flist
+  #Gather all the speech files together to create a file list
+  (
+      find $speech_train -iname '*.sph';
+      find $speech_dev -iname '*.sph';
+      find $speech_test -iname '*.sph';
+  )  > $tmpdir/callhome_train_sph.flist
 
-	#Get all the transcripts in one place
+  #Get all the transcripts in one place
 
-	(                                                                              
+  (
     find $transcripts_train -iname '*.txt';
     find $transcripts_dev -iname '*.txt';
     find $transcripts_test -iname '*.txt';
-    )  > $tmpdir/callhome_train_transcripts.flist 
+  )  > $tmpdir/callhome_train_transcripts.flist
 
 fi
 
 if [ $stage -le 1 ]; then
-	$local/callhome_make_trans.pl $tmpdir
-	mkdir -p $dir/callhome_train_all
-	mv $tmpdir/callhome_reco2file_and_channel $dir/callhome_train_all/
+  $local/callhome_make_trans.pl $tmpdir
+  mkdir -p $dir/callhome_train_all
+  mv $tmpdir/callhome_reco2file_and_channel $dir/callhome_train_all/
 fi
 
-if [ $stage -le 2 ]; then                                                        
-  sort $tmpdir/callhome.text.1 | grep -v '((' | \
-  awk '{if (NF > 1){ print; }}' | \
-  sed 's:<\s*[/]*\s*\s*for[ei][ei]g[nh]\s*\w*>::g' | \
-  sed 's:<lname>\([^<]*\)<\/lname>:\1:g' | \
-  sed 's:<lname[\/]*>::g' | \
-  sed 's:<laugh>[^<]*<\/laugh>:[laughter]:g' | \
-  sed 's:<\s*cough[\/]*>:[noise]:g' | \
-  sed 's:<sneeze[\/]*>:[noise]:g' | \
-  sed 's:<breath[\/]*>:[noise]:g' | \
-  sed 's:<lipsmack[\/]*>:[noise]:g' | \
-  sed 's:<background>[^<]*<\/background>:[noise]:g' | \
-  sed -r 's:<[/]?background[/]?>:[noise]:g' | \
-  #One more time to take care of nested stuff
-  sed 's:<laugh>[^<]*<\/laugh>:[laughter]:g' | \
-  sed -r 's:<[/]?laugh[/]?>:[laughter]:g' | \
-  #now handle the exceptions, find a cleaner way to do this?
-  sed 's:<foreign langenglish::g' | \
-  sed 's:</foreign::g' | \
-  sed -r 's:<[/]?foreing\s*\w*>::g' | \
-  sed 's:</b::g' | \
-  sed 's:<foreign langengullís>::g' | \
-  sed 's:foreign>::g' | \
-  sed 's:>::g' | \
-  #How do you handle numbers?
-  grep -v '()' | \
-  #Now go after the non-printable characters
-  sed -r 's:¿::g' > $tmpdir/callhome.text.2
-
-  CHARS=$(python -c 'print u"\u00BF\u00A1".encode("utf8")')
-  sed -i 's/['"$CHARS"']//g' $tmpdir/callhome.text.2
-
-  cp $tmpdir/callhome.text.2 $dir/callhome_train_all/callhome.text
-
+if [ $stage -le 2 ]; then
+  sort $tmpdir/callhome.text.1 | sed 's/^\s\s*|\s\s*$//g' | sed 's/\s\s*/ /g' > $dir/callhome_train_all/callhome.text
 
   #Create segments file and utt2spk file
   ! cat $dir/callhome_train_all/callhome.text | perl -ane 'm:([^-]+)-([AB])-(\S+): || die "Bad line $_;"; print "$1-$2-$3 $1-$2\n"; ' > $dir/callhome_train_all/callhome_utt2spk \
@@ -159,7 +127,7 @@ fi
 if [ $stage -le 3 ]; then
   for f in `cat $tmpdir/callhome_train_sph.flist`; do
     # convert to absolute path
-    utils/make_absolute.sh $f 
+    make_absolute.sh $f
   done > $tmpdir/callhome_train_sph_abs.flist
 
   cat $tmpdir/callhome_train_sph_abs.flist | perl -ane 'm:/([^/]+)\.SPH$: || die "bad line $_; ";  print lc($1)," $_"; ' > $tmpdir/callhome_sph.scp
@@ -184,9 +152,12 @@ if [ $stage -le 5 ]; then
     mv callhome_reco2file_and_channel reco2file_and_channel
     mv callhome_spk2gender spk2gender
     mv callhome_utt2spk utt2spk
+    cd $cdir
 fi
+
+fix_data_dir.sh $dir/callhome_train_all || exit 1
+utils/validate_data_dir.sh --no-feats $dir/callhome_train_all || exit 1
 
 echo "CALLHOME spanish Data preparation succeeded."
 
 exit 0;
-

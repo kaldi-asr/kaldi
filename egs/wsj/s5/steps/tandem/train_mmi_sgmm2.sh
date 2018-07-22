@@ -29,7 +29,7 @@ if [ $# -ne 6 ]; then
   echo "  --cancel (true|false)                            # cancel stats (true by default)"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --config <config-file>                           # config containing options"
-  echo "  --stage <stage>                                  # stage to do partial re-run from."  
+  echo "  --stage <stage>                                  # stage to do partial re-run from."
   echo "  --transform-dir <transform-dir>                  # directory to find fMLLR transforms."
   exit 1;
 fi
@@ -73,11 +73,11 @@ normft2=`cat $alidir/normft2 2>/dev/null`
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
-  delta) 
-  	echo "$0: feature type is $feat_type"
-  	;;
-  lda) 
-  	echo "$0: feature type is $feat_type"
+  delta)
+    echo "$0: feature type is $feat_type"
+    ;;
+  lda)
+    echo "$0: feature type is $feat_type"
     cp $alidir/{lda,final}.mat $dir/ || exit 1;
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
@@ -93,7 +93,7 @@ elif [ "$feat_type" == "lda" ]; then
   feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 fi
 
-# set up feature stream 2;  this are usually bottleneck or posterior features, 
+# set up feature stream 2;  this are usually bottleneck or posterior features,
 # which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
 

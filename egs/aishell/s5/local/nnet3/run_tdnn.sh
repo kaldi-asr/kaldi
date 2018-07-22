@@ -28,7 +28,7 @@ use_ivectors=true
 
 # End configuration section.
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

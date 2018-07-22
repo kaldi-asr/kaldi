@@ -3,7 +3,7 @@
 # Copyright  2014 Nickolay V. Shmyrev
 # Apache 2.0
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 
 small_arpa_lm=data/local/local_lm/data/arpa/4gram_small.arpa.gz

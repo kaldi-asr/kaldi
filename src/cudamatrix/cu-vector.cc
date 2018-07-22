@@ -2,6 +2,7 @@
 
 // Copyright 2012-2013  Karel Vesely
 //           2012-2014  Johns Hopkins University (author: Daniel Povey)
+//                2017  Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -49,8 +50,8 @@ Real VecVec(const CuVectorBase<Real> &a,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
-    CU_SAFE_CALL(cublas_dot(GetCublasHandle(), a.Dim(), a.Data(), 1, b.Data(),
-                            1, &result));
+    CUBLAS_SAFE_CALL(cublas_dot(GetCublasHandle(), a.Dim(), a.Data(), 1, b.Data(),
+                                1, &result));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
 } else
 #endif
@@ -74,6 +75,27 @@ Real VecVec(const CuVectorBase<Real> &A, const CuVectorBase<OtherReal> &B) {
 // instantiate the template above
 template float VecVec(const CuVectorBase<float> &A, const CuVectorBase<double> &B);
 template double VecVec(const CuVectorBase<double> &A, const CuVectorBase<float> &B);
+
+
+template<typename Real>
+Real VecMatVec(const CuVectorBase<Real> &v1, const CuMatrixBase<Real> &M,
+               const CuVectorBase<Real> &v2) {
+  KALDI_ASSERT(v1.Dim() == M.NumRows() && M.NumCols() == v2.Dim());
+  if (v1.Dim() > v2.Dim()) {  // do v2*M first
+    CuVector<Real> v2M(v1.Dim(), kUndefined);
+    v2M.AddMatVec(1.0, M, kNoTrans, v2, 0.0);
+    return VecVec(v2M, v1);
+  } else {  // do v1*M first
+    CuVector<Real> v1M(v2.Dim(), kUndefined);
+    v1M.AddMatVec(1.0, M, kTrans, v1, 0.0);
+    return VecVec(v1M, v2);
+  }
+}
+// instantiate the template above
+template float VecMatVec(const CuVectorBase<float> &v1, const CuMatrixBase<float> &M,
+               const CuVectorBase<float> &v2);
+template double VecMatVec(const CuVectorBase<double> &v1, const CuMatrixBase<double> &M,
+               const CuVectorBase<double> &v2);
 
 template<typename Real>
 void CuVectorBase<Real>::CopyColFromMat(const CuMatrixBase<Real> &mat, MatrixIndexT col) {
@@ -321,52 +343,68 @@ void CuVectorBase<Real>::ApplySoftMax() {
 }
 
 template<typename Real>
-MatrixIndexT CuVectorBase<Real>::ApplyFloor(Real floor_val) {
-  MatrixIndexT num_floored = 0;
+void CuVectorBase<Real>::ApplyFloor(Real floor_val, MatrixIndexT *floored_count) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    if (dim_ == 0) return 0;
-    CuTimer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
+    if (floored_count == nullptr) {
+      if (dim_ == 0) return;
+      CuTimer tim;
+      // We are calling a function meant for matrices, by viewing the
+      // vector as a matrix with a single row.
+      ::MatrixDim dim = {1, Dim(), 1};
+      cuda_apply_floor(dimGrid, dimBlock, data_, floor_val, dim);
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloorNoCount", tim);
+    } else {
+      if (dim_ == 0) { *floored_count = 0; return; }
+      CuTimer tim;
 
-    CuVector<float> count_vec(dim_, kUndefined);
+      CuVector<float> count_vec(dim_, kUndefined);
 
-    cuda_vec_apply_floor(dimGrid, dimBlock, data_, floor_val, count_vec.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    num_floored = count_vec.Sum();
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim);
+      cuda_vec_apply_floor(dimGrid, dimBlock, data_, floor_val, count_vec.Data(), dim_);
+      CU_SAFE_CALL(cudaGetLastError());
+      *floored_count = count_vec.Sum();
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyFloor", tim);
+    }
   } else
 #endif
   {
-    num_floored = Vec().ApplyFloor(floor_val);
+    Vec().ApplyFloor(floor_val, floored_count);
   }
-  return num_floored;
-
 }
 
 template<typename Real>
-MatrixIndexT CuVectorBase<Real>::ApplyCeiling(Real ceiling_val) {
-  MatrixIndexT num_ceiled = 0;
+void CuVectorBase<Real>::ApplyCeiling(Real ceiling_val, MatrixIndexT *ceiled_count) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    if (dim_ == 0) return 0;
-    CuTimer tim;
     int dimBlock(CU1DBLOCK);
     int dimGrid(n_blocks(dim_,CU1DBLOCK));
+    if (ceiled_count == nullptr) {
+      if (dim_ == 0) return;
+      CuTimer tim;
+      // We are calling a function meant for matrices, by viewing the
+      // vector as a matrix with a single row.
+      ::MatrixDim dim = {1, Dim(), 1};
+      cuda_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, dim);
 
-    CuVector<float> count_vec(dim_, kUndefined);
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeilingNoCount", tim);
+    } else {
+      if (dim_ == 0) { *ceiled_count = 0; return; }
+      CuTimer tim;
 
-    cuda_vec_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, count_vec.Data(), dim_);
-    CU_SAFE_CALL(cudaGetLastError());
-    num_ceiled = count_vec.Sum();
-    CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeiling", tim);
+      CuVector<float> count_vec(dim_, kUndefined);
+
+      cuda_vec_apply_ceiling(dimGrid, dimBlock, data_, ceiling_val, count_vec.Data(), dim_);
+      CU_SAFE_CALL(cudaGetLastError());
+      *ceiled_count = count_vec.Sum();
+      CuDevice::Instantiate().AccuProfile("CuVectorBase::ApplyCeiling", tim);
+    }
   } else
 #endif
   {
-    num_ceiled = Vec().ApplyCeiling(ceiling_val);
+    Vec().ApplyCeiling(ceiling_val, ceiled_count);
   }
-  return num_ceiled;
 }
 
 template<typename Real>
@@ -451,10 +489,10 @@ void CuVectorBase<Real>::AddMatVec(const Real alpha,
 
     // Everything is backwards in CuBlas.  We need to reverse rows, columns,
     // transpose-ness.
-    CU_SAFE_CALL(cublas_gemv(GetCublasHandle(),
-                             (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
-                             M.NumCols(), M.NumRows(), alpha, M.Data(),
-                             M.Stride(), v.Data(), 1, beta, data_, 1));
+    CUBLAS_SAFE_CALL(cublas_gemv(GetCublasHandle(),
+                                 (trans==kTrans? CUBLAS_OP_N:CUBLAS_OP_T),
+                                 M.NumCols(), M.NumRows(), alpha, M.Data(),
+                                 M.Stride(), v.Data(), 1, beta, data_, 1));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
@@ -478,8 +516,8 @@ void CuVectorBase<Real>::AddSpVec(const Real alpha,
 
     // Note: in our opinion the CuSpMatrix represents a lower-triangular matrix, but
     // in CUBLAS, for some stupid reason, everything is reversed.
-    CU_SAFE_CALL(cublas_spmv(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, Dim(),
-                             alpha, M.Data(), v.Data(), 1, beta, data_, 1));
+    CUBLAS_SAFE_CALL(cublas_spmv(GetCublasHandle(), CUBLAS_FILL_MODE_UPPER, Dim(),
+                                 alpha, M.Data(), v.Data(), 1, beta, data_, 1));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
@@ -767,6 +805,17 @@ void CuVectorBase<Real>::MulElements(const CuVectorBase<Real> &v) {
   }
 }
 
+template<typename Real>
+void CuVectorBase<Real>::DivElements(const CuVectorBase<Real> &v) {
+  // this just creates a matrix and calls the matrix version.
+  KALDI_ASSERT(dim_ == v.dim_);
+  CuSubMatrix<Real> this_mat(this->Data(), 1, dim_, dim_),
+      v_mat(v.Data(), 1, dim_, dim_);
+  this_mat.DivElements(v_mat);
+}
+
+
+
 template<>
 template<>
 void CuVectorBase<double>::CopyFromVec(const CuVectorBase<float> &src) {
@@ -775,7 +824,7 @@ void CuVectorBase<double>::CopyFromVec(const CuVectorBase<float> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     CuTimer tim;
-    CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
+    CUBLAS_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
@@ -792,7 +841,7 @@ void CuVectorBase<float>::CopyFromVec(const CuVectorBase<double> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     CuTimer tim;
-    CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
+    CUBLAS_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, src.Data(), 1, data_, 1));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
@@ -915,6 +964,13 @@ void CuVector<Real>::Resize(MatrixIndexT dim, MatrixResizeType t) {
 }
 
 template<typename Real>
+void CuVector<Real>::Swap(CuVector<Real> *vec) {
+  std::swap(this->data_, vec->data_);
+  std::swap(this->dim_, vec->dim_);
+}
+
+
+template<typename Real>
 void CuVector<Real>::Swap(Vector<Real> *vec) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -935,7 +991,7 @@ void CuVector<Real>::Swap(Vector<Real> *vec) {
         this->Swap(&temp); // now temp is full, *this is empty.
         vec->Swap(&temp); // now vec has data from *this, temp has
         // data from vec.
-        Swap(vec); // copy data in vec to *this, which is now empty.
+        Swap(&temp); // copy data in vec to *this, which is now empty.
       } else { // *this is full but *vec is empty.
         vec->Resize(this->dim_, kUndefined);
         this->CopyToVec(vec);
@@ -1089,8 +1145,8 @@ void CuVectorBase<Real>::CopyDiagFromMat(const CuMatrix<Real> &M) {
   if (CuDevice::Instantiate().Enabled()) {
     KALDI_ASSERT(dim_ == std::min(M.NumRows(), M.NumCols()));
     CuTimer tim;
-    CU_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, M.Data(), M.Stride() + 1,
-                             data_, 1));
+    CUBLAS_SAFE_CALL(cublas_copy(GetCublasHandle(), dim_, M.Data(), M.Stride() + 1,
+                                 data_, 1));
 
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
@@ -1212,6 +1268,46 @@ void CuVectorBase<Real>::InvertElements() {
 #endif
   {
     Vec().InvertElements();
+  }
+}
+
+
+template<typename Real>
+void CuVectorBase<Real>::CopyElements(const CuMatrixBase<Real> &mat,
+                                      const MatrixTransposeType trans,
+                                      const CuArrayBase<int32> &elements) {
+  KALDI_ASSERT(elements.Dim() == Dim());
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU1DBLOCK));
+
+    cuda_vector_copy_elements(dimGrid, dimBlock, this->data_, Dim(),
+                                mat.Data(), mat.Stride(), trans == kTrans,
+                                elements.Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    VectorBase<Real> &this_vec = this->Vec();
+    const MatrixBase<Real> &src_mat = mat.Mat();
+    const int32* index_map = elements.Data();
+    KALDI_ASSERT((Dim() == mat.NumRows() && trans == kNoTrans)
+                 || (Dim() == mat.NumCols() && trans == kTrans));
+    for (int32 i = 0; i < Dim(); i++) {
+      int32 j = index_map[i];
+      KALDI_ASSERT(j >= 0);
+      if (trans == kNoTrans) {
+        KALDI_ASSERT(j < mat.NumCols());
+        this_vec(i) = src_mat(i, j);
+      } else {
+        KALDI_ASSERT(j < mat.NumRows());
+        this_vec(i) = src_mat(j, i);
+      }
+    }
   }
 }
 

@@ -81,7 +81,7 @@ for i in `seq 1 $nj` ; do
 done
 
 echo "Converting statistics..."
-cat $confusion_files | cut -f 2- -d ' ' | sed 's/ *; */\n/g' | \
+cat $confusion_files | cut -f 2- -d ' ' | perl -ape 's/ *; */\n/g;' | \
   sed 's/ *$//g' | sed 's/^ *//g' | sort | uniq -c | \
   grep -v -E '<oov>|<sss>|<vns>|SIL' | \
   perl -ane '

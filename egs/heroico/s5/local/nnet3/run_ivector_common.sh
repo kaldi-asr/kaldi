@@ -37,6 +37,7 @@ if [ $stage -le 1 ]; then
     utils/data/perturb_data_dir_speed_3way.sh \
 	data/${train_set} \
 	data/${train_set}_sp
+
     echo "$0: making mfcc features for low-resolution speed-perturbed data"
     steps/make_mfcc.sh --cmd "$train_cmd" --nj 10 data/${train_set}_sp || exit 1;
     steps/compute_cmvn_stats.sh data/${train_set}_sp || exit 1;

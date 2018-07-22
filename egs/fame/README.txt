@@ -6,10 +6,10 @@ The Corpus consists of short utterances extracted from 203 audio segments of app
 
 A full description of the FAME! Speech Corpus is provided in:
 
-Yilmaz, E., Heuvel, H. van den, Van de Velde, H., Kampstra, F., Algra, J., Leeuwen, D. van:
+E. Yılmaz, H. van den Heuvel, J. Dijkstra, H. Van de Velde, F. Kampstra, J. Algra and D. van Leeuwen, "Open Source Speech and Language Resources for Frisian,"  In Proc. INTERSPEECH, pp. 1536-1540, San Francisco, CA, USA, Sept. 2016. 
 
-Open Source Speech and Language Resources for Frisian Language.
+Speaker clustering and verification corpus details are provided in:
 
-In: Proceedings Interspeech 2016, pp. 1536--1540, 8-12 September 2016, San Francisco
+E. Yılmaz, J. Dijkstra, H. Van de Velde, F. Kampstra, J. Algra, H. van den Heuvel and D. van Leeuwen, "Longitudinal Speaker Clustering and Verification Corpus with Code-switching Frisian-Dutch Speech," in Proc. INTERSPEECH, pp. 37-41 Stockholm, Sweden, August 2017.
 
-Please check http://www.ru.nl/clst/datasets/ to get the FAME! Speech Corpus
+Please check http://www.ru.nl/clst/datasets/ to get the FAME! Speech Corpus. The ASR scripts are in ./s5. The GMM-UBM and DNN-UBM SV scripts are in ./v1 and ./v2 respectively. 

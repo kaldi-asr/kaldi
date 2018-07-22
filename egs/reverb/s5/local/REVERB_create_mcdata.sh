@@ -50,7 +50,7 @@ fi
 
 # Download and install nist tools
 pushd $dir/ReleasePackage/reverb_tools_for_asr_ver2.0
-sed -e "s|^main$|targetSPHEREDir\=tools/SPHERE\ninstall_nist|" installTools > installnist
+perl -ape "s|^main$|targetSPHEREDir\=tools/SPHERE\ninstall_nist|;" installTools > installnist
 chmod u+x installnist
 ./installnist
 popd

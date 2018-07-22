@@ -8,8 +8,8 @@
 # probability of misses for individual languages are computed in 
 # local/lre07_eval/lre07_results.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 posterior_dir=$1

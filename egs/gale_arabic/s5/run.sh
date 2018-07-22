@@ -5,8 +5,8 @@ set -e
 # Copyright 2014 QCRI (author: Ahmed Ali)
 # Apache 2.0
 
-. path.sh
-. cmd.sh   ## You'll want to change cmd.sh to something that will work on your system.
+. ./path.sh
+. ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 nJobs=120
 nDecodeJobs=40

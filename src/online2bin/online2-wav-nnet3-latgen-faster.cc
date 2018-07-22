@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
         OnlineSilenceWeighting silence_weighting(
             trans_model,
             feature_info.silence_weighting_config,
-	    decodable_opts.frame_subsampling_factor);
+            decodable_opts.frame_subsampling_factor);
 
         SingleUtteranceNnet3Decoder decoder(decoder_opts, trans_model,
                                             decodable_info,
@@ -258,8 +258,9 @@ int main(int argc, char *argv[]) {
 
           decoder.AdvanceDecoding();
 
-          if (do_endpointing && decoder.EndpointDetected(endpoint_opts))
+          if (do_endpointing && decoder.EndpointDetected(endpoint_opts)) {
             break;
+          }
         }
         decoder.FinalizeDecoding();
 

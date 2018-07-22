@@ -86,7 +86,7 @@ struct FrameExtractionOptions {
                    "frame-length.  If false, the number of frames depends only on the "
                    "frame-shift, and we reflect the data at the ends.");
     opts->Register("allow-downsample", &allow_downsample,
-                   "If true, allow the input waveform to have a higher frequency than"
+                   "If true, allow the input waveform to have a higher frequency than "
                    "the specified --sample-frequency (and we'll downsample).");
   }
   int32 WindowShift() const {
@@ -116,7 +116,7 @@ struct FeatureWindowFunction {
    file with the given number of samples in it (assumed to have the same
    sampling rate as specified in 'opts').
 
-      @param [in] wave_length  The number of samples in the wave file.
+      @param [in] num_samples  The number of samples in the wave file.
       @param [in] opts     The frame-extraction options class
 
       @param [in] flush   True if we are asserting that this number of samples is

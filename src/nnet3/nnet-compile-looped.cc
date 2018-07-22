@@ -150,26 +150,24 @@ static void CreateComputationRequestInternal(
 }
 
 
-void CreateLoopedComputationRequestSimple(const Nnet &nnet,
-                                          int32 chunk_size,
-                                          int32 frame_subsampling_factor,
-                                          int32 ivector_period,
-                                          int32 extra_left_context_begin,
-                                          int32 extra_right_context,
-                                          int32 num_sequences,
-                                          ComputationRequest *request1,
-                                          ComputationRequest *request2,
-                                          ComputationRequest *request3) {
+void CreateLoopedComputationRequest(const Nnet &nnet,
+                                    int32 chunk_size,
+                                    int32 frame_subsampling_factor,
+                                    int32 ivector_period,
+                                    int32 left_context_begin,
+                                    int32 right_context,
+                                    int32 num_sequences,
+                                    ComputationRequest *request1,
+                                    ComputationRequest *request2,
+                                    ComputationRequest *request3) {
   bool has_ivector = (nnet.InputDim("ivector") > 0);
-  int32 left_context, right_context;
-  ComputeSimpleNnetContext(nnet, &left_context, &right_context);
   KALDI_ASSERT(chunk_size % frame_subsampling_factor == 0 &&
                chunk_size % nnet.Modulus() == 0 &&
                chunk_size % ivector_period == 0);
-  KALDI_ASSERT(extra_left_context_begin >= 0 && extra_right_context >= 0);
+  KALDI_ASSERT(left_context_begin >= 0 && right_context >= 0);
   // note, 'end' is one past the last one.
-  int32 chunk1_input_begin_t = - left_context - extra_left_context_begin,
-      chunk1_input_end_t = chunk_size + right_context + extra_right_context,
+  int32 chunk1_input_begin_t = - left_context_begin,
+      chunk1_input_end_t = chunk_size + right_context,
       chunk2_input_begin_t = chunk1_input_end_t,
       chunk2_input_end_t = chunk2_input_begin_t + chunk_size,
       chunk3_input_begin_t = chunk2_input_end_t,
@@ -349,10 +347,25 @@ void CompileLooped(const Nnet &nnet,
 }
 
 
+void CreateLoopedComputationRequestSimple(const Nnet &nnet,
+                                          int32 chunk_size,
+                                          int32 frame_subsampling_factor,
+                                          int32 ivector_period,
+                                          int32 extra_left_context_begin,
+                                          int32 extra_right_context,
+                                          int32 num_sequences,
+                                          ComputationRequest *request1,
+                                          ComputationRequest *request2,
+                                          ComputationRequest *request3) {
+  int32 left_context, right_context;
+  ComputeSimpleNnetContext(nnet, &left_context, &right_context);
 
-
-
-
+  CreateLoopedComputationRequest(nnet, chunk_size, frame_subsampling_factor,
+                                 ivector_period,
+                                 extra_left_context_begin + left_context,
+                                 extra_right_context + right_context,
+                                 num_sequences, request1, request2, request3);
+}
 
 } // namespace nnet3
 } // namespace kaldi

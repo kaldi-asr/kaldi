@@ -4,7 +4,7 @@
 
 # this script contains some common (shared) parts of the run_nnet*.sh scripts.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -12,7 +12,7 @@ num_threads_ubm=32
 ivector_extractor=
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -27,7 +27,7 @@ if [ $stage -le 1 ] && [ -z $ivector_extractor ]; then
   # them overwrite each other.
   mfccdir=mfcc_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/hkust-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/mfcc/hkust-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
   for datadir in train dev; do
@@ -58,20 +58,19 @@ for line in sys.stdin.readlines():
 fi
 
 if [ $stage -le 2 ] && [ -z $ivector_extractor ]; then
-  # Train a system just for its LDA+MLLT transform.  We use --num-iters 13
-  # because after we get the transform (12th iter is the last), any further
-  # training is pointless.
-  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
-    --realign-iters "" \
+  # perform PCA on the data
+  echo "$0: computing a PCA transform from the no-pitch hires data."
+  steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=3 --right-context=3" \
-    5000 10000 data/train_hires_nopitch data/lang \
-    ${gmm_dir}_ali exp/nnet3/tri5
+    --max-utts 10000 --subsample 2 \
+    data/${train_set}_hires_nopitch \
+    exp/nnet3/tri5_pca
 fi
 
 if [ $stage -le 3 ] && [ -z $ivector_extractor ]; then
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 \
     --num-frames 700000 \
-    data/train_hires_nopitch 512 exp/nnet3/tri5 exp/nnet3/diag_ubm
+    data/train_hires_nopitch 512 exp/nnet3/tri5_pca exp/nnet3/diag_ubm
 fi
 
 if [ $stage -le 4 ] && [ -z $ivector_extractor ]; then
@@ -127,7 +126,7 @@ if [ $stage -le 6 ]; then
   rm -f exp/nnet3/.error 2>/dev/null
   ivectordir=exp/nnet3/ivectors_${train_set}
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
-    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/egs/hkust-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b0{5,6,7,8}/$USER/kaldi-data/ivectors/hkust-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
   # We extract iVectors on all the train data, which will be what we train the
   # system on.  With --utts-per-spk-max 2, the script.  pairs the utterances

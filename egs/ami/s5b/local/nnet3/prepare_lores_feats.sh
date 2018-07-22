@@ -22,7 +22,7 @@ use_ihm_ali=false # If true, we use alignments from the IHM data (which is bette
 train_set=train   # you might set this to e.g. train_cleaned.
 
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

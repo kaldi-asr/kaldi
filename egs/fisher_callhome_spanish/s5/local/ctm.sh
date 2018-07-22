@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 
-. cmd.sh
+. ./cmd.sh
 
 split=test
 data_dir=data/test
@@ -10,7 +10,7 @@ lang_dir=data/lang
 
 # Create the STM file
 # Always create this file before creating the CTM files so that
-# channel numbers are properly created. 
+# channel numbers are properly created.
 if [ ! -f $data_dir/stm ]; then
     /export/a11/guoguo/babel/103-bengali-limitedLP.official/local/prepare_stm.pl $data_dir
 fi

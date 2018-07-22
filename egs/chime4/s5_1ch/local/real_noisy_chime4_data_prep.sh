@@ -10,6 +10,8 @@ set -e
 
 # Modified from the script for CHiME2 baseline
 # Shinji Watanabe 02/13/2015
+# Modified to use data of six channels
+# Szu-Jui Chen 09/29/2017
 
 # Config:
 eval_flag=true # make it true when the evaluation data are released
@@ -29,7 +31,7 @@ echo "$0 $@"  # Print the command line for logging
 audio_dir=$1/data/audio/16kHz/isolated
 trans_dir=$1/data/transcriptions
 
-echo "extract 5th channel (CH5.wav, the center bottom edge in the front of the tablet) for noisy data"
+echo "extract all channels (CH[1-6].wav) for noisy data"
 
 dir=`pwd`/data/local/data
 lmdir=`pwd`/data/local/nist_lm
@@ -53,10 +55,10 @@ fi
 
 cd $dir
 
-find $audio_dir -name '*CH5.wav' | grep 'tr05_bus_real\|tr05_caf_real\|tr05_ped_real\|tr05_str_real' | sort -u > tr05_real_noisy.flist
-find $audio_dir -name '*CH5.wav' | grep 'dt05_bus_real\|dt05_caf_real\|dt05_ped_real\|dt05_str_real' | sort -u > dt05_real_noisy.flist
+find $audio_dir -name '*CH[1-6].wav' | grep 'tr05_bus_real\|tr05_caf_real\|tr05_ped_real\|tr05_str_real' | sort -u > tr05_real_noisy.flist
+find $audio_dir -name '*CH[1-6].wav' | grep 'dt05_bus_real\|dt05_caf_real\|dt05_ped_real\|dt05_str_real' | sort -u > dt05_real_noisy.flist
 if $eval_flag; then
-find $audio_dir -name '*CH5.wav' | grep 'et05_bus_real\|et05_caf_real\|et05_ped_real\|et05_str_real' | sort -u > et05_real_noisy.flist
+find $audio_dir -name '*CH[1-6].wav' | grep 'et05_bus_real\|et05_caf_real\|et05_ped_real\|et05_str_real' | sort -u > et05_real_noisy.flist
 fi
 
 # make a dot format from json annotation files
@@ -73,16 +75,22 @@ for x in $list_set; do
 done
 
 #make a transcription from dot
-cat tr05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH5_REAL"}'> tr05_real_noisy.ids
+cat tr05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH1_REAL"}'> tr05_real_noisy.ids
 cat tr05_real.dot | sed -e 's/(.*)//' > tr05_real_noisy.txt
-paste -d" " tr05_real_noisy.ids tr05_real_noisy.txt | sort -k 1 > tr05_real_noisy.trans1
-cat dt05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH5_REAL"}'> dt05_real_noisy.ids
+paste -d" " tr05_real_noisy.ids tr05_real_noisy.txt | \
+awk '{print}{sub(/CH1/, "CH2",$0);print}{sub(/CH2/, "CH3",$0);print}{sub(/CH3/, "CH4",$0);print}{sub(/CH4/, "CH5",$0);print}{sub(/CH5/, "CH6",$0);print}' | \
+sort -k 1 > tr05_real_noisy.trans1
+cat dt05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH1_REAL"}'> dt05_real_noisy.ids
 cat dt05_real.dot | sed -e 's/(.*)//' > dt05_real_noisy.txt
-paste -d" " dt05_real_noisy.ids dt05_real_noisy.txt | sort -k 1 > dt05_real_noisy.trans1
+paste -d" " dt05_real_noisy.ids dt05_real_noisy.txt | \
+awk '{print}{sub(/CH1/, "CH2",$0);print}{sub(/CH2/, "CH3",$0);print}{sub(/CH3/, "CH4",$0);print}{sub(/CH4/, "CH5",$0);print}{sub(/CH5/, "CH6",$0);print}' | \
+sort -k 1 > dt05_real_noisy.trans1
 if $eval_flag; then
-cat et05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH5_REAL"}'> et05_real_noisy.ids
+cat et05_real.dot | sed -e 's/(\(.*\))/\1/' | awk '{print $NF ".CH1_REAL"}'> et05_real_noisy.ids
 cat et05_real.dot | sed -e 's/(.*)//' > et05_real_noisy.txt
-paste -d" " et05_real_noisy.ids et05_real_noisy.txt | sort -k 1 > et05_real_noisy.trans1
+paste -d" " et05_real_noisy.ids et05_real_noisy.txt | \
+awk '{print}{sub(/CH1/, "CH2",$0);print}{sub(/CH2/, "CH3",$0);print}{sub(/CH3/, "CH4",$0);print}{sub(/CH4/, "CH5",$0);print}{sub(/CH5/, "CH6",$0);print}' | \
+sort -k 1 > et05_real_noisy.trans1
 fi
 
 # Do some basic normalization steps.  At this point we don't remove OOVs--

@@ -21,7 +21,7 @@
 #ifndef KALDI_FEAT_FEATURE_FBANK_H_
 #define KALDI_FEAT_FEATURE_FBANK_H_
 
-#include<map>
+#include <map>
 #include <string>
 
 #include "feat/feature-common.h"

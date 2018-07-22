@@ -8,7 +8,7 @@ txt_dvds=${@:1:${#}-1} # all the txt cds correspoding to the audio corpus; check
 
 
 top_pwd=`pwd`
-txtdir=$galeData/txt 
+txtdir=$galeData/txt
 mkdir -p $txtdir; cd $txtdir
 
 for cdx in $txt_dvds; do
@@ -18,11 +18,11 @@ for cdx in $txt_dvds; do
   elif [  -d "$cdx" ]; then
     ln -s $cdx `basename $cdx`
   else
-    echo "I don't really know what I shall do with $cdx " >&2 
+    echo "I don't really know what I shall do with $cdx " >&2
   fi
 done
 
-find -L . -type f -name "*.tdf" | while read file; do 
+find -L . -type f -name "*.tdf" | while read file; do
 sed '1,3d' $file  # delete the first 3 lines
 done >  all.tmp$$
 
@@ -35,13 +35,13 @@ perl -e '
       @arr= split /\t/,$_;
       $start=sprintf ("%0.3f",$arr[2]);$rStart=$start;$start=~s/\.//; $start=~s/^0+$/0/; $start=~s/^0+([^0])/$1/; # remove zeros at the beginning
       $end=sprintf ("%0.3f",$arr[3]);$rEnd=$end;$end=~s/^0+([^0])/$1/;$end=~s/\.//;
-	  if ( ($arr[11] !~ m/report/) && ($arr[11] !~ m/conversational/) ){$arr[11]="UNK";}
-	  $id="$arr[11] $arr[0] $arr[0]_${start}_${end} $rStart $rEnd\n";
-	  next if ($rStart == $rEnd);
-	  $id =~ s/.sph//g;
-	  print ID $id;
+      if ( ($arr[11] !~ m/report/) && ($arr[11] !~ m/conversational/) ){$arr[11]="UNK";}
+      $id="$arr[11] $arr[0] $arr[0]_${start}_${end} $rStart $rEnd\n";
+      next if ($rStart == $rEnd);
+      $id =~ s/.sph//g;
+      print ID $id;
       print TXT "$arr[7]\n";
- }' "all.tmp$$ allid.tmp$$ contentall.tmp$$" 
+ }' "all.tmp$$ allid.tmp$$ contentall.tmp$$"
 
 
 perl ${top_pwd}/local/normalize_transcript_BW.pl contentall.tmp$$ contentall.buck.tmp$$
@@ -57,4 +57,4 @@ rm -fr $txtdir
 cd $top_pwd
 echo data prep text succeeded
 
-exit 0 
+exit 0

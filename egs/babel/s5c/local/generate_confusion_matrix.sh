@@ -81,7 +81,7 @@ for i in `seq 1 $nj` ; do
 done
 
 echo "Converting statistics..."
-cat $confusion_files | cut -f 2- -d ' ' | sed 's/ *; */\n/g'| sort | uniq -c | \
+cat $confusion_files | cut -f 2- -d ' ' | perl -ape 's/ *; */\n/g;'| sort | uniq -c | \
   grep -v -E '<oov>|<sss>|<vns>|SIL' | \
   perl -ane '
     die unless scalar @F == 3;

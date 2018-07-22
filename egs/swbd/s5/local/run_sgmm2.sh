@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 # This is as run_sgmm2.sh but uses the "SGMM2" version of the code and
 # scripts, with various improvements.

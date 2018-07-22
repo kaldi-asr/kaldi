@@ -11,12 +11,10 @@
 cmd=run.pl
 skip_scoring=false
 max_ngram_order=4
-N=10
-inv_acwt=12
-weight=1.0  # Interpolation weight for RNNLM.
-# End configuration section.
+acwt=0.1
+weight=0.5  # Interpolation weight for RNNLM.
 rnnlm_ver=
-#layer_string=
+# End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
 
@@ -56,11 +54,6 @@ if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
   first_arg=$rnnlm_dir/rnn.wlist
 fi
 
-if [ "$rnnlm_ver" == "tensorflow" ]; then
-  rescoring_binary="lattice-lmrescore-tf-rnnlm"
-  first_arg="$rnnlm_dir/unk.probs $rnnlm_dir/wordlist.rnn.final"
-fi
-
 oldlm=$oldlang/G.fst
 if [ -f $oldlang/G.carpa ]; then
   oldlm=$oldlang/G.carpa
@@ -70,7 +63,7 @@ elif [ ! -f $oldlm ]; then
 fi
 
 [ ! -f $oldlm ] && echo "$0: Missing file $oldlm" && exit 1;
-[ ! -f $rnnlm_dir/rnnlm ] && [ ! -d $rnnlm_dir/rnnlm ] && echo "$0: Missing file $rnnlm_dir/rnnlm" && exit 1;
+[ ! -f $rnnlm_dir/rnnlm ] && echo "$0: Missing file $rnnlm_dir/rnnlm" && exit 1;
 [ ! -f $rnnlm_dir/unk.probs ] &&\
   echo "$0: Missing file $rnnlm_dir/unk.probs" && exit 1;
 [ ! -f $oldlang/words.txt ] &&\
@@ -82,8 +75,6 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
   || exit 1;
 
 oldlm_command="fstproject --project_output=true $oldlm |"
-
-acwt=`perl -e "print (1.0/$inv_acwt);"`
 
 mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
@@ -112,7 +103,7 @@ if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
   local/score.sh --cmd "$cmd" $data $oldlang $outdir
 else
-  echo "Not scoring because requested so..."
+  echo "$0: Not scoring because --skip-scoring was specified."
 fi
 
 exit 0;

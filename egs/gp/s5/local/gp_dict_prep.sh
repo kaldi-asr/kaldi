@@ -65,7 +65,7 @@ pushd $config_dir > /dev/null
 [ -f lang_codes.txt ] || error_exit "$PROG: Mapping for language name to 2-letter code not found.";
 
 popd > /dev/null
-[ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
+[ -f path.sh ] && . ./path.sh  # Sets the PATH to contain necessary executables
 
 # (1) Normalize the dictionary
 for L in $LANGUAGES; do

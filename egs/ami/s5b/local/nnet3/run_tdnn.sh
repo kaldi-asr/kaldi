@@ -23,7 +23,6 @@
 # local/nnet3/run_tdnn.sh --mic sdm1 --use-ihm-ali true --affix _cleaned2 --gmm tri4a --train-set train_cleaned2 &
 
 
-
 set -e -o pipefail -u
 
 # First the options that are passed through to run_ivector_common.sh
@@ -49,7 +48,7 @@ remove_egs=true
 relu_dim=850
 num_epochs=3
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

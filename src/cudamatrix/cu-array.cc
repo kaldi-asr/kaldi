@@ -1,6 +1,8 @@
 // cudamatrix/cu-array.cc
 
 // Copyright 2016  Brno University of Technology (author: Karel Vesely)
+//           2017  Shiyin Kang
+
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -33,11 +35,35 @@
 
 namespace kaldi {
 
-template<> 
-void CuArray<int32>::Set(const int32 &value) {
+template<>
+void CuArrayBase<int32>::Sequence(const int32 base) {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+
+    dim3 dimBlock(CU1DBLOCK);
+    dim3 dimGrid(n_blocks(Dim(), CU1DBLOCK));
+
+    cuda_sequence(dimGrid, dimBlock, Data(), Dim(), base);
+    CU_SAFE_CALL(cudaGetLastError());
+
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    for (int32 i = 0; i < dim_; i++) {
+      data_[i] = base + i;
+    }
+  }
+}
+
+
+template<>
+void CuArrayBase<int32>::Set(const int32 &value) {
+  if (dim_ == 0) return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK);
@@ -58,11 +84,11 @@ void CuArray<int32>::Set(const int32 &value) {
 }
 
 
-template<> 
-void CuArray<int32>::Add(const int32 &value) {
+template<>
+void CuArrayBase<int32>::Add(const int32 &value) {
   if (dim_ == 0) return;
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled()) { 
+  if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
 
     dim3 dimBlock(CU2DBLOCK);
@@ -80,7 +106,6 @@ void CuArray<int32>::Add(const int32 &value) {
       data_[i] += value;
     }
   }
-} 
-
+}
 
 }  // namespace kaldi

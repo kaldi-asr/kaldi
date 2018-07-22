@@ -3,7 +3,7 @@
 # This script is invoked from ../run.sh
 # It contains some SGMM-related scripts that I am breaking out of the main run.sh for clarity.
 
-. cmd.sh
+. ./cmd.sh
 
 # Note: you might want to try to give the option --spk-dep-weights=false to train_sgmm2.sh;
 # this takes out the "symmetric SGMM" part which is not always helpful.

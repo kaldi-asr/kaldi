@@ -62,6 +62,7 @@ class DeterminizeLatticeTask {
     }
     delete lat_; // This is no longer needed so we can delete it now;
     lat_ = NULL;
+    fst::Connect(&det_clat_); // remove states not leading to any final state,
     if (minimize_) {
       PushCompactLatticeStrings(&det_clat_);
       PushCompactLatticeWeights(&det_clat_);

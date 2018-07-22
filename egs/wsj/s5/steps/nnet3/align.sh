@@ -6,6 +6,8 @@
 # Apache 2.0
 
 # Computes training alignments using nnet3 DNN
+# Warning: this script uses GPUs by default, and this is generally not
+# an efficient use of GPUs. Set --use-gpu false to make it run on CPU.
 
 # Begin configuration section.
 nj=4
@@ -14,7 +16,6 @@ cmd=run.pl
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 beam=10
 retry_beam=40
-transform_dir=
 iter=final
 use_gpu=true
 frames_per_chunk=50
@@ -31,8 +32,11 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
-   echo "Usage: $0 [--transform-dir <transform-dir>] <data-dir> <lang-dir> <src-dir> <align-dir>"
+   echo "Usage: $0 <data-dir> <lang-dir> <src-dir> <align-dir>"
    echo "e.g.: $0 data/train data/lang exp/nnet4 exp/nnet4_ali"
+   echo "Warning: this script uses GPUs by default, and this is generally not"
+   echo "an efficient use of GPUs. Set --use-gpu false to make it run on CPU."
+   echo ""
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"
@@ -48,6 +52,7 @@ dir=$4
 oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
+touch $dir/per_utt
 sdata=$data/split${nj}utt
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || \
    split_data.sh --per-utt $data $nj || exit 1;
@@ -83,27 +88,6 @@ cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 cp $srcdir/cmvn_opts $dir 2>/dev/null
 
 feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
-
-if [ ! -z "$transform_dir" ]; then
-  echo "$0: using transforms from $transform_dir"
-  [ ! -s $transform_dir/num_jobs ] && \
-    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
-  nj_orig=$(cat $transform_dir/num_jobs)
-
-  if [ ! -f $transform_dir/raw_trans.1 ]; then
-    echo "$0: expected $transform_dir/raw_trans.1 to exist (--transform-dir option)"
-    exit 1;
-  fi
-  if [ $nj -ne $nj_orig ]; then
-    # Copy the transforms into an archive with an index.
-    for n in $(seq $nj_orig); do cat $transform_dir/raw_trans.$n; done | \
-       copy-feats ark:- ark,scp:$dir/raw_trans.ark,$dir/raw_trans.scp || exit 1;
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/raw_trans.scp ark:- ark:- |"
-  else
-    # number of jobs matches with alignment dir.
-    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/raw_trans.JOB ark:- ark:- |"
-  fi
-fi
 
 ivector_opts=
 if [ ! -z "$online_ivector_dir" ]; then

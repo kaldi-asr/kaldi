@@ -7,7 +7,7 @@
 
 [ -f ./path.sh ] && . ./path.sh
 . utils/parse_options.sh
-. cmd.sh
+. ./cmd.sh
 
 if [ -e data/train_dev ] ;then
     dev_set=train_dev

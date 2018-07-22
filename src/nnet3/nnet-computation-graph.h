@@ -439,7 +439,7 @@ class ComputationStepsComputer {
   ///                         (step-index, index-into-step), so that for any cindex_id c,
   ///                         (*steps)[locations[c].first][locations[c].second] == c.
   ///                          It's possible in principle if there are non-simple
-  ///                          Components, that for node corresponding to component-input
+  ///                          Components, that for nodes corresponding to component-input
   ///                          descriptors, a cindex might be present in more than one step,
   ///                          so it doesn't follow that if (*steps)[i][j] == c, then
   ///                          locations[c] == (i,j).
@@ -547,6 +547,15 @@ class ComputationStepsComputer {
   /// (*steps_)[i][j] == c.  This is also an output (we get the pointer in
   /// the constructor).
   std::vector<std::pair<int32, int32> > *locations_;
+
+
+  /// dim_range_nodes_ is used when allocating steps for nodes of type kDimRangeNode.
+  /// This is a set of (source_step, dim_range_node_index),
+  /// where source_step is the step in which we computed of the input
+  /// of the dim-range node (this step will be for a node of type kComponentNode).
+  /// This just tells us whether we've already added a particular dim-range node
+  /// for this step, so we know whether we need to add it again.
+  std::unordered_set<std::pair<int32, int32>, PairHasher<int32> > dim_range_nodes_;
 };
 
 

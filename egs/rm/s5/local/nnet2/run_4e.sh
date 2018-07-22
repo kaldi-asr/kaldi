@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 
 # This example runs on top of "raw-fMLLR" features.

@@ -37,7 +37,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (
@@ -64,7 +64,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (
@@ -92,7 +92,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (
@@ -125,7 +125,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (
@@ -158,7 +158,7 @@ export kwsets=( `find ${mydirs[@]} -type d  -name "kwset*" -not \( -ipath "*syll
     done | \
     while IFS='' read -r line || [[ -n "$line" ]]; do
       file=$(echo $line | sed 's/:.*//g' )
-      cat $file  | sed 's/ *, */\n/g' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
+      cat $file  | perl -ape 's/ *, */\n/g;' | sed 's/ //g' | grep -E 'TWV|THR'  | paste -s | paste - <(echo $file)
     done
   ) | column -t | sort -k3,3g | \
   (

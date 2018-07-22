@@ -79,8 +79,9 @@ void UnitTestNnetAnalyze() {
     for (int32 n = 0; n < 30; n++) {
       int32 s = RandInt(1, computation.submatrices.size() - 1);
       int32 c = RandInt(0, nc - 1);
-      KALDI_LOG << "First access of submatrix " << submatrix_strings[s]
-                << " is command " << PrintCommand(nc, analysis.FirstAccess(s));
+      KALDI_LOG << "First nontrivial access of submatrix " << submatrix_strings[s]
+                << " is command "
+                << PrintCommand(nc, analysis.FirstNontrivialAccess(s));
       KALDI_LOG << "Last access of submatrix " << submatrix_strings[s]
                 << " is command " << PrintCommand(nc, analysis.LastAccess(s));
       KALDI_LOG << "Last write access of submatrix " << submatrix_strings[s]

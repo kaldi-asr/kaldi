@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-. cmd.sh
+. ./cmd.sh
 
 split=dev
 data_dir=data/dev

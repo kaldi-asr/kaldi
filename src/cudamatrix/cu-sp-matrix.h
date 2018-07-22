@@ -48,9 +48,9 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   template<class R, class S>
   friend R TraceSpSp(const CuSpMatrix<R> &A, const CuSpMatrix<S> &B);
  public:
-  
+
   CuSpMatrix(): CuPackedMatrix<Real>() {}
-  
+
   explicit CuSpMatrix(MatrixIndexT r, MatrixResizeType resize_type = kSetZero)
     : CuPackedMatrix<Real>(r, resize_type) {}
 
@@ -69,8 +69,8 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   }
 
   CuSpMatrix<Real> &operator = (const CuSpMatrix<Real> &in);
-  
-  ~CuSpMatrix() {}  
+
+  ~CuSpMatrix() {}
 
   inline void Resize(MatrixIndexT nRows, MatrixResizeType resize_type = kSetZero) {
     CuPackedMatrix<Real>::Resize(nRows, resize_type);
@@ -81,7 +81,7 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
   bool IsUnit(Real tol = 0.001) const;
 
   bool ApproxEqual(const CuSpMatrix<Real> &other, Real tol = 0.001) const;
-  
+
   void CopyFromSp(const CuSpMatrix<Real> &other) {
     CuPackedMatrix<Real>::CopyFromPacked(other);
   }
@@ -91,8 +91,8 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
 
   void CopyFromMat(const CuMatrixBase<Real> &orig,
                    SpCopyType copy_type = kTakeLower);
-  
-  void CopyToSp(SpMatrix<Real> *dst) const { //added const by hxu
+
+  void CopyToSp(SpMatrix<Real> *dst) const {
     CuPackedMatrix<Real>::CopyToPacked(dst);
   }
 
@@ -104,7 +104,7 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
                  static_cast<UnsignedMatrixIndexT>(this->num_rows_));
     return CuValue<Real>(this->data_ + (r * (r+1)) / 2 + c);
   }
-  
+
   inline Real operator() (MatrixIndexT r, MatrixIndexT c) const {
     if (static_cast<UnsignedMatrixIndexT>(c) >
         static_cast<UnsignedMatrixIndexT>(r))
@@ -123,7 +123,7 @@ class CuSpMatrix : public CuPackedMatrix<Real> {
 
   void AddMat2(const Real alpha, const CuMatrixBase<Real> &M,
                MatrixTransposeType transM, const Real beta);
-  
+
   void AddSp(const Real alpha, const CuSpMatrix<Real> &Ma) {
     this->AddPacked(alpha, Ma);
   }

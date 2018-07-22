@@ -17,7 +17,7 @@
 # The time taken is dominated by the lattice generation anyway, so this isn't
 # a huge deal.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -35,7 +35,7 @@ cleanup=false  # run with --cleanup true --stage 6 to clean up (remove large thi
                # alignments and degs).
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

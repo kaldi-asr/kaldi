@@ -7,7 +7,7 @@
 train_stage=-10
 use_gpu=true
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
 

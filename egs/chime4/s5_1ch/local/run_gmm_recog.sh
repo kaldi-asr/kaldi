@@ -84,7 +84,7 @@ if [ $stage -le 1 ]; then
   for x in $tasks; do
     if [ ! -e data/$x/feats.scp ]; then
       steps/make_mfcc.sh --nj 8 --cmd "$train_cmd" \
-	data/$x exp/make_mfcc/$x $mfccdir
+        data/$x exp/make_mfcc/$x $mfccdir
       steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
     fi
   done
@@ -96,7 +96,7 @@ if [ $stage -le 2 ]; then
   if [ ! -d data/dt05_multi_$enhan ] || [ ! -d data/et05_multi_$enhan ]; then
     utils/combine_data.sh data/dt05_multi_$enhan data/dt05_simu_$enhan data/dt05_real_$enhan
     if $eval_flag; then
-    utils/combine_data.sh data/et05_multi_$enhan data/et05_simu_$enhan data/et05_real_$enhan
+      utils/combine_data.sh data/et05_multi_$enhan data/et05_simu_$enhan data/et05_real_$enhan
     fi
   fi
 fi
@@ -108,10 +108,10 @@ if [ $stage -le 3 ]; then
   steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
     exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/dt05_simu_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_dt05_simu_$enhan &
   if $eval_flag; then
-  steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
-    exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/et05_real_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_et05_real_$enhan &
-  steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
-    exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/et05_simu_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_et05_simu_$enhan &
+    steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
+      exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/et05_real_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_et05_real_$enhan &
+    steps/decode_fmllr.sh --nj 4 --num-threads 3 --cmd "$decode_cmd" \
+      exp/tri3b_tr05_multi_${train}/graph_tgpr_5k data/et05_simu_$enhan exp/tri3b_tr05_multi_${train}/decode_tgpr_5k_et05_simu_$enhan &
   fi
   wait;
 fi

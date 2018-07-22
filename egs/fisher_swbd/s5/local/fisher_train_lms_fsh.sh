@@ -3,7 +3,7 @@
 
 # To be run from one directory above this script.
 
-. path.sh
+. ./path.sh
 
 text=data/train_fisher/text
 lexicon=data/local/dict/lexicon.txt 

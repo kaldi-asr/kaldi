@@ -9,9 +9,9 @@
 # is to limit the number of transitions, so we can decode reasonably fast, and the
 # graph won't blow up.  This is probably going to be most useful for things like
 # language-id.
+#
+#  See also steps/make_phone_graph.sh
 
-
-# We might later have options here; if not, I'll emove this.
 
 echo "$0 $@"  # Print the command line for logging
 

@@ -60,7 +60,6 @@ fi
     cd phonetisaurus-g2p
     #checkout the current kaldi tag
     git checkout -b kaldi kaldi
-    cd src
     ./configure --with-openfst-includes=${TOOLS}/openfst/include --with-openfst-libs=${TOOLS}/openfst/lib
     make
 )
@@ -80,7 +79,7 @@ fi
   wd=`readlink -f $wd || pwd`
 
   echo "export PHONETISAURUS=\"$wd/phonetisaurus-g2p\""
-  echo "export PATH=\"\$PATH:\${PHONETISAURUS}/src/bin\""
+  echo "export PATH=\"\$PATH:\${PHONETISAURUS}:\${PHONETISAURUS}/src/scripts\""
 ) >> env.sh
 
 echo >&2 "Installation of PHONETISAURUS finished successfully"

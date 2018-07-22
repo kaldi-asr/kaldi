@@ -3,6 +3,7 @@
 // Copyright 2009-2011  Ondrej Glembek;  Microsoft Corporation;  Lukas Burget;
 //                      Saarland University;  Petr Schwarz;  Yanmin Qian;
 //                      Karel Vesely;  Go Vivace Inc.;  Haihua Xu
+//           2017       Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -51,8 +52,10 @@ class MatrixBase {
   friend class CuMatrix<Real>;
   friend class CuSubMatrix<Real>;
   friend class CuPackedMatrix<Real>;
-
   friend class PackedMatrix<Real>;
+  friend class SparseMatrix<Real>;
+  friend class SparseMatrix<float>;
+  friend class SparseMatrix<double>;
 
   /// Returns number of rows (or zero for emtpy matrix).
   inline MatrixIndexT  NumRows() const { return num_rows_; }
@@ -324,6 +327,14 @@ class MatrixBase {
   /// the same).
   void AddToRows(Real alpha, Real *const *dst) const;
 
+  /// For each row i of *this, adds this->Row(i) to
+  /// dst->Row(indexes(i)) if indexes(i) >= 0, else do nothing.
+  /// Requires that all the indexes[i] that are >= 0
+  /// be distinct, otherwise the behavior is undefined.
+  void AddToRows(Real alpha,
+                 const MatrixIndexT *indexes,
+                 MatrixBase<Real> *dst) const;
+
   /// Applies floor to all matrix elements
   void ApplyFloor(Real floor_val);
 
@@ -335,6 +346,11 @@ class MatrixBase {
 
   /// Exponentiate each of the elements.
   void ApplyExp();
+
+  /// For each element x of the matrix, set it to
+  /// (x < 0 ? exp(x) : x + 1).  This function is used
+  /// in our RNNLM training.
+  void ApplyExpSpecial();
 
   /// Applies power to all matrix elements
   void ApplyPow(Real power);
@@ -545,6 +561,24 @@ class MatrixBase {
   /// *this += alpha * M [or M^T]
   void AddMat(const Real alpha, const MatrixBase<Real> &M,
               MatrixTransposeType transA = kNoTrans);
+
+  /// *this += alpha * A [or A^T].
+  void AddSmat(Real alpha, const SparseMatrix<Real> &A,
+               MatrixTransposeType trans = kNoTrans);
+
+  /// (*this) = alpha * op(A) * B + beta * (*this), where A is sparse.
+  /// Multiplication of sparse with dense matrix.  See also AddMatSmat.
+  void AddSmatMat(Real alpha, const SparseMatrix<Real> &A,
+                  MatrixTransposeType transA, const MatrixBase<Real> &B,
+                  Real beta);
+
+  /// (*this) = alpha * A * op(B) + beta * (*this), where B is sparse
+  /// and op(B) is either B or trans(B) depending on the 'transB' argument.
+  /// This is multiplication of a dense by a sparse matrix.  See also
+  /// AddSmatMat.
+  void AddMatSmat(Real alpha, const MatrixBase<Real> &A,
+                  const SparseMatrix<Real> &B, MatrixTransposeType transB,
+                  Real beta);
 
   /// *this = beta * *this + alpha * M M^T, for symmetric matrices.  It only
   /// updates the lower triangle of *this.  It will leave the matrix asymmetric;

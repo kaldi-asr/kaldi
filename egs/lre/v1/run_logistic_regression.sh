@@ -5,8 +5,8 @@
 # An in progress example script for training and evaluating
 # using logistic regression.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 config=conf/logistic-regression.conf

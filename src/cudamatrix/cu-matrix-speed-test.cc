@@ -2,6 +2,7 @@
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 //           2015  Guoguo Chen
+//           2017  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,6 +31,7 @@
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-sp-matrix.h"
+#include "cudamatrix/cu-sparse-matrix.h"
 
 using namespace kaldi;
 
@@ -978,6 +980,35 @@ template<typename Real> void TestCuMatrixAddRowRanges(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuSparseMatrixTraceMatSmat(int32 dim) {
+  for (int32 n = 0; n < 2; n++) {
+    MatrixTransposeType trans = (n == 0 ? kNoTrans : kTrans);
+    BaseFloat time_in_secs = 0.02;
+
+    CuMatrix<Real> M(dim, dim);
+    M.SetRandn();
+
+    std::vector<std::vector<std::pair<MatrixIndexT, Real> > > pairs(dim);
+    for (auto && row : pairs) {
+      row.push_back( { MatrixIndexT(Rand() % dim), Real(Rand() % dim) });
+    }
+    SparseMatrix<Real> Ncpu(dim, pairs);
+    CuSparseMatrix<Real> N(Ncpu);
+
+    Timer tim;
+    int32 iter = 0;
+    for (;tim.Elapsed() < time_in_secs; iter++) {
+      TraceMatSmat(M, N, trans);
+    }
+    BaseFloat fdim = dim;
+    BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For CuSparseMatrix::TraceMatSmat" << NameOf<Real>()
+              << (trans == kTrans ? " [transposed]" : "") << ", for dim = "
+              << dim << ", speed was " << gflops << " gigaflops.";
+  }
+}
+
+
 template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
@@ -1038,6 +1069,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixGroupMaxDeriv<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixTraceMatMat<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuSparseMatrixTraceMatSmat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixCopyLowerToUpper<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)

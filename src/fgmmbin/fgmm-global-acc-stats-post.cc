@@ -65,39 +65,39 @@ int main(int argc, char *argv[]) {
     int32 num_components = atoi(po.GetArg(2).c_str());
 
     AccumFullGmm fgmm_accs;
-    
+
     double tot_like = 0.0, tot_weight = 0.0;
 
-    SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
-    RandomAccessPosteriorReader post_reader(post_rspecifier);
+    SequentialPosteriorReader post_reader(post_rspecifier);
+    RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessBaseFloatVectorReader weights_reader(weights_rspecifier);
     int32 num_done = 0, num_err = 0;
 
-    for (; !feature_reader.Done(); feature_reader.Next()) {
-      std::string key = feature_reader.Key();
-      const Matrix<BaseFloat> &mat = feature_reader.Value();
-      int32 file_frames = mat.NumRows();
-      if (!post_reader.HasKey(key)) {
-        KALDI_WARN << "No posteriors available for utterance "
+    for (; !post_reader.Done(); post_reader.Next()) {
+      std::string key = post_reader.Key();
+      Posterior post = post_reader.Value();
+      if (!feature_reader.HasKey(key)) {
+        KALDI_WARN << "No features available for utterance "
                    << key;
         num_err++;
         continue;
       }
+      const Matrix<BaseFloat> &mat = feature_reader.Value(key);
+      int32 file_frames = mat.NumRows();
 
-      Posterior post = post_reader.Value(key);     
       // Initialize the FGMM accs before processing the first utt.
       if (num_done == 0) {
-        fgmm_accs.Resize(num_components, mat.NumCols(), 
+        fgmm_accs.Resize(num_components, mat.NumCols(),
           StringToGmmFlags(update_flags_str));
       }
 
       BaseFloat file_like = 0.0,
-          file_weight = 0.0; // total of weights of frames (will each be 
+          file_weight = 0.0; // total of weights of frames (will each be
                              // 1 unless --weights option supplied.
       Vector<BaseFloat> weights;
       if (weights_rspecifier != "") { // We have per-frame weighting.
         if (!weights_reader.HasKey(key)) {
-          KALDI_WARN << "No per-frame weights available for utterance " 
+          KALDI_WARN << "No per-frame weights available for utterance "
                      << key;
           num_err++;
           continue;
@@ -118,7 +118,7 @@ int main(int argc, char *argv[]) {
         num_err++;
         continue;
       }
-        
+
       for (int32 i = 0; i < file_frames; i++) {
         BaseFloat weight = (weights.Dim() != 0) ? weights(i) : 1.0;
         if (weight == 0.0) continue;
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
         ScalePosterior(weight, &post);
         file_like += TotalPosterior(post);
         for (int32 j = 0; j < post[i].size(); j++)
-          fgmm_accs.AccumulateForComponent(data, post[i][j].first, 
+          fgmm_accs.AccumulateForComponent(data, post[i][j].first,
             post[i][j].second);
       }
 
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Done " << num_done << " files; "
               << num_err << " with errors.";
     KALDI_LOG << "Overall likelihood per "
-              << "frame = " << (tot_like/tot_weight) << " over " 
+              << "frame = " << (tot_like/tot_weight) << " over "
               << tot_weight << " (weighted) frames.";
 
     WriteKaldiObject(fgmm_accs, accs_wxfilename, binary);

@@ -201,7 +201,12 @@ fi
 
 # duplicate the `speaker' i-vector to all `utterances' of that speaker,
 if [ $stage -le 5 ]; then
-  utils/apply_map.pl -f 2 $dir/ivectors_spk.scp <$data/utt2spk >$dir/ivectors_spk-as-utt.scp
+  # filter utt2spk (remove speakers with no iVector),
+  awk -v ivec_spk=$dir/ivectors_spk.scp \
+    'BEGIN{ while(getline < ivec_spk) { spk_has_ivec[$1] = 1; }} { spk=$2; if(spk_has_ivec[spk]) { print $0 }}' \
+    $data/utt2spk >$dir/utt2spk.filt
+  # expand the list of i-vectors,
+  utils/apply_map.pl -f 2 $dir/ivectors_spk.scp <$dir/utt2spk.filt >$dir/ivectors_spk-as-utt.scp
 fi
 
 echo "$0: done extracting iVectors (per-speaker, per-sentence) into '$dir'"

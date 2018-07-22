@@ -9,7 +9,7 @@
 # and 2 for speech.
 
 set -e -o pipefail -u
-. path.sh
+. ./path.sh
 
 cmd=run.pl
 stage=-10

@@ -18,7 +18,7 @@ export cuda_cmd="queue.pl --gpu 1"
 
 # the rest of this file is present for historical reasons.  it's better to
 # create and edit conf/queue.conf for cluster-specific configuration.
-if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
+if [[ "$(hostname -f)" == "*.fit.vutbr.cz" ]]; then
   # BUT cluster:
   queue="all.q@@blade,all.q@@speech"
   storage="matylda5"

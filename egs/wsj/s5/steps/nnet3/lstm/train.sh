@@ -73,9 +73,9 @@ label_delay=5  # the lstm output is used to predict the label with the specified
 lstm_delay=" -1 -2 -3 "  # the delay to be used in the recurrence of lstms
                          # "-1 -2 -3" means the a three layer stacked LSTM would use recurrence connections with
                          # delays -1, -2 and -3 at layer1 lstm, layer2 lstm and layer3 lstm respectively
-			 # "[-1,1] [-2,2] [-3,3]" means a three layer stacked bi-directional LSTM would use recurrence
-			 # connections with delay -1 for the forward, 1 for the backward at layer1,
-			 # -2 for the forward, 2 for the backward at layer2, and so on at layer3
+                         # "[-1,1] [-2,2] [-3,3]" means a three layer stacked bi-directional LSTM would use recurrence
+                         # connections with delay -1 for the forward, 1 for the backward at layer1,
+                         # -2 for the forward, 2 for the backward at layer2, and so on at layer3
 num_bptt_steps=    # this variable counts the number of time steps to back-propagate from the last label in the chunk
                    # it is usually same as chunk_width
 

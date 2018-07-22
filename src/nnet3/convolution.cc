@@ -22,6 +22,7 @@
 #include <iomanip>
 #include "nnet3/convolution.h"
 #include "nnet3/nnet-parse.h"
+#include "nnet3/nnet-compile-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -1413,46 +1414,6 @@ void CompileConvolutionComputation(
 }
 
 
-
-// This function outputs a sorted list of pairs of (n, x) values that are
-// encountered in the provided list of Indexes.
-static void GetNxList(const std::vector<Index> &indexes,
-                      std::vector<std::pair<int32, int32> > *pairs) {
-  // set of (n,x) pairs
-  std::unordered_set<std::pair<int32, int32>, PairHasher<int32> > n_x_set;
-
-  for (std::vector<Index>::const_iterator iter = indexes.begin();
-       iter != indexes.end(); ++iter)
-    n_x_set.insert(std::pair<int32, int32>(iter->n, iter->x));
-  pairs->clear();
-  pairs->reserve(n_x_set.size());
-  for (std::unordered_set<std::pair<int32, int32>, PairHasher<int32> >::iterator
-           iter = n_x_set.begin(); iter != n_x_set.end(); ++iter)
-    pairs->push_back(*iter);
-  std::sort(pairs->begin(), pairs->end());
-}
-
-
-// This function outputs a sorted list of the 't' values that are
-// encountered in the provided list of Indexes.
-static void GetTList(const std::vector<Index> &indexes,
-                     std::vector<int32> *t_values) {
-  // set of t values
-  std::unordered_set<int32> t_set;
-
-  for (std::vector<Index>::const_iterator iter = indexes.begin();
-       iter != indexes.end(); ++iter)
-    if (iter->t != kNoTime)
-      t_set.insert(iter->t);
-  t_values->clear();
-  t_values->reserve(t_set.size());
-  for (std::unordered_set<int32>::iterator iter = t_set.begin();
-       iter != t_set.end(); ++iter)
-    t_values->push_back(*iter);
-  std::sort(t_values->begin(), t_values->end());
-}
-
-
 // Returns the greatest common divisor of the differences between the values in
 // 'vec', or zero if the vector has zero or one element.  It is an error if
 // 'vec' has repeated elements (which could cause a crash in 'Gcd').
@@ -1675,6 +1636,34 @@ void MakeComputation(const ConvolutionModel &model,
     computation->steps.push_back(step);
   }
   ComputeTempMatrixSize(opts, computation);
+}
+
+
+void ConvolutionComputationIo::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ConvCompIo>");
+  WriteBasicType(os, binary, num_images);
+  WriteBasicType(os, binary, start_t_in);
+  WriteBasicType(os, binary, t_step_in);
+  WriteBasicType(os, binary, num_t_in);
+  WriteBasicType(os, binary, start_t_out);
+  WriteBasicType(os, binary, t_step_out);
+  WriteBasicType(os, binary, num_t_out);
+  WriteBasicType(os, binary, reorder_t_in);
+  WriteToken(os, binary, "</ConvCompIo>");
+}
+
+
+void ConvolutionComputationIo::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<ConvCompIo>");
+  ReadBasicType(is, binary, &num_images);
+  ReadBasicType(is, binary, &start_t_in);
+  ReadBasicType(is, binary, &t_step_in);
+  ReadBasicType(is, binary, &num_t_in);
+  ReadBasicType(is, binary, &start_t_out);
+  ReadBasicType(is, binary, &t_step_out);
+  ReadBasicType(is, binary, &num_t_out);
+  ReadBasicType(is, binary, &reorder_t_in);
+  ExpectToken(is, binary, "</ConvCompIo>");
 }
 
 } // namespace time_height_convolution

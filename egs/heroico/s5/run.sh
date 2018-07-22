@@ -24,7 +24,7 @@ subsdata="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.z
 # don't change tmpdir, the location is used explicitly in scripts in local/.
 tmpdir=data/local/tmp
 
-if [ $stage -le 0 ]; then
+if [ $stage -le -1 ]; then
   # download the corpus from openslr
   local/heroico_download.sh
 fi
@@ -40,7 +40,6 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  # prepare the lang directory
   utils/prepare_lang.sh \
     data/local/dict "<UNK>" \
     data/local/lang data/lang
@@ -68,7 +67,7 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  # extract acoustic features
+  echo "$0: extracting acoustic features."
   mkdir -p exp
 
   for fld in native nonnative test devtest train; do
@@ -123,7 +122,6 @@ fi
 
 if [ $stage -le 10 ]; then
   echo "$0: Starting delta system alignment"
-
   steps/align_si.sh \
     --nj 8 --cmd "$train_cmd" data/train data/lang exp/tri1 exp/tri1_ali
 
@@ -148,7 +146,6 @@ fi
 if  [ $stage -le 11 ]; then
   echo "$0: Starting LDA+MLLT system alignment"
 
-  # align with lda and mllt adapted triphones
   steps/align_si.sh \
     --use-graphs true --nj 8 --cmd "$train_cmd" \
     data/train data/lang exp/tri2b exp/tri2b_ali
@@ -158,7 +155,6 @@ if  [ $stage -le 11 ]; then
     --cmd "$train_cmd" \
     3100 50000 data/train data/lang exp/tri2b_ali exp/tri3b
 
-  # align with tri3b models
   echo "$0 Starting exp/tri3b_ali"
   steps/align_fmllr.sh \
     --nj 8 --cmd "$train_cmd" \
@@ -171,8 +167,8 @@ if  [ $stage -le 11 ]; then
     utils/mkgraph.sh \
       data/lang_test exp/tri3b exp/tri3b/graph ||  exit 1;
 
-    # decode test sets with tri3b models
     for x in native nonnative devtest test; do
+      echo "$0: decoding $x with tri3b models."
       steps/decode_fmllr.sh \
         --nj 8 --cmd "$decode_cmd"  exp/tri3b/graph data/$x exp/tri3b/decode_${x}
     done
@@ -180,7 +176,7 @@ if  [ $stage -le 11 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  # train and test chain models
+  echo "$0: train and test chain models."
   local/chain/run_tdnn.sh
 fi
 

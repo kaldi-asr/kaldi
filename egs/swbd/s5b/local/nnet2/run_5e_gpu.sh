@@ -14,7 +14,7 @@ dir=nnet5e_gpu
 temp_dir=
 train_stage=-10
 
-. cmd.sh
+. ./cmd.sh
 
 
 . utils/parse_options.sh

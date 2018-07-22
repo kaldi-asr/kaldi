@@ -13,14 +13,14 @@
 # Begin configuration section.
 nj=4
 cmd=run.pl
-stage=-6 # use this to resume partially finished training 
+stage=-6 # use this to resume partially finished training
 context_opts= # e.g. set it to "--context-width=5 --central-position=2"  for a
 # quinphone system.
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 num_iters=25   # Total number of iterations of training
 num_iters_alimdl=3 # Number of iterations for estimating alignment model.
 max_iter_inc=15 # Last iter to increase #substates on.
-realign_iters="5 10 15"; # Iters to realign on. 
+realign_iters="5 10 15"; # Iters to realign on.
 spkvec_iters="5 8 12 17" # Iters to estimate speaker vectors on.
 increase_iters="6 10 14"; # Iters on which to increase phn dim and/or spk dim;
     # rarely necessary, and if it is, only the 1st will normally be necessary.
@@ -116,11 +116,11 @@ normft2=`cat $alidir/normft2 2>/dev/null`
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
-  delta) 
-  	echo "$0: feature type is $feat_type"
-  	;;
-  lda) 
-  	echo "$0: feature type is $feat_type"
+  delta)
+    echo "$0: feature type is $feat_type"
+    ;;
+  lda)
+    echo "$0: feature type is $feat_type"
     cp $alidir/{lda,final}.mat $dir/ || exit 1;
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
@@ -136,7 +136,7 @@ elif [ "$feat_type" == "lda" ]; then
   feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 fi
 
-# set up feature stream 2;  this are usually bottleneck or posterior features, 
+# set up feature stream 2;  this are usually bottleneck or posterior features,
 # which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
 
@@ -187,7 +187,7 @@ if [ $stage -le -5 ]; then
 fi
 
 if [ $stage -le -4 ]; then
-  echo "$0: Initializing the model"  
+  echo "$0: Initializing the model"
   # Note: if phn_dim > feat_dim+1 or spk_dim > feat_dim, these dims
   # will be truncated on initialization.
   $cmd $dir/log/init_sgmm.log \
@@ -212,7 +212,7 @@ if [ $stage -le -2 ]; then
 fi
 
 if [ $stage -le -1 ]; then
-  echo "$0: converting alignments" 
+  echo "$0: converting alignments"
   $cmd JOB=1:$nj $dir/log/convert_ali.JOB.log \
     convert-ali $alidir/final.mdl $dir/0.mdl $dir/tree "ark:gunzip -c $alidir/ali.JOB.gz|" \
     "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
@@ -240,10 +240,10 @@ while [ $x -lt $num_iters ]; do
          ark:$dir/tmp_vecs.JOB '&&' mv $dir/tmp_vecs.JOB $dir/vecs.JOB || exit 1;
      fi
      spkvecs_opt="--spk-vecs=ark:$dir/vecs.JOB"
-   fi  
+   fi
    if [ $x -eq 0 ]; then
      flags=vwcSt # on the first iteration, don't update projections M or N
-   elif [ $spk_dim -gt 0 -a $[$x%2] -eq 1 -a $x -ge $first_spkvec_iter ]; then 
+   elif [ $spk_dim -gt 0 -a $[$x%2] -eq 1 -a $x -ge $first_spkvec_iter ]; then
      # Update N if we have speaker-vector space and x is odd,
      # and we've already updated the speaker vectors...
      flags=vNwSct
@@ -254,9 +254,9 @@ while [ $x -lt $num_iters ]; do
        flags=vwSct # no M on early iters, if --update-m-iter option given.
      fi
    fi
-   $spk_dep_weights && [ $x -ge $first_spkvec_iter ] && flags=${flags}u; # update 
+   $spk_dep_weights && [ $x -ge $first_spkvec_iter ] && flags=${flags}u; # update
    # spk-weight projections "u".
-   
+
    if [ $stage -le $x ]; then
      $cmd JOB=1:$nj $dir/log/acc.$x.JOB.log \
        sgmm2-acc-stats $spkvecs_opt --utt2spk=ark:$sdata1/JOB/utt2spk \
@@ -271,7 +271,7 @@ while [ $x -lt $num_iters ]; do
    if echo $increase_dim_iters | grep -w $x >/dev/null; then
      increase_dim_opts="--increase-phn-dim=$phn_dim --increase-spk-dim=$spk_dim"
      # Note: the command below might have a null effect on some iterations.
-     if [ $spk_dim -gt $feat_dim ]; then 
+     if [ $spk_dim -gt $feat_dim ]; then
        cmd JOB=1:$nj $dir/log/copy_vecs.$x.JOB.log \
          copy-vector --print-args=false --change-dim=$spk_dim \
          ark:$dir/vecs.JOB ark:$dir/vecs_tmp.$JOB '&&' \
@@ -328,7 +328,7 @@ if [ $spk_dim -gt 0 ]; then
     cur_alimdl=$dir/$[$x+1].alimdl
     x=$[$x+1]
   done
-  rm $dir/final.alimdl 2>/dev/null 
+  rm $dir/final.alimdl 2>/dev/null
   ln -s $x.alimdl $dir/final.alimdl
 fi
 
