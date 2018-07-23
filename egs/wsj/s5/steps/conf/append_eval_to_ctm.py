@@ -38,11 +38,11 @@ with open(eval_in, 'r') as f:
     assert(tag == 'op')
     hyp_vec = hyp_vec.split()
     op_vec = op_vec.split()
-    # Fill create eval vector with symbols 'C', 'S', 'I',
+    # Fill create eval vector with symbols 'C', 'S', 'I'
     assert(utt not in eval_vec)
     eval_vec[utt] = []
     for op,hyp in zip(op_vec, hyp_vec):
-      if hyp != '<eps>': eval_vec[utt].append(op)
+      if op != 'D': eval_vec[utt].append((op,hyp))
 
 # Load the 'ctm' into dictionary,
 ctm = dict()
@@ -56,9 +56,20 @@ with open(ctm_in) as f:
 ctm_eval = []
 for utt,ctm_part in ctm.iteritems():
   ctm_part.sort(key = operator.itemgetter(2)) # Sort by 'beg' time,
-  # extending the 'tuple' by '+':
-  merged = [ tup + (evl,) for tup,evl in zip(ctm_part,eval_vec[utt]) ]
-  ctm_eval.extend(merged)
+  try:
+    # merging 'tuples' by '+', the record has format:
+    # (utt, ch, beg, dur, ctm_wrd, conf, op, hyp_wrd)
+    merged = [ ctm_tup + evl_tup for ctm_tup,evl_tup in zip(ctm_part,eval_vec[utt]) ]
+    # check,
+    for j in range(len(merged)):
+      hyp_wrd = merged[j][-1]
+      ctm_wrd = merged[j][-4]
+      assert hyp_wrd == ctm_wrd, "We failed with words: hyp_wrd %s, ctm_wrd %s" % (hyp_wrd,ctm_wrd) # Check that words in 'ctm' and 'utt_stats' match!
+      merged[j] = merged[j][:-1] # dropping the 'hyp_wrd' (the last element of tuple),
+    # append,
+    ctm_eval.extend(merged)
+  except KeyError:
+    print 'Missing key', utt, 'in the word-evaluation stats from scoring'
 
 # Sort again,
 ctm_eval.sort(key = operator.itemgetter(0,1,2))

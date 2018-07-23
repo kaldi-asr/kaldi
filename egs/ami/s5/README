@@ -1,10 +1,14 @@
 = README =
+
+ Plese note, there is now a newer, more streamlined recipe in ../s5b that we will be
+ recommending going forward.
+
 - In this recipe you can build systems for 3 different conditions:
   - IHM : independent headset microphone, run_ihm.sh
   - MDM : multiple distant microphone, run_mdm.sh
   - SDM : single distant microphone, run_sdm.sh
 
-- Please run 'run_prepare_shared.sh' before buildin any system (prepares annotation and LM)
+- Please run 'run_prepare_shared.sh' before building any system (prepares annotation and LM)
 
 - To show the results run './RESULTS_(ihm,mdm,sdm)'
 
@@ -16,7 +20,7 @@
   - put 'stages' to the recipes,
   - fix the DNN recipe for LDA-MLLT features (we have no fMLLR),
   - use sclite scoring also for IHM => better logs,
-  - fixed check on #wavs after downloading, 
+  - fixed check on #wavs after downloading,
   - checked the IHM accuracy is same as in RESULTS_*!
   - defined 10h subset (now unused, 0.2-0.3 degradation at 'tri4a' if subset used for mono + tri1)
 

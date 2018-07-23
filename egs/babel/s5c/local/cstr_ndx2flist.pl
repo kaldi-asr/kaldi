@@ -16,7 +16,7 @@
 # limitations under the License.
 
 # This is modified from the script in standard Kaldi recipe to account
-# for the way the WSJ data is structured on the Edinburgh systems. 
+# for the way the WSJ data is structured on the Edinburgh systems.
 # - Arnab Ghoshal, 12/1/12
 
 # This program takes as its standard input an .ndx file from the WSJ corpus that looks
@@ -25,7 +25,7 @@
 #;;
 #;; Index for WSJ0 SI-short Sennheiser training data
 #;; Data is read WSJ sentences, Sennheiser mic.
-#;; Contains 84 speakers X (~100 utts per speaker MIT/SRI and ~50 utts 
+#;; Contains 84 speakers X (~100 utts per speaker MIT/SRI and ~50 utts
 #;; per speaker TI) = 7236 utts
 #;;
 #11_1_1:wsj0/si_tr_s/01i/01ic0201.wv1

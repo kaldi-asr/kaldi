@@ -7,7 +7,7 @@ train_stage=-100
 # and uses various combinations of VTLN warping factor and time-warping
 # factor to artificially expand the amount of data.
 
-. cmd.sh
+. ./cmd.sh
 
 . utils/parse_options.sh  # to parse the --stage option, if given
 

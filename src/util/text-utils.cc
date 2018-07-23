@@ -19,6 +19,8 @@
 
 #include "util/text-utils.h"
 #include <limits>
+#include <map>
+#include <algorithm>
 #include "base/kaldi-common.h"
 
 namespace kaldi {
@@ -160,96 +162,182 @@ bool IsLine(const std::string &line) {
   return true;
 }
 
+template <class T>
+class NumberIstream{
+ public:
+  explicit NumberIstream(std::istream &i) : in_(i) {}
 
-inline bool starts_with(const std::string &in, const std::string &prefix) {
-  return in.substr(0, prefix.size()) == prefix;
-}
+  NumberIstream & operator >> (T &x) {
+    if (!in_.good()) return *this;
+    in_ >> x;
+    if (!in_.fail() && RemainderIsOnlySpaces()) return *this;
+    return ParseOnFail(&x);
+  }
 
-inline bool stricmp(const std::string &in, const std::string &prefix) {
-  int ret = KALDI_STRCASECMP(in.c_str(), prefix.c_str());
-  return ret == 0;
-}
+ private:
+  std::istream &in_;
 
-inline bool is_nan_text(const std::string &in, const std::string &prefix) {
-  if (in.size() < prefix.size())
-    return false;
+  bool RemainderIsOnlySpaces() {
+    if (in_.tellg() != std::istream::pos_type(-1)) {
+      std::string rem;
+      in_ >> rem;
 
-  if (stricmp(in, prefix))
-    return true;
+      if (rem.find_first_not_of(' ') != std::string::npos) {
+        // there is not only spaces
+        return false;
+      }
+    }
 
-  for (int i = 0; i < prefix.size(); ++i)
-    if (tolower(in[i]) != tolower(prefix[i]))
-      return false;
-
-  for (int i = prefix.size(); i < in.size(); ++i)
-    if (!isalpha(in[i]) && (in[i] != '_'))
-      return false;
-
-  return true;
-}
-
-template<typename T>
-bool convert_special_number(const std::string &str, T *out) {
-  if (stricmp(str, "infinity") || stricmp(str, "inf") ||
-      starts_with(str, "1.#INF")) {
-    *out = std::numeric_limits<T>::infinity();
-    return true;
-  } else if (stricmp(str, "-infinity") || stricmp(str, "-inf") ||
-             starts_with(str, "-1.#INF")) {
-    *out = -std::numeric_limits<T>::infinity();
-    return true;
-  } else if (is_nan_text(str, "nan") || starts_with(str, "1.#QNAN")) {
-    *out = std::numeric_limits<T>::quiet_NaN();
-    return true;
-  } else if (is_nan_text(str, "-nan") || starts_with(str, "-1.#QNAN")) {
-    *out = -std::numeric_limits<T>::quiet_NaN();
+    in_.clear();
     return true;
   }
-  return false;
-}
 
+  NumberIstream & ParseOnFail(T *x) {
+    std::string str;
+    in_.clear();
+    in_.seekg(0);
+    // If the stream is broken even before trying
+    // to read from it or if there are many tokens,
+    // it's pointless to try.
+    if (!(in_ >> str) || !RemainderIsOnlySpaces()) {
+      in_.setstate(std::ios_base::failbit);
+      return *this;
+    }
+
+    std::map<std::string, T> inf_nan_map;
+    // we'll keep just uppercase values.
+    inf_nan_map["INF"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["+INF"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["-INF"] = - std::numeric_limits<T>::infinity();
+    inf_nan_map["INFINITY"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["+INFINITY"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["-INFINITY"] = - std::numeric_limits<T>::infinity();
+    inf_nan_map["NAN"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["+NAN"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["-NAN"] = - std::numeric_limits<T>::quiet_NaN();
+    // MSVC
+    inf_nan_map["1.#INF"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["-1.#INF"] = - std::numeric_limits<T>::infinity();
+    inf_nan_map["1.#QNAN"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["-1.#QNAN"] = - std::numeric_limits<T>::quiet_NaN();
+
+    std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+
+    if (inf_nan_map.find(str) != inf_nan_map.end()) {
+      *x = inf_nan_map[str];
+    } else {
+      in_.setstate(std::ios_base::failbit);
+    }
+
+    return *this;
+  }
+};
+
+
+template <typename T>
 bool ConvertStringToReal(const std::string &str,
-                         double *out) {
-  const char *this_str = str.c_str();
-  char *end = NULL;
-  errno = 0;
+                         T *out) {
+  std::istringstream iss(str);
 
-#if defined(_MSC_VER)
-  // TODO: check if the new MSVC already supports it
-  // depending on claims of the C++11 support, it should have
-  if (convert_special_number(str, out))
-    return true;
-#endif  // defined(_MSC_VER)
+  NumberIstream<T> i(iss);
 
-  double d = KALDI_STRTOD(this_str, &end);
-  if (end != this_str)
-    while (isspace(*end)) end++;
-  if (end == this_str || *end != '\0' || errno != 0)
+  i >> *out;
+
+  if (iss.fail()) {
+    // Number conversion failed.
     return false;
-  *out = d;
+  }
+
   return true;
 }
 
+template
 bool ConvertStringToReal(const std::string &str,
-                         float *out) {
-  const char *this_str = str.c_str();
-  char *end = NULL;
-  errno = 0;
+                         float *out);
+template
+bool ConvertStringToReal(const std::string &str,
+                         double *out);
 
-#ifdef _MSC_VER
-  // TODO: check if the new MSVC already supports it
-  // depending on claims of the C++11 support, it should have
-  if (convert_special_number(str, out))
-    return true;
-#endif  // _MSC_VER
 
-  float f = KALDI_STRTOF(this_str, &end);
-  if (end != this_str)
-    while (isspace(*end)) end++;
-  if (end == this_str || *end != '\0' || errno != 0)
-    return false;
-  *out = f;
-  return true;
+
+/*
+  This function is a helper function of StringsApproxEqual.  It should be
+  thought of as a recursive function-- it was designed that way-- but rather
+  than actually recursing (which would cause problems with stack overflow), we
+  just set the args and return to the start.
+
+  The 'decimal_places_tolerance' argument is just passed in from outside,
+  see the documentation for StringsApproxEqual in text-utils.h to see an
+  explanation.  The argument 'places_into_number' provides some information
+  about the strings 'a' and 'b' that precedes the current pointers.
+  For purposes of this comment, let's define the 'decimal' of a number
+  as the part that comes after the decimal point, e.g. in '99.123',
+  '123' would be the decimal.  If 'places_into_number' is -1, it means
+  we're not currently inside some place like that (i.e. it's not the
+  case that we're pointing to the '1' or the '2' or the '3').
+  If it's 0, then we'd be pointing to the first place after the decimal,
+  '1' in this case.  Note if one of the numbers is shorter than the
+  other, like '99.123' versus '99.1234' and 'a' points to the first '3'
+  while 'b' points to the second '4', 'places_into_number' referes to the
+  shorter of the two, i.e. it would be 2 in this example.
+
+
+ */
+bool StringsApproxEqualInternal(const char *a, const char *b,
+                                int32 decimal_places_tolerance,
+                                int32 places_into_number) {
+start:
+  char ca = *a, cb = *b;
+  if (ca == cb) {
+    if (ca == '\0') {
+      return true;
+    } else {
+      if (places_into_number >= 0) {
+        if (isdigit(ca)) {
+          places_into_number++;
+        } else {
+          places_into_number = -1;
+        }
+      } else {
+        if (ca == '.') {
+          places_into_number = 0;
+        }
+      }
+      a++;
+      b++;
+      goto start;
+    }
+  } else {
+    if (places_into_number  >= decimal_places_tolerance &&
+        (isdigit(ca) || isdigit(cb))) {
+      // we're potentially willing to accept this difference between the
+      // strings.
+      if (isdigit(ca)) a++;
+      if (isdigit(cb)) b++;
+      // we'll have advanced at least one of the two strings.
+      goto start;
+    } else if (places_into_number >= 0 &&
+               ((ca == '0' && !isdigit(cb)) || (cb == '0' && !isdigit(ca)))) {
+      // this clause is designed to ensure that, for example,
+      // "0.1" would count the same as "0.100001".
+      if (ca == '0') a++;
+      else b++;
+      places_into_number++;
+      goto start;
+    } else {
+      return false;
+    }
+  }
+
 }
+
+
+bool StringsApproxEqual(const std::string &a,
+                        const std::string &b,
+                        int32 decimal_places_tolerance) {
+  return StringsApproxEqualInternal(a.c_str(), b.c_str(),
+                                    decimal_places_tolerance, -1);
+}
+
 
 }  // end namespace kaldi

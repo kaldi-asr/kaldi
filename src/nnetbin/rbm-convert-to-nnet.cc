@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
 
 
     bool binary_write = true;
-    
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
 
@@ -50,13 +50,13 @@ int main(int argc, char *argv[]) {
     std::string model_in_filename = po.GetArg(1),
         model_out_filename = po.GetArg(2);
 
-    Nnet nnet; 
+    Nnet nnet;
     {
       bool binary_read;
       Input ki(model_in_filename, &binary_read);
       nnet.Read(ki.Stream(), binary_read);
     }
-    
+
     KALDI_ASSERT(nnet.NumComponents() == 1);
     KALDI_ASSERT(nnet.GetComponent(0).GetType() == kaldi::nnet1::Component::kRbm);
     RbmBase& rbm = dynamic_cast<RbmBase&>(nnet.GetComponent(0));
@@ -68,8 +68,8 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Written model to " << model_out_filename;
     return 0;
-  } catch(const std::exception& e) {
-    std::cerr << e.what() << '\n';
+  } catch(const std::exception &e) {
+    std::cerr << e.what();
     return -1;
   }
 }

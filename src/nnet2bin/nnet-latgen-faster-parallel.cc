@@ -27,7 +27,7 @@
 #include "decoder/decoder-wrappers.h"
 #include "nnet2/decodable-am-nnet.h"
 #include "base/timer.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 
 int main(int argc, char *argv[]) {
@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi::nnet2;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -49,16 +49,16 @@ int main(int argc, char *argv[]) {
     BaseFloat acoustic_scale = 0.1;
     LatticeFasterDecoderConfig config;
     TaskSequencerConfig sequencer_config; // has --num-threads option
-    
+
     std::string word_syms_filename;
     sequencer_config.Register(&po);
     config.Register(&po);
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() < 4 || po.NumArgs() > 6) {
       po.PrintUsage();
       exit(1);
@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
         lattice_wspecifier = po.GetArg(4),
         words_wspecifier = po.GetOptArg(5),
         alignment_wspecifier = po.GetOptArg(6);
-    
+
     TransitionModel trans_model;
     AmNnet am_nnet;
     {
@@ -89,31 +89,32 @@ int main(int argc, char *argv[]) {
                  << lattice_wspecifier;
 
     TaskSequencer<DecodeUtteranceLatticeFasterClass> sequencer(sequencer_config);
-    
+
     Int32VectorWriter words_writer(words_wspecifier);
 
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") 
+    if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
     // We support reading in a vector to describe each speaker, if the neural
     // net requires this (i.e. it was trained with this).
-    
+
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
     int num_done = 0, num_err = 0;
-    VectorFst<StdArc> *decode_fst = NULL;
+    Fst<StdArc> *decode_fst = NULL;
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
-      decode_fst = fst::ReadFstKaldi(fst_in_str);
+      decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
+      timer.Reset();
 
       {
-    
+
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();
           const Matrix<BaseFloat> &features (feature_reader.Value());
@@ -138,14 +139,14 @@ int main(int argc, char *argv[]) {
                   allow_partial, &alignment_writer, &words_writer,
                   &compact_lattice_writer, &lattice_writer,
                   &tot_like, &frame_count, &num_done, &num_err, NULL);
-              
+
           sequencer.Run(task); // takes ownership of "task",
                                // and will delete it when done.
         }
       }
     } else { // We have different FSTs for different utterances.
       SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_in_str);
-      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);          
+      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !fst_reader.Done(); fst_reader.Next()) {
         std::string utt = fst_reader.Key();
         if (!feature_reader.HasKey(utt)) {
@@ -184,16 +185,17 @@ int main(int argc, char *argv[]) {
       }
     }
     sequencer.Wait(); // Waits for all tasks to be done.
-    delete decode_fst;   
-    
+    delete decode_fst;
+
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor per thread assuming 100 frames/sec is "
               << (sequencer_config.num_threads * elapsed * 100.0 / frame_count);
     KALDI_LOG << "Done " << num_done << " utterances, failed for "
               << num_err;
-    KALDI_LOG << "Overall log-likelihood per frame is " << (tot_like/frame_count) << " over "
-              << frame_count<<" frames.";
+    KALDI_LOG << "Overall log-likelihood per frame is "
+              << (tot_like / frame_count) << " over " << frame_count
+              << " frames.";
 
     delete word_syms;
     if (num_done != 0) return 0;

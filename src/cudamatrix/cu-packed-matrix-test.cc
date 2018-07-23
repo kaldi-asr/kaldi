@@ -243,6 +243,7 @@ template<typename Real> void CudaPackedMatrixUnitTest() {
 int main() {
   using namespace kaldi;
 #if HAVE_CUDA == 1
+  CuDevice::Instantiate().SetDebugStrideMode(true);
   // Select the GPU
   CuDevice::Instantiate().SelectGpuId("yes");
 #endif

@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
   try {
     const char *usage  =
         "Convert an ARPA format language model into an FST\n"
-        "Usage: arpa2fst [opts] <input_arpa> <output_fst>\n"
+        "Usage: arpa2fst [opts] <input-arpa> <output-fst>\n"
         " e.g.: arpa2fst --disambig-symbol=#0 --read-symbol-table="
         "data/lang/words.txt lm/input.arpa G.fst\n\n"
         "Note: When called without switches, the output G.fst will contain\n"
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
 
     fst::SymbolTable* symbols;
     if (!read_syms_filename.empty()) {
-      // Use existing symbols. Required symbolds must be in the table.
+      // Use existing symbols. Required symbols must be in the table.
       kaldi::Input kisym(read_syms_filename);
       symbols = fst::SymbolTable::ReadText(
           kisym.Stream(), PrintableWxfilename(read_syms_filename));
@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
       options.oov_handling = ArpaParseOptions::kSkipNGram;
       if (!disambig_symbol.empty()) {
         disambig_symbol_id = symbols->Find(disambig_symbol);
-        if (disambig_symbol_id == fst::SymbolTable::kNoSymbol)
+        if (disambig_symbol_id == -1) // fst::kNoSymbol
           KALDI_ERR << "Symbol table " << read_syms_filename
                     << " has no symbol for " << disambig_symbol;
       }
@@ -118,7 +118,10 @@ int main(int argc, char *argv[]) {
     // Actually compile LM.
     KALDI_ASSERT (symbols != NULL);
     ArpaLmCompiler lm_compiler(options, disambig_symbol_id, symbols);
-    ReadKaldiObject(arpa_rxfilename, &lm_compiler);
+    {
+      Input ki(arpa_rxfilename);
+      lm_compiler.Read(ki.Stream());
+    }
 
     // Sort the FST in-place if requested by options.
     if (ilabel_sort) {

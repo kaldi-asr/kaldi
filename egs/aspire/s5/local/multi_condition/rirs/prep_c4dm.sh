@@ -12,8 +12,8 @@ output_bit=16
 DBname=C4DM
 file_splitter=  #script to generate job scripts given the command file
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 . ./utils/parse_options.sh
 
 if [ $# != 3 ]; then
@@ -88,7 +88,7 @@ total_files=$(echo ${data_files[@]}|wc -w)
 echo "" > $log_dir/${DBname}_type${type_num}.rir.list
 echo "Found $total_files impulse responses in ${RIR_home}/c4dm/"
 tmpdir=`mktemp -d $log_dir/c4dm_XXXXXX`
-tmpdir=`readlink -e $tmpdir`
+tmpdir=`utils/make_absolute.sh $tmpdir`
 file_count=1
 for data_file in ${data_files[@]}; do
   # c4dm has incompatible format of wav audio, which are not compatible with python's wav.read() function

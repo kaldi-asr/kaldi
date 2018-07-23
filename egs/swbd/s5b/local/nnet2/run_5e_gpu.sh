@@ -14,11 +14,11 @@ dir=nnet5e_gpu
 temp_dir=
 train_stage=-10
 
-. cmd.sh
+. ./cmd.sh
 
 
 . utils/parse_options.sh
-parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 ( 
   if [ ! -f exp/$dir/final.mdl ]; then

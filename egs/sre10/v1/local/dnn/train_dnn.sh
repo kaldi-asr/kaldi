@@ -6,11 +6,10 @@
 
 # It's best to run the commands in this one by one.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 mfccdir=`pwd`/mfcc
 set -e
-
 # the next command produces the data in local/train_all_asr
 local/dnn/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
    /export/corpora3/LDC/LDC2004S13 /export/corpora3/LDC/LDC2005S13
@@ -78,19 +77,19 @@ utils/subset_data_dir.sh --speakers data/train_asr 100000 data/train_asr_100k
 # The next commands are not necessary for the scripts to run, but increase
 # efficiency of data access by putting the mfcc's of the subset
 # in a contiguous place in a file.
-( . path.sh;
+( . ./path.sh;
   # make sure mfccdir is defined as above..
   cp data/train_asr_10k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_asr_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_10k_nodup.ark,$mfccdir/kaldi_fish_10k_nodup.scp \
   && cp $mfccdir/kaldi_fish_10k_nodup.scp data/train_asr_10k_nodup/feats.scp
 )
-( . path.sh;
+( . ./path.sh;
   # make sure mfccdir is defined as above..
   cp data/train_asr_30k/feats.scp{,.bak}
   copy-feats scp:data/train_asr_30k/feats.scp  ark,scp:$mfccdir/kaldi_fish_30k.ark,$mfccdir/kaldi_fish_30k.scp \
   && cp $mfccdir/kaldi_fish_30k.scp data/train_asr_30k/feats.scp
 )
-( . path.sh;
+( . ./path.sh;
   # make sure mfccdir is defined as above..
   cp data/train_asr_100k/feats.scp{,.bak}
   copy-feats scp:data/train_asr_100k/feats.scp  ark,scp:$mfccdir/kaldi_fish_100k.ark,$mfccdir/kaldi_fish_100k.scp \
@@ -169,5 +168,5 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # this will help find issues with the lexicon.
 # steps/cleanup/debug_lexicon.sh --nj 300 --cmd "$train_cmd" data/train_asr_100k data/lang exp/tri5a data/local/dict/lexicon.txt exp/debug_lexicon_100k
 
-## The following is based on the best current neural net recipe.
+# The following is based on an older nnet2 recipe.
 local/dnn/run_nnet2_multisplice.sh

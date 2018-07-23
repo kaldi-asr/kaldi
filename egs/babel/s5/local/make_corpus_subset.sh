@@ -40,8 +40,8 @@ fi
 mkdir -p $output_data_dir/transcription
 mkdir -p $output_data_dir/audio
 
-abs_src_dir=`readlink -f $input_data_dir` 
-abs_tgt_dir=`readlink -f $output_data_dir`
+abs_src_dir=`utils/make_absolute.sh $input_data_dir` 
+abs_tgt_dir=`utils/make_absolute.sh $output_data_dir`
 
 echo "Making subset..."
 for file_basename in `cat $input_data_list`; do

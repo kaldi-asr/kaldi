@@ -28,6 +28,7 @@
 #include <limits>
 #include <string>
 #include "base/kaldi-common.h"
+#include "matrix/kaldi-matrix.h"
 
 
 namespace kaldi {
@@ -235,12 +236,23 @@ class Input {
   KALDI_DISALLOW_COPY_AND_ASSIGN(Input);
 };
 
-template <class C> inline void ReadKaldiObject(const std::string &filename,
-                                               C *c) {
+template <class C> void ReadKaldiObject(const std::string &filename,
+                                        C *c) {
   bool binary_in;
   Input ki(filename, &binary_in);
   c->Read(ki.Stream(), binary_in);
 }
+
+// Specialize the template for reading matrices, because we want to be able to
+// support reading 'ranges' (row and column ranges), like foo.mat[10:20].
+template <> void ReadKaldiObject(const std::string &filename,
+                                 Matrix<float> *m);
+
+
+template <> void ReadKaldiObject(const std::string &filename,
+                                 Matrix<double> *m);
+
+
 
 template <class C> inline void WriteKaldiObject(const C &c,
                                                 const std::string &filename,

@@ -65,6 +65,89 @@ static void UnitTestSimple() {
   KALDI_LOG << "Test passed :)";
 }
 
+// Make sure the snip edges options works as expected, i.e.
+// disabling the option should introduce a delay equivalent to
+// half the window length
+static void UnitTestSnipEdges() {
+  KALDI_LOG << "=== UnitTestSnipEdges() ===\n";
+  PitchExtractionOptions op_SnipEdges, op_NoSnipEdges;
+  Matrix<BaseFloat> m1, m2;
+  ProcessPitchOptions opp;
+  int nbad = 0;
+
+  // Load test wave file
+  WaveData wave;
+  {
+    std::ifstream is("test_data/test.wav");
+    wave.Read(is);
+  }
+  KALDI_ASSERT(wave.Data().NumRows() == 1);
+  SubVector<BaseFloat> waveform(wave.Data(), 0);
+
+  // Process files with snip edge enabled or disabled, on various
+  // frame shifts and frame lengths
+  for (int fs = 4; fs <= 10; fs += 2) {
+    for (int wl = 20; wl <= 100; wl += 20) {
+      // Rather dirty way to round, but works fine
+      int32 ms_fs = (int32)(wave.SampFreq() * 0.001 * fs + 0.5);
+      int32 ms_wl = (int32)(wave.SampFreq() * 0.001 * wl + 0.5);
+      op_SnipEdges.snip_edges = true;
+      op_SnipEdges.frame_shift_ms = fs;
+      op_SnipEdges.frame_length_ms = wl;
+      op_NoSnipEdges.snip_edges = false;
+      op_NoSnipEdges.frame_shift_ms = fs;
+      op_NoSnipEdges.frame_length_ms = wl;
+      ComputeAndProcessKaldiPitch(op_SnipEdges, opp, waveform, &m1);
+      ComputeAndProcessKaldiPitch(op_NoSnipEdges, opp, waveform, &m2);
+
+      // Check the output differ in a predictable manner:
+      // 1. The length of the output should only depend on the window size & window shift
+      KALDI_LOG << "Output: " << m1.NumRows() << " ; " << m2.NumRows();
+      //   - with snip edges disabled, depends on file size and frame shift only */
+      AssertEqual(m2.NumRows(), ((int)(wave.Data().NumCols() + ms_fs / 2)) / ms_fs);
+      //   - with snip edges disabled, depend on file size, frame shift, frame length */
+      AssertEqual(m1.NumRows(), ((int)(wave.Data().NumCols() - ms_wl + ms_fs)) / ms_fs);
+      // 2. The signal should be delayed in a predictable manner
+      Vector<BaseFloat> f0_1(m1.NumRows());
+      f0_1.CopyColFromMat(m1, 1);
+      Vector<BaseFloat> f0_2(m2.NumRows());
+      f0_2.CopyColFromMat(m2, 1);
+
+      BaseFloat bcorr = -1;
+      int32 blag = -1;
+      int32 max_lag =  wl / fs * 2;
+      int num_frames_f0 = m1.NumRows() - max_lag;
+
+      /* Looks for the best correlation between the output signals,
+         identify the lag, compares it with theoretical value */
+      SubVector<BaseFloat> sub_vec1(f0_1, 0, num_frames_f0);
+      for (int32 lag = 0; lag < max_lag + 1; lag++) {
+        SubVector<BaseFloat> sub_vec2(f0_2, lag, num_frames_f0);
+        BaseFloat corr = VecVec(sub_vec1, sub_vec2);
+        if (corr > bcorr) {
+          bcorr = corr;
+          blag = lag;
+        }
+      }
+      KALDI_LOG << "Best lag: " << blag * fs << "ms with value: " << bcorr <<
+        "; expected lag: " << wl / 2 + 10 - fs / 2 << " ± " << fs;
+      // BP: the lag should in theory be equal to wl / 2 - fs / 2, but it seems
+      // to be: wl / 2 + 10 - fs / 2! It appears the 10 ms comes from the nccf_lag which
+      // is 82 samples with the default settings => nccf_lag / resample_freq / 2 => 10.25ms
+      // We should really be using the full_frame_length of the algorithm for accurate results,
+      // but there is no method to obtain it (and it is potentially variable), so that makes
+      // the pitch value *with snip edge* particularly unreliable.
+      if (!ApproxEqual(blag * fs, (BaseFloat)(wl / 2 + 10 - fs / 2), (BaseFloat)fs / wl)) {
+        KALDI_WARN << "Bad lag for window size " << wl << " and frame shift " << fs;
+        nbad++;
+      }
+      /*AssertEqual(blag * fs, (BaseFloat)(wl / 2 + 10 - fs / 2), (BaseFloat)fs / wl);*/
+    }
+  }
+  /* If more than 10% of tests fail, crash */
+  if (nbad > 9) KALDI_ERR << "Too many bad lags: " << nbad;
+
+}
 
 // Make sure that doing a calculation on the whole waveform gives
 // the same results as doing on the waveform broken into pieces.
@@ -147,7 +230,7 @@ static void UnitTestDelay() {
     ext_opt.nccf_ballast_online = true;  // this is necessary for the computation
     // to be identical regardless how many pieces we break the signal into.
 
-    int32 size = 10000 + rand() % 50000;
+    int32 size = 1000 + rand() % 5000;
 
     Vector<BaseFloat> v(size);
     // init with noise plus a sine-wave whose frequency is changing randomly.
@@ -211,7 +294,7 @@ static void UnitTestSearch() {
     op.nccf_ballast_online = true;  // this is necessary for the computation
     // to be identical regardless how many pieces we break the signal into.
 
-    int32 size = 10000 + rand() % 10000;
+    int32 size = 1000 + rand() % 1000;
 
     Vector<BaseFloat> v(size);
     // init with noise plus a sine-wave whose frequency is changing randomly.
@@ -513,6 +596,7 @@ void UnitTestProcess() {
 static void UnitTestFeatNoKeele() {
   UnitTestSimple();
   UnitTestPieces();
+  UnitTestSnipEdges();
   UnitTestDelay();
   UnitTestSearch();
 }

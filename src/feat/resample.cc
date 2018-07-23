@@ -155,7 +155,7 @@ void LinearResample::Resample(const VectorBase<BaseFloat> &input,
   int32 input_dim = input.Dim();
   int64 tot_input_samp = input_sample_offset_ + input_dim,
       tot_output_samp = GetNumOutputSamples(tot_input_samp, flush);
-  
+
   KALDI_ASSERT(tot_output_samp >= output_sample_offset_);
 
   output->Resize(tot_output_samp - output_sample_offset_);
@@ -365,5 +365,13 @@ BaseFloat ArbitraryResample::FilterFunc(BaseFloat t) const {
   return filter * window;
 }
 
-
+void DownsampleWaveForm(BaseFloat orig_freq, const VectorBase<BaseFloat> &wave,
+                        BaseFloat new_freq, Vector<BaseFloat> *new_wave) {
+  KALDI_ASSERT(new_freq < orig_freq);
+  BaseFloat lowpass_cutoff = 0.99 * 0.5 * new_freq;
+  int32 lowpass_filter_width = 6;
+  LinearResample signal_downsampler(orig_freq, new_freq,
+                                    lowpass_cutoff, lowpass_filter_width);
+  signal_downsampler.Resample(wave, true, new_wave);
+}
 }  // namespace kaldi

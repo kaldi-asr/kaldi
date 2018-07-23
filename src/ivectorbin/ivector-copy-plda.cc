@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: ivector-copy-plda <plda-in> <plda-out>\n"
         "e.g.: ivector-copy-plda --smoothing=0.1 plda plda.smooth0.1\n";
-    
+
     ParseOptions po(usage);
 
     BaseFloat smoothing = 0.0;
@@ -41,12 +41,12 @@ int main(int argc, char *argv[]) {
     po.Register("smoothing", &smoothing, "Factor used in smoothing within-class "
                 "covariance (add this factor times between-class covar)");
     po.Register("binary", &binary, "Write output in binary mode");
-    
+
     PldaConfig plda_config;
     plda_config.Register(&po);
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);

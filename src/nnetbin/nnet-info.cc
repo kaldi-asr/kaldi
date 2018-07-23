@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet-info [options] <nnet-in>\n"
         "e.g.:\n"
         " nnet-info 1.nnet\n";
-    
+
     ParseOptions po(usage);
     po.Read(argc, argv);
 
@@ -45,19 +45,19 @@ int main(int argc, char *argv[]) {
     std::string nnet_rxfilename = po.GetArg(1);
 
     // load the network
-    Nnet nnet; 
+    Nnet nnet;
     {
       bool binary_read;
       Input ki(nnet_rxfilename, &binary_read);
       nnet.Read(ki.Stream(), binary_read);
     }
 
-    std::cout << nnet.Info(); 
+    std::cout << nnet.Info();
 
     KALDI_LOG << "Printed info about " << nnet_rxfilename;
     return 0;
   } catch(const std::exception &e) {
-    std::cerr << e.what() << '\n';
+    std::cerr << e.what();
     return -1;
   }
 }

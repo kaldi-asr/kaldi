@@ -6,35 +6,35 @@
 # you can run it using --stage 4 if you've already run run_nnet2.sh,
 # since the iVector extractor is the same.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
 train_stage=-10
 use_gpu=true
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
-  dir=exp/nnet2_online/nnet_b_gpu 
+  dir=exp/nnet2_online/nnet_b_gpu
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
   dir=exp/nnet2_online/nnet_b
 fi
 
@@ -124,7 +124,7 @@ if [ $stage -le 7 ]; then
 fi
 
 if [ $stage -le 8 ]; then
-  # do the actual online decoding with iVectors, carrying info forward from 
+  # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 30 \
       exp/tri5a/graph data/dev ${dir}_online/decode_dev || exit 1;
@@ -161,13 +161,13 @@ exit 0;
 #%WER 25.12 [ 9832 / 39141, 1423 ins, 2471 del, 5938 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_11
 
 # The current "b" experiment, with per-utterance decoding.
-#grep WER exp/nnet2_online/nnet_b_gpu/decode_dev/wer_* | utils/best_wer.sh 
+#grep WER exp/nnet2_online/nnet_b_gpu/decode_dev/wer_* | utils/best_wer.sh
 #%WER 24.84 [ 9724 / 39141, 1446 ins, 2372 del, 5906 sub ] exp/nnet2_online/nnet_b_gpu/decode_dev/wer_10
 
 
 #The same with online decoding:
 #%WER 24.05 [ 9415 / 39141, 1413 ins, 2332 del, 5670 sub ] exp/nnet2_online/nnet_b_gpu_online/decode_dev_utt/wer_11
-grep WER exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_* | utils/best_wer.sh 
+grep WER exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_* | utils/best_wer.sh
 %WER 25.12 [ 9832 / 39141, 1423 ins, 2471 del, 5938 sub ] exp/nnet2_online/nnet_a_gpu_online/decode_dev_utt/wer_11
 
 

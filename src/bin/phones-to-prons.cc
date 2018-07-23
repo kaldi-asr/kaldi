@@ -80,7 +80,8 @@ int main(int argc, char *argv[]) {
         "<word-end-sym> <phones-rspecifier> <words-rspecifier> <prons-wspecifier>\n"
         "e.g.: \n"
         " ali-to-phones 1.mdl ark:1.ali ark:- | \\\n"
-        "  phones-to-prons L_align.fst 46 47 ark:- 1.tra ark:1.prons\n";
+        "  phones-to-prons L_align.fst 46 47 ark:- "
+        "'ark:sym2int.pl -f 2- words.txt text|' ark:1.prons\n";
 
     ParseOptions po(usage);
     po.Read(argc, argv);
@@ -170,11 +171,7 @@ int main(int argc, char *argv[]) {
                    << "not reach end-state, or mismatched lexicon.)";
         if (g_kaldi_verbose_level >= 2) {
           KALDI_LOG << "phn2word FST is below:";
-#ifdef HAVE_OPENFST_GE_10400
           fst::FstPrinter<StdArc> fstprinter(phn2word, NULL, NULL, NULL, false, true, "\t");
-#else
-          fst::FstPrinter<StdArc> fstprinter(phn2word, NULL, NULL, NULL, false, true);
-#endif
           fstprinter.Print(&std::cerr, "standard error");
           KALDI_LOG << "phone sequence is: ";
           for (size_t i = 0; i < phones.size(); i++)
@@ -219,5 +216,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

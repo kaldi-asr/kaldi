@@ -19,7 +19,7 @@
 
 #include "nnet2/combine-nnet-fast.h"
 #include "nnet2/nnet-update-parallel.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -39,12 +39,13 @@ class FisherComputationClass: public MultiThreadable {
       scatter_ptr_(scatter) { } // This initializer is only used to create a
   // temporary version of the object; the next initializer is used to
   // create the separate versions for the parallel jobs.
-  
+
   FisherComputationClass(const FisherComputationClass &other):
+      MultiThreadable(other),
       nnet_(other.nnet_), nnets_(other.nnets_), egs_(other.egs_),
       minibatch_size_(other.minibatch_size_), scatter_ptr_(other.scatter_ptr_) {
     scatter_.Resize(nnets_.size() * nnet_.NumUpdatableComponents());  }
-  
+
   void operator () () {
     // b is the "minibatch id."
     int32 num_egs = static_cast<int32>(egs_.size());
@@ -85,7 +86,7 @@ class FisherComputationClass: public MultiThreadable {
       scatter_ptr_->AddSp(1.0, scatter_);
     }
   }
-  
+
  private:
   const Nnet &nnet_; // point at which we compute the parameter gradients.
   const std::vector<Nnet> &nnets_; // The dot-product  of each of these with the parameter gradients,
@@ -94,7 +95,7 @@ class FisherComputationClass: public MultiThreadable {
   int32 minibatch_size_; // equals config --fisher-minbatch-size e.g. 64 (smaller than
                          // regular minibatch size.)
   SpMatrix<double> *scatter_ptr_;
-  SpMatrix<double> scatter_; // Local accumulation of the scatter.  
+  SpMatrix<double> scatter_; // Local accumulation of the scatter.
 };
 
 
@@ -113,7 +114,7 @@ class FastNnetCombiner {
     int32 dim = params_.Dim();
     KALDI_ASSERT(dim > 0);
     Vector<double> gradient(dim);
-    
+
     double regularizer_objf, initial_regularizer_objf; // for diagnostics
     double objf, initial_objf;
 
@@ -124,7 +125,7 @@ class FastNnetCombiner {
 
     OptimizeLbfgs<double> lbfgs(params_,
                                 lbfgs_options);
-    
+
     for (int32 i = 0; i < config_.num_lbfgs_iters; i++) {
       params_.CopyFromVec(lbfgs.GetProposedValue());
       objf = ComputeObjfAndGradient(&gradient, &regularizer_objf);
@@ -137,7 +138,7 @@ class FastNnetCombiner {
       lbfgs.DoStep(objf, gradient);
     }
     params_ = lbfgs.GetValue(&objf);
-    
+
     ComputeCurrentNnet(nnet_out_, true); // create the output neural net, and
                                          // print out the scaling factors.
     if (config_.regularizer != 0.0) {
@@ -151,15 +152,15 @@ class FastNnetCombiner {
       KALDI_LOG << "Combining nnets, objf per frame changed from "
                 << initial_objf << " to " << objf;
     }
-  }    
-  
+  }
+
  private:
   int32 GetInitialModel(
       const std::vector<NnetExample> &validation_set,
       const std::vector<Nnet> &nnets) const;
 
   void GetInitialParams();
-  
+
   void ComputePreconditioner();
 
   // Computes and returns objective function per frame, including
@@ -168,7 +169,7 @@ class FastNnetCombiner {
   double ComputeObjfAndGradient(
       Vector<double> *gradient,
       double *regularizer_objf);
-  
+
   void ComputeCurrentNnet(
       Nnet *dest, bool debug = false);
 
@@ -176,7 +177,7 @@ class FastNnetCombiner {
                            const std::vector<Nnet> &nnets,
                            Nnet *dest);
 
-  
+
   // C_ is the cholesky of the smoothed Fisher matrix F.
   // Let F = C C^T.
   // Preconditioned gradient is \hat{g} = C^{-1} g
@@ -188,7 +189,7 @@ class FastNnetCombiner {
                           // preconditioned space.  These are the same dimension
                           // as the number of nnets we're combining times the
                           // number of updatable layers.
-  
+
   const NnetCombineFastConfig &config_;
   const std::vector<NnetExample> &egs_;
   const std::vector<Nnet> &nnets_;
@@ -204,8 +205,8 @@ void FastNnetCombiner::CombineNnets(const Vector<double> &scale_params,
   KALDI_ASSERT(num_nnets >= 1);
   int32 num_uc = nnets[0].NumUpdatableComponents();
   KALDI_ASSERT(num_nnets * nnets[0].NumUpdatableComponents());
-  
-  
+
+
   *dest = nnets[0];
   SubVector<double> scale_params0(scale_params, 0, num_uc);
   dest->ScaleComponents(Vector<BaseFloat>(scale_params0));
@@ -228,14 +229,14 @@ void FastNnetCombiner::ComputePreconditioner() {
                               &F);
 
     // Setting num_threads to zero if config_.num_threads == 1
-    // is a signal to the MultiThreader class to run without creating 
+    // is a signal to the MultiThreader class to run without creating
     // any extra threads in this case; it helps support GPUs.
     int32 num_threads = config_.num_threads == 1 ? 0 : config_.num_threads;
     // The work gets done in the initializer and destructor of
     // the class below.
     MultiThreader<FisherComputationClass> m(num_threads, fc);
   }
-  
+
   // The scale of F is irrelevant but it might be quite
   // large at this point, so we just normalize it.
   KALDI_ASSERT(F.Trace() > 0);
@@ -251,7 +252,7 @@ void FastNnetCombiner::ComputePreconditioner() {
   // smaller than the dimension of F; we want to ensure F is full rank.
   for (int32 i = 0; i < F.NumRows(); i++)
     F(i, i) *= (1.0 + config_.alpha);
-  
+
   C_.Resize(F.NumRows());
   C_.Cholesky(F);
   C_inv_ = C_;
@@ -259,7 +260,7 @@ void FastNnetCombiner::ComputePreconditioner() {
 
   // Transform the params_ data-member to be in the preconditioned space.
   Vector<double> raw_params(params_);
-  params_.AddTpVec(1.0, C_, kTrans, raw_params, 0.0); 
+  params_.AddTpVec(1.0, C_, kTrans, raw_params, 0.0);
 }
 
 // Note, we ignore the regularizer in selecting the best one.  It shouldn't
@@ -274,14 +275,14 @@ void FastNnetCombiner::GetInitialParams() {
 
   KALDI_ASSERT(initial_model >= 0 && initial_model <= num_nnets);
   int32 num_uc = nnets_[0].NumUpdatableComponents();
-  
+
   Vector<double> raw_params(num_uc * num_nnets); // parameters in
                                                  // non-preconditioned space.
   if (initial_model < num_nnets) {
     KALDI_LOG << "Initializing with neural net with index " << initial_model;
     // At this point we're using the best of the individual neural nets.
     raw_params.Set(0.0);
-    
+
     // Set the block of parameters corresponding to the "best" of the
     // source neural nets to
     SubVector<double> best_block(raw_params, num_uc * initial_model, num_uc);
@@ -291,7 +292,7 @@ void FastNnetCombiner::GetInitialParams() {
     raw_params.Set(1.0 / num_nnets);
   }
   KALDI_ASSERT(C_.NumRows() == 0); // Assume this not set up yet.
-  params_ = raw_params; // this is in non-preconditioned space.  
+  params_ = raw_params; // this is in non-preconditioned space.
 }
 
 /// Computes objf at point "params_".
@@ -300,14 +301,14 @@ double FastNnetCombiner::ComputeObjfAndGradient(
     double *regularizer_objf_ptr) {
   Nnet nnet;
   ComputeCurrentNnet(&nnet); // compute it at the value "params_".
-  
+
   Nnet nnet_gradient(nnet);
   bool is_gradient = true;
   nnet_gradient.SetZero(is_gradient);
   double tot_weight = 0.0;
   double objf = DoBackpropParallel(nnet, config_.minibatch_size, config_.num_threads,
                                    egs_, &tot_weight, &nnet_gradient) / egs_.size();
-  
+
   // raw_gradient is gradient in non-preconditioned space.
   Vector<double> raw_gradient(params_.Dim());
 
@@ -364,7 +365,7 @@ void FastNnetCombiner::ComputeCurrentNnet(
     raw_params.AddTpVec(1.0, C_inv_, kTrans, params_, 0.0);
   else
     raw_params = params_; // C not set up yet: interpret params_ as raw parameters.
-  
+
   if (debug) {
     Matrix<double> params_mat(num_nnets,
                               nnets_[0].NumUpdatableComponents());
@@ -392,7 +393,7 @@ int32 FastNnetCombiner::GetInitialModel(
                                           &num_frames);
     KALDI_ASSERT(num_frames != 0);
     objf /= num_frames;
-    
+
     if (n == 0 || objf > best_objf) {
       best_objf = objf;
       best_n = n;
@@ -437,6 +438,6 @@ void CombineNnetsFast(const NnetCombineFastConfig &combine_config,
                             nnet_out);
 }
 
-  
+
 } // namespace nnet2
 } // namespace kaldi

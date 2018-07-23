@@ -19,7 +19,7 @@
 
 #include "base/kaldi-common.h"
 #include "sgmm2/estimate-am-sgmm2-ebw.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 using std::vector;
 
 namespace kaldi {
@@ -30,11 +30,11 @@ void EbwAmSgmm2Updater::Update(const MleAmSgmm2Accs &num_accs,
                                SgmmUpdateFlagsType flags,
                                BaseFloat *auxf_change_out,
                                BaseFloat *count_out) {
-  
+
   // Various quantities need to be computed at the start, before we
   // change any of the model parameters.
   std::vector< SpMatrix<double> > Q_num, Q_den, H, S_means;
-  
+
   if (flags & kSgmmPhoneProjections) {
     MleAmSgmm2Updater::ComputeQ(num_accs, *model, &Q_num);
     MleAmSgmm2Updater::ComputeQ(den_accs, *model, &Q_den);
@@ -49,29 +49,29 @@ void EbwAmSgmm2Updater::Update(const MleAmSgmm2Accs &num_accs,
   }
   if (flags & (kSgmmPhoneVectors | kSgmmPhoneWeightProjections))
     model->ComputeH(&H);
-  
+
   Vector<double> gamma_num(num_accs.num_gaussians_);
   for (int32 j1 = 0; j1 < num_accs.num_groups_; j1++)
-    gamma_num.AddRowSumMat(1.0, num_accs.gamma_[j1]); 
+    gamma_num.AddRowSumMat(1.0, num_accs.gamma_[j1]);
   Vector<double> gamma_den(den_accs.num_gaussians_);
   for (int32 j1 = 0; j1 < den_accs.num_groups_; j1++)
-    gamma_den.AddRowSumMat(1.0, den_accs.gamma_[j1]); 
+    gamma_den.AddRowSumMat(1.0, den_accs.gamma_[j1]);
 
   BaseFloat tot_impr = 0.0;
 
   if (flags & kSgmmPhoneVectors)
     tot_impr += UpdatePhoneVectors(num_accs, den_accs, H, model);
-  
+
   if (flags & kSgmmPhoneProjections)
     tot_impr += UpdateM(num_accs, den_accs, Q_num, Q_den,
                         gamma_num, gamma_den, model);
-  
+
   if (flags & kSgmmPhoneWeightProjections)
     tot_impr += UpdateW(num_accs, den_accs, gamma_num, gamma_den, model);
 
   if (flags & kSgmmSpeakerWeightProjections)
     tot_impr += UpdateU(num_accs, den_accs, gamma_num, gamma_den, model);
-  
+
   if (flags & kSgmmCovarianceMatrix)
     tot_impr += UpdateVars(num_accs, den_accs,
                            gamma_num, gamma_den, S_means, model);
@@ -81,18 +81,18 @@ void EbwAmSgmm2Updater::Update(const MleAmSgmm2Accs &num_accs,
 
   if (flags & kSgmmSpeakerProjections)
     tot_impr += UpdateN(num_accs, den_accs, gamma_num, gamma_den, model);
-  
+
 
   if (auxf_change_out) *auxf_change_out = tot_impr * num_accs.total_frames_;
   if (count_out) *count_out = num_accs.total_frames_;
-  
+
   if (fabs(num_accs.total_frames_ - den_accs.total_frames_) >
       0.01*(num_accs.total_frames_ + den_accs.total_frames_))
     KALDI_WARN << "Num and den frame counts differ, "
                << num_accs.total_frames_ << " vs. " << den_accs.total_frames_;
 
   BaseFloat like_diff = num_accs.total_like_ - den_accs.total_like_;
-  
+
   KALDI_LOG << "***Averaged differenced likelihood per frame is "
             << (like_diff/num_accs.total_frames_)
             << " over " << (num_accs.total_frames_) << " frames.";
@@ -100,7 +100,7 @@ void EbwAmSgmm2Updater::Update(const MleAmSgmm2Accs &num_accs,
             << "\"canceled\" stats you will have to renormalize this over "
             << "the \"real\" frame count.";
   KALDI_ASSERT(num_accs.total_frames_ > 0 && den_accs.total_frames_ > 0);
-  
+
   model->ComputeNormalizers();
 }
 
@@ -110,16 +110,22 @@ class EbwUpdatePhoneVectorsClass: public MultiThreadable { // For multi-threaded
   EbwUpdatePhoneVectorsClass(const EbwAmSgmm2Updater *updater,
                              const MleAmSgmm2Accs &num_accs,
                              const MleAmSgmm2Accs &den_accs,
-                             const std::vector<SpMatrix<double> > &H,                             
+                             const std::vector<SpMatrix<double> > &H,
                              AmSgmm2 *model,
                              double *auxf_impr):
       updater_(updater), num_accs_(num_accs), den_accs_(den_accs),
       model_(model), H_(H), auxf_impr_ptr_(auxf_impr), auxf_impr_(0.0) { }
-  
+
+  EbwUpdatePhoneVectorsClass(const EbwUpdatePhoneVectorsClass &other) :
+      MultiThreadable(other),
+      updater_(other.updater_), num_accs_(other.num_accs_),
+      den_accs_(other.den_accs_), model_(other.model_),
+      H_(other.H_), auxf_impr_ptr_(other.auxf_impr_ptr_), auxf_impr_(0.0) { }
+
   ~EbwUpdatePhoneVectorsClass() {
     *auxf_impr_ptr_ += auxf_impr_;
   }
-  
+
   inline void operator() () {
     // Note: give them local copy of the sums we're computing,
     // which will be propagated to the total sums in the destructor.
@@ -151,7 +157,7 @@ void EbwAmSgmm2Updater::ComputePhoneVecStats(
   if (!accs.a_.empty() && accs.a_[j1](m, 0) != 0) { // [SSGMM]
     w_jm.MulElements(accs.a_[j1].Row(m)); // multiply by "a" quantities..
     w_jm.Scale(1.0 / w_jm.Sum()); // renormalize.
-  }  
+  }
   g_jm->CopyFromVec(accs.y_[j1].Row(m));
   for (int32 i = 0; i < accs.num_gaussians_; i++) {
     double gamma_jmi = accs.gamma_[j1](m, i);
@@ -181,9 +187,9 @@ void EbwAmSgmm2Updater::UpdatePhoneVectorsInternal(
   int32 block_size = (num_accs.num_groups_ + (num_threads-1)) / num_threads,
       j1_start = block_size * thread_id,
       j1_end = std::min(num_accs.num_groups_, j1_start + block_size);
-  
+
   int32 S = num_accs.phn_space_dim_, I = num_accs.num_gaussians_;
-  
+
   for (int32 j1 = j1_start; j1 < j1_end; j1++) {
     double num_state_count = 0.0,
         state_auxf_impr = 0.0;
@@ -205,12 +211,12 @@ void EbwAmSgmm2Updater::UpdatePhoneVectorsInternal(
       // Note: in the ML code, in the SSGMM case, at this point the w_jm would
       // be modified with the "a" quantities to get the "\tilde{w}_{jm}" of the
       // SSGMM techreport.  But in this code, it gets done inside ComputePhoneVecStats.
-      
+
       ComputePhoneVecStats(num_accs, *model, H, j1, m, w_jm, gamma_jm_num,
                            &g_jm_num, &H_jm_num);
       ComputePhoneVecStats(den_accs, *model, H, j1, m, w_jm, gamma_jm_den,
                            &g_jm_den, &H_jm_den);
-      
+
       Vector<double> v_jm(model->v_[j1].Row(m));
       Vector<double> local_derivative(S); // difference of derivative of numerator
       // and denominator objetive function.
@@ -218,7 +224,7 @@ void EbwAmSgmm2Updater::UpdatePhoneVectorsInternal(
       local_derivative.AddSpVec(-1.0, H_jm_num, v_jm, 1.0);
       local_derivative.AddVec(-1.0, g_jm_den);
       local_derivative.AddSpVec(-1.0 * -1.0, H_jm_den, v_jm, 1.0);
-      
+
       SpMatrix<double> quadratic_term(H_jm_num);
       quadratic_term.AddSp(1.0, H_jm_den);
       double substate_count = 1.0e-10 + gamma_jm_num + gamma_jm_den;
@@ -231,7 +237,7 @@ void EbwAmSgmm2Updater::UpdatePhoneVectorsInternal(
       opts.name = "v";
       opts.K = options_.max_cond;
       opts.eps = options_.epsilon;
-      
+
       double auxf_impr =
           ((gamma_jm_num + gamma_jm_den == 0) ? 0.0 :
            SolveQuadraticProblem(quadratic_term,
@@ -257,12 +263,12 @@ double EbwAmSgmm2Updater::UpdatePhoneVectors(const MleAmSgmm2Accs &num_accs,
                                              const vector< SpMatrix<double> > &H,
                                              AmSgmm2 *model) const {
   KALDI_LOG << "Updating phone vectors.";
-  
+
   double count = 0.0, auxf_impr = 0.0;
-  
+
   int32 J1 = num_accs.num_groups_;
   for (int32 j1 = 0; j1 < J1; j1++) count += num_accs.gamma_[j1].Sum();
-  
+
   EbwUpdatePhoneVectorsClass c(this, num_accs, den_accs, H, model, &auxf_impr);
   RunMultiThreaded(c);
 
@@ -284,7 +290,7 @@ double EbwAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &num_accs,
   int32 S = model->PhoneSpaceDim(),
       D = model->FeatureDim(),
       I = model->NumGauss();
-  
+
   Vector<double> impr_vec(I);
 
   for (int32 i = 0; i < I; i++) {
@@ -295,8 +301,8 @@ double EbwAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &num_accs,
                  << " because count is zero. ";
       continue;
     }
-    
-    Matrix<double> Mi(model->M_[i]);    
+
+    Matrix<double> Mi(model->M_[i]);
     Matrix<double> L(D, S); // this is something like the Y quantity, which
     // represents the linear term in the objf on M-- except that we make it the local
     // derivative about the current value, instead of the derivative around zero.
@@ -318,7 +324,7 @@ double EbwAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &num_accs,
     // represented by the quadratic part of the stats.
     Q.Scale( (state_count + options_.tau_M) / state_count );
     Q.Scale( 1.0 / (options_.lrate_M + 1.0e-10) );
-    
+
 
     SolverOptions opts;
     opts.name = "M";
@@ -341,7 +347,7 @@ double EbwAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &num_accs,
     }
   }
   BaseFloat tot_count = gamma_num.Sum(), tot_impr = impr_vec.Sum();
-  
+
   tot_impr /= (tot_count + 1.0e-20);
   KALDI_LOG << "Overall auxiliary function improvement for model projections "
             << "M is " << tot_impr << " over " << tot_count << " frames";
@@ -349,7 +355,7 @@ double EbwAmSgmm2Updater::UpdateM(const MleAmSgmm2Accs &num_accs,
   KALDI_VLOG(1) << "Updating M: num-count is " << gamma_num;
   KALDI_VLOG(1) << "Updating M: den-count is " << gamma_den;
   KALDI_VLOG(1) << "Updating M: objf-impr is " << impr_vec;
-  
+
   return tot_impr;
 }
 
@@ -369,15 +375,15 @@ double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
   KALDI_LOG << "Updating weight projections";
 
   int32 I = num_accs.num_gaussians_, S = num_accs.phn_space_dim_;
-  
+
   Matrix<double> g_i_num(I, S), g_i_den(I, S);
-      
+
   // View F_i_{num,den} as vectors of SpMatrix [i.e. symmetric matrices,
   // linearized into vectors]
   Matrix<double> F_i_num(I, (S*(S+1))/2), F_i_den(I, (S*(S+1))/2);
-  
+
   Vector<double> impr_vec(I);
-  
+
   // Get the F_i and g_i quantities-- this is done in parallel (multi-core),
   // using the same code we use in the ML update [except we get it for
   // numerator and denominator separately.]
@@ -392,7 +398,7 @@ double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
   }
   {
     std::vector<Matrix<double> > log_a_den;
-    if (model->HasSpeakerDependentWeights())    
+    if (model->HasSpeakerDependentWeights())
       MleAmSgmm2Updater::ComputeLogA(den_accs, &log_a_den);
     double garbage;
     UpdateWClass c_den(den_accs, *model, w, log_a_den, &F_i_den, &g_i_den, &garbage);
@@ -421,14 +427,14 @@ double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
 
     quadratic_term.Scale((state_count + options_.tau_w) / (state_count + 1.0e-10));
     quadratic_term.Scale(1.0 / (options_.lrate_w + 1.0e-10) );
-    
+
     Vector<double> delta_w(S);
 
     SolverOptions opts;
     opts.name = "w";
     opts.K = options_.max_cond;
     opts.eps = options_.epsilon;
-  
+
     double objf_impr =
         SolveQuadraticProblem(quadratic_term, derivative, opts, &delta_w);
 
@@ -443,7 +449,7 @@ double EbwAmSgmm2Updater::UpdateW(const MleAmSgmm2Accs &num_accs,
   KALDI_VLOG(1) << "Updating w: numerator count is " << gamma_num;
   KALDI_VLOG(1) << "Updating w: denominator count is " << gamma_den;
   KALDI_VLOG(1) << "Updating w: objf-impr is " << impr_vec;
-    
+
   double tot_num_count = gamma_num.Sum(), tot_impr = impr_vec.Sum();
   tot_impr /= tot_num_count;
 
@@ -479,12 +485,12 @@ double EbwAmSgmm2Updater::UpdateU(const MleAmSgmm2Accs &num_accs,
     double state_count = gamma_num(i) + gamma_den(i);
     U.Scale((state_count + options_.tau_u) / (state_count + 1.0e-10));
     U.Scale(1.0 / (options_.lrate_u + 1.0e-10) );
-    
+
     SolverOptions opts;
     opts.name = "u";
     opts.K = options_.max_cond;
     opts.eps = options_.epsilon;
-  
+
     double impr = SolveQuadraticProblem(U, t, opts, &delta_u);
     double impr_per_frame = impr / gamma_num(i);
     if (impr_per_frame > options_.max_impr_u) {
@@ -527,9 +533,9 @@ double EbwAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &num_accs,
 
   int32 I = num_accs.num_gaussians_, D = num_accs.feature_dim_,
       T = num_accs.spk_space_dim_;
-  
+
   Vector<double> impr_vec(I);
-  
+
   for (int32 i = 0; i < I; i++) {
     double gamma_i_num = gamma_num(i), gamma_i_den = gamma_den(i);
     if (gamma_i_num + gamma_i_den == 0.0) {
@@ -546,7 +552,7 @@ double EbwAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &num_accs,
     L.AddMatSp(-1.0, Ni, kNoTrans, num_accs.R_[i], 1.0);
     L.AddMat(-1.0, den_accs.Z_[i]);
     L.AddMatSp(-1.0*-1.0, Ni, kNoTrans, den_accs.R_[i], 1.0);
-    
+
     SpMatrix<double> R(T); // combination of the numerator and denominator R's.
     R.AddSp(1.0, num_accs.R_[i]);
     R.AddSp(1.0, den_accs.R_[i]);
@@ -555,14 +561,14 @@ double EbwAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &num_accs,
     // represented by the quadratic part of the stats.
     R.Scale( (state_count + options_.tau_N) / state_count );
     R.Scale( 1.0 / (options_.lrate_N + 1.0e-10) );
-    
+
     Matrix<double> deltaN(D, T);
 
     SolverOptions opts;
     opts.name = "N";
     opts.K = options_.max_cond;
     opts.eps = options_.epsilon;
-  
+
     double impr =
         SolveQuadraticMatrixProblem(R, L,
                                     SpMatrix<double>(model->SigmaInv_[i]),
@@ -580,7 +586,7 @@ double EbwAmSgmm2Updater::UpdateN(const MleAmSgmm2Accs &num_accs,
   KALDI_VLOG(1) << "Updating N: numerator count is " << gamma_num;
   KALDI_VLOG(1) << "Updating N: denominator count is " << gamma_den;
   KALDI_VLOG(1) << "Updating N: objf-impr is " << impr_vec;
-  
+
   double tot_count = gamma_num.Sum(), tot_impr = impr_vec.Sum();
   tot_impr /= (tot_count + 1.0e-20);
   KALDI_LOG << "**Overall auxf impr for N is " << tot_impr
@@ -602,7 +608,7 @@ double EbwAmSgmm2Updater::UpdateVars(const MleAmSgmm2Accs &num_accs,
   int32 I = num_accs.num_gaussians_;
   KALDI_ASSERT(S_means.size() == I);
   Vector<double> impr_vec(I);
-  
+
   for (int32 i = 0; i < I; i++) {
     double num_count = gamma_num(i), den_count = gamma_den(i);
 
@@ -634,8 +640,8 @@ double EbwAmSgmm2Updater::UpdateVars(const MleAmSgmm2Accs &num_accs,
     int n_floor = SigmaInv.ApplyFloor(SigmaOld, options_.cov_min_value, verbose);
     SigmaInv.Invert(); // make it inverse variance.
     int n_ceiling = SigmaInv.ApplyFloor(SigmaInvOld, options_.cov_min_value, verbose);
-    
-    // this auxf_change.  
+
+    // this auxf_change.
     double auxf_change = -0.5 * count *(TraceSpSp(SigmaInv, SigmaStats)
                                         - TraceSpSp(SigmaInvOld, SigmaStats)
                                         - SigmaInv.LogDet()
@@ -654,7 +660,7 @@ double EbwAmSgmm2Updater::UpdateVars(const MleAmSgmm2Accs &num_accs,
   KALDI_VLOG(1) << "Updating Sigma: numerator count is " << gamma_num;
   KALDI_VLOG(1) << "Updating Sigma: denominator count is " << gamma_den;
   KALDI_VLOG(1) << "Updating Sigma: objf-impr is " << impr_vec;
-  
+
   double tot_count = gamma_num.Sum(), tot_impr = impr_vec.Sum();
   tot_impr /= tot_count+1.0e-20;
   KALDI_LOG << "**Overall auxf impr for Sigma is " << tot_impr
@@ -680,7 +686,7 @@ double EbwAmSgmm2Updater::UpdateSubstateWeights(
           + options_.tau_c * weights(m);
       den_occs(m) = den_accs.gamma_c_[j2](m);
     }
-    
+
     if (weights.Dim() > 1) {
       double begin_auxf = 0.0, end_auxf = 0.0;
       for (int32 m = 0; m < M; m++) {  // see eq. 4.32, Dan Povey's PhD thesis.
@@ -718,13 +724,13 @@ double EbwAmSgmm2Updater::UpdateSubstateWeights(
     model->c_[j2].CopyFromVec(weights);
     tot_count += den_occs.Sum(); // Note: num and den occs should be the
     // same, except num occs are smoothed, so this is what we want.
-  }    
+  }
 
   tot_impr /= (tot_count + 1.0e-20);
 
   KALDI_LOG << "**Overall auxf impr for c is " << tot_impr
             << " over " << tot_count << " frames";
   return tot_impr;
-}  
+}
 
 }  // namespace kaldi

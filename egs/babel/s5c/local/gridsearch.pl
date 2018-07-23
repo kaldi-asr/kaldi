@@ -78,7 +78,7 @@ sub substitute {
 sub escape {
   my @cmd_in = @{$_[0]};
   my @cmd = ();
-  foreach my $x (@cmd_in) { 
+  foreach my $x (@cmd_in) {
     if ($x =~ m/^\S+$/) { push @cmd, $x } # If string contains no spaces, take
                                           # as-is.
 
@@ -100,11 +100,11 @@ my %found_switches = ();
 
 for (my $i=0; $i < scalar(@ARGV); $i++) {
   if ($ARGV[$i] eq "-var") {
-     
+
     $i++;
     (my $name, my @range) = gen_sequence(split('=', $ARGV[$i]));
     $VARIABLES{$name}=\@range
-  
+
   } elsif ($ARGV[$i] eq "-train") {
     if ( $cmdid ) {
       if ( $cmdid eq "-eval" ) {
@@ -113,7 +113,7 @@ for (my $i=0; $i < scalar(@ARGV); $i++) {
         @traincmd = @cmd;
       }
     }
-    
+
     $cmdid = $ARGV[$i];
     @cmd = ();
 
@@ -167,12 +167,12 @@ foreach my $comb (@combs) {
   @out = substitute(\@traincmd, \%params);
   print "Running train:\n" . join(" ", @out) . "\n";
   system(@out) == 0 or die "system @out failed: exit code $?";
-  
+
 
   @out = substitute(\@evalcmd, \%params);
   print "Running eval:\n" . join(" ", @out) . "\n";
   system(@out) == 0 or die "system @out failed: exit code $?";
-  
+
 }
 
 

@@ -39,7 +39,7 @@ int main(int argc, char *argv[]) {
     const char *usage =  "Write an equally spaced alignment (for getting training started)"
         "Usage:  align-equal-compiled <graphs-rspecifier> <features-rspecifier> <alignments-wspecifier>\n"
         "e.g.: \n"
-        " align-equal-compiled 1.mdl 1.fsts scp:train.scp ark:equal.ali\n";
+        " align-equal-compiled 1.fsts scp:train.scp ark:equal.ali\n";
 
     ParseOptions po(usage);
     bool binary = true;

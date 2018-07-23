@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
 
     std::string fgmm_rxfilename = po.GetArg(1),
         ivector_extractor_wxfilename = po.GetArg(2);
-        
+
     FullGmm fgmm;
     ReadKaldiObject(fgmm_rxfilename, &fgmm);
 

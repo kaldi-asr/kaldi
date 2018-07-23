@@ -296,7 +296,7 @@ and reversing it to produce something like <br>
  we maintain "Karel's setup" and "Dan's setup".  This system uses "Dan's setup".  The
  training procedure differs in a number of ways from previously published methods, and
  for reasons of time and space we can't document it fully here.
- See <a href=http://kaldi.sourceforge.net/dnn2.html> here </a> for more information.
+ See <a href=http://kaldi-asr.org/doc/dnn2.html> here </a> for more information.
  The most salient point is that the setup allows us to train a neural network in parallel
  on multiple GPUs, which substantially decreases the training time.  For example, for Zulu, the
  FullLP system took 11 hours to train for 25 epochs on 8 GPUs.
@@ -313,7 +313,7 @@ and reversing it to produce something like <br>
  The FullLP system has four hidden layers with 4000 as the input dimension to the nonlinearity
  and 400 as the output-dimension (so the group size is 10).  There are 12000 output neurons
  in the softmax layer; this is more than the number of context-dependent states (which is
- about 5000), because of the "mixing-up" as described <a href=http://kaldi.sourceforge.net/dnn2.html> here </a>.
+ about 5000), because of the "mixing-up" as described <a href=http://kaldi-asr.org/doc/dnn2.html> here </a>.
  For the LimitedLP system the input/output dimensions are 3000/300 and the softmax layer dimension
  is 5000 (versus about 2000 context-dependent states).
 
@@ -344,7 +344,7 @@ and reversing it to produce something like <br>
 
  The training is based on Stochastic Gradient Descent (SGD), although modified by our
  "preconditioning method" which will eventually be described
-  <a href=http://kaldi.sourceforge.net/dnn2.html> here </a> (till then, see the code).
+  <a href=http://kaldi-asr.org/doc/dnn2.html> here </a> (till then, see the code).
  We use a learning rate of 9E-5, but one tenth that value for the output layer.
  Training is for four epochs.
  Instead of frame-level randomization we use segment-level randomization, where a

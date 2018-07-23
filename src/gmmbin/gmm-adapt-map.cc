@@ -40,20 +40,20 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: gmm-adapt-map  [options] <model-in> <feature-rspecifier> "
         "<posteriors-rspecifier> <map-am-wspecifier>\n";
-    
+
     ParseOptions po(usage);
-    string spk2utt_rspecifier;
+    std::string spk2utt_rspecifier;
     bool binary = true;
     MapDiagGmmOptions map_config;
     std::string update_flags_str = "mw";
-        
+
     po.Register("spk2utt", &spk2utt_rspecifier, "rspecifier for speaker to "
                 "utterance-list map");
     po.Register("binary", &binary, "Write output in binary mode");
     po.Register("update-flags", &update_flags_str, "Which GMM parameters will be "
                 "updated: subset of mvw.");
     map_config.Register(&po);
-        
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 4) {
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
         map_am_wspecifier = po.GetArg(4);
 
     GmmFlagsType update_flags = StringToGmmFlags(update_flags_str);
-    
+
     RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
     MapAmDiagGmmWriter map_am_writer(map_am_wspecifier);
 
@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0, tot_like_change = 0.0, tot_t = 0.0,
         tot_t_check = 0.0;
     int32 num_done = 0, num_err = 0;
-    
+
     if (spk2utt_rspecifier != "") {  // per-speaker adaptation
       SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
       RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
@@ -93,9 +93,9 @@ int main(int argc, char *argv[]) {
         copy_am_gmm.CopyFromAmDiagGmm(am_gmm);
         AccumAmDiagGmm map_accs;
         map_accs.Init(am_gmm, update_flags);
-        
+
         const std::vector<std::string> &uttlist = spk2utt_reader.Value();
-        
+
         // for each speaker, estimate MAP means
         std::vector<std::string>::const_iterator iter = uttlist.begin(),
             end = uttlist.end();
@@ -124,8 +124,8 @@ int main(int argc, char *argv[]) {
           ConvertPosteriorToPdfs(trans_model, posterior, &pdf_posterior);
           for ( size_t i = 0; i < posterior.size(); i++ ) {
             for ( size_t j = 0; j < pdf_posterior[i].size(); j++ ) {
-              int32 pdf_id = pdf_posterior[i][j].first; 
-              BaseFloat weight = pdf_posterior[i][j].second; 
+              int32 pdf_id = pdf_posterior[i][j].first;
+              BaseFloat weight = pdf_posterior[i][j].second;
               file_like += map_accs.AccumulateForGmm(copy_am_gmm,
                                                      feats.Row(i),
                                                      pdf_id, weight);
@@ -135,7 +135,7 @@ int main(int argc, char *argv[]) {
 
           KALDI_VLOG(2) << "Average like for utterance " << utt << " is "
                         << (file_like/file_t) << " over " << file_t << " frames.";
-          
+
           tot_like += file_like;
           tot_t += file_t;
           num_done++;
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
             KALDI_VLOG(1) << "Avg like per frame so far is "
                           << (tot_like / tot_t);
         }  // end looping over all utterances of the current speaker
- 
+
         // MAP estimation.
         BaseFloat spk_objf_change = 0.0, spk_frames = 0.0;
         MapAmDiagGmmUpdate(map_config, map_accs, update_flags, &copy_am_gmm,
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
                   << " over " << spk_frames << " frames.";
         tot_like_change += spk_objf_change;
         tot_t_check += spk_frames;
-        
+
         // Writing AM for each speaker in a table
         map_am_writer.Write(spk,copy_am_gmm);
       }  // end looping over speakers
@@ -201,9 +201,9 @@ int main(int argc, char *argv[]) {
         tot_like += file_like;
         tot_t += file_t;
         if ( num_done % 10 == 0 )
-          KALDI_VLOG(1) << "Avg like per frame so far is " 
+          KALDI_VLOG(1) << "Avg like per frame so far is "
                         << (tot_like / tot_t);
-                
+
         // MAP
         BaseFloat utt_objf_change = 0.0, utt_frames = 0.0;
         MapAmDiagGmmUpdate(map_config, map_accs, update_flags, &copy_am_gmm,
@@ -213,7 +213,7 @@ int main(int argc, char *argv[]) {
                   << " over " << utt_frames << " frames.";
         tot_like_change += utt_objf_change;
         tot_t_check += utt_frames;
-        
+
         // Writing AM for each utterance in a table
         map_am_writer.Write(feature_reader.Key(), copy_am_gmm);
       }

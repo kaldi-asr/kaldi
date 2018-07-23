@@ -113,7 +113,7 @@ int32 FullGmm::ComputeGconsts() {
     // So gc is the likelihood at zero feature value.
 
     if (KALDI_ISNAN(gc)) {  // negative infinity is OK but NaN is not acceptable
-      KALDI_ERR << "At component" << mix
+      KALDI_ERR << "At component " << mix
                 << ", not a number in gconst computation";
     }
     if (KALDI_ISINF(gc)) {
@@ -687,7 +687,7 @@ BaseFloat FullGmm::GaussianSelectionPreselect(
   }
   Vector<BaseFloat> loglikes(preselect_sz);
   LogLikelihoodsPreselect(data, preselect, &loglikes);
-  
+
   Vector<BaseFloat> loglikes_copy(loglikes);
   BaseFloat *ptr = loglikes_copy.Data();
   std::nth_element(ptr, ptr+preselect_sz-this_num_gselect,

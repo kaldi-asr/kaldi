@@ -75,6 +75,11 @@ namespace kaldi {
  
  * @param P [in] The central position of the phone context window, e.g. 1 for a
  *                triphone system.
+ * @param round_num_leaves [in]  If true, then the number of leaves in the 
+ *                  final tree is made a multiple of 8. This is done by 
+ *                  further clustering the leaves after they are first
+ *                  clustered based on log-likelihood change.
+ *                  (See cluster_thresh above) (default: true)
  * @return  Returns a pointer to an EventMap object that is the tree.
 
 */
@@ -88,7 +93,8 @@ EventMap *BuildTree(Questions &qopts,
                     BaseFloat thresh,
                     int32 max_leaves,
                     BaseFloat cluster_thresh,  // typically == thresh.  If negative, use smallest split.
-                    int32 P);
+                    int32 P, 
+                    bool round_num_leaves = true);
 
 
 /**

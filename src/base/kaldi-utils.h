@@ -46,25 +46,18 @@
 #endif
 #endif
 
-#ifdef HAVE_POSIX_MEMALIGN
-#  define KALDI_MEMALIGN(align, size, pp_orig) \
-     (!posix_memalign(pp_orig, align, size) ? *(pp_orig) : NULL)
-#  define KALDI_MEMALIGN_FREE(x) free(x)
-#elif defined(HAVE_MEMALIGN)
-  /* Some systems have memalign() but no declaration for it */
-  void * memalign(size_t align, size_t size);
-#  define KALDI_MEMALIGN(align, size, pp_orig) \
-     (*(pp_orig) = memalign(align, size))
-#  define KALDI_MEMALIGN_FREE(x) free(x)
-#elif defined(_MSC_VER)
+#if defined(_MSC_VER)
 #  define KALDI_MEMALIGN(align, size, pp_orig) \
   (*(pp_orig) = _aligned_malloc(size, align))
 #  define KALDI_MEMALIGN_FREE(x) _aligned_free(x)
+#elif defined(__CYGWIN__)
+#  define KALDI_MEMALIGN(align, size, pp_orig) \
+  (*(pp_orig) = aligned_alloc(align, size))
+#  define KALDI_MEMALIGN_FREE(x) free(x)
 #else
-#error Manual memory alignment is no longer supported.  Note: if you see this error \
-it will usually be due to Makefile problems-- you are probably not using the flags \
-that the Kaldi configure script would normally add to the Makefile, or they are \
-somehow not getting passed to your compilation command line.
+#  define KALDI_MEMALIGN(align, size, pp_orig) \
+     (!posix_memalign(pp_orig, align, size) ? *(pp_orig) : NULL)
+#  define KALDI_MEMALIGN_FREE(x) free(x)
 #endif
 
 #ifdef __ICC
@@ -124,8 +117,7 @@ void Sleep(float seconds);
           (reinterpret_cast<char*>(&a))[1]=t;}
 
 
-// Makes copy constructor and operator= private.  Same as in compat.h of OpenFst
-// toolkit.
+// Makes copy constructor and operator= private.
 #define KALDI_DISALLOW_COPY_AND_ASSIGN(type)    \
   type(const type&);                  \
   void operator = (const type&)
@@ -146,8 +138,11 @@ template<> class KaldiCompileTimeAssert<true> {
   KaldiCompileTimeAssert<std::numeric_limits<F>::is_specialized \
                 && !std::numeric_limits<F>::is_integer>::Check()
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 #define KALDI_STRCASECMP _stricmp
+#elif defined(__CYGWIN__)
+#include <strings.h>
+#define KALDI_STRCASECMP strcasecmp
 #else
 #define KALDI_STRCASECMP strcasecmp
 #endif
@@ -157,14 +152,4 @@ template<> class KaldiCompileTimeAssert<true> {
 #  define KALDI_STRTOLL(cur_cstr, end_cstr) strtoll(cur_cstr, end_cstr, 10);
 #endif
 
-#define KALDI_STRTOD(cur_cstr, end_cstr) strtod(cur_cstr, end_cstr)
-
-#ifdef _MSC_VER
-#  define KALDI_STRTOF(cur_cstr, end_cstr) \
-    static_cast<float>(strtod(cur_cstr, end_cstr));
-#else
-#  define KALDI_STRTOF(cur_cstr, end_cstr) strtof(cur_cstr, end_cstr);
-#endif
-
 #endif  // KALDI_BASE_KALDI_UTILS_H_
-

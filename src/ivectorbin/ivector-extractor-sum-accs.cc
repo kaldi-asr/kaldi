@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
   try {
     typedef kaldi::int32 int32;
     using namespace kaldi;
-    
+
     const char *usage =
         "Sum accumulators for training of iVector extractor\n"
         "Usage: ivector-extractor-sum-accs [options] <stats-in1> "
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
     po.Register("parallel", &parallel, "If true, the program makes sure to "
                 "open all filehandles before reading for any (useful when "
                 "summing accs from long processes)");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2) {
@@ -74,9 +74,9 @@ int main(int argc, char *argv[]) {
         bool add = true;
         stats.Read(ki.Stream(), binary_in, add);
       }
-    }    
+    }
     WriteKaldiObject(stats, stats_wxfilename, binary);
-    
+
     KALDI_LOG << "Wrote summed stats to " << stats_wxfilename;
 
     return 0;

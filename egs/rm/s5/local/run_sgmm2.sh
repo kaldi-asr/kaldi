@@ -4,7 +4,7 @@
 # and the symmetric SGMM, and one or two other small changes (e.g. no updating of M for a few
 # iterations.)
 
-. cmd.sh
+. ./cmd.sh
 ## SGMM on top of LDA+MLLT+SAT features.
 if [ ! -f exp/ubm4a/final.ubm ] || [ ! data/train/feats.scp -nt exp/ubm4a/final.ubm ]; then
   steps/train_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" 400 data/train data/lang exp/tri3b_ali exp/ubm4a || exit 1;

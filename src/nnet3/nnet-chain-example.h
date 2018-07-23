@@ -25,6 +25,7 @@
 #include "hmm/posterior.h"
 #include "util/table-types.h"
 #include "nnet3/nnet-example.h"
+#include "nnet3/nnet-example-utils.h"
 #include "chain/chain-supervision.h"
 
 namespace kaldi {
@@ -49,9 +50,13 @@ struct NnetChainSupervision {
   /// Be careful about the order of these indexes-- it is a little confusing.
   /// The indexes in the 'index' vector are ordered as: (frame 0 of each sequence);
   /// (frame 1 of each sequence); and so on.  But in the 'supervision' object,
-  /// the FST contains (sequence 0; sequence 1; ...).  So reordering is needed.
-  /// This is done for efficiency in the denominator computation (it helps memory
-  /// locality), as well as to match the ordering inside the neural net.
+  /// the FST contains (sequence 0; sequence 1; ...).  So reordering is needed
+  /// when doing the numerator computation.
+  /// We order 'indexes' in this way for efficiency in the denominator
+  /// computation (it helps memory locality), as well as to avoid the need for
+  /// the nnet to reorder things internally to match the requested output
+  /// (for layers inside the neural net, the ordering is (frame 0; frame 1 ...)
+  /// as this corresponds to the order you get when you sort a vector of Index).
   std::vector<Index> indexes;
 
 
@@ -83,7 +88,7 @@ struct NnetChainSupervision {
   /// is slower than the input, so in this case it might be 2 or 3.
   NnetChainSupervision(const std::string &name,
                        const chain::Supervision &supervision,
-                       const Vector<BaseFloat> &deriv_weights,
+                       const VectorBase<BaseFloat> &deriv_weights,
                        int32 first_frame,
                        int32 frame_skip);
 
@@ -100,8 +105,8 @@ struct NnetChainSupervision {
   bool operator == (const NnetChainSupervision &other) const;
 };
 
-/// NnetChainExample is like NnetExample, but specialized for CTC training.
-/// (actually CCTC training, which is our extension of CTC).
+/// NnetChainExample is like NnetExample, but specialized for
+/// lattice-free (chain) training.
 struct NnetChainExample {
 
   /// 'inputs' contains the input to the network-- normally just it has just one
@@ -109,7 +114,7 @@ struct NnetChainExample {
   /// "ivector")...  this depends on the setup.
   std::vector<NnetIo> inputs;
 
-  /// 'outputs' contains the CTC output supervision.  There will normally
+  /// 'outputs' contains the chain output supervision.  There will normally
   /// be just one member with name == "output".
   std::vector<NnetChainSupervision> outputs;
 
@@ -129,6 +134,31 @@ struct NnetChainExample {
     return inputs == other.inputs && outputs == other.outputs;
   }
 };
+
+/// This hashing object hashes just the structural aspects of the NnetExample
+/// without looking at the value of the features.  It will be used in combining
+/// egs into batches of all similar structure.
+struct NnetChainExampleStructureHasher {
+  size_t operator () (const NnetChainExample &eg) const noexcept;
+  // We also provide a version of this that works from pointers.
+  size_t operator () (const NnetChainExample *eg) const noexcept {
+    return (*this)(*eg);
+  }
+};
+
+
+/// This comparator object compares just the structural aspects of the
+/// NnetChainExample without looking at the value of the features.
+struct NnetChainExampleStructureCompare {
+  bool operator () (const NnetChainExample &a,
+                    const NnetChainExample &b) const;
+  // We also provide a version of this that works from pointers.
+  bool operator () (const NnetChainExample *a,
+                    const NnetChainExample *b) const {
+    return (*this)(*a, *b);
+  }
+};
+
 
 
 /// This function merges a list of NnetChainExample objects into a single one--
@@ -163,15 +193,6 @@ void ShiftChainExampleTimes(int32 frame_shift,
                            const std::vector<std::string> &exclude_names,
                            NnetChainExample *eg);
 
-/**
-   This sets to zero any elements of 'egs->outputs[*].deriv_weights' that correspond
-   to frames within the first or last 'truncate' frames of the sequence (e.g. you could
-   set 'truncate=5' to set zero deriv-weight for the first and last 5 frames of the
-   sequence).
- */
-void TruncateDerivWeights(int32 truncate,
-                          NnetChainExample *eg);
-
 /**  This function takes a NnetChainExample and produces a ComputationRequest.
      Assumes you don't want the derivatives w.r.t. the inputs; if you do, you
      can create the ComputationRequest manually.  Assumes that if
@@ -199,6 +220,60 @@ void GetChainComputationRequest(const Nnet &nnet,
 typedef TableWriter<KaldiObjectHolder<NnetChainExample > > NnetChainExampleWriter;
 typedef SequentialTableReader<KaldiObjectHolder<NnetChainExample > > SequentialNnetChainExampleReader;
 typedef RandomAccessTableReader<KaldiObjectHolder<NnetChainExample > > RandomAccessNnetChainExampleReader;
+
+
+/// This function returns the 'size' of a chain example as defined for purposes
+/// of merging egs, which is defined as the largest number of Indexes in any of
+/// the inputs or outputs of the example.
+int32 GetChainNnetExampleSize(const NnetChainExample &a);
+
+
+/// This class is responsible for arranging examples in groups that have the
+/// same strucure (i.e. the same input and output indexes), and outputting them
+/// in suitable minibatches as defined by ExampleMergingConfig.
+class ChainExampleMerger {
+ public:
+  ChainExampleMerger(const ExampleMergingConfig &config,
+                     NnetChainExampleWriter *writer);
+
+  // This function accepts an example, and if possible, writes a merged example
+  // out.  The ownership of the pointer 'a' is transferred to this class when
+  // you call this function.
+  void AcceptExample(NnetChainExample *a);
+
+  // This function announces to the class that the input has finished, so it
+  // should flush out any smaller-sized minibatches, as dictated by the config.
+  // This will be called in the destructor, but you can call it explicitly when
+  // all the input is done if you want to; it won't repeat anything if called
+  // twice.  It also prints the stats.
+  void Finish();
+
+  // returns a suitable exit status for a program.
+  int32 ExitStatus() { Finish(); return (num_egs_written_ > 0 ? 0 : 1); }
+
+  ~ChainExampleMerger() { Finish(); };
+ private:
+  // called by Finish() and AcceptExample().  Merges, updates the stats, and
+  // writes.  The 'egs' is non-const only because the egs are temporarily
+  // changed inside MergeChainEgs.  The pointer 'egs' is still owned
+  // by the caller.
+  void WriteMinibatch(std::vector<NnetChainExample> *egs);
+
+  bool finished_;
+  int32 num_egs_written_;
+  const ExampleMergingConfig &config_;
+  NnetChainExampleWriter *writer_;
+  ExampleMergingStats stats_;
+
+  // Note: the "key" into the egs is the first element of the vector.
+  typedef unordered_map<NnetChainExample*,
+                        std::vector<NnetChainExample*>,
+                        NnetChainExampleStructureHasher,
+                        NnetChainExampleStructureCompare> MapType;
+MapType eg_to_egs_;
+};
+
+
 
 } // namespace nnet3
 } // namespace kaldi

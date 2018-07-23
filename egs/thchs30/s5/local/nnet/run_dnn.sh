@@ -30,7 +30,7 @@ if [ $stage -le 0 ]; then
     #ompute cmvn
     steps/compute_cmvn_stats.sh data/fbank/$x exp/fbank_cmvn/$x fbank/$x || exit 1
   done
-  
+
   echo "producing test_fbank_phone"
   cp data/fbank/test/feats.scp data/fbank/test_phone && cp data/fbank/test/cmvn.scp data/fbank/test_phone || exit 1;
 
@@ -44,15 +44,15 @@ if [ $stage -le 1 ]; then
   (tail --pid=$$ -F $outdir/log/train_nnet.log 2>/dev/null)& # forward log
   $cuda_cmd $outdir/log/train_nnet.log \
     steps/nnet/train.sh --copy_feats false --cmvn-opts "--norm-means=true --norm-vars=false" --hid-layers 4 --hid-dim 1024 \
-	  --learn-rate 0.008 data/fbank/train data/fbank/dev data/lang $alidir $alidir_cv $outdir || exit 1;
+    --learn-rate 0.008 data/fbank/train data/fbank/dev data/lang $alidir $alidir_cv $outdir || exit 1;
   #Decode (reuse HCLG graph in gmmdir)
   (
     steps/nnet/decode.sh --nj $nj --cmd "$decode_cmd" --srcdir $outdir --config conf/decode_dnn.config --acwt 0.1 \
-      $gmmdir/graph_word data/fbank/test $outdir/decode_test_word || exit 1; 
+      $gmmdir/graph_word data/fbank/test $outdir/decode_test_word || exit 1;
   )&
   (
    steps/nnet/decode.sh --nj $nj --cmd "$decode_cmd" --srcdir $outdir --config conf/decode_dnn.config --acwt 0.1 \
-     $gmmdir/graph_phone data/fbank/test_phone $outdir/decode_test_phone || exit 1; 
+     $gmmdir/graph_phone data/fbank/test_phone $outdir/decode_test_phone || exit 1;
   )&
 
 fi
@@ -83,7 +83,7 @@ if [ $stage -le 3 ]; then
    )&
    (
    steps/nnet/decode.sh --nj $nj --cmd "$decode_cmd" --nnet $outdir/${ITER}.nnet --config conf/decode_dnn.config --acwt $acwt \
-     $gmmdir/graph_phone data/fbank/test_phone $outdir/decode_test_phone_it${ITER} || exit 1; 
+     $gmmdir/graph_phone data/fbank/test_phone $outdir/decode_test_phone_it${ITER} || exit 1;
    )&
   done
 fi

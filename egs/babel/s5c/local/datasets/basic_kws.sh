@@ -1,13 +1,13 @@
-#This script is not really supposed to be run directly 
+#This script is not really supposed to be run directly
 #Instead, it should be sourced from the decoding script
 #It makes many assumption on existence of certain environmental
 #variables as well as certain directory structure.
 
 if [ "${dataset_kind}" == "supervised" ] ; then
-  mandatory_variables="my_ecf_file my_kwlist_file my_rttm_file" 
+  mandatory_variables="my_ecf_file my_kwlist_file my_rttm_file"
   optional_variables="my_subset_ecf"
 else
-  mandatory_variables="my_ecf_file my_kwlist_file" 
+  mandatory_variables="my_ecf_file my_kwlist_file"
   optional_variables="my_subset_ecf"
 fi
 
@@ -23,6 +23,6 @@ if [ ! -f ${dataset_dir}/kws/.done ] ; then
   fi
   local/kws_setup.sh --case_insensitive $case_insensitive \
     "${kws_flags[@]}" "${icu_opt[@]}" \
-    $my_ecf_file $my_kwlist_file data/lang ${dataset_dir} || exit 1
-  touch ${dataset_dir}/kws/.done 
+    $my_ecf_file $my_kwlist_file $lang ${dataset_dir} || exit 1
+  touch ${dataset_dir}/kws/.done
 fi

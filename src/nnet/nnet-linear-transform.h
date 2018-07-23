@@ -21,6 +21,7 @@
 #ifndef KALDI_NNET_NNET_LINEAR_TRANSFORM_H_
 #define KALDI_NNET_NNET_LINEAR_TRANSFORM_H_
 
+#include <string>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -31,9 +32,9 @@ namespace nnet1 {
 
 class LinearTransform : public UpdatableComponent {
  public:
-  LinearTransform(int32 dim_in, int32 dim_out) : 
-    UpdatableComponent(dim_in, dim_out), 
-    linearity_(dim_out, dim_in), 
+  LinearTransform(int32 dim_in, int32 dim_out):
+    UpdatableComponent(dim_in, dim_out),
+    linearity_(dim_out, dim_in),
     linearity_corr_(dim_out, dim_in)
   { }
 
@@ -42,47 +43,47 @@ class LinearTransform : public UpdatableComponent {
 
   Component* Copy() const { return new LinearTransform(*this); }
   ComponentType GetType() const { return kLinearTransform; }
-  
+
   void InitData(std::istream &is) {
     // define options
     float param_stddev = 0.1;
-    float learn_rate_coef = 1.0;
     std::string read_matrix_file;
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
-      ReadToken(is, false, &token); 
+      ReadToken(is, false, &token);
       /**/ if (token == "<ParamStddev>") ReadBasicType(is, false, &param_stddev);
-      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef);
       else if (token == "<ReadMatrix>") ReadToken(is, false, &read_matrix_file);
+      else if (token == "<LearnRateCoef>") ReadBasicType(is, false, &learn_rate_coef_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
                      << " (ParamStddev|ReadMatrix|LearnRateCoef)";
     }
 
-    //
-    // initialize
-    //
-    if (read_matrix_file != "") { // load from file,
+    if (read_matrix_file != "") {  // load from file,
       bool binary;
       Input in(read_matrix_file, &binary);
       linearity_.Read(in.Stream(), binary);
       in.Close();
-      KALDI_LOG << "Loaded <LinearTransform> matrix from file : " << read_matrix_file;
-    } else { // random initialization,
-      linearity_.Resize(output_dim_, input_dim_);
-      for (int32 r=0; r<output_dim_; r++) {
-        for (int32 c=0; c<input_dim_; c++) {
-          linearity_(r,c) = param_stddev * RandGauss(); // 0-mean Gauss with given std_dev
-        }
+      // check dims,
+      if (OutputDim() != linearity_.NumRows() ||
+          InputDim() != linearity_.NumCols()) {
+        KALDI_ERR << "Dimensionality mismatch! Expected matrix"
+                  << " r=" << OutputDim() << " c=" << InputDim()
+                  << ", loaded matrix " << read_matrix_file
+                  << " with r=" << linearity_.NumRows()
+                  << " c=" << linearity_.NumCols();
       }
+      KALDI_LOG << "Loaded <LinearTransform> matrix from file : "
+                << read_matrix_file;
+      return;
     }
-    //
-    learn_rate_coef_ = learn_rate_coef;
-    //
 
-    // check dims,
-    KALDI_ASSERT(linearity_.NumRows() == output_dim_);
-    KALDI_ASSERT(linearity_.NumCols() == input_dim_);
+    //
+    // Initialize trainable parameters,
+    //
+    // Gaussian with given std_dev (mean = 0),
+    linearity_.Resize(OutputDim(), InputDim());
+    RandGauss(0.0, param_stddev, &linearity_);
   }
 
   void ReadData(std::istream &is, bool binary) {
@@ -90,17 +91,17 @@ class LinearTransform : public UpdatableComponent {
     while ('<' == Peek(is, binary)) {
       int first_char = PeekToken(is, binary);
       switch (first_char) {
-        case 'L': ExpectToken(is, binary, "<LearnRateCoef>"); 
+        case 'L': ExpectToken(is, binary, "<LearnRateCoef>");
           ReadBasicType(is, binary, &learn_rate_coef_);
           break;
-        default: 
+        default:
           std::string token;
           ReadToken(is, false, &token);
           KALDI_ERR << "Unknown token: " << token;
       }
     }
     // Read the data (data follow the tokens),
-    
+
     // weights
     linearity_.Read(is, binary);
 
@@ -111,40 +112,63 @@ class LinearTransform : public UpdatableComponent {
   void WriteData(std::ostream &os, bool binary) const {
     WriteToken(os, binary, "<LearnRateCoef>");
     WriteBasicType(os, binary, learn_rate_coef_);
-    if(!binary) os << "\n";
+    if (!binary) os << "\n";
     linearity_.Write(os, binary);
   }
 
-  int32 NumParams() const { return linearity_.NumRows()*linearity_.NumCols(); }
-  
-  void GetParams(Vector<BaseFloat>* wei_copy) const {
-    wei_copy->Resize(NumParams());
-    int32 linearity_num_elem = linearity_.NumRows() * linearity_.NumCols(); 
-    wei_copy->Range(0,linearity_num_elem).CopyRowsFromMat(Matrix<BaseFloat>(linearity_));
+  int32 NumParams() const {
+    return linearity_.NumRows()*linearity_.NumCols();
   }
-  
+
+  void GetGradient(VectorBase<BaseFloat>* gradient) const {
+    KALDI_ASSERT(gradient->Dim() == NumParams());
+    gradient->CopyRowsFromMat(linearity_corr_);
+  }
+
+  void GetParams(VectorBase<BaseFloat>* params) const {
+    KALDI_ASSERT(params->Dim() == NumParams());
+    params->CopyRowsFromMat(linearity_);
+  }
+
+  void SetParams(const VectorBase<BaseFloat>& params) {
+    KALDI_ASSERT(params.Dim() == NumParams());
+    linearity_.CopyRowsFromVec(params);
+  }
+
+  void SetLinearity(const MatrixBase<BaseFloat>& l) {
+    KALDI_ASSERT(l.NumCols() == linearity_.NumCols());
+    KALDI_ASSERT(l.NumRows() == linearity_.NumRows());
+    linearity_.CopyFromMat(l);
+  }
+
   std::string Info() const {
-    return std::string("\n  linearity") + MomentStatistics(linearity_) +
+    return std::string("\n  linearity") +
+      MomentStatistics(linearity_) +
       ", lr-coef " + ToString(learn_rate_coef_);
   }
   std::string InfoGradient() const {
-    return std::string("\n  linearity_grad") + MomentStatistics(linearity_corr_) +
+    return std::string("\n  linearity_grad") +
+      MomentStatistics(linearity_corr_) +
       ", lr-coef " + ToString(learn_rate_coef_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // multiply by weights^t
     out->AddMatMat(1.0, in, kNoTrans, linearity_, kTrans, 0.0);
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // multiply error derivative by weights
     in_diff->AddMatMat(1.0, out_diff, kNoTrans, linearity_, kNoTrans, 0.0);
   }
 
 
-  void Update(const CuMatrixBase<BaseFloat> &input, const CuMatrixBase<BaseFloat> &diff) {
+  void Update(const CuMatrixBase<BaseFloat> &input,
+              const CuMatrixBase<BaseFloat> &diff) {
     // we use following hyperparameters from the option class
     const BaseFloat lr = opts_.learn_rate;
     const BaseFloat mmt = opts_.momentum;
@@ -167,9 +191,7 @@ class LinearTransform : public UpdatableComponent {
   }
 
   /// Accessors to the component parameters
-  const CuMatrixBase<BaseFloat>& GetLinearity() {
-    return linearity_;
-  }
+  const CuMatrixBase<BaseFloat>& GetLinearity() { return linearity_; }
 
   void SetLinearity(const CuMatrixBase<BaseFloat>& linearity) {
     KALDI_ASSERT(linearity.NumRows() == linearity_.NumRows());
@@ -177,17 +199,14 @@ class LinearTransform : public UpdatableComponent {
     linearity_.CopyFromMat(linearity);
   }
 
-  const CuMatrixBase<BaseFloat>& GetLinearityCorr() {
-    return linearity_corr_;
-  }
-
+  const CuMatrixBase<BaseFloat>& GetLinearityCorr() { return linearity_corr_; }
 
  private:
   CuMatrix<BaseFloat> linearity_;
   CuMatrix<BaseFloat> linearity_corr_;
 };
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_LINEAR_TRANSFORM_H_

@@ -5,7 +5,7 @@
 # Apache 2.0
 # Acknowledgement  This work was supported by JSPS KAKENHI Grant Number 26280055.
 
-# Official evaluation data set (each set contains 10 speakers) preparation 
+# Official evaluation data set (each set contains 10 speakers) preparation
 
 # To be run from one directory above this script.
 
@@ -17,9 +17,9 @@ if [ $# -ne 2 ]; then
   exit 1
 fi
 
-tdir=$1 
+tdir=$1
 eval_num=$2
-. path.sh 
+. ./path.sh
 
 dir=data/local/$eval_num
 mkdir -p $dir
@@ -28,11 +28,11 @@ cat $tdir/$eval_num/*/*-wav.list | sort > $dir/wav.flist
 n=`cat $dir/wav.flist | wc -l`
 
 
-sed -e 's?.*/??' -e 's?.wav??' $dir/wav.flist | paste - $dir/wav.flist \
+sed -e 's?.*/??' -e 's?.wav??' -e 's?\-[R,L]??' $dir/wav.flist | paste - $dir/wav.flist \
   > $dir/wavflist.scp
 
-awk '{                                                                                                                                                                   
- printf("%s cat %s |\n", $1, $2);           
+awk '{
+ printf("%s cat %s |\n", $1, $2);
 }' < $dir/wavflist.scp | sort > $dir/wav.scp || exit 1;
 
 
@@ -45,20 +45,20 @@ awk '{
 awk '{
       spkutt_id=$1;
       split(spkutt_id,T,"[_ ]");
-      name=T[1]; stime=$2; etime=$3; 
+      name=T[1]; stime=$2; etime=$3;
       printf("%s_%07.0f_%07.0f",name, int(1000*stime), int(1000*etime));
       for(i=4;i<=NF;i++) printf(" %s", tolower($i)); printf "\n"
 }' $tdir/$eval_num/*/*-trans.text | sort > $dir/transcripts_${eval_num}.txt
 
 # Remove option
 cat $dir/transcripts_${eval_num}.txt \
- | perl -ane 's:\<s\>\s::gi;
-               s:\<\/s\>\s::gi;
+ | perl -ane 's:\<s\>::gi;
+               s:\<\/s\>::gi;
                 print;' \
  | awk '{if(NF > 1) { print; } } ' > $dir/text
 
 export LC_ALL=C;
-sort -c $dir/text || exit 1; # check it's sorted.  
+sort -c $dir/text || exit 1; # check it's sorted.
 
 ## Create segment file
 awk '{

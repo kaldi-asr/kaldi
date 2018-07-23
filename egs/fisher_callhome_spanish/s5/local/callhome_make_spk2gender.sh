@@ -2,7 +2,7 @@
 
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 # Gets the unique speakers from the file created by fsp_make_trans.pl
-# Note that if a speaker appears multiple times, it is categorized as female 
+# Note that if a speaker appears multiple times, it is categorized as female
 
 import os
 import sys
@@ -24,6 +24,6 @@ for line in tmpFile:
         speakers[comp[0]] = "f"
     else:
         speakers[comp[0]] = comp[1]
-        
+
 for speaker, gender in speakers.iteritems():
-    print speaker + " " + gender    
+    print speaker + " " + gender

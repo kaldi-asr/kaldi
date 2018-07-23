@@ -7,9 +7,9 @@ KALDI_ROOT=/homes/eva/q/qghoshal/src/kaldi/trunk
 [ -f $KALDI_ROOT/tools/env.sh ] && . $KALDI_ROOT/tools/env.sh
 
 KALDISRC=$KALDI_ROOT/src
-KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin  
+KALDIBIN=$KALDISRC/bin:$KALDISRC/featbin:$KALDISRC/fgmmbin:$KALDISRC/fstbin
 KALDIBIN=$KALDIBIN:$KALDISRC/gmmbin:$KALDISRC/latbin:$KALDISRC/nnetbin
-KALDIBIN=$KALDIBIN:$KALDISRC/sgmmbin:$KALDISRC/lm
+KALDIBIN=$KALDIBIN:$KALDISRC/sgmm2bin:$KALDISRC/lmbin
 
 FSTBIN=$KALDI_ROOT/tools/openfst/bin
 LMBIN=$KALDI_ROOT/tools/irstlm/bin
@@ -25,10 +25,9 @@ SCRIPTS=$kaldi_local:$kaldi_utils:$kaldi_steps
 
 export PATH=$PATH:$KALDIBIN:$FSTBIN:$LMBIN:$SCRIPTS
 
-# If the correct version of shorten and sox are not on the path, 
+# If the correct version of shorten and sox are not on the path,
 # the following will be set by local/gp_check_tools.sh
 SHORTEN_BIN=
 # e.g. $PWD/tools/shorten-3.6.1/bin
 SOX_BIN=
 # e.g. $PWD/tools/sox-14.3.2/bin
-

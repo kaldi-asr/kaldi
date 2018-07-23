@@ -31,38 +31,38 @@ int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace std;
-    
+
     const char *usage =
         "Select certain dimensions of the feature file;  think of it as the unix\n"
         "command cut -f ...\n"
         "Usage: select-feats <selection> <in-rspecifier> <out-wspecifier>\n"
         "  e.g. select-feats 0,24-22,3-12 scp:feats.scp ark,scp:feat-red.ark,feat-red.scp\n"
-        "See also copy-feats, extract-rows, subset-feats, subsample-feats\n";
-    
+        "See also copy-feats, extract-feature-segments, subset-feats, subsample-feats\n";
+
     ParseOptions po(usage);
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
-    }    
+    }
 
     string sspecifier = po.GetArg(1);
     string rspecifier = po.GetArg(2);
     string wspecifier = po.GetArg(3);
-    
+
     // set up input (we'll need that to validate the selected indices)
     SequentialBaseFloatMatrixReader kaldi_reader(rspecifier);
-    
+
     if (kaldi_reader.Done()) {
       KALDI_WARN << "Empty archive provided.";
       return 0;
     }
-    
+
     int32 dim_in = kaldi_reader.Value().NumCols();
     int32 dim_out = 0;
-    
+
     // figure out the selected dimensions
     istringstream iss(sspecifier);
     string token;
@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
         int s, e;
         istringstream(token.substr(0, token.length() - p - 1)) >> s;
         istringstream(token.substr(p+1)) >> e;
-        
+
         if (s < 0 || s > (dim_in-1)) {
           KALDI_ERR << "Invalid range start: " << s;
           return 1;
@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
           KALDI_ERR << "Invalid range end: " << e;
           return 1;
         }
-        
+
         // reverse range? make individual selections
         if (s > e) {
           for (int32 i = s; i >= e; --i) {
@@ -98,42 +98,42 @@ int main(int argc, char *argv[]) {
       } else {
         int i;
         istringstream(token) >> i;
-        
+
         if (i < 0 || i > (dim_in - 1)) {
           KALDI_ERR << "Invalid selection index: " << i;
           return 1;
         }
-        
+
         ranges.push_back(pair<int32, int32>(i, i));
         offsets.push_back(dim_out);
         dim_out += 1;
       }
     }
-    
+
     if (ranges.size() < 1) {
       KALDI_ERR << "No ranges or indices in selection string!";
       return 1;
     }
-    
+
     // set up output
     BaseFloatMatrixWriter kaldi_writer(wspecifier);
 
     // process all keys
     for (; !kaldi_reader.Done(); kaldi_reader.Next()) {
       Matrix<BaseFloat> feats(kaldi_reader.Value().NumRows(), dim_out);
-      
+
       // extract the desired ranges
       for (int32 i = 0; i < ranges.size(); ++i) {
         int32 f = ranges[i].first;
         int32 ncol = ranges[i].second - f + 1;
-        
+
         feats.Range(0, feats.NumRows(), offsets[i], ncol)
           .CopyFromMat(kaldi_reader.Value().Range(0, feats.NumRows(), f, ncol));
       }
-      
+
       kaldi_writer.Write(kaldi_reader.Key(), feats);
     }
-    
+
     return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();

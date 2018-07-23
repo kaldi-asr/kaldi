@@ -27,6 +27,40 @@
 namespace kaldi {
 namespace nnet3 {
 
+// renames outputs named "output" to new_name
+void RenameOutputs(const std::string &new_name, NnetExample *eg) {
+  bool found_output = false;
+  for (std::vector<NnetIo>::iterator it = eg->io.begin();
+       it != eg->io.end(); ++it) {
+    if (it->name == "output") {
+      it->name = new_name;
+      found_output = true;
+    }
+  }
+
+  if (!found_output)
+    KALDI_ERR << "No io-node with name 'output'"
+              << "exists in eg.";
+}
+
+// scales the supervision for 'output' by a factor of "weight"
+void ScaleSupervisionWeight(BaseFloat weight, NnetExample *eg) {
+  if (weight == 1.0) return;
+
+  bool found_output = false;
+  for (std::vector<NnetIo>::iterator it = eg->io.begin();
+       it != eg->io.end(); ++it) {
+    if (it->name == "output") {
+      it->features.Scale(weight);
+      found_output = true;
+    }
+  }
+
+  if (!found_output)
+    KALDI_ERR << "No supervision with name 'output'"
+              << "exists in eg.";
+}
+
 // returns an integer randomly drawn with expected value "expected_count"
 // (will be either floor(expected_count) or ceil(expected_count)).
 int32 GetCount(double expected_count) {
@@ -191,6 +225,7 @@ bool SelectFromExample(const NnetExample &eg,
                        int32 right_context,
                        int32 frame_shift,
                        NnetExample *eg_out) {
+  static bool warned_left = false, warned_right = false;
   int32 min_input_t, max_input_t,
       min_output_t, max_output_t;
   if (!ContainsSingleExample(eg, &min_input_t, &max_input_t,
@@ -214,21 +249,26 @@ bool SelectFromExample(const NnetExample &eg,
       min_output_t = max_output_t = frame;
     }
   }
-  // There may come a time when we want to remove or make it possible to disable
-  // the error messages below.  The std::max and std::min expressions may seem
-  // unnecessary but are intended to make life easier if and when we do that.
   if (left_context != -1) {
-    if (min_input_t > min_output_t - left_context)
-      KALDI_ERR << "You requested --left-context=" << left_context
-                << ", but example only has left-context of "
-                <<  (min_output_t - min_input_t);
+    if (!warned_left && min_input_t > min_output_t - left_context) {
+      warned_left = true;
+      KALDI_WARN << "You requested --left-context=" << left_context
+                 << ", but example only has left-context of "
+                 <<  (min_output_t - min_input_t)
+                 << " (will warn only once; this may be harmless if "
+          "using any --*left-context-initial options)";
+    }
     min_input_t = std::max(min_input_t, min_output_t - left_context);
   }
   if (right_context != -1) {
-    if (max_input_t < max_output_t + right_context)
-      KALDI_ERR << "You requested --right-context=" << right_context
+    if (!warned_right && max_input_t < max_output_t + right_context) {
+      warned_right = true;
+      KALDI_WARN << "You requested --right-context=" << right_context
                 << ", but example only has right-context of "
-                <<  (max_input_t - max_output_t);
+                <<  (max_input_t - max_output_t)
+                 << " (will warn only once; this may be harmless if "
+            "using any --*right-context-final options.";
+    }
     max_input_t = std::min(max_input_t, max_output_t + right_context);
   }
   FilterExample(eg,
@@ -264,7 +304,8 @@ int main(int argc, char *argv[]) {
         "e.g.\n"
         "nnet3-copy-egs ark:train.egs ark,t:text.egs\n"
         "or:\n"
-        "nnet3-copy-egs ark:train.egs ark:1.egs ark:2.egs\n";
+        "nnet3-copy-egs ark:train.egs ark:1.egs ark:2.egs\n"
+        "See also: nnet3-subset-egs, nnet3-get-egs, nnet3-merge-egs, nnet3-shuffle-egs\n";
 
     bool random = false;
     int32 srand_seed = 0;
@@ -278,7 +319,8 @@ int main(int argc, char *argv[]) {
 
     // you can set frame to a number to select a single frame with a particular
     // offset, or to 'random' to select a random single frame.
-    std::string frame_str;
+    std::string frame_str,
+      eg_weight_rspecifier, eg_output_name_rspecifier;
 
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
@@ -301,8 +343,15 @@ int main(int argc, char *argv[]) {
                 "feature left-context that we output.");
     po.Register("right-context", &right_context, "Can be used to truncate the "
                 "feature right-context that we output.");
-
-
+    po.Register("weights", &eg_weight_rspecifier,
+                "Rspecifier indexed by the key of egs, providing a weight by "
+                "which we will scale the supervision matrix for that eg. "
+                "Used in multilingual training.");
+    po.Register("outputs", &eg_output_name_rspecifier,
+                "Rspecifier indexed by the key of egs, providing a string-valued "
+                "output name, e.g. 'output-0'.  If provided, the NnetIo with "
+                "name 'output' will be renamed to the provided name. Used in "
+                "multilingual training.");
     po.Read(argc, argv);
 
     srand(srand_seed);
@@ -316,28 +365,58 @@ int main(int argc, char *argv[]) {
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 
+    // In the normal case, these would not be used. These are only applicable
+    // for multi-task or multilingual training.
+    RandomAccessTokenReader output_name_reader(eg_output_name_rspecifier);
+    RandomAccessBaseFloatReader egs_weight_reader(eg_weight_rspecifier);
+
     int32 num_outputs = po.NumArgs() - 1;
     std::vector<NnetExampleWriter*> example_writers(num_outputs);
     for (int32 i = 0; i < num_outputs; i++)
       example_writers[i] = new NnetExampleWriter(po.GetArg(i+2));
 
 
-    int64 num_read = 0, num_written = 0;
+    int64 num_read = 0, num_written = 0, num_err = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
+      const std::string &key = example_reader.Key();
+      NnetExample &eg = example_reader.Value();
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
-      std::string key = example_reader.Key();
-      const NnetExample &eg = example_reader.Value();
+
+      if (!eg_weight_rspecifier.empty()) {
+        BaseFloat weight = 1.0;
+        if (!egs_weight_reader.HasKey(key)) {
+          KALDI_WARN << "No weight for example key " << key;
+          num_err++;
+          continue;
+        }
+        weight = egs_weight_reader.Value(key);
+        ScaleSupervisionWeight(weight, &eg);
+      }
+
+      std::string new_output_name;
+      if (!eg_output_name_rspecifier.empty()) {
+        if (!output_name_reader.HasKey(key)) {
+          KALDI_WARN << "No new output-name for example key " << key;
+          num_err++;
+          continue;
+        }
+        new_output_name = output_name_reader.Value(key);
+      }
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
+          if (!new_output_name.empty() && c == 0)
+            RenameOutputs(new_output_name, &eg);
           example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
           if (SelectFromExample(eg, frame_str, left_context, right_context,
                                 frame_shift, &eg_modified)) {
+            if (!new_output_name.empty())
+              RenameOutputs(new_output_name, &eg_modified);
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
             example_writers[index]->Write(key, eg_modified);
@@ -350,12 +429,11 @@ int main(int argc, char *argv[]) {
     for (int32 i = 0; i < num_outputs; i++)
       delete example_writers[i];
     KALDI_LOG << "Read " << num_read << " neural-network training examples, wrote "
-              << num_written;
+              << num_written << ", "
+              << num_err <<  " examples had errors.";
     return (num_written == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
-
-

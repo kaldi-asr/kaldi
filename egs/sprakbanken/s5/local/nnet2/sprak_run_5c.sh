@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This is neural net training on top of adapted 40-dimensional features.
-# 
+#
 
 . ./cmd.sh
 
@@ -16,13 +16,13 @@ test2=$3
    --num-hidden-layers 4 --hidden-layer-dim 1024 \
    --cmd "$decode_cmd" \
    data/train data/lang exp/tri4b_ali exp/nnet5c || exit 1
-  
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 7 \
+
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 7 \
     --transform-dir exp/tri4b/decode_${uid}_$test1 \
      exp/tri4b/graph_$uid data/$test1 exp/nnet5c/decode_${uid}_$test1
 
 if [ -d $test2 ]; then
-  steps/decode_nnet_cpu.sh --cmd "$decode_cmd" --nj 4 \
+  steps/nnet2/decode.sh --cmd "$decode_cmd" --nj 4 \
     --transform-dir exp/tri4b/decode_${uid}_$test2 \
      exp/tri4b/graph_${uid} data/$test2 exp/nnet5c/decode_${uid}_$test2
 fi

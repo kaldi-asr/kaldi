@@ -24,16 +24,23 @@ if (  @ARGV < 1 && @ARGV > 2) {
 
 $symtab = shift @ARGV;
 open(S, "<$symtab") || die "Failed opening symbol table file $symtab\n";
-while(<S>){ 
+while(<S>){
     @A = split(" ", $_);
     @A == 2 || die "Bad line in symbol table file: $_";
     $seen{$A[0]} = 1;
 }
 
+$found_data=0;
 $curgram=0;
 while(<>) { # Find the \data\ marker.
-    if(m:^\\data\\$:) { last; }
+    if(m:^\\data\\\s*$:) { $found_data=1; last; }
 }
+
+if ($found_data==0) {
+  print STDERR "find_arpa_oovs.pl: found no \\data\\ marker in the ARPA input.\n";
+  exit(1);
+}
+
 while(<>) {
     if(m/^\\(\d+)\-grams:\s*$/) {
         $curgram = $1;

@@ -25,12 +25,28 @@ use warnings; #sed replacement for -w perl parameter
 # the make_lexicon_fst.pl script except for the word-dependent silprobs part
 
 if (@ARGV != 4) {
-  print STDERR "Usage: $0 lexiconp_disambig.txt \\\n";
-  print STDERR "       silprob.txt silphone sil_disambig_sym > lexiconfst.txt \n";
+  print STDERR "Usage: $0 lexiconp_silprob_disambig.txt \\\n";
+  print STDERR "       silprob.txt silphone_string sil_disambig_sym > lexiconfst.txt \n";
   print STDERR "\n";
   print STDERR "This script is almost the same as the utils/make_lexicon_fst.pl\n";
   print STDERR "except here we include word-dependent silence probabilities\n";
-  print STDERR "when making the lexicon FSTs.\n";
+  print STDERR "when making the lexicon FSTs. ";
+  print STDERR "For details, see paper \nhttp://danielpovey.com/files/2015_interspeech_silprob.pdf\n\n";
+  print STDERR "The lexiconp_silprob_disambig.txt file should have each line like \n\n";
+  print STDERR "word p(pronunciation|word) p(sil-after|word) correction-term-for-sil ";
+  print STDERR "correction-term-for-no-sil phone-1 phone-2 ... phone-N\n\n";
+  print STDERR "The pronunciation would have to include disambiguation symbols;\n";
+  print STDERR "the 2 correction terms above are computed to reflect how much a \n";
+  print STDERR "word affects the probability of a [non-]silence before it. \n";
+  print STDERR "Please see the paper (link given above) for detailed descriptions\n";
+  print STDERR "for how the 2 terms are computed.\n\n";
+  print STDERR "The silprob.txt file contains 4 lines, \n\n";
+  print STDERR "<s> p(sil-after|<s>)\n";
+  print STDERR "</s>_s correction-term-for-sil-for-</s>\n";
+  print STDERR "</s>_n correction-term-for-no-sil-for-</s>\n";
+  print STDERR "overall p(overall-sil)\n\n";
+  print STDERR "Other files are the same as utils/make_lexicon_fst.pl\n";
+
   exit(1);
 }
 
@@ -41,19 +57,6 @@ $silprobfile = shift @ARGV;
 
 open(L, "<$lexfn") || die "Error opening lexicon $lexfn";
 open(SP, "<$silprobfile") || die "Error opening word-sil-probs $SP";
-
-sub is_sil {
-  # Return true (1) if provided with a phone-sequence
-  # that means silence.
-  # @_ is the parameters of the function
-  # This function returns true if @_ equals ( $silphone )
-  # or something of the form ( "#0", $silphone, "#1" )
-  # where the "#0" and "#1" are disambiguation symbols.
-  return ( @_ == 1 && $_[0] eq $silphone ||
-           (@_ == 3 && $_[1] eq $silphone &&
-            $_[0] =~ m/^\#\d+$/ &&
-            $_[0] =~ m/^\#\d+$/));
-}
 
 $silbeginprob = -1;
 $silendcorrection = -1;

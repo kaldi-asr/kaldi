@@ -51,7 +51,7 @@ steps/nnet2/decode.sh --nj 10 --cmd "$decode_cmd" \
 
  # options here are for GPU use.
   steps/nnet2/train_more.sh --learning-rate-factor 0.1 --cmd "$train_cmd" \
-    --parallel-opts "-l gpu=1" --num-threads 1  --minibatch-size 512 \
+    --parallel-opts "--gpu 1" --num-threads 1  --minibatch-size 512 \
     exp/dnn4b_nnet2/final.mdl.mod exp/dnn4b_nnet2_retrain/egs exp/dnn4b_nnet2_retrain
 
   steps/nnet2/decode.sh --nj 30 --cmd "$decode_cmd" --transform-dir exp/tri3b/decode \
@@ -91,7 +91,7 @@ steps/nnet2/decode.sh --nj 10 --cmd "$decode_cmd" \
       exp/dnn4b_nnet2_dbn_retrain
 
   steps/nnet2/train_more.sh --learning-rate-factor 0.1 --cmd "$train_cmd" \
-    --parallel-opts "-l gpu=1" --num-threads 1  --minibatch-size 512 \
+    --parallel-opts "--gpu 1" --num-threads 1  --minibatch-size 512 \
     exp/dnn4b_nnet2_dbn/final.mdl.mod exp/dnn4b_nnet2_dbn_retrain/egs exp/dnn4b_nnet2_dbn_retrain
 
 

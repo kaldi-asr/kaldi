@@ -26,7 +26,7 @@ namespace kaldi {
 
 void InitRandomGmm(DiagGmm *gmm_in) {
   int32 num_gauss = 10 + Rand() % 5;
-  int32 dim = 20 + Rand() % 15;
+  int32 dim = 10 + Rand() % 10;
   DiagGmm &gmm(*gmm_in);
   gmm.Resize(num_gauss, dim);
   Matrix<BaseFloat> inv_vars(num_gauss, dim),
@@ -85,9 +85,9 @@ void UnitTestDiagGmmGenerate() {
 
 void UnitTestDiagGmm() {
   // random dimension of the gmm
-  size_t dim = 1 + kaldi::RandInt(0, 9);
+  size_t dim = 1 + kaldi::RandInt(0, 5);
   // random number of mixtures
-  size_t nMix = 1 + kaldi::RandInt(0, 9);
+  size_t nMix = 1 + kaldi::RandInt(0, 5);
 
   std::cout << "Testing NumGauss: " << nMix << ", " << "Dim: " << dim
     << '\n';
@@ -284,7 +284,7 @@ void UnitTestDiagGmm() {
     std::vector<std::pair<BaseFloat, const DiagGmm*> > vec;
     vec.push_back(std::make_pair(static_cast<BaseFloat>(0.4), (const DiagGmm*)(&gmm1)));
     vec.push_back(std::make_pair(static_cast<BaseFloat>(0.6), (const DiagGmm*)(&gmm1)));
-    
+
     DiagGmm gmm2(vec);
 
     float loglike1 = gmm1.LogLikelihood(feat);

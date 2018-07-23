@@ -80,11 +80,11 @@ void* CuMemoryAllocator::MallocPitchInternal(size_t row_bytes,
   cudaError_t e;
   for (int32 i = 0; i <= 2; i++) {
     if (num_rows != 1) {
-      Timer tim;
+      CuTimer tim;
       e = cudaMallocPitch(&ans, pitch, row_bytes, num_rows);
       tot_time_taken_in_cuda_malloc_pitch_ += tim.Elapsed();
     } else {
-      Timer tim;
+      CuTimer tim;
       // we might save a little time this way.
       e = cudaMalloc(&ans, row_bytes);
       tot_time_taken_in_cuda_malloc_ += tim.Elapsed();
@@ -131,10 +131,13 @@ void CuMemoryAllocator::PrintMemoryUsage() const {
             << "; " << num_system_allocations_ << '/'
             << num_user_allocations_ << " calls to Malloc* resulted in "
             << "CUDA calls.";
-  KALDI_LOG << "Time taken in cudaMallocPitch=" << tot_time_taken_in_cuda_malloc_pitch_
-            << ", in cudaMalloc=" << tot_time_taken_in_cuda_malloc_
-            << ", in cudaFree=" << tot_time_taken_in_cuda_free_
-            << ", in this->MallocPitch()=" << tot_time_taken_in_malloc_pitch_;
+  if (GetVerboseLevel() >= 1) {
+    // CuTimer only accumulates stats at verbose level 1 or above.
+    KALDI_LOG << "Time taken in cudaMallocPitch=" << tot_time_taken_in_cuda_malloc_pitch_
+              << ", in cudaMalloc=" << tot_time_taken_in_cuda_malloc_
+              << ", in cudaFree=" << tot_time_taken_in_cuda_free_
+              << ", in this->MallocPitch()=" << tot_time_taken_in_malloc_pitch_;
+  }
 }
 
 CuMemoryAllocator::CuMemoryAllocator(CuAllocatorOptions opts):
@@ -155,7 +158,7 @@ CuMemoryAllocator::CuMemoryAllocator(CuAllocatorOptions opts):
 void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
                                      size_t num_rows,
                                      size_t *pitch) {
-  Timer tim;
+  CuTimer tim;
   t_++;
   num_user_allocations_++;
   size_t requested_bytes = row_bytes * num_rows;
@@ -200,7 +203,7 @@ void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
 }
 
 void CuMemoryAllocator::FreeSomeCachedMemory(size_t bytes_to_free_in) {
-  Timer tim;
+  CuTimer tim;
   // the next few lines are responsible for increasing the amount of memory we
   // are going to free, in case the user requested an amount that's very tiny
   // compared with the total amount of memory ever used.  This helps us

@@ -246,7 +246,7 @@ basic_filebuf<CharT, Traits>::swap(basic_filebuf& rhs) {
                    reinterpret_cast<char_type*>(_M_extbuf_min) + n,
                    reinterpret_cast<char_type*>(_M_extbuf_min) + e);
     } else if (this->pbase() ==
-	           reinterpret_cast<char_type*>(rhs._M_extbuf_min)) {
+               reinterpret_cast<char_type*>(rhs._M_extbuf_min)) {
         ptrdiff_t n = this->pptr() - this->pbase();
         ptrdiff_t e = this->epptr() - this->pbase();
         this->setp(reinterpret_cast<char_type*>(_M_extbuf_min),

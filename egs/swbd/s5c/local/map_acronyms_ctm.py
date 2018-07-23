@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+
+# Copyright 2015  Minhua Wu
+# Apache 2.0
+
 # convert acronyms in swbd decode result
 # e.g. convert things like en_4156 B 414.26 0.65 u._c._l._a. to
 # en_4156 B 414.26 0.16 u

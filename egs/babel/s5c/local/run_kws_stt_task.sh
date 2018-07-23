@@ -1,4 +1,4 @@
-#!/bin/bash  
+#!/bin/bash
 # Copyright 2013  Johns Hopkins University (authors: Yenda Trmal)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,7 @@ if [ $(basename $0) == score.sh ]; then
 fi
 
 echo $0 "$@"
-. utils/parse_options.sh     
+. utils/parse_options.sh
 
 if [ $# -ne 3 ]; then
   echo "Usage: $0 [options] <data-dir> <lang-dir> <decode-dir>"
@@ -47,27 +47,29 @@ if [ $# -ne 3 ]; then
   exit 1;
 fi
 
-data_dir=$1; 
+data_dir=$1;
 lang_dir=$2;
-decode_dir=$3; 
+decode_dir=$3;
 
 ##NB: The first ".done" files are used for backward compatibility only
 ##NB: should be removed in a near future...
-if  [ ! -f $decode_dir/.score.done ] && [ ! -f $decode_dir/.done.score ]; then 
-  local/lattice_to_ctm.sh --cmd "$cmd" --word-ins-penalty $wip \
-    --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
-    $data_dir $lang_dir $decode_dir
-
-  if ! $skip_scoring ; then
-    local/score_stm.sh --cmd "$cmd"  --cer $cer \
-      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
+if ! $skip_stt ; then
+  if  [ ! -f $decode_dir/.score.done ] && [ ! -f $decode_dir/.done.score ]; then
+    local/lattice_to_ctm.sh --cmd "$cmd" --word-ins-penalty $wip \
+      --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
       $data_dir $lang_dir $decode_dir
+
+    if ! $skip_scoring ; then
+      local/score_stm.sh --cmd "$cmd"  --cer $cer \
+        --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt}\
+        $data_dir $lang_dir $decode_dir
+    fi
+    touch $decode_dir/.done.score
   fi
-  touch $decode_dir/.done.score
 fi
 
 if ! $skip_kws ; then
-  if [ ! -f $decode_dir/.kws.done ] && [ ! -f $decode_dir/.done.kws ]; then 
+  if [ ! -f $decode_dir/.kws.done ] && [ ! -f $decode_dir/.done.kws ]; then
     local/kws_search.sh --cmd "$cmd" --max-states ${max_states} \
       --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} --skip-scoring $skip_scoring\
       --indices-dir $decode_dir/kws_indices $lang_dir $data_dir $decode_dir

@@ -292,8 +292,8 @@ void TestConvertAlignment() {
   std::vector<int32> new_alignment;
 
   bool ans = ConvertAlignment(trans_model_old, trans_model_new, *ctx_dep_new,
-                              old_alignment, subsample_factor, new_reorder,
-                              NULL, &new_alignment);
+                              old_alignment, subsample_factor, false,
+                              new_reorder, NULL, &new_alignment);
   if(!ans) {
     KALDI_WARN << "Alignment conversion failed";
     // make sure it failed for a good reason.
@@ -311,8 +311,8 @@ void TestConvertAlignment() {
       // we should be able to convert back and it'll be the same.
       std::vector<int32> old_alignment_copy;
       bool ans = ConvertAlignment(trans_model_new, trans_model_old, *ctx_dep_old,
-                                  new_alignment, subsample_factor, old_reorder,
-                                  NULL, &old_alignment_copy);
+                                  new_alignment, subsample_factor, false,
+                                  old_reorder, NULL, &old_alignment_copy);
       KALDI_ASSERT(ans);
       KALDI_ASSERT(old_alignment_copy == old_alignment);
     }

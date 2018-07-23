@@ -8,7 +8,7 @@
 # This example script demonstrates how speed perturbation of the data helps the nnet training in the SWB setup.
 
 . ./cmd.sh
-set -e 
+set -e
 stage=0
 train_stage=-10
 use_gpu=true
@@ -22,13 +22,13 @@ has_fisher=true
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
   # the _a is in case I want to change the parameters.
@@ -37,7 +37,7 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 
@@ -150,7 +150,7 @@ fi
 wait;
 
 if [ $stage -le 14 ]; then
-  # do the actual online decoding with iVectors, carrying info forward from 
+  # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
   for decode_set in dev test; do
     num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
@@ -191,9 +191,9 @@ wait;
 if [ $stage -le 17 ]; then
   # prepare the build for distribution
   cat <<EOF >${dir}_online/sample_decode.sh
-. cmd.sh
+. ./cmd.sh
 data_dir=\$1  # e.g. data/dev_hires (to be prepared by the user, see egs/tedlium/run.sh for examples)
-model_dir=\$2 # e.g. exp/nnet2_online/nnet_ms_sp_online (provided in the distribution) 
+model_dir=\$2 # e.g. exp/nnet2_online/nnet_ms_sp_online (provided in the distribution)
 
 decode_dir=\$model_dir/\`basename \$data_dir\`
 num_jobs=\`cat \$data_dir/spk2utt | wc -l\`

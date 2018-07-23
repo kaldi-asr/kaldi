@@ -34,22 +34,25 @@ void ElementwiseProductOfFft(const Vector<BaseFloat> &a, Vector<BaseFloat> *b) {
 void ConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal) {
   int32 signal_length = signal->Dim();
   int32 filter_length = filter.Dim();
-  Vector<BaseFloat> signal_padded(signal_length + filter_length - 1);
+  int32 output_length = signal_length + filter_length - 1;
+  Vector<BaseFloat> signal_padded(output_length);
   signal_padded.SetZero();
   for (int32 i = 0; i < signal_length; i++) {
     for (int32 j = 0; j < filter_length; j++) {
         signal_padded(i + j) += (*signal)(i) * filter(j);
     }
   }
-  signal->CopyFromVec(signal_padded.Range(0, signal_length));
+  signal->Resize(output_length);
+  signal->CopyFromVec(signal_padded);
 }
 
 
 void FFTbasedConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal) {
   int32 signal_length = signal->Dim();
   int32 filter_length = filter.Dim();
+  int32 output_length = signal_length + filter_length - 1;
 
-  int32 fft_length = RoundUpToNearestPowerOfTwo(signal_length + filter_length - 1);
+  int32 fft_length = RoundUpToNearestPowerOfTwo(output_length);
   KALDI_VLOG(1) << "fft_length for full signal convolution is " << fft_length;
 
   SplitRadixRealFft<BaseFloat> srfft(fft_length);
@@ -67,12 +70,15 @@ void FFTbasedConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> 
   srfft.Compute(signal_padded.Data(), false);
   signal_padded.Scale(1.0 / fft_length);
 
-  signal->CopyFromVec(signal_padded.Range(0, signal_length));
+  signal->Resize(output_length);
+  signal->CopyFromVec(signal_padded.Range(0, output_length));
 }
 
 void FFTbasedBlockConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFloat> *signal) {
   int32 signal_length = signal->Dim();
   int32 filter_length = filter.Dim();
+  int32 output_length = signal_length + filter_length - 1;
+  signal->Resize(output_length, kCopyData);
 
   KALDI_VLOG(1) << "Length of the filter is " << filter_length;
 
@@ -91,9 +97,9 @@ void FFTbasedBlockConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFl
   temp_pad.SetZero();
   Vector<BaseFloat> signal_block_padded(fft_length);
 
-  for (int32 po = 0; po < signal_length; po += block_length) {
+  for (int32 po = 0; po < output_length; po += block_length) {
     // get a block of the signal
-    int32 process_length = std::min(block_length, signal_length - po);
+    int32 process_length = std::min(block_length, output_length - po);
     signal_block_padded.SetZero();
     signal_block_padded.Range(0, process_length).CopyFromVec(signal->Range(po, process_length));
 
@@ -105,17 +111,17 @@ void FFTbasedBlockConvolveSignals(const Vector<BaseFloat> &filter, Vector<BaseFl
     signal_block_padded.Scale(1.0 / fft_length);
 
     // combine the block
-    if (po + block_length < signal_length) {       // current block is not the last block
+    if (po + block_length < output_length) {       // current block is not the last block
       signal->Range(po, block_length).CopyFromVec(signal_block_padded.Range(0, block_length));
       signal->Range(po, filter_length - 1).AddVec(1.0, temp_pad);
       temp_pad.CopyFromVec(signal_block_padded.Range(block_length, filter_length - 1));
     } else {
-      signal->Range(po, signal_length - po).CopyFromVec(
-                        signal_block_padded.Range(0, signal_length - po));
-      if (filter_length - 1 < signal_length - po)
+      signal->Range(po, output_length - po).CopyFromVec(
+                        signal_block_padded.Range(0, output_length - po));
+      if (filter_length - 1 < output_length - po)
         signal->Range(po, filter_length - 1).AddVec(1.0, temp_pad);
       else
-        signal->Range(po, signal_length - po).AddVec(1.0, temp_pad.Range(0, signal_length - po));
+        signal->Range(po, output_length - po).AddVec(1.0, temp_pad.Range(0, output_length - po));
     }
   }
 }

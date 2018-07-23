@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
@@ -9,7 +9,7 @@ use_gpu=true
 dir=exp/nnet2_online/nnet_perturbed
 
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -17,13 +17,13 @@ dir=exp/nnet2_online/nnet_perturbed
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
 else
@@ -31,7 +31,7 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 
@@ -44,7 +44,7 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  # Note: if you've already run run_online_decoding_nnet2.sh you can 
+  # Note: if you've already run run_online_decoding_nnet2.sh you can
   # skip this stage.
   # use a smaller iVector dim (50) than the default (100) because RM has a very
   # small amount of data.
@@ -79,7 +79,7 @@ if [ $stage -le 5 ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/dpovey/kaldi-online/egs/rm/s5/$ivectordir $ivectordir/storage
   fi
   # Below, setting --utts-per-spk-max to a noninteger helps to randomize the division
-  # of speakers into "fake-speakers" with about 2 utterances each, by randomly making 
+  # of speakers into "fake-speakers" with about 2 utterances each, by randomly making
   # some have 2 and some 3 utterances... this randomness will be different in different
   # copies of the data.
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2.5 data/train_perturbed_mfcc \

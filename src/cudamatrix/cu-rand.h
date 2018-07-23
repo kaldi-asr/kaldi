@@ -1,6 +1,6 @@
 // cudamatrix/cu-rand.h
 
-// Copyright 2012  Karel Vesely
+// Copyright 2016  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,65 +17,84 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef KALDI_CUDAMATRIX_CU_RAND_H_
 #define KALDI_CUDAMATRIX_CU_RAND_H_
 
+#if HAVE_CUDA == 1
+  #include <curand.h>
+#endif
 
 #include "cudamatrix/cu-matrix.h"
+#include "cudamatrix/cu-vector.h"
 #include "base/kaldi-math.h"
 
 namespace kaldi {
 
-
-template<typename Real> 
+template<typename Real>
 class CuRand {
  public:
+  CuRand() {
+  #if HAVE_CUDA == 1
+    if (CuDevice::Instantiate().Enabled()) {
+      // Initialize the generator,
+      CURAND_SAFE_CALL(curandCreateGenerator(&gen_, CURAND_RNG_PSEUDO_DEFAULT));
+      // To get same random sequence, call srand() before the constructor is invoked,
+      CURAND_SAFE_CALL(curandSetGeneratorOrdering(gen_, CURAND_ORDERING_PSEUDO_DEFAULT));
+      CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(gen_, RandInt(128, RAND_MAX)));
+      CURAND_SAFE_CALL(curandSetGeneratorOffset(gen_, 0));
+    }
+  #endif
+  }
 
-  CuRand(): z1_(NULL), z2_(NULL), z3_(NULL), z4_(NULL), state_size_(0) { }
+  ~CuRand() {
+  #if HAVE_CUDA == 1
+    if (CuDevice::Instantiate().Enabled()) {
+      // Release the generator,
+      CURAND_SAFE_CALL(curandDestroyGenerator(gen_));
+    }
+  #endif
+  }
 
-  ~CuRand();
-  
-  /// on demand seeding of all the buffers
-  void SeedGpu(MatrixIndexT state_size);
+  /// Generate new seed for the GPU,
+  void SeedGpu() {
+  #if HAVE_CUDA == 1
+    if (CuDevice::Instantiate().Enabled()) {
+      // To get same random sequence, call srand() before the method is invoked,
+      CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(gen_, RandInt(128, RAND_MAX)));
+      CURAND_SAFE_CALL(curandSetGeneratorOffset(gen_, 0));
+    }
+  #endif
+  }
 
-  /// fill with numbers drawn from uniform distribution on [0, 1]
+  // CAUTION.
+  // For the versions of these functions that output to a CuMatrix (as opposed to
+  // CuMatrixBase), the random numbers depend on the stride, and the stride
+  // is not guaranteed to be consistent for the same dimension of matrix
+  // (it usually will be, but not when memory is nearly exhausted).  So
+  // for applications where consistency is essential, either use the versions
+  // of these function that accept CuMatrixBase, or initialize your matrix
+  // with the kStrideEqualNumCols argument to ensure consistent stride.
+
+  /// Fill with uniform [0..1] floats,
   void RandUniform(CuMatrixBase<Real> *tgt);
-  /// fill with normal random numbers
+  void RandUniform(CuMatrix<Real> *tgt);
+  void RandUniform(CuVectorBase<Real> *tgt);
+  /// Fill with Normal random numbers,
   void RandGaussian(CuMatrixBase<Real> *tgt);
+  void RandGaussian(CuMatrix<Real> *tgt);
   void RandGaussian(CuVectorBase<Real> *tgt);
 
-  /// align probabilities to discrete 0/1 states (use uniform samplig)
+  /// align probabilities to discrete 0/1 states (use uniform sampling),
   void BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states);
-  /// add gaussian noise to each element
+  /// add gaussian noise to each element,
   void AddGaussNoise(CuMatrix<Real> *tgt, Real gscale = 1.0);
 
  private:
-  /// seed one buffer on the GPU.  If state_size == 0, just frees any
-  /// existing buffers.
-  void SeedBuffer(MatrixIndexT state_size, uint32 **tgt);
-   
- private:
-
-  // CANNOT DEFINE CuMatrix<uint32>, 
-  // CuMatrix has back-off Matrix which cannot hold integers. 
-  // The inner state of random number generator will be in 
-  // a raw buffer with the size of the current matrix. 
-  //
-  // On-demand seeding is used to get the correct size 
-  // of the state buffer z1,z2,z3,z4
-  
-  /// Inner state of the ``grid-like'' random number generator
-  uint32 *z1_, *z2_, *z3_, *z4_; 
-  int32 state_size_; ///< size of the buffers
-  
-  CuMatrix<Real> tmp_; ///< auxiliary matrix
+  #if HAVE_CUDA == 1
+  curandGenerator_t gen_;
+  #endif
 };
 
+}  // namsepace
 
-} // namsepace
-
-#endif
-
-
+#endif  // KALDI_CUDAMATRIX_CU_RAND_H_

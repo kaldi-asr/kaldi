@@ -11,7 +11,7 @@ temp_dir=
 
 
 
-. cmd.sh
+. ./cmd.sh
 . utils/parse_options.sh  # to parse the --stage option, if given
 
 if [ $# != 0 ]; then
@@ -59,7 +59,7 @@ if [ $stage -le 2 ]; then
 
   steps/nnet2/train_block.sh --stage "$train_stage" \
      --num-threads 1 --max-change 40.0 --minibatch-size 512 --num-jobs-nnet 8 \
-     --parallel-opts "-l gpu=1" \
+     --parallel-opts "--gpu 1" \
      --initial-learning-rate 0.0075 --final-learning-rate 0.00075 \
      --num-epochs 10 --num-epochs-extra 5 \
      --cmd "$decode_cmd" \

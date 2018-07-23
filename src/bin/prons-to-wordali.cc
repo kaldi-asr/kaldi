@@ -52,8 +52,8 @@ int main(int argc, char *argv[]) {
         " <phone-lengths-rspecifier> <wordali-wspecifier>\n"
         "e.g.: \n"
         " ali-to-phones 1.mdl ark:1.ali ark:- | \\\n"
-        "  phones-to-prons L_align.fst 46 47 ark:- 1.tra ark:- | \\\n"
-        "  prons-to-wordali ark:- \\\n"
+        "  phones-to-prons L_align.fst 46 47 ark:- 'ark:sym2int.pl -f 2- words.txt text|' \\\n"
+        "  ark:- | prons-to-wordali ark:- \\\n"
         "    \"ark:ali-to-phones --write-lengths 1.mdl ark:1.ali ark:-|\" ark:1.wali\n";
     
     ParseOptions po(usage);

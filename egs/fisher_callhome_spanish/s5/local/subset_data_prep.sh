@@ -43,8 +43,8 @@ mkdir links/
 mkdir links/speech
 mkdir links/transcripts
 if [ ! -f $4 ]; then
-	echo "Please specify a valid parition file. Could not find $4"
-	exit 1;
+  echo "Please specify a valid parition file. Could not find $4"
+  exit 1;
 fi
 cat $4 | sed 's:.*/::g' | \
 xargs -I % find $1/ -name %* | xargs -I % echo cp % links/
@@ -90,21 +90,21 @@ then
 fi   
 
 if [ $stage -le 0 ]; then
-	#Gather all the speech files together to create a file list
-	#TODO: Train and test split might be required
-	(
-	    find $speech_d1 -iname '*.sph';
-	    find $speech_d2 -iname '*.sph';
-	)  > $tmpdir/train_sph.flist
+  #Gather all the speech files together to create a file list
+  #TODO: Train and test split might be required
+  (
+      find $speech_d1 -iname '*.sph';
+      find $speech_d2 -iname '*.sph';
+  )  > $tmpdir/train_sph.flist
 
-	#Get all the transcripts in one place
-	find $transcripts -iname '*.tdf' > $tmpdir/train_transcripts.flist
+  #Get all the transcripts in one place
+  find $transcripts -iname '*.tdf' > $tmpdir/train_transcripts.flist
 fi
 
 if [ $stage -le 1 ]; then
-	$local/fsp_make_trans.pl $tmpdir
-	mkdir -p $dir/train_all
-	mv $tmpdir/reco2file_and_channel $dir/train_all/
+  $local/fsp_make_trans.pl $tmpdir
+  mkdir -p $dir/train_all
+  mv $tmpdir/reco2file_and_channel $dir/train_all/
 fi
 
 if [ $stage -le 2 ]; then                                                        

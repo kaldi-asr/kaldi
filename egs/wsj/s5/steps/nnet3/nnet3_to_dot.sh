@@ -17,6 +17,7 @@ if [ $# != 3 ]; then
   echo " e.g.: $0 exp/sdm1/nnet3/lstm_sp/0.mdl lstm.dot lstm.png"
   echo ""
   echo "Main options (for others, see top of script file)"
+  echo "  --info-bin <nnet3-am-info|nnet3-info>        # Name of the binary to generate the nnet3 file"
   echo "  --component-attributes <string|name,type>     # attributes to be printed in nnet3 components"
   echo "  --node-prefixes <string|Lstm1,Lstm2>          # list of prefixes. Nnet3 components/component-nodes with the same prefix"
   echo "                                                # will be clustered together in the dot-graph"
@@ -34,6 +35,7 @@ $info_bin $model | \
   steps/nnet3/dot/nnet3_to_dot.py \
     --component-attributes "$component_attributes" \
     $attr $dot_file
+echo "Generated the dot file $dot_file"
 
 command -v dot >/dev/null 2>&1 || { echo >&2 "This script requires dot but it's not installed. Please compile $dot_file with dot"; exit 1; }
 dot -Tpdf $dot_file -o $output_file

@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
                 "individual posteriors, apply the weighting to the whole frame: "
                 "i.e. on time t, scale all posterior entries by "
                 "p(sil)*silence-weight + p(non-sil)*1.0");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 5) {
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]) {
       else
         WeightSilencePost(trans_model, silence_set,
                           silence_weight, &post);
-      
+
       posterior_writer.Write(posterior_reader.Key(), post);
     }
     KALDI_LOG << "Done " << num_posteriors << " posteriors.";

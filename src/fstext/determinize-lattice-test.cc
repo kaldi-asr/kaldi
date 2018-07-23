@@ -75,7 +75,7 @@ template<class Arc> void TestDeterminizeLattice() {
   typedef typename Arc::Weight Weight;
   typedef int32 Int;
   typedef ArcTpl<CompactLatticeWeightTpl<Weight, Int> > CompactArc;
-  
+
   for(int i = 0; i < 100; i++) {
     RandFstOptions opts;
     opts.n_states = 4;
@@ -84,34 +84,26 @@ template<class Arc> void TestDeterminizeLattice() {
     opts.allow_empty = false;
     opts.weight_multiplier = 0.5; // impt for the randomly generated weights
     // to be exactly representable in float,
-    // or this test fails because numerical differences can cause symmetry in 
+    // or this test fails because numerical differences can cause symmetry in
     // weights to be broken, which causes the wrong path to be chosen as far
     // as the string part is concerned.
-    
+
     VectorFst<Arc> *fst = RandFst<Arc>();
     std::cout << "FST before lattice-determinizing is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
-#else
-      FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> det_fst;
     try {
       DeterminizeLatticeOptions lat_opts;
       lat_opts.max_mem = 100;
-      
+
       if (!DeterminizeLattice<TropicalWeight, int32>(*fst, &det_fst, lat_opts, NULL))
         throw std::runtime_error("could not determinize");
       std::cout << "FST after lattice-determinizing is:\n";
       {
-#ifdef HAVE_OPENFST_GE_10400
         FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true, "\t");
-#else
-        FstPrinter<Arc> fstprinter(det_fst, NULL, NULL, NULL, false, true);
-#endif
         fstprinter.Print(&std::cout, "standard output");
       }
       assert(det_fst.Properties(kIDeterministic, true) & kIDeterministic);
@@ -122,11 +114,7 @@ template<class Arc> void TestDeterminizeLattice() {
       ConvertLattice<Weight, Int>(*fst, &compact_fst, false);
       std::cout << "Compact FST is:\n";
       {
-#ifdef HAVE_OPENFST_GE_10400
         FstPrinter<CompactArc> fstprinter(compact_fst, NULL, NULL, NULL, false, true, "\t");
-#else
-        FstPrinter<CompactArc> fstprinter(compact_fst, NULL, NULL, NULL, false, true);
-#endif
         fstprinter.Print(&std::cout, "standard output");
       }
       if (kaldi::Rand() % 2 == 1)
@@ -134,17 +122,13 @@ template<class Arc> void TestDeterminizeLattice() {
       else
         if (!DeterminizeLattice<TropicalWeight, int32>(*fst, &compact_det_fst, lat_opts, NULL))
           throw std::runtime_error("could not determinize");
-      
+
       std::cout << "Compact version of determinized FST is:\n";
       {
-#ifdef HAVE_OPENFST_GE_10400
         FstPrinter<CompactArc> fstprinter(compact_det_fst, NULL, NULL, NULL, false, true, "\t");
-#else
-        FstPrinter<CompactArc> fstprinter(compact_det_fst, NULL, NULL, NULL, false, true);
-#endif
         fstprinter.Print(&std::cout, "standard output");
       }
-      
+
       assert(RandEquivalent(compact_det_fst, compact_fst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length, max*/));
     } catch (...) {
       std::cout << "Failed to lattice-determinize this FST (probably not determinizable)\n";
@@ -162,22 +146,14 @@ template<class Arc> void TestDeterminizeLattice2() {
     VectorFst<Arc> *fst = RandFst<Arc>(opts);
     std::cout << "FST before lattice-determinizing is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
-#else
-      FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true);
-#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     VectorFst<Arc> ofst;
     DeterminizeLattice<TropicalWeight, int32>(*fst, &ofst);
     std::cout << "FST after lattice-determinizing is:\n";
     {
-#ifdef HAVE_OPENFST_GE_10400
       FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true, "\t");
-#else
-      FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true);
-#endif
       fstprinter.Print(&std::cout, "standard output");
     }
     delete fst;

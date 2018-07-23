@@ -12,33 +12,33 @@ set -e
 
 train_stage=-10
 use_gpu=true
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
   dir=exp/nnet2_online_wsj/nnet_gpu
   trainfeats=exp/nnet2_online_wsj/wsj_activations_train_gpu
   srcdir=../../wsj/s5/exp/nnet2_online/nnet_a_gpu_online
   # the following things are needed while training the combined model.
-  srcdir_orig=../../wsj/s5/exp/nnet2_online/nnet_a_gpu 
+  srcdir_orig=../../wsj/s5/exp/nnet2_online/nnet_a_gpu
   ivector_src=../../wsj/s5/exp/nnet2_online/extractor
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
   dir=exp/nnet2_online_wsj/nnet
   trainfeats=exp/nnet2_online_wsj/wsj_activations_train
   srcdir=../../wsj/s5/exp/nnet2_online/nnet_a_online
@@ -64,7 +64,7 @@ if [ $stage -le 1 ]; then
     --num-jobs-nnet 4 \
     --mix-up 4000 \
     --initial-learning-rate 0.02 --final-learning-rate 0.004 \
-     $trainfeats/data data/lang exp/tri3b_ali $dir 
+     $trainfeats/data data/lang exp/tri3b_ali $dir
 fi
 
 if [ $stage -le 2 ]; then
@@ -97,10 +97,10 @@ fi
 
 ## From this point on we try something else: we try training all the layers of
 ## the model on this dataset.  First we need to create a combined version of the
-## model. 
+## model.
 if [ $stage -le 5 ]; then
   steps/nnet2/create_appended_model.sh $srcdir_orig $dir ${dir}_combined_init
-  
+
   # Set the learning rate in this initial value to our guess of a suitable value.
   # note: we initially tried 0.005, and this gave us WERs of (1.40, 1.48, 7.24, 7.70) vs.
   # (1.32, 1.38, 7.20, 7.44) with a learning rate of 0.01.
@@ -140,7 +140,7 @@ if [ $stage -le 8 ]; then
     --num-threads "$num_threads" \
     --minibatch-size "$minibatch_size" \
     --parallel-opts "$parallel_opts" \
-     ${dir}_combined_init/final.mdl  ${dir}_combined/egs ${dir}_combined 
+     ${dir}_combined_init/final.mdl  ${dir}_combined/egs ${dir}_combined
 fi
 
 if [ $stage -le 9 ]; then
@@ -170,9 +170,9 @@ fi
 exit 0;
 
 # Here are the results when we just retrain the last layer:
-# grep WER exp/nnet2_online_wsj/nnet_gpu_online/decode/wer_* | utils/best_wer.sh 
+# grep WER exp/nnet2_online_wsj/nnet_gpu_online/decode/wer_* | utils/best_wer.sh
 #%WER 1.61 [ 202 / 12533, 22 ins, 46 del, 134 sub ] exp/nnet2_online_wsj/nnet_gpu_online/decode/wer_3
-#a11:s5: grep WER exp/nnet2_online_wsj/nnet_gpu_online/decode_ug/wer_* | utils/best_wer.sh 
+#a11:s5: grep WER exp/nnet2_online_wsj/nnet_gpu_online/decode_ug/wer_* | utils/best_wer.sh
 #%WER 7.99 [ 1002 / 12533, 74 ins, 153 del, 775 sub ] exp/nnet2_online_wsj/nnet_gpu_online/decode_ug/wer_6
 
 # and with per-utterance decoding:
@@ -188,7 +188,7 @@ exit 0;
 # %WER 7.44 [ 932 / 12533, 57 ins, 163 del, 712 sub ] exp/nnet2_online_wsj/nnet_gpu_combined_online/decode_ug_per_utt/wer_8
 
 # And this is a suitable baseline: a system trained on RM only.
-#a11:s5: grep WER exp/nnet2_online/nnet_gpu_online/decode/wer_* | utils/best_wer.sh 
+#a11:s5: grep WER exp/nnet2_online/nnet_gpu_online/decode/wer_* | utils/best_wer.sh
 #%WER 2.20 [ 276 / 12533, 25 ins, 69 del, 182 sub ] exp/nnet2_online/nnet_gpu_online/decode/wer_8
-#a11:s5: grep WER exp/nnet2_online/nnet_gpu_online/decode_ug/wer_* | utils/best_wer.sh 
+#a11:s5: grep WER exp/nnet2_online/nnet_gpu_online/decode_ug/wer_* | utils/best_wer.sh
 #%WER 10.14 [ 1271 / 12533, 127 ins, 198 del, 946 sub ] exp/nnet2_online/nnet_gpu_online/decode_ug/wer_11

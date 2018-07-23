@@ -109,7 +109,7 @@ and stores the results to exp/results.log.
 
 If you want to use the trained acoustic model with your language model
 outside the prepared script, you need to build the HCLG decoding graph yourself.  
-See http://kaldi.sourceforge.net/graph.html for general introduction to the FST 
+See http://kaldi-asr.org/doc/graph.html for general introduction to the FST 
 framework in Kaldi.
 
 The simplest way to start decoding is to use the same LM which

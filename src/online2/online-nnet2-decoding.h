@@ -29,7 +29,7 @@
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
 #include "nnet2/online-nnet2-decodable.h"
-#include "online2/online-nnet2-feature-pipeline.h"
+#include "itf/online-feature-itf.h"
 #include "online2/online-endpoint.h"
 #include "decoder/lattice-faster-online-decoder.h"
 #include "hmm/transition-model.h"
@@ -72,7 +72,7 @@ class SingleUtteranceNnet2Decoder {
                               const TransitionModel &tmodel,
                               const nnet2::AmNnet &model,
                               const fst::Fst<fst::StdArc> &fst,
-                              OnlineNnet2FeaturePipeline *feature_pipeline);
+                              OnlineFeatureInterface *feature_pipeline);
   
   /// advance the decoding as far as we can.
   void AdvanceDecoding();
@@ -111,7 +111,7 @@ class SingleUtteranceNnet2Decoder {
 
   OnlineNnet2DecodingConfig config_;
 
-  OnlineNnet2FeaturePipeline *feature_pipeline_;
+  OnlineFeatureInterface *feature_pipeline_;
 
   const TransitionModel &tmodel_;
   

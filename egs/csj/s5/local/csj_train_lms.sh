@@ -1,5 +1,8 @@
 #!/bin/bash 
 
+# 2016 Modified by Takafumi Moriya at Tokyo Institute of Technology
+# for Japanese speech recognition using CSJ.
+
 # Copyright 2013  Arnab Ghoshal
 #                 Johns Hopkins University (author: Daniel Povey)
 
@@ -39,6 +42,7 @@ fi
 text=$1    
 lexicon=$2 
 dir=$3     
+. ./path.sh
 
 for f in "$text" "$lexicon"; do
   [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
@@ -47,9 +51,9 @@ done
 loc=`which ngram-count`;
 if [ -z $loc ]; then
   if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-    sdir=`pwd`/../../../tools/srilm/bin/i686-m64 
+    sdir=${KALDI_ROOT}/tools/srilm/bin/i686-m64 
   else
-    sdir=`pwd`/../../../tools/srilm/bin/i686
+    sdir=${KALDI_ROOT}/tools/srilm/bin/i686
   fi
   if [ -f $sdir/ngram-count ]; then
     echo Using SRILM tools from $sdir

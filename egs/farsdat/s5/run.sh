@@ -65,7 +65,7 @@ echo ===========================================================================
 
 steps/train_mono.sh  --nj "$train_nj" --cmd "$train_cmd" data/train data/lang exp/mono
 
-utils/mkgraph.sh --mono data/lang_test_bg exp/mono exp/mono/graph
+utils/mkgraph.sh data/lang_test_bg exp/mono exp/mono/graph
 
 steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
  exp/mono/graph data/dev exp/mono/decode_dev

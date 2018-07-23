@@ -22,6 +22,8 @@
 #ifndef KALDI_NNET_NNET_MAX_POOLING_2D_COMPONENT_H_
 #define KALDI_NNET_NNET_MAX_POOLING_2D_COMPONENT_H_
 
+#include <string>
+#include <vector>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -38,11 +40,13 @@ namespace nnet1 {
  */
 class MaxPooling2DComponent : public Component {
  public:
-  MaxPooling2DComponent(int32 dim_in, int32 dim_out)
-      : Component(dim_in, dim_out),
-        fmap_x_len_(0), fmap_y_len_(0),
-        pool_x_len_(0), pool_y_len_(0), pool_x_step_(0), pool_y_step_(0)
+  MaxPooling2DComponent(int32 dim_in, int32 dim_out):
+    Component(dim_in, dim_out),
+    fmap_x_len_(0), fmap_y_len_(0),
+    pool_x_len_(0), pool_y_len_(0),
+    pool_x_step_(0), pool_y_step_(0)
   { }
+
   ~MaxPooling2DComponent()
   { }
 
@@ -64,7 +68,9 @@ class MaxPooling2DComponent : public Component {
                      << " (FmapXLen|FmapYLen|PoolXLen|PoolYLen|PoolXStep|PoolYStep)";
     }
     // check
-    KALDI_ASSERT(fmap_x_len_ * fmap_y_len_ * pool_x_len_ * pool_y_len_ * pool_x_step_ * pool_y_step_  != 0);
+    KALDI_ASSERT(fmap_x_len_ * fmap_y_len_ != 0);
+    KALDI_ASSERT(pool_x_len_ * pool_y_len_ != 0);
+    KALDI_ASSERT(pool_x_step_ * pool_y_step_ != 0);
   }
 
   void ReadData(std::istream &is, bool binary) {
@@ -118,7 +124,8 @@ class MaxPooling2DComponent : public Component {
     WriteBasicType(os, binary, pool_y_step_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
     int out_fmap_cnt = 0;
@@ -126,7 +133,9 @@ class MaxPooling2DComponent : public Component {
       for (int32 n = 0; n < fmap_y_len_-pool_y_len_+1; n = n+pool_y_step_) {
         int32 st = 0;
         st = (m * fmap_y_len_ + n) * num_input_fmaps;
-        CuSubMatrix<BaseFloat> pool(out->ColRange(out_fmap_cnt * num_input_fmaps, num_input_fmaps));
+        CuSubMatrix<BaseFloat> pool(
+          out->ColRange(out_fmap_cnt * num_input_fmaps, num_input_fmaps)
+        );
         pool.Set(-1e20);  // reset (large neg value)
         for (int32 i = 0; i < pool_x_len_; i++) {
           for (int32 j = 0; j < pool_y_len_; j++) {
@@ -141,8 +150,10 @@ class MaxPooling2DComponent : public Component {
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_input_fmaps = input_dim_ / (fmap_x_len_ * fmap_y_len_);
     int32 inp_fmap_size = fmap_x_len_ * fmap_y_len_;
@@ -169,11 +180,15 @@ class MaxPooling2DComponent : public Component {
                    + j * num_input_fmaps;
             //
             CuSubMatrix<BaseFloat> in_p(in.ColRange(c, num_input_fmaps));
-            CuSubMatrix<BaseFloat> out_p(out.ColRange(out_fmap_cnt*num_input_fmaps, num_input_fmaps));
+            CuSubMatrix<BaseFloat> out_p(
+              out.ColRange(out_fmap_cnt*num_input_fmaps, num_input_fmaps)
+            );
             //
 
             CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(c, num_input_fmaps));
-            CuMatrix<BaseFloat> src(out_diff.ColRange(out_fmap_cnt*num_input_fmaps, num_input_fmaps));
+            CuMatrix<BaseFloat> src(
+              out_diff.ColRange(out_fmap_cnt*num_input_fmaps, num_input_fmaps)
+            );
 
             CuMatrix<BaseFloat> mask;
             in_p.EqualElementMask(out_p, &mask);
@@ -187,7 +202,7 @@ class MaxPooling2DComponent : public Component {
       }
     }
 
-    // divide diff by #summands (compensate for patches used in more pools)
+    // divide diff by #summands (compensate for patches used in more pools),
     for (int i = 0; i < fmap_x_len_; i++) {
       for (int32 j = 0; j < fmap_y_len_; j++) {
         int32 c = i * fmap_y_len_ + j;
@@ -200,11 +215,11 @@ class MaxPooling2DComponent : public Component {
 
  private:
   int32 fmap_x_len_, fmap_y_len_,
-    pool_x_len_, pool_y_len_,
-    pool_x_step_, pool_y_step_;
+        pool_x_len_, pool_y_len_,
+        pool_x_step_, pool_y_step_;
 };
 
 }  // namespace nnet1
 }  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_MAX_POOLING_2D_COMPONENT_H_

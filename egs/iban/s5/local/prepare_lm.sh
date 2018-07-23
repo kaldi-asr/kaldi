@@ -10,7 +10,7 @@ set -e -o pipefail
 
 local/train_lms_srilm.sh --train-text data/train/text data/ data/srilm
 
-nl -nrz -w10  corpus/LM/iban-bp-2012.txt | sort -R > data/local/external_text
+nl -nrz -w10  corpus/LM/iban-bp-2012.txt | utils/shuffle_list.pl > data/local/external_text
 local/train_lms_srilm.sh --train-text data/local/external_text data/ data/srilm_external
 
 # let's do ngram interpolation of the previous two LMs
@@ -21,7 +21,7 @@ for w in 0.9 0.8 0.7 0.6 0.5; do
     ngram -lm data/srilm/lm.gz  -mix-lm data/srilm_external/lm.gz \
           -lambda $w -write-lm data/srilm_interp/lm.${w}.gz
     echo -n "data/srilm_interp/lm.${w}.gz "
-    ngram -lm data/srilm_interp/lm.${w}.gz -ppl data/srilm/dev.txt | paste -s
+    ngram -lm data/srilm_interp/lm.${w}.gz -ppl data/srilm/dev.txt | paste -s -
 done | sort  -k15,15g  > data/srilm_interp/perplexities.txt
 
 # for basic decoding, let's use only a trigram LM

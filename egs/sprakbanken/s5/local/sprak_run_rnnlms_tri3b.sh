@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 lang_test=$1 # e.g. data/lang_test_4g
 rnndir=$2 # e.g. data/local/rnntest

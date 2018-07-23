@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
         "segments are extracted and appended to the end of the utterance.\n"
         "Note this is for use in testing endpointing in decoding.\n"
         "\n"
-        "Usage: extend-wav-with-silence [options] <wav-rspecifier> <wav-wspecifier>\n";
+        "Usage: extend-wav-with-silence [options] <wav-rspecifier> <wav-wspecifier>\n"
+        "       extend-wav-with-silence [options] <wav-rxfilename> <wav-wxfilename>\n";
 
     ParseOptions po(usage);
     BaseFloat sil_len = 5.0,
@@ -76,16 +77,47 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string wav_rspecifier = po.GetArg(1);
-    std::string wav_wspecifier = po.GetArg(2);
+    if (ClassifyRspecifier(po.GetArg(1), NULL, NULL) != kNoRspecifier) {
+      SequentialTableReader<WaveHolder> reader(po.GetArg(1));
+      TableWriter<WaveHolder> writer(po.GetArg(2));
+      int32 num_success = 0;
 
-    SequentialTableReader<WaveHolder> reader(wav_rspecifier);
-    TableWriter<WaveHolder> writer(wav_wspecifier);
-    int32 num_success = 0;
+      for(; !reader.Done(); reader.Next()){
+        std::string wav_key = reader.Key();
+        const WaveData &wave = reader.Value();
+        BaseFloat samp_freq = wave.SampFreq();  // read sampling fequency
+        const Matrix<BaseFloat> &wave_data = wave.Data();
+        int32 num_chan = wave_data.NumRows(),       // number of channels in recording
+          num_ext_samp  = (int32)(samp_freq * sil_len); // number of samples that will be extended
+        KALDI_ASSERT(num_ext_samp > 0);
+        Matrix<BaseFloat> new_wave(wave_data.NumRows(), wave_data.NumCols() + num_ext_samp);
+        for(int32 i = 0; i < num_chan; i++){
+          Vector<BaseFloat> wav_this_chan(wave_data.Row(i));
+          Vector<BaseFloat> wav_extend(wav_this_chan.Dim() + num_ext_samp);
+          ExtendWaveWithSilence(wav_this_chan, samp_freq, &wav_extend,
+                                sil_search_len, sil_extract_len, sil_extract_shift);
+          KALDI_ASSERT(wav_extend.Dim() == wav_this_chan.Dim() + num_ext_samp);
+          new_wave.CopyRowFromVec(wav_extend, i);
+        }
+        WaveData wave_out(samp_freq, new_wave);
+        writer.Write(wav_key, wave_out);
+        num_success++;
+      }
+      KALDI_LOG << "Successfully extended " << num_success << " files.";
+      return 0;
+    } else {
+      std::string wav_rxfilename = po.GetArg(1);
+      std::string wav_wxfilename = po.GetArg(2);
+      bool binary = true;
+      Input ki(wav_rxfilename, &binary);
+      WaveHolder wh;
+      if (!wh.Read(ki.Stream())) {
+        KALDI_ERR << "Read failure from "
+                  << PrintableRxfilename(wav_rxfilename);
+      }
 
-    for(; !reader.Done(); reader.Next()){
-      std::string wav_key = reader.Key();
-      const WaveData &wave = reader.Value();
+      const WaveData& wave = wh.Value();
+
       BaseFloat samp_freq = wave.SampFreq();  // read sampling fequency
       const Matrix<BaseFloat> &wave_data = wave.Data();
       int32 num_chan = wave_data.NumRows(),       // number of channels in recording
@@ -101,11 +133,14 @@ int main(int argc, char *argv[]) {
         new_wave.CopyRowFromVec(wav_extend, i);
       }
       WaveData wave_out(samp_freq, new_wave);
-      writer.Write(wav_key, wave_out);
-      num_success++;
+
+      Output ko(wav_wxfilename, binary, false);
+      if (!WaveHolder::Write(ko.Stream(), true, wave_out)) {
+        KALDI_ERR << "Write failure to "
+                  << PrintableWxfilename(wav_wxfilename);
+      }
+      // we do not print any log messages here
     }
-    KALDI_LOG << "Successfully extended " << num_success << " files.";
-    return 0;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
@@ -142,7 +177,7 @@ void ExtendWaveWithSilence(const Vector<BaseFloat> &wav_in,
                                 wav_out->Dim() - wav_in.Dim() + window_size_half);
   for(int32 i = 0; i < window_size_half; i++)    // windowing the first half window
     wav_ext(i) *= half_window(i);
-  
+
   int32 tmp_offset = 0;
   for(; tmp_offset + window_size < wav_ext.Dim();) {
     wav_ext.Range(tmp_offset, window_size).AddVec(1.0, windowed_silence);

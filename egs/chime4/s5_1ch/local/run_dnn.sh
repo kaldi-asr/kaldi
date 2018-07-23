@@ -14,9 +14,9 @@
 
 # Config:
 nj=30
-stage=0 # resume training with --stage=N
+stage=0 # resume training with --stage N
 train=noisy
-eval_flag=false # make it true when the evaluation data are released
+eval_flag=true # make it true when the evaluation data are released
 
 . utils/parse_options.sh || exit 1;
 
@@ -90,10 +90,17 @@ fi
 # make mixed training set from real and simulation enhanced data
 # multi = simu + real
 if [ $stage -le 3 ]; then
+  for data_dir in $data_fmllr/tr05_real_${train} $data_fmllr/tr05_simu_${train} $data_fmllr/dt05_real_$enhan $data_fmllr/dt05_simu_$enhan; do
+    utils/data/get_utt2dur.sh $data_dir
+  done
+
   utils/combine_data.sh $data_fmllr/tr05_multi_${train} $data_fmllr/tr05_simu_${train} $data_fmllr/tr05_real_${train}
   utils/combine_data.sh $data_fmllr/dt05_multi_$enhan $data_fmllr/dt05_simu_$enhan $data_fmllr/dt05_real_$enhan
   if $eval_flag; then
-  utils/combine_data.sh $data_fmllr/et05_multi_$enhan $data_fmllr/et05_simu_$enhan $data_fmllr/et05_real_$enhan
+    for data_dir in $data_fmllr/et05_real_$enhan $data_fmllr/et05_simu_$enhan; do
+      utils/data/get_utt2dur.sh $data_dir
+    done
+    utils/combine_data.sh $data_fmllr/et05_multi_$enhan $data_fmllr/et05_simu_$enhan $data_fmllr/et05_real_$enhan
   fi
 fi
 
@@ -140,7 +147,7 @@ srcdir=exp/tri4a_dnn_tr05_multi_${train}
 acwt=0.1
 
 # First we generate lattices and alignments:
-# gawk must be installed to perform awk -v FS="/" '{ print gensub(".gz","","",$NF)" gunzip -c "$0" |"; }' in
+# awk -v FS="/" '{ NF_nosuffix=$NF; sub(".gz","",NF_nosuffix); print NF_nosuffix gunzip -c "$0" |"; }' in
 # steps/nnet/make_denlats.sh
 if [ $stage -le 7 ]; then
   steps/nnet/align.sh --nj $nj --cmd "$train_cmd" \

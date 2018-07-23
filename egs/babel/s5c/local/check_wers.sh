@@ -4,7 +4,7 @@
 
 check_wer () {
   dir=$1
-  if [ -d $dir ]; then 
+  if [ -d $dir ]; then
     seen_dir=false
     for ddir in $dir/decode*; do
       if [ -d $ddir ]; then
@@ -34,7 +34,7 @@ for n in `seq 10`; do
   fi
 done
 
-if [ $# != 0 ]; then 
+if [ $# != 0 ]; then
   echo "Usage: local/check_wers.sh [--final] [--char]"
   exit 1;
 fi

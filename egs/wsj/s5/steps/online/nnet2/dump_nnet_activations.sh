@@ -66,7 +66,7 @@ if [ $stage -le 0 ]; then
   ns=$(wc -l <$data/spk2utt)
   if [ "$ns" == 1 -a "$utts_per_spk_max" != 1 ]; then
     echo "$0: you seem to have just one speaker in your database.  This is probably not a good idea."
-    echo "  see http://kaldi.sourceforge.net/data_prep.html (search for 'bold') for why"
+    echo "  see http://kaldi-asr.org/doc/data_prep.html (search for 'bold') for why"
     echo "  Setting --utts-per-spk-max to 1."
     utts_per_spk_max=1
   fi

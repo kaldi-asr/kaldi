@@ -24,6 +24,8 @@
 #include <string>
 #include <vector>
 #include <deque>
+#include <mutex>
+#include <thread>
 
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
@@ -34,8 +36,7 @@
 #include "online2/online-endpoint.h"
 #include "decoder/lattice-faster-online-decoder.h"
 #include "hmm/transition-model.h"
-#include "thread/kaldi-mutex.h"
-#include "thread/kaldi-semaphore.h"
+#include "util/kaldi-semaphore.h"
 
 namespace kaldi {
 /// @addtogroup  onlinedecoding OnlineDecoding
@@ -62,50 +63,50 @@ namespace kaldi {
    state of the buffer.
 */
 class ThreadSynchronizer {
- public:  
+ public:
   ThreadSynchronizer();
 
   // Most calls to this class should provide the thread-type of the caller,
   // producing or consuming.  Actually the behavior of this class is symmetric
   // between the two types of thread.
   enum ThreadType { kProducer, kConsumer };
-  
+
   // All functions returning bool will return true normally, and false if
   // SetAbort() was set; if they return false, you should probably call SetAbort()
   // on any other ThreadSynchronizer classes you are using and then return from
   // the thread.
-  
+
   // call this to lock the object being guarded.
-  bool Lock(ThreadType t);  
+  bool Lock(ThreadType t);
 
   // Call this to unlock the object being guarded, if you don't want the next call to
   // Lock to stall.
   bool UnlockSuccess(ThreadType t);
-  
+
   // Call this if you want the next call to Lock() to stall until the other
   // (producer/consumer) thread has locked and then unlocked the mutex.  Note
   // that, if the other thread then calls Lock and then UnlockFailure, this will
   // generate a printed warning (and if repeated too many times, an exception).
   bool UnlockFailure(ThreadType t);
-  
+
   // Sets abort_ flag so future calls will return false, and future calls to
   // Lock() won't lock the mutex but will immediately return false.
   void SetAbort();
 
   ~ThreadSynchronizer();
-  
+
  private:
   bool abort_;
   bool producer_waiting_;  // true if producer is/will be waiting on semaphore
   bool consumer_waiting_;  // true if consumer is/will be waiting on semaphore
-  Mutex mutex_;  // Locks the buffer object.
+  std::mutex mutex_;  // Locks the buffer object.
   ThreadType held_by_;  // Record of which thread is holding the mutex (if
                         // held); else undefined.  Used for validation of input.
   Semaphore producer_semaphore_;  // The producer thread waits on this semaphore
   Semaphore consumer_semaphore_;  // The consumer thread waits on this semaphore
   int32 num_errors_;  // Rumber of times the threads alternated doing Lock() and
                       // UnlockFailure().  This should not happen at all; but
-                      // it's more user-friendly to simply warn a few times; and then  
+                      // it's more user-friendly to simply warn a few times; and then
                       // only after a number of errors, to fail.
   KALDI_DISALLOW_COPY_AND_ASSIGN(ThreadSynchronizer);
 };
@@ -118,15 +119,15 @@ class ThreadSynchronizer {
 // separately, and which are not included here: namely,
 // OnlineNnet2FeaturePipelineConfig and OnlineEndpointConfig.
 struct OnlineNnet2DecodingThreadedConfig {
-  
+
   LatticeFasterDecoderConfig decoder_opts;
-  
+
   BaseFloat acoustic_scale;
-  
+
   int32 max_buffered_features;  // maximum frames of features we allow to be
                                 // held in the feature buffer before we block
                                 // the feature-processing thread.
-  
+
   int32 feature_batch_size;  // maximum number of frames at a time that we decode
                              // before unlocking the mutex.  The only real cost
                              // here is a mutex lock/unlock, so it's OK to make
@@ -148,7 +149,7 @@ struct OnlineNnet2DecodingThreadedConfig {
                             // before unlocking the mutex.  The only real cost
                             // here is a mutex lock/unlock, so it's OK to make
                             // this fairly small.
-  
+
   OnlineNnet2DecodingThreadedConfig() {
     acoustic_scale = 0.1;
     max_buffered_features = 100;
@@ -159,7 +160,7 @@ struct OnlineNnet2DecodingThreadedConfig {
   }
 
   void Check();
-  
+
   void Register(OptionsItf *opts) {
     decoder_opts.Register(opts);
     opts->Register("acoustic-scale", &acoustic_scale, "Scale used on acoustics "
@@ -202,7 +203,7 @@ class SingleUtteranceNnet2DecoderThreaded {
       const OnlineIvectorExtractorAdaptationState &adaptation_state);
 
 
-  
+
   /// You call this to provide this class with more waveform to decode.  This
   /// call is, for all practical purposes, non-blocking.
   void AcceptWaveform(BaseFloat samp_freq,
@@ -226,12 +227,12 @@ class SingleUtteranceNnet2DecoderThreaded {
   /// data before the decoding thread exits.  You can call Wait() after calling
   /// this, if you want to wait for that.
   void TerminateDecoding();
-  
+
   /// This call will block until all the data has been decoded; it must only be
   /// called after either InputFinished() has been called or TerminateDecoding() has
   /// been called; otherwise, to call it is an error.
   void Wait();
-  
+
   /// Finalizes the decoding. Cleans up and prunes remaining tokens, so the final
   /// lattice is faster to obtain.  May not be called unless either InputFinished()
   /// or TerminateDecoding() has been called.  If InputFinished() was called, it
@@ -251,7 +252,7 @@ class SingleUtteranceNnet2DecoderThreaded {
   /// it may increase after this-- unless you've already called either
   /// TerminateDecoding() or InputFinished(), followed by Wait().
   int32 NumFramesDecoded() const;
-  
+
   /// Gets the lattice.  The output lattice has any acoustic scaling in it
   /// (which will typically be desirable in an online-decoding context); if you
   /// want an un-scaled lattice, scale it using ScaleLattice() with the inverse
@@ -267,7 +268,7 @@ class SingleUtteranceNnet2DecoderThreaded {
   void GetLattice(bool end_of_utterance,
                   CompactLattice *clat,
                   BaseFloat *final_relative_cost) const;
-  
+
   /// Outputs an FST corresponding to the single best path through the current
   /// lattice. If "use_final_probs" is true AND we reached the final-state of
   /// the graph then it will include those as final-probs, else it will treat
@@ -298,7 +299,7 @@ class SingleUtteranceNnet2DecoderThreaded {
   /// this if you called TerminateDecoding() before Wait().  The idea is that
   /// you can then provide this un-decoded piece of waveform to another decoder.
   BaseFloat GetRemainingWaveform(Vector<BaseFloat> *waveform_out) const;
-  
+
   ~SingleUtteranceNnet2DecoderThreaded();
  private:
 
@@ -306,18 +307,16 @@ class SingleUtteranceNnet2DecoderThreaded {
   // can safely do so, by calling SetAbort() in the threads
   void AbortAllThreads(bool error);
 
-  // This function waits for all the threads that have been spawned, and then
-  // sets the pointers in threads_ to NULL; it is called in the destructor and
-  // from Wait().  If called twice it is not an error.
+  // This function waits for all the threads that have been spawned. It is
+  // called in the destructor and Wait(). If called twice it is not an error.
   void WaitForAllThreads();
-  
-  
+
+
 
   // this function runs the thread that does the feature extraction and
-  // neural-net evaluation.  ptr_in is to class
-  // SingleUtteranceNnet2DecoderThreaded.  Always returns NULL, but in case of
-  // failure, calls ptr_in->AbortAllThreads(true).
-  static void* RunNnetEvaluation(void *ptr_in);
+  // neural-net evaluation. In case of failure, calls
+  // me->AbortAllThreads(true).
+  static void RunNnetEvaluation(SingleUtteranceNnet2DecoderThreaded *me);
   // member-function version of RunNnetEvaluation, called by RunNnetEvaluation.
   bool RunNnetEvaluationInternal();
   // the following function is called inside RunNnetEvaluationInternal(); it
@@ -331,20 +330,19 @@ class SingleUtteranceNnet2DecoderThreaded {
   bool FeatureComputation(int32 num_frames_output);
 
 
-  // this function runs the thread that does the neural-net evaluation ptr_in is
-  // to class SingleUtteranceNnet2DecoderThreaded.  Always returns NULL, but in
-  // case of failure, calls ptr_in->AbortAllThreads(true).
-  static void* RunDecoderSearch(void *ptr_in);
+  // this function runs the thread that does the neural-net evaluation.
+  // In case of failure, calls me->AbortAllThreads(true).
+  static void RunDecoderSearch(SingleUtteranceNnet2DecoderThreaded *me);
   // member-function version of RunDecoderSearch, called by RunDecoderSearch.
   bool RunDecoderSearchInternal();
 
 
   // Member variables:
-  
+
   OnlineNnet2DecodingThreadedConfig config_;
 
   const nnet2::AmNnet &am_nnet_;
-  
+
   const TransitionModel &tmodel_;
 
 
@@ -363,15 +361,15 @@ class SingleUtteranceNnet2DecoderThreaded {
   bool input_finished_;
   std::deque< Vector<BaseFloat>* > input_waveform_;
 
-  
+
   ThreadSynchronizer waveform_synchronizer_;
-  
+
   // feature_pipeline_ is accessed by the nnet-evaluation thread, by the main
   // thread if GetAdaptionState() is called, and by the decoding thread via
   // ComputeCurrentTraceback() if online silence weighting is being used.  It is
   // guarded by feature_pipeline_mutex_.
   OnlineNnet2FeaturePipeline feature_pipeline_;
-  Mutex feature_pipeline_mutex_;
+  std::mutex feature_pipeline_mutex_;
 
   // The next two variables are required only for implementation of the function
   // GetRemainingWaveform().  After we take waveform from the input_waveform_
@@ -385,9 +383,9 @@ class SingleUtteranceNnet2DecoderThreaded {
   // This object is used to control the (optional) downweighting of silence in iVector estimation,
   // which is based on the decoder traceback.
   OnlineSilenceWeighting silence_weighting_;
-  Mutex silence_weighting_mutex_;
+  std::mutex silence_weighting_mutex_;
 
-  
+
   // this Decodable object just stores a matrix of scaled log-likelihoods
   // obtained by the nnet-evaluation thread.  It is produced by the
   // nnet-evaluation thread and consumed by the decoder-search thread.  The
@@ -407,25 +405,26 @@ class SingleUtteranceNnet2DecoderThreaded {
   // thread (where it is released and re-obtained on each frame), but is obtained
   // by the main (parent) thread if you call functions like NumFramesDecoded(),
   // GetLattice() and GetBestPath().
-  Mutex decoder_mutex_;
-  
+  mutable std::mutex decoder_mutex_;  // declared as mutable because we mutate
+                                      // this mutex in const methods
+
   // This contains the thread pointers for the nnet-evaluation and
   // decoder-search threads respectively (or NULL if they have been joined in
   // Wait()).
-  pthread_t threads_[2];
+  std::thread threads_[2];
 
   // This is set to true if AbortAllThreads was called for any reason, including
   // if someone called TerminateDecoding().
   bool abort_;
-  
+
   // This is set to true if any kind of unexpected error is encountered,
   // including if exceptions are raised in any of the threads.  Will normally
   // be a coding error, malloc failure-- something we should never encounter.
   bool error_;
-  
+
 };
 
-  
+
 /// @} End of "addtogroup onlinedecoding"
 
 }  // namespace kaldi

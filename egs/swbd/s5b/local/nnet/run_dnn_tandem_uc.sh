@@ -7,8 +7,8 @@
 # 'Universal Context' topology as invented by Frantisek Grezl,
 # the network is on top of FBANK+f0 features.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 
 # Config:
 stage=0 # resume training with --stage=N
@@ -89,7 +89,7 @@ if [ $stage -le 4 ]; then
   dir=exp/nnet5b_uc-part1
   feature_transform=$dir/final.feature_transform.part1
   nnet-concat $dir/final.feature_transform \
-    "nnet-copy --remove-last-layers=4 --binary=false $dir/final.nnet - |" \
+    "nnet-copy --remove-last-components=4 --binary=false $dir/final.nnet - |" \
     "utils/nnet/gen_splice.py --fea-dim=80 --splice=2 --splice-step=5 |" \
     $feature_transform || exit 1
   

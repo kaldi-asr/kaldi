@@ -21,6 +21,8 @@
 #ifndef KALDI_NNET_NNET_MAX_POOLING_COMPONENT_H_
 #define KALDI_NNET_NNET_MAX_POOLING_COMPONENT_H_
 
+#include <string>
+#include <vector>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -37,18 +39,22 @@ namespace nnet1 {
  */
 class MaxPoolingComponent : public Component {
  public:
-  MaxPoolingComponent(int32 dim_in, int32 dim_out) 
-    : Component(dim_in, dim_out), pool_size_(0), pool_step_(0), pool_stride_(0)
+  MaxPoolingComponent(int32 dim_in, int32 dim_out):
+    Component(dim_in, dim_out),
+    pool_size_(0),
+    pool_step_(0),
+    pool_stride_(0)
   { }
+
   ~MaxPoolingComponent()
   { }
 
   Component* Copy() const { return new MaxPoolingComponent(*this); }
   ComponentType GetType() const { return kMaxPoolingComponent; }
-  
+
   void InitData(std::istream &is) {
     // parse config
-    std::string token; 
+    std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
       /**/ if (token == "<PoolSize>") ReadBasicType(is, false, &pool_size_);
@@ -94,7 +100,8 @@ class MaxPoolingComponent : public Component {
     WriteBasicType(os, binary, pool_stride_);
   }
 
-  void PropagateFnc(const CuMatrixBase<BaseFloat> &in, CuMatrixBase<BaseFloat> *out) {
+  void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                    CuMatrixBase<BaseFloat> *out) {
     // useful dims
     int32 num_patches = input_dim_ / pool_stride_;
     int32 num_pools = 1 + (num_patches - pool_size_) / pool_step_;
@@ -103,16 +110,18 @@ class MaxPoolingComponent : public Component {
     for (int32 q = 0; q < num_pools; q++) {
       // get output buffer of the pool
       CuSubMatrix<BaseFloat> pool(out->ColRange(q*pool_stride_, pool_stride_));
-      pool.Set(-1e20); // reset (large negative value)
-      for (int32 r = 0; r < pool_size_; r++) { // max
-        int32 p = r + q * pool_step_; // p = input patch
+      pool.Set(-1e20);  // reset (large negative value)
+      for (int32 r = 0; r < pool_size_; r++) {  // max
+        int32 p = r + q * pool_step_;  // p = input patch
         pool.Max(in.ColRange(p*pool_stride_, pool_stride_));
       }
     }
   }
 
-  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in, const CuMatrixBase<BaseFloat> &out,
-                        const CuMatrixBase<BaseFloat> &out_diff, CuMatrixBase<BaseFloat> *in_diff) {
+  void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
+                        const CuMatrixBase<BaseFloat> &out,
+                        const CuMatrixBase<BaseFloat> &out_diff,
+                        CuMatrixBase<BaseFloat> *in_diff) {
     // useful dims
     int32 num_patches = input_dim_ / pool_stride_;
     int32 num_pools = 1 + (num_patches - pool_size_) / pool_step_;
@@ -120,22 +129,22 @@ class MaxPoolingComponent : public Component {
     //
     // here we note how many diff matrices are summed for each input patch,
     std::vector<int32> patch_summands(num_patches, 0);
-    // this metainfo will be used to divide diff of patches 
+    // this metainfo will be used to divide diff of patches
     // used in more than one pool.
     //
-    
-    in_diff->SetZero(); // reset
 
-    for(int32 q=0; q<num_pools; q++) { // sum
-      for(int32 r=0; r<pool_size_; r++) {
-        int32 p = r + q * pool_step_; // patch number
+    in_diff->SetZero();  // reset
+
+    for (int32 q = 0; q<num_pools; q++) {  // sum
+      for (int32 r = 0; r<pool_size_; r++) {
+        int32 p = r + q * pool_step_;  // patch number
         //
         CuSubMatrix<BaseFloat> in_p(in.ColRange(p*pool_stride_, pool_stride_));
         CuSubMatrix<BaseFloat> out_q(out.ColRange(q*pool_stride_, pool_stride_));
         //
         CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p*pool_stride_, pool_stride_));
         CuMatrix<BaseFloat> src(out_diff.ColRange(q*pool_stride_, pool_stride_));
-        
+
         // Only the pool-inputs with 'max-values' are used to back-propagate into,
         // the rest of derivatives is zeroed-out by a mask.
         CuMatrix<BaseFloat> mask;
@@ -148,20 +157,20 @@ class MaxPoolingComponent : public Component {
     }
 
     // divide diff by #summands (compensate for patches used in more pools)
-    for(int32 p=0; p<num_patches; p++) {
+    for (int32 p = 0; p < num_patches; p++) {
       CuSubMatrix<BaseFloat> tgt(in_diff->ColRange(p*pool_stride_, pool_stride_));
-      KALDI_ASSERT(patch_summands[p] > 0); // patch at least in one pool
+      KALDI_ASSERT(patch_summands[p] > 0);  // patch at least in one pool
       tgt.Scale(1.0/patch_summands[p]);
     }
   }
 
  private:
-  int32 pool_size_,   // input patches used for pooling
-        pool_step_,   // shift used for pooling (allow overlapping pools)
-        pool_stride_; // stride used to cut input matrix to a vector of matrices
+  int32 pool_size_,    // input patches used for pooling
+        pool_step_,    // shift used for pooling (allow overlapping pools)
+        pool_stride_;  // stride used to slice input to a vector of matrices
 };
 
-} // namespace nnet1
-} // namespace kaldi
+}  // namespace nnet1
+}  // namespace kaldi
 
-#endif
+#endif  // KALDI_NNET_NNET_MAX_POOLING_COMPONENT_H_

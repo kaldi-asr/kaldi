@@ -129,7 +129,7 @@ int main(int argc, char *argv[]) {
     OnlineGmmDecodingModels gmm_models(decode_config);
     
     
-    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldi(fst_rxfilename);
+    fst::Fst<fst::StdArc> *decode_fst = ReadFstKaldiGeneric(fst_rxfilename);
     
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_rxfilename != "")

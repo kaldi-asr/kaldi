@@ -4,8 +4,8 @@
 # Recipe for CallHome Egyptian Arabic
 # Made to integrate KALDI with JOSHUA for end-to-end ASR and SMT
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 mfccdir=`pwd`/mfcc
 set -e
 
@@ -29,7 +29,7 @@ local/callhome_prepare_dict.sh $eca_lexicon
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
 # Make sure that you do not use your test and your dev sets to train the LM
-# Some form of cross validation is possible where you decode your dev/set based on an 
+# Some form of cross validation is possible where you decode your dev/set based on an
 # LM that is trained on  everything but that that conversation
 local/callhome_train_lms.sh $split
 local/callhome_create_test_lang.sh
@@ -100,7 +100,7 @@ steps/train_lda_mllt.sh --cmd "$train_cmd" \
    exp/tri3a/graph data/dev exp/tri3a/decode_dev || exit 1;
 )&
 
-# Next we'll use fMLLR and train with SAT (i.e. on 
+# Next we'll use fMLLR and train with SAT (i.e. on
 # fMLLR features)
 
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
@@ -108,7 +108,7 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
 
 steps/train_sat.sh  --cmd "$train_cmd" \
   2200 25000 data/train data/lang exp/tri3a_ali  exp/tri4a || exit 1;
-                                                                                 
+
 (
   utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
   steps/decode_fmllr.sh --nj 25 --cmd "$decode_cmd" --config conf/decode.config \
@@ -140,9 +140,9 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 )&
 
 dnn_cpu_parallel_opts=(--minibatch-size 128 --max-change 10 --num-jobs-nnet 8 --num-threads 16 \
-                       --parallel-opts "-pe smp 16" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+                       --parallel-opts "--num-threads 16" --cmd "queue.pl  --mem 1G")
 dnn_gpu_parallel_opts=(--minibatch-size 512 --max-change 40 --num-jobs-nnet 4 --num-threads 1 \
-                       --parallel-opts "-l gpu=1" --cmd "queue.pl -l arch=*64 -l mem_free=2G,ram_free=1G")
+                       --parallel-opts "--gpu 1" --cmd "queue.pl  --mem 1G")
 
 steps/nnet2/train_pnorm_ensemble.sh \
   --mix-up 5000  --initial-learning-rate 0.008 --final-learning-rate 0.0008\
@@ -153,17 +153,17 @@ steps/nnet2/train_pnorm_ensemble.sh \
   data/train data/lang exp/tri5a_ali exp/tri6a_dnn
 
 (
-  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " -pe smp 4"   \
+  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " --num-threads 4"   \
     --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_dev exp/tri5a/graph data/dev exp/tri6a_dnn/decode_dev
 ) &
 
 # Decode test sets
 (
-  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " -pe smp 4"   \
+  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " --num-threads 4"   \
     --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_test exp/tri5a/graph data/test exp/tri6a_dnn/decode_test
-  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " -pe smp 4"   \
+  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " --num-threads 4"   \
     --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_sup exp/tri5a/graph data/sup exp/tri6a_dnn/decode_sup
-  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " -pe smp 4"   \
+  steps/nnet2/decode.sh --nj 13 --cmd "$decode_cmd" --num-threads 4 --parallel-opts " --num-threads 4"   \
     --scoring-opts "--min-lmwt 8 --max-lmwt 16" --transform-dir exp/tri5a/decode_h5 exp/tri5a/graph data/h5 exp/tri6a_dnn/decode_h5
 ) &
 

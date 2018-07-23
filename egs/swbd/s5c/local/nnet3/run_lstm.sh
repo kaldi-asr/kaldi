@@ -37,6 +37,7 @@ chunk_right_context=0
 
 
 # training options
+srand=0
 num_epochs=8
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
@@ -98,7 +99,8 @@ if [ $stage -le 9 ]; then
     --recurrent-projection-dim $recurrent_projection_dim \
     --non-recurrent-projection-dim $non_recurrent_projection_dim \
     --label-delay $label_delay \
-    --self-repair-scale 0.00001 \
+    --self-repair-scale-nonlinearity 0.00001 \
+    --self-repair-scale-clipgradient 1.0 \
    $dir/configs || exit 1;
 
 fi
@@ -113,6 +115,7 @@ if [ $stage -le 10 ]; then
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir=exp/nnet3/ivectors_${train_set} \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
+    --trainer.srand=$srand \
     --trainer.num-epochs=$num_epochs \
     --trainer.samples-per-iter=$samples_per_iter \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \
@@ -150,7 +153,7 @@ if [ $stage -le 11 ]; then
   for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
+      steps/nnet3/decode.sh --nj 250 --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
           --frames-per-chunk "$frames_per_chunk" \

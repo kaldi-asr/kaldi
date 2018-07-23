@@ -3,7 +3,7 @@
 # Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
@@ -72,14 +72,14 @@ else
 fi
 
 if $do_endpointing; then
-	if $do_speex_compressing; then
+  if $do_speex_compressing; then
     wav_rspecifier="ark:compress-uncompress-speex scp:$sdata/JOB/wav.scp ark:-|extend-wav-with-silence ark:- ark:-|"
   else
     wav_rspecifier="ark:extend-wav-with-silence scp:$sdata/JOB/wav.scp ark:-|"
   fi
 else
   if $do_speex_compressing; then
-  	wav_rspecifier="ark:compress-uncompress-speex scp:$sdata/JOB/wav.scp ark:-|"
+    wav_rspecifier="ark:compress-uncompress-speex scp:$sdata/JOB/wav.scp ark:-|"
   else
     wav_rspecifier=scp:$sdata/JOB/wav.scp
   fi

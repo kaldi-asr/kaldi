@@ -48,8 +48,8 @@ for i in `seq 0 $(( $num_src / 2 - 1))` ; do
   input_data_dir=${sources[ $[2 * $i] ]}
   input_data_list=${sources[ $((2 * $i + 1)) ]}
 
-  abs_src_dir=`readlink -f $input_data_dir`
-  abs_tgt_dir=`readlink -f $output_data_dir`
+  abs_src_dir=`utils/make_absolute.sh $input_data_dir`
+  abs_tgt_dir=`utils/make_absolute.sh $output_data_dir`
 
   if [[ ! -d "$input_data_dir" ]] ; then
     echo "FATAL: input data directory does not exist";
