@@ -17,7 +17,7 @@
       It is used by the tokeniser to tokenise these characters separately
     </comment>
     <exp>
-      <![CDATA[^([+\/\*=$£€¥₩@&%|\\#~^¬])$]]>
+      <![CDATA[^([\-+\/\*=$£€¥₩@&%|\\#~^¬])$]]>
     </exp>
   </regex>
 
