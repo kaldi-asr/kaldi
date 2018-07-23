@@ -72,6 +72,10 @@ GSYMS
 /src/kaldi.mk.tmp
 /src/kaldi.mk.bak
 
+# Idlak python wrapper
+/src/pyIdlak/pyIdlak.py
+/src/pyIdlak/pyIdlak_wrap.cc
+
 # /egs/ & /idlak-egs/
 /egs/*/s*/mfcc
 /egs/*/s*/plp
