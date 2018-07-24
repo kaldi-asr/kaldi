@@ -1,0 +1,1 @@
+score_basic.sh

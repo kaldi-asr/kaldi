@@ -150,7 +150,6 @@ struct ExampleGenerationConfig {
    struct ChunkTimeInfo is used by class UtteranceSplitter to output
    information about how we split an utterance into chunks.
  */
-
 struct ChunkTimeInfo {
   int32 first_frame;
   int32 num_frames;

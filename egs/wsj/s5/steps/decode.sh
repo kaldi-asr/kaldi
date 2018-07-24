@@ -80,7 +80,7 @@ if [ $(basename $model) != final.alimdl ] ; then
 fi
 
 for f in $sdata/1/feats.scp $sdata/1/cmvn.scp $model $graphdir/HCLG.fst; do
-  [ ! -f $f ] && echo "decode.sh: no such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: Error: no such file $f" && exit 1;
 done
 
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
@@ -96,13 +96,13 @@ thread_string=
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
-  *) echo "Invalid feature type $feat_type" && exit 1;
+  *) echo "$0: Error: Invalid feature type $feat_type" && exit 1;
 esac
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "Using fMLLR transforms from $transform_dir"
   [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
   [ ! -s $transform_dir/num_jobs ] && \
-    echo "$0: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
+    echo "$0: Error: expected $transform_dir/num_jobs to contain the number of jobs." && exit 1;
   nj_orig=$(cat $transform_dir/num_jobs)
   if [ $nj -ne $nj_orig ]; then
     # Copy the transforms into an archive with an index.
@@ -119,7 +119,7 @@ fi
 if [ $stage -le 0 ]; then
   if [ -f "$graphdir/num_pdfs" ]; then
     [ "`cat $graphdir/num_pdfs`" -eq `am-info --print-args=false $model | grep pdfs | awk '{print $NF}'` ] || \
-      { echo "Mismatch in number of pdfs with $model"; exit 1; }
+      { echo "$0: Error: Mismatch in number of pdfs with $model"; exit 1; }
   fi
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     gmm-latgen-faster$thread_string --max-active=$max_active --beam=$beam --lattice-beam=$lattice_beam \
@@ -134,9 +134,9 @@ fi
 
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
-    echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;
+    echo "$0: Not scoring because local/score.sh does not exist or not executable." && exit 1;
   local/score.sh --cmd "$cmd" $scoring_opts $data $graphdir $dir ||
-    { echo "$0: Scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
+    { echo "$0: Error: scoring failed. (ignore by '--skip-scoring true')"; exit 1; }
 fi
 
 exit 0;

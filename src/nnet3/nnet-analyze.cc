@@ -1441,10 +1441,18 @@ int64 GetMaxMemoryUse(const NnetComputation &computation) {
       max_memory_use = 0;
   int32 num_commands = computation.commands.size(),
       num_submatrices = computation.submatrices.size();
+  // the vector 'num_compressed_bytes' is used to remember the number of bytes
+  // in the compressed matrices for each submatrix (this will only be used for
+  // those that correspond to a 'whole matrix).  It's needed because the
+  // decompression command doesn't tell us what compression type was used for
+  // that matrix.
+  std::vector<int32> num_compressed_bytes(num_submatrices, -100000000);
   for (int32 command_index = 0; command_index < num_commands; ++command_index) {
     const NnetComputation::Command &c = computation.commands[command_index];
     int64 this_num_bytes = -100000000,
         this_compressed_num_bytes = -10000000;
+
+
     if (c.arg1 >= 0 && c.arg1 < num_submatrices) {
       // if arg1 could plausibly be a sub-matrix index...
       const NnetComputation::SubMatrixInfo &submat_info =
@@ -1452,11 +1460,16 @@ int64 GetMaxMemoryUse(const NnetComputation &computation) {
       this_num_bytes = static_cast<int64>(sizeof(BaseFloat)) *
           submat_info.num_rows * submat_info.num_cols;
 
-      this_compressed_num_bytes =
-          ((c.arg2 == static_cast<int32>(kCompressedMatrixInt8) ||
-            c.arg2 == static_cast<int32>(kCompressedMatrixUint8)) ?
-           1 : 2) * static_cast<int64>(submat_info.num_rows) *
-          submat_info.num_cols;
+      if (c.command_type == kCompressMatrix) {
+        this_compressed_num_bytes =
+            ((c.arg2 == static_cast<int32>(kCompressedMatrixInt8) ||
+              c.arg2 == static_cast<int32>(kCompressedMatrixUint8)) ?
+             1 : 2) * static_cast<int64>(submat_info.num_rows) *
+            submat_info.num_cols;
+        num_compressed_bytes[c.arg1] = this_compressed_num_bytes;
+      } else if (c.command_type == kDecompressMatrix) {
+        this_compressed_num_bytes = num_compressed_bytes[c.arg1];
+      }
     }
     switch (c.command_type) {
       case kAllocMatrix:

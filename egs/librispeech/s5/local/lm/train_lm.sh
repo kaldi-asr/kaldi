@@ -47,7 +47,7 @@ split_prefix=$tmp_dir/split
 if [ "$stage" -le 1 ]; then
   mkdir -p $tmp_dir
   echo "Splitting into $normjobs parts, to allow for parallel processing ..."
-  split_files=$(eval "echo $split_prefix-{$(seq -s',' $normjobs)}")
+  split_files=$(eval "echo $split_prefix-{$(seq -s',' $normjobs | sed 's/,$//')}")
   find $corpus_dir -mindepth 1 -maxdepth 1 -type d |\
     tee $tmp_dir/all_texts.txt |\
     utils/split_scp.pl - $split_files
