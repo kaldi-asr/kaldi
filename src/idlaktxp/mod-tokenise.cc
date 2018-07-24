@@ -95,7 +95,7 @@ bool TxpTokenise::Process(pugi::xml_document* input) {
       }
       if (wspace.length()) {
         if (token.length())
-          ws = tkroot.append_child("ws");
+          ws = tk.parent().insert_child_after("ws", tk);
         else
           ws = node.parent().insert_child_before("ws", node);
         ntxt = ws.append_child(pugi::node_pcdata);
