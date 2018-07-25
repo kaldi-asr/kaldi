@@ -19,8 +19,8 @@ with open(text_path, 'r', encoding='utf-8') as f:
         line_vect = line.strip().split(' ')
         for i in range(1, len(line_vect)):
             characters = list(line_vect[i])
-	    # Put SIL instead of "|". Because every "|" in the beginning of the words is for initial-space of that word
-            characters = " ".join([ 'SIL' if char == '|' else char for char in characters])
+            # Put SIL instead of "|". Because every "|" in the beginning of the words is for initial-space of that word
+            characters = " ".join(['SIL' if char == '|' else char for char in characters])
             lex[line_vect[i]] = characters
             if line_vect[i] == '#':
                 lex[line_vect[i]] = "<HASH>"
