@@ -790,7 +790,8 @@ void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
                           int src_stride, float scale);
 
 // Launches a kernel that does nothing, explicitly using the legacy default stream;
-// this will synchronize all threads without blocking.
+// this will synchronize all CUDA streams (except for non-blocking streams) on the
+// device.
 void cuda_legacy_noop();
 
 

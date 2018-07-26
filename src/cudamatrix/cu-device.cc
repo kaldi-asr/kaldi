@@ -282,11 +282,9 @@ bool CuDevice::IsComputeExclusive() {
     case cudaComputeModeExclusive :
       return true;
       break;
-#if (CUDA_VERSION >= 4000)
     case cudaComputeModeExclusiveProcess :
       return true;
       break;
-#endif
     default :
       // in this case we release the GPU context...
       return false;
@@ -346,13 +344,10 @@ bool CuDevice::SelectGpuIdAuto() {
         // destroy the CUDA context for the thread
         cudaDeviceReset();
       } break;
-
-#if (CUDA_VERSION > 3020)
       case cudaErrorDeviceAlreadyInUse :
         KALDI_LOG << "cudaSetDevice(" << n << "): "
                   << "Device cannot be accessed, used EXCLUSIVE-THREAD mode...";
         break;
-#endif
       case cudaErrorInvalidDevice :
         KALDI_LOG << "cudaSetDevice(" << n << "): "
                   << "Device cannot be accessed, not a VALID CUDA device!";
@@ -540,7 +535,8 @@ void SynchronizeGpu() {
   cuda_legacy_noop();
   CU_SAFE_CALL(cudaGetLastError());
 }
-}
+
+}  // namespace kaldi
 
 #else  // #if HAVE_CUDA == 1
 
@@ -548,4 +544,5 @@ namespace kaldi {
 // SynchronizeGpu() does nothing if we didn't compile for GPU.
 void SynchronizeGpu() { }
 }
+
 #endif  // #if HAVE_CUDA == 1

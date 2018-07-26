@@ -3066,7 +3066,7 @@ int main() {
                 << num_threads << " threads.";
       std::vector<std::thread*> threads;
       for (int32 i = 0;  i < num_threads - 1; i++)
-        threads.push_back(new std::thread(CudaMatrixUnitTest<float>));
+        threads.push_back(new std::thread(kaldi::CudaMatrixUnitTest<float>));
       // the last thread running is the main thread.
       kaldi::CudaMatrixUnitTest<float>();
       for (size_t i = 0; i < threads.size(); i++) {

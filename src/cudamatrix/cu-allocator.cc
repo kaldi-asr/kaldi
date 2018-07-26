@@ -133,12 +133,8 @@ std::string GetFreeGpuMemory(int64* free, int64* total) {
   size_t mem_free, mem_total;
   cuMemGetInfo_v2(&mem_free, &mem_total);
 #else
-#if (CUDA_VERSION >= 3020)
   // define the function signature type
   size_t mem_free, mem_total;
-#else
-  unsigned int mem_free, mem_total;
-#endif
   {
     // we will load cuMemGetInfo_v2 dynamically from libcuda.so
     // pre-fill ``safe'' values that will not cause problems
@@ -150,13 +146,8 @@ std::string GetFreeGpuMemory(int64* free, int64* total) {
     } else {
       // define the function signature type
       // and get the symbol
-#if (CUDA_VERSION >= 3020)
       typedef CUresult (*cu_fun_ptr)(size_t*, size_t*);
       cu_fun_ptr dl_cuMemGetInfo = (cu_fun_ptr)dlsym(libcuda,"cuMemGetInfo_v2");
-#else
-      typedef CUresult (*cu_fun_ptr)(int*, int*);
-      cu_fun_ptr dl_cuMemGetInfo = (cu_fun_ptr)dlsym(libcuda,"cuMemGetInfo");
-#endif
       if (NULL == dl_cuMemGetInfo) {
         KALDI_WARN << "cannot load cuMemGetInfo from libcuda.so";
       } else {

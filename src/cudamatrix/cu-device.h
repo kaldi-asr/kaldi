@@ -46,8 +46,24 @@ class CuTimer;
    (which supports caching, to avoid the slowness of the CUDA memory allocator).
 
    There is a separate instance of the CuDevice object for each thread of the
-   program, since it is recommended to have different cuBLAS and cuSparse
-   handles per thread.
+   program, but many of its variables are static (hence, shared between all
+   instances).
+
+   We only (currently) support using a single GPU device; however, we support
+   multiple CUDA streams.  The expected programming model here is that you will
+   have multiple CPU threads, and each CPU thread automatically gets its own
+   CUDA stream because we compile with -DCUDA_API_PER_THREAD_DEFAULT_STREAM.
+
+   In terms of synchronizing the activities of multiple threads: The CuDevice
+   object (with help from the underlying CuAllocator object) ensures that the
+   memory caching code won't itself be a cause of synchronization problems,
+   i.e. you don't have to worry that when you allocate with CuDevice::Malloc(),
+   the memory will still be in use by another thread on the GPU.  However, it
+   may sometimes still be necessary to synchronize the activities of multiple
+   streams by calling the function SynchronizeGpu()-- probably right before a
+   thread increments a semaphore, right after it waits on a semaphore, or
+   right after it acquires a mutex, or something like that.
+
  */
 class CuDevice {
  public:
@@ -137,8 +153,6 @@ class CuDevice {
   /// the code will detect that you failed to call it, and will print a warning).
   inline void AllowMultithreading() { multi_threaded_ = true; }
 
-  /// Get the actual GPU memory use stats
-  std::string GetFreeMemory(int64* free = NULL, int64* total = NULL) const;
   /// Get the name of the GPU
   void DeviceGetName(char* name, int32 len, int32 dev);
 
@@ -286,14 +300,24 @@ inline cusparseHandle_t GetCusparseHandle() { return CuDevice::Instantiate().Get
 
 
 namespace kaldi {
-/// The function SynchronizeGpu(), which for convenience is defined whether or
-/// not we have compiled for CUDA, is intended to be called in places where threads
-/// need to be synchronized.
-///
-/// It just launches a no-op kernel into the legacy default stream.  This will
-/// have the effect that it will run after any kernels previously launched from
-/// any stream*, and before kernels that will later be launched from any stream*
-/// *does not apply to non-blocking streams.
+/**
+   The function SynchronizeGpu(), which for convenience is defined whether or
+   not we have compiled for CUDA, is intended to be called in places where threads
+   need to be synchronized.
+
+   It just launches a no-op kernel into the legacy default stream.  This will
+   have the effect that it will run after any kernels previously launched from
+   any stream(*), and before kernels that will later be launched from any stream(*).
+   (*) does not apply to non-blocking streams.
+
+   Note: at the time of writing we never call SynchronizeGpu() from binary-level
+   code because it hasn't become necessary yet; the only program that might have
+   multiple threads actually using the GPU is rnnlm-train (if the user were to
+   invoke it with the ,bg option for loading training examples); but the only
+   CUDA invocation the RnnlmExample::Read() function uses (via
+   CuMatrix::Read()), is cudaMemcpy, which is synchronous already.
+
+*/
 void SynchronizeGpu();
 }
 
