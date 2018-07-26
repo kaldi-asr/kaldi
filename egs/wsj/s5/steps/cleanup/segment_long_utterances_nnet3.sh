@@ -23,8 +23,9 @@ lattice_beam=1.0
 nj=4
 lmwt=10
 
-extractor=    ## i-Vector extractor
-decode_opts=   ## Options for nnet3 decoding
+extractor=    # i-Vector extractor. If provided, will extract i-vectors. 
+              # Required if the network was trained with i-vector extractor. 
+decode_opts=   # Options for nnet3 decoding
 
 # TF-IDF similarity search options
 max_words=1000
@@ -190,16 +191,19 @@ fi
 decode_dir=$dir/lats
 mkdir -p $decode_dir
 
+online_ivector_dir=
 if [ ! -z "$extractor" ]; then
   online_ivector_dir=$dir/ivectors_$(basename $data_uniform_seg)
 
   if [ $stage -le 4 ]; then
     # Compute energy-based VAD
-    steps/compute_vad_decision.sh $data_uniform_seg \
-      $data_uniform_seg/log $data_uniform_seg/data
+    if $use_vad; then
+      steps/compute_vad_decision.sh $data_uniform_seg \
+        $data_uniform_seg/log $data_uniform_seg/data
+    fi
 
     steps/online/nnet2/extract_ivectors_online.sh \
-      --nj $nj --cmd "$cmd --mem 4G" --use-vad true \
+      --nj $nj --cmd "$cmd --mem 4G" --use-vad $use_vad \
       $data_uniform_seg $extractor $online_ivector_dir
   fi
 fi
