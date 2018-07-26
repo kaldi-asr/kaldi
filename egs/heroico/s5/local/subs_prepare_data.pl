@@ -18,7 +18,8 @@ my $up_bound = 16;
 # only segments with fewer than $up_bound words will be written
 
 # input and output files
-my $corpus = "data/local/tmp/subs/OpenSubtitles2016.en-es.es";
+
+my $corpus = "OpenSubtitles2016.en-es.es";
 my $symbol_table = "data/lang/words.txt";
 my $filtered = "data/local/tmp/subs/lm/es.txt";
 my $oovs = "data/local/tmp/subs/lm/oovs.txt";
@@ -77,10 +78,6 @@ while( my $line = <$F>) {
 }
 close $F;
 
-<<<<<<< HEAD
-
-=======
->>>>>>> upstream/master
 open my $I, '<', $filtered or croak "problem with $filtered $!";
 open my $OOVS, '+>', $oovs or croak "problems with $oovs $!";
 

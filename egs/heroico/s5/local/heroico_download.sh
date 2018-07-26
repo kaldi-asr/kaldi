@@ -14,7 +14,8 @@ data_dir=$tmpdir/LDC2006S37/data
 mkdir -p $tmpdir
 
 # download the corpus from openslr
-if [ ! -f $download_dir/LDC2006S37.tar.gz ]; then
+
+if [ ! -f $download_dir/heroico.tar.gz ]; then
   wget -O $download_dir/heroico.tar.gz $speech
 
   (
@@ -26,6 +27,7 @@ fi
 mkdir -p data/local/dict $tmpdir/dict
 
 # download the dictionary from openslr
+
 if [ ! -f $download_dir/santiago.tar.gz ]; then
     wget -O $download_dir/santiago.tar.gz $lexicon
 fi
