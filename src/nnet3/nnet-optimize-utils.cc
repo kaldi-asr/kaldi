@@ -696,18 +696,15 @@ void RenumberComputation(NnetComputation *computation) {
 }
 
 
+static bool IsNoop(const NnetComputation::Command &command) {
+  return command.command_type == kNoOperation;
+}
+
 void RemoveNoOps(NnetComputation *computation) {
-  std::vector<NnetComputation::Command>::iterator
-      input_iter = computation->commands.begin(),
-      input_end = computation->commands.end(),
-      output_iter = computation->commands.begin();
-  for (; input_iter != input_end; ++input_iter) {
-    if (input_iter->command_type != kNoOperation) {
-      *output_iter = *input_iter;
-      ++output_iter;
-    }
-  }
-  computation->commands.resize(output_iter - computation->commands.begin());
+  computation->commands.erase(
+      std::remove_if(computation->commands.begin(),
+                     computation->commands.end(),
+                     IsNoop), computation->commands.end());
 }
 
 

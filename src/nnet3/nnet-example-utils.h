@@ -131,7 +131,8 @@ struct ExampleGenerationConfig {
                 "that most of the time the number of frames will be 40, but to "
                 "deal with odd-sized inputs we may also generate egs with these "
                 "other sizes.  All these values will be rounded up to the "
-                "closest multiple of --frame-subsampling-factor.");
+                "closest multiple of --frame-subsampling-factor.  As a special case, "
+                "--num-frames=-1 means 'don't do any splitting'.");
     po->Register("num-frames-overlap", &num_frames_overlap, "Number of frames of "
                  "overlap between adjacent eamples (applies to chunks of size "
                  "equal to the primary [first-listed] --num-frames value... "
@@ -149,7 +150,6 @@ struct ExampleGenerationConfig {
    struct ChunkTimeInfo is used by class UtteranceSplitter to output
    information about how we split an utterance into chunks.
  */
-
 struct ChunkTimeInfo {
   int32 first_frame;
   int32 num_frames;

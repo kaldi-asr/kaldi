@@ -46,7 +46,6 @@ lat_dir=exp/chain${nnet3_affix}/tri2_train_lats
 dir=exp/chain${nnet3_affix}/cnn${affix}
 train_data_dir=data/train
 lores_train_data_dir=$train_data_dir  # for the start, use the same data for gmm and chain
-gmm_lang=data/lang
 lang_test=data/lang_unk
 tree_dir=exp/chain${nnet3_affix}/tree${affix}
 
@@ -84,7 +83,7 @@ if [ $stage -le 1 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   if [ -d $lang ]; then
-    if [ $lang/L.fst -nt $lang_test/L.fst ]; then
+    if [ $lang/L.fst -nt data/lang/L.fst ]; then
       echo "$0: $lang already exists, not overwriting it; continuing"
     else
       echo "$0: $lang already exists and seems to be older than data/lang..."
@@ -92,7 +91,7 @@ if [ $stage -le 1 ]; then
       exit 1;
     fi
   else
-    cp -r $lang_test $lang
+    cp -r data/lang $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
@@ -105,7 +104,7 @@ if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj $nj --cmd "$cmd" ${lores_train_data_dir} \
-    $lang_test $gmm_dir $lat_dir
+    data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 

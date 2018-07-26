@@ -610,8 +610,6 @@ void AlignUtteranceWrapper(
     return;
   }
 
-
-  fst::StdArc::Label special_symbol = 0;
   if (config.careful)
     ModifyGraphForCarefulAlignment(fst);
 

@@ -58,7 +58,11 @@ sub validate_utf8_whitespaces {
     my $current_line = $unicode_lines->[$i];
     # we replace TAB, LF, CR, and SPACE
     # this is to simplify the test
-    $current_line =~ s/[\x{0009}\x{000a}\x{000d}\x{0020}]/./g;
+    if ($current_line =~ /\x{000d}/) {
+      print STDERR "$0: The current line (nr. $i) contains CR (0x0D) character\n";
+      return 1;
+    }
+    $current_line =~ s/[\x{0009}\x{000a}\x{0020}]/./g;
     if ($current_line =~/\s/) {
       return 1;
     }

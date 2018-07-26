@@ -1,0 +1,6 @@
+%WER 44.78 [ 22176 / 49527, 370 ins, 2179 del, 19627 sub ] exp/mono/decode_test/cer_9_0.0
+%WER 24.78 [ 12271 / 49527, 394 ins, 815 del, 11062 sub ] exp/tri1/decode_test/cer_11_0.0
+%WER 22.54 [ 11165 / 49527, 390 ins, 665 del, 10110 sub ] exp/tri2/decode_test/cer_11_0.0
+%WER 19.78 [ 9795 / 49527, 313 ins, 684 del, 8798 sub ] exp/tri3/decode_test/cer_13_0.0
+
+# (Chain model results are at the beginning of corresponding scripts)

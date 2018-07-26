@@ -1,6 +1,8 @@
 // latbin/lattice-1best.cc
 
 // Copyright 2009-2012  Stefan Kombrink  Johns Hopkins University (Author: Daniel Povey)
+//           2018       Music Technology Group, Universitat Pompeu Fabra (Rong Gong)
+
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -44,11 +46,14 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat lm_scale = 1.0;
+    BaseFloat word_ins_penalty = 0.0;
     
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
     po.Register("lm-scale", &lm_scale,
                 "Scaling factor for language model scores.");
+    po.Register("word-ins-penalty", &word_ins_penalty,
+                "Word insertion penality.");
     
     po.Read(argc, argv);
 
@@ -74,6 +79,9 @@ int main(int argc, char *argv[]) {
       CompactLattice clat = clat_reader.Value();
       clat_reader.FreeCurrent();
       fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
+      if (word_ins_penalty > 0.0) {
+        AddWordInsPenToCompactLattice(word_ins_penalty, &clat);
+      }
 
       CompactLattice best_path;
       CompactLatticeShortestPath(clat, &best_path);
@@ -85,6 +93,9 @@ int main(int argc, char *argv[]) {
       } else {
         fst::ScaleLattice(fst::LatticeScale(1.0 / lm_scale, 1.0/acoustic_scale),
                           &best_path);
+        if (word_ins_penalty > 0.0) {
+          AddWordInsPenToCompactLattice(word_ins_penalty, &clat);
+        }
         compact_1best_writer.Write(key, best_path);
         n_done++;
       }

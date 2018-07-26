@@ -224,8 +224,6 @@ def process_args(args):
                         "and exist; or the {0}/configs directory should exist."
                         "".format(args.dir))
 
-    if args.transform_dir is None:
-        args.transform_dir = args.lat_dir
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
     if args.use_gpu in ["true", "false"]:
@@ -384,7 +382,6 @@ def train(args, run_opts):
             cmvn_opts=args.cmvn_opts,
             online_ivector_dir=args.online_ivector_dir,
             frames_per_iter=args.frames_per_iter,
-            transform_dir=args.transform_dir,
             stage=args.egs_stage)
 
     if args.egs_dir is None:
@@ -581,7 +578,7 @@ def train(args, run_opts):
                                      "{0}/final.mdl".format(args.dir))
             chain_lib.compute_train_cv_probabilities(
                 dir=args.dir, iter=num_iters, egs_dir=egs_dir,
-                l2_regularize=l2_regularize, xent_regularize=xent_regularize,
+                l2_regularize=args.l2_regularize, xent_regularize=args.xent_regularize,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 run_opts=run_opts,
                 use_multitask_egs=use_multitask_egs)

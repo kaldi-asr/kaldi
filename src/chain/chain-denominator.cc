@@ -47,6 +47,11 @@ DenominatorComputation::DenominatorComputation(
     tot_log_prob_(num_sequences_, kUndefined),
     log_correction_term_(num_sequences_, kUndefined),
     ok_(true) {
+  // We don't let leaky_hmm_coefficient be exactly zero (although that would
+  // make sense mathematically, corresponding to "turning off" the leaky HMM),
+  // because that would lead to underflow and eventually NaN's or inf's
+  // appearing in the computation, since we do this computation not in
+  // log-space.
   KALDI_ASSERT(opts_.leaky_hmm_coefficient > 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
   // make sure the alpha sums and beta sums are zeroed.

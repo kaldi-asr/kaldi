@@ -1208,7 +1208,7 @@ inline bool IsStochasticFst(const Fst<LogArc> &fst,
 // This function deals with the generic fst.
 // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>.
 // Otherwise, it will be died with an error.
-bool IsStochasticFstInLog(const Fst<StdArc> &fst,
+inline bool IsStochasticFstInLog(const Fst<StdArc> &fst,
                           float delta,
                           StdArc::Weight *min_sum,
                           StdArc::Weight *max_sum) {

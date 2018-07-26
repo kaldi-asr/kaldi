@@ -42,7 +42,6 @@ stage=0
 max_jobs_run=15
 max_shuffle_jobs_run=15
 
-transform_dir= # If this is a SAT system, directory for transforms
 online_ivector_dir=
 cmvn_opts=  # can be used for specifying CMVN options, if feature type is not lda (if lda,
             # it doesn't make sense to use different options than were used as input to the
@@ -128,8 +127,6 @@ fi
 awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlist | \
    utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
 
-[ -z "$transform_dir" ] && transform_dir=$alidir
-
 if [ $stage -le 1 ]; then
   nj_ali=$(cat $alidir/num_jobs)
   alis=$(for n in $(seq $nj_ali); do echo -n "$alidir/ali.$n.gz "; done)
@@ -139,14 +136,6 @@ if [ $stage -le 1 ]; then
 fi
 
 prior_ali_rspecifier="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $dir/ali.scp | ali-to-pdf $alidir/final.mdl scp:- ark:- |"
-
-if [ -f $transform_dir/raw_trans.1 ]; then
-  echo "$0: using raw transforms from $transform_dir"
-  if [ $stage -le 0 ]; then
-    $cmd $dir/log/copy_transforms.log \
-      copy-feats "ark:cat $transform_dir/raw_trans.* |" "ark,scp:$dir/trans.ark,$dir/trans.scp"
-  fi
-fi
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 cp $alidir/tree $dir
@@ -158,22 +147,11 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
   utils/shuffle_list.pl | head -$num_priors_subset \
   > $dir/priors_uttlist || exit 1;
 
-## We don't support deltas here, only LDA or raw (mainly because deltas are less
-## frequently used).
-echo "$0: feature type is raw"
-
 feats="ark,s,cs:utils/filter_scp.pl --exclude $dir/valid_uttlist $sdata/JOB/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:- ark:- |"
 valid_feats="ark,s,cs:utils/filter_scp.pl $dir/valid_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
 train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
 priors_feats="ark,s,cs:utils/filter_scp.pl $dir/priors_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
 echo $cmvn_opts > $dir/cmvn_opts
-
-if [ -f $dir/trans.scp ]; then
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/trans.scp ark:- ark:- |"
-  valid_feats="$valid_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp|' ark:- ark:- |"
-  train_subset_feats="$train_subset_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp|' ark:- ark:- |"
-  priors_feats="$priors_feats transform-feats --utt2spk=ark:$data/utt2spk scp:$dir/trans.scp|' ark:- ark:- |"
-fi
 
 if [ ! -z $online_ivector_dir ]; then
   ivector_period=$(cat $online_ivector_dir/ivector_period)
@@ -433,9 +411,8 @@ if [ $stage -le 7 ]; then
   fi
   echo "$0: removing temporary lattices"
   rm $dir/lat.*
-  echo "$0: removing temporary alignments and transforms"
-  # Ignore errors below because trans.* might not exist.
-  rm $dir/{ali,trans}.{ark,scp} 2>/dev/null
+  echo "$0: removing temporary alignments"
+  rm $dir/ali.{ark,scp} 2>/dev/null
 fi
 
 wait

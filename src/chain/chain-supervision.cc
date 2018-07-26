@@ -223,7 +223,7 @@ bool PhoneLatticeToProtoSupervision(const SupervisionOptions &opts,
   if (opts.lm_scale != 0.0)
     fst::Push(&(proto_supervision->fst),
               fst::REWEIGHT_TO_INITIAL, fst::kDelta, true);
-  
+
   return true;
 }
 
@@ -237,10 +237,14 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
   }
   if (std::binary_search(allowed_phones_[s].begin(),
                          allowed_phones_[s].end(), phone)) {
-    // the olabel will be a pdf-id plus one, not a transition-id.
-    int32 pdf_id = trans_model_.TransitionIdToPdf(ilabel);
     oarc->ilabel = ilabel;
-    oarc->olabel = pdf_id + 1;
+    if (convert_to_pdfs_) {
+      // the olabel will be a pdf-id plus one, not a transition-id.
+      int32 pdf_id = trans_model_.TransitionIdToPdf(ilabel);
+      oarc->olabel = pdf_id + 1;
+    } else {
+      oarc->olabel = ilabel;
+    }
     oarc->weight = fst::TropicalWeight::One();
     oarc->nextstate = s + 1;
     return true;
@@ -250,7 +254,7 @@ bool TimeEnforcerFst::GetArc(StateId s, Label ilabel, fst::StdArc* oarc) {
 }
 
 bool TrainingGraphToSupervisionE2e(
-    const fst::StdVectorFst& training_graph,
+    const fst::StdVectorFst &training_graph,
     const TransitionModel &trans_model,
     int32 num_frames,
     Supervision *supervision) {
@@ -276,7 +280,6 @@ bool TrainingGraphToSupervisionE2e(
       aiter.SetValue(arc2);
     }
   }
-  supervision->e2e = true;
   supervision->e2e_fsts.clear();
   supervision->e2e_fsts.resize(1);
   supervision->e2e_fsts[0] = trans2word_fst;
@@ -291,6 +294,7 @@ bool ProtoSupervisionToSupervision(
     const ContextDependencyInterface &ctx_dep,
     const TransitionModel &trans_model,
     const ProtoSupervision &proto_supervision,
+    bool convert_to_pdfs,
     Supervision *supervision) {
   using fst::VectorFst;
   using fst::StdArc;
@@ -338,10 +342,13 @@ bool ProtoSupervisionToSupervision(
   // when we compose with the denominator graph.
   BaseFloat self_loop_scale = 0.0;
 
-  bool reorder = true;  // more efficient in general; won't affect results.
+  // You should always set reorder to true; for the current chain-model
+  // topologies, it will affect results if you are inconsistent about this.
+  bool reorder = true,
+      check_no_self_loops = true;
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
-               &transition_id_fst);
+               check_no_self_loops, &transition_id_fst);
 
   // at this point transition_id_fst will have transition-ids as its ilabels and
   // context-dependent phones (indexes into ILabelInfo()) as its olabels.
@@ -357,14 +364,19 @@ bool ProtoSupervisionToSupervision(
   // The last step is to enforce that phones can only appear on the frames they
   // are 'allowed' to appear on.  This will also convert the FST to have pdf-ids
   // plus one as the labels
-  TimeEnforcerFst enforcer_fst(trans_model, proto_supervision.allowed_phones);
+  TimeEnforcerFst enforcer_fst(trans_model,
+                               convert_to_pdfs,
+                               proto_supervision.allowed_phones);
   ComposeDeterministicOnDemand(transition_id_fst,
                                &enforcer_fst,
                                &(supervision->fst));
   fst::Connect(&(supervision->fst));
-  // at this point supervision->fst will have pdf-ids plus one as the olabels,
-  // but still transition-ids as the ilabels.  Copy olabels to ilabels.
-  fst::Project(&(supervision->fst), fst::PROJECT_OUTPUT);
+
+  if (convert_to_pdfs) {
+    // at this point supervision->fst will have pdf-ids plus one as the olabels,
+    // but still transition-ids as the ilabels.  Copy olabels to ilabels.
+    fst::Project(&(supervision->fst), fst::PROJECT_OUTPUT);
+  }
 
   KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);
   if (supervision->fst.NumStates() == 0) {
@@ -377,11 +389,13 @@ bool ProtoSupervisionToSupervision(
   supervision->weight = 1.0;
   supervision->num_sequences = 1;
   supervision->frames_per_sequence = proto_supervision.allowed_phones.size();
-  supervision->label_dim = trans_model.NumPdfs();
+  if (convert_to_pdfs)
+    supervision->label_dim = trans_model.NumPdfs();
+  else
+    supervision->label_dim = trans_model.NumTransitionIds();
   SortBreadthFirstSearch(&(supervision->fst));
   return true;
 }
-
 
 
 SupervisionSplitter::SupervisionSplitter(
@@ -397,50 +411,10 @@ SupervisionSplitter::SupervisionSplitter(
     KALDI_WARN << "Splitting already-reattached sequence (only expected in "
                << "testing code)";
   }
-  int32 num_states = fst.NumStates(),
-      num_frames = supervision_.frames_per_sequence * supervision_.num_sequences;
-  KALDI_ASSERT(num_states > 0);
-  int32 start_state = fst.Start();
-  // FST should be top-sorted and connected, so start-state must be 0.
-  KALDI_ASSERT(start_state == 0 && "Expecting start-state to be 0");
-  frame_[start_state] = 0;
-  for (int32 state = 0; state < num_states; state++) {
-    int32 cur_frame = frame_[state];
-    if (cur_frame == -1) {
-      // If this happens it means the Supervision does not have the required
-      // properties, e.g. being top-sorted and connected.
-      KALDI_ERR << "Error computing frame indexes for Supervision";
-    }
-    for (fst::ArcIterator<fst::StdVectorFst> aiter(fst, state);
-         !aiter.Done(); aiter.Next()) {
-      const fst::StdArc &arc = aiter.Value();
-      // The FST is supposed to be an epsilon-free acceptor.
-      KALDI_ASSERT(arc.ilabel == arc.olabel && arc.ilabel > 0);
-      int32 nextstate = arc.nextstate;
-      KALDI_ASSERT(nextstate >= 0 && nextstate < num_states);
-      // all arcs go from some t to t + 1.
-      int32 &next_frame = frame_[nextstate];
-      if (next_frame == -1)
-        next_frame = cur_frame + 1;
-      else
-        KALDI_ASSERT(next_frame == cur_frame + 1);
-    }
-  }
-  // The following assert checks that the number of frames in the FST
-  // matches the num_frames stored in the supervision object; it also relies
-  // on the topological sorting and connectedness of the FST.
-  KALDI_ASSERT(frame_.back() == num_frames);
-  std::vector<int32>::iterator iter = frame_.begin(),
-      end = iter + (frame_.size() - 1);
-  // check that the frame-indexes of states are monotonically non-decreasing, as
-  // they should be based on the top-sorting.  We rely on this property to
-  // compute the frame ranges while splitting.
-  while (iter != end) {
-    int32 cur_t = *iter;
-    ++iter;
-    int32 next_t = *iter;
-    KALDI_ASSERT(next_t >= cur_t);
-  }
+  int32 num_frames = supervision_.frames_per_sequence *
+                     supervision_.num_sequences;
+  int32 ans = ComputeFstStateTimes(fst, &frame_);
+  KALDI_ASSERT(ans == num_frames);
 }
 
 void SupervisionSplitter::GetFrameRange(int32 begin_frame, int32 num_frames,
@@ -574,7 +548,10 @@ void Supervision::Write(std::ostream &os, bool binary) const {
   WriteBasicType(os, binary, label_dim);
   KALDI_ASSERT(frames_per_sequence > 0 && label_dim > 0 &&
                num_sequences > 0);
+  bool e2e = !e2e_fsts.empty();
   WriteToken(os, binary, "<End2End>");
+  // the following is of course redundant, but it's for back compatibility
+  // reasons.
   WriteBasicType(os, binary, e2e);
   if (!e2e) {
     if (binary == false) {
@@ -606,6 +583,10 @@ void Supervision::Write(std::ostream &os, bool binary) const {
     }
     WriteToken(os, binary, "</Fsts>");
   }
+  if (!alignment_pdfs.empty()) {
+    WriteToken(os, binary, "<AlignmentPdfs>");
+    WriteIntegerVector(os, binary, alignment_pdfs);
+  }
   WriteToken(os, binary, "</Supervision>");
 }
 
@@ -615,8 +596,8 @@ void Supervision::Swap(Supervision *other) {
   std::swap(frames_per_sequence, other->frames_per_sequence);
   std::swap(label_dim, other->label_dim);
   std::swap(fst, other->fst);
-  std::swap(e2e, other->e2e);
   std::swap(e2e_fsts, other->e2e_fsts);
+  std::swap(alignment_pdfs, other->alignment_pdfs);
 }
 
 void Supervision::Read(std::istream &is, bool binary) {
@@ -629,12 +610,9 @@ void Supervision::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &frames_per_sequence);
   ExpectToken(is, binary, "<LabelDim>");
   ReadBasicType(is, binary, &label_dim);
-  if (PeekToken(is, binary) == 'E') {
-    ExpectToken(is, binary, "<End2End>");
-    ReadBasicType(is, binary, &e2e);
-  } else {
-    e2e = false;
-  }
+  bool e2e;
+  ExpectToken(is, binary, "<End2End>");
+  ReadBasicType(is, binary, &e2e);
   if (!e2e) {
     if (!binary) {
       ReadFstKaldi(is, binary, &fst);
@@ -664,6 +642,12 @@ void Supervision::Read(std::istream &is, bool binary) {
       }
     }
     ExpectToken(is, binary, "</Fsts>");
+  }
+  if (PeekToken(is, binary) == 'A') {
+    ExpectToken(is, binary, "<AlignmentPdfs>");
+    ReadIntegerVector(is, binary, &alignment_pdfs);
+  } else {
+    alignment_pdfs.clear();
   }
   ExpectToken(is, binary, "</Supervision>");
 }
@@ -698,6 +682,17 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
         KALDI_ERR << "Input FST does not have required properties.";
     }
   }
+  std::vector<int32>::iterator iter = state_times->begin(),
+      end = iter + (num_states - 1);
+  // check that the frame-indexes of states are monotonically non-decreasing, as
+  // they should be based on the top-sorting.  We rely on this property to
+  // compute the frame ranges while splitting.
+  while (iter != end) {
+    int32 cur_t = *iter;
+    ++iter;
+    int32 next_t = *iter;
+    KALDI_ASSERT(next_t >= cur_t);
+  }
   if (total_length < 0)
     KALDI_ERR << "Input FST does not have required properties.";
   return total_length;
@@ -707,28 +702,33 @@ Supervision::Supervision(const Supervision &other):
     weight(other.weight), num_sequences(other.num_sequences),
     frames_per_sequence(other.frames_per_sequence),
     label_dim(other.label_dim), fst(other.fst),
-    e2e(other.e2e), e2e_fsts(other.e2e_fsts) { }
+    e2e_fsts(other.e2e_fsts), alignment_pdfs(other.alignment_pdfs) { }
 
 
-// This static function is called by AppendSupervision if the supervisions
+// This static function is called by MergeSupervision if the supervisions
 // are end2end. It simply puts all e2e FST's into 1 supervision.
-void AppendSupervisionE2e(const std::vector<const Supervision*> &input,
+void MergeSupervisionE2e(const std::vector<const Supervision*> &input,
                           Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
-  KALDI_ASSERT(input[0]->e2e);
   KALDI_ASSERT(input[0]->e2e_fsts.size() == 1);
   *output_supervision = *(input[0]);
-  for (int32 i = 1; i < input.size(); i++) {
+  output_supervision->e2e_fsts.reserve(input.size());
+  int32 frames_per_sequence = output_supervision->frames_per_sequence,
+      num_seqs = input.size();
+  for (int32 i = 1; i < num_seqs; i++) {
     output_supervision->num_sequences++;
     KALDI_ASSERT(input[i]->e2e_fsts.size() == 1);
     KALDI_ASSERT(input[i]->frames_per_sequence ==
-                 output_supervision->frames_per_sequence);
+                 frames_per_sequence);
     output_supervision->e2e_fsts.push_back(input[i]->e2e_fsts[0]);
   }
+  output_supervision->alignment_pdfs.clear();
+  // The program nnet3-chain-acc-lda-stats works on un-merged egs,
+  // and there is no need to support merging of 'alignment_pdfs'
 }
 
-void AppendSupervision(const std::vector<const Supervision*> &input,
-                       Supervision *output_supervision) {
+void MergeSupervision(const std::vector<const Supervision*> &input,
+                      Supervision *output_supervision) {
   KALDI_ASSERT(!input.empty());
   int32 label_dim = input[0]->label_dim,
       num_inputs = input.size();
@@ -736,14 +736,16 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
     *output_supervision = *(input[0]);
     return;
   }
-  if (input[0]->e2e) {
-    AppendSupervisionE2e(input, output_supervision);
+  if (!input[0]->e2e_fsts.empty()) {
+    MergeSupervisionE2e(input, output_supervision);
     return;
   }
 
-  for (int32 i = 1; i < num_inputs; i++)
+  for (int32 i = 1; i < num_inputs; i++) {
     KALDI_ASSERT(input[i]->label_dim == label_dim &&
                  "Trying to append incompatible Supervision objects");
+    KALDI_ASSERT(input[i]->alignment_pdfs.empty());
+  }
   *output_supervision = *(input[num_inputs-1]);
   for (int32 i = num_inputs - 2; i >= 0; i--) {
     const Supervision &src = *(input[i]);
@@ -773,7 +775,6 @@ void AppendSupervision(const std::vector<const Supervision*> &input,
 // be sorted).
 bool AddWeightToSupervisionFstE2e(const fst::StdVectorFst &normalization_fst,
                                   Supervision *supervision) {
-    KALDI_ASSERT(supervision->e2e);
     KALDI_ASSERT(supervision->num_sequences == 1);
     KALDI_ASSERT(supervision->e2e_fsts.size() == 1);
     // Remove epsilons before composing.  'normalization_fst' has no epsilons so
@@ -798,7 +799,7 @@ bool AddWeightToSupervisionFstE2e(const fst::StdVectorFst &normalization_fst,
 
 bool AddWeightToSupervisionFst(const fst::StdVectorFst &normalization_fst,
                                Supervision *supervision) {
-  if (supervision->e2e)
+  if (!supervision->e2e_fsts.empty())
     return AddWeightToSupervisionFstE2e(normalization_fst, supervision);
 
   // remove epsilons before composing.  'normalization_fst' has noepsilons so
@@ -902,9 +903,11 @@ void Supervision::Check(const TransitionModel &trans_mdl) const {
     KALDI_ERR << "Invalid frames_per_sequence: " << frames_per_sequence;
   if (num_sequences <= 0)
     KALDI_ERR << "Invalid num_sequences: " << num_sequences;
-  if (label_dim != trans_mdl.NumPdfs())
+  if (!(label_dim == trans_mdl.NumPdfs() ||
+        label_dim == trans_mdl.NumTransitionIds()))
     KALDI_ERR << "Invalid label-dim: " << label_dim
-              << ", expected " << trans_mdl.NumPdfs();
+              << ", expected " << trans_mdl.NumPdfs()
+              << " or " << trans_mdl.NumTransitionIds();
   std::vector<int32> state_times;
   if (frames_per_sequence * num_sequences !=
       ComputeFstStateTimes(fst, &state_times))
@@ -954,6 +957,158 @@ void GetWeightsForRanges(int32 range_length,
       }
     }
   }
+}
+
+bool ConvertSupervisionToUnconstrained(
+    const TransitionModel &trans_mdl,
+    Supervision *supervision) {
+  KALDI_ASSERT(supervision->label_dim == trans_mdl.NumTransitionIds() &&
+               supervision->fst.NumStates() > 0 &&
+               supervision->e2e_fsts.empty() &&
+               supervision->alignment_pdfs.empty());
+
+  // Remove epsilons that will have been introduced into supervision->fst by
+  // class SupervisionSplitter (they make it harder to identify arcs that are on
+  // the first frame).
+  fst::RmEpsilon(&(supervision->fst));
+
+  { // Set supervision->alignment_pdfs to the label sequence on a randomly chosen
+    // path through supervision->fst.  This is only needed for computing LDA
+    // stats in `nnet3-chain-acc-lda-stats`.
+    fst::UniformArcSelector<fst::StdArc> selector;
+    fst::RandGenOptions<fst::UniformArcSelector<fst::StdArc> > randgen_opts(
+        selector);
+    fst::StdVectorFst single_path_fst;
+    fst::RandGen(supervision->fst, &single_path_fst, randgen_opts);
+    fst::GetLinearSymbolSequence(single_path_fst, &(supervision->alignment_pdfs),
+                                 static_cast<std::vector<int32>*>(NULL),
+                                 static_cast<fst::StdArc::Weight*>(NULL));
+
+    if (static_cast<int32>(supervision->alignment_pdfs.size()) !=
+        supervision->frames_per_sequence) {
+      KALDI_ERR << "Length mismatch between FST and frames-per-sequence.";
+    }
+    for (int32 i = 0; i < supervision->frames_per_sequence; i++) {
+      supervision->alignment_pdfs[i] =
+          trans_mdl.TransitionIdToPdf(supervision->alignment_pdfs[i]);
+    }
+  }
+
+
+  {
+    int32 num_states = supervision->fst.NumStates(),
+        start_state = supervision->fst.Start(),
+        num_transition_ids = trans_mdl.NumTransitionIds();
+    for (int32 s = 0; s < num_states; s++) {
+      for (fst::MutableArcIterator<fst::StdVectorFst> aiter(
+               &(supervision->fst), s);
+           !aiter.Done();  aiter.Next()) {
+        fst::StdArc arc = aiter.Value();
+        // First replace all output labels with epsilon.
+        arc.olabel = 0;
+        int32 transition_id = arc.ilabel;
+        KALDI_ASSERT(transition_id <= num_transition_ids);
+        // Then remove all self-loop transitions except those on the 1st frame
+        // (which must come from the start state, since the FST was epsilon free).
+        // The reason for allowing them on the 1st frame, if they were already
+        // there, is because we want to allow phones to be cut in half on
+        // chunk boundaries.  We don't have to do anything special on the
+        // last frame.  (Note that the self-loops come after forward transitions,
+        // because these graphs are always built with reorder == true; if it was
+        // built with reorder == false, we'd have to treat the last, not first,
+        // frame specially.)
+        if (trans_mdl.IsSelfLoop(transition_id) && s != start_state)
+          arc.ilabel = 0;
+        aiter.SetValue(arc);
+      }
+    }
+  }
+
+  {
+    // We determinize using DeterminizeStar, which removes epsilons while
+    // determinizing.  It can't fail because the FST is functional (all output
+    // paths are epsilons) and acyclic.  [Note: by "functional" here we have a
+    // more natural definition of functional than Mohri likely uses in the
+    // context of determinization; we mean, functional after removing epsilons]
+    supervision->e2e_fsts.resize(1);
+    bool is_partial = fst::DeterminizeStar(supervision->fst,
+                                           &(supervision->e2e_fsts[0]));
+    if (is_partial) {
+      KALDI_WARN << "Partial FST generated when determinizing supervision; "
+          "abandoning this chunk.";
+      return false;
+    }
+    supervision->fst.DeleteStates();
+    fst::Minimize(&(supervision->e2e_fsts[0]));
+    if (supervision->e2e_fsts[0].NumStates() == 0) {
+      // this should not happen-- likely a code bug or mismatch of some kind.
+      KALDI_WARN << "Supervision FST became empty.";
+      return false;
+    }
+  }
+
+  {  // Add self-loops to the FST.  (At this point we move it to
+    // supervision->e2e_fsts[0]).
+
+    // There are be no disambiguation symbols here.
+    std::vector<int32> disambig_syms;
+    // We're not adding transition probabilities; we rely on compsition with the
+    // normalization FST for that.  (note: all transition probabilities are just
+    // 0.5 anyway, for the typical chain topology).
+    BaseFloat self_loop_scale = 0.0;
+    // 'reorder' must always be true for chain models.
+    bool reorder = true;
+    // The FST we're about to call AddSelfLoops() on will have self-loops, on
+    // the first frame, so disable the check that the FST was originally
+    // self-loop-free.
+    bool check_no_self_loops = false;
+    supervision->e2e_fsts.resize(1);
+    AddSelfLoops(trans_mdl, disambig_syms, self_loop_scale,
+                 reorder, check_no_self_loops, &(supervision->e2e_fsts[0]));
+  }
+
+  { // Convert transition-ids to pdf-ids+1 on the FST labels,
+    // and copy ilabels to olabels.
+    fst::StdVectorFst &e2e_fst = supervision->e2e_fsts[0];
+    int32 num_states = e2e_fst.NumStates();
+    for (int32 s = 0; s < num_states; s++) {
+      for (fst::MutableArcIterator<fst::StdVectorFst> aiter(&e2e_fst, s);
+           !aiter.Done();  aiter.Next()) {
+        fst::StdArc arc = aiter.Value();
+        // There will be a few zero ilabels at this point, due to how
+        // AddSelfLoops() works (it calls MakePrecedingInputSymbolsSame(), which
+        // adds epsilons).  zero olabels.
+        if (arc.ilabel != 0) {
+          int32 pdf_id_plus_one = trans_mdl.TransitionIdToPdf(arc.ilabel) + 1;
+          arc.ilabel = pdf_id_plus_one;
+          arc.olabel = pdf_id_plus_one;
+          aiter.SetValue(arc);
+        }
+      }
+    }
+    supervision->label_dim = trans_mdl.NumPdfs();
+  }
+
+  {
+    // AddSelfLoops() adds epsilons, and we don't want these.  Determinize-star
+    // (which removes epsilons) and minimize again.
+    fst::StdVectorFst temp_fst(supervision->e2e_fsts[0]);
+    bool is_partial = fst::DeterminizeStar(temp_fst,
+                                           &(supervision->e2e_fsts[0]));
+    if (is_partial) {
+      KALDI_WARN << "Partial FST generated when determinizing supervision; "
+          "abandoning this chunk.";
+      return false;
+    }
+    fst::Minimize(&(supervision->e2e_fsts[0]));
+    fst::Connect(&(supervision->e2e_fsts[0]));
+    if (supervision->e2e_fsts[0].NumStates() == 0) {
+      // this should not happen-- likely a code bug or mismatch of some kind.
+      KALDI_WARN << "Supervision FST became empty.";
+      return false;
+    }
+  }
+  return true;
 }
 
 

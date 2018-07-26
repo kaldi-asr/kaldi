@@ -69,7 +69,7 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                        alignment_subsampling_factor=3,
                        online_ivector_dir=None,
                        frames_per_iter=20000, frames_per_eg_str="20", srand=0,
-                       egs_opts=None, cmvn_opts=None, transform_dir=None):
+                       egs_opts=None, cmvn_opts=None):
     """Wrapper for steps/nnet3/chain/get_egs.sh
 
     See options in that script.
@@ -79,7 +79,6 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
         """steps/nnet3/chain/get_egs.sh {egs_opts} \
                 --cmd "{command}" \
                 --cmvn-opts "{cmvn_opts}" \
-                --transform-dir "{transform_dir}" \
                 --online-ivector-dir "{ivector_dir}" \
                 --left-context {left_context} \
                 --right-context {right_context} \
@@ -96,9 +95,6 @@ def generate_chain_egs(dir, data, lat_dir, egs_dir,
                 {data} {dir} {lat_dir} {egs_dir}""".format(
                     command=run_opts.egs_command,
                     cmvn_opts=cmvn_opts if cmvn_opts is not None else '',
-                    transform_dir=(transform_dir
-                                   if transform_dir is not None
-                                   else ''),
                     ivector_dir=(online_ivector_dir
                                  if online_ivector_dir is not None
                                  else ''),
@@ -490,7 +486,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
         """{command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
-                "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
+                {model} {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} {scp_or_ark}:{egs_dir}/valid_diagnostic{egs_suffix} \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
@@ -509,7 +505,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
-                "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
+                {model} {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} {scp_or_ark}:{egs_dir}/train_diagnostic{egs_suffix} \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,

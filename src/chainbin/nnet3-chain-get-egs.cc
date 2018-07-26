@@ -33,48 +33,61 @@ namespace nnet3 {
 
 /**
    This function does all the processing for one utterance, and outputs the
-   supervision objects to 'example_writer'.  Note: if normalization_fst is the
-   empty FST (with no states), it skips the final stage of egs preparation and
-   you should do it later with nnet3-chain-normalize-egs.
+   supervision objects to 'example_writer'.
 
+     @param [in]  trans_mdl           The transition-model for the tree for which we
+                                      are dumping egs.  This is expected to be
+                                      NULL if the input examples already contain
+                                      pdfs-ids+1 in their FSTs, and non-NULL if the
+                                      input examples contain transition-ids in
+                                      their FSTs and need to be converted to
+                                      unconstrained 'e2e' (end-to-end) style FSTs
+                                      which contain pdf-ids+1 but which won't enforce any
+                                      alignment constraints interior to the
+                                      utterance.
      @param [in]  normalization_fst   A version of denominator FST used to add weights
-                                      to the created supervision. It is 
+                                      to the created supervision. It is
                                       actually an FST expected to have the
-                                      labels as (pdf-id+1)
-     @param [in]  feats               Input feature matrix 
-     @param [in]  ivector_feats       Online iVector matrix sub-sampled at a 
+                                      labels as (pdf-id+1).  If this has no states,
+                                      we skip the final stage of egs preparation
+                                      in which we compose with the normalization
+                                      FST, and you should do it later with
+                                      nnet3-chain-normalize-egs.
+     @param [in]  feats               Input feature matrix
+     @param [in]  ivector_feats       Online iVector matrix sub-sampled at a
                                       rate of "ivector_period".
-                                      If NULL, iVector will not be added 
+                                      If NULL, iVector will not be added
                                       as in input to the egs.
      @param [in]  ivector_period      Number of frames between iVectors in
                                       "ivector_feats" matrix.
-     @param [in]  supervision         Supervision for 'chain' training created 
+     @param [in]  supervision         Supervision for 'chain' training created
                                       from the binary chain-get-supervision.
-                                      This is expected to be at a 
-                                      sub-sampled rate if 
+                                      This is expected to be at a
+                                      sub-sampled rate if
                                       --frame-subsampling-factor > 1.
      @param [in]  deriv_weights       Vector of per-frame weights that scale
                                       a frame's gradient during backpropagation.
                                       If NULL, this is equivalent to specifying
-                                      a vector of all 1s. 
-                                      The dimension of the vector is expected 
-                                      to be the supervision size, which is 
-                                      at a sub-sampled rate if 
+                                      a vector of all 1s.
+                                      The dimension of the vector is expected
+                                      to be the supervision size, which is
+                                      at a sub-sampled rate if
                                       --frame-subsampling-factor > 1.
      @param [in]  supervision_length_tolerance
-                                      Tolerance for difference in num-frames-subsampled between 
-                                      supervision and deriv weights, and also between supervision 
+                                      Tolerance for difference in num-frames-subsampled between
+                                      supervision and deriv weights, and also between supervision
                                       and input frames.
      @param [in]  utt_id              Utterance-id
      @param [in]  compress            If true, compresses the feature matrices.
      @param [out]  utt_splitter       Pointer to UtteranceSplitter object,
-                                      which helps to split an utterance into 
+                                      which helps to split an utterance into
                                       chunks. This also stores some stats.
      @param [out]  example_writer     Pointer to egs writer.
 
 **/
 
-static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
+static bool ProcessFile(const TransitionModel *trans_mdl,
+                        const fst::StdVectorFst &normalization_fst,
                         const GeneralMatrix &feats,
                         const MatrixBase<BaseFloat> *ivector_feats,
                         int32 ivector_period,
@@ -103,6 +116,16 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                                   supervision_length_tolerance))
     return false;  // LengthsMatch() will have printed a warning.
 
+  // It can happen if people mess with the feature frame-width options, that
+  // there can be small mismatches in length between the supervisions (derived
+  // from lattices) and the features; if this happens, and
+  // supervision_length_tolerance is nonzero, and the num-input-frames is larger
+  // than plausible for this num_output_frames, then it could lead us to try to
+  // access frames in the supervision that don't exist.  The following
+  // if-statement is to prevent that happening.
+  if (num_input_frames > num_output_frames * frame_subsampling_factor)
+    num_input_frames = num_output_frames * frame_subsampling_factor;
+
   std::vector<ChunkTimeInfo> chunks;
 
   utt_splitter->GetChunksForUtterance(num_input_frames, &chunks);
@@ -127,6 +150,9 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
                                num_frames_subsampled,
                                &supervision_part);
 
+    if (trans_mdl != NULL)
+      ConvertSupervisionToUnconstrained(*trans_mdl, &supervision_part);
+
     if (normalization_fst.NumStates() > 0 &&
         !AddWeightToSupervisionFst(normalization_fst,
                                    &supervision_part)) {
@@ -139,7 +165,7 @@ static bool ProcessFile(const fst::StdVectorFst &normalization_fst,
 
     int32 first_frame = 0;  // we shift the time-indexes of all these parts so
                             // that the supervised part starts from frame 0.
-    
+
     NnetChainExample nnet_chain_eg;
     nnet_chain_eg.outputs.resize(1);
 
@@ -234,7 +260,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "An example [where $feats expands to the actual features]:\n"
         "chain-get-supervision [args] | \\\n"
-        "  nnet3-chain-get-egs --left-context=25 --right-context=9 --num-frames=20 dir/normalization.fst \\\n"
+        "  nnet3-chain-get-egs --left-context=25 --right-context=9 --num-frames=150,100,90 dir/normalization.fst \\\n"
         "  \"$feats\" ark,s,cs:- ark:cegs.1.ark\n"
         "Note: the --frame-subsampling-factor option must be the same as given to\n"
         "chain-get-supervision.\n";
@@ -248,7 +274,9 @@ int main(int argc, char *argv[]) {
 
     BaseFloat normalization_fst_scale = 1.0;
     int32 srand_seed = 0;
-    std::string online_ivector_rspecifier, deriv_weights_rspecifier;
+    std::string online_ivector_rspecifier,
+        deriv_weights_rspecifier,
+        trans_mdl_rxfilename;
 
     ParseOptions po(usage);
     po.Register("compress", &compress, "If true, write egs with input features "
@@ -266,7 +294,7 @@ int main(int argc, char *argv[]) {
     po.Register("srand", &srand_seed, "Seed for random number generator ");
     po.Register("length-tolerance", &length_tolerance, "Tolerance for "
                 "difference in num-frames between feat and ivector matrices");
-    po.Register("supervision-length-tolerance", &supervision_length_tolerance, 
+    po.Register("supervision-length-tolerance", &supervision_length_tolerance,
                 "Tolerance for difference in num-frames-subsampled between "
                 "supervision and deriv weights, and also between supervision "
                 "and input frames.");
@@ -275,10 +303,14 @@ int main(int argc, char *argv[]) {
                 "backpropagation. "
                 "Not specifying this is equivalent to specifying a vector of "
                 "all 1s.");
-    po.Register("normalization-fst-scale", &normalization_fst_scale, 
+    po.Register("normalization-fst-scale", &normalization_fst_scale,
                 "Scale the weights from the "
                 "'normalization' FST before applying them to the examples. "
                 "(Useful for semi-supervised training)");
+    po.Register("transition-model", &trans_mdl_rxfilename,
+                "Filename of transition model to read; should only be supplied "
+                "if you want 'unconstrained' egs, and if you supplied "
+                "--convert-to-pdfs=false to chain-get-supervision.");
 
     eg_config.Register(&po);
 
@@ -296,6 +328,7 @@ int main(int argc, char *argv[]) {
         feature_rspecifier,
         supervision_rspecifier,
         examples_wspecifier;
+
     if (po.NumArgs() == 3) {
       feature_rspecifier = po.GetArg(1);
       supervision_rspecifier = po.GetArg(2);
@@ -311,11 +344,21 @@ int main(int argc, char *argv[]) {
     eg_config.ComputeDerived();
     UtteranceSplitter utt_splitter(eg_config);
 
+
+    const TransitionModel *trans_mdl_ptr = NULL;
+    TransitionModel trans_mdl;
+    if (!trans_mdl_rxfilename.empty()) {
+      ReadKaldiObject(trans_mdl_rxfilename,
+                      &trans_mdl);
+      trans_mdl_ptr = &trans_mdl;
+    }
+
+
     fst::StdVectorFst normalization_fst;
     if (!normalization_fst_rxfilename.empty()) {
       ReadFstKaldi(normalization_fst_rxfilename, &normalization_fst);
       KALDI_ASSERT(normalization_fst.NumStates() > 0);
-      
+
       if (normalization_fst_scale <= 0.0)
         KALDI_ERR << "Invalid scale on normalization FST; must be > 0.0";
 
@@ -366,7 +409,7 @@ int main(int argc, char *argv[]) {
           num_err++;
           continue;
         }
-        
+
         const Vector<BaseFloat> *deriv_weights = NULL;
         if (!deriv_weights_rspecifier.empty()) {
           if (!deriv_weights_reader.HasKey(key)) {
@@ -380,7 +423,7 @@ int main(int argc, char *argv[]) {
           }
         }
 
-        if (!ProcessFile(normalization_fst, feats,
+        if (!ProcessFile(trans_mdl_ptr, normalization_fst, feats,
                          online_ivector_feats, online_ivector_period,
                          supervision, deriv_weights, supervision_length_tolerance,
                          key, compress,

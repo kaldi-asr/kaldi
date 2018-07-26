@@ -8,11 +8,12 @@
 # Results (mostly EERs) are inline in comments below.
 #
 # This example demonstrates a "bare bones" NIST SRE 2016 recipe using xvectors.
-# In the future, we will add score-normalization and a more effective form of
-# PLDA domain adaptation.
+# It is closely based on "X-vectors: Robust DNN Embeddings for Speaker
+# Recognition" by Snyder et al.  In the future, we will add score-normalization
+# and a more effective form of PLDA domain adaptation.
 #
-# Pretrained models are available for this recipe.
-# See http://kaldi-asr.org/models.html and
+# Pretrained models are available for this recipe.  See
+# http://kaldi-asr.org/models.html and
 # https://david-ryan-snyder.github.io/2017/10/04/model_sre16_v2.html
 # for details.
 

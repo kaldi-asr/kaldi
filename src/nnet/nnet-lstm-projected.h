@@ -411,7 +411,7 @@ class LstmProjected : public MultistreamComponent {
       CuSubMatrix<BaseFloat> y_c(YC.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_h(YH.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_m(YM.RowRange(t*S, S));
-      CuSubMatrix<BaseFloat> y_r(YR.RowRange(t*S, S));
+       CuSubMatrix<BaseFloat> y_r(YR.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_gifo(YGIFO.RowRange(t*S, S));
 
       // r(t-1) -> g, i, f, o
@@ -514,10 +514,10 @@ class LstmProjected : public MultistreamComponent {
       CuSubMatrix<BaseFloat> y_i(YI.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_f(YF.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_o(YO.RowRange(t*S, S));
-      CuSubMatrix<BaseFloat> y_c(YC.RowRange(t*S, S));
+      // CuSubMatrix<BaseFloat> y_c(YC.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_h(YH.RowRange(t*S, S));
-      CuSubMatrix<BaseFloat> y_m(YM.RowRange(t*S, S));
-      CuSubMatrix<BaseFloat> y_r(YR.RowRange(t*S, S));
+      // CuSubMatrix<BaseFloat> y_m(YM.RowRange(t*S, S));
+      // CuSubMatrix<BaseFloat> y_r(YR.RowRange(t*S, S));
 
       CuSubMatrix<BaseFloat> d_all(backpropagate_buf_.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> d_g(DG.RowRange(t*S, S));
