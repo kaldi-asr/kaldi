@@ -4,11 +4,13 @@
 #           2016  Vimal Manohar
 # Apache 2.0
 
-. ./path.sh
-
 set -e
 set -o pipefail
 set -u
+
+stage=-1
+cmd=run.pl
+nj=4
 
 # Uniform segmentation options
 max_segment_duration=30
@@ -17,15 +19,21 @@ seconds_per_spk_max=30
 
 # Decode options
 graph_opts=
-graph_scale_opts=
 beam=15.0
 lattice_beam=1.0
-nj=4
 lmwt=10
 
+# Contexts must ideally match training
+extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
+extra_right_context=0  
+extra_left_context_initial=-1
+extra_right_context_final=-1
+frames_per_chunk=150
+
+# i-vector options
 extractor=    # i-Vector extractor. If provided, will extract i-vectors. 
               # Required if the network was trained with i-vector extractor. 
-decode_opts=   # Options for nnet3 decoding
+use_vad=   # Use energy-based VAD for i-vector extraction
 
 # TF-IDF similarity search options
 max_words=1000
@@ -49,15 +57,13 @@ hard_max_segment_length=15
 min_silence_length_to_split_at=0.3
 min_non_scored_length_to_split_at=0.3
 
-stage=-1
 
-cmd=run.pl
-
+. ./path.sh
 . utils/parse_options.sh
 
 if [ $# -ne 5 ] && [ $# -ne 7 ]; then
-    cat <<EOF
-Usage: $0 [options] <model-dir> <lang> <data-in> [<text-in> <utt2text>] <segmented-data-out> <work-dir>
+  cat <<EOF
+Usage: $0 [--extractor <ivector-extractor>] [options] <model-dir> <lang> <data-in> [<text-in> <utt2text>] <segmented-data-out> <work-dir>
  e.g.: $0 exp/wsj_tri2b data/lang_nosp data/train_long data/train_long/text data/train_reseg exp/segment_wsj_long_utts_train
 This script performs segmentation of the data in <data-in> and writes out the
 segmented data (with a segments file) to
@@ -74,8 +80,30 @@ transcript that seems to match each segment.
 The output data is not necessarily particularly clean; you are advised to run
 steps/cleanup/clean_and_segment_data.sh on the output in order to further clean
 it and eliminate data where the transcript doesn't seem to match.
+  main options (for others, see top of script file):
+    --stage <n>             # stage to run from, to enable resuming from partially
+                            # completed run (default: 0)
+    --cmd '$cmd'            # command to submit jobs with (e.g. run.pl, queue.pl)
+    --nj <n>                # number of parallel jobs to use in graph creation and
+                            # decoding
+    --graph-opts 'opts'         # Additional options to make_biased_lm_graphs.sh.
+                                # Please run steps/cleanup/make_biased_lm_graphs.sh
+                                # without arguments to see allowed options.
+    --segmentation-extra-opts 'opts'  # Additional options to segment_ctm_edits_mild.py.
+                                # Please run steps/cleanup/internal/segment_ctm_edits_mild.py
+                                # without arguments to see allowed options.
+    --align-full-hyp <true|false>  # If true, align full hypothesis 
+                                   i.e. trackback from the end to get the alignment. 
+                                   This is different from the normal 
+                                   Smith-Waterman alignment, where the
+                                   traceback will be from the maximum score.
+    --extractor <extractor>     # i-vector extractor directory if i-vector is 
+                                # to be used during decoding. Must match
+                                # the extractor used for training neural-network.
+    --use-vad <true|false>      # If true, uses energy-based VAD to apply frame weights
+                                # for i-vector stats extraction
 EOF
-    exit 1
+  exit 1
 fi
 
 srcdir=$1
@@ -96,6 +124,10 @@ else
   dir=$5
 fi
 
+if [ ! -z "$extractor" ]; then
+  extra_files="$extra_files $extractor/final.ie"
+fi
+
 for f in $data/feats.scp $text $extra_files $srcdir/tree \
   $srcdir/final.mdl $srcdir/cmvn_opts; do
   if [ ! -f $f ]; then
@@ -106,10 +138,16 @@ done
 
 data_id=`basename $data`
 mkdir -p $dir
+cp $srcdir/final.mdl $dir
+cp $srcdir/tree $dir
+cp $srcdir/cmvn_opts $dir
+cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $dir 2>/dev/null || true
+cp $srcdir/frame_subsampling_factor $dir 2>/dev/null || true
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+cp $lang/phones.txt $dir
 
 data_uniform_seg=$dir/${data_id}_uniform_seg
-
-frame_shift=`utils/data/get_frame_shift.sh $data`
 
 # First we split the data into segments of around 30s long, on which
 # it would be possible to do a decoding.
@@ -155,17 +193,10 @@ graph_dir=$dir/graphs_uniform_seg
 if [ $stage -le 3 ]; then
   echo "$0: Stage 3 (Building biased-language-model decoding graphs)"
 
-  cp $srcdir/final.mdl $dir
-  cp $srcdir/tree $dir
-  cp $srcdir/cmvn_opts $dir
-  cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $dir 2>/dev/null || true
-  cp $srcdir/phones.txt $dir 2>/dev/null || true
-
   mkdir -p $graph_dir
 
   # Make graphs w.r.t. to the original text (usually recording-level)
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
-    ${graph_scale_opts:+--scale-opts "$graph_scale_opts"}\
     --nj $nj --cmd "$cmd" $text \
     $lang $dir $dir/graphs
   if [ -z "$utt2text" ]; then
@@ -213,14 +244,24 @@ if [ $stage -le 5 ]; then
 
   steps/cleanup/decode_segmentation_nnet3.sh \
     --beam $beam --lattice-beam $lattice_beam --nj $nj --cmd "$cmd --mem 4G" \
-    --skip-scoring true --allow-partial false $decode_opts \
+    --skip-scoring true --allow-partial false \
+    --extra-left-context $extra_left_context \
+    --extra-right-context $extra_right_context \
+    --extra-left-context-initial $extra_left_context_initial \
+    --extra-right-context-final $extra_right_context_final \
+    --frames-per-chunk $frames_per_chunk \
     ${online_ivector_dir:+--online-ivector-dir $online_ivector_dir} \
     $graph_dir $data_uniform_seg $decode_dir
 fi
 
+frame_shift_opt=
+if [ -f $srcdir/frame_subsampling_factor ]; then
+  frame_shift_opt="--frame-shift=0.0$(cat $srcdir/frame_subsampling_factor)"
+fi
+
 if [ $stage -le 6 ]; then
   steps/get_ctm_fast.sh --lmwt $lmwt --cmd "$cmd --mem 4G" \
-    --print-silence true \
+    --print-silence true $frame_shift_opt \
     $data_uniform_seg $lang $decode_dir $decode_dir/ctm_$lmwt
 fi
 

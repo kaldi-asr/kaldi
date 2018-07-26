@@ -12,7 +12,7 @@ set -o pipefail
 
 # Begin configuration section.
 stage=-1
-nj=4 # number of decoding jobs.  If --transform-dir set, must match that number!
+nj=4 # number of decoding jobs.
 acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
 post_decode_acwt=1.0  # can be used in 'chain' systems to scale acoustics by 10 so the
                       # regular scoring script works.
@@ -27,7 +27,6 @@ lattice_beam=8.0  # Beam we use in lattice generation. We can reduce this if
 iter=final
 num_threads=1 # if >1, will use gmm-latgen-faster-parallel
 scoring_opts=
-skip_diagnostics=false
 skip_scoring=false
 allow_partial=true
 extra_left_context=0
@@ -85,15 +84,14 @@ else
 fi
 model=$srcdir/$iter.mdl
 
+
 extra_files=
 if [ ! -z "$online_ivector_dir" ]; then
   steps/nnet2/check_ivectors_compatible.sh $srcdir $online_ivector_dir || exit 1
   extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
 fi
 
-if [ -f $srcdir/phones.txt ]; then
-  utils/lang/check_phones_compatible.sh $graph_dir/phones.txt $srcdir/phones.txt
-fi
+utils/lang/check_phones_compatible.sh $graph_dir/phones.txt $srcdir/phones.txt || exit 1
 
 for f in $graphdir/HCLG.fsts.scp $data/feats.scp $model $extra_files; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
