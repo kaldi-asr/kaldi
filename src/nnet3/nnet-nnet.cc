@@ -279,7 +279,7 @@ void Nnet::ProcessComponentConfigLine(
   }
   if (config->HasUnusedValues())
     KALDI_ERR << "Unused values '" << config->UnusedValues()
-              << " in config line: " << config->WholeLine();
+              << "' in config line: " << config->WholeLine();
 }
 
 

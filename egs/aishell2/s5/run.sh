@@ -36,9 +36,8 @@ if [ $stage -le 2 ]; then
   local/run_gmm.sh --nj $nj --stage $gmm_stage
 fi
 
-# nnet3 & chain
+# chain
 if [ $stage -le 3 ]; then
-  # local/nnet3/run_tdnn.sh --nj $nj
   local/chain/run_tdnn.sh --nj $nj
 fi
 

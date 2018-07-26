@@ -143,3 +143,10 @@ for x in $*; do
   printf "% 10s" $prob
 done
 echo
+
+echo -n "# Num-parameters             "
+for x in $*; do
+  num_params=$(grep num-parameters $x/log/progress.1.log | awk '{print $2}')
+  printf "% 10d" $num_params
+done
+echo

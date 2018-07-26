@@ -68,10 +68,13 @@ config_to_layer = {
         'opgru-layer' : xlayers.XconfigOpgruLayer,
         'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
         'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
+        'tdnnf-layer': xlayers.XconfigTdnnfLayer,
+        'prefinal-layer': xlayers.XconfigPrefinalLayer,
         'renorm-component': xlayers.XconfigRenormComponent,
         'batchnorm-component': xlayers.XconfigBatchnormComponent,
         'no-op-component': xlayers.XconfigNoOpComponent,
-        'linear-component': xlayers.XconfigLinearComponent
+        'linear-component': xlayers.XconfigLinearComponent,
+        'scale-component':  xlayers.XconfigPerElementScaleComponent
 }
 
 # Turn a config line and a list of previous layers into
@@ -85,7 +88,7 @@ def xconfig_line_to_object(config_line, prev_layers = None):
         if x is None:
             return None
         (first_token, key_to_value) = x
-        if not config_to_layer.has_key(first_token):
+        if not first_token in config_to_layer:
             raise RuntimeError("No such layer type '{0}'".format(first_token))
         return config_to_layer[first_token](first_token, key_to_value, prev_layers)
     except Exception:

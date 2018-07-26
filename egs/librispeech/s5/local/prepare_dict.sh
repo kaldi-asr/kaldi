@@ -72,7 +72,7 @@ if [ $stage -le 1 ]; then
   auto_lexicon_prefix="$g2p_dir/lexicon_autogen"
 
   mkdir -p $g2p_dir/log
-  auto_vocab_splits=$(eval "echo $auto_vocab_prefix.{$(seq -s',' $nj)}")
+  auto_vocab_splits=$(eval "echo $auto_vocab_prefix.{$(seq -s',' $nj | sed 's/,$//')}")
   awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' $cmudict_plain $vocab |\
     sort | tee $g2p_dir/vocab_autogen.full |\
     utils/split_scp.pl - $auto_vocab_splits || exit 1
