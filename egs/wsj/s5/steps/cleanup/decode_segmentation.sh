@@ -145,18 +145,10 @@ if [ ! -z "$transform_dir" ]; then # add transforms to features...
     echo "$0: num-jobs for transforms mismatches, so copying them."
     for n in $(seq $nj_orig); do cat $transform_dir/trans.$n; done | \
        copy-feats ark:- ark,scp:$dir/trans.ark,$dir/trans.scp || exit 1;
-    if [ -f $transform_dir/fmllr.basis ]; then
-      feats="$feats transform-feats scp:$dir/trans.scp ark:- ark:- |"
-    else
-      feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/trans.scp ark:- ark:- |"
-    fi
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk scp:$dir/trans.scp ark:- ark:- |"
   else
-    if [ -f $transform_dir/fmllr.basis ]; then
-      # number of jobs matches with alignment dir.
-      feats="$feats transform-feats ark:$transform_dir/trans.JOB ark:- ark:- |"
-    else
-      feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
-    fi
+    # number of jobs matches with alignment dir.
+    feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$transform_dir/trans.JOB ark:- ark:- |"
   fi
 fi
 

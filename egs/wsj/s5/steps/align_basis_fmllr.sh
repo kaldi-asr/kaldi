@@ -24,7 +24,6 @@ beam=10
 retry_beam=40
 boost_silence=1.5 # factor by which to boost silence during alignment.
 fmllr_update_type=full
-graphs_scp=
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -102,18 +101,9 @@ else
   graphdir=$dir
   if [ $stage -le 0 ]; then
     echo "$0: compiling training graphs"
-    if [ ! -z "$graphs_scp" ]; then
-      if [ ! -f $graphs_scp ]; then
-        echo "Could not find graphs $graphs_scp" && exit 1
-      fi
-      tra="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $graphs_scp |"
-      prog=compile-train-graphs-fsts
-    else
-      tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";   
-      prog=compile-train-graphs
-    fi
+    tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
     $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
-      $prog --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
+      compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
         "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
   fi
 fi
@@ -138,8 +128,6 @@ if [ $stage -le 2 ]; then
         --write-weights=ark:$dir/pre_wgt.JOB \
         $mdl $srcdir/fmllr.basis "$sifeats"  ark,s,cs:- \
         ark:$dir/trans.JOB || exit 1;
-  else
-    echo "$alimdl must be different from $mdl" && exit 1
 #  else
 #    $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
 #      ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
@@ -149,8 +137,6 @@ if [ $stage -le 2 ]; then
 #      ark,s,cs:- ark:$dir/trans.JOB || exit 1;
   fi
 fi
-
-cp $srcdir/fmllr.basis $dir
 
 feats="$sifeats transform-feats ark:$dir/trans.JOB ark:- ark:- |"
 
