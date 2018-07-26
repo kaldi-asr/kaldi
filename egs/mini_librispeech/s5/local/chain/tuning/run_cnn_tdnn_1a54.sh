@@ -336,8 +336,7 @@ if [ $stage -le 13 ]; then
   # the first TDNN-F layer has no bypass (since dims don't match), and a larger bottleneck so the
   # information bottleneck doesn't become a problem.  (we use time-stride=0 so no splicing, to
   # limit the num-parameters).
-  tdnnf-layer name=tdnnf6 $tdnnf_first_opts dim=768 bottleneck-dim=192 time-stride=0
-  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_first_opts dim=768 bottleneck-dim=192 time-stride=0
   tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
   tdnnf-layer name=tdnnf9 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
   tdnnf-layer name=tdnnf10 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
@@ -345,6 +344,7 @@ if [ $stage -le 13 ]; then
   tdnnf-layer name=tdnnf12 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
   tdnnf-layer name=tdnnf13 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
   tdnnf-layer name=tdnnf14 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
   linear-component name=prefinal-l dim=192 $linear_opts
 
   ## adding the layers for chain branch
