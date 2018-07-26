@@ -23,6 +23,7 @@
 namespace kaldi {
 
 void get_free_memory_stat(const char *prefix) {
+#if 0 // TODO: define of GetFreeMemory
   int32 act_gpu_id;
   cudaError_t e = cudaGetDevice(&act_gpu_id);
   char name[128];
@@ -36,6 +37,7 @@ void get_free_memory_stat(const char *prefix) {
   KALDI_LOG << prefix << "\tcudaSetDevice(" << act_gpu_id << "): "
             << name << "\t" << mem_ratio << " % "
             << "\t" << mem_stats;
+#endif
 }
 
 // a combination of cudaMallocManaged & cudaMemAdvise
