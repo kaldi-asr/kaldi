@@ -44,7 +44,7 @@ namespace kaldi {
 
 void* CuMemoryAllocator::Malloc(size_t size) {
   // For now just call MallocPitch and throw away the pitch, to avoid
-  // duplicating code here.  Apparently the time difference is quite small.
+  // duplicating code here.
   size_t pitch;
   return MallocPitch(size, 1, &pitch);
 }
@@ -76,9 +76,9 @@ CuMemoryAllocator::MruCache& CuMemoryAllocator::GetCacheForSize(
 }
 
 //inline
-void* CuMemoryAllocator::MallocPitchInternal(size_t row_bytes,
-                                             size_t num_rows,
-                                            size_t *pitch) {
+void* CuMemoryAllocator::MallocPitchDevice(size_t row_bytes,
+                                           size_t num_rows,
+                                           size_t *pitch) {
   num_system_allocations_++;
   void *ans;
   cudaError_t e;
@@ -206,6 +206,7 @@ CuMemoryAllocator::CuMemoryAllocator():
     cur_bytes_used_(0),
     max_bytes_used_(0),
     t_(1),
+    synchronize_gpu_t_(0),
     num_user_allocations_(0),
     num_system_allocations_(0),
     tot_time_taken_in_cuda_malloc_(0.0),
@@ -217,6 +218,9 @@ void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
                                      size_t num_rows,
                                      size_t *pitch) {
   CuTimer tim;
+
+  RoundUpMemorySizes(&row_bytes, &num_rows);
+
   t_++;
   num_user_allocations_++;
   size_t requested_bytes = row_bytes * num_rows;
@@ -231,6 +235,12 @@ void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
     *pitch = output.pitch;
     used_map_[ans] = UsedMemoryElement(row_bytes, num_rows, output.pitch);
     cur_bytes_used_ += requested_bytes;
+    if (std::this_thread::get_id() != output.thread_id &&
+        output.t > synchronize_gpu_t_) {
+      // see NOTE ON SYNCHRONIZATION in the header.
+      SynchronizeGpu();
+      synchronize_gpu_t_ = t_;
+    }
     tot_time_taken_in_malloc_pitch_ += tim.Elapsed();
     return ans;
   } else {
@@ -249,7 +259,7 @@ void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
       KALDI_ASSERT(cur_bytes_allocated_ + requested_bytes <=
                    max_bytes_to_allocate);
     }
-    void *ans = MallocPitchInternal(row_bytes, num_rows, pitch);
+    void *ans = MallocPitchDevice(row_bytes, num_rows, pitch);
     cur_bytes_allocated_ += requested_bytes;
     if (cur_bytes_allocated_ > max_bytes_allocated_)
       max_bytes_allocated_ = cur_bytes_allocated_;
@@ -350,7 +360,8 @@ void CuMemoryAllocator::Free(void *ptr) {
   MruCache &cache = GetCacheForSize(num_bytes);
 
   cache.Insert(MemoryRequest(elem.row_bytes, elem.num_rows),
-               CachedMemoryElement(ptr, t_, elem.pitch));
+               CachedMemoryElement(ptr, t_, elem.pitch,
+                                   std::this_thread::get_id()));
   used_map_.erase(iter);
 }
 
@@ -375,8 +386,39 @@ bool CuMemoryAllocator::MruCache::Lookup(const MemoryRequest &request,
     return false;
   MapValueType &q = iter->second;
   KALDI_ASSERT(!q.empty());
-  // use q.back() as we want to return the most recently used one if there
-  // is a choice.  We believe this will give better caching behavior.
+
+
+  // max_iter is the number of times we'll iterate looking for something that
+  // belongs to the same thread.
+  int32 max_iter = 10;
+  std::thread::id thread_id = std::this_thread::get_id();
+
+  // map_value_iter is an iterator that we'll use to iterate from the
+  // front of the list towards the back, looking for (if possible)
+  // a CachedMemoryElement from the same thread.
+  MapValueTypeIterator map_value_iter = q.begin();
+
+  // First try to find one from the same thread.
+  int32 i = 0;
+  for (; map_value_iter != q.end() && i < max_iter; map_value_iter++,i++) {
+    if (map_value_iter->first.thread_id == thread_id) {
+      // we found an element matching the thread; return that one.
+      *output = map_value_iter->first;
+      // erase this element from list_
+      list_.erase(map_value_iter->second);
+      // and from map_
+      q.erase(map_value_iter);
+      if (q.empty())
+        map_.erase(request);
+      return true;
+    }
+  }
+
+  // OK, if we got to this point, we didn't find one from the same thread;
+  // we'll return one from a different thread, which may force the calling code
+  // to call cudaDeviceSynchronize() depending how long ago the thing we're
+  // going to return was freed.  To minimize the chance of that happening, we
+  // return one from the back of the list (i.e. the oldest one).
   *output = q.back().first;
   list_.erase(q.back().second);
   q.pop_back();
@@ -388,7 +430,9 @@ bool CuMemoryAllocator::MruCache::Lookup(const MemoryRequest &request,
 void CuMemoryAllocator::MruCache::Insert(const MemoryRequest &request,
                                          const CachedMemoryElement &element) {
   list_.push_back(request);
-  map_[request].push_back(std::pair<CachedMemoryElement, ListIterType>(
+  // in the map, the lists have most recently used elements on the front.
+  //
+  map_[request].push_front(std::pair<CachedMemoryElement, ListIterType>(
       element,
       --list_.end()));
 }
@@ -401,11 +445,14 @@ size_t CuMemoryAllocator::MruCache::RemoveLeastRecentlyUsed() {
   KALDI_ASSERT(iter != map_.end());
   MapValueType &queue = iter->second;
   KALDI_ASSERT(!queue.empty());
-  // least recently used elements are at the front of the queue.
-  std::pair<CachedMemoryElement, ListIterType> &p = queue.front();
+  // Least recently used elements are at the back of the queue.
+  // this is a bit against normal expectation, I think, but it's in
+  // that order beause of std::list having no erase() function that
+  // takes a reverse_iterator.
+  std::pair<CachedMemoryElement, ListIterType> &p = queue.back();
   KALDI_ASSERT(p.second == list_.begin());
   CU_SAFE_CALL(cudaFree(p.first.pointer));
-  queue.pop_front();
+  queue.pop_back();
   if (queue.empty())
     map_.erase(request);
   list_.pop_front();

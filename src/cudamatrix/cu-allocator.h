@@ -29,6 +29,7 @@
 #include <mutex>
 #include <list>
 #include <queue>
+#include <thread>
 #include <iostream>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
@@ -39,8 +40,8 @@ namespace kaldi {
 
 
 // For now we don't give the user a way to modify these from the command line.
-// or the code, it just documents what the default options are, and to change
-// the values you have to do it in the code.
+// or the code, it just documents what the default options are.  To change
+// the options, you have to do it in the code.
 struct CuAllocatorOptions {
   // memory_factor is the total amount of (allocated + cached) memory that we
   // allow to be held, relative to the max amount of memory the program has ever
@@ -59,6 +60,7 @@ struct CuAllocatorOptions {
   CuAllocatorOptions(): memory_factor(1.3),
                         delete_factor(0.001) { }
 
+
   void Check() {
     KALDI_ASSERT(delete_factor < memory_factor - 1.0 && delete_factor > 0.0);
   }
@@ -66,10 +68,41 @@ struct CuAllocatorOptions {
 
 
 
+/**
+   Class that caches memory for us (needed because the CUDA malloc and free
+   routines are very slow).  The user doesn't access this class directly, it is
+   accessed via the CuDevice object.  The CuDevice class allocates memory using
+   this class's Malloc() and MallocPitch() functions, and frees them with its
+   Free() function, and this class caches the memory blocks to avoid calling the
+   CUDA library's malloc/free functions too often.  If the application is using
+   multiple threads, it's necessary to lock this class before using it, and in
+   that case the CuDevice class calls the MallocLocking() and
+   MallocPitchLocking() versions of the allocation functions (but the user
+   should call CuDevice::AllowMultithreading() if the application plans to use
+   GPU functionality from multiple CPU threads).
 
-// Class that caches memory for us (the CUDA
-// malloc and free routines are very slow).
-// This is a member of the CuDevice class.
+   NOTE ON SYNCHRONIZATION: if multiple CUDA streams are used there is a
+   potential problem with any caching allocator which shares its pool across
+   CUDA streams.  That is: if a memory block is freed by stream 1 and allocated to
+   stream 2, an operation might start in stream 2 before stream 1 has finished
+   working with that memory location.  We solve this here using a rather low-tech
+   solution, relying on calling SynchronizeGpu() which submits a no-op kernel
+   into the legacy default stream.  Each
+   time CuMemoryAllocator()::Free() is called and we cache the memory block
+   in this class, we record the thread-id of the CPU thread from which it was
+   freed, as well as a timestamp (the t_ member of CuMemoryAllocator, which
+   we increment every time the class is used).  When we allocate memory
+   that was cached, we try to allocate it from a block that was relased by the
+   same CPU thread; and if that is not possible and we haven't called
+   SynchronizeGpu() since the block was freed, then we call
+   SynchronizeGpu().  The hope is that this will happen quite rarely.
+   Note that this is based on the assumption that the user is using the
+   per-thread default stream (indeed this is how we compile).  If the
+   user were to make explicit use of CUDA streams, this mechanism would
+   not necessarily be sufficient to prevent data-race conditions and the
+   user might have to take further precautions.
+*/
+
 class CuMemoryAllocator {
  public:
   /// Allocates memory on the CUDA device, of size 'size'.
@@ -114,20 +147,44 @@ class CuMemoryAllocator {
 
  private:
 
+
+  // This function does some rounding-up on the requested size, which will help
+  // to make allocation requests that are close in size, more similar.  Note:
+  // for memory debugging purposes this might not actually be a great idea,
+  // since it will may sometimes prevent cuda-memcheck from detecting memory
+  // overruns.
+  static inline void RoundUpMemorySizes(size_t *row_bytes,
+                                        size_t *num_rows) {
+    // round up row_bytes to the nearest multiple of 256.
+    *row_bytes = (*row_bytes + 255) & ~((size_t)255);
+    if (*num_rows > 512) {
+      // if num_rows >= 512, round num_rows up to the nearest multiple of 128.
+      *num_rows = (*num_rows + 127) & ~((size_t)127);
+    }
+  }
+
   void FreeSomeCachedMemory(size_t bytes_to_free);
+
+
 
   // This calls CudaMallocPitch, checks for errors (dies if it has to), and
   // returns the result.  It's up to the caller to do all the bookkeeping though.
-  inline void* MallocPitchInternal(size_t row_bytes, size_t num_rows, size_t *pitch);
+  inline void* MallocPitchDevice(size_t row_bytes, size_t num_rows, size_t *pitch);
 
   typedef std::pair<size_t, size_t> MemoryRequest;  // (row_bytes, num_rows).
   struct CachedMemoryElement {
     void *pointer;  // the CUDA memory location that we own
     size_t t;       // time value when we put this in the cache.
     size_t pitch;   // pitch of this memory region (c.f. cudaMallocPitch()).
+    std::thread::id thread_id;  // the thread-id of the thread in which this
+                    // memory element was most recently freed (via Free()).
+                    // Used in knowing whether we need to call
+                    // SynchronizeGpu() to prevent synchronization bugs
+                    // if this element is allocated to another thread.
     CachedMemoryElement() { }
-    CachedMemoryElement(void *pointer, size_t t, size_t pitch):
-        pointer(pointer), t(t), pitch(pitch) { }
+    CachedMemoryElement(void *pointer, size_t t, size_t pitch,
+                        std::thread::id thread_id):
+        pointer(pointer), t(t), pitch(pitch), thread_id(thread_id) { }
   };
 
   // This class caches a map from MemoryRequest to a list of CachedMemoryElements,
@@ -179,19 +236,28 @@ class CuMemoryAllocator {
    private:
     typedef std::list<MemoryRequest> ListType;
     typedef std::list<MemoryRequest>::iterator ListIterType;
-    typedef std::deque<std::pair<CachedMemoryElement, ListIterType> > MapValueType;
+    typedef std::list<std::pair<CachedMemoryElement, ListIterType> > MapValueType;
+    typedef std::list<std::pair<CachedMemoryElement,
+                                ListIterType> >::iterator MapValueTypeIterator;
+
     typedef unordered_map<MemoryRequest, MapValueType,
                           MemoryRequestHasher> MapType;
-    // 'list_' contains MemoryRequests with the most recent on the back (where they are added),
-    // and least recent on the front (where they are removed by RemoveLeastRecentlyUsed, although
-    // they are also removed from random parts of the list by Lookup().
-    // There will in general be duplicates of MemoryRequests in the list, as
-    // many as there are entries in the MapValueType.
+
+    // 'list_' contains MemoryRequests with the most recent on the back (where
+    // they are added), and least recent on the front (where they are removed by
+    // RemoveLeastRecentlyUsed, although they are also removed from random parts
+    // of the list by Lookup().  Any given MemoryRequest may in general appear
+    // repeated many times in this list, as many as there are entries in the
+    // MapValueType.h that you'd find by looking it up in map_.
     ListType list_;
-    // 'map_' maps from a MemoryRequest to a queue of (memory-element,
-    // iterator), with the most-recently-added things at the back; we remove
-    // things from the front of these queues (oldest) inside
-    // RemoveLeastRecentlyUsed(), and from the back (newest) in Lookup.
+
+    // 'map_' maps from a MemoryRequest to a list of (memory-element,
+    // iterator), with the most-recently-added things at the front; we remove
+    // things from the back of these queues (oldest) inside
+    // RemoveLeastRecentlyUsed(), and from near the front (newest) in Lookup.
+    // the reason for adding recent things at the front, not back of the list,
+    // has to do with the lack (as far as I know) of a version of list::erase()
+    // that works with reverse iterators.
     MapType map_;
   };
 
@@ -209,6 +275,8 @@ class CuMemoryAllocator {
   size_t cur_bytes_used_;  // number of bytes currently owned by callers.
   size_t max_bytes_used_;  // the max over all time, of cur_bytes_used_.
   size_t t_;  // time counter, incremented with each call.
+  size_t synchronize_gpu_t_;     // value of t_ at the last time we called
+                                 // SynchronizeGpu().
   size_t num_user_allocations_;  // number of times user calls Malloc*
   size_t num_system_allocations_;  // number of times we call cudaMalloc*.
   double tot_time_taken_in_cuda_malloc_;  // time in cudaMalloc

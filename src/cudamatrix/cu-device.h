@@ -280,12 +280,21 @@ inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetCubl
 inline cusparseHandle_t GetCusparseHandle() { return CuDevice::Instantiate().GetCusparseHandle(); }
 
 
-void SynchronizeGpu();
-
-
 }  // namespace
 
 #endif // HAVE_CUDA
 
+
+namespace kaldi {
+/// The function SynchronizeGpu(), which for convenience is defined whether or
+/// not we have compiled for CUDA, is intended to be called in places where threads
+/// need to be synchronized.
+///
+/// It just launches a no-op kernel into the legacy default stream.  This will
+/// have the effect that it will run after any kernels previously launched from
+/// any stream*, and before kernels that will later be launched from any stream*
+/// *does not apply to non-blocking streams.
+void SynchronizeGpu();
+}
 
 #endif

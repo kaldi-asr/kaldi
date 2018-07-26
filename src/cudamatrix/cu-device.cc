@@ -41,6 +41,8 @@
 #include "base/kaldi-utils.h"
 #include "util/common-utils.h"
 #include "util/kaldi-io.h"
+// the following is for cuda_legacy_noop().
+#include "cudamatrix/cu-kernels-ansi.h"
 
 namespace kaldi {
 
@@ -319,7 +321,7 @@ bool CuDevice::SelectGpuIdAuto() {
     switch(ret) {
       case cudaSuccess : {
         // create the CUDA context for the thread
-        cudDeviceSynchronize();
+        cudaDeviceSynchronize();
         // get GPU name
         char name[128];
         DeviceGetName(name,128,n);
@@ -507,7 +509,8 @@ CuDevice::CuDevice():
     initialized_(false),
     device_id_copy_(-1),
     cublas_handle_(NULL),
-    cusparse_handle_(NULL) { }
+    cusparse_handle_(NULL) {
+}
 
 
 CuDevice::~CuDevice() {
@@ -532,7 +535,17 @@ int64 CuDevice::free_memory_at_startup_;
 cudaDeviceProp CuDevice::properties_;
 bool CuDevice::debug_stride_mode_ = false;
 
+
+void SynchronizeGpu() {
+  cuda_legacy_noop();
+  CU_SAFE_CALL(cudaGetLastError());
+}
 }
 
+#else  // #if HAVE_CUDA == 1
 
-#endif // HAVE_CUDA
+namespace kaldi {
+// SynchronizeGpu() does nothing if we didn't compile for GPU.
+void SynchronizeGpu() { }
+}
+#endif  // #if HAVE_CUDA == 1
