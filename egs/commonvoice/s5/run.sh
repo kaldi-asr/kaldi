@@ -146,8 +146,8 @@ if [ $stage -le 7 ]; then
     utils/mkgraph.sh data/lang_test exp/tri4b exp/tri4b/graph
     for testset in valid_dev; do
       steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
-        exp/tri4b/graph_nosp_tgsmall data/$testset \
-        exp/tri4b/decode_nosp_tgsmall_$testset
+        exp/tri4b/graph data/$testset \
+        exp/tri4b/decode_$testset
     done
   )&
 fi
