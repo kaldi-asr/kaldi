@@ -454,6 +454,8 @@ function configure_cuda {
       else
         cat makefiles/cuda_64bit.mk >> kaldi.mk
       fi
+    elif [ "`uname -m`" == "aarch64" ]; then
+      cat makefiles/cuda_64bit.mk >> kaldi.mk
     elif [ "`uname -m`" == "ppc64le" ]; then
       cat makefiles/cuda_64bit.mk >> kaldi.mk
     else
