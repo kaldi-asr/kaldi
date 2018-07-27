@@ -10,6 +10,8 @@ set -euo pipefail
 
 stage=0
 nj=56
+num_threads_ubm=2
+
 train_set=train
 test_sets="native nonnative devtest test"
 gmm=tri3b
