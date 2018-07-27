@@ -1,25 +1,26 @@
 #!/bin/bash
 
 # 1h is as 1g but a re-tuned model based on resnet-style TDNN-F layers with
-# bypass connections.  Below, 1h2 is just a rerun of 1h with a different --affix
-# option, to give some idea of the run-to-run variation.
+# bypass connections.  Below, 1h2 and 1h3 are just reruns of 1h with different
+# --affix options, to give some idea of the run-to-run variation.
 
-# local/chain/compare_wer.sh --online exp/chain/tdnn1g_sp exp/chain/tdnn1h_sp exp/chain/tdnn1h2_sp
-# System                tdnn1g_sp tdnn1h_sp tdnn1h2_sp
-#WER dev_clean_2 (tgsmall)      13.50     13.18     13.04
-#             [online:]         13.52     13.03     12.97
-#WER dev_clean_2 (tglarge)       9.79      9.18      9.16
-#             [online:]          9.79      9.29      9.24
-# Final train prob        -0.0460   -0.0531   -0.0590
-# Final valid prob        -0.0892   -0.0844   -0.0865
-# Final train prob (xent)   -1.1739   -1.5244   -1.7771
-# Final valid prob (xent)   -1.4487   -1.7447   -1.9611
-# Num-params                 6234672   3512112   3512112
+# local/chain/compare_wer.sh --online exp/chain/tdnn1g_sp exp/chain/tdnn1h_sp exp/chain/tdnn1h2_sp exp/chain/tdnn1h3_sp
+# System                tdnn1g_sp tdnn1h_sp tdnn1h2_sp tdnn1h3_sp
+#WER dev_clean_2 (tgsmall)      13.50     12.09     12.23     12.19
+#             [online:]         13.52     12.11     12.25     12.14
+#WER dev_clean_2 (tglarge)       9.79      8.59      8.64      8.73
+#             [online:]          9.79      8.76      8.65      8.78
+# Final train prob        -0.0460   -0.0493   -0.0490   -0.0493
+# Final valid prob        -0.0892   -0.0805   -0.0803   -0.0813
+# Final train prob (xent)   -1.1739   -1.1730   -1.1742   -1.1749
+# Final valid prob (xent)   -1.4487   -1.3872   -1.3857   -1.3913
+# Num-params                 6234672   5207856   5207856   5207856
 
-# steps/info/chain_dir_info.pl  exp/chain/tdnn1{g,h,h2}_sp
+
 # exp/chain/tdnn1g_sp: num-iters=25 nj=2..5 num-params=6.2M dim=40+100->2328 combine=-0.056->-0.055 (over 3) xent:train/valid[15,24,final]=(-1.50,-1.23,-1.17/-1.73,-1.52,-1.45) logprob:train/valid[15,24,final]=(-0.063,-0.051,-0.046/-0.101,-0.094,-0.089)
-# exp/chain/tdnn1h_sp: num-iters=34 nj=2..5 num-params=3.5M dim=40+100->2328 combine=-0.055->-0.050 (over 4) xent:train/valid[21,33,final]=(-1.97,-1.57,-1.52/-2.11,-1.78,-1.74) logprob:train/valid[21,33,final]=(-0.080,-0.061,-0.053/-0.106,-0.096,-0.084)
-# exp/chain/tdnn1h2_sp: num-iters=34 nj=2..5 num-params=3.5M dim=40+100->2328 combine=-0.062->-0.056 (over 4) xent:train/valid[21,33,final]=(-2.21,-1.78,-1.78/-2.34,-1.96,-1.96) logprob:train/valid[21,33,final]=(-0.086,-0.066,-0.059/-0.110,-0.098,-0.087)
+# exp/chain/tdnn1h_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2328 combine=-0.049->-0.046 (over 4) xent:train/valid[21,33,final]=(-1.50,-1.22,-1.17/-1.66,-1.44,-1.39) logprob:train/valid[21,33,final]=(-0.068,-0.055,-0.049/-0.097,-0.088,-0.080)
+# exp/chain/tdnn1h2_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2328 combine=-0.049->-0.046 (over 4) xent:train/valid[21,33,final]=(-1.50,-1.22,-1.17/-1.67,-1.43,-1.39) logprob:train/valid[21,33,final]=(-0.068,-0.055,-0.049/-0.096,-0.087,-0.080)
+# exp/chain/tdnn1h3_sp: num-iters=34 nj=2..5 num-params=5.2M dim=40+100->2328 combine=-0.050->-0.046 (over 4) xent:train/valid[21,33,final]=(-1.51,-1.23,-1.17/-1.67,-1.45,-1.39) logprob:train/valid[21,33,final]=(-0.068,-0.055,-0.049/-0.097,-0.089,-0.081)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
