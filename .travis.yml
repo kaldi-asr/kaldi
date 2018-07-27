@@ -22,6 +22,7 @@ addons:
       - liblapack-dev
       - clang-3.8
       - csh
+      - swig
 
 branches:
   only:
@@ -40,8 +41,12 @@ before_script:
   - ccache --zero-stats --max-size=3G
 
 env:
-  - CI_TARGETS="all ext"        # Job1: Build everything.
-  - CI_TARGETS="test"           # Job2: Test libraries. #### ext_test? adds 5min compile, runs 1 test.
+  - CI_TARGETS="depend"     # Job1: Build main programs.
+  - CI_TARGETS="all"        # Job2: Build main programs.
+  - CI_TARGETS="ext_depend" # Job3: Build extra programs
+  - CI_TARGETS="ext"        # Job4: Build extra programs
+  - CI_TARGETS="test"       # Job5: Test libraries.
+  #### ext_test? adds 5min compile, runs 1 test.
 
 script:
   # See http://petereisentraut.blogspot.com/2011/05/ccache-and-clang.html and
