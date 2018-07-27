@@ -9,6 +9,7 @@ set -euo pipefail
 # of usage.
 
 stage=0
+nj=56
 train_set=train
 test_sets="native nonnative devtest test"
 gmm=tri3b
