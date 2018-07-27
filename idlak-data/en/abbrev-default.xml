@@ -16,4 +16,13 @@
 <abb prepunc="(" token="US" pstpunc=")"> u s </abb>
 <abb token="USA-wide"> u s <lex entry="letter">a</lex> wide </abb>
 <abb token=":-)">smiley</abb>
+<abb token="FM">f m</abb>
+<abb token="BBC1">b b c one</abb>
+<abb token="BBC2">b b c two</abb>
+<abb token="7/7">seven seven</abb>
+<abb token="7/7">seven seven</abb>
+<abb token="9/11">nine eleven</abb>
+<abb token="BA">b <lex entry="letter">a</lex></abb>
+<abb token="BST">b s t</abb>
+<abb token="GMT">g m t</abb>
 </abbreviations>

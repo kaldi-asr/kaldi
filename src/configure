@@ -88,13 +88,15 @@ Configuration options:
   --speex-incdir=DIR    SPEEX include directory
   --host=HOST           Host triple in the format 'cpu-vendor-os'
                         If provided, it is prepended to all toolchain programs.
-  --android-incdir=DIR  Andraid include directory
+  --android-incdir=DIR  Android include directory
+  --pydev-incdir=DIR    Python development library include directory [default=/usr/include/python2.7]
 
 Following environment variables can be used to override the default toolchain.
   CXX         C++ compiler [default=g++]
   AR          Archive maintenance utility [default=ar]
   AS          Assembler [default=as]
   RANLIB      Archive indexing utility [default=ranlib]
+  SWIG        Python wrapper generation tool [default=swig]
 
 If a host triple is provided, it is prepended to CXX, AR, AS and RANLIB.
 
@@ -832,6 +834,7 @@ CXX=${CXX:-g++}
 AR=${AR:-ar}
 AS=${AS:-as}
 RANLIB=${RANLIB:-ranlib}
+SWIG=${SWIG:-swig}
 
 # These environment variables can be used to provide additional flags to the
 # compiler/linker. We want these flags to override the flags determined by the
@@ -860,6 +863,8 @@ FSTROOT=`rel2abs ../tools/openfst`
 EXPATROOT=`rel2abs ../tools/expat-2.1.0/`
 PCREROOT=`rel2abs ../tools/pcre-8.20/`
 PUJIXMLROOT=`rel2abs ../tools/pugixml-1.2/`
+
+PYTHONDEVINC=/usr/include/python2.7
 
 # Save the command line to include in kaldi.mk
 cmd_line="$0 $@"
@@ -1000,6 +1005,9 @@ do
     MATHLIB='OPENBLAS';
     ANDROIDINC=`read_dirname $1`;
     shift;;
+  --pydev-incdir=*)
+    PYTHONDEVINC=`read_dirname $1`;
+    shift;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -1069,6 +1077,7 @@ echo "CXX = $CXX" >> kaldi.mk
 echo "AR = $AR" >> kaldi.mk
 echo "AS = $AS" >> kaldi.mk
 echo "RANLIB = $RANLIB" >> kaldi.mk
+echo "SWIG = $SWIG" >> kaldi.mk
 echo >> kaldi.mk
 
 echo "Checking compiler $CXX ..."
@@ -1107,7 +1116,7 @@ echo IDLAK = true >> kaldi.mk
 echo PCREROOT = $PCREROOT >> kaldi.mk
 echo EXPATROOT = $EXPATROOT >> kaldi.mk
 echo PUJIXMLROOT = $PUJIXMLROOT >> kaldi.mk
-
+echo PYTHONDEVINC = $PYTHONDEVINC >> kaldi.mk
 
 echo "Checking OpenFst library in $FSTROOT ..."
 if [ ! -f $FSTROOT/include/fst/fst.h  ]; then

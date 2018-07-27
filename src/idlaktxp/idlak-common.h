@@ -27,6 +27,8 @@
 #include <utility>
 #include <string>
 
+#include "base/kaldi-common.h"
+
 namespace kaldi {
 
 #define NO_INDEX -1
