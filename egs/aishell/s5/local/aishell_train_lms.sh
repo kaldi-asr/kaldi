@@ -23,7 +23,7 @@ kaldi_lm=`which train_lm.sh`
 if [ -z $kaldi_lm ]; then
   echo "$0: train_lm.sh is not found. That might mean it's not installed"
   echo "$0: or it is not added to PATH"
-  echo "$0: Use the script tools/extra/install_kaldi_lm.sh to install it"
+  echo "$0: Use the script tools/extras/install_kaldi_lm.sh to install it"
   exit 1
 fi
 
