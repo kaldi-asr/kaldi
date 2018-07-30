@@ -14,13 +14,6 @@ set -u
 # the location of the LDC corpus; this location works for the CLSP grid.
 #datadir=/export/corpora5/LDC/LDC2006S37
 
-# The corpus and lexicon are on openslr.org
-lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
-speech="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
-
-# location of subtitles text data
-subsdata="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2016/en-es.txt.zip"
-
 # don't change tmpdir, the location is used explicitly in scripts in local/.
 tmpdir=data/local/tmp
 
