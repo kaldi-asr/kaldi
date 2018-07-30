@@ -18,6 +18,11 @@
 //
 
 %module pyIdlak
+%include <argcargv.i>
+%include <std_iostream.i>
+
+%apply (int ARGC, char **ARGV) { (int argc, char *argv[]) }
+
 %{
 #include "python-api.h"
 %}
