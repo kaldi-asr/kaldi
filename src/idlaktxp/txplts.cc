@@ -29,12 +29,15 @@ static const char* ApplyTree(const TxpLtsTree &tree,
 
 void TxpLts::StartElement(const char* name, const char** atts) {
   std::string terminal;
+  std::string nonterminal;
   LtsMap::iterator it;
   if (!strcmp(name, "tree")) {
     SetAttribute("ltr", atts, &ltr_);
     SetAttribute("terminal", atts, &terminal);
+    SetAttribute("nonterminal", atts, &nonterminal);
     TxpLtsTree tree;
-    tree.root = atoi(terminal.c_str());
+    if (atoi(nonterminal.c_str()) == 0) tree.root = 0;
+    else tree.root = atoi(terminal.c_str());
     ltslkp_.insert(LtsItem(ltr_, tree));
   } else if (!strcmp(name, "node")) {
     TxpLtsNode node;
