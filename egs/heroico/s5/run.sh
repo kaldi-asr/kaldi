@@ -27,6 +27,8 @@ tmpdir=data/local/tmp
 if [ $stage -le -1 ]; then
   # download the corpus from openslr
   local/heroico_download.sh
+  # Get data for lm training
+  local/subs_download.sh
 fi
 
 if [ $stage -le 1 ]; then
@@ -46,20 +48,17 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-      # Get data for lm training
-  local/subs_download.sh
-fi
-
-if [ $stage -le 5 ]; then
   mkdir -p $tmpdir/subs/lm
   local/subs_prepare_data.pl
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   echo "point 1"
   # build lm
   local/prepare_lm.sh  $tmpdir/subs/lm/in_vocabulary.txt
+fi
 
+if [ $stage -le 6 ]; then
   echo "point 2"
   utils/format_lm.sh \
     data/lang data/local/lm/trigram.arpa.gz data/local/dict/lexicon.txt \
