@@ -19,7 +19,7 @@ my $up_bound = 16;
 
 # input and output files
 
-my $corpus = "OpenSubtitles2016.en-es.es";
+my $corpus = "OpenSubtitles2018.en-es.es";
 my $symbol_table = "data/lang/words.txt";
 my $filtered = "data/local/tmp/subs/lm/es.txt";
 my $oovs = "data/local/tmp/subs/lm/oovs.txt";
@@ -28,11 +28,11 @@ my $iv = "data/local/tmp/subs/lm/in_vocabulary.txt";
 open my $C, '<', $corpus or croak "problems with $corpus $!";
 
 system "mkdir -p data/local/tmp/subs/lm";
-open my $FLT, '+>:utf8', $filtered or croak "problems with $filtered $!";
 
 if ( -e $filtered ) {
     warn "$filtered already exists.";
 } else {
+  open my $FLT, '+>:utf8', $filtered or croak "problems with $filtered $!";
   LINE: while ( my $line = <$C> ) {
       $line = decode_utf8 $line;
       chomp $line;
@@ -57,9 +57,10 @@ if ( -e $filtered ) {
 
       print $FLT "$line\n";
   }
+  close $FLT;
 }
 close $C;
-close $FLT;
+
 
 # find out of vocabulary words
 
