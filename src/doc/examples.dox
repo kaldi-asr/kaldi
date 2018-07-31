@@ -1,0 +1,404 @@
+// doc/examples.dox
+
+// Copyright 2016 Fred Richardson  Allen Guo
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+/**
+ \page examples Examples included with Kaldi
+
+ When you check out the Kaldi source tree (see \ref install), you will find many
+ sets of example scripts in the egs/ directory.  This table summarizes some key
+ facts about some of those example scripts; however, it it not an exhaustive
+ list.
+
+<table><tr>
+  <th>Name</th>
+  <th>BW</th>
+  <th>Lang</th>
+  <th>Train Domain</th>
+  <th>Train Hours</th>
+  <th>Train Speakers</th>
+  <th>License and Availability</th>
+  <th>Year Released</th>
+  <th>Speech Style</th>
+  <th>Test Domain</th>
+  <th>Kaldi Aprox Perf</th>
+  <th>Model Type</th>
+  <th>LM Data</th>
+  <th>Lexicon</th>
+</tr>
+<tr>
+  <!-- Name                 --> <td>AMI</td>
+  <!-- BW                   --> <td>16k</td>
+  <!-- Lang                 --> <td>English<br>(+non-native)</td>
+  <!-- Train Domain         --> <td>Microphone: head-mike,<br>single and multiple<br>distance mikes</td>
+  <!-- Train Hours          --> <td>100</td>
+  <!-- Train Speakers       --> <td>123 M<br>66 F</td>
+  <!-- License/Availability --> <td>Free /<br>Download<br>http://groups.inf.ed.ac.uk/ami/corpus/</td>
+  <!-- Year Released        --> <td>2014</td>
+  <!-- Speech Style         --> <td>Meeting room</td>
+  <!-- Test Domain          --> <td>Same as train<br>no overlap(?)</td>
+  <!-- Kaldi Aprox Perf     --> <td>~25% WER head (T)DNN<br>~45% WER distant (B)LSTM</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>AMI + (opt) Fisher</td>
+  <!-- Lexicon              --> <td>50K (CMU dict +<br>kaldi sources)</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Aspire</td>
+  <!-- BW                   --> <td></td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>Conversational microphone<br>developed on telephone</td>
+  <!-- Train Hours          --> <td>see Fisher</td>
+  <!-- Train Speakers       --> <td></td>
+  <!-- License/Availability --> <td></td>
+  <!-- Year Released        --> <td>2015</td>
+  <!-- Speech Style         --> <td></td>
+  <!-- Test Domain          --> <td></td>
+  <!-- Kaldi Aprox Perf     --> <td>30.8% WER (dev or eval?)</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td></td>
+  <!-- Lexicon              --> <td></td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>WSJ</td>
+  <!-- BW                   --> <td>16k</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>Clean close-mic<br>read speech</td>
+  <!-- Train Hours          --> <td>80</td>
+  <!-- Train Speakers       --> <td></td>
+  <!-- License/Availability --> <td>LDC<br>LDC93S6B (WSJ0) and LDC94S13B (WSJ1)</td>
+  <!-- Year Released        --> <td>1993</td>
+  <!-- Speech Style         --> <td>Read speech</td>
+  <!-- Test Domain          --> <td>Same</td>
+  <!-- Kaldi Aprox Perf     --> <td>6-7% WER</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>same as train</td>
+  <!-- Lexicon              --> <td>20k (CMU dict)</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>RM</td>
+  <!-- BW                   --> <td></td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>read transcript<br>limited vocab and grammar</td>
+  <!-- Train Hours          --> <td></td>
+  <!-- Train Speakers       --> <td></td>
+  <!-- License/Availability --> <td>LDC<br>LDC93S3A</td>
+  <!-- Year Released        --> <td>1987-1989</td>
+  <!-- Speech Style         --> <td>read speech</td>
+  <!-- Test Domain          --> <td>same</td>
+  <!-- Kaldi Aprox Perf     --> <td>1-2% WER</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>predefined grammar</td>
+  <!-- Lexicon              --> <td>&lt;1K<br>RM dict</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Timit</td>
+  <!-- BW                   --> <td>16k</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>read transcript<br>very limited grammar</td>
+  <!-- Train Hours          --> <td></td>
+  <!-- Train Speakers       --> <td>630</td>
+  <!-- License/Availability --> <td></td>
+  <!-- Year Released        --> <td>1986</td>
+  <!-- Speech Style         --> <td>read speech</td>
+  <!-- Test Domain          --> <td>same</td>
+  <!-- Kaldi Aprox Perf     --> <td>~30-40% PER</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>none</td>
+  <!-- Lexicon              --> <td>~47 phones</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>fisher_english</td>
+  <!-- BW                   --> <td>8k</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>Telephone speech<br>Auto-transcribed<br>(errorful transcriptions)</td>
+  <!-- Train Hours          --> <td>1,600</td>
+  <!-- Train Speakers       --> <td>5203 M<br>7198 F</td>
+  <!-- License/Availability --> <td>LDC<br>speech: LDC2004S13, LDC2005S13<br>transcript: LDC2004T19, LDC2005T19</td>
+  <!-- Year Released        --> <td>2004/2005</td>
+  <!-- Speech Style         --> <td>CTS</td>
+  <!-- Test Domain          --> <td>Fisher (may<br>overlap witb<br>train)</td>
+  <!-- Kaldi Aprox Perf     --> <td>~22% WER (DNN)</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>LDC Fisher</td>
+  <!-- Lexicon              --> <td>CMU dict<br>Size UNK</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Switchboard 1</td>
+  <!-- BW                   --> <td>8k</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>CTS</td>
+  <!-- Train Hours          --> <td>300</td>
+  <!-- Train Speakers       --> <td></td>
+  <!-- License/Availability --> <td>LDC<br>Train: LDC97S62<br>Mississippi State transcriptions<br>Eval: LDC2002S09 and LDC2002T43</td>
+  <!-- Year Released        --> <td>1993/1997/2000</td>
+  <!-- Speech Style         --> <td>CTS</td>
+  <!-- Test Domain          --> <td>CTS<br>eval2000 (hub5)</td>
+  <!-- Kaldi Aprox Perf     --> <td>~10% WER (LSTM)</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Mississippi Trans<br>+ (opt) Fisher</td>
+  <!-- Lexicon              --> <td>30K (CMU dict)</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Switchboard 1<br>+ Fisher</td>
+  <!-- BW                   --> <td>8k</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>CTS</td>
+  <!-- Train Hours          --> <td>see above</td>
+  <!-- Train Speakers       --> <td>see above</td>
+  <!-- License/Availability --> <td>see above</td>
+  <!-- Year Released        --> <td>see above</td>
+  <!-- Speech Style         --> <td>CTS</td>
+  <!-- Test Domain          --> <td>eval2000<br>rt03</td>
+  <!-- Kaldi Aprox Perf     --> <td>~12% eval2000<br>~19% rt03</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>see above</td>
+  <!-- Lexicon              --> <td>see above</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Callhome<br>Egyptian</td>
+  <!-- BW                   --> <td></td>
+  <!-- Lang                 --> <td>Egyptian<br>Colloquial<br>Arabic</td>
+  <!-- Train Domain         --> <td>CTS</td>
+  <!-- Train Hours          --> <td>120 conv</td>
+  <!-- Train Speakers       --> <td></td>
+  <!-- License/Availability --> <td>LDC<br>Speech : LDC97S45<br>Transcripts : LDC97T19<br>Lexicon : LDC99L22</td>
+  <!-- Year Released        --> <td>1997</td>
+  <!-- Speech Style         --> <td>CTS</td>
+  <!-- Test Domain          --> <td>hub5 arabic<br>LDC2002S22<br>LDC2002T39</td>
+  <!-- Kaldi Aprox Perf     --> <td>50-60% WER</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Train trans</td>
+  <!-- Lexicon              --> <td>LDC dict</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Corpus of<br>Spontaneous<br>Japanese</td>
+  <!-- BW                   --> <td></td>
+  <!-- Lang                 --> <td>Japanese</td>
+  <!-- Train Domain         --> <td>Mixed style<br>Close-talking mic</td>
+  <!-- Train Hours          --> <td>650 hours<br>(240 hr train)</td>
+  <!-- Train Speakers       --> <td>&gt;1,400</td>
+  <!-- License/Availability --> <td>Unclear how to get this<br>http://www.ninjal.ac.jp/english/products/csj/<br>http://pj.ninjal.ac.jp/corpus_center/csj/</td>
+  <!-- Year Released        --> <td>2004</td>
+  <!-- Speech Style         --> <td>Mixed</td>
+  <!-- Test Domain          --> <td></td>
+  <!-- Kaldi Aprox Perf     --> <td>9-10% WER</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>UNK</td>
+  <!-- Lexicon              --> <td>UNK</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Fisher Spanish<br>Callhome Spanish</td>
+  <!-- BW                   --> <td></td>
+  <!-- Lang                 --> <td>Caribbean<br>Spanish</td>
+  <!-- Train Domain         --> <td>CTS</td>
+  <!-- Train Hours          --> <td>Fisher: 163 hrs<br>Callhome: 60 hrs?<br>120 30min conv</td>
+  <!-- Train Speakers       --> <td>Fisher: 136<br>Callhome:</td>
+  <!-- License/Availability --> <td>LDC<br>Fisher speech : LDC96S35<br>Fisher transcripts : LDC96T17<br>Callhome Speech : LDC96S35<br>Callhome Transcripts : LDC96T17</td>
+  <!-- Year Released        --> <td>Fisher: 2010<br>Callhome: 1996</td>
+  <!-- Speech Style         --> <td>CTS</td>
+  <!-- Test Domain          --> <td>Kaldi subset<br>of Fisher</td>
+  <!-- Kaldi Aprox Perf     --> <td>29-30% WER</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Fisher trans</td>
+  <!-- Lexicon              --> <td>LDC96L16</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Gale Arabic<br>Phase 2</td>
+  <!-- BW                   --> <td>16K</td>
+  <!-- Lang                 --> <td>Arabic</td>
+  <!-- Train Domain         --> <td>Broadcast<br>Conversational/Report</td>
+  <!-- Train Hours          --> <td>320 train<br>9.3 test</td>
+  <!-- Train Speakers       --> <td></td>
+  <!-- License/Availability --> <td>LDC2013S02  LDC2014S07<br>LDC2013S07  LDC2014T17<br>LDC2013T17<br>LDC2013T04</td>
+  <!-- Year Released        --> <td>Collected<br>2006/2007</td>
+  <!-- Speech Style         --> <td>Broadcast<br>Conversational<br>and Report</td>
+  <!-- Test Domain          --> <td></td>
+  <!-- Kaldi Aprox Perf     --> <td>Report: 13% WER (LSTM)<br>Conver: 28% WER (LSTM)<br>Comb: 24% WER (LSTM)</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>LDC2013T17<br>LDC2013T04<br>LDC2014T17</td>
+  <!-- Lexicon              --> <td>http://alt.qcri.org/</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Gale Mandarin</td>
+  <!-- BW                   --> <td>16K</td>
+  <!-- Lang                 --> <td>Mandarin<br>Chinese</td>
+  <!-- Train Domain         --> <td>Broadcast</td>
+  <!-- Train Hours          --> <td>126</td>
+  <!-- Train Speakers       --> <td></td>
+  <!-- License/Availability --> <td>LDC2013S08  LDC2013T20</td>
+  <!-- Year Released        --> <td>2006-2007</td>
+  <!-- Speech Style         --> <td>Broadcast</td>
+  <!-- Test Domain          --> <td>Same as train</td>
+  <!-- Kaldi Aprox Perf     --> <td>17.5% WER [1]</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>LDC2013S08<br>LDC2013T20</td>
+  <!-- Lexicon              --> <td>Same as HKUST below</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>hkust<br>EARS RT04F data<br>dev and train [2]</td>
+  <!-- BW                   --> <td>8K</td>
+  <!-- Lang                 --> <td>Mandarin<br>Chinese</td>
+  <!-- Train Domain         --> <td>Telephone Conversational</td>
+  <!-- Train Hours          --> <td>~145</td>
+  <!-- Train Speakers       --> <td>~873</td>
+  <!-- License/Availability --> <td>LDC2005S15  LDC2005T32</td>
+  <!-- Year Released        --> <td>2004</td>
+  <!-- Speech Style         --> <td>Conversational</td>
+  <!-- Test Domain          --> <td>Same as train</td>
+  <!-- Kaldi Aprox Perf     --> <td>33.5% CER</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Acoustic trans<br>(very little)</td>
+  <!-- Lexicon              --> <td>Both Eng and Man.<br>CMU dict use for Eng<br>mdbg dict use for Man<br>http://www.mdbg.net</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>librispeech [3]</td>
+  <!-- BW                   --> <td>16K</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>Read transcription</td>
+  <!-- Train Hours          --> <td>100 - 960<br>(460 </td>
+  <!-- Train Speakers       --> <td>F: 125-1128<br>M: 126-1167</td>
+  <!-- License/Availability --> <td>http://www.openslr.org/12/</td>
+  <!-- Year Released        --> <td>2015</td>
+  <!-- Speech Style         --> <td>Read trans</td>
+  <!-- Test Domain          --> <td>Librispeech<br></td>
+  <!-- Kaldi Aprox Perf     --> <td>~5% </td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Large (books)</td>
+  <!-- Lexicon              --> <td>cmu (with sequitur)<br>G2P)</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>reverb</td>
+  <!-- BW                   --> <td></td>
+  <!-- Lang                 --> <td></td>
+  <!-- Train Domain         --> <td></td>
+  <!-- Train Hours          --> <td></td>
+  <!-- Train Speakers       --> <td></td>
+  <!-- License/Availability --> <td></td>
+  <!-- Year Released        --> <td></td>
+  <!-- Speech Style         --> <td></td>
+  <!-- Test Domain          --> <td></td>
+  <!-- Kaldi Aprox Perf     --> <td></td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td></td>
+  <!-- Lexicon              --> <td></td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>sprakbanken</td>
+  <!-- BW                   --> <td></td>
+  <!-- Lang                 --> <td>Danish</td>
+  <!-- Train Domain         --> <td>Read transcript?</td>
+  <!-- Train Hours          --> <td>350</td>
+  <!-- Train Speakers       --> <td></td>
+  <!-- License/Availability --> <td>Free download<br>http://www.nb.no/sprakbanken/#ticketsfrom?lang=en</td>
+  <!-- Year Released        --> <td>2012</td>
+  <!-- Speech Style         --> <td>Read/Dictation</td>
+  <!-- Test Domain          --> <td>Same as train</td>
+  <!-- Kaldi Aprox Perf     --> <td>14% WER</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>NST Provided</td>
+  <!-- Lexicon              --> <td>NST Provided?</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>vystadial_en [4]</td>
+  <!-- BW                   --> <td>8Khz</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>Telephone, dialog system</td>
+  <!-- Train Hours          --> <td>41</td>
+  <!-- Train Speakers       --> <td>unk</td>
+  <!-- License/Availability --> <td>Free</td>
+  <!-- Year Released        --> <td>2014</td>
+  <!-- Speech Style         --> <td>Dialog sys</td>
+  <!-- Test Domain          --> <td>Same as train</td>
+  <!-- Kaldi Aprox Perf     --> <td>~11% WER (GMM/HMM)</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Train trans</td>
+  <!-- Lexicon              --> <td>CMU + 250</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>vystadial_cz [4]</td>
+  <!-- BW                   --> <td>8Khz</td>
+  <!-- Lang                 --> <td>Czech</td>
+  <!-- Train Domain         --> <td>Telephone, dialog system</td>
+  <!-- Train Hours          --> <td>15</td>
+  <!-- Train Speakers       --> <td>unk</td>
+  <!-- License/Availability --> <td>Free</td>
+  <!-- Year Released        --> <td>2014</td>
+  <!-- Speech Style         --> <td>Dialog sys</td>
+  <!-- Test Domain          --> <td>Same as train</td>
+  <!-- Kaldi Aprox Perf     --> <td>~50% WER (GMM/HMM)</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Train trans</td>
+  <!-- Lexicon              --> <td>Rule derived</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>chime3</td>
+  <!-- BW                   --> <td>16Khz</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>Read trans, simulated<br>and real noise</td>
+  <!-- Train Hours          --> <td>18</td>
+  <!-- Train Speakers       --> <td>WSJ0 + 4</td>
+  <!-- License/Availability --> <td>Not clear (Chime performers)</td>
+  <!-- Year Released        --> <td>2015</td>
+  <!-- Speech Style         --> <td>Read<br>transcript</td>
+  <!-- Test Domain          --> <td>Same as train<br>(same channels!)</td>
+  <!-- Kaldi Aprox Perf     --> <td>~12% WER real (4 spkrs)<br>~12% WER simu</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Official WSJ0 5K<br>trans</td>
+  <!-- Lexicon              --> <td>WSJ0</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>voxforge</td>
+  <!-- BW                   --> <td>16Khz</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>Read trans</td>
+  <!-- Train Hours          --> <td>&gt;75hrs</td>
+  <!-- Train Speakers       --> <td>unk</td>
+  <!-- License/Availability --> <td>Free GPL</td>
+  <!-- Year Released        --> <td>2008?</td>
+  <!-- Speech Style         --> <td>Read trans</td>
+  <!-- Test Domain          --> <td>unk</td>
+  <!-- Kaldi Aprox Perf     --> <td>unk</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Train</td>
+  <!-- Lexicon              --> <td>cmu + g2p for oov</td>
+</tr>
+<tr>
+  <!-- Name                 --> <td>Tedlium</td>
+  <!-- BW                   --> <td>16KHz</td>
+  <!-- Lang                 --> <td>English</td>
+  <!-- Train Domain         --> <td>Presentation/talk</td>
+  <!-- Train Hours          --> <td>118</td>
+  <!-- Train Speakers       --> <td>666</td>
+  <!-- License/Availability --> <td>Free download</td>
+  <!-- Year Released        --> <td>2014?</td>
+  <!-- Speech Style         --> <td>Presentation</td>
+  <!-- Test Domain          --> <td>Same as train</td>
+  <!-- Kaldi Aprox Perf     --> <td>~10% WER</td>
+  <!-- Model Type           --> <td></td>
+  <!-- LM Data              --> <td>Cantab provided LM</td>
+  <!-- Lexicon              --> <td>Cantab provided dict</td>
+</tr>
+<!-- Add a new row by copying a <tr></tr> block from above
+     and pasting it above this message. -->
+</table>
+
+[1] "Audio Augmentation for Speech Recognition" Tom Ko, Vijayaditya Peddinti, Daniel Povey, Sanjeev Khudanpur.<br>
+[2] There should be more Mandarin data from rt04f - 50 hours of dev data I believe (see LDC2004E67, LDC2004E68).  There should also be eval data. See https://www.ldc.upenn.edu/collaborations/past-projects/gale/data/gale-pubs.<br>
+[3] See http://www.danielpovey.com/files/2015_icassp_librispeech.pdf for details.  Acoustic and language models are available online.<br>
+[4] See http://www.lrec-conf.org/proceedings/lrec2014/pdf/535_Paper.pdf.
+*/

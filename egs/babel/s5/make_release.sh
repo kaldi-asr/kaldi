@@ -57,7 +57,7 @@ function export_file {
   else
     if [ ! -f $target_file ] ; then
       if ! $dryrun ; then
-        ln -s `readlink -f $source_file` $target_file || exit 1
+        ln -s `utils/make_absolute.sh $source_file` $target_file || exit 1
       fi
     else
       echo "The file is already there, not doing anything. Either change the version (using --version), or delete that file manually)"

@@ -11,7 +11,7 @@ import sys, operator
 
 # Typically the CTM contains:
 # - utterance-relative timimng (i.e. prepared without 'utils/convert_ctm.pl')
-# - confidences 
+# - confidences
 
 if len(sys.argv) != 3:
   print 'Usage: %s ctm-in tra-out' % __file__

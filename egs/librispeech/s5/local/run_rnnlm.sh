@@ -13,7 +13,7 @@ rnnlm_ver=faster-rnnlm
 
 echo "$0 $@"  # Print the command line for logging
 
-. path.sh
+. ./path.sh
 . utils/parse_options.sh
 
 set -e
@@ -33,8 +33,8 @@ if [ $# -ne 2 ]; then
 fi
 
 s5_dir=`pwd`
-data_dir=`readlink -f $1`
-lm_dir=`readlink -f $2`
+data_dir=`utils/make_absolute.sh $1`
+lm_dir=`utils/make_absolute.sh $2`
 modeldir=data/lang_${rnnlm_ver}_${rnnlm_tag}
 
 if [ $stage -le 1 ]; then
@@ -57,7 +57,7 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: Training RNNLM. It will probably take several hours."
   $KALDI_ROOT/tools/extras/check_for_rnnlm.sh "$rnnlm_ver" || exit 1
-  rnnlm_path="$(readlink -f $KALDI_ROOT)/tools/$rnnlm_ver/rnnlm"
+  rnnlm_path="$(utils/make_absolute.sh $KALDI_ROOT)/tools/$rnnlm_ver/rnnlm"
   cd $s5_dir
   mkdir -p $modeldir
   echo "$0: Model file: $modeldir/rnnlm"
@@ -68,7 +68,7 @@ if [ $stage -le 2 ]; then
       rnnlm_cmd="$rnnlm_path"
       if type taskset >/dev/null 2>&1 ; then
           # HogWild works much faster if all threads are binded to the same phisical cpu
-          rnnlm_cmd="taskset -c $(seq -s, 0 $(( $num_threads - 1 )) ) $rnnlm_cmd"
+          rnnlm_cmd="taskset -c $(seq -s, 0 $(( $num_threads - 1 )) | sed 's/,$//') $rnnlm_cmd"
       fi
       $rnnlm_cmd -rnnlm $modeldir/rnnlm.tmp \
           -train $data_dir/librispeech-lm-norm.train.txt \

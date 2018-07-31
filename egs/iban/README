@@ -1,0 +1,84 @@
+###
+# Iban Data collected by Sarah Samson Juan and Laurent Besacier
+# Prepared by Sarah Samson Juan and Laurent Besacier
+# Created in GETALP, Grenoble, France
+###
+
+
+## INTRODUCTION ##
+This package has iban text and speech corpora used for Automatic Speech Recognition (ASR) experiments. Data is available in the subdirectories of /data. The subdirectories contain:
+a. train - train transcript for training ASR system using Kaldi ASR (http://kaldi-asr.org/doc/)
+b. test - test transcript for testing ASR system (also Kaldi ASR format)
+c. wav - speech corpus
+
+We have provided text corpus and language model in the /LM directory, while, the pronunciation dictionary in /lang directory.
+
+###PUBLICATION ON IBAN DATA AND ASR #####
+Details on the corpora and the our experiments on iban ASR can be found in the following list of publication. We appreciate if you cite them if you intend to publish.
+
+@inproceedings{Juan14,
+	Author = {Sarah Samson Juan and Laurent Besacier and Solange Rossato},
+	Booktitle = {Proceedings of Workshop for Spoken Language Technology for Under-resourced (SLTU)},
+	Month = {May},
+	Title = {Semi-supervised G2P bootstrapping and its application to ASR for a very under-resourced language: Iban},
+	Year = {2014}}
+
+
+@inproceedings{Juan2015,
+  	Title = {Using Resources from a closely-Related language to develop ASR for a very under-resourced Language: A case study for Iban},
+  	Author = {Sarah Samson Juan and Laurent Besacier and Benjamin Lecouteux and Mohamed Dyab},
+  	Booktitle = {Proceedings of INTERSPEECH},
+  	Year = {2015},
+  	Address = {Dresden, Germany},
+  	Month = {September}}
+
+
+###IBAN SPEECH CORPUS
+News data provided by a local radio station in Sarawak, Malaysia.
+
+Directory: data/train
+Files: text (training transcript), wav.scp (file id and path to audio file), utt2spk (file id and audio id), spk2utt(audio id and file id), wav (.wav files).
+For more information about the format, please refer to Kaldi website http://kaldi-asr.org/doc/data_prep.html
+Description: training data in Kaldi format about 7 hours. Note: The path of wav files in wav.scp MUST BE MODIFIED to point to the actual location.
+
+Directory: data/test
+Files: text (test transcript), wav.scp (file id and path to audio file), utt2spk (file id and audio id), spk2utt(audio id and file id), wav (.wav files).
+Description: testing data in Kaldi format about 1 hour. Note: The path of wav files in wav.scp MUST BE MODIFIED to point to the actual location.
+
+The audio files have the format:
+ib[m|f]_SPK_UTT where, m refers to male and f refers to female speaker, SPK denotes speaker id and UTT is the utterance id.
+
+#### IBAN TEXT CORPUS
+Directory: /LM/
+Files: iban-bp-2012.txt, iban-lm-o3.arpa
+
+# /iban-bp-2012.txt
+Contains 2 M Words. Full text data crawled from an online newspaper and cleaned as much as we could.
+
+# /iban-lm-o3.arpa
+The language model build on SRILM (http://www.speech.sri.com/projects/srilm/) using iban-bp-2012.txt
+
+
+#### LEXICON/PRONUNCIATION DICTIONARY
+Directory: /lang
+Files : lexicon.txt (lexicon), nonsilence_phones.txt (speech phones), optional_silence.txt (silence phone)
+Description: lexicon contains words and their respective pronunciation, non-speech sound and noise in Kaldi format. Details on the development of the dictionary can be found in our papers. (For this package, we provided the Iban-Hybrid version.)
+
+
+#TO DOWNLOAD THE REPOSITORY
+
+svn co https://github.com/sarahjuan/iban
+
+### SCRIPTS
+In /kaldi-scripts, you can find all scripts that can be used to train and test models from the existing data and lang directory. Note: Path needs to changed to make it work in your own directory. 
+
+You can launch run.sh to prepare data & language model, make mfccs and train acoustic models.
+
+
+### WER RESULTS OBTAINED USING OUR CORPORA AND SETTINGS. RESULTS OBTAINED AFTER UPDATING TEST TRANSCRIPT. THE ONES REPORTED IN OUR PAPERS WERE BEFORE THIS UPDATE##
+
+See the latest results in s5/RESULTS file (they will not match the results from the paper)
+       
+##ACKNOWLEDGEMENT ###
+We would like to thank the Ministry of Higher Education Malaysia for providing financial support to conduct this study. We also thank The Borneo Post news agency for providing online materials for building the text corpus and also to Radio Televisyen Malaysia (RTM), Sarawak, Malaysia, for providing the news data.
+

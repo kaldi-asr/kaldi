@@ -17,12 +17,12 @@ EXTRA_LDLIBS += $(shell pkg-config --libs glib-2.0)
 #Kaldi shared libraries required by the GStreamer plugin
 EXTRA_LDLIBS += -lkaldi-online -lkaldi-lat -lkaldi-decoder -lkaldi-feat -lkaldi-transform \
  -lkaldi-gmm -lkaldi-hmm \
- -lkaldi-tree -lkaldi-matrix  -lkaldi-util -lkaldi-base -lkaldi-thread
+ -lkaldi-tree -lkaldi-matrix  -lkaldi-util -lkaldi-base 
 
 
 OBJFILES = gst-audio-source.o gst-online-gmm-decode-faster.o
 
-LIBNAME=gstkaldi
+LIBNAME=gstonlinegmmdecodefaster
 
 LIBFILE = lib$(LIBNAME).so
 BINFILES= $(LIBFILE)

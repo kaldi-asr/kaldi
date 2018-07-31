@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "ivector/ivector-extractor.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -42,13 +42,13 @@ class IvectorExtractTask {
 
   void operator () () {
     bool need_2nd_order_stats = false;
-    
+
     IvectorExtractorUtteranceStats utt_stats(extractor_.NumGauss(),
                                              extractor_.FeatDim(),
                                              need_2nd_order_stats);
-      
+
     utt_stats.AccStats(feats_, posterior_);
-    
+
     ivector_.Resize(extractor_.IvectorDim());
     ivector_(0) = extractor_.PriorOffset();
 
@@ -102,7 +102,7 @@ int32 RunPerSpeaker(const std::string &ivector_extractor_rxfilename,
   RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
   RandomAccessPosteriorReader posterior_reader(posterior_rspecifier);
   BaseFloatVectorWriter ivector_writer(ivector_wspecifier);
-  
+
   double tot_auxf_change = 0.0, tot_post = 0.0, tot_norm = 0.0;
   int32 num_utt_done = 0, num_utt_err = 0,
       num_spk_done = 0, num_spk_err = 0;
@@ -112,7 +112,7 @@ int32 RunPerSpeaker(const std::string &ivector_extractor_rxfilename,
     const std::vector<std::string> &utts = spk2utt_reader.Value();
 
     bool need_2nd_order_stats = false;
-    
+
     IvectorExtractorUtteranceStats utt_stats(extractor.NumGauss(),
                                              extractor.FeatDim(),
                                              need_2nd_order_stats);
@@ -154,10 +154,10 @@ int32 RunPerSpeaker(const std::string &ivector_extractor_rxfilename,
         KALDI_LOG << "Scaling stats for speaker " << spk << " by scale "
                   << scale << " due to --max-count=" << opts.max_count;
       }
-      
+
       Vector<double> ivector(extractor.IvectorDim());
       ivector(0) = extractor.PriorOffset();
-    
+
       if (compute_objf_change) {
         double old_auxf = extractor.GetAuxf(utt_stats, ivector);
         extractor.GetIvectorDistribution(utt_stats, &ivector, NULL);
@@ -178,7 +178,7 @@ int32 RunPerSpeaker(const std::string &ivector_extractor_rxfilename,
       ivector(0) -= extractor.PriorOffset();
       KALDI_LOG << "Ivector norm for speaker " << spk
                 << " was " << ivector.Norm(2.0);
-      
+
       tot_norm += ivector.Norm(2.0) * utt_stats.NumFrames();
       tot_post += utt_stats.NumFrames();
       num_spk_done++;
@@ -186,7 +186,7 @@ int32 RunPerSpeaker(const std::string &ivector_extractor_rxfilename,
       ivector_writer.Write(spk, ivector_flt);
     }
   }
-  
+
   KALDI_LOG << "Done " << num_spk_done << " speakers; " << num_spk_err
             << " with errors.  " << num_utt_done << " utterances "
             << "were processed, " << num_utt_err << " with errors.";
@@ -236,12 +236,12 @@ int main(int argc, char *argv[]) {
                 "is not the normal way iVectors are obtained for speaker-id. "
                 "This option will cause the program to ignore the --num-threads "
                 "option.");
-    
+
     opts.Register(&po);
     sequencer_config.Register(&po);
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
@@ -256,17 +256,17 @@ int main(int argc, char *argv[]) {
     if (spk2utt_rspecifier.empty()) {
       // g_num_threads affects how ComputeDerivedVars is called when we read the
       // extractor.
-      g_num_threads = sequencer_config.num_threads; 
+      g_num_threads = sequencer_config.num_threads;
       IvectorExtractor extractor;
       ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
 
       double tot_auxf_change = 0.0, tot_t = 0.0;
       int32 num_done = 0, num_err = 0;
-    
+
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       RandomAccessPosteriorReader posterior_reader(posterior_rspecifier);
       BaseFloatVectorWriter ivector_writer(ivectors_wspecifier);
-    
+
       {
         TaskSequencer<IvectorExtractTask> sequencer(sequencer_config);
         for (; !feature_reader.Done(); feature_reader.Next()) {
@@ -278,7 +278,7 @@ int main(int argc, char *argv[]) {
           }
           const Matrix<BaseFloat> &mat = feature_reader.Value();
           Posterior posterior = posterior_reader.Value(utt);
-          
+
           if (static_cast<int32>(posterior.size()) != mat.NumRows()) {
             KALDI_WARN << "Size mismatch between posterior " << posterior.size()
                        << " and features " << mat.NumRows() << " for utterance "
@@ -301,10 +301,10 @@ int main(int argc, char *argv[]) {
           ScalePosterior(opts.acoustic_weight * max_count_scale,
                          &posterior);
           // note: now, this_t == sum of posteriors.
-          
+
           sequencer.Run(new IvectorExtractTask(extractor, utt, mat, posterior,
                                                &ivector_writer, auxf_ptr));
-          
+
           tot_t += this_t;
           num_done++;
         }

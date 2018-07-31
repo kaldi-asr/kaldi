@@ -196,6 +196,35 @@ void UnitTestComputeTopSortOrder() {
   KALDI_ASSERT(AssertVectorEqual(node_to_order, ref_node_to_order));
 }
 
+void UnitTestComputeTopSortOrder2() {
+  // The outer vector is indexed by node ID, and each nested vector contains
+  // the node IDs for its successors in the graph. For example, if there are
+  // arcs from node 0 to nodes 1 and 2, then the vector at graph[0] will be (1, 2)
+  std::vector<std::vector<int32> > graph;
+
+  // Build a test graph:
+  // 0 ---> 1 ---> 2 ---> 4
+  //   `--> 3 -----^
+  graph.resize(5);
+  graph[0].push_back(1); graph[0].push_back(3);
+  graph[1].push_back(2);
+  graph[2].push_back(4);
+  graph[3].push_back(2);
+  // graph[4] is empty(has no successors)
+
+  // fill in the desired(topological) mapping node->order
+  std::vector<int32> ref_node_to_order;
+  ref_node_to_order.push_back(0); // node 0 comes first
+  ref_node_to_order.push_back(2); // node 1 comes third
+  ref_node_to_order.push_back(3); // node 2 comes fourth
+  ref_node_to_order.push_back(1); // node 3 comes second
+  ref_node_to_order.push_back(4); // node 4 comes last
+
+  std::vector<int32> computed_node_to_order;
+  ComputeTopSortOrder(graph, &computed_node_to_order);
+  KALDI_ASSERT(AssertVectorEqual(ref_node_to_order, computed_node_to_order));
+}
+
 } // namespace nnet3
 } // namespace kaldi
 
@@ -207,6 +236,7 @@ int main() {
   UnitTestFindSccs();
   UnitTestMakeSccGraph();
   UnitTestComputeTopSortOrder();
+  UnitTestComputeTopSortOrder2();
 
   KALDI_LOG << "Nnet graph tests succeeded.";
 

@@ -26,8 +26,8 @@ ac_model=${data_file}/models/$ac_model_type
 trans_matrix=""
 audio=${data_file}/audio
 
-if [ ! -s $KALDI_ROOT/src/gst-plugin/libgstkaldi.so ]; then
-    echo "Kaldi Gstreamer plugin libarary $KALDI_ROOT/src/gst-plugin/libgstkaldi.so not present, make it first"
+if [ ! -s $KALDI_ROOT/src/gst-plugin/libgstonlinegmmdecodefaster.so ]; then
+    echo "Kaldi Gstreamer plugin libarary $KALDI_ROOT/src/gst-plugin/libgstonlinegmmdecodefaster.so not present, make it first"
     exit 1
 fi
 

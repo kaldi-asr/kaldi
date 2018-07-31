@@ -158,7 +158,7 @@ the questions configuration class would be output by the compile-questions
 program, which takes in a topology list of phonetic questions (in our
 scripts, these are automatically obtained from tree-building statistics
 by the program cluster-phones.  The roots file specifies sets of phones
-that are goint to have shared roots in the decision-tree clustering process, and says
+that are going to have shared roots in the decision-tree clustering process, and says
 for each phone set the following two things:
 
   - "shared" or "not-shared" says whether or not there should be separate roots

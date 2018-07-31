@@ -46,6 +46,7 @@ int main() {
   try {
     kaldi::UnitTestError();
     KALDI_ASSERT(0);  // should not happen.
+    exit(1);
   } catch(std::runtime_error &r) {
     std::cout << "UnitTestError: the error we generated was: " << r.what();
   }

@@ -35,16 +35,19 @@ int main(int argc, char *argv[]) {
         " e.g.: copy-vector --binary=false 1.mat -\n"
         "   copy-vector ark:2.trans ark,t:-\n"
         "see also: dot-weights, append-vector-to-feats\n";
-    
+
     bool binary = true;
     int32 change_dim = -1;
+    float scale = 1.0;
     ParseOptions po(usage);
 
     po.Register("binary", &binary, "Write in binary mode (only "
                 "relevant if output is a wxfilename)");
     po.Register("change_dim", &change_dim,
                 "Use this option to truncate or zero-pad the vectors.");
-    
+    po.Register("scale", &scale,
+                "This option can be used to scale the vectors being copied.");
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -67,7 +70,7 @@ int main(int argc, char *argv[]) {
 
     if (in_is_rspecifier != out_is_wspecifier)
       KALDI_ERR << "Cannot mix archives with regular files (copying vectors)";
-    
+
     if (!in_is_rspecifier) {
       Vector<BaseFloat> vec;
       ReadKaldiObject(vector_in_fn, &vec);
@@ -80,18 +83,20 @@ int main(int argc, char *argv[]) {
       int num_done = 0;
       BaseFloatVectorWriter writer(vector_out_fn);
       SequentialBaseFloatVectorReader reader(vector_in_fn);
-      if (change_dim < 0) {
-        for (; !reader.Done(); reader.Next(), num_done++)
+      if (change_dim < 0 && scale == 1.0) {
+        for (; !reader.Done(); reader.Next(), num_done++) {
           writer.Write(reader.Key(), reader.Value());
+        }
         KALDI_LOG << "Copied " << num_done << " vectors.";
       } else {
         for (; !reader.Done(); reader.Next(), num_done++) {
-          Vector<BaseFloat> vec (reader.Value());
-          vec.Resize(change_dim, kCopyData);
+          Vector<BaseFloat> vec(reader.Value());
+          if (change_dim >= 0) vec.Resize(change_dim, kCopyData);
+          if (scale != 1.0) vec.Scale(scale);
           writer.Write(reader.Key(), reader.Value());
         }
         KALDI_LOG << "Copied " << num_done << " vectors, setting dim to "
-                  << change_dim;
+                  << change_dim << " scaled by " << scale;
       }
       return (num_done != 0 ? 0 : 1);
     }

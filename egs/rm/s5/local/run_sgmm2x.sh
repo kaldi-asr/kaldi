@@ -3,7 +3,7 @@
 # This is as run_sgmm2.sh but excluding the "speaker-dependent weights",
 # so not doing the symmetric SGMM.
 
-. cmd.sh
+. ./cmd.sh
 
 ## SGMM on top of LDA+MLLT+SAT features.
 if [ ! -f exp/ubm4a/final.mdl ]; then

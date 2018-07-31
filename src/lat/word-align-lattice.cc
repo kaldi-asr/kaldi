@@ -429,14 +429,17 @@ bool LatticeWordAligner::ComputationState::OutputOnePhoneWordArc(
   }
 
   // interpret i as the number of transition-ids to consume.
-  std::vector<int32> tids_out(transition_ids_.begin(), transition_ids_.begin()+i);
+  std::vector<int32> tids_out(transition_ids_.begin(),
+                              transition_ids_.begin() + i);
 
   // consumed transition ids from our internal state.
   int32 word = word_labels_[0];
   *arc_out = CompactLatticeArc(word, word,
                                CompactLatticeWeight(weight_, tids_out), fst::kNoStateId);
-  transition_ids_.erase(transition_ids_.begin(), transition_ids_.begin()+i); // delete these
-  word_labels_.erase(word_labels_.begin(), word_labels_.begin()+1); // remove the word we output.
+  transition_ids_.erase(transition_ids_.begin(),
+                        transition_ids_.begin() + i); // delete these
+  // Remove the word that we just output.
+  word_labels_.erase(word_labels_.begin(), word_labels_.begin() + 1);
   weight_ = LatticeWeight::One(); // we just output the weight.
   return true;
 }
@@ -518,15 +521,19 @@ bool LatticeWordAligner::ComputationState::OutputNormalWordArc(
 
   // OK, we're ready to output the word.
   // Interpret i as the number of transition-ids to consume.
-  std::vector<int32> tids_out(transition_ids_.begin(), transition_ids_.begin()+i);
+  std::vector<int32> tids_out(transition_ids_.begin(),
+                              transition_ids_.begin() + i);
 
   // consumed transition ids from our internal state.
   int32 word = word_labels_[0];
   *arc_out = CompactLatticeArc(word, word,
                                CompactLatticeWeight(weight_, tids_out),
                                fst::kNoStateId);
-  transition_ids_.erase(transition_ids_.begin(), transition_ids_.begin()+i); // delete these
-  word_labels_.erase(word_labels_.begin(), word_labels_.begin()+1); // remove the word we output.
+  transition_ids_.erase(transition_ids_.begin(),
+                        transition_ids_.begin() + i); // delete these
+  // Remove the word that we just output.
+  word_labels_.erase(word_labels_.begin(),
+                     word_labels_.begin() + 1);
   weight_ = LatticeWeight::One(); // we just output the weight.
   return true;
 }
@@ -829,8 +836,8 @@ class WordAlignedLatticeTester {
     { // first phone.
       int num_final = 0;
       for (i = 0; i < tids.size(); i++) {
-        if (tmodel_.IsFinal(tids[i])) num_final++;
         if (tmodel_.TransitionIdToPhone(tids[i]) != first_phone) break;
+        if (tmodel_.IsFinal(tids[i])) num_final++;
       }
       if (num_final != 1)
         return false; // Something went wrong-- perhaps we
@@ -857,7 +864,7 @@ class WordAlignedLatticeTester {
         else {
           // Make sure the only thing that follows this is self-loops
           // of the final transition-state.
-          for (size_t k=j+1; k<tids.size(); k++)
+          for (size_t k = j + 1; k < tids.size(); k++)
             if (tmodel_.TransitionIdToTransitionState(tids[k])
                 != tmodel_.TransitionIdToTransitionState(tids[j])
                 || !tmodel_.IsSelfLoop(tids[k]))

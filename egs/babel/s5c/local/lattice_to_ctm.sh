@@ -39,8 +39,7 @@ if [ -z "$model" ] ; then
 fi
 
 
-for f in $lang/words.txt $lang/phones/word_boundary.int \
-     $model $data/segments $data/reco2file_and_channel $dir/lat.1.gz; do
+for f in $lang/words.txt $model $data/segments $data/reco2file_and_channel $dir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
@@ -49,17 +48,31 @@ name=`basename $data`; # e.g. eval2000
 mkdir -p $dir/scoring/log
 
 if [ $stage -le 0 ]; then
-  $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-    set -e -o pipefail \; \
-    mkdir -p $dir/score_LMWT/ '&&' \
-    lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-    lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
-    lattice-prune --beam=$beam ark:- ark:- \| \
-    lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-    lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
-    utils/int2sym.pl -f 5 $lang/words.txt  \| tee $dir/score_LMWT/$name.utt.ctm \| \
-    utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
-    '>' $dir/score_LMWT/$name.ctm || exit 1;
+  if [ ! -f $lang/phones/word_boundary.int ] ; then
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
+      set -e -o pipefail \; \
+      mkdir -p $dir/score_LMWT/ '&&' \
+      lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
+      lattice-prune --beam=$beam ark:- ark:- \| \
+      lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt  \| tee $dir/score_LMWT/$name.utt.ctm \| \
+      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+      '>' $dir/score_LMWT/$name.ctm || exit 1;
+  else
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
+      set -e -o pipefail \; \
+      mkdir -p $dir/score_LMWT/ '&&' \
+      lattice-scale --inv-acoustic-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      lattice-add-penalty --word-ins-penalty=$word_ins_penalty ark:- ark:- \| \
+      lattice-prune --beam=$beam ark:- ark:- \| \
+      lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
+      lattice-to-ctm-conf --decode-mbr=$decode_mbr ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt  \| tee $dir/score_LMWT/$name.utt.ctm \| \
+      utils/convert_ctm.pl $data/segments $data/reco2file_and_channel \
+      '>' $dir/score_LMWT/$name.ctm || exit 1;
+  fi
 fi
 
 if [ $stage -le 1 ]; then
@@ -76,12 +89,12 @@ if [ $stage -le 1 ]; then
       grep -v -E '<v-noise>' | \
       perl -e '@list = (); %list = ();
       while(<>) {
-        chomp; 
-        @col = split(" ", $_); 
+        chomp;
+        @col = split(" ", $_);
         push(@list, $_);
-        $key = "$col[0]" . " $col[1]"; 
+        $key = "$col[0]" . " $col[1]";
         $list{$key} = 1;
-      } 
+      }
       foreach(sort keys %list) {
         $key = $_;
         foreach(grep(/$key/, @list)) {

@@ -1,46 +1,69 @@
-#!/bin/bash 
+#!/bin/bash
 
 # Copyright 2014 QCRI (author: Ahmed Ali)
+# Copyright 2016 Johns Hopkins Univeersity (author: Jan "Yenda" Trmal)
 # Apache 2.0
 
 
-if [ $# -ne 2 ]; then
-   echo "Arguments should be the <output folder> <data folder> "; exit 1
-fi
+echo $0 "$@"
 
-# check that sox is installed 
-
-which sox  &>/dev/null
-if [[ $? != 0 ]]; then 
- echo "sox is not installed"
- exit 1 
-fi
-
-galeData=$1
+galeData=$(utils/make_absolute.sh "${@: -1}" );
 wavedir=$galeData/wav
 mkdir -p $wavedir
 
-audio_path=$2
 
-mkdir -p $wavedir/
-  
-#copy and convert the flac to wav
-find $audio_path -type f -name *.flac  | while read file; do
-  f_name=$(basename $file)
-  if [[ ! -e $wavedir/"${f_name%.flac}.wav" ]]; then
-   echo "soxing $file to $wavedir/$CD/"${f_name%.flac}.wav" "
-   sox $file $wavedir/"${f_name%.flac}.wav"
-  fi
-  
+length=$(($#-1))
+args=${@:1:$length}
+
+# check that sox is installed
+which sox  &>/dev/null
+if [[ $? != 0 ]]; then
+ echo "$0: sox is not installed"
+ exit 1
+fi
+
+set -e -o pipefail
+
+for var in $args; do
+  CD=$(basename $var)
+  [ -d $wavedir/$CD ] && rm -rf $wavedir/$CD
+  mkdir -p $wavedir/$CD
+  find $var -type f -name *.wav | while read file; do
+    f=$(basename $file)
+    if [[ ! -L "$wavedir/$CD/$f" ]]; then
+      ln -sf $file $wavedir/$CD/$f
+    fi
+  done
+
+  #make an flac symmlink as well
+  find $var -type f -name *.flac  | while read file; do
+    f=$(basename $file)
+
+    if [[ ! -L "$wavedir/$CD/$f" ]]; then
+      ln -sf $file $wavedir/$CD/$f
+    fi
+  done
 done
 
-find $wavedir -name *.wav > $galeData/wav$$ 
-awk -F "/" '{print $NF}' $galeData/wav$$  | sed 's:\.wav::' > $galeData/id$$ 
-paste -d ' ' $galeData/id$$ $galeData/wav$$  | sort -u > $galeData/wav.scp  
+#figure out the proper sox command line
+#the flac will be converted on the fly
+(
+  for w in `find $wavedir -name *.wav` ; do
+    base=`basename $w .wav`
+    fullpath=`utils/make_absolute.sh $w`
+    echo "$base sox $fullpath -r 16000 -t wav - |"
+  done
 
-#clean 
+  for w in `find $wavedir -name *.flac` ; do
+    base=`basename $w .flac`
+    fullpath=`utils/make_absolute.sh $w`
+    echo "$base sox $fullpath -r 16000 -t wav - |"
+  done
+)  | sort -u > $galeData/wav.scp
+
+#clean
 rm -fr $galeData/id$$ $galeData/wav$$
-echo data prep audio succeded
+echo "$0: data prep audio succeded"
 
 exit 0
 

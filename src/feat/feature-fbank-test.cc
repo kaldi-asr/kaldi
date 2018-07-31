@@ -101,7 +101,7 @@ static void UnitTestSimple() {
   // use default parameters
 
   // compute fbanks.
-  fbank.Compute(v, 1.0, &m, NULL);
+  fbank.Compute(v, 1.0, &m);
 
   // possibly dump
   //   std::cout << "== Output features == \n" << m;
@@ -143,7 +143,7 @@ static void UnitTestHTKCompare1() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_features;
-  fbank.Compute(waveform, 1.0, &kaldi_features, NULL);
+  fbank.Compute(waveform, 1.0, &kaldi_features);
 
 
   std::cout << "<<<=== Compare with HTK features...\n";
@@ -224,7 +224,7 @@ static void UnitTestHTKCompare2() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_features;
-  fbank.Compute(waveform, 1.0, &kaldi_features, NULL);
+  fbank.Compute(waveform, 1.0, &kaldi_features);
 
 
   std::cout << "<<<=== Compare with HTK features...\n";
@@ -308,7 +308,7 @@ static void UnitTestHTKCompare3() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_features;
-  fbank.Compute(waveform, vtln_warp, &kaldi_features, NULL);
+  fbank.Compute(waveform, vtln_warp, &kaldi_features);
 
 
   std::cout << "<<<=== Compare with HTK features...\n";
@@ -394,7 +394,7 @@ static void UnitTestHTKCompare4() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_features;
-  fbank.Compute(waveform, vtln_warp, &kaldi_features, NULL);
+  fbank.Compute(waveform, vtln_warp, &kaldi_features);
 
 
   std::cout << "<<<=== Compare with HTK features...\n";

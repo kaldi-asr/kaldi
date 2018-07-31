@@ -74,10 +74,15 @@ class OnlineFeatureInterface {
   /// the class.
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat) = 0;
 
+  // Returns frame shift in seconds.  Helps to estimate duration from frame
+  // counts.
+  virtual BaseFloat FrameShiftInSeconds() const = 0;
+
   /// Virtual destructor.  Note: constructors that take another member of
   /// type OnlineFeatureInterface are not expected to take ownership of
   /// that pointer; the caller needs to keep track of that manually.
   virtual ~OnlineFeatureInterface() { }  
+  
 };
 
 

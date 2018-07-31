@@ -34,8 +34,8 @@ nonum=$tmp/nonum.tmp
 
 cat $2 | tr -d '\r' > $src
 
-$dir/expand_abbr_medical.sh $src > $abbr;
-$dir/remove_annotation.sh $abbr > $rem;
+#$dir/expand_abbr_medical.sh $src > $abbr;
+$dir/remove_annotation.sh $src > $rem;
 if [ $mode != "am" ]; then
     $dir/sent_split.sh $rem > $line;
 else
@@ -45,10 +45,11 @@ fi
 $dir/expand_dates.sh $line |\
 $dir/format_punct.sh  >  $num;
 #python3 $dir/writenumbers.py $dir/numbersUp.tbl $num $nonum;
-cat $num | $dir/write_punct.sh | \
+# $dir/write_punct.sh | \
+cat $num | \
 perl -pi -e "s/^\n//" | \
-perl -pe 's/ (.{4}.*?)\./ \1/g' | \
-PERLIO=:utf8 perl -pe '$_=uc'
+perl -pe 's/ (.{4}.*?)\./ \1/g'
+# | PERLIO=:utf8 perl -pe '$_=lc'
 
 # Comment this line for debugging
 wait

@@ -1,23 +1,29 @@
 #!/bin/bash
-
-. cmd.sh
+# This script extracts mfcc features using mfcc_config and trains ubm model and
+# ivector extractor and extracts ivector for train and test.
+. ./cmd.sh
 
 
 stage=1
-
-. cmd.sh
+nnet_affix=_online
+extractor=exp/nnet2${nnet_affix}/extractor
+ivector_dim=50
+mfcc_config=conf/mfcc_hires.conf
+use_ivector=true # If false, it skips training ivector extractor and
+                 # ivector extraction stages.
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
 else
@@ -25,30 +31,50 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
-  dir=exp/nnet2_online/nnet
+  parallel_opts="--num-threads $num_threads"
+  dir=exp/nnet2${nnet_affix}/nnet
 fi
 
+train_set=train
+if [ $stage -le 0 ]; then
+  echo "$0: creating high-resolution MFCC features."
+  mfccdir=data/${train_set}_hires/data
 
-if [ $stage -le 1 ]; then
-  mkdir -p exp/nnet2_online
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 10 --num-frames 200000 \
-    data/train 256 exp/tri3b exp/nnet2_online/diag_ubm
+  for datadir in $train_set test; do
+    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
+
+    steps/make_mfcc.sh --nj 30 --mfcc-config $mfcc_config \
+      --cmd "$train_cmd" data/${datadir}_hires || exit 1;
+    steps/compute_cmvn_stats.sh data/${datadir}_hires
+    utils/fix_data_dir.sh data/${datadir}_hires
+  done
 fi
 
-if [ $stage -le 2 ]; then
-  # use a smaller iVector dim (50) than the default (100) because RM has a very
-  # small amount of data.
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 4 \
-    --ivector-dim 50 \
-   data/train exp/nnet2_online/diag_ubm exp/nnet2_online/extractor || exit 1;
+train_set=${train_set}_hires
+if [ ! -f $extractor/final.ie ] && [ $ivector_dim -gt 0 ]; then
+  if [ $stage -le 1 ]; then
+    mkdir -p exp/nnet2${nnet_affix}
+    steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 40 --num-frames 200000 \
+      data/${train_set} 256 exp/tri3b exp/nnet2${nnet_affix}/diag_ubm
+  fi
+
+  if [ $stage -le 2 ]; then
+    # use a smaller iVector dim (50) than the default (100) because RM has a very
+    # small amount of data.
+    steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 40 \
+      --ivector-dim $ivector_dim \
+     data/${train_set} exp/nnet2${nnet_affix}/diag_ubm $extractor || exit 1;
+  fi
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 3 ] && [ $ivector_dim -gt 0 ]; then
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
-  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/train data/train_max2
+  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set} data/${train_set}_max2
 
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 4 \
-    data/train_max2 exp/nnet2_online/extractor exp/nnet2_online/ivectors || exit 1;
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 40 \
+    data/${train_set}_max2 $extractor exp/nnet2${nnet_affix}/ivectors || exit 1;
+
+  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 10 \
+    data/test_hires $extractor exp/nnet2${nnet_affix}/ivectors_test || exit 1;
 fi

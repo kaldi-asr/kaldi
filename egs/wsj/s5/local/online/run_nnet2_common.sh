@@ -3,12 +3,12 @@
 # this script is called from scripts like run_nnet2.sh; it does
 # the common stages of the build.
 
-. cmd.sh
+. ./cmd.sh
 mfccdir=mfcc
 
 stage=1
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

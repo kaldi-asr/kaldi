@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011 Gilles Boulianne
 // Copyright 2016 Smart Action LLC (kkm)
+// Copyright 2017 Xiaohui Zhang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -27,6 +28,7 @@
 #include "lm/arpa-lm-compiler.h"
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
+#include "fstext/remove-eps-local.h"
 
 namespace kaldi {
 
@@ -71,10 +73,10 @@ class GeneralHistKey {
   std::vector<Symbol> vector_;
 };
 
-// OptimizedHistKey combiness 3 21-bit symbol ID values into one 64-bit
+// OptimizedHistKey combines 3 21-bit symbol ID values into one 64-bit
 // machine word. allowing significant memory reduction and some runtime
-// benefit over GeneralHistKey. Since 3 symbolss are enough to track history
-// in a 4-gram model, this optimized key is used for smalled models with up
+// benefit over GeneralHistKey. Since 3 symbols are enough to track history
+// in a 4-gram model, this optimized key is used for smaller models with up
 // to 4-gram and symbol values up to 2^21-1.
 //
 // See GeneralHistKey for interface requrements of a key class.
@@ -193,6 +195,9 @@ void ArpaLmCompilerImpl<HistKey>::ConsumeNGram(const NGram &ngram,
   StateId dest;
   Symbol sym = ngram.words.back();
   float weight = -ngram.logprob;
+  if (sym == sub_eps_ || sym == 0) {
+    KALDI_ERR << " <eps> or disambiguation symbol " << sym << "found in the ARPA file. ";
+  }
   if (sym == eos_symbol_) {
     if (sub_eps_ == 0) {
       // Keep </s> as a real symbol when not substituting.
@@ -315,9 +320,58 @@ void ArpaLmCompiler::ConsumeNGram(const NGram &ngram) {
   impl_->ConsumeNGram(ngram, is_highest);
 }
 
+void ArpaLmCompiler::RemoveRedundantStates() {
+  fst::StdArc::Label backoff_symbol = sub_eps_;
+  if (backoff_symbol == 0) {
+    // The method of removing redundant states implemented in this function
+    // leads to slow determinization of L o G when people use the older style of
+    // usage of arpa2fst where the --disambig-symbol option was not specified.
+    // The issue seems to be that it creates a non-deterministic FST, while G is
+    // supposed to be deterministic.  By 'return'ing below, we just disable this
+    // method if people were using an older script.  This method isn't really
+    // that consequential anyway, and people will move to the newer-style
+    // scripts (see current utils/format_lm.sh), so this isn't much of a
+    // problem.
+    return;
+  }
+
+  fst::StdArc::StateId num_states = fst_.NumStates();
+
+
+  // replace the #0 symbols on the input of arcs out of redundant states (states
+  // that are not final and have only a backoff arc leaving them), with <eps>.
+  for (fst::StdArc::StateId state = 0; state < num_states; state++) {
+    if (fst_.NumArcs(state) == 1 && fst_.Final(state) == fst::TropicalWeight::Zero()) {
+      fst::MutableArcIterator<fst::StdVectorFst> iter(&fst_, state);
+      fst::StdArc arc = iter.Value();
+      if (arc.ilabel == backoff_symbol) {
+        arc.ilabel = 0;
+        iter.SetValue(arc);
+      }
+    }
+  }
+
+  // we could call fst::RemoveEps, and it would have the same effect in normal
+  // cases, where backoff_symbol != 0 and there are no epsilons in unexpected
+  // places, but RemoveEpsLocal is a bit safer in case something weird is going
+  // on; it guarantees not to blow up the FST.
+  fst::RemoveEpsLocal(&fst_);
+  KALDI_LOG << "Reduced num-states from " << num_states << " to "
+            << fst_.NumStates();
+}
+
+void ArpaLmCompiler::Check() const {
+  if (fst_.Start() == fst::kNoStateId) {
+    KALDI_ERR << "Arpa file did not contain the beginning-of-sentence symbol "
+              << Symbols()->Find(Options().bos_symbol) << ".";
+  }
+}
+
 void ArpaLmCompiler::ReadComplete() {
   fst_.SetInputSymbols(Symbols());
   fst_.SetOutputSymbols(Symbols());
+  RemoveRedundantStates();
+  Check();
 }
 
 }  // namespace kaldi

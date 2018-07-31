@@ -71,4 +71,4 @@ cd SAcC_GLNXA64
   && echo "**Error testing SAcC-- something went wrong." && exit 1;
 
 echo "Test succeeded."
-exit 1;
+exit 0;

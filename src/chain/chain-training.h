@@ -53,6 +53,7 @@ struct ChainTrainingOptions {
   // B, with transition from A to B, so we don't have to consider epsilon loops-
   // or just imagine the coefficient is small enough that we can ignore the
   // epsilon loops.
+  // Note: we generally set leaky_hmm_coefficient to 0.1.
   BaseFloat leaky_hmm_coefficient;
 
 
@@ -63,7 +64,7 @@ struct ChainTrainingOptions {
 
   ChainTrainingOptions(): l2_regularize(0.0), leaky_hmm_coefficient(1.0e-05),
                           xent_regularize(0.0) { }
-  
+
   void Register(OptionsItf *opts) {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
                    "constant for 'chain' training, applied to the output "
@@ -107,10 +108,13 @@ struct ChainTrainingOptions {
                            You don't have to zero this before passing to this function,
                            we zero it internally.
    @param [out] xent_output_deriv  If non-NULL, then the numerator part of the derivative
-                           (which equals a posterior from the numerator forward-backward,
-                           scaled by the supervision weight) is written to here.  This will
-                           be used in the cross-entropy regularization code.  This value
-                           is also used in computing the cross-entropy objective value.
+                           (which equals a posterior from the numerator
+                           forward-backward, scaled by the supervision weight)
+                           is written to here (this function will set it to the
+                           correct size first; doing it this way reduces the
+                           peak memory use).  xent_output_deriv will be used in
+                           the cross-entropy regularization code; it is also
+                           used in computing the cross-entropy objective value.
 */
 void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               const DenominatorGraph &den_graph,
@@ -120,12 +124,11 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *l2_term,
                               BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv,
-                              CuMatrixBase<BaseFloat> *xent_output_deriv = NULL);
-                              
+                              CuMatrix<BaseFloat> *xent_output_deriv = NULL);
+
 
 
 }  // namespace chain
 }  // namespace kaldi
 
 #endif  // KALDI_CHAIN_CHAIN_TRAINING_H_
-

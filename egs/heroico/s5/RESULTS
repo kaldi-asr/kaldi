@@ -1,0 +1,22 @@
+# for dir in $(echo exp/tri*/decode* | grep -v 'si/'); do grep WER $dir/wer* | utils/best_wer.sh; done
+
+%WER 67.01 [ 5126 / 7650, 837 ins, 575 del, 3714 sub ] exp/tri1/decode_devtest/wer_14_1.0
+%WER 62.39 [ 4678 / 7498, 768 ins, 397 del, 3513 sub ] exp/tri1/decode_native/wer_13_1.0
+%WER 67.05 [ 6179 / 9215, 895 ins, 606 del, 4678 sub ] exp/tri1/decode_nonnative/wer_13_1.0
+%WER 64.97 [ 10859 / 16713, 1678 ins, 999 del, 8182 sub ] exp/tri1/decode_test/wer_13_1.0
+%WER 65.90 [ 5041 / 7650, 1016 ins, 416 del, 3609 sub ] exp/tri2b/decode_devtest/wer_12_1.0
+%WER 61.26 [ 4593 / 7498, 908 ins, 300 del, 3385 sub ] exp/tri2b/decode_native/wer_14_1.0
+%WER 67.51 [ 6221 / 9215, 1085 ins, 524 del, 4612 sub ] exp/tri2b/decode_nonnative/wer_14_1.0
+%WER 64.87 [ 10842 / 16713, 2004 ins, 838 del, 8000 sub ] exp/tri2b/decode_test/wer_14_1.0
+%WER 66.09 [ 5056 / 7650, 1078 ins, 402 del, 3576 sub ] exp/tri3b/decode_devtest/wer_16_1.0
+%WER 74.88 [ 5728 / 7650, 1210 ins, 426 del, 4092 sub ] exp/tri3b/decode_devtest.si/wer_15_1.0
+%WER 61.19 [ 4588 / 7498, 1038 ins, 255 del, 3295 sub ] exp/tri3b/decode_native/wer_14_1.0
+%WER 70.99 [ 5323 / 7498, 1185 ins, 301 del, 3837 sub ] exp/tri3b/decode_native.si/wer_16_1.0
+%WER 66.35 [ 6114 / 9215, 1186 ins, 421 del, 4507 sub ] exp/tri3b/decode_nonnative/wer_17_1.0
+%WER 76.36 [ 7037 / 9215, 1420 ins, 467 del, 5150 sub ] exp/tri3b/decode_nonnative.si/wer_16_1.0
+%WER 64.06 [ 10706 / 16713, 2245 ins, 657 del, 7804 sub ] exp/tri3b/decode_test/wer_15_1.0
+%WER 73.97 [ 12362 / 16713, 2608 ins, 766 del, 8988 sub ] exp/tri3b/decode_test.si/wer_16_1.0
+%WER 53.07 [ 4060 / 7650, 744 ins, 376 del, 2940 sub ] exp/chain/tdnn1e_sp/decode_devtest/wer_7_1.0
+%WER 54.47 [ 4084 / 7498, 536 ins, 475 del, 3073 sub ] exp/chain/tdnn1e_sp/decode_native/wer_7_1.0
+%WER 63.01 [ 5806 / 9215, 685 ins, 784 del, 4337 sub ] exp/chain/tdnn1e_sp/decode_nonnative/wer_7_1.0
+%WER 59.25 [ 9903 / 16713, 1226 ins, 1259 del, 7418 sub ] exp/chain/tdnn1e_sp/decode_test/wer_7_1.0

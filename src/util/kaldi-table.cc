@@ -22,21 +22,6 @@
 
 namespace kaldi {
 
-bool ExtractRangeSpecifier(const std::string &line,
-                           std::string *data_rxfilename,
-                           std::string *range) {
-  if (line.empty() || line[line.size()-1] != ']')
-    KALDI_ERR << "ExtractRangeRspecifier called wrongly.";
-  std::vector<std::string> splits;
-  SplitStringToVector(line, "[", false, &splits);
-  if (splits.size() == 2 && !splits[0].empty() && splits[1].size() > 1) {
-    *data_rxfilename = splits[0];
-    range->assign(splits[1], 0, splits[1].size()-1);
-    return true;
-  }
-  return false;
-}
-
 
 bool ReadScriptFile(const std::string &rxfilename,
                     bool warn,

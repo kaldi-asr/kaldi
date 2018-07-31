@@ -26,7 +26,7 @@ If no "category" is specified, the script will print out the possible categories
 Allowed options:
 EOU
 
-GetOptions(); 
+GetOptions();
 
 @ARGV >= 2 || die $Usage;
 
@@ -77,7 +77,7 @@ if (@ARGV == 0) {
       if ($count == 0) {
         $output .= "$value";
         $count ++; next;
-      } 
+      }
       if ($count == 6) {
         $output .= ", ...";
         last;

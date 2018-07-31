@@ -3,7 +3,7 @@
 # Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
 # AMI Corpus dev/eval data preparation 
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 if [ $# != 2 ]; then
@@ -74,7 +74,7 @@ awk '{print $1}' $dir/wav2.scp | join -2 2 - $dir/segments | \
 awk '{print $1}' $dir/segments | join - $dir/text > $dir/t; mv $dir/t $dir/text
 
 #replace path with an appropriate sox command that select a single channel only
-awk '{print $1" sox -c 1 -t wavpcm -s "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
+awk '{print $1" sox -c 1 -t wavpcm -e signed-integer "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
 
 # this file reco2file_and_channel maps recording-id
 cat $dir/wav.scp | \

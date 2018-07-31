@@ -1,9 +1,11 @@
  This directory (lre07) contains example recipes for the 2007 NIST
- Language Evaluation.  The subdirectory v1 demonstrates our single best LID
- system, which is an I-Vector based recipe.  Different LID systems combine
- easily to improve accuracy; contained in the subdirectory v2 is a fusion
- of the I-Vector-based system in v1 with an additional I-Vector-based system
- that using MFCC+Pitch features.
+ Language Evaluation.  The subdirectory v1 demonstrates the standard
+ LID system, which is an I-Vector based recipe using full covariance
+ GMM-UBM and logistic regression model. The subdirectory v2 demonstrates
+ the LID system using a time delay deep neural network based UBM
+ which is used to replace the GMM-UBM of v1. The DNN is trained using
+ about 1800 hours of the English portion of Fisher.
+
 
  The following LDC corpora are used during training:
     
@@ -21,7 +23,7 @@
    CALLFRIEND Taiwan Chinese Mandarin:   LDC96S56
    CALLFRIEND Caribbean Spanish:         LDC96S57
    CALLFRIEND Non-Caribbean Spanish:     LDC96S58
-   LRE 1996:                             LDC?
+   LRE 1996:                             LDC2006S31
    LRE 2003:                             LDC2006S31
    LRE 2005:                             LDC2008S05
    LRE 2007 Training Set:                LDC2009S05
@@ -36,5 +38,4 @@
  This list will be updated as scripts for system development and testing
  (which will require additional data sources) are created. 
 
- The subdirectories "v1" and so on are different versions of the recipe.
 

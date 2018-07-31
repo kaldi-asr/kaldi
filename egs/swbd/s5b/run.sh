@@ -11,8 +11,8 @@ exit 1;
 # Caution: some of the graph creation steps use quite a bit of memory, so you
 # should run this on a machine that has sufficient memory.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e # exit on error
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features. 
@@ -127,20 +127,20 @@ utils/subset_data_dir.sh --last data/train $n data/train_nodev
 # then take 10k random utterances from those (about 4hr 40mins)
 
 utils/subset_data_dir.sh --shortest data/train_nodev 100000 data/train_100kshort
-local/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
+utils/data/remove_dup_utts.sh 10 data/train_100kshort data/train_100kshort_nodup
 utils/subset_data_dir.sh data/train_100kshort_nodup 10000 data/train_10k_nodup
 
 # Take the first 30k utterances (about 1/8th of the data)
 utils/subset_data_dir.sh --first data/train_nodev 30000 data/train_30k
-local/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup  # 33hr
+utils/data/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup  # 33hr
 
 # Take the first 100k utterances (just under half the data); we'll use
 # this for later stages of training.
 utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
-local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
+utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 110hr
 
 # Finally, the full training set:
-local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
+utils/data/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
 
 ## Starting basic training on MFCC features
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2014  Vassil Panayotov 
+# Copyright 2014  Vassil Panayotov
 #           2014  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 
@@ -31,8 +31,9 @@ wav_scp=$dst/wav.scp; [[ -f "$wav_scp" ]] && rm $wav_scp
 trans=$dst/text; [[ -f "$trans" ]] && rm $trans
 utt2spk=$dst/utt2spk; [[ -f "$utt2spk" ]] && rm $utt2spk
 spk2gender=$dst/spk2gender; [[ -f $spk2gender ]] && rm $spk2gender
+utt2dur=$dst/utt2dur; [[ -f "$utt2dur" ]] && rm $utt2dur
 
-for reader_dir in $(find $src -mindepth 1 -maxdepth 1 -type d | sort); do
+for reader_dir in $(find -L $src -mindepth 1 -maxdepth 1 -type d | sort); do
   reader=$(basename $reader_dir)
   if ! [ $reader -eq $reader ]; then  # not integer.
     echo "$0: unexpected subdirectory name $reader"
@@ -52,7 +53,7 @@ for reader_dir in $(find $src -mindepth 1 -maxdepth 1 -type d | sort); do
       exit 1;
     fi
 
-    find $chapter_dir/ -iname "*.flac" | sort | xargs -I% basename % .flac | \
+    find -L $chapter_dir/ -iname "*.flac" | sort | xargs -I% basename % .flac | \
       awk -v "dir=$chapter_dir" '{printf "%s flac -c -d -s %s/%s.flac |\n", $0, dir, $0}' >>$wav_scp|| exit 1
 
     chapter_trans=$chapter_dir/${reader}-${chapter}.trans.txt
@@ -77,6 +78,8 @@ ntrans=$(wc -l <$trans)
 nutt2spk=$(wc -l <$utt2spk)
 ! [ "$ntrans" -eq "$nutt2spk" ] && \
   echo "Inconsistent #transcripts($ntrans) and #utt2spk($nutt2spk)" && exit 1;
+
+utils/data/get_utt2dur.sh $dst 1>&2 || exit 1
 
 utils/validate_data_dir.sh --no-feats $dst || exit 1;
 

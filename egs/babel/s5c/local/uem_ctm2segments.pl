@@ -40,10 +40,10 @@ use Getopt::Long;
         $defaultSegLen = 10; # seconds
 ################################################################################
 
-GetOptions("ctmTimeStep=f" => \$ctmTimeStep, 
-  "minSilence=f" => \$minSilence, 
-  "silence=s" => \$silence, 
-  "maxSegLen=f" => \$maxSegLen, 
+GetOptions("ctmTimeStep=f" => \$ctmTimeStep,
+  "minSilence=f" => \$minSilence,
+  "silence=s" => \$silence,
+  "maxSegLen=f" => \$maxSegLen,
   "defaultSegLen=f" => \$defaultSegLen);
 
 if ($#ARGV == 1) {

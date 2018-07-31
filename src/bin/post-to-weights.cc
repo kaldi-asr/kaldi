@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
         "Turn posteriors into per-frame weights (typically most useful after\n"
         "weight-silence-post, to get silence weights)\n"
         "See also: weight-silence-post, post-to-pdf-post, post-to-phone-post\n"
-        "get-post-on-ali\n"
+        "post-to-feats, get-post-on-ali\n"
         "Usage: post-to-weights <post-rspecifier> <weights-wspecifier>\n";
     
     ParseOptions po(usage); 

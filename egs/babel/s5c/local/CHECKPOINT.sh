@@ -1,11 +1,11 @@
 #!/bin/bash
 
 function GETAPPROVAL {
-  until false ; do 
+  until false ; do
     echo "Do you want to run the command (y/n)?"
     read -n 1 WISH
-    
-    if [ "$WISH" == "y" ]; then 
+
+    if [ "$WISH" == "y" ]; then
       return true;
     elif [ "$WISH" == "n" ]; then
       return false;
@@ -21,11 +21,11 @@ function ESCAPE_PARAMS {
 
       if [[ "$v" == *"<"* ]]; then
          out="$out \"$v\""
-      elif [[ "$v" == *">"* ]] ; then 
+      elif [[ "$v" == *">"* ]] ; then
          out="$out \"$v\""
-      elif [[ "$v" == *"|"* ]] ; then 
+      elif [[ "$v" == *"|"* ]] ; then
          out="$out \'$v\'"
-      elif [[ "$v" == *" "* ]] ; then 
+      elif [[ "$v" == *" "* ]] ; then
          out="$out \"$v\""
       else
          out="$out $v"
@@ -76,7 +76,7 @@ function CHECKPOINT {
 
     if [ !$INTERACTIVE_CHECKPOINT ] ; then
       eval `ESCAPE_PARAMS "$@"`
-    else 
+    else
       APPROVAL=GETAPPROVAL
       if $APPROVAL ; then
         eval `ESCAPE_PARAMS $@`
@@ -87,7 +87,7 @@ function CHECKPOINT {
       echo -e ${COLOR_RED}"CHECKPOINT FAILURE: The command returned non-zero status" >&2
       echo -e "                    rerun the script with the parameter -c $LAST_GOOD_NAME=$COUNTER" >&2
       echo -e "COMMAND">&2
-      echo -e "  " "$@" ${COLOR_RED} >&2 
+      echo -e "  " "$@" ${COLOR_RED} >&2
 
       exit 1
     fi
@@ -97,7 +97,7 @@ function CHECKPOINT {
     echo -e "$@"${COLOR_DEFAULT} >&2
   fi
 
-  COUNTER=$(( $COUNTER + 1 )) 
+  COUNTER=$(( $COUNTER + 1 ))
   eval export $COUNTER_NAME=$COUNTER
 }
 

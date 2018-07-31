@@ -16,8 +16,8 @@
 
 
 # This takes data from the standard input that's unnormalized transcripts in the format
-# 4k2c0308 Of course there isn\'t any guarantee the company will keep its hot hand [misc_noise] 
-# 4k2c030a [loud_breath] And new hardware such as the set of personal computers I\. B\. M\. introduced last week can lead to unexpected changes in the software business [door_slam] 
+# 4k2c0308 Of course there isn\'t any guarantee the company will keep its hot hand [misc_noise]
+# 4k2c030a [loud_breath] And new hardware such as the set of personal computers I\. B\. M\. introduced last week can lead to unexpected changes in the software business [door_slam]
 # and outputs normalized transcripts.
 # c.f. /mnt/matylda2/data/WSJ0/11-10.1/wsj0/transcrp/doc/dot_spec.doc
 
@@ -39,7 +39,7 @@ while(<STDIN>) {
            $w =~ m:\[\w+/\]$: ||  # E.g. [phone_ring/], which indicates the start of this phenomenon.
            $w =~ m:\[\/\w+]$: ||  # E.g. [/phone_ring], which indicates the end of this phenomenon.
            $w eq "~" ||        # This is used to indicate truncation of an utterance.  Not a word.
-           $w eq ".") {      # "." is used to indicate a pause.  Silence is optional anyway so not much 
+           $w eq ".") {      # "." is used to indicate a pause.  Silence is optional anyway so not much
                              # point including this in the transcript.
             next; # we won't print this word.
         } elsif($w =~ m:\[\w+\]:) { # Other noises, e.g. [loud_breath].

@@ -27,9 +27,9 @@ void UnitTestConfigLineParse() {
   std::string str;
   {
     ConfigLine cfl;
-    str = "xx=yyy foo=bar  baz=123 ba=1:2";
+    str = "a-b xx=yyy foo=bar  baz=123 ba=1:2";
     bool status = cfl.ParseLine(str);
-    KALDI_ASSERT(status);
+    KALDI_ASSERT(status && cfl.FirstToken() == "a-b");
 
     KALDI_ASSERT(cfl.HasUnusedValues());
     std::string str_value;
@@ -55,38 +55,48 @@ void UnitTestConfigLineParse() {
 
   {
     ConfigLine cfl;
-    str = "baz=x y z pp = qq ab =cd ac= bd";
+    str = "a-b baz=x y z pp = qq ab =cd ac= bd";
     KALDI_ASSERT(!cfl.ParseLine(str));
   }
   {
     ConfigLine cfl;
-    str = "baz=x y z pp = qq ab=cd ac=bd";
+    str = "a-b baz=x y z pp = qq ab=cd ac=bd";
     KALDI_ASSERT(!cfl.ParseLine(str));
   }
   {
     ConfigLine cfl;
-    str = "baz";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "a=b baz";
-    KALDI_ASSERT(cfl.ParseLine(str) && cfl.UnusedValues() == "a=b baz");
-  }
-  {
-    ConfigLine cfl;
-    str = "a=b baz ";
-    KALDI_ASSERT(cfl.ParseLine(str) && cfl.UnusedValues() == "a=b baz");
-  }
-  {
-    ConfigLine cfl;
-    str = "a=b =c";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "baz='x y z' pp=qq ab=cd ac=bd";
+    str = "foo-bar";
     KALDI_ASSERT(cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = "foo-bar a=b c d f=g";
+    std::string value;
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "foo-bar" &&
+                 cfl.GetValue("a", &value)  && value == "b c d" &&
+                 cfl.GetValue("f", &value) && value == "g" &&
+                 !cfl.HasUnusedValues());
+  }
+  {
+    ConfigLine cfl;
+    str = "zzz a=b baz";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "zzz" &&
+                 cfl.UnusedValues() == "a=b baz");
+  }
+  {
+    ConfigLine cfl;
+    str = "xxx a=b baz ";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.UnusedValues() == "a=b baz");
+  }
+  {
+    ConfigLine cfl;
+    str = "xxx a=b =c";
+    KALDI_ASSERT(!cfl.ParseLine(str));
+  }
+  {
+    ConfigLine cfl;
+    str = "xxx baz='x y z' pp=qq ab=cd ac=bd";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "xxx");
     std::string str_value;
     KALDI_ASSERT(cfl.GetValue("baz", &str_value));
     KALDI_ASSERT(str_value == "x y z");
@@ -104,13 +114,13 @@ void UnitTestConfigLineParse() {
 
   {
     ConfigLine cfl;
-    str = "baz= pp = qq flag=t ";
+    str = "x baz= pp = qq flag=t ";
     KALDI_ASSERT(!cfl.ParseLine(str));
   }
   {
     ConfigLine cfl;
-    str = " baz= pp=qq flag=t  ";
-    KALDI_ASSERT(cfl.ParseLine(str));
+    str = " x baz= pp=qq flag=t  ";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "x");
 
     std::string str_value;
     KALDI_ASSERT(cfl.GetValue("baz", &str_value));
@@ -129,34 +139,34 @@ void UnitTestConfigLineParse() {
 
   {
     ConfigLine cfl;
-    str = "_baz=a -pp=qq";
+    str = "xx _baz=a -pp=qq";
     KALDI_ASSERT(!cfl.ParseLine(str));
   }
   {
     ConfigLine cfl;
-    str = "0baz=a pp=qq";
+    str = "xx 0baz=a pp=qq";
     KALDI_ASSERT(!cfl.ParseLine(str));
   }
   {
     ConfigLine cfl;
-    str = "-baz=a pp=qq";
+    str = "xx -baz=a pp=qq";
     KALDI_ASSERT(!cfl.ParseLine(str));
   }
   {
     ConfigLine cfl;
-    str = "_baz'=a pp=qq";
+    str = "xx _baz'=a pp=qq";
     KALDI_ASSERT(!cfl.ParseLine(str));
   }
   {
     ConfigLine cfl;
-    str = "baz=g";
-    KALDI_ASSERT(cfl.ParseLine(str));
+    str = " baz=g";
+    KALDI_ASSERT(cfl.ParseLine(str) && cfl.FirstToken() == "");
     bool flag;
     KALDI_ASSERT(!cfl.GetValue("baz", &flag));
   }
   {
     ConfigLine cfl;
-    str = "_baz1=a pp=qq";
+    str = "xx _baz1=a pp=qq";
     KALDI_ASSERT(cfl.ParseLine(str));
 
     std::string str_value;
@@ -165,31 +175,40 @@ void UnitTestConfigLineParse() {
 }
 
 void UnitTestReadConfig() {
-  std::string str = " alpha=aa beta=\"b b\"# String test\n"
-      "beta2='b c' beta3=bd # \n"
-      "gamma=1:2:3:4  # Int Vector test\n"
-      " de1ta=f  # Bool + Integer in key Comment test delta=t  \n"
-      "_epsilon=-1  # Int Vector test _epsilon=1 \n"
-      " zet-_a=0.15   theta=1.1# Float, -, _ test\n"
-      "quoted='a b c' # quoted string\n"
-      "quoted2=\"d e 'a b=c' f\" # string quoted with double quotes";
+  std::string str = "a-b alpha=aa beta=\"b b\"# String test\n"
+      "a-b beta2='b c' beta3=bd # \n"
+      "a-b gamma=1:2:3:4  # Int Vector test\n"
+      " a-b de1ta=f  # Bool + Integer in key Comment test delta=t  \n"
+      "a-b _epsilon=-1  # Int Vector test _epsilon=1 \n"
+      "a-b zet-_a=0.15   theta=1.1# Float, -, _ test\n"
+      "a-b quoted='a b c' # quoted string\n"
+      "a-b quoted2=\"d e 'a b=c' f\" # string quoted with double quotes";
 
   std::istringstream is(str);
   std::vector<std::string> lines;
-  ReadConfigFile(is, &lines);
+  ReadConfigLines(is, &lines);
   KALDI_ASSERT(lines.size() == 8);
 
   ConfigLine cfl;
   for (size_t i = 0; i < lines.size(); i++) {
-    KALDI_ASSERT(cfl.ParseLine(lines[i]));
+    KALDI_ASSERT(cfl.ParseLine(lines[i]) && cfl.FirstToken() == "a-b");
+    if (i == 1) {
+        KALDI_ASSERT(cfl.GetValue("beta2", &str) && str == "b c");
+    }
+    if (i == 4) {
+      KALDI_ASSERT(cfl.GetValue("_epsilon", &str) && str == "-1");
+    }
+    if (i == 5) {
+      BaseFloat float_val = 0;
+      KALDI_ASSERT(cfl.GetValue("zet-_a", &float_val) && ApproxEqual(float_val, 0.15));
+    }
+    if (i == 6) {
+      KALDI_ASSERT(cfl.GetValue("quoted", &str) && str == "a b c");
+    }
+    if (i == 7) {
+      KALDI_ASSERT(cfl.GetValue("quoted2", &str) && str == "d e 'a b=c' f");
+    }
   }
-  KALDI_ASSERT(cfl.GetValue("beta2", &str) && str == "b c");
-  KALDI_ASSERT(cfl.GetValue("_epsilon", &str) && str == "-1");
-  KALDI_ASSERT(cfl.GetValue("quoted", &str) && str == "a b c");
-  KALDI_ASSERT(cfl.GetValue("quoted2", &str) && str == "d e 'a b=c' f");
-
-  BaseFloat float_val = 0;
-  KALDI_ASSERT(cfl.GetValue("zet-_a", &float_val) && ApproxEqual(float_val, 0.15));
 }
 
 void UnitTestDescriptorTokenize() {
@@ -241,6 +260,19 @@ void UnitTestSummarizeVector() {
   KALDI_LOG << "vec = " << vec << " -> " << SummarizeVector(vec);
 }
 
+void  UnitTestNameMatchesPattern() {
+  KALDI_ASSERT(NameMatchesPattern("hello", "hello"));
+  KALDI_ASSERT(!NameMatchesPattern("hello", "hellox"));
+  KALDI_ASSERT(!NameMatchesPattern("hellox", "hello"));
+  KALDI_ASSERT(NameMatchesPattern("hellox", "hello*"));
+  KALDI_ASSERT(NameMatchesPattern("hello", "hello*"));
+  KALDI_ASSERT(NameMatchesPattern("", "*"));
+  KALDI_ASSERT(NameMatchesPattern("x", "*"));
+  KALDI_ASSERT(NameMatchesPattern("foo12bar", "foo*bar"));
+  KALDI_ASSERT(NameMatchesPattern("foo12bar", "foo*"));
+  KALDI_ASSERT(NameMatchesPattern("foo12bar", "*bar"));
+}
+
 } // namespace nnet3
 
 } // namespace kaldi
@@ -253,6 +285,7 @@ int main() {
   UnitTestReadConfig();
   UnitTestDescriptorTokenize();
   UnitTestSummarizeVector();
+  UnitTestNameMatchesPattern();
 
   KALDI_LOG << "Parse tests succeeded.";
 

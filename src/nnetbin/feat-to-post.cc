@@ -22,18 +22,19 @@
 #include "util/common-utils.h"
 #include "hmm/posterior.h"
 
-/** @brief Convert features into posterior format, is used to specify NN training targets. */
+/** @brief Converts features into posterior format, which is the generic
+ *  format of NN training targets in 'nnet1'. */
 int main(int argc, char *argv[]) {
   using namespace kaldi;
   typedef kaldi::int32 int32;
   try {
     const char *usage =
-        "Convert features into posterior format, which is used for NN training targets\n"
-        "in Karel's nnet1 tools.\n"
-        "(speed is not an issue for reasonably low NN-output dimensions)\n"
-        "Usage:  feat-to-post [options] feat-rspecifier posteriors-wspecifier\n"
-        "e.g.:\n"
-        " feat-to-post scp:feats.scp ark:feats.post\n";
+      "Convert features into posterior format, which is the generic format \n"
+      "of NN training targets in Karel's nnet1 tools.\n"
+      "(speed is not an issue for reasonably low NN-output dimensions)\n"
+      "Usage:  feat-to-post [options] feat-rspecifier posteriors-wspecifier\n"
+      "e.g.:\n"
+      " feat-to-post scp:feats.scp ark:feats.post\n";
 
     ParseOptions po(usage);
 
@@ -59,9 +60,9 @@ int main(int argc, char *argv[]) {
       // Posterior is vector<vector<pair<int32, BaseFloat> > >
       Posterior post(num_frames);
       // Fill posterior with matrix values,
-      for (int32 f=0; f<num_frames; f++) {
-        for (int32 d=0; d<num_dims; d++) {
-          post[f].push_back(std::make_pair(d,mat(f,d)));
+      for (int32 f = 0; f < num_frames; f++) {
+        for (int32 d = 0; d < num_dims; d++) {
+          post[f].push_back(std::make_pair(d, mat(f, d)));
         }
         KALDI_ASSERT(post[f].size() == num_dims);
       }

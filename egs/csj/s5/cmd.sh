@@ -11,5 +11,11 @@
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
 export train_cmd="queue.pl --mem 2G"
-export decode_cmd="queue.pl --mem 4G"
-export mkgraph_cmd="queue.pl --mem 8G"
+#export decode_cmd="queue.pl --mem 4G"
+#export mkgraph_cmd="queue.pl --mem 8G"
+
+# run it locally...
+#export train_cmd=run.pl
+export decode_cmd=run.pl
+export cuda_cmd=run.pl
+export mkgraph_cmd=run.pl

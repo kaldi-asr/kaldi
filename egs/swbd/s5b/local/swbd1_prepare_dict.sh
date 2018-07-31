@@ -5,7 +5,7 @@
 
 # To be run from one directory above this script.
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 [ $# != 0 ] && echo "Usage: local/swbd1_data_prep.sh" && exit 1;
@@ -23,9 +23,7 @@ patch <local/dict.patch $dir/lexicon0.txt || exit 1;
 
 #(2a) Dictionary preparation:
 # Pre-processing (lower-case, remove comments)
-awk 'BEGIN{getline}($0 !~ /^#/) {$0=tolower($0); print}' \
-  $srcdict | sort | awk '($0 !~ /^[[:space:]]*$/) {print}' \
-   > $dir/lexicon1.txt || exit 1;
+grep -v '^#' $srcdict | tr '[A-Z]' '[a-z]' | awk 'NF>0' | sort > $dir/lexicon1.txt || exit 1;
 
 
 cat $dir/lexicon1.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \

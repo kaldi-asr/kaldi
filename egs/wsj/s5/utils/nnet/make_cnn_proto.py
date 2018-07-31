@@ -93,10 +93,13 @@ print "<NnetProto>"
 # Convolutional part of network
 num_patch1 = 1 + (feat_raw_dim - o.patch_dim1) / o.patch_step1
 num_pool = 1 + (num_patch1 - o.pool_size) / o.pool_step
-patch_dim2 = o.patch_dim2 * o.num_filters1
-patch_step2 = o.num_filters1
-patch_stride2 = num_pool * o.num_filters1 # same as layer1 outputs 
-num_patch2 = 1 + (num_pool * o.num_filters1 - patch_dim2) / patch_step2
+patch_dim2 = o.patch_dim2
+patch_step2 = o.patch_step1
+patch_stride2 = num_pool # same as layer1 outputs 
+num_patch2 = 1 + (num_pool - patch_dim2) / patch_step2
+
+inputdim_of_cnn = feat_dim
+outputdim_of_cnn = o.num_filters2*num_patch2
 
 convolution_proto = ''  
 
@@ -111,13 +114,13 @@ convolution_proto += "<AddShift> <InputDim> %d <OutputDim> %d <InitParam> %f\n" 
 convolution_proto += "%s <InputDim> %d <OutputDim> %d\n" % \
 			(o.activation_type, o.num_filters1*num_pool, o.num_filters1*num_pool)
 convolution_proto += "<ConvolutionalComponent> <InputDim> %d <OutputDim> %d <PatchDim> %d <PatchStep> %d <PatchStride> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <MaxNorm> %f\n" % \
-			(o.num_filters1*num_pool, o.num_filters2*num_patch2, patch_dim2, patch_step2, patch_stride2, -2.0, 4.0, 0.1, 50) #~4x128 = 512 inputs
+			(o.num_filters1*num_pool, outputdim_of_cnn, patch_dim2, patch_step2, patch_stride2, -2.0, 4.0, 0.1, 50) #~4x128 = 512 inputs
 convolution_proto += "<Rescale> <InputDim> %d <OutputDim> %d <InitParam> %f\n" % \
-			(o.num_filters2 * num_patch2, o.num_filters2*num_patch2, 1)
+			(outputdim_of_cnn, outputdim_of_cnn, 1)
 convolution_proto += "<AddShift> <InputDim> %d <OutputDim> %d <InitParam> %f\n" % \
-			(o.num_filters2*num_patch2, o.num_filters2*num_patch2, 0)
+			(outputdim_of_cnn, outputdim_of_cnn, 0)
 convolution_proto += "%s <InputDim> %d <OutputDim> %d\n" % \
-			(o.activation_type, o.num_filters2*num_patch2, o.num_filters2*num_patch2)
+			(o.activation_type, outputdim_of_cnn, outputdim_of_cnn)
 
 if (o.pitch_dim > 0):
   # convolutional part
@@ -143,14 +146,14 @@ if (o.pitch_dim > 0):
 
   # paralell part
   vector = ''
-  for i in range(1, (feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), feat_raw_dim + o.pitch_dim):
+  for i in range(1, inputdim_of_cnn, feat_raw_dim + o.pitch_dim):
     vector += '%d:1:%d ' % (i, i + feat_raw_dim - 1)
-  for i in range(feat_raw_dim+1, (feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), feat_raw_dim + o.pitch_dim):
+  for i in range(feat_raw_dim+1, inputdim_of_cnn + 1, feat_raw_dim + o.pitch_dim):
     vector += '%d:1:%d ' % (i, i + o.pitch_dim - 1)
   print '<Copy> <InputDim> %d <OutputDim> %d <BuildVector> %s </BuildVector>' % \
-	((feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), (feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), vector)
+	(inputdim_of_cnn, inputdim_of_cnn, vector)
   print '<ParallelComponent> <InputDim> %d <OutputDim> %d <NestedNnetProto> %s %s </NestedNnetProto>' % \
-	((feat_raw_dim + o.pitch_dim) * (o.delta_order+1) * (o.splice*2+1), o.num_pitch_neurons + o.num_filters2*num_patch2, '%s/nnet.proto.convolution' % o.protodir, '%s/nnet.proto.pitch' % o.protodir)
+	(inputdim_of_cnn, o.num_pitch_neurons + outputdim_of_cnn, '%s/nnet.proto.convolution' % o.protodir, '%s/nnet.proto.pitch' % o.protodir)
 
 else: # no pitch
   print convolution_proto

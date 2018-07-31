@@ -8,7 +8,7 @@
 # This example script demonstrates how speed perturbation of the data helps the nnet training in the SWB setup.
 
 . ./cmd.sh
-set -e 
+set -e
 stage=1
 train_stage=-10
 use_gpu=true
@@ -27,13 +27,13 @@ fix_nnet=false
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="--gpu 1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
   if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
@@ -52,7 +52,7 @@ else
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 dir=exp/$mic/nnet2_online/nnet_ms_sp${affix:+_$affix}
@@ -155,7 +155,7 @@ fi
 wait;
 
 if [ $stage -le 12 ]; then
-  # do the actual online decoding with iVectors, carrying info forward from 
+  # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
   for decode_set in dev eval; do
     (
@@ -191,7 +191,7 @@ if [ $stage -le 14 ]; then
       steps/online/nnet2/decode.sh --config conf/decode.conf --cmd "$decode_cmd" --nj $num_jobs \
         --per-utt true --online false $graph_dir data/$mic/${decode_set}_hires \
           $decode_dir || exit 1;
-    ) & 
+    ) &
   done
 fi
 wait;

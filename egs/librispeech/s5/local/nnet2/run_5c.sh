@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This is neural net training on top of adapted 40-dimensional features.
-# 
+#
 
 train_stage=-10
 use_gpu=true
@@ -9,15 +9,15 @@ use_gpu=true
 train_set="train-clean-100"
 test_sets="dev-clean dev-other"
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
 
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
 EOF
@@ -28,7 +28,7 @@ EOF
   dir=exp/nnet5c_gpu_${train_set}
 else
   num_threads=16
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
   dir=exp/nnet5c_${train_set}
   minibatch_size=128
 fi

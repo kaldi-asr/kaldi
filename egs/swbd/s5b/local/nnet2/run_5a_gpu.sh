@@ -18,7 +18,7 @@ EOF
 
 . utils/parse_options.sh
 
-parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 ( 
   if [ ! -f exp/nnet5a_gpu/final.mdl ]; then

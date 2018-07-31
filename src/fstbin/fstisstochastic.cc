@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 
     std::string fst_in_filename = po.GetOptArg(1);
 
-    VectorFst<StdArc> *fst = ReadFstKaldi(fst_in_filename);
+    Fst<StdArc> *fst = ReadFstKaldiGeneric(fst_in_filename);
 
     bool ans;
     StdArc::Weight min, max;

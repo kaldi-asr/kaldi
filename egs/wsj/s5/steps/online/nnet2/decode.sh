@@ -3,7 +3,7 @@
 # Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
@@ -62,10 +62,17 @@ graphdir=$1
 data=$2
 dir=$3
 srcdir=`dirname $dir`; # The model directory is one level up from decoding directory.
-sdata=$data/split$nj;
+if $per_utt; then
+  utt_suffix=utt
+  utt_opt="--per-utt"
+else
+  utt_suffix=
+  utt_opt=
+fi
+sdata=$data/split${nj}${utt_suffix};
 
 mkdir -p $dir/log
-[[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+split_data.sh $utt_opt $data $nj || exit 1;
 echo $nj > $dir/num_jobs
 
 for f in $srcdir/conf/online_nnet2_decoding.conf $srcdir/${iter}.mdl \
@@ -95,7 +102,7 @@ if $do_speex_compressing; then
   wav_rspecifier="$wav_rspecifier compress-uncompress-speex ark:- ark:- |"
 fi
 if $do_endpointing; then
-  wav_rspecifier="$wav_rspecifier extend-wav-with-silence ark:- ark:- |"  
+  wav_rspecifier="$wav_rspecifier extend-wav-with-silence ark:- ark:- |"
 fi
 
 if [ "$silence_weight" != "1.0" ]; then

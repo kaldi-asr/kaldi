@@ -3,7 +3,7 @@
 # Copyright 2014  Vimal Manohar
 # This is our online neural net build for Gale system
 
-. cmd.sh
+. ./cmd.sh
 
 stage=-1
 train_stage=-10
@@ -12,29 +12,29 @@ mfccdir=mfcc
 train_nj=120
 decode_nj=30
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
   minibatch_size=512
   # the _a is in case I want to change the parameters.
-  dir=exp/nnet2_online/nnet_a_gpu 
+  dir=exp/nnet2_online/nnet_a_gpu
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
   minibatch_size=128
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
   dir=exp/nnet2_online/nnet_a
 fi
 
@@ -123,13 +123,13 @@ if [ $stage -le 6 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-online/egs/bolt/s5/$dir/egs $dir/egs/storage || exit 1
   fi
-  
+
   # Because we have a lot of data here and we don't want the training to take
   # too long, we reduce the number of epochs from the defaults (15) to (8).
   # The option "--io-opts '--max-jobs-run 12'" is to have more than the default number
   # (5) of jobs dumping the egs to disk; this is OK since we're splitting our
   # data across four filesystems for speed.
-  
+
   steps/nnet2/train_pnorm_simple.sh --stage $train_stage \
     --num-epochs 8 \
     --samples-per-iter 400000 \
@@ -156,7 +156,7 @@ if [ $stage -le 7 ]; then
 fi
 
 if [ $stage -le 8 ]; then
-  # do the actual online decoding with iVectors, carrying info forward from 
+  # do the actual online decoding with iVectors, carrying info forward from
   # previous utterances of the same speaker.
    steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj $decode_nj \
       exp/tri3b/graph data/test ${dir}_online/decode_test || exit 1;

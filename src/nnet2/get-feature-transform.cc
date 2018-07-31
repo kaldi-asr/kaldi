@@ -111,7 +111,8 @@ void FeatureTransformEstimate::EstimateInternal(
     Vector<BaseFloat> s(min_dim);
     M->Svd(&s, &U, &Vt); // decompose m = U diag(s) Vt.
     BaseFloat max_s = s.Max();
-    int32 n = s.ApplyCeiling(opts.max_singular_value);
+    int32 n;
+    s.ApplyCeiling(opts.max_singular_value, &n);
     if (n > 0) {
       KALDI_LOG << "Applied ceiling to " << n << " out of " << s.Dim()
                 << " singular values of transform using ceiling "

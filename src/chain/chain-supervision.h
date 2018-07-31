@@ -50,10 +50,16 @@ struct SupervisionOptions {
   int32 left_tolerance;
   int32 right_tolerance;
   int32 frame_subsampling_factor;
+  BaseFloat weight;
+  BaseFloat lm_scale;
+  bool convert_to_pdfs;
 
   SupervisionOptions(): left_tolerance(5),
                         right_tolerance(5),
-                        frame_subsampling_factor(1) { }
+                        frame_subsampling_factor(1),
+                        weight(1.0),
+                        lm_scale(0.0),
+                        convert_to_pdfs(true) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("left-tolerance", &left_tolerance, "Left tolerance for "
@@ -65,6 +71,15 @@ struct SupervisionOptions {
                    "frame-rate of the original alignment.  Applied after "
                    "left-tolerance and right-tolerance are applied (so they are "
                    "in terms of the original num-frames.");
+    opts->Register("weight", &weight,
+                   "Use this to set the supervision weight for training. "
+                   "This can be used to assign different weights to "
+                   "different data sources.");
+    opts->Register("lm-scale", &lm_scale, "The scale with which the graph/lm "
+                   "weights from the phone lattice are included in the "
+                   "supervision fst.");
+    opts->Register("convert-to-pdfs", &convert_to_pdfs, "If true, convert "
+                   "transition-ids to pdf-ids + 1 in supervision FSTs.");
   }
   void Check() const;
 };
@@ -167,8 +182,10 @@ class TimeEnforcerFst:
   typedef fst::StdArc::Label Label;
 
   TimeEnforcerFst(const TransitionModel &trans_model,
+                  bool convert_to_pdfs,
                   const std::vector<std::vector<int32> > &allowed_phones):
       trans_model_(trans_model),
+      convert_to_pdfs_(convert_to_pdfs),
       allowed_phones_(allowed_phones) { }
 
   // We cannot use "const" because the pure virtual function in the interface is
@@ -188,6 +205,10 @@ class TimeEnforcerFst:
 
  private:
   const TransitionModel &trans_model_;
+  // if convert_to_pdfs_ is true, this FST will map from transition-id (on the
+  // input side) to pdf-id plus one (on the output side); if false, both sides'
+  // labels will be transition-id.
+  bool convert_to_pdfs_;
   const std::vector<std::vector<int32> > &allowed_phones_;
 };
 
@@ -212,17 +233,58 @@ struct Supervision {
   int32 frames_per_sequence;
 
   // the maximum possible value of the labels in 'fst' (which go from 1 to
-  // label_dim).  This should equal the NumPdfs() in the TransitionModel object.
-  // Included to avoid training on mismatched egs.
+  // label_dim).  For fully-processed examples this will equal the NumPdfs() in the
+  // TransitionModel object, but for newer-style "unconstrained" examples
+  // that have been output by chain-get-supervision but not yet processed
+  // by nnet3-chain-get-egs, it will be the NumTransitionIds() of the
+  // TransitionModel object.
   int32 label_dim;
 
   // This is an epsilon-free unweighted acceptor that is sorted in increasing
   // order of frame index (this implies it's topologically sorted but it's a
-  // stronger condition).  The labels are pdf-ids plus one (to avoid epsilons,
-  // since pdf-ids are zero-based).  Each successful path in 'fst' has exactly
-  // 'frames_per_sequence * num_sequences' arcs on it (first 'frames_per_sequence' arcs for the
-  // first sequence; then 'frames_per_sequence' arcs for the second sequence, and so on).
+  // stronger condition).  The labels will normally be pdf-ids plus one (to avoid epsilons,
+  // since pdf-ids are zero-based), but for newer-style "unconstrained" examples
+  // that have been output by chain-get-supervision but not yet processed
+  // by nnet3-chain-get-egs, they will be transition-ids.
+  // Each successful path in 'fst' has exactly 'frames_per_sequence *
+  // num_sequences' arcs on it (first 'frames_per_sequence' arcs for the first
+  // sequence; then 'frames_per_sequence' arcs for the second sequence, and so
+  // on).
   fst::StdVectorFst fst;
+
+  // 'e2e_fsts' may be set as an alternative to 'fst'.  These FSTs are used
+  // when the numerator computation will be done with 'full forward_backward'
+  // instead of constrained in time.  (The 'constrained in time' fsts are
+  // how we described it in the original LF-MMI paper, where each phone can
+  // only occur at the same time it occurred in the lattice, extended by
+  // a tolerance).
+  //
+  // This 'e2e_fsts' is an array of FSTs, one per sequence, that are acceptors
+  // with (pdf_id + 1) on the labels, just like 'fst', but which are cyclic FSTs.
+  // Unlike with 'fst', it is not the case with 'e2e_fsts' that each arc
+  // corresponds to a specific frame).
+  //
+  // There are two situations 'e2e_fsts' might be set.
+  // The first is in 'end-to-end' training, where we train without a tree from
+  // a flat start.  The function responsible for creating this object in that
+  // case is TrainingGraphToSupervision(); to find out more about end-to-end
+  // training, see chain-generic-numerator.h
+  // The second situation is where we create the supervision from lattices,
+  // and split them into chunks using the time marks in the lattice, but then
+  // make a cyclic FST, and don't enforce the times on the lattice inside the
+  // chunk.  [Code location TBD].
+  std::vector<fst::StdVectorFst> e2e_fsts;
+
+
+  // This member is only set to a nonempty value if we are creating 'unconstrained'
+  // egs.  These are egs that are split into chunks using the lattice alignments,
+  // but then within the chunks we remove the frame-level constraints on which
+  // phones can appear when, and use the 'e2e_fsts' member.
+  //
+  // It is only required in order to accumulate the LDA stats using
+  // `nnet3-chain-acc-lda-stats`, and it is not merged by nnet3-chain-merge-egs;
+  // it will only be present for un-merged egs.
+  std::vector<int32> alignment_pdfs;
 
   Supervision(): weight(1.0), num_sequences(1), frames_per_sequence(-1),
                  label_dim(-1) { }
@@ -243,19 +305,37 @@ struct Supervision {
 
 
 /** This function creates a Supervision object from a ProtoSupervision object.
-    The labels will be pdf-ids plus one.  It sets supervision->label_dim
-    trans_model.NumPdfs().
 
-    It returns true on success, and false on failure; the only failure mode is
-    that it might return false on that would not be a bug, is when the FST is
+    If convert_to_pdfs is true then the labels will be pdf-ids plus one and
+    supervision->label_dim will be set to trans_model.NumPdfs(); otherwise, the
+    labels will be transition-ids and supervision->label_dim will be
+    trans_model.NumTransitionIds().
+
+    It returns true on success, and false on failure; the only failure mode for
+    which it might return false that would not be a bug, is when the FST is
     empty because there were too many phones for the number of frames.
 */
 bool ProtoSupervisionToSupervision(
     const ContextDependencyInterface &ctx_dep,
     const TransitionModel &trans_model,
     const ProtoSupervision &proto_supervision,
+    bool convert_to_pdfs,
     Supervision *supervision);
 
+/** This function creates and initializes an end-to-end supervision object
+    from a training FST (e.g. created using compile-train-graphs). It simply
+    sets all the input and output labels to pdf_id+1 (i.e. converts the FST to
+    an FSA) and stores the resulting FST in supervision->e2e_fsts[0].
+    It returns true if there were no epsilon transitions, otherwise
+    it would return false (the current implementation of forward-backward in
+    chain-generic-numerator.cc does not support epsilon transitions).
+    To find out more about end-to-end training, see chain-generic-numerator.h
+ */
+bool TrainingGraphToSupervisionE2e(
+    const fst::StdVectorFst& training_graph,
+    const TransitionModel& trans_model,
+    int32 num_frames,
+    Supervision *supervision);
 
 /**
    This function sorts the states of the fst argument in an ordering
@@ -350,18 +430,11 @@ int32 ComputeFstStateTimes(const fst::StdVectorFst &fst,
                            std::vector<int32> *state_times);
 
 
-/// This function appends a list of supervision objects to create what will
-/// usually be a single such object, but if the weights and num-frames are not
-/// all the same it will only append Supervision objects where successive ones
-/// have the same weight and num-frames, and if 'compactify' is true.  The
-/// normal use-case for this is when you are combining neural-net examples for
-/// training; appending them like this helps to simplify the training process.
 
-/// This function will crash if the values of label_dim in the inputs are not
-/// all the same.
-void AppendSupervision(const std::vector<const Supervision*> &input,
-                       bool compactify,
-                       std::vector<Supervision> *output_supervision);
+/// This function merges a list of supervision objects, which must have the
+/// same num-frames and label-dim.
+void MergeSupervision(const std::vector<const Supervision*> &input,
+                      Supervision *output_supervision);
 
 
 /// This function helps you to pseudo-randomly split a sequence of length 'num_frames',
@@ -402,26 +475,17 @@ void GetWeightsForRanges(int32 range_length,
                          std::vector<Vector<BaseFloat> > *weights);
 
 
-/// This is a newer version of GetWeightsForRanges with a simpler behavior
-/// than GetWeightsForRanges and a different purpose.  Instead of aiming to
-/// create weights that sum to one over the whole file, the purpose is to
-/// zero out the derivative weights for a certain number of frames to each
-/// side of every 'cut point' in the numerator lattice [by numerator lattice,
-/// what I mean is the FST that we automatically generate from the numerator
-/// alignment or lattice].  So we don't zero out the weights for the very
-/// beginning or very end of each original utterance, just those where
-/// we split the utterance into pieces.  We believe there is an incentive
-/// for the network to produce deletions near the edges, and this aims to fix
-/// this problem.
-/// range_length is the length of each range of times (so range_starts[0]
-/// represents the start of a range of t values of length 'range_length'
-/// and so range_starts[1] etc.), and num_frames_zeroed is the number of frames
-/// on each side of the cut point on which we are supposed to zero out the
-/// derivative.
-void GetWeightsForRangesNew(int32 range_length,
-                            int32 num_frames_zeroed,
-                            const std::vector<int32> &range_starts,
-                            std::vector<Vector<BaseFloat> > *weights);
+/// This function converts a 'Supervision' object that has a non-cyclic FST
+/// as its 'fst' member, and converts it to one that has a cyclic FST in
+/// its e2e_fsts[0], and has 'alignment_pdfs' set to a random path through
+/// the original 'fst' (this used only in the binary nnet3-chain-acc-lda-stats).
+/// This can be used to train without any constraints on the alignment of phones
+/// internal to chunks, while still imposing constraints at chunk boundaries.
+/// It returns true on success, and false if some kind of error happened
+/// (this is not expected).
+bool ConvertSupervisionToUnconstrained(
+    const TransitionModel &trans_mdl,
+    Supervision *supervision);
 
 
 typedef TableWriter<KaldiObjectHolder<Supervision> > SupervisionWriter;

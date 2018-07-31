@@ -15,35 +15,11 @@ stage=0 # resume training with --stage=N
 
 . utils/parse_options.sh || exit 1;
 
-# check BeamformIt, IRSTLM, SRILM, and RNNLM are installed or not
-if [ -z $BEAMFORMIT ] ; then
-  export BEAMFORMIT=$KALDI_ROOT/tools/BeamformIt-3.51
-fi
-export PATH=${PATH}:$BEAMFORMIT
-! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
-if [ -z $IRSTLM ] ; then
-  export IRSTLM=$KALDI_ROOT/tools/irstlm/
-fi
-export PATH=${PATH}:$IRSTLM/bin
-if ! command -v prune-lm >/dev/null 2>&1 ; then
-  echo "$0: Error: the IRSTLM is not available or compiled" >&2
-  echo "$0: Error: We used to install it by default, but." >&2
-  echo "$0: Error: this is no longer the case." >&2
-  echo "$0: Error: To install it, go to $KALDI_ROOT/tools" >&2
-  echo "$0: Error: and run extras/install_irstlm.sh" >&2
-  exit 1
-fi
-if [ -z $SRILM ] ; then
-  export SRILM=$KALDI_ROOT/tools/srilm/
-fi
-export PATH=${PATH}:$SRILM/bin/i686-m64
-! hash ngram-count && echo "Missing srilm, run 'cd ../../../tools/; extras/install_srilm.sh;'" && exit 1
-
-if [ -z $RNNLM ] ; then
-  export RNNLM=$KALDI_ROOT/tools/rnnlm-0.3e
-fi
-export PATH=${PATH}:$RNNLM
-! hash rnnlm && echo "Missing rnnlm, run 'cd ../../../tools/; extras/install_mikolov_rnnlm.sh rnnlm-0.3e;'" && exit 1
+# Set bash to 'debug' mode, it will exit on :
+# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
+set -e
+set -u
+set -o pipefail
 
 # You can execute run_init.sh only "once"
 # This creates LMs, basic task files, basic models,
@@ -53,6 +29,11 @@ export PATH=${PATH}:$RNNLM
 # chime3_data=`pwd`/../..
 # Otherwise, please specify it, e.g.,
 chime3_data=/data2/archive/speech-db/original/public/CHiME3
+
+case $(hostname) in *.clsp.jhu.edu)
+  chime3_data=/export/corpora5/CHiME3 ;; # JHU,
+esac 
+
 if [ ! -d $chime3_data ]; then
   echo "$chime3_data does not exist. Please specify chime3 data root correctly" && exit 1
 fi

@@ -35,14 +35,14 @@
     fstrandgen C.fst | fstprint --isymbols=context_syms.txt --osymbols=phones.txt
 
     Example output:
-0	1	#0	#0
-1	2	#-1	a
-2	3	<eps>/a/a	a
-3	4	a/a/a	a
-4	5	#0	#0
-5	6	a/a/b	b
-6	7	a/b/<eps>	#$
-7	8	#1	#1
+0   1   #0        #0
+1   2   #-1       a
+2   3   <eps>/a/a a
+3   4   a/a/a     a
+4   5   #0        #0
+5   6   a/a/b     b
+6   7   a/b/<eps> #$
+7   8   #1        #1
 8
 */
 
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
     po.Register("initial-disambig", &initial_disambig,
                 "Name for special disambiguation symbol that occurs at start "
                 "of context-dependent phone sequences");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2 || po.NumArgs() > 3) {
@@ -115,4 +115,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

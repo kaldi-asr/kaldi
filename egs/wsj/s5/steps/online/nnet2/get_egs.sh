@@ -2,7 +2,7 @@
 
 # Copyright 2012-2014 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
-# This is modified from ../../nnet2/get_egs.sh. 
+# This is modified from ../../nnet2/get_egs.sh.
 # This script combines the
 # nnet-example extraction with the feature extraction directly from wave files;
 # it uses the program online2-wav-dump-feature to do all parts of feature
@@ -24,7 +24,7 @@ samples_per_iter=400000 # each iteration of training, see this many samples
 transform_dir=     # If supplied, overrides alidir
 num_jobs_nnet=16    # Number of neural net jobs to run in parallel
 stage=0
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.
 random_copy=false
 
 echo "$0 $@"  # Print the command line for logging
@@ -56,7 +56,7 @@ if [ $# != 4 ]; then
   echo "                                                   # very end."
   echo "  --stage <stage|0>                                # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  
+
   exit 1;
 fi
 
@@ -82,7 +82,7 @@ mkdir -p $dir/log
 cp $alidir/tree $dir
 grep -v '^--endpoint' $feature_conf >$dir/feature.conf || exit 1;
 
-# Get list of validation utterances. 
+# Get list of validation utterances.
 mkdir -p $dir/valid $dir/train_subset
 
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
@@ -163,7 +163,7 @@ for x in `seq 1 $num_jobs_nnet`; do
   done
 done
 
-remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }
 
 set -o pipefail
 left_context=$(nnet-am-info $mdl | grep '^left-context' | awk '{print $2}') || exit 1;
@@ -175,7 +175,7 @@ mkdir -p $dir/egs
 
 if [ $stage -le 2 ]; then
   rm $dir/.error 2>/dev/null
-  
+
   echo "$0: extracting validation and training-subset alignments."
   set -o pipefail;
   for id in $(seq $nj); do gunzip -c $alidir/ali.$id.gz; done | \
@@ -183,7 +183,7 @@ if [ $stage -le 2 ]; then
     utils/filter_scp.pl <(cat $dir/valid/uttlist $dir/train_subset/uttlist) | \
     gzip -c >$dir/ali_special.gz || exit 1;
   set +o pipefail; # unset the pipefail option.
-  
+
   echo "Getting validation and training subset examples."
   $cmd $dir/log/create_valid_subset.log \
     nnet-get-egs $ivectors_opt $nnet_context_opts "$valid_feats" \
@@ -252,7 +252,7 @@ if [ $stage -le 4 ]; then
     echo "$0: Since iters-per-epoch == 1, just concatenating the data."
     for n in `seq 1 $num_jobs_nnet`; do
       cat $dir/egs/egs_orig.$n.*.ark > $dir/egs/egs_tmp.$n.0.ark || exit 1;
-      remove $dir/egs/egs_orig.$n.*.ark 
+      remove $dir/egs/egs_orig.$n.*.ark
     done
   else # We'll have to split it up using nnet-copy-egs.
     egs_list=
@@ -277,7 +277,7 @@ if [ $stage -le 5 ]; then
   for n in `seq 0 $[$iters_per_epoch-1]`; do
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/shuffle.$n.JOB.log \
       nnet-shuffle-egs "--srand=\$[JOB+($num_jobs_nnet*$n)]" \
-      ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark 
+      ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark
     remove $dir/egs/egs_tmp.*.$n.ark
   done
 fi

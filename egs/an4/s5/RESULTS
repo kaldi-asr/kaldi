@@ -1,0 +1,9 @@
+#!/bin/bash
+for x in exp/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+exit 0
+
+%WER 10.61 [ 82 / 773, 4 ins, 10 del, 68 sub ] exp/mono/decode/wer_10_0.5
+%WER 10.48 [ 81 / 773, 5 ins, 7 del, 69 sub ] exp/tri1/decode/wer_19_0.5
+%WER 11.38 [ 88 / 773, 17 ins, 3 del, 68 sub ] exp/tri2/decode/wer_18_0.5
+%WER 5.95 [ 46 / 773, 3 ins, 3 del, 40 sub ] exp/tri3/decode/wer_20_1.0
+%WER 9.06 [ 70 / 773, 6 ins, 4 del, 60 sub ] exp/tri3/decode.si/wer_20_1.0

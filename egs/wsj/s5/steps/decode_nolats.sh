@@ -23,7 +23,7 @@ max_active=7000
 beam=13.0
 lattice_beam=6.0
 acwt=0.083333 # note: only really affects pruning (scoring is on lattices).
-write_alignments=false
+write_alignments=false  # The output directory is treated like an alignment directory
 write_words=true
 # End configuration section.
 
@@ -85,9 +85,29 @@ splice_opts=`cat $srcdir/splice_opts 2>/dev/null`
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
 delta_opts=`cat $srcdir/delta_opts 2>/dev/null`
 
+utils/lang/check_phones_compatible.sh $graphdir/phones.txt $srcdir/phones.txt || exit 1;
+
+if $write_alignments; then
+  # Copy model and options that are generally expected in an alignment 
+  # directory.
+  cp $graphdir/phones.txt $dir || exit 1;
+
+  cp $srcdir/{tree,final.mdl} $dir || exit 1;
+  cp $srcdir/final.alimdl $dir 2>/dev/null
+  cp $srcdir/final.occs $dir;
+  cp $srcdir/splice_opts $dir 2>/dev/null # frame-splicing options.
+  cp $srcdir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
+  cp $srcdir/delta_opts $dir 2>/dev/null
+fi
+
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
-  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |";;
+  lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
+    if $write_alignments; then
+      cp $srcdir/final.mat $dir
+      cp $srcdir/full.mat $dir 2>/dev/null
+    fi
+    ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac
 if [ ! -z "$transform_dir" ]; then # add transforms to features...

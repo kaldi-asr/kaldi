@@ -36,12 +36,12 @@ template<class Arc>  void TestPreDeterminize() {
   int n_syms = 2 + kaldi::Rand() % 5, n_states = 3 + kaldi::Rand() % 10, n_arcs = 5 + kaldi::Rand() % 30, n_final = 1 + kaldi::Rand()%3;  // Up to 2 unique symbols.
   cout << "Testing pre-determinize with "<<n_syms<<" symbols, "<<n_states<<" states and "<<n_arcs<<" arcs and "<<n_final<<" final states.\n";
   SymbolTable *sptr = NULL;
-  
+
   vector<Label> all_syms;  // including epsilon.
   // Put symbols in the symbol table from 1..n_syms-1.
   for (size_t i = 0;i < (size_t)n_syms;i++)
     all_syms.push_back(i);
-  
+
   // Create states.
   vector<StateId> all_states;
   for (size_t i = 0;i < (size_t)n_states;i++) {
@@ -69,11 +69,7 @@ template<class Arc>  void TestPreDeterminize() {
 
   std::cout <<" printing before trimming\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
   // Trim resulting FST.
@@ -81,11 +77,7 @@ template<class Arc>  void TestPreDeterminize() {
 
   std::cout <<" printing after trimming\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -99,11 +91,7 @@ template<class Arc>  void TestPreDeterminize() {
 
   std::cout <<" printing after predeterminization\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -119,11 +107,7 @@ template<class Arc>  void TestPreDeterminize() {
 
   std::cout <<" printing after epsilon removal\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -133,22 +117,14 @@ template<class Arc>  void TestPreDeterminize() {
   Determinize(*fst, &ofst, opts);
   std::cout <<" printing after determinization\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
   int64 num_removed = DeleteISymbols(&ofst, extra_syms);
   std::cout <<" printing after removing "<<num_removed<<" instances of extra symbols\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -200,11 +176,7 @@ template<class Arc>  void TestAddSelfLoops() {
   }
   std::cout <<" printing before adding self-loops\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -223,11 +195,7 @@ template<class Arc>  void TestAddSelfLoops() {
 
   std::cout <<" printing after adding self-loops\n";
   {
-#ifdef HAVE_OPENFST_GE_10400
     FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true, "\t");
-#else
-    FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true);
-#endif
     fstprinter.Print(&std::cout, "standard output");
   }
 
@@ -247,5 +215,3 @@ int main() {
     fst::TestAddSelfLoops<fst::StdArc>();
   }
 }
-
-

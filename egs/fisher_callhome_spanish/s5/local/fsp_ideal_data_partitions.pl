@@ -31,55 +31,55 @@ $splitId = 0;
 %splits = ();
 
 while (<T>) {
- 	@myStringComponents = split(/\s/);
-	@uttid = split('-', $myStringComponents[0]);
-	$currentConv = $uttid[0];
-	if ($currentConv eq $ongoingConv) {
-		# Same conversation, add to current hash
-		#print "Same conversation";
-		$tmpSplits{$ongoingConv} += 1;
-	}
-	else {
-		# New conversation intiated, first check if there are enough entries
-		# in the hash
-		#print $ongoingConv . " " . get_entries_hash(\%tmpSplits) . "\n";
-		if (get_entries_hash(\%tmpSplits) > $splitNumbers[$splitId]) {
-			print "Finished processing split " . $splitId . ". It contains " . get_entries_hash(\%tmpSplits) . " entries. \n";
-			#$splits{$splitId} = keys %tmpSplits;
-			@newArr = keys %tmpSplits;
-			$splits{$splitId} = dclone(\@newArr);
-			%tmpSplits = ();
-			$splitId += 1;
-		}
-		$ongoingConv = $currentConv;
-		$tmpSplits{$ongoingConv} = 1;
-	}
+   @myStringComponents = split(/\s/);
+  @uttid = split('-', $myStringComponents[0]);
+  $currentConv = $uttid[0];
+  if ($currentConv eq $ongoingConv) {
+    # Same conversation, add to current hash
+    #print "Same conversation";
+    $tmpSplits{$ongoingConv} += 1;
+  }
+  else {
+    # New conversation intiated, first check if there are enough entries
+    # in the hash
+    #print $ongoingConv . " " . get_entries_hash(\%tmpSplits) . "\n";
+    if (get_entries_hash(\%tmpSplits) > $splitNumbers[$splitId]) {
+      print "Finished processing split " . $splitId . ". It contains " . get_entries_hash(\%tmpSplits) . " entries. \n";
+      #$splits{$splitId} = keys %tmpSplits;
+      @newArr = keys %tmpSplits;
+      $splits{$splitId} = dclone(\@newArr);
+      %tmpSplits = ();
+      $splitId += 1;
+    }
+    $ongoingConv = $currentConv;
+    $tmpSplits{$ongoingConv} = 1;
+  }
 }
 # Put final tmpsplits in the right partition
 @newArr = keys %tmpSplits;
 $splits{$splitId} = dclone(\@newArr);
 foreach (keys  %splits) {
-	#print $_ , " ", $splits{$_}, "\n";
+  #print $_ , " ", $splits{$_}, "\n";
 }
-print "Finished processing split " . $splitId . ". It contains " . get_entries_hash(\%tmpSplits) . " entries. \n"; 
+print "Finished processing split " . $splitId . ". It contains " . get_entries_hash(\%tmpSplits) . " entries. \n";
 
-# Write splits to file 
+# Write splits to file
 foreach my $key ( keys %splits ) {
-	open(S, ">$tmp/split-$key") || die "Can't open splitfile to write";
-	foreach my $file ( @{$splits{$key}} ) {
-		print $file, "\n";
-		print S "$file\n" || die "Error writing to file";
-	}
-	close(S);
+  open(S, ">$tmp/split-$key") || die "Can't open splitfile to write";
+  foreach my $file ( @{$splits{$key}} ) {
+    print $file, "\n";
+    print S "$file\n" || die "Error writing to file";
+  }
+  close(S);
 }
 
 sub get_entries_hash() {
-	my $inputHashRef = shift; 
-	$total = 0;
-	foreach (keys %{$inputHashRef})
-  	{
-		$total += $inputHashRef->{$_};
-  	}
-	return $total;
+  my $inputHashRef = shift;
+  $total = 0;
+  foreach (keys %{$inputHashRef})
+    {
+    $total += $inputHashRef->{$_};
+    }
+  return $total;
 }
 

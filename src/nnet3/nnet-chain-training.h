@@ -64,9 +64,24 @@ class NnetChainTrainer {
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
 
+  // Prints out the max-change stats (if nonzero): the percentage of time that
+  // per-component max-change and global max-change were enforced.
+  void PrintMaxChangeStats() const;
+
   ~NnetChainTrainer();
  private:
-  void ProcessOutputs(const NnetChainExample &eg,
+  // The internal function for doing one step of conventional SGD training.
+  void TrainInternal(const NnetChainExample &eg,
+                     const NnetComputation &computation);
+
+  // The internal function for doing one step of backstitch training. Depending
+  // on whether is_backstitch_step1 is true, It could be either the first
+  // (backward) step, or the second (forward) step of backstitch.
+  void TrainInternalBackstitch(const NnetChainExample &eg,
+                               const NnetComputation &computation,
+                               bool is_backstitch_step1);
+
+  void ProcessOutputs(bool is_backstitch_step2, const NnetChainExample &eg,
                       NnetComputer *computer);
 
   const NnetChainTrainingOptions opts_;
@@ -85,7 +100,16 @@ class NnetChainTrainer {
   // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
 
+  // stats for max-change.
+  std::vector<int32> num_max_change_per_component_applied_;
+  int32 num_max_change_global_applied_;
+
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
+
+  // This value is used in backstitch training when we need to ensure
+  // consistent dropout masks.  It's set to a value derived from rand()
+  // when the class is initialized.
+  int32 srand_seed_;
 };
 
 

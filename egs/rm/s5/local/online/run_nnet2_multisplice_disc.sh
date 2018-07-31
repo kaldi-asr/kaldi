@@ -3,7 +3,7 @@
 # This is to be run after run_nnet2_multisplice.sh.
 # It demonstrates discriminative training for the online-nnet2 models
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
@@ -15,7 +15,7 @@ learning_rate=0.0016
 
 drop_frames=false # only relevant for MMI
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -26,19 +26,19 @@ fi
 
 if $use_gpu; then
   if ! cuda-compiled; then
-    cat <<EOF && exit 1 
-This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA 
+    cat <<EOF && exit 1
+This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.  Otherwise, call this script with --use-gpu false
 EOF
   fi
-  parallel_opts="-l gpu=1" 
+  parallel_opts="--gpu 1"
   num_threads=1
 else
   # Use 4 nnet jobs just like run_4d_gpu.sh so the results should be
   # almost the same, but this may be a little bit slow.
   num_threads=16
-  parallel_opts="-pe smp $num_threads" 
+  parallel_opts="--num-threads $num_threads"
 fi
 
 if [ $stage -le 1 ]; then
@@ -46,7 +46,7 @@ if [ $stage -le 1 ]; then
   # otherwise on RM we'd get very thin lattices.
   nj=30
   num_threads_denlats=6
-  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G -pe smp $num_threads_denlats" \
+  steps/online/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G --num-threads $num_threads_denlats" \
       --nj $nj --sub-split 40 --num-threads "$num_threads_denlats" --config conf/decode.config \
      data/train data/lang $srcdir ${srcdir}_denlats || exit 1;
 fi
@@ -63,7 +63,7 @@ fi
 
 
 if [ $stage -le 3 ]; then
-  # I tested the following with  --max-temp-archives 3 
+  # I tested the following with  --max-temp-archives 3
   # to test other branches of the code.
   # the --max-jobs-run 5 limits the I/O.
   steps/online/nnet2/get_egs_discriminative2.sh \
@@ -82,7 +82,7 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  ln -sf $(readlink -f $srcdir/conf) ${srcdir}_${criterion}_${learning_rate}/conf # so it acts like an online-decoding directory
+  ln -sf $(utils/make_absolute.sh $srcdir/conf) ${srcdir}_${criterion}_${learning_rate}/conf # so it acts like an online-decoding directory
 
   for epoch in 0 1 2 3 4 5 6; do
     steps/online/nnet2/decode.sh --config conf/decode.config --cmd "$decode_cmd" --nj 20 \

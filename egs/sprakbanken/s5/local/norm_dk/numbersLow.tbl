@@ -1,0 +1,265 @@
+¼	en fjerdedel
+½	en halv
+0	nul
+²	i anden
+enogfirs	en og firs
+enogfyrre	en og fyrre
+enoghalvfems	en og halvfems
+enoghalvfjerds	en og halvfjerds
+enoghalvtreds	en og halvtreds
+enogtredive	en og tredive
+enogtredivte	en og tredivte
+enogtres	en og tres
+enogtyvende	en og tyvende
+femogfirs	fem og firs
+femogfyrre	fem og fyrre
+femoghalvfems	fem og halvfems
+femoghalvfjerds	fem og halvfjerds
+femoghalvtreds	fem og halvtreds
+femogtredive	fem og tredive
+femogtres	fem og tres
+femogtyve	fem og tyve
+femogtyvende	fem og tyvende
+fireogfirs	fire og firs
+fireogfyrre	fire og fyrre
+fireoghalvfems	fire og halvfems
+fireoghalvfjerds	fire og halvfjerds
+fireoghalvtreds	fire og halvtreds
+fireogtredive	fire og tredive
+fireogtres	fire og tres
+fireogtyve	fire og tyve
+fireogtyvende	fire og tyvende
+fyrreogtyvende	fyrre og tyvende
+niogfirs	ni og firs
+niogfyrre	ni og fyrre
+nioghalvfems	ni og halvfems
+nioghalvfjerds	ni og halvfjerds
+nioghalvtreds	ni og halvtreds
+niogtredive	ni og tredive
+niogtres	ni og tres
+niogtyvende	ni og tyvende
+niogtyve	ni og tyve
+otteogfirs	otte og firs
+otteogfyrre	otte og fyrre
+otteoghalvfems	otte og halvfems
+otteoghalvfjerds	otte og halvfjerds
+otteoghalvtreds	otte og halvtreds
+otteogtredive	otte og tredive
+otteogtres	otte og tres
+otteogtyvende	otte og tyvende
+otteogtyve	otte og tyve
+seksogfirs	seks og firs
+seksogfyrre	seks og fyrre
+seksoghalvfems	seks og halvfems
+seksoghalvfjerds	seks og halvfjerds
+seksoghalvtreds	seks og halvtreds
+seksogtredive	seks og tredive
+seksogtres	seks og tres
+seksogtyvende	seks og tyvende
+seksogtyve	seks og tyve
+syvogfirs	syv og firs
+syvogfyrre	syv og fyrre
+syvoghalvfems	syv og halvfems
+syvoghalvfjerds	syv og halvfjerds
+syvoghalvtreds	syv og halvtreds
+syvogtredive	syv og tredive
+syvogtres	syv og tres
+syvogtyvende	syv og tyvende
+syvogtyve	syv og tyve
+toogfirs	to og firs
+toogfyrre	to og fyrre
+tooghalvfems	to og halvfems
+tooghalvfjerds	to og halvfjerds
+tooghalvtreds	to og halvtreds
+toogtredive	to og tredive
+toogtres	to og tres
+toogtyvende	to og tyvende
+toogtyve	to og tyve
+totusindogatten	to tusind og atten
+totusindogelleve	to tusind og elleve
+totusindoget	to tusind og et
+totusindogfemten	to tusind og femten
+totusindogfem	to tusind og fem
+totusindogfire	to tusind og fire
+totusindogfjorten	to tusind og fjorten
+totusindogni	to tusind og ni
+totusindognitten	to tusind og nitten
+totusindogotte	to tusind og otte
+totusindogseksten	to tusind og seksten
+totusindogseks	to tusind og seks
+totusindogsytten	to tusind og sytten
+totusindogsyv	to tusind og syv
+totusindogti	to tusind og ti
+totusindogtolv	to tusind og tolv
+totusindogto	to tusind og to
+totusindogtre	to tusind og tre
+totusindogtretten	to tusind og tretten
+totusindogtyve	to tusind og tyve
+treogfirs	tre og firs
+treogfyrre	tre og fyrre
+treoghalvfems	tre og halvfems
+treoghalvfjerds	tre og halvfjerds
+treoghalvtreds	tre og halvtreds
+treogtredive	tre og tredive
+treogtres	tre og tres
+treogtyvende	tre og tyvende
+treogtyve	tre og tyve
+1	en
+1.	første
+2.	anden
+2	to
+3	tre
+3.	tredje
+4	fire
+4.	fjerde
+5	fem
+5.	femte
+6	seks
+6.	sjette
+7	syv
+7.	syvende
+8	otte
+8.	ottende
+9	ni
+9.	niende
+10	ti
+10.	tiende
+11	elleve
+11.	ellevte
+12	tolv
+12.	tolvte
+13	tretten
+13.	trettende
+14	fjorten
+14.	fjortende
+15	femten
+15.	femtende
+16	seksten
+16.	sekstende
+17	sytten
+17.	syttende
+18	atten
+18.	attende
+19	nitten
+19.	nittende
+20	tyve
+20.	tyvende
+21	en og tyve
+21.	en og tyvende
+22	to og tyve
+22.	to og tyvende
+23	tre og tyve
+23.	tre og tyvende
+24	fire og tyve
+24.	fire og tyvende
+25	fem og tyve
+25.	fem og tyvende
+26	seks og tyve
+26.	seks og tyvende
+27	syv og tyve
+27.	syv og tyvende
+28	otte og tyve
+28.	otte og tyvende
+29	ni og tyve
+29.	ni og tyvende
+30	tredive
+30.	tredivte
+31	en og tredive
+31.	en og tredivte
+32	to og tredive
+33	tre og tredive
+34	fire og tredive
+35	fem og tredive
+36	seks og tredive
+37	syv og tredive
+38	otte og tredive
+39	ni og tredive
+40	fyrre
+40.	fyrre og tyvende
+41	en og fyrre
+42	to og fyrre
+43	tre og fyrre
+44	fire og fyrre
+45	fem og fyrre
+46	seks og fyrre
+47	syv og fyrre
+48	otte og fyrre
+49	ni og fyrre
+50	halvtreds
+50.	halvtredsinds tyvende
+51	en og halvtreds
+52	to og halvtreds
+53	tre og halvtreds
+54	fire og halvtreds
+55	fem og halvtreds
+56	seks og halvtreds
+57	syv og halvtreds
+58	otte og halvtreds
+59	ni og halvtreds
+60	tres
+60.	tresinds tyvende
+61	en og tres
+62	to og tres
+63	tre og tres
+64	fire og tres
+65	fem og tres
+66	seks og tres
+67	syv og tres
+68	otte og tres
+69	ni og tres
+70	halvfjerds
+70.	halvfjerdsinds tyvende
+71	en og halvfjerds
+72	to og halvfjerds
+73	tre og halvfjerds
+74	fire og halvfjerds
+75	fem og halvfjerds
+76	seks og halvfjerds
+77	syv og halvfjerds
+78	otte og halvfjerds
+79	ni og halvfjerds
+80	firs
+80.	firsindstyvende
+81	en og firs
+82	to og firs
+83	tre og firs
+84	fire og firs
+85	fem og firs
+86	seks og firs
+87	syv og firs
+88	otte og firs
+89	ni og firs
+90	halvfems
+90.	halvfemsinds tyvende enogtyve	en og tyve
+91	en og halvfems
+92	to og halvfems
+93	tre og halvfems
+94	fire og halvfems
+95	fem og halvfems
+96	seks og halvfems
+97	syv og halvfems
+98	otte og halvfems
+99	ni og halvfems
+100	hundrede
+1000	tusind
+2000	to tusind
+2001	to tusind og et
+2002	to tusind og to
+2003	to tusind og tre
+2004	to tusind og fire
+2005	to tusind og fem
+2006	to tusind og seks
+2007	to tusind og syv
+2008	to tusind og otte
+2009	to tusind og ni
+2010	to tusind og ti
+2011	to tusind og elleve
+2012	to tusind og tolv
+2013	to tusind og tretten
+2014	to tusind og fjorten
+2015	to tusind og femten
+2016	to tusind og seksten
+2017	to tusind og sytten
+2018	to tusind og atten
+2019	to tusind og nitten
+2020	to tusind og tyve

@@ -91,7 +91,7 @@ NnetDiscriminativeSupervision::NnetDiscriminativeSupervision(const NnetDiscrimin
 NnetDiscriminativeSupervision::NnetDiscriminativeSupervision(
     const std::string &name,
     const discriminative::DiscriminativeSupervision &supervision,
-    const Vector<BaseFloat> &deriv_weights,
+    const VectorBase<BaseFloat> &deriv_weights,
     int32 first_frame,
     int32 frame_skip):
     name(name),
@@ -196,15 +196,10 @@ void MergeSupervision(
   input_supervision.reserve(inputs.size());
   for (int32 n = 0; n < num_inputs; n++)
     input_supervision.push_back(&(inputs[n]->supervision));
-  std::vector<discriminative::DiscriminativeSupervision> output_supervision;
-  bool compactify = true;
-  discriminative::AppendSupervision(input_supervision,
-                         compactify,
+  discriminative::DiscriminativeSupervision output_supervision;
+  discriminative::MergeSupervision(input_supervision,
                          &output_supervision);
-  if (output_supervision.size() != 1)
-    KALDI_ERR << "Failed to merge discriminative examples-- inconsistent lengths "
-              << "or weights?";
-  output->supervision.Swap(&(output_supervision[0]));
+  output->supervision.Swap(&(output_supervision));
 
   output->indexes.clear();
   output->indexes.reserve(num_indexes);
@@ -249,13 +244,15 @@ void MergeSupervision(
 }
 
 
-void MergeDiscriminativeExamples(bool compress,
-                        std::vector<NnetDiscriminativeExample> *input,
-                        NnetDiscriminativeExample *output) {
+void MergeDiscriminativeExamples(
+    bool compress,
+    std::vector<NnetDiscriminativeExample> *input,
+    NnetDiscriminativeExample *output) {
   int32 num_examples = input->size();
   KALDI_ASSERT(num_examples > 0);
-  // we temporarily make the input-features in 'input' look like regular NnetExamples,
-  // so that we can recycle the MergeExamples() function.
+  // we temporarily make the input-features in 'input' look like regular
+  // NnetExamples, so that we can recycle the
+  // MergeExamples() function.
   std::vector<NnetExample> eg_inputs(num_examples);
   for (int32 i = 0; i < num_examples; i++)
     eg_inputs[i].io.swap((*input)[i].inputs);
@@ -283,27 +280,6 @@ void MergeDiscriminativeExamples(bool compress,
   }
 }
 
-void TruncateDerivWeights(int32 truncate,
-                          NnetDiscriminativeExample *eg) {
-  for (size_t i = 0; i < eg->outputs.size(); i++) {
-    NnetDiscriminativeSupervision &supervision = eg->outputs[i];
-    Vector<BaseFloat> &deriv_weights = supervision.deriv_weights;
-    if (deriv_weights.Dim() == 0) {
-      deriv_weights.Resize(supervision.indexes.size());
-      deriv_weights.Set(1.0);
-    }
-    int32 num_sequences = supervision.supervision.num_sequences,
-       frames_per_sequence = supervision.supervision.frames_per_sequence;
-    KALDI_ASSERT(2 * truncate  < frames_per_sequence);
-    for (int32 t = 0; t < truncate; t++)
-      for (int32 s = 0; s < num_sequences; s++)
-        deriv_weights(t * num_sequences + s) = 0.0;
-    for (int32 t = frames_per_sequence - truncate;
-         t < frames_per_sequence; t++)
-      for (int32 s = 0; s < num_sequences; s++)
-        deriv_weights(t * num_sequences + s) = 0.0;
-  }
-}
 
 void GetDiscriminativeComputationRequest(const Nnet &nnet,
                                          const NnetDiscriminativeExample &eg,
@@ -347,7 +323,7 @@ void GetDiscriminativeComputationRequest(const Nnet &nnet,
     io_spec.name = name;
     io_spec.indexes = sup.indexes;
     io_spec.has_deriv = need_model_derivative;
-    
+
     if (use_xent_regularization) {
       size_t cur_size = request->outputs.size();
       request->outputs.resize(cur_size + 1);
@@ -414,6 +390,160 @@ void ShiftDiscriminativeExampleTimes(int32 frame_shift,
   }
 }
 
+size_t NnetDiscriminativeExampleStructureHasher::operator () (
+    const NnetDiscriminativeExample &eg) const noexcept {
+  // these numbers were chosen at random from a list of primes.
+  NnetIoStructureHasher io_hasher;
+  size_t size = eg.inputs.size(), ans = size * 35099;
+  for (size_t i = 0; i < size; i++)
+    ans = ans * 19157 + io_hasher(eg.inputs[i]);
+  for (size_t i = 0; i < eg.outputs.size(); i++) {
+    const NnetDiscriminativeSupervision &sup = eg.outputs[i];
+    StringHasher string_hasher;
+    IndexVectorHasher indexes_hasher;
+    ans = ans * 17957 +
+        string_hasher(sup.name) + indexes_hasher(sup.indexes);
+  }
+  return ans;
+}
+
+bool NnetDiscriminativeExampleStructureCompare::operator () (
+    const NnetDiscriminativeExample &a,
+    const NnetDiscriminativeExample &b) const {
+  NnetIoStructureCompare io_compare;
+  if (a.inputs.size() != b.inputs.size() ||
+      a.outputs.size() != b.outputs.size())
+    return false;
+  size_t size = a.inputs.size();
+  for (size_t i = 0; i < size; i++)
+    if (!io_compare(a.inputs[i], b.inputs[i]))
+      return false;
+  size = a.outputs.size();
+  for (size_t i = 0; i < size; i++)
+    if (a.outputs[i].name != b.outputs[i].name ||
+        a.outputs[i].indexes != b.outputs[i].indexes)
+      return false;
+  return true;
+}
+
+
+int32 GetNnetDiscriminativeExampleSize(const NnetDiscriminativeExample &a) {
+  int32 ans = 0;
+  for (size_t i = 0; i < a.inputs.size(); i++) {
+    int32 s = a.inputs[i].indexes.size();
+    if (s > ans)
+      ans = s;
+  }
+  for (size_t i = 0; i < a.outputs.size(); i++) {
+    int32 s = a.outputs[i].indexes.size();
+    if (s > ans)
+      ans = s;
+  }
+  return ans;
+}
+
+
+DiscriminativeExampleMerger::DiscriminativeExampleMerger(const ExampleMergingConfig &config,
+                             NnetDiscriminativeExampleWriter *writer):
+    finished_(false), num_egs_written_(0),
+    config_(config), writer_(writer) { }
+
+
+void DiscriminativeExampleMerger::AcceptExample(NnetDiscriminativeExample *eg) {
+  KALDI_ASSERT(!finished_);
+  // If an eg with the same structure as 'eg' is already a key in the
+  // map, it won't be replaced, but if it's new it will be made
+  // the key.  Also we remove the key before making the vector empty.
+  // This way we ensure that the eg in the key is always the first
+  // element of the vector.
+  std::vector<NnetDiscriminativeExample*> &vec = eg_to_egs_[eg];
+  vec.push_back(eg);
+  int32 eg_size = GetNnetDiscriminativeExampleSize(*eg),
+      num_available = vec.size();
+  bool input_ended = false;
+  int32 minibatch_size = config_.MinibatchSize(eg_size, num_available,
+                                               input_ended);
+  if (minibatch_size != 0) {  // we need to write out a merged eg.
+    KALDI_ASSERT(minibatch_size == num_available);
+
+    std::vector<NnetDiscriminativeExample*> vec_copy(vec);
+    eg_to_egs_.erase(eg);
+
+    // MergeDiscriminativeExamples() expects a vector of NnetDiscriminativeExample, not of pointers,
+    // so use swap to create that without doing any real work.
+    std::vector<NnetDiscriminativeExample> egs_to_merge(minibatch_size);
+    for (int32 i = 0; i < minibatch_size; i++) {
+      egs_to_merge[i].Swap(vec_copy[i]);
+      delete vec_copy[i];  // we owned those pointers.
+    }
+    WriteMinibatch(&egs_to_merge);
+  }
+}
+
+void DiscriminativeExampleMerger::WriteMinibatch(
+    std::vector<NnetDiscriminativeExample> *egs) {
+  KALDI_ASSERT(!egs->empty());
+  int32 eg_size = GetNnetDiscriminativeExampleSize((*egs)[0]);
+  NnetDiscriminativeExampleStructureHasher eg_hasher;
+  size_t structure_hash = eg_hasher((*egs)[0]);
+  int32 minibatch_size = egs->size();
+  stats_.WroteExample(eg_size, structure_hash, minibatch_size);
+  NnetDiscriminativeExample merged_eg;
+  MergeDiscriminativeExamples(config_.compress, egs, &merged_eg);
+  std::ostringstream key;
+  key << "merged-" << (num_egs_written_++) << "-" << minibatch_size;
+  writer_->Write(key.str(), merged_eg);
+}
+
+void DiscriminativeExampleMerger::Finish() {
+  if (finished_) return;  // already finished.
+  finished_ = true;
+
+  // we'll convert the map eg_to_egs_ to a vector of vectors to avoid
+  // iterator invalidation problems.
+  std::vector<std::vector<NnetDiscriminativeExample*> > all_egs;
+  all_egs.reserve(eg_to_egs_.size());
+
+  MapType::iterator iter = eg_to_egs_.begin(), end = eg_to_egs_.end();
+  for (; iter != end; ++iter)
+    all_egs.push_back(iter->second);
+  eg_to_egs_.clear();
+
+  for (size_t i = 0; i < all_egs.size(); i++) {
+    int32 minibatch_size;
+    std::vector<NnetDiscriminativeExample*> &vec = all_egs[i];
+    KALDI_ASSERT(!vec.empty());
+    int32 eg_size = GetNnetDiscriminativeExampleSize(*(vec[0]));
+    bool input_ended = true;
+    while (!vec.empty() &&
+           (minibatch_size = config_.MinibatchSize(eg_size, vec.size(),
+                                                   input_ended)) != 0) {
+      // MergeDiscriminativeExamples() expects a vector of
+      // NnetDiscriminativeExample, not of pointers, so use swap to create that
+      // without doing any real work.
+      std::vector<NnetDiscriminativeExample> egs_to_merge(minibatch_size);
+      for (int32 i = 0; i < minibatch_size; i++) {
+        egs_to_merge[i].Swap(vec[i]);
+        delete vec[i];  // we owned those pointers.
+      }
+      vec.erase(vec.begin(), vec.begin() + minibatch_size);
+      WriteMinibatch(&egs_to_merge);
+    }
+    if (!vec.empty()) {
+      int32 eg_size = GetNnetDiscriminativeExampleSize(*(vec[0]));
+      NnetDiscriminativeExampleStructureHasher eg_hasher;
+      size_t structure_hash = eg_hasher(*(vec[0]));
+      int32 num_discarded = vec.size();
+      stats_.DiscardedExamples(eg_size, structure_hash, num_discarded);
+      for (int32 i = 0; i < num_discarded; i++)
+        delete vec[i];
+      vec.clear();
+    }
+  }
+  stats_.PrintStats();
+}
+
+
+
 } // namespace nnet3
 } // namespace kaldi
-

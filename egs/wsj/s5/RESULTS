@@ -1,8 +1,15 @@
 #!/bin/bash
 
-# this RESULTS file was obtained by Haihua Xu in July 2013.
+# this RESULTS file was obtained by Dan Povey in Feb 2017, after
+# a rewrite of the run.sh file.
+# To see results from the scripts local/nnet3/ and local/chain/,
+# look at the top of those files, we don't put those in the
+# RESULTS file.
 
-for x in exp/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+for dir in exp/*; do
+  steps/info/gmm_dir_info.pl $dir
+  for x in $dir/decode*dev93* $dir/decode*eval92*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+done
 exit 0
 
 # Use caution when comparing these results with other published results.
@@ -13,107 +20,77 @@ exit 0
 # in which we only test on utterances that are in either a 5k or 20k subset
 # of the vocabulary.
 
-# The following results are updated with LDA+MLLT to use 7, not 9 frames of context,
-# and also increased the learning rate for the "indirect" fMMI.
-
 # monophone, deltas, trained on the 2k shortest utterances from the si84 data.
-%WER 35.39 [ 2914 / 8234, 284 ins, 467 del, 2163 sub ] exp/mono0a/decode_tgpr_dev93/wer_10
-%WER 25.78 [ 1455 / 5643, 142 ins, 184 del, 1129 sub ] exp/mono0a/decode_tgpr_eval92/wer_9
+exp/mono0a: nj=10 align prob=-95.82 over 2.36h [retry=0.4%, fail=0.0%] states=132 gauss=973
+%WER 34.33 [ 2827 / 8234, 266 ins, 457 del, 2104 sub ] exp/mono0a/decode_nosp_tgpr_dev93/wer_10_0.0
+%WER 25.13 [ 1418 / 5643, 138 ins, 192 del, 1088 sub ] exp/mono0a/decode_nosp_tgpr_eval92/wer_10_0.0
+
+
 
 # first triphone build.  Built on half of SI-84.
-%WER 20.00 [ 1647 / 8234, 257 ins, 197 del, 1193 sub ] exp/tri1/decode_tgpr_dev93/wer_17
-%WER 13.04 [ 736 / 5643, 137 ins, 61 del, 538 sub ] exp/tri1/decode_tgpr_eval92/wer_14
+exp/tri1: nj=10 align prob=-93.75 over 7.38h [retry=0.4%, fail=0.0%] states=1567 gauss=10025 tree-impr=5.06
+%WER 19.40 [ 1597 / 8234, 247 ins, 199 del, 1151 sub ] exp/tri1/decode_nosp_tgpr_dev93/wer_14_0.5
+%WER 12.76 [ 720 / 5643, 110 ins, 89 del, 521 sub ] exp/tri1/decode_nosp_tgpr_eval92/wer_14_1.0
 
-# the same, rescored with full trigram model [not pruned.]  Note: the tg{1,2,3,4} are
+# the above, rescored with full trigram model [not pruned.]  Note: the tg{1,2,3,4,5} are
 # different rescoring methods.  They all give about the same results.  Note: 3 and 4 give
 # the "correct" LM scores.
-%WER 18.87 [ 1554 / 8234, 295 ins, 136 del, 1123 sub ] exp/tri1/decode_tgpr_dev93_tg1/wer_14
-%WER 18.87 [ 1554 / 8234, 295 ins, 136 del, 1123 sub ] exp/tri1/decode_tgpr_dev93_tg2/wer_14
-%WER 18.75 [ 1544 / 8234, 266 ins, 152 del, 1126 sub ] exp/tri1/decode_tgpr_dev93_tg3/wer_15
-%WER 18.76 [ 1545 / 8234, 266 ins, 152 del, 1127 sub ] exp/tri1/decode_tgpr_dev93_tg4/wer_15
+%WER 18.23 [ 1501 / 8234, 245 ins, 181 del, 1075 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg1/wer_15_0.5
+%WER 18.23 [ 1501 / 8234, 245 ins, 181 del, 1075 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg2/wer_15_0.5
+%WER 18.16 [ 1495 / 8234, 268 ins, 153 del, 1074 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg3/wer_16_0.0
+%WER 18.18 [ 1497 / 8234, 268 ins, 154 del, 1075 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg4/wer_16_0.0
+%WER 18.16 [ 1495 / 8234, 220 ins, 202 del, 1073 sub ] exp/tri1/decode_nosp_tgpr_dev93_tg5/wer_15_1.0
 
-# tri2a is delta+delta-delta features.
-%WER 17.93 [ 1476 / 8234, 256 ins, 161 del, 1059 sub ] exp/tri2a/decode_tgpr_dev93/wer_16
-%WER 12.42 [ 701 / 5643, 132 ins, 64 del, 505 sub ] exp/tri2a/decode_tgpr_eval92/wer_15
-# just demonstrates how to do decoding constrained by lattices.
-%WER 16.76 [ 1380 / 8234, 275 ins, 132 del, 973 sub ] exp/tri2a/decode_tgpr_dev93_fromlats/wer_16
 
-# This is an LDA+MLLT system. 
-%WER 16.43 [ 1353 / 8234, 241 ins, 162 del, 950 sub ] exp/tri2b/decode_tgpr_dev93/wer_16
-%WER 10.69 [ 603 / 5643, 154 ins, 47 del, 402 sub ] exp/tri2b/decode_tgpr_eval92/wer_14
+# tri2b is an LDA+MLLT system trained on SI-84
+exp/tri2b: nj=10 align prob=-47.22 over 15.10h [retry=0.7%, fail=0.0%] states=2005 gauss=15036 tree-impr=5.45 lda-sum=26.20 mllt:impr,logdet=1.34,1.97
+%WER 16.37 [ 1348 / 8234, 241 ins, 157 del, 950 sub ] exp/tri2b/decode_nosp_tgpr_dev93/wer_17_0.0
+%WER 10.53 [ 594 / 5643, 110 ins, 60 del, 424 sub ] exp/tri2b/decode_nosp_tgpr_eval92/wer_17_0.5
 
-# rescoring the lattices with trigram.
-%WER 15.29 [ 1252 / 8191, 219 ins, 153 del, 880 sub ] [PARTIAL] exp/tri2b/decode_tgpr_dev93_tg/wer_18
-# using the "biglm" decoding method to avoid the lattice rescoring step [not faster though.]
-%WER 15.31 [ 1261 / 8234, 227 ins, 158 del, 876 sub ] exp/tri2b/decode_tgpr_dev93_tg_biglm/wer_18
-# using a Minimum Bayes Risk decoding method on top of the _tg lattices.
-%WER 15.15 [ 1241 / 8191, 221 ins, 155 del, 865 sub ] [PARTIAL] exp/tri2b/decode_tgpr_dev93_tg_mbr/wer_18
 
-# fMMI, default learning rate (0.001)
+# tri3b is an LDA+MLLT+SAT system trained on all of SI-284
+exp/tri3b: nj=10 align prob=-44.30 over 81.23h [retry=0.8%, fail=0.1%] states=3362 gauss=40061 fmllr-impr=3.70 over 59.77h tree-impr=7.86
 
-%WER 15.19 [ 1251 / 8234, 213 ins, 148 del, 890 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it3/wer_15
-%WER 15.14 [ 1247 / 8234, 228 ins, 138 del, 881 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it4/wer_14
-%WER 15.06 [ 1240 / 8234, 211 ins, 152 del, 877 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it5/wer_15
-%WER 15.01 [ 1236 / 8234, 206 ins, 154 del, 876 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it6/wer_15
-%WER 14.99 [ 1234 / 8234, 210 ins, 159 del, 865 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it7/wer_15
-%WER 15.23 [ 1254 / 8234, 200 ins, 184 del, 870 sub ] exp/tri2b_fmmi_b0.1/decode_tgpr_dev93_it8/wer_16
+%WER 15.56 [ 1281 / 8234, 220 ins, 140 del, 921 sub ] exp/tri3b/decode_nosp_tgpr_dev93.si/wer_17_0.5
+%WER 12.82 [ 1056 / 8234, 135 ins, 147 del, 774 sub ] exp/tri3b/decode_nosp_bd_tgpr_dev93.si/wer_15_0.0
+%WER 9.24 [ 761 / 8234, 89 ins, 109 del, 563 sub ] exp/tri3b/decode_nosp_bd_tgpr_dev93/wer_16_0.0
+%WER 11.53 [ 949 / 8234, 179 ins, 94 del, 676 sub ] exp/tri3b/decode_nosp_tgpr_dev93/wer_15_0.5
+%WER 10.94 [ 901 / 8234, 181 ins, 82 del, 638 sub ] exp/tri3b/decode_nosp_tg_dev93/wer_14_0.5
+%WER 8.16 [ 672 / 8234, 94 ins, 94 del, 484 sub ] exp/tri3b/decode_nosp_bd_tgpr_dev93_fg/wer_17_0.0
 
-%WER 15.55 [ 1280 / 8234, 234 ins, 151 del, 895 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it3/wer_15
-%WER 15.63 [ 1287 / 8234, 242 ins, 150 del, 895 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it4/wer_15
-%WER 15.30 [ 1260 / 8234, 224 ins, 143 del, 893 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it5/wer_15
-%WER 15.34 [ 1263 / 8234, 216 ins, 156 del, 891 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it6/wer_16
-%WER 15.34 [ 1263 / 8234, 242 ins, 139 del, 882 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it7/wer_14
-%WER 15.30 [ 1260 / 8234, 245 ins, 134 del, 881 sub ] exp/tri2b_fmmi_b0.1_lr0.005/decode_tgpr_dev93_it8/wer_13
+%WER 10.95 [ 618 / 5643, 148 ins, 36 del, 434 sub ] exp/tri3b/decode_nosp_tgpr_eval92.si/wer_14_0.0
+%WER 8.19 [ 462 / 5643, 77 ins, 51 del, 334 sub ] exp/tri3b/decode_nosp_bd_tgpr_eval92.si/wer_16_0.0
+%WER 5.55 [ 313 / 5643, 35 ins, 45 del, 233 sub ] exp/tri3b/decode_nosp_bd_tgpr_eval92/wer_17_1.0
+%WER 4.89 [ 276 / 5643, 47 ins, 28 del, 201 sub ] exp/tri3b/decode_nosp_bd_tgpr_eval92_fg/wer_15_0.5
+%WER 7.53 [ 425 / 5643, 112 ins, 20 del, 293 sub ] exp/tri3b/decode_nosp_tg_eval92/wer_17_0.0
+%WER 8.15 [ 460 / 5643, 113 ins, 30 del, 317 sub ] exp/tri3b/decode_nosp_tgpr_eval92/wer_14_1.0
 
-%WER 15.21 [ 1252 / 8234, 218 ins, 148 del, 886 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it3/wer_15
-%WER 15.16 [ 1248 / 8234, 205 ins, 159 del, 884 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it4/wer_16
-%WER 15.22 [ 1253 / 8234, 229 ins, 147 del, 877 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it5/wer_15
-%WER 14.90 [ 1227 / 8234, 203 ins, 150 del, 874 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it6/wer_15
-%WER 14.95 [ 1231 / 8234, 202 ins, 152 del, 877 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it7/wer_15
-%WER 15.18 [ 1250 / 8234, 184 ins, 172 del, 894 sub ] exp/tri2b_fmmi_indirect_b0.1/decode_tgpr_dev93_it8/wer_16
 
-%WER 15.70 [ 1293 / 8234, 218 ins, 163 del, 912 sub ] exp/tri2b_mmi/decode_tgpr_dev93_it3/wer_16
-%WER 15.61 [ 1285 / 8234, 217 ins, 163 del, 905 sub ] exp/tri2b_mmi/decode_tgpr_dev93_it4/wer_16
-%WER 10.46 [ 590 / 5643, 125 ins, 51 del, 414 sub ] exp/tri2b_mmi/decode_tgpr_eval92_it3/wer_15
-%WER 10.40 [ 587 / 5643, 124 ins, 52 del, 411 sub ] exp/tri2b_mmi/decode_tgpr_eval92_it4/wer_16
+# tri4b is an LDA+MLLT+SAT system after estimating pronunciation probabilities
+# and word-and-pronunciation-dependent silence probabilities.
 
-%WER 15.56 [ 1281 / 8234, 224 ins, 152 del, 905 sub ] exp/tri2b_mmi_b0.1/decode_tgpr_dev93_it3/wer_15
-%WER 15.44 [ 1271 / 8234, 220 ins, 165 del, 886 sub ] exp/tri2b_mmi_b0.1/decode_tgpr_dev93_it4/wer_16
-%WER 10.33 [ 583 / 5643, 125 ins, 51 del, 407 sub ] exp/tri2b_mmi_b0.1/decode_tgpr_eval92_it3/wer_15
-%WER 10.33 [ 583 / 5643, 125 ins, 47 del, 411 sub ] exp/tri2b_mmi_b0.1/decode_tgpr_eval92_it4/wer_15
+exp/tri4b: nj=10 align prob=-44.46 over 81.23h [retry=0.6%, fail=0.1%] states=3413 gauss=40059 fmllr-impr=0.17 over 60.20h tree-impr=8.70
 
-%WER 11.43 [ 941 / 8234, 113 ins, 144 del, 684 sub ] exp/tri3b/decode_bd_tgpr_dev93/wer_19
-%WER 16.09 [ 1325 / 8234, 193 ins, 185 del, 947 sub ] exp/tri3b/decode_bd_tgpr_dev93.si/wer_16
-%WER 6.79 [ 383 / 5643, 51 ins, 49 del, 283 sub ] exp/tri3b/decode_bd_tgpr_eval92/wer_18
-%WER 10.61 [ 599 / 5643, 91 ins, 74 del, 434 sub ] exp/tri3b/decode_bd_tgpr_eval92.si/wer_15
-%WER 5.74 [ 324 / 5643, 46 ins, 41 del, 237 sub ] exp/tri3b/decode_bd_tgpr_eval92_fg/wer_19
-%WER 5.90 [ 333 / 5643, 46 ins, 39 del, 248 sub ] exp/tri3b/decode_bd_tgpr_eval92_tg/wer_18
+%WER 15.16 [ 1248 / 8234, 253 ins, 96 del, 899 sub ] exp/tri4b/decode_tgpr_dev93.si/wer_17_0.0
+%WER 12.62 [ 1039 / 8234, 141 ins, 124 del, 774 sub ] exp/tri4b/decode_bd_tgpr_dev93.si/wer_17_0.0
+%WER 9.01 [ 742 / 8234, 106 ins, 97 del, 539 sub ] exp/tri4b/decode_bd_tgpr_dev93/wer_16_0.0
+%WER 8.25 [ 679 / 8234, 94 ins, 100 del, 485 sub ] exp/tri4b/decode_bd_tgpr_dev93_fg/wer_17_0.5
+%WER 10.92 [ 899 / 8234, 186 ins, 92 del, 621 sub ] exp/tri4b/decode_tg_dev93/wer_17_0.5
+%WER 11.44 [ 942 / 8234, 203 ins, 87 del, 652 sub ] exp/tri4b/decode_tgpr_dev93/wer_14_0.5
 
-%WER 14.17 [ 1167 / 8234, 222 ins, 123 del, 822 sub ] exp/tri3b/decode_tgpr_dev93/wer_17
-%WER 19.37 [ 1595 / 8234, 315 ins, 153 del, 1127 sub ] exp/tri3b/decode_tgpr_dev93.si/wer_15
+%WER 10.93 [ 617 / 5643, 147 ins, 33 del, 437 sub ] exp/tri4b/decode_tgpr_eval92.si/wer_14_1.0
+%WER 8.74 [ 493 / 5643, 104 ins, 34 del, 355 sub ] exp/tri4b/decode_bd_tgpr_eval92.si/wer_15_0.0
+%WER 5.69 [ 321 / 5643, 50 ins, 34 del, 237 sub ] exp/tri4b/decode_bd_tgpr_eval92/wer_17_0.5
+%WER 4.71 [ 266 / 5643, 40 ins, 27 del, 199 sub ] exp/tri4b/decode_bd_tgpr_eval92_fg/wer_17_1.0
+%WER 7.39 [ 417 / 5643, 107 ins, 24 del, 286 sub ] exp/tri4b/decode_tg_eval92/wer_16_1.0
+%WER 7.90 [ 446 / 5643, 111 ins, 27 del, 308 sub ] exp/tri4b/decode_tgpr_eval92/wer_15_1.0
 
-%WER 12.98 [ 1069 / 8234, 209 ins, 116 del, 744 sub ] exp/tri3b/decode_tgpr_dev93_tg/wer_19
-%WER 9.30 [ 525 / 5643, 120 ins, 37 del, 368 sub ] exp/tri3b/decode_tgpr_eval92/wer_18
-%WER 12.95 [ 731 / 5643, 167 ins, 46 del, 518 sub ] exp/tri3b/decode_tgpr_eval92.si/wer_14
-%WER 8.54 [ 482 / 5643, 113 ins, 29 del, 340 sub ] exp/tri3b/decode_tgpr_eval92_tg/wer_17
 
-%WER 12.12 [ 998 / 8234, 209 ins, 88 del, 701 sub ] exp/tri4a/decode_tgpr_dev93/wer_17
-%WER 15.98 [ 1316 / 8234, 275 ins, 119 del, 922 sub ] exp/tri4a/decode_tgpr_dev93.si/wer_15
-%WER 7.83 [ 442 / 5643, 107 ins, 23 del, 312 sub ] exp/tri4a/decode_tgpr_eval92/wer_16
-%WER 10.90 [ 615 / 5643, 148 ins, 30 del, 437 sub ] exp/tri4a/decode_tgpr_eval92.si/wer_13
+######################################
+## Results below this point were mostly obtained in 2013 by Hainan Xu,
+## They are from parts of the script that are now not run by default in the run.sh.
+## you can look in the git history to figure out when these results were added.
 
-%WER 9.15 [ 753 / 8234, 90 ins, 113 del, 550 sub ] exp/tri4b/decode_bd_pp_tgpr_dev93/wer_16
-%WER 12.64 [ 1041 / 8234, 137 ins, 145 del, 759 sub ] exp/tri4b/decode_bd_pp_tgpr_dev93.si/wer_16
-%WER 5.74 [ 324 / 5643, 47 ins, 35 del, 242 sub ] exp/tri4b/decode_bd_pp_tgpr_eval92/wer_19
-%WER 7.92 [ 447 / 5643, 64 ins, 46 del, 337 sub ] exp/tri4b/decode_bd_pp_tgpr_eval92.si/wer_15
-%WER 9.38 [ 772 / 8234, 90 ins, 118 del, 564 sub ] exp/tri4b/decode_bd_tgpr_dev93/wer_18
-%WER 13.07 [ 1076 / 8234, 148 ins, 143 del, 785 sub ] exp/tri4b/decode_bd_tgpr_dev93.si/wer_17
-%WER 6.03 [ 340 / 5643, 66 ins, 26 del, 248 sub ] exp/tri4b/decode_bd_tgpr_eval92/wer_13
-%WER 8.19 [ 462 / 5643, 74 ins, 42 del, 346 sub ] exp/tri4b/decode_bd_tgpr_eval92.si/wer_15
-%WER 12.16 [ 1001 / 8234, 197 ins, 98 del, 706 sub ] exp/tri4b/decode_tgpr_dev93/wer_17
-%WER 15.47 [ 1274 / 8234, 235 ins, 120 del, 919 sub ] exp/tri4b/decode_tgpr_dev93.si/wer_17
-%WER 8.08 [ 456 / 5643, 125 ins, 16 del, 315 sub ] exp/tri4b/decode_tgpr_eval92/wer_13
-%WER 10.49 [ 592 / 5643, 147 ins, 27 del, 418 sub ] exp/tri4b/decode_tgpr_eval92.si/wer_12
 %WER 7.99 [ 658 / 8234, 72 ins, 95 del, 491 sub ] exp/tri4b_fmmi_a/decode_bd_tgpr_dev93_it8/wer_12
 %WER 11.15 [ 918 / 8234, 180 ins, 81 del, 657 sub ] exp/tri4b_fmmi_a/decode_tgpr_dev93_it3/wer_15
 %WER 11.23 [ 925 / 8234, 201 ins, 77 del, 647 sub ] exp/tri4b_fmmi_a/decode_tgpr_dev93_it4/wer_12
@@ -166,7 +143,7 @@ exit 0
 # not updated
 
 
-# DNN on fMLLR features (Karel's setup, [7.8.2015]). 
+# DNN on fMLLR features (Karel's setup, [7.8.2015]).
 # frame cross-entropy training
 %WER 6.05 [ 498 / 8234, 59 ins, 67 del, 372 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_dev93/wer_11_0.0
 %WER 3.69 [ 208 / 5643, 19 ins, 19 del, 170 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_bd_tgpr_eval92/wer_11_1.0
@@ -298,7 +275,7 @@ for x in exp/nnet3/nnet_tdnn_a/decode_*; do grep WER $x/wer_* | utils/best_wer.s
 
 # bidirectional LSTM
 # -----------------------
-# local/nnet3/run_lstm.sh --affix bidirectional \ 
+# local/nnet3/run_lstm.sh --affix bidirectional \
 #                         --lstm-delay " [-1,1] [-2,2] [-3,3] " \
 #	                  --label-delay 0 \
 #                         --cell-dim 640 \

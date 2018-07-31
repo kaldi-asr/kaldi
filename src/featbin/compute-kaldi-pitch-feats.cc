@@ -37,8 +37,7 @@ int main(int argc, char *argv[]) {
         "compute-kaldi-pitch-feats --sample-frequency=8000 scp:wav.scp ark:- \n"
         "\n"
         "See also: process-kaldi-pitch-feats, compute-and-process-kaldi-pitch-feats\n";
-    
-    
+
     ParseOptions po(usage);
     PitchExtractionOptions pitch_opts;
     int32 channel = -1; // Note: this isn't configurable because it's not a very
@@ -47,14 +46,14 @@ int main(int argc, char *argv[]) {
                         // similar.
 
     pitch_opts.Register(&po);
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     std::string wav_rspecifier = po.GetArg(1),
         feat_wspecifier = po.GetArg(2);
 
@@ -63,12 +62,12 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0, num_err = 0;
     for (; !wav_reader.Done(); wav_reader.Next()) {
-      std::string utt = wav_reader.Key();  
-      const WaveData &wave_data = wav_reader.Value(); 
-      
+      std::string utt = wav_reader.Key();
+      const WaveData &wave_data = wav_reader.Value();
+
       int32 num_chan = wave_data.Data().NumRows(), this_chan = channel;
       {
-        KALDI_ASSERT(num_chan > 0); 
+        KALDI_ASSERT(num_chan > 0);
         // reading code if no channels.
         if (channel == -1) {
           this_chan = 0;
@@ -84,14 +83,14 @@ int main(int argc, char *argv[]) {
           }
         }
       }
-      
+
       if (pitch_opts.samp_freq != wave_data.SampFreq())
         KALDI_ERR << "Sample frequency mismatch: you specified "
                   << pitch_opts.samp_freq << " but data has "
                   << wave_data.SampFreq() << " (use --sample-frequency "
                   << "option).  Utterance is " << utt;
-      
-      
+
+
       SubVector<BaseFloat> waveform(wave_data.Data(), this_chan);
       Matrix<BaseFloat> features;
       try {
@@ -99,10 +98,10 @@ int main(int argc, char *argv[]) {
       } catch (...) {
         KALDI_WARN << "Failed to compute pitch for utterance "
                    << utt;
-        num_err++;        
+        num_err++;
         continue;
       }
-      
+
       feat_writer.Write(utt, features);
       if (num_done % 50 == 0 && num_done != 0)
         KALDI_VLOG(2) << "Processed " << num_done << " utterances";

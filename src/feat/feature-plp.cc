@@ -125,7 +125,7 @@ void PlpComputer::Compute(BaseFloat signal_log_energy,
 
   if (opts_.use_energy && !opts_.raw_energy)
     signal_log_energy = Log(std::max(VecVec(*signal_frame, *signal_frame),
-                                     std::numeric_limits<float>::min()));
+                                     std::numeric_limits<BaseFloat>::min()));
 
   if (srfft_ != NULL)  // Compute FFT using split-radix algorithm.
     srfft_->Compute(signal_frame->Data(), true);

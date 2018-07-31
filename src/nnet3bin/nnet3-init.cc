@@ -39,18 +39,19 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-init [options] [<existing-model-in>] <config-in> <raw-nnet-out>\n"
         "e.g.:\n"
         " nnet3-init nnet.config 0.raw\n"
+        "or: nnet3-init 1.raw nnet.config 2.raw\n"
         "See also: nnet3-copy, nnet3-info\n";
-    
+
     bool binary_write = true;
     int32 srand_seed = 0;
-    
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("srand", &srand_seed, "Seed for random number generator");
-    
+
     po.Read(argc, argv);
     srand(srand_seed);
-    
+
     if (po.NumArgs() < 2 || po.NumArgs() > 3) {
       po.PrintUsage();
       exit(1);
@@ -60,21 +61,21 @@ int main(int argc, char *argv[]) {
                                        po.GetArg(1) : std::string("")),
         config_rxfilename = po.GetArg(po.NumArgs() == 3 ? 2 : 1),
         raw_nnet_wxfilename = po.GetArg(po.NumArgs() == 3 ? 3 : 2);
-    
+
     Nnet nnet;
     if (po.NumArgs() == 3) {
       ReadKaldiObject(raw_nnet_rxfilename, &nnet);
       KALDI_LOG << "Read raw neural net from "
                 << raw_nnet_rxfilename;
     }
-    
+
     {
       bool binary;
       Input ki(config_rxfilename, &binary);
       KALDI_ASSERT(!binary && "Expect config file to contain text.");
       nnet.ReadConfig(ki.Stream());
     }
-    
+
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
     KALDI_LOG << "Initialized raw neural net and wrote it to "
               << raw_nnet_wxfilename;
@@ -99,7 +100,7 @@ component-node name=affine1_node component=affine1 input=Append(Offset(input, -4
 component-node name=nonlin1 component=relu1 input=affine1_node
 component-node name=final_affine component=final_affine input=nonlin1
 component-node name=output_nonlin component=logsoftmax input=final_affine
-output-node name=output input=output_nonlin  
+output-node name=output input=output_nonlin
 EOF
 
 cat <<EOF | nnet3-init --binary=false foo.raw -  bar.raw

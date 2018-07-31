@@ -1,6 +1,9 @@
 // cudamatrix/cu-vector-speed-test.cc
 
-// Copyright 2013  Johns Hopkins University (author: Daniel Povey)
+// Copyright      2013  Johns Hopkins University (author: Daniel Povey)
+//                2017  Daniel Galvez
+//           2016-2018  Shiyin Kang
+
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -73,6 +76,74 @@ template<typename Real> void TestCuVectorSum(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real, typename OtherReal> void TestCuVectorCopyFromVec(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> M(dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    CuVector<OtherReal> v(dim);
+    v.CopyFromVec(M);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::CopyFromVec" << NameOf<Real>() << " to "
+            <<  NameOf<OtherReal>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+
+#if HAVE_CUDA == 1
+// This test choose the min length of vectors to be reduced on GPU.
+// Smaller vector will be copied to RAM and reduced on CPU.
+template<typename Real> void TestCuVectorSumChooseMinLength() {
+  BaseFloat time_in_secs = 0.02;
+  for (int dim = 100; dim < 1000000; dim = dim * 1.5 + 1 ) {
+    CuVector<Real> M(dim);
+    BaseFloat gflops, gflops_cpu;
+    Real result = 0, result_cpu = 0;
+    M.SetRandn();
+    {
+      Timer tim;
+      int32 iter = 0;
+      for (; tim.Elapsed() < time_in_secs; iter++) {
+        // Force GPU reduction
+        int dimBlock = CU1DBLOCK;
+        int dimGrid = n_blocks(M.Dim(), dimBlock);
+        if (dimGrid > 256) {
+          dimGrid = 256;
+        }
+        CuVector<Real> ans(dimGrid, kUndefined);
+        cuda_vec_sum(dimGrid, dimBlock, M.Data(), ans.Data(), M.Dim(), 1);
+        CU_SAFE_CALL(cudaGetLastError());
+        Vector<Real> ans_cpu(ans);
+        result = ans_cpu.Sum();
+      }
+
+      BaseFloat fdim = dim;
+      gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+    }
+    {
+      Timer tim;
+      int32 iter = 0;
+      for (; tim.Elapsed() < time_in_secs; iter++) {
+        Vector<Real> M_cpu(M);
+        result_cpu = M_cpu.Sum();
+      }
+
+      BaseFloat fdim = dim;
+      gflops_cpu = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+    }
+    KALDI_LOG << "CuVector::Sum" << NameOf<Real>() << ", dim: " << dim
+              << ", speed: GPU " << (gflops > gflops_cpu ? ">" : "<")
+              << " CPU, GPU speed: " << gflops << " Gflops. CPU speed: "
+              << gflops_cpu << " Gflops. Result diff: " << (result - result_cpu);
+  }
+}
+#endif
 
 template<typename Real> void TestCuVectorVecVecOne(int32 dim) {
   BaseFloat time_in_secs = 0.02;
@@ -120,6 +191,32 @@ template<typename Real> void TestCuVectorAddDiagMatMat(int32 dim,
             << (transO == kNoTrans ? "[no-trans],":"[trans],")
             << " for dim = "<< dim << ", speed was " << gflops << " gigaflops.";
 }
+
+
+template<typename Real> void TestCuVectorAddDiagMat2OnVariousShapes(
+    int32 dim, MatrixTransposeType trans) {
+  BaseFloat time_in_secs = 0.02;
+  int32 size = 1024 * 32;
+  CuVector<Real> v(trans == kNoTrans ? size / dim : dim);
+  v.SetRandn();
+  CuMatrix<Real> N(size / dim, dim);
+  N.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    v.AddDiagMat2(1.0, N, trans, 0.0);
+  }
+
+  BaseFloat fdim = size;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::AddDiagMat2Shapes" << NameOf<Real>()
+            << (trans == kTrans ? "[trans]" : "[no-trans]") << ", for dim = ("
+            << size / dim << ", " << dim  << "), speed was " << gflops
+            << " gigaflops.";
+}
+
 
 
 template<typename Real> void TestCuVectorAddDiagMat2(int32 dim, MatrixTransposeType trans) {
@@ -188,26 +285,161 @@ template<typename Real> void TestCuVectorAddColSumMat(int32 dim, MatrixTranspose
 }
 
 
+template<typename Real> void TestCuVectorApplyFloor(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  Real threshold = RandInt(-35000, 35000) / Real(100);
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    MatrixIndexT dummy_count;
+    v.ApplyFloor(threshold, &dummy_count);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::ApplyFloor" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+
+}
+
+
+template<typename Real> void TestCuVectorApplyFloorNoCount(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  Real threshold = RandInt(-35000, 35000) / Real(100);
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    v.ApplyFloor(threshold, nullptr);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::ApplyFloor (no count variety)" << NameOf<Real>()
+            << ", for dim = " << dim << ", speed was " << gflops
+            << " gigaflops.";
+
+}
+
+
+template<typename Real> void TestCuVectorApplyCeiling(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  Real threshold = RandInt(-35000, 35000) / Real(100);
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    MatrixIndexT dummy_count;
+    v.ApplyCeiling(threshold, &dummy_count);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::ApplyCeiling" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+
+}
+
+
+template<typename Real> void TestCuVectorApplyCeilingNoCount(int32 dim) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(dim);
+  v.SetRandn();
+  Real threshold = RandInt(-35000, 35000) / Real(100);
+
+  Timer tim;
+  int32 iter = 0;
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    v.ApplyCeiling(threshold, nullptr);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::ApplyCeiling (no count variety)" << NameOf<Real>()
+            << ", for dim = " << dim << ", speed was " << gflops
+            << " gigaflops.";
+
+}
+
+
+template<typename Real> void TestCuVectorAddDiagMatMatShape(
+    int32 num_rows, int32 num_cols, MatrixTransposeType transM,
+    MatrixTransposeType transN) {
+  BaseFloat time_in_secs = 0.02;
+  CuVector<Real> v(transM == kTrans ? num_cols : num_rows);
+  v.SetRandn();
+  CuMatrix<Real> M(num_rows, num_cols);
+  CuMatrix<Real> N(transM != transN ? num_rows : num_cols,
+                   transM != transN ? num_cols : num_rows);
+  M.SetRandn();
+  N.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+
+  for (;tim.Elapsed() < time_in_secs; iter++) {
+    v.AddDiagMatMat(1.0, M, transM, N, transN, 1.0);
+  }
+
+  BaseFloat fnr = num_rows;
+  BaseFloat fnc = num_cols;
+  BaseFloat gflops = (fnr * fnc * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuVector::AddDiagMatMat" << NameOf<Real>()
+            << (transM == kNoTrans ? "[no-trans],":"[trans],")
+            << (transN == kNoTrans ? "[no-trans],":"[trans],")
+            << " for dim = "<< num_rows << ", " << num_cols
+            << ", speed was " << gflops << " gigaflops.";
+}
+
+
 template<typename Real> void CudaVectorSpeedTest() {
+  const size_t a = 1 << 5;
+  const size_t b = 1 << 8;
+  for (size_t i = a; i <= b; i *= 2) {
+    for (size_t j = a; j <= b; j *= 2) {
+      if (i * j <= a * b) {
+        TestCuVectorAddDiagMatMatShape<Real>(i, j, kNoTrans, kNoTrans);
+        TestCuVectorAddDiagMatMatShape<Real>(i, j, kNoTrans, kTrans);
+        TestCuVectorAddDiagMatMatShape<Real>(i, j, kTrans, kNoTrans);
+        TestCuVectorAddDiagMatMatShape<Real>(i, j, kTrans, kTrans);
+      }
+    }
+  }
+
   std::vector<int32> sizes;
-  sizes.push_back(16);
-  sizes.push_back(32);
-  sizes.push_back(64);
-  sizes.push_back(128);
-  sizes.push_back(256);
-  sizes.push_back(1024);
+  for (int i = 32; i <= 1024; i *= 2) {
+    sizes.push_back(i);
+  }
   int32 ns = sizes.size();
   for (int32 s = 0; s < ns; s++)
     TestCuVectorSoftmax<Real>(sizes[s]);
+#if HAVE_CUDA == 1
+  TestCuVectorSumChooseMinLength<Real>();
+#endif
   for (int32 s = 0; s < ns; s++)
     TestCuVectorSum<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuVectorVecVecOne<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuVectorCopyFromVec<Real, float>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuVectorCopyFromVec<Real, double>(sizes[s]);
   for (int32 s = 0; s < ns; s++) {
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kNoTrans, kNoTrans);
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kNoTrans, kTrans);
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kNoTrans);
     TestCuVectorAddDiagMatMat<Real>(sizes[s], kTrans, kTrans);
+  }
+  for (int32 s = 0; s < ns; s++) {
+    TestCuVectorAddDiagMat2OnVariousShapes<Real>(sizes[s], kNoTrans);
+    TestCuVectorAddDiagMat2OnVariousShapes<Real>(sizes[s], kTrans);
   }
   for (int32 s = 0; s < ns; s++) {
     TestCuVectorAddDiagMat2<Real>(sizes[s], kNoTrans);
@@ -221,6 +453,14 @@ template<typename Real> void CudaVectorSpeedTest() {
     TestCuVectorAddColSumMat<Real>(sizes[s], kNoTrans);
     TestCuVectorAddColSumMat<Real>(sizes[s], kTrans);
   }
+  for (int32 s = 0; s < ns; s++) {
+    TestCuVectorApplyFloor<Real>(sizes[s]);
+    TestCuVectorApplyFloorNoCount<Real>(sizes[s]);
+  }
+  for (int32 s = 0; s < ns; s++) {
+    TestCuVectorApplyCeiling<Real>(sizes[s]);
+    TestCuVectorApplyCeilingNoCount<Real>(sizes[s]);
+  }
 
 }
 
@@ -229,12 +469,13 @@ template<typename Real> void CudaVectorSpeedTest() {
 
 
 int main() {
-    //Select the GPU
+  kaldi::SetVerboseLevel(1);
+  //Select the GPU
 #if HAVE_CUDA == 1
-    CuDevice::Instantiate().SelectGpuId("yes"); //-2 .. automatic selection
+  CuDevice::Instantiate().SelectGpuId("yes"); //-2 .. automatic selection
 #endif
 
-    kaldi::CudaVectorSpeedTest<float>();
+  kaldi::CudaVectorSpeedTest<float>();
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().DoublePrecisionSupported()) {
     kaldi::CudaVectorSpeedTest<double>();
@@ -244,6 +485,6 @@ int main() {
 #else
   kaldi::CudaVectorSpeedTest<double>();
 #endif
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 }
 

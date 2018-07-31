@@ -52,7 +52,7 @@ function export_file {
   else
     if [ ! -f $target_file ] ; then
       if ! $dryrun ; then
-        ln -s `readlink -f $source_file` $target_file || exit 1
+        ln -s `utils/make_absolute.sh $source_file` $target_file || exit 1
         ls -al $target_file
       else
         echo "$source_file -> $target_file"
@@ -158,10 +158,10 @@ function get_ecf_name {
   #echo $kwstask
   if [ -z $kwstask ] ; then
     #echo $data/kws/kwlist.xml
-    kwlist= `readlink -f $data/kws/kwlist.xml`
+    kwlist= `utils/make_absolute.sh $data/kws/kwlist.xml`
   else
     #echo $data/$kwstask/kwlist.xml
-    kwlist=`readlink -f  $data/$kwstask/kwlist.xml`
+    kwlist=`utils/make_absolute.sh  $data/$kwstask/kwlist.xml`
   fi
   ecf=`head -n 1 $kwlist | grep -Po "(?<=ecf_filename=\")[^\"]*"`
   echo -e "\tFound ECF: $ecf" >&2
@@ -302,7 +302,7 @@ else
       echo -e "\tPREPARE EXPORT: $compound_best_one"
       sysid=`create_sysid $compound_best_one`
       #ecf=`get_ecf_name $best_one`
-      ecf=`readlink -f $data/compounds/$compound/ecf.xml`
+      ecf=`utils/make_absolute.sh $data/compounds/$compound/ecf.xml`
       scase=`figure_out_scase $ecf`
       partition=`figure_out_partition $ecf`
       corpusid=`figure_out_corpusid $ecf`
@@ -340,7 +340,7 @@ else
     echo -e "\tPREPARE EXPORT: $compound_best_one"
     sysid=`create_sysid $compound_best_one`
     #ecf=`get_ecf_name $best_one`
-    ecf=`readlink -f $data/compounds/$compound/ecf.xml`
+    ecf=`utils/make_absolute.sh $data/compounds/$compound/ecf.xml`
     scase=`figure_out_scase $ecf`
     partition=`figure_out_partition $ecf`
     corpusid=`figure_out_corpusid $ecf`

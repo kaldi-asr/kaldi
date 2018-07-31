@@ -1,4 +1,6 @@
-#!/bin/bash 
+#!/bin/bash
+
+set -e 
 
 # Copyright 2014 QCRI (author: Ahmed Ali)
 # Apache 2.0
@@ -21,6 +23,8 @@ nDecodeJobs=40
 #This is CLSP configuration. We add the 2014 GALE data. We got around 2 % 
 #improvement just by including it. The gain might be large if someone would tweak
 # the number of leaves and states and so on.
+
+#Make sure you edit this section to reflect whers you keep the LDC data on your cluster
 audio=(
   /data/sls/scratch/amali/data/GALE/LDC2013S02
   /data/sls/scratch/amali/data/GALE/LDC2013S07 
@@ -42,25 +46,25 @@ galeData=GALE
 # By copying and pasting into your shell.
 
 #copy the audio files to local folder wav and convet flac files to wav
-local/gale_data_prep_audio.sh  "${audio[@]}" $galeData 
+local/gale_data_prep_audio.sh  "${audio[@]}" $galeData || exit 1;
 
 #get the transcription and remove empty prompts and all noise markers  
-local/gale_data_prep_txt.sh  "${text[@]}" $galeData
+local/gale_data_prep_txt.sh  "${text[@]}" $galeData || exit 1;
 
 # split the data to reports and conversational and for each class will have rain/dev and test
-local/gale_data_prep_split.sh $galeData 
+local/gale_data_prep_split.sh $galeData  || exit 1;
 
 # get QCRI dictionary and add silence and UN
-local/gale_prep_dict.sh 
+local/gale_prep_dict.sh || exit 1;
 
 
 #prepare the langauge resources
-utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang   
+utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang data/lang   || exit 1;
 
 # LM training
-local/gale_train_lms.sh
+local/gale_train_lms.sh || exit 1;
 
-local/gale_format_data.sh 
+local/gale_format_data.sh  || exit 1;
 # G compilation, check LG composition
 
 # Now make MFCC features.

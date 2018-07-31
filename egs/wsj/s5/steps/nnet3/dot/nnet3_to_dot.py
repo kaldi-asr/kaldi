@@ -90,11 +90,12 @@ def GetDotNodeName(name_string, is_component = False):
     # this function is required as dot does not allow all the component names
     # allowed by nnet3.
     # Identified incompatibilities :
-    #   1. dot does not allow hyphen(-) in names
+    #   1. dot does not allow hyphen(-) and dot(.) in names
     #   2. Nnet3 names can be shared among components and component nodes
     #      dot does not allow common names
     #
     node_name_string = re.sub("-", "hyphen", name_string)
+    node_name_string = re.sub("\.", "_dot_", node_name_string)
     if is_component:
         node_name_string += node_name_string.strip() + "_component"
     return {"label":name_string, "node":node_name_string}
@@ -121,9 +122,9 @@ def ProcessAppendDescriptor(segment, parent_node_name, affix, edge_attributes = 
 
     attr_string = ''
     if edge_attributes is not None:
-        if edge_attributes.has_key('label'):
+        if 'label' in edge_attributes:
             attr_string += " label={0} ".format(edge_attributes['label'])
-        if edge_attributes.has_key('style'):
+        if 'style' in edge_attributes:
             attr_string += ' style={0} '.format(edge_attributes['style'])
 
     dot_string = '{0} -> {1} [tailport=s]'.format(GetDotNodeName(desc_name)['node'], GetDotNodeName(parent_node_name)['node'])
@@ -141,9 +142,9 @@ def ProcessRoundDescriptor(segment, parent_node_name, affix, edge_attributes = N
     label = 'Round ({0})'.format(segment['arguments'][1])
     style = None
     if edge_attributes is not None:
-        if edge_attributes.has_key('label'):
+        if 'label' in edge_attributes:
             label = "{0} {1}".format(edge_attributes['label'], label)
-        if edge_attributes.has_key('style'):
+        if 'style' in edge_attributes:
             style  = 'style={0}'.format(edge_attributes['style'])
 
     attr_string = 'label="{0}"'.format(label)
@@ -163,9 +164,9 @@ def ProcessOffsetDescriptor(segment, parent_node_name, affix, edge_attributes = 
     label = 'Offset ({0})'.format(segment['arguments'][1])
     style = None
     if edge_attributes is not None:
-        if edge_attributes.has_key('label'):
+        if 'label' in edge_attributes:
             label = "{0} {1}".format(edge_attributes['label'], label)
-        if edge_attributes.has_key('style'):
+        if 'style' in edge_attributes:
             style  = 'style={0}'.format(edge_attributes['style'])
 
     attr_string = 'label="{0}"'.format(label)
@@ -203,9 +204,9 @@ def ProcessSumDescriptor(segment, parent_node_name, affix, edge_attributes = Non
 
     attr_string = ''
     if edge_attributes is not None:
-        if edge_attributes.has_key('label'):
+        if 'label' in edge_attributes:
             attr_string += " label={0} ".format(edge_attributes['label'])
-        if edge_attributes.has_key('style'):
+        if 'style' in edge_attributes:
             attr_string += ' style={0} '.format(edge_attributes['style'])
 
     dot_string = '{0} -> {1}'.format(GetDotNodeName(desc_name)['node'], GetDotNodeName(parent_node_name)['node'])
@@ -220,9 +221,9 @@ def ProcessReplaceIndexDescriptor(segment, parent_node_name, affix, edge_attribu
     label = 'ReplaceIndex({0}, {1})'.format(segment['arguments'][1], segment['arguments'][2])
     style = None
     if edge_attributes is not None:
-        if edge_attributes.has_key('label'):
+        if 'label' in edge_attributes:
             label = "{0} {1}".format(edge_attributes['label'], label)
-        if edge_attributes.has_key('style'):
+        if 'style' in edge_attributes:
             style  = 'style={0}'.format(edge_attributes['style'])
 
     attr_string = 'label="{0}"'.format(label)
@@ -323,7 +324,7 @@ def Nnet3ComponentToDot(component_config, component_attributes = None):
     attributes_to_print = set(component_attributes).intersection(component_config.keys())
     # process the known fields
     for key in attributes_to_print:
-        if component_config.has_key(key):
+        if key in component_config:
             label += '{0} = {1}\\n'.format(key, component_config[key])
 
     attr_string = ''
@@ -369,7 +370,9 @@ def Nnet3ComponentNodeToDot(parsed_config):
                                                        GetDotNodeName(parsed_config['name'])['node']))
     return dot_graph
 
-def GroupConfigs(configs, node_prefixes = []):
+def GroupConfigs(configs, node_prefixes = None):
+    if node_prefixes is None:
+        node_prefixes = []
     # we make the assumption that nodes belonging to the same sub-graph have a
     # commong prefix.
     grouped_configs = {}
@@ -387,7 +390,9 @@ def GroupConfigs(configs, node_prefixes = []):
 
     return grouped_configs
 
-def ParseConfigLines(lines, node_prefixes = [], component_attributes = None ):
+def ParseConfigLines(lines, node_prefixes = None, component_attributes = None ):
+    if node_prefixes is None:
+        node_prefixes = []
     config_lines = []
     dot_graph=[]
     configs = []

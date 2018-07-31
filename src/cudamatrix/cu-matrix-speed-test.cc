@@ -2,6 +2,7 @@
 
 // Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 //           2015  Guoguo Chen
+//           2017  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -30,6 +31,7 @@
 #include "cudamatrix/cu-math.h"
 #include "cudamatrix/cu-tp-matrix.h"
 #include "cudamatrix/cu-sp-matrix.h"
+#include "cudamatrix/cu-sparse-matrix.h"
 
 using namespace kaldi;
 
@@ -41,8 +43,131 @@ std::string NameOf() {
   return (sizeof(Real) == 8 ? "<double>" : "<float>");
 }
 
-template<typename Real> void TestCuMatrixAddMat(int32 dim, 
-		int32 num_row_blocks, int32 num_col_blocks) {
+template<typename Real> void TestCuMatrixSum(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  Real result = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    result = M.Sum();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TestCuMatrixSum" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops, result = " << result;
+}
+
+template<typename Real> void TestCuMatrixMax(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  Real result = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    result = M.Max();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TestCuMatrixMax" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops, result = " << result;
+}
+
+template<typename Real> void TestCuMatrixMin(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  Real result = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    result = M.Min();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TestCuMatrixMin" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops, result = " << result;
+}
+
+template<typename Real> void TestCuMatrixDivRowsVec(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  CuVector<Real> V(dim);
+  M.SetRandn();
+  V.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.DivRowsVec(V);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::DivRowsVec" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixTransposeNS(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim / 2);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.Transpose();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter / 2) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TransposeNS" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixTransposeS(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    M.Transpose();
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TransposeS" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixTransposeCross(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<float> Mf(dim / 2, dim), ref(dim, dim / 2);
+  CuMatrix<Real> Md(dim, dim / 2);
+  Mf.SetRandn();
+  ref = Mf;
+
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    Md.CopyFromMat(Mf, kTrans);
+    Mf.CopyFromMat(Md, kTrans);
+  }
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG<< "For CuMatrix::TransposeCross" << NameOf<Real>() << ", for dim = "
+  << dim << ", speed was " << gflops << " gigaflops.";
+
+  AssertEqual(ref, Mf);
+}
+
+template<typename Real> void TestCuMatrixAddMat(int32 dim, int32 num_row_blocks,
+                                                int32 num_col_blocks) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> A(dim, dim), B(dim * num_row_blocks, dim * num_col_blocks);
   A.SetRandn();
@@ -57,15 +182,16 @@ template<typename Real> void TestCuMatrixAddMat(int32 dim,
     }
   }
   BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter) 
-	  / (tim.Elapsed() * 1.0e+09);
+  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter)
+                     / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuMatrix::AddMat" << NameOf<Real>() << ", for dim = "
-	    << dim << "numRowBlocks = "<< num_row_blocks << "numColBlocks = "
-	    << num_col_blocks << ", speed was " << gflops << " gigaflops.";
+            << dim << "numRowBlocks = "<< num_row_blocks << "numColBlocks = "
+            << num_col_blocks << ", speed was " << gflops << " gigaflops.";
 }
 
-template<typename Real> void TestCuMatrixAddMatBlocks(int32 dim, 
-		int32 num_row_blocks, int32 num_col_blocks) {
+template<typename Real> void TestCuMatrixAddMatBlocks(int32 dim,
+                                                      int32 num_row_blocks,
+                                                      int32 num_col_blocks) {
   BaseFloat time_in_secs = 0.025;
   CuMatrix<Real> A(dim, dim), B(dim * num_row_blocks, dim * num_col_blocks);
   A.SetRandn();
@@ -76,11 +202,11 @@ template<typename Real> void TestCuMatrixAddMatBlocks(int32 dim,
     A.AddMatBlocks(0.0, B);
   }
   BaseFloat fdim = dim;
-  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter) 
-	  / (tim.Elapsed() * 1.0e+09);
+  BaseFloat gflops = (fdim * fdim * num_row_blocks * num_col_blocks * iter)
+                     / (tim.Elapsed() * 1.0e+09);
    KALDI_LOG << "For CuMatrix::AddMatBlocks" << NameOf<Real>() << ", for dim = "
-	     << dim << ", numRowBlocks = "<< num_row_blocks << ", numColBlocks = "
-	     << num_col_blocks << ", speed was " << gflops << " gigaflops.";
+             << dim << ", numRowBlocks = "<< num_row_blocks << ", numColBlocks = "
+             << num_col_blocks << ", speed was " << gflops << " gigaflops.";
 }
 
 template<typename Real> void TestCuMatrixMatMat(int32 dim) {
@@ -103,7 +229,7 @@ template<typename Real> void TestCuMatrixMatMat(int32 dim) {
 template<typename Real> void TestCuMatrixMatMatBatched(int32 dim, int32 batchCount) {
   std::vector<CuMatrix<Real>* > a(batchCount), b(batchCount), c(batchCount);
   std::vector<CuSubMatrix<Real>* > A, B, C;
-  
+
   for (int32 i = 0; i < batchCount; i++) {
     // first create a Matrix intance and then creat a SubMatrix instance from that
     a[i] = new CuMatrix<Real>(dim, dim);
@@ -111,19 +237,19 @@ template<typename Real> void TestCuMatrixMatMatBatched(int32 dim, int32 batchCou
     c[i] = new CuMatrix<Real>(dim, dim);
     a[i]->SetRandn();
     b[i]->SetRandn();
-    A.push_back(new CuSubMatrix<Real>(*(a[i]), 0, a[i]->NumRows(), 0, 
-			    a[i]->NumCols()));
-    B.push_back(new CuSubMatrix<Real>(*(b[i]), 0, b[i]->NumRows(), 0, 
-			    b[i]->NumCols()));
-    C.push_back(new CuSubMatrix<Real>(*(c[i]), 0, c[i]->NumRows(), 0, 
-			    c[i]->NumCols()));
+    A.push_back(new CuSubMatrix<Real>(*(a[i]), 0, a[i]->NumRows(), 0,
+                                      a[i]->NumCols()));
+    B.push_back(new CuSubMatrix<Real>(*(b[i]), 0, b[i]->NumRows(), 0,
+                                      b[i]->NumCols()));
+    C.push_back(new CuSubMatrix<Real>(*(c[i]), 0, c[i]->NumRows(), 0,
+                                      c[i]->NumCols()));
   }
   BaseFloat time_in_secs = 0.025;
   Timer tim;
   int32 iter = 0;
   for (;tim.Elapsed() < time_in_secs; iter++) {
-    AddMatMatBatched(static_cast<Real>(1.0), C, A, kNoTrans, B, kNoTrans, 
-		    static_cast<Real>(0.0));
+    AddMatMatBatched(static_cast<Real>(1.0), C, A, kNoTrans, B, kNoTrans,
+                     static_cast<Real>(0.0));
   }
   for (int32 i = 0; i< batchCount; i++) {
     delete a[i]; delete b[i]; delete c[i];
@@ -132,8 +258,8 @@ template<typename Real> void TestCuMatrixMatMatBatched(int32 dim, int32 batchCou
 
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * fdim * fdim * iter * batchCount) / (tim.Elapsed() * 1.0e+09);
-  KALDI_LOG << "For CuMatrix::AddMatMatBatched" << NameOf<Real>() << ", for dim = " << dim 
-	    << ", batchSize = " << batchCount << ", speed was " << gflops << " gigaflops.";
+  KALDI_LOG << "For CuMatrix::AddMatMatBatched" << NameOf<Real>() << ", for dim = " << dim
+            << ", batchSize = " << batchCount << ", speed was " << gflops << " gigaflops.";
 }
 
 template<typename Real> void TestCuMatrixAddDiagVecMat(int32 dim, MatrixTransposeType trans) {
@@ -335,6 +461,41 @@ template<typename Real> void TestCuMatrixMulRowsGroupMat(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuMatrixDiffSoftmax(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim), L(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  L.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    N.DiffSoftmaxPerRow(M, L);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::DiffSoftmaxPerRow" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixDiffLogSoftmax(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim), N(dim, dim), L(dim, dim);
+  M.SetRandn();
+  N.SetRandn();
+  L.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs; iter++) {
+    N.DiffLogSoftmaxPerRow(M, L);
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::DiffLogSoftmaxPerRow" << NameOf<Real>() << ", for dim = "
+            << dim << ", speed was " << gflops << " gigaflops.";
+}
 
 template<typename Real> void TestCuMatrixSoftmax(int32 dim) {
   BaseFloat time_in_secs = 0.025;
@@ -388,21 +549,24 @@ template<typename Real> void TestCuMatrixGroupPnorm(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
-template<typename Real> void TestCuMatrixGroupPnormDeriv(int32 dim) {
+
+template<typename Real> void TestCuMatrixDiffGroupPnorm(int32 dim) {
   BaseFloat time_in_secs = 0.025;
-  int32 group_size = 4;
-  CuMatrix<Real> M(dim, dim), N(dim, dim / group_size), O(dim, dim);
-  M.SetRandn();
-  N.GroupPnorm(M, 2.0);
+  int32 group_size = 8;
+  CuMatrix<Real> iv(dim, dim), ov(dim, dim / group_size);
+  CuMatrix<Real> id(dim, dim), od(dim, dim / group_size);
+  iv.SetRandn();
+  od.SetRandn();
+  ov.GroupPnorm(iv, 2.0);
   Timer tim;
   int32 iter = 0;
 
-  for (;tim.Elapsed() < time_in_secs; iter++)
-    O.GroupPnormDeriv(M, N, 2.0);
+  for (; tim.Elapsed() < time_in_secs; iter++)
+    id.DiffGroupPnorm(iv, ov, od, 2.0);
 
   BaseFloat fdim = dim;
   BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
-  KALDI_LOG << "For CuMatrix::GroupPnormDeriv" << NameOf<Real>() << ", for dim = "
+  KALDI_LOG << "For CuMatrix::DiffGroupPnorm" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
@@ -420,6 +584,29 @@ template<typename Real> void TestCuMatrixGroupMax(int32 dim) {
   BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
   KALDI_LOG << "For CuMatrix::GroupMax" << NameOf<Real>() << ", for dim = "
             << dim << ", speed was " << gflops << " gigaflops.";
+}
+
+template<typename Real> void TestCuMatrixGroupMaxAllGroupSizes(int32 dim) {
+  BaseFloat time_in_secs = 0.025;
+  CuMatrix<Real> M(dim, dim);
+  M.SetRandn();
+  Timer tim;
+  int32 iter = 0;
+  for (; tim.Elapsed() < time_in_secs;) {
+    for (int group_size = 1; group_size <= dim; group_size++) {
+      if (dim % group_size == 0) {
+        CuMatrix<Real> N(dim, dim / group_size, kUndefined);
+        N.GroupMax(M);
+        iter++;
+      }
+    }
+  }
+
+  BaseFloat fdim = dim;
+  BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+  KALDI_LOG << "For CuMatrix::GroupMax (all group sizes)" << NameOf<Real>()
+            << ", for dim = " << dim << ", speed was " << gflops
+            << " gigaflops.";
 }
 
 template<typename Real> void TestCuMatrixGroupMaxDeriv(int32 dim) {
@@ -793,6 +980,35 @@ template<typename Real> void TestCuMatrixAddRowRanges(int32 dim) {
             << dim << ", speed was " << gflops << " gigaflops.";
 }
 
+template<typename Real> void TestCuSparseMatrixTraceMatSmat(int32 dim) {
+  for (int32 n = 0; n < 2; n++) {
+    MatrixTransposeType trans = (n == 0 ? kNoTrans : kTrans);
+    BaseFloat time_in_secs = 0.02;
+
+    CuMatrix<Real> M(dim, dim);
+    M.SetRandn();
+
+    std::vector<std::vector<std::pair<MatrixIndexT, Real> > > pairs(dim);
+    for (auto && row : pairs) {
+      row.push_back( { MatrixIndexT(Rand() % dim), Real(Rand() % dim) });
+    }
+    SparseMatrix<Real> Ncpu(dim, pairs);
+    CuSparseMatrix<Real> N(Ncpu);
+
+    Timer tim;
+    int32 iter = 0;
+    for (;tim.Elapsed() < time_in_secs; iter++) {
+      TraceMatSmat(M, N, trans);
+    }
+    BaseFloat fdim = dim;
+    BaseFloat gflops = (fdim * fdim * iter) / (tim.Elapsed() * 1.0e+09);
+    KALDI_LOG << "For CuSparseMatrix::TraceMatSmat" << NameOf<Real>()
+              << (trans == kTrans ? " [transposed]" : "") << ", for dim = "
+              << dim << ", speed was " << gflops << " gigaflops.";
+  }
+}
+
+
 template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
   sizes.push_back(16);
@@ -804,6 +1020,8 @@ template<typename Real> void CudaMatrixSpeedTest() {
   sizes.push_back(1024);
   int32 ns = sizes.size();
   for (int32 s = 0; s < ns; s++)
+    TestCuMatrixDivRowsVec<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
     TestCuMatrixResize<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixAddMat<Real>(sizes[s], 3, 3);
@@ -811,7 +1029,7 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixAddMatBlocks<Real>(sizes[s], 3, 3);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixMatMat<Real>(sizes[s]);
-  for (int32 s = 0; s < ns; s++)
+  for (int32 s = 0; s + 1 < ns; s++)
     TestCuMatrixMatMatBatched<Real>(sizes[s], 10);
   for (int32 s = 0; s < ns; s++) {
     TestCuMatrixAddDiagVecMat<Real>(sizes[s], kNoTrans);
@@ -834,17 +1052,25 @@ template<typename Real> void CudaMatrixSpeedTest() {
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSoftmax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
+    TestCuMatrixDiffSoftmax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixDiffLogSoftmax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
     TestCuMatrixLogSoftmax<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixGroupPnorm<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
-    TestCuMatrixGroupPnormDeriv<Real>(sizes[s]);
+    TestCuMatrixDiffGroupPnorm<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixGroupMax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixGroupMaxAllGroupSizes<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixGroupMaxDeriv<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixTraceMatMat<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuSparseMatrixTraceMatSmat<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixCopyLowerToUpper<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
@@ -857,7 +1083,7 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixCopyUpperToLower<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixSetZeroAboveDiag<Real>(sizes[s]);
-  for (int32 s = 0; s < ns; s++)
+  for (int32 s = 0; s + 2 < ns; s++)
     TestCuMatrixLookup<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixCopyRows1<Real>(sizes[s]);
@@ -873,6 +1099,18 @@ template<typename Real> void CudaMatrixSpeedTest() {
     TestCuMatrixAddToRows<Real>(sizes[s]);
   for (int32 s = 0; s < ns; s++)
     TestCuMatrixAddRowRanges<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixTransposeCross<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixTransposeS<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixTransposeNS<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixSum<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixMax<Real>(sizes[s]);
+  for (int32 s = 0; s < ns; s++)
+    TestCuMatrixMin<Real>(sizes[s]);
 }
 
 
@@ -880,8 +1118,10 @@ template<typename Real> void CudaMatrixSpeedTest() {
 
 
 int main() {
-  for (int32 loop = 0; loop < 2; loop++) {
+  SetVerboseLevel(1);
 #if HAVE_CUDA == 1
+  int32 loop = 0;
+  for (loop = 0; loop < 2; loop++) {
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
     else
@@ -898,9 +1138,9 @@ int main() {
 #else
     kaldi::CudaMatrixSpeedTest<double>();
 #endif
-  }
 #if HAVE_CUDA == 1
+  } // No for loop if 'HAVE_CUDA != 1',
   CuDevice::Instantiate().PrintProfile();
 #endif
-  std::cout << "Tests succeeded.\n";
+  KALDI_LOG << "Tests succeeded.";
 }

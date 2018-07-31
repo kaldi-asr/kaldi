@@ -7,7 +7,7 @@
 # begin configuration section.
 cmd=run.pl
 dirname=lats-in-htk-slf
-parallel_opts="-tc 50" # We should limit disk stress
+parallel_opts="--max-jobs-run 50" # We should limit disk stress
 word_to_node=false # Words in arcs or nodes? [default:arcs]
 #end configuration section.
 
@@ -21,7 +21,7 @@ if [ $# -ne 3 ]; then
   echo " Options:"
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --word-to-link (true|false)     # put word symbols on links or nodes."
-  echo "    --parallel-opts STR             # parallelization options (def.: '-tc 50')."
+  echo "    --parallel-opts STR             # parallelization options (def.: '--max-jobs-run 50')."
   echo "e.g.:"
   echo "$0 data/dev data/lang exp/tri4a/decode_dev"
   exit 1;
@@ -33,7 +33,7 @@ dir=$3
 
 model=$(dirname $dir)/final.mdl # assume model one level up from decoding dir.
 
-for f in $lang/words.txt $lang/phones/word_boundary.int $model $dir/lat.1.gz; do
+for f in $lang/words.txt $lang/phones/align_lexicon.int $model $dir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
@@ -50,7 +50,8 @@ nj=$(cat $dir/num_jobs)
 # convert the lattices (individually, gzipped)
 $cmd $parallel_opts JOB=1:$nj $dir/$dirname/log/lat_convert.JOB.log \
   mkdir -p $dir/$dirname/JOB/ '&&' \
-  lattice-align-words-lexicon --output-error-lats=true --output-if-empty=true $lang/phones/align_lexicon.int $model "ark:gunzip -c $dir/lat.JOB.gz |" ark,t:- \| \
+  lattice-align-words-lexicon --output-error-lats=true --output-if-empty=true \
+    $lang/phones/align_lexicon.int $model "ark:gunzip -c $dir/lat.JOB.gz |" ark,t:- \| \
   utils/int2sym.pl -f 3 $lang/words.txt \| \
   utils/convert_slf.pl $word_to_node_arg - $dir/$dirname/JOB/ || exit 1
 

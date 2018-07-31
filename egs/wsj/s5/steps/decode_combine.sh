@@ -55,8 +55,6 @@ $cmd JOB=1:$nj $dir/log/interp.JOB.log \
   lattice-copy-backoff "ark,s,cs:gunzip -c $srcdir1/lat.JOB.gz|" ark,s,cs:- \
    "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 
-cp $srcdir1/final.mdl $dir/final.mdl
-
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \
     echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;

@@ -1,0 +1,8 @@
+%WER 33.82 [ 35432 / 104765, 743 ins, 3991 del, 30698 sub ] exp/mono/decode_test/cer_12_0.0
+%WER 19.39 [ 20310 / 104765, 903 ins, 1452 del, 17955 sub ] exp/tri1/decode_test/cer_13_0.5
+%WER 19.23 [ 20147 / 104765, 910 ins, 1287 del, 17950 sub ] exp/tri2/decode_test/cer_14_0.5
+%WER 17.14 [ 17961 / 104765, 812 ins, 1024 del, 16125 sub ] exp/tri3a/decode_test/cer_14_0.0
+%WER 13.64 [ 14294 / 104765, 669 ins, 736 del, 12889 sub ] exp/tri4a/decode_test/cer_14_0.5
+%WER 12.23 [ 12809 / 104765, 656 ins, 580 del, 11573 sub ] exp/tri5a/decode_test/cer_13_1.0
+%WER 8.45 [ 8849 / 104765, 312 ins, 538 del, 7999 sub ] exp/nnet3/tdnn_sp/decode_test/cer_13_1.0
+%WER 7.46 [ 7813 / 104765, 287 ins, 472 del, 7054 sub ] exp/chain/tdnn_1a_sp/decode_test/cer_10_1.0

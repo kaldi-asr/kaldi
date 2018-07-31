@@ -278,7 +278,7 @@ class OnlineFeInput : public OnlineFeatInputItf {
                 const int32 frame_size, const int32 frame_shift);
 
   virtual int32 Dim() const { return extractor_->Dim(); }
-  
+
   virtual bool Compute(Matrix<BaseFloat> *output);
 
  private:
@@ -287,8 +287,6 @@ class OnlineFeInput : public OnlineFeatInputItf {
   const int32 frame_size_;
   const int32 frame_shift_;
   Vector<BaseFloat> wave_; // the samples to be passed for extraction
-  Vector<BaseFloat> wave_remainder_; // the samples remained from the previous
-                                     // feature batch
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(OnlineFeInput);
 };
@@ -312,20 +310,14 @@ OnlineFeInput<E>::Compute(Matrix<BaseFloat> *output) {
   Vector<BaseFloat> read_samples(samples_req);
 
   bool ans = source_->Read(&read_samples);
-  
-  Vector<BaseFloat> all_samples(wave_remainder_.Dim() + read_samples.Dim());
-  all_samples.Range(0, wave_remainder_.Dim()).CopyFromVec(wave_remainder_);
-  all_samples.Range(wave_remainder_.Dim(), read_samples.Dim()).
-      CopyFromVec(read_samples);
-  
+
   // Extract the features
-  if (all_samples.Dim() >= frame_size_) {
-    extractor_->Compute(all_samples, 1.0, output, &wave_remainder_);
+  if (read_samples.Dim() >= frame_size_) {
+    extractor_->Compute(read_samples, 1.0, output);
   } else {
     output->Resize(0, 0);
-    wave_remainder_ = all_samples;
   }
-  
+
   return ans;
 }
 

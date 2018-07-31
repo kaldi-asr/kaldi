@@ -33,6 +33,7 @@ sub GetGCD {
 }
 
 my $Usage = <<EOU;
+create_data_link.pl:
 This script distributes data onto different file systems by making symbolic
 links. It is supposed to use together with utils/create_split_dir.pl, which
 creates a "storage" directory that links to different file systems.
@@ -78,7 +79,7 @@ for (my $x = 1; $x <= $num_storage; $x++) {
 
 # Second, get the coprime list.
 my @coprimes;
-for (my $n = 1; $n < $num_storage; $n++) {
+for (my $n = 1; $n <= $num_storage; $n++) {
   if (GetGCD($n, $num_storage) == 1) {
     push(@coprimes, $n);
   }

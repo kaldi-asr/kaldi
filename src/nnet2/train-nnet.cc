@@ -18,7 +18,7 @@
 // limitations under the License.
 
 #include "nnet2/train-nnet.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -32,26 +32,16 @@ class NnetExampleBackgroundReader {
       minibatch_size_(minibatch_size), nnet_(nnet), reader_(reader),
       finished_(false) {
     // When this class is created, it spawns a thread which calls ReadExamples()
-    // in the background.
-    pthread_attr_t pthread_attr;
-    pthread_attr_init(&pthread_attr);
-    int32 ret;
-    // below, Run is the static class-member function.
-    if ((ret=pthread_create(&thread_, &pthread_attr,
-                            Run, static_cast<void*>(this)))) {
-      const char *c = strerror(ret);
-      if (c == NULL) { c = "[NULL]"; }
-      KALDI_ERR << "Error creating thread, errno was: " << c;
-    }
+    // in the background. Below, Run is the static class-member function.
+    thread_ = std::thread(Run, this);
     // the following call is a signal that no-one is currently using the examples_ and
     // formatted_examples_ class members.
     consumer_semaphore_.Signal();
   }
   ~NnetExampleBackgroundReader() {
-    if (KALDI_PTHREAD_PTR(thread_) == 0)
+    if (!thread_.joinable())
       KALDI_ERR << "No thread to join.";
-    if (pthread_join(thread_, NULL))
-      KALDI_ERR << "Error rejoining thread.";
+    thread_.join();
   }
 
   // This will be called in a background thread.  It's responsible for
@@ -60,13 +50,13 @@ class NnetExampleBackgroundReader {
     KALDI_ASSERT(minibatch_size_ > 0);
     int32 minibatch_size = minibatch_size_;
 
-    
+
     // Loop over minibatches...
     while (true) {
       // When the following call succeeds we interpret it as a signal that
       // we are free to write to the class-member variables examples_ and formatted_examples_.
       consumer_semaphore_.Wait();
-      
+
       examples_.clear();
       examples_.reserve(minibatch_size);
       // Read the examples.
@@ -85,14 +75,14 @@ class NnetExampleBackgroundReader {
         FormatNnetInput(*nnet_, examples_, &formatted_examples_);
         total_weight_ = TotalNnetTrainingWeight(examples_);
       }
-      
+
       bool finished = examples_.empty();
-      
+
       // The following call alerts the main program thread (that calls
       // GetNextMinibatch() that it can how use the contents of
       // examples_ and formatted_examples_.
       producer_semaphore_.Signal();
-      
+
       // If we just read an empty minibatch (because no more examples),
       // then return.
       if (finished)
@@ -122,11 +112,11 @@ class NnetExampleBackgroundReader {
     examples_.swap(*examples);
     formatted_examples_.Swap(formatted_examples);
     *total_weight = total_weight_;
-    
+
     // signal the background thread that it is now free to write
     // again to examples_ and formatted_examples_.
     consumer_semaphore_.Signal();
-    
+
     if (examples->empty()) {
       finished_ = true;
       return false;
@@ -134,18 +124,18 @@ class NnetExampleBackgroundReader {
       return true;
     }
   }
-  
+
  private:
   int32 minibatch_size_;
   Nnet *nnet_;
   SequentialNnetExampleReader *reader_;
-  pthread_t thread_;
-  
+  std::thread thread_;
+
   std::vector<NnetExample> examples_;
   Matrix<BaseFloat> formatted_examples_;
   double total_weight_;  // total weight, from TotalNnetTrainingWeight(examples_).
                          // better to compute this in the background thread.
-  
+
   Semaphore producer_semaphore_;
   Semaphore consumer_semaphore_;
 

@@ -3,7 +3,7 @@
 # Copyright 2012-2015 Brno University of Technology (author: Karel Vesely), Daniel Povey
 # Apache 2.0
 
-# Begin configuration section. 
+# Begin configuration section.
 nnet=               # non-default location of DNN (optional)
 feature_transform=  # non-default location of feature_transform (optional)
 model=              # non-default location of transition model (optional)
@@ -12,7 +12,7 @@ srcdir=             # non-default location of DNN-dir (decouples model dir from 
 ivector=            # rx-specifier with i-vectors (ark-with-vectors),
 
 blocksoftmax_dims=   # 'csl' with block-softmax dimensions: dim1,dim2,dim3,...
-blocksoftmax_active= # '1' for the 1st block, 
+blocksoftmax_active= # '1' for the 1st block,
 
 stage=0 # stage=1 skips lattice generation
 nj=4
@@ -93,7 +93,7 @@ done
 
 # Possibly use multi-threaded decoder
 thread_string=
-[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads" 
+[ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
 
 
 # PREPARE FEATURE EXTRACTION PIPELINE
@@ -118,12 +118,20 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 
 # add-ivector (optional),
 if [ -e $D/ivector_dim ]; then
-  ivector_dim=$(cat $D/ivector_dim)
-  [ -z $ivector ] && echo "Missing --ivector, they were used in training! (dim $ivector_dim)" && exit 1
-  ivector_dim2=$(copy-vector --print-args=false "$ivector" ark,t:- | head -n1 | awk '{ print NF-3 }') || true
-  [ $ivector_dim != $ivector_dim2 ] && "Error, i-vector dimensionality mismatch! (expected $ivector_dim, got $ivector_dim2 in $ivector)" && exit 1
-  # Append to feats
-  feats="$feats append-vector-to-feats ark:- '$ivector' ark:- |"
+  [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
+  # Get the tool,
+  ivector_append_tool=append-vector-to-feats # default,
+  [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
+  # Check dims,
+  feats_job_1=$(sed 's:JOB:1:g' <(echo $feats))
+  dim_raw=$(feat-to-dim "$feats_job_1" -)
+  dim_raw_and_ivec=$(feat-to-dim "$feats_job_1 $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_ivec=$((dim_raw_and_ivec - dim_raw))
+  [ $dim_ivec != "$(cat $D/ivector_dim)" ] && \
+    echo "Error, i-vector dim. mismatch (expected $(cat $D/ivector_dim), got $dim_ivec in '$ivector')" && \
+    exit 1
+  # Append to feats,
+  feats="$feats $ivector_append_tool ark:- '$ivector' ark:- |"
 fi
 
 # select a block from blocksoftmax,
@@ -135,8 +143,8 @@ if [ ! -z "$blocksoftmax_dims" ]; then
   dim_block=$(awk -F'[:,]' -v active=$blocksoftmax_active '{ print $active; }' <(echo $blocksoftmax_dims))
   offset=$(awk -F'[:,]' -v active=$blocksoftmax_active '{ sum=0; for(i=1;i<active;i++) { sum += $i }; print sum; }' <(echo $blocksoftmax_dims))
   # create components which select a block,
-  nnet-initialize <(echo "<Copy> <InputDim> $dim_total <OutputDim> $dim_block <BuildVector> $((1+offset)):$((offset+dim_block)) </BuildVector>"; 
-                    echo "<Softmax> <InputDim> $dim_block <OutputDim> $dim_block") $dir/copy_and_softmax.nnet 
+  nnet-initialize <(echo "<Copy> <InputDim> $dim_total <OutputDim> $dim_block <BuildVector> $((1+offset)):$((offset+dim_block)) </BuildVector>";
+                    echo "<Softmax> <InputDim> $dim_block <OutputDim> $dim_block") $dir/copy_and_softmax.nnet
   # nnet is assembled on-the fly, <BlockSoftmax> is removed, while <Copy> + <Softmax> is added,
   nnet="nnet-concat 'nnet-copy --remove-last-components=1 $nnet - |' $dir/copy_and_softmax.nnet - |"
 fi

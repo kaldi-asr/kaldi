@@ -11,7 +11,7 @@
 
 stage=0
 train_stage=-100
-. cmd.sh || exit 1;
+. ./cmd.sh || exit 1;
 . utils/parse_options.sh || exit 1;
 
 # We increase the beam relative to the defaults; this is just for this RM setup,
@@ -22,15 +22,15 @@ train_stage=-100
 nj=8
 
 if [ $stage -le 0 ]; then
-  steps/nnet2/make_denlats.sh --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
-    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "-pe smp 6" \
+  steps/nnet2/make_denlats.sh --cmd "$decode_cmd --mem 1G" \
+    --nj $nj --sub-split 20 --num-threads 6 --parallel-opts "--num-threads 6" \
     --beam 20.0 --lattice-beam 10.0 \
     --transform-dir exp/tri3b_ali \
     data/train data/lang exp/nnet4c exp/nnet4c_denlats
 fi
 
 if [ $stage -le 1 ]; then
-  steps/nnet2/align.sh  --cmd "$decode_cmd -l mem_free=1G,ram_free=1G" \
+  steps/nnet2/align.sh  --cmd "$decode_cmd --mem 1G" \
     --transform-dir exp/tri3b_ali \
     --nj $nj data/train data/lang exp/nnet4c exp/nnet4c_ali
 fi

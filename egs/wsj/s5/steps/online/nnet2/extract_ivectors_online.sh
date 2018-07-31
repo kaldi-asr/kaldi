@@ -3,6 +3,7 @@
 # Copyright     2013  Daniel Povey
 # Apache 2.0.
 
+set -o pipefail
 
 # This script extracts iVectors for a set of utterances, given
 # features and a trained iVector extractor.
@@ -106,7 +107,7 @@ echo "--max-remembered-frames=1000" >>$ieconf # the default
 echo "--max-count=$max_count" >>$ieconf
 
 
-absdir=$(readlink -f $dir)
+absdir=$(utils/make_absolute.sh $dir)
 
 for n in $(seq $nj); do
   # This will do nothing unless the directory $dir/storage exists;
@@ -126,3 +127,8 @@ if [ $stage -le 1 ]; then
   echo "$0: combining iVectors across jobs"
   for j in $(seq $nj); do cat $dir/ivector_online.$j.scp; done >$dir/ivector_online.scp || exit 1;
 fi
+
+steps/nnet2/get_ivector_id.sh $srcdir > $dir/final.ie.id || exit 1
+
+echo "$0: done extracting (online) iVectors to $dir using the extractor in $srcdir."
+

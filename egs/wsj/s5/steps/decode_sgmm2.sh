@@ -2,7 +2,7 @@
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
-# This script does decoding with an SGMM system, with speaker vectors. 
+# This script does decoding with an SGMM system, with speaker vectors.
 # If the SGMM system was
 # built on top of fMLLR transforms from a conventional system, you should
 # provide the --transform-dir option.
@@ -17,14 +17,14 @@ beam=13.0
 gselect=15  # Number of Gaussian-selection indices for SGMMs.  [Note:
             # the first_pass_gselect variable is used for the 1st pass of
             # decoding and can be tighter.
-first_pass_gselect=3 # Use a smaller number of Gaussian-selection indices in 
+first_pass_gselect=3 # Use a smaller number of Gaussian-selection indices in
             # the 1st pass of decoding (lattice generation).
 max_active=7000
 max_mem=50000000
-#WARNING: This option is renamed lattice_beam (it was renamed to follow the naming 
+#WARNING: This option is renamed lattice_beam (it was renamed to follow the naming
 #         in the other scripts
 lattice_beam=6.0 # Beam we use in lattice generation.
-vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for 
+vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for
     # speaker-vector computation.  Can be quite tight (actually we could
     # probably just do best-path.
 use_fmllr=false
@@ -96,7 +96,7 @@ if [ ! -z "$transform_dir" ]; then
     echo "$0: using transforms from $transform_dir"
     feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/trans.JOB ark:- ark:- |"
   elif [ -f $transform_dir/raw_trans.1 ]; then
-    feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"    
+    feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$transform_dir/raw_trans.JOB ark:- ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $srcdir/final.mat ark:- ark:- |"
   else
     echo "$0: no such file $transform_dir/trans.1 or $transform_dir/raw_trans.1, invalid --transform-dir option?"
     exit 1;
@@ -142,7 +142,7 @@ fi
 # Estimate speaker vectors (1st pass).  Prune before determinizing
 # because determinization can take a while on un-pruned lattices.
 # Note: the sgmm2-post-to-gpost stage is necessary because we have
-# a separate alignment-model and final model, otherwise we'd skip it 
+# a separate alignment-model and final model, otherwise we'd skip it
 # and use sgmm2-est-spkvecs.
 if [ $stage -le 3 ]; then
   $cmd JOB=1:$nj $dir/log/vecs_pass1.JOB.log \
@@ -195,7 +195,7 @@ if $use_fmllr; then
        --fmllr-iters=$fmllr_iters --fmllr-min-count=$fmllr_min_count \
       $srcdir/final.fmllr_mdl "$feats" ark,s,cs:- "ark:$dir/trans.JOB" || exit 1;
   fi
-  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"  
+  feats="$feats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"
 fi
 
 # Now rescore the state-level lattices with the adapted features and the
@@ -208,13 +208,14 @@ if [ $stage -le 6 ]; then
     lattice-determinize-pruned$thread_string --acoustic-scale=$acwt --beam=$lattice_beam ark:- \
     "ark:|gzip -c > $dir/lat.JOB.gz" || exit 1;
 fi
-#rm $dir/pre_lat.*.gz ##TEMP!
-
-# The output of this script is the files "lat.*.gz"-- we'll rescore this at different
-# acoustic scales to get the final output.
+rm $dir/pre_lat.*.gz
 
 
 if [ $stage -le 7 ]; then
+  steps/diagnostic/analyze_lats.sh --cmd "$cmd" $graphdir $dir
+fi
+
+if [ $stage -le 8 ]; then
   if ! $skip_scoring ; then
     [ ! -x local/score.sh ] && \
       echo "Not scoring because local/score.sh does not exist or not executable." && exit 1;

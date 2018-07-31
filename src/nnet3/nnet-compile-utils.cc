@@ -1,6 +1,6 @@
 // nnet3/nnet-compile-utils.cc
 
-// Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015-2017  Johns Hopkins University (author: Daniel Povey)
 //                2015                           (author: Vijayaditya Peddinti)
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -434,33 +434,62 @@ void EnsureContiguousProperty(
   }
 }
 
-// Function to split a list of pairs into vector of lists of unique pairs
+
+
+/**
+   This function splits a vector of pairs into a list of vectors of pairs.
+   [note: by 'vector' we mean something that has a meaningful index that we care
+   about; by 'list' we mean a collection of elements to be iterated over, without
+   (in this case) meaningful indexes or even order.
+
+   @param [in] list   A vector of pairs; these pairs should be either (-1,-1)
+                      or (a,b) for a >= 0, b >= 0.  At least one element of 'list'
+                      must be different from (-1,-1).
+   @param [out] split_lists   A list, in arbitrary order, of vectors of pairs.
+                     It has the following relationship with 'list':
+                     - Size: for each j, split_lists[j].size() == list.size().
+                     - Contents must match input: For each i:
+                       -  If list[i] == (-1, -1), then
+                          split_lists[j][i] == (-1, -1) for all j.
+                       -  If list[i] != (-1, -1), then
+                         split_lists[j][i] == (-1, -1) for *all but one* j, and
+                         for the remaining j, split_lists[j][i] == list[i].
+                     - Uniqueness: for no j should split_lists[j] contain
+                       any duplicate elements (except the pair (-1,-1), which  is
+                       allowed to exist in duplicate form).
+                     To satisfy the above conditions, this function will create
+                     as many lists in split_lists (i.e. as many j values) as the
+                     number of times that the most frequent pair in 'list'
+                     repeats other than the pair (-1,-1), e.g. if the pair
+                     (10,11) appears 4 times in 'list' and that is the most,
+                     split_lists->size() == 4.
+*/
 void SplitPairList(std::vector<std::pair<int32, int32> >& list,
                    std::vector<std::vector<std::pair<int32, int32> > >* split_lists) {
   split_lists->clear();
+  typedef unordered_map<std::pair<int32, int32>,
+                        int32, PairHasher<int32> > MapType;
+  // this maps a pair not equal to -1,-1, to the number of times we've already seen it.
+  MapType pair_to_count;
+  int32 cur_num_lists = 0;
+
   for (int32 i = 0; i < list.size(); i++)  {
-    // searching for the new pair in the new_split_lists
-    bool added_pair = false;
-    if ( list[i].first == -1)
+    if (list[i].first == -1)
       continue;
-    for (int32 j = 0; j < split_lists->size(); j++)  {
-      std::vector<std::pair<int32, int32> >::const_iterator iter
-          = std::find_if((*split_lists)[j].begin(),
-                         (*split_lists)[j].end(),
-                         PairIsEqualComparator(list[i]));
-      if (iter == (*split_lists)[j].end()) {
-        // this pair is not in this list
-        (*split_lists)[j][i] = list[i];
-        added_pair = true;
-        break;
-      }
+    MapType::iterator iter = pair_to_count.find(list[i]);
+    int32 this_count;
+    if (iter == pair_to_count.end())
+      pair_to_count[list[i]] = this_count = 1;
+    else
+      this_count = (++iter->second);
+    if (this_count > cur_num_lists) {
+      KALDI_ASSERT(this_count == cur_num_lists + 1);
+      split_lists->resize(this_count);
+      split_lists->back().resize(list.size(),
+                                 std::pair<int32, int32>(-1, -1));
+      cur_num_lists++;
     }
-    if (!added_pair)  {
-      std::vector<std::pair<int32, int32> > list_of_pairs(list.size(),
-                                                          std::make_pair(-1, -1));
-      list_of_pairs[i] = list[i];
-      split_lists->push_back(list_of_pairs);
-    }
+    (*split_lists)[this_count-1][i] = list[i];
   }
   if (split_lists->size() == 0)
     KALDI_ERR << "Input list has just dummy pairs";
@@ -477,8 +506,12 @@ void SplitLocationsBackward(
     std::vector<int32> second_values;
     if (ConvertToIndexes(split_lists_intermediate[i],
                          &first_value, &second_values)) {
-      // the .first values are the same
-      if (first_value == -1) continue;  // don't output anything for this.
+      // the .first values in split_lists_intermediate[i] are all the same (or
+      // equal to -1).
+      if (first_value == -1) {
+        // all the .first values were equal to -1.  this is like a NULL marker.
+        continue;
+      }
       std::vector<std::vector<int32> > second_values_split;
       EnsureContiguousProperty(second_values, &second_values_split);
       if (second_values_split.size() == 1) {
@@ -564,6 +597,45 @@ bool HasContiguousProperty(
   }
   return true;
 }
+
+
+// see comment in header.
+void GetNxList(const std::vector<Index> &indexes,
+               std::vector<std::pair<int32, int32> > *pairs) {
+  // set of (n,x) pairs
+  std::unordered_set<std::pair<int32, int32>, PairHasher<int32> > n_x_set;
+
+  for (std::vector<Index>::const_iterator iter = indexes.begin();
+       iter != indexes.end(); ++iter)
+    n_x_set.insert(std::pair<int32, int32>(iter->n, iter->x));
+  pairs->clear();
+  pairs->reserve(n_x_set.size());
+  for (std::unordered_set<std::pair<int32, int32>, PairHasher<int32> >::iterator
+           iter = n_x_set.begin(); iter != n_x_set.end(); ++iter)
+    pairs->push_back(*iter);
+  std::sort(pairs->begin(), pairs->end());
+}
+
+
+// see comment in header.
+void GetTList(const std::vector<Index> &indexes,
+              std::vector<int32> *t_values) {
+  // set of t values
+  std::unordered_set<int32> t_set;
+
+  for (std::vector<Index>::const_iterator iter = indexes.begin();
+       iter != indexes.end(); ++iter)
+    if (iter->t != kNoTime)
+      t_set.insert(iter->t);
+  t_values->clear();
+  t_values->reserve(t_set.size());
+  for (std::unordered_set<int32>::iterator iter = t_set.begin();
+       iter != t_set.end(); ++iter)
+    t_values->push_back(*iter);
+  std::sort(t_values->begin(), t_values->end());
+}
+
+
 
 }  // namespace nnet3
 }  // namespace kaldi

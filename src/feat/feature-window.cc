@@ -88,8 +88,13 @@ int32 NumFrames(int64 num_samples,
 
 
 void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value) {
-  for (int32 i = 0; i < waveform->Dim(); i++)
-    (*waveform)(i) += RandGauss() * dither_value;
+  if (dither_value == 0.0)
+    return;
+  int32 dim = waveform->Dim();
+  BaseFloat *data = waveform->Data();
+  RandomState rstate;
+  for (int32 i = 0; i < dim; i++)
+    data[i] += RandGauss(&rstate) * dither_value;
 }
 
 
@@ -105,16 +110,20 @@ FeatureWindowFunction::FeatureWindowFunction(const FrameExtractionOptions &opts)
   int32 frame_length = opts.WindowSize();
   KALDI_ASSERT(frame_length > 0);
   window.Resize(frame_length);
+  double a = M_2PI / (frame_length-1);
   for (int32 i = 0; i < frame_length; i++) {
-    BaseFloat i_fl = static_cast<BaseFloat>(i);
+    double i_fl = static_cast<double>(i);
     if (opts.window_type == "hanning") {
-      window(i) = 0.5  - 0.5*cos(M_2PI * i_fl / (frame_length-1));
+      window(i) = 0.5  - 0.5*cos(a * i_fl);
     } else if (opts.window_type == "hamming") {
-      window(i) = 0.54 - 0.46*cos(M_2PI * i_fl / (frame_length-1));
+      window(i) = 0.54 - 0.46*cos(a * i_fl);
     } else if (opts.window_type == "povey") {  // like hamming but goes to zero at edges.
-      window(i) = pow(0.5 - 0.5*cos(M_2PI * i_fl / (frame_length-1)), 0.85);
+      window(i) = pow(0.5 - 0.5*cos(a * i_fl), 0.85);
     } else if (opts.window_type == "rectangular") {
       window(i) = 1.0;
+    } else if (opts.window_type == "blackman") {
+      window(i) = opts.blackman_coeff - 0.5*cos(a * i_fl) +
+        (0.5 - opts.blackman_coeff) * cos(2 * a * i_fl);
     } else {
       KALDI_ERR << "Invalid window type " << opts.window_type;
     }
@@ -136,7 +145,7 @@ void ProcessWindow(const FrameExtractionOptions &opts,
 
   if (log_energy_pre_window != NULL) {
     BaseFloat energy = std::max(VecVec(*window, *window),
-                                std::numeric_limits<float>::epsilon());
+                                std::numeric_limits<BaseFloat>::epsilon());
     *log_energy_pre_window = Log(energy);
   }
 

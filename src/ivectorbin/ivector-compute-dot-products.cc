@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "ivector/ivector-extractor.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 
 int main(int argc, char *argv[]) {
@@ -44,11 +44,11 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " ivector-compute-dot-products trials ark:train_ivectors.scp ark:test_ivectors.scp trials.scored\n"
         "See also: ivector-plda-scoring\n";
-    
+
     ParseOptions po(usage);
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
@@ -61,10 +61,10 @@ int main(int argc, char *argv[]) {
 
 
     int64 num_done = 0, num_err = 0;
-    
+
     RandomAccessBaseFloatVectorReader ivector1_reader(ivector1_rspecifier);
     RandomAccessBaseFloatVectorReader ivector2_reader(ivector2_rspecifier);
-    
+
     Input ki(trials_rxfilename);
 
     bool binary = false;
@@ -101,7 +101,7 @@ int main(int argc, char *argv[]) {
       num_done++;
       ko.Stream() << key1 << ' ' << key2 << ' ' << dot_prod << std::endl;
     }
-    
+
     if (num_done != 0) {
       BaseFloat mean = sum / num_done, scatter = sumsq / num_done,
           variance = scatter - mean * mean, stddev = sqrt(variance);

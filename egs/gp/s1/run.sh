@@ -66,7 +66,7 @@ for LCODE in GE PO SP SW; do
   # The following 3 commands will not run as written, since the LM directories
   # will be different across sites. Edit the 'lang_test' to match what is 
   # available
-  utils/mkgraph.sh --mono data/$LCODE/lang_test exp/$LCODE/mono \
+  utils/mkgraph.sh data/$LCODE/lang_test exp/$LCODE/mono \
     exp/$LCODE/mono/graph
   utils/decode.sh --qcmd "$decode_cmd" steps/decode_deltas.sh \
     exp/$LCODE/mono/graph data/$LCODE/dev exp/$LCODE/mono/decode_dev

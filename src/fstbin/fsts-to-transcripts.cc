@@ -1,6 +1,7 @@
 // fstbin/fsts-to-transcripts.cc
 
-// Copyright 2012-2013  Johns Hopkins University (Authors: Guoguo Chen, Daniel Povey)
+// Copyright 2012-2013  Johns Hopkins University (Authors: Guoguo Chen,
+//                                                         Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -32,12 +33,15 @@ int main(int argc, char *argv[]) {
     typedef kaldi::uint64 uint64;
 
     const char *usage =
-        "Reads a table of FSTs; for each element, finds the best path and prints out the\n"
-        "output-symbol sequence (if --output-side=true), or input-symbol sequence "
-        "otherwise.\n"
+        "Reads a table of FSTs; for each element, finds the best path and \n"
+        "prints out the output-symbol sequence (if --output-side=true), or \n"
+        "input-symbol sequence otherwise.\n"
         "\n"
-        "Usage: fsts-to-transcripts [options] <fsts-rspecifier> <transcriptions-wspecifier>\n"
-        " e.g.: fsts-to-transcripts ark:train.fsts ark,t:train.text\n";
+        "Usage:\n"
+        " fsts-to-transcripts [options] <fsts-rspecifier>"
+        " <transcriptions-wspecifier>\n"
+        "e.g.:\n"
+        " fsts-to-transcripts ark:train.fsts ark,t:train.text\n";
 
     ParseOptions po(usage);
 
@@ -48,13 +52,13 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 2 || po.NumArgs() > 3) {
+    if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string fst_rspecifier = po.GetArg(1),
-        transcript_wspecifier = po.GetOptArg(2);
+        transcript_wspecifier = po.GetArg(2);
 
 
     SequentialTableReader<VectorFstHolder> fst_reader(fst_rspecifier);
@@ -67,11 +71,11 @@ int main(int argc, char *argv[]) {
 
 
       VectorFst<StdArc> shortest_path;
-      ShortestPath(fst, &shortest_path); // the OpenFst algorithm ShortestPath.
+      ShortestPath(fst, &shortest_path);  // the OpenFst algorithm ShortestPath.
 
       if (shortest_path.NumStates() == 0) {
-        KALDI_WARN << "Input FST (after shortest path) was empty.  Producing no "
-                   << "output for key " << key;
+        KALDI_WARN << "Input FST (after shortest path) was empty. Producing "
+                   << "no output for key " << key;
         n_err++;
         continue;
       }
@@ -80,7 +84,8 @@ int main(int argc, char *argv[]) {
       bool ans;
       if (output_side) ans = fst::GetLinearSymbolSequence<StdArc, int32>(
               shortest_path, NULL, &transcript, NULL);
-      else ans = fst::GetLinearSymbolSequence<StdArc, int32>(
+      else
+        ans = fst::GetLinearSymbolSequence<StdArc, int32>(
           shortest_path, &transcript, NULL, NULL);
       if (!ans) {
         KALDI_ERR << "GetLinearSymbolSequence returned false (code error);";

@@ -89,12 +89,13 @@ template<class Weight, class IntType> class CompactLatticePusher {
   void CheckForConflict(const CompactWeight &final,
                         StateId state,
                         int32 *shift) {
+    if (shift == NULL) return;
     // At input, "shift" has the maximum value that we could shift back assuming
     // there is no conflict between the values of the strings.  We need to check
     // if there is conflict, and if so, reduce the "shift".
     bool is_final = (final != CompactWeight::Zero());
     size_t num_arcs = clat_->NumArcs(state);
-    if (num_arcs + (is_final ? 1 : 0) > 1 && shift > 0) {
+    if (num_arcs + (is_final ? 1 : 0) > 1 && *shift > 0) {
       // There is potential for conflict between string values, because >1
       // [arc or final-prob].  Find the longest shift up to and including the
       // current shift, that gives no conflict.

@@ -1,0 +1,242 @@
+#Created on 2016-02-25T15:45:46-05:00 by local/best_scores.sh
+#
+# STT Task performance (WER), evaluated on 2016-02-25T15:45:46-05:00
+%WER 50.2 | 21825 101803 | 55.1 33.2 11.7 5.3 50.2 31.2 | -0.670 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+#
+# STT Task performance (WER), evaluated on 2016-02-25T17:03:34-05:00
+%WER 50.2 | 21825 101803 | 55.1 33.2 11.7 5.3 50.2 31.2 | -0.670 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+%WER 58.1 | 21825 101803 | 48.5 39.7 11.8 6.6 58.1 32.6 | -1.226 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER 48.1 | 21825 101803 | 56.4 31.2 12.3 4.6 48.1 31.0 | -0.638 | exp/tri6_nnet/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+#
+# STT Task performance (WER), evaluated on 2016-03-03T19:48:53-05:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+%WER  50.4  |  21825  101803  |  55.5  34.1  10.4  5.9  50.4  31.0  |  -0.669  |  exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it3/score_16/dev10h.pem.ctm.sys
+%WER  42.3  |  21825  101803  |  61.0  26.6  12.3  3.3  42.3  30.0  |  -1.260  |  exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+%WER  50.2  |  21825  101803  |  55.1  33.2  11.7  5.3  50.2  31.2  |  -0.670  |  exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+%WER  58.1  |  21825  101803  |  48.5  39.7  11.8  6.6  58.1  32.6  |  -1.226  |  exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER  62.3  |  21825  101803  |  44.2  42.6  13.3  6.5  62.3  32.9  |  -0.955  |  exp/tri5/decode_dev10h.pem.si/score_12/dev10h.pem.ctm.sys
+%WER  48.1  |  21825  101803  |  56.4  31.2  12.3  4.6  48.1  31.0  |  -0.638  |  exp/tri6_nnet/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+%WER  46.8  |  21825  101803  |  57.7  28.7  13.7  4.4  46.8  30.8  |  -0.514  |  exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/score_10/dev10h.pem.ctm.sys
+#
+# STT Task performance (WER), evaluated on 2016-03-06T10:07:57-05:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+%WER  50.4  |  21825  101803  |  55.5  34.1  10.4  5.9  50.4  31.0  |  -0.669  |  exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it3/score_16/dev10h.pem.ctm.sys
+%WER  42.3  |  21825  101803  |  61.0  26.6  12.3  3.3  42.3  30.0  |  -1.260  |  exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+%WER  43.7  |  21825  101803  |  60.3  27.8  12.0  4.0  43.7  30.3  |  -1.051  |  exp/nnet3/lstm_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+%WER  46.6  |  21825  101803  |  57.7  29.7  12.6  4.3  46.6  30.8  |  -0.740  |  exp/nnet3/tdnn_6layer_r512_sp/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+%WER  50.2  |  21825  101803  |  55.1  33.2  11.7  5.3  50.2  31.2  |  -0.670  |  exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+%WER  58.1  |  21825  101803  |  48.5  39.7  11.8  6.6  58.1  32.6  |  -1.226  |  exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER  62.3  |  21825  101803  |  44.2  42.6  13.3  6.5  62.3  32.9  |  -0.955  |  exp/tri5/decode_dev10h.pem.si/score_12/dev10h.pem.ctm.sys
+%WER  48.1  |  21825  101803  |  56.4  31.2  12.3  4.6  48.1  31.0  |  -0.638  |  exp/tri6_nnet/decode_dev10h.pem/score_11/dev10h.pem.ctm.sys
+%WER  46.8  |  21825  101803  |  57.7  28.7  13.7  4.4  46.8  30.8  |  -0.514  |  exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/score_10/dev10h.pem.ctm.sys
+#
+# KWS Task performance (TWV), for the set kwlist evaluated on 2016-03-31T11:30:04-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.4114 OTWV=0.5171 STWV=0.6713 MTWV=0.4128 THRESHOLD=0.453 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/kwset_kwlist_9/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=3606 , #FA=1935 , #Miss=2988 , Contributed ATWV= 0.4114, Best Possible Contributed ATWV= 0.9984, ATWV= 0.4121
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.4639 OTWV=0.5790 STWV=0.7779 MTWV=0.4639 THRESHOLD=0.491 exp/tri6_nnet/decode_dev10h.pem/kwset_kwlist_11/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=3948 , #FA=2450 , #Miss=2646 , Contributed ATWV= 0.4639, Best Possible Contributed ATWV= 0.9984, ATWV= 0.4646
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.4670 OTWV=0.5932 STWV=0.7799 MTWV=0.4685 THRESHOLD=0.453 exp/nnet3/tdnn_6layer_r512_sp/decode_dev10h.pem/kwset_kwlist_11/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=3914 , #FA=2016 , #Miss=2680 , Contributed ATWV= 0.4670, Best Possible Contributed ATWV= 0.9984, ATWV= 0.4677
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.4940 OTWV=0.6072 STWV=0.7751 MTWV=0.4940 THRESHOLD=0.491 exp/nnet3/lstm_sp/decode_dev10h.pem/kwset_kwlist_11/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=4297 , #FA=2623 , #Miss=2297 , Contributed ATWV= 0.4940, Best Possible Contributed ATWV= 0.9984, ATWV= 0.4948
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.4970 OTWV=0.6016 STWV=0.7837 MTWV=0.4985 THRESHOLD=0.503 exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=4145 , #FA=2538 , #Miss=2449 , Contributed ATWV= 0.4970, Best Possible Contributed ATWV= 0.9984, ATWV= 0.4977
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.5174 OTWV=0.6324 STWV=0.7958 MTWV=0.5183 THRESHOLD=0.433 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem/kwset_kwlist_11/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=4312 , #FA=2156 , #Miss=2282 , Contributed ATWV= 0.5174, Best Possible Contributed ATWV= 0.9984, ATWV= 0.5182
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+#
+# KWS Task performance (TWV), for the set kwlist2 evaluated on 2016-03-31T11:30:12-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.4371 OTWV=0.5527 STWV=0.6904 MTWV=0.4372 THRESHOLD=0.484 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=7695 , #FA=8671 , #Miss=6784 , Contributed ATWV= 0.4356, Best Possible Contributed ATWV= 0.9849, ATWV= 0.4423
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=10   , #FA=32   , #Miss=50   , Contributed ATWV= 0.0015, Best Possible Contributed ATWV= 0.0151, ATWV= 0.0974
+ATWV=0.4822 OTWV=0.6082 STWV=0.7912 MTWV=0.4822 THRESHOLD=0.491 exp/tri6_nnet/decode_dev10h.pem/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=8278 , #FA=9303 , #Miss=6201 , Contributed ATWV= 0.4808, Best Possible Contributed ATWV= 0.9849, ATWV= 0.4882
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=12   , #FA=60   , #Miss=48   , Contributed ATWV= 0.0014, Best Possible Contributed ATWV= 0.0151, ATWV= 0.0924
+ATWV=0.4920 OTWV=0.6156 STWV=0.7891 MTWV=0.4920 THRESHOLD=0.491 exp/nnet3/tdnn_6layer_r512_sp/decode_dev10h.pem/kwset_kwlist2_11/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=8698 , #FA=10346, #Miss=5781 , Contributed ATWV= 0.4913, Best Possible Contributed ATWV= 0.9849, ATWV= 0.4989
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=8    , #FA=59   , #Miss=52   , Contributed ATWV= 0.0006, Best Possible Contributed ATWV= 0.0151, ATWV= 0.0427
+ATWV=0.5006 OTWV=0.6216 STWV=0.7975 MTWV=0.5006 THRESHOLD=0.491 exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/kwset_kwlist2_11/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=8552 , #FA=9419 , #Miss=5927 , Contributed ATWV= 0.4992, Best Possible Contributed ATWV= 0.9849, ATWV= 0.5069
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=11   , #FA=55   , #Miss=49   , Contributed ATWV= 0.0013, Best Possible Contributed ATWV= 0.0151, ATWV= 0.0873
+ATWV=0.5077 OTWV=0.6291 STWV=0.7819 MTWV=0.5077 THRESHOLD=0.491 exp/nnet3/lstm_sp/decode_dev10h.pem/kwset_kwlist2_11/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=9060 , #FA=10188, #Miss=5419 , Contributed ATWV= 0.5073, Best Possible Contributed ATWV= 0.9849, ATWV= 0.5150
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=7    , #FA=64   , #Miss=53   , Contributed ATWV= 0.0005, Best Possible Contributed ATWV= 0.0151, ATWV= 0.0325
+ATWV=0.5203 OTWV=0.6486 STWV=0.7952 MTWV=0.5218 THRESHOLD=0.473 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=9144 , #FA=8922 , #Miss=5335 , Contributed ATWV= 0.5191, Best Possible Contributed ATWV= 0.9849, ATWV= 0.5271
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=9    , #FA=44   , #Miss=51   , Contributed ATWV= 0.0012, Best Possible Contributed ATWV= 0.0151, ATWV= 0.0821
+#
+# KWS Task performance (TWV), for the set kwlist3 evaluated on 2016-03-31T11:30:24-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.3527 OTWV=0.4568 STWV=0.6002 MTWV=0.3537 THRESHOLD=0.484 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=6954 , #FA=5353 , #Miss=7254 , Contributed ATWV= 0.3477, Best Possible Contributed ATWV= 0.9203, ATWV= 0.3778
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=23   , #FA=232  , #Miss=223  , Contributed ATWV= 0.0049, Best Possible Contributed ATWV= 0.0814, ATWV= 0.0605
+ATWV=0.3997 OTWV=0.5121 STWV=0.7021 MTWV=0.4002 THRESHOLD=0.503 exp/tri6_nnet/decode_dev10h.pem/kwset_kwlist3_12/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=7407 , #FA=5449 , #Miss=6801 , Contributed ATWV= 0.3919, Best Possible Contributed ATWV= 0.9203, ATWV= 0.4259
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=39   , #FA=307  , #Miss=207  , Contributed ATWV= 0.0076, Best Possible Contributed ATWV= 0.0814, ATWV= 0.0939
+ATWV=0.4102 OTWV=0.5277 STWV=0.7047 MTWV=0.4102 THRESHOLD=0.491 exp/nnet3/tdnn_6layer_r512_sp/decode_dev10h.pem/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=7795 , #FA=5927 , #Miss=6413 , Contributed ATWV= 0.4033, Best Possible Contributed ATWV= 0.9203, ATWV= 0.4382
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=36   , #FA=288  , #Miss=210  , Contributed ATWV= 0.0067, Best Possible Contributed ATWV= 0.0814, ATWV= 0.0822
+ATWV=0.4222 OTWV=0.5278 STWV=0.7066 MTWV=0.4222 THRESHOLD=0.491 exp/tri6_nnet_mpe/decode_dev10h.pem_epoch3/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=7820 , #FA=5808 , #Miss=6388 , Contributed ATWV= 0.4152, Best Possible Contributed ATWV= 0.9203, ATWV= 0.4511
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=36   , #FA=326  , #Miss=210  , Contributed ATWV= 0.0068, Best Possible Contributed ATWV= 0.0814, ATWV= 0.0839
+ATWV=0.4285 OTWV=0.5406 STWV=0.6965 MTWV=0.4286 THRESHOLD=0.484 exp/nnet3/lstm_sp/decode_dev10h.pem/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=8050 , #FA=5500 , #Miss=6158 , Contributed ATWV= 0.4213, Best Possible Contributed ATWV= 0.9203, ATWV= 0.4578
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=34   , #FA=264  , #Miss=212  , Contributed ATWV= 0.0070, Best Possible Contributed ATWV= 0.0814, ATWV= 0.0858
+ATWV=0.4361 OTWV=0.5517 STWV=0.7032 MTWV=0.4361 THRESHOLD=0.491 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=8487 , #FA=6339 , #Miss=5721 , Contributed ATWV= 0.4310, Best Possible Contributed ATWV= 0.9203, ATWV= 0.4683
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=36   , #FA=311  , #Miss=210  , Contributed ATWV= 0.0048, Best Possible Contributed ATWV= 0.0814, ATWV= 0.0594
+#
+# KWS Task performance (TWV), syllabic search for the set kwlist evaluated on 2016-03-31T11:30:38-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.2471 OTWV=0.2986 STWV=0.3521 MTWV=0.2471 THRESHOLD=0.491 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it3/syllabs/kwset_kwlist_9/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1536 , #FA=1187 , #Miss=5058 , Contributed ATWV= 0.2471, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2475
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.2738 OTWV=0.3312 STWV=0.3984 MTWV=0.2738 THRESHOLD=0.491 exp/tri6_nnet/decode_dev10h.pem/syllabs/kwset_kwlist_11/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1588 , #FA=1164 , #Miss=5006 , Contributed ATWV= 0.2738, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2742
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.2762 OTWV=0.3345 STWV=0.4011 MTWV=0.2762 THRESHOLD=0.491 exp/nnet3/tdnn_6layer_r512_sp/decode_dev10h.pem/syllabs/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1613 , #FA=1156 , #Miss=4981 , Contributed ATWV= 0.2762, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2766
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.2932 OTWV=0.3415 STWV=0.3985 MTWV=0.2981 THRESHOLD=0.433 exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/syllabs/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1624 , #FA=1082 , #Miss=4970 , Contributed ATWV= 0.2934, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2938
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=3    , #Miss=2    , Contributed ATWV=-0.0001, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0828
+ATWV=0.2970 OTWV=0.3432 STWV=0.4014 MTWV=0.2970 THRESHOLD=0.491 exp/nnet3/lstm_sp/decode_dev10h.pem/syllabs/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1702 , #FA=1132 , #Miss=4892 , Contributed ATWV= 0.2970, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2975
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.2978 OTWV=0.3444 STWV=0.4035 MTWV=0.2978 THRESHOLD=0.491 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem/syllabs/kwset_kwlist_12/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1683 , #FA=1050 , #Miss=4911 , Contributed ATWV= 0.2978, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2983
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+#
+# KWS Task performance (TWV), phonetic search for the set kwlist evaluated on 2016-03-31T11:30:51-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.2335 OTWV=0.2867 STWV=0.3609 MTWV=0.2337 THRESHOLD=0.503 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/phones/kwset_kwlist_9/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1443 , #FA=1310 , #Miss=5151 , Contributed ATWV= 0.2336, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2339
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=1    , #Miss=2    , Contributed ATWV=-0.0000, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0276
+ATWV=0.2513 OTWV=0.3174 STWV=0.4034 MTWV=0.2513 THRESHOLD=0.491 exp/tri6_nnet/decode_dev10h.pem/phones/kwset_kwlist_11/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1518 , #FA=1442 , #Miss=5076 , Contributed ATWV= 0.2515, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2519
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=3    , #Miss=2    , Contributed ATWV=-0.0001, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0828
+ATWV=0.2525 OTWV=0.3188 STWV=0.4069 MTWV=0.2583 THRESHOLD=0.444 exp/nnet3/tdnn_6layer_r512_sp/decode_dev10h.pem/phones/kwset_kwlist_11/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1564 , #FA=1489 , #Miss=5030 , Contributed ATWV= 0.2526, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2530
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=2    , #Miss=2    , Contributed ATWV=-0.0001, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0552
+ATWV=0.2575 OTWV=0.3184 STWV=0.3902 MTWV=0.2608 THRESHOLD=0.433 exp/tri6_nnet_mpe/decode_dev10h.pem_epoch3/phones/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1544 , #FA=1319 , #Miss=5050 , Contributed ATWV= 0.2575, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2579
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=1    , #Miss=2    , Contributed ATWV=-0.0000, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0276
+ATWV=0.2759 OTWV=0.3294 STWV=0.4067 MTWV=0.2766 THRESHOLD=0.511 exp/nnet3/lstm_sp/decode_dev10h.pem/phones/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1624 , #FA=1369 , #Miss=4970 , Contributed ATWV= 0.2760, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2764
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=2    , #Miss=2    , Contributed ATWV=-0.0001, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0552
+ATWV=0.2793 OTWV=0.3306 STWV=0.4042 MTWV=0.2812 THRESHOLD=0.529 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.pem/phones/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1693 , #FA=1495 , #Miss=4901 , Contributed ATWV= 0.2785, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2790
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=1    , #FA=0    , #Miss=1    , Contributed ATWV= 0.0008, Best Possible Contributed ATWV= 0.0016, ATWV= 0.5000
+declare -ax kwsets='([0]="kwlist" [1]="kwlist2" [2]="kwlist3")'
+#
+# KWS Task performance (TWV), for the set kwlist evaluated on 2016-03-31T11:31:11-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.2516 OTWV=0.2931 STWV=0.3457 MTWV=0.2518 THRESHOLD=0.503 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.syll.pem_it4/kwset_kwlist_8/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1433 , #FA=916  , #Miss=5161 , Contributed ATWV= 0.2516, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2520
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.2710 OTWV=0.3243 STWV=0.3971 MTWV=0.2720 THRESHOLD=0.503 exp/tri6_nnet/decode_dev10h.syll.pem/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1527 , #FA=1006 , #Miss=5067 , Contributed ATWV= 0.2710, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2715
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=2    , #Miss=2    , Contributed ATWV=-0.0001, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0552
+ATWV=0.2864 OTWV=0.3330 STWV=0.3928 MTWV=0.2864 THRESHOLD=0.491 exp/nnet3/lstm_sp/decode_dev10h.syll.pem.syll/kwset_kwlist_12/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1673 , #FA=1135 , #Miss=4921 , Contributed ATWV= 0.2864, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2869
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=0    , #Miss=2    , Contributed ATWV= 0.0000, Best Possible Contributed ATWV= 0.0016, ATWV= 0.0000
+ATWV=0.2874 OTWV=0.3386 STWV=0.4018 MTWV=0.2881 THRESHOLD=0.403 exp/tri6_nnet_mpe/decode_dev10h.syll.pem_epoch2/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1591 , #FA=1010 , #Miss=5003 , Contributed ATWV= 0.2874, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2879
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=1    , #Miss=2    , Contributed ATWV=-0.0000, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0276
+ATWV=0.2946 OTWV=0.3463 STWV=0.4046 MTWV=0.2952 THRESHOLD=0.453 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.syll.pem.syll/kwset_kwlist_12/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1666 , #FA=1036 , #Miss=4928 , Contributed ATWV= 0.2946, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2951
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=1    , #Miss=2    , Contributed ATWV=-0.0000, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0276
+#
+# KWS Task performance (TWV), for the set kwlist2 evaluated on 2016-03-31T11:31:16-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.3298 OTWV=0.4064 STWV=0.4925 MTWV=0.3305 THRESHOLD=0.503 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.syll.pem_it4/kwset_kwlist2_8/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=4881 , #FA=5838 , #Miss=9598 , Contributed ATWV= 0.3281, Best Possible Contributed ATWV= 0.9849, ATWV= 0.3331
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=9    , #FA=23   , #Miss=51   , Contributed ATWV= 0.0017, Best Possible Contributed ATWV= 0.0151, ATWV= 0.1105
+ATWV=0.3636 OTWV=0.4527 STWV=0.5672 MTWV=0.3638 THRESHOLD=0.453 exp/tri6_nnet/decode_dev10h.syll.pem/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=5215 , #FA=6311 , #Miss=9264 , Contributed ATWV= 0.3608, Best Possible Contributed ATWV= 0.9849, ATWV= 0.3663
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=15   , #FA=26   , #Miss=45   , Contributed ATWV= 0.0028, Best Possible Contributed ATWV= 0.0151, ATWV= 0.1873
+ATWV=0.3784 OTWV=0.4622 STWV=0.5703 MTWV=0.3792 THRESHOLD=0.484 exp/tri6_nnet_mpe/decode_dev10h.syll.pem_epoch4/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=5416 , #FA=6432 , #Miss=9063 , Contributed ATWV= 0.3766, Best Possible Contributed ATWV= 0.9849, ATWV= 0.3824
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=11   , #FA=33   , #Miss=49   , Contributed ATWV= 0.0018, Best Possible Contributed ATWV= 0.0151, ATWV= 0.1208
+ATWV=0.3795 OTWV=0.4643 STWV=0.5595 MTWV=0.3795 THRESHOLD=0.491 exp/nnet3/lstm_sp/decode_dev10h.syll.pem.syll/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=5620 , #FA=6171 , #Miss=8859 , Contributed ATWV= 0.3781, Best Possible Contributed ATWV= 0.9849, ATWV= 0.3839
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=8    , #FA=29   , #Miss=52   , Contributed ATWV= 0.0015, Best Possible Contributed ATWV= 0.0151, ATWV= 0.0974
+ATWV=0.3973 OTWV=0.4799 STWV=0.5716 MTWV=0.4011 THRESHOLD=0.465 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.syll.pem.syll/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=5747 , #FA=5988 , #Miss=8732 , Contributed ATWV= 0.3952, Best Possible Contributed ATWV= 0.9849, ATWV= 0.4013
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=11   , #FA=26   , #Miss=49   , Contributed ATWV= 0.0020, Best Possible Contributed ATWV= 0.0151, ATWV= 0.1346
+#
+# KWS Task performance (TWV), for the set kwlist3 evaluated on 2016-03-31T11:31:26-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.2442 OTWV=0.2994 STWV=0.3760 MTWV=0.2442 THRESHOLD=0.491 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.syll.pem_it4/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3580 , #FA=3520 , #Miss=10628, Contributed ATWV= 0.2378, Best Possible Contributed ATWV= 0.9203, ATWV= 0.2584
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=28   , #FA=145  , #Miss=218  , Contributed ATWV= 0.0064, Best Possible Contributed ATWV= 0.0814, ATWV= 0.0787
+ATWV=0.2681 OTWV=0.3407 STWV=0.4407 MTWV=0.2684 THRESHOLD=0.484 exp/tri6_nnet/decode_dev10h.syll.pem/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3688 , #FA=3305 , #Miss=10520, Contributed ATWV= 0.2574, Best Possible Contributed ATWV= 0.9203, ATWV= 0.2797
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=45   , #FA=195  , #Miss=201  , Contributed ATWV= 0.0106, Best Possible Contributed ATWV= 0.0814, ATWV= 0.1306
+ATWV=0.2844 OTWV=0.3499 STWV=0.4441 MTWV=0.2857 THRESHOLD=0.484 exp/tri6_nnet_mpe/decode_dev10h.syll.pem_epoch4/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3840 , #FA=3340 , #Miss=10368, Contributed ATWV= 0.2733, Best Possible Contributed ATWV= 0.9203, ATWV= 0.2970
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=44   , #FA=197  , #Miss=202  , Contributed ATWV= 0.0111, Best Possible Contributed ATWV= 0.0814, ATWV= 0.1367
+ATWV=0.2946 OTWV=0.3581 STWV=0.4423 MTWV=0.2948 THRESHOLD=0.484 exp/nnet3/lstm_sp/decode_dev10h.syll.pem.syll/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3882 , #FA=2874 , #Miss=10326, Contributed ATWV= 0.2804, Best Possible Contributed ATWV= 0.9203, ATWV= 0.3047
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=53   , #FA=138  , #Miss=193  , Contributed ATWV= 0.0142, Best Possible Contributed ATWV= 0.0814, ATWV= 0.1751
+ATWV=0.2958 OTWV=0.3658 STWV=0.4485 MTWV=0.2988 THRESHOLD=0.453 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.syll.pem.syll/kwset_kwlist3_11/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=4068 , #FA=3344 , #Miss=10140, Contributed ATWV= 0.2835, Best Possible Contributed ATWV= 0.9203, ATWV= 0.3081
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=47   , #FA=136  , #Miss=199  , Contributed ATWV= 0.0122, Best Possible Contributed ATWV= 0.0814, ATWV= 0.1504
+declare -ax kwsets='([0]="kwlist" [1]="kwlist2" [2]="kwlist3")'
+#
+# KWS Task performance (TWV), for the set kwlist evaluated on 2016-03-31T11:31:47-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.1869 OTWV=0.2380 STWV=0.3024 MTWV=0.1869 THRESHOLD=0.491 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.phn.pem_it2/kwset_kwlist_9/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1180 , #FA=1168 , #Miss=5414 , Contributed ATWV= 0.1870, Best Possible Contributed ATWV= 0.9984, ATWV= 0.1873
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=3    , #Miss=2    , Contributed ATWV=-0.0001, Best Possible Contributed ATWV= 0.0016, ATWV=-0.0828
+ATWV=0.2043 OTWV=0.2598 STWV=0.3427 MTWV=0.2043 THRESHOLD=0.491 exp/tri6_nnet/decode_dev10h.phn.pem/kwset_kwlist_11/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1281 , #FA=1263 , #Miss=5313 , Contributed ATWV= 0.2045, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2048
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=4    , #Miss=2    , Contributed ATWV=-0.0002, Best Possible Contributed ATWV= 0.0016, ATWV=-0.1103
+ATWV=0.2055 OTWV=0.2591 STWV=0.3340 MTWV=0.2055 THRESHOLD=0.491 exp/tri6_nnet_mpe/decode_dev10h.phn.pem_epoch3/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1267 , #FA=1206 , #Miss=5327 , Contributed ATWV= 0.2057, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2060
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=5    , #Miss=2    , Contributed ATWV=-0.0002, Best Possible Contributed ATWV= 0.0016, ATWV=-0.1379
+ATWV=0.2123 OTWV=0.2766 STWV=0.3581 MTWV=0.2149 THRESHOLD=0.484 exp/nnet3/tdnn_6layer_r512_sp/decode_dev10h.phn.pem.phn/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1333 , #FA=1274 , #Miss=5261 , Contributed ATWV= 0.2125, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2128
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=0    , #FA=4    , #Miss=2    , Contributed ATWV=-0.0002, Best Possible Contributed ATWV= 0.0016, ATWV=-0.1103
+ATWV=0.2216 OTWV=0.2852 STWV=0.3565 MTWV=0.2240 THRESHOLD=0.403 exp/nnet3/lstm_sp/decode_dev10h.phn.pem.phn/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1371 , #FA=1067 , #Miss=5223 , Contributed ATWV= 0.2209, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2213
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=1    , #FA=2    , #Miss=1    , Contributed ATWV= 0.0007, Best Possible Contributed ATWV= 0.0016, ATWV= 0.4448
+ATWV=0.2532 OTWV=0.3121 STWV=0.3808 MTWV=0.2539 THRESHOLD=0.465 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.phn.pem.phn/kwset_kwlist_10/f4de/metrics.txt
+	OOV=0	#Keywords=633  , #Targ=6594 , #Corr=1547 , #FA=1310 , #Miss=5047 , Contributed ATWV= 0.2524, Best Possible Contributed ATWV= 0.9984, ATWV= 0.2528
+	OOV=1	#Keywords=1    , #Targ=2    , #Corr=1    , #FA=0    , #Miss=1    , Contributed ATWV= 0.0008, Best Possible Contributed ATWV= 0.0016, ATWV= 0.5000
+#
+# KWS Task performance (TWV), for the set kwlist2 evaluated on 2016-03-31T11:31:53-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.2686 OTWV=0.3459 STWV=0.4328 MTWV=0.2690 THRESHOLD=0.484 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.phn.pem_it4/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=3870 , #FA=5258 , #Miss=10609, Contributed ATWV= 0.2670, Best Possible Contributed ATWV= 0.9849, ATWV= 0.2711
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=10   , #FA=42   , #Miss=50   , Contributed ATWV= 0.0016, Best Possible Contributed ATWV= 0.0151, ATWV= 0.1055
+ATWV=0.3044 OTWV=0.3970 STWV=0.5154 MTWV=0.3044 THRESHOLD=0.491 exp/tri6_nnet/decode_dev10h.phn.pem/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=4285 , #FA=5644 , #Miss=10194, Contributed ATWV= 0.3011, Best Possible Contributed ATWV= 0.9849, ATWV= 0.3057
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=16   , #FA=54   , #Miss=44   , Contributed ATWV= 0.0033, Best Possible Contributed ATWV= 0.0151, ATWV= 0.2152
+ATWV=0.3073 OTWV=0.3944 STWV=0.4998 MTWV=0.3079 THRESHOLD=0.473 exp/tri6_nnet_mpe/decode_dev10h.phn.pem_epoch2/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=4457 , #FA=6120 , #Miss=10022, Contributed ATWV= 0.3051, Best Possible Contributed ATWV= 0.9849, ATWV= 0.3098
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=13   , #FA=55   , #Miss=47   , Contributed ATWV= 0.0022, Best Possible Contributed ATWV= 0.0151, ATWV= 0.1487
+ATWV=0.3092 OTWV=0.4100 STWV=0.5226 MTWV=0.3125 THRESHOLD=0.465 exp/nnet3/tdnn_6layer_r512_sp/decode_dev10h.phn.pem.phn/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=4431 , #FA=5723 , #Miss=10048, Contributed ATWV= 0.3078, Best Possible Contributed ATWV= 0.9849, ATWV= 0.3125
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=11   , #FA=69   , #Miss=49   , Contributed ATWV= 0.0015, Best Possible Contributed ATWV= 0.0151, ATWV= 0.0977
+ATWV=0.3280 OTWV=0.4225 STWV=0.5216 MTWV=0.3291 THRESHOLD=0.503 exp/nnet3/lstm_sp/decode_dev10h.phn.pem.phn/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=4940 , #FA=6266 , #Miss=9539 , Contributed ATWV= 0.3266, Best Possible Contributed ATWV= 0.9849, ATWV= 0.3316
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=10   , #FA=63   , #Miss=50   , Contributed ATWV= 0.0014, Best Possible Contributed ATWV= 0.0151, ATWV= 0.0911
+ATWV=0.3586 OTWV=0.4552 STWV=0.5519 MTWV=0.3614 THRESHOLD=0.473 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.phn.pem.phn/kwset_kwlist2_10/f4de/metrics.txt
+	OOV=0	#Keywords=2474 , #Targ=14479, #Corr=5261 , #FA=6266 , #Miss=9218 , Contributed ATWV= 0.3563, Best Possible Contributed ATWV= 0.9849, ATWV= 0.3618
+	OOV=1	#Keywords=38   , #Targ=60   , #Corr=14   , #FA=67   , #Miss=46   , Contributed ATWV= 0.0023, Best Possible Contributed ATWV= 0.0151, ATWV= 0.1531
+#
+# KWS Task performance (TWV), for the set kwlist3 evaluated on 2016-03-31T11:32:05-04:00 by user jtrmal1@jhu.edu on login-node04.cm.cluster
+ATWV=0.1931 OTWV=0.2569 STWV=0.3444 MTWV=0.1931 THRESHOLD=0.491 exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.phn.pem_it4/kwset_kwlist3_9/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3015 , #FA=3772 , #Miss=11193, Contributed ATWV= 0.1875, Best Possible Contributed ATWV= 0.9203, ATWV= 0.2037
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=33   , #FA=303  , #Miss=213  , Contributed ATWV= 0.0062, Best Possible Contributed ATWV= 0.0814, ATWV= 0.0759
+ATWV=0.2228 OTWV=0.2982 STWV=0.4154 MTWV=0.2231 THRESHOLD=0.503 exp/tri6_nnet/decode_dev10h.phn.pem/kwset_kwlist3_11/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3232 , #FA=3853 , #Miss=10976, Contributed ATWV= 0.2092, Best Possible Contributed ATWV= 0.9203, ATWV= 0.2273
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=57   , #FA=332  , #Miss=189  , Contributed ATWV= 0.0141, Best Possible Contributed ATWV= 0.0814, ATWV= 0.1738
+ATWV=0.2247 OTWV=0.2962 STWV=0.4001 MTWV=0.2247 THRESHOLD=0.491 exp/tri6_nnet_mpe/decode_dev10h.phn.pem_epoch4/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3131 , #FA=3232 , #Miss=11077, Contributed ATWV= 0.2122, Best Possible Contributed ATWV= 0.9203, ATWV= 0.2306
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=48   , #FA=278  , #Miss=198  , Contributed ATWV= 0.0131, Best Possible Contributed ATWV= 0.0814, ATWV= 0.1606
+ATWV=0.2320 OTWV=0.3081 STWV=0.4229 MTWV=0.2326 THRESHOLD=0.484 exp/nnet3/tdnn_6layer_r512_sp/decode_dev10h.phn.pem.phn/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3378 , #FA=3831 , #Miss=10830, Contributed ATWV= 0.2194, Best Possible Contributed ATWV= 0.9203, ATWV= 0.2384
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=53   , #FA=299  , #Miss=193  , Contributed ATWV= 0.0126, Best Possible Contributed ATWV= 0.0814, ATWV= 0.1544
+ATWV=0.2474 OTWV=0.3186 STWV=0.4206 MTWV=0.2476 THRESHOLD=0.503 exp/nnet3/lstm_sp/decode_dev10h.phn.pem.phn/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3615 , #FA=3812 , #Miss=10593, Contributed ATWV= 0.2310, Best Possible Contributed ATWV= 0.9203, ATWV= 0.2510
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=63   , #FA=306  , #Miss=183  , Contributed ATWV= 0.0165, Best Possible Contributed ATWV= 0.0814, ATWV= 0.2023
+ATWV=0.2668 OTWV=0.3433 STWV=0.4457 MTWV=0.2668 THRESHOLD=0.491 exp/nnet3/lstm_bidirectional_sp/decode_dev10h.phn.pem.phn/kwset_kwlist3_10/f4de/metrics.txt
+	OOV=0	#Keywords=1617 , #Targ=14208, #Corr=3825 , #FA=3913 , #Miss=10383, Contributed ATWV= 0.2535, Best Possible Contributed ATWV= 0.9203, ATWV= 0.2755
+	OOV=1	#Keywords=143  , #Targ=246  , #Corr=59   , #FA=305  , #Miss=187  , Contributed ATWV= 0.0138, Best Possible Contributed ATWV= 0.0814, ATWV= 0.1699

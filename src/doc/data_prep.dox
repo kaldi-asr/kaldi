@@ -74,7 +74,7 @@ As an example of the "data" part of the data preparation, look at the directory
 "data/train" in one of the example directories (assuming you have already run
 the scripts there).  Note: there is nothing special about the directory name
 "data/train".  There are other directories such as "data/eval2000" (for a test set)
-that have essentially the same format ("essentially" because we may have an "sgm" and
+that have essentially the same format ("essentially" because we may have an "stm" and
 "glm" file in the test directory, to enable sclite scoring).
 The specific example we'll look at the Switchboard recipe
 in egs/swbd/s5.
@@ -105,12 +105,17 @@ prefix of the utterance id; this is important for reasons relating to the sortin
 these files.  The rest of the line is the transcription of each sentence.  You don't
 have to make sure that all words in this file are in your vocabulary; out of vocabulary words will
 get mapped to a word specified in the file data/lang/oov.txt.
-Note: although, in this particular example we have used an underscore to separate the
-"speaker" and "utterance" parts of the utterance-id, in general it is probably safer to
-use a dash ("-").  This is because it has a lower ASCII value; it has been pointed out
-to me that if an underscore is used, and if the speaker-ids vary in length, in certain
-cases the speaker-ids and their corresponding utterance ids can end up being sorted in
-different orders when using the standard "C"-style ordering on strings.
+
+It needs to be the case that when you sort both the utt2spk and spk2utt files,
+the orders "agree", e.g. the list of speaker-ids extracted from the utt2spk file
+is the same as the string sorted order.  The easiest way to make this happen is
+to make the speaker-ids a prefix of the utter Although, in this particular
+example we have used an underscore to separate the "speaker" and "utterance"
+parts of the utterance-id, in general it is probably safer to use a dash ("-").
+This is because it has a lower ASCII value; if the speaker-ids vary in length,
+in certain cases the speaker-ids and their corresponding utterance ids can end
+up being sorted in different orders when using the standard "C"-style ordering
+on strings, which will lead to a crash.
 \endverbatim
 Another important file is <DFN>wav.scp</DFN>.  In the Switchboard example,
 \verbatim
@@ -127,6 +132,8 @@ an actual filename, or as in this case, a command that extracts a wav-format fil
 on the end of the extended-filename specifies that it is to be interpreted as a pipe.  We will
 explain what "recording-id" is below, but we would first like to point out that if the "segments" file
 does not exist, the first token on each line of "wav.scp" file is just the utterance id.
+The files in wav.scp must be single-channel (mono); if the underlying wav files have multiple
+channels, then a sox command must be used in the wav.scp to extract a particular channel.
 
 In the Switchboard setup we have the "segments" file, so we'll discuss this next.
 \verbatim
@@ -661,7 +668,7 @@ scripts <DFN>prepare_lang.sh</DFN> that adds those suffixes.
 
 You can see from the empty <DFN>extra_questions.txt</DFN> file that there
 is some kind of potential here that is not being fully exploited.  This relates
-things like stress markings or tone markings.  You may want to have different
+to things like stress markings or tone markings.  You may want to have different
 versions of a particular phone that have different stress or tone.  In order
 to demonstrate what this looks like, we'll view the same files as above,
 but in the <DFN>egs/wsj/s5/</DFN> setup.  The result is below:
@@ -803,44 +810,32 @@ www.openfst.org and do the FST tutorial so that you understand the basics of fin
 state transducers.  (Note that language models would be represented as finite state
 acceptors, or FSAs, which can be considered as a special case of finite state transducers).
 
-In the WSJ setup (like most setups), we use a statistical language model.  The script <DFN>local/wsj_format_data.sh</DFN>
-deals with converting the ARPA-format language models supplied with the WSJ database, into
-an OpenFst format.  Some of the key commands from that script are:
+The script <DFN>utils/format_lm.sh</DFN> deals with converting the ARPA-format language
+models into an OpenFst format. Here is the usage messages of that script: 
 \verbatim
-  gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-   utils/find_arpa_oovs.pl $test/words.txt  > $tmpdir/oovs_${lm_suffix}.txt
- ...
-  gunzip -c $lmdir/lm_${lm_suffix}.arpa.gz | \
-    grep -v '<s> <s>' | \
-    grep -v '</s> <s>' | \
-    grep -v '</s> </s>' | \
-    arpa2fst - | fstprint | \
-    utils/remove_oovs.pl $tmpdir/oovs_${lm_suffix}.txt | \
-    utils/eps2disambig.pl | utils/s2eps.pl | fstcompile --isymbols=$test/words.txt \
-      --osymbols=$test/words.txt  --keep_isymbols=false --keep_osymbols=false | \
-     fstrmepsilon > $test/G.fst
+Usage: utils/format_lm.sh <lang_dir> <arpa-LM> <lexicon> <out_dir>
+E.g.: utils/format_lm.sh data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test
+Convert ARPA-format language models to FSTs.
 \endverbatim
-Here, the variable <DFN>\$test</DFN> would be something like <DFN>data/lang_test_tg</DFN>.
-The most important of these commands is <DFN>arpa2fst</DFN> which is a Kaldi program.
-This program turns the ARPA-format language model into a Weight Finite State Transducer
-(actually, an acceptor).
-The <DFN>grep</DFN> commands remove certain "invalid" n-grams from the language model, which
-should not have been there in the first place.  The program <DFN>remove_oovs.pl</DFN> removes
-N-grams containing words not in our vocabulary (which would cause a crash in <DFN>fstcompile</DFN>); <DFN>eps2disambig.pl</DFN> turns the
-<DFN>\<eps\></DFN> (\f$\epsilon\f$) symbols on backoff arcs into a special symbol <DFN>#0</DFN> which
-we use to make the grammar determinizable; see \ref graph_disambig.  If you don't know
-what a "backoff arc" is, see the literature on backoff N-grams, for instance Goodman's "A bit of progress in
-language modeling", and the paper by Mohri we referenced above.  The command <DFN>s2eps.pl</DFN> turns the
-sentence-begin and sentence-end symbols <DFN>\<s\></DFN> and <DFN>\</s\></DFN> into
-epsilon (<DFN>\<eps\></DFN>), which means "no symbol"; <DFN>fstcompile</DFN> is an OpenFst
-command which turns the
-FST from text form into OpenFst binary form; and <DFN>fstrmepsilon</DFN> is also
-an OpenFst command, which removes the small number of <DFN>\<eps\></DFN> symbols from the
-FST, which were converted from <DFN>\<s\></DFN> and <DFN>\</s\></DFN>.
+Some of the key commands from that script are:
+\verbatim
+gunzip -c $lm \
+  | arpa2fst --disambig-symbol=#0 \
+             --read-symbol-table=$out_dir/words.txt - $out_dir/G.fst
+\endverbatim
+This Kaldi program, <DFN>arpa2fst</DFN>, turns the ARPA-format language model
+into a Weight Finite State Transducer (actually, an acceptor).
 
 A popular toolkit for building language models is SRILM.  Various language
 modeling toolkits are used in the Kaldi example scripts.  SRILM is the best
 documented and most fully featured, and we generally recommend it (its only
-drawback is that it don't have the most free licence).
+drawback is that it don't have the most free licence). Here is the usage
+messages of <DFN>utils/format_lm_sri.sh</DFN>
+
+\verbatim
+Usage: utils/format_lm_sri.sh [options] <lang-dir> <arpa-LM> <out-dir>
+E.g.: utils/format_lm_sri.sh data/lang data/local/lm/foo.kn.gz data/lang_test
+Converts ARPA-format language models to FSTs. Change the LM vocabulary using SRILM.
+\endverbatim
 
 */
