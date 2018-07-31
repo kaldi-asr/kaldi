@@ -46,7 +46,7 @@ if [ ! -d $data ]; then
 fi
 
 if [ -f $data/images.scp ]; then
-  cmd=${cmd/--no-wav/--no-image}  # change --no-wav to --no-image, if supplied
+  cmd=${cmd/--no-wav/}  # remove --no-wav if supplied
   image/validate_data_dir.sh $cmd
   exit $?
 fi
