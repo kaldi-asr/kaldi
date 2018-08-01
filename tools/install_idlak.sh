@@ -1,5 +1,5 @@
 #!/bin/bash
-# This script attempts to automatically execute the instructions in 
+# This script attempts to automatically execute the instructions in
 # INSTALL_IDLAK.
 
 # (1) Install instructions for expat
@@ -103,17 +103,17 @@ echo "****(4) Installing SPTK"
     rm -f SPTK-3.9.tar.gz 2>/dev/null
     wget -T 10 -t 3 https://sourceforge.net/projects/sp-tk/files/SPTK/SPTK-3.9/SPTK-3.9.tar.gz
     if [ ! -e SPTK-3.9.tar.gz ]; then
-	echo "****download of SPTK-3.9.tar.gz failed."
-	exit 1
+        echo "****download of SPTK-3.9.tar.gz failed."
+        exit 1
     else
-	mkdir -p SPTK
-	tar -xovzf SPTK-3.9.tar.gz || exit 1
-	cd SPTK-3.9
-	CFLAGS="-fPIC -O2" ./configure --prefix=`pwd`/../SPTK || exit 1
-	make || exit 1
-	make install || exit 1
-    cd ..
-  fi
+        mkdir -p SPTK
+        tar -xovzf SPTK-3.9.tar.gz || exit 1
+        cd SPTK-3.9
+        CFLAGS="-fPIC -O2" ./configure --prefix=`pwd`/../SPTK || exit 1
+        make || exit 1
+        make install || exit 1
+        cd ..
+    fi
 )
 ok_sptk=$?
 if [ $ok_sptk -ne 0 ]; then
@@ -136,8 +136,8 @@ echo "****(5) Installing opengrm"
         CPPFLAGS="-std=gnu++11 -I`pwd`/../openfst/include" LDFLAGS=-L`pwd`/../openfst/lib ./configure --prefix=`pwd` || exit 1
         make || exit 1
         make install || exit 1
-    cd ..
-  fi
+        cd ..
+    fi
 )
 ok_ogrm=$?
 if [ $ok_ogrm -ne 0 ]; then
@@ -145,6 +145,28 @@ if [ $ok_ogrm -ne 0 ]; then
   exit 1
 fi
 
+
+echo "****(6) Installing swig"
+(
+    rm -f swig-3.0.12.tar.gz 2>/dev/null
+    wget -T 10 -t 3 http://prdownloads.sourceforge.net/swig/swig-3.0.12.tar.gz
+    if [ ! -e swig-3.0.12.tar.gz ]; then
+        echo "****download of swig-3.0.12.tar.gz failed."
+        exit 1
+    else
+        tar -xovzf swig-3.0.12.tar.gz || exit 1
+        cd swig-3.0.12
+        LDFLAGS="-Wl,-rpath=`pwd`/../pcre-8.20/lib/" ./configure --prefix=`pwd` --with-pcre-prefix=`pwd`/../pcre-8.20 || exit 1
+        make || exit 1
+        make install || exit 1
+        cd ..
+    fi
+)
+ok_swig=$?
+if [ $ok_swig -ne 0 ]; then
+  echo "****swig install failed."
+  exit 1
+fi
 
 #echo "****(5) Installing phonetisaurus"
 #(
