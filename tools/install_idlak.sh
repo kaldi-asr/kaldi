@@ -121,32 +121,7 @@ if [ $ok_sptk -ne 0 ]; then
   exit 1
 fi
 
-echo "****(5) Installing opengrm"
-(
-    OGRM_VER=1.3.4
-    stem=opengrm-ngram-${OGRM_VER}
-    rm -f $stem.tar.gz 2>/dev/null
-    wget -T 10 -t 3 http://www.opengrm.org/twiki/pub/GRM/NGramDownload/$stem.tar.gz
-    if [ ! -e $stem.tar.gz ]; then
-        echo "****download of $stem.tar.gz failed."
-        exit 1
-    else
-        tar -xovzf $stem.tar.gz || exit 1
-        cd $stem
-        CPPFLAGS="-std=gnu++11 -I`pwd`/../openfst/include" LDFLAGS=-L`pwd`/../openfst/lib ./configure --prefix=`pwd` || exit 1
-        make || exit 1
-        make install || exit 1
-        cd ..
-    fi
-)
-ok_ogrm=$?
-if [ $ok_ogrm -ne 0 ]; then
-  echo "****opengrm install failed."
-  exit 1
-fi
-
-
-echo "****(6) Installing swig"
+echo "****(5) Installing swig"
 (
     rm -f swig-3.0.12.tar.gz 2>/dev/null
     wget -T 10 -t 3 http://prdownloads.sourceforge.net/swig/swig-3.0.12.tar.gz
@@ -168,6 +143,31 @@ if [ $ok_swig -ne 0 ]; then
   exit 1
 fi
 echo "REQUIRED FOR MAKE DO NOT DELETE!" > ../src/pyIdlak/pyIdlak_wrap.cc
+
+
+# echo "****(5) Installing opengrm"
+# (
+#     OGRM_VER=1.3.4
+#     stem=opengrm-ngram-${OGRM_VER}
+#     rm -f $stem.tar.gz 2>/dev/null
+#     wget -T 10 -t 3 http://www.opengrm.org/twiki/pub/GRM/NGramDownload/$stem.tar.gz
+#     if [ ! -e $stem.tar.gz ]; then
+#         echo "****download of $stem.tar.gz failed."
+#         exit 1
+#     else
+#         tar -xovzf $stem.tar.gz || exit 1
+#         cd $stem
+#         CPPFLAGS="-std=gnu++11 -I`pwd`/../openfst/include" LDFLAGS=-L`pwd`/../openfst/lib ./configure --prefix=`pwd` || exit 1
+#         make || exit 1
+#         make install || exit 1
+#         cd ..
+#     fi
+# )
+# ok_ogrm=$?
+# if [ $ok_ogrm -ne 0 ]; then
+#   echo "****opengrm install failed."
+#   exit 1
+# fi
 
 #echo "****(5) Installing phonetisaurus"
 #(
