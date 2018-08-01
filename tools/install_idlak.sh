@@ -167,6 +167,7 @@ if [ $ok_swig -ne 0 ]; then
   echo "****swig install failed."
   exit 1
 fi
+echo "REQUIRED FOR MAKE DO NOT DELETE!" > ../src/pyIdlak/pyIdlak_wrap.cc
 
 #echo "****(5) Installing phonetisaurus"
 #(
