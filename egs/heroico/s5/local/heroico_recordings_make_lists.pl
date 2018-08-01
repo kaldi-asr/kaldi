@@ -89,7 +89,6 @@ open my $TSTTXT, '+>', $test_text or croak "problem with $test_text $!";
      my $spk_utt_id = $spk . '_' . $utt;
      if ( ( $utt_id >= 355 ) and ( $utt_id < 561 ) ) {
 if ( exists $prompts{$utt} ) {
-         warn "hello\t$utt\t$utt_id\t$prompts{$utt}";
 	     print $TSTTXT "$spk_utt_id $prompts{$utt}\n";
 	 } elsif ( defined $spk_utt_id ) {
 	     warn  "problem\t$spk_utt_id";
