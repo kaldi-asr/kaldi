@@ -25,7 +25,7 @@ if [ $stage -le -1 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  # Make lists for building models.
+  echo "Makin lists for building models."
   local/prepare_data.sh
 fi
 
@@ -47,7 +47,6 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "point 1"
-  # build lm
   local/prepare_lm.sh  $tmpdir/subs/lm/in_vocabulary.txt
 fi
 
