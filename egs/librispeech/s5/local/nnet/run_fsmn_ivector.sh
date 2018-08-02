@@ -17,12 +17,15 @@ if [ $stage -le 0 ]; then
  train_set=train_960_cleaned
  gmm=tri6b_cleaned
  nnet3_affix=_cleaned
- local/nnet3/run_ivector_common.sh --stage $stage \
+ local/nnet3/run_ivector_common.sh --stage 7 \
                                    --min-seg-len $min_seg_len \
                                    --train-set $train_set \
                                    --gmm $gmm \
                                    --num-threads-ubm 6 --num-processes 3 \
                                    --nnet3-affix "$nnet3_affix" || exit 1;
+  mkdir exp/nnet3_cleaned/ivectors_train_960_dev_hires
+  cat exp/nnet3_cleaned/ivectors_train_960_cleaned_sp_hires_comb/ivector_online.scp exp/nnet3_cleaned/ivectors_dev_clean_hires/ivector_online.scp \
+            exp/nnet3_cleaned/ivectors_dev_other_hires/ivector_online.scp > exp/nnet3_cleaned/ivectors_train_960_dev_hires/ivector_online.scp
 fi
 
 ##Make fbank features
@@ -53,11 +56,7 @@ lrate=0.00001
 dir=exp/tri7b_${dnn_model}
 data_fbk=data_fbank
 if [ $stage -le 3 ]; then
-	proto=proto/${dnn_model}.proto
-
-        cat exp/nnet3_cleaned/ivectors_train_960_cleaned_hires/ivector_online.scp exp/nnet3_cleaned/ivectors_dev_clean_hires/ivector_online.scp \
-            exp/nnet3_cleaned/ivectors_dev_other_hires/ivector_online.scp > exp/nnet3_cleaned/ivectors_train_960_dev_hires/ivector_online.scp
-
+	proto=proto/${dnn_model}.proto	
 	$cuda_cmd $dir/_train_nnet.log \
    	steps/nnet/train_faster.sh --learn-rate $lrate --nnet-proto $proto \
         --start_half_lr 5 --momentum 0.9 \
