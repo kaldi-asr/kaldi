@@ -143,6 +143,7 @@ PyIdlakModule * PyIdlakModule_new(enum IDLAKMOD modtype, PyTxpParseOptions * pyp
   kaldi::TxpPhrasing * ph;
   kaldi::TxpPronounce * pr;
   kaldi::TxpSyllabify * sy;
+  kaldi::TxpCex * cx;
   
   if (!pypo) return NULL;
   PyIdlakModule * pymod = new PyIdlakModule;
@@ -178,6 +179,11 @@ PyIdlakModule * PyIdlakModule_new(enum IDLAKMOD modtype, PyTxpParseOptions * pyp
       sy->Init(*(pypo->po_));
       pymod->modptr_ = (void *) sy;
       break;
+    case ContextExtraction:
+      cx = new kaldi::TxpCex;
+      cx->Init(*(pypo->po_));
+      pymod->modptr_ = (void *) cx;
+      break;
     case Empty:
     default:
       break;
@@ -206,6 +212,9 @@ void PyIdlakModule_delete(PyIdlakModule * pymod) {
     case Syllabify:
       delete static_cast<kaldi::TxpSyllabify *>(pymod->modptr_);
       break;
+    case ContextExtraction:
+      delete static_cast<kaldi::TxpCex *>(pymod->modptr_);
+      break;
     case Empty:
     default:
       break;
@@ -233,6 +242,9 @@ void PyIdlakModule_process(PyIdlakModule * pymod, PyPugiXMLDocument * pypugidoc)
       break;
     case Syllabify:
       static_cast<kaldi::TxpSyllabify *>(pymod->modptr_)->Process(pypugidoc->doc_);
+      break;
+    case ContextExtraction:
+      static_cast<kaldi::TxpCex *>(pymod->modptr_)->Process(pypugidoc->doc_);
       break;
     case Empty:
     default:
