@@ -22,7 +22,6 @@ addons:
       - liblapack-dev
       - clang-3.8
       - csh
-      - swig
 
 branches:
   only:
