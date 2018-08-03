@@ -9,12 +9,12 @@
 
 # local/chain/compare_wer.sh exp/chain/cnn_1a/
 # System                         cnn_1a
-# WER                             18.58
-# CER                             10.17
-# Final train prob              -0.0122
-# Final valid prob              -0.0999
-# Final train prob (xent)       -0.5652
-# Final valid prob (xent)       -0.9758
+# WER                             18.52
+# CER                             10.07
+# Final train prob              -0.0077
+# Final valid prob              -0.0970
+# Final train prob (xent)       -0.5484
+# Final valid prob (xent)       -0.9643
 # Parameters                      4.36M
 
 set -e -o pipefail
@@ -89,7 +89,7 @@ if [ $stage -le 1 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   if [ -d $lang ]; then
-    if [ $lang/L.fst -nt data/$lang_test/L.fst ]; then
+    if [ $lang/L.fst -nt data/lang/L.fst ]; then
       echo "$0: $lang already exists, not overwriting it; continuing"
     else
       echo "$0: $lang already exists and seems to be older than data/lang..."
@@ -97,7 +97,7 @@ if [ $stage -le 1 ]; then
       exit 1;
     fi
   else
-    cp -r data/$lang_test $lang
+    cp -r data/lang $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
@@ -110,7 +110,7 @@ if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj $nj --cmd "$cmd" ${train_data_dir} \
-    data/$lang_test $gmm_dir $lat_dir
+    data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 

@@ -175,7 +175,7 @@ void RnnlmEmbeddingTrainer::Train(
   if (config_.l2_regularize > 0.0) {
     BaseFloat l2_term = -2 * config_.l2_regularize;
     if (l2_term != 0.0) {
-      embedding_deriv->AddToRows(l2_term, active_words, embedding_mat_);
+      embedding_deriv->AddRows(l2_term, *embedding_mat_, active_words);
     }
   }
   BaseFloat scale = 1.0;
@@ -229,8 +229,8 @@ void RnnlmEmbeddingTrainer::TrainBackstitch(
   if (config_.l2_regularize > 0.0 && !is_backstitch_step1) {
     BaseFloat l2_term = -2 * config_.l2_regularize;
     if (l2_term != 0.0) {
-      embedding_deriv->AddMat(1.0 / (1.0 + config_.backstitch_training_scale) *
-          l2_term, *embedding_mat_);
+      embedding_deriv->AddRows(l2_term / (1.0 + config_.backstitch_training_scale),
+                               *embedding_mat_, active_words);
     }
   } 
   BaseFloat scale = 1.0;

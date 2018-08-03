@@ -696,18 +696,15 @@ void RenumberComputation(NnetComputation *computation) {
 }
 
 
+static bool IsNoop(const NnetComputation::Command &command) {
+  return command.command_type == kNoOperation;
+}
+
 void RemoveNoOps(NnetComputation *computation) {
-  std::vector<NnetComputation::Command>::iterator
-      input_iter = computation->commands.begin(),
-      input_end = computation->commands.end(),
-      output_iter = computation->commands.begin();
-  for (; input_iter != input_end; ++input_iter) {
-    if (input_iter->command_type != kNoOperation) {
-      *output_iter = *input_iter;
-      ++output_iter;
-    }
-  }
-  computation->commands.resize(output_iter - computation->commands.begin());
+  computation->commands.erase(
+      std::remove_if(computation->commands.begin(),
+                     computation->commands.end(),
+                     IsNoop), computation->commands.end());
 }
 
 
@@ -4695,7 +4692,7 @@ class MemoryCompressionOptimizer {
 
   /** @param [in] nnet         The neural net the computation is for.
       @param [in] memory_compression_level.  The level of compression:
-         0 = no compression (the constructor should not be calle with this value).
+         0 = no compression (the constructor should not be called with this value).
          1 = compression that doesn't affect the results (but still takes time).
          2 = compression that affects the results only very slightly
          3 = compression that affects the results a little more.

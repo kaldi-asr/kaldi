@@ -162,6 +162,8 @@ class Segmentation(object):
         """Pads segments by duration 'segment_padding' on either sides, but
         ensures that the segments don't go beyond the neighboring segments
         or the duration of the utterance 'max_duration'."""
+        if max_duration == None:
+            max_duration = float("inf")
         for i, segment in enumerate(self.segments):
             assert segment[2] == 2, segment
             segment[0] -= segment_padding   # try adding padding on the left side

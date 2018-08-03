@@ -1437,7 +1437,7 @@ bool DeterminizeLatticePhonePruned(
   // If --phone-determinize is true, do the determinization on phone + word
   // lattices.
   if (opts.phone_determinize) {
-    KALDI_VLOG(1) << "Doing first pass of determinization on phone + word "
+    KALDI_VLOG(3) << "Doing first pass of determinization on phone + word "
                   << "lattices.";
     ans = DeterminizeLatticePhonePrunedFirstPass<Weight, IntType>(
         trans_model, beam, ifst, det_opts) && ans;
@@ -1452,14 +1452,14 @@ bool DeterminizeLatticePhonePruned(
 
   // If --word-determinize is true, do the determinization on word lattices.
   if (opts.word_determinize) {
-    KALDI_VLOG(1) << "Doing second pass of determinization on word lattices.";
+    KALDI_VLOG(3) << "Doing second pass of determinization on word lattices.";
     ans = DeterminizeLatticePruned<Weight, IntType>(
         *ifst, beam, ofst, det_opts) && ans;
   }
 
   // If --minimize is true, push and minimize after determinization.
   if (opts.minimize) {
-    KALDI_VLOG(1) << "Pushing and minimizing on word lattices.";
+    KALDI_VLOG(3) << "Pushing and minimizing on word lattices.";
     ans = PushCompactLatticeStrings<Weight, IntType>(ofst) && ans;
     ans = PushCompactLatticeWeights<Weight, IntType>(ofst) && ans;
     ans = MinimizeCompactLattice<Weight, IntType>(ofst) && ans;

@@ -90,7 +90,7 @@ def create_config_files(output_dir, params):
   for i in xrange(1, params.num_hidden_layers): #just run till num_hidden_layers-1 since we do not add splice before the final affine transform
     lines=[]
     context_len = 1
-    if contexts.has_key(i):
+    if i in contexts:
         # Adding the splice component as a context is provided
         lines.append("SpliceComponent input-dim=%d context=%s " % (pnorm_output_dim, contexts[i]))
         context_len = len(contexts[i].split(":"))

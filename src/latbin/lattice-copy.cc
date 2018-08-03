@@ -25,13 +25,13 @@
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {
-  int32 CopySubsetLattices(std::string filename, 
+  int32 CopySubsetLattices(std::string filename,
       SequentialLatticeReader *lattice_reader,
       LatticeWriter *lattice_writer,
-      bool include = true, bool ignore_missing = false
-      ) {
+      bool include = true, bool ignore_missing = false,
+      bool sorted = false) {
     unordered_set<std::string, StringHasher> subset;
-    std::set<std::string> subset_list; 
+    std::set<std::string> subset_list;
 
     bool binary;
     Input ki(filename, &binary);
@@ -50,7 +50,8 @@ namespace kaldi {
     int32 num_total = 0;
     size_t num_success = 0;
     for (; !lattice_reader->Done(); lattice_reader->Next(), num_total++) {
-      if (include && lattice_reader->Key() > *(subset_list.rbegin())) {
+      if (include && sorted && subset_list.size() > 0
+              && lattice_reader->Key() > *(subset_list.rbegin())) {
         KALDI_LOG << "The utterance " << lattice_reader->Key()
                   << " is larger than "
                   << "the last key in the include list. Not reading further.";
@@ -75,14 +76,14 @@ namespace kaldi {
     return (num_success != 0 ? 0 : 1);
   }
 
-  int32 CopySubsetLattices(std::string filename, 
+  int32 CopySubsetLattices(std::string filename,
       SequentialCompactLatticeReader *lattice_reader,
       CompactLatticeWriter *lattice_writer,
-      bool include = true, bool ignore_missing = false
-      ) {
+      bool include = true, bool ignore_missing = false,
+      bool sorted = false) {
     unordered_set<std::string, StringHasher> subset;
-    std::set<std::string> subset_list; 
-    
+    std::set<std::string> subset_list;
+
     bool binary;
     Input ki(filename, &binary);
     KALDI_ASSERT(!binary);
@@ -100,7 +101,8 @@ namespace kaldi {
     int32 num_total = 0;
     size_t num_success = 0;
     for (; !lattice_reader->Done(); lattice_reader->Next(), num_total++) {
-      if (include && lattice_reader->Key() > *(subset_list.rbegin())) {
+      if (include && sorted && subset_list.size() > 0
+              && lattice_reader->Key() > *(subset_list.rbegin())) {
         KALDI_LOG << "The utterance " << lattice_reader->Key()
                   << " is larger than "
                   << "the last key in the include list. Not reading further.";
@@ -145,19 +147,20 @@ int main(int argc, char *argv[]) {
         "Only one of --include and --exclude can be supplied.\n"
         "Usage: lattice-copy [options] lattice-rspecifier lattice-wspecifier\n"
         " e.g.: lattice-copy --write-compact=false ark:1.lats ark,t:text.lats\n"
-        "See also: lattice-to-fst, and the script egs/wsj/s5/utils/convert_slf.pl\n";
-    
+        "See also: lattice-scale, lattice-to-fst, and\n"
+        "   the script egs/wsj/s5/utils/convert_slf.pl\n";
+
     ParseOptions po(usage);
     bool write_compact = true, ignore_missing = false;
     std::string include_rxfilename;
     std::string exclude_rxfilename;
 
     po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
-    po.Register("include", &include_rxfilename, 
+    po.Register("include", &include_rxfilename,
                 "Text file, the first field of each "
                 "line being interpreted as the "
                 "utterance-id whose lattices will be included");
-    po.Register("exclude", &exclude_rxfilename, 
+    po.Register("exclude", &exclude_rxfilename,
                 "Text file, the first field of each "
                 "line being interpreted as an utterance-id "
                 "whose lattices will be excluded");
@@ -174,21 +177,25 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
 
+    RspecifierOptions opts;
+    ClassifyRspecifier(lats_rspecifier, NULL, &opts);
+    bool sorted = opts.sorted;
+
     int32 n_done = 0;
-    
+
     if (write_compact) {
       SequentialCompactLatticeReader lattice_reader(lats_rspecifier);
       CompactLatticeWriter lattice_writer(lats_wspecifier);
-      
+
       if (include_rxfilename != "") {
         if (exclude_rxfilename != "") {
           KALDI_ERR << "should not have both --exclude and --include option!";
         }
-        return CopySubsetLattices(include_rxfilename,  
+        return CopySubsetLattices(include_rxfilename,
             &lattice_reader, &lattice_writer,
-            true, ignore_missing);
+            true, ignore_missing, sorted);
       } else if (exclude_rxfilename != "") {
-        return CopySubsetLattices(exclude_rxfilename, 
+        return CopySubsetLattices(exclude_rxfilename,
             &lattice_reader, &lattice_writer,
             false, ignore_missing);
       }
@@ -198,14 +205,14 @@ int main(int argc, char *argv[]) {
     } else {
       SequentialLatticeReader lattice_reader(lats_rspecifier);
       LatticeWriter lattice_writer(lats_wspecifier);
-      
+
       if (include_rxfilename != "") {
         if (exclude_rxfilename != "") {
           KALDI_ERR << "should not have both --exclude and --include option!";
         }
         return CopySubsetLattices(include_rxfilename,
             &lattice_reader, &lattice_writer,
-            true, ignore_missing);
+            true, ignore_missing, sorted);
       } else if (exclude_rxfilename != "") {
         return CopySubsetLattices(exclude_rxfilename,
             &lattice_reader, &lattice_writer,
@@ -216,7 +223,7 @@ int main(int argc, char *argv[]) {
         lattice_writer.Write(lattice_reader.Key(), lattice_reader.Value());
     }
     KALDI_LOG << "Done copying " << n_done << " lattices.";
-    
+
     if (ignore_missing) return 0;
 
     return (n_done != 0 ? 0 : 1);

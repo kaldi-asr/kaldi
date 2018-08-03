@@ -28,7 +28,7 @@ endif
 all: $(LIBFILE) $(BINFILES)
 
 $(LIBFILE): $(OBJFILES)
-	$(AR) -cru $(LIBNAME).a $(OBJFILES)
+	$(AR) -cr $(LIBNAME).a $(OBJFILES)
 	$(RANLIB) $(LIBNAME).a
 ifeq ($(KALDI_FLAVOR), dynamic)
   ifeq ($(shell uname), Darwin)

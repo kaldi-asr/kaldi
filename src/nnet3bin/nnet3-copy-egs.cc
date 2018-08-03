@@ -393,26 +393,30 @@ int main(int argc, char *argv[]) {
         weight = egs_weight_reader.Value(key);
         ScaleSupervisionWeight(weight, &eg);
       }
-      
+
+      std::string new_output_name;
       if (!eg_output_name_rspecifier.empty()) {
         if (!output_name_reader.HasKey(key)) {
           KALDI_WARN << "No new output-name for example key " << key;
           num_err++;
           continue;
         }
-        std::string new_output_name = output_name_reader.Value(key);
-        RenameOutputs(new_output_name, &eg);
+        new_output_name = output_name_reader.Value(key);
       }
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
+          if (!new_output_name.empty() && c == 0)
+            RenameOutputs(new_output_name, &eg);
           example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
           if (SelectFromExample(eg, frame_str, left_context, right_context,
                                 frame_shift, &eg_modified)) {
+            if (!new_output_name.empty())
+              RenameOutputs(new_output_name, &eg_modified);
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
             example_writers[index]->Write(key, eg_modified);

@@ -32,6 +32,8 @@ train_stage=-10
 # variables for lattice rescoring
 run_lat_rescore=true
 run_nbest_rescore=true
+run_backward_rnnlm=false
+
 ac_model_dir=exp/nnet3/tdnn_lstm_1a_adversarial0.3_epochs12_ld5_sp
 decode_dir_suffix=rnnlm_1e
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
@@ -130,10 +132,10 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
     # Lattice rescoring
     rnnlm/lmrescore$pruned.sh \
       --cmd "$decode_cmd --mem 4G" \
-      --weight 0.5 --max-ngram-order $ngram_order \
+      --weight 0.45 --max-ngram-order $ngram_order \
       data/lang_$LM $dir \
       data/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}_${decode_dir_suffix}
+      ${decode_dir}_${decode_dir_suffix}_0.45
   done
 fi
 
@@ -149,6 +151,12 @@ if [ $stage -le 5 ] && $run_nbest_rescore; then
       data/${decode_set}_hires ${decode_dir} \
       ${decode_dir}_${decode_dir_suffix}_nbest
   done
+fi
+
+# running backward RNNLM, which further improves WERS by combining backward with
+# the forward RNNLM trained in this script.
+if [ $stage -le 6 ] && $run_backward_rnnlm; then
+  local/rnnlm/run_tdnn_lstm_back.sh
 fi
 
 exit 0

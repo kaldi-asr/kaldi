@@ -85,7 +85,7 @@ def fill_nonlin_stats_table_with_regex_result(groups, gate_index, stats_table):
 
     if len(groups) <= 9:
         try:
-            if stats_table[component_name]['stats'].has_key(iteration):
+            if iteration in stats_table[component_name]['stats']:
                 stats_table[component_name]['stats'][iteration].extend(
                         [value_mean,  value_stddev,
                          deriv_mean,  deriv_stddev,
@@ -117,7 +117,7 @@ def fill_nonlin_stats_table_with_regex_result(groups, gate_index, stats_table):
         oderiv_50th = float(oderiv_percentiles_split[6])
         oderiv_95th = float(oderiv_percentiles_split[9])
         try:
-            if stats_table[component_name]['stats'].has_key(iteration):
+            if iteration in stats_table[component_name]['stats']:
                 stats_table[component_name]['stats'][iteration].extend(
                         [value_mean,  value_stddev,
                          deriv_mean,  deriv_stddev,

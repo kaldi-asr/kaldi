@@ -33,10 +33,12 @@ static bool ProcessSupervision(const TransitionModel &trans_model,
                                const ContextDependencyInterface &ctx_dep,
                                const ProtoSupervision &proto_sup,
                                const std::string &key,
+                               bool convert_to_pdfs,
                                SupervisionWriter *supervision_writer) {
   Supervision supervision;
   if (!ProtoSupervisionToSupervision(ctx_dep, trans_model,
-                                     proto_sup, &supervision)) {
+                                     proto_sup, convert_to_pdfs,
+                                     &supervision)) {
     KALDI_WARN << "Failed creating supervision for utterance "
                << key;
     return false;
@@ -118,7 +120,9 @@ int main(int argc, char *argv[]) {
           continue;
         }
         if (ProcessSupervision(trans_model, ctx_dep,
-                               proto_supervision, key, &supervision_writer))
+                               proto_supervision, key,
+                               sup_opts.convert_to_pdfs,
+                               &supervision_writer))
           num_utts_done++;
         else
           num_utts_error++;
@@ -134,7 +138,9 @@ int main(int argc, char *argv[]) {
         AlignmentToProtoSupervision(sup_opts, ali,
                                     &proto_supervision);
         if (ProcessSupervision(trans_model, ctx_dep,
-                               proto_supervision, key, &supervision_writer))
+                               proto_supervision, key,
+                               sup_opts.convert_to_pdfs,
+                               &supervision_writer))
           num_utts_done++;
         else
           num_utts_error++;

@@ -68,10 +68,13 @@ config_to_layer = {
         'opgru-layer' : xlayers.XconfigOpgruLayer,
         'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
         'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
+        'tdnnf-layer': xlayers.XconfigTdnnfLayer,
+        'prefinal-layer': xlayers.XconfigPrefinalLayer,
         'renorm-component': xlayers.XconfigRenormComponent,
         'batchnorm-component': xlayers.XconfigBatchnormComponent,
         'no-op-component': xlayers.XconfigNoOpComponent,
-        'linear-component': xlayers.XconfigLinearComponent
+        'linear-component': xlayers.XconfigLinearComponent,
+        'scale-component':  xlayers.XconfigPerElementScaleComponent
 }
 
 # Turn a config line and a list of previous layers into
@@ -85,7 +88,7 @@ def xconfig_line_to_object(config_line, prev_layers = None):
         if x is None:
             return None
         (first_token, key_to_value) = x
-        if not config_to_layer.has_key(first_token):
+        if not first_token in config_to_layer:
             raise RuntimeError("No such layer type '{0}'".format(first_token))
         return config_to_layer[first_token](first_token, key_to_value, prev_layers)
     except Exception:
@@ -165,7 +168,9 @@ def get_model_component_info(model_filename):
 # layers but are actual component node names from an existing neural net model
 # and created using get_model_component_info function).
 # 'existing' layers can be used as input to component-nodes in layers of xconfig file.
-def read_xconfig_file(xconfig_filename, existing_layers=[]):
+def read_xconfig_file(xconfig_filename, existing_layers=None):
+    if existing_layers is None:
+        existing_layers = []
     try:
         f = open(xconfig_filename, 'r')
     except Exception as e:

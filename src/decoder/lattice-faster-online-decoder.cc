@@ -1054,7 +1054,7 @@ void LatticeFasterOnlineDecoder::ProcessNonemittingWrapper(
         ProcessNonemitting<fst::VectorFst<Arc>>(cost_cutoff);
   } else {
     return LatticeFasterOnlineDecoder::
-        ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+        ProcessNonemitting<fst::Fst<Arc>>(cost_cutoff);
   }
 }
 

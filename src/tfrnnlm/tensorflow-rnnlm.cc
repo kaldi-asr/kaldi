@@ -49,7 +49,7 @@ void SetUnkPenalties(const string &filename,
   float count, total_count = 0;
   while (ifile >> word >> count) {
     int id = fst_word_symbols.Find(word);
-    KALDI_ASSERT(id != fst::SymbolTable::kNoSymbol);
+    KALDI_ASSERT(id != -1); // fst::kNoSymbol
     (*out)[id] = count;
     total_count += count;
   }
@@ -145,7 +145,7 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
       rnn_label_to_word_.push_back(word);  // vector[i] = word
 
       int fst_label = fst_word_symbols->Find(word);
-      if (fst::SymbolTable::kNoSymbol == fst_label) {
+      if (fst_label == -1) { // fst::kNoSymbol
         if (id == eos_)
           continue;
 

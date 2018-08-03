@@ -448,7 +448,83 @@ void NoOpComponent::Backprop(const std::string &debug_info,
                              // to "this" or different.
                              CuMatrixBase<BaseFloat> *in_deriv) const {
   in_deriv->CopyFromMat(out_deriv);
+  if (backprop_scale_ != 1.0)
+    in_deriv->Scale(backprop_scale_);
 }
+
+void NoOpComponent::InitFromConfig(ConfigLine *cfl) {
+  backprop_scale_ = 1.0;
+  cfl->GetValue("backprop-scale", &backprop_scale_);
+  if (!cfl->GetValue("dim", &dim_) ||
+      dim_ <= 0 || cfl->HasUnusedValues()) {
+    KALDI_ERR << "Invalid initializer for layer of type "
+              << Type() << ": \"" << cfl->WholeLine() << "\"";
+  }
+}
+
+std::string NoOpComponent::Info() const {
+  std::ostringstream stream;
+  stream << Type() << ", dim=" << dim_;
+  if (backprop_scale_ != 1.0)
+    stream << ", backprop-scale=" << backprop_scale_;
+  return stream.str();
+}
+
+void NoOpComponent::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<NoOpComponent>");
+  WriteToken(os, binary, "<Dim>");
+  WriteBasicType(os, binary, dim_);
+  WriteToken(os, binary, "<BackpropScale>");
+  WriteBasicType(os, binary, backprop_scale_);
+  WriteToken(os, binary, "</NoOpComponent>");
+}
+
+void NoOpComponent::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<NoOpComponent>", "<Dim>");
+  ReadBasicType(is, binary, &dim_);
+
+  if (PeekToken(is, binary) == 'V') {
+    // This is the old format, from when NoOpComponent inherited from
+    // NonlinearComponent.
+    backprop_scale_ = 1.0;
+    ExpectToken(is, binary, "<ValueAvg>");
+    CuVector<BaseFloat> temp_vec;
+    temp_vec.Read(is, binary);
+    ExpectToken(is, binary, "<DerivAvg>");
+    temp_vec.Read(is, binary);
+    ExpectToken(is, binary, "<Count>");
+    BaseFloat temp_float;
+    ReadBasicType(is, binary, &temp_float);
+    if (PeekToken(is, binary) == 'O') {
+      ExpectToken(is, binary, "<OderivRms>");
+      temp_vec.Read(is, binary);
+      ExpectToken(is, binary, "<OderivCount>");
+      ReadBasicType(is, binary, &temp_float);
+    }
+    std::string token;
+    ReadToken(is, binary, &token);
+    if (token[0] != '<') {
+      // this should happen only rarely, in case we couldn't push back the
+      // '<' to the stream in PeekToken().
+      token = '<' + token;
+    }
+    if (token == "<NumDimsSelfRepaired>") {
+      ReadBasicType(is, binary, &temp_float);
+      ReadToken(is, binary, &token);
+    }
+    if (token == "<NumDimsProcessed>") {
+      ReadBasicType(is, binary, &temp_float);
+      ReadToken(is, binary, &token);
+    }
+    KALDI_ASSERT(token == "</NoOpComponent>");
+    return;
+  } else {
+    ExpectToken(is, binary, "<BackpropScale>");
+    ReadBasicType(is, binary, &backprop_scale_);
+    ExpectToken(is, binary, "</NoOpComponent>");
+  }
+}
+
 
 void ClipGradientComponent::Read(std::istream &is, bool binary) {
   // might not see the "<NaturalGradientAffineComponent>" part because
@@ -2803,13 +2879,18 @@ void NaturalGradientAffineComponent::InitFromConfig(ConfigLine *cfl) {
   // Set natural-gradient configs.
   BaseFloat num_samples_history = 2000.0,
       alpha = 4.0;
-  int32 rank_in = 20, rank_out = 80,
+  int32 rank_in = -1, rank_out = -1,
       update_period = 4;
   cfl->GetValue("num-samples-history", &num_samples_history);
   cfl->GetValue("alpha", &alpha);
   cfl->GetValue("rank-in", &rank_in);
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("update-period", &update_period);
+
+  if (rank_in < 0)
+    rank_in = std::min<int32>(20, (InputDim() + 1) / 2);
+  if (rank_out < 0)
+    rank_out = std::min<int32>(80, (OutputDim() + 1) / 2);
 
   preconditioner_in_.SetNumSamplesHistory(num_samples_history);
   preconditioner_out_.SetNumSamplesHistory(num_samples_history);
@@ -3012,7 +3093,7 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
     params_.Scale(param_stddev);
   }
   // Read various natural-gradient-related configs.
-  int32 rank_in = 20, rank_out = 80, update_period = 4;
+  int32 rank_in = -1, rank_out = -1, update_period = 4;
   BaseFloat alpha = 4.0,
       num_samples_history = 2000.0;
 
@@ -3024,6 +3105,11 @@ void LinearComponent::InitFromConfig(ConfigLine *cfl) {
   cfl->GetValue("rank-out", &rank_out);
   cfl->GetValue("update-period", &update_period);
   cfl->GetValue("use-natural-gradient", &use_natural_gradient_);
+
+  if (rank_in < 0)
+    rank_in = std::min<int32>(20, (InputDim() + 1) / 2);
+  if (rank_out < 0)
+    rank_out = std::min<int32>(80, (OutputDim() + 1) / 2);
 
   preconditioner_in_.SetAlpha(alpha);
   preconditioner_out_.SetAlpha(alpha);
@@ -5859,6 +5945,7 @@ void SumBlockComponent::Backprop(
     in_deriv->AddMatBlocks(scale_, out_deriv, kNoTrans);
   }
 }
+
 
 
 } // namespace nnet3

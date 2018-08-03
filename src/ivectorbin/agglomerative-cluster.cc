@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
       " is less than this threshold.");
     po.Register("read-costs", &read_costs, "If true, the first"
       " argument is interpreted as a matrix of costs rather than a"
-       "similarity matrix.");
+      " similarity matrix.");
 
     po.Read(argc, argv);
 
@@ -75,6 +75,8 @@ int main(int argc, char *argv[]) {
     RandomAccessInt32Reader reco2num_spk_reader(reco2num_spk_rspecifier);
     Int32Writer label_writer(label_wspecifier);
 
+    if (!read_costs)
+      threshold = -threshold;
     for (; !scores_reader.Done(); scores_reader.Next()) {
       std::string reco = scores_reader.Key();
       Matrix<BaseFloat> costs = scores_reader.Value();
@@ -84,7 +86,6 @@ int main(int argc, char *argv[]) {
       // clustering code requires.
       if (!read_costs)
         costs.Scale(-1);
-        threshold = -threshold;
       std::vector<std::string> uttlist = reco2utt_reader.Value(reco);
       std::vector<int32> spk_ids;
       if (reco2num_spk_rspecifier.size()) {
