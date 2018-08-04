@@ -44,7 +44,7 @@ $cmd JOB=1:$num_jobs $dir/log/get_phone_alignments.JOB.log \
   set -o pipefail '&&' ali-to-phones --write-lengths=true "$model"  \
       "ark:gunzip -c $dir/ali.JOB.gz|" ark,t:- \| \
    sed -E 's/^[^ ]+ //' \| \
-   awk 'BEGIN{FS=" ; "; OFS="\n";} {print "begin " $1; print "end " $NF; for (n=1;n<=NF;n++) print "all " $n; }' \| \
+   awk 'BEGIN{FS=" ; "; OFS="\n";} {print "begin " $1; if (NF>1) print "end " $NF; for (n=1;n<=NF;n++) print "all " $n; }' \| \
    sort \| uniq -c \| gzip -c '>' $dir/phone_stats.JOB.gz || exit 1
 
 if ! $cmd $dir/log/analyze_alignments.log \

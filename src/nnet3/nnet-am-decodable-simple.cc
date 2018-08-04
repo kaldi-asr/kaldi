@@ -46,7 +46,7 @@ DecodableNnetSimple::DecodableNnetSimple(
       (feats_.NumRows() + opts_.frame_subsampling_factor - 1) /
       opts_.frame_subsampling_factor;
   KALDI_ASSERT(IsSimpleNnet(nnet));
-  ComputeSimpleNnetContext(nnet, &nnet_left_context_, &nnet_right_context_);
+  compiler_.GetSimpleNnetContext(&nnet_left_context_, &nnet_right_context_);
   KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
   KALDI_ASSERT(!(online_ivectors != NULL && online_ivector_period <= 0 &&
                  "You need to set the --online-ivector-period option!"));
