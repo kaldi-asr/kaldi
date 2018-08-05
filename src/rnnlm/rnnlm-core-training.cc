@@ -343,6 +343,11 @@ void RnnlmCoreTrainer::ProcessOutput(
   computer->AcceptInput("output", &output_deriv);
 }
 
+void RnnlmCoreTrainer::ConsolidateMemory() {
+  kaldi::nnet3::ConsolidateMemory(nnet_);
+  kaldi::nnet3::ConsolidateMemory(delta_nnet_);
+}
+
 RnnlmCoreTrainer::~RnnlmCoreTrainer() {
   PrintMaxChangeStats();
   // Note: the objective-function stats are printed out in the destructor of the

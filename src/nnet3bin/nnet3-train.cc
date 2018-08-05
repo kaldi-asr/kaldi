@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-training.h"
-
+#include "cudamatrix/cu-allocator.h"
 
 int main(int argc, char *argv[]) {
   try {

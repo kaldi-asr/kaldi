@@ -22,7 +22,7 @@
 #include "rnnlm/rnnlm-training.h"
 #include "rnnlm/rnnlm-example-utils.h"
 #include "nnet3/nnet-utils.h"
-
+#include "cudamatrix/cu-allocator.h"
 
 int main(int argc, char *argv[]) {
   try {

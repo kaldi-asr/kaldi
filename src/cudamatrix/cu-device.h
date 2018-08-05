@@ -24,7 +24,6 @@
 #define KALDI_CUDAMATRIX_CU_DEVICE_H_
 
 #if HAVE_CUDA == 1
-
 #include <cublas_v2.h>
 #include <cusparse.h>
 #include <map>

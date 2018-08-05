@@ -19,6 +19,8 @@
 
 
 
+#include "cudamatrix/cu-allocator.h"
+
 #if HAVE_CUDA == 1
 
 #include <cublas_v2.h>
@@ -583,10 +585,6 @@ void CuMemoryAllocator::SortSubregions() {
   }
 }
 
-
-// Define/initialize this global variable.  It was declared in cu-allocator.h.
-CuAllocatorOptions g_allocator_options;
-
 CuMemoryAllocator g_cuda_allocator;
 
 
@@ -594,3 +592,14 @@ CuMemoryAllocator g_cuda_allocator;
 
 
 #endif // HAVE_CUDA
+
+
+namespace kaldi {
+
+// Define/initialize this global variable.  It was declared in cu-allocator.h.
+// This has to be done outside of the ifdef, because we register the options
+// whether or not CUDA is compiled in (so that the binaries accept the same
+// options).
+CuAllocatorOptions g_allocator_options;
+
+}
