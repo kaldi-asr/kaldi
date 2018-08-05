@@ -1,5 +1,6 @@
 #!/bin/bash
 
+cmd="$@"
 
 no_feats=false
 no_wav=false
@@ -42,6 +43,12 @@ data=$1
 if [ ! -d $data ]; then
   echo "$0: no such directory $data"
   exit 1;
+fi
+
+if [ -f $data/images.scp ]; then
+  cmd=${cmd/--no-wav/}  # remove --no-wav if supplied
+  image/validate_data_dir.sh $cmd
+  exit $?
 fi
 
 for f in spk2utt utt2spk; do
