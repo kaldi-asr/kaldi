@@ -93,6 +93,7 @@ int main(int argc, char *argv[]) {
 
 
     objective_config.Register(&po);
+    RegisterCuAllocatorOptions(&po);
 
     // register the core RNNLM training options options with the prefix "rnnlm",
     // so they will appear as --rnnlm.max-change and the like.  This is done

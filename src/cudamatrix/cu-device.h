@@ -87,29 +87,29 @@ class CuDevice {
   // the results of previous allocations to avoid the very large overhead that
   // CUDA's allocation seems to give for some setups.
   inline void* Malloc(size_t size) {
-    return multi_threaded_ ? allocator_.MallocLocking(size) :
-        allocator_.Malloc(size);
+    return multi_threaded_ ? g_cuda_allocator.MallocLocking(size) :
+        g_cuda_allocator.Malloc(size);
   }
 
   inline void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
     if (multi_threaded_) {
-      return allocator_.MallocPitchLocking(row_bytes, num_rows, pitch);
+      return g_cuda_allocator.MallocPitchLocking(row_bytes, num_rows, pitch);
     } else if (debug_stride_mode_) {
       // The pitch bucket size is hardware dependent.
       // It is 512 on K40c with CUDA 7.5
       // "% 8" ensures that any 8 adjacent allocations have different pitches
       // if their original pitches are same in the normal mode.
-      return allocator_.MallocPitch(
+      return g_cuda_allocator.MallocPitch(
           row_bytes + 512 * RandInt(0, 4), num_rows,
           pitch);
     } else {
-      return allocator_.MallocPitch(row_bytes, num_rows, pitch);
+      return g_cuda_allocator.MallocPitch(row_bytes, num_rows, pitch);
     }
   }
 
   inline void Free(void *ptr) {
-    if (multi_threaded_) allocator_.FreeLocking(ptr);
-    else allocator_.Free(ptr);
+    if (multi_threaded_) g_cuda_allocator.FreeLocking(ptr);
+    else g_cuda_allocator.Free(ptr);
   }
 
   /// Select a GPU for computation.  You are supposed to call this function just
@@ -226,9 +226,6 @@ class CuDevice {
   // recommended by NVidia).
   static thread_local CuDevice this_thread_device_;
 
-  // The allocator object is static because it's shared between all the threads.
-  static CuMemoryAllocator allocator_;
-
   // The GPU device-id that we are using.  This will be initialized to -1, and will
   // be set when the user calls
   //  CuDevice::Instantiate::SelectGpuId(...)
@@ -294,12 +291,13 @@ inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetCubl
 inline cusparseHandle_t GetCusparseHandle() { return CuDevice::Instantiate().GetCusparseHandle(); }
 
 
-}  // namespace
+}  // namespace kaldi
 
 #endif // HAVE_CUDA
 
 
 namespace kaldi {
+
 /**
    The function SynchronizeGpu(), which for convenience is defined whether or
    not we have compiled for CUDA, is intended to be called in places where threads
@@ -319,6 +317,7 @@ namespace kaldi {
 
 */
 void SynchronizeGpu();
-}
 
-#endif
+}   // namespace kaldi
+
+#endif // KALDI_CUDAMATRIX_CU_DEVICE_H_

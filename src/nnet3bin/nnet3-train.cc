@@ -53,6 +53,7 @@ int main(int argc, char *argv[]) {
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
     train_config.Register(&po);
+    RegisterCuAllocatorOptions(&po);
 
     po.Read(argc, argv);
 
@@ -94,5 +95,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

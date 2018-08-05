@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
     opts.Register(&po);
+    RegisterCuAllocatorOptions(&po);
 
     po.Read(argc, argv);
 

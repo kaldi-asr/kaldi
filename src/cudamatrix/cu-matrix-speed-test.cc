@@ -1008,6 +1008,22 @@ template<typename Real> void TestCuSparseMatrixTraceMatSmat(int32 dim) {
   }
 }
 
+void CudaMatrixMemoryTest() {
+  KALDI_LOG << "In CudaMatrixMemoryTest";
+  size_t i = 0;
+  Timer tim;
+  while (true) {
+    size_t nr = 1000, nc = 1000, pitch;
+    void *ans;
+    cudaMallocPitch(&ans, &pitch, nc * 4, nr);
+    cudaFree(ans);
+    i++;
+    if (i % 10000 == 0) {
+      KALDI_LOG << "Time for each malloc/free is " << (tim.Elapsed() / i) << " seconds.";
+    }
+  }
+}
+
 
 template<typename Real> void CudaMatrixSpeedTest() {
   std::vector<int32> sizes;
@@ -1121,12 +1137,15 @@ int main() {
   SetVerboseLevel(1);
 #if HAVE_CUDA == 1
   int32 loop = 0;
-  for (loop = 0; loop < 2; loop++) {
+  for (loop = 1; loop < 2; loop++) {
     if (loop == 0)
       CuDevice::Instantiate().SelectGpuId("no");
     else
       CuDevice::Instantiate().SelectGpuId("yes");
 #endif
+    if (loop == 1) {
+      CudaMatrixMemoryTest();
+    }
 
     kaldi::CudaMatrixSpeedTest<float>();
 #if HAVE_CUDA == 1

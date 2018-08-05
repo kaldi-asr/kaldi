@@ -111,6 +111,7 @@ void CuDevice::Initialize() {
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
+
   }
 }
 
@@ -130,6 +131,9 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   int32 num_gpus = 0;
 
   cudaError_t e = cudaGetDeviceCount(&num_gpus);
+
+  // Make sure the global allocator object has the up-to-date options.
+  g_cuda_allocator.SetOptions(g_allocator_options);
 
   if (num_gpus == 0) {
     if (use_gpu == "yes" || use_gpu == "wait") {
@@ -421,7 +425,7 @@ void CuDevice::AccuProfile(const char *function_name,
 
 void CuDevice::PrintMemoryUsage() const {
   if (Enabled())
-    allocator_.PrintMemoryUsage();
+    g_cuda_allocator.PrintMemoryUsage();
 }
 
 void CuDevice::PrintProfile() {
@@ -521,7 +525,6 @@ CuDevice::~CuDevice() {
 thread_local CuDevice CuDevice::this_thread_device_;
 
 // define and initialize the static members of the CuDevice object.
-CuMemoryAllocator CuDevice::allocator_;
 int32 CuDevice::device_id_ = -1;
 bool CuDevice::multi_threaded_ = false;
 unordered_map<std::string, double, StringHasher> CuDevice::profile_map_;
