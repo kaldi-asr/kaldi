@@ -161,6 +161,7 @@ if [ $stage -le 11 ]; then
     --feat-dir data/${train_set}_hires \
     --tree-dir $treedir \
     --lat-dir exp/tri5a_sp_lats \
+    --use-gpu wait \
     --dir $dir  || exit 1;
 fi
 

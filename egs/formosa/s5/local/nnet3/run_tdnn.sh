@@ -93,7 +93,7 @@ if [ $stage -le 8 ]; then
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --cleanup.preserve-model-interval 500 \
-    --use-gpu true \
+    --use-gpu wait \
     --feat-dir=data/${train_set}_hires \
     --ali-dir $ali_dir \
     --lang data/lang \
