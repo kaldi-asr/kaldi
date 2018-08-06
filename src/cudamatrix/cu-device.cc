@@ -111,6 +111,7 @@ void CuDevice::Initialize() {
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
+
   }
 }
 
@@ -130,6 +131,9 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
   int32 num_gpus = 0;
 
   cudaError_t e = cudaGetDeviceCount(&num_gpus);
+
+  // Make sure the global allocator object has the up-to-date options.
+  g_cuda_allocator.SetOptions(g_allocator_options);
 
   if (num_gpus == 0) {
     if (use_gpu == "yes" || use_gpu == "wait") {
@@ -282,11 +286,9 @@ bool CuDevice::IsComputeExclusive() {
     case cudaComputeModeExclusive :
       return true;
       break;
-#if (CUDA_VERSION >= 4000)
     case cudaComputeModeExclusiveProcess :
       return true;
       break;
-#endif
     default :
       // in this case we release the GPU context...
       return false;
@@ -346,13 +348,10 @@ bool CuDevice::SelectGpuIdAuto() {
         // destroy the CUDA context for the thread
         cudaDeviceReset();
       } break;
-
-#if (CUDA_VERSION > 3020)
       case cudaErrorDeviceAlreadyInUse :
         KALDI_LOG << "cudaSetDevice(" << n << "): "
                   << "Device cannot be accessed, used EXCLUSIVE-THREAD mode...";
         break;
-#endif
       case cudaErrorInvalidDevice :
         KALDI_LOG << "cudaSetDevice(" << n << "): "
                   << "Device cannot be accessed, not a VALID CUDA device!";
@@ -426,7 +425,7 @@ void CuDevice::AccuProfile(const char *function_name,
 
 void CuDevice::PrintMemoryUsage() const {
   if (Enabled())
-    allocator_.PrintMemoryUsage();
+    g_cuda_allocator.PrintMemoryUsage();
 }
 
 void CuDevice::PrintProfile() {
@@ -526,7 +525,6 @@ CuDevice::~CuDevice() {
 thread_local CuDevice CuDevice::this_thread_device_;
 
 // define and initialize the static members of the CuDevice object.
-CuMemoryAllocator CuDevice::allocator_;
 int32 CuDevice::device_id_ = -1;
 bool CuDevice::multi_threaded_ = false;
 unordered_map<std::string, double, StringHasher> CuDevice::profile_map_;
@@ -540,7 +538,8 @@ void SynchronizeGpu() {
   cuda_legacy_noop();
   CU_SAFE_CALL(cudaGetLastError());
 }
-}
+
+}  // namespace kaldi
 
 #else  // #if HAVE_CUDA == 1
 
@@ -548,4 +547,5 @@ namespace kaldi {
 // SynchronizeGpu() does nothing if we didn't compile for GPU.
 void SynchronizeGpu() { }
 }
+
 #endif  // #if HAVE_CUDA == 1

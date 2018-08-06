@@ -4692,7 +4692,7 @@ class MemoryCompressionOptimizer {
 
   /** @param [in] nnet         The neural net the computation is for.
       @param [in] memory_compression_level.  The level of compression:
-         0 = no compression (the constructor should not be calle with this value).
+         0 = no compression (the constructor should not be called with this value).
          1 = compression that doesn't affect the results (but still takes time).
          2 = compression that affects the results only very slightly
          3 = compression that affects the results a little more.

@@ -988,7 +988,7 @@ static void ComputeTempMatrixSize(const ConvolutionComputationOptions &opts,
     temp_rows = new_num_t_out * computation->num_images;
     BaseFloat new_num_megabytes = (4 * temp_rows * temp_cols) / 1000000.0;
     // make sure we're within the memory limit.
-    if (new_num_megabytes > megabyte_limit) {
+    if (new_num_megabytes > 1.01 * megabyte_limit) {
       KALDI_WARN << "Memory consumed in convolution is more than requested "
                  << "(maybe very long time sequence?)";
     }

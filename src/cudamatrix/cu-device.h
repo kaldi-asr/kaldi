@@ -24,7 +24,6 @@
 #define KALDI_CUDAMATRIX_CU_DEVICE_H_
 
 #if HAVE_CUDA == 1
-
 #include <cublas_v2.h>
 #include <cusparse.h>
 #include <map>
@@ -46,8 +45,24 @@ class CuTimer;
    (which supports caching, to avoid the slowness of the CUDA memory allocator).
 
    There is a separate instance of the CuDevice object for each thread of the
-   program, since it is recommended to have different cuBLAS and cuSparse
-   handles per thread.
+   program, but many of its variables are static (hence, shared between all
+   instances).
+
+   We only (currently) support using a single GPU device; however, we support
+   multiple CUDA streams.  The expected programming model here is that you will
+   have multiple CPU threads, and each CPU thread automatically gets its own
+   CUDA stream because we compile with -DCUDA_API_PER_THREAD_DEFAULT_STREAM.
+
+   In terms of synchronizing the activities of multiple threads: The CuDevice
+   object (with help from the underlying CuAllocator object) ensures that the
+   memory caching code won't itself be a cause of synchronization problems,
+   i.e. you don't have to worry that when you allocate with CuDevice::Malloc(),
+   the memory will still be in use by another thread on the GPU.  However, it
+   may sometimes still be necessary to synchronize the activities of multiple
+   streams by calling the function SynchronizeGpu()-- probably right before a
+   thread increments a semaphore, right after it waits on a semaphore, or
+   right after it acquires a mutex, or something like that.
+
  */
 class CuDevice {
  public:
@@ -71,29 +86,29 @@ class CuDevice {
   // the results of previous allocations to avoid the very large overhead that
   // CUDA's allocation seems to give for some setups.
   inline void* Malloc(size_t size) {
-    return multi_threaded_ ? allocator_.MallocLocking(size) :
-        allocator_.Malloc(size);
+    return multi_threaded_ ? g_cuda_allocator.MallocLocking(size) :
+        g_cuda_allocator.Malloc(size);
   }
 
   inline void* MallocPitch(size_t row_bytes, size_t num_rows, size_t *pitch) {
     if (multi_threaded_) {
-      return allocator_.MallocPitchLocking(row_bytes, num_rows, pitch);
+      return g_cuda_allocator.MallocPitchLocking(row_bytes, num_rows, pitch);
     } else if (debug_stride_mode_) {
       // The pitch bucket size is hardware dependent.
       // It is 512 on K40c with CUDA 7.5
       // "% 8" ensures that any 8 adjacent allocations have different pitches
       // if their original pitches are same in the normal mode.
-      return allocator_.MallocPitch(
+      return g_cuda_allocator.MallocPitch(
           row_bytes + 512 * RandInt(0, 4), num_rows,
           pitch);
     } else {
-      return allocator_.MallocPitch(row_bytes, num_rows, pitch);
+      return g_cuda_allocator.MallocPitch(row_bytes, num_rows, pitch);
     }
   }
 
   inline void Free(void *ptr) {
-    if (multi_threaded_) allocator_.FreeLocking(ptr);
-    else allocator_.Free(ptr);
+    if (multi_threaded_) g_cuda_allocator.FreeLocking(ptr);
+    else g_cuda_allocator.Free(ptr);
   }
 
   /// Select a GPU for computation.  You are supposed to call this function just
@@ -137,8 +152,6 @@ class CuDevice {
   /// the code will detect that you failed to call it, and will print a warning).
   inline void AllowMultithreading() { multi_threaded_ = true; }
 
-  /// Get the actual GPU memory use stats
-  std::string GetFreeMemory(int64* free = NULL, int64* total = NULL) const;
   /// Get the name of the GPU
   void DeviceGetName(char* name, int32 len, int32 dev);
 
@@ -212,9 +225,6 @@ class CuDevice {
   // recommended by NVidia).
   static thread_local CuDevice this_thread_device_;
 
-  // The allocator object is static because it's shared between all the threads.
-  static CuMemoryAllocator allocator_;
-
   // The GPU device-id that we are using.  This will be initialized to -1, and will
   // be set when the user calls
   //  CuDevice::Instantiate::SelectGpuId(...)
@@ -280,21 +290,33 @@ inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetCubl
 inline cusparseHandle_t GetCusparseHandle() { return CuDevice::Instantiate().GetCusparseHandle(); }
 
 
-}  // namespace
+}  // namespace kaldi
 
 #endif // HAVE_CUDA
 
 
 namespace kaldi {
-/// The function SynchronizeGpu(), which for convenience is defined whether or
-/// not we have compiled for CUDA, is intended to be called in places where threads
-/// need to be synchronized.
-///
-/// It just launches a no-op kernel into the legacy default stream.  This will
-/// have the effect that it will run after any kernels previously launched from
-/// any stream*, and before kernels that will later be launched from any stream*
-/// *does not apply to non-blocking streams.
-void SynchronizeGpu();
-}
 
-#endif
+/**
+   The function SynchronizeGpu(), which for convenience is defined whether or
+   not we have compiled for CUDA, is intended to be called in places where threads
+   need to be synchronized.
+
+   It just launches a no-op kernel into the legacy default stream.  This will
+   have the effect that it will run after any kernels previously launched from
+   any stream(*), and before kernels that will later be launched from any stream(*).
+   (*) does not apply to non-blocking streams.
+
+   Note: at the time of writing we never call SynchronizeGpu() from binary-level
+   code because it hasn't become necessary yet; the only program that might have
+   multiple threads actually using the GPU is rnnlm-train (if the user were to
+   invoke it with the ,bg option for loading training examples); but the only
+   CUDA invocation the RnnlmExample::Read() function uses (via
+   CuMatrix::Read()), is cudaMemcpy, which is synchronous already.
+
+*/
+void SynchronizeGpu();
+
+}   // namespace kaldi
+
+#endif // KALDI_CUDAMATRIX_CU_DEVICE_H_
