@@ -18,7 +18,7 @@ nj=4 # max 9
 lng="ru"
 acc="ru"
 # Speaker ID
-spks="abr" # can be any of slt, bdl, jmk
+spks="abr" # Must be a speaker from the Idlak Resources
 network_type=dnn # dnn or lstm
 nodev=50 #the remaining will be in the training set.
          #50 utterances in the test set assums that the number of utterances
