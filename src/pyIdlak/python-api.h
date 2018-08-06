@@ -33,7 +33,8 @@ enum IDLAKMOD {Empty = 0,
                Phrasing = 4,
                Pronounce = 5,
                Syllabify = 6,
-               NumMods = 6};
+               ContextExtraction = 7,
+               NumMods = 7};
 
 PyIdlakBuffer * PyIdlakBuffer_newfromstr(const char * data);
 void PyIdlakBuffer_delete(PyIdlakBuffer * pybuf);

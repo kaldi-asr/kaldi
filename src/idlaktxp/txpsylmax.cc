@@ -266,14 +266,26 @@ void TxpSylmax::StartElement(const char *name, const char ** atts) {
       stress_ = true;
   } else if (!strcmp("s", name)) {
     SetAttribute("name", atts, &item);
+    if (item.empty()) {
+      KALDI_ERR << fname_ << ": error missing 'name' attribute on line " << GetCurrentLineNumber();
+      return;
+    }
     syllabic_.insert(item);
   } else if (!strcmp("o", name)) {
     SetAttribute("pat", atts, &item);
+    if (item.empty()) {
+      KALDI_ERR << fname_ << ": error missing 'pat' attribute on line " << GetCurrentLineNumber();
+      return;
+    }
     onsets_.insert(item);
     size = GetPhoneVector(item.c_str(), &pv);
     if (size > max_onset_) max_onset_ = size;
   } else if (!strcmp("n", name)) {
     SetAttribute("pat", atts, &item);
+    if (item.empty()) {
+      KALDI_ERR << fname_ << ": error missing 'pat' attribute on line " << GetCurrentLineNumber();
+      return;
+    }
     nuclei_.insert(item);
     size = GetPhoneVector(item.c_str(), &pv);
     if (size > max_nucleus_) max_nucleus_ = size;
