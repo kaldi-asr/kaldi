@@ -6,7 +6,7 @@
 tmpdir=data/local/tmp
 download_dir=$(pwd)
 mkdir -p $download_dir
-subs_src="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2018/en-es.txt.zip"
+subs_src=$1
 
 # download the subs corpus
 if [ ! -f $download_dir/subs.zip ]; then
