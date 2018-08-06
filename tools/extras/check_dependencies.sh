@@ -24,15 +24,15 @@ COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
 case $COMPILER_VER_INFO in
   "")
     echo "$0: $CXX is not installed."
-    echo "$0: You need g++ >= 4.7, Apple Xcode >= 5.0 or clang >= 3.3."
+    echo "$0: You need g++ >= 4.8.3, Apple Xcode >= 5.0 or clang >= 3.3."
     status=1
     ;;
   "g++ "* )
     GCC_VER=$($CXX -dumpversion)
     GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-    if [ $GCC_VER_NUM -lt 40700 ]; then
+    if [ $GCC_VER_NUM -lt 40803 ]; then
         echo "$0: $CXX (g++-$GCC_VER) is not supported."
-        echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        echo "$0: You need g++ >= 4.8.3, Apple clang >= 5.0 or LLVM clang >= 3.3."
         status=1
     fi
     ;;
@@ -42,7 +42,7 @@ case $COMPILER_VER_INFO in
     CLANG_VER_NUM=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*clang-\([0-9]*\).*/\1/")
     if [ $CLANG_VER_NUM -lt 500 ]; then
         echo "$0: $CXX (Apple clang-$CLANG_VER) is not supported."
-        echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        echo "$0: You need g++ >= 4.8.3, Apple clang >= 5.0 or LLVM clang >= 3.3."
         status=1
     fi
     ;;
@@ -51,7 +51,7 @@ case $COMPILER_VER_INFO in
     CLANG_VER_NUM=$(echo $CLANG_VER | sed 's/\./ /g' | xargs printf "%d%02d")
     if [ $CLANG_VER_NUM -lt 303 ]; then
         echo "$0: $CXX (LLVM clang-$CLANG_VER) is not supported."
-        echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        echo "$0: You need g++ >= 4.8.3, Apple clang >= 5.0 or LLVM clang >= 3.3."
         status=1
     fi
     ;;
