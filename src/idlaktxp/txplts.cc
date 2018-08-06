@@ -67,11 +67,13 @@ int TxpLts::GetPron(const std::string &word, TxpLexiconLkp* lkp) {
   std::string ltr;
   LtsMap::iterator it;
   TxpLtsTree stress_tree;
-
+  bool stress_tree_present = true;
+  
   // get stress lookup
   it = ltslkp_.find(std::string("0"));
   if (it == ltslkp_.end()) {
-      KALDI_WARN << "No stress lookup tree: name='0'";
+    stress_tree_present = false;
+    KALDI_WARN << "No stress lookup tree: name='0'";
   } else {
     stress_tree = it->second;
   }
@@ -97,11 +99,11 @@ int TxpLts::GetPron(const std::string &word, TxpLexiconLkp* lkp) {
         }
 
         // Check is syllabic and if so get stress
-        if (phone[strlen(phone) - 1] == '0') {
-          stress = ApplyTree(stress_tree, word.c_str(), pos);
-          lkp->pron += std::string(phone, strlen(phone) - 1);
-          lkp->pron += stress;
-	      free((void *)stress);
+        if (phone[strlen(phone) - 1] == '0' && stress_tree_present) {
+            stress = ApplyTree(stress_tree, word.c_str(), pos);
+            lkp->pron += std::string(phone, strlen(phone) - 1);
+            lkp->pron += stress;
+            free((void *)stress);
         } else {
           lkp->pron += phone;
         }
