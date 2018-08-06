@@ -396,7 +396,7 @@ size_t IndexVectorHasher::operator () (
   size_t ans = 1433 + 34949  * index_vector.size();
   std::vector<Index>::const_iterator iter = index_vector.begin(),
       end = index_vector.end(), med = end;
-  if (med > iter + n1)
+  if (n1 <= index_vector.size())
     med = iter + n1;
 
   for (; iter != med; ++iter) {
@@ -412,6 +412,12 @@ size_t IndexVectorHasher::operator () (
     ans += iter->n * 1619;
     ans += iter->t * 15649;
     ans += iter->x * 89809;
+	// check 'n2 > index_vector.size()' first,
+	// otherwise, 'end - n2' will be less than 'index_vector.begin()' and
+	// cause error "vector iterator + offset out of range" in STL vector.
+	if (n2 > index_vector.size() || iter >= end - n2) 
+		break;
+	
   }
   return ans;
 }
