@@ -56,7 +56,7 @@ lrate=0.00001
 dir=exp/tri7b_${dnn_model}
 data_fbk=data_fbank
 if [ $stage -le 3 ]; then
-	proto=proto/${dnn_model}.proto	
+	proto=local/nnet/${dnn_model}.proto	
 	$cuda_cmd $dir/_train_nnet.log \
    	steps/nnet/train_faster.sh --learn-rate $lrate --nnet-proto $proto \
         --start_half_lr 5 --momentum 0.9 \
