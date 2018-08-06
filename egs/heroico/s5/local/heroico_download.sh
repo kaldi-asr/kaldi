@@ -3,9 +3,8 @@
 # Copyright 2018 John Morgan
 # Apache 2.0.
 
-# The corpus and lexicon are on openslr.org
-lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
-speech="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
+speech=$1
+lexicon=$2
 
 download_dir=$(pwd)
 tmpdir=data/local/tmp
