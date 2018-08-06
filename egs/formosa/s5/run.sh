@@ -204,6 +204,13 @@ fi
 # chain model
 if [ $stage -le 7 ]; then
 
+  # The iVector-extraction and feature-dumping parts are the same as the standard
+  # nnet3 setup, we can skip them by setting "--train_stage 8", since we have already
+  # run those things in previous stage.
+  if [ $train_stage -eq -10 ] then
+    train_stage=7
+  fi
+
   echo "$0: train chain model"
   local/chain/run_tdnn.sh --stage $train_stage
 
