@@ -13,15 +13,21 @@ set -u
 
 # the location of the LDC corpus; this location works for the CLSP grid.
 #datadir=/export/corpora5/LDC/LDC2006S37
+# The corpus and lexicon are on openslr.org
+speech="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
+lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
+
+# Location of the Movie subtitles text corpus
+subs_src="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2018/en-es.txt.zip"
 
 # don't change tmpdir, the location is used explicitly in scripts in local/.
 tmpdir=data/local/tmp
 
 if [ $stage -le -1 ]; then
   # download the corpus from openslr
-  local/heroico_download.sh
+  local/heroico_download.sh $speech $lexicon
   # Get data for lm training
-  local/subs_download.sh
+  local/subs_download.sh $subs_src
 fi
 
 if [ $stage -le 1 ]; then
