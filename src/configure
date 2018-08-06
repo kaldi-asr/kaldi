@@ -851,6 +851,7 @@ android=false
 
 MATHLIB='ATLAS'
 ATLASROOT=`rel2abs ../tools/ATLAS_headers/`
+CUBROOT=`rel2abs ../tools/cub-1.8.0`
 FSTROOT=`rel2abs ../tools/openfst`
 
 # Save the command line to include in kaldi.mk
@@ -940,6 +941,9 @@ do
   --mkl-threading=*)
     mkl_threading=`expr "X$1" : '[^=]*=\(.*\)'`;
     threaded_atlas=true;
+    shift ;;
+  --cub-root=*)
+    CUBROOT=`read_dirname $1`;
     shift ;;
   --fst-root=*)
     FSTROOT=`read_dirname $1`;
@@ -1078,6 +1082,14 @@ if $double_precision; then
 else
   echo "DOUBLE_PRECISION = 0" >> kaldi.mk
 fi
+$use_cuda && echo "Checking cub library in $CUBROOT ..."
+if [ $use_cuda && ! -f $CUBROOT/cub/cub.cuh  ]; then
+  failure "Could not find file $CUBROOT/cub/cub.cuh:
+  you may not have installed cub. See ../tools/INSTALL"
+else
+  echo "CUBROOT = $CUBROOT" >> kaldi.mk
+fi
+
 echo "Checking OpenFst library in $FSTROOT ..."
 if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
   failure "Could not find file $FSTROOT/include/fst/fst.h:

@@ -25,7 +25,6 @@
 #include "lat/lattice-functions.h"
 
 #if HAVE_CUDA == 1
-#include "omp.h"
 #include "nvToolsExt.h"
 #include "cuda-decoder-utils.h"
 #endif

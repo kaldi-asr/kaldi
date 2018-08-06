@@ -18,7 +18,7 @@ ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
             Supported versions: >= 1.6.0)
 endif
 
-all: check_required_programs sph2pipe sclite openfst
+all: check_required_programs sph2pipe sclite openfst cub
 	@echo -e "\n\n"
 	@echo "Warning: IRSTLM is not installed by default anymore. If you need IRSTLM"
 	@echo "Warning: use the script extras/install_irstlm.sh"
@@ -149,3 +149,7 @@ openblas_compiled:
 	cd OpenBLAS; sed 's:# FCOMMON_OPT = -frecursive:FCOMMON_OPT = -frecursive:' < Makefile.rule >tmp && mv tmp Makefile.rule
 	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
+
+cub: 
+	wget -T 10 -t 3 https://github.com/NVlabs/cub/archive/1.8.0.zip
+	unzip 1.8.0.zip

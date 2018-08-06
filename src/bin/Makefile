@@ -24,16 +24,6 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         transform-vec align-text matrix-dim post-to-smat
 
 
-ifeq ($(CUDA), true)
-LDFLAGS += $(CUDA_LDFLAGS)
-LDLIBS += $(CUDA_LDLIBS)
-LDLIBS += -lnvToolsExt -lcuda 
-CXXFLAGS += -fopenmp
-LDFLAGS += -fopenmp
-LDFLAGS += ../cudamatrix/libkaldi-cudamatrix.so
-BINFILES += latgen-faster-mapped-cuda decode-faster-mapped-cuda
-endif
-
 OBJFILES =
 
 ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../lm/kaldi-lm.a \
@@ -41,6 +31,13 @@ ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../lm/kaldi-lm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+
+ifeq ($(CUDA), true)
+LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
+ADDLIBS += ../cudamatrix/kaldi-cudamatrix.a
+BINFILES += latgen-faster-mapped-cuda decode-faster-mapped-cuda
+endif
 
 
 TESTFILES =

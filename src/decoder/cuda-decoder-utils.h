@@ -30,7 +30,6 @@
 #include <math.h>
 #include <cooperative_groups.h>
 #include "math_constants.h"
-#include "omp.h"
 
 #include "util/stl-utils.h"
 #include "hmm/transition-model.h"
