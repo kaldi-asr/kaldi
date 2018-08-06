@@ -65,7 +65,7 @@ if ! echo "#include <zlib.h>" | $CXX -E - >&/dev/null; then
   add_packages zlib-devel zlib1g-dev zlib-devel
 fi
 
-for f in make automake autoconf patch grep bzip2 gzip wget git swig; do
+for f in make automake autoconf patch grep bzip2 gzip wget git; do
   if ! which $f >&/dev/null; then
     echo "$0: $f is not installed."
     add_packages $f $f $f

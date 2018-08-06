@@ -18,8 +18,10 @@ else
   STATICLIB = _pyIdlak.a
 endif
 
+.PHONY: wrapper
 wrapper:
 	$(SWIG) -c++ -python -o pyIdlak_wrap.cc pyIdlak.i
+pyIdlak_wrap.o: wrapper
 
 sharedlib: $(STATICLIB)
 ifeq ($(KALDI_FLAVOR), dynamic)
@@ -44,5 +46,6 @@ endif
 
 clean:
 	-rm -f *.o *.a *.so pyIdlak.py pyIdlak.pyc pyIdlak_wrap.cc
+	@echo "REQUIRED FOR MAKE DO NOT DELETE!" > pyIdlak_wrap.cc
 
-all: wrapper sharedlib
+all: sharedlib

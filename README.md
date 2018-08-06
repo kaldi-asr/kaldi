@@ -1,5 +1,5 @@
-[![Build Status](https://travis-ci.org/Idlak/idlak.svg?branch=master)]
-(https://travis-ci.org/Idlak/idlak)
+[![](https://travis-ci.org/Idlak/idlak.svg?branch=master)](https://travis-ci.org/Idlak/idlak)
+[![](https://readthedocs.org/projects/pip/badge/?version=latest&style=flat)](https://idlak.readthedocs.io/)
 
 Idlak Speech Synthesis Toolkit
 ================================
@@ -48,9 +48,14 @@ please see below.
 
 For HOT news about Kaldi see [the project site](http://kaldi-asr.org/).
 
+[Documentation of Idlak](https://idlak.readthedocs.io/)
+- Info about Idlak
+- Info about language and audio resources
+- Doxygen reference of the Idlak and Kaldi C++ code.
+
 [Documentation of Kaldi](http://kaldi-asr.org/doc/):
 - Info about the project, description of techniques, tutorial for C++ coding.
-- Doxygen reference of the C++ code.
+- Doxygen reference of the Kaldi C++ code.
 
 [Kaldi forums and mailing lists](http://kaldi-asr.org/forums.html):
 

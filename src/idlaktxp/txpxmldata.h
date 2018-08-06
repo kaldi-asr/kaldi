@@ -75,6 +75,7 @@ class TxpXmlData {
   /// section of the configuration file. If not present they load from the
   /// directory name given (tpdb).
   bool Parse(const std::string &tpdb);
+  int GetCurrentLineNumber() {return XML_GetCurrentLineNumber(parser_);}
   /// Utility to set a named attribute from an expat array of attribute
   /// key value pairs
   int32 SetAttribute(const char* name, const char ** atts, std::string *val);
