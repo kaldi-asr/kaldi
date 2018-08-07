@@ -2,19 +2,19 @@
 
 # configs for 'chain' gpu decoding
 # NOTICE: 1. we need CUDA9.0 installed with correct driver version
-#         2. a GPU newer than K20
-#         3. as libkaldi-decoder.so needs cuda library, other libraries using
-#            libkaldi-decoder.so also needs it.
+#         2. a GPU not earlier than K20
+#         3. as libkaldi-decoder.so needs the CUDA runtime libraries, other libraries using
+#            libkaldi-decoder.so also needs them.
 
 stage=19
+nj=25
+data=data/eval2000_hires
 
 echo "$0 $@"  # Print the command line for logging
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
-set -x
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -29,7 +29,7 @@ model_dir=exp/chain/tdnn_lstm_1e_sp
 
 # model training
 if [ $stage -le 19 ]; then
-  bash local/chain/tuning/run_tdnn_lstm_1e.sh || exit 1;
+  local/chain/tuning/run_tdnn_lstm_1e.sh || exit 1;
 fi
 
 # acoustic inference
@@ -37,11 +37,16 @@ if [ $stage -le 20 ]; then
   mkdir -p $dir/log
   nnet3-am-copy --raw=true  $model_dir/final.mdl $dir/final.raw
   
-  queue.pl  JOB=1:25 $dir/log/post.JOB.log \
-  net3-compute --use-gpu=no \
+  sdata=$data/split$nj;
+  [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+  echo $nj > $dir/num_jobs
+
+
+  queue.pl  JOB=1:$nj $dir/log/post.JOB.log \
+  nnet3-compute --use-gpu=no \
      --online-ivectors=scp:exp/nnet3/ivectors_eval2000/ivector_online.scp --online-ivector-period=10 --frame-subsampling-factor=3 --frames-per-chunk=140 --extra-left-context=50 --extra-right-context=0 --extra-left-context-initial=0 --extra-right-context-final=0 \
     $dir/final.raw \
-    "ark,s,cs:apply-cmvn --norm-means=false --norm-vars=false --utt2spk=ark:data/eval2000_hires/split25/JOB/utt2spk scp:data/eval2000_hires/split25/JOB/cmvn.scp scp:data/eval2000_hires/split25/JOB/feats.scp ark:- |" \
+    "ark,s,cs:apply-cmvn --norm-means=false --norm-vars=false --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |" \
      ark,scp:$dir/post.JOB.ark,$dir/post.JOB.scp
 fi
 

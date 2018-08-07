@@ -150,6 +150,7 @@ openblas_compiled:
 	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
 
+.PHONY: cub
 cub: 
 	wget -T 10 -t 3 https://github.com/NVlabs/cub/archive/1.8.0.zip
 	unzip 1.8.0.zip
