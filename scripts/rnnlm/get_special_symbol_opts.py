@@ -9,7 +9,7 @@ import argparse
 import sys
 
 import re
-tab_or_space = re.compile('[ \t]')
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script checks whether the special symbols "
                                  "appear in words.txt with expected values, if not, it will "

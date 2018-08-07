@@ -10,7 +10,7 @@ import math
 from collections import defaultdict
 
 import re
-tab_or_space = re.compile('[ \t]')
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script turns the words into the sparse feature representation, "
                                              "using features from rnnlm/choose_features.py.",

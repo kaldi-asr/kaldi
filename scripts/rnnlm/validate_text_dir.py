@@ -8,7 +8,7 @@ import argparse
 import sys
 
 import re
-tab_or_space = re.compile('[ \t]')
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="Validates data directory containing text "
                                  "files from one or more data sources, including dev.txt.",
