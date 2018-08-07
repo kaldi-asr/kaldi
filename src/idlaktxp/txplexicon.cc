@@ -46,12 +46,12 @@ void TxpLexicon:: EndElement(const char* name) {
       return;
     }
     // Only one default for each word is valid
-    if (isdefault_ == "true") {
+    if (isdefault_ == "true" || isdefault_ == "True" || isdefault_ == "TRUE") {
       it =  lookup_.find(word_ + std::string(":default"));
       if (it == lookup_.end()) {
         lookup_.insert(LookupItem(word_ + std::string(":default"), pron_));
       } else {
-        KALDI_ERR << "Lexicon error muliple default entries for word: "
+        KALDI_WARN << "Lexicon error multiple default entries for word: "
                   << word_;
         return;
       }

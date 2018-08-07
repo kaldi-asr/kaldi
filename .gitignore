@@ -122,6 +122,8 @@ GSYMS
 /tools/openfst-1.6.2/
 /tools/openfst-1.6.5.tar.gz
 /tools/openfst-1.6.5/
+/tools/openfst-1.6.6.tar.gz
+/tools/openfst-1.6.6/
 /tools/BeamformIt/
 /tools/libsndfile-1.0.25.tar.gz
 /tools/libsndfile-1.0.25/
@@ -170,5 +172,9 @@ GSYMS
 /tools/pcre-8.20/
 /tools/pugixml-1.2.tar.gz
 /tools/pugixml-1.2/
+/tools/swig-3.0.12.tar.gz
+/tools/swig-3.0.12/
+/tools/opengrm-ngram-1.3.4.tar.gz
+/tools/opengrm-ngram-1.3.4/
 
 /kaldiwin_vs*
