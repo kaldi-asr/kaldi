@@ -19,7 +19,7 @@
 
 # chain model results:
 
-%WER 6.55 [ 491 / 7498, 54 ins, 65 del, 372 sub ] exp/chain/tdnn1b_sp/decode_native/wer_10_0.0
-%WER 13.26 [ 1222 / 9215, 106 ins, 202 del, 914 sub ] exp/chain/tdnn1b_sp/decode_nonnative/wer_14_0.0
-%WER 12.92 [ 988 / 7650, 193 ins, 163 del, 632 sub ] exp/chain/tdnn1b_sp/decode_devtest/wer_10_0.5
-%WER 10.38 [ 1735 / 16713, 161 ins, 259 del, 1315 sub ] exp/chain/tdnn1b_sp/decode_test/wer_12_0.0
+12.84 [ 982 / 7650, 187 ins, 165 del, 630 sub ] exp/chain/tdnn1b_sp/decode_devtest/wer_10_0.5
+12.13 [ 1118 / 9215, 99 ins, 161 del, 858 sub ] exp/chain/tdnn1b_sp/decode_nonnative/wer_13_0.0
+9.47 [ 1582 / 16713, 119 ins, 254 del, 1209 sub ] exp/chain/tdnn1b_sp/decode_test/wer_11_0.5
+5.87 [ 440 / 7498, 28 ins, 79 del, 333 sub ] exp/chain/tdnn1b_sp/decode_native/wer_11_0.5
