@@ -1063,7 +1063,7 @@ void ConsolidateMemory(Nnet *nnet) {
   if (CuDevice::Instantiate().Enabled()) {
     bool print_memory_info = (GetVerboseLevel() >= 1);
     if (print_memory_info) {
-      KALDI_LOG << "Consolidating memory; will print memory usage before "
+      KALDI_VLOG(1) << "Consolidating memory; will print memory usage before "
           "and after consolidating:";
       g_cuda_allocator.PrintMemoryUsage();
     }

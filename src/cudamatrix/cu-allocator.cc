@@ -352,9 +352,10 @@ void CuMemoryAllocator::PrintMemoryUsage() const {
   KALDI_LOG << "Memory usage: " << memory_allocated << "/"
             << memory_held << " bytes currently allocated/total-held; "
             << num_blocks_allocated << "/" << num_blocks_free
-            << " blocks currently allocated/free; largest block sizes are "
+            << " blocks currently allocated/free; largest "
+            << "free/allocated block sizes are "
             << largest_allocated_block << "/" << largest_free_block
-            << " allocated/free; time taken total/cudaMalloc is "
+            << "; time taken total/cudaMalloc is "
             << tot_time_taken_ << "/" << malloc_time_taken_
             << ", synchronized the GPU " << num_synchronizations_
             << " times out of " << (t_/2) << " frees; "
