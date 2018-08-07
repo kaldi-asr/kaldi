@@ -15,11 +15,18 @@ TMPDIR=/tmp
 stage=-1
 endstage=7
 nj=4 # max 9
+lng="ru"
+acc="ru"
 # Speaker ID
-spks="slt" # can be any of slt, bdl, jmk
+spks="abr" # Must be a speaker from the Idlak Resources
 network_type=dnn # dnn or lstm
+nodev=50 #the remaining will be in the training set.
+         #50 utterances in the test set assums that the number of utterances
+         #in the recording script is between 500 and 600
 
 . parse_options.sh || exit 1;
+
+here=`pwd`
 
 function incr_stage(){
    stage=$(( $stage + 1 ))
@@ -41,45 +48,39 @@ if [ $stage -le 0 ]; then
     echo "##### Step 0: data preparation #####"
     mkdir -p data/{train,dev}
     for spk in $spks; do
-        # URL of arctic DB
-        arch=cmu_us_${spk}_arctic-WAVEGG.tar.bz2
-        url=http://festvox.org/cmu_arctic/cmu_arctic/orig/$arch
-        laburl=http://festvox.org/cmu_arctic/cmuarctic.data
-        audio_dir=rawaudio/cmu_us_${spk}_arctic/48k
-        label_dir=labels/cmu_us_${spk}_arctic
+        # URL of idlak DB
+        arch=$lng.$acc.$spk.$srate.tar.gz
+        url=https://github.com/Idlak/idlak_resources/raw/master/$lng/$acc/$spk/$arch
+        laburl=https://github.com/idlak/idlak_resources/raw/master/$lng/$acc/$spk/text.xml
+        audio_dir=$here/rawaudio/$lng/$acc/$spk/${srate}
+        label_dir=$here/labels/$lng/$acc/$spk
         # Download data
         if [ ! -e $audio_dir ]; then
-	        mkdir -p rawaudio
-	        cd rawaudio
+	        mkdir -p $audio_dir
+	        cd $audio_dir/..
 	        wget -c -N $url
 	        tar xjf $arch
-	        cd ..
-            mkdir -p $audio_dir
-            for i in rawaudio/cmu_us_${spk}_arctic/orig/*.wav; do
-                sox $i $audio_dir/`basename $i` remix 1 rate -v -s -a 48000 dither -s
-            done
+          cp -r 48000_orig/*.wav 48000/.
+            #for i in rawaudio/cmu_us_${spk}_arctic/orig/*.wav; do
+              #  sox $i $audio_dir/`basename $i` remix 1 rate -v -s -a 48000 dither -s
+            #done
         fi
         if [ ! -e $label_dir ]; then
 	        mkdir -p $label_dir
 	        cd $label_dir
 	        wget $laburl
-	        cd ../..
         fi
 
         # Create train, dev sets
-        dev_pat='arctic_a0??2'
-        dev_rgx='arctic_a0..2'
-        train_pat='arctic_?????'
-        train_rgx='arctic_.....'
+        cd $audio_dir
+        python -c "import sys,os,random,glob; random.seed(0); files = glob.glob('*.wav'); random.shuffle(files); print '\n'.join(map(lambda f: os.path.splitext(f)[0], files))" > $here/$lng.$acc.$spk.order.txt
 
-        makeid="xargs -n 1 -I {} -n 1 awk -v lst={} -v spk=$spk BEGIN{print(gensub(\".*/([^.]*)[.].*\",spk\"_\\\\1\",\"g\",lst),lst)}"
-        makelab="awk -v spk=$spk '{u=\$2;\$1=\"\";\$2=\"\";\$NF=\"\";print(\"<fileid id=\\\"\" spk \"_\" u \"\\\">\",substr(\$0,4,length(\$0)-5),\"</fileid>\")}'"
+        cd $here
+        tail -r $lng.$acc.$spk.order.txt | tail -n +$nodev | tail -r | sed s'|^\(.*\)|\1 '$audio_dir/'\1.wav|' > data/train/wav.scp
+        tail -n$nodev $lng.$acc.$spk.order.txt | sed s'|^\(.*\)|\1 '$audio_dir/'\1.wav|' > data/dev/wav.scp
 
-        find $audio_dir -iname "$train_pat".wav  | grep -v "$dev_rgx" | sort | $makeid >> data/train/wav.scp
-        find $audio_dir -iname "$dev_pat".wav    | sort | $makeid >> data/dev/wav.scp
-
-        grep "$train_rgx" $label_dir/cmuarctic.data | grep -v "$dev_rgx" | sort | eval "$makelab" >> data/train/text.xml
-        grep "$dev_rgx"   $label_dir/cmuarctic.data | sort | eval "$makelab" >> data/dev/text.xml
+        cp $label_dir/text.xml $here/data/train
+        cp $label_dir/text.xml $here/data/dev
 
         # Generate utt2spk / spk2utt info
         for step in train dev; do
@@ -89,22 +90,17 @@ if [ $stage -le 0 ]; then
     done
 
     mkdir -p data/full
-    for k in text.xml wav.scp utt2spk; do
-        cat data/{train,dev}/$k | sort -u > data/full/$k
+    for k in wav.scp utt2spk; do
+        cat $here/data/{train,dev}/$k | sort -u > $here/data/full/$k
     done
-    utt2spk_to_spk2utt.pl < data/full/utt2spk > data/full/spk2utt
-    rm -f data/full/text
+    cp $here/data/train/text.xml $here/data/full/.
 
-    # Turn transcription into valid xml files
-    for step in full train dev; do
-        cat data/$step/text.xml | awk 'BEGIN{print "<document>"}{print}END{print "</document>"}' > data/$step/text2
-        mv data/$step/text2 data/$step/text.xml
-    done
+    utt2spk_to_spk2utt.pl < data/full/utt2spk > data/full/spk2utt
 
     incr_stage
 fi
 
-export featdir=$TMPDIR/dnn_feats/arcticf
+export featdir=$TMPDIR/dnn_feats/idlak
 ############################################
 ##### Step 1: acoustic data generation #####
 ############################################
@@ -526,5 +522,3 @@ local/make_dnn_voice_pitch.sh --spk $spk --srate $srate --mcep_order $order --bn
 echo "Voice packaged successfully. Portable models have been stored in ${spk}_pmdl."
 echo "Synthesis can be performed using:
          echo \"This is a demo of D N N synthesis\" | local/synthesis_voice_pitch.sh ${spk}_pmdl <out_dir>"
-
-
