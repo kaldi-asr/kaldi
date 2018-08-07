@@ -392,11 +392,12 @@ size_t IndexVectorHasher::operator () (
                             // skipping over more elements.  Setting n1 large or
                             // n2 to 1 would make the hasher consider all
                             // elements.
+  size_t len = index_vector.size();
   // all long-ish numbers appearing below are randomly chosen primes.
-  size_t ans = 1433 + 34949  * index_vector.size();
+  size_t ans = 1433 + 34949 * len;
   std::vector<Index>::const_iterator iter = index_vector.begin(),
       end = index_vector.end(), med = end;
-  if (n1 <= index_vector.size())
+  if (n1 < len)
     med = iter + n1;
 
   for (; iter != med; ++iter) {
@@ -412,12 +413,10 @@ size_t IndexVectorHasher::operator () (
     ans += iter->n * 1619;
     ans += iter->t * 15649;
     ans += iter->x * 89809;
-	// check 'n2 > index_vector.size()' first,
-	// otherwise, 'end - n2' will be less than 'index_vector.begin()' and
-	// cause error "vector iterator + offset out of range" in STL vector.
-	if (n2 > index_vector.size() || iter >= end - n2) 
-		break;
-	
+    // The following if-statement was introduced in order to fix an
+    // out-of-range iterator problem on Windows.
+    if (n2 > len || iter >= end - n2) 
+        break;
   }
   return ans;
 }
