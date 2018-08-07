@@ -1,0 +1,57 @@
+<?xml version="1.0" ?>
+<syl>
+	<syllabic>
+		<s name="u"/>
+		<s name="o"/>
+		<s name="a"/>
+		<s name="e"/>
+		<s name="y"/>
+		<s name="i"/>
+	</syllabic>
+	<onsets>
+		<o pat="k"/>
+		<o pat="h"/>
+		<o pat="g"/>
+		<o pat="j"/>
+		<o pat="ch"/>
+		<o pat="sh"/>
+		<o pat="zh"/>
+		<o pat="r"/>
+		<o pat="t"/>
+		<o pat="ts"/>
+		<o pat="s"/>
+		<o pat="d"/>
+		<o pat="z"/>
+		<o pat="n"/>
+		<o pat="l"/>
+		<o pat="p"/>
+		<o pat="f"/>
+		<o pat="b"/>
+		<o pat="v"/>
+		<o pat="m"/>
+		<o pat="kj"/>
+		<o pat="hj"/>
+		<o pat="gj"/>
+		<o pat="shj"/>
+		<o pat="rj"/>
+		<o pat="tj"/>
+		<o pat="sj"/>
+		<o pat="dj"/>
+		<o pat="zj"/>
+		<o pat="nj"/>
+		<o pat="lj"/>
+		<o pat="pj"/>
+		<o pat="fj"/>
+		<o pat="bj"/>
+		<o pat="vj"/>
+		<o pat="mj"/>
+	</onsets>
+	<nuclei stress="false">
+		<n pat="u"/>
+		<n pat="o"/>
+		<n pat="a"/>
+		<n pat="e"/>
+		<n pat="y"/>
+		<n pat="i"/>
+	</nuclei>
+</syl>

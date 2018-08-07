@@ -1,0 +1,1049 @@
+<lts>
+	<tree ltr='0' rootnode='N2' terminal='2' nonterminal='460'>
+		<node id='T0' val='1'/>
+		<node id='T1' val='0'/>
+		<node id='N2' pos='p.p.p.p.p.p.p.name' posval='#' yes='415' no='461'/>
+		<node id='N3' pos='p.name' posval='т' yes='1' no='0'/>
+		<node id='N4' pos='p.p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N5' pos='p.p.name' posval='е' yes='1' no='0'/>
+		<node id='N6' pos='p.p.name' posval='о' yes='1' no='5'/>
+		<node id='N7' pos='p.p.name' posval='у' yes='1' no='6'/>
+		<node id='N8' pos='name' posval='а' yes='1' no='7'/>
+		<node id='N9' pos='p.p.name' posval='и' yes='1' no='8'/>
+		<node id='N10' pos='p.p.p.p.name' posval='#' yes='9' no='1'/>
+		<node id='N11' pos='p.p.p.name' posval='е' yes='0' no='10'/>
+		<node id='N12' pos='p.p.p.name' posval='о' yes='1' no='11'/>
+		<node id='N13' pos='name' posval='я' yes='4' no='12'/>
+		<node id='N14' pos='p.p.p.name' posval='и' yes='1' no='13'/>
+		<node id='N15' pos='p.p.name' posval='а' yes='1' no='14'/>
+		<node id='N16' pos='name' posval='ю' yes='1' no='15'/>
+		<node id='N17' pos='name' posval='е' yes='1' no='16'/>
+		<node id='N18' pos='p.name' posval='к' yes='1' no='17'/>
+		<node id='N19' pos='p.p.name' posval='с' yes='3' no='18'/>
+		<node id='N20' pos='p.p.p.name' posval='а' yes='1' no='19'/>
+		<node id='N21' pos='p.p.p.p.name' posval='о' yes='1' no='20'/>
+		<node id='N22' pos='p.name' posval='а' yes='1' no='21'/>
+		<node id='N23' pos='p.p.p.name' posval='#' yes='0' no='22'/>
+		<node id='N24' pos='name' posval='я' yes='0' no='1'/>
+		<node id='N25' pos='p.name' posval='с' yes='1' no='24'/>
+		<node id='N26' pos='p.p.name' posval='и' yes='1' no='25'/>
+		<node id='N27' pos='name' posval='о' yes='1' no='26'/>
+		<node id='N28' pos='p.p.p.p.p.name' posval='в' yes='1' no='27'/>
+		<node id='N29' pos='p.p.p.p.p.name' posval='у' yes='1' no='28'/>
+		<node id='N30' pos='p.p.p.name' posval='е' yes='1' no='29'/>
+		<node id='N31' pos='name' posval='ы' yes='1' no='30'/>
+		<node id='N32' pos='p.p.p.name' posval='о' yes='1' no='31'/>
+		<node id='N33' pos='p.name' posval='м' yes='1' no='32'/>
+		<node id='N34' pos='p.name' posval='и' yes='1' no='33'/>
+		<node id='N35' pos='p.name' posval='у' yes='1' no='34'/>
+		<node id='N36' pos='name' posval='е' yes='1' no='35'/>
+		<node id='N37' pos='p.name' posval='а' yes='1' no='36'/>
+		<node id='N38' pos='p.p.name' posval='ь' yes='0' no='37'/>
+		<node id='N39' pos='p.p.p.p.p.p.name' posval='#' yes='38' no='1'/>
+		<node id='N40' pos='p.p.p.p.p.name' posval='#' yes='23' no='39'/>
+		<node id='N41' pos='n.name' posval='л' yes='0' no='1'/>
+		<node id='N42' pos='n.name' posval='я' yes='1' no='0'/>
+		<node id='N43' pos='n.name' posval='й' yes='1' no='0'/>
+		<node id='N44' pos='name' posval='о' yes='43' no='1'/>
+		<node id='N45' pos='name' posval='е' yes='0' no='44'/>
+		<node id='N46' pos='n.name' posval='к' yes='1' no='45'/>
+		<node id='N47' pos='name' posval='а' yes='42' no='46'/>
+		<node id='N48' pos='n.name' posval='л' yes='0' no='47'/>
+		<node id='N49' pos='n.name' posval='в' yes='0' no='48'/>
+		<node id='N50' pos='p.name' posval='р' yes='0' no='49'/>
+		<node id='N51' pos='p.p.p.name' posval='в' yes='1' no='50'/>
+		<node id='N52' pos='name' posval='ы' yes='1' no='51'/>
+		<node id='N53' pos='name' posval='и' yes='41' no='52'/>
+		<node id='N54' pos='n.name' posval='м' yes='1' no='53'/>
+		<node id='N55' pos='p.p.p.name' posval='#' yes='0' no='54'/>
+		<node id='N56' pos='p.p.p.p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N57' pos='p.p.name' posval='о' yes='0' no='56'/>
+		<node id='N58' pos='name' posval='и' yes='57' no='0'/>
+		<node id='N59' pos='name' posval='у' yes='1' no='58'/>
+		<node id='N60' pos='p.p.p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N61' pos='n.name' posval='к' yes='1' no='60'/>
+		<node id='N62' pos='n.name' posval='м' yes='1' no='61'/>
+		<node id='N63' pos='n.name' posval='я' yes='1' no='62'/>
+		<node id='N64' pos='n.name' posval='х' yes='1' no='63'/>
+		<node id='N65' pos='n.name' posval='е' yes='1' no='64'/>
+		<node id='N66' pos='n.name' posval='и' yes='1' no='65'/>
+		<node id='N67' pos='n.name' posval='т' yes='1' no='66'/>
+		<node id='N68' pos='n.name' posval='й' yes='1' no='67'/>
+		<node id='N69' pos='name' posval='о' yes='1' no='0'/>
+		<node id='N70' pos='n.name' posval='н' yes='1' no='42'/>
+		<node id='N71' pos='p.name' posval='т' yes='1' no='70'/>
+		<node id='N72' pos='n.name' posval='к' yes='1' no='71'/>
+		<node id='N73' pos='n.name' posval='т' yes='1' no='72'/>
+		<node id='N74' pos='name' posval='у' yes='1' no='73'/>
+		<node id='N75' pos='p.p.p.p.p.name' posval='п' yes='0' no='74'/>
+		<node id='N76' pos='p.p.p.name' posval='а' yes='0' no='75'/>
+		<node id='N77' pos='n.name' posval='й' yes='1' no='76'/>
+		<node id='N78' pos='n.name' posval='х' yes='1' no='77'/>
+		<node id='N79' pos='p.p.p.name' posval='р' yes='0' no='78'/>
+		<node id='N80' pos='p.name' posval='в' yes='0' no='79'/>
+		<node id='N81' pos='p.name' posval='р' yes='69' no='80'/>
+		<node id='N82' pos='n.name' posval='в' yes='1' no='81'/>
+		<node id='N83' pos='p.p.p.name' posval='о' yes='0' no='82'/>
+		<node id='N84' pos='p.name' posval='ш' yes='1' no='83'/>
+		<node id='N85' pos='n.name' posval='м' yes='1' no='84'/>
+		<node id='N86' pos='p.name' posval='к' yes='1' no='85'/>
+		<node id='N87' pos='p.name' posval='а' yes='1' no='86'/>
+		<node id='N88' pos='name' posval='ы' yes='1' no='87'/>
+		<node id='N89' pos='p.p.p.name' posval='т' yes='0' no='1'/>
+		<node id='N90' pos='n.name' posval='м' yes='1' no='89'/>
+		<node id='N91' pos='name' posval='ы' yes='1' no='90'/>
+		<node id='N92' pos='p.name' posval='а' yes='1' no='91'/>
+		<node id='N93' pos='p.p.p.p.p.p.name' posval='#' yes='88' no='92'/>
+		<node id='N94' pos='name' posval='с' yes='1' no='93'/>
+		<node id='N95' pos='name' posval='и' yes='68' no='94'/>
+		<node id='N96' pos='p.name' posval='н' yes='1' no='95'/>
+		<node id='N97' pos='n.name' posval='л' yes='59' no='96'/>
+		<node id='N98' pos='p.p.p.p.name' posval='#' yes='55' no='97'/>
+		<node id='N99' pos='p.p.name' posval='#' yes='1' no='0'/>
+		<node id='N100' pos='p.p.p.name' posval='#' yes='99' no='1'/>
+		<node id='N101' pos='name' posval='а' yes='1' no='100'/>
+		<node id='N102' pos='n.name' posval='ч' yes='1' no='101'/>
+		<node id='N103' pos='n.name' posval='ж' yes='1' no='102'/>
+		<node id='N104' pos='n.name' posval='в' yes='1' no='103'/>
+		<node id='N105' pos='name' posval='и' yes='1' no='104'/>
+		<node id='N106' pos='n.name' posval='т' yes='0' no='1'/>
+		<node id='N107' pos='n.n.name' posval='е' yes='0' no='1'/>
+		<node id='N108' pos='name' posval='у' yes='1' no='0'/>
+		<node id='N109' pos='name' posval='а' yes='1' no='108'/>
+		<node id='N110' pos='n.n.name' posval='е' yes='1' no='109'/>
+		<node id='N111' pos='p.name' posval='р' yes='1' no='110'/>
+		<node id='N112' pos='n.name' posval='л' yes='1' no='111'/>
+		<node id='N113' pos='p.name' posval='т' yes='1' no='112'/>
+		<node id='N114' pos='n.name' posval='т' yes='107' no='113'/>
+		<node id='N115' pos='n.name' posval='д' yes='1' no='114'/>
+		<node id='N116' pos='p.name' posval='л' yes='1' no='115'/>
+		<node id='N117' pos='n.name' posval='в' yes='0' no='116'/>
+		<node id='N118' pos='name' posval='и' yes='106' no='117'/>
+		<node id='N119' pos='n.n.name' posval='а' yes='105' no='118'/>
+		<node id='N120' pos='name' posval='о' yes='1' no='119'/>
+		<node id='N121' pos='p.name' posval='р' yes='0' no='1'/>
+		<node id='N122' pos='n.n.name' posval='т' yes='1' no='121'/>
+		<node id='N123' pos='p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N124' pos='n.n.name' posval='т' yes='0' no='123'/>
+		<node id='N125' pos='n.n.n.name' posval='и' yes='1' no='124'/>
+		<node id='N126' pos='name' posval='е' yes='1' no='0'/>
+		<node id='N127' pos='name' posval='а' yes='1' no='126'/>
+		<node id='N128' pos='n.n.n.n.name' posval='#' yes='125' no='127'/>
+		<node id='N129' pos='p.name' posval='м' yes='0' no='128'/>
+		<node id='N130' pos='p.p.p.p.name' posval='#' yes='129' no='1'/>
+		<node id='N131' pos='name' posval='у' yes='1' no='130'/>
+		<node id='N132' pos='p.name' posval='н' yes='1' no='131'/>
+		<node id='N133' pos='n.n.n.name' posval='в' yes='1' no='132'/>
+		<node id='N134' pos='name' posval='о' yes='122' no='133'/>
+		<node id='N135' pos='n.n.name' posval='с' yes='0' no='134'/>
+		<node id='N136' pos='p.name' posval='ч' yes='1' no='0'/>
+		<node id='N137' pos='n.n.name' posval='т' yes='1' no='136'/>
+		<node id='N138' pos='name' posval='и' yes='0' no='137'/>
+		<node id='N139' pos='n.n.name' posval='ь' yes='1' no='138'/>
+		<node id='N140' pos='p.p.p.p.p.name' posval='#' yes='135' no='139'/>
+		<node id='N141' pos='n.n.name' posval='н' yes='0' no='140'/>
+		<node id='N142' pos='n.n.name' posval='и' yes='0' no='1'/>
+		<node id='N143' pos='p.name' posval='р' yes='1' no='142'/>
+		<node id='N144' pos='p.p.name' posval='с' yes='0' no='143'/>
+		<node id='N145' pos='n.n.name' posval='и' yes='1' no='0'/>
+		<node id='N146' pos='n.n.n.n.name' posval='е' yes='145' no='1'/>
+		<node id='N147' pos='n.n.n.n.name' posval='#' yes='144' no='146'/>
+		<node id='N148' pos='n.name' posval='л' yes='1' no='0'/>
+		<node id='N149' pos='name' posval='о' yes='148' no='0'/>
+		<node id='N150' pos='n.name' posval='ш' yes='0' no='149'/>
+		<node id='N151' pos='n.name' posval='ч' yes='123' no='150'/>
+		<node id='N152' pos='n.n.name' posval='и' yes='4' no='0'/>
+		<node id='N153' pos='n.n.name' posval='о' yes='1' no='0'/>
+		<node id='N154' pos='n.n.n.n.name' posval='#' yes='153' no='1'/>
+		<node id='N155' pos='n.n.name' posval='н' yes='0' no='154'/>
+		<node id='N156' pos='n.n.n.name' posval='#' yes='0' no='155'/>
+		<node id='N157' pos='p.name' posval='м' yes='1' no='0'/>
+		<node id='N158' pos='p.name' posval='л' yes='1' no='157'/>
+		<node id='N159' pos='n.n.n.name' posval='#' yes='4' no='0'/>
+		<node id='N160' pos='n.n.name' posval='н' yes='1' no='159'/>
+		<node id='N161' pos='n.n.n.n.name' posval='#' yes='1' no='0'/>
+		<node id='N162' pos='n.n.n.name' posval='#' yes='0' no='161'/>
+		<node id='N163' pos='n.n.name' posval='а' yes='162' no='0'/>
+		<node id='N164' pos='p.p.p.name' posval='л' yes='1' no='163'/>
+		<node id='N165' pos='p.name' posval='ж' yes='0' no='164'/>
+		<node id='N166' pos='p.p.name' posval='и' yes='0' no='165'/>
+		<node id='N167' pos='p.p.p.p.p.name' posval='#' yes='166' no='0'/>
+		<node id='N168' pos='n.name' posval='н' yes='160' no='167'/>
+		<node id='N169' pos='p.p.p.name' posval='д' yes='158' no='168'/>
+		<node id='N170' pos='p.name' posval='х' yes='1' no='169'/>
+		<node id='N171' pos='n.name' posval='к' yes='1' no='170'/>
+		<node id='N172' pos='p.p.name' posval='#' yes='156' no='171'/>
+		<node id='N173' pos='n.name' posval='м' yes='152' no='172'/>
+		<node id='N174' pos='n.n.n.n.name' posval='й' yes='1' no='0'/>
+		<node id='N175' pos='p.p.p.p.p.name' posval='#' yes='1' no='174'/>
+		<node id='N176' pos='p.p.p.p.name' posval='#' yes='0' no='175'/>
+		<node id='N177' pos='p.p.p.p.p.name' posval='о' yes='0' no='176'/>
+		<node id='N178' pos='p.p.p.name' posval='с' yes='1' no='177'/>
+		<node id='N179' pos='name' posval='о' yes='0' no='178'/>
+		<node id='N180' pos='p.p.p.name' posval='#' yes='1' no='0'/>
+		<node id='N181' pos='n.n.n.n.name' posval='л' yes='1' no='0'/>
+		<node id='N182' pos='n.name' posval='ж' yes='0' no='181'/>
+		<node id='N183' pos='n.n.n.n.name' posval='#' yes='180' no='182'/>
+		<node id='N184' pos='n.n.n.name' posval='о' yes='0' no='183'/>
+		<node id='N185' pos='n.n.n.name' posval='ы' yes='0' no='184'/>
+		<node id='N186' pos='n.name' posval='н' yes='179' no='185'/>
+		<node id='N187' pos='p.name' posval='л' yes='0' no='123'/>
+		<node id='N188' pos='p.p.p.p.p.name' posval='#' yes='187' no='1'/>
+		<node id='N189' pos='n.n.n.n.name' posval='#' yes='153' no='0'/>
+		<node id='N190' pos='name' posval='о' yes='1' no='189'/>
+		<node id='N191' pos='n.n.n.name' posval='м' yes='0' no='190'/>
+		<node id='N192' pos='n.n.n.name' posval='#' yes='0' no='191'/>
+		<node id='N193' pos='p.p.name' posval='а' yes='0' no='192'/>
+		<node id='N194' pos='p.name' posval='р' yes='4' no='193'/>
+		<node id='N195' pos='name' posval='е' yes='188' no='194'/>
+		<node id='N196' pos='n.n.name' posval='т' yes='0' no='195'/>
+		<node id='N197' pos='n.n.name' posval='и' yes='0' no='196'/>
+		<node id='N198' pos='n.n.n.name' posval='#' yes='1' no='0'/>
+		<node id='N199' pos='p.p.p.name' posval='#' yes='0' no='198'/>
+		<node id='N200' pos='p.name' posval='р' yes='0' no='199'/>
+		<node id='N201' pos='p.name' posval='л' yes='0' no='200'/>
+		<node id='N202' pos='p.p.p.p.p.name' posval='#' yes='201' no='0'/>
+		<node id='N203' pos='p.p.name' posval='в' yes='0' no='202'/>
+		<node id='N204' pos='n.name' posval='м' yes='1' no='203'/>
+		<node id='N205' pos='n.n.name' posval='а' yes='0' no='1'/>
+		<node id='N206' pos='n.n.n.n.name' posval='#' yes='0' no='1'/>
+		<node id='N207' pos='p.p.name' posval='а' yes='1' no='0'/>
+		<node id='N208' pos='p.p.p.p.name' posval='#' yes='0' no='207'/>
+		<node id='N209' pos='p.p.p.p.p.name' posval='п' yes='0' no='208'/>
+		<node id='N210' pos='p.p.p.name' posval='в' yes='0' no='209'/>
+		<node id='N211' pos='p.p.p.p.p.p.name' posval='#' yes='210' no='0'/>
+		<node id='N212' pos='n.n.name' posval='ы' yes='0' no='211'/>
+		<node id='N213' pos='p.p.name' posval='#' yes='206' no='212'/>
+		<node id='N214' pos='name' posval='ы' yes='0' no='213'/>
+		<node id='N215' pos='name' posval='у' yes='4' no='214'/>
+		<node id='N216' pos='n.n.name' posval='с' yes='1' no='215'/>
+		<node id='N217' pos='name' posval='о' yes='205' no='216'/>
+		<node id='N218' pos='n.n.n.name' posval='#' yes='0' no='1'/>
+		<node id='N219' pos='p.name' posval='т' yes='1' no='218'/>
+		<node id='N220' pos='name' posval='и' yes='1' no='0'/>
+		<node id='N221' pos='n.n.name' posval='ь' yes='1' no='0'/>
+		<node id='N222' pos='name' posval='у' yes='1' no='221'/>
+		<node id='N223' pos='p.p.name' posval='с' yes='0' no='222'/>
+		<node id='N224' pos='p.name' posval='м' yes='0' no='223'/>
+		<node id='N225' pos='n.n.n.name' posval='я' yes='0' no='224'/>
+		<node id='N226' pos='n.n.n.n.name' posval='ь' yes='0' no='225'/>
+		<node id='N227' pos='name' posval='о' yes='218' no='226'/>
+		<node id='N228' pos='p.p.p.name' posval='о' yes='220' no='227'/>
+		<node id='N229' pos='n.n.name' posval='я' yes='1' no='228'/>
+		<node id='N230' pos='p.p.p.name' posval='л' yes='0' no='229'/>
+		<node id='N231' pos='p.name' posval='в' yes='207' no='230'/>
+		<node id='N232' pos='n.n.name' posval='е' yes='1' no='231'/>
+		<node id='N233' pos='p.name' posval='д' yes='0' no='232'/>
+		<node id='N234' pos='p.p.name' posval='и' yes='219' no='233'/>
+		<node id='N235' pos='n.name' posval='к' yes='1' no='180'/>
+		<node id='N236' pos='name' posval='о' yes='1' no='235'/>
+		<node id='N237' pos='n.n.n.name' posval='#' yes='0' no='236'/>
+		<node id='N238' pos='n.name' posval='г' yes='1' no='237'/>
+		<node id='N239' pos='n.n.n.name' posval='м' yes='123' no='238'/>
+		<node id='N240' pos='name' posval='е' yes='1' no='69'/>
+		<node id='N241' pos='n.name' posval='к' yes='1' no='0'/>
+		<node id='N242' pos='p.p.name' posval='с' yes='0' no='1'/>
+		<node id='N243' pos='n.n.n.name' posval='#' yes='241' no='242'/>
+		<node id='N244' pos='n.n.name' posval='е' yes='1' no='69'/>
+		<node id='N245' pos='n.name' posval='р' yes='0' no='244'/>
+		<node id='N246' pos='name' posval='и' yes='0' no='245'/>
+		<node id='N247' pos='n.n.n.name' posval='#' yes='0' no='246'/>
+		<node id='N248' pos='n.name' posval='р' yes='1' no='0'/>
+		<node id='N249' pos='n.n.n.name' posval='#' yes='0' no='248'/>
+		<node id='N250' pos='n.n.name' posval='и' yes='0' no='249'/>
+		<node id='N251' pos='name' posval='о' yes='0' no='1'/>
+		<node id='N252' pos='n.n.name' posval='ы' yes='0' no='107'/>
+		<node id='N253' pos='n.n.name' posval='и' yes='251' no='252'/>
+		<node id='N254' pos='n.name' posval='в' yes='1' no='253'/>
+		<node id='N255' pos='p.p.p.name' posval='о' yes='0' no='254'/>
+		<node id='N256' pos='n.name' posval='р' yes='0' no='255'/>
+		<node id='N257' pos='name' posval='ы' yes='1' no='256'/>
+		<node id='N258' pos='name' posval='е' yes='250' no='257'/>
+		<node id='N259' pos='p.name' posval='р' yes='0' no='258'/>
+		<node id='N260' pos='name' posval='и' yes='198' no='259'/>
+		<node id='N261' pos='p.p.name' posval='#' yes='247' no='260'/>
+		<node id='N262' pos='p.name' posval='#' yes='1' no='261'/>
+		<node id='N263' pos='n.name' posval='ж' yes='0' no='262'/>
+		<node id='N264' pos='n.n.name' posval='у' yes='123' no='263'/>
+		<node id='N265' pos='n.n.name' posval='а' yes='243' no='264'/>
+		<node id='N266' pos='p.name' posval='ж' yes='1' no='265'/>
+		<node id='N267' pos='n.n.name' posval='л' yes='240' no='266'/>
+		<node id='N268' pos='n.n.name' posval='о' yes='239' no='267'/>
+		<node id='N269' pos='n.n.name' posval='я' yes='1' no='268'/>
+		<node id='N270' pos='p.name' posval='б' yes='0' no='269'/>
+		<node id='N271' pos='name' posval='е' yes='0' no='1'/>
+		<node id='N272' pos='name' posval='ы' yes='0' no='271'/>
+		<node id='N273' pos='n.name' posval='р' yes='0' no='1'/>
+		<node id='N274' pos='name' posval='е' yes='273' no='1'/>
+		<node id='N275' pos='name' posval='о' yes='1' no='180'/>
+		<node id='N276' pos='n.n.n.name' posval='н' yes='0' no='275'/>
+		<node id='N277' pos='n.n.n.name' posval='м' yes='0' no='276'/>
+		<node id='N278' pos='n.n.n.name' posval='е' yes='1' no='277'/>
+		<node id='N279' pos='p.p.name' posval='#' yes='274' no='278'/>
+		<node id='N280' pos='n.n.name' posval='и' yes='0' no='279'/>
+		<node id='N281' pos='p.p.name' posval='е' yes='1' no='280'/>
+		<node id='N282' pos='n.name' posval='в' yes='1' no='281'/>
+		<node id='N283' pos='n.name' posval='ч' yes='0' no='282'/>
+		<node id='N284' pos='n.n.n.name' posval='и' yes='0' no='283'/>
+		<node id='N285' pos='name' posval='и' yes='1' no='284'/>
+		<node id='N286' pos='n.n.n.name' posval='ы' yes='0' no='285'/>
+		<node id='N287' pos='n.n.n.n.name' posval='л' yes='1' no='286'/>
+		<node id='N288' pos='n.n.n.n.name' posval='т' yes='1' no='287'/>
+		<node id='N289' pos='n.n.name' posval='о' yes='1' no='288'/>
+		<node id='N290' pos='p.name' posval='в' yes='272' no='289'/>
+		<node id='N291' pos='n.n.name' posval='ш' yes='0' no='290'/>
+		<node id='N292' pos='n.n.n.n.name' posval='#' yes='270' no='291'/>
+		<node id='N293' pos='p.p.p.p.p.p.name' posval='#' yes='271' no='1'/>
+		<node id='N294' pos='p.p.name' posval='о' yes='0' no='293'/>
+		<node id='N295' pos='name' posval='ы' yes='1' no='294'/>
+		<node id='N296' pos='n.n.name' posval='о' yes='1' no='295'/>
+		<node id='N297' pos='name' posval='и' yes='1' no='296'/>
+		<node id='N298' pos='p.name' posval='л' yes='198' no='297'/>
+		<node id='N299' pos='n.name' posval='д' yes='0' no='298'/>
+		<node id='N300' pos='n.name' posval='р' yes='3' no='299'/>
+		<node id='N301' pos='p.name' posval='щ' yes='1' no='300'/>
+		<node id='N302' pos='p.name' posval='н' yes='1' no='301'/>
+		<node id='N303' pos='p.p.p.p.p.name' posval='#' yes='292' no='302'/>
+		<node id='N304' pos='n.name' posval='л' yes='234' no='303'/>
+		<node id='N305' pos='n.name' posval='т' yes='217' no='304'/>
+		<node id='N306' pos='name' posval='я' yes='204' no='305'/>
+		<node id='N307' pos='p.name' posval='а' yes='1' no='306'/>
+		<node id='N308' pos='n.name' posval='н' yes='197' no='307'/>
+		<node id='N309' pos='n.n.name' posval='н' yes='186' no='308'/>
+		<node id='N310' pos='name' posval='а' yes='173' no='309'/>
+		<node id='N311' pos='n.n.name' posval='к' yes='151' no='310'/>
+		<node id='N312' pos='n.n.n.name' posval='т' yes='147' no='311'/>
+		<node id='N313' pos='n.name' posval='с' yes='141' no='312'/>
+		<node id='N314' pos='n.n.n.name' posval='л' yes='120' no='313'/>
+		<node id='N315' pos='n.n.name' posval='#' yes='98' no='314'/>
+		<node id='N316' pos='n.n.n.name' posval='у' yes='0' no='1'/>
+		<node id='N317' pos='n.n.n.name' posval='и' yes='0' no='316'/>
+		<node id='N318' pos='n.n.n.n.name' posval='м' yes='0' no='317'/>
+		<node id='N319' pos='n.n.n.n.n.name' posval='о' yes='0' no='318'/>
+		<node id='N320' pos='n.n.name' posval='ь' yes='0' no='1'/>
+		<node id='N321' pos='n.n.n.name' posval='и' yes='180' no='320'/>
+		<node id='N322' pos='n.n.n.n.n.name' posval='и' yes='0' no='1'/>
+		<node id='N323' pos='n.n.n.n.name' posval='т' yes='0' no='1'/>
+		<node id='N324' pos='n.n.name' posval='е' yes='1' no='0'/>
+		<node id='N325' pos='n.n.n.n.name' posval='ы' yes='0' no='1'/>
+		<node id='N326' pos='name' posval='е' yes='324' no='325'/>
+		<node id='N327' pos='n.n.name' posval='и' yes='1' no='326'/>
+		<node id='N328' pos='n.n.n.n.n.name' posval='я' yes='0' no='1'/>
+		<node id='N329' pos='n.n.n.name' posval='л' yes='1' no='328'/>
+		<node id='N330' pos='n.n.n.n.name' posval='с' yes='329' no='1'/>
+		<node id='N331' pos='n.n.n.name' posval='ч' yes='0' no='330'/>
+		<node id='N332' pos='n.n.n.name' posval='н' yes='327' no='331'/>
+		<node id='N333' pos='n.n.n.name' posval='с' yes='323' no='332'/>
+		<node id='N334' pos='n.n.n.n.name' posval='г' yes='0' no='333'/>
+		<node id='N335' pos='name' posval='ы' yes='0' no='334'/>
+		<node id='N336' pos='p.name' posval='в' yes='0' no='1'/>
+		<node id='N337' pos='n.name' posval='в' yes='1' no='0'/>
+		<node id='N338' pos='name' posval='и' yes='1' no='337'/>
+		<node id='N339' pos='n.n.name' posval='о' yes='1' no='338'/>
+		<node id='N340' pos='name' posval='у' yes='1' no='339'/>
+		<node id='N341' pos='p.p.p.p.p.name' posval='#' yes='340' no='0'/>
+		<node id='N342' pos='n.n.name' posval='и' yes='1' no='341'/>
+		<node id='N343' pos='n.n.n.n.name' posval='а' yes='0' no='342'/>
+		<node id='N344' pos='n.n.name' posval='ь' yes='0' no='343'/>
+		<node id='N345' pos='name' posval='е' yes='336' no='344'/>
+		<node id='N346' pos='p.p.p.name' posval='#' yes='335' no='345'/>
+		<node id='N347' pos='n.n.n.n.name' posval='м' yes='322' no='346'/>
+		<node id='N348' pos='name' posval='о' yes='321' no='347'/>
+		<node id='N349' pos='n.n.name' posval='а' yes='1' no='348'/>
+		<node id='N350' pos='n.n.n.n.name' posval='и' yes='1' no='349'/>
+		<node id='N351' pos='n.n.name' posval='н' yes='319' no='350'/>
+		<node id='N352' pos='n.n.name' posval='с' yes='0' no='351'/>
+		<node id='N353' pos='n.n.n.n.n.name' posval='#' yes='315' no='352'/>
+		<node id='N354' pos='n.name' posval='#' yes='40' no='353'/>
+		<node id='N355' pos='n.n.n.n.name' posval='а' yes='1' no='0'/>
+		<node id='N356' pos='p.name' posval='в' yes='355' no='0'/>
+		<node id='N357' pos='n.n.n.n.n.n.n.n.name' posval='#' yes='356' no='1'/>
+		<node id='N358' pos='n.n.n.name' posval='и' yes='0' no='1'/>
+		<node id='N359' pos='n.n.n.n.n.name' posval='т' yes='0' no='358'/>
+		<node id='N360' pos='n.n.n.n.name' posval='н' yes='99' no='1'/>
+		<node id='N361' pos='n.n.n.n.n.name' posval='к' yes='0' no='360'/>
+		<node id='N362' pos='n.n.name' posval='о' yes='1' no='361'/>
+		<node id='N363' pos='n.n.name' posval='и' yes='1' no='362'/>
+		<node id='N364' pos='n.n.n.n.n.n.n.name' posval='#' yes='0' no='1'/>
+		<node id='N365' pos='n.n.n.name' posval='с' yes='0' no='1'/>
+		<node id='N366' pos='p.p.name' posval='п' yes='1' no='365'/>
+		<node id='N367' pos='p.p.name' posval='#' yes='1' no='366'/>
+		<node id='N368' pos='n.n.n.name' posval='д' yes='1' no='367'/>
+		<node id='N369' pos='n.n.name' posval='с' yes='364' no='368'/>
+		<node id='N370' pos='n.n.n.name' posval='н' yes='363' no='369'/>
+		<node id='N371' pos='n.n.name' posval='н' yes='359' no='370'/>
+		<node id='N372' pos='n.n.n.n.n.n.name' posval='л' yes='1' no='371'/>
+		<node id='N373' pos='n.n.name' posval='с' yes='0' no='1'/>
+		<node id='N374' pos='n.n.n.n.name' posval='в' yes='373' no='1'/>
+		<node id='N375' pos='n.n.n.n.n.n.n.n.name' posval='#' yes='372' no='374'/>
+		<node id='N376' pos='name' posval='ы' yes='357' no='375'/>
+		<node id='N377' pos='n.n.n.n.n.name' posval='ы' yes='0' no='1'/>
+		<node id='N378' pos='n.n.n.name' posval='н' yes='377' no='1'/>
+		<node id='N379' pos='n.n.name' posval='ь' yes='0' no='378'/>
+		<node id='N380' pos='n.n.name' posval='н' yes='0' no='379'/>
+		<node id='N381' pos='name' posval='а' yes='0' no='1'/>
+		<node id='N382' pos='p.p.p.p.name' posval='#' yes='1' no='381'/>
+		<node id='N383' pos='n.n.name' posval='и' yes='1' no='382'/>
+		<node id='N384' pos='n.n.n.n.name' posval='в' yes='0' no='383'/>
+		<node id='N385' pos='n.n.n.n.name' posval='ь' yes='0' no='384'/>
+		<node id='N386' pos='n.n.n.n.name' posval='н' yes='0' no='1'/>
+		<node id='N387' pos='n.n.name' posval='т' yes='0' no='1'/>
+		<node id='N388' pos='n.n.n.n.name' posval='а' yes='153' no='387'/>
+		<node id='N389' pos='n.n.name' posval='н' yes='0' no='1'/>
+		<node id='N390' pos='n.name' posval='л' yes='1' no='389'/>
+		<node id='N391' pos='p.p.p.name' posval='п' yes='1' no='390'/>
+		<node id='N392' pos='n.n.name' posval='л' yes='1' no='0'/>
+		<node id='N393' pos='n.n.name' posval='ш' yes='0' no='392'/>
+		<node id='N394' pos='p.p.p.p.name' posval='#' yes='1' no='0'/>
+		<node id='N395' pos='n.n.n.n.name' posval='н' yes='0' no='394'/>
+		<node id='N396' pos='p.p.p.p.p.name' posval='#' yes='395' no='0'/>
+		<node id='N397' pos='p.p.name' posval='а' yes='0' no='396'/>
+		<node id='N398' pos='n.n.name' posval='и' yes='1' no='397'/>
+		<node id='N399' pos='name' posval='и' yes='1' no='398'/>
+		<node id='N400' pos='p.p.p.name' posval='о' yes='1' no='399'/>
+		<node id='N401' pos='n.name' posval='ч' yes='0' no='400'/>
+		<node id='N402' pos='n.n.name' posval='ь' yes='0' no='401'/>
+		<node id='N403' pos='n.n.n.name' posval='т' yes='1' no='402'/>
+		<node id='N404' pos='n.name' posval='в' yes='393' no='403'/>
+		<node id='N405' pos='name' posval='е' yes='391' no='404'/>
+		<node id='N406' pos='n.n.n.n.n.name' posval='и' yes='1' no='405'/>
+		<node id='N407' pos='n.n.n.n.n.n.n.n.name' posval='#' yes='406' no='1'/>
+		<node id='N408' pos='n.n.n.name' posval='в' yes='388' no='407'/>
+		<node id='N409' pos='n.n.name' posval='с' yes='0' no='408'/>
+		<node id='N410' pos='n.n.name' posval='а' yes='386' no='409'/>
+		<node id='N411' pos='n.n.n.n.name' posval='к' yes='0' no='410'/>
+		<node id='N412' pos='n.name' posval='т' yes='385' no='411'/>
+		<node id='N413' pos='name' posval='о' yes='380' no='412'/>
+		<node id='N414' pos='p.p.p.name' posval='#' yes='376' no='413'/>
+		<node id='N415' pos='n.n.n.n.n.n.name' posval='#' yes='354' no='414'/>
+		<node id='N416' pos='p.name' posval='в' yes='1' no='0'/>
+		<node id='N417' pos='n.name' posval='л' yes='416' no='1'/>
+		<node id='N418' pos='name' posval='о' yes='1' no='126'/>
+		<node id='N419' pos='n.n.name' posval='ь' yes='1' no='418'/>
+		<node id='N420' pos='p.p.name' posval='и' yes='1' no='419'/>
+		<node id='N421' pos='p.p.p.p.p.p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N422' pos='p.p.p.p.name' posval='а' yes='1' no='421'/>
+		<node id='N423' pos='p.p.p.p.name' posval='т' yes='1' no='422'/>
+		<node id='N424' pos='n.name' posval='н' yes='1' no='0'/>
+		<node id='N425' pos='p.p.p.name' posval='н' yes='0' no='424'/>
+		<node id='N426' pos='p.name' posval='д' yes='0' no='425'/>
+		<node id='N427' pos='name' posval='о' yes='1' no='426'/>
+		<node id='N428' pos='p.name' posval='р' yes='0' no='427'/>
+		<node id='N429' pos='name' posval='а' yes='423' no='428'/>
+		<node id='N430' pos='p.p.name' posval='ы' yes='1' no='0'/>
+		<node id='N431' pos='p.p.name' posval='и' yes='1' no='430'/>
+		<node id='N432' pos='p.p.p.name' posval='с' yes='1' no='431'/>
+		<node id='N433' pos='p.p.p.p.p.p.name' posval='о' yes='1' no='432'/>
+		<node id='N434' pos='p.p.p.p.name' posval='н' yes='1' no='0'/>
+		<node id='N435' pos='n.name' posval='м' yes='1' no='434'/>
+		<node id='N436' pos='p.p.name' posval='в' yes='1' no='126'/>
+		<node id='N437' pos='n.n.name' posval='и' yes='0' no='436'/>
+		<node id='N438' pos='name' posval='я' yes='0' no='337'/>
+		<node id='N439' pos='name' posval='и' yes='0' no='1'/>
+		<node id='N440' pos='n.n.n.name' posval='я' yes='1' no='439'/>
+		<node id='N441' pos='n.name' posval='л' yes='126' no='1'/>
+		<node id='N442' pos='p.p.name' posval='и' yes='1' no='441'/>
+		<node id='N443' pos='name' posval='ю' yes='1' no='442'/>
+		<node id='N444' pos='n.name' posval='е' yes='1' no='443'/>
+		<node id='N445' pos='name' posval='ы' yes='1' no='444'/>
+		<node id='N446' pos='n.n.n.n.name' posval='о' yes='1' no='445'/>
+		<node id='N447' pos='p.name' posval='р' yes='1' no='446'/>
+		<node id='N448' pos='n.n.name' posval='о' yes='1' no='447'/>
+		<node id='N449' pos='n.name' posval='к' yes='1' no='448'/>
+		<node id='N450' pos='name' posval='у' yes='0' no='449'/>
+		<node id='N451' pos='n.name' posval='т' yes='440' no='450'/>
+		<node id='N452' pos='n.n.n.name' posval='с' yes='439' no='451'/>
+		<node id='N453' pos='n.n.name' posval='н' yes='0' no='452'/>
+		<node id='N454' pos='p.name' posval='л' yes='438' no='453'/>
+		<node id='N455' pos='n.name' posval='н' yes='437' no='454'/>
+		<node id='N456' pos='name' posval='а' yes='435' no='455'/>
+		<node id='N457' pos='p.name' posval='в' yes='433' no='456'/>
+		<node id='N458' pos='n.name' posval='г' yes='1' no='457'/>
+		<node id='N459' pos='p.p.name' posval='о' yes='429' no='458'/>
+		<node id='N460' pos='n.name' posval='с' yes='420' no='459'/>
+		<node id='N461' pos='n.n.name' posval='#' yes='417' no='460'/>
+	</tree>
+	<tree ltr='а' rootnode='N2' terminal='2' nonterminal='6'>
+		<node id='T0' val='a0'/>
+		<node id='T1' val='i0'/>
+		<node id='N2' pos='p.name' posval='ч' yes='4' no='7'/>
+		<node id='N3' pos='n.n.n.n.n.name' posval='#' yes='0' no='1'/>
+		<node id='N4' pos='p.p.p.name' posval='#' yes='3' no='0'/>
+		<node id='N5' pos='n.n.n.name' posval='#' yes='1' no='0'/>
+		<node id='N6' pos='p.p.name' posval='е' yes='0' no='5'/>
+		<node id='N7' pos='p.name' posval='щ' yes='6' no='0'/>
+	</tree>
+	<tree ltr='б' rootnode='N3' terminal='3' nonterminal='14'>
+		<node id='T0' val='bj'/>
+		<node id='T1' val='p'/>
+		<node id='T2' val='b'/>
+		<node id='N3' pos='n.name' posval='е' yes='0' no='16'/>
+		<node id='N4' pos='p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N5' pos='p.p.name' posval='#' yes='2' no='4'/>
+		<node id='N6' pos='n.name' posval='у' yes='2' no='5'/>
+		<node id='N7' pos='n.name' posval='н' yes='2' no='6'/>
+		<node id='N8' pos='n.name' posval='ы' yes='2' no='7'/>
+		<node id='N9' pos='n.name' posval='а' yes='2' no='8'/>
+		<node id='N10' pos='n.name' posval='л' yes='2' no='9'/>
+		<node id='N11' pos='n.name' posval='р' yes='2' no='10'/>
+		<node id='N12' pos='n.name' posval='о' yes='2' no='11'/>
+		<node id='N13' pos='p.name' posval='#' yes='2' no='12'/>
+		<node id='N14' pos='n.name' posval='с' yes='1' no='13'/>
+		<node id='N15' pos='n.name' posval='к' yes='1' no='14'/>
+		<node id='N16' pos='n.name' posval='и' yes='0' no='15'/>
+	</tree>
+	<tree ltr='в' rootnode='N3' terminal='3' nonterminal='16'>
+		<node id='T0' val='vj'/>
+		<node id='T1' val='f'/>
+		<node id='T2' val='v'/>
+		<node id='N3' pos='n.name' posval='е' yes='0' no='18'/>
+		<node id='N4' pos='n.name' posval='з' yes='2' no='1'/>
+		<node id='N5' pos='n.name' posval='р' yes='2' no='4'/>
+		<node id='N6' pos='n.name' posval='у' yes='2' no='5'/>
+		<node id='N7' pos='n.name' posval='н' yes='2' no='6'/>
+		<node id='N8' pos='n.name' posval='л' yes='2' no='7'/>
+		<node id='N9' pos='n.name' posval='ы' yes='2' no='8'/>
+		<node id='N10' pos='n.name' posval='о' yes='2' no='9'/>
+		<node id='N11' pos='n.name' posval='а' yes='2' no='10'/>
+		<node id='N12' pos='n.name' posval='т' yes='1' no='11'/>
+		<node id='N13' pos='n.name' posval='к' yes='1' no='12'/>
+		<node id='N14' pos='n.name' posval='я' yes='0' no='13'/>
+		<node id='N15' pos='n.name' posval='ш' yes='1' no='14'/>
+		<node id='N16' pos='n.name' posval='с' yes='1' no='15'/>
+		<node id='N17' pos='n.name' posval='#' yes='1' no='16'/>
+		<node id='N18' pos='n.name' posval='и' yes='0' no='17'/>
+	</tree>
+	<tree ltr='г' rootnode='N4' terminal='4' nonterminal='6'>
+		<node id='T0' val='v'/>
+		<node id='T1' val='k'/>
+		<node id='T2' val='gj'/>
+		<node id='T3' val='g'/>
+		<node id='N4' pos='n.n.name' posval='#' yes='7' no='9'/>
+		<node id='N5' pos='n.name' posval='и' yes='2' no='3'/>
+		<node id='N6' pos='n.name' posval='#' yes='1' no='5'/>
+		<node id='N7' pos='n.name' posval='о' yes='0' no='6'/>
+		<node id='N8' pos='n.name' posval='е' yes='2' no='3'/>
+		<node id='N9' pos='n.name' posval='и' yes='2' no='8'/>
+	</tree>
+	<tree ltr='д' rootnode='N4' terminal='4' nonterminal='9'>
+		<node id='T0' val='dj'/>
+		<node id='T1' val='0'/>
+		<node id='T2' val='t'/>
+		<node id='T3' val='d'/>
+		<node id='N4' pos='n.name' posval='е' yes='0' no='12'/>
+		<node id='N5' pos='n.name' posval='п' yes='2' no='3'/>
+		<node id='N6' pos='n.name' posval='ц' yes='1' no='5'/>
+		<node id='N7' pos='n.name' posval='ь' yes='1' no='6'/>
+		<node id='N8' pos='n.name' posval='#' yes='2' no='7'/>
+		<node id='N9' pos='n.name' posval='к' yes='2' no='8'/>
+		<node id='N10' pos='n.name' posval='с' yes='1' no='9'/>
+		<node id='N11' pos='n.name' posval='я' yes='0' no='10'/>
+		<node id='N12' pos='n.name' posval='и' yes='0' no='11'/>
+	</tree>
+	<tree ltr='е' rootnode='N6' terminal='6' nonterminal='115'>
+		<node id='T0' val='j_i0'/>
+		<node id='T1' val='i0'/>
+		<node id='T2' val='e0'/>
+		<node id='T3' val='y0'/>
+		<node id='T4' val='j_e0'/>
+		<node id='T5' val='o0'/>
+		<node id='N6' pos='n.name' posval='#' yes='13' no='120'/>
+		<node id='N7' pos='p.name' posval='е' yes='0' no='1'/>
+		<node id='N8' pos='p.name' posval='о' yes='0' no='7'/>
+		<node id='N9' pos='p.name' posval='и' yes='0' no='8'/>
+		<node id='N10' pos='p.name' posval='ы' yes='0' no='9'/>
+		<node id='N11' pos='p.name' posval='ы' yes='0' no='8'/>
+		<node id='N12' pos='p.name' posval='и' yes='0' no='11'/>
+		<node id='N13' pos='p.p.name' posval='н' yes='10' no='12'/>
+		<node id='N14' pos='n.n.name' posval='и' yes='2' no='3'/>
+		<node id='N15' pos='n.name' posval='с' yes='2' no='3'/>
+		<node id='N16' pos='n.n.name' posval='и' yes='2' no='15'/>
+		<node id='N17' pos='n.n.n.name' posval='#' yes='3' no='16'/>
+		<node id='N18' pos='p.p.p.p.p.name' posval='#' yes='4' no='0'/>
+		<node id='N19' pos='n.n.name' posval='#' yes='3' no='2'/>
+		<node id='N20' pos='n.n.n.name' posval='#' yes='0' no='4'/>
+		<node id='N21' pos='p.p.p.p.name' posval='#' yes='2' no='1'/>
+		<node id='N22' pos='p.p.name' posval='#' yes='1' no='21'/>
+		<node id='N23' pos='p.p.name' posval='е' yes='1' no='22'/>
+		<node id='N24' pos='p.name' posval='л' yes='1' no='23'/>
+		<node id='N25' pos='p.p.name' posval='о' yes='2' no='24'/>
+		<node id='N26' pos='n.name' posval='н' yes='2' no='25'/>
+		<node id='N27' pos='n.n.name' posval='н' yes='5' no='1'/>
+		<node id='N28' pos='n.n.name' posval='н' yes='1' no='2'/>
+		<node id='N29' pos='p.name' posval='р' yes='1' no='28'/>
+		<node id='N30' pos='n.n.n.name' posval='#' yes='1' no='29'/>
+		<node id='N31' pos='p.name' posval='м' yes='1' no='30'/>
+		<node id='N32' pos='p.name' posval='л' yes='27' no='31'/>
+		<node id='N33' pos='p.p.p.name' posval='#' yes='2' no='32'/>
+		<node id='N34' pos='p.p.p.p.name' posval='#' yes='2' no='5'/>
+		<node id='N35' pos='n.n.name' posval='е' yes='5' no='2'/>
+		<node id='N36' pos='n.n.name' posval='#' yes='34' no='35'/>
+		<node id='N37' pos='n.n.n.name' posval='#' yes='2' no='1'/>
+		<node id='N38' pos='p.name' posval='н' yes='1' no='2'/>
+		<node id='N39' pos='n.name' posval='р' yes='1' no='38'/>
+		<node id='N40' pos='p.p.name' posval='#' yes='1' no='2'/>
+		<node id='N41' pos='p.p.p.name' posval='#' yes='40' no='2'/>
+		<node id='N42' pos='n.name' posval='р' yes='2' no='41'/>
+		<node id='N43' pos='n.n.name' posval='т' yes='2' no='42'/>
+		<node id='N44' pos='n.n.name' posval='а' yes='1' no='43'/>
+		<node id='N45' pos='n.n.n.name' posval='и' yes='1' no='44'/>
+		<node id='N46' pos='n.n.n.name' posval='#' yes='2' no='45'/>
+		<node id='N47' pos='n.name' posval='к' yes='2' no='46'/>
+		<node id='N48' pos='p.p.p.p.p.name' posval='#' yes='47' no='2'/>
+		<node id='N49' pos='n.n.name' posval='ь' yes='2' no='48'/>
+		<node id='N50' pos='n.name' posval='л' yes='2' no='49'/>
+		<node id='N51' pos='p.name' posval='т' yes='1' no='50'/>
+		<node id='N52' pos='p.p.name' posval='т' yes='1' no='51'/>
+		<node id='N53' pos='n.name' posval='ч' yes='1' no='52'/>
+		<node id='N54' pos='p.p.p.name' posval='п' yes='1' no='53'/>
+		<node id='N55' pos='n.n.name' posval='#' yes='39' no='54'/>
+		<node id='N56' pos='n.n.name' posval='ш' yes='2' no='55'/>
+		<node id='N57' pos='n.n.name' posval='н' yes='2' no='56'/>
+		<node id='N58' pos='p.name' posval='щ' yes='1' no='57'/>
+		<node id='N59' pos='n.n.name' posval='к' yes='2' no='58'/>
+		<node id='N60' pos='p.p.name' posval='в' yes='2' no='59'/>
+		<node id='N61' pos='n.n.name' posval='я' yes='1' no='60'/>
+		<node id='N62' pos='n.n.n.n.name' posval='л' yes='1' no='61'/>
+		<node id='N63' pos='n.n.name' posval='л' yes='1' no='62'/>
+		<node id='N64' pos='n.n.name' posval='е' yes='37' no='63'/>
+		<node id='N65' pos='n.name' posval='м' yes='1' no='64'/>
+		<node id='N66' pos='n.name' posval='т' yes='36' no='65'/>
+		<node id='N67' pos='n.name' posval='н' yes='33' no='66'/>
+		<node id='N68' pos='p.name' posval='ч' yes='27' no='67'/>
+		<node id='N69' pos='n.n.n.name' posval='л' yes='1' no='68'/>
+		<node id='N70' pos='n.n.n.name' posval='#' yes='1' no='2'/>
+		<node id='N71' pos='n.name' posval='н' yes='5' no='1'/>
+		<node id='N72' pos='n.n.name' posval='#' yes='1' no='38'/>
+		<node id='N73' pos='p.name' posval='т' yes='1' no='72'/>
+		<node id='N74' pos='p.name' posval='щ' yes='1' no='73'/>
+		<node id='N75' pos='n.name' posval='н' yes='1' no='74'/>
+		<node id='N76' pos='p.name' posval='м' yes='2' no='75'/>
+		<node id='N77' pos='p.p.p.p.p.p.name' posval='п' yes='71' no='76'/>
+		<node id='N78' pos='n.name' posval='с' yes='1' no='77'/>
+		<node id='N79' pos='p.p.name' posval='о' yes='70' no='78'/>
+		<node id='N80' pos='p.p.p.p.p.p.name' posval='#' yes='69' no='79'/>
+		<node id='N81' pos='n.n.name' posval='и' yes='26' no='80'/>
+		<node id='N82' pos='p.name' posval='я' yes='0' no='81'/>
+		<node id='N83' pos='p.name' posval='#' yes='4' no='82'/>
+		<node id='N84' pos='p.name' posval='у' yes='0' no='83'/>
+		<node id='N85' pos='p.name' posval='е' yes='0' no='84'/>
+		<node id='N86' pos='p.name' posval='о' yes='20' no='85'/>
+		<node id='N87' pos='p.name' posval='ц' yes='19' no='86'/>
+		<node id='N88' pos='p.name' posval='и' yes='18' no='87'/>
+		<node id='N89' pos='n.name' posval='н' yes='1' no='41'/>
+		<node id='N90' pos='n.n.n.n.n.n.name' posval='#' yes='1' no='2'/>
+		<node id='N91' pos='p.p.p.name' posval='#' yes='90' no='1'/>
+		<node id='N92' pos='n.n.n.name' posval='н' yes='2' no='1'/>
+		<node id='N93' pos='p.name' posval='в' yes='2' no='1'/>
+		<node id='N94' pos='p.name' posval='л' yes='1' no='93'/>
+		<node id='N95' pos='n.name' posval='р' yes='1' no='94'/>
+		<node id='N96' pos='n.n.n.name' posval='н' yes='1' no='95'/>
+		<node id='N97' pos='n.n.name' posval='е' yes='1' no='96'/>
+		<node id='N98' pos='n.n.name' posval='и' yes='1' no='97'/>
+		<node id='N99' pos='p.p.p.name' posval='п' yes='1' no='98'/>
+		<node id='N100' pos='n.n.n.name' posval='с' yes='2' no='99'/>
+		<node id='N101' pos='p.name' posval='н' yes='1' no='100'/>
+		<node id='N102' pos='n.n.n.n.name' posval='м' yes='1' no='101'/>
+		<node id='N103' pos='n.n.n.name' posval='т' yes='1' no='102'/>
+		<node id='N104' pos='n.n.n.n.name' posval='и' yes='1' no='103'/>
+		<node id='N105' pos='p.name' posval='т' yes='1' no='104'/>
+		<node id='N106' pos='n.n.name' posval='т' yes='92' no='105'/>
+		<node id='N107' pos='p.p.name' posval='с' yes='91' no='106'/>
+		<node id='N108' pos='n.name' posval='з' yes='1' no='107'/>
+		<node id='N109' pos='n.n.name' posval='н' yes='89' no='108'/>
+		<node id='N110' pos='n.n.name' posval='с' yes='2' no='109'/>
+		<node id='N111' pos='n.n.n.name' posval='т' yes='2' no='1'/>
+		<node id='N112' pos='n.n.n.n.name' posval='в' yes='111' no='1'/>
+		<node id='N113' pos='p.name' posval='н' yes='1' no='112'/>
+		<node id='N114' pos='n.n.n.n.n.n.n.name' posval='#' yes='110' no='113'/>
+		<node id='N115' pos='p.name' posval='#' yes='0' no='114'/>
+		<node id='N116' pos='p.name' posval='ц' yes='3' no='115'/>
+		<node id='N117' pos='n.n.n.n.n.name' posval='#' yes='88' no='116'/>
+		<node id='N118' pos='p.name' posval='ш' yes='17' no='117'/>
+		<node id='N119' pos='p.name' posval='ж' yes='14' no='118'/>
+		<node id='N120' pos='p.name' posval='а' yes='0' no='119'/>
+	</tree>
+	<tree ltr='ж' rootnode='N2' terminal='2' nonterminal='1'>
+		<node id='T0' val='sh'/>
+		<node id='T1' val='zh'/>
+		<node id='N2' pos='n.name' posval='к' yes='0' no='1'/>
+	</tree>
+	<tree ltr='з' rootnode='N4' terminal='4' nonterminal='12'>
+		<node id='T0' val='zj'/>
+		<node id='T1' val='z'/>
+		<node id='T2' val='0'/>
+		<node id='T3' val='s'/>
+		<node id='N4' pos='n.name' posval='и' yes='0' no='15'/>
+		<node id='N5' pos='n.name' posval='д' yes='0' no='1'/>
+		<node id='N6' pos='p.p.p.p.name' posval='#' yes='1' no='3'/>
+		<node id='N7' pos='n.n.name' posval='и' yes='6' no='1'/>
+		<node id='N8' pos='n.n.name' posval='е' yes='5' no='7'/>
+		<node id='N9' pos='n.n.name' posval='н' yes='2' no='8'/>
+		<node id='N10' pos='n.name' posval='я' yes='0' no='9'/>
+		<node id='N11' pos='n.name' posval='к' yes='3' no='10'/>
+		<node id='N12' pos='n.name' posval='#' yes='3' no='11'/>
+		<node id='N13' pos='n.name' posval='ж' yes='2' no='12'/>
+		<node id='N14' pos='n.name' posval='а' yes='1' no='13'/>
+		<node id='N15' pos='n.name' posval='е' yes='0' no='14'/>
+	</tree>
+	<tree ltr='и' rootnode='N3' terminal='3' nonterminal='4'>
+		<node id='T0' val='y0'/>
+		<node id='T1' val='0'/>
+		<node id='T2' val='i0'/>
+		<node id='N3' pos='p.name' posval='ш' yes='0' no='6'/>
+		<node id='N4' pos='n.name' posval='и' yes='1' no='2'/>
+		<node id='N5' pos='p.name' posval='ц' yes='0' no='4'/>
+		<node id='N6' pos='p.name' posval='ж' yes='0' no='5'/>
+	</tree>
+	<tree ltr='к' rootnode='N2' terminal='2' nonterminal='2'>
+		<node id='T0' val='kj'/>
+		<node id='T1' val='k'/>
+		<node id='N2' pos='n.name' posval='и' yes='0' no='3'/>
+		<node id='N3' pos='n.name' posval='е' yes='0' no='1'/>
+	</tree>
+	<tree ltr='л' rootnode='N3' terminal='3' nonterminal='6'>
+		<node id='T0' val='0'/>
+		<node id='T1' val='lj'/>
+		<node id='T2' val='l'/>
+		<node id='N3' pos='n.name' posval='ь' yes='0' no='8'/>
+		<node id='N4' pos='n.name' posval='л' yes='0' no='2'/>
+		<node id='N5' pos='n.name' posval='ю' yes='1' no='4'/>
+		<node id='N6' pos='n.name' posval='я' yes='1' no='5'/>
+		<node id='N7' pos='n.name' posval='е' yes='1' no='6'/>
+		<node id='N8' pos='n.name' posval='и' yes='1' no='7'/>
+	</tree>
+	<tree ltr='м' rootnode='N2' terminal='2' nonterminal='3'>
+		<node id='T0' val='mj'/>
+		<node id='T1' val='m'/>
+		<node id='N2' pos='n.name' posval='и' yes='0' no='4'/>
+		<node id='N3' pos='n.name' posval='я' yes='0' no='1'/>
+		<node id='N4' pos='n.name' posval='е' yes='0' no='3'/>
+	</tree>
+	<tree ltr='н' rootnode='N3' terminal='3' nonterminal='12'>
+		<node id='T0' val='0'/>
+		<node id='T1' val='nj'/>
+		<node id='T2' val='n'/>
+		<node id='N3' pos='n.name' posval='н' yes='0' no='14'/>
+		<node id='N4' pos='n.n.name' posval='#' yes='0' no='1'/>
+		<node id='N5' pos='n.n.name' posval='к' yes='0' no='4'/>
+		<node id='N6' pos='n.name' posval='к' yes='2' no='1'/>
+		<node id='N7' pos='n.name' posval='т' yes='1' no='2'/>
+		<node id='N8' pos='n.n.name' posval='е' yes='7' no='2'/>
+		<node id='N9' pos='n.name' posval='ю' yes='1' no='8'/>
+		<node id='N10' pos='n.n.name' posval='и' yes='6' no='9'/>
+		<node id='N11' pos='n.name' posval='ь' yes='5' no='10'/>
+		<node id='N12' pos='n.name' posval='я' yes='1' no='11'/>
+		<node id='N13' pos='n.name' posval='е' yes='1' no='12'/>
+		<node id='N14' pos='n.name' posval='и' yes='1' no='13'/>
+	</tree>
+	<tree ltr='о' rootnode='N3' terminal='3' nonterminal='99'>
+		<node id='T0' val='o0'/>
+		<node id='T1' val='a0'/>
+		<node id='T2' val='0'/>
+		<node id='N3' pos='n.n.n.n.n.n.name' posval='#' yes='87' no='101'/>
+		<node id='N4' pos='n.n.n.n.n.name' posval='#' yes='0' no='1'/>
+		<node id='N5' pos='n.n.n.name' posval='о' yes='0' no='4'/>
+		<node id='N6' pos='p.p.p.name' posval='р' yes='1' no='0'/>
+		<node id='N7' pos='n.name' posval='н' yes='0' no='6'/>
+		<node id='N8' pos='n.name' posval='ч' yes='1' no='7'/>
+		<node id='N9' pos='p.p.name' posval='#' yes='5' no='8'/>
+		<node id='N10' pos='n.name' posval='л' yes='0' no='1'/>
+		<node id='N11' pos='n.n.n.name' posval='т' yes='0' no='10'/>
+		<node id='N12' pos='n.n.n.name' posval='е' yes='0' no='11'/>
+		<node id='N13' pos='n.n.n.name' posval='и' yes='1' no='12'/>
+		<node id='N14' pos='n.n.name' posval='и' yes='0' no='13'/>
+		<node id='N15' pos='n.n.n.name' posval='м' yes='0' no='14'/>
+		<node id='N16' pos='n.n.name' posval='к' yes='0' no='15'/>
+		<node id='N17' pos='n.n.n.name' posval='#' yes='0' no='16'/>
+		<node id='N18' pos='p.p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N19' pos='n.n.name' posval='#' yes='18' no='0'/>
+		<node id='N20' pos='n.n.n.name' posval='#' yes='19' no='1'/>
+		<node id='N21' pos='n.name' posval='в' yes='0' no='20'/>
+		<node id='N22' pos='p.p.p.name' posval='с' yes='0' no='21'/>
+		<node id='N23' pos='n.n.name' posval='#' yes='1' no='0'/>
+		<node id='N24' pos='p.name' posval='н' yes='1' no='23'/>
+		<node id='N25' pos='n.name' posval='в' yes='0' no='24'/>
+		<node id='N26' pos='n.n.name' posval='#' yes='0' no='1'/>
+		<node id='N27' pos='p.p.p.p.name' posval='#' yes='26' no='1'/>
+		<node id='N28' pos='p.p.name' posval='и' yes='0' no='27'/>
+		<node id='N29' pos='n.name' posval='м' yes='1' no='28'/>
+		<node id='N30' pos='p.name' posval='л' yes='1' no='29'/>
+		<node id='N31' pos='n.name' posval='в' yes='26' no='30'/>
+		<node id='N32' pos='p.name' posval='к' yes='1' no='31'/>
+		<node id='N33' pos='n.n.name' posval='у' yes='1' no='32'/>
+		<node id='N34' pos='p.p.name' posval='у' yes='0' no='33'/>
+		<node id='N35' pos='p.p.name' posval='с' yes='0' no='34'/>
+		<node id='N36' pos='p.p.p.name' posval='а' yes='1' no='35'/>
+		<node id='N37' pos='p.name' posval='х' yes='0' no='36'/>
+		<node id='N38' pos='n.name' posval='т' yes='1' no='37'/>
+		<node id='N39' pos='n.name' posval='е' yes='1' no='38'/>
+		<node id='N40' pos='p.name' posval='б' yes='23' no='39'/>
+		<node id='N41' pos='p.p.p.name' posval='к' yes='0' no='40'/>
+		<node id='N42' pos='p.p.p.name' posval='о' yes='25' no='41'/>
+		<node id='N43' pos='p.p.p.p.name' posval='м' yes='1' no='42'/>
+		<node id='N44' pos='n.n.name' posval='т' yes='1' no='43'/>
+		<node id='N45' pos='p.name' posval='р' yes='22' no='44'/>
+		<node id='N46' pos='n.n.name' posval='и' yes='0' no='45'/>
+		<node id='N47' pos='n.name' posval='н' yes='0' no='46'/>
+		<node id='N48' pos='p.p.p.name' posval='#' yes='17' no='47'/>
+		<node id='N49' pos='p.p.p.name' posval='#' yes='1' no='0'/>
+		<node id='N50' pos='n.n.n.name' posval='е' yes='1' no='49'/>
+		<node id='N51' pos='n.name' posval='в' yes='1' no='50'/>
+		<node id='N52' pos='p.name' posval='р' yes='0' no='51'/>
+		<node id='N53' pos='n.n.n.n.name' posval='й' yes='0' no='52'/>
+		<node id='N54' pos='p.name' posval='к' yes='1' no='53'/>
+		<node id='N55' pos='n.n.name' posval='а' yes='1' no='54'/>
+		<node id='N56' pos='n.n.name' posval='т' yes='1' no='55'/>
+		<node id='N57' pos='n.n.name' posval='о' yes='1' no='56'/>
+		<node id='N58' pos='n.n.n.name' posval='т' yes='1' no='57'/>
+		<node id='N59' pos='p.name' posval='п' yes='1' no='58'/>
+		<node id='N60' pos='n.n.n.n.name' posval='л' yes='1' no='59'/>
+		<node id='N61' pos='n.n.n.name' posval='и' yes='0' no='60'/>
+		<node id='N62' pos='n.n.n.n.name' posval='#' yes='48' no='61'/>
+		<node id='N63' pos='n.n.n.name' posval='л' yes='1' no='62'/>
+		<node id='N64' pos='p.p.p.name' posval='р' yes='0' no='1'/>
+		<node id='N65' pos='p.p.p.name' posval='л' yes='0' no='64'/>
+		<node id='N66' pos='p.name' posval='р' yes='0' no='65'/>
+		<node id='N67' pos='p.name' posval='в' yes='0' no='1'/>
+		<node id='N68' pos='p.p.name' posval='о' yes='67' no='1'/>
+		<node id='N69' pos='p.p.p.p.p.name' posval='п' yes='0' no='68'/>
+		<node id='N70' pos='p.p.p.p.p.p.name' posval='#' yes='1' no='0'/>
+		<node id='N71' pos='n.name' posval='в' yes='1' no='70'/>
+		<node id='N72' pos='n.n.name' posval='т' yes='1' no='71'/>
+		<node id='N73' pos='n.n.n.name' posval='#' yes='69' no='72'/>
+		<node id='N74' pos='p.p.p.p.name' posval='о' yes='66' no='73'/>
+		<node id='N75' pos='n.name' posval='д' yes='0' no='74'/>
+		<node id='N76' pos='n.n.n.name' posval='л' yes='1' no='75'/>
+		<node id='N77' pos='n.name' posval='н' yes='0' no='76'/>
+		<node id='N78' pos='n.name' posval='#' yes='1' no='77'/>
+		<node id='N79' pos='p.name' posval='н' yes='1' no='78'/>
+		<node id='N80' pos='p.p.p.p.p.name' posval='#' yes='63' no='79'/>
+		<node id='N81' pos='n.n.name' posval='ь' yes='0' no='1'/>
+		<node id='N82' pos='n.n.n.name' posval='и' yes='49' no='81'/>
+		<node id='N83' pos='n.n.name' posval='с' yes='0' no='82'/>
+		<node id='N84' pos='n.n.n.n.n.name' posval='#' yes='80' no='83'/>
+		<node id='N85' pos='n.n.name' posval='н' yes='9' no='84'/>
+		<node id='N86' pos='n.n.name' posval='н' yes='0' no='1'/>
+		<node id='N87' pos='p.p.p.p.p.p.p.name' posval='#' yes='85' no='86'/>
+		<node id='N88' pos='p.p.p.p.name' posval='#' yes='1' no='0'/>
+		<node id='N89' pos='n.n.n.name' posval='и' yes='0' no='88'/>
+		<node id='N90' pos='n.n.n.name' posval='н' yes='0' no='1'/>
+		<node id='N91' pos='n.n.name' posval='е' yes='90' no='1'/>
+		<node id='N92' pos='n.n.n.n.n.name' posval='е' yes='1' no='91'/>
+		<node id='N93' pos='p.name' posval='г' yes='1' no='92'/>
+		<node id='N94' pos='n.n.n.n.n.name' posval='и' yes='1' no='93'/>
+		<node id='N95' pos='n.n.n.n.name' posval='е' yes='1' no='94'/>
+		<node id='N96' pos='n.n.n.n.n.n.n.n.name' posval='#' yes='95' no='1'/>
+		<node id='N97' pos='n.n.n.n.n.name' posval='ы' yes='90' no='96'/>
+		<node id='N98' pos='n.n.name' posval='ь' yes='0' no='97'/>
+		<node id='N99' pos='n.n.name' posval='н' yes='89' no='98'/>
+		<node id='N100' pos='p.p.name' posval='#' yes='1' no='99'/>
+		<node id='N101' pos='p.name' posval='о' yes='2' no='100'/>
+	</tree>
+	<tree ltr='п' rootnode='N2' terminal='2' nonterminal='4'>
+		<node id='T0' val='pj'/>
+		<node id='T1' val='p'/>
+		<node id='N2' pos='n.name' posval='е' yes='0' no='5'/>
+		<node id='N3' pos='n.name' posval='ь' yes='0' no='1'/>
+		<node id='N4' pos='n.name' posval='я' yes='0' no='3'/>
+		<node id='N5' pos='n.name' posval='и' yes='0' no='4'/>
+	</tree>
+	<tree ltr='р' rootnode='N3' terminal='3' nonterminal='6'>
+		<node id='T0' val='rj'/>
+		<node id='T1' val='0'/>
+		<node id='T2' val='r'/>
+		<node id='N3' pos='n.name' posval='е' yes='0' no='8'/>
+		<node id='N4' pos='p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N5' pos='n.name' posval='ю' yes='0' no='2'/>
+		<node id='N6' pos='n.name' posval='ь' yes='4' no='5'/>
+		<node id='N7' pos='n.name' posval='я' yes='0' no='6'/>
+		<node id='N8' pos='n.name' posval='и' yes='0' no='7'/>
+	</tree>
+	<tree ltr='с' rootnode='N6' terminal='6' nonterminal='38'>
+		<node id='T0' val='sj'/>
+		<node id='T1' val='0'/>
+		<node id='T2' val='s'/>
+		<node id='T3' val='ts'/>
+		<node id='T4' val='zj'/>
+		<node id='T5' val='z'/>
+		<node id='N6' pos='n.n.name' posval='#' yes='11' no='43'/>
+		<node id='N7' pos='p.p.name' posval='т' yes='1' no='0'/>
+		<node id='N8' pos='p.name' posval='т' yes='1' no='7'/>
+		<node id='N9' pos='n.name' posval='я' yes='8' no='2'/>
+		<node id='N10' pos='n.name' posval='ь' yes='1' no='9'/>
+		<node id='N11' pos='p.name' posval='л' yes='0' no='10'/>
+		<node id='N12' pos='n.n.name' posval='я' yes='0' no='2'/>
+		<node id='N13' pos='p.name' posval='т' yes='3' no='12'/>
+		<node id='N14' pos='p.name' posval='д' yes='3' no='13'/>
+		<node id='N15' pos='n.n.name' posval='е' yes='0' no='14'/>
+		<node id='N16' pos='n.n.name' posval='ь' yes='0' no='15'/>
+		<node id='N17' pos='n.n.name' posval='н' yes='1' no='16'/>
+		<node id='N18' pos='n.n.name' posval='и' yes='0' no='17'/>
+		<node id='N19' pos='n.n.name' posval='е' yes='0' no='2'/>
+		<node id='N20' pos='n.n.name' posval='и' yes='0' no='19'/>
+		<node id='N21' pos='n.n.name' posval='е' yes='2' no='5'/>
+		<node id='N22' pos='n.name' posval='ы' yes='2' no='21'/>
+		<node id='N23' pos='n.name' posval='а' yes='2' no='22'/>
+		<node id='N24' pos='n.name' posval='у' yes='2' no='23'/>
+		<node id='N25' pos='n.name' posval='м' yes='2' no='24'/>
+		<node id='N26' pos='n.name' posval='п' yes='2' no='25'/>
+		<node id='N27' pos='n.name' posval='к' yes='2' no='26'/>
+		<node id='N28' pos='n.name' posval='в' yes='2' no='27'/>
+		<node id='N29' pos='n.name' posval='л' yes='2' no='28'/>
+		<node id='N30' pos='n.name' posval='о' yes='2' no='29'/>
+		<node id='N31' pos='p.name' posval='#' yes='30' no='2'/>
+		<node id='N32' pos='n.n.name' posval='м' yes='2' no='31'/>
+		<node id='N33' pos='n.name' posval='ш' yes='1' no='32'/>
+		<node id='N34' pos='p.name' posval='д' yes='3' no='33'/>
+		<node id='N35' pos='n.name' posval='д' yes='4' no='34'/>
+		<node id='N36' pos='p.name' posval='т' yes='3' no='35'/>
+		<node id='N37' pos='n.name' posval='н' yes='20' no='36'/>
+		<node id='N38' pos='n.name' posval='я' yes='0' no='37'/>
+		<node id='N39' pos='n.name' posval='ч' yes='1' no='38'/>
+		<node id='N40' pos='n.name' posval='т' yes='18' no='39'/>
+		<node id='N41' pos='n.name' posval='с' yes='1' no='40'/>
+		<node id='N42' pos='n.name' posval='и' yes='0' no='41'/>
+		<node id='N43' pos='n.name' posval='е' yes='0' no='42'/>
+	</tree>
+	<tree ltr='т' rootnode='N5' terminal='5' nonterminal='12'>
+		<node id='T0' val='tj'/>
+		<node id='T1' val='0'/>
+		<node id='T2' val='ts'/>
+		<node id='T3' val='s'/>
+		<node id='T4' val='t'/>
+		<node id='N5' pos='n.name' posval='ь' yes='8' no='16'/>
+		<node id='N6' pos='n.n.name' posval='с' yes='1' no='0'/>
+		<node id='N7' pos='n.n.name' posval='#' yes='1' no='6'/>
+		<node id='N8' pos='n.n.name' posval='ю' yes='0' no='7'/>
+		<node id='N9' pos='n.n.name' posval='я' yes='2' no='1'/>
+		<node id='N10' pos='p.name' posval='с' yes='3' no='4'/>
+		<node id='N11' pos='n.name' posval='д' yes='1' no='4'/>
+		<node id='N12' pos='n.name' posval='н' yes='10' no='11'/>
+		<node id='N13' pos='n.name' posval='я' yes='0' no='12'/>
+		<node id='N14' pos='n.name' posval='с' yes='9' no='13'/>
+		<node id='N15' pos='n.name' posval='и' yes='0' no='14'/>
+		<node id='N16' pos='n.name' posval='е' yes='0' no='15'/>
+	</tree>
+	<tree ltr='у' rootnode='N1' terminal='1' nonterminal='0'>
+		<node id='T0' val='u0'/>
+	</tree>
+	<tree ltr='ф' rootnode='N2' terminal='2' nonterminal='2'>
+		<node id='T0' val='fj'/>
+		<node id='T1' val='f'/>
+		<node id='N2' pos='n.name' posval='и' yes='0' no='3'/>
+		<node id='N3' pos='n.name' posval='е' yes='0' no='1'/>
+	</tree>
+	<tree ltr='х' rootnode='N2' terminal='2' nonterminal='1'>
+		<node id='T0' val='hj'/>
+		<node id='T1' val='h'/>
+		<node id='N2' pos='n.name' posval='и' yes='0' no='1'/>
+	</tree>
+	<tree ltr='ц' rootnode='N1' terminal='1' nonterminal='0'>
+		<node id='T0' val='ts'/>
+	</tree>
+	<tree ltr='ч' rootnode='N2' terminal='2' nonterminal='1'>
+		<node id='T0' val='shj'/>
+		<node id='T1' val='ch'/>
+		<node id='N2' pos='p.name' posval='с' yes='0' no='1'/>
+	</tree>
+	<tree ltr='ш' rootnode='N2' terminal='2' nonterminal='1'>
+		<node id='T0' val='0'/>
+		<node id='T1' val='sh'/>
+		<node id='N2' pos='n.name' posval='ь' yes='0' no='1'/>
+	</tree>
+	<tree ltr='щ' rootnode='N1' terminal='1' nonterminal='0'>
+		<node id='T0' val='shj'/>
+	</tree>
+	<tree ltr='ъ' rootnode='N1' terminal='1' nonterminal='0'>
+		<node id='T0' val='j'/>
+	</tree>
+	<tree ltr='ы' rootnode='N1' terminal='1' nonterminal='0'>
+		<node id='T0' val='y0'/>
+	</tree>
+	<tree ltr='ь' rootnode='N10' terminal='10' nonterminal='13'>
+		<node id='T0' val='sj'/>
+		<node id='T1' val='lj'/>
+		<node id='T2' val='tj'/>
+		<node id='T3' val='sh'/>
+		<node id='T4' val='nj'/>
+		<node id='T5' val='ch'/>
+		<node id='T6' val='rj'/>
+		<node id='T7' val='ts'/>
+		<node id='T8' val='j'/>
+		<node id='T9' val='dj'/>
+		<node id='N10' pos='p.name' posval='с' yes='0' no='22'/>
+		<node id='N11' pos='p.p.p.p.p.name' posval='#' yes='5' no='6'/>
+		<node id='N12' pos='p.name' posval='н' yes='4' no='11'/>
+		<node id='N13' pos='p.name' posval='ш' yes='3' no='12'/>
+		<node id='N14' pos='p.name' posval='т' yes='2' no='13'/>
+		<node id='N15' pos='n.name' posval='к' yes='4' no='8'/>
+		<node id='N16' pos='p.name' posval='д' yes='9' no='8'/>
+		<node id='N17' pos='n.n.name' posval='#' yes='8' no='16'/>
+		<node id='N18' pos='p.name' posval='р' yes='8' no='17'/>
+		<node id='N19' pos='p.name' posval='н' yes='15' no='18'/>
+		<node id='N20' pos='n.name' posval='с' yes='7' no='19'/>
+		<node id='N21' pos='n.name' posval='#' yes='14' no='20'/>
+		<node id='N22' pos='p.name' posval='л' yes='1' no='21'/>
+	</tree>
+	<tree ltr='э' rootnode='N2' terminal='2' nonterminal='1'>
+		<node id='T0' val='e0'/>
+		<node id='T1' val='y0'/>
+		<node id='N2' pos='n.n.n.n.n.n.name' posval='#' yes='0' no='1'/>
+	</tree>
+	<tree ltr='ю' rootnode='N2' terminal='2' nonterminal='9'>
+		<node id='T0' val='u0'/>
+		<node id='T1' val='j_u0'/>
+		<node id='N2' pos='p.name' posval='л' yes='0' no='10'/>
+		<node id='N3' pos='p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N4' pos='n.name' posval='#' yes='1' no='3'/>
+		<node id='N5' pos='p.name' posval='#' yes='1' no='4'/>
+		<node id='N6' pos='p.name' posval='а' yes='1' no='5'/>
+		<node id='N7' pos='p.p.p.p.p.name' posval='#' yes='6' no='1'/>
+		<node id='N8' pos='p.name' posval='р' yes='0' no='7'/>
+		<node id='N9' pos='p.name' posval='н' yes='0' no='8'/>
+		<node id='N10' pos='p.name' posval='ь' yes='0' no='9'/>
+	</tree>
+	<tree ltr='я' rootnode='N4' terminal='4' nonterminal='37'>
+		<node id='T0' val='a0'/>
+		<node id='T1' val='j_a0'/>
+		<node id='T2' val='j_i0'/>
+		<node id='T3' val='i0'/>
+		<node id='N4' pos='n.name' posval='#' yes='11' no='40'/>
+		<node id='N5' pos='p.p.p.p.p.p.name' posval='#' yes='0' no='1'/>
+		<node id='N6' pos='p.name' posval='д' yes='0' no='5'/>
+		<node id='N7' pos='p.name' posval='ь' yes='0' no='6'/>
+		<node id='N8' pos='p.name' posval='л' yes='0' no='7'/>
+		<node id='N9' pos='p.name' posval='и' yes='1' no='8'/>
+		<node id='N10' pos='p.name' posval='а' yes='1' no='9'/>
+		<node id='N11' pos='p.name' posval='с' yes='0' no='10'/>
+		<node id='N12' pos='n.n.n.n.n.name' posval='#' yes='1' no='2'/>
+		<node id='N13' pos='n.n.n.name' posval='#' yes='2' no='1'/>
+		<node id='N14' pos='n.n.n.name' posval='#' yes='2' no='3'/>
+		<node id='N15' pos='p.p.p.p.p.name' posval='#' yes='3' no='0'/>
+		<node id='N16' pos='p.p.name' posval='е' yes='0' no='15'/>
+		<node id='N17' pos='p.name' posval='н' yes='0' no='16'/>
+		<node id='N18' pos='n.n.n.name' posval='#' yes='3' no='0'/>
+		<node id='N19' pos='p.p.p.p.name' posval='#' yes='3' no='0'/>
+		<node id='N20' pos='p.p.p.name' posval='#' yes='0' no='19'/>
+		<node id='N21' pos='p.name' posval='л' yes='0' no='20'/>
+		<node id='N22' pos='p.name' posval='р' yes='0' no='21'/>
+		<node id='N23' pos='n.name' posval='л' yes='0' no='22'/>
+		<node id='N24' pos='n.name' posval='н' yes='0' no='23'/>
+		<node id='N25' pos='p.name' posval='н' yes='18' no='24'/>
+		<node id='N26' pos='n.n.n.name' posval='т' yes='3' no='25'/>
+		<node id='N27' pos='p.p.p.p.name' posval='т' yes='0' no='26'/>
+		<node id='N28' pos='n.name' posval='х' yes='3' no='27'/>
+		<node id='N29' pos='n.n.n.name' posval='н' yes='3' no='28'/>
+		<node id='N30' pos='p.p.p.name' posval='х' yes='0' no='29'/>
+		<node id='N31' pos='n.name' posval='т' yes='17' no='30'/>
+		<node id='N32' pos='n.name' posval='м' yes='3' no='31'/>
+		<node id='N33' pos='p.p.name' posval='в' yes='0' no='32'/>
+		<node id='N34' pos='n.n.n.name' posval='л' yes='3' no='33'/>
+		<node id='N35' pos='n.name' posval='с' yes='14' no='34'/>
+		<node id='N36' pos='p.name' posval='е' yes='2' no='35'/>
+		<node id='N37' pos='p.name' posval='и' yes='13' no='36'/>
+		<node id='N38' pos='p.name' posval='#' yes='12' no='37'/>
+		<node id='N39' pos='p.name' posval='а' yes='2' no='38'/>
+		<node id='N40' pos='p.name' posval='о' yes='1' no='39'/>
+	</tree>
+</lts>

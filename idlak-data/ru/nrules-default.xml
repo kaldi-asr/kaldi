@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rules xmlns="http://www.cereproc.com/rulesdat" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.cereproc.com/rulesdat rulesdat.xsd ">
+
+<regex name="whitespace">
+  <comment>
+    Overide default to regard hypens as wspace until norm rules added
+    to deal with hypenation.
+  </comment>
+  <exp>
+    <![CDATA[^([ \n\t\r\-]+)]]>
+  </exp>
+</regex>
+
+  <regex name="separators">
+    <comment>
+      Important: DO NOT REMOVE
+      It is used by the tokeniser to tokenise these characters separately
+    </comment>
+    <exp>
+      <![CDATA[^([+\/\*=$£€¥₩@&%|\\#~^¬])$]]>
+    </exp>
+  </regex>
+
+  <regex name="alpha">
+    <comment>
+      Important: Do not delete this regex, as it is used by the normaliser
+      internally.
+      Also, extend it with the language-specific letters.
+    </comment>
+    <exp>
+      <![CDATA[^[а-яА-Я_']+$]]>
+    </exp>
+  </regex>
+
+  <lookup name="downcase">
+    <comment>
+      Important: Do not delete this table, as it is used by the normaliser
+      internally.
+      Also, extend it with the language-specific letters.
+    </comment>
+    <exp>
+      <![CDATA[{"A":"a", "B":"b", "C":"c", "D":"d", "E":"e", "F":"f", "G":"g", "H":"h", "I":"i", "J":"j", "K":"k", "L":"l", "M":"m", "N":"n", "O":"o", "P":"p", "Q":"q", "R":"r", "S":"s", "T":"t", "U":"u", "V":"v", "W":"w", "X":"x", "Y":"y", "Z":"z", "Ä":"ä", "Ö":"ö", "Ü":"ü", "А":"а", "Б":"б", "В":"в", "Г":"г", "Д":"д", "Е":"е", "Ё":"ё", "Ж":"ж", "З":"з", "И":"и", "Й":"й", "К":"к", "Л":"л", "М":"м", "Н":"н", "О":"о", "П":"п", "Р":"р", "С":"с", "Т":"т", "У":"у", "Ф":"ф", "Х":"х", "Ц":"ц", "Ч":"ч", "Ш":"ш", "Щ":"щ", "Ъ":"ъ", "Ы":"ы", "Ь":"ь", "Э":"э", "Ю":"ю", "Я":"я}]]>
+    </exp>
+  </lookup>
+
+  <lookup name="convertillegal">
+    <comment>
+      Important: Do not delete this table, as it is used by the normaliser internally.
+    </comment>
+    <exp>
+      <![CDATA["й":"й", "À":"А", "Á":"А", "Â":"А", "Ã":"А", "Å":"А", "Æ":"АЕ", "à":"а", "á":"а", "È":"Е", "É":"Е", "Ë":"Ё", "è":"е", "é":"е", "ë":"ё", "ò":"о", "ó":"о", "１":"1", "２":"2", "３":"3", "４":"4", "５":"5", "６":"6", "７":"7", "８":"8", "９":"9", "Ａ":"A", "Ｂ":"B", "Ｃ":"C", "Ｄ":"D", "Ｅ":"E", "Ｆ":"F", "Ｇ":"G", "Ｈ":"H", "Ｉ":"I", "Ｊ":"J", "Ｋ":"K", "Ｌ":"L", "Ｍ":"M", "Ｎ":"N", "Ｏ":"O", "Ｐ":"P", "Ｑ":"Q", "Ｒ":"R", "Ｓ":"S", "Ｔ":"T", "Ｕ":"U", "Ｖ":"V", "Ｗ":"W", "Ｘ":"X", "Ｙ":"Y", "Ｚ":"Z", "ａ":"a", "ｂ":"b", "ｃ":"c", "ｄ":"d", "ｅ":"e", "ｆ":"f", "ｇ":"g", "ｈ":"h", "ｉ":"i", "ｊ":"j", "ｋ":"k", "ｌ":"l", "ｍ":"m", "ｎ":"n", "ｏ":"o", "ｐ":"p", "ｑ":"q", "ｒ":"r", "ｓ":"s", "ｔ":"t", "ｕ":"u", "ｖ":"v", "ｗ":"w", "ｘ":"x", "ｙ":"y", "ｚ":"z"]]>
+    </exp>
+  </lookup>
+
+  <lookup name="utfpunc2ascii">
+    <comment>
+      Important: Do not delete this table, as it is used by the normaliser
+      internally.
+    </comment>
+    <exp>
+      <![CDATA[{"‘":"'", "’":"'", "‛":"'", '“':'"', '”':'"',"΄":"'", "´":"'", "`":"'", "…":".", "\uFF06":"&", "„":'"', '–':'-', '–':'-', '–':'-', '—':'-', "＇":"'"}]]>
+    </exp>
+  </lookup>
+  <lookup name="asdigits">
+    <comment>
+      This is used for 'H:asdigits'.
+    </comment>
+    <exp>
+      <![CDATA[{'0':'ноль', '1':'один', '2':'два', '3':'три', '4':'четыре', '5':'пять', '6':'шесть', '7':'семь', '8':'восемь', '9':'девять'}]]>
+    </exp>
+  </lookup>
+
+  <lookup name="symbols">
+    <comment>
+      Important, do not delete: Used by the hard-coded rule "H:aschars"
+    </comment>
+    <exp>
+      <![CDATA[{"\":"бэкслэш", "_": "нижнее подчёркивание", "*":"звёздочка", "#":"хэш", "@":"собака", ".":"точка", "~":"тильда", "%":"процент", "<":"меньше чем", ">":"больше чем", "=":"равно", "&":"амперсанд", "+":"плюс", "÷": "разделить на", "¢": "центов", ":":"двоеточие", "/":"слэш", ",":"запятая", "°":"градусов", "?":"вопросительный знак", "!":"восклицательный знак", "½":"половина", "¼":"четверть", "¾":"три четверти", "©":"копирайт", "²":"в квадрате", "³":"в кубе", "×":"раз", "·":"точка", "√":"квадратный корень"}]]>
+    </exp>
+  </lookup>
+
+</rules>
