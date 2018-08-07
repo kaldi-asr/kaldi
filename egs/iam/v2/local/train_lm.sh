@@ -58,7 +58,12 @@ if [ $stage -le 0 ]; then
   rm ${dir}/data/text/* 2>/dev/null || true
 
   # Using LOB and brown corpus.
-  cat data/local/lob.txt | \
+  if [ ! -f data/local/lob-train-only.txt ]; then
+    cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt | \
+      local/remove_test_utterances_from_lob.py data/test/text data/val/text \
+                                               > data/local/lob-train-only.txt
+  fi
+  cat data/local/lob-train-only.txt | \
     local/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
     | sed 's/@@//g' > ${dir}/data/text/lob.txt
   cat data/local/browncorpus/brown.txt | \
