@@ -110,9 +110,7 @@ ContextFstImpl<Arc, LabelT>::ContextFstImpl(Label subsequential_symbol,  // epsi
     assert(N>0 && P>=0 && P<N);
   }
   SetType("context");
-  assert(subsequential_symbol_ != 0);  // it's OK to be kNoLabel though, if it never appears in ifst.
 
-  assert(disambig_syms_.count(subsequential_symbol_) == 0 && phone_syms_.count(subsequential_symbol_) == 0);
 
   vector<LabelT> eps_vec;  // empty vec.
   // Make sure the symbol that equates to epsilon is zero in our numbering.
@@ -136,7 +134,6 @@ ContextFstImpl<Arc, LabelT>::ContextFstImpl(Label subsequential_symbol,  // epsi
     assert(pseudo_eps_symbol_ == 1);
   } else pseudo_eps_symbol_ = 0;  // use actual epsilon.
 }
-
 
 
 template<class Arc, class LabelT>

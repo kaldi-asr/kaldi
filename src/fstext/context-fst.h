@@ -42,10 +42,10 @@
 #ifndef KALDI_FSTEXT_CONTEXT_FST_H_
 #define KALDI_FSTEXT_CONTEXT_FST_H_
 
-/* This header defines a context FST "C" which transduces from symbols representing phone
-   context windows (e.g. "a, b, c") to individual phone, e.g. "a".  The context
-   FST is an on-demand FST.  It has its own matcher type that makes it particularly
-   efficient to compose with.
+/* This header defines a context FST "C" (the "C" in "HCLG") which transduces
+   from symbols representing phone context windows (e.g. "a, b, c") to
+   individual phones, e.g. "a".  Search for "hbka.pdf" ("Speech Recognition
+   with Weighted Finite State Transducers") by M. Mohri, for more context.
 */
 
 #include <unordered_map>
@@ -58,6 +58,7 @@ using std::unordered_map;
 #include <fst/fst-decl.h>
 
 #include "util/const-integer-set.h"
+#include "fstext/deterministic-fst.h"
 
 namespace fst {
 
@@ -100,8 +101,8 @@ class ContextFstImpl : public CacheImpl<Arc> {
   ContextFstImpl(Label subsequential_symbol,  // epsilon not allowed.
                  const vector<LabelT> &phones,
                  const vector<LabelT> &disambig_syms,
-                 int32 N,  // size of ctx window
-                 int32 P);
+                 int32 context_width,  // size of ctx window
+                 int32 central_position);
 
   ContextFstImpl(const ContextFstImpl &other);
 
@@ -175,12 +176,11 @@ class ContextFstImpl : public CacheImpl<Arc> {
   // of the graph.  If we have "real" disambiguation symbols AND N > P+1, then this cannot be
   // epsilon or there is a danger of non-determinizable output.  It's because in this case,
   // the disambiguation symbols are shifted left w.r.t. the phones, and there becomes
-  // and ambiguity if a disambiguation symbol appears at the start of a sequence onthe
+  // an ambiguity if a disambiguation symbol appears at the start of a sequence on the
   // input of CLG, whether it was at the very start of the input of LG, or just after, say,
   // the first real phone.  What we do if we need pseudo_eps_symbol_ to be not epsilon,
   // we create a special symbol with symbol-id 1 and sequence representation (ilabels entry)
   // [ 0 ] .  In the printed form we call this #-1.
-  std::string separator_;
 };
 
 }  // namespace internal
@@ -261,6 +261,9 @@ class ContextFst : public ImplToFst<internal::ContextFstImpl<Arc, LabelT>> {
   ContextFst &operator=(const ContextFst &fst) = delete;
 };
 
+
+
+
 /// Useful utility function for writing these vectors to disk.
 /// writes as int32 for binary compatibility since it will typically be "int".
 template<class I>
@@ -280,7 +283,6 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
                                          const SymbolTable &phones_symtab,
                                          std::string separator,
                                          std::string disambig_prefix);  // e.g. separator = "/", disambig_prefix = "#"
-
 
 
 // Specialization for ContextFst, of StateIterator.
@@ -469,6 +471,171 @@ inline void ComposeContext(const vector<int32> &disambig_syms,
 template<class Arc>
 void AddSubsequentialLoop(typename Arc::Label subseq_symbol,
                           MutableFst<Arc> *fst);
+
+
+/*
+   InverseContextFst represents the inverse of the context FST "C" (the "C" in
+   "HCLG") which transduces from symbols representing phone context windows
+   (e.g. "a, b, c") to individual phones, e.g. "a".  So InverseContextFst
+   transduces from phones to symbols representing phone context windows.  The
+   point is that the inverse is deterministic, so the DeterministicOnDemandFst
+   interface is applicable, which turns out to be a convenient way to implement
+   this.
+
+   This doesn't implement the full Fst interface, it implements the
+   DeterministicOnDemandFst interface which is much simpler and which is
+   sufficient for what we need to do with this.
+
+   Search for "hbka.pdf" ("Speech Recognition with Weighted Finite State
+   Transducers") by M. Mohri, for more context.
+*/
+
+class InverseContextFst: public DeterministicOnDemandFst<StdArc> {
+public:
+  typedef StdArc Arc;
+  typedef typename StdArc::StateId StateId;
+  typedef typename StdArc::Weight Weight;
+  typedef typename StdArc::Label Label;
+
+  /// See \ref graph_context for more details.
+  InverseContextFst(Label subsequential_symbol,  // epsilon not allowed.
+                    const vector<int32>& phones,  // symbols on output side of fst.
+                    const vector<int32>& disambig_syms,  // symbols on output side of fst.
+                    int32 N,  // Size of context window
+                    int32 P);  // Pos of "central" phone in ctx window, from 0..N-1.
+
+
+  virtual StateId Start() { return 0; }
+
+  virtual Weight Final(StateId s);
+
+  /// Note: ilabel must not be epsilon.
+  virtual bool GetArc(StateId s, Label ilabel, Arc *arc);
+
+  ~InverseContextFst() { }
+
+private:
+
+  /// Returns the state-id corresponding to this vector of phones; creates the
+  /// state it if necessary.  Requires seq.size() == context_width_ - 1.
+  StateId FindState(const vector<int32> &seq);
+
+  /// Finds the label index corresponding to this context-window of phones
+  /// (likely of width context_width_).  Inserts it into the
+  /// ilabel_info_/ilabel_map_ tables if necessary.
+  Label FindLabel(const vector<int32> &label_info);
+
+  inline bool IsDisambigSymbol(Label lab) { return (disambig_syms_.count(lab) != 0); }
+
+  inline bool IsPhoneSymbol(Label lab) { return (phone_syms_.count(lab) != 0); }
+
+  /// Create disambiguation-symbol self-loop arc; where 'ilabel' must correspond to
+  /// a disambiguation symbol.  Called from CreateArc().
+  inline void CreateDisambigArc(StateId s, Label ilabel, Arc *arc);
+
+  /// Creates an arc, this function is to be called only when 'ilabel'
+  /// corresponds to a phone.  Called from CreateArc().  The olabel may end be
+  /// epsilon, instead of a phone-in-context, if the system has right context
+  /// and we are very near the beginning of the phone sequence.
+  inline void CreatePhoneOrEpsArc(StateId src, StateId dst, Label ilabel,
+                                  const vector<int32> &phone_seq, Arc *arc);
+
+
+  /// If phone_seq is nonempty then this function it left by one and appends
+  /// 'label' to it, otherwise it does nothing.  We expect (but do not check)
+  /// that phone_seq->size() == context_width_ - 1.
+  inline void ShiftSequenceLeft(Label label, std::vector<int32> *phone_seq);
+
+  /// This utility function does something equivalent to the following 3 steps:
+  ///   *full_phone_sequence =  seq;
+  ///  full_phone_sequence->append(label)
+  ///  Replace any values equal to 'subsequential_symbol_' in
+  /// full_phone_sequence with zero (this is to avoid having to keep track of
+  /// the value of 'subsequential_symbol_' outside of this program).
+  /// This function assumes that seq.size() == context_width_ - 1, and also that
+  /// 'subsequential_symbol_' does not appear in positions 0 through
+  /// central_position_ of 'seq'.
+  inline void GetFullPhoneSequence(const std::vector<int32> &seq, Label label,
+                                   std::vector<int32> *full_phone_sequence);
+
+  // Map type to map from vectors of int32 (representing phonetic contexts,
+  // which will be of dimension context_width - 1) to StateId (corresponding to
+  // the state index in this FST).
+  typedef unordered_map<vector<int32>, StateId,
+                        kaldi::VectorHasher<int32> > VectorToStateMap;
+
+  // Map type to map from vectors of int32 (representing ilabel-info,
+  // see http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel) to
+  // Label (the output label in this FST).
+  typedef unordered_map<vector<int32>, Label,
+                        kaldi::VectorHasher<int32> > VectorToLabelMap;
+
+
+  // Sometimes called N, context_width_ this is the width of the
+  // phonetic context, e.g. 3 for triphone, 2 for biphone, one for monophone.
+  // It is a user-specified value.
+  int32 context_width_;
+
+  // Sometimes called P, central_position_ is is the (zero-based) "central
+  // position" in the context window, meaning the phone that is "in" a certain
+  // context.  The most widely used values of (context-width, central-position)
+  // are: (3,1) for triphone, (1,0) for monophone, and (2, 1) for left biphone.
+  // This is also specified by the user.  As an example, in the left-biphone
+  // [ 5, 6 ], we view it as "the phone numbered 6 with the phone numbered 5 as
+  // its left-context".
+  int32 central_position_;
+
+  // The following three variables were also passed in by the caller:
+
+  // 'phone_syms_' are a set of phone-ids, typically 1, 2, .. num_phones.
+  kaldi::ConstIntegerSet<Label> phone_syms_;
+
+  // disambig_syms_ is the set of integer ids of the disambiguation symbols,
+  // usually represented in text form as #0, #1, #2, etc.  These are inserted
+  // into the grammar (for #0) and the lexicon (for #1, #2, ...) in order to
+  // make the composed FSTs determinizable.  They are treated "specially" by the
+  // context FST in that they are not part of the context, they are just "passed
+  // through" via self-loops.  See the Mohri chapter mrentioned above for more
+  // information.
+  kaldi::ConstIntegerSet<Label> disambig_syms_;
+
+  // subsequential_symbol_, represented as "$" in the Mohri chapter mentioned
+  // above, is something which terminates phonetic sequences to force out the
+  // last phones-in-context.  In our implementation it's added to det(LG) as a
+  // self-loop on final states before composing with C.
+  // (c.f. AddSubsequentialLoop()).
+  Label subsequential_symbol_;
+
+
+  // pseudo_eps_symbol_, which in printed form we refer to as "#-1", is a symbol that
+  // appears on the ilabels of the context transducer C, i.e. the olabels of this
+  // FST which is C's inverse.  It is a symbol we introduce to solve a special problem
+  // in systems with right-context (context_width_ > central_position_ + 1) that
+  // use disambiguation symbols.  It exists to prevent CLG from being nondeterminizable.
+  //
+  // The issue is that, in this case, the disambiguation symbols are shifted
+  // left w.r.t. the phones, and there becomes an ambiguity, if a disambiguation
+  // symbol appears at the start of a sequence on the input of CLG, about
+  // whether it was at the very start of the input of LG, or just after, say,
+  // the first real phone.  This can lead to determinization failure under
+  // certain circumstances.  What we do if we need pseudo_eps_symbol_ to be not
+  // epsilon, we create a special symbol with symbol-id 1 and sequence
+  // representation (ilabels entry) [ 0 ] .
+  int32 pseudo_eps_symbol_;
+
+  // maps from vector<int32>, representing phonetic contexts of length
+  // context_width-1, to StateId.  (The states of the "C" fst correspond to
+  // phonetic contexts, but we only create them as and when they are needed).
+  VectorToStateMap state_map_;
+
+  // The inverse of 'state_map_': gives us the phonetic context corresponding to
+  // each state-id.
+  vector<vector<int32> > state_seqs_;
+
+
+
+};
+
 
 /// @}
 }  // namespace fst
