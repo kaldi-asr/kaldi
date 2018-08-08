@@ -3,6 +3,7 @@
 # Copyright 2017 John Morgan
 # Apache 2.0.
 
+dir=$1
 . ./cmd.sh
 
 . ./path.sh
@@ -14,7 +15,7 @@ set -e
 set -o pipefail
 
 tmpdir=data/local/tmp
-datadir=$(pwd)/LDC2006S37
+datadir=$(pwd)/$dir
 
 # acoustic models are trained on the heroico corpus
 # testing is done on the usma corpus
