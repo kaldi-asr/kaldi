@@ -7,7 +7,6 @@
 # 1. Formosa Speech in the Wild (FSW) project (https://sites.google.com/speech.ntut.edu.tw/fsw/home/corpus)
 # 2. Formosa Speech Recognition Challenge (FSW) 2018 (https://sites.google.com/speech.ntut.edu.tw/fsw/home/challenge)
 stage=-2
-train_stage=-10
 num_jobs=20
 
 # shell options
@@ -194,25 +193,20 @@ if [ $stage -le 5 ]; then
 fi
 
 # nnet3 tdnn models
+# commented out by default, since the chain model is usually faster and better
 if [ $stage -le 6 ]; then
 
-  echo "$0: train nnet3 model"
-  local/nnet3/run_tdnn.sh --stage $train_stage
+  # echo "$0: train nnet3 model"
+  # local/nnet3/run_tdnn.sh
 
 fi
 
 # chain model
 if [ $stage -le 7 ]; then
 
-  # The iVector-extraction and feature-dumping parts are the same as the standard
-  # nnet3 setup, we can skip them by setting "--train_stage 8", since we have already
-  # run those things in previous stage.
-  if [ $train_stage -eq -10 ] then
-    train_stage=7
-  fi
-
+  # The iVector-extraction and feature-dumping parts coulb be skipped by setting "--train_stage 7"
   echo "$0: train chain model"
-  local/chain/run_tdnn.sh --stage $train_stage
+  local/chain/run_tdnn.sh
 
 fi
 
