@@ -44,8 +44,6 @@
     <item name="z"/>
     <item name="zh"/>
     <item name="sil"/>
-    <item name="X"/>
-
   </set>
   <set name="pos" null="0">
     <item name="CC"/>
