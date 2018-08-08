@@ -293,4 +293,108 @@ void ComposeContext(const vector<int32> &disambig_syms_in,
   *ilabels_out = inv_c.IlabelInfo();
 }
 
+void AddSubsequentialLoop(StdArc::Label subseq_symbol,
+                          MutableFst<StdArc> *fst) {
+  typedef StdArc Arc;
+  typedef typename Arc::StateId StateId;
+  typedef typename Arc::Weight Weight;
+
+  vector<StateId> final_states;
+  for (StateIterator<MutableFst<Arc> > siter(*fst); !siter.Done(); siter.Next()) {
+    StateId s = siter.Value();
+    if (fst->Final(s) != Weight::Zero())  final_states.push_back(s);
+  }
+
+  StateId superfinal = fst->AddState();
+  Arc arc(subseq_symbol, 0, Weight::One(), superfinal);
+  fst->AddArc(superfinal, arc);  // loop at superfinal.
+  fst->SetFinal(superfinal, Weight::One());
+
+  for (size_t i = 0; i < final_states.size(); i++) {
+    StateId s = final_states[i];
+    fst->AddArc(s, Arc(subseq_symbol, 0, fst->Final(s), superfinal));
+    // No, don't remove the final-weights of the original states..
+    // this is so we can add the subsequential loop in cases where
+    // there is no context, and it won't hurt.
+    // fst->SetFinal(s, Weight::Zero());
+    arc.nextstate = final_states[i];
+  }
+}
+
+void WriteILabelInfo(std::ostream &os, bool binary,
+                     const vector<vector<int32> > &info) {
+  int32 size = info.size();
+  kaldi::WriteBasicType(os, binary, size);
+  for (int32 i = 0; i < size; i++) {
+    kaldi::WriteIntegerVector(os, binary, info[i]);
+  }
+}
+
+
+void ReadILabelInfo(std::istream &is, bool binary,
+                    vector<vector<int32> > *info) {
+  int32 size = info->size();
+  kaldi::ReadBasicType(is, binary, &size);
+  info->resize(size);
+  for (int32 i = 0; i < size; i++) {
+    kaldi::ReadIntegerVector(is, binary, &((*info)[i]));
+  }
+}
+
+SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<int32> > &info,
+                                         const SymbolTable &phones_symtab,
+                                         std::string separator,
+                                         std::string initial_disambig) {  // e.g. separator = "/", initial-disambig="#-1"
+  KALDI_ASSERT(!info.empty() && !info[0].empty());
+  SymbolTable *ans = new SymbolTable("ilabel-info-symtab");
+  int64 s = ans->AddSymbol(phones_symtab.Find(static_cast<int64>(0)));
+  assert(s == 0);
+  for (size_t i = 1; i < info.size(); i++) {
+    if (info[i].size() == 0) {
+      KALDI_ERR << "Invalid ilabel-info";
+    }
+    if (info[i].size() == 1 &&
+       info[i][0] <= 0) {
+      if (info[i][0] == 0) {  // special symbol at start that we want to call #-1.
+        s = ans->AddSymbol(initial_disambig);
+        if (s != i) {
+          KALDI_ERR << "Disambig symbol " << initial_disambig
+                    << " already in vocab";
+        }
+      } else {
+        std::string disambig_sym = phones_symtab.Find(-info[i][0]);
+        if (disambig_sym == "") {
+          KALDI_ERR << "Disambig symbol " << -info[i][0]
+                    << " not in phone symbol-table";
+        }
+        s = ans->AddSymbol(disambig_sym);
+        if (s != i) {
+          KALDI_ERR << "Disambig symbol " << disambig_sym
+                    << " already in vocab";
+        }
+      }
+    } else {
+      // is a phone-context-window.
+      std::string newsym;
+      for (size_t j = 0; j < info[i].size(); j++) {
+        std::string phonesym = phones_symtab.Find(info[i][j]);
+        if (phonesym == "") {
+          KALDI_ERR << "Symbol " << info[i][j]
+                    << " not in phone symbol-table";
+        }
+        if (j != 0) newsym += separator;
+        newsym += phonesym;
+      }
+      int64 s = ans->AddSymbol(newsym);
+      if (s != static_cast<int64>(i)) {
+        KALDI_ERR << "Some problem with duplicate symbols";
+      }
+    }
+  }
+  return ans;
+}
+
+
+
+
 }  // end namespace fst
