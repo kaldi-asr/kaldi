@@ -116,9 +116,6 @@ if [ $frame_subsampling_factor -ne 1 ]; then
   frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
 fi
 
-# convert $dir to absolute pathname
-fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
-
 # Possibly use multi-threaded decoder
 thread_string=
 [ $num_threads -gt 1 ] && thread_string="-parallel --num-threads=$num_threads"
