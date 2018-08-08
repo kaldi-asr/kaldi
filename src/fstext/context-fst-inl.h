@@ -470,44 +470,7 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<I> > &info,
   return ans;
 }
 
-inline void ComposeContext(const vector<int32> &disambig_syms_in,
-                           int N, int P,
-                           VectorFst<StdArc> *ifst,
-                           VectorFst<StdArc> *ofst,
-                           vector<vector<int32> > *ilabels_out) {
-  assert(ifst != NULL && ofst != NULL);
-  assert(N > 0);
-  assert(P >= 0);
-  assert(P < N);
 
-  vector<int32> disambig_syms(disambig_syms_in);
-  std::sort(disambig_syms.begin(), disambig_syms.end());
-  vector<int32> all_syms;
-  GetInputSymbols(*ifst, false/*no eps*/, &all_syms);
-  std::sort(all_syms.begin(), all_syms.end());
-  vector<int32> phones;
-  for (size_t i = 0; i < all_syms.size(); i++)
-    if (!std::binary_search(disambig_syms.begin(),
-                            disambig_syms.end(), all_syms[i]))
-      phones.push_back(all_syms[i]);
-
-  // Get subsequential symbol that does not clash with
-  // any disambiguation symbol or symbol in the FST.
-  int32 subseq_sym = 1;
-  if (!all_syms.empty())
-    subseq_sym = std::max(subseq_sym, all_syms.back() + 1);
-  if (!disambig_syms.empty())
-    subseq_sym = std::max(subseq_sym, disambig_syms.back() + 1);
-
-  // if P == N-1, it's left-context, and no subsequential symbol needed.
-  if (P != N-1)
-    AddSubsequentialLoop(subseq_sym, ifst);
-  ContextFst<StdArc, int32> cfst(subseq_sym, phones, disambig_syms, N, P);
-  ComposeContextFst(cfst, *ifst, ofst);
-  *ilabels_out = cfst.ILabelInfo();
-}
-
-///
 
 }  // namespace fst
 

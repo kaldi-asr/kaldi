@@ -446,12 +446,30 @@ void ComposeContextFst(const ContextFst<Arc, LabelT> &ifst1, const Fst<Arc> &ifs
    composes it on the left with "ifst" to make "ofst".  It outputs the label
    information to ilabels_out.  "ifst" is mutable because we need to add the
    subsequential loop.
+
+    @param disambig_syms  List of disambiguation symbols (on the output side
+             of C.fst.
+    @param context_width  Size of context window, e.g. 3 for triphone.
+    @param central_position  Central position in context window, e.g. 1 for
+                        triphone.
+    @param ifst   FST we are composing with C (e.g. LG.fst), mustable because
+                  we need to add the subsequential loop to it.
+    @param ofst   Composed output FST (would be CLG.fst).
+    @param ilabels_out  Vector, indexed by ilabel of CLG.fst, providing information
+                  about the meaning of that ilabel; see
+                  "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel".
+    @param project_ifst  This is intended only to be set to true
+                  in the program 'fstmakecontextfst'... if true, it will
+                  project on the input after adding the subsequential loop
+                  to 'ifst', which allows us to reconstruct the context
+                  fst C.fst.
  */
-inline void ComposeContext(const vector<int32> &disambig_syms,
-                           int N, int P,
-                           VectorFst<StdArc> *ifst,
-                           VectorFst<StdArc> *ofst,
-                           vector<vector<int32> > *ilabels_out);
+void ComposeContext(const vector<int32> &disambig_syms,
+                    int32 context_width, int32 central_position,
+                    VectorFst<StdArc> *ifst,
+                    VectorFst<StdArc> *ofst,
+                    vector<vector<int32> > *ilabels_out,
+                    bool project_ifst = false);
 
 
 /**
@@ -513,6 +531,15 @@ public:
   virtual bool GetArc(StateId s, Label ilabel, Arc *arc);
 
   ~InverseContextFst() { }
+
+  // Returns a reference to a vector<vector<int32> > with information about all
+  // the input symbols of C (i.e. all the output symbols of this
+  // InverseContextFst).  See
+  // "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel".
+  const vector<vector<int32> > &IlabelInfo() const {
+    return ilabel_info_;
+  }
+
 
 private:
 
@@ -624,7 +651,7 @@ private:
   int32 pseudo_eps_symbol_;
 
   // maps from vector<int32>, representing phonetic contexts of length
-  // context_width-1, to StateId.  (The states of the "C" fst correspond to
+  // context_width_ - 1, to StateId.  (The states of the "C" fst correspond to
   // phonetic contexts, but we only create them as and when they are needed).
   VectorToStateMap state_map_;
 
@@ -632,7 +659,20 @@ private:
   // each state-id.
   vector<vector<int32> > state_seqs_;
 
+  // maps from vector<int32>, representing phonetic contexts of length
+  // context_width_ - 1, to Label.  These are actually the output labels of this
+  // InverseContextFst (because of the "Inverse" part), but for historical
+  // reasons and because we've used the term ilabels" in the documentation, we
+  // still call these "ilabels").
+  VectorToLabelMap ilabel_map_;
 
+  // ilabel_info_ is the reverse map of ilabel_map_.
+  // Indexed by olabel (although we call this ilabel_info_ for historical
+  // reasons and because is for the ilabels of C), ilabel_info_[i] gives
+  // information about the meaning of each symbol on the input of C
+  // aka the output of inv(C).
+  // See "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel".
+  vector<vector<int32> > ilabel_info_;
 
 };
 
