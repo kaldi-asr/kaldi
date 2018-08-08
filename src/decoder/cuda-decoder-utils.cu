@@ -22,7 +22,7 @@
 
 namespace kaldi {
 
-void get_free_memory_stat(const char *prefix) {
+void GetFreeMemoryStat(const char *prefix) {
 #if 0 // TODO: define of GetFreeMemory
   int32 act_gpu_id;
   cudaError_t e = cudaGetDevice(&act_gpu_id);
@@ -41,8 +41,8 @@ void get_free_memory_stat(const char *prefix) {
 }
 
 // a combination of cudaMallocManaged & cudaMemAdvise
-void cuda_malloc_managed_preferred_device(void** devPtr, size_t size) {
-  cudaMallocManaged(devPtr, size);
+void CudaMallocManagedPreferredDevice(void** devPtr, size_t size) {
+  CU_SAFE_CALL(cudaMallocManaged(devPtr, size));
 #ifdef MEMADVISE
   // Setting the preferred location does not cause data to migrate to
   // that location immediately.
@@ -61,14 +61,13 @@ void cuda_malloc_managed_preferred_device(void** devPtr, size_t size) {
 // CudaHistogram Implementation
 int32 CudaHistogram::Allocate(BaseFloat beam, BaseFloat beam_lowest,
                               BaseFloat step) {
-  assert(step == 1);
   int32 sz = 0;
   beam_ = beam;
   beam_lowest_ = beam_lowest;
   step_ = step;
-  cudaMalloc(&best_cost_, sizeof(BaseFloat)); sz += sizeof(BaseFloat);
+  CU_SAFE_CALL(cudaMalloc(&best_cost_, sizeof(BaseFloat))); sz += sizeof(BaseFloat);
   assert(MAX_HISTOGRAM_SIZE >= beam - beam_lowest);
-  cudaMalloc(&hist_global_, sizeof(int32) * (beam - beam_lowest));
+  CU_SAFE_CALL(cudaMalloc(&hist_global_, sizeof(int32) * (beam - beam_lowest) / step_));
   sz += sizeof(int32) * (beam - beam_lowest);
   return sz;
 }
@@ -95,16 +94,16 @@ void CudaFst::Initialize(const fst::Fst<StdArc> &fst) {
     numStates++;
   }
   start = fst.Start();
-  cudaMallocHost(&final_h, sizeof(float) * numStates);
-  cudaMalloc(&final_d, sizeof(float) * numStates);
+  CU_SAFE_CALL(cudaMallocHost(&final_h, sizeof(float) * numStates));
+  CU_SAFE_CALL(cudaMalloc(&final_d, sizeof(float) * numStates));
 
   // allocate and initialize offset arrays
   e_offsets_h = (unsigned int *)malloc(sizeof(unsigned int) * (numStates + 1));
   ne_offsets_h = (unsigned int *)malloc(sizeof(unsigned int) * (numStates + 1));
 
-  cudaMalloc((void**)&e_offsets_d, sizeof(unsigned int) * (numStates + 1));
+  CU_SAFE_CALL(cudaMalloc((void**)&e_offsets_d, sizeof(unsigned int) * (numStates + 1)));
   bytes_cudaMalloc += sizeof(unsigned int) * (numStates + 1);
-  cudaMalloc((void**)&ne_offsets_d, sizeof(unsigned int) * (numStates + 1));
+  CU_SAFE_CALL(cudaMalloc((void**)&ne_offsets_d, sizeof(unsigned int) * (numStates + 1)));
   bytes_cudaMalloc += sizeof(unsigned int) * (numStates + 1);
 
   memset(e_offsets_h, 0, sizeof(unsigned int) * (numStates + 1));
@@ -154,23 +153,23 @@ void CudaFst::Initialize(const fst::Fst<StdArc> &fst) {
 
   // although using managed memory in the following, we still have a CPU
   // copy to speed up the CPU lattice processing
-  cudaMallocHost(&arc_weights_h, arc_count * sizeof(BaseFloat));
-  cudaMallocHost(&arc_nextstates_h, arc_count * sizeof(StateId));
-  cudaMallocHost(&arc_ilabels_h, arc_count * sizeof(int32));
-  cudaMallocHost(&arc_olabels_h, arc_count * sizeof(int32));
+  CU_SAFE_CALL(cudaMallocHost(&arc_weights_h, arc_count * sizeof(BaseFloat)));
+  CU_SAFE_CALL(cudaMallocHost(&arc_nextstates_h, arc_count * sizeof(StateId)));
+  CU_SAFE_CALL(cudaMallocHost(&arc_ilabels_h, arc_count * sizeof(int32)));
+  CU_SAFE_CALL(cudaMallocHost(&arc_olabels_h, arc_count * sizeof(int32)));
 
   // to reduce memory usage, we use cudaMallocManaged, which doesn't
   // allocate in GPU at once
-  cuda_malloc_managed_preferred_device((void**)&arc_weights_d,
+  CudaMallocManagedPreferredDevice((void**)&arc_weights_d,
                                        arc_count * sizeof(BaseFloat));
   bytes_cudaMalloc += arc_count * sizeof(BaseFloat);
-  cuda_malloc_managed_preferred_device((void**)&arc_nextstates_d,
+  CudaMallocManagedPreferredDevice((void**)&arc_nextstates_d,
                                        arc_count * sizeof(StateId));
   bytes_cudaMalloc += arc_count * sizeof(StateId);
-  cuda_malloc_managed_preferred_device((void**)&arc_ilabels_d,
+  CudaMallocManagedPreferredDevice((void**)&arc_ilabels_d,
                                        arc_count * sizeof(int32));
   bytes_cudaMalloc += arc_count * sizeof(int32);
-  cuda_malloc_managed_preferred_device((void**)&arc_olabels_d,
+  CudaMallocManagedPreferredDevice((void**)&arc_olabels_d,
                                        arc_count * sizeof(int32));
   bytes_cudaMalloc += arc_count * sizeof(int32);
 

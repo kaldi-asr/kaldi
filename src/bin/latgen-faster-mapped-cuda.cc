@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 
     std::string model_in_filename = po.GetArg(1),
                 fst_in_str = po.GetArg(2),
-                feature_rspecifier = po.GetArg(3),
+                loglikes_rspecifier = po.GetArg(3),
                 lattice_wspecifier = po.GetArg(4),
                 words_wspecifier = po.GetOptArg(5),
                 alignment_wspecifier = po.GetOptArg(6);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
 
     double elapsed = 0;
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
-      SequentialBaseFloatMatrixReader loglike_reader(feature_rspecifier);
+      SequentialBaseFloatMatrixReader loglike_reader(loglikes_rspecifier);
       // Input FST is just one FST, not a table of FSTs.
       Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
       CuDevice::Instantiate().SelectGpuId("yes");
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 
           elapsed += timer.Elapsed();
           if (num_success % config.mem_print_freq == 0)
-            get_free_memory_stat("");
+            GetFreeMemoryStat("");
           DecodeUtteranceLatticeFasterCudaOutput(
             decoder, decodable, trans_model, word_syms, utt,
             config.acoustic_scale, determinize, allow_partial, &alignment_writer,

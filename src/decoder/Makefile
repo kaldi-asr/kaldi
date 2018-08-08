@@ -26,8 +26,7 @@ ADDLIBS += ../cudamatrix/kaldi-cudamatrix.a
 
 CUDAOPTS = -O3 $(CUDA_ARCH) 
 #CUDAOPTS += -G  
-CUDA_DEC_OPTS = -DCUDA_API_PER_THREAD_DEFAULT_STREAM -DHAVE_CXXABI_H \
-               -lineinfo -w -DHAVE_EXECINFO_H=1 \
+CUDA_DEC_OPTS = -DHAVE_CXXABI_H -lineinfo -w -DHAVE_EXECINFO_H=1 \
                -DHAVE_ATLAS -Xcompiler "-msse -msse2 -pthread" \
                $(CUDAOPTS) -I.. -I$(OPENFSTINC) 
 

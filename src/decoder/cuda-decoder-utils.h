@@ -21,15 +21,12 @@
 #define KALDI_CUDA_DECODER_UTILS_H_
 
 
-#include <cuda_runtime.h>
-#include <cuda_runtime_api.h>
-#include "cuda_runtime.h"
 #include <algorithm>
+#include "cuda_runtime.h"
 #include <cuda_runtime_api.h>
 #include <float.h>
 #include <math.h>
 #include <cooperative_groups.h>
-#include "math_constants.h"
 
 #include "util/stl-utils.h"
 #include "hmm/transition-model.h"
@@ -109,10 +106,10 @@ const int32 num_colors = sizeof(colors) / sizeof(uint32);
 // host function definition
 
 // get current GPU memory usage
-void get_free_memory_stat(const char *prefix);
+void GetFreeMemoryStat(const char *prefix);
 
 // a combination of cudaMallocManaged & cudaMemAdvise
-void cuda_malloc_managed_preferred_device(void** devPtr, size_t size);
+void CudaMallocManagedPreferredDevice(void** devPtr, size_t size);
 
 // inline host device function definition
 
@@ -182,29 +179,25 @@ inline DEVICE int binsearch_maxle(const int *vec, const int val, int low,
 }
 
 
-// fast load 16 bits using CUDA ASM
+// fast load 16 bytes using CUDA ASM
 inline  DEVICE void fast_load16(void *a, const void *b) {
   const ulong2 *src = reinterpret_cast<const ulong2*>(b);
   ulong2 &dst = *reinterpret_cast<ulong2*>(a);
   asm("ld.global.v2.u64 {%0,%1}, [%2];" : "=l"(dst.x), "=l"(dst.y) : "l"(src));
 }
 
-// fast store 16 bits using CUDA ASM
+// fast store 16 bytes using CUDA ASM
 inline  DEVICE void fast_store16(void *a, const void *b) {
   const ulong2 src = *reinterpret_cast<const ulong2*>(b);
   asm("st.global.v2.u64 [%0], {%1,%2};" :: "l"(a), "l"(src.x), "l"(src.y));
 }
 
-// fast store 8 bits using CUDA ASM
+// fast store 8 bytes using CUDA ASM
 inline  DEVICE void fast_store8(void *a, const void *b) {
-#if 0
-  memcpy(a, b, 8);
-#else
   *(uint64*)a = (*(uint64*)b);
-#endif
 }
 
-// TODO: we need a fast 32 bits storing function
+// TODO: we need a fast 32 bytes storing function
 inline  DEVICE void fast_store32(void *a, const void *b) {
   memcpy(a, b, 32);
 }
@@ -277,7 +270,7 @@ class CudaHistogram {
   }
   inline DEVICE int32 Size() const { return (beam_ - beam_lowest_); }
   inline DEVICE void AddScore2LocalHist(BaseFloat cost, int32 *hist_local) {
-    int32 dist = (int)(cost - *best_cost_);
+    int32 dist = (int)(cost - *best_cost_) / step_;
     assert(dist <= beam_);
     if (dist <= beam_lowest_) hist_local[0]++;
     else if (dist == beam_) hist_local[Size() - 1]++;
@@ -297,7 +290,7 @@ class CudaHistogram {
       acc += hist_global_[i];
       if (acc > cutoff_num) break;
     }
-    BaseFloat ret_beam = i + beam_lowest_;
+    BaseFloat ret_beam = step_ * (i + beam_lowest_);
     *cutoff_from_hist = *best_cost_ + ret_beam;
     if (verbose > 2) {
       CUDA_PRINTF(2, "hist_LF %f %i\n", *cutoff_from_hist, acc);

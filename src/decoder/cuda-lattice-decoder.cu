@@ -937,7 +937,7 @@ int32 LatticeProcessor::Allocate(int32 max_tokens_per_frame,
   // to reduce memory usage, we use cudaMallocManaged, which doesn't
   // allocate in GPU at once
   sz = sizeof(Token) * max_toks;
-  cuda_malloc_managed_preferred_device((void**)&toks_bpr_d, sz);
+  CudaMallocManagedPreferredDevice((void**)&toks_bpr_d, sz);
   bytes_cuda_malloc += sz;
   // if we directly use managed memory from toks_bpr_d, the RTF is 10% larger
   cudaMallocHost((void**)&toks_bpr_h, sz);
@@ -946,7 +946,7 @@ int32 LatticeProcessor::Allocate(int32 max_tokens_per_frame,
   // to reduce memory usage, we use cudaMallocManaged, which doesn't
   // allocate in GPU at once
   sz = sizeof(LatLinkCompact) * max_arcs;
-  cuda_malloc_managed_preferred_device((void**)&arcs_bpr_d, sz);
+  CudaMallocManagedPreferredDevice((void**)&arcs_bpr_d, sz);
   bytes_cuda_malloc += sz;
 
   arcs_buf_before_pr_size = max_arcs;
@@ -965,7 +965,7 @@ int32 LatticeProcessor::Allocate(int32 max_tokens_per_frame,
   sz = ESTIMATED_PRUNE_RATIO * sizeof(LatLink) * max_arcs;
   // to reduce memory usage, we use cudaMallocManaged, which doesn't
   // allocate in GPU at once
-  cuda_malloc_managed_preferred_device((void**)&arcs_apr_d, sz);
+  CudaMallocManagedPreferredDevice((void**)&arcs_apr_d, sz);
   bytes_cuda_malloc += sz;
   cudaMallocHost((void**)&arcs_apr_h, sz);
   sz = sizeof(int32);
@@ -1484,14 +1484,14 @@ CudaLatticeDecoder::CudaLatticeDecoder(const CudaFst &fst, const TransitionModel
   cudaMemcpy(id2pdf_d_, id2pdf_id.data(), data_size, cudaMemcpyHostToDevice);
 
   if (config_.verbose > 1)
-    get_free_memory_stat("After initlization:");
+    GetFreeMemoryStat("After initlization:");
 }
 
 CudaLatticeDecoder::~CudaLatticeDecoder() {
   KALDI_VLOG(1) << "CUDA LatticeDecoder DESTRUCTOR\n";
 
   if (config_.verbose > 1)
-    get_free_memory_stat("End of decoding:");
+    GetFreeMemoryStat("End of decoding:");
 
   for (int32 j = 0; j < LAT_BUF_SIZE; j++) lat_toks_bufs_[j].Free();
   lat_arcs_buf_.Free(true);

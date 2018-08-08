@@ -72,9 +72,9 @@ class DecodableMatrixScaledMapped: public DecodableInterface {
     if (frame >= likes_->NumRows()) return;
     SubVector<BaseFloat> vec = likes_->Row(frame);
     vec.Scale(scale_);
-    for(int i=0;i<count;i++) {
+    for(int i = 0; i < count; i++) {
       BaseFloat val = vec.Data()[trans_model_.TransitionIdToPdf(i)];
-      out[i]=val;
+      out[i] = val;
     }
   };
 
