@@ -58,7 +58,7 @@ if [ $stage -le 2 ]; then
   for set in test train val; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | \
-      local/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/train/bpe.txt \
+      local/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
       | sed 's/@@//g' > data/$set/bpe_text
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
