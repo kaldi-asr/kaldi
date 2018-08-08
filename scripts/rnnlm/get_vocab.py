@@ -9,7 +9,7 @@ import sys
 sys.stdout = open(1, 'w', encoding='latin-1', closefd=False)
 
 import re
-tab_or_space = re.compile('[ \t]')
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script get a vocab from unigram counts "
                                  "of words produced by get_unigram_counts.sh",

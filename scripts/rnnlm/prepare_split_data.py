@@ -9,7 +9,7 @@ import argparse
 import sys
 
 import re
-tab_or_space = re.compile('[ \t]')
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script prepares files containing integerized text, "
                                  "for consumption by nnet3-get-egs.",
