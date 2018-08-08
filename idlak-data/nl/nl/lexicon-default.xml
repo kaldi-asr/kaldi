@@ -34339,7 +34339,6 @@
   <lex pron="t w ee1 d ee2 l ax0 x" entry="full" default="true">tweedelig</lex>
   <lex pron="t w ee1 d ee2 l ax0 gh ax0" entry="full" default="true">tweedelige</lex>
   <lex pron="t w ee0 d ax0 r ah1 ng s" entry="full" default="true">tweederangs</lex>
-  <lex pron="t w ee1 d ui1 z ax0 n t" entry="full" default="true">tweeduizend</lex>
 <lex pron="t w ee1 d ui0 z ax0 n t" entry="full" default="true">tweeduizend</lex>
   <lex pron="t w ee1 gh ax0 v eh0 x t" entry="full" default="true">tweegevecht</lex>
   <lex pron="t w ee1 h oh0 n d ax0 rr t" entry="full" default="true">tweehonderd</lex>
@@ -37220,7 +37219,6 @@
   <lex pron="v ei1 f t iy0 n" entry="full" default="true">vijftien</lex>
   <lex pron="v ei1 f t iy0 n d ax0" entry="full" default="true">vijftiende</lex>
   <lex pron="v ei1 f t iy0 n d ui0 z ax0 n t" entry="full" default="true">vijftienduizend</lex>
-  <lex pron="v ei1 f t iy1 n h oh1 n d ax0 rr d" entry="full" default="true">vijftienhonderd</lex>
 <lex pron="v ei1 f t iy0 n h oh0 n d ax0 rr t" entry="full" default="true">vijftienhonderd</lex>
   <lex pron="v ei0 f t iy0 n t w ee0 ax0 n z ee1 v ax0 n t ih0 gh" entry="full" default="true">vijftientweeënzeventig</lex>
 <lex pron="f ei1 f t ax0 x" entry="full" default="true">vijftig</lex>
