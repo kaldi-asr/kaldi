@@ -6,10 +6,10 @@ For cygwin installation, see the instructions in `../INSTALL`.
 ## Notes
 
 * The recipes (in egs/) will not work. There is no commitment to support Windows.
-  The Windows port of Kaldi is targeted at experienced developers who want 
-  to program their own apps using the kaldi libraries and are able to do 
-  the troubleshooting on their own. 
-* These instructions are valid November 2017, 
+  The Windows port of Kaldi is targeted at experienced developers who want
+  to program their own apps using the kaldi libraries and are able to do
+  the troubleshooting on their own.
+* These instructions are valid November 2017,
   [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS are supported
 * ATLAS is not supported and I personally have no intention to work on supporting
   it, as it requires whole cygwin environment
@@ -19,7 +19,7 @@ For cygwin installation, see the instructions in `../INSTALL`.
   and we didn't test if the solutions work or not.
 * While the 32bit project files will still be generated, we don't really
   care if they work or not. They will be removed in the near future.
-* The build process was validated using MSVC2017. We do not support earlier 
+* The build process was validated using MSVC2017. We do not support earlier
   releases (i.e. MSVC2015 and older). The reason is the C++11 support is still
   very buggy in the MS compiler.
 * We support only openfst-1.6.5 for now.
@@ -36,7 +36,7 @@ For cygwin installation, see the instructions in `../INSTALL`.
 ## Compiling OpenFST
 
 Skip this section, if you have downloaded OpenFST project from https://github.com/kkm000/openfst.git and it already contains openfst.sln file in the root folder. If it is present you can directly open it with Visual Studio 17 and you do not need CMake.
-------------------------- 
+-------------------------
 For compilation of OpenFST, you will need CMake installed. Simply go to https://cmake.org/download/ and download and install.
 Then, in the command line, run the following commands. Be very careful about writing the commands verbatim!
 
@@ -45,7 +45,7 @@ Then, in the command line, run the following commands. Be very careful about wri
         $ mkdir build64
         $ cd build64
         $ cmake -G "Visual Studio 15 2017 Win64" ../
-        
+
 The last command will generate output looking similarly to this. Do not try to read too much into specific versions of the programs.
 
         -- The C compiler identification is MSVC 19.11.25547.0
@@ -73,20 +73,20 @@ The last command will generate output looking similarly to this. Do not try to r
         -- Generating done
         -- Build files have been written to: C:/Users/jtrmal/Documents/openfst/build64
 
-In the directory `build64`, find the file `openfst.sln` and open it using Visual Studio 17. 
-------------------------- 
+In the directory `build64`, find the file `openfst.sln` and open it using Visual Studio 17.
+-------------------------
 
-   **Switch the configuration to `debug|Win64` and build the solution.**
-   **Do the same for configuration `release|Win64`.**
+   **Switch the configuration to `Debug|x64` and build the solution.**
+   **Do the same for configuration `Release|x64`.**
 
  If either of the two won't build, you should stop here and start figuring what's different!
 
-## Compiling Kaldi   
-   
+## Compiling Kaldi
+
 1. Checkout Kaldi trunk, using [git](https://git-for-windows.github.io/) from https://github.com/kaldi-asr/kaldi.git
 
    Example:
-   
+
         $ git clone https://github.com/kaldi-asr/kaldi.git kaldi
 
 There are two options to use for BLAS (linear algebra): [Intel® MKL](https://software.intel.com/en-us/intel-mkl) and OpenBLAS. [Intel® MKL](https://software.intel.com/en-us/intel-mkl) is made by Intel and is optimised
@@ -124,7 +124,7 @@ for their processors. It isn't free, but you can get [Community Licensing for In
 4. Enter the `(kaldi)/windows` directory
 
     Example:
-    
+
          (kaldi)/$ cd windows
          (kaldi)/windows $ pwd
 
@@ -148,7 +148,7 @@ for their processors. It isn't free, but you can get [Community Licensing for In
          generate_solution.pl --vsver <default|vs2017|vs2015> [--enable-cuda] [--enable-openblas] [--enable-mkl]
 
     `--enable-mkl` is the default so you shouldn't need to use it. If `--enable-openblas` is passed it disables MKL support.
-    CUDA is disabled by default. The default Visual Studio version is 15.0 (Visual Studio 2017). 
+    CUDA is disabled by default. The default Visual Studio version is 15.0 (Visual Studio 2017).
     Please note that while we support generating the project for Visual Studio 2015, the C++11 support for that compiler
     is rather sub-par, i.e. it won't probably compile. When choosing Visual Studio 2015, you are on your own!
 
@@ -161,10 +161,10 @@ for their processors. It isn't free, but you can get [Community Licensing for In
          (kaldi)/windows$ generate_solution.pl --vsver vs2017 --enable-cuda --enable-openblas
 
 9. Run the script (kaldi)/windows/get_version.pl:
-        
+
         (kaldi)/windows$ get_version.pl
-  
-10. Open the generated solution that was created in a subfolder (kaldi)/kaldiwin_vs<version>_<blas-library> 
+
+10. Open the generated solution that was created in a subfolder (kaldi)/kaldiwin_vs<version>_<blas-library>
 	in the visual studio and switch to **Debug|x64** (or **Release|x64**) and build.
    Expect 10 projects to fail, majority of them will fail because of missing include `portaudio.h`. The tests will
    fail to compile too -- this is because of deficiency of the script generate_solution.pl. We might fix it
