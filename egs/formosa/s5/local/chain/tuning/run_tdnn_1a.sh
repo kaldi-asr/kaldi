@@ -186,7 +186,7 @@ fi
 
 if [ $stage -le 99 ]; then
 
-  local/nnet3/run_ivector_common.sh || exit 1;
+  local/nnet3/run_eval_ivector_common.sh || exit 1;
   
   for test_set in eval; do
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
