@@ -109,14 +109,13 @@ if [ $stage -le 5 ]; then
 
 fi
 
-exit 0;
-
 # nnet3 tdnn models
+# commented out by default, since the chain model is usually faster and better
 if [ $stage -le 6 ]; then
 
-  train_stage=99
-  echo "$0: evaluate nnet3 model"
-  local/nnet3/run_tdnn.sh --stage $train_stage
+#  train_stage=99
+#  echo "$0: evaluate nnet3 model"
+#  local/nnet3/run_tdnn.sh --stage $train_stage
 
 fi
 
