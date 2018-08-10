@@ -3,6 +3,9 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
+
 BINFILES = sgmm2-init sgmm2-gselect sgmm2-acc-stats sgmm2-est sgmm2-sum-accs \
          sgmm2-align-compiled sgmm2-est-spkvecs sgmm2-post-to-gpost \
          sgmm2-acc-stats-gpost sgmm2-latgen-faster sgmm2-est-spkvecs-gpost \
@@ -22,6 +25,6 @@ ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a \
           ../feat/kaldi-feat.a ../transform/kaldi-transform.a \
           ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
           ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a
+          ../base/kaldi-base.a ../cudamatrix/kaldi-cudamatrix.a
 
 include ../makefiles/default_rules.mk

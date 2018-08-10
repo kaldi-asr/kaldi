@@ -4,6 +4,9 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
+LDFLAGS += $(CUDA_LDFLAGS)
+LDLIBS += $(CUDA_LDLIBS)
+
 BINFILES = gmm-init-mono gmm-est gmm-acc-stats-ali gmm-align \
            gmm-decode-faster gmm-decode-simple gmm-align-compiled \
            gmm-sum-accs gmm-est-regtree-fmllr gmm-acc-stats-twofeats \
@@ -38,7 +41,8 @@ ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a \
           ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a ../feat/kaldi-feat.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a \
+          ../cudamatrix/kaldi-cudamatrix.a
 
 
 include ../makefiles/default_rules.mk
