@@ -134,8 +134,8 @@ if [ $stage -le 10 ]; then
   echo "$0: extract the results"
   rm -f eval-decoding-results.log
   touch eval-decoding-results.log
-  for x in exp/*/decode_eval/log; do [ -d $x ] && grep NER $x/*.log | grep -v LOG >> eval-decoding-results.log ; done 2>/dev/null
-  for x in exp/*/*/decode_eval/log; do [ -d $x ] && grep WER $x/*.log | grep -v LOG >> eval-decoding-results.log; done 2>/dev/null
+  for x in exp/*/decode_eval/log;   do [ -d $x ] && grep NER $x/*.log | grep -v LOG | grep -v WARNING >> eval-decoding-results.log; done
+  for x in exp/*/*/decode_eval/log; do [ -d $x ] && grep NER $x/*.log | grep -v LOG | grep -v WARNING >> eval-decoding-results.log; done
 
 fi
 
