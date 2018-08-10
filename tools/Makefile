@@ -152,5 +152,5 @@ openblas_compiled:
 
 .PHONY: cub
 cub: 
-	wget -T 10 -t 3 https://github.com/NVlabs/cub/archive/1.8.0.zip
-	unzip 1.8.0.zip
+	wget -T 10 -t 3 -O cub-1.8.0.zip https://github.com/NVlabs/cub/archive/1.8.0.zip
+	unzip cub-1.8.0.zip
