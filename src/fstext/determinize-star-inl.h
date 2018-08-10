@@ -306,7 +306,6 @@ template<class F> class DeterminizerStar {
     bool operator ()(const vector<Element> *s1,
                      const vector<Element> *s2) const {
       size_t sz = s1->size();
-      assert(sz >= 0);
       if (sz != s2->size()) return false;
       typename vector<Element>::const_iterator iter1 = s1->begin(),
           iter1_end = s1->end(), iter2 = s2->begin();

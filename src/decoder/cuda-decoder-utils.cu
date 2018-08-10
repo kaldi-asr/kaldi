@@ -86,7 +86,7 @@ HOST DEVICE float CudaFst::Final(StateId state) const {
 #endif
 }
 void CudaFst::Initialize(const fst::Fst<StdArc> &fst) {
-  PUSH_RANGE("CudaFst constructor", 1)
+  PUSH_RANGE("CudaFst constructor", 1);
   bytes_cudaMalloc = 0;
   numStates = 0;
   for ( fst::StateIterator<fst::Fst<StdArc> > iter(fst); !iter.Done();
@@ -112,19 +112,13 @@ void CudaFst::Initialize(const fst::Fst<StdArc> &fst) {
   // iterate through states and arcs and count number of arcs per state
   e_count = 0;
   ne_count = 0;
-  max_ilabel = 0;
   for (int i = 0; i < numStates; i++) {
     final_h[i] = fst.Final(i).Value();
     // count emmiting and non_emitting arcs
     for (fst::ArcIterator<fst::Fst<StdArc> > aiter(fst, i); !aiter.Done();
          aiter.Next()) {
       StdArc arc = aiter.Value();
-      int32 ilabel = arc.ilabel;
-      int32 olabel = arc.olabel;
-      if (ilabel > max_ilabel) {
-        max_ilabel = ilabel;
-      }
-      if (ilabel != 0) { // emitting
+      if (arc.ilabel != 0) { // emitting
         e_count++;
       } else { // non-emitting
         ne_count++;
@@ -207,7 +201,7 @@ void CudaFst::Initialize(const fst::Fst<StdArc> &fst) {
   memcpy(arc_olabels_d, arc_olabels_h, arc_count * sizeof(int32));
 
   cudaStreamSynchronize(cudaStreamPerThread);
-  POP_RANGE
+  POP_RANGE;
 }
 
 void CudaFst::Finalize() {
@@ -229,7 +223,7 @@ void CudaFst::Finalize() {
   cudaFree(arc_nextstates_d);
   cudaFree(arc_ilabels_d);
   cudaFree(arc_olabels_d);
-  POP_RANGE
+  POP_RANGE;
 }
 
 } // end namespace kaldi.

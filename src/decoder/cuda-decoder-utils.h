@@ -68,8 +68,8 @@ const int32 num_colors = sizeof(colors) / sizeof(uint32);
     eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII; \
     eventAttrib.message.ascii = name; \
     nvtxRangePushEx(&eventAttrib); \
-} while (0);
-#define POP_RANGE nvtxRangePop();
+} while (0)
+#define POP_RANGE nvtxRangePop()
 #else
 #define PUSH_RANGE(name,cid)
 #define POP_RANGE
@@ -242,7 +242,6 @@ static DEVICE inline void _grid_sync(volatile int *fast_epoch) {
     __threadfence();
     atomicAdd((int*)fast_epoch, nb);
     // wait for the sign bit to commute
-    int cnt = 0;
     while (((*fast_epoch) ^ old_epoch) >= 0) ;
   }
   __syncthreads();

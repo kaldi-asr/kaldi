@@ -24,7 +24,7 @@
 #include "itf/decodable-itf.h"
 
 #include "cuda-decoder-utils.h"
-#include "decoder/cuda-lattice-decoder.h"
+#include "cuda-lattice-decoder.h"
 
 namespace kaldi {
 
@@ -191,7 +191,7 @@ DEVICE static inline void _find_best_cutoff(processTokens_params * params) {
     int th_idx = block_offset + threadIdx.x;
     bool valid_input = (th_idx < total_narcs);
 
-    StateId prev_state, nextstate;
+    StateId prev_state;
     BaseFloat total_cost = FLT_MAX, acoustic_cost, weight;
     int arc_idx, q_idx;
     TokenState* ts;
@@ -416,9 +416,9 @@ DEVICE static inline void _process_nonemitting_tokens(processTokens_params
   // updated by _process_emit_or_nemit_tokens(), so we don't need to do aggregation
   int* agg_tok_idx = params->agg_idx; // need to make it 0 before enter this func
   int* cur_tok_idx = params->ne_idx; // need to make it 0 before enter this func
-  int32 tid = threadIdx.x + blockIdx.x * blockDim.x;
   if (aggregate) {  // aggregation stage
-    for (tid; tid < size; tid += blockDim.x * gridDim.x) {
+    for (int32 tid = threadIdx.x + blockIdx.x * blockDim.x; tid < size;
+         tid += blockDim.x * gridDim.x) {
       if (params->cur_toks.IsUpdated(tid)) {
         int32 i = atomicAdd(agg_tok_idx, 1);
         // get updated token index for faster processing non-emitting tokens
@@ -1061,7 +1061,6 @@ DEVICE void LatticeProcessor::PruneActiveTokens(int32 frame,
 DEVICE void LatticeProcessor::CollectToksPerFrame(
   TokenMergeVector& cur_toks_vec, int32 frame) {
   int32 tid = threadIdx.x + blockIdx.x * blockDim.x;
-  TokenState* cur_toks = cur_toks_vec.mem_d;
   int32 size = cur_toks_vec.Size();
   if (tid == 0) {
     // Set start index in the buffer of the next frame
@@ -1078,7 +1077,6 @@ DEVICE void LatticeProcessor::CollectArcsPerFrame(LatLinkVector&
   int32 tid = threadIdx.x + blockIdx.x * blockDim.x;
   int32 idx = tid;
   int32 rank0 = blockIdx.x == 0 && threadIdx.x == 0 ? 1 : 0;
-  int32 batch = blockDim.x * gridDim.x;
 
   int32 size = cur_arc_array.Size() - *arcs_bpr_used_d; // size of current frame
   grid_sync(barrier_);
@@ -1631,18 +1629,14 @@ void CudaLatticeDecoder::ClearToks(TokenMergeVector &toks) {
 }
 
 void CudaLatticeDecoder::PreProcessTokens() {
-  //PUSH_RANGE("PreProcessTokens", 1)
-
   num_frames_decoded_++;
   UpdateTokPointersByFrame(num_frames_decoded_);
   // ClearToks(*cur_toks_); // to reduce a kernel
   // dont need to clear arcs as we directly take the final buffer into this vector
-
-  //POP_RANGE
 }
 
 void CudaLatticeDecoder::ProcessTokens() {
-  PUSH_RANGE("ProcessTokens", 2)
+  PUSH_RANGE("ProcessTokens", 2);
   KALDI_VLOG(4) << num_frames_decoded_ << std::endl;
 
   // we launch 256 threads as a block, i.e. 8 cooperative_groups
@@ -1657,17 +1651,17 @@ void CudaLatticeDecoder::ProcessTokens() {
   cudaStreamWaitEvent(stream_comp, event_ll, 0);
   processTokens_params params;
   InitParams(&params);
-  _process_tokens <<< blocks, threads, 0, stream_comp>>>(params); // doesn't work
+  _process_tokens<<<blocks, threads, 0, stream_comp>>>(params);
   CU_SAFE_CALL(cudaGetLastError());
 
   cudaEventSynchronize(event_pt); // wait for last frame to finish
   cudaEventRecord(event_pt, stream_comp);
 
-  POP_RANGE
+  POP_RANGE;
 }
 
 void CudaLatticeDecoder::ProcessNonemitting() {
-  PUSH_RANGE("ProcessNonemitting", 0)
+  PUSH_RANGE("ProcessNonemitting", 0);
 
   // we launch 256 threads as a block, i.e. 8 cooperative_groups
   // in cuda kernel of dynamic load balancing. more details are described there
@@ -1677,10 +1671,10 @@ void CudaLatticeDecoder::ProcessNonemitting() {
 
   processTokens_params params;
   InitParams(&params);
-  _process_tokens <<< blocks, threads, 0, stream_comp>>>(params, true);
+  _process_tokens<<<blocks, threads, 0, stream_comp>>>(params, true);
   CU_SAFE_CALL(cudaGetLastError());
 
-  POP_RANGE
+  POP_RANGE;
 }
 
 
@@ -1709,12 +1703,11 @@ void CudaLatticeDecoder::Decode(MatrixChunker *decodable) {
                  << num_frames_decoded_ + 1;
     }
 
-    PUSH_RANGE("ComputeLogLikelihoods", 3)
-    int chunk_len;
+    PUSH_RANGE("ComputeLogLikelihoods", 3);
     CuMatrix<BaseFloat> *post_chunk;
     decodable->LogLikelihoodChunk(num_frames_decoded_, &post_chunk, stream_ll);
     cudaEventRecord(event_ll, stream_ll);
-    POP_RANGE
+    POP_RANGE;
     DecodeChunk(post_chunk);
 
     if (last_frame) {
@@ -1728,7 +1721,7 @@ void CudaLatticeDecoder::Decode(MatrixChunker *decodable) {
 void CudaLatticeDecoder::FinalProcessLattice(Token** toks_buf, int** toks_fr_sidx,
     LatLink** arcs_buf, int** arcs_fr_size, TokenMergeVector** toks_vec_last_fr, 
     int *num_frames_decoded) {
-  PUSH_RANGE("FinalProcessLattice", 3)
+  PUSH_RANGE("FinalProcessLattice", 3);
 
   cudaStreamSynchronize(stream_comp); // after fini comp. we can start copy
   // copy unpruned toks to host
@@ -1755,7 +1748,7 @@ void CudaLatticeDecoder::FinalProcessLattice(Token** toks_buf, int** toks_fr_sid
   KALDI_VLOG(1) << "Average tokens number, total frame: "
                 << (*toks_fr_sidx)[num_frames_decoded_ + 1] / num_frames_decoded_
                 << ", " << num_frames_decoded_;
-  POP_RANGE
+  POP_RANGE;
 }
 
 void CudaLatticeDecoder::PruneActiveTokens(cudaStream_t wait_st,

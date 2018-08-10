@@ -259,7 +259,6 @@ static void _get_cutoff(processTokens_params params) {
     __shared__ typename BlockScan::TempStorage temp_storage_scan;
     __shared__ typename BlockReduce::TempStorage temp_storage_reduce;
 
-    __shared__ int new_q_block_off;
     __shared__ BaseFloat global_cutoff;
 
     const int total_narcs = *params.tot_narcs_d_;
@@ -275,7 +274,6 @@ static void _get_cutoff(processTokens_params params) {
         int th_idx = block_offset + threadIdx.x;
         bool valid_input = (th_idx < total_narcs);
 
-        StateId prev_state;
         BaseFloat total_cost = FLT_MAX;
         int arc_idx;
         StateId arc_next_state;
@@ -289,8 +287,6 @@ static void _get_cutoff(processTokens_params params) {
                                                    old_q_size - 1);
             // the outgoing arc number of the token, used to obtain arc_idx
             int lower_bound = params.narcs_scan_d_[q_idx - old_q_offset];
-            // the state of the token
-            prev_state = params.d_q[q_idx]; 
             // the starting arc_id of out-going arcs from the token
             int arc_offset_start = params.arc_offset_pertok_d_[q_idx - old_q_offset];
             // the arc id in the WFST
@@ -361,7 +357,6 @@ static void _expand_arcs_kernel(processTokens_params params) {
         int th_idx = block_offset + threadIdx.x;
         bool valid_input = (th_idx < total_narcs);
 
-        StateId prev_state;
         BaseFloat total_cost = FLT_MAX;
         int arc_idx;
         StateId arc_next_state;
@@ -376,8 +371,6 @@ static void _expand_arcs_kernel(processTokens_params params) {
                                                    old_q_size - 1);
             // the outgoing arc number of the token, used to obtain arc_idx
             int lower_bound = params.narcs_scan_d_[q_idx - old_q_offset];
-            // the state of the token
-            prev_state = params.d_q[q_idx];
             // the starting arc_id of out-going arcs from the token
             int arc_offset_start = params.arc_offset_pertok_d_[q_idx - old_q_offset];
             // the arc id in the WFST
@@ -870,12 +863,12 @@ void CudaDecoder::Decode(MatrixChunker *decodable) {
     while ( !decodable->IsLastFrame(num_frames_decoded_ - 1)) {
         bool last_frame = decodable->IsLastFrame(num_frames_decoded_ - 0);
 
-        PUSH_RANGE("ComputeLogLikelihoods", 3)
+        PUSH_RANGE("ComputeLogLikelihoods", 3);
         int chunk_len;
         CuMatrix<BaseFloat> *post_chunk;
         decodable->LogLikelihoodChunk(num_frames_decoded_, &post_chunk, stream_ll);
         cudaEventRecord(event_ll, stream_ll);
-        POP_RANGE
+        POP_RANGE;
         DecodeChunk(post_chunk);
 
         if (last_frame) {

@@ -247,13 +247,12 @@ bool DecodeUtteranceLatticeFasterCuda(
   if (lat.NumStates() == 0)
     KALDI_WARN << "Unexpected problem getting lattice for utterance " << utt;
   else fst::Connect(&lat);
-  POP_RANGE
+  POP_RANGE;
 
   double t4 = timer.Elapsed();
   KALDI_VLOG(1) << "post_decoding: " << t4;
 
-
-  POP_RANGE
+  POP_RANGE;
 
   return true;
 }
@@ -291,7 +290,7 @@ bool DecodeUtteranceLatticeFasterCudaOutput(
   if (!decoder.GetBestPath(&decoded))
     // Shouldn't really reach this point as already checked success.
     KALDI_WARN << "Failed to get traceback for utterance " << utt;
-  POP_RANGE
+  POP_RANGE;
   std::vector<int32> alignment;
   std::vector<int32> words;
   GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
@@ -343,7 +342,7 @@ bool DecodeUtteranceLatticeFasterCudaOutput(
     if (examples_mutex_) examples_mutex_->lock();
     lattice_writer->Write(utt, lat);
     if (examples_mutex_) examples_mutex_->unlock();
-    POP_RANGE
+    POP_RANGE;
   }
   return true;
 }

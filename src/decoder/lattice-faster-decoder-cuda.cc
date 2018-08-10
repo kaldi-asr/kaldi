@@ -72,7 +72,7 @@ bool LatticeFasterDecoderCuda::Decode(MatrixChunker *decodable) {
   InitDecoding(); // CPU init
   decoder_.InitDecoding(); // GPU init
   decoder_.Decode(decodable);
-  POP_RANGE
+  POP_RANGE;
 
   PUSH_RANGE("CudaLatticeDecoder::Decode::final", 1);
   cuToken* toks_buf;
@@ -92,7 +92,7 @@ bool LatticeFasterDecoderCuda::Decode(MatrixChunker *decodable) {
   FinalizeDecoding();   
   // Returns true if we have any kind of traceback available (not necessarily
   // to the end state; query ReachedFinal() for that).
-  POP_RANGE
+  POP_RANGE;
   assert(NumFramesDecoded() == NumFramesDecoded());
   return !active_toks_.empty() && active_toks_.back().toks != NULL;
 }
@@ -136,7 +136,7 @@ inline bool LatticeFasterDecoderCuda::CreateAndLinkTok(BaseFloat cost,
 // and next lattice node recorded in the arc; after that, unlinked nodes
 // are implicitly pruned
 inline int32 LatticeFasterDecoderCuda::AddLatticeArcs(int32 proc_frame) {
-  PUSH_RANGE("AddLatticeArcs", 1)
+  PUSH_RANGE("AddLatticeArcs", 1);
 
   int32 num_arcs = 0;
   num_arcs = active_arcs_size_perframe_[proc_frame];
@@ -151,7 +151,7 @@ inline int32 LatticeFasterDecoderCuda::AddLatticeArcs(int32 proc_frame) {
     }
   }
 
-  POP_RANGE
+  POP_RANGE;
   return num_arcs;
 }
 
@@ -160,7 +160,7 @@ void LatticeFasterDecoderCuda::FinalProcessLattice(cuTokenVector* last_toks,
     cuToken* toks_buf, int* toks_sidx, LatLink* arcs_buf, int* arcs_size, 
     int32 proc_frame) {
   if (proc_frame < 0) return;
-  PUSH_RANGE("FinalProcessLattice", 3)
+  PUSH_RANGE("FinalProcessLattice", 3);
 
   assert(proc_frame <= config_.max_len);
   active_toks_.resize(proc_frame + 1);
@@ -223,7 +223,7 @@ void LatticeFasterDecoderCuda::FinalProcessLattice(cuTokenVector* last_toks,
   }
   KALDI_VLOG(3) << "tok after GPU prune " << num_toks_;
 
-  POP_RANGE
+  POP_RANGE;
 }
 
 // Outputs an FST corresponding to the single best path through the lattice.
