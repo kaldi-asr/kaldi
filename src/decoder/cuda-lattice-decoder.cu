@@ -191,7 +191,6 @@ DEVICE static inline void _find_best_cutoff(processTokens_params * params) {
     int th_idx = block_offset + threadIdx.x;
     bool valid_input = (th_idx < total_narcs);
 
-    StateId prev_state;
     BaseFloat total_cost = FLT_MAX, acoustic_cost, weight;
     int arc_idx, q_idx;
     TokenState* ts;
@@ -206,7 +205,6 @@ DEVICE static inline void _find_best_cutoff(processTokens_params * params) {
       int arc_number_offset = params->d_degrees_scan[q_idx - old_q_offset];
       ts  = &tok_vec[q_idx];
       tok = params->lattice_processor.GetTokenByExactIdx(ts->tok_idx_allocated);
-      prev_state = ts->state;
       // arc id lower bound of this previous token
       int arc_id_offset = params->d_q_arc_offset[q_idx - old_q_offset];
       arc_idx = arc_id_offset + (block_offset + threadIdx.x - arc_number_offset);
@@ -337,7 +335,7 @@ DEVICE static inline void _process_emit_or_nemit_tokens(processTokens_params *pa
     int th_idx = block_offset + threadIdx.x;
     bool valid_input = (th_idx < total_narcs);
 
-    StateId prev_state, nextstate;
+    StateId nextstate;
     BaseFloat total_cost = FLT_MAX, acoustic_cost, weight;
     int arc_idx, q_idx;
     TokenState* ts;
@@ -354,7 +352,6 @@ DEVICE static inline void _process_emit_or_nemit_tokens(processTokens_params *pa
       ts  = &tok_vec[q_idx];
       tok = params->lattice_processor.GetTokenByExactIdx(ts->tok_idx_allocated);
       assert(tok);
-      prev_state = ts->state;
       BaseFloat old_tok_cost = tok->cost_;
       // arc id lower bound of this previous token
       int arc_id_offset = params->d_q_arc_offset[q_idx - old_q_offset];
@@ -1074,8 +1071,6 @@ DEVICE void LatticeProcessor::CollectToksPerFrame(
 DEVICE void LatticeProcessor::CollectArcsPerFrame(LatLinkVector&
     cur_arc_array,
     int32 frame) {
-  int32 tid = threadIdx.x + blockIdx.x * blockDim.x;
-  int32 idx = tid;
   int32 rank0 = blockIdx.x == 0 && threadIdx.x == 0 ? 1 : 0;
 
   int32 size = cur_arc_array.Size() - *arcs_bpr_used_d; // size of current frame
@@ -1426,8 +1421,8 @@ CudaLatticeDecoder::CudaLatticeDecoder(const CudaFst &fst, const TransitionModel
   bytes_cuda_malloc += sizeof(int32) * 2;
 
   cudaMalloc((void**)&current_tokens_lookup_d,
-             sizeof(TokenLookupElem)*fst_.numStates);
-  bytes_cuda_malloc += sizeof(TokenLookupElem) * fst_.numStates;
+             sizeof(TokenLookupElem)*fst_.NumStates());
+  bytes_cuda_malloc += sizeof(TokenLookupElem) * fst_.NumStates();
 
   // for pruning
   bytes_cuda_malloc += lattice_processor_.Allocate(config.max_tokens_per_frame,
@@ -1598,7 +1593,7 @@ void CudaLatticeDecoder::InitDecoding() {
   // init TokenLookupElem
 
   _initialize_all_states <<< blocks, threads, 0, stream_comp>>>(
-    current_tokens_lookup_d, fst_.numStates, barrier_d);
+    current_tokens_lookup_d, fst_.NumStates(), barrier_d);
   CU_SAFE_CALL(cudaGetLastError());
 
 

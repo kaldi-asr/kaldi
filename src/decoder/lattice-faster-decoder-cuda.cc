@@ -581,7 +581,7 @@ void LatticeFasterDecoderCuda::PruneActiveTokens(BaseFloat delta) {
   }
   KALDI_VLOG(4) << "PruneActiveTokens: pruned tokens from " << num_toks_begin
                 << " to " << num_toks_;
-  POP_RANGE
+  POP_RANGE;
 }
 
 void LatticeFasterDecoderCuda::ComputeFinalCosts(

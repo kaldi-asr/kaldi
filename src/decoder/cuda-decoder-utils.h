@@ -321,21 +321,22 @@ class CudaFst {
   void Initialize(const fst::Fst<StdArc> &fst);
   void Finalize();
 
-  uint32 NumStates() const {  return numStates; }
-  uint32 NumArcs() const {  return numArcs; }
+  uint32 NumStates() const {  return num_states_; }
+  uint32 NumArcs() const {  return num_arcs; }
   StateId Start() const { return start; }
   HOST DEVICE BaseFloat Final(StateId state) const;
   size_t GetCudaMallocBytes() const { return bytes_cudaMalloc; }
 
-  uint32 numStates;               // total number of states
-  uint32 numArcs;               // total number of states
+  // Should these fields be private?
+  uint32 num_states_;               // total number of states
+  uint32 num_arcs;               // total number of states
   StateId  start;
 
   uint32 max_ilabel;              // the largest ilabel
   uint32 e_count, ne_count,
          arc_count;       // number of emitting and non-emitting states
 
-  // This data structure have 2 matrices (one emitting one non-emitting).
+  // This data structure has 2 CSR matrices (one emitting, one non-emitting).
   // Offset arrays are numStates+1 in size.
   // Arc values for state i are stored in the range of [i,i+1)
   // size numStates+1
@@ -358,11 +359,8 @@ class CudaFst {
 class MatrixChunker {
 #define DEC_CHUNK_BUF_SIZE 2
  public:
-  // This constructor creates an object that will not delete "likes"
-  // when done.
-  MatrixChunker(const Matrix<BaseFloat> &likes, int chunk_len): likes_(&likes),
-    delete_likes_(false), chunk_len_(chunk_len), chunk_id_(0) {
-  }
+  MatrixChunker(const Matrix<BaseFloat> &likes, int chunk_len):
+    likes_(&likes), chunk_len_(chunk_len), chunk_id_(0) { }
 
   int32 NumFramesReady() const { return likes_->NumRows(); }
 
@@ -375,7 +373,7 @@ class MatrixChunker {
     if (frame >= likes_->NumRows()) return;
     int len = std::min(chunk_len_, likes_->NumRows() - frame);
     assert(len);
-    CuMatrix<BaseFloat>& loglike_d = loglikes_d[++chunk_id_ % DEC_CHUNK_BUF_SIZE];
+    CuMatrix<BaseFloat>& loglike_d = loglikes_d_[++chunk_id_ % DEC_CHUNK_BUF_SIZE];
     int data_size = likes_->NumCols() * sizeof(BaseFloat);
     CU_SAFE_CALL(cudaGetLastError());
     // we seldom Resize()
@@ -389,16 +387,12 @@ class MatrixChunker {
     return;
   };
 
-  ~MatrixChunker() {
-    if (delete_likes_) delete likes_;
-  }
-  
   const Matrix<BaseFloat> *likes_;
-  bool delete_likes_;
-  CuMatrix<BaseFloat> loglikes_d[DEC_CHUNK_BUF_SIZE];
+  CuMatrix<BaseFloat> loglikes_d_[DEC_CHUNK_BUF_SIZE];
 
   int chunk_len_, chunk_id_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(MatrixChunker);
+#undef DEC_CHUNK_BUF_SIZE
 };
 
 class CuMatrixScaledMapper {
@@ -406,7 +400,7 @@ class CuMatrixScaledMapper {
   CuMatrixScaledMapper() : id2pdf_d_(NULL), acoustic_scale_(0),
     loglike_d_(NULL) {}
   CuMatrixScaledMapper(int32 *id2pdf_d, BaseFloat acoustic_scale,
-                                BaseFloat* loglike_d) : id2pdf_d_(id2pdf_d),
+                       BaseFloat* loglike_d) : id2pdf_d_(id2pdf_d),
     acoustic_scale_(acoustic_scale), loglike_d_(loglike_d) {}
   DEVICE BaseFloat LogLikelihood(int32 tid) const {
     assert(id2pdf_d_);
@@ -415,7 +409,8 @@ class CuMatrixScaledMapper {
   }
  private:
   int32 *id2pdf_d_;
-  BaseFloat acoustic_scale_, *loglike_d_;
+  BaseFloat acoustic_scale_;
+  BaseFloat *loglike_d_;
 };
 
 } // end namespace kaldi.

@@ -114,8 +114,8 @@ int main(int argc, char *argv[]) {
 
         for (; !loglike_reader.Done(); loglike_reader.Next()) {
           timer.Reset();
-          PUSH_RANGE("whole decoding", 0)
-          PUSH_RANGE("before_decoding", 1)
+          PUSH_RANGE("whole decoding", 0);
+          PUSH_RANGE("before_decoding", 1);
           std::string utt = loglike_reader.Key();
           Matrix<BaseFloat> loglikes (loglike_reader.Value());
           loglike_reader.FreeCurrent();
@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
             continue;
           }
           MatrixChunker decodable(loglikes, config.chunk_len);
-          POP_RANGE
+          POP_RANGE;
 
           double like;
           Lattice lat;
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
             config.acoustic_scale, determinize, allow_partial, &alignment_writer,
             &words_writer, &compact_lattice_writer, &lattice_writer,
             &like, lat);
-          POP_RANGE
+          POP_RANGE;
         }
       }
       decode_fst_cuda.Finalize();

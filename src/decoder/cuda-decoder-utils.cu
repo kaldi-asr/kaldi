@@ -88,31 +88,31 @@ HOST DEVICE float CudaFst::Final(StateId state) const {
 void CudaFst::Initialize(const fst::Fst<StdArc> &fst) {
   PUSH_RANGE("CudaFst constructor", 1);
   bytes_cudaMalloc = 0;
-  numStates = 0;
+  num_states_ = 0;
   for ( fst::StateIterator<fst::Fst<StdArc> > iter(fst); !iter.Done();
         iter.Next()) {
-    numStates++;
+    num_states_++;
   }
   start = fst.Start();
-  CU_SAFE_CALL(cudaMallocHost(&final_h, sizeof(float) * numStates));
-  CU_SAFE_CALL(cudaMalloc(&final_d, sizeof(float) * numStates));
+  CU_SAFE_CALL(cudaMallocHost(&final_h, sizeof(float) * num_states_));
+  CU_SAFE_CALL(cudaMalloc(&final_d, sizeof(float) * num_states_));
 
   // allocate and initialize offset arrays
-  e_offsets_h = (unsigned int *)malloc(sizeof(unsigned int) * (numStates + 1));
-  ne_offsets_h = (unsigned int *)malloc(sizeof(unsigned int) * (numStates + 1));
+  e_offsets_h = (unsigned int *)malloc(sizeof(unsigned int) * (num_states_ + 1));
+  ne_offsets_h = (unsigned int *)malloc(sizeof(unsigned int) * (num_states_ + 1));
 
-  CU_SAFE_CALL(cudaMalloc((void**)&e_offsets_d, sizeof(unsigned int) * (numStates + 1)));
-  bytes_cudaMalloc += sizeof(unsigned int) * (numStates + 1);
-  CU_SAFE_CALL(cudaMalloc((void**)&ne_offsets_d, sizeof(unsigned int) * (numStates + 1)));
-  bytes_cudaMalloc += sizeof(unsigned int) * (numStates + 1);
+  CU_SAFE_CALL(cudaMalloc((void**)&e_offsets_d, sizeof(unsigned int) * (num_states_ + 1)));
+  bytes_cudaMalloc += sizeof(unsigned int) * (num_states_ + 1);
+  CU_SAFE_CALL(cudaMalloc((void**)&ne_offsets_d, sizeof(unsigned int) * (num_states_ + 1)));
+  bytes_cudaMalloc += sizeof(unsigned int) * (num_states_ + 1);
 
-  memset(e_offsets_h, 0, sizeof(unsigned int) * (numStates + 1));
-  memset(ne_offsets_h, 0, sizeof(unsigned int) * (numStates + 1));
+  memset(e_offsets_h, 0, sizeof(unsigned int) * (num_states_ + 1));
+  memset(ne_offsets_h, 0, sizeof(unsigned int) * (num_states_ + 1));
 
   // iterate through states and arcs and count number of arcs per state
   e_count = 0;
   ne_count = 0;
-  for (int i = 0; i < numStates; i++) {
+  for (int i = 0; i < num_states_; i++) {
     final_h[i] = fst.Final(i).Value();
     // count emmiting and non_emitting arcs
     for (fst::ArcIterator<fst::Fst<StdArc> > aiter(fst, i); !aiter.Done();
@@ -129,20 +129,20 @@ void CudaFst::Initialize(const fst::Fst<StdArc> &fst) {
   }
 
   // offset ne_offsets by the number of emitting arcs
-  for (int i = 0; i < numStates + 1; i++) {
+  for (int i = 0; i < num_states_ + 1; i++) {
     e_offsets_h[i] += 1;        // add dummy arc at the beginingg.
     ne_offsets_h[i] += e_count + 1; // add dummy arc and put e_arcs before
   }
 
   arc_count = e_count + ne_count + 1;
-  numArcs = arc_count;
+  num_arcs = arc_count;
 
-  cudaMemcpyAsync(final_d, final_h, sizeof(float)*numStates, cudaMemcpyHostToDevice,
+  cudaMemcpyAsync(final_d, final_h, sizeof(float)*num_states_, cudaMemcpyHostToDevice,
                   cudaStreamPerThread);
-  cudaMemcpyAsync(e_offsets_d, e_offsets_h, sizeof(unsigned int) * (numStates + 1),
+  cudaMemcpyAsync(e_offsets_d, e_offsets_h, sizeof(unsigned int) * (num_states_ + 1),
                   cudaMemcpyHostToDevice, cudaStreamPerThread);
   cudaMemcpyAsync(ne_offsets_d, ne_offsets_h,
-                  sizeof(unsigned int) * (numStates + 1), cudaMemcpyHostToDevice,
+                  sizeof(unsigned int) * (num_states_ + 1), cudaMemcpyHostToDevice,
                   cudaStreamPerThread);
 
   // although using managed memory in the following, we still have a CPU
@@ -177,7 +177,7 @@ void CudaFst::Initialize(const fst::Fst<StdArc> &fst) {
   arc_ilabels_h[0] = 0;
   arc_olabels_h[0] = 0;
 
-  for (int i = 0; i < numStates; i++) {
+  for (int i = 0; i < num_states_; i++) {
     // count emmiting and non_emitting arcs
     for (fst::ArcIterator<fst::Fst<StdArc> > aiter(fst, i); !aiter.Done();
          aiter.Next()) {

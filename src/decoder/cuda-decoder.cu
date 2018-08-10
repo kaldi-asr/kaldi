@@ -501,7 +501,6 @@ static void _get_best_path_kernel(int best_token_idx_in_all_tokens,
     int idx = 0;
 
     while (tok_idx != INT_MIN) {
-        int state = d_all_tokens[tok_idx];
         int arc_idx = d_all_tokens_info[tok_idx].arc_idx;
         reversed_path_d_[idx++] = arc_idx;
 
@@ -725,7 +724,6 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const TransitionModel &trans_model,
                          const CudaDecoderConfig &config): fst_(fst),
     trans_model_(trans_model),
     config_(config) {
-    int max_token = config.max_tokens;
 
     cudaStreamCreate(&stream_comp);
     cudaStreamCreate(&stream_ll);
@@ -750,7 +748,7 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const TransitionModel &trans_model,
                (max_token_frame / COMPUTE_DEGREES_DIMX + 2)* sizeof(int));
     cudaMalloc(&arc_offset_pertok_d_, max_token_frame * sizeof(int));
 
-    cudaMalloc(&state_pack_d_, sizeof(uint64)*fst_.numStates);
+    cudaMalloc(&state_pack_d_, sizeof(uint64)*fst_.NumStates());
 
     cudaMallocHost(&reached_final_h_, sizeof(int));
 
@@ -864,7 +862,6 @@ void CudaDecoder::Decode(MatrixChunker *decodable) {
         bool last_frame = decodable->IsLastFrame(num_frames_decoded_ - 0);
 
         PUSH_RANGE("ComputeLogLikelihoods", 3);
-        int chunk_len;
         CuMatrix<BaseFloat> *post_chunk;
         decodable->LogLikelihoodChunk(num_frames_decoded_, &post_chunk, stream_ll);
         cudaEventRecord(event_ll, stream_ll);
@@ -982,8 +979,10 @@ BaseFloat CudaDecoder::FinalRelativeCost() const {
     return (best_cost_final - best_cost);
 }
 
+// TODO: Change 4-space indents to 2-space indents.
+
 void CudaDecoder::InitLookup() {
-    int nstates = fst_.numStates;
+  int nstates = fst_.NumStates();
 
 
     dim3 grid, block;
@@ -1113,7 +1112,6 @@ void CudaDecoder::GetBestCost(BaseFloat *min, int *arg, bool isfinal) const {
     void *d_temp_storage_amin = NULL;
     size_t temp_storage_amin_bytes = 0;
 
-    int max_t = config_.max_tokens;
     cub::DeviceReduce::ArgMin(d_temp_storage_amin, temp_storage_amin_bytes,
                               state_pack_d_, d_argmin, *tot_ntok_h_);
     cudaMalloc(&d_temp_storage_amin, temp_storage_amin_bytes);
