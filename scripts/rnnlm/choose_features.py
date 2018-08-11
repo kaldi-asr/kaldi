@@ -11,7 +11,7 @@ from collections import defaultdict
 sys.stdout = open(1, 'w', encoding='latin-1', closefd=False)
 
 import re
-tab_or_space = re.compile('[ \t]')
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script chooses the sparse feature representation of words. "
                                              "To be more specific, it chooses the set of features-- you compute "
