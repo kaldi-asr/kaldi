@@ -21,7 +21,7 @@ set -euo pipefail
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
-stage=13
+stage=0
 decode_nj=10
 train_set=train
 test_sets="native nonnative devtest test"
