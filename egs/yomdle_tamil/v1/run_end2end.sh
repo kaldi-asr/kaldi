@@ -69,19 +69,18 @@ fi
 
 if [ $stage -le 4 ]; then
   echo "$0: Calling the flat-start chain recipe...$(date)"
-  local/chain/run_flatstart_cnn1a.sh --nj $nj
+  local/chain/run_flatstart_cnn1a.sh
 fi
 
 if [ $stage -le 5 ]; then
   echo "$0: Aligning the training data using the e2e chain model... $(date)"
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
+      --use-gpu false \
       --scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0' \
       data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
-affix=_1b
-decode_dir=decode_test
 if [ $stage -le 6 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments...$(date)"
-  local/chain/run_cnn_e2eali_1b.sh --nj $nj --affix $affix --decode_dir $decode_dir
+  local/chain/run_cnn_e2eali_1b.sh
 fi

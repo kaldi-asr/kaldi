@@ -22,7 +22,7 @@ test_dir=data/test
 decode_dir=decode_test
 stage=0
 
-nj=30
+nj=70
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
