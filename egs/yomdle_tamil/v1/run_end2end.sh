@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Copyright 2018    Hossein Hadian
+#                   Ashish Arora
+#                   Jonathan Chang
+# Apache 2.0
+
 set -e
 stage=0
 nj=80
@@ -21,7 +26,7 @@ if [ $stage -le 1 ]; then
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. "
     echo "Date: $(date)."
     #local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
-    local/make_features.py data/$dataset/images.scp --feat-dim 40 \
+    image/make_features.py data/$dataset/images.scp --feat-dim 40 \
       --allowed_len_file_path data/$dataset/allowed_lengths.txt --no-augment | \
       copy-feats --compress=true --compression-method=7 \
         ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
@@ -31,7 +36,7 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  echo "$0: Preparing bpe data $(date)"
+  echo "$0: Processing corpus and preparing BPE file $(date)"
   cp -r data/train data/local/backup/
   cp -r data/test data/local/backup/
   cut -d' ' -f2- data/train/text | python3 local/get_phones.py > data/local/text/cleaned/phones.txt
@@ -45,10 +50,10 @@ if [ $stage -le 2 ]; then
       mv data/$datasplit/text data/$datasplit/text.old
       paste -d' ' data/$datasplit/ids data/$datasplit/bpe_text > data/$datasplit/text
   done
-  echo "$0: Preparing corpus"
+  echo "$0: Preparing BPE corpus $(date)"
   cat data/local/text/cleaned/corpus.txt | python3 local/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_corpus.txt
   cat data/local/text/cleaned/val.txt | python3 local/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_val.txt
-  echo "$0: Preparing dictionary and lang..."
+  echo "$0: Preparing dictionary and lang... $(date)"
   local/prepare_dict.sh --dir data/local/dict
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
       data/local/dict "<sil>" data/lang/temp data/lang
