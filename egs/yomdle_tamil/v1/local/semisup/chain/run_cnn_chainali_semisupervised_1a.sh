@@ -1,23 +1,23 @@
 #!/bin/bash
 
 # Copyright 2017  Vimal Manohar
+#           2018  Ashish Arora
 # Apache 2.0
 # This script is semi-supervised recipe with 25k line images of supervised data
 # and 22k line images of unsupervised data with naive splitting.
 # Based on "Semi-Supervised Training of Acoustic Models using Lattice-Free MMI",
 # Vimal Manohar, Hossein Hadian, Daniel Povey, Sanjeev Khudanpur, ICASSP 2018
 # http://www.danielpovey.com/files/2018_icassp_semisupervised_mmi.pdf
-# local/semisup/run_100k.sh shows how to call this.
+# local/semisup/run_semisup.sh shows how to call this.
 
 # We use 3-gram LM trained on 5M lines of auxilary data.
 # This script uses the same tree as that for the seed model.
-# Unsupervised set: train_unsup100k_250k (25k tamil line images)
-#To do
+# Unsupervised set: train_unsup (25k tamil line images)
 # unsup_frames_per_eg=150
 # Deriv weights: Lattice posterior of best path pdf
 # Unsupervised weight: 1.0
 # Weights for phone LM (supervised, unsupervised): 3,2
-# LM for decod2ing unsupervised data: 4gram
+# LM for decoding unsupervised data: 4gram
 # Supervision: Naive split lattices
 # output-0 and output-1 are for superivsed and unsupervised data respectively.
 set -u -e -o pipefail
@@ -35,8 +35,8 @@ chain_affix=    # affix for chain dir
 tdnn_affix=_semisup_1a  # affix for semi-supervised chain system
 
 # Datasets-Expects supervised_set and unsupervised_set
-supervised_set=train_sup
-unsupervised_set=train_unsup100k_250k
+supervised_set=train
+unsupervised_set=train_unsup
 
 # Input seed system
 sup_chain_dir=exp/semisup_100k/chain/cnn_e2eali_1b  # supervised chain system
@@ -63,7 +63,6 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 unsup_decode_lang=data/lang_test
-unsup_rescore_lang=${unsup_decode_lang}.6grm.lr
 unsup_decode_graph_affix=_poco_3grm_unsup
 test_lang=data/lang_test
 test_graph_affix=_poco_3grm_test
@@ -108,8 +107,8 @@ if [ $stage -le 6 ]; then
     $unsup_decode_lang $unsup_rescore_lang \
     data/$unsupervised_set \
     $sup_chain_dir/decode_$unsupervised_set \
-    $sup_chain_dir/decode_${unsupervised_set}.lr
-  ln -sf ../final.mdl $sup_chain_dir/decode_${unsupervised_set}.lr/final.mdl
+    $sup_chain_dir/decode_${unsupervised_set}
+  ln -sf ../final.mdl $sup_chain_dir/decode_${unsupervised_set}/final.mdl
 fi
 
 # Get best path alignment and lattice posterior of best path alignment to be
@@ -117,7 +116,7 @@ fi
 if [ $stage -le 8 ]; then
   steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
     data/$unsupervised_set \
-    $sup_chain_dir/decode_${unsupervised_set}.lr \
+    $sup_chain_dir/decode_${unsupervised_set} \
     $sup_chain_dir/best_path_$unsupervised_set
 fi
 
@@ -325,7 +324,7 @@ fi
 
 if [ $stage -le 18 ]; then
     steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-      --beam 15 \
+      --beam 12 \
       --frames-per-chunk 340 \
       --nj $nj --cmd "$decode_cmd" \
       $test_graph_dir data/test \
