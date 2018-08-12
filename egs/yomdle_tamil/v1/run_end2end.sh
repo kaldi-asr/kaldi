@@ -8,7 +8,7 @@ nj=80
 . ./path.sh
 . ./utils/parse_options.sh
 mkdir -p data/{train,train_unsup,test}/data
-mkdir -p data/local
+mkdir -p data/{local,backup}
 if [ $stage -le 0 ]; then
   local/prepare_data.sh --language tamil
 fi
@@ -21,10 +21,10 @@ if [ $stage -le 1 ]; then
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. "
     echo "Date: $(date)."
     #local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
-    local/make_features.py data/train/images.scp --feat-dim 40 \
-      --allowed_len_file_path data/train/allowed_lengths.txt --no-augment | \
+    local/make_features.py data/$dataset/images.scp --feat-dim 40 \
+      --allowed_len_file_path data/$dataset/allowed_lengths.txt --no-augment | \
       copy-feats --compress=true --compression-method=7 \
-        ark:- ark,scp:data/train/data/images.ark,data/train/feats.scp
+        ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
     steps/compute_cmvn_stats.sh data/$dataset || exit 1;
   done
   utils/fix_data_dir.sh data/train
@@ -32,12 +32,12 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Preparing bpe data"
-  cp -r data/train data/backup/train
-  cp -r data/test data/backup/test
+  cp -r data/train data/backup/
+  cp -r data/test data/backup/
   cut -d' ' -f2- data/train/text | python3 local/get_phones.py > data/local/text/cleaned/phones.txt
   cut -d' ' -f2- data/train/text > data/local/text/cleaned/train.txt
   cat data/local/text/ta.txt | python3 local/process_corpus.py > data/local/text/cleaned/corpus.txt
-  cat data/local/text/val.text | python3 local/process_corpus.py > data/local/text/cleaned/val.txt
+  cat data/local/text/val.txt | python3 local/process_corpus.py > data/local/text/cleaned/val.txt
   cat data/local/text/cleaned/phones.txt data/local/text/cleaned/train.txt | python3 local/prepend_words.py | python3 utils/lang/bpe/learn_bpe.py -s 700 > data/train/bpe.out
   for datasplit in test train; do
       cut -d' ' -f1 data/$datasplit/text > data/$datasplit/ids

@@ -3,7 +3,7 @@
 import os
 import sys, io
 
-phone_file = os.path.join('phones.txt')
+phone_file = os.path.join('data/local/text/cleaned/phones.txt')
 infile = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 output = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 phone_dict = dict()

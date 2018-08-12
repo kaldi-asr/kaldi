@@ -9,6 +9,7 @@ stage=0
 
 echo "Date: $(date)."
 mkdir -p data/local/splits
+mkdir -p data/local/text/cleaned
 if [ $stage -le 0 ]; then
   for language in  english tamil; do
     echo "$0: Processing YOMDLE ${language}"
@@ -25,7 +26,6 @@ if [ $stage -le 0 ]; then
       --filter
   done
 fi
-
 
 if [ $stage -le 1 ]; then
   for language in Tamil; do
@@ -61,5 +61,27 @@ if [ $stage -le 2 ]; then
       --ext '.png' \
       --filter
   done
+fi
+
+if [ $stage -le 3 ]; then
+  cp -r data/download/Tamil_boxed/truth_line_image/* data/download/tamil/truth_line_image/
+  cp -r data/download/Tamil/truth_line_image/* data/download/tamil/truth_line_image/
+  cp -r data/download/english/truth_line_image/* data/download/tamil/truth_line_image/
+  cp -r data/download/Tamil_boxed/truth_csv/* data/download/tamil/truth_csv/
+  cp -r data/download/Tamil/truth_csv/* data/download/tamil/truth_csv/
+  cp -r data/download/english/truth_csv/* data/download/tamil/truth_csv/
+fi
+
+
+if [ $stage -le 4 ]; then
+  cat data/local/yomdle-tamil-train.list data/local/yomdle-english-train.list > data/local/splits/yomdle-tamil-train.list
+  cp data/local/yomdle-Tamil-test.list data/local/splits/yomdle-tamil-test.list
+  cp data/local/yomdle-Tamil-train_unsup.list data/local/splits/yomdle-tamil-train_unsup.list
+fi
+
+if [ $stage -le 5 ]; then
+  cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/corpus.txt
+  head -20000 data/local/text/corpus.txt > data/local/text/val.txt
+  tail -n +20000 data/local/text/corpus.txt > data/local/text/ta.txt
 fi
 echo "Date: $(date)."
