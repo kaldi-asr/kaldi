@@ -60,11 +60,11 @@ if [ $stage -le 0 ]; then
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
 
-  cat data/local/text/dev_text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  cat data/local/text/cleaned/bpe_val.txt | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
   # use the training data as an additional data source.
   # we can later fold the dev data into this.
   cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/madcat.txt
-  cat data/local/text/corpus_text > ${dir}/data/text/corpus_text.txt
+  cat data/local/text/cleaned/bpe_corpus.txt > ${dir}/data/text/corpus_text.txt
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
   # out interpolation weights.)
