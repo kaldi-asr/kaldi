@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+# Copyright      2017  Hossein Hadian
+
+import sys, io
+import string
+infile = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+output = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+for line in infile:
+  words = line.strip().split()
+  uttid = words[0]
+  transcript = ''.join(words[1:])
+  transcript = transcript.replace('|', ' ')
+  output.write(uttid + ' ' + transcript + '\n')
