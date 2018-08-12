@@ -25,8 +25,8 @@ if [ $stage -le 1 ]; then
   for dataset in test train train_unsup; do
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. "
     echo "Date: $(date)."
-    #local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
-    image/make_features.py data/$dataset/images.scp --feat-dim 40 \
+    #image/ocr/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
+    image/ocr/make_features.py data/$dataset/images.scp --feat-dim 40 \
       --allowed_len_file_path data/$dataset/allowed_lengths.txt --no-augment | \
       copy-feats --compress=true --compression-method=7 \
         ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
@@ -43,16 +43,16 @@ if [ $stage -le 2 ]; then
   cut -d' ' -f2- data/train/text > data/local/text/cleaned/train.txt
   cat data/local/text/ta.txt | python3 local/process_corpus.py > data/local/text/cleaned/corpus.txt
   cat data/local/text/val.txt | python3 local/process_corpus.py > data/local/text/cleaned/val.txt
-  cat data/local/text/cleaned/phones.txt data/local/text/cleaned/train.txt | python3 local/prepend_words.py | python3 utils/lang/bpe/learn_bpe.py -s 700 > data/train/bpe.out
+  cat data/local/text/cleaned/phones.txt data/local/text/cleaned/train.txt | python3 image/ocr/prepend_words.py | python3 utils/lang/bpe/learn_bpe.py -s 700 > data/train/bpe.out
   for datasplit in test train; do
       cut -d' ' -f1 data/$datasplit/text > data/$datasplit/ids
-      cut -d' ' -f2- data/$datasplit/text | python3 local/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/$datasplit/bpe_text
+      cut -d' ' -f2- data/$datasplit/text | python3 image/ocr/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/$datasplit/bpe_text
       mv data/$datasplit/text data/$datasplit/text.old
       paste -d' ' data/$datasplit/ids data/$datasplit/bpe_text > data/$datasplit/text
   done
   echo "$0: Preparing BPE corpus $(date)"
-  cat data/local/text/cleaned/corpus.txt | python3 local/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_corpus.txt
-  cat data/local/text/cleaned/val.txt | python3 local/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_val.txt
+  cat data/local/text/cleaned/corpus.txt | python3 image/ocr/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_corpus.txt
+  cat data/local/text/cleaned/val.txt | python3 image/ocr/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_val.txt
   echo "$0: Preparing dictionary and lang... $(date)"
   local/prepare_dict.sh --dir data/local/dict
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
