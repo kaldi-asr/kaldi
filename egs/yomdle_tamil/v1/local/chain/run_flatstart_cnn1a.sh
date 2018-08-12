@@ -2,23 +2,7 @@
 # Copyright    2017  Hossein Hadian
 
 # This script does end2end chain training (i.e. from scratch)
-
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a
-# System                      e2e_cnn_1a
-# WER                             10.71
-# CER                              2.85
-# Final train prob              -0.0859
-# Final valid prob              -0.1266
-# Final train prob (xent)
-# Final valid prob (xent)
-# Parameters                      2.94M
-
-# steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a/
-# exp/chain/e2e_cnn_1a/: num-iters=195 nj=6..16 num-params=2.9M dim=40->324 combine=-0.065->-0.064 (over 5) logprob:train/valid[129,194,final]=(-0.078,-0.077,-0.086/-0.129,-0.126,-0.127)
-
 set -e
-
-exp_dir=exp
 
 # configs for 'chain'
 stage=0
@@ -29,13 +13,7 @@ affix=1a
 
 # training options
 tdnn_dim=450
-num_epochs=2
-num_jobs_initial=6
-num_jobs_final=12
 minibatch_size=150=64,32/300=32,16/600=16,8/1200=8,4
-common_egs_dir=
-l2_regularize=0.00005
-frames_per_iter=1000000
 cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train
 lang_test=lang_test
@@ -56,8 +34,8 @@ EOF
 fi
 
 lang=data/lang_e2e
-treedir=$exp_dir/chain/e2e_monotree  # it's actually just a trivial tree (no tree building)
-dir=$exp_dir/chain/e2e_cnn_${affix}
+treedir=exp/chain/e2e_monotree  # it's actually just a trivial tree (no tree building)
+dir=exp/chain/e2e_cnn_${affix}
 
 if [ $stage -le 0 ]; then
   # Create a version of the lang/ directory that has one state per phone in the
@@ -67,8 +45,6 @@ if [ $stage -le 0 ]; then
   cp -r data/lang $lang
   silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
   nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
-  # Use our special topology... note that later on may have to tune this
-  # topology.
   steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
 fi
 
@@ -117,27 +93,22 @@ EOF
 fi
 
 if [ $stage -le 3 ]; then
-  # no need to store the egs in a shared storage because we always
-  # remove them. Anyway, it takes only 5 minutes to generate them.
-
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$cmd" \
     --feat.cmvn-opts "$cmvn_opts" \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize $l2_regularize \
-    --chain.apply-deriv-weights false \
-    --egs.dir "$common_egs_dir" \
+    --chain.apply-deriv-weights true \
     --egs.stage $get_egs_stage \
     --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter $frames_per_iter \
-    --trainer.num-epochs $num_epochs \
+    --trainer.frames-per-iter 1000000 \
+    --trainer.num-epochs 2 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
+    --trainer.optimization.num-jobs-initial 6 \
+    --trainer.optimization.num-jobs-final 12 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
@@ -147,25 +118,3 @@ if [ $stage -le 3 ]; then
     --tree-dir $treedir \
     --dir $dir  || exit 1;
 fi
-
-#if [ $stage -le 4 ]; then
-#  # The reason we are using data/lang here, instead of $lang, is just to
-#  # emphasize that it's not actually important to give mkgraph.sh the
-#  # lang directory with the matched topology (since it gets the
-#  # topology file from the model).  So you could give it a different
-#  # lang directory, one that contained a wordlist and LM of your choice,
-#  # as long as phones.txt was compatible.
-#
-#  utils/mkgraph.sh \
-#    --self-loop-scale 1.0 data/$lang_test \
-#    $dir $dir/graph || exit 1;
-#fi
-
-#if [ $stage -le 5 ]; then
-#  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-#  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-#    --nj $nj --cmd "$cmd" \
-#    $dir/graph data/test $dir/decode_test || exit 1;
-#fi
-#echo "Done. Date: $(date). Results:"
-#local/chain/compare_wer.sh $dir
