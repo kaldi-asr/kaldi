@@ -7,7 +7,6 @@ language_main=Tamil
 . ./path.sh
 . ./utils/parse_options.sh
 
-echo "Date: $(date)."
 mkdir -p data/local/splits
 mkdir -p data/local/text/cleaned
 language_lower=$(echo "$language_main" | tr '[:upper:]' '[:lower:]')
@@ -75,4 +74,3 @@ if [ $stage -le 4 ]; then
   cp data/local/yomdle-${language_main}-test.list data/local/splits/yomdle-${language_lower}-test.list
   cp data/local/yomdle-${language_main}-train_unsup.list data/local/splits/yomdle-${language_lower}-train_unsup.list
 fi
-echo "Date: $(date)."

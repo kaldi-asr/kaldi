@@ -16,13 +16,16 @@ mkdir -p data/{train,train_unsup,test}/data
 mkdir -p data/local/backup
 
 if [ $stage -le -1 ]; then
+  echo "$0: creating line images for shared model and unsupervised training...$(date)"
   local/create_download_dir.sh --language Tamil
+  echo "$0: getting text for language modelling...$(date)"
   cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/ta.txt
   head -20000 data/local/text/ta.txt > data/local/text/val.txt
   tail -n +20000 data/local/text/ta.txt > data/local/text/corpus.txt
 fi
 
 if [ $stage -le 0 ]; then
+  echo "$0: Processing train, train unsupervised and test data...$(date)"
   local/prepare_data.sh --language tamil
 fi
 
