@@ -31,7 +31,7 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  echo "$0: Preparing bpe data"
+  echo "$0: Preparing bpe data $(date)"
   cp -r data/train data/backup/
   cp -r data/test data/backup/
   cut -d' ' -f2- data/train/text | python3 local/get_phones.py > data/local/text/cleaned/phones.txt
@@ -56,15 +56,14 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  echo "$0: Estimating a language model for decoding..."
+  echo "$0: Estimating a language model for decoding...$(date)"
   local/train_lm.sh --dir data/local/local_lm --order 3
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
       data/local/dict/lexicon.txt data/lang_test
 fi
 
 if [ $stage -le 4 ]; then
-  echo "$0: Calling the flat-start chain recipe..."
-  echo "Date: $(date)." 
+  echo "$0: Calling the flat-start chain recipe...$(date)"
   local/chain/run_flatstart_cnn1a.sh --nj $nj
 fi
 
