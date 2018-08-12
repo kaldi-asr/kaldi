@@ -18,16 +18,14 @@ OCR_SCORE=${script_dir}/ocr_score.pl
 SCLITE=../../../tools/sctk/bin/sclite
 
 LANG=$(echo $LANG | tr '[:upper:]' '[:lower:]')
-REF_FILE=$script_dir/slam_${LANG}.txt
-echo "About to score $HYP_FILE against $REF_FILE"
-echo "First performing some normalizations..."
+echo "performing some normalizations..."
 
 mkdir -p $OUTDIR
 cat $HYP_FILE | python3 scoring_ocr/convert2snor.py > data/local/text/hyp_file.txt
-
+cat data/test/text.old | python3 scoring_ocr/convert2snor.py > data/local/text/ref_file.txt
 # Step 1. Run some normalizations that are common to all languages
 python3 ${script_dir}/utils/normalize_spaces.py data/local/text/hyp_file.txt $OUTDIR/hyp.norm-sp.txt
-python3 ${script_dir}/utils/normalize_spaces.py $REF_FILE $OUTDIR/ref.norm-sp.txt
+python3 ${script_dir}/utils/normalize_spaces.py data/local/text/ref_file.txt $OUTDIR/ref.norm-sp.txt
 
 python3 ${script_dir}/utils/normalize_common.py $OUTDIR/hyp.norm-sp.txt $OUTDIR/hyp.norm-sp-common.txt
 python3 ${script_dir}/utils/normalize_common.py $OUTDIR/ref.norm-sp.txt $OUTDIR/ref.norm-sp-common.txt
