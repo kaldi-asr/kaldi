@@ -14,6 +14,14 @@ nj=80
 . ./utils/parse_options.sh
 mkdir -p data/{train,train_unsup,test}/data
 mkdir -p data/local/backup
+
+if [ $stage -le -1 ]; then
+  local/create_download_dir.sh --language Tamil
+  cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/corpus.txt
+  head -20000 data/local/text/corpus.txt > data/local/text/val.txt
+  tail -n +20000 data/local/text/corpus.txt > data/local/text/ta.txt
+fi
+
 if [ $stage -le 0 ]; then
   local/prepare_data.sh --language tamil
 fi
