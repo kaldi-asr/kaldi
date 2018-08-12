@@ -32,7 +32,7 @@ if [ $stage -le 1 ]; then
         ark:- ark,scp:data/$dataset/data/images.ark,data/$dataset/feats.scp
     steps/compute_cmvn_stats.sh data/$dataset || exit 1;
   done
-  utils/fix_data_dir.sh data/train
+  image/fix_data_dir.sh data/train
 fi
 
 if [ $stage -le 2 ]; then
