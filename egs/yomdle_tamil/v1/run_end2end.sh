@@ -17,9 +17,9 @@ mkdir -p data/local/backup
 
 if [ $stage -le -1 ]; then
   local/create_download_dir.sh --language Tamil
-  cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/corpus.txt
-  head -20000 data/local/text/corpus.txt > data/local/text/val.txt
-  tail -n +20000 data/local/text/corpus.txt > data/local/text/ta.txt
+  cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/ta.txt
+  head -20000 data/local/text/ta.txt > data/local/text/val.txt
+  tail -n +20000 data/local/text/ta.txt > data/local/text/corpus.txt
 fi
 
 if [ $stage -le 0 ]; then
@@ -49,7 +49,7 @@ if [ $stage -le 2 ]; then
   cp -r data/test data/local/backup/
   cut -d' ' -f2- data/train/text | python3 local/get_phones.py > data/local/text/cleaned/phones.txt
   cut -d' ' -f2- data/train/text > data/local/text/cleaned/train.txt
-  cat data/local/text/ta.txt | python3 local/process_corpus.py > data/local/text/cleaned/corpus.txt
+  cat data/local/text/corpus.txt | python3 local/process_corpus.py > data/local/text/cleaned/corpus.txt
   cat data/local/text/val.txt | python3 local/process_corpus.py > data/local/text/cleaned/val.txt
   cat data/local/text/cleaned/phones.txt data/local/text/cleaned/train.txt | python3 image/ocr/prepend_words.py | python3 utils/lang/bpe/learn_bpe.py -s 700 > data/train/bpe.out
   for datasplit in test train; do
