@@ -8,7 +8,7 @@ nj=80
 . ./path.sh
 . ./utils/parse_options.sh
 mkdir -p data/{train,train_unsup,test}/data
-mkdir -p data/{local,backup}
+mkdir -p data/local/backup
 if [ $stage -le 0 ]; then
   local/prepare_data.sh --language tamil
 fi
@@ -32,8 +32,8 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Preparing bpe data $(date)"
-  cp -r data/train data/backup/
-  cp -r data/test data/backup/
+  cp -r data/train data/local/backup/
+  cp -r data/test data/local/backup/
   cut -d' ' -f2- data/train/text | python3 local/get_phones.py > data/local/text/cleaned/phones.txt
   cut -d' ' -f2- data/train/text > data/local/text/cleaned/train.txt
   cat data/local/text/ta.txt | python3 local/process_corpus.py > data/local/text/cleaned/corpus.txt
