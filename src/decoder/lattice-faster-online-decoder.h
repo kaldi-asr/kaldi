@@ -43,7 +43,8 @@ namespace kaldi {
 
 /** LatticeFasterOnlineDecoder is as LatticeFasterDecoder but also supports an
     efficient way to get the best path (see the function BestPathEnd()), which
-    is useful in endpointing.
+    is useful in endpointing and in situations where you might want to
+    frequently access the best path.
  */
 class LatticeFasterOnlineDecoder {
  public:

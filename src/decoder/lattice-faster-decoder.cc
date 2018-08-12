@@ -33,7 +33,7 @@ namespace kaldi {
 // instantiate this class once for each thing you have to decode.
 LatticeFasterDecoder::LatticeFasterDecoder(const fst::Fst<fst::StdArc> &fst,
                                            const LatticeFasterDecoderConfig &config):
-    fst_(fst), delete_fst_(false), config_(config), num_toks_(0) {
+    fst_(&fst), delete_fst_(false), grammar_fst_(NULL), config_(config), num_toks_(0) {
   config.Check();
   toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
 }
@@ -41,7 +41,15 @@ LatticeFasterDecoder::LatticeFasterDecoder(const fst::Fst<fst::StdArc> &fst,
 
 LatticeFasterDecoder::LatticeFasterDecoder(const LatticeFasterDecoderConfig &config,
                                            fst::Fst<fst::StdArc> *fst):
-    fst_(*fst), delete_fst_(true), config_(config), num_toks_(0) {
+    fst_(fst), delete_fst_(true), grammar_fst_(NULL), config_(config), num_toks_(0) {
+  config.Check();
+  toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
+}
+
+LatticeFasterDecoder::LatticeFasterDecoder(const LatticeFasterDecoderConfig &config,
+                                           const GrammarFst &grammar_fst):
+    fst_(NULL), delete_fst_(true), grammar_fst_(&grammar_fst), config_(config),
+    num_toks_(0) {
   config.Check();
   toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
 }
@@ -62,7 +70,7 @@ void LatticeFasterDecoder::InitDecoding() {
   num_toks_ = 0;
   decoding_finalized_ = false;
   final_costs_.clear();
-  StateId start_state = fst_.Start();
+  StateId start_state = (fst_ != NULL ? fst_->Start() : grammar_fst_->Start());
   KALDI_ASSERT(start_state != fst::kNoStateId);
   active_toks_.resize(1);
   Token *start_tok = new Token(0.0, 0.0, NULL, NULL);
@@ -126,7 +134,7 @@ bool LatticeFasterDecoder::GetRawLattice(Lattice *ofst,
   const unordered_map<Token*, BaseFloat> &final_costs =
       (decoding_finalized_ ? final_costs_ : final_costs_local);
   if (!decoding_finalized_ && use_final_probs)
-    ComputeFinalCosts(&final_costs_local, NULL, NULL);
+    ComputeFinalCostsWrapper(&final_costs_local, NULL, NULL);
 
   ofst->DeleteStates();
   // num-frames plus one (since frames are one-based, and we have
@@ -381,7 +389,7 @@ void LatticeFasterDecoder::PruneForwardLinksFinal() {
     KALDI_WARN << "No tokens alive at end of file";
 
   typedef unordered_map<Token*, BaseFloat>::const_iterator IterType;
-  ComputeFinalCosts(&final_costs_, &final_relative_cost_, &final_best_cost_);
+  ComputeFinalCostsWrapper(&final_costs_, &final_relative_cost_, &final_best_cost_);
   decoding_finalized_ = true;
   // We call DeleteElems() as a nicety, not because it's really necessary;
   // otherwise there would be a time, after calling PruneTokensForFrame() on the
@@ -460,7 +468,7 @@ void LatticeFasterDecoder::PruneForwardLinksFinal() {
 BaseFloat LatticeFasterDecoder::FinalRelativeCost() const {
   if (!decoding_finalized_) {
     BaseFloat relative_cost;
-    ComputeFinalCosts(NULL, &relative_cost, NULL);
+    ComputeFinalCostsWrapper(NULL, &relative_cost, NULL);
     return relative_cost;
   } else {
     // we're not allowed to call that function if FinalizeDecoding() has
@@ -529,7 +537,9 @@ void LatticeFasterDecoder::PruneActiveTokens(BaseFloat delta) {
                 << " to " << num_toks_;
 }
 
+template <typename FST>
 void LatticeFasterDecoder::ComputeFinalCosts(
+    const FST &fst,
     unordered_map<Token*, BaseFloat> *final_costs,
     BaseFloat *final_relative_cost,
     BaseFloat *final_best_cost) const {
@@ -540,11 +550,12 @@ void LatticeFasterDecoder::ComputeFinalCosts(
   BaseFloat infinity = std::numeric_limits<BaseFloat>::infinity();
   BaseFloat best_cost = infinity,
       best_cost_with_final = infinity;
+
   while (final_toks != NULL) {
     StateId state = final_toks->key;
     Token *tok = final_toks->val;
     const Elem *next = final_toks->tail;
-    BaseFloat final_cost = fst_.Final(state).Value();
+    BaseFloat final_cost = fst.Final(state).Value();
     BaseFloat cost = tok->tot_cost,
         cost_with_final = cost + final_cost;
     best_cost = std::min(cost, best_cost);
@@ -570,6 +581,31 @@ void LatticeFasterDecoder::ComputeFinalCosts(
     }
   }
 }
+
+void LatticeFasterDecoder::ComputeFinalCostsWrapper(
+    unordered_map<Token*, BaseFloat> *final_costs,
+    BaseFloat *final_relative_cost,
+    BaseFloat *final_best_cost) {
+  if (grammar_fst_ != NULL) {
+    return LatticeFasterDecoder::ComputeFinalCosts(
+        *grammar_fst_, final_costs, final_relative_cost, final_best_cost);
+  } else if (fst_->Type() == "const") {
+    const fst::ConstFst<fst::StdArc> *fst =
+        dynamic_cast<const fst::ConstFst<fst::StdArc>*>(fst_);
+    return LatticeFasterDecoder::ComputeFinalCosts(
+        *fst, final_costs, final_relative_cost, final_best_cost);
+  } else if (fst_.Type() == "vector") {
+    const fst::VectorFst<fst::StdArc> *fst =
+        dynamic_cast<const fst::VectorFst<fst::StdArc>*>(fst_);
+    return LatticeFasterDecoder::ComputeFinalCosts(
+        *fst, final_costs, final_relative_cost, final_best_cost);
+  } else {
+    // use generic Fst type to cover the remaining cases.
+    return LatticeFasterDecoder::ComputeFinalCosts(
+        *fst_, final_costs, final_relative_cost, final_best_cost);
+  }
+}
+
 
 void LatticeFasterDecoder::AdvanceDecoding(DecodableInterface *decodable,
                                              int32 max_num_frames) {
@@ -684,8 +720,9 @@ BaseFloat LatticeFasterDecoder::GetCutoff(Elem *list_head, size_t *tok_count,
   }
 }
 
-template <typename FstType>
-BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
+template <typename FST>
+BaseFloat LatticeFasterDecoder::ProcessEmitting(const FST &fst,
+                                                DecodableInterface *decodable) {
   KALDI_ASSERT(active_toks_.size() > 0);
   int32 frame = active_toks_.size() - 1; // frame is the frame-index
                                          // (zero-based) used to get likelihoods
@@ -708,8 +745,8 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   // pruning "online" before having seen all tokens
 
   BaseFloat cost_offset = 0.0; // Used to keep probabilities in a good
-  // dynamic range.
-  const FstType &fst = dynamic_cast<const FstType&>(fst_);
+                               // dynamic range.
+
 
   // First process the best token to get a hopefully
   // reasonably tight bound on the next cutoff.  The only
@@ -723,7 +760,7 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
          aiter.Next()) {
       const Arc &arc = aiter.Value();
       if (arc.ilabel != 0) {  // propagate..
-        BaseFloat new_weight = arc.weight.Value() + cost_offset - 
+        BaseFloat new_weight = arc.weight.Value() + cost_offset -
             decodable->LogLikelihood(frame, arc.ilabel) + tok->tot_cost;
         if (new_weight + adaptive_beam < next_cutoff)
           next_cutoff = new_weight + adaptive_beam;
@@ -776,31 +813,31 @@ BaseFloat LatticeFasterDecoder::ProcessEmitting(DecodableInterface *decodable) {
   return next_cutoff;
 }
 
-template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::ConstFst<fst::StdArc>>(
-        DecodableInterface *decodable);
-template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::VectorFst<fst::StdArc>>(
-        DecodableInterface *decodable);
-template BaseFloat LatticeFasterDecoder::ProcessEmitting<fst::Fst<fst::StdArc>>(
-        DecodableInterface *decodable);
-
 BaseFloat LatticeFasterDecoder::ProcessEmittingWrapper(DecodableInterface *decodable) {
-  if (fst_.Type() == "const") {
-    return LatticeFasterDecoder::ProcessEmitting<fst::ConstFst<Arc>>(decodable);
+  if (grammar_fst_ != NULL) {
+    return LatticeFasterDecoder::ProcessEmitting(*grammar_fst_, decodable);
+  } else if (fst_->Type() == "const") {
+    const fst::ConstFst<fst::StdArc> *fst =
+        dynamic_cast<const fst::ConstFst<fst::StdArc>*>(fst_);
+    return LatticeFasterDecoder::ProcessEmitting(*fst, decodable);
   } else if (fst_.Type() == "vector") {
-    return LatticeFasterDecoder::ProcessEmitting<fst::VectorFst<Arc>>(decodable);
+    const fst::VectorFst<fst::StdArc> *fst =
+        dynamic_cast<const fst::VectorFst<fst::StdArc>*>(fst_);
+    return LatticeFasterDecoder::ProcessEmitting(*fst, decodable);
   } else {
-    return LatticeFasterDecoder::ProcessEmitting<fst::Fst<Arc>>(decodable);
+    // use generic Fst type to cover the remaining cases.
+    return LatticeFasterDecoder::ProcessEmitting(*fst_, decodable);
   }
 }
 
-template <typename FstType> 
-void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
+template <typename FST>
+void LatticeFasterDecoder::ProcessNonemitting(const FST &fst,
+                                              BaseFloat cutoff) {
   KALDI_ASSERT(!active_toks_.empty());
   int32 frame = static_cast<int32>(active_toks_.size()) - 2;
   // Note: "frame" is the time-index we just processed, or -1 if
   // we are processing the nonemitting transitions before the
   // first frame (called from InitDecoding()).
-  const FstType &fst = dynamic_cast<const FstType&>(fst_);
 
   // Processes nonemitting arcs for one frame.  Propagates within toks_.
   // Note-- this queue structure is is not very optimal as
@@ -857,20 +894,20 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
   } // while queue not empty
 }
 
-template void LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<fst::StdArc>>(
-        BaseFloat cutoff);
-template void LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<fst::StdArc>>(
-        BaseFloat cutoff);
-template void LatticeFasterDecoder::ProcessNonemitting<fst::Fst<fst::StdArc>>(
-        BaseFloat cutoff);
-
 void LatticeFasterDecoder::ProcessNonemittingWrapper(BaseFloat cost_cutoff) {
-  if (fst_.Type() == "const") {
-    return LatticeFasterDecoder::ProcessNonemitting<fst::ConstFst<Arc>>(cost_cutoff);
+  if (grammar_fst_ != NULL) {
+    return LatticeFasterDecoder::ProcessNonemitting(*grammar_fst_, cost_cutoff);
+  } else if (fst_->Type() == "const") {
+    const fst::ConstFst<fst::StdArc> *fst =
+        dynamic_cast<const fst::ConstFst<fst::StdArc>*>(fst_);
+    return LatticeFasterDecoder::ProcessNonemitting(*fst, cost_cutoff);
   } else if (fst_.Type() == "vector") {
-    return LatticeFasterDecoder::ProcessNonemitting<fst::VectorFst<Arc>>(cost_cutoff);
+    const fst::VectorFst<fst::StdArc> *fst =
+        dynamic_cast<const fst::VectorFst<fst::StdArc>*>(fst_);
+    return LatticeFasterDecoder::ProcessNonemitting(*fst, cost_cutoff);
   } else {
-    return LatticeFasterDecoder::ProcessNonemitting<fst::Fst<Arc>>(cost_cutoff);
+    // use generic Fst type to cover the remaining cases.
+    return LatticeFasterDecoder::ProcessNonemitting(*fst_, cost_cutoff);
   }
 }
 

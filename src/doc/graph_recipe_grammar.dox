@@ -1,0 +1,321 @@
+// doc/graph_recipe_grammar.dox
+
+
+// Copyright  2018  Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+
+ \page graph_grammar   Support for grammars and graphs with on-the-fly parts.
+
+
+ This page explains our support for dynamically created grammars and graphs with
+ extra parts that you want be able to compile quickly (like words you want to
+ add to the lexicon; contact lists; things like that).  We have used the word
+ "grammar" as an easy searchable term for this framework, but this is not the
+ only way to implement grammars in Kaldi.  If you have a smallish, fixed grammar
+ it would probably be much easier to create an FST (G.fst) directly from the
+ grammar (ensuring it is determinizable by means of disambiguation symbols if
+ necessary), and using the normal graph creation recipe.  This framework is
+ specifically for where you have a compelling need to pre-compile the HCLG.fst
+ for various sub-parts and have them dynamically stitched together (typically to
+ avoid recompiling large graphs at runtime).
+
+ This framework is limited to work only with left-biphone models.  This is
+ without loss of performance, because our best models (chain models) already use
+ left-biphone context.
+
+
+  \section graph_grammar_replace  Relation to OpenFst's 'Replace()' operation
+
+  The design of these tools is inspired by OpenFst's  "Replace()"" operation, as implemented
+  by its command-line tool fstreplace.  The basic idea is illustrated by its usage message:
+\verbatim
+Recursively replaces FST arcs with other FST(s).
+
+  Usage: fstreplace root.fst rootlabel [rule1.fst label1 ...] [out.fst]
+\endverbatim
+  Below is a very trivial example of using `fstreplace`; it just replaces the olabel 5
+  in the top-level FST with 6.
+\verbatim
+# (echo 0  1  0  5; echo 1 0) | fstcompile > top.fst
+# (echo 0  1  0  6; echo 1 0) | fstcompile > x.fst
+# fstreplace top.fst 1000 x.fst 5 | fstprint
+0	1	0	0
+1	2	0	6
+2	3	0	0
+3
+\endverbatim
+  The framework of these tools is similar, in that at the G.fst level there are
+  symbols that will end up getting replaced by other FSTs.  Most of the
+  complexity has to do with the need to handle phonetic context-- and this is
+  the reason why we can't just use the existing Replace() operation or its
+  on-demand equivalent).
+
+  A slight difference in interface of our tools versus `fstreplace` is that in our
+  tools, the top-level FST (corresponding to the 1st arg of `fstreplace`) does not
+  have a symbol assigned to it and thus cannot be `replaced into` any
+  FST.
+
+
+  \section graph_grammar_symtabs  Symbol tables and special symbols
+
+  In order to use this framework it will be necessary (or at least highly desirable, for
+  debugging) to add certain extra symbols to the words.txt and phones.txt symbol tables.
+  These extra symbols represent certain special symbols intrinsic to the framework, plus
+  the user-defined nonterminal symbols.  In the following example the user-defined
+  special symbols are \#nonterm:foo and \#nonterm:bar:
+\verbatim
+tail words.txt
+ZZZ  8431
+#0   8432
+#nonterm_bos  8433
+#nonterm_begin  8434
+#nonterm_end  8435
+#nonterm_reenter  8436
+#nonterm:foo  8437
+#nonterm:bar  8438
+\endverbatim
+ The phones.txt would contain the same symbols, but starting from a different number:
+\verbatim
+tail phones.txt
+Z_S  243
+#0  244
+#1  245
+#2  246
+#nonterm_bos  247
+#nonterm_begin  248
+#nonterm_end  249
+#nonterm_reenter  250
+#nonterm:foo  251
+#nonterm:bar  252
+\endverbatim
+ The C++ code never actually interacts with the nonterminal symbols in
+ words.txt; that is all done at the script level (e.g. creating L.fst), and the
+ C++ code only interacts with the nonterminal symbols in phones.txt.  Therefore
+ there are no particularly strong constraints on the symbols in words.txt if you
+ are prepared to modify the scripts or create "LG.fst"-type graphs directly.
+ There are some constraints on the order of these symbols in phones.txt: in that case,
+ the inbuilt symbols (the ones without a colon) must be in the order shown,
+ the user-defined nonterminals must directly follow them, and there must be no
+ phones numbered higher than the nonterminal-related symbols.
+
+ Some binaries accept an option `--nonterm-phones-offset`, which tell them
+ where to find the nonterminal symbols.  This should always be equal to the
+ integer id of the symbol `\#nonterm_bos` in `phones.txt`.  In the above example
+ it would `--nonterm-phones-offset=247`.
+
+  \section graph_grammar_special_g  Special symbols in G.fst
+
+ If you are using this framework you will be creating several graphs, so there
+ may be several copies of G.fst (and the intermediate and fully compiled
+ versions thereof).  All of them are allowed to include sub-graphs via
+ nonterminals, and this can be done recursively.   It's done only when states
+ are accesed, so there is no requirement for the fully expanded FST to be
+ finite.
+
+ If you want to include a particular nonterminal (say the one for `\#nonterm:foo`),
+ you have to include that symbols `\#nonterm:foo` on the input side of G.fst.  As to
+ what you include on the output side: that's up to you, as the framework doesn't care,
+ but bear in mind that symbols without pronunciations may cause problems for lattice
+ word alignment.
+
+ For graphs which are not top-level graphs, all input-word sequences in the
+ G.fst should begin with the special symbol `\#nonterm_begin` and end it with
+ `\#nonterm_end`.  This can be accomplished via `fstconcat` from the command
+ line.  For some applications, such as the contact-list scenario, it may be easier
+ to skip creating G.fst and just create LG.fst manually; this won't be hard to
+ do once you know its expected structure.
+
+  \section graph_grammar_special_lg  Special symbols in LG.fst
+
+ Before we describe what L.fst is expected to do with the special symbols,
+ we will state what we expect LG.fst to contain after composition.  All the
+ special symbols are on the ilabels.
+
+ Let us define the set of <e>"left-context phones"</e> as the set of phones that can
+ end a word, plus the optional silence, plus the special symbol `\#nonterm_bos`.
+ This is the set of phones that can possibly appear as the left-context when we
+ are beginning a word, plus `\#nonterm_bos` as a stand-in for the beginning-of-sequence
+ context where no previous phone was seen.  We will italicize the phrase
+ <e>left-context phones</e> when we use it, to emphasize that it has a special meaning.
+
+ For non-top-level graphs only:
+
+  - All paths in FST must begin with `\#nonterm_begin` followed by each possible
+    <e>left-context phone</e>, i.e. parallel arcs enumerating all possible phonetic
+    left-contexts that could precede this nonterminal.
+
+    In non-word-position-dependent systems we can just let this set be all phones;
+    in word-position-dependent system it can be all phones except word-internal
+    and word-begin phones, i.e.  all phones except those that look like `P_B`
+    and `P_I`.  If the set of possible left contexts is known to be smaller, it may
+    be more efficient to make this a smaller set.  In addition to real phones, if
+    it is possible for this nonterminal to be the first phone in an utterance it is
+    necessary for the set of phones mentioned above to include `\#nonterm_bos`.
+
+  - ilabel sequences must end with #nonterm_end.
+
+ Whenever a nonterminal is invoked, whether from a top-level or non-top-level
+ graph, the ilabels in LG.fst will be, for example, `\#nonterm:foo` followed by
+ in parallel, all possible <e>left-context phones</e>.
+
+
+  \section graph_grammar_special_l  Special symbols in L.fst
+
+ This section explains what sequences involving special symbols in L.fst we need to
+ add, in order to compile a LG.fst with the desired properties from G.fst.  Let the
+ loop-state of L.fst be the state in L.fst with very high out-degree, from which
+ all the words leave (and return).
+
+ The lexicon needs to include, in addition to the normal things:
+
+ - A sequence starting and ending at the loop-state, with olabel `\#nonterm_begin`
+   and ilabels consisting of, `\#nonterm_begin` followed by all possible left-context
+   phones (and `\#nonterm_bos`) in parallel.
+ - A sequence starting and ending at the loop-state, with olabel `\#nonterm_end`
+   and ilabel `\#nonterm_end`.
+ - For each user-defined nonterminal (e.g. `\#nonterm:foo`), a sequence
+   starting and ending at the loop-state, with olabel `\#nonterm_foo` and
+   ilabels: `\#nonterm_foo` followed by all possible left-context phones
+   (and `\#nonterm_bos`) in parallel.
+
+ In the versions of the lexicons that have silence probabilities there
+ are actually two versions of the `loop state`, one for after silence
+ and one for after nonsilence (see <a href=http://www.danielpovey.com/files/2015_interspeech_silprob.pdf> here</a>;
+ in these cases we will make the loops for user-defined nonterminals
+ (the last of the bullets above) from/to both loop states, so that these
+ nonterminals can appear after both silence and nonsilence; but the other
+ two loops will start/end only at the nonsilence loop-state; this will avoid
+ the possibility to have two optional silences in succession.
+
+
+  \section graph_grammar_special_clg  Special symbols in CLG.fst
+
+  First, some background: the symbols on the input of CLG.fst (i.e. the ilabels) have interpretation
+  given by a what we call the `ilabel_info`.  This is explained more in \ref tree_ilabel.  Programs
+  that consume CLG.fst also need the `ilabel_info`, which is a `vector<vector<int32> >`.
+  For a particular ilabel, say 1536, `ilabel_info[1536] = { 5, 21 }` is a vector of integers representing
+  a phone-in-context.  E.g. this would represent the phone 21 with a left-context of 5.
+  Disambiguation symbols also appear on the input of CLG.fst, and they are are represented in the `ilabel_info`
+  a 1-dimensional vector like `{ -104 }` containing the negative of the disambiguation symbol's
+  integer id.
+
+  The special symbols we add to the input of CLG.fst will correspond to pairs of symbols,
+  specifically pairs (`\#nontermXXX`, <e>left-context phone</e>), where `\#nontermXXX` is any
+  of the symbols `\#nonterm_begin`, `\#nonterm_end`, `\#nonterm_reenter`, or user-defined
+  nonterminals like `\#nonterm:foo`.  The ilabel-info for these special symbols will be
+  pairs like `{-104, 21}` where the first element is the negative of the `\#nontermXXX` symbol
+  and the second is the  <e>left-context phone</e>.
+
+  The special symbols in CLG.fst will be as follows.
+  For non-top-level CLG graphs only:
+   - These graphs will begin with ilabels representing pairs (`\#nonterm_begin`, <e>left-context-phone</e>),
+     representing potential left-contexts.
+   - They will end with ilabels (`\#nonterm_end`, <e>left-context-phone</e>), representing
+     actual left-contexts.
+  The following special symbols may appear in any CLG graphs:
+   - When any graph invokes a sub-graph, there will be a sequence of two ilabels:
+     one of the form (`\#nonterm:foo`, <e>left-context-phone</e>) representing the
+     user-specified nonterminal and the actual left-context; then one of the form
+     (`\#nonterm:return`, <e>left-context-phone</e>), with multiple outgoing arcs
+     for all potential left-context phones.
+
+   \subsection graph_grammar_special_c  Special symbols in C.fst
+
+  First, background.  Since this framework only supports the left-biphone
+  states, the states of C.fst correspond to the left context phone, and the
+  ilabels on the transitions correspond to biphones (plus self-loops for
+  disambiguation symbols).
+
+  Next, what we are trying to accomplish.  C.fst needs to do as follows
+ (describing how it needs to change sequences in LG.fst to sequences in CLG.fst):
+
+   - It needs to change the sequence `\#nonterm_begin` p1 (where p1 is a <e>left-context-phone</e>)
+     to a single symbol representing the pair (`\#nonterm_begin`, p1).
+   - It needs to change the symbol `\#nonterm_end` to a single symbol representing
+     the pair (`\#nonterm_end` <e>left-context-phone</e>), where <e>left-context-phone</e>
+     represents the current phonetic left-context.
+   - For each user-defined nonterminal e.g. `\#nonterm:foo`, it needs to change
+     the sequence `\#nonterm:foo` p1 (where p1 is a <e>left-context-phone</e>)
+     to a sequence of two symbols reprenting the pairs (`\#nonterm:foo`, p0) and
+     (`\#nonterm_end` p1) respectively.  Here, p0 represents the phone that was
+     previous to the symbol `\#nonterm:foo`.
+
+ In order to implement the above, we augment the state-space of C.fst by adding
+ two new states: one which we transition to when the olabel is
+ `\#nonterm_begin`, and one which we transition to when we see any user-defined
+ symbol `\#nonterm:foo`.  In order to avoid changing the main context-fst code,
+ we implement this in a special class InverseGrammarContextFst which implements
+ these extensions and which only supports the left-biphone case.
+
+
+
+ \section graph_grammar_special_hclg  Special symbols in HCLG.fst
+
+  The special symbols in the HCLG.fst graphs will represent the same thing as
+  those in CLG.fst graphs, discussed above; but the representation in integer
+  form is different.
+
+  Firstly, some background.  At the input of CLG.fst the symbols are indexes
+  into an `ilabel_info` table.  At the input of HCLG.fst the symbols, in general,
+  represent `transition-ids`-- and also disambiguation symbols, but those
+  are removed after determinization.
+
+  We choose a representation of the special symbols in HCLG.fst that avoids
+  clashing with the transition-ids and which makes it relatively painless to
+  decode the symbols to find what they represent.  The representation  of
+  a pair (`\#nonterm:XXX`, <e>left-context-phone</e>) is,
+  in the typical case:
+\verbatim
+  hclg_ilabel = 1000000 + 1000 * nonterm_xxx + left_context_phone
+\endverbatim
+  where of course `nonterm_xxx` and `left_context_phone` are the corresponding
+  symbol-ids `phones.txt`.  That is the typical case; to handle situations with
+  more than 1000 phones, in general, instead of 1000 we will use the smallest
+  multiple of 1000 that is greater than the value passed to the
+  --nonterm-phones-offset option.
+
+
+  \subsection graph_grammar_special_h  Special symbols in H.fst
+
+ Since H.fst only needs to change the integer represention of the special
+ symbols but otherwise leaves them unchanged, the changes are quite trivial.
+ H.fst has a high-out-degree state which we will refer to as the loop-state.
+ We just need to add a self-loop arc at the loop-state for each of the special
+ symbols referred to in the `ilabel_info`.
+
+
+  \section graph_grammar_decoder  The decoder
+
+
+ The current approach to decoding with grammars (and we may in future make a more efficient
+ version), is to wrap up the entire thing as an FST so that the same decoding code as
+ before can be used.   That is, we just invoke the decoder with a different FST.
+ We use 64-bit state-ids, so that we can let the higher-order 32 bits encode the "fst instance"
+ and the lower-order bits encode the state within that instance.  The fst instances
+ are created on the fly as states are visited.
+.. TODO ...
+
+
+
+*/
+
+
+}
