@@ -89,18 +89,18 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<int32> > &ilabel_in
    information to ilabels_out.  "ifst" is mutable because we need to add the
    subsequential loop.
 
-    @param disambig_syms  List of disambiguation symbols (on the output side
-             of C.fst.
-    @param context_width  Size of context window, e.g. 3 for triphone.
-    @param central_position  Central position in context window, e.g. 1 for
-                        triphone.
-    @param ifst   FST we are composing with C (e.g. LG.fst), mustable because
+    @param [in] disambig_syms  List of disambiguation symbols (on the output side
+                  of C.fst.
+    @param [in] context_width  Size of context window, e.g. 3 for triphone.
+    @param [in] central_position  Central position in phonetic context window
+                  (zero-based index), e.g. 1 for triphone.
+    @param [in,out] ifst   The FST we are composing with C (e.g. LG.fst), mustable because
                   we need to add the subsequential loop to it.
-    @param ofst   Composed output FST (would be CLG.fst).
-    @param ilabels_out  Vector, indexed by ilabel of CLG.fst, providing information
+    @param [out] ofst   Composed output FST (would be CLG.fst).
+    @param [out] ilabels_out  Vector, indexed by ilabel of CLG.fst, providing information
                   about the meaning of that ilabel; see
                   "http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel".
-    @param project_ifst  This is intended only to be set to true
+    @param [in] project_ifst  This is intended only to be set to true
                   in the program 'fstmakecontextfst'... if true, it will
                   project on the input after adding the subsequential loop
                   to 'ifst', which allows us to reconstruct the context
@@ -156,12 +156,26 @@ public:
   typedef typename StdArc::Weight Weight;
   typedef typename StdArc::Label Label;
 
-  /// See \ref graph_context for more details.
-  InverseContextFst(Label subsequential_symbol,  // epsilon not allowed.
-                    const vector<int32>& phones,  // symbols on output side of fst.
-                    const vector<int32>& disambig_syms,  // symbols on output side of fst.
-                    int32 context_width,  // Size of context window
-                    int32 central_position);  // Pos of "central" phone in ctx window, from 0..N-1.
+  /**
+     Constructor.
+        @param [in] subsequential_symbol   The integer id of the 'subsequential symbol'
+                          (usually represented as '$') that terminates sequences on the
+                          output of C.fst (input of InverseContextFst).  Search for
+                          "quential" in https://cs.nyu.edu/~mohri/pub/hbka.pdf.
+                          This may just be the first unused integer id.  Must be nonzer.
+        @param [in] phones      List of integer ids of phones, as you would see in phones.txt
+        @param [in] disambig_syms   List of integer ids of disambiguation symbols,
+                                   e.g. the ids of #0, #1, #2 in phones.txt
+        @param [in] context_width  Size of context window, e.g. 3 for triphone.
+        @param [in] central_position  Central position in context window (zero-based),
+                                   e.g. 1 for triphone.
+     See \ref graph_context for more details.
+  */
+  InverseContextFst(Label subsequential_symbol,
+                    const vector<int32>& phones,
+                    const vector<int32>& disambig_syms,
+                    int32 context_width,
+                    int32 central_position);
 
 
   virtual StateId Start() { return 0; }

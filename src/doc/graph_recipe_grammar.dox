@@ -287,7 +287,7 @@ Z_S  243
   hclg_ilabel = 1000000 + 1000 * nonterm_xxx + left_context_phone
 \endverbatim
   where of course `nonterm_xxx` and `left_context_phone` are the corresponding
-  symbol-ids `phones.txt`.  That is the typical case; to handle situations with
+  symbol-ids in `phones.txt`.  That is the typical case; to handle situations with
   more than 1000 phones, in general, instead of 1000 we will use the smallest
   multiple of 1000 that is greater than the value passed to the
   --nonterm-phones-offset option.
