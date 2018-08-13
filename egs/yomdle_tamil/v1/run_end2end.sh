@@ -76,6 +76,7 @@ if [ $stage -le 3 ]; then
       sed 's/@@//g' > data/$set/bpe_text
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
+    rm -rf data/$set/bpe_text data/$set/ids
   done
 
   echo "applying BPE to corpus text..."
