@@ -17,7 +17,7 @@ mkdir -p data/local/backup
 
 if [ $stage -le -1 ]; then
   echo "$0: creating line images for shared model and unsupervised training...$(date)"
-  local/create_download_dir.sh --language Tamil
+  local/create_download_dir.sh --language_main Tamil
   echo "$0: getting text for language modelling...$(date)"
   cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/ta.txt
   head -20000 data/local/text/ta.txt > data/local/text/val.txt
@@ -49,24 +49,25 @@ if [ $stage -le 2 ]; then
   echo "$0: Processing corpus text and preparing BPE file $(date)"
   cp -r data/train data/local/backup/
   cp -r data/test data/local/backup/
+  cp -r data/train_unsup data/local/backup/
   cut -d' ' -f2- data/train/text | python3 local/get_phones.py > data/local/text/cleaned/phones.txt
   cut -d' ' -f2- data/train/text > data/local/text/cleaned/train.txt
   cat data/local/text/corpus.txt | python3 local/process_corpus.py > data/local/text/cleaned/corpus.txt
   cat data/local/text/val.txt | python3 local/process_corpus.py > data/local/text/cleaned/val.txt
-  cat data/local/text/cleaned/phones.txt data/local/text/cleaned/train.txt | python3 image/ocr/prepend_words.py | python3 utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.out
+  cat data/local/text/cleaned/phones.txt data/local/text/cleaned/train.txt | python3 local/prepend_words.py | python3 utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.out
 fi
 
 if [ $stage -le 3 ]; then
   echo "$0: applying BPE on train test and corpus text... $(date)"
   for set in test train; do
       cut -d' ' -f1 data/$set/text > data/$set/ids
-      cut -d' ' -f2- data/$set/text | image/ocr/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/local/bpe.out | sed 's/@@//g' > data/$set/bpe_text
+      cut -d' ' -f2- data/$set/text | local/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/local/bpe.out | sed 's/@@//g' > data/$set/bpe_text
       mv data/$set/text data/$set/text.old
       paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
   done
   echo "$0: Preparing BPE corpus $(date)"
-  cat data/local/text/cleaned/corpus.txt | python3 image/ocr/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_corpus.txt
-  cat data/local/text/cleaned/val.txt | python3 image/ocr/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_val.txt
+  cat data/local/text/cleaned/corpus.txt | python3 local/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_corpus.txt
+  cat data/local/text/cleaned/val.txt | python3 localprepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/local/text/cleaned/bpe_val.txt
 fi
 
 if [ $stage -le 4 ]; then
