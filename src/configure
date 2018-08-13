@@ -1329,7 +1329,7 @@ elif [ "`uname`" == "Linux" ]; then
     elif [ -f $OPENBLASROOT/include/openblas/openblas_config.h ] ; then
       OPENBLASINCDIR=$OPENBLASROOT/include/openblas
     else 
-      failure "Expected to find the file $OPENBLASROOT/include/openblas_config.h 
+      failure "Expected to find the file $OPENBLASROOT/include/openblas_config.h "
     fi
     echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
     if $static_math; then
