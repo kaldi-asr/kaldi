@@ -38,7 +38,7 @@ if [ $stage -le 1 ]; then
     local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set}
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
-  utils/fix_data_dir.sh data/train
+  image/fix_data_dir.sh data/train
   rm -rf data/train/.backup
 fi
 
