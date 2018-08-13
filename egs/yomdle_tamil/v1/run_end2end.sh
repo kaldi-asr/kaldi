@@ -19,7 +19,7 @@ mkdir -p data/download_backup
 if [ $stage -le -1 ]; then
   echo "$(date): creating line images for shared model and unsupervised training..."
   image/ocr/yomdle/create_download_dir.sh --language_main Tamil
-  echo "$(date): getting text for language modelling..."
+  echo "$(date): getting corpus text for language modelling..."
   cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/ta.txt
   head -2000 data/local/text/ta.txt > data/local/text/val.txt
   tail -2000 data/local/text/ta.txt > data/local/text/corpus.txt
@@ -29,7 +29,7 @@ fi
 
 if [ $stage -le 0 ]; then
   echo "$(date) stage 0: Processing train and test data..."
-  local/prepare_data.sh --language tamil
+  local/prepare_data.sh
 fi
 
 if [ $stage -le 1 ]; then
