@@ -6,7 +6,7 @@
 set -e -o pipefail
 test_dir=data/test
 stage=0
-nj=80
+nj=30
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.

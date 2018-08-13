@@ -7,7 +7,7 @@
 
 set -e
 stage=0
-nj=80
+nj=30
 
 . ./cmd.sh
 . ./path.sh
@@ -17,7 +17,7 @@ mkdir -p data/local/backup
 
 if [ $stage -le -1 ]; then
   echo "$0: creating line images for shared model and unsupervised training...$(date)"
-  local/create_download_dir.sh --language_main Tamil
+  image/ocr/yomdle/create_download_dir.sh --language_main Tamil
   echo "$0: getting text for language modelling...$(date)"
   cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/ta.txt
   head -20000 data/local/text/ta.txt > data/local/text/val.txt
@@ -25,33 +25,22 @@ if [ $stage -le -1 ]; then
 fi
 
 if [ $stage -le 0 ]; then
-  echo "stage 0: Processing train, train unsupervised and test data...$(date)"
+  echo "stage 0: Processing train and test data...$(date)"
   local/prepare_data.sh --language tamil
 fi
 
 if [ $stage -le 1 ]; then
+  echo "stage 1: Obtaining image groups. calling get_image2num_frames..."
   image/get_image2num_frames.py --feat-dim 40 data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
-  for set in train train_unsup; do
-    echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $set. "
-    echo "Date: $(date)."
-    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/${set}
-    steps/compute_cmvn_stats.sh data/${set} || exit 1;
-    #image/ocr/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
-    #image/ocr/make_features.py data/$set/images.scp --feat-dim 40 \
-    #  --allowed_len_file_path data/$set/allowed_lengths.txt --no-augment | \
-    #  copy-feats --compress=true --compression-method=7 \
-    #    ark:- ark,scp:data/$set/data/images.ark,data/$set/feats.scp
-    #steps/compute_cmvn_stats.sh data/$set || exit 1;
+  for set in train test; do
+    echo "Extracting features and calling compute_cmvn_stats: $(date) "
+    local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${datasplit}
+    steps/compute_cmvn_stats.sh data/${datasplit} || exit 1;
   done
   utils/fix_data_dir.sh data/train
-
-  local/make_features.py data/test/images.scp --feat-dim 40 \
-      --allowed_len_file_path data/test/allowed_lengths.txt  --no-augment | \
-      copy-feats --compress=true --compression-method=7 \
-               ark:- ark,scp:data/test/data/images.ark,data/test/feats.scp
 fi
-
+exit
 if [ $stage -le 2 ]; then
   echo "stage 2: BPE preparation  $(date)"
   cp -r data/train data/local/backup1/
@@ -62,34 +51,34 @@ if [ $stage -le 2 ]; then
     local/get_phones.py > data/local/text/cleaned/phones.txt
   cut -d' ' -f2- data/train/text > data/local/text/cleaned/train.txt
 
-  echo ": Processing corpus text"
+  echo "Processing corpus text..."
   cat data/local/text/corpus.txt | \
     local/process_corpus.py > data/local/text/cleaned/corpus.txt
   cat data/local/text/val.txt | \
     local/process_corpus.py > data/local/text/cleaned/val.txt
 
-  echo ": learning BPE"
+  echo "learning BPE..."
   cat data/local/text/cleaned/phones.txt data/local/text/cleaned/train.txt | \
-    local/prepend_words.py | utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt || exit 1;
+    utils/lang/bpe/prepend_words.py | utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt || exit 1;
 fi
 
 if [ $stage -le 3 ]; then
   echo "stage 3: applying BPE...$(date)"
-  echo "applying BPE on train test text..."
+  echo "applying BPE on train, test text..."
   for set in test train; do
-      cut -d' ' -f1 data/$set/text > data/$set/ids
-      cut -d' ' -f2- data/$set/text | local/prepend_words.py | \
-        utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt | \
-        sed 's/@@//g' > data/$set/bpe_text
-      mv data/$set/text data/$set/text.old
-      paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
+    cut -d' ' -f1 data/$set/text > data/$set/ids
+    cut -d' ' -f2- data/$set/text | utils/lang/bpe/prepend_words.py | \
+      utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt | \
+      sed 's/@@//g' > data/$set/bpe_text
+    mv data/$set/text data/$set/text.old
+    paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
   done
 
-  echo "applying BPE to corpus text"
-  cat data/local/text/cleaned/corpus.txt | local/prepend_words.py | \
+  echo "applying BPE to corpus text..."
+  cat data/local/text/cleaned/corpus.txt | utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt | \
     sed 's/@@//g' > data/local/text/cleaned/bpe_corpus.txt
-  cat data/local/text/cleaned/val.txt | local/prepend_words.py | \
+  cat data/local/text/cleaned/val.txt | utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt | \
     sed 's/@@//g' > data/local/text/cleaned/bpe_val.txt
 fi
@@ -121,8 +110,8 @@ fi
 if [ $stage -le 7 ]; then
   echo "stage 7: Aligning the training data using the e2e chain model... $(date)"
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
-      --scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0' \
-      data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
+    --scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0' \
+    data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 8 ]; then
