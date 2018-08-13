@@ -30,7 +30,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  echo "stage 1: Obtaining image groups. calling get_image2num_frames..."
+  echo "$(date) stage 1: Obtaining image groups. calling get_image2num_frames..."
   image/get_image2num_frames.py --feat-dim 40 data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   for set in train test; do
