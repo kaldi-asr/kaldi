@@ -6,7 +6,7 @@ set -e
 
 # configs for 'chain'
 stage=0
-nj=70
+nj=80
 train_stage=-10
 get_egs_stage=-10
 affix=1a

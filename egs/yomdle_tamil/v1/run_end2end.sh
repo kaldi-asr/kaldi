@@ -32,7 +32,6 @@ fi
 if [ $stage -le 1 ]; then
   image/get_image2num_frames.py --feat-dim 40 data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
-
   for set in test train train_unsup; do
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $set. "
     echo "Date: $(date)."
@@ -87,13 +86,12 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: Calling the flat-start chain recipe...$(date)"
-  local/chain/run_flatstart_cnn1a.sh
+  local/chain/run_e2e_cnn.sh
 fi
 
 if [ $stage -le 7 ]; then
   echo "$0: Aligning the training data using the e2e chain model... $(date)"
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
-      --use-gpu false \
       --scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0' \
       data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
