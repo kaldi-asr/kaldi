@@ -35,12 +35,12 @@ if [ $stage -le 1 ]; then
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   for set in train test; do
     echo "Extracting features and calling compute_cmvn_stats: $(date) "
-    local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${datasplit}
-    steps/compute_cmvn_stats.sh data/${datasplit} || exit 1;
+    local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set}
+    steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
   utils/fix_data_dir.sh data/train
 fi
-exit
+
 if [ $stage -le 2 ]; then
   echo "stage 2: BPE preparation  $(date)"
   cp -r data/train data/local/backup1/
