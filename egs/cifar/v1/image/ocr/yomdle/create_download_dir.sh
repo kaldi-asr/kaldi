@@ -68,9 +68,13 @@ if [ $stage -le 3 ]; then
   cp -r data/download/english/truth_csv/* data/download/$language_lower/truth_csv/
 fi
 
-
 if [ $stage -le 4 ]; then
-  cat data/local/yomdle-${language_lower}-train.list data/local/yomdle-english-train.list > data/local/splits/yomdle-${language_lower}-train.list
-  cp data/local/yomdle-${language_main}-test.list data/local/splits/yomdle-${language_lower}-test.list
-  cp data/local/yomdle-${language_main}-train_unsup.list data/local/splits/yomdle-${language_lower}-train_unsup.list
+  cp -r data/download/$language_lower/truth_line_image/* data/download/truth_line_image/
+  cp -r data/download/$language_lower/truth_csv/* data/download/truth_csv/
+fi
+
+if [ $stage -le 5 ]; then
+  cat data/local/yomdle-${language_lower}-train.list data/local/yomdle-english-train.list > data/local/splits/train.txt
+  cp data/local/yomdle-${language_main}-test.list data/local/splits/test.txt
+  cp data/local/yomdle-${language_main}-train_unsup.list data/local/splits/train_unsup.txt
 fi
