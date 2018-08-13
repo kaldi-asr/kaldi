@@ -14,5 +14,6 @@ if [ $stage -le 1 ]; then
             data/local/splits/yomdle-${language}-${datasplit}.list \
             data/${datasplit}
         image/fix_data_dir.sh data/${datasplit}
+        rm -rf data/${datasplit}/.backup
     done
 fi
