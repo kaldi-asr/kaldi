@@ -96,8 +96,8 @@ fi
 
 if ! which python3 >&/dev/null; then
   echo "$0: python3 is not installed"
-#  add_packages python3
-#  pythonok=false
+  add_packages python3
+  pythonok=false
 fi
 
 (
