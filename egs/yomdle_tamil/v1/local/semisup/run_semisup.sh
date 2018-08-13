@@ -19,6 +19,7 @@ exp_root=exp/semisup_100k
 . ./path.sh
 . ./utils/parse_options.sh
 
+mkdir -p data/{train_unsup}/data
 if [ $stage -le 0 ]; then
   echo "stage 0: Processing train unsupervised data...$(date)"
   local/semisup/local/prepare_data.sh --language tamil

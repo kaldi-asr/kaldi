@@ -12,7 +12,7 @@ nj=30
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-mkdir -p data/{train,train_unsup,test}/data
+mkdir -p data/{train,test}/data
 mkdir -p data/local/backup
 
 if [ $stage -le -1 ]; then
@@ -39,13 +39,13 @@ if [ $stage -le 1 ]; then
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
   utils/fix_data_dir.sh data/train
+  rm -rf data/train/.backup
 fi
 
 if [ $stage -le 2 ]; then
   echo "$(date) stage 2: BPE preparation"
   cp -r data/train data/local/backup1/
   cp -r data/test data/local/backup1/
-  cp -r data/train_unsup data/local/backup1/
 
   cut -d' ' -f2- data/train/text | \
     local/get_phones.py > data/local/text/cleaned/phones.txt

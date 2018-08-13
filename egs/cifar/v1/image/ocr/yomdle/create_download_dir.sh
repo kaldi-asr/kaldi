@@ -14,7 +14,7 @@ if [ $stage -le 0 ]; then
   for language in  english $language_lower; do
     echo "$0: Processing YOMDLE ${language}"
     mkdir -p data/download/${language}/{truth_csv,truth_line_image}
-    image/ocr/yomdle2csv.py \
+    image/ocr/yomdle/yomdle2csv.py \
       --inputDir /export/corpora5/slam/YOMDLE/final_${language}/ \
       --outputDir data/download/${language}/truth_csv/ \
       --log data/download/yomdle2csv.${language}.log
@@ -30,7 +30,7 @@ fi
 if [ $stage -le 1 ]; then
   echo "$0: Processing slam ${language_main}"
   mkdir -p data/download/${language_main}/{truth_csv,truth_line_image}
-  image/ocr/gedi2csv_enriched.py \
+  image/ocr/yomdle/gedi2csv_enriched.py \
     --inputDir /export/corpora5/slam/SLAM/${language_main}/transcribed/ \
     --outputDir data/download/${language_main}/truth_csv/ \
     --log data/download/gedi2csv.${language_main}.log
@@ -45,7 +45,7 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: Processing slam ${language_main}"
   mkdir -p data/download/${language_main}_boxed/{truth_csv,truth_line_image}
-  image/ocr/gedi2csv_enriched.py \
+  image/ocr/yomdle/gedi2csv_enriched.py \
     --inputDir /export/corpora5/slam/SLAM/${language_main}/boxed/ \
     --ftype boxed \
     --outputDir data/download/${language_main}_boxed/truth_csv/ \

@@ -7,7 +7,6 @@ language=tamil
 . ./path.sh
 . ./utils/parse_options.sh || exit 1;
 
-mkdir -p data/{train,test,train_unsup}
 if [ $stage -le 1 ]; then
   for datasplit in train test; do
     local/process_data.py data/download/${language}/ \
