@@ -3,25 +3,9 @@
 # e2eali_1b is the same as chainali_1a but uses the e2e chain model to get the
 # lattice alignments and to build a tree
 
-# local/chain/compare_wer.sh exp/chain/exp/chain/cnn_e2eali_1b
-# System                      cnn_e2eali_1b
-# WER                             10.78
-# CER                              2.99
-# Final train prob              -0.0587
-# Final valid prob              -0.0609
-# Final train prob (xent)       -0.4471
-# Final valid prob (xent)       -0.4653
-# Parameters                      3.37M
-
-# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
-#exp/chain/cnn_e2eali_1b: num-iters=179 nj=8..16 num-params=3.4M dim=40->416 combine=-0.058->-0.058 (over 3) xent:train/valid[118,178,final]=(-0.463,-0.445,-0.447/-0.477,-0.462,-0.465) logprob:train/valid[118,178,final]=(-0.062,-0.059,-0.059/-0.063,-0.061,-0.061)
-
 set -e -o pipefail
-
 test_dir=data/test
-decode_dir=decode_test
 stage=0
-
 nj=80
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
@@ -41,15 +25,14 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=false
-lang_test=lang_test
+lang_decode=data/lang_test
+lang_rescore=data/lang_rescore_6g
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
-
 
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
-
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -70,10 +53,9 @@ e2echain_model_dir=exp/chain/e2e_cnn_1a
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
 lang=data/lang_chain
-#for f in $train_data_dir/feats.scp $ali_dir/ali.1.gz $ali_dir/final.mdl; do
-#  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
-#done
-
+for f in $train_data_dir/feats.scp $ali_dir/ali.1.gz $ali_dir/final.mdl; do
+  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
+done
 
 if [ $stage -le 1 ]; then
   echo "$0: creating lang directory $lang with chain-type topology"
@@ -93,7 +75,6 @@ if [ $stage -le 1 ]; then
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
-    # topology.
     steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
   fi
 fi
@@ -225,7 +206,7 @@ if [ $stage -le 6 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/$lang_test \
+    --self-loop-scale 1.0 data/$lang_decode \
     $dir $dir/graph || exit 1;
 fi
 
@@ -235,5 +216,8 @@ if [ $stage -le 7 ]; then
     --beam 12 \
     --frames-per-chunk $frames_per_chunk \
     --nj $nj --cmd "$cmd" \
-    $dir/graph $test_dir $dir/$decode_dir || exit 1;
+    $dir/graph $test_dir $dir/decode_test || exit 1;
+
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/test $dir/decode_test{,_rescored} || exit 1
 fi

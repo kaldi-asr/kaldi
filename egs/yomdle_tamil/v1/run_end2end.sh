@@ -82,6 +82,10 @@ if [ $stage -le 5 ]; then
   local/train_lm.sh --dir data/local/local_lm --order 3
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
       data/local/dict/lexicon.txt data/lang_test
+
+  #local/train_lm.sh --dir data/local/local_lm --order 6
+  #utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
+  #                             data/lang data/lang_rescore_6g
 fi
 
 if [ $stage -le 6 ]; then
