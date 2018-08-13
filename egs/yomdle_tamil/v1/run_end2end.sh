@@ -21,8 +21,8 @@ if [ $stage -le -1 ]; then
   image/ocr/yomdle/create_download_dir.sh --language_main Tamil
   echo "$(date): getting text for language modelling..."
   cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/ta.txt
-  head -20000 data/local/text/ta.txt > data/local/text/val.txt
-  tail -n +20000 data/local/text/ta.txt > data/local/text/corpus.txt
+  head -2000 data/local/text/ta.txt > data/local/text/val.txt
+  tail -2000 data/local/text/ta.txt > data/local/text/corpus.txt
   cp -r data/download data/backup/
   cp -r data/local data/backup/
 fi
