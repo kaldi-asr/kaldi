@@ -1320,6 +1320,7 @@ elif [ "`uname`" == "Linux" ]; then
     if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
       OPENBLASLIBDIR=$OPENBLASROOT/lib
     elif [ -f $OPENBLASROOT/lib64/libopenblas.so ]; then
+      # in REDHAT/CentOS package installs, the library is located here
       OPENBLASLIBDIR=$OPENBLASROOT/lib64
     else
       failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
@@ -1327,6 +1328,7 @@ elif [ "`uname`" == "Linux" ]; then
     if [ -f $OPENBLASROOT/include/openblas_config.h ] ; then
       OPENBLASINCDIR=$OPENBLASROOT/include
     elif [ -f $OPENBLASROOT/include/openblas/openblas_config.h ] ; then
+      # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
       OPENBLASINCDIR=$OPENBLASROOT/include/openblas
     else 
       failure "Expected to find the file $OPENBLASROOT/include/openblas_config.h "
