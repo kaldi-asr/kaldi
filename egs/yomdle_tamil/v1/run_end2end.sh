@@ -13,8 +13,8 @@ nj=30
 . ./path.sh
 . ./utils/parse_options.sh
 mkdir -p data/{train,test}/data
-mkdir -p data/local/backup
-mkdir -p data/backup
+mkdir -p data/tr_te_backup
+mkdir -p data/download_backup
 
 if [ $stage -le -1 ]; then
   echo "$(date): creating line images for shared model and unsupervised training..."
@@ -23,8 +23,8 @@ if [ $stage -le -1 ]; then
   cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/ta.txt
   head -2000 data/local/text/ta.txt > data/local/text/val.txt
   tail -2000 data/local/text/ta.txt > data/local/text/corpus.txt
-  cp -r data/download data/backup/
-  cp -r data/local data/backup/
+  cp -r data/download data/download_backup/
+  cp -r data/local data/download_backup/
 fi
 
 if [ $stage -le 0 ]; then
@@ -48,8 +48,8 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$(date) stage 2: BPE preparation"
-  cp -r data/train data/local/backup/
-  cp -r data/test data/local/backup/
+  cp -r data/train data/tr_te_backup/
+  cp -r data/test data/tr_te_backup/
 
   cut -d' ' -f2- data/train/text | \
     local/get_phones.py > data/local/text/cleaned/phones.txt
