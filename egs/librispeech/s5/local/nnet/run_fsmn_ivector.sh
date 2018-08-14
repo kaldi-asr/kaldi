@@ -60,7 +60,7 @@ if [ $stage -le 3 ]; then
     sed -r "s/"$ori_num_pdf"/"$new_num_pdf"/g" $proto > $new_proto
 
     $cuda_cmd $dir/_train_nnet.log \
-        steps/nnet/train_faster.sh --learn-rate $lrate --nnet-proto $proto \
+        steps/nnet/train_faster.sh --learn-rate $lrate --nnet-proto $new_proto \
         --start_half_lr 5 --momentum 0.9 \
         --train-tool "nnet-train-fsmn-streams" \
         --feat-type plain --splice 1 \
