@@ -452,11 +452,7 @@ class CudaLatticeDecoder {
 
     // GPU global memory temp variables
     volatile int32 *modified;
-    int32 *pe_idx;
-    int32 *ne_idx;
     int32 *ne_queue;
-    int32 *fb_idx;
-    int32 *agg_idx;
     int32 *barrier;
     int32 *num_arcs_till_last;
 
@@ -519,9 +515,7 @@ class CudaLatticeDecoder {
   CudaLatticeDecoderConfig config_;
   const CudaFst fst_;
 
-  // dynamic load balancing
-  int32 *pe_idx_d, *ne_idx_d, *fb_idx_d; // warp assignment indexes
-  int32 *agg_idx_d, *ne_queue_d; // for aggregation of token idx
+  int32 *ne_queue_d; // for token idx
   // token passing
   TokenMergeVector* cur_toks_;
   TokenMergeVector* prev_toks_;  

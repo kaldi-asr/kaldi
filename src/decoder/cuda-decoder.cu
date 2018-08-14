@@ -193,6 +193,7 @@ DEVICE static inline void _compute_degrees_kernel(processTokens_params* params) 
                 blk_scan_offset = total;
             }
         }
+        __syncthreads(); // blk_scan_offset
         if (threadIdx.x == 0) {
             *params->tot_narcs_d_ = blk_scan_offset;
             *params->tot_narcs_h_ = blk_scan_offset; // pinned memory

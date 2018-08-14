@@ -298,6 +298,7 @@ DEVICE static inline void _compute_degrees_scan(processTokens_params * params,
         blk_scan_offset = total;
       }
     }
+    __syncthreads(); // blk_scan_offset
     if (threadIdx.x == 0) {
       *params->d_q_token_from_narcs = blk_scan_offset;
     }
@@ -396,94 +397,6 @@ DEVICE static inline void _process_emit_or_nemit_tokens(processTokens_params *pa
                                       &(params->lattice_processor));
 }
 
-template<int32 blockDimx, int32 blockDimy>
-DEVICE static inline void _process_nonemitting_tokens(processTokens_params
-    *params, CostType cutoff, uint32 size,  volatile int32 *modified,
-    bool aggregate = false) {
-  assert(size);
-  // blockDim threads per token to process out-arcs in parallel
-  auto group = cooperative_groups::tiled_partition<blockDimx>
-               (cooperative_groups::this_thread_block());
-
-  // as we can't use linked list in GPU, a naive implementation is processing
-  // all tokens in each iteration. We propose a better method by firstly doing
-  // an aggregation of the Tokens updated in last iteration. After that,
-  // processing non-emitting tokens is only conducted on these aggregated
-  // tokens. For the first time to run into this iteration, all tokens are
-  // updated by _process_emit_or_nemit_tokens(), so we don't need to do aggregation
-  int* agg_tok_idx = params->agg_idx; // need to make it 0 before enter this func
-  int* cur_tok_idx = params->ne_idx; // need to make it 0 before enter this func
-  if (aggregate) {  // aggregation stage
-    for (int32 tid = threadIdx.x + blockIdx.x * blockDim.x; tid < size;
-         tid += blockDim.x * gridDim.x) {
-      if (params->cur_toks.IsUpdated(tid)) {
-        int32 i = atomicAdd(agg_tok_idx, 1);
-        // get updated token index for faster processing non-emitting tokens
-        if (i >= size) break;
-        params->ne_queue[i] = tid;
-      }
-    }
-    grid_sync(params->barrier);
-  }
-  if (params->verbose > 3 && threadIdx.x == 0
-      && blockIdx.x == 0) CUDA_PRINTF(1, "PNE: %i %i %i %f\n", params->frame,
-                                        params->cur_toks.Size(), *agg_tok_idx, *params->cutoff);
-
-  while (true) {
-    int32 i, j;
-    // uses dynamically load balanced loop trips.
-    // details are described in _process_emit_or_nemit_tokens()
-    if (group.thread_rank() == 0) { // thread 0 nominated to get new token
-      if (aggregate) {
-        j = atomicAdd(cur_tok_idx, 1); // allocate new token index
-        if (j >= *agg_tok_idx) i = size; // to finish
-        else i = params->ne_queue[j];
-      } else {
-        i = atomicAdd(cur_tok_idx, 1);
-      }
-    }
-    i = group.shfl(i, 0); // rank 0 broadcasts i to whole group
-    if (i >= size) break;
-
-    TokenState& ts = params->cur_toks[i];
-    Token * tok = params->lattice_processor.GetTokenByExactIdx(ts.tok_idx_allocated);
-    StateId state = ts.state;
-    assert(params->ne_offsets);
-    uint32 start = params->ne_offsets[state], finish = params->ne_offsets[state + 1];
-    for (int32 j = start + group.thread_rank(); j < finish; j += blockDimx) {
-      BaseFloat weight = params->arc_weights[j];
-      StateId nextstate = params->arc_nextstates[j];
-      Token next_tok = Token(weight, tok);
-      CostType total_cost = tok->cost_ + weight;
-
-      // 2-pass atomic based token recombination
-      // details described in _process_emit_or_nemit_tokens()
-      if (next_tok.cost_ <= cutoff) {
-        TokenState *next_ts = NULL;
-        uint64* token_pack;
-        int32 update_idx;
-        _find_or_add_token_arc(params, nextstate, total_cost,
-                               0, &ts, j, true, &next_ts, &token_pack,
-                               &update_idx, false);
-        uint64 new_token_pack = pack_cost_idx_into_uint64(-total_cost, update_idx);
-        uint64 ret = atomicMax((unsigned long long *)token_pack,
-                               (unsigned long long)new_token_pack);
-        if (ret < new_token_pack) {
-          assert(update_idx < params->max_lat_arc_per_frame);
-          Token* cur_te = params->token_per_arc + update_idx;
-          fast_store8(cur_te, &(Token(weight, tok)));
-          params->token_per_arc_update[update_idx] = 1;
-          (*modified) = true; // show that we need another iteration
-        }
-      }
-    }
-  }
-  grid_sync(params->barrier);
-  params->cur_toks.StoreDataByPackIdx(params->token_per_arc,
-                                      params->token_per_arc_update, params->numArcs,
-                                      &(params->lattice_processor));
-}
-
 // end of inline device functions
 
 // cuda __global__ functions
@@ -537,7 +450,7 @@ __global__
 static void _process_tokens(processTokens_params params, bool is_init = false) {
   bool rank0 = blockIdx.x == 0 && threadIdx.x == 0;
 
-  if (!is_init) { // only do _process_nonemitting_tokens() at frame 0
+  if (!is_init) { 
     if (rank0) params.cur_toks.Clear(0); // clear here to reduce a kernel call
 
     _compute_degrees_scan(&params, true); //for emit
@@ -553,7 +466,6 @@ static void _process_tokens(processTokens_params params, bool is_init = false) {
     *params.num_arcs_till_last = 0;
   }
 
-  // modified flag for current iteration used in _process_nonemitting_tokens()
   volatile int32 *modified0 = params.modified;
   // modified flag for next/last iteration
   volatile int32 *modified1 = params.modified + 1;
@@ -564,58 +476,49 @@ static void _process_tokens(processTokens_params params, bool is_init = false) {
     *modified0 = false;
     *modified1 = false;
   }
-  if (!is_init) { // only do _process_nonemitting_tokens() at frame 0
+  if (!is_init) { 
     _process_emit_or_nemit_tokens(&params);
     grid_sync(params.barrier);  // ensure cur_toks size is final
   }
 
   // debug
-  int32 tok_E;
+  int32 tok_E, tok_E_sc;
   int32 itv = params.verbose > 2 ? 1 : 10;
   // if without -G, this code will be optimized out
-  if (rank0 && params.verbose > 0 && params.frame % itv == 0)
+  if (rank0 && params.verbose > 0 && params.frame % itv == 0) {
     tok_E = params.cur_toks.Size();
+    tok_E_sc = *params.d_q_token_from_narcs;
+  }
   int32 cnt = 0;
   uint32 size = 0;
   do {
-    size = params.cur_toks.Size();
-    if (rank0) {
-      // need to make it 0 before enter _process_nonemitting_tokens
-      *params.ne_idx = 0;
-      // need to make it 0 before enter _process_nonemitting_tokens
-      *params.agg_idx = 0;
-    }
+    cnt++;
+    _compute_degrees_scan(&params, false); //for non-emit
     // wait for everyone to read size and modified0
-    grid_sync(params.barrier);
-
+    size = params.cur_toks.Size();
     // swap buffers: double buffered to avoid extra sync when resetting
     // modified to false, 3% speedup
     // if we use more modified, we can reduce more grid sync,
     // but will make the program complexer
     cuda_swap(modified0, modified1);
     if (rank0) *modified1 = false;
-    cnt++;
-    // details of aggregation described in _process_nonemitting_tokens()
-    bool aggregate = (!is_init) && cnt > 1 ? 1 : 0;
-    if (!aggregate) {
-      _compute_degrees_scan(&params, false); //for non-emit
-      grid_sync(params.barrier);
-      _process_emit_or_nemit_tokens(&params, false, modified0, size);
-    } else {
-      _process_nonemitting_tokens<32, 2>(&params, cutoff, size, modified0, aggregate);
-    }
+    grid_sync(params.barrier); // for _compute_degrees_scan()
+    _process_emit_or_nemit_tokens(&params, false, modified0, size);
 
-    // we have sync in the end of _process_nonemitting_tokens
-    // grid_sync(params.barrier);
     // wait for everyone to finish process tokens and writes modified0
+    // we have sync in the end of _process_emit_or_nemit_tokens
+    // thus we can reduce a grid_sync(params.barrier);
   } while ((*modified0) == true && cnt < 10);
-  if (rank0 && params.verbose > 0 && params.frame % itv == 0)
-    if (is_init)
+  if (rank0 && params.verbose > 2 && params.frame % itv == 0) {
+    if (is_init) {
       CUDA_PRINTF(1, "TK: %i %i %i %f\n", params.frame, tok_E,
                 params.cur_toks.Size(), cutoff);
-    else
-      CUDA_PRINTF(1, "TK: %i %i %i %f %f\n", params.frame, tok_E,
-                params.cur_toks.Size(), cutoff, params.cuda_decodable.LogLikelihood(1));
+    } else {
+      CUDA_PRINTF(1, "TK: %i %i %i %i %i %f %f\n", params.frame, tok_E,
+                params.cur_toks.Size(), tok_E_sc, *params.d_q_token_from_narcs,
+                cutoff, params.cuda_decodable.LogLikelihood(1));
+    }
+  }
 
   // process lattice before allocate new toks to TokenState
   params.lattice_processor.CollectToksPerFrame(params.cur_toks, params.frame);
@@ -633,8 +536,6 @@ static void _process_tokens(processTokens_params params, bool is_init = false) {
   if (rank0) {
     // prepare for next iteration
     *params.cutoff = INFINITY;
-    *params.fb_idx = 0;
-    *params.pe_idx = 0;
   }
 }
 
@@ -1397,18 +1298,10 @@ CudaLatticeDecoder::CudaLatticeDecoder(const CudaFst &fst, const TransitionModel
     cudaStreamCreateWithFlags(&stream_lat[i], cudaStreamNonBlocking);
   cudaStreamCreateWithPriority(&stream_ll, cudaStreamNonBlocking, -1);
 
-  cudaMalloc(&pe_idx_d, sizeof(int32)); bytes_cuda_malloc += sizeof(int32);
-  cudaMalloc(&agg_idx_d, sizeof(int32)); bytes_cuda_malloc += sizeof(int32);
-  cudaMalloc(&ne_idx_d, sizeof(int32)); bytes_cuda_malloc += sizeof(int32);
   cudaMalloc(&ne_queue_d, sizeof(int32)*config.max_tokens_per_frame);
   bytes_cuda_malloc += sizeof(int32);
-  cudaMalloc(&fb_idx_d, sizeof(int32)); bytes_cuda_malloc += sizeof(int32);
   cudaMalloc(&barrier_d, sizeof(int32)); bytes_cuda_malloc += sizeof(int32);
 
-  cudaMemset(pe_idx_d, 0, sizeof(int32));
-  cudaMemset(ne_idx_d, 0, sizeof(int32));
-  cudaMemset(agg_idx_d, 0, sizeof(int32));
-  cudaMemset(fb_idx_d, 0, sizeof(int32));
   cudaMemset(barrier_d, 0, sizeof(int32));
   CU_SAFE_CALL(cudaGetLastError());
 
@@ -1494,11 +1387,7 @@ CudaLatticeDecoder::~CudaLatticeDecoder() {
 
   cudaFree(current_tokens_lookup_d);
 
-  cudaFree(pe_idx_d);
-  cudaFree(agg_idx_d);
-  cudaFree(ne_idx_d);
   cudaFree(ne_queue_d);
-  cudaFree(fb_idx_d);
   cudaFree(barrier_d);
 
   cudaFree(cutoff_d);
@@ -1544,11 +1433,7 @@ void CudaLatticeDecoder::InitParams(processTokens_params* params) {
 
   params->cuda_decodable = cuda_decodable_;
   params->modified = modified_d;
-  params->pe_idx = pe_idx_d;
-  params->ne_idx = ne_idx_d;
   params->ne_queue = ne_queue_d;
-  params->fb_idx = fb_idx_d;
-  params->agg_idx = agg_idx_d;
   params->barrier = barrier_d;
 
   params->beam = config_.beam;
