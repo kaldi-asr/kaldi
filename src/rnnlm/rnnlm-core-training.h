@@ -189,6 +189,10 @@ class RnnlmCoreTrainer {
   // per-component max-change and global max-change were enforced.
   void PrintMaxChangeStats() const;
 
+
+  // Calls ConsolidateMemory() on nnet_ and delta_nnet_.
+  void ConsolidateMemory();
+
   ~RnnlmCoreTrainer();
  private:
 
