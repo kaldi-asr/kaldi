@@ -62,17 +62,6 @@ def write_kaldi_matrix(file_handle, matrix, key):
     file_handle.write(" ]\n")
 
 
-def get_scaled_image(im):
-    scale_size = args.feat_dim
-    sx = im.shape[1]  # width
-    sy = im.shape[0]  # height
-    scale = (1.0 * scale_size) / sy
-    nx = int(scale_size)
-    ny = int(scale * sx)
-    im = misc.imresize(im, (nx, ny))
-    return im
-
-
 def horizontal_pad(im, allowed_lengths = None):
     if allowed_lengths is None:
         left_padding = right_padding = args.padding

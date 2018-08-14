@@ -1,10 +1,5 @@
 #!/bin/bash
 
-#
-# SCALE 2018 Text detection evaluation
-#
-# last updated: 2018-05-17
-#
 # DESC: Evaluate text detection bounding boxes
 #
 # INPUT:
@@ -17,14 +12,6 @@
 # OUTPUT:
 #    output - output directory of results (plot)
 #    log - log output
-#
-# Original data - /exp/scale18/ocr/data/SLAM_2.0/FINAL_SLAM_sanitized
-# Derived data (truth_csv, truth_overlay, ...) - /exp/scale18/ocr/data/derived/SLAM_2.0
-# Tools (Tesseract, Leptonica, Tesserocr) - /exp/scale18/ocr/tools 
-#
-# qsub -v PATH -S /bin/bash -b y -q all.q -cwd -j y -N detter -l num_proc=2,mem_free=64G /exp/detter/scale18/ocr/cv_scale/scripts/eval_text_detect.sh
-#
-#
 
 source activate py35
 echo "LD_LIBRARY_PATH = ${LD_LIBRARY_PATH}"

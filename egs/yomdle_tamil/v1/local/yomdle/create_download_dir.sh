@@ -3,12 +3,14 @@
 set -e
 stage=0
 language_main=Tamil
+slam_dir=/export/corpora5/slam/SLAM/
+yomdle_dir=/export/corpora5/slam/YOMDLE/
+
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
 mkdir -p data/local/splits
-mkdir -p data/local/text/cleaned
 language_lower=$(echo "$language_main" | tr '[:upper:]' '[:lower:]')
 
 echo "$0: extracting line images for english and ${language} for shared model training"
@@ -16,12 +18,12 @@ if [ $stage -le 0 ]; then
   for language in  english $language_lower; do
     echo "$0: Processing YOMDLE ${language}"
     mkdir -p data/download/${language}/{truth_csv,truth_line_image}
-    image/ocr/yomdle/yomdle2csv.py \
-      --inputDir /export/corpora5/slam/YOMDLE/final_${language}/ \
+    local/yomdle/yomdle2csv.py \
+      --inputDir $yomdle_dir/final_$language/ \
       --outputDir data/download/${language}/truth_csv/ \
       --log data/download/yomdle2csv.${language}.log
-    local/create_line_image_from_page_image.py \
-      /export/corpora5/slam/YOMDLE/final_${language}/images/ \
+    local/yomdle/create_line_image_from_page_image.py \
+      $yomdle_dir/final_$language/images/ \
       data/download/${language}/truth_csv/ \
       data/download/${language}/truth_line_image/ \
       data/local/yomdle-${language}-train.list \
@@ -33,12 +35,12 @@ echo "$0: extracting line images for slam ${language} for testing"
 if [ $stage -le 1 ]; then
   echo "$0: Processing slam ${language_main}"
   mkdir -p data/download/${language_main}/{truth_csv,truth_line_image}
-  image/ocr/yomdle/gedi2csv_enriched.py \
-    --inputDir /export/corpora5/slam/SLAM/${language_main}/transcribed/ \
+  local/yomdle/gedi2csv_enriched.py \
+    --inputDir $slam_dir/${language_main}/transcribed/ \
     --outputDir data/download/${language_main}/truth_csv/ \
     --log data/download/gedi2csv.${language_main}.log
-  local/create_line_image_from_page_image.py \
-    /export/corpora5/slam/SLAM/${language_main}/transcribed/ \
+  local/yomdle/create_line_image_from_page_image.py \
+    $slam_dir/${language_main}/transcribed/ \
     data/download/${language_main}/truth_csv/ \
     data/download/${language_main}/truth_line_image/ \
     data/local/yomdle-${language_main}-test.list \
@@ -49,13 +51,13 @@ echo "$0: extracting line images for semi supervised training for slam ${languag
 if [ $stage -le 2 ]; then
   echo "$0: Processing slam ${language_main}"
   mkdir -p data/download/${language_main}_boxed/{truth_csv,truth_line_image}
-  image/ocr/yomdle/gedi2csv_enriched.py \
-    --inputDir /export/corpora5/slam/SLAM/${language_main}/boxed/ \
+  local/yomdle/gedi2csv_enriched.py \
+    --inputDir $slam_dir/${language_main}/boxed \
     --ftype boxed \
     --outputDir data/download/${language_main}_boxed/truth_csv/ \
     --log data/download/gedi2csv.${language_main}_boxed.log
-  local/create_line_image_from_page_image.py \
-    /export/corpora5/slam/SLAM/${language_main}/boxed/ \
+  local/yomdle/create_line_image_from_page_image.py \
+    $slam_dir/${language_main}/boxed \
     data/download/${language_main}_boxed/truth_csv/ \
     data/download/${language_main}_boxed/truth_line_image/ \
     data/local/yomdle-${language_main}-train_unsup.list \

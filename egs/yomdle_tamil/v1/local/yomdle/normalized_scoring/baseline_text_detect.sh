@@ -1,11 +1,5 @@
 #!/bin/bash
 
-#
-#
-#  SCALE 2018 Text detection Baseline with Tesseract 4
-#
-#  last updated: 2018-05-14
-#
 #  INPUT:
 #		LANGUAGE - SLAM language to evaluate
 #		TRUTH_CSV - Transcription annotation csv file 
@@ -17,12 +11,6 @@
 #  OUTPUT:
 #		OUTPUT_DIR - 
 #
-#
-#  qsub -v PATH -S /bin/bash -b y -q all.q -cwd -j y -N detter -l num_proc=4,mem_free=64G /exp/detter/scale18/ocr/cv_scale/scripts/baseline_text_detect.sh
-#
-#  Original data - /exp/scale18/ocr/data/SLAM_2.0/FINAL_SLAM_sanitized
-#  Derived data (truth_csv, truth_overlay, ...) - /exp/scale18/ocr/data/derived/SLAM_2.0
-#  Tools (Tesseract, Leptonica, Tesserocr) - /exp/scale18/ocr/tools
 #
 
 source activate py35

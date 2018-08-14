@@ -9,16 +9,28 @@ set -e
 stage=0
 nj=30
 
+language_main=Tamil
+slam_dir=/export/corpora5/slam/SLAM/
+yomdle_dir=/export/corpora5/slam/YOMDLE/
+corpus_dir=/export/corpora5/handwriting_ocr/corpus_data/ta/
+
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 mkdir -p data/{train,test}/data
 
+# Start from stage=-2 for extracting line images from page image and 
+# creating csv files for transcriptions.
+if [ $stage -le -2 ]; then
+  echo "$(date): extracting line images for shared model and semi-supervised training..."
+  local/yomdle/create_download_dir.sh --language_main $language_main \
+    --slam_dir $slam_dir --yomdle_dir $yomdle_dir
+fi
+
 if [ $stage -le -1 ]; then
-  echo "$(date): creating line images for shared model and unsupervised training..."
-  image/ocr/yomdle/create_download_dir.sh --language_main Tamil
   echo "$(date): getting corpus text for language modelling..."
-  cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/ta.txt
+  mkdir -p data/local/text/cleaned
+  cat $corpus_dir/* > data/local/text/ta.txt
   head -20000 data/local/text/ta.txt > data/local/text/val.txt
   tail -n +20000 data/local/text/ta.txt > data/local/text/corpus.txt
 fi
@@ -39,7 +51,7 @@ if [ $stage -le 1 ]; then
   done
   image/fix_data_dir.sh data/train
 fi
-
+exit
 if [ $stage -le 2 ]; then
   echo "$(date) stage 2: BPE preparation"
   cut -d' ' -f2- data/train/text | \
@@ -112,5 +124,5 @@ fi
 
 if [ $stage -le 8 ]; then
   echo "$(date) stage 8: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali_1b.sh
+  local/chain/run_cnn_e2eali.sh
 fi

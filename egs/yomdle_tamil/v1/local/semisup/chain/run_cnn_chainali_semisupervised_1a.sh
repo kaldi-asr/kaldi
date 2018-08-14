@@ -100,17 +100,6 @@ if [ $stage -le 5 ]; then
             $graphdir data/$unsupervised_set $sup_chain_dir/decode_$unsupervised_set
 fi
 
-# Rescore undeterminized lattices with larger LM
-if [ $stage -le 6 ]; then
-  steps/lmrescore_const_arpa_undeterminized.sh --cmd "$decode_cmd" \
-    --acwt 0.1 --beam 8.0  --skip-scoring true \
-    $unsup_decode_lang $unsup_rescore_lang \
-    data/$unsupervised_set \
-    $sup_chain_dir/decode_$unsupervised_set \
-    $sup_chain_dir/decode_${unsupervised_set}
-  ln -sf ../final.mdl $sup_chain_dir/decode_${unsupervised_set}/final.mdl
-fi
-
 # Get best path alignment and lattice posterior of best path alignment to be
 # used as frame-weights in lattice-based training
 if [ $stage -le 8 ]; then

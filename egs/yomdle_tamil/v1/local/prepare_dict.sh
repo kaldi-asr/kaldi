@@ -10,8 +10,6 @@ set -e
 dir=data/local/dict
 . ./utils/parse_options.sh || exit 1;
 
-base_dir=$(echo "$DIRECTORY" | cut -d "/" -f2)
-
 mkdir -p $dir
 
 local/prepare_lexicon.py $dir

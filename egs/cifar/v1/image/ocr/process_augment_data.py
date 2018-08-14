@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+
+# Copyright   2017 Yiwen Shao
+#             2018 Ashish Arora
+
+# Apache 2.0
+
 import os
 import argparse
 
@@ -10,44 +16,41 @@ args = parser.parse_args()
 
 
 text_file = os.path.join(args.dir, 'backup', 'text')
-text_dict = dict()  # stores imageID and text
+text_dict = dict()  # stores image_id and text
 
 with open(text_file) as text_fh:
     for uttID_text in text_fh:
         uttID_text = uttID_text.strip()
         uttID_text_vect = uttID_text.split(" ")
         uttID = uttID_text_vect[0]
-        imageID = uttID
+        image_id = uttID
         text_vect = uttID_text_vect[1:]
         text = " ".join(text_vect)
-        text_dict[imageID] = text
-        # print "%s: %s" % (imageID, text)
+        text_dict[image_id] = text
 
 utt2spk_file = os.path.join(args.dir, 'backup', 'utt2spk')
-uttID_spk_dict = dict()  # stores imageID and speaker
+uttid_to_spk = dict()  # stores image_id and speaker
 
 with open(utt2spk_file) as utt2spk_fh:
     for uttID_spk in utt2spk_fh:
         uttID_spk = uttID_spk.strip()
         uttID_spk_vect = uttID_spk.split(" ")
         uttID = uttID_spk_vect[0]
-        imageID = uttID
+        image_id = uttID
         spk = uttID_spk_vect[1]
-        uttID_spk_dict[imageID] = spk
-        # print "%s: %s" % (imageID, spk)
+        uttid_to_spk[image_id] = spk
 
 image_file = os.path.join(args.dir, 'backup', 'images.scp')
-uttID_path_dict = dict()  # stores imageID and image path
+uttID_path_dict = dict()  # stores image_id and image path
 
 with open(image_file) as image_fh:
     for uttID_path in image_fh:
         uttID_path = uttID_path.strip()
         uttID_path_vect = uttID_path.split(" ")
         uttID = uttID_path_vect[0]
-        imageID = uttID
+        image_id = uttID
         path = uttID_path_vect[1]
-        uttID_path_dict[imageID] = path
-        # print "%s: %s" % (imageID, path)
+        uttID_path_dict[image_id] = path
 
 
 image_file = os.path.join(args.dir + '/', 'images.scp')

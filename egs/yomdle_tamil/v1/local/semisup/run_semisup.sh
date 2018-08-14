@@ -66,5 +66,6 @@ if [ $stage -le 2 ]; then
     --sup-tree-dir exp/chain/tree_e2e \
     --chain-affix "" \
     --tdnn-affix _semisup_1a \
+    --stage 8 \
     --exp-root $exp_root || exit 1
 fi
