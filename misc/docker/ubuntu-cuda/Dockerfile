@@ -7,7 +7,7 @@ ENV CPU_CORE 4
 RUN \
   apt-get update -qq && \
   apt-get install -y \
-    git bzip2 wget \
+    git bzip2 wget sox \
     g++ make python python3 \
     zlib1g-dev automake autoconf libtool subversion \
     libatlas-base-dev
