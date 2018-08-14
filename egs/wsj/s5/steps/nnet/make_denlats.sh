@@ -15,6 +15,7 @@ lattice_beam=7.0
 acwt=0.1
 max_active=5000
 nnet=
+ivector_append_tool=append-vector-to-feats # default
 nnet_forward_opts="--no-softmax=true --prior-scale=1.0"
 max_mem=20000000 # This will stop the processes getting too large.
 # This is in bytes, but not "real" bytes-- you have to multiply
@@ -122,7 +123,7 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 if [ -e $D/ivector_dim ]; then
   [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
   # Get the tool,
-  ivector_append_tool=append-vector-to-feats # default,
+  # ivector_append_tool=append-vector-to-feats # default,
   [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
   # Check dims,
   feats_job_1=$(sed 's:JOB:1:g' <(echo $feats))

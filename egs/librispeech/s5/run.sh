@@ -374,13 +374,14 @@ local/run_cleanup_segmentation.sh
 
 
 # ## Traing FSMN models on the cleaned-up data
-# ## Three configurations of DFSMN with different model size: DFSMN_S, DFSMN_M, DFSMN_L
-local/nnet/run_fsmn_ivector.sh DFSMN_S
-# local/nnet/run_fsmn_ivector.sh DFSMN_M
-# local/nnet/run_fsmn_ivector.sh DFSMN_L
-
-# Wait for decodings in the background
-
+# ## Three configurations of DFSMN with different model size (S--small; M--medium; L--large)
+# ## with/without online ivector
+local/nnet/run_fsmn.sh DFSMN_S
+# local/nnet/run_fsmn.sh DFSMN_M
+# local/nnet/run_fsmn.sh DFSMN_L
+# local/nnet/run_fsmn_ivector.sh DFSMN_S_ivector
+# local/nnet/run_fsmn_ivector.sh DFSMN_M_ivector
+# local/nnet/run_fsmn_ivector.sh DFSMN_L_ivector
 
 # Wait for decodings in the background
 wait

@@ -25,7 +25,7 @@ min_active=200
 max_active=7000 # limit of active tokens
 max_mem=50000000 # approx. limit to memory consumption during minimization in bytes
 nnet_forward_opts="--no-softmax=true --prior-scale=1.0"
-
+ivector_append_tool=append-vector-to-feats # default,
 skip_scoring=false
 scoring_opts="--min-lmwt 4 --max-lmwt 15"
 
@@ -120,7 +120,7 @@ feats="ark,s,cs:copy-feats scp:$sdata/JOB/feats.scp ark:- |"
 if [ -e $D/ivector_dim ]; then
   [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
   # Get the tool,
-  ivector_append_tool=append-vector-to-feats # default,
+  #ivector_append_tool=append-vector-to-feats # default,
   [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
   # Check dims,
   feats_job_1=$(sed 's:JOB:1:g' <(echo $feats))

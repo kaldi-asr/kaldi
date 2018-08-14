@@ -34,6 +34,7 @@ nnet=  # For non-default location of nnet,
 
 seed=777    # seed value used for training data shuffling
 skip_cuda_check=false
+ivector_append_tool=append-vector-to-feats # default,
 # End configuration section
 
 echo "$0 $@"  # Print the command line for logging
@@ -136,7 +137,7 @@ feats="ark,o:copy-feats scp:$dir/train.scp ark:- |"
 if [ -e $D/ivector_dim ]; then
   [ -z $ivector ] && echo "Missing --ivector, they were used in training!" && exit 1
   # Get the tool,
-  ivector_append_tool=append-vector-to-feats # default,
+  # ivector_append_tool=append-vector-to-feats # default,
   [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
   # Check dims,
   dim_raw=$(feat-to-dim "$feats" -)

@@ -21,9 +21,6 @@ if [ $stage -le 0 ]; then
                                    --gmm $gmm \
                                    --num-threads-ubm 6 --num-processes 3 \
                                    --nnet3-affix "$nnet3_affix" || exit 1;
-    mkdir exp/nnet3_cleaned/ivectors_train_960_dev_hires
-    cat exp/nnet3_cleaned/ivectors_train_960_cleaned_sp_hires_comb/ivector_online.scp exp/nnet3_cleaned/ivectors_dev_clean_hires/ivector_online.scp \
-        exp/nnet3_cleaned/ivectors_dev_other_hires/ivector_online.scp > exp/nnet3_cleaned/ivectors_train_960_dev_hires/ivector_online.scp
 then
 
 ##Make fbank features
@@ -66,8 +63,6 @@ if [ $stage -le 3 ]; then
         --feat-type plain --splice 1 \
         --cmvn-opts "--norm-means=true --norm-vars=false" --delta_opts "--delta-order=2" \
         --train-tool-opts "--minibatch-size=4096" \
-        --ivector scp:exp/nnet3_cleaned/ivectors_train_960_dev_hires/ivector_online.scp \
-        --ivector-append-tool "append-ivector-to-feats --online-ivector-period=10" \
         $data_fbk/train_960_cleaned $data_fbk/dev_clean data/lang exp/tri6b_cleaned_ali_train_960_cleaned exp/tri6b_cleaned_ali_dev_clean $dir
 fi
 ####Decode
@@ -79,8 +74,6 @@ if [ $stage -le 4  ]; then
         do
              steps/nnet/decode.sh --nj 16 --cmd "$decode_cmd" \
                  --acwt $acwt \
-                 --ivector scp:exp/nnet3_cleaned/ivectors_${set}_hires/ivector_online.scp \
-                 --ivector-append-tool "append-ivector-to-feats --online-ivector-period=10" \
                  $gmm/graph_tgsmall \
                  $data_fbk/$set $dir/decode_tgsmall_${set}
 
@@ -104,8 +97,6 @@ fi
 nj=32
 if [ $stage -le 5 ]; then
         steps/nnet/align.sh --nj $nj --cmd "$train_cmd" \
-            --ivector scp:exp/nnet3_cleaned/ivectors_train_960_dev_hires/ivector_online.scp \
-            --ivector-append-tool "append-ivector-to-feats --online-ivector-period=10" \
             $data_fbk/train_960_cleaned data/lang $dir ${dir}_ali
         steps/nnet/make_denlats.sh --nj $nj --cmd "$decode_cmd" --acwt $acwt \
             --ivector scp:exp/nnet3_cleaned/ivectors_train_960_dev_hires/ivector_online.scp \
@@ -116,8 +107,6 @@ fi
 ####do smbr
 if [ $stage -le 5 ]; then
         steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 2 --learn-rate 0.0000002 --acwt $acwt --do-smbr true \
-            --ivector scp:exp/nnet3_cleaned/ivectors_train_960_dev_hires/ivector_online.scp \
-            --ivector-append-tool "append-ivector-to-feats --online-ivector-period=10" \
             $data_fbk/train_960_cleaned data/lang $dir ${dir}_ali ${dir}_denlats ${dir}_smbr
 fi
 ###decode
@@ -130,8 +119,6 @@ if [ $stage -le 6 ]; then
         do
                 steps/nnet/decode.sh --nj 16 --cmd "$decode_cmd" \
                 --acwt $acwt \
-                --ivector scp:exp/nnet3_cleaned/ivectors_${set}_hires/ivector_online.scp \
-                --ivector-append-tool "append-ivector-to-feats --online-ivector-period=10" \
                 $gmm/graph_tgsmall \
                 $data_fbk/$set $dir/decode_tgsmall_${set}
 
