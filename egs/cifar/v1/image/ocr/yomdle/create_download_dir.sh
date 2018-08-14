@@ -10,6 +10,8 @@ language_main=Tamil
 mkdir -p data/local/splits
 mkdir -p data/local/text/cleaned
 language_lower=$(echo "$language_main" | tr '[:upper:]' '[:lower:]')
+
+echo "$0: extracting line images for english and ${language} for shared model training"
 if [ $stage -le 0 ]; then
   for language in  english $language_lower; do
     echo "$0: Processing YOMDLE ${language}"
@@ -27,6 +29,7 @@ if [ $stage -le 0 ]; then
   done
 fi
 
+echo "$0: extracting line images for slam ${language} for testing"
 if [ $stage -le 1 ]; then
   echo "$0: Processing slam ${language_main}"
   mkdir -p data/download/${language_main}/{truth_csv,truth_line_image}
@@ -42,6 +45,7 @@ if [ $stage -le 1 ]; then
     --ext '.png'
 fi
 
+echo "$0: extracting line images for semi supervised training for slam ${language}"
 if [ $stage -le 2 ]; then
   echo "$0: Processing slam ${language_main}"
   mkdir -p data/download/${language_main}_boxed/{truth_csv,truth_line_image}
@@ -59,6 +63,7 @@ if [ $stage -le 2 ]; then
     --filter
 fi
 
+echo "$0: storing english, given language(transcribed and untranscribed) line images together"
 if [ $stage -le 3 ]; then
   cp -r data/download/${language_main}_boxed/truth_line_image/* data/download/$language_lower/truth_line_image/
   cp -r data/download/$language_main/truth_line_image/* data/download/$language_lower/truth_line_image/
@@ -74,6 +79,7 @@ if [ $stage -le 4 ]; then
   mv data/download/$language_lower/truth_csv/ data/download/
 fi
 
+echo "$0: storing train, test and train unsupervised splits"
 if [ $stage -le 5 ]; then
   cat data/local/yomdle-${language_lower}-train.list data/local/yomdle-english-train.list > data/local/splits/train.txt
   cp data/local/yomdle-${language_main}-test.list data/local/splits/test.txt
