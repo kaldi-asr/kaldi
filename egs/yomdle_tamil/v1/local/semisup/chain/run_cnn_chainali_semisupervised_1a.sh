@@ -24,8 +24,8 @@ set -u -e -o pipefail
 
 stage=0   # Start from -1 for supervised seed system training
 train_stage=-100
-nj=80
-test_nj=80
+nj=30
+test_nj=30
 
 # The following 3 options decide the output directory for semi-supervised 
 # chain system
