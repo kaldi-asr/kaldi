@@ -68,9 +68,10 @@ if [ $stage -le 3 ]; then
   cp -r data/download/english/truth_csv/* data/download/$language_lower/truth_csv/
 fi
 
+
 if [ $stage -le 4 ]; then
-  cp -r data/download/$language_lower/truth_line_image/* data/download/truth_line_image/
-  cp -r data/download/$language_lower/truth_csv/* data/download/truth_csv/
+  mv data/download/$language_lower/truth_line_image/ data/download/
+  mv data/download/$language_lower/truth_csv/ data/download/
 fi
 
 if [ $stage -le 5 ]; then

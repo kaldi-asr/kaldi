@@ -22,7 +22,10 @@ exp_root=exp/semisup_100k
 mkdir -p data/train_unsup/data
 if [ $stage -le 0 ]; then
   echo "stage 0: Processing train unsupervised data...$(date)"
-  local/semisup/local/prepare_data.sh --language tamil
+  local/semisup/local/process_data.py data/download/ \
+    data/local/splits/train_unsup.txt \
+    data/train_unsup
+  image/fix_data_dir.sh data/train_unsup
 fi
 
 if [ $stage -le 1 ]; then
@@ -32,7 +35,7 @@ if [ $stage -le 1 ]; then
   echo "Extracting features and calling compute_cmvn_stats: $(date) "
   local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/train_unsup
   steps/compute_cmvn_stats.sh data/train_unsup || exit 1;
-  utils/fix_data_dir.sh data/train_unsup
+  image/fix_data_dir.sh data/train_unsup
 fi
 
 for f in data/train/utt2spk data/train_unsup/utt2spk \

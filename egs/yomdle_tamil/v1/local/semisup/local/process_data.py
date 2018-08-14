@@ -40,8 +40,6 @@ with open(args.data_split) as f:
         for row in csv.reader(csv_file):
             if row[1] == image_filename:
                 text = row[11]
-                if not text:
-                    continue
                 text_fh.write(image_id + ' ' + text + '\n')
                 utt2spk_fh.write(image_id + ' ' + '_'.join(line.split('_')[:-1]) + '\n')
                 image_fh.write(image_id + ' ' + image_filepath + ' ' + row[13] +  '\n')

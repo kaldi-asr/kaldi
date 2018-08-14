@@ -13,18 +13,18 @@ nj=30
 . ./path.sh
 . ./utils/parse_options.sh
 mkdir -p data/{train,test}/data
-mkdir -p data/tr_te_backup
-mkdir -p data/download_backup
+mkdir -p data/backup_train_test
+mkdir -p data/backup_download
 
 if [ $stage -le -1 ]; then
   echo "$(date): creating line images for shared model and unsupervised training..."
   image/ocr/yomdle/create_download_dir.sh --language_main Tamil
   echo "$(date): getting corpus text for language modelling..."
   cat /export/corpora5/handwriting_ocr/corpus_data/ta/* > data/local/text/ta.txt
-  head -2000 data/local/text/ta.txt > data/local/text/val.txt
-  tail -2000 data/local/text/ta.txt > data/local/text/corpus.txt
-  cp -r data/download data/download_backup/
-  cp -r data/local data/download_backup/
+  head -20000 data/local/text/ta.txt > data/local/text/val.txt
+  tail -n +20000 data/local/text/ta.txt > data/local/text/corpus.txt
+  #cp -r data/download data/backup_download/
+  #cp -r data/local data/backup_download/
 fi
 
 if [ $stage -le 0 ]; then
@@ -42,14 +42,16 @@ if [ $stage -le 1 ]; then
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
   image/fix_data_dir.sh data/train
-  rm -rf data/train/.backup
-  rm -rf data/test/.backup
+  #image/fix_data_dir.sh data/test
+  #rm -rf data/train/.backup
+  #rm -rf data/test/.backup
+  #rm -rf data/train/image2num_frames
 fi
 
 if [ $stage -le 2 ]; then
   echo "$(date) stage 2: BPE preparation"
-  cp -r data/train data/tr_te_backup/
-  cp -r data/test data/tr_te_backup/
+  #cp -r data/train data/backup_train_test/
+  #cp -r data/test data/backup_train_test/
 
   cut -d' ' -f2- data/train/text | \
     local/get_phones.py > data/local/text/cleaned/phones.txt
@@ -76,7 +78,7 @@ if [ $stage -le 3 ]; then
       sed 's/@@//g' > data/$set/bpe_text
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
-    rm -rf data/$set/bpe_text data/$set/ids
+    rm -f data/$set/bpe_text data/$set/ids
   done
 
   echo "applying BPE to corpus text..."

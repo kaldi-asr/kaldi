@@ -11,6 +11,6 @@ if [ $stage -le 1 ]; then
       data/local/splits/${datasplit}.txt \
       data/${datasplit}
     image/fix_data_dir.sh data/${datasplit}
-    rm -rf data/${datasplit}/.backup
+    #rm -rf data/${datasplit}/.backup
   done
 fi
