@@ -57,8 +57,11 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$(date) stage 2: BPE preparation"
-  cut -d' ' -f2- data/train/text | \
-    local/get_phones.py > data/local/text/cleaned/phones.txt
+  
+  cat data/train/text | \
+  perl -ne '@A = split; shift @A; for(@A) {print join("\n", split(//)), "\n";}' | \
+  sort -u > data/local/text/cleaned/phones.txt
+
   cut -d' ' -f2- data/train/text > data/local/text/cleaned/train.txt
 
   echo "Processing corpus text..."

@@ -12,23 +12,22 @@
 import os
 import argparse
 
-parser = argparse.ArgumentParser(
-    description="""Regenerate images.scp, text, utt2spk and spk2utt from feats.scp for augment data""")
-parser.add_argument(
-    'dir', type=str, help='directory of images.scp')
+parser = argparse.ArgumentParser(description="""Regenerate images.scp, text,
+                    utt2spk and spk2utt from feats.scp for augment data.""")
+parser.add_argument('dir', type=str,
+                    help='directory of images.scp')
 args = parser.parse_args()
-
 
 text_file = os.path.join(args.dir, 'backup', 'text')
 text_dict = dict()  # stores image_id and text
 
 with open(text_file) as text_fh:
-    for uttID_text in text_fh:
-        uttID_text = uttID_text.strip()
-        uttID_text_vect = uttID_text.split(" ")
-        uttID = uttID_text_vect[0]
-        image_id = uttID
-        text_vect = uttID_text_vect[1:]
+    for uttid_text in text_fh:
+        uttid_text = uttid_text.strip()
+        uttid_text_vect = uttid_text.split(" ")
+        uttid = uttid_text_vect[0]
+        image_id = uttid
+        text_vect = uttid_text_vect[1:]
         text = " ".join(text_vect)
         text_dict[image_id] = text
 
@@ -36,25 +35,25 @@ utt2spk_file = os.path.join(args.dir, 'backup', 'utt2spk')
 uttid_to_spk = dict()  # stores image_id and speaker
 
 with open(utt2spk_file) as utt2spk_fh:
-    for uttID_spk in utt2spk_fh:
-        uttID_spk = uttID_spk.strip()
-        uttID_spk_vect = uttID_spk.split(" ")
-        uttID = uttID_spk_vect[0]
-        image_id = uttID
-        spk = uttID_spk_vect[1]
+    for uttid_spk in utt2spk_fh:
+        uttid_spk = uttID_spk.strip()
+        uttid_spk_vect = uttid_spk.split(" ")
+        uttid = uttid_spk_vect[0]
+        image_id = uttid
+        spk = uttid_spk_vect[1]
         uttid_to_spk[image_id] = spk
 
 image_file = os.path.join(args.dir, 'backup', 'images.scp')
 uttID_path_dict = dict()  # stores image_id and image path
 
 with open(image_file) as image_fh:
-    for uttID_path in image_fh:
-        uttID_path = uttID_path.strip()
-        uttID_path_vect = uttID_path.split(" ")
-        uttID = uttID_path_vect[0]
-        image_id = uttID
-        path = uttID_path_vect[1]
-        uttID_path_dict[image_id] = path
+    for uttid_path in image_fh:
+        uttid_path = uttid_path.strip()
+        uttid_path_vect = uttid_path.split(" ")
+        uttid = uttid_path_vect[0]
+        image_id = uttid
+        path = uttid_path_vect[1]
+        uttid_path_dict[image_id] = path
 
 
 image_file = os.path.join(args.dir + '/', 'images.scp')
@@ -66,15 +65,14 @@ text_fh = open(text_file, 'w')
 utt2spk_file = os.path.join(args.dir + '/', 'utt2spk')
 utt2spk_fh = open(utt2spk_file, 'w')
 
-print('generate new files')
 feats_scp_file = os.path.join(args.dir, 'feats.scp')
 with open(feats_scp_file) as feats_scp_fh:
-    for uttID_image_path in feats_scp_fh:
-        uttID_image_path = uttID_image_path.strip()
-        uttID_path_vect = uttID_image_path.split(" ")
-        uttID = uttID_path_vect[0]
-        imageID = "_".join(uttID.split("_")[:-1])
-        text_fh.write(uttID + ' ' + text_dict[imageID] + '\n')
-        utt2spk_fh.write(uttID + ' ' + uttID_spk_dict[imageID] + '\n')
-        image_fh.write(uttID + ' ' + uttID_path_dict[imageID] + '\n')
+    for uttid_image_path in feats_scp_fh:
+        uttid_image_path = uttID_image_path.strip()
+        uttid_path_vect = uttID_image_path.split(" ")
+        uttid = uttid_path_vect[0]
+        imageid = "_".join(uttid.split("_")[:-1])
+        text_fh.write(uttid + ' ' + text_dict[imageid] + '\n')
+        utt2spk_fh.write(uttid + ' ' + uttid_spk_dict[imageid] + '\n')
+        image_fh.write(uttid + ' ' + uttid_path_dict[imageid] + '\n')
 
