@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-
-#                2018  Ashish Arora
+# Copyright      2018  Ashish Arora
 # Apache 2.0
-
 # This script reads valid phones and removes the lines in the corpus
 # which have any other phone.
 

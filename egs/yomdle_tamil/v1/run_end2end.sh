@@ -40,7 +40,12 @@ fi
 if [ $stage -le 0 ]; then
   echo "$(date) stage 0: Processing train and test data."
   echo " creating text, images.scp, utt2spk and spk2utt"
-  local/prepare_data.sh
+  for set in train test; do
+    local/process_data.py data/download/ \
+      data/local/splits/${set}.txt \
+      data/${set}
+    image/fix_data_dir.sh data/${set}
+  done
 fi
 
 if [ $stage -le 1 ]; then
