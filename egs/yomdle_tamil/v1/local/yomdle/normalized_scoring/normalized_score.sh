@@ -13,7 +13,7 @@ LANG=$3
 # Therefore default option is to convert files to uxxxx format and use sclite for scoring
 # Turn following switch to false to use ocr_score.pl instead
 USE_SCLITE=true
-script_dir=image/ocr/yomdle/normalised_scoring
+script_dir=local/yomdle/normalized_scoring
 OCR_SCORE=${script_dir}/ocr_score.pl
 SCLITE=../../../tools/sctk/bin/sclite
 

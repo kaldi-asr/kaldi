@@ -40,6 +40,8 @@ fi
 if [ $stage -le 0 ]; then
   echo "$(date) stage 0: Processing train and test data."
   echo " creating text, images.scp, utt2spk and spk2utt"
+  # removing empty transcription line images from train and test set.
+  # It can cause error while applying BPE.
   for set in train test; do
     local/process_data.py data/download/ \
       data/local/splits/${set}.txt \
@@ -62,7 +64,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$(date) stage 2: BPE preparation"
-  
+  # getting non-silence phones.
   cat data/train/text | \
   perl -ne '@A = split; shift @A; for(@A) {print join("\n", split(//)), "\n";}' | \
   sort -u > data/local/text/cleaned/phones.txt
@@ -70,12 +72,17 @@ if [ $stage -le 2 ]; then
   cut -d' ' -f2- data/train/text > data/local/text/cleaned/train.txt
 
   echo "Processing corpus text..."
+  # we are removing the lines from the corpus which which have
+  # phones other than the phones in data/local/text/cleaned/phones.txt.
   cat data/local/text/corpus.txt | \
     local/process_corpus.py > data/local/text/cleaned/corpus.txt
   cat data/local/text/val.txt | \
     local/process_corpus.py > data/local/text/cleaned/val.txt
 
   echo "learning BPE..."
+  # it is currently learned with only training text but we can also use all corpus text
+  # to learn BPE. phones are added so that one isolated occurance of every phone is present
+  # in the BPE.
   cat data/local/text/cleaned/phones.txt data/local/text/cleaned/train.txt | \
     utils/lang/bpe/prepend_words.py | utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt || exit 1;
 fi
@@ -116,8 +123,8 @@ if [ $stage -le 5 ]; then
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
       data/local/dict/lexicon.txt data/lang_test
 
-  local/train_lm.sh --dir data/local/local_lm --order 6
-  utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
+  local/train_lm.sh --dir data/local/local_lm_6g --order 6
+  utils/build_const_arpa_lm.sh data/local/local_lm_6g/data/arpa/6gram_unpruned.arpa.gz \
                                data/lang data/lang_rescore_6g
 fi
 
@@ -129,6 +136,7 @@ fi
 if [ $stage -le 7 ]; then
   echo "$(date) stage 7: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
+    --use-gpu false \
     --scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0' \
     data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
