@@ -259,12 +259,18 @@ Z_S  243
      previous to the symbol `\#nonterm:foo`.
 
  In order to implement the above, we augment the state-space of C.fst by adding
- two new states: one which we transition to when the olabel is
- `\#nonterm_begin`, and one which we transition to when we see any user-defined
- symbol `\#nonterm:foo`.  In order to avoid changing the main context-fst code,
- we implement this in a special class InverseGrammarContextFst which implements
- these extensions and which only supports the left-biphone case.
+ three new states:
 
+    - One which we transition to when the olabel is
+     `\#nonterm_begin`
+    - One which we transition to when we see any user-defined
+      symbol `\#nonterm:foo`.
+    - One which we transition to when the olabel is `\#nonterm_end`.
+
+ In order to avoid changing the main context-fst code, we implement this in a
+ special class InverseLeftBiphoneContextFst which implements these extensions
+ and which only supports the left-biphone case.  See that code for more
+ details (search for "state space" in grammar-context-fst.h).
 
 
  \section graph_grammar_special_hclg  Special symbols in HCLG.fst

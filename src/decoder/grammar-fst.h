@@ -41,6 +41,7 @@ namespace fst {
 
 
 class GrammarFstConfig {
+ public:
   // This config class currently only has one member, but we may later add
   // others that relate to entry and exit olabels for the nonterminals, to make
   // it possible to recover the structure of invoking the nonterminals from the
@@ -50,10 +51,11 @@ class GrammarFstConfig {
 
   GrammarFstConfig(): nonterm_phones_offset(-1)  {}
 
-  void Register(OptionsItf *po) {
+  void Register(kaldi::OptionsItf *po) {
     po->Register("nonterm-phones-offset", &nonterm_phones_offset,
                  "The integer id of the symbol #nonterm_bos in phones.txt");
   }
+  void Check() const;
 };
 
 
@@ -78,11 +80,6 @@ struct GrammarFstArc {
         olabel(olabel),
         weight(std::move(weight)),
         nextstate(nextstate) {}
-
-  static const string &Type() {
-    static const string *const type = "grammar";
-    return *type;
-  }
 };
 
 class GrammarFst;
@@ -97,9 +94,9 @@ template<> class ArcIterator<GrammarFst>;
 /**
    GrammarFst is an FST that is 'stitched together' from multiple FSTs, that can
    recursively incorporate each other.  (This is limited to left-biphone
-   phonetic context).  Note: this class does not inherit from fst::Fst and
-   does not support its full interface-- only the parts that are necessary
-   for the decoder.
+   phonetic context). This class does not inherit from fst::Fst and does not
+   support its full interface-- only the parts that are necessary for the
+   decoder.
 
    The basic interface is inspired by OpenFst's 'ReplaceFst' (see its
    replace.h), except that this handles left-biphone phonetic context, which
@@ -139,8 +136,10 @@ class GrammarFst {
   // instance.
   typedef Arc::StateId StateId;
 
-  // The StateId of the individual FSTs instances.
+  // The StateId of the individual FST instances.
   typedef StdArc::StateId BaseStateId;
+
+  typedef Arc::Label Label;
 
 
 
@@ -195,7 +194,7 @@ class GrammarFst {
 
   StateId Start() const {
     // the top 32 bits of the 64-bit state-id will be zero.
-    return static_cast<int64>(top_fst_.Start());
+    return static_cast<int64>(top_fst_->Start());
   }
 
   Weight Final(StateId s) const {
@@ -204,11 +203,14 @@ class GrammarFst {
     if (s != static_cast<int64>(static_cast<int32>(s)))
       return Weight::Zero();
     else
-      return top_fst_.Final(static_cast<BaseStateId>(s));
+      return top_fst_->Final(static_cast<BaseStateId>(s));
   }
 
+  inline std::string Type() const { return "grammar"; }
 
  private:
+
+  struct ExpandedState;
 
   friend class ArcIterator<GrammarFst>;
 
@@ -241,14 +243,14 @@ class GrammarFst {
   // on to trigger this state-expansion code.
   inline ExpandedState *GetExpandedState(int32 instance_id,
                                          BaseStateId state_id) {
-    const FstInstance &instance = instances_[instance_id];
+    FstInstance &instance = instances_[instance_id];
     std::unordered_map<BaseStateId, ExpandedState*> &expanded_states =
         instance.expanded_states;
 
     std::unordered_map<BaseStateId, ExpandedState*>::iterator iter =
         expanded_states.find(state_id);
     if (iter != expanded_states.end())
-      return *iter;
+      return iter->second;
     else
       return ExpandState(instance_id, state_id);
   }
@@ -259,12 +261,12 @@ class GrammarFst {
   // The top-level FST passed in by the user; contains the start state and
   // final-states, and may invoke FSTs in 'ifsts_' (which can also invoke
   // each other recursively).
-  const Fst<StdArc> &top_fst_;
+  const Fst<StdArc> *top_fst_;
 
   // A list of pairs (nonterm, fst), where 'nonterm' is a user-defined
   // nonterminal symbol as numbered in phones.txt (e.g. #nonterm:foo), and
   // 'fst' is the corresponding FST.
-  std::vector<std::pair<int32, const Fst<StdArc> *> > ifsts_;
+  std::vector<std::pair<int32, const ConstFst<StdArc> *> > ifsts_;
 
 
   // encoding_multiple_ is the smallest multiple of 1000 that is greater than
@@ -300,7 +302,7 @@ class GrammarFst {
     // will be given by 'dest_fst_instance_'.  We do it this way, instead of
     // constructing a vector<Arc>, in order to simplify the ArcIterator code and
     // avoid unnecessarybranches in loops over arcs.
-    // We need to guarantee that this 'arcs' array will always be nonempty; this
+    // We guarantee that this 'arcs' array will always be nonempty; this
     // is to avoid certain hassles on Windows with automated bounds-checking.
     std::vector<StdArc> arcs;
   };
@@ -349,53 +351,145 @@ class GrammarFst {
 
   };
 
-
   std::vector<FstInstance> instances_;
-
-
-
-
 };
 
 
 /**
-   This is the overridden template for class ArcIterator for GrammarFst.
-   This is only used in the decoder, so we don't need to implement all
-   the functionality that the regular ArcIterator has.
+   This is the overridden template for class ArcIterator for GrammarFst.  This
+   is only used in the decoder, and the GrammarFst is not a "real" FST (it just
+   has a very similar-looking interface), so we don't need to implement all the
+   functionality that the regular ArcIterator has.
  */
 template <>
 class ArcIterator<GrammarFst> {
+ public:
   using Arc = typename GrammarFst::Arc;
   using BaseArc = StdArc;
   using StateId = typename Arc::StateId;  // int64
   using BaseStateId = typename StdArc::StateId;
+  using ExpandedState = GrammarFst::ExpandedState;
 
-  ArcIterator(const GrammarFst &fst, StateId s) {
+  inline ArcIterator(const GrammarFst &fst_in, StateId s) {
+    // Caution: uses const_cast to evade const rules on GrammarFst.
+    // This is for compatibility with how things work in OpenFst.
+    GrammarFst &fst = const_cast<GrammarFst&>(fst_in);
     int32 instance_id = s >> 32;  // high order bits
     BaseStateId base_state = static_cast<int32>(s);  // low order bits.
     const GrammarFst::FstInstance &instance = fst.instances_[instance_id];
     const ConstFst<StdArc> *base_fst = instance.fst;
-    if (fst->Final(base_state) == TropicalWeight::Zero()) {
-      // If this state is non-final then we just iterate over the
-      // arcs in the underlying fst.
-      arcs_ = base_fst->GetImpl()->Arcs(base_state);
-      end_arcs_ = arcs_ + base_fst->GetImpl()->NumArcs(base_state);
+    ExpandedState *expanded_state;
+    if (fst.Final(base_state) == TropicalWeight::Zero() ||
+        (expanded_state = fst.GetExpandedState(instance_id, s)) == NULL) {
+      // If this state doesn't cross FST boundaries then we just iterate over
+      // the arcs in the underlying fst.
+      base_fst->InitArcIterator(s, &data_);
+      i_ = 0;
+      dest_instance_ = instance_id;
+      // set up arc_.
+      if (data_.narcs != 0)
+        CopyArcToTemp();
     } else {
-      instance.
-
+      dest_instance_ = expanded_state->dest_fst_instance;
+      data_.arcs = &(expanded_state->arcs[0]);
+      data_.narcs = expanded_state->arcs.size();
+      CopyArcToTemp();
+    }
   }
+
+  inline bool Done() {
+    if (i_ < data_.narcs) {
+      CopyArcToTemp();
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  inline void Next() {
+    i_++;
+    // Note: logically, at this point we would do:
+    // if (i_ < data_.size)
+    //  CopyArcToTemp();
+    // Instead we move this CopyArcToTemp() invocation into Done(), which we
+    // know will always be called after Next() and before Value(), because the
+    // user has no other way of knowing whether the iterator is still valid.
+    // The reason for moving it that way is that I believe it will give the
+    // compiler an easier time to optimize the code.
+  }
+
+  // Each time we do Next(), we re-copy the ilabel, olabel and weight of the arc
+  // of the user-provided FST to 'arc_', and compute its nexstate from
+  // dest_instance_ and the original arc's nextstate.  This is of course
+  // potentially wasteful, as we copy the arc to a temporary.  The hope is that
+  // the compiler will realize what is happening and will optimize most of the
+  // waste out.  If not, this can be revisited later.
+  inline const Arc &Value() const { return arc_; }
 
  private:
 
-  StdArc *arcs_;  // Current pointer to arcs in base FST (in usual case)
-  StdArc *arcs_end_;  // end of arcs array.
+  inline void CopyArcToTemp() {
+    const StdArc &src = data_.arcs[i_];
+    arc_.ilabel = src.ilabel;
+    arc_.olabel = src.olabel;
+    arc_.weight = src.weight;
+    arc_.nextstate = (static_cast<int64>(dest_instance_) << 32) +
+        src.nextstate;
+  }
 
-  Arc arc_;  //
+  // The members of 'data_' that we use are:
+  //  const Arc *arcs;             // O.w. arcs pointer
+  //  size_t narcs;                // ... and arc count.
+  ArcIteratorData<StdArc> data_;
 
 
+  int32 dest_instance_;  // The index of the FstInstance that transitions from this
+                         // state go to.
+  size_t i_;  // i_ is the index into the 'arcs' pointer.
+
+  Arc arc_;  // 'Arc' is the current arc in the GrammarFst, that we point to.
+             // It will be the same as data_.arcs[i], except with the
+             // 'nextstate' modified to encode the dest_instance_ in the
+             // higher order bits.
 };
 
 
+/**
+   This function prepares 'ifst' for use in GrammarFst: it ensures that it has
+   the expected properties, changing it slightly as needed.  'ifst' is expected
+   to be a fully compiled HCLG graph that is intended to be used in GrammarFst.
+   The user will most likely want to copy it to the ConstFst type after calling
+   this function.  Prior to doing the 'special fixes', if 'fst' was not
+   ilabel-sorted it ilabel-sorts it.  We'd normally do this prior to decoding
+   with an FST.  You can't ilabel-sort after calling this function, though, as
+   that would put some arcs in the wrong order.
+
+   The following describes what this function does, and the reasons why
+   it has to:
+
+     - To keep the ArcIterator code simple, even for expanded states we store
+       the destination fst-instance index separately per state.  This requires
+       that any transitions across FST boundaries from a single FST must be to a
+       single destination FST (per source state).  We can fix this problem by
+       introducing epsilon arcs and new states whenever we find a state that
+       would cause a problem for the above.
+     - We need to ensure that, after a state has been expanded by the GrammarFst
+       code, epsilon arcs still precede non-epsilon arcs, which a requirement of
+       our decoders.  (The issue is that there are certain "special" arcs, which
+       cross FST boundaries, that the GrammarFst code will turn into epsilons).
+     - In order to signal to the GrammarFst code that a state has
+       cross-FST-boundary transitions, we set final-probs on some states.  We
+       set these to a weight with Value() == 4096.0.  When the GrammarFst code
+       sees that value it knows that it was not a 'real' final-prob.
+
+
+     @param [in] nonterm_phones_offset   The integer id of
+                the symbols #nonterm_bos in the phones.txt file.
+     @param [in,out] fst  The FST to be (slightly) modified.
+
+ */
+void PrepareForGrammarFst(int32 nonterm_phones_offset,
+                          VectorFst<StdArc> *fst);
 
 
 } // end namespace fst

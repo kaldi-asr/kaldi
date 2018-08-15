@@ -89,8 +89,8 @@ SymbolTable *CreateILabelInfoSymbolTable(const vector<vector<int32> > &ilabel_in
    information to ilabels_out.  "ifst" is mutable because we need to add the
    subsequential loop.
 
-    @param [in] disambig_syms  List of disambiguation symbols (on the output side
-                  of C.fst.
+    @param [in] disambig_syms  List of disambiguation symbols, e.g. the integer
+                 ids of #0, #1, #2 ... in the phones.txt.
     @param [in] context_width  Size of context window, e.g. 3 for triphone.
     @param [in] central_position  Central position in phonetic context window
                   (zero-based index), e.g. 1 for triphone.
