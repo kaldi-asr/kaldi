@@ -2,6 +2,7 @@
 
 # Copyright      2017  Chun Chieh Chang
 #                2017  Ashish Arora
+#                2017  Yiwen Shao
 #                2018  Hossein Hadian
 
 """ This script converts images to Kaldi-format feature matrices. The input to
@@ -9,7 +10,9 @@
     reads the images listed in images.scp and writes them to standard output
     (by default) as Kaldi-formatted matrices (in text form). It also scales the
     images so they have the same height (via --feat-dim). It can optionally pad
-    the images (on left/right sides) with white pixels.
+    the images (on left/right sides) with white pixels. It by default performs 
+    augmentation, (directly scaling down and scaling up). It will double the 
+    data but we can turn augmentation off (via --no-augment).
     If an 'image2num_frames' file is found in the data dir, it will be used
     to enforce the images to have the specified length in that file by padding
     white pixels (the --padding option will be ignored in this case). This relates

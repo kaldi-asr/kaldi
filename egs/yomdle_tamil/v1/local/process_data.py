@@ -1,5 +1,19 @@
 #!/usr/bin/env python3
 
+# Copyright      2018  Ashish Arora
+#                2018  Chun Chieh Chang
+
+""" This script reads the extracted Tamil OCR (yomdle and slam) database files 
+    and creates the following files (for the data subset selected via --dataset):
+    text, utt2spk, images.scp.
+  Eg. local/process_data.py data/download/ data/local/splits/train.txt data/train
+
+  Eg. text file: english_phone_books_0001_1 To sum up, then, it would appear that
+      utt2spk file: english_phone_books_0001_0 english_phone_books_0001
+      images.scp file: english_phone_books_0001_0 \
+      data/download/truth_line_image/english_phone_books_0001_0.png
+"""
+
 import argparse
 import os
 import sys
@@ -44,4 +58,4 @@ with open(args.data_split) as f:
                     continue
                 text_fh.write(image_id + ' ' + text + '\n')
                 utt2spk_fh.write(image_id + ' ' + '_'.join(line.split('_')[:-1]) + '\n')
-                image_fh.write(image_id + ' ' + image_filepath + ' ' + row[13] +  '\n')
+                image_fh.write(image_id + ' ' + image_filepath +  '\n')

@@ -4,6 +4,7 @@
 #             2018 Ashish Arora
 
 # Apache 2.0
+# This script converts a BPE-encoded text to normal text. It is used in scoring
 
 import os
 import argparse

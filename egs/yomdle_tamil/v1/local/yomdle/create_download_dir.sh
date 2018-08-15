@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# Copyright      2018  Chun Chieh Chang
+#                2018  Ashish Arora
+#                2018  Hossein Hadian
+# Apache 2.0
+
+# This script assumes that the SLAM and Yomdle OCR database is stored in slam_dir and
+# yomdle_dir. It reads the xml files and converts them to csv files. It then with the
+# help of csv files, extracts lines images from page images. It can create dataset for
+# any yomdle and slam language. Assuming it is creating dataset for Tamil OCR. It
+# creates csv files for yomdle English, yomdle Tamil, slam Tamil transcribed and slam
+# Tamil boxed. It also creates train, test and train_unsup sets for training and testing.
+# Yomdle (English and Tamil) is training set, slam Tamil transcribed is test set, and
+# slam Tamil boxed is semi-supervised set.
+
 set -e
 stage=0
 language_main=Tamil

@@ -36,7 +36,8 @@ if [ $stage -le -1 ]; then
 fi
 
 if [ $stage -le 0 ]; then
-  echo "$(date) stage 0: Processing train and test data..."
+  echo "$(date) stage 0: Processing train and test data."
+  echo " creating text, images.scp, utt2spk and spk2utt"
   local/prepare_data.sh
 fi
 
@@ -51,7 +52,7 @@ if [ $stage -le 1 ]; then
   done
   image/fix_data_dir.sh data/train
 fi
-exit
+
 if [ $stage -le 2 ]; then
   echo "$(date) stage 2: BPE preparation"
   cut -d' ' -f2- data/train/text | \
