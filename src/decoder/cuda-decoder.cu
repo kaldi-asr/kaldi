@@ -237,19 +237,21 @@ static void _init_lookup_kernel(uint64 *state_pack_d, int size) {
 
 // a combination of degree calculation, scan and reset to reduce kernel launch time
 __global__
-static void _compute_degrees_with_reset_kernel(processTokens_params params,
+static void _compute_degrees_kernel(processTokens_params params,
         bool reset = true) {
-    int rank0 = threadIdx.x == 0 && blockIdx.x == 0;
     _compute_degrees_kernel(&params);
     // the above scan result is needed in _finalize_degrees_scan_kernel
-    grid_sync(params.barrier); 
+}
+__global__
+static void _finalize_degrees_with_reset_kernel(processTokens_params params,
+        bool reset = true) {
+    int rank0 = threadIdx.x == 0 && blockIdx.x == 0;
     if (rank0 && params.frame > 1 && *params.active_tok_cnt_d > params.max_active)
         params.histogram_prev_toks.GetCutoff(params.cutoff_prev,
                                              params.max_active, 0);
     _reset_lookup_kernel(&params, reset);
     _finalize_degrees_scan_kernel(&params);
 }
-
 
 // find best cutoff before _expand_arcs_kernel to guarantee consistent results
 __global__
@@ -1074,9 +1076,13 @@ void CudaDecoder::ContractAndPreprocess(const processTokens_params &params) {
     assert(*tot_ntok_h_);
     grid.x = DIV_ROUND_UP(*tot_ntok_h_, block.x);
 
-    _compute_degrees_with_reset_kernel <<< grid, block, 0, stream_comp>>>(params,
+    _compute_degrees_kernel <<< grid, block, 0, stream_comp>>>(params,
             params.is_emitting);
     CU_SAFE_CALL(cudaGetLastError());
+    _finalize_degrees_with_reset_kernel<<< grid, block, 0, stream_comp>>>(params,
+            params.is_emitting);
+    CU_SAFE_CALL(cudaGetLastError());
+
 }
 
 
@@ -1108,7 +1114,7 @@ void CudaDecoder::GetBestCost(BaseFloat *min, int *arg, bool isfinal) const {
                                           tok_from_d_, tok_to_d_, state_pack_d_, fst_.final_d, isfinal);
 
     cub::KeyValuePair<int, uint64> *d_argmin;
-    cudaMalloc(&d_argmin, sizeof(cub::KeyValuePair<int, int>));
+    cudaMalloc(&d_argmin, sizeof(cub::KeyValuePair<int, int64>));
 
     void *d_temp_storage_amin = NULL;
     size_t temp_storage_amin_bytes = 0;
@@ -1121,7 +1127,7 @@ void CudaDecoder::GetBestCost(BaseFloat *min, int *arg, bool isfinal) const {
                               state_pack_d_, d_argmin, *tot_ntok_h_);
 
     cub::KeyValuePair<int, uint64> h_argmin;
-    cudaMemcpy(&h_argmin, d_argmin, sizeof(cub::KeyValuePair<int, int>),
+    cudaMemcpy(&h_argmin, d_argmin, sizeof(cub::KeyValuePair<int, int64>),
                cudaMemcpyDeviceToHost);
     cudaFree(d_temp_storage_amin);
     cudaFree(d_argmin);
