@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 
+# Copyright      2017  Babak Rekabdar
+#                2017  Hossein Hadian
+#                2017  Chun Chieh Chang
+#                2017  Ashish Arora
+# Apache 2.0
+
+# This script prepares lexicon for BPE. It gets the set of all words that occur in data/train/text.
+# Since this lexicon is based on BPE, it replaces '|' with silence.
+
 import argparse
 import os
 

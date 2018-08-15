@@ -4,7 +4,10 @@
 #             2018 Ashish Arora
 
 # Apache 2.0
-# This script converts a BPE-encoded text to normal text. It is used in scoring
+# This script reads the feats.scp file and regenerate images.scp, text,
+# utt2spk and spk2utt. Apart from original images.scp, text, utt2spk new 
+# values were created due to augmentation (doubles the data). Hence to 
+# map newly created feats, to text, images.scp and utt2spk this script is used.
 
 import os
 import argparse

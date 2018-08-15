@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
 # Copyright   2018 Ashish Arora
+#             2018  Chun Chieh Chang
+
 # Apache 2.0
+
 # minimum bounding box part in this script is originally from
 #https://github.com/BebeSparkelSparkel/MinimumBoundingBox
 #https://startupnextdoor.com/computing-convex-hull-in-python/

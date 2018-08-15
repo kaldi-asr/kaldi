@@ -17,6 +17,8 @@ corpus_dir=/export/corpora5/handwriting_ocr/corpus_data/ta/
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
+
+./local/check_tools.sh
 mkdir -p data/{train,test}/data
 
 # Start from stage=-2 for extracting line images from page image and 

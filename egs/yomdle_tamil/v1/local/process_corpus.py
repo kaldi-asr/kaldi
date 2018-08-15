@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+#                2018  Ashish Arora
+# Apache 2.0
+
+# This script reads valid phones and removes the lines in the corpus
+# which have any other phone.
+
 import os
 import sys, io
 
@@ -7,7 +13,6 @@ phone_file = os.path.join('data/local/text/cleaned/phones.txt')
 infile = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
 output = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 phone_dict = dict()
-total_lines = 0
 with open(phone_file, 'r', encoding='utf-8') as phone_fh:
     for line in phone_fh:
         line = line.strip().split()[0]
@@ -16,7 +21,6 @@ with open(phone_file, 'r', encoding='utf-8') as phone_fh:
 phone_dict[' '] = ' '
 corpus_text = list()
 for line in infile:
-    total_lines += 1
     text = line.strip()
     skip_text = False
     for phone in text:
