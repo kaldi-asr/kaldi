@@ -349,11 +349,10 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
                                     // value in test time.
   // 'reorder' must always be set to true for chain models.
   bool reorder = true;
-  bool check_no_self_loops = true;
 
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
-               check_no_self_loops, &transition_id_fst);
+               &transition_id_fst);
   // at this point transition_id_fst will have transition-ids as its ilabels and
   // context-dependent phones (indexes into ILabelInfo()) as its olabels.
   // Discard the context-dependent phones by projecting on the input, keeping

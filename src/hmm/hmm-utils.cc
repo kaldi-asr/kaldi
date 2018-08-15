@@ -566,8 +566,16 @@ void AddSelfLoops(const TransitionModel &trans_model,
                   const std::vector<int32> &disambig_syms,
                   BaseFloat self_loop_scale,
                   bool reorder,
-                  bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst) {
+  return AddSelfLoopsChecking(trans_model, disambig_syms, self_loop_scale, reorder, true, fst);
+}
+
+void AddSelfLoopsChecking(const TransitionModel &trans_model,
+                          const std::vector<int32> &disambig_syms,
+                          BaseFloat self_loop_scale,
+                          bool reorder,
+                          bool check_no_self_loops,
+                          fst::VectorFst<fst::StdArc> *fst) {
   KALDI_ASSERT(fst->Start() != fst::kNoStateId);
   if (reorder)
     AddSelfLoopsReorder(trans_model, disambig_syms, self_loop_scale,

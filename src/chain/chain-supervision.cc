@@ -344,11 +344,10 @@ bool ProtoSupervisionToSupervision(
 
   // You should always set reorder to true; for the current chain-model
   // topologies, it will affect results if you are inconsistent about this.
-  bool reorder = true,
-      check_no_self_loops = true;
+  bool reorder = true;
   // add self-loops to the FST with transition-ids as its labels.
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
-               check_no_self_loops, &transition_id_fst);
+               &transition_id_fst);
 
   // at this point transition_id_fst will have transition-ids as its ilabels and
   // context-dependent phones (indexes into ILabelInfo()) as its olabels.
@@ -1063,8 +1062,8 @@ bool ConvertSupervisionToUnconstrained(
     // self-loop-free.
     bool check_no_self_loops = false;
     supervision->e2e_fsts.resize(1);
-    AddSelfLoops(trans_mdl, disambig_syms, self_loop_scale,
-                 reorder, check_no_self_loops, &(supervision->e2e_fsts[0]));
+    AddSelfLoopsChecking(trans_mdl, disambig_syms, self_loop_scale,
+                         reorder, check_no_self_loops, &(supervision->e2e_fsts[0]));
   }
 
   { // Convert transition-ids to pdf-ids+1 on the FST labels,

@@ -97,13 +97,11 @@ int main(int argc, char *argv[]) {
     if (!fst)
       KALDI_ERR << "add-self-loops: error reading input FST.";
 
-    bool check_no_self_loops = true;
-
     // The work gets done here.
     AddSelfLoops(trans_model,
                  disambig_syms_in,
                  self_loop_scale,
-                 reorder, check_no_self_loops, fst);
+                 reorder, fst);
 
     if (! fst->Write(fst_out_filename) )
       KALDI_ERR << "add-self-loops: error writing FST to "

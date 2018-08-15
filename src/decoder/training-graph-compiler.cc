@@ -133,12 +133,10 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
   MinimizeEncoded(&trans2word_fst);
 
   std::vector<int32> disambig;
-  bool check_no_self_loops = true;
   AddSelfLoops(trans_model_,
                disambig,
                opts_.self_loop_scale,
                opts_.reorder,
-               check_no_self_loops,
                &trans2word_fst);
 
   delete H;
@@ -233,12 +231,10 @@ bool TrainingGraphCompiler::CompileGraphs(
     MinimizeEncoded(&trans2word_fst);
 
     std::vector<int32> disambig;
-    bool check_no_self_loops = true;
     AddSelfLoops(trans_model_,
                  disambig,
                  opts_.self_loop_scale,
                  opts_.reorder,
-                 check_no_self_loops,
                  &trans2word_fst);
 
     KALDI_ASSERT(trans2word_fst.Start() != kNoStateId);

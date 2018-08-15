@@ -174,8 +174,27 @@ void AddSelfLoops(const TransitionModel &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
                   BaseFloat self_loop_scale,
                   bool reorder,
-                  bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst);
+
+/**
+  * For context, see \ref hmm_graph_add_self_loops.  This is an extension of
+  * AddSelfLoops that introduces an optional check for existing self-loops using
+  * the check_no_self_loops argument.  See AddSelfLoops for the other arguments.
+  *
+  * @param check_no_self_loops [in]  If true, it will check that there are no
+  *                      self-loops in the original graph; you'll normally want
+  *                      this to be true.  If false, it will allow them, and
+  *                      will add self-loops after the original self-loop
+  *                      transitions, assuming reorder==true... this happens to
+  *                      be what we want when converting normal to unconstrained
+  *                      chain examples.
+  */
+void AddSelfLoopsChecking(const TransitionModel &trans_model,
+                          const std::vector<int32> &disambig_syms,  // used as a check only.
+                          BaseFloat self_loop_scale,
+                          bool reorder,
+                          bool check_no_self_loops,
+                          fst::VectorFst<fst::StdArc> *fst);
 
 /**
   * Adds transition-probs, with the supplied
