@@ -219,23 +219,24 @@ class GrammarFst {
   // sets up nonterminal_map_.
   void InitNonterminalMap();
 
-  // sets up entry_points_.
-  void InitEntryPoints();
+  // sets up entry_arcs_;
+  void InitEntryArcs();
 
 
   /*
-    This utility funciton sets up a map from "left-context phone", meaning
+    This utility function sets up a map from "left-context phone", meaning
     either a phone index or the index of the symbol #nonterm_bos, to
-    a state-index in an FST.
+    an arc-index leaving a particular state in an FST (i.e. an index
+    that we could use to Seek() to the matching arc).
 
       @param [in]  fst  The FST we are looking for state-indexes for
-      @param [in]  entry_state  The state in the FST that arcs with
-                 labels decodable as (nonterminal_symbol, left_context_phone)
-                 leave.  Will either be the start state (if 'nonterminal_symbol'
+      @param [in]  entry_state  The state in the FST-- must have arcs with
+                 ilabels decodable as (nonterminal_symbol, left_context_phone).
+                 Will either be the start state (if 'nonterminal_symbol'
                  corresponds to #nonterm_begin), or an internal state
                  (if 'nonterminal_symbol' corresponds to #nonterm_reenter).
-                 The destination-states of those arcs will be the values
-                 we set in 'phone_to_state'
+                 The arc-indexes of those arcs will be the values
+                 we set in 'phone_to_arc'
       @param [in]  nonterminal_symbol  The index in phones.txt of the
                  nonterminal symbol we expect to be encoded in the ilabels
                  of the arcs leaving 'entry_state'.  Will either correspond
@@ -244,7 +245,7 @@ class GrammarFst {
                  to the arc-index (i.e. the index we'd have to Seek() to
                  in an arc-iterator set up for the state 'entry_state).
    */
-  void InitEntryOrReentryPoints(
+  void InitEntryOrReentryArcs(
       const ConstFst<StdArc> &fst,
       int32 entry_state,
       int32 nonterminal_symbol,
@@ -281,6 +282,33 @@ class GrammarFst {
   // final-state which did not need expansion.
   ExpandedState *ExpandState(int32 instance_id, BaseStateId state_id);
 
+
+  // Called from ExpandState() when the nonterminal type on the arcs is
+  // #nonterm_end, this implements ExpandState() for that case.
+  ExpandedState *ExpandStateEnd(int32 instance_id, BaseStateId state_id);
+
+  // Called from ExpandState() when the nonterminal type on the arcs is a
+  // user-defined nonterminal, this implements ExpandState() for that case.
+  ExpandedState *ExpandStateUserDefined(int32 instance_id, BaseStateId state_id);
+
+  // Called from ExpandStateUserDefined(), this function attempts to
+  // look up the pair (nonterminal, return_state) in the map
+  // instances_[instance_id].child_instances.  If it exists (because this
+  // return-state has been expanded before, it returns that value; otherwise
+  // it creates the child-instance and returns its newly created instance-id.
+  inline int32 GetChildInstanceId(int32 instance_id, int32 nonterminal,
+                                  int32 return_state);
+
+  // Called while expanding states, this function combines information from two
+  // arcs: one leaving one sub-fst and one arriving in another sub-fst.  The
+  // output weight will be the product of the weights; this function takes the
+  // olabel from 'arriving_arc' (and checks that the olabel on leaving_arc is 0,
+  // which should have been ensured by PrepareForGrammarFst()); sets the ilabel
+  // to 0; and uses the nextstate from 'arriving_arc'.
+  static inline void CombineArcs(const StdArc &leaving_arc,
+                                 const StdArc &arriving_arc,
+                                 StdArc *arc);
+
   // Called from the ArcIterator constructor when we encounter an FST state with
   // nonzero final-prob, this function first looks up this state_id in
   // 'expanded_states' member of the corresponding FstInstance, and returns it
@@ -304,29 +332,6 @@ class GrammarFst {
     else
       return ExpandState(instance_id, state_id);
   }
-
-  // Configuration object; contains nonterm_phones_offset.
-  GrammarFstConfig config_;
-
-  // The top-level FST passed in by the user; contains the start state and
-  // final-states, and may invoke FSTs in 'ifsts_' (which can also invoke
-  // each other recursively).
-  const Fst<StdArc> *top_fst_;
-
-  // A list of pairs (nonterm, fst), where 'nonterm' is a user-defined
-  // nonterminal symbol as numbered in phones.txt (e.g. #nonterm:foo), and
-  // 'fst' is the corresponding FST.
-  std::vector<std::pair<int32, const ConstFst<StdArc> *> > ifsts_;
-
-  // Maps from the user-defined nonterminals like #nonterm:foo as defined
-  // in phones.txt, to the corresponding index into 'ifsts_'.
-  std::unordered_map<int32, int32> nonterminal_map_;
-
-  // entry_points_, which will have the same dimension as ifst_, is a map from
-  // left-context phone (i.e. either a phone-index or #nonterm_bos) to the
-  // corresponding arc-index leaving the start-state in this FST.
-  std::vector<std::unordered_map<int32, int32> > entry_points_;
-
   // Represents an expanded state in an FstInstance.  We expand states whenever
   // we encounter states with a nonzero final-prob.  Note: nonzero final-probs
   // function as a signal that says "trye to expand this state"; the user is
@@ -362,10 +367,10 @@ class GrammarFst {
     // ifst_index == -1, or ifsts_[ifst_index].second otherwise.
     const ConstFst<StdArc> *fst;
 
-    // 'expanded_states', which will be populated on demand as states are
-    // accessed, will only contain entries for states in this FST that have
-    // nonzero final-prob.  (The final-prob is used as a kind of signal to this
-    // code that the state needs expansion).
+    // 'expanded_states', which will be populated on demand as states in this
+    // FST instance are accessed, will only contain entries for states in this
+    // FST that have nonzero final-prob.  (The final-prob is used as a kind of
+    // signal to this code that the state needs expansion).
     //
     // In cases where states actually needed to be expanded because they
     // contained transitions to other sub-FSTs, the value in the map will
@@ -375,25 +380,73 @@ class GrammarFst {
     // a normal state.
     std::unordered_map<BaseStateId, ExpandedState*> expanded_states;
 
+    // 'child_instances', which is populated on demand as states in this FST
+    // instance are accessed, is logically a map from pair (nonterminal_index,
+    // return_state) to instance_id.  When we encounter an arc in our FST with a
+    // user-defined nonterminal indexed 'nonterminal_index' on its ilabel, and
+    // with 'return_state' as its nextstate, we look up that pair
+    // (nonterminal_index, return_state) in this map to see whether there already
+    // exists an FST instance for that.  If it exists then the transition goes to
+    // that FST instance; if not, then we create a new one.  The 'return_state'
+    // that's part of the key in this map would be the same as the 'return_state'
+    // in that child FST instance, and of course the 'return_instance' in
+    // that child FST instance would be the instance_id of this instance.
+    //
+    // In most cases each return_state would only have a single
+    // nonterminal_index, making the 'nonterminal_index' in the key *usually*
+    // redundant, but in principle it could happen that two user-defined
+    // nonterminals have the same return-state.
+    std::unordered_map<int64, int32> child_instances;
 
     // The instance-id of the FST we return to when we are done with this one
     // (or -1 if this is the top-level FstInstance so there is nowhere to
     // return).
     int32 return_instance;
 
-    // The state in the FST of 'return_instance' at which we expanded this; the
-    // values in 'reentry_points' are the 'nextstates' of arcs leaving this
-    // state.
+    // The state in the FST of 'return_instance' at which we expanded this FST
+    // instance, and to which we return (actually we return to the next-states
+    // of arcs out of 'return_state').
     int32 return_state;
 
-    // return_points has similar semantics to entry_points_, but it refers to
-    // the state index in the FST to which we will return from this FST.
-    // It's indexed by phone index (or #nonterm_eps).  We make use of this
-    // when we expand states in this FST that have nonzero final-prob.
-    std::unordered_map<int32, int32> reentry_points;
+    // 'reentry_arcs' is a map from left-context-phone (i.e. either a phone
+    // index or #nonterm_bos), to an arc-index, which we could use to Seek() in
+    // an arc-iterator..  It refers to arcs in the state 'return_state' in the
+    // FST-instance 'return_instance'.  It's set up when we create this FST
+    // instance.  (The arcs used to enter this instance are not located here,
+    // they can be located in entry_arcs_[instance_id]).  We make use of
+    // reentry_arcs when we expand states in this FST that have nonzero
+    // final-prob, and which return to the parent FST-instance.
+    std::unordered_map<int32, int32> reentry_arcs;
   };
 
+  // Configuration object; contains nonterm_phones_offset.
+  GrammarFstConfig config_;
+
+  // The top-level FST passed in by the user; contains the start state and
+  // final-states, and may invoke FSTs in 'ifsts_' (which can also invoke
+  // each other recursively).
+  const Fst<StdArc> *top_fst_;
+
+  // A list of pairs (nonterm, fst), where 'nonterm' is a user-defined
+  // nonterminal symbol as numbered in phones.txt (e.g. #nonterm:foo), and
+  // 'fst' is the corresponding FST.
+  std::vector<std::pair<int32, const ConstFst<StdArc> *> > ifsts_;
+
+  // Maps from the user-defined nonterminals like #nonterm:foo as defined
+  // in phones.txt, to the corresponding index into 'ifsts_', i.e. the ifst_index.
+  std::unordered_map<int32, int32> nonterminal_map_;
+
+  // entry_arcs_ will have the same dimension as ifst_.  Each entry_arcs_[i]
+  // is a map from left-context phone (i.e. either a phone-index or
+  // #nonterm_bos) to the corresponding arc-index leaving the start-state in
+  // this FST.
+  std::vector<std::unordered_map<int32, int32> > entry_arcs_;
+
   std::vector<FstInstance> instances_;
+
+
+
+  std::unordered_map<int64, int32> instance_map_;
 };
 
 

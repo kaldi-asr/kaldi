@@ -74,6 +74,56 @@ Recursively replaces FST arcs with other FST(s).
   FST.
 
 
+  \section graph_grammar_overview  Overview of the framework
+
+ To explain how this works, we'll take the "contact list" scenario, where you want to
+ build a large language model with a nonterminal, say `\#nonterm:contact_list` in it,
+ and at recognition time you quickly build some kind of small LM representing
+ the contact list (possibly with previously unseen words), and compile that graph.
+ Both the "big graph" and the "small graph" are fully compiled down to the HCLG level.
+ The GrammarFst code "stitches them together" at decode time.  The way this is
+ accomplished is by putting special ilabels in the two HCLGs that the GrammarFst
+ code knows how to interpret.  That is: most ilabels in the HCLGs correspond to
+ transition-ids, but there are "special ilabels" with values over one million, that
+ the GrammarFst code knows how to interpret, and it uses them to stitch together
+ the FSTs, in a way that's related to OpenFst's Replace() operation, but is a little
+ more complicated due to the need to get the phonetic context right.  (It only supports
+ left-biphone context, to keep the complexity manageable).
+
+ The GrammarFst has an interface very similar to OpenFst's "Fst" type--
+ sufficiently similar that the decoder can use it as a drop-in replacement for a
+ normal FST-- but it does not actually inherit from any OpenFst type; this is to
+ simplify the implementation and give us more freedom in designing it.  The
+ decoders that use GrammarFst are templated on the FST type, and we use
+ GrammarFst as the template argument when we want to decode with them.  The
+ GrammarFst only supports the parts of the Fst interface that are actually
+ needed by the decoder.
+
+ The StateId used in the GrammarFst code is a 64-bit StateId, which we interpret
+ as a pair of 32-bit integers.  The first one is the "fst instance" and the
+ second one is the state in that "fst instance".  In the contact-list example,
+ fst-instance zero would be the top-level graph, and there would potentially be
+ a new fst-instance for each time the `\#nonterm:contact_list` nonterminal
+ appears in the big language model.  However, these are only generated on demand
+ as those parts of the graph are actually accessed.  The GrammarFst is a
+ lightweight object that does very little work at startup.  It is designed to be
+ as fast as possible in the "normal case" when we are not crossing FST
+ boundaries, and are just traversing inside a single FST.  The GrammarFst code
+ needs a fast-to-evaluate "signal" that it needs to do something special for a
+ particular FST state.  We let the final-probabilities be that signal: that is,
+ each time we initialize an ArcIterator, the GrammarFst code can quickly test
+ whether the final-prob is nonzero.  If it's nonzero, then the GrammarFst code
+ does a little bit of extra work to see whether it needs to expand the state
+ somehow.  But since most FST final-probs are zero, this extra work is quite
+ minimal.  (We have to artificially add nonzero final-probs to any FST state that
+ has "special symbols" coming out of it.
+
+ The FST compilation process-- i.e. the process of going from G.fst to HCLG.fst--
+ is a little different when we intend to support grammars.  That is, we need to
+ extend some of the tools used in compilation to work correctly with certain
+ special symbols that we introduces.  The differences are explained below.
+
+
   \section graph_grammar_symtabs  Symbol tables and special symbols
 
   In order to use this framework it will be necessary (or at least highly desirable, for

@@ -37,7 +37,7 @@ GrammarFst::GrammarFst(
     ifsts_(ifsts) {
   config.Check();
   InitNonterminalMap();
-  InitEntryPoints();
+  InitEntryArcs();
 }
 
 void GrammarFst::DecodeSymbol(Label label,
@@ -78,18 +78,18 @@ void GrammarFst::InitNonterminalMap() {
 }
 
 
-void GrammarFst::InitEntryPoints() {
-  entry_points_.resize(ifsts_.size());
+void GrammarFst::InitEntryArcs() {
+  entry_arcs_.resize(ifsts_.size());
   for (size_t i = 0; i < ifsts_.size(); i++) {
     const ConstFst<StdArc> &fst = *(ifsts_[i].second);
-    InitEntryOrReentryPoints(fst, fst.Start(),
+    InitEntryOrReentryArcs(fst, fst.Start(),
                              GetPhoneSymbolFor(kNontermBegin),
-                             &(entry_points_[i]));
+                             &(entry_arcs_[i]));
   }
 }
 
 
-void GrammarFst::InitEntryOrReentryPoints(
+void GrammarFst::InitEntryOrReentryArcs(
     const ConstFst<StdArc> &fst,
     int32 entry_state,
     int32 expected_nonterminal_symbol,
@@ -126,8 +126,8 @@ void GrammarFst::InitEntryOrReentryPoints(
   }
 }
 
-GrammarFst::ExpandedState *GrammarFst::ExpandState(int32 instance_id,
-                                       BaseStateId state_id) {
+GrammarFst::ExpandedState *GrammarFst::ExpandState(
+    int32 instance_id, BaseStateId state_id) {
   int32 big_number = kNontermBigNumber;
   const ConstFst<StdArc> &fst = *(instances_[instance_id].fst);
   ArcIterator<ConstFst<StdArc> > aiter(fst, state_id);
@@ -147,59 +147,172 @@ GrammarFst::ExpandedState *GrammarFst::ExpandState(int32 instance_id,
     KALDI_ERR << "Encountered unexpected type of nonterminal while "
         "expanding state.";
   } else if (nonterminal == GetPhoneSymbolFor(kNontermEnd)) {
-    if (instance_id == 0)
-      KALDI_ERR << "Did not expect #nonterm_end symbol in FST-instance 0.";
-    const FstInstance &instance = instances_[instance_id];
-    int32 return_instance_id = instance.return_instance;
-    ans->dest_fst_instance = return_instance_id;
-
-    const FstInstance &return_instance = instances_[return_instance_id];
-    const ConstFst<StdArc> &return_fst = *(return_instance.fst);
-    // return_aiter is the iterator in the state we return to.
-    ArcIterator<ConstFst<StdArc> > return_aiter(return_fst,
-                                                instance.return_state);
-
-    for (; !aiter.Done(); aiter.Next()) {
-      const StdArc &leaving_arc = aiter.Value();
-      int32 this_nonterminal, left_context_phone;
-      DecodeSymbol(leaving_arc.ilabel, &this_nonterminal,
-                   &left_context_phone);
-      KALDI_ASSERT(this_nonterminal == nonterminal &&
-                   ">1 nonterminals from a state; did you use "
-                   "PrepareForGrammarFst()?");
-      std::unordered_map<int32, BaseStateId>::const_iterator reentry_iter =
-          instances_[instance_id].reentry_points.find(left_context_phone);
-      if (reentry_iter == instance.reentry_points.end()) {
-        KALDI_ERR << "FST with index " << instance.ifst_index
-                  << " returns with left-context " << left_context_phone
-                  << " but parent FST "
-                  << instances_[return_instance_id].ifst_index
-                  << " does not support that left-context at state "
-                  << instance.return_state;
-      }
-      size_t return_arc_index = reentry_iter->second;
-      return_aiter.Seek(return_arc_index);
-      const StdArc &arriving_arc = return_aiter.Value();
-      // 'arc' will combine the information on 'leaving_arc' and 'arriving_arc',
-      // except that the ilabel will be set to zero.
-      if (leaving_arc.olabel != 0) {
-        // If the following fails it would maybe indicate you hadn't called
-        // PrepareForGrammarFst(), or there was an error in that, because
-        // we made sure the leaving arc does not have an olabel.  Search
-        // in that code for 'olabel_problem' for more details.
-        KALDI_ERR << "Leaving arc has zero olabel.";
-      }
-      StdArc arc;
-      arc.ilabel = 0;
-      // We checked that one of those two olabels is zero; their sum is
-      // whichever is nonzero.
-      arc.olabel = arriving_arc.olabel;
-      arc.nextstate = arriving_arc.nextstate;
-      arc.weight = Plus(leaving_arc.weight, arriving_arc.weight);
-      ans->arcs.push_back(arc);
-    }
-  } else { // TODO
+    return ExpandStateEnd(instance_id, state_id);
+  } else if (nonterminal >= GetPhoneSymbolFor(kNontermUserDefined)) {
+    return ExpandStateUserDefined(instance_id, state_id, nonterminal);
+  } else {
+    KALDI_ERR << "Encountered unexpected type of nonterminal "
+              << nonterminal << " while expanding state.";
+    return NULL;  // Suppress compiler warning
   }
+}
+
+
+// static inline
+void GrammarFst::CombineArcs(const StdArc &leaving_arc,
+                             const StdArc &arriving_arc,
+                             StdArc *arc) {
+  KALDI_ASSERT(leaving_arc.olabel == 0);
+  arc->ilabel = 0;
+  arc->olabel = arriving_arc.olabel;
+  arc->weight = Times(leaving_arc.weight, arriving_arc.weight);
+  arc->nextstate = arriving_arc.nextstate;
+}
+
+GrammarFst::ExpandedState *GrammarFst::ExpandStateEnd(
+    int32 instance_id, BaseStateId state_id) {
+  if (instance_id == 0)
+    KALDI_ERR << "Did not expect #nonterm_end symbol in FST-instance 0.";
+  const FstInstance &instance = instances_[instance_id];
+  int32 return_instance_id = instance.return_instance;
+  const ConstFst<StdArc> &fst = *(instance.fst);
+  const FstInstance &return_instance = instances_[return_instance_id];
+  const ConstFst<StdArc> &return_fst = *(return_instance.fst);
+
+  ExpandedState *ans = new ExpandedState;
+  ans->dest_fst_instance = return_instance_id;
+
+  // return_aiter is the iterator in the state we return to.
+  // We'll Seek() to various positions in 'return_aiter'
+  // based on the values in 'reentry_arcs'.
+  ArcIterator<ConstFst<StdArc> > return_aiter(return_fst,
+                                              instance.return_state);
+
+  ArcIterator<ConstFst<StdArc> > aiter(fst, state_id);
+
+  for (; !aiter.Done(); aiter.Next()) {
+    const StdArc &leaving_arc = aiter.Value();
+    int32 this_nonterminal, left_context_phone;
+    DecodeSymbol(leaving_arc.ilabel, &this_nonterminal,
+                 &left_context_phone);
+    KALDI_ASSERT(this_nonterminal == GetPhoneSymbolFor(kNontermEnd) &&
+                 ">1 nonterminals from a state; did you use "
+                 "PrepareForGrammarFst()?");
+    std::unordered_map<int32, int32>::const_iterator reentry_iter =
+        instances_[instance_id].reentry_arcs.find(left_context_phone);
+    if (reentry_iter == instance.reentry_arcs.end()) {
+      KALDI_ERR << "FST with index " << instance.ifst_index
+                << " returns with left-context " << left_context_phone
+                << " but parent FST "
+                << instances_[return_instance_id].ifst_index
+                << " does not support that left-context at state "
+                << instance.return_state;
+    }
+    size_t return_arc_index = reentry_iter->second;
+    return_aiter.Seek(return_arc_index);
+    const StdArc &arriving_arc = return_aiter.Value();
+    // 'arc' will combine the information on 'leaving_arc' and 'arriving_arc',
+    // except that the ilabel will be set to zero.
+    if (leaving_arc.olabel != 0) {
+      // If the following fails it would maybe indicate you hadn't called
+      // PrepareForGrammarFst(), or there was an error in that, because
+      // we made sure the leaving arc does not have an olabel.  Search
+      // in that code for 'olabel_problem' for more details.
+      KALDI_ERR << "Leaving arc has zero olabel.";
+    }
+    StdArc arc;
+    CombineArcs(leaving_arc, arriving_arc, &arc);
+    ans->arcs.push_back(arc);
+  }
+}
+
+int32 GrammarFst::GetChildInstanceId(int32 instance_id, int32 nonterminal,
+                                     int32 return_state) {
+  int64 encoded_pair = static_cast<int64>(nonterminal) << 32 + return_state;
+  // 'new_instance_id' is the instance-id we'd assign if we had to create a new one.
+  // We try to add it at once, to avoid having to do an extra map lookup in case
+  // it wasn't there and we did need to add it.
+  int32 child_instance_id = instances_.size();
+  {
+    std::pair<int64, int32> p(encoded_pair, new_instance_id);
+    std::pair<std::unordered_map<int64, int32>::const_iterator, bool> ans =
+        instances_[instance_id].child_instances.insert(p);
+    if (!ans.second) {
+      // The pair was not inserted, which means the key 'encoded_pair' did exist in the
+      // map.  Return the value in the map.
+      child_instance_id = p.first->second;
+      return child_instance_id;
+    }
+  }
+  // If we reached this point, we did successfully insert 'new_instance_id' into
+  // the map, because the key didn't exist.  That means we have to actually create
+  // the instance.
+  instances_.resize(child_instance_id + 1);
+  const FstInstance &parent_instance = instances_[instance_id];
+  FstInstance &child_instance = instances_[child_instance_id];
+
+  // Work out the ifst_index for this nonterminal.
+  std::unordered_map<int32, int32>::const_iterator iter =
+      nonterminal_map_.find(nonterminal);
+  if (iter == nonterminal_map_.end()) {
+    KALDI_ERR << "Nonterminal " << nonterminal << " was requested, but "
+        "there is no FST for it.";
+  }
+  int32 ifst_index = iter->second;
+  child_instance.ifst_index = ifst_index;
+  child_instance.ifst = ifsts_[ifst_index].second;
+  child_instance.return_instance = instance_id;
+  child_instance.return_state = return_state;
+  InitEntryOrReentryArcs(*(parent_instance.fst), return_state,
+                         GetPhoneSymbolFor(kNontermReenter),
+                         &(child_instance.reentry_arcs));
+  return child_instance_id;
+}
+
+GrammarFst::ExpandedState *GrammarFst::ExpandStateUserDefined(
+    int32 instance_id, BaseStateId state_id) {
+  const ConstFst<StdArc> &fst = *(instances_[instance_id].fst);
+  ArcIterator<ConstFst<StdArc> > aiter(fst, state_id);
+
+  ExpandedState *ans = new ExpandedState;
+  int32 dest_fst_instance = -1;  // We'll set it in the loop.
+                                 // and->dest_fst_instance will be set to this.
+
+  for (; !aiter.Done(); aiter.Next()) {
+    const StdArc &leaving_arc = aiter.Value();
+    int32 nonterminal, left_context_phone;
+    DecodeSymbol(leaving_arc.ilabel, &nonterminal,
+                 &left_context_phone);
+    int32 return_state = leaving_arc.nextstate,
+        child_instance_id = GetChildInstanceId(instance_id,
+                                               nonterminal,
+                                               return_state);
+    if (dest_fst_instance < 0) {
+      dest_fst_instance = child_instance_id;
+    } else if (dest_fst_instance != child_instance_id) {
+      KALDI_ERR << "Same state leaves to different FST instances "
+          "(Did you use PrepareForGrammarFst()?)";
+    }
+    const FstInstance &child_instance = instances_[child_instance_id];
+    const ConstFst<StdArc> &child_fst = *(child_instance.fst);
+    int32 child_ifst_index = child_instance.ifst_index;
+    // Get arc-index from start-state of child FST.
+    std::unordered_map<int32, int32>::const_iterator entry_iter =
+        entry_arcs_[child_ifst_index].find(left_context_phone);
+    if (entry_iter == entry_arcs_[child_ifst_index].end()) {
+      KALDI_ERR << "FST for nonterminal " << nonterminal
+                << " does not have an entry point for left-context-phone "
+                << left_context_phone;
+    }
+    int32 arc_index = entry_iter->second;
+    ArcIterator<ConstFst<StdArc> > child_aiter(child_fst, child_fst.Start());
+    child_aiter.Seek(arc_index);
+    const StdArc &arriving_arc = child_aiter.Value();
+    CombineArcs(leaving_arc, arriving_arc, &arc);
+    ans->arcs.push_back(arc);
+  }
+  ans->dest_fst_instance = dest_fst_instance;
+  return ans;
 }
 
 // This class contains the implementation of the function
@@ -215,9 +328,7 @@ class GrammarFstPreparer {
   GrammarFstPreparer(int32 nonterm_phones_offset,
                      VectorFst<StdArc> *fst):
       nonterm_phones_offset_(nonterm_phones_offset),
-      fst_(fst),
-      num_new_states_(0),
-      simple_final_state_(kNoStateId) { }
+      fst_(fst), num_new_states_(0), simple_final_state_(kNoStateId) { }
 
   void Prepare() {
     if (fst_->Start() == kNoStateId) {
@@ -276,10 +387,13 @@ class GrammarFstPreparer {
      @param [out] transitions_to_multiple_instances   Will be set to true
                    if state s has arcs out of it that will transition to
                    multiple FST instance (for example: one to this same FST, and
-                   one to the FST for a user-defined nonterminal).  This is
-                   the same as checking that all the labels correspond to
-                   the same symbol #nontermXXX (or no such symbol, but in that
-                   case this function wouldn't have been called.
+                   one to the FST for a user-defined nonterminal).  If this
+                   state does not have arcs with ilabels corresponding to all
+                   the same symbol #nontermXXX, then we set this to true;
+                   also, if this state has arcs with a user-defined nonterminal
+                   on their label and their destination-states are not all the
+                   same, we set this to true.  (This should not happen, but
+                   we check for it anyway).
      @param [out] has_olabel_problem   True if this state has at least one
                    arc with an ilabel corresponding to a user-defined
                    nonterminal or #nonterm_exit, and an olabel that is
@@ -359,6 +473,15 @@ void GrammarFstPreparer::CheckProperties(StateId s,
   // normally we'll have encoding_multiple = 1000, big_number = 1000000.
   int32 encoding_multiple = GetEncodingMultiple(nonterm_phones_offset_),
       big_number = kNontermBigNumber;
+
+
+  // If we encounter arcs with user-defined nonterminals on them (unlikely), we
+  // need to make sure that their destination-states are all the same.  If not,
+  // they would transition to different FST instances, and we'd have to set
+  // 'transitions_to_multiple_instances' to true.  'destination_state' is used
+  // to check this.
+  StateId destination_state = kNoStateId;
+
   for (ArcIterator<FST> aiter(*fst_, s ); !aiter.Done(); aiter.Next()) {
     const Arc &arc = aiter.Value();
     int32 nonterminal;
@@ -372,6 +495,10 @@ void GrammarFstPreparer::CheckProperties(StateId s,
                   << arc.ilabel;
       }
       if (nonterminal >= GetPhoneSymbolFor(kNontermUserDefined)) {
+        if (destination_state != kNoStateId && arc.nextstate != destination_state)
+          *transitions_to_multiple_instances = true;
+        destination_state = arc.nextstate;
+
         // This is a user-defined symbol.  Check that the destination state of
         // this arc has arcs with kNontermReenter on them.  We'll separately
         // check that such states don't have other types of arcs coming from
