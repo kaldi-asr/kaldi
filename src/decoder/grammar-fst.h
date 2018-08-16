@@ -36,6 +36,7 @@
 #include "itf/decodable-itf.h"
 #include "itf/options-itf.h"
 #include "util/stl-utils.h"
+#include "fstext/grammar-context-fst.h"
 
 namespace fst {
 
@@ -229,7 +230,7 @@ class GrammarFst {
 
       @param [in]  fst  The FST we are looking for state-indexes for
       @param [in]  entry_state  The state in the FST that arcs with
-                 labels decodable as (#nontermXXX, left_context_phone)
+                 labels decodable as (nonterminal_symbol, left_context_phone)
                  leave.  Will either be the start state (if 'nonterminal_symbol'
                  corresponds to #nonterm_begin), or an internal state
                  (if 'nonterminal_symbol' corresponds to #nonterm_reenter).
@@ -239,18 +240,19 @@ class GrammarFst {
                  nonterminal symbol we expect to be encoded in the ilabels
                  of the arcs leaving 'entry_state'.  Will either correspond
                  to #nonterm_begin or #nonterm_reenter.
-      @param [out] phone_to_state  We output the map from left_context_phone
-                 to state-index here.
+      @param [out] phone_to_arc  We output the map from left_context_phone
+                 to the arc-index (i.e. the index we'd have to Seek() to
+                 in an arc-iterator set up for the state 'entry_state).
    */
   void InitEntryOrReentryPoints(
       const ConstFst<StdArc> &fst,
       int32 entry_state,
       int32 nonterminal_symbol,
-      std::unordered_map<int32, BaseStateId> *phone_to_state);
+      std::unordered_map<int32, int32> *phone_to_arc);
 
 
   inline int32 GetPhoneSymbolFor(enum NonterminalValues n) {
-    return nonterm_phones_offset_ + static_cast<int32>(n);
+    return config_.nonterm_phones_offset + static_cast<int32>(n);
   }
   /**
      Decodes an ilabel in to a pair of (nonterminal, left_context_phone).  Crashes
@@ -322,8 +324,8 @@ class GrammarFst {
 
   // entry_points_, which will have the same dimension as ifst_, is a map from
   // left-context phone (i.e. either a phone-index or #nonterm_bos) to the
-  // corresponding start-state in this FST.
-  std::vector<std::unordered_map<int32, BaseStateId> > entry_points_;
+  // corresponding arc-index leaving the start-state in this FST.
+  std::vector<std::unordered_map<int32, int32> > entry_points_;
 
   // Represents an expanded state in an FstInstance.  We expand states whenever
   // we encounter states with a nonzero final-prob.  Note: nonzero final-probs
@@ -374,14 +376,6 @@ class GrammarFst {
     std::unordered_map<BaseStateId, ExpandedState*> expanded_states;
 
 
-    // entry_points, which is only set up for instances other than instance 0
-    // (the top-level instance), is a map from phonetic left-context (either a
-    // phone id or the symbol #nonterm_eps representing no left-context, using
-    // the integer mapping defined in phones.txt), to the state in the FST that
-    // we start at if that is the left-context.  Will be kNoStateId for
-    // left-contexts which this FST does not make available.
-    std::vector<BaseStateId> entry_points;
-
     // The instance-id of the FST we return to when we are done with this one
     // (or -1 if this is the top-level FstInstance so there is nowhere to
     // return).
@@ -389,14 +383,14 @@ class GrammarFst {
 
     // The state in the FST of 'return_instance' at which we expanded this; the
     // values in 'reentry_points' are the 'nextstates' of arcs leaving this
-    // state.  Only needed for debugging.
+    // state.
     int32 return_state;
 
     // return_points has similar semantics to entry_points_, but it refers to
     // the state index in the FST to which we will return from this FST.
     // It's indexed by phone index (or #nonterm_eps).  We make use of this
     // when we expand states in this FST that have nonzero final-prob.
-    std::unordered_map<int32, BaseStateId> reentry_points;
+    std::unordered_map<int32, int32> reentry_points;
   };
 
   std::vector<FstInstance> instances_;
