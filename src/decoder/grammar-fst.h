@@ -175,7 +175,8 @@ class GrammarFst {
               symbols must be among the user-specified nonterminals in
               phones.txt, i.e. the things with names like "#nonterm:foo"
               and "#nonterm:bar" in phones.txt.  Also they must not be
-              repeated.
+              repeated.  ifsts may be empty, even though that doesn't
+              make much sense.
     */
   GrammarFst(
       const GrammarFstConfig &config,
@@ -214,21 +215,68 @@ class GrammarFst {
 
   friend class ArcIterator<GrammarFst>;
 
-  // This function, which is to be called after top_fsts_, ifsts_ and
-  // nonterm_phones_offset_ have been set up, initializes the following derived
-  // variables:
-  //  encoding_multiple_
-  //  nonterminal_map_
-  //  entry_points_
-  void Init();
-  void CreateEntryMap();
+  // sets up nonterminal_map_.
+  void InitNonterminalMap();
+
+  // sets up entry_points_.
+  void InitEntryPoints();
+
+
+  /*
+    This utility funciton sets up a map from "left-context phone", meaning
+    either a phone index or the index of the symbol #nonterm_bos, to
+    a state-index in an FST.
+
+      @param [in]  fst  The FST we are looking for state-indexes for
+      @param [in]  entry_state  The state in the FST that arcs with
+                 labels decodable as (#nontermXXX, left_context_phone)
+                 leave.  Will either be the start state (if 'nonterminal_symbol'
+                 corresponds to #nonterm_begin), or an internal state
+                 (if 'nonterminal_symbol' corresponds to #nonterm_reenter).
+                 The destination-states of those arcs will be the values
+                 we set in 'phone_to_state'
+      @param [in]  nonterminal_symbol  The index in phones.txt of the
+                 nonterminal symbol we expect to be encoded in the ilabels
+                 of the arcs leaving 'entry_state'.  Will either correspond
+                 to #nonterm_begin or #nonterm_reenter.
+      @param [out] phone_to_state  We output the map from left_context_phone
+                 to state-index here.
+   */
+  void InitEntryOrReentryPoints(
+      const ConstFst<StdArc> &fst,
+      int32 entry_state,
+      int32 nonterminal_symbol,
+      std::unordered_map<int32, BaseStateId> *phone_to_state);
+
+
+  inline int32 GetPhoneSymbolFor(enum NonterminalValues n) {
+    return nonterm_phones_offset_ + static_cast<int32>(n);
+  }
+  /**
+     Decodes an ilabel in to a pair of (nonterminal, left_context_phone).  Crashes
+     if something went wrong or ilabel did not represent that (e.g. was less
+     than kNontermBigNumber).
+
+       @param [in] the ilabel to be decoded.  Note: the type 'Label' will in practice be int.
+       @param [out] The nonterminal part of the ilabel after decoding.
+                   Will be a value greater than nonterm_phones_offset_.
+       @param [out] The left-context-phone part of the ilabel after decoding.
+                    Will either be a phone index, or the symbol corresponding
+                    to #nonterm_bos (meaning no left-context as we are at
+                    the beginning of the sequence).
+   */
+  void DecodeSymbol(Label label,
+                    int32 *nonterminal_symbol,
+                    int32 *left_context_phone);
 
 
   // This function creates and returns an ExpandedState corresponding to a
   // particular state-id in the FstInstance for this instance_id.  It is called
-  // when we have determined that an ExpandedState (possibly NULL) needs to be
-  // created and that it is not currently present.  It adds it to the
-  // expanded_states map and returns it.
+  // when we have determined that an ExpandedState needs to be created and that
+  // it is not currently present.  It adds it to the expanded_states map for
+  // this FST instance, and returns it.  Note: it is possible for it to add NULL
+  // to that map, and return NULL, in the case where this was a genuine
+  // final-state which did not need expansion.
   ExpandedState *ExpandState(int32 instance_id, BaseStateId state_id);
 
   // Called from the ArcIterator constructor when we encounter an FST state with
@@ -268,20 +316,14 @@ class GrammarFst {
   // 'fst' is the corresponding FST.
   std::vector<std::pair<int32, const ConstFst<StdArc> *> > ifsts_;
 
-
-  // encoding_multiple_ is the smallest multiple of 1000 that is greater than
-  // config_.nonterm_phones_offset.  It's a value that we use to encode and decode
-  // ilabels on HCLG.
-  int32 encoding_multiple_;
-
   // Maps from the user-defined nonterminals like #nonterm:foo as defined
   // in phones.txt, to the corresponding index into 'ifsts_'.
-  std::unordered_map<Label, int32> nonterminal_map_;
+  std::unordered_map<int32, int32> nonterminal_map_;
 
   // entry_points_, which will have the same dimension as ifst_, is a map from
   // left-context phone (i.e. either a phone-index or #nonterm_bos) to the
   // corresponding start-state in this FST.
-  std::vector<std::unordered_map<Label, BaseStateId> > entry_points_;
+  std::vector<std::unordered_map<int32, BaseStateId> > entry_points_;
 
   // Represents an expanded state in an FstInstance.  We expand states whenever
   // we encounter states with a nonzero final-prob.  Note: nonzero final-probs
@@ -311,9 +353,11 @@ class GrammarFst {
   // An FstInstance represents an instance of a sub-FST.
   struct FstInstance {
     // ifst_index is the index into the ifsts_ vector that corresponds to this
-    // FST instance.
+    // FST instance, or -1 if this is the top-level instance.
     int32 ifst_index;
 
+    // Pointer to the FST corresponding to this instance: top_fst_ if
+    // ifst_index == -1, or ifsts_[ifst_index].second otherwise.
     const ConstFst<StdArc> *fst;
 
     // 'expanded_states', which will be populated on demand as states are
@@ -343,12 +387,16 @@ class GrammarFst {
     // return).
     int32 return_instance;
 
-    // return_points has similar semantics to entry_points, but it refers to
+    // The state in the FST of 'return_instance' at which we expanded this; the
+    // values in 'reentry_points' are the 'nextstates' of arcs leaving this
+    // state.  Only needed for debugging.
+    int32 return_state;
+
+    // return_points has similar semantics to entry_points_, but it refers to
     // the state index in the FST to which we will return from this FST.
     // It's indexed by phone index (or #nonterm_eps).  We make use of this
     // when we expand states in this FST that have nonzero final-prob.
-    std::vector<BaseStateId> return_points;
-
+    std::unordered_map<int32, BaseStateId> reentry_points;
   };
 
   std::vector<FstInstance> instances_;
@@ -386,15 +434,17 @@ class ArcIterator<GrammarFst> {
       base_fst->InitArcIterator(s, &data_);
       i_ = 0;
       dest_instance_ = instance_id;
-      // set up arc_.
-      if (data_.narcs != 0)
-        CopyArcToTemp();
     } else {
       dest_instance_ = expanded_state->dest_fst_instance;
       data_.arcs = &(expanded_state->arcs[0]);
       data_.narcs = expanded_state->arcs.size();
-      CopyArcToTemp();
     }
+    // In principle we might want to call CopyArcToTemp() now, but
+    // we rely on the fact that the calling code needs to call Done()
+    // before accessing Value(); Done() calls CopyArcToTemp().
+    // Of course this is slightly against the semantics of Done(), but
+    // it's more efficient to have Done() call CopyArcToTemp() than
+    // this function or Next().
   }
 
   inline bool Done() {
@@ -479,7 +529,7 @@ class ArcIterator<GrammarFst> {
        cross FST boundaries, that the GrammarFst code will turn into epsilons).
      - In order to signal to the GrammarFst code that a state has
        cross-FST-boundary transitions, we set final-probs on some states.  We
-       set these to a weight with Value() == 4096.0.  When the GrammarFst code
+       set these to a weight with Value() == 1024.0.  When the GrammarFst code
        sees that value it knows that it was not a 'real' final-prob.
 
 
