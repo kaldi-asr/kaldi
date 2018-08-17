@@ -71,12 +71,22 @@ enum NonterminalValues {
   kNontermEnd = 2,  // #nonterm_end
   kNontermReenter = 3,  // #nonterm_reenter
   kNontermUserDefined = 4,   // the lowest-numbered user-defined nonterminal, e.g. #nonterm:foo
-  kNontermMediumNumber = 1000,   // kNontermMediumNumber and kNontermBigNumber come into the encoding
-  kNontermBigNumber = 1000000    // of nonterminal-related symbols in HCLG.fst.
+  // kNontermMediumNumber and kNontermBigNumber come into the encoding of
+  // nonterminal-related symbols in HCLG.fst.  The only hard constraint on them
+  // is that kNontermBigNumber must be bigger than the biggest transition-id in
+  // your system, and kNontermMediumNumber must be >0.  These values were chosen
+  // for ease of human inspection of numbers encoded with them.
+  kNontermMediumNumber = 1000,
+  kNontermBigNumber = 1000000
 };
 
-// Returns the smallest multiple of 1000 that is strictly greater
-// than nonterm_phones_offset.  Used in the encoding in HCLG.
+
+
+// Returns the smallest multiple of 1000 that is strictly greater than
+// nonterm_phones_offset.  Used in the encoding of special symbol in HCLG;
+// they are encoded as
+//  special_symbol =
+//     kNontermBigNumber + (nonterminal * encoding_multiple) + phone_index
 inline int32 GetEncodingMultiple(int32 nonterm_phones_offset) {
   int32 medium_number = static_cast<int32>(kNontermMediumNumber);
   return medium_number *
