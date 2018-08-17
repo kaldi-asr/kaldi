@@ -25,7 +25,6 @@
 #include "cuda_runtime.h"
 #include <cuda_runtime_api.h>
 #include <float.h>
-#include <math.h>
 #include <cooperative_groups.h>
 
 #include "util/stl-utils.h"

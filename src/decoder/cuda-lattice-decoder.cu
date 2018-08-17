@@ -1161,7 +1161,7 @@ DEVICE void LatticeProcessor::PruneLatticeForFrame(int32 frame,
       BaseFloat link_extra_cost = next_tok->extra_cost +
                                   ((tok->cost_ + link->acoustic_cost + 
                                   arc_weights[link->arc_id]) - next_tok->cost_);
-      if (!isnan(link_extra_cost) && link_extra_cost <= lattice_beam) {
+      if (link_extra_cost != FLT_MAX && link_extra_cost <= lattice_beam) {
         // not prune out
         if (link_extra_cost < -1) {// debug
           CUDA_PRINTF(2, "%i %f %f %f %f %f\n", frame, next_tok->extra_cost, tok->cost_,
@@ -1190,7 +1190,7 @@ DEVICE void LatticeProcessor::PruneLatticeForFrame(int32 frame,
       BaseFloat link_extra_cost = next_tok->extra_cost +
                                   ((tok->cost_ + link->acoustic_cost + 
                                   arc_weights[link->arc_id]) - next_tok->cost_);
-      if (!isnan(link_extra_cost) && link_extra_cost <= lattice_beam) {
+      if (link_extra_cost != FLT_MAX && link_extra_cost <= lattice_beam) {
         // not pruned out
         if (merge) {
           AddArc(link, frame);
