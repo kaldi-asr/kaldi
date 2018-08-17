@@ -77,6 +77,10 @@ def find_and_replace_unks(old_lm_lines, max_ngrams, skip_rows):
             if "\{}-grams:".format(max_ngrams) in line:
                 last_ngram = True
 
+            for i in range(max_ngrams):
+                if "\{}-grams:".format(i+1) in line:
+                    ngram = i+1
+
             # remove any n-gram states of the form: foo <unk> -> X
             # that is, any n-grams of order > 2 where <unk>
             # is the second-to-last word
@@ -85,7 +89,6 @@ def find_and_replace_unks(old_lm_lines, max_ngrams, skip_rows):
             if passed_2grams:
                 g_unk = unk_pattern.search(line)
                 if g_unk:
-                    ngram = len(g_unk.group(0).split()) - 1
                     ngram_diffs[ngram] = ngram_diffs[ngram] - 1
                     unk_row_count += 1
                     continue

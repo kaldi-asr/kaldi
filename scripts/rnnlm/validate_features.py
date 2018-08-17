@@ -8,7 +8,7 @@ import argparse
 import sys
 
 import re
-tab_or_space = re.compile('[ \t]')
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="Validates features file, produced by rnnlm/choose_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " exp/rnnlm/features.txt",

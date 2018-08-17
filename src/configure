@@ -42,7 +42,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=7
+CONFIGURE_VERSION=8
 
 if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
@@ -367,7 +367,7 @@ function linux_configure_mkl_threading {
 function configure_cuda {
   # Check for CUDA toolkit in the system
   if [ ! -d  "$CUDATKDIR" ]; then
-    for base in /Developer/NVIDIA/CUDA-6.0 /usr/local/share/cuda /usr/local/cuda /pkgs_local/cuda-3.2/ /opt/nvidia_cuda/cuda-6.0/ /usr/; do
+    for base in /usr/local/share/cuda /usr/local/cuda /usr/; do
       if [ -f $base/bin/nvcc ]; then
         CUDATKDIR=$base
       fi
@@ -395,14 +395,6 @@ function configure_cuda {
       GCC_VER=$($COMPILER -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
-        5_5)
-          MIN_UNSUPPORTED_GCC_VER="5.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
-        ;;
-        6_*)
-          MIN_UNSUPPORTED_GCC_VER="5.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
-        ;;
         7_*)
           MIN_UNSUPPORTED_GCC_VER="5.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=50000;

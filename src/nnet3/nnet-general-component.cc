@@ -1385,7 +1385,10 @@ void ConstantComponent::UnVectorize(const VectorBase<BaseFloat> &params) {
   output_.CopyFromVec(params);
 }
 
-
+void ConstantComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp(preconditioner_);
+  preconditioner_.Swap(&temp);
+}
 
 std::string DropoutMaskComponent::Info() const {
   std::ostringstream stream;

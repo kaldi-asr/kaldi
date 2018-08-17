@@ -1,19 +1,20 @@
 #!/bin/bash
 
 # local/chain/compare_wer.sh exp/chain/tdnn1a_sp
+# ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp
 # System                  tdnn1a_sp
-# %WER        devtest       53.07
-# %WER           test       59.25
-# %WER         native       54.47
-# %WER      nonnative       63.01
-# Final train prob          -0.0253
-# Final valid prob          -0.0687
-# Final train prob (xent)   -0.7715
-# Final valid prob (xent)   -1.0719
-# Num-params                 6567648
+# %WER        devtest       13.10
+# %WER           test       15.53
+# %WER         native       10.14
+# %WER      nonnative       19.78
+# Final train prob          -0.0233
+# Final valid prob          -0.0720
+# Final train prob (xent)   -0.8107
+# Final valid prob (xent)   -0.9898
+# Num-params                 6559440
 
 # steps/info/chain_dir_info.pl  exp/chain/tdnn1a_sp/
-#exp/chain/tdnn1a_sp/: num-iters=105 nj=1..1 num-params=6.6M dim=40+100->1392 combine=-0.040->-0.033 (over 7) xent:train/valid[69,104,final]=(-1.12,-0.880,-0.771/-1.33,-1.21,-1.07) logprob:train/valid[69,104,final]=(-0.050,-0.031,-0.025/-0.079,-0.080,-0.069)
+# exp/chain/tdnn1a_sp: num-iters=105 nj=1..1 num-params=6.6M dim=40+100->1384 combine=-0.032->-0.026 (over 7) xent:train/valid[69,104,final]=(-1.14,-0.892,-0.811/-1.19,-1.07,-0.990) logprob:train/valid[69,104,final]=(-0.045,-0.029,-0.023/-0.083,-0.080,-0.072)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail

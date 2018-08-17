@@ -28,7 +28,7 @@ OnlineNaturalGradient::OnlineNaturalGradient():
     rank_(40), update_period_(1), num_samples_history_(2000.0),
     num_minibatches_history_(0.0), alpha_(4.0),
     epsilon_(1.0e-10), delta_(5.0e-04), frozen_(false), t_(0),
-    self_debug_(false) { }
+    self_debug_(false), rho_t_(-1.0e+10) { }
 
 
 /**
@@ -623,6 +623,21 @@ void OnlineNaturalGradient::SetAlpha(BaseFloat alpha) {
   alpha_ = alpha;
 }
 
+void OnlineNaturalGradient::Swap(OnlineNaturalGradient *other) {
+  std::swap(rank_, other->rank_);
+  std::swap(update_period_, other->update_period_);
+  std::swap(num_samples_history_, other->num_samples_history_);
+  std::swap(num_minibatches_history_, other->num_minibatches_history_);
+  std::swap(alpha_, other->alpha_);
+  std::swap(epsilon_, other->epsilon_);
+  std::swap(delta_, other->delta_);
+  std::swap(frozen_, other->frozen_);
+  std::swap(t_, other->t_);
+  std::swap(self_debug_, other->self_debug_);
+  W_t_.Swap(&(other->W_t_));
+  std::swap(rho_t_, other->rho_t_);
+  d_t_.Swap(&(other->d_t_));
+}
 
-}
-}
+}  // namespace nnet3
+}  // namespace kaldi

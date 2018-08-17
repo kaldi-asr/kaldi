@@ -665,6 +665,12 @@ void TimeHeightConvolutionComponent::PrecomputedIndexes::Read(
   ExpectToken(is, binary, "</TimeHeightConvolutionComponentPrecomputedIndexes>");
 }
 
+void TimeHeightConvolutionComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp_in(preconditioner_in_);
+  preconditioner_in_.Swap(&temp_in);
+  OnlineNaturalGradient temp_out(preconditioner_out_);
+  preconditioner_out_.Swap(&temp_out);
+}
 
 } // namespace nnet3
 } // namespace kaldi
