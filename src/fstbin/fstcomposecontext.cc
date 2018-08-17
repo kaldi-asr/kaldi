@@ -22,6 +22,7 @@
 #include "util/common-utils.h"
 #include "fst/fstlib.h"
 #include "fstext/context-fst.h"
+#include "fstext/grammar-context-fst.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/kaldi-fst-io.h"
 
@@ -97,6 +98,7 @@ int main(int argc, char *argv[]) {
     std::string disambig_rxfilename,
         disambig_wxfilename;
     int32 context_width = 3, central_position = 1;
+    int32 nonterm_phones_offset = -1;
     po.Register("binary", &binary,
                 "If true, output ilabels-output-file in binary format");
     po.Register("read-disambig-syms", &disambig_rxfilename,
@@ -106,6 +108,10 @@ int main(int argc, char *argv[]) {
     po.Register("context-size", &context_width, "Size of phone context window");
     po.Register("central-position", &central_position,
                 "Designated central position in context window");
+    po.Register("nonterm-phones-offset",  &nonterm_phones_offset,
+                "The integer id of #nonterm_bos in your phones.txt, if present "
+                "(only relevant for grammar-FST construction, see "
+                "doc/graph_recipe_grammar.dox");
 
     po.Read(argc, argv);
 
@@ -139,9 +145,19 @@ int main(int argc, char *argv[]) {
     VectorFst<StdArc> composed_fst;
 
     // Work gets done here (see context-fst.h)
-    ComposeContext(disambig_in, context_width, central_position,
-                   fst, &composed_fst, &ilabels);
-
+    if (nonterm_phones_offset < 0) {
+      // The normal case.
+      ComposeContext(disambig_in, context_width, central_position,
+                     fst, &composed_fst, &ilabels);
+    } else {
+      // The grammar-FST case. See ../doc/graph_recipe_grammar.dox for an intro.
+      if (context_width != 2 | central_position != 1) {
+        KALDI_ERR << "Grammar-fst graph creation only supports models with left-"
+            "biphone context.  (--nonterm-phones-offset option was supplied).";
+      }
+      ComposeContextLeftBiphone(nonterm_phones_offset,  disambig_in,
+                                *fst, &composed_fst, &ilabels);
+    }
     WriteILabelInfo(Output(ilabels_out_filename, binary).Stream(),
                     binary, ilabels);
 

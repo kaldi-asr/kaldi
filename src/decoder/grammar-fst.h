@@ -142,7 +142,7 @@ class GrammarFst {
       const std::vector<std::pair<int32, const ConstFst<StdArc> *> > &ifsts);
 
   ///  This constructor should only be used prior to calling Read().
-  GrammarFst() { }
+  GrammarFst(): top_fst_(NULL) { }
 
   // This Write function allows you to dump a GrammarFst to disk as a single
   // object.  It only supports binary mode.
@@ -194,6 +194,12 @@ class GrammarFst {
   // sets up instances_ with the top-level instance.
   void InitInstances();
 
+  // Does the initialization tasks after nonterm_phones_offset_,
+  // top_fsts_ and ifsts_ have been set up
+  void Init();
+
+  // clears everything.
+  void Destroy();
 
   /*
     This utility function sets up a map from "left-context phone", meaning
@@ -418,6 +424,9 @@ class GrammarFst {
   // representing top_fst_, and it will be populated with more elements on
   // demand.  An instance_id refers to an index into this vector.
   std::vector<FstInstance> instances_;
+
+  // This will only be set up if we read this object from the disk using Read().
+  std::vector<const ConstFst<StdArc> *> fsts_to_delete_;
 };
 
 

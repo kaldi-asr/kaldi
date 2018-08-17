@@ -30,17 +30,29 @@ GrammarFst::GrammarFst(
     nonterm_phones_offset_(nonterm_phones_offset),
     top_fst_(&top_fst),
     ifsts_(ifsts) {
+  Init();
+}
+
+void GrammarFst::Init() {
   KALDI_ASSERT(nonterm_phones_offset_ > 1);
   InitNonterminalMap();
   entry_arcs_.resize(ifsts_.size());
   if (!ifsts_.empty()) {
-    // We call this mostly so that if something is wrong with the input FSTs,
-    // it will be detected soon
+    // We call this mostly so that if something is wrong with the input FSTs, the
+    // problem will be detected sooner rather than later.
+    // There would be no problem if we were to call InitEntryArcs(i)
+    // for all 0 <= i < ifsts_size(), but we choose to call it
+    // lazily on demand, to save startup time if the number of nonterminals
+    // is large.
     InitEntryArcs(0);
   }
 }
 
 GrammarFst::~GrammarFst() {
+  Destroy();
+}
+
+void GrammarFst::Destroy() {
   for (size_t i = 0; i < instances_.size(); i++) {
     FstInstance &instance = instances_[i];
     std::unordered_map<BaseStateId, ExpandedState*>::const_iterator
@@ -51,6 +63,16 @@ GrammarFst::~GrammarFst() {
       delete e;
     }
   }
+  top_fst_ = NULL;
+  ifsts_.clear();
+  nonterminal_map_.clear();
+  entry_arcs_.clear();
+  instances_.clear();
+  // the following will only do something if we read this object from disk using
+  // its Read() function.
+  for (size_t i = 0; i < fsts_to_delete_.size(); i++)
+    delete fsts_to_delete_[i];
+  fsts_to_delete_.clear();
 }
 
 
@@ -341,24 +363,67 @@ GrammarFst::ExpandedState *GrammarFst::ExpandStateUserDefined(
   return ans;
 }
 
+
 void GrammarFst::Write(std::ostream &os) const {
+  using namespace kaldi;
   bool binary = true;
   int32 format = 1,
       num_ifsts = ifsts_.size();
+  WriteToken(os, binary, "<GrammarFst>");
   WriteBasicType(os, binary, format);
   WriteBasicType(os, binary, num_ifsts);
   WriteBasicType(os, binary, nonterm_phones_offset_);
 
-  FstWriteOptions wopts("unknown");
-  top_fst_->Write(os.Stream(), wopts);
+  std::string stream_name("unknown");
+  FstWriteOptions wopts(stream_name);
+  top_fst_->Write(os, wopts);
+
   for (int32 i = 0; i < num_ifsts; i++) {
     int32 nonterminal = ifsts_[i].first;
     WriteBasicType(os, binary, nonterminal);
-    ifsts_[i]->Write(os.Stream(), wopts);
+    ifsts_[i].second->Write(os, wopts);
   }
+  WriteToken(os, binary, "</GrammarFst>");
 }
 
+static ConstFst<StdArc> *ReadConstFstFromStream(std::istream &is) {
+  fst::FstHeader hdr;
+  std::string stream_name("unknown");
+  if (!hdr.Read(is, stream_name))
+    KALDI_ERR << "Reading FST: error reading FST header";
+  FstReadOptions ropts("<unspecified>", &hdr);
+  ConstFst<StdArc> *ans = ConstFst<StdArc>::Read(is, ropts);
+  if (!ans)
+    KALDI_ERR << "Could not read ConstFst from stream.";
+  return ans;
+}
+
+
+
 void GrammarFst::Read(std::istream &is) {
+  using namespace kaldi;
+  if (top_fst_ != NULL)
+    Destroy();
+  bool binary = true;
+  int32 format = 1, num_ifsts;
+  ExpectToken(is, binary, "<GrammarFst>");
+  ReadBasicType(is, binary, &format);
+  if (format != 1)
+    KALDI_ERR << "This version of the code cannot read this GrammarFst, "
+        "update your code.";
+  ReadBasicType(is, binary, &num_ifsts);
+  ReadBasicType(is, binary, &nonterm_phones_offset_);
+  top_fst_ = ReadConstFstFromStream(is);
+  fsts_to_delete_.push_back(top_fst_);
+  for (int32 i = 0; i < num_ifsts; i++) {
+    int32 nonterminal;
+    ReadBasicType(is, binary, &nonterminal);
+    ConstFst<StdArc> *this_fst =  ReadConstFstFromStream(is);
+    fsts_to_delete_.push_back(this_fst);
+    ifsts_.push_back(std::pair<int32, const ConstFst<StdArc>* >(nonterminal,
+                                                                this_fst));
+  }
+  Init();
 }
 
 
