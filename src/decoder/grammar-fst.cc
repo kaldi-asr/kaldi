@@ -109,7 +109,6 @@ void GrammarFst::InitInstances() {
   instances_[0].parent_state = -1;
 }
 
-
 void GrammarFst::InitEntryOrReentryArcs(
     const ConstFst<StdArc> &fst,
     int32 entry_state,
@@ -153,7 +152,7 @@ GrammarFst::ExpandedState *GrammarFst::ExpandState(
   int32 big_number = kNontermBigNumber;
   const ConstFst<StdArc> &fst = *(instances_[instance_id].fst);
   ArcIterator<ConstFst<StdArc> > aiter(fst, state_id);
-  KALDI_ASSERT(!aiter.Done() && aiter.Value().ilabel < big_number &&
+  KALDI_ASSERT(!aiter.Done() && aiter.Value().ilabel > big_number &&
                "Something is not right; did you call PrepareForGrammarFst()?");
 
   const StdArc &arc = aiter.Value();
@@ -342,6 +341,27 @@ GrammarFst::ExpandedState *GrammarFst::ExpandStateUserDefined(
   return ans;
 }
 
+void GrammarFst::Write(std::ostream &os) const {
+  bool binary = true;
+  int32 format = 1,
+      num_ifsts = ifsts_.size();
+  WriteBasicType(os, binary, format);
+  WriteBasicType(os, binary, num_ifsts);
+  WriteBasicType(os, binary, nonterm_phones_offset_);
+
+  FstWriteOptions wopts("unknown");
+  top_fst_->Write(os.Stream(), wopts);
+  for (int32 i = 0; i < num_ifsts; i++) {
+    int32 nonterminal = ifsts_[i].first;
+    WriteBasicType(os, binary, nonterminal);
+    ifsts_[i]->Write(os.Stream(), wopts);
+  }
+}
+
+void GrammarFst::Read(std::istream &is) {
+}
+
+
 // This class contains the implementation of the function
 // PrepareForGrammarFst(), which is declared in grammar-fst.h.
 class GrammarFstPreparer {
@@ -381,7 +401,7 @@ class GrammarFstPreparer {
         } else {
           // OK, state s is a special state.
           FixArcsToFinalStates(s);
-          AddFinalProbToState(s);
+          MaybeAddFinalProbToState(s);
         }
       }
     }
@@ -397,18 +417,17 @@ class GrammarFstPreparer {
   // special nonterminal-related ilabel on it (i.e. an ilabel >= 1 million).
   bool IsSpecialState(StateId s) const;
 
-  // Verifies that this state does not currently have any final-prob (crashes if
-  // that fails); then adds a final-prob to it.
-  void AddFinalProbToState(StateId s) {
-    if (fst_->Final(s) != Weight::Zero()) {
-      // Something went wrong and it will require some debugging.  In Prepare(),
-      // if we detected that the special state had a nonzero final-prob, we
-      // would have inserted epsilons to remove it, so there may be a bug in
-      // this class's code.
-      KALDI_ERR << "State already final-prob.";
-    }
-    fst_->SetFinal(s, Weight(KALDI_GRAMMAR_FST_SPECIAL_WEIGHT));
-  }
+  // This function verifies that state s does not currently have any
+  // final-prob (crashes if that fails); then, if the arcs leaving s have
+  // nonterminal symbols kNontermEnd or user-defined nonterminals (>=
+  // kNontermUserDefined), it adds a final-prob with cost given by
+  // KALDI_GRAMMAR_FST_SPECIAL_WEIGHT to the state.
+  //
+  // State s is required to be a 'special state', i.e. have special symbols on
+  // arcs leaving it, and the function assumes (since it will already
+  // have been checked) that the arcs leaving s, if there are more than
+  // one, all correspond to the same nonterminal symbol.
+  void MaybeAddFinalProbToState(StateId s);
 
   /**
      This function does some checking for 'special states', that they have
@@ -461,12 +480,12 @@ class GrammarFstPreparer {
   void FixArcsToFinalStates(StateId s);
 
   // For each non-self-loop arc out of state s, replace that arc with an
-  // epsilon-input arc to a newly created state, with unit weight and the
-  // original olabel of the arc; and then an arc from that newly created state
-  // to the original 'nextstate' of the arc, with the arc's weight and ilabel on
-  // it.  If this arc had a final-prob, make it an epsilon arc from this state
-  // to the state 'simple_final_state_' (which has unit final-prob); we create
-  // that state if needed.
+  // epsilon-input arc to a newly created state, with the arc's original weight
+  // and the original olabel of the arc; and then an arc from that newly created
+  // state to the original 'nextstate' of the arc, with the arc's ilabel on it,
+  // and unit weight.  If this arc had a final-prob, make it an epsilon arc from
+  // this state to the state 'simple_final_state_' (which has unit final-prob);
+  // we create that state if needed.
   void InsertEpsilonsForState(StateId s);
 
   inline int32 GetPhoneSymbolFor(enum NonterminalValues n) const {
@@ -498,23 +517,22 @@ void GrammarFstPreparer::CheckProperties(StateId s,
   *transitions_to_multiple_instances = false;
   *has_olabel_problem = false;
 
-  // dest_nonterminals will encode something about which other FSTs this FST might
-  // transition to.  It will contain:
+  // The set 'dest_nonterminals' will encode something related to the set of
+  // other FSTs this FST might transition to.  It will contain:
   //   0 if this state has any transition leaving it that is to this same FST
   //     (i.e. an epsilon or a normal transition-id)
-  //   #nontermXXX if this state has an ilabel which would be decoded as
-  //       the pair (#nontermXXX, p1).  Here, #nontermXXX is either an
-  //       inbuilt nonterminal like #nonterm_begin, #nonterm_end or #nonterm_reenter,
-  //       or a user-defined nonterminal like #nonterm:foo.
+  //   #nontermXXX if this state has an arc leaving it with an ilabel which
+  //       would be decoded as the pair (#nontermXXX, p1).  Here, #nontermXXX is
+  //       either an inbuilt nonterminal like #nonterm_begin, #nonterm_end or
+  //       #nonterm_reenter, or a user-defined nonterminal like #nonterm:foo.
   std::set<int32> dest_nonterminals;
   // normally we'll have encoding_multiple = 1000, big_number = 1000000.
   int32 encoding_multiple = GetEncodingMultiple(nonterm_phones_offset_),
       big_number = kNontermBigNumber;
 
-
   // If we encounter arcs with user-defined nonterminals on them (unlikely), we
   // need to make sure that their destination-states are all the same.  If not,
-  // they would transition to different FST instances, and we'd have to set
+  // they would transition to different FST instances, so we'd have to setq
   // 'transitions_to_multiple_instances' to true.  'destination_state' is used
   // to check this.
   StateId destination_state = kNoStateId;
@@ -532,15 +550,18 @@ void GrammarFstPreparer::CheckProperties(StateId s,
                   << arc.ilabel;
       }
       if (nonterminal >= GetPhoneSymbolFor(kNontermUserDefined)) {
-        if (destination_state != kNoStateId && arc.nextstate != destination_state)
+        // This is a user-defined symbol.
+        if (destination_state != kNoStateId &&
+            arc.nextstate != destination_state) {
+          // The code is not expected to come here.
           *transitions_to_multiple_instances = true;
+        }
         destination_state = arc.nextstate;
 
-        // This is a user-defined symbol.  Check that the destination state of
-        // this arc has arcs with kNontermReenter on them.  We'll separately
-        // check that such states don't have other types of arcs coming from
-        // them (search for kNontermReenter below), so it's sufficient to
-        // check the first arc.
+        // Check that the destination state of this arc has arcs with
+        // kNontermReenter on them.  We'll separately check that such states
+        // don't have other types of arcs leaving them (search for
+        // kNontermReenter below), so it's sufficient to check the first arc.
         ArcIterator<FST> next_aiter(*fst_, arc.nextstate);
         if (next_aiter.Done())
           KALDI_ERR << "Destination state of a user-defined nonterminal "
@@ -557,11 +578,12 @@ void GrammarFstPreparer::CheckProperties(StateId s,
       }
       if (nonterminal == GetPhoneSymbolFor(kNontermBegin) &&
           s != fst_->Start()) {
-        KALDI_ERR << "#nonterm_begin symbol is not on the first arc. "
-            "Perhaps you didn't do fstdeterminizestar while compil?";
+        KALDI_ERR << "#nonterm_begin symbol is present but this is not the "
+            "first arc.  Did you do fstdeterminizestar while compiling?";
       }
       if (nonterminal == GetPhoneSymbolFor(kNontermEnd)) {
-        if (fst_->NumArcs(arc.nextstate) != 0) {
+        if (fst_->NumArcs(arc.nextstate) != 0 ||
+            fst_->Final(arc.nextstate) == Weight::Zero()) {
           KALDI_ERR << "Arc with kNontermEnd is not the final arc.";
         }
         if (arc.olabel != 0)
@@ -598,10 +620,11 @@ void GrammarFstPreparer::FixArcsToFinalStates(StateId s) {
     if (arc.ilabel < big_number)
       continue;
     int32 nonterminal = (arc.ilabel - big_number) / encoding_multiple;
-    if (nonterminal ==  GetPhoneSymbolFor(kNontermEnd) &&
-        fst_->Final(arc.nextstate) != Weight::One()) {
+    if (nonterminal ==  GetPhoneSymbolFor(kNontermEnd)) {
       KALDI_ASSERT(fst_->NumArcs(arc.nextstate) == 0 &&
                    fst_->Final(arc.nextstate) != Weight::Zero());
+      if (fst_->Final(arc.nextstate) == Weight::One())
+        continue;  // There is no problem to fix.
       if (simple_final_state_ == kNoStateId) {
         simple_final_state_ = fst_->AddState();
         fst_->SetFinal(simple_final_state_, Weight::One());
@@ -613,6 +636,28 @@ void GrammarFstPreparer::FixArcsToFinalStates(StateId s) {
   }
 }
 
+void GrammarFstPreparer::MaybeAddFinalProbToState(StateId s) {
+  if (fst_->Final(s) != Weight::Zero()) {
+    // Something went wrong and it will require some debugging.  In Prepare(),
+    // if we detected that the special state had a nonzero final-prob, we
+    // would have inserted epsilons to remove it, so there may be a bug in
+    // this class's code.
+    KALDI_ERR << "State already final-prob.";
+  }
+  ArcIterator<FST> aiter(*fst_, s );
+  KALDI_ASSERT(!aiter.Done());
+  const Arc &arc = aiter.Value();
+  int32 encoding_multiple = GetEncodingMultiple(nonterm_phones_offset_),
+      big_number = kNontermBigNumber,
+      nonterminal = (arc.ilabel - big_number) / encoding_multiple;
+  KALDI_ASSERT(nonterminal >= GetPhoneSymbolFor(kNontermBegin));
+  if (nonterminal == GetPhoneSymbolFor(kNontermEnd) ||
+      nonterminal >= GetPhoneSymbolFor(kNontermUserDefined)) {
+    fst_->SetFinal(s, Weight(KALDI_GRAMMAR_FST_SPECIAL_WEIGHT));
+  }
+}
+
+
 void GrammarFstPreparer::InsertEpsilonsForState(StateId s) {
   int32 encoding_multiple = GetEncodingMultiple(nonterm_phones_offset_),
       big_number = kNontermBigNumber;
@@ -621,10 +666,10 @@ void GrammarFstPreparer::InsertEpsilonsForState(StateId s) {
     Arc arc = iter.Value();
     {
       // Do a sanity check.  We shouldn't be inserting epsilons for certain
-      // types of state.
+      // types of state, so check that it's not one of those.
       int32 nonterminal = (arc.ilabel - big_number) / encoding_multiple;
       if (nonterminal == GetPhoneSymbolFor(kNontermBegin) ||
-          nonterminal >= GetPhoneSymbolFor(kNontermReenter)) {
+          nonterminal == GetPhoneSymbolFor(kNontermReenter)) {
         KALDI_ERR << "Something went wrong; did not expect to insert epsilons "
             "for this type of state.";
       }
@@ -634,19 +679,23 @@ void GrammarFstPreparer::InsertEpsilonsForState(StateId s) {
       num_new_states_++;
       Arc new_arc(arc);
       new_arc.olabel = 0;
+      new_arc.weight = Weight::One();
       fst_->AddArc(new_state, new_arc);
       // now make this arc be an epsilon arc that goes to 'new_state',
       // with unit weight but the original olabel of the arc.
       arc.ilabel = 0;
-      arc.weight = Weight::One();
       arc.nextstate = new_state;
       iter.SetValue(arc);
+    } else {  // Self-loop
+      KALDI_ASSERT(arc.ilabel < big_number &&
+                   "Self-loop with special label found.");
     }
   }
   if (fst_->Final(s) != Weight::Zero()) {
     if (fst_->Final(s).Value() == KALDI_GRAMMAR_FST_SPECIAL_WEIGHT) {
-      // TODO: find a way to detect if it was a coincidence, because in principle
-      // a user-defined grammar could contain this cost value.
+      // TODO: find a way to detect if it was a coincidence, or not make it an
+      // error, because in principle a user-defined grammar could contain this
+      // special cost.
       KALDI_ERR << "It looks like you are calling PrepareForGrammarFst twice.";
     }
     if (simple_final_state_ == kNoStateId) {
@@ -658,6 +707,7 @@ void GrammarFstPreparer::InsertEpsilonsForState(StateId s) {
     arc.olabel = 0;
     arc.nextstate = simple_final_state_;
     arc.weight = fst_->Final(s);
+    fst_->AddArc(s, arc);
     fst_->SetFinal(s, Weight::Zero());
   }
 }

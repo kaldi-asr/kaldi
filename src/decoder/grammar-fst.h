@@ -124,7 +124,7 @@ class GrammarFst {
               decode.  When an FST invokes another, it will be with sequences of
               special symbols which would be decoded as:
                   (#nonterm:foo,p1) (#nonterm_reenter,p2)
-              where p1 and p2 (which may be real phones or #nonterm:eps)
+              where p1 and p2 (which may be real phones or #nonterm_bos)
               represent the phonetic left-context that we enter, and leave, the
               sub-graph with respectively.
      @param [in] ifsts   ifsts is a list of pairs (nonterminal-symbol,
@@ -144,13 +144,12 @@ class GrammarFst {
   ///  This constructor should only be used prior to calling Read().
   GrammarFst() { }
 
-  // This Write function uses Kaldi-type mechanisms,  and doesn't make use of the
-  // OpenFst headers; OpenFst programs won't be able to read this format.  It is
-  // used so that you can dump GrammarFsts to disk as a single object, mostly for
-  // convenience for demonstration purposes.
-  void Write(std::ostream &os, bool binary) const;
+  // This Write function allows you to dump a GrammarFst to disk as a single
+  // object.  It only supports binary mode.
+  void Write(std::ostream &os) const;
 
-  void Read(std::istream &os, bool binary);
+  // Reads the format that Write() outputs.
+  void Read(std::istream &os);
 
   StateId Start() const {
     // the top 32 bits of the 64-bit state-id will be zero.

@@ -281,11 +281,11 @@ Z_S  243
    - They will end with ilabels (`\#nonterm_end`, <e>left-context-phone</e>), representing
      actual left-contexts.
   The following special symbols may appear in any CLG graphs:
-   - When any graph invokes a sub-graph, there will be a sequence of two ilabels:
-     one of the form (`\#nonterm:foo`, <e>left-context-phone</e>) representing the
-     user-specified nonterminal and the actual left-context; then one of the form
-     (`\#nonterm:return`, <e>left-context-phone</e>), with multiple outgoing arcs
-     for all potential left-context phones.
+   - When any graph invokes a sub-graph, there will ben arc with an ilabel
+     (`\#nonterm:foo`, <e>left-context-phone</e>) representing the
+     user-specified nonterminal and the actual left-context; from its destination
+     state will leave arcs with ilabels of the form (`\#nonterm_reenter`,
+     <e>left-context-phone</e>), for all left-context phones.
 
    \subsection graph_grammar_special_c  Special symbols in C.fst
 
@@ -305,7 +305,7 @@ Z_S  243
    - For each user-defined nonterminal e.g. `\#nonterm:foo`, it needs to change
      the sequence `\#nonterm:foo` p1 (where p1 is a <e>left-context-phone</e>)
      to a sequence of two symbols reprenting the pairs (`\#nonterm:foo`, p0) and
-     (`\#nonterm_end` p1) respectively.  Here, p0 represents the phone that was
+     (`\#nonterm_renter` p1) respectively.  Here, p0 represents the phone that was
      previous to the symbol `\#nonterm:foo`.
 
  In order to implement the above, we augment the state-space of C.fst by adding

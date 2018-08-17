@@ -196,7 +196,7 @@ public:
        is the state we transition to when we see any user-defined nonterminal.
        Transitions to this special state have olabels of the form (#nonterm:foo,p1)
        where p1 is the preceding context (with #nonterm_begin if that context was
-       0); transitions out of it have olabels of the form (#nonterm:foo,p2), where
+       0); transitions out of it have olabels of the form (#nonterm_reenter,p2), where
        p2 is the phone on the ilabel of that transition.  Again: talking about inv(C).
        This state is not final.
 
