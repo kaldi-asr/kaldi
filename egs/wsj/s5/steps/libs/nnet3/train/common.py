@@ -288,7 +288,7 @@ def halve_range_str(range_str):
     halved_ranges = []
     for r in ranges:
         # a range may be either e.g. '64', or '128:256'
-        c = [str(max(1, int(x)/2)) for x in r.split(":")]
+        c = [str(max(1, int(x)//2)) for x in r.split(":")]
         halved_ranges.append(":".join(c))
     return ','.join(halved_ranges)
 
@@ -591,7 +591,7 @@ def get_model_combine_iters(num_iters, num_epochs,
         models_to_combine.add(num_iters)
     else:
         subsample_model_factor = 1
-        num_iters_combine = min(max_models_combine, num_iters/2)
+        num_iters_combine = min(max_models_combine, num_iters//2)
         models_to_combine = set(range(num_iters - num_iters_combine + 1,
                                       num_iters + 1))
 
