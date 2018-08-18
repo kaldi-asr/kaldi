@@ -126,7 +126,7 @@ function do_filtering {
 
      # Filter the STM file for proper sclite scoring
      # Copy over the comments from STM file
-     [ -f $srcdir/stm ] && grep "^;;" $srcdir/stm > ${destdir}/stm
+     [ -f $srcdir/stm ] && grep "^;;" $srcdir/stm > $destdir/stm
      [ -f $srcdir/stm ] && utils/filter_scp.pl $destdir/reco < $srcdir/stm >> $destdir/stm
 
      rm $destdir/reco
