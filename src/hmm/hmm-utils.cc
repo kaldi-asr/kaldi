@@ -280,7 +280,7 @@ fst::VectorFst<fst::StdArc> *GetHTransducer(const std::vector<std::vector<int32>
 
   for (int32 j = 1; j < static_cast<int32>(ilabel_info.size()); j++) {  // zero is eps.
     KALDI_ASSERT(!ilabel_info[j].empty());
-    if (ilabel_info[j][0] <= 0) {  // disambig symbol or special symbol for grammar FSTs.
+    if (ilabel_info[j][0] < 0) {  // disambig symbol or special symbol for grammar FSTs.
       if (ilabel_info[j].size() == 1) {
         // disambiguation symbol.
         int32 disambig_sym_left = next_disambig_sym++;
