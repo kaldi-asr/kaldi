@@ -76,19 +76,17 @@ if [ $stage -le 4 ]; then
 
   mkdir exp -p exp/nnet3
 
-  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
-    --realign-iters "" \
+  steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=3 --right-context=3" \
-    3000 10000 data/${trainset}_hires data/lang_nosp \
-    ${gmmdir}_ali_${trainset} exp/nnet3/tri2
+    --max-utts 30000 --subsample 2 \
+    data/${trainset}_hires exp/nnet3/pca_transform
 fi
-
 
 if [ $stage -le 5 ]; then
   # To train a diagonal UBM we don't need very much data, so use a small subset
   # (actually, it's not that small: still around 100 hours).
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 700000 \
-    data/train_30k_hires 512 exp/nnet3/tri2 exp/nnet3/diag_ubm
+    data/train_30k_hires 512 exp/nnet3/pca_transform exp/nnet3/diag_ubm
 fi
 
 if [ $stage -le 6 ]; then
