@@ -36,7 +36,7 @@ uttid_to_spk = dict()  # stores image_id and speaker
 
 with open(utt2spk_file) as utt2spk_fh:
     for uttid_spk in utt2spk_fh:
-        uttid_spk = uttID_spk.strip()
+        uttid_spk = uttid_spk.strip()
         uttid_spk_vect = uttid_spk.split(" ")
         uttid = uttid_spk_vect[0]
         image_id = uttid
@@ -44,7 +44,7 @@ with open(utt2spk_file) as utt2spk_fh:
         uttid_to_spk[image_id] = spk
 
 image_file = os.path.join(args.dir, 'backup', 'images.scp')
-uttID_path_dict = dict()  # stores image_id and image path
+uttid_path_dict = dict()  # stores image_id and image path
 
 with open(image_file) as image_fh:
     for uttid_path in image_fh:
@@ -68,8 +68,8 @@ utt2spk_fh = open(utt2spk_file, 'w')
 feats_scp_file = os.path.join(args.dir, 'feats.scp')
 with open(feats_scp_file) as feats_scp_fh:
     for uttid_image_path in feats_scp_fh:
-        uttid_image_path = uttID_image_path.strip()
-        uttid_path_vect = uttID_image_path.split(" ")
+        uttid_image_path = uttid_image_path.strip()
+        uttid_path_vect = uttid_image_path.split(" ")
         uttid = uttid_path_vect[0]
         imageid = "_".join(uttid.split("_")[:-1])
         text_fh.write(uttid + ' ' + text_dict[imageid] + '\n')

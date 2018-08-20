@@ -1,5 +1,20 @@
 #!/bin/bash
 
+# e2eali_1b is the same as e2eali_1a but has fewer CNN layers, smaller
+# l2-regularize, more epochs and uses dropout.
+
+# System                      cnn_e2eali_1b cnn_e2eali_1a
+# WER                             15.06     15.68
+# CER                              3.15      3.18
+# Final train prob              -0.0343   -0.0331
+# Final valid prob              -0.0403   -0.0395
+
+#steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
+#exp/chain/cnn_e2eali_1b: num-iters=33 nj=3..16 num-params=5.2M dim=40->456 combine=-0.037->-0.037 (over 1) xent:train/valid[21,32,final]=(-0.242,-0.185,-0.179/-0.252,-0.210,-0.206) logprob:train/valid[21,32,final]=(-0.041,-0.035,-0.034/-0.046,-0.041,-0.040)
+
+# Normalize scoring
+# WER = 11.5
+# CER = 3.2
 
 set -e -o pipefail
 stage=0

@@ -84,7 +84,7 @@ if [ $stage -le 1 ]; then
   # Note: if you have more than one order, use a certain amount of words as the
   # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  min_counts='train=2 madcat=1'
+  min_counts='train=1'
   wordlist=${dir}/data/wordlist
 
   lm_name="`basename ${wordlist}`_${order}"

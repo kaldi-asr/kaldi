@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# e2eali_1a is the same as 1a but uses the e2e chain model to get the
+# lattice alignments and to build a tree
+
+# local/chain/compare_wer.sh exp/old/chain/cnn_e2eali_1a/
+# System                      cnn_e2eali_1a
+# WER                             15.68
+# CER                              3.18
+# Final train prob              -0.0331
+# Final valid prob              -0.0395
+
+# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1a/
+# exp/old/chain/cnn_e2eali_1a/: num-iters=33 nj=3..16 num-params=5.2M dim=40->456 combine=-0.035->-0.035 (over 1) xent:train/valid[21,32,final]=(-0.226,-0.175,-0.169/-0.248,-0.202,-0.195) logprob:train/valid[21,32,final]=(-0.039,-0.034,-0.033/-0.046,-0.040,-0.039)
+
+# Normalize scoring
+# WER = 11.7
+# CER = 3.3
+
 set -e -o pipefail
 stage=0
 nj=30
