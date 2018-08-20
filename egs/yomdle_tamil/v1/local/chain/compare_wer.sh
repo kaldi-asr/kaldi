@@ -26,6 +26,13 @@ for x in $*; do
 done
 echo
 
+echo -n "# WER (rescored)                       "
+for x in $*; do
+  wer=$(cat $x/decode_test_rescored/scoring_kaldi/best_wer | awk '{print $2}')
+  printf "% 10s" $wer
+done
+echo
+
 echo -n "# CER                        "
 for x in $*; do
   cer=$(cat $x/decode_test/scoring_kaldi/best_cer | awk '{print $2}')
@@ -33,6 +40,12 @@ for x in $*; do
 done
 echo
 
+echo -n "# CER (rescored)                        "
+for x in $*; do
+  cer=$(cat $x/decode_test_rescored/scoring_kaldi/best_cer | awk '{print $2}')
+  printf "% 10s" $cer
+done
+echo
 
 if $used_epochs; then
   exit 0;  # the diagnostics aren't comparable between regular and discriminatively trained systems.
@@ -51,3 +64,11 @@ for x in $*; do
   printf "% 10s" $prob
 done
 echo
+
+echo -n "# Parameters                 "
+for x in $*; do
+  params=$(nnet3-info $x/final.mdl 2>/dev/null | grep num-parameters | cut -d' ' -f2 | awk '{printf "%0.2fM\n",$1/1000000}')
+  printf "% 10s" $params
+done
+echo
+
