@@ -93,7 +93,7 @@ if [ $stage -le 5 ]; then
 fi
 
 if [ $stage -le 6 ]; then
-  echo "#### Monophone Training ###########"
+  echo "$0: #### Monophone Training ###########"
   # train a monophone system with 2k short utts
   steps/train_mono.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
   	data/train_2kshort data/lang_nosp exp/mono
@@ -114,7 +114,7 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  echo "#### Triphone Training, delta + delta-delta ###########"
+  echo "$0: #### Triphone Training, delta + delta-delta ###########"
   steps/align_si.sh --boost-silence 1.25 --nj $nj --cmd "$train_cmd" \
   	data/train_5k data/lang_nosp exp/mono exp/mono_ali_5k
   # train a first delta + delta-delta triphone system on a subset of 5000 utterances
@@ -137,7 +137,7 @@ if [ $stage -le 7 ]; then
 fi
 
 if [ $stage -le 8 ]; then
-  echo "#### Triphone Training, LDA+MLLT ###########"
+  echo "$0: #### Triphone Training, LDA+MLLT ###########"
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
     data/train_10k data/lang_nosp exp/tri1 exp/tri1_ali_10k
   # train an LDA+MLLT system.
@@ -162,7 +162,7 @@ fi
 
 
 if [ $stage -le 9 ]; then
-  echo "#### Triphone Training, LDA+MLLT+SAT ###########"
+  echo "$0: #### Triphone Training, LDA+MLLT+SAT ###########"
   # Align the entire train_clean using the tri2 model
   steps/align_si.sh  --nj $nj --cmd "$train_cmd" --use-graphs true \
     data/train_clean data/lang_nosp exp/tri2 exp/tri2_ali_train_clean
@@ -187,7 +187,7 @@ if [ $stage -le 9 ]; then
 fi 
 
 if [ $stage -le 10 ]; then
-  echo "#### Re-computing pronunciation model using tri3 model ###########"
+  echo "$0: #### Re-computing pronunciation model using tri3 model ###########"
   # Now we compute the pronunciation and silence probabilities from training data,
   # and re-create the lang directory.
   # silence transition probability ...
@@ -227,7 +227,7 @@ fi
 
 if [ $stage -le 11 ]; then
 
-  echo "#### SAT again on train_clean ###########"
+  echo "$0: #### SAT again on train_clean ###########"
   # align the entire train_clean using the tri3 model
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
     data/train_clean data/lang exp/tri3 exp/tri3_ali_train_clean
@@ -252,11 +252,11 @@ if [ $stage -le 11 ]; then
   fi 
 fi 
 
-echo "GMM trainig is Done"
+echo "$0: GMM trainig is Done"
 
 if $chain_train; then
   ## Training Chain Acoustic model using clean data set
-  echo "#### chain training  ###########"
+  echo "$0: #### chain training  ###########"
   local/chain/run_tdnn.sh
 fi 
 
