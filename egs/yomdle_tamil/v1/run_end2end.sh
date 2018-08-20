@@ -81,8 +81,7 @@ if [ $stage -le 2 ]; then
 
   echo "learning BPE..."
   # it is currently learned with only training text but we can also use all corpus text
-  # to learn BPE. phones are added so that one isolated occurance of every phone is present
-  # in the BPE.
+  # to learn BPE. phones are added so that one isolated occurance of every phone exists.
   cat data/local/text/cleaned/phones.txt data/local/text/cleaned/train.txt | \
     utils/lang/bpe/prepend_words.py | utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt || exit 1;
 fi
@@ -124,7 +123,7 @@ if [ $stage -le 5 ]; then
       data/local/dict/lexicon.txt data/lang_test
 
   local/train_lm.sh --dir data/local/local_lm_6g --order 6
-  utils/build_const_arpa_lm.sh data/local/local_lm_6g/data/arpa/6gram_unpruned.arpa.gz \
+  utils/build_const_arpa_lm.sh data/local/local_lm_6g/data/arpa/6gram_big.arpa.gz \
                                data/lang data/lang_rescore_6g
 fi
 

@@ -43,8 +43,10 @@ parser.add_argument('--feat-dim', type=int, default=40,
 parser.add_argument('--padding', type=int, default=5,
                     help='Number of white pixels to pad on the left'
                     'and right side of the image.')
-parser.add_argument("--no-augment", action="store_true",
+parser.add_argument("--augment", action="store_true",
                    help="whether or not to do image augmentation")
+parser.add_argument("--flip", action="store_true",
+                   help="whether or not to flip the image")
 args = parser.parse_args()
 
 
@@ -138,17 +140,9 @@ with open(data_list_path) as f:
         image_id = line_vect[0]
         image_path = line_vect[1]
         im = misc.imread(image_path)
-        if args.no_augment:
-            im_shift = get_scaled_image_aug(im, shift_setting[0])
-            im_horizontal_padded = horizontal_pad(im_shift, allowed_lengths)
-            if im_horizontal_padded is None:
-                num_fail += 1
-                continue
-            data = np.transpose(im_horizontal_padded, (1, 0))
-            data = np.divide(data, 255.0)
-            num_ok += 1
-            write_kaldi_matrix(out_fh, data, image_id)
-        else:
+        if args.flip:
+            im = np.fliplr(im)
+        if args.augment:
             for i in range(2):
                 image_shift_id = image_id + '_shift' + str(i + 1)
                 im_shift = get_scaled_image_aug(im, shift_setting[i])
@@ -160,6 +154,16 @@ with open(data_list_path) as f:
                 data = np.divide(data, 255.0)
                 num_ok += 1
                 write_kaldi_matrix(out_fh, data, image_shift_id)
+        else:
+            im_shift = get_scaled_image_aug(im, shift_setting[0])
+            im_horizontal_padded = horizontal_pad(im_shift, allowed_lengths)
+            if im_horizontal_padded is None:
+                num_fail += 1
+                continue
+            data = np.transpose(im_horizontal_padded, (1, 0))
+            data = np.divide(data, 255.0)
+            num_ok += 1
+            write_kaldi_matrix(out_fh, data, image_id)
 
 print('Generated features for {} images. Failed for {} (image too '
       'long).'.format(num_ok, num_fail), file=sys.stderr)
