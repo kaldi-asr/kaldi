@@ -22,7 +22,7 @@
 
 /**
    For an extended explanation of the framework of which grammar-fsts are a
-   part, please see \ref graph_grammar (i.e. ../doc/graph_recipe_grammar.dox).
+   part, please see \ref grammar (i.e. ../doc/grammar.dox).
 
    This header implements a special FST type which we use in that framework;
    it is a lightweight wrapper which stitches together several FSTs and makes
@@ -86,7 +86,7 @@ template<> class ArcIterator<GrammarFst>;
    requires, essentially, having multiple exit-points and entry-points for
    sub-FSTs that represent nonterminals in the grammar; and multiple return
    points whenever we invoke a nonterminal.  For more information
-   see \ref graph_grammar (i.e. ../doc/graph_recipe_grammar.dox).
+   see \ref grammar (i.e. ../doc/grammar.dox).
  */
 class GrammarFst {
  public:
@@ -275,14 +275,40 @@ class GrammarFst {
   inline int32 GetChildInstanceId(int32 instance_id, int32 nonterminal,
                                   int32 state);
 
-  // Called while expanding states, this function combines information from two
-  // arcs: one leaving one sub-fst and one arriving in another sub-fst.  The
-  // output weight will be the product of the weights; this function takes the
-  // olabel from 'arriving_arc' (and checks that the olabel on leaving_arc is 0,
-  // which should have been ensured by PrepareForGrammarFst()); sets the ilabel
-  // to 0; and uses the nextstate from 'arriving_arc'.
+  /**
+    Called while expanding states, this function combines information from two
+    arcs: one leaving one sub-fst and one arriving in another sub-fst.
+
+      @param [in] leaving_arc  The arc leaving the first FST; must have
+                     zero olabel.  The ilabel will have a nonterminal symbol
+                     like #nonterm:foo or #nonterm_end on it, encoded with a
+                     phonetic context, but we ignore that.
+      @param [in] arriving_arc  The arc arriving in the second FST.
+                    It will have an ilabel consisted of either #nonterm_begin
+                    or #nonterm_enter combined with a left-context phone,
+                    but we ignore that.
+      @param [in] cost_correction  A correction term that we add to the
+                    cost of the arcs.  This basically cancels out the
+                    "1/num_options" part of the weight that we added in L.fst
+                    when we put in all the phonetic-context options.  We
+                    did that to keep the FST stochastic, so that if we ever
+                    pushed the weights, it wouldn't lead to weird effects.
+                    This takes out that correction term... things will
+                    still sum to one in the appropriate way, because in fact
+                    when we cross these FST boundaries we only take one
+                    specific phonetic context, rather than all possibilities.
+      @param [out] arc  The arc that we output.  Will have:
+                   - weight equal to the product of the input arcs' weights,
+                      times a weight constructed from 'cost_correction'.
+                   - olabel equal to arriving_arc.olabel (leaving_arc's olabel
+                     will be zero).
+                   - ilabel equal to zero (we discard both ilabels, they are
+                     not transition-ids but special symbols).
+                   - nextstate equal to the nextstate of arriving_arc.
+  */
   static inline void CombineArcs(const StdArc &leaving_arc,
                                  const StdArc &arriving_arc,
+                                 float cost_correction,
                                  StdArc *arc);
 
   // Called from the ArcIterator constructor when we encounter an FST state with
@@ -382,15 +408,15 @@ class GrammarFst {
     // of arcs out of 'parent_state').
     int32 parent_state;
 
-    // 'reentry_arcs' is a map from left-context-phone (i.e. either a phone
-    // index or #nonterm_bos), to an arc-index, which we could use to Seek() in
-    // an arc-iterator..  It refers to arcs in the state 'parent_state' in the
-    // FST-instance 'parent_instance'.  It's set up when we create this FST
-    // instance.  (The arcs used to enter this instance are not located here,
-    // they can be located in entry_arcs_[instance_id]).  We make use of
-    // reentry_arcs when we expand states in this FST that have nonzero
-    // final-prob, and which return to the parent FST-instance.
-    std::unordered_map<int32, int32> reentry_arcs;
+    // 'parent_reentry_arcs' is a map from left-context-phone (i.e. either a
+    // phone index or #nonterm_bos), to an arc-index, which we could use to
+    // Seek() in an arc-iterator..  It refers to arcs in the state
+    // 'parent_state' in the FST-instance 'parent_instance'.  It's set up when
+    // we create this FST instance.  (The arcs used to enter this instance are
+    // not located here, they can be located in entry_arcs_[instance_id]).  We
+    // make use of reentry_arcs when we expand states in this FST that have
+    // nonzero final-prob, and which return to the parent FST-instance.
+    std::unordered_map<int32, int32> parent_reentry_arcs;
   };
 
   // The integer id of the symbol #nonterm_bos in phones.txt.
@@ -538,6 +564,17 @@ class ArcIterator<GrammarFst> {
              // higher order bits.
 };
 
+/**
+   This function copies a GrammarFst to a VectorFst (intended mostly for testing
+   and comparison purposes.  GrammarFst doesn't actually inherit from class
+   Fst, so we can't use more inbuilt methods.
+
+   grammar_fst gets expanded by this call, and although we could make it a const
+   reference (because the ArcIterator does actually use const_cast), we make it
+   a non-const pointer to emphasize that it does change grammar_fst.
+ */
+void CopyToVectorFst(GrammarFst *grammar_fst,
+                     VectorFst<StdArc> *vector_fst);
 
 /**
    This function prepares 'ifst' for use in GrammarFst: it ensures that it has

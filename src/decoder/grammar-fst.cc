@@ -80,7 +80,7 @@ void GrammarFst::DecodeSymbol(Label label,
                               int32 *nonterminal_symbol,
                               int32 *left_context_phone) {
   // encoding_multiple will normally equal 1000 (but may be a multiple of 1000
-  // if there are a lot of phones); kNontermBigNumber is 1000000.
+  // if there are a lot of phones); kNontermBigNumber is 10000000.
   int32 big_number = static_cast<int32>(kNontermBigNumber),
       nonterm_phones_offset = nonterm_phones_offset_,
       encoding_multiple = GetEncodingMultiple(nonterm_phones_offset);
@@ -199,6 +199,7 @@ GrammarFst::ExpandedState *GrammarFst::ExpandState(
 // static inline
 void GrammarFst::CombineArcs(const StdArc &leaving_arc,
                              const StdArc &arriving_arc,
+                             float cost_correction,
                              StdArc *arc) {
   // The following assertion shouldn't fail; we ensured this in
   // PrepareForGrammarFst(), search for 'olabel_problem'.
@@ -209,7 +210,11 @@ void GrammarFst::CombineArcs(const StdArc &leaving_arc,
   // for the consumption of the GrammarFST code.
   arc->ilabel = 0;
   arc->olabel = arriving_arc.olabel;
-  arc->weight = Times(leaving_arc.weight, arriving_arc.weight);
+  // conceptually, arc->weight =
+  //  Times(Times(leaving_arc.weight, arriving_arc.weight), Weight(cost_correction)).
+  // The below might be a bit faster, I hope-- avoiding checking.
+  arc->weight = Weight(cost_correction + leaving_arc.weight.Value() +
+                       arriving_arc.weight.Value());
   arc->nextstate = arriving_arc.nextstate;
 }
 
@@ -232,6 +237,10 @@ GrammarFst::ExpandedState *GrammarFst::ExpandStateEnd(
   ArcIterator<ConstFst<StdArc> > parent_aiter(parent_fst,
                                               instance.parent_state);
 
+  // for explanation of cost_correction, see documentation for CombineArcs().
+  float num_reentry_arcs = instances_[instance_id].parent_reentry_arcs.size(),
+      cost_correction = -log(num_reentry_arcs);
+
   ArcIterator<ConstFst<StdArc> > aiter(fst, state_id);
 
   for (; !aiter.Done(); aiter.Next()) {
@@ -243,8 +252,8 @@ GrammarFst::ExpandedState *GrammarFst::ExpandStateEnd(
                  ">1 nonterminals from a state; did you use "
                  "PrepareForGrammarFst()?");
     std::unordered_map<int32, int32>::const_iterator reentry_iter =
-        instances_[instance_id].reentry_arcs.find(left_context_phone),
-        reentry_end = instances_[instance_id].reentry_arcs.end();
+        instances_[instance_id].parent_reentry_arcs.find(left_context_phone),
+        reentry_end = instances_[instance_id].parent_reentry_arcs.end();
     if (reentry_iter == reentry_end) {
       KALDI_ERR << "FST with index " << instance.ifst_index
                 << " ends with left-context-phone " << left_context_phone
@@ -264,7 +273,7 @@ GrammarFst::ExpandedState *GrammarFst::ExpandStateEnd(
       KALDI_ERR << "Leaving arc has zero olabel.";
     }
     StdArc arc;
-    CombineArcs(leaving_arc, arriving_arc, &arc);
+    CombineArcs(leaving_arc, arriving_arc, cost_correction, &arc);
     ans->arcs.push_back(arc);
   }
   return ans;
@@ -309,7 +318,7 @@ int32 GrammarFst::GetChildInstanceId(int32 instance_id, int32 nonterminal,
   child_instance.parent_state = state;
   InitEntryOrReentryArcs(*(parent_instance.fst), state,
                          GetPhoneSymbolFor(kNontermReenter),
-                         &(child_instance.reentry_arcs));
+                         &(child_instance.parent_reentry_arcs));
   return child_instance_id;
 }
 
@@ -342,6 +351,10 @@ GrammarFst::ExpandedState *GrammarFst::ExpandStateUserDefined(
     std::unordered_map<int32, int32> &entry_arcs = entry_arcs_[child_ifst_index];
     if (entry_arcs.empty())
       InitEntryArcs(child_ifst_index);
+    // for explanation of cost_correction, see documentation for CombineArcs().
+    float num_entry_arcs = entry_arcs.size(),
+        cost_correction = -log(num_entry_arcs);
+
     // Get the arc-index for the arc leaving the start-state of child FST that
     // corresponds to this phonetic context.
     std::unordered_map<int32, int32>::const_iterator entry_iter =
@@ -356,7 +369,7 @@ GrammarFst::ExpandedState *GrammarFst::ExpandStateUserDefined(
     child_aiter.Seek(arc_index);
     const StdArc &arriving_arc = child_aiter.Value();
     StdArc arc;
-    CombineArcs(leaving_arc, arriving_arc, &arc);
+    CombineArcs(leaving_arc, arriving_arc, cost_correction, &arc);
     ans->arcs.push_back(arc);
   }
   ans->dest_fst_instance = dest_fst_instance;
@@ -591,7 +604,7 @@ void GrammarFstPreparer::CheckProperties(StateId s,
   //       either an inbuilt nonterminal like #nonterm_begin, #nonterm_end or
   //       #nonterm_reenter, or a user-defined nonterminal like #nonterm:foo.
   std::set<int32> dest_nonterminals;
-  // normally we'll have encoding_multiple = 1000, big_number = 1000000.
+  // normally we'll have encoding_multiple = 1000, big_number = 10000000.
   int32 encoding_multiple = GetEncodingMultiple(nonterm_phones_offset_),
       big_number = kNontermBigNumber;
 
@@ -784,6 +797,52 @@ void PrepareForGrammarFst(int32 nonterm_phones_offset,
   p.Prepare();
 }
 
+void CopyToVectorFst(GrammarFst *grammar_fst,
+                     VectorFst<StdArc> *vector_fst) {
+  typedef GrammarFstArc::StateId GrammarStateId;  // int64
+  typedef StdArc::StateId StdStateId;  // int
+  typedef StdArc::Label Label;
+  typedef StdArc::Weight Weight;
+
+  std::vector<std::pair<GrammarStateId, StdStateId> > queue;
+  std::unordered_map<GrammarStateId, StdStateId> state_map;
+
+  vector_fst->DeleteStates();
+  state_map[grammar_fst->Start()] = vector_fst->AddState();  // state 0.
+  vector_fst->SetStart(0);
+
+  queue.push_back(
+      std::pair<GrammarStateId, StdStateId>(grammar_fst->Start(), 0));
+
+  while (!queue.empty()) {
+    std::pair<GrammarStateId, StdStateId> p = queue.back();
+    queue.pop_back();
+    GrammarStateId grammar_state = p.first;
+    StdStateId std_state = p.second;
+    vector_fst->SetFinal(std_state, grammar_fst->Final(grammar_state));
+    ArcIterator<GrammarFst> aiter(*grammar_fst, grammar_state);
+    for (; !aiter.Done(); aiter.Next()) {
+      const GrammarFstArc &grammar_arc = aiter.Value();
+      StdArc std_arc;
+      std_arc.ilabel = grammar_arc.olabel;
+      std_arc.olabel = grammar_arc.olabel;
+      std_arc.weight = grammar_arc.weight;
+      GrammarStateId next_grammar_state = grammar_arc.nextstate;
+      StdStateId next_std_state;
+      std::unordered_map<GrammarStateId, StdStateId>::const_iterator
+          state_iter = state_map.find(next_grammar_state);
+      if (state_iter == state_map.end()) {
+        next_std_state = vector_fst->AddState();
+        queue.push_back(std::pair<GrammarStateId, StdStateId>(
+            next_grammar_state, next_std_state));
+      } else {
+        next_std_state = state_iter->second;
+      }
+      std_arc.nextstate = next_std_state;
+      vector_fst->AddArc(std_state, std_arc);
+    }
+  }
+}
 
 
 

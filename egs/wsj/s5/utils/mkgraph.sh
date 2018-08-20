@@ -78,6 +78,17 @@ P=$(tree-info $tree | grep "central-position" | cut -d' ' -f2) || { echo "Error 
 [[ -f $2/frame_subsampling_factor && "$loopscale" == "0.1" ]] && \
   echo "$0: WARNING: chain models need '--self-loop-scale 1.0'";
 
+if [ -f $lang/phones/nonterm_phones_offset.int ]; then
+  if [[ $N != 2  || $P != 1 ]]; then
+    echo "$0: when doing grammar decoding, you can only build graphs for left-biphone trees."
+    exit 1
+  fi
+  nonterm_phones_offset=$(cat $lang/phones/nonterm_phones_offset.int)
+  nonterm_opt="--nonterm-phones-offset=$nonterm_phones_offset"
+else
+  nonterm_opt=
+fi
+
 mkdir -p $lang/tmp
 trap "rm -f $lang/tmp/LG.fst.$$" EXIT HUP INT PIPE TERM
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
@@ -98,7 +109,7 @@ ilabels_tmp=$ilabels.$$
 trap "rm -f $clg_tmp $ilabels_tmp" EXIT HUP INT PIPE TERM
 if [[ ! -s $clg || $clg -ot $lang/tmp/LG.fst \
     || ! -s $ilabels || $ilabels -ot $lang/tmp/LG.fst ]]; then
-  fstcomposecontext --context-size=$N --central-position=$P \
+  fstcomposecontext $nonterm_opt --context-size=$N --central-position=$P \
    --read-disambig-syms=$lang/phones/disambig.int \
    --write-disambig-syms=$lang/tmp/disambig_ilabels_${N}_${P}.int \
     $ilabels_tmp < $lang/tmp/LG.fst |\
@@ -111,7 +122,7 @@ fi
 trap "rm -f $dir/Ha.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/Ha.fst || $dir/Ha.fst -ot $model  \
     || $dir/Ha.fst -ot $lang/tmp/ilabels_${N}_${P} ]]; then
-  make-h-transducer --disambig-syms-out=$dir/disambig_tid.int \
+  make-h-transducer $nonterm_opt --disambig-syms-out=$dir/disambig_tid.int \
     --transition-scale=$tscale $lang/tmp/ilabels_${N}_${P} $tree $model \
      > $dir/Ha.fst.$$  || exit 1;
   mv $dir/Ha.fst.$$ $dir/Ha.fst
@@ -162,7 +173,8 @@ mkdir -p $dir/phones
 cp $lang/phones/word_boundary.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/align_lexicon.* $dir/phones/ 2>/dev/null # might be needed for ctm scoring,
 cp $lang/phones/optional_silence.* $dir/phones/ 2>/dev/null # might be needed for analyzing alignments.
-  # but ignore the error if it's not there.
+    # but ignore the error if it's not there.
+
 
 cp $lang/phones/disambig.{txt,int} $dir/phones/ 2> /dev/null
 cp $lang/phones/silence.csl $dir/phones/ || exit 1;

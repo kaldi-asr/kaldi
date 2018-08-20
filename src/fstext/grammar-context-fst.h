@@ -36,7 +36,7 @@
    is limited to left-biphone context and also supports certain special
    extensions we need to compile grammars.
 
-   See \ref graph_grammar (../doc/graph_recipe_grammar.dox) for high-level
+   See \ref grammar (../doc/grammar.dox) for high-level
    documentation on how this framework works.
 */
 
@@ -57,7 +57,7 @@ namespace fst {
 /**
    An anonymous enum to define some values for symbols used in our grammar-fst
    framework.  Please understand this with reference to the documentation in
-   \ref graph_grammar (../doc/graph_recipe_grammar.dox).  This enum defines
+   \ref grammar (../doc/grammar.dox).  This enum defines
    the values of nonterminal-related symbols in phones.txt.  They are not
    the actual values-- they will be shifted by adding the value
    nonterm_phones_offset which is passed in by the command-line flag
@@ -77,7 +77,7 @@ enum NonterminalValues {
   // your system, and kNontermMediumNumber must be >0.  These values were chosen
   // for ease of human inspection of numbers encoded with them.
   kNontermMediumNumber = 1000,
-  kNontermBigNumber = 1000000
+  kNontermBigNumber = 10000000
 };
 
 
@@ -96,7 +96,7 @@ inline int32 GetEncodingMultiple(int32 nonterm_phones_offset) {
 /**
    This is a variant of the function ComposeContext() which is to be used
    with our "grammar FST" framework (see \ref graph_context, i.e.
-   ../doc/graph_recipe_grammar.dox, for more details).  This does not take
+   ../doc/grammar.dox, for more details).  This does not take
    the 'context_width' and 'central_position' arguments because they are
    assumed to be 2 and 1 respectively (meaning, left-biphone phonetic context).
 
@@ -114,8 +114,8 @@ inline int32 GetEncodingMultiple(int32 nonterm_phones_offset) {
     @param [out] ilabels  Vector, indexed by ilabel of CLG.fst, providing information
                   about the meaning of that ilabel; see \ref tree_ilabel
                   (http://kaldi-asr.org/doc/tree_externals.html#tree_ilabel)
-                  and also \ref graph_grammar_special_clg
-                  (http://kaldi-asr.org/doc/graph_recipe_grammar#graph_grammar_special_clg).
+                  and also \ref grammar_special_clg
+                  (http://kaldi-asr.org/doc/grammar#grammar_special_clg).
   */
 void ComposeContextLeftBiphone(
     int32 nonterm_phones_offset,
@@ -172,7 +172,7 @@ public:
 
   /**
      Here is a note on the state space of InverseLeftBiphoneContextFst;
-     see \ref graph_grammar_special_c which has some documentation on this.
+     see \ref grammar_special_c which has some documentation on this.
 
      The state space uses the same numbering as phones.txt.
 

@@ -50,7 +50,7 @@ struct HTransducerConfig {
     opts->Register("nonterm-phones-offset", &nonterm_phones_offset,
                    "The integer id of #nonterm_bos in phones.txt, if present. "
                    "Only needs to be set if you are doing grammar decoding, "
-                   "see doc/graph_recipe_grammar.dox.");
+                   "see doc/grammar.dox.");
   }
 };
 
@@ -160,6 +160,10 @@ void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
   * was created in such a way that it was stochastic).  Note that the
   * disambig_syms will be empty in some recipes (e.g.  if you already removed
   * the disambiguation symbols).
+  * This function will treat numbers over 10000000 (kNontermBigNumber) the
+  * same as disambiguation symbols, assuming they are special symbols for
+  * grammar decoding.
+  *
   * @param trans_model [in] Transition model
   * @param disambig_syms [in] Sorted, uniq list of disambiguation symbols, required
   *       if the graph contains disambiguation symbols but only needed for sanity checks.

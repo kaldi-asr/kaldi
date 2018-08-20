@@ -1,4 +1,4 @@
-// doc/graph_recipe_grammar.dox
+// doc/grammar.dox
 
 
 // Copyright  2018  Johns Hopkins University (author: Daniel Povey)
@@ -22,7 +22,7 @@ namespace kaldi {
 
 /**
 
- \page graph_grammar   Support for grammars and graphs with on-the-fly parts.
+ \page grammar   Support for grammars and graphs with on-the-fly parts.
 
 
  This page explains our support for dynamically created grammars and graphs with
@@ -42,7 +42,7 @@ namespace kaldi {
  left-biphone context.
 
 
-  \section graph_grammar_replace  Relation to OpenFst's 'Replace()' operation
+  \section grammar_replace  Relation to OpenFst's 'Replace()' operation
 
   The design of these tools is inspired by OpenFst's  "Replace()"" operation, as implemented
   by its command-line tool fstreplace.  The basic idea is illustrated by its usage message:
@@ -74,7 +74,7 @@ Recursively replaces FST arcs with other FST(s).
   FST.
 
 
-  \section graph_grammar_overview  Overview of the framework
+  \section grammar_overview  Overview of the framework
 
  To explain how this works, we'll take the "contact list" scenario, where you want to
  build a large language model with a nonterminal, say `\#nonterm:contact_list` in it,
@@ -124,7 +124,7 @@ Recursively replaces FST arcs with other FST(s).
  special symbols that we introduces.  The differences are explained below.
 
 
-  \section graph_grammar_symtabs  Symbol tables and special symbols
+  \section grammar_symtabs  Symbol tables and special symbols
 
   In order to use this framework it will be necessary (or at least highly desirable, for
   debugging) to add certain extra symbols to the words.txt and phones.txt symbol tables.
@@ -171,7 +171,7 @@ Z_S  243
  integer id of the symbol `\#nonterm_bos` in `phones.txt`.  In the above example
  it would `--nonterm-phones-offset=247`.
 
-  \section graph_grammar_special_g  Special symbols in G.fst
+  \section grammar_special_g  Special symbols in G.fst
 
  If you are using this framework you will be creating several graphs, so there
  may be several copies of G.fst (and the intermediate and fully compiled
@@ -193,7 +193,7 @@ Z_S  243
  to skip creating G.fst and just create LG.fst manually; this won't be hard to
  do once you know its expected structure.
 
-  \section graph_grammar_special_lg  Special symbols in LG.fst
+  \section grammar_special_lg  Special symbols in LG.fst
 
  Before we describe what L.fst is expected to do with the special symbols,
  we will state what we expect LG.fst to contain after composition.  All the
@@ -227,7 +227,7 @@ Z_S  243
  in parallel, all possible <e>left-context phones</e>.
 
 
-  \section graph_grammar_special_l  Special symbols in L.fst
+  \section grammar_special_l  Special symbols in L.fst
 
  This section explains what sequences involving special symbols in L.fst we need to
  add, in order to compile a LG.fst with the desired properties from G.fst.  Let the
@@ -239,14 +239,21 @@ Z_S  243
  - A sequence starting and ending at the loop-state, with olabel `\#nonterm_begin`
    and ilabels consisting of, `\#nonterm_begin` followed by all possible left-context
    phones (and `\#nonterm_bos`) in parallel.
- - A sequence starting and ending at the loop-state, with olabel `\#nonterm_end`
+ - A self-loop arc at the loop-state, with olabel `\#nonterm_end`
    and ilabel `\#nonterm_end`.
- - For each user-defined nonterminal (e.g. `\#nonterm:foo`), a sequence
-   starting and ending at the loop-state, with olabel `\#nonterm_foo` and
-   ilabels: `\#nonterm_foo` followed by all possible left-context phones
-   (and `\#nonterm_bos`) in parallel.
+ - For each user-defined nonterminal (e.g. `\#nonterm:foo`) and for
+   `\#nonterm_begin`, the following:
+    - An arc from the loop-state to a newly created state, with ilabel
+      and olabel equal to the symbol in question (say `\#nonterm:foo`).
+    - For each left-context phone (as defined above), an arc from
+      that newly created state to the loop-state, with no olabel,
+      ilabel equal to the left-context phone, and a weight equal to
+      1/(the number of left-context phones).  This weight keeps the
+      graph stochastic which will allow us to push the weights later on
+      if we want; we'll later cancel out this weight in the grammar-decoding
+      code.  (See the documentation for CombineArcs()).
 
- In the versions of the lexicons that have silence probabilities there
+ In the versions of the lexicons that have word-specific silence probabilities there
  are actually two versions of the `loop state`, one for after silence
  and one for after nonsilence (see <a href=http://www.danielpovey.com/files/2015_interspeech_silprob.pdf> here</a>;
  in these cases we will make the loops for user-defined nonterminals
@@ -256,7 +263,7 @@ Z_S  243
  the possibility to have two optional silences in succession.
 
 
-  \section graph_grammar_special_clg  Special symbols in CLG.fst
+  \section grammar_special_clg  Special symbols in CLG.fst
 
   First, some background: the symbols on the input of CLG.fst (i.e. the ilabels) have interpretation
   given by a what we call the `ilabel_info`.  This is explained more in \ref tree_ilabel.  Programs
@@ -287,7 +294,7 @@ Z_S  243
      state will leave arcs with ilabels of the form (`\#nonterm_reenter`,
      <e>left-context-phone</e>), for all left-context phones.
 
-   \subsection graph_grammar_special_c  Special symbols in C.fst
+   \subsection grammar_special_c  Special symbols in C.fst
 
   First, background.  Since this framework only supports the left-biphone
   states, the states of C.fst correspond to the left context phone, and the
@@ -323,7 +330,7 @@ Z_S  243
  details (search for "state space" in grammar-context-fst.h).
 
 
- \section graph_grammar_special_hclg  Special symbols in HCLG.fst
+ \section grammar_special_hclg  Special symbols in HCLG.fst
 
   The special symbols in the HCLG.fst graphs will represent the same thing as
   those in CLG.fst graphs, discussed above; but the representation in integer
@@ -349,7 +356,7 @@ Z_S  243
   --nonterm-phones-offset option.
 
 
-  \subsection graph_grammar_special_h  Special symbols in H.fst
+  \subsection grammar_special_h  Special symbols in H.fst
 
  Since H.fst only needs to change the integer represention of the special
  symbols but otherwise leaves them unchanged, the changes are quite trivial.
@@ -358,7 +365,7 @@ Z_S  243
  symbols referred to in the `ilabel_info`.
 
 
-  \section graph_grammar_decoder  The decoder
+  \section grammar_decoder  The decoder
 
 
  The current approach to decoding with grammars (and we may in future make a more efficient

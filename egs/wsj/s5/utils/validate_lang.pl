@@ -479,32 +479,15 @@ sub check_summation {
   %sum = (%silence, %nonsilence, %disambig);
   $sum{"<eps>"} = 1;
 
-  my @itset = intersect(\%sum, \%psymtab);
-  my @key1 = keys %sum;
-  my @key2 = keys %psymtab;
-  my %itset = (); foreach(@itset) {$itset{$_} = 1;}
-  if (@itset < @key1) {
-    $exit = 1; print "--> ERROR: phones in silence.txt, nonsilence.txt, disambig.txt but not in phones.txt -- ";
-    foreach (@key1) {
-      if (!$itset{$_}) {
-        print "$_ ";
-      }
+  my $ok = 1
+  foreach $p (keys %psymtab) {
+    if (! defined $sum{$p} and $p !~ m/^#nonterm/) {
+      $exit = 1;  $ok = 0;  print("--> ERROR: phone $p is not in silence.txt, nonsilence.txt or disambig.txt...");
     }
-    print "\n";
   }
 
-  if (@itset < @key2) {
-    $exit = 1; print "--> ERROR: phones in phones.txt but not in silence.txt, nonsilence.txt, disambig.txt -- ";
-    foreach (@key2) {
-      if (!$itset{$_}) {
-        print "$_ ";
-      }
-    }
-    print "\n";
-  }
-
-  if (@itset == @key1 and @itset == @key2) {
-    print "--> summation property is OK\n";
+  if ($ok) {
+    print "--> found no unexplainable phones in phones.txt\n";
   }
   return;
 }

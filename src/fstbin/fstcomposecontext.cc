@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
     po.Register("nonterm-phones-offset",  &nonterm_phones_offset,
                 "The integer id of #nonterm_bos in your phones.txt, if present "
                 "(only relevant for grammar-FST construction, see "
-                "doc/graph_recipe_grammar.dox");
+                "doc/grammar.dox");
 
     po.Read(argc, argv);
 
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
       ComposeContext(disambig_in, context_width, central_position,
                      fst, &composed_fst, &ilabels);
     } else {
-      // The grammar-FST case. See ../doc/graph_recipe_grammar.dox for an intro.
+      // The grammar-FST case. See ../doc/grammar.dox for an intro.
       if (context_width != 2 | central_position != 1) {
         KALDI_ERR << "Grammar-fst graph creation only supports models with left-"
             "biphone context.  (--nonterm-phones-offset option was supplied).";

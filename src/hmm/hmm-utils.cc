@@ -431,7 +431,8 @@ public:
   // check.
 
   // This maps valid transition-ids to transition states, maps kNoLabel to -1, and
-  // maps all other symbols (i.e. epsilon symbols and disambig symbols) to zero.
+  // maps all other symbols (i.e. epsilon symbols, disambig symbols, and symbols
+  // with values over 100000/kNontermBigNumber) to zero.
   // Its point is to provide an equivalence class on labels that's relevant to what
   // the self-loop will be on the following (or preceding) state.
   TidToTstateMapper(const TransitionModel &trans_model,
@@ -448,7 +449,8 @@ public:
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
       return trans_model_.TransitionIdToTransitionState(label);
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
-      if (label != 0)
+      int32 big_number = kNontermBigNumber;  // 1000000
+      if (label != 0 && label < big_number)
         KALDI_ASSERT(std::binary_search(disambig_syms_.begin(),
                                         disambig_syms_.end(),
                                         label));  // or invalid label
@@ -521,7 +523,8 @@ static void AddSelfLoopsReorder(const TransitionModel &trans_model,
   // with the corresponding labels on them by this probability).
 
   for (StateId s = 0; s < static_cast<StateId>(state_in.size()); s++) {
-    if (state_in[s] > 0) {  // defined, and not eps or a disambiguation symbol...
+    if (state_in[s] > 0) {  // defined, and not eps or a disambiguation symbol or a
+                            // nonterminal-related sybol for grammar decoding...
       int32 trans_state = static_cast<int32>(state_in[s]);
       // First multiply all probabilities by "forward" probability.
       BaseFloat log_prob = trans_model.GetNonSelfLoopLogProb(trans_state);
