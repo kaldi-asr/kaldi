@@ -40,6 +40,7 @@ srand=0
 remove_egs=false
 lang_decode=data/lang_test
 lang_rescore=data/lang_rescore_6g
+decode_chain=false
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -100,7 +101,6 @@ if [ $stage -le 2 ]; then
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                             ${train_data_dir} data/lang $e2echain_model_dir $lat_dir
   echo "" >$lat_dir/splice_opts
-
 fi
 
 if [ $stage -le 3 ]; then
@@ -207,7 +207,7 @@ if [ $stage -le 5 ]; then
     --dir=$dir  || exit 1;
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 6 ] && $decode_chain; then
   # The reason we are using data/lang here, instead of $lang, is just to
   # emphasize that it's not actually important to give mkgraph.sh the
   # lang directory with the matched topology (since it gets the
@@ -220,7 +220,7 @@ if [ $stage -le 6 ]; then
     $dir $dir/graph || exit 1;
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 7 ] && $decode_chain; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --beam 12 \
@@ -230,7 +230,7 @@ if [ $stage -le 7 ]; then
 
   steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
                                 data/test $dir/decode_test{,_rescored} || exit 1
-fi
 
-echo "Done. Date: $(date). Results:"
-local/chain/compare_wer.sh $dir
+  echo "Done. Date: $(date). Results:"
+  local/chain/compare_wer.sh $dir
+fi

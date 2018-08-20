@@ -3,18 +3,17 @@
 # e2eali_1b is the same as e2eali_1a but has fewer CNN layers, smaller
 # l2-regularize, more epochs and uses dropout.
 
-# System                      cnn_e2eali_1b cnn_e2eali_1a
-# WER                             15.06     15.68
-# CER                              3.15      3.18
-# Final train prob              -0.0343   -0.0331
-# Final valid prob              -0.0403   -0.0395
-
+# System                      cnn_e2eali_1b
+#                                 score_basic  score_nomalized
+# WER                             14.91        11.4
+# WER (rescored)                  13.73        10.3
+# CER                              3.11         3.2
+# CER (rescored)                   2.85         2.9
+# Final train prob              -0.0343
+# Final valid prob              -0.0403
+# Parameters                      5.19M
 #steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1b
-#exp/chain/cnn_e2eali_1b: num-iters=33 nj=3..16 num-params=5.2M dim=40->456 combine=-0.037->-0.037 (over 1) xent:train/valid[21,32,final]=(-0.242,-0.185,-0.179/-0.252,-0.210,-0.206) logprob:train/valid[21,32,final]=(-0.041,-0.035,-0.034/-0.046,-0.041,-0.040)
-
-# Normalize scoring
-# WER = 11.5
-# CER = 3.2
+#exp/chain/cnn_e2eali_1b: num-iters=33 nj=3..16 num-params=5.2M dim=40->456 combine=-0.037->-0.037 (over 1) xent:train/valid[21,32,final]=(-0.231,-0.181,-0.175/-0.249,-0.207,-0.203) logprob:train/valid[21,32,final]=(-0.040,-0.035,-0.034/-0.046,-0.041,-0.040)
 
 set -e -o pipefail
 stage=0
@@ -39,7 +38,7 @@ srand=0
 remove_egs=false
 lang_decode=data/lang_test
 lang_rescore=data/lang_rescore_6g
-
+decode_chain=true
 dropout_schedule='0,0@0.20,0.2@0.50,0'
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -209,7 +208,7 @@ if [ $stage -le 5 ]; then
     --dir=$dir  || exit 1;
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 6 ] && $decode_chain; then
   # The reason we are using data/lang here, instead of $lang, is just to
   # emphasize that it's not actually important to give mkgraph.sh the
   # lang directory with the matched topology (since it gets the
@@ -222,7 +221,7 @@ if [ $stage -le 6 ]; then
     $dir $dir/graph || exit 1;
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 7 ] && $decode_chain; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --beam 12 \
@@ -232,7 +231,7 @@ if [ $stage -le 7 ]; then
 
   steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
                                 data/test $dir/decode_test{,_rescored} || exit 1
-fi
 
-echo "Done. Date: $(date). Results:"
-local/chain/compare_wer.sh $dir
+  echo "Done. Date: $(date). Results:"
+  local/chain/compare_wer.sh $dir
+fi

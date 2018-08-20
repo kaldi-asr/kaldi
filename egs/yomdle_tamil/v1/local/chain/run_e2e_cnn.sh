@@ -4,18 +4,17 @@
 
 # This script does end2end chain training (i.e. from scratch)
 # local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b/ exp/chain/e2e_cnn_1a/
-# System                      cnn_e2eali_1b e2e_cnn_1a
-# WER                             15.06     17.86
-# CER                              3.15      4.02
-# Final train prob              -0.0343    0.1402
-# Final valid prob              -0.0403    0.1045
+# System                          e2e_cnn_1a
+#                                 score_basic  score_nomalized
+# WER                             17.65        14.1
+# WER (rescored)                  15.35        10.3
+# CER                              3.97        12.1
+# CER (rescored)                   3.41         3.5
+# Final train prob                0.1402
+# Final valid prob                0.1045
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a
 #exp/chain/e2e_cnn_1a: num-iters=17 nj=6..12 num-params=3.0M dim=40->352 combine=0.110->0.110 (over 1) logprob:train/valid[10,16,final]=(0.135,0.134,0.140/0.098,0.099,0.105)
-
-# Normalize scoring
-#WER = 14.0
-#CER = 4.0
 
 set -e
 # configs for 'chain'
@@ -32,7 +31,7 @@ cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train
 lang_decode=data/lang_test
 lang_rescore=data/lang_rescore_6g
-
+decode_e2e=true
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -119,11 +118,11 @@ if [ $stage -le 3 ]; then
     --chain.alignment-subsampling-factor 4 \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter 2000000 \
-    --trainer.num-epochs 4 \
+    --trainer.frames-per-iter 1500000 \
+    --trainer.num-epochs 3 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial 6 \
-    --trainer.optimization.num-jobs-final 12 \
+    --trainer.optimization.num-jobs-initial 5 \
+    --trainer.optimization.num-jobs-final 8 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
@@ -134,7 +133,7 @@ if [ $stage -le 3 ]; then
     --dir $dir  || exit 1;
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 4 ] && $decode_e2e; then
   # The reason we are using data/lang here, instead of $lang, is just to
   # emphasize that it's not actually important to give mkgraph.sh the
   # lang directory with the matched topology (since it gets the
@@ -147,7 +146,7 @@ if [ $stage -le 4 ]; then
     $dir $dir/graph || exit 1;
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 5 ] && $decode_e2e; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj 30 --cmd "$cmd" --beam 12 \
@@ -155,7 +154,7 @@ if [ $stage -le 5 ]; then
 
   steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
                                 data/test $dir/decode_test{,_rescored} || exit 1
-fi
 
-echo "Done. Date: $(date). Results:"
-local/chain/compare_wer.sh $dir
+  echo "Done. Date: $(date). Results:"
+  local/chain/compare_wer.sh $dir
+fi

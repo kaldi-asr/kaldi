@@ -44,8 +44,7 @@ if [ $stage -le 0 ]; then
   # It can cause error while applying BPE.
   for set in train test; do
     local/process_data.py data/download/ \
-      data/local/splits/${set}.txt \
-      data/${set}
+      data/local/splits/${set}.txt data/${set}
     image/fix_data_dir.sh data/${set}
   done
 fi
@@ -112,17 +111,19 @@ if [ $stage -le 4 ]; then
   echo "$(date) stage 4: Preparing dictionary and lang..."
   local/prepare_dict.sh --dir data/local/dict
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
-      data/local/dict "<sil>" data/lang/temp data/lang
+    data/local/dict "<sil>" data/lang/temp data/lang
   utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
 fi
 
 if [ $stage -le 5 ]; then
   echo "$(date) stage 5: Estimating a language model for decoding..."
-  local/train_lm.sh --dir data/local/local_lm --order 3
+  local/train_lm.sh --dir data/local/local_lm --order 3 \
+    bypass_metaparam_optim_opt="--bypass-metaparameter-optimization=0.016,0.938,0.779,0.027,0.001,0.000,0.930,0.647,0.308,0.101"
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
-      data/local/dict/lexicon.txt data/lang_test
+    data/local/dict/lexicon.txt data/lang_test
 
-  local/train_lm.sh --dir data/local/local_lm_6g --order 6
+  local/train_lm.sh --dir data/local/local_lm_6g --order 6 \
+    bypass_metaparam_optim_opt="--bypass-metaparameter-optimization=0.031,0.860,0.678,0.194,0.037,0.006,0.928,0.712,0.454,0.220,0.926,0.844,0.749,0.358,0.966,0.879,0.783,0.544,0.966,0.826,0.674,0.450"
   utils/build_const_arpa_lm.sh data/local/local_lm_6g/data/arpa/6gram_big.arpa.gz \
                                data/lang data/lang_rescore_6g
 fi

@@ -98,31 +98,32 @@ if [ $stage -le 1 ]; then
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
-
+  #3grm: [perplexity = 27.7734168008] over 151116.0 words
+  #6grm: [perplexity = 18.6681627154] over 151116.0 words
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.arpa.gz
 fi
 
 if [ $stage -le 2 ]; then
   echo "$0: pruning the LM (to larger size)"
-  # Using 1 million n-grams for a big LM for rescoring purposes.
-  size=1000000
+  # Using 10 million n-grams for a big LM for rescoring purposes.
+  size=10000000
   prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
-
+  #[perplexity = 22.0613098868] over 151116.0 words
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
 fi
 
 if [ $stage -le 3 ]; then
   echo "$0: pruning the LM (to smaller size)"
-  # Using 500,000 n-grams for a smaller LM for graph building.  Prune from the
+  # Using 2 million n-grams for a smaller LM for graph building.  Prune from the
   # bigger-pruned LM, it'll be faster.
-  size=500000
+  size=2000000
   prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big ${dir}/data/lm_${order}_prune_small
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
-
+  #[perplexity = 23.4801171202] over 151116.0 words
   format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
 fi

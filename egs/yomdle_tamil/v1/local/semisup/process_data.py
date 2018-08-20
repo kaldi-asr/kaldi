@@ -37,6 +37,8 @@ utt2spk_file = os.path.join(args.out_dir, 'utt2spk')
 utt2spk_fh = open(utt2spk_file, 'w', encoding='utf-8')
 image_file = os.path.join(args.out_dir, 'images.scp')
 image_fh = open(image_file, 'w', encoding='utf-8')
+text_file = os.path.join(args.out_dir, 'text')
+text_fh = open(text_file, 'w', encoding='utf-8')
 
 with open(args.data_split) as f:
     for line in f:
@@ -53,5 +55,7 @@ with open(args.data_split) as f:
         csv_file = open(csv_filepath, 'r', encoding='utf-8')
         for row in csv.reader(csv_file):
             if row[1] == image_filename:
+                text = 'semisup'
+                text_fh.write(image_id + ' ' + text + '\n')
                 utt2spk_fh.write(image_id + ' ' + '_'.join(line.split('_')[:-1]) + '\n')
                 image_fh.write(image_id + ' ' + image_filepath +  '\n')

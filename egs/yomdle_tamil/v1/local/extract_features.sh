@@ -47,7 +47,7 @@ fi
 $cmd JOB=1:$nj $logdir/extract_features.JOB.log \
   image/ocr/make_features.py $logdir/images.JOB.scp \
     --allowed_len_file_path $data/allowed_lengths.txt \
-    --feat-dim $feat_dim  --augment \| \
+    --feat-dim $feat_dim \| \
     copy-feats --compress=true --compression-method=7 \
     ark:- ark,scp:$featdir/images.JOB.ark,$featdir/images.JOB.scp
 

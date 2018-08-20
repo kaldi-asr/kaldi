@@ -132,7 +132,7 @@ if os.path.isfile(allowed_len_handle):
 
 num_fail = 0
 num_ok = 0
-shift_setting = ['normal', 'scaled']
+aug_setting = ['normal', 'scaled']
 with open(data_list_path) as f:
     for line in f:
         line = line.strip()
@@ -144,26 +144,27 @@ with open(data_list_path) as f:
             im = np.fliplr(im)
         if args.augment:
             for i in range(2):
-                image_shift_id = image_id + '_shift' + str(i + 1)
-                im_shift = get_scaled_image_aug(im, shift_setting[i])
-                im_horizontal_padded = horizontal_pad(im_shift, allowed_lengths)
+                image_aug_id = image_id + '_aug' + str(i + 1)
+                im_aug = get_scaled_image_aug(im, aug_setting[i])
+                im_horizontal_padded = horizontal_pad(im_aug, allowed_lengths)
                 if im_horizontal_padded is None:
                     num_fail += 1
                     continue
                 data = np.transpose(im_horizontal_padded, (1, 0))
                 data = np.divide(data, 255.0)
                 num_ok += 1
-                write_kaldi_matrix(out_fh, data, image_shift_id)
+                write_kaldi_matrix(out_fh, data, image_aug_id)
         else:
-            im_shift = get_scaled_image_aug(im, shift_setting[0])
-            im_horizontal_padded = horizontal_pad(im_shift, allowed_lengths)
+            image_aug_id = image_id + '_aug'
+            im_aug = get_scaled_image_aug(im, aug_setting[0])
+            im_horizontal_padded = horizontal_pad(im_aug, allowed_lengths)
             if im_horizontal_padded is None:
                 num_fail += 1
                 continue
             data = np.transpose(im_horizontal_padded, (1, 0))
             data = np.divide(data, 255.0)
             num_ok += 1
-            write_kaldi_matrix(out_fh, data, image_id)
+            write_kaldi_matrix(out_fh, data, image_aug_id)
 
 print('Generated features for {} images. Failed for {} (image too '
       'long).'.format(num_ok, num_fail), file=sys.stderr)

@@ -58,7 +58,7 @@ fi
 # and seed chain system from the previous stage.
 ###############################################################################
 if [ $stage -le 2 ]; then
-  local/semisup/chain/run_cnn_chainali_semisupervised_1a.sh \
+  local/semisup/chain/run_cnn_chainali_semisupervised_1b.sh \
     --supervised-set train \
     --unsupervised-set train_unsup \
     --sup-chain-dir exp/chain/cnn_e2eali_1b \
