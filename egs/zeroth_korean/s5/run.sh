@@ -11,8 +11,7 @@
 #
 
 # Check list before start
-# 1. locale setup (see egs/zeroth_korean/s5/path.sh; you need this "export LC_ALL=ko_KR.UTF-8" )
-# 2. required software: Morfessor-2.0.1 (see tools/extras/install_morfessor.sh)
+# 1. required software: Morfessor-2.0.1 (see tools/extras/install_morfessor.sh)
 
 stage=0
 db_dir=./db

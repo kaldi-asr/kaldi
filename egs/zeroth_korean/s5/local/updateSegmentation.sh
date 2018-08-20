@@ -28,7 +28,7 @@ cp $trans $trans".old"
 awk '{print $1}' $trans".old" > $trans"_tmp_index"
 cut -d' ' -f2- $trans".old" |\
 	sed -E 's/\s+/ /g; s/^\s//g; s/\s$//g' |\
-	morfessor -l $lmDir/zeroth_morfessor.seg -T - -o - \
+	morfessor -e 'utf-8' -l $lmDir/zeroth_morfessor.seg -T - -o - \
 	--output-format '{analysis} ' --output-newlines \
 	--nosplit-re '[0-9\[\]\(\){}a-zA-Z&.,\-]+' \
 	| paste -d" " $trans"_tmp_index" - > $trans
