@@ -14,8 +14,7 @@
 set -e
 stage=0
 dir=data/local/local_lm
-order=4
-bypass_metaparam_optim_opt=
+order=6
 echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh || exit 1;
 
@@ -36,13 +35,14 @@ export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
  fi
 ) || exit 1;
 
+#bypass_metaparam_optim_opt=
 # If you want to bypass the metaparameter optimization steps with specific metaparameters
 # un-comment the following line, and change the numbers to some appropriate values.
 # You can find the values from output log of train_lm.py.
 # These example numbers of metaparameters is for 4-gram model (with min-counts)
 # running with train_lm.py.
 # The dev perplexity should be close to the non-bypassed model.
-#bypass_metaparam_optim_opt=
+bypass_metaparam_optim_opt="--bypass-metaparameter-optimization=0.031,0.860,0.678,0.194,0.037,0.006,0.928,0.712,0.454,0.220,0.926,0.844,0.749,0.358,0.966,0.879,0.783,0.544,0.966,0.826,0.674,0.450"
 # Note: to use these example parameters, you may need to remove the .done files
 # to make sure the make_lm_dir.py be called and tain only 3-gram model
 #for order in 3; do

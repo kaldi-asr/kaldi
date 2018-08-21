@@ -117,14 +117,10 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$(date) stage 5: Estimating a language model for decoding..."
-  local/train_lm.sh --dir data/local/local_lm --order 3 \
-    --bypass_metaparam_optim_opt "--bypass-metaparameter-optimization=0.016,0.938,0.779,0.027,0.001,0.000,0.930,0.647,0.308,0.101"
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
-    data/local/dict/lexicon.txt data/lang_test
-
-  local/train_lm.sh --dir data/local/local_lm_6g --order 6 \
-    --bypass_metaparam_optim_opt "--bypass-metaparameter-optimization=0.031,0.860,0.678,0.194,0.037,0.006,0.928,0.712,0.454,0.220,0.926,0.844,0.749,0.358,0.966,0.879,0.783,0.544,0.966,0.826,0.674,0.450"
-  utils/build_const_arpa_lm.sh data/local/local_lm_6g/data/arpa/6gram_big.arpa.gz \
+  local/train_lm.sh
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_small.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang
+  utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
                                data/lang data/lang_rescore_6g
 fi
 

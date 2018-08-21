@@ -21,22 +21,20 @@
 # Supervision: Naive split lattices
 # output-0 and output-1 are for superivsed and unsupervised data respectively.
 
-# local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b/ exp/semisup_100k/chain/tdnn_semisup_1a/
-# System                      cnn_e2eali_1b tdnn_semisup_1a
-# WER                             15.06     13.83
-# CER                              3.15      2.83
-# Final train prob              -0.0343    0.6103-0.0360
-# Final valid prob              -0.0403    0.6054-0.0418
+# local/chain/compare_wer.sh exp/semisup_100k/chain/tdnn_semisup_1b/
+# System                      tdnn_semisup_1b
+#                                 score_basic    score_normalized
+# WER                             13.73          10.2
+# WER (rescored)                  12.80           9.4
+# CER                              2.78           2.8
+# CER (rescored)                   2.57           2.7
+# Final train prob           0.6138-0.0337
+# Final valid prob           0.6115-0.0399
 
-# steps/info/chain_dir_info.pl exp/semisup_100k/chain/tdnn_semisup_1a/
-# exp/semisup_100k/chain/tdnn_semisup_1a/: num-iters=58 nj=6..16 num-params=3.7M dim=40->456 combine=0.240->0.240 (over 1)
-
-# Normalize scoring
-#WER = 10.4
-#CER = 2.9
+# steps/info/chain_dir_info.pl exp/semisup_100k/chain/tdnn_semisup_1b/
+# exp/semisup_100k/chain/tdnn_semisup_1b/: num-iters=46 nj=6..16 num-params=5.7M dim=40->456 combine=0.239->0.239 (over 1)
 
 set -u -e -o pipefail
-
 stage=0   # Start from -1 for supervised seed system training
 train_stage=-100
 nj=30
@@ -47,7 +45,7 @@ test_nj=30
 # dir=${exp_root}/chain${chain_affix}/tdnn${tdnn_affix}
 exp_root=exp/semisup_100k
 chain_affix=    # affix for chain dir
-tdnn_affix=_semisup_1a  # affix for semi-supervised chain system
+tdnn_affix=_semisup_1b  # affix for semi-supervised chain system
 
 # Datasets-Expects supervised_set and unsupervised_set
 supervised_set=train
