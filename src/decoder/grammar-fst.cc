@@ -46,6 +46,7 @@ void GrammarFst::Init() {
     // is large.
     InitEntryArcs(0);
   }
+  InitInstances();
 }
 
 GrammarFst::~GrammarFst() {
@@ -485,7 +486,7 @@ class GrammarFstPreparer {
     }
     if (simple_final_state_ != kNoStateId)
       num_new_states_++;
-    KALDI_VLOG(2) << "Added " << num_new_states_ << " new states while "
+    KALDI_LOG << "Added " << num_new_states_ << " new states while "
         "preparing for grammar FST.";
   }
 
@@ -824,7 +825,7 @@ void CopyToVectorFst(GrammarFst *grammar_fst,
     for (; !aiter.Done(); aiter.Next()) {
       const GrammarFstArc &grammar_arc = aiter.Value();
       StdArc std_arc;
-      std_arc.ilabel = grammar_arc.olabel;
+      std_arc.ilabel = grammar_arc.ilabel;
       std_arc.olabel = grammar_arc.olabel;
       std_arc.weight = grammar_arc.weight;
       GrammarStateId next_grammar_state = grammar_arc.nextstate;
@@ -833,6 +834,7 @@ void CopyToVectorFst(GrammarFst *grammar_fst,
           state_iter = state_map.find(next_grammar_state);
       if (state_iter == state_map.end()) {
         next_std_state = vector_fst->AddState();
+        state_map[next_grammar_state] = next_std_state;
         queue.push_back(std::pair<GrammarStateId, StdStateId>(
             next_grammar_state, next_std_state));
       } else {

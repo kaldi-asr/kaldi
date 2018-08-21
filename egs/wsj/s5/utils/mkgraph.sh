@@ -85,7 +85,9 @@ if [ -f $lang/phones/nonterm_phones_offset.int ]; then
   fi
   nonterm_phones_offset=$(cat $lang/phones/nonterm_phones_offset.int)
   nonterm_opt="--nonterm-phones-offset=$nonterm_phones_offset"
+  prepare_grammar_command="make-grammar-fst --nonterm-phones-offset=$nonterm_phones_offset - -"
 else
+  prepare_grammar_command="cat"
   nonterm_opt=
 fi
 
@@ -112,7 +114,7 @@ if [[ ! -s $clg || $clg -ot $lang/tmp/LG.fst \
   fstcomposecontext $nonterm_opt --context-size=$N --central-position=$P \
    --read-disambig-syms=$lang/phones/disambig.int \
    --write-disambig-syms=$lang/tmp/disambig_ilabels_${N}_${P}.int \
-    $ilabels_tmp < $lang/tmp/LG.fst |\
+    $ilabels_tmp $lang/tmp/LG.fst |\
     fstarcsort --sort_type=ilabel > $clg_tmp
   mv $clg_tmp $clg
   mv $ilabels_tmp $ilabels
@@ -145,8 +147,9 @@ fi
 
 trap "rm -f $dir/HCLG.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
-  add-self-loops --self-loop-scale=$loopscale --reorder=true \
-    $model < $dir/HCLGa.fst | fstconvert --fst_type=const > $dir/HCLG.fst.$$ || exit 1;
+  add-self-loops --self-loop-scale=$loopscale --reorder=true $model < $dir/HCLGa.fst | \
+    $prepare_grammar_command | \
+    fstconvert --fst_type=const > $dir/HCLG.fst.$$ || exit 1;
   mv $dir/HCLG.fst.$$ $dir/HCLG.fst
   if [ $tscale == 1.0 -a $loopscale == 1.0 ]; then
     # No point doing this test if transition-scale not 1, as it is bound to fail.

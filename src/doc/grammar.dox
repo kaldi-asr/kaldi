@@ -236,10 +236,11 @@ Z_S  243
 
  The lexicon needs to include, in addition to the normal things:
 
- - A sequence starting and ending at the loop-state, with olabel `\#nonterm_begin`
-   and ilabels consisting of, `\#nonterm_begin` followed by all possible left-context
-   phones (and `\#nonterm_bos`) in parallel.
- - A self-loop arc at the loop-state, with olabel `\#nonterm_end`
+ - A sequence starting at the start state and ending at the loop-state, with
+   olabel `\#nonterm_begin` and ilabels consisting of, `\#nonterm_begin`
+   followed by all possible left-context phones (and `\#nonterm_bos`) in
+   parallel.
+ - An arc from the loop-state to a final state, with olabel `\#nonterm_end`
    and ilabel `\#nonterm_end`.
  - For each user-defined nonterminal (e.g. `\#nonterm:foo`) and for
    `\#nonterm_begin`, the following:
@@ -252,6 +253,11 @@ Z_S  243
       graph stochastic which will allow us to push the weights later on
       if we want; we'll later cancel out this weight in the grammar-decoding
       code.  (See the documentation for CombineArcs()).
+
+ Note that the above means that each sub-graph corresponding to
+ a user-defined nonterminal will allow optional silence after the nonterminal
+ but not before it.  Users should bear this in mind if they are going to
+ construct these sub-graphs manually at the LG.fst level.
 
  In the versions of the lexicons that have word-specific silence probabilities there
  are actually two versions of the `loop state`, one for after silence

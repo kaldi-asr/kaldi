@@ -209,7 +209,8 @@ void ComposeContextLeftBiphone(
   vector<int32> phones;
   for (size_t i = 0; i < all_syms.size(); i++)
     if (!std::binary_search(disambig_syms.begin(),
-                            disambig_syms.end(), all_syms[i]))
+                            disambig_syms.end(), all_syms[i]) &&
+        all_syms[i] < nonterm_phones_offset)
       phones.push_back(all_syms[i]);
 
 

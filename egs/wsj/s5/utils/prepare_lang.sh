@@ -419,17 +419,18 @@ if [ -f $srcdir/nonterminals.txt ]; then
   nonterm_phones_offset=$(grep '#nonterm_bos' <$dir/phones.txt | awk '{print $2}')
   echo $nonterm_phones_offset > $dir/phones/nonterm_phones_offset.int
   echo '#nonterm_bos' > $dir/phones/nonterm_phones_offset.txt  # temporary.
-  for suf in txt int; do
-    if [ -f $dir/phones/word_boundary.$suf ]; then
-      # word-position-dependent system.  Only include the optional-silence phone,
-      # and phones that can end a word, plus the special symbol #nonterm_bos, in the
-      # left-context phones.
-      awk '{if ($2 == "end" || $2 == "singleton") print $1; }' <$dir/phones/word_boundary.$suf | \
-        cat - $dir/phones/optional_silence.$suf $dir/phones/nonterm_phones_offset.$suf > $dir/phones/left_context_phones.$suf
-    else
-      cat $dir/phones/{silence,nonsilence}.$suf $dir/phones/nonterm_phones_offset.$suf > $dir/phones/left_context_phones.$suf
-    fi
-  done
+
+  if [ -f $dir/phones/word_boundary.txt ]; then
+    # word-position-dependent system.  Only include the optional-silence phone,
+    # and phones that can end a word, plus the special symbol #nonterm_bos, in the
+    # left-context phones.
+    awk '{if ($2 == "end" || $2 == "singleton") print $1; }' <$dir/phones/word_boundary.txt | \
+        cat - $dir/phones/optional_silence.txt $dir/phones/nonterm_phones_offset.txt > $dir/phones/left_context_phones.txt
+  else
+    cat $dir/phones/{silence,nonsilence}.txt $dir/phones/nonterm_phones_offset.txt > $dir/phones/left_context_phones.txt
+  fi
+  utils/sym2int.pl $dir/phones.txt <$dir/phones/left_context_phones.txt >$dir/phones/left_context_phones.int
+
   # we need to write utils/lang/make_lexicon_fst_silprob.py before this can work.
   $silprob && echo "$0: silprobs not yet supported with grammar decoding" && exit 1
   grammar_opts="--left-context-phones=$dir/phones/left_context_phones.txt --nonterminals=$srcdir/nonterminals.txt"

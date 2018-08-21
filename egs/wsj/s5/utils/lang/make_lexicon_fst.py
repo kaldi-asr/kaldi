@@ -114,7 +114,7 @@ def read_lexiconp(filename):
     return ans
 
 
-def write_nonterminal_arcs(loop_state, shared_state,
+def write_nonterminal_arcs(start_state, loop_state, new_state,
                            nonterminals, left_context_phones):
     """This function relates to the grammar-decoding setup, see
     kaldi-asr.org/doc/grammar.html.  It is called from write_fst_no_silence
@@ -122,21 +122,30 @@ def write_nonterminal_arcs(loop_state, shared_state,
     in the lexicon FST that relate to nonterminal symbols.
     See the section "Special symbols in L.fst,
     kaldi-asr.org/doc/grammar.html#grammar_special_l.
+       start_state: the start-state of L.fst.
        loop_state:  the state of high out-degree in L.fst where words leave
                   and enter.
-       shared_state: a newly allocated state that this function uses
-                  as the destination-state of arcs that need to be
-                  followed by all left-context phones.
+       new_state: the number from which this function can start allocating its
+                  own states.  the updated value of new_state will be returned.
        nonterminals: the user-defined nonterminal symbols as a list of
           strings, e.g. ['#nonterm:contact_list', ... ].
        left_context_phones: a list of phones that may appear as left-context,
           e.g. ['a', 'ah', ... '#nonterm_bos'].
     """
-    for nonterminal in nonterminals + ['#nonterm_begin']:
+    shared_state = new_state
+    new_state += 1
+    final_state = new_state
+    new_state += 1
+
+    print("{src}\t{dest}\t{phone}\t{word}\t{cost}".format(
+        src=start_state, dest=shared_state,
+        phone='#nonterm_begin', word='#nonterm_begin',
+        cost=0.0))
+
+    for nonterminal in nonterminals:
         print("{src}\t{dest}\t{phone}\t{word}\t{cost}".format(
             src=loop_state, dest=shared_state,
-            phone=nonterminal,
-            word=nonterminal,
+            phone=nonterminal, word=nonterminal,
             cost=0.0))
     # this_cost equals log(len(left_context_phones)) but the expression below
     # better captures the meaning.  Applying this cost to arcs keeps the FST
@@ -149,10 +158,13 @@ def write_nonterminal_arcs(loop_state, shared_state,
         print("{src}\t{dest}\t{phone}\t{word}\t{cost}".format(
             src=shared_state, dest=loop_state,
             phone=left_context_phone, word='<eps>', cost=this_cost))
-    # self-loop at loop-state with #nonterm_end as ilabel and olabel
+    # arc from loop-state to a final-state with #nonterm_end as ilabel and olabel
     print("{src}\t{dest}\t{phone}\t{word}\t{cost}".format(
-        src=loop_state, dest=loop_state,
+        src=loop_state, dest=final_state,
         phone='#nonterm_end', word='#nonterm_end', cost=0.0))
+    print("{state}\t{final_cost}".format(
+        state=final_state, final_cost=0.0))
+    return new_state
 
 
 
@@ -194,10 +206,9 @@ def write_fst_no_silence(lexicon, nonterminals=None, left_context_phones=None):
             cost=(cost if i <= 0 else 0.0)))
 
     if nonterminals is not None:
-        shared_state = new_state
-        new_state += 1
-        write_nonterminal_arcs(loop_state, shared_state,
-                               nonterminals, left_context_phones)
+        new_state = write_nonterminal_arcs(
+            start_state, loop_state, new_state,
+            nonterminals, left_context_phones)
 
     print("{state}\t{final_cost}".format(
         state=loop_state,
@@ -281,10 +292,9 @@ def write_fst_with_silence(lexicon, sil_prob, sil_phone, sil_disambig,
             cost=sil_cost + (pron_cost if i <= 0 else 0.0)))
 
     if nonterminals is not None:
-        shared_state = new_state
-        new_state += 1
-        write_nonterminal_arcs(loop_state, shared_state,
-                               nonterminals, left_context_phones)
+        new_state = write_nonterminal_arcs(
+            start_state, loop_state, new_state,
+            nonterminals, left_context_phones)
 
     print("{state}\t{final_cost}".format(
         state=loop_state,

@@ -53,16 +53,27 @@ int main(int argc, char *argv[]) {
         "and write that to disk instead).  Mostly intended for demonstration\n"
         "and testing purposes (since it may be more convenient to construct\n"
         "GrammarFst from code).  See kaldi-asr.org/doc/grammar.html\n"
+        "Can also be used to prepares FSTs for this use, by calling\n"
+        "PrepareForGrammarFst(), which does things like adding final-probs and\n"
+        "making small structural tweaks to the FST\n"
         "\n"
-        "Usage: make-grammar-fst [options] <top-level-fst> <symbol1> <fst1> \\\n"
-        "                          [<symbol2> <fst2> ...]] <fst-out>\n"
+        "Usage (1): make-grammar-fst [options] <top-level-fst> <symbol1> <fst1> \\\n"
+        "                            [<symbol2> <fst2> ...]] <fst-out>\n"
         "\n"
         "<symbol1>, <symbol2> are the integer ids of the corresponding\n"
         " user-defined nonterminal symbols (e.g. #nonterm:contact_list) in the\n"
         " phones.txt file.\n"
         "e.g.: make-grammar-fst --nonterm-phones-offset=317 HCLG.fst \\\n"
         "            320 HCLG1.fst HCLG_grammar.fst\n"
-        "The --nonterm-phones-offset option is required.\n";
+        "\n"
+        "Usage (2): make-grammar-fst <fst-in> <fst-out>\n"
+        "  Prepare individual FST for compilation into GrammarFst.\n"
+        "  E.g. make-grammar-fst HCLG.fst HCLGmod.fst.  The outputs of this\n"
+        "   will then become the arguments <top-level-fst>, <fst1>, ... for usage\n"
+        "   pattern (1).\n"
+        "\n"
+        "The --nonterm-phones-offset option is required for both usage patterns.\n";
+
 
     ParseOptions po(usage);
 
@@ -89,9 +100,19 @@ int main(int argc, char *argv[]) {
       KALDI_ERR << "The --nonterm-phones-offset option must be supplied "
           "and positive.";
 
+    if (po.NumArgs() == 2) {
+      // this usage pattern calls PrepareForGrammarFst().
+      VectorFst<StdArc> *fst = ReadFstKaldi(po.GetArg(1));
+      PrepareForGrammarFst(nonterm_phones_offset, fst);
+      // This will write it as VectorFst; to avoid it having to be converted to
+      // ConstFst when read again by make-grammar-fst, you may want to pipe
+      // through fstconvert --fst_type=const.
+      WriteFstKaldi(*fst, po.GetArg(2));
+      exit(0);
+    }
+
     std::string top_fst_str = po.GetArg(1),
         fst_out_str = po.GetArg(po.NumArgs());
-
 
     ConstFst<StdArc> *top_fst = ReadAsConstFst(top_fst_str);
     std::vector<std::pair<int32, const ConstFst<StdArc>* > > pairs;
@@ -99,7 +120,7 @@ int main(int argc, char *argv[]) {
     int32 num_pairs = (po.NumArgs() - 2) / 2;
     for (int32 i = 1; i <= num_pairs; i++) {
       int32 nonterminal;
-      std::string nonterm_str = po.GetArg(2*i + 1);
+      std::string nonterm_str = po.GetArg(2*i);
       if (!ConvertStringToInteger(nonterm_str, &nonterminal) ||
           nonterminal <= 0)
         KALDI_ERR << "Expected positive integer as nonterminal, got: "
@@ -123,8 +144,8 @@ int main(int argc, char *argv[]) {
       CopyToVectorFst(grammar_fst, &vfst);
       ConstFst<StdArc> cfst(vfst);
 
-      bool binary = true;
-      Output ko(fst_out_str, binary);
+      bool binary = true, write_binary_header = false;  // suppress the ^@B
+      Output ko(fst_out_str, binary, write_binary_header);
       FstWriteOptions wopts(kaldi::PrintableWxfilename(fst_out_str));
       cfst.Write(ko.Stream(), wopts);
     }

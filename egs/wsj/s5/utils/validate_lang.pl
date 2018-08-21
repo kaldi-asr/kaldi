@@ -479,9 +479,9 @@ sub check_summation {
   %sum = (%silence, %nonsilence, %disambig);
   $sum{"<eps>"} = 1;
 
-  my $ok = 1
+  my $ok = 1;
   foreach $p (keys %psymtab) {
-    if (! defined $sum{$p} and $p !~ m/^#nonterm/) {
+    if (! defined $sum{$p} && $p !~ m/^#nonterm/) {
       $exit = 1;  $ok = 0;  print("--> ERROR: phone $p is not in silence.txt, nonsilence.txt or disambig.txt...");
     }
   }
@@ -807,10 +807,11 @@ if (-s "$lang/phones/word_boundary.int") {
     $wordseq_syms = "";
     foreach (1 .. $wlen) {
       $id = int(rand(scalar(keys %wint2sym)));
-      # exclude disambiguation symbols, BOS and EOS and epsilon from the word
-      # sequence.
+      # exclude disambiguation symbols, BOS and EOS, epsilon, and
+      # grammar-related symbols from the word sequence.
       while (defined $wdisambig_words_hash{$id} or
-             $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or $id == 0) {
+             $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
+             $wint2sym{$id} =~ m/^#nonterm/ or $id == 0) {
         $id = int(rand(scalar(keys %wint2sym)));
       }
       $wordseq_syms = $wordseq_syms . $wint2sym{$id} . " ";

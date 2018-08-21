@@ -486,7 +486,7 @@ class ArcIterator<GrammarFst> {
     BaseStateId base_state = static_cast<int32>(s);
     const GrammarFst::FstInstance &instance = fst.instances_[instance_id];
     const ConstFst<StdArc> *base_fst = instance.fst;
-    if (fst.Final(base_state).Value() != KALDI_GRAMMAR_FST_SPECIAL_WEIGHT) {
+    if (base_fst->Final(base_state).Value() != KALDI_GRAMMAR_FST_SPECIAL_WEIGHT) {
       dest_instance_ = instance_id;
       base_fst->InitArcIterator(s, &data_);
       i_ = 0;
@@ -512,9 +512,9 @@ class ArcIterator<GrammarFst> {
   inline bool Done() {
     if (i_ < data_.narcs) {
       CopyArcToTemp();
-      return true;
-    } else {
       return false;
+    } else {
+      return true;
     }
   }
 

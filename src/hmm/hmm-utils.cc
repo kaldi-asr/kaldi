@@ -449,7 +449,7 @@ public:
         KALDI_ERR << "AddSelfLoops: graph already has self-loops.";
       return trans_model_.TransitionIdToTransitionState(label);
     } else {  // 0 or (presumably) disambiguation symbol.  Map to zero
-      int32 big_number = kNontermBigNumber;  // 1000000
+      int32 big_number = fst::kNontermBigNumber;  // 1000000
       if (label != 0 && label < big_number)
         KALDI_ASSERT(std::binary_search(disambig_syms_.begin(),
                                         disambig_syms_.end(),

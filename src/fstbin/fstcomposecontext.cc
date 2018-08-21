@@ -151,7 +151,7 @@ int main(int argc, char *argv[]) {
                      fst, &composed_fst, &ilabels);
     } else {
       // The grammar-FST case. See ../doc/grammar.dox for an intro.
-      if (context_width != 2 | central_position != 1) {
+      if (context_width != 2 || central_position != 1) {
         KALDI_ERR << "Grammar-fst graph creation only supports models with left-"
             "biphone context.  (--nonterm-phones-offset option was supplied).";
       }
