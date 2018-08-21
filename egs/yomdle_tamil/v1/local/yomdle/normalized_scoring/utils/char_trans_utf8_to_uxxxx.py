@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+""" This script convertss the text from character format to
+    hexadecimal format (uxxxx).
+    Eg. char_trans_utf8_to_uxxxx.py <input-file> <output-file>
+"""
+
 import sys
 from snor import SnorIter
 

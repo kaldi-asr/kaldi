@@ -107,7 +107,7 @@ fi
 # Decode unsupervised data and write lattices in non-compact
 # undeterminized format
 if [ $stage -le 5 ]; then
-  steps/nnet3/decode_semisup.sh --num-threads 4 --nj $nj --cmd "$decode_cmd" --beam 12 \
+  steps/nnet3/decode_semisup.sh --num-threads 4 --nj $nj --cmd "$cmd" --beam 12 \
             --frames-per-chunk 340 \
             --acwt 1.0 --post-decode-acwt 10.0 --write-compact false --skip-scoring true \
             --scoring-opts "--min-lmwt 6 --max-lmwt 6" --word-determinize false \
@@ -117,7 +117,7 @@ fi
 # Get best path alignment and lattice posterior of best path alignment to be
 # used as frame-weights in lattice-based training
 if [ $stage -le 8 ]; then
-  steps/best_path_weights.sh --cmd "${train_cmd}" --acwt 0.1 \
+  steps/best_path_weights.sh --cmd "${cmd}" --acwt 0.1 \
     data/$unsupervised_set \
     $sup_chain_dir/decode_${unsupervised_set} \
     $sup_chain_dir/best_path_$unsupervised_set
@@ -134,7 +134,7 @@ diff $sup_tree_dir/tree $sup_chain_dir/tree || { echo "$0: $sup_tree_dir/tree an
 # Train denominator FST using phone alignments from
 # supervised and unsupervised data
 if [ $stage -le 10 ]; then
-  steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$train_cmd" \
+  steps/nnet3/chain/make_weighted_den_fst.sh --num-repeats $lm_weights --cmd "$cmd" \
     --lm_opts '--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000' \
     $sup_tree_dir $sup_chain_dir/best_path_$unsupervised_set \
     $dir
@@ -201,7 +201,7 @@ if [ -z "$sup_egs_dir" ]; then
     touch $sup_egs_dir/.nodelete # keep egs around when that run dies.
 
     echo "$0: generating egs from the supervised data"
-    steps/nnet3/chain/get_egs.sh --cmd "$decode_cmd" \
+    steps/nnet3/chain/get_egs.sh --cmd "$cmd" \
                --left-tolerance 3 --right-tolerance 3 \
                --left-context $egs_left_context --right-context $egs_right_context \
                --frame-subsampling-factor $frame_subsampling_factor \
@@ -241,7 +241,7 @@ if [ -z "$unsup_egs_dir" ]; then
 
     echo "$0: generating egs from the unsupervised data"
     steps/nnet3/chain/get_egs.sh \
-      --cmd "$decode_cmd" --alignment-subsampling-factor 1 \
+      --cmd "$cmd" --alignment-subsampling-factor 1 \
       --left-tolerance $tolerance --right-tolerance $tolerance \
       --left-context $egs_left_context --right-context $egs_right_context \
       --frames-per-eg $unsup_frames_per_eg --frames-per-iter 2000000 \
@@ -257,7 +257,7 @@ fi
 
 comb_egs_dir=$dir/comb_egs
 if [ $stage -le 14 ]; then
-  steps/nnet3/chain/multilingual/combine_egs.sh --cmd "$train_cmd" \
+  steps/nnet3/chain/multilingual/combine_egs.sh --cmd "$cmd" \
     --block-size 64 \
     --lang2weight $supervision_weights 2 \
     $sup_egs_dir $unsup_egs_dir $comb_egs_dir
@@ -274,7 +274,7 @@ if [ $stage -le 15 ]; then
   steps/nnet3/chain/train.py --stage $train_stage \
     --egs.dir "$comb_egs_dir" \
     --egs.chunk-width=$chunk_width \
-    --cmd "$decode_cmd" \
+    --cmd "$cmd" \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient 0.1 \

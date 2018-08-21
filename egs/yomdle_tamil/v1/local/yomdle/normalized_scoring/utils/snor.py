@@ -1,11 +1,12 @@
+#!/usr/bin/env python3
 
+""" This script defines an iterator over SNOR-formatted files.
+    The iterator iterates over lines, returning tuples of form (utt, utt-id).
+    snor-format:
+    some text goes here (id-of-utterance)
+    some other text here (id-of-next-utterance)
+"""
 
-# Defines an iterator over SNOR-formatted files.
-# File format is:
-#   some text goes here (id-of-utterance)
-#   some other text here (id-of-next-utterance)
-#
-# The iterator iterates over lines, returning tuples of form (utt, utt-id)
 def SnorIter(fh):
     for line in fh:
         lparen_location = line.rfind("(")

@@ -22,28 +22,28 @@ uttid_to_text = dict()  #stores uttid and text
 with open(text_file) as text_fh:
     for uttid_text in text_fh:
         uttid_text_vect = uttid_text.strip().split(" ")
-        uttid = uttid_text_vect[0]
+        utt_id = uttid_text_vect[0]
         text_vect = uttid_text_vect[1:]
         text = " ".join(text_vect)
-        uttid_to_text[uttid] = text
+        uttid_to_text[utt_id] = text
 
 utt2spk_file = os.path.join(args.dir, 'backup', 'utt2spk')
 uttid_to_spk = dict()  #stores uttid and speaker
 with open(utt2spk_file) as utt2spk_fh:
     for uttid_spk in utt2spk_fh:
         uttid_spk_vect = uttid_spk.strip().split(" ")
-        uttid = uttid_spk_vect[0]
+        utt_id = uttid_spk_vect[0]
         spk = uttid_spk_vect[1]
-        uttid_to_spk[uttid] = spk
+        uttid_to_spk[utt_id] = spk
 
 image_file = os.path.join(args.dir, 'backup', 'images.scp')
 uttid_to_path = dict()  # stores uttid and image path
 with open(image_file) as image_fh:
     for uttid_path in image_fh:
         uttid_path_vect = uttid_path.strip().split(" ")
-        uttid = uttid_path_vect[0]
+        utt_id = uttid_path_vect[0]
         path = uttid_path_vect[1]
-        uttid_to_path[uttid] = path
+        uttid_to_path[utt_id] = path
 
 image_file = os.path.join(args.dir + '/', 'images.scp')
 image_fh = open(image_file, 'w')
@@ -56,9 +56,9 @@ feats_scp_file = os.path.join(args.dir, 'feats.scp')
 with open(feats_scp_file) as feats_scp_fh:
     for uttid_feats in feats_scp_fh:
         uttid_feats_vect = uttid_feats.strip().split(" ")
-        uttid = uttid_feats_vect[0]
-        imageid = "_".join(uttid.split("_")[:-1])
-        text_fh.write(uttid + ' ' + uttid_to_text[imageid] + '\n')
-        utt2spk_fh.write(uttid + ' ' + uttid_to_spk[imageid] + '\n')
-        image_fh.write(uttid + ' ' + uttid_to_path[imageid] + '\n')
+        utt_id = uttid_feats_vect[0]
+        image_id = "_".join(utt_id.split("_")[:-1])
+        text_fh.write(utt_id + ' ' + uttid_to_text[image_id] + '\n')
+        utt2spk_fh.write(utt_id + ' ' + uttid_to_spk[image_id] + '\n')
+        image_fh.write(utt_id + ' ' + uttid_to_path[image_id] + '\n')
 

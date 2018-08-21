@@ -15,6 +15,7 @@ set -e
 stage=0
 dir=data/local/local_lm
 order=4
+bypass_metaparam_optim_opt=
 echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh || exit 1;
 
@@ -35,7 +36,6 @@ export PATH=$KALDI_ROOT/tools/pocolm/scripts:$PATH
  fi
 ) || exit 1;
 
-bypass_metaparam_optim_opt=
 # If you want to bypass the metaparameter optimization steps with specific metaparameters
 # un-comment the following line, and change the numbers to some appropriate values.
 # You can find the values from output log of train_lm.py.
@@ -92,7 +92,7 @@ if [ $stage -le 1 ]; then
     lm_name+="_`echo ${min_counts} | tr -s "[:blank:]" "_" | tr "=" "-"`"
   fi
   unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
-  train_lm.py  --wordlist=${wordlist} --num-splits=5 --warm-start-ratio=1 \
+  train_lm.py  --wordlist=${wordlist} --num-splits=20 --warm-start-ratio=20 \
                --limit-unk-history=true \
                ${bypass_metaparam_optim_opt} \
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}

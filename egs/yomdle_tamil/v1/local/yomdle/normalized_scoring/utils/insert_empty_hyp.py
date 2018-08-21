@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+""" This script adds ids with empty utterance. It is used during scoring
+    in cases where some of the reference ids are missing in the hypothesis.
+    Eg. insert_empty_hyp.py <ids-to-insert> <in-hyp-file> <out-hyp-file>
+"""
+
 import sys
 from snor import SnorIter
 

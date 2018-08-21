@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+""" This script normalizes a text file. It performs following normalizations:
+    dots/filled-circles to periods, # variuos dashes to regular hyphen, full
+    width left/right-paren to regular left/right paren.
+    Eg. normalize_common.py <input-file> <output-file>
+"""
 import sys
 from snor import SnorIter
 

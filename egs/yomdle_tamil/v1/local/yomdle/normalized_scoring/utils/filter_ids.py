@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+""" This script is used for partial scoring, it will remove the given
+    utterance ids and will score with the remailing utterance ids.
+    Eg. filter_ids.py <ids-to-filter> <input-trans> <output-trans>
+"""
+
 import unicodedata
 import sys
 from snor import SnorIter

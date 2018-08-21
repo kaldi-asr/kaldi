@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+""" This script normalizes a text file. It performs following normalizations:
+    multiple continuous spaces to single space, removes spaces at the begining
+    and end of the word.
+    Eg. normalize_spaces.py <input-file> <output-file>
+"""
 import sys
 from snor import SnorIter
 

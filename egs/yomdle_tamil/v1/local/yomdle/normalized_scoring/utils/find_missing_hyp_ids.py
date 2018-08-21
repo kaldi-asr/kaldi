@@ -1,3 +1,10 @@
+#!/usr/bin/env python3
+
+""" This script finds and prints the hypothesis utterance ids which
+    are not present in the reference utterance ids.
+    Eg. find_missing_hyp_ids.py <ref-file> <hyp-file>
+"""
+
 import sys
 from snor import SnorIter
 

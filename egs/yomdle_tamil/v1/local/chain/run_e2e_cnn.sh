@@ -3,12 +3,12 @@
 # Copyright    2017  Hossein Hadian
 
 # This script does end2end chain training (i.e. from scratch)
-# local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b/ exp/chain/e2e_cnn_1a/
+# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
 # System                          e2e_cnn_1a
 #                                 score_basic  score_nomalized
 # WER                             17.65        14.1
-# WER (rescored)                  15.35        10.3
-# CER                              3.97        12.1
+# WER (rescored)                  15.35        12.1
+# CER                              3.97         4.0
 # CER (rescored)                   3.41         3.5
 # Final train prob                0.1402
 # Final valid prob                0.1045

@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+
+""" This script normalizes a text file. It performs following normalizations:
+    remove tatweel, vowels and hamza, RTL and LTR marks,
+    convert arabic keheh to arabic kaf, Farsi Yeh to Arabic Yeh,
+    Extended (farsi) arabic-indic digit to regular arabic-indic digit,
+    arabic comma to regular comma.
+    Eg. normalize_farsi.py <input-file> <output-file>
+"""
+
 import sys
 from snor import SnorIter
 
