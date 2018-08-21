@@ -49,7 +49,10 @@ if [ $stage -le 2 ]; then
 0    1    GROUP  GROUP
 1    2    ONE   ONE   0.69314718055994
 1    2    TWO   TWO  0.69314718055994
-2
+1    2    <eps>  <eps>  5.0
+2    3    ASSIST   ASSIST  0.69314718055994
+2  0.69314718055994
+3
 EOF
   utils/mkgraph.sh --self-loop-scale 1.0 $lang $tree_dir $tree_dir/grammar1
 fi
@@ -67,7 +70,9 @@ lang=data/lang_nosp_grammar1a
 cat <<EOF | fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt > $lang/G.fst
 0    1    GROUP   GROUP
 1    2    #nonterm:contact_list  <eps>
-2
+2    3    ASSIST   ASSIST  0.69314718055994
+2  0.69314718055994
+3
 EOF
 utils/mkgraph.sh --self-loop-scale 1.0 $lang $tree_dir $tree_dir/grammar1a
 fi
@@ -81,6 +86,7 @@ if [ $stage -le 4 ]; then
 0    1    #nonterm_begin <eps>
 1    2    ONE  ONE    0.69314718055994
 1    2    TWO  TWO    0.69314718055994
+1    2    <eps>  <eps>  5.0
 2    3    #nonterm_end <eps>
 3
 EOF
