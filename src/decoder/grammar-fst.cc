@@ -454,7 +454,8 @@ class GrammarFstPreparer {
   GrammarFstPreparer(int32 nonterm_phones_offset,
                      VectorFst<StdArc> *fst):
       nonterm_phones_offset_(nonterm_phones_offset),
-      fst_(fst), num_new_states_(0), simple_final_state_(kNoStateId) { }
+      fst_(fst), orig_num_states_(fst->NumStates()),
+      simple_final_state_(kNoStateId) { }
 
   void Prepare() {
     if (fst_->Start() == kNoStateId) {
@@ -468,12 +469,7 @@ class GrammarFstPreparer {
     }
     for (StateId s = 0; s < fst_->NumStates(); s++) {
       if (IsSpecialState(s)) {
-        bool transitions_to_multiple_instances,
-            has_olabel_problem;
-        CheckProperties(s, &transitions_to_multiple_instances,
-                        &has_olabel_problem);
-        if (transitions_to_multiple_instances ||
-            has_olabel_problem || fst_->Final(s) != Weight::Zero()) {
+        if (NeedEpsilons(s)) {
           InsertEpsilonsForState(s);
           // now all olabels on arcs leaving from state s will be input-epsilon,
           // so it won't be treated as a 'special' state any more.
@@ -484,9 +480,8 @@ class GrammarFstPreparer {
         }
       }
     }
-    if (simple_final_state_ != kNoStateId)
-      num_new_states_++;
-    KALDI_LOG << "Added " << num_new_states_ << " new states while "
+    StateId num_new_states = fst_->NumStates() - orig_num_states_;
+    KALDI_LOG << "Added " << num_new_states << " new states while "
         "preparing for grammar FST.";
   }
 
@@ -508,41 +503,12 @@ class GrammarFstPreparer {
   // one, all correspond to the same nonterminal symbol.
   void MaybeAddFinalProbToState(StateId s);
 
-  /**
-     This function does some checking for 'special states', that they have
-     certain expected properties, and also detects certain problematic
-     conditions that we need to fix.
 
-     @param [in] s  The state whose properties we are checking.  It is
-                   expected that state 's' has at least one arc leaving it
-                   with a special nonterminal symbol on it.
-     @param [out] transitions_to_multiple_instances   Will be set to true
-                   if state s has arcs out of it that will transition to
-                   multiple FST instances (for example: one to this same FST, and
-                   one to the FST for a user-defined nonterminal).  If the arcs
-                   leaving this state do not all have ilabels corresponding to
-                   a single symbol #nontermXXX, then we set this to true;
-                   also, if this state has arcs with a user-defined nonterminal
-                   on their label and their destination-states are not all the
-                   same, we also set this to true.  (This should not happen, but
-                   we check for it anyway).
-     @param [out] has_olabel_problem   True if this state has at least one
-                   arc with an ilabel corresponding to a user-defined
-                   nonterminal or #nonterm_exit, and an olabel that is
-                   nonzero.  In this case we will insert an input-epsilon
-                   arc to fix the problem, basically using the same code as to
-                   fix the 'transitions_to_multiple_instances' problem.
-                   It's maybe not 100% ideal (it would have been better to push
-                   the label backward), but in the big scheme of things this is
-                   a very insignificant issue; it may not even happen.
-
-   This function also does some other checks that things are as expected,
-   and will crash if those checks fail.
-  */
-
-  void CheckProperties(StateId s,
-                       bool *transitions_to_multiple_instances,
-                       bool *has_olabel_problem) const;
+  // This function does some checking for 'special states', that they have
+  // certain expected properties, and also detects certain problematic
+  // conditions that we need to fix.  It returns true if we need to
+  // modify this state (by adding input-epsilon arcs), and false otherwise.
+  bool NeedEpsilons(StateId s) const;
 
   // Fixes any final-prob-related problems with this state.  The problem we
   // aim to fix is that there may be arcs with nonterminal symbol
@@ -557,6 +523,41 @@ class GrammarFstPreparer {
   // doing it this way is clearer; and the time taken here should actually be
   // tiny.
   void FixArcsToFinalStates(StateId s);
+
+
+
+  // This struct helps us to split up arcs leaving a 'special state'
+  // (c.f. IsSpecialState()) into as few categories as possible, to allow us to
+  // insert a small number of epsilon states while allowing the
+  // resulting FST to have properties suitable in class GrammarFst.
+  //
+  // The 'nonterminal' and 'nextstate' have to do with ensuring that all
+  // arcs leaving a particular FST state transition to the same FST instance
+  // (which, in turn, helps to keep the ArcIterator code efficient).
+  //
+  // The 'olabel' has to do with ensuring that arcs with user-defined nonterminals
+  // or kNontermEnd have no olabels on them (this is a requirement of the
+  // CombineArcs() function of GrammarFst).
+  struct ArcCategory {
+    int32 nonterminal;  //  The nonterminal symbol #nontermXXX encoded into the ilabel,
+                        // or 0 if the ilabel was <kNontermBigNumber.
+    StateId nextstate; //  If nonterminal is a user-defined nonterminal like #nonterm:foo,
+                        // then the destination state of the arc, else kNoStateId (-1).
+    Label olabel;       //  If nonterminal is #nonterm_end or is  a user-defined nonterminal
+                        // (e.g. #nonterm:foo), then the olabel on the arc; else, 0.
+    bool operator < (const ArcCategory &other) const {
+      if (nonterminal < other.nonterminal) return true;
+      else if (nonterminal > other.nonterminal) return false;
+      if (nextstate < other.nextstate) return true;
+      else if (nextstate > other.nextstate) return false;
+      return olabel < other.olabel;
+    }
+  };
+
+  // This function, which is used in CheckProperties() and InsertEpsilonsForState(),
+  // works out the categrory of the arc; see documentation of struct ArcCategory for more details.
+  void GetCategoryOfArc(const Arc &arc,
+                        ArcCategory *arc_category) const;
 
   // For each non-self-loop arc out of state s, replace that arc with an
   // epsilon-input arc to a newly created state, with the arc's original weight
@@ -573,7 +574,7 @@ class GrammarFstPreparer {
 
   int32 nonterm_phones_offset_;
   VectorFst<StdArc> *fst_;
-  int32 num_new_states_;
+  StateId orig_num_states_;
   // If needed we may add a 'simple final state' to fst_, which has unit
   // final-prob.  This is used when we ensure that states with kNontermExit on
   // them transition to a state with unit final-prob, so we don't need to
@@ -582,6 +583,12 @@ class GrammarFstPreparer {
 };
 
 bool GrammarFstPreparer::IsSpecialState(StateId s) const {
+  if (fst_->Final(s).Value() == KALDI_GRAMMAR_FST_SPECIAL_WEIGHT) {
+    // TODO: find a way to detect if it was a coincidence, or not make it an
+    // error, because in principle a user-defined grammar could contain this
+    // special cost.
+    KALDI_WARN << "It looks like you are calling PrepareForGrammarFst twice.";
+  }
   for (ArcIterator<FST> aiter(*fst_, s ); !aiter.Done(); aiter.Next()) {
     const Arc &arc = aiter.Value();
     if (arc.ilabel >= kNontermBigNumber) // 1 million
@@ -590,95 +597,71 @@ bool GrammarFstPreparer::IsSpecialState(StateId s) const {
   return false;
 }
 
-void GrammarFstPreparer::CheckProperties(StateId s,
-                                         bool *transitions_to_multiple_instances,
-                                         bool *has_olabel_problem) const {
-  *transitions_to_multiple_instances = false;
-  *has_olabel_problem = false;
+bool GrammarFstPreparer::NeedEpsilons(StateId s) const {
 
-  // The set 'dest_nonterminals' will encode something related to the set of
-  // other FSTs this FST might transition to.  It will contain:
-  //   0 if this state has any transition leaving it that is to this same FST
-  //     (i.e. an epsilon or a normal transition-id)
-  //   #nontermXXX if this state has an arc leaving it with an ilabel which
-  //       would be decoded as the pair (#nontermXXX, p1).  Here, #nontermXXX is
-  //       either an inbuilt nonterminal like #nonterm_begin, #nonterm_end or
-  //       #nonterm_reenter, or a user-defined nonterminal like #nonterm:foo.
-  std::set<int32> dest_nonterminals;
-  // normally we'll have encoding_multiple = 1000, big_number = 10000000.
-  int32 encoding_multiple = GetEncodingMultiple(nonterm_phones_offset_),
-      big_number = kNontermBigNumber;
+  // See the documentation for GetCategoryOfArc() for explanation of what these are.
+  std::set<ArcCategory> categories;
 
-  // If we encounter arcs with user-defined nonterminals on them (unlikely), we
-  // need to make sure that their destination-states are all the same.  If not,
-  // they would transition to different FST instances, so we'd have to setq
-  // 'transitions_to_multiple_instances' to true.  'destination_state' is used
-  // to check this.
-  StateId destination_state = kNoStateId;
+  if (fst_->Final(s) != Weight::Zero()) {
+    // A state having a final-prob is considered the same as it having
+    // a non-nonterminal arc out of it.. this would be like a transition
+    // within the same FST.
+    ArcCategory category;
+    category.nonterminal = 0;
+    category.nextstate = kNoStateId;
+    category.olabel = 0;
+    categories.insert(category);
+  }
+
+  int32 big_number = kNontermBigNumber,
+      encoding_multiple = GetEncodingMultiple(nonterm_phones_offset_);
 
   for (ArcIterator<FST> aiter(*fst_, s ); !aiter.Done(); aiter.Next()) {
     const Arc &arc = aiter.Value();
-    int32 nonterminal;
-    if (arc.ilabel < big_number) {
-      nonterminal = 0;
-    } else {
-      nonterminal = (arc.ilabel - big_number) / encoding_multiple;
-      if (nonterminal <= nonterm_phones_offset_) {
-        KALDI_ERR << "Problem decoding nonterminal symbol "
-            "(wrong --nonterm-phones-offset option?), ilabel="
-                  << arc.ilabel;
-      }
-      if (nonterminal >= GetPhoneSymbolFor(kNontermUserDefined)) {
-        // This is a user-defined symbol.
-        if (destination_state != kNoStateId &&
-            arc.nextstate != destination_state) {
-          // The code is not expected to come here.
-          *transitions_to_multiple_instances = true;
-        }
-        destination_state = arc.nextstate;
+    ArcCategory category;
+    GetCategoryOfArc(arc, &category);
+    categories.insert(category);
 
-        // Check that the destination state of this arc has arcs with
-        // kNontermReenter on them.  We'll separately check that such states
-        // don't have other types of arcs leaving them (search for
-        // kNontermReenter below), so it's sufficient to check the first arc.
-        ArcIterator<FST> next_aiter(*fst_, arc.nextstate);
-        if (next_aiter.Done())
-          KALDI_ERR << "Destination state of a user-defined nonterminal "
-              "has no arcs leaving it.";
-        const Arc &next_arc = next_aiter.Value();
-        int32 next_nonterminal = (next_arc.ilabel - big_number) /
-            encoding_multiple;
-        if (next_nonterminal != nonterm_phones_offset_ + kNontermReenter) {
-          KALDI_ERR << "Expected arcs with user-defined nonterminals to be "
-              "followed by arcs with kNontermReenter.";
-        }
-        if (arc.olabel != 0)
-          *has_olabel_problem = true;
-      }
-      if (nonterminal == GetPhoneSymbolFor(kNontermBegin) &&
-          s != fst_->Start()) {
-        KALDI_ERR << "#nonterm_begin symbol is present but this is not the "
-            "first arc.  Did you do fstdeterminizestar while compiling?";
-      }
-      if (nonterminal == GetPhoneSymbolFor(kNontermEnd)) {
-        if (fst_->NumArcs(arc.nextstate) != 0 ||
-            fst_->Final(arc.nextstate) == Weight::Zero()) {
-          KALDI_ERR << "Arc with kNontermEnd is not the final arc.";
-        }
-        if (arc.olabel != 0)
-          *has_olabel_problem = true;
+    // the rest of this block is just checking.
+    int32 nonterminal = category.nonterminal;
+
+    if (nonterminal >= GetPhoneSymbolFor(kNontermUserDefined)) {
+      // Check that the destination state of this arc has arcs with
+      // kNontermReenter on them.  We'll separately check that such states
+      // don't have other types of arcs leaving them (search for
+      // kNontermReenter below), so it's sufficient to check the first arc.
+      ArcIterator<FST> next_aiter(*fst_, arc.nextstate);
+      if (next_aiter.Done())
+        KALDI_ERR << "Destination state of a user-defined nonterminal "
+            "has no arcs leaving it.";
+      const Arc &next_arc = next_aiter.Value();
+      int32 next_nonterminal = (next_arc.ilabel - big_number) /
+          encoding_multiple;
+      if (next_nonterminal != GetPhoneSymbolFor(kNontermReenter)) {
+        KALDI_ERR << "Expected arcs with user-defined nonterminals to be "
+            "followed by arcs with kNontermReenter.";
       }
     }
-    dest_nonterminals.insert(nonterminal);
+    if (nonterminal == GetPhoneSymbolFor(kNontermBegin) &&
+        s != fst_->Start()) {
+      KALDI_ERR << "#nonterm_begin symbol is present but this is not the "
+          "first arc.  Did you do fstdeterminizestar while compiling?";
+    }
+    if (nonterminal == GetPhoneSymbolFor(kNontermEnd)) {
+      if (fst_->NumArcs(arc.nextstate) != 0 ||
+          fst_->Final(arc.nextstate) == Weight::Zero()) {
+        KALDI_ERR << "Arc with kNontermEnd is not the final arc.";
+      }
+    }
   }
-  if (dest_nonterminals.size() > 1) {
+  if (categories.size() > 1) {
     // This state has arcs leading to multiple FST instances.
-    *transitions_to_multiple_instances = true;
-    // Do some checking, to see that there is nothing really unexpected in
+    // Do some checking to see that there is nothing really unexpected in
     // there.
-    for (std::set<int32>::const_iterator iter = dest_nonterminals.begin();
-         iter != dest_nonterminals.end(); ++iter) {
-      int32 nonterminal = *iter;
+    for (std::set<ArcCategory>::const_iterator
+             iter = categories.begin();
+         iter != categories.end(); ++iter) {
+      int32 nonterminal = iter->nonterminal;
       if (nonterminal == nonterm_phones_offset_ + kNontermBegin ||
           nonterminal == nonterm_phones_offset_ + kNontermReenter)
         // we don't expect any state which has symbols like (kNontermBegin:p1)
@@ -689,6 +672,16 @@ void GrammarFstPreparer::CheckProperties(StateId s,
             "other types of arc.";
     }
   }
+  // the first half of the || below relates to olabels on arcs with either
+  // user-defined nonterminals or #nonterm_end (which would become 'leaving_arc'
+  // in the CombineArcs() function of GrammarFst).  That function does not allow
+  // nonzero olabels on 'leaving_arc', which would be a problem if the
+  // 'arriving' arc had nonzero olabels, so we solve this by introducing
+  // input-epsilon arcs and putting the olabels on them instead.
+  bool need_epsilons = (categories.size() == 1 &&
+                        categories.begin()->olabel != 0) ||
+      categories.size() > 1;
+  return need_epsilons;
 }
 
 void GrammarFstPreparer::FixArcsToFinalStates(StateId s) {
@@ -736,59 +729,130 @@ void GrammarFstPreparer::MaybeAddFinalProbToState(StateId s) {
   }
 }
 
-
-void GrammarFstPreparer::InsertEpsilonsForState(StateId s) {
+void GrammarFstPreparer::GetCategoryOfArc(
+    const Arc &arc, ArcCategory *arc_category) const {
   int32 encoding_multiple = GetEncodingMultiple(nonterm_phones_offset_),
       big_number = kNontermBigNumber;
-  fst::MutableArcIterator<FST> iter(fst_, s);
-  for (; !iter.Done(); iter.Next()) {
-    Arc arc = iter.Value();
-    {
-      // Do a sanity check.  We shouldn't be inserting epsilons for certain
-      // types of state, so check that it's not one of those.
-      int32 nonterminal = (arc.ilabel - big_number) / encoding_multiple;
-      if (nonterminal == GetPhoneSymbolFor(kNontermBegin) ||
-          nonterminal == GetPhoneSymbolFor(kNontermReenter)) {
-        KALDI_ERR << "Something went wrong; did not expect to insert epsilons "
-            "for this type of state.";
-      }
+
+  int32 ilabel = arc.ilabel;
+  if (ilabel < big_number) {
+    arc_category->nonterminal = 0;
+    arc_category->nextstate = kNoStateId;
+    arc_category->olabel = 0;
+  } else {
+    int32 nonterminal = (ilabel - big_number) / encoding_multiple;
+    arc_category->nonterminal = nonterminal;
+    if (nonterminal <= nonterm_phones_offset_) {
+      KALDI_ERR << "Problem decoding nonterminal symbol "
+          "(wrong --nonterm-phones-offset option?), ilabel="
+                << ilabel;
     }
-    if (arc.nextstate != s) {
-      StateId new_state = fst_->AddState();
-      num_new_states_++;
-      Arc new_arc(arc);
-      new_arc.olabel = 0;
-      new_arc.weight = Weight::One();
-      fst_->AddArc(new_state, new_arc);
-      // now make this arc be an epsilon arc that goes to 'new_state',
-      // with unit weight but the original olabel of the arc.
-      arc.ilabel = 0;
-      arc.nextstate = new_state;
-      iter.SetValue(arc);
-    } else {  // Self-loop
-      KALDI_ASSERT(arc.ilabel < big_number &&
-                   "Self-loop with special label found.");
+    if (nonterminal >= GetPhoneSymbolFor(kNontermUserDefined)) {
+      // This is a user-defined symbol.
+      arc_category->nextstate = arc.nextstate;
+      arc_category->olabel = arc.olabel;
+    } else {
+      arc_category->nextstate = kNoStateId;
+      if (nonterminal == GetPhoneSymbolFor(kNontermEnd))
+        arc_category->olabel = arc.olabel;
+      else
+        arc_category->olabel = 0;
     }
   }
-  if (fst_->Final(s) != Weight::Zero()) {
-    if (fst_->Final(s).Value() == KALDI_GRAMMAR_FST_SPECIAL_WEIGHT) {
-      // TODO: find a way to detect if it was a coincidence, or not make it an
-      // error, because in principle a user-defined grammar could contain this
-      // special cost.
-      KALDI_ERR << "It looks like you are calling PrepareForGrammarFst twice.";
+}
+
+
+void GrammarFstPreparer::InsertEpsilonsForState(StateId s) {
+  // Maps from category of arc, to a pair:
+  //  the StateId is the state corresponding to that category.
+  //  the float is the cost on the arc leading to that state;
+  //   we compute the value that corresponds to the sum of the probabilities
+  //   of the leaving arcs, bearing in mind that p = exp(-cost).
+  // We don't insert the arc-category whose 'nonterminal' is 0 here (i.e. the
+  // category for normal arcs); those arcs stay at this state.
+  std::map<ArcCategory, std::pair<StateId, float> > category_to_state;
+
+  // This loop sets up 'category_to_state'.
+  for (fst::ArcIterator<FST> aiter(*fst_, s); !aiter.Done(); aiter.Next()) {
+    const Arc &arc = aiter.Value();
+    ArcCategory category;
+    GetCategoryOfArc(arc, &category);
+    int32 nonterminal = category.nonterminal;
+    if (nonterminal == 0)
+      continue;
+    if (nonterminal == GetPhoneSymbolFor(kNontermBegin) ||
+        nonterminal == GetPhoneSymbolFor(kNontermReenter)) {
+      KALDI_ERR << "Something went wrong; did not expect to insert epsilons "
+          "for this type of state.";
     }
-    if (simple_final_state_ == kNoStateId) {
-      simple_final_state_ = fst_->AddState();
-      fst_->SetFinal(simple_final_state_, Weight::One());
+    auto iter = category_to_state.find(category);
+    if (iter == category_to_state.end()) {
+      StateId new_state = fst_->AddState();
+      float cost = arc.weight.Value();
+      category_to_state[category] = std::pair<StateId, float>(new_state, cost);
+    } else {
+      std::pair<StateId, float> &p = iter->second;
+      p.second = -kaldi::LogAdd(-p.second, -arc.weight.Value());
     }
+  }
+
+  KALDI_ASSERT(!category_to_state.empty());  // would be a code error.
+
+  // 'arcs_from_this_state' is a place to put arcs that will put on this state
+  // after we delete all its existing arcs.
+  std::vector<Arc> arcs_from_this_state;
+  arcs_from_this_state.reserve(fst_->NumArcs(s) + category_to_state.size());
+
+  // add arcs corresponding to transitions to the newly created states, to
+  // 'arcs_from_this_state'
+  for (std::map<ArcCategory, std::pair<StateId, float> >::const_iterator
+           iter = category_to_state.begin(); iter != category_to_state.end();
+       ++iter) {
+    const ArcCategory &category = iter->first;
+    StateId new_state = iter->second.first;
+    float cost = iter->second.second;
     Arc arc;
     arc.ilabel = 0;
-    arc.olabel = 0;
-    arc.nextstate = simple_final_state_;
-    arc.weight = fst_->Final(s);
-    fst_->AddArc(s, arc);
-    fst_->SetFinal(s, Weight::Zero());
+    arc.olabel = category.olabel;
+    arc.weight = Weight(cost);
+    arc.nextstate = new_state;
+    arcs_from_this_state.push_back(arc);
   }
+
+  // Now add to 'arcs_from_this_state', and to the newly created states,
+  // arcs corresponding to each of the arcs that were originally leaving
+  // this state.
+  for (fst::ArcIterator<FST> aiter(*fst_, s); !aiter.Done(); aiter.Next()) {
+    const Arc &arc = aiter.Value();
+    ArcCategory category;
+    GetCategoryOfArc(arc, &category);
+    int32 nonterminal = category.nonterminal;
+    if (nonterminal == 0) { // this arc remains unchanged; we'll put it back later.
+      arcs_from_this_state.push_back(arc);
+      continue;
+    }
+    auto iter = category_to_state.find(category);
+    KALDI_ASSERT(iter != category_to_state.end());
+    Arc new_arc;
+    new_arc.ilabel = arc.ilabel;
+    if (arc.olabel == category.olabel) {
+      new_arc.olabel = 0;  // the olabel went on the epsilon-input arc.
+    } else {
+      KALDI_ASSERT(category.olabel == 0);
+      new_arc.olabel = arc.olabel;
+    }
+    StateId new_state = iter->second.first;
+    float epsilon_arc_cost = iter->second.second;
+    new_arc.weight = Weight(arc.weight.Value() - epsilon_arc_cost);
+    new_arc.nextstate = arc.nextstate;
+    fst_->AddArc(new_state, new_arc);
+  }
+
+  fst_->DeleteArcs(s);
+  for (size_t i = 0; i < arcs_from_this_state.size(); i++) {
+    fst_->AddArc(s, arcs_from_this_state[i]);
+  }
+  // leave the final-prob on this state as it was before.
 }
 
 
