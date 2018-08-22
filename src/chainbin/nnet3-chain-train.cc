@@ -20,6 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-chain-training.h"
+#include "cudamatrix/cu-allocator.h"
 
 
 int main(int argc, char *argv[]) {
@@ -52,6 +53,7 @@ int main(int argc, char *argv[]) {
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
     opts.Register(&po);
+    RegisterCuAllocatorOptions(&po);
 
     po.Read(argc, argv);
 

@@ -650,6 +650,9 @@ class NaturalGradientRepeatedAffineComponent: public RepeatedAffineComponent {
   // Copy constructor
   explicit NaturalGradientRepeatedAffineComponent(
       const NaturalGradientRepeatedAffineComponent &other);
+
+  virtual void ConsolidateMemory();
+
  private:
   virtual void Update(
       const CuMatrixBase<BaseFloat> &in_value,
@@ -832,6 +835,9 @@ class NaturalGradientAffineComponent: public AffineComponent {
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
   virtual void FreezeNaturalGradient(bool freeze);
+
+  virtual void ConsolidateMemory();
+
   // copy constructor
   explicit NaturalGradientAffineComponent(
       const NaturalGradientAffineComponent &other);
@@ -955,6 +961,8 @@ class LinearComponent: public UpdatableComponent {
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
   virtual void FreezeNaturalGradient(bool freeze);
+  virtual void ConsolidateMemory();
+
   // copy constructor
   explicit LinearComponent(const LinearComponent &other);
 
@@ -1715,6 +1723,7 @@ class ConstantFunctionComponent: public UpdatableComponent {
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void ConsolidateMemory();
  private:
   int32 input_dim_;
   // the output value-- a vector.
@@ -1782,6 +1791,8 @@ class NaturalGradientPerElementScaleComponent: public PerElementScaleComponent {
   void Init(std::string vector_filename,
             int32 rank, int32 update_period, BaseFloat num_samples_history,
             BaseFloat alpha);
+
+  void ConsolidateMemory();
 
  private:
   // unlike the NaturalGradientAffineComponent, there is only one dimension to
@@ -1888,6 +1899,7 @@ class ScaleAndOffsetComponent: public UpdatableComponent {
   virtual int32 NumParameters() const { return 2 * scales_.Dim(); }
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+  virtual void ConsolidateMemory();
 
 
   // copy constructor
@@ -2280,6 +2292,8 @@ class LstmNonlinearityComponent: public UpdatableComponent {
             BaseFloat tanh_self_repair_threshold,
             BaseFloat sigmoid_self_repair_threshold,
             BaseFloat self_repair_scale);
+
+  virtual void ConsolidateMemory();
 
  private:
 

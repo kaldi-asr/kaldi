@@ -14,7 +14,7 @@ iam_database=/export/corpora5/handwriting_ocr/IAM
 # wellington_database points to the database path on the JHU grid. The Wellington
 # corpus contains two directories WWC and WSC (Wellington Written and Spoken Corpus).
 # This corpus is of written NZ English that can be purchased here:
-# "https://www.victoria.ac.nz/lals/resources/corpora-default" 
+# "https://www.victoria.ac.nz/lals/resources/corpora-default"
 wellington_database=/export/corpora5/Wellington/WWC/
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
@@ -90,7 +90,8 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
-                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
+                       --use-gpu false \
+                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
                        data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 

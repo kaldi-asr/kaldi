@@ -76,8 +76,8 @@ write_compact=true   # If set to false, then writes the lattice in non-compact f
 
 if [ $# -lt 5 ]; then
   echo "Usage: $0 [options] <data-dir> <graph-dir> <nnet3-dir> <nnet3-dir2> [<nnet3-dir3> ... ] <output-dir>"
-  echo "e.g.:   local/socal/score_fusion.sh --nj 8 \\"
-  echo "--online-ivector-dir exp/nnet3/ivectors_test_eval92 \\"
+  echo "e.g.:   steps/nnet3/decode_score_fusion.sh --nj 8 \\"
+  echo "    --online-ivector-dir exp/nnet3/ivectors_test_eval92 \\"
   echo "    data/test_eval92_hires exp/nnet3/tdnn/graph exp/nnet3/tdnn/output exp/nnet3/tdnn1/output .. \\"
   echo "    exp/nnet3/tdnn_comb/decode_dev"
   echo "main options (for others, see top of script file)"
@@ -115,9 +115,6 @@ if [ $frame_subsampling_factor -ne 1 ]; then
   # e.g. for 'chain' systems
   frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
 fi
-
-# convert $dir to absolute pathname
-fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
 
 # Possibly use multi-threaded decoder
 thread_string=
