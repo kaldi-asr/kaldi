@@ -99,8 +99,6 @@ if [ $stage -le 5 ]; then
         steps/nnet/align.sh --nj $nj --cmd "$train_cmd" \
             $data_fbk/train_960_cleaned data/lang $dir ${dir}_ali
         steps/nnet/make_denlats.sh --nj $nj --cmd "$decode_cmd" --acwt $acwt \
-            --ivector scp:exp/nnet3_cleaned/ivectors_train_960_dev_hires/ivector_online.scp \
-            --ivector-append-tool "append-ivector-to-feats --online-ivector-period=10" \
             $data_fbk/train_960_cleaned data/lang $dir ${dir}_denlats
 fi
 
