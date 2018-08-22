@@ -172,6 +172,22 @@ class GrammarFst {
     }
   }
 
+  // This is called in LatticeFasterDecoder.  As an implementation shortcut, if
+  // the state is an expanded state, we return 1, meaning 'yes, there are input
+  // epsilons'; the calling code doesn't actually care about the exact number.
+  inline size_t NumInputEpsilons(StateId s) const {
+    // Compare with the constructor of ArcIterator.
+    int32 instance_id = s >> 32;
+    BaseStateId base_state = static_cast<int32>(s);
+    const GrammarFst::FstInstance &instance = instances_[instance_id];
+    const ConstFst<StdArc> *base_fst = instance.fst;
+    if (base_fst->Final(base_state).Value() != KALDI_GRAMMAR_FST_SPECIAL_WEIGHT) {
+      return base_fst->NumInputEpsilons(base_state);
+    } else {
+      return 1;
+    }
+  }
+
   inline std::string Type() const { return "grammar"; }
 
   ~GrammarFst();

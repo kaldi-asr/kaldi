@@ -98,8 +98,7 @@ trap "rm -f $lang/tmp/LG.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \
       $lang/tmp/LG.fst -ot $lang/L_disambig.fst ]]; then
   fsttablecompose $lang/L_disambig.fst $lang/G.fst | fstdeterminizestar --use-log=true | \
-    fstminimizeencoded | fstpushspecial | \
-    fstarcsort --sort_type=ilabel > $lang/tmp/LG.fst.$$ || exit 1;
+    fstminimizeencoded | fstpushspecial > $lang/tmp/LG.fst.$$ || exit 1;
   mv $lang/tmp/LG.fst.$$ $lang/tmp/LG.fst
   fstisstochastic $lang/tmp/LG.fst || echo "[info]: LG not stochastic."
 fi
@@ -147,7 +146,7 @@ fi
 
 trap "rm -f $dir/HCLG.fst.$$" EXIT HUP INT PIPE TERM
 if [[ ! -s $dir/HCLG.fst || $dir/HCLG.fst -ot $dir/HCLGa.fst ]]; then
-  add-self-loops --self-loop-scale=$loopscale --reorder=true $model < $dir/HCLGa.fst | \
+  add-self-loops --self-loop-scale=$loopscale --reorder=true $model $dir/HCLGa.fst | \
     $prepare_grammar_command | \
     fstconvert --fst_type=const > $dir/HCLG.fst.$$ || exit 1;
   mv $dir/HCLG.fst.$$ $dir/HCLG.fst

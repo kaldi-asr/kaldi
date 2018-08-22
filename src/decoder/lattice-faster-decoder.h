@@ -279,6 +279,12 @@ class LatticeFasterDecoderTpl {
   };
 
   using Elem = typename HashList<StateId, Token*>::Elem;
+  // Equivalent to:
+  //  struct Elem {
+  //    StateId key;
+  //    Token *val;
+  //    Elem *tail;
+  //  };
 
   void PossiblyResizeHash(size_t num_toks);
 

@@ -62,26 +62,44 @@ if [ $stage -le 2 ]; then
 3
 EOF
   utils/mkgraph.sh --self-loop-scale 1.0 $lang $tree_dir $tree_dir/grammar1
+
+  # test that the binary 'compile-graph' does the same thing as mkgraph.sh.
+  compile-graph --read-disambig-syms=$lang/phones/disambig.int $tree_dir/tree $tree_dir/1.mdl $lang/L_disambig.fst $lang/G.fst $tree_dir/grammar1/HCLG2.fst
+
+  if ! fstequivalent --delta=0.01 --random=true --npath=100 $tree_dir/grammar1/HCLG{,2}.fst; then
+    echo "$0: two methods of producing graph in $tree_dir/grammar1 were different."
+    exit 1
+  fi
 fi
 
 
 if [ $stage -le 3 ]; then
-  # create the stop-level graph in data/lang_nosp_grammar2a
+  # create the top-level graph in data/lang_nosp_grammar2a
 
-# you can of course choose to put what symbols you want on the output side, as
-# long as they are defined in words.txt.  #nonterm:contact_list, #nonterm_begin
-# and #nonterm_end would be defined in this example.  This might be useful in
-# situations where you want to keep track of the structure of calling
-# nonterminals.
-lang=data/lang_nosp_grammar2a
-cat <<EOF | fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt > $lang/G.fst
+  # you can of course choose to put what symbols you want on the output side, as
+  # long as they are defined in words.txt.  #nonterm:contact_list, #nonterm_begin
+  # and #nonterm_end would be defined in this example.  This might be useful in
+  # situations where you want to keep track of the structure of calling
+  # nonterminals.
+  lang=data/lang_nosp_grammar2a
+  cat <<EOF | fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt > $lang/G.fst
 0    1    GROUP   GROUP
 1    2    #nonterm:contact_list  <eps>
 2    3    ASSIST   ASSIST  0.69314718055994
 2  0.69314718055994
 3
 EOF
-utils/mkgraph.sh --self-loop-scale 1.0 $lang $tree_dir $tree_dir/grammar2a
+  utils/mkgraph.sh --self-loop-scale 1.0 $lang $tree_dir $tree_dir/grammar2a
+
+  # test that the binary 'compile-graph' does the same thing as mkgraph.sh.
+  offset=$(grep nonterm_bos $lang/phones.txt | awk '{print $2}') # 364
+  compile-graph --nonterm-phones-offset=$offset --read-disambig-syms=$lang/phones/disambig.int \
+       $tree_dir/tree $tree_dir/1.mdl $lang/L_disambig.fst $lang/G.fst $tree_dir/grammar2a/HCLG2.fst
+
+  if ! fstequivalent --delta=0.01 --random=true --npath=100 $tree_dir/grammar2a/HCLG{,2}.fst; then
+    echo "$0: two methods of producing graph in $tree_dir/grammar2a were different."
+    exit 1
+  fi
 fi
 
 if [ $stage -le 4 ]; then
@@ -98,6 +116,17 @@ if [ $stage -le 4 ]; then
 3
 EOF
   utils/mkgraph.sh --self-loop-scale 1.0 $lang $tree_dir $tree_dir/grammar2b
+
+
+  # test that the binary 'compile-graph' does the same thing as mkgraph.sh.
+  offset=$(grep nonterm_bos $lang/phones.txt | awk '{print $2}') # 364
+  compile-graph --nonterm-phones-offset=$offset --read-disambig-syms=$lang/phones/disambig.int \
+       $tree_dir/tree $tree_dir/1.mdl $lang/L_disambig.fst $lang/G.fst $tree_dir/grammar2b/HCLG2.fst
+
+  if ! fstequivalent --delta=0.01 --random=true --npath=100 $tree_dir/grammar2b/HCLG{,2}.fst; then
+    echo "$0: two methods of producing graph in $tree_dir/grammar2b were different."
+    exit 1
+  fi
 fi
 
 if [ $stage -le 5 ]; then

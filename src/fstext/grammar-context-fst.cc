@@ -222,7 +222,7 @@ void ComposeContextLeftBiphone(
   //   (*ofst) = inv(inv_c) * (*ifst)
   ComposeDeterministicOnDemandInverse(ifst, &inv_c, ofst);
 
-  *ilabels = inv_c.IlabelInfo();
+  inv_c.SwapIlabelInfo(ilabels);
 }
 
 }  // end namespace fst

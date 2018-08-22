@@ -195,6 +195,9 @@ public:
     return ilabel_info_;
   }
 
+  // A way to destructively obtain the ilabel-info.  Only do this if you
+  // are just about to destroy this object.
+  void SwapIlabelInfo(vector<vector<int32> > *vec) { ilabel_info_.swap(*vec); }
 
 private:
 

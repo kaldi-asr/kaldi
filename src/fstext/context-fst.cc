@@ -290,7 +290,7 @@ void ComposeContext(const vector<int32> &disambig_syms_in,
   //   (*ofst) = inv(inv_c) * (*ifst)
   ComposeDeterministicOnDemandInverse(*ifst, &inv_c, ofst);
 
-  *ilabels_out = inv_c.IlabelInfo();
+  inv_c.SwapIlabelInfo(ilabels_out);
 }
 
 void AddSubsequentialLoop(StdArc::Label subseq_symbol,
