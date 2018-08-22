@@ -14,6 +14,7 @@ LIBNAME = kaldi-decoder
 ADDLIBS = ../lat/kaldi-lat.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a \
+          ../fstext/kaldi-fstext.a \
           ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk
