@@ -4,11 +4,13 @@
 #           2016  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
 
+# This script demonstrates how to re-segment training data selecting only the
+# "good" audio that matches the transcripts.
 # This script is like clean_and_segment_data.sh, but uses nnet3 model instead of
 # a GMM for decoding.
-# The basic idea is to decode with an existing in-domain acoustic model, and a
-# biased language model built from the reference, and then work out the
-# segmentation from a ctm like file.
+# The basic idea is to decode with an existing in-domain nnet3 acoustic model,
+# and a biased language model built from the reference transcript, and then work
+# out the segmentation from a ctm like file.
 
 set -e
 set -o pipefail
