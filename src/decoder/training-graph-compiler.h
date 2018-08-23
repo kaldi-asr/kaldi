@@ -66,9 +66,9 @@ class TrainingGraphCompiler {
                         const TrainingGraphCompilerOptions &opts);
 
 
-  /// CompileGraph compiles a single training graph its input is a
+  // CompileGraph compiles a single training graph its input is a
   // weighted acceptor (G) at the word level, its output is HCLG.
-  // Note: G could actually be an acceptor, it would also work.
+  // Note: G could actually be a transducer, it would also work.
   // This function is not const for technical reasons involving the cache.
   // if not for "table_compose" we could make it const.
   bool CompileGraph(const fst::VectorFst<fst::StdArc> &word_grammar,
