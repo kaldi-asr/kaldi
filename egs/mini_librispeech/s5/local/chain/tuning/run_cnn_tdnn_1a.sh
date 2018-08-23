@@ -1,43 +1,19 @@
 #!/bin/bash
 
+# run_cnn_tdnn_1a.sh is modified from run_tdnn_1h.sh, but adding CNN layers
+#  near the beginning.
 
-# run_cnn_tdnn_1a10.sh is modified from run_tdnn_1b.sh but taking
-#   the xconfig from mini-librispeech's run_cnn_tdnn_1a54.sh; only
-#   reducing the bottleneck-dim from 96 to 64, which is the value
-#   the run_tdnn1b.sh script here has.
-# Better!
-# local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp exp/chain/cnn_tdnn1a10_sp
-# System                  tdnn1a_sp tdnn1b_sp cnn_tdnn1a10_sp
-# %WER        devtest       53.07     52.54     51.10
-# %WER           test       59.25     53.70     52.07
-# %WER         native       54.47     48.76     47.88
-# %WER      nonnative       63.01     57.66     55.51
-# Final train prob          -0.0253   -0.0547   -0.0502
-# Final valid prob          -0.0687   -0.0694   -0.0661
-# Final train prob (xent)   -0.7715   -0.9502   -0.8513
-# Final valid prob (xent)   -1.0719   -1.0849   -0.9915
-# Num-params                 6567648   3321312   3345088
-
-
-
-# 1b is as 1a but a re-tuned model with quite a few changes, including moving to
-#   a resnet-style factored TDNN-F model.
-#
-# local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp
-# System                  tdnn1a_sp tdnn1b_sp
-# %WER        devtest       53.07     52.54
-# %WER           test       59.25     53.70
-# %WER         native       54.47     48.76
-# %WER      nonnative       63.01     57.66
-# Final train prob          -0.0253   -0.0547
-# Final valid prob          -0.0687   -0.0694
-# Final train prob (xent)   -0.7715   -0.9502
-# Final valid prob (xent)   -1.0719   -1.0849
-# Num-params                 6567648   3321312
-
-
-# steps/info/chain_dir_info.pl  exp/chain/tdnn1b_sp
-# exp/chain/tdnn1b_sp: num-iters=34 nj=2..5 num-params=3.3M dim=40+100->1392 combine=-0.059->-0.059 (over 1) xent:train/valid[21,33,final]=(-1.28,-0.986,-0.950/-1.38,-1.10,-1.08) logprob:train/valid[21,33,final]=(-0.085,-0.063,-0.055/-0.090,-0.074,-0.069)
+# local/chain/compare_wer.sh --online exp/chain/tdnn1h_sp exp/chain/cnn_tdnn1a_sp
+# System                tdnn1h_sp cnn_tdnn1a_sp
+#WER dev_clean_2 (tgsmall)      12.09     11.15
+#             [online:]         12.11     11.17
+#WER dev_clean_2 (tglarge)       8.59      7.79
+#             [online:]          8.76      7.80
+# Final train prob        -0.0493   -0.0467
+# Final valid prob        -0.0805   -0.0789
+# Final train prob (xent)   -1.1730   -1.0767
+# Final valid prob (xent)   -1.3872   -1.3070
+# Num-params                 5207856   4492816
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -46,25 +22,22 @@ set -euo pipefail
 # (some of which are also used in this script directly).
 stage=0
 decode_nj=10
-train_set=train
-test_sets="native nonnative devtest test"
+train_set=train_clean_5
+test_sets=dev_clean_2
 gmm=tri3b
 nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1a10   # affix for the TDNN directory name
+affix=1a   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
 
-num_leaves=3500
-
 # training options
 # training chunk-options
 chunk_width=140,100,160
-# we don't need extra left/right context for TDNN systems.
 dropout_schedule='0,0@0.20,0.3@0.50,0'
 common_egs_dir=
 xent_regularize=0.1
@@ -75,7 +48,8 @@ remove_egs=true
 reporting_email=
 
 #decode options
-test_online_decoding=false  # if true, it will run the last decoding stage.
+test_online_decoding=true  # if true, it will run the last decoding stage.
+
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -158,11 +132,9 @@ if [ $stage -le 12 ]; then
      exit 1;
   fi
   steps/nnet3/chain/build_tree.sh \
-    --cmd "$train_cmd" \
     --frame-subsampling-factor 3 \
     --context-opts "--context-width=2 --central-position=1" \
-    $num_leaves \
-    ${lores_train_data_dir} \
+    --cmd "$train_cmd" 3500 ${lores_train_data_dir} \
     $lang $ali_dir $tree_dir
 fi
 
@@ -175,7 +147,6 @@ if [ $stage -le 13 ]; then
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
   cnn_opts="l2-regularize=0.03"
-  ivector_layer_opts="l2-regularize=0.03"
   ivector_affine_opts="l2-regularize=0.03"
   tdnn_opts="l2-regularize=0.03 dropout-proportion=0.0 dropout-per-dim-continuous=true"
   tdnnf_first_opts="l2-regularize=0.03 dropout-proportion=0.0 bypass-scale=0.0"
@@ -211,14 +182,14 @@ if [ $stage -le 13 ]; then
   # information bottleneck doesn't become a problem.  (we use time-stride=0 so no splicing, to
   # limit the num-parameters).
   tdnnf-layer name=tdnnf7 $tdnnf_first_opts dim=768 bottleneck-dim=192 time-stride=0
-  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
-  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
-  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
-  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
-  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
-  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
-  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
-  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=768 bottleneck-dim=64 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
   linear-component name=prefinal-l dim=192 $linear_opts
 
   ## adding the layers for chain branch
@@ -229,14 +200,17 @@ if [ $stage -le 13 ]; then
   prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
-
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 
 if [ $stage -le 14 ]; then
-  steps/nnet3/chain/train.py \
-    --stage=$train_stage \
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+    utils/create_split_dir.pl \
+     /export/fs0{1,2}/$USER/kaldi-data/egs/mini_librispeech-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+  fi
+
+  steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir=$train_ivector_dir \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
@@ -249,12 +223,12 @@ if [ $stage -le 14 ]; then
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=8 \
+    --trainer.num-epochs=20 \
     --trainer.frames-per-iter=3000000 \
     --trainer.optimization.num-jobs-initial=2 \
     --trainer.optimization.num-jobs-final=5 \
-    --trainer.optimization.initial-effective-lrate=0.001 \
-    --trainer.optimization.final-effective-lrate=0.0001 \
+    --trainer.optimization.initial-effective-lrate=0.002 \
+    --trainer.optimization.final-effective-lrate=0.0002 \
     --trainer.num-chunk-per-minibatch=128,64 \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$common_egs_dir" \
@@ -272,10 +246,8 @@ if [ $stage -le 15 ]; then
   # Note: it's not important to give mkgraph.sh the lang directory with the
   # matched topology (since it gets the topology file from the model).
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 \
-    data/lang_test \
-    $tree_dir \
-    $tree_dir/graph || exit 1;
+    --self-loop-scale 1.0 data/lang_test_tgsmall \
+    $tree_dir $tree_dir/graph_tgsmall || exit 1;
 fi
 
 if [ $stage -le 16 ]; then
@@ -284,18 +256,16 @@ if [ $stage -le 16 ]; then
 
   for data in $test_sets; do
     (
-    nspk=$(wc -l <data/${data}_hires/spk2utt)
-    steps/nnet3/decode.sh \
-      --acwt 1.0 \
-      --post-decode-acwt 10.0 \
-      --frames-per-chunk $frames_per_chunk \
-      --nj $nspk \
-      --cmd "$decode_cmd" \
-      --num-threads 4 \
-      --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-      $tree_dir/graph \
-      data/${data}_hires \
-      ${dir}/decode_${data} || exit 1;
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      steps/nnet3/decode.sh \
+          --acwt 1.0 --post-decode-acwt 10.0 \
+          --frames-per-chunk $frames_per_chunk \
+          --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
+          --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
+          $tree_dir/graph_tgsmall data/${data}_hires ${dir}/decode_tgsmall_${data} || exit 1
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+        data/lang_test_{tgsmall,tglarge} \
+       data/${data}_hires ${dir}/decode_{tgsmall,tglarge}_${data} || exit 1
     ) || touch $dir/.error &
   done
   wait
@@ -311,31 +281,27 @@ if $test_online_decoding && [ $stage -le 17 ]; then
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
     --mfcc-config conf/mfcc_hires.conf \
-    $lang \
-    exp/nnet3${nnet3_affix}/extractor \
-    ${dir} \
-    ${dir}_online
+    $lang exp/nnet3${nnet3_affix}/extractor ${dir} ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
 
   for data in $test_sets; do
     (
-    nspk=$(wc -l <data/${data}_hires/spk2utt)
-    # note: we just give it "data/${data}" as it only uses the wav.scp, the
-    # feature type does not matter.
-    steps/online/nnet3/decode.sh \
-      --acwt 1.0 --post-decode-acwt 10.0 \
-      --nj $nspk --cmd "$decode_cmd" \
-      $tree_dir/graph data/${data} ${dir}_online/decode_${data} || exit 1
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      # note: we just give it "data/${data}" as it only uses the wav.scp, the
+      # feature type does not matter.
+      steps/online/nnet3/decode.sh \
+        --acwt 1.0 --post-decode-acwt 10.0 \
+        --nj $nspk --cmd "$decode_cmd" \
+        $tree_dir/graph_tgsmall data/${data} ${dir}_online/decode_tgsmall_${data} || exit 1
+      steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
+        data/lang_test_{tgsmall,tglarge} \
+       data/${data}_hires ${dir}_online/decode_{tgsmall,tglarge}_${data} || exit 1
     ) || touch $dir/.error &
   done
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
 
-exit 0;
 
-# Local Variables:
-# tab-width: 2
-# indent-tabs-mode: nil
-# End:
+exit 0;

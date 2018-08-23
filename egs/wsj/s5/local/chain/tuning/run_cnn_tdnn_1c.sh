@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# 1b17 is as 1b16 but taking the first layers from the 1a54 setup in mini_librispeech.
-# A little better than the baseline.  Overfits more.
+# 1c is as 1b but taking the first layers from the cnn_tdnn_1a setup in mini_librispeech.
+# A little better than the baseline and overfits more.
 #
-# local/chain/compare_wer.sh exp/chain/tdnn1g_sp exp/chain/cnn_tdnn1b17_sp
-# System                tdnn1g_sp cnn_tdnn1b17_sp
+# local/chain/compare_wer.sh exp/chain/tdnn1g_sp exp/chain/cnn_tdnn1c_sp
+# System                tdnn1g_sp cnn_tdnn1c_sp
 #WER dev93 (tgpr)                6.68      6.55
 #WER dev93 (tg)                  6.57      6.49
 #WER dev93 (big-dict,tgpr)       4.60      4.52
@@ -18,100 +18,6 @@
 # Final train prob (xent)   -0.6461   -0.6203
 # Final valid prob (xent)   -0.6882   -0.6591
 # Num-params                 8354636   6935084
-
-# 1b16 is like 1b12 but taking the cnn-layer part from the 1a30 setup in mini-librispeech,
-# and adding another TDNN-F layer with splicing 3.
-# Doesn't seem helpful.  This setup seems very vulnerable to overfitting.
-#
-# local/chain/compare_wer.sh exp/chain/tdnn1g_sp exp/chain/cnn_tdnn1b_sp exp/chain/cnn_tdnn1b10_sp exp/chain/cnn_tdnn1b11_sp exp/chain/cnn_tdnn1b12_sp exp/chain/cnn_tdnn1b13_sp
-# System                tdnn1g_sp cnn_tdnn1b_sp cnn_tdnn1b10_sp cnn_tdnn1b11_sp cnn_tdnn1b12_sp cnn_tdnn1b13_sp
-#WER dev93 (tgpr)                6.68      8.19      7.85      6.95      6.58      6.73
-#WER dev93 (tg)                  6.57      7.76      7.49      6.98      6.59      6.59
-#WER dev93 (big-dict,tgpr)       4.60      6.06      5.93      4.87      4.69      4.86
-#WER dev93 (big-dict,fg)         4.26      5.49      5.15      4.62      4.30      4.35
-#WER eval92 (tgpr)               4.54      5.69      5.58      4.59      4.59      4.73
-#WER eval92 (tg)                 4.32      5.12      5.30      4.29      4.36      4.36
-#WER eval92 (big-dict,tgpr)      2.62      3.47      3.56      2.60      2.59      2.68
-#WER eval92 (big-dict,fg)        2.32      3.10      3.01      2.13      2.22      2.27
-# Final train prob        -0.0417   -0.0469   -0.0463   -0.0401   -0.0414   -0.0401
-# Final valid prob        -0.0487   -0.0663   -0.0668   -0.0504   -0.0483   -0.0486
-# Final train prob (xent)   -0.6461   -0.8759   -0.8764   -0.6210   -0.6353   -0.6173
-# Final valid prob (xent)   -0.6882   -1.0003   -0.9906   -0.6880   -0.6857   -0.6623
-# Num-params                 8354636   5470268   5470268   6337852   6385980   6571836
-
-# 1b12 is like 1b11 but making various changes that were helpful in the mini-librispeech
-#  setup: using the same l2 values for the early layers; not doing splicing in the first
-#  TDNN-F layer; and adding an extra TDNN-F layer.
-# It's now about the same as tdnn1g_sp.
-#
-# local/chain/compare_wer.sh exp/chain/tdnn1g_sp exp/chain/cnn_tdnn1b_sp exp/chain/cnn_tdnn1b10_sp exp/chain/cnn_tdnn1b11_sp exp/chain/cnn_tdnn1b12_sp
-# System                tdnn1g_sp cnn_tdnn1b_sp cnn_tdnn1b10_sp cnn_tdnn1b11_sp cnn_tdnn1b12_sp
-#WER dev93 (tgpr)                6.68      8.19      7.85      6.95      6.58
-#WER dev93 (tg)                  6.57      7.76      7.49      6.98      6.59
-#WER dev93 (big-dict,tgpr)       4.60      6.06      5.93      4.87      4.69
-#WER dev93 (big-dict,fg)         4.26      5.49      5.15      4.62      4.30
-#WER eval92 (tgpr)               4.54      5.69      5.58      4.59      4.59
-#WER eval92 (tg)                 4.32      5.12      5.30      4.29      4.36
-#WER eval92 (big-dict,tgpr)      2.62      3.47      3.56      2.60      2.59
-#WER eval92 (big-dict,fg)        2.32      3.10      3.01      2.13      2.22
-# Final train prob        -0.0417   -0.0469   -0.0463   -0.0401   -0.0414
-# Final valid prob        -0.0487   -0.0663   -0.0668   -0.0504   -0.0483
-# Final train prob (xent)   -0.6461   -0.8759   -0.8764   -0.6210   -0.6353
-# Final valid prob (xent)   -0.6882   -1.0003   -0.9906   -0.6880   -0.6857
-# Num-params                 8354636   5470268   5470268   6337852   6385980
-#
-# 1b11 is like 1b10 but taking options and resnet-style TDNN-F configuration from tdnn_1g.sh.
-#  (using slightly fewer epochs than 1g since the frames-per-minibatch is smaller here).
-#   (re-dumped egs into 1b11b due to disk crash of b03).
-# It's better than the previous cnn_tdnn experiments but not yet better than tdnn1g.
-# local/chain/compare_wer.sh exp/chain/tdnn1g_sp exp/chain/cnn_tdnn1b_sp exp/chain/cnn_tdnn1b10_sp exp/chain/cnn_tdnn1b11_sp
-# System                tdnn1g_sp cnn_tdnn1b_sp cnn_tdnn1b10_sp cnn_tdnn1b11_sp
-#WER dev93 (tgpr)                6.68      8.19      7.85      6.95
-#WER dev93 (tg)                  6.57      7.76      7.49      6.98
-#WER dev93 (big-dict,tgpr)       4.60      6.06      5.93      4.87
-#WER dev93 (big-dict,fg)         4.26      5.49      5.15      4.62
-#WER eval92 (tgpr)               4.54      5.69      5.58      4.59
-#WER eval92 (tg)                 4.32      5.12      5.30      4.29
-#WER eval92 (big-dict,tgpr)      2.62      3.47      3.56      2.60
-#WER eval92 (big-dict,fg)        2.32      3.10      3.01      2.13
-# Final train prob        -0.0417   -0.0469   -0.0463   -0.0401
-# Final valid prob        -0.0487   -0.0663   -0.0668   -0.0504
-# Final train prob (xent)   -0.6461   -0.8759   -0.8764   -0.6210
-# Final valid prob (xent)   -0.6882   -1.0003   -0.9906   -0.6880
-# Num-params                 8354636   5470268   5470268   6337852
-
-#
-# 1b10 is like 1b but adding a batchnorm-component before the first CNN layer.
-
-# 1b is like 1a, but converting the batch-norm layers in all but the CNN
-# components back into renorm layers.
-# Note: I'm not confident that the differences from 1a are entirely due
-# to this change, as there have also been code changes, about how the
-# combination works.
-
-# exp/chain/tdnn1g_sp: num-iters=108 nj=2..8 num-params=8.4M dim=40+100->2854 combine=-0.042->-0.042 (over 2) xent:train/valid[71,107,final]=(-0.975,-0.640,-0.646/-0.980,-0.678,-0.688) logprob:train/valid[71,107,final]=(-0.067,-0.043,-0.042/-0.069,-0.050,-0.049)
-# exp/chain/cnn_tdnn1b17_sp: num-iters=144 nj=2..8 num-params=6.9M dim=40+100->2854 combine=-0.041->-0.041 (over 3) xent:train/valid[95,143,final]=(-0.866,-0.617,-0.620/-0.881,-0.657,-0.659) logprob:train/valid[95,143,final]=(-0.061,-0.042,-0.041/-0.062,-0.050,-0.049)
-
-# The following table compares chain (TDNN+LSTM, TDNN, CNN+TDNN).
-# The CNN+TDNN doesn't seem to have any advantages versus the TDNN (and it's
-# about 5 times slower per iteration).  But it's not well tuned.
-# And the num-params is fewer (5.5M vs 7.6M for TDNN).
-
-# local/chain/compare_wer.sh exp/chain/tdnn_lstm1a_sp exp/chain/tdnn1a_sp exp/chain/cnn_tdnn1a_sp
-# System                tdnn_lstm1a_sp tdnn1a_sp cnn_tdnn1a_sp
-#WER dev93 (tgpr)                7.48      7.87      9.02
-#WER dev93 (tg)                  7.41      7.61      8.60
-#WER dev93 (big-dict,tgpr)       5.64      5.71      6.97
-#WER dev93 (big-dict,fg)         5.40      5.10      6.12
-#WER eval92 (tgpr)               5.67      5.23      5.56
-#WER eval92 (tg)                 5.46      4.87      5.05
-#WER eval92 (big-dict,tgpr)      3.69      3.24      3.40
-#WER eval92 (big-dict,fg)        3.28      2.71      2.73
-# Final train prob        -0.0341   -0.0414   -0.0532
-# Final valid prob        -0.0506   -0.0634   -0.0752
-# Final train prob (xent)   -0.5643   -0.8216   -1.0857
-# Final valid prob (xent)   -0.6648   -0.9208   -1.1505
-
 
 
 set -e -o pipefail
@@ -128,7 +34,7 @@ num_threads_ubm=32
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1b17  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=1c  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
 
