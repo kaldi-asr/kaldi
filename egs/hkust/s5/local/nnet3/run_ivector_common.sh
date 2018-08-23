@@ -58,20 +58,19 @@ for line in sys.stdin.readlines():
 fi
 
 if [ $stage -le 2 ] && [ -z $ivector_extractor ]; then
-  # Train a system just for its LDA+MLLT transform.  We use --num-iters 13
-  # because after we get the transform (12th iter is the last), any further
-  # training is pointless.
-  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
-    --realign-iters "" \
+  # perform PCA on the data
+  echo "$0: computing a PCA transform from the no-pitch hires data."
+  steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=3 --right-context=3" \
-    5000 10000 data/train_hires_nopitch data/lang \
-    ${gmm_dir}_ali exp/nnet3/tri5
+    --max-utts 10000 --subsample 2 \
+    data/${train_set}_hires_nopitch \
+    exp/nnet3/tri5_pca
 fi
 
 if [ $stage -le 3 ] && [ -z $ivector_extractor ]; then
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 \
     --num-frames 700000 \
-    data/train_hires_nopitch 512 exp/nnet3/tri5 exp/nnet3/diag_ubm
+    data/train_hires_nopitch 512 exp/nnet3/tri5_pca exp/nnet3/diag_ubm
 fi
 
 if [ $stage -le 4 ] && [ -z $ivector_extractor ]; then

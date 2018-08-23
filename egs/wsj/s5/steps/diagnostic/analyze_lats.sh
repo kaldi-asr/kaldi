@@ -51,7 +51,7 @@ $cmd JOB=1:$num_jobs $dir/log/lattice_best_path.JOB.log \
 $cmd JOB=1:$num_jobs $dir/log/get_lattice_stats.JOB.log \
   ali-to-phones --write-lengths=true "$model" "ark:gunzip -c $dir/ali_tmp.JOB.gz|" ark,t:- \| \
   sed -E 's/^[^ ]+ //' \| \
-  awk 'BEGIN{FS=" ; "; OFS="\n";} {print "begin " $1; print "end " $NF; for (n=1;n<=NF;n++) print "all " $n; }' \| \
+  awk 'BEGIN{FS=" ; "; OFS="\n";} {print "begin " $1; if (NF>1) print "end " $NF; for (n=1;n<=NF;n++) print "all " $n; }' \| \
   sort \| uniq -c \| gzip -c '>' $dir/phone_stats.JOB.gz || exit 1
 
 

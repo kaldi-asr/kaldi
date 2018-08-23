@@ -24,15 +24,15 @@ COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
 case $COMPILER_VER_INFO in
   "")
     echo "$0: $CXX is not installed."
-    echo "$0: You need g++ >= 4.7, Apple Xcode >= 5.0 or clang >= 3.3."
+    echo "$0: You need g++ >= 4.8.3, Apple Xcode >= 5.0 or clang >= 3.3."
     status=1
     ;;
   "g++ "* )
     GCC_VER=$($CXX -dumpversion)
     GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-    if [ $GCC_VER_NUM -lt 40700 ]; then
+    if [ $GCC_VER_NUM -lt 40803 ]; then
         echo "$0: $CXX (g++-$GCC_VER) is not supported."
-        echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        echo "$0: You need g++ >= 4.8.3, Apple clang >= 5.0 or LLVM clang >= 3.3."
         status=1
     fi
     ;;
@@ -42,7 +42,7 @@ case $COMPILER_VER_INFO in
     CLANG_VER_NUM=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*clang-\([0-9]*\).*/\1/")
     if [ $CLANG_VER_NUM -lt 500 ]; then
         echo "$0: $CXX (Apple clang-$CLANG_VER) is not supported."
-        echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        echo "$0: You need g++ >= 4.8.3, Apple clang >= 5.0 or LLVM clang >= 3.3."
         status=1
     fi
     ;;
@@ -51,7 +51,7 @@ case $COMPILER_VER_INFO in
     CLANG_VER_NUM=$(echo $CLANG_VER | sed 's/\./ /g' | xargs printf "%d%02d")
     if [ $CLANG_VER_NUM -lt 303 ]; then
         echo "$0: $CXX (LLVM clang-$CLANG_VER) is not supported."
-        echo "$0: You need g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3."
+        echo "$0: You need g++ >= 4.8.3, Apple clang >= 5.0 or LLVM clang >= 3.3."
         status=1
     fi
     ;;
@@ -65,7 +65,7 @@ if ! echo "#include <zlib.h>" | $CXX -E - >&/dev/null; then
   add_packages zlib-devel zlib1g-dev zlib-devel
 fi
 
-for f in make automake autoconf patch grep bzip2 gzip wget git; do
+for f in make automake autoconf patch grep bzip2 gzip wget git sox; do
   if ! which $f >&/dev/null; then
     echo "$0: $f is not installed."
     add_packages $f $f $f
@@ -100,7 +100,7 @@ if ! which python3 >&/dev/null; then
   pythonok=false
 fi
 
-( 
+(
 #Use a subshell so that sourcing env.sh does not have an influence on the rest of the script
 [ -f ./env.sh ] && . ./env.sh
 if $pythonok && ! which python2 >&/dev/null; then
@@ -111,14 +111,14 @@ if $pythonok && ! which python2 >&/dev/null; then
 fi
 
 if [[ -f $PWD/python/.use_default_python && -f $PWD/python/python ]]; then
-  rm $PWD/python/python 
+  rm $PWD/python/python
 fi
 
 if $pythonok && which python >&/dev/null && [[ ! -f $PWD/python/.use_default_python ]]; then
   version=`python 2>&1 --version | awk '{print $2}' `
   if [[ $version != "2.7"* ]] ; then
     echo "$0: WARNING python 2.7 is not the default python. We fixed this by adding a correct symlink more prominently on the path."
-    echo "$0: If you really want to use python $version as default, add an empty file $PWD/python/.use_default_python and run this script again."  
+    echo "$0: If you really want to use python $version as default, add an empty file $PWD/python/.use_default_python and run this script again."
     mkdir -p $PWD/python
     ln -s $(which python2.7) $PWD/python/python
     echo "export PATH=$PWD/python:\${PATH}" >> env.sh

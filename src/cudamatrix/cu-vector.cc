@@ -3,6 +3,7 @@
 // Copyright 2012-2013  Karel Vesely
 //           2012-2014  Johns Hopkins University (author: Daniel Povey)
 //                2017  Daniel Galvez
+//           2016-2018  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -569,8 +570,8 @@ void CuVectorBase<Real>::AddDiagMat2(Real alpha, const CuMatrixBase<Real> &M,
   if (CuDevice::Instantiate().Enabled()) {
     if (dim_ == 0) return;
     MatrixTransposeType other_trans = (trans == kTrans ? kNoTrans : kTrans);
-    this->AddDiagMatMat(alpha, M, trans,
-                        M, other_trans, beta);
+    KALDI_ASSERT(dim_ == (trans == kNoTrans ? M.NumRows() : M.NumCols()));
+    this->AddDiagMatMat(alpha, M, trans, M, other_trans, beta);
   } else
 #endif
   {
@@ -601,15 +602,34 @@ void CuVectorBase<Real>::AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M,
       } else {
         // Case 2: diag(M'*N) == sum(M.*N, 1)
         // 16x16 or 8x32 2D block for coalesced memory access.
-        // One block per 'tile_dim' columns of N.
-        // Large tile dim only for large matrix
-        // 1D grid expands along the row of N.
-        int tile_dim =
-            sizeof(Real) == sizeof(float) && N.NumCols() >= 1536 ? 32 : 16;
+        // Grid shape is designed as follows,
+        // 1. for small matrices, use 1D grid with only 1 row of 16x16 block,
+        //    to avoid multiple kernel launch;
+        // 2. for large enough matrices (no matter thin or fat),
+        //    use 1- or 2-D grid so that the grid contains
+        //    at least and not much larger than 'kOptNumBlocks' blocks
+        //    to fully utilize the GPU;
+        const int32 warpSize = 32;
+        const int32 kOptNumBlocks = 512;
+        const int32 tile_dim =
+            (N.NumRows() < 4096 && N.NumCols() < kOptNumBlocks * warpSize) ?
+                16 : 32;
         dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
-        dim3 dimGrid(n_blocks(N.NumCols(), tile_dim));
-        cuda_add_diag_mat_mat_MTN(dimGrid, dimBlock, alpha, M.Data(),
-                                  M.Stride(), N.Data(), N.Dim(), beta, data_);
+        dim3 dimGrid(n_blocks(N.NumCols(), dimBlock.x),
+                     n_blocks(N.NumRows(), dimBlock.y));
+        dimGrid.y = std::min(dimGrid.y, (kOptNumBlocks - 1) / dimGrid.x + 1);
+        dimGrid.y = tile_dim == 16 ? 1 : dimGrid.y;
+        if (dimGrid.y > 1) {
+          CuMatrix<Real> buf(dimGrid.y, N.NumCols());
+          cuda_add_diag_mat_mat_MTN(dimGrid, dimBlock, Real(1), M.Data(),
+                                    M.Stride(), N.Data(), N.Dim(), Real(0),
+                                    buf.Data(), buf.Stride());
+          this->AddRowSumMat(alpha, buf, beta);
+        } else {
+          cuda_add_diag_mat_mat_MTN(dimGrid, dimBlock, alpha, M.Data(),
+                                    M.Stride(), N.Data(), N.Dim(), beta, data_,
+                                    dim_);
+        }
       }
     } else {
       KALDI_ASSERT(M.NumCols() == N.NumRows());

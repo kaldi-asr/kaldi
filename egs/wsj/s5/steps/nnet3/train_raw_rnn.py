@@ -68,6 +68,14 @@ def get_args():
                         is the 'principal' chunk-width, used preferentially""")
 
     # trainer options
+    parser.add_argument("--trainer.input-model", type=str,
+                        dest='input_model', default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="""If specified, this model is used as initial
+                        raw model (0.raw in the script) instead of initializing
+                        the model from xconfig. Configs dir is not expected to
+                        exist and left/right context is computed from this
+                        model.""")
     parser.add_argument("--trainer.samples-per-iter", type=int,
                         dest='samples_per_iter', default=20000,
                         help="""This is really the number of egs in each
@@ -171,11 +179,14 @@ def process_args(args):
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be non-negative")
 
-    if (not os.path.exists(args.dir)
-            or not os.path.exists(args.dir+"/configs")):
-        raise Exception("This scripts expects {0} to exist and have a configs "
-                        "directory which is the output of "
-                        "make_configs.py script")
+    if (not os.path.exists(args.dir)):
+        raise Exception("This script expects --dir={0} to exist.")
+    if (not os.path.exists(args.dir+"/configs") and
+        (args.input_model is None or not os.path.exists(args.input_model))):
+        raise Exception("Either --trainer.input-model option should be supplied, "
+                        "and exist; or the {0}/configs directory should exist."
+                        "{0}/configs is the output of make_configs.py"
+                        "".format(args.dir))
 
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
@@ -233,11 +244,15 @@ def train(args, run_opts):
     ivector_dim = common_lib.get_ivector_dim(args.online_ivector_dir)
     ivector_id = common_lib.get_ivector_extractor_id(args.online_ivector_dir)
 
+    if args.input_model is None:
+        config_dir = '{0}/configs'.format(args.dir)
+        var_file = '{0}/vars'.format(config_dir)
 
-    config_dir = '{0}/configs'.format(args.dir)
-    var_file = '{0}/vars'.format(config_dir)
-
-    variables = common_train_lib.parse_generic_config_vars_file(var_file)
+        variables = common_train_lib.parse_generic_config_vars_file(var_file)
+    else:
+        # If args.input_model is specified, the model left and right contexts
+        # are computed using input_model.
+        variables = common_train_lib.get_input_model_info(args.input_model)
 
     # Set some variables.
     try:
@@ -259,7 +274,8 @@ def train(args, run_opts):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config"):
+    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config") and \
+       (args.input_model is None):
         logger.info("Initializing the network for computing the LDA stats")
         common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
@@ -333,7 +349,8 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if args.stage <= -2 and os.path.exists(args.dir+"/configs/init.config"):
+    if args.stage <= -2 and os.path.exists(args.dir+"/configs/init.config") and \
+       (args.input_model is None):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -343,7 +360,7 @@ def train(args, run_opts):
 
     if args.stage <= -1:
         logger.info("Preparing the initial network.")
-        common_train_lib.prepare_initial_network(args.dir, run_opts)
+        common_train_lib.prepare_initial_network(args.dir, run_opts, args.srand, args.input_model)
 
     # set num_iters so that as close as possible, we process the data
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==

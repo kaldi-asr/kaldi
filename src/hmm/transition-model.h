@@ -130,7 +130,7 @@ class TransitionModel {
 
 
   /// Constructor that takes no arguments: typically used prior to calling Read.
-  TransitionModel() { }
+  TransitionModel(): num_pdfs_(0) { }
 
   void Read(std::istream &is, bool binary);  // note, no symbol table: topo object always read/written w/o symbols.
   void Write(std::ostream &os, bool binary) const;

@@ -44,7 +44,7 @@ static void RunNnetComputation(const MatrixBase<BaseFloat> &features,
   output_spec.indexes.resize(1);
   request.outputs.resize(1);
   request.outputs[0].Swap(&output_spec);
-  std::shared_ptr<const NnetComputation> computation = compiler->Compile(request);
+  std::shared_ptr<const NnetComputation> computation(std::move(compiler->Compile(request)));
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(NnetComputeOptions(), *computation,
                   nnet, nnet_to_update);
@@ -98,6 +98,7 @@ int main(int argc, char *argv[]) {
     std::string use_gpu = "no";
     int32 chunk_size = -1,
       min_chunk_size = 100;
+    bool pad_input = true;
 
     opts.Register(&po);
     compiler_config.Register(&po);
@@ -109,6 +110,8 @@ int main(int argc, char *argv[]) {
       "If not set, extracts an xvector from all available features.");
     po.Register("min-chunk-size", &min_chunk_size,
       "Minimum chunk-size allowed when extracting xvectors.");
+    po.Register("pad-input", &pad_input, "If true, duplicate the first and "
+      "last frames of the input features as required to equal min-chunk-size.");
 
     po.Read(argc, argv);
 
@@ -152,8 +155,7 @@ int main(int argc, char *argv[]) {
       int32 num_rows = features.NumRows(),
             feat_dim = features.NumCols(),
             this_chunk_size = chunk_size;
-
-      if (num_rows < min_chunk_size) {
+      if (!pad_input && num_rows < min_chunk_size) {
         KALDI_WARN << "Minimum chunk size of " << min_chunk_size
                    << " is greater than the number of rows "
                    << "in utterance: " << utt;
@@ -180,13 +182,29 @@ int main(int argc, char *argv[]) {
         // the nnet.
         int32 offset = std::min(
           this_chunk_size, num_rows - chunk_indx * this_chunk_size);
-        if (offset < min_chunk_size)
+        if (!pad_input && offset < min_chunk_size)
           continue;
         SubMatrix<BaseFloat> sub_features(
           features, chunk_indx * this_chunk_size, offset, 0, feat_dim);
         Vector<BaseFloat> xvector;
         tot_weight += offset;
-        RunNnetComputation(sub_features, nnet, &compiler, &xvector);
+
+        // Pad input if the offset is less than the minimum chunk size
+        if (pad_input && offset < min_chunk_size) {
+          Matrix<BaseFloat> padded_features(min_chunk_size, feat_dim);
+          int32 left_context = (min_chunk_size - offset) / 2;
+          int32 right_context = min_chunk_size - offset - left_context;
+          for (int32 i = 0; i < left_context; i++) {
+            padded_features.Row(i).CopyFromVec(sub_features.Row(0));
+          }
+          for (int32 i = 0; i < right_context; i++) {
+            padded_features.Row(min_chunk_size - i - 1).CopyFromVec(sub_features.Row(offset - 1));
+          }
+          padded_features.Range(left_context, offset, 0, feat_dim).CopyFromMat(sub_features);
+          RunNnetComputation(padded_features, nnet, &compiler, &xvector);
+        } else {
+          RunNnetComputation(sub_features, nnet, &compiler, &xvector);
+        }
         xvector_avg.AddVec(offset, xvector);
       }
       xvector_avg.Scale(1.0 / tot_weight);

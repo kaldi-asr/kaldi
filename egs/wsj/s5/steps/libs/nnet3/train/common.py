@@ -195,7 +195,7 @@ def validate_chunk_width(chunk_width):
     for elem in a:
         try:
             i = int(elem)
-            if i < 1:
+            if i < 1 and i != -1:
                 return False
         except:
             return False
@@ -320,7 +320,7 @@ def copy_egs_properties_to_exp_dir(egs_dir, dir):
         for file in ['cmvn_opts', 'splice_opts', 'info/final.ie.id', 'final.mat']:
             file_name = '{dir}/{file}'.format(dir=egs_dir, file=file)
             if os.path.isfile(file_name):
-                shutil.copy2(file_name, dir)
+                shutil.copy(file_name, dir)
     except IOError:
         logger.error("Error while trying to copy egs "
                      "property files to {dir}".format(dir=dir))
@@ -535,7 +535,10 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
     return scaled_counts
 
 
-def prepare_initial_network(dir, run_opts, srand=-3):
+def prepare_initial_network(dir, run_opts, srand=-3, input_model=None):
+    if input_model is not None:
+        shutil.copy(input_model, "{0}/0.raw".format(dir))
+        return
     if os.path.exists(dir+"/configs/init.config"):
         common_lib.execute_command(
             """{command} {dir}/log/add_first_layer.log \

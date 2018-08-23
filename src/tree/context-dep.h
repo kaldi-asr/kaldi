@@ -180,15 +180,15 @@ ContextDependency *GenRandContextDependencyLarge(const std::vector<int32> &phone
 // 0, 1, 2).
 
 ContextDependency*
-MonophoneContextDependency(const std::vector<int32> phones,
-                           const std::vector<int32> phone2num_pdf_classes);
+MonophoneContextDependency(const std::vector<int32> &phones,
+                           const std::vector<int32> &phone2num_pdf_classes);
 
 // MonophoneContextDependencyShared is as MonophoneContextDependency but lets
 // you define classes of phones which share pdfs (e.g. different stress-markers of a single
 // phone.)  Each element of phone_classes is a set of phones that are in that class.
 ContextDependency*
-MonophoneContextDependencyShared(const std::vector<std::vector<int32> > phone_classes,
-                                 const std::vector<int32> phone2num_pdf_classes);
+MonophoneContextDependencyShared(const std::vector<std::vector<int32> > &phone_classes,
+                                 const std::vector<int32> &phone2num_pdf_classes);
 
 
 // Important note:

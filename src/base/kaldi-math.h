@@ -183,6 +183,7 @@ inline Float RandPrune(Float post, BaseFloat prune_thresh,
 
 inline double LogAdd(double x, double y) {
   double diff;
+
   if (x < y) {
     diff = x - y;
     x = y;
@@ -203,6 +204,7 @@ inline double LogAdd(double x, double y) {
 
 inline float LogAdd(float x, float y) {
   float diff;
+
   if (x < y) {
     diff = x - y;
     x = y;

@@ -31,6 +31,10 @@ alignment_subsampling_factor=3 # frames-per-second of input alignments divided
 left_context=4    # amount of left-context per eg (i.e. extra frames of input features
                   # not present in the output supervision).
 right_context=4   # amount of right-context per eg.
+constrained=true  # 'constrained=true' is the traditional setup; 'constrained=false'
+                  # gives you the 'unconstrained' egs creation in which the time
+                  # boundaries are not enforced inside chunks.
+
 left_context_initial=-1    # if >=0, left-context for first chunk of an utterance
 right_context_final=-1     # if >=0, right-context for last chunk of an utterance
 compress=true   # set this to false to disable compression (e.g. if you want to see whether
@@ -145,17 +149,14 @@ fi
 mkdir -p $dir/log $dir/info
 
 # Get list of validation utterances.
-
 frame_shift=$(utils/data/get_frame_shift.sh $data) || exit 1
-utils/data/get_utt2dur.sh $data
 
-cat $data/utt2dur | \
-  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
-  utils/shuffle_list.pl | head -$num_utts_subset > $dir/valid_uttlist || exit 1;
+awk '{print $1}' $data/utt2spk | \
+  utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/valid_uttlist
 
-len_uttlist=`wc -l $dir/valid_uttlist | awk '{print $1}'`
+len_uttlist=$(wc -l < $dir/valid_uttlist)
 if [ $len_uttlist -lt $num_utts_subset ]; then
-  echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
+  echo "Number of utterances is very small. Please check your data." && exit 1;
 fi
 
 if [ -f $data/utt2uniq ]; then  # this matters if you use data augmentation.
@@ -173,13 +174,12 @@ fi
 
 echo "$0: creating egs.  To ensure they are not deleted later you can do:  touch $dir/.nodelete"
 
-cat $data/utt2dur | \
-  awk -v min_len=$frames_per_eg -v fs=$frame_shift '{if ($2 * 1/fs >= min_len) print $1}' | \
+awk '{print $1}' $data/utt2spk | \
    utils/filter_scp.pl --exclude $dir/valid_uttlist | \
-   utils/shuffle_list.pl | head -$num_utts_subset > $dir/train_subset_uttlist || exit 1;
-len_uttlist=`wc -l $dir/train_subset_uttlist | awk '{print $1}'`
+   utils/shuffle_list.pl 2>/dev/null | head -$num_utts_subset > $dir/train_subset_uttlist
+len_uttlist=$(wc -l <$dir/train_subset_uttlist)
 if [ $len_uttlist -lt $num_utts_subset ]; then
-  echo "Number of utterances which have length at least $frames_per_eg is really low. Please check your data." && exit 1;
+  echo "Number of utterances is very small. Please check your data." && exit 1;
 fi
 
 ## Set up features.
@@ -277,6 +277,14 @@ chain_supervision_all_opts="--lattice-input=true --frame-subsampling-factor=$ali
 [ ! -z $left_tolerance ] && \
   chain_supervision_all_opts="$chain_supervision_all_opts --left-tolerance=$left_tolerance"
 
+if ! $constrained; then
+  chain_supervision_all_opts="$chain_supervision_all_opts --convert-to-pdfs=false"
+  trans_mdl_opt=--transition-model=$chaindir/0.trans_mdl
+else
+  trans_mdl_opt=
+fi
+
+
 lats_rspecifier="ark:gunzip -c $latdir/lat.JOB.gz |"
 if [ ! -z $lattice_prune_beam ]; then
   if [ "$lattice_prune_beam" == "0" ] || [ "$lattice_prune_beam" == "0.0" ]; then
@@ -322,7 +330,8 @@ if [ $stage -le 2 ]; then
       chain-get-supervision $chain_supervision_all_opts $chaindir/tree $chaindir/0.trans_mdl \
         ark:- ark:- \| \
       nnet3-chain-get-egs $ivector_opts --srand=$srand \
-        $egs_opts --normalization-fst-scale=$normalization_fst_scale $chaindir/normalization.fst \
+         $egs_opts --normalization-fst-scale=$normalization_fst_scale \
+         $trans_mdl_opt $chaindir/normalization.fst \
         "$valid_feats" ark,s,cs:- "ark:$dir/valid_all.cegs" || exit 1
     $cmd $dir/log/create_train_subset.log \
       utils/filter_scp.pl $dir/train_subset_uttlist $dir/lat_special.scp \| \
@@ -330,7 +339,8 @@ if [ $stage -le 2 ]; then
       chain-get-supervision $chain_supervision_all_opts \
         $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
       nnet3-chain-get-egs $ivector_opts --srand=$srand \
-        $egs_opts --normalization-fst-scale=$normalization_fst_scale $chaindir/normalization.fst \
+        $egs_opts --normalization-fst-scale=$normalization_fst_scale \
+        $trans_mdl_opt $chaindir/normalization.fst \
         "$train_subset_feats" ark,s,cs:- "ark:$dir/train_subset_all.cegs" || exit 1
     wait
     sleep 5  # wait for file system to sync.
@@ -360,7 +370,6 @@ if [ $stage -le 2 ]; then
     if $generate_egs_scp; then
       cat $dir/valid_combine.cegs $dir/train_combine.cegs | \
         nnet3-chain-copy-egs ark:- ark,scp:$dir/combine.cegs,$dir/combine.scp
-      rm $dir/{train,valid}_combine.scp
     else
       cat $dir/valid_combine.cegs $dir/train_combine.cegs > $dir/combine.cegs
     fi
@@ -397,7 +406,7 @@ if [ $stage -le 4 ]; then
     chain-get-supervision $chain_supervision_all_opts \
       $chaindir/tree $chaindir/0.trans_mdl ark:- ark:- \| \
     nnet3-chain-get-egs $ivector_opts --srand=\$[JOB+$srand] $egs_opts \
-      --num-frames-overlap=$frames_overlap_per_eg \
+      --num-frames-overlap=$frames_overlap_per_eg $trans_mdl_opt \
      "$feats" ark,s,cs:- ark:- \| \
     nnet3-chain-copy-egs --random=true --srand=\$[JOB+$srand] ark:- $egs_list || exit 1;
 fi

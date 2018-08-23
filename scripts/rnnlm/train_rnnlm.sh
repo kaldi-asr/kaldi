@@ -188,12 +188,16 @@ while [ $x -lt $num_iters ]; do
         else dest_number=$[x+1]; fi
         # in the normal case $repeated data will be just one copy.
         repeated_data=$(for n in $(seq $num_repeats); do echo -n $dir/text/$split.txt ''; done)
-        
+
         rnnlm_l2_factor=$(perl -e "print (1.0/$this_num_jobs);")
         embedding_l2_regularize=$(perl -e "print ($embedding_l2/$this_num_jobs);")
 
+        # allocate queue-slots for threads doing sampling,
+        num_threads_=$[$num_egs_threads*2/3]
+        [ -f $dir/sampling.lm ] && queue_thread_opt="--num-threads $num_threads_" || queue_thread_opt=
+
         # Run the training job or jobs.
-        $cmd $queue_gpu_opt $dir/log/train.$x.$n.log \
+        $cmd $queue_gpu_opt $queue_thread_opt $dir/log/train.$x.$n.log \
            rnnlm-train \
              --rnnlm.max-param-change=$rnnlm_max_change \
              --rnnlm.l2_regularize_factor=$rnnlm_l2_factor \
@@ -247,11 +251,11 @@ fi
 # Now get some diagnostics about the evolution of the objective function.
 if [ $stage -le $[num_iters+1] ]; then
   (
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
+    logs=$(for iter in $(seq 1 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
     # in the non-sampling case the exact objf is printed and we plot that
     # in the sampling case we print the approximated objf for training.
     grep 'Overall objf' $logs | awk 'BEGIN{printf("Train objf: ")} /exact/{printf("%.2f ", $NF);next} {printf("%.2f ", $10)} END{print "";}'
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
+    logs=$(for iter in $(seq 1 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
     grep 'Overall objf' $logs | awk 'BEGIN{printf("Dev objf:   ")} {printf("%.2f ", $NF)} END{print "";}'
   ) > $dir/report.txt
   cat $dir/report.txt

@@ -123,6 +123,9 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   frame_subsampling_opt="--frame-subsampling-factor=$(cat $srcdir/frame_subsampling_factor)"
 fi
 
+# Copy the model as it is required when generating egs
+cp $model $dir/  || exit 1
+
 if [ $stage -le 1 ]; then
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
     nnet3-latgen-faster$thread_string $ivector_opts $frame_subsampling_opt \
@@ -137,7 +140,6 @@ if [ $stage -le 1 ]; then
      --word-symbol-table=$graphdir/words.txt ${extra_opts} "$model" \
      $graphdir/HCLG.fst "$feats" "$lat_wspecifier" || exit 1;
 fi
-
 
 if [ $stage -le 2 ]; then
   if ! $skip_diagnostics ; then
