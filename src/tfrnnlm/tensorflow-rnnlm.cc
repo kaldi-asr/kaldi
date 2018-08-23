@@ -21,13 +21,15 @@
 #include <utility>
 #include <fstream>
 
-#include "tensorflow/core/public/session.h"
-#include "tensorflow/core/platform/env.h"
-#include "tensorflow/core/protobuf/meta_graph.pb.h"
-
 #include "tfrnnlm/tensorflow-rnnlm.h"
 #include "util/stl-utils.h"
 #include "util/text-utils.h"
+
+// Tensorflow includes were moved after tfrnnlm/tensorflow-rnnlm.h include to
+// avoid macro redefinitions. See also the note in tfrnnlm/tensorflow-rnnlm.h.
+#include "tensorflow/core/public/session.h"
+#include "tensorflow/core/platform/env.h"
+#include "tensorflow/core/protobuf/meta_graph.pb.h"
 
 namespace kaldi {
 using std::ifstream;
@@ -47,7 +49,7 @@ void SetUnkPenalties(const string &filename,
   float count, total_count = 0;
   while (ifile >> word >> count) {
     int id = fst_word_symbols.Find(word);
-    KALDI_ASSERT(id != fst::SymbolTable::kNoSymbol);
+    KALDI_ASSERT(id != -1); // fst::kNoSymbol
     (*out)[id] = count;
     total_count += count;
   }
@@ -143,7 +145,7 @@ KaldiTfRnnlmWrapper::KaldiTfRnnlmWrapper(
       rnn_label_to_word_.push_back(word);  // vector[i] = word
 
       int fst_label = fst_word_symbols->Find(word);
-      if (fst::SymbolTable::kNoSymbol == fst_label) {
+      if (fst_label == -1) { // fst::kNoSymbol
         if (id == eos_)
           continue;
 
@@ -316,7 +318,7 @@ void TfRnnlmDeterministicFst::Clear() {
   for (int i = 1; i < state_to_cell_.size(); i++) {
     delete state_to_cell_[i];
   }
-  
+
   state_to_context_.resize(1);
   state_to_cell_.resize(1);
   state_to_wseq_.resize(1);

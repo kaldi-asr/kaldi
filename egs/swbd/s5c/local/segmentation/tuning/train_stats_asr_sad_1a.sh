@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2017   Nagendra Kumar Goel
+#           2016   Vimal Manohar
+# Apache 2.0
 # This is a script to train a TDNN for speech activity detection (SAD) 
 # using statistics pooling for long-context information.
 
@@ -27,7 +30,7 @@ extra_right_context=21
 relu_dim=256
 
 # training options
-num_epochs=4
+num_epochs=1
 initial_effective_lrate=0.0003
 final_effective_lrate=0.00003
 num_jobs_initial=3
@@ -43,11 +46,11 @@ config_dir=
 dir=
 affix=1a2
 
-data_dir=exp/segmentation_1a/train_whole_hires_bp
+data_dir=exp/segmentation_1a/train_whole_rvb_hires
 targets_dir=exp/segmentation_1a/train_whole_combined_targets_sub3
 
 . ./cmd.sh
-. ./path.sh
+if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
 if [ -z "$dir" ]; then
@@ -129,10 +132,13 @@ if [ $stage -le 6 ]; then
     --targets-scp="$targets_dir/targets.scp" \
     --egs.opts="--frame-subsampling-factor 3 --num-utts-subset $num_utts_subset" \
     --dir=$dir || exit 1
+fi
 
-  copy-feats scp:$targets_dir/targets.scp ark:- | \
-    matrix-sum-rows ark:- ark:- | vector-sum --binary=false ark:- - | \
-    awk '{print " [ "$2" "$3" ]"}' > $dir/post_output.vec
+if [ $stage -le 7 ]; then
+  # Use a subset to compute prior over the output targets
+  $train_cmd $dir/log/get_priors.log \
+    matrix-sum-rows "scp:utils/subset_scp.pl --quiet 1000 $targets_dir/targets.scp |" \
+    ark:- \| vector-sum --binary=false ark:- $dir/post_output.vec || exit 1
 
   echo 3 > $dir/frame_subsampling_factor
 fi

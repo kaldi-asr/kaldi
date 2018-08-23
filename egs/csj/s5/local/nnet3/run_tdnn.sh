@@ -43,7 +43,7 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 gmm_dir=exp/$gmm
 ali_dir=exp/${gmm}_ali_${train_set}_sp
 dir=exp/nnet3${nnet3_affix}/tdnn${affix}
-train_ivector_dir=exp/nnet3${nnet3_affix}ivectors_${train_set}_sp_hires
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 if [ -e data/train_dev ] ;then
     dev_set=train_dev
 fi
@@ -52,15 +52,30 @@ fi
 if [ $stage -le 9 ]; then
   echo "$0: creating neural net configs";
 
-  # create the config files for nnet initialization                                                                                                                                  
-  python steps/nnet3/tdnn/make_configs.py  \
-    --feat-dir data/${train_set}_sp_hires \
-    --ivector-dir $train_ivector_dir \
-    --ali-dir $ali_dir \
-    --relu-dim 1024 \
-    --splice-indexes "-2,-1,0,1,2 -1,2 -3,3 -7,2 0"  \
-    --use-presoftmax-prior-scale true \
-   $dir/configs || exit 1;
+  num_targets=$(tree-info $ali_dir/tree | grep num-pdfs | awk '{print $2}')
+
+  mkdir -p $dir/configs
+  cat <<EOF > $dir/configs/network.xconfig
+  input dim=100 name=ivector
+  input dim=40 name=input
+
+  # please note that it is important to have input layer with the name=input
+  # as the layer immediately preceding the fixed-affine-layer to enable
+  # the use of short notation for the descriptor
+  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+
+  # the first splicing is moved before the lda layer, so no splicing here
+  relu-renorm-layer name=tdnn1 dim=1024
+  relu-renorm-layer name=tdnn2 input=Append(-1,2) dim=1024
+  relu-renorm-layer name=tdnn3 input=Append(-3,3) dim=1024
+  relu-renorm-layer name=tdnn4 input=Append(-3,3) dim=1024
+  relu-renorm-layer name=tdnn5 input=Append(-7,2) dim=1024
+  relu-renorm-layer name=tdnn6 dim=1024
+
+  output-layer name=output input=tdnn6 dim=$num_targets max-change=1.5
+EOF
+
+  steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
 
 if [ $stage -le 10 ]; then

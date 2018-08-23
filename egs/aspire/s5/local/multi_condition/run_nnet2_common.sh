@@ -57,9 +57,6 @@ if [ $stage -le 1 ]; then
       data/${data_dir} data/${data_dir}_rvb
   done
 
-  # create the dev, test and eval sets from the aspire recipe
-  local/multi_condition/aspire_data_prep.sh
-
   # copy the alignments for the newly created utterance ids
   ali_dirs=
   for i in `seq 1 $num_data_reps`; do

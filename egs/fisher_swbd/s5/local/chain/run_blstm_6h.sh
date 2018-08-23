@@ -171,7 +171,6 @@ if [ $stage -le 15 ]; then
       steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
           data/lang_fsh_sw1_{tg,fg} data/${decode_set}_hires \
          $dir/decode_${decode_set}${decode_dir_affix:+_$decode_dir_affix}_fsh_sw1_{tg,fg} || exit 1;
-      fi
       ) &
   done
 fi

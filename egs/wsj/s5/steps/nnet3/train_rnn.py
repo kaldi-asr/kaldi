@@ -67,6 +67,14 @@ def get_args():
                         should halve --trainer.samples-per-iter.  May be
                         a comma-separated list of alternatives: first width
                         is the 'principal' chunk-width, used preferentially""")
+    parser.add_argument("--trainer.input-model", type=str,
+                        dest='input_model', default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="""If specified, this model is used as initial
+                        raw model (0.raw in the script) instead of initializing
+                        the model from xconfig. Configs dir is not expected to
+                        exist and left/right context is computed from this
+                        model.""")
     parser.add_argument("--trainer.samples-per-iter", type=int,
                         dest='samples_per_iter', default=20000,
                         help="""This is really the number of egs in each
@@ -162,18 +170,21 @@ def process_args(args):
     if args.chunk_right_context < 0:
         raise Exception("--egs.chunk-right-context should be non-negative")
 
-    if (not os.path.exists(args.dir)
-            or not os.path.exists(args.dir+"/configs")):
-        raise Exception("This scripts expects {0} to exist and have a configs "
-                        "directory which is the output of "
-                        "make_configs.py script")
+    if (not os.path.exists(args.dir)):
+        raise Exception("This script expects --dir={0} to exist.")
 
-    if args.transform_dir is None:
-        args.transform_dir = args.ali_dir
+    if (not os.path.exists(args.dir+"/configs") and
+        (args.input_model is None or not os.path.exists(args.input_model))):
+        raise Exception("Either --trainer.input-model option should be supplied, "
+                        "and exist; or the {0}/configs directory should exist."
+                        "{0}/configs is the output of make_configs.py"
+                        "".format(args.dir))
 
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
-    if args.use_gpu:
+    if args.use_gpu in ["true", "false"]:
+        args.use_gpu = ("yes" if args.use_gpu == "true" else "no")
+    if args.use_gpu in ["yes", "wait"]:
         if not common_lib.check_if_cuda_compiled():
             logger.warning(
                 """You are running with one thread but you have not compiled
@@ -182,9 +193,10 @@ def process_args(args):
                    ./configure; make""")
 
         run_opts.train_queue_opt = "--gpu 1"
-        run_opts.parallel_train_opts = ""
+        run_opts.parallel_train_opts = "--use-gpu={}".format(args.use_gpu)
+        run_opts.combine_gpu_opt = "--use-gpu={}".format(args.use_gpu)
         run_opts.combine_queue_opt = "--gpu 1"
-        run_opts.prior_gpu_opt = "--use-gpu=yes"
+        run_opts.prior_gpu_opt = "--use-gpu={}".format(args.use_gpu)
         run_opts.prior_queue_opt = "--gpu 1"
 
     else:
@@ -193,6 +205,7 @@ def process_args(args):
 
         run_opts.train_queue_opt = ""
         run_opts.parallel_train_opts = "--use-gpu=no"
+        run_opts.combine_gpu_opt = "--use-gpu=no"
         run_opts.combine_queue_opt = ""
         run_opts.prior_gpu_opt = "--use-gpu=no"
         run_opts.prior_queue_opt = ""
@@ -218,6 +231,10 @@ def train(args, run_opts):
     arg_string = pprint.pformat(vars(args))
     logger.info("Arguments for the experiment\n{0}".format(arg_string))
 
+    # Copy phones.txt from ali-dir to dir. Later, steps/nnet3/decode.sh will
+    # use it to check compatibility between training and decoding phone-sets.
+    shutil.copy('{0}/phones.txt'.format(args.ali_dir), args.dir)
+
     # Set some variables.
     num_jobs = common_lib.get_number_of_jobs(args.ali_dir)
     feat_dim = common_lib.get_feat_dim(args.feat_dir)
@@ -236,7 +253,15 @@ def train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    variables = common_train_lib.parse_generic_config_vars_file(var_file)
+    if args.input_model is None:
+        config_dir = '{0}/configs'.format(args.dir)
+        var_file = '{0}/vars'.format(config_dir)
+
+        variables = common_train_lib.parse_generic_config_vars_file(var_file)
+    else:
+        # If args.input_model is specified, the model left and right contexts
+        # are computed using input_model.
+        variables = common_train_lib.get_input_model_info(args.input_model)
 
     # Set some variables.
     try:
@@ -258,7 +283,7 @@ def train(args, run_opts):
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
 
-    if args.stage <= -5:
+    if (args.stage <= -5) and (args.input_model is None):
         logger.info("Initializing a basic network for estimating "
                     "preconditioning matrix")
         common_lib.execute_command(
@@ -288,7 +313,6 @@ def train(args, run_opts):
             cmvn_opts=args.cmvn_opts,
             online_ivector_dir=args.online_ivector_dir,
             samples_per_iter=args.samples_per_iter,
-            transform_dir=args.transform_dir,
             stage=args.egs_stage)
 
     if args.egs_dir is None:
@@ -315,7 +339,7 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if args.stage <= -3:
+    if args.stage <= -3 and (args.input_model is None):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -323,7 +347,7 @@ def train(args, run_opts):
             max_lda_jobs=args.max_lda_jobs,
             rand_prune=args.rand_prune)
 
-    if args.stage <= -2:
+    if args.stage <= -2 and (args.input_model is None):
         logger.info("Computing initial vector for FixedScaleComponent before"
                     " softmax, using priors^{prior_scale} and rescaling to"
                     " average 1".format(
@@ -336,7 +360,8 @@ def train(args, run_opts):
     if args.stage <= -1:
         logger.info("Preparing the initial acoustic model.")
         train_lib.acoustic_model.prepare_initial_acoustic_model(
-            args.dir, args.ali_dir, run_opts)
+            args.dir, args.ali_dir, run_opts,
+            input_model=args.input_model)
 
     # set num_iters so that as close as possible, we process the data
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==
@@ -397,6 +422,19 @@ def train(args, run_opts):
                                            iter, model_file,
                                            args.shrink_saturation_threshold) else 1.0)
 
+            percent = num_archives_processed * 100.0 / num_archives_to_process
+            epoch = (num_archives_processed * args.num_epochs
+                     / num_archives_to_process)
+            shrink_info_str = ''
+            if shrinkage_value != 1.0:
+                shrink_info_str = 'shrink: {0:0.5f}'.format(shrinkage_value)
+            logger.info("Iter: {0}/{1}    "
+                        "Epoch: {2:0.2f}/{3:0.1f} ({4:0.1f}% complete)    "
+                        "lr: {5:0.6f}    {6}".format(iter, num_iters - 1,
+                                                     epoch, args.num_epochs,
+                                                     percent,
+                                                     lrate, shrink_info_str))
+
             train_lib.common.train_one_iteration(
                 dir=args.dir,
                 iter=iter,
@@ -410,6 +448,7 @@ def train(args, run_opts):
                     args.dropout_schedule,
                     float(num_archives_processed) / num_archives_to_process,
                     iter),
+                train_opts=' '.join(args.train_opts),
                 shrinkage_value=shrinkage_value,
                 minibatch_size_str=args.num_chunk_per_minibatch,
                 min_deriv_time=min_deriv_time,

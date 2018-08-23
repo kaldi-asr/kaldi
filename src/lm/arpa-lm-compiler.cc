@@ -360,10 +360,18 @@ void ArpaLmCompiler::RemoveRedundantStates() {
             << fst_.NumStates();
 }
 
+void ArpaLmCompiler::Check() const {
+  if (fst_.Start() == fst::kNoStateId) {
+    KALDI_ERR << "Arpa file did not contain the beginning-of-sentence symbol "
+              << Symbols()->Find(Options().bos_symbol) << ".";
+  }
+}
+
 void ArpaLmCompiler::ReadComplete() {
   fst_.SetInputSymbols(Symbols());
   fst_.SetOutputSymbols(Symbols());
   RemoveRedundantStates();
+  Check();
 }
 
 }  // namespace kaldi

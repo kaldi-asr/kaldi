@@ -6,6 +6,11 @@
 #            2015  Hainan Xu
 
 
+# The thing that this script implements is described in the paper:
+# "PRONUNCIATION AND SILENCE PROBABILITY MODELING FOR ASR"
+# by Guoguo Chen et al, see
+# http://www.danielpovey.com/files/2015_interspeech_silprob.pdf
+
 . ./path.sh || exit 1;
 
 # begin configuration
@@ -73,7 +78,7 @@ fi
 # the cat and awk commands below are implementing add-one smoothing.
 cat <(awk '{print 1, $0;}' <$dir/lexicon.txt) $pron_counts | \
   awk '{ count = $1; $1 = ""; word_count[$2] += count; pron_count[$0] += count; pron2word[$0] = $2; }
-       END{ for (p in pron_count) { word = pron2word[p]; num = pron_count[p]; den = word_count[word]; 
+       END{ for (p in pron_count) { word = pron2word[p]; num = pron_count[p]; den = word_count[word];
           print num / den, p } } ' | \
     awk '{ word = $2; $2 = $1; $1 = word; print; }' | grep -v '^<eps>' |\
     sort -k1,1 -k2g,2 -k3 > $dir/lexiconp.txt
@@ -108,6 +113,11 @@ fi
 # Create $dir/lexiconp_silprob.txt and $dir/silprob.txt if silence counts file
 # exists. The format of $dir/lexiconp_silprob.txt is:
 # word pron-prob P(s_r | w)  F(s_l | w) F(n_l | w) pron
+#  where:  P(s_r | w) is the probability of silence to the right of the word
+#          F(s_l | w) is a factor which is greater than one if silence to the
+#                  left of the word is more than averagely probable.
+#          F(n_l | w) is a factor which is greater than one if nonsilence to the
+#                  left of the word is more than averagely probable.
 if [ -n "$sil_counts" ]; then
   if [ ! -s "$sil_counts" ]; then
     echo "$0: expected file $sil_counts to exist and not empty" && exit 1;
@@ -175,7 +185,7 @@ if [ -n "$sil_counts" ]; then
     # Computes F(s_l | w) and F(n_l | w) in the paper.
     $lambda3 = 2;             # Smoothing term, \lambda_3 in the paper.
     foreach my $wpron (keys %all_wprons) {
-      @col = split(" ", $wpron); 
+      @col = split(" ", $wpron);
       $word = shift @col;
       $pron = join(" ", @col);
       $pron_prob = $all_wprons{$wpron};
@@ -189,7 +199,7 @@ if [ -n "$sil_counts" ]; then
 
       print LPSP "$word $pron_prob $P_w_sr{$wpron} $F_sl_w $F_nl_w $pron\n";
     }
-    
+
     # Create silprob.txt
     $BOS_sil_count = $wpron_sil{"<s>"} + $sil_prob * $lambda2;
     $BOS_nonsil_count = $wpron_nonsil{"<s>"} + (1 - $sil_prob) * $lambda2;
@@ -206,7 +216,7 @@ if [ -n "$sil_counts" ]; then
 fi
 
 # now regenerate lexicon.txt from lexiconp.txt, to make sure the lines are
-# in the same order. 
+# in the same order.
 cat $dir/lexiconp.txt | awk '{$2 = ""; print;}' | sed 's/  / /g' >$dir/lexicon.txt
 
 

@@ -22,8 +22,10 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
-#include "tfrnnlm/tensorflow-rnnlm.h"
 #include "util/common-utils.h"
+
+// This should come after any OpenFst includes to avoid using the wrong macros.
+#include "tfrnnlm/tensorflow-rnnlm.h"
 
 int main(int argc, char *argv[]) {
   try {

@@ -157,6 +157,22 @@ struct ComputationRequest {
   bool operator== (const ComputationRequest &other) const;
 };
 
+// Hash function for ComputationRequest. It converts
+// ComputationRequest to hash code by looking at input
+// and output IoSpecifications vectors.
+struct ComputationRequestHasher {
+  size_t operator()(const ComputationRequest *cr) const noexcept;
+};
+
+// Equality function for ComputationRequest pointer
+struct ComputationRequestPtrEqual {
+ public:
+  bool operator() (const ComputationRequest* cr1,
+                   const ComputationRequest* cr2) const {
+    return (*cr1) == (*cr2);
+  }
+};
+
 
 /**
    CommandType is an enum that describes the category of the command used in
@@ -232,6 +248,17 @@ struct ComputationRequest {
      indexes_ranges[arg3].  We use the "alpha" as if AddRowRanges()
      accepted that argument, even though it doesn't (we fake it using other
      calls, if alpha != 1.0).
+   - kCompressMatrix: Compresses the matrix which should be referred to
+     by submatrix-index arg1.  arg2 is a number that determines the
+     compression type (it's converted from the enum
+     CuCompressedMatrixType; 1=int8, 2=uint8, 3=int16, 4=uint16), and alpha
+     determines the 'range' parameter (c.f. NewCuCompressedMatrix()).  arg3
+     will be converted to the 'truncate' argument to the class
+     CuCompressedMatrix; it should be false (0) if you know that the input is
+     limited to the allowed range, and true (1) if the input may exceed that
+     range (see docs for CuCompresedMatrix).
+   - kDecompressMatrix:  Decompresses the matrix which is referred to
+     by submatrix-index arg1 (it should previously have been compressed).
    - kAcceptInput: accepts a matrix of input from the user, which may be either
      features, or derivatives w.r.t. the output.  arg1 is the submatrix index of
      a whole matrix that the input goes to, and arg2 is the index of the network
@@ -263,7 +290,8 @@ enum CommandType {
   kPropagate, kBackprop, kBackpropNoModelUpdate,
   kMatrixCopy, kMatrixAdd, kCopyRows, kAddRows,
   kCopyRowsMulti, kCopyToRowsMulti, kAddRowsMulti, kAddToRowsMulti,
-  kAddRowRanges, kAcceptInput, kProvideOutput,
+  kAddRowRanges, kCompressMatrix, kDecompressMatrix,
+  kAcceptInput, kProvideOutput,
   kNoOperation, kNoOperationPermanent, kNoOperationMarker, kNoOperationLabel,
   kGotoLabel };
 
@@ -383,12 +411,17 @@ struct NnetComputation {
   // These are owned here.
   std::vector<PrecomputedIndexesInfo> component_precomputed_indexes;
 
-  // used in kAddRows, kAddToRows, kCopyRows, kCopyToRows.  contains row-indexes.
+  // Used in commands kAddRows, kAddToRows, kCopyRows, which
+  // contain indexes into this data-member.
+  // Each vector<int32> is a vector of row-indexes (with -1 usually treated as
+  // a special case meaning "don't do anything for this row" for add
+  // commands, or "use zero" for copy commands.
   std::vector<std::vector<int32> > indexes;
 
-  // used kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti, kCopyToRowsMulti.
-  // contains pairs (sub-matrix index, row index)- or (-1,-1) meaning don't
-  // do anything for this row.
+  // Used in commands kAddRowsMulti, kAddToRowsMulti, kCopyRowsMulti and
+  // kCopyToRowsMulti.  Contains pairs (sub-matrix index, row index)- or the
+  // special pair (-1,-1) meaning "don't do anything for this row" for add
+  // commands, or "use zero" for copy commands.
   std::vector<std::vector<std::pair<int32,int32> > > indexes_multi;
 
 

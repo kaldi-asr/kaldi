@@ -7,9 +7,15 @@
 # steps/info/chain_dir_info.pl exp/chain/cnn_1a/
 # exp/chain/cnn_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.021->-0.015 xent:train/valid[13,20,final]=(-1.05,-0.701,-0.591/-1.30,-1.08,-1.00) logprob:train/valid[13,20,final]=(-0.061,-0.034,-0.030/-0.107,-0.101,-0.098)
 
-# cat exp/chain/cnn_1a/decode_test/scoring_kaldi/best_*
-# %WER 5.94 [ 3913 / 65921, 645 ins, 1466 del, 1802 sub ] exp/chain/cnn_1a/decode_test//cer_11_0.0
-# %WER 9.13 [ 1692 / 18542, 162 ins, 487 del, 1043 sub ] exp/chain/cnn_1a/decode_test/wer_11_0.0
+# local/chain/compare_wer.sh exp/chain/cnn_1a/
+# System                         cnn_1a
+# WER                             18.52
+# CER                             10.07
+# Final train prob              -0.0077
+# Final valid prob              -0.0970
+# Final train prob (xent)       -0.5484
+# Final valid prob (xent)       -0.9643
+# Parameters                      4.36M
 
 set -e -o pipefail
 
@@ -40,7 +46,7 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=false
-lang_test=lang_test
+lang_test=lang_unk
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -83,7 +89,7 @@ if [ $stage -le 1 ]; then
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
   if [ -d $lang ]; then
-    if [ $lang/L.fst -nt data/$lang_test/L.fst ]; then
+    if [ $lang/L.fst -nt data/lang/L.fst ]; then
       echo "$0: $lang already exists, not overwriting it; continuing"
     else
       echo "$0: $lang already exists and seems to be older than data/lang..."
@@ -91,7 +97,7 @@ if [ $stage -le 1 ]; then
       exit 1;
     fi
   else
-    cp -r data/$lang_test $lang
+    cp -r data/lang $lang
     silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
     nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
     # Use our special topology... note that later on may have to tune this
@@ -104,7 +110,7 @@ if [ $stage -le 2 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
   steps/align_fmllr_lats.sh --nj $nj --cmd "$cmd" ${train_data_dir} \
-    data/$lang_test $gmm_dir $lat_dir
+    data/lang $gmm_dir $lat_dir
   rm $lat_dir/fsts.*.gz # save space
 fi
 

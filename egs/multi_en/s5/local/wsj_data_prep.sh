@@ -6,7 +6,6 @@
 # Changes made:
 #  - Modified paths to match multi_en naming conventions
 #  - Removed code related to LM creation (happens after utt2spk creation)
-#  - Changed wav.scp to downsample to 8 kHz
 ###########################################################################################
 
 # Copyright 2009-2012  Microsoft Corporation  Johns Hopkins University (Author: Daniel Povey)
@@ -136,7 +135,7 @@ done
 
 # Create scp's with wav's. (the wv1 in the distribution is not really wav, it is sph.)
 for x in train_si84 train_si284 test_eval92 test_eval93 test_dev93 test_eval92_5k test_eval93_5k test_dev93_5k dev_dt_05 dev_dt_20; do
-  awk '{printf("%s '$sph2pipe' -f wav %s | sox -t raw -r 16000 -e signed-integer -b 16 - -t wav -r 8000 - | \n", $1, $2);}' < ${x}_sph.scp > ${x}_wav.scp
+  awk '{printf("%s '$sph2pipe' -f wav %s |\n", $1, $2);}' < ${x}_sph.scp > ${x}_wav.scp
 done
 
 # Make the utt2spk and spk2utt files.

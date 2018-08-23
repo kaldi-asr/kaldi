@@ -54,17 +54,16 @@ double ComputeObjf(bool batchnorm_test_mode, bool dropout_test_mode,
                                                    end = egs.end();
     for (; iter != end; ++iter)
       prob_computer->Compute(*iter);
-    const ChainObjectiveInfo *objf_info =
-        prob_computer->GetObjective("output");
-    if (objf_info == NULL)
-      KALDI_ERR << "Error getting objective info (unsuitable egs?)";
-    KALDI_ASSERT(objf_info->tot_weight > 0.0);
+
+    double tot_weight = 0.0;
+    double tot_objf = prob_computer->GetTotalObjective(&tot_weight);
+
+    KALDI_ASSERT(tot_weight > 0.0);
     // inf/nan tot_objf->return -inf objective.
-    double tot_objf = objf_info->tot_like + objf_info->tot_l2_term;
     if (!(tot_objf == tot_objf && tot_objf - tot_objf == 0))
       return -std::numeric_limits<double>::infinity();
     // we prefer to deal with normalized objective functions.
-    return tot_objf / objf_info->tot_weight;
+    return tot_objf / tot_weight;
   }
 }
 

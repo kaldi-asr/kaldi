@@ -6,11 +6,14 @@
 # After comparing different combinations of dropout(with or without) and decay-time
 # option(20, 40 or without), we found this setup is best.
 
-#System                   tdnn_lstm_1l_ld5  tdnn_lstm_1m_ld   1m_online 
+#System                   tdnn_lstm_1l_ld5  tdnn_lstm_1m_ld   1m_online
 #WER on train_dev(tg)         12.41             12.37           12.21
 #WER on train_dev(fg)         11.59             11.46           11.41
 #WER on eval2000(tg)          14.8              14.8            14.9
 #WER on eval2000(fg)          13.5              13.5            13.6
+# WER on rt03(tg)                               18.6
+# WER on rt03(fg)                               16.3
+
 #Final train prob             -0.069            -0.081
 #Final valid prob             -0.095            -0.100
 #Final train prob (xent)      -0.913            -0.950
@@ -30,6 +33,7 @@ dir=exp/chain/tdnn_lstm_1m # Note: _sp will get added to this if $speed_perturb 
 decode_iter=
 decode_dir_affix=
 decode_nj=50
+if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
 
 # training options
 leftmost_questions_truncate=-1
@@ -227,7 +231,7 @@ if [ $stage -le 15 ]; then
   if [ ! -z $decode_iter ]; then
     iter_opts=" --iter $decode_iter "
   fi
-  for decode_set in train_dev eval2000; do
+  for decode_set in train_dev eval2000 $maybe_rt03; do
       (
        steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj 50 --cmd "$decode_cmd" $iter_opts \
@@ -257,7 +261,7 @@ if $test_online_decoding && [ $stage -le 16 ]; then
        $lang exp/nnet3/extractor $dir ${dir}_online
 
   rm $dir/.error 2>/dev/null || true
-  for decode_set in train_dev eval2000; do
+  for decode_set in train_dev eval2000 $maybe_rt03; do
     (
       # note: we just give it "$decode_set" as it only uses the wav.scp, the
       # feature type does not matter.

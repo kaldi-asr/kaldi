@@ -204,6 +204,17 @@ bool ScoringTest(bool seps, const string &infile, const string& sentence,
   return ok;
 }
 
+bool ThrowsExceptionTest(bool seps, const string &infile) {
+  try {
+    // Make memory cleanup easy in both cases of try-catch block.
+    std::unique_ptr<ArpaLmCompiler> compiler(Compile(seps, infile));
+    return false;
+  } catch (const std::runtime_error&) {
+    // Kaldi throws only std::runtime_error in kaldi-error.cc
+    return true;
+  }
+}
+
 }  // namespace kaldi
 
 bool RunAllTests(bool seps) {
@@ -214,6 +225,9 @@ bool RunAllTests(bool seps) {
 
   ok &= kaldi::ScoringTest(seps, "test_data/input.arpa", "b b b a", 59.2649);
   ok &= kaldi::ScoringTest(seps, "test_data/input.arpa", "a b", 4.36082);
+
+  ok &= kaldi::ThrowsExceptionTest(seps, "test_data/missing_bos.arpa");
+
   if (!ok) {
     KALDI_WARN << "Tests " << (seps ? "with" : "without")
                << " epsilon substitution FAILED";

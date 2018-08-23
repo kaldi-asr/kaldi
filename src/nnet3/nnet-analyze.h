@@ -160,6 +160,7 @@ class ComputationVariables {
   // zero indexing): something like "m1" or "m1(0:99,:)" or "m1(0:19,10:49)"
   std::string DescribeVariable(int32 variable) const;
 
+  NnetComputation::SubMatrixInfo VariableInfo(int32 variable) const;
  private:
   // sets up split_points_, matrix_to_variable_index_, and num_variables_.
   // called from constructor.
@@ -321,6 +322,13 @@ class ComputationAnalysis {
   /// s must be >0 (i.e. not the empty submatrix).
   int32 FirstNontrivialAccess(int32 s) const;
 
+  /// Returns the first command (read or write) that accesses any part of 's',
+  /// including possibly zeroing it.  [note: kAllocMatrix, kSwapMatrix and
+  /// kDeallocMatrix do not count as read or write operations].  If there is no
+  /// such command, it returns num_commands.  s must be >0 (i.e. not the empty
+  /// submatrix).
+  int32 FirstAccess(int32 s) const;
+
   /// Returns the last non-deallocation command that accesses any part of
   /// submatrix 's'; if there is no such command it returns -1.
   /// s must be >0 (i.e. not the empty submatrix).
@@ -385,7 +393,7 @@ struct CheckComputationOptions {
   // legitimately fail after optimization.  see code for details.
   bool check_rewrite;
   // If 'check_unused_variables' is true, it checks for unused variables
-  // (e.g. unused partsof matrices).  We only set it false for online
+  // (e.g. unused parts of matrices).  We only set it false for online
   // computations, where there can be instances where a part of a matrix is
   // apparently never accessed (until we consider that the matrix is swapped
   // with another).
@@ -407,15 +415,17 @@ class ComputationChecker {
                      const NnetComputation &computation);
   void Check();  // call this only once.
  private:
-  // various dimension consistency checks and checks on properties.
+  // Various dimension consistency checks and checks on properties.
   void CheckComputationIndexes() const;
-  // checks for a situation where an undefined variable is read.
+  // Checks for a situation where an undefined variable is read.
   void CheckComputationUndefined() const;
-  // checks that all writes are done before reads.  details with implementation.
+  // Checks that all writes are done before reads.  details with implementation.
   void CheckComputationRewrite() const;
-  // check matrix accesses make sense.
+  // Check matrix accesses make sense.
   void CheckComputationMatrixAccesses() const;
-  // check debug_info has the correct size, if used.
+  // Some checks related to the kCompressMatrix and kDecompressMatrix commands.
+  void CheckComputationCompression() const;
+  // Check debug_info has the correct size, if used.
   void CheckComputationDebugInfo() const;
 
   const CheckComputationOptions &config_;

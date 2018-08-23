@@ -431,9 +431,10 @@ void ConvertLatticeToPhones(const TransitionModel &trans,
       arc.olabel = 0; // remove any word.
       if ((arc.ilabel != 0) // has a transition-id on input..
           && (trans.TransitionIdToHmmState(arc.ilabel) == 0)
-          && (!trans.IsSelfLoop(arc.ilabel)))
+          && (!trans.IsSelfLoop(arc.ilabel))) {
          // && trans.IsFinal(arc.ilabel)) // there is one of these per phone...
         arc.olabel = trans.TransitionIdToPhone(arc.ilabel);
+      }
       aiter.SetValue(arc);
     }  // end looping over arcs
   }  // end looping over states
@@ -459,6 +460,8 @@ double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
   StateId num_states = lat.NumStates();
   KALDI_ASSERT(lat.Properties(fst::kTopSorted, true) == fst::kTopSorted);
   KALDI_ASSERT(lat.Start() == 0);
+  alpha->clear();
+  beta->clear();
   alpha->resize(num_states, kLogZeroDouble);
   beta->resize(num_states, kLogZeroDouble);
 
@@ -1644,6 +1647,112 @@ void ComposeCompactLatticeDeterministic(
     }
   }
   fst::Connect(composed_clat);
+}
+
+
+void ComputeAcousticScoresMap(
+    const Lattice &lat,
+    unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>,
+                                        PairHasher<int32> > *acoustic_scores) {
+  // typedef the arc, weight types
+  typedef Lattice::Arc Arc;
+  typedef Arc::Weight LatticeWeight;
+  typedef Arc::StateId StateId;
+
+  acoustic_scores->clear();
+
+  std::vector<int32> state_times;
+  LatticeStateTimes(lat, &state_times);   // Assumes the input is top sorted
+
+  KALDI_ASSERT(lat.Start() == 0);
+
+  for (StateId s = 0; s < lat.NumStates(); s++) {
+    int32 t = state_times[s];
+    for (fst::ArcIterator<Lattice> aiter(lat, s); !aiter.Done();
+          aiter.Next()) {
+      const Arc &arc = aiter.Value();
+      const LatticeWeight &weight = arc.weight;
+
+      int32 tid = arc.ilabel;
+
+      if (tid != 0) {
+        unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>,
+          PairHasher<int32> >::iterator it = acoustic_scores->find(std::make_pair(t, tid));
+        if (it == acoustic_scores->end()) {
+          acoustic_scores->insert(std::make_pair(std::make_pair(t, tid),
+                                          std::make_pair(weight.Value2(), 1)));
+        } else {
+          if (it->second.second == 2
+                && it->second.first / it->second.second != weight.Value2()) {
+            KALDI_VLOG(2) << "Transitions on the same frame have different "
+                          << "acoustic costs for tid " << tid << "; "
+                          << it->second.first / it->second.second
+                          << " vs " << weight.Value2();
+          }
+          it->second.first += weight.Value2();
+          it->second.second++;
+        }
+      } else {
+        // Arcs with epsilon input label (tid) must have 0 acoustic cost
+        KALDI_ASSERT(weight.Value2() == 0);
+      }
+    }
+
+    LatticeWeight f = lat.Final(s);
+    if (f != LatticeWeight::Zero()) {
+      // Final acoustic cost must be 0 as we are reading from
+      // non-determinized, non-compact lattice
+      KALDI_ASSERT(f.Value2() == 0.0);
+    }
+  }
+}
+
+void ReplaceAcousticScoresFromMap(
+    const unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>,
+                                        PairHasher<int32> > &acoustic_scores,
+    Lattice *lat) {
+  // typedef the arc, weight types
+  typedef Lattice::Arc Arc;
+  typedef Arc::Weight LatticeWeight;
+  typedef Arc::StateId StateId;
+
+  TopSortLatticeIfNeeded(lat);
+
+  std::vector<int32> state_times;
+  LatticeStateTimes(*lat, &state_times);
+
+  KALDI_ASSERT(lat->Start() == 0);
+
+  for (StateId s = 0; s < lat->NumStates(); s++) {
+    int32 t = state_times[s];
+    for (fst::MutableArcIterator<Lattice> aiter(lat, s);
+          !aiter.Done(); aiter.Next()) {
+      Arc arc(aiter.Value());
+
+      int32 tid = arc.ilabel;
+      if (tid != 0) {
+        unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>,
+          PairHasher<int32> >::const_iterator it = acoustic_scores.find(std::make_pair(t, tid));
+        if (it == acoustic_scores.end()) {
+          KALDI_ERR << "Could not find tid " << tid << " at time " << t
+                    << " in the acoustic scores map.";
+        } else {
+          arc.weight.SetValue2(it->second.first / it->second.second);
+        }
+      } else {
+        // For epsilon arcs, set acoustic cost to 0.0
+        arc.weight.SetValue2(0.0);
+      }
+      aiter.SetValue(arc);
+    }
+
+    LatticeWeight f = lat->Final(s);
+    if (f != LatticeWeight::Zero()) {
+      // Set final acoustic cost to 0.0
+      f.SetValue2(0.0);
+      lat->SetFinal(s, f);
+    }
+  }
 }
 
 }  // namespace kaldi

@@ -116,7 +116,7 @@
 
  \subsection versions_versions_53 Version 5.3
 
-   Version 5.3 is the current master branch.  Major changes that were made between the end of 5.2.x
+   Major changes that were made between the end of 5.2.x
    and the start of the 5.3 branch include:
       - Create a nnet3-based setup for RNN language models (i.e. recurrent and neural net based
         language models)
@@ -126,5 +126,25 @@
    Below are patches corresponding to minor version numbers 5.3.x.
 
    \htmlinclude 5.3.html
+
+ \subsection versions_versions_54 Version 5.4
+
+
+   Version 5.4 is the current master branch.   The main changes that were made between
+   the end of 5.3.x and the start of the 5.4 branch include:
+    - Some code changes in the nnet3 codebase, for speed and memory efficiency.
+    - Various simplifications and code reorganizations in the nnet3 code.
+    - Support for a new kind of factorized TDNN which gives substantially better
+      results than our old TDNN recipe, and is even better than our old TDNN+LSTM
+      recipe.  A good example of this is in egs/swbd/s5c/local/chain/tuning/run_tdnn_lstm_1n.sh.
+      Some nnet3 code changes were needed for this as well (mostly: support for constraining
+      a matrix to have orthonormal rows).
+
+   Below are patches corresponding to minor version numbers 5.4.x.
+
+   \htmlinclude 5.4.html
+
+
+
 
 */

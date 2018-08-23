@@ -66,8 +66,8 @@ struct ImageAugmentationConfig {
     po->Register("rotation-prob", &rotation_prob,
                  "Probability of doing rotation");
     po->Register("fill-mode", &fill_mode_string, "Mode for dealing with "
-		 "points outside the image boundary when applying transformation. "
-		 "Choices = {nearest, reflect}");
+                 "points outside the image boundary when applying transformation. "
+                 "Choices = {nearest, reflect}");
   }
 
   void Check() const {
@@ -87,10 +87,10 @@ struct ImageAugmentationConfig {
       fill_mode = kReflect;
     } else {
       if (fill_mode_string != "nearest") {
-	KALDI_ERR << "Choices for --fill-mode are 'nearest' or 'reflect', got: "
-		  << fill_mode_string;
+        KALDI_ERR << "Choices for --fill-mode are 'nearest' or 'reflect', got: "
+                  << fill_mode_string;
       } else {
-	fill_mode = kNearest;
+        fill_mode = kNearest;
       }
     }
     return fill_mode;
@@ -243,7 +243,7 @@ void PerturbImage(const ImageAugmentationConfig &config,
   //   0           0            1 ]
   if (RandUniform() <= config.rotation_prob) {
     BaseFloat theta = (2 * config.rotation_degree * RandUniform() -
-		       config.rotation_degree) / 180.0 * M_PI;
+                       config.rotation_degree) / 180.0 * M_PI;
     rotation_mat(0, 0) = cos(theta);
     rotation_mat(0, 1) = -sin(theta);
     rotation_mat(1, 0) = sin(theta);
@@ -325,8 +325,8 @@ void PerturbImageInNnetExample(
 }
 
 
-} // namespace nnet3
-} // namespace kaldi
+}  // namespace nnet3
+}  // namespace kaldi
 
 int main(int argc, char *argv[]) {
   try {

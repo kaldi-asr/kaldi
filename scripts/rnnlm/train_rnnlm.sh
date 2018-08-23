@@ -23,6 +23,8 @@ final_effective_lrate=0.0001
 embedding_l2=0.005
 embedding_lrate_factor=0.1  # the embedding learning rate is the
                             # nnet learning rate times this factor.
+backstitch_training_scale=0.0    # backstitch training scale
+backstitch_training_interval=1   # backstitch training interval
 cmd=run.pl  # you might want to set this to queue.pl
 
 # some options passed into rnnlm-get-egs, relating to sampling.
@@ -117,6 +119,8 @@ final_effective_lrate=$final_effective_lrate
 embedding_lrate_factor=$embedding_lrate_factor
 sample_group_size=$sample_group_size
 num_samples=$num_samples
+backstitch_training_scale=$backstitch_training_scale
+backstitch_training_interval=$backstitch_training_interval
 EOF
 
 
@@ -139,6 +143,10 @@ while [ $x -lt $num_iters ]; do
     fi
     if $use_gpu_for_diagnostics; then queue_gpu_opt="--gpu 1"; gpu_opt="--use-gpu=yes";
     else gpu_opt=''; queue_gpu_opt=''; fi
+    backstitch_opt="--rnnlm.backstitch-training-scale=$backstitch_training_scale \
+      --rnnlm.backstitch-training-interval=$backstitch_training_interval \
+      --embedding.backstitch-training-scale=$backstitch_training_scale \
+      --embedding.backstitch-training-interval=$backstitch_training_interval"
     [ -f $dir/.error ] && rm $dir/.error
     $cmd $queue_gpu_opt $dir/log/compute_prob.$x.log \
        rnnlm-get-egs $(cat $dir/special_symbol_opts.txt) \
@@ -180,19 +188,23 @@ while [ $x -lt $num_iters ]; do
         else dest_number=$[x+1]; fi
         # in the normal case $repeated data will be just one copy.
         repeated_data=$(for n in $(seq $num_repeats); do echo -n $dir/text/$split.txt ''; done)
-        
+
         rnnlm_l2_factor=$(perl -e "print (1.0/$this_num_jobs);")
         embedding_l2_regularize=$(perl -e "print ($embedding_l2/$this_num_jobs);")
 
+        # allocate queue-slots for threads doing sampling,
+        num_threads_=$[$num_egs_threads*2/3]
+        [ -f $dir/sampling.lm ] && queue_thread_opt="--num-threads $num_threads_" || queue_thread_opt=
+
         # Run the training job or jobs.
-        $cmd $queue_gpu_opt $dir/log/train.$x.$n.log \
+        $cmd $queue_gpu_opt $queue_thread_opt $dir/log/train.$x.$n.log \
            rnnlm-train \
              --rnnlm.max-param-change=$rnnlm_max_change \
              --rnnlm.l2_regularize_factor=$rnnlm_l2_factor \
              --embedding.max-param-change=$embedding_max_change \
              --embedding.learning-rate=$embedding_lrate \
              --embedding.l2_regularize=$embedding_l2_regularize \
-             $sparse_opt $gpu_opt \
+             $sparse_opt $gpu_opt $backstitch_opt \
              --read-rnnlm="$src_rnnlm" --write-rnnlm=$dir/$dest_number.raw \
              --read-embedding=$dir/${embedding_type}_embedding.$x.mat \
              --write-embedding=$dir/${embedding_type}_embedding.$dest_number.mat \
@@ -212,12 +224,12 @@ while [ $x -lt $num_iters ]; do
       fi
     )
 
-    num_splits_processed=$[num_splits_processed+this_num_jobs]
     # the error message below is not that informative, but $cmd will
     # have printed a more specific one.
     [ -f $dir/.error ] && echo "$0: error with diagnostics on iteration $x of training" && exit 1;
   fi
   x=$[x+1]
+  num_splits_processed=$[num_splits_processed+this_num_jobs]
 done
 
 wait # wait for diagnostic jobs in the background.
@@ -239,11 +251,11 @@ fi
 # Now get some diagnostics about the evolution of the objective function.
 if [ $stage -le $[num_iters+1] ]; then
   (
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
+    logs=$(for iter in $(seq 1 $[$num_iters-1]); do echo -n $dir/log/train.$iter.1.log ''; done)
     # in the non-sampling case the exact objf is printed and we plot that
     # in the sampling case we print the approximated objf for training.
     grep 'Overall objf' $logs | awk 'BEGIN{printf("Train objf: ")} /exact/{printf("%.2f ", $NF);next} {printf("%.2f ", $10)} END{print "";}'
-    logs=$(for iter in $(seq 0 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
+    logs=$(for iter in $(seq 1 $[$num_iters-1]); do echo -n $dir/log/compute_prob.$iter.log ''; done)
     grep 'Overall objf' $logs | awk 'BEGIN{printf("Dev objf:   ")} {printf("%.2f ", $NF)} END{print "";}'
   ) > $dir/report.txt
   cat $dir/report.txt

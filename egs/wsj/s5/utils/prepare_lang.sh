@@ -85,7 +85,7 @@ if [ $# -ne 4 ]; then
   echo "     --position-dependent-phones (true|false)        # default: true; if true, use _B, _E, _S & _I"
   echo "                                                     # markers on phones to indicate word-internal positions. "
   echo "     --share-silence-phones (true|false)             # default: false; if true, share pdfs of "
-  echo "                                                     # all non-silence phones. "
+  echo "                                                     # all silence phones. "
   echo "     --sil-prob <probability of silence>             # default: 0.5 [must have 0 <= silprob < 1]"
   echo "     --phone-symbol-table <filename>                 # default: \"\"; if not empty, use the provided "
   echo "                                                     # phones.txt as phone symbol table. This is useful "
@@ -115,7 +115,7 @@ silprob=false
   echo "*Error validating directory $srcdir*" && exit 1;
 
 if [[ ! -f $srcdir/lexicon.txt ]]; then
-  echo "**Creating $dir/lexicon.txt from $dir/lexiconp.txt"
+  echo "**Creating $srcdir/lexicon.txt from $srcdir/lexiconp.txt"
   perl -ape 's/(\S+\s+)\S+\s+(.+)/$1$2/;' < $srcdir/lexiconp.txt > $srcdir/lexicon.txt || exit 1;
 fi
 if [[ ! -f $srcdir/lexiconp.txt ]]; then

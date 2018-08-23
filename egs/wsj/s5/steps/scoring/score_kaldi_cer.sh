@@ -8,7 +8,7 @@
 # i.e. write your own local/score.sh that will contain
 # 
 # steps/scoring/score_kaldi_wer.sh "$@"
-# steps/scoring/score_kaldi_cer.sh --stage 2 "@"
+# steps/scoring/score_kaldi_cer.sh --stage 2 "$@"
 #
 # NOTE it would work without the --stage 2, but this way its more effective
 # as the lattice decoding won't be run twice.

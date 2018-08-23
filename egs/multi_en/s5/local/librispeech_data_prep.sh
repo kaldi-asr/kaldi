@@ -3,8 +3,7 @@
 ###########################################################################################
 # This script was copied from egs/librispeech/s5/local/data_prep.sh
 # The source commit was e69198c3dc5633f98eb88e1cdf20b2521a598f21
-# Changes made:
-#  - Changed wav.scp to use sox to convert and downsample
+# No change was made.
 ###########################################################################################
 
 # Copyright 2014  Vassil Panayotov
@@ -21,8 +20,8 @@ src=$1
 dst=$2
 
 # all utterances are FLAC compressed
-if ! which sox >&/dev/null; then
-   echo "Please install 'sox' on ALL worker nodes!"
+if ! which flac >&/dev/null; then
+   echo "Please install 'flac' on ALL worker nodes!"
    exit 1
 fi
 
@@ -40,7 +39,7 @@ utt2spk=$dst/utt2spk; [[ -f "$utt2spk" ]] && rm $utt2spk
 spk2gender=$dst/spk2gender; [[ -f $spk2gender ]] && rm $spk2gender
 utt2dur=$dst/utt2dur; [[ -f "$utt2dur" ]] && rm $utt2dur
 
-for reader_dir in $(find $src -mindepth 1 -maxdepth 1 -type d | sort); do
+for reader_dir in $(find -L $src -mindepth 1 -maxdepth 1 -type d | sort); do
   reader=$(basename $reader_dir)
   if ! [ $reader -eq $reader ]; then  # not integer.
     echo "$0: unexpected subdirectory name $reader"
@@ -60,8 +59,8 @@ for reader_dir in $(find $src -mindepth 1 -maxdepth 1 -type d | sort); do
       exit 1;
     fi
 
-    find $chapter_dir/ -iname "*.flac" | sort | xargs -I% basename % .flac | \
-      awk -v "dir=$chapter_dir" '{printf "%s sox %s/%s.flac -r 8000 -t wavpcm - |\n", $0, dir, $0}' >>$wav_scp|| exit 1
+    find -L $chapter_dir/ -iname "*.flac" | sort | xargs -I% basename % .flac | \
+      awk -v "dir=$chapter_dir" '{printf "%s flac -c -d -s %s/%s.flac |\n", $0, dir, $0}' >>$wav_scp|| exit 1
 
     chapter_trans=$chapter_dir/${reader}-${chapter}.trans.txt
     [ ! -f  $chapter_trans ] && echo "$0: expected file $chapter_trans to exist" && exit 1

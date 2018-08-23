@@ -22,7 +22,7 @@ EXTRA_LDLIBS += -lkaldi-online -lkaldi-lat -lkaldi-decoder -lkaldi-feat -lkaldi-
 
 OBJFILES = gst-audio-source.o gst-online-gmm-decode-faster.o
 
-LIBNAME=gstkaldi
+LIBNAME=gstonlinegmmdecodefaster
 
 LIBFILE = lib$(LIBNAME).so
 BINFILES= $(LIBFILE)

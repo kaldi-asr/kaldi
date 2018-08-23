@@ -2,7 +2,7 @@ This is a WIP **English LVCSR recipe** that trains on data from multiple corpora
 * Fisher (1761 hours)
 * Switchboard (317 hours)
 * WSJ (81 hours)
-* HUB4 English Broadcast News (76 hours)
+* HUB4 (1996 & 1997) English Broadcast News (75 + 72 hours)
 * TED-LIUM (118 hours)
 * Librispeech (960 hours)
 

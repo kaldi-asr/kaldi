@@ -9,7 +9,13 @@
 . ./path.sh
 
 mfccdir=`pwd`/mfcc
+
 set -e
+
+# Set this to somewhere where you want to put your aspire data, or where
+# someone else has already put it.  You'll want to change this
+# if you're not on the CLSP grid.
+aspire_data=/export/corpora/LDC/LDC2017S21/IARPA-ASpIRE-Dev-Sets-v2.0/data  # JHU
 
 # the next command produces the data in local/train_all
 local/fisher_data_prep.sh /export/corpora3/LDC/LDC2004T19 /export/corpora3/LDC/LDC2005T19 \
@@ -159,30 +165,59 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # build silprob lang directory
 local/build_silprob.sh
 
-# train the neural network model
-local/multi_condition/run_nnet2_ms.sh
-
- local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75 --affix v6 --tune-hyper true dev_aspire data/lang exp/nnet2_multicondition/nnet_ms_a
-# %WER 30.8 | 2120 27213 | 75.3 16.2 8.4 6.2 30.8 78.8 | -0.724 | exp/nnet2_multicondition/nnet_ms_a/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterfinal_pp_fg/score_13/penalty_0.0/ctm.filt.filt.sys
-
- local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a
-# 72.3 on leaderboard
-
-# discriminative training. Helped on dev, but not on dev_test
-local/multi_condition/run_nnet2_ms_disc.sh
- local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75 --affix v6 --tune-hyper true dev_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
- #%WER 29.1 | 2120 27208 | 77.6 15.4 7.0 6.7 29.1 77.1 | -1.357 | exp/nnet2_multicondition/nnet_ms_c_prior_adjusted_smbr_0.00015_nj12/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterepoch2_pp_fg/score_16/penalty_1.0/ctm.filt.filt.sys
-
- local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
-   --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
-   --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
- # around 71.5, as models changed after server closed
-
+local/multi_condition/aspire_data_prep.sh --aspire-data $aspire_data
 
 # see local/{chain,nnet3}/* for nnet3 scripts
+
+# train the neural network model
+local/chain/run_tdnn.sh
+
+local/chain/run_tdnn_lstm.sh
+# %WER 22.9 | 2083 25834 | 81.6 12.0 6.4 4.5 22.9 70.7 | -0.546 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_uniformsegmented_pp_fg/score_8/penalty_0.0/ctm.filt.filt.sys
+# %WER 24.0 | 2083 25820 | 79.9 12.0 8.1 4.0 24.0 71.8 | -0.444 | exp/chain/tdnn_lstm_1a_online/decode_dev_aspire_uniformsegmented_v9_pp_fg/score_10/penalty_0.0/ctm.filt.filt.sys
+
+# Train speech activity detection system using TDNN+Stats
+local/run_asr_segmentation.sh
+
+sad_nnet_dir=exp/segmentation_1a/tdnn_stats_asr_sad_1a
+chain_dir=exp/chain/tdnn_lstm_1a
+
+# %WER 22.9 | 2083 25821 | 81.9 11.1 7.0 4.9 22.9 71.8 | -0.488 | exp/chain/tdnn_lstm_1a/decode_dev_aspire_asr_sad_1a_pp_fg/score_10/penalty_0.25/ctm.filt.filt.sys
+local/nnet3/segment_and_decode.sh --stage 1 --decode-num-jobs 30 --affix "" \
+  --acwt 1.0 --post-decode-acwt 10.0 --frames-per-chunk 160 \
+  --extra-left-context 50 --extra-right-context 0 \
+  --extra-left-context-initial 0 --extra-right-context-final 0 \
+  --sub-speaker-frames 6000 --max-count 75 \
+  --decode-opts '--min-active 1000' \
+  --sad-affix asr_sad_1a \
+  --sad-opts "--extra-left-context 79 --extra-right-context 21 --frames-per-chunk 150 --extra-left-context-initial 0 --extra-right-context-final 0 --acwt 0.3" \
+  --sad-graph-opts "--min-silence-duration=0.03 --min-speech-duration=0.3 --max-speech-duration=10.0" \
+  --sad-priors-opts "--sil-scale=0.1" \
+  dev_aspire $sad_nnet_dir $sad_nnet_dir \
+  data/lang $chain_dir/graph_pp $chain_dir
+
+# Old nnet2-based systems are in the comments below. The results here are
+# not applicable to the latest dev set from LDC.
+
+# local/multi_condition/run_nnet2_ms.sh
+# 
+# local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
+#  --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
+#  --ivector-scale 0.75 --affix v6 --tune-hyper true dev_aspire data/lang exp/nnet2_multicondition/nnet_ms_a
+# 
+# local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
+#  --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
+#  --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a
+# # 72.3 on leaderboard
+# 
+# # discriminative training. Helped on dev, but not on dev_test
+# local/multi_condition/run_nnet2_ms_disc.sh
+# local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
+#  --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
+#  --ivector-scale 0.75 --affix v6 --tune-hyper true dev_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
+# #%WER 29.1 | 2120 27208 | 77.6 15.4 7.0 6.7 29.1 77.1 | -1.357 | exp/nnet2_multicondition/nnet_ms_c_prior_adjusted_smbr_0.00015_nj12/decode_dev_aspire_whole_uniformsegmented_win10_over5_v6_iterepoch2_pp_fg/score_16/penalty_1.0/ctm.filt.filt.sys
+# 
+# local/multi_condition/prep_test_aspire.sh --stage 1 --decode-num-jobs 200 \
+#  --sub-speaker-frames 6000 --window 10 --overlap 5 --max-count 75 --pass2-decode-opts "--min-active 1000" \
+#  --ivector-scale 0.75 --affix v6 --tune-hyper true test_aspire data/lang exp/nnet2_multicondition/nnet_ms_a_smbr_0.00015_nj12
+# # around 71.5, as models changed after server closed
