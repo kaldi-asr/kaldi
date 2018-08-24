@@ -20,6 +20,7 @@ cmd=run.pl
 use_graphs=false
 # Begin configuration.
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+basis_fmllr_opts="--fmllr-min-count=22  --num-iters=10 --size-scale=0.2 --step-size-iters=3"
 beam=10
 retry_beam=40
 boost_silence=1.5 # factor by which to boost silence during alignment.
@@ -123,22 +124,20 @@ if [ $stage -le 2 ]; then
       ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
       gmm-post-to-gpost $alimdl "$sifeats" ark:- ark:- \| \
-      gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
-        --size-scale=0.2 --step-size-iters=3 \
-        --write-weights=ark:$dir/pre_wgt.JOB \
+      gmm-est-basis-fmllr-gpost $basis_fmllr_opts --spk2utt=ark:$sdata/JOB/spk2utt \
         $mdl $srcdir/fmllr.basis "$sifeats"  ark,s,cs:- \
         ark:$dir/trans.JOB || exit 1;
-#  else
-#    $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
-#      ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
-#      weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
-#      gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
-#      --spk2utt=ark:$sdata/JOB/spk2utt $mdl "$sifeats" \
-#      ark,s,cs:- ark:$dir/trans.JOB || exit 1;
+  else
+    $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
+      ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
+      weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
+      gmm-est-basis-fmllr $basis_fmllr_opts --spk2utt=ark:$sdata/JOB/spk2utt \
+         $mdl $srcdir/fmllr.basis "$sifeats" \
+        ark,s,cs:- ark:$dir/trans.JOB || exit 1;
   fi
 fi
 
-feats="$sifeats transform-feats ark:$dir/trans.JOB ark:- ark:- |"
+feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
 
 if [ $stage -le 3 ]; then
   echo "$0: doing final alignment."

@@ -17,6 +17,7 @@ scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
 beam=10
 retry_beam=40
 boost_silence=1.0 # Factor by which to boost silence likelihoods in alignment
+basis_fmllr_opts="--fmllr-min-count=22  --num-iters=10 --size-scale=0.2 --step-size-iters=3"
 context_opts=  # e.g. set this to "--context-width 5 --central-position 2" for quinphone.
 realign_iters="10 20 30";
 fmllr_iters="2 4 6 12";
@@ -93,7 +94,7 @@ esac
 ## Get initial fMLLR transforms (possibly from alignment dir)
 if [ -f $alidir/trans.1 ]; then
   echo "$0: Using transforms from $alidir"
-  feats="$sifeats transform-feats ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+  feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
   cur_trans_dir=$alidir
 else
   if [ $stage -le -5 ]; then
@@ -114,13 +115,11 @@ else
       ali-to-post "ark:gunzip -c $alidir/ali.JOB.gz|" ark:-  \| \
       weight-silence-post $silence_weight $silphonelist $alidir/final.mdl ark:- ark:- \| \
       gmm-post-to-gpost $alidir/final.mdl "$sifeats" ark:- ark:- \| \
-      gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
-      --size-scale=0.2 --step-size-iters=3 \
-      --write-weights=ark:$dir/pre_wgt.JOB \
+      gmm-est-basis-fmllr-gpost $basis_fmllr_opts --spk2utt=ark:$sdata/JOB/spk2utt  \
       $alidir/final.mdl $alidir/fmllr.basis "$sifeats"  ark,s,cs:- \
       ark:$alidir/trans.JOB || exit 1;
 
-    feats="$sifeats transform-feats ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
+    feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark,s,cs:$alidir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$alidir
   fi
 fi
@@ -214,14 +213,12 @@ while [ $x -lt $num_iters ]; do
         ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:-  \| \
         weight-silence-post $silence_weight $silphonelist $dir/$x.mdl ark:- ark:- \| \
         gmm-post-to-gpost $dir/$x.mdl "$sifeats" ark:- ark:- \| \
-        gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
-          --size-scale=0.2 --step-size-iters=3 \
-          --write-weights=ark:$dir/pre_wgt.JOB \
+        gmm-est-basis-fmllr-gpost $basis_fmllr_opts --spk2utt=ark:$sdata/JOB/spk2utt \
           $dir/$x.mdl $dir/fmllr.basis "$sifeats"  ark,s,cs:- \
           ark:$dir/trans.JOB || exit 1;
 
     fi
-    feats="$sifeats transform-feats ark:$dir/trans.JOB ark:- ark:- |"
+    feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
     cur_trans_dir=$dir
   fi
 
