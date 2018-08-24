@@ -6,18 +6,38 @@
 
 # This script demonstrates how to re-segment training data selecting only the
 # "good" audio that matches the transcripts.
-# The basic idea is to decode with an existing in-domain GMM acoustic model, and
-# a biased language model built from the reference transcript, and then work out
-# the segmentation from a ctm like file.
+# This script is like clean_and_segment_data.sh, but uses nnet3 model instead of
+# a GMM for decoding.
+# The basic idea is to decode with an existing in-domain nnet3 acoustic model,
+# and a biased language model built from the reference transcript, and then work
+# out the segmentation from a ctm like file.
 
-set -e -o pipefail
+set -e
+set -o pipefail
+set -u
 
 stage=0
 
 cmd=run.pl
-cleanup=true
+cleanup=true  # remove temporary directories and files
 nj=4
+# Decode options
 graph_opts=
+beam=15.0
+lattice_beam=1.0
+
+# Contexts must ideally match training
+extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
+extra_right_context=0  
+extra_left_context_initial=-1
+extra_right_context_final=-1
+frames_per_chunk=150
+
+# i-vector options
+extractor=    # i-Vector extractor. If provided, will extract i-vectors. 
+              # Required if the network was trained with i-vector extractor. 
+use_vad=   # Use energy-based VAD for i-vector extraction
+
 segmentation_opts=
 
 . ./path.sh
@@ -25,34 +45,37 @@ segmentation_opts=
 
 
 if [ $# -ne 5 ]; then
-  echo "Usage: $0 [options] <data> <lang> <srcdir> <dir> <cleaned-data>"
-  echo " This script does data cleanup to remove bad portions of transcripts and"
-  echo " may do other minor modifications of transcripts such as allowing repetitions"
-  echo " for disfluencies, and adding or removing non-scored words (by default:"
-  echo " words that map to 'silence phones')"
-  echo " Note: <srcdir> is expected to contain a GMM-based model, preferably a"
-  echo " SAT-trained one (see train_sat.sh)."
-  echo " If <srcdir> contains fMLLR transforms (trans.*) they are assumed to"
-  echo " be transforms corresponding to the data in <data>.  If <srcdir> is for different"
-  echo " dataset, and you're using SAT models, you should align <data> with <srcdir>"
-  echo " using align_fmllr.sh, and supply that directory as <srcdir>"
-  echo ""
-  echo "e.g. $0 data/train data/lang exp/tri3 exp/tri3_cleanup data/train_cleaned"
-  echo "Options:"
-  echo "  --stage <n>             # stage to run from, to enable resuming from partially"
-  echo "                          # completed run (default: 0)"
-  echo "  --cmd '$cmd'            # command to submit jobs with (e.g. run.pl, queue.pl)"
-  echo "  --nj <n>                # number of parallel jobs to use in graph creation and"
-  echo "                          # decoding"
-  echo "  --segmentation-opts 'opts'  # Additional options to segment_ctm_edits.py."
-  echo "                              # Please run steps/cleanup/internal/segment_ctm_edits.py"
-  echo "                              # without arguments to see allowed options."
-  echo "  --graph-opts 'opts'         # Additional options to make_biased_lm_graphs.sh."
-  echo "                              # Please run steps/cleanup/make_biased_lm_graphs.sh"
-  echo "                              # without arguments to see allowed options."
-  echo "  --cleanup        <true|false>  # Clean up intermediate files afterward.  Default true."
+  cat <<EOF
+  Usage: $0 [--extractor <ivector-extractor>] [options] <data> <lang> <srcdir> <dir> <cleaned-data>
+   This script does data cleanup to remove bad portions of transcripts and
+   may do other minor modifications of transcripts such as allowing repetitions
+   for disfluencies, and adding or removing non-scored words (by default:
+   words that map to 'silence phones')
+   Note: <srcdir> is expected to contain a nnet3-based model. 
+   <ivector-extractor> and decoding options like --extra-left-context must match
+   the appropriate options used for training.
+  
+  e.g. $0 data/train data/lang exp/tri3 exp/tri3_cleanup data/train_cleaned
+  main options (for others, see top of script file):
+    --stage <n>             # stage to run from, to enable resuming from partially
+                            # completed run (default: 0)
+    --cmd '$cmd'            # command to submit jobs with (e.g. run.pl, queue.pl)
+    --nj <n>                # number of parallel jobs to use in graph creation and
+                            # decoding
+    --graph-opts 'opts'         # Additional options to make_biased_lm_graphs.sh.
+                                # Please run steps/cleanup/make_biased_lm_graphs.sh
+                                # without arguments to see allowed options.
+    --segmentation-opts 'opts'  # Additional options to segment_ctm_edits.py.
+                                # Please run steps/cleanup/internal/segment_ctm_edits.py
+                                # without arguments to see allowed options.
+    --cleanup        <true|false>  # Clean up intermediate files afterward.  Default true.
+    --extractor <extractor>     # i-vector extractor directory if i-vector is 
+                                # to be used during decoding. Must match
+                                # the extractor used for training neural-network.
+    --use-vad <true|false>      # If true, uses energy-based VAD to apply frame weights
+                                # for i-vector stats extraction
+EOF
   exit 1
-
 fi
 
 data=$1
@@ -62,7 +85,13 @@ dir=$4
 data_out=$5
 
 
-for f in $srcdir/{final.mdl,tree,cmvn_opts} $data/utt2spk $data/feats.scp $lang/words.txt $lang/oov.txt; do
+extra_files=
+if [ ! -z "$extractor" ]; then
+  extra_files="$extractor/final.ie"
+fi
+
+for f in $srcdir/{final.mdl,tree,cmvn_opts} $data/utt2spk $data/feats.scp \
+  $lang/words.txt $lang/oov.txt $extra_files; do
   if [ ! -f $f ]; then
     echo "$0: expected file $f to exist."
     exit 1
@@ -74,42 +103,64 @@ cp $srcdir/final.mdl $dir
 cp $srcdir/tree $dir
 cp $srcdir/cmvn_opts $dir
 cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $dir 2>/dev/null || true
+cp $srcdir/frame_subsampling_factor $dir 2>/dev/null || true
 
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
 cp $lang/phones.txt $dir
 
 if [ $stage -le 1 ]; then
   echo "$0: Building biased-language-model decoding graphs..."
+
+
   steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
     --nj $nj --cmd "$cmd" \
      $data $lang $dir $dir/graphs
 fi
 
-if [ $stage -le 2 ]; then
-  echo "$0: Decoding with biased language models..."
-  transform_opt=
-  if [ -f $srcdir/trans.1 ]; then
-    # If srcdir contained trans.* then we assume they are fMLLR transforms for
-    # this data, and we use them.
-    transform_opt="--transform-dir $srcdir"
-  fi
-  # Note: the --beam 15.0 (vs. the default 13.0) does actually slow it
-  # down substantially, around 0.35xRT to 0.7xRT on tedlium.
-  # I want to test at some point whether it's actually necessary to have
-  # this largish beam.
-  steps/cleanup/decode_segmentation.sh \
-      --beam 15.0 --nj $nj --cmd "$cmd --mem 4G" $transform_opt \
-      --skip-scoring true --allow-partial false \
-       $dir/graphs $data $dir/lats
+online_ivector_dir=
+if [ ! -z "$extractor" ]; then
+  online_ivector_dir=$dir/ivectors_$(basename $data_uniform_seg)
 
+  if [ $stage -le 2 ]; then
+    # Compute energy-based VAD
+    if $use_vad; then
+      steps/compute_vad_decision.sh $data_uniform_seg \
+        $data_uniform_seg/log $data_uniform_seg/data
+    fi
+
+    steps/online/nnet2/extract_ivectors_online.sh \
+      --nj $nj --cmd "$cmd --mem 4G" --use-vad $use_vad \
+      $data_uniform_seg $extractor $online_ivector_dir
+  fi
+fi
+
+if [ $stage -le 3 ]; then
+  echo "$0: Decoding with biased language models..."
+
+  steps/cleanup/decode_segmentation_nnet3.sh \
+    --beam $beam --lattice-beam $lattice_beam --nj $nj --cmd "$cmd --mem 4G" \
+    --skip-scoring true --allow-partial false \
+    --extra-left-context $extra_left_context \
+    --extra-right-context $extra_right_context \
+    --extra-left-context-initial $extra_left_context_initial \
+    --extra-right-context-final $extra_right_context_final \
+    --frames-per-chunk $frames_per_chunk \
+    ${online_ivector_dir:+--online-ivector-dir $online_ivector_dir} \
+    $dir/graphs $data $dir/lats
+  
   # the following is for diagnostics, e.g. it will give us the lattice depth.
   steps/diagnostic/analyze_lats.sh --cmd "$cmd" $lang $dir/lats
 fi
 
-if [ $stage -le 3 ]; then
+frame_shift_opt=
+if [ -f $srcdir/frame_subsampling_factor ]; then
+  frame_shift_opt="--frame-shift=0.0$(cat $srcdir/frame_subsampling_factor)"
+fi
+
+if [ $stage -le 4 ]; then
   echo "$0: Doing oracle alignment of lattices..."
-  steps/cleanup/lattice_oracle_align.sh \
-    --cmd "$cmd" $data $lang $dir/lats $dir/lattice_oracle
+  steps/cleanup/lattice_oracle_align.sh --cmd "$cmd --mem 4G" $frame_shift_opt \
+    $data $lang $dir/lats $dir/lattice_oracle
 fi
 
 
@@ -152,8 +203,8 @@ if [ $stage -le 7 ]; then
 
   $cmd $dir/log/segment_ctm_edits.log \
     steps/cleanup/internal/segment_ctm_edits.py \
-       $segmentation_opts \
-       --oov-symbol-file=$lang/oov.txt \
+      $segmentation_opts \
+      --oov-symbol-file=$lang/oov.txt \
       --ctm-edits-out=$dir/ctm_edits.segmented \
       --word-stats-out=$dir/word_stats.txt \
       $dir/non_scored_words.txt \
