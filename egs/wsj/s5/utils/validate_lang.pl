@@ -96,15 +96,21 @@ sub check_allowed_whitespace {
 
 $skip_det_check = 0;
 $skip_disambig_check = 0;
+$skip_generate_words_check = 0;
 
-if (@ARGV > 0 && $ARGV[0] eq "--skip-determinization-check") {
-  $skip_det_check = 1;
-  shift @ARGV;
-}
-
-if (@ARGV > 0 && $ARGV[0] eq "--skip-disambig-check") {
-  $skip_disambig_check = 1;
-  shift @ARGV;
+for ($x=0; $x <= 3; $x++) {
+  if (@ARGV > 0 && $ARGV[0] eq "--skip-determinization-check") {
+    $skip_det_check = 1;
+    shift @ARGV;
+  }
+  if (@ARGV > 0 && $ARGV[0] eq "--skip-disambig-check") {
+    $skip_disambig_check = 1;
+    shift @ARGV;
+  }
+  if (@ARGV > 0 && $ARGV[0] eq "--skip-generate-words-check") {
+    $skip_generate_words_check = 1;
+    shift @ARGV;
+  }
 }
 
 if (@ARGV != 1) {
@@ -800,6 +806,9 @@ if (-s "$lang/phones/word_boundary.int") {
   }
 
   foreach $fst ("L.fst", "L_disambig.fst") {
+    if ($skip_generate_words_check) {
+      next;
+    }
     $wlen = int(rand(100)) + 1;
     print "--> generating a $wlen word sequence\n";
     $wordseq = "";

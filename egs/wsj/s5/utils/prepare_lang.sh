@@ -412,6 +412,9 @@ cat $tmpdir/align_lexicon.txt | \
 if [ -f $srcdir/nonterminals.txt ]; then
   utils/lang/grammar/augment_phones_txt.py $dir/phones.txt $srcdir/nonterminals.txt $dir/phones.txt
   utils/lang/grammar/augment_words_txt.py $dir/words.txt $srcdir/nonterminals.txt $dir/words.txt
+  cp $srcdir/nonterminals.txt $dir/phones/nonterminals.txt
+  utils/sym2int.pl $dir/phones.txt <$dir/phones/nonterminals.txt >$dir/phones/nonterminals.int
+
   for w in "#nonterm_begin" "#nonterm_end" $(cat $srcdir/nonterminals.txt); do
     echo $w $w  # These are words without pronunciations, so leave those prons
                 # empty.
