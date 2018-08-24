@@ -26,6 +26,7 @@
 #include "decoder/decoder-wrappers.h"
 #include "nnet3/nnet-am-decodable-simple.h"
 #include "nnet3/nnet-utils.h"
+#include "decoder/grammar-fst.h"
 #include "base/timer.h"
 
 
@@ -47,6 +48,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: nnet3-latgen-grammar [options] <nnet-in> <grammar-fst-in> <features-rspecifier>"
         " <lattice-wspecifier> [ <words-wspecifier> [<alignments-wspecifier>] ]\n";
+
     ParseOptions po(usage);
     Timer timer;
     bool allow_partial = false;
@@ -83,8 +85,8 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string model_in_filename = po.GetArg(1),
-        fst_in_rspecifier = po.GetArg(2),
+    std::string model_rxfilename = po.GetArg(1),
+        grammar_fst_rxfilename = po.GetArg(2),
         feature_rspecifier = po.GetArg(3),
         lattice_wspecifier = po.GetArg(4),
         words_wspecifier = po.GetOptArg(5),
@@ -94,7 +96,7 @@ int main(int argc, char *argv[]) {
     AmNnetSimple am_nnet;
     {
       bool binary;
-      Input ki(model_in_filename, &binary);
+      Input ki(model_rxfilename, &binary);
       trans_model.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
       SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
@@ -135,16 +137,16 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
     // Input FST is just one FST, not a table of FSTs.
-    GrammarFst fst;
+    fst::GrammarFst fst;
     {
       bool binary;
-      Input ki(fst, &binary);  // 'binary' will be true.
+      Input ki(grammar_fst_rxfilename, &binary);  // 'binary' will be true.
       fst.Read(ki.Stream());
     }
     timer.Reset();
 
     {
-      LatticeFasterDecoderTpl<GrammarFst> decoder(fst, config);
+      LatticeFasterDecoderTpl<fst::GrammarFst> decoder(fst, config);
 
       for (; !feature_reader.Done(); feature_reader.Next()) {
         std::string utt = feature_reader.Key();
