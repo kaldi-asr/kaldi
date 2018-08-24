@@ -3,9 +3,13 @@
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Version of align_fmllr.sh that generates lattices (lat.*.gz) with
-# alignments of alternative pronunciations in them.  Mainly intended
-# as a precursor to LF-MMI/chain training for now.
+# Version of align_fmllr_lats.sh that uses "basis fMLLR", so it is suitable for
+# situations where there is very little data per speaker (e.g. when there is a
+# one-to-one mapping between utterances and speakers).  Intended for use where
+# the model was trained with basis-fMLLR (i.e.  when you trained the model with
+# train_sat_basis.sh where you normally would have trained with train_sat.sh),
+# or when it was trained with SAT but you ran get_fmllr_basis.sh on the
+# source-model directory.
 
 # Begin configuration section.
 stage=0
@@ -22,7 +26,8 @@ final_beam=20  # For the lattice-generation phase there is no retry-beam.  This
                # slightly slower.  (however, the min-active of 200 that
                # gmm-latgen-faster defaults to may help.)
 boost_silence=1.0 # factor by which to boost silence during alignment.
-fmllr_update_type=full
+basis_fmllr_opts="--fmllr-min-count=22  --num-iters=10 --size-scale=0.2 --step-size-iters=3"
+
 generate_ali_from_lats=false # If true, alingments generated from lattices.
 # End configuration options.
 
@@ -38,7 +43,6 @@ if [ $# != 4 ]; then
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-   echo "  --fmllr-update-type (full|diag|offset|none)      # default full."
    exit 1;
 fi
 
@@ -46,6 +50,11 @@ data=$1
 lang=$2
 srcdir=$3
 dir=$4
+
+for f in $data/feats.scp $lang/phones.txt $srcdir/final.mdl $srcdir/fmllr.basis; do
+  [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
+done
+
 
 oov=`cat $lang/oov.int` || exit 1;
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
@@ -122,15 +131,15 @@ if [ $stage -le 2 ]; then
       ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
       gmm-post-to-gpost $alimdl "$sifeats" ark:- ark:- \| \
-      gmm-est-fmllr-gpost --fmllr-update-type=$fmllr_update_type \
-      --spk2utt=ark:$sdata/JOB/spk2utt $mdl "$sifeats" \
+      gmm-est-basis-fmllr-gpost $basis_fmllr_opts \
+      --spk2utt=ark:$sdata/JOB/spk2utt $mdl $srcdir/fmllr.basis "$sifeats" \
       ark,s,cs:- ark:$dir/trans.JOB || exit 1;
   else
     $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
       ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
-      gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
-      --spk2utt=ark:$sdata/JOB/spk2utt $mdl "$sifeats" \
+      gmm-est-basis-fmllr $basis_fmllr_opts \
+      --spk2utt=ark:$sdata/JOB/spk2utt $mdl $srcdir/fmllr.basis "$sifeats" \
       ark,s,cs:- ark:$dir/trans.JOB || exit 1;
   fi
 fi
