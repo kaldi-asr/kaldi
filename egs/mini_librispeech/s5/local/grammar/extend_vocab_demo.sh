@@ -9,6 +9,9 @@
 # thing might take too much time.  The code itself allows you to construct these
 # GrammarFst objects in lightweight way and decode using them.
 
+# Unfortunately the filenames here are not very well through through.  I hope to
+# rework this when I have time.
+
 stage=0
 run_g2p=false  # set this to true to run the g2p stuff, it's slow so
                # by default we fake it by providing what it previously output
@@ -269,7 +272,6 @@ if [ $stage -le 6 ]; then
 fi
 
 if [ $stage -le 7 ]; then
-  lang=data/lang_nosp_grammar2a
   offset=$(grep nonterm_bos $lang_ext/phones.txt | awk '{print $2}')
   nonterm_unk=$(grep nonterm:unk $lang_ext/phones.txt | awk '{print $2}')
 
@@ -285,6 +287,7 @@ if [ $stage -le 7 ]; then
 
   # the following compiles it and writes as GrammarFst.  The size is 176M, vs. 182M for HCLG.fst.
   # In other examples, of course the difference might be more.
+
   make-grammar-fst --write-as-grammar=true --nonterm-phones-offset=$offset $tree_dir/extvocab_top/HCLG.fst \
                 $nonterm_unk $tree_dir/extvocab_part/HCLG.fst  $tree_dir/extvocab_combined/HCLG.gra
 fi
@@ -304,11 +307,21 @@ if [ $stage -le 8 ]; then
     --cmd "queue.pl --mem 4G --num-threads 4" --online-ivector-dir exp/nnet3/ivectors_dev_clean_2_hires \
     exp/chain/tree_sp/extvocab_combined data/dev_clean_2_hires exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb
 
-
  # s5: grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb/wer_* | utils/best_wer.sh
  #%WER 11.77 [ 2370 / 20138, 198 ins, 339 del, 1833 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb/wer_12_0.0
- #.. versus the baseline below ...
+
+ #.. versus the baseline below note, the baseline is not 100% comparable as it used the
+ #   silence probabilities, which the grammar-decoding does not (yet) support...
  # s5: grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2/wer_* | utils/best_wer.sh
  # %WER 12.01 [ 2418 / 20138, 244 ins, 307 del, 1867 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2/wer_13_0.0
+fi
 
+if [ $stage -le 9 ]; then
+ steps/nnet3/decode_grammar.sh --acwt 1.0 --post-decode-acwt 10.0 --frames-per-chunk 140 --nj 38 \
+    --cmd "queue.pl --mem 4G --num-threads 4" --online-ivector-dir exp/nnet3/ivectors_dev_clean_2_hires \
+    exp/chain/tree_sp/extvocab_combined data/dev_clean_2_hires exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb_gra
+
+ #  The WER when decoding with the grammar FST directly is exactly the same:
+ #s5:  grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb_gra/wer_* | utils/best_wer.sh
+ #%WER 11.77 [ 2370 / 20138, 198 ins, 339 del, 1833 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb_gra/wer_12_0.0
 fi
