@@ -48,11 +48,12 @@ fi
 
 if [ $stage -le 1 ]; then
   # note: <UNK> does appear in that arpa file, with a reasonable probability
-  # (presumably because the extvocab that the arpa file was built with was not
-  # vast).  It would be possible to adjust its probability with adjust_unk_arpa.pl,
-  # but for now we just leave it as-is.  The <UNK> appears quite a few times in the
-  # ARPA.  In the language model we replaced it with #nonterm:unk, which will
-  # later expand to our custom graph of new words.
+  # (0.0)...  presumably because the vocab that the arpa file was built with was
+  # not vast, so there were plenty of OOVs.  It would be possible to adjust its
+  # probability with adjust_unk_arpa.pl, but for now we just leave it as-is.
+  # The <UNK> appears quite a few times in the ARPA.  In the language model we
+  # replaced it with #nonterm:unk, which will later expand to our custom graph
+  # of new words.
 
   # We don't want the #nonterm:unk on the output side of G.fst, or it would
   # appear in the decoded output, so we remove it using the 'fstrmsymbols' command.
