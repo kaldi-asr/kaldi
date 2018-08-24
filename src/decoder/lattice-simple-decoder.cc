@@ -575,6 +575,12 @@ void LatticeSimpleDecoder::ProcessNonemitting() {
     }
   }
   BaseFloat cutoff = best_cost + config_.beam;
+
+  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
+     StateId key = e->key;
+     if (fst_->NumInputEpsilons(key) != 0)
+       queue_.push_back(key);
+  }
     
   while (!queue.empty()) {
     StateId state = queue.back();

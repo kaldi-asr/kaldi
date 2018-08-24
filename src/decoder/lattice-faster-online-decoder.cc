@@ -998,6 +998,12 @@ void LatticeFasterOnlineDecoder::ProcessNonemitting(BaseFloat cutoff) {
     }
   }
 
+  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
+     StateId key = e->key;
+     if (fst_->NumInputEpsilons(key) != 0)
+       queue_.push_back(key);
+  }
+
   while (!queue_.empty()) {
     StateId state = queue_.back();
     queue_.pop_back();
