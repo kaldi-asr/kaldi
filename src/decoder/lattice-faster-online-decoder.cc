@@ -989,19 +989,16 @@ void LatticeFasterOnlineDecoder::ProcessNonemitting(BaseFloat cutoff) {
   // problem did not improve overall speed.
 
   KALDI_ASSERT(queue_.empty());
-  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail)
-    queue_.push_back(e->key);
+  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
+    StateId key = e->key;
+    if (fst_->NumInputEpsilons(key) != 0)
+      queue_.push_back(key);
+  }
   if (queue_.empty()) {
     if (!warned_) {
       KALDI_WARN << "Error, no surviving tokens: frame is " << frame;
       warned_ = true;
     }
-  }
-
-  for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
-     StateId key = e->key;
-     if (fst_->NumInputEpsilons(key) != 0)
-       queue_.push_back(key);
   }
 
   while (!queue_.empty()) {
