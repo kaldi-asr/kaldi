@@ -553,7 +553,6 @@ void LatticeSimpleDecoder::ProcessNonemitting() {
   // Note: "frame" is the time-index we just processed, or -1 if
   // we are processing the nonemitting transitions before the
   // first frame (called from InitDecoding()).
-  const FstType &fst = dynamic_cast<const FstType&>(fst_);
     
   // Processes nonemitting arcs for one frame.  Propagates within
   // cur_toks_.  Note-- this queue structure is is not very optimal as
@@ -566,7 +565,7 @@ void LatticeSimpleDecoder::ProcessNonemitting() {
        iter != cur_toks_.end();
        ++iter) {
     StateId key = iter->first;
-    if (fst_->NumInputEpsilons(key) != 0) {
+    if (fst_.NumInputEpsilons(key) != 0) {
       queue.push_back(key);
       best_cost = std::min(best_cost, iter->second->tot_cost);
     }
