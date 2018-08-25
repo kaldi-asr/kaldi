@@ -547,6 +547,7 @@ void LatticeSimpleDecoder::ProcessEmitting(DecodableInterface *decodable) {
   }
 }
 
+template <typename FstType>
 void LatticeSimpleDecoder::ProcessNonemitting() {
   KALDI_ASSERT(!active_toks_.empty());
   int32 frame = static_cast<int32>(active_toks_.size()) - 2;
