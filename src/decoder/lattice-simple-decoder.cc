@@ -564,9 +564,9 @@ void LatticeSimpleDecoder::ProcessNonemitting() {
   for (unordered_map<StateId, Token*>::iterator iter = cur_toks_.begin();
        iter != cur_toks_.end();
        ++iter) {
-    StateId key = iter->first;
-    if (fst_.NumInputEpsilons(key) != 0)
-      queue.push_back(key);
+    StateId state = iter->first;
+    if (fst_.NumInputEpsilons(state) != 0)
+      queue.push_back(state);
     best_cost = std::min(best_cost, iter->second->tot_cost);
   }
   if (queue.empty()) {
