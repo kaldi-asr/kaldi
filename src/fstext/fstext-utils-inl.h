@@ -216,7 +216,7 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
 }
 
 
-// see fstext-utils.sh for comment.
+// see fstext-utils.h for comment.
 template<class Arc>
 void ConvertNbestToVector(const Fst<Arc> &fst,
                           vector<VectorFst<Arc> > *fsts_out) {
