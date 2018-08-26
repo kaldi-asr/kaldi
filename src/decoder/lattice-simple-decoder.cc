@@ -565,10 +565,9 @@ void LatticeSimpleDecoder::ProcessNonemitting() {
        iter != cur_toks_.end();
        ++iter) {
     StateId key = iter->first;
-    if (fst_.NumInputEpsilons(key) != 0) {
+    if (fst_.NumInputEpsilons(key) != 0)
       queue.push_back(key);
-      best_cost = std::min(best_cost, iter->second->tot_cost);
-    }
+    best_cost = std::min(best_cost, iter->second->tot_cost);
   }
   if (queue.empty()) {
     if (!warned_) {
