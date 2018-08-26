@@ -853,7 +853,8 @@ void LatticeFasterDecoder::ProcessNonemitting(BaseFloat cutoff) {
 
           // "changed" tells us whether the new token has a different
           // cost from before, or is new [if so, add into queue].
-          if (changed) queue_.push_back(arc.nextstate);
+          if (changed && fst_.NumInputEpsilons(arc.nextstate) != 0) 
+            queue_.push_back(arc.nextstate);
         }
       }
     } // for all arcs
