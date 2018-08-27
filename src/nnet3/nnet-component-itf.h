@@ -375,6 +375,23 @@ class Component {
   /// backprop to consume it.
   virtual void DeleteMemo(void *memo) const { KALDI_ASSERT(memo == NULL); }
 
+  /// This virtual function relates to memory management, and avoiding
+  /// fragmentation.  It is called only once per model, after we do the first
+  /// minibatch of training.  The default implementation does nothing, but it
+  /// can be overridden by child classes, where it may re-initialize certain
+  /// quantities that may possibly have been allocated during the forward pass
+  /// (e.g. certain statistics; OnlineNaturalGradient objects).  We use our own
+  /// CPU-based allocator (see cu-allocator.h) and since it can't do paging
+  /// since we're not in control of the GPU page table, fragmentation can be a
+  /// problem.  The allocator always tries to put things in 'low-address memory'
+  /// (i.e. at smaller memory addresses) near the beginning of the block it
+  /// allocated, to avoid fragmentation; but if permanent things (belonging to
+  /// the model) are allocated in the forward pass, they can permanently stay in
+  /// high memory.  This function helps to prevent that, by re-allocating those
+  /// things into low-address memory (It's important that it's called after all the
+  /// temporary buffers for the forward-backward have been freed, so that there
+  /// is low-address memory available)).
+  virtual void ConsolidateMemory() { }
 
   Component() { }
 
@@ -619,6 +636,8 @@ class NonlinearComponent: public Component {
 
   virtual void Scale(BaseFloat scale);
   virtual void Add(BaseFloat alpha, const Component &other);
+
+  virtual void ConsolidateMemory();
 
   // The following functions are unique to NonlinearComponent.
   // They mostly relate to diagnostics.

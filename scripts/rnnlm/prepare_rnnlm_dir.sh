@@ -23,7 +23,7 @@ if [ $# != 3 ]; then
   echo "Usage: $0 [options] <text-dir> <rnnlm-config-dir> <rnnlm-dir>"
   echo "Sets up the directory <rnnlm-dir> for RNNLM training as done by"
   echo "rnnlm/train_rnnlm.sh, and initializes the model."
-  echo " <text-dir> is as validated by rnnlm/validate_data_dir.py"
+  echo " <text-dir> is as validated by rnnlm/validate_text_dir.py"
   echo " <rnnlm-config-dir> is as validated by rnnlm/validate_config_dir.sh."
   exit 1
 fi

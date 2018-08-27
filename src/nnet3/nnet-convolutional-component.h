@@ -300,6 +300,8 @@ class TimeHeightConvolutionComponent: public UpdatableComponent {
   };
 
   void ScaleLinearParams(BaseFloat alpha) { linear_params_.Scale(alpha); }
+
+  void ConsolidateMemory();
  private:
 
   void Check() const;
@@ -556,6 +558,8 @@ class TdnnComponent: public UpdatableComponent {
   CuVector<BaseFloat> &BiasParams() { return bias_params_; }
 
   BaseFloat OrthonormalConstraint() const { return orthonormal_constraint_; }
+
+  void ConsolidateMemory();
  private:
 
   // This static function is a utility function that extracts a CuSubMatrix

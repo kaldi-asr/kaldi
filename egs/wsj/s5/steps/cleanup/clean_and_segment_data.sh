@@ -6,9 +6,9 @@
 
 # This script demonstrates how to re-segment training data selecting only the
 # "good" audio that matches the transcripts.
-# The basic idea is to decode with an existing in-domain acoustic model, and a
-# biased language model built from the reference, and then work out the
-# segmentation from a ctm like file.
+# The basic idea is to decode with an existing in-domain GMM acoustic model, and
+# a biased language model built from the reference transcript, and then work out
+# the segmentation from a ctm like file.
 
 set -e -o pipefail
 

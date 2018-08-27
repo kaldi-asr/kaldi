@@ -24,6 +24,7 @@ extra_right_context=0
 extra_left_context_initial=-1
 extra_right_context_final=-1
 online_ivector_dir=
+graphs_scp=
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -97,8 +98,6 @@ fi
 
 echo "$0: aligning data in $data using model from $srcdir, putting alignments in $dir"
 
-tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
-
 frame_subsampling_opt=
 if [ -f $srcdir/frame_subsampling_factor ]; then
   # e.g. for 'chain' systems
@@ -114,9 +113,20 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   fi
 fi
 
+if [ ! -z "$graphs_scp" ]; then
+  if [ ! -f $graphs_scp ]; then
+    echo "Could not find graphs $graphs_scp" && exit 1
+  fi
+  tra="scp:utils/filter_scp.pl $sdata/JOB/utt2spk $graphs_scp |"
+  prog=compile-train-graphs-fsts
+else
+  tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
+  prog=compile-train-graphs
+fi
 
 $cmd $queue_opt JOB=1:$nj $dir/log/align.JOB.log \
-  compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
+  $prog --read-disambig-syms=$lang/phones/disambig.int $dir/tree \
+  $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
   nnet3-align-compiled $scale_opts $ivector_opts $frame_subsampling_opt \
   --frames-per-chunk=$frames_per_chunk \
   --extra-left-context=$extra_left_context \

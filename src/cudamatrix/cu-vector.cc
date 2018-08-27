@@ -83,11 +83,11 @@ Real VecMatVec(const CuVectorBase<Real> &v1, const CuMatrixBase<Real> &M,
                const CuVectorBase<Real> &v2) {
   KALDI_ASSERT(v1.Dim() == M.NumRows() && M.NumCols() == v2.Dim());
   if (v1.Dim() > v2.Dim()) {  // do v2*M first
-    CuVector<Real> v2M(v1.Dim(), kUndefined);
+    CuVector<Real> v2M(v1.Dim());
     v2M.AddMatVec(1.0, M, kNoTrans, v2, 0.0);
     return VecVec(v2M, v1);
   } else {  // do v1*M first
-    CuVector<Real> v1M(v2.Dim(), kUndefined);
+    CuVector<Real> v1M(v2.Dim());
     v1M.AddMatVec(1.0, M, kTrans, v1, 0.0);
     return VecVec(v1M, v2);
   }
