@@ -43,7 +43,7 @@ while (<$lexicon_file>) {
 while (<$wordlist_file>) {
   chomp;
   my $word = $_;
-  print "Cannot find word $word in lexicon\n" unless defined($lexicon{uc $word});
+  print STDERR "Cannot find word $word in lexicon\n" unless defined($lexicon{uc $word});
 
   #print "$word $lexicon{$word}\n";
 
