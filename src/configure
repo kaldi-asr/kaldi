@@ -1325,13 +1325,14 @@ elif [ "`uname`" == "Linux" ]; then
     else
       failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
     fi
-    if [ -f $OPENBLASROOT/include/openblas_config.h ] ; then
+    if [ -f $OPENBLASROOT/include/cblas.h ] ; then
       OPENBLASINCDIR=$OPENBLASROOT/include
-    elif [ -f $OPENBLASROOT/include/openblas/openblas_config.h ] ; then
+    elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
       # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
       OPENBLASINCDIR=$OPENBLASROOT/include/openblas
     else 
-      failure "Expected to find the file $OPENBLASROOT/include/openblas_config.h "
+      echo "Assuming openblas is aleady in a default include path"
+      OPENBLASINCDIR="/usr/include"
     fi
     echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
     if $static_math; then
