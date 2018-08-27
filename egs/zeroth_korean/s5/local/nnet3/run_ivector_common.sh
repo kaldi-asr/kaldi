@@ -17,30 +17,22 @@ set -e
 
 if [ "$speed_perturb" == "true" ]; then
   if [ $stage -le 1 ]; then
+    echo "$0: preparing directory for speed-perturbed data"
     #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
     # _sp stands for speed-perturbed
-
     for datadir in ${trainset} ; do
-      utils/perturb_data_dir_speed.sh 0.9 data/${datadir} data/temp1
-      utils/perturb_data_dir_speed.sh 1.1 data/${datadir} data/temp2
-      utils/combine_data.sh data/${datadir}_tmp data/temp1 data/temp2
-      utils/validate_data_dir.sh --no-feats data/${datadir}_tmp
-      rm -r data/temp1 data/temp2
+	  utils/data/perturb_data_dir_speed_3way.sh data/${datadir} data/${datadir}_sp 
 
       mfccdir=mfcc_perturbed
       steps/make_mfcc.sh --cmd "$train_cmd" --nj 40 \
-        data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
-      steps/compute_cmvn_stats.sh data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
-      utils/fix_data_dir.sh data/${datadir}_tmp
-
-      utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- data/${datadir} data/temp0
-      utils/combine_data.sh data/${datadir}_sp data/${datadir}_tmp data/temp0
+        data/${datadir}_sp exp/make_mfcc/${datadir}_sp $mfccdir || exit 1;
+      steps/compute_cmvn_stats.sh data/${datadir}_sp exp/make_mfcc/${datadir}_sp $mfccdir || exit 1;
       utils/fix_data_dir.sh data/${datadir}_sp
-      rm -r data/temp0 data/${datadir}_tmp
     done
   fi
 
   if [ $stage -le 2 ]; then
+	echo "$0: aligning with the perturbed low-resolution data"
     #obtain the alignment of the perturbed data
     steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
       data/${trainset}_sp data/lang_nosp ${gmmdir} ${gmmdir}_ali_${trainset}_sp || exit 1
@@ -55,6 +47,7 @@ if [ $stage -le 3 ]; then
   # have multiple copies of Kaldi checked out and run the same recipe, not to let
   # them overwrite each other.
 
+  echo "$0: creating high-resolution MFCC features"  
   for datadir in ${trainset} ; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
     steps/make_mfcc.sh --nj 40 --mfcc-config conf/mfcc_hires.conf \
@@ -74,8 +67,8 @@ if [ $stage -le 4 ]; then
   # because after we get the transform (12th iter is the last), any further
   # training is pointless.
 
+  echo "$0: computing a PCA transform from the hires data."
   mkdir exp -p exp/nnet3
-
   steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=3 --right-context=3" \
     --max-utts 30000 --subsample 2 \
@@ -84,12 +77,15 @@ fi
 
 if [ $stage -le 5 ]; then
   # To train a diagonal UBM we don't need very much data, so use a small subset
-  # (actually, it's not that small: still around 100 hours).
+  echo "$0: computing a PCA transform from the hires data."
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 700000 \
     data/train_30k_hires 512 exp/nnet3/pca_transform exp/nnet3/diag_ubm
 fi
 
 if [ $stage -le 6 ]; then
+  # Train the iVector extractor.  Use all of the speed-perturbed data since iVector extractors
+  # can be sensitive to the amount of data.  The script defaults to an iVector dimension of 100
+  echo "$0: training the iVector extractor"
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
     data/${trainset}_hires exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
 fi
@@ -104,6 +100,7 @@ if [ $stage -le 7 ]; then
 
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
+  echo "$0: extracing iVector using trained iVector extractor"
   utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
     data/${trainset}_hires data/${trainset}_hires_max2
   
