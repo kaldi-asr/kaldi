@@ -72,7 +72,7 @@ def read_lexiconp(filename):
         for line in f:
             a = line.split()
             if len(a) < 2:
-                print("{0}: error: found bad line '{1}' in lexicon file {1} ".format(
+                print("{0}: error: found bad line '{1}' in lexicon file {2} ".format(
                     sys.argv[0], line.strip(), filename), file=sys.stderr)
                 sys.exit(1)
             word = a[0]
@@ -84,7 +84,7 @@ def read_lexiconp(filename):
             try:
                 pron_prob = float(a[1])
             except:
-                print("{0}: error: found bad line '{1}' in lexicon file {1}, 2nd field "
+                print("{0}: error: found bad line '{1}' in lexicon file {2}, 2nd field "
                       "should be pron-prob".format(sys.argv[0], line.strip(), filename),
                       file=sys.stderr)
                 sys.exit(1)
