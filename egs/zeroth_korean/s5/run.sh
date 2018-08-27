@@ -45,7 +45,7 @@ fi
 if [ $stage -le 2 ]; then
   # update segmentation of transcripts
   for part in train_data_01 test_data_01; do
-  	local/updateSegmentation.sh data/$part data/local/lm
+  	local/update_segmentation.sh data/$part data/local/lm
   done
 fi
 
