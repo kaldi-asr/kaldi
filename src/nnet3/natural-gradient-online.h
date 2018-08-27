@@ -466,6 +466,9 @@ class OnlineNaturalGradient {
   explicit OnlineNaturalGradient(const OnlineNaturalGradient &other);
   // Assignent operator
   OnlineNaturalGradient &operator = (const OnlineNaturalGradient &other);
+
+  // Shallow swap
+  void Swap(OnlineNaturalGradient *other);
  private:
 
 

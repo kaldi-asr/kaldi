@@ -11,7 +11,7 @@ use File::Basename;
 use Cwd;
 use Getopt::Long;
 
-# This is a version of the queue.pl modified so that it works under PBS 
+# This is a version of the queue.pl modified so that it works under PBS
 # The PBS is one of the several "almost compatible" queueing systems. The
 # command switches and environment variables are different, so we are adding
 # a this script. An optimal solution might probably be to make the variable
