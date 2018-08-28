@@ -64,10 +64,9 @@ fi
 if [ $stage -le 2 ]; then
   for set in train; do
     echo "$(date) stage 2: Performing augmentation"
-    local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set} data/${set}
+    local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set} data/${set}_aug
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
-  image/fix_data_dir.sh data/train
 fi
 
 if [ $stage -le 3 ]; then
@@ -111,7 +110,7 @@ fi
 if [ $stage -le 4 ]; then
   echo "$(date) stage 4: applying BPE..."
   echo "applying BPE on train, test text..."
-  for set in test train; do
+  for set in test train_aug; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | utils/lang/bpe/prepend_words.py | \
       utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt | \
@@ -149,7 +148,7 @@ fi
 
 if [ $stage -le 7 ]; then
   echo "$(date) stage 7: Calling the flat-start chain recipe..."
-  local/chain/run_e2e_cnn.sh
+  local/chain/run_e2e_cnn.sh --train_set train_aug
 fi
 
 if [ $stage -le 8 ]; then
@@ -162,5 +161,5 @@ fi
 
 if [ $stage -le 9 ]; then
   echo "$(date) stage 9: Building a tree and training a regular chain model using the e2e alignments..."
-  local/chain/run_cnn_e2eali.sh
+  local/chain/run_cnn_e2eali.sh --train_set train_aug
 fi

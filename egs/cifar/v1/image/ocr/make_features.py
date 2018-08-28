@@ -143,28 +143,17 @@ with open(data_list_path) as f:
         if args.fliplr:
             im = np.fliplr(im)
         if args.augment:
-            for i in range(2):
-                image_aug_id = image_id + '_aug' + str(i + 1)
-                im_aug = get_scaled_image_aug(im, aug_setting[i])
-                im_horizontal_padded = horizontal_pad(im_aug, allowed_lengths)
-                if im_horizontal_padded is None:
-                    num_fail += 1
-                    continue
-                data = np.transpose(im_horizontal_padded, (1, 0))
-                data = np.divide(data, 255.0)
-                num_ok += 1
-                write_kaldi_matrix(out_fh, data, image_aug_id)
+            im_aug = get_scaled_image_aug(im, aug_setting[1])
         else:
-            image_aug_id = image_id + '_aug'
             im_aug = get_scaled_image_aug(im, aug_setting[0])
-            im_horizontal_padded = horizontal_pad(im_aug, allowed_lengths)
-            if im_horizontal_padded is None:
-                num_fail += 1
-                continue
-            data = np.transpose(im_horizontal_padded, (1, 0))
-            data = np.divide(data, 255.0)
-            num_ok += 1
-            write_kaldi_matrix(out_fh, data, image_aug_id)
+        im_horizontal_padded = horizontal_pad(im_aug, allowed_lengths)
+        if im_horizontal_padded is None:
+            num_fail += 1
+            continue
+        data = np.transpose(im_horizontal_padded, (1, 0))
+        data = np.divide(data, 255.0)
+        num_ok += 1
+        write_kaldi_matrix(out_fh, data, image_id)
 
 print('Generated features for {} images. Failed for {} (image too '
       'long).'.format(num_ok, num_fail), file=sys.stderr)

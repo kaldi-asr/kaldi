@@ -2,6 +2,9 @@
 # Copyright   2018 Hossein Hadian
 #             2018 Ashish Arora
 
+# Apache 2.0
+# This script performs data augmentation.
+
 nj=4
 cmd=run.pl
 feat_dim=40
@@ -11,13 +14,17 @@ echo "$0 $@"
 . ./path.sh
 . ./utils/parse_options.sh || exit 1;
 
-src_dir=$1
-out_dir=$2
+srcdir=$1
+outdir=$2
 
-echo "copying $src_dir to ${outdir}_aug1"
+echo "copying $srcdir to ${outdir}_aug1"
 utils/copy_data_dir.sh --spk-prefix aug1- --utt-prefix aug1- $srcdir ${outdir}_aug1
 
 echo " calling local/extract_features.sh for extracting features"
-local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim --fliplr $fliplr --augment true ${outdir}_aug1
+local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim --fliplr false --augment true ${outdir}_aug1
 
-#utils/combine_data_dir.sh --extra-files images.scp $outdir  $srcdir ${outdir}_aug1 ${outdir}_aug2 ...
+echo " combine original data and data from different augmentations"
+utils/combine_data.sh --extra-files images.scp $outdir  $srcdir ${outdir}_aug1
+
+# remove the temporary augX dir's:
+rm -r ${outdir}_aug1
