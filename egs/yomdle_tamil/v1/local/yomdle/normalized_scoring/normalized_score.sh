@@ -1,8 +1,7 @@
 #!/bin/bash
 
-""" This script normalizes hypothesis and reference file and performs scoring.
-    Eg. ./local/yomdle/normalized_scoring/normalized_score.sh <output-dir> <input-hyp-file> <slam-language>
-"""
+#    This script normalizes hypothesis and reference file and performs scoring.
+#    Eg. ./local/yomdle/normalized_scoring/normalized_score.sh <output-dir> <input-hyp-file> <slam-language>
 
 if [ $# -ne 3 ]; then
     echo "USAGE:  ./local/yomdle/normalized_scoring/normalized_score.sh <output-dir> <input-hyp-file> <slam-language>"

@@ -64,9 +64,23 @@ fi
 if [ $stage -le 2 ]; then
   echo "$(date) stage 2: BPE preparation"
   # getting non-silence phones.
-  cat data/train/text | \
-  perl -ne '@A = split; shift @A; for(@A) {print join("\n", split(//)), "\n";}' | \
-  sort -u > data/local/text/cleaned/phones.txt
+  cat data/train/text | cut -d' ' -f2- | \
+python3 <(
+cat << "END"
+import os, sys, io;
+infile = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8');
+output = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8');
+phone_dict = dict();
+for line in infile:
+    line_vect = line.strip().split();
+    for word in line_vect:
+        for phone in word:
+            phone_dict[phone] = phone;
+
+for phone in phone_dict.keys():
+      output.write(phone+ '\n');
+END
+   ) > data/local/text/cleaned/phones.txt
 
   cut -d' ' -f2- data/train/text > data/local/text/cleaned/train.txt
 
