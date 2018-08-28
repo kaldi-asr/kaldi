@@ -49,7 +49,7 @@ done
 # Prepare semi-supervised train set 
 if [ $stage -le 1 ]; then
   utils/combine_data.sh data/semisup100k_250k \
-    data/train data/train_unsup || exit 1
+    data/train_aug data/train_unsup || exit 1
 fi
 
 ###############################################################################
@@ -59,7 +59,7 @@ fi
 ###############################################################################
 if [ $stage -le 2 ]; then
   local/semisup/chain/run_cnn_chainali_semisupervised_1b.sh \
-    --supervised-set train \
+    --supervised-set train_aug \
     --unsupervised-set train_unsup \
     --sup-chain-dir exp/chain/cnn_e2eali_1b \
     --sup-lat-dir exp/chain/e2e_train_lats \
