@@ -43,10 +43,10 @@ parser.add_argument('--feat-dim', type=int, default=40,
 parser.add_argument('--padding', type=int, default=5,
                     help='Number of white pixels to pad on the left'
                     'and right side of the image.')
-parser.add_argument("--augment", action="store_true",
-                   help="whether or not to do image augmentation")
-parser.add_argument("--flip", action="store_true",
-                   help="whether or not to flip the image")
+parser.add_argument('--fliplr', type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="Flip the image left-right for right to left languages")
+parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="performs image augmentation")
 args = parser.parse_args()
 
 
@@ -140,7 +140,7 @@ with open(data_list_path) as f:
         image_id = line_vect[0]
         image_path = line_vect[1]
         im = misc.imread(image_path)
-        if args.flip:
+        if args.fliplr:
             im = np.fliplr(im)
         if args.augment:
             for i in range(2):
