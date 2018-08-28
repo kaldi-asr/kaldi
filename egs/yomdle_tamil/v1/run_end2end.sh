@@ -110,7 +110,7 @@ fi
 if [ $stage -le 4 ]; then
   echo "$(date) stage 4: applying BPE..."
   echo "applying BPE on train, test text..."
-  for set in test train_aug; do
+  for set in test train train_aug; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | utils/lang/bpe/prepend_words.py | \
       utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt | \
