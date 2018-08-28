@@ -10,14 +10,13 @@ set -e -o pipefail
 
 # ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp
 # System                tdnn1a_sp
-#WER test_clean (tgsmall)               19.11
-#WER test_clean (fglarge)                 11.06
+#WER test_clean (tgsmall)               18.93
+#WER test_clean (fglarge)                 11.08
 # Final train prob        -0.0527
-# Final valid prob        -0.0545
-# Final train prob (xent)   -0.8395
-# Final valid prob (xent)   -0.8590
+# Final valid prob        -0.0541
+# Final train prob (xent)   -0.8366
+# Final valid prob (xent)   -0.8532
 # Num-params                 8426432
-
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).

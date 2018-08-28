@@ -52,12 +52,13 @@ done
 exit 0
 
 # tdnn_1a is a kind of factorized TDNN, with skip connections.
-exp/chain/tdnn_1a_sp: num-iters=72 nj=3..16 num-params=18.6M dim=40+100->3040 combine=-0.046->-0.045 (over 3) xent:train/valid[47,71,final]=(-0.898,-0.775,-0.766/-0.967,-0.855,-0.845) logprob:train/valid[47,71,final]=(-0.056,-0.043,-0.043/-0.069,-0.057,-0.057)
-%WER 11.42 [ 1057 / 9253, 128 ins, 193 del, 736 sub ] exp/chain/tdnn_1a_sp_online/decode_fglarge_test_clean/wer_16_1.0
-%WER 19.25 [ 1781 / 9253, 188 ins, 291 del, 1302 sub ] exp/chain/tdnn_1a_sp_online/decode_tgsmall_test_clean/wer_11_0.5
+exp/chain/tdnn1a_sp: num-iters=174 nj=2..8 num-params=8.4M dim=40+100->3040 combine=-0.049->-0.048 (over 3) xent:train/valid[115,173,final]=(-1.21,-0.841,-0.837/-1.20,-0.856,-0.853) logprob:train/valid[115,173,final]=(-0.091,-0.053,-0.053/-0.084,-0.055,-0.054)
+%WER 11.08 [ 1025 / 9253, 155 ins, 155 del, 715 sub ] exp/chain/tdnn1a_sp_online/decode_fglarge_test_clean/wer_11_0.0
+%WER 18.93 [ 1752 / 9253, 209 ins, 273 del, 1270 sub ] exp/chain/tdnn1a_sp_online/decode_tgsmall_test_clean/wer_11_0.0
+
 
 # This chain system has TDNN+Norm-OPGRU architecture. 
-exp/chain/tdnn_opgru_1a_sp: num-iters=130 nj=2..12 num-params=37.9M dim=40+100->3000 combine=-0.040->-0.038 (over 6) xent:train/valid[85,129,final]=(-1.12,-0.608,-0.616/-1.21,-0.697,-0.705) logprob:train/valid[85,129,final]=(-0.062,-0.027,-0.027/-0.067,-0.030,-0.030)
-%WER 9.33 [ 863 / 9253, 101 ins, 162 del, 600 sub ] exp/chain/tdnn_opgru_1a_sp_online/decode_fglarge_test_clean/wer_8_1.0
-%WER 15.13 [ 1400 / 9253, 154 ins, 217 del, 1029 sub ] exp/chain/tdnn_opgru_1a_sp_online/decode_tgsmall_test_clean/wer_9_0.0
+exp/chain/tdnn_opgru1a_sp: num-iters=99 nj=2..12 num-params=38.0M dim=40+100->3040 combine=-0.045->-0.045 (over 1) xent:train/valid[65,98,final]=(-1.18,-0.663,-0.651/-1.21,-0.698,-0.684) logprob:train/valid[65,98,final]=(-0.079,-0.038,-0.037/-0.076,-0.040,-0.039)
+%WER 9.45 [ 874 / 9253, 109 ins, 159 del, 606 sub ] exp/chain/tdnn_opgru1a_sp_online/decode_fglarge_test_clean/wer_10_1.0
+%WER 15.22 [ 1408 / 9253, 175 ins, 196 del, 1037 sub ] exp/chain/tdnn_opgru1a_sp_online/decode_tgsmall_test_clean/wer_8_0.0
 

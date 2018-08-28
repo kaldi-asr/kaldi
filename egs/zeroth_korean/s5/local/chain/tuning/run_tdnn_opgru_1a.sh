@@ -10,12 +10,12 @@ set -e -o pipefail
 
 # ./local/chain/compare_wer.sh exp/chain/tdnn_opgru1a_sp
 # System                tdnn_opgru1a_sp
-#WER test_clean (tgsmall)               15.17
-#WER test_clean (fglarge)                  9.14
-# Final train prob        -0.0380
-# Final valid prob        -0.0378
-# Final train prob (xent)   -0.6470
-# Final valid prob (xent)   -0.6805
+#WER test_clean (tgsmall)               15.22
+#WER test_clean (fglarge)                  9.45
+# Final train prob        -0.0373
+# Final valid prob        -0.0386
+# Final train prob (xent)   -0.6506
+# Final valid prob (xent)   -0.6837
 # Num-params                37970368
 
 
