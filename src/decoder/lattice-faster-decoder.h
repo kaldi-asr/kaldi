@@ -35,6 +35,7 @@
 #include "fstext/fstext-lib.h"
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/kaldi-lattice.h"
+#include "decoder/grammar-fst.h"
 
 namespace kaldi {
 
@@ -92,26 +93,38 @@ struct LatticeFasterDecoderConfig {
 };
 
 
-/** A bit more optimized version of the lattice decoder.
-   See \ref lattices_generation \ref decoders_faster and \ref decoders_simple
-    for more information.
- */
-class LatticeFasterDecoder {
- public:
-  typedef fst::StdArc Arc;
-  typedef Arc::Label Label;
-  typedef Arc::StateId StateId;
-  typedef Arc::Weight Weight;
+/** This is the "normal" lattice-generating decoder.
+    See \ref lattices_generation \ref decoders_faster and \ref decoders_simple
+     for more information.
 
-  // instantiate this class once for each thing you have to decode.
-  LatticeFasterDecoder(const fst::Fst<fst::StdArc> &fst,
-                       const LatticeFasterDecoderConfig &config);
+   It's templated on the FST type, but this defaults to Fst::Fst<fst::StdArc>,
+   also known as fst::StdFst.  You also might want to instantiate it for type
+   fst::GrammarFst.  If instantiated for typename FST = fst::Fst<fst::StdArc>
+   and it notices that the FST type is actually ConstFst or VectorFst, it will
+   specialize itself to the appropriate inside AdvanceDecoding() for speed.
+   That means you can get the speed advantages of knowing what the type is
+   without having to know at compile time.
+
+ */
+
+template <typename FST = fst::StdFst>
+class LatticeFasterDecoderTpl {
+ public:
+  using Arc = typename FST::Arc;
+  using Label = typename Arc::Label;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
+
+  // Instantiate this class once for each thing you have to decode.
+  // This version of the constructor does not take ownership of
+  // 'fst'.
+  LatticeFasterDecoderTpl(const FST &fst,
+                          const LatticeFasterDecoderConfig &config);
 
   // This version of the initializer "takes ownership" of the fst,
   // and will delete it when this object is destroyed.
-  LatticeFasterDecoder(const LatticeFasterDecoderConfig &config,
-                       fst::Fst<fst::StdArc> *fst);
-
+  LatticeFasterDecoderTpl(const LatticeFasterDecoderConfig &config,
+                          FST *fst);
 
   void SetOptions(const LatticeFasterDecoderConfig &config) {
     config_ = config;
@@ -121,7 +134,7 @@ class LatticeFasterDecoder {
     return config_;
   }
 
-  ~LatticeFasterDecoder();
+  ~LatticeFasterDecoderTpl();
 
   /// Decodes until there are no more frames left in the "decodable" object..
   /// note, this may block waiting for input if the "decodable" object blocks.
@@ -265,7 +278,13 @@ class LatticeFasterDecoder {
                  must_prune_tokens(true) { }
   };
 
-  typedef HashList<StateId, Token*>::Elem Elem;
+  using Elem = typename HashList<StateId, Token*>::Elem;
+  // Equivalent to:
+  //  struct Elem {
+  //    StateId key;
+  //    Token *val;
+  //    Elem *tail;
+  //  };
 
   void PossiblyResizeHash(size_t num_toks);
 
@@ -338,20 +357,16 @@ class LatticeFasterDecoder {
   BaseFloat GetCutoff(Elem *list_head, size_t *tok_count,
                       BaseFloat *adaptive_beam, Elem **best_elem);
 
-  /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to cur_toks_.
-  /// Returns the cost cutoff for subsequent ProcessNonemitting() to use.
-  /// Templated on FST type for speed; called via ProcessEmittingWrapper().
-  template <typename FstType> BaseFloat ProcessEmitting(DecodableInterface *decodable);
-
-  BaseFloat ProcessEmittingWrapper(DecodableInterface *decodable);
+  /// Processes emitting arcs for one frame.  Propagates from prev_toks_ to
+  /// cur_toks_.  Returns the cost cutoff for subsequent ProcessNonemitting() to
+  /// use.
+  BaseFloat ProcessEmitting(DecodableInterface *decodable);
 
   /// Processes nonemitting (epsilon) arcs for one frame.  Called after
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
-  /// the templated design is similar to ProcessEmitting()
-  template <typename FstType> void ProcessNonemitting(BaseFloat cost_cutoff);
-
-  void ProcessNonemittingWrapper(BaseFloat cost_cutoff);
+  /// The templated design is similar to ProcessEmitting()
+  void ProcessNonemitting(BaseFloat cost_cutoff);
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
   // more than one list (e.g. for current and previous frames), but only one of
@@ -367,9 +382,13 @@ class LatticeFasterDecoder {
   // must_prune_tokens).
   std::vector<StateId> queue_;  // temp variable used in ProcessNonemitting,
   std::vector<BaseFloat> tmp_array_;  // used in GetCutoff.
-  // make it class member to avoid internal new/delete.
-  const fst::Fst<fst::StdArc> &fst_;
+
+  // fst_ is a pointer to the FST we are decoding from.
+  const FST *fst_;
+  // delete_fst_ is true if the pointer fst_ needs to be deleted when this
+  // object is destroyed.
   bool delete_fst_;
+
   std::vector<BaseFloat> cost_offsets_; // This contains, for each
   // frame, an offset that was added to the acoustic log-likelihoods on that
   // frame in order to keep everything in a nice dynamic range i.e.  close to
@@ -416,8 +435,10 @@ class LatticeFasterDecoder {
 
   void ClearActiveTokens();
 
-  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeFasterDecoder);
+  KALDI_DISALLOW_COPY_AND_ASSIGN(LatticeFasterDecoderTpl);
 };
+
+typedef LatticeFasterDecoderTpl<fst::StdFst> LatticeFasterDecoder;
 
 
 

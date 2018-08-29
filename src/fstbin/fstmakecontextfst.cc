@@ -46,15 +46,15 @@ int main(int argc, char *argv[]) {
 
     bool binary = true;  // binary output to ilabels_output_file.
     std::string disambig_rxfilename, disambig_wxfilename;
-    int32 N = 3, P = 1;
-    
+    int32 context_width = 3, central_position = 1;
+
     ParseOptions po(usage);
     po.Register("read-disambig-syms", &disambig_rxfilename,
                 "List of disambiguation symbols to read");
     po.Register("write-disambig-syms", &disambig_wxfilename,
                 "List of disambiguation symbols to write");
-    po.Register("context-size", &N, "Size of phonetic context window");
-    po.Register("central-position", &P,
+    po.Register("context-size", &context_width, "Size of phonetic context window");
+    po.Register("central-position", &central_position,
                 "Designated central position in context window");
     po.Register("binary", &binary,
                 "Write ilabels output file in binary Kaldi format");
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     if ( (disambig_wxfilename != "") && (disambig_rxfilename == "") )
       KALDI_ERR << "fstmakecontextfst: cannot specify --write-disambig-syms if "
           "not specifying --read-disambig-syms\n";
-    
+
     std::vector<int32> disambig_in;
     if (disambig_rxfilename != "") {
       if (!ReadIntegerVectorSimple(disambig_rxfilename, &disambig_in))
@@ -100,21 +100,33 @@ int main(int argc, char *argv[]) {
     }
 
     if (std::binary_search(phone_syms.begin(), phone_syms.end(), subseq_sym)
-       ||std::binary_search(disambig_in.begin(), disambig_in.end(), subseq_sym))
-      KALDI_ERR << "Invalid subsequential symbol "<<(subseq_sym)<<", already a phone or disambiguation symbol.";
+       || std::binary_search(disambig_in.begin(), disambig_in.end(), subseq_sym))
+      KALDI_ERR << "Invalid subsequential symbol " << subseq_sym
+                << ", already a phone or disambiguation symbol.";
 
+    // 'loop_fst' will be an acceptor FST with single (initial and final) state, with
+    // a loop for each phone and disambiguation symbol.
+    StdVectorFst loop_fst;
+    loop_fst.AddState();  // Add state zero.
+    loop_fst.SetStart(0);
+    loop_fst.SetFinal(0, TropicalWeight::One());
+    for (size_t i = 0; i < phone_syms.size(); i++) {
+      int32 sym = phone_syms[i];
+      loop_fst.AddArc(0, StdArc(sym, sym, TropicalWeight::One(), 0));
+    }
+    for (size_t i = 0; i < disambig_in.size(); i++) {
+      int32 sym = disambig_in[i];
+      loop_fst.AddArc(0, StdArc(sym, sym, TropicalWeight::One(), 0));
+    }
 
-    ContextFst<StdArc, int32> cfst(subseq_sym,
-                                   phone_syms,
-                                   disambig_in,
-                                   N,
-                                   P);
+    std::vector<std::vector<int32> > ilabels;
+    VectorFst<StdArc> context_fst;
 
-    VectorFst<StdArc> vfst(cfst);  // Copy the fst to a VectorFst.
+    ComposeContext(disambig_in, context_width, central_position,
+                   &loop_fst, &context_fst, &ilabels, true);
 
-    WriteFstKaldi(vfst, fst_out_filename);
-    
-    const std::vector<std::vector<int32> >  &ilabels = cfst.ILabelInfo();
+    WriteFstKaldi(context_fst, fst_out_filename);
+
     WriteILabelInfo(Output(ilabels_out_filename, binary).Stream(),
                     binary, ilabels);
 
@@ -133,4 +145,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
