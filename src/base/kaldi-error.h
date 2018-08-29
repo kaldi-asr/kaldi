@@ -114,19 +114,27 @@ public:
   /// 'KALDI_LOG << "Message,"',
   inline std::ostream &stream() { return ss_; }
 
-private:
+protected:
   /// The logging function,
   static void HandleMessage(const LogMessageEnvelope &env, const char *msg);
 
-private:
   LogMessageEnvelope envelope_;
   std::ostringstream ss_;
 };
 
+class FatalMessageLogger: public MessageLogger {
+public:
+  FatalMessageLogger(LogMessageEnvelope::Severity severity,
+                     const char *func, const char *file, int32 line):
+    MessageLogger(severity, func, file, line) {}
+
+  [[ noreturn ]] ~FatalMessageLogger() KALDI_NOEXCEPT(false);
+};
+
 // The definition of the logging macros,
 #define KALDI_ERR \
-  ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::kError, \
-                         __func__, __FILE__, __LINE__).stream()
+  ::kaldi::FatalMessageLogger(::kaldi::LogMessageEnvelope::kError, \
+                              __func__, __FILE__, __LINE__).stream()
 #define KALDI_WARN \
   ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::kWarning, \
                          __func__, __FILE__, __LINE__).stream()
@@ -140,8 +148,8 @@ private:
 
 /***** KALDI ASSERTS *****/
 
-void KaldiAssertFailure_(const char *func, const char *file,
-                         int32 line, const char *cond_str);
+[[noreturn]] void KaldiAssertFailure_(const char *func, const char *file,
+                                      int32 line, const char *cond_str);
 
 // Note on KALDI_ASSERT and KALDI_PARANOID_ASSERT
 // The original (simple) version of the code was this

@@ -384,7 +384,7 @@ int32 FastNnetCombiner::GetInitialModel(
   int32 num_nnets = static_cast<int32>(nnets.size());
   KALDI_ASSERT(!nnets.empty());
   int32 best_n = -1;
-  double best_objf;
+  double best_objf = -std::numeric_limits<double>::infinity();
   Vector<double> objfs(nnets.size());
   for (int32 n = 0; n < num_nnets; n++) {
     double num_frames;

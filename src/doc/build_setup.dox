@@ -58,11 +58,9 @@
 
   Changes that you might want to make to kaldi.mk after running "configure" are the following:
     - Changing the debug level:
-      - The default (which creates the easiest-to-debug binaries) is enabled by the options "-g -O0 -DKALDI_PARANOID".
-      - For faster, but still debuggable, binaries, you can change -O0 to -O1
-      - If you won't need to debug the binaries, you can remove the "-g -O0 -DKALDI_PARANOID" options, which 
-        will make it even faster.
-      - For maximum speed and no checking, you can replace the "-g -O0 -DKALDI_PARANOID" options with
+      - The default is "-O1"
+      - Easy to debug binaries can be enabled by uncommenting the options "-O0 -DKALDI_PARANOID".
+      - For maximum speed and no checking, you can replace the "-O0 -DKALDI_PARANOID" options with
         "-O2 -DNDEBUG" or "-O3 -DNDEBUG"
     - Changing the default precision
       - To test algorithms in double precision (e.g. if you suspect that roundoff is affecting
