@@ -210,9 +210,11 @@ void SplitRadixComplexFft<Real>::BitReversePermute(Real *x, MatrixIndexT logn) c
 template<typename Real>
 void SplitRadixComplexFft<Real>::ComputeRecursive(Real *xr, Real *xi, MatrixIndexT logn) const {
 
+  // Do we required that logn <= this->logn_?
   MatrixIndexT    m, m2, m4, m8, nel, n;
   Real    *xr1, *xr2, *xi1, *xi2;
-  Real    *cn, *spcn, *smcn, *c3n, *spc3n, *smc3n;
+  Real    *cn = nullptr, *spcn = nullptr, *smcn = nullptr, *c3n = nullptr,
+    *spc3n = nullptr, *smc3n = nullptr;
   Real    tmp1, tmp2;
   Real   sqhalf = M_SQRT1_2;
 

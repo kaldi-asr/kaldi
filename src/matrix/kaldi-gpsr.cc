@@ -226,8 +226,13 @@ double GpsrBasic(const GpsrConfig &opts, const SpMatrix<double> &H,
   Vector<double> delta_v(dim);
   Vector<double> u_new(dim);
   Vector<double> v_new(dim);
-  double objf_old, objf_new, num_zeros;
+  double objf_old = -std::numeric_limits<double>::infinity(),
+    objf_new = -std::numeric_limits<double>::infinity(),
+    num_zeros;
   bool keep_going = true;
+
+  KALDI_ASSERT(opts.max_iters_backtrak > 0 &&
+               "Gpsr must run at least one iteration of backtracking");
 
   for (int32 iter = 0; keep_going; iter++) {
     objf_old = GpsrObjective(H, c, u, v);

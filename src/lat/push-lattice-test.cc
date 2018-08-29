@@ -45,7 +45,8 @@ void TestPushCompactLatticeStrings() {
     if (s == 0)
       continue; // We don't check state zero, as the "leftover string" stays
                // there.
-    int32 first_label;
+    // Double check: HMM state ID's cannot be negative.
+    int32 first_label = -1;
     bool ok = false;
     bool first_label_set = false;
     for (ArcIterator<CompactLattice> aiter(clat2, s); !aiter.Done();
