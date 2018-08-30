@@ -435,7 +435,6 @@ if [ -f $srcdir/nonterminals.txt ]; then
   utils/sym2int.pl $dir/phones.txt <$dir/phones/left_context_phones.txt >$dir/phones/left_context_phones.int
 
   # we need to write utils/lang/make_lexicon_fst_silprob.py before this can work.
-  $silprob && echo "$0: silprobs not yet supported with grammar decoding" && exit 1
   grammar_opts="--left-context-phones=$dir/phones/left_context_phones.txt --nonterminals=$srcdir/nonterminals.txt"
 else
   grammar_opts=
@@ -452,7 +451,8 @@ if $silprob; then
   # Add silence probabilities (models the prob. of silence before and after each
   # word).  On some setups this helps a bit.  See utils/dict_dir_add_pronprobs.sh
   # and where it's called in the example scripts (run.sh).
-  utils/make_lexicon_fst_silprob.pl $tmpdir/lexiconp_silprob.txt $srcdir/silprob.txt $silphone "<eps>" | \
+  utils/lang/make_lexicon_fst_silprob.py $grammar_opts --sil-phone=$silphone \
+         $tmpdir/lexiconp_silprob.txt $srcdir/silprob.txt | \
      fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
        --keep_isymbols=false --keep_osymbols=false |   \
      fstarcsort --sort_type=olabel > $dir/L.fst || exit 1;
@@ -527,7 +527,9 @@ utils/gen_topo.pl $num_nonsil_states $num_sil_states $nonsilphonelist $silphonel
 # disambiguation symbols from G.fst.
 
 if $silprob; then
-  utils/make_lexicon_fst_silprob.pl $tmpdir/lexiconp_silprob_disambig.txt $srcdir/silprob.txt $silphone '#'$ndisambig | \
+  utils/lang/make_lexicon_fst_silprob.py $grammar_opts \
+     --sil-phone=$silphone --sil-disambig='#'$ndisambig \
+     $tmpdir/lexiconp_silprob_disambig.txt $srcdir/silprob.txt | \
      fstcompile --isymbols=$dir/phones.txt --osymbols=$dir/words.txt \
        --keep_isymbols=false --keep_osymbols=false |   \
      fstaddselfloops  $dir/phones/wdisambig_phones.int $dir/phones/wdisambig_words.int | \
