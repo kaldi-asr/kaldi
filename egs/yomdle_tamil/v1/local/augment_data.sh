@@ -26,9 +26,8 @@ echo "$(date) Obtaining allowed length for training with augmented data..."
 image/get_image2num_frames.py --feat-dim 40 $datadir/augmentations/aug1
 image/get_allowed_lengths.py --frame-subsampling-factor 4 10 $datadir/augmentations/aug1
 
-echo " calling local/extract_features.sh for extracting features"
+echo " Extracting features, creating feats.scp file for augmentated data"
 local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim --fliplr false --augment true $datadir/augmentations/aug1
 
 echo " combine original data and data from different augmentations"
 utils/combine_data.sh --extra-files images.scp $outdir $srcdir $datadir/augmentations/aug1
-
