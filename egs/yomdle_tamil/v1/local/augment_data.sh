@@ -22,12 +22,12 @@ mkdir -p $datadir/augmentations
 echo "copying $srcdir to $datadir/augmentations/aug1"
 utils/copy_data_dir.sh --spk-prefix aug1- --utt-prefix aug1- $srcdir $datadir/augmentations/aug1
 
-echo "$(date) Obtaining allowed length for training with augmented data..."
-image/get_image2num_frames.py --feat-dim 40 $datadir/augmentations/aug1
-image/get_allowed_lengths.py --frame-subsampling-factor 4 10 $datadir/augmentations/aug1
+echo " copying allowed length for training with augmented data..."
+cat $srcdir/allowed_lengths.txt > $datadir/augmentations/aug1/allowed_lengths.txt
 
 echo " Extracting features, creating feats.scp file for augmentated data"
 local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim --fliplr false --augment true $datadir/augmentations/aug1
 
 echo " combine original data and data from different augmentations"
 utils/combine_data.sh --extra-files images.scp $outdir $srcdir $datadir/augmentations/aug1
+cat $srcdir/allowed_lengths.txt > $outdir/allowed_lengths.txt
