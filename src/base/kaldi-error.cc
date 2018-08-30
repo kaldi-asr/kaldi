@@ -147,7 +147,7 @@ MessageLogger::MessageLogger(LogMessageEnvelope::Severity severity,
 }
 
 
-MessageLogger::~MessageLogger() KALDI_NOEXCEPT(false) {
+MessageLogger::~MessageLogger() noexcept(false) {
   // remove trailing '\n',
   std::string str = ss_.str();
   while (!str.empty() && str[str.length() - 1] == '\n')
@@ -204,7 +204,7 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
   }
 }
 
-FatalMessageLogger::~FatalMessageLogger() KALDI_NOEXCEPT(false) {
+FatalMessageLogger::~FatalMessageLogger() noexcept(false) {
   // remove trailing '\n',
   std::string str = ss_.str();
   while (!str.empty() && str[str.length() - 1] == '\n')

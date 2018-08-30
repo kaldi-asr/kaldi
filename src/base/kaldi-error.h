@@ -33,18 +33,6 @@
 #include "base/kaldi-utils.h"
 /* Important that this file does not depend on any other kaldi headers. */
 
-// By adding 'KALDI_NOEXCEPT(bool)' immediately after function declaration,
-// we can tell the compiler that the function must-not produce
-// exceptions (true), or may produce exceptions (false):
-#if _MSC_VER >= 1900 || (!defined(_MSC_VER) && __cplusplus >= 201103L)
-#define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
-#elif defined(__GXX_EXPERIMENTAL_CXX0X__) && \
-      (__GNUC__ >= 4 && __GNUC_MINOR__ >= 6)
-#define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
-#else
-#define KALDI_NOEXCEPT(Predicate)
-#endif
-
 #ifdef _MSC_VER
 #define __func__ __FUNCTION__
 #endif
@@ -108,7 +96,7 @@ public:
 
   /// Destructor, calls 'HandleMessage' which prints the message,
   /// (since C++11 a 'throwing' destructor must be declared 'noexcept(false)')
-  ~MessageLogger() KALDI_NOEXCEPT(false);
+  ~MessageLogger() noexcept(false);
 
   /// The hook for the 'insertion operator', e.g.
   /// 'KALDI_LOG << "Message,"',
@@ -128,7 +116,7 @@ public:
                      const char *func, const char *file, int32 line):
     MessageLogger(severity, func, file, line) {}
 
-  [[ noreturn ]] ~FatalMessageLogger() KALDI_NOEXCEPT(false);
+  [[ noreturn ]] ~FatalMessageLogger() noexcept(false);
 };
 
 // The definition of the logging macros,
