@@ -4928,14 +4928,15 @@ void OptimizeMemoryCompression(const Nnet &nnet,
   }
   if (memory_compression_level >= 1) {
     int64 bytes_used_initial, bytes_used_final;
-    if (GetVerboseLevel() >= 2)
+    bool verbose_ge_2 = GetVerboseLevel() >= 2;
+    if (verbose_ge_2)
       bytes_used_initial = GetMaxMemoryUse(*computation);
 
     MemoryCompressionOptimizer opt(nnet, memory_compression_level,
                                    middle_command, computation);
     opt.Optimize();
 
-    if (GetVerboseLevel() >= 2) {
+    if (verbose_ge_2) {
       bytes_used_final = GetMaxMemoryUse(*computation);
       if (bytes_used_final != bytes_used_initial) {
         KALDI_VLOG(2) << "Memory compression reduced  memory use from "

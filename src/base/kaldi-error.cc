@@ -147,7 +147,7 @@ MessageLogger::MessageLogger(LogMessageEnvelope::Severity severity,
 }
 
 
-MessageLogger::~MessageLogger() KALDI_NOEXCEPT(false) {
+MessageLogger::~MessageLogger() noexcept(false) {
   // remove trailing '\n',
   std::string str = ss_.str();
   while (!str.empty() && str[str.length() - 1] == '\n')
@@ -202,9 +202,19 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
               KaldiGetStackTrace().c_str());
     }
   }
+}
+
+FatalMessageLogger::~FatalMessageLogger() noexcept(false) {
+  // remove trailing '\n',
+  std::string str = ss_.str();
+  while (!str.empty() && str[str.length() - 1] == '\n')
+    str.resize(str.length() - 1);
+
+  // print the mesage (or send to logging handler),
+  MessageLogger::HandleMessage(envelope_, str.c_str());
 
   // Should we throw exception, or abort?
-  switch (envelope.severity) {
+  switch (envelope_.severity) {
     case LogMessageEnvelope::kAssertFailed:
       abort(); // ASSERT_FAILED,
       break;
@@ -221,6 +231,8 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
         abort();
       }
       break;
+  default:
+    abort();
   }
 }
 
@@ -229,7 +241,7 @@ void MessageLogger::HandleMessage(const LogMessageEnvelope &envelope,
 
 void KaldiAssertFailure_(const char *func, const char *file,
                          int32 line, const char *cond_str) {
-  MessageLogger ml(LogMessageEnvelope::kAssertFailed, func, file, line);
+  FatalMessageLogger ml(LogMessageEnvelope::kAssertFailed, func, file, line);
   ml.stream() << ": '" << cond_str << "' ";
 }
 

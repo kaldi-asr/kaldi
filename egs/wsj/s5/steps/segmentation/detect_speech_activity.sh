@@ -99,14 +99,14 @@ data_id=`basename $data_dir`
 sad_dir=${dir}/${sad_name}${affix}_${data_id}_whole${feat_affix}
 seg_dir=${dir}/${segmentation_name}${affix}_${data_id}_whole${feat_affix}
 
-test_data_dir=data/${data_id}${feat_affix}_hires
-
 if $convert_data_dir_to_whole; then
+  test_data_dir=data/${data_id}_whole${feat_affix}_hires
   if [ $stage -le 0 ]; then
     rm -r ${test_data_dir} || true
     utils/data/convert_data_dir_to_whole.sh $src_data_dir ${test_data_dir}
   fi
 else
+  test_data_dir=data/${data_id}${feat_affix}_hires
   if [ $stage -le 0 ]; then
     rm -r ${test_data_dir} || true
     utils/copy_data_dir.sh $src_data_dir $test_data_dir
@@ -170,7 +170,8 @@ fi
 ## Prepare FST we search to make speech/silence decisions.
 ###############################################################################
 
-frame_shift=$(utils/data/get_frame_shift.sh $test_data_dir)
+utils/data/get_utt2dur.sh --nj $nj --cmd "$cmd" $test_data_dir || exit 1
+frame_shift=$(utils/data/get_frame_shift.sh $test_data_dir) || exit 1
 
 graph_dir=${dir}/graph_${output_name}
 if [ $stage -le 5 ]; then

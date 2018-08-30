@@ -33,8 +33,11 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
-   echo "usage: steps/align_fmllr.sh <data-dir> <lang-dir> <src-dir> <align-dir>"
-   echo "e.g.:  steps/align_fmllr.sh data/train data/lang exp/tri1 exp/tri1_ali"
+   echo "usage: steps/align_basis_fmllr.sh <data-dir> <lang-dir> <src-dir> <align-dir>"
+   echo "e.g.:  steps/align_basis_fmllr.sh data/train data/lang exp/tri4 exp/tri4_ali"
+   echo "Note: <src-dir> should ideally have been trained by steps/train_sat_basis.sh, or"
+   echo "if a non-SAT system (not recommended), the basis should have been computed"
+   echo "by steps/get_fmllr_basis.sh."
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"
@@ -58,8 +61,18 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
+
+for f in $srcdir/tree  $srcdir/final.mdl $srcdir/fmllr.basis \
+                       $data/feats.scp $lang/phones.txt; do
+  if [ ! -f $f ]; then
+    echo "$0: expected file $f to exist"
+    exit 1
+  fi
+done
+
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
 cp $lang/phones.txt $dir || exit 1;
+
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.occs $dir;
