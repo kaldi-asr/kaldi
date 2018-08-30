@@ -26,7 +26,7 @@ stage=0
 nj=30
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1c  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1a
 common_egs_dir=
 reporting_email=
@@ -45,6 +45,8 @@ tdnn_dim=550
 # training options
 srand=0
 remove_egs=true
+#lang_decode=data.new/lang
+#lang_rescore=data.new/lang_rescore_6g
 lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 
@@ -69,6 +71,7 @@ fi
 ali_dir=exp/chain/e2e_ali_train
 lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats
 dir=exp/chain${nnet3_affix}/cnn_e2eali${affix}
+#dir=exp/chain/cnn_e2eali_1c
 train_data_dir=data/${train_set}
 tree_dir=exp/chain${nnet3_affix}/tree_e2e
 
@@ -144,7 +147,7 @@ if [ $stage -le 4 ]; then
   output_opts="l2-regularize=0.04"
   common1="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
+  common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=90"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
@@ -153,7 +156,7 @@ if [ $stage -le 4 ]; then
   conv-relu-batchnorm-dropout-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-dropout-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
   conv-relu-batchnorm-dropout-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-dropout-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
+  conv-relu-batchnorm-dropout-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common3 height-subsample-out=2
   relu-batchnorm-dropout-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
@@ -161,16 +164,6 @@ if [ $stage -le 4 ]; then
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $tdnn_opts
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
-
-  # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' mod?els... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
   relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5 $tdnn_opts
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5 $output_opts
 EOF
@@ -190,8 +183,8 @@ if [ $stage -le 5 ]; then
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
     --chain.l2-regularize=0.00005 \
-    --chain.apply-deriv-weights=false \
-    --chain.lm-opts="--num-extra-lm-states=500" \
+    --chain.apply-deriv-weights=true \
+    --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
     --chain.alignment-subsampling-factor=1 \
     --chain.left-tolerance 3 \
@@ -199,14 +192,14 @@ if [ $stage -le 5 ]; then
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=8 \
-    --trainer.frames-per-iter=2000000 \
+    --trainer.frames-per-iter=1500000 \
     --trainer.optimization.num-jobs-initial=2 \
     --trainer.optimization.num-jobs-final=4 \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=64,32 \
+    --trainer.num-chunk-per-minibatch=32,16 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
