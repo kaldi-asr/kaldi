@@ -18,7 +18,7 @@ srcdir=$1
 outdir=$2
 datadir=$3
 
-mkdir -p $data_dir/augmentations
+mkdir -p $datadir/augmentations
 echo "copying $srcdir to $datadir/augmentations/aug1"
 utils/copy_data_dir.sh --spk-prefix aug1- --utt-prefix aug1- $srcdir $datadir/augmentations/aug1
 

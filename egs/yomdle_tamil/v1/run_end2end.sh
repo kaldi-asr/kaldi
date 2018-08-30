@@ -19,12 +19,11 @@ corpus_dir=/export/corpora5/handwriting_ocr/corpus_data/ta/
 . ./utils/parse_options.sh
 
 ./local/check_tools.sh
-mkdir -p data/{train,test}/data
-
-# Start from stage=-2 for extracting line images from page image and 
-# creating csv files for transcriptions.
+# Start from stage=-2 for data preparation. This stage stores line images,
+# csv files and splits{train,test,train_unsup} data/download/truth_line_image,
+# data/download/truth_csv and data/local/splits respectively.
 if [ $stage -le -2 ]; then
-  echo "$(date): extracting line images for shared model and semi-supervised training..."
+  echo "$(date): preparing data, obtaining line images and csv files..."
   local/yomdle/create_download_dir.sh --language_main $language_main \
     --slam_dir $slam_dir --yomdle_dir $yomdle_dir
 fi
@@ -37,6 +36,7 @@ if [ $stage -le -1 ]; then
   tail -n +20000 data/local/text/ta.txt > data/local/text/corpus.txt
 fi
 
+mkdir -p data/{train,test}/data
 if [ $stage -le 0 ]; then
   echo "$(date) stage 0: Processing train and test data."
   echo " creating text, images.scp, utt2spk and spk2utt"
@@ -50,11 +50,11 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  echo "$(date) stage 1: Obtaining image groups. calling get_image2num_frames..."
+  echo "$(date) stage 1: getting allowed image widths for e2e training..."
   image/get_image2num_frames.py --feat-dim 40 data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   for set in train test; do
-    echo "$(date) Extracting features and calling compute_cmvn_stats"
+    echo "$(date) Extracting features, creating feats.scp file"
     local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set}
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
@@ -63,7 +63,7 @@ fi
 
 if [ $stage -le 2 ]; then
   for set in train; do
-    echo "$(date) stage 2: Performing augmentation"
+    echo "$(date) stage 2: Performing augmentation, it will double training data"
     local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set} data/${set}_aug data
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
