@@ -7,13 +7,16 @@
 # Modified by Lucas Jo 2017 (Altas Guide)
 
 if [ "$#" -ne 2 ]; then
-  echo "Usage: $0 <src-dir> <dst-dir>"
+  echo "Usage: $0 <db-dir> <part>"
   echo "e.g.: $0 ./db/train_data_01 data/train_data_01"
   exit 1
 fi
 
-src=$1
-dst=$2
+db_dir=$1
+data_part=$2
+
+src=${db_dir}/${data_part}
+dst=data/${data_part}
 
 # all utterances are FLAC compressed
 if ! which flac >&/dev/null; then
@@ -21,7 +24,7 @@ if ! which flac >&/dev/null; then
    exit 1
 fi
 
-spk_file=$src/../AUDIO_INFO
+spk_file=${db_dir}/AUDIO_INFO
 
 mkdir -p $dst || exit 1;
 

@@ -38,7 +38,7 @@ if [ $stage -le 1 ]; then
   # format the data as Kaldi data directories
   for part in train_data_01 test_data_01; do
   	# use underscore-separated names in data directories.
-  	local/data_prep.sh $db_dir/$part data/$part
+  	local/data_prep.sh $db_dir $part
   done
 fi
 
