@@ -52,10 +52,9 @@ done
 exit 0
 
 # tdnn_1a is a kind of factorized TDNN, with skip connections.
-exp/chain/tdnn1a_sp: num-iters=174 nj=2..8 num-params=8.4M dim=40+100->3040 combine=-0.049->-0.048 (over 3) xent:train/valid[115,173,final]=(-1.21,-0.841,-0.837/-1.20,-0.856,-0.853) logprob:train/valid[115,173,final]=(-0.091,-0.053,-0.053/-0.084,-0.055,-0.054)
-%WER 11.08 [ 1025 / 9253, 155 ins, 155 del, 715 sub ] exp/chain/tdnn1a_sp_online/decode_fglarge_test_clean/wer_11_0.0
-%WER 18.93 [ 1752 / 9253, 209 ins, 273 del, 1270 sub ] exp/chain/tdnn1a_sp_online/decode_tgsmall_test_clean/wer_11_0.0
-
+exp/chain/tdnn1b_sp: num-iters=174 nj=2..8 num-params=12.9M dim=40+100->3040 combine=-0.041->-0.041 (over 2) xent:train/valid[115,173,final]=(-1.14,-0.759,-0.751/-1.14,-0.788,-0.777) logprob:train/valid[115,173,final]=(-0.084,-0.047,-0.046/-0.080,-0.050,-0.048)
+%WER 10.55 [ 976 / 9253, 122 ins, 166 del, 688 sub ] exp/chain/tdnn1b_sp_online/decode_fglarge_test_clean/wer_13_1.0
+%WER 17.65 [ 1633 / 9253, 208 ins, 233 del, 1192 sub ] exp/chain/tdnn1b_sp_online/decode_tgsmall_test_clean/wer_10_0.0
 
 # This chain system has TDNN+Norm-OPGRU architecture. 
 exp/chain/tdnn_opgru1a_sp: num-iters=99 nj=2..12 num-params=38.0M dim=40+100->3040 combine=-0.045->-0.045 (over 1) xent:train/valid[65,98,final]=(-1.18,-0.663,-0.651/-1.21,-0.698,-0.684) logprob:train/valid[65,98,final]=(-0.079,-0.038,-0.037/-0.076,-0.040,-0.039)

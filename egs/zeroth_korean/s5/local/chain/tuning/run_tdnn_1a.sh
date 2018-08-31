@@ -6,17 +6,17 @@ set -e -o pipefail
 # The training recipe is from WSJ example(egs/wsj/s5/local/chain/tuning/run_tdnn_1g.sh)
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
-# exp/chain/tdnn1a_sp: num-iters=174 nj=2..8 num-params=8.4M dim=40+100->3040 combine=-0.049->-0.048 (over 3) xent:train/valid[115,173,final]=(-1.23,-0.838,-0.839/-1.22,-0.863,-0.859) logprob:train/valid[115,173,final]=(-0.091,-0.053,-0.053/-0.087,-0.056,-0.055)
+# exp/chain/tdnn1b_sp: num-iters=174 nj=2..8 num-params=12.9M dim=40+100->3040 combine=-0.041->-0.041 (over 2) xent:train/valid[115,173,final]=(-1.14,-0.759,-0.751/-1.14,-0.788,-0.777) logprob:train/valid[115,173,final]=(-0.084,-0.047,-0.046/-0.080,-0.050,-0.048)
 
 # ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp
-# System                tdnn1a_sp
-#WER test_clean (tgsmall)               18.93
-#WER test_clean (fglarge)                 11.08
-# Final train prob        -0.0527
-# Final valid prob        -0.0541
-# Final train prob (xent)   -0.8366
-# Final valid prob (xent)   -0.8532
-# Num-params                 8426432
+# System                tdnn1b_sp
+#WER test_clean (tgsmall)               17.65
+#WER test_clean (fglarge)                 10.55
+# Final train prob        -0.0460
+# Final valid prob        -0.0480
+# Final train prob (xent)   -0.7512
+# Final valid prob (xent)   -0.7769
+# Num-params                12922560
 
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
@@ -174,26 +174,26 @@ if [ $stage -le 11 ]; then
   fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=1024
-  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
-  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
-  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=1
-  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=0
-  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1024 bottleneck-dim=128 time-stride=3
-  linear-component name=prefinal-l dim=192 $linear_opts
+  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=1280
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=1280 bottleneck-dim=160 time-stride=3
+  linear-component name=prefinal-l dim=256 $linear_opts
 
 
-  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1024 small-dim=192
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts big-dim=1280 small-dim=256
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
-  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=1024 small-dim=192
+  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts big-dim=1280 small-dim=256
   output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 
 EOF
