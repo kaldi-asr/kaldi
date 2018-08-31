@@ -135,11 +135,9 @@ class XconfigTdnnfLayer(XconfigLayerBase):
     def _generate_config(self):
         configs = []
         name = self.name
-
         input_dim = self.descriptors['input']['dim']
         input_descriptor = self.descriptors['input']['final-string']
         output_dim = self.config['dim']
-        assert output_dim == input_dim
         bottleneck_dim = self.config['bottleneck-dim']
         bypass_scale = self.config['bypass-scale']
         dropout_proportion = self.config['dropout-proportion']

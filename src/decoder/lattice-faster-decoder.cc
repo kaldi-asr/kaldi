@@ -840,9 +840,9 @@ void LatticeFasterDecoderTpl<FST>::ProcessNonemitting(BaseFloat cutoff) {
   }
 
   for (const Elem *e = toks_.GetList(); e != NULL;  e = e->tail) {
-    StateId key = e->key;
-    if (fst_->NumInputEpsilons(key) != 0)
-      queue_.push_back(key);
+    StateId state = e->key;
+    if (fst_->NumInputEpsilons(state) != 0)
+      queue_.push_back(state);
   }
 
   while (!queue_.empty()) {
