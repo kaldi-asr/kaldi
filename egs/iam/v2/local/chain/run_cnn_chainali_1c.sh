@@ -43,7 +43,7 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=false
-lang_test=lang_unk
+lang_test=lang
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
