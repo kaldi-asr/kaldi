@@ -304,12 +304,14 @@ if [ $stage -le 8 ]; then
 
   # We just replace the graph with the one in $treedir/extvocab_nosp_combined.
 
- steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --frames-per-chunk 140 --nj 38 \
+  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 --frames-per-chunk 140 --nj 38 \
     --cmd "queue.pl --mem 4G --num-threads 4" --online-ivector-dir exp/nnet3/ivectors_dev_clean_2_hires \
-    exp/chain/tree_sp/extvocab_nosp_combined data/dev_clean_2_hires exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb
+    exp/chain/tree_sp/extvocab_nosp_combined data/dev_clean_2_hires exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb
 
- # s5: grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb/wer_* | utils/best_wer.sh
- #%WER 11.77 [ 2370 / 20138, 198 ins, 339 del, 1833 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb/wer_12_0.0
+
+
+#  grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_* | utils/best_wer.sh
+#%WER 11.79 [ 2375 / 20138, 195 ins, 343 del, 1837 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_12_0.0# s5: grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb/wer_* | utils/best_wer.sh
 
  #.. versus the baseline below note, the baseline is not 100% comparable as it used the
  #   silence probabilities, which the grammar-decoding does not (yet) support...
@@ -318,11 +320,11 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 9 ]; then
- steps/nnet3/decode_grammar.sh --acwt 1.0 --post-decode-acwt 10.0 --frames-per-chunk 140 --nj 38 \
+  steps/nnet3/decode_grammar.sh --acwt 1.0 --post-decode-acwt 10.0 --frames-per-chunk 140 --nj 38 \
     --cmd "queue.pl --mem 4G --num-threads 4" --online-ivector-dir exp/nnet3/ivectors_dev_clean_2_hires \
-    exp/chain/tree_sp/extvocab_nosp_combined data/dev_clean_2_hires exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb_gra
+    exp/chain/tree_sp/extvocab_nosp_combined data/dev_clean_2_hires exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb_gra
 
- #  The WER when decoding with the grammar FST directly is exactly the same:
- #s5:  grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb_gra/wer_* | utils/best_wer.sh
- #%WER 11.77 [ 2370 / 20138, 198 ins, 339 del, 1833 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_comb_gra/wer_12_0.0
+  #  The WER when decoding with the grammar FST directly is exactly the same:
+  # s5:  grep WER exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb_gra/wer_* | utils/best_wer.sh
+  # %WER 11.79 [ 2375 / 20138, 195 ins, 343 del, 1837 sub ] exp/chain/tdnn1h_sp/decode_tgsmall_dev_clean_2_ev_nosp_comb_gra/wer_12_0.0
 fi
