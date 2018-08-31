@@ -58,6 +58,7 @@ if [ $stage -le 2 ]; then
   cat <<EOF | fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt | \
       fstarcsort --sort_type=ilabel > $lang/G.fst
 0    1    GROUP  GROUP
+0    1   <eps>  <eps>  4.0
 1    2    ONE   ONE   0.69314718055994
 1    2    TWO   TWO  0.69314718055994
 1    2    <eps>  <eps>  5.0
@@ -89,6 +90,7 @@ if [ $stage -le 3 ]; then
   cat <<EOF | fstcompile --isymbols=$lang/words.txt --osymbols=$lang/words.txt | \
      fstarcsort --sort_type=ilabel >$lang/G.fst
 0    1    GROUP   GROUP
+0    1    <eps>   <eps>  4.0
 1    2    #nonterm:contact_list  <eps>
 2    3    ASSIST   ASSIST  0.69314718055994
 2  0.69314718055994
