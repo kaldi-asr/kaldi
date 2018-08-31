@@ -22,7 +22,7 @@ mkdir -p $datadir/augmentations
 echo "copying $srcdir to $datadir/augmentations/aug1, allowed length, creating feats.scp"
 
 for set in aug1; do
-  utils/copy_data_dir.sh --spk-prefix $set- --utt-prefix $set- \
+  image/copy_data_dir.sh --spk-prefix $set- --utt-prefix $set- \
     $srcdir $datadir/augmentations/$set
   cat $srcdir/allowed_lengths.txt > $datadir/augmentations/$set/allowed_lengths.txt
   local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim \
