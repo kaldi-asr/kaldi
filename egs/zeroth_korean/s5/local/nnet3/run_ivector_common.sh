@@ -55,29 +55,25 @@ if [ $stage -le 3 ]; then
     steps/compute_cmvn_stats.sh data/${datadir}_hires  || exit 1;
   done
 
-  # We need to build a small system just because we need the LDA+MLLT transform
-  # to train the diag-UBM on top of.  We align a subset of training data for
-  # this purpose.
+  # We need to build a small system just because we need PCA transform
+  # to train the diag-UBM on top of.  
   utils/subset_data_dir.sh data/${trainset}_hires 30000 data/train_30k_hires
 fi
 
 
 if [ $stage -le 4 ]; then
-  # Train a small system just for its LDA+MLLT transform.  We use --num-iters 13
-  # because after we get the transform (12th iter is the last), any further
-  # training is pointless.
-
+  # Train a small system just for its PCA transform.  
   echo "$0: computing a PCA transform from the hires data."
   mkdir exp -p exp/nnet3
   steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
     --splice-opts "--left-context=3 --right-context=3" \
     --max-utts 30000 --subsample 2 \
-    data/${trainset}_hires exp/nnet3/pca_transform
+    data/train_30k_hires exp/nnet3/pca_transform
 fi
 
 if [ $stage -le 5 ]; then
   # To train a diagonal UBM we don't need very much data, so use a small subset
-  echo "$0: computing a PCA transform from the hires data."
+  echo "$0: training the diagonal UBM."
   steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 700000 \
     data/train_30k_hires 512 exp/nnet3/pca_transform exp/nnet3/diag_ubm
 fi
