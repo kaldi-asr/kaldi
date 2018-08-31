@@ -36,7 +36,7 @@ tdnn_dim=550
 # training options
 srand=0
 remove_egs=false
-lang_decode=data/lang_test
+lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 decode_chain=true
 dropout_schedule='0,0@0.20,0.2@0.50,0'

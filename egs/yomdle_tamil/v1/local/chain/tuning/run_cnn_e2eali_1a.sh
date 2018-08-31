@@ -38,7 +38,7 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=false
-lang_decode=data/lang_test
+lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 decode_chain=false
 # End configuration section.

@@ -29,7 +29,7 @@ tdnn_dim=450
 minibatch_size=150=64,32/300=32,16/600=16,8/1200=8,4
 cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train
-lang_decode=data/lang_test
+lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 decode_e2e=true
 # End configuration section.

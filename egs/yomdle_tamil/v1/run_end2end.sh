@@ -72,7 +72,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$(date) stage 3: BPE preparation"
   # getting non-silence phones.
-  cat data/train/text | cut -d' ' -f2- | \
+  cut -d' ' -f2- data/train/text | \
 python3 <(
 cat << "END"
 import os, sys, io;
@@ -148,7 +148,7 @@ fi
 
 if [ $stage -le 7 ]; then
   echo "$(date) stage 7: Calling the flat-start chain recipe..."
-  local/chain/run_e2e_cnn.sh --train_set train_aug --stage 3 --train_stage 14
+  local/chain/run_e2e_cnn.sh --train_set train_aug
 fi
 
 if [ $stage -le 8 ]; then
