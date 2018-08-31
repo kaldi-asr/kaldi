@@ -88,40 +88,21 @@ if [ -f $srcdir/images.scp ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/images.scp >$destdir/images.scp
 fi
 
-if [ -f $srcdir/reco2file_and_channel ]; then
-  cp $srcdir/reco2file_and_channel $destdir/
-fi
-
 if [ -f $srcdir/text ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/text >$destdir/text
 fi
 if [ -f $srcdir/utt2dur ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/utt2dur >$destdir/utt2dur
 fi
-if [ -f $srcdir/reco2dur ]; then
-  if [ -f $srcdir/segments ]; then
-    cp $srcdir/reco2dur $destdir/reco2dur
-  else
-    utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/reco2dur >$destdir/reco2dur
-  fi
-fi
-if [ -f $srcdir/spk2gender ]; then
-  utils/apply_map.pl -f 1 $destdir/spk_map <$srcdir/spk2gender >$destdir/spk2gender
-fi
 if [ -f $srcdir/cmvn.scp ]; then
   utils/apply_map.pl -f 1 $destdir/spk_map <$srcdir/cmvn.scp >$destdir/cmvn.scp
 fi
-for f in stm glm ctm; do
-  if [ -f $srcdir/$f ]; then
-    cp $srcdir/$f $destdir
-  fi
-done
 
 rm $destdir/spk_map $destdir/utt_map
 
 echo "$0: copied data from $srcdir to $destdir"
 
-for f in feats.scp cmvn.scp vad.scp utt2lang utt2uniq utt2dur utt2num_frames text images.scp reco2file_and_channel stm glm ctm; do
+for f in feats.scp cmvn.scp vad.scp utt2uniq utt2dur utt2num_frames text images.scp; do
   if [ -f $destdir/$f ] && [ ! -f $srcdir/$f ]; then
     echo "$0: file $f exists in dest $destdir but not in src $srcdir.  Moving it to"
     echo " ... $destdir/.backup/$f"
