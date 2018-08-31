@@ -148,7 +148,7 @@ fi
 
 if [ $stage -le 7 ]; then
   echo "$(date) stage 7: Calling the flat-start chain recipe..."
-  local/chain/run_e2e_cnn.sh --train_set train_aug
+  local/chain/run_e2e_cnn.sh --train_set train_aug --stage 3 --train_stage 14
 fi
 
 if [ $stage -le 8 ]; then

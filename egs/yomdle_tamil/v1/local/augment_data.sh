@@ -19,14 +19,15 @@ outdir=$2
 datadir=$3
 
 mkdir -p $datadir/augmentations
-echo "copying $srcdir to $datadir/augmentations/aug1"
-utils/copy_data_dir.sh --spk-prefix aug1- --utt-prefix aug1- $srcdir $datadir/augmentations/aug1
+echo "copying $srcdir to $datadir/augmentations/aug1, allowed length, creating feats.scp"
 
-echo " copying allowed length for training with augmented data..."
-cat $srcdir/allowed_lengths.txt > $datadir/augmentations/aug1/allowed_lengths.txt
-
-echo " Extracting features, creating feats.scp file for augmentated data"
-local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim --fliplr false --augment true $datadir/augmentations/aug1
+for set in aug1; do
+  utils/copy_data_dir.sh --spk-prefix $set- --utt-prefix $set- \
+    $srcdir $datadir/augmentations/$set
+  cat $srcdir/allowed_lengths.txt > $datadir/augmentations/$set/allowed_lengths.txt
+  local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim \
+    --fliplr false --augment true $datadir/augmentations/$set
+done
 
 echo " combine original data and data from different augmentations"
 utils/combine_data.sh --extra-files images.scp $outdir $srcdir $datadir/augmentations/aug1
