@@ -146,7 +146,7 @@ fi
 
 if [ $stage -le 11 ]; then
   steps/align_fmllr.sh --nj $nj --cmd $cmd --use-graphs true \
-    data/train data/lang exp/tri2 exp/tri2_ali
+    data/train_aug data/lang exp/tri2 exp/tri2_ali
 
   steps/train_sat.sh --cmd $cmd 500 20000 \
     data/train_aug data/lang exp/tri2_ali exp/tri3
