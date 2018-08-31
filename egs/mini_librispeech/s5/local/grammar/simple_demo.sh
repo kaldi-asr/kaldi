@@ -45,7 +45,7 @@ if [ $stage -le 1 ]; then
   # Most contents of these directories will be the same, only G.fst differs, but
   # it's our practice to make these things as directories combining G.fst with
   # everything else.
-  rm -r  data/lang_nosp_grammar2{a,b}
+  rm -r  data/lang_nosp_grammar2{a,b} 2>/dev/null || true
   cp -r data/lang_nosp_grammar1 data/lang_nosp_grammar2a
   cp -r data/lang_nosp_grammar1 data/lang_nosp_grammar2b
 fi
