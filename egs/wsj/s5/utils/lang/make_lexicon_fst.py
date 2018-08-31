@@ -114,7 +114,7 @@ def read_lexiconp(filename):
     return ans
 
 
-def write_nonterminal_arcs(start_state, loop_state, new_state,
+def write_nonterminal_arcs(start_state, loop_state, next_state,
                            nonterminals, left_context_phones):
     """This function relates to the grammar-decoding setup, see
     kaldi-asr.org/doc/grammar.html.  It is called from write_fst_no_silence
@@ -125,17 +125,17 @@ def write_nonterminal_arcs(start_state, loop_state, new_state,
        start_state: the start-state of L.fst.
        loop_state:  the state of high out-degree in L.fst where words leave
                   and enter.
-       new_state: the number from which this function can start allocating its
-                  own states.  the updated value of new_state will be returned.
+       next_state: the number from which this function can start allocating its
+                  own states.  the updated value of next_state will be returned.
        nonterminals: the user-defined nonterminal symbols as a list of
           strings, e.g. ['#nonterm:contact_list', ... ].
        left_context_phones: a list of phones that may appear as left-context,
           e.g. ['a', 'ah', ... '#nonterm_bos'].
     """
-    shared_state = new_state
-    new_state += 1
-    final_state = new_state
-    new_state += 1
+    shared_state = next_state
+    next_state += 1
+    final_state = next_state
+    next_state += 1
 
     print("{src}\t{dest}\t{phone}\t{word}\t{cost}".format(
         src=start_state, dest=shared_state,
@@ -164,7 +164,7 @@ def write_nonterminal_arcs(start_state, loop_state, new_state,
         phone='#nonterm_end', word='#nonterm_end', cost=0.0))
     print("{state}\t{final_cost}".format(
         state=final_state, final_cost=0.0))
-    return new_state
+    return next_state
 
 
 
@@ -183,19 +183,19 @@ def write_fst_no_silence(lexicon, nonterminals=None, left_context_phones=None):
     """
 
     loop_state = 0
-    new_state = 1  # the next un-allocated state, will be incremented as we go.
+    next_state = 1  # the next un-allocated state, will be incremented as we go.
     for (word, pronprob, pron) in lexicon:
         cost = -math.log(pronprob)
         cur_state = loop_state
         for i in range(len(pron) - 1):
             print("{src}\t{dest}\t{phone}\t{word}\t{cost}".format(
                 src=cur_state,
-                dest=new_state,
+                dest=next_state,
                 phone=pron[i],
                 word=(word if i == 0 else '<eps>'),
                 cost=(cost if i == 0 else 0.0)))
-            cur_state = new_state
-            new_state += 1
+            cur_state = next_state
+            next_state += 1
 
         i = len(pron) - 1  # note: i == -1 if pron is empty.
         print("{src}\t{dest}\t{phone}\t{word}\t{cost}".format(
@@ -206,8 +206,8 @@ def write_fst_no_silence(lexicon, nonterminals=None, left_context_phones=None):
             cost=(cost if i <= 0 else 0.0)))
 
     if nonterminals is not None:
-        new_state = write_nonterminal_arcs(
-            start_state, loop_state, new_state,
+        next_state = write_nonterminal_arcs(
+            start_state, loop_state, next_state,
             nonterminals, left_context_phones)
 
     print("{state}\t{final_cost}".format(
@@ -241,7 +241,7 @@ def write_fst_with_silence(lexicon, sil_prob, sil_phone, sil_disambig,
     loop_state = 1  # words enter and leave from here
     sil_state = 2   # words terminate here when followed by silence; this state
                     # has a silence transition to loop_state.
-    new_state = 3  # the next un-allocated state, will be incremented as we go.
+    next_state = 3  # the next un-allocated state, will be incremented as we go.
 
 
     print('{src}\t{dest}\t{phone}\t{word}\t{cost}'.format(
@@ -255,8 +255,8 @@ def write_fst_with_silence(lexicon, sil_prob, sil_phone, sil_disambig,
             src=sil_state, dest=loop_state,
             phone=sil_phone, word='<eps>', cost=0.0))
     else:
-        sil_disambig_state = new_state
-        new_state += 1
+        sil_disambig_state = next_state
+        next_state += 1
         print('{src}\t{dest}\t{phone}\t{word}\t{cost}'.format(
             src=sil_state, dest=sil_disambig_state,
             phone=sil_phone, word='<eps>', cost=0.0))
@@ -270,12 +270,12 @@ def write_fst_with_silence(lexicon, sil_prob, sil_phone, sil_disambig,
         cur_state = loop_state
         for i in range(len(pron) - 1):
             print("{src}\t{dest}\t{phone}\t{word}\t{cost}".format(
-                src=cur_state, dest=new_state,
+                src=cur_state, dest=next_state,
                 phone=pron[i],
                 word=(word if i == 0 else '<eps>'),
                 cost=(pron_cost if i == 0 else 0.0)))
-            cur_state = new_state
-            new_state += 1
+            cur_state = next_state
+            next_state += 1
 
         i = len(pron) - 1  # note: i == -1 if pron is empty.
         print("{src}\t{dest}\t{phone}\t{word}\t{cost}".format(
@@ -292,8 +292,8 @@ def write_fst_with_silence(lexicon, sil_prob, sil_phone, sil_disambig,
             cost=sil_cost + (pron_cost if i <= 0 else 0.0)))
 
     if nonterminals is not None:
-        new_state = write_nonterminal_arcs(
-            start_state, loop_state, new_state,
+        next_state = write_nonterminal_arcs(
+            start_state, loop_state, next_state,
             nonterminals, left_context_phones)
 
     print("{state}\t{final_cost}".format(
