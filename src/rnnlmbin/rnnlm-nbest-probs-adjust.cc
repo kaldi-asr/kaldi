@@ -1,4 +1,4 @@
-// rnnlmbin/rnnlm-compute-prob.cc
+// rnnlmbin/rnnlm-nbest-probs-adjust.cc
 
 // Copyright 2015-2017  Johns Hopkins University (author: Daniel Povey)
 

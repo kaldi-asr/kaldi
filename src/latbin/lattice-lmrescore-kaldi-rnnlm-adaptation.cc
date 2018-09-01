@@ -68,7 +68,6 @@ class NnetComputerFromEg {
  private:
   const Nnet &nnet_;
   CachingOptimizingCompiler compiler_;
-
 };
 
 } // namespace nnet3
@@ -135,40 +134,6 @@ class ArcPosteriorComputer {
   BaseFloat min_post_;
 };
 } // namespace kaldi
-
-// void ReadUnigramCountByConversation(string filename,
-//                                unordered_map<string, map<int, double> > *counts,
-//                                unordered_map<string, double> *total_counts) {
-// 
-//   unordered_map<string, map<int, double> > &m = *counts;
-//   KALDI_ASSERT(m.size() == 0);
-//   ifstream ifile(filename.c_str());
-//   string convo_id;
-//   int32 word_id;
-//   double soft_count;
-// 
-//   unordered_map<string, double> &convo_to_sum = *total_counts;
-//   KALDI_ASSERT(convo_to_sum.size() == 0);
-// 
-//   while (ifile >> convo_id >> word_id >> soft_count) {
-//     m[convo_id][word_id] = soft_count;
-//     convo_to_sum[convo_id] += soft_count;
-//   }
-// 
-//   // now normalize everything; should add smoothing later
-// //  for (unordered_map<string, map<int, double> >::iterator i = m.begin();
-// //                                                          i != m.end(); i++) {
-// //    map<int, double> &this_map = i->second;
-// //    double sum = convo_to_sum[i->first];
-// //    for (map<int, double>::iterator j = this_map.begin();
-// //                                      j!= this_map.end(); j++) {
-// //      j->second /= sum;
-// //    }
-// //  }
-// 
-//   ifile.close();
-// }
-// 
 
 void ReadUttToConvo(string filename, map<string, string> &m) {
   KALDI_ASSERT(m.size() == 0);

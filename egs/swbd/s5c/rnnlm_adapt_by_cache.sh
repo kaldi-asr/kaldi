@@ -65,8 +65,7 @@ if [ $stage -le 2 ] && $ppl_from_lattice; then
   LM=fsh_sw1_fg
   for dataset in eval2000 rt03; do 
     data_dir=$text_dir/$dataset
-    # decode_dir=${ac_model_dir}/decode_${dataset}_$LM
-    decode_dir=${ac_model_dir}/new_split_${dataset}
+    decode_dir=${ac_model_dir}/decode_${dataset}_$LM
     ppl_name=ppl_cache
     mkdir -p $data_dir/$ppl_name/log
     nj=`cat $decode_dir/num_jobs` || exit 1;
