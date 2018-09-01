@@ -75,7 +75,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ -f ./path.sh ]; then . ./path.sh; fi
 . ./utils/parse_options.sh
 
-lang_decode=data/lang_test
+lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 dropout_schedule='0,0@0.20,0.2@0.50,0'
 dir=$exp_root/chain$chain_affix/tdnn$tdnn_affix

@@ -6,15 +6,14 @@
 # local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
 # System                          e2e_cnn_1a
 #                                 score_basic  score_nomalized
-# WER                             17.65        14.1
-# WER (rescored)                  15.35        12.1
-# CER                              3.97         4.0
-# CER (rescored)                   3.41         3.5
-# Final train prob                0.1402
-# Final valid prob                0.1045
-
+# WER                             13.64        10.6
+# WER (rescored)                  13.13        10.2
+# CER                              2.99         3.0
+# CER (rescored)                   2.88         2.9
+# Final train prob               0.0113
+# Final valid prob               0.0152
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a
-#exp/chain/e2e_cnn_1a: num-iters=17 nj=6..12 num-params=3.0M dim=40->352 combine=0.110->0.110 (over 1) logprob:train/valid[10,16,final]=(0.135,0.134,0.140/0.098,0.099,0.105)
+# exp/chain/e2e_cnn_1a: num-iters=48 nj=5..8 num-params=3.0M dim=40->352 combine=0.047->0.047 (over 2) logprob:train/valid[31,47,final]=(0.002,0.008,0.011/0.008,0.013,0.015)
 
 set -e
 # configs for 'chain'
