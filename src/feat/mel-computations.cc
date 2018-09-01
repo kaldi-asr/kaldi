@@ -193,7 +193,15 @@ BaseFloat MelBanks::VtlnWarpFreq(BaseFloat vtln_low_cutoff,  // upper+lower freq
   BaseFloat scale = 1.0 / vtln_warp_factor;
   BaseFloat Fl = scale * l;  // F(l);
   BaseFloat Fh = scale * h;  // F(h);
-  KALDI_ASSERT(l > low_freq && h < high_freq);
+
+  if(h <= l)
+  {
+	  KALDI_ERR <<
+		  "VTLN low cutoff " << vtln_low_cutoff <<
+		  " and VTLN high cutoff " << vtln_high_cutoff <<
+		  " are too close together for VTLN warp factor " << vtln_warp_factor;
+  }
+
   // slope of left part of the 3-piece linear function
   BaseFloat scale_left = (Fl - low_freq) / (l - low_freq);
   // [slope of center part is just "scale"]
