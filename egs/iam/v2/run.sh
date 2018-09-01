@@ -93,6 +93,9 @@ if [ $stage -le 4 ]; then
   local/prepare_dict.sh
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
                         data/local/dict "<sil>" data/lang/temp data/lang
+  silphonelist=`cat data/lang/phones/silence.csl`
+  nonsilphonelist=`cat data/lang/phones/nonsilence.csl`
+  local/gen_topo.py 8 4 4 $nonsilphonelist $silphonelist data/lang/phones.txt >data/lang/topo
   utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
 
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_big.arpa.gz \
