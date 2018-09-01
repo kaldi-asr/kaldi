@@ -378,9 +378,10 @@ GrammarFst::ExpandedState *GrammarFst::ExpandStateUserDefined(
 }
 
 
-void GrammarFst::Write(std::ostream &os) const {
+void GrammarFst::Write(std::ostream &os, bool binary) const {
   using namespace kaldi;
-  bool binary = true;
+  if (!binary)
+    KALDI_ERR << "GrammarFst::Write only supports binary mode.";
   int32 format = 1,
       num_ifsts = ifsts_.size();
   WriteToken(os, binary, "<GrammarFst>");
@@ -414,11 +415,12 @@ static ConstFst<StdArc> *ReadConstFstFromStream(std::istream &is) {
 
 
 
-void GrammarFst::Read(std::istream &is) {
+void GrammarFst::Read(std::istream &is, bool binary) {
   using namespace kaldi;
+  if (!binary)
+    KALDI_ERR << "GrammarFst::Read only supports binary mode.";
   if (top_fst_ != NULL)
     Destroy();
-  bool binary = true;
   int32 format = 1, num_ifsts;
   ExpectToken(is, binary, "<GrammarFst>");
   ReadBasicType(is, binary, &format);

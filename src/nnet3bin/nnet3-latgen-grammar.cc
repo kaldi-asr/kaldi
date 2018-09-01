@@ -136,13 +136,8 @@ int main(int argc, char *argv[]) {
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
-    // Input FST is just one FST, not a table of FSTs.
     fst::GrammarFst fst;
-    {
-      bool binary;
-      Input ki(grammar_fst_rxfilename, &binary);  // 'binary' will be true.
-      fst.Read(ki.Stream());
-    }
+    ReadKaldiObject(grammar_fst_rxfilename, &fst);
     timer.Reset();
 
     {

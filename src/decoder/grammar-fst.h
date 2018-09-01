@@ -145,11 +145,13 @@ class GrammarFst {
   GrammarFst(): top_fst_(NULL) { }
 
   // This Write function allows you to dump a GrammarFst to disk as a single
-  // object.  It only supports binary mode.
-  void Write(std::ostream &os) const;
+  // object.  It only supports binary mode, but the option is allowed for
+  // compatibility with other Kaldi read/write functions (it will crash if
+  // binary == true).
+  void Write(std::ostream &os, bool binary) const;
 
-  // Reads the format that Write() outputs.
-  void Read(std::istream &os);
+  // Reads the format that Write() outputs.  Will crash if binary is false.
+  void Read(std::istream &os, bool binary);
 
   StateId Start() const {
     // the top 32 bits of the 64-bit state-id will be zero.

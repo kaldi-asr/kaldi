@@ -135,15 +135,15 @@ int main(int argc, char *argv[]) {
                                              pairs);
 
     if (write_as_grammar) {
-      bool binary = true;
-      Output ko(fst_out_str, binary);
-      grammar_fst->Write(ko.Stream());
+      bool binary = true;  // GrammarFst does not support non-binary write.
+      WriteKaldiObject(*grammar_fst, fst_out_str, binary);
       delete grammar_fst;
     } else {
       VectorFst<StdArc> vfst;
       CopyToVectorFst(grammar_fst, &vfst);
       ConstFst<StdArc> cfst(vfst);
-
+      // We don't have a wrapper in kaldi-fst-io.h for writing type
+      // ConstFst<StdArc>, so do it manually.
       bool binary = true, write_binary_header = false;  // suppress the ^@B
       Output ko(fst_out_str, binary, write_binary_header);
       FstWriteOptions wopts(kaldi::PrintableWxfilename(fst_out_str));
