@@ -41,13 +41,17 @@ struct SpectrogramOptions {
   bool raw_energy;  // If true, compute energy before preemphasis and windowing
 
   SpectrogramOptions() :
-    energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
+    energy_floor(0.0),
     raw_energy(true) {}
 
   void Register(OptionsItf *opts) {
     frame_opts.Register(opts);
     opts->Register("energy-floor", &energy_floor,
-                   "Floor on energy (absolute, not relative) in Spectrogram computation");
+                   "Floor on energy (absolute, not relative) in Spectrogram "
+                   "computation.  Caution: this floor is applied to the zeroth "
+                   "component, representing the total signal energy.  The "
+                   "floor on the individual spectrogram elements is fixed at "
+                   "std::numeric_limits<float>::epsilon().");
     opts->Register("raw-energy", &raw_energy,
                    "If true, compute energy before preemphasis and windowing");
   }

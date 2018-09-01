@@ -71,7 +71,9 @@ struct FrameExtractionOptions {
                    "Coefficient for use in signal preemphasis");
     opts->Register("remove-dc-offset", &remove_dc_offset,
                    "Subtract mean from waveform on each frame");
-    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither)");
+    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither). "
+                   "If you turn this off, you should set the --energy-floor "
+                   "option, e.g. to 1.0 or 0.1");
     opts->Register("window-type", &window_type, "Type of window "
                    "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\""
                    "|\"blackmann\")");
