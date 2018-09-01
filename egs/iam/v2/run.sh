@@ -169,6 +169,6 @@ if [ $stage -le 14 ]; then
 fi
 
 if [ $stage -le 15 ]; then
-  local/chain/run_cnn_chainali_1c.sh --train_set train_aug \
+  local/chain/run_cnn_chainali_1d.sh --train_set train_aug \
     --chain-model-dir exp/chain/cnn_1a --stage 2
 fi
