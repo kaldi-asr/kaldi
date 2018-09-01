@@ -190,13 +190,12 @@ BaseFloat MelBanks::VtlnWarpFreq(BaseFloat vtln_low_cutoff,  // upper+lower freq
   BaseFloat one = 1.0;
   BaseFloat l = vtln_low_cutoff * std::max(one, vtln_warp_factor);
   BaseFloat h = vtln_high_cutoff * std::min(one, vtln_warp_factor);
-  BaseFloat scale = 1.0 / vtln_warp_factor;
-  BaseFloat Fl = scale * l;  // F(l);
-  BaseFloat Fh = scale * h;  // F(h);
+  BaseFloat Fl = l / vtln_warp_factor;  // F(l);
+  BaseFloat Fh = h / vtln_warp_factor;  // F(h);
   KALDI_ASSERT(l > low_freq && h < high_freq);
   // slope of left part of the 3-piece linear function
   BaseFloat scale_left = (Fl - low_freq) / (l - low_freq);
-  // [slope of center part is just "scale"]
+  // [slope of center part is just "1/vtln_warp_factor"]
 
   // slope of right part of the 3-piece linear function
   BaseFloat scale_right = (high_freq - Fh) / (high_freq - h);
@@ -204,7 +203,7 @@ BaseFloat MelBanks::VtlnWarpFreq(BaseFloat vtln_low_cutoff,  // upper+lower freq
   if (freq < l) {
     return low_freq + scale_left * (freq - low_freq);
   } else if (freq < h) {
-    return scale * freq;
+    return freq / vtln_warp_factor;
   } else {  // freq >= h
     return high_freq + scale_right * (freq - high_freq);
   }
