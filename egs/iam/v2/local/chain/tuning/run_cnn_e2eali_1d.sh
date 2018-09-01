@@ -1,24 +1,20 @@
 #!/bin/bash
 
-# e2eali_1c is the same as e2eali_1b but has fewer CNN layers, smaller
-# l2-regularize, more epochs and uses dropout.
+# This script does end2end chain training (i.e. from scratch)
+# ./local/chain/compare_wer.sh exp/chain/cnn_e2eali_1d/
+# System                      cnn_e2eali_1d
+# WER                              9.92
+# WER (rescored)                   9.50
+# CER                              4.53
+# CER (rescored)                   4.46
+# Final train prob              -0.0472
+# Final valid prob              -0.0713
+# Final train prob (xent)       -0.4751
+# Final valid prob (xent)       -0.5506
+# Parameters                      5.64M
 
-
-# local/chain/compare_wer.sh exp/chain/cnn_e2eali_1b exp/chain/cnn_e2eali_1c
-# System                      cnn_e2eali_1b cnn_e2eali_1c
-# WER                             10.33     10.05
-# WER (rescored)                  10.10      9.75
-# CER                              5.00      4.76
-# CER (rescored)                   4.88      4.68
-# Final train prob              -0.0428   -0.0317
-# Final valid prob              -0.0666   -0.0630
-# Final train prob (xent)       -0.9210   -0.5413
-# Final valid prob (xent)       -1.0264   -0.7096
-# Parameters                      3.98M     5.12M
-
-# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1c
-# exp/chain/cnn_e2eali_1c: num-iters=21 nj=2..4 num-params=5.1M dim=40->392 combine=-0.034->-0.034 (over 1) xent:train/valid[13,20,final]=(-0.953,-0.800,-0.541/-1.03,-0.933,-0.710) logprob:train/valid[13,20,final]=(-0.069,-0.048,-0.032/-0.091,-0.078,-0.063)
-
+# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1d
+# exp/chain/cnn_e2eali_1d/: num-iters=40 nj=2..4 num-params=5.6M dim=40->392 combine=-0.051->-0.051 (over 1) xent:train/valid[25,39,final]=(-0.764,-0.493,-0.475/-0.770,-0.566,-0.551) logprob:train/valid[25,39,final]=(-0.094,-0.051,-0.047/-0.111,-0.075,-0.071)
 set -e -o pipefail
 
 stage=0
