@@ -32,14 +32,13 @@ nonsilence_phones = [ int(x) for x in args.nonsilence_phones.split(":") ]
 all_phones = silence_phones +  nonsilence_phones
 
 punctuation_phones = []
-exclude = set(string.punctuation)
+exclude = set("!(),.?;:'-\"")
 with open(args.phone_list) as f:
     for line in f:
         line = line.strip()
-        phone = line.split('_')[0]
+        phone = line.split(' ')[0]
         if len(phone) == 1 and phone in exclude:
             punctuation_phones.append(int(line.split(' ')[1]))
-
 # For nonsilence phones that are not punctuations
 print("<Topology>")
 print("<TopologyEntry>")
