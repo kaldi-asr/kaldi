@@ -36,7 +36,7 @@ done
 utils/split_scp.pl $scp $split_scps || exit 1;
 
 $cmd JOB=1:$nj $logdir/extract_features.JOB.log \
-  local/make_features.py $logdir/images.JOB.scp \
+  image/ocr/make_features.py $logdir/images.JOB.scp \
     --allowed_len_file_path $data/allowed_lengths.txt \
     --feat-dim $feat_dim --fliplr $fliplr --augment $augment \| \
     copy-feats --compress=true --compression-method=7 \

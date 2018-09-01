@@ -5,17 +5,19 @@
 #              2017 Ashish Arora
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_1a/
-# exp/chain/cnn_1a/: num-iters=21 nj=2..4 num-params=4.4M dim=40->364 combine=-0.021->-0.015 xent:train/valid[13,20,final]=(-1.05,-0.701,-0.591/-1.30,-1.08,-1.00) logprob:train/valid[13,20,final]=(-0.061,-0.034,-0.030/-0.107,-0.101,-0.098)
+# exp/chain/cnn_1a/: num-iters=42 nj=2..4 num-params=4.4M dim=40->400 combine=-0.039->-0.039 (over 2) xent:train/valid[27,41,final]=(-0.502,-0.380,-0.376/-0.679,-0.626,-0.625) logprob:train/valid[27,41,final]=(-0.038,-0.032,-0.032/-0.063,-0.064,-0.064)
 
-# local/chain/compare_wer.sh exp/chain/cnn_1a/
+# ./local/chain/compare_wer.sh exp/chain/cnn_1a/
 # System                         cnn_1a
-# WER                             18.52
-# CER                             10.07
-# Final train prob              -0.0077
-# Final valid prob              -0.0970
-# Final train prob (xent)       -0.5484
-# Final valid prob (xent)       -0.9643
-# Parameters                      4.36M
+# WER                             14.91
+# WER (rescored)                     --
+# CER                              7.92
+# CER (rescored)                     --
+# Final train prob              -0.0320
+# Final valid prob              -0.0643
+# Final train prob (xent)       -0.3762
+# Final valid prob (xent)       -0.6247
+# Parameters                      4.39M
 
 set -e -o pipefail
 
