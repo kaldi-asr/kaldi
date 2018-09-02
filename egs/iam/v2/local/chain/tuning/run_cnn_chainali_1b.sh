@@ -42,10 +42,10 @@ chunk_right_context=0
 tdnn_dim=550
 # training options
 srand=0
-remove_egs=false
-lang_test=lang
+remove_egs=true
 lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
+
 dropout_schedule='0,0@0.20,0.2@0.50,0'
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -120,10 +120,11 @@ if [ $stage -le 3 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-   if [ -f $tree_dir/final.mdl ]; then
-     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-     exit 1;
+  if [ -f $tree_dir/final.mdl ]; then
+    echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+    exit 1;
   fi
+
   steps/nnet3/chain/build_tree.sh \
     --frame-subsampling-factor $frame_subsampling_factor \
     --context-opts "--context-width=2 --central-position=1" \
@@ -156,6 +157,7 @@ if [ $stage -le 4 ]; then
   relu-batchnorm-dropout-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
+
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $tdnn_opts
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
