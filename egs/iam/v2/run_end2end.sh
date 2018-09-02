@@ -6,7 +6,15 @@ stage=0
 nj=20
 username=
 password=
+# iam_database points to the database path on the JHU grid. If you have not
+# already downloaded the database you can set it to a local directory
+# like "data/download" and follow the instructions
+# in "local/prepare_data.sh" to download the database:
 iam_database=/export/corpora5/handwriting_ocr/IAM
+# wellington_database points to the database path on the JHU grid. The Wellington
+# corpus contains two directories WWC and WSC (Wellington Written and Spoken Corpus).
+# This corpus is of written NZ English that can be purchased here:
+# "https://www.victoria.ac.nz/lals/resources/corpora-default"
 wellington_database=/export/corpora5/Wellington/WWC/
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
@@ -28,7 +36,10 @@ mkdir -p data/{train,test}/data
 
 if [ $stage -le 1 ]; then
   echo "$(date) stage 1: getting allowed image widths for e2e training..."
-  image/get_image2num_frames.py --feat-dim 40 data/train
+  image/get_image2num_frames.py --feat-dim 40 data/train # This will be needed for the next command
+  # The next command creates a "allowed_lengths.txt" file in data/train
+  # which will be used by local/make_features.py to enforce the images to
+  # have allowed lengths. The allowed lengths will be spaced by 10% difference in length.
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   for set in train test; do
     echo "$(date) Extracting features, creating feats.scp file"
@@ -88,6 +99,8 @@ fi
 if [ $stage -le 4 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
+  # This recipe uses byte-pair encoding, the silences are part of the words' pronunciations.
+  # So we set --sil-prob to 0.0
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
                         data/local/dict "<sil>" data/lang/temp data/lang
   utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
@@ -106,6 +119,7 @@ fi
 if [ $stage -le 6 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
+                       --use-gpu false \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
                        data/train_aug data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
