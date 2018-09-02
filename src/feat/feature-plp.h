@@ -78,7 +78,7 @@ struct PlpOptions {
     opts->Register("use-energy", &use_energy,
                    "Use energy (not C0) for zeroth PLP feature");
     opts->Register("energy-floor", &energy_floor,
-                   "Floor on energy (absolute, not relative) in MFCC computation. "
+                   "Floor on energy (absolute, not relative) in PLP computation. "
                    "Only makes a difference if --use-energy=true; only necessary if "
                    "--dither=0.0.  Suggested values: 0.1 or 1.0");
     opts->Register("raw-energy", &raw_energy,
