@@ -65,6 +65,8 @@ if ! awk '{if(NF < 2) exit(1)} END{if(NR==0) exit(1)}' <$lexicon; then
   exit 1
 fi
 
+mkdir -p $dir
+
 if [ -d $dir/phones ]; then rm -r $dir/phones; fi
 
 cp -r $srcdir/phones $dir/
