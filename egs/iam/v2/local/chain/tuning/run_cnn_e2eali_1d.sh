@@ -3,18 +3,18 @@
 # This script does end2end chain training (i.e. from scratch)
 # ./local/chain/compare_wer.sh exp/chain/cnn_e2eali_1d/
 # System                      cnn_e2eali_1d
-# WER                              9.92
-# WER (rescored)                   9.50
-# CER                              4.53
-# CER (rescored)                   4.46
-# Final train prob              -0.0472
-# Final valid prob              -0.0713
-# Final train prob (xent)       -0.4751
-# Final valid prob (xent)       -0.5506
-# Parameters                      5.64M
+# WER                              9.52
+# WER (rescored)                   9.29
+# CER                              4.45
+# CER (rescored)                   4.43
+# Final train prob              -0.0473
+# Final valid prob              -0.0706
+# Final train prob (xent)       -0.4623
+# Final valid prob (xent)       -0.5371
+# Parameters                      5.08M
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1d
-# exp/chain/cnn_e2eali_1d/: num-iters=40 nj=2..4 num-params=5.6M dim=40->392 combine=-0.051->-0.051 (over 1) xent:train/valid[25,39,final]=(-0.764,-0.493,-0.475/-0.770,-0.566,-0.551) logprob:train/valid[25,39,final]=(-0.094,-0.051,-0.047/-0.111,-0.075,-0.071)
+# exp/chain/cnn_e2eali_1d/: num-iters=40 nj=2..4 num-params=5.1M dim=40->400 combine=-0.052->-0.052 (over 1) xent:train/valid[25,39,final]=(-0.739,-0.483,-0.462/-0.763,-0.551,-0.537) logprob:train/valid[25,39,final]=(-0.092,-0.052,-0.047/-0.112,-0.076,-0.071)
 set -e -o pipefail
 
 stage=0
@@ -140,7 +140,7 @@ if [ $stage -le 4 ]; then
   output_opts="l2-regularize=0.04"
   common1="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=90"
+  common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
@@ -194,7 +194,7 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=8 \
+    --trainer.num-epochs=5 \
     --trainer.frames-per-iter=1500000 \
     --trainer.optimization.num-jobs-initial=2 \
     --trainer.optimization.num-jobs-final=4 \
