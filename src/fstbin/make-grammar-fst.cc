@@ -141,6 +141,7 @@ int main(int argc, char *argv[]) {
     } else {
       VectorFst<StdArc> vfst;
       CopyToVectorFst(grammar_fst, &vfst);
+      delete grammar_fst;
       ConstFst<StdArc> cfst(vfst);
       // We don't have a wrapper in kaldi-fst-io.h for writing type
       // ConstFst<StdArc>, so do it manually.
@@ -149,7 +150,6 @@ int main(int argc, char *argv[]) {
       FstWriteOptions wopts(kaldi::PrintableWxfilename(fst_out_str));
       cfst.Write(ko.Stream(), wopts);
     }
-
 
     delete top_fst;
     for (size_t i = 0; i < pairs.size(); i++)
