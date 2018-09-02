@@ -66,6 +66,7 @@
    - \subpage graph
    - \subpage graph_recipe_test
    - \subpage graph_recipe_train
+   - \subpage grammar
    - \subpage fst_algo
    - \subpage decoders
    - \subpage lattices

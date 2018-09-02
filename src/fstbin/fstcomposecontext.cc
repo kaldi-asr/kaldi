@@ -22,6 +22,7 @@
 #include "util/common-utils.h"
 #include "fst/fstlib.h"
 #include "fstext/context-fst.h"
+#include "fstext/grammar-context-fst.h"
 #include "fstext/fstext-utils.h"
 #include "fstext/kaldi-fst-io.h"
 
@@ -34,27 +35,31 @@
   ( echo "<eps> 0"; echo "a 1"; echo "b 2"; echo "c 3" ) > phones.txt
   fstmakecontextsyms phones.txt ilabels.sym > context.txt
   fstprint --isymbols=context.txt --osymbols=phones.txt tmp.fst
-#  0    1    <eps>/<eps>/a    a
-#  1    2    <eps>/a/b    b
-#  2    3    a/b/c    c
-#  3
+  # and the result is:
+
+WARNING (fstcomposecontext[5.4]:main():fstcomposecontext.cc:130) Disambiguation symbols list is empty; this likely indicates an error in data preparation.
+0	1	<eps>	a
+1	2	<eps>/a/b	b
+2	3	a/b/c	c
+3	4	b/c/<eps>	<eps>
+4
 
 
   # (2) with disambig syms:
   ( echo 4; echo 5) > disambig.list
-  ( echo "<eps> 0"; echo "a 1"; echo "b 2"; echo "c 3" ) > phones.txt
+  ( echo "<eps> 0"; echo "a 1"; echo "b 2"; echo "c 3"; echo "#0 4"; echo "#1 5") > phones.txt
   ( echo "0 1 1 1"; echo "1 2 2 2"; echo " 2 3 4 4"; echo "3 4 3 3"; echo "4 5 5 5"; echo "5 0" ) | fstcompile > in.fst
-  fstcomposecontext --disambig-syms=disambig.list ilabels.sym in.fst tmp.fst
-  fstmakecontextsyms --disambig-syms=disambig.list phones.txt ilabels.sym > context.txt
+  fstcomposecontext --read-disambig-syms=disambig.list ilabels.sym in.fst tmp.fst
+  fstmakecontextsyms phones.txt ilabels.sym > context.txt
   cp phones.txt phones_disambig.txt;  ( echo "#0 4"; echo "#1 5" ) >> phones_disambig.txt
   fstprint --isymbols=context.txt --osymbols=phones_disambig.txt tmp.fst
 
-#  0    1    <eps>/<eps>/a    a
-#  1    2    <eps>/a/b    b
-#  2    3    #0    #0
-#  3    4    a/b/c    c
-#  4    5    #1    #1
-#  5
+0	1	#-1	a
+1	2	<eps>/a/b	b
+2	3	#0	#0
+3	4	a/b/c	c
+4	5	#1	#1
+5	6	b/c/<eps>	<eps>
 
 */
 
@@ -86,22 +91,27 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage:  fstcomposecontext <ilabels-output-file>  [<in.fst> [<out.fst>] ]\n"
         "E.g:  fstcomposecontext ilabels.sym < LG.fst > CLG.fst\n";
-    
+
 
     ParseOptions po(usage);
     bool binary = true;
     std::string disambig_rxfilename,
         disambig_wxfilename;
-    int32 N = 3, P = 1;
+    int32 context_width = 3, central_position = 1;
+    int32 nonterm_phones_offset = -1;
     po.Register("binary", &binary,
                 "If true, output ilabels-output-file in binary format");
     po.Register("read-disambig-syms", &disambig_rxfilename,
                 "List of disambiguation symbols on input of in.fst");
     po.Register("write-disambig-syms", &disambig_wxfilename,
                 "List of disambiguation symbols on input of out.fst");
-    po.Register("context-size", &N, "Size of phone context window");
-    po.Register("central-position", &P,
+    po.Register("context-size", &context_width, "Size of phone context window");
+    po.Register("central-position", &central_position,
                 "Designated central position in context window");
+    po.Register("nonterm-phones-offset",  &nonterm_phones_offset,
+                "The integer id of #nonterm_bos in your phones.txt, if present "
+                "(only relevant for grammar-FST construction, see "
+                "doc/grammar.dox");
 
     po.Read(argc, argv);
 
@@ -130,13 +140,24 @@ int main(int argc, char *argv[]) {
       KALDI_WARN << "Disambiguation symbols list is empty; this likely "
                  << "indicates an error in data preparation.";
     }
-    
+
     std::vector<std::vector<int32> > ilabels;
     VectorFst<StdArc> composed_fst;
 
     // Work gets done here (see context-fst.h)
-    ComposeContext(disambig_in, N, P, fst, &composed_fst, &ilabels);
-
+    if (nonterm_phones_offset < 0) {
+      // The normal case.
+      ComposeContext(disambig_in, context_width, central_position,
+                     fst, &composed_fst, &ilabels);
+    } else {
+      // The grammar-FST case. See ../doc/grammar.dox for an intro.
+      if (context_width != 2 || central_position != 1) {
+        KALDI_ERR << "Grammar-fst graph creation only supports models with left-"
+            "biphone context.  (--nonterm-phones-offset option was supplied).";
+      }
+      ComposeContextLeftBiphone(nonterm_phones_offset,  disambig_in,
+                                *fst, &composed_fst, &ilabels);
+    }
     WriteILabelInfo(Output(ilabels_out_filename, binary).Stream(),
                     binary, ilabels);
 
@@ -160,4 +181,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

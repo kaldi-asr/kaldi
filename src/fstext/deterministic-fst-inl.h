@@ -423,9 +423,11 @@ void ComposeDeterministicOnDemandInverse(const Fst<Arc> &right,
 
   // Set start state in fst_composed.
   StateId s_left = left->Start(),
-          s_right = right.Start(),
-          start_state = fst_composed->AddState();
+      s_right = right.Start();
+  if (s_left == kNoStateId || s_right == kNoStateId)
+    return;  // Empty result.
   StatePair start_pair(s_left, s_right);
+  StateId start_state = fst_composed->AddState();
   state_queue.push(start_pair);
   fst_composed->SetStart(start_state);
   // A mapping between pairs of states in *left and right, and the corresponding
