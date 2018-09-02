@@ -395,8 +395,9 @@ OnlineSilenceWeighting::OnlineSilenceWeighting(
 }
 
 
+template <typename FST>
 void OnlineSilenceWeighting::ComputeCurrentTraceback(
-    const LatticeFasterOnlineDecoder &decoder) {
+    const LatticeFasterOnlineDecoderTpl<FST> &decoder) {
   int32 num_frames_decoded = decoder.NumFramesDecoded(),
       num_frames_prev = frame_info_.size();
   // note, num_frames_prev is not the number of frames previously decoded,
@@ -412,7 +413,7 @@ void OnlineSilenceWeighting::ComputeCurrentTraceback(
     return;
   int32 frame = num_frames_decoded - 1;
   bool use_final_probs = false;
-  LatticeFasterOnlineDecoder::BestPathIterator iter =
+  typename LatticeFasterOnlineDecoderTpl<FST>::BestPathIterator iter =
       decoder.BestPathEnd(use_final_probs, NULL);
   while (frame >= 0) {
     LatticeArc arc;
@@ -443,6 +444,14 @@ void OnlineSilenceWeighting::ComputeCurrentTraceback(
     // frame.
   }
 }
+
+// Instantiate the template OnlineSilenceWeighting::ComputeCurrentTraceback().
+template
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::Fst<fst::StdArc> >(
+    const LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder);
+template
+void OnlineSilenceWeighting::ComputeCurrentTraceback<fst::GrammarFst>(
+    const LatticeFasterOnlineDecoderTpl<fst::GrammarFst> &decoder);
 
 int32 OnlineSilenceWeighting::GetBeginFrame() {
   int32 max_duration = config_.max_state_duration;
@@ -591,7 +600,7 @@ void OnlineSilenceWeighting::GetDeltaWeights(
 	delta_weights->push_back(std::make_pair(input_frame, weight_diff));
       }
     }
-  }  
+  }
 }
 
 }  // namespace kaldi

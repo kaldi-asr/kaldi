@@ -5,7 +5,7 @@
 #            2015 Daniel Povey
 #            2017 Johns Hopkins University (Jan "Yenda" Trmal <jtrmal@gmail.com>)
 #
-# Validation script for data/local/dict
+# Validation script for 'dict' directories (e.g. data/local/dict)
 
 # this function reads the opened file (supplied as a first
 # parameter) into an array of lines. For each
@@ -442,7 +442,7 @@ if (-s "$dict/extra_questions.txt") {
     }
     foreach (0 .. @col-1) {
       if(!$silence{@col[$_]} and !$nonsilence{@col[$_]}) {
-        set_to_fail();  print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence.txt (line $idx, block ", $_+1, ")\n";
+        set_to_fail();  print "--> ERROR: phone \"@col[$_]\" is not in {, non}silence_phones.txt (line $idx, block ", $_+1, ")\n";
       }
       $idx ++;
     }
@@ -463,6 +463,22 @@ if (-s "$dict/extra_questions.txt") {
   close(EX);
   $success == 0 || print "--> $dict/extra_questions.txt is OK\n";
 } else { print "--> $dict/extra_questions.txt is empty (this is OK)\n";}
+
+if (-f "$dict/nonterminals.txt") {
+  open(NT, "<$dict/nonterminals.txt") || die "opening $dict/nonterminals.txt";
+  my %nonterminals = ();
+  my $line_number = 1;
+  while (<NT>) {
+    chop;
+    my @line = split(" ", $_);
+    if (@line != 1 || ! m/^#nonterm:/ || defined $nonterminals{$line[0]}) {
+      print "--> ERROR: bad (or duplicate) line $line_number: '$_' in $dict/nonterminals.txt\n"; exit 1;
+    }
+    $nonterminals{$line[0]} = 1;
+    $line_number++;
+  }
+  print "--> $dict/nonterminals.txt is OK\n";
+}
 
 
 # check nonsilence_phones.txt again for phone-pairs that are never
