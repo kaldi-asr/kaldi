@@ -204,15 +204,6 @@ void ExtractWindow(int64 sample_offset,
                    BaseFloat *log_energy_pre_window = NULL);
 
 
-// ExtractWaveformRemainder is useful if the waveform is coming in segments.
-// It extracts the bit of the waveform at the end of this block that you
-// would have to append the next bit of waveform to, if you wanted to have
-// the same effect as everything being in one big block.
-void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
-                              const FrameExtractionOptions &opts,
-                              Vector<BaseFloat> *wave_remainder);
-
-
 /// @} End of "addtogroup feat"
 }  // namespace kaldi
 
