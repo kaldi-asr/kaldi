@@ -1,6 +1,6 @@
 // fstext/context-fst.cc
 
-// Copyright      2018  Daniel Povey
+// Copyright      2018  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

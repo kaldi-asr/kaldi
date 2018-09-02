@@ -1,7 +1,7 @@
 // fstext/context-fst.h
 
 // Copyright 2009-2011  Microsoft Corporation
-//                2018  Daniel Povey
+//                2018  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

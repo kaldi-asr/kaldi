@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 
-# This script demonstrates how to use the grammar-decoding framework to build
+# simple_demo_silprobs.sh is a version of simple_demo.sh that uses a lexicon
+# with word-specific silence probabilities.
+
+# These scripts demonstrate how to use the grammar-decoding framework to build
 # graphs made out of more than one part.  It demonstrates using `fstequivalent`
 # that the graph constructed this way is equivalent to what you would create if
 # you had the LM all as a single piece.  This uses the command line tools to

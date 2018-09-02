@@ -463,18 +463,14 @@ class GrammarFstPreparer {
     if (fst_->Start() == kNoStateId) {
       KALDI_ERR << "FST has no states.";
     }
-    if (fst_->Properties(kILabelSorted, true) == 0) {
-      // Make sure the FST is sorted on ilabel, if it wasn't already; the
-      // decoder code requires epsilons to precede non-epsilons.
-      ILabelCompare<StdArc> ilabel_comp;
-      ArcSort(fst_, ilabel_comp);
-    }
     for (StateId s = 0; s < fst_->NumStates(); s++) {
       if (IsSpecialState(s)) {
         if (NeedEpsilons(s)) {
           InsertEpsilonsForState(s);
-          // now all olabels on arcs leaving from state s will be input-epsilon,
-          // so it won't be treated as a 'special' state any more.
+          // This state won't be treated as a 'special' state any more;
+          // all 'special' arcs (arcs with ilabels >= kNontermBigNumber)
+          // have been moved and now leave from newly created states that
+          // this state transitions to via epsilons arcs.
         } else {
           // OK, state s is a special state.
           FixArcsToFinalStates(s);
@@ -490,7 +486,8 @@ class GrammarFstPreparer {
  private:
 
   // Returns true if state 's' has at least one arc coming out of it with a
-  // special nonterminal-related ilabel on it (i.e. an ilabel >= 1 million).
+  // special nonterminal-related ilabel on it (i.e. an ilabel >=
+  // kNontermBigNumber)
   bool IsSpecialState(StateId s) const;
 
   // This function verifies that state s does not currently have any
@@ -512,41 +509,43 @@ class GrammarFstPreparer {
   // modify this state (by adding input-epsilon arcs), and false otherwise.
   bool NeedEpsilons(StateId s) const;
 
-  // Fixes any final-prob-related problems with this state.  The problem we
-  // aim to fix is that there may be arcs with nonterminal symbol
-  // #nonterm_end which transition to a state with non-unit final prob.
-  // This function assimilates that final-prob into the arc leaving from this state,
+  // Fixes any final-prob-related problems with this state.  The problem we aim
+  // to fix is that there may be arcs with nonterminal symbol #nonterm_end which
+  // transition from this state to a state with non-unit final prob.  This
+  // function assimilates that final-prob into the arc leaving from this state,
   // by making the arc transition to a new state with unit final-prob, and
   // incorporating the original final-prob into the arc's weight.
   //
   // The purpose of this is to keep the GrammarFst code simple.
   //
   // It would have been more efficient to do this in CheckProperties(), but
-  // doing it this way is clearer; and the time taken here should actually be
-  // tiny.
+  // doing it this way is clearer; and the extra time taken here will be tiny.
   void FixArcsToFinalStates(StateId s);
 
 
-
-  // This struct helps us to split up arcs leaving a 'special state'
-  // (c.f. IsSpecialState()) into as few categories as possible, to allow us to
-  // insert a small number of epsilon states while allowing the
-  // resulting FST to have properties suitable in class GrammarFst.
+  // This struct represents a category of arcs that are allowed to leave from
+  // the same 'special state'.  If a special state has arcs leaving it that
+  // are in more than one category, it will need to be split up into
+  // multiple states connected by epsilons.
   //
   // The 'nonterminal' and 'nextstate' have to do with ensuring that all
   // arcs leaving a particular FST state transition to the same FST instance
   // (which, in turn, helps to keep the ArcIterator code efficient).
   //
-  // The 'olabel' has to do with ensuring that arcs with user-defined nonterminals
-  // or kNontermEnd have no olabels on them (this is a requirement of the
-  // CombineArcs() function of GrammarFst).
+  // The 'olabel' has to do with ensuring that arcs with user-defined
+  // nonterminals or kNontermEnd have no olabels on them.  This is a requirement
+  // of the CombineArcs() function of GrammarFst, because it needs to combine
+  // two olabels into one so we need to know that at least one of the olabels is
+  // always epsilon.
   struct ArcCategory {
     int32 nonterminal;  //  The nonterminal symbol #nontermXXX encoded into the ilabel,
                         // or 0 if the ilabel was <kNontermBigNumber.
-    StateId nextstate; //  If nonterminal is a user-defined nonterminal like #nonterm:foo,
-                        // then the destination state of the arc, else kNoStateId (-1).
-    Label olabel;       //  If nonterminal is #nonterm_end or is  a user-defined nonterminal
-                        // (e.g. #nonterm:foo), then the olabel on the arc; else, 0.
+    StateId nextstate; //  If 'nonterminal' is a user-defined nonterminal like
+                       //  #nonterm:foo,
+                       // then the destination state of the arc, else kNoStateId (-1).
+    Label olabel;  //  If 'nonterminal' is #nonterm_end or is a user-defined
+                   // nonterminal (e.g. #nonterm:foo), then the olabel on the
+                   // arc; else, 0.
     bool operator < (const ArcCategory &other) const {
       if (nonterminal < other.nonterminal) return true;
       else if (nonterminal > other.nonterminal) return false;
@@ -556,18 +555,19 @@ class GrammarFstPreparer {
     }
   };
 
-  // This function, which is used in CheckProperties() and InsertEpsilonsForState(),
-  // works out the categrory of the arc; see documentation of struct ArcCategory for more details.
+  // This function, which is used in CheckProperties() and
+  // InsertEpsilonsForState(), works out the categrory of the arc; see
+  // documentation of struct ArcCategory for more details.
   void GetCategoryOfArc(const Arc &arc,
                         ArcCategory *arc_category) const;
 
-  // For each non-self-loop arc out of state s, replace that arc with an
-  // epsilon-input arc to a newly created state, with the arc's original weight
-  // and the original olabel of the arc; and then an arc from that newly created
-  // state to the original 'nextstate' of the arc, with the arc's ilabel on it,
-  // and unit weight.  If this arc had a final-prob, make it an epsilon arc from
-  // this state to the state 'simple_final_state_' (which has unit final-prob);
-  // we create that state if needed.
+
+  // This will be called for 'special states' that need to be split up.
+  // Non-special arcs leaving this state will stay here.  For each
+  // category of special arcs (see ArcCategory for details), a new
+  // state will be created and those arcs will leave from that state
+  // instead; for each such state, an input-epsilon arc will leave this state
+  // for that state.  For more details, see the code.
   void InsertEpsilonsForState(StateId s);
 
   inline int32 GetPhoneSymbolFor(enum NonterminalValues n) const {

@@ -45,11 +45,10 @@ namespace kaldi {
     BestPathEnd()), which is useful in endpointing and in situations where you
     might want to frequently access the best path.
 
-    This is only templated on the FST type as the Token type is required
-    to be BackpointerToken.  Actually it only makes sense to instantiate
-    LatticeFasterDecoderTpl with BackpointerToken if you do so indirectly
-    via this child class, because otherwise there is no point in having
-    the backpointers.
+    This is only templated on the FST type, since the Token type is required to
+    be BackpointerToken.  Actually it only makes sense to instantiate
+    LatticeFasterDecoderTpl with Token == BackpointerToken if you do so indirectly via
+    this child class.
  */
 template <typename FST>
 class LatticeFasterOnlineDecoderTpl:
@@ -69,8 +68,8 @@ class LatticeFasterOnlineDecoderTpl:
                                 const LatticeFasterDecoderConfig &config):
       LatticeFasterDecoderTpl<FST, Token>(fst, config) { }
 
-  // This version of the initializer "takes ownership" of the fst,
-  // and will delete it when this object is destroyed.
+  // This version of the initializer takes ownership of 'fst', and will delete
+  // it when this object is destroyed.
   LatticeFasterOnlineDecoderTpl(const LatticeFasterDecoderConfig &config,
                                 FST *fst):
       LatticeFasterDecoderTpl<FST, Token>(config, fst) { }

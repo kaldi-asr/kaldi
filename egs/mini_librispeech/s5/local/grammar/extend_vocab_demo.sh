@@ -87,14 +87,11 @@ if [ $stage -le 4 ]; then
 
   mkdir -p $tree_dir/extvocab_nosp_lexicon
 
-  # First find a word-list of words in the test set that are out of vocabulary.
+  # First find a list of words in the test set that are out of vocabulary.
   # Of course this is totally cheating.
   awk -v w=data/lang/words.txt 'BEGIN{while(getline <w) seen[$1] = $1} {for(n=2;n<=NF;n++) if(!($n in seen)) oov[$n] = 1}
                                 END{ for(k in oov) print k;}' < data/dev_clean_2/text > $tree_dir/extvocab_nosp_lexicon/words
   echo "$0: generating g2p entries for $(wc -l <$tree_dir/extvocab_nosp_lexicon/words) words"
-
-  # TEMP
-  # tail -n 10 data/local/dict/lexiconp.txt | awk '{ print "XXX"$0 }' > $tree_dir/extvocab_nosp_lexicon/lexiconp.txt
 
   if $run_g2p; then
     steps/dict/apply_g2p.sh $tree_dir/extvocab_nosp_lexicon/words $tree_dir/extvocab_nosp_g2p  $tree_dir/extvocab_nosp_lexicon
@@ -282,7 +279,8 @@ if [ $stage -le 7 ]; then
   # graph directory where they will have suitable values.
   cp -r $tree_dir/extvocab_nosp_part/{words.txt,phones.txt,phones/} $tree_dir/extvocab_nosp_combined
 
-  # the following compiles it into a regular graph which can be decoded by the normal binary.
+  # the following, due to --write-as-grammar=false, compiles it into an FST
+  # which can be decoded by our normal decoder.
   make-grammar-fst --write-as-grammar=false --nonterm-phones-offset=$offset $tree_dir/extvocab_nosp_top/HCLG.fst \
                    $nonterm_unk $tree_dir/extvocab_nosp_part/HCLG.fst  $tree_dir/extvocab_nosp_combined/HCLG.fst
 

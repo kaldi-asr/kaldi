@@ -96,7 +96,7 @@ void ModifyGraphForCarefulAlignment(
 /// lattice_writer, else to compact_lattice_writer.  The writers for
 /// alignments and words will only be written to if they are open.
 ///
-/// Caution: this will only link correctly if FST is either Fst::Fst<fst::StdArc>,
+/// Caution: this will only link correctly if FST is either fst::Fst<fst::StdArc>,
 /// or fst::GrammarFst, as the template function is defined in the .cc file and
 /// only instantiated for those two types.
 template <typename FST>

@@ -24,7 +24,11 @@ def get_args():
        text form of a lexicon FST, to be compiled by fstcompile using the
        appropriate symbol tables (phones.txt and words.txt) .  It will mostly
        be invoked indirectly via utils/prepare_lang.sh.  The output goes to
-       the stdout.""")
+       the stdout.
+
+       This version is for a lexicon with word-specific silence probabilities,
+       see http://www.danielpovey.com/files/2015_interspeech_silprob.pdf
+       for an explanation""")
 
     parser.add_argument('--sil-phone', dest='sil_phone', type=str,
                         help="Text form of optional-silence phone, e.g. 'SIL'.")

@@ -20,10 +20,6 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-// Note: this file is "upstream" from lattice-faster-online-decoder.h,
-// and changes in this file should be made to lattice-faster-online-decoder.h,
-// if applicable.
-
 #ifndef KALDI_DECODER_LATTICE_FASTER_DECODER_H_
 #define KALDI_DECODER_LATTICE_FASTER_DECODER_H_
 
@@ -215,14 +211,16 @@ struct BackpointerToken {
     See \ref lattices_generation \ref decoders_faster and \ref decoders_simple
      for more information.
 
-   It's templated on the FST type, but this defaults to Fst::Fst<fst::StdArc>,
-   also known as fst::StdFst.  You also might want to instantiate it for type
-   fst::GrammarFst.  If instantiated for typename FST = fst::Fst<fst::StdArc>
-   and it notices that the FST type is actually ConstFst or VectorFst, it will
-   specialize itself to the appropriate inside AdvanceDecoding() for speed.
-   That means you can get the speed advantages of knowing what the type is
-   without having to know at compile time.
+   The decoder is templated on the FST type and the token type.  The token type
+   will normally be StdToken, but also may be BackpointerToken which is to support
+   quick lookup of the current best path (see lattice-faster-online-decoder.h)
 
+   The FST you invoke this decoder with is expected to equal
+   Fst::Fst<fst::StdArc>, a.k.a. StdFst, or GrammarFst.  If you invoke it with
+   FST == StdFst and it notices that the actual FST type is
+   fst::VectorFst<fst::StdArc> or fst::ConstFst<fst::StdArc>, the decoder object
+   will internally cast itself to one that is templated on those more specific
+   types; this is an optimization for speed.
  */
 template <typename FST, typename Token = decoder::StdToken>
 class LatticeFasterDecoderTpl {
@@ -239,8 +237,8 @@ class LatticeFasterDecoderTpl {
   LatticeFasterDecoderTpl(const FST &fst,
                           const LatticeFasterDecoderConfig &config);
 
-  // This version of the initializer "takes ownership" of the fst,
-  // and will delete it when this object is destroyed.
+  // This version of the constructor takes ownership of the fst, and will delete
+  // it when this object is destroyed.
   LatticeFasterDecoderTpl(const LatticeFasterDecoderConfig &config,
                           FST *fst);
 
@@ -379,8 +377,8 @@ class LatticeFasterDecoderTpl {
   // index plus one, which is used to index into the active_toks_ array.
   // Returns the Token pointer.  Sets "changed" (if non-NULL) to true if the
   // token was newly created or the cost changed.
-  // The 'backpointer' argument has no purpose (and will hopefully be optimized
-  // out) if Token == StdToken.
+  // If Token == StdToken, the 'backpointer' argument has no purpose (and will
+  // hopefully be optimized out).
   inline Token *FindOrAddToken(StateId state, int32 frame_plus_one,
                                BaseFloat tot_cost, Token *backpointer,
                                bool *changed);
@@ -451,7 +449,6 @@ class LatticeFasterDecoderTpl {
   /// Processes nonemitting (epsilon) arcs for one frame.  Called after
   /// ProcessEmitting() on each frame.  The cost cutoff is computed by the
   /// preceding ProcessEmitting().
-  /// The templated design is similar to ProcessEmitting()
   void ProcessNonemitting(BaseFloat cost_cutoff);
 
   // HashList defined in ../util/hash-list.h.  It actually allows us to maintain
