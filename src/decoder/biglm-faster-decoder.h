@@ -172,7 +172,6 @@ class BiglmFasterDecoder {
       cur_state = arc.nextstate;
     }
     if (is_final && use_final_probs) {
-      KALDI_ASSERT(best_final.Value() != Weight::Zero());
       fst_out->SetFinal(cur_state, LatticeWeight(best_final.Value(), 0.0));
     } else {
       fst_out->SetFinal(cur_state, LatticeWeight::One());
