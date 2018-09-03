@@ -10,6 +10,7 @@ nj=70
 decode_gmm=false
 username=
 password=
+overwrite=false
 # iam_database points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
 # like "data/download" and follow the instructions
@@ -33,7 +34,8 @@ if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$iam_database" \
     --wellington-dir "$wellington_database" \
-    --username "$username" --password "$password"
+    --username "$username" --password "$password" \
+    --overwrite $overwrite
 fi
 mkdir -p data/{train,test}/data
 

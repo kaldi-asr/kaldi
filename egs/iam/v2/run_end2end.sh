@@ -6,6 +6,7 @@ stage=0
 nj=20
 username=
 password=
+overwrite=false
 # iam_database points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
 # like "data/download" and follow the instructions
@@ -30,10 +31,11 @@ if [ $stage -le 0 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$iam_database" \
     --wellington-dir "$wellington_database" \
-    --username "$username" --password "$password"
+    --username "$username" --password "$password" \
+    --overwrite $overwrite
 fi
-mkdir -p data/{train,test}/data
 
+mkdir -p data/{train,test}/data
 if [ $stage -le 1 ]; then
   echo "$(date) stage 1: getting allowed image widths for e2e training..."
   image/get_image2num_frames.py --feat-dim 40 data/train # This will be needed for the next command
@@ -103,6 +105,9 @@ if [ $stage -le 4 ]; then
   # So we set --sil-prob to 0.0
   utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
                         data/local/dict "<sil>" data/lang/temp data/lang
+  silphonelist=`cat data/lang/phones/silence.csl`
+  nonsilphonelist=`cat data/lang/phones/nonsilence.csl`
+  local/gen_topo.py 8 4 4 $nonsilphonelist $silphonelist data/lang/phones.txt >data/lang/topo
   utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
 
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_big.arpa.gz \
