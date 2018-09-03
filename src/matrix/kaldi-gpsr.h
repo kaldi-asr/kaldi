@@ -67,7 +67,7 @@ struct GpsrConfig {
   /// function must be less than the old one by mu times the gradient in the
   /// direction of the change in x. 0 < mu < 1
   double gpsr_mu;
-  int32 max_iters_backtrak;  ///< Max iterations for backtracking line search
+  int32 max_iters_backtrack;  ///< Max iterations for backtracking line search
 
   bool debias;  ///< Do debiasing, i.e. unconstrained optimization at the end
   double stop_thresh_debias;  ///< Stopping threshold for debiasing stage
@@ -86,7 +86,7 @@ struct GpsrConfig {
 
     gpsr_beta = 0.5;
     gpsr_mu = 0.1;
-    max_iters_backtrak = 50;
+    max_iters_backtrack = 50;
 
     debias = false;
     stop_thresh_debias = 0.001;
@@ -120,7 +120,7 @@ inline void GpsrConfig::Register(OptionsItf *opts) {
                  "Step size reduction factor in backtracking line search (0<beta<1).");
   opts->Register("gpsr-mu", &gpsr_mu, module+
                  "Improvement factor in backtracking line search (0<mu<1).");
-  opts->Register("max-iters-backtrack", &max_iters_backtrak, module+
+  opts->Register("max-iters-backtrack", &max_iters_backtrack, module+
                  "Maximum number of iterations of backtracking line search.");
 
   opts->Register("debias", &debias, module+

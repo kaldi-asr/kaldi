@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
       }
       for (size_t i = 1; i < po.NumArgs(); i++) {
         bool b;
-        if(kaldi::InitKaldiInputStream(inputs[i-1]->Stream(), &b)) {
+        if (kaldi::InitKaldiInputStream(inputs[i-1]->Stream(), &b)) {
           bool add = true;
           stats.Read(inputs[i-1]->Stream(), b, add);
           delete inputs[i-1];

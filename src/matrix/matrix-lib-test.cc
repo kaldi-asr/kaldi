@@ -2520,8 +2520,9 @@ template<typename Real> static void UnitTestIo() {
       bool binary_in;
       bool either_way = (i%2 == 0);
       std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
-      KALDI_ASSERT(InitKaldiInputStream(ins, &binary_in)
-                   && "Malformed input stream.");
+      if (!InitKaldiInputStream(ins, &binary_in)) {
+        KALDI_ERR << "Malformed input stream.";
+      }
       N.Resize(0, 0);
       T.Resize(0);
       v2.Resize(0);
@@ -2586,8 +2587,9 @@ template<typename Real> static void UnitTestIoCross() {  // across types.
     {
       std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
       bool binary_in;
-      KALDI_ASSERT(InitKaldiInputStream(ins, &binary_in)
-                   && "Malformed input stream");
+      if (!InitKaldiInputStream(ins, &binary_in)) {
+        KALDI_ERR << "Malformed input stream";
+      }
 
       MO.Read(ins, binary_in);
       SO.Read(ins, binary_in);

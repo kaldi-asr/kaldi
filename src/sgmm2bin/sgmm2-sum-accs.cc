@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
       }
       for (size_t i = 0; i < po.NumArgs() - 1; i++) {
         bool b;
-        if(kaldi::InitKaldiInputStream(inputs[i]->Stream(), &b)) {
+        if (kaldi::InitKaldiInputStream(inputs[i]->Stream(), &b)) {
           transition_accs.Read(inputs[i]->Stream(), b, true /* add values */);
           sgmm_accs.Read(inputs[i]->Stream(), b, true /* add values */);
           delete inputs[i];

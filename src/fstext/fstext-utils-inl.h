@@ -1141,8 +1141,8 @@ inline bool IsStochasticFst(const Fst<Arc> &fst,
   NaturalLess<Weight> nl;
   bool first_time = true;
   bool ans = true;
-  if(min_sum) *min_sum = Arc::Weight::One();
-  if(max_sum) *max_sum = Arc::Weight::One();
+  if (min_sum) *min_sum = Arc::Weight::One();
+  if (max_sum) *max_sum = Arc::Weight::One();
   for (StateIterator<Fst<Arc> > siter(fst); !siter.Done(); siter.Next()) {
     StateId s = siter.Value();
     Weight sum = fst.Final(s);
@@ -1179,8 +1179,8 @@ inline bool IsStochasticFst(const Fst<LogArc> &fst,
   typedef Arc::Weight Weight;
   bool first_time = true;
   bool ans = true;
-  if(min_sum) *min_sum = LogArc::Weight::One();
-  if(max_sum) *max_sum = LogArc::Weight::One();
+  if (min_sum) *min_sum = LogArc::Weight::One();
+  if (max_sum) *max_sum = LogArc::Weight::One();
   for (StateIterator<Fst<Arc> > siter(fst); !siter.Done(); siter.Next()) {
     StateId s = siter.Value();
     Weight sum = fst.Final(s);
