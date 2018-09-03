@@ -2945,7 +2945,7 @@ static int32 FindNStride(const std::vector<Index> &indexes,
   int32 size = indexes.size();
   KALDI_ASSERT(size > 0);
   int32 N = indexes[size-1].n + 1,
-      n_stride;
+        n_stride = -1;
   if (N <= 1) {
     // we wouldn't be able to determine the stride if N <= 1.
     return 0;
@@ -2974,7 +2974,7 @@ static int32 FindNStride(const std::vector<Index> &indexes,
         break;
       }
     }
-    if (stride == size / N) {
+    if (n_stride == -1) {
       // if we fell off the loop then we found no candidates, which is strange
       // and means we did not find the expected structure; we'll return 0 as we
       // failed.
@@ -3035,7 +3035,7 @@ static int32 FindNStride(const std::vector<Cindex> &cindexes,
   int32 size = cindexes.size();
   KALDI_ASSERT(size > 0);
   int32 N = cindexes[size-1].second.n + 1,
-      n_stride;
+      n_stride = 0;
   if (N <= 1)
     return 0;
   Cindex cindex(cindexes[0]);

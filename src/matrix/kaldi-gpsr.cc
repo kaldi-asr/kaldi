@@ -226,8 +226,13 @@ double GpsrBasic(const GpsrConfig &opts, const SpMatrix<double> &H,
   Vector<double> delta_v(dim);
   Vector<double> u_new(dim);
   Vector<double> v_new(dim);
-  double objf_old, objf_new, num_zeros;
+  double objf_old = -std::numeric_limits<double>::infinity(),
+    objf_new = -std::numeric_limits<double>::infinity(),
+    num_zeros;
   bool keep_going = true;
+
+  KALDI_ASSERT(opts.max_iters_backtrack > 0 &&
+               "Gpsr must run at least one iteration of backtracking");
 
   for (int32 iter = 0; keep_going; iter++) {
     objf_old = GpsrObjective(H, c, u, v);
@@ -237,7 +242,7 @@ double GpsrBasic(const GpsrConfig &opts, const SpMatrix<double> &H,
     if (alpha > opts.alpha_max) alpha = opts.alpha_max;
 
     // This is the backtracking line search part:
-    for (int32 k = 0; k < opts.max_iters_backtrak; k++) {
+    for (int32 k = 0; k < opts.max_iters_backtrack; k++) {
       // Calculate the potential new iterate: [z_k - \alpha_k \grad F(z_k)]_+
       u_new.CopyFromVec(u);
       u_new.AddVec(-alpha, grad_u);
@@ -266,7 +271,7 @@ double GpsrBasic(const GpsrConfig &opts, const SpMatrix<double> &H,
       else
         alpha *= opts.gpsr_beta;
 
-      if (k == opts.max_iters_backtrak - 1) {  // Stop further optimization
+      if (k == opts.max_iters_backtrack - 1) {  // Stop further optimization
         KALDI_WARN << "Backtracking line search did not decrease objective.";
         u_new.CopyFromVec(u);
         u_new.ApplyFloor(0.0);
