@@ -1,20 +1,21 @@
 #!/bin/bash
 
 # This script does end2end chain training (i.e. from scratch)
-# ./local/chain/compare_wer.sh exp/chain/cnn_e2eali_1d/
-# System                      cnn_e2eali_1d
-# WER                              9.52
-# WER (rescored)                   9.29
-# CER                              4.45
-# CER (rescored)                   4.43
-# Final train prob              -0.0473
-# Final valid prob              -0.0706
-# Final train prob (xent)       -0.4623
-# Final valid prob (xent)       -0.5371
-# Parameters                      5.08M
+# ./local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/ exp/chain/cnn_e2eali_1d
+# System                      e2e_cnn_1a cnn_e2eali_1d
+# WER                             13.59      9.45
+# WER (rescored)                  13.27      9.28
+# CER                              6.92      4.41
+# CER (rescored)                   6.71      4.31
+# Final train prob               0.0345   -0.0451
+# Final valid prob               0.0269   -0.0684
+# Final train prob (xent)                 -0.4241
+# Final valid prob (xent)                 -0.5068
+# Parameters                      9.52M     5.13M
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1d
-# exp/chain/cnn_e2eali_1d/: num-iters=40 nj=2..4 num-params=5.1M dim=40->400 combine=-0.052->-0.052 (over 1) xent:train/valid[25,39,final]=(-0.739,-0.483,-0.462/-0.763,-0.551,-0.537) logprob:train/valid[25,39,final]=(-0.092,-0.052,-0.047/-0.112,-0.076,-0.071)
+# exp/chain/cnn_e2eali_1d/: num-iters=36 nj=3..5 num-params=5.1M dim=40->400 combine=-0.047->-0.047 (over 1) xent:train/valid[23,35,final]=(-0.705,-0.446,-0.424/-0.714,-0.523,-0.507) logprob:train/valid[23,35,final]=(-0.095,-0.049,-0.045/-0.110,-0.073,-0.068)
+
 set -e -o pipefail
 
 stage=0
@@ -22,7 +23,7 @@ stage=0
 nj=30
 train_set=train
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1df  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1a
 common_egs_dir=
 reporting_email=
@@ -194,10 +195,10 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=5 \
+    --trainer.num-epochs=6 \
     --trainer.frames-per-iter=1500000 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=4 \
+    --trainer.optimization.num-jobs-initial=3 \
+    --trainer.optimization.num-jobs-final=5 \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
@@ -247,3 +248,6 @@ if [ $stage -le 7 ]; then
   steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
                                 data/test $dir/decode_test{,_rescored} || exit 1
 fi
+
+echo "Done. Date: $(date). Results:"
+local/chain/compare_wer.sh $dir

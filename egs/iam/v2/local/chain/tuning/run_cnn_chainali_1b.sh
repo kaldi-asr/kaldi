@@ -1,19 +1,20 @@
 #!/bin/bash
 
-# local/chain/compare_wer.sh exp/chain/cnn_chainali_1b
-# System                      cnn_chainali_1b
-# WER                              9.49
-# WER (rescored)                   9.27
-# CER                              4.39
-# CER (rescored)                   4.32
-# Final train prob              -0.0466
-# Final valid prob              -0.0692
-# Final train prob (xent)       -0.4811
-# Final valid prob (xent)       -0.5538
-# Parameters                      5.65M
+# ./local/chain/compare_wer.sh exp/chain/cnn_1a/ exp/chain/cnn_chainali_1b
+# System                         cnn_1a cnn_chainali_1b
+# WER                             17.05      9.45
+# WER (rescored)                  16.70      9.01
+# CER                              9.75      4.43
+# CER (rescored)                   9.61      4.28
+# Final train prob              -0.0358   -0.0522
+# Final valid prob              -0.0709   -0.0702
+# Final train prob (xent)       -0.4013   -0.4992
+# Final valid prob (xent)       -0.6841   -0.5658
+# Parameters                      4.39M     5.13M
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_chainali_1b
-# exp/chain/cnn_chainali_1d: num-iters=40 nj=2..4 num-params=5.7M dim=40->400 combine=-0.051->-0.051 (over 1) xent:train/valid[25,39,final]=(-0.818,-0.500,-0.481/-0.828,-0.570,-0.554) logprob:train/valid[25,39,final]=(-0.097,-0.050,-0.047/-0.114,-0.073,-0.069)
+# exp/chain/cnn_chainali_1b/: num-iters=36 nj=3..5 num-params=5.1M dim=40->400 combine=-0.054->-0.054 (over 1) xent:train/valid[23,35,final]=(-0.769,-0.524,-0.499/-0.773,-0.584,-0.566) logprob:train/valid[23,35,final]=(-0.092,-0.056,-0.052/-0.107,-0.076,-0.070)
+
 set -e -o pipefail
 
 stage=0
@@ -198,10 +199,10 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=5 \
+    --trainer.num-epochs=6 \
     --trainer.frames-per-iter=1500000 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=4 \
+    --trainer.optimization.num-jobs-initial=3 \
+    --trainer.optimization.num-jobs-final=5 \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
@@ -251,3 +252,6 @@ if [ $stage -le 7 ]; then
   steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
                                 data/test $dir/decode_test{,_rescored} || exit 1
 fi
+
+echo "Done. Date: $(date). Results:"
+local/chain/compare_wer.sh $dir

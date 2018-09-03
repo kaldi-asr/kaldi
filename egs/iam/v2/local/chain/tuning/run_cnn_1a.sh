@@ -5,18 +5,18 @@
 #              2017 Ashish Arora
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_1a/
-# exp/chain/cnn_1a/: num-iters=42 nj=2..4 num-params=4.4M dim=40->400 combine=-0.039->-0.039 (over 2) xent:train/valid[27,41,final]=(-0.502,-0.380,-0.376/-0.679,-0.626,-0.625) logprob:train/valid[27,41,final]=(-0.038,-0.032,-0.032/-0.063,-0.064,-0.064)
+# exp/chain/cnn_1a/: num-iters=42 nj=2..4 num-params=4.4M dim=40->400 combine=-0.039->-0.039 (over 2) xent:train/valid[27,41,final]=(-0.547,-0.404,-0.401/-0.746,-0.685,-0.684) logprob:train/valid[27,41,final]=(-0.046,-0.036,-0.036/-0.072,-0.071,-0.071)
 
 # ./local/chain/compare_wer.sh exp/chain/cnn_1a/
 # System                         cnn_1a
-# WER                             14.91
-# WER (rescored)                     --
-# CER                              7.92
-# CER (rescored)                     --
-# Final train prob              -0.0320
-# Final valid prob              -0.0643
-# Final train prob (xent)       -0.3762
-# Final valid prob (xent)       -0.6247
+# WER                             17.05
+# WER (rescored)                  16.70
+# CER                              9.75
+# CER (rescored)                   9.61
+# Final train prob              -0.0358
+# Final valid prob              -0.0709
+# Final train prob (xent)       -0.4013
+# Final valid prob (xent)       -0.6841
 # Parameters                      4.39M
 
 set -e -o pipefail
@@ -245,3 +245,6 @@ if [ $stage -le 7 ]; then
   steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
                                 data/test $dir/decode_test{,_rescored} || exit 1
 fi
+
+echo "Done. Date: $(date). Results:"
+local/chain/compare_wer.sh $dir
