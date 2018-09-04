@@ -288,7 +288,7 @@ def halve_range_str(range_str):
     halved_ranges = []
     for r in ranges:
         # a range may be either e.g. '64', or '128:256'
-        c = [str(max(1, int(x)/2)) for x in r.split(":")]
+        c = [str(max(1, int(x)//2)) for x in r.split(":")]
         halved_ranges.append(":".join(c))
     return ','.join(halved_ranges)
 
@@ -320,7 +320,7 @@ def copy_egs_properties_to_exp_dir(egs_dir, dir):
         for file in ['cmvn_opts', 'splice_opts', 'info/final.ie.id', 'final.mat']:
             file_name = '{dir}/{file}'.format(dir=egs_dir, file=file)
             if os.path.isfile(file_name):
-                shutil.copy2(file_name, dir)
+                shutil.copy(file_name, dir)
     except IOError:
         logger.error("Error while trying to copy egs "
                      "property files to {dir}".format(dir=dir))
@@ -535,7 +535,10 @@ def smooth_presoftmax_prior_scale_vector(pdf_counts,
     return scaled_counts
 
 
-def prepare_initial_network(dir, run_opts, srand=-3):
+def prepare_initial_network(dir, run_opts, srand=-3, input_model=None):
+    if input_model is not None:
+        shutil.copy(input_model, "{0}/0.raw".format(dir))
+        return
     if os.path.exists(dir+"/configs/init.config"):
         common_lib.execute_command(
             """{command} {dir}/log/add_first_layer.log \
@@ -588,7 +591,7 @@ def get_model_combine_iters(num_iters, num_epochs,
         models_to_combine.add(num_iters)
     else:
         subsample_model_factor = 1
-        num_iters_combine = min(max_models_combine, num_iters/2)
+        num_iters_combine = min(max_models_combine, num_iters//2)
         models_to_combine = set(range(num_iters - num_iters_combine + 1,
                                       num_iters + 1))
 

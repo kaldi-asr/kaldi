@@ -42,9 +42,6 @@ RnnlmTrainer::RnnlmTrainer(bool train_embedding,
     embedding_trainer_(NULL),
     word_feature_mat_(word_feature_mat),
     num_minibatches_processed_(0),
-    end_of_input_(false),
-    previous_minibatch_empty_(1),
-    current_minibatch_empty_(1),
     srand_seed_(RandInt(0, 100000)) {
 
 
@@ -75,13 +72,6 @@ RnnlmTrainer::RnnlmTrainer(bool train_embedding,
                 << embedding_mat_->NumRows() << " (mismatch).";
     }
   }
-
-  // Start a thread that calls run_background_thread(this).
-  // That thread will be responsible for computing derived variables of
-  // the minibatch, since that can be done independently of the main
-  // training process.
-  background_thread_ = std::thread(run_background_thread, this);
-
 }
 
 
@@ -92,25 +82,43 @@ void RnnlmTrainer::Train(RnnlmExample *minibatch) {
                 << VocabSize() << ", got "
                 << minibatch->vocab_size;
 
-  // hand over 'minibatch' to the background thread to have its derived variable
-  // computed, via the class variable 'current_minibatch_'.
-  current_minibatch_empty_.Wait();
   current_minibatch_.Swap(minibatch);
-  current_minibatch_full_.Signal();
   num_minibatches_processed_++;
-  if (num_minibatches_processed_ == 1) {
-    return;  // The first time this function is called, return immediately
-             // because there is no previous minibatch to train on.
+  RnnlmExampleDerived derived;
+  CuArray<int32> active_words_cuda;
+  CuSparseMatrix<BaseFloat> active_word_features;
+  CuSparseMatrix<BaseFloat> active_word_features_trans;
+
+  if (!current_minibatch_.sampled_words.empty()) {
+    std::vector<int32> active_words;
+    RenumberRnnlmExample(&current_minibatch_, &active_words);
+    active_words_cuda.CopyFromVec(active_words);
+
+    if (word_feature_mat_ != NULL) {
+      active_word_features.SelectRows(active_words_cuda,
+                                      *word_feature_mat_);
+      active_word_features_trans.CopyFromSmat(active_word_features,
+                                              kTrans);
+    }
   }
-  previous_minibatch_full_.Wait();
+  GetRnnlmExampleDerived(current_minibatch_, train_embedding_,
+                         &derived);
+
+  derived_.Swap(&derived);
+  active_words_.Swap(&active_words_cuda);
+  active_word_features_.Swap(&active_word_features);
+  active_word_features_trans_.Swap(&active_word_features_trans);
+
   TrainInternal();
-  previous_minibatch_empty_.Signal();
+
+  if (num_minibatches_processed_ == 1)
+    core_trainer_->ConsolidateMemory();
 }
 
 
 void RnnlmTrainer::GetWordEmbedding(CuMatrix<BaseFloat> *word_embedding_storage,
                                     CuMatrix<BaseFloat> **word_embedding) {
-  RnnlmExample &minibatch = previous_minibatch_;
+  RnnlmExample &minibatch = current_minibatch_;
   bool sampling = !minibatch.sampled_words.empty();
 
   if (word_feature_mat_ == NULL) {
@@ -148,7 +156,7 @@ void RnnlmTrainer::GetWordEmbedding(CuMatrix<BaseFloat> *word_embedding_storage,
 
 void RnnlmTrainer::TrainWordEmbedding(
     CuMatrixBase<BaseFloat> *word_embedding_deriv) {
-  RnnlmExample &minibatch = previous_minibatch_;
+  RnnlmExample &minibatch = current_minibatch_;
   bool sampling = !minibatch.sampled_words.empty();
 
   if (word_feature_mat_ == NULL) {
@@ -186,7 +194,7 @@ void RnnlmTrainer::TrainWordEmbedding(
 void RnnlmTrainer::TrainBackstitchWordEmbedding(
     bool is_backstitch_step1,
     CuMatrixBase<BaseFloat> *word_embedding_deriv) {
-  RnnlmExample &minibatch = previous_minibatch_;
+  RnnlmExample &minibatch = current_minibatch_;
   bool sampling = !minibatch.sampled_words.empty();
 
   if (word_feature_mat_ == NULL) {
@@ -239,7 +247,7 @@ void RnnlmTrainer::TrainInternal() {
       srand_seed_ % core_config_.backstitch_training_interval) {
     bool is_backstitch_step1 = true;
     srand(srand_seed_ + num_minibatches_processed_);
-    core_trainer_->TrainBackstitch(is_backstitch_step1, previous_minibatch_,
+    core_trainer_->TrainBackstitch(is_backstitch_step1, current_minibatch_,
         derived_, *word_embedding,
         (train_embedding_ ? &word_embedding_deriv : NULL));
     if (train_embedding_)
@@ -247,13 +255,13 @@ void RnnlmTrainer::TrainInternal() {
 
     is_backstitch_step1 = false;
     srand(srand_seed_ + num_minibatches_processed_);
-    core_trainer_->TrainBackstitch(is_backstitch_step1, previous_minibatch_,
+    core_trainer_->TrainBackstitch(is_backstitch_step1, current_minibatch_,
         derived_, *word_embedding,
         (train_embedding_ ? &word_embedding_deriv : NULL));
     if (train_embedding_)
       TrainBackstitchWordEmbedding(is_backstitch_step1, &word_embedding_deriv);
   } else {
-    core_trainer_->Train(previous_minibatch_, derived_, *word_embedding,
+    core_trainer_->Train(current_minibatch_, derived_, *word_embedding,
                          (train_embedding_ ? &word_embedding_deriv : NULL));
     if (train_embedding_)
       TrainWordEmbedding(&word_embedding_deriv);
@@ -265,61 +273,7 @@ int32 RnnlmTrainer::VocabSize() {
   else return embedding_mat_->NumRows();
 }
 
-void RnnlmTrainer::RunBackgroundThread() {
-  while (true) {
-    current_minibatch_full_.Wait();
-    if (end_of_input_)
-      return;
-    RnnlmExampleDerived derived;
-    CuArray<int32> active_words_cuda;
-    CuSparseMatrix<BaseFloat> active_word_features;
-    CuSparseMatrix<BaseFloat> active_word_features_trans;
-
-    if (!current_minibatch_.sampled_words.empty()) {
-      std::vector<int32> active_words;
-      RenumberRnnlmExample(&current_minibatch_, &active_words);
-      active_words_cuda.CopyFromVec(active_words);
-
-      if (word_feature_mat_ != NULL) {
-        active_word_features.SelectRows(active_words_cuda,
-                                        *word_feature_mat_);
-        active_word_features_trans.CopyFromSmat(active_word_features,
-                                                kTrans);
-      }
-    }
-    GetRnnlmExampleDerived(current_minibatch_, train_embedding_,
-                           &derived);
-
-    // Wait until the main thread is not currently processing
-    // previous_minibatch_; once we get this semaphore we are free to write to
-    // it and other related variables such as 'derived_'.
-    previous_minibatch_empty_.Wait();
-    previous_minibatch_.Swap(&current_minibatch_);
-    derived_.Swap(&derived);
-    active_words_.Swap(&active_words_cuda);
-    active_word_features_.Swap(&active_word_features);
-    active_word_features_trans_.Swap(&active_word_features_trans);
-
-    // The following statement signals that 'previous_minibatch_'
-    // and related variables have been written to by this thread.
-    previous_minibatch_full_.Signal();
-    // The following statement signals that 'current_minibatch_'
-    // has been consumed by this thread and is no longer needed.
-    current_minibatch_empty_.Signal();
-  }
-}
-
 RnnlmTrainer::~RnnlmTrainer() {
-  // Train on the last minibatch, because Train() always trains on the previously
-  // provided one (for threading reasons).
-  if (num_minibatches_processed_ > 0) {
-    previous_minibatch_full_.Wait();
-    TrainInternal();
-  }
-  end_of_input_ = true;
-  current_minibatch_full_.Signal();
-  background_thread_.join();
-
   // Note: the following delete statements may cause some diagnostics to be
   // issued, from the destructors of those classes.
   if (core_trainer_)

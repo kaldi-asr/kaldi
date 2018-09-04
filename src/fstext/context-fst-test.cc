@@ -154,10 +154,11 @@ static VectorFst<Arc> *GenRandPhoneSeq(vector<typename Arc::Label> &phone_syms,
 
 // Don't instantiate with log semiring, as RandEquivalent may fail.
 // TestContestFst also test ReadILabelInfo and WriteILabelInfo.
-template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
-  typedef typename Arc::Label Label;
-  typedef typename Arc::StateId StateId;
-  typedef typename Arc::Weight Weight;
+static void TestContextFst(bool verbose, bool use_matcher) {
+  typedef StdArc Arc;
+  typedef Arc::Label Label;
+  typedef Arc::StateId StateId;
+  typedef Arc::Weight Weight;
 
   // Generate a random set of phones.
   size_t num_phones = 1 + kaldi::Rand() % 10;
@@ -176,25 +177,11 @@ template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
   vector<int32> phone_syms;
   for (size_t i = 0; i < phones.size();i++) phone_syms.push_back(phones[i]);
 
-  SymbolTable symtab_out("cfst-output-syms");
 
+  InverseContextFst inv_cfst(subsequential_symbol,
+                             phones, disambig_syms,
+                             N, P);
 
-  ContextFst<Arc> cfst(subsequential_symbol,
-                       phones, disambig_syms,
-                       N, P);
-
-  bool test_vec = (kaldi::Rand() % 2 == 0);
-  VectorFst<Arc> *cfst_vec = NULL;
-  if (test_vec) {
-    cfst_vec = new VectorFst<Arc>(cfst);  // fully expand it.
-    cfst_vec->SetInputSymbols(cfst.InputSymbols());  // because isymbols get changed
-    // as it gets constructed.
-  }
-
-  if (verbose) {  // Try to print the fst.
-    FstPrinter<Arc> fstprinter(cfst, cfst.InputSymbols(), cfst.OutputSymbols(), NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
-  }
 
   /* Now create random phone-sequences and compose them with the context FST.
   */
@@ -207,50 +194,35 @@ template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
     if (verbose) {
       std::cout << "Sequence FST is:\n";
       {  // Try to print the fst.
-        FstPrinter<Arc> fstprinter(*f, f->InputSymbols(), f->OutputSymbols(), NULL, false, true, "\t");
+        FstPrinter<Arc> fstprinter(*f, NULL, NULL, NULL, false, true, "\t");
         fstprinter.Print(&std::cout, "standard output");
       }
     }
 
     VectorFst<Arc> fst_composed;
-    VectorFst<Arc> fst_composed_vec;
-    if (use_matcher)   ComposeContextFst(cfst, *f, &fst_composed);
-    else Compose(cfst, *f, &fst_composed);
 
+    ComposeDeterministicOnDemandInverse(*f,  &inv_cfst, &fst_composed);
 
-    if (test_vec) {
-      Compose(*cfst_vec, *f, &fst_composed_vec);
-      assert(RandEquivalent(fst_composed, fst_composed_vec, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
-      // delete cfst_vec;
-    }
 
     // Testing WriteILabelInfo and ReadILabelInfo.
     {
       bool binary = (kaldi::Rand() % 2 == 0);
       WriteILabelInfo(kaldi::Output("tmpf", binary).Stream(),
-                      binary, cfst.ILabelInfo());
+                      binary, inv_cfst.IlabelInfo());
 
       bool binary_in;
       vector<vector<int32> > ilabel_info;
       kaldi::Input ki("tmpf", &binary_in);
       ReadILabelInfo(ki.Stream(),
                      binary_in, &ilabel_info);
-      assert(ilabel_info == cfst.ILabelInfo());
+      assert(ilabel_info == inv_cfst.IlabelInfo());
     }
 
-
-    // These lines are important and a bit confusing.
-    // The Compose algorithm actually sets these symbols, but it gets it wrong,
-    // because it creates a copy of the input symbols of cfst *as they existed at the start*.
-    // They get modified during the composition (assuming we didn't already print out the FST)
-    // because
-    fst_composed.SetInputSymbols(cfst.InputSymbols());
 
     if (verbose) {
       std::cout << "Composed FST is:\n";
       {  // Try to print the fst.
-        FstPrinter<Arc> fstprinter(fst_composed, fst_composed.InputSymbols(),
-                                   fst_composed.OutputSymbols(), NULL, false, true, "\t");
+        FstPrinter<Arc> fstprinter(fst_composed, NULL, NULL, NULL, false, true, "\t");
         fstprinter.Print(&std::cout, "standard output");
       }
     }
@@ -260,13 +232,12 @@ template<class Arc> static void TestContextFst(bool verbose, bool use_matcher) {
                                             phone_syms,
                                             disambig_syms,
                                             phone_seq,
-                                            cfst.ILabelInfo(),
+                                            inv_cfst.IlabelInfo(),
                                             N, P);
     kaldi::AssertEqual(tot_cost, tot_cost_check);
 
     delete f;
   }
-  if (test_vec) { delete cfst_vec; }
 
   unlink("tmpf");
 }
@@ -279,6 +250,6 @@ int main() {
   for (int i = 0;i < 16;i++) {
     bool verbose = (i < 4);
     bool use_matcher = ( (i/4) % 2 == 0);
-    fst::TestContextFst<fst::StdArc>(verbose, use_matcher);
+    fst::TestContextFst(verbose, use_matcher);
   }
 }

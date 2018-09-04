@@ -8,7 +8,7 @@
 # Apache 2.0.
 
 # This script trains a DNN similar to the recipe described in
-# http://www.danielpovey.com/files/2017_interspeech_embeddings.pdf .
+# http://www.danielpovey.com/files/2018_icassp_xvectors.pdf
 
 . ./cmd.sh
 set -e
@@ -56,7 +56,7 @@ num_pdfs=$(awk '{print $2}' $data/utt2spk | sort | uniq -c | wc -l)
 if [ $stage -le 6 ]; then
   echo "$0: Getting neural network training egs";
   # dump egs.
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
+  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $egs_dir/storage ]; then
     utils/create_split_dir.pl \
      /export/b{03,04,05,06}/$USER/kaldi-data/egs/voxceleb2/v2/xvector-$(date +'%m_%d_%H_%M')/$egs_dir/storage $egs_dir/storage
   fi

@@ -42,6 +42,7 @@ max_count=0         # The use of this option (e.g. --max-count 100) can make
                     # posterior-scaling, so assuming the posterior-scale is 0.1,
                     # --max-count 100 starts having effect after 1000 frames, or
                     # 10 seconds of data.
+use_vad=false
 
 # End configuration section.
 
@@ -69,8 +70,13 @@ data=$1
 srcdir=$2
 dir=$3
 
+extra_files=
+if $use_vad; then
+  extra_files=$data/vad.scp
+fi
+
 for f in $data/feats.scp $srcdir/final.ie $srcdir/final.dubm $srcdir/global_cmvn.stats $srcdir/splice_opts \
-     $srcdir/online_cmvn.conf $srcdir/final.mat; do
+     $srcdir/online_cmvn.conf $srcdir/final.mat $extra_files; do
   [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 
@@ -117,9 +123,15 @@ done
 
 if [ $stage -le 0 ]; then
   echo "$0: extracting iVectors"
+  extra_opts=
+  if $use_vad; then
+    extra_opts="--frame-weights-rspecifier=scp:$data/vad.scp"
+  fi
+
   $cmd JOB=1:$nj $dir/log/extract_ivectors.JOB.log \
-     ivector-extract-online2 --config=$ieconf ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
-     copy-feats --compress=$compress ark:- \
+    ivector-extract-online2 --config=$ieconf $extra_opts \
+      ark:$sdata/JOB/spk2utt scp:$sdata/JOB/feats.scp ark:- \| \
+    copy-feats --compress=$compress ark:- \
       ark,scp:$absdir/ivector_online.JOB.ark,$absdir/ivector_online.JOB.scp || exit 1;
 fi
 

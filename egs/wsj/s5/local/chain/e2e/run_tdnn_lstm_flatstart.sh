@@ -92,11 +92,18 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
+  echo "$0: Estimating a phone language model for the denominator graph..."
+  mkdir -p $treedir/log
+  $train_cmd $treedir/log/make_phone_lm.log \
+             cat data/$train_set/text \| \
+             steps/nnet3/chain/e2e/text_to_phones.py data/lang_nosp \| \
+             utils/sym2int.pl -f 2- data/lang_nosp/phones.txt \| \
+             chain-est-phone-lm --num-extra-lm-states=2000 \
+             ark:- $treedir/phone_lm.fst
   steps/nnet3/chain/e2e/prepare_e2e.sh --nj 30 --cmd "$train_cmd" \
                                        --type biphone \
                                        --shared-phones true \
                                        data/$train_set $lang $treedir
-  cp exp/chain/e2e_base/char_lm.fst $treedir/phone_lm.fst
 fi
 
 if [ $stage -le 2 ]; then

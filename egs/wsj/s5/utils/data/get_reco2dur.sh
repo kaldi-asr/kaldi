@@ -49,10 +49,10 @@ fi
 if [ -s $data/utt2dur ] && \
    [ $(wc -l < $data/utt2spk) -eq $(wc -l < $data/utt2dur) ] && \
    [ ! -s $data/segments ]; then
-  
+
   echo "$0: $data/wav.scp indexed by utt-id; copying utt2dur to reco2dur"
-  cp $data/utt2dur $data/reco2utt && exit 0;
-  
+  cp $data/utt2dur $data/reco2dur && exit 0;
+
 elif [ -f $data/wav.scp ]; then
   echo "$0: obtaining durations from recordings"
 
@@ -100,7 +100,7 @@ elif [ -f $data/wav.scp ]; then
       nj=$num_recos
     fi
 
-    temp_data_dir=$data/wav${nj}split    
+    temp_data_dir=$data/wav${nj}split
     wavscps=$(for n in `seq $nj`; do echo $temp_data_dir/$n/wav.scp; done)
     subdirs=$(for n in `seq $nj`; do echo $temp_data_dir/$n; done)
 
@@ -111,12 +111,12 @@ elif [ -f $data/wav.scp ]; then
     fi
 
     utils/split_scp.pl $data/wav.scp $wavscps
-    
+
 
     $cmd JOB=1:$nj $data/log/get_reco_durations.JOB.log \
       wav-to-duration --read-entire-file=$read_entire_file \
       scp:$temp_data_dir/JOB/wav.scp ark,t:$temp_data_dir/JOB/reco2dur || \
-        { echo "$0: there was a problem getting the durations"; exit 1; } # This could 
+        { echo "$0: there was a problem getting the durations"; exit 1; } # This could
 
     for n in `seq $nj`; do
       cat $temp_data_dir/$n/reco2dur

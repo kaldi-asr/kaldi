@@ -1,5 +1,6 @@
 #!/bin/bash
 
+cmd="$@"
 
 no_feats=false
 no_wav=false
@@ -42,6 +43,12 @@ data=$1
 if [ ! -d $data ]; then
   echo "$0: no such directory $data"
   exit 1;
+fi
+
+if [ -f $data/images.scp ]; then
+  cmd=${cmd/--no-wav/}  # remove --no-wav if supplied
+  image/validate_data_dir.sh $cmd
+  exit $?
 fi
 
 for f in spk2utt utt2spk; do
@@ -340,7 +347,7 @@ fi
 if [ -f $data/reco2dur ]; then
   check_sorted_and_uniq $data/reco2dur
   cat $data/reco2dur | awk '{print $1}' > $tmpdir/recordings.reco2dur
-  if [ -f $tempdir/recordings ]; then
+  if [ -f $tmpdir/recordings ]; then
     if ! cmp -s $tmpdir/recordings{,.reco2dur}; then
       echo "$0: Error: in $data, recording-ids extracted from segments and reco2dur file"
       echo "$0: differ, partial diff is:"

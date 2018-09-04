@@ -18,7 +18,11 @@ stage=0
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
-data_splits=data/download/data_splits
+writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
+writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
+writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
+data_splits_dir=data/download/data_splits
+images_scp_dir=data/local
 
 . ./cmd.sh
 . ./path.sh
@@ -29,9 +33,17 @@ mkdir -p data/{train,test,dev}
 if [ $stage -le 1 ]; then
   echo "$0: Processing dev, train and test data..."
   echo "Date: $(date)."
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.dev.raw.lineid data/dev data/local/dev/images.scp || exit 1
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.test.raw.lineid data/test data/local/test/images.scp || exit 1
-  local/process_data.py $download_dir1 $download_dir2 $download_dir3 $data_splits/madcat.train.raw.lineid data/train data/local/train/images.scp || exit 1
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
+    $data_splits_dir/madcat.dev.raw.lineid data/dev $images_scp_dir/dev/images.scp \
+    $writing_condition1 $writing_condition2 $writing_condition3 || exit 1
+
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
+    $data_splits_dir/madcat.test.raw.lineid data/test $images_scp_dir/test/images.scp \
+    $writing_condition1 $writing_condition2 $writing_condition3 || exit 1
+
+  local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
+    $data_splits_dir/madcat.train.raw.lineid data/train $images_scp_dir/train/images.scp \
+    $writing_condition1 $writing_condition2 $writing_condition3 || exit 1
 
   for dataset in dev test train; do
     echo "$0: Fixing data directory for dataset: $dataset"

@@ -383,8 +383,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                                    use_multitask_egs=False,
                                    compute_per_dim_accuracy=False):
     if get_raw_nnet_from_am:
-        model = "nnet3-am-copy --raw=true {dir}/{iter}.mdl - |".format(
-                    dir=dir, iter=iter)
+        model = "{dir}/{iter}.mdl".format(dir=dir, iter=iter)
     else:
         model = "{dir}/{iter}.raw".format(dir=dir, iter=iter)
 

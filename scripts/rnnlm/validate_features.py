@@ -7,6 +7,9 @@ import os
 import argparse
 import sys
 
+import re
+tab_or_space = re.compile('[ \t]+')
+
 parser = argparse.ArgumentParser(description="Validates features file, produced by rnnlm/choose_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " exp/rnnlm/features.txt",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -21,7 +24,7 @@ EOS_SYMBOL = '</s>'
 if not os.path.isfile(args.features_file):
     sys.exit(sys.argv[0] + ": Expected file {0} to exist".format(args.features_file))
 
-with open(args.features_file, 'r', encoding="utf-8") as f:
+with open(args.features_file, 'r', encoding="latin-1") as f:
     has_unigram = False
     has_length = False
     idx = 0
@@ -30,7 +33,7 @@ with open(args.features_file, 'r', encoding="utf-8") as f:
     final_feats = {}
     word_feats = {}
     for line in f:
-        fields = line.split()
+        fields = re.split(tab_or_space, line)
         assert(len(fields) in [3, 4, 5])
 
         assert idx == int(fields[0])

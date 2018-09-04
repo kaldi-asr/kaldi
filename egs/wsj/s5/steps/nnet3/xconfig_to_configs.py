@@ -296,10 +296,10 @@ def check_model_contexts(config_dir, nnet_edits=None, existing_model=None):
                 if key in ['left-context', 'right-context']:
                     contexts[file_name][key] = value
 
-    if contexts.has_key('init'):
-        assert(contexts.has_key('ref'))
-        if (contexts['init'].has_key('left-context') and
-            contexts['ref'].has_key('left-context')):
+    if 'init' in contexts:
+        assert('ref' in contexts)
+        if ('left-context' in contexts['init'] and
+            'left-context' in contexts['ref']):
             if ((contexts['init']['left-context']
                  > contexts['ref']['left-context'])
                 or (contexts['init']['right-context']

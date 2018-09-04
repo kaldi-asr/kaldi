@@ -13,6 +13,9 @@ nj=70
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
+writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
+writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
+writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_splits_dir=data/download/data_splits
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
@@ -28,24 +31,27 @@ mkdir -p data/local/{train,test,dev}
 if [ $stage -le 0 ]; then
   echo "$0: Downloading data splits..."
   echo "Date: $(date)."
-  local/download_data.sh --data_splits $data_splits_dir
+  local/download_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
+                         --download_dir2 $download_dir2 --download_dir3 $download_dir3
 fi
 
 if [ $stage -le 1 ]; then
-  for dataset in test dev train; do
-    echo "$0: Extracting line images from page image for dataset:  $dataset. "
-    echo "Date: $(date)."
-    dataset_file=$data_splits_dir/madcat.$dataset.raw.lineid
-    local/extract_lines.sh --nj $nj --cmd $cmd --dataset_file $dataset_file \
-                           --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
-                           --download_dir3 $download_dir3 data/local/$dataset
+  for dataset in test train dev; do
+    data_split_file=$data_splits_dir/madcat.$dataset.raw.lineid
+    local/extract_lines.sh --nj $nj --cmd $cmd --data_split_file $data_split_file \
+        --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
+        --download_dir3 $download_dir3 --writing_condition1 $writing_condition1 \
+        --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3 \
+        --data data/local/$dataset
   done
 fi
 
 if [ $stage -le 2 ]; then
-  echo "$0: Preparing dev train and eval data..."
-  echo "Date: $(date)."
-  local/prepare_data.sh
+  echo "$0: Preparing data..."
+  local/prepare_data.sh --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
+      --download_dir3 $download_dir3 --images_scp_dir data/local \
+      --data_splits_dir $data_splits_dir --writing_condition1 $writing_condition1 \
+      --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3
 fi
 
 if [ $stage -le 3 ]; then
@@ -74,9 +80,23 @@ fi
 
 if [ $stage -le 5 ]; then
   echo "$0: Preparing dictionary and lang..."
+  cut -d' ' -f2- data/train/text | local/reverse.py | \
+    local/prepend_words.py | \
+    utils/lang/bpe/learn_bpe.py -s 700 > data/train/bpe.out
+  for set in test train dev; do
+    cut -d' ' -f1 data/$set/text > data/$set/ids
+    cut -d' ' -f2- data/$set/text | local/reverse.py | \
+      local/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/train/bpe.out \
+      | sed 's/@@//g' > data/$set/bpe_text
+    mv data/$set/text data/$set/text.old
+    paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
+  done
   local/prepare_dict.sh
-  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.9999 \
+  # This recipe uses byte-pair encoding, the silences are part of the words' pronunciations.
+  # So we set --sil-prob to 0.0
+  utils/prepare_lang.sh --num-sil-states 4 --num-nonsil-states 8 --sil-prob 0.0 --position-dependent-phones false \
                         data/local/dict "<sil>" data/lang/temp data/lang
+  utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
 fi
 
 if [ $stage -le 6 ]; then
@@ -96,7 +116,8 @@ if [ $stage -le 8 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   echo "Date: $(date)."
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
-                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
+                       --use-gpu false \
+                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
                        data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 

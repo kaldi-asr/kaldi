@@ -60,6 +60,14 @@ def get_args():
                         help="Image augmentation options")
 
     # trainer options
+    parser.add_argument("--trainer.input-model", type=str,
+                        dest='input_model', default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="""If specified, this model is used as initial
+                        raw model (0.raw in the script) instead of initializing
+                        the model from xconfig. Configs dir is not expected to
+                        exist and left/right context is computed from this
+                        model.""")
     parser.add_argument("--trainer.prior-subset-size", type=int,
                         dest='prior_subset_size', default=20000,
                         help="Number of samples for computing priors")
@@ -118,11 +126,14 @@ def process_args(args):
     if not common_train_lib.validate_minibatch_size_str(args.minibatch_size):
         raise Exception("--trainer.optimization.minibatch-size has an invalid value")
 
-    if (not os.path.exists(args.dir)
-            or not os.path.exists(args.dir+"/configs")):
-        raise Exception("This scripts expects {0} to exist and have a configs "
-                        "directory which is the output of "
-                        "make_configs.py script")
+    if (not os.path.exists(args.dir)):
+        raise Exception("This script expects --dir={0} to exist.")
+    if (not os.path.exists(args.dir+"/configs") and
+        (args.input_model is None or not os.path.exists(args.input_model))):
+        raise Exception("Either --trainer.input-model option should be supplied, "
+                        "and exist; or the {0}/configs directory should exist."
+                        "{0}/configs is the output of make_configs.py"
+                        "".format(args.dir))
 
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
@@ -185,7 +196,15 @@ def train(args, run_opts):
     config_dir = '{0}/configs'.format(args.dir)
     var_file = '{0}/vars'.format(config_dir)
 
-    variables = common_train_lib.parse_generic_config_vars_file(var_file)
+    if args.input_model is None:
+        config_dir = '{0}/configs'.format(args.dir)
+        var_file = '{0}/vars'.format(config_dir)
+
+        variables = common_train_lib.parse_generic_config_vars_file(var_file)
+    else:
+        # If args.input_model is specified, the model left and right contexts
+        # are computed using input_model.
+        variables = common_train_lib.get_input_model_info(args.input_model)
 
     # Set some variables.
     try:
@@ -204,7 +223,8 @@ def train(args, run_opts):
     # matrix.  This first config just does any initial splicing that we do;
     # we do this as it's a convenient way to get the stats for the 'lda-like'
     # transform.
-    if (args.stage <= -5) and os.path.exists(args.dir+"/configs/init.config"):
+    if (args.stage <= -4) and os.path.exists(args.dir+"/configs/init.config") and \
+       (args.input_model is None):
         logger.info("Initializing the network for computing the LDA stats")
         common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
@@ -213,7 +233,7 @@ def train(args, run_opts):
                                              dir=args.dir))
 
     default_egs_dir = '{0}/egs'.format(args.dir)
-    if (args.stage <= -4) and args.egs_dir is None:
+    if (args.stage <= -3) and args.egs_dir is None:
         if args.targets_scp is None or args.feat_dir is None:
             raise Exception("If you don't supply the --egs-dir option, the "
                             "--targets-scp and --feat-dir options are required.")
@@ -274,7 +294,8 @@ def train(args, run_opts):
     # use during decoding
     common_train_lib.copy_egs_properties_to_exp_dir(egs_dir, args.dir)
 
-    if args.stage <= -3 and os.path.exists(args.dir+"/configs/init.config"):
+    if args.stage <= -2 and os.path.exists(args.dir+"/configs/init.config") and \
+       (args.input_model is None):
         logger.info('Computing the preconditioning matrix for input features')
 
         train_lib.common.compute_preconditioning_matrix(
@@ -284,7 +305,7 @@ def train(args, run_opts):
 
     if args.stage <= -1:
         logger.info("Preparing the initial network.")
-        common_train_lib.prepare_initial_network(args.dir, run_opts)
+        common_train_lib.prepare_initial_network(args.dir, run_opts, args.srand, args.input_model)
 
     # set num_iters so that as close as possible, we process the data
     # $num_epochs times, i.e. $num_iters*$avg_num_jobs) ==

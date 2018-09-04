@@ -6,6 +6,8 @@
 # It puts the original contents of data-dir into
 # data-dir/.backup
 
+cmd="$@"
+
 utt_extra_files=
 spk_extra_files=
 
@@ -21,6 +23,12 @@ if [ $# != 1 ]; then
 fi
 
 data=$1
+
+if [ -f $data/images.scp ]; then
+  image/fix_data_dir.sh $cmd
+  exit $?
+fi
+
 mkdir -p $data/.backup
 
 [ ! -d $data ] && echo "$0: no such directory $data" && exit 1;
@@ -98,6 +106,7 @@ function filter_recordings {
     filter_file $tmpdir/recordings $data/wav.scp
     [ -f $data/reco2file_and_channel ] && filter_file $tmpdir/recordings $data/reco2file_and_channel
     [ -f $data/reco2dur ] && filter_file $tmpdir/recordings $data/reco2dur
+    true
   fi
 }
 

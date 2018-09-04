@@ -71,7 +71,9 @@ struct FrameExtractionOptions {
                    "Coefficient for use in signal preemphasis");
     opts->Register("remove-dc-offset", &remove_dc_offset,
                    "Subtract mean from waveform on each frame");
-    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither)");
+    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither). "
+                   "If you turn this off, you should set the --energy-floor "
+                   "option, e.g. to 1.0 or 0.1");
     opts->Register("window-type", &window_type, "Type of window "
                    "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\""
                    "|\"blackmann\")");
@@ -200,15 +202,6 @@ void ExtractWindow(int64 sample_offset,
                    const FeatureWindowFunction &window_function,
                    Vector<BaseFloat> *window,
                    BaseFloat *log_energy_pre_window = NULL);
-
-
-// ExtractWaveformRemainder is useful if the waveform is coming in segments.
-// It extracts the bit of the waveform at the end of this block that you
-// would have to append the next bit of waveform to, if you wanted to have
-// the same effect as everything being in one big block.
-void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
-                              const FrameExtractionOptions &opts,
-                              Vector<BaseFloat> *wave_remainder);
 
 
 /// @} End of "addtogroup feat"

@@ -38,7 +38,7 @@ open(SPKR_TRAIN, ">", "$out_train_dir/utt2spk") or die "Could not open the outpu
 open(WAV_TRAIN, ">", "$out_train_dir/wav.scp") or die "Could not open the output file $out_train_dir/wav.scp";
 open(TRIAL_OUT, ">", "$out_test_dir/trials") or die "Could not open the output file $out_test_dir/trials";
 
-my %test_utts = ();
+my $test_spkrs = ();
 while (<TRIAL_IN>) {
   chomp;
   my ($tar_or_none, $path1, $path2) = split;
@@ -49,7 +49,7 @@ while (<TRIAL_IN>) {
   my $rec_id = substr($filename, 0, 11);
   my $segment = substr($filename, 12, 7);
   my $utt_id1 = "$spkr_id-$rec_id-$segment";
-  $test_utts{$utt_id1} = ();
+  $test_spkrs{$spkr_id} = ();
 
   # Create entry for right-hand side of trial
   my $wav = "$data_base/voxceleb1_wav/$path2";
@@ -57,7 +57,7 @@ while (<TRIAL_IN>) {
   my $rec_id = substr($filename, 0, 11);
   my $segment = substr($filename, 12, 7);
   my $utt_id2 = "$spkr_id-$rec_id-$segment";
-  $test_utts{$utt_id2} = ();
+  $test_spkrs{$spkr_id} = ();
 
   my $target = "nontarget";
   if ($tar_or_none eq "1") {
@@ -77,7 +77,7 @@ foreach (@spkr_dirs) {
     my $segment = substr($filename, 12, 7);
     my $utt_id = "$spkr_id-$rec_id-$segment";
     my $wav = "$data_base/voxceleb1_wav/$spkr_id/$filename.wav";
-    if (exists $test_utts{$utt_id}) {
+    if (exists $test_spkrs{$spkr_id}) {
       print WAV_TEST "$utt_id", " $wav", "\n";
       print SPKR_TEST "$utt_id", " $spkr_id", "\n";
     } else {

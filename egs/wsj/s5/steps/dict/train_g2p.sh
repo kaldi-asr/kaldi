@@ -24,13 +24,18 @@ set -e
 if [ $# != 2 ]; then
    echo "Usage: $0 [options] <lexicon-in> <work-dir>"
    echo "    where <lexicon-in> is the training lexicon (one pronunciation per "
-   echo "    word per line) and <word-dir> is directory where the models will "
-   echo "    be stored"
-   echo "e.g.: train_g2p.sh data/local/lexicon.txt exp/g2p/"
+   echo "    word per line, with lines like 'hello h uh l ow') and"
+   echo "    <work-dir> is directory where the models will be stored"
+   echo "e.g.: train_g2p.sh --silence-phones data/local/dict/silence_phones.txt data/local/dict/lexicon.txt exp/g2p/"
    echo ""
    echo "main options (for others, see top of script file)"
    echo "  --iters <int>                                    # How many iterations. Relates to N-ngram order"
    echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
+   echo "  --silence-phones <silphones-list>                # e.g. data/local/dict/silence_phones.txt."
+   echo "                                                   # A list of silence phones, one or more per line"
+   echo "                                                   # Relates to  --only-words option"
+   echo "  --only-words (true|false)    (default: true)     # If true, exclude silence words, i.e."
+   echo "                                                   # words with 1 phone which is a silence."
    exit 1;
 fi
 

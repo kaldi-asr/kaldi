@@ -68,7 +68,7 @@ if [ $stage -le 2 ]; then
       rnnlm_cmd="$rnnlm_path"
       if type taskset >/dev/null 2>&1 ; then
           # HogWild works much faster if all threads are binded to the same phisical cpu
-          rnnlm_cmd="taskset -c $(seq -s, 0 $(( $num_threads - 1 )) ) $rnnlm_cmd"
+          rnnlm_cmd="taskset -c $(seq -s, 0 $(( $num_threads - 1 )) | sed 's/,$//') $rnnlm_cmd"
       fi
       $rnnlm_cmd -rnnlm $modeldir/rnnlm.tmp \
           -train $data_dir/librispeech-lm-norm.train.txt \

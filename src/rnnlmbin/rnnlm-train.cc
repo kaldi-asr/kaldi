@@ -22,7 +22,7 @@
 #include "rnnlm/rnnlm-training.h"
 #include "rnnlm/rnnlm-example-utils.h"
 #include "nnet3/nnet-utils.h"
-
+#include "cudamatrix/cu-allocator.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -93,6 +93,7 @@ int main(int argc, char *argv[]) {
 
 
     objective_config.Register(&po);
+    RegisterCuAllocatorOptions(&po);
 
     // register the core RNNLM training options options with the prefix "rnnlm",
     // so they will appear as --rnnlm.max-change and the like.  This is done
