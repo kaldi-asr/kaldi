@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright Johns Hopkins University (Author: Daniel Povey),  2012.  
+# Copyright Johns Hopkins University (Author: Daniel Povey),  2012.
 # Apache 2.0.
 
 # Train a diagonal mixture of Gaussians.  This is trained without
@@ -10,7 +10,6 @@
 # The current use for this is in fMMI training.
 
 # Begin configuration section.
-nj=4
 cmd=run.pl
 num_iters=3
 silence_weight=
@@ -48,7 +47,12 @@ lang=$3
 alidir=$4
 dir=$5
 
+for f in $data/feats.scp $alidir/num_jobs; do
+  [ ! -f $f ] && echo "No such file $f" && exit 1;
+done
+
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
+nj=`cat $alidir/num_jobs` || exit 1;
 
 sdata=$data/split$nj
 splice_opts=`cat $alidir/splice_opts 2>/dev/null`
@@ -67,7 +71,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac

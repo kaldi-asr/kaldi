@@ -298,7 +298,7 @@ fi
 
 if [ $stage -le 16 ]; then
   # Now do fMMI+MMI training
-  steps/train_diag_ubm.sh --silence-weight 0.5 --nj 50 --cmd "$train_cmd" \
+  steps/train_diag_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" \
                           700 data/train_nodup data/lang exp/tri4_ali_nodup exp/tri4_dubm
 
   steps/train_mmi_fmmi.sh --learning-rate 0.005 \

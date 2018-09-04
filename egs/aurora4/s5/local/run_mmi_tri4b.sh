@@ -13,7 +13,7 @@ steps/decode.sh --nj 10 --cmd "$decode_cmd" --transform-dir exp/tri3b/decode_tgp
   exp/tri4b/graph_tgpr data/test_dev93 exp/tri4b_mmi_b0.1/decode_tgpr_dev93
 
 #first, train UBM for fMMI experiments.
-steps/train_diag_ubm.sh --silence-weight 0.5 --nj 30 --cmd "$train_cmd" \
+steps/train_diag_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" \
   600 data/train_si284 data/lang exp/tri4b_ali_si284 exp/dubm4b
 
 # Next, fMMI+MMI.

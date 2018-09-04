@@ -44,7 +44,7 @@ selected=${DATA_ROOT}/selected
 # /bin/bash run.sh --pos-dep-phones false
 . utils/parse_options.sh || exit 1
 
-[[ $# -ge 1 ]] && { echo "Unexpected arguments"; exit 1; } 
+[[ $# -ge 1 ]] && { echo "Unexpected arguments"; exit 1; }
 
 # Select a subset of the data to use
 # WARNING: the destination directory will be deleted if it already exists!
@@ -75,7 +75,7 @@ local/voxforge_format_data.sh || exit 1
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
 mfccdir=${DATA_ROOT}/mfcc
-for x in train test; do 
+for x in train test; do
  steps/make_mfcc.sh --cmd "$train_cmd" --nj $njobs \
    data/$x exp/make_mfcc/$x $mfccdir || exit 1;
  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
@@ -184,7 +184,7 @@ steps/decode.sh --config conf/decode.config --nj $njobs --cmd "$decode_cmd" \
 
 
 #first, train UBM for fMMI experiments.
-steps/train_diag_ubm.sh --silence-weight 0.5 --nj $njobs --cmd "$train_cmd" \
+steps/train_diag_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" \
   250 data/train data/lang exp/tri3b_ali exp/dubm3b
 
 # Next, various fMMI+MMI configurations.

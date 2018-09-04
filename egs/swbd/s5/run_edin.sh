@@ -299,10 +299,10 @@ done
 # ./steps/lmrescore.sh --mode 3 --cmd "$highmem_cmd" data/lang_sw1_fsh_tgpr data/lang_sw1_fsh_tg data/eval2000 exp/tri3a/decode_eval2000_sw1_fsh_tgpr exp/tri3a/decode_eval2000_sw1_fsh_tg.3 &
 
 # Now do fMMI+MMI training
-steps/train_diag_ubm.sh --silence-weight 0.5 --nj 50 --cmd "$train_cmd" \
+steps/train_diag_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" \
   700 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup exp/tri4a_dubm
 
-steps/train_diag_ubm.sh --silence-weight 0.5 --nj 100 --cmd "$train_cmd" \
+steps/train_diag_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" \
   700 data/train_nodup data/lang exp/tri4b_ali_all exp/tri4b_dubm
 
 steps/train_mmi_fmmi.sh --learning-rate 0.005 --boost 0.1 --cmd "$train_cmd" \
