@@ -161,16 +161,16 @@ cat $train_old > $train_new
 cat $test_old > $test_new
 cat $val1_old $val2_old > $val_new
 
-if [ $stage -le 0 ]; then
-  if [ ! -f data/train/text ] || $overwrite; then
+if $process_aachen_split; then
+    local/process_aachen_splits.py data/local aachen_split data/train --dataset train || exit 1
+    local/process_aachen_splits.py data/local aachen_split data/test --dataset test || exit 1
+    local/process_aachen_splits.py data/local aachen_split data/val --dataset validation || exit 1
+else
     local/process_data.py data/local data/train --dataset train || exit 1
     local/process_data.py data/local data/test --dataset test || exit 1
     local/process_data.py data/local data/val --dataset validation || exit 1
-
-    image/fix_data_dir.sh data/train
-    image/fix_data_dir.sh data/test
-    image/fix_data_dir.sh data/val
-  else
-    echo "Not processing data since it is already processed"
-  fi
 fi
+
+image/fix_data_dir.sh data/train
+image/fix_data_dir.sh data/test
+image/fix_data_dir.sh data/val
