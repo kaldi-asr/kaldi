@@ -27,7 +27,7 @@ parser.add_argument('split_path', type=str,
 parser.add_argument('out_dir', type=str,
                     help='location to write output files.')
 parser.add_argument('--dataset', type=str, default='train',
-                    choices=['train_list', 'dev_list', 'eval_list'],
+                    choices=['train', 'test','validation'],
                     help='Subset of data to process.')
 args = parser.parse_args()
 
@@ -41,7 +41,7 @@ image_file = os.path.join(args.out_dir + '/', 'images.scp')
 image_fh = open(image_file, 'w')
 
 dataset_path = os.path.join(args.split_path,
-                            args.dataset + '.txt')
+                            args.dataset + '.uttlist')
 
 text_file_path = os.path.join(args.database_path,
                               'ascii','lines.txt')
