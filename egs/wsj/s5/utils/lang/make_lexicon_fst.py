@@ -70,8 +70,8 @@ def read_lexiconp(filename):
     found_large_pronprobs = False
     # See the comment near the top of this file, RE why we use latin-1.
     with open(filename, 'r', encoding='latin-1') as f:
+        whitespace = re.compile("[ \t]+")
         for line in f:
-            whitespace = re.compile("[ \t]+")
             a = whitespace.split(line.strip())
             if len(a) < 2:
                 print("{0}: error: found bad line '{1}' in lexicon file {2} ".format(

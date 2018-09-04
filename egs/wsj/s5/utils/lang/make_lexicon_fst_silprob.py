@@ -8,6 +8,7 @@ import argparse
 import os
 import sys
 import math
+import re
 
 # The use of latin-1 encoding does not preclude reading utf-8.  latin-1
 # encoding means "treat words as sequences of bytes", and it is compatible
@@ -79,8 +80,9 @@ def read_silprobs(filename):
     nonsilendcorrection = -1
     siloverallprob = -1
     with open(filename, 'r', encoding='latin-1') as f:
+        whitespace = re.compile("[ \t]+")
         for line in f:
-            a = line.split()
+            a = whitespace.split(line.strip())
             if len(a) != 2:
                 print("{0}: error: found bad line '{1}' in silprobs file {1} ".format(
                     sys.argv[0], line.strip(), filename), file=sys.stderr)
