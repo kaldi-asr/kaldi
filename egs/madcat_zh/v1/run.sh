@@ -25,7 +25,7 @@ data_split_dir=data/download/datasplits
 
 mkdir -p data/{train,test,dev}/lines
 if [ $stage -le 0 ]; then
-  local/download_data.sh --download-dir1 $madcat_database/data --data-split-dir $data_splits_dir
+  local/download_data.sh --download-dir1 $madcat_database/data --data-split-dir $data_split_dir
 
   for dataset in train test dev; do
     local/extract_lines.sh --nj $nj --cmd $cmd \
