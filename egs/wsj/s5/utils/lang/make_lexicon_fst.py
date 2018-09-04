@@ -8,6 +8,7 @@ import argparse
 import os
 import sys
 import math
+import re
 
 # The use of latin-1 encoding does not preclude reading utf-8.  latin-1
 # encoding means "treat words as sequences of bytes", and it is compatible
@@ -70,7 +71,8 @@ def read_lexiconp(filename):
     # See the comment near the top of this file, RE why we use latin-1.
     with open(filename, 'r', encoding='latin-1') as f:
         for line in f:
-            a = line.split()
+            whitespace = re.compile("[ \t]+")
+            a = whitespace.split(line.strip())
             if len(a) < 2:
                 print("{0}: error: found bad line '{1}' in lexicon file {2} ".format(
                     sys.argv[0], line.strip(), filename), file=sys.stderr)
