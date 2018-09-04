@@ -31,7 +31,7 @@ done
 
 
 # Train a UBM with 400 components, for fMMI.
-steps/train_diag_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" \
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj 10 --cmd "$train_cmd" \
   400 data/train_si84 data/lang exp/tri2b_ali_si84 exp/dubm2b
 
  steps/train_mmi_fmmi.sh --boost 0.1 --cmd "$train_cmd" \

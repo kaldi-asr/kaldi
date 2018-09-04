@@ -189,7 +189,7 @@ steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
   --transform-dir exp/tri5a/decode_eval2000 \
   exp/tri5a/graph data/eval2000 exp/tri5a_mmi_b0.1/decode_eval2000 &
 
-steps/train_diag_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" \
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj 40 --cmd "$train_cmd" \
   700 data/train_100k_nodup data/lang exp/tri5a_ali_100k_nodup exp/tri5a_dubm
 
 steps/train_mmi_fmmi.sh --learning-rate 0.005 \

@@ -94,7 +94,7 @@ steps/decode.sh --nj 4 --cmd "$train_cmd" --transform-dir exp/system1/tri3b/deco
 
 ## UBM for fMMI experiments
 # Training
-steps/train_diag_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" 600 data/train data/lang exp/system1/tri3b_ali exp/system1/dubm3b
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj 20 --cmd "$train_cmd" 600 data/train data/lang exp/system1/tri3b_ali exp/system1/dubm3b
 
 ## fMMI+MMI
 # Training

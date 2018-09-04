@@ -184,7 +184,7 @@ steps/decode.sh --config conf/decode.config --nj $njobs --cmd "$decode_cmd" \
 
 
 #first, train UBM for fMMI experiments.
-steps/train_diag_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" \
+steps/train_diag_ubm.sh --silence-weight 0.5 --nj $njobs --cmd "$train_cmd" \
   250 data/train data/lang exp/tri3b_ali exp/dubm3b
 
 # Next, various fMMI+MMI configurations.
