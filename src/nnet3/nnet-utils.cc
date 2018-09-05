@@ -1375,9 +1375,9 @@ class ModelCollapser {
     int32 num_components3 = nnet_->NumComponents();
     if (num_components2 != num_components1 ||
         num_components3 != num_components2)
-      KALDI_LOG << "Added " << (num_components2 - num_components1)
-                << " components, removed "
-                << (num_components2 - num_components3);
+      KALDI_VLOG(2) << "Added " << (num_components2 - num_components1)
+                    << " components, removed "
+                    << (num_components2 - num_components3);
   }
  private:
   /**

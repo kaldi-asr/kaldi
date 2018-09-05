@@ -504,8 +504,8 @@ void Optimize(const NnetOptimizeOptions &config,
               NnetComputation *computation) {
   if (GetVerboseLevel() >= 3) {
     CheckComputation(nnet, *computation, true);
-    KALDI_LOG << "Before optimization, max memory use (bytes) = "
-              << GetMaxMemoryUse(*computation);
+    KALDI_VLOG(4) << "Before optimization, max memory use (bytes) = "
+                  << GetMaxMemoryUse(*computation);
   }
 
   { // Call LimitDerivativeTimes(); it's important that this
@@ -626,8 +626,8 @@ void Optimize(const NnetOptimizeOptions &config,
 
   if (GetVerboseLevel() >= 3) {
     CheckComputation(nnet, *computation, false);
-    KALDI_LOG << "After optimization, max memory use (bytes) = "
-              << GetMaxMemoryUse(*computation);
+    KALDI_VLOG(4) << "After optimization, max memory use (bytes) = "
+                  << GetMaxMemoryUse(*computation);
   }
 }
 
@@ -707,7 +707,7 @@ CachingOptimizingCompiler::~CachingOptimizingCompiler() {
        << seconds_taken_indexes_ << " computing indexes, "
        << seconds_taken_misc << " misc.) + "
        << seconds_taken_io_ << " I/O.";
-    KALDI_LOG << os.str();
+    KALDI_VLOG(2) << os.str();
     // note: the leftover amount is misc things like hashing and == comparisons on
     // computation-requests, and calling RequestIsDecomposable().
   }
@@ -757,10 +757,10 @@ const NnetComputation *CachingOptimizingCompiler::CompileNoShortcut(
   if (GetVerboseLevel() >= verbose_cutoff) {
     std::ostringstream os1;
     request.Print(os1);
-    KALDI_LOG << "Computation request is " << os1.str();
+    KALDI_VLOG(4) << "Computation request is " << os1.str();
     std::ostringstream os2;
     computation->Print(os2, nnet_);
-    KALDI_LOG << "Generated computation is: " << os2.str();
+    KALDI_VLOG(4) << "Generated computation is: " << os2.str();
   }
 
   { // some checking.  Note: there may come a time when we might
@@ -785,7 +785,7 @@ const NnetComputation *CachingOptimizingCompiler::CompileNoShortcut(
   if (GetVerboseLevel() >= verbose_cutoff) {
     std::ostringstream os;
     computation->Print(os, nnet_);
-    KALDI_LOG << "Optimized computation is: " << os.str();
+    KALDI_VLOG(4) << "Optimized computation is: " << os.str();
   }
 
   {  // check the computation again.

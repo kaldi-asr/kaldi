@@ -776,8 +776,8 @@ void Nnet::Check(bool warn_for_orphans) const {
     std::vector<int32> orphans;
     FindOrphanComponents(*this, &orphans);
     for (size_t i = 0; i < orphans.size(); i++) {
-      KALDI_WARN << "Component " << GetComponentName(orphans[i])
-                 << " is never used by any node.";
+      KALDI_VLOG(1) << "Component " << GetComponentName(orphans[i])
+                    << " is never used by any node.";
     }
     FindOrphanNodes(*this, &orphans);
     for (size_t i = 0; i < orphans.size(); i++) {
@@ -786,8 +786,8 @@ void Nnet::Check(bool warn_for_orphans) const {
         // warning will be printed for the corresponding component nodes..  a
         // duplicate warning might be confusing to the user, as the
         // component-input nodes are implicit and usually hidden from users.
-        KALDI_WARN << "Node " << GetNodeName(orphans[i])
-                   << " is never used to compute any output.";
+        KALDI_VLOG(1) << "Node " << GetNodeName(orphans[i])
+                      << " is never used to compute any output.";
       }
     }
   }
@@ -844,8 +844,8 @@ std::string Nnet::Info() const {
 void Nnet::RemoveOrphanComponents() {
   std::vector<int32> orphan_components;
   FindOrphanComponents(*this, &orphan_components);
-  KALDI_LOG << "Removing " << orphan_components.size()
-            << " orphan components.";
+  KALDI_VLOG(2) << "Removing " << orphan_components.size()
+                << " orphan components.";
   if (orphan_components.empty())
     return;
   int32 old_num_components = components_.size(),
@@ -945,7 +945,7 @@ void Nnet::RemoveOrphanNodes(bool remove_orphan_inputs) {
     if (!IsComponentInputNode(orphan_nodes[i]))
       num_nodes_removed++;
   RemoveSomeNodes(orphan_nodes);
-  KALDI_LOG << "Removed " << num_nodes_removed << " orphan nodes.";
+  KALDI_VLOG(3) << "Removed " << num_nodes_removed << " orphan nodes.";
 }
 
 void Nnet::ResetGenerators() {

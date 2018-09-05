@@ -356,13 +356,13 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
       if (config.remove_low_count_gaussians &&
           static_cast<int32>(to_remove.size()) < num_gauss-1) {
         // remove the component, unless it is the last one.
-        KALDI_WARN << "Too little data - removing Gaussian (weight "
+        KALDI_VLOG(2) << "Too little data - removing Gaussian (weight "
                    << std::fixed << prob
                    << ", occupation count " << std::fixed << diag_gmm_acc.occupancy()(i)
                    << ", vector size " << gmm->Dim() << ")";
         to_remove.push_back(i);
       } else {
-        KALDI_WARN << "Gaussian has too little data but not removing it because"
+        KALDI_VLOG(2) << "Gaussian has too little data but not removing it because"
                    << (config.remove_low_count_gaussians ?
                        " it is the last Gaussian: i = "
                        : " remove-low-count-gaussians == false: g = ") << i
