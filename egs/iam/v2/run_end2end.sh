@@ -7,6 +7,7 @@ nj=20
 username=
 password=
 process_aachen_split=false
+overwrite=false
 # iam_database points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
 # like "data/download" and follow the instructions
@@ -134,7 +135,7 @@ if [ $stage -le 8 ]; then
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --use-gpu false \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/train_aug data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
+                       data/train_aug data/lang exp/chain/e2e_cnn_1b exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 9 ]; then
