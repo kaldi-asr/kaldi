@@ -299,6 +299,7 @@ bool ProtoSupervisionToSupervision(
   using fst::VectorFst;
   using fst::StdArc;
   VectorFst<StdArc> phone_fst(proto_supervision.fst);
+  std::vector<int32> disambig_syms;  // empty list of diambiguation symbols.
   int32 subsequential_symbol = trans_model.GetPhones().back() + 1;
   if (ctx_dep.CentralPosition() != ctx_dep.ContextWidth() - 1) {
     // note: this function only adds the subseq symbol to the input of what was
@@ -307,19 +308,28 @@ bool ProtoSupervisionToSupervision(
     AddSubsequentialLoop(subsequential_symbol, &phone_fst);
     fst::Project(&phone_fst, fst::PROJECT_INPUT);
   }
-  std::vector<int32> disambig_syms;  // empty list of diambiguation symbols.
-  fst::ContextFst<StdArc> cfst(subsequential_symbol, trans_model.GetPhones(),
-                               disambig_syms, ctx_dep.ContextWidth(),
-                               ctx_dep.CentralPosition());
+
+  // inv_cfst will be expanded on the fly, as needed.
+  fst::InverseContextFst inv_cfst(subsequential_symbol,
+                                  trans_model.GetPhones(),
+                                  disambig_syms,
+                                  ctx_dep.ContextWidth(),
+                                  ctx_dep.CentralPosition());
+
+
   VectorFst<StdArc> context_dep_fst;
-  fst::ComposeContextFst(cfst, phone_fst, &context_dep_fst);
-  // at this point, context_dep_fst will have indexes into 'ilabels' as its
-  // input symbol (representing context-dependent phones), and phones on its
-  // output.  We don't need the phones, so we'll project.
+  ComposeDeterministicOnDemandInverse(phone_fst, &inv_cfst, &context_dep_fst);
+
+
+  // at this point, context_dep_fst will have indexes into
+  // 'inv_cfst.IlabelInfo()' as its input symbol (representing context-dependent
+  // phones), and phones on its output.  We don't need the phones, so we'll
+  // project.
   fst::Project(&context_dep_fst, fst::PROJECT_INPUT);
 
-  std::vector<int32> disambig_syms_h; // disambiguation symbols on input side
-                                      // of H -- will be empty.
+  std::vector<int32> disambig_syms_h; // disambiguation symbols on input side of
+                                      // H -- will be empty, as there were no
+                                      // disambiguation symbols on the output.
 
   HTransducerConfig h_cfg;
 
@@ -327,7 +337,7 @@ bool ProtoSupervisionToSupervision(
   // when we compose with the denominator graph.
   h_cfg.transition_scale = 0.0;
 
-  VectorFst<StdArc> *h_fst = GetHTransducer(cfst.ILabelInfo(),
+  VectorFst<StdArc> *h_fst = GetHTransducer(inv_cfst.IlabelInfo(),
                                             ctx_dep,
                                             trans_model,
                                             h_cfg,

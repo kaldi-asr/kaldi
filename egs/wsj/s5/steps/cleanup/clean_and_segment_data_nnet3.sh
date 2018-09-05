@@ -28,14 +28,14 @@ lattice_beam=1.0
 
 # Contexts must ideally match training
 extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
-extra_right_context=0  
+extra_right_context=0
 extra_left_context_initial=-1
 extra_right_context_final=-1
 frames_per_chunk=150
 
 # i-vector options
-extractor=    # i-Vector extractor. If provided, will extract i-vectors. 
-              # Required if the network was trained with i-vector extractor. 
+extractor=    # i-Vector extractor. If provided, will extract i-vectors.
+              # Required if the network was trained with i-vector extractor.
 use_vad=   # Use energy-based VAD for i-vector extraction
 
 segmentation_opts=
@@ -51,10 +51,10 @@ if [ $# -ne 5 ]; then
    may do other minor modifications of transcripts such as allowing repetitions
    for disfluencies, and adding or removing non-scored words (by default:
    words that map to 'silence phones')
-   Note: <srcdir> is expected to contain a nnet3-based model. 
+   Note: <srcdir> is expected to contain a nnet3-based model.
    <ivector-extractor> and decoding options like --extra-left-context must match
    the appropriate options used for training.
-  
+
   e.g. $0 data/train data/lang exp/tri3 exp/tri3_cleanup data/train_cleaned
   main options (for others, see top of script file):
     --stage <n>             # stage to run from, to enable resuming from partially
@@ -69,7 +69,7 @@ if [ $# -ne 5 ]; then
                                 # Please run steps/cleanup/internal/segment_ctm_edits.py
                                 # without arguments to see allowed options.
     --cleanup        <true|false>  # Clean up intermediate files afterward.  Default true.
-    --extractor <extractor>     # i-vector extractor directory if i-vector is 
+    --extractor <extractor>     # i-vector extractor directory if i-vector is
                                 # to be used during decoding. Must match
                                 # the extractor used for training neural-network.
     --use-vad <true|false>      # If true, uses energy-based VAD to apply frame weights
@@ -147,7 +147,7 @@ if [ $stage -le 3 ]; then
     --frames-per-chunk $frames_per_chunk \
     ${online_ivector_dir:+--online-ivector-dir $online_ivector_dir} \
     $dir/graphs $data $dir/lats
-  
+
   # the following is for diagnostics, e.g. it will give us the lattice depth.
   steps/diagnostic/analyze_lats.sh --cmd "$cmd" $lang $dir/lats
 fi
@@ -230,7 +230,7 @@ if [ $stage -le 8 ]; then
   # the apply_map command below gives us lines of the form 'utt dur-from-$data/utt2dur dur-from-utt2dur.from_ctm',
   # e.g. AMI_EN2001a_H00_MEE068_0000557_0000594 0.37 0.35
   utils/apply_map.pl -f 1 <(awk '{print $1,$1,$2}' <$data/utt2dur) <$dir/utt2dur.from_ctm  | \
-    awk '{printf("%.3f\n", $2 - $3); }' | sort | uniq -c > $dir/padding_frequencies
+    awk '{printf("%.3f\n", $2 - $3); }' | sort | uniq -c | sort -nr > $dir/padding_frequencies
   # there are values other than the most-frequent one (0.02) in there because
   # of wav files that were shorter than the segment info.
   padding=$(head -n 1 $dir/padding_frequencies | awk '{print $2}')

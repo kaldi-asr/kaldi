@@ -1327,6 +1327,8 @@ template<typename Real> static void UnitTestCuMatrixSetMatMatDivMat() {
   B.SetRandn();
   C.SetRandn();
 
+  C.ApplyFloor(0.01);  // make sure there are no zeros.
+
   M.SetMatMatDivMat(A,B,C);
   ref.AddMatMatElements(1.0, A, B, 0.0);
   ref.DivElements(C);

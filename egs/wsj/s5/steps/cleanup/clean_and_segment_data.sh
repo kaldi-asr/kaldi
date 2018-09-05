@@ -179,7 +179,7 @@ if [ $stage -le 8 ]; then
   # the apply_map command below gives us lines of the form 'utt dur-from-$data/utt2dur dur-from-utt2dur.from_ctm',
   # e.g. AMI_EN2001a_H00_MEE068_0000557_0000594 0.37 0.35
   utils/apply_map.pl -f 1 <(awk '{print $1,$1,$2}' <$data/utt2dur) <$dir/utt2dur.from_ctm  | \
-    awk '{printf("%.3f\n", $2 - $3); }' | sort | uniq -c > $dir/padding_frequencies
+    awk '{printf("%.3f\n", $2 - $3); }' | sort | uniq -c | sort -nr > $dir/padding_frequencies
   # there are values other than the most-frequent one (0.02) in there because
   # of wav files that were shorter than the segment info.
   padding=$(head -n 1 $dir/padding_frequencies | awk '{print $2}')

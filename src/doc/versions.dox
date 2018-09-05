@@ -61,7 +61,7 @@
     This is the first major/minor version number after introducing the versioning scheme.
     The latest revision of version 5.0 is saved as branch "5.0" on github.
 
-    Below are patches corresponding to minor version numbers 5.0.x.
+    Below are commits corresponding to minor version numbers 5.0.x.
 
      \htmlinclude 5.0.html
 
@@ -89,7 +89,7 @@
 
    The latest revision of version 5.1 is saved as branch "5.1" on github.
 
-   Below are patches corresponding to minor version numbers 5.1.x.
+   Below are commits corresponding to minor version numbers 5.1.x.
 
     \htmlinclude 5.1.html
 
@@ -110,7 +110,7 @@
 
   The latest revision of version 5.2 is saved as branch "5.2" on github.
 
-  Below are patches corresponding to minor version numbers 5.1.x.
+  Below are commits corresponding to minor version numbers 5.1.x.
 
     \htmlinclude 5.2.html
 
@@ -123,28 +123,50 @@
       - Some extentions to the core of the nnet3 framework to support constant values and
         scalar multiplication without dedicated compoennts.
 
-   Below are patches corresponding to minor version numbers 5.3.x.
+   Below are commits corresponding to minor version numbers 5.3.x.
 
    \htmlinclude 5.3.html
 
  \subsection versions_versions_54 Version 5.4
 
 
-   Version 5.4 is the current master branch.   The main changes that were made between
+   The main changes that were made between
    the end of 5.3.x and the start of the 5.4 branch include:
     - Some code changes in the nnet3 codebase, for speed and memory efficiency.
     - Various simplifications and code reorganizations in the nnet3 code.
-    - Support for a new kind of factorized TDNN which gives substantially better
+    - Support for a new kind of factorized TDNN (TDNN-F) which gives substantially better
       results than our old TDNN recipe, and is even better than our old TDNN+LSTM
       recipe.  A good example of this is in egs/swbd/s5c/local/chain/tuning/run_tdnn_lstm_1n.sh.
       Some nnet3 code changes were needed for this as well (mostly: support for constraining
       a matrix to have orthonormal rows).
 
-   Below are patches corresponding to minor version numbers 5.4.x.
+  Some of the larger changes that were made while 5.4 was the major version number include:
+    - Improvements to handwriting recognition and OCR recipes, including BPE (word-piece) encoding.
+    - An updated version of the TDNN-F configuration, including ResNet-style bypass,
+      which is now the default in many recipes.  (it's called tdnnf-layer in xconfigs).
+    - A rewrite of the CUDA memory allocator to be based on a small number of large regions
+      (since with newer drivers and hardware, allocation speed was becoming a bottleneck).
+    - A decoder speedup (make use of OpenFst's NumInputEpsilons() function).
+
+
+   Below are commits corresponding to minor version numbers 5.4.x.
 
    \htmlinclude 5.4.html
 
 
+
+ \subsection versions_versions_55 Version 5.5
+
+
+  Version 5.5 is the current master branch.   The change that was made between the end of
+  5.4 and the start of 5.5 is support for \ref grammar grammar decoding; this allows support for things like
+  the "contact list scenario" where you want to use a dynamically changing contact list in
+  a larger, fixed decoding graph.
+
+  Below are commits corresponding to minor version numbers 5.5.x.
+
+
+    \htmlinclude 5.5.html
 
 
 */

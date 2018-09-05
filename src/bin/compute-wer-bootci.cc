@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
       "Compute a bootstrapping of WER to extract the 95\% confidence interval.\n"
       "Take a reference and a transcription file, in integer or text format,\n"
       "and outputs overall WER statistics to standard output along with its\n"
-      "confidence interval using the bootstrap methos of Bisani and Ney.\n"
+      "confidence interval using the bootstrap method of Bisani and Ney.\n"
       "If a second transcription file corresponding to the same reference is\n"
       "provided, a bootstrap comparison of the two transcription is performed\n"
       "to estimate the probability of improvement.\n"

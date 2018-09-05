@@ -98,7 +98,7 @@ if [ $stage -le 3 ]; then
     steps/lmrescore.sh --mode 3 \
       data/lang_test_tgpr_5k \
       data/lang_test_${lm_suffix} \
-      data/${t}_${enhan}_hires \
+      data/${t}_${enhan}_chunked \
       $srcdir/decode_tgpr_5k_${t}_${enhan} \
       $dir/decode_tgpr_5k_${t}_${enhan}_${lm_suffix}
   done
@@ -128,7 +128,7 @@ if [ $stage -le 4 ]; then
       $rnnweight \
       data/lang_test_${lm_suffix} \
       data/lang_test_${rnnlm_suffix} \
-      data/${t}_${enhan}_hires \
+      data/${t}_${enhan}_chunked \
       $dir/decode_tgpr_5k_${t}_${enhan}_${lm_suffix} \
       $dir/decode_tgpr_5k_${t}_${enhan}_${rnnlm_suffix}_w${rnnweight}_n${nbest}
   done
