@@ -1,20 +1,20 @@
 #!/bin/bash
 
-# This was modified from wsj/local/chain/tunning/run_tdnn_1d.sh to be
+# This was modified from wsj/local/chain/tunning/run_tdnn_1e.sh to be
 # used in Chime4.
 
 #This is the result using all 6 channels:
-# exp/chain/tdnn1a_sp/best_wer_beamformit_5mics.result
+# exp/chain/tdnn1a_sp/best_wer_blstm_gev.result
 # -------------------
-# best overall dt05 WER 6.04% (language model weight = 9)
+# best overall dt05 WER 4.34% (language model weight = 7)
 # -------------------
-# dt05_simu WER: 6.25% (Average), 5.71% (BUS), 6.92% (CAFE), 5.37% (PEDESTRIAN), 7.02% (STREET)
+# dt05_simu WER: 4.46% (Average), 4.12% (BUS), 5.29% (CAFE), 4.00% (PEDESTRIAN), 4.42% (STREET)
 # -------------------
-# dt05_real WER: 5.83% (Average), 7.48% (BUS), 5.28% (CAFE), 4.43% (PEDESTRIAN), 6.13% (STREET)
+# dt05_real WER: 4.21% (Average), 4.94% (BUS), 4.07% (CAFE), 3.81% (PEDESTRIAN), 4.04% (STREET)
 # -------------------
-# et05_simu WER: 10.30% (Average), 7.34% (BUS), 10.37% (CAFE), 10.05% (PEDESTRIAN), 13.43% (STREET)
+# et05_simu WER: 5.50% (Average), 4.78% (BUS), 5.86% (CAFE), 5.51% (PEDESTRIAN), 5.83% (STREET)
 # -------------------
-# et05_real WER: 9.67% (Average), 12.71% (BUS), 8.33% (CAFE), 8.20% (PEDESTRIAN), 9.45% (STREET)
+# et05_real WER: 5.78% (Average), 6.82% (BUS), 5.10% (CAFE), 5.70% (PEDESTRIAN), 5.51% (STREET)
 # -------------------
 # Final train prob        -0.080
 # Final valid prob        -0.075
@@ -32,9 +32,7 @@ set -e -o pipefail
 stage=1
 nj=30
 train=noisy
-enhan=$1
 train_set=tr05_multi_${train}
-test_sets="dt05_real_$enhan dt05_simu_$enhan et05_real_$enhan et05_simu_$enhan"
 gmm=tri3b_tr05_multi_${train} # this is the source gmm-dir that we'll use for alignments; it
                               # should have alignments for the specified training data.
 num_threads_ubm=32
@@ -57,11 +55,11 @@ chunk_right_context=0
 
 # training options
 srand=0
-remove_egs=false
+remove_egs=true
 
 #decode options
 test_online_decoding=false  # if true, it will run the last decoding stage.
-
+decode_only=false # if true, it wouldn't train a model again and will only do decoding
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -70,6 +68,8 @@ echo "$0 $@"  # Print the command line for logging
 . ./path.sh
 . ./utils/parse_options.sh
 
+enhan=$1
+test_sets="dt05_real_$enhan dt05_simu_$enhan et05_real_$enhan et05_simu_$enhan"
 
 if ! cuda-compiled; then
   cat <<EOF && exit 1
@@ -91,12 +91,55 @@ if [ ! -d exp/tri3b_tr05_multi_${train} ]; then
   exit 1;
 fi
 
-local/nnet3/run_ivector_common.sh \
-  --stage $stage --nj $nj \
-  --train-set "$train_set" --gmm $gmm \
-  --test-sets "$test_sets" \
-  --num-threads-ubm $num_threads_ubm \
-  --nnet3-affix "$nnet3_affix"
+if $decode_only; then
+  mdir=`pwd`
+  # check ivector extractor
+  if [ ! -d $mdir/exp/nnet3${nnet3_affix}/extractor ]; then
+    echo "error, set $mdir correctly"
+    exit 1;
+  fi
+  # check tdnn graph
+  if [ ! -d $mdir/exp/chain${nnet3_affix}/tree_a_sp/graph_tgpr_5k ]; then
+    echo "error, set $mdir correctly"
+    exit 1;
+  fi
+  # check dir
+  if [ ! -d $mdir/exp/chain${nnet3_affix}/tdnn${affix}_sp ]; then
+    echo "error, set $mdir correctly"
+    exit 1;
+  fi
+
+  # make ivector for dev and eval
+  for datadir in ${test_sets}; do
+    utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
+  done
+
+  # extracting hires features
+  for datadir in ${test_sets}; do
+    steps/make_mfcc.sh --nj $nj --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" data/${datadir}_hires
+    steps/compute_cmvn_stats.sh data/${datadir}_hires
+    utils/fix_data_dir.sh data/${datadir}_hires
+  done
+
+  # extract iVectors for the test data, but in this case we don't need the speed
+  # perturbation (sp).
+  for data in ${test_sets}; do
+    nspk=$(wc -l <data/${data}_hires/spk2utt)
+    steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj "${nspk}" \
+    data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
+    exp/nnet3${nnet3_affix}/ivectors_${data}_hires
+  done
+  # directly do decoding
+  stage=18
+else
+  local/nnet3/run_ivector_common.sh \
+    --stage $stage --nj $nj \
+    --train-set "$train_set" --gmm $gmm \
+    --test-sets "$test_sets" \
+    --num-threads-ubm $num_threads_ubm \
+    --nnet3-affix "$nnet3_affix"
+fi
 
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_ali_${train_set}_sp
@@ -175,6 +218,8 @@ if [ $stage -le 15 ]; then
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  opts="l2-regularize=0.01"
+  output_opts="l2-regularize=0.005"
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
@@ -187,18 +232,18 @@ if [ $stage -le 15 ]; then
   fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-batchnorm-layer name=tdnn1 dim=750
-  relu-batchnorm-layer name=tdnn2 dim=750 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn3 dim=750
-  relu-batchnorm-layer name=tdnn4 dim=750 input=Append(-1,0,1)
-  relu-batchnorm-layer name=tdnn5 dim=750
-  relu-batchnorm-layer name=tdnn6 dim=750 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn7 dim=750 input=Append(-3,0,3)
-  relu-batchnorm-layer name=tdnn8 dim=750 input=Append(-6,-3,0)
+  relu-batchnorm-layer name=tdnn1 $opts dim=850
+  relu-batchnorm-layer name=tdnn2 $opts dim=850 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn3 $opts dim=850
+  relu-batchnorm-layer name=tdnn4 $opts dim=850 input=Append(-1,0,1)
+  relu-batchnorm-layer name=tdnn5 $opts dim=850
+  relu-batchnorm-layer name=tdnn6 $opts dim=850 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn7 $opts dim=850 input=Append(-3,0,3)
+  relu-batchnorm-layer name=tdnn8 $opts dim=850 input=Append(-6,-3,0)
 
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=750 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  relu-batchnorm-layer name=prefinal-chain $opts dim=850 target-rms=0.5
+  output-layer name=output $output_opts include-log-softmax=false dim=$num_targets max-change=1.5
 
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
@@ -209,8 +254,8 @@ if [ $stage -le 15 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn8 dim=750 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  relu-batchnorm-layer name=prefinal-xent $opts input=tdnn8 dim=850 target-rms=0.5
+  output-layer name=output-xent $output_opts dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -221,7 +266,12 @@ if [ $stage -le 16 ]; then
     utils/create_split_dir.pl \
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/chime4-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
-
+  
+  cat $train_data_dir/utt2uniq | awk -F' ' '{print $1}' > $train_data_dir/utt2uniq.tmp1
+  cat $train_data_dir/utt2uniq | awk -F' ' '{print $2}' | sed -e 's/\....//g' | sed -e 's/\_CH.//g' | sed -e 's/\_enhan//g' > $train_data_dir/utt2uniq.tmp2
+  paste -d" " $train_data_dir/utt2uniq.tmp1 $train_data_dir/utt2uniq.tmp2 > $train_data_dir/utt2uniq
+  rm -rf $train_data_dir/utt2uniq.tmp{1,2}
+  
   steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd="$decode_cmd" \
     --feat.online-ivector-dir=$train_ivector_dir \
@@ -233,16 +283,17 @@ if [ $stage -le 16 ]; then
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=6 \
+    --trainer.num-epochs=12 \
     --trainer.frames-per-iter=3000000 \
     --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=5 \
-    --trainer.optimization.initial-effective-lrate=0.003 \
-    --trainer.optimization.final-effective-lrate=0.0003 \
+    --trainer.optimization.num-jobs-final=12 \
+    --trainer.optimization.initial-effective-lrate=0.005 \
+    --trainer.optimization.final-effective-lrate=0.0005 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.optimization.proportional-shrink=60.0 \
     --trainer.num-chunk-per-minibatch=128,64 \
     --trainer.optimization.momentum=0.0 \
+    --trainer.optimization.backstitch-training-scale=0.3 \
+    --trainer.optimization.backstitch-training-interval=1 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=0 \
     --egs.chunk-right-context=0 \
@@ -280,8 +331,11 @@ if [ $stage -le 18 ]; then
 
   for data in $test_sets; do
     (
+      utils/data/modify_speaker_info.sh --seconds-per-spk-max 200 \
+        data/${data}_hires data/${data}_chunked
+      
       data_affix=$(echo $data | sed s/test_//)
-      nspk=$(wc -l <data/${data}_hires/spk2utt)
+      nspk=$(wc -l <data/${data}_chunked/spk2utt)
       for lmtype in tgpr_5k; do
         steps/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
@@ -291,7 +345,7 @@ if [ $stage -le 18 ]; then
           --frames-per-chunk $frames_per_chunk \
           --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
           --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
-          $tree_dir/graph_${lmtype} data/${data}_hires ${dir}/decode_${lmtype}_${data_affix} || exit 1
+          $tree_dir/graph_${lmtype} data/${data}_chunked ${dir}/decode_${lmtype}_${data_affix} || exit 1
       done
     ) || touch $dir/.error &
   done
