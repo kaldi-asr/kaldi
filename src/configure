@@ -1323,7 +1323,11 @@ elif [ "`uname`" == "Linux" ]; then
       # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
       OPENBLASINCDIR=$OPENBLASROOT/include/openblas
     else 
-      echo "Assuming openblas is aleady in a default include path"
+      echo "$0: ***** Using OpenBlas from $OPENBLASROOT but cblas.h is not found. "
+      echo " ****** Assuming openblas is aleady in a default include path, but"
+      echo " ***** if you get compilation messages about not finding files like cblas.h,"
+      echo " ***** you should look into this (e.g. make sure to install the 'openblas-dev' package,"
+      echo " ***** if it is a package-based install)."
       OPENBLASINCDIR="/usr/include"
     fi
     echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
