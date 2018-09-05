@@ -297,9 +297,9 @@ static bool CompileLoopedInternal(
   for (int32 i = 0; i < num_requests - 3; i++) {
     if (!ExtrapolateComputationRequest(*prev_request, *cur_request,
                                        &(extra_requests[i]))) {
-      KALDI_LOG << "prev_request is:";
+      KALDI_VLOG(3) << "prev_request is:";
       prev_request->Print(std::cerr);
-      KALDI_LOG << "cur_request is:";
+      KALDI_VLOG(3) << "cur_request is:";
       cur_request->Print(std::cerr);
       KALDI_ERR << "Computation requests do not have the right relationship";
     }
@@ -342,8 +342,8 @@ void CompileLooped(const Nnet &nnet,
     if (CompileLoopedInternal(nnet, optimize_opts,
                              request1, request2, request3,
                              num_requests, computation)) {
-      KALDI_LOG << "Spent " << timer.Elapsed()
-                << " seconds in looped compilation.";
+      KALDI_VLOG(3) << "Spent " << timer.Elapsed()
+                    << " seconds in looped compilation.";
       return;
     } else {
       KALDI_VLOG(2) << "Looped compilation failed with "

@@ -977,7 +977,7 @@ BaseFloat ClusterKMeansOnce(const std::vector<Clusterable*> &points,
     if (cfg.verbose) objf_after = SumClusterableObjf(*clusters_out);
     ans += impr;
     if (cfg.verbose)
-      KALDI_LOG << "ClusterKMeans: on iteration "<<(iter)<<", objf before = "<<(objf_before)<<", impr = "<<(impr)<<", objf after = "<<(objf_after)<<", normalized by "<<(normalizer)<<" = "<<(objf_after/normalizer);
+      KALDI_VLOG(2) << "ClusterKMeans: on iteration "<<(iter)<<", objf before = "<<(objf_before)<<", impr = "<<(impr)<<", objf after = "<<(objf_after)<<", normalized by "<<(normalizer)<<" = "<<(objf_after/normalizer);
     if (impr == 0) break;
   }
   return ans;

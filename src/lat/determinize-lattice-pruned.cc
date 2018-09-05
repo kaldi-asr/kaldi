@@ -280,7 +280,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     needed_strings.erase(std::unique(needed_strings.begin(),
                                      needed_strings.end()),
                          needed_strings.end()); // uniq the strings.
-    KALDI_LOG << "Rebuilding repository.";
+    KALDI_VLOG(3) << "Rebuilding repository.";
 
     repository_.Rebuild(needed_strings);
   }
@@ -313,13 +313,13 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
           double total_weight = backward_costs_[ifst_->Start()]; // best weight of FST.
           effective_beam = task->priority_cost - total_weight;
         }
-        KALDI_WARN << "Did not reach requested beam in determinize-lattice: "
-                   << "size exceeds maximum " << opts_.max_mem
-                   << " bytes; (repo,arcs,elems) = (" << repo_size << ","
-                   << arcs_size << "," << elems_size
-                   << "), after rebuilding, repo size was " << new_repo_size
-                   << ", effective beam was " << effective_beam
-                   << " vs. requested beam " << beam_;
+        KALDI_VLOG(1) << "Did not reach requested beam in determinize-lattice: "
+                      << "size exceeds maximum " << opts_.max_mem
+                      << " bytes; (repo,arcs,elems) = (" << repo_size << ","
+                      << arcs_size << "," << elems_size
+                      << "), after rebuilding, repo size was " << new_repo_size
+                      << ", effective beam was " << effective_beam
+                      << " vs. requested beam " << beam_;
         return false;
       }
     }
@@ -1278,9 +1278,11 @@ bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
         effective_beam = 0;
       double new_beam = beam * sqrt(effective_beam / beam);
       if (new_beam < 0.5 * beam) new_beam = 0.5 * beam;
-      KALDI_WARN << "Effective beam " << effective_beam << " was less than beam "
-                 << beam << " * cutoff " << opts.retry_cutoff << ", pruning raw "
-                 << "lattice with new beam " << new_beam << " and retrying.";
+      KALDI_VLOG(1) << "Effective beam " << effective_beam 
+                    << " was less than beam " << beam 
+                    << " * cutoff " << opts.retry_cutoff 
+                    << ", pruning raw " << "lattice with new beam " 
+                    << new_beam << " and retrying.";
       beam = new_beam;
       if (iter == 0) temp_fst = ifst;
       kaldi::PruneLattice(beam, &temp_fst);
