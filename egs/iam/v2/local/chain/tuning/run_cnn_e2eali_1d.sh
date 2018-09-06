@@ -1,21 +1,20 @@
 #!/bin/bash
 
 # This script does end2end chain training (i.e. from scratch)
-# ./local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/ exp/chain/cnn_e2eali_1d
-# System                      e2e_cnn_1a cnn_e2eali_1d
-# WER                             13.59      9.45
-# WER (rescored)                  13.27      9.28
-# CER                              6.92      4.41
-# CER (rescored)                   6.71      4.31
-# Final train prob               0.0345   -0.0451
-# Final valid prob               0.0269   -0.0684
-# Final train prob (xent)                 -0.4241
-# Final valid prob (xent)                 -0.5068
-# Parameters                      9.52M     5.13M
+# ./local/chain/compare_wer.sh exp/chain/e2e_cnn_1b/ exp/chain/cnn_e2eali_1d
+# System                      e2e_cnn_1b cnn_e2eali_1d
+# WER                             13.91      9.59
+# WER (rescored)                  13.64      9.09
+# CER                              7.08      4.49
+# CER (rescored)                   6.82      4.35
+# Final train prob               0.0148   -0.0504
+# Final valid prob               0.0105   -0.0716
+# Final train prob (xent)                 -0.4695
+# Final valid prob (xent)                 -0.5347
+# Parameters                      9.52M     5.08M
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1d
-# exp/chain/cnn_e2eali_1d/: num-iters=36 nj=3..5 num-params=5.1M dim=40->400 combine=-0.047->-0.047 (over 1) xent:train/valid[23,35,final]=(-0.705,-0.446,-0.424/-0.714,-0.523,-0.507) logprob:train/valid[23,35,final]=(-0.095,-0.049,-0.045/-0.110,-0.073,-0.068)
-
+# exp/chain/cnn_e2eali_1d: num-iters=24 nj=3..5 num-params=5.1M dim=40->400 combine=-0.054->-0.054 (over 1) xent:train/valid[15,23,final]=(-0.727,-0.497,-0.470/-0.734,-0.557,-0.535) logprob:train/valid[15,23,final]=(-0.093,-0.057,-0.050/-0.110,-0.078,-0.072)
 set -e -o pipefail
 
 stage=0
@@ -196,7 +195,7 @@ if [ $stage -le 5 ]; then
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=6 \
-    --trainer.frames-per-iter=1500000 \
+    --trainer.frames-per-iter=2000000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=5 \
     --trainer.dropout-schedule $dropout_schedule \
