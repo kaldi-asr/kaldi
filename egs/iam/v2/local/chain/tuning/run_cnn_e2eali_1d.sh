@@ -1,20 +1,20 @@
 #!/bin/bash
 
 # This script does end2end chain training (i.e. from scratch)
-# ./local/chain/compare_wer.sh exp/chain/e2e_cnn_1b/ exp/chain/cnn_e2eali_1d
+# local/chain/compare_wer.sh exp/chain/e2e_cnn_1b/ exp/chain/cnn_e2eali_1d
 # System                      e2e_cnn_1b cnn_e2eali_1d
-# WER                             13.91      9.59
-# WER (rescored)                  13.64      9.09
-# CER                              7.08      4.49
-# CER (rescored)                   6.82      4.35
-# Final train prob               0.0148   -0.0504
-# Final valid prob               0.0105   -0.0716
+# WER                             13.91      9.32
+# WER (rescored)                  13.64      9.07
+# CER                              7.08      4.35
+# CER (rescored)                   6.82      4.24
+# Final train prob               0.0148   -0.0524
+# Final valid prob               0.0105   -0.0713
 # Final train prob (xent)                 -0.4695
-# Final valid prob (xent)                 -0.5347
-# Parameters                      9.52M     5.08M
+# Final valid prob (xent)                 -0.5310
+# Parameters                      9.52M     4.36M
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1d
-# exp/chain/cnn_e2eali_1d: num-iters=24 nj=3..5 num-params=5.1M dim=40->400 combine=-0.054->-0.054 (over 1) xent:train/valid[15,23,final]=(-0.727,-0.497,-0.470/-0.734,-0.557,-0.535) logprob:train/valid[15,23,final]=(-0.093,-0.057,-0.050/-0.110,-0.078,-0.072)
+# exp/chain/cnn_e2eali_1d: num-iters=30 nj=3..5 num-params=4.4M dim=40->400 combine=-0.055->-0.055 (over 1) xent:train/valid[19,29,final]=(-0.683,-0.489,-0.469/-0.703,-0.544,-0.531) logprob:train/valid[19,29,final]=(-0.090,-0.057,-0.052/-0.107,-0.076,-0.071)
 set -e -o pipefail
 
 stage=0
@@ -150,7 +150,8 @@ if [ $stage -le 4 ]; then
   conv-relu-batchnorm-dropout-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
   conv-relu-batchnorm-dropout-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
   conv-relu-batchnorm-dropout-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common3 height-subsample-out=2
-  relu-batchnorm-dropout-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
+  conv-relu-batchnorm-dropout-layer name=cnn6 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
+  relu-batchnorm-dropout-layer name=tdnn1 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
   relu-batchnorm-dropout-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
 
@@ -194,8 +195,8 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=6 \
-    --trainer.frames-per-iter=2000000 \
+    --trainer.num-epochs=5 \
+    --trainer.frames-per-iter=1500000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=5 \
     --trainer.dropout-schedule $dropout_schedule \
