@@ -89,21 +89,25 @@ row_to_keep = [True for i in range(len(original_corpus_text))]
 remaining_utterances = dict()
 for line_id, line_to_find in utterance_dict.items():
     found_line = False
-    for i in range(1, (len(corpus_text_lowercase_wo_sc) - 2)):
-        # Combine 3 consecutive lines of the corpus into a single line
-        prev_words = corpus_text_lowercase_wo_sc[i - 1].strip()
-        curr_words = corpus_text_lowercase_wo_sc[i].strip()
-        next_words = corpus_text_lowercase_wo_sc[i + 1].strip()
-        new_line = prev_words + curr_words + next_words
-        transcript = ''.join(new_line)
-        if line_to_find in transcript:
-            found_line = True
-            row_to_keep[i-1] = False
-            row_to_keep[i] = False
-            row_to_keep[i+1] = False
+    # avoiding very small utterance, it causes removing
+    # complete lob text
+    if len(line_to_find) < 13:
+        remaining_utterances[line_id] = line_to_find
+    else:
+        for i in range(1, (len(corpus_text_lowercase_wo_sc) - 2)):
+            # Combine 3 consecutive lines of the corpus into a single line
+            prev_words = corpus_text_lowercase_wo_sc[i - 1].strip()
+            curr_words = corpus_text_lowercase_wo_sc[i].strip()
+            next_words = corpus_text_lowercase_wo_sc[i + 1].strip()
+            new_line = prev_words + curr_words + next_words
+            transcript = ''.join(new_line)
+            if line_to_find in transcript:
+                found_line = True
+                row_to_keep[i-1] = False
+                row_to_keep[i] = False
+                row_to_keep[i+1] = False
     if not found_line:
         remaining_utterances[line_id] = line_to_find
-
 
 for i in range(len(original_corpus_text)):
     transcript = original_corpus_text[i].strip()
