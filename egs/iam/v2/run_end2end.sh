@@ -93,12 +93,12 @@ END
 
   cut -d' ' -f2- data/train/text > data/local/train_data.txt
   cat data/local/phones.txt data/local/train_data.txt | \
-    local/prepend_words.py | \
+    utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
   for set in test train val train_aug; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | \
-      local/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+      utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
       | sed 's/@@//g' > data/$set/bpe_text
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
