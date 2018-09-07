@@ -3,10 +3,10 @@
 # This script does end2end chain training (i.e. from scratch)
 # local/chain/compare_wer.sh exp/chain/e2e_cnn_1b/ exp/chain/cnn_e2eali_1d
 # System                      e2e_cnn_1b cnn_e2eali_1d
-# WER                             13.91      9.32
-# WER (rescored)                  13.64      9.07
-# CER                              7.08      4.35
-# CER (rescored)                   6.82      4.24
+# WER                             13.91      8.80
+# WER (rescored)                  13.64      8.52
+# CER                              7.08      4.06
+# CER (rescored)                   6.82      3.98
 # Final train prob               0.0148   -0.0524
 # Final valid prob               0.0105   -0.0713
 # Final train prob (xent)                 -0.4695
