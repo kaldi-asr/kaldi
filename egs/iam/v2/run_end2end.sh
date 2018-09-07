@@ -52,12 +52,15 @@ if [ $stage -le 2 ]; then
   # which will be used by local/make_features.py to enforce the images to
   # have allowed lengths. The allowed lengths will be spaced by 10% difference in length.
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
-  for set in train test; do
-    echo "$(date) Extracting features, creating feats.scp file"
-    local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set}
+  echo "$(date) Extracting features, creating feats.scp file"
+  local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/train
+  steps/compute_cmvn_stats.sh data/train || exit 1;
+  for set in val test; do
+    local/extract_features.sh --nj $nj --cmd "$cmd" --augment true \
+    --feat-dim 40 data/${set}
     steps/compute_cmvn_stats.sh data/${set} || exit 1;
   done
-  image/fix_data_dir.sh data/train
+  utils/fix_data_dir.sh data/train
 fi
 
 if [ $stage -le 3 ]; then
