@@ -68,7 +68,7 @@ if [ $stage -le 4 ]; then
   echo "Starting triphone training."
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
       data/train data/lang exp/mono exp/mono_ali
-  steps/train_deltas.sh --boost-silence 1.25  --cmd "$train_cmd"  \
+  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd"  \
       3200 30000 data/train data/lang exp/mono_ali exp/tri1
   echo "Triphone training done."
 
@@ -78,7 +78,7 @@ if [ $stage -le 4 ]; then
   steps/decode.sh --nj $dev_nj --cmd "$decode_cmd"  \
       exp/tri1/graph  data/dev exp/tri1/decode_dev
 
-  steps/lmrescore_const_arpa.sh  --cmd "$decode_cmd" \
+  steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_test/ data/lang_big/ data/dev \
       exp/tri1/decode_dev exp/tri1/decode_dev.rescored
   echo "Triphone decoding done."
@@ -89,7 +89,7 @@ if [ $stage -le 5 ]; then
   ## Triphones + delta delta
   # Training
   echo "Starting (larger) triphone training."
-  steps/align_si.sh  --nj $nj --cmd "$train_cmd" --use-graphs true \
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" --use-graphs true \
        data/train data/lang exp/tri1 exp/tri1_ali
   steps/train_deltas.sh --cmd "$train_cmd"  \
       4200 40000 data/train data/lang exp/tri1_ali exp/tri2a
@@ -97,11 +97,11 @@ if [ $stage -le 5 ]; then
 
   (
   echo "Decoding the dev set using triphone(large) models."
-  utils/mkgraph.sh data/lang_test  exp/tri2a exp/tri2a/graph
+  utils/mkgraph.sh data/lang_test exp/tri2a exp/tri2a/graph
   steps/decode.sh --nj $dev_nj --cmd "$decode_cmd" \
-      exp/tri2a/graph  data/dev exp/tri2a/decode_dev
+      exp/tri2a/graph data/dev exp/tri2a/decode_dev
 
-  steps/lmrescore_const_arpa.sh  --cmd "$decode_cmd" \
+  steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_test/ data/lang_big/ data/dev \
       exp/tri2a/decode_dev exp/tri2a/decode_dev.rescored
   echo "Triphone(large) decoding done."
@@ -112,21 +112,21 @@ if [ $stage -le 6 ]; then
   ### Triphone + LDA and MLLT
   # Training
   echo "Starting LDA+MLLT training."
-  steps/align_si.sh  --nj $nj --cmd "$train_cmd"  \
+  steps/align_si.sh --nj $nj --cmd "$train_cmd"  \
       data/train data/lang exp/tri2a exp/tri2a_ali
 
-  steps/train_lda_mllt.sh  --cmd "$train_cmd"  \
+  steps/train_lda_mllt.sh --cmd "$train_cmd"  \
     --splice-opts "--left-context=3 --right-context=3" \
-    4200 40000 data/train data/lang  exp/tri2a_ali exp/tri2b
+    4200 40000 data/train data/lang exp/tri2a_ali exp/tri2b
   echo "LDA+MLLT training done."
 
   (
   echo "Decoding the dev set using LDA+MLLT models."
-  utils/mkgraph.sh data/lang_test  exp/tri2b exp/tri2b/graph
-  steps/decode.sh --nj $dev_nj    --cmd "$decode_cmd" \
-      exp/tri2b/graph  data/dev exp/tri2b/decode_dev
+  utils/mkgraph.sh data/lang_test exp/tri2b exp/tri2b/graph
+  steps/decode.sh --nj $dev_nj --cmd "$decode_cmd" \
+      exp/tri2b/graph data/dev exp/tri2b/decode_dev
 
-  steps/lmrescore_const_arpa.sh  --cmd "$decode_cmd" \
+  steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_test/ data/lang_big/ data/dev \
       exp/tri2b/decode_dev exp/tri2b/decode_dev.rescored
   echo "LDA+MLLT decoding done."
@@ -138,7 +138,7 @@ if [ $stage -le 7 ]; then
   ### Triphone + LDA and MLLT + SAT and FMLLR
   # Training
   echo "Starting SAT+FMLLR training."
-  steps/align_si.sh  --nj $nj --cmd "$train_cmd" \
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
       --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali
   steps/train_sat.sh --cmd "$train_cmd" 4200 40000 \
       data/train data/lang exp/tri2b_ali exp/tri3b
@@ -150,7 +150,7 @@ if [ $stage -le 7 ]; then
   steps/decode_fmllr.sh --nj $dev_nj --cmd "$decode_cmd" \
       exp/tri3b/graph  data/dev exp/tri3b/decode_dev
 
-  steps/lmrescore_const_arpa.sh  --cmd "$decode_cmd" \
+  steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_test/ data/lang_big/ data/dev \
       exp/tri3b/decode_dev exp/tri3b/decode_dev.rescored
   echo "SAT+FMLLR decoding done."
@@ -163,10 +163,10 @@ if [ $stage -le 8 ]; then
   steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
       data/train data/lang exp/tri3b exp/tri3b_ali
 
-  steps/train_ubm.sh  --cmd "$train_cmd"  \
+  steps/train_ubm.sh --cmd "$train_cmd"  \
       600 data/train data/lang exp/tri3b_ali exp/ubm5b2
 
-  steps/train_sgmm2.sh  --cmd "$train_cmd"  \
+  steps/train_sgmm2.sh --cmd "$train_cmd"  \
        5200 12000 data/train data/lang exp/tri3b_ali exp/ubm5b2/final.ubm exp/sgmm2_5b2
   echo "SGMM training done."
 
@@ -180,7 +180,7 @@ if [ $stage -le 8 ]; then
       --transform-dir exp/tri3b/decode_dev \
       exp/sgmm2_5b2/graph data/dev exp/sgmm2_5b2/decode_dev
 
-  steps/lmrescore_const_arpa.sh  --cmd "$decode_cmd" \
+  steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
       data/lang_test/ data/lang_big/ data/dev \
       exp/sgmm2_5b2/decode_dev exp/sgmm2_5b2/decode_dev.rescored
 

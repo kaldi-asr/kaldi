@@ -18,7 +18,7 @@ fi
 if [ ! -f exp/ubm5/final.ubm ]; then
   steps/train_ubm.sh --cmd "$train_cmd" 1400 data/train_nodup data/lang \
     exp/tri4_ali_nodup exp/ubm5 || exit 1;
-fi 
+fi
 
 # steps/train_sgmm2.sh --cmd "$train_cmd" \
 steps/train_sgmm2_group.sh --cmd "$train_cmd" \

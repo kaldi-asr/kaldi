@@ -45,7 +45,7 @@ utils/convert_models.sh exp/tri2b data_ml/lang_rm exp_ml/tri2b_rm data_ml/lang_r
 
 utils/convert_models.sh ../../wsj/exp/tri4b data_ml/lang_wsj exp_ml/tri4b_wsj data_ml/lang
 
-# Re-do the alignment of the RM tri2b setup with the converted models 
+# Re-do the alignment of the RM tri2b setup with the converted models
 # (this avoids the hassle of converting the alignment.)
 steps/align_si.sh --nj 8 --cmd "$train_cmd"  data_ml/train_rm data_ml/lang exp_ml/tri2b_rm \
     exp_ml/tri2b_rm_ali || exit 1;
@@ -66,7 +66,7 @@ steps/train_sat.sh 1800 9000 data_ml/train_rm data_ml/lang exp_ml/tri2b_rm_ali e
 # "merge-tree" program will need, for each tree, a record of which sets of
 # phones it was supposed to handle, since this is not recorded in the tree
 # itself-- we can get this from the transition models which do record this.
-# probably the "merge-tree" program will have usage: 
+# probably the "merge-tree" program will have usage:
 # merge-tree <tree1> <phone-set-1> <tree2> <phone-set-2> ... <tree-out>
 # where the phone-set-n's will probably be filenames that contain lists of
 # the phones.
