@@ -95,8 +95,13 @@ void ModifyGraphForCarefulAlignment(
 /// other obvious place to put it.  If determinize == false, it writes to
 /// lattice_writer, else to compact_lattice_writer.  The writers for
 /// alignments and words will only be written to if they are open.
+///
+/// Caution: this will only link correctly if FST is either fst::Fst<fst::StdArc>,
+/// or fst::GrammarFst, as the template function is defined in the .cc file and
+/// only instantiated for those two types.
+template <typename FST>
 bool DecodeUtteranceLatticeFaster(
-    LatticeFasterDecoder &decoder, // not const but is really an input.
+    LatticeFasterDecoderTpl<FST> &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
     const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
@@ -109,6 +114,7 @@ bool DecodeUtteranceLatticeFaster(
     CompactLatticeWriter *compact_lattice_writer,
     LatticeWriter *lattice_writer,
     double *like_ptr);  // puts utterance's likelihood in like_ptr on success.
+
 
 /// This class basically does the same job as the function
 /// DecodeUtteranceLatticeFaster, but in a way that allows us

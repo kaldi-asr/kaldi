@@ -42,7 +42,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=8
+CONFIGURE_VERSION=9
 
 if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
@@ -1309,18 +1309,36 @@ elif [ "`uname`" == "Linux" ]; then
     if [ -z "$OPENBLASROOT" ]; then
       failure "Must specify the location of OPENBLAS with --openblas-root option (and it must exist)"
     fi
-    if [ ! -f $OPENBLASROOT/lib/libopenblas.so ]; then
+    if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
+      OPENBLASLIBDIR=$OPENBLASROOT/lib
+    elif [ -f $OPENBLASROOT/lib64/libopenblas.so ]; then
+      # in REDHAT/CentOS package installs, the library is located here
+      OPENBLASLIBDIR=$OPENBLASROOT/lib64
+    else
       failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
+    fi
+    if [ -f $OPENBLASROOT/include/cblas.h ] ; then
+      OPENBLASINCDIR=$OPENBLASROOT/include
+    elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
+      # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
+      OPENBLASINCDIR=$OPENBLASROOT/include/openblas
+    else 
+      echo "$0: ***** Using OpenBlas from $OPENBLASROOT but cblas.h is not found. "
+      echo " ****** Assuming openblas is aleady in a default include path, but"
+      echo " ***** if you get compilation messages about not finding files like cblas.h,"
+      echo " ***** you should look into this (e.g. make sure to install the 'openblas-dev' package,"
+      echo " ***** if it is a package-based install)."
+      OPENBLASINCDIR="/usr/include"
     fi
     echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
     if $static_math; then
       echo "Configuring static OpenBlas since --static-math=yes"
-      OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
+      OPENBLASLIBS="$OPENBLASLIBDIR/libopenblas.a -lgfortran"
     else
       echo "Configuring dynamically loaded OpenBlas since --static-math=no (the default)"
-      OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran -Wl,-rpath=$OPENBLASROOT/lib"
+      OPENBLASLIBS="-L$OPENBLASLIBDIR -lopenblas -lgfortran -Wl,-rpath=$OPENBLASLIBDIR"
     fi
-    echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
+    echo "OPENBLASINC = $OPENBLASINCDIR" >> kaldi.mk
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo >> kaldi.mk
     if [[ "$TARGET_ARCH" == arm* ]]; then
