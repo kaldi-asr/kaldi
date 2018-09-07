@@ -68,9 +68,12 @@ if [ $stage -le 5 ]; then
   mfccdir=mfcc_hires
   for datadir in ${train_set} ${test_sets}; do
   	utils/copy_data_dir.sh data/${datadir} data/${datadir}_hires
-	  utils/data/perturb_data_dir_volume.sh data/${datadir}_hires || exit 1;
-	  steps/make_mfcc_pitch.sh --mfcc-config conf/mfcc_hires.conf --pitch-config conf/pitch.conf \
+    utils/data/perturb_data_dir_volume.sh data/${datadir}_hires || exit 1;
+	steps/make_mfcc_pitch.sh --mfcc-config conf/mfcc_hires.conf --pitch-config conf/pitch.conf \
       --nj $nj data/${datadir}_hires exp/make_mfcc/ ${mfccdir}
+    steps/compute_cmvn_stats.sh data/${datadir}_hires exp/make_mfcc ${mfccdir}
+    utils/data/limit_feature_dim.sh 0:39 data/${datadir}_hires data/${datadir}_hires_nopitch
+    steps/compute_cmvn_stats.sh data/${datadir}_hires_nopitch exp/make_mfcc ${mfccdir}
   done
 fi
 
@@ -81,14 +84,10 @@ if [ $stage -le 6 ]; then
   mkdir -p exp/chain/diag_ubm_${affix}
   temp_data_root=exp/chain/diag_ubm_${affix}
 
-  num_utts_total=$(wc -l < data/${train_set}_hires/utt2spk)
+  num_utts_total=$(wc -l < data/${train_set}_hires_nopitch/utt2spk)
   num_utts=$[$num_utts_total/4]
-  utils/data/subset_data_dir.sh data/${train_set}_hires \
+  utils/data/subset_data_dir.sh data/${train_set}_hires_nopitch \
     $num_utts ${temp_data_root}/${train_set}_subset
-
-  #echo "$0: get cmvn stats if not there for subset"
-  #[ -f ${temp_data_root}/${train_set}_subset/cmvn.scp ] || \
-    steps/compute_cmvn_stats.sh ${temp_data_root}/${train_set}_subset || exit 1;
 
   echo "$0: computing a PCA transform from the hires data."
   steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
@@ -108,13 +107,13 @@ if [ $stage -le 6 ]; then
 
   echo "$0: training the iVector extractor"
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj $nj \
-    data/${train_set}_hires exp/chain/diag_ubm_${affix} \
+    data/${train_set}_hires_nopitch exp/chain/diag_ubm_${affix} \
     exp/chain/extractor_${affix} || exit 1;
 
   for datadir in ${train_set} ${test_sets}; do
-    steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${datadir}_hires data/${datadir}_hires_max2
+    steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${datadir}_hires_nopitch data/${datadir}_hires_nopitch_max2
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
-      data/${datadir}_hires_max2 exp/chain/extractor_${affix} exp/chain/ivectors_${datadir}_${affix} || exit 1;
+      data/${datadir}_hires_nopitch_max2 exp/chain/extractor_${affix} exp/chain/ivectors_${datadir}_${affix} || exit 1;
   done
 fi
 
