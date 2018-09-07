@@ -23,12 +23,14 @@ stage=0
 train_stage=-10
 get_egs_stage=-10
 affix=1b
+nj=30
 
 # training options
 tdnn_dim=450
 minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
 common_egs_dir=
 train_set=train
+decode_val=true
 lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 
@@ -149,11 +151,21 @@ fi
 if [ $stage -le 5 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj 30 --cmd "$cmd" \
+    --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
 
   steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
                                 data/test $dir/decode_test{,_rescored} || exit 1
+fi
+
+if [ $stage -le 6 ] && $decode_val; then
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+    --nj $nj --cmd "$cmd" \
+    $dir/graph data/val $dir/decode_val || exit 1;
+
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/val $dir/decode_val{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"

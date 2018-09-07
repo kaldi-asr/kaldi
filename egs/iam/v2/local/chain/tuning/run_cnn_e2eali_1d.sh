@@ -21,7 +21,7 @@ stage=0
 
 nj=30
 train_set=train
-test_dir=data/test
+decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1b
@@ -244,10 +244,25 @@ if [ $stage -le 7 ]; then
     --extra-right-context-final 0 \
     --frames-per-chunk $frames_per_chunk \
     --nj $nj --cmd "$cmd" \
-    $dir/graph $test_dir $dir/decode_test || exit 1;
+    $dir/graph data/test $dir/decode_test || exit 1;
 
   steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                $test_dir $dir/decode_test{,_rescored} || exit 1
+                                data/test $dir/decode_test{,_rescored} || exit 1
+fi
+
+if [ $stage -le 8 ] && $decode_val; then
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+    --extra-left-context $chunk_left_context \
+    --extra-right-context $chunk_right_context \
+    --extra-left-context-initial 0 \
+    --extra-right-context-final 0 \
+    --frames-per-chunk $frames_per_chunk \
+    --nj $nj --cmd "$cmd" \
+    $dir/graph data/val $dir/decode_val || exit 1;
+
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/val $dir/decode_val{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"
