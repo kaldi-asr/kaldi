@@ -47,7 +47,7 @@ class ArcPosteriorComputer {
                        BaseFloat min_post,
                        const TransitionModel *trans_model = NULL):
       clat_(clat), min_post_(min_post) {}
-      
+
 
   // returns the number of arc posteriors that it output.
   void OutputPosteriors(
@@ -97,7 +97,7 @@ class ArcPosteriorComputer {
 
   BaseFloat min_post_;
 };
-} // namespace kaldi
+}  // namespace kaldi
 
 void ReadUttToConvo(string filename, map<string, string> &m) {
   KALDI_ASSERT(m.size() == 0);
@@ -160,27 +160,28 @@ int main(int argc, char *argv[]) {
     bool use_carpa = false;
     bool two_speaker_mode = false, one_best_mode = false;
 
-    po.Register("lm-scale", &lm_scale, "Scaling factor for <lm-to-add>; its negative "
-                "will be applied to <lm-to-subtract>.");
-    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic "
-                "probabilities (e.g. 0.1 for non-chain systems); important because "
-                "of its effect on pruning.");
+    po.Register("lm-scale", &lm_scale, "Scaling factor for <lm-to-add>; its "
+                "negative will be applied to <lm-to-subtract>.");
+    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for "
+                "acoustic probabilities (e.g. 0.1 for non-chain systems); "
+                "important because of its effect on pruning.");
     po.Register("use-const-arpa", &use_carpa, "If true, read the old-LM file "
                 "as a const-arpa file as opposed to an FST file");
     po.Register("correction_weight", &correction_weight, "The weight on the "
                 "correction term of the RNNLM scores.");
     po.Register("max-ngram-order", &max_ngram_order,
-        "If positive, allow RNNLM histories longer than this to be identified "
-        "with each other for rescoring purposes (an approximation that "
-        "saves time and reduces output lattice size).");
+                "If positive, allow RNNLM histories longer than this to be "
+                "identified with each other for rescoring purposes (an "
+                "approximation that saves time and reduces output lattice "
+                "size).");
     po.Register("min-post", &min_post,
                 "Arc posteriors below this value will be pruned away");
     po.Register("two_speaker_mode", &two_speaker_mode, "If true, use two "
-                "speaker's utterances to estimate cache models or " 
+                "speaker's utterances to estimate cache models or "
                 "as the input of DNN models.");
     po.Register("one_best_mode", &one_best_mode, "If true, use 1 best decoding "
-                "results instead of lattice posteriors to estimate cache models " 
-                "or as the input of DNN models.");
+                "results instead of lattice posteriors to estimate cache "
+                "models or as the input of DNN models.");
 
     opts.Register(&po);
     compose_opts.Register(&po);
@@ -206,7 +207,8 @@ int main(int argc, char *argv[]) {
 
     // for G.fst
     fst::ScaleDeterministicOnDemandFst *lm_to_subtract_det_scale = NULL;
-    fst::BackoffDeterministicOnDemandFst<StdArc> *lm_to_subtract_det_backoff = NULL;
+    fst::BackoffDeterministicOnDemandFst<StdArc>
+      *lm_to_subtract_det_backoff = NULL;
     VectorFst<StdArc> *lm_to_subtract_fst = NULL;
 
     // for G.carpa
@@ -241,9 +243,10 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
 
-    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);  // number of words
+    // number of words
+    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);
     ReadUnigram(unigram_file, &original_unigram);
-   
+
     const rnnlm::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
 
     // Reads and writes as compact lattice.
@@ -256,7 +259,7 @@ int main(int argc, char *argv[]) {
     std::map<string, map<int, double> > per_utt_counts;
     std::map<string, double> per_convo_sums;
     std::map<string, double> per_utt_sums;
-    
+
     std::vector<string> utt_ids;
     {
       SequentialCompactLatticeReader clat_reader(lats_rspecifier);
@@ -271,11 +274,12 @@ int main(int argc, char *argv[]) {
 
         string convo_id = utt2convo[utt_id];
         if (two_speaker_mode) {
-          std::string convo_id_2spk = std::string(convo_id.begin(), convo_id.end() - 2);
+          std::string convo_id_2spk = std::string(convo_id.begin(),
+                                                  convo_id.end() - 2);
           convo_id = convo_id_2spk;
         }
 
-        // Estimate cache models from 1-best hypotheses instead of 
+        // Estimate cache models from 1-best hypotheses instead of
         // word-posteriors from first-pass decoded lattices
         if (one_best_mode) {
           kaldi::CompactLattice best_path;
@@ -290,11 +294,10 @@ int main(int argc, char *argv[]) {
                                   &(per_utt_counts[utt_id]),
                                   &(per_convo_sums[convo_id]),
                                   &(per_utt_sums[utt_id]));
-
       }
       clat_reader.Close();
     }
-    
+
     std::map<string, map<int, double> > per_utt_hists;
     // std::map<string, double> per_utt_hists_sums;
     std::vector<string>::iterator it = utt_ids.begin();
@@ -307,8 +310,9 @@ int main(int argc, char *argv[]) {
         // copy the previous speaker's utts to the current one
         per_utt_hists[utt_id] = per_utt_hists[utt_id_prev];
         // add the current utt to the counts for the current speaker
-        for (std::map<int, double>::iterator cur_utt = per_utt_counts[utt_id].begin();
-            cur_utt != per_utt_counts[utt_id].end(); ++cur_utt) {
+        for (std::map<int, double>::iterator cur_utt =
+             per_utt_counts[utt_id].begin();
+             cur_utt != per_utt_counts[utt_id].end(); ++cur_utt) {
             int32 word = cur_utt->first;
             BaseFloat count = cur_utt->second;
             per_utt_hists[utt_id][word] += count;
@@ -320,14 +324,16 @@ int main(int argc, char *argv[]) {
       std::string key = compact_lattice_reader.Key();
       std::string convo_id = utt2convo[key];
       if (two_speaker_mode) {
-        std::string convo_id_2spks = std::string(convo_id.begin(), convo_id.end() - 2);
+        std::string convo_id_2spks = std::string(convo_id.begin(),
+                                                 convo_id.end() - 2);
         convo_id = convo_id_2spks;
       }
       KALDI_ASSERT(convo_id != "");
 
       map<int, double> unigram = per_utt_hists[key];
       for (map<int, double>::iterator iter = per_utt_counts[key].begin();
-                                      iter != per_utt_counts[key].end(); ++iter) {
+                                      iter != per_utt_counts[key].end();
+                                      ++iter) {
         unigram[iter->first] = (unigram[iter->first] - iter->second);
       }
       double sum = 0.0;
@@ -346,8 +352,10 @@ int main(int argc, char *argv[]) {
       KALDI_ASSERT(ApproxEqual(debug_sum, 1.0));
 
       // Rescoring and pruning happens below.
-      rnnlm::KaldiRnnlmDeterministicFst* lm_to_add_orig = 
-           new rnnlm::KaldiRnnlmDeterministicFst(max_ngram_order, info, correction_weight, unigram, original_unigram);
+      rnnlm::KaldiRnnlmDeterministicFst* lm_to_add_orig =
+           new rnnlm::KaldiRnnlmDeterministicFst(max_ngram_order, info,
+                                                 correction_weight,
+                                                 unigram, original_unigram);
       fst::DeterministicOnDemandFst<StdArc> *lm_to_add =
          new fst::ScaleDeterministicOnDemandFst(lm_scale, lm_to_add_orig);
 

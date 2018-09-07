@@ -59,8 +59,10 @@ void ReadUnigram(string filename, std::vector<double> *unigram) {
   }
 }
 
-// first set *key to the first field, and then break the remaining line into a vector of integers
-void GetNumbersFromLine(std::string line, std::string *key, std::vector<int32> *v) {
+// first set *key to the first field, and then break the remaining line into a
+// vector of integers
+void GetNumbersFromLine(std::string line, std::string *key,
+                        std::vector<int32> *v) {
   std::stringstream ss(line);
   ss >> *key;
   int32 i;
@@ -127,7 +129,7 @@ int main(int argc, char *argv[]) {
     map<string, string> utt2convo;
     ReadUttToConvo(utt_to_convo_file, utt2convo);
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
     CuDevice::Instantiate().AllowMultithreading();
 #endif
@@ -147,7 +149,8 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
 
-    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);  // number of words
+    // number of words
+    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);
     ReadUnigram(unigram_file, &original_unigram);
 
     const rnnlm::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
@@ -167,7 +170,8 @@ int main(int argc, char *argv[]) {
         GetNumbersFromLine(line, &utt_id, &v);
         std::string convo_id = utt2convo[utt_id];
         if (two_speaker_mode) {
-          std::string convo_id_2spk = std::string(convo_id.begin(), convo_id.end() - 2);
+          std::string convo_id_2spk = std::string(convo_id.begin(),
+                                                  convo_id.end() - 2);
           convo_id = convo_id_2spk;
         }
 
@@ -181,7 +185,7 @@ int main(int argc, char *argv[]) {
         }
       }
     }
-    
+
     {
       std::ifstream ifile(text_filename.c_str());
       std::string line;
@@ -193,12 +197,14 @@ int main(int argc, char *argv[]) {
         std::string convo_id = utt2convo[utt_id];
         // Use convs of both speakers
         if (two_speaker_mode) {
-          std::string convo_id_2spk = std::string(convo_id.begin(), convo_id.end() - 2);
+          std::string convo_id_2spk = std::string(convo_id.begin(),
+                                                  convo_id.end() - 2);
           convo_id = convo_id_2spk;
         }
         map<int, double> unigram = per_convo_counts[convo_id];
         for (map<int, double>::iterator iter = per_utt_counts[utt_id].begin();
-                                        iter != per_utt_counts[utt_id].end(); iter++) {
+                                        iter != per_utt_counts[utt_id].end();
+                                        iter++) {
           unigram[iter->first] = unigram[iter->first] - iter->second;
         }
         double sum = per_convo_sums[convo_id] - per_utt_sums[utt_id];
@@ -224,11 +230,13 @@ int main(int argc, char *argv[]) {
                 double u = iter->second;  // already unigram probs
 
                 const double C = 0.0000001;
-                double correction = (u + C) / (original_unigram[iter->first] + C);
-                // smoothing by a background unigram distribution original_unigram
+                double correction = (u + C) /
+                                    (original_unigram[iter->first] + C);
+                // smoothing by a background unigram distribution
+                // original_unigram
                 correction = 0.5 * correction + 0.5;
                 if (correction != 0) {
-                    word_logprobs.Row(0).Range(iter->first, 1).Add(Log(correction)
+                  word_logprobs.Row(0).Range(iter->first, 1).Add(Log(correction)
                         * correction_weight);
                 }
             }
@@ -244,7 +252,7 @@ int main(int argc, char *argv[]) {
       std::cout << "Perplexity: " << ppl << std::endl;
     }
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().PrintProfile();
 #endif
     return 0;

@@ -1,6 +1,6 @@
 // rnnlm/rnnlm-lattice-rescoring.cc
 
-// Copyright 2017 Johns Hopkins University (author: Daniel Povey) 
+// Copyright 2017 Johns Hopkins University (author: Daniel Povey)
 //           2017 Yiming Wang
 //           2017 Hainan Xu
 //
@@ -32,7 +32,7 @@ KaldiRnnlmDeterministicFst::~KaldiRnnlmDeterministicFst() {
   int32 size = state_to_rnnlm_state_.size();
   for (int32 i = 0; i < size; i++)
     delete state_to_rnnlm_state_[i];
-  
+
   state_to_rnnlm_state_.resize(0);
   state_to_wseq_.resize(0);
   wseq_to_state_.clear();
@@ -44,7 +44,7 @@ void KaldiRnnlmDeterministicFst::Clear() {
   int32 size = state_to_rnnlm_state_.size();
   for (int32 i = 1; i < size; i++)
     delete state_to_rnnlm_state_[i];
-  
+
   state_to_rnnlm_state_.resize(1);
   state_to_wseq_.resize(1);
   wseq_to_state_.clear();
@@ -56,7 +56,8 @@ KaldiRnnlmDeterministicFst::KaldiRnnlmDeterministicFst(int32 max_ngram_order,
     double correction_weight,
     const std::map<int32, double> &unigrams,
     const std::vector<double> &ori_unigrams):
-          correction_weight_(correction_weight), unigrams_(unigrams), ori_unigrams_(ori_unigrams) {
+    correction_weight_(correction_weight), unigrams_(unigrams),
+    ori_unigrams_(ori_unigrams) {
   max_ngram_order_ = max_ngram_order;
   bos_index_ = info.opts.bos_index;
   eos_index_ = info.opts.eos_index;
@@ -88,7 +89,7 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   const RnnlmComputeState* rnnlm = state_to_rnnlm_state_[s];
 
   BaseFloat logprob = rnnlm->LogProbOfWord(ilabel);
-  
+
   std::map<int32, double>::const_iterator iter = unigrams_.find(ilabel);
   if (iter != unigrams_.end()) {
     double C = 0.00000001;

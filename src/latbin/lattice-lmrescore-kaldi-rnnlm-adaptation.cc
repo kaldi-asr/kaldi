@@ -46,10 +46,10 @@ class NnetComputerFromEg {
       nnet_(nnet), compiler_(nnet) { }
 
   // Compute the output (which will have the same number of rows as the number
-  // of Indexes in the output with the name 'output_name' of the eg), 
+  // of Indexes in the output with the name 'output_name' of the eg),
   // and put it in "*output".
   // An output with the name 'output_name' is expected to exist in the network.
-  void Compute(const NnetExample &eg, const std::string &output_name, 
+  void Compute(const NnetExample &eg, const std::string &output_name,
                Matrix<BaseFloat> *output) {
     ComputationRequest request;
     bool need_backprop = false, store_stats = false;
@@ -61,7 +61,8 @@ class NnetComputerFromEg {
     NnetComputer computer(options, computation, nnet_, NULL);
     computer.AcceptInputs(nnet_, eg.io);
     computer.Run();
-    const CuMatrixBase<BaseFloat> &nnet_output = computer.GetOutput(output_name);
+    const CuMatrixBase<BaseFloat> &nnet_output =
+                                  computer.GetOutput(output_name);
     output->Resize(nnet_output.NumRows(), nnet_output.NumCols());
     nnet_output.CopyToMat(output);
   }
@@ -70,7 +71,7 @@ class NnetComputerFromEg {
   CachingOptimizingCompiler compiler_;
 };
 
-} // namespace nnet3
+}  // namespace nnet3
 
 // This class computes and outputs
 // the information about arc posteriors.
@@ -82,7 +83,7 @@ class ArcPosteriorComputer {
                        BaseFloat min_post,
                        const TransitionModel *trans_model = NULL):
       clat_(clat), min_post_(min_post) {}
-      
+
 
   // returns the number of arc posteriors that it output.
   void OutputPosteriors(
@@ -133,7 +134,7 @@ class ArcPosteriorComputer {
 
   BaseFloat min_post_;
 };
-} // namespace kaldi
+}  // namespace kaldi
 
 void ReadUttToConvo(string filename, map<string, string> &m) {
   KALDI_ASSERT(m.size() == 0);
@@ -186,7 +187,8 @@ int main(int argc, char *argv[]) {
     kaldi::BaseFloat min_post = 0.0001;
     int32 max_ngram_order = 3;
     int32 weight_range = 10;
-    kaldi::BaseFloat acoustic_scale = 0.1, lm_scale = 1.0, weight = 5.0, correction_weight = 0.1;
+    kaldi::BaseFloat acoustic_scale = 0.1, lm_scale = 1.0,
+                     weight = 5.0, correction_weight = 0.1;
 
     po.Register("acoustic-scale", &acoustic_scale,
                 "Scaling factor for acoustic likelihoods");
@@ -241,7 +243,9 @@ int main(int argc, char *argv[]) {
 
     NnetComputerFromEg nnet_computer(dnn);
 
-    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);  // number of words
+    // number of words
+    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);
+
     ReadUnigram(unigram_file, &original_unigram);
 
     const rnnlm::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
@@ -253,7 +257,7 @@ int main(int argc, char *argv[]) {
     std::map<string, map<int, double> > per_utt_counts;
     std::map<string, double> per_convo_sums;
     std::map<string, double> per_utt_sums;
-    
+
     std::vector<string> utt_ids;
 
     {
@@ -263,13 +267,14 @@ int main(int argc, char *argv[]) {
         std::string utt_id = clat_reader.Key();
         utt_ids.push_back(utt_id);
         kaldi::CompactLattice &clat = clat_reader.Value();
-        
+
         fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
         kaldi::TopSortCompactLatticeIfNeeded(&clat);
 
         string convo_id = utt2convo[utt_id];
         // Use convs of both speakers
-        std::string convo_id_twoSides = std::string(convo_id.begin(), convo_id.end() - 2);
+        std::string convo_id_twoSides = std::string(convo_id.begin(),
+                                                    convo_id.end() - 2);
         convo_id = convo_id_twoSides;
         kaldi::ArcPosteriorComputer computer(clat, min_post);
 
@@ -282,16 +287,16 @@ int main(int argc, char *argv[]) {
 
       clat_reader.Close();
     }
-    
+
     // Collect stats of nearby sentences by looping over the per_utt_counts
     int32 range = weight_range;
     std::map<string, map<int, double> > per_utt_nearby_stats;
     std::map<string, double> per_utt_nearby_sums;
     std::vector<string>::iterator it = utt_ids.begin();
-    for(int32 i = 0; i < utt_ids.size(); i++) {
+    for (int32 i = 0; i < utt_ids.size(); i++) {
       // current utterance id
       std::string utt_id = *(it + i);
-      for(int32 j = 0; j <= range; j++) {
+      for (int32 j = 0; j <= range; j++) {
         // get the correct idx of the nearby sentence
         int32 idx = j - range / 2;
         if (idx == 0)
@@ -312,7 +317,7 @@ int main(int argc, char *argv[]) {
           std::cout << "Nearby utt id " << utt_nearby_id << std::endl;
         */
         std::map<int, double> per_utt_stats = per_utt_counts[utt_nearby_id];
-        for(std::map<int, double>::iterator utt_it = per_utt_stats.begin();
+        for (std::map<int, double>::iterator utt_it = per_utt_stats.begin();
             utt_it != per_utt_stats.end(); ++utt_it) {
           int32 word = utt_it->first;
           BaseFloat soft_count = utt_it->second;
@@ -320,39 +325,42 @@ int main(int argc, char *argv[]) {
           per_utt_nearby_sums[utt_id] += soft_count * weight;
         }
       }
-    } 
+    }
 
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
-    
-    std::string output_name = "output";
-    
-    for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
 
+    std::string output_name = "output";
+
+    for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
       std::string key = compact_lattice_reader.Key();
       // std::cout << "key is " << key << std::endl;
       std::string convo_id = utt2convo[key];
       // Use convs of both speakers
-      std::string convo_id_twoSides = std::string(convo_id.begin(), convo_id.end()-2);
+      std::string convo_id_twoSides = std::string(convo_id.begin(),
+                                                  convo_id.end() - 2);
       // std::cout << "convo_id is " << convo_id << std::endl;
       // std::cout << "convo_id_twoSides is " << convo_id_twoSides << std::endl;
       convo_id = convo_id_twoSides;
       KALDI_ASSERT(convo_id != "");
-        
+
       map<int, double> unigram = per_convo_counts[convo_id];
       for (map<int, double>::iterator iter = per_utt_counts[key].begin();
-                                      iter != per_utt_counts[key].end(); iter++) {
+                                      iter != per_utt_counts[key].end();
+                                      iter++) {
         unigram[iter->first] =
-                 (unigram[iter->first] - iter->second); // / per_utt_sums[key];
+                 (unigram[iter->first] - iter->second);  // per_utt_sums[key];
         // debug_sum += unigram[iter->first];
       }
 
       // adjust weights of nearby sentences
-      // std::cout << "weighted count "<< per_utt_nearby_stats[key][iter->first] << std::endl;
+      // std::cout << "weighted count "<< per_utt_nearby_stats[key][iter->first]
+      //           << std::endl;
       // unigram[iter->first] += per_utt_nearby_stats[key][iter->first];
       double weighted_sum = 0.0;
       for (map<int, double>::iterator iter = per_utt_nearby_stats[key].begin();
-                                      iter != per_utt_nearby_stats[key].end(); ++iter) {
+                                      iter != per_utt_nearby_stats[key].end();
+                                      ++iter) {
         int32 word = iter->first;
         unigram[word] += iter->second;
         weighted_sum += iter->second;
@@ -374,7 +382,8 @@ int main(int argc, char *argv[]) {
                                       iter != unigram.end(); iter++) {
         input.push_back(std::make_pair(iter->first, iter->second));
       }
-      // KALDI_LOG << "Input info: " << input.size() << " , " << input[0].first << " , " << input[0].second;
+      // KALDI_LOG << "Input info: " << input.size() << " , "
+      //           << input[0].first << " , " << input[0].second;
       std::vector<std::vector<std::pair<int32, BaseFloat> > > feat;
       feat.push_back(input);
       const SparseMatrix<BaseFloat> feat_sp(word_embedding_mat.NumRows(), feat);
@@ -383,7 +392,7 @@ int main(int argc, char *argv[]) {
       eg.io.push_back(NnetIo("input", 0, eg_input));
       // const Posterior post;
       eg.io.push_back(NnetIo("output", word_embedding_mat.NumRows(), 0, feat));
-      // Second compute output given 1) eg input and 2) trained nnet 
+      // Second compute output given 1) eg input and 2) trained nnet
       Matrix<BaseFloat> output;
       nnet_computer.Compute(eg, output_name, &output);
       KALDI_ASSERT(output.NumRows() != 0);
@@ -400,11 +409,12 @@ int main(int argc, char *argv[]) {
         }
       }
       KALDI_ASSERT(ApproxEqual(uni_sum, 1.0));
-       
+
       rnnlm::KaldiRnnlmDeterministicFst
-               rnnlm_fst(max_ngram_order, info, correction_weight, unigram_dnn, original_unigram);
+               rnnlm_fst(max_ngram_order, info, correction_weight, unigram_dnn,
+                         original_unigram);
       CompactLattice &clat = compact_lattice_reader.Value();
-       
+
       if (lm_scale != 0.0) {
         // Before composing with the LM FST, we scale the lattice weights
         // by the inverse of "lm_scale".  We'll later scale by "lm_scale".

@@ -54,7 +54,6 @@ class ArcPosteriorComputer {
                         std::map<int, double> *word_to_count2,
                         double* sum,
                         double* sum2) {
-//    *sum = 0;
     int32 num_post = 0;
     if (!ComputeCompactLatticeAlphas(clat_, &alpha_))
       return;
@@ -127,8 +126,10 @@ void ReadUnigram(string filename, std::vector<double> *unigram) {
   }
 }
 
-// first set *key to the first field, and then break the remaining line into a vector of integers
-void GetNumbersFromLine(std::string line, std::string *key, std::vector<int32> *v) {
+// first set *key to the first field, and then break the remaining line into a
+// vector of integers
+void GetNumbersFromLine(std::string line, std::string *key,
+                        std::vector<int32> *v) {
   std::stringstream ss(line);
   ss >> *key;
   int32 i;
@@ -169,11 +170,11 @@ int main(int argc, char *argv[]) {
 
     ParseOptions po(usage);
     rnnlm::RnnlmComputeStateComputationOptions opts;
-    po.Register("lm-scale", &lm_scale, "Scaling factor for <lm-to-add>; its negative "
-                "will be applied to <lm-to-subtract>.");
-    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic "
-                "probabilities (e.g. 0.1 for non-chain systems); important because "
-                "of its effect on pruning.");
+    po.Register("lm-scale", &lm_scale, "Scaling factor for <lm-to-add>; its "
+                "negative will be applied to <lm-to-subtract>.");
+    po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for "
+                "acoustic probabilities (e.g. 0.1 for non-chain systems); "
+                "important because of its effect on pruning.");
     po.Register("min-post", &min_post,
                 "Arc posteriors below this value will be pruned away");
     po.Register("use-gpu", &use_gpu,
@@ -188,7 +189,8 @@ int main(int argc, char *argv[]) {
     po.Register("two_speaker_mode", &two_speaker_mode, "If true, use two "
                 "speaker's utterances to estimate cache models.");
     po.Register("one_best_mode", &one_best_mode, "If true, use 1 best decoding "
-                "results instead of lattice posteriors to estimate cache models.");
+                "results instead of lattice posteriors to estimate cache "
+                "models.");
 
     opts.Register(&po);
 
@@ -209,7 +211,7 @@ int main(int argc, char *argv[]) {
     map<string, string> utt2convo;
     ReadUttToConvo(utt_to_convo_file, utt2convo);
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
     CuDevice::Instantiate().AllowMultithreading();
 #endif
@@ -229,12 +231,12 @@ int main(int argc, char *argv[]) {
 
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
-
-    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);  // number of words
+    // number of words
+    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);
     ReadUnigram(unigram_file, &original_unigram);
 
     const rnnlm::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
-    
+
     // Reads as compact lattice.
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
 
@@ -249,17 +251,18 @@ int main(int argc, char *argv[]) {
       for (; !clat_reader.Done(); clat_reader.Next()) {
         std::string utt_id = clat_reader.Key();
         kaldi::CompactLattice &clat = clat_reader.Value();
-        
+
         fst::ScaleLattice(fst::LatticeScale(lm_scale, acoustic_scale), &clat);
         kaldi::TopSortCompactLatticeIfNeeded(&clat);
 
         string convo_id = utt2convo[utt_id];
         if (two_speaker_mode) {
-          std::string convo_id_2spk = std::string(convo_id.begin(), convo_id.end() - 2);
+          std::string convo_id_2spk = std::string(convo_id.begin(),
+                                                  convo_id.end() - 2);
           convo_id = convo_id_2spk;
         }
 
-        // Estimate cache models from 1-best hypothese instead of 
+        // Estimate cache models from 1-best hypothese instead of
         // word-posteriors from first-pass decoded lattices
         if (one_best_mode) {
           kaldi::CompactLattice best_path;
@@ -274,11 +277,10 @@ int main(int argc, char *argv[]) {
                                   &(per_utt_counts[utt_id]),
                                   &(per_convo_sums[convo_id]),
                                   &(per_utt_sums[utt_id]));
-
       }
       clat_reader.Close();
     }
-    
+
     std::map<string, std::vector<int> > text;
     {
       std::ifstream ifile(text_filename.c_str());
@@ -297,14 +299,16 @@ int main(int argc, char *argv[]) {
       std::string key = compact_lattice_reader.Key();
       std::string convo_id = utt2convo[key];
       if (two_speaker_mode) {
-        std::string convo_id_2spk = std::string(convo_id.begin(), convo_id.end() - 2);
+        std::string convo_id_2spk = std::string(convo_id.begin(),
+                                                convo_id.end() - 2);
         convo_id = convo_id_2spk;
       }
       KALDI_ASSERT(convo_id != "");
       // collect counts of nearby sentences of the current utterance.
       map<int, double> unigram = per_convo_counts[convo_id];
       for (map<int, double>::iterator iter = per_utt_counts[key].begin();
-                                      iter != per_utt_counts[key].end(); ++iter) {
+                                      iter != per_utt_counts[key].end();
+                                      ++iter) {
         unigram[iter->first] = unigram[iter->first] - iter->second;
       }
       double sum = per_convo_sums[convo_id] - per_utt_sums[key];
@@ -338,7 +342,7 @@ int main(int argc, char *argv[]) {
               // smoothing by a background unigram distribution original_unigram
               correction = 0.5 * correction + 0.5;
               if (correction != 0) {
-                  word_logprobs.Row(0).Range(iter->first, 1).Add(Log(correction) 
+                word_logprobs.Row(0).Range(iter->first, 1).Add(Log(correction)
                       * correction_weight);
               }
           }
@@ -352,7 +356,7 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Log probs " << total_probs;
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().PrintProfile();
 #endif
     return 0;

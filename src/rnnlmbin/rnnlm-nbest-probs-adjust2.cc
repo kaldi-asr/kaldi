@@ -59,8 +59,10 @@ void ReadUnigram(string filename, std::vector<double> *unigram) {
   }
 }
 
-// first set *key to the first field, and then break the remaining line into a vector of integers
-void GetNumbersFromLine(std::string line, std::string *key, std::vector<int32> *v) {
+// first set *key to the first field, and then break the remaining line into a
+// vector of integers
+void GetNumbersFromLine(std::string line, std::string *key,
+                        std::vector<int32> *v) {
   std::stringstream ss(line);
   ss >> *key;
   int32 i;
@@ -104,7 +106,8 @@ int main(int argc, char *argv[]) {
     po.Register("dropout-test-mode", &dropout_test_mode,
                 "If true, set test-mode to true on any DropoutComponents and "
                 "DropoutMaskComponents.");
-    po.Register("unigram-weight", &unigram_weight, "Weight for unigram in combination");
+    po.Register("unigram-weight", &unigram_weight, "Weight for unigram in "
+                "combination");
     opts.Register(&po);
 
     po.Read(argc, argv);
@@ -123,7 +126,7 @@ int main(int argc, char *argv[]) {
     map<string, string> utt2convo;
     ReadUttToConvo(utt_to_convo_file, utt2convo);
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().SelectGpuId(use_gpu);
     CuDevice::Instantiate().AllowMultithreading();
 #endif
@@ -143,7 +146,8 @@ int main(int argc, char *argv[]) {
     CuMatrix<BaseFloat> word_embedding_mat;
     ReadKaldiObject(word_embedding_rxfilename, &word_embedding_mat);
 
-    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);  // number of words
+    // number of words
+    std::vector<double> original_unigram(word_embedding_mat.NumRows(), 0.0);
     ReadUnigram(unigram_file, &original_unigram);
 
     const rnnlm::RnnlmComputeStateInfo info(opts, rnnlm, word_embedding_mat);
@@ -162,7 +166,8 @@ int main(int argc, char *argv[]) {
         std::vector<int> v;
         GetNumbersFromLine(line, &utt_id, &v);
         std::string convo_id = utt2convo[utt_id];
-//        std::cout << convo_id << " " << utt_id << " " << v.size() << std::endl;
+//        std::cout << convo_id << " " << utt_id << " " << v.size() 
+//                  << std::endl;
 
         per_convo_sums[convo_id] += v.size();
         per_utt_sums[utt_id] += v.size();
@@ -187,9 +192,9 @@ int main(int argc, char *argv[]) {
         std::string convo_id = utt2convo[utt_id];
         map<int, double> unigram = per_convo_counts[convo_id];
         for (map<int, double>::iterator iter = per_utt_counts[utt_id].begin();
-                                        iter != per_utt_counts[utt_id].end(); iter++) {
-          unigram[iter->first] =
-                   (unigram[iter->first] - iter->second); //
+                                        iter != per_utt_counts[utt_id].end();
+                                        iter++) {
+          unigram[iter->first] = (unigram[iter->first] - iter->second);
         }
 
         double sum = per_convo_sums[convo_id] - per_utt_sums[utt_id];
@@ -219,9 +224,11 @@ int main(int argc, char *argv[]) {
             double u = iter->second;  // already unigram probs
 
             const double C = 0.0000001;
-            double correction = log(u + C) - log(original_unigram[iter->first] + C);
+            double correction = log(u + C) -
+                                log(original_unigram[iter->first] + C);
 
-            word_logprobs.Row(0).Range(iter->first, 1).Add(correction * unigram_weight);
+            word_logprobs.Row(0).Range(iter->first, 1).Add(correction *
+                                                           unigram_weight);
           }
 
           word_logprobs.ApplyLogSoftMaxPerRow(word_logprobs);
@@ -234,7 +241,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA == 1
     CuDevice::Instantiate().PrintProfile();
 #endif
     return 0;
