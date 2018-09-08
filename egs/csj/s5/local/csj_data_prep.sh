@@ -45,7 +45,9 @@ if [ ! -d $CSJ ]; then
 fi
 
 # CSJ dictionary file check
-[ ! -f $dir/lexicon.txt ] && cp $CSJ/lexicon/lexicon.txt $dir || exit 1;
+if [ ! -f $dir/lexicon.txt ]; then
+  cp $CSJ/lexicon/lexicon.txt $dir || exit 1;
+fi
 
 ### Config of using wav data that relates with acoustic model training ###
 if [ $mode -eq 3 ]

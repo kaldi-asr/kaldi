@@ -82,7 +82,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  # Make filterbanks and compute the energy-based VAD for each dataset
+  # Make MFCCs and compute the energy-based VAD for each dataset
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
     utils/create_split_dir.pl \
       /export/b{14,15,16,17}/$USER/kaldi-data/egs/sre16/v2/xvector-$(date +'%m_%d_%H_%M')/mfccs/storage $mfccdir/storage
@@ -159,7 +159,7 @@ if [ $stage -le 2 ]; then
   utils/subset_data_dir.sh data/swbd_sre_aug 128000 data/swbd_sre_aug_128k
   utils/fix_data_dir.sh data/swbd_sre_aug_128k
 
-  # Make filterbanks for the augmented data.  Note that we do not compute a new
+  # Make MFCCs for the augmented data.  Note that we do not compute a new
   # vad.scp file here.  Instead, we use the vad.scp from the clean version of
   # the list.
   steps/make_mfcc.sh --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
