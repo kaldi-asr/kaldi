@@ -74,6 +74,19 @@
   } \
 }
 
+#if HAVE_CUDNN == 1
+#include <cudnn.h>
+
+#define CUDNN_SAFE_CALL(fun)                                                    \
+do {                                                                            \
+  cudnnStatus_t ret;                                                            \
+  if ((ret = (fun)) != CUDNN_STATUS_SUCCESS) {                                  \
+    KALDI_ERR << "cudnnStatus_t " << ret << " : \"" << cudnnGetErrorString(ret) \
+              << "\" returned from '" << #fun << "'";                           \
+  }                                                                             \
+} while(0)
+#endif // HAVE_CUDNN == 1
+
 
 namespace kaldi {
 
