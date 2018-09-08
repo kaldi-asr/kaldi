@@ -39,47 +39,42 @@
 namespace kaldi {
 namespace nnet3 {
 
-/*
-  This class handles the neural net computation in parallel.
 
-  It can accept just input features, or input features plus iVectors.  */
+/**
+   This class does neural net inference in a way that is optimized for GPU use:
+   it combines chunks of multiple utterances into minibatches for more efficient
+   computation.
+
+   Note: it stores references to all arguments to the constructor, so don't
+   delete them till this goes out of scope.
+
+   @param [in] opts   The options class.  Warning: it includes an acoustic
+          weight, whose default is 0.1; you may sometimes want to
+          change this to 1.0.
+   @param [in] nnet
+          The neural net that we're going to do the computation with
+   @param [in] priors
+          Vector of priors-- if supplied and nonempty, we subtract
+          the log of these priors from the nnet output.
+   @param [in] online_ivector_period
+           If you are using iVectors estimated 'online'
+           (i.e. if online_ivectors != NULL) gives the periodicity
+           (in input frames) with which the iVectors are estimated, e.g. 10.
+   @param [in] ensure_exact_final_context
+           If an utterance length is less than opts_.frames_per_chunk, we call
+           it a "shorter-than-chunk-size" utterance.  If
+           ensure_exact_final_context is true, for such utterances we will
+           create a special computation just for them, that has the exact
+           right size.  (This is necessary for things like BLSTMs, to get
+           the correct output).  If false, we will just pad on the right
+           with repeats of the last frame (which is fine for topologies
+           that are not backwards recurrent).
+   @param [in] minibatch_size  The number of separate chunks that we
+           process in each minibatch.  (The number of frames per chunk
+           comes from 'opts').
+*/
 class BatchNnetComputer {
  public:
-  /**
-     This class does neural net inference in a way that is optimized for GPU
-     use: it combines chunks of multiple utterances into minibatche for more
-     efficient computation.
-     
-     Note: it stores references to all arguments to the constructor, so don't
-     delete them till this goes out of scope.
-
-     @param [in] opts   The options class.  Warning: it includes an acoustic
-                        weight, whose default is 0.1; you may sometimes want to
-                        change this to 1.0.
-     @param [in] nnet   The neural net that we're going to do the computation with
-     @param [in] priors Vector of priors-- if supplied and nonempty, we subtract
-                        the log of these priors from the nnet output.
-     @param [in] online_ivector_period If you are using iVectors estimated 'online'
-                        (i.e. if online_ivectors != NULL) gives the periodicity
-                        (in frames) with which the iVectors are estimated.
-     @param [in] ensure_exact_final_context If an utterance length is less than
-                        opts_.frames_per_chunk, we call it "shorter-than-chunk
-                        -size" utterance. This option is used to control whether
-                        we deal with "shorter-than-chunk-size" utterances
-                        specially. It is useful in some models, such as blstm.
-                        If it is true, its "t" indexs will from 
-                        "-opts_.extra_left_context_initial - nnet_left_context_"
-                        to "chunk_length + nnet_right_context_ + 
-                        opts_.extra_right_context_final". Otherwise, it will be
-                        from "-opts_.extra_left_context_initial - nnet_left_context_"
-                        to "opts_.frames_per_chunk + nnet_right_context_ + 
-                        opts_.extra_right_context"
-     @param [in] minibatch_size The capacity of the minibatch. In general, it 
-                        means the number of chunks will be processed. The chunk
-                        size comes from opts, and it may be adjusted slightly
-                        by CheckAndFixConfigs() function according to 
-                        nnet_modulus and frame_subsampling_factor.
-  */
   BatchNnetComputer(const NnetSimpleComputationOptions &opts,
                     const Nnet &nnet,
                     const VectorBase<BaseFloat> &priors,
@@ -88,11 +83,19 @@ class BatchNnetComputer {
                     int32 minibatch_size = 128);
   ~BatchNnetComputer();
 
-  // It takes features as input, and you can either supply a
-  // single iVector input, estimated in batch-mode ('ivector'), or 'online'
-  // iVectors ('online_ivectors' and 'online_ivector_period', or none at all.
-  // BatchNnetComputer takes the ownership of the three pointers, and they
-  // will be released in function Clear().
+
+  /**
+     You call AcceptInput() for each feature file that you are going to want it
+     to decode.
+
+
+     TODO..
+     It takes features as input, and you can either supply a
+     single iVector input, estimated in batch-mode ('ivector'), or 'online'
+     iVectors ('online_ivectors' and 'online_ivector_period', or none at all.
+     BatchNnetComputer takes the ownership of the three pointers, and they
+     will be released in function Clear().
+  */
   void AcceptInput(const std::string &utt_id,
                    const Matrix<BaseFloat> *feats,  // takes the ownership of
                                                     // the below pointers
@@ -228,7 +231,7 @@ class BatchNnetComputer {
   // computing without taking the results out.
   std::list<std::string> utt_list_;
 
-  // The sturcture records the information of each chunk in current batch. It
+  // The stucture records the information of each chunk in current batch. It
   // is used to point out how to organize the input data into batch chunk by
   // chunk and how to fetch the output data into corresponding place.
   struct BatchInfo {
