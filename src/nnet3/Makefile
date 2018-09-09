@@ -29,7 +29,7 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-discriminative-diagnostics.o \
   discriminative-training.o nnet-discriminative-training.o \
   nnet-compile-looped.o decodable-simple-looped.o \
-  decodable-online-looped.o convolution.o \
+  decodable-online-looped.o convolution.o convolution-cudnn.o \
   nnet-convolutional-component.o attention.o \
   nnet-attention-component.o nnet-tdnn-component.o
 
