@@ -80,6 +80,7 @@ public:
                             CuVectorBase<BaseFloat> *bias_deriv) const;
 
 private:
+  // Need to use the PIMPL idiom so our clients don't need to have cudnn.h
   cudnnTensorDescriptor_t input_desc_;
   cudnnTensorDescriptor_t output_desc_;
   cudnnFilterDescriptor_t params_desc_;

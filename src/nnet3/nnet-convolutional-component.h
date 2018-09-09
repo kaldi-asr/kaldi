@@ -24,6 +24,7 @@
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/natural-gradient-online.h"
 #include "nnet3/convolution.h"
+#include "nnet3/cudnn-convolution.h"
 #include <iostream>
 
 namespace kaldi {
