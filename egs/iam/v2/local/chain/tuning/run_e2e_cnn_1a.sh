@@ -163,23 +163,14 @@ if [ $stage -le 4 ]; then
 fi
 
 if [ $stage -le 5 ]; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj $nj --cmd "$cmd" \
-    $dir/graph data/test $dir/decode_test || exit 1;
+  for decode_set in test $maybe_val; do
+    steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+      --nj $nj --cmd "$cmd" \
+      $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
 
-  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                data/test $dir/decode_test{,_rescored} || exit 1
-fi
-
-if [ $stage -le 6 ] && $decode_val; then
-  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --nj $nj --cmd "$cmd" \
-    $dir/graph data/val $dir/decode_val || exit 1;
-
-  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                data/val $dir/decode_val{,_rescored} || exit 1
+    steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/$decode_set $dir/decode_$decode_set{,_rescored} || exit 1
+  done
 fi
 
 echo "Done. Date: $(date). Results:"

@@ -50,32 +50,32 @@ for x in $*; do
 done
 echo
 
-echo -n "# WER val                        "
+echo -n "# WER val                    "
 for x in $*; do
   wer=$(cat $x/decode_val/scoring_kaldi/best_wer | awk '{print $2}')
   printf "% 10s" $wer
 done
 echo
 
-echo -n "# WER (rescored) val            "
+echo -n "# WER (rescored) val         "
 for x in $*; do
   wer="--"
-  [ -d $x/decode_val_rescored ] && wer=$(cat $x/decode_test_rescored/scoring_kaldi/best_wer | awk '{print $2}')
+  [ -d $x/decode_val_rescored ] && wer=$(cat $x/decode_val_rescored/scoring_kaldi/best_wer | awk '{print $2}')
   printf "% 10s" $wer
 done
 echo
 
-echo -n "# CER val                        "
+echo -n "# CER val                    "
 for x in $*; do
   cer=$(cat $x/decode_val/scoring_kaldi/best_cer | awk '{print $2}')
   printf "% 10s" $cer
 done
 echo
 
-echo -n "# CER (rescored) val             "
+echo -n "# CER (rescored) val         "
 for x in $*; do
   cer="--"
-  [ -d $x/decode_val_rescored ] && cer=$(cat $x/decode_test_rescored/scoring_kaldi/best_cer | awk '{print $2}')
+  [ -d $x/decode_val_rescored ] && cer=$(cat $x/decode_val_rescored/scoring_kaldi/best_cer | awk '{print $2}')
   printf "% 10s" $cer
 done
 echo
