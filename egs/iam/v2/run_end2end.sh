@@ -29,14 +29,13 @@ wellington_database=/export/corpora5/Wellington/WWC/
 ./local/check_tools.sh
 
 if [ $stage -le 0 ]; then
+
   if [ -f data/train/text ] && ! $overwrite; then
-    echo "Not processing, probably script have run from wrong stage"
+    echo "$0: Not processing, probably script have run from wrong stage"
     echo "Exiting with status 1 to avoid data corruption"
     exit 1;
   fi
-fi
 
-if [ $stage -le 1 ]; then
   echo "$0: Preparing data..."
   local/prepare_data.sh --download-dir "$iam_database" \
     --wellington-dir "$wellington_database" \
@@ -45,8 +44,8 @@ if [ $stage -le 1 ]; then
 fi
 
 mkdir -p data/{train,test}/data
-if [ $stage -le 2 ]; then
-  echo "$(date) stage 2: getting allowed image widths for e2e training..."
+if [ $stage -le 1 ]; then
+  echo "$(date) stage 1: getting allowed image widths for e2e training..."
   image/get_image2num_frames.py --feat-dim 40 data/train # This will be needed for the next command
   # The next command creates a "allowed_lengths.txt" file in data/train
   # which will be used by local/make_features.py to enforce the images to
@@ -63,15 +62,15 @@ if [ $stage -le 2 ]; then
   utils/fix_data_dir.sh data/train
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 2 ]; then
   for set in train; do
-    echo "$(date) stage 3: Performing augmentation, it will double training data"
+    echo "$(date) stage 2: Performing augmentation, it will double training data"
     local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set} data/${set}_aug data
     steps/compute_cmvn_stats.sh data/${set}_aug || exit 1;
   done
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 3 ]; then
   echo "$0: Preparing BPE..."
   # getting non-silence phones.
   cut -d' ' -f2- data/train/text | \
@@ -105,12 +104,12 @@ END
   done
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 5 ]; then
   echo "$0: Preparing dictionary and lang..."
   local/prepare_dict.sh
   # This recipe uses byte-pair encoding, the silences are part of the words' pronunciations.
@@ -128,12 +127,12 @@ if [ $stage -le 6 ]; then
                                data/lang data/lang_rescore_6g
 fi
 
-if [ $stage -le 7 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: Calling the flat-start chain recipe..."
   local/chain/run_e2e_cnn.sh --train_set train_aug
 fi
 
-if [ $stage -le 8 ]; then
+if [ $stage -le 7 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --use-gpu false \
@@ -141,7 +140,7 @@ if [ $stage -le 8 ]; then
                        data/train_aug data/lang exp/chain/e2e_cnn_1b exp/chain/e2e_ali_train
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 8 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
   local/chain/run_cnn_e2eali.sh --train_set train_aug
 fi
