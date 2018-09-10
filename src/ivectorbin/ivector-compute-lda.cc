@@ -84,11 +84,23 @@ template<class Real>
 void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
                                  MatrixBase<Real> *proj) {
   int32 dim = covar.NumRows();
-  TpMatrix<Real> C(dim);  // Cholesky of covar, covar = C C^T
-  C.Cholesky(covar);
-  C.Invert();  // The matrix that makes covar unit is C^{-1}, because
-               // C^{-1} covar C^{-T} = C^{-1} C C^T C^{-T} = I.
-  proj->CopyFromTp(C, kNoTrans);  // set "proj" to C^{-1}.
+  Matrix<Real> U(dim, dim);
+  Vector<Real> s(dim);
+  covar.Eig(&s, &U);
+  // Sort from greatest to smallest eigenvalue.
+  SortSvd(&s, &U);
+  // Floor eigenvalues to a small positive value.
+  Real floor = s(0) * std::numeric_limits<Real>::min();
+  int32 num_floored;
+  s.ApplyFloor(floor, &num_floored);
+  if (num_floored > 0) {
+    KALDI_WARN << "Floored " << num_floored << " eigenvalues of covariance "
+               << " to " << floor;
+  }
+  // Next two lines computes projection proj, such that
+  // proj * covar * proj^T = I.
+  s.ApplyPow(-0.5);
+  proj->AddDiagVecMat(1.0, s, U, kTrans, 0.0);
 }
 
 void ComputeLdaTransform(
