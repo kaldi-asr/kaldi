@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# e2eali_1c is the same as e2eali_1c but has more CNN layers, different filter size
+# smaller lm-opts, less epochs, more initial/finaljobs, less minibatch, frams-per-iter.
+
 # This script does end2end chain training (i.e. from scratch)
 # local/chain/compare_wer.sh exp/chain/e2e_cnn_1b/ exp/chain/cnn_e2eali_1d
 # System                      e2e_cnn_1b cnn_e2eali_1d
