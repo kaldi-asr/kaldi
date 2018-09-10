@@ -54,6 +54,8 @@ ascii_url=http://www.fki.inf.unibe.ch/DBs/iamDB/data/ascii/ascii.tgz
 brown_corpus_url=http://www.sls.hawaii.edu/bley-vroman/brown.txt
 lob_corpus_url=http://ota.ox.ac.uk/text/0167.zip
 wellington_corpus_loc=/export/corpora5/Wellington/WWC/
+aachen_split_url=http://www.openslr.org/resources/56/splits.zip
+aachen_splits=data/local/aachensplits
 mkdir -p $download_dir data/local
 
 # download and extact images and transcription
@@ -144,6 +146,19 @@ elif [ ! -z $wellington_dir ]; then
 else
   echo "$0: Wellington Corpus not included because wellington_dir not provided"
 fi
+
+if [ -d $aachen_splits ]; then
+  echo "$0: Not downloading the Aachen splits as it is already there."
+else
+  if [ ! -f $aachen_splits/splits.zip ]; then
+    echo "$0: Downloading Aachen splits ..."
+    mkdir -p $aachen_splits
+    wget -P $aachen_splits/ $aachen_split_url || exit 1;
+  fi
+  unzip $aachen_splits/splits.zip -d $aachen_splits || exit 1;
+  echo "$0: Done downloading and extracting Aachen splits"
+fi
+
 
 mkdir -p data/{train,test,val}
 file_name=largeWriterIndependentTextLineRecognitionTask
