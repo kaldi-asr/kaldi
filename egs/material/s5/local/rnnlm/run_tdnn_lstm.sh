@@ -29,7 +29,7 @@
 embedding_dim=512
 lstm_rpd=128
 lstm_nrpd=128
-stage=-10
+stage=0
 train_stage=-10
 epochs=40
 
@@ -43,7 +43,10 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 pruned_rescore=true
 
 ac_model_dir=exp/chain/tdnn1b_sp
-decode_sets="dev analysis1_segmented_reseg analysis2_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg eval2_segmented_reseg"
+#decode_sets="dev analysis1_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg eval2_segmented_reseg"
+decode_sets="dev analysis1_segmented test_dev_segmented eval1_segmented eval2_segmented eval3_segmented"
+#decode_sets="analysis2_segmented"
+#decode_sets="dev eval1_segmented eval2_segmented"
 dir=exp/rnnlm_lstm_1a
 text_dir=data/rnnlm/text
 train_text=data/lm/train.txt
@@ -147,6 +150,32 @@ if [ $stage -le 4 ] && $run_rescore; then
   done
 fi
 wait
-[ -f $dir/.error ] && echo "$0: there was a problem while rescoring" && exit 1
+#[ -f $dir/.error ] && echo "$0: there was a problem while rescoring" && exit 1
+
+if [ $stage -le 5 ]; then
+  echo "$0: Perform nbest-rescoring on $ac_model_dir"
+
+  rm $dir/.error 2>/dev/null || true
+  for decode_set in ${decode_sets}; do
+    (
+      decode_dir=${ac_model_dir}/decode_${decode_set}
+      skip_scoring=false
+      if [ ${decode_set} != "dev" ]; then skip_scoring=true; fi
+
+      # Lattice rescoring
+      rnnlm/lmrescore_nbest.sh \
+        --N 20 \
+        --cmd "$decode_cmd" \
+        --skip-scoring ${skip_scoring} \
+        0.5 data/lang_$LM $dir data/${decode_set}_hires \
+        ${decode_dir}_${decode_dir_suffix}_rescore ${decode_dir}_${decode_dir_suffix}_rescore_nbest || exit 1
+
+      if [ ${decode_set} != "dev" ]; then
+        local/postprocess_test.sh ${decode_set} ${tree_dir}/graph_combined \
+          ${decode_dir}_${decode_dir_suffix}_rescore_nbest
+      fi
+    ) || touch $dir/.error 
+  done
+fi
 
 exit 0
