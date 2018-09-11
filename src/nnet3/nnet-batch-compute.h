@@ -40,6 +40,315 @@ namespace kaldi {
 namespace nnet3 {
 
 
+
+
+/**
+   class NnetComputationTask represents a chunk of an utterance that is
+   requested to be computed.  This will be given to NnetBatchComputer, which
+   will aggregate the tasks and complete them.
+ */
+struct NnetComputationTask {
+  // The input frames, which are treated as being numbered t=0, t=1, etc.  (If
+  // the lowest t value was originally nonzero in the 'natural' numbering, this
+  // just means we conceptually shift the 't' values; the only real constraint
+  // is that the 't' values are contiguous.
+  Matrix<BaseFloat> input_frames;
+
+  // The index of the first output frame (in the shifted numbering where the
+  // first output frame is numbered zero.  This will typically be less than one,
+  // because most network topologies require left context.  If this was an
+  // 'interior' chunk of a recurrent topology like LSTMs, first_input_t may be
+  // substantially less than zero, due to 'extra_left_context'.
+  int32 first_input_t;
+
+  // The stride of output 't' values: e.g., will be 1 for normal-frame-rate
+  // models, and 3 for low-frame-rate models such as chain models.
+  int32 output_t_stride;
+  // The number of output 't' values (they will start from zero and be separated
+  // by output_t_stride).  This will be the num-rows of 'output'.
+  int32 num_output_frames;
+
+  // 'num_initial_unused_output_frames', which will normally be zero, is the number
+  // of rows of the output matrix ('output' which won't actually be needed by
+  // the user, usually because they overlap with a previous chunk (this can
+  // happen because the number of outputs isn't a multiple of the number of
+  // chunks).
+  int32 num_initial_unused_output_frames;
+  // num_used_output_frames, which must be <= num_output_frames -
+  // num_initial_unused_output_frames, is the number of output frames which are
+  // actually going to be used by the user.  (Due to edge effects, not all are
+  // necessarily used).
+  int32 num_used_output_frames;
+
+  // True if this chunk is an 'edge' (the beginning or end of an utterance) AND
+  // is structurally different somehow from non-edge chunk, e.g. requires less
+  // context.  This is present only so that NnetBatchComputer will know the
+  // appropriate minibatch size to use.
+  bool is_edge;
+
+  // The i-vector for this chunk, if this network accepts i-vector inputs.
+  Vector<BaseFloat> ivector;
+
+  // A priority (lower is more urgent).  May be updated after this object is
+  // provided to class NnetBatchComputer.
+  int64 priority;
+
+  // This semaphore will be incremented by class NnetBatchComputer when this
+  // chunk is done.  After this semaphore is incremented, class
+  // NnetBatchComputer will no longer hold any pointers to this class.
+  Semaphore semaphore;
+
+  // Will be set to true by the caller if they want the output of the neural net
+  // to be copied to CPU (to 'output').  If false, the output will stay on
+  // the GPU (if used)- in cu_output.
+  bool output_to_cpu;
+
+  // The neural net output, of dimension num_output_frames by the output-dim of
+  // the neural net, will be written to 'output_cpu' if 'output_to_cpu' is true.
+  // This is expected to be empty when this task is provided to class
+  // NnetBatchComputer, and will be nonempty (if output_to_cpu == true) when the
+  // task is completed and the semaphore is signaled.
+  Matrix<BaseFloat> output_cpu;
+
+  // The output goes here instead of 'output_to_cpu' is false.
+  CuMatrix<BaseFloat> output;
+
+  // Returns true if these two tasks can be part of the same minibatch.  There
+  // are certain things that does *doesn't* check, such as the presence/absence
+  // of an i-vector and output_t_stride, because they are expected to always be
+  // the same in the context where you'd call this function.
+  //bool IsCompatible(const NnetComputationTask &other) const {
+  //return (input_frames.NumRows() == other.input_frames.NumRows() &&
+  //first_input_t == other.first_input_t &&
+  //num_output_frames == other.num_output_frames);
+  //}
+};
+
+
+struct NnetBatchComputerOptions: public NnetSimpleComputationOptions {
+  int32 minibatch_size;
+  int32 edge_minibatch_size;
+  bool ensure_exact_final_context;
+  BaseFloat partial_minibatch_factor;
+
+  NnetBatchComputerOptions(): minbatch_size(128),
+                              edge_minibatch_size(32),
+                              ensure_exact_final_context(false),
+                              partial_minibatch_factor(0.5) {
+  }
+
+  void Register(OptionsItf *po) {
+    NnetSimpleComputationOptions::Register(opts);
+    po->Register("minibatch-size", &minibatch_size, "Number of chunks per "
+                 "minibatch (see also edge-minibatch-size)");
+    po->Register("edge-minibatch-size", &edge_minibatch_size, "Number of "
+                 "chunks per minibatch: this applies to chunks at the "
+                 "beginnings and ends of utterances, in cases (such as "
+                 "recurrent models) when the computation would be different "
+                 "from the usual one.");
+    po->Register("ensure-exact-final-context", &ensure_exact_final_context,
+                 "If true, for utterances shorter than --frames-per-chunk, "
+                 "use exact-length, special computations.  If false, "
+                 "pad with repeats of the last frame.  Would only affect "
+                 "the output for backwards-recurrent models, but would "
+                 "negatively impact speed in all cases.");
+    po->Register("partial-minibatch-factor", &partial_minibatch_factor,
+                 "Factor that controls how small partial minibatches will be "
+                 "they become necessary.  We will potentially do the computation "
+                 "for sizes: int(partial_minibatch_factor^n * minibatch_size "
+                 ", for n = 0, 1, 2...");
+  }
+};
+
+
+/**
+   Split a single utterance into a list of separate tasks to give to class
+   NnetBatchComputer.  This version is for when either you don't have i-vectors
+   (ivector == NULL) or you have a single i-vector for the entire file.
+   The other version (below) has more extensive documentation.
+*/
+void SplitUtteranceIntoTasks(
+    const NnetBatchComputerOptions &opts,
+    int32 nnet_left_context,
+    int32 nnet_right_context,
+    bool output_to_cpu,
+    const Matrix<BaseFloat> &input,
+    const Vector<BaseFloat> *ivector,
+    std::vector<NnetComputationTask> *tasks);
+
+/**
+   Split a single utterance into a list of separate tasks to give to class
+   NnetBatchComputer.  This version is for when you have 'online' i-vectors,
+   i.e.  multiple i-vectors per utterance.
+     @param [in] opts  Options class, e.g. used to get minibatch size.
+     @param [in] nnet_left_context  This, and nnet_right_context, should be the
+              result of a call like this:
+        ComputeSimpleNnetContext(nnet, &nnet_left_context_, &nnet_right_context_);
+     @param [in] nnet_right_context see above.
+     @param [in] output_to_cpu  Will become the 'output_to_cpu' member of the
+             output tasks; this controls whether the computation code should transfer
+             the outputs to CPU (which is to save GPU memory).
+     @param [in] online_ivectors  Matrix of ivectors, one every 'online_ivector_period' frames.
+     @param [in] online_ivector_period  Affects the interpretation of 'online_ivectors'.
+     @param [out]  tasks       The tasks created will be output to here.  The
+                      priorities will be set to zero; setting them to a meaningful
+                      value is up to the caller.
+*/
+void SplitUtteranceIntoTasks(
+    const NnetBatchComputerOptions &opts,
+    int32 nnet_left_context,
+    int32 nnet_right_context,
+    bool output_to_cpu,
+    const Matrix<BaseFloat> &input,
+    const Matrix<BaseFloat> &online_ivectors,
+    int32 online_ivector_period,
+    std::vector<NnetComputationTask> *tasks);
+
+
+/**
+   This class does neural net inference in a way that is optimized for GPU use:
+   it combines chunks of multiple utterances into minibatches for more efficient
+   computation.  It is thread safe, i.e. you can call it from multiple threads
+   without having to worry about data races and the like.  (However, you are
+   expected to call the Compute() function from only one thread).
+
+   Note: it stores references to all arguments to the constructor, so don't
+   delete them till this goes out of scope.
+
+   @param [in] opts   The options class.  Warning: it includes an acoustic
+          weight, whose default is 0.1; you may sometimes want to
+          change this to 1.0.
+   @param [in] nnet
+          The neural net that we're going to do the computation with
+   @param [in] priors
+          Vector of priors-- if supplied and nonempty, we subtract
+          the log of these priors from the nnet output.
+*/
+class NnetBatchComputer {
+ public:
+  /**  Constructor.
+
+       \param [in] opts  Options struct
+       \param [in] nnet  The neural net which we'll be doing the computation with
+       \param [in] priors  Either zero, or a vector of prior probabilities which
+                        we'll take the log of and subtract from the neural net
+                        outputs (e.g. used in non-chain systems).
+   */
+  NnetBatchComputer(const NnetBatchComputerOptions &opts,
+                    const Nnet &nnet,
+                    const VectorBase<BaseFloat> &priors);
+
+
+  /// Accepts a task, meaning the task will be queued.  (Note: the pointer is
+  /// still owned by the caller.
+  void AcceptTask(NnetComputationTask *task);
+
+  /// Returns the number of tasks currently queued.
+  int32 NumTasksQueued() const;
+
+  /// Returns true if at least one full minibatch is ready to compute.
+  bool FullMinibatchReady() const;
+
+
+  /***
+      Does some kind of computation, choosing the highest-priority thing to
+      compute; this will be a full minibatch if FullMinibatchReady() returned
+      true, and a partial one if not, and if tasks were queued (NumTasksQueued()
+      > 0).  It returns true if it did some kind of computation, and false
+      otherwise.  This function locks the class, but not for the entire time
+      it's being called: only at the beginning and at the end.
+   */
+  bool Compute();
+
+  ~NnetBatchComputer();
+
+ private:
+  // Mutex that guards this object.  It is only held for fairly quick operations
+  // (not while the actual computation is being done).
+  std::mutex mutex_;
+
+
+
+  typedef unordered_map<ComputationGroupKey, ComputationGroupInfo,
+                        ComputationGroupKeyHasher> MapType;
+  // tasks_ contains all the queued tasks.
+  // Each key contains a vector of NnetComputationTask* pointers, of the same
+  // structure (i.e., IsCompatible() returns true).
+  MapType tasks_;
+
+  // Gets the priority for a group.  (A group is a list of tasks that may be
+  // computed in the same minibatch).  Lower priority is more important.
+  // What this function does is a kind of heuristic.
+  int64 GetPriority(const std::vector<NnetComputationTask*> > &group);
+
+
+  // This function either compiles and caches (in tasks_) a computation, or
+  // retrieves it from tasks_ and returns it.
+  std::shared_ptr<const NnetComputation> GetComputation(
+      const ComputationGroupKey &key,
+      int32 minibatch_size);
+
+
+  // This function finds the highest-priority group of tasks, removes a
+  // minibatch's worth of them from 'tasks_' and puts them into the
+  // caller-supplied array 'tasks', ensures that a computation has been compiled
+  // for this size of task.  It locks 'mutex_' for its duration.
+  // Will return NULL if there are no tasks to compute.
+  std::shared_ptr<const NnetComputation> FindHighestPriorityGroup(
+      ComputationGroupKey *key,
+      std::vector<NnetComputationTask*> *tasks);
+
+
+  // Changes opts_.frames_per_chunk to be a multiple of
+  // opts_.frame_subsampling_factor, if needed.
+  void CheckAndFixConfigs();
+
+  // this function creates and returns the computation request which is to be
+  // compiled.
+  static void GetComputationRequest(const NnetComputationTask &task,
+                                    int32 minibatch_size,
+                                    ComputationRequest *request);
+
+  struct ComputationGroupInfo {
+    std::vector<NnetComputationTask*> tasks;
+    // map from minibatch-size to a pointer to the appropriate NnetComputation.
+    std::map<int32, std::shared_ptr<const NnetComputation> > computation;
+  }
+
+  // This struct allows us to arrange the tasks into groups that can be
+  // computed in the same minibatch.
+  struct ComputationGroupKey {
+    ComputationGroupKey(const NnetComputationTask &task):
+        num_input_frames(task.input_matrix.NumRows()),
+        first_output_t(task.first_output_t),
+        num_output_frames(task.num_output_frames) {}
+
+    bool operator == (const ComputationGroupKey &other) const {
+      return num_input_frames == other.num_input_frames &&
+          first_input_t == other.first_input_t &&
+          num_output_frames == other.num_output_frames;
+    }
+    int32 num_input_frames;
+    int32 first_input_t;
+    int32 num_output_frames;
+  };
+  struct ComputationGroupKeyHasher {
+    int32 operator () const (const ComputationGroupKey &key) {
+      return key.num_input_frames + 18043 * key.first_input_t +
+          6413 * num_output_frames;
+    }
+  };
+
+  NnetBatchComputerOptions opts_;
+  const Nnet &nnet_;
+  CachingOptimizingCompiler compiler_;
+  CuVector<BaseFloat> log_priors_;
+  int32 output_dim_;
+
+
+
+};
+
 /**
    This class does neural net inference in a way that is optimized for GPU use:
    it combines chunks of multiple utterances into minibatches for more efficient
@@ -73,7 +382,7 @@ namespace nnet3 {
            process in each minibatch.  (The number of frames per chunk
            comes from 'opts').
 */
-class BatchNnetComputer {
+class NnetBatchComputer {
  public:
   BatchNnetComputer(const NnetSimpleComputationOptions &opts,
                     const Nnet &nnet,

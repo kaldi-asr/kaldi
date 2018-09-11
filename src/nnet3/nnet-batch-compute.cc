@@ -25,32 +25,82 @@
 namespace kaldi {
 namespace nnet3 {
 
-BatchNnetComputer::BatchNnetComputer(
-    const NnetSimpleComputationOptions &opts,
+
+NnetBatchComputer::NnetBatchComputer(
+    const NnetBatchComputerOptions &opts,
     const Nnet &nnet,
-    const VectorBase<BaseFloat> &priors,
-    int32 online_ivector_period,
-    bool  ensure_exact_final_context,
-    int32 minibatch_size):
+    const VectorBase<BaseFloat> &priors):
     opts_(opts),
     nnet_(nnet),
-    output_dim_(nnet_.OutputDim("output")),
     log_priors_(priors),
-    online_ivector_period_(online_ivector_period),
-    compiler_(nnet_, opts_.optimize_config),
-    ensure_exact_final_context_(ensure_exact_final_context),
-    minibatch_size_(minibatch_size) {
-  // Check the Nnet
-  KALDI_ASSERT(IsSimpleNnet(nnet));
-  ComputeSimpleNnetContext(nnet, &nnet_left_context_, &nnet_right_context_);
+    compiler_(nnet_, opts.optimize_config) {
   log_priors_.ApplyLog();
   CheckAndFixConfigs();
-  // Prepare ComputationRequest and store a NnetComputation object
-  PrepareComputationRequest();
+}
+
+std::shared_ptr<const NnetComputation> NnetBatchComputer::FindHighestPriorityGroup(
+    ComputationGroupKey *key,
+    std::vector<NnetComputationTask*> *tasks) {
+  tasks->clear();
+  std::unique_lock<std::mutex>(mutex_);
+  MapType::const_iterator iter = tasks_.begin(), end = tasks_.end();
+
 }
 
 
-void BatchNnetComputer::CheckAndFixConfigs() {
+std::shared_ptr<const NnetComputation> NnetBatchComputer::GetComputation(
+    const ComputationGroupKey &key,
+    int32 minibatch_size) {
+  MapType::iterator iter = tasks_.Find(key);
+  if (iter == tasks_.end() || iter->second.tasks.empty()) {
+    KALDI_ERR << "Expected to have at least one example to compile for.";
+  }
+  NnetComputationTask *example_task = iter->second.tasks[0];
+
+  NnetComputationRequest request;
+  GetComputationRequest(*example_task, minibatch_size, &request);
+  return compiler_.Compile(request);
+}
+
+// static
+void NnetBatchComputer::GetComputationRequest(
+    const NnetComputationTask &task,
+    int32 minibatch_size,
+    ComputationRequest *request) {
+  request->need_model_derivative = false;
+  request->store_component_stats = false;
+  request->inputs.reserve(2);
+
+  int32 num_input_frames = task.input_matrix.NumRows(),
+      first_input_t = task.first_input_t,
+      num_output_frames = task.num_output_frames,
+      output_t_stride = task.output_t_stride;
+  bool has_ivector = (task.ivector.Dim() != 0);
+
+  std::vector<Index> input_indexes, ivector_indexes, output_indexes;
+  input_indexes.reserve(minibatch_size * num_input_frames);
+  output_indexes.reserve(minibatch_size * num_output_frames);
+  if (has_ivector)
+    ivector_indexes.reserve(minibatch_size);
+
+  for (int32 n = 0; n < minibatch_size; n++) {
+    for (int32 t = first_input_t; t < first_input_t + num_input_rows; t++)
+      input_indexes.push_back(Index(n, t, 0));
+    if (has_ivector)
+      ivector_indexes.push_back(Index(n, 0, 0));
+    for (int32 t = 0; t < num_output_rows; t++)
+      output_indexes.push_back(Index(n, t, 0));
+  }
+
+  request->inputs.push_back(IoSpecification("input", input_indexes));
+  if (has_ivector)
+    request->inputs.push_back(IoSpecification("ivector", ivector_indexes));
+  request->outputs.push_back(IoSpecification("output", output_indexes));
+}
+
+
+
+void NnetBatchComputer::CheckAndFixConfigs() {
   static bool warned_frames_per_chunk = false;
   int32 nnet_modulus = nnet_.Modulus();
   if (opts_.frame_subsampling_factor < 1 ||
@@ -86,81 +136,41 @@ void BatchNnetComputer::CheckAndFixConfigs() {
   }
 }
 
-
-void BatchNnetComputer::PrepareComputationRequest() {
-  int32 input_dim = nnet_.InputDim("input"),
-        ivector_dim = nnet_.InputDim("ivector");
-  KALDI_ASSERT(input_dim > 0);
-
-  std::pair<int32, int32> context;
-  context = std::make_pair(opts_.extra_left_context + nnet_left_context_,
-                           opts_.extra_right_context + nnet_right_context_);
-  batch_info_[context] = new BatchInfoQueue();
-
-  if (opts_.extra_left_context_initial != opts_.extra_left_context &&
-      opts_.extra_left_context_initial >= 0) {
-    context = std::make_pair(opts_.extra_left_context_initial +
-                             nnet_left_context_,
-                             opts_.extra_right_context + nnet_right_context_);
-    batch_info_[context] = new BatchInfoQueue();
+int32 NnetBatchComputer::NumTasksQueued() const {
+  std::unique_lock<std::mutex> lock(mutex_);
+  MapType::const_iterator iter = tasks_.begin(), end = tasks_.end();
+  int32 ans = 0;
+  for (; iter != end; ++iter) {
+    const ComputationGroupInfo &info = iter->second;
+    ans += static_cast<int32>(info.tasks.size());
   }
+  return ans;
+}
 
-  if (opts_.extra_right_context_final != opts_.extra_right_context &&
-      opts_.extra_right_context_final >= 0) {
-    context = std::make_pair(opts_.extra_left_context + nnet_left_context_,
-                             opts_.extra_right_context_final +
-                             nnet_right_context_);
-    batch_info_[context] = new BatchInfoQueue();
+bool NnetBatchComputer::FullMinibatchReady() const {
+  std::unique_lock<std::mutex> lock(mutex_);
+  MapType::const_iterator iter = tasks_.begin(), end = tasks_.end();
+  int32 ans = 0;
+  for (; iter != end; ++iter) {
+    const ComputationGroupInfo &info = iter->second;
+    if (info.tasks.empty())
+      continue;
+    // 'is_edge' is true only if this task is for the beginning or end of an
+    // utterance, *AND* it's structurally different from the non-edge tasks
+    // (e.g. due to extra_left_context_initial or extra_right_initial).
+    bool is_edge = info.tasks[0]->is_edge;
+    int32 this_minibatch_size = (is_edge ? opts_.edge_minibatch_size :
+                                 opts_.minibatch_size);
+    if (static_cast<int32>(info.tasks.size()) >= this_minibatch_size)
+      return true;
   }
+  return false;
+}
 
-  for (BatchInfoMap::iterator iter =
-       batch_info_.begin(); iter != batch_info_.end(); iter++) {
-    context = iter->first;
-    int32 left_context = context.first,
-          right_context = context.second;
-    // Actually, when opts_.frame_subsampling_factor > 1,  the chunk size will
-    // be less than opts_.frames_per_chunk.
-    int32 num_input_rows = left_context + opts_.frames_per_chunk +
-      right_context - opts_.frame_subsampling_factor + 1,
-          num_output_rows = opts_.frames_per_chunk /
-                            opts_.frame_subsampling_factor;
+bool NnetBatchComputer::Compute() {
 
-    ComputationRequest* request = new ComputationRequest();
-    request->need_model_derivative = false;
-    request->store_component_stats = false;
-    request->inputs.reserve(2);
-    request->outputs.reserve(1);
-    std::vector<Index> input_indexes, ivector_indexes, output_indexes;
 
-    for (int32 n = 0; n < minibatch_size_; n++) {
-      for (int32 t = 0; t < num_input_rows; t++) {
-        input_indexes.push_back(Index(n, t - left_context, 0));
-      }
-    }
-    if (ivector_dim > 0) {
-      for (int32 n = 0; n < minibatch_size_; n++) {
-        ivector_indexes.push_back(Index(n, 0, 0));
-      }
-    }
-    for (int32 n = 0; n < minibatch_size_; n++) {
-      for (int32 i = 0; i < num_output_rows; i++) {
-        output_indexes.push_back(Index(n, i * opts_.frame_subsampling_factor,
-                                       0));
-      }
-    }
 
-    request->inputs.push_back(IoSpecification("input", input_indexes));
-    if (ivector_dim > 0) {
-      request->inputs.push_back(IoSpecification("ivector", ivector_indexes));
-    }
-    request->outputs.push_back(IoSpecification("output", output_indexes));
-    context_to_request_[context] = request;
-  }
-
-  if (ensure_exact_final_context_) {
-    context = std::make_pair(-1, -1);
-    batch_info_[context] = new BatchInfoQueue();
-  }
 }
 
 
@@ -320,7 +330,7 @@ void BatchNnetComputer::PrepareBatchInfo() {
     last_batch_info_.utt_id = utt_id;
     last_batch_info_.first_input_frame_index = first_input_frame;
     last_batch_info_.last_input_frame_index = last_input_frame;
-    last_batch_info_.first_output_subsampled_frame_index = 
+    last_batch_info_.first_output_subsampled_frame_index =
       first_subsampled_frame;
     last_batch_info_.last_output_subsampled_frame_index =
       last_subsampled_frame;
@@ -487,7 +497,7 @@ void BatchNnetComputer::DoNnetComputationOnes() {
   // contest_to_request_ is compiled more than one time. As when
   // CachingOptimizingCompiler compile a request, it will be moved to the end
   // of access_queue_.
-  // ComputationRequestMap::iterator iter = context_to_request_.begin(), 
+  // ComputationRequestMap::iterator iter = context_to_request_.begin(),
   //                                  end = context_to_request_.end();
   // for (; iter != end; iter++) {
   //   compiler_.Compile(*(iter->second));
