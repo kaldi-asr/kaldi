@@ -248,7 +248,7 @@ if [ $stage -le 7 ]; then
       $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
 
     steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                data/$decode_set $dir/decode_$decode_set{,_rescored} || exit 1
+                                data/$decode_set $dir/decode_${decode_set}{,_rescored} || exit 1
   done
 fi
 

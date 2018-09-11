@@ -177,9 +177,9 @@ cat $test_old > $test_new
 cat $val1_old $val2_old > $val_new
 
 if $process_aachen_split; then
-    local/process_aachen_splits.py data/local extra/splits data/train --dataset train || exit 1
-    local/process_aachen_splits.py data/local extra/splits data/test --dataset test || exit 1
-    local/process_aachen_splits.py data/local extra/splits data/val --dataset validation || exit 1
+    local/process_aachen_splits.py data/local $aachen_splits/splits data/train --dataset train || exit 1
+    local/process_aachen_splits.py data/local $aachen_splits/splits data/test --dataset test || exit 1
+    local/process_aachen_splits.py data/local $aachen_splits/splits data/val --dataset validation || exit 1
 else
     local/process_data.py data/local data/train --dataset train || exit 1
     local/process_data.py data/local data/test --dataset test || exit 1
