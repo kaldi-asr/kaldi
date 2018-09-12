@@ -27,6 +27,8 @@ def remove_punctuations(transcript):
             continue
         if char == '(' or char == ':' or char == ';' or char == '"':
             continue
+        if char == '*':
+            continue
         char_list.append(char)
     return char_list
 
@@ -110,8 +112,8 @@ for line_id, line_to_find in utterance_dict.items():
         remaining_utterances[line_id] = line_to_find
 
 # removing long utterances not found above
-row_to_keep[87530] = False; row_to_keep[87531] = False; row_to_keep[87532] = False
-row_to_keep[31724] = False; row_to_keep[31725] = False; row_to_keep[31726] = False
+row_to_keep[87530] = False; row_to_keep[87531] = False; row_to_keep[87532] = False;
+row_to_keep[31724] = False; row_to_keep[31725] = False; row_to_keep[31726] = False;
 row_to_keep[16704] = False; row_to_keep[16705] = False; row_to_keep[16706] = False;
 row_to_keep[94181] = False; row_to_keep[94182] = False; row_to_keep[94183] = False;
 row_to_keep[20171] = False; row_to_keep[20172] = False; row_to_keep[20173] = False;
