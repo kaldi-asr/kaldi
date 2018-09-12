@@ -88,12 +88,15 @@ void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
   Matrix<Real> U(dim, dim);
   Vector<Real> s(dim);
   covar.Eig(&s, &U);
+  // Sort eigvenvalues from largest to smallest.
+  SortSvd(&s, &U);
   // Floor eigenvalues to a small positive value.
   int32 num_floored;
+  floor *= s(0); // Floor relative to the largest eigenvalue
   s.ApplyFloor(floor, &num_floored);
   if (num_floored > 0) {
     KALDI_WARN << "Floored " << num_floored << " eigenvalues of covariance "
-               << " to " << floor;
+               << "to " << floor;
   }
   // Next two lines computes projection proj, such that
   // proj * covar * proj^T = I.
@@ -222,7 +225,7 @@ int main(int argc, char *argv[]) {
 
     int32 lda_dim = 100; // Dimension we reduce to
     BaseFloat total_covariance_factor = 0.0,
-              covariance_floor = 1.0e-04;
+              covariance_floor = 1.0e-06;
     bool binary = true;
 
     po.Register("dim", &lda_dim, "Dimension we keep with the LDA transform");
@@ -230,8 +233,9 @@ int main(int argc, char *argv[]) {
                 "If this is 0.0 we normalize to make the within-class covariance "
                 "unit; if 1.0, the total covariance; if between, we normalize "
                 "an interpolated matrix.");
-    po.Register("covariance-floor", &covariance_floor, "Floor on the eigenvalues "
-                " of the interpolated covariance matrix");
+    po.Register("covariance-floor", &covariance_floor, "Floor the eigenvalues "
+                "of the interpolated covariance matrix to the product of its "
+                "largest eigenvalue and this number.");
     po.Register("binary", &binary, "Write output in binary mode");
 
     po.Read(argc, argv);
