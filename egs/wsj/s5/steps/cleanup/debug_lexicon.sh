@@ -113,9 +113,10 @@ if [ $stage -le 8 ]; then
   grep -v '<eps>' $phone_lang/phones.txt | awk '{print $1, $1}' | \
     sed 's/_B$//' | sed 's/_I$//' | sed 's/_E$//' | sed 's/_S$//' >$dir/phone_map.txt
 
-  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt > $dir/phone_text.ctm > $dir/phone_mapped.ctm
 
   export LC_ALL=C
+
+  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt | sort > $dir/phone_mapped.ctm
 
   cat $dir/word.ctm  | awk '{printf("%s-%s %010.0f START %s\n", $1, $2, 1000*$3, $5); printf("%s-%s %010.0f END %s\n", $1, $2, 1000*($3+$4), $5);}' | \
     sort > $dir/word_processed.ctm
@@ -129,7 +130,7 @@ if [ $stage -le 8 ]; then
   sort -m $dir/word_processed.ctm $dir/phone_processed.ctm > $dir/combined.ctm
 fi
 
-  # after merge-sort of the two ctm's, we add <eps> to cover "deserted" phones due to precision limits, and then merge all consecutive <eps>'s. 
+  # after merge-sort of the two ctm's, we add <eps> to cover "deserted" phones due to precision limits, and then merge all consecutive <eps>'s.
 if [ $stage -le 9 ]; then
   awk '{print $1, $3, $4}' $dir/combined.ctm | \
      perl -e ' while (<>) { chop; @A = split(" ", $_); ($utt, $a,$b) = @A;
@@ -137,14 +138,14 @@ if [ $stage -le 9 ]; then
      if ($a eq "END") { print $utt, " ", $cur_word, " ", join(" ", @phones), "\n"; }
      if ($a eq "PHONE") { if ($prev eq "END") {print $utt, " ", "<eps>", " ", $b, "\n";} else {push @phones, $b;}} $prev = $a;} ' |\
      awk 'BEGIN{merge_prev=0;} {utt=$1;word=$2;pron=$3;for (i=4;i<=NF;i++) pron=pron" "$i;
-     if (word_prev == "<eps>" && word == "<eps>" && utt_prev == utt) {merge=0;pron_prev=pron_prev" "pron;} else {merge=1;} 
+     if (word_prev == "<eps>" && word == "<eps>" && utt_prev == utt) {merge=0;pron_prev=pron_prev" "pron;} else {merge=1;}
      if(merge_prev==1) {print utt_prev, word_prev, pron_prev;};
      merge_prev=merge; utt_prev=utt; word_prev=word; pron_prev=pron;}
      END{if(merge_prev==1) {print utt_prev, word_prev, pron_prev;}}' > $dir/ctm_prons.txt
-  
+
   steps/cleanup/internal/get_non_scored_words.py $lang > $dir/non_scored_words
   steps/cleanup/internal/get_pron_stats.py $dir/ctm_prons.txt $phone_lang/phones/silence.txt $phone_lang/phones/optional_silence.txt $dir/non_scored_words - | \
-    sort -nr > $dir/prons.txt  
+    sort -nr > $dir/prons.txt
 fi
 
 if [ $stage -le 10 ]; then
