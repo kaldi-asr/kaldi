@@ -1,0 +1,27 @@
+#!/usr/bin/env perl
+# Copyright 2012-2014  Johns Hopkins University (Author: Yenda Trmal)
+# Apache 2.0
+
+use utf8;
+
+use open qw(:encoding(utf8));
+binmode STDIN, ":utf8";
+binmode STDOUT, ":utf8";
+binmode STDERR, ":utf8";
+
+# Arabic-specific normalization
+while (<>) {
+  @F = split " ";
+  print "$F[0] ";
+  foreach $s (@F[1..$#F]) {
+    $s =~ s/\|/ /g;
+    #$s =~ s/\*/!/g;
+    if ($s ne "") {
+      print "$s";
+    } else {
+      print "";
+    }
+  }
+  print "\n";
+}
+
