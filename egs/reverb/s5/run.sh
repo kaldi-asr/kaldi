@@ -30,10 +30,13 @@ if [ ! `which matlab` ]; then
   exit 1
 fi
 
+./local/check_tools.sh || exit 1
+
 . ./cmd.sh
 . ./path.sh
 
 stage=0
+
 . utils/parse_options.sh
 # Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
 # -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
@@ -51,13 +54,10 @@ if [[ $(hostname -f) == *.clsp.jhu.edu ]] ; then
 else
   echo "Set the data directory locations." && exit 1;
 fi
-export reverb_dt=$reverb/REVERB_WSJCAM0_dt
-export reverb_et=$reverb/REVERB_WSJCAM0_et
-export reverb_real_dt=$reverb/MC_WSJ_AV_Dev
-export reverb_real_et=$reverb/MC_WSJ_AV_Eval
 
-# set the directory of the multi-condition training data to be generated
-reverb_tr=`pwd`/data_tr_cut/REVERB_WSJCAM0_tr_cut
+#training set and test set
+train_set=tr_simu_8ch
+test_sets="dt_real_1ch dt_simu_1ch et_real_1ch et_simu_1ch"
 
 # LDA context size (left/right) (4 is default)
 context_size=4
@@ -66,15 +66,14 @@ context_size=4
 lm="tg_5k"
 
 # number of jobs for feature extraction and model training
-nj_train=30
+nj=92
+decode_nj=20
 
 # number of jobs for decoding
 nj_decode=8
 
 # set to true if you want the tri2a systems (re-implementation of the HTK baselines)
 do_tri2a=true
-
-./local/check_tools.sh || exit 1
 
 if [ ${stage} -le 1 ]; then
     ### Task dependent. You have to make the following data preparation part by yourself.
@@ -88,17 +87,27 @@ fi
 
 if [ $stage -le 2 ]; then
   # Prepare wsjcam0 clean data and wsj0 language model.
-  local/wsjcam0_data_prep.sh $wsjcam0 $wsj0
+  # local/wsjcam0_data_prep.sh $wsjcam0 $wsj0
 
-  # Prepare merged BEEP/CMU dictionary.
-  local/wsj_prepare_beep_dict.sh
+  # # Prepare merged BEEP/CMU dictionary.
+  # local/wsj_prepare_beep_dict.sh
 
-  # Prepare wordlists, etc.
+  # # Prepare wordlists, etc.
  
-  utils/prepare_lang.sh data/local/dict "<SPOKEN_NOISE>" data/local/lang_tmp data/lang
+  # utils/prepare_lang.sh data/local/dict "<NOISE>" data/local/lang_tmp data/lang
 
-  # Prepare directory structure for clean data. Apply some language model fixes.
-  local/wsjcam0_format_data.sh
+  # # Prepare directory structure for clean data. Apply some language model fixes.
+  # local/wsjcam0_format_data.sh
+  
+  local/train_lms_srilm.sh \
+    --train-text data/${train_set}/text --dev-text data/dt_simu_8ch/text \
+    --oov-symbol "<NOISE>" --words-file data/lang/words.txt \
+    data/ data/srilm
+  
+  LM=data/srilm/best_3gram.gz
+  # Compiles G for reverb trigram LM
+  utils/format_lm.sh \
+		data/lang $LM data/local/dict/lexicon.txt data/lang
 
   # Now it's getting more interesting.
   # Prepare the multi-condition training data and the REVERB dt set.
@@ -123,210 +132,152 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
+  for dset in ${train_set} ${test_sets}; do
+    utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
+    utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit data/${dset}
+  done
+fi
+
+if [ $stage -le 4 ]; then
   # Extract MFCC features for clean sets.
   # For the non-clean data sets, this is outsourced to the data preparation scripts.
   mfccdir=mfcc
   ### for x in si_tr si_dt; do it seems that the number of transcriptions of si_dt is not correct.
-  for x in dt_real_8ch dt_simu_8ch et_real_8ch et_simu_8ch; do # tr_simu_8ch 
-   steps/make_mfcc.sh --cmd "$train_cmd" --nj $nj_train \
+  for x in ${train_set} ${test_sets}; do
+   steps/make_mfcc.sh --cmd "$train_cmd" --nj 30 \
      data/$x exp/make_mfcc/$x $mfccdir
    steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
   done
 fi
 
-if [ $stage -le 4 ]; then
-  # Train monophone model on clean data (si_tr).
-  echo "### TRAINING mono0a ###"
-  steps/train_mono.sh --boost-silence 1.25 --nj $nj_train --cmd "$train_cmd" \
-    data/tr_simu_8ch data/lang exp/mono0a
-
-  # Align monophones with clean data.
-  echo "### ALIGNING mono0a_ali ###"
-  steps/align_si.sh --boost-silence 1.25 --nj $nj_train --cmd "$train_cmd" \
-    data/tr_simu_8ch data/lang exp/mono0a exp/mono0a_ali
-
-  # Create first triphone recognizer.
-  echo "### TRAINING tri1 ###"
-  steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
-    2000 10000 data/tr_simu_8ch data/lang exp/mono0a_ali exp/tri1
-
-  echo "### ALIGNING tri1_ali ###"
-  # Re-align triphones.
-  steps/align_si.sh --nj $nj_train --cmd "$train_cmd" \
-    data/tr_simu_8ch data/lang exp/tri1 exp/tri1_ali
-fi
-
-# The following code trains and evaluates a delta feature recognizer, which is similar to the HTK
-# baseline (but using per-utterance basis fMLLR instead of batch MLLR). This is for reference only.
-if $do_tri2a; then
-if [ $stage -le 5 ]; then
-  # Train tri2a, which is deltas + delta-deltas, on clean data.
-  steps/train_deltas.sh --cmd "$train_cmd" \
-    2500 15000 data/tr_simu_8ch data/lang exp/tri1_ali exp/tri2a
-
-  # Re-align triphones using clean data. This gives a smallish performance gain.
-  steps/align_si.sh --nj $nj_train --cmd "$train_cmd" \
-    data/tr_simu_8ch data/lang exp/tri2a exp/tri2a_ali
-
-  # Train a multi-condition triphone recognizer.
-  # This uses alignments on *clean* data, which is allowed for REVERB.
-  # However, we have to use the "cut" version so that the length of the
-  # waveforms match.
-  # It is actually asserted by the Challenge that clean and multi-condition waves are aligned.
-  # steps/train_deltas.sh --cmd "$train_cmd" \
-    # 2500 15000 data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/tri2a_ali exp/tri2a_mc
-
-  # Prepare clean and mc tri2a models for decoding.
-  utils/mkgraph.sh data/lang_test_bg_5k exp/tri2a exp/tri2a/graph_bg_5k
-  # utils/mkgraph.sh data/lang_test_bg_5k exp/tri2a_mc exp/tri2a_mc/graph_bg_5k &
-fi
+# if [ $stage -le 5 ]; then
+  # make a subset for monophone training
+  #utils/subset_data_dir.sh --shortest data/${train_set} 30000 data/${train_set}_30kshort
+  #utils/subset_data_dir.sh data/${train_set}_10kshort 4000 data/${train_set}_4kshort
+# fi
 
 if [ $stage -le 6 ]; then
-  # decode REVERB dt using tri2a, clean
-  for dataset in data/{dt,et}*_8ch; do
-    steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
-      exp/tri2a/graph_bg_5k $dataset exp/tri2a/decode_bg_5k_`echo $dataset | awk -F '/' '{print $2 "_" $3}'` &
-  done
-
-  # decode REVERB dt using tri2a, mc
-  # for dataset in data/{dt,et}*_8ch; do
-    # steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
-      # exp/tri2a_mc/graph_bg_5k $dataset exp/tri2a_mc/decode_bg_5k_`echo $dataset | awk -F '/' '{print $2 "_" $3}'` &
-  # done
-
-  # basis fMLLR for tri2a_mc system
-  # This computes a transform for every training utterance and computes a basis from that.
-  # steps/get_fmllr_basis.sh --cmd "$train_cmd" --per-utt true data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/tri2a_mc
-
-  # Recognition using fMLLR adaptation (per-utterance processing).
-  # for dataset in data/{dt,et}*_8ch; do
-    # steps/decode_basis_fmllr.sh --nj $nj_decode --cmd "$decode_cmd" \
-      # exp/tri2a_mc/graph_bg_5k $dataset exp/tri2a_mc/decode_basis_fmllr_bg_5k_`echo $dataset | awk -F '/' '{print $2 "_" $3}'` &
-  # done
-  wait
-fi
+  # Starting basic training on MFCC features
+  steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
+		      data/${train_set} data/lang exp/mono
 fi
 
 if [ $stage -le 7 ]; then
-  # Train tri2b recognizer, which uses LDA-MLLT, using the default parameters from the WSJ recipe.
-  echo "### TRAINING tri2b ###"
-  steps/train_lda_mllt.sh --cmd "$train_cmd" \
-    --splice-opts "--left-context=$context_size --right-context=$context_size" \
-    2500 15000 data/tr_simu_8ch data/lang exp/tri1_ali exp/tri2b
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+		    data/${train_set} data/lang exp/mono exp/mono_ali
 
-  # tri2b (LDA-MLLT system) with multi-condition training, using default parameters.
-  # echo "### TRAINING tri2b_mc ###"
-  # steps/train_lda_mllt.sh  --cmd "$train_cmd"\
-    # --splice-opts "--left-context=$context_size --right-context=$context_size" \
-    # 2500 15000 data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/tri1_ali exp/tri2b_mc
+  steps/train_deltas.sh --cmd "$train_cmd" \
+			2500 30000 data/${train_set} data/lang exp/mono_ali exp/tri1
 fi
 
-# Prepare tri2b* systems for decoding.
 if [ $stage -le 8 ]; then
-  echo "### MAKING GRAPH {tri2b,tri2b_mc}/graph_$lm ###"
-  for recog in tri2b; do #tri2b_mc
-    utils/mkgraph.sh data/lang_test_$lm exp/$recog exp/$recog/graph_$lm &
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+		    data/${train_set} data/lang exp/tri1 exp/tri1_ali
+
+  steps/train_lda_mllt.sh --cmd "$train_cmd" \
+			  4000 50000 data/${train_set} data/lang exp/tri1_ali exp/tri2
+fi
+
+if [ $stage -le 9 ]; then
+  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
+  for dset in ${test_sets}; do
+    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+		    exp/tri2/graph data/${dset} exp/tri2/decode_${dset} &
   done
   wait
 fi
-exit 1
-# discriminative training on top of multi-condition systems
-# one could also add tri2b here to have a DT clean recognizer for reference
-if [ $stage -le 9 ]; then
-  base_recog=tri2b_mc
-  bmmi_recog=${base_recog}_mmi_b0.1
-  echo "### DT $base_recog --> $bmmi_recog ###"
 
-  # get alignments from base recognizer
-  steps/align_si.sh --nj $nj_train --cmd "$train_cmd" \
-    --use-graphs true data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/$base_recog exp/${base_recog}_ali
-
-  # get lattices from base recognizer
-  denlats_dir=${base_recog}_denlats
-  subsplit=`echo $nj_train \* 2 | bc`
-  # DT with multi-condition data ...
-  steps/make_denlats.sh --sub-split $subsplit --nj $nj_train --cmd "$decode_cmd" \
-    data/REVERB_tr_cut/SimData_tr_for_1ch_A data/lang exp/$base_recog exp/$denlats_dir
-
-  # boosted MMI training
-  steps/train_mmi.sh --boost 0.1 --cmd "$train_cmd" \
-    data/REVERB_tr_cut/SimData_tr_for_1ch_A \
-    data/lang \
-    exp/${base_recog}_ali \
-    exp/$denlats_dir \
-    exp/$bmmi_recog
-  cp exp/$base_recog/ali.* exp/$bmmi_recog
-fi
-
-# decoding using various recognizers
 if [ $stage -le 10 ]; then
-  # put tri2b last since it takes longest due to the large mismatch.
-  for recog in tri2b_mc tri2b_mc_mmi_b0.1 tri2b; do
-    # The graph from the ML directory is used in recipe
-    recog2=`echo $recog | sed s/_mmi.*//`
-    graph=exp/$recog2/graph_$lm
+  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
+		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
 
-    echo "### DECODING with $recog, noadapt, $lm ###"
-    for dataset in data/REVERB_*{dt,et}/*; do
-      decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
-      steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
-        $graph $dataset \
-        exp/$recog/decode_$decode_suff &
-    done
-    wait
-
-    echo " ## MBR RESCORING with $recog, noadapt ##"
-    for dataset in data/REVERB_*{dt,et}/*; do
-      decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
-      mkdir -p exp/$recog/decode_mbr_$decode_suff
-      cp exp/$recog/decode_$decode_suff/lat.*.gz exp/$recog/decode_mbr_$decode_suff
-      local/score_mbr.sh --cmd "$decode_cmd" \
-        $dataset data/lang_test_$lm/ exp/$recog/decode_mbr_$decode_suff &
-    done
-    wait
-
-  done # loop recog
+  steps/train_sat.sh --cmd "$train_cmd" \
+		     5000 100000 data/${train_set} data/lang exp/tri2_ali exp/tri3
 fi
 
-# decoding using various recognizers with adaptation
 if [ $stage -le 11 ]; then
-  # put tri2b last since it takes longest due to the large mismatch.
-  for recog in tri2b_mc tri2b_mc_mmi_b0.1 tri2b; do
-    # The graph from the ML directory is used in recipe
-    recog2=`echo $recog | sed s/_mmi.*//`
-    graph=exp/$recog2/graph_$lm
-
-    # set the adaptation data
-    if [[ "$recog" =~ _mc ]]; then
-      tr_dataset=REVERB_tr_cut/SimData_tr_for_1ch_A
-    else
-      tr_dataset=si_tr
-    fi
-
-    echo "### DECODING with $recog, basis_fmllr, $lm ###"
-    steps/get_fmllr_basis.sh --cmd "$train_cmd" --per-utt true data/$tr_dataset data/lang exp/$recog
-    for dataset in data/REVERB_*{dt,et}/*; do
-      (
-        decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
-        steps/decode_basis_fmllr.sh --nj $nj_decode --cmd "$decode_cmd" \
-          $graph $dataset \
-          exp/$recog/decode_basis_fmllr_$decode_suff
-      ) &
-    done
-    wait
-
-    echo " ## MBR RESCORING with $recog, basis_fmllr ##"
-    for dataset in data/REVERB_*{dt,et}/*; do
-      decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
-      mkdir -p exp/$recog/decode_mbr_basis_fmllr_$decode_suff
-      cp exp/$recog/decode_basis_fmllr_$decode_suff/lat.*.gz exp/$recog/decode_mbr_basis_fmllr_$decode_suff
-      local/score_mbr.sh --cmd "$decode_cmd" \
-        $dataset data/lang_test_$lm/ exp/$recog/decode_mbr_basis_fmllr_$decode_suff &
-    done
-    wait
-
-  done # loop recog
+  utils/mkgraph.sh data/lang exp/tri3 exp/tri3/graph
+  for dset in ${test_sets}; do
+    steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+			  exp/tri3/graph data/${dset} exp/tri3/decode_${dset} &
+  done
+  wait
 fi
+
+if [ $stage -le 12 ]; then
+  # chain TDNN
+  local/chain/run_tdnn.sh --nj ${nj} --train-set ${train_set} --test-sets "$test_sets" --gmm tri3 --nnet3-affix _${train_set}
+fi
+exit 1
+# # decoding using various recognizers
+# if [ $stage -le 16 ]; then
+  # # put tri2b last since it takes longest due to the large mismatch.
+  # for recog in tri2b_mc tri2b_mc_mmi_b0.1 tri2b; do
+    # # The graph from the ML directory is used in recipe
+    # recog2=`echo $recog | sed s/_mmi.*//`
+    # graph=exp/$recog2/graph_$lm
+
+    # echo "### DECODING with $recog, noadapt, $lm ###"
+    # for dataset in data/REVERB_*{dt,et}/*; do
+      # decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
+      # steps/decode.sh --nj $nj_decode --cmd "$decode_cmd" \
+        # $graph $dataset \
+        # exp/$recog/decode_$decode_suff &
+    # done
+    # wait
+
+    # echo " ## MBR RESCORING with $recog, noadapt ##"
+    # for dataset in data/REVERB_*{dt,et}/*; do
+      # decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
+      # mkdir -p exp/$recog/decode_mbr_$decode_suff
+      # cp exp/$recog/decode_$decode_suff/lat.*.gz exp/$recog/decode_mbr_$decode_suff
+      # local/score_mbr.sh --cmd "$decode_cmd" \
+        # $dataset data/lang_test_$lm/ exp/$recog/decode_mbr_$decode_suff &
+    # done
+    # wait
+
+  # done # loop recog
+# fi
+
+# # decoding using various recognizers with adaptation
+# if [ $stage -le 11 ]; then
+  # # put tri2b last since it takes longest due to the large mismatch.
+  # for recog in tri2b_mc tri2b_mc_mmi_b0.1 tri2b; do
+    # # The graph from the ML directory is used in recipe
+    # recog2=`echo $recog | sed s/_mmi.*//`
+    # graph=exp/$recog2/graph_$lm
+
+    # # set the adaptation data
+    # if [[ "$recog" =~ _mc ]]; then
+      # tr_dataset=REVERB_tr_cut/SimData_tr_for_1ch_A
+    # else
+      # tr_dataset=si_tr
+    # fi
+
+    # echo "### DECODING with $recog, basis_fmllr, $lm ###"
+    # steps/get_fmllr_basis.sh --cmd "$train_cmd" --per-utt true data/$tr_dataset data/lang exp/$recog
+    # for dataset in data/REVERB_*{dt,et}/*; do
+      # (
+        # decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
+        # steps/decode_basis_fmllr.sh --nj $nj_decode --cmd "$decode_cmd" \
+          # $graph $dataset \
+          # exp/$recog/decode_basis_fmllr_$decode_suff
+      # ) &
+    # done
+    # wait
+
+    # echo " ## MBR RESCORING with $recog, basis_fmllr ##"
+    # for dataset in data/REVERB_*{dt,et}/*; do
+      # decode_suff=${lm}_`echo $dataset | awk -F '/' '{print $2 "_" $3}'`
+      # mkdir -p exp/$recog/decode_mbr_basis_fmllr_$decode_suff
+      # cp exp/$recog/decode_basis_fmllr_$decode_suff/lat.*.gz exp/$recog/decode_mbr_basis_fmllr_$decode_suff
+      # local/score_mbr.sh --cmd "$decode_cmd" \
+        # $dataset data/lang_test_$lm/ exp/$recog/decode_mbr_basis_fmllr_$decode_suff &
+    # done
+    # wait
+
+  # done # loop recog
+# fi
 
 # get all WERs with lmw=15
 if [ $stage -le 12 ]; then
