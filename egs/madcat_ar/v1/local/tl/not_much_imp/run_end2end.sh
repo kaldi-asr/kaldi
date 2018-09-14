@@ -3,7 +3,7 @@
 #           2018    Ashish Arora
 set -e
 stage=0
-nj=70
+nj=30
 # download_dir{1,2,3} points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
 # This corpus can be purchased here:
@@ -23,8 +23,6 @@ data_splits_dir=data/download/data_splits
 . ./path.sh
 . ./utils/parse_options.sh  # e.g. this parses the above options
                             # if supplied.
-./local/check_tools.sh
-
 mkdir -p data/{train,test,dev}/data
 mkdir -p data/local/{train,test,dev}
 
@@ -36,7 +34,7 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  for dataset in test train dev; do
+  for dataset in dev train; do
     data_split_file=$data_splits_dir/madcat.$dataset.raw.lineid
     local/extract_lines.sh --nj $nj --cmd $cmd --data_split_file $data_split_file \
         --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
@@ -67,28 +65,27 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  for dataset in test train; do
-    echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. "
-    echo "Date: $(date)."
-    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
-    steps/compute_cmvn_stats.sh data/$dataset || exit 1;
-  done
-  echo "$0: Fixing data directory for train dataset"
-  echo "Date: $(date)."
-  utils/fix_data_dir.sh data/train
+ # for dataset in train dev; do
+ #   echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. "
+ #   echo "Date: $(date)."
+ #   local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
+ #   steps/compute_cmvn_stats.sh data/$dataset || exit 1;
+ # done
+ # echo "$0: Fixing data directory for train dataset $(date)."
+ # utils/fix_data_dir.sh data/train
+
+  local/make_features.py data/test/images.scp --feat-dim 40 \
+    --allowed_len_file_path data/test/allowed_lengths.txt --no-augment | \
+    copy-feats --compress=true --compression-method=7 \
+               ark:- ark,scp:data/test/data/images.ark,data/test/feats.scp
 fi
 
 if [ $stage -le 5 ]; then
   echo "$0: Preparing dictionary and lang..."
-  cut -d' ' -f2- data/train/text | local/reverse.py | \
-    utils/lang/bpe/prepend_words.py --encoding 'utf-8' | \
-    utils/lang/bpe/learn_bpe.py -s 700 > data/train/bpe.out
-  for set in test train dev; do
+  cut -d' ' -f2- data/train/text | python3 local/reverse.py | python3 local/prepend_words.py | python3 utils/lang/bpe/learn_bpe.py -s 700 > data/train/bpe.out
+  for set in test train dev ; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
-    cut -d' ' -f2- data/$set/text | local/reverse.py | \
-      utils/lang/bpe/prepend_words.py --encoding 'utf-8' |
-      utils/lang/bpe/apply_bpe.py -c data/train/bpe.out \
-      | sed 's/@@//g' > data/$set/bpe_text
+    cut -d' ' -f2- data/$set/text | python3 local/reverse.py | python3 local/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c data/train/bpe.out | sed 's/@@//g' > data/$set/bpe_text
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
   done
@@ -117,13 +114,12 @@ if [ $stage -le 8 ]; then
   echo "$0: Aligning the training data using the e2e chain model..."
   echo "Date: $(date)."
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
-                       --use-gpu false \
-                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
+                       --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                        data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 9 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments..."
   echo "Date: $(date)."
-  local/chain/run_cnn_e2eali_1b.sh --nj $nj
+  local/chain/run_cnn_e2eali_1b.sh --nj $nj --stage 2
 fi

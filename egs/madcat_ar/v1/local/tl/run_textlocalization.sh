@@ -81,13 +81,12 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0: Preparing dictionary and lang..."
   cut -d' ' -f2- data/train/text | local/reverse.py | \
-    utils/lang/bpe/prepend_words.py --encoding 'utf-8' | \
+    local/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/train/bpe.out
   for set in test train dev; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | local/reverse.py | \
-      utils/lang/bpe/prepend_words.py --encoding 'utf-8' |
-      utils/lang/bpe/apply_bpe.py -c data/train/bpe.out \
+      local/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/train/bpe.out \
       | sed 's/@@//g' > data/$set/bpe_text
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
