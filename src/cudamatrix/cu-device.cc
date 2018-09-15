@@ -535,11 +535,11 @@ CuDevice::~CuDevice() {
     CUBLAS_SAFE_CALL(cublasDestroy(cublas_handle_));
   if (cusparse_handle_)
     CUSPARSE_SAFE_CALL(cusparseDestroy(cusparse_handle_));
-  if (cudnn_handle_) {
 #if HAVE_CUDNN == 1
+  if (cudnn_handle_) {
     CUDNN_SAFE_CALL(cudnnDestroy(cudnn_handle_));
-#endif // HAVE_CUDNN == 1
   }
+#endif // HAVE_CUDNN == 1
 }
 
 
