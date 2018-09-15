@@ -3699,7 +3699,9 @@ static void _cuda_uncompress(BaseFloat *dest, MatrixDim dim,
   }
 }
 
-
+__global__
+static void _noop_kernel() {
+}
 
 /***********************************************************************
  * ANSI-C wrappers of CUDA kernels
@@ -5458,4 +5460,11 @@ void cuda_uncompress_int16(dim3 Gr, dim3 Bl, BaseFloat *dest,
                            MatrixDim dim, const int16_t *src,
                            int src_stride, float scale) {
   _cuda_uncompress<<<Gr, Bl>>>(dest, dim, src, src_stride, scale);
+}
+
+
+// Launches a kernel that does nothing, explicitly using the legacy default stream;
+// this will synchronize all threads without blocking.
+void cuda_legacy_noop() {
+  _noop_kernel<<<1, 1, 0, cudaStreamLegacy>>>();
 }

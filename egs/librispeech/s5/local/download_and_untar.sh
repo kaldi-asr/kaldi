@@ -67,7 +67,9 @@ if [ -f $data/$part.tar.gz ]; then
   fi
 fi
 
-if [ ! -f $data/$part.tar.gz ]; then
+pushd $data
+
+if [ ! -f $part.tar.gz ]; then
   if ! which wget >/dev/null; then
     echo "$0: wget is not installed."
     exit 1;
@@ -75,19 +77,18 @@ if [ ! -f $data/$part.tar.gz ]; then
   full_url=$url/$part.tar.gz
   echo "$0: downloading data from $full_url.  This may take some time, please be patient."
 
-  cd $data
   if ! wget --no-check-certificate $full_url; then
     echo "$0: error executing wget $full_url"
     exit 1;
   fi
 fi
 
-cd $data
-
 if ! tar -xvzf $part.tar.gz; then
   echo "$0: error un-tarring archive $data/$part.tar.gz"
   exit 1;
 fi
+
+popd >&/dev/null
 
 touch $data/LibriSpeech/$part/.complete
 

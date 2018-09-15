@@ -128,6 +128,6 @@ void TestTaskSequencer() {
 int main() {
   using namespace kaldi;
   TestThreads();
-  for (int32 i = 0; i < 1000; i++)
+  for (int32 i = 0; i < 10; i++)
     TestTaskSequencer();
 }

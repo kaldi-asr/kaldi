@@ -5,9 +5,9 @@
 # Results
 # local/chain/compare_wer.sh --online exp/chain/tdnn_7h_chain_2b_sp
 # Model                tdnn_7h_chain_2b_sp
-# WER(%)                    23.67
-# WER(%)[online]            23.69
-# WER(%)[per-utt]           24.67
+# CER(%)                    23.67
+# CER(%)[online]            23.69
+# CER(%)[per-utt]           24.67
 # Final train prob        -0.0895
 # Final valid prob        -0.1251
 # Final train prob (xent)   -1.3628

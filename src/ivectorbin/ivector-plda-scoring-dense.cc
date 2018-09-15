@@ -194,8 +194,8 @@ int main(int argc, char *argv[]) {
         } else {
           KALDI_WARN << "Unable to compute conversation dependent PCA for"
             << " recording " << reco << ".";
-          ivector_mat_pca.Resize(ivector_mat.NumRows(), ivector_mat.NumCols());
-          ivector_mat_pca.CopyFromMat(ivector_mat);
+          TransformIvectors(ivector_mat, plda_config, this_plda,
+          &ivector_mat_plda);
         }
         for (int32 i = 0; i < ivector_mat_plda.NumRows(); i++) {
           for (int32 j = 0; j < ivector_mat_plda.NumRows(); j++) {

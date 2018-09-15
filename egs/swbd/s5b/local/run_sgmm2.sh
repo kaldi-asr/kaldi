@@ -10,7 +10,7 @@ set -e
 if [ ! -f exp/ubm5b/final.ubm ]; then
   steps/train_ubm.sh --cmd "$train_cmd" 1400 data/train_nodup data/lang \
     exp/tri4b_ali_nodup exp/ubm5b || exit 1;
-fi 
+fi
 
 steps/train_sgmm2.sh --cmd "$train_cmd" \
   18000 60000 data/train_nodup data/lang exp/tri4b_ali_nodup \

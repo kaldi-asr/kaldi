@@ -5,7 +5,7 @@
 
 # Version of align_fmllr.sh that generates lattices (lat.*.gz) with
 # alignments of alternative pronunciations in them.  Mainly intended
-# as a precursor to CTC training for now.
+# as a precursor to LF-MMI/chain training for now.
 
 # Begin configuration section.
 stage=0
