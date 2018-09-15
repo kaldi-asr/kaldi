@@ -76,7 +76,7 @@ if [ $stage -le 2 ]; then
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | local/reverse.py | \
       utils/lang/bpe/prepend_words.py --encoding 'utf-8' |
-      utils/lang/bpe/apply_bpe.py -c data/local/bpe.out \
+      utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
       | sed 's/@@//g' > data/$set/bpe_text
 
     mv data/$set/text data/$set/text.old
@@ -94,7 +94,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang_test
 fi
 
