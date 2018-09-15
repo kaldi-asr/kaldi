@@ -191,11 +191,10 @@ class CuDevice {
   /// (i.e. from outside the class), call this only if Enabled() returns true.
   bool IsComputeExclusive();
 
-  // Shouldn't this be a private constructor?
-  CuDevice();
-
   ~CuDevice();
  private:
+  // Default constructor used to initialize this_thread_device_
+  CuDevice();
   CuDevice(CuDevice&); // Disallow.
   CuDevice &operator=(CuDevice&);  // Disallow.
 
