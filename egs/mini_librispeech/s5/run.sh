@@ -48,7 +48,7 @@ if [ $stage -le 2 ]; then
   # spread the mfccs over various machines, as this data-set is quite large.
   if [[  $(hostname -f) ==  *.clsp.jhu.edu ]]; then
     mfcc=$(basename mfccdir) # in case was absolute pathname (unlikely), get basename.
-    utils/create_split_dir.pl /export/b{07,14,16,17}/$USER/kaldi-data/egs/librispeech/s5/$mfcc/storage \
+    utils/create_split_dir.pl /export/b{07,14,16,18}/$USER/kaldi-data/egs/librispeech/s5/$mfcc/storage \
       $mfccdir/storage
   fi
 
