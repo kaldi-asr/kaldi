@@ -106,8 +106,8 @@ fi
 if [ $stage -le 7 ]; then
   echo "Starting SGMM training."
   steps/align_fmllr.sh --nj $train_nj --cmd "$train_cmd" data/train data/lang exp/tri3 exp/tri3_ali || exit 1;
-  steps/train_ubm.sh  --cmd "$train_cmd" $numGaussUBM data/train data/lang exp/tri3_ali exp/ubm || exit 1;
-  steps/train_sgmm2.sh  --cmd "$train_cmd" $numLeavesSGMM $numGaussSGMM data/train data/lang exp/tri3_ali exp/ubm/final.ubm exp/sgmm2 || exit 1;
+  steps/train_ubm.sh --cmd "$train_cmd" $numGaussUBM data/train data/lang exp/tri3_ali exp/ubm || exit 1;
+  steps/train_sgmm2.sh --cmd "$train_cmd" $numLeavesSGMM $numGaussSGMM data/train data/lang exp/tri3_ali exp/ubm/final.ubm exp/sgmm2 || exit 1;
   echo "SGMM training done."
 
   echo "Decoding the development and test sets using SGMM models"

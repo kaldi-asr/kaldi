@@ -22,9 +22,6 @@ import math, random, sys, re
 ###
 ### Parse options
 ###
-
-print >> sys.stderr, sys.argv
-
 from optparse import OptionParser
 usage="%prog [options] <feat-dim> <num-leaves> <num-hid-layers> <num-hid-neurons> >nnet-proto-file"
 parser = OptionParser(usage)
