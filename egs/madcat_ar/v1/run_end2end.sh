@@ -75,7 +75,7 @@ if [ $stage -le 2 ]; then
   for set in test train dev; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | local/reverse.py | \
-      utils/lang/bpe/prepend_words.py --encoding 'utf-8' |
+      utils/lang/bpe/prepend_words.py --encoding 'utf-8' | \
       utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
       | sed 's/@@//g' > data/$set/bpe_text
 
