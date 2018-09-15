@@ -56,22 +56,25 @@ if [ $stage -le 1 ]; then
   echo "$0: Obtaining image groups. calling get_image2num_frames $(date)."
   image/get_image2num_frames.py data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
-
-  for dataset in dev train; do
+  for set in dev test train; do
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. $(date)"
-    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
-    steps/compute_cmvn_stats.sh data/$dataset || exit 1;
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$set
+    steps/compute_cmvn_stats.sh data/$set || exit 1;
   done
   echo "$0: Fixing data directory for train dataset $(date)."
-  utils/fix_data_dir.sh data/train
+  image/fix_data_dir.sh data/train
 
-  local/make_features.py data/test/images.scp --feat-dim 40 \
-    --allowed_len_file_path data/test/allowed_lengths.txt | \
-    copy-feats --compress=true --compression-method=7 \
-               ark:- ark,scp:data/test/data/images.ark,data/test/feats.scp
 fi
 
 if [ $stage -le 2 ]; then
+  for set in train; do
+    echo "$(date) stage 2: Performing augmentation, it will double training data"
+    local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set} data/${set}_aug data
+    steps/compute_cmvn_stats.sh data/${set}_aug || exit 1;
+  done
+fi
+
+if [ $stage -le 3 ]; then
   echo "$0: Preparing BPE..."
   cut -d' ' -f2- data/train/text | local/reverse.py | \
     utils/lang/bpe/prepend_words.py --encoding 'utf-8' | \
