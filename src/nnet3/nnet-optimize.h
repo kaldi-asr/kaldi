@@ -242,6 +242,16 @@ class CachingOptimizingCompiler {
   void ReadCache(std::istream &is, bool binary);
   void WriteCache(std::ostream &os, bool binary);
 
+
+  // GetSimpleNnetContext() is equivalent to calling:
+  // ComputeSimpleNnetContext(nnet_, &nnet_left_context,
+  //                          &nnet_right_context)
+  // but it caches it inside this class.  This functionality is independent of
+  // the rest of the functionality of this class; it just happens to be a
+  // convenient place to put this mechanism.
+  void GetSimpleNnetContext(int32 *nnet_left_context,
+                            int32 *nnet_right_context);
+
  private:
 
   // This function just implements the work of Compile(); it's made a separate
@@ -290,6 +300,10 @@ class CachingOptimizingCompiler {
   double seconds_taken_io_;
 
   ComputationCache cache_;
+
+  // These following two variables are only used by the function GetSimpleNnetContext().
+  int32 nnet_left_context_;
+  int32 nnet_right_context_;
 };
 
 

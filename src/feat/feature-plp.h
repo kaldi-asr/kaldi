@@ -61,7 +61,7 @@ struct PlpOptions {
                  lpc_order(12),
                  num_ceps(13),
                  use_energy(true),
-                 energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
+                 energy_floor(0.0),
                  raw_energy(true),
                  compress_factor(0.33333),
                  cepstral_lifter(22),
@@ -78,7 +78,9 @@ struct PlpOptions {
     opts->Register("use-energy", &use_energy,
                    "Use energy (not C0) for zeroth PLP feature");
     opts->Register("energy-floor", &energy_floor,
-                   "Floor on energy (absolute, not relative) in PLP computation");
+                   "Floor on energy (absolute, not relative) in PLP computation. "
+                   "Only makes a difference if --use-energy=true; only necessary if "
+                   "--dither=0.0.  Suggested values: 0.1 or 1.0");
     opts->Register("raw-energy", &raw_energy,
                    "If true, compute energy before preemphasis and windowing");
     opts->Register("compress-factor", &compress_factor,

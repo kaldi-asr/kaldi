@@ -413,13 +413,7 @@ def CreateReverberatedCopy(input_dir,
     wav_scp = ParseFileToDict(input_dir + "/wav.scp", value_processor = lambda x: " ".join(x))
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
-        read_entire_file="false"
-        for value in wav_scp.values():
-            # we will add more checks for sox commands which modify the header as we come across these cases in our data
-            if "sox" in value and "speed" in value:
-                read_entire_file="true"
-                break
-        data_lib.RunKaldiCommand("wav-to-duration --read-entire-file={1} scp:{0}/wav.scp ark,t:{0}/reco2dur".format(input_dir, read_entire_file))
+        data_lib.RunKaldiCommand("utils/data/get_reco2dur.sh {}".format(input_dir))
     durations = ParseFileToDict(input_dir + "/reco2dur", value_processor = lambda x: float(x[0]))
     foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
     background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))

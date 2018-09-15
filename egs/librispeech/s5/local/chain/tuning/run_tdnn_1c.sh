@@ -34,7 +34,6 @@ set -e
 # configs for 'chain'
 stage=0
 decode_nj=50
-min_seg_len=1.55
 train_set=train_960_cleaned
 gmm=tri6b_cleaned
 nnet3_affix=_cleaned
@@ -75,21 +74,20 @@ fi
 # run those things.
 
 local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
-				  --num-threads-ubm 6 --num-processes 3 \
+                                  --num-threads-ubm 6 --num-processes 3 \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
 
 gmm_dir=exp/$gmm
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
+ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
 dir=exp/chain${nnet3_affix}/tdnn${affix:+_$affix}_sp
-train_data_dir=data/${train_set}_sp_hires_comb
-lores_train_data_dir=data/${train_set}_sp_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+train_data_dir=data/${train_set}_sp_hires
+lores_train_data_dir=data/${train_set}_sp
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 # if we are using the speed-perturbed data we need to generate
 # alignments for it.

@@ -105,8 +105,6 @@ if [ $stage -le 2 ]; then
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                             ${train_data_dir} data/lang $e2echain_model_dir $lat_dir
   echo "" >$lat_dir/splice_opts
-
-  stage=4
 fi
 
 if [ $stage -le 3 ]; then

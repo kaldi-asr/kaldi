@@ -316,7 +316,7 @@ void ComposeDeterministicOnDemand(const Fst<Arc> &fst1,
    inverse of 'fst2' (i.e. with the input and output symbols swapped),
    is that the DeterministicOnDemandFst interface only supports lookup
    by ilabel (see its function GetArc).
-   This does not call Connect.
+   This does not call Connect().
 */
 template<class Arc>
 void ComposeDeterministicOnDemandInverse(const Fst<Arc> &fst1,

@@ -8,6 +8,9 @@ import os
 import argparse
 import sys
 
+import re
+tab_or_space = re.compile('[ \t]+')
+
 parser = argparse.ArgumentParser(description="This script prepares files containing integerized text, "
                                  "for consumption by nnet3-get-egs.",
                                  epilog="E.g. " + sys.argv[0] + " --vocab-file=data/rnnlm/vocab/words.txt "
@@ -63,10 +66,10 @@ def get_all_data_sources_except_dev(text_dir):
 #                    value is a tuple (repeated_times_per_epoch, weight)
 def read_data_weights(weights_file, data_sources):
     data_weights = {}
-    with open(weights_file, 'r', encoding="utf-8") as f:
+    with open(weights_file, 'r', encoding="latin-1") as f:
         for line in f:
             try:
-                fields = line.split()
+                fields = re.split(tab_or_space, line)
                 assert len(fields) == 3
                 if fields[0] in data_weights:
                     raise Exception("duplicated data source({0}) specified in "
@@ -94,7 +97,7 @@ def distribute_to_outputs(source_filename, weight, output_filehandles):
     num_outputs = len(output_filehandles)
     n = 0
     try:
-        f = open(source_filename, 'r', encoding="utf-8")
+        f = open(source_filename, 'r', encoding="latin-1")
     except Exception as e:
         sys.exit(sys.argv[0] + ": failed to open file {0} for reading: {1} ".format(
             source_filename, str(e)))
@@ -121,7 +124,7 @@ if not os.path.exists(args.split_dir + "/info"):
     os.makedirs(args.split_dir +  "/info")
 
 # set up the 'num_splits' file, which contains an integer.
-with open("{0}/info/num_splits".format(args.split_dir), 'w', encoding="utf-8") as f:
+with open("{0}/info/num_splits".format(args.split_dir), 'w', encoding="latin-1") as f:
     print(args.num_splits, file=f)
 
 # e.g. set temp_files = [ 'foo/1.tmp', 'foo/2.tmp', ..., 'foo/5.tmp' ]
@@ -133,7 +136,7 @@ temp_files = [ "{0}/{1}.tmp".format(args.split_dir, n) for n in range(1, args.nu
 temp_filehandles = []
 for fname in temp_files:
     try:
-        temp_filehandles.append(open(fname, 'w', encoding="utf-8"))
+        temp_filehandles.append(open(fname, 'w', encoding="latin-1"))
     except Exception as e:
         sys.exit(sys.argv[0] + ": failed to open file: " + str(e) +
                  ".. if this is a max-open-filehandles limitation, you may "

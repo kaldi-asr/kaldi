@@ -471,8 +471,23 @@ void ScaleBatchnormStats(BaseFloat batchnorm_stats_scale,
    In order to make it efficient on GPU, it doesn't make it completely orthonormal,
    it just makes it closer to being orthonormal (times the 'orthonormal_constraint'
    value).  Over multiple iterations this rapidly makes it almost exactly orthonormal.
+
+   See http://www.danielpovey.com/files/2018_interspeech_tdnnf.pdf
  */
 void ConstrainOrthonormal(Nnet *nnet);
+
+
+/**
+   This just calls ConsolidateMemory() on all the components of the nnet.  This
+   is called by the training code after processing the first minibatch.  On some
+   components this will do nothing; on some components it will reallocate
+   certain quantities that have been allocated during training (mostly the
+   contents of NaturalGradientOnline objects, and stats for NonlinearComponents)
+   so that they can be put into low memory.  This will tend to minimize
+   memory fragmentation.  Read comments in ../cudamatrix/cu-allocator.h for
+   more explanation.
+ */
+void ConsolidateMemory(Nnet *nnet);
 
 /** This utility function can be used to obtain the number of distinct 'n'
     values in a training example.  This is the number of examples

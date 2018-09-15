@@ -8,6 +8,9 @@ import os
 import argparse
 import sys
 
+import re
+tab_or_space = re.compile('[ \t]+')
+
 parser = argparse.ArgumentParser(description="This script checks whether the special symbols "
                                  "appear in words.txt with expected values, if not, it will "
                                  "print out the options with correct value to stdout, which may look like "
@@ -25,9 +28,10 @@ upper_special_symbols = [key.upper() for key in special_symbols]
 
 lower_ids = {}
 upper_ids = {}
-input_stream = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
+input_stream = io.TextIOWrapper(sys.stdin.buffer, encoding='latin-1')
 for line in input_stream:
-    fields = line.split()
+    fields = re.split(tab_or_space, line)
+    assert(len(fields) == 2)
     sym = fields[0]
     if sym in special_symbols:
         assert sym not in lower_ids

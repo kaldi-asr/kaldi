@@ -82,8 +82,12 @@ void NnetTrainer::Train(const NnetExample &eg) {
   } else { // conventional training
     TrainInternal(eg, *computation);
   }
-
+  if (num_minibatches_processed_ == 0) {
+    ConsolidateMemory(nnet_);
+    ConsolidateMemory(delta_nnet_);
+  }
   num_minibatches_processed_++;
+
 }
 
 void NnetTrainer::TrainInternal(const NnetExample &eg,

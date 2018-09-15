@@ -167,7 +167,7 @@ def train_new_models(dir, iter, srand, num_jobs,
         # work out the 1-based archive index.
         archive_index = (k % num_archives) + 1
         # previous : frame_shift = (k/num_archives) % frame_subsampling_factor
-        frame_shift = ((archive_index + k/num_archives)
+        frame_shift = ((archive_index + k//num_archives)
                        % frame_subsampling_factor)
 
         multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
@@ -486,7 +486,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
         """{command} {dir}/log/compute_prob_valid.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
-                "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
+                {model} {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} {scp_or_ark}:{egs_dir}/valid_diagnostic{egs_suffix} \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
@@ -505,7 +505,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
         """{command} {dir}/log/compute_prob_train.{iter}.log \
                 nnet3-chain-compute-prob --l2-regularize={l2} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
-                "nnet3-am-copy --raw=true {model} - |" {dir}/den.fst \
+                {model} {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} {scp_or_ark}:{egs_dir}/train_diagnostic{egs_suffix} \
                     ark:- | nnet3-chain-merge-egs --minibatch-size=1:64 ark:- ark:- |" \
         """.format(command=run_opts.command, dir=dir, iter=iter, model=model,
