@@ -81,7 +81,7 @@ if [ $stage -le 2 ]; then
 
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
-    rm -f data/$set/bpe_text data/$set/ids
+    #rm -f data/$set/bpe_text data/$set/ids
   done
 
   echo "$0:Preparing dictionary and lang..."
