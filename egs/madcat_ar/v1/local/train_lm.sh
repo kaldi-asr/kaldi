@@ -6,7 +6,7 @@
 #           2017  Hossein Hadian
 # Apache 2.0
 #
-# This script trains a LM on the training transcriptions and corpus text.
+# This script trains a LM on the training transcriptions.
 # It is based on the example scripts distributed with PocoLM
 
 # It will check if pocolm is installed and if not will proceed with installation

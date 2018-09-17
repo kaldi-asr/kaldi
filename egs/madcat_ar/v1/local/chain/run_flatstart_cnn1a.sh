@@ -5,16 +5,16 @@
 
 # local/chain/compare_wer.sh exp/chain/e2e_cnn_1a
 # System                      e2e_cnn_1a
-# WER                             10.71
-# CER                              2.85
-# Final train prob              -0.0859
-# Final valid prob              -0.1266
+# WER                              7.81
+# CER                              2.05
+# Final train prob              -0.0812
+# Final valid prob              -0.0708
 # Final train prob (xent)
 # Final valid prob (xent)
 # Parameters                      2.94M
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a/
-# exp/chain/e2e_cnn_1a/: num-iters=195 nj=6..16 num-params=2.9M dim=40->324 combine=-0.065->-0.064 (over 5) logprob:train/valid[129,194,final]=(-0.078,-0.077,-0.086/-0.129,-0.126,-0.127)
+# exp/chain/e2e_cnn_1a/: num-iters=98 nj=6..16 num-params=2.9M dim=40->330 combine=-0.073->-0.073 (over 2) logprob:train/valid[64,97,final]=(-0.084,-0.080,-0.081/-0.073,-0.070,-0.071)
 
 set -e
 
