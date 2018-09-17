@@ -60,6 +60,8 @@ parser.add_argument('writing_condition3', type=str,
                     help='Path to the downloaded (and extracted) writing conditions file 3')
 parser.add_argument('--padding', type=int, default=400,
                     help='padding across horizontal/verticle direction')
+parser.add_argument("--subset", type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="only processes subset of data based on writing condition")
 args = parser.parse_args()
 
 """
@@ -535,13 +537,12 @@ def check_writing_condition(wc_dict, base_name):
     Returns
     (bool): True if writing condition matches.
     """
-    return True
-    writing_condition = wc_dict[base_name].strip()
-    if writing_condition != 'IUC':
-        return False
-
-    return True
-
+    if args.subset:
+        writing_condition = wc_dict[base_name].strip()
+        if writing_condition != 'IUC':
+            return False
+    else:
+        return True
 
 ### main ###
 

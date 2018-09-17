@@ -33,7 +33,7 @@ num_jobs_final=16
 minibatch_size=150=128,64/300=128,64/600=64,32/1200=32,16
 common_egs_dir=
 l2_regularize=0.00005
-frames_per_iter=1000000
+frames_per_iter=2000000
 cmvn_opts="--norm-means=true --norm-vars=true"
 train_set=train
 lang_test=lang_test
@@ -125,6 +125,7 @@ if [ $stage -le 3 ]; then
     --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
+    --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter $frames_per_iter \
