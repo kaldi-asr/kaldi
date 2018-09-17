@@ -117,7 +117,6 @@ if [ $stage -le 3 ]; then
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
     --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
-    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \

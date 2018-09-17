@@ -125,6 +125,7 @@ if [ $stage -le 3 ]; then
     --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
+    --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter $frames_per_iter \
