@@ -132,9 +132,9 @@ if [ $stage -le 12 ]; then
 fi
 
 if [ $stage -le 13 ]; then
-  local/chain/run_cnn_1a.sh
+  local/chain/run_cnn.sh
 fi
 
 if [ $stage -le 14 ]; then
-  local/chain/run_cnn_chainali_1a.sh --stage 2
+  local/chain/run_cnn_chainali.sh --stage 2
 fi

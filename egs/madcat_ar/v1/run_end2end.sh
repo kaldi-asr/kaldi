@@ -100,7 +100,7 @@ fi
 
 if [ $stage -le 4 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
-  local/chain/run_flatstart_cnn1a.sh --nj $nj
+  local/chain/run_e2e_cnn.sh --nj $nj
 fi
 
 if [ $stage -le 5 ]; then
@@ -112,5 +112,5 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments...$(date)"
-  local/chain/run_cnn_e2eali_1b.sh --nj $nj
+  local/chain/run_cnn_e2eali.sh --nj $nj
 fi
