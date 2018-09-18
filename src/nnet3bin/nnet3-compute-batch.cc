@@ -35,9 +35,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Propagate the features through raw neural network model "
-        "and write the output.In this version, we will compose some\n"
-        "input feature matrixes into a minibatch, and then propagate "
-        "together.\n"
+        "and write the output.  This version is optimized for GPU use. "
         "If --apply-exp=true, apply the Exp() function to the output "
         "before writing it out.\n"
         "\n"
@@ -49,8 +47,8 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     Timer timer;
 
-    NnetSimpleComputationOptions opts;
-    opts.acoustic_scale = 1.0;  // by default do no scaling in this recipe.
+    NnetBatchComputerOptionsOptions opts;
+    opts.acoustic_scale = 1.0;  // by default do no scaling
 
     bool apply_exp = false, use_priors = false;
     std::string use_gpu = "yes";
@@ -83,11 +81,6 @@ int main(int argc, char *argv[]) {
     po.Register("use-priors", &use_priors, "If true, subtract the logs of the "
                 "priors stored with the model (in this case, "
                 "a .mdl file is expected as input).");
-    po.Register("minibatch-size", &minibatch_size, "Specify the number of "
-                "utterances to be process in parallel.");
-    po.Register("ensure-exact-final-context", &ensure_exact_final_context, "It "
-                "controls whether we deal with those utterances whose length "
-                "are shorter than chunk size specially.");
 
     po.Read(argc, argv);
 
@@ -135,18 +128,15 @@ int main(int argc, char *argv[]) {
     std::string output_uttid;
     Matrix<BaseFloat> output_matrix;
 
-    BatchNnetComputer nnet_computer(opts, nnet, priors, online_ivector_period,
-                                    ensure_exact_final_context, minibatch_size);
+
+    NnetBatchInference inference(opts, nnet, priors);
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-      // Note: the reference that Value() returns is only valid until call
-      // Next()
-      const Matrix<BaseFloat> *features =
-        new Matrix<BaseFloat>(feature_reader.Value());
-      if (features->NumRows() == 0) {
+      const Matrix<BaseFloat> &features = feature_reader.Value();
+      if (features.NumRows() == 0) {
         KALDI_WARN << "Zero-length utterance: " << utt;
         num_fail++;
         continue;
@@ -173,24 +163,26 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      nnet_computer.AcceptInput(utt, features, ivector, online_ivectors);
-      nnet_computer.Compute(false);
-      while (nnet_computer.GetFinishedUtterance(
-            &output_uttid, &output_matrix)) {
-        if (apply_exp) {
-          output_matrix.ApplyExp();
-        }
-        matrix_writer.Write(output_uttid, output_matrix);
+      inference.AcceptInput(utt, features, ivector, online_ivectors,
+                            online_ivector_period);
+
+      std::string output_key;
+      Matrix<BaseFloat> output;
+      while (inference.GetOutput(&output_key, &output)) {
+        if (apply_exp)
+          output.ApplyExp();
+        matrix_writer.Write(output_key, output);
         num_success++;
       }
     }
-    // flush out the remaining output.
-    nnet_computer.Compute(true);
-    while (nnet_computer.GetFinishedUtterance(&output_uttid, &output_matrix )) {
-      if (apply_exp) {
-        output_matrix.ApplyExp();
-      }
-      matrix_writer.Write(output_uttid, output_matrix);
+
+    inference.Finished();
+    std::string output_key;
+    Matrix<BaseFloat> output;
+    while (inference.GetOutput(&output_key, &output)) {
+      if (apply_exp)
+        output.ApplyExp();
+      matrix_writer.Write(output_key, output);
       num_success++;
     }
 #if HAVE_CUDA==1
