@@ -50,6 +50,10 @@ parser.add_argument('--padding', type=int, default=400,
                     help='padding across horizontal/verticle direction')
 parser.add_argument('--pixel-scaling', type=int, default=30,
                     help='padding across horizontal/verticle direction')
+parser.add_argument("--subset", type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="only processes subset of data based on writing condition")
+parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="performs image augmentation")
 args = parser.parse_args()
 
 """
@@ -331,7 +335,8 @@ def update_minimum_bounding_box_input(bounding_box_input):
 
 
 def dilate_polygon(points, amount_increase):
-    """ Increases size of polygon given as a list of tuples. Assumes points in polygon are given in CCW
+    """ Increases size of polygon given as a list of tuples.
+        Assumes points in polygon are given in CCW
     """
     expanded_points = []
     for index, point in enumerate(points):
@@ -398,10 +403,48 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path, image_fh)
                 minimum_bounding_box_input.append(word_coordinate)
         updated_mbb_input = update_minimum_bounding_box_input(minimum_bounding_box_input)
         points_ordered = [updated_mbb_input[index] for index in ConvexHull(updated_mbb_input).vertices]
-        for i in range(0, 3):
-            additional_pixel = random.randint(1, args.pixel_scaling)
-            mar = dilate_polygon(points_ordered, (i-1)*args.pixel_scaling + additional_pixel + 1)
-            bounding_box = minimum_bounding_box(mar)
+        if args.augment:
+            for i in range(0, 3):
+                additional_pixel = random.randint(1, args.pixel_scaling)
+                mar = dilate_polygon(points_ordered, (i-1)*args.pixel_scaling + additional_pixel + 1)
+                bounding_box = minimum_bounding_box(mar)
+                (x1, y1), (x2, y2), (x3, y3), (x4, y4) = bounding_box.corner_points
+                min_x, min_y = int(min(x1, x2, x3, x4)), int(min(y1, y2, y3, y4))
+                max_x, max_y = int(max(x1, x2, x3, x4)), int(max(y1, y2, y3, y4))
+                box = (min_x, min_y, max_x, max_y)
+                region_initial = im.crop(box)
+                rot_points = []
+                p1, p2 = (x1 - min_x, y1 - min_y), (x2 - min_x, y2 - min_y)
+                p3, p4 = (x3 - min_x, y3 - min_y), (x4 - min_x, y4 - min_y)
+                rot_points.append(p1)
+                rot_points.append(p2)
+                rot_points.append(p3)
+                rot_points.append(p4)
+
+                cropped_bounding_box = bounding_box_tuple(bounding_box.area,
+                        bounding_box.length_parallel,
+                        bounding_box.length_orthogonal,
+                        bounding_box.length_orthogonal,
+                        bounding_box.unit_vector,
+                        bounding_box.unit_vector_angle,
+                        set(rot_points)
+                    )
+
+                rotation_angle_in_rad = get_smaller_angle(cropped_bounding_box)
+                img2 = region_initial.rotate(degrees(rotation_angle_in_rad), resample = Image.BICUBIC)
+                x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4 = rotated_points(
+                    cropped_bounding_box, get_center(region_initial))
+
+                min_x = int(min(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
+                min_y = int(min(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
+                max_x = int(max(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
+                max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
+                box = (min_x, min_y, max_x, max_y)
+                region_final = img2.crop(box)
+                line_id = id + '_scale' + str(i)
+                set_line_image_data(region_final, line_id, image_file_name, image_fh)
+        else:
+            bounding_box = minimum_bounding_box(points_ordered)
             (x1, y1), (x2, y2), (x3, y3), (x4, y4) = bounding_box.corner_points
             min_x, min_y = int(min(x1, x2, x3, x4)), int(min(y1, y2, y3, y4))
             max_x, max_y = int(max(x1, x2, x3, x4)), int(max(y1, y2, y3, y4))
@@ -435,8 +478,7 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path, image_fh)
             max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
             box = (min_x, min_y, max_x, max_y)
             region_final = img2.crop(box)
-            line_id = id + '_scale' + str(i)
-            set_line_image_data(region_final, line_id, image_file_name, image_fh)
+            set_line_image_data(region_final, id, image_file_name, image_fh)
 
 
 def check_file_location(base_name, wc_dict1, wc_dict2, wc_dict3):
@@ -490,16 +532,14 @@ def check_writing_condition(wc_dict, base_name):
     Returns
     (bool): True if writing condition matches.
     """
-    #return True
-    writing_condition = wc_dict[base_name].strip()
-    if writing_condition != 'IUC':
-        return False
-
-    return True
-
+    if args.subset:
+        writing_condition = wc_dict[base_name].strip()
+        if writing_condition != 'IUC':
+            return False
+    else:
+        return True
 
 ### main ###
-
 def main():
 
     wc_dict1 = parse_writing_conditions(args.writing_condition1)
@@ -519,8 +559,7 @@ def main():
             madcat_file_path, image_file_path, wc_dict = check_file_location(base_name, wc_dict1, wc_dict2, wc_dict3)
             if wc_dict is None or not check_writing_condition(wc_dict, base_name):
                 continue
-            if madcat_file_path is not None:
-                get_line_images_from_page_image(image_file_path, madcat_file_path, image_fh)
+            get_line_images_from_page_image(image_file_path, madcat_file_path, image_fh)
 
 
 if __name__ == '__main__':
