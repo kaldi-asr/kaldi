@@ -4,14 +4,20 @@
 # This is especially important for Farsi as this script scores using various normalizations
 # on things like Farsi vs Arabic yeh.
 # Usage e.g.:
-# local/normalized_scoring/normalized_scoring.sh output exp_yomdle_farsi/chain/cnn_e2eali_1b/decode_test/scoring_kaldi/penalty_1.0/7.txt farsi
+# local/normalized_scoring/normalized_scoring.sh output exp_yomdle_farsi/chain/cnn_e2eali_1b/decode_test/scoring_kaldi/penalty_1.0/7.txt data_yomdle_farsi/test/text.old farsi
 
 OUTDIR=$1
 HYP_FILE=$2
-LANG=$3
+REF_FILE=$3
+LANG=$4
 
-cat ${HYP_FILE} | cut -d' ' -f1 > ids
-cat ${HYP_FILE} | cut -d' ' -f2- | python3 local/bidi.py > hyp
-paste -d' ' ids hyp | python3 local/normalized_scoring/convert2snor.py > hyp_file.txt
+mkdir -p $OUTDIR
+cat ${HYP_FILE} | cut -d' ' -f1 > $OUTDIR/hyp_ids
+cat ${HYP_FILE} | cut -d' ' -f2- > $OUTDIR/hyp_utt
+paste -d' ' $OUTDIR/hyp_ids $OUTDIR/hyp_utt | python3 local/normalized_scoring/convert2snor.py > $OUTDIR/hyp_file.txt
 
-local/normalized_scoring/score.sh ${OUTDIR} hyp_file.txt ${LANG}
+cat ${REF_FILE} | cut -d' ' -f1 > $OUTDIR/ref_ids
+cat ${REF_FILE} | cut -d' ' -f2- | python3 local/bidi.py > $OUTDIR/ref_utt
+paste -d' ' $OUTDIR/ref_ids $OUTDIR/ref_utt | python3 local/normalized_scoring/convert2snor.py > $OUTDIR/ref_file.txt
+
+local/normalized_scoring/score.sh ${OUTDIR} $OUTDIR/hyp_file.txt $OUTDIR/ref_file.txt ${LANG}

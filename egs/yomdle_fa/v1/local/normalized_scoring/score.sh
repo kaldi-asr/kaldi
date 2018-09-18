@@ -1,13 +1,14 @@
 #!/bin/bash
 
-if [ $# -ne 3 ]; then
-    echo "USAGE:  ./score.sh <output-dir> <input-hyp-file> <slam-language>"
+if [ $# -ne 4 ]; then
+    echo "USAGE:  ./score.sh <output-dir> <input-hyp-file> <input-ref-file> <slam-language>"
     exit 1
 fi
 
 OUTDIR=$1
 HYP_FILE=$2
-LANG=$3
+REF_FILE=$3
+LANG=$4
 
 # ocr_score.pl is slow, especially for CER computation
 # Therefore default option is to convert files to uxxxx format and use sclite for scoring
@@ -19,8 +20,6 @@ OCR_SCORE=${script_dir}/../scripts/ocr_score.pl
 SCLITE=../../../tools/sctk/bin/sclite
 
 LANG=$(echo $LANG | tr '[:upper:]' '[:lower:]')
-
-REF_FILE=$script_dir/ref_files/slam_${LANG}.txt
 
 echo "About to score $HYP_FILE against $REF_FILE"
 echo "First performing some normalizations..."
@@ -67,14 +66,14 @@ python3 ${script_dir}/utils/insert_empty_hyp.py $OUTDIR/missing-hyp-ids.list $OU
 # TODO
 # Currently just cp non-filtered transcripts to filtered transcripts
 # This will eventually filter out "bad" uttids that should be removed prior to scoring
-python3 ${script_dir}/utils/remove_filtered_ids.py $OUTDIR/ref.norm-final.words.txt $OUTDIR/filtered-ids.list > $OUTDIR/ref.norm-final.words.filtered.txt
-python3 ${script_dir}/utils/remove_filtered_ids.py $OUTDIR/ref.norm-final.chars.txt $OUTDIR/filtered-ids.list > $OUTDIR/ref.norm-final.chars.filtered.txt
-python3 ${script_dir}/utils/remove_filtered_ids.py $OUTDIR/hyp.norm-final.words.withmissing.txt  $OUTDIR/filtered-ids.list > $OUTDIR/hyp.norm-final.words.filtered.txt
-python3 ${script_dir}/utils/remove_filtered_ids.py cp $OUTDIR/hyp.norm-final.chars.withmissing.txt $OUTDIR/filtered-ids.list > $OUTDIR/hyp.norm-final.chars.filtered.txt
-#cp $OUTDIR/ref.norm-final.words.txt $OUTDIR/ref.norm-final.words.filtered.txt
-#cp $OUTDIR/ref.norm-final.chars.txt $OUTDIR/ref.norm-final.chars.filtered.txt
-#cp $OUTDIR/hyp.norm-final.words.withmissing.txt $OUTDIR/hyp.norm-final.words.filtered.txt
-#cp $OUTDIR/hyp.norm-final.chars.withmissing.txt $OUTDIR/hyp.norm-final.chars.filtered.txt
+#python3 ${script_dir}/utils/remove_filtered_ids.py $OUTDIR/ref.norm-final.words.txt $OUTDIR/filtered-ids.list > $OUTDIR/ref.norm-final.words.filtered.txt
+#python3 ${script_dir}/utils/remove_filtered_ids.py $OUTDIR/ref.norm-final.chars.txt $OUTDIR/filtered-ids.list > $OUTDIR/ref.norm-final.chars.filtered.txt
+#python3 ${script_dir}/utils/remove_filtered_ids.py $OUTDIR/hyp.norm-final.words.withmissing.txt  $OUTDIR/filtered-ids.list > $OUTDIR/hyp.norm-final.words.filtered.txt
+#python3 ${script_dir}/utils/remove_filtered_ids.py cp $OUTDIR/hyp.norm-final.chars.withmissing.txt $OUTDIR/filtered-ids.list > $OUTDIR/hyp.norm-final.chars.filtered.txt
+cp $OUTDIR/ref.norm-final.words.txt $OUTDIR/ref.norm-final.words.filtered.txt
+cp $OUTDIR/ref.norm-final.chars.txt $OUTDIR/ref.norm-final.chars.filtered.txt
+cp $OUTDIR/hyp.norm-final.words.withmissing.txt $OUTDIR/hyp.norm-final.words.filtered.txt
+cp $OUTDIR/hyp.norm-final.chars.withmissing.txt $OUTDIR/hyp.norm-final.chars.filtered.txt
 
 
 # Step 7. Now we can run scoring
