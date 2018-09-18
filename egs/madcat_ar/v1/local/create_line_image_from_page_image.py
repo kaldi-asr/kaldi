@@ -500,7 +500,6 @@ def check_writing_condition(wc_dict, base_name):
         return True
 
 ### main ###
-
 def main():
 
     wc_dict1 = parse_writing_conditions(args.writing_condition1)
@@ -520,8 +519,7 @@ def main():
             madcat_file_path, image_file_path, wc_dict = check_file_location(base_name, wc_dict1, wc_dict2, wc_dict3)
             if wc_dict is None or not check_writing_condition(wc_dict, base_name):
                 continue
-            if madcat_file_path is not None:
-                get_line_images_from_page_image(image_file_path, madcat_file_path, image_fh)
+            get_line_images_from_page_image(image_file_path, madcat_file_path, image_fh)
 
 
 if __name__ == '__main__':
