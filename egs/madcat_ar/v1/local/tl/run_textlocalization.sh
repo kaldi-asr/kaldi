@@ -47,10 +47,16 @@ if [ $stage -le 0 ]; then
   done
 
   echo "$0: Preparing data..."
-  local/prepare_data.sh --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
-      --download_dir3 $download_dir3 --images_scp_dir data/local \
-      --data_splits_dir $data_splits_dir --writing_condition1 $writing_condition1 \
-      --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3
+  for set in dev train; do
+    local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
+      $data_splits_dir/madcat.$set.raw.lineid data/$set $images_scp_dir/$set/images.scp \
+      $writing_condition1 $writing_condition2 $writing_condition3 --augment true || exit 1
+      data/local/splits/${set}.txt data/${set}
+    image/fix_data_dir.sh data/${set}
+  done
+
+  local/process_waldo_data.py lines/hyp_line_image_transcription_mapping_kaldi.txt data/test
+  image/fix_data_dir.sh data/test
 fi
 
 if [ $stage -le 1 ]; then
@@ -77,20 +83,20 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "$0: Preparing BPE..."
-  cut -d' ' -f2- data/train/text | local/reverse.py | \
-    utils/lang/bpe/prepend_words.py --encoding 'utf-8' | \
+  cut -d' ' -f2- data/train/text | utilis/lang/bpe/reverse.py | \
+    utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
 
   for set in test train dev; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
-    cut -d' ' -f2- data/$set/text | local/reverse.py | \
-      utils/lang/bpe/prepend_words.py --encoding 'utf-8' | \
+    cut -d' ' -f2- data/$set/text | utils/lang/bpe/reverse.py | \
+      utils/lang/bpe/prepend_words.py | \
       utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
       | sed 's/@@//g' > data/$set/bpe_text
 
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
-    #rm -f data/$set/bpe_text data/$set/ids
+    rm -f data/$set/bpe_text data/$set/ids
   done
 
   echo "$0:Preparing dictionary and lang..."
@@ -103,8 +109,10 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang_test
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_small.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang
+  utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
+                               data/lang data/lang_rescore_6g
 fi
 
 if [ $stage -le 4 ]; then
@@ -115,6 +123,7 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0: Aligning the training data using the e2e chain model...$(date)."
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
+                       --use-gpu false \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
                        data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
