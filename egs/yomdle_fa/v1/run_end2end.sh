@@ -57,7 +57,7 @@ fi
 if [ $stage -le 2 ]; then
     for datasplit in train; do
         echo "$(date) stage 2: Performing augmentation, it will double training data"
-        local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 $data_dir/${datasplit} $data_dir/${datasplit}_aug $data_dir
+        local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 --fliplr true $data_dir/${datasplit} $data_dir/${datasplit}_aug $data_dir
         steps/compute_cmvn_stats.sh $data_dir/${datasplit}_aug || exit 1;
     done
 fi
