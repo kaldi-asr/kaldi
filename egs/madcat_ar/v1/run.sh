@@ -57,10 +57,13 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Preparing data..."
-  local/prepare_data.sh --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
-      --download_dir3 $download_dir3 --images_scp_dir data/local \
-      --data_splits_dir $data_splits_dir --writing_condition1 $writing_condition1 \
-      --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3
+  for set in dev train test; do
+    local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
+      $data_splits_dir/madcat.$set.raw.lineid data/$set $images_scp_dir/$set/images.scp \
+      $writing_condition1 $writing_condition2 $writing_condition3 || exit 1
+      data/local/splits/${set}.txt data/${set}
+    image/fix_data_dir.sh data/${set}
+  done
 fi
 
 mkdir -p data/{train,test,dev}/data
