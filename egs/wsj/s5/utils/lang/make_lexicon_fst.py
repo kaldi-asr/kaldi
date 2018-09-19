@@ -72,7 +72,7 @@ def read_lexiconp(filename):
     with open(filename, 'r', encoding='latin-1') as f:
         whitespace = re.compile("[ \t]+")
         for line in f:
-            a = whitespace.split(line.strip())
+            a = whitespace.split(line.rstrip('\n'))
             if len(a) < 2:
                 print("{0}: error: found bad line '{1}' in lexicon file {2} ".format(
                     sys.argv[0], line.strip(), filename), file=sys.stderr)
