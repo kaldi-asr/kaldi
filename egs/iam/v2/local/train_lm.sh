@@ -64,22 +64,22 @@ if [ $stage -le 0 ]; then
                                                > data/local/lob-train-only.txt
   fi
   cat data/local/lob-train-only.txt | \
-    local/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+    utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
     | sed 's/@@//g' > ${dir}/data/text/lob.txt
   cat data/local/browncorpus/brown.txt | \
-    local/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
-    | sed 's/@@//g' > ${dir}/data/text/brown.txt
+    utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+    | sed 's/@@//g' > ${dir}/brown.txt
+  tail -n +5000 ${dir}/brown.txt > ${dir}/data/text/brown.txt
   if [ -d "data/local/wellingtoncorpus" ]; then
     cat data/local/wellingtoncorpus/Wellington_annotation_removed.txt | \
-      local/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+      utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
       | sed 's/@@//g' > ${dir}/data/text/wellington.txt
   fi
 
   # use the validation data as the dev set.
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
-
-  cat data/val/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  head -5000 ${dir}/brown.txt > ${dir}/data/text/dev.txt
 
   # use the training data as an additional data source.
   # we can later fold the dev data into this.

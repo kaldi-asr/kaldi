@@ -4,17 +4,13 @@
 # the beginning of the words for finding the initial-space of every word
 # after decoding.
 
-import argparse
-import sys, io
+import sys
+import io
+import re
 
-parser = argparse.ArgumentParser(description="Prepends '|' to the beginning of every word")
-parser.add_argument('--encoding', type=str, default='latin-1',
-                    help='Type of encoding')
-args = parser.parse_args()
-
-infile = io.TextIOWrapper(sys.stdin.buffer, encoding=args.encoding)
-output = io.TextIOWrapper(sys.stdout.buffer, encoding=args.encoding)
+whitespace = re.compile("[ \t]+")
+infile = io.TextIOWrapper(sys.stdin.buffer, encoding='latin-1')
+output = io.TextIOWrapper(sys.stdout.buffer, encoding='latin-1')
 for line in infile:
-    output.write(' '.join([ "|"+word for word in line.split()]) + '\n')
-
-
+    words = whitespace.split(line.strip(" \t\r\n"))
+    output.write(' '.join([ "|"+word for word in words]) + '\n')
