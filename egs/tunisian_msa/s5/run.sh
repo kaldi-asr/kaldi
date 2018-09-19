@@ -76,9 +76,9 @@ fi
 if [ $stage -le 9 ]; then
   # extract acoustic features
   for fld in devtest train test; do
-    steps/make_plp_pitch.sh data/$fld exp/make_plp_pitch/$fld plp_pitch
+    steps/make_mfcc.sh data/$fld exp/make_mfcc/$fld mfcc
     utils/fix_data_dir.sh data/$fld
-    steps/compute_cmvn_stats.sh data/$fld exp/make_plp_pitch plp_pitch
+    steps/compute_cmvn_stats.sh data/$fld exp/make_mfcc mfcc
     utils/fix_data_dir.sh data/$fld
   done
 fi
