@@ -83,8 +83,10 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang_test
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_small.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang
+  utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
+                               data/lang data/lang_rescore_6g
 fi
 
 if [ $stage -le 6 ]; then
