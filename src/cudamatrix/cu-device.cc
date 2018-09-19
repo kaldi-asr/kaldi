@@ -514,7 +514,6 @@ CuDevice::CuDevice():
     cusparse_handle_(NULL) {
 }
 
-
 CuDevice::~CuDevice() {
   if (cublas_handle_)
     CUBLAS_SAFE_CALL(cublasDestroy(cublas_handle_));

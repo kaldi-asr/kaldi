@@ -15,6 +15,7 @@ writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
 writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
 writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_splits_dir=data/download/data_splits
+overwrite=false
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
@@ -81,7 +82,7 @@ if [ $stage -le 2 ]; then
 
     mv data/$set/text data/$set/text.old
     paste -d' ' data/$set/ids data/$set/bpe_text > data/$set/text
-    #rm -f data/$set/bpe_text data/$set/ids
+    rm -f data/$set/bpe_text data/$set/ids
   done
 
   echo "$0:Preparing dictionary and lang..."
@@ -100,7 +101,7 @@ fi
 
 if [ $stage -le 4 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
-  local/chain/run_flatstart_cnn1a.sh --nj $nj
+  local/chain/run_e2e_cnn.sh --nj $nj
 fi
 
 if [ $stage -le 5 ]; then
@@ -112,5 +113,5 @@ fi
 
 if [ $stage -le 6 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments...$(date)"
-  local/chain/run_cnn_e2eali_1b.sh --nj $nj
+  local/chain/run_cnn_e2eali.sh --nj $nj
 fi
