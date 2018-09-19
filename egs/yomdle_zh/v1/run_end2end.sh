@@ -4,7 +4,7 @@ set -e
 stage=0
 nj=60
 
-database_slam=/export/corpora5/slam/SLAM/Farsi/transcribed
+database_slam=/export/corpora5/slam/SLAM/Chinese/transcribed
 database_yomdle=/export/corpora5/slam/YOMDLE/final_chinese
 download_dir=data_yomdle_chinese/download/
 extra_lm=download/extra_lm.txt
@@ -44,7 +44,7 @@ if [ $stage -le 1 ]; then
         echo "$0: Extracting features and calling compute_cmvn_stats for dataset: $datasplit. "
         echo "Date: $(date)."
         local/extract_features.sh --nj $nj --cmd "$cmd" \
-            --feat-dim 60 --num-channels 3 --fliplr true \
+            --feat-dim 60 --num-channels 3 \
             $data_dir/${datasplit}
         steps/compute_cmvn_stats.sh $data_dir/${datasplit} || exit 1;
     done

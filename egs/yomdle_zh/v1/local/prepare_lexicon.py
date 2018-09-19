@@ -27,7 +27,7 @@ with open('download/cj5-cc.txt', 'r', encoding='utf-8') as f:
 
 with open(text_path, 'r', encoding='utf-8') as f:
     for line in f:
-        line_vect = line.strip().split(' ')
+        line_vect = line.strip().split()
         for i in range(1, len(line_vect)):
             characters = list(line_vect[i])
 	    # Put SIL instead of "|". Because every "|" in the beginning of the words is for initial-space of that word

@@ -49,10 +49,8 @@ for filename in sorted(os.listdir(os.path.join(args.database_path, 'truth_csv'))
                 continue
             image_id = os.path.splitext(row[1])[0]
             image_filepath = os.path.join(args.database_path, 'truth_line_image', row[1])
-            text = unicodedata.normalize('NFC', row[11])
-            file_info = os.stat(image_filepath)
-            if file_info.st_size != 0:
-                if text:
-                    text_fh.write(image_id + ' ' + text + '\n')
-                    utt2spk_fh.write(image_id + ' ' + '_'.join(image_id.split('_')[:-1]) + '\n')
-                    image_fh.write(image_id + ' ' + image_filepath + ' ' + row[13] +  '\n')
+            text = unicodedata.normalize('NFC', row[11]).replace('\n', '')
+            if os.path.isfile(image_filepath) and os.stat(image_filepath).st_size != 0 and text:
+                text_fh.write(image_id + ' ' + text + '\n')
+                utt2spk_fh.write(image_id + ' ' + '_'.join(image_id.split('_')[:-1]) + '\n')
+                image_fh.write(image_id + ' ' + image_filepath + ' ' + row[13] +  '\n')
