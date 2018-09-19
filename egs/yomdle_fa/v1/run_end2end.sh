@@ -65,10 +65,10 @@ fi
 if [ $stage -le 3 ]; then
     echo "$0: Preparing dictionary and lang..."
     if [ ! -f $data_dir/train/bpe.out ]; then
-        cut -d' ' -f2- $data_dir/train/text | local/bidi.py | utils/lang/bpe/prepend_words.py --encoding 'utf-8' | python3 utils/lang/bpe/learn_bpe.py -s 700 > $data_dir/train/bpe.out
+        cut -d' ' -f2- $data_dir/train/text | local/bidi.py | utils/lang/bpe/prepend_words.py | python3 utils/lang/bpe/learn_bpe.py -s 700 > $data_dir/train/bpe.out
         for datasplit in test train train_aug; do
             cut -d' ' -f1 $data_dir/$datasplit/text > $data_dir/$datasplit/ids
-            cut -d' ' -f2- $data_dir/$datasplit/text | local/bidi.py | utils/lang/bpe/prepend_words.py --encoding 'utf-8' | python3 utils/lang/bpe/apply_bpe.py -c $data_dir/train/bpe.out | sed 's/@@//g' > $data_dir/$datasplit/bpe_text
+            cut -d' ' -f2- $data_dir/$datasplit/text | local/bidi.py | utils/lang/bpe/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c $data_dir/train/bpe.out | sed 's/@@//g' > $data_dir/$datasplit/bpe_text
             mv $data_dir/$datasplit/text $data_dir/$datasplit/text.old
             paste -d' ' $data_dir/$datasplit/ids $data_dir/$datasplit/bpe_text > $data_dir/$datasplit/text
         done
