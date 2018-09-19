@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     Timer timer;
 
-    NnetBatchComputerOptionsOptions opts;
+    NnetBatchComputerOptions opts;
     opts.acoustic_scale = 1.0;  // by default do no scaling
 
     bool apply_exp = false, use_priors = false;
@@ -58,8 +58,6 @@ int main(int argc, char *argv[]) {
                 online_ivector_rspecifier,
                 utt2spk_rspecifier;
     int32 online_ivector_period = 0;
-    bool ensure_exact_final_context = false;
-    int32 minibatch_size = 128;
     opts.Register(&po);
 
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier for "
@@ -90,6 +88,7 @@ int main(int argc, char *argv[]) {
     }
 
 #if HAVE_CUDA==1
+    CuDevice::Instantiate().AllowMultithreading();
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 

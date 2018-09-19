@@ -54,7 +54,7 @@ fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print
 
 model=$srcdir/$iter.raw
 if [ ! -f $srcdir/$iter.raw ]; then
-  echo "$0: WARNING: no such file $srcdir/$iter.raw. Trying $srcdir/$iter.mdl instead." && exit 1
+  echo "$0: WARNING: no such file $srcdir/$iter.raw. Trying $srcdir/$iter.mdl instead."
   model=$srcdir/$iter.mdl
 fi
 

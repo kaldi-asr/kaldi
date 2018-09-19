@@ -120,8 +120,8 @@ void NnetBatchComputer::GetHighestPriorityTasks(
     std::vector<NnetInferenceTask*> *tasks) {
   int32 num_tasks_present = info->tasks.size(),
       minibatch_size = GetMinibatchSize(*info);
-  KALDI_ASSERT(num_tasks_needed <= num_tasks_present && tasks->empty());
-  if (num_tasks_needed == num_tasks_present) {
+  KALDI_ASSERT(tasks->empty());
+  if (num_tasks_needed >= num_tasks_present) {
     tasks->swap(info->tasks);
   } else {
     int32 num_tasks_not_needed = num_tasks_present - num_tasks_needed;
@@ -328,16 +328,16 @@ void NnetBatchComputer::FormatInputs(
     const std::vector<NnetInferenceTask*> &tasks,
     CuMatrix<BaseFloat> *input,
     CuMatrix<BaseFloat> *ivector) {
-  KALDI_ASSERT(!tasks.empty());
   int32 num_input_frames = tasks[0]->input.NumRows(),
       input_dim = tasks[0]->input.NumCols(),
       ivector_dim = tasks[0]->ivector.Dim(),
       num_tasks = tasks.size();
+  KALDI_ASSERT(num_tasks > 0 && num_tasks <= minibatch_size);
 
   // We first aggregate the input frames and i-vectors in matrices on the CPU,
   // and then transfer them to the GPU.  Later on we'll change this code to
   // used pinned memory.
-  Matrix<BaseFloat> input_cpu(num_tasks * num_input_frames,
+  Matrix<BaseFloat> input_cpu(num_tasks * num_input_frames, input_dim,
                               kUndefined);
 
 
@@ -347,28 +347,30 @@ void NnetBatchComputer::FormatInputs(
                                     0, input_dim);
     input_part.CopyFromMat(tasks[n]->input);
   }
-  input->Resize(minibatch_size * num_input_frames,
+  input->Resize(minibatch_size * num_input_frames, input_dim,
                 kUndefined);
   input->RowRange(0, num_tasks * num_input_frames).CopyFromMat(input_cpu);
   if (num_tasks < minibatch_size) {
     // The following will make things easier to debug if something fails, but
     // shouldn't be strictly necessary.
     // the -1 means 'take all remaining rows'.
-    input->RowRange(num_tasks * num_input_frames, -1).SetZero();
+    input->RowRange(num_tasks * num_input_frames,
+                    (minibatch_size - num_tasks) * num_input_frames).SetZero();
   }
 
   if (ivector_dim != 0) {
-    Matrix<BaseFloat> ivectors_cpu(num_tasks, ivector_dim);
+    Matrix<BaseFloat> ivectors_cpu(num_tasks, ivector_dim, kUndefined);
     for (int32 n = 0; n < num_tasks; n++)
       ivectors_cpu.Row(n).CopyFromVec(tasks[n]->ivector);
 
+    ivector->Resize(minibatch_size, ivector_dim, kUndefined);
     ivector->RowRange(0, num_tasks).CopyFromMat(ivectors_cpu);
 
     if (num_tasks < minibatch_size) {
       // The following will make things easier to debug if something fails, but
       // shouldn't be strictly necessary.
       // the -1 means 'take all remaining rows'.
-      ivector->RowRange(num_tasks, -1).SetZero();
+      ivector->RowRange(num_tasks, minibatch_size - num_tasks).SetZero();
     }
   }
 }
@@ -772,7 +774,7 @@ void MergeTaskOutput(
       output->RowRange(cur_output_frame, num_used).CopyFromMat(
           task.output.RowRange(skip, num_used));
     }
-    num_output_frames += num_used;
+    cur_output_frame += num_used;
   }
   KALDI_ASSERT(cur_output_frame == num_output_frames);
 }
@@ -806,9 +808,9 @@ void NnetBatchInference::AcceptInput(
     int32 online_ivector_period) {
 
   { // This block does some checking.
-    if (input.NumRows() != input_dim_) {
+    if (input.NumCols() != input_dim_) {
       KALDI_ERR << "Input features did not have expected dimension: expected "
-          << input_dim_ << ", got " << input.NumRows();
+          << input_dim_ << ", got " << input.NumCols();
     }
     int32 ivector_dim = (ivector != NULL ? ivector->Dim() :
                          (online_ivectors != NULL ?
