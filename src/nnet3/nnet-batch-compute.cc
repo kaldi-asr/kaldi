@@ -19,6 +19,7 @@
 // limitations under the License.
 
 #include <algorithm>
+#include <iomanip>
 #include "nnet3/nnet-batch-compute.h"
 #include "nnet3/nnet-utils.h"
 
@@ -38,7 +39,67 @@ NnetBatchComputer::NnetBatchComputer(
   CheckAndFixConfigs();
 }
 
+void NnetBatchComputer::PrintMinibatchStats() {
+  int32 max_stats_to_print = 10;
+  int64 tot_tasks = 0, tot_minibatches = 0;
+  double tot_time = 0.0;
+  std::ostringstream os;
+  struct MinibatchStats {
+    int32 num_frames_out;
+    int32 num_frames_in;
+    int32 minibatch_size;
+    int32 num_done;
+    int32 percent_full;
+    BaseFloat seconds_taken;
+
+    bool operator < (const MinibatchStats &other) const {
+      return seconds_taken > other.seconds_taken;  // sort from most to least time.
+    }
+  };
+  std::vector<MinibatchStats> all_stats;
+  os << "Minibatch stats: seconds-taken,frames-in:frames-out*minibatch-size=num-done(percent-full%)  ";
+
+  for (MapType::const_iterator iter = tasks_.begin();
+       iter != tasks_.end(); ++iter) {
+    for (std::map<int32, MinibatchSizeInfo>::const_iterator
+             miter = iter->second.minibatch_info.begin();
+         miter != iter->second.minibatch_info.end(); ++miter) {
+      const ComputationGroupKey &key = iter->first;
+      const MinibatchSizeInfo &minfo = miter->second;
+      MinibatchStats stats;
+      stats.num_frames_in = key.num_input_frames;
+      stats.num_frames_out = key.num_output_frames;
+      stats.minibatch_size = miter->first;
+      stats.num_done = minfo.num_done;
+      stats.seconds_taken = minfo.seconds_taken;
+
+      tot_tasks += minfo.tot_num_tasks;
+      tot_minibatches += minfo.num_done;
+      tot_time += minfo.seconds_taken;
+      stats.percent_full = int32(minfo.tot_num_tasks * 100.0 /
+                                 (stats.minibatch_size * stats.num_done));
+      all_stats.push_back(stats);
+    }
+  }
+
+  std::sort(all_stats.begin(), all_stats.end());
+  os << std::fixed << std::setprecision(2);
+  int32 num_stats = all_stats.size();
+  for (int32 i = 0; i < std::min<int32>(num_stats, max_stats_to_print); i++) {
+    MinibatchStats &stats = all_stats[i];
+    os << stats.seconds_taken << ',' << stats.num_frames_in << ':'
+       << stats.num_frames_out << '*' << stats.minibatch_size
+       << '=' << stats.num_done << '(' << stats.percent_full << "%) ";
+  }
+  if (num_stats > max_stats_to_print)
+    os << "...";
+  KALDI_LOG << os.str();
+  KALDI_LOG << "Did " << tot_tasks << " tasks in " << tot_minibatches
+            << " minibatches, taking " << tot_time << " seconds.";
+}
+
 NnetBatchComputer::~NnetBatchComputer() {
+  PrintMinibatchStats();
   // the destructor shouldn't be called while the mutex is locked; if it is, it
   // likely means the program has already crashed, or it's a programming error.
   if (!mutex_.try_lock())
@@ -60,7 +121,7 @@ NnetBatchComputer::~NnetBatchComputer() {
   KALDI_ASSERT(num_full_minibatches_ == 0);  // failure would be a coding error.
 }
 
-std::shared_ptr<const NnetComputation>
+NnetBatchComputer::MinibatchSizeInfo*
 NnetBatchComputer::GetHighestPriorityComputation(
     bool allow_partial_minibatch,
     int32 *minibatch_size_out,
@@ -87,19 +148,11 @@ NnetBatchComputer::GetHighestPriorityComputation(
   ComputationGroupInfo &info = best_iter->second;
   int32 actual_minibatch_size = GetActualMinibatchSize(info);
   *minibatch_size_out = actual_minibatch_size;
-  std::map<int32, std::shared_ptr<const NnetComputation> >::const_iterator
-      computation_iter = info.computation.find(actual_minibatch_size);
-  std::shared_ptr<const NnetComputation> ans;
-  if (computation_iter != info.computation.end()) {
-    // We previously cached this computation.
-    ans = computation_iter->second;
-  } else {
-    // Compilation would happen in here.
-    ans = (info.computation[actual_minibatch_size] = GetComputation(
-        info, actual_minibatch_size));
-  }
+  MinibatchSizeInfo *minfo = &(info.minibatch_info[actual_minibatch_size]);
+  if (minfo->computation == NULL)
+    minfo->computation = GetComputation(info, actual_minibatch_size);
   GetHighestPriorityTasks(actual_minibatch_size, &info, tasks);
-  return ans;
+  return minfo;
 }
 
 
@@ -449,15 +502,16 @@ void NnetBatchComputer::AcceptTask(NnetInferenceTask *task,
 bool NnetBatchComputer::Compute(bool allow_partial_minibatch) {
   int32 minibatch_size;
   std::vector<NnetInferenceTask*> tasks;
-  std::shared_ptr<const NnetComputation> computation =
+  MinibatchSizeInfo *minfo =
       GetHighestPriorityComputation(allow_partial_minibatch,
                                     &minibatch_size,
                                     &tasks);
-  if (computation == NULL)
+  if (minfo == NULL)
     return false;
 
+  Timer tim;
   Nnet *nnet_to_update = NULL;  // we're not doing any update
-  NnetComputer computer(opts_.compute_config, *computation,
+  NnetComputer computer(opts_.compute_config, *(minfo->computation),
                         nnet_, nnet_to_update);
 
 
@@ -475,6 +529,11 @@ bool NnetBatchComputer::Compute(bool allow_partial_minibatch) {
   }
   output.Scale(opts_.acoustic_scale);
   FormatOutputs(output, tasks);
+
+  // Update the stats, for diagnostics.
+  minfo->num_done++;
+  minfo->tot_num_tasks += static_cast<int64>(tasks.size());
+  minfo->seconds_taken += tim.Elapsed();
 
   for (size_t i = 0; i < tasks.size(); i++)
     tasks[i]->semaphore.Signal();

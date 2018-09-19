@@ -1,7 +1,7 @@
 // nnet3/nnet-batch-compute.h
 
 // Copyright 2012-2018  Johns Hopkins University (author: Daniel Povey)
-//           2018       Hang Lyu
+//                2018       Hang Lyu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -295,15 +295,35 @@ class NnetBatchComputer {
   ~NnetBatchComputer();
 
  private:
+
+  // Information about a specific minibatch size for a group of tasks sharing a
+  // specific structure (in terms of left and right context, etc.)
+  struct MinibatchSizeInfo {
+    // the computation for this minibatch size.
+    std::shared_ptr<const NnetComputation> computation;
+    int32 num_done;  // The number of minibatches computed: for diagnostics.
+    int64 tot_num_tasks;  // The total number of tasks in those minibatches,
+    // also for diagnostics... can be used to compute
+    // how 'full', on average, these minibatches were.
+    double seconds_taken;  // The total time elapsed in computation for this
+                          // minibatch type.
+    MinibatchSizeInfo(): computation(NULL), num_done(0),
+                         tot_num_tasks(0), seconds_taken(0.0) { }
+  };
+
+
+  // A computation group is a group of tasks that have the same structure
+  // (number of input and output frames, left and right context).
   struct ComputationGroupInfo {
     // The tasks to be completed.  This array is added-to by AcceptTask(),
     // and removed-from by GetHighestPriorityComputation(), which is called
     // from Compute().
     std::vector<NnetInferenceTask*> tasks;
-    // map from minibatch-size to a pointer to the appropriate NnetComputation.
-    // this is set up by GetHighestPriorityComputation(), which is called from
-    // Compute().
-    std::map<int32, std::shared_ptr<const NnetComputation> > computation;
+
+    // Map from minibatch-size to information specific to this minibatch-size,
+    // including the NnetComputation.  This is set up by
+    // GetHighestPriorityComputation(), which is called from Compute().
+    std::map<int32, MinibatchSizeInfo> minibatch_info;
   };
 
   // This struct allows us to arrange the tasks into groups that can be
@@ -377,12 +397,12 @@ class NnetBatchComputer {
   inline int32 GetMinibatchSize(const ComputationGroupInfo &info) const;
 
 
-  // This function either compiles and caches (in tasks_) a computation, or
-  // retrieves it from tasks_ and returns it.
+  // This function compiles, and returns, a computation for tasks of
+  // the structure present in info.tasks[0], and the specified minibatch
+  // size.
   std::shared_ptr<const NnetComputation> GetComputation(
       const ComputationGroupInfo &info,
       int32 minibatch_size);
-
 
 
   // Returns the actual minibatch size we'll use for this computation.  In most
@@ -408,6 +428,7 @@ class NnetBatchComputer {
   /**
       This function finds and returns the computation corresponding to the
       highest-priority group of tasks.
+
        @param [in] allow_partial_minibatch  If this is true, then this
              function may return a computation corresponding to a partial
              minibatch-- i.e. the minibatch size in the computation may be
@@ -421,11 +442,12 @@ class NnetBatchComputer {
        @param [out] tasks  The tasks which we'll be doing the computation
              for in this minibatch are put here (and removed from tasks_,
              in cases where this function returns non-NULL.
-       @return  This function returns a shared_ptr to the computation that
-             we'll be using for this minibatch, or NULL if there is nothing
+       @return  This function returns a pointer to the appropriate
+             'MinibatchSizeInfo' object corresponding to the computation
+             that we'll be doing for this minibatch, or NULL if there is nothing
              to compute.
   */
-  std::shared_ptr<const NnetComputation> GetHighestPriorityComputation(
+  MinibatchSizeInfo *GetHighestPriorityComputation(
       bool allow_partial_minibatch,
       int32 *minibatch_size,
       std::vector<NnetInferenceTask*> *tasks);
@@ -463,6 +485,10 @@ class NnetBatchComputer {
   static void GetComputationRequest(const NnetInferenceTask &task,
                                     int32 minibatch_size,
                                     ComputationRequest *request);
+
+  // Prints some logging information about what we computed, with breakdown by
+  // minibatch type.
+  void PrintMinibatchStats();
 
   NnetBatchComputerOptions opts_;
   const Nnet &nnet_;
