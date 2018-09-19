@@ -25,8 +25,8 @@ steps/decode_raw_fmllr.sh --use-normal-fmllr true --config conf/decode.config --
 steps/align_raw_fmllr.sh --nj 8 --cmd "$train_cmd" data/train data/lang exp/tri3c exp/tri3c_ali
 
 
-                                        
-                                                                    
+
+
 if [ ! -f exp/ubm4c/final.mdl ]; then
   steps/train_ubm.sh --silence-weight 0.5 --cmd "$train_cmd" 400 data/train data/lang exp/tri3c_ali exp/ubm4c || exit 1;
 fi
@@ -43,7 +43,7 @@ steps/decode_sgmm2.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 
 steps/decode_sgmm2.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
   --transform-dir exp/tri3c/decode  exp/sgmm2_4c/graph data/test exp/sgmm2_4c/decode_fmllr || exit 1;
- 
+
 
 exit 0;
 
@@ -61,7 +61,7 @@ exit 0;
 #    awk -v scale=30.0 '{printf("%s [ ", $1); for (n=3;n<NF;n++) { printf("%f ", scale*$n); } print "]"; }' > exp/sgmm2_4c_x30/decode_ug/vecs.1
 # )
 # exit 0;
-# ## 
+# ##
 # steps/decode_sgmm2.sh --config conf/decode.config --nj 20 --cmd "$decode_cmd" \
 #   exp/sgmm2_4c.no_transform/graph data/test exp/sgmm2_4c.no_transform/decode || exit 1;
 

@@ -305,6 +305,8 @@ int main() {
   SetVerboseLevel(4);
   CuDevice::Instantiate().PrintProfile();
 #endif
+
+  unlink("tmp.ark");
   return 0;
 }
 

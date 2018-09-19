@@ -748,7 +748,8 @@ class XconfigBasicLayer(XconfigLayerBase):
         if self.config['target-rms'] < 0.0:
             raise RuntimeError("target-rms has invalid value {0}"
                                .format(self.config['target-rms']))
-        if self.config['learning-rate-factor'] <= 0.0:
+        if (self.config['learning-rate-factor'] != '' and
+            self.config['learning-rate-factor'] <= 0.0):
             raise RuntimeError("learning-rate-factor has invalid value {0}"
                                .format(self.config['learning-rate-factor']))
 

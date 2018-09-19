@@ -43,19 +43,22 @@ namespace kaldi {
 
 
 /**
-   You will instantiate this class when you want to decode a single
-   utterance using the online-decoding setup for neural nets.
+   You will instantiate this class when you want to decode a single utterance
+   using the online-decoding setup for neural nets.  The template will be
+   instantiated only for FST = fst::Fst<fst::StdArc> and FST = fst::GrammarFst.
 */
-class SingleUtteranceNnet3Decoder {
+
+template <typename FST>
+class SingleUtteranceNnet3DecoderTpl {
  public:
 
   // Constructor. The pointer 'features' is not being given to this class to own
   // and deallocate, it is owned externally.
-  SingleUtteranceNnet3Decoder(const LatticeFasterDecoderConfig &decoder_opts,
-                              const TransitionModel &trans_model,
-                              const nnet3::DecodableNnetSimpleLoopedInfo &info,
-                              const fst::Fst<fst::StdArc> &fst,
-                              OnlineNnet2FeaturePipeline *features);
+  SingleUtteranceNnet3DecoderTpl(const LatticeFasterDecoderConfig &decoder_opts,
+                                 const TransitionModel &trans_model,
+                                 const nnet3::DecodableNnetSimpleLoopedInfo &info,
+                                 const FST &fst,
+                                 OnlineNnet2FeaturePipeline *features);
 
   /// advance the decoding as far as we can.
   void AdvanceDecoding();
@@ -87,9 +90,9 @@ class SingleUtteranceNnet3Decoder {
   /// with the required arguments.
   bool EndpointDetected(const OnlineEndpointConfig &config);
 
-  const LatticeFasterOnlineDecoder &Decoder() const { return decoder_; }
+  const LatticeFasterOnlineDecoderTpl<FST> &Decoder() const { return decoder_; }
 
-  ~SingleUtteranceNnet3Decoder() { }
+  ~SingleUtteranceNnet3DecoderTpl() { }
  private:
 
   const LatticeFasterDecoderConfig &decoder_opts_;
@@ -104,10 +107,12 @@ class SingleUtteranceNnet3Decoder {
 
   nnet3::DecodableAmNnetLoopedOnline decodable_;
 
-  LatticeFasterOnlineDecoder decoder_;
+  LatticeFasterOnlineDecoderTpl<FST> decoder_;
 
 };
 
+
+typedef SingleUtteranceNnet3DecoderTpl<fst::Fst<fst::StdArc> > SingleUtteranceNnet3Decoder;
 
 /// @} End of "addtogroup onlinedecoding"
 

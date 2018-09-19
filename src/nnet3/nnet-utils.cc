@@ -1058,6 +1058,27 @@ void ConstrainOrthonormal(Nnet *nnet) {
   }
 }
 
+void ConsolidateMemory(Nnet *nnet) {
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    bool print_memory_info = (GetVerboseLevel() >= 1);
+    if (print_memory_info) {
+      KALDI_VLOG(1) << "Consolidating memory; will print memory usage before "
+          "and after consolidating:";
+      g_cuda_allocator.PrintMemoryUsage();
+    }
+    for (int32 c = 0; c < nnet->NumComponents(); c++) {
+      Component *comp = nnet->GetComponent(c);
+      comp->ConsolidateMemory();
+    }
+    if (print_memory_info) {
+      g_cuda_allocator.PrintMemoryUsage();
+    }
+  }
+#endif
+}
+
+
 
 // This code has been broken out of ReadEditConfig as it's quite long.
 // It implements the internals of the edit directive 'reduce-rank'.
@@ -2065,7 +2086,7 @@ bool UpdateNnetWithMaxChange(const Nnet &delta_nnet,
       ostr << "Per-component max-change active on "
            << num_max_change_per_component_applied_per_minibatch
            << " / " << num_updatable << " Updatable Components."
-           << "(smallest factor=" << min_scale << " on "
+           << " (Smallest factor=" << min_scale << " on "
            << component_name_with_min_scale
            << " with max-change=" << max_change_with_min_scale <<"). ";
     if (param_delta > max_param_change * max_change_scale)

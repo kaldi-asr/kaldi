@@ -1,18 +1,13 @@
 #!/bin/bash
 
 . ./cmd.sh
-
 . ./path.sh
+
 stage=0
 
-. utils/parse_options.sh
-
-set -e
-set -o pipefail
-set -u
-
 # the location of the LDC corpus; this location works for the CLSP grid.
-#datadir=/export/corpora5/LDC/LDC2006S37
+datadir=/export/corpora5/LDC/LDC2006S37
+
 # The corpus and lexicon are on openslr.org
 speech="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
 lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
@@ -20,10 +15,17 @@ lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
 # Location of the Movie subtitles text corpus
 subs_src="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2018/en-es.txt.zip"
 
+. utils/parse_options.sh
+
+set -e
+set -o pipefail
+set -u
+
+
 # don't change tmpdir, the location is used explicitly in scripts in local/.
 tmpdir=data/local/tmp
 
-if [ $stage -le -1 ]; then
+if [ $stage -le 0 ]; then
   # download the corpus from openslr
   local/heroico_download.sh $speech $lexicon
   # Get data for lm training
@@ -32,7 +34,7 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "Makin lists for building models."
-  local/prepare_data.sh
+  local/prepare_data.sh $datadir
 fi
 
 if [ $stage -le 2 ]; then

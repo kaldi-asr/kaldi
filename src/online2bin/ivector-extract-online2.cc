@@ -55,6 +55,8 @@ int main(int argc, char *argv[]) {
 
     g_num_threads = 8;
     bool repeat = false;
+    int32 length_tolerance = 0;
+    std::string frame_weights_rspecifier;
     
     po.Register("num-threads", &g_num_threads,
                 "Number of threads to use for computing derived variables "
@@ -62,6 +64,12 @@ int main(int argc, char *argv[]) {
     po.Register("repeat", &repeat,
                 "If true, output the same number of iVectors as input frames "
                 "(including repeated data).");
+    po.Register("frame-weights-rspecifier", &frame_weights_rspecifier,
+                "Archive of frame weights to scale stats");
+    po.Register("length-tolerance", &length_tolerance,
+                "Tolerance on the difference in number of frames "
+                "for feats and frame weights");
+
     po.Read(argc, argv);
     
     if (po.NumArgs() != 3) {
@@ -82,6 +90,7 @@ int main(int argc, char *argv[]) {
     
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomAccessBaseFloatVectorReader frame_weights_reader(frame_weights_rspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
     
     
@@ -105,6 +114,31 @@ int main(int argc, char *argv[]) {
                                              &matrix_feature);
         
         ivector_feature.SetAdaptationState(adaptation_state);
+
+        if (!frame_weights_rspecifier.empty()) {
+          if (!frame_weights_reader.HasKey(utt)) {
+            KALDI_WARN << "Did not find weights for utterance " << utt;
+            num_err++;
+            continue;
+          }
+          const Vector<BaseFloat> &weights = frame_weights_reader.Value(utt);
+
+          if (std::abs(weights.Dim() - feats.NumRows()) > length_tolerance) {
+            num_err++;
+            continue;
+          }
+
+          std::vector<std::pair<int32, BaseFloat> > frame_weights;
+          for (int32 i = 0; i < feats.NumRows(); i++) {
+            if (i < weights.Dim())
+              frame_weights.push_back(std::make_pair(i, weights(i)));
+            else
+              frame_weights.push_back(std::make_pair(i, 0.0));
+          }
+
+
+          ivector_feature.UpdateFrameWeights(frame_weights);
+        }
 
         int32 T = feats.NumRows(),
             n = (repeat ? 1 : ivector_config.ivector_period),

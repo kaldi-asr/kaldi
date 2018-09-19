@@ -6,10 +6,16 @@
 import os
 import argparse
 import sys
+
+# The use of latin-1 encoding does not preclude reading utf-8.  latin-1 encoding
+# means "treat words as sequences of bytes", and it is compatible with utf-8
+# encoding as well as other encodings such as gbk, as long as the spaces are
+# also spaces in ascii (which we check).  It is basically how we emulate the
+# behavior of python before python3.
 sys.stdout = open(1, 'w', encoding='latin-1', closefd=False)
 
 import re
-tab_or_space = re.compile('[ \t]')
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script turns the word features to a human readable format.",
                                  epilog="E.g. " + sys.argv[0] + "exp/rnnlm/word_feats.txt exp/rnnlm/features.txt "

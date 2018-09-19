@@ -9,7 +9,7 @@ import sys
 sys.stdout = open(1, 'w', encoding='latin-1', closefd=False)
 
 import re
-tab_or_space = re.compile('[ \t]')
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script get a vocab from unigram counts "
                                  "of words produced by get_unigram_counts.sh",
@@ -30,7 +30,7 @@ special_symbols = ['<s>', '<brk>', '<eps>']
 def add_counts(word_counts, counts_file):
     with open(counts_file, 'r', encoding="latin-1") as f:
         for line in f:
-            line = line.strip()
+            line = line.strip(" \t\r\n")
             word_and_count = re.split(tab_or_space, line)
             assert len(word_and_count) == 2
             if word_and_count[0] in word_counts:

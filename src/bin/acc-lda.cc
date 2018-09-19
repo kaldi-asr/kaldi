@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
         "Accumulate LDA statistics based on pdf-ids.\n"
         "Usage:  acc-lda [options] <transition-gmm/model> <features-rspecifier> <posteriors-rspecifier> <lda-acc-out>\n"
         "Typical usage:\n"
-        " ali-to-post ark:1.ali ark:- | lda-acc 1.mdl \"ark:splice-feats scp:train.scp|\"  ark:- ldaacc.1\n";
+        " ali-to-post ark:1.ali ark:- | acc-lda 1.mdl \"ark:splice-feats scp:train.scp|\"  ark:- ldaacc.1\n";
 
     bool binary = true;
     BaseFloat rand_prune = 0.0;
@@ -126,5 +126,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

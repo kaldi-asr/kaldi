@@ -3,7 +3,7 @@
 #            2014  Guoguo Chen
 # Apache 2.0
 
-# Begin configuration section.  
+# Begin configuration section.
 cmd=run.pl
 stage=1
 lmwt=10
@@ -28,6 +28,13 @@ if [ $# != 3 ]; then
    echo "                                                   # for lattice input (default: 10)"
    exit 1;
 fi
+
+# As the usage message of nbest-to-prons says, its output has lines that can be interpreted as
+#  <utterance-id> <begin-frame> <num-frames> <word> <phone1> <phone2> ... <phoneN>
+# and you could convert these into text form using a command like:
+# gunzip -c prons.*.gz | utils/sym2int.pl -f 4 words.txt | utils/sym2int.pl -f 5- phones.txt
+
+
 
 data=$1
 lang=$2
@@ -66,7 +73,7 @@ fi
 
 if [ -f $dir/ali.1.gz ]; then
   echo "$0: $dir/ali.1.gz exists, so starting from alignments."
-  
+
   if [ $stage -le 1 ]; then
     rm $dir/prons.*.gz 2>/dev/null
     $cmd JOB=1:$nj $dir/log/nbest_to_prons.JOB.log \

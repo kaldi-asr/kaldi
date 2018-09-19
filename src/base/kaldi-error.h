@@ -33,18 +33,6 @@
 #include "base/kaldi-utils.h"
 /* Important that this file does not depend on any other kaldi headers. */
 
-// By adding 'KALDI_NOEXCEPT(bool)' immediately after function declaration,
-// we can tell the compiler that the function must-not produce
-// exceptions (true), or may produce exceptions (false):
-#if _MSC_VER >= 1900 || (!defined(_MSC_VER) && __cplusplus >= 201103L)
-#define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
-#elif defined(__GXX_EXPERIMENTAL_CXX0X__) && \
-      (__GNUC__ >= 4 && __GNUC_MINOR__ >= 6)
-#define KALDI_NOEXCEPT(Predicate) noexcept((Predicate))
-#else
-#define KALDI_NOEXCEPT(Predicate)
-#endif
-
 #ifdef _MSC_VER
 #define __func__ __FUNCTION__
 #endif
@@ -108,25 +96,36 @@ public:
 
   /// Destructor, calls 'HandleMessage' which prints the message,
   /// (since C++11 a 'throwing' destructor must be declared 'noexcept(false)')
-  ~MessageLogger() KALDI_NOEXCEPT(false);
+  ~MessageLogger() noexcept(false);
 
   /// The hook for the 'insertion operator', e.g.
   /// 'KALDI_LOG << "Message,"',
   inline std::ostream &stream() { return ss_; }
 
-private:
+protected:
+  std::string GetMessage() const;
   /// The logging function,
   static void HandleMessage(const LogMessageEnvelope &env, const char *msg);
 
-private:
+protected:
   LogMessageEnvelope envelope_;
+
+private:
   std::ostringstream ss_;
+};
+
+class FatalMessageLogger: public MessageLogger {
+public:
+  FatalMessageLogger(LogMessageEnvelope::Severity severity,
+                     const char *func, const char *file, int32 line);
+
+  [[ noreturn ]] ~FatalMessageLogger() noexcept(false);
 };
 
 // The definition of the logging macros,
 #define KALDI_ERR \
-  ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::kError, \
-                         __func__, __FILE__, __LINE__).stream()
+  ::kaldi::FatalMessageLogger(::kaldi::LogMessageEnvelope::kError, \
+                              __func__, __FILE__, __LINE__).stream()
 #define KALDI_WARN \
   ::kaldi::MessageLogger(::kaldi::LogMessageEnvelope::kWarning, \
                          __func__, __FILE__, __LINE__).stream()
@@ -140,8 +139,8 @@ private:
 
 /***** KALDI ASSERTS *****/
 
-void KaldiAssertFailure_(const char *func, const char *file,
-                         int32 line, const char *cond_str);
+[[ noreturn ]] void KaldiAssertFailure_(const char *func, const char *file,
+                                        int32 line, const char *cond_str);
 
 // Note on KALDI_ASSERT and KALDI_PARANOID_ASSERT
 // The original (simple) version of the code was this
