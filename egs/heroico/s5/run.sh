@@ -16,7 +16,6 @@ set -u
 # The corpus and lexicon are on openslr.org
 speech="http://www.openslr.org/resources/39/LDC2006S37.tar.gz"
 lexicon="http://www.openslr.org/resources/34/santiago.tar.gz"
-dir=LDC2006S37
 
 # Location of the Movie subtitles text corpus
 subs_src="http://opus.lingfil.uu.se/download.php?f=OpenSubtitles2018/en-es.txt.zip"
@@ -33,7 +32,7 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "Makin lists for building models."
-  local/prepare_data.sh $dir
+  local/prepare_data.sh
 fi
 
 if [ $stage -le 2 ]; then
