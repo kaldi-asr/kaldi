@@ -105,6 +105,8 @@ def check_writing_condition(wc_dict):
         writing_condition = wc_dict[base_name].strip()
         if writing_condition != 'IUC':
             return False
+        else:
+            return True
     else:
         return True
 

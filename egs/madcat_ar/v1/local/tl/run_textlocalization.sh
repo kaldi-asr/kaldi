@@ -18,7 +18,7 @@ data_splits_dir=data/download/data_splits
 images_scp_dir=data/local
 overwrite=false
 subset=true
-augment=true
+augment=false
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -47,7 +47,7 @@ if [ $stage -le 0 ]; then
         --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3 \
         --data data/local/$set --subset $subset --augment $augment || exit 1
   done
-
+ 
   echo "$0: Preparing data..."
   for set in dev train; do
     local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
