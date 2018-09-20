@@ -74,7 +74,7 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Preparing BPE..."
-  cut -d' ' -f2- data/train/text | utilis/lang/bpe/reverse.py | \
+  cut -d' ' -f2- data/train/text | utils/lang/bpe/reverse.py | \
     utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
 
