@@ -56,15 +56,15 @@ if [ $stage -le 0 ]; then
     image/fix_data_dir.sh data/${set}
   done
 
-  #local/process_waldo_data.py lines/hyp_line_image_transcription_mapping_kaldi.txt data/test
-  #image/fix_data_dir.sh data/test
+  local/process_waldo_data.py lines/hyp_line_image_transcription_mapping_kaldi.txt data/test
+  image/fix_data_dir.sh data/test
 fi
 
 if [ $stage -le 1 ]; then
   echo "$0: Obtaining image groups. calling get_image2num_frames $(date)."
   image/get_image2num_frames.py data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
-  for set in dev train; do
+  for set in test dev train; do
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. $(date)"
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$set
     steps/compute_cmvn_stats.sh data/$set || exit 1;
@@ -87,7 +87,7 @@ if [ $stage -le 3 ]; then
     utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
 
-  for set in train dev train_aug; do
+  for set in test train dev train_aug; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | utils/lang/bpe/reverse.py | \
       utils/lang/bpe/prepend_words.py | \
