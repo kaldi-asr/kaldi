@@ -15,8 +15,10 @@ writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
 writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
 writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_splits_dir=data/download/data_splits
+images_scp_dir=data/local
 overwrite=false
-
+subset=true
+augment=true
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -37,20 +39,20 @@ if [ $stage -le 0 ]; then
   local/download_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
                          --download_dir2 $download_dir2 --download_dir3 $download_dir3
 
-  for dataset in test train dev; do
-    data_split_file=$data_splits_dir/madcat.$dataset.raw.lineid
+  for set in test train dev; do
+    data_split_file=$data_splits_dir/madcat.$set.raw.lineid
     local/extract_lines.sh --nj $nj --cmd $cmd --data_split_file $data_split_file \
         --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
         --download_dir3 $download_dir3 --writing_condition1 $writing_condition1 \
         --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3 \
-        --data data/local/$dataset || exit 1
+        --data data/local/$set --subset $subset --augment $augment || exit 1
   done
 
   echo "$0: Preparing data..."
   for set in dev train test; do
     local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
       $data_splits_dir/madcat.$set.raw.lineid data/$set $images_scp_dir/$set/images.scp \
-      $writing_condition1 $writing_condition2 $writing_condition3 || exit 1
+      $writing_condition1 $writing_condition2 $writing_condition3 --augment $augment --subset $subset
     image/fix_data_dir.sh data/${set}
   done
 

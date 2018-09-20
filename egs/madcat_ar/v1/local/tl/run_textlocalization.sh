@@ -3,7 +3,7 @@
 #           2018    Ashish Arora
 set -e
 stage=0
-nj=30
+nj=70
 # download_dir{1,2,3} points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
 # This corpus can be purchased here:
@@ -15,6 +15,7 @@ writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
 writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
 writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_splits_dir=data/download/data_splits
+images_scp_dir=data/local
 overwrite=false
 subset=true
 augment=true
@@ -114,6 +115,7 @@ if [ $stage -le 3 ]; then
                                data/lang data/lang_rescore_6g
 fi
 
+nj=30
 if [ $stage -le 4 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
   local/tl/chain/run_e2e_cnn.sh --nj $nj
