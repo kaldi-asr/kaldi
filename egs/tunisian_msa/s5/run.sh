@@ -3,8 +3,6 @@
 # Trains on 11 hours of speechfrom CTELL{ONE,TWO,THREE,FOUR,FIVE}
 # Uses the QCRI vowelized Arabic lexicon.
 # Converts the Buckwalter encoding to utf8.
-# Uses the perl module Encode::Arabic::Buckwalter for the conversion.
-# On Mac OSX use cpanm (cpanminus) to install perl module.
 . ./cmd.sh
 . ./path.sh
 stage=0
@@ -44,9 +42,9 @@ fi
 
 if [ $stage -le 3 ]; then
   mkdir -p $tmpdir/dict
-  local/qcri_buckwalter2utf8.pl > $tmpdir/dict/qcri_utf8.txt
+  local/qcri_buckwalter2utf8.sh > $tmpdir/dict/qcri_utf8.txt
 fi
-
+exit
 if [ $stage -le 4 ]; then
   local/prepare_dict.sh $tmpdir/dict/qcri_utf8.txt
 fi
