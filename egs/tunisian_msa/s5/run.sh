@@ -44,7 +44,7 @@ if [ $stage -le 3 ]; then
   mkdir -p $tmpdir/dict
   local/qcri_buckwalter2utf8.sh > $tmpdir/dict/qcri_utf8.txt
 fi
-exit
+
 if [ $stage -le 4 ]; then
   local/prepare_dict.sh $tmpdir/dict/qcri_utf8.txt
 fi
