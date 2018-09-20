@@ -56,15 +56,15 @@ if [ $stage -le 0 ]; then
     image/fix_data_dir.sh data/${set}
   done
 
-  local/process_waldo_data.py lines/hyp_line_image_transcription_mapping_kaldi.txt data/test
-  image/fix_data_dir.sh data/test
+  #local/process_waldo_data.py lines/hyp_line_image_transcription_mapping_kaldi.txt data/test
+  #image/fix_data_dir.sh data/test
 fi
 
 if [ $stage -le 1 ]; then
   echo "$0: Obtaining image groups. calling get_image2num_frames $(date)."
   image/get_image2num_frames.py data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
-  for set in dev test train; do
+  for set in dev train; do
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. $(date)"
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$set
     steps/compute_cmvn_stats.sh data/$set || exit 1;
@@ -87,7 +87,7 @@ if [ $stage -le 3 ]; then
     utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
 
-  for set in test train dev; do
+  for set in test train dev train_aug; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | utils/lang/bpe/reverse.py | \
       utils/lang/bpe/prepend_words.py | \
@@ -118,7 +118,7 @@ fi
 nj=30
 if [ $stage -le 4 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
-  local/tl/chain/run_e2e_cnn.sh --nj $nj
+  local/tl/chain/run_e2e_cnn.sh --nj $nj --train_set train_aug
 fi
 
 if [ $stage -le 5 ]; then
@@ -126,10 +126,10 @@ if [ $stage -le 5 ]; then
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
                        --use-gpu false \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
+                       data/train_aug data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 6 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments...$(date)"
-  local/tl/chain/run_cnn_e2eali.sh --nj $nj
+  local/tl/chain/run_cnn_e2eali.sh --nj $nj --train_set train_aug
 fi
