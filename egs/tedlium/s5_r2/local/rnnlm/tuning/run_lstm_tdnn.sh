@@ -16,10 +16,10 @@
 # %WER 7.8 | 1155 27500 | 93.1 4.5 2.4 0.9 7.8 66.4 | -0.089 | /export/a12/ywang/kaldi/egs/tedlium/s5_r2/exp/chain_cleaned/tdnn_lstm1i_adversarial1.0_interval4_epoches7_lin_to_5_sp_bi/decode_looped_test_rescore/score_10_0.0/ctm.filt.filt.sys
 
 # RNNLM lattice rescoring
-# %WER 7.4 | 1155 27500 | 93.4 4.2 2.4 0.8 7.4 65.0 | -0.117 | exp/decode_test_rnnlm_tedlium/score_10_0.0/ctm.filt.filt.sys
+# %WER 7.2 | 1155 27500 | 93.6 4.0 2.3 0.8 7.2 64.3 | -0.927 | exp/decode_looped_test_rnnlm_tedlium_rescore//score_10_0.0/ctm.filt.filt.sys
 
 # RNNLM nbest rescoring
-# %WER 7.7 | 1155 27500 | 93.1 4.3 2.6 0.8 7.7 65.8 | -0.855 | exp/decode_test_rnnlm_tedlium_nbest//score_10_0.0/ctm.filt.filt.sys
+# %WER 7.4 | 1155 27500 | 93.4 4.3 2.3 0.9 7.4 64.8 | -0.863 | exp/decode_looped_test_rnnlm_tedlium_nbest_rescore/score_8_0.0/ctm.filt.filt.sys
 
 # Begin configuration section.
 cmd=run.pl
@@ -36,7 +36,7 @@ epochs=20
 run_lat_rescore=true
 run_nbest_rescore=true
 decode_dir_suffix=rnnlm_tedlium
-ac_model_dir=/export/a12/ywang/kaldi/egs/tedlium/s5_r2/exp/chain_cleaned/tdnn_lstm1i_adversarial1.0_interval4_epoches7_lin_to_5_sp_bi
+ac_model_dir=exp/chain_cleaned/tdnn_lstm1i_adversarial1.0_interval4_epoches7_lin_to_5_sp_bi
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
               # if it's set, it merges histories in the lattice if they share
               # the same ngram history and this prevents the lattice from 
@@ -63,7 +63,6 @@ if [ $stage -le 0 ]; then
   cat $text | cut -d ' ' -f2- | head -n $dev_sents > $text_dir/dev.txt
   cat $text | cut -d ' ' -f2- | tail -n +$[$dev_sents+1] > $text_dir/ted.txt
 fi
-
 
 if [ $stage -le 1 ]; then
   cp $wordlist $dir/config/
@@ -113,7 +112,8 @@ fi
 
 if [ $stage -le 3 ]; then
   rnnlm/train_rnnlm.sh --num-jobs-initial 1 --num-jobs-final 1 \
-                       --stage $train_stage --num-epochs $epochs --cmd "queue.pl" $dir
+                       --stage $train_stage --num-epochs $epochs \
+                       --cmd "queue.pl" $dir
 fi
 
 if [ $stage -le 4 ] && $run_lat_rescore; then
@@ -123,7 +123,7 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
     pruned=_pruned
   fi
   for decode_set in dev test; do
-    decode_dir=${ac_model_dir}/decode_looped_${decode_set}
+    decode_dir=${ac_model_dir}/decode_looped_${decode_set}_rescore
 
     # Lattice rescoring
     rnnlm/lmrescore$pruned.sh \
@@ -131,21 +131,21 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
       --weight 0.5 --max-ngram-order $ngram_order \
       data/lang $dir \
       data/${decode_set}_hires ${decode_dir} \
-      exp/decode_${decode_set}_${decode_dir_suffix}
+      exp/decode_looped_${decode_set}_${decode_dir_suffix}_rescore
   done
 fi
 
 if [ $stage -le 5 ] && $run_nbest_rescore; then
   echo "$0: Perform nbest-rescoring on $ac_model_dir"
   for decode_set in dev test; do
-    decode_dir=${ac_model_dir}/decode_looped_${decode_set}
+    decode_dir=${ac_model_dir}/decode_looped_${decode_set}_rescore
 
-    # Lattice rescoring
+    # nbest rescoring
     rnnlm/lmrescore_nbest.sh \
       --cmd "$decode_cmd --mem 4G" --N 20 \
       0.8 data/lang $dir \
       data/${decode_set}_hires ${decode_dir} \
-      exp/decode_${decode_set}_${decode_dir_suffix}_nbest
+      exp/decode_looped_${decode_set}_${decode_dir_suffix}_nbest_rescore
   done
 fi
 
