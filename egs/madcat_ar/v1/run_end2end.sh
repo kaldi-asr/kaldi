@@ -43,15 +43,15 @@ if [ $stage -le 0 ]; then
         --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
         --download_dir3 $download_dir3 --writing_condition1 $writing_condition1 \
         --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3 \
-        --data data/local/$dataset
+        --data data/local/$dataset || exit 1
   done
 
   echo "$0: Preparing data..."
   for set in dev train test; do
     local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
       $data_splits_dir/madcat.$set.raw.lineid data/$set $images_scp_dir/$set/images.scp \
-      $writing_condition1 $writing_condition2 $writing_condition3 || exit 1
-      data/local/splits/${set}.txt data/${set}
+      $writing_condition1 $writing_condition2 $writing_condition3 \
+      data/local/splits/${set}.txt data/${set} || exit 1
     image/fix_data_dir.sh data/${set}
   done
 
