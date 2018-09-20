@@ -22,6 +22,6 @@ fi
 if [ ! -f $datadir/qcri.txt ]; then
   (
     cd $downloaddir
-    bzcat qcri.txt.bz2 > $datadir/qcri.txt
+    bzcat qcri.txt.bz2 | tail -n+4 > $datadir/qcri.txt
   )
 fi
