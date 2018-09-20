@@ -83,11 +83,11 @@ fi
 
 if [ $stage -le 3 ]; then
   echo "$0: Preparing BPE..."
-  cut -d' ' -f2- data/train/text | utilis/lang/bpe/reverse.py | \
+  cut -d' ' -f2- data/train/text | utils/lang/bpe/reverse.py | \
     utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
 
-  for set in test train dev train_aug; do
+  for set in train dev train_aug; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
     cut -d' ' -f2- data/$set/text | utils/lang/bpe/reverse.py | \
       utils/lang/bpe/prepend_words.py | \
