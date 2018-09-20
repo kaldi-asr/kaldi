@@ -51,8 +51,7 @@ if [ $stage -le 0 ]; then
   for set in dev train; do
     local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
       $data_splits_dir/madcat.$set.raw.lineid data/$set $images_scp_dir/$set/images.scp \
-      $writing_condition1 $writing_condition2 $writing_condition3 \
-      data/local/splits/${set}.txt data/${set} --augment $augment --subset $subset || exit 1
+      $writing_condition1 $writing_condition2 $writing_condition3 --augment $augment --subset $subset
     image/fix_data_dir.sh data/${set}
   done
 
