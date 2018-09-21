@@ -103,7 +103,6 @@ if [ $stage -le 2 ]; then
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
                             ${train_data_dir} data/lang $e2echain_model_dir $lat_dir
   echo "" >$lat_dir/splice_opts
-
 fi
 
 if [ $stage -le 3 ]; then
@@ -198,6 +197,7 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.shrink-value=1.0 \
     --trainer.num-chunk-per-minibatch=64,32 \
     --trainer.optimization.momentum=0.0 \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
@@ -219,7 +219,7 @@ if [ $stage -le 6 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/$lang_test \
+    --self-loop-scale 1.0 $lang_decode \
     $dir $dir/graph || exit 1;
 fi
 
