@@ -8,14 +8,14 @@ set -o errexit
 [ -f ./path.sh ] && . ./path.sh
 
 if [ ! -d data/local/dict ]; then
-    mkdir -p data/local/dict
+  mkdir -p data/local/dict
 fi
 
 l=$1
 export LC_ALL=C
 
 cut -f2- -d " " $l | tr -s '[:space:]' '[\n*]' | grep -v SPN | \
-    sort -u > data/local/dict/nonsilence_phones.txt
+    sort -u | tail -n+2 > data/local/dict/nonsilence_phones.txt
 
 expand -t 1 $l | sort -u | \
     sed "1d" > data/local/dict/lexicon.txt
