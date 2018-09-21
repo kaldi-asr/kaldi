@@ -58,7 +58,6 @@ if [ $stage -le 0 ]; then
 
   local/tl/process_waldo_data.py lines/hyp_line_image_transcription_mapping_kaldi.txt data/test
   utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
-  #image/fix_data_dir.sh data/test
 fi
 
 if [ $stage -le 1 ]; then
@@ -110,8 +109,8 @@ fi
 if [ $stage -le 4 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/tl/train_lm.sh --order 3
-  utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
-                               data/lang data/lang
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang
 fi
 
 nj=30
