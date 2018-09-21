@@ -63,10 +63,10 @@ if [ $stage -le 1 ]; then
   image/get_image2num_frames.py data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
 
-  for dataset in test train; do
-    echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. $(date)"
-    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
-    steps/compute_cmvn_stats.sh data/$dataset || exit 1;
+  for set in test train; do
+    echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $set. $(date)"
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$set
+    steps/compute_cmvn_stats.sh data/$set || exit 1;
   done
   echo "$0: Fixing data directory for train dataset $(date)."
   utils/fix_data_dir.sh data/train

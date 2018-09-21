@@ -65,8 +65,8 @@ if [ $stage -le 1 ]; then
   echo "$0: Obtaining image groups. calling get_image2num_frames $(date)."
   image/get_image2num_frames.py data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
-  for set in test dev train; do
-    echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. $(date)"
+  for set in dev train test; do
+    echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $set. $(date)"
     local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$set
     steps/compute_cmvn_stats.sh data/$set || exit 1;
   done

@@ -158,9 +158,9 @@ with open(data_list_path) as f:
             num_fail += 1
             continue
         if args.augment:
-            im_shift = vertical_shift(im_horizontal_padded, shift_setting[1])
+            im_shift = vertical_shift(im_horizontal_padded, aug_setting[1])
         else:
-            im_shift = vertical_shift(im_horizontal_padded, shift_setting[0])
+            im_shift = vertical_shift(im_horizontal_padded, aug_setting[0])
         data = np.transpose(im_shift, (1, 0))
         data = np.divide(data, 255.0)
         num_ok += 1
