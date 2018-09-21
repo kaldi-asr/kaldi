@@ -27,7 +27,7 @@ if [ $stage -le 0 ]; then
     echo "producing fbank for $x"
     #fbank generation
     steps/make_fbank.sh --nj $nj --cmd "$train_cmd" data/fbank/$x exp/make_fbank/$x fbank/$x || exit 1
-    #ompute cmvn
+    #compute cmvn
     steps/compute_cmvn_stats.sh data/fbank/$x exp/fbank_cmvn/$x fbank/$x || exit 1
   done
 
