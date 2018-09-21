@@ -38,7 +38,6 @@ frames_per_iter=1000000
 cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train
 lang_decode=data/lang
-lang_rescore=data/lang_rescore_6g
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -163,9 +162,6 @@ if [ $stage -le 5 ]; then
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
-
-  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                data/test $dir/decode_test{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"
