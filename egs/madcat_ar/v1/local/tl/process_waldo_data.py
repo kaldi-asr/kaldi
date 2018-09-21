@@ -29,8 +29,6 @@ def read_image_text(image_text_path):
             image_path = line_vect[0]
             line_id = os.path.basename(image_path).split('.png')[0]
             transcription = line_vect[1:]
-            #transcription = " ".join(transcription)
-            #image_transcription_dict[line_id] = transcription
             joined_transcription = list()
             for word in transcription:
                 joined_transcription.append(word)
@@ -41,7 +39,6 @@ def read_image_text(image_text_path):
 
 ### main ###
 print("Processing '{}' data...".format(args.out_dir))
-
 text_file = os.path.join(args.out_dir, 'text')
 text_fh = open(text_file, 'w', encoding='utf-8')
 utt2spk_file = os.path.join(args.out_dir, 'utt2spk')
@@ -50,7 +47,7 @@ image_file = os.path.join(args.out_dir, 'images.scp')
 image_fh = open(image_file, 'w', encoding='utf-8')
 
 image_transcription_dict = read_image_text(args.image_transcription_file)
-for line_id in image_transcription_dict:
+for line_id in sorted(image_transcription_dict.keys()):
         writer_id = line_id.strip().split('_')[-3]
         updated_line_id = line_id + '.png'
         image_file_path = os.path.join('lines', updated_line_id)

@@ -56,8 +56,9 @@ if [ $stage -le 0 ]; then
     image/fix_data_dir.sh data/${set}
   done
 
-  local/process_waldo_data.py lines/hyp_line_image_transcription_mapping_kaldi.txt data/test
-  image/fix_data_dir.sh data/test
+  local/tl/process_waldo_data.py lines/hyp_line_image_transcription_mapping_kaldi.txt data/test
+  utils/utt2spk_to_spk2utt.pl data/test/utt2spk > data/test/spk2utt
+  #image/fix_data_dir.sh data/test
 fi
 
 if [ $stage -le 1 ]; then

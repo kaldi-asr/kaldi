@@ -10,7 +10,6 @@ nj=4
 cmd=run.pl
 feat_dim=40
 augment=false
-fliplr=false
 echo "$0 $@"
 
 . ./cmd.sh
@@ -38,7 +37,7 @@ utils/split_scp.pl $scp $split_scps || exit 1;
 $cmd JOB=1:$nj $logdir/extract_features.JOB.log \
   local/make_features.py $logdir/images.JOB.scp \
     --allowed_len_file_path $data/allowed_lengths.txt \
-    --feat-dim $feat_dim --fliplr $fliplr --augment $augment \| \
+    --feat-dim $feat_dim --augment $augment \| \
     copy-feats --compress=true --compression-method=7 \
     ark:- ark,scp:$featdir/images.JOB.ark,$featdir/images.JOB.scp
 
