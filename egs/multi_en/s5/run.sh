@@ -115,13 +115,13 @@ if [ $stage -le 4 ]; then
   rm $dict_dir/lexiconp.txt 2>/dev/null || true
   cp data/local/dict_combined/{extra_questions,nonsilence_phones,silence_phones,optional_silence}.txt $dict_dir
 
-  # awk command from http://stackoverflow.com/questions/2626274/print-all-but-the-first-three-columns
   echo 'Gathering missing words...'
   
   lexicon=data/local/dict_combined/lexicon.txt
   g2p_tmp_dir=data/local/g2p_phonetisarus
   mkdir -p $g2p_tmp_dir
 
+  # awk command from http://stackoverflow.com/questions/2626274/print-all-but-the-first-three-columns
   cat data/*/train/text | \
     local/count_oovs.pl $lexicon | \
     awk '{if (NF > 3 ) {for(i=4; i<NF; i++) printf "%s ",$i; print $NF;}}' | \
@@ -134,10 +134,8 @@ if [ $stage -le 4 ]; then
   
   expanded_lexicon=$dict_dir/lexicon.txt
   echo "Adding new pronunciations to get expanded lexicon $expanded_lexicon"
-  cat "$lexicon" $g2p_tmp_dir/missing_lexicon.txt | sort | uniq > $expanded_lexicon
+  cat <(cut -f 1,3 $g2p_tmp_dir/missing_lexicon.txt) $lexicon | sort | uniq > $expanded_lexicon
 fi
-
-exit 0
 
 # We'll do multiple iterations of pron/sil-prob estimation. So the structure of
 # the dict/lang dirs are designed as ${dict/lang_root}_${dict_affix}, where dict_affix
