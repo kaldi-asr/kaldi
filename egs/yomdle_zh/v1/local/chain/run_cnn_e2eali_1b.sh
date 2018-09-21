@@ -32,7 +32,7 @@ xent_regularize=0.1
 frame_subsampling_factor=4
 # training chunk-options
 chunk_width=340,300,200,100
-num_leaves=1500
+num_leaves=1000
 # we don't need extra left/right context for TDNN systems.
 chunk_left_context=0
 chunk_right_context=0
@@ -206,7 +206,7 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=32,16 \
+    --trainer.num-chunk-per-minibatch=16,8 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
