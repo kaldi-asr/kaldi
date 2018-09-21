@@ -188,24 +188,6 @@ def rectangle_corners(rectangle):
     return rotate_points(rectangle['rectangle_center'], rectangle['unit_vector_angle'], corner_points)
 
 
-<<<<<<< HEAD
-def get_orientation(origin, p1, p2):
-    """
-    Given origin and two points, return the orientation of the Point p1 with
-    regards to Point p2 using origin.
-    Returns
-    -------
-    integer: Negative if p1 is clockwise of p2.
-    """
-    difference = (
-        ((p2[0] - origin[0]) * (p1[1] - origin[1]))
-        - ((p1[0] - origin[0]) * (p2[1] - origin[1]))
-    )
-    return difference
-
-
-=======
->>>>>>> ed3ab450cd7bec2300415af88cfccafd3e128efb
 def minimum_bounding_box(points):
     """ Given a list of 2D points, it returns the minimum area rectangle bounding all
         the points in the point cloud.
