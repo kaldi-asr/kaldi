@@ -109,7 +109,7 @@ fi
 
 if [ $stage -le 4 ]; then
   echo "$0: Estimating a language model for decoding..."
-  local/train_lm.sh --order 3
+  local/tl/train_lm.sh --order 3
   utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
                                data/lang data/lang
 fi
