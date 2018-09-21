@@ -107,22 +107,20 @@ if [ $stage -le 3 ]; then
   utils/lang/bpe/add_final_optional_silence.sh --final-sil-prob 0.5 data/lang
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   echo "$0: Estimating a language model for decoding..."
-  local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_small.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang
-  utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
-                               data/lang data/lang_rescore_6g
+  local/train_lm.sh --order 3
+  utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
+                               data/lang data/lang
 fi
 
 nj=30
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   echo "$0: Calling the flat-start chain recipe... $(date)."
   local/tl/chain/run_e2e_cnn.sh --nj $nj --train_set train_aug
 fi
 
-if [ $stage -le 5 ]; then
+if [ $stage -le 6 ]; then
   echo "$0: Aligning the training data using the e2e chain model...$(date)."
   steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
                        --use-gpu false \
@@ -130,7 +128,7 @@ if [ $stage -le 5 ]; then
                        data/train_aug data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 7 ]; then
   echo "$0: Building a tree and training a regular chain model using the e2e alignments...$(date)"
   local/tl/chain/run_cnn_e2eali.sh --nj $nj --train_set train_aug
 fi
