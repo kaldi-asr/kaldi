@@ -14,14 +14,11 @@ datadir=$(pwd)
 
 # download the corpus 
 if [ ! -f $downloaddir/qcri.txt.bz2 ]; then
-    wget -O $downloaddir/qcri.txt.bz2 $lex
-else
-  echo "$0: The corpus $lex was already downloaded."
-fi
-
-if [ ! -f $datadir/qcri.txt ]; then
+  wget -O $downloaddir/qcri.txt.bz2 $lex
   (
     cd $downloaddir
     bzcat qcri.txt.bz2 | tail -n+4 > $datadir/qcri.txt
   )
+else
+  echo "$0: The corpus $lex was already downloaded."
 fi
