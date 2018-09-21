@@ -82,10 +82,10 @@ def read_silprobs(filename):
     with open(filename, 'r', encoding='latin-1') as f:
         whitespace = re.compile("[ \t]+")
         for line in f:
-            a = whitespace.split(line.strip())
+            a = whitespace.split(line.strip(" \t\r\n"))
             if len(a) != 2:
                 print("{0}: error: found bad line '{1}' in silprobs file {1} ".format(
-                    sys.argv[0], line.strip(), filename), file=sys.stderr)
+                    sys.argv[0], line.strip(" \t\r\n"), filename), file=sys.stderr)
                 sys.exit(1)
             label = a[0]
             try:
@@ -101,7 +101,7 @@ def read_silprobs(filename):
                     raise RuntimeError()
             except:
                 print("{0}: error: found bad line '{1}' in silprobs file {1}"
-                      .format(sys.argv[0], line.strip(), filename),
+                      .format(sys.argv[0], line.strip(" \t\r\n"), filename),
                       file=sys.stderr)
                 sys.exit(1)
     if (silbeginprob <= 0.0 or silbeginprob > 1.0 or
@@ -130,18 +130,19 @@ def read_lexiconp(filename):
     found_empty_prons = False
     found_large_pronprobs = False
     # See the comment near the top of this file, RE why we use latin-1.
+    whitespace = re.compile("[ \t]+")
     with open(filename, 'r', encoding='latin-1') as f:
         for line in f:
-            a = line.split()
+            a = whitespace.split(line.strip(" \t\r\n"))
             if len(a) < 2:
                 print("{0}: error: found bad line '{1}' in lexicon file {1} ".format(
-                    sys.argv[0], line.strip(), filename), file=sys.stderr)
+                    sys.argv[0], line.strip(" \t\r\n"), filename), file=sys.stderr)
                 sys.exit(1)
             word = a[0]
             if word == "<eps>":
                 # This would clash with the epsilon symbol normally used in OpenFst.
                 print("{0}: error: found <eps> as a word in lexicon file "
-                      "{1}".format(line.strip(), filename), file=sys.stderr)
+                      "{1}".format(line.strip(" \t\r\n"), filename), file=sys.stderr)
                 sys.exit(1)
             try:
                 pron_prob = float(a[1])
@@ -151,13 +152,13 @@ def read_lexiconp(filename):
             except:
                 print("{0}: error: found bad line '{1}' in lexicon file {2}, 2nd field "
                       "through 5th field should be numbers".format(sys.argv[0],
-                                                                   line.strip(), filename),
+                                                                   line.strip(" \t\r\n"), filename),
                       file=sys.stderr)
                 sys.exit(1)
             prons = a[5:]
             if pron_prob <= 0.0:
                 print("{0}: error: invalid pron-prob in line '{1}' of lexicon file {2} ".format(
-                    sys.argv[0], line.strip(), filename), file=sys.stderr)
+                    sys.argv[0], line.strip(" \t\r\n"), filename), file=sys.stderr)
                 sys.exit(1)
             if len(prons) == 0:
                 found_empty_prons = True
@@ -357,7 +358,7 @@ def read_nonterminals(filename):
        it has the expected format and has no duplicates, and returns the nonterminal
        symbols as a list of strings, e.g.
        ['#nonterm:contact_list', '#nonterm:phone_number', ... ]. """
-    ans = [line.strip() for line in open(filename, 'r', encoding='latin-1')]
+    ans = [line.strip(" \t\r\n") for line in open(filename, 'r', encoding='latin-1')]
     if len(ans) == 0:
         raise RuntimeError("The file {0} contains no nonterminals symbols.".format(filename))
     for nonterm in ans:
@@ -371,7 +372,7 @@ def read_nonterminals(filename):
 def read_left_context_phones(filename):
     """Reads, checks, and returns a list of left-context phones, in text form, one
        per line.  Returns a list of strings, e.g. ['a', 'ah', ..., '#nonterm_bos' ]"""
-    ans = [line.strip() for line in open(filename, 'r', encoding='latin-1')]
+    ans = [line.strip(" \t\r\n") for line in open(filename, 'r', encoding='latin-1')]
     if len(ans) == 0:
         raise RuntimeError("The file {0} contains no left-context phones.".format(filename))
     for s in ans:

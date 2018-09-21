@@ -29,7 +29,8 @@ tdnn_dim=450
 # training options
 srand=0
 remove_egs=true
-lang_test=lang_test
+lang_decode=data/lang
+lang_rescore=data/lang_rescore_6g
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -213,7 +214,7 @@ if [ $stage -le 6 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/$lang_test \
+    --self-loop-scale 1.0 $lang_decode \
     $dir $dir/graph || exit 1;
 fi
 
@@ -227,4 +228,10 @@ if [ $stage -le 7 ]; then
     --frames-per-chunk $frames_per_chunk \
     --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
+
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/test $dir/decode_test{,_rescored} || exit 1
 fi
+
+echo "Done. Date: $(date). Results:"
+local/chain/compare_wer.sh $dir
