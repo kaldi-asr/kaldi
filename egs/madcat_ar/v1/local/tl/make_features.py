@@ -14,14 +14,16 @@
     to enforce the images to have the specified length in that file by padding
     white pixels (the --padding option will be ignored in this case). This relates
     to end2end chain training.
+
     eg. local/make_features.py data/train --feat-dim 40
 """
-
+import random
 import argparse
 import os
 import sys
 import numpy as np
 from scipy import misc
+import math
 
 parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images.scp) to features and
                                                 writes them to standard output in text format.""")
@@ -37,8 +39,10 @@ parser.add_argument('--feat-dim', type=int, default=40,
 parser.add_argument('--padding', type=int, default=5,
                     help='Number of white pixels to pad on the left'
                     'and right side of the image.')
-
-
+parser.add_argument('--vertical-shift', type=int, default=16,
+                    help='total number of padding pixel per column')
+parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="performs image augmentation")
 args = parser.parse_args()
 
 
@@ -93,15 +97,39 @@ def horizontal_pad(im, allowed_lengths = None):
                                                     dtype=int)), axis=1)
     return im_pad1
 
+def vertical_shift(im, mode='mid'):
+    total = args.vertical_shift
+    if mode == 'notmid':
+        val = random.randint(0, 1)
+        if val == 0:
+            mode = 'top'
+        else:
+            mode = 'bottom'
+    if mode == 'mid':
+        top = int(total / 2)
+        bottom = total - top
+    elif mode == 'top':  # more padding on top
+        top = random.randint(total / 2, total)
+        bottom = total - top
+    elif mode == 'bottom':  # more padding on bottom
+        top = random.randint(0, total / 2)
+        bottom = total - top
+    width = im.shape[1]
+    im_pad = np.concatenate(
+        (255 * np.ones((top, width), dtype=int) -
+         np.random.normal(2, 1, (top, width)).astype(int), im), axis=0)
+    im_pad = np.concatenate(
+        (im_pad, 255 * np.ones((bottom, width), dtype=int) -
+         np.random.normal(2, 1, (bottom, width)).astype(int)), axis=0)
+    return im_pad
 
 ### main ###
-
+random.seed(1)
 data_list_path = args.images_scp_path
-
 if args.out_ark == '-':
     out_fh = sys.stdout
 else:
-    out_fh = open(args.out_ark,'wb')
+    out_fh = open(args.out_ark,'w')
 
 allowed_lengths = None
 allowed_len_handle = args.allowed_len_file_path
@@ -116,6 +144,7 @@ if os.path.isfile(allowed_len_handle):
 
 num_fail = 0
 num_ok = 0
+aug_setting = ['mid', 'notmid']
 with open(data_list_path) as f:
     for line in f:
         line = line.strip()
@@ -128,7 +157,11 @@ with open(data_list_path) as f:
         if im_horizontal_padded is None:
             num_fail += 1
             continue
-        data = np.transpose(im_horizontal_padded, (1, 0))
+        if args.augment:
+            im_shift = vertical_shift(im_horizontal_padded, aug_setting[1])
+        else:
+            im_shift = vertical_shift(im_horizontal_padded, aug_setting[0])
+        data = np.transpose(im_shift, (1, 0))
         data = np.divide(data, 255.0)
         num_ok += 1
         write_kaldi_matrix(out_fh, data, image_id)
