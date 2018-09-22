@@ -402,7 +402,7 @@ void WeightSilencePostDistributed(const TransitionModel &trans_model,
   for (size_t i = 0; i < post->size(); i++) {
     std::vector<std::pair<int32, BaseFloat> > this_post;
     this_post.reserve((*post)[i].size());
-    BaseFloat sil_weight = 0.0, nonsil_weight = 0.0;   
+    BaseFloat sil_weight = 0.0, nonsil_weight = 0.0;
     for (size_t j = 0; j < (*post)[i].size(); j++) {
       int32 tid = (*post)[i][j].first,
           phone = trans_model.TransitionIdToPhone(tid);
@@ -418,11 +418,11 @@ void WeightSilencePostDistributed(const TransitionModel &trans_model,
     if (frame_scale != 0.0) {
       for (size_t j = 0; j < (*post)[i].size(); j++) {
         int32 tid = (*post)[i][j].first;
-        BaseFloat weight = (*post)[i][j].second;    
+        BaseFloat weight = (*post)[i][j].second;
         this_post.push_back(std::make_pair(tid, weight * frame_scale));
       }
     }
-    (*post)[i].swap(this_post);    
+    (*post)[i].swap(this_post);
   }
 }
 
@@ -440,24 +440,44 @@ BaseFloat VectorToPosteriorEntry(
     num_gselect = num_gauss;
   Vector<BaseFloat> log_likes_normalized(log_likes);
   BaseFloat ans = log_likes_normalized.ApplySoftMax();
-  std::vector<std::pair<int32, BaseFloat> > temp_post(num_gauss);
-  for (int32 g = 0; g < num_gauss; g++)
-    temp_post[g] = std::pair<int32, BaseFloat>(g, log_likes_normalized(g));
+  std::vector<std::pair<int32, BaseFloat> > temp_post;
+  if (min_post != 0.0) {
+    for (int32 g = 0; g < num_gauss; g++) {
+      BaseFloat post = log_likes_normalized(g);
+      if (post > min_post)
+        temp_post.push_back(std::pair<int32, BaseFloat>(g, post));
+    }
+  }
+  if (temp_post.empty()) {
+    // we reach here if min_post was 0.0 or if no posteriors reached the
+    // threshold min_post (we need at least one).
+    temp_post.resize(num_gauss);
+    for (int32 g = 0; g < num_gauss; g++)
+      temp_post[g] = std::pair<int32, BaseFloat>(g, log_likes_normalized(g));
+  }
+
   CompareReverseSecond compare;
-  // Sort in decreasing order on posterior.  For efficiency we
-  // first do nth_element and then sort, as we only need the part we're
-  // going to output, to be sorted.
-  std::nth_element(temp_post.begin(),
-                   temp_post.begin() + num_gselect, temp_post.end(),
-                   compare);
-  std::sort(temp_post.begin(), temp_post.begin() + num_gselect,
-            compare);
+  if (static_cast<int32>(temp_post.size()) > num_gselect * 2) {
+    // Sort in decreasing order on posterior.  For efficiency we
+    // first do nth_element and then sort, as we only need the part we're
+    // going to output, to be sorted.
+    std::nth_element(temp_post.begin(),
+                     temp_post.begin() + num_gselect, temp_post.end(),
+                     compare);
+    std::sort(temp_post.begin(), temp_post.begin() + num_gselect,
+              compare);
+  } else {
+    std::sort(temp_post.begin(), temp_post.end(), compare);
+  }
+
+  size_t num_to_insert = std::min<size_t>(temp_post.size(),
+                                          num_gselect);
 
   post_entry->clear();
   post_entry->insert(post_entry->end(),
-                     temp_post.begin(), temp_post.begin() + num_gselect);
+                     temp_post.begin(), temp_post.begin() + num_to_insert);
   while (post_entry->size() > 1 && post_entry->back().second < min_post)
-    post_entry->pop_back();  
+    post_entry->pop_back();
   // Now renormalize to sum to one after pruning.
   BaseFloat tot = 0.0;
   size_t size = post_entry->size();

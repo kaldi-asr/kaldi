@@ -308,12 +308,8 @@ void OnlineIvectorFeature::PrintDiagnostics() const {
 OnlineIvectorFeature::~OnlineIvectorFeature() {
   PrintDiagnostics();
   // Delete objects owned here.
-  delete lda_normalized_;
-  delete splice_normalized_;
-  delete cmvn_;
-  delete lda_;
-  delete splice_;
-  // base_ is not owned here so don't delete it.
+  for (size_t i = 0; i < to_delete_.size(); i++)
+    delete to_delete_[i];
   for (size_t i = 0; i < ivectors_history_.size(); i++)
     delete ivectors_history_[i];
 }
@@ -334,7 +330,8 @@ void OnlineIvectorFeature::GetAdaptationState(
 OnlineIvectorFeature::OnlineIvectorFeature(
     const OnlineIvectorExtractionInfo &info,
     OnlineFeatureInterface *base_feature):
-    info_(info), base_(base_feature),
+    info_(info),
+    base_(base_feature),
     ivector_stats_(info_.extractor.IvectorDim(),
                    info_.extractor.PriorOffset(),
                    info_.max_count),
@@ -343,16 +340,33 @@ OnlineIvectorFeature::OnlineIvectorFeature(
     most_recent_frame_with_weight_(-1), tot_ubm_loglike_(0.0) {
   info.Check();
   KALDI_ASSERT(base_feature != NULL);
-  splice_ = new OnlineSpliceFrames(info_.splice_opts, base_);
-  lda_ = new OnlineTransform(info.lda_mat, splice_);
+  OnlineFeatureInterface *splice_feature = new OnlineSpliceFrames(info_.splice_opts, base_feature);
+  to_delete_.push_back(splice_feature);
+  OnlineFeatureInterface *lda_feature = new OnlineTransform(info.lda_mat, splice_feature);
+  to_delete_.push_back(lda_feature);
+  OnlineFeatureInterface *lda_cache_feature = new OnlineCacheFeature(lda_feature);
+  lda_ = lda_cache_feature;
+  to_delete_.push_back(lda_cache_feature);
+
+
   OnlineCmvnState naive_cmvn_state(info.global_cmvn_stats);
   // Note: when you call this constructor the CMVN state knows nothing
   // about the speaker.  If you want to inform this class about more specific
   // adaptation state, call this->SetAdaptationState(), most likely derived
   // from a call to GetAdaptationState() from a previous object of this type.
-  cmvn_ = new OnlineCmvn(info.cmvn_opts, naive_cmvn_state, base_);
-  splice_normalized_ = new OnlineSpliceFrames(info_.splice_opts, cmvn_);
-  lda_normalized_ = new OnlineTransform(info.lda_mat, splice_normalized_);
+  cmvn_ = new OnlineCmvn(info.cmvn_opts, naive_cmvn_state, base_feature);
+  to_delete_.push_back(cmvn_);
+
+  OnlineFeatureInterface *splice_normalized =
+      new OnlineSpliceFrames(info_.splice_opts, cmvn_),
+      *lda_normalized =
+      new OnlineTransform(info.lda_mat, splice_normalized),
+      *cache_normalized = new OnlineCacheFeature(lda_normalized);
+  lda_normalized_ = cache_normalized;
+
+  to_delete_.push_back(splice_normalized);
+  to_delete_.push_back(lda_normalized);
+  to_delete_.push_back(cache_normalized);
 
   // Set the iVector to its default value, [ prior_offset, 0, 0, ... ].
   current_ivector_.Resize(info_.extractor.IvectorDim());

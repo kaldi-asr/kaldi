@@ -327,14 +327,16 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
 
   const OnlineIvectorExtractionInfo &info_;
 
-  // base_ is the base feature; it is not owned here.
-  OnlineFeatureInterface *base_;
-  // the following online-feature-extractor pointers are owned here:
-  OnlineSpliceFrames *splice_; // splice on top of raw features.
-  OnlineTransform *lda_;  // LDA on top of raw+splice features.
-  OnlineCmvn *cmvn_;
-  OnlineSpliceFrames *splice_normalized_; // splice on top of CMVN feats.
-  OnlineTransform *lda_normalized_;  // LDA on top of CMVN+splice
+  OnlineFeatureInterface *base_;  // The feature this is built on top of
+                                  // (e.g. MFCC); not owned here
+
+  OnlineFeatureInterface *lda_;  // LDA on top of raw+splice features.
+  OnlineCmvn *cmvn_;  // the CMVN that we give to the lda_normalized_.
+  OnlineFeatureInterface *lda_normalized_;  // LDA on top of CMVN+splice
+
+  // the following is the pointers to OnlineFeatureInterface objects that are
+  // owned here and which we need to delete.
+  std::vector<OnlineFeatureInterface*> to_delete_;
 
   /// the iVector estimation stats
   OnlineIvectorEstimationStats ivector_stats_;
