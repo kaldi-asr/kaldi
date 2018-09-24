@@ -67,7 +67,7 @@ lm="tg_5k"
 
 # number of jobs for feature extraction and model training
 nj=92
-decode_nj=20
+decode_nj=10
 
 # number of jobs for decoding
 nj_decode=8
@@ -87,17 +87,17 @@ fi
 
 if [ $stage -le 2 ]; then
   # Prepare wsjcam0 clean data and wsj0 language model.
-  # local/wsjcam0_data_prep.sh $wsjcam0 $wsj0
+  local/wsjcam0_data_prep.sh $wsjcam0 $wsj0
 
-  # # Prepare merged BEEP/CMU dictionary.
-  # local/wsj_prepare_beep_dict.sh
+  # Prepare merged BEEP/CMU dictionary.
+  local/wsj_prepare_beep_dict.sh
 
-  # # Prepare wordlists, etc.
+  # Prepare wordlists, etc.
  
-  # utils/prepare_lang.sh data/local/dict "<NOISE>" data/local/lang_tmp data/lang
+  utils/prepare_lang.sh data/local/dict "<NOISE>" data/local/lang_tmp data/lang
 
-  # # Prepare directory structure for clean data. Apply some language model fixes.
-  # local/wsjcam0_format_data.sh
+  # Prepare directory structure for clean data. Apply some language model fixes.
+  local/wsjcam0_format_data.sh
   
   local/train_lms_srilm.sh \
     --train-text data/${train_set}/text --dev-text data/dt_simu_8ch/text \
@@ -105,7 +105,7 @@ if [ $stage -le 2 ]; then
     data/ data/srilm
   
   LM=data/srilm/best_3gram.gz
-  # Compiles G for reverb trigram LM
+  # Compiles G for reverb 3-gram LM
   utils/format_lm.sh \
 		data/lang $LM data/local/dict/lexicon.txt data/lang
 
@@ -179,7 +179,7 @@ if [ $stage -le 8 ]; then
 fi
 
 if [ $stage -le 9 ]; then
-  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
+  utils/mkgraph.sh data/lang_test_$lm exp/tri2 exp/tri2/graph
   for dset in ${test_sets}; do
     steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
 		    exp/tri2/graph data/${dset} exp/tri2/decode_${dset} &
@@ -196,7 +196,7 @@ if [ $stage -le 10 ]; then
 fi
 
 if [ $stage -le 11 ]; then
-  utils/mkgraph.sh data/lang exp/tri3 exp/tri3/graph
+  utils/mkgraph.sh data/lang_test_$lm exp/tri3 exp/tri3/graph
   for dset in ${test_sets}; do
     steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
 			  exp/tri3/graph data/${dset} exp/tri3/decode_${dset} &
@@ -206,7 +206,8 @@ fi
 
 if [ $stage -le 12 ]; then
   # chain TDNN
-  local/chain/run_tdnn.sh --nj ${nj} --train-set ${train_set} --test-sets "$test_sets" --gmm tri3 --nnet3-affix _${train_set}
+  local/chain/run_tdnn.sh --nj ${nj} --stage 16 --train-set ${train_set} --test-sets "$test_sets" --gmm tri3 --nnet3-affix _${train_set} \
+  --lm-suffix _test_$lm
 fi
 exit 1
 # # decoding using various recognizers
