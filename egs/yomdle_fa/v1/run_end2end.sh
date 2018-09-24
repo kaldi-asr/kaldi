@@ -57,7 +57,7 @@ fi
 if [ $stage -le 2 ]; then
     for datasplit in train; do
         echo "$(date) stage 2: Performing augmentation, it will double training data"
-        local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 --fliplr true $data_dir/${datasplit} $data_dir/${datasplit}_aug $data_dir
+        local/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 --fliplr false $data_dir/${datasplit} $data_dir/${datasplit}_aug $data_dir
         steps/compute_cmvn_stats.sh $data_dir/${datasplit}_aug || exit 1;
     done
 fi
@@ -100,7 +100,7 @@ if [ $stage -le 6 ]; then
     echo "Date: $(date)."
     steps/nnet3/align.sh --nj $nj --cmd "$cmd" \
         --scale-opts '--transition-scale=1.0 --acoustic-scale=1.0 --self-loop-scale=1.0' \
-        $data_dir/train $data_dir/lang $exp_dir/chain/e2e_cnn_1a $exp_dir/chain/e2e_ali_train
+        $data_dir/train_aug $data_dir/lang $exp_dir/chain/e2e_cnn_1a $exp_dir/chain/e2e_ali_train
 fi
 
 if [ $stage -le 7 ]; then
