@@ -3,14 +3,13 @@
 
 # This script does end2end chain training (i.e. from scratch)
 
-# local/chain/compare_wer.sh exp_yomdle_farsi/chain/e2e_cnn_1a exp_yomdle_farsi/chain/cnn_e2eali_1b
+# ./local/chain/compare_wer.sh exp_yomdle_chinese/chain/e2e_cnn_1a exp_yomdle_chinese/chain/cnn_e2eali_1b
 # System                      e2e_cnn_1a cnn_e2eali_1b
-# WER                             19.55     18.45
-# CER                              5.64      4.94
-# Final train prob              -0.0065   -0.0633
-# Final valid prob               0.0015   -0.0619
-# Final train prob (xent)                 -0.2636
-# Final valid prob (xent)                 -0.2511
+# CER                             15.44     13.57
+# Final train prob               0.0616   -0.0512
+# Final valid prob               0.0390   -0.0718
+# Final train prob (xent)                 -0.6199
+# Final valid prob (xent)                 -0.7448
 
 set -e
 
