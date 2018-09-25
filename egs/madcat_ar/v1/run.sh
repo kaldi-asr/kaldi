@@ -11,9 +11,7 @@ decode_gmm=false
 # download_dir{1,2,3} points to the database path on the JHU grid. If you have not
 # already downloaded the database you can set it to a local directory
 # This corpus can be purchased here:
-# https://catalog.ldc.upenn.edu/LDC2012T15,
-# https://catalog.ldc.upenn.edu/LDC2013T09/,
-# https://catalog.ldc.upenn.edu/LDC2013T15/.
+# https://catalog.ldc.upenn.edu/{LDC2012T15,LDC2013T09/,LDC2013T15/}
 download_dir1=/export/corpora/LDC/LDC2012T15/data
 download_dir2=/export/corpora/LDC/LDC2013T09/data
 download_dir3=/export/corpora/LDC/LDC2013T15/data
@@ -21,7 +19,7 @@ writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
 writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
 writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_splits_dir=data/download/data_splits
-
+overwrite=false
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -34,8 +32,14 @@ mkdir -p data/{train,test,dev}/data
 mkdir -p data/local/{train,test,dev}
 
 if [ $stage -le 0 ]; then
-  echo "$0: Downloading data splits..."
-  echo "Date: $(date)."
+
+  if [ -f data/train/text ] && ! $overwrite; then
+    echo "$0: Not processing, probably script have run from wrong stage"
+    echo "Exiting with status 1 to avoid data corruption"
+    exit 1;
+  fi
+
+  echo "$0: Downloading data splits...$(date)"
   local/download_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
                          --download_dir2 $download_dir2 --download_dir3 $download_dir3
 fi
@@ -79,7 +83,7 @@ fi
 if [ $stage -le 5 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/3gram_unpruned.arpa.gz \
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang_test
 fi
 
@@ -132,9 +136,9 @@ if [ $stage -le 12 ]; then
 fi
 
 if [ $stage -le 13 ]; then
-  local/chain/run_cnn_1a.sh
+  local/chain/run_cnn.sh
 fi
 
 if [ $stage -le 14 ]; then
-  local/chain/run_cnn_chainali_1a.sh --stage 2
+  local/chain/run_cnn_chainali.sh --stage 2
 fi
