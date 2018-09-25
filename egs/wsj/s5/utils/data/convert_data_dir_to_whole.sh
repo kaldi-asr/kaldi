@@ -41,8 +41,9 @@ fi
 if [ -f $dir/cmvn.scp ]; then
   mv $dir/cmvn.scp $dir/.backup
 fi
-
-rm $dir/utt2spk || true
+if [ -f $dir/utt2spk ]; then
+  mv $dir/utt2spk $dir/.backup
+fi
 
 [ -f $data/stm ] && cp $data/stm $dir
 [ -f $data/glm ] && cp $data/glm $dir
