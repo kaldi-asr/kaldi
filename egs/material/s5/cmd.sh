@@ -11,4 +11,4 @@
 # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
 
 export train_cmd="queue.pl --mem 2G"
-export decode_cmd="queue.pl --mem 8G"
+export decode_cmd="retry.pl --num-tries 3 queue.pl --mem 8G"
