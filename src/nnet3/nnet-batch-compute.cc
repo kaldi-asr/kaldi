@@ -22,6 +22,7 @@
 #include <iomanip>
 #include "nnet3/nnet-batch-compute.h"
 #include "nnet3/nnet-utils.h"
+#include "decoder/decodable-matrix.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -34,9 +35,16 @@ NnetBatchComputer::NnetBatchComputer(
     opts_(opts),
     nnet_(nnet),
     compiler_(nnet_, opts.optimize_config),
-    log_priors_(priors) {
+    log_priors_(priors),
+    num_full_minibatches_(0) {
   log_priors_.ApplyLog();
   CheckAndFixConfigs();
+  ComputeSimpleNnetContext(nnet, &nnet_left_context_,
+                           &nnet_right_context_);
+  input_dim_ = nnet.InputDim("input");
+  ivector_dim_ = std::max<int32>(0, nnet.InputDim("ivector"));
+  output_dim_ = nnet.OutputDim("output");
+  KALDI_ASSERT(input_dim_ > 0 && output_dim_ > 0);
 }
 
 void NnetBatchComputer::PrintMinibatchStats() {
@@ -114,7 +122,7 @@ NnetBatchComputer::~NnetBatchComputer() {
     std::condition_variable *cond = iter->second;
     // the next call will notify any threads that were waiting on this condition
     // variable-- there shouldn't be any, though, as it would be a programming
-    // error.
+    // error, but better to wake them up so we can see any messages they print.
     cond->notify_all();
     delete cond;
   }
@@ -156,17 +164,6 @@ NnetBatchComputer::GetHighestPriorityComputation(
 }
 
 
-
-
-struct TaskPriorityCompare {
-  // This is used to sort (or partition) tasks from smallest to largest
-  // priority.
-  bool operator () (const NnetInferenceTask *a,
-                    const NnetInferenceTask *b) {
-    return a->priority < b->priority;
-  }
-};
-
 void NnetBatchComputer::GetHighestPriorityTasks(
     int32 num_tasks_needed,
     ComputationGroupInfo *info,
@@ -178,19 +175,29 @@ void NnetBatchComputer::GetHighestPriorityTasks(
     tasks->swap(info->tasks);
   } else {
     int32 num_tasks_not_needed = num_tasks_present - num_tasks_needed;
-    std::nth_element(info->tasks.begin(),
-                     info->tasks.begin() + num_tasks_not_needed,
-                     info->tasks.end(),
-                     TaskPriorityCompare());
-    // TODO: remove the following assertion.
-    KALDI_ASSERT(info->tasks.front()->priority <= info->tasks.back()->priority);
+    // We don't sort the tasks with a comparator that dereferences the pointers,
+    // because the priorities can change asynchronously, and we're concerned that
+    // something weird might happen in the sorting if the things it's comparing
+    // are changing.
+    std::vector<std::pair<double, NnetInferenceTask*> > pairs(num_tasks_present);
+    for (int32 i = 0; i < num_tasks_present; i++) {
+      pairs[i].first = info->tasks[i]->priority;
+      pairs[i].second = info->tasks[i];
+    }
+    std::nth_element(pairs.begin(), pairs.begin() + num_tasks_not_needed,
+                     pairs.end());
+
+    // The lowest-priority 'num_tasks_not_needed' stay in the 'info' struct.
+    info->tasks.clear();
+    for (int32 i = 0; i < num_tasks_not_needed; i++)
+      info->tasks.push_back(pairs[i].second);
+    // The highest-priority 'num_tasks_needed' tasks go to the output 'tasks'
+    // array.
+    for (int32 i = num_tasks_not_needed; i < num_tasks_present; i++)
+      tasks->push_back(pairs[i].second);
     // The following assertion checks that the is_edge and is_irregular values
     // are the same for the entire minibatch, which they should always be.
     KALDI_ASSERT(GetMinibatchSize(*info) == minibatch_size);
-    tasks->insert(tasks->begin(),
-                  info->tasks.begin() + num_tasks_not_needed,
-                  info->tasks.end());
-    info->tasks.resize(num_tasks_not_needed);
   }
 
   {
@@ -435,6 +442,8 @@ void NnetBatchComputer::FormatOutputs(
   int32 num_output_frames = tasks[0]->num_output_frames,
       output_dim = output.NumCols(),
       num_tasks = tasks.size();
+  bool did_output_to_gpu = false;
+
   // Note: it may not be optimal to do so many individual calls to copy the
   // output to CPU; we'd have to test that, as I'm not sure how much the latency
   // of a GPU call is.  On the other hand, the downsides of one big call are
@@ -462,6 +471,7 @@ void NnetBatchComputer::FormatOutputs(
       // if (right_unused > 0)
       //   task->output_cpu.RowRange(0, left_unused + used, right_unused).SetZero();
     } else {
+      did_output_to_gpu = true;
       task->output.Resize(num_output_frames, output_dim,
                           kUndefined);
       // if (left_unused > 0)
@@ -472,6 +482,11 @@ void NnetBatchComputer::FormatOutputs(
       //   task->output.RowRange(0, left_unused + used, right_unused).SetZero();
     }
   }
+  // The output of this function will likely be consumed by another thread.
+  // The following call will make sure the relevant kernels complete before
+  // any kernels from the other thread use the output.
+  if (did_output_to_gpu)
+    SynchronizeGpu();
 }
 
 void NnetBatchComputer::AcceptTask(NnetInferenceTask *task,
@@ -535,6 +550,9 @@ bool NnetBatchComputer::Compute(bool allow_partial_minibatch) {
   minfo->tot_num_tasks += static_cast<int64>(tasks.size());
   minfo->seconds_taken += tim.Elapsed();
 
+
+  SynchronizeGpu();
+
   for (size_t i = 0; i < tasks.size(); i++)
     tasks[i]->semaphore.Signal();
 
@@ -544,8 +562,7 @@ bool NnetBatchComputer::Compute(bool allow_partial_minibatch) {
 
 /**
    This namespace contains things needed for the implementation of
-   the function SplitUtteranceIntoTasks() that is
-   declared in nnet-batch-compute.h.
+   the function NnetBatchComputer::SplitUtteranceIntoTasks().
  */
 namespace utterance_splitting {
 /**
@@ -755,17 +772,8 @@ static void SplitInputToTasks(const NnetBatchComputerOptions &opts,
 
 } // namespace utterance_splitting
 
-/**
-   This function implements the two versions of SplitUtteranceIntoTasks() which
-   are declared in nnet-batch-compute.h.  See their documentation for more
-   information.  if 'ivector' is non-NULL (which is the case if the ivectors
-   were estimated in batch mode as opposed to online), then online_ivectors
-   should be NULL.
- */
-void SplitUtteranceIntoTasks(
-    const NnetBatchComputerOptions &opts,
-    int32 nnet_left_context,
-    int32 nnet_right_context,
+
+void NnetBatchComputer::SplitUtteranceIntoTasks(
     bool output_to_cpu,
     const Matrix<BaseFloat> &input,
     const Vector<BaseFloat> *ivector,
@@ -774,23 +782,43 @@ void SplitUtteranceIntoTasks(
     std::vector<NnetInferenceTask> *tasks) {
   using namespace utterance_splitting;
 
-  int32 num_input_frames = input.NumRows(),
-      f = opts.frame_subsampling_factor,
-      num_subsampled_frames = (num_input_frames + f - 1) / f,
-      num_subsampled_frames_per_chunk = opts.frames_per_chunk / f;
 
-  GetOutputFrameInfoForTasks(opts, num_subsampled_frames,
+  { // This block does some checking.
+    if (input.NumCols() != input_dim_) {
+      KALDI_ERR << "Input features did not have expected dimension: expected "
+          << input_dim_ << ", got " << input.NumCols();
+    }
+    int32 ivector_dim = (ivector != NULL ? ivector->Dim() :
+                         (online_ivectors != NULL ?
+                          online_ivectors->NumCols() : 0));
+    if (ivector_dim_ != 0 && ivector_dim == 0)
+      KALDI_ERR << "Model expects i-vectors but none were supplied";
+    else if (ivector_dim_ == 0 && ivector_dim != 0)
+      KALDI_ERR << "You supplied i-vectors but model does not expect them.";
+    else if (ivector_dim != ivector_dim_)
+      KALDI_ERR << "I-vector dimensions mismatch: model expects "
+                << ivector_dim_ << ", you supplied " << ivector_dim;
+  }
+
+
+  int32 num_input_frames = input.NumRows(),
+      f = opts_.frame_subsampling_factor,
+      num_subsampled_frames = (num_input_frames + f - 1) / f,
+      num_subsampled_frames_per_chunk = opts_.frames_per_chunk / f;
+
+  GetOutputFrameInfoForTasks(opts_, num_subsampled_frames,
                              num_subsampled_frames_per_chunk,
                              tasks);
 
-  SplitInputToTasks(opts, nnet_left_context, nnet_right_context, input, tasks);
+  SplitInputToTasks(opts_, nnet_left_context_, nnet_right_context_,
+                    input, tasks);
 
   if (ivector != NULL) {
     KALDI_ASSERT(online_ivectors == NULL);
     for (size_t i = 0; i < tasks->size(); i++)
       (*tasks)[i].ivector = *ivector;
   } else if (online_ivectors != NULL) {
-    AddOnlineIvectorsToTasks(opts, *online_ivectors,
+    AddOnlineIvectorsToTasks(opts_, *online_ivectors,
                              online_ivector_period, tasks);
   }
 
@@ -844,16 +872,8 @@ NnetBatchInference::NnetBatchInference(
     const Nnet &nnet,
     const VectorBase<BaseFloat> &priors):
     computer_(opts, nnet, priors),
-    opts_(opts),
     is_finished_(false),
     utterance_counter_(0) {
-
-  ComputeSimpleNnetContext(nnet, &nnet_left_context_,
-                           &nnet_right_context_);
-  input_dim_ = nnet.InputDim("input");
-  ivector_dim_ = std::max<int32>(0, nnet.InputDim("ivector"));
-  output_dim_ = nnet.OutputDim("output");
-  KALDI_ASSERT(input_dim_ > 0 && output_dim_ > 0);
   // 'thread_' will run the Compute() function in the background.
   compute_thread_ = std::thread(ComputeFunc, this);
 }
@@ -866,24 +886,6 @@ void NnetBatchInference::AcceptInput(
     const Matrix<BaseFloat> *online_ivectors,
     int32 online_ivector_period) {
 
-  { // This block does some checking.
-    if (input.NumCols() != input_dim_) {
-      KALDI_ERR << "Input features did not have expected dimension: expected "
-          << input_dim_ << ", got " << input.NumCols();
-    }
-    int32 ivector_dim = (ivector != NULL ? ivector->Dim() :
-                         (online_ivectors != NULL ?
-                          online_ivectors->NumCols() : 0));
-    if (ivector_dim_ != 0 && ivector_dim == 0)
-      KALDI_ERR << "Model expects i-vectors but none were supplied";
-    else if (ivector_dim_ == 0 && ivector_dim != 0)
-      KALDI_ERR << "You supplied i-vectors but model does not expect them.";
-    else if (ivector_dim != ivector_dim_)
-      KALDI_ERR << "I-vector dimensions mismatch: model expects "
-                << ivector_dim_ << ", you supplied " << ivector_dim;
-  }
-
-
   UtteranceInfo *info = new UtteranceInfo();
   info->utterance_id = utterance_id;
   info->num_tasks_finished = 0;
@@ -892,9 +894,9 @@ void NnetBatchInference::AcceptInput(
                               // written to disk.  If this needs to be
                               // configurable in the future, we can make changes
                               // then.
-  SplitUtteranceIntoTasks(opts_, nnet_left_context_, nnet_right_context_,
-                          output_to_cpu, input, ivector, online_ivectors,
-                          online_ivector_period, &(info->tasks));
+  computer_.SplitUtteranceIntoTasks(
+      output_to_cpu, input, ivector, online_ivectors,
+      online_ivector_period, &(info->tasks));
 
   // Setting this to a nonzero value will cause the AcceptTask() call below to
   // hang until the computation thread has made some progress, if too much
@@ -967,6 +969,345 @@ void NnetBatchInference::Compute() {
       return;
     }
   }
+}
+
+
+NnetBatchDecoder::NnetBatchDecoder(
+    const fst::Fst<fst::StdArc> &fst,
+    const LatticeFasterDecoderConfig &decoder_opts,
+    const TransitionModel &trans_model,
+    const fst::SymbolTable *word_syms,
+    bool allow_partial,
+    int32 num_threads,
+    NnetBatchComputer *computer):
+  fst_(fst), decoder_opts_(decoder_opts),
+  trans_model_(trans_model), word_syms_(word_syms),
+  allow_partial_(allow_partial),  computer_(computer),
+  is_finished_(false), tasks_finished_(false), priority_offset_(0.0),
+  tot_like_(0.0), frame_count_(0), num_success_(0), num_fail_(0),
+  num_partial_(0) {
+  KALDI_ASSERT(num_threads > 0);
+  for (int32 i = 0; i < num_threads; i++)
+    decode_threads_.push_back(new std::thread(DecodeFunc, this));
+  compute_thread_ = std::thread(ComputeFunc, this);
+}
+
+void NnetBatchDecoder::SetPriorities(std::vector<NnetInferenceTask> *tasks) {
+  size_t num_tasks = tasks->size();
+  double priority_offset = priority_offset_;
+  for (size_t i = 0; i < num_tasks; i++)
+    (*tasks)[i].priority = priority_offset - (double)i;
+}
+
+void NnetBatchDecoder::UpdatePriorityOffset(double priority) {
+  size_t num_tasks = decode_threads_.size(),
+      new_weight = 1.0 / num_tasks,
+      old_weight = 1.0 - new_weight;
+  // The next line is vulnerable to a race condition but if it happened it
+  // wouldn't matter.
+  priority_offset_ = priority_offset_ * old_weight + priority * new_weight;
+}
+
+void NnetBatchDecoder::AcceptInput(
+    const std::string &utterance_id,
+    const Matrix<BaseFloat> &input,
+    const Vector<BaseFloat> *ivector,
+    const Matrix<BaseFloat> *online_ivectors,
+    int32 online_ivector_period){
+  // This function basically does a handshake with one of the decoder threads.
+  // It may have to wait till one of the decoder threads becomes ready.
+  input_utterance_.utterance_id = utterance_id;
+  input_utterance_.input = &input;
+  input_utterance_.ivector = ivector;
+  input_utterance_.online_ivectors = online_ivectors;
+  input_utterance_.online_ivector_period = online_ivector_period;
+
+
+  UtteranceOutput *this_output = new UtteranceOutput();
+  this_output->utterance_id = utterance_id;
+  pending_utts_.push_back(this_output);
+
+  input_ready_semaphore_.Signal();
+  input_consumed_semaphore_.Wait();
+}
+
+int32 NnetBatchDecoder::Finished() {
+  is_finished_ = true;
+  for (size_t i = 0; i < decode_threads_.size(); i++)
+    input_ready_semaphore_.Signal();
+  for (size_t i = 0; i < decode_threads_.size(); i++) {
+    decode_threads_[i]->join();
+    delete decode_threads_[i];
+    decode_threads_[i] = NULL;
+  }
+  // don't clear decode_threads_, since its size is needed in the destructor to
+  // compute timing.
+
+  tasks_finished_ = true;
+  tasks_ready_semaphore_.Signal();
+  compute_thread_.join();
+  return num_success_;
+}
+
+
+bool NnetBatchDecoder::GetOutput(
+    std::string *utterance_id,
+    CompactLattice *clat,
+    std::string *sentence) {
+  if (!decoder_opts_.determinize_lattice)
+    KALDI_ERR << "Don't call this version of GetOutput if you are "
+        "not determinizing.";
+  while (true) {
+    if (pending_utts_.empty())
+      return false;
+    if (!pending_utts_.front()->finished)
+      return false;
+    UtteranceOutput *this_output = pending_utts_.front();
+    pending_utts_.pop_front();
+    if (this_output->compact_lat.NumStates() == 0) {
+      delete this_output;
+      // ... and continue round the loop, without returning any output to the
+      // user for this utterance.  Something went wrong in decoding: for
+      // example, the user specified allow_partial == false and no final-states
+      // were active on the last frame, or something more unexpected.  A warning
+      // would have been printed in the decoder thread.
+    } else {
+      *clat = this_output->compact_lat;
+      utterance_id->swap(this_output->utterance_id);
+      sentence->swap(this_output->sentence);
+      delete this_output;
+      return true;
+    }
+  }
+}
+
+
+bool NnetBatchDecoder::GetOutput(
+    std::string *utterance_id,
+    Lattice *lat,
+    std::string *sentence) {
+  if (decoder_opts_.determinize_lattice)
+    KALDI_ERR << "Don't call this version of GetOutput if you are "
+        "determinizing.";
+  while (true) {
+    if (pending_utts_.empty())
+      return false;
+    if (!pending_utts_.front()->finished)
+      return false;
+    UtteranceOutput *this_output = pending_utts_.front();
+    pending_utts_.pop_front();
+    if (this_output->compact_lat.NumStates() == 0) {
+      delete this_output;
+      // ... and continue round the loop, without returning any output to the
+      // user for this utterance.  Something went wrong in decoding: for
+      // example, the user specified allow_partial == false and no final-states
+      // were active on the last frame, or something more unexpected.  A warning
+      // would have been printed in the decoder thread.
+    } else {
+      *lat = this_output->lat;  // OpenFST has shallow copy so no need to swap.
+      utterance_id->swap(this_output->utterance_id);
+      sentence->swap(this_output->sentence);
+      delete this_output;
+      return true;
+    }
+  }
+}
+
+void NnetBatchDecoder::Compute() {
+  while (!tasks_finished_) {
+    tasks_ready_semaphore_.Wait();
+    bool allow_partial_minibatch = true;
+    while (computer_->Compute(allow_partial_minibatch));
+  }
+}
+
+void NnetBatchDecoder::Decode() {
+  while (true) {
+    input_ready_semaphore_.Wait();
+    if (is_finished_)
+      return;
+
+    std::vector<NnetInferenceTask> tasks;
+    std::string utterance_id;
+    // we can be confident that the last element of 'pending_utts_' is the one
+    // for this utterance, as we know exactly at what point in the code the main
+    // thread will be in AcceptInput().
+    UtteranceOutput *output_utterance = pending_utts_.back();
+    {
+      UtteranceInput input_utterance(input_utterance_);
+      utterance_id = input_utterance.utterance_id;
+      bool output_to_cpu = true;
+      computer_->SplitUtteranceIntoTasks(output_to_cpu,
+                                         *(input_utterance.input),
+                                         input_utterance.ivector,
+                                         input_utterance.online_ivectors,
+                                         input_utterance.online_ivector_period,
+                                         &tasks);
+      KALDI_ASSERT(output_utterance->utterance_id == utterance_id);
+      input_consumed_semaphore_.Signal();
+      // Now let input_utterance go out of scope; it's no longer valid as it may
+      // be overwritten by something else.
+    }
+
+    SetPriorities(&tasks);
+    for (size_t i = 0; i < tasks.size(); i++)
+      computer_->AcceptTask(&(tasks[i]));
+    tasks_ready_semaphore_.Signal();
+
+    {
+      int32 frame_offset = 0;
+      LatticeFasterDecoder decoder(fst_, decoder_opts_);
+      decoder.InitDecoding();
+
+
+      for (size_t i = 0; i < tasks.size(); i++) {
+        NnetInferenceTask &task = tasks[i];
+        task.semaphore.Wait();
+        UpdatePriorityOffset(task.priority);
+
+        SubMatrix<BaseFloat> post(task.output_cpu,
+                                  task.num_initial_unused_output_frames,
+                                  task.num_used_output_frames,
+                                  0, task.output_cpu.NumCols());
+        DecodableMatrixMapped decodable(trans_model_, post, frame_offset);
+        frame_offset += post.NumRows();
+        decoder.AdvanceDecoding(&decodable);
+        task.output.Resize(0, 0);  // Free some memory.
+      }
+
+      bool use_final_probs = true;
+      if (!decoder.ReachedFinal()) {
+        if (allow_partial_) {
+          KALDI_WARN << "Outputting partial output for utterance "
+                     << utterance_id << " since no final-state reached\n";
+          use_final_probs = false;
+          std::unique_lock<std::mutex> lock(stats_mutex_);
+          num_partial_++;
+        } else {
+          KALDI_WARN << "Not producing output for utterance " << utterance_id
+                     << " since no final-state reached and "
+                     << "--allow-partial=false.\n";
+          std::unique_lock<std::mutex> lock(stats_mutex_);
+          num_fail_++;
+          continue;
+        }
+      }
+      // if we reached this point, we are getting a lattice.
+      decoder.GetRawLattice(&output_utterance->lat, use_final_probs);
+      // Let the decoder and the decodable object go out of scope, to save
+      // memory.
+    }
+    ProcessOutputUtterance(output_utterance);
+  }
+}
+
+
+void NnetBatchDecoder::UtteranceFailed() {
+  std::unique_lock<std::mutex> lock(stats_mutex_);
+  num_fail_++;
+}
+
+void NnetBatchDecoder::ProcessOutputUtterance(UtteranceOutput *output) {
+  fst::Connect(&(output->lat));
+  if (output->lat.NumStates() == 0) {
+    KALDI_WARN << "Unexpected problem getting lattice for utterance "
+               << output->utterance_id;
+    std::unique_lock<std::mutex> lock(stats_mutex_);
+    num_fail_++;
+    return;
+  }
+
+  { // This block accumulates diagnostics, prints log messages, and sets
+    // output->sentence.
+    Lattice best_path;
+    LatticeWeight weight;
+    ShortestPath(output->lat, &best_path);
+    std::vector<int32> alignment;
+    std::vector<int32> words;
+    GetLinearSymbolSequence(best_path, &alignment, &words, &weight);
+    int32 num_frames = alignment.size();
+    if (word_syms_ != NULL) {
+      std::ostringstream os;
+      for (size_t i = 0; i < words.size(); i++) {
+        std::string s = word_syms_->Find(words[i]);
+        if (s == "")
+          KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
+        os << s << ' ';
+      }
+      output->sentence = os.str();
+    }
+    double likelihood = -(weight.Value1() + weight.Value2());
+    // Note: these logging messages will be out-of-order w.r.t. the transcripts
+    // that are printed to cerr; we keep those transcripts in the same order
+    // that the utterances were in, but these logging messages may be out of
+    // order (due to multiple threads).
+    KALDI_LOG << "Log-like per frame for utterance " << output->utterance_id
+              << " is " << (likelihood / num_frames) << " over "
+              << num_frames << " frames.";
+    KALDI_VLOG(2) << "Cost for utterance " << output->utterance_id << " is "
+                  << weight.Value1() << " + " << weight.Value2();
+
+    std::unique_lock<std::mutex> lock(stats_mutex_);
+    tot_like_ += likelihood;
+    frame_count_ += num_frames;
+    num_success_ += 1;
+  }
+
+  if (decoder_opts_.determinize_lattice) {
+    if (!DeterminizeLatticePhonePrunedWrapper(
+            trans_model_,
+            &output->lat,
+            decoder_opts_.lattice_beam,
+            &(output->compact_lat),
+            decoder_opts_.det_opts))
+      KALDI_WARN << "Determinization finished earlier than the beam for "
+                 << "utterance " << output->utterance_id;
+    output->lat.DeleteStates();  // Save memory.
+  }
+
+  // We'll write the lattice without acoustic scaling, so we need to reverse
+  // the scale that we applied when decoding.
+  BaseFloat acoustic_scale = computer_->GetOptions().acoustic_scale;
+  if (acoustic_scale != 0.0) {
+    if (decoder_opts_.determinize_lattice)
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale),
+                        &(output->compact_lat));
+    else
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale),
+                        &(output->lat));
+  }
+  output->finished = true;
+}
+
+
+
+NnetBatchDecoder::~NnetBatchDecoder() {
+  if (!is_finished_ || !pending_utts_.empty()) {
+    // At this point the application is bound to fail so raising another
+    // exception is not a big problem.
+    KALDI_ERR << "Destroying NnetBatchDecoder object without calling "
+        "Finished() and consuming the remaining output";
+  }
+  // Print diagnostics.
+
+  kaldi::int64 input_frame_count =
+      frame_count_ * computer_->GetOptions().frame_subsampling_factor;
+  int32 num_threads = static_cast<int32>(decode_threads_.size());
+
+  KALDI_LOG << "Overall likelihood per frame was "
+            << tot_like_ / std::max<int64>(1, frame_count_)
+            << " over " << frame_count_ << " frames.";
+
+  double elapsed = timer_.Elapsed();
+  // the +1 below is just to avoid division-by-zero errors.
+  KALDI_LOG << "Time taken "<< elapsed
+            << "s: real-time factor assuming 100 frames/sec is "
+            << (num_threads * elapsed * 100.0 /
+                std::max<int64>(input_frame_count, 1))
+            << " (per thread; with " << num_threads << " threads).";
+  KALDI_LOG << "Done " << num_success_ << " utterances ("
+            << num_partial_ << " forced out); failed for "
+            << num_fail_;
 }
 
 

@@ -34,13 +34,12 @@
 #include "nnet3/nnet-compute.h"
 #include "nnet3/am-nnet-simple.h"
 #include "nnet3/nnet-am-decodable-simple.h"
+#include "decoder/lattice-faster-decoder.h"
 #include "util/stl-utils.h"
 
 
 namespace kaldi {
 namespace nnet3 {
-
-
 
 
 /**
@@ -213,21 +212,6 @@ void SplitUtteranceIntoTasks(
 
 
 /**
-   Split a single utterance into a list of separate tasks to give to class
-   NnetBatchComputer.  This version is for when either you don't have i-vectors
-   (ivector == NULL) or you have a single i-vector for the entire file.
-   The other version (above) has more extensive documentation.
-*/
-void SplitUtteranceIntoTasks(
-    const NnetBatchComputerOptions &opts,
-    int32 nnet_left_context,
-    int32 nnet_right_context,
-    bool output_to_cpu,
-    const Matrix<BaseFloat> &input,
-    const Vector<BaseFloat> *ivector,
-    std::vector<NnetInferenceTask> *tasks);
-
-/**
    Merges together the 'output_cpu' (if the 'output_to_cpu' members are true) or
    the 'output' members of 'tasks' into a single CPU matrix 'output'.  Requires that
    those outputs are nonempty (i.e. that those tasks must have been completed).
@@ -246,16 +230,14 @@ void MergeTaskOutput(
 /**
    This class does neural net inference in a way that is optimized for GPU use:
    it combines chunks of multiple utterances into minibatches for more efficient
-   computation.  It is thread safe, i.e. you can call it from multiple threads
-   without having to worry about data races and the like.  (However, you are
-   expected to call the Compute() function from only one thread).
-
-   Note: it stores references to all arguments to the constructor, so don't
-   delete them till this goes out of scope.
+   computation.  It does the computation in one background thread that accesses
+   the GPU.  It is thread safe, i.e. you can call it from multiple threads
+   without having to worry about data races and the like.
 */
 class NnetBatchComputer {
  public:
-  /**  Constructor.
+  /**  Constructor.  It stores references to all the arguments, so don't delete
+       them till this object goes out of scop.
 
        \param [in] opts  Options struct
        \param [in] nnet  The neural net which we'll be doing the computation with
@@ -292,9 +274,38 @@ class NnetBatchComputer {
    */
   bool Compute(bool allow_partial_minibatch);
 
+
+  /**
+     Split a single utterance into a list of separate tasks which can then
+     be given to this class by AcceptTask().
+
+     @param [in] output_to_cpu  Will become the 'output_to_cpu' member of the
+             output tasks; this controls whether the computation code should transfer
+             the outputs to CPU (which is to save GPU memory).
+     @param [in] ivector  If non-NULL, and i-vector for the whole utterance is
+             expected to be supplied here (and online_ivectors should be NULL).
+             This is relevant if you estimate i-vectors per speaker instead of
+             online.
+     @param [in] online_ivectors  Matrix of ivectors, one every 'online_ivector_period' frames.
+     @param [in] online_ivector_period  Affects the interpretation of 'online_ivectors'.
+     @param [out]  tasks       The tasks created will be output to here.  The
+                      priorities will be set to zero; setting them to a meaningful
+                      value is up to the caller.
+  */
+  void SplitUtteranceIntoTasks(
+      bool output_to_cpu,
+      const Matrix<BaseFloat> &input,
+      const Vector<BaseFloat> *ivector,
+      const Matrix<BaseFloat> *online_ivectors,
+      int32 online_ivector_period,
+      std::vector<NnetInferenceTask> *tasks);
+
+  const NnetBatchComputerOptions &GetOptions() { return opts_; }
+
   ~NnetBatchComputer();
 
  private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(NnetBatchComputer);
 
   // Information about a specific minibatch size for a group of tasks sharing a
   // specific structure (in terms of left and right context, etc.)
@@ -343,6 +354,7 @@ class NnetBatchComputer {
     int32 first_input_t;
     int32 num_output_frames;
   };
+
   struct ComputationGroupKeyHasher {
     int32 operator () (const ComputationGroupKey &key) const {
       return key.num_input_frames + 18043 * key.first_input_t +
@@ -350,31 +362,9 @@ class NnetBatchComputer {
     }
   };
 
-  // Mutex that guards this object.  It is only held for fairly quick operations
-  // (not while the actual computation is being done).
-  std::mutex mutex_;
-
 
   typedef unordered_map<ComputationGroupKey, ComputationGroupInfo,
                         ComputationGroupKeyHasher> MapType;
-  // tasks_ contains all the queued tasks.
-  // Each key contains a vector of NnetInferenceTask* pointers, of the same
-  // structure (i.e., IsCompatible() returns true).
-  MapType tasks_;
-
-  // num_full_minibatches_ is a function of the data in tasks_ (and the
-  // minibatch sizes, specified in opts_.  It is the number of full minibatches
-  // of tasks that are pending, meaning: for each group of tasks, the number of
-  // pending tasks divided by the minibatch-size for that group in integer
-  // arithmetic.  This is kept updated for thread synchronization reasons, because
-  // it is the shared variable
-  int32 num_full_minibatches_;
-
-  // a map from 'n' to a condition variable corresponding to the condition:
-  // num_full_minibatches_ <= n.  Any time the number of full minibatches drops
-  // below n, the corresponding condition variable is notified (if it exists).
-  std::unordered_map<int32, std::condition_variable*> no_more_than_n_minibatches_full_;
-
 
   // Gets the priority for a group, higher means higher priority.  (A group is a
   // list of tasks that may be computed in the same minibatch).  What this
@@ -494,6 +484,35 @@ class NnetBatchComputer {
   const Nnet &nnet_;
   CachingOptimizingCompiler compiler_;
   CuVector<BaseFloat> log_priors_;
+
+  // Mutex that guards this object.  It is only held for fairly quick operations
+  // (not while the actual computation is being done).
+  std::mutex mutex_;
+
+  // tasks_ contains all the queued tasks.
+  // Each key contains a vector of NnetInferenceTask* pointers, of the same
+  // structure (i.e., IsCompatible() returns true).
+  MapType tasks_;
+
+  // num_full_minibatches_ is a function of the data in tasks_ (and the
+  // minibatch sizes, specified in opts_.  It is the number of full minibatches
+  // of tasks that are pending, meaning: for each group of tasks, the number of
+  // pending tasks divided by the minibatch-size for that group in integer
+  // arithmetic.  This is kept updated for thread synchronization reasons, because
+  // it is the shared variable
+  int32 num_full_minibatches_;
+
+  // a map from 'n' to a condition variable corresponding to the condition:
+  // num_full_minibatches_ <= n.  Any time the number of full minibatches drops
+  // below n, the corresponding condition variable is notified (if it exists).
+  std::unordered_map<int32, std::condition_variable*> no_more_than_n_minibatches_full_;
+
+  // some static information about the neural net, computed at the start.
+  int32 nnet_left_context_;
+  int32 nnet_right_context_;
+  int32 input_dim_;
+  int32 ivector_dim_;
+  int32 output_dim_;
 };
 
 
@@ -512,8 +531,10 @@ class NnetBatchInference {
       const VectorBase<BaseFloat> &priors);
 
   /**
-    The user should call this one by one for the utterances that
-    it needs to compute (interspersed with calls to GetOutput()).
+    The user should call this one by one for the utterances that this class
+    needs to compute (interspersed with calls to GetOutput()).  This call
+    will block when enough ready-to-be-computed data is present.
+
       @param [in] utterance_id  The string representing the utterance-id;
              it will be provided back to the user when GetOutput() is
              called.
@@ -548,14 +569,17 @@ class NnetBatchInference {
       it was specified in the options; the subtraction of priors will
       depend whether you supplied a non-empty vector of priors to the
       constructor.
+
       This call does not block (i.e. does not wait on any semaphores) unless you
-      have previously called Finished().
+      have previously called Finished().  It returns true if it actually got any
+      output; if none was ready it will return false.
   */
   bool GetOutput(std::string *utterance_id,
                  Matrix<BaseFloat> *output);
 
   ~NnetBatchInference();
  private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(NnetBatchInference);
 
   // This is the computation thread, which is run in the background.  It will
   // exit once the user calls Finished() and all computation is completed.
@@ -570,23 +594,13 @@ class NnetBatchInference {
   // is called.
   NnetBatchComputer computer_;
 
-  NnetBatchComputerOptions opts_;
-
-  // some static information about the neural net, computed at the start.
-  int32 nnet_left_context_;
-  int32 nnet_right_context_;
-  int32 input_dim_;
-  int32 ivector_dim_;  // 0 if no i-vector used.
-  int32 output_dim_;
-
   // This is set to true when the user calls Finished(); the computation thread
   // sees it and knows to flush
   bool is_finished_;
 
   // This semaphore is signaled by the main thread (the thread in which
-  // AcceptInput() is called) every time a new utterance is added, and the
-  // background thread in which Compute() is called waits on it after it notices
-  // it's waiting on data, to avoid having to spin.
+  // AcceptInput() is called) every time a new utterance is added, and waited on
+  // in the background thread in which Compute() is called.
   Semaphore tasks_ready_semaphore_;
 
   struct UtteranceInfo {
@@ -612,6 +626,241 @@ class NnetBatchInference {
 };
 
 
+/**
+   Decoder object that uses multiple CPU threads for the graph search, plus a
+   GPU for the neural net inference (that's done by a separate
+   NnetBatchComputer object).  The interface of this object should
+   accessed from only one thread, though-- presumably the main thread of the
+   program.
+ */
+class NnetBatchDecoder {
+ public:
+  /**
+     Constructor.
+        @param [in] fst    FST that we are decoding with, will be shared between
+                           all decoder threads.
+        @param [in] decoder_config  Configuration object for the decoders.
+        @param [in] trans_model   The transition model-- needed to construct the decoders,
+                           and for determinization.
+        @param [in] word_syms  A pointer to a symbol table of words, used for printing
+                          the decoded words to stderr.  If NULL, the word-level output will not
+                          be logged.
+        @param [in] allow_partial   If true, in cases where no final-state was reached
+                           on the final frame of the decoding, we still output a lattice;
+                           it just may contain partial words (words that are cut off in
+                           the middle).  If false, we just won't output anything for
+                           those lattices.
+        @param [in] num_threads  The number of decoder threads to use.  It will use
+                          two more threads on top of this: the main thread, for I/O,
+                          and a thread for possibly-GPU-based inference.
+        @param [in] computer The NnetBatchComputer object, through which the
+                           neural net will be evaluated.
+   */
+  NnetBatchDecoder(const fst::Fst<fst::StdArc> &fst,
+                   const LatticeFasterDecoderConfig &decoder_config,
+                   const TransitionModel &trans_model,
+                   const fst::SymbolTable *word_syms,
+                   bool allow_partial,
+                   int32 num_threads,
+                   NnetBatchComputer *computer);
+
+  /**
+    The user should call this one by one for the utterances that
+    it needs to compute (interspersed with calls to GetOutput()).  This
+    call will block when no threads are ready to start processing this
+    utterance.
+
+      @param [in] utterance_id  The string representing the utterance-id;
+             it will be provided back to the user when GetOutput() is
+             called.
+      @param [in] input  The input features (e.g. MFCCs)
+      @param [in] ivector  If non-NULL, this is expected to be the
+             i-vector for this utterance (and 'online_ivectors' should
+             be NULL).
+      @param [in] online_ivector_period  Only relevant if
+             'online_ivector' is non-NULL, this says how many
+             frames of 'input' is covered by each row of
+             'online_ivectors'.
+  */
+  void AcceptInput(const std::string &utterance_id,
+                   const Matrix<BaseFloat> &input,
+                   const Vector<BaseFloat> *ivector,
+                   const Matrix<BaseFloat> *online_ivectors,
+                   int32 online_ivector_period);
+
+  /*
+    The user should call this function each time there was a problem with an utterance
+    prior to being able to call AcceptInput()-- e.g. missing i-vectors.  This will
+    update the num-failed-utterances stats which are stored in this class.
+   */
+  void UtteranceFailed();
+
+  /*
+     The user should call this when all input has been provided, e.g.
+     when AcceptInput will not be called any more.  It will block until
+     all threads have terminated; after that, you can call GetOutput()
+     until it returns false, which will guarantee that nothing remains
+     to compute.
+     It returns the number of utterances that have been successfully decoded.
+   */
+  int32 Finished();
+
+  /**
+      The user should call this to obtain output (This version should
+      only be called if config.determinize_lattice == true (w.r.t. the
+      config provided to the constructor).  The output is guaranteed to
+      be in the same order as the input was provided, but it may be
+      delayed, *and* some outputs may be missing, for example because
+      of search failures (allow_partial will affect this).
+
+      The acoustic scores in the output lattice will already be divided by
+      the acoustic scale we decoded with.
+
+      This call does not block (i.e. does not wait on any semaphores).  It
+      returns true if it actually got any output; if none was ready it will
+      return false.
+         @param [out] utterance_id  If an output was ready, its utterance-id is written to here.
+         @param [out] clat  If an output was ready, it compact lattice will be
+                            written to here.
+         @param [out] sentence  If an output was ready and a nonempty symbol table
+                            was provided to the constructor of this class, contains
+                            the word-sequence decoded as a string.  Otherwise will
+                            be empty.
+         @return  Returns true if a decoded output was ready.  (These appear asynchronously
+                  as the decoding is done in background threads).
+  */
+  bool GetOutput(std::string *utterance_id,
+                 CompactLattice *clat,
+                 std::string *sentence);
+
+  // This version of GetOutput is for where config.determinize_lattice == false
+  // (w.r.t. the config provided to the constructor).  It is the same as the
+  // other version except it outputs to a normal Lattice, not a CompactLattice.
+  bool GetOutput(std::string *utterance_id,
+                 Lattice *lat,
+                 std::string *sentence);
+
+  ~NnetBatchDecoder();
+
+ private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(NnetBatchDecoder);
+
+  struct UtteranceInput {
+    std::string utterance_id;
+    const Matrix<BaseFloat> *input;
+    const Vector<BaseFloat> *ivector;
+    const Matrix<BaseFloat> *online_ivectors;
+    int32 online_ivector_period;
+  };
+
+  // This object is created when a thread finished an utterance.  For utterances
+  // where decoding failed somehow, the relevant lattice (compact_lat, if
+  // opts_.determinize == true, or lat otherwise) will be empty (have no
+  // states).
+  struct UtteranceOutput {
+    std::string utterance_id;
+    bool finished;
+    CompactLattice compact_lat;
+    Lattice lat;
+    std::string sentence;  // 'sentence' is only nonempty if a non-NULL symbol
+                           // table was provided to the constructor of class
+                           // NnetBatchDecoder; it's the sentence as a string (a
+                           // sequence of words separated by space).  It's used
+                           // for printing the sentence to stderr, which we do
+                           // in the main thread to keep the order consistent.
+  };
+
+  // This is the decoding thread, several copies of which are run in the
+  // background.  It will exit once the user calls Finished() and all
+  // computation is completed.
+  void Decode();
+  // static wrapper for Compute().
+  static void DecodeFunc(NnetBatchDecoder *object) { object->Decode(); }
+
+  // This is the computation thread; it handles the neural net inference.
+  void Compute();
+  // static wrapper for Compute().
+  static void ComputeFunc(NnetBatchDecoder *object) { object->Compute(); }
+
+
+  // Sets the priorities of the tasks in a newly provided utterance.
+  void SetPriorities(std::vector<NnetInferenceTask> *tasks);
+
+  // In the single-thread case, this sets priority_offset_ to 'priority'.
+  // In the multi-threaded case it causes priority_offset_ to approach
+  // 'priority' at a rate that depends on the nunber of threads.
+  void UpdatePriorityOffset(double priority);
+
+  // This function does the determinization (if needed) and finds the best path through
+  // the lattice to update the stats.  It is expected that when it is called, 'output' must
+  // have its 'lat' member set up.
+  void ProcessOutputUtterance(UtteranceOutput *output);
+
+  const fst::Fst<fst::StdArc> &fst_;
+  const LatticeFasterDecoderConfig &decoder_opts_;
+  const TransitionModel &trans_model_;
+  const fst::SymbolTable *word_syms_;  // May be NULL.  Owned here.
+  bool allow_partial_;
+  NnetBatchComputer *computer_;
+  std::vector<std::thread*> decode_threads_;
+  std::thread compute_thread_;  // Thread that calls computer_->Compute().
+
+
+  // 'input_utterance', together with utterance_ready_semaphore_ and
+  // utterance_consumed_semaphore_, use used to 'hand off' information about a
+  // newly provided utterance from AcceptInput() to a decoder thread that is
+  // ready to process a new utterance.
+  UtteranceInput input_utterance_;
+  Semaphore input_ready_semaphore_;  // Is signaled by the main thread when
+                                     // AcceptInput() is called and a new
+                                     // utterance is being provided (or when the
+                                     // input is finished), and waited on in
+                                     // decoder thread.
+  Semaphore input_consumed_semaphore_;  // Is signaled in decoder thread when it
+                                        // has finished consuming the input, so
+                                        // the main thread can know when it
+                                        // should continue (to avoid letting
+                                        // 'input' go out of scope while it's
+                                        // still needed).
+
+  Semaphore tasks_ready_semaphore_; // Is signaled when new tasks are added to
+                                    // the computer_ object (or when we're finished).
+
+  bool is_finished_;  // True if the input is finished.  If this is true, a
+                      // signal to input_ready_semaphore_ indicates to the
+                      // decoder thread that it should terminate.
+
+  bool tasks_finished_;  // True if we know that no more tasks will be given
+                         // to the computer_ object.
+
+
+  // pending_utts_ is a list of utterances that have been provided via
+  // AcceptInput(), but their decoding has not yet finished.  AcceptInput() will
+  // push_back to it, and GetOutput() will pop_front().  When a decoding thread
+  // has finished an utterance it will set its 'finished' member to true.  There
+  // is no need to synchronize or use mutexes here.
+  std::list<UtteranceOutput*> pending_utts_;
+
+  // priority_offset_ is something used in determining the priorities of nnet
+  // computation tasks.  It starts off at zero and becomes more negative with
+  // time, with the aim being that the priority of the first task (i.e. the
+  // leftmost chunk) of a new utterance should be at about the same priority as
+  // whatever chunks we are just now getting around to decoding.
+  double priority_offset_;
+
+  // Some statistics accumulated by this class, for logging and timing purposes.
+  double tot_like_;  // Total likelihood (of best path) over all lattices that
+                     // we output.
+  int64 frame_count_;  // Frame count over all latices that we output.
+  int32 num_success_;  // Number of successfully decoded files.
+  int32 num_fail_;  // Number of files where decoding failed.
+  int32 num_partial_;  // Number of files that were successfully decoded but
+                       // reached no final-state (can only be nonzero if
+                       // allow_partial_ is true).
+  std::mutex stats_mutex_;  // Mutex that guards the statistics from tot_like_
+                            // through num_partial_.
+  Timer timer_;  // Timer used to print real-time info.
+};
 
 
 }  // namespace nnet3

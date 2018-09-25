@@ -187,6 +187,8 @@ class CuMemoryAllocator {
   // by the user (c.f. RegisterCuAllocatorOptions()) before the options are read.
   void SetOptions(const CuAllocatorOptions &opts) { opts_ = opts; }
 
+  ~CuMemoryAllocator();
+
  private:
 
   struct SubRegion;
