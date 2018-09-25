@@ -49,7 +49,7 @@ template <typename FST, typename Token>
 LatticeFasterDecoderTpl<FST, Token>::~LatticeFasterDecoderTpl() {
   DeleteElems(toks_.Clear());
   ClearActiveTokens();
-  if (delete_fst_) delete &(fst_);
+  if (delete_fst_) delete fst_;
 }
 
 template <typename FST, typename Token>
