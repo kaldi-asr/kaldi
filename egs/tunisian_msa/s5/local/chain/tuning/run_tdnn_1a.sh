@@ -1,7 +1,17 @@
 #!/bin/bash
 
-#Uses   a resnet-style factored TDNN-F model.
-#
+# Uses a resnet-style factored TDNN-F model.
+
+# ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp
+# System                  tdnn1a_sp
+# %WER        devtest       39.25
+# %WER           test       49.74
+# Final train prob          -0.0473
+# Final valid prob          -0.0538
+# Final train prob (xent)   -1.0935
+# Final valid prob (xent)   -1.0817
+# Num-params                 3466448
+
 # First the options that are passed through to run_ivector_common.sh
 # (some of which are also used in this script directly).
 stage=0
@@ -15,7 +25,7 @@ nnet3_affix=
 # are just hardcoded at this level, in the commands below.
 affix=1a   # affix for the TDNN directory name
 tree_affix=
-train_stage=-10
+train_stage=22
 get_egs_stage=-10
 decode_iter=
 
