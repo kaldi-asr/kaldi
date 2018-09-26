@@ -55,7 +55,7 @@ int Rand(struct RandomState* state) {
 #endif
 }
 
-RandomState::RandomState() {
+RandomState::RandomState() : distribution(0.0, 1.0) {
   // we initialize it as Rand() + 27437 instead of just Rand(), because on some
   // systems, e.g. at the very least Mac OSX Yosemite and later, it seems to be
   // the case that rand_r when initialized with rand() will give you the exact
@@ -65,6 +65,7 @@ RandomState::RandomState() {
   // without calling rand() in between, they would give you the same sequence
   // offset by one (if we didn't have the "+ 27437" in the code).  27437 is just
   // a randomly chosen prime number.
+
   seed = Rand() + 27437;
 }
 
