@@ -426,6 +426,17 @@ void WeightSilencePostDistributed(const TransitionModel &trans_model,
   }
 }
 
+inline static BaseFloat GetTotalPosterior(
+    const std::vector<std::pair<int32, BaseFloat> > &post_entry) {
+  BaseFloat tot = 0.0;
+  std::vector<std::pair<int32, BaseFloat> >::const_iterator
+      iter =  post_entry.begin(), end = post_entry.end();
+  for (; iter != end; ++iter) {
+    tot += iter->second;
+  }
+  return tot;
+}
+
 BaseFloat VectorToPosteriorEntry(
     const VectorBase<BaseFloat> &log_likes,
     int32 num_gselect,
@@ -434,18 +445,21 @@ BaseFloat VectorToPosteriorEntry(
   KALDI_ASSERT(num_gselect > 0 && min_post >= 0 && min_post < 1.0);
   // we name num_gauss assuming each entry in log_likes represents a Gaussian;
   // it doesn't matter if they don't.
+
   int32 num_gauss = log_likes.Dim();
   KALDI_ASSERT(num_gauss > 0);
   if (num_gselect > num_gauss)
     num_gselect = num_gauss;
-  Vector<BaseFloat> log_likes_normalized(log_likes);
-  BaseFloat ans = log_likes_normalized.ApplySoftMax();
   std::vector<std::pair<int32, BaseFloat> > temp_post;
+  BaseFloat max_like = log_likes.Max();
   if (min_post != 0.0) {
+    BaseFloat like_cutoff = max_like + Log(min_post);
     for (int32 g = 0; g < num_gauss; g++) {
-      BaseFloat post = log_likes_normalized(g);
-      if (post > min_post)
+      BaseFloat like = log_likes(g);
+      if (like > like_cutoff) {
+        BaseFloat post = exp(like - max_like);
         temp_post.push_back(std::pair<int32, BaseFloat>(g, post));
+      }
     }
   }
   if (temp_post.empty()) {
@@ -453,7 +467,7 @@ BaseFloat VectorToPosteriorEntry(
     // threshold min_post (we need at least one).
     temp_post.resize(num_gauss);
     for (int32 g = 0; g < num_gauss; g++)
-      temp_post[g] = std::pair<int32, BaseFloat>(g, log_likes_normalized(g));
+      temp_post[g] = std::pair<int32, BaseFloat>(g, Exp(log_likes(g) - max_like));
   }
 
   CompareReverseSecond compare;
@@ -476,17 +490,21 @@ BaseFloat VectorToPosteriorEntry(
   post_entry->clear();
   post_entry->insert(post_entry->end(),
                      temp_post.begin(), temp_post.begin() + num_to_insert);
-  while (post_entry->size() > 1 && post_entry->back().second < min_post)
+
+  BaseFloat tot_post = GetTotalPosterior(*post_entry),
+      cutoff = min_post * tot_post;
+
+  while (post_entry->size() > 1 && post_entry->back().second < cutoff) {
+    tot_post -= post_entry->back().second;
     post_entry->pop_back();
+  }
   // Now renormalize to sum to one after pruning.
-  BaseFloat tot = 0.0;
-  size_t size = post_entry->size();
-  for (size_t i = 0; i < size; i++)
-    tot += (*post_entry)[i].second;
-  BaseFloat inv_tot = 1.0 / tot;
-  for (size_t i = 0; i < size; i++)
-    (*post_entry)[i].second *= inv_tot;
-  return ans;
+  BaseFloat inv_tot = 1.0 / tot_post;
+  auto end = post_entry->end();
+  for (auto iter = post_entry->begin(); iter != end; ++iter)
+    iter->second *= inv_tot;
+
+  return max_like + log(tot_post);
 }
 
 
