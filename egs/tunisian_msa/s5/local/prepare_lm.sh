@@ -6,6 +6,7 @@
 . ./cmd.sh
 set -e
 . ./path.sh
+. $KALDI_ROOT/tools/env.sh
 stage=0
 nsegs=1000000;  # limit the number of training segments
 
@@ -26,7 +27,9 @@ perl -MList::Util=shuffle -e 'print shuffle(<STDIN>);' < $corpus | \
      head -n $nsegs > data/local/lm/train.txt
 
 if ! command ngram-count >/dev/null; then
-  if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
+  if uname -a | grep darwin >/dev/null; then # For MACOSX...
+    sdir=$KALDI_ROOT/tools/srilm/bin/macosx
+  elif uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
     sdir=$KALDI_ROOT/tools/srilm/bin/i686-m64
   else
     sdir=$KALDI_ROOT/tools/srilm/bin/i686
