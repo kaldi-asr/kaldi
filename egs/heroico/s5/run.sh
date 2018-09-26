@@ -179,8 +179,4 @@ if [ $stage -le 12 ]; then
   local/chain/run_tdnn.sh
 fi
 
-if [ $stage -le 13 ]; then
-    local/grammar/simple_demo.sh
-fi
-
 wait
