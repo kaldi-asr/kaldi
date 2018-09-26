@@ -66,7 +66,7 @@ class Utterance:
     """
 
     def __init__(self, uid, wavefile, speaker, transcription, dur):
-        self.wavefile = (wavefile if wavefile.rstrip().endswith('|') else
+        self.wavefile = (wavefile if wavefile.rstrip(" \t\r\n").endswith('|') else
                          'cat {} |'.format(wavefile))
         self.speaker = speaker
         self.transcription = transcription
@@ -130,7 +130,7 @@ def read_kaldi_mapfile(path):
     m = {}
     with open(path, 'r', encoding='latin-1') as f:
         for line in f:
-            line = line.strip()
+            line = line.strip(" \t\r\n")
             sp_pos = line.find(' ')
             key = line[:sp_pos]
             val = line[sp_pos+1:]

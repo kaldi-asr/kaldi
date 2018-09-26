@@ -5,16 +5,16 @@
 
 # local/chain/compare_wer.sh exp/chain/e2e_cnn_1a
 # System                      e2e_cnn_1a
-# WER                             10.71
-# CER                              2.85
-# Final train prob              -0.0859
-# Final valid prob              -0.1266
+# WER                              7.81
+# CER                              2.05
+# Final train prob              -0.0812
+# Final valid prob              -0.0708
 # Final train prob (xent)
 # Final valid prob (xent)
 # Parameters                      2.94M
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a/
-# exp/chain/e2e_cnn_1a/: num-iters=195 nj=6..16 num-params=2.9M dim=40->324 combine=-0.065->-0.064 (over 5) logprob:train/valid[129,194,final]=(-0.078,-0.077,-0.086/-0.129,-0.126,-0.127)
+# exp/chain/e2e_cnn_1a/: num-iters=98 nj=6..16 num-params=2.9M dim=40->330 combine=-0.073->-0.073 (over 2) logprob:train/valid[64,97,final]=(-0.084,-0.080,-0.081/-0.073,-0.070,-0.071)
 
 set -e
 
@@ -33,7 +33,7 @@ num_jobs_final=16
 minibatch_size=150=128,64/300=128,64/600=64,32/1200=32,16
 common_egs_dir=
 l2_regularize=0.00005
-frames_per_iter=1000000
+frames_per_iter=2000000
 cmvn_opts="--norm-means=true --norm-vars=true"
 train_set=train
 lang_test=lang_test
@@ -125,6 +125,7 @@ if [ $stage -le 3 ]; then
     --egs.opts "--num_egs_diagnostic 100 --num_utts_subset 400" \
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
+    --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
     --trainer.frames-per-iter $frames_per_iter \
