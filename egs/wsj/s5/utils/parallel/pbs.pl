@@ -401,7 +401,7 @@ if ($ret != 0) {
   exit(1);
 }
 
-my $sge_job_id;
+my $pbs_job_id;
 if (! $sync) { # We're not submitting with -sync y, so we
   # need to wait for the jobs to finish.  We wait for the
   # sync-files we "touched" in the script to exist.
@@ -413,12 +413,12 @@ if (! $sync) { # We're not submitting with -sync y, so we
       push @syncfiles, "$syncfile.$jobid";
     }
   }
-  # We will need the sge_job_id, to check that job still exists
+  # We will need the pbs_job_id, to check that job still exists
   { # Get the SGE job-id from the log file in q/
     open(L, "<$queue_logfile") || die "Error opening log file $queue_logfile";
     undef $sge_job_id;
     while (<L>) {
-      if (m/Your job\S* (\d+)[. ].+ has been submitted/) {
+      if (/(\d+.+\.pbsserver/) {
         if (defined $sge_job_id) {
           die "Error: your job was submitted more than once (see $queue_logfile)";
         } else {
