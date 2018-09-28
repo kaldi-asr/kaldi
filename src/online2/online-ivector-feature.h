@@ -315,6 +315,20 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
   void UpdateStatsForFrame(int32 frame,
                            BaseFloat weight);
 
+  // This is like UpdateStatsForFrame, but updates the i-vector stats for a
+  // range of frames, specified as pairs (t, weight).  The weights do
+  // not have to be positive.  (In the online silence-weighting that we
+  // do, negative weights can occur if we change our minds about the
+  // assignment of a frame).
+  void UpdateStatsForFrames(
+      const std::vector<std::pair<int32, BaseFloat> > &frame_weights);
+
+  // Returns a modified version of info_.min_post, which is opts_.min_post if
+  // weight is 1.0 or -1.0, but gets larger if fabs(weight) is small... but no
+  // larger than 0.99.  (This is an efficiency thing, to not bother processing
+  // very small counts).
+  BaseFloat GetMinPost(BaseFloat weight) const;
+
   // This is the original UpdateStatsUntilFrame that is called when there is
   // no data-weighting involved.
   void UpdateStatsUntilFrame(int32 frame);
