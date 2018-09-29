@@ -94,8 +94,6 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatVectorReader frame_weights_reader(frame_weights_rspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
 
-    Timer tim;
-
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
@@ -175,8 +173,6 @@ int main(int argc, char *argv[]) {
         num_done++;
       }
     }
-
-    KALDI_LOG << "Elapsed time " << tim.Elapsed();
 
     KALDI_LOG << "Estimated iVectors for " << num_done << " files, " << num_err
               << " with errors.";
