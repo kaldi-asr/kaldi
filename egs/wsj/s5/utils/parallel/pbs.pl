@@ -414,24 +414,24 @@ if (! $sync) { # We're not submitting with -sync y, so we
     }
   }
   # We will need the pbs_job_id, to check that job still exists
-  { # Get the SGE job-id from the log file in q/
-    open(L, "<$queue_logfile") || die "Error opening log file $queue_logfile";
-    undef $sge_job_id;
-    while (<L>) {
-      if (/(\d+.+\.pbsserver/) {
-        if (defined $sge_job_id) {
+  { # Get the PBS job-id from the log file in q/
+    open my $L, '<', $queue_logfile || die "Error opening log file $queue_logfile";
+    undef $pbs_job_id;
+    while (<$L>) {
+      if (/(\d+.+\.pbsserver)/) {
+        if (defined $pbs_job_id) {
           die "Error: your job was submitted more than once (see $queue_logfile)";
         } else {
-          $sge_job_id = $1;
+          $pbs_job_id = $1;
         }
       }
     }
-    close(L);
-    if (!defined $sge_job_id) {
-      die "Error: log file $queue_logfile does not specify the SGE job-id.";
+    close $L;
+    if (!defined $pbs_job_id) {
+      die "Error: log file $queue_logfile does not specify the PBS job-id.";
     }
   }
-  my $check_sge_job_ctr=1;
+  my $check_pbs_job_ctr=1;
   #
   my $wait = 0.1;
   my $counter = 0;
@@ -460,11 +460,11 @@ if (! $sync) { # We're not submitting with -sync y, so we
         }
       }
 
-      # Check that the job exists in SGE. Job can be killed if duration
+      # Check that the job exists in PBS. Job can be killed if duration
       # exceeds some hard limit, or in case of a machine shutdown.
-      if (($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
+      if (($check_pbs_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on PBS.
         if ( -f $f ) { next; }; #syncfile appeared: OK.
-        $ret = system("qstat -t $sge_job_id >/dev/null 2>/dev/null");
+        $ret = system("qstat -t $pbs_job_id >/dev/null 2>/dev/null");
         # system(...) : To get the actual exit value, shift $ret right by eight bits.
         if ($ret>>8 == 1) {     # Job does not seem to exist
           # Don't consider immediately missing job as error, first wait some
@@ -513,7 +513,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
             exit(1);
           }
         } elsif ($ret != 0) {
-          print STDERR "pbs.pl: Warning: qstat command returned status $ret (qstat -t $sge_job_id,$!)\n";
+          print STDERR "pbs.pl: Warning: qstat command returned status $ret (qstat -t $pbs_job_id,$!)\n";
         }
       }
     }
