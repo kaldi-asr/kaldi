@@ -311,15 +311,11 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
       const std::vector<std::pair<int32, BaseFloat> > &delta_weights);
 
  private:
-  // this function adds "weight" to the stats for frame "frame".
-  void UpdateStatsForFrame(int32 frame,
-                           BaseFloat weight);
 
-  // This is like UpdateStatsForFrame, but updates the i-vector stats for a
-  // range of frames, specified as pairs (t, weight).  The weights do
-  // not have to be positive.  (In the online silence-weighting that we
-  // do, negative weights can occur if we change our minds about the
-  // assignment of a frame).
+  // This accumulates i-vector stats for a set of frames, specified as pairs
+  // (t, weight).  The weights do not have to be positive.  (In the online
+  // silence-weighting that we do, negative weights can occur if we change our
+  // minds about the assignment of a frame as silence vs. non-silence).
   void UpdateStatsForFrames(
       const std::vector<std::pair<int32, BaseFloat> > &frame_weights);
 

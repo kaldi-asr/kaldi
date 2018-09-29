@@ -445,6 +445,17 @@ void OnlineTransform::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   feat->AddMatVec(1.0, linear_term_, kNoTrans, input_feat, 1.0);
 }
 
+void OnlineTransform::GetFrames(
+    const std::vector<int32> &frames, MatrixBase<BaseFloat> *feats) {
+  KALDI_ASSERT(static_cast<int32>(frames.size()) == feats->NumRows());
+  int32 num_frames = feats->NumRows(),
+      input_dim = linear_term_.NumCols();
+  Matrix<BaseFloat> input_feats(num_frames, input_dim, kUndefined);
+  src_->GetFrames(frames, &input_feats);
+  feats->CopyRowsFromVec(offset_);
+  feats->AddMatMat(1.0, input_feats, kNoTrans, linear_term_, kTrans, 1.0);
+}
+
 
 int32 OnlineDeltaFeature::Dim() const {
   int32 src_dim = src_->Dim();
@@ -507,6 +518,44 @@ void OnlineCacheFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
     feat->CopyFromVec(*(cache_[frame]));
   }
 }
+
+void OnlineCacheFeature::GetFrames(
+    const std::vector<int32> &frames, MatrixBase<BaseFloat> *feats) {
+  int32 num_frames = frames.size();
+  // non_cached_frames will be the subset of 't' values in 'frames' which were
+  // not previously cached, which we therefore need to get from src_.
+  std::vector<int32> non_cached_frames;
+  // 'non_cached_indexes' stores the indexes 'i' into 'frames' corresponding to
+  // the corresponding frames in 'non_cached_frames'.
+  std::vector<int32> non_cached_indexes;
+  non_cached_frames.reserve(frames.size());
+  non_cached_indexes.reserve(frames.size());
+  for (int32 i = 0; i < num_frames; i++) {
+    int32 t = frames[i];
+    if (static_cast<size_t>(t) < cache_.size() && cache_[t] != NULL) {
+      feats->Row(i).CopyFromVec(*(cache_[t]));
+    } else {
+      non_cached_frames.push_back(t);
+      non_cached_indexes.push_back(i);
+    }
+  }
+  if (non_cached_frames.empty())
+    return;
+  int32 num_non_cached_frames = non_cached_frames.size(),
+      dim = this->Dim();
+  Matrix<BaseFloat> non_cached_feats(num_non_cached_frames, dim,
+                                     kUndefined);
+  src_->GetFrames(non_cached_frames, &non_cached_feats);
+  for (int32 i = 0; i < num_non_cached_frames; i++) {
+    SubVector<BaseFloat> this_feat(non_cached_feats, i);
+    feats->Row(non_cached_indexes[i]).CopyFromVec(this_feat);
+    int32 t = non_cached_frames[i];
+    if (static_cast<size_t>(t) >= cache_.size())
+      cache_.resize(t + 1, NULL);
+    cache_[t] = new Vector<BaseFloat>(this_feat);
+  }
+}
+
 
 void OnlineCacheFeature::ClearCache() {
   for (size_t i = 0; i < cache_.size(); i++)

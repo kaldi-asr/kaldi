@@ -188,26 +188,6 @@ BaseFloat OnlineIvectorFeature::GetMinPost(BaseFloat weight) const {
   return min_post;
 }
 
-
-void OnlineIvectorFeature::UpdateStatsForFrame(int32 t,
-                                               BaseFloat weight) {
-  int32 feat_dim = lda_normalized_->Dim();
-  Vector<BaseFloat> feat(feat_dim),  // features given to iVector extractor
-      log_likes(info_.diag_ubm.NumGauss());
-  lda_normalized_->GetFrame(t, &feat);
-  info_.diag_ubm.LogLikelihoods(feat, &log_likes);
-  // "posterior" stores the pruned posteriors for Gaussians in the UBM.
-  std::vector<std::pair<int32, BaseFloat> > posterior;
-  tot_ubm_loglike_ += weight *
-      VectorToPosteriorEntry(log_likes, info_.num_gselect,
-                             GetMinPost(weight), &posterior);
-  for (size_t i = 0; i < posterior.size(); i++)
-    posterior[i].second *= info_.posterior_scale * weight;
-  lda_->GetFrame(t, &feat); // get feature without CMN.
-  ivector_stats_.AccStats(info_.extractor, feat, posterior);
-}
-
-
 void OnlineIvectorFeature::UpdateStatsForFrames(
     const std::vector<std::pair<int32, BaseFloat> > &frame_weights) {
   int32 num_frames = static_cast<int32>(frame_weights.size());
@@ -215,11 +195,12 @@ void OnlineIvectorFeature::UpdateStatsForFrames(
   Matrix<BaseFloat> feats(num_frames, feat_dim, kUndefined),
       log_likes;
 
-  for (int32 i = 0; i < num_frames; i++) {
-    int32 t = frame_weights[i].first;
-    SubVector<BaseFloat> feat(feats, i);
-    lda_normalized_->GetFrame(t, &feat);
-  }
+  std::vector<int32> frames;
+  frames.reserve(frame_weights.size());
+  for (int32 i = 0; i < num_frames; i++)
+    frames.push_back(frame_weights[i].first);
+  lda_normalized_->GetFrames(frames, &feats);
+
   info_.diag_ubm.LogLikelihoods(feats, &log_likes);
 
   // "posteriors" stores, for each frame index in the range of frames, the
@@ -236,11 +217,7 @@ void OnlineIvectorFeature::UpdateStatsForFrames(
         posterior[j].second *= info_.posterior_scale * weight;
     }
   }
-  for (int32 i = 0; i < num_frames; i++) {
-    int32 t = frame_weights[i].first;
-    SubVector<BaseFloat> feat(feats, i);
-    lda_->GetFrame(t, &feat);  // get feature without CMN.
-  }
+  lda_->GetFrames(frames, &feats);  // get features without CMN.
   ivector_stats_.AccStats(info_.extractor, feats, posteriors);
 }
 

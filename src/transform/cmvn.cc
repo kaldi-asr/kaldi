@@ -74,14 +74,14 @@ void ApplyCmvn(const MatrixBase<double> &stats,
   if (stats.NumRows() == 1 && var_norm)
     KALDI_ERR << "You requested variance normalization but no variance stats "
               << "are supplied.";
-  
+
   double count = stats(0, dim);
   // Do not change the threshold of 1.0 here: in the balanced-cmvn code, when
   // computing an offset and representing it as stats, we use a count of one.
   if (count < 1.0)
     KALDI_ERR << "Insufficient stats for cepstral mean and variance normalization: "
               << "count = " << count;
-  
+
   Matrix<BaseFloat> norm(2, dim);  // norm(0, d) = mean offset
   // norm(1, d) = scale, e.g. x(d) <-- x(d)*norm(1, d) + norm(0, d).
   for (int32 d = 0; d < dim; d++) {
@@ -90,6 +90,7 @@ void ApplyCmvn(const MatrixBase<double> &stats,
     if (!var_norm) {
       scale = 1.0;
       offset = -mean;
+      norm(0, d) = offset;
     } else {
       double var = (stats(1, d)/count) - mean*mean,
           floor = 1.0e-20;
@@ -102,9 +103,9 @@ void ApplyCmvn(const MatrixBase<double> &stats,
       if (scale != scale || 1/scale == 0.0)
         KALDI_ERR << "NaN or infinity in cepstral mean/variance computation";
       offset = -(mean*scale);
+      norm(0, d) = offset;
+      norm(1, d) = scale;
     }
-    norm(0, d) = offset;
-    norm(1, d) = scale;
   }
   // Apply the normalization.
   if (var_norm)
@@ -125,14 +126,14 @@ void ApplyCmvnReverse(const MatrixBase<double> &stats,
   if (stats.NumRows() == 1 && var_norm)
     KALDI_ERR << "You requested variance normalization but no variance stats "
               << "are supplied.";
-  
+
   double count = stats(0, dim);
   // Do not change the threshold of 1.0 here: in the balanced-cmvn code, when
   // computing an offset and representing it as stats, we use a count of one.
   if (count < 1.0)
     KALDI_ERR << "Insufficient stats for cepstral mean and variance normalization: "
               << "count = " << count;
-  
+
   Matrix<BaseFloat> norm(2, dim);  // norm(0, d) = mean offset
   // norm(1, d) = scale, e.g. x(d) <-- x(d)*norm(1, d) + norm(0, d).
   for (int32 d = 0; d < dim; d++) {

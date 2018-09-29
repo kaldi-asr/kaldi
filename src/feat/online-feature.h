@@ -479,6 +479,9 @@ class OnlineTransform: public OnlineFeatureInterface {
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
+  virtual void GetFrames(const std::vector<int32> &frames,
+                         MatrixBase<BaseFloat> *feats);
+
   //
   // Next, functions that are not in the interface.
   //
@@ -543,6 +546,9 @@ class OnlineCacheFeature: public OnlineFeatureInterface {
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+
+  virtual void GetFrames(const std::vector<int32> &frames,
+                         MatrixBase<BaseFloat> *feats);
 
   virtual ~OnlineCacheFeature() { ClearCache(); }
 
