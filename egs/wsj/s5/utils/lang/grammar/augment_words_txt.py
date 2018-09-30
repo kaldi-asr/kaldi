@@ -4,6 +4,7 @@
 import argparse
 import os
 import sys
+import re
 
 def get_args():
     parser = argparse.ArgumentParser(description="""This script augments a words.txt
