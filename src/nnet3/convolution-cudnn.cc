@@ -33,7 +33,6 @@ namespace {
   ConvolutionComputation(int32 num_channels_out, int32 num_channels_in,
                          int32 filter_height, int32 filter_width,
                          int32 filter_stride_height, int32 filter_stride_width,
-                         // dilation?
                          int32 filter_dilation_height,
                          int32 filter_dilation_width,
                          int32 num_images,
@@ -47,26 +46,10 @@ namespace {
     CUDNN_SAFE_CALL(cudnnCreateActivationDescriptor(&activation_desc_));
 
     CUDNN_SAFE_CALL(
-      cudnnSetTensor4dDescriptor(input_desc_, CUDNN_TENSOR_NHWC,
-                                 CUDNN_DATA_FLOAT, num_images,
-                                 num_channels_in, input_image_width,
-                                 input_image_height));
-
-    int32 out_kaldi_height_cudnn_width = OutputImageHeight();
-    int32 out_kaldi_width_cudnn_height = OutputImageWidth();
-    CUDNN_SAFE_CALL(
-    cudnnSetTensor4dDescriptor(output_desc_, CUDNN_TENSOR_NHWC,
-                               CUDNN_DATA_FLOAT, num_images,
-                               num_channels_in, out_kaldi_width_cudnn_height,
-                               out_kaldi_height_cudnn_width));
-    CUDNN_SAFE_CALL(
-    cudnnSetFilter4dDescriptor(params_desc_, CUDNN_DATA_FLOAT,
-                               CUDNN_TENSOR_NHWC, num_channels_out,
-                               num_channels_in, filter_width, filter_height));
-    int32 bias_stride = 1;
-    CUDNN_SAFE_CALL(
-    cudnnSetTensorNdDescriptor(bias_desc_, CUDNN_DATA_FLOAT, 1,
-                               &num_channels_out, &bias_stride));
+    cudnnSetTensor4dDescriptor(input_desc_, CUDNN_TENSOR_NHWC,
+			       CUDNN_DATA_FLOAT, num_images,
+			       num_channels_in, input_image_width,
+			       input_image_height));
     CUDNN_SAFE_CALL(
     cudnnSetConvolution2dDescriptor(conv_desc_,
                                     zero_padding_width, zero_padding_height,
@@ -74,6 +57,24 @@ namespace {
                                     filter_dilation_width, filter_dilation_height,
                                     CUDNN_CROSS_CORRELATION, // TODO: Double check this!
                                     CUDNN_DATA_FLOAT));
+    CUDNN_SAFE_CALL(
+    cudnnSetFilter4dDescriptor(params_desc_, CUDNN_DATA_FLOAT,
+                               CUDNN_TENSOR_NCHW, num_channels_out,
+                               num_channels_in, filter_width, filter_height));
+
+    // These two member functions depend only on input_desc_,
+    // conv_desc_, and params_desc_, so they are safe to call now.
+    int32 out_kaldi_height_cudnn_width = OutputImageHeight();
+    int32 out_kaldi_width_cudnn_height = OutputImageWidth();
+    CUDNN_SAFE_CALL(
+    cudnnSetTensor4dDescriptor(output_desc_, CUDNN_TENSOR_NHWC,
+                               CUDNN_DATA_FLOAT, num_images,
+                               num_channels_in, out_kaldi_width_cudnn_height,
+                               out_kaldi_height_cudnn_width));
+    const int32 bias_stride[] = {1};
+    CUDNN_SAFE_CALL(
+    cudnnSetTensorNdDescriptor(bias_desc_, CUDNN_DATA_FLOAT, 1,
+                               &num_channels_out, bias_stride));
 
     const double DONT_CARE = 0;
     CUDNN_SAFE_CALL(
@@ -96,7 +97,8 @@ namespace {
       &returned_algo_count,
       forward_results));
 
-    KALDI_ASSERT(returned_algo_count > 0);
+    KALDI_ASSERT(returned_algo_count > 0 &&
+		 "No algorithms were returned by CUDNN.");
     const cudnnConvolutionFwdAlgoPerf_t& best_forward = forward_results[0];
     fwd_algo_ = best_forward.algo;
     delete [] forward_results;
@@ -114,7 +116,8 @@ namespace {
       requested_algo_count,
       &returned_algo_count,
       backward_filter_results));
-    KALDI_ASSERT(returned_algo_count > 0);
+    KALDI_ASSERT(returned_algo_count > 0 &&
+		 "No algorithms were returned by CUDNN.");
     const cudnnConvolutionBwdFilterAlgoPerf_t& best_backward_filter =
       backward_filter_results[0];
     bwd_filter_algo_ = best_backward_filter.algo;
@@ -133,7 +136,8 @@ namespace {
       requested_algo_count,
       &returned_algo_count,
       backward_data_results));
-    KALDI_ASSERT(returned_algo_count > 0);
+    KALDI_ASSERT(returned_algo_count > 0 &&
+		 "No algorithms were returned by CUDNN.");
     const cudnnConvolutionBwdDataAlgoPerf_t& best_backward_data =
       backward_data_results[0];
     bwd_data_algo_ = best_backward_data.algo;
@@ -156,8 +160,8 @@ namespace {
       cudnnGetConvolution2dForwardOutputDim(conv_desc_, input_desc_,
                                             params_desc_,
                                             &unused, &unused,
-                                            &kaldi_height_cudnn_width,
-                                            &unused));
+                                            &unused,
+                                            &kaldi_height_cudnn_width));
     return kaldi_height_cudnn_width;
   }
 
@@ -168,8 +172,8 @@ namespace {
       cudnnGetConvolution2dForwardOutputDim(conv_desc_, input_desc_,
                                             params_desc_,
                                             &unused, &unused,
-                                            &unused,
-                                            &kaldi_width_cudnn_height));
+                                            &kaldi_width_cudnn_height,
+                                            &unused));
     return kaldi_width_cudnn_height;
   }
 
