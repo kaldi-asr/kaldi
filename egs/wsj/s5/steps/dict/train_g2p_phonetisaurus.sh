@@ -58,10 +58,10 @@ if [ $stage -le 0 ]; then
     awk 'NR==FNR{a[$1] = 1; next} {s=$2;for(i=3;i<=NF;i++) s=s" "$i; if(!(s in a)) print $1" "s}' \
       $silence_phones $lexicon | \
       awk '{printf("%s\t",$1); for (i=2;i<NF;i++){printf("%s ",$i);} printf("%s\n",$NF);}' | \
-      uconv -f utf-8  -t utf-8 -x Any-NFC - | awk 'NF > 0'> $wdir/lexicon_tab_separated.txt
+      uconv -f "$encoding"  -t "$encoding" -x Any-NFC - | awk 'NF > 0'> $wdir/lexicon_tab_separated.txt
   else
     awk '{printf("%s\t",$1); for (i=2;i<NF;i++){printf("%s ",$i);} printf("%s\n",$NF);}' $lexicon | \
-      uconv -f utf-8  -t utf-8 -x Any-NFC - | awk 'NF > 0'> $wdir/lexicon_tab_separated.txt
+      uconv -f "$encoding" -t "$encoding" -x Any-NFC - | awk 'NF > 0'> $wdir/lexicon_tab_separated.txt
   fi
 fi
 

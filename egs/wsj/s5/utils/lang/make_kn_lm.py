@@ -17,6 +17,8 @@
 
 import sys
 import os
+import re
+import io
 import math
 import argparse
 from collections import Counter, defaultdict
@@ -31,6 +33,14 @@ parser.add_argument("-text", type=str, default=None, help="Path to the corpus fi
 parser.add_argument("-lm", type=str, default=None, help="Path to output arpa file for language models")
 parser.add_argument("-verbose", type=int, default=0, choices=[0, 1, 2, 3, 4, 5], help="Verbose level")
 args = parser.parse_args()
+
+default_encoding = "latin-1"  # For encoding-agnostic scripts, we assume byte stream as input.
+                              # Need to be very careful about the use of strip() and split()
+                              # in this case, because there is a latin-1 whitespace character
+                              # (nbsp) which is part of the unicode encoding range.
+                              # Ref: kaldi/egs/wsj/s5/utils/lang/bpe/prepend_words.py @ 69cd717
+strip_chars = " \t\r\n"
+whitespace = re.compile("[ \t]+")
 
 
 class CountsForHistory:
@@ -82,9 +92,6 @@ class NgramCounts:
         self.bos_symbol = bos_symbol
         self.eos_symbol = eos_symbol
 
-        self.backoff_symbol = -1
-        # self.total_num_words = 0  # count includes EOS but not BOS.
-
         self.counts = []
         for n in range(ngram_order):
             self.counts.append(defaultdict(lambda: CountsForHistory()))
@@ -101,7 +108,7 @@ class NgramCounts:
     # 'line' is a string containing a sequence of integer word-ids.
     # This function adds the un-smoothed counts from this line of text.
     def add_raw_counts_from_line(self, line):
-        words = [self.bos_symbol] + line.split() + [self.eos_symbol]
+        words = [self.bos_symbol] + whitespace.split(line) + [self.eos_symbol]
 
         for i in range(len(words)):
             for n in range(1, self.ngram_order+1):
@@ -120,9 +127,9 @@ class NgramCounts:
 
     def add_raw_counts_from_standard_input(self):
         lines_processed = 0
-        while True:
-            line = sys.stdin.readline()
-            line = line.strip()
+        infile = io.TextIOWrapper(sys.stdin.buffer, encoding=default_encoding)  # byte stream as input
+        for line in infile:
+            line = line.strip(strip_chars)
             if line == '':
                 break
             self.add_raw_counts_from_line(line)
@@ -132,9 +139,9 @@ class NgramCounts:
 
     def add_raw_counts_from_file(self, filename):
         lines_processed = 0
-        with open(filename, encoding="utf-8") as fp:
+        with open(filename, encoding=default_encoding) as fp:
             for line in fp:
-                line = line.strip()
+                line = line.strip(strip_chars)
                 if line == '':
                     break
                 self.add_raw_counts_from_line(line)
@@ -204,11 +211,6 @@ class NgramCounts:
         # bow(a_) = (1 - Sum_Z1 f(a_z)) / (1 - Sum_Z1 f(_z))
         # Note that Z1 is the set of all words with c(a_z) > 0
 
-        # for this_order_counts in self.counts:
-        #     for hist, counts_for_hist in this_order_counts.items():
-        #         if len(hist) == 0:
-        #             continue
-
         # highest order N-grams
         n = self.ngram_order - 1
         this_order_counts = self.counts[n]
@@ -251,7 +253,7 @@ class NgramCounts:
             for hist, counts_for_hist in this_order_counts.items():
                 for w in counts_for_hist.word_to_count.keys():
                     ngram = " ".join(hist) + " " + w
-                    ngram = ngram.strip()
+                    ngram = ngram.strip(strip_chars)
 
                     res.append("{0}\t{1}".format(ngram, counts_for_hist.word_to_count[w]))
         res.sort(reverse=True)
@@ -266,7 +268,7 @@ class NgramCounts:
             for hist, counts_for_hist in this_order_counts.items():
                 for w in counts_for_hist.word_to_count.keys():
                     ngram = " ".join(hist) + " " + w
-                    ngram = ngram.strip()
+                    ngram = ngram.strip(strip_chars)
 
                     modified_count = len(counts_for_hist.word_to_context[w])
                     raw_count = counts_for_hist.word_to_count[w]
@@ -287,7 +289,7 @@ class NgramCounts:
             for hist, counts_for_hist in this_order_counts.items():
                 for w in counts_for_hist.word_to_count.keys():
                     ngram = " ".join(hist) + " " + w
-                    ngram = ngram.strip()
+                    ngram = ngram.strip(strip_chars)
 
                     f = counts_for_hist.word_to_f[w]
                     if f == 0:  # f(<s>) is always 0
@@ -306,7 +308,7 @@ class NgramCounts:
             for hist, counts_for_hist in this_order_counts.items():
                 for w in counts_for_hist.word_to_count.keys():
                     ngram = " ".join(hist) + " " + w
-                    ngram = ngram.strip()
+                    ngram = ngram.strip(strip_chars)
 
                     f = counts_for_hist.word_to_f[w]
                     if f == 0:  # f(<s>) is always 0
@@ -321,7 +323,7 @@ class NgramCounts:
         for r in res:
             print(r)
 
-    def print_as_arpa(self, fout=sys.stdout):
+    def print_as_arpa(self, fout=io.TextIOWrapper(sys.stdout.buffer, encoding='latin-1')):
         # print as ARPA format.
 
         print('\\data\\', file=fout)
@@ -373,5 +375,5 @@ if __name__ == "__main__":
     if args.lm is None:
         ngram_counts.print_as_arpa()
     else:
-        with open(args.lm, 'w', encoding="utf-8") as f:
+        with open(args.lm, 'w', encoding=default_encoding) as f:
             ngram_counts.print_as_arpa(fout=f)

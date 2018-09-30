@@ -132,9 +132,9 @@ if [ $stage -le 4 ]; then
 
   steps/dict/apply_g2p_phonetisaurus.sh --nbest 1 exp/g2p/model.fst $g2p_tmp_dir/missing_onlywords.txt $g2p_tmp_dir/missing_lexicon.txt || exit 1;
   
-  expanded_lexicon=$dict_dir/lexicon.txt
-  echo "Adding new pronunciations to get expanded lexicon $expanded_lexicon"
-  cat <(cut -f 1,3 $g2p_tmp_dir/missing_lexicon.txt) $lexicon | sort | uniq > $expanded_lexicon
+  extended_lexicon=$dict_dir/lexicon.txt
+  echo "Adding new pronunciations to get expanded lexicon $extended_lexicon"
+  cat <(cut -f 1,3 $g2p_tmp_dir/missing_lexicon.txt) $lexicon | sort | uniq > $extended_lexicon
 fi
 
 # We'll do multiple iterations of pron/sil-prob estimation. So the structure of

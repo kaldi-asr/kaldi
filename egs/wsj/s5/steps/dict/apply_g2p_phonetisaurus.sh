@@ -41,25 +41,20 @@ fi
 model=$1
 word_list=$2
 out_lexicon=$3
+out_lexicon_failed="${out_lexicon}.failed"
 
-[ ! -z $nbest ] && [[ ! $nbest =~ ^[1-9][0-9]*$ ]] && echo "$0: nbest should be a positive integer." && exit 1;
 [ -z $pmass ] && [ -z $nbest ] && echo "$0: nbest or/and pmass should be specified." && exit 1;
 
-if [ -z $pmass ]; then
-  echo "Synthesizing pronunciations for words in $word_list based on nbest=$nbest"
-  options="--nbest $nbest --pmass 1.0"
-elif [ -z $nbest ]; then
-  echo "Synthesizing pronunciations for words in $word_list based on pmass=$pmass"
-  options="--pmass $pmass --nbest 20"
-else
-  echo "Synthesizing pronunciations for words in $word_list based on nbest=$nbest and pmass=$pmass"
-  options="--pmass $pmass --nbest $nbest"
-fi
-phonetisaurus-apply $options --model $model --thresh 5 --accumulate --verbose --prob --word_list $word_list 1>$out_lexicon
+# three options: 1) nbest, 2) pmass, 3) nbest+pmass,
+nbest=${nbest:-20}   # if nbest is not specified, set it to 20, due to Phonetisaurus mechanism
+pmass=${pmass:-1.0}  # if pmass is not specified, set it to 1.0, due to Phonetisaurus mechanism
 
-if [ $(tr -d [:space:] < $out_lexicon | wc -c) -eq 0 ]; then
-  echo "$0: Did not generate the lexicon $out_lexicon for new words succesfully, which has no content." && exit 1;
-else
-  echo "$0: Successful. The synthesized lexicon for new words is in $out_lexicon" && exit 0;
-fi
+[[ ! $nbest =~ ^[1-9][0-9]*$ ]] && echo "$0: nbest should be a positive integer." && exit 1;
 
+echo "$0: Synthesizing pronunciations for words in $word_list based on nbest=$nbest and pmass=$pmass"
+phonetisaurus-apply --pmass $pmass --nbest $nbest --model $model --thresh 5 --accumulate --verbose --prob --word_list $word_list \
+  1>$out_lexicon 
+
+echo "$0: Completed. Synthesized lexicon for new words is in $out_lexicon"
+
+exit 0
