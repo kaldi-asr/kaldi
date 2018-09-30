@@ -177,39 +177,6 @@ struct NnetBatchComputerOptions: public NnetSimpleComputationOptions {
   }
 };
 
-/**
-   Split a single utterance into a list of separate tasks to give to class
-   NnetBatchComputer.
-
-     @param [in] opts  Options class, e.g. used to get minibatch size.
-     @param [in] nnet_left_context  This, and nnet_right_context, should be the
-              result of a call like this:
-        ComputeSimpleNnetContext(nnet, &nnet_left_context, &nnet_right_context);
-     @param [in] nnet_right_context see above.
-     @param [in] output_to_cpu  Will become the 'output_to_cpu' member of the
-             output tasks; this controls whether the computation code should transfer
-             the outputs to CPU (which is to save GPU memory).
-     @param [in] ivector  If non-NULL, and i-vector for the whole utterance is
-             expected to be supplied here (and online_ivectors should be NULL).
-             This is relevant if you estimate i-vectors per speaker instead of
-             online.
-     @param [in] online_ivectors  Matrix of ivectors, one every 'online_ivector_period' frames.
-     @param [in] online_ivector_period  Affects the interpretation of 'online_ivectors'.
-     @param [out]  tasks       The tasks created will be output to here.  The
-                      priorities will be set to zero; setting them to a meaningful
-                      value is up to the caller.
-*/
-void SplitUtteranceIntoTasks(
-    const NnetBatchComputerOptions &opts,
-    int32 nnet_left_context,
-    int32 nnet_right_context,
-    bool output_to_cpu,
-    const Matrix<BaseFloat> &input,
-    const Vector<BaseFloat> *ivector,
-    const Matrix<BaseFloat> *online_ivectors,
-    int32 online_ivector_period,
-    std::vector<NnetInferenceTask> *tasks);
-
 
 /**
    Merges together the 'output_cpu' (if the 'output_to_cpu' members are true) or

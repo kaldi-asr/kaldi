@@ -745,8 +745,6 @@ static void SplitInputToTasks(const NnetBatchComputerOptions &opts,
         (tot_left_context != nnet_left_context + opts.extra_left_context ||
          tot_right_context !=  nnet_right_context + opts.extra_right_context);
 
-    //HERE.task.
-
     int32 begin_input_t_padded = begin_input_t - tot_left_context,
         end_input_t_padded = end_input_t + tot_right_context;
 
