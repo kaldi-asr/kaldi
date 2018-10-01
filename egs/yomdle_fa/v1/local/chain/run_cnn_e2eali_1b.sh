@@ -179,10 +179,6 @@ if [ $stage -le 5 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/iam-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-#    --image.augmentation-opts="--vertical-shift=0.1 \
-#                               --crop=true --crop-scale-min=45 --crop-scale-max=60 \
-#                               --num-channels=3" \
-
   steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd="$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
@@ -197,7 +193,7 @@ if [ $stage -le 5 ]; then
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=6 \
+    --trainer.num-epochs=16 \
     --trainer.frames-per-iter=1000000 \
     --trainer.optimization.num-jobs-initial=4 \
     --trainer.optimization.num-jobs-final=8 \
