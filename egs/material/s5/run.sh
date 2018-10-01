@@ -326,4 +326,8 @@ if [ $stage -le 25 ]; then
     ${dict_root}/lexiconp.txt ${lang_root}_test
 fi
 
+# After run.sh is finished, run the followings:
+# ./local/chain/run_tdnn.sh
+# ./local/chain/decode_test.sh --language <swahili|tagalog>
+# ./local/rnnlm/run_tdnn_lstm.sh
 exit 0;
