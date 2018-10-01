@@ -252,8 +252,8 @@ def parse_arguments(argv):
 
     return parser.parse_args(argv)
 
-""" Run """
 if __name__ == '__main__':
+    """ Run """
     main(parse_arguments(sys.argv[1:]))
 
 
