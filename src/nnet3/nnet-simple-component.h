@@ -945,7 +945,7 @@ class LinearComponent: public UpdatableComponent {
  public:
   virtual int32 InputDim() const { return params_.NumCols(); }
   virtual int32 OutputDim() const { return params_.NumRows(); }
-
+  const CuMatrix<BaseFloat> &LinearParams() const { return params_; }
   virtual std::string Type() const { return "LinearComponent"; }
   virtual int32 Properties() const {
     return kSimpleComponent|kUpdatableComponent|kBackpropNeedsInput|

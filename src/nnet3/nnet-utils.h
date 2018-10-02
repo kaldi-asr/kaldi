@@ -301,11 +301,11 @@ void CollapseModel(const CollapseModelConfig &config,
        Sets the dropout rates for any components of type DropoutComponent whose
        names match the given <name-pattern> (e.g. lstm*).  <name-pattern> defaults to "*".
 
-    apply-svd name=<name-pattern> bottleneck-dim=<dim>
+    apply-svd name=<name-pattern> bottleneck-dim=<dim> energy-threshold=<threshold> shrinkage-threshold=<s>
        Locates all components with names matching <name-pattern>, which are
        type AffineComponent or child classes thereof.  If <dim> is
        less than the minimum of the (input or output) dimension of the component,
-       it does SVD on the components' parameters, retaining only the alrgest
+       it does SVD on the components' parameters, retaining only the largest
        <dim> singular values, replacing these components with sequences of two
        components, of types LinearComponent and NaturalGradientAffineComponent.
        See also 'reduce-rank'.
@@ -316,6 +316,8 @@ void CollapseModel(const CollapseModelConfig &config,
        components' parameters, retaining only the largest <dim> singular values,
        and writes the reconstructed matrix back to the component.  See also
        'apply-svd', which structurally breaks the component into two pieces.
+
+    reverse-svd name=<name-pattern>
 
    \endverbatim
 */

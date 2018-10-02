@@ -604,14 +604,266 @@ void FindOrphanNodes(const Nnet &nnet, std::vector<int32> *nodes) {
   }
 }
 
+// this class implements the internals of the edit directive 'reverse-svd'
+class SvdReversal {
+ public:
+  SvdReversal(const std::string component_name_pattern,
+	      Nnet *nnet) : nnet_(nnet),
+			    component_name_pattern_(component_name_pattern) { }
+  void ReverseSvd() {
+    MergeComponents();
+    if (!modified_component_info_.empty()) {
+      ModifyTopology();
+    }
+    KALDI_LOG << "Reversed SVD";
+  }
+ private:
+  void MergeComponents() {
+    int32 num_components = nnet_->NumComponents();
+    modification_index_.resize(num_components, -1);
+    modify_component_.resize(num_components, 0);
+    delete_component_.resize(num_components, 0);
+    for (int32 c = 0; c < num_components; c++) {
+      Component *component = nnet_->GetComponent(c);
+      std::string component_name = nnet_->GetComponentName(c);
+      //      KALDI_LOG << c << " " << component_name;
+      if (NameMatchesPattern(component_name.c_str(),
+                             component_name_pattern_.c_str())) {
+        LinearComponent *linear =  dynamic_cast<LinearComponent*>(component);
+        if (linear == NULL) {
+          KALDI_WARN << "Not merging component " << component_name
+                     << " as it is not an LinearComponent.";
+          continue;
+        };
+	Component *next_component = nnet_->GetComponent(c+1);
+	std::string next_component_name = nnet_->GetComponentName(c+1);
+	if (NameMatchesPattern(next_component_name.c_str(),
+			       component_name_pattern_.c_str())) {
+	  AffineComponent *next_affine =  dynamic_cast<AffineComponent*>(next_component);
+	  if (next_affine == NULL) {
+	    KALDI_WARN << "Not merging component " << component_name
+		       << " as next component is not an Affine Component.";
+	    continue;
+	  };
+	  Component *merged_component = NULL;
+	  MergeComponent(*linear, *next_affine, &merged_component);
+	  size_t n = modified_component_info_.size();
+	  KALDI_VLOG(3) << " c: " << c << " " << n << " " << component_name;
+	  modification_index_[c] = n;
+	  modified_component_info_.resize(n + 1);
+	  modify_component_[c] = 1;
+	  delete_component_[c+1] = 1;
+	  delete_component_[c+2] = 1;
+	  ModifiedComponentInfo &info = modified_component_info_[n];
+	  info.component_index = c;
+	  size_t str_index = component_name.find_first_of(".");
+	  info.component_name = component_name.substr(0, str_index);
+	  info.component_name += ".affine";
+	  if (nnet_->GetComponentIndex(info.component_name) >= 0)
+	    KALDI_ERR << "Neural network already has a component named "
+		      << info.component_name;
+	  info.component_index = nnet_->AddComponent(info.component_name,
+						     merged_component);
+	  KALDI_VLOG(3) << info.component_name << " index : " << info.component_index;
+	  c++;
+	} else {
+	  KALDI_ERR << "Unexpected component name " << next_component_name;
+	}
+
+      }
+    }
+  }
+  void MergeComponent(const LinearComponent &affine_c,
+		      const AffineComponent &affine_n,
+		      Component **component_out) {
+    int32 input_dim_c = affine_c.InputDim(), output_dim_c = affine_c.OutputDim();
+    int32 input_dim_n = affine_n.InputDim(), output_dim_n = affine_n.OutputDim();
+    Matrix<BaseFloat> linear_params_c(affine_c.LinearParams()); //output_dim * input_dim
+    Matrix<BaseFloat> linear_params_n(affine_n.LinearParams());
+    Vector<BaseFloat> bias_params(affine_n.BiasParams()); //output_dim
+
+    // note: 'linear_params' is of dimension output_dim by input_dim.
+    Matrix<BaseFloat> linear_params(output_dim_n, input_dim_c);
+    linear_params.AddMatMat(1.0,linear_params_n, kNoTrans, linear_params_c, kNoTrans, 1.0);
+    CuMatrix<BaseFloat> linear_params_cuda(linear_params);
+    CuVector<BaseFloat> bias_params_cuda(bias_params);
+
+    NaturalGradientAffineComponent *component =
+        new NaturalGradientAffineComponent(linear_params_cuda, bias_params_cuda);
+    // set the learning rates, max-change, and so on.
+    component->SetUpdatableConfigs(affine_n);
+    *component_out = component;
+    
+  }
+  void ModifyTopology() {
+    std::vector<int32> nodes_to_modify;
+    // node_names_modified is nnet_->node_names_ except with, for the nodes that
+    // we are merging into one.
+    std::vector<std::string> node_names_orig = nnet_->GetNodeNames();
+    std::vector<std::string> node_names_modified = node_names_orig;
+    std::set<std::string> node_names_unique;
+    std::vector<int32> nodes_retained;
+    
+    // config_os is a stream to which we are printing lines that we'll later
+    // read using nnet_->ReadConfig().
+
+    for (int32 n = 0; n < nnet_->NumNodes(); n++) {
+      std::string node_name = node_names_orig[n];
+      if (NameMatchesPattern(node_name.c_str(),
+                             component_name_pattern_.c_str())) {
+	size_t  node_name_first_index = node_name.find_first_of("_");
+	size_t node_name_last_index = node_name.find_last_of("_");
+	if (node_name_last_index+1 == node_name.size() - 1) {
+	  node_name = node_name.substr(0, node_name_first_index);
+	} else {
+	  node_name = node_name.substr(0, node_name_first_index) + "_" +
+	    node_name.substr(node_name_last_index+1, node_name.size() - 1);
+	}
+      }
+      KALDI_VLOG(3) << n << " new " << node_name << " orig " <<  node_names_orig[n];
+      if (nnet_->IsComponentNode(n)) {
+	NetworkNode &node = nnet_->GetNode(n);
+	int32 component_index = node.u.component_index,
+	  modification_index = modification_index_[component_index];
+	if (modify_component_[component_index] == 1) {
+	  KALDI_VLOG(3) << "Modifying " << node_name;
+	  size_t  node_name_first_index = node_name.find_first_of(".");
+	  node_name = node_name.substr(0, node_name_first_index) + ".affine";
+	  // continue;
+	}
+      }
+      node_names_modified[n] = node_name;
+      
+      if (node_names_unique.find(node_name) == node_names_unique.end()) {
+	node_names_unique.insert(node_name);
+	//	node_names_modified.push_back(node_name);
+	KALDI_LOG << "Keeping " << node_name << " Component " ;
+	nodes_retained.push_back(n);
+      } 
+    }
+    //nnet_->RemoveSomeNodes(nodes_to_modify);
+    std::ostringstream config_os;
+    // The following loop writes to 'config_os'. The the code is modified from
+    // the private function Nnet::GetAsConfigLine(), and from
+    // Nnet::GetConfigLines().
+    //    for (int32 n = 0; n < nnet_->NumNodes(); n++) {
+    for (int32 n = 0; n < nodes_retained.size(); n++) {
+      KALDI_VLOG(3) << n << " " << nodes_retained[n];
+      if (nnet_->IsComponentInputNode(nodes_retained[n]) || nnet_->IsInputNode(nodes_retained[n])) {
+        // component-input descriptor nodes aren't handled separately from their
+        // associated components (we deal with them along with their
+        // component-node); and input-nodes won't be affected so we don't have
+        // to print anything.
+        continue;
+      }
+      const NetworkNode &node = nnet_->GetNode(nodes_retained[n]);
+      int32 c = node.u.component_index;  // 'c' will only be meaningful if the
+                                         // node is a component-node.
+      std::string node_name = node_names_modified[nodes_retained[n]];
+      KALDI_VLOG(3) << "c: " << c << " node name : " << node_name << " remove_component : " << modify_component_[c];
+      if (node.node_type == kComponent &&  modify_component_[c] > 0 ) {
+        ModifiedComponentInfo &info = modified_component_info_[modification_index_[c]];
+        // we print two component-nodes, the "a" an "b".  The original
+        // one will later be removed when we call RemoveOrphanNodes().
+	node_name = info.component_name;
+	KALDI_VLOG(3) << "Modifying " << node_name;
+	if (modify_component_[c] == 0) {
+	  config_os << "component-node name=" << node_name << " component="
+		    << info.component_name << " input=";
+	  nnet_->GetNode(nodes_retained[n-1]).descriptor.WriteConfig(config_os, node_names_modified);
+	  config_os << "\n";
+	  //	  continue;
+	} else {
+	  // This is the modified node
+	  config_os << "component-node name=" << node_name << " component="
+		    << info.component_name << " input=";
+	  nnet_->GetNode(nodes_retained[n-1]).descriptor.WriteConfig(config_os, node_names_modified);
+	  config_os << "\n";
+	}
+	
+      } else {
+        // This code is modified from Nnet::GetAsConfigLine().  The key difference
+        // is that we're using node_names_modified, which will replace all the
+        // nodes we're splitting with their "b" versions.
+        switch (node.node_type) {
+          case kDescriptor:
+            // assert that it's an output-descriptor, not one describing the input to
+            // a component-node.
+            KALDI_ASSERT(nnet_->IsOutputNode(nodes_retained[n]));
+            config_os << "output-node name=" << node_name << " input=";
+            node.descriptor.WriteConfig(config_os, node_names_modified);
+            config_os << " objective=" << (node.u.objective_type == kLinear ?
+                                           "linear" : "quadratic");
+            break;
+          case kComponent:
+	    if (modify_component_[node.u.component_index] == 0) {
+	      config_os << "component-node name=" << node_name << " component="
+			<< nnet_->GetComponentName(node.u.component_index)
+			<< " input=";
+	      nnet_->GetNode(nodes_retained[n-1]).descriptor.WriteConfig(config_os,
+							 node_names_modified);
+	      //  continue;
+	    } else {
+	      KALDI_LOG << "Skipping " << node_name;
+	    }
+            break;
+          case kDimRange:
+            config_os << "dim-range-node name=" << node_name << " input-node="
+                      << node_names_modified[node.u.node_index]
+                      << " dim-offset=" << node.dim_offset
+                      << " dim=" << node.dim;
+            break;
+          default:
+            KALDI_ERR << "Unexpected node type.";
+        }
+        config_os << "\n";
+      }
+    }
+    KALDI_LOG << config_os.str();
+    KALDI_LOG << "---";
+    
+    std::istringstream config_is(config_os.str());
+    nnet_->ReadConfig(config_is);
+    nnet_->RemoveOrphanNodes();
+    nnet_->RemoveOrphanComponents();
+  }
+  std::vector<int32> modification_index_;
+  std::vector<int32> modify_component_;
+  std::vector<int32> delete_component_;
+
+  struct ModifiedComponentInfo {
+    std::string component_name_a;  // The original name of the component "_a"
+    // e.g. "some_component_a".
+    std::string component_name_b;  // The original name of the component "_b"
+    // e.g. "some_component_b".
+    int32 component_a_index;  // component-index of the left part of the
+    // original component, which will have a name
+    // like "some_component_a".
+    int32 component_b_index;  // component-index of the right part of the
+    // original component, which will have a name
+    // like "some_component_b".
+    int32 component_index;  // Index of the component we are inserting.
+    std::string component_name;  // The final name of the component,
+    // e.g. "some_component".
+
+  };
+  
+  std::vector<ModifiedComponentInfo> modified_component_info_;
+  Nnet *nnet_;
+  std::string component_name_pattern_;
+};
 
 // this class implements the internals of the edit directive 'apply-svd'.
 class SvdApplier {
  public:
   SvdApplier(const std::string component_name_pattern,
              int32 bottleneck_dim,
+	     BaseFloat energy_threshold,
+	     BaseFloat shrinkage_threshold,
              Nnet *nnet): nnet_(nnet),
                           bottleneck_dim_(bottleneck_dim),
+			  energy_threshold_(energy_threshold),
+			  shrinkage_threshold_(shrinkage_threshold),
                           component_name_pattern_(component_name_pattern) { }
   void ApplySvd() {
     DecomposeComponents();
@@ -648,43 +900,57 @@ class SvdApplier {
                      << " -> " << output_dim;
           continue;
         }
-        size_t n = modified_component_info_.size();
-        modification_index_[c] = n;
-        modified_component_info_.resize(n + 1);
-        ModifiedComponentInfo &info = modified_component_info_[n];
-        info.component_index = c;
-        info.component_name = component_name;
         Component *component_a = NULL, *component_b = NULL;
-        info.component_name_a = component_name + "_a";
-        info.component_name_b = component_name + "_b";
-        if (nnet_->GetComponentIndex(info.component_name_a) >= 0)
-          KALDI_ERR << "Neural network already has a component named "
-                    << info.component_name_a;
-        if (nnet_->GetComponentIndex(info.component_name_b) >= 0)
-          KALDI_ERR << "Neural network already has a component named "
-                    << info.component_name_b;
-        DecomposeComponent(component_name, *affine, &component_a, &component_b);
-        info.component_a_index = nnet_->AddComponent(info.component_name_a,
-                                                     component_a);
-        info.component_b_index = nnet_->AddComponent(info.component_name_b,
-                                                     component_b);
+	if(DecomposeComponent(component_name, *affine, &component_a, &component_b)) {
+	  size_t n = modified_component_info_.size();
+	  modification_index_[c] = n;
+	  modified_component_info_.resize(n + 1);
+	  ModifiedComponentInfo &info = modified_component_info_[n];
+	  info.component_index = c;
+	  info.component_name = component_name;
+	  info.component_name_a = component_name + "_a";
+	  info.component_name_b = component_name + "_b";
+	  if (nnet_->GetComponentIndex(info.component_name_a) >= 0)
+	    KALDI_ERR << "Neural network already has a component named "
+		      << info.component_name_a;
+	  if (nnet_->GetComponentIndex(info.component_name_b) >= 0)
+	    KALDI_ERR << "Neural network already has a component named "
+		      << info.component_name_b;
+	  info.component_a_index = nnet_->AddComponent(info.component_name_a,
+						       component_a);
+	  info.component_b_index = nnet_->AddComponent(info.component_name_b,
+						       component_b);
+	}
       }
     }
     KALDI_LOG << "Converted " << modified_component_info_.size()
               << " components to FixedAffineComponent.";
   }
 
-  void DecomposeComponent(const std::string &component_name,
+  int32 BinarySearch(const Vector<BaseFloat> &input_vector,
+		     int32 lower,
+		     int32 upper,
+		     BaseFloat min_val) {
+    int32 mid = (lower + upper) / 2;
+    if (lower < upper - 1) {
+      SubVector<BaseFloat> subset(input_vector, 0, mid);
+      if (subset.Sum() < min_val) {
+	return BinarySearch(input_vector, mid, upper, min_val);
+      } else {
+	return BinarySearch(input_vector, lower, mid, min_val);
+      }
+    }
+    return upper;
+  }
+  
+  bool DecomposeComponent(const std::string &component_name,
                           const AffineComponent &affine,
                           Component **component_a_out,
                           Component **component_b_out) {
     int32 input_dim = affine.InputDim(), output_dim = affine.OutputDim();
-    Matrix<BaseFloat> linear_params(affine.LinearParams());
-    Vector<BaseFloat> bias_params(affine.BiasParams());
-
-    int32 bottleneck_dim = bottleneck_dim_,
-        middle_dim = std::min<int32>(input_dim, output_dim);
-    KALDI_ASSERT(bottleneck_dim < middle_dim);
+    Matrix<BaseFloat> linear_params(affine.LinearParams()); //input_dim
+    Vector<BaseFloat> bias_params(affine.BiasParams()); //output_dim
+    int32 middle_dim = std::min<int32>(input_dim, output_dim);
 
     // note: 'linear_params' is of dimension output_dim by input_dim.
     Vector<BaseFloat> s(middle_dim);
@@ -694,14 +960,38 @@ class SvdApplier {
     // make sure the singular values are sorted from greatest to least value.
     SortSvd(&s, &B, &A);
     BaseFloat s_sum_orig = s.Sum();
-    s.Resize(bottleneck_dim, kCopyData);
-    A.Resize(bottleneck_dim, input_dim, kCopyData);
-    B.Resize(output_dim, bottleneck_dim, kCopyData);
-    BaseFloat s_sum_reduced = s.Sum();
+    Vector<BaseFloat> s2(s.Dim());
+    s2.AddVec2(1.0, s);
+    s_sum_orig = s2.Sum();
+    if (energy_threshold_ > 0) {
+      BaseFloat min_singular_sum = energy_threshold_ * s2.Sum();
+      bottleneck_dim_ = BinarySearch(s2, 0, s2.Dim()-1, min_singular_sum);
+    } 
+    SubVector<BaseFloat> this_part(s2, 0, bottleneck_dim_);
+    BaseFloat s_sum_reduced = this_part.Sum();
+    BaseFloat shrinkage_ratio =
+      static_cast<BaseFloat>(bottleneck_dim_ * (input_dim+output_dim))
+      / static_cast<BaseFloat>(input_dim * output_dim);
+    if (shrinkage_ratio > shrinkage_threshold_) {
+      KALDI_LOG << "Shrinkage ratio " << shrinkage_ratio
+		<< " greater than threshold : " << shrinkage_threshold_
+		<< " Skipping SVD for this layer.";
+      return false;
+    }
+
+    s.Resize(bottleneck_dim_, kCopyData);
+    A.Resize(bottleneck_dim_, input_dim, kCopyData);
+    B.Resize(output_dim, bottleneck_dim_, kCopyData);
     KALDI_LOG << "For component " << component_name
               << " singular value sum changed by "
               << (s_sum_orig - s_sum_reduced)
               << " (from " << s_sum_orig << " to " << s_sum_reduced << ")";
+    KALDI_LOG << "For component " << component_name
+	      << " dimension reduced from "
+              << " (" << input_dim << "," << output_dim << ")"
+	      << " to [(" << input_dim << "," << bottleneck_dim_
+	      << "), (" << bottleneck_dim_ << "," << output_dim <<")]";
+    KALDI_LOG << "shrinkage ratio : " << shrinkage_ratio;
 
     // we'll divide the singular values equally between the two
     // parameter matrices.
@@ -720,23 +1010,22 @@ class SvdApplier {
     component_b->SetUpdatableConfigs(affine);
     *component_a_out = component_a;
     *component_b_out = component_b;
+    return true;
   }
 
   // This function modifies the topology of the neural network, splitting
   // up the components we're modifying into two parts.
   // Suppose we have something like:
   //  component-node name=some_node component=some_component input=
+  // nodes_to_split will be a list of component-node indexes that we
+  // need to split into two.  These will be nodes like
+  // component-node name=component_node_name component=component_name input=xxx
+  // where 'component_name' is one of the components that we're splitting.
+  // node_names_modified is nnet_->node_names_ except with, for the nodes that
+  // we are splitting in two, "some_node_name" replaced with
+  // "some_node_name_b" (the second of the two split nodes).
   void ModifyTopology() {
-    // nodes_to_split will be a list of component-node indexes that we
-    // need to split into two.  These will be nodes like
-    // component-node name=component_node_name component=component_name input=xxx
-    // where 'component_name' is one of the components that we're splitting.
     std::set<int32> nodes_to_modify;
-
-
-    // node_names_modified is nnet_->node_names_ except with, for the nodes that
-    // we are splitting in two, "some_node_name" replaced with
-    // "some_node_name_b" (the second of the two split nodes).
     std::vector<std::string> node_names_orig = nnet_->GetNodeNames(),
         node_names_modified = node_names_orig;
 
@@ -856,6 +1145,8 @@ class SvdApplier {
 
   Nnet *nnet_;
   int32 bottleneck_dim_;
+  BaseFloat energy_threshold_;
+  BaseFloat shrinkage_threshold_;
   std::string component_name_pattern_;
 };
 
@@ -1088,14 +1379,26 @@ void ReadEditConfig(std::istream &edit_config_is, Nnet *nnet) {
     } else if (directive == "apply-svd") {
       std::string name_pattern;
       int32 bottleneck_dim = -1;
-      if (!config_line.GetValue("name", &name_pattern) ||
-          !config_line.GetValue("bottleneck-dim", &bottleneck_dim))
-        KALDI_ERR << "Edit directive apply-svd requires 'name' and "
-            "'bottleneck-dim' to be specified.";
-      if (bottleneck_dim <= 0)
-        KALDI_ERR << "Bottleneck-dim must be positive in apply-svd command.";
-      SvdApplier applier(name_pattern, bottleneck_dim, nnet);
+      BaseFloat energy_threshold = -1;
+      BaseFloat shrinkage_threshold = 1.0;
+      config_line.GetValue("bottleneck-dim", &bottleneck_dim);
+      config_line.GetValue("energy-threshold", &energy_threshold);
+      config_line.GetValue("shrinkage-threshold", &shrinkage_threshold);
+      if (!config_line.GetValue("name", &name_pattern))
+        KALDI_ERR << "Edit directive apply-svd requires 'name' to be specified.";
+      if (bottleneck_dim <= 0 && energy_threshold <=0)
+        KALDI_ERR << "Either Bottleneck-dim or energy-threshold "
+	  "must be set in apply-svd command. "
+	  "Range of possible values is (0 1]";
+      SvdApplier applier(name_pattern, bottleneck_dim, energy_threshold, shrinkage_threshold, nnet);
       applier.ApplySvd();
+    } else if (directive == "reverse-svd") {
+      std::string name_pattern;
+      if (!config_line.GetValue("name", &name_pattern)) {
+	KALDI_ERR << "Edit directive reverse-svd requires 'name' to be specified.";
+      }
+      SvdReversal reversal(name_pattern, nnet);
+      reversal.ReverseSvd();
     } else if (directive == "reduce-rank") {
       std::string name_pattern;
       int32 rank = -1;
