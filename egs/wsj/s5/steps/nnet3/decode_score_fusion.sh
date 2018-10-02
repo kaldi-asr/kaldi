@@ -115,6 +115,17 @@ if [ -z $frame_subsampling_factor ]; then
    frame_subsampling_factor=`cat ${model_dirs[0]}/frame_subsampling_factor` || exit 1;
 fi
 
+# check if standard chain system or not.
+if [ $frame_subsampling_factor -e 3 ]; then
+   if [ $acwt -ne 1.0 ] || [ $post_decode_acwt -ne 10.0 ] then
+     echo -e '\n\n'
+     echo "$0 WARNING: In stanard chain sysemt, acwt = 1.0, post_decode_acwt = 10.0 \\"
+     echo "$0 WARNING: Your acwt = $awct, post_decode_acwt = $post_decode_acwt \\"
+     echo "$0 WARNING: This is OK if you know what you are doing \\"
+     echo -e '\n\n'
+   fi
+fi
+
 frame_subsampling_opt=
 if [ $frame_subsampling_factor -ne 1 ]; then
   # e.g. for 'chain' systems
