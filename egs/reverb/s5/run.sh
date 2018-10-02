@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Copyright 2013-2014 MERL (author: Felix Weninger and Shinji Watanabe)
-#                     JHU CLSP (Szu-Jui Chen)
+#                     Johns Hopkins University (author: Szu-Jui Chen)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
