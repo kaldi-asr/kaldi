@@ -39,7 +39,7 @@ that you run the commands one by one by copying and pasting into the shell."
 #  If they are not found, the local/gp_install.sh script will install them.
 #local/gp_check_tools.sh $PWD path.sh || exit 1;
 
-. path.sh || { echo "Cannot source path.sh"; exit 1; }
+. ./path.sh || { echo "Cannot source path.sh"; exit 1; }
 
 # Set the locations of the GlobalPhone corpus and language models
 GP_CORPUS=/idiap/resource/database/GLOBALPHONE

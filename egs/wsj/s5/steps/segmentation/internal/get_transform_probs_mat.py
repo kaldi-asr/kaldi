@@ -38,8 +38,9 @@ def get_args():
                         help="The fraction of garbage probability "
                         "to add to silence")
     parser.add_argument("--sil-scale", type=float,
-			default=1.0,
-			help="Scale on the silence probability (make this more that one to encourage decoding silence).")
+                        default=1.0, help="""Scale on the silence probability
+                        (make this more than one to encourage
+                        decoding silence).""")
 
     args = parser.parse_args()
 
@@ -47,7 +48,7 @@ def get_args():
 
 
 def run(args):
-    priors = [[1, 1, 1]]
+    priors = [[1.0, 1.0, 1.0]]
     if args.priors is not None:
         priors = common_lib.read_matrix_ascii(args.priors)
         if len(priors) != 0 and len(priors[0]) != 3:

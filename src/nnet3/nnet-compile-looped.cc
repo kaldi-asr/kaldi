@@ -37,25 +37,36 @@ void ModifyNnetIvectorPeriod(int32 ivector_period,
     bool b = config_line.ParseLine(config_lines[i]);
     KALDI_ASSERT(b && "Could not parse config line.");
     if (config_line.FirstToken() == "component-node") {
+      // What we're trying to do here is: find a line like:
+      //  component-node name=foo component=foo input=Append(bar, ReplaceIndex(ivector, t, 0))
+      // we want to replace it with something like:
+      // component-node name=foo component=foo input=Append(bar, ReplaceIndex(ivector, t, 0))
+      // .. and we want this to also work if instead of 'ivector' it has something like
+      // Scale(0.5, ivector).  We assume that ReplaceIndex() expressions only occur in this
+      // type of context.
       std::string whole_line = config_lines[i];
       std::string to_search_for = "ReplaceIndex(";
       std::string::size_type to_search_for_size = to_search_for.size();
       std::string::size_type pos = whole_line.find(to_search_for);
       if (pos != std::string::npos) {
-        std::string::size_type comma_pos = whole_line.find(',', pos);
+        std::string::size_type comma_pos = whole_line.find(", t, 0)", pos);
         if (comma_pos != std::string::npos) {
           // if the line contained ReplaceIndex(ivector, t, 0),
           // descriptor_name would now be 'ivector'.
           std::string descriptor_name =
               whole_line.substr(pos + to_search_for_size,
                                 comma_pos - (pos + to_search_for_size));
-          std::string::size_type end_pos = whole_line.find(')', pos);
-          std::string::size_type expr_size = end_pos + 1 - pos;
+          // Note: 7, below, is the size of: ", t, 0)".
+          std::string::size_type end_pos = comma_pos + 7;
+          std::string::size_type expr_size = end_pos - pos;
           // e.g. expr_size would be strlen("ReplaceIndex(ivector, t, 0)").
           std::ostringstream to_replace_with;
           to_replace_with << "Round(" << descriptor_name << ", " << ivector_period << ")";
           whole_line.replace(pos, expr_size, to_replace_with.str());
           config_to_read << whole_line << "\n";
+        } else {
+          KALDI_ERR << "Could not process the ReplaceIndex expression in: "
+                    << whole_line;
         }
       }
     }
@@ -150,26 +161,24 @@ static void CreateComputationRequestInternal(
 }
 
 
-void CreateLoopedComputationRequestSimple(const Nnet &nnet,
-                                          int32 chunk_size,
-                                          int32 frame_subsampling_factor,
-                                          int32 ivector_period,
-                                          int32 extra_left_context_begin,
-                                          int32 extra_right_context,
-                                          int32 num_sequences,
-                                          ComputationRequest *request1,
-                                          ComputationRequest *request2,
-                                          ComputationRequest *request3) {
+void CreateLoopedComputationRequest(const Nnet &nnet,
+                                    int32 chunk_size,
+                                    int32 frame_subsampling_factor,
+                                    int32 ivector_period,
+                                    int32 left_context_begin,
+                                    int32 right_context,
+                                    int32 num_sequences,
+                                    ComputationRequest *request1,
+                                    ComputationRequest *request2,
+                                    ComputationRequest *request3) {
   bool has_ivector = (nnet.InputDim("ivector") > 0);
-  int32 left_context, right_context;
-  ComputeSimpleNnetContext(nnet, &left_context, &right_context);
   KALDI_ASSERT(chunk_size % frame_subsampling_factor == 0 &&
                chunk_size % nnet.Modulus() == 0 &&
                chunk_size % ivector_period == 0);
-  KALDI_ASSERT(extra_left_context_begin >= 0 && extra_right_context >= 0);
+  KALDI_ASSERT(left_context_begin >= 0 && right_context >= 0);
   // note, 'end' is one past the last one.
-  int32 chunk1_input_begin_t = - left_context - extra_left_context_begin,
-      chunk1_input_end_t = chunk_size + right_context + extra_right_context,
+  int32 chunk1_input_begin_t = - left_context_begin,
+      chunk1_input_end_t = chunk_size + right_context,
       chunk2_input_begin_t = chunk1_input_end_t,
       chunk2_input_end_t = chunk2_input_begin_t + chunk_size,
       chunk3_input_begin_t = chunk2_input_end_t,
@@ -349,10 +358,25 @@ void CompileLooped(const Nnet &nnet,
 }
 
 
+void CreateLoopedComputationRequestSimple(const Nnet &nnet,
+                                          int32 chunk_size,
+                                          int32 frame_subsampling_factor,
+                                          int32 ivector_period,
+                                          int32 extra_left_context_begin,
+                                          int32 extra_right_context,
+                                          int32 num_sequences,
+                                          ComputationRequest *request1,
+                                          ComputationRequest *request2,
+                                          ComputationRequest *request3) {
+  int32 left_context, right_context;
+  ComputeSimpleNnetContext(nnet, &left_context, &right_context);
 
-
-
-
+  CreateLoopedComputationRequest(nnet, chunk_size, frame_subsampling_factor,
+                                 ivector_period,
+                                 extra_left_context_begin + left_context,
+                                 extra_right_context + right_context,
+                                 num_sequences, request1, request2, request3);
+}
 
 } // namespace nnet3
 } // namespace kaldi

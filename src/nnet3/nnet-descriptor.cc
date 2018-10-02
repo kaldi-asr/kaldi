@@ -499,7 +499,7 @@ bool Descriptor::Parse(const std::vector<std::string> &node_names,
   }
   if (**next_token != "end of input")
     KALDI_ERR << "Parsing Descriptor, expected end of input but got "
-              << "'" <<  *next_token << "'";
+              << "'" <<  **next_token << "'";
   Descriptor *desc = gen_desc->ConvertToDescriptor();
   *this = *desc;
   delete desc;
@@ -841,6 +841,7 @@ bool GeneralDescriptor::Normalize(GeneralDescriptor *desc) {
         desc->descriptor_type_ = child->descriptor_type_;
         desc->value1_ = child->value1_;
         desc->value2_ = child->value2_;
+        desc->alpha_ = child->alpha_;
         child->descriptors_.clear();  // avoid delete in destructor.
         delete child;
         changed = true;
@@ -897,6 +898,7 @@ bool GeneralDescriptor::Normalize(GeneralDescriptor *desc) {
         desc->descriptors_.swap(child->descriptors_);
         desc->value1_ = child->value1_;
         desc->value2_ = child->value2_;
+        desc->alpha_ = child->alpha_;
         child->descriptors_.clear();  // avoid delete in destructor.
         delete child;
         changed = true;

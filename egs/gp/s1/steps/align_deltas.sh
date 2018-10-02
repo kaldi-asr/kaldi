@@ -80,7 +80,7 @@ if [ $# != 4 ]; then
   error_exit $usage;
 fi
 
-[ -f path.sh ] && . path.sh
+[ -f path.sh ] && . ./path.sh
 
 data=$1
 lang=$2

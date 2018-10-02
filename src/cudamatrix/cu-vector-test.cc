@@ -2,7 +2,7 @@
 
 // Copyright 2013 Lucas Ondel
 //           2013 Johns Hopkins University (author: Daniel Povey)
-//           2017 Hossein Hadian
+//           2017 Hossein Hadian, Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -345,7 +345,16 @@ template<typename Real> void CuVectorUnitTestSum() {
     A.SetRandn();
     ones.Set(1.0);
 
-    AssertEqual(VecVec(A, ones), A.Sum());
+    Real x = VecVec(A, ones);
+    Real y = A.Sum();
+    Real diff = std::abs(x - y);
+    // Note: CuVectorBase<> does not have an ApplyAbs() member
+    // function, so we copy back to a host vector for simplicity in
+    // this test case.
+    Vector<Real> A_host(A);
+    A_host.ApplyAbs();
+    Real s = A_host.Sum();
+    KALDI_ASSERT ( diff <= 1.0e-04 * s);
   }
 }
 
@@ -550,8 +559,9 @@ template<typename Real> void CuVectorUnitTestApplyFloor() {
 
     Vector<Real> vector(cu_vector);
     BaseFloat floor = 0.33 * (-5 + Rand() % 10);
-    int32 i = cu_vector.ApplyFloor(floor);
-    int32 j = vector.ApplyFloor(floor);
+    MatrixIndexT i, j;
+    cu_vector.ApplyFloor(floor, &i);
+    vector.ApplyFloor(floor, &j);
 
     CuVector<Real> cu2(vector);
 
@@ -563,6 +573,21 @@ template<typename Real> void CuVectorUnitTestApplyFloor() {
   }
 }
 
+template<typename Real> void CuVectorUnitTestApplyFloorNoCount() {
+  for (int32 l = 0; l < 10; l++) {
+    int32 dim = 100 + Rand() % 700;
+    CuVector<Real> cu_vector1(dim);
+    cu_vector1.SetRandn();
+    CuVector<Real> cu_vector2(cu_vector1);
+
+    BaseFloat floor = 0.33 * (-5 + Rand() % 10);
+    MatrixIndexT dummy_count;
+    cu_vector1.ApplyFloor(floor, &dummy_count);
+    cu_vector2.ApplyFloor(floor, nullptr);
+    AssertEqual(cu_vector1, cu_vector2);
+  }
+}
+
 template<typename Real> void CuVectorUnitTestApplyCeiling() {
   for (int32 l = 0; l < 10; l++) {
     int32 dim = 100 + Rand() % 700;
@@ -571,8 +596,9 @@ template<typename Real> void CuVectorUnitTestApplyCeiling() {
 
     Vector<Real> vector(cu_vector);
     BaseFloat floor = 0.33 * (-5 + Rand() % 10);
-    int32 i = cu_vector.ApplyCeiling(floor);
-    int32 j = vector.ApplyCeiling(floor);
+    MatrixIndexT i, j;
+    cu_vector.ApplyCeiling(floor, &i);
+    vector.ApplyCeiling(floor, &j);
 
     CuVector<Real> cu2(vector);
 
@@ -581,6 +607,21 @@ template<typename Real> void CuVectorUnitTestApplyCeiling() {
       KALDI_WARN << "ApplyCeiling return code broken...";
     }
     KALDI_ASSERT(i==j);
+  }
+}
+
+template<typename Real> void CuVectorUnitTestApplyCeilingNoCount() {
+  for (int32 l = 0; l < 10; l++) {
+    int32 dim = 100 + Rand() % 700;
+    CuVector<Real> cu_vector1(dim);
+    cu_vector1.SetRandn();
+    CuVector<Real> cu_vector2(cu_vector1);
+
+    BaseFloat floor = 0.33 * (-5 + Rand() % 10);
+    MatrixIndexT dummy_count;
+    cu_vector1.ApplyCeiling(floor, &dummy_count);
+    cu_vector2.ApplyCeiling(floor, nullptr);
+    AssertEqual(cu_vector1, cu_vector2);
   }
 }
 
@@ -770,6 +811,8 @@ template<typename Real> void CuVectorUnitTest() {
   CuVectorUnitTestApplyExp<Real>();
   CuVectorUnitTestApplyLog<Real>();
   CuVectorUnitTestApplyFloor<Real>();
+  CuVectorUnitTestApplyFloorNoCount<Real>();
+  CuVectorUnitTestApplyCeilingNoCount<Real>();
   CuVectorUnitTestApplyCeiling<Real>();
   CuVectorUnitTestApplyPow<Real>();
   CuVectorUnitTestAddMatVec<Real>();

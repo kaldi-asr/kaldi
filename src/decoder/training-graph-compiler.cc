@@ -1,5 +1,7 @@
 // decoder/training-graph-compiler.cc
-// Copyright 2009-2011 Microsoft Corporation
+
+// Copyright 2009-2011  Microsoft Corporation
+//                2018  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -39,16 +41,16 @@ TrainingGraphCompiler::TrainingGraphCompiler(const TransitionModel &trans_model,
                            disambig_syms_[i]))
       KALDI_ERR << "Disambiguation symbol " << disambig_syms_[i]
                 << " is also a phone.";
-  
-  int32 subseq_symbol = 1 + phone_syms.back();
-  if (!disambig_syms_.empty() && subseq_symbol <= disambig_syms_.back())
-    subseq_symbol = 1 + disambig_syms_.back();
+
+  subsequential_symbol_ = 1 + phone_syms.back();
+  if (!disambig_syms_.empty() && subsequential_symbol_ <= disambig_syms_.back())
+    subsequential_symbol_ = 1 + disambig_syms_.back();
 
   {
     int32 N = ctx_dep.ContextWidth(),
         P = ctx_dep.CentralPosition();
     if (P != N-1)
-      AddSubsequentialLoop(subseq_symbol, lex_fst_);  // This is needed for
+      AddSubsequentialLoop(subsequential_symbol_, lex_fst_);  // This is needed for
     // systems with right-context or we will not successfully compose
     // with C.
   }
@@ -80,25 +82,19 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
 
   KALDI_ASSERT(phone2word_fst.Start() != kNoStateId);
 
-  ContextFst<StdArc> *cfst = NULL;
-  {  // make cfst [ it's expanded on the fly ]
-    const std::vector<int32> &phone_syms = trans_model_.GetPhones();  // needed to create context fst.
-    int32 subseq_symbol = phone_syms.back() + 1;
-    if (!disambig_syms_.empty() && subseq_symbol <= disambig_syms_.back())
-      subseq_symbol = 1 + disambig_syms_.back();
+  const std::vector<int32> &phone_syms = trans_model_.GetPhones();  // needed to create context fst.
 
-    cfst = new ContextFst<StdArc>(subseq_symbol,
-                                  phone_syms,
-                                  disambig_syms_,
-                                  ctx_dep_.ContextWidth(),
-                                  ctx_dep_.CentralPosition());
-  }
+  // inv_cfst will be expanded on the fly, as needed.
+  InverseContextFst inv_cfst(subsequential_symbol_,
+                             phone_syms,
+                             disambig_syms_,
+                             ctx_dep_.ContextWidth(),
+                             ctx_dep_.CentralPosition());
+
 
   VectorFst<StdArc> ctx2word_fst;
-  ComposeContextFst(*cfst, phone2word_fst, &ctx2word_fst);
-  // ComposeContextFst is like Compose but faster for this particular Fst type.
-  // [and doesn't expand too many arcs in the ContextFst.]
-
+  ComposeDeterministicOnDemandInverse(phone2word_fst, &inv_cfst, &ctx2word_fst);
+  // now ctx2word_fst is C * LG, assuming phone2word_fst is written as LG.
   KALDI_ASSERT(ctx2word_fst.Start() != kNoStateId);
 
   HTransducerConfig h_cfg;
@@ -106,15 +102,15 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
 
   std::vector<int32> disambig_syms_h; // disambiguation symbols on
   // input side of H.
-  VectorFst<StdArc> *H = GetHTransducer(cfst->ILabelInfo(),
+  VectorFst<StdArc> *H = GetHTransducer(inv_cfst.IlabelInfo(),
                                         ctx_dep_,
                                         trans_model_,
                                         h_cfg,
                                         &disambig_syms_h);
-  
+
   VectorFst<StdArc> &trans2word_fst = *out_fst;  // transition-id to word.
   TableCompose(*H, ctx2word_fst, &trans2word_fst);
-  
+
   KALDI_ASSERT(trans2word_fst.Start() != kNoStateId);
 
   // Epsilon-removal and determinization combined. This will fail if not determinizable.
@@ -128,19 +124,20 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
       RemoveEpsLocal(&trans2word_fst);
   }
 
-  
+
   // Encoded minimization.
   MinimizeEncoded(&trans2word_fst);
 
   std::vector<int32> disambig;
+  bool check_no_self_loops = true;
   AddSelfLoops(trans_model_,
                disambig,
                opts_.self_loop_scale,
                opts_.reorder,
+               check_no_self_loops,
                &trans2word_fst);
 
   delete H;
-  delete cfst;
   return true;
 }
 
@@ -154,7 +151,7 @@ bool TrainingGraphCompiler::CompileGraphsFromText(
     VectorFst<StdArc> *word_fst = new VectorFst<StdArc>();
     MakeLinearAcceptor(transcripts[i], word_fst);
     word_fsts[i] = word_fst;
-  }    
+  }
   bool ans = CompileGraphs(word_fsts, out_fsts);
   for (size_t i = 0; i < transcripts.size(); i++)
     delete word_fsts[i];
@@ -171,19 +168,14 @@ bool TrainingGraphCompiler::CompileGraphs(
   out_fsts->resize(word_fsts.size(), NULL);
   if (word_fsts.empty()) return true;
 
-  ContextFst<StdArc> *cfst = NULL;
-  {  // make cfst [ it's expanded on the fly ]
-    const std::vector<int32> &phone_syms = trans_model_.GetPhones();  // needed to create context fst.
-    int32 subseq_symbol = phone_syms.back() + 1;
-    if (!disambig_syms_.empty() && subseq_symbol <= disambig_syms_.back())
-      subseq_symbol = 1 + disambig_syms_.back();
+  const std::vector<int32> &phone_syms = trans_model_.GetPhones();  // needed to create context fst.
 
-    cfst = new ContextFst<StdArc>(subseq_symbol,
-                                  phone_syms,
-                                  disambig_syms_,
-                                  ctx_dep_.ContextWidth(),
-                                  ctx_dep_.CentralPosition());
-  }
+  // inv_cfst will be expanded on the fly, as needed.
+  InverseContextFst inv_cfst(subsequential_symbol_,
+                             phone_syms,
+                             disambig_syms_,
+                             ctx_dep_.ContextWidth(),
+                             ctx_dep_.CentralPosition());
 
   for (size_t i = 0; i < word_fsts.size(); i++) {
     VectorFst<StdArc> phone2word_fst;
@@ -192,12 +184,10 @@ bool TrainingGraphCompiler::CompileGraphs(
 
     KALDI_ASSERT(phone2word_fst.Start() != kNoStateId &&
                  "Perhaps you have words missing in your lexicon?");
-    
-    VectorFst<StdArc> ctx2word_fst;
-    ComposeContextFst(*cfst, phone2word_fst, &ctx2word_fst);
-    // ComposeContextFst is like Compose but faster for this particular Fst type.
-    // [and doesn't expand too many arcs in the ContextFst.]
 
+    VectorFst<StdArc> ctx2word_fst;
+    ComposeDeterministicOnDemandInverse(phone2word_fst, &inv_cfst, &ctx2word_fst);
+    // now ctx2word_fst is C * LG, assuming phone2word_fst is written as LG.
     KALDI_ASSERT(ctx2word_fst.Start() != kNoStateId);
 
     (*out_fsts)[i] = ctx2word_fst.Copy();  // For now this contains the FST with symbols
@@ -208,7 +198,7 @@ bool TrainingGraphCompiler::CompileGraphs(
   h_cfg.transition_scale = opts_.transition_scale;
 
   std::vector<int32> disambig_syms_h;
-  VectorFst<StdArc> *H = GetHTransducer(cfst->ILabelInfo(),
+  VectorFst<StdArc> *H = GetHTransducer(inv_cfst.IlabelInfo(),
                                         ctx_dep_,
                                         trans_model_,
                                         h_cfg,
@@ -226,15 +216,17 @@ bool TrainingGraphCompiler::CompileGraphs(
       if (opts_.rm_eps)
         RemoveEpsLocal(&trans2word_fst);
     }
-    
+
     // Encoded minimization.
     MinimizeEncoded(&trans2word_fst);
 
     std::vector<int32> disambig;
+    bool check_no_self_loops = true;
     AddSelfLoops(trans_model_,
                  disambig,
                  opts_.self_loop_scale,
                  opts_.reorder,
+                 check_no_self_loops,
                  &trans2word_fst);
 
     KALDI_ASSERT(trans2word_fst.Start() != kNoStateId);
@@ -243,7 +235,6 @@ bool TrainingGraphCompiler::CompileGraphs(
   }
 
   delete H;
-  delete cfst;
   return true;
 }
 

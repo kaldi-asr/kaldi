@@ -148,6 +148,9 @@ for f in $data/feats.scp $lang/L.fst $alidir/ali.1.gz $alidir/final.mdl $alidir/
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
+# Copy phones.txt from ali-dir to dir. Later, steps/nnet3/decode.sh will
+# use it to check compatibility between training and decoding phone-sets.
+cp $alidir/phones.txt $dir
 
 # Set some variables.
 num_leaves=`tree-info $alidir/tree 2>/dev/null | grep num-pdfs | awk '{print $2}'` || exit 1

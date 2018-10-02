@@ -54,7 +54,7 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
                 << kaldi::PrintableRxfilename(rxfilename);
     } else {
       KALDI_WARN << "We fail to read FST header from "
-                 << kaldi::PrintableRxfilename(rxfilename) 
+                 << kaldi::PrintableRxfilename(rxfilename)
                  << ". A NULL pointer is returned.";
       return NULL;
     }
@@ -92,16 +92,15 @@ Fst<StdArc> *ReadFstKaldiGeneric(std::string rxfilename, bool throw_on_err) {
 }
 
 VectorFst<StdArc> *CastOrConvertToVectorFst(Fst<StdArc> *fst) {
-  // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>         
+  // This version currently supports ConstFst<StdArc> or VectorFst<StdArc>
   std::string real_type = fst->Type();
   KALDI_ASSERT(real_type == "vector" || real_type == "const");
   if (real_type == "vector") {
     return dynamic_cast<VectorFst<StdArc> *>(fst);
   } else {
-    // As the 'fst' can't cast to VectorFst, I'm creating a new 
-    // VectorFst<StdArc> initialized by 'fst', and deletes 'fst'.
+    // As the 'fst' can't cast to VectorFst, we carete a new
+    // VectorFst<StdArc> initialized by 'fst', and delete 'fst'.
     VectorFst<StdArc> *new_fst = new VectorFst<StdArc>(*fst);
-    KALDI_WARN << "The 'fst' is deleted.";
     delete fst;
     return new_fst;
   }
@@ -121,6 +120,25 @@ void WriteFstKaldi(const VectorFst<StdArc> &fst,
   kaldi::Output ko(wxfilename, write_binary, write_header);
   FstWriteOptions wopts(kaldi::PrintableWxfilename(wxfilename));
   fst.Write(ko.Stream(), wopts);
+}
+
+fst::VectorFst<fst::StdArc> *ReadAndPrepareLmFst(std::string rxfilename) {
+  // ReadFstKaldi() will die with exception on failure.
+  fst::VectorFst<fst::StdArc> *ans = fst::ReadFstKaldi(rxfilename);
+  if (ans->Properties(fst::kAcceptor, true) == 0) {
+    // If it's not already an acceptor, project on the output, i.e. copy olabels
+    // to ilabels.  Generally the G.fst's on disk will have the disambiguation
+    // symbol #0 on the input symbols of the backoff arc, and projection will
+    // replace them with epsilons which is what is on the output symbols of
+    // those arcs.
+    fst::Project(ans, fst::PROJECT_OUTPUT);
+  }
+  if (ans->Properties(fst::kILabelSorted, true) == 0) {
+    // Make sure LM is sorted on ilabel.
+    fst::ILabelCompare<fst::StdArc> ilabel_comp;
+    fst::ArcSort(ans, ilabel_comp);
+  }
+  return ans;
 }
 
 } // end namespace fst

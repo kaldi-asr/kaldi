@@ -38,11 +38,17 @@ RnnlmComputeStateInfo::RnnlmComputeStateInfo(
     KALDI_ERR << "Non-zero left or right context. Please check your script";
   }
   int32 frame_subsampling_factor = 1;
-  int32 embedding_dim = rnnlm.OutputDim("output");
+  int32 embedding_dim = word_embedding_mat.NumCols();
   if (embedding_dim != rnnlm.OutputDim("output")) {
-    KALDI_ERR << "Embedding file and nnet have different number of words. "
-              << "You might be using a different wordlist "
-                 "here from what is used in training";
+    KALDI_ERR << "Embedding file and nnet have different embedding sizes. ";
+  }
+
+  if (opts.bos_index <= 0 || opts.bos_index >= word_embedding_mat.NumRows()) {
+    KALDI_ERR << "--bos-symbol option isn't set correctly.";
+  }
+
+  if (opts.eos_index <= 0 || opts.eos_index >= word_embedding_mat.NumRows()) {
+    KALDI_ERR << "--eos-symbol option isn't set correctly.";
   }
 
   nnet3::ComputationRequest request1, request2, request3;
@@ -87,6 +93,7 @@ RnnlmComputeState* RnnlmComputeState::GetSuccessorState(int32 next_word) const {
 }
 
 void RnnlmComputeState::AddWord(int32 word_index) {
+  KALDI_ASSERT(word_index > 0 && word_index < info_.word_embedding_mat.NumRows());
   previous_word_ = word_index;
   AdvanceChunk();
 
@@ -115,6 +122,24 @@ BaseFloat RnnlmComputeState::LogProbOfWord(int32 word_index) const {
     log_prob -= normalization_factor_;
   }
   return log_prob;
+}
+
+void RnnlmComputeState::GetLogProbOfWords(CuMatrixBase<BaseFloat> *output) const {
+  const CuMatrix<BaseFloat> &word_embedding_mat = info_.word_embedding_mat;
+
+  KALDI_ASSERT(output->NumRows() == 1
+                && output->NumCols() == word_embedding_mat.NumCols());
+  output->Row(0).AddMatVec(1.0, word_embedding_mat, kNoTrans,
+                   predicted_word_embedding_->Row(0), 0.0);
+
+  // Even without explicit normalization, the log-probs will be close to
+  // correctly normalized due to the way the model was trained.
+  if (info_.opts.normalize_probs) {
+    output->Add(normalization_factor_);
+  }
+
+  // making sure <eps> has almost 0 prob
+  output->ColRange(0, 1).Set(-99.0);
 }
 
 void RnnlmComputeState::AdvanceChunk() {

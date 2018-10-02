@@ -12,7 +12,7 @@
 
 # To be run from one directory above this script.
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 [ $# != 0 ] && echo "Usage: local/swbd1_data_prep.sh" && exit 1;

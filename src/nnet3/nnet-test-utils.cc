@@ -69,20 +69,37 @@ void GenerateConfigSequenceSimpleContext(
                     opts.output_dim :
                     100 + Rand() % 200);
 
-  os << "component name=affine1 type=AffineComponent input-dim="
-     << spliced_dim << " output-dim=" << output_dim << std::endl;
+  if (RandInt(0,1) == 0) {
+    // do it the traditional way with an AffineComponent and an Append() expression.
+    os << "component name=affine1 type=AffineComponent input-dim="
+       << spliced_dim << " output-dim=" << output_dim << std::endl;
 
-  os << "input-node name=input dim=" << input_dim << std::endl;
+    os << "input-node name=input dim=" << input_dim << std::endl;
 
-  os << "component-node name=affine1_node component=affine1 input=Append(";
-  for (size_t i = 0; i < splice_context.size(); i++) {
-    int32 offset = splice_context[i];
-    os << "Offset(input, " << offset << ")";
-    if (i + 1 < splice_context.size())
-      os << ", ";
+    os << "component-node name=affine1_node component=affine1 input=Append(";
+    for (size_t i = 0; i < splice_context.size(); i++) {
+      int32 offset = splice_context[i];
+      os << "Offset(input, " << offset << ")";
+      if (i + 1 < splice_context.size())
+        os << ", ";
+    }
+    os << ")\n";
+    os << "output-node name=output input=affine1_node\n";
+  } else {
+    os << "component name=tdnn1 type=TdnnComponent input-dim="
+       << input_dim << " output-dim=" << output_dim
+       << " time-offsets=";
+    for (size_t i = 0; i < splice_context.size(); i++) {
+      if (i>0) os << ',';
+      os << splice_context[i];
+    }
+    os << " use-bias=" << (RandInt(0,1) == 0 ? "true":"false")
+       << " use-natural-gradient="  << (RandInt(0,1) == 0 ? "true":"false")
+       << std::endl;
+    os << "input-node name=input dim=" << input_dim << std::endl;
+    os << "component-node name=tdnn1_node component=tdnn1 input=input\n";
+    os << "output-node name=output input=tdnn1_node\n";
   }
-  os << ")\n";
-  os << "output-node name=output input=affine1_node\n";
   configs->push_back(os.str());
 }
 
@@ -679,26 +696,36 @@ void GenerateConfigSequenceLstmWithTruncation(
   }
   std::string spliced_input = temp_string_stream.str();
 
-  std::string c_tminus1 = "IfDefined(Offset(c_t, -1))";
+  int32 offset = RandInt(-3, 3);
+  if (offset == 0)
+    offset = -1;
+
+
+  std::string c_tminus1;
+  {
+    std::ostringstream os_temp;
+    os_temp << "IfDefined(Offset(c_t, " << offset << "))";
+    c_tminus1 = os_temp.str();
+  }
   os << "component-node name=c_t component=c input=Sum(c1_t, c2_t)\n";
 
   // i_t
   os << "component-node name=i1 component=Wi-xr input=Append("
-     << spliced_input << ", IfDefined(Offset(r_t, -1)))\n";
+     << spliced_input << ", IfDefined(Offset(r_t, " << offset << ")))\n";
   os << "component-node name=i2 component=Wic "
      << " input=" << c_tminus1 << std::endl;
   os << "component-node name=i_t component=i input=Sum(i1, i2)\n";
 
   // f_t
   os << "component-node name=f1 component=Wf-xr input=Append("
-     << spliced_input << ", IfDefined(Offset(r_t, -1)))\n";
+     << spliced_input << ", IfDefined(Offset(r_t, " << offset << ")))\n";
   os << "component-node name=f2 component=Wfc "
      << " input=" << c_tminus1 << std::endl;
   os << "component-node name=f_t component=f input=Sum(f1, f2)\n";
 
   // o_t
   os << "component-node name=o1 component=Wo-xr input=Append("
-     << spliced_input << ", IfDefined(Offset(r_t, -1)))\n";
+     << spliced_input << ", IfDefined(Offset(r_t, " << offset << ")))\n";
   os << "component-node name=o2 component=Woc input=Sum(c1_t, c2_t)\n";
   os << "component-node name=o_t component=o input=Sum(o1, o2)\n";
 
@@ -707,7 +734,7 @@ void GenerateConfigSequenceLstmWithTruncation(
 
   // g_t
   os << "component-node name=g1 component=Wc-xr input=Append("
-     << spliced_input << ", IfDefined(Offset(r_t, -1)))\n";
+     << spliced_input << ", IfDefined(Offset(r_t, " << offset << ")))\n";
   os << "component-node name=g_t component=g input=g1\n";
 
   // parts of c_t
@@ -757,6 +784,10 @@ void GenerateConfigSequenceLstmType2(
                     100 + Rand() % 200),
       cell_dim = 40 + Rand() % 50,
       projection_dim = std::ceil(cell_dim / (Rand() % 10 + 2));
+
+  int32 offset = RandInt(-3, 3);
+  if (offset == 0)
+    offset = -1;
 
   os << "input-node name=input dim=" << input_dim << std::endl;
   // Parameter Definitions W*(* replaced by - to have valid names)
@@ -819,10 +850,13 @@ void GenerateConfigSequenceLstmType2(
   }
   os << ")\n";
 
-  os << "component-node name=W-r component=W-r input=IfDefined(Offset(r_t, -1))\n";
+  os << "component-node name=W-r component=W-r input=IfDefined(Offset(r_t"
+     << offset << "))\n";
   os << "component-node name=W-m component=W-m input=m_t \n";
-  os << "component-node name=Wic component=Wic input=IfDefined(Offset(c_t, -1))\n";
-  os << "component-node name=Wfc component=Wfc input=IfDefined(Offset(c_t, -1))\n";
+  os << "component-node name=Wic component=Wic input=IfDefined(Offset(c_t"
+     << offset << "))\n";
+  os << "component-node name=Wfc component=Wfc input=IfDefined(Offset(c_t"
+     << offset << "))\n";
   os << "component-node name=Woc component=Woc input=c_t\n";
 
   // Splitting the outputs of W*m node
@@ -857,7 +891,8 @@ void GenerateConfigSequenceLstmType2(
   os << "component-node name=i_t component=i_t input=Sum(W_ix-x_t, Sum(W_ir-r_tminus1, Wic))\n";
   os << "component-node name=f_t component=f_t input=Sum(W_fx-x_t, Sum(W_fr-r_tminus1, Wfc))\n";
   os << "component-node name=o_t component=o_t input=Sum(W_ox-x_t, Sum(W_or-r_tminus1, Woc))\n";
-  os << "component-node name=f_t-c_tminus1 component=f_t-c_tminus1 input=Append(f_t, Offset(c_t, -1))\n";
+  os << "component-node name=f_t-c_tminus1 component=f_t-c_tminus1 input=Append(f_t, Offset(c_t"
+     << offset << "))\n";
   os << "component-node name=i_t-g component=i_t-g input=Append(i_t, g)\n";
   os << "component-node name=m_t component=m_t input=Append(o_t, h)\n";
 
@@ -1311,7 +1346,7 @@ void ComputeExampleComputationRequestSimple(
 
   int32 num_output_frames = 1 + Rand() % 10,
       output_start_frame = Rand() % 10,
-      num_examples = 1 + Rand() % 10,
+      num_examples = 1 + Rand() % 4,
       output_end_frame = output_start_frame + num_output_frames,
       input_start_frame = output_start_frame - left_context - (Rand() % 3),
       input_end_frame = output_end_frame + right_context + (Rand() % 3),
@@ -1365,7 +1400,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 34);
+  int32 n = RandInt(0, 35);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1675,11 +1710,11 @@ static void GenerateRandomComponentConfig(std::string *component_type,
     // labels to the most recently added component, so it gets tested more
     case 31: {
       *component_type = "BatchNormComponent";
-      int32 block_dim = RandInt(1, 10), dim = block_dim * RandInt(1, 2);
+      int32 block_dim = RandInt(1, 20), dim = block_dim * RandInt(1, 2);
       bool test_mode = (RandInt(0, 1) == 0);
       os << " dim=" << dim
          << " block-dim=" << block_dim << " target-rms="
-         << RandInt(1, 2) << " test-mode="
+         << RandInt(1, 4) << " test-mode="
          << (test_mode ? "true" : "false")
          << " epsilon=" << (RandInt(0, 1) == 0 ? "0.1" : "1.0");
       break;
@@ -1711,6 +1746,17 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate;
       break;
     }
+    case 35: {
+      // This is not technically a SimpleComponent, but it behaves as one
+      // if time-offsets=0.
+      *component_type = "TdnnComponent";
+      int32 input_dim = RandInt(1, 50), output_dim = RandInt(1, 50);
+      os << "input-dim=" << input_dim << " output-dim=" << output_dim
+         << " learning-rate=" << learning_rate << " time-offsets=0"
+         << " use-natural-gradient=" << (RandInt(0,1) == 0 ? "true":"false")
+         << " use-bias=" << (RandInt(0,1) == 0 ? "true":"false");
+      break;
+    }
     default:
       KALDI_ERR << "Error generating random component";
   }
@@ -1729,6 +1775,11 @@ Component *GenerateRandomSimpleComponent() {
   if (c == NULL)
     KALDI_ERR << "Invalid component type " << component_type;
   c->InitFromConfig(&config_line);
+  if (config_line.HasUnusedValues()) {
+    KALDI_ERR << "Config line " << config_line.WholeLine()
+              << " has unused values: "
+              << config_line.UnusedValues();
+  }
   return c;
 }
 

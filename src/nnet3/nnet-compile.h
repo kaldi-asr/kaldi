@@ -134,7 +134,9 @@ class Compiler {
                           std::vector<bool> *deriv_needed);
 
   // this sets up steps_, destroying the input "by_step" in the process.  It
-  // also sets various matrix and sub-matrix sizes in "computation".
+  // also sets various matrix and sub-matrix sizes in "computation".  The input
+  // 'by_step' is elsewhere referred to as just 'step'; it is a vector of steps,
+  // and each step is a vector of cindex_ids that are computed by that step.
   void CreateStepInfo(const std::vector<bool> &deriv_needed,
                       const std::vector<int32> &step_to_segment,
                       std::vector<std::vector<int32> > *by_step,

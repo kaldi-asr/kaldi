@@ -5,7 +5,7 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
-//           2016-2017  Shiyin Kang
+//           2016-2018  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -29,6 +29,15 @@
 
 #if HAVE_CUDA == 1
 extern "C" {
+
+// "C" version of the BaseFloat typedef-- this saves us having to write
+// multiple versions of these kernels.
+#if (KALDI_DOUBLEPRECISION != 0)
+typedef double  BaseFloat;
+#else
+typedef float   BaseFloat;
+#endif
+
 
 void cudaD_add_col_sum_mat(int Gr, int Bl, double* result, const double* mat,
                            const MatrixDim d, const double alpha,
@@ -61,11 +70,12 @@ void cudaF_add_diag_mat_mat_MNT(int Gr, int Bl, const float alpha,
 void cudaD_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const double alpha,
                                 const double* M, const int strid_M,
                                 const double* N, const MatrixDim dim_N,
-                                const double beta, double* v);
+                                const double beta, double* v,
+                                const int stride_v);
 void cudaF_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const float alpha,
                                 const float* M, const int strid_M,
                                 const float* N, const MatrixDim dim_N,
-                                const float beta, float* v);
+                                const float beta, float* v, const int stride_v);
 void cudaD_add_diag_packed(int Gr, int Bl, double* mat, double value, int dim);
 void cudaF_add_diag_packed(int Gr, int Bl, float* mat, float value, int dim);
 void cudaD_add_diag_vec_mat(dim3 Gr, dim3 Bl, double alpha, double *mat,
@@ -134,6 +144,12 @@ void cudaD_add_rows(dim3 Gr, dim3 Bl, double alpha, double* dst,
 void cudaF_add_rows(dim3 Gr, dim3 Bl, float alpha, float* dst, const float* src,
                     const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
                     int src_stride);
+void cudaD_mul_rows(dim3 Gr, dim3 Bl, double* dst,
+                    const double* src, const MatrixIndexT_cuda* reorder,
+                    MatrixDim dst_dim, int src_stride);
+void cudaF_mul_rows(dim3 Gr, dim3 Bl, float* dst, const float* src,
+                    const MatrixIndexT_cuda* reorder, MatrixDim dst_dim,
+                    int src_stride);
 void cudaD_add_rows_direct(dim3 Gr, dim3 Bl, double alpha, double* dst,
                            const double* const * src, MatrixDim dst_dim);
 void cudaF_add_rows_direct(dim3 Gr, dim3 Bl, float alpha, float* dst,
@@ -185,6 +201,10 @@ void cudaF_apply_ceiling(dim3 Gr, dim3 Bl, float* mat, float ceiling_val,
                          MatrixDim d);
 void cudaD_apply_exp(dim3 Gr, dim3 Bl, double* mat, MatrixDim d);
 void cudaF_apply_exp(dim3 Gr, dim3 Bl, float* mat, MatrixDim d);
+void cudaD_apply_exp_limited(dim3 Gr, dim3 Bl, double* mat, MatrixDim d,
+                             double lower_limit, double upper_limit);
+void cudaF_apply_exp_limited(dim3 Gr, dim3 Bl, float* mat, MatrixDim d,
+                             float lower_limit, float upper_limit);
 void cudaD_apply_exp_special(dim3 Gr, dim3 Bl, double* out, MatrixDim out_dim,
                              const double* in, int in_stride);
 void cudaF_apply_exp_special(dim3 Gr, dim3 Bl, float* out, MatrixDim out_dim,
@@ -735,6 +755,46 @@ void cudaD_vec_soft_max(int Gr, int Bl, double* v, int dim);
 void cudaF_vec_soft_max(int Gr, int Bl, float* v, int dim);
 void cudaD_vec_sum(int Gr, int Bl, double* v, double* value, int dim, int inc);
 void cudaF_vec_sum(int Gr, int Bl, float* v, float* value, int dim, int inc);
+
+
+void cuda_compress_int16(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                          MatrixDim dim, int16_t *dest,
+                          int dest_stride, float inv_scale,
+                          bool bounds_check);
+void cuda_compress_uint16(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                          MatrixDim dim, uint16_t *dest,
+                          int dest_stride, float inv_scale,
+                          bool bounds_check);
+void cuda_compress_uint8(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                          MatrixDim dim, uint8_t *dest,
+                          int dest_stride, float inv_scale,
+                          bool bounds_check);
+void cuda_compress_int8(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                         MatrixDim dim, int8_t *dest,
+                         int dest_stride, float inv_scale,
+                         bool bounds_check);
+
+void cuda_compress_uint8_sign(dim3 Gr, dim3 Bl, const BaseFloat *src,
+                              MatrixDim dim, uint8_t *dest, int dest_stride);
+
+void cuda_uncompress_int16(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                           MatrixDim dim, const int16_t *src,
+                           int src_stride, float scale);
+void cuda_uncompress_uint16(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                            MatrixDim dim, const uint16_t *src,
+                            int src_stride, float scale);
+void cuda_uncompress_int8(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                          MatrixDim dim, const int8_t *src,
+                          int src_stride, float scale);
+void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
+                          MatrixDim dim, const uint8_t *src,
+                          int src_stride, float scale);
+
+// Launches a kernel that does nothing, explicitly using the legacy default stream;
+// this will synchronize all CUDA streams (except for non-blocking streams) on the
+// device.
+void cuda_legacy_noop();
+
 
 } // extern "C"
 

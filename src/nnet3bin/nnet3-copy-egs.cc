@@ -26,39 +26,39 @@
 
 namespace kaldi {
 namespace nnet3 {
-// rename name of NnetIo with old_name to new_name.
-void RenameIoNames(const std::string &old_name,
-                   const std::string &new_name,
-                   NnetExample *eg_modified) {
-  // list of io-names in eg_modified.
-  std::vector<std::string> orig_io_list;
-  int32 io_size = eg_modified->io.size();
-  for (int32 io_ind = 0; io_ind < io_size; io_ind++)
-    orig_io_list.push_back(eg_modified->io[io_ind].name);
 
-  // find the io in eg with name 'old_name'.
-  int32 rename_io_ind =
-     std::find(orig_io_list.begin(), orig_io_list.end(), old_name) -
-      orig_io_list.begin();
+// renames outputs named "output" to new_name
+void RenameOutputs(const std::string &new_name, NnetExample *eg) {
+  bool found_output = false;
+  for (std::vector<NnetIo>::iterator it = eg->io.begin();
+       it != eg->io.end(); ++it) {
+    if (it->name == "output") {
+      it->name = new_name;
+      found_output = true;
+    }
+  }
 
-  if (rename_io_ind >= io_size)
-    KALDI_ERR << "No io-node with name " << old_name
+  if (!found_output)
+    KALDI_ERR << "No io-node with name 'output'"
               << "exists in eg.";
-  eg_modified->io[rename_io_ind].name = new_name;
 }
 
-// ranames NnetIo name with name 'output' to new_output_name
-// and scales the supervision for 'output' using weight.
-void ScaleAndRenameOutput(BaseFloat weight,
-                          const std::string &new_output_name,
-                          NnetExample *eg) {
-  // scale the supervision weight for egs
-  for (int32 i = 0; i < eg->io.size(); i++)
-    if (eg->io[i].name == "output")
-      if (weight != 0.0 && weight != 1.0)
-        eg->io[i].features.Scale(weight);
-  // rename output io name to 'new_output_name'.
-  RenameIoNames("output", new_output_name, eg);
+// scales the supervision for 'output' by a factor of "weight"
+void ScaleSupervisionWeight(BaseFloat weight, NnetExample *eg) {
+  if (weight == 1.0) return;
+
+  bool found_output = false;
+  for (std::vector<NnetIo>::iterator it = eg->io.begin();
+       it != eg->io.end(); ++it) {
+    if (it->name == "output") {
+      it->features.Scale(weight);
+      found_output = true;
+    }
+  }
+
+  if (!found_output)
+    KALDI_ERR << "No supervision with name 'output'"
+              << "exists in eg.";
 }
 
 // returns an integer randomly drawn with expected value "expected_count"
@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
     // you can set frame to a number to select a single frame with a particular
     // offset, or to 'random' to select a random single frame.
     std::string frame_str,
-      eg_weight_rspecifier, eg_output_rspecifier;
+      eg_weight_rspecifier, eg_output_name_rspecifier;
 
     ParseOptions po(usage);
     po.Register("random", &random, "If true, will write frames to output "
@@ -347,12 +347,11 @@ int main(int argc, char *argv[]) {
                 "Rspecifier indexed by the key of egs, providing a weight by "
                 "which we will scale the supervision matrix for that eg. "
                 "Used in multilingual training.");
-    po.Register("outputs", &eg_output_rspecifier,
+    po.Register("outputs", &eg_output_name_rspecifier,
                 "Rspecifier indexed by the key of egs, providing a string-valued "
                 "output name, e.g. 'output-0'.  If provided, the NnetIo with "
                 "name 'output' will be renamed to the provided name. Used in "
                 "multilingual training.");
-
     po.Read(argc, argv);
 
     srand(srand_seed);
@@ -366,8 +365,11 @@ int main(int argc, char *argv[]) {
 
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 
-    RandomAccessTokenReader output_reader(eg_output_rspecifier);
+    // In the normal case, these would not be used. These are only applicable
+    // for multi-task or multilingual training.
+    RandomAccessTokenReader output_name_reader(eg_output_name_rspecifier);
     RandomAccessBaseFloatReader egs_weight_reader(eg_weight_rspecifier);
+
     int32 num_outputs = po.NumArgs() - 1;
     std::vector<NnetExampleWriter*> example_writers(num_outputs);
     for (int32 i = 0; i < num_outputs; i++)
@@ -376,52 +378,45 @@ int main(int argc, char *argv[]) {
 
     int64 num_read = 0, num_written = 0, num_err = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
-      bool modify_eg_output = !(eg_output_rspecifier.empty() &&
-                                eg_weight_rspecifier.empty());
+      const std::string &key = example_reader.Key();
+      NnetExample &eg = example_reader.Value();
       // count is normally 1; could be 0, or possibly >1.
       int32 count = GetCount(keep_proportion);
-      std::string key = example_reader.Key();
-      NnetExample eg_modified_output;
-      const NnetExample &eg_orig = example_reader.Value(),
-        &eg = (modify_eg_output ? eg_modified_output : eg_orig);
-      // Note: in the normal case we just use 'eg'; eg_modified_output is
-      // for the case when the --outputs or --weights option is specified
-      // (only for multilingual training).
-      BaseFloat weight = 1.0;
+
+      if (!eg_weight_rspecifier.empty()) {
+        BaseFloat weight = 1.0;
+        if (!egs_weight_reader.HasKey(key)) {
+          KALDI_WARN << "No weight for example key " << key;
+          num_err++;
+          continue;
+        }
+        weight = egs_weight_reader.Value(key);
+        ScaleSupervisionWeight(weight, &eg);
+      }
+
       std::string new_output_name;
-      if (modify_eg_output) { // This branch is only taken for multilingual training.
-        eg_modified_output = eg_orig;
-        if (!eg_weight_rspecifier.empty()) {
-          if (!egs_weight_reader.HasKey(key)) {
-            KALDI_WARN << "No weight for example key " << key;
-            num_err++;
-            continue;
-          }
-          weight = egs_weight_reader.Value(key);
+      if (!eg_output_name_rspecifier.empty()) {
+        if (!output_name_reader.HasKey(key)) {
+          KALDI_WARN << "No new output-name for example key " << key;
+          num_err++;
+          continue;
         }
-        if (!eg_output_rspecifier.empty()) {
-          if (!output_reader.HasKey(key)) {
-            KALDI_WARN << "No new output-name for example key " << key;
-            num_err++;
-            continue;
-          }
-          new_output_name = output_reader.Value(key);
-        }
+        new_output_name = output_name_reader.Value(key);
       }
       for (int32 c = 0; c < count; c++) {
         int32 index = (random ? Rand() : num_written) % num_outputs;
         if (frame_str == "" && left_context == -1 && right_context == -1 &&
             frame_shift == 0) {
-          if (modify_eg_output) // Only for multilingual training
-            ScaleAndRenameOutput(weight, new_output_name, &eg_modified_output);
+          if (!new_output_name.empty() && c == 0)
+            RenameOutputs(new_output_name, &eg);
           example_writers[index]->Write(key, eg);
           num_written++;
         } else { // the --frame option or context options were set.
           NnetExample eg_modified;
           if (SelectFromExample(eg, frame_str, left_context, right_context,
                                 frame_shift, &eg_modified)) {
-            if (modify_eg_output)
-              ScaleAndRenameOutput(weight, new_output_name, &eg_modified);
+            if (!new_output_name.empty())
+              RenameOutputs(new_output_name, &eg_modified);
             // this branch of the if statement will almost always be taken (should only
             // not be taken for shorter-than-normal egs from the end of a file.
             example_writers[index]->Write(key, eg_modified);

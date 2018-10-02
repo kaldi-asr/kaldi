@@ -9,21 +9,12 @@ You must first have completed the installation steps in ../tools/INSTALL
 The installation instructions are
 
   ./configure --shared
-  make depend
-  make
-
-Note that "make" takes a long time. You can speed it up by running make
-in parallel if you have multiple CPUs, e.g. to use 8 CPUs
-
   make depend -j 8
   make -j 8
 
-Kaldi requires a relatively recent C++ compiler with C++11 support,
-e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3. If your system
-default compiler does not support C++11, you can specify a C++11 compliant
-compiler by setting the CXX environment variable, e.g.
-
-  CXX=g++-4.8 ./configure --shared
+Note that we added the "-j 8" to run in parallel because "make" takes a long
+time.  8 jobs might be too many for a laptop or small desktop machine with not
+many cores.
 
 For more information, see documentation at http://kaldi-asr.org/doc/
 and click on "The build process (how Kaldi is compiled)".

@@ -6,6 +6,7 @@
 //                       Johns Hopkins University (Author: Daniel Povey);
 //                       Haihua Xu; Wei Shi
 //                2015   Guoguo Chen
+//                2017   Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -26,7 +27,8 @@
 #include "util/stl-utils.h"
 #include <numeric>
 #include <time.h> // This is only needed for UnitTestSvdSpeed, you can
-// comment it (and that function) out if it causes problems.
+// comment it (and that function) out if it causes problems.  
+#include <matrix/cblas-wrappers.h>
 
 namespace kaldi {
 
@@ -2286,8 +2288,10 @@ template<typename Real> static void  UnitTestFloorCeiling() {
     v.SetRandn();
     Real pivot = v(5);
     Vector<Real> f(v), f2(v), c(v), c2(v);
-    MatrixIndexT floored2 = f.ApplyFloor(pivot),
-        ceiled2 = c.ApplyCeiling(pivot);
+    MatrixIndexT floored2;
+    f.ApplyFloor(pivot, &floored2);
+    MatrixIndexT ceiled2;
+    c.ApplyCeiling(pivot, &ceiled2);
     MatrixIndexT floored = 0, ceiled = 0;
     for (MatrixIndexT d = 0; d < dimM; d++) {
       if (f2(d) < pivot) { f2(d) = pivot; floored++; }
@@ -2297,6 +2301,16 @@ template<typename Real> static void  UnitTestFloorCeiling() {
     AssertEqual(c, c2);
     KALDI_ASSERT(floored == floored2);
     KALDI_ASSERT(ceiled == ceiled2);
+
+    // Check that the non-counting variants are equivalent to the counting
+    // variants.
+    Vector<Real> f3(v);
+    f3.ApplyFloor(pivot);
+    AssertEqual(f2, f3);
+
+    Vector<Real> c3(v);
+    c3.ApplyCeiling(pivot);
+    AssertEqual(c2, c3);
   }
 }
 
@@ -2506,7 +2520,9 @@ template<typename Real> static void UnitTestIo() {
       bool binary_in;
       bool either_way = (i%2 == 0);
       std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
-      InitKaldiInputStream(ins, &binary_in);
+      if (!InitKaldiInputStream(ins, &binary_in)) {
+        KALDI_ERR << "Malformed input stream.";
+      }
       N.Resize(0, 0);
       T.Resize(0);
       v2.Resize(0);
@@ -2571,7 +2587,9 @@ template<typename Real> static void UnitTestIoCross() {  // across types.
     {
       std::ifstream ins("tmpf", std::ios_base::in | std::ios_base::binary);
       bool binary_in;
-      InitKaldiInputStream(ins, &binary_in);
+      if (!InitKaldiInputStream(ins, &binary_in)) {
+        KALDI_ERR << "Malformed input stream";
+      }
 
       MO.Read(ins, binary_in);
       SO.Read(ins, binary_in);
@@ -4732,5 +4750,4 @@ int main() {
   kaldi::MatrixUnitTest<float>(full_test);
   kaldi::MatrixUnitTest<double>(full_test);
   KALDI_LOG << "Tests succeeded.";
-
 }

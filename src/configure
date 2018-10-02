@@ -37,10 +37,12 @@
 #        # addition of the the --android-includes flag because the toolchains
 #        # produced by the Android NDK don't always include the C++ stdlib
 #        # headers in the normal cross compile include path.
+# --host=aarch64-linux-android
+#        # support for 64bit ARMv8(AArch64) architecture in Android.
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=7
+CONFIGURE_VERSION=9
 
 if ! [ -x "$PWD/configure" ]; then
   echo 'You must run "configure" from the src/ directory.'
@@ -86,7 +88,7 @@ Configuration options:
   --speex-incdir=DIR    SPEEX include directory
   --host=HOST           Host triple in the format 'cpu-vendor-os'
                         If provided, it is prepended to all toolchain programs.
-  --android-incdir=DIR  Andraid include directory
+  --android-incdir=DIR  Android include directory
 
 Following environment variables can be used to override the default toolchain.
   CXX         C++ compiler [default=g++]
@@ -365,7 +367,7 @@ function linux_configure_mkl_threading {
 function configure_cuda {
   # Check for CUDA toolkit in the system
   if [ ! -d  "$CUDATKDIR" ]; then
-    for base in /Developer/NVIDIA/CUDA-6.0 /usr/local/share/cuda /usr/local/cuda /pkgs_local/cuda-3.2/ /opt/nvidia_cuda/cuda-6.0/ /usr/; do
+    for base in /usr/local/share/cuda /usr/local/cuda /usr/; do
       if [ -f $base/bin/nvcc ]; then
         CUDATKDIR=$base
       fi
@@ -393,14 +395,6 @@ function configure_cuda {
       GCC_VER=$($COMPILER -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
-        5_5)
-          MIN_UNSUPPORTED_GCC_VER="5.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
-        ;;
-        6_*)
-          MIN_UNSUPPORTED_GCC_VER="5.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=50000;
-        ;;
         7_*)
           MIN_UNSUPPORTED_GCC_VER="5.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=50000;
@@ -409,9 +403,13 @@ function configure_cuda {
           MIN_UNSUPPORTED_GCC_VER="6.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=60000;
         ;;
-        9_*)
+        9_0 | 9_1)
           MIN_UNSUPPORTED_GCC_VER="7.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=70000;
+        ;;
+        9_2 | 9_* | 10_*)
+          MIN_UNSUPPORTED_GCC_VER="8.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=80000;
         ;;
         *)
           echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1;
@@ -424,11 +422,12 @@ function configure_cuda {
     fi
 
     case $CUDA_VERSION in
-      5_5) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
-      6_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
-      7_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
-      8_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
+      5_5) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
+      6_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
+      7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
+      8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
       9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70" ;;
+      10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_72,code=sm_72 -gencode arch=compute_75,code=sm_75" ;;
       *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
     esac
 
@@ -448,6 +447,8 @@ function configure_cuda {
       else
         cat makefiles/cuda_64bit.mk >> kaldi.mk
       fi
+    elif [ "`uname -m`" == "aarch64" ]; then
+      cat makefiles/cuda_64bit.mk >> kaldi.mk
     elif [ "`uname -m`" == "ppc64le" ]; then
       cat makefiles/cuda_64bit.mk >> kaldi.mk
     else
@@ -748,7 +749,7 @@ function linux_check_dynamic {
 function linux_configure_dynamic {
   if $threaded_atlas; then pt=t; else pt=s; fi # relevant to "fat" libraries, will change later for separate ones
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
+    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3,/x86_64-linux-gnu} \
       `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
       linux_check_dynamic && ATLASLIBDIR=$dir && ATLASLIBNAME=$atlas_libname
     done
@@ -798,6 +799,7 @@ function linux_configure_dynamic {
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
+  echo ATLASLDFLAGS = -Wl,-rpath,$ATLASLIBDIR >> kaldi.mk
   echo >> kaldi.mk
   if [[ "$TARGET_ARCH" == arm* ]]; then
     cat makefiles/linux_atlas_arm.mk >> kaldi.mk
@@ -1023,11 +1025,11 @@ if is_set $HOST; then
   IFS='-' read -ra PARTS <<< "$HOST"
   # The first field in the PARTS list is the target architecture.
   TARGET_ARCH="$PARTS"
-  if [[ "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && "$TARGET_ARCH" != x86* ]] ; then
-    # We currently only support building for x86[_64], arm*, and ppc64le.
+  if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && "$TARGET_ARCH" != x86* ]] ; then
+    # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
     # If TARGET_ARCH was read from the HOST variable, it must be one of these.
     failure "$TARGET_ARCH is not a supported architecture.
-             Supported architectures: x86[_64], arm*, ppc64le."
+             Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
   fi
 else
   TARGET_ARCH="`uname -m`"
@@ -1099,7 +1101,7 @@ else
     OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
   else
     failure "Dynamic libraries are not supported on this platform.
-             Run configure with --static --static-fst=no flag."
+             Run configure with --static --static-fst flag."
   fi
 fi
 if [ ! -f "$OPENFSTLIBS" ]; then
@@ -1308,18 +1310,36 @@ elif [ "`uname`" == "Linux" ]; then
     if [ -z "$OPENBLASROOT" ]; then
       failure "Must specify the location of OPENBLAS with --openblas-root option (and it must exist)"
     fi
-    if [ ! -f $OPENBLASROOT/lib/libopenblas.so ]; then
+    if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
+      OPENBLASLIBDIR=$OPENBLASROOT/lib
+    elif [ -f $OPENBLASROOT/lib64/libopenblas.so ]; then
+      # in REDHAT/CentOS package installs, the library is located here
+      OPENBLASLIBDIR=$OPENBLASROOT/lib64
+    else
       failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
+    fi
+    if [ -f $OPENBLASROOT/include/cblas.h ] ; then
+      OPENBLASINCDIR=$OPENBLASROOT/include
+    elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
+      # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
+      OPENBLASINCDIR=$OPENBLASROOT/include/openblas
+    else 
+      echo "$0: ***** Using OpenBlas from $OPENBLASROOT but cblas.h is not found. "
+      echo " ****** Assuming openblas is aleady in a default include path, but"
+      echo " ***** if you get compilation messages about not finding files like cblas.h,"
+      echo " ***** you should look into this (e.g. make sure to install the 'openblas-dev' package,"
+      echo " ***** if it is a package-based install)."
+      OPENBLASINCDIR="/usr/include"
     fi
     echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
     if $static_math; then
       echo "Configuring static OpenBlas since --static-math=yes"
-      OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
+      OPENBLASLIBS="$OPENBLASLIBDIR/libopenblas.a -lgfortran"
     else
       echo "Configuring dynamically loaded OpenBlas since --static-math=no (the default)"
-      OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran -Wl,-rpath=$OPENBLASROOT/lib"
+      OPENBLASLIBS="-L$OPENBLASLIBDIR -lopenblas -lgfortran -Wl,-rpath=$OPENBLASLIBDIR"
     fi
-    echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
+    echo "OPENBLASINC = $OPENBLASINCDIR" >> kaldi.mk
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo >> kaldi.mk
     if [[ "$TARGET_ARCH" == arm* ]]; then

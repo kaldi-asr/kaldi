@@ -3,9 +3,13 @@
 # Copyright  2017  Jian Wang
 # License: Apache 2.0.
 
+import io
 import os
 import argparse
 import sys
+
+import re
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script checks whether the special symbols "
                                  "appear in words.txt with expected values, if not, it will "
@@ -24,8 +28,10 @@ upper_special_symbols = [key.upper() for key in special_symbols]
 
 lower_ids = {}
 upper_ids = {}
-for line in sys.stdin:
-    fields = line.split()
+input_stream = io.TextIOWrapper(sys.stdin.buffer, encoding='latin-1')
+for line in input_stream:
+    fields = re.split(tab_or_space, line)
+    assert(len(fields) == 2)
     sym = fields[0]
     if sym in special_symbols:
         assert sym not in lower_ids

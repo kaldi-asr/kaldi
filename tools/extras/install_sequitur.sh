@@ -62,10 +62,19 @@ if [ ! -d ./sequitur-g2p ] ; then
       echo  >&2 "  manually and re-run the script"
     fi
   }
+else
+  echo >&2 "$0: Updating the repository -- we will try to merge with local changes (if you have any)"
+  (
+    cd sequitur-g2p/
+    git pull
+    # this would work also, but would drop all local modifications
+    #git fetch
+    #git reset --hard origin/master
+  ) || {
+    echo >&2 "Failed to do git pull, delete the sequitur dir and run again";
+    exit 1
+  }
 fi
-#just to retain backward compatibility for a while. Can be removed
-#in a couple of months.
-ln -sf sequitur-g2p sequitur
 
 (
 cd sequitur-g2p
@@ -75,15 +84,30 @@ cd sequitur-g2p
 #the primary issue is that real GNU GCC does not accept that switch
 #in addition, Apple fake g++ based on LLVM version 8.1 prints warning about
 #the libstdc++ should no longer be used.
-if (g++ --version 2>/dev/null | grep -s  "LLVM version 8.0" >/dev/null) ; then 
+if (g++ --version 2>/dev/null | grep -s  "LLVM version 8.0" >/dev/null) ; then
   #Apple fake-g++
   make CXX=g++ CC=gcc CPPFLAGS="-stdlib=libstdc++"
 else
   make CXX=g++ CC=gcc
 fi
 
-python setup.py install --prefix `pwd`
-)
+# the next two lines deal with the issue that the new setup tools
+# expect the directory in which we will be installing to be visible
+# as module directory to python
+site_packages_dir=$(PYTHONPATH="" python -m site --user-site | grep -oE "lib.*")
+SEQUITUR=$(pwd)/$site_packages_dir
+# some bits of info to troubleshoot this in case people have problems
+echo -n  >&2 "USER SITE: "; PYTHONPATH="" python -m site --user-site
+echo >&2 "SEQUITUR_PACKAGE: ${site_packages_dir:-}"
+echo >&2 "SEQUITUR: $SEQUITUR"
+echo >&2 "PYTHONPATH: ${PYTHONPATH:-}"
+mkdir -p $SEQUITUR
+PYTHONPATH=${PYTHONPATH:-}:$SEQUITUR python setup.py install --prefix `pwd`
+) || {
+  echo >&2 "Problem installing sequitur!"
+  exit 1
+}
+
 site_packages_dir=$(cd sequitur-g2p; find ./lib{,64} -type d -name site-packages | head -n 1)
 (
   set +u

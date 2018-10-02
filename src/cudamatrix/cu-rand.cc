@@ -68,7 +68,8 @@ void CuRand<Real>::RandUniform(CuMatrixBase<Real> *tgt) {
     // may vary).
     CuMatrix<Real> tmp(tgt->NumRows(), tgt->NumCols(), kUndefined,
                        kStrideEqualNumCols);
-    CU_SAFE_CALL(curandGenerateUniformWrap(gen_, tmp.Data(), tmp.NumRows() * tmp.Stride()));
+    size_t s = static_cast<size_t>(tmp.NumRows()) * static_cast<size_t>(tmp.Stride());
+    CURAND_SAFE_CALL(curandGenerateUniformWrap(gen_, tmp.Data(), s));
     tgt->CopyFromMat(tmp);
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
@@ -84,7 +85,8 @@ void CuRand<Real>::RandUniform(CuMatrix<Real> *tgt) {
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
     // Here we don't need to use 'tmp' matrix,
-    CU_SAFE_CALL(curandGenerateUniformWrap(gen_, tgt->Data(), tgt->NumRows() * tgt->Stride()));
+    size_t s = static_cast<size_t>(tgt->NumRows()) * static_cast<size_t>(tgt->Stride());
+    CURAND_SAFE_CALL(curandGenerateUniformWrap(gen_, tgt->Data(), s));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
@@ -98,7 +100,7 @@ void CuRand<Real>::RandUniform(CuVectorBase<Real> *tgt) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
-    CU_SAFE_CALL(curandGenerateUniformWrap(gen_, tgt->Data(), tgt->Dim()));
+    CURAND_SAFE_CALL(curandGenerateUniformWrap(gen_, tgt->Data(), tgt->Dim()));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
@@ -123,7 +125,7 @@ void CuRand<Real>::RandGaussian(CuMatrixBase<Real> *tgt) {
     MatrixIndexT num_cols_even = tgt->NumCols() + (tgt->NumCols() % 2); // + 0 or 1,
     CuMatrix<Real> tmp(tgt->NumRows(), num_cols_even, kUndefined,
                        kStrideEqualNumCols);
-    CU_SAFE_CALL(curandGenerateNormalWrap(gen_, tmp.Data(), tmp.NumRows()*tmp.Stride()));
+    CURAND_SAFE_CALL(curandGenerateNormalWrap(gen_, tmp.Data(), tmp.NumRows()*tmp.Stride()));
     tgt->CopyFromMat(tmp.ColRange(0,tgt->NumCols()));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
@@ -141,7 +143,7 @@ void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
     // Here we don't need to use 'tmp' matrix, if the number of elements is even,
     MatrixIndexT num_elements = tgt->NumRows() * tgt->Stride();
     if (0 == (num_elements % 2)) {
-      CU_SAFE_CALL(curandGenerateNormalWrap(gen_, tgt->Data(), num_elements));
+      CURAND_SAFE_CALL(curandGenerateNormalWrap(gen_, tgt->Data(), num_elements));
     } else {
       // We use 'tmp' matrix with one column added, this guarantees an even
       // number of elements.  Use the option kStrideEqualNumCols to ensure
@@ -150,7 +152,7 @@ void CuRand<Real>::RandGaussian(CuMatrix<Real> *tgt) {
       MatrixIndexT num_cols_even = tgt->NumCols() + (tgt->NumCols() % 2); // + 0 or 1,
       CuMatrix<Real> tmp(tgt->NumRows(), num_cols_even, kUndefined,
                          kStrideEqualNumCols);
-      CU_SAFE_CALL(curandGenerateNormalWrap(gen_, tmp.Data(),
+      CURAND_SAFE_CALL(curandGenerateNormalWrap(gen_, tmp.Data(),
                                             tmp.NumRows() * tmp.Stride()));
       tgt->CopyFromMat(tmp.ColRange(0,tgt->NumCols()));
     }
@@ -172,11 +174,11 @@ void CuRand<Real>::RandGaussian(CuVectorBase<Real> *tgt) {
     // curandGenerateUniform(), curandGenerateUniformDouble().
     MatrixIndexT num_elements = tgt->Dim();
     if (0 == (num_elements % 2)) {
-      CU_SAFE_CALL(curandGenerateNormalWrap(gen_, tgt->Data(), tgt->Dim()));
+      CURAND_SAFE_CALL(curandGenerateNormalWrap(gen_, tgt->Data(), tgt->Dim()));
     } else {
       MatrixIndexT dim_even = tgt->Dim() + (tgt->Dim() % 2); // + 0 or 1,
       CuVector<Real> tmp(dim_even, kUndefined);
-      CU_SAFE_CALL(curandGenerateNormalWrap(gen_, tmp.Data(), tmp.Dim()));
+      CURAND_SAFE_CALL(curandGenerateNormalWrap(gen_, tmp.Data(), tmp.Dim()));
       tgt->CopyFromVec(tmp.Range(0,tgt->Dim()));
     }
     CuDevice::Instantiate().AccuProfile(__func__, tim);

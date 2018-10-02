@@ -158,6 +158,9 @@ for f in $data/feats.scp $treedir/ali.1.gz $treedir/final.mdl $treedir/tree \
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
+# Copy phones.txt from tree-dir to dir. Later, steps/nnet3/decode.sh will
+# use it to check compatibility between training and decoding phone-sets.
+cp $treedir/phones.txt $dir
 
 # Set some variables.
 nj=`cat $treedir/num_jobs` || exit 1;  # number of jobs in alignment dir...

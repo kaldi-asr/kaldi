@@ -213,7 +213,7 @@ if [ -e $dir/prior_counts ]; then
   echo "Priors are already re-estimated, skipping... ($dir/prior_counts)"
 else
   echo "Re-estimating priors by forwarding 10k utterances from training set."
-  . cmd.sh
+  . ./cmd.sh
   nj=$(cat $alidir/num_jobs)
   steps/nnet/make_priors.sh --cmd "$train_cmd" --nj $nj \
     ${ivector:+ --ivector "$ivector"} $data $dir

@@ -22,8 +22,9 @@ set -e # exit on error
 
 use_dev=false # Use the first 4k sentences from training data as dev set. (39 speakers.)
 
-CSJDATATOP=/db/laputa1/data/processed/public/CSJ ## CSJ database top directory.
-CSJVER=dvd  ## Set your CSJ format (dvd or usb).
+CSJDATATOP=/export/corpora5/CSJ/USB
+#CSJDATATOP=/db/laputa1/data/processed/public/CSJ ## CSJ database top directory.
+CSJVER=usb  ## Set your CSJ format (dvd or usb).
             ## Usage    :
             ## Case DVD : We assume CSJ DVDs are copied in this directory with the names dvd1, dvd2,...,dvd17.
             ##            Neccesary directory is dvd3 - dvd17.
@@ -45,8 +46,14 @@ wait
 
 # Prepare Corpus of Spontaneous Japanese (CSJ) data.
 # Processing CSJ data to KALDI format based on switchboard recipe.
-# local/csj_data_prep.sh <SPEECH_and_TRANSCRIPTION_DATA_DIRECTORY>
+# local/csj_data_prep.sh <SPEECH_and_TRANSCRIPTION_DATA_DIRECTORY> [ <mode_number> ]
+# mode_number can be 0, 1, 2, 3 (0=default using "Academic lecture" and "other" data, 
+#                                1=using "Academic lecture" data, 
+#                                2=using All data except for "dialog" data, 3=using All data )
 local/csj_data_prep.sh data/csj-data
+# local/csj_data_prep.sh data/csj-data 1
+# local/csj_data_prep.sh data/csj-data 2
+# local/csj_data_prep.sh data/csj-data 3
 
 local/csj_prepare_dict.sh
 
@@ -75,7 +82,7 @@ done
 mfccdir=mfcc
 
 for x in train eval1 eval2 eval3; do
-  steps/make_mfcc.sh --nj 10 --cmd "$train_cmd" \
+  steps/make_mfcc.sh --nj 50 --cmd "$train_cmd" \
     data/$x exp/make_mfcc/$x $mfccdir
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
   utils/fix_data_dir.sh data/$x
@@ -122,10 +129,10 @@ utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup  # 147hr
 utils/data/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 233hr 36min
 
 ## Starting basic training on MFCC features
-steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
+steps/train_mono.sh --nj 50 --cmd "$train_cmd" \
   data/train_30kshort data/lang_nosp exp/mono
 
-steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+steps/align_si.sh --nj 50 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang_nosp exp/mono exp/mono_ali
 
 steps/train_deltas.sh --cmd "$train_cmd" \
@@ -139,7 +146,7 @@ for eval_num in eval1 eval2 eval3 $dev_set ; do
 	$graph_dir data/$eval_num exp/tri1/decode_${eval_num}_csj
 done
 
-steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+steps/align_si.sh --nj 50 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang_nosp exp/tri1 exp/tri1_ali
 
 steps/train_deltas.sh --cmd "$train_cmd" \
@@ -158,12 +165,12 @@ for eval_num in eval1 eval2 eval3 $dev_set ; do
 done
 
 # From now, we start with the LDA+MLLT system
-steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+steps/align_si.sh --nj 50 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang_nosp exp/tri2 exp/tri2_ali_100k_nodup
 
 # From now, we start using all of the data (except some duplicates of common
 # utterances, which don't really contribute much).
-steps/align_si.sh --nj 10 --cmd "$train_cmd" \
+steps/align_si.sh --nj 50 --cmd "$train_cmd" \
   data/train_nodup data/lang_nosp exp/tri2 exp/tri2_ali_nodup
 
 # Do another iteration of LDA+MLLT training, on all the data.
@@ -201,7 +208,7 @@ done
 
 
 # Train tri4, which is LDA+MLLT+SAT, on all the (nodup) data.
-steps/align_fmllr.sh --nj 10 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri3 exp/tri3_ali_nodup
 
 steps/train_sat.sh  --cmd "$train_cmd" \
@@ -215,55 +222,13 @@ for eval_num in eval1 eval2 eval3 $dev_set ; do
 	$graph_dir data/$eval_num exp/tri4/decode_${eval_num}_csj
 done
 
-### MMI training
-# MMI training starting from the LDA+MLLT+SAT systems with the entire train_nodup (233hr)
-steps/align_fmllr.sh --nj 10 --cmd "$train_cmd" \
+steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri4 exp/tri4_ali_nodup || exit 1
 
-# You can execute DNN training script [local/nnet/run_dnn.sh] from here.
+# You can execute DNN training script [e.g. local/chain/run_dnn.sh] from here.
 
-steps/make_denlats.sh --nj 10 --cmd "$decode_cmd" --config conf/decode.config \
-  --transform-dir exp/tri4_ali_nodup \
-  data/train_nodup data/lang exp/tri4 exp/tri4_denlats_nodup
-
-# 4 iterations of MMI seems to work well overall. The number of iterations is
-# used as an explicit argument even though train_mmi.sh will use 4 iterations by
-# default.
-num_mmi_iters=4
-steps/train_mmi.sh --cmd "$decode_cmd" --boost 0.1 --num-iters $num_mmi_iters \
-  data/train_nodup data/lang exp/tri4_{ali,denlats}_nodup exp/tri4_mmi_b0.1
-
-for eval_num in eval1 eval2 eval3 $dev_set ; do
-    for iter in 1 2 3 4; do
-	graph_dir=exp/tri4/graph_csj_tg
-	decode_dir=exp/tri4_mmi_b0.1/decode_${eval_num}_${iter}.mdl_csj
-
-	steps/decode.sh --nj 10 --cmd "$decode_cmd" --config conf/decode.config \
-	    --iter $iter --transform-dir exp/tri4/decode_${eval_num}_csj \
-	    $graph_dir data/$eval_num $decode_dir
-    done
-done
-wait
-
-# Now do fMMI+MMI training
-steps/train_diag_ubm.sh --silence-weight 0.5 --nj 10 --cmd "$train_cmd" \
-  700 data/train_nodup data/lang exp/tri4_ali_nodup exp/tri4_dubm
-
-steps/train_mmi_fmmi.sh --learning-rate 0.005 --boost 0.1 --cmd "$train_cmd" \
-  data/train_nodup data/lang exp/tri4_ali_nodup exp/tri4_dubm \
-  exp/tri4_denlats_nodup exp/tri4_fmmi_b0.1
-
-for eval_num in eval1 eval2 eval3 $dev_set ; do
-    for iter in 4 5 6 7 8; do
-	graph_dir=exp/tri4/graph_csj_tg
-	decode_dir=exp/tri4_fmmi_b0.1/decode_${eval_num}_it${iter}_csj
-
-	steps/decode_fmmi.sh --nj 10 --cmd "$decode_cmd" --iter $iter \
-	    --transform-dir exp/tri4/decode_${eval_num}_csj \
-	    --config conf/decode.config $graph_dir data/${eval_num} $decode_dir
-    done
-done
-wait
+# MMI training
+# local/run_mmi.sh
 
 # this will help find issues with the lexicon.
 # steps/cleanup/debug_lexicon.sh --nj 300 --cmd "$train_cmd" data/train_nodev data/lang exp/tri4 data/local/dict/lexicon.txt exp/debug_lexicon
@@ -275,7 +240,10 @@ wait
 
 ##### Start DNN training #####
 # Karel's DNN recipe on top of fMLLR features
-local/nnet/run_dnn.sh
+# local/nnet/run_dnn.sh
+
+# nnet3 TDNN+Chain 
+local/chain/run_tdnn.sh
 
 # nnet3 TDNN recipe
 # local/nnet3/run_tdnn.sh

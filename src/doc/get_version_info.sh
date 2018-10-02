@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# search for VERSIONS below to see how to change this when
+# search for VERSION below to see how to change this when
 # Kaldi's version number increases.
 
 # Note: this script assumes that it's part of a git repository where
@@ -42,7 +42,12 @@ fi
 # Note: when you add new tuples here you'll also want to add ndew
 # \htmlinclude directives in versions.dox.
 
-for tuple in "5.0 5.0 c160a9883" "5.1 5.1 2145519961" "5.2 5.2 393ef73caa93" "5.3 master 131cdd4cb544"; do
+for tuple in "5.0 5.0 c160a9883" "5.1 5.1 2145519961" "5.2 5.2 393ef73caa93" "5.3 5.3 db28650346ba07" \
+                                 "5.4 5.4 be969d7baf04" "5.5 master 7aab92b7c"; do
+  if [ $(echo $tuple | wc -w) != 3 ]; then
+    echo "$0: tuple should have 3 fields: '$tuple'"
+    exit 1
+  fi
   major_minor_number=$(echo $tuple | awk '{print $1}')  # e.g. 5.0
   branch=$(echo $tuple | awk '{print $2}')  # e.g. 'master', or '5.1' (it's a branch name)
   first_commit=$(echo $tuple | awk '{print $3}')

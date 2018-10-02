@@ -66,8 +66,10 @@ if [ $# -ne 6 ]; then
   Usage: $0 <lang> <data> <whole-recording-data> <ali-model-dir> <model-dir> <dir>
    e.g.: $0 data/lang data/train data/train_whole exp/tri5 exp/tri4 exp/segmentation_1a
   
-  Note: Both <data> and <whole-recording-data> must have the recording-id
-  as speaker, and must contain feats.scp.
+  Note: <whole-recording-data> is expected to have feats.scp and <data> 
+  expected to have segments file. We will get the features for <data> by 
+  using row ranges of <whole-recording-data>/feats.scp. This script will 
+  work on a copy of <data> created to have the recording-id as the speaker-id.
 EOF
   exit 1
 fi
@@ -97,8 +99,7 @@ else
   extra_files="$extra_files $graph_dir/HCLG.fst $graph_dir/phones.txt"
 fi
 
-for f in $in_data_dir/feats.scp $in_whole_data_dir/feats.scp \
-  $in_data_dir/segments \
+for f in $in_whole_data_dir/feats.scp $in_data_dir/segments \
   $lang/phones.txt $garbage_phones_list $silence_phones_list \
   $ali_model_dir/final.mdl $model_dir/final.mdl $extra_files; do
   if [ ! -f $f ]; then
@@ -125,8 +126,7 @@ if [ $stage -le 0 ]; then
 
   utils/data/modify_speaker_info_to_recording.sh \
     $in_data_dir $dir/$data_id || exit 1
-  steps/compute_cmvn_stats.sh $dir/$data_id || exit 1
-  utils/validate_data_dir.sh $dir/$data_id || exit 1
+  utils/validate_data_dir.sh --no-feats $dir/$data_id || exit 1
 fi 
 
 # Work with a temporary data directory with recording-id as the speaker labels.
@@ -135,6 +135,13 @@ data_dir=$dir/${data_id}
 ###############################################################################
 # Get feats for the manual segments
 ###############################################################################
+if [ $stage -le 1 ]; then
+  utils/data/subsegment_data_dir.sh $in_whole_data_dir ${data_dir}/segments ${data_dir}/tmp
+  cp $data_dir/tmp/feats.scp $data_dir
+
+  steps/compute_cmvn_stats.sh $data_dir || exit 1
+fi
+
 if [ $stage -le 2 ]; then
   utils/copy_data_dir.sh $in_whole_data_dir $dir/$whole_data_id
 

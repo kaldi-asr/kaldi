@@ -10,6 +10,12 @@ import math
 from collections import defaultdict
 sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
 
+# because this script splits inside words, we cannot use latin-1; we actually need to know what 
+# what the encoding is.  By default we make this utf-8; to handle encodings that are not compatible
+# with utf-8 (e.g. gbk), we'll eventually have to make the encoding an option to this script.
+
+import re
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script chooses the sparse feature representation of words. "
                                              "To be more specific, it chooses the set of features-- you compute "
@@ -86,7 +92,7 @@ def read_vocab(vocab_file):
     vocab = {}
     with open(vocab_file, 'r', encoding="utf-8") as f:
         for line in f:
-            fields = line.split()
+            fields = re.split(tab_or_space, line)
             assert len(fields) == 2
             if fields[0] in vocab:
                 sys.exit(sys.argv[0] + ": duplicated word({0}) in vocab: {1}"
@@ -115,7 +121,7 @@ def read_unigram_probs(unigram_probs_file):
     unigram_probs = []
     with open(unigram_probs_file, 'r', encoding="utf-8") as f:
         for line in f:
-            fields = line.split()
+            fields = re.split(tab_or_space, line)
             assert len(fields) == 2
             idx = int(fields[0])
             if idx >= len(unigram_probs):

@@ -21,13 +21,15 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "base/kaldi-utils.h"
 #include "matrix/kaldi-matrix.h"
 #include "matrix/sp-matrix.h"
 #include "matrix/jama-svd.h"
 #include "matrix/jama-eig.h"
 #include "matrix/compressed-matrix.h"
 #include "matrix/sparse-matrix.h"
+
+static_assert(int(kaldi::kNoTrans) == int(CblasNoTrans) && int(kaldi::kTrans) == int(CblasTrans), 
+    "kaldi::kNoTrans and kaldi::kTrans must be equal to the appropriate CBLAS library constants!");
 
 namespace kaldi {
 
@@ -1488,8 +1490,8 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
     std::string token;
     ReadToken(is, binary, &token);
     if (token != my_token) {
-      specific_error << ": Expected token " << my_token
-                     << ", got " << StringToReadable(token);
+      if (token.length() > 20) token = token.substr(0, 17) + "...";
+      specific_error << ": Expected token " << my_token << ", got " << token;
       goto bad;
     }
     int32 rows, cols;
@@ -1522,8 +1524,8 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
     // }
     if (str == "[]") { Resize(0, 0); return; } // Be tolerant of variants.
     else if (str != "[") {
-      specific_error << ": Expected \"[\", got \""
-                     << StringToReadable(str) << '"';
+      if (str.length() > 20) str = str.substr(0, 17) + "...";
+      specific_error << ": Expected \"[\", got \"" << str << '"';
       goto bad;
     }
     // At this point, we have read "[".
@@ -1594,8 +1596,8 @@ void Matrix<Real>::Read(std::istream & is, bool binary, bool add) {
           cur_row->push_back(std::numeric_limits<Real>::quiet_NaN());
           KALDI_WARN << "Reading NaN value into matrix.";
         } else {
-          specific_error << "Expecting numeric matrix data, got "
-                         << StringToReadable(str);
+          if (str.length() > 20) str = str.substr(0, 17) + "...";
+          specific_error << "Expecting numeric matrix data, got " << str;
           goto cleanup;
         }
       }

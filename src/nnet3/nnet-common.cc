@@ -392,11 +392,12 @@ size_t IndexVectorHasher::operator () (
                             // skipping over more elements.  Setting n1 large or
                             // n2 to 1 would make the hasher consider all
                             // elements.
+  size_t len = index_vector.size();
   // all long-ish numbers appearing below are randomly chosen primes.
-  size_t ans = 1433 + 34949  * index_vector.size();
+  size_t ans = 1433 + 34949 * len;
   std::vector<Index>::const_iterator iter = index_vector.begin(),
       end = index_vector.end(), med = end;
-  if (med > iter + n1)
+  if (n1 < len)
     med = iter + n1;
 
   for (; iter != med; ++iter) {
@@ -412,6 +413,10 @@ size_t IndexVectorHasher::operator () (
     ans += iter->n * 1619;
     ans += iter->t * 15649;
     ans += iter->x * 89809;
+    // The following if-statement was introduced in order to fix an
+    // out-of-range iterator problem on Windows.
+    if (n2 > len || iter >= end - n2) 
+        break;
   }
   return ans;
 }
@@ -440,6 +445,11 @@ void PrintIndexes(std::ostream &os,
     os << "[ ]";
     return;
   }
+  // If the string is longer than 'max_string_length' characters, it will
+  // be summarized with '...' in the middle.
+  size_t max_string_length = 200;
+  std::ostringstream os_temp;
+
   // range_starts will be the starts of ranges (with consecutive t values and
   // the same n value and zero x values) that we compactly print.  we'll append
   // "end" to range_starts for convenience.n
@@ -457,23 +467,32 @@ void PrintIndexes(std::ostream &os,
   }
   range_starts.push_back(cur_start);
   range_starts.push_back(end);
-  os << "[";
+  os_temp << "[";
   int32 num_ranges = range_starts.size() - 1;
   for (int32 r = 0; r < num_ranges; r++) {
     int32 range_start = range_starts[r], range_end = range_starts[r+1];
     KALDI_ASSERT(range_end > range_start);
-    os << "(" << indexes[range_start].n << ",";
+    os_temp << "(" << indexes[range_start].n << ",";
     if (range_end == range_start + 1)
-      os << indexes[range_start].t;
+      os_temp << indexes[range_start].t;
     else
-      os << indexes[range_start].t << ":" << indexes[range_end - 1].t;
+      os_temp << indexes[range_start].t << ":" << indexes[range_end - 1].t;
     if (indexes[range_start].x != 0)
-      os << "," << indexes[range_start].x;
-    os << ")";
+      os_temp << "," << indexes[range_start].x;
+    os_temp << ")";
     if (r + 1 < num_ranges)
-      os << ", ";
+      os_temp << ", ";
   }
-  os << "]";
+  os_temp << "]";
+
+  std::string str = os_temp.str();
+  if (str.size() <= max_string_length) {
+    os << str;
+  } else {
+    size_t len = str.size();
+    os << str.substr(0, max_string_length / 2) << " ... "
+       << str.substr(len - max_string_length / 2);
+  }
 }
 
 void PrintCindexes(std::ostream &ostream,

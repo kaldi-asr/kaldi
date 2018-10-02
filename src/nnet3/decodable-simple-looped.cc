@@ -60,9 +60,10 @@ void DecodableNnetSimpleLoopedInfo::Init(
   KALDI_ASSERT(IsSimpleNnet(*nnet));
   has_ivectors = (nnet->InputDim("ivector") > 0);
   int32 left_context, right_context;
+  int32 extra_right_context = 0;
   ComputeSimpleNnetContext(*nnet, &left_context, &right_context);
   frames_left_context = left_context + opts.extra_left_context_initial;
-  frames_right_context = right_context;
+  frames_right_context = right_context + extra_right_context;
   frames_per_chunk = GetChunkSize(*nnet, opts.frame_subsampling_factor,
                                   opts.frames_per_chunk);
   output_dim = nnet->OutputDim("output");
@@ -73,14 +74,14 @@ void DecodableNnetSimpleLoopedInfo::Init(
     ModifyNnetIvectorPeriod(ivector_period, nnet);
 
   int32 num_sequences = 1;  // we're processing one utterance at a time.
-  int32 extra_right_context = 0;
-  CreateLoopedComputationRequestSimple(*nnet, frames_per_chunk,
-                                       opts.frame_subsampling_factor,
-                                       ivector_period,
-                                       opts.extra_left_context_initial,
-                                       extra_right_context,
-                                       num_sequences,
-                                       &request1, &request2, &request3);
+
+  CreateLoopedComputationRequest(*nnet, frames_per_chunk,
+                                 opts.frame_subsampling_factor,
+                                 ivector_period,
+                                 frames_left_context,
+                                 frames_right_context,
+                                 num_sequences,
+                                 &request1, &request2, &request3);
 
   CompileLooped(*nnet, opts.optimize_config, request1, request2, request3,
                 &computation);

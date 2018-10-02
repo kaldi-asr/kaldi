@@ -1,0 +1,793 @@
+diff -Naur tools/csr4_utils/abbrproc.perl local/data_prep/csr_hub4_utils/abbrproc.perl
+--- tools/csr4_utils/abbrproc.perl	1996-08-27 15:25:15.000000000 -0400
++++ local/data_prep/csr_hub4_utils/abbrproc.perl	2017-11-03 13:22:09.466213159 -0400
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ # $Id: abbrproc.perl,v 1.3 1996/08/21 20:05:09 robertm Rel $
+ ###############################################################################
+ # This software is being provided to you, the LICENSEE, by the Massachusetts  #
+diff -Naur tools/csr4_utils/artfilter.perl local/data_prep/csr_hub4_utils/artfilter.perl
+--- tools/csr4_utils/artfilter.perl	1996-01-04 11:31:57.000000000 -0500
++++ local/data_prep/csr_hub4_utils/artfilter.perl	2017-11-03 13:22:09.470213159 -0400
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # artfilter.perl 
+ 
+diff -Naur tools/csr4_utils/bugproc.perl local/data_prep/csr_hub4_utils/bugproc.perl
+--- tools/csr4_utils/bugproc.perl	1996-08-27 15:25:15.000000000 -0400
++++ local/data_prep/csr_hub4_utils/bugproc.perl	2017-11-03 13:22:09.474213159 -0400
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ # $Id: bugproc.perl,v 1.4 1996/08/21 23:55:40 robertm Rel $
+ ###############################################################################
+ # This software is being provided to you, the LICENSEE, by the Massachusetts  #
+diff -Naur tools/csr4_utils/do-lm local/data_prep/csr_hub4_utils/do-lm
+--- tools/csr4_utils/do-lm	1996-08-27 15:25:15.000000000 -0400
++++ local/data_prep/csr_hub4_utils/do-lm	2017-11-27 14:21:15.965400509 -0500
+@@ -22,19 +22,22 @@
+ 	exit 1
+ fi
+ 
+-PATH=$PATH:./bin ; export PATH
++dir=$1
++shift
+ 
+ for file in $*
+ do
+ 	BASENM=`basename $file`
++  name="${BASENM%.*}"
++
+ 	echo "Running LM pipeline for |$BASENM|..." 1>&2
+ 	set -x
+-	pare-sgml.perl $file |
+-	 bugproc.perl |
+-	 numhack.perl |
+-	 numproc.perl |
+-	 abbrproc.perl |
+-	 puncproc.perl > lm/$BASENM
++  gunzip -c $file | pare-sgml.perl | \
++    bugproc.perl | \
++    numhack.perl | \
++    numproc.perl -xtools/csr4_utils/num_excp | \
++    abbrproc.perl tools/csr4_utils/abbrlist | \
++    puncproc.perl -np | gzip -c > $dir/$name.txt.gz
+ 	set +x
+ 	echo "Done with $BASENM."
+ done
+diff -Naur tools/csr4_utils/numhack.perl local/data_prep/csr_hub4_utils/numhack.perl
+--- tools/csr4_utils/numhack.perl	1996-08-27 15:25:16.000000000 -0400
++++ local/data_prep/csr_hub4_utils/numhack.perl	2017-11-03 13:22:09.482213158 -0400
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # $Id: numhack.perl,v 1.4 1996/08/23 05:12:27 robertm Rel $
+ # preprocessor for numproc, potentially specialized for Broadcast News material
+diff -Naur tools/csr4_utils/numproc.perl local/data_prep/csr_hub4_utils/numproc.perl
+--- tools/csr4_utils/numproc.perl	1996-08-27 15:25:16.000000000 -0400
++++ local/data_prep/csr_hub4_utils/numproc.perl	2017-11-08 16:59:50.497562934 -0500
+@@ -1,4 +1,5 @@
+-#!/usr/local/bin/perl
++#! /usr/bin/perl
++#
+ # $Id: numproc.perl,v 1.7 1996/08/23 05:04:11 robertm Rel $
+ ###############################################################################
+ # This software is being provided to you, the LICENSEE, by the Massachusetts  #
+@@ -74,7 +75,7 @@
+ {	if($ARGV[$i] =~ /^-/)
+ 	{	if($ARGV[$i] =~ /^-v/) {$vflg=1;}
+ 		elsif($ARGV[$i] =~ /^-x/)
+-		{	$exfile=$ARGV[i];
++		{	$exfile=$ARGV[$i];
+ 			$exfile =~ s/^-x//;
+ 		}
+ 		else {&perr2("illegal flag: $ARGV[$i]");}
+@@ -237,7 +238,7 @@
+ 	if(/\d/ && !/^<\/?[spa]/)		# opt and protect sgml
+ 	{	@input = split(/\s+/o);
+ 		@output=();
+-	wloop:	for($field=0;$field<=$#input;$field++)	# $field is global
++	for($field=0;$field<=$#input;$field++)	# $field is global
+ 		{	if($field>0) {$last=$input[$field-1];}
+ 			else {$last='';}
+ 			if($field<$#input) {$next=$input[$field+1];}
+@@ -248,27 +249,27 @@
+ 			$_=$input[$field];
+ 	
+ 			if(/<[\w\.\/]*>/o && !/<p/o && !/<\/p>/o) # pass only
+-				{&perr("spurious SGML: $_");}	# <p... and </p>
++				{&perr("spurious SGML: $_"); next; }	# <p... and </p>
+ 	
+ 			if(/[0-9]/o && !/<p/o)		# number but not <p
+ 			{	if(/[\$\#]/o)			# money
+-					{&money($_,$next);}
++					{if (! &money($_,$next)) {next;} }
+ 				elsif(/\d:\d\d$/o || /\d:\d\d\D/o)	# time
+-					{&printtime($_);}
++					{if (! &printtime($_)) {next;} }
+ 				elsif(/\d+\/\d+\/\d+/o)		# x/x/x date
+-					{&printdate($_);}
++					{if (! &printdate($_)) {next;} }
+ 				elsif((/[a-zA-Z].*\d/ || /\d.*[a-zA-Z]/)
+ 				      && 
+ 				      !(/\dth\W*/i || /1st\W*/i || /2nd\W*/i
+ 					|| /3rd\W*/i
+ 					|| (/\d\'?s\W*/
+ 					    && (! /\d[a-zA-Z]+\d+\'?s\W*$/))))
+-					{&printserno($_);}	 # serial no
++					{if (! &printserno($_)) {next;} }	 # serial no
+ 				elsif(/\//o)			# fraction
+-					{&printfrac($_);}
++					{if (! &printfrac($_)) {next;} }
+ 				elsif(/\d\'-?\d+/o)		# ft inches
+-					{&printftin($_);}
+-				else {&printnum($_); }	      # ordinary number
++					{if (! &printftin($_)) {next;} }
++				else {if (! &printnum($_)) {next;} }	      # ordinary number
+ 			}
+ 			else {&pusho($_ );}		# non-numeric string
+ 		}
+@@ -348,7 +349,7 @@
+ 		$subunit_sing='penny';
+ 		$subunit_pl='pence';
+ 	}
+-	else {&perr("money: unknown currency");}
++	else {&perr("money: unknown currency"); return 0;}
+ 
+ 	($back)=/(\D*)$/;
+ 	$back =~ s/^s//;	# $40s -> $40
+@@ -362,32 +363,32 @@
+ 	if($x =~ /\//)
+ 	{	$x =~ s/^\D*//;
+ 		$x =~ s/\D*$//;
+-		&printfrac($x);
++		if (! &printfrac($x)) {return 0;}
+ 		&pusho("of a $unit");
+ 		$x="";
+ 		$plural=0;
+ 	}
+ 
+ 	$x =~ s/^\D*([\d,]*)\D*.*$/$1/;		# int part of string
+-	if($x ne "") {&printint($x);}		# print int part (eg. dollars)
++	if($x ne "") {if (! &printint($x)) {return 0;} }		# print int part (eg. dollars)
+ 
+ 	if($next eq "and" && $next2 =~ /\d\/\d/ && next2 !~ /\/.*\//)
+ 	{	if($unit && $x ne "") {&pusho("and");}	      # frac: eg 4 1/16
+ 		$z=$next2;
+ 		$z =~ s/\D*$//;
+-		&printfrac($z);
++		if (! &printfrac($z)) {return 0;}
+ 		($punct)=($next2 =~ /(\D*)$/);
+ 		$field+=2;
+ 		&pusho("${unit}s");
+ 	
+-		if($back) {&perr("money: back and 1 1/3");}
++		if($back) {&perr("money: back and 1 1/3"); return 0;}
+ 		
+ 		if($punct) {&appendo($punct);}	# punctuation from *illion
+-		return;
++		return 1;
+ 	}
+ 
+ 	if($back eq "" && $next =~ /^(thousands?|[a-z]*illions?)(\W*)/i)
+-	{	&printdecfrac($_);			# multiplier
++	{	if (! &printdecfrac($_)) {return 0;}			# multiplier
+ 		&pusho($1);
+ 		$punct=$2;
+ 		$plural=1;			### if adj '', if noun 's'
+@@ -395,7 +396,7 @@
+ 		$frac=1;
+ 	}
+ 	elsif(/\.\d$/ || /\.\d\D/ || /\.\d{3}/ )	# .d or .ddd+
+-	{	&printdecfrac($_);
++	{	if (! &printdecfrac($_)) {return 0;}
+ 		$plural=1;			# can be either
+ 		$frac=1;
+ 	}
+@@ -409,7 +410,7 @@
+ 	{	$unit="";			# fix "$1 dollar" wsj typo
+ 		$subunit_sing="";
+ 		$subunit_pl="";
+-		&printdecfrac($_);
++		if (! &printdecfrac($_)) {return 0;}
+ 		$frac=1;
+ 	}
+ 
+@@ -447,24 +448,26 @@
+ 	{	$y=$_;
+ 		$y =~ s/^[^\.]*\.([\d]*)\D?.*$/$1/;	# get fractional part
+ 		if($unit && $x ne "") {&pusho("and");}
+-		&printint($y);
++		if (! &printint($y)) {return 0;}
+ 		if($sing || int($y)==1) {&pusho($subunit_sing);}
+ 		else {&pusho($subunit_pl);}
+ 	}
+ 
+ 	if($back)				# punctuation from this field
+-	{	if($punct) {&perr("money: back and punct");}
++	{	if($punct) {&perr("money: back and punct"); return 0;}
+ 
+ 		if($back =~ /^\w/) {&pusho($back);}
+ 		else {&appendo($back);}
+ 	}
+ 		
+ 	if($punct) {&appendo($punct);}		# punctuation from *illion
++
++  return 1;
+ }
+ 
+ sub printyear			# &printyear(x)
+ {	if($vflg) {print "printyear: $_[0]\n";}
+-	&printnum($_[0]);		# for now
++	return &printnum($_[0]);		# for now
+ }
+ 
+ sub printtime			# &printtime(x)
+@@ -475,7 +478,7 @@
+ 	local($front);
+ 	local($back);
+ 
+-	if(/:{2,}/ || !/\d:\d/) {&perr("printtime: not a time");}
++	if(/:{2,}/ || !/\d:\d/) {&perr("printtime: not a time"); return 0;}
+ 
+ 	@x=split(/:/,$_);
+ 	($front)=($x[0] =~ /^(\D*)/);
+@@ -487,20 +490,21 @@
+ 	{	&pusho($front);			# generally punctuation
+ 		if($front !~ /\w$/) {$appendflg=1;}
+ 	}
+-	&printint($x[0]);
++	if (! &printint($x[0])) {return 0;}
+ 	if($x[1]==0)
+ 	{	$_=$next;
+ 		if(!/^[aApP]\.?[nM]\.?$/) {&pusho("o'clock");}
+ 	}
+ 	elsif ($x[1]<10)
+ 	{	&pusho("oh");
+-		&printint($x[1]);
++		if (!&printint($x[1])) {return 0;}
+ 	}
+-	else {&printint($x[1]);}
++	else {if (! &printint($x[1])) {return 0;} }
+ 	if($back)
+ 	{	if($back =~ /^\w/) {&pusho($back);}
+ 		else {&appendo($back);}		# generally punctuation
+ 	}
++  return 1;
+ }
+ 
+ sub printfrac
+@@ -530,8 +534,8 @@
+ 	}
+ 
+ 	@z=split(/\//,$x);
+-	if($#z !=1) {&perr("printfrac: illegal fraction: $_[0]");}
+-	if($z[1] <= 1) {&perr("printfrac: den too small: $_[0]");}
++	if($#z !=1) {&perr("printfrac: illegal fraction: $_[0]"); return 0;}
++	if($z[1] <= 1) {&perr("printfrac: den too small: $_[0]"); return 0;}
+ 
+ 	if($front) 
+ 	{	&pusho($front);
+@@ -541,22 +545,22 @@
+ 
+ 	if($sign) {&pusho($sign);}
+ 
+-	&printint($z[0]);			#numerator
++	if (! &printint($z[0])) { return 0;}			#numerator
+ 	if($z[1] <= $#den)			# small den from table (<20)
+ 	{	&pusho($den[$z[1]]);
+-		if($z[0]!=1) {&pluralize;}
++		if($z[0]!=1) {if (! &pluralize) {return 0;} }
+ 	}
+ 	else					#large den
+ 	{	$ones=int($z[1]%100);
+ 		$hun=100*int($z[1]/100);
+-		if($hun>0) {&printint($hun);}
++		if($hun>0) {if (!&printint($hun)) {return 0;} }
+ 		if($ones==0) 
+ 		{	&appendo("th");
+-			if($z[0]!=1) {&pluralize;}
++			if($z[0]!=1) {if (! &pluralize) {return 0;} }
+ 		}
+ 		elsif($ones<=$#largeden)		# <20
+ 		{	&pusho($largeden[$ones]);
+-			if($z[0]!=1) {&pluralize;};
++			if($z[0]!=1) {if (!&pluralize) {return 0;} }
+ 		}
+ 		else
+ 		{	$x=int($ones%10);
+@@ -569,11 +573,11 @@
+ 			}
+ 			if($x==0)
+ 			{	&pusho("th");
+-				if($z[0]!=1) {&pluralize;}
++        if($z[0]!=1) {if (! &pluralize) {return 0;} }
+ 			}
+ 			else
+ 			{	&pusho($largeden[$x]);
+-				if($z[0]!=1) {&pluralize;}
++        if($z[0]!=1) {if (! &pluralize) {return 0;} }
+ 			}
+ 		}
+ 	}
+@@ -585,6 +589,8 @@
+ 			&appendo($back);
+ 		}
+ 	}
++  
++  return 1;
+ }
+ 
+ sub printnum			# printnum(n)
+@@ -624,7 +630,7 @@
+ 		$x =~ s/\D*$//;			# strip back: final . is punct
+ 	}
+ 
+-	if($x =~ /[^\d\.,]/) {&perr("printnum: $_[0] is not a number");}
++	if($x =~ /[^\d\.,]/) {&perr("printnum: $_[0] is not a number"); return 0;}
+ 
+ 	if($x!=0 && $x =~ /^0/ && $x =~ /^\d*$/)	# "oh" numbers
+ 	{	if($front) 
+@@ -641,7 +647,7 @@
+ 
+ 		if($back)
+ 		{	if($back =~ /^s$/ || $back =~ /^s\W/)	# back = s
+-			{	&pluralize;			# eg. 1960s
++			{	if (! &pluralize) {return 0;}			# eg. 1960s
+ 				$back =~ s/^s//;
+ 			}
+ 			if($back)
+@@ -649,7 +655,7 @@
+ 				else {&appendo($back);}	# back = punct or "'s"
+ 			}
+ 		}
+-		return;
++		return 1;
+ 	}
+ 
+ 	if($x =~ /^\d/)			# get integer part
+@@ -675,48 +681,48 @@
+ 	if($sign) { &pusho($sign); }
+ 
+ 	$ones=int($intpart%100);
+-	if($comma) {&printint($intpart);}
++	if($comma) {if (! &printint($intpart)) {return 0;} }
+ 	elsif(($intpart>=1900 || $intpart>=1100 && $ones==0)
+ 		&& $intpart<2000 && !$fracpart)			#4 digit -> 2+2
+ 	{	$hun=int($intpart/100);
+-		&printint($hun);
+-		if($ones>=10) {&printint($ones);}
++		if (! &printint($hun)) {return 0;}
++		if($ones>=10) {if (! &printint($ones)) {return 0;} }
+ 		elsif($ones>0)
+ 		{	&pusho("oh");
+-			&printint($ones);
++			if (! &printint($ones)) {return 0;}
+ 		}
+ 		else {&pusho("hundred");}
+ 	}
+ 	else
+-	{	&printint($intpart);
++	{	if (! &printint($intpart)) {return 0;}
+ 		$y=$last;
+ 		$y =~ s/^\W*//;				# thize dates: May 25th
+ 		if(length($intpart)<=2 && $months{$y})
+-		{	&thize("");
++		{	if (! &thize("")) {return 0;}
+ 			$back =~ s/[a-z]//g;
+ 		}
+ 	}
+-	if($fracpart) {&printdecfrac($fracpart);}
++	if($fracpart) {if (! &printdecfrac($fracpart)) {return 0;} }
+ 
+ 	if($back)
+ 	{	if($back =~ /^s$/ || $back =~ /^s\W/)	# back = s
+-		{	&pluralize;			# eg. 1960s
++		{	if (! &pluralize) {return 0;}			# eg. 1960s
+ 			$back =~ s/^s//;
+ 		}
+ 		if($back =~ /^st$/ || $back =~ /^st\W/)	# back= st
+-		{	&thize("st");			# eg. 1st
++		{	if (! &thize("st")) {return 0;}			# eg. 1st
+ 			$back =~ s/^st//;
+ 		}
+ 		if($back =~ /^nd$/ || $back =~ /^nd\W/)	# back= nd
+-		{	&thize("nd");			# eg. 2nd
++		{	if (! &thize("nd")) {return 0;}			# eg. 2nd
+ 			$back =~ s/^nd//;
+ 		}
+ 		if($back =~ /^rd$/ || $back =~ /^rd\W/)	# back= rd
+-		{	&thize("rd");			# eg. 3rd
++		{	if (! &thize("rd")) {return 0;}			# eg. 3rd
+ 			$back =~ s/^rd//;
+ 		}
+ 		if($back =~ /^th$/ || $back =~ /^th\W/)	# back= th
+-		{	&thize("th");			# eg. 4th
++		{	if (! &thize("th")) {return 0;}			# eg. 4th
+ 			$back =~ s/^th//;
+ 		}
+ 		if($back)
+@@ -724,6 +730,7 @@
+ 			else {&appendo($back);}	# back = punct or "'s"
+ 		}
+ 	}
++  return 1;
+ }
+ 
+ sub printdate			# printdate(n):	x/x/x format
+@@ -741,7 +748,7 @@
+ 	$back=$1;
+ 
+ 	if($x !~ /^\d{1,2}\/\d{1,2}\/(19)?\d{2}$/)
+-		{&perr("printdate: $_[0] is not a date");}
++		{&perr("printdate: $_[0] is not a date"); return 0;}
+ 
+ 	@y=split(/\//,$x);
+ 	$y[2] =~ s/^19(\d{2})$/$1/;
+@@ -752,20 +759,21 @@
+ 		$appendflg=1;
+ 	}
+ 
+-	&printint($y[0]);
++	if (! &printint($y[0])) {return 0;}
+ 	&appendo("/");
+ 
+ 	$appendflg=1;
+-	&printint($y[1]);
++	if (! &printint($y[1])) {return 0;}
+ 	&appendo("/");
+ 
+ 	$appendflg=1;
+-	&printint($y[2]);
++	if (! &printint($y[2])) {return 0;}
+ 
+ 	if($back)
+ 	{	if($back =~ /^[a-zA-Z]/) {&appendo("-");}
+ 		&appendo($back);
+ 	}
++  return 1;
+ }
+ 
+ sub printserno			# printserno(n): eg. B1, 3b2, 10W-40
+@@ -815,12 +823,12 @@
+ 		}		     # (should expand here unless in dictionary)
+ 		$x =~ s/^(\d*)//;	# strip off dig
+ 		$y=$1;
+-		if($y ne "") { &printdigstr($y); }
++		if($y ne "") { if (! &printdigstr($y)) {return 0;} }
+ 	}
+ 
+ 	if($back =~ /^s\b/)	# back = s
+ 	{			# eg. 2C60s
+-	    &pluralize;
++	    if (! &pluralize) {return 0;} 
+ 	    $back =~ s/^s//;
+ 	}
+ 	if($back)
+@@ -828,6 +836,7 @@
+ 		else {&appendo($back);}
+ 	}
+ 	$appendflg=0;
++  return 1;
+ }
+ 
+ sub printdigstr			# printdigstr(x)
+@@ -841,14 +850,13 @@
+ 	if($x =~ /^0/)			# leading zero
+ 	{	while($x ne "")
+ 		{	$x =~ s/^(.)//;
+-			if($1 !~ /\d/) {&perr("printdigstr: non-digit");}
++			if($1 !~ /\d/) {&perr("printdigstr: non-digit"); return 0;}
+ 			&pusho("$ones_z[$1]");
+ 		}
+ 		return;
+ 	}
+ 	if($x =~ /^\d0*$/)		# d, d0, d00, d000, etc
+-	{	&printint($x);
+-		return;
++	{	return &printint($x);
+ 	}
+ 
+ 	$_=$x;
+@@ -857,30 +865,29 @@
+ 	for($k=0;$y[$k]==0;$k++) {}			# k= nr following 0s
+ 
+ 	if($j==2)			# 2 dig
+-	{	&printint($x);
+-		return;
++	{	return &printint($x);
+ 	}
+ 	if($j==3)
+-	{	&printint($y[2]);
++	{	if (! &printint($y[2])) {return 0;}
+ 		if($y[1]==0) {&pusho("oh");}
+-		&printint("$y[1]$y[0]");
+-		return;
++		return &printint("$y[1]$y[0]");
+ 	}
+ 	if($j==5 && $k<=2)
+-	{	&printint("$y[4]");
++	{	if (! &printint("$y[4]")) {return 0;}
+ 		$j=4;
+ 	}
+ 	if($j==4)
+-	{	&printint("$y[3]$y[2]");
++	{	if (! &printint("$y[3]$y[2]")) {return 0;}
+ 		if($k==2) {&pusho("hundred");}
+ 		else
+ 		{	if($y[1]==0) {&pusho("oh");}
+-			&printint("$y[1]$y[0]");
++			return &printint("$y[1]$y[0]");
+ 		}
+-		return;
++		return 1;
+ 	}
+ 						# >5 dig: just sequential dig
+ 	for($j--;$j>=0;$j--) {&pusho("$ones_oh[$y[$j]]");}
++  return 1;
+ }
+ 
+ sub printftin			# printftin(n): eg. 6\'-4\"
+@@ -905,19 +912,19 @@
+ 
+ 	$x =~ s/^([\d\.]*)//;	# strip off dig & .
+ 	$y=$1;
+-	if(!$y) {&perr("printftin: bad feet");}
+-	&printnum($y);
++	if(!$y) {&perr("printftin: bad feet"); return 0;}
++	if (! &printnum($y)) {return 0;}
+ 	if($y==1) {&appendo("-foot");}
+ 	else {&appendo("-feet");}
+ 
+ 	$x =~ s/^\'//;	# strip off \'
+ 	$x =~ s/^-//;	# strip off -
+-	if(!$x) {&perr("printftin: bad intermed");}
++	if(!$x) {&perr("printftin: bad intermed"); return 0;}
+ 
+ 	$x =~ s/^([\d\.]*)//;	# strip off dig & .
+ 	$y=$1;
+-	if(!$y) {&perr("printftin: bad inches");}
+-	&printnum($y);
++	if(!$y) {&perr("printftin: bad inches"); return 0;}
++	if (! &printnum($y)) {return 0;}
+ 	if($y==1) {&appendo("-inch");}
+ 	else {&appendo("-inches");}
+ 
+@@ -925,6 +932,7 @@
+ 	{	if($back !~ /^[a-zA-Z]/) {&appendo($back);}
+ 		else {&pusho($back);}
+ 	}
++  return 1;
+ }
+ 
+ sub printint			# printint(x)
+@@ -968,13 +976,14 @@
+ 			}
+ 			if(int($j/3)>0)
+ 			{	if(int($j/3) > $#mult)
+-					{ &perr("printint: too big"); }
++					{ &perr("printint: too big"); return 0;}
+ 				&pusho($mult[int($j/3)]);
+ 			}
+ 			$commanextflg=1;
+ 		}
+ 	}
+ 	$commanextflg=0;
++  return 1;
+ }
+ 
+ sub printdecfrac
+@@ -989,6 +998,8 @@
+ 	if($leadingzeroflg)
+ 		{for($j=0;$j<=$#y;$j++) { &pusho($ones_z[$y[$j]]);}}
+ 	else {for($j=0;$j<=$#y;$j++) { &pusho($ones_oh[$y[$j]]);}}
++
++  return 1;
+ }
+ 
+ sub pluralize		# pluralize(): pluralize last entry on output stack
+@@ -1016,7 +1027,9 @@
+ 		$x =~ s/y$/ies/;
+ 		&pusho($x);
+ 	}
+-	else {&perr("pluralize: unknown word: $_");}
++	else {&perr("pluralize: unknown word: $_"); return 0;}
++
++  return 1;
+ }
+ 
+ sub thize		# thize(): add th to last entry on output stack
+@@ -1028,50 +1041,51 @@
+ 	$_=&geto;
+ 	if( /four$/ || /six$/ || /seven$/ || /ten$/ ||
+ 		/eleven$/ || /een$/ || /hundred$/ || /thousand$/ || /illion$/ )
+-	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n");} # xth
++	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n"); return 0;} # xth
+ 		&appendo("th");
+ 	}
+ 	elsif( /one$/ )						# 1st
+-	{	if($y && $y ne "st") {&perr("thize: mismatch: $_ $y\n");}
++	{	if($y && $y ne "st") {&perr("thize: mismatch: $_ $y\n"); return 0;}
+ 		$x=&popo();
+ 		$x =~ s/one$/first/;
+ 		&pusho($x);
+ 	}
+ 	elsif( /two$/ )						# 2nd
+-	{	if($y && $y ne "nd") {&perr("thize: mismatch: $_ $y\n");}
++	{	if($y && $y ne "nd") {&perr("thize: mismatch: $_ $y\n"); return 0;}
+ 		$x=&popo();
+ 		$x =~ s/two$/second/;
+ 		&pusho($x);
+ 	}
+ 	elsif( /three$/ )					# 3rd
+-	{	if($y && $y ne "rd") {&perr("thize: mismatch: $_ $y\n");}
++	{	if($y && $y ne "rd") {&perr("thize: mismatch: $_ $y\n"); return 0;}
+ 		$x=&popo();
+ 		$x =~ s/three$/third/;
+ 		&pusho($x);
+ 	}
+ 	elsif( /five$/ || /twelve$/ )				# 5th, 12th
+-	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n");}
++	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n"); return 0;}
+ 		$x=&popo();
+ 		$x =~ s/ve$/fth/;
+ 		&pusho($x);
+ 	}
+ 	elsif(/eight$/)
+-	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n");} # 8th
++	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n"); return 0;} # 8th
+ 		&appendo("h");
+ 	}
+ 	elsif( /nine$/ )
+-	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n");}
++	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n"); return 0;}
+ 		$x=&popo();
+ 		$x =~ s/nine$/ninth/;
+ 		&pusho($x);
+ 	}
+ 	elsif( /ty$/ )
+-	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n");}
++	{	if($y && $y ne "th") {&perr("thize: mismatch: $_ $y\n"); return 0;}
+ 		$x=&popo();
+ 		$x =~ s/ty$/tieth/;
+ 		&pusho($x);
+ 	}
+-	else {&perr("thize: unknown word: $_");}
++	else {&perr("thize: unknown word: $_"); return 0;j}
++  return 1;
+ }
+ 
+ sub pusho				# pusho($x): push output
+@@ -1089,17 +1103,17 @@
+ sub appendo				# appendo($x): append to output
+ {	$appendflg=0;		
+ #	if($#output < 0) {&pusho("");}
+-	if($#output < 0) {&perr("appendo: output empty");}
++	if($#output < 0) {&perr("appendo: output empty"); return 0;}
+ 	$output[$#output] .= @_[0];
+ }
+ 
+ sub popo				# popo(): pop last output
+-{	if($#output < 0) {&perr("popo: output empty");}
++{	if($#output < 0) {&perr("popo: output empty"); return 0;}
+ 	pop(@output);
+ }
+ 
+ sub geto				# geto(): get last output
+-{	if($#output < 0) {&perr("geto: output empty");}
++{	if($#output < 0) {&perr("geto: output empty"); return 0;}
+ 	return $output[$#output];
+ }
+ 
+@@ -1111,8 +1125,6 @@
+ 	$appendflg=0;
+ 	$commanextflg=0;
+ 	&pusho($this);
+-	$field++;		# graceful error recovery
+-	goto wloop;
+ }
+ 
+ sub perr2
+diff -Naur tools/csr4_utils/pare-sgml.perl local/data_prep/csr_hub4_utils/pare-sgml.perl
+--- tools/csr4_utils/pare-sgml.perl	1996-08-27 15:25:17.000000000 -0400
++++ local/data_prep/csr_hub4_utils/pare-sgml.perl	2017-11-03 13:22:09.486213159 -0400
+@@ -1,11 +1,14 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # $Id: pare-sgml.perl,v 1.3 1996/08/15 02:51:17 robertm Rel $
+ # removes extraneous headers and other non-LM fields
+ # translates <DOC ...> into LM-standard <art ...>
+ # removes comments (enclosed in brackets)
+ 
+-$intext=0;
++use strict;
++use warnings;
++
++my $intext=0;
+ while (<>)
+ {
+     if ($intext == 0)
+diff -Naur tools/csr4_utils/process_filelist.sh local/data_prep/csr_hub4_utils/process_filelist.sh
+--- tools/csr4_utils/process_filelist.sh	1969-12-31 19:00:00.000000000 -0500
++++ local/data_prep/csr_hub4_utils/process_filelist.sh	2017-11-03 13:22:09.490213160 -0400
+@@ -0,0 +1,30 @@
++#! /bin/bash
++
++set -e 
++set -o pipefail
++set -u
++set -x
++
++if [ $# -ne 2 ]; then
++  echo "Usage: $0 <filelist> <dir>"
++  exit 1
++fi
++
++filelist=$1
++dir=$2
++
++export PATH=$PATH:tools/csr4_utils
++
++for file in `cat $filelist`; do
++	BASENM=`basename $file`
++  name="${BASENM%.*}"
++
++	echo "Running LM pipeline for |$BASENM|..." 1>&2
++  gunzip -c $file | pare-sgml.perl | \
++    bugproc.perl | \
++    numhack.perl | \
++    numproc.perl -xtools/csr4_utils/num_excp | \
++    abbrproc.perl tools/csr4_utils/abbrlist | \
++    puncproc.perl -np | gzip -c > $dir/$name.txt.gz
++	echo "Done with $BASENM."
++done
+diff -Naur tools/csr4_utils/progsummary.perl local/data_prep/csr_hub4_utils/progsummary.perl
+--- tools/csr4_utils/progsummary.perl	1996-07-12 09:26:35.000000000 -0400
++++ local/data_prep/csr_hub4_utils/progsummary.perl	2017-11-03 13:22:09.494213160 -0400
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # Program:	progsummary.perl
+ # Written by:	dave graff
+diff -Naur tools/csr4_utils/puncproc.perl local/data_prep/csr_hub4_utils/puncproc.perl
+--- tools/csr4_utils/puncproc.perl	1996-08-27 15:25:17.000000000 -0400
++++ local/data_prep/csr_hub4_utils/puncproc.perl	2017-11-03 13:22:09.494213160 -0400
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl
++#!/usr/bin/perl
+ 
+ # $Id: puncproc.perl,v 1.2 1996/08/05 16:12:42 robertm Rel $
+ ###############################################################################
+@@ -59,7 +59,7 @@
+ 						# forbidden symbols
+ 	if(/</) {&perr("<");}				# <
+ 	if(/>/) {&perr(">");}				# >
+-	if(/\$/) {&perr("$");}				# $
++	if(/\$/) {&perr("\$");}				# $
+ 	if(/_/) {&perr("_");}				# _
+ 	if(/\d/) {&perr("[0-9]");}			# 0-9
+ 
+diff -Naur tools/csr4_utils/tr-bn-char.fast.perl local/data_prep/csr_hub4_utils/tr-bn-char.fast.perl
+--- tools/csr4_utils/tr-bn-char.fast.perl	1996-08-21 02:39:12.000000000 -0400
++++ local/data_prep/csr_hub4_utils/tr-bn-char.fast.perl	2017-11-03 13:22:09.502213160 -0400
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl -pi.old-char
++#!/usr/bin/perl -pi.old-char
+ 
+ # handles nonprinting characters in Broadcast News material, to the extent
+ # that they can be handled, and perhaps a bit beyond...
+diff -Naur tools/csr4_utils/tr-bn-char.slow.perl local/data_prep/csr_hub4_utils/tr-bn-char.slow.perl
+--- tools/csr4_utils/tr-bn-char.slow.perl	1996-08-21 01:30:18.000000000 -0400
++++ local/data_prep/csr_hub4_utils/tr-bn-char.slow.perl	2017-11-03 13:22:09.502213160 -0400
+@@ -1,4 +1,4 @@
+-#!/usr/local/bin/perl -p
++#!/usr/bin/perl -p
+ 
+ # handles nonprinting characters in Broadcast News material, to the extent
+ # that they can be handled, and perhaps a bit beyond...

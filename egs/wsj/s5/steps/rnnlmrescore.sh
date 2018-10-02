@@ -183,7 +183,7 @@ if [ $stage -le 5 ]; then
   done
 fi
 if [ $stage -le 6 ]; then
-  echo "$0: invoking rnnlm_compute_scores.sh which calls rnnlm, to get RNN LM scores."
+  echo "$0: invoking utils/rnnlm_compute_scores.sh which calls rnnlm, to get RNN LM scores."
   $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \
     utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $rnndir $adir.JOB/temp $adir.JOB/words_text $adir.JOB/lmwt.rnn \
     || exit 1;

@@ -14,10 +14,14 @@ import argparse
 import logging
 import math
 import os
-import re
 import subprocess
 import sys
 import threading
+
+try:
+    import thread as thread_module
+except:
+    import _thread as thread_module
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -231,8 +235,7 @@ def background_command_waiter(command, popen_object, require_zero_status):
             logger.error(str)
             # thread.interrupt_main() sends a KeyboardInterrupt to the main
             # thread, which will generally terminate the program.
-            import thread
-            thread.interrupt_main()
+            thread_module.interrupt_main()
         else:
             logger.warning(str)
 
@@ -263,7 +266,7 @@ def get_number_of_leaves_from_model(dir):
 def get_number_of_jobs(alidir):
     try:
         num_jobs = int(open('{0}/num_jobs'.format(alidir)).readline().strip())
-    except IOError, ValueError:
+    except (IOError, ValueError) as e:
         logger.error("Exception while reading the "
                      "number of alignment jobs: ", exc_info=True)
         raise SystemExit(1)

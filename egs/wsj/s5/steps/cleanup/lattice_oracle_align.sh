@@ -72,9 +72,9 @@ fi
 nj=$(cat $latdir/num_jobs)
 oov=$(cat $lang/oov.int)
 
-utils/split_data.sh --per-utt $data $nj
+utils/split_data.sh $data $nj
 
-sdata=$data/split$nj
+sdata=$data/split${nj}
 
 if [ $stage -le 1 ]; then
   $cmd JOB=1:$nj $dir/log/get_oracle.JOB.log \

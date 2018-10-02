@@ -122,8 +122,9 @@ class BiglmFasterDecoder {
     // will be nonempty).
     fst_out->DeleteStates();
     Token *best_tok = NULL;
-    Weight best_final; // only set if is_final == true.  The final-prob corresponding
-    // to the best final token (i.e. the one with best weight best_weight, below).
+    Weight best_final = Weight::Zero(); // set only if is_final == true.  The
+    // final-prob corresponding to the best final token (i.e. the one with best
+    // weight best_weight, below).
     bool is_final = ReachedFinal();
     if (!is_final) {
       for (const Elem *e = toks_.GetList(); e != NULL; e = e->tail)

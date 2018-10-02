@@ -36,21 +36,24 @@ exit 0
 # multi_a  tri5  tedlium_tg_tedlium.si    ||  %WER 29.0 | 1155 27512 | 75.8 20.3 3.9 4.8 29.0 93.3 | exp/multi_a/tri5/decode_tedlium_tg_tedlium.si/score_11_0.5/test.ctm.filt.sys
 
 # Results with the current data combination, lexicon preparation, and acoustic model training procedures.
-# On eval2000 the final GMM results is 24.3, which is better than the above result (24.9). 
-
-multi_a  tri1b  tg_eval2000        ||  %WER 40.3 | 4459 42989 | 63.7 26.1 10.2 4.0 40.3 72.9 | exp/multi_a/tri1b/decode_tg_eval2000/score_10_0.5/eval2000.ctm.filt.sys
-multi_a  tri1b  tg_eval2000.si     ||  %WER 45.3 | 4459 42989 | 59.2 29.3 11.4 4.6 45.3 75.4 | exp/multi_a/tri1b/decode_tg_eval2000.si/score_11_0.0/eval2000.ctm.filt.sys
-multi_a  tri3a  tg_eval2000        ||  %WER 33.3 | 4459 42989 | 70.4 21.0 8.6 3.7 33.3 69.6 | exp/multi_a/tri3a/decode_tg_eval2000/score_11_1.0/eval2000.ctm.filt.sys
-multi_a  tri3a  tg_eval2000.si     ||  %WER 38.5 | 4459 42989 | 65.9 24.7 9.5 4.4 38.5 72.5 | exp/multi_a/tri3a/decode_tg_eval2000.si/score_11_1.0/eval2000.ctm.filt.sys
-multi_a  tri3b  tg_eval2000        ||  %WER 27.9 | 4459 42989 | 75.8 17.9 6.3 3.7 27.9 67.1 | exp/multi_a/tri3b/decode_tg_eval2000/score_11_0.0/eval2000.ctm.filt.sys
-multi_a  tri3b  tg_eval2000.si     ||  %WER 31.6 | 4459 42989 | 71.9 20.3 7.8 3.5 31.6 68.8 | exp/multi_a/tri3b/decode_tg_eval2000.si/score_12_0.0/eval2000.ctm.filt.sys
-multi_a  tri3b  tg_sp_eval2000     ||  %WER 26.7 | 4459 42989 | 77.2 17.1 5.7 3.9 26.7 65.6 | exp/multi_a/tri3b/decode_tg_sp_eval2000/score_11_0.0/eval2000.ctm.filt.sys
-multi_a  tri3b  tg_sp_eval2000.si  ||  %WER 30.6 | 4459 42989 | 73.1 19.6 7.3 3.8 30.6 68.2 | exp/multi_a/tri3b/decode_tg_sp_eval2000.si/score_12_1.0/eval2000.ctm.filt.sys
-multi_a  tri4   tg_eval2000        ||  %WER 24.8 | 4459 42989 | 78.5 16.0 5.5 3.4 24.8 63.8 | exp/multi_a/tri4/decode_tg_eval2000/score_12_1.0/eval2000.ctm.filt.sys
-multi_a  tri4   tg_eval2000.si     ||  %WER 31.2 | 4459 42989 | 72.6 20.6 6.8 3.9 31.2 67.6 | exp/multi_a/tri4/decode_tg_eval2000.si/score_12_0.0/eval2000.ctm.filt.sys
-multi_a  tri5a  tg_eval2000        ||  %WER 24.3 | 4459 42989 | 78.8 15.6 5.6 3.2 24.3 63.3 | exp/multi_a/tri5a/decode_tg_eval2000/score_13_0.0/eval2000.ctm.filt.sys
-multi_a  tri5a  tg_eval2000.si     ||  %WER 30.6 | 4459 42989 | 73.7 20.2 6.1 4.3 30.6 67.9 | exp/multi_a/tri5a/decode_tg_eval2000.si/score_10_1.0/eval2000.ctm.filt.sys
-multi_a  tri5a  tg_sp_eval2000     ||  %WER 24.2 | 4459 42989 | 79.1 15.6 5.3 3.3 24.2 63.2 | exp/multi_a/tri5a/decode_tg_sp_eval2000/score_12_0.0/eval2000.ctm.filt.sys
-multi_a  tri5a  tg_sp_eval2000.si  ||  %WER 30.5 | 4459 42989 | 73.7 20.3 6.0 4.2 30.5 67.8 | exp/multi_a/tri5a/decode_tg_sp_eval2000.si/score_10_1.0/eval2000.ctm.filt.sys
-multi_a  tri5b  tg_eval2000        ||  %WER 24.3 | 4459 42989 | 79.3 15.7 5.0 3.6 24.3 63.5 | exp/multi_a/tri5b/decode_tg_eval2000/score_11_0.0/eval2000.ctm.filt.sys
-multi_a  tri5b  tg_eval2000.si     ||  %WER 30.7 | 4459 42989 | 73.6 20.4 6.0 4.3 30.7 68.1 | exp/multi_a/tri5b/decode_tg_eval2000.si/score_10_1.0/eval2000.ctm.filt.sys
+# On eval2000 the final GMM results is 24.5, which is better than the above result (24.9). 
+multi_a  tri1b  tg_eval2000        ||  %WER 40.4 | 4459 42989 | 63.8 25.9 10.3 4.2 40.4 72.7 | exp/multi_a/tri1b/decode_tg_eval2000/score_10_0.5/eval2000.ctm.filt.sys
+multi_a  tri1b  tg_eval2000.si     ||  %WER 45.0 | 4459 42989 | 59.3 28.8 11.9 4.3 45.0 75.0 | exp/multi_a/tri1b/decode_tg_eval2000.si/score_12_0.0/eval2000.ctm.filt.sys
+multi_a  tri3a  tg_eval2000        ||  %WER 33.4 | 4459 42989 | 70.5 21.3 8.3 3.9 33.4 69.7 | exp/multi_a/tri3a/decode_tg_eval2000/score_11_0.0/eval2000.ctm.filt.sys
+multi_a  tri3a  tg_eval2000.si     ||  %WER 38.4 | 4459 42989 | 66.2 24.2 9.6 4.6 38.4 72.3 | exp/multi_a/tri3a/decode_tg_eval2000.si/score_11_1.0/eval2000.ctm.filt.sys
+multi_a  tri3b  tg_eval2000        ||  %WER 27.8 | 4459 42989 | 75.7 17.8 6.6 3.5 27.8 66.6 | exp/multi_a/tri3b/decode_tg_eval2000/score_12_0.0/eval2000.ctm.filt.sys
+multi_a  tri3b  tg_eval2000.si     ||  %WER 31.7 | 4459 42989 | 71.8 20.3 7.8 3.6 31.7 69.0 | exp/multi_a/tri3b/decode_tg_eval2000.si/score_12_0.5/eval2000.ctm.filt.sys
+multi_a  tri3b  tg_sp_eval2000     ||  %WER 26.8 | 4459 42989 | 77.0 17.3 5.7 3.8 26.8 65.2 | exp/multi_a/tri3b/decode_tg_sp_eval2000/score_11_1.0/eval2000.ctm.filt.sys
+multi_a  tri3b  tg_sp_eval2000.si  ||  %WER 30.5 | 4459 42989 | 73.7 19.7 6.7 4.2 30.5 68.0 | exp/multi_a/tri3b/decode_tg_sp_eval2000.si/score_11_0.0/eval2000.ctm.filt.sys
+multi_a  tri4   tg_eval2000        ||  %WER 24.8 | 4459 42989 | 78.6 15.8 5.5 3.5 24.8 64.1 | exp/multi_a/tri4/decode_tg_eval2000/score_12_1.0/eval2000.ctm.filt.sys
+multi_a  tri4   tg_eval2000.si     ||  %WER 31.3 | 4459 42989 | 73.1 20.8 6.2 4.4 31.3 68.7 | exp/multi_a/tri4/decode_tg_eval2000.si/score_10_1.0/eval2000.ctm.filt.sys
+multi_a  tri5a  tg_eval2000        ||  %WER 24.5 | 4459 42989 | 79.0 15.7 5.3 3.5 24.5 63.4 | exp/multi_a/tri5a/decode_tg_eval2000/score_12_0.0/eval2000.ctm.filt.sys
+multi_a  tri5a  tg_eval2000.si     ||  %WER 30.4 | 4459 42989 | 73.3 20.0 6.6 3.8 30.4 67.5 | exp/multi_a/tri5a/decode_tg_eval2000.si/score_12_0.5/eval2000.ctm.filt.sys
+multi_a  tri5a  tg_sp_eval2000     ||  %WER 24.5 | 4459 42989 | 78.9 15.7 5.4 3.4 24.5 63.4 | exp/multi_a/tri5a/decode_tg_sp_eval2000/score_12_0.5/eval2000.ctm.filt.sys
+multi_a  tri5a  tg_sp_eval2000.si  ||  %WER 30.5 | 4459 42989 | 73.5 20.1 6.5 4.0 30.5 67.8 | exp/multi_a/tri5a/decode_tg_sp_eval2000.si/score_11_1.0/eval2000.ctm.filt.sys
+multi_a  tri5b  tg_eval2000        ||  %WER 24.4 | 4459 42989 | 79.1 15.6 5.3 3.5 24.4 63.4 | exp/multi_a/tri5b/decode_tg_eval2000/score_12_0.0/eval2000.ctm.filt.sys
+multi_a  tri5b  tg_eval2000.si     ||  %WER 30.5 | 4459 42989 | 73.5 20.2 6.3 4.0 30.5 67.3 | exp/multi_a/tri5b/decode_tg_eval2000.si/score_11_1.0/eval2000.ctm.filt.sys
+multi_a  tri6a  tg_eval2000        ||  %WER 24.5 | 4459 42989 | 78.8 15.7 5.5 3.4 24.5 63.0 | exp/multi_a/tri6a/decode_tg_eval2000/score_13_0.5/eval2000.ctm.filt.sys
+multi_a  tri6a  tg_eval2000.si     ||  %WER 31.5 | 4459 42989 | 73.1 21.0 5.9 4.6 31.5 68.1 | exp/multi_a/tri6a/decode_tg_eval2000.si/score_10_1.0/eval2000.ctm.filt.sys
+multi_a  tri6a  tg_sp_eval2000     ||  %WER 24.6 | 4459 42989 | 78.9 15.8 5.3 3.5 24.6 63.3 | exp/multi_a/tri6a/decode_tg_sp_eval2000/score_12_1.0/eval2000.ctm.filt.sys
+multi_a  tri6a  tg_sp_eval2000.si  ||  %WER 31.5 | 4459 42989 | 72.6 21.0 6.4 4.2 31.5 67.9 | exp/multi_a/tri6a/decode_tg_sp_eval2000.si/score_11_1.0/eval2000.ctm.filt.sys

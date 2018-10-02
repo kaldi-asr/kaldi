@@ -51,7 +51,7 @@ namespace chain {
 
   All this is done in parallel over multiple sequences, but the computations
   are independent over the separate sequences, so we won't introduce any notation
-  or index for the sequence; we'll just explain it for one sequences.
+  or index for the sequence; we'll just explain it for one sequence.
 
   Suppose we have I hmm-states, numbered i = 0 ... I-1 (we'll use i and j for
   hmm-state indexes).  Let foll(i) give a list of arcs leaving state i, and
@@ -210,9 +210,11 @@ class DenominatorComputation {
                          int32 num_sequences,
                          const CuMatrixBase<BaseFloat> &nnet_output);
 
-  // Does the forward computation, and returns the total negated log-like summed
-  // over all sequences.  You will have to scale this by any supervision
-  // weighting factor, manually.
+  // Does the forward computation, and returns the total log-like summed over
+  // all sequences.  You will have to scale this by any supervision weighting
+  // factor, manually.  Note: this log-like will be negated before it
+  // is added into the objective function, since this is the denominator
+  // computation.
   BaseFloat Forward();
 
   // this adds deriv_weight times (the derivative of the log-prob w.r.t. the
@@ -313,4 +315,3 @@ class DenominatorComputation {
 }  // namespace kaldi
 
 #endif  // KALDI_CHAIN_CHAIN_DENOMINATOR_H_
-

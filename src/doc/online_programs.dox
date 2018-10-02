@@ -163,7 +163,7 @@ repository (http://backports.debian.org). Install the 'good' GStreamer plugins (
 and GStreamer 1.0 tools (package `gstreamer1.0-tools`). A demo program also requires the PulseAudio Gstreamer plugins 
 (package gstreamer1.0-pulseaudio).
 
-Finally, run `make depend` and `make` in the `src/gst-plugin` directory. This should result in a file `src/gst-plugin/libgstkaldi.so`
+Finally, run `make depend` and `make` in the `src/gst-plugin` directory. This should result in a file `src/gst-plugin/libgstonlinegmmdecodefaster.so`
 which contains the GStreamer plugin.
 
 To make GStreamer able to find the Kaldi plugin, you have to add the `src/gst-plugin` directory to its plugin search path. To do this,

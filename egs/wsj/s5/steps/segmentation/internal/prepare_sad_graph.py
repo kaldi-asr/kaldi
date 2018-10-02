@@ -38,7 +38,8 @@ def get_args():
         and minimum silence duration constraint. The graph is written to the
         'output_graph', which can be file or "-" for stdout.  for segmentation
         with minimum and maximum speech duration constraints and minimum silence
-        duration constraint.""")
+        duration constraint.""",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     parser.add_argument("--transition-scale", type=float, default=1.0,
                         help="""Scale on transition probabilities relative to

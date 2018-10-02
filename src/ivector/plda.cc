@@ -40,6 +40,19 @@ void Plda::Read(std::istream &is, bool binary) {
   ComputeDerivedVars();
 }
 
+template<class Real>
+/// This function computes a projection matrix that when applied makes the
+/// covariance unit (i.e. all 1).
+static void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
+                                        MatrixBase<Real> *proj) {
+  int32 dim = covar.NumRows();
+  TpMatrix<Real> C(dim);  // Cholesky of covar, covar = C C^T
+  C.Cholesky(covar);
+  C.Invert();  // The matrix that makes covar unit is C^{-1}, because
+               // C^{-1} covar C^{-T} = C^{-1} C C^T C^{-T} = I.
+  proj->CopyFromTp(C, kNoTrans);  // set "proj" to C^{-1}.
+}
+
 
 void Plda::ComputeDerivedVars() {
   KALDI_ASSERT(Dim() > 0);
@@ -201,6 +214,72 @@ void Plda::SmoothWithinClassCovariance(double smoothing_factor) {
   within_class_covar.ApplyPow(-0.5);
   transform_.MulRowsVec(within_class_covar);
 
+  ComputeDerivedVars();
+}
+
+void Plda::ApplyTransform(const Matrix<double> &in_transform) {
+  KALDI_ASSERT(in_transform.NumRows() <= Dim()
+    && in_transform.NumCols() == Dim());
+
+  // Apply in_transform to mean_.
+  Vector<double> mean_new(in_transform.NumRows());
+  mean_new.AddMatVec(1.0, in_transform, kNoTrans, mean_, 0.0);
+  mean_.Resize(in_transform.NumRows());
+  mean_.CopyFromVec(mean_new);
+
+  SpMatrix<double> between_var(in_transform.NumCols()),
+                   within_var(in_transform.NumCols()),
+                   psi_mat(in_transform.NumCols()),
+                   between_var_new(Dim()),
+                   within_var_new(Dim());
+  Matrix<double> transform_invert(transform_);
+
+  // Next, compute the between_var and within_var that existed
+  // prior to diagonalization.
+  psi_mat.AddDiagVec(1.0, psi_);
+  transform_invert.Invert();
+  within_var.AddMat2(1.0, transform_invert, kNoTrans, 0.0);
+  between_var.AddMat2Sp(1.0, transform_invert, kNoTrans, psi_mat, 0.0);
+
+  // Next, transform the variances using the input transformation.
+  between_var_new.AddMat2Sp(1.0, in_transform, kNoTrans, between_var, 0.0);
+  within_var_new.AddMat2Sp(1.0, in_transform, kNoTrans, within_var, 0.0);
+
+  // Finally, we need to recompute psi_ and transform_. The remainder of
+  // the code in this function  is a lightly modified copy of
+  // PldaEstimator::GetOutput().
+  Matrix<double> transform1(Dim(), Dim());
+  ComputeNormalizingTransform(within_var_new, &transform1);
+  // Now transform is a matrix that if we project with it,
+  // within_var becomes unit.
+  // between_var_proj is between_var after projecting with transform1.
+  SpMatrix<double> between_var_proj(Dim());
+  between_var_proj.AddMat2Sp(1.0, transform1, kNoTrans, between_var_new, 0.0);
+
+  Matrix<double> U(Dim(), Dim());
+  Vector<double> s(Dim());
+  // Do symmetric eigenvalue decomposition between_var_proj = U diag(s) U^T,
+  // where U is orthogonal.
+  between_var_proj.Eig(&s, &U);
+
+  KALDI_ASSERT(s.Min() >= 0.0);
+  int32 n;
+  s.ApplyFloor(0.0, &n);
+  if (n > 0) {
+    KALDI_WARN << "Floored " << n << " eigenvalues of between-class "
+               << "variance to zero.";
+  }
+  // Sort from greatest to smallest eigenvalue.
+  SortSvd(&s, &U);
+
+  // The transform U^T will make between_var_proj diagonal with value s
+  // (i.e. U^T U diag(s) U U^T = diag(s)).  The final transform that
+  // makes within_var unit and between_var diagonal is U^T transform1,
+  // i.e. first transform1 and then U^T.
+  transform_.Resize(Dim(), Dim());
+  transform_.AddMatMat(1.0, U, kTrans, transform1, kNoTrans, 0.0);
+  psi_.Resize(Dim());
+  psi_.CopyFromVec(s);
   ComputeDerivedVars();
 }
 
@@ -454,17 +533,6 @@ void PldaEstimator::Estimate(const PldaEstimationConfig &config,
   GetOutput(plda);
 }
 
-template<class Real>
-static void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
-                                        MatrixBase<Real> *proj) {
-  int32 dim = covar.NumRows();
-  TpMatrix<Real> C(dim);  // Cholesky of covar, covar = C C^T
-  C.Cholesky(covar);
-  C.Invert();  // The matrix that makes covar unit is C^{-1}, because
-               // C^{-1} covar C^{-T} = C^{-1} C C^T C^{-T} = I.
-  proj->CopyFromTp(C, kNoTrans);  // set "proj" to C^{-1}.
-}
-
 
 void PldaEstimator::GetOutput(Plda *plda) {
   plda->mean_ = stats_.sum_;
@@ -488,7 +556,8 @@ void PldaEstimator::GetOutput(Plda *plda) {
   between_var_proj.Eig(&s, &U);
 
   KALDI_ASSERT(s.Min() >= 0.0);
-  int32 n = s.ApplyFloor(0.0);
+  int32 n;
+  s.ApplyFloor(0.0, &n);
   if (n > 0) {
     KALDI_WARN << "Floored " << n << " eigenvalues of between-class "
                << "variance to zero.";

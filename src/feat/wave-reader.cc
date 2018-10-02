@@ -132,7 +132,23 @@ void WaveInfo::Read(std::istream &is) {
   uint32 riff_chunk_read = 0;
   riff_chunk_read += 4;  // WAVE included in riff_chunk_size.
 
-  reader.Expect4ByteTag("fmt ");
+  // Possibly skip any RIFF tags between 'WAVE' and 'fmt '.
+  // Apple devices produce a filler tag 'JUNK' for memory alignment.
+  reader.Read4ByteTag();
+  riff_chunk_read += 4;
+  while (strcmp(reader.tag,"fmt ") != 0) {
+    uint32 filler_size = reader.ReadUint32();
+    riff_chunk_read += 4;
+    for (uint32 i = 0; i < filler_size; i++) {
+      is.get(); // read 1 byte,
+    }
+    riff_chunk_read += filler_size;
+    // get next RIFF tag,
+    reader.Read4ByteTag();
+    riff_chunk_read += 4;
+  }
+
+  KALDI_ASSERT(strcmp(reader.tag,"fmt ") == 0);
   uint32 subchunk1_size = reader.ReadUint32();
   uint16 audio_format = reader.ReadUint16();
   num_channels_ = reader.ReadUint16();
@@ -190,9 +206,8 @@ void WaveInfo::Read(std::istream &is) {
     KALDI_ERR << "Unexpected block_align: " << block_align << " vs. "
               << num_channels_ << " * " << (bits_per_sample/8);
 
-  riff_chunk_read += 8 + subchunk1_size;
-  // size of what we just read, 4 bytes for "fmt " + 4
-  // for subchunk1_size + subchunk1_size itself.
+  riff_chunk_read += 4 + subchunk1_size;
+  // size of what we just read, 4 for subchunk1_size + subchunk1_size itself.
 
   // We support an optional "fact" chunk (which is useless but which
   // we encountered), and then a single "data" chunk.
@@ -217,10 +232,7 @@ void WaveInfo::Read(std::istream &is) {
     riff_chunk_read += 4;
   }
 
-  if (strcmp(reader.tag, "data"))
-    KALDI_ERR << "WaveData: expected data chunk, got instead "
-              << reader.tag;
-
+  KALDI_ASSERT(strcmp(reader.tag, "data") == 0);
   uint32 data_chunk_size = reader.ReadUint32();
   riff_chunk_read += 4;
 

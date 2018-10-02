@@ -41,7 +41,7 @@ weights_file=$3
 [ ! -f $weight ] && \
   echo "$0: expected weights file in $weight" 1>&2 && exit 1;
 
-rnnlm/ensure_counts_present.sh $text
+rnnlm/ensure_counts_present.sh $text 1>&2
 
 
 set -e -o pipefail -u
@@ -65,7 +65,7 @@ tot_with_multiplicities=0
 
 for f in $text/*.counts; do
   if [ "$f" != "$text/dev.counts" ]; then
-    this_tot=$(cat $f | awk '{tot += $2} END{print tot}')
+    this_tot=$(cat $f | awk '{tot += $2} END{printf("%d", tot)}')
     if ! [ $this_tot -gt 0 ]; then
       echo "$0: there were no counts in counts file $f" 1>&2
       exit 1

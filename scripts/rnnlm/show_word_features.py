@@ -6,7 +6,16 @@
 import os
 import argparse
 import sys
-sys.stdout = open(1, 'w', encoding='utf-8', closefd=False)
+
+# The use of latin-1 encoding does not preclude reading utf-8.  latin-1 encoding
+# means "treat words as sequences of bytes", and it is compatible with utf-8
+# encoding as well as other encodings such as gbk, as long as the spaces are
+# also spaces in ascii (which we check).  It is basically how we emulate the
+# behavior of python before python3.
+sys.stdout = open(1, 'w', encoding='latin-1', closefd=False)
+
+import re
+tab_or_space = re.compile('[ \t]+')
 
 parser = argparse.ArgumentParser(description="This script turns the word features to a human readable format.",
                                  epilog="E.g. " + sys.argv[0] + "exp/rnnlm/word_feats.txt exp/rnnlm/features.txt "
@@ -27,9 +36,9 @@ args = parser.parse_args()
 def read_feature_type_and_key(features_file):
     feat_types = {}
 
-    with open(features_file, 'r', encoding="utf-8") as f:
+    with open(features_file, 'r', encoding="latin-1") as f:
         for line in f:
-            fields = line.split()
+            fields = re.split(tab_or_space, line)
             assert(len(fields) in [2, 3, 4])
 
             feat_id = int(fields[0])
@@ -44,9 +53,9 @@ def read_feature_type_and_key(features_file):
 feat_type_and_key = read_feature_type_and_key(args.features_file)
 
 num_word_feats = 0
-with open(args.word_features_file, 'r', encoding="utf-8") as f:
+with open(args.word_features_file, 'r', encoding="latin-1") as f:
     for line in f:
-        fields = line.split()
+        fields = re.split(tab_or_space, line)
         assert len(fields) % 2 == 1
 
         print(int(fields[0]), end='\t')

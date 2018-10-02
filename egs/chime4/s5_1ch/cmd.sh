@@ -12,7 +12,7 @@
 
 export train_cmd="queue.pl --mem 2G"
 export cuda_cmd="queue.pl --mem 2G --gpu 1"
-export decode_cmd="queue.pl --mem 4G"
+export decode_cmd="queue.pl --mem 8G"
 export mkgraph_cmd="queue.pl --mem 8G"
 
 # run it locally...

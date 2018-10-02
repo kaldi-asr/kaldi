@@ -168,8 +168,57 @@ void TestBuildTree() {
       std::vector<bool> share_roots(phone_sets.size(), true),
           do_split(phone_sets.size(), true);
 
-      tree = BuildTree(qopts, phone_sets, hmm_lengths, share_roots,
-                       do_split, stats, thresh, max_leaves, 0.0, P);
+      if (p % 3 != 0) {
+        bool round_num_leaves = true;
+
+        EventMap *tree_not_rounded =
+               BuildTree(qopts, phone_sets, hmm_lengths, share_roots,
+                         do_split, stats, thresh, max_leaves, 0.0, P,
+                         false);
+
+        tree = BuildTree(qopts, phone_sets, hmm_lengths, share_roots,
+                         do_split, stats, thresh, max_leaves, 0.0, P,
+                         round_num_leaves);
+
+        BuildTreeStatsType::const_iterator iter, end = stats.end();
+
+        std::map<EventAnswerType, std::set<EventAnswerType> > mapping;
+        int32 num_removed = 0;
+        for (iter = stats.begin(); iter != end; ++iter) {
+          const EventType &evec =  iter->first;
+          EventAnswerType ans_not_rounded;
+          KALDI_ASSERT(tree_not_rounded->Map(evec, &ans_not_rounded));
+
+          EventAnswerType ans;
+          KALDI_ASSERT(tree->Map(evec, &ans));
+
+          auto it = mapping.find(ans);
+          if (it == mapping.end()) {
+            std::set<EventAnswerType> leaf_set;
+            leaf_set.insert(ans_not_rounded);
+            mapping.insert(it, std::make_pair(ans, leaf_set));
+          } else if (it->second.count(ans_not_rounded) == 0) {
+            num_removed++;
+            it->second.insert(ans_not_rounded);
+          }
+        }
+
+        std::cout << "Leaf rounding map:\n";
+        for (auto it = mapping.begin(); it != mapping.end(); ++it) {
+          WriteBasicType(std::cout, false, it->first);
+          for (auto it2 = it->second.begin(); it2 != it->second.end(); ++it2) {
+            WriteBasicType(std::cout, false, *it2);
+          }
+          std::cout << std::endl;
+        }
+
+        KALDI_ASSERT(num_removed < 8);
+      } else {
+        tree = BuildTree(qopts, phone_sets, hmm_lengths, share_roots,
+                         do_split, stats, thresh, max_leaves, 0.0, P,
+                         false);
+      }
+
       // Would have print-out & testing code here.
       std::cout << "Tree [default build] is:\n";
       tree->Write(std::cout, false);

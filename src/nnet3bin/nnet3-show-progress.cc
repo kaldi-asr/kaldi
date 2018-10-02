@@ -132,6 +132,10 @@ int main(int argc, char *argv[]) {
     { // Get info about magnitude of parameter change.
       Nnet diff_nnet(nnet1);
       AddNnet(nnet2, -1.0, &diff_nnet);
+      if (GetVerboseLevel() >= 1) {
+        KALDI_VLOG(1) << "Printing info for the difference between the neural nets: "
+                      << diff_nnet.Info();
+      }
       int32 num_updatable = NumUpdatableComponents(diff_nnet);
       Vector<BaseFloat> dot_prod(num_updatable);
       ComponentDotProducts(diff_nnet, diff_nnet, &dot_prod);
@@ -139,12 +143,15 @@ int main(int argc, char *argv[]) {
       KALDI_LOG << "Parameter differences per layer are "
                 << PrintVectorPerUpdatableComponent(nnet1, dot_prod);
 
-      Vector<BaseFloat> baseline_prod(num_updatable);
+      Vector<BaseFloat> baseline_prod(num_updatable),
+          new_prod(num_updatable);
       ComponentDotProducts(nnet1, nnet1, &baseline_prod);
+      ComponentDotProducts(nnet2, nnet2, &new_prod);
       baseline_prod.ApplyPow(0.5);
+      new_prod.ApplyPow(0.5);
 
-      KALDI_LOG << "Norms of parameter matrices are "
-                << PrintVectorPerUpdatableComponent(nnet1, baseline_prod);
+      KALDI_LOG << "Norms of parameter matrices from <new-nnet-in> are "
+                << PrintVectorPerUpdatableComponent(nnet2, new_prod);
 
       dot_prod.DivElements(baseline_prod);
       KALDI_LOG << "Relative parameter differences per layer are "

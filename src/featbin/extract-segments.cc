@@ -23,7 +23,7 @@
 #include "feat/wave-reader.h"
 
 /*! @brief This is the main program for extracting segments from a wav file
- - usage : 
+ - usage :
      - extract-segments [options ..]  <scriptfile > <segments-file> <wav-written-specifier>
      - "scriptfile" must contain full path of the wav file.
      - "segments-file" should have the information of the segments that needs to be extracted from wav file
@@ -34,7 +34,7 @@
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
-    
+
     const char *usage =
         "Extract segments from a large audio file in WAV format.\n"
         "Usage:  extract-segments [options] <wav-rspecifier> <segments-file> <wav-wspecifier>\n"
@@ -43,12 +43,11 @@ int main(int argc, char *argv[]) {
         "<segment-id> <recording-id> <start-time> <end-time>\n"
         "e.g. call-861225-A-0050-0065 call-861225-A 5.0 6.5\n"
         "or (less frequently, and not supported in scripts):\n"
-        "<segment-id> <wav-file-name> <start-time> <end-time> <channel>\n"        
+        "<segment-id> <wav-file-name> <start-time> <end-time> <channel>\n"
         "where <channel> will normally be 0 (left) or 1 (right)\n"
         "e.g. call-861225-A-0050-0065 call-861225 5.0 6.5 1\n"
         "And <end-time> of -1 means the segment runs till the end of the WAV file\n"
-        "See also: extract-rows, which does the same thing but to feature files,\n"
-        " wav-copy, wav-to-duration\n";
+        "See also: extract-feature-segments, wav-copy, wav-to-duration\n";
 
     ParseOptions po(usage);
     BaseFloat min_segment_length = 0.1, // Minimum segment length in seconds.
@@ -58,7 +57,7 @@ int main(int argc, char *argv[]) {
     po.Register("max-overshoot", &max_overshoot,
                 "End segments overshooting audio by less than this (in seconds) "
                 "are truncated, else rejected.");
-    
+
     po.Read(argc, argv);
     if (po.NumArgs() != 3) {
       po.PrintUsage();
@@ -119,15 +118,15 @@ int main(int argc, char *argv[]) {
           continue;
         }
       }
-      /* check whether a segment start time and end time exists in recording 
+      /* check whether a segment start time and end time exists in recording
        * if fails , skips the segment.
-       */ 
+       */
       if (!reader.HasKey(recording)) {
         KALDI_WARN << "Could not find recording " << recording
                    << ", skipping segment " << segment;
         continue;
       }
-      
+
       const WaveData &wave = reader.Value(recording);
       const Matrix<BaseFloat> &wave_data = wave.Data();
       BaseFloat samp_freq = wave.SampFreq();  // read sampling fequency
@@ -147,7 +146,7 @@ int main(int argc, char *argv[]) {
                    << num_samp << ", skipping segment " << segment;
         continue;
       }
-      /* end sample must be less than total number samples 
+      /* end sample must be less than total number samples
        * otherwise skip the segment
        */
       if (end_samp > num_samp) {
@@ -184,7 +183,7 @@ int main(int argc, char *argv[]) {
         }
       }
       /*
-       * This function  return a portion of a wav data from the orignial wav data matrix 
+       * This function  return a portion of a wav data from the orignial wav data matrix
        */
       SubMatrix<BaseFloat> segment_matrix(wave_data, channel, 1, start_samp, end_samp-start_samp);
       WaveData segment_wave(samp_freq, segment_matrix);
