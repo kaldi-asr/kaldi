@@ -234,6 +234,7 @@ if [ $stage -le 16 ]; then
   for data in $test_sets; do
     (
       steps/nnet3/decode.sh \
+          --stage 3 \
           --acwt 1.0 --post-decode-acwt 10.0 \
           --extra-left-context $chunk_left_context \
           --extra-right-context $chunk_right_context \

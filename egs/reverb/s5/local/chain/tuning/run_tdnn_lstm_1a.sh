@@ -7,15 +7,15 @@ set -euo pipefail
 # (some of which are also used in this script directly).
 stage=0
 nj=96
-train_set=train_worn_u400k_cleaned
-test_sets="dev_worn dev_beamformit_dereverb_ref"
-gmm=tri3_cleaned
-nnet3_affix=_train_worn_u400k_cleaned
+train_set=tr_simu_8ch
+test_sets="dt_real_1ch dt_simu_1ch et_real_1ch et_simu_1ch"
+gmm=tri3
+nnet3_affix=_tr_simu_8ch
 lm_suffix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=_1a_aug   # affix for the TDNN directory name
+affix=1a   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
@@ -66,7 +66,7 @@ fi
 # The iVector-extraction and feature-dumping parts are the same as the standard
 # nnet3 setup, and you can skip them by setting "--stage 11" if you have already
 # run those things.
-local/nnet3/run_ivector_common_old.sh --stage $stage \
+local/nnet3/run_ivector_common.sh --stage $stage \
                                   --train-set $train_set \
 				  --test-sets "$test_sets" \
                                   --gmm $gmm \
