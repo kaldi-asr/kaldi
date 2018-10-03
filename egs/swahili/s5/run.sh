@@ -117,7 +117,7 @@ echo -e "fMMI+MMI training done.\n"
 ### Triphone + LDA and MLLT + SGMM
 ## SGMM
 # Training
-steps/train_ubm.sh --cmd "$train_cmd"  500 data/train data/lang exp/system1/tri3b_ali exp/system1/ubm5b2 || exit 1;
+steps/train_ubm.sh --cmd "$train_cmd" 500 data/train data/lang exp/system1/tri3b_ali exp/system1/ubm5b2 || exit 1;
 steps/train_sgmm2.sh  --cmd "$train_cmd" 5000 12000 data/train data/lang exp/system1/tri3b_ali exp/system1/ubm5b2/final.ubm exp/system1/sgmm2_5b2 || exit 1;
 # Graph compilation
 utils/mkgraph.sh data/lang exp/system1/sgmm2_5b2 exp/system1/sgmm2_5b2/graph
@@ -146,7 +146,7 @@ for iter in 1 2 3 4; do
 done
 
 ## MBR
-rm -r exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3.mbr 2>/dev/null 
+rm -r exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3.mbr 2>/dev/null
 cp -r exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3{,.mbr}
 local/score_mbr.sh data/test data/lang exp/system1/sgmm2_5b2_mmi_b0.1/decode_test_it3.mbr
 

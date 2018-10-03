@@ -68,10 +68,14 @@ if $eval_flag; then
 cp $trans_dir/et05_real.dot_all et05_real.dot
 fi
 
-# make a scp file from file list
+# make a scp temporary file from file list
 for x in $list_set; do
-    cat $x.flist | awk -F'[/]' '{print $NF}'| sed -e 's/\.wav/_REAL/' > ${x}_wav.ids
-    paste -d" " ${x}_wav.ids $x.flist | sort -k 1 > ${x}_wav.scp
+    cat $x.flist | awk -F'[/]' '{print $NF}'| sed -e 's/\.wav/_REAL/' > ${x}_wav.id.temp
+    cat ${x}_wav.id.temp | awk -F'_' '{print $3}' | awk -F'.' '{print $2}' > $x.ch
+    cat ${x}_wav.id.temp | awk -F'_' '{print $1}' > $x.part1
+    cat ${x}_wav.id.temp | sed -e 's/^..._//' > $x.part2
+    paste -d"_" $x.part1 $x.ch $x.part2 > ${x}_wav.ids
+    paste -d" " ${x}_wav.ids $x.flist | sort -t_ -k1,1 -k3 > ${x}_wav.scp.temp
 done
 
 #make a transcription from dot
@@ -98,13 +102,17 @@ fi
 # data-preparation stage independent of the specific lexicon used.
 noiseword="<NOISE>";
 for x in $list_set;do
+  cat ${x}_wav.scp.temp | awk '{print $1}' > $x.txt.part1
+  cat $x.trans1 | awk '{$1=""; print $0}' | sed 's/^[ \t]*//g' > $x.txt.part2
+  paste -d" " $x.txt.part1 $x.txt.part2 > $x.trans1
   cat $x.trans1 | $local/normalize_transcript.pl $noiseword \
     | sort > $x.txt || exit 1;
 done
 
 # Make the utt2spk and spk2utt files.
 for x in $list_set; do
-  cat ${x}_wav.scp | awk -F'_' '{print $1}' > $x.spk
+  sort ${x}_wav.scp.temp > ${x}_wav.scp
+  cat ${x}_wav.scp | awk -F'_' '{print $1"_"$2}' > $x.spk
   cat ${x}_wav.scp | awk '{print $1}' > $x.utt
   paste -d" " $x.utt $x.spk > $x.utt2spk
   cat $x.utt2spk | $utils/utt2spk_to_spk2utt.pl > $x.spk2utt || exit 1;
@@ -118,5 +126,9 @@ for x in $list_set; do
   cp ${x}.spk2utt ../../$x/spk2utt || exit 1;
   cp ${x}.utt2spk ../../$x/utt2spk || exit 1;
 done
+
+# clean up temp files
+rm *.temp
+rm *.part{1,2}
 
 echo "Data preparation succeeded"

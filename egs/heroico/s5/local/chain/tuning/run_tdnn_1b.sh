@@ -3,21 +3,20 @@
 # 1b is as 1a but a re-tuned model with quite a few changes, including moving to
 #   a resnet-style factored TDNN-F model.
 #
-# local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp
+# ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp
 # System                  tdnn1a_sp tdnn1b_sp
-# %WER        devtest       53.07     52.54
-# %WER           test       59.25     53.70
-# %WER         native       54.47     48.76
-# %WER      nonnative       63.01     57.66
-# Final train prob          -0.0253   -0.0547
-# Final valid prob          -0.0687   -0.0694
-# Final train prob (xent)   -0.7715   -0.9502
-# Final valid prob (xent)   -1.0719   -1.0849
-# Num-params                 6567648   3321312
-
+# %WER        devtest       13.10     12.99
+# %WER           test       15.53      9.64
+# %WER         native       10.14      6.13
+# %WER      nonnative       19.78     12.47
+# Final train prob          -0.0233   -0.0442
+# Final valid prob          -0.0720   -0.0726
+# Final train prob (xent)   -0.8107   -0.9759
+# Final valid prob (xent)   -0.9898   -0.9964
+# Num-params                 6559440   3318224
 
 # steps/info/chain_dir_info.pl  exp/chain/tdnn1b_sp
-# exp/chain/tdnn1b_sp: num-iters=34 nj=2..5 num-params=3.3M dim=40+100->1392 combine=-0.059->-0.059 (over 1) xent:train/valid[21,33,final]=(-1.28,-0.986,-0.950/-1.38,-1.10,-1.08) logprob:train/valid[21,33,final]=(-0.085,-0.063,-0.055/-0.090,-0.074,-0.069)
+# exp/chain/tdnn1b_sp: num-iters=34 nj=2..5 num-params=3.3M dim=40+100->1384 combine=-0.044->-0.044 (over 1) xent:train/valid[21,33,final]=(-1.30,-0.993,-0.976/-1.28,-1.01,-0.996) logprob:train/valid[21,33,final]=(-0.071,-0.050,-0.044/-0.093,-0.076,-0.073)
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail

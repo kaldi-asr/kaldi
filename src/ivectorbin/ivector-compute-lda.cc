@@ -82,19 +82,33 @@ class CovarianceStats {
 
 template<class Real>
 void ComputeNormalizingTransform(const SpMatrix<Real> &covar,
+                                 Real floor,
                                  MatrixBase<Real> *proj) {
   int32 dim = covar.NumRows();
-  TpMatrix<Real> C(dim);  // Cholesky of covar, covar = C C^T
-  C.Cholesky(covar);
-  C.Invert();  // The matrix that makes covar unit is C^{-1}, because
-               // C^{-1} covar C^{-T} = C^{-1} C C^T C^{-T} = I.
-  proj->CopyFromTp(C, kNoTrans);  // set "proj" to C^{-1}.
+  Matrix<Real> U(dim, dim);
+  Vector<Real> s(dim);
+  covar.Eig(&s, &U);
+  // Sort eigvenvalues from largest to smallest.
+  SortSvd(&s, &U);
+  // Floor eigenvalues to a small positive value.
+  int32 num_floored;
+  floor *= s(0); // Floor relative to the largest eigenvalue
+  s.ApplyFloor(floor, &num_floored);
+  if (num_floored > 0) {
+    KALDI_WARN << "Floored " << num_floored << " eigenvalues of covariance "
+               << "to " << floor;
+  }
+  // Next two lines computes projection proj, such that
+  // proj * covar * proj^T = I.
+  s.ApplyPow(-0.5);
+  proj->AddDiagVecMat(1.0, s, U, kTrans, 0.0);
 }
 
 void ComputeLdaTransform(
     const std::map<std::string, Vector<BaseFloat> *> &utt2ivector,
     const std::map<std::string, std::vector<std::string> > &spk2utt,
     BaseFloat total_covariance_factor,
+    BaseFloat covariance_floor,
     MatrixBase<BaseFloat> *lda_out) {
   KALDI_ASSERT(!utt2ivector.empty());
   int32 lda_dim = lda_out->NumRows(), dim = lda_out->NumCols();
@@ -136,7 +150,8 @@ void ComputeLdaTransform(
   mat_to_normalize.AddSp(1.0 - total_covariance_factor, within_covar);
 
   Matrix<double> T(dim, dim);
-  ComputeNormalizingTransform(mat_to_normalize, &T);
+  ComputeNormalizingTransform(mat_to_normalize,
+    static_cast<double>(covariance_floor), &T);
 
   SpMatrix<double> between_covar(total_covar);
   between_covar.AddSp(-1.0, within_covar);
@@ -209,7 +224,8 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
 
     int32 lda_dim = 100; // Dimension we reduce to
-    BaseFloat total_covariance_factor = 0.0;
+    BaseFloat total_covariance_factor = 0.0,
+              covariance_floor = 1.0e-06;
     bool binary = true;
 
     po.Register("dim", &lda_dim, "Dimension we keep with the LDA transform");
@@ -217,6 +233,9 @@ int main(int argc, char *argv[]) {
                 "If this is 0.0 we normalize to make the within-class covariance "
                 "unit; if 1.0, the total covariance; if between, we normalize "
                 "an interpolated matrix.");
+    po.Register("covariance-floor", &covariance_floor, "Floor the eigenvalues "
+                "of the interpolated covariance matrix to the product of its "
+                "largest eigenvalue and this number.");
     po.Register("binary", &binary, "Write output in binary mode");
 
     po.Read(argc, argv);
@@ -229,6 +248,8 @@ int main(int argc, char *argv[]) {
     std::string ivector_rspecifier = po.GetArg(1),
         utt2spk_rspecifier = po.GetArg(2),
         lda_wxfilename = po.GetArg(3);
+
+    KALDI_ASSERT(covariance_floor >= 0.0);
 
     int32 num_done = 0, num_err = 0, dim = 0;
 
@@ -283,6 +304,7 @@ int main(int argc, char *argv[]) {
     ComputeLdaTransform(utt2ivector,
                         spk2utt,
                         total_covariance_factor,
+                        covariance_floor,
                         &linear_part);
     Vector<BaseFloat> offset(lda_dim);
     offset.AddMatVec(-1.0, linear_part, kNoTrans, mean, 0.0);

@@ -110,6 +110,9 @@ void RnnlmTrainer::Train(RnnlmExample *minibatch) {
   active_word_features_trans_.Swap(&active_word_features_trans);
 
   TrainInternal();
+
+  if (num_minibatches_processed_ == 1)
+    core_trainer_->ConsolidateMemory();
 }
 
 

@@ -50,10 +50,9 @@ dir=$4
 oov=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
-touch $dir/per_utt
-sdata=$data/split${nj}utt
+sdata=$data/split${nj}
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || \
-   split_data.sh --per-utt $data $nj || exit 1;
+   split_data.sh $data $nj || exit 1;
 
 extra_files=
 if [ ! -z "$online_ivector_dir" ]; then

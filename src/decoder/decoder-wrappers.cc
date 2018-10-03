@@ -19,6 +19,8 @@
 
 #include "decoder/decoder-wrappers.h"
 #include "decoder/faster-decoder.h"
+#include "decoder/lattice-faster-decoder.h"
+#include "decoder/grammar-fst.h"
 #include "lat/lattice-functions.h"
 
 namespace kaldi {
@@ -195,8 +197,9 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
 
 
 // Takes care of output.  Returns true on success.
+template <typename FST>
 bool DecodeUtteranceLatticeFaster(
-    LatticeFasterDecoder &decoder, // not const but is really an input.
+    LatticeFasterDecoderTpl<FST> &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
     const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
@@ -291,6 +294,38 @@ bool DecodeUtteranceLatticeFaster(
   *like_ptr = likelihood;
   return true;
 }
+
+// Instantiate the template above for the two required FST types.
+template bool DecodeUtteranceLatticeFaster(
+    LatticeFasterDecoderTpl<fst::Fst<fst::StdArc> > &decoder,
+    DecodableInterface &decodable,
+    const TransitionModel &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignment_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr);
+
+template bool DecodeUtteranceLatticeFaster(
+    LatticeFasterDecoderTpl<fst::GrammarFst> &decoder,
+    DecodableInterface &decodable,
+    const TransitionModel &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignment_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr);
+
 
 // Takes care of output.  Returns true on success.
 bool DecodeUtteranceLatticeSimple(

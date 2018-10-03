@@ -216,7 +216,7 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
 }
 
 
-// see fstext-utils.sh for comment.
+// see fstext-utils.h for comment.
 template<class Arc>
 void ConvertNbestToVector(const Fst<Arc> &fst,
                           vector<VectorFst<Arc> > *fsts_out) {
@@ -1141,6 +1141,8 @@ inline bool IsStochasticFst(const Fst<Arc> &fst,
   NaturalLess<Weight> nl;
   bool first_time = true;
   bool ans = true;
+  if (min_sum) *min_sum = Arc::Weight::One();
+  if (max_sum) *max_sum = Arc::Weight::One();
   for (StateIterator<Fst<Arc> > siter(fst); !siter.Done(); siter.Next()) {
     StateId s = siter.Value();
     Weight sum = fst.Final(s);
@@ -1177,6 +1179,8 @@ inline bool IsStochasticFst(const Fst<LogArc> &fst,
   typedef Arc::Weight Weight;
   bool first_time = true;
   bool ans = true;
+  if (min_sum) *min_sum = LogArc::Weight::One();
+  if (max_sum) *max_sum = LogArc::Weight::One();
   for (StateIterator<Fst<Arc> > siter(fst); !siter.Done(); siter.Next()) {
     StateId s = siter.Value();
     Weight sum = fst.Final(s);
@@ -1213,7 +1217,8 @@ inline bool IsStochasticFstInLog(const Fst<StdArc> &fst,
                           StdArc::Weight *min_sum,
                           StdArc::Weight *max_sum) {
   bool ans = false;
-  LogArc::Weight log_min, log_max;
+  LogArc::Weight log_min = LogArc::Weight::One(),
+    log_max = LogArc::Weight::Zero();
   if (fst.Type() == "const") {
     ConstFst<LogArc> logfst;
     Cast(dynamic_cast<const ConstFst<StdArc>&>(fst), &logfst);
