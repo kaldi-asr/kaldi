@@ -60,7 +60,6 @@ use Getopt::Long;
 # option gpu=* -l gpu=$0 -q g.q
 
 my $qsub_opts = "";
-my $sync = 0;
 my $num_threads = 1;
 my $gpu = 0;
 
@@ -84,8 +83,6 @@ sub print_usage() {
    "or: pbs.pl -q all.q\@qyz JOB=1:10 foo.JOB.log echo JOB \n" .
    " (which illustrates the mechanism to submit parallel jobs; note, you can use \n" .
    "  another string other than JOB)\n" .
-   "Note: if you pass the \"-sync y\" option to qsub, this script will take note\n" .
-   "and change its behavior.  Otherwise it uses qstat to work out when the job finished\n" .
    "Options:\n" .
    "  --config <config-file> (default: $config)\n" .
    "  --mem <mem-requirement> (e.g. --mem 2G, --mem 500M, \n" .
@@ -113,10 +110,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       if ($argument =~ m/^--/) {
         print STDERR "pbs.pl: Warning: suspicious argument '$argument' to $switch; starts with '-'\n";
       }
-      if ($switch eq "-sync" && $argument =~ m/^[yY]/) {
-        $sync = 1;
-        $qsub_opts .= "$switch $argument ";
-      } elsif ($switch eq "-pe") { # e.g. -pe smp 5
+      if ($switch eq "-pe") { # e.g. -pe smp 5
         my $argument2 = shift @ARGV;
         $qsub_opts .= "$switch $argument $argument2 ";
         $num_threads = $argument2;
@@ -390,14 +384,9 @@ if (!close(Q)) { # close was not successful... || die "Could not close script fi
 
 my $ret = system ($qsub_cmd);
 if ($ret != 0) {
-  if ($sync && $ret == 256) { # this is the exit status when a job failed (bad exit status)
-    if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/*/g; }
-    print STDERR "pbs.pl: job writing to $logfile failed\n";
-  } else {
-    print STDERR "pbs.pl: error submitting jobs to queue (return status was $ret)\n";
-    print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
-    print STDERR `tail $queue_logfile`;
-  }
+  print STDERR "pbs.pl: error submitting jobs to queue (return status was $ret)\n";
+  print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
+  print STDERR `tail $queue_logfile`;
   exit(1);
 }
 
