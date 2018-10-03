@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Copyright 2018 John Morgan
+# Apache 2.0.
+
 # write separate files for word and pronunciation fields
 cut -d " " -f 1 qcri.txt > qcri_words_buckwalter.txt
 cut -d " " -f 2- qcri.txt > qcri_prons.txt
