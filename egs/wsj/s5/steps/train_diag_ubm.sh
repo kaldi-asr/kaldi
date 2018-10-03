@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright Johns Hopkins University (Author: Daniel Povey),  2012.  
+# Copyright Johns Hopkins University (Author: Daniel Povey),  2012.
 # Apache 2.0.
 
 # Train a diagonal mixture of Gaussians.  This is trained without
@@ -67,7 +67,7 @@ echo "$0: feature type is $feat_type"
 case $feat_type in
   delta) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | add-deltas $delta_opts ark:- ark:- |";;
   lda) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $alidir/final.mat ark:- ark:- |"
-    cp $alidir/final.mat $dir    
+    cp $alidir/final.mat $dir
     ;;
   *) echo "Invalid feature type $feat_type" && exit 1;
 esac

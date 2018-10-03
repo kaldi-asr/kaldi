@@ -99,13 +99,13 @@ def compute_begin_prob(sub_list):
     for i in range(1, len(sub_list) - 1):
         logprob += compute_sublist_prob(sub_list[:i + 1])
     return logprob
-    
+
 # The probability is computed in this way:
 # p(word_N | word_N-1 ... word_1) = ngram_dict[word_1 ... word_N][0].
 # Here gram_dict is a dictionary stores a tuple corresponding to ngrams.
 # The first element of tuple is probablity and the second is backoff probability (if exists).
 # If the particular ngram (word_1 ... word_N) is not in the dictionary, then
-# p(word_N | word_N-1 ... word_1) = p(word_N | word_(N-1) ... word_2) * backoff_weight(word_(N-1) | word_(N-2) ... word_1) 
+# p(word_N | word_N-1 ... word_1) = p(word_N | word_(N-1) ... word_2) * backoff_weight(word_(N-1) | word_(N-2) ... word_1)
 # If the sequence (word_(N-1) ... word_1) is not in the dictionary, then the backoff_weight gets replaced with 0.0 (log1)
 # More details can be found in https://cmusphinx.github.io/wiki/arpaformat/
 def compute_sentence_prob(sentence, ngram_order):
@@ -127,7 +127,7 @@ def compute_sentence_prob(sentence, ngram_order):
             logprob += compute_sublist_prob(cur_sublist)
 
     return logprob
-        
+
 
 def output_result(text_in_handle, output_file_handle, ngram_order):
     lines = text_in_handle.readlines()
@@ -139,8 +139,8 @@ def output_result(text_in_handle, output_file_handle, ngram_order):
         output_file_handle.write("{}\n".format(new_logprob))
     text_in_handle.close()
     output_file_handle.close()
-     
-            
+
+
 if __name__ == "__main__":
     check_args(args)
     ngram_dict, tot_num = load_model(args.arpa_lm)
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     if not num_valid:
         sys.exit("compute_sentence_probs_arpa.py: Wrong loading model.")
     if args.ngram_order <= 0 or args.ngram_order > max_ngram_order:
-        sys.exit("compute_sentence_probs_arpa.py: " +   
+        sys.exit("compute_sentence_probs_arpa.py: " +
             "Invalid ngram_order (either negative or greater than maximum ngram number ({}) allowed)".format(max_ngram_order))
 
     output_result(args.text_in_handle, args.prob_file_handle, args.ngram_order)

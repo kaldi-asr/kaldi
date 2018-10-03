@@ -417,8 +417,10 @@ void SigmoidComponent::RepairGradients(
 void SigmoidComponent::StoreStats(const CuMatrixBase<BaseFloat> &in_value,
                                   const CuMatrixBase<BaseFloat> &out_value,
                                   void *memo) {
-  // only store stats about every other minibatch.
-  if (RandInt(0, 1) == 0)
+  // Only store stats about every other minibatch (but on the first minibatch,
+  // always store it, which is necessary for the ConsolidateMemory() operation
+  // to work correctly.
+  if (RandInt(0, 1) == 0 && count_ != 0)
     return;
   // derivative of the nonlinearity is out_value * (1.0 - out_value);
   CuMatrix<BaseFloat> temp_deriv(out_value.NumRows(), out_value.NumCols(),
@@ -939,8 +941,10 @@ void TanhComponent::Backprop(const std::string &debug_info,
 void TanhComponent::StoreStats(const CuMatrixBase<BaseFloat> &in_value,
                                const CuMatrixBase<BaseFloat> &out_value,
                                void *memo) {
-  // only store stats about every other minibatch.
-  if (RandInt(0, 1) == 0)
+  // Only store stats about every other minibatch (but on the first minibatch,
+  // always store it, which is necessary for the ConsolidateMemory() operation
+  // to work correctly.
+  if (RandInt(0, 1) == 0 && count_ != 0)
     return;
   // derivative of the onlinearity is out_value * (1.0 - out_value);
   CuMatrix<BaseFloat> temp_deriv(out_value);
@@ -1073,8 +1077,10 @@ void RectifiedLinearComponent::StoreStats(
     const CuMatrixBase<BaseFloat> &in_value,
     const CuMatrixBase<BaseFloat> &out_value,
     void *memo) {
-  // only store stats about every other minibatch.
-  if (RandInt(0, 1) == 0)
+  // Only store stats about every other minibatch (but on the first minibatch,
+  // always store it, which is necessary for the ConsolidateMemory() operation
+  // to work correctly.
+  if (RandInt(0, 1) == 0 && count_ != 0)
     return;
   CuMatrix<BaseFloat> temp_deriv(out_value.NumRows(),
                                  out_value.NumCols(),
@@ -1636,6 +1642,12 @@ void NaturalGradientRepeatedAffineComponent::Update(
   bias_deriv.CopyColFromMat(deriv, block_dim_in);
   bias_params_.AddVec(learning_rate_ * scale, bias_deriv);
 }
+
+void NaturalGradientRepeatedAffineComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp(preconditioner_in_);
+  preconditioner_in_.Swap(&temp);
+}
+
 
 BlockAffineComponent::BlockAffineComponent(const BlockAffineComponent &other) :
   UpdatableComponent(other),
@@ -2555,6 +2567,13 @@ void ScaleAndOffsetComponent::BackpropInternal(
   }
 }
 
+void ScaleAndOffsetComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp_scale(scale_preconditioner_);
+  scale_preconditioner_.Swap(&temp_scale);
+  OnlineNaturalGradient temp_offset(offset_preconditioner_);
+  offset_preconditioner_.Swap(&temp_offset);
+}
+
 
 std::string ConstantFunctionComponent::Info() const {
   std::ostringstream stream;
@@ -2744,7 +2763,10 @@ void ConstantFunctionComponent::UnVectorize(const VectorBase<BaseFloat> &params)
   output_.CopyFromVec(params);
 }
 
-
+void ConstantFunctionComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp(preconditioner_);
+  preconditioner_.Swap(&temp);
+}
 
 void NaturalGradientAffineComponent::Read(std::istream &is, bool binary) {
   ReadUpdatableCommon(is, binary);  // Read the opening tag and learning rate
@@ -3017,12 +3039,17 @@ void NaturalGradientAffineComponent::Add(BaseFloat alpha, const Component &other
   bias_params_.AddVec(alpha, other->bias_params_);
 }
 
-/// virtual
 void NaturalGradientAffineComponent::FreezeNaturalGradient(bool freeze) {
   preconditioner_in_.Freeze(freeze);
   preconditioner_out_.Freeze(freeze);
 }
 
+void NaturalGradientAffineComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp_in(preconditioner_in_);
+  preconditioner_in_.Swap(&temp_in);
+  OnlineNaturalGradient temp_out(preconditioner_out_);
+  preconditioner_out_.Swap(&temp_out);
+}
 
 void LinearComponent::Read(std::istream &is, bool binary) {
   std::string token = ReadUpdatableCommon(is, binary);
@@ -3291,6 +3318,12 @@ void LinearComponent::FreezeNaturalGradient(bool freeze) {
   preconditioner_out_.Freeze(freeze);
 }
 
+void LinearComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp_in(preconditioner_in_);
+  preconditioner_in_.Swap(&temp_in);
+  OnlineNaturalGradient temp_out(preconditioner_out_);
+  preconditioner_out_.Swap(&temp_out);
+}
 
 std::string FixedAffineComponent::Info() const {
   std::ostringstream stream;
@@ -3900,9 +3933,13 @@ void NaturalGradientPerElementScaleComponent::Update(
   scales_.AddVec(1.0, delta_scales);
 }
 
-/// virtual
 void NaturalGradientPerElementScaleComponent::FreezeNaturalGradient(bool freeze) {
   preconditioner_.Freeze(freeze);
+}
+
+void NaturalGradientPerElementScaleComponent::ConsolidateMemory() {
+  OnlineNaturalGradient temp(preconditioner_);
+  preconditioner_.Swap(&temp);
 }
 
 // Constructors for the convolution component
@@ -5872,6 +5909,11 @@ void LstmNonlinearityComponent::InitFromConfig(ConfigLine *cfl) {
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
   }
+}
+
+void LstmNonlinearityComponent::ConsolidateMemory() {
+  OnlineNaturalGradient preconditioner_temp(preconditioner_);
+  preconditioner_.Swap(&preconditioner_);
 }
 
 SumBlockComponent::SumBlockComponent(const SumBlockComponent &other):

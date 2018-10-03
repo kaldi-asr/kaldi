@@ -13,12 +13,12 @@ fi
 
 export LC_ALL=C
 
-cut -f2- data/local/tmp/dict/santiago.txt | \
+cut -f2- ./santiago.txt | \
   tr -s '[:space:]' '[\n*]' | \
     grep -v SPN | sort -u  >data/local/dict/nonsilence_phones.txt
 
 # sed "1d" deletes the last line.
-expand -t 1 data/local/tmp/dict/santiago.txt | sort -u |
+expand -t 1 ./santiago.txt | sort -u |
    sed "1d" >data/local/dict/lexicon.txt
 
 echo "<UNK> SPN" >> data/local/dict/lexicon.txt

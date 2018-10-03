@@ -1,6 +1,10 @@
 #!/bin/bash
+
 # Copyright   2017 Yiwen Shao
 #             2018 Ashish Arora
+
+# Apache 2.0
+# This script runs the make features script in parallel. 
 
 nj=4
 cmd=run.pl

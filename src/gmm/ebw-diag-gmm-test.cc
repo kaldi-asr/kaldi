@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
+#include <cmath>
 
 #include "gmm/diag-gmm.h"
 #include "gmm/ebw-diag-gmm.h"
@@ -141,7 +141,7 @@ void UnitTestEstimateMmieDiagGmm() {
   den.SetZero(flags);
 
   size_t iteration = 0;
-  double last_log_like_diff;
+  double last_log_like_diff = NAN;
   while (iteration < maxiterations) {
     Vector<BaseFloat> featvec_num(dim);
     Vector<BaseFloat> featvec_den(dim);

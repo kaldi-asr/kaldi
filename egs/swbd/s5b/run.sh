@@ -15,7 +15,7 @@ exit 1;
 . ./path.sh
 set -e # exit on error
 # mfccdir should be some place with a largish disk where you
-# want to store MFCC features. 
+# want to store MFCC features.
 mfccdir=mfcc
 
 if [ -z $IRSTLM ] ; then
@@ -36,7 +36,7 @@ fi
 # which specifies the directory to Switchboard documentations. Specifically, if
 # this argument is given, the script will look for the conv.tab file and correct
 # speaker IDs to the actual speaker personal identification numbers released in
-# the documentations. The documentations can be found here: 
+# the documentations. The documentations can be found here:
 # https://catalog.ldc.upenn.edu/docs/LDC97S62/
 # Note: if you are using this link, make sure you rename conv_tab.csv to conv.tab
 # after downloading.
@@ -52,7 +52,7 @@ local/swbd1_prepare_dict.sh
 utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
 
 # Now train the language models. We are using SRILM and interpolating with an
-# LM trained on the Fisher transcripts (part 2 disk is currently missing; so 
+# LM trained on the Fisher transcripts (part 2 disk is currently missing; so
 # only part 1 transcripts ~700hr are used)
 
 # If you have the Fisher data, you can set this "fisher_dir" variable.
@@ -75,10 +75,10 @@ for order in 3 4; do
   LM=data/local/lm/sw1.o${order}g.kn.gz
   utils/format_lm_sri.sh --srilm-opts "$srilm_opts" \
     data/lang $LM data/local/dict/lexicon.txt data/lang_sw1_$lm_suffix
-  
+
   LM=data/local/lm/sw1_fsh.o${order}g.kn.gz
   utils/build_const_arpa_lm.sh $LM data/lang data/lang_sw1_fsh_$lm_suffix
-  
+
   # For some funny reason we are still using IRSTLM for doing LM pruning :)
   prune-lm --threshold=1e-7 data/local/lm/sw1_fsh.o${order}g.kn.gz /dev/stdout \
     | gzip -c > data/local/lm/sw1_fsh.o${order}g.pr1-7.kn.gz || exit 1
@@ -98,9 +98,9 @@ done
 local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/corpora2/LDC/LDC2002T43
 
 steps/make_mfcc.sh --nj 50 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir
-steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir 
+steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir
 
-# Remove the small number of utterances that couldn't be extracted for some 
+# Remove the small number of utterances that couldn't be extracted for some
 # reason (e.g. too short; no such file).
 utils/fix_data_dir.sh data/train
 
@@ -120,10 +120,10 @@ utils/subset_data_dir.sh --last data/train $n data/train_nodev
 # perl -ne 'split; $s+=($_[3]-$_[2]); END{$h=int($s/3600); $r=($s-$h*3600); $m=int($r/60); $r-=$m*60; printf "%.1f sec -- %d:%d:%.1f\n", $s, $h, $m, $r;}' data/local/train/segments
 
 
-# Now-- there are 260k utterances (313hr 23min), and we want to start the 
-# monophone training on relatively short utterances (easier to align), but not 
+# Now-- there are 260k utterances (313hr 23min), and we want to start the
+# monophone training on relatively short utterances (easier to align), but not
 # only the shortest ones (mostly uh-huh).  So take the 100k shortest ones;
-# remove most of the repeated utterances (these are the uh-huh type ones), and 
+# remove most of the repeated utterances (these are the uh-huh type ones), and
 # then take 10k random utterances from those (about 4hr 40mins)
 
 utils/subset_data_dir.sh --shortest data/train_nodev 100000 data/train_100kshort
@@ -144,13 +144,13 @@ utils/data/remove_dup_utts.sh 300 data/train_nodev data/train_nodup  # 286hr
 
 ## Starting basic training on MFCC features
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
-  data/train_10k_nodup data/lang exp/mono 
+  data/train_10k_nodup data/lang exp/mono
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_30k_nodup data/lang exp/mono exp/mono_ali 
+  data/train_30k_nodup data/lang exp/mono exp/mono_ali
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-  3200 30000 data/train_30k_nodup data/lang exp/mono_ali exp/tri1 
+  3200 30000 data/train_30k_nodup data/lang exp/mono_ali exp/tri1
 
 for lm_suffix in tg fsh_tgpr; do
   (
@@ -163,10 +163,10 @@ for lm_suffix in tg fsh_tgpr; do
 done
 
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_30k_nodup data/lang exp/tri1 exp/tri1_ali 
+  data/train_30k_nodup data/lang exp/tri1 exp/tri1_ali
 
 steps/train_deltas.sh --cmd "$train_cmd" \
-  3200 30000 data/train_30k_nodup data/lang exp/tri1_ali exp/tri2 
+  3200 30000 data/train_30k_nodup data/lang exp/tri1_ali exp/tri2
 
 
 for lm_suffix in tg fsh_tgpr; do
@@ -183,14 +183,14 @@ for lm_suffix in tg fsh_tgpr; do
   ) &
 done
 
-# From now, we start building a bigger system (on train_100k_nodup, which has 
+# From now, we start building a bigger system (on train_100k_nodup, which has
 # 110hrs of data). We start with the LDA+MLLT system
 steps/align_si.sh --nj 30 --cmd "$train_cmd" \
-  data/train_100k_nodup data/lang exp/tri2 exp/tri2_ali_100k_nodup 
+  data/train_100k_nodup data/lang exp/tri2 exp/tri2_ali_100k_nodup
 
 # Train tri3b, which is LDA+MLLT, on 100k_nodup data.
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
-  5500 90000 data/train_100k_nodup data/lang exp/tri2_ali_100k_nodup exp/tri3b 
+  5500 90000 data/train_100k_nodup data/lang exp/tri2_ali_100k_nodup exp/tri3b
 
 for lm_suffix in tg fsh_tgpr; do
   (
@@ -204,12 +204,12 @@ done
 
 # Train tri4a, which is LDA+MLLT+SAT, on 100k_nodup data.
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train_100k_nodup data/lang exp/tri3b exp/tri3b_ali_100k_nodup 
+  data/train_100k_nodup data/lang exp/tri3b exp/tri3b_ali_100k_nodup
 
 
 steps/train_sat.sh  --cmd "$train_cmd" \
   5500 90000 data/train_100k_nodup data/lang exp/tri3b_ali_100k_nodup \
-   exp/tri4a 
+   exp/tri4a
 
 for lm_suffix in tg fsh_tgpr; do
   (
@@ -226,11 +226,11 @@ done
 # both train and test data.
 # local/run_resegment.sh
 
-# Now train a LDA+MLLT+SAT model on the entire training data (train_nodup; 
+# Now train a LDA+MLLT+SAT model on the entire training data (train_nodup;
 # 286 hours)
 # Train tri4b, which is LDA+MLLT+SAT, on train_nodup data.
 steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
-  data/train_nodup data/lang exp/tri3b exp/tri3b_ali_nodup 
+  data/train_nodup data/lang exp/tri3b exp/tri3b_ali_nodup
 
 
 steps/train_sat.sh  --cmd "$train_cmd" \
@@ -257,7 +257,7 @@ steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" \
   data/lang_sw1_fsh_{tgpr,fg} data/eval2000 \
   exp/tri4b/decode_eval2000_sw1_fsh_{tgpr,fg} || exit 1;
 
-# MMI training starting from the LDA+MLLT+SAT systems on both the 
+# MMI training starting from the LDA+MLLT+SAT systems on both the
 # train_100k_nodup (110hr) and train_nodup (286hr) sets
 steps/align_fmllr.sh --nj 50 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri4a exp/tri4a_ali_100k_nodup || exit 1
@@ -268,11 +268,11 @@ steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
 steps/make_denlats.sh --nj 50 --cmd "$decode_cmd" --config conf/decode.config \
   --transform-dir exp/tri4a_ali_100k_nodup \
   data/train_100k_nodup data/lang exp/tri4a exp/tri4a_denlats_100k_nodup \
-  
+
 
 steps/make_denlats.sh --nj 100 --cmd "$decode_cmd" --config conf/decode.config \
   --transform-dir exp/tri4b_ali_nodup \
-  data/train_nodup data/lang exp/tri4b exp/tri4b_denlats_nodup 
+  data/train_nodup data/lang exp/tri4b exp/tri4b_denlats_nodup
 
 # 4 iterations of MMI seems to work well overall. The number of iterations is
 # used as an explicit argument even though train_mmi.sh will use 4 iterations by
@@ -280,11 +280,11 @@ steps/make_denlats.sh --nj 100 --cmd "$decode_cmd" --config conf/decode.config \
 num_mmi_iters=4
 steps/train_mmi.sh --cmd "$decode_cmd" --boost 0.1 --num-iters $num_mmi_iters \
   data/train_100k_nodup data/lang exp/tri4a_{ali,denlats}_100k_nodup \
-  exp/tri4a_mmi_b0.1 
+  exp/tri4a_mmi_b0.1
 
 steps/train_mmi.sh --cmd "$decode_cmd" --boost 0.1 --num-iters $num_mmi_iters \
   data/train_nodup data/lang exp/tri4b_{ali,denlats}_nodup \
-  exp/tri4b_mmi_b0.1 
+  exp/tri4b_mmi_b0.1
 
 for iter in 1 2 3 4; do
   for lm_suffix in tg fsh_tgpr; do
@@ -336,11 +336,11 @@ steps/train_diag_ubm.sh --silence-weight 0.5 --nj 100 --cmd "$train_cmd" \
 
 steps/train_mmi_fmmi.sh --learning-rate 0.005 --boost 0.1 --cmd "$train_cmd" \
   data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup exp/tri4a_dubm \
-  exp/tri4a_denlats_100k_nodup exp/tri4a_fmmi_b0.1 
+  exp/tri4a_denlats_100k_nodup exp/tri4a_fmmi_b0.1
 
 steps/train_mmi_fmmi.sh --learning-rate 0.005 --boost 0.1 --cmd "$train_cmd" \
   data/train_nodup data/lang exp/tri4b_ali_nodup exp/tri4b_dubm \
-  exp/tri4b_denlats_nodup exp/tri4b_fmmi_b0.1  
+  exp/tri4b_denlats_nodup exp/tri4b_fmmi_b0.1
 
 for iter in 4 5 6 7 8; do
   for lm_suffix in tg fsh_tgpr; do

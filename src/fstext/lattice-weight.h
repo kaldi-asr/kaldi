@@ -57,7 +57,7 @@ class LatticeWeightTpl {
 
   inline void SetValue2(T f) { value2_ = f; }
 
-  LatticeWeightTpl() { }
+  LatticeWeightTpl(): value1_{}, value2_{} { }
 
   LatticeWeightTpl(T a, T b): value1_(a), value2_(b) {}
 

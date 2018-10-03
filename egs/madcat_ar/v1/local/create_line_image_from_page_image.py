@@ -60,6 +60,8 @@ parser.add_argument('writing_condition3', type=str,
                     help='Path to the downloaded (and extracted) writing conditions file 3')
 parser.add_argument('--padding', type=int, default=400,
                     help='padding across horizontal/verticle direction')
+parser.add_argument("--subset", type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="only processes subset of data based on writing condition")
 args = parser.parse_args()
 
 """
@@ -209,50 +211,6 @@ def get_orientation(origin, p1, p2):
     return difference
 
 
-def compute_hull(points):
-    """
-    Given input list of points, return a list of points that
-    made up the convex hull.
-    Returns
-    -------
-    [(float, float)]: convexhull points
-    """
-    hull_points = []
-    start = points[0]
-    min_x = start[0]
-    for p in points[1:]:
-        if p[0] < min_x:
-            min_x = p[0]
-            start = p
-
-    point = start
-    hull_points.append(start)
-
-    far_point = None
-    while far_point is not start:
-        p1 = None
-        for p in points:
-            if p is point:
-                continue
-            else:
-                p1 = p
-                break
-
-        far_point = p1
-
-        for p2 in points:
-            if p2 is point or p2 is p1:
-                continue
-            else:
-                direction = get_orientation(point, far_point, p2)
-                if direction > 0:
-                    far_point = p2
-
-        hull_points.append(far_point)
-        point = far_point
-    return hull_points
-
-
 def minimum_bounding_box(points):
     """ Given a list of 2D points, it returns the minimum area rectangle bounding all
         the points in the point cloud.
@@ -272,7 +230,6 @@ def minimum_bounding_box(points):
 
     hull_ordered = [points[index] for index in ConvexHull(points).vertices]
     hull_ordered.append(hull_ordered[0])
-    #hull_ordered = compute_hull(points)
     hull_ordered = tuple(hull_ordered)
 
     min_rectangle = bounding_area(0, hull_ordered)
@@ -535,16 +492,14 @@ def check_writing_condition(wc_dict, base_name):
     Returns
     (bool): True if writing condition matches.
     """
-    return True
-    writing_condition = wc_dict[base_name].strip()
-    if writing_condition != 'IUC':
-        return False
-
-    return True
-
+    if args.subset:
+        writing_condition = wc_dict[base_name].strip()
+        if writing_condition != 'IUC':
+            return False
+    else:
+        return True
 
 ### main ###
-
 def main():
 
     wc_dict1 = parse_writing_conditions(args.writing_condition1)
@@ -564,8 +519,7 @@ def main():
             madcat_file_path, image_file_path, wc_dict = check_file_location(base_name, wc_dict1, wc_dict2, wc_dict3)
             if wc_dict is None or not check_writing_condition(wc_dict, base_name):
                 continue
-            if madcat_file_path is not None:
-                get_line_images_from_page_image(image_file_path, madcat_file_path, image_fh)
+            get_line_images_from_page_image(image_file_path, madcat_file_path, image_fh)
 
 
 if __name__ == '__main__':

@@ -162,7 +162,7 @@ int main(int argc, char *argv[]) {
 
 
     std::string topo_filename = po.GetArg(1);
-    int dim;
+    int dim = 0;
     if (!ConvertStringToInteger(po.GetArg(2), &dim) || dim <= 0 || dim > 10000)
       KALDI_ERR << "Bad dimension:" << po.GetArg(2)
                 << ". It should be a positive integer.";
