@@ -358,7 +358,7 @@ print Q "time2=\`date +\"%s\"\`\n";
 print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) >>$logfile\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
 print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137;
-  # let the script return with status 100 which will put it to E state; more easily rerunnable.
+# let the script return with status 100 which will put it to E state; more easily rerunnable.
 if ($array_job == 0) { # not an array job
   print Q "touch $syncfile\n"; # so we know it's done.
 } else {
@@ -385,7 +385,8 @@ my $pbs_job_id;
 # need to wait for the jobs to finish.  We wait for the
 # sync-files we "touched" in the script to exist.
 my @syncfiles = ();
-if (!defined $jobname) { # not an array job.
+if (!defined $jobname) {
+    # not an array job.
     push @syncfiles, $syncfile;
 } else {
     for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
