@@ -8,7 +8,7 @@
 
 # begin configuration section.
 cmd=run.pl
-stage=1
+stage=0
 decode_mbr=false
 stats=true
 beam=6
