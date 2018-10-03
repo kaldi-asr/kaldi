@@ -447,65 +447,65 @@ foreach my $f (@syncfiles) {
     # exceeds some hard limit, or in case of a machine shutdown.
     if (($check_pbs_job_ctr++ % 10) == 0) {
       # Don't run qstat too often, avoid stress on PBS.
-      if ( -f $f ) { next; };
-        #syncfile appeared: OK.
-        $ret = system("qstat -t $pbs_job_id >/dev/null 2>/dev/null");
-        # system(...) : To get the actual exit value, shift $ret right by eight bits.
-        if ($ret>>8 == 1) {
-          # Job does not seem to exist
-          # Don't consider immediately missing job as error, first wait some
-          # time to make sure it is not just delayed creation of the syncfile.
+      next FILE if ( -f $f );
+      #syncfile appeared: OK.
+      $ret = system("qstat -t $pbs_job_id >/dev/null 2>/dev/null");
+      # system(...) : To get the actual exit value, shift $ret right by eight bits.
+      if ($ret>>8 == 1) {
+        # Job does not seem to exist
+        # Don't consider immediately missing job as error, first wait some
+        # time to make sure it is not just delayed creation of the syncfile.
 
-          sleep(3);
-          # Sometimes NFS gets confused and thinks it's transmitted the directory
-          # but it hasn't, due to timestamp issues.  Changing something in the
-          # directory will usually fix that.
-          system("touch $qdir/.kick");
-          system("rm $qdir/.kick 2>/dev/null");
-          next FILE if ( -f $f );
-          #syncfile appeared, ok
-          sleep(7);
-          system("touch $qdir/.kick");
-          sleep(1);
-          system("rm $qdir/.kick 2>/dev/null");
-          next FILE if ( -f $f );
-          #syncfile appeared, ok
-          sleep(60);
-          system("touch $qdir/.kick");
-          sleep(1);
-          system("rm $qdir/.kick 2>/dev/null");
-          next FILE if ( -f $f );
-          #syncfile appeared, ok
-          $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
-          my $job_id = $1;
-          if (defined $jobname) {
-            $logfile =~ s/\$PBS_ARRAY_INDEX/$job_id/g;
-          }
-          my $last_line = `tail -n 1 $logfile`;
-          if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {
-            # if the last line of $logfile ended with "status 0" and
-            # $logfile is newer than this program [(-M $logfile) gives the
-            # time elapsed between file modification and the start of this
-            # program], then we assume the program really finished OK,
-            # and maybe something is up with the file system.
-            print STDERR "**pbs.pl: syncfile $f was not created but job seems\n" .
-              "**to have finished OK.  Probably your file-system has problems.\n" .
-              "**This is just a warning.\n";
-            last;
-          } else {
-            chop $last_line;
-            print STDERR "pbs.pl: Error, unfinished job no " .
-              "longer exists, log is in $logfile, last line is '$last_line', " .
-              "syncfile is $f, return status of qstat was $ret\n" .
-              "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
-              " b) Shutdown/Frozen machine? -> Run again!\n";
-            exit(1);
-          }
-        } elsif ($ret != 0) {
-          print STDERR "pbs.pl: Warning: qstat command returned status $ret (qstat -t $pbs_job_id,$!)\n";
+        sleep(3);
+        # Sometimes NFS gets confused and thinks it's transmitted the directory
+        # but it hasn't, due to timestamp issues.  Changing something in the
+        # directory will usually fix that.
+        system("touch $qdir/.kick");
+        system("rm $qdir/.kick 2>/dev/null");
+        next FILE if ( -f $f );
+        #syncfile appeared, ok
+        sleep(7);
+        system("touch $qdir/.kick");
+        sleep(1);
+        system("rm $qdir/.kick 2>/dev/null");
+        next FILE if ( -f $f );
+        #syncfile appeared, ok
+        sleep(60);
+        system("touch $qdir/.kick");
+        sleep(1);
+        system("rm $qdir/.kick 2>/dev/null");
+        next FILE if ( -f $f );
+        #syncfile appeared, ok
+        $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
+        my $job_id = $1;
+        if (defined $jobname) {
+          $logfile =~ s/\$PBS_ARRAY_INDEX/$job_id/g;
         }
+        my $last_line = `tail -n 1 $logfile`;
+        if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {
+          # if the last line of $logfile ended with "status 0" and
+          # $logfile is newer than this program [(-M $logfile) gives the
+          # time elapsed between file modification and the start of this
+          # program], then we assume the program really finished OK,
+          # and maybe something is up with the file system.
+          print STDERR "**pbs.pl: syncfile $f was not created but job seems\n" .
+            "**to have finished OK.  Probably your file-system has problems.\n" .
+            "**This is just a warning.\n";
+          last;
+        } else {
+          chop $last_line;
+          print STDERR "pbs.pl: Error, unfinished job no " .
+            "longer exists, log is in $logfile, last line is '$last_line', " .
+            "syncfile is $f, return status of qstat was $ret\n" .
+            "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
+            " b) Shutdown/Frozen machine? -> Run again!\n";
+          exit(1);
+        }
+      } elsif ($ret != 0) {
+        print STDERR "pbs.pl: Warning: qstat command returned status $ret (qstat -t $pbs_job_id,$!)\n";
       }
     }
+  }
 }
 my $all_syncfiles = join(" ", @syncfiles);
 system("rm $all_syncfiles 2>/dev/null");
