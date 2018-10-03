@@ -28,6 +28,7 @@
 #include <cmath>
 #include <limits>
 #include <vector>
+#include <random>
 
 #include "base/kaldi-types.h"
 #include "base/kaldi-common.h"
@@ -136,6 +137,8 @@ int Rand(struct RandomState* state = NULL);
 struct RandomState {
   RandomState();
   unsigned seed;
+  std::default_random_engine generator;
+  std::uniform_real_distribution<float> distribution;
 };
 
 // Returns a random integer between first and last inclusive.
@@ -148,8 +151,9 @@ bool WithProb(BaseFloat prob, struct RandomState* state = NULL);
 // that it should work even if prob is very small.
 
 /// Returns a random number strictly between 0 and 1.
-inline float RandUniform(struct RandomState* state = NULL) {
-  return static_cast<float>((Rand(state) + 1.0) / (RAND_MAX+2.0));
+inline float RandUniform(struct RandomState* state = NULL)
+{
+	return state->distribution(state->generator);
 }
 
 inline float RandGauss(struct RandomState* state = NULL) {
