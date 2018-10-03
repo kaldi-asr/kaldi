@@ -130,10 +130,11 @@ if [ $stage -le 4 ]; then
   cat $g2p_tmp_dir/missing.txt | \
     grep "^[a-z]*$"  > $g2p_tmp_dir/missing_onlywords.txt
 
-  steps/dict/apply_g2p_phonetisaurus.sh --nbest 1 exp/g2p/model.fst $g2p_tmp_dir/missing_onlywords.txt $g2p_tmp_dir/missing_lexicon.txt || exit 1;
-  
+  steps/dict/apply_g2p_phonetisaurus.sh --nbest 1 $g2p_tmp_dir/missing_onlywords.txt exp/g2p exp/g2p/oov_lex || exit 1;
+  cp exp/g2p/oov_lex/lexicon.lex $g2p_tmp_dir/missing_lexicon.txt
+
   extended_lexicon=$dict_dir/lexicon.txt
-  echo "Adding new pronunciations to get expanded lexicon $extended_lexicon"
+  echo "Adding new pronunciations to get extended lexicon $extended_lexicon"
   cat <(cut -f 1,3 $g2p_tmp_dir/missing_lexicon.txt) $lexicon | sort | uniq > $extended_lexicon
 fi
 

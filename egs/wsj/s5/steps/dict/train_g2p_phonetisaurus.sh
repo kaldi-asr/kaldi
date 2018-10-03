@@ -48,6 +48,12 @@ if [ -z $isuconv ]; then
   exit 1;
 fi
 
+if ! phonetisaurus=`which phonetisaurus-apply` ; then
+  echo "Phonetisarus was not found !"
+  echo "Go to $KALDI_ROOT/tools and execute extras/install_phonetisaurus.sh"
+  exit 1
+fi
+
 mkdir -p $wdir
 
 
