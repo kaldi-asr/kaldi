@@ -169,7 +169,7 @@ fi
 
 if [ $stage -le 12 ]; then
   # chain TDNN
-  local/chain/run_tdnn.sh --nj ${nj} --stage 16 --train-set ${train_set} --test-sets "$test_sets" --gmm tri3 --nnet3-affix _${train_set} \
+  local/chain/run_tdnn.sh --nj ${nj} --train-set ${train_set} --test-sets "$test_sets" --gmm tri3 --nnet3-affix _${train_set} \
   --lm-suffix _test_$lm
 fi
 
