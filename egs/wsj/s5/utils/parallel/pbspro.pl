@@ -6,11 +6,10 @@ use Carp;
 use File::Basename;
 use Cwd;
 
-
 BEGIN {
-    @ARGV == 4 or croak "USAGE: pbspro.pl <LOGFILE> <JJOBNAME> <JOBSTART> <JOBEND>";
+    @ARGV == 4 or croak "USAGE: pbspro.pl <LOGFILE> <JJOBNAME> <JOBSTART> <JOBEND>
   example:
-    pbspro.pl foo.log JOB 1 10
+    $0 foo.log JOB 1 10";
 }
 
 my ($logfile,$jobname,$jobstart,$jobend) = @ARGV;
