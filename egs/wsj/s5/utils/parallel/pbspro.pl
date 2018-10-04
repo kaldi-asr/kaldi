@@ -4,19 +4,19 @@ use warnings;
 use Carp;
 
 use File::Basename;
-use Cwd;
 
 BEGIN {
-    @ARGV == 4 or croak "USAGE: pbspro.pl <LOGFILE> <JJOBNAME> <JOBSTART> <JOBEND>
+    @ARGV == 5 or croak "USAGE: pbspro.pl <LOGFILE> <JJOBNAME> <JOBSTART> <JOBEND> <NUM_THREADS>
   example:
-    $0 foo.log JOB 1 10";
+    $0 foo.log JOB 1 10 40
+";
 }
 
-my ($logfile,$jobname,$jobstart,$jobend) = @ARGV;
+my ($logfile,$jobname,$jobstart,$jobend,$num_threads) = @ARGV;
 
-my $qsub_cmd = "";jobname
-
-my $cwd = getcwd();
+my $qsub_cmd = "";
+    my $queue_scriptfile = "";
+my $cwd = `pwd`;
 
 my $cmd = "";
 
@@ -55,14 +55,11 @@ if (! -d "$qdir") {
 my $queue_array_opt = "";
 
 $queue_array_opt = "-J $jobstart-$jobend";
-  $logfile =~ s/$jobname/\$PBS_ARRAY_INDEX/g;
-  # This variable will get replaced by qsub, in each job, with the job-id.
-  $cmd =~ s/$jobname/\$\{PBS_ARRAY_INDEX\}/g;
-  # same for the command...
-  $queue_logfile =~ s/\.?$jobname//;
-}
+$logfile =~ s/$jobname/\$PBS_ARRAY_INDEX/g;
+$cmd =~ s/$jobname/\$\{PBS_ARRAY_INDEX\}/g;
+$queue_logfile =~ s/\.?$jobname//;
 
-my $queue_scriptfile = $queue_logfile;
+$queue_scriptfile = $queue_logfile;
 ($queue_scriptfile =~ s/\.[a-zA-Z]{1,5}$/.sh/) || ($queue_scriptfile .= ".sh");
 if ($queue_scriptfile !~ m:^/:) {
   $queue_scriptfile = $cwd . "/" . $queue_scriptfile;
@@ -73,12 +70,12 @@ my $syncfile = "$qdir/done.$$";
 
 system("rm $queue_logfile $syncfile 2>/dev/null");
 
-open $Q, '+>', $queue_scriptfile or croak "problems with $queue_scriptfile $!";
+open my $Q, '+>', $queue_scriptfile or croak "problems with $queue_scriptfile $!";
 
 print $Q "#!/bin/bash\n";
 print $Q "cd $cwd\n";
 print $Q ". ./path.sh\n";
-$print $Q "( echo '#' Running on \`hostname\`\n";
+print $Q "( echo '#' Running on \`hostname\`\n";
 print $Q "  echo '#' Started at \`date\`\n";
 print $Q "  echo -n '# '; cat <<EOF\n";
 print $Q "$cmd\n"; # this is a way of echoing the command into a comment in the log file,
@@ -91,19 +88,15 @@ print $Q "time2=\`date +\"%s\"\`\n";
 print $Q "echo '#' Accounting: time=\$((\$time2-\$time1)) threads=$num_threads >>$logfile\n";
 print $Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
 print $Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137;
-  # let the script return with status 100 which will put it to E state; more easily rerunnable.
-if ($array_job == 0) { # not an array job
-  print Q "touch $syncfile\n"; # so we know it's done.
-} else {
-  print Q "touch $syncfile.\$PBS_ARRAY_INDEX\n"; # touch a bunch of sync-files.
-}
-print Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
-print Q "## submitted with:\n";       # treats specially.
+
+# touch a bunch of sync-files.
+print $Q "touch $syncfile.\$PBS_ARRAY_INDEX\n";
+
+print $Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
+print $Q "## submitted with:\n";       # treats specially.
 $qsub_cmd .= "-o $queue_logfile $qsub_opts $queue_array_opt $queue_scriptfile >>$queue_logfile 2>&1";
-print Q "# $qsub_cmd\n";
-if (!close(Q)) { # close was not successful... || die "Could not close script file $shfile";
-  die "Failed to close the script file (full disk?)";
-}
+print $Q "# $qsub_cmd\n";
+close $Q;
 
 my $ret = system ($qsub_cmd);
 if ($ret != 0) {
