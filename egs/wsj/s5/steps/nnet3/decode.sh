@@ -82,6 +82,9 @@ sdata=$data/split$nj;
 cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
 thread_string=
 if $use_gpu; then
+  if [ $num_threads -eq 1 ]; then
+    echo "$0: **Warning: we recommend to use --num-threads > 1 for GPU-based decoding."
+  fi
   thread_string="-batch --num-threads=$num_threads"
   queue_opt="--num-threads $num_threads --gpu 1"
 elif [ $num_threads -gt 1 ]; then
