@@ -61,10 +61,17 @@ fi
 
 mkdir -p $dir/scoring_kaldi
 cat $data/text | $ref_filtering_cmd > $dir/scoring_kaldi/test_filt.txt || exit 1;
-tasks="\
-near_room1 far_room1 \
-near_room2 far_room2 \
-near_room3 far_room3"
+
+if echo $data | grep -q "real"; then
+  tasks="\
+  near_room1 far_room1"
+else
+  tasks="\
+  near_room1 far_room1 \
+  near_room2 far_room2 \
+  near_room3 far_room3"
+fi
+
 if [ $stage -le 0 ]; then
 
   for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do

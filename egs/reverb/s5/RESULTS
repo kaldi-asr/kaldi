@@ -2,11 +2,7 @@
 GMM RESULTs:
 exp/tri3/decode_dt_real_1ch
 %WER 34.18 [ 500 / 1463, 24 ins, 125 del, 351 sub ] [PARTIAL] exp/tri3/decode_dt_real_1ch/wer_17_1.0_far_room1
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/tri3/decode_dt_real_1ch/wer_7_0.0_far_room2
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/tri3/decode_dt_real_1ch/wer_7_0.0_far_room3
 %WER 29.63 [ 475 / 1603, 24 ins, 127 del, 324 sub ] [PARTIAL] exp/tri3/decode_dt_real_1ch/wer_15_0.5_near_room1
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/tri3/decode_dt_real_1ch/wer_7_0.0_near_room2
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/tri3/decode_dt_real_1ch/wer_7_0.0_near_room3
 
 exp/tri3/decode_dt_simu_1ch
 %WER 6.78 [ 276 / 4071, 38 ins, 42 del, 196 sub ] [PARTIAL] exp/tri3/decode_dt_simu_1ch/wer_12_1.0_far_room1
@@ -18,11 +14,7 @@ exp/tri3/decode_dt_simu_1ch
 
 exp/tri3/decode_et_real_1ch
 %WER 33.09 [ 980 / 2962, 103 ins, 157 del, 720 sub ] [PARTIAL] exp/tri3/decode_et_real_1ch/wer_13_0.0_far_room1
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/tri3/decode_et_real_1ch/wer_7_0.0_far_room2
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/tri3/decode_et_real_1ch/wer_7_0.0_far_room3
 %WER 33.18 [ 1039 / 3131, 104 ins, 194 del, 741 sub ] [PARTIAL] exp/tri3/decode_et_real_1ch/wer_16_0.0_near_room1
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/tri3/decode_et_real_1ch/wer_7_0.0_near_room2
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/tri3/decode_et_real_1ch/wer_7_0.0_near_room3
 
 exp/tri3/decode_et_simu_1ch
 %WER 7.47 [ 441 / 5907, 73 ins, 48 del, 320 sub ] [PARTIAL] exp/tri3/decode_et_simu_1ch/wer_15_0.5_far_room1
@@ -35,11 +27,7 @@ exp/tri3/decode_et_simu_1ch
 TDNN RESULTs:
 exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt*
 %WER 19.62 [ 287 / 1463, 29 ins, 55 del, 203 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_10_0.0_far_room1
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_7_0.0_far_room2
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_7_0.0_far_room3
 %WER 17.65 [ 283 / 1603, 27 ins, 67 del, 189 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_12_0.0_near_room1
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_7_0.0_near_room2
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_7_0.0_near_room3
 %WER 3.29 [ 134 / 4071, 17 ins, 25 del, 92 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_0.5_far_room1
 %WER 7.02 [ 285 / 4058, 27 ins, 53 del, 205 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_7_0.5_far_room2
 %WER 6.85 [ 277 / 4045, 20 ins, 54 del, 203 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_1.0_far_room3
@@ -49,11 +37,7 @@ exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt*
 
 exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et*
 %WER 19.04 [ 564 / 2962, 53 ins, 94 del, 417 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_10_0.5_far_room1
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_7_0.0_far_room2
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_7_0.0_far_room3
 %WER 18.17 [ 569 / 3131, 48 ins, 123 del, 398 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_10_0.5_near_room1
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_7_0.0_near_room2
-%WER -nan [ 0 / 0, 0 ins, 0 del, 0 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_7_0.0_near_room3
 %WER 3.72 [ 220 / 5907, 24 ins, 41 del, 155 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_far_room1
 %WER 7.40 [ 461 / 6226, 41 ins, 97 del, 323 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_8_1.0_far_room2
 %WER 7.26 [ 426 / 5868, 33 ins, 101 del, 292 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_far_room3
