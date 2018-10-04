@@ -66,7 +66,6 @@ my $config = "conf/pbs.conf";
 
 my %cli_options = ();
 
-my $jobname = 'JOB';
 my $jobstart;
 my $jobend;
 
@@ -137,7 +136,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       die "run.pl: invalid job range $ARGV[0], start must be strictly positive.";
     }
   } elsif ($ARGV[0] =~ /JOB=(\d+)$/) {
-    croak "pbs.pl: JOB $ARGV[0] must have a range like JOB=1:10";
+      $ARGV[0] = 'JOB=1:1';
   } elsif ($ARGV[0] =~ /.+\=.*\:.*$/) {
     print STDERR "pbs.pl: Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
   }
@@ -315,10 +314,10 @@ if (! -d "$qdir") {
 my $queue_array_opt = "";
 if ($array_job == 1) { # It's an array job.
   $queue_array_opt = "-J $jobstart-$jobend";
-  $logfile =~ s/$jobname/\$PBS_ARRAY_INDEX/g; # This variable will get
+  $logfile =~ s/JOB/\$PBS_ARRAY_INDEX/g; # This variable will get
   # replaced by qsub, in each job, with the job-id.
-  $cmd =~ s/$jobname/\$\{PBS_ARRAY_INDEX\}/g; # same for the command...
-  $queue_logfile =~ s/\.?$jobname//; # the log file in the q/ subdirectory
+  $cmd =~ s/JOB/\$\{PBS_ARRAY_INDEX\}/g; # same for the command...
+  $queue_logfile =~ s/\.?JOB//; # the log file in the q/ subdirectory
   # is for the queue to put its log, and this doesn't need the task array subscript
   # so we remove it.
 }
@@ -387,14 +386,10 @@ my $pbs_job_id;
 # need to wait for the jobs to finish.  We wait for the
 # sync-files we "touched" in the script to exist.
 my @syncfiles = ();
-if (!defined $jobname) {
-  # not an array job.
-  push @syncfiles, $syncfile;
-} else {
-  for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-    push @syncfiles, "$syncfile.$jobid";
-  }
+for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
+  push @syncfiles, "$syncfile.$jobid";
 }
+
 # We will need the pbs_job_id, to check that job still exists
 {
   # Get the PBS job-id from the log file in q/
@@ -480,9 +475,8 @@ foreach my $f (@syncfiles) {
         #syncfile appeared, ok
         $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
         my $job_id = $1;
-        if (defined $jobname) {
-          $logfile =~ s/\$PBS_ARRAY_INDEX/$job_id/g;
-        }
+        $logfile =~ s/\$PBS_ARRAY_INDEX/$job_id/g;
+
         my $last_line = `tail -n 1 $logfile`;
         if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {
           # if the last line of $logfile ended with "status 0" and
@@ -517,15 +511,10 @@ system("rm $all_syncfiles 2>/dev/null");
 # First work out an array @logfiles of file-locations we need to
 # read (just one, unless it's an array job).
 my @logfiles = ();
-if (!defined $jobname) {
-  # not an array job.
-  push @logfiles, $logfile;
-} else {
-  for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-    my $l = $logfile;
-    $l =~ s/\$PBS_ARRAY_INDEX/$jobid/g;
-    push @logfiles, $l;
-  }
+for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
+  my $l = $logfile;
+  $l =~ s/\$PBS_ARRAY_INDEX/$jobid/g;
+  push @logfiles, $l;
 }
 
 my $num_failed = 0;
@@ -564,15 +553,14 @@ foreach my $l (@logfiles) {
 if ($num_failed == 0) { exit(0); }
 else { # we failed.
   if (@logfiles == 1) {
-    if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/$jobstart/g; }
-      print STDERR "pbs.pl: job failed with status $status, log is in $logfile\n";
-      if ($logfile =~ m/JOB/) {
-        print STDERR "pbs.pl: probably you forgot to put JOB=1:\$nj in your script.\n";
-      }
-    } else {
-      if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/*/g; }
-      my $numjobs = 1 + $jobend - $jobstart;
-      print STDERR "pbs.pl: $num_failed / $numjobs failed, log is in $logfile\n";
+    $logfile =~ s/\$PBS_ARRAY_INDEX/$jobstart/g;
+    print STDERR "pbs.pl: job failed with status $status, log is in $logfile\n";
+    if ($logfile =~ m/JOB/) {
+      print STDERR "pbs.pl: probably you forgot to put JOB=1:\$nj in your script.\n";
     }
+    $logfile =~ s/\$PBS_ARRAY_INDEX/*/g;
+    my $numjobs = 1 + $jobend - $jobstart;
+    print STDERR "pbs.pl: $num_failed / $numjobs failed, log is in $logfile\n";
+  }
   exit(1);
 }
