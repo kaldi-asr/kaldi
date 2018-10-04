@@ -137,7 +137,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       die "run.pl: invalid job range $ARGV[0], start must be strictly positive.";
     }
   } elsif ($ARGV[0] =~ /JOB=(\d+)$/) {
-    croak "JOB must have a range like JOB=1:10";
+    croak "pbs.pl: JOB $ARGV[0] must have a range like JOB=1:10";
   } elsif ($ARGV[0] =~ /.+\=.*\:.*$/) {
     print STDERR "pbs.pl: Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
   }
@@ -264,11 +264,9 @@ for my $option (keys %cli_options) {
 my $cwd = getcwd();
 my $logfile = shift @ARGV;
 
-if ($array_job == 1 && $logfile !~ m/$jobname/
+if ($array_job == 1 && $logfile !~ /JOB/
     && $jobend > $jobstart) {
-  print STDERR "pbs.pl: you are trying to run a parallel job but "
-    . "you are putting the output into just one log file ($logfile)\n";
-  exit(1);
+  warn "pbs.pl: you are putting the output into just one log file ($logfile)\n";
 }
 
 #
