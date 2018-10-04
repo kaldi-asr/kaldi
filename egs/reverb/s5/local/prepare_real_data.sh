@@ -6,6 +6,7 @@
 # https://github.com/kaldi-asr/kaldi/tree/master/egs/reverb/s5/local
 
 # Begin configuration section.
+wavdir=${PWD}/wav
 # End configuration section
 . ./utils/parse_options.sh  # accept options.. you can run this run.sh with the
 
@@ -79,13 +80,19 @@ for nch in 1 2 8; do
     for task in dt et; do
 	if [ ${task} == 'dt' ]; then
 	    audiodir=${reverb}/MC_WSJ_AV_Dev
+	    audiodir_wpe=${wavdir}/WPE/MC_WSJ_AV_Dev
 	elif [ ${task} == 'et' ]; then
 	    audiodir=${reverb}/MC_WSJ_AV_Eval
+	    audiodir_wpe=${wavdir}/WPE/MC_WSJ_AV_Eval
 	fi
 	for x in `ls ${taskdir} | grep RealData | grep _${task}_`; do
 	    perl -se 'while(<>){m:^\S+/[\w\-]*_(T\w{6,7})\.wav$: || die "Bad line $_"; $id = lc $1; print "$id $dir$_";}' -- -dir=${audiodir} ${taskdir}/$x |\
 		sed -e "s/^\(...\)/\1_${x}_\1/"
 	done > ${dir}/${task}_real_${nch}ch_wav.scp
+	for x in `ls ${taskdir} | grep RealData | grep _${task}_`; do
+	    perl -se 'while(<>){m:^\S+/[\w\-]*_(T\w{6,7})\.wav$: || die "Bad line $_"; $id = lc $1; print "$id $dir$_";}' -- -dir=${audiodir_wpe} ${taskdir}/$x |\
+		sed -e "s/^\(...\)/\1_${x}_\1/"
+	done > ${dir}/${task}_real_${nch}ch_wpe_wav.scp
     done
     # make a transcript
     for task in dt et; do
@@ -109,7 +116,7 @@ for nch in 1 2 8; do
     for task in dt et; do
 	datadir=data/${task}_real_${nch}ch
 	mkdir -p ${datadir}
-	sort ${dir}/${task}_real_${nch}ch_wav.scp > ${datadir}/wav.scp
+	sort ${dir}/${task}_real_${nch}ch_wpe_wav.scp > ${datadir}/wav.scp
 	sort ${dir}/${task}_real_${nch}ch.txt     > ${datadir}/text
 	sort ${dir}/${task}_real_${nch}ch.utt2spk > ${datadir}/utt2spk
 	sort ${dir}/${task}_real_${nch}ch.spk2utt > ${datadir}/spk2utt

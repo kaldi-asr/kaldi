@@ -55,6 +55,18 @@ for nch in 1 2 8; do
 	done > ${dir}/${task}_simu_${nch}ch_wav.scp
     done
 
+    task=tr
+    for x in `ls ${taskdir} | grep SimData | grep _${task}_`; do
+	perl -se 'while (<>) { chomp; if (m/\/(\w{8})[^\/]+$/) { print $1, " ", $dir, $_, "\n"; } }' -- -dir=${wavdir}/WPE/REVERB_WSJCAM0_${task}/data ${taskdir}/$x |\
+	    sed -e "s/^\(...\)/\1_${x}_\1/"
+    done > ${dir}/${task}_simu_${nch}ch_wpe_wav.scp
+    for task in dt et; do
+	for x in `ls ${taskdir} | grep SimData | grep _${task}_`; do
+	    perl -se 'while (<>) { chomp; if (m/\/(\w{8})[^\/]+$/) { print $1, " ", $dir, $_, "\n"; } }' -- -dir=${wavdir}/WPE/REVERB_WSJCAM0_${task}/data ${taskdir}/$x |\
+		sed -e "s/^\(...\)/\1_${x}_\1/"
+	done > ${dir}/${task}_simu_${nch}ch_wpe_wav.scp
+    done
+
     # make a transcript
     for task in tr dt et; do
 	for x in `ls ${taskdir} | grep SimData | grep _${task}_`; do
@@ -77,7 +89,7 @@ for nch in 1 2 8; do
     for task in tr dt et; do
 	datadir=data/${task}_simu_${nch}ch
 	mkdir -p ${datadir}
-	sort ${dir}/${task}_simu_${nch}ch_wav.scp > ${datadir}/wav.scp
+	sort ${dir}/${task}_simu_${nch}ch_wpe_wav.scp > ${datadir}/wav.scp
 	sort ${dir}/${task}_simu_${nch}ch.txt     > ${datadir}/text
 	sort ${dir}/${task}_simu_${nch}ch.utt2spk > ${datadir}/utt2spk
 	sort ${dir}/${task}_simu_${nch}ch.spk2utt > ${datadir}/spk2utt

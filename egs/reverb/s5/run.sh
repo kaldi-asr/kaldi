@@ -69,16 +69,20 @@ nj=92
 decode_nj=10
 
 if [ ${stage} -le 1 ]; then
-    ### Task dependent. You have to make the following data preparation part by yourself.
-    ### But you can utilize Kaldi recipes in most cases
-    wavdir=$PWD/wav
-    echo "stage 0: Data preparation"
-    local/generate_data.sh --wavdir ${wavdir} ${wsjcam0}
-    local/prepare_simu_data.sh --wavdir ${wavdir} ${reverb} ${wsjcam0}
-    local/prepare_real_data.sh ${reverb}
+  ### Task dependent. You have to make the following data preparation part by yourself.
+  ### But you can utilize Kaldi recipes in most cases
+  wavdir=$PWD/wav
+  echo "stage 0: Data preparation"
+  local/generate_data.sh --wavdir ${wavdir} ${wsjcam0}
+  local/prepare_simu_data.sh --wavdir ${wavdir} ${reverb} ${wsjcam0}
+  local/prepare_real_data.sh --wavdir ${wavdir} ${reverb}
 fi
 
 if [ $stage -le 2 ]; then
+  local/run_wpe.sh
+fi
+
+if [ $stage -le 3 ]; then
   # Prepare wsjcam0 clean data and wsj0 language model.
   local/wsjcam0_data_prep.sh $wsjcam0 $wsj0
 
@@ -102,14 +106,14 @@ if [ $stage -le 2 ]; then
 		data/lang $LM data/local/dict/lexicon.txt data/lang
 fi
 
-if [ $stage -le 3 ]; then
+if [ $stage -le 4 ]; then
   for dset in ${train_set} ${test_sets}; do
     utils/copy_data_dir.sh data/${dset} data/${dset}_nosplit
     utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${dset}_nosplit data/${dset}
   done
 fi
 
-if [ $stage -le 4 ]; then
+if [ $stage -le 5 ]; then
   # Extract MFCC features for train and test sets.
   mfccdir=mfcc
   for x in ${train_set} ${test_sets}; do
