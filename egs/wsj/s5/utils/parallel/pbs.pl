@@ -1,6 +1,7 @@
 #!/usr/bin/env perl
 use strict;
 use warnings;
+use Carp;
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).
 #           2014  Johns Hopkins University (Author: Vimal Manohar)
@@ -20,8 +21,6 @@ use Getopt::Long;
 #
 # pbs.pl has the same functionality as run.pl, except that
 # it runs the job in question on the queue (PBS).
-# This version of pbs.pl uses the task array functionality
-# of PBS.  
 # The script now supports configuring the queue system using a config file
 # (default in conf/pbs.conf; but can be passed specified with --config option)
 # and a set of command line options.
@@ -67,7 +66,7 @@ my $config = "conf/pbs.conf";
 
 my %cli_options = ();
 
-my $jobname;
+my $jobname = 'JOB';
 my $jobstart;
 my $jobend;
 
@@ -126,25 +125,20 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       }
     }
   }
-  if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) { # e.g. JOB=1:20
+  if ($ARGV[0] =~ /JOB=(\d+):(\d+)$/) { # e.g. JOB=1:20
     $array_job = 1;
-    $jobname = $1;
-    $jobstart = $2;
-    $jobend = $3;
+    $jobstart = $1;
+    $jobend = $2;
     shift;
     if ($jobstart > $jobend) {
       die "pbs.pl: invalid job range $ARGV[0]";
     }
     if ($jobstart <= 0) {
-      die "run.pl: invalid job range $ARGV[0], start must be strictly positive (this is a GridEngine limitation).";
+      die "run.pl: invalid job range $ARGV[0], start must be strictly positive.";
     }
-  } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
-    $array_job = 1;
-    $jobname = $1;
-    $jobstart = $2;
-    $jobend = $2;
-    shift;
-  } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
+  } elsif ($ARGV[0] =~ /JOB=(\d+)$/) {
+    croak "JOB must have a range like JOB=1:10";
+  } elsif ($ARGV[0] =~ /.+\=.*\:.*$/) {
     print STDERR "pbs.pl: Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
   }
 }
