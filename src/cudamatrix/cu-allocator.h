@@ -54,7 +54,7 @@ struct CuAllocatorOptions {
   bool cache_memory;
 
   // The proportion of the device's memory that the CuAllocator allocates to
-  // start with; by default this is 0.8, although if you want to share the
+  // start with; by default this is 0.5, although if you want to share the
   // device (not recommended!) you should set this lower.
   BaseFloat memory_proportion;
 
