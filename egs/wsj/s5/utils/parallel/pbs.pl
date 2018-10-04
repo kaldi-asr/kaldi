@@ -52,12 +52,15 @@ use Getopt::Long;
 # command qsub -v PATH -S /bin/bash -l arch=*64*
 # option mem=* -l mem_free=$0,ram_free=$0
 # option mem=0          # Do not add anything to qsub_opts
+# option num_threads=* -pe smp $0
+# option num_threads=1  # Do not add anything to qsub_opts
 # option max_jobs_run=* -tc $0
 # default gpu=0
 # option gpu=0 -q all.q
 # option gpu=* -l gpu=$0 -q g.q
 
 my $qsub_opts = "";
+my $num_threads = 1;
 my $gpu = 0;
 
 my $config = "conf/pbs.conf";
@@ -84,6 +87,7 @@ sub print_usage() {
    "  --config <config-file> (default: $config)\n" .
    "  --mem <mem-requirement> (e.g. --mem 2G, --mem 500M, \n" .
    "                           also support K and numbers mean bytes)\n" .
+   "  --num-threads <num-threads> (default: $num_threads)\n" .
    "  --max-jobs-run <num-jobs>\n" .
    "  --gpu <0|1> (default: $gpu)\n";
   exit 1;
@@ -106,7 +110,11 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       if ($argument =~ m/^--/) {
         print STDERR "pbs.pl: Warning: suspicious argument '$argument' to $switch; starts with '-'\n";
       }
-      if ($switch =~ m/^--/) { # Config options
+      if ($switch eq "-ncpus") { # e.g. -ncpus=40 
+        my $argument2 = shift @ARGV;
+        $qsub_opts .= "$switch $argument $argument2 ";
+        $num_threads = $argument2;
+      } elsif ($switch =~ m/^--/) { # Config options
         # Convert CLI option to variable name
         # by removing '--' from the switch and replacing any
         # '-' with a '_'
@@ -154,6 +162,8 @@ my $default_config_file = <<'EOF';
 command qsub -V -v PATH -S /bin/bash -l mem=4G
 option mem=* -l mem=$0
 option mem=0          # Do not add anything to qsub_opts
+option num_threads=* -l ncpus=$0
+option num_threads=1  # Do not add anything to qsub_opts
 default gpu=0
 option gpu=0
 option gpu=* -l ncpus=$0
@@ -355,7 +365,7 @@ print Q "time1=\`date +\"%s\"\`\n";
 print Q " ( $cmd ) 2>>$logfile >>$logfile\n";
 print Q "ret=\$?\n";
 print Q "time2=\`date +\"%s\"\`\n";
-print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) >>$logfile\n";
+print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) threads=$num_threads >>$logfile\n";
 print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
 print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137;
 # let the script return with status 100 which will put it to E state; more easily rerunnable.
