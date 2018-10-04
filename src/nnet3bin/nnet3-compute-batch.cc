@@ -1,7 +1,7 @@
-// nnet3bin/nnet3-compute.cc
+// nnet3bin/nnet3-compute-batch.cc
 
-// Copyright 2012-2015   Johns Hopkins University (author: Daniel Povey)
-//                2015   Vimal Manohar
+// Copyright 2012-2018   Johns Hopkins University (author: Daniel Povey)
+//           2018        Hang Lyu
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -21,7 +21,7 @@
 
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
-#include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/nnet-batch-compute.h"
 #include "base/timer.h"
 #include "nnet3/nnet-utils.h"
 
@@ -35,24 +35,25 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Propagate the features through raw neural network model "
-        "and write the output.\n"
+        "and write the output.  This version is optimized for GPU use. "
         "If --apply-exp=true, apply the Exp() function to the output "
         "before writing it out.\n"
         "\n"
-        "Usage: nnet3-compute [options] <nnet-in> <features-rspecifier> <matrix-wspecifier>\n"
-        " e.g.: nnet3-compute final.raw scp:feats.scp ark:nnet_prediction.ark\n"
-        "See also: nnet3-compute-from-egs, nnet3-chain-compute-post\n"
-        "Note: this program does not currently make very efficient use of the GPU.\n";
+        "Usage: nnet3-compute-batch [options] <nnet-in> <features-rspecifier> "
+        "<matrix-wspecifier>\n"
+        " e.g.: nnet3-compute-batch final.raw scp:feats.scp "
+        "ark:nnet_prediction.ark\n";
 
     ParseOptions po(usage);
     Timer timer;
 
-    NnetSimpleComputationOptions opts;
-    opts.acoustic_scale = 1.0; // by default do no scaling.
+    NnetBatchComputerOptions opts;
+    opts.acoustic_scale = 1.0;  // by default do no scaling
 
     bool apply_exp = false, use_priors = false;
     std::string use_gpu = "yes";
 
+    std::string word_syms_filename;
     std::string ivector_rspecifier,
                 online_ivector_rspecifier,
                 utt2spk_rspecifier;
@@ -60,16 +61,17 @@ int main(int argc, char *argv[]) {
     opts.Register(&po);
 
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier for "
-                "iVectors as vectors (i.e. not estimated online); per utterance "
-                "by default, or per speaker if you provide the --utt2spk option.");
+                "iVectors as vectors (i.e. not estimated online); per "
+                "utterance by default, or per speaker if you provide the "
+                "--utt2spk option.");
     po.Register("utt2spk", &utt2spk_rspecifier, "Rspecifier for "
                 "utt2spk option used to get ivectors per speaker");
     po.Register("online-ivectors", &online_ivector_rspecifier, "Rspecifier for "
                 "iVectors estimated online, as matrices.  If you supply this,"
                 " you must set the --online-ivector-period option.");
-    po.Register("online-ivector-period", &online_ivector_period, "Number of frames "
-                "between iVectors in matrices supplied to the --online-ivectors "
-                "option");
+    po.Register("online-ivector-period", &online_ivector_period, "Number of "
+                "frames between iVectors in matrices supplied to the "
+                "--online-ivectors option");
     po.Register("apply-exp", &apply_exp, "If true, apply exp function to "
                 "output");
     po.Register("use-gpu", &use_gpu,
@@ -86,6 +88,7 @@ int main(int argc, char *argv[]) {
     }
 
 #if HAVE_CUDA==1
+    CuDevice::Instantiate().AllowMultithreading();
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
@@ -118,18 +121,20 @@ int main(int argc, char *argv[]) {
     RandomAccessBaseFloatVectorReaderMapped ivector_reader(
         ivector_rspecifier, utt2spk_rspecifier);
 
-    CachingOptimizingCompiler compiler(nnet, opts.optimize_config);
-
     BaseFloatMatrixWriter matrix_writer(matrix_wspecifier);
 
     int32 num_success = 0, num_fail = 0;
-    int64 frame_count = 0;
+    std::string output_uttid;
+    Matrix<BaseFloat> output_matrix;
+
+
+    NnetBatchInference inference(opts, nnet, priors);
 
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
-      const Matrix<BaseFloat> &features (feature_reader.Value());
+      const Matrix<BaseFloat> &features = feature_reader.Value();
       if (features.NumRows() == 0) {
         KALDI_WARN << "Zero-length utterance: " << utt;
         num_fail++;
@@ -143,7 +148,7 @@ int main(int argc, char *argv[]) {
           num_fail++;
           continue;
         } else {
-          ivector = &ivector_reader.Value(utt);
+          ivector = new Vector<BaseFloat>(ivector_reader.Value(utt));
         }
       }
       if (!online_ivector_rspecifier.empty()) {
@@ -152,44 +157,46 @@ int main(int argc, char *argv[]) {
           num_fail++;
           continue;
         } else {
-          online_ivectors = &online_ivector_reader.Value(utt);
+          online_ivectors = new Matrix<BaseFloat>(
+              online_ivector_reader.Value(utt));
         }
       }
 
-      DecodableNnetSimple nnet_computer(
-          opts, nnet, priors,
-          features, &compiler,
-          ivector, online_ivectors,
-          online_ivector_period);
+      inference.AcceptInput(utt, features, ivector, online_ivectors,
+                            online_ivector_period);
 
-      Matrix<BaseFloat> matrix(nnet_computer.NumFrames(),
-                               nnet_computer.OutputDim());
-      for (int32 t = 0; t < nnet_computer.NumFrames(); t++) {
-        SubVector<BaseFloat> row(matrix, t);
-        nnet_computer.GetOutputForFrame(t, &row);
+      std::string output_key;
+      Matrix<BaseFloat> output;
+      while (inference.GetOutput(&output_key, &output)) {
+        if (apply_exp)
+          output.ApplyExp();
+        matrix_writer.Write(output_key, output);
+        num_success++;
       }
-
-      if (apply_exp)
-        matrix.ApplyExp();
-
-      matrix_writer.Write(utt, matrix);
-
-      frame_count += features.NumRows();
-      num_success++;
     }
 
+    inference.Finished();
+    std::string output_key;
+    Matrix<BaseFloat> output;
+    while (inference.GetOutput(&output_key, &output)) {
+      if (apply_exp)
+        output.ApplyExp();
+      matrix_writer.Write(output_key, output);
+      num_success++;
+    }
 #if HAVE_CUDA==1
     CuDevice::Instantiate().PrintProfile();
 #endif
     double elapsed = timer.Elapsed();
-    KALDI_LOG << "Time taken "<< elapsed
-              << "s: real-time factor assuming 100 frames/sec is "
-              << (elapsed*100.0/frame_count);
+    KALDI_LOG << "Time taken "<< elapsed << "s";
     KALDI_LOG << "Done " << num_success << " utterances, failed for "
               << num_fail;
 
-    if (num_success != 0) return 0;
-    else return 1;
+    if (num_success != 0) {
+      return 0;
+    } else {
+      return 1;
+    }
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

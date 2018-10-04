@@ -33,7 +33,7 @@
 int main(int argc, char *argv[]) {
   // note: making this program work with GPUs is as simple as initializing the
   // device, but it probably won't make a huge difference in speed for typical
-  // setups.
+  // setups.  You should use nnet3-latgen-faster-batch if you want to use a GPU.
   try {
     using namespace kaldi;
     using namespace kaldi::nnet3;
@@ -45,7 +45,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Generate lattices using nnet3 neural net model.\n"
         "Usage: nnet3-latgen-faster [options] <nnet-in> <fst-in|fsts-rspecifier> <features-rspecifier>"
-        " <lattice-wspecifier> [ <words-wspecifier> [<alignments-wspecifier>] ]\n";
+        " <lattice-wspecifier> [ <words-wspecifier> [<alignments-wspecifier>] ]\n"
+        "See also: nnet3-latgen-faster-parallel, nnet3-latgen-faster-batch\n";
     ParseOptions po(usage);
     Timer timer;
     bool allow_partial = false;
