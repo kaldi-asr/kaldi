@@ -1,9 +1,12 @@
 #!/usr/bin/env perl
+
 use strict;
 use warnings;
 use Carp;
 
 use File::Basename;
+use Cwd qw(getcwd);
+my $cwd = getcwd;
 
 BEGIN {
     @ARGV == 5 or croak "USAGE: pbspro.pl <LOGFILE> <JJOBNAME> <JOBSTART> <JOBEND> <NUM_THREADS>
@@ -16,30 +19,19 @@ my ($logfile,$jobname,$jobstart,$jobend,$num_threads) = @ARGV;
 
 my $qsub_cmd = "";
     my $queue_scriptfile = "";
-my $cwd = `pwd`;
-
 my $cmd = "";
 
-foreach my $x (@ARGV) {
-  if ($x =~ /^\S+$/) {
-    $cmd .= $x . " ";
-  } elsif ($x =~ m:\":) {
- $cmd .= "'$x' "; }
-  else {
-    $cmd .= "\"$x\" ";
-  }
-}
-
-# Work out the location of the script file, and open it for writing.
-
 my $dir = dirname $logfile;
+
 my $base = basename $logfile;
+
 my $qdir = "$dir/q";
+
 $qdir =~ s:/(log|LOG)/*q:/q:; # If qdir ends in .../log/q, make it just .../q.
+
 my $queue_logfile = "$qdir/$base";
 
 if (!-d $dir) {
-  # another job may be doing this...
   system "mkdir -p $dir 2>/dev/null";
 }
 
@@ -55,20 +47,32 @@ if (! -d "$qdir") {
 my $queue_array_opt = "";
 
 $queue_array_opt = "-J $jobstart-$jobend";
-$logfile =~ s/$jobname/\$PBS_ARRAY_INDEX/g;
-$cmd =~ s/$jobname/\$\{PBS_ARRAY_INDEX\}/g;
-$queue_logfile =~ s/\.?$jobname//;
 
-$queue_scriptfile = $queue_logfile;
-($queue_scriptfile =~ s/\.[a-zA-Z]{1,5}$/.sh/) || ($queue_scriptfile .= ".sh");
-if ($queue_scriptfile !~ m:^/:) {
-  $queue_scriptfile = $cwd . "/" . $queue_scriptfile;
-  # just in case.
+$logfile =~ s/$jobname/\$PBS_ARRAY_INDEX/g;
+
+foreach my $x (@ARGV) {
+  # If string contains no spaces, take as-is.
+  if ($x =~ /^\S+$/) {
+    $cmd .= $x . " ";
+  } elsif ($x =~ /\"/) {
+    # else if no dbl-quotes, use single
+    $cmd .= "'$x' ";
+  } else {
+    # else use double.
+    $cmd .= "\"$x\" ";
+  }
 }
+
+$cmd =~ s/$jobname/\$\{PBS_ARRAY_INDEX\}/g;
+
+$queue_logfile =~ s/\.?$jobname//;
+$queue_scriptfile = $queue_logfile;
+
+($queue_scriptfile =~ s/\.[a-zA-Z]{1,5}$/.sh/) || ($queue_scriptfile .= ".sh");
 
 my $syncfile = "$qdir/done.$$";
 
-system("rm $queue_logfile $syncfile 2>/dev/null");
+system "rm $queue_logfile $syncfile 2>/dev/null";
 
 open my $Q, '+>', $queue_scriptfile or croak "problems with $queue_scriptfile $!";
 
@@ -94,13 +98,13 @@ print $Q "touch $syncfile.\$PBS_ARRAY_INDEX\n";
 
 print $Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
 print $Q "## submitted with:\n";       # treats specially.
-$qsub_cmd .= "-o $queue_logfile $qsub_opts $queue_array_opt $queue_scriptfile >>$queue_logfile 2>&1";
+$qsub_cmd .= "-o $queue_logfile $queue_array_opt $queue_scriptfile >>$queue_logfile 2>&1";
 print $Q "# $qsub_cmd\n";
 close $Q;
 
 my $ret = system ($qsub_cmd);
 if ($ret != 0) {
-  print STDERR "queue.pl: error submitting jobs to queue (return status was $ret)\n";
+  print STDERR "pbspro.pl: error submitting jobs to queue (return status was $ret)\n";
   print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
   print STDERR `tail $queue_logfile`;
   exit(1);
@@ -191,7 +195,7 @@ foreach my $f (@syncfiles) {
             " b) Shutdown/Frozen machine? -> Run again!\n";
 	  exit(1);
         }
-      } elsif ($ret != 0) {          print STDERR "pbspro.pl: Warning: qstat command returned status $ret (qstat -t $sge_job_id,$!)\n";
+      } elsif ($ret != 0) {          print STDERR "pbspro.pl: Warning: qstat command returned status $ret (qstat -t $pbs_job_id,$!)\n";
       }
     }
   }
@@ -199,8 +203,9 @@ foreach my $f (@syncfiles) {
 my $all_syncfiles = join(" ", @syncfiles);
 system("rm $all_syncfiles 2>/dev/null");
 my @logfiles = ();
-for my $jobid ($jobstart..$jobend;) {
-  my $l = $logfile;
+my $l = "";
+for my $jobid ($jobstart..$jobend) {
+  $l = $logfile;
   $l =~ s/\$PBS_ARRAY_INDEX/$jobid/g;
   push @logfiles, $l;
 }
