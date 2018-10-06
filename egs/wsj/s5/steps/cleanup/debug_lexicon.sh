@@ -123,7 +123,7 @@ if [ $stage -le 8 ]; then
 
   # filter out those utteraces which only appea in phone_processed.ctm but not in word_processed.ctm
   cat $dir/phone_mapped.ctm | awk '{printf("%s-%s %010.0f PHONE %s\n", $1, $2, 1000*($3+(0.5*$4)), $5);}' | \
-    awk 'NR==FNR{a[$1] = 1; next} {if($1 in a) print $0}' $dir/word_processed.ctm - \
+    awk 'NR==FNR{a[$1] = 1; next} {if($1 in a) print $0}' $dir/word_processed.ctm - | \
     sort > $dir/phone_processed.ctm
 
   # merge-sort both ctm's
