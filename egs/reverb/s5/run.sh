@@ -69,8 +69,7 @@ nj=92
 decode_nj=10
 
 if [ ${stage} -le 1 ]; then
-  ### Task dependent. You have to make the following data preparation part by yourself.
-  ### But you can utilize Kaldi recipes in most cases
+  # data preparation
   wavdir=$PWD/wav
   echo "stage 0: Data preparation"
   local/generate_data.sh --wavdir ${wavdir} ${wsjcam0}

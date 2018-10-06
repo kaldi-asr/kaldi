@@ -60,8 +60,6 @@ fi
 
 
 mkdir -p $dir/scoring_kaldi
-cat $data/text | $ref_filtering_cmd > $dir/scoring_kaldi/test_filt.txt || exit 1;
-
 if echo $data | grep -q "real"; then
   tasks="\
   near_room1 far_room1"
@@ -71,6 +69,9 @@ else
   near_room2 far_room2 \
   near_room3 far_room3"
 fi
+for task in ${tasks}; do
+  grep $task $data/text | $ref_filtering_cmd > $dir/scoring_kaldi/test_filt_${task}.txt || exit 1;
+done
 
 if [ $stage -le 0 ]; then
 
@@ -100,7 +101,7 @@ if [ $stage -le 0 ]; then
       $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring_kaldi/penalty_$wip/log/score.LMWT.log \
         grep $task $dir/scoring_kaldi/penalty_$wip/LMWT.txt \| \
         compute-wer --text --mode=present \
-        ark:$dir/scoring_kaldi/test_filt.txt  ark,p:- ">&" $dir/wer_LMWT_${wip}_${task} || exit 1;
+        ark:$dir/scoring_kaldi/test_filt_${task}.txt  ark,p:- ">&" $dir/wer_LMWT_${wip}_${task} || exit 1;
     done
   done
 fi
@@ -131,7 +132,7 @@ if [ $stage -le 1 ]; then
 
       $cmd $dir/scoring_kaldi/log/stats1.log \
         cat $dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \| \
-        align-text --special-symbol="'***'" ark:$dir/scoring_kaldi/test_filt.txt ark:- ark,t:- \|  \
+        align-text --special-symbol="'***'" ark:$dir/scoring_kaldi/test_filt_${task}.txt ark:- ark,t:- \|  \
         utils/scoring/wer_per_utt_details.pl --special-symbol "'***'" \| tee $dir/scoring_kaldi/wer_details/per_utt \|\
          utils/scoring/wer_per_spk_details.pl $data/utt2spk \> $dir/scoring_kaldi/wer_details/per_spk || exit 1;
 
@@ -142,7 +143,7 @@ if [ $stage -le 1 ]; then
 
       $cmd $dir/scoring_kaldi/log/wer_bootci.log \
         compute-wer-bootci --mode=present \
-          ark:$dir/scoring_kaldi/test_filt.txt ark:$dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
+          ark:$dir/scoring_kaldi/test_filt_${task}.txt ark:$dir/scoring_kaldi/penalty_$best_wip/$best_lmwt.txt \
           '>' $dir/scoring_kaldi/wer_details/wer_bootci || exit 1;
 
     fi

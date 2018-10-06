@@ -1,46 +1,46 @@
 ########################################
 GMM RESULTs:
 exp/tri3/decode_dt_real_1ch
-%WER 34.18 [ 500 / 1463, 24 ins, 125 del, 351 sub ] [PARTIAL] exp/tri3/decode_dt_real_1ch/wer_17_1.0_far_room1
-%WER 29.63 [ 475 / 1603, 24 ins, 127 del, 324 sub ] [PARTIAL] exp/tri3/decode_dt_real_1ch/wer_15_0.5_near_room1
+%WER 34.18 [ 500 / 1463, 24 ins, 125 del, 351 sub ] exp/tri3/decode_dt_real_1ch/wer_17_1.0_far_room1
+%WER 29.63 [ 475 / 1603, 24 ins, 127 del, 324 sub ] exp/tri3/decode_dt_real_1ch/wer_15_0.5_near_room1
 
 exp/tri3/decode_dt_simu_1ch
-%WER 6.78 [ 276 / 4071, 38 ins, 42 del, 196 sub ] [PARTIAL] exp/tri3/decode_dt_simu_1ch/wer_12_1.0_far_room1
-%WER 18.28 [ 742 / 4058, 65 ins, 155 del, 522 sub ] [PARTIAL] exp/tri3/decode_dt_simu_1ch/wer_14_0.5_far_room2
-%WER 19.78 [ 800 / 4045, 77 ins, 148 del, 575 sub ] [PARTIAL] exp/tri3/decode_dt_simu_1ch/wer_13_0.0_far_room3
-%WER 5.53 [ 225 / 4071, 36 ins, 29 del, 160 sub ] [PARTIAL] exp/tri3/decode_dt_simu_1ch/wer_12_1.0_near_room1
-%WER 7.81 [ 317 / 4058, 48 ins, 37 del, 232 sub ] [PARTIAL] exp/tri3/decode_dt_simu_1ch/wer_12_0.0_near_room2
-%WER 10.70 [ 433 / 4045, 47 ins, 86 del, 300 sub ] [PARTIAL] exp/tri3/decode_dt_simu_1ch/wer_13_0.5_near_room3
+%WER 6.78 [ 276 / 4071, 38 ins, 42 del, 196 sub ] exp/tri3/decode_dt_simu_1ch/wer_12_1.0_far_room1
+%WER 18.28 [ 742 / 4058, 65 ins, 155 del, 522 sub ] exp/tri3/decode_dt_simu_1ch/wer_14_0.5_far_room2
+%WER 19.78 [ 800 / 4045, 77 ins, 148 del, 575 sub ] exp/tri3/decode_dt_simu_1ch/wer_13_0.0_far_room3
+%WER 5.53 [ 225 / 4071, 36 ins, 29 del, 160 sub ] exp/tri3/decode_dt_simu_1ch/wer_12_1.0_near_room1
+%WER 7.81 [ 317 / 4058, 48 ins, 37 del, 232 sub ] exp/tri3/decode_dt_simu_1ch/wer_12_0.0_near_room2
+%WER 10.70 [ 433 / 4045, 47 ins, 86 del, 300 sub ] exp/tri3/decode_dt_simu_1ch/wer_13_0.5_near_room3
 
 exp/tri3/decode_et_real_1ch
-%WER 33.09 [ 980 / 2962, 103 ins, 157 del, 720 sub ] [PARTIAL] exp/tri3/decode_et_real_1ch/wer_13_0.0_far_room1
-%WER 33.18 [ 1039 / 3131, 104 ins, 194 del, 741 sub ] [PARTIAL] exp/tri3/decode_et_real_1ch/wer_16_0.0_near_room1
+%WER 33.09 [ 980 / 2962, 103 ins, 157 del, 720 sub ] exp/tri3/decode_et_real_1ch/wer_13_0.0_far_room1
+%WER 33.18 [ 1039 / 3131, 104 ins, 194 del, 741 sub ] exp/tri3/decode_et_real_1ch/wer_16_0.0_near_room1
 
 exp/tri3/decode_et_simu_1ch
-%WER 7.47 [ 441 / 5907, 73 ins, 48 del, 320 sub ] [PARTIAL] exp/tri3/decode_et_simu_1ch/wer_15_0.5_far_room1
-%WER 18.31 [ 1140 / 6226, 128 ins, 191 del, 821 sub ] [PARTIAL] exp/tri3/decode_et_simu_1ch/wer_13_0.0_far_room2
-%WER 21.81 [ 1280 / 5868, 109 ins, 273 del, 898 sub ] [PARTIAL] exp/tri3/decode_et_simu_1ch/wer_14_0.5_far_room3
-%WER 7.26 [ 429 / 5907, 77 ins, 42 del, 310 sub ] [PARTIAL] exp/tri3/decode_et_simu_1ch/wer_16_1.0_near_room1
-%WER 9.52 [ 593 / 6226, 78 ins, 86 del, 429 sub ] [PARTIAL] exp/tri3/decode_et_simu_1ch/wer_13_0.5_near_room2
-%WER 11.96 [ 702 / 5868, 60 ins, 151 del, 491 sub ] [PARTIAL] exp/tri3/decode_et_simu_1ch/wer_13_1.0_near_room3
+%WER 7.47 [ 441 / 5907, 73 ins, 48 del, 320 sub ] exp/tri3/decode_et_simu_1ch/wer_15_0.5_far_room1
+%WER 18.31 [ 1140 / 6226, 128 ins, 191 del, 821 sub ] exp/tri3/decode_et_simu_1ch/wer_13_0.0_far_room2
+%WER 21.81 [ 1280 / 5868, 109 ins, 273 del, 898 sub ] exp/tri3/decode_et_simu_1ch/wer_14_0.5_far_room3
+%WER 7.26 [ 429 / 5907, 77 ins, 42 del, 310 sub ] exp/tri3/decode_et_simu_1ch/wer_16_1.0_near_room1
+%WER 9.52 [ 593 / 6226, 78 ins, 86 del, 429 sub ] exp/tri3/decode_et_simu_1ch/wer_13_0.5_near_room2
+%WER 11.96 [ 702 / 5868, 60 ins, 151 del, 491 sub ] exp/tri3/decode_et_simu_1ch/wer_13_1.0_near_room3
 ########################################
 TDNN RESULTs:
 exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt*
-%WER 19.62 [ 287 / 1463, 29 ins, 55 del, 203 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_10_0.0_far_room1
-%WER 17.65 [ 283 / 1603, 27 ins, 67 del, 189 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_12_0.0_near_room1
-%WER 3.29 [ 134 / 4071, 17 ins, 25 del, 92 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_0.5_far_room1
-%WER 7.02 [ 285 / 4058, 27 ins, 53 del, 205 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_7_0.5_far_room2
-%WER 6.85 [ 277 / 4045, 20 ins, 54 del, 203 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_1.0_far_room3
-%WER 2.73 [ 111 / 4071, 10 ins, 18 del, 83 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_0.5_near_room1
-%WER 3.45 [ 140 / 4058, 14 ins, 24 del, 102 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_9_0.5_near_room2
-%WER 3.93 [ 159 / 4045, 23 ins, 26 del, 110 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_0.0_near_room3
+%WER 19.62 [ 287 / 1463, 29 ins, 55 del, 203 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_10_0.0_far_room1
+%WER 17.65 [ 283 / 1603, 27 ins, 67 del, 189 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_12_0.0_near_room1
+%WER 3.29 [ 134 / 4071, 17 ins, 25 del, 92 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_0.5_far_room1
+%WER 7.02 [ 285 / 4058, 27 ins, 53 del, 205 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_7_0.5_far_room2
+%WER 6.85 [ 277 / 4045, 20 ins, 54 del, 203 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_1.0_far_room3
+%WER 2.73 [ 111 / 4071, 10 ins, 18 del, 83 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_0.5_near_room1
+%WER 3.45 [ 140 / 4058, 14 ins, 24 del, 102 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_9_0.5_near_room2
+%WER 3.93 [ 159 / 4045, 23 ins, 26 del, 110 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_8_0.0_near_room3
 
 exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et*
-%WER 19.04 [ 564 / 2962, 53 ins, 94 del, 417 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_10_0.5_far_room1
-%WER 18.17 [ 569 / 3131, 48 ins, 123 del, 398 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_10_0.5_near_room1
-%WER 3.72 [ 220 / 5907, 24 ins, 41 del, 155 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_far_room1
-%WER 7.40 [ 461 / 6226, 41 ins, 97 del, 323 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_8_1.0_far_room2
-%WER 7.26 [ 426 / 5868, 33 ins, 101 del, 292 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_far_room3
-%WER 3.18 [ 188 / 5907, 25 ins, 38 del, 125 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_8_1.0_near_room1
-%WER 4.87 [ 303 / 6226, 31 ins, 64 del, 208 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_near_room2
-%WER 4.84 [ 284 / 5868, 23 ins, 64 del, 197 sub ] [PARTIAL] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_10_1.0_near_room3
+%WER 19.04 [ 564 / 2962, 53 ins, 94 del, 417 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_10_0.5_far_room1
+%WER 18.17 [ 569 / 3131, 48 ins, 123 del, 398 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_10_0.5_near_room1
+%WER 3.72 [ 220 / 5907, 24 ins, 41 del, 155 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_far_room1
+%WER 7.40 [ 461 / 6226, 41 ins, 97 del, 323 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_8_1.0_far_room2
+%WER 7.26 [ 426 / 5868, 33 ins, 101 del, 292 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_far_room3
+%WER 3.18 [ 188 / 5907, 25 ins, 38 del, 125 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_8_1.0_near_room1
+%WER 4.87 [ 303 / 6226, 31 ins, 64 del, 208 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_near_room2
+%WER 4.84 [ 284 / 5868, 23 ins, 64 del, 197 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_10_1.0_near_room3
