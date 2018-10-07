@@ -16,20 +16,24 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 if [ $# -ne 5 ] && [ $# -ne 6 ]; then
   cat <<EOF
-  This script compares to directories containing data alignments, and
+  This script compares two directories containing data alignments, and
   creates statistics showing how much the phone and word alignments differ,
   including breakdown by phones and words; and which utterances differ the
   most.  This is intended for diagnostic purposes.  Both alignment directories
   should be for the same data (or at least the data sets should overlap).
-  The word alignment stats may not be correctly obtained if the  data-dirs are
+  The word alignment stats may not be correctly obtained if the data-dirs are
   not the same.
 
   Usage: $0 [options] <lang-directory> (<data-directory> | <data-directory1> <data-directory2>) <ali-dir1> <ali-dir2> <work-dir>
-   e.g.: $0 data/lang exp/tri2_ali exp/tri3_ali exp/ali_compare_2_3
+   e.g.: $0 data/lang data/train exp/tri2_ali exp/tri3_ali exp/compare_ali_2_3
 
   Options:
-    echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
-                                              # (passed through to get_train_ctm.sh)"
+              --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes.
+                                              # (passed through to get_train_ctm.sh)
+              --cleanup <true|false>          # Specify --cleanup false to prevent
+                                              # cleanup of temporary files.
+              --stage  <n>                    # Enables you to run part of the script.
+
 EOF
   exit 1
 fi
