@@ -398,7 +398,7 @@ void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
 }
 
 void CuMemoryAllocator::Free(void *ptr) {
-  CuTimer tim;
+  Timer tim;
   if (!opts_.cache_memory) {
     CU_SAFE_CALL(cudaFree(ptr));
     tot_time_taken_ += tim.Elapsed();
