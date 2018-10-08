@@ -35,11 +35,7 @@
 #include "base/kaldi-common.h"
 #include "base/timer.h"
 #include "cudamatrix/cu-allocator.h"
-
-// Forward declare the cudnnHandle_t found in cudnn.h so that we don't
-// need to #include <cudnn.h>. This allows us to make cudnn an
-// optional dependency.
-typedef struct cudnnContext *cudnnHandle_t;
+#include "cudamatrix/cu-cudnn-helper.h"
 
 namespace kaldi {
 

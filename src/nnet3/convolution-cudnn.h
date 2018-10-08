@@ -25,10 +25,7 @@
 #include "matrix/matrix-lib.h"
 #include "nnet3/convolution.h"
 
-// TODO: Consider forward declaring types like
-// cudnnTensorDescriptor_t, so that this header file doesn't depend on
-// cudnn.h
-#include <cudnn.h>
+#include <cudamatrix/cu-cudnn-helper.h>
 
 namespace kaldi {
 namespace nnet3 {

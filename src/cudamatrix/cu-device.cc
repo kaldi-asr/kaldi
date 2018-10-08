@@ -27,9 +27,6 @@
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
-#if HAVE_CUDNN == 1
-#include <cudnn.h>
-#endif // HAVE_CUDNN == 1
 
 #include <string>
 #include <vector>
@@ -119,10 +116,8 @@ void CuDevice::Initialize() {
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
 
-#if HAVE_CUDNN == 1
     CUDNN_SAFE_CALL(cudnnCreate(&cudnn_handle_));
     CUDNN_SAFE_CALL(cudnnSetStream(cudnn_handle_, cudaStreamPerThread));
-#endif // HAVE_CUDNN == 1
   }
 }
 
@@ -259,10 +254,8 @@ void CuDevice::FinalizeActiveGpu() {
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
 
-#if HAVE_CUDNN == 1
     CUDNN_SAFE_CALL(cudnnCreate(&cudnn_handle_));
     CUDNN_SAFE_CALL(cudnnSetStream(cudnn_handle_, cudaStreamPerThread));
-#endif // HAVE_CUDNN == 1
 
     // Notify the user which GPU is being userd.
     char name[128];
@@ -535,11 +528,8 @@ CuDevice::~CuDevice() {
     CUBLAS_SAFE_CALL(cublasDestroy(cublas_handle_));
   if (cusparse_handle_)
     CUSPARSE_SAFE_CALL(cusparseDestroy(cusparse_handle_));
-#if HAVE_CUDNN == 1
-  if (cudnn_handle_) {
+  if (cudnn_handle_)
     CUDNN_SAFE_CALL(cudnnDestroy(cudnn_handle_));
-  }
-#endif // HAVE_CUDNN == 1
 }
 
 

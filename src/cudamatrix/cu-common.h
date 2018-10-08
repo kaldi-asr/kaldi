@@ -23,6 +23,7 @@
 #ifndef KALDI_CUDAMATRIX_CU_COMMON_H_
 #define KALDI_CUDAMATRIX_CU_COMMON_H_
 #include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK
+#include "cudamatrix/cu-cudnn-helper.h"
 
 #include <iostream>
 #include <sstream>
@@ -74,9 +75,6 @@
   } \
 }
 
-#if HAVE_CUDNN == 1
-#include <cudnn.h>
-
 #define CUDNN_SAFE_CALL(fun)                                                    \
 do {                                                                            \
   cudnnStatus_t ret;                                                            \
@@ -85,7 +83,6 @@ do {                                                                            
               << "\" returned from '" << #fun << "'";                           \
   }                                                                             \
 } while(0)
-#endif // HAVE_CUDNN == 1
 
 
 namespace kaldi {
