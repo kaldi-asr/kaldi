@@ -520,7 +520,6 @@ def ParseRirList(rir_set_para_array, smoothing_weight, sampling_rate = None):
     rir_list = []
     for rir_set in set_list:
         current_rir_list = [rir_parser.parse_args(shlex.split(x.strip())) for x in open(rir_set.filename)]
-        rir_list_in = []
         for rir in current_rir_list:
             if sampling_rate is not None:
                 # check if the rspecifier is a pipe or not
@@ -528,7 +527,6 @@ def ParseRirList(rir_set_para_array, smoothing_weight, sampling_rate = None):
                     rir.rir_rspecifier = "sox {0} -r {1} -t wav - |".format(rir.rir_rspecifier, sampling_rate)
                 else:
                     rir.rir_rspecifier = "{0} sox -t wav - -r {1} -t wav - |".format(rir.rir_rspecifier, sampling_rate)
-            rir_list_in.append(rir)
 
         rir_list += SmoothProbabilityDistribution(current_rir_list, smoothing_weight, rir_set.probability)
 
