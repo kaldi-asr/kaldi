@@ -519,7 +519,6 @@ def ParseRirList(rir_set_para_array, smoothing_weight, sampling_rate = None):
 
     rir_list = []
     for rir_set in set_list:
-        #current_rir_list = map(lambda x: rir_parser.parse_args(shlex.split(x.strip())),open(rir_set.filename))
         current_rir_list = [rir_parser.parse_args(shlex.split(x.strip())) for x in open(rir_set.filename)]
         rir_list_in = []
         for rir in current_rir_list:
