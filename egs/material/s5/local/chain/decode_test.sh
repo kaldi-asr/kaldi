@@ -10,7 +10,7 @@ set -euo pipefail
 
 language=swahili
 stage=0
-datadev="data/analysis1 data/analysis2 data/test_dev data/eval1 data/eval2"
+datadev="data/analysis1 data/analysis2 data/test_dev data/eval1 data/eval2 data/eval3"
 dir=exp/chain/tdnn1b_sp
 lang=data/lang_combined_chain
 tree_dir=exp/chain/tree_sp
@@ -49,12 +49,12 @@ where "nvcc" is installed.
 EOF
 fi
 
-if [ $stage -le 0 ]; then
-  # audio segmentation: uniformly
-  for datadir in $datadev; do
-    local/preprocess_test.sh $datadir
-  done
-fi
+#if [ $stage -le 0 ]; then
+#  # audio segmentation: uniformly
+#  for datadir in $datadev; do
+#    local/preprocess_test.sh $datadir
+#  done
+#fi
 
 if [ $stage -le 1 ]; then
   # extract hires mfcc features from uniformly segmented data

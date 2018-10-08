@@ -45,14 +45,14 @@ pruned_rescore=true
 ac_model_dir=exp/chain/tdnn1b_sp
 #decode_sets="dev analysis1_segmented_reseg test_dev_segmented_reseg eval1_segmented_reseg eval2_segmented_reseg"
 decode_sets="dev analysis1_segmented test_dev_segmented eval1_segmented eval2_segmented eval3_segmented"
-decode_sets="analysis1_segmented"
+#decode_sets="analysis1_segmented"
 #decode_sets="dev eval1_segmented eval2_segmented"
 dir=exp/rnnlm_lstm_1a
 text_dir=data/rnnlm/text
 train_text=data/lm/train.txt
 dev_text=data/lm/dev.txt
 bitext=data/bitext/text.txt
-monotext=data/monolingual/text.txt
+monotext=data/mono/text.txt
 lang=data/lang_combined_chain
 tree_dir=exp/chain/tree_sp
 

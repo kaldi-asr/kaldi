@@ -26,9 +26,8 @@ SOURCE_TC_MODEL=/home/pkoehn/experiment/material-${language_affix}-en/truecaser/
 $MOSES/scripts/tokenizer/normalize-punctuation.perl ${language_affix} < ${srctext_bitext} \
  | $MOSES/scripts/tokenizer/tokenizer.perl -a -l ${language_affix} > ${srctext_bitext}.tok
 
-# Truecase
-$MOSES/scripts/recaser/truecase.perl -model $SOURCE_TC_MODEL \
-  < ${srctext_bitext}.tok > ${srctext_bitext}.tc
+# convert to lower cases
+cat ${srctext_bitext}.tok | tr 'A-Z' 'a-z' > ${srctext_bitext}.tc
 
 # Remove punctuation
 cat ${srctext_bitext}.tc | sed 's/&apos; //g' | sed 's/&apos//g' | sed 's/&#91//g' | sed 's/&#93//g' | sed 's/&quot; //g' | sed 's/&quot //g' | sed 's/&amp; //g' | sed 's/@-@ //g' | sed 's/-//g' | sed 's/://g' | sed 's/\///g' | sed 's/%//g' | sed 's/+//g' | sed 's/( //g' | sed 's/) //g' | sed 's/\, //g' | sed 's/ \.//g' | sed 's/\?//g' | sed 's/\!//g' | sed 's/\;//g' > $output
