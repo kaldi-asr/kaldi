@@ -15,16 +15,16 @@ my $num_threads = 1;
 my $gpu = 0;
 my $config = "conf/pbspro.conf";
 my %cli_options = ();
-my $jobname;
-my $jobstart;
-my $jobend;
-my $array_job = 0;
+my $jobname = '';
+my $jobstart = 0;
+my $jobend = 0;
+my $array_job = 1;
 my $logfile = "";
 
 my %cli_config_options = ();
 my %cli_default_options = ();
 my $opened_config_file = 1;
-my $default_config_file = "";
+my $default_config_file = "conf/pbspro.conf";
 my $qsub_cmd = "";
 my $queue_scriptfile = "";
 my $cmd = "";
@@ -62,14 +62,15 @@ foreach my $x (@ARGV) {
   }
 }
 
-&process_arguments($config);
+($qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend) = &process_arguments($config,$array_job,$jobname,$jobstart,$jobend);
+
 $cwd = getcwd();
 $logfile = shift @ARGV;
 
 if ($array_job == 1 && $logfile !~ m/$jobname/
-    && $jobend > $jobstart) {
+  && $jobend > $jobstart) {
   print STDERR "pbspro.pl: you are trying to run a parallel job but "
-    . "you are putting the output into just one log file ($logfile)\n";
+  . "you are putting the output into just one log file ($logfile)\n";
   exit(1);
 }
 
@@ -77,8 +78,8 @@ my $dir = dirname $logfile;
 my $base = basename $logfile;
 my $qdir = "$dir/q";
 $qdir =~ s:/(log|LOG)/*q:/q:; # If qdir ends in .../log/q, make it just .../q.
+
 my $queue_logfile = "$qdir/$base";
-warn "$queue_logfile";
 if (!-d $dir) {
   system "mkdir -p $dir 2>/dev/null";
 }
@@ -101,9 +102,8 @@ if ($array_job == 1) {
 }
 
 $queue_scriptfile = $queue_logfile;
-warn "$queue_scriptfile";
 ($queue_scriptfile =~ s/\.[a-zA-Z]{1,5}$/.sh/) || ($queue_scriptfile .= ".sh");
-warn "$queue_scriptfile";
+
 if ($queue_scriptfile !~ m:^/:) {
   $queue_scriptfile = $cwd . "/" . $queue_scriptfile; # just in case.
 }
@@ -112,8 +112,7 @@ my $syncfile = "$qdir/done.$$";
 
 system "rm $queue_logfile $syncfile 2>/dev/null";
 
-warn "$queue_scriptfile";
-unlink($queue_logfile, $syncfile);
+#unlink($queue_logfile, $syncfile);
 &write_script($queue_scriptfile,$cwd,$cmd,$logfile,$num_threads,$syncfile,$qsub_cmd,$queue_logfile,$queue_array_opt,$array_job);
 
 chmod 0755, $queue_scriptfile;my $pbs_job_id;
@@ -124,7 +123,7 @@ for my $jobid ($jobstart..$jobend) {
 
 {
   # Get the PBS job-id from the log file in q/
-  open my $L, '<', $queue_logfile or croak "problem  with$queue_logfile $!";
+  open my $L, '<', $queue_logfile or warn "problem  with$queue_logfile $!";
   undef $pbs_job_id;
   while ( my $line = <$L> ) {
     chomp $line;
@@ -257,7 +256,8 @@ else { # we failed.
   exit(1);
 }
 sub process_arguments {
-    my ($config) = @_;
+    my ($config,$array_job,$jobname,$jobstart,$jobend) = @_;
+    my @out = ();
   #  allow the JOB=1:n option to be interleaved with the options to qsub.
   for my $x (1..2) {
     while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) {
@@ -309,9 +309,13 @@ sub process_arguments {
     }
   }
 
+    push @out, $qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend;
+
   &process_config_file($config);
 
-  &process_cli(\%cli_options);
+    &process_cli(\%cli_options);
+
+    return@out; 
 }
 
 sub process_config_file {
@@ -455,14 +459,14 @@ sub write_script {
 print $Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
   print $Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137;
   if ($array_job == 0) {
-    print Q "touch $syncfile\n";
+    print $Q "touch $syncfile\n";
   } else {
-    print Q "touch $syncfile.\$PBS_ARRAY_INDEX\n";
+    print $Q "touch $syncfile.\$PBS_ARRAY_INDEX\n";
   }
-  print Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
-  print Q "## submitted with:\n";       # treats specially.
+  print $Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
+  print $Q "## submitted with:\n";       # treats specially.
   $qsub_cmd .= "-o $queue_logfile $qsub_opts $queue_array_opt $queue_scriptfile >>$queue_logfile 2>&1";
-  print Q "# $qsub_cmd\n";
+  print $Q "# $qsub_cmd\n";
   close $Q;
 }
 
