@@ -285,3 +285,9 @@ if [ $stage -le 19 ]; then
   utils/format_lm.sh ${lang_root} $lmdir/lm.gz \
     ${dict_root}/lexiconp.txt ${lang_root}_test
 fi
+
+# After run.sh is finished, run the followings:
+# ./local/chain/run_tdnn.sh
+# ./local/chain/decode_test.sh --language <swahili|tagalog>
+# ./local/rnnlm/run_tdnn_lstm.sh
+exit 0;
