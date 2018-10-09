@@ -59,9 +59,11 @@ transform_probs_opts=""
 # Postprocessing options
 segment_padding=0.2   # Duration (in seconds) of padding added to segments 
 min_segment_dur=0   # Minimum duration (in seconds) required for a segment to be included
-                    # This is before any padding. This is an alternative to --min-speech-duration above.
+                    # This is before any padding. Segments shorter than this duration will be removed.
+                    # This is an alternative to --min-speech-duration above.
 merge_consecutive_max_dur=0   # Merge consecutive segments as long as the merged segment is no longer than this many
                               # seconds. The segments are only merged if their boundaries are touching.
+                              # This is after padding by --segment-padding seconds.
                               # 0 means do not merge. Use 'inf' to not limit the duration.
 
 echo $* 

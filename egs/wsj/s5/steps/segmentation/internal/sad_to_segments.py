@@ -57,12 +57,14 @@ and 2 for speech frames.
 
     parser.add_argument("--min-segment-dur", type=float, default=0,
                         help="Minimum duration (in seconds) required for a segment "
-                             "to be included. This is before any padding.")
+                             "to be included. This is before any padding. Segments "
+                             "shorter than this duration will be removed.")
 
     parser.add_argument("--merge-consecutive-max-dur", type=float, default=0,
                         help="Merge consecutive segments as long as the merged "
                              "segment is no longer than this many seconds. The segments "
                              "are only merged if their boundaries are touching. "
+                             "This is after padding by --segment-padding seconds."
                              "0 means do not merge. Use 'inf' to not limit the duration.")
 
     parser.add_argument("in_sad", type=str,
