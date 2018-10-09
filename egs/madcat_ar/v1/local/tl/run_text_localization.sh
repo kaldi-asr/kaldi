@@ -1,12 +1,13 @@
 #!/bin/bash
 # Copyright 2017    Hossein Hadian
 #           2018    Ashish Arora
-""" This script performs full page text recognition on automatically extracted line images
-    from madcat arabic data. It is created as a separate scrip, because it performs
-    data augmentation, uses smaller language model and calls process_waldo_data for
-    test images (automatically extracted line images). Data augmentation increases image
-    height hence requires different DNN arachitecture and different chain scripts.
-"""
+
+# This script performs full page text recognition on automatically extracted line images
+#    from madcat arabic data. It is created as a separate scrip, because it performs
+#    data augmentation, uses smaller language model and calls process_waldo_data for
+#    test images (automatically extracted line images). Data augmentation increases image
+#    height hence requires different DNN arachitecture and different chain scripts.
+
 set -e
 stage=0
 nj=70
