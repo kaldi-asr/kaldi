@@ -182,7 +182,8 @@ struct OnlineCmvnOptions {
                   // class computes the cmvn internally.  smaller->more
                   // time-efficient but less memory-efficient.  Must be >= 1.
   int32 ring_buffer_size;  // not configurable from command line; size of ring
-                           // buffer used for caching CMVN stats.
+                           // buffer used for caching CMVN stats.  Must be >=
+                           // modulus.
   std::string skip_dims; // Colon-separated list of dimensions to skip normalization
                          // of, e.g. 13:14:15.
 
@@ -371,10 +372,10 @@ class OnlineCmvn: public OnlineFeatureInterface {
   /// were cached, sets up empty stats for frame zero and returns that].
   void GetMostRecentCachedFrame(int32 frame,
                                 int32 *cached_frame,
-                                Matrix<double> *stats);
+                                MatrixBase<double> *stats);
 
   /// Cache this frame of stats.
-  void CacheFrame(int32 frame, const Matrix<double> &stats);
+  void CacheFrame(int32 frame, const MatrixBase<double> &stats);
 
   /// Initialize ring buffer for caching stats.
   inline void InitRingBufferIfNeeded();
@@ -402,6 +403,12 @@ class OnlineCmvn: public OnlineFeatureInterface {
   // the variable below is a ring-buffer of cached stats.  the int32 is the
   // frame index.
   std::vector<std::pair<int32, Matrix<double> > > cached_stats_ring_;
+
+  // Some temporary variables used inside functions of this class, which
+  // put here to avoid reallocation.
+  Matrix<double> temp_stats_;
+  Vector<BaseFloat> temp_feats_;
+  Vector<double> temp_feats_dbl_;
 
   OnlineFeatureInterface *src_;  // Not owned here
 };
@@ -472,6 +479,9 @@ class OnlineTransform: public OnlineFeatureInterface {
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
+  virtual void GetFrames(const std::vector<int32> &frames,
+                         MatrixBase<BaseFloat> *feats);
+
   //
   // Next, functions that are not in the interface.
   //
@@ -536,6 +546,9 @@ class OnlineCacheFeature: public OnlineFeatureInterface {
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+
+  virtual void GetFrames(const std::vector<int32> &frames,
+                         MatrixBase<BaseFloat> *feats);
 
   virtual ~OnlineCacheFeature() { ClearCache(); }
 

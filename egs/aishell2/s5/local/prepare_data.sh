@@ -45,8 +45,9 @@ utils/filter_scp.pl -f 1 $tmp/utt.list $tmp/tmp_wav.scp | sort -k 1 | uniq > $tm
 python -c "import jieba" 2>/dev/null || \
   (echo "jieba is not found. Use tools/extra/install_jieba.sh to install it." && exit 1;)
 utils/filter_scp.pl -f 1 $tmp/utt.list $corpus/trans.txt | sort -k 1 | uniq > $tmp/trans.txt
-awk '{print $1}' $dict_dir/lexicon.txt | sort | uniq | awk 'BEGIN{idx=0}{print $1,idx++}'> $tmp/vocab.txt
-python local/word_segmentation.py $tmp/vocab.txt $tmp/trans.txt > $tmp/text
+# jieba's vocab format requires word count(frequency), set to 99
+awk '{print $1}' $dict_dir/lexicon.txt | sort | uniq | awk '{print $1,99}'> $tmp/word_seg_vocab.txt
+python local/word_segmentation.py $tmp/word_seg_vocab.txt $tmp/trans.txt > $tmp/text
 
 # utt2spk & spk2utt
 awk -F'\t' '{print $2}' $tmp/wav.scp > $tmp/wav.list

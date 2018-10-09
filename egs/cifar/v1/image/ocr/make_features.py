@@ -43,6 +43,8 @@ parser.add_argument('--feat-dim', type=int, default=40,
 parser.add_argument('--padding', type=int, default=5,
                     help='Number of white pixels to pad on the left'
                     'and right side of the image.')
+parser.add_argument('--num-channels', type=int, default=1,
+                    help='Number of color channels')
 parser.add_argument('--fliplr', type=lambda x: (str(x).lower()=='true'), default=False,
                    help="Flip the image left-right for right to left languages")
 parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
@@ -84,9 +86,9 @@ def horizontal_pad(im, allowed_lengths = None):
         left_padding = int(padding // 2)
         right_padding = padding - left_padding
     dim_y = im.shape[0] # height
-    im_pad = np.concatenate((255 * np.ones((dim_y, left_padding),
+    im_pad = np.concatenate((255 * np.ones((dim_y, left_padding, args.num_channels),
                                            dtype=int), im), axis=1)
-    im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding),
+    im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding, args.num_channels),
                                                     dtype=int)), axis=1)
     return im_pad1
 
@@ -150,7 +152,13 @@ with open(data_list_path) as f:
         if im_horizontal_padded is None:
             num_fail += 1
             continue
-        data = np.transpose(im_horizontal_padded, (1, 0))
+        if args.num_channels == 1:
+            data = np.transpose(im_horizontal_padded, (1, 0))
+        elif args.num_channels == 3:
+            H = im_horizontal_padded.shape[0]
+            W = im_horizontal_padded.shape[1]
+            C = im_horizontal_padded.shape[2]
+            data = np.reshape(np.transpose(im_horizontal_padded, (1, 0, 2)), (W, H * C))
         data = np.divide(data, 255.0)
         num_ok += 1
         write_kaldi_matrix(out_fh, data, image_id)
