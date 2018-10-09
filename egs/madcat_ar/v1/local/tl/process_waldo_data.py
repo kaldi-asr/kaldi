@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 
+""" This script reads image and transcription mapping and creates the following files :text, utt2spk, images.scp.
+  Eg. local/process_waldo_data.py lines/hyp_line_image_transcription_mapping_kaldi.txt data/test
+  Eg. text file: LDC0001_000404_NHR_ARB_20070113.0052_11_LDC0001_00z2 ﻮﺠﻫ ﻮﻌﻘﻟ ﻍﺍﺮﻗ ﺢﺗّﻯ ﺎﻠﻨﺧﺎﻋ
+      utt2spk file: LDC0001_000397_NHR_ARB_20070113.0052_11_LDC0001_00z1 LDC0001
+      images.scp file: LDC0009_000000_arb-NG-2-76513-5612324_2_LDC0009_00z0
+      data/local/lines/1/arb-NG-2-76513-5612324_2_LDC0009_00z0.tif
+"""
+
 import argparse
 import os
 import sys
