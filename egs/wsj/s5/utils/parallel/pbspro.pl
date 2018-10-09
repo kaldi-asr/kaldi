@@ -4,34 +4,6 @@ use strict;
 use warnings;
 use Carp;
 
-use File::Basename;
-use Cwd qw(getcwd);
-my $cwd = getcwd;
-
-
-# Start initializing variables: 
-my $qsub_opts = "";
-my $num_threads = 1;
-my $gpu = 0;
-my $config = "conf/pbspro.conf";
-my %cli_options = ();
-my $jobname = '';
-my $jobstart = 0;
-my $jobend = 0;
-my $array_job = 1;
-my $logfile = "";
-
-my %cli_config_options = ();
-my %cli_default_options = ();
-my $opened_config_file = 1;
-my $default_config_file = "conf/pbspro.conf";
-my $qsub_cmd = "";
-my $queue_scriptfile = "";
-my $cmd = "";
-my $queue_array_opt = "";
-my $ret = "";
-# End initializing variables
-
 BEGIN {
   @ARGV >= 2 or croak "Usage: pbspro.pl [options] [JOB=1:n] log-file command-line arguments...\n" .
     "example: \n$0 foo.log echo baz\n" .
@@ -48,6 +20,32 @@ BEGIN {
        "  --gpu <0|1> (default: 0)\n
 ";
 }
+
+use File::Basename;
+use Cwd qw(getcwd);
+my $cwd = getcwd;
+
+# Start initializing variables: 
+my $qsub_opts = "";
+my $num_threads = 1;
+my $gpu = 0;
+my $config = "conf/pbspro.conf";
+my %cli_options = ();
+my $jobname = '';
+my $jobstart = 0;
+my $jobend = 0;
+my $array_job = 1;
+my $logfile = "";
+my %cli_config_options = ();
+my %cli_default_options = ();
+my $opened_config_file = 1;
+my $default_config_file = "conf/pbspro.conf";
+my $qsub_cmd = "";
+my $queue_scriptfile = "";
+my $cmd = "";
+my $queue_array_opt = "";
+my $ret = "";
+# End initializing variables
 
 foreach my $x (@ARGV) {
   # If string contains no spaces, take as-is.
@@ -309,13 +307,11 @@ sub process_arguments {
     }
   }
 
-    push @out, $qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend;
+  ($config,$default_config_file) = &process_config_file($config);
 
-  &process_config_file($config);
-
-    &process_cli(\%cli_options);
-
-    return@out; 
+  ($qsub_opts,$config) = &process_cli(\%cli_options);
+  push @out, $qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend;
+  return@out; 
 }
 
 sub process_config_file {
@@ -342,7 +338,7 @@ sub process_config_file {
   my $read_command = 0;
 
   LINE: while( my $line = <$CONFIG>) {
-      my $linea = $line;
+    my $linea = $line;
     chomp $line;
     $line =~ s/\s*#.*//g;
     next LINE if ( $line eq "");
@@ -417,6 +413,7 @@ default gpu=0
 option gpu=0
 option gpu=* -l ncpus=$0
 EOF
+  return ($config,$default_config_file);
 }
 
 sub process_cli {
@@ -437,6 +434,7 @@ sub process_cli {
       croak "pbspro.pl: Command line option $option not described in $config (or value '$value' not allowed)\n";
     }
   }
+  return ($qsub_opts,$config);
 }
 
 sub write_script {
