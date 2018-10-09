@@ -163,13 +163,6 @@ if os.path.isfile(allowed_len_handle):
 
 num_fail = 0
 num_ok = 0
-if args.augment_type == 'random_scale':
-  aug_setting = ['normal', 'scaled']
-elif args.augment_type == 'random_shift':
-  aug_setting = ['normal', 'notmid']
-else:
-  aug_setting = ['normal']
-
 with open(data_list_path) as f:
     for line in f:
         line = line.strip()
@@ -180,17 +173,17 @@ with open(data_list_path) as f:
         if args.fliplr:
             im = np.fliplr(im)
         if args.augment_type == 'no_aug' or 'random_shift':
-            im = get_scaled_image_aug(im, aug_setting[0])
+            im = get_scaled_image_aug(im, 'normal')
         elif args.augment_type == 'random_scale':
-            im = get_scaled_image_aug(im, aug_setting[1])
+            im = get_scaled_image_aug(im, 'scaled')
         im = horizontal_pad(im, allowed_lengths)
         if im is None:
             num_fail += 1
             continue
         if args.augment_type == 'no_aug' or 'random_scale':
-            im = vertical_shift(im, aug_setting[0])
+            im = vertical_shift(im, 'normal')
         elif args.augment_type == 'random_shift':
-            im = vertical_shift(im, aug_setting[1])
+            im = vertical_shift(im, 'notmid')
         if args.num_channels == 1:
             data = np.transpose(im, (1, 0))
         elif args.num_channels == 3:
