@@ -26,7 +26,7 @@ for set in $aug_set; do
     $srcdir $datadir/augmentations/$set
   cat $srcdir/allowed_lengths.txt > $datadir/augmentations/$set/allowed_lengths.txt
   local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim \
-    --augment true $datadir/augmentations/$set
+    --augment 'random_shift' $datadir/augmentations/$set
 done
 
 echo " combine original data and data from different augmentations"

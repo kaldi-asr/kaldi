@@ -84,7 +84,8 @@ fi
 if [ $stage -le 2 ]; then
   for set in train; do
     echo "$(date) stage 2: Performing augmentation, it will double training data"
-    local/tl/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 data/${set} data/${set}_aug data
+    local/tl/augment_data.sh --nj $nj --cmd "$cmd" --feat-dim 40 \
+    --verticle_shift $verticle_shift data/${set} data/${set}_aug data
     steps/compute_cmvn_stats.sh data/${set}_aug || exit 1;
   done
 fi

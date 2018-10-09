@@ -27,7 +27,7 @@ for set in aug1; do
     $srcdir $datadir/augmentations/$set
   cat $srcdir/allowed_lengths.txt > $datadir/augmentations/$set/allowed_lengths.txt
   local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim \
-    --fliplr $fliplr --augment true $datadir/augmentations/$set
+    --fliplr $fliplr --augment 'random_scale' $datadir/augmentations/$set
 done
 
 echo " combine original data and data from different augmentations"
