@@ -9,6 +9,7 @@ nj=4
 cmd=run.pl
 feat_dim=40
 fliplr=false
+verticle_shift=0
 echo "$0 $@"
 
 . ./cmd.sh
@@ -27,7 +28,9 @@ for set in aug1; do
     $srcdir $datadir/augmentations/$set
   cat $srcdir/allowed_lengths.txt > $datadir/augmentations/$set/allowed_lengths.txt
   local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim \
-    --fliplr $fliplr --augment true $datadir/augmentations/$set
+    --vertical-shift $verticle_shift \
+    --fliplr $fliplr --augment 'random_scale' $datadir/augmentations/$set
+
 done
 
 echo " combine original data and data from different augmentations"

@@ -3,36 +3,37 @@
 
 # This script does end2end chain training (i.e. from scratch)
 
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a
+# ./local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
 # System                      e2e_cnn_1a
-# WER                              7.81
-# CER                              2.05
-# Final train prob              -0.0812
-# Final valid prob              -0.0708
+# WER                             19.30
+# CER                              5.72
+# Final train prob              -0.0734
+# Final valid prob              -0.0607
 # Final train prob (xent)
 # Final valid prob (xent)
-# Parameters                      2.94M
+# Parameters                      3.30M
 
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a/
-# exp/chain/e2e_cnn_1a/: num-iters=98 nj=6..16 num-params=2.9M dim=40->330 combine=-0.073->-0.073 (over 2) logprob:train/valid[64,97,final]=(-0.084,-0.080,-0.081/-0.073,-0.070,-0.071)
+# exp/chain/e2e_cnn_1a/: num-iters=24 nj=3..15 num-params=3.3M dim=56->292 combine=-0.060->-0.060 (over 1) logprob:train/valid[15,23,final]=(-0.122,-0.143,-0.073/-0.105,-0.132,-0.061)
 
 set -e
 
+
 # configs for 'chain'
 stage=0
-nj=70
+nj=30
 train_stage=-10
 get_egs_stage=-10
 affix=1a
 
 # training options
 tdnn_dim=450
-minibatch_size=150=128,64/300=128,64/600=64,32/1200=32,16
+minibatch_size=150=64,32/300=32,16/600=16,8/1200=8,4
 common_egs_dir=
+frames_per_iter=1000000
 cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train
 lang_decode=data/lang
-lang_rescore=data/lang_rescore_6g
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -85,16 +86,17 @@ if [ $stage -le 2 ]; then
   common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
   common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
+
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
-  input dim=40 name=input
-  conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
-  conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn6 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
-  conv-relu-batchnorm-layer name=cnn7 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
+  input dim=56 name=input
+  conv-relu-batchnorm-layer name=cnn1 height-in=56 height-out=56 time-offsets=-3,-2,-1,0,1,2,3 $common1
+  conv-relu-batchnorm-layer name=cnn2 height-in=56 height-out=28 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn3 height-in=28 height-out=28 time-offsets=-4,-2,0,2,4 $common2
+  conv-relu-batchnorm-layer name=cnn4 height-in=28 height-out=28 time-offsets=-4,-2,0,2,4 $common2
+  conv-relu-batchnorm-layer name=cnn5 height-in=28 height-out=14 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn6 height-in=14 height-out=14 time-offsets=-4,0,4 $common3
+  conv-relu-batchnorm-layer name=cnn7 height-in=14 height-out=14 time-offsets=-4,0,4 $common3
   relu-batchnorm-layer name=tdnn1 input=Append(-4,0,4) dim=$tdnn_dim
   relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
   relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
@@ -127,7 +129,7 @@ if [ $stage -le 3 ]; then
     --trainer.frames-per-iter 2000000 \
     --trainer.num-epochs 2 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial 6 \
+    --trainer.optimization.num-jobs-initial 3 \
     --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
@@ -157,9 +159,6 @@ if [ $stage -le 5 ]; then
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
-
-  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                data/test $dir/decode_test{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"

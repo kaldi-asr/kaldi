@@ -1,20 +1,28 @@
 #!/bin/bash
 
+# ./local/chain/compare_wer.sh exp/chain/cnn_e2eali_1a/
+# System                      cnn_e2eali_1a
+# WER                             16.78
+# CER                              5.22
+# Final train prob              -0.1189
+# Final valid prob              -0.1319
+# Final train prob (xent)       -0.6395
+# Final valid prob (xent)       -0.6732
+# Parameters                      3.73M
+
+# steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1a/
+# exp/chain/cnn_e2eali_1a/: num-iters=24 nj=3..15 num-params=3.7M dim=56->392 combine=-0.125->-0.125 (over 1) xent:train/valid[15,23,final]=(-0.850,-1.24,-0.640/-0.901,-1.31,-0.673) logprob:train/valid[15,23,final]=(-0.149,-0.209,-0.119/-0.166,-0.229,-0.132)
 set -e -o pipefail
 
 stage=0
 
-nj=70
+nj=30
 train_set=train
-gmm=tri3        # this is the source gmm-dir that we'll use for alignments; it
-                # should have alignments for the specified training data.
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-ali=tri3_ali
-chain_model_dir=exp/chain${nnet3_affix}/cnn_1a
 common_egs_dir=
 reporting_email=
-lats_affix=
+
 # chain options
 train_stage=-10
 xent_regularize=0.1
@@ -22,11 +30,9 @@ xent_regularize=0.1
 chunk_width=340,300,200,100
 num_leaves=500
 tdnn_dim=450
-# training options
 srand=0
-remove_egs=false
+remove_egs=true
 lang_decode=data/lang
-lang_rescore=data/lang_rescore_6g
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -44,21 +50,18 @@ where "nvcc" is installed.
 EOF
 fi
 
-gmm_dir=exp/${gmm}
-ali_dir=exp/${ali}
-lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats_chain_$lats_affix
-gmm_lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_lats
-dir=exp/chain${nnet3_affix}/cnn_chainali${affix}
+ali_dir=exp/chain/e2e_ali_train
+lat_dir=exp/chain${nnet3_affix}/e2e_${train_set}_lats
+dir=exp/chain${nnet3_affix}/cnn_e2eali${affix}
 train_data_dir=data/${train_set}
-tree_dir=exp/chain${nnet3_affix}/tree_chain_$lats_affix
+tree_dir=exp/chain${nnet3_affix}/tree_e2e
+e2echain_model_dir=exp/chain/e2e_cnn_1a
 
 # the 'lang' directory is created by this script.
 # If you create such a directory with a non-standard topology
 # you should probably name it differently.
 lang=data/lang_chain
-for f in $train_data_dir/feats.scp \
-    $train_data_dir/feats.scp $gmm_dir/final.mdl \
-    $ali_dir/ali.1.gz $gmm_dir/final.mdl; do
+for f in $train_data_dir/feats.scp $ali_dir/ali.1.gz $ali_dir/final.mdl; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
@@ -92,8 +95,9 @@ if [ $stage -le 2 ]; then
   steps/nnet3/align_lats.sh --nj $nj --cmd "$cmd" \
                             --acoustic-scale 1.0 \
                             --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0' \
-                            ${train_data_dir} data/lang $chain_model_dir $lat_dir
-  cp $gmm_lat_dir/splice_opts $lat_dir/splice_opts
+                            ${train_data_dir} data/lang $e2echain_model_dir $lat_dir
+  echo "" >$lat_dir/splice_opts
+
 fi
 
 if [ $stage -le 3 ]; then
@@ -101,12 +105,14 @@ if [ $stage -le 3 ]; then
   # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
   # those.  The num-leaves is always somewhat less than the num-leaves from
   # the GMM baseline.
-   if [ -f $tree_dir/final.mdl ]; then
-     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
-     exit 1;
+  if [ -f $tree_dir/final.mdl ]; then
+    echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+    exit 1;
   fi
+
   steps/nnet3/chain/build_tree.sh \
-    --frame-subsampling-factor $frame_subsampling_factor \
+    --frame-subsampling-factor 4 \
+    --alignment-subsampling-factor 1 \
     --context-opts "--context-width=2 --central-position=1" \
     --cmd "$cmd" $num_leaves ${train_data_dir} \
     $lang $ali_dir $tree_dir
@@ -119,25 +125,28 @@ if [ $stage -le 4 ]; then
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  common1="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
-  common2="required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
+  cnn_opts="l2-regularize=0.075"
+  tdnn_opts="l2-regularize=0.075"
+  output_opts="l2-regularize=0.1"
+  common1="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
+  common2="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
+  common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
-  input dim=40 name=input
-  conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
-  conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn6 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
-  conv-relu-batchnorm-layer name=cnn7 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
-  relu-batchnorm-layer name=tdnn1 input=Append(-4,0,4) dim=$tdnn_dim
-  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
-  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
+  input dim=56 name=input
+  conv-relu-batchnorm-layer name=cnn1 height-in=56 height-out=56 time-offsets=-3,-2,-1,0,1,2,3 $common1
+  conv-relu-batchnorm-layer name=cnn2 height-in=56 height-out=28 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn3 height-in=28 height-out=28 time-offsets=-4,-2,0,2,4 $common2
+  conv-relu-batchnorm-layer name=cnn4 height-in=28 height-out=28 time-offsets=-4,-2,0,2,4 $common2
+  conv-relu-batchnorm-layer name=cnn5 height-in=28 height-out=14 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
+  conv-relu-batchnorm-layer name=cnn6 height-in=14 height-out=14 time-offsets=-4,0,4 $common3
+  conv-relu-batchnorm-layer name=cnn7 height-in=14 height-out=14 time-offsets=-4,0,4 $common3
+  relu-batchnorm-layer name=tdnn1 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
+  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
+  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
   ## adding the layers for chain branch
-  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $tdnn_opts
+  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
   # adding the layers for xent branch
   # This block prints the configs for a separate output that will be
   # trained with a cross-entropy objective in the 'chain' mod?els... this
@@ -147,8 +156,8 @@ if [ $stage -le 4 ]; then
   # final-layer learns at a rate independent of the regularization
   # constant; and the 0.5 was tuned so as to make the relative progress
   # similar in the xent and regular final layers.
-  relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  relu-batchnorm-layer name=prefinal-xent input=tdnn3 dim=$tdnn_dim target-rms=0.5 $tdnn_opts
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5 $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -170,9 +179,11 @@ if [ $stage -le 5 ]; then
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --chain.frame-subsampling-factor=4 \
     --chain.alignment-subsampling-factor=1 \
+    --chain.left-tolerance 3 \
+    --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=4 \
+    --trainer.num-epochs=2 \
     --trainer.frames-per-iter=2000000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=16 \
@@ -183,7 +194,7 @@ if [ $stage -le 5 ]; then
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0" \
+    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \
@@ -212,9 +223,6 @@ if [ $stage -le 7 ]; then
     --frames-per-chunk $frames_per_chunk \
     --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
-
-  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                data/test $dir/decode_test{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"
