@@ -1,6 +1,12 @@
 #!/bin/bash
 # Copyright 2017    Hossein Hadian
 #           2018    Ashish Arora
+""" This script performs full page text recognition on automatically extracted line images
+    from madcat arabic data. It is created as a separate scrip, because it performs
+    data augmentation, uses smaller language model and calls process_waldo_data for
+    test images (automatically extracted line images). Data augmentation increases image
+    height hence requires different DNN arachitecture and different chain scripts.
+"""
 set -e
 stage=0
 nj=70
@@ -19,6 +25,7 @@ images_scp_dir=data/local
 overwrite=false
 subset=true
 augment=true
+verticle_shift=16
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -66,7 +73,8 @@ if [ $stage -le 1 ]; then
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
   for set in dev train test; do
     echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $set. $(date)"
-    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$set
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 \
+    --verticle_shift $verticle_shift data/$set
     steps/compute_cmvn_stats.sh data/$set || exit 1;
   done
   echo "$0: Fixing data directory for train dataset $(date)."
