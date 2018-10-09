@@ -56,10 +56,13 @@ acwt=0.3
 # e.g. --speech-in-sil-weight=0.0 --garbage-in-sil-weight=0.0 --sil-in-speech-weight=0.0 --garbage-in-speech-weight=0.3
 transform_probs_opts=""
 
+# Postprocessing options
 segment_padding=0.2   # Duration (in seconds) of padding added to segments 
-min_segment_dur=0   # Filter out segments that are shorter than this
-merge_consecutive_max_dur=0   # Merge consecutive segments provided combined duration is no longer than this
-                              # 0 = no merge
+min_segment_dur=0   # Minimum duration (in seconds) required for a segment to be included
+                    # This is before any padding. This is an alternative to --min-speech-duration above.
+merge_consecutive_max_dur=0   # Merge consecutive segments as long as the merged segment is no longer than this many
+                              # seconds. The segments are only merged if their boundaries are touching.
+                              # 0 means do not merge. Use 'inf' to not limit the duration.
 
 echo $* 
 

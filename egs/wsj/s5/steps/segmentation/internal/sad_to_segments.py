@@ -56,13 +56,14 @@ and 2 for speech frames.
                              "adjacent segment.")
 
     parser.add_argument("--min-segment-dur", type=float, default=0,
-                        help="Minimum duration required for a segment to be "
-                             "included. This is before any padding.")
+                        help="Minimum duration (in seconds) required for a segment "
+                             "to be included. This is before any padding.")
 
     parser.add_argument("--merge-consecutive-max-dur", type=float, default=0,
                         help="Merge consecutive segments as long as the merged "
-                             "segment is no longer than this duration. 0 means do "
-                             "not merge. Use 'inf' to not limit the duration.")
+                             "segment is no longer than this many seconds. The segments "
+                             "are only merged if their boundaries are touching. "
+                             "0 means do not merge. Use 'inf' to not limit the duration.")
 
     parser.add_argument("in_sad", type=str,
                         help="Input file containing alignments in "
