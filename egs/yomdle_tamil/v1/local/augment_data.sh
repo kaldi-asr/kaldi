@@ -8,6 +8,7 @@
 nj=4
 cmd=run.pl
 feat_dim=40
+verticle_shift=0
 echo "$0 $@"
 
 . ./cmd.sh
@@ -26,6 +27,7 @@ for set in aug1; do
     $srcdir $datadir/augmentations/$set
   cat $srcdir/allowed_lengths.txt > $datadir/augmentations/$set/allowed_lengths.txt
   local/extract_features.sh --nj $nj --cmd "$cmd" --feat-dim $feat_dim \
+    --vertical-shift $verticle_shift \
     --fliplr false --augment 'random_scale' $datadir/augmentations/$set
 done
 

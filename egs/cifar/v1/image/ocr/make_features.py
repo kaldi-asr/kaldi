@@ -71,7 +71,6 @@ def write_kaldi_matrix(file_handle, matrix, key):
             file_handle.write("\n")
     file_handle.write(" ]\n")
 
-
 def horizontal_pad(im, allowed_lengths = None):
     if allowed_lengths is None:
         left_padding = right_padding = args.padding
@@ -115,17 +114,9 @@ def get_scaled_image_aug(im, mode='normal'):
         return im_scaled_up
     return im
 
-def get_scaled_image(im):
-    scale_size = args.feat_dim
-    sx = im.shape[1]  # width
-    sy = im.shape[0]  # height
-    scale = (1.0 * scale_size) / sy
-    nx = int(scale_size)
-    ny = int(scale * sx)
-    im = misc.imresize(im, (nx, ny))
-    return im
-
-def vertical_shift(im, mode='mid'):                                                                                                                                                                                                               if args.vertical_shift == 0:                                                                                                                                                                                                                      return im
+def vertical_shift(im, mode='normal'):
+    if args.vertical_shift == 0:
+        return im
     total = args.vertical_shift
     if mode == 'notmid':
         val = random.randint(0, 1)
@@ -133,7 +124,7 @@ def vertical_shift(im, mode='mid'):                                             
             mode = 'top'
         else:
             mode = 'bottom'
-    if mode == 'mid':
+    if mode == 'normal':
         top = int(total / 2)
         bottom = total - top
     elif mode == 'top':  # more padding on top
@@ -175,7 +166,9 @@ num_ok = 0
 if args.augment_type == 'random_scale':
   aug_setting = ['normal', 'scaled']
 elif args.augment_type == 'random_shift':
-  aug_setting = ['mid', 'notmid']
+  aug_setting = ['normal', 'notmid']
+else:
+  aug_setting = ['normal']
 
 with open(data_list_path) as f:
     for line in f:
@@ -186,19 +179,18 @@ with open(data_list_path) as f:
         im = misc.imread(image_path)
         if args.fliplr:
             im = np.fliplr(im)
-        if args.augment_type == 'no_aug':
+        if args.augment_type == 'no_aug' or 'random_shift':
             im = get_scaled_image_aug(im, aug_setting[0])
-            im = vertical_shift(im, aug_setting[0])
         elif args.augment_type == 'random_scale':
             im = get_scaled_image_aug(im, aug_setting[1])
-            im = vertical_shift(im, aug_setting[0])
-        elif args.augment_type == 'random_shift':
-            im = get_scaled_image_aug(im, aug_setting[0])
-            im = vertical_shift(im, aug_setting[1])
         im = horizontal_pad(im, allowed_lengths)
         if im is None:
             num_fail += 1
             continue
+        if args.augment_type == 'no_aug' or 'random_scale':
+            im = vertical_shift(im, aug_setting[0])
+        elif args.augment_type == 'random_shift':
+            im = vertical_shift(im, aug_setting[1])
         if args.num_channels == 1:
             data = np.transpose(im, (1, 0))
         elif args.num_channels == 3:
