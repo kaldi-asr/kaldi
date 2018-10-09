@@ -98,6 +98,8 @@ def horizontal_pad(im, allowed_lengths = None):
     return im_pad1
 
 def vertical_shift(im, mode='mid'):
+    if args.vertical_shift == 0:
+        return im
     total = args.vertical_shift
     if mode == 'notmid':
         val = random.randint(0, 1)
