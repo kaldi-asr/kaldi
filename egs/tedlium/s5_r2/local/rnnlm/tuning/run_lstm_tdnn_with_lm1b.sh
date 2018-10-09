@@ -3,10 +3,10 @@
 # Copyright 2012  Johns Hopkins University (author: Daniel Povey)  Tony Robinson
 #           2018  Ke Li
 
-# rnnlm/train_rnnlm.sh: best iteration (out of 9) was 8, linking it to final iteration.
-# rnnlm/train_rnnlm.sh: train/dev perplexity was 32.2 / 123.2.
-# Train objf: -4.02 -3.71 -3.64 -3.58 -3.55 -3.52 -3.50 -3.48 -3.44
-# Dev objf:   -11.92 -5.13 -5.03 -4.94 -4.91 -4.87 -4.85 -4.83 -4.81
+# rnnlm/train_rnnlm.sh: best iteration (out of 60) was 58, linking it to final iteration.
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 25.1 / 104.5.
+# Train objf: -3.60 -3.52 -3.48 -3.44 -3.41 -3.38 -3.36 -3.35 -3.33 -3.31 -3.29 -3.29 -3.28 -3.28 -3.27 -3.25 -3.25 -3.23 -3.23 -3.22 -3.22 -3.21 -3.20 -3.19 -3.19 -3.18 -3.18 -3.18 -3.17 -3.17 -3.15 -3.15 -3.15 -3.15 -3.14 -3.14 -3.12 -3.14 -3.16 -3.13 -3.12 -3.13 -3.11 -3.12 -3.11 -3.10 -3.09 -3.10 -3.06 -3.08 -3.10 -3.09 -3.08 -3.09 -3.02 -3.01 -3.02 -2.98 -3.02
+# Dev objf:   -5.12 -5.04 -4.98 -4.93 -4.91 -4.89 -4.87 -4.86 -4.82 -4.80 -4.79 -4.79 -4.78 -4.77 -4.78 -4.76 -4.76 -4.75 -4.75 -4.74 -4.74 -4.73 -4.73 -4.72 -4.71 -4.72 -4.71 -4.70 -4.70 -4.70 -4.70 -4.70 -4.70 -4.70 -4.69 -4.69 -4.68 -4.68 -4.67 -4.67 -4.68 -4.67 -4.67 -4.67 -4.67 -4.67 -4.67 -4.67 -4.66 -4.68 -4.68 -4.72 -4.68 -4.66 -4.71 -4.65 -4.65 -4.65 -4.65
 
 # 1-pass results 
 # %WER 8.3 | 1155 27500 | 92.7 4.9 2.4 1.0 8.3 68.8 | -0.019 | /export/a12/ywang/kaldi/egs/tedlium/s5_r2/exp/chain_cleaned/tdnn_lstm1i_adversarial1.0_interval4_epoches7_lin_to_5_sp_bi/decode_looped_test/score_10_0.0/ctm.filt.filt.sys
@@ -15,10 +15,10 @@
 # %WER 7.8 | 1155 27500 | 93.1 4.5 2.4 0.9 7.8 66.4 | -0.089 | /export/a12/ywang/kaldi/egs/tedlium/s5_r2/exp/chain_cleaned/tdnn_lstm1i_adversarial1.0_interval4_epoches7_lin_to_5_sp_bi/decode_looped_test_rescore/score_10_0.0/ctm.filt.filt.sys
 
 # RNNLM lattice rescoring
-# %WER 7.3 | 1155 27500 | 93.6 4.0 2.4 0.9 7.3 65.4 | -0.138 | exp/decode_test_rnnlm_lm1b_tedlium_weight3/score_10_0.0/ctm.filt.filt.sys
+# %WER 6.8 | 1155 27500 | 94.0 3.7 2.3 0.8 6.8 62.3 | -0.844 | exp/decode_looped_test_rnnlm_lm1b_tedlium_weight3_rescore//score_10_0.0/ctm.filt.filt.sys
 
 # RNNLM nbest rescoring
-# %WER 7.3 | 1155 27500 | 93.6 4.3 2.1 0.9 7.3 65.0 | -0.895 | exp/decode_test_rnnlm_lm1b_tedlium_weight3_nbest/score_8_0.0/ctm.filt.filt.sys
+# %WER 6.9 | 1155 27500 | 94.0 3.8 2.2 0.9 6.9 61.3 | -0.769 | exp/decode_looped_test_rnnlm_lm1b_tedlium_weight3_nbest_rescore//score_10_0.0/ctm.filt.filt.sys
 
 # Begin configuration section.
 cmd=run.pl
@@ -29,7 +29,7 @@ lstm_rpd=256
 lstm_nrpd=256
 stage=0
 train_stage=-10
-epochs=3
+epochs=20
 
 # variables for lattice rescoring
 run_lat_rescore=true
