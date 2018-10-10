@@ -43,10 +43,15 @@ parser.add_argument('--feat-dim', type=int, default=40,
 parser.add_argument('--padding', type=int, default=5,
                     help='Number of white pixels to pad on the left'
                     'and right side of the image.')
+parser.add_argument('--num-channels', type=int, default=1,
+                    help='Number of color channels')
+parser.add_argument('--vertical-shift', type=int, default=0,
+                    help='total number of padding pixel per column')
 parser.add_argument('--fliplr', type=lambda x: (str(x).lower()=='true'), default=False,
                    help="Flip the image left-right for right to left languages")
-parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
-                   help="performs image augmentation")
+parser.add_argument('--augment_type', type=str, default='no_aug',
+                    choices=['no_aug', 'random_scale','random_shift'],
+                    help='Subset of data to process.')
 args = parser.parse_args()
 
 
@@ -66,7 +71,6 @@ def write_kaldi_matrix(file_handle, matrix, key):
             file_handle.write("\n")
     file_handle.write(" ]\n")
 
-
 def horizontal_pad(im, allowed_lengths = None):
     if allowed_lengths is None:
         left_padding = right_padding = args.padding
@@ -84,9 +88,9 @@ def horizontal_pad(im, allowed_lengths = None):
         left_padding = int(padding // 2)
         right_padding = padding - left_padding
     dim_y = im.shape[0] # height
-    im_pad = np.concatenate((255 * np.ones((dim_y, left_padding),
+    im_pad = np.concatenate((255 * np.ones((dim_y, left_padding, args.num_channels),
                                            dtype=int), im), axis=1)
-    im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding),
+    im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding, args.num_channels),
                                                     dtype=int)), axis=1)
     return im_pad1
 
@@ -110,6 +114,33 @@ def get_scaled_image_aug(im, mode='normal'):
         return im_scaled_up
     return im
 
+def vertical_shift(im, mode='normal'):
+    if args.vertical_shift == 0:
+        return im
+    total = args.vertical_shift
+    if mode == 'notmid':
+        val = random.randint(0, 1)
+        if val == 0:
+            mode = 'top'
+        else:
+            mode = 'bottom'
+    if mode == 'normal':
+        top = int(total / 2)
+        bottom = total - top
+    elif mode == 'top':  # more padding on top
+        top = random.randint(total / 2, total)
+        bottom = total - top
+    elif mode == 'bottom':  # more padding on bottom
+        top = random.randint(0, total / 2)
+        bottom = total - top
+    width = im.shape[1]
+    im_pad = np.concatenate(
+        (255 * np.ones((top, width), dtype=int) -
+         np.random.normal(2, 1, (top, width)).astype(int), im), axis=0)
+    im_pad = np.concatenate(
+        (im_pad, 255 * np.ones((bottom, width), dtype=int) -
+         np.random.normal(2, 1, (bottom, width)).astype(int)), axis=0)
+    return im_pad
 
 ### main ###
 random.seed(1)
@@ -132,7 +163,6 @@ if os.path.isfile(allowed_len_handle):
 
 num_fail = 0
 num_ok = 0
-aug_setting = ['normal', 'scaled']
 with open(data_list_path) as f:
     for line in f:
         line = line.strip()
@@ -142,15 +172,25 @@ with open(data_list_path) as f:
         im = misc.imread(image_path)
         if args.fliplr:
             im = np.fliplr(im)
-        if args.augment:
-            im_aug = get_scaled_image_aug(im, aug_setting[1])
-        else:
-            im_aug = get_scaled_image_aug(im, aug_setting[0])
-        im_horizontal_padded = horizontal_pad(im_aug, allowed_lengths)
-        if im_horizontal_padded is None:
+        if args.augment_type == 'no_aug' or 'random_shift':
+            im = get_scaled_image_aug(im, 'normal')
+        elif args.augment_type == 'random_scale':
+            im = get_scaled_image_aug(im, 'scaled')
+        im = horizontal_pad(im, allowed_lengths)
+        if im is None:
             num_fail += 1
             continue
-        data = np.transpose(im_horizontal_padded, (1, 0))
+        if args.augment_type == 'no_aug' or 'random_scale':
+            im = vertical_shift(im, 'normal')
+        elif args.augment_type == 'random_shift':
+            im = vertical_shift(im, 'notmid')
+        if args.num_channels == 1:
+            data = np.transpose(im, (1, 0))
+        elif args.num_channels == 3:
+            H = im.shape[0]
+            W = im.shape[1]
+            C = im.shape[2]
+            data = np.reshape(np.transpose(im, (1, 0, 2)), (W, H * C))
         data = np.divide(data, 255.0)
         num_ok += 1
         write_kaldi_matrix(out_fh, data, image_id)

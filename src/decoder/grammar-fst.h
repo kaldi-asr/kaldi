@@ -87,6 +87,9 @@ template<> class ArcIterator<GrammarFst>;
    sub-FSTs that represent nonterminals in the grammar; and multiple return
    points whenever we invoke a nonterminal.  For more information
    see \ref grammar (i.e. ../doc/grammar.dox).
+
+   Caution: this class is not thread safe, i.e. you shouldn't access the same
+   GrammarFst from multiple threads.  We can fix this later if needed.
  */
 class GrammarFst {
  public:

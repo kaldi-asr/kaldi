@@ -25,7 +25,7 @@ nnet3_affix=
 # are just hardcoded at this level, in the commands below.
 affix=1a   # affix for the TDNN directory name
 tree_affix=
-train_stage=22
+train_stage=-10
 get_egs_stage=-10
 decode_iter=
 

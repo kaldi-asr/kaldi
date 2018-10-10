@@ -206,7 +206,7 @@ fi
 
 if $cleanup; then
   echo "$0: cleaning up intermediate files"
-  rm -r $dir/fsts $dir/HCLG.fsts.scp || true
+  rm -r $dir/graphs/fsts $dir/graphs/HCLG.fsts.scp || true
   rm -r $dir/lats/lat.*.gz $dir/lats/split_fsts || true
   rm $dir/lattice_oracle/lat.*.gz || true
 fi

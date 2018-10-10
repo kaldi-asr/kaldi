@@ -149,8 +149,8 @@ if [ $stage -le 5 ]; then
   done
 fi
 
-if [ -f data/${train_set}_sp/feats.scp ] && [ $stage -le 8 ]; then
-  echo "$0: $feats already exists.  Refusing to overwrite the features "
+if [ -f data/${train_set}_sp/feats.scp ] && [ $stage -le 7 ]; then
+  echo "$0: data/${train_set}_sp/feats.scp already exists.  Refusing to overwrite the features "
   echo " to avoid wasting time.  Please remove the file and continue if you really mean this."
   exit 1;
 fi

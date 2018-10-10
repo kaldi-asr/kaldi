@@ -346,7 +346,7 @@ RnnlmExampleCreator::~RnnlmExampleCreator() {
       num_minibatches_written_;
   KALDI_LOG << "Combined " << num_sequences_processed_ << "/"
             << num_chunks_processed_
-            << " chunks/sequences into " << num_minibatches_written_
+            << " sequences/chunks into " << num_minibatches_written_
             << " minibatches (" << chunks_.size()
             << " chunks left over)";
  KALDI_LOG << "Overall there were "
