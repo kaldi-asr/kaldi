@@ -108,7 +108,7 @@ if ($queue_scriptfile !~ m:^/:) {
 
 my $syncfile = "$qdir/done.$$";
 
-system "rm $queue_logfile $syncfile 2>/dev/null";
+#system "rm $queue_logfile $syncfile 2>/dev/null";
 
 #unlink($queue_logfile, $syncfile);
 &write_script($queue_scriptfile,$cwd,$cmd,$logfile,$num_threads,$syncfile,$qsub_cmd,$queue_logfile,$queue_array_opt,$array_job);
