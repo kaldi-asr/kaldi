@@ -93,8 +93,8 @@ if (! -d "$qdir") {
 
 if ($array_job == 1) {
   $queue_array_opt = "-J $jobstart-$jobend";
-  $logfile =~ s/$jobname/\$PBS_ARRAY_INDEX/g;
-  $cmd =~ s/$jobname/\$\{PBS_ARRAY_INDEX\}/g;
+  $logfile =~ s/$jobname/\$PBS_JOBID/g;
+  $cmd =~ s/$jobname/\$\{PBS_JOBID\}/g;
   $queue_logfile =~ s/\.?$jobname=//;
   $queue_logfile =~ s/\://;
 }
@@ -121,7 +121,7 @@ for my $jobid ($jobstart..$jobend) {
 
 {
   # Get the PBS job-id from the log file in q/
-  open my $L, '<', $queue_logfile or warn "problem  with$queue_logfile $!";
+  open my $L, '<', $queue_logfile or warn "problem  with $queue_logfile $!";
   undef $pbs_job_id;
   while ( my $line = <$L> ) {
     chomp $line;
@@ -181,7 +181,7 @@ foreach my $f (@syncfiles) {
         $f =~ m/\.(\d+)$/ || croak "Bad sync-file name $f";
         my $job_id = $1;
         if (defined $jobname) {
-          $logfile =~ s/\$PBS_ARRAY_INDEX/$job_id/g;
+          $logfile =~ s/\$PBS_JOBID/$job_id/g;
         }
         my $last_line = `tail -n 1 $logfile`;
         if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {
@@ -209,7 +209,7 @@ my @logfiles = ();
 my $l = "";
 for my $jobid ($jobstart..$jobend) {
   $l = $logfile;
-  $l =~ s/\$PBS_ARRAY_INDEX/$jobid/g;
+  $l =~ s/\$PBS_JOBID/$jobid/g;
   push @logfiles, $l;
 }
 
@@ -241,13 +241,13 @@ foreach my $l (@logfiles) {
 if ($num_failed == 0) { exit(0); }
 else { # we failed.
   if (@logfiles == 1) {
-    if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/$jobstart/g; }
+    if (defined $jobname) { $logfile =~ s/\$PBS_JOBID/$jobstart/g; }
     print STDERR "pbspro.pl: job failed with status $status, log is in $logfile\n";
     if ($logfile =~ m/JOB/) {
       print STDERR "pbspro.pl: probably you forgot to put JOB=1:\$nj in your script.\n";
     }
   } else {
-    if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/*/g; }
+    if (defined $jobname) { $logfile =~ s/\$PBS_JOBID/*/g; }
     my $numjobs = 1 + $jobend - $jobstart;
     print STDERR "pbspro.pl: $num_failed / $numjobs failed, log is in $logfile\n";
   }
@@ -459,7 +459,7 @@ print $Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
   if ($array_job == 0) {
     print $Q "touch $syncfile\n";
   } else {
-    print $Q "touch $syncfile.\$PBS_ARRAY_INDEX\n";
+    print $Q "touch $syncfile.\$PBS_JOBID\n";
   }
   print $Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
   print $Q "## submitted with:\n";       # treats specially.
