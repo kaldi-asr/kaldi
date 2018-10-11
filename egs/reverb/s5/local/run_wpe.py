@@ -1,3 +1,6 @@
+# Copyright 2018 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
+# Apache 2.0
+
 import numpy as np
 import soundfile as sf
 import time

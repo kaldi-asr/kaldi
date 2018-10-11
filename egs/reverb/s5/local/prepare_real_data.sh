@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Copyright  2018  Johns Hopkins University (Author: Shinji Watanabe)
+# Copyright 2018 Johns Hopkins University (Author: Shinji Watanabe)
+# Copyright 2018 Johns Hopkins University (Author: Aswin Shanmugam Subramanian)
 # Apache 2.0
 # This script is adapted from data preparation scripts in the Kaldi reverb recipe
 # https://github.com/kaldi-asr/kaldi/tree/master/egs/reverb/s5/local
@@ -124,3 +125,14 @@ for nch in 1 2 8; do
     done
 done
 
+for nch in 2 8; do
+    for task in dt et; do
+	datadir=data/${task}_real_${nch}ch_beamformit
+	mkdir -p ${datadir}
+	sort ${dir}/${task}_real_1ch_wpe_wav.scp | sed -e "s/-[1-8]_/-bf${nch}_/" > ${datadir}/wav.scp
+	sort ${dir}/${task}_real_1ch.txt     > ${datadir}/text
+	sort ${dir}/${task}_real_1ch.utt2spk > ${datadir}/utt2spk
+	sort ${dir}/${task}_real_1ch.spk2utt > ${datadir}/spk2utt
+	./utils/fix_data_dir.sh ${datadir}
+    done
+done
