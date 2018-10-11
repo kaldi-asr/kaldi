@@ -2,6 +2,7 @@
 
 # Copyright 2013-2014 MERL (author: Felix Weninger and Shinji Watanabe)
 #                     Johns Hopkins University (author: Szu-Jui Chen)
+#                     Johns Hopkins University (author: Aswin Shanmugam Subramanian)
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,7 +59,7 @@ fi
 
 #training set and test set
 train_set=tr_simu_8ch
-test_sets="dt_real_1ch dt_simu_1ch et_real_1ch et_simu_1ch"
+test_sets="dt_real_1ch dt_simu_1ch et_real_1ch et_simu_1ch dt_real_2ch_beamformit dt_simu_2ch_beamformit et_real_2ch_beamformit et_simu_2ch_beamformit dt_real_8ch_beamformit dt_simu_8ch_beamformit et_real_8ch_beamformit et_simu_8ch_beamformit"
 
 # The language models with which to decode (tg_5k or bg_5k)
 lm="tg_5k"
@@ -70,7 +71,7 @@ decode_nj=10
 
 if [ ${stage} -le 1 ]; then
   # data preparation
-  wavdir=$PWD/wav
+  wavdir=${PWD}/wav
   echo "stage 0: Data preparation"
   local/generate_data.sh --wavdir ${wavdir} ${wsjcam0}
   local/prepare_simu_data.sh --wavdir ${wavdir} ${reverb} ${wsjcam0}
@@ -79,6 +80,7 @@ fi
 
 if [ $stage -le 2 ]; then
   local/run_wpe.sh
+  local/run_beamform.sh ${wavdir}/WPE/
 fi
 
 if [ $stage -le 3 ]; then
