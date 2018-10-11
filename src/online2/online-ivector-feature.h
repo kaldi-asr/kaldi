@@ -99,12 +99,16 @@ struct OnlineIvectorExtractionConfig {
   // by calling SetAdaptationState()).
   BaseFloat max_remembered_frames;
 
+  // see documentation in Register().
+  BaseFloat length_limit;
+
   OnlineIvectorExtractionConfig(): ivector_period(10), num_gselect(5),
                                    min_post(0.025), posterior_scale(0.1),
                                    max_count(0.0), num_cg_iters(15),
                                    use_most_recent_ivector(true),
                                    greedy_ivector_extractor(false),
-                                   max_remembered_frames(1000) { }
+                                   max_remembered_frames(1000),
+                                   length_limit(0.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("lda-matrix", &lda_mat_rxfilename, "Filename of LDA matrix, "
@@ -151,6 +155,10 @@ struct OnlineIvectorExtractionConfig {
                    "number allows the speaker adaptation state to change over "
                    "time).  Interpret as a real frame count, i.e. not a count "
                    "scaled by --posterior-scale.");
+    opts->Register("length-limit", &length_limit, "If >0, this value will be "
+                   "applied as a limit on the length of i-vectors (longer "
+                   "i-vectors than this will be scaled down).  If -1, it is "
+                   "equivalent to setting it to sqrt(ivector_dim).");
   }
 };
 
@@ -179,6 +187,7 @@ struct OnlineIvectorExtractionInfo {
   bool use_most_recent_ivector;
   bool greedy_ivector_extractor;
   BaseFloat max_remembered_frames;
+  BaseFloat length_limit;
 
   OnlineIvectorExtractionInfo(const OnlineIvectorExtractionConfig &config);
 

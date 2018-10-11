@@ -42,6 +42,7 @@ void OnlineIvectorExtractionInfo::Init(
     use_most_recent_ivector = true;
   }
   max_remembered_frames = config.max_remembered_frames;
+  length_limit = config.length_limit;
 
   std::string note = "(note: this may be needed "
       "in the file supplied to --ivector-extractor-config)";
@@ -328,6 +329,13 @@ void OnlineIvectorFeature::GetFrame(int32 frame,
     KALDI_ASSERT(static_cast<size_t>(i) <  ivectors_history_.size());
     feat->CopyFromVec(*(ivectors_history_[i]));
     (*feat)(0) -= info_.extractor.PriorOffset();
+  }
+  if (info_.length_limit != 0.0) {
+    BaseFloat length_limit = (info_.length_limit < 0.0 ?
+                              std::sqrt(feat->Dim()) : info_.length_limit);
+    BaseFloat length = std::sqrt(VecVec(*feat, *feat));
+    if (length > length_limit)
+      feat->Scale(length_limit / length);
   }
 }
 

@@ -156,6 +156,7 @@ if [ ! -z "$iedir" ]; then
   echo "--posterior-scale=$posterior_scale" >>$ieconf # this is currently the default in the scripts.
   echo "--max-remembered-frames=1000" >>$ieconf # the default
   echo "--max-count=$max_count" >>$ieconf
+  echo "--length-limit=-1" >>$ieconf  # applies the default length limit of sqrt(ivector-dim).
 fi
 
 if $add_pitch; then
