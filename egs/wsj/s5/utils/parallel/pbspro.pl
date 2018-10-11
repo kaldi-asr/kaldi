@@ -106,6 +106,7 @@ if ($queue_scriptfile !~ m:^/:) {
   $queue_scriptfile = $cwd . "/" . $queue_scriptfile; # just in case.
 }
 $queue_logfile = $queue_scriptfile;
+$queue_logfile =~ s/sh$/log/;
 my $syncfile = "$qdir/done.$$";
 
 #system "rm $queue_logfile $syncfile 2>/dev/null";
