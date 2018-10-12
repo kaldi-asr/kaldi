@@ -60,7 +60,11 @@ my $exclusive = "";
 my @cmd = @ARGV[7,$#ARGV];
 $cmd = join ' ', @cmd;
 
+my $opciones = ' -a ' . $project . ' -q ' . $queue_name . ' -l walltime=' . $walltime . ' -l select=' . $nodes . ':ncpus=' . $num_threads . ' -l place=' . $place . ':' . $exclusive . ' -J ' . $jobstart . '-' . $jobend;
+
 $qsub_opts .= "-V -S #!/bin/bash";
+$qsub_opts .= $opciones;
+
 #($qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend) = &process_arguments($config,$array_job,$jobname,$jobstart,$jobend);
 
 $cwd = getcwd();
