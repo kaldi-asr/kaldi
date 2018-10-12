@@ -5,19 +5,21 @@ use warnings;
 use Carp;
 
 BEGIN {
-  @ARGV >= 2 or croak "Usage: pbspro.pl [options] [JOB=1:n] log-file command-line arguments...\n" .
-    "example: \n$0 foo.log echo baz\n" .
-    " (which will echo \"baz\", with stdout and stderr directed to foo.log)\n" .
-    "or: pbspro.pl -q all.q\@xyz foo.log echo bar \| sed s/bar/baz/ \n" .
-    " (which is an example of using a pipe; you can provide other escaped bash constructs)\n" .
-    "or: pbspro.pl -q all.q\@qyz JOB=1:10 foo.JOB.log echo JOB \n" .
-    " (which illustrates the mechanism to submit parallel jobs;" .
-    "It uses qstat to work out when the job finished\n" .
-    "Options:\n" .
-    "  --config <config-file> (default: conf/pbspro.conf)\n" .
-    "  --mem <mem-requirement> (e.g. --mem 2G, --mem 500M, \n" .   "                           also support K and numbers mean bytes)\n" .    "  --num-threads <num-threads> (default: 1)\n" .
-    "  --max-jobs-run <num-jobs>\n" .
-       "  --gpu <0|1> (default: 0)\n
+  @ARGV >= 9 or croak "
+Usage: 
+$0  <QSUB_ARGUMENTS>
+where qsub arguments are:
+<PROJECT_NAME>
+<QUEUE_NAME>
+<WALLTIME>
+<NUMBER_OF_NODES>
+<NUMBER_OF_Threads>
+<PLACE>
+<EXCLUSIVE>
+<JOBSTART>
+<JOBEND>
+example: 
+$0 ARLAP14877100  debug 00:30:00 8 40 scatter excl 1 10
 ";
 }
 
@@ -42,25 +44,24 @@ my $opened_config_file = 1;
 my $default_config_file = "conf/pbspro.conf";
 my $qsub_cmd = "";
 my $queue_scriptfile = "";
+my $queue_name="debug";
 my $cmd = "";
 my $queue_array_opt = "";
 my $ret = "";
+my $tool = "";
+my $walltime = "";
+my $project = "";
+my $nodes = "";
+my $place = "";
+my $exclusive = "";
 # End initializing variables
 
-foreach my $x (@ARGV) {
-  # If string contains no spaces, take as-is.
-  if ($x =~ /^\S+$/) {
-    $cmd .= $x . " ";
-  } elsif ($x =~ /\"/) {
-    # else if no dbl-quotes, use single
-    $cmd .= "'$x' ";
-  } else {
-    # else use double.
-    $cmd .= "\"$x\" ";
-  }
-}
+($project,$queue_name,$walltime,$nodes,$num_threads,$place,$exclusive,$jobstart,$jobend,$cmd) = @ARGV;
+my @cmd = @ARGV[7,$#ARGV];
+$cmd = join ' ', @cmd;
 
-($qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend) = &process_arguments($config,$array_job,$jobname,$jobstart,$jobend);
+$qsub_opts .= "-V -S #!/bin/bash";
+#($qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend) = &process_arguments($config,$array_job,$jobname,$jobstart,$jobend);
 
 $cwd = getcwd();
 $logfile = shift @ARGV;
@@ -255,24 +256,20 @@ else { # we failed.
   exit(1);
 }
 sub process_arguments {
-    my ($config,$array_job,$jobname,$jobstart,$jobend) = @_;
-    my @out = ();
+  my ($config,$array_job,$jobname,$jobstart,$jobend) = @_;
+  my @out = ();
   #  allow the JOB=1:n option to be interleaved with the options to qsub.
   for my $x (1..2) {
     while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) {
       my $switch = shift @ARGV;
-      if ($switch eq "-V") {
-        $qsub_opts .= "-V ";
-      } else {
-        my $argument = shift @ARGV;
+      warn "switch\t$switch";
+      my $argument = shift @ARGV;
+	  warn "arg\t$argument";
         if ($argument =~ m/^--/) {
           print STDERR "pbspro.pl: Warning: suspicious argument '$argument' to $switch; starts with '-'\n";
         }
-        if ($switch eq "-pe") { # e.g. -pe smp 5
-          my $argument2 = shift @ARGV;
-          $qsub_opts .= "$switch $argument $argument2 ";
-          $num_threads = $argument2;
-        } elsif ($switch =~ m/^--/) { # Config options
+        # cli options start with --
+        if ($switch =~ m/^--/) { # Config options
           # Convert CLI option to variable name
           # by removing '--' from the switch and replacing any
           # '-' with a '_'
@@ -284,31 +281,48 @@ sub process_arguments {
           $qsub_opts .= "$switch $argument ";
         }
       }
+
+    warn "hola\t$ARGV[0]";
+    if ( $ARGV[0] =~ /(\w+\.log)/ ) {
+      $logfile = $1;
+      shift @ARGV;
     }
-    if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) { # e.g. JOB=1:20
+    if ($ARGV[0] =~ m/JOB=(\d+):(\d+)$/) {
+      # e.g. JOB=1:20
+      warn "howdy\t$ARGV[0]";
       $array_job = 1;
-      $jobname = $1;
-      $jobstart = $2;
-      $jobend = $3;
-      shift;
+      $jobname = 'JOB';
+      $jobstart = $1;
+      $jobend = $2;
+      shift @ARGV;
       if ($jobstart > $jobend) {
         croak "pbspro.pl: invalid job range $ARGV[0]";
       }
       if ($jobstart <= 0) {
-	  croak "pbspro: invalid job range $ARGV[0], start must be strictly positive.";
+        croak "pbspro: invalid job range $ARGV[0], start must be strictly positive.";
       }
-    } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
+    } elsif ($ARGV[0] =~ m/^JOB=(\d+)$/) {
+      # e.g. JOB=1.
+      warn "chau\t$ARGV[0]";
       $array_job = 1;
-      $jobname = $1;
-      $jobstart = $2;
+      $jobname = 'JOB';
+      $jobstart = $1;
       $jobend = $2;
-      shift;
-    } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
+      shift @ARGV;
+	} elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
+	    warn "bondia\t$ARGV[0]";
       print STDERR "pbspro.pl: Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
+	}
+    warn "bonjour\t$ARGV[0]\tconfig is $config";
+    if ( $ARGV[0] =~ /(\w+)/ ) {
+	$tool = $1;
+	shift @ARGV;
     }
+    shift @ARGV;
+    warn "yo\t$ARGV[0]";
   }
 
-  ($config,$default_config_file) = &process_config_file($config);
+#  ($config,$default_config_file) = &process_config_file($config);
 
   ($qsub_opts,$config) = &process_cli(\%cli_options);
   push @out, $qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend;
@@ -316,7 +330,8 @@ sub process_arguments {
 }
 
 sub process_config_file {
-  my ($config) = @_;
+    my ($config) = @_;
+
   # Here the configuration options specified by the user on the command line
   # (e.g. --mem 2G) are converted to options to the qsub system as defined in
   # the config file. (e.g. if the config file has the line
@@ -327,8 +342,8 @@ sub process_config_file {
   open my $CONFIG, '<', $config or $opened_config_file = 0;
 
   if ($opened_config_file == 0 && exists($cli_options{"config"})) {
-    print STDERR "Could not open config file $config\n";
-    exit(1);
+    croak "Could not open config file $config\n";
+
   } elsif ($opened_config_file == 0 && !exists($cli_options{"config"})) {
     # Open the default config file instead
     open  my $CONFIG, "echo '$default_config_file' |" or croak "Unable to open pipe $!\n";
@@ -396,8 +411,7 @@ sub process_config_file {
   close $CONFIG;
 
   if ($read_command != 1) {
-    print STDERR "pbspro.pl: config file ($config) does not contain the line \"command .*\"\n";
-    exit(1);
+    croak "pbspro.pl: config file ($config) does not contain the line \"command .*\"\n";
   }
   if (exists $cli_options{"config"}) {
     $config = $cli_options{"config"};
@@ -405,7 +419,7 @@ sub process_config_file {
 
 my $default_config_file = <<'EOF';
 # Default configuration
-command qsub -V -v PATH -S /bin/bash -l mem=4G
+command qsub -V -v PATH -S /bin/bash 
 option mem=* -l mem=$0
 option mem=0          # Do not add anything to qsub_opts
 option num_threads=* -l ncpus=$0
