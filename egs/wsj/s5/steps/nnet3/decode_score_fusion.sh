@@ -119,7 +119,7 @@ fi
 if [ $frame_subsampling_factor -eq 3 ]; then
    if [ $acwt != 1.0 ] || [ $post_decode_acwt != 10.0 ]; then
      echo -e '\n\n'
-     echo "$0 WARNING: In standard chain sysemt, acwt = 1.0, post_decode_acwt = 10.0"
+     echo "$0 WARNING: In standard chain system, acwt = 1.0, post_decode_acwt = 10.0"
      echo "$0 WARNING: Your acwt = $acwt, post_decode_acwt = $post_decode_acwt"
      echo "$0 WARNING: This is OK if you know what you are doing."
      echo -e '\n\n'
