@@ -31,64 +31,68 @@ namespace kaldi {
 namespace nnet3 {
 namespace cudnn {
 
+/**
+   Represents structural information about a convolution computation, with
+   filters, padding, striding, inputs and outputs of a specified size.  The
+   same interface is usable on both GPU and CPU.  You create this object only
+   after you know the number of images and input and output sizes, and it will
+   be stored as part of a NnetComputation (i.e. a compiled computation) and
+   re-used between different minibatches.  This object is lightweight; it
+   doesn't contain data, only a few integers and descriptors.
+
+   In the following docstrings, consider:
+    N to be equivalent to num_images
+    C to be equivalent to num_channels_in
+    K to be equivalent to num_channels_out
+    H to be equivalent to input_image_height (for images) or
+       filter_height (for filter parameters).
+    W to be equivalent to input_image_width (for images) or
+       filter_width (for filter parameters).
+
+
+    @param [in] num_channels_out   Number of output channels, e.g. 64.
+    @param [in] num_channels_in   Number of input channels, e.g. 32.
+    @param [in] filter_height  Height of filter patch, e.g. 3 (for 3x3 kernel).  Corresponds
+                                to the 'frequency' dimension in normal speech applications, or
+                                height in OCR applications.
+    @param [in] filter_width  Width of filter patch, e.g. 3 (for 3x3 kernel).  Corresponds
+                                to the 'time' dimension in normal speech applications.
+    @param [in] filter_stride_height   Filter stride in the height ('frequency') dimension.
+                                Will normally be 1 in speech and OCR applications.
+    @param [in] filter_stride_width  Filter stride in the width ('time') dimension.
+                                Will usually be 1 in most layers, but may be 2 or 3 if
+                                we are doing subsampling on this layer (e.g. in
+                                reduced-frame-rate models like chain models).
+    @param [in] filter_dilation_height  Filter dilation in the height ('frequency')
+                                dimension.  Equals the stride, in the input image, of
+                                individual elements of the filter patch. Will
+                                normally be 1.
+    @param [in] filter_dilation_width  Filter dilation in the width ('time')
+                                dimension.  Will normally be 1, but could
+                                be more than one if, for instance, you have components
+                                with time-stride > 1 which for some reason are required
+                                to be evaluated on every frame.
+    @param [in] num_images      The number of images we are processing, generally
+                                equal to the minibatch size.
+    @param [in] input_image_height  The height of the input images.  Corresponds to
+                                the number of frequency bins, in speech applications.
+    @param [in] input_image_width  The width of the input images.  Corresponds to
+                                the number of time frames on the input, in speech
+                                applications.
+    @param [in] zero_padding_height  The number of pixels that we zero-pad with on
+                                the bottom, and on the top, of the image (the
+                                frequency dimension, in speech applications).  Would
+                                be 1, for instance, if you are using a 3x3 kernel
+                                and don't want to lose frequency bins.
+    @param [in] zero_padding_width  The number of frames that we zero-pad with on
+                                the left, and on the right, of the image (time
+                                dimension).  Likely to be 0 in many speech applications,
+                                since we normally deal with edge effects by padding
+                                with repeats of the first and last frame; but
+                                padding is supported by the component.
+*/
 class ConvolutionComputation final {
 public:
-  // Represents structural information about a convolution computation,
-  // with filters, padding, striding, inputs and outputs of a specified size.  The same interface
-  // is usable on both GPU and CPU.  You create this object only after you know the
-  // number of images and input and output sizes, and it will be stored as part of
-  // a NnetComputation (i.e. a compiled computation) and re-used between different
-  // minibatches.  This object is lightweight.
-  //
-  // In the following docstrings, consider:
-  // N to be equivalent to num_images
-  // C to be equivalent to num_channels_in
-  // K to be equivalent to num_channels_out
-  // H to be equivalent to input_image_height, or filter_height,
-  //   depending on context
-  // W to be equivalent to input_image_width, or filter_width,
-  //   depending on context
-  //
-  //  @param [in] num_channels_out   Number of output channels, e.g. 64.
-  //  @param [in] num_channels_in   Number of input channels, e.g. 32.
-  //  @param [in] filter_height  Height of filter patch, e.g. 3 (for 3x3 kernel).  Corresponds
-  //                              to the 'frequency' dimension in normal speech applications, or
-  //                              height in OCR applications.
-  //  @param [in] filter_width  Width of filter patch, e.g. 3 (for 3x3 kernel).  Corresponds
-  //                              to the 'time' dimension in normal speech applications.
-  //  @param [in] filter_stride_height   Filter stride in the height ('frequency') dimension.
-  //                              Will normally be 1 in speech and OCR applications.
-  //  @param [in] filter_stride_width  Filter stride in the width ('time') dimension.
-  //                              Will usually be 1 in most layers, but may be 2 or 3 if
-  //                              we are doing subsampling on this layer (e.g. in
-  //                              reduced-frame-rate models like chain models).
-  //  @param [in] filter_dilation_height  Filter dilation in the height ('frequency')
-  //                              dimension.  Equals the stride, in the input image, of
-  //                              individual elements of the filter patch. Will
-  //                              normally be 1.
-  //  @param [in] filter_dilation_width  Filter dilation in the width ('time')
-  //                              dimension.  Will normally be 1, but could
-  //                              be more than one if, for instance, you have components
-  //                              with time-stride > 1 which for some reason are required
-  //                              to be evaluated on every frame.
-  //  @param [in] num_images      The number of images we are processing, generally
-  //                              equal to the minibatch size.
-  //  @param [in] input_image_height  The height of the input images.  Corresponds to
-  //                              the number of frequency bins, in speech applications.
-  //  @param [in] input_image_width  The width of the input images.  Corresponds to
-  //                              the number of time frames on the input, in speech
-  //                              applications.
-  //  @param [in] zero_padding_height  The number of pixels that we zero-pad with on
-  //                              the bottom, and on the top, of the image (the
-  //                              frequency dimension, in speech applications).  Would
-  //                              be 1, for instance, if you are using a 3x3 kernel
-  //                              and don't want to lose frequency bins.
-  //  @param [in] zero_padding_width  The number of frames that we zero-pad with on
-  //                              the left, and on the right, of the image (time
-  //                              dimension).  Likely to be 0 in many speech applications,
-  //                              since we normally deal with edge effects by padding
-  //                              with repeats of the first and last frame; but
-  //                              padding is supported by the component.
   ConvolutionComputation(int32 num_channels_out, int32 num_channels_in,
                          int32 filter_height, int32 filter_width,
                          int32 filter_stride_height, int32 filter_stride_width,
@@ -110,10 +114,19 @@ public:
   size_t TempSpaceRequiredBackwardFilter() const;
 
   /**
+   * For an explanation of the notation below (e.g. NWHC), see the
+   * explanation for those variable names in the documentation for this
+   * class above.  Variables that come first have the higher stride.
+   *
+   * Caution: for convenience, given the way nnet3 works, we flip the notion of
+   * height and width that CUDNN uses, so our height is CUDNN's width, and vice
+   * versa.  This is not visible to the user; we mention it just in case
+   * those familiar with CUDNN get surprised at the order
+   *
    *  @param [in] input NWHC fully-packed tensor, with N == NumRows()
    *  @param [in] params KCWH fully-packed tensor, with K == NumRows()
    *  @param [in] bias vector of length K
-   *  @param [in/out] temp_space Pointer to pre-allocated memory of size at least 
+   *  @param [in/out] temp_space Pointer to pre-allocated memory of size at least
    *                             this->TempSpaceRequiredForward() bytes
    *  @param [out] output Pre-allocated NWHK fully-packed tensor, with N == NumRows()
    */
@@ -126,7 +139,7 @@ public:
   /**
    *  @param [in] params KCWH fully-packed tensor, with K == NumRows()
    *  @param [in] output_deriv NWHK fully-packed tensor, with N == NumRows()
-   *  @param [in/out] temp_space Pointer to pre-allocated memory of size at least 
+   *  @param [in/out] temp_space Pointer to pre-allocated memory of size at least
    *                             this->TempSpaceRequiredBackwardData() bytes
    *  @param [out] input_deriv Pre-allocated NWHC fully-packed tensor, with N == NumRows()
    */
@@ -138,10 +151,10 @@ public:
   /**
    *  @param [in] output_deriv NWHK fully-packed tensor, with N == NumRows()
    *  @param [in] input NWHC fully-packed tensor, with N == NumRows()
-   *  @param [in] alpha 
+   *  @param [in] alpha
    *              params_deriv := alpha * gradient_computed + params_deriv
    *  @param [in] params KCWH fully-packed tensor, with K == NumRows()
-   *  @param [in/out] temp_space Pointer to pre-allocated memory of size at least 
+   *  @param [in/out] temp_space Pointer to pre-allocated memory of size at least
    *                             this->TempSpaceRequiredBackwardFilter() bytes
    *  @param [out] params_deriv Pre-allocated KCWH fully-packed tensor, with K == NumRows()
    */
@@ -153,7 +166,7 @@ public:
 
   /**
    *  @param [in] output_deriv NWHK fully-packed tensor, with N == NumRows()
-   *  @param [in] alpha 
+   *  @param [in] alpha
    *              bias_deriv := alpha * gradient_computed + bias_deriv
    *  @param [out] bias_deriv Pre-allocated vector of length K
    */
