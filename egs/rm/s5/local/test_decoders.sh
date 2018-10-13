@@ -13,7 +13,7 @@ gmm-latgen-faster --beam=$beam --lattice-beam=6.0 --acoustic-scale=$acwt --allow
 
 gmm-decode-faster --beam=$beam --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=exp/tri1/graph/words.txt exp/tri1/final.mdl exp/tri1/graph/HCLG.fst "ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:data/test/utt2spk scp:data/test/cmvn.scp 'scp:head -n $n data/test/feats.scp|' ark:- | add-deltas ark:- ark:- |" ark:/dev/null ark:/dev/null "ark:|gzip -c > $dir/lat.2.gz" 2>$dir/decode_faster.log &
 
-gmm-decode-simple --beam=$beam --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=exp/tri1/graph/words.txt exp/tri1/final.mdl exp/tri1/graph/HCLG.fst "ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:data/test/utt2spk scp:data/test/cmvn.scp 'scp:head -n $n data/test/feats.scp|' ark:- | add-deltas ark:- ark:- |" ark:/dev/null ark:/dev/null "ark:|gzip -c > $dir/lat.3.gz" 2>$dir/decode_simple.log &
+gmm-decode-simple --beam=$beam --acoustic-scale=$acwt --allow-partial=true --word-symbol-table=exp/tri1/graph/words.txt exp/tri1/final.mdl <(fstconvert exp/tri1/graph/HCLG.fst) "ark,s,cs:apply-cmvn --norm-vars=false --utt2spk=ark:data/test/utt2spk scp:data/test/cmvn.scp 'scp:head -n $n data/test/feats.scp|' ark:- | add-deltas ark:- ark:- |" ark:/dev/null ark:/dev/null "ark:|gzip -c > $dir/lat.3.gz" 2>$dir/decode_simple.log &
 
 wait
 
