@@ -423,9 +423,6 @@ function configure_cuda {
     fi
 
     case $CUDA_VERSION in
-      5_5) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
-      6_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
-      7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
       8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
       9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70" ;;
       10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_72,code=sm_72 -gencode arch=compute_75,code=sm_75" ;;
@@ -439,8 +436,9 @@ function configure_cuda {
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
-    echo CUDNNDIR = $CUDNNDIR >> kaldi.mk
     echo >> kaldi.mk
+
+    configure_cudnn
 
     # 64bit/32bit? We do not support cross compilation with CUDA so, use direct calls to uname -m here
     if [ "`uname -m`" == "x86_64" ]; then
@@ -454,7 +452,7 @@ function configure_cuda {
     elif [ "`uname -m`" == "ppc64le" ]; then
       cat makefiles/cuda_64bit.mk >> kaldi.mk
     else
-      cat makefiles/cuda_32bit.mk >> kaldi.mk
+      echo "Unexpected architecture `uname -m`"; exit 1
     fi
 
   else
@@ -462,15 +460,46 @@ function configure_cuda {
     echo "and cuda toolkit, try using --cudatk-dir=... option.  Note: this is"
     echo "only relevant for neural net experiments"
   fi
+}
 
-  if [ ! -z $CUDNNDIR ]; then
-    if [ ! -f $CUDNNDIR/lib64/libcudnn.so ] |
-       [ ! -f $CUDNNDIR/include/cudnn.h ]; then
-      echo "CUDNNDIR(=$CUDNNDIR) invalid!"
-    fi
-
-    
+function configure_cudnn {
+  if [ -z $CUDNNDIR ]; then
+    download_appropriate_cudnn
   fi
+
+  echo CUDNNDIR = $CUDNNDIR >> kaldi.mk
+  echo >> kaldi.mk
+
+  if [ ! -f $CUDNNDIR/lib64/libcudnn.so ] |
+     [ ! -f $CUDNNDIR/include/cudnn.h ]; then
+    echo "CUDNNDIR(=$CUDNNDIR) invalid!"
+  fi
+}
+
+function download_appropriate_cudnn {
+  CUDNNDIR=`rel2abs ../tools/cudnn/cuda/`
+
+  if [ -f $CUDNNDIR/include/cudnn.h ]; then
+    echo -n "CUDNN has been downloaded already. If you'd like to redownload it "
+    echo -n "(e.g., because you changed CUDA version), please delete $CUDNNDIR "
+    echo    "and rerun configure"
+    return
+  fi
+
+  local cudnn_url
+  case $CUDA_VERSION in
+    8_0)  cudnn_url="http://developer.download.nvidia.com/compute/redist/cudnn/v7.1.2/cudnn-8.0-linux-x64-v7.1.tgz" ;;
+    9_0)  cudnn_url="http://developer.download.nvidia.com/compute/redist/cudnn/v7.3.1/cudnn-9.0-linux-x64-v7.3.1.20.tgz" ;;
+    9_1)  cudnn_url="http://developer.download.nvidia.com/compute/redist/cudnn/v7.1.2/cudnn-9.1-linux-x64-v7.1.tgz" ;;
+    9_2)  cudnn_url="http://developer.download.nvidia.com/compute/redist/cudnn/v7.2.1/cudnn-9.2-linux-x64-v7.2.1.38.tgz" ;;
+    10_0) cudnn_url="http://developer.download.nvidia.com/compute/redist/cudnn/v7.3.1/cudnn-10.0-linux-x64-v7.3.1.20.tgz" ;;
+    *) echo "No known CUDNN download for provided CUDA_VERSION. Try checking here to see if your CUDA version supports a reasonably new version of CUDNN: https://gitlab.com/nvidia/cuda/tree/centos7"; exit 1 ;;
+  esac
+
+  local extract_dir=$CUDNNDIR/..
+  mkdir -p $extract_dir
+  wget -T 10 -t 3 $cudnn_url -O $extract_dir/cudnn.tgz
+  tar --no-same-owner -xzf $extract_dir/cudnn.tgz -C $extract_dir
 }
 
 function linux_configure_speex {
