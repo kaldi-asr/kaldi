@@ -33,7 +33,7 @@ my $num_threads = 1;
 my $gpu = 0;
 my $config = "conf/pbspro.conf";
 my %cli_options = ();
-my $jobname = '';
+my $jobname = 'JOB';
 my $jobstart = 0;
 my $jobend = 0;
 my $array_job = 1;
@@ -54,11 +54,18 @@ my $project = "";
 my $nodes = "";
 my $place = "";
 my $exclusive = "";
+my $dir = "";
+my $base = "";
+my $qdir = '';
 # End initializing variables
 
 ($project,$queue_name,$walltime,$nodes,$num_threads,$place,$exclusive,$jobstart,$jobend,$cmd) = @ARGV;
-my @cmd = @ARGV[7,$#ARGV];
+my @cmd = @ARGV[9..$#ARGV];
+
 $cmd = join ' ', @cmd;
+my $cmd_string = join '_', @cmd;
+$cmd_string =~ s:/:_:g;
+$cmd_string =~ s:\.:_:g;
 
 my $opciones = ' -a ' . $project . ' -q ' . $queue_name . ' -l walltime=' . $walltime . ' -l select=' . $nodes . ':ncpus=' . $num_threads . ' -l place=' . $place . ':' . $exclusive . ' -J ' . $jobstart . '-' . $jobend;
 
@@ -68,21 +75,19 @@ $qsub_opts .= $opciones;
 #($qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend) = &process_arguments($config,$array_job,$jobname,$jobstart,$jobend);
 
 $cwd = getcwd();
-$logfile = shift @ARGV;
 
-if ($array_job == 1 && $logfile !~ m/$jobname/
-  && $jobend > $jobstart) {
-  print STDERR "pbspro.pl: you are trying to run a parallel job but "
-  . "you are putting the output into just one log file ($logfile)\n";
-  exit(1);
-}
+$logfile = "${cmd_string}.${jobname}.log";
 
-my $dir = dirname $logfile;
-my $base = basename $logfile;
-my $qdir = "$dir/q";
+$dir = dirname $logfile;
+
+$base = basename $logfile, '.log';
+
+$qdir = "$dir/q";
+
 $qdir =~ s:/(log|LOG)/*q:/q:; # If qdir ends in .../log/q, make it just .../q.
 
-my $queue_logfile = "$qdir/$base";
+my $queue_logfile = "$qdir/${base}.log";
+
 if (!-d $dir) {
   system "mkdir -p $dir 2>/dev/null";
 }
@@ -96,16 +101,11 @@ if (! -d "$qdir") {
   sleep(5);
 }
 
-if ($array_job == 1) {
-  $queue_array_opt = "-J $jobstart-$jobend";
-  $logfile =~ s/$jobname/\$PBS_JOBID/g;
-  $cmd =~ s/$jobname/\$\{PBS_JOBID\}/g;
-  $queue_logfile =~ s/\.?$jobname=//;
-  $queue_logfile =~ s/\://;
-}
+$logfile =~ s/$jobname/\$PBS_JOBID/g;
 
 $queue_scriptfile = $queue_logfile;
-($queue_scriptfile =~ s/\.[a-zA-Z]{1,5}$/.sh/) || ($queue_scriptfile .= ".sh");
+
+$queue_scriptfile =~ s/.log$/.sh/;
 
 if ($queue_scriptfile !~ m:^/:) {
   $queue_scriptfile = $cwd . "/" . $queue_scriptfile; # just in case.
@@ -120,6 +120,9 @@ my $syncfile = "$qdir/done.$$";
 &write_script($queue_scriptfile,$cwd,$cmd,$logfile,$num_threads,$syncfile,$qsub_cmd,$queue_logfile,$queue_array_opt,$array_job);
 
 chmod 0755, $queue_scriptfile;my $pbs_job_id;
+
+&submit_job($qsub_opts);
+
 my @syncfiles = ();
 for my $jobid ($jobstart..$jobend) {
   push @syncfiles, "$syncfile.$jobid";
@@ -141,7 +144,7 @@ for my $jobid ($jobstart..$jobend) {
   }
   close $L;
   if (!defined $pbs_job_id) {
-    croak "Error: log file $queue_logfile does not specify the pbs job-id.";
+    warn "Error: log file $queue_logfile does not specify the pbs job-id.";
   }
 }
 my $check_pbs_job_ctr=1;
@@ -259,202 +262,6 @@ else { # we failed.
   }
   exit(1);
 }
-sub process_arguments {
-  my ($config,$array_job,$jobname,$jobstart,$jobend) = @_;
-  my @out = ();
-  #  allow the JOB=1:n option to be interleaved with the options to qsub.
-  for my $x (1..2) {
-    while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) {
-      my $switch = shift @ARGV;
-      warn "switch\t$switch";
-      my $argument = shift @ARGV;
-	  warn "arg\t$argument";
-        if ($argument =~ m/^--/) {
-          print STDERR "pbspro.pl: Warning: suspicious argument '$argument' to $switch; starts with '-'\n";
-        }
-        # cli options start with --
-        if ($switch =~ m/^--/) { # Config options
-          # Convert CLI option to variable name
-          # by removing '--' from the switch and replacing any
-          # '-' with a '_'
-          $switch =~ s/^--//;
-          $switch =~ s/-/_/g;
-          $cli_options{$switch} = $argument;
-        } else {
-          # Other qsub options - passed as is
-          $qsub_opts .= "$switch $argument ";
-        }
-      }
-
-    warn "hola\t$ARGV[0]";
-    if ( $ARGV[0] =~ /(\w+\.log)/ ) {
-      $logfile = $1;
-      shift @ARGV;
-    }
-    if ($ARGV[0] =~ m/JOB=(\d+):(\d+)$/) {
-      # e.g. JOB=1:20
-      warn "howdy\t$ARGV[0]";
-      $array_job = 1;
-      $jobname = 'JOB';
-      $jobstart = $1;
-      $jobend = $2;
-      shift @ARGV;
-      if ($jobstart > $jobend) {
-        croak "pbspro.pl: invalid job range $ARGV[0]";
-      }
-      if ($jobstart <= 0) {
-        croak "pbspro: invalid job range $ARGV[0], start must be strictly positive.";
-      }
-    } elsif ($ARGV[0] =~ m/^JOB=(\d+)$/) {
-      # e.g. JOB=1.
-      warn "chau\t$ARGV[0]";
-      $array_job = 1;
-      $jobname = 'JOB';
-      $jobstart = $1;
-      $jobend = $2;
-      shift @ARGV;
-	} elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
-	    warn "bondia\t$ARGV[0]";
-      print STDERR "pbspro.pl: Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
-	}
-    warn "bonjour\t$ARGV[0]\tconfig is $config";
-    if ( $ARGV[0] =~ /(\w+)/ ) {
-	$tool = $1;
-	shift @ARGV;
-    }
-    shift @ARGV;
-    warn "yo\t$ARGV[0]";
-  }
-
-#  ($config,$default_config_file) = &process_config_file($config);
-
-  ($qsub_opts,$config) = &process_cli(\%cli_options);
-  push @out, $qsub_opts,$num_threads,$array_job,$jobname,$jobstart,$jobend;
-  return@out; 
-}
-
-sub process_config_file {
-    my ($config) = @_;
-
-  # Here the configuration options specified by the user on the command line
-  # (e.g. --mem 2G) are converted to options to the qsub system as defined in
-  # the config file. (e.g. if the config file has the line
-  # "option mem=* -l ram_free=$0,mem_free=$0"
-  # and the user has specified '--mem 2G' on the command line, the options
-  # passed to queue system would be "-l ram_free=2G,mem_free=2G
-
-  open my $CONFIG, '<', $config or $opened_config_file = 0;
-
-  if ($opened_config_file == 0 && exists($cli_options{"config"})) {
-    croak "Could not open config file $config\n";
-
-  } elsif ($opened_config_file == 0 && !exists($cli_options{"config"})) {
-    # Open the default config file instead
-    open  my $CONFIG, "echo '$default_config_file' |" or croak "Unable to open pipe $!\n";
-    $config = "Default config";
-  }
-
-  my $qsub_cmd = "";
-  my $read_command = 0;
-
-  LINE: while( my $line = <$CONFIG>) {
-    my $linea = $line;
-    chomp $line;
-    $line =~ s/\s*#.*//g;
-    next LINE if ( $line eq "");
-    if ( $line =~ /^command (.+)/ ) {
-      $read_command = 1;
-      $qsub_cmd = $1 . " ";
-    } elsif ( $line =~ /^option ([^=]+)=\* (.+)$/ ) {
-      # Config option that needs replacement with parameter value read from CLI
-      # e.g.: option mem=* -l mem_free=$0,ram_free=$0
-      # mem
-      my $option = $1;
-      # -l mem_free=$0,ram_free=$0
-      my $arg= $2;
-      if ( $arg !~ m:\$0: ) {
-        croak "pbspro.pl: Unable to parse line '$linea' in config file ($config)\n";
-      }
-      if ( exists $cli_options{$option} ) {
-        # Replace $0 with the argument read from command line.
-        # e.g. "-l mem_free=$0,ram_free=$0" -> "-l mem_free=2G,ram_free=2G"
-        $arg =~ s/\$0/$cli_options{$option}/g;
-        $cli_config_options{$option} = $arg;
-      }
-    } elsif ( $line =~ /^option ([^=]+)=(\S+)\s?(.*)$/ ) {
-      # Config option that does not need replacement
-      # e.g. option gpu=0 -q all.q
-      # gpu
-      my $option = $1;
-      # 0
-      my $value = $2;
-      # -q all.q
-      my $arg = $3;
-      if ( exists $cli_options{$option} ) {
-        $cli_default_options{($option,$value)} = $arg;
-      }
-    } elsif ( $line =~ /^default (\S+)=(\S+)/ ) {
-      # Default options. Used for setting default values to options i.e. when
-      # the user does not specify the option on the command line
-      # e.g. default gpu=0
-      # gpu
-      my $option = $1;
-       # 0
-      my $value = $2;
-      if ( ! exists $cli_options{$option} ) {
-        # If the user has specified this option on the command line, then we
-        # don't have to do anything
-        $cli_options{$option} = $value;
-      }
-    } else {
-      print STDERR "pbspro.pl: unable to parse line '$linea' in config file ($config)\n";
-      exit(1);
-    }
-  }
-
-  close $CONFIG;
-
-  if ($read_command != 1) {
-    croak "pbspro.pl: config file ($config) does not contain the line \"command .*\"\n";
-  }
-  if (exists $cli_options{"config"}) {
-    $config = $cli_options{"config"};
-  }
-
-my $default_config_file = <<'EOF';
-# Default configuration
-command qsub -V -v PATH -S /bin/bash 
-option mem=* -l mem=$0
-option mem=0          # Do not add anything to qsub_opts
-option num_threads=* -l ncpus=$0
-option num_threads=1  # Do not add anything to qsub_opts
-default gpu=0
-option gpu=0
-option gpu=* -l ncpus=$0
-EOF
-  return ($config,$default_config_file);
-}
-
-sub process_cli {
-  my ($cli_options) = @_;
-  OPTION: for my $option (keys %{$cli_options}) {
-    next OPTION if ( $option eq "config");
-    next OPTION if ( $option eq "max_jobs_run" && $array_job != 1 );
-    my $value = $cli_options{$option};
-
-    if (exists $cli_default_options{($option,$value)}) {
-      $qsub_opts .= "$cli_default_options{($option,$value)} ";
-    } elsif (exists $cli_config_options{$option}) {
-      $qsub_opts .= "$cli_config_options{$option} ";
-    } else {
-      if ( $opened_config_file == 0) {
-        $config = "default config file";
-      }
-      croak "pbspro.pl: Command line option $option not described in $config (or value '$value' not allowed)\n";
-    }
-  }
-  return ($qsub_opts,$config);
-}
 
 sub write_script {
     my ($queue_scriptfile,$cwd,$cmd,$logfile,$num_threads,$syncfile,$qsub_cmd,$queue_logfile,$queue_array_opt,$array_job) = @_;
@@ -489,11 +296,11 @@ print $Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
 
 
 sub submit_job {
-  my ($qsub_cmd) = @_;
+  my ($qsub_opts) = @_;
   for my $try (1..5) {
-    my $ret = system $qsub_cmd;
+    my $ret = system "qsub $qsub_opts";
     if ($ret != 0) {
-      print STDERR "pbspro.pl: Error submitting jobs to queue (return status was $ret)\n";
+      print STDERR "pbspro.pl: Error submitting jobs to queue (return status was $ret)\nqsub $qsub_opts";
       print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
       my $err = `tail $queue_logfile`;
       print STDERR "Output of qsub was: $err\n";
