@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Karel Vesely
 //           2012-2015  Johns Hopkins University (author: Daniel Povey)
+//           2018       Daniel Galvez
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -34,6 +35,7 @@
 #include "base/kaldi-common.h"
 #include "base/timer.h"
 #include "cudamatrix/cu-allocator.h"
+#include "cudamatrix/cu-cudnn-helper.h"
 
 namespace kaldi {
 
@@ -80,6 +82,7 @@ class CuDevice {
 
   inline cublasHandle_t GetCublasHandle() { return cublas_handle_; }
   inline cusparseHandle_t GetCusparseHandle() { return cusparse_handle_; }
+  inline cudnnHandle_t GetCudnnHandle() { return cudnn_handle_; }
 
   // We provide functions Malloc(), MallocPitch() and Free() which replace
   // cudaMalloc(), cudaMallocPitch() and cudaFree().  Their function is to cache
@@ -271,6 +274,8 @@ class CuDevice {
 
   cusparseHandle_t cusparse_handle_;
 
+  cudnnHandle_t cudnn_handle_;
+
 }; // class CuDevice
 
 
@@ -288,6 +293,8 @@ class CuTimer: public Timer {
 inline cublasHandle_t GetCublasHandle() { return CuDevice::Instantiate().GetCublasHandle(); }
 // A more convenient way to get the handle to use cuSPARSE APIs.
 inline cusparseHandle_t GetCusparseHandle() { return CuDevice::Instantiate().GetCusparseHandle(); }
+
+inline cudnnHandle_t GetCudnnHandle() { return CuDevice::Instantiate().GetCudnnHandle(); }
 
 
 }  // namespace kaldi

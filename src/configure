@@ -65,6 +65,7 @@ Configuration options:
   --shared              Build and link against shared libraries [default=no]
   --use-cuda            Build with CUDA [default=yes]
   --cudatk-dir=DIR      CUDA toolkit directory
+  --cudnn-dir=DIR       CUDNN installation directory
   --double-precision    Build with BaseFloat set to double if yes [default=no],
                         mostly useful for testing purposes.
   --static-fst          Build with static OpenFst libraries [default=no]
@@ -438,6 +439,7 @@ function configure_cuda {
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
+    echo CUDNNDIR = $CUDNNDIR >> kaldi.mk
     echo >> kaldi.mk
 
     # 64bit/32bit? We do not support cross compilation with CUDA so, use direct calls to uname -m here
@@ -459,6 +461,15 @@ function configure_cuda {
     echo "CUDA will not be used! If you have already installed cuda drivers "
     echo "and cuda toolkit, try using --cudatk-dir=... option.  Note: this is"
     echo "only relevant for neural net experiments"
+  fi
+
+  if [ ! -z $CUDNNDIR ]; then
+    if [ ! -f $CUDNNDIR/lib64/libcudnn.so ] |
+       [ ! -f $CUDNNDIR/include/cudnn.h ]; then
+      echo "CUDNNDIR(=$CUDNNDIR) invalid!"
+    fi
+
+    
   fi
 }
 
@@ -975,6 +986,9 @@ do
   --cudatk-dir=*)
     CUDATKDIR=`read_dirname $1`;
     shift ;; #CUDA is used in src/cudamatrix and src/nnet{,bin} only
+  --cudnn-dir=*)
+    CUDNNDIR=`read_dirname $1`;
+    shift ;;
   --fst-version=*)
     OPENFST_VER=`expr "X$1" : '[^=]*=\(.*\)'`;
     shift;;

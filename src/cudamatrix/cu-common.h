@@ -23,6 +23,7 @@
 #ifndef KALDI_CUDAMATRIX_CU_COMMON_H_
 #define KALDI_CUDAMATRIX_CU_COMMON_H_
 #include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK
+#include "cudamatrix/cu-cudnn-helper.h"
 
 #include <iostream>
 #include <sstream>
@@ -73,6 +74,15 @@
     KALDI_ERR << msg << ", diagnostics: cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\", in " << __FILE__ << ":" << __LINE__; \
   } \
 }
+
+#define CUDNN_SAFE_CALL(fun)                                                    \
+do {                                                                            \
+  cudnnStatus_t ret;                                                            \
+  if ((ret = (fun)) != CUDNN_STATUS_SUCCESS) {                                  \
+    KALDI_ERR << "cudnnStatus_t " << ret << " : \"" << cudnnGetErrorString(ret) \
+              << "\" returned from '" << #fun << "'";                           \
+  }                                                                             \
+} while(0)
 
 
 namespace kaldi {

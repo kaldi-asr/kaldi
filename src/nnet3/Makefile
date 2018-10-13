@@ -34,6 +34,10 @@ OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-attention-component.o nnet-tdnn-component.o nnet-batch-compute.o
 
 
+ifeq ($(CUDA), true)
+OBJFILES += convolution-cudnn.o
+endif
+
 LIBNAME = kaldi-nnet3
 
 ADDLIBS = ../chain/kaldi-chain.a ../cudamatrix/kaldi-cudamatrix.a \
