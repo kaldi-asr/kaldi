@@ -32,8 +32,6 @@ if [ ! `which matlab` ]; then
   exit 1
 fi
 
-./local/check_tools.sh || exit 1
-
 . ./cmd.sh
 . ./path.sh
 
@@ -69,9 +67,9 @@ nj=92
 # number of jobs for decoding
 decode_nj=10
 
+wavdir=${PWD}/wav
 if [ ${stage} -le 1 ]; then
   # data preparation
-  wavdir=${PWD}/wav
   echo "stage 0: Data preparation"
   local/generate_data.sh --wavdir ${wavdir} ${wsjcam0}
   local/prepare_simu_data.sh --wavdir ${wavdir} ${reverb} ${wsjcam0}
