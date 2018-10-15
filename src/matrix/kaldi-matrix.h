@@ -952,9 +952,10 @@ class SubMatrix : public MatrixBase<Real> {
             const MatrixIndexT co,  // column offset, 0 < co < NumCols()
             const MatrixIndexT c);   // number of columns, c > 0
 
-  // This initializer is mostly intended for use in CuMatrix and related
-  // classes.  Be careful!
-  SubMatrix(Real *data,
+  // This initializer does not take ownership of the pointer, and to use it you
+  // need to have some understanding of how this library works.  Caution:
+  // it can be used to get around const limitations, so be careful.
+  SubMatrix(const Real *data,
             MatrixIndexT num_rows,
             MatrixIndexT num_cols,
             MatrixIndexT stride);

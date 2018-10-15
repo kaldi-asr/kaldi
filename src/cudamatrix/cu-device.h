@@ -31,11 +31,11 @@
 #include <string>
 #include <iostream>
 #include <cuda.h>
+#include <cudnn.h>
 #include <cuda_runtime_api.h>
 #include "base/kaldi-common.h"
 #include "base/timer.h"
 #include "cudamatrix/cu-allocator.h"
-#include "cudamatrix/cu-cudnn-helper.h"
 
 namespace kaldi {
 

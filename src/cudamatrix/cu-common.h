@@ -23,7 +23,6 @@
 #ifndef KALDI_CUDAMATRIX_CU_COMMON_H_
 #define KALDI_CUDAMATRIX_CU_COMMON_H_
 #include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK
-#include "cudamatrix/cu-cudnn-helper.h"
 
 #include <iostream>
 #include <sstream>

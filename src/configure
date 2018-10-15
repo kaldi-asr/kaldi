@@ -477,7 +477,9 @@ function configure_cudnn {
 }
 
 function download_appropriate_cudnn {
-  CUDNNDIR=`rel2abs ../tools/cudnn/cuda/`
+  local tools=`rel2abs ../tools`
+  install_dir=$tools/cudnn
+  CUDNNDIR=$tools/cudnn/cuda
 
   if [ -f $CUDNNDIR/include/cudnn.h ]; then
     echo -n "CUDNN has been downloaded already. If you'd like to redownload it "
@@ -496,10 +498,9 @@ function download_appropriate_cudnn {
     *) echo "No known CUDNN download for provided CUDA_VERSION. Try checking here to see if your CUDA version supports a reasonably new version of CUDNN: https://gitlab.com/nvidia/cuda/tree/centos7"; exit 1 ;;
   esac
 
-  local extract_dir=$CUDNNDIR/..
-  mkdir -p $extract_dir
-  wget -T 10 -t 3 $cudnn_url -O $extract_dir/cudnn.tgz
-  tar --no-same-owner -xzf $extract_dir/cudnn.tgz -C $extract_dir
+  mkdir -p $install_dir
+  wget -T 10 -t 3 $cudnn_url -O $install_dir/cudnn.tgz
+  tar --no-same-owner -xzf $install_dir/cudnn.tgz -C $install_dir
 }
 
 function linux_configure_speex {
@@ -1366,7 +1367,7 @@ elif [ "`uname`" == "Linux" ]; then
     elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
       # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
       OPENBLASINCDIR=$OPENBLASROOT/include/openblas
-    else 
+    else
       echo "$0: ***** Using OpenBlas from $OPENBLASROOT but cblas.h is not found. "
       echo " ****** Assuming openblas is aleady in a default include path, but"
       echo " ***** if you get compilation messages about not finding files like cblas.h,"

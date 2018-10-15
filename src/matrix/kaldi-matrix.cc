@@ -28,7 +28,7 @@
 #include "matrix/compressed-matrix.h"
 #include "matrix/sparse-matrix.h"
 
-static_assert(int(kaldi::kNoTrans) == int(CblasNoTrans) && int(kaldi::kTrans) == int(CblasTrans), 
+static_assert(int(kaldi::kNoTrans) == int(CblasNoTrans) && int(kaldi::kTrans) == int(CblasTrans),
     "kaldi::kNoTrans and kaldi::kTrans must be equal to the appropriate CBLAS library constants!");
 
 namespace kaldi {
@@ -538,7 +538,7 @@ void MatrixBase<Real>::AddMatSmat(Real alpha, const MatrixBase<Real> &A,
         // pass stride to write a column as matrices are stored in row major order.
         cblas_Xaxpy(this_num_rows, alpha_B_jk, a_col_k, A.stride_,
                     this_col_j, this->stride_);
-        //for (MatrixIndexT i = 0; i < this_num_rows; ++i) 
+        //for (MatrixIndexT i = 0; i < this_num_rows; ++i)
         // this_col_j[i*this->stride_] +=  alpha_B_jk * a_col_k[i*A.stride_];
       }
     }
@@ -1656,11 +1656,12 @@ SubMatrix<Real>::SubMatrix(const MatrixBase<Real> &M,
 
 
 template<typename Real>
-SubMatrix<Real>::SubMatrix(Real *data,
+SubMatrix<Real>::SubMatrix(const Real *data,
                            MatrixIndexT num_rows,
                            MatrixIndexT num_cols,
                            MatrixIndexT stride):
-    MatrixBase<Real>(data, num_cols, num_rows, stride) { // caution: reversed order!
+    MatrixBase<Real>(const_cast<Real*>(data),
+                     num_cols, num_rows, stride) { // caution: reversed order!
   if (data == NULL) {
     KALDI_ASSERT(num_rows * num_cols == 0);
     this->num_rows_ = 0;
