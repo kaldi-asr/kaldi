@@ -34,8 +34,8 @@ mkdir -p $new_lang
 cp -r $old_lang/* $new_lang
 
 unk=`cat $new_lang/oov.int`
-bos=`grep -w "<s>" $new_lang/words.txt | awk '{print $2}'`
-eos=`grep "</s>" $new_lang/words.txt | awk '{print $2}'`
+bos=`grep "^<s>\s" $new_lang/words.txt | awk '{print $2}'`
+eos=`grep "^</s>\s" $new_lang/words.txt | awk '{print $2}'`
 if [[ -z $bos || -z $eos ]]; then
   echo "$0: <s> and </s> symbols are not in $new_lang/words.txt"
   exit 1

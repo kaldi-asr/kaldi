@@ -180,10 +180,6 @@ if [ $stage -le 5 ]; then
      /export/b0{3,4,5,6}/$USER/kaldi-data/egs/iam-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
-#    --image.augmentation-opts="--vertical-shift=0.1 \
-#                               --crop=true --crop-scale-min=45 --crop-scale-max=60 \
-#                               --num-channels=3" \
-
   steps/nnet3/chain/train.py --stage=$train_stage \
     --cmd="$cmd" \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \

@@ -156,6 +156,10 @@ class TransitionModel {
   // this state doesn't have a self-loop.
 
   inline int32 TransitionIdToPdf(int32 trans_id) const;
+  // TransitionIdToPdfFast is as TransitionIdToPdf but skips an assertion
+  // (unless we're in paranoid mode).
+  inline int32 TransitionIdToPdfFast(int32 trans_id) const;
+
   int32 TransitionIdToPhone(int32 trans_id) const;
   int32 TransitionIdToPdfClass(int32 trans_id) const;
   int32 TransitionIdToHmmState(int32 trans_id) const;
@@ -316,14 +320,26 @@ class TransitionModel {
   /// of pdfs).
   int32 num_pdfs_;
 
-
   KALDI_DISALLOW_COPY_AND_ASSIGN(TransitionModel);
-
 };
 
 inline int32 TransitionModel::TransitionIdToPdf(int32 trans_id) const {
-  KALDI_ASSERT(static_cast<size_t>(trans_id) < id2pdf_id_.size() &&
-               "Likely graph/model mismatch (graph built from wrong model?)");
+  KALDI_ASSERT(
+      static_cast<size_t>(trans_id) < id2pdf_id_.size() &&
+      "Likely graph/model mismatch (graph built from wrong model?)");
+  return id2pdf_id_[trans_id];
+}
+
+inline int32 TransitionModel::TransitionIdToPdfFast(int32 trans_id) const {
+  // Note: it's a little dangerous to assert this only in paranoid mode.
+  // However, this function is called in the inner loop of decoders and
+  // the assertion likely takes a significant amount of time.  We make
+  // sure that past the end of thd id2pdf_id_ array there are big
+  // numbers, which will make the calling code more likely to segfault
+  // (rather than silently die) if this is called for out-of-range values.
+  KALDI_PARANOID_ASSERT(
+      static_cast<size_t>(trans_id) < id2pdf_id_.size() &&
+      "Likely graph/model mismatch (graph built from wrong model?)");
   return id2pdf_id_[trans_id];
 }
 
