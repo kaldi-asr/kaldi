@@ -34,94 +34,122 @@ namespace kaldi {
 namespace nnet3 {
 namespace cudnn_convolution {
 
+/**  This struct contains information about a specific convolution
+     computation.  It combines information about the model and the data.
+     The examples below are very arbitrary.
+ */
+struct ConvolutionComputationConfig {
+  // The number of images we are working on, e.g. 128.
+  int32 num_images;
+  // The number of input channels, e.g. 32
+  int32 num_channels_in;
+  // The number of output channels, e.g. 64.
+  int32 num_channels_out;
+  // The number of pixels in the filter patch in the vertical direction, e.g. 3.
+  int32 filter_height;
+  // The number of pixels in the filter patch in the horizontal direction, e.g. 3.
+  int32 filter_width;
+  // The vertical stride of the filter, normally 1 but might be (e.g.) 2 if we
+  // are subsampling in the vertical (usually: frequency) dimension.
+  int32 filter_stride_vertical;
+  // The horizontal stride of the filter, normally 1 but might be (e.g.) 3 at a
+  // certain layer of the network if we are training a chain model with a
+  // frame-subsampling-factor of 3.
+  int32 filter_stride_horizontal;
+  // Normally 1, if this is more than 1 the pixels of the image patch will be
+  // spaced apart from each other.
+  int32 filter_dilation_vertical;
+  // Normally 1, if this is more than 1 the pixels of the image patch will be
+  // spaced apart from each other.
+  int32 filter_dilation_horizontal;
+  // The height of the input image, e.g. this is often 40 in speech applications,
+  // subsampled to 20 or 10 later in the network.
+  int32 input_image_height;
+  // The width of the input image, which will be the same as the number of
+  // frames being computed.
+  int32 input_image_width;
+  // The amount of zero-padding in the height (normally: frequency) dimension;
+  // this number of zero frames are added at both top and bottom of the input.
+  // Will often be 1, if you are using 3x3 kernels and don't want to
+  // reduce the height of the image.
+  int32 zero_padding_vertical;
+  // The amount of zero-padding in the time dimension, meaning the number of
+  // zero frames that we implicitly add to the beginning and end of the utterance.
+  // This will normally be zero because in Kaldi ASR recipes we generally don't
+  // do zero padding, but duplicate the first and last frame of the input to
+  // match the amount of left and right context that the neural network requires.
+  int32 zero_padding_horizontal;
+
+
+  // The height of the output image.  The user does not have to set this;
+  // it will be computed when you call ComputeOutputImageSize().
+  int32 output_image_height;
+  // The width of the output image.  The user does not have to set this;
+  // it will be computed when you call ComputeOutputImageSize().
+  int32 output_image_width;
+
+
+  // Checks that all the configuration variables except output_image_height
+  // and output_image_width have allowed values.
+  void Check();
+
+  // Computes output_image_height and output_image_width from the other
+  // configuration values.
+  void ComputeOutputImageSize();
+
+  void Write(std::ostream &os, bool binary) const;
+
+  void Read(std::istream &is, bool binary);
+
+};
+
+
 /**
-   Represents structural information about a convolution computation, with
-   filters, padding, striding, inputs and outputs of a specified size.  The
-   same interface is usable on both GPU and CPU.  You create this object only
-   after you know the number of images and input and output sizes, and it will
-   be stored as part of a NnetComputation (i.e. a compiled computation) and
-   re-used between different minibatches.  This object is lightweight; it
-   doesn't contain data, only a few integers and descriptors.
+   This object allows you to execute a convolution computation, and its backprop,
+   on either a GPU (using CUDNN), or on CPU using a compatible interface.
 
-   In the following docstrings:
-    N is equivalent to num_images
-    C is equivalent to num_channels_in
-    K is equivalent to num_channels_out
-    H is equivalent to input_image_height or output_image_height (for images) or
-       filter_height (for filter parameters).
-    W is equivalent to input_image_width or output_image_width (for images) or
-       filter_width (for filter parameters).
+   This object is quite lightweight: it only contains some structural data and a
+   few smallish CUDNN descriptors that are derived from it.
 
-    @param [in] num_channels_out   Number of output channels, e.g. 64.
-    @param [in] num_channels_in   Number of input channels, e.g. 32.
-    @param [in] filter_height  Height of filter patch, e.g. 3 (for 3x3 kernel).  Corresponds
-                                to the 'frequency' dimension in normal speech applications, or
-                                height in OCR applications.
-    @param [in] filter_width  Width of filter patch, e.g. 3 (for 3x3 kernel).  Corresponds
-                                to the 'time' dimension in normal speech applications.
-    @param [in] filter_stride_vertical   Filter stride in the vertical ('frequency') dimension.
-                                Will normally be 1 in speech and OCR applications.
-    @param [in] filter_stride_horizontal  Filter stride in the horizontal ('time') dimension.
-                                Will usually be 1 in most layers, but may be 2 or 3 if
-                                we are doing subsampling on this layer (e.g. in
-                                reduced-frame-rate models like chain models).
-    @param [in] filter_dilation_height  Filter dilation in the vertical ('frequency')
-                                dimension.  Equals the stride, in the input image, of
-                                individual elements of the filter patch. Will
-                                normally be 1.
-    @param [in] filter_dilation_width  Filter dilation in the horizontal ('time')
-                                dimension.  Will normally be 1, but could
-                                be more than one if, for instance, you have components
-                                with time-stride > 1 which for some reason are required
-                                to be evaluated on every frame.
-    @param [in] num_images      The number of images we are processing, generally
-                                equal to the minibatch size.
-    @param [in] input_image_height  The height of the input images.  Corresponds to
-                                the number of frequency bins, in speech applications.
-    @param [in] input_image_width  The width of the input images.  Corresponds to
-                                the number of time frames on the input, in speech
-                                applications.
-    @param [in] zero_padding_height  The number of pixels that we zero-pad with on
-                                the bottom, and on the top, of the image (the
-                                frequency dimension, in speech applications).  Would
-                                be 1, for instance, if you are using a 3x3 kernel
-                                and don't want to lose frequency bins.
-    @param [in] zero_padding_width  The number of frames that we zero-pad with on
-                                the left, and on the right, of the image (time
-                                dimension).  Likely to be 0 in many speech applications,
-                                since we normally deal with edge effects by padding
-                                with repeats of the first and last frame; but
-                                padding is supported by this object.
 */
 class ConvolutionComputation final {
 public:
-  ConvolutionComputation(int32 num_channels_out, int32 num_channels_in,
-                         int32 filter_height, int32 filter_width,
-                         int32 filter_stride_vertical, int32 filter_stride_horizontal,
-                         int32 filter_dilation_height,
-                         int32 filter_dilation_width,
-                         int32 num_images,
-                         int32 input_image_height, int32 input_image_width,
-                         int32 zero_padding_height, int32 zero_padding_width);
+  // Note: you don't have to have done ComputeOutputImageSize() on 'config',
+  // this class will do it in the constructor.
+  ConvolutionComputation(const ConvolutionComputationConfig &config);
+
+  // This constructor may be used prior to calling Read().
+  ConvolutionComputation();
+
   ~ConvolutionComputation();
 
-  int32 OutputImageHeight() const { return output_image_height_; }
-  int32 OutputImageWidth() const { return output_image_width_; }
+  /*
+    For an explanation of the notation below (e.g. NWHC):
 
-  /**
-   * For an explanation of the notation below (e.g. NWHC), see the
-   * explanation for those variable names in the documentation for this
-   * class above.  Variables that come first have the higher stride.
-   *
-   * Caution: for convenience, given the way nnet3 works, we flip the notion of
-   * height and width that CUDNN uses, so our height is CUDNN's width, and vice
-   * versa.  This is not visible to the user; we mention it just in case
-   * those familiar with CUDNN get surprised at the order
-   *
-   *  @param [in] input NWHC fully-packed tensor, with NumRows() == N * W
-   *  @param [in] params KCWH fully-packed tensor, with NumRows() == K.
-   *  @param [in] bias vector of length K
-   *  @param [out] output Pre-allocated NWHK fully-packed tensor, with N == NumRows()
+      N is equivalent to num_images
+      C is equivalent to num_channels_in
+      K is equivalent to num_channels_out
+      H is equivalent to input_image_height or output_image_height (for images) or
+         filter_height (for filter parameters).
+      W is equivalent to input_image_width or output_image_width (for images) or
+         filter_width (for filter parameters).
+    and the order of letters is from highest to lowest stride, e.g in
+
+    NWHC, N would have the highest stride, and C a stride of 1.
+
+
+    explanation for those variable names in the documentation for this
+    class above.  Variables that come first have the higher stride.
+
+    Caution: for convenience, given the way nnet3 works, we flip the notion of
+    height and width that CUDNN uses, so our height is CUDNN's width, and vice
+    versa.  This is not visible to the user; we mention it just in case
+    those familiar with CUDNN get surprised at the order
+
+      @param [in] input NWHC fully-packed tensor, with NumRows() == N * W
+      @param [in] params KCWH fully-packed tensor, with NumRows() == K.
+      @param [in] bias vector of length K
+      @param [out] output Pre-allocated NWHK fully-packed tensor, with N == NumRows()
    */
   void ConvolveForward(const CuMatrixBase<BaseFloat> &input,
                        const CuMatrixBase<BaseFloat> &params,
@@ -184,9 +212,9 @@ public:
 
 
 
-  void Write(std::ostream &os, bool binary) const;
+  void Write(std::ostream &os, bool binary) const { config_.Write(os, binary); }
 
-  void Read(std::istream &os, bool binary);
+  void Read(std::istream &is, bool binary);
 
 private:
 #if HAVE_CUDA == 1
@@ -221,27 +249,11 @@ private:
 
 
 
-  // The following block of members are just copies of the args to the
-  // constructor.  Please see the documentation of the constructor, and look for
-  // the similarly named parameter, to understand the meaning of these
-  // individual members.
-  int32 num_channels_out_;
-  int32 num_channels_in_;
-  int32 filter_height_;
-  int32 filter_width_;
-  int32 filter_stride_vertical_;
-  int32 filter_stride_horizontal_;
-  int32 filter_dilation_height_;
-  int32 filter_dilation_width_;
-  int32 num_images_;
-  int32 input_image_height_;
-  int32 input_image_width_;
-  int32 zero_padding_height_;
-  int32 zero_padding_width_;
-  int32 output_image_height_;
-  int32 output_image_width_;
+  ConvolutionComputationConfig config_;
+
 
 #if HAVE_CUDA == 1
+  bool descriptors_initialized_;
   cudnnTensorDescriptor_t input_desc_;
   cudnnTensorDescriptor_t output_desc_;
   cudnnFilterDescriptor_t params_desc_;

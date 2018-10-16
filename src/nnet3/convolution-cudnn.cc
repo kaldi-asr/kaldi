@@ -32,40 +32,127 @@ const BaseFloat ONE(1.0);
 const BaseFloat ZERO(0.0);
 }
 
-ConvolutionComputation::
-ConvolutionComputation(int32 num_channels_out, int32 num_channels_in,
-                       int32 filter_height, int32 filter_width,
-                       int32 filter_stride_vertical, int32 filter_stride_horizontal,
-                       int32 filter_dilation_height,
-                       int32 filter_dilation_width,
-                       int32 num_images,
-                       int32 input_image_height, int32 input_image_width,
-                       int32 zero_padding_height, int32 zero_padding_width):
-    num_channels_out_(num_channels_out),
-    num_channels_in_(num_channels_in),
-    filter_height_(filter_height),
-    filter_width_(filter_width),
-    filter_stride_vertical_(filter_stride_vertical),
-    filter_stride_horizontal_(filter_stride_horizontal),
-    filter_dilation_height_(filter_dilation_height),
-    filter_dilation_width_(filter_dilation_width),
-    num_images_(num_images),
-    input_image_height_(input_image_height),
-    input_image_width_(input_image_width),
-    zero_padding_height_(zero_padding_height),
-    zero_padding_width_(zero_padding_width) {
+
+void ConvolutionComputationConfig::Check() {
+  KALDI_ASSERT(num_images > 0 && num_channels_out > 0 &&
+               num_channels_in > 0 && filter_height > 0 && filter_width > 0);
+  KALDI_ASSERT(filter_stride_vertical > 0 && filter_stride_horizontal > 0 &&
+               filter_dilation_vertical > 0 && filter_dilation_horizontal > 0);
+  KALDI_ASSERT(input_image_height > 0 && input_image_width > 0 &&
+               zero_padding_vertical >= 0 && zero_padding_horizontal >= 0);
+}
+
+void ConvolutionComputationConfig::ComputeOutputImageSize() {
+  { // This blocks deals with the vertical direction.
+
+    // 'filter_height_reduction' is the amount by which the height of the filter patch
+    // reduces the effective height of the input image.  It's the distance between
+    // the first and last pixels of the filter patch.  E.g. in a 3x3 kernel it
+    // would be 2.
+    int32 filter_height_reduction = (filter_height - 1) * filter_dilation_vertical;
+    // 'modified_input_height' is the number of times we can shift the filter patch
+    // (not yet taking account of any filter stride).  It's a kind of augmented input-image
+    // height, after applying zero-padding and subtracting filter_height_reduction.
+    int32 modified_input_height =
+        input_image_height - filter_height_reduction + (zero_padding_vertical * 2),
+        s = filter_stride_vertical;
+
+    // output_image_height equals reduced_input_height divided by s (but rounding
+    // up), which is the number of times we can shift the filter patch by
+    // filter_stride_vertical_.
+    output_image_height = (modified_input_height + s - 1) / s;
+  }
+
+  { // This blocks deals with the horizontal direction.
+
+    // 'filter_width_reduction' is the amount by which the width of the filter patch
+    // reduces the effective width of the input image.  It's the distance between
+    // the first and last pixels of the filter patch.  E.g. in a 3x3 kernel it
+    // would be 2.
+    int32 filter_width_reduction = (filter_width - 1) * filter_dilation_horizontal;
+    // 'modified_input_width' is the number of times we can shift the filter patch
+    // (not yet taking account of any filter stride).  It's a kind of augmented input-image
+    // width, after applying zero-padding and subtracting filter_width_reduction.
+    int32 modified_input_width =
+        input_image_width - filter_width_reduction + (zero_padding_horizontal * 2),
+        s = filter_stride_horizontal;
+
+    // output_image_width equals reduced_input_width divided by s (but rounding
+    // up), which is the number of times we can shift the filter patch by
+    // filter_stride_horizontal_.
+    output_image_width = (modified_input_width + s - 1) / s;
+  }
+}
+
+void ConvolutionComputationConfig::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<ConvolutionComputationConfig>");
+  WriteBasicType(os, binary, num_images);
+  WriteToken(os, binary, "<Channels>");
+  WriteBasicType(os, binary, num_channels_in);
+  WriteBasicType(os, binary, num_channels_out);
+  WriteToken(os, binary, "<Filters>");
+  WriteBasicType(os, binary, filter_height);
+  WriteBasicType(os, binary, filter_width);
+  WriteBasicType(os, binary, filter_stride_vertical);
+  WriteBasicType(os, binary, filter_stride_horizontal);
+  WriteBasicType(os, binary, filter_dilation_vertical);
+  WriteBasicType(os, binary, filter_dilation_horizontal);
+  WriteToken(os, binary, "<Input>");
+  WriteBasicType(os, binary, input_image_height);
+  WriteBasicType(os, binary, input_image_width);
+  WriteToken(os, binary, "<Padding>");
+  WriteBasicType(os, binary, zero_padding_vertical);
+  WriteBasicType(os, binary, zero_padding_horizontal);
+  WriteToken(os, binary, "</ConvolutionComputationConfig>");
+}
+
+void ConvolutionComputationConfig::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<ConvolutionComputationConfig>");
+  ReadBasicType(is, binary, &num_images);
+  ExpectToken(is, binary, "<Channels>");
+  ReadBasicType(is, binary, &num_channels_in);
+  ReadBasicType(is, binary, &num_channels_out);
+  ExpectToken(is, binary, "<Filters>");
+  ReadBasicType(is, binary, &filter_height);
+  ReadBasicType(is, binary, &filter_width);
+  ReadBasicType(is, binary, &filter_stride_vertical);
+  ReadBasicType(is, binary, &filter_stride_horizontal);
+  ReadBasicType(is, binary, &filter_dilation_vertical);
+  ReadBasicType(is, binary, &filter_dilation_horizontal);
+  ExpectToken(is, binary, "<Input>");
+  ReadBasicType(is, binary, &input_image_height);
+  ReadBasicType(is, binary, &input_image_width);
+  ExpectToken(is, binary, "<Padding>");
+  ReadBasicType(is, binary, &zero_padding_vertical);
+  ReadBasicType(is, binary, &zero_padding_horizontal);
+  ExpectToken(is, binary, "</ConvolutionComputationConfig>");
+}
+
+
+ConvolutionComputation::ConvolutionComputation(
+    const ConvolutionComputationConfig &config): config_(config) {
+  config_.Check();
+  config_.ComputeOutputImageSize();
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     InitCudnn();
   }
 #endif
-  // The following is called whether or not we are using CUDA.
-  ComputeOutputImageHeight();
-  ComputeOutputImageWidth();
 }
+
+ConvolutionComputation::ConvolutionComputation() {
+#if HAVE_CUDA == 1
+  descriptors_initialized_ = false;
+#endif
+}
+
 
 #if HAVE_CUDA == 1
 void ConvolutionComputation::InitCudnn() {
+  descriptors_initialized_ = true;
+
+  const ConvolutionComputationConfig &c = config_;
+
   CUDNN_SAFE_CALL(cudnnCreateTensorDescriptor(&input_desc_));
   CUDNN_SAFE_CALL(cudnnCreateTensorDescriptor(&output_desc_));
   CUDNN_SAFE_CALL(cudnnCreateFilterDescriptor(&params_desc_));
@@ -75,34 +162,50 @@ void ConvolutionComputation::InitCudnn() {
 
   CUDNN_SAFE_CALL(
       cudnnSetTensor4dDescriptor(input_desc_, CUDNN_TENSOR_NHWC,
-                                 CUDNN_DATA_FLOAT, num_images_,
-                                 num_channels_in_, input_image_width_,
-                                 input_image_height_));
+                                 CUDNN_DATA_FLOAT, c.num_images,
+                                 c.num_channels_in, c.input_image_width,
+                                 c.input_image_height));
   CUDNN_SAFE_CALL(
-      cudnnSetConvolution2dDescriptor(conv_desc_,
-                                      zero_padding_width_, zero_padding_height_,
-                                      filter_stride_horizontal_, filter_stride_vertical_,
-                                      filter_dilation_width_, filter_dilation_height_,
-                                      CUDNN_CROSS_CORRELATION, // TODO: Double check this!
-                                      CUDNN_DATA_FLOAT));
+      cudnnSetConvolution2dDescriptor(
+          conv_desc_,
+          c.zero_padding_horizontal, c.zero_padding_vertical,
+          c.filter_stride_horizontal, c.filter_stride_vertical,
+          c.filter_dilation_horizontal, c.filter_dilation_vertical,
+          CUDNN_CROSS_CORRELATION, // TODO: Double check this!
+          CUDNN_DATA_FLOAT));
   CUDNN_SAFE_CALL(
       cudnnSetFilter4dDescriptor(params_desc_, CUDNN_DATA_FLOAT,
-                                 CUDNN_TENSOR_NCHW, num_channels_out_,
-                                 num_channels_in_, filter_width_, filter_height_));
+                                 CUDNN_TENSOR_NCHW, c.num_channels_out,
+                                 c.num_channels_in, c.filter_width,
+                                 c.filter_height));
+
+  int32 kaldi_height_cudnn_width, kaldi_width_cudnn_height, unused;
+  CUDNN_SAFE_CALL(
+      cudnnGetConvolution2dForwardOutputDim(conv_desc_, input_desc_,
+                                            params_desc_,
+                                            &unused, &unused,
+                                            &kaldi_width_cudnn_height,
+                                            &kaldi_height_cudnn_width));
+
+  if (kaldi_height_cudnn_width != c.output_image_height)
+    KALDI_ERR << "Code error: the height from CUDNN " << kaldi_height_cudnn_width
+              << " does not match our value " << c.output_image_height;
+  if (kaldi_width_cudnn_height != c.output_image_width)
+    KALDI_ERR << "Code error: the width from CUDNN " << kaldi_width_cudnn_height
+              << " does not match our value " << c.output_image_width;
+
 
   // These two member functions depend only on input_desc_,
   // conv_desc_, and params_desc_, so they are safe to call now.
-  int32 out_kaldi_height_cudnn_width = OutputImageHeight();
-  int32 out_kaldi_width_cudnn_height = OutputImageWidth();
   CUDNN_SAFE_CALL(
       cudnnSetTensor4dDescriptor(output_desc_, CUDNN_TENSOR_NHWC,
-                                 CUDNN_DATA_FLOAT, num_images_,
-                                 num_channels_in_, out_kaldi_width_cudnn_height,
-                                 out_kaldi_height_cudnn_width));
+                                 CUDNN_DATA_FLOAT, c.num_images,
+                                 c.num_channels_in, kaldi_width_cudnn_height,
+                                 kaldi_height_cudnn_width));
   const int32 bias_stride[] = {1};
   CUDNN_SAFE_CALL(
       cudnnSetTensorNdDescriptor(bias_desc_, CUDNN_DATA_FLOAT, 1,
-                                 &num_channels_out_, bias_stride));
+                                 &c.num_channels_out, bias_stride));
 
   const double DONT_CARE = 0;
   CUDNN_SAFE_CALL(
@@ -218,97 +321,19 @@ void ConvolutionComputation::DestroyCudnn() {
 
 ConvolutionComputation::~ConvolutionComputation() {
 #if HAVE_CUDA == 1
-  if (CuDevice::Instantiate().Enabled())
+  if (CuDevice::Instantiate().Enabled() && descriptors_initialized_)
     DestroyCudnn();
 #endif
 }
 
-void ConvolutionComputation::ComputeOutputImageHeight() {
-  // 'filter_height_reduction' is the amount by which the height of the filter patch
-  // reduces the effective height of the input image.  It's the distance between
-  // the first and last pixels of the filter patch.  E.g. in a 3x3 kernel it
-  // would be 2.
-  int32 filter_height_reduction = (filter_height_ - 1) * filter_dilation_height_;
-  // 'modified_input_height' is the number of times we can shift the filter patch
-  // (not yet taking account of any filter stride).  It's a kind of augmented input-image
-  // height, after applying zero-padding and subtracting filter_height_reduction.
-  int32 modified_input_height =
-        input_image_height_ - filter_height_reduction + (zero_padding_height_ * 2),
-      s = filter_stride_vertical_;
-
-  // output_image_height_ equals reduced_input_height divided by s (but rounding
-  // up), which is the number of times we can shift the filter patch by
-  // filter_stride_vertical_.
-  output_image_height_ = (modified_input_height + s - 1) / s;
-
-#if HAVE_CUDA == 1
-  // Check that CUDA has the same idea of what the output image height is, as we
-  // do.  This helps check that the CPU and GPU computations are compatible.
-  int32 unused;
-  int32 kaldi_height_cudnn_width;
-  CUDNN_SAFE_CALL(
-      cudnnGetConvolution2dForwardOutputDim(conv_desc_, input_desc_,
-                                            params_desc_,
-                                            &unused, &unused,
-                                            &unused,
-                                            &kaldi_height_cudnn_width));
-  if (kaldi_height_cudnn_width != output_image_height_) {
-    KALDI_ERR << "Code error: the height from CUDNN " << kaldi_height_cudnn_width
-              << " does not match our value " << output_image_height_;
-  }
-#endif
-}
-
-void ConvolutionComputation::ComputeOutputImageWidth() {
-  // 'filter_width_reduction' is the amount by which the width of the filter patch
-  // reduces the effective width of the input image.  It's the distance between
-  // the first and last pixels of the filter patch.  E.g. in a 3x3 kernel it
-  // would be 2.
-  int32 filter_width_reduction = (filter_width_ - 1) * filter_dilation_width_;
-  // 'modified_input_width' is the number of times we can shift the filter patch
-  // (not yet taking account of any filter stride).  It's a kind of augmented input-image
-  // width, after applying zero-padding and subtracting filter_width_reduction.
-  int32 modified_input_width =
-        input_image_width_ - filter_width_reduction + (zero_padding_width_ * 2),
-      s = filter_stride_horizontal_;
-
-  // output_image_width equals reduced_input_width divided by s (but rounding
-  // up), which is the number of times we can shift the filter patch by
-  // filter_stride_horizontal_.
-  output_image_width_ = (modified_input_width + s - 1) / s;
-#if HAVE_CUDA == 1
-  int32 unused;
-  int32 kaldi_width_cudnn_height;
-  CUDNN_SAFE_CALL(
-      cudnnGetConvolution2dForwardOutputDim(conv_desc_, input_desc_,
-                                            params_desc_,
-                                            &unused, &unused,
-                                            &kaldi_width_cudnn_height,
-                                            &unused));
-  if (kaldi_width_cudnn_height != output_image_width_) {
-    KALDI_ERR << "Code error: the height from CUDNN " << kaldi_width_cudnn_height
-              << " does not match our value " << output_image_width_;
-  }
-#endif
-}
-
-
-void ConvolutionComputation::Write(std::ostream &os, bool binary) const {
-  // TODO: write just num_channels_out_ through zero_padding_width_;
-
-}
 
 void ConvolutionComputation::Read(std::istream &is, bool binary) {
-  // TODO: read just num_channels_out_ through zero_padding_width_;
-
+  config_.Read(is, binary);
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     InitCudnn();
   }
 #endif
-  // The following are called whether or not we have CUDA.
-  ComputeOutputImageHeight();
-  ComputeOutputImageWidth();
 }
 
 
@@ -317,17 +342,18 @@ ConvolveForward(const CuMatrixBase<BaseFloat> &input,
                 const CuMatrixBase<BaseFloat> &params,
                 const CuVectorBase<BaseFloat> &bias,
                 CuMatrixBase<BaseFloat> *output) const {
+  const ConvolutionComputationConfig &c = config_;
   // Check some dimensions.
   KALDI_ASSERT(
-      input.NumRows() == num_images_ * input_image_width_ &&
-      input.NumCols() == input_image_height_ * num_channels_in_ &&
+      input.NumRows() == c.num_images * c.input_image_width &&
+      input.NumCols() == c.input_image_height * c.num_channels_in &&
       input.Stride() == input.NumCols() &&
-      params.NumRows() == num_channels_out_ &&
-      params.NumCols() == num_channels_in_ * filter_height_ * filter_width_ &&
+      params.NumRows() == c.num_channels_out &&
+      params.NumCols() == c.num_channels_in * c.filter_height * c.filter_width &&
       params.Stride() == params.NumCols() &&
-      bias.Dim() == num_channels_out_ &&
-      output->NumRows() == num_images_ * input_image_height_ &&
-      output->NumCols() == input_image_width_ * num_channels_out_ &&
+      bias.Dim() == c.num_channels_out &&
+      output->NumRows() == c.num_images * c.input_image_height &&
+      output->NumCols() == c.input_image_width * c.num_channels_out &&
       output->Stride() == output->NumCols());
 
 #ifdef HAVE_CUDNN
@@ -367,69 +393,70 @@ ConvolveForward(const MatrixBase<BaseFloat> &input,
                 const MatrixBase<BaseFloat> &params,
                 const VectorBase<BaseFloat> &bias,
                 MatrixBase<BaseFloat> *output) const {
+  const ConvolutionComputationConfig &c = config_;
   // Check some dimensions.
   KALDI_ASSERT(
-      input.NumRows() == num_images_ * input_image_width_ &&
-      input.NumCols() == input_image_height_ * num_channels_in_ &&
+      input.NumRows() == c.num_images * c.input_image_width &&
+      input.NumCols() == c.input_image_height * c.num_channels_in &&
       input.Stride() == input.NumCols() &&
-      params.NumRows() == num_channels_out_ &&
-      params.NumCols() == num_channels_in_ * filter_height_ * filter_width_ &&
+      params.NumRows() == c.num_channels_out &&
+      params.NumCols() == c.num_channels_in * c.filter_height * c.filter_width &&
       params.Stride() == params.NumCols() &&
-      bias.Dim() == num_channels_out_ &&
-      output->NumRows() == num_images_ * input_image_height_ &&
-      output->NumCols() == input_image_width_ * num_channels_out_ &&
+      bias.Dim() == c.num_channels_out &&
+      output->NumRows() == c.num_images * c.input_image_height &&
+      output->NumCols() == c.input_image_width * c.num_channels_out &&
       output->Stride() == output->NumCols());
 
 
   {  // Deal with the bias.
     SubMatrix<BaseFloat> output_rearranged(
         output->Data(),
-        num_images_ * input_image_width_ * input_image_height_,
-        num_channels_out_, num_channels_out_);
+        c.num_images * c.input_image_width * c.input_image_height,
+        c.num_channels_out, c.num_channels_out);
     output_rearranged.CopyRowsFromVec(bias);
   }
 
-  Matrix<BaseFloat> params_rearranged(filter_width_ * filter_height_,
-                                      num_channels_out_ * num_channels_in_,
+  Matrix<BaseFloat> params_rearranged(c.filter_width * c.filter_height,
+                                      c.num_channels_out * c.num_channels_in,
                                       kUndefined, kStrideEqualNumCols);
   ConvertParams(params, &params_rearranged);
 
   // We're using variable names w (as in width) for horizontal positions and h
   // (as in height) for vertical positions.  This is perhaps not ideal.
-  for (int32 output_w = 0; output_w < output_image_width_; output_w++) {
-    for (int32 output_h = 0; output_h < output_image_height_; output_h++) {
-      for (int32 filter_h = 0; filter_h < filter_height_; filter_h++) {
-        int32 filter_h_flipped = filter_height_ - 1 - filter_h;
-        int32 input_h = output_h * filter_stride_vertical_
-            - zero_padding_height_
-            + filter_h * filter_dilation_height_;
-        if (input_h < 0 || input_h >= input_image_height_)
+  for (int32 output_w = 0; output_w < c.output_image_width; output_w++) {
+    for (int32 output_h = 0; output_h < c.output_image_height; output_h++) {
+      for (int32 filter_h = 0; filter_h < c.filter_height; filter_h++) {
+        int32 filter_h_flipped = c.filter_height - 1 - filter_h;
+        int32 input_h = output_h * c.filter_stride_vertical
+            - c.zero_padding_vertical
+            + filter_h * c.filter_dilation_vertical;
+        if (input_h < 0 || input_h >= c.input_image_height)
           continue;
-        for (int32 filter_w = 0; filter_w < filter_width_; filter_w++) {
-          int32 filter_w_flipped = filter_width_ - 1 - filter_w;
-          int32 input_w = output_w * filter_stride_horizontal_
-              - zero_padding_width_
-              + filter_w * filter_dilation_width_;
+        for (int32 filter_w = 0; filter_w < c.filter_width; filter_w++) {
+          int32 filter_w_flipped = c.filter_width - 1 - filter_w;
+          int32 input_w = output_w * c.filter_stride_horizontal
+              - c.zero_padding_horizontal
+              + filter_w * c.filter_dilation_horizontal;
 
-          if (input_w < 0 || input_w >= input_image_width_)
+          if (input_w < 0 || input_w >= c.input_image_width)
             continue;
 
           const BaseFloat *params_data = params_rearranged.RowData(
-              filter_w_flipped * filter_height_ + filter_h_flipped);
+              filter_w_flipped * c.filter_height + filter_h_flipped);
           SubMatrix<BaseFloat> this_params(params_data,
-                                           num_channels_out_,
-                                           num_channels_in_, num_channels_in_);
+                                           c.num_channels_out,
+                                           c.num_channels_in, c.num_channels_in);
           const BaseFloat *input_data = input.Data() +
-              input_w * input_image_height_ * num_channels_in_ +
-              input_h * num_channels_in_;
+              input_w * c.input_image_height * c.num_channels_in +
+              input_h * c.num_channels_in;
           SubMatrix<BaseFloat> this_input_pixel(input_data,
-                                                num_images_,
-                                                num_channels_in_,
-                                                num_channels_in_);
+                                                c.num_images,
+                                                c.num_channels_in,
+                                                c.num_channels_in);
           SubMatrix<BaseFloat> this_output_pixel(input_data,
-                                                 num_images_,
-                                                 num_channels_in_,
-                                                 num_channels_in_);
+                                                 c.num_images,
+                                                 c.num_channels_in,
+                                                 c.num_channels_in);
           this_output_pixel.AddMatMat(1.0, this_input_pixel, kNoTrans,
                                       this_params, kTrans, 1.0);
         }
@@ -552,16 +579,17 @@ ConvolveBackwardBias(const MatrixBase<BaseFloat> &output_deriv,
 void ConvolutionComputation::ConvertParams(
     const MatrixBase<BaseFloat> &params,
     MatrixBase<BaseFloat> *params_rearranged) const {
-  KALDI_ASSERT(params.NumRows() == num_channels_out_ &&
+  const ConvolutionComputationConfig &c = config_;
+  KALDI_ASSERT(params.NumRows() == c.num_channels_out &&
                params.Stride() == params.NumCols() &&
-               params_rearranged->NumRows() == filter_width_ * filter_height_ &&
+               params_rearranged->NumRows() == c.filter_width * c.filter_height &&
                params_rearranged->Stride() == params_rearranged->NumCols());
 
   // Reinterpret params as params_reinterpret which is of dimension KC * WH (instead of  K * CWH).
   SubMatrix<BaseFloat> params_reinterpret(params.Data(),
-                                          num_channels_out_ * num_channels_in_,
-                                          filter_width_ * filter_height_,
-                                          filter_width_ * filter_height_);
+                                          c.num_channels_out * c.num_channels_in,
+                                          c.filter_width * c.filter_height,
+                                          c.filter_width * c.filter_height);
   params_rearranged->CopyFromMat(params_reinterpret, kTrans);
 }
 

@@ -18,7 +18,7 @@ ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
             Supported versions: >= 1.6.0)
 endif
 
-all: check_required_programs sph2pipe sclite openfst cudnn
+all: check_required_programs sph2pipe sclite openfst
 	@echo -e "\n\n"
 	@echo "Warning: IRSTLM is not installed by default anymore. If you need IRSTLM"
 	@echo "Warning: use the script extras/install_irstlm.sh"
@@ -149,9 +149,3 @@ openblas_compiled:
 	cd OpenBLAS; sed 's:# FCOMMON_OPT = -frecursive:FCOMMON_OPT = -frecursive:' < Makefile.rule >tmp && mv tmp Makefile.rule
 	# $(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=1 NUM_THREADS=64 -C OpenBLAS all install
 	$(MAKE) PREFIX=`pwd`/OpenBLAS/install FC=gfortran $(fortran_opt) DEBUG=1 USE_THREAD=0 -C OpenBLAS all install
-
-cudnn:
-	wget -T 10 -t 3 http://developer.download.nvidia.com/compute/redist/cudnn/v7.1.2/cudnn-9.1-linux-x64-v7.1.tgz -O cudnn-9.1-linux-x64-v7.1.tgz
-	-echo "c61000ed700bc5a009bc2e135bbdf736c9743212b2174a2fc9018a66cc0979ec cudnn-9.1-linux-x64-v7.1.tgz" | sha256sum -c
-	-mkdir -p cudnn/
-	tar --no-same-owner -xzf cudnn-9.1-linux-x64-v7.1.tgz -C cudnn/

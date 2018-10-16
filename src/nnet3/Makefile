@@ -12,7 +12,8 @@ TESTFILES = natural-gradient-online-test nnet-graph-test \
   nnet-compile-utils-test nnet-nnet-test nnet-utils-test \
   nnet-compile-test nnet-analyze-test nnet-compute-test \
   nnet-optimize-test nnet-derivative-test nnet-example-test \
-  nnet-common-test convolution-test attention-test
+  nnet-common-test convolution-test attention-test \
+  convolution-cudnn-test
 
 OBJFILES = nnet-common.o nnet-compile.o nnet-component-itf.o \
   nnet-simple-component.o nnet-normalize-component.o \
