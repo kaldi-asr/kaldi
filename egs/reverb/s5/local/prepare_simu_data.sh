@@ -90,33 +90,28 @@ for nch in 1 2 8; do
     for task in tr dt et; do
 	datadir=data/${task}_simu_${nch}ch
 	mkdir -p ${datadir}
-	if [ ${task} == 'tr' ]; then
-	    sort ${dir}/${task}_simu_${nch}ch_wav.scp > ${datadir}/wav.scp
-	else
-	    sort ${dir}/${task}_simu_${nch}ch_wpe_wav.scp > ${datadir}/wav.scp
-	fi
+	sort ${dir}/${task}_simu_${nch}ch_wav.scp > ${datadir}/wav.scp
 	sort ${dir}/${task}_simu_${nch}ch.txt     > ${datadir}/text
 	sort ${dir}/${task}_simu_${nch}ch.utt2spk > ${datadir}/utt2spk
 	sort ${dir}/${task}_simu_${nch}ch.spk2utt > ${datadir}/spk2utt
 	./utils/fix_data_dir.sh ${datadir}
-    done
-done
-
-for nch in 2 8; do
-    for task in dt et; do
-	datadir=data/${task}_simu_${nch}ch_beamformit
-	mkdir -p ${datadir}
-	sort ${dir}/${task}_simu_1ch_wpe_wav.scp | sed -e "s/ch1/bf${nch}/" | sed -e "s/WPE\/1ch/WPE\/${nch}ch/" > ${datadir}/wav.scp
-	sort ${dir}/${task}_simu_1ch.txt     > ${datadir}/text
-	sort ${dir}/${task}_simu_1ch.utt2spk > ${datadir}/utt2spk
-	sort ${dir}/${task}_simu_1ch.spk2utt > ${datadir}/spk2utt
-	./utils/fix_data_dir.sh ${datadir}
-	datadir=data/${task}_simu_${nch}ch_wpe
-	mkdir -p ${datadir}
-	sort ${dir}/${task}_simu_1ch_wpe_wav.scp | sed -e "s/WPE\/1ch/WPE\/${nch}ch/" > ${datadir}/wav.scp
-	sort ${dir}/${task}_simu_1ch.txt     > ${datadir}/text
-	sort ${dir}/${task}_simu_1ch.utt2spk > ${datadir}/utt2spk
-	sort ${dir}/${task}_simu_1ch.spk2utt > ${datadir}/spk2utt
-	./utils/fix_data_dir.sh ${datadir}
+	if [ ${task} != 'tr' ]; then
+	    datadir=data/${task}_simu_${nch}ch_wpe
+	    mkdir -p ${datadir}
+	    sort ${dir}/${task}_simu_1ch_wpe_wav.scp | sed -e "s/WPE\/1ch/WPE\/${nch}ch/" > ${datadir}/wav.scp
+	    sort ${dir}/${task}_simu_1ch.txt     > ${datadir}/text
+	    sort ${dir}/${task}_simu_1ch.utt2spk > ${datadir}/utt2spk
+	    sort ${dir}/${task}_simu_1ch.spk2utt > ${datadir}/spk2utt
+	    ./utils/fix_data_dir.sh ${datadir}
+	    if [ ${nch} != 1 ]; then
+		datadir=data/${task}_simu_${nch}ch_beamformit
+		mkdir -p ${datadir}
+		sort ${dir}/${task}_simu_1ch_wpe_wav.scp | sed -e "s/ch1/bf${nch}/" | sed -e "s/WPE\/1ch/WPE\/${nch}ch/" > ${datadir}/wav.scp
+		sort ${dir}/${task}_simu_1ch.txt     > ${datadir}/text
+		sort ${dir}/${task}_simu_1ch.utt2spk > ${datadir}/utt2spk
+		sort ${dir}/${task}_simu_1ch.spk2utt > ${datadir}/spk2utt
+		./utils/fix_data_dir.sh ${datadir}
+	    fi
+	fi
     done
 done
