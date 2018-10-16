@@ -57,7 +57,7 @@ fi
 
 #training set and test set
 train_set=tr_simu_8ch
-test_sets="dt_real_1ch dt_simu_1ch et_real_1ch et_simu_1ch dt_real_2ch_beamformit dt_simu_2ch_beamformit et_real_2ch_beamformit et_simu_2ch_beamformit dt_real_8ch_beamformit dt_simu_8ch_beamformit et_real_8ch_beamformit et_simu_8ch_beamformit"
+test_sets="dt_real_1ch dt_simu_1ch et_real_1ch et_simu_1ch dt_real_2ch_beamformit dt_simu_2ch_beamformit et_real_2ch_beamformit et_simu_2ch_beamformit dt_real_8ch_beamformit dt_simu_8ch_beamformit et_real_8ch_beamformit et_simu_8ch_beamformit dt_real_2ch_wpe dt_simu_2ch_wpe et_real_2ch_wpe et_simu_2ch_wpe dt_real_8ch_wpe dt_simu_8ch_wpe et_real_8ch_wpe et_simu_8ch_wpe"
 
 # The language models with which to decode (tg_5k or bg_5k)
 lm="tg_5k"
