@@ -122,17 +122,21 @@ for nch in 1 2 8; do
 	sort ${dir}/${task}_real_${nch}ch.utt2spk > ${datadir}/utt2spk
 	sort ${dir}/${task}_real_${nch}ch.spk2utt > ${datadir}/spk2utt
 	./utils/fix_data_dir.sh ${datadir}
-    done
-done
-
-for nch in 2 8; do
-    for task in dt et; do
-	datadir=data/${task}_real_${nch}ch_beamformit
-	mkdir -p ${datadir}
-	sort ${dir}/${task}_real_1ch_wpe_wav.scp | sed -e "s/-[1-8]_/-bf${nch}_/" | sed -e "s/1ch/${nch}ch/" > ${datadir}/wav.scp
-	sort ${dir}/${task}_real_1ch.txt     > ${datadir}/text
-	sort ${dir}/${task}_real_1ch.utt2spk > ${datadir}/utt2spk
-	sort ${dir}/${task}_real_1ch.spk2utt > ${datadir}/spk2utt
-	./utils/fix_data_dir.sh ${datadir}
+	if [ ${nch} != 1 ]; then
+	    datadir=data/${task}_real_${nch}ch_beamformit
+	    mkdir -p ${datadir}
+	    sort ${dir}/${task}_real_1ch_wpe_wav.scp | sed -e "s/-[1-8]_/-bf${nch}_/" | sed -e "s/WPE\/1ch/WPE\/${nch}ch/" > ${datadir}/wav.scp
+	    sort ${dir}/${task}_real_1ch.txt     > ${datadir}/text
+	    sort ${dir}/${task}_real_1ch.utt2spk > ${datadir}/utt2spk
+	    sort ${dir}/${task}_real_1ch.spk2utt > ${datadir}/spk2utt
+	    ./utils/fix_data_dir.sh ${datadir}
+	    datadir=data/${task}_real_${nch}ch_wpe
+	    mkdir -p ${datadir}
+	    sort ${dir}/${task}_real_1ch_wpe_wav.scp | sed -e "s/WPE\/1ch/WPE\/${nch}ch/" > ${datadir}/wav.scp
+	    sort ${dir}/${task}_real_1ch.txt     > ${datadir}/text
+	    sort ${dir}/${task}_real_1ch.utt2spk > ${datadir}/utt2spk
+	    sort ${dir}/${task}_real_1ch.spk2utt > ${datadir}/spk2utt
+	    ./utils/fix_data_dir.sh ${datadir}
+	fi
     done
 done
