@@ -1,0 +1,5 @@
+# dockerignore file to minimalize the size of docker image
+#
+# Ignore .git and dev directories
+.git
+dev
