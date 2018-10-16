@@ -69,7 +69,14 @@ for nch in 1 2 8; do
     done
 
     # make a transcript
-    for task in tr dt et; do
+    task=tr
+    for x in `ls ${taskdir} | grep SimData | grep _${task}_`; do
+        perl -e 'while (<>) { chomp; if (m/\/(\w{8})[^\/]+$/) { print $1, "\n"; } }' ${taskdir}/$x |\
+	    perl local/find_transcripts_singledot.pl ${dir}/${task}.dot |\
+	    sed -e "s/^\(...\)/\1_${x}_\1/"
+    done > ${dir}/${task}_simu_${nch}ch.trans1 || exit 1;
+    cat ${dir}/${task}_simu_${nch}ch.trans1 | local/normalize_transcript.pl ${noiseword} > ${dir}/${task}_simu_${nch}ch.txt || exit 1;
+    for task in dt et; do
 	for x in `ls ${taskdir} | grep SimData | grep _${task}_ | grep -e far -e near`; do
 	    perl -e 'while (<>) { chomp; if (m/\/(\w{8})[^\/]+$/) { print $1, "\n"; } }' ${taskdir}/$x |\
 		perl local/find_transcripts_singledot.pl ${dir}/${task}.dot |\
