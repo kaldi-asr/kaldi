@@ -80,7 +80,7 @@ def main():
 
   # Cut up overlapping segments so they are contiguous
   contiguous_segs = []
-  for reco in reco2segs:
+  for reco in sorted(reco2segs):
     segs = reco2segs[reco].strip().split()
     new_segs = ""
     for i in range(1, len(segs)-1):
