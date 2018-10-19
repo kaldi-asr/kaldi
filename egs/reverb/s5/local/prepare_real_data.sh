@@ -81,10 +81,10 @@ for nch in 1 2 8; do
     for task in dt et; do
 	if [ ${task} == 'dt' ]; then
 	    audiodir=${reverb}/MC_WSJ_AV_Dev
-	    audiodir_wpe=${wavdir}/WPE/MC_WSJ_AV_Dev
+	    audiodir_wpe=${wavdir}/WPE/${nch}ch/MC_WSJ_AV_Dev
 	elif [ ${task} == 'et' ]; then
 	    audiodir=${reverb}/MC_WSJ_AV_Eval
-	    audiodir_wpe=${wavdir}/WPE/MC_WSJ_AV_Eval
+	    audiodir_wpe=${wavdir}/WPE/${nch}ch/MC_WSJ_AV_Eval
 	fi
 	for x in `ls ${taskdir} | grep RealData | grep _${task}_`; do
 	    perl -se 'while(<>){m:^\S+/[\w\-]*_(T\w{6,7})\.wav$: || die "Bad line $_"; $id = lc $1; print "$id $dir$_";}' -- -dir=${audiodir} ${taskdir}/$x |\
@@ -117,19 +117,23 @@ for nch in 1 2 8; do
     for task in dt et; do
 	datadir=data/${task}_real_${nch}ch
 	mkdir -p ${datadir}
-	sort ${dir}/${task}_real_${nch}ch_wpe_wav.scp > ${datadir}/wav.scp
+	sort ${dir}/${task}_real_${nch}ch_wav.scp > ${datadir}/wav.scp
 	sort ${dir}/${task}_real_${nch}ch.txt     > ${datadir}/text
 	sort ${dir}/${task}_real_${nch}ch.utt2spk > ${datadir}/utt2spk
 	sort ${dir}/${task}_real_${nch}ch.spk2utt > ${datadir}/spk2utt
 	./utils/fix_data_dir.sh ${datadir}
-    done
-done
-
-for nch in 2 8; do
-    for task in dt et; do
-	datadir=data/${task}_real_${nch}ch_beamformit
+	if [ ${nch} != 1 ]; then
+	    datadir=data/${task}_real_${nch}ch_beamformit
+	    mkdir -p ${datadir}
+	    sort ${dir}/${task}_real_1ch_wpe_wav.scp | sed -e "s/-[1-8]_/-bf${nch}_/" | sed -e "s/WPE\/1ch/WPE\/${nch}ch/" > ${datadir}/wav.scp
+	    sort ${dir}/${task}_real_1ch.txt     > ${datadir}/text
+	    sort ${dir}/${task}_real_1ch.utt2spk > ${datadir}/utt2spk
+	    sort ${dir}/${task}_real_1ch.spk2utt > ${datadir}/spk2utt
+	    ./utils/fix_data_dir.sh ${datadir}
+	fi
+	datadir=data/${task}_real_${nch}ch_wpe
 	mkdir -p ${datadir}
-	sort ${dir}/${task}_real_1ch_wpe_wav.scp | sed -e "s/-[1-8]_/-bf${nch}_/" > ${datadir}/wav.scp
+	sort ${dir}/${task}_real_1ch_wpe_wav.scp | sed -e "s/WPE\/1ch/WPE\/${nch}ch/" > ${datadir}/wav.scp
 	sort ${dir}/${task}_real_1ch.txt     > ${datadir}/text
 	sort ${dir}/${task}_real_1ch.utt2spk > ${datadir}/utt2spk
 	sort ${dir}/${task}_real_1ch.spk2utt > ${datadir}/spk2utt

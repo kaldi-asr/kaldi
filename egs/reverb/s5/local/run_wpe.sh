@@ -6,7 +6,7 @@
 . ./path.sh
 
 # Config:
-nj=20
+nj=50
 cmd=run.pl
 
 . utils/parse_options.sh || exit 1;
@@ -104,7 +104,7 @@ for task in dt et; do
     done
 done
 
-for task in tr dt et; do
+for task in dt et; do
     for nch in 1 2 8; do
         wdir=exp/wpe_simu_${task}_${nch}ch
         mkdir -p $wdir/log
