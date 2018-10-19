@@ -59,7 +59,7 @@ if [ $stage -le 0 ]; then
 
   rm ${dir}/data/text/* 2>/dev/null || true
 
-  cat ${extra_lm} | local/bidi.py | utils/lang/bpe/prepend_words.py --encoding 'utf-8' | python3 utils/lang/bpe/apply_bpe.py -c $data_dir/train/bpe.out | sed 's/@@//g' > ${dir}/data/text/extra_lm.txt
+  cat ${extra_lm} | utils/lang/bpe/prepend_words.py | python3 utils/lang/bpe/apply_bpe.py -c $data_dir/train/bpe.out | sed 's/@@//g' > ${dir}/data/text/extra_lm.txt
   
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
