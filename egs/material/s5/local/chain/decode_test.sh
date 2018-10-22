@@ -49,12 +49,12 @@ where "nvcc" is installed.
 EOF
 fi
 
-if [ $stage -le 0 ]; then
-  # audio segmentation: uniformly
-  for datadir in $datadev; do
-    local/preprocess_test.sh $datadir
-  done
-fi
+#if [ $stage -le 0 ]; then
+#  # audio segmentation: uniformly
+#  for datadir in $datadev; do
+#    local/preprocess_test.sh $datadir
+#  done
+#fi
 
 if [ $stage -le 1 ]; then
   # extract hires mfcc features from uniformly segmented data

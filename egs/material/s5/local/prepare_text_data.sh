@@ -51,7 +51,7 @@ for i in train dev; do
   $MOSES/scripts/recaser/truecase.perl -model $SOURCE_TC_MODEL \
     < data/$i/text.notruecase | sed "s=<= <=g" > data/$i/text.truecase
 #  cat data/$i/text.truecase | sed 's/&apos; //g' | sed 's/&apos//g' | sed 's/&#91//g' | sed 's/&#93//g' | sed 's/&quot; //g' | sed 's/&quot //g' | sed 's/&amp; //g' | sed 's/@-@ //g' | sed 's/://g' | sed 's/\///g' | sed 's/%//g' | sed 's/+//g' | sed 's/( //g' | sed 's/) //g' | sed 's/\, //g' | sed 's/ \.//g' | sed 's/\?//g' | sed 's/\!//g' | sed 's/\;//g' > data/$i/text.nopunc
-  cat data/$i/text.truecase > data/$i/text.nopunc
+  cat data/$i/text.truecase | tr 'A-Z' 'a-z' > data/$i/text.nopunc
   paste -d " " data/$i/uttids data/$i/text.nopunc > data/$i/text
 done
 

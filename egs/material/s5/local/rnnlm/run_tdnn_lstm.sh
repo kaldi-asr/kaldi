@@ -52,7 +52,7 @@ text_dir=data/rnnlm/text
 train_text=data/lm/train.txt
 dev_text=data/lm/dev.txt
 bitext=data/bitext/text.txt
-monotext=data/monolingual/text.txt
+monotext=data/mono/text.txt
 
 lang=data/lang_combined_chain
 tree_dir=exp/chain/tree_sp
