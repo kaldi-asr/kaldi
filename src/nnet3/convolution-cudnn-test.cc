@@ -33,25 +33,23 @@ static void GetRandomConfig(ConvolutionComputationConfig *config) {
   config->filter_height = RandInt(1, 3);
   config->filter_width = RandInt(1, 3);
 
-  // TODO: randomize the following as well.  For now we just use
-  // default values.
-  config->filter_stride_vertical = 1;
-  config->filter_stride_horizontal = 1;
-  config->filter_dilation_vertical = 1;
+  config->filter_stride_vertical = RandInt(1, 2);
+  config->filter_stride_horizontal = RandInt(1, 2);
+  config->filter_dilation_vertical = RandInt(1, 2);
   config->filter_dilation_horizontal = 1;
 
-  config->input_image_height = RandInt(3, 10);
-  config->input_image_width = RandInt(3, 10);
+  config->input_image_height = RandInt(10, 20);
+  config->input_image_width = RandInt(10, 20);
 
-  config->zero_padding_vertical = 0;
-  config->zero_padding_horizontal = 0;
+  config->zero_padding_vertical = RandInt(0, 1);
+  config->zero_padding_horizontal = RandInt(0, 1);
 
   config->Check();
   config->ComputeOutputImageSize();
 }
 
 void TestConvolutionComputationConfig() {
-  for (int32 i = 0; i < 10; i++) {
+  for (int32 i = 0; i < 100; i++) {
     ConvolutionComputationConfig config;
     GetRandomConfig(&config);
     std::ostringstream os;
@@ -68,9 +66,16 @@ void TestConvolutionComputationConfig() {
 }
 
 void TestConvolutionComputation() {
-  for (int32 i = 0; i < 10; i++) {
+  for (int32 i = 0; i < 100; i++) {
     ConvolutionComputationConfig config;
     GetRandomConfig(&config);
+
+    {
+      std::ostringstream os;
+      config.Write(os, false);
+      KALDI_LOG << "Config is: " << os.str();
+    }
+
     ConvolutionComputation computation(config);
 
     std::ostringstream os;

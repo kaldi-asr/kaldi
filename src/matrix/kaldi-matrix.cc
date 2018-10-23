@@ -1840,7 +1840,8 @@ void MatrixBase<Real>::Svd(VectorBase<Real> *s, MatrixBase<Real> *U, MatrixBase<
     KALDI_ERR << "Error doing Svd (did not converge), first part of matrix is\n"
               << SubMatrix<Real>(*this, 0, std::min((MatrixIndexT)10, num_rows_),
                                  0, std::min((MatrixIndexT)10, num_cols_))
-              << ", min and max are: " << Min() << ", " << Max();
+              << ", min, max and sum are: " << Min() << ", " << Max()
+              << ", " << Sum();
   }
 }
 

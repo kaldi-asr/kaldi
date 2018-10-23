@@ -115,7 +115,6 @@ void CuDevice::Initialize() {
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
-
     CUDNN_SAFE_CALL(cudnnCreate(&cudnn_handle_));
     CUDNN_SAFE_CALL(cudnnSetStream(cudnn_handle_, cudaStreamPerThread));
   }
@@ -253,11 +252,10 @@ void CuDevice::FinalizeActiveGpu() {
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
     CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
-
     CUDNN_SAFE_CALL(cudnnCreate(&cudnn_handle_));
     CUDNN_SAFE_CALL(cudnnSetStream(cudnn_handle_, cudaStreamPerThread));
 
-    // Notify the user which GPU is being userd.
+    // Notify the user which GPU is being used.
     char name[128];
     DeviceGetName(name,128, device_id);
 

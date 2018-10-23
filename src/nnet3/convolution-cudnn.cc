@@ -126,6 +126,7 @@ void ConvolutionComputationConfig::Read(std::istream &is, bool binary) {
   ReadBasicType(is, binary, &zero_padding_vertical);
   ReadBasicType(is, binary, &zero_padding_horizontal);
   ExpectToken(is, binary, "</ConvolutionComputationConfig>");
+  ComputeOutputImageSize();
 }
 
 
@@ -148,6 +149,13 @@ ConvolutionComputation::ConvolutionComputation() {
 
 
 #if HAVE_CUDA == 1
+
+#if (KALDI_DOUBLEPRECISION != 0)
+#define CUDNN_DATA_BASEFLOAT CUDNN_DATA_DOUBLE
+#else
+#define CUDNN_DATA_BASEFLOAT CUDNN_DATA_FLOAT
+#endif
+
 void ConvolutionComputation::InitCudnn() {
   descriptors_initialized_ = true;
 
@@ -160,11 +168,16 @@ void ConvolutionComputation::InitCudnn() {
   CUDNN_SAFE_CALL(cudnnCreateConvolutionDescriptor(&conv_desc_));
   CUDNN_SAFE_CALL(cudnnCreateActivationDescriptor(&activation_desc_));
 
+  // Caution: in the following call, the 'height' and 'width' are swapped
+  // relative to what the CUDNN interface specifies; this is because Kaldi's
+  // notion of what is height vs. width is opposite to CUDNN's.  (There
+  // are good reasons for this).
   CUDNN_SAFE_CALL(
       cudnnSetTensor4dDescriptor(input_desc_, CUDNN_TENSOR_NHWC,
-                                 CUDNN_DATA_FLOAT, c.num_images,
+                                 CUDNN_DATA_BASEFLOAT, c.num_images,
                                  c.num_channels_in, c.input_image_width,
                                  c.input_image_height));
+  // Again: width and height are swapped.
   CUDNN_SAFE_CALL(
       cudnnSetConvolution2dDescriptor(
           conv_desc_,
@@ -172,14 +185,24 @@ void ConvolutionComputation::InitCudnn() {
           c.filter_stride_horizontal, c.filter_stride_vertical,
           c.filter_dilation_horizontal, c.filter_dilation_vertical,
           CUDNN_CROSS_CORRELATION, // TODO: Double check this!
-          CUDNN_DATA_FLOAT));
+          CUDNN_DATA_BASEFLOAT));
+
+  // Set dimensions of the filters (linear parameters).
+  // Again: width and height are swapped.  Per the CUDNN documentation at
+  // https://docs.nvidia.com/deeplearning/sdk/pdf/cuDNN-Developer-Guide.pdf for
+  // cudnnSetFilter4dDescriptor, setting CUDNN_TENSOR_NHWC as the layout
+  // corresponds to KSRC, meaning: num-channels-out, height, width, num-channels-in,
+  // where 'height' and 'width' are the filter height and width respectively (e.g. 3
+  // and 3 for a 3x3 patch); and these are swapped w.r.t. Kaldi's notion of height and
+  // width, so as far as Kaldi is concerned, the strides are, from largest to
+  // smallest: num-channels-out, width, height, num-channels-in.
   CUDNN_SAFE_CALL(
-      cudnnSetFilter4dDescriptor(params_desc_, CUDNN_DATA_FLOAT,
-                                 CUDNN_TENSOR_NCHW, c.num_channels_out,
+      cudnnSetFilter4dDescriptor(params_desc_, CUDNN_DATA_BASEFLOAT,
+                                 CUDNN_TENSOR_NHWC, c.num_channels_out,
                                  c.num_channels_in, c.filter_width,
                                  c.filter_height));
 
-  int32 kaldi_height_cudnn_width, kaldi_width_cudnn_height, unused;
+  int32 kaldi_width_cudnn_height, kaldi_height_cudnn_width, unused;
   CUDNN_SAFE_CALL(
       cudnnGetConvolution2dForwardOutputDim(conv_desc_, input_desc_,
                                             params_desc_,
@@ -194,18 +217,21 @@ void ConvolutionComputation::InitCudnn() {
     KALDI_ERR << "Code error: the width from CUDNN " << kaldi_width_cudnn_height
               << " does not match our value " << c.output_image_width;
 
-
   // These two member functions depend only on input_desc_,
   // conv_desc_, and params_desc_, so they are safe to call now.
   CUDNN_SAFE_CALL(
       cudnnSetTensor4dDescriptor(output_desc_, CUDNN_TENSOR_NHWC,
-                                 CUDNN_DATA_FLOAT, c.num_images,
-                                 c.num_channels_in, kaldi_width_cudnn_height,
+                                 CUDNN_DATA_BASEFLOAT, c.num_images,
+                                 c.num_channels_out, kaldi_width_cudnn_height,
                                  kaldi_height_cudnn_width));
-  const int32 bias_stride[] = {1};
+
+  // We pad the bias with leading dims of 1, since CUDNN's tensors appear to
+  // need a dimension of at least 3.
+  int bias_dims[3] = {1, 1, c.num_channels_out};
+  int bias_stride[3] = {c.num_channels_out, c.num_channels_out, 1};
   CUDNN_SAFE_CALL(
-      cudnnSetTensorNdDescriptor(bias_desc_, CUDNN_DATA_FLOAT, 1,
-                                 &c.num_channels_out, bias_stride));
+      cudnnSetTensorNdDescriptor(bias_desc_, CUDNN_DATA_BASEFLOAT, 3,
+                                 bias_dims, bias_stride));
 
   const double DONT_CARE = 0;
   CUDNN_SAFE_CALL(
@@ -231,6 +257,7 @@ void ConvolutionComputation::InitCudnn() {
   KALDI_ASSERT(returned_algo_count > 0 &&
                "No algorithms were returned by CUDNN.");
   const cudnnConvolutionFwdAlgoPerf_t& best_forward = forward_results[0];
+  KALDI_ASSERT(best_forward.status == CUDNN_STATUS_SUCCESS);
   fwd_algo_ = best_forward.algo;
   delete [] forward_results;
 
@@ -251,6 +278,7 @@ void ConvolutionComputation::InitCudnn() {
                "No algorithms were returned by CUDNN.");
   const cudnnConvolutionBwdFilterAlgoPerf_t& best_backward_filter =
       backward_filter_results[0];
+  KALDI_ASSERT(best_backward_filter.status == CUDNN_STATUS_SUCCESS);
   bwd_filter_algo_ = best_backward_filter.algo;
   delete [] backward_filter_results;
 
@@ -271,8 +299,10 @@ void ConvolutionComputation::InitCudnn() {
                "No algorithms were returned by CUDNN.");
   const cudnnConvolutionBwdDataAlgoPerf_t& best_backward_data =
       backward_data_results[0];
+  KALDI_ASSERT(best_backward_data.status == CUDNN_STATUS_SUCCESS);
   bwd_data_algo_ = best_backward_data.algo;
   delete [] backward_data_results;
+
   ComputeTempSpaceSizes();
 }
 #endif
@@ -574,7 +604,7 @@ ConvolveBackwardBias(const MatrixBase<BaseFloat> &output_deriv,
 
 
 // This function, called only if we are not using the GPU, converts
-// the params from KCWH format to WHKC format (which is more convenient
+// the params from KWHC format to WHKC format (which is more convenient
 // when using the CPU.  Note: K == channels-out, C == channels-in.
 void ConvolutionComputation::ConvertParams(
     const MatrixBase<BaseFloat> &params,
@@ -585,12 +615,27 @@ void ConvolutionComputation::ConvertParams(
                params_rearranged->NumRows() == c.filter_width * c.filter_height &&
                params_rearranged->Stride() == params_rearranged->NumCols());
 
-  // Reinterpret params as params_reinterpret which is of dimension KC * WH (instead of  K * CWH).
-  SubMatrix<BaseFloat> params_reinterpret(params.Data(),
-                                          c.num_channels_out * c.num_channels_in,
-                                          c.filter_width * c.filter_height,
-                                          c.filter_width * c.filter_height);
-  params_rearranged->CopyFromMat(params_reinterpret, kTrans);
+  int32 num_rows_reinterpret =
+      c.num_channels_out * c.filter_width * c.filter_height,
+      num_cols_reinterpret = c.num_channels_in,
+      area = c.filter_width * c.filter_height;
+
+  // Reinterpret params as params_reinterpret which is of dimension KWH * C
+  SubMatrix<BaseFloat> params_reinterpret(
+      params.Data(),
+      num_rows_reinterpret, num_cols_reinterpret, num_cols_reinterpret);
+  SubMatrix<BaseFloat> params_rearranged_reinterpret(
+      params_rearranged->Data(),
+      num_rows_reinterpret, num_cols_reinterpret, num_cols_reinterpret);
+  for (int32 k = 0; k < c.num_channels_out; k++) {
+    for (int32 wh = 0; wh < area; wh++) {
+      int32 params_row = k * area + wh,
+          params_rearranged_row = wh * c.num_channels_out + k;
+      SubVector<BaseFloat> src(params_reinterpret, params_row),
+          dest(*params_rearranged, params_rearranged_row);
+      dest.CopyFromVec(src);
+    }
+  }
 }
 
 

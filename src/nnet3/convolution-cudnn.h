@@ -99,6 +99,7 @@ struct ConvolutionComputationConfig {
 
   void Write(std::ostream &os, bool binary) const;
 
+  // Note: Read() automatically calls ComputeOutputImageSize().
   void Read(std::istream &is, bool binary);
 
 };
@@ -147,7 +148,7 @@ public:
     those familiar with CUDNN get surprised at the order
 
       @param [in] input NWHC fully-packed tensor, with NumRows() == N * W
-      @param [in] params KCWH fully-packed tensor, with NumRows() == K.
+      @param [in] params KWHC fully-packed tensor, with NumRows() == K.
       @param [in] bias vector of length K
       @param [out] output Pre-allocated NWHK fully-packed tensor, with N == NumRows()
    */
@@ -157,7 +158,7 @@ public:
                        CuMatrixBase<BaseFloat> *output) const;
 
   /**
-   *  @param [in] params KCWH fully-packed tensor, with NumRows() == K
+   *  @param [in] params KWHC fully-packed tensor, with NumRows() == K
    *  @param [in] output_deriv NWHK fully-packed tensor, with NumRows() == N * W
    *  @param [out] input_deriv Pre-allocated NWHC fully-packed tensor, with
    *                           NumRows() == N * W
@@ -171,8 +172,8 @@ public:
    *  @param [in] input NWHC fully-packed tensor, with NumRows() == N * W.
    *  @param [in] alpha
    *              params_deriv := alpha * gradient_computed + params_deriv
-   *  @param [in] params KCWH fully-packed tensor, with NumRows() == K
-   *  @param [out] params_deriv Pre-allocated KCWH fully-packed tensor,
+   *  @param [in] params KWHC fully-packed tensor, with NumRows() == K
+   *  @param [out] params_deriv Pre-allocated KWHC fully-packed tensor,
    *                             with NumRows() == K.
    */
   void ConvolveBackwardParams(const CuMatrixBase<BaseFloat> &output_deriv,
@@ -235,8 +236,8 @@ private:
 
 
   // This function, called only if we are not using the GPU, converts
-  // the params from KCWH format to WHKC format (which is more convenient
-  // when using the CPU.  params and params_rearranged must both be
+  // the params from KWHC format to WHKC format (which is more convenient
+  // when using the CPU).  params and params_rearranged must both be
   // packed (Stride() == NumCols()), params must have num-rows equal to K
   // (num_channels_out_), and params_rearranged must have num-rows equal
   // to to WH (filter_width_ * filter_height_).
