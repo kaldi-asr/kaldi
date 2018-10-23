@@ -71,7 +71,7 @@ if [ -f $srcdir/segments ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/segments | \
     utils/apply_map.pl -f 2 $destdir/reco_map | \
       awk -v factor=$factor \
-        '{printf("%s %s %.2f %.2f\n", $1, $2, $3/factor, $4/factor);}' >$destdir/segments
+        '{s=$3/factor; e=$4/factor; if (e > s + 0.01) { printf("%s %s %.2f %.2f\n", $1, $2, $3/factor, $4/factor);} }' >$destdir/segments
 
   utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/wav.scp | sed 's/| *$/ |/' | \
     # Handle three cases of rxfilenames appropriately; "input piped command", "file offset" and "filename" 
@@ -82,6 +82,14 @@ if [ -f $srcdir/segments ]; then
   if [ -f $srcdir/reco2file_and_channel ]; then
     utils/apply_map.pl -f 1 $destdir/reco_map <$srcdir/reco2file_and_channel >$destdir/reco2file_and_channel
   fi
+
+  if [ ! -f $srcdir/reco2dur ]; then
+    # generate utt2dur if it does not exist in srcdir
+    utils/data/get_reco2dur.sh $srcdir
+  fi
+
+  cat $srcdir/reco2dur | utils/apply_map.pl -f 1 $destdir/reco_map  | \
+    awk -v factor=$factor '{print $1, $2/factor;}' >$destdir/reco2dur
 
   rm $destdir/reco_map 2>/dev/null
 else # no segments->wav indexed by utterance.
@@ -113,4 +121,5 @@ cat $srcdir/utt2dur | utils/apply_map.pl -f 1 $destdir/utt_map  | \
 rm $destdir/spk_map $destdir/utt_map 2>/dev/null
 echo "$0: generated speed-perturbed version of data in $srcdir, in $destdir"
 
+utils/fix_data_dir.sh $destdir
 utils/validate_data_dir.sh --no-feats --no-text $destdir
