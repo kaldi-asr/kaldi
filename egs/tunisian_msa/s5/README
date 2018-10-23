@@ -1,0 +1,24 @@
+A Kaldi recipe for Arabic using the Tunisian_MSA  corpus.
+
+Extra Requirements:
+This recipe uses the QCRI lexicon which uses the Buckwalter encoding.
+In order to convert the Buckwalter to utf-8, the Encode::Arabic::Buckwalter perl module is required.
+On ubuntu install the package: libencode-arabic-perl.
+On Mac OSX use cpanm (cpanminus) to install the perl module.
+
+Description of the Tunisian_MSA Corpus
+The Tunisian_MSA corpus was originally collected to train acoustic models for pronunciation modeling in Arabic language learning applications.
+The data collection took place near Tunis the capital of the Republic of Tunisia in 2003 at the Military Academy of Fondouk Jedied . 
+The Tunisian_MSA  corpus is divided into recited  and prompted speech  subcorpora.
+The  recited speech appears under the recordings directory and the prompted speech under the answers directory.
+Each of the 118 informants contributed to both subcorpora by reciting sentences and providing answers to prompted questions. 
+The Tunisian_MSA corpus  has   11.2 hours of speech.
+
+With the exception of speech from two speakers , all the corpus was used for training.
+
+A small corpus was collected for testing.
+
+A pronunciation dictionary is also available from openslrm.org.
+It covers all the words uttered in the Tunisian_MSA corpus and the test corpus.
+The QCRI lexicon was used as a starting point for writing this lexicon.
+The phones are the same as those used in the QCRI lexicon.

@@ -210,9 +210,11 @@ class DenominatorComputation {
                          int32 num_sequences,
                          const CuMatrixBase<BaseFloat> &nnet_output);
 
-  // Does the forward computation, and returns the total negated log-like summed
-  // over all sequences.  You will have to scale this by any supervision
-  // weighting factor, manually.
+  // Does the forward computation, and returns the total log-like summed over
+  // all sequences.  You will have to scale this by any supervision weighting
+  // factor, manually.  Note: this log-like will be negated before it
+  // is added into the objective function, since this is the denominator
+  // computation.
   BaseFloat Forward();
 
   // this adds deriv_weight times (the derivative of the log-prob w.r.t. the

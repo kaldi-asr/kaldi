@@ -9,7 +9,7 @@
 if [ ! -f exp/ubm5a/final.ubm ]; then
   steps/train_ubm.sh --cmd "$train_cmd" 700 data/train_100k_nodup data/lang \
     exp/tri4a_ali_100k_nodup exp/ubm5a || exit 1;
-fi 
+fi
 
 steps/train_sgmm2.sh --cmd "$train_cmd" \
   9000 30000 data/train_100k_nodup data/lang exp/tri4a_ali_100k_nodup \
@@ -65,4 +65,4 @@ done
  done
  wait
 )
- 
+

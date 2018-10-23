@@ -3,6 +3,10 @@
 # Copyright 2016 Pegah Ghahremani
 
 # This script dumps bottleneck feature for model trained using nnet3.
+# CAUTION!  This script isn't very suitable for dumping features from recurrent
+# architectures such as LSTMs, because it doesn't support setting the chunk size
+# and left and right context.  (Those would have to be passed into nnet3-compute).
+# See also chain/get_phone_post.sh.
 
 # Begin configuration section.
 stage=1
@@ -21,7 +25,7 @@ echo "$0 $@"  # Print the command line for logging
 if [[ ( $# -lt 4 ) || ( $# -gt 6 ) ]]; then
    echo "usage: steps/nnet3/make_bottleneck_features.sh <bnf-node-name> <input-data-dir> <bnf-data-dir> <nnet-dir> [<log-dir> [<bnfdir>] ]"
    echo "e.g.:  steps/nnet3/make_bottleneck_features.sh tdnn_bn.renorm data/train data/train_bnf exp/nnet3/tdnn_bnf exp_bnf/dump_bnf bnf"
-   echo "Note: <log-dir> dafaults to <bnf-data-dir>/log and <bnfdir> defaults to"
+   echo "Note: <log-dir> defaults to <bnf-data-dir>/log and <bnfdir> defaults to"
    echo " <bnf-data-dir>/data"
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"

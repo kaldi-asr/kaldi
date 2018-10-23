@@ -568,7 +568,7 @@ void CRnnLM::goToDelimiter(int delim, FILE *fi) {
 
 void CRnnLM::restoreNet() {   // will read whole network structure
   FILE *fi;
-  int a, b, ver;
+  int a, b, ver, unused_size;
   float fl;
   char str[MAX_STRING];
   double d;
@@ -580,7 +580,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   }
 
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &ver);
+  unused_size = fscanf(fi, "%d", &ver);
   if ((ver == 4) && (version == 5)) {
     /* we will solve this later.. */
   } else {
@@ -590,71 +590,71 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     }
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &filetype);
+  unused_size = fscanf(fi, "%d", &filetype);
   goToDelimiter(':', fi);
   if (train_file_set == 0) {
-    fscanf(fi, "%s", train_file);
+    unused_size = fscanf(fi, "%s", train_file);
   } else {
-    fscanf(fi, "%s", str);
+    unused_size = fscanf(fi, "%s", str);
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%s", valid_file);
+  unused_size = fscanf(fi, "%s", valid_file);
   goToDelimiter(':', fi);
-  fscanf(fi, "%lf", &llogp);
+  unused_size = fscanf(fi, "%lf", &llogp);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &iter);
+  unused_size = fscanf(fi, "%d", &iter);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &train_cur_pos);
+  unused_size = fscanf(fi, "%d", &train_cur_pos);
   goToDelimiter(':', fi);
-  fscanf(fi, "%lf", &logp);
+  unused_size = fscanf(fi, "%lf", &logp);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &anti_k);
+  unused_size = fscanf(fi, "%d", &anti_k);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &train_words);
+  unused_size = fscanf(fi, "%d", &train_words);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &layer0_size);
+  unused_size = fscanf(fi, "%d", &layer0_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &layer1_size);
+  unused_size = fscanf(fi, "%d", &layer1_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &layerc_size);
+  unused_size = fscanf(fi, "%d", &layerc_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &layer2_size);
+  unused_size = fscanf(fi, "%d", &layer2_size);
   if (ver > 5) {
     goToDelimiter(':', fi);
-    fscanf(fi, "%lld", &direct_size);
+    unused_size = fscanf(fi, "%lld", &direct_size);
   }
   if (ver > 6) {
     goToDelimiter(':', fi);
-    fscanf(fi, "%d", &direct_order);
+    unused_size = fscanf(fi, "%d", &direct_order);
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &bptt);
+  unused_size = fscanf(fi, "%d", &bptt);
   if (ver > 4) {
     goToDelimiter(':', fi);
-    fscanf(fi, "%d", &bptt_block);
+    unused_size = fscanf(fi, "%d", &bptt_block);
   } else {
     bptt_block = 10;
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &vocab_size);
+  unused_size = fscanf(fi, "%d", &vocab_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &class_size);
+  unused_size = fscanf(fi, "%d", &class_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &old_classes);
+  unused_size = fscanf(fi, "%d", &old_classes);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &independent);
+  unused_size = fscanf(fi, "%d", &independent);
   goToDelimiter(':', fi);
-  fscanf(fi, "%lf", &d);
+  unused_size = fscanf(fi, "%lf", &d);
   starting_alpha = d;
   goToDelimiter(':', fi);
   if (alpha_set == 0) {
-    fscanf(fi, "%lf", &d);
+    unused_size = fscanf(fi, "%lf", &d);
     alpha = d;
   } else {
-    fscanf(fi, "%lf", &d);
+    unused_size = fscanf(fi, "%lf", &d);
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &alpha_divide);
+  unused_size = fscanf(fi, "%d", &alpha_divide);
 
   // read normal vocabulary
   if (vocab_max_size < vocab_size) {
@@ -666,11 +666,11 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   }
   goToDelimiter(':', fi);
   for (a = 0; a < vocab_size; a++) {
-    // fscanf(fi, "%d%d%s%d", &b, &vocab[a].cn,
+    // unused_size = fscanf(fi, "%d%d%s%d", &b, &vocab[a].cn,
     // vocab[a].word, &vocab[a].class_index);
-    fscanf(fi, "%d%d", &b, &vocab[a].cn);
+    unused_size = fscanf(fi, "%d%d", &b, &vocab[a].cn);
     readWord(vocab[a].word, fi);
-    fscanf(fi, "%d", &vocab[a].class_index);
+    unused_size = fscanf(fi, "%d", &vocab[a].class_index);
     // printf("%d  %d  %s  %d\n", b, vocab[a].cn,
     // vocab[a].word, vocab[a].class_index);
   }
@@ -679,14 +679,14 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   if (filetype == TEXT) {
     goToDelimiter(':', fi);
     for (a = 0; a < layer1_size; a++) {
-      fscanf(fi, "%lf", &d);
+      unused_size = fscanf(fi, "%lf", &d);
       neu1[a].ac = d;
     }
   }
   if (filetype == BINARY) {
     fgetc(fi);
     for (a = 0; a < layer1_size; a++) {
-      fread(&fl, 4, 1, fi);
+      unused_size = fread(&fl, 4, 1, fi);
       neu1[a].ac = fl;
     }
   }
@@ -694,7 +694,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     goToDelimiter(':', fi);
     for (b = 0; b < layer1_size; b++) {
       for (a = 0; a < layer0_size; a++) {
-        fscanf(fi, "%lf", &d);
+        unused_size = fscanf(fi, "%lf", &d);
         syn0[a + b * layer0_size].weight = d;
       }
     }
@@ -702,7 +702,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   if (filetype == BINARY) {
     for (b = 0; b < layer1_size; b++) {
       for (a = 0; a < layer0_size; a++) {
-        fread(&fl, 4, 1, fi);
+        unused_size = fread(&fl, 4, 1, fi);
         syn0[a + b * layer0_size].weight = fl;
       }
     }
@@ -712,14 +712,14 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     if (layerc_size == 0) {  // no compress layer
       for (b = 0; b < layer2_size; b++) {
         for (a = 0; a < layer1_size; a++) {
-          fscanf(fi, "%lf", &d);
+          unused_size = fscanf(fi, "%lf", &d);
           syn1[a + b * layer1_size].weight = d;
         }
       }
     } else {        // with compress layer
       for (b = 0; b < layerc_size; b++) {
         for (a = 0; a < layer1_size; a++) {
-          fscanf(fi, "%lf", &d);
+          unused_size = fscanf(fi, "%lf", &d);
           syn1[a + b * layer1_size].weight = d;
         }
       }
@@ -728,7 +728,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
 
       for (b = 0; b < layer2_size; b++) {
         for (a = 0; a < layerc_size; a++) {
-          fscanf(fi, "%lf", &d);
+          unused_size = fscanf(fi, "%lf", &d);
           sync[a + b * layerc_size].weight = d;
         }
       }
@@ -738,21 +738,21 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     if (layerc_size == 0) {  // no compress layer
       for (b = 0; b < layer2_size; b++) {
         for (a = 0; a < layer1_size; a++) {
-          fread(&fl, 4, 1, fi);
+          unused_size = fread(&fl, 4, 1, fi);
           syn1[a + b * layer1_size].weight = fl;
         }
       }
     } else {        // with compress layer
       for (b = 0; b < layerc_size; b++) {
         for (a = 0; a < layer1_size; a++) {
-          fread(&fl, 4, 1, fi);
+          unused_size = fread(&fl, 4, 1, fi);
           syn1[a + b * layer1_size].weight = fl;
         }
       }
 
       for (b = 0; b < layer2_size; b++) {
         for (a = 0; a < layerc_size; a++) {
-          fread(&fl, 4, 1, fi);
+          unused_size = fread(&fl, 4, 1, fi);
           sync[a + b * layerc_size].weight = fl;
         }
       }
@@ -762,23 +762,26 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     goToDelimiter(':', fi);    // direct conenctions
     long long aa;
     for (aa = 0; aa < direct_size; aa++) {
-      fscanf(fi, "%lf", &d);
+      unused_size = fscanf(fi, "%lf", &d);
       syn_d[aa] = d;
     }
   }
   if (filetype == BINARY) {
     long long aa;
     for (aa = 0; aa < direct_size; aa++) {
-      fread(&fl, 4, 1, fi);
+      unused_size = fread(&fl, 4, 1, fi);
       syn_d[aa] = fl;
 
-      /*fread(&si, 2, 1, fi);
+      /*unused_size = fread(&si, 2, 1, fi);
         fl = si/(float)(4*256);
         syn_d[aa] = fl;*/
     }
   }
 
   saveWeights();
+
+  // idiom to "use" an unused variable
+  (void) unused_size;
 
   fclose(fi);
 }

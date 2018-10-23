@@ -85,7 +85,7 @@ def fill_nonlin_stats_table_with_regex_result(groups, gate_index, stats_table):
 
     if len(groups) <= 9:
         try:
-            if stats_table[component_name]['stats'].has_key(iteration):
+            if iteration in stats_table[component_name]['stats']:
                 stats_table[component_name]['stats'][iteration].extend(
                         [value_mean,  value_stddev,
                          deriv_mean,  deriv_stddev,
@@ -117,7 +117,7 @@ def fill_nonlin_stats_table_with_regex_result(groups, gate_index, stats_table):
         oderiv_50th = float(oderiv_percentiles_split[6])
         oderiv_95th = float(oderiv_percentiles_split[9])
         try:
-            if stats_table[component_name]['stats'].has_key(iteration):
+            if iteration in stats_table[component_name]['stats']:
                 stats_table[component_name]['stats'][iteration].extend(
                         [value_mean,  value_stddev,
                          deriv_mean,  deriv_stddev,
@@ -532,7 +532,7 @@ def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
         try:
             report.append("%d\t%s\t%g\t%g\t%g" % (x[0], str(times[x[0]]),
                                                   x[1], x[2], x[2]-x[1]))
-        except KeyError, IndexError:
+        except (KeyError, IndexError):
             continue
 
     total_time = 0

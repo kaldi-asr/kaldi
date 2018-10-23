@@ -11,6 +11,13 @@ errcho() { echo "$@" 1>&2; }
 
 errcho "****() Installing IRSTLM"
 
+if [ ! -d ./extras ]; then
+  errcho "****** You are trying to install IRSTLM from the wrong directory.  You should"
+  errcho "****** go to tools/ and type extras/install_irstlm.sh."
+  exit 1
+fi
+
+
 if [ ! -d ./irstlm ] ; then
   svn=`which git`
   if [ $? != 0 ]  ; then

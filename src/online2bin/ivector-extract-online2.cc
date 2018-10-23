@@ -23,6 +23,7 @@
 #include "gmm/am-diag-gmm.h"
 #include "online2/online-ivector-feature.h"
 #include "util/kaldi-thread.h"
+#include "base/timer.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -47,44 +48,52 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         "  ivector-extract-online2 --config=exp/nnet2_online/nnet_online/conf/ivector_extractor.conf \\\n"
         "    ark:data/train/spk2utt scp:data/train/feats.scp ark,t:ivectors.1.ark\n";
-    
+
     ParseOptions po(usage);
-    
+
     OnlineIvectorExtractionConfig ivector_config;
     ivector_config.Register(&po);
 
     g_num_threads = 8;
     bool repeat = false;
-    
+    int32 length_tolerance = 0;
+    std::string frame_weights_rspecifier;
+
     po.Register("num-threads", &g_num_threads,
                 "Number of threads to use for computing derived variables "
                 "of iVector extractor, at process start-up.");
     po.Register("repeat", &repeat,
                 "If true, output the same number of iVectors as input frames "
                 "(including repeated data).");
+    po.Register("frame-weights-rspecifier", &frame_weights_rspecifier,
+                "Archive of frame weights to scale stats");
+    po.Register("length-tolerance", &length_tolerance,
+                "Tolerance on the difference in number of frames "
+                "for feats and frame weights");
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     std::string spk2utt_rspecifier = po.GetArg(1),
         feature_rspecifier = po.GetArg(2),
         ivectors_wspecifier = po.GetArg(3);
-    
+
     double tot_ubm_loglike = 0.0, tot_objf_impr = 0.0, tot_t = 0.0,
         tot_length = 0.0, tot_length_utt_end = 0.0;
     int32 num_done = 0, num_err = 0;
-    
+
     ivector_config.use_most_recent_ivector = false;
     OnlineIvectorExtractionInfo ivector_info(ivector_config);
-    
+
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
+    RandomAccessBaseFloatVectorReader frame_weights_reader(frame_weights_rspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
-    
-    
+
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
@@ -98,21 +107,46 @@ int main(int argc, char *argv[]) {
           continue;
         }
         const Matrix<BaseFloat> &feats = feature_reader.Value(utt);
-        
+
         OnlineMatrixFeature matrix_feature(feats);
 
         OnlineIvectorFeature ivector_feature(ivector_info,
                                              &matrix_feature);
-        
+
         ivector_feature.SetAdaptationState(adaptation_state);
+
+        if (!frame_weights_rspecifier.empty()) {
+          if (!frame_weights_reader.HasKey(utt)) {
+            KALDI_WARN << "Did not find weights for utterance " << utt;
+            num_err++;
+            continue;
+          }
+          const Vector<BaseFloat> &weights = frame_weights_reader.Value(utt);
+
+          if (std::abs(weights.Dim() - feats.NumRows()) > length_tolerance) {
+            num_err++;
+            continue;
+          }
+
+          std::vector<std::pair<int32, BaseFloat> > frame_weights;
+          for (int32 i = 0; i < feats.NumRows(); i++) {
+            if (i < weights.Dim())
+              frame_weights.push_back(std::make_pair(i, weights(i)));
+            else
+              frame_weights.push_back(std::make_pair(i, 0.0));
+          }
+
+
+          ivector_feature.UpdateFrameWeights(frame_weights);
+        }
 
         int32 T = feats.NumRows(),
             n = (repeat ? 1 : ivector_config.ivector_period),
             num_ivectors = (T + n - 1) / n;
-        
+
         Matrix<BaseFloat> ivectors(num_ivectors,
                                    ivector_feature.Dim());
-        
+
         for (int32 i = 0; i < num_ivectors; i++) {
           int32 t = i * n;
           SubVector<BaseFloat> ivector(ivectors, i);

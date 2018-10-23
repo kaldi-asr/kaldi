@@ -35,7 +35,7 @@ subsample=2 # subsample all features with this periodicity, in the main E-M phas
 cleanup=true
 min_gaussian_weight=0.0001
 remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
-num_threads=32
+num_threads=16
 parallel_opts=  # ignored now.
 online_cmvn_config=conf/online_cmvn.conf
 # End configuration section.

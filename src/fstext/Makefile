@@ -17,14 +17,14 @@ TESTFILES = determinize-star-test \
       determinize-lattice-test lattice-utils-test deterministic-fst-test \
       push-special-test epsilon-property-test prune-special-test
 
-OBJFILES = push-special.o kaldi-fst-io.o
+OBJFILES = push-special.o kaldi-fst-io.o context-fst.o grammar-context-fst.o
 
 
 LIBNAME = kaldi-fstext
 
 # tree and matrix archives needed for test-context-fst
 # matrix archive needed for push-special.
-ADDLIBS = ../tree/kaldi-tree.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+ADDLIBS = ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+          ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

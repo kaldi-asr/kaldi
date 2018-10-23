@@ -4,6 +4,23 @@
 #           2016  Vimal Manohar
 # Apache 2.0
 
+# This script performs segmentation of the input data based on the transcription
+# and outputs segmented data along with the corresponding aligned transcription.
+# The purpose of this script is to divide up the input data (which may consist
+# of long recordings such as television shows or audiobooks) into segments which
+# are of manageable length for further processing, along with the portion of the
+# transcript that seems to match (aligns with) each segment.
+# This the light-supervised training scenario where the input transcription is
+# not expected to be completely clean and may have significant errors. 
+# See "JHU Kaldi System for Arabic MGB-3 ASR Challenge using Diarization,
+# Audio-transcript Alignment and Transfer Learning": Vimal Manohar, Daniel
+# Povey, Sanjeev Khudanpur, ASRU 2017
+# (http://www.danielpovey.com/files/2017_asru_mgb3.pdf) for details.
+# The output data is not necessarily particularly clean; you can run
+# steps/cleanup/clean_and_segment_data.sh on the output in order to
+# further clean it and eliminate data where the transcript doesn't seem to
+# match.
+
 . ./path.sh
 
 set -e
@@ -380,7 +397,8 @@ if [ $stage -le 9 ]; then
 fi
 
 if [ $stage -le 10 ]; then
-  steps/cleanup/internal/resolve_ctm_edits_overlaps.py \
+  $cmd $dir/log/resolve_ctm_edits.log \
+    steps/cleanup/internal/resolve_ctm_edits_overlaps.py \
     ${data_uniform_seg}/segments $decode_dir/ctm_$lmwt/ctm_edits $dir/ctm_edits
 fi
 

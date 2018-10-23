@@ -26,14 +26,14 @@ steps/decode_sgmm2.sh --use-fmllr true --config conf/decode.config --nj 20 --cmd
  steps/make_denlats_sgmm2.sh --nj 8 --sub-split 20 --cmd "$decode_cmd" --transform-dir exp/tri3b \
    data/train data/lang exp/sgmm2x_4a_ali exp/sgmm2x_4a_denlats
  steps/train_mmi_sgmm2.sh --cmd "$decode_cmd" --transform-dir exp/tri3b --boost 0.2 \
-   data/train data/lang exp/sgmm2x_4a_ali exp/sgmm2x_4a_denlats exp/sgmm2x_4a_mmi_b0.2 
+   data/train data/lang exp/sgmm2x_4a_ali exp/sgmm2x_4a_denlats exp/sgmm2x_4a_mmi_b0.2
 
  for iter in 1 2 3 4; do
   steps/decode_sgmm2_rescore.sh --cmd "$decode_cmd" --iter $iter \
     --transform-dir exp/tri3b/decode data/lang data/test exp/sgmm2x_4a/decode exp/sgmm2x_4a_mmi_b0.2/decode_it$iter &
- done  
+ done
 
-wait 
+wait
 steps/decode_combine.sh data/test data/lang exp/tri1/decode exp/tri2a/decode exp/combine_1_2a/decode || exit 1;
 steps/decode_combine.sh data/test data/lang exp/sgmm2x_4a/decode exp/tri3b_mmi/decode exp/combine_sgmm2x_4a_3b/decode || exit 1;
 # combining the sgmm run and the best MMI+fMMI run.
