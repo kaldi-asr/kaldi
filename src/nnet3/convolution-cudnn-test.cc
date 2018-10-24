@@ -36,7 +36,7 @@ static void GetRandomConfig(ConvolutionComputationConfig *config) {
   config->filter_stride_vertical = RandInt(1, 2);
   config->filter_stride_horizontal = RandInt(1, 2);
   config->filter_dilation_vertical = RandInt(1, 2);
-  config->filter_dilation_horizontal = 1;
+  config->filter_dilation_horizontal = RandInt(1, 2);
 
   config->input_image_height = RandInt(10, 20);
   config->input_image_width = RandInt(10, 20);

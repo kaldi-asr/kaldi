@@ -181,11 +181,14 @@ void ConvolutionComputation::InitCudnn() {
   // relative to what the CUDNN interface specifies; this is because Kaldi's
   // notion of what is height vs. width is opposite to CUDNN's.  (There
   // are good reasons for this).
+  int in_dims[4] = {c.num_images, c.num_channels_in, c.input_image_width,
+		    c.input_image_height};
+  int in_stride[4] = {c.num_channels_in * c.input_image_width * c.input_image_height,
+		      c.input_image_width * c.input_image_height,
+		      c.input_image_height, 1};
   CUDNN_SAFE_CALL(
-      cudnnSetTensor4dDescriptor(input_desc_, CUDNN_TENSOR_NHWC,
-                                 CUDNN_DATA_BASEFLOAT, c.num_images,
-                                 c.num_channels_in, c.input_image_width,
-                                 c.input_image_height));
+      cudnnSetTensorNdDescriptor(input_desc_, CUDNN_DATA_BASEFLOAT, 4, in_dims,
+				 in_stride));
   // Again: width and height are swapped.
   CUDNN_SAFE_CALL(
       cudnnSetConvolution2dDescriptor(
@@ -228,11 +231,14 @@ void ConvolutionComputation::InitCudnn() {
 
   // These two member functions depend only on input_desc_,
   // conv_desc_, and params_desc_, so they are safe to call now.
+  int out_dims[4] = {c.num_images, c.num_channels_out, c.output_image_width,
+		     c.output_image_height};
+  int out_stride[4] = {c.num_channels_out * c.output_image_width * c.output_image_height,
+		       c.output_image_width * c.output_image_height,
+		       c.output_image_height, 1};
   CUDNN_SAFE_CALL(
-      cudnnSetTensor4dDescriptor(output_desc_, CUDNN_TENSOR_NHWC,
-                                 CUDNN_DATA_BASEFLOAT, c.num_images,
-                                 c.num_channels_out, kaldi_width_cudnn_height,
-                                 kaldi_height_cudnn_width));
+    cudnnSetTensorNdDescriptor(output_desc_, CUDNN_DATA_BASEFLOAT, 4, out_dims,
+			       out_stride));
 
   // We pad the bias with leading dims of 1, since CUDNN's tensors appear to
   // need a dimension of at least 3.
