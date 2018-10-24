@@ -102,16 +102,17 @@ void CuDevice::Initialize() {
     if (!multi_threaded_) {
       multi_threaded_ = true;
       KALDI_WARN << "For multi-threaded code that might use GPU, you should call "
-          "CuDevice()::Instantiate().AllowMultithreading() at the start of "
+          "CuDevice::Instantiate().AllowMultithreading() at the start of "
           "the program.";
     }
     device_id_copy_ = device_id_;
     cudaSetDevice(device_id_);
     // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
+    CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
-
+    CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
   }
 }
 
@@ -243,8 +244,10 @@ void CuDevice::FinalizeActiveGpu() {
                           // the main thread.
     // Initialize CUBLAS.
     CUBLAS_SAFE_CALL(cublasCreate(&cublas_handle_));
+    CUBLAS_SAFE_CALL(cublasSetStream(cublas_handle_, cudaStreamPerThread));
     // Initialize the cuSPARSE library
     CUSPARSE_SAFE_CALL(cusparseCreate(&cusparse_handle_));
+    CUSPARSE_SAFE_CALL(cusparseSetStream(cusparse_handle_, cudaStreamPerThread));
 
     // Notify the user which GPU is being userd.
     char name[128];
@@ -510,7 +513,6 @@ CuDevice::CuDevice():
     cublas_handle_(NULL),
     cusparse_handle_(NULL) {
 }
-
 
 CuDevice::~CuDevice() {
   if (cublas_handle_)

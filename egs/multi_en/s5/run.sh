@@ -58,8 +58,8 @@ if [ $stage -le 1 ]; then
   # We prepare the basic dictionary in data/local/dict_combined.
   local/prepare_dict.sh $swbd $tedlium2
   (
-   local/g2p/train_g2p.sh --stage 0 --silence-phones \
-     "data/local/dict_combined/silence_phones.txt" data/local/dict_combined exp/g2p || touch exp/g2p/.error
+   steps/dict/train_g2p_phonetisaurus.sh --stage 0 --silence-phones \
+     "data/local/dict_combined/silence_phones.txt" data/local/dict_combined/lexicon.txt exp/g2p || touch exp/g2p/.error
   ) &
 fi
 
@@ -114,8 +114,28 @@ if [ $stage -le 4 ]; then
   mkdir -p $dict_dir
   rm $dict_dir/lexiconp.txt 2>/dev/null || true
   cp data/local/dict_combined/{extra_questions,nonsilence_phones,silence_phones,optional_silence}.txt $dict_dir
-  local/g2p/apply_g2p.sh --var-counts 1 exp/g2p/model.fst data/local/g2p_phonetisarus \
-    data/local/dict_combined/lexicon.txt $dict_dir/lexicon.txt || exit 1;
+
+  echo 'Gathering missing words...'
+  
+  lexicon=data/local/dict_combined/lexicon.txt
+  g2p_tmp_dir=data/local/g2p_phonetisarus
+  mkdir -p $g2p_tmp_dir
+
+  # awk command from http://stackoverflow.com/questions/2626274/print-all-but-the-first-three-columns
+  cat data/*/train/text | \
+    local/count_oovs.pl $lexicon | \
+    awk '{if (NF > 3 ) {for(i=4; i<NF; i++) printf "%s ",$i; print $NF;}}' | \
+    perl -ape 's/\s/\n/g;' | \
+    sort | uniq > $g2p_tmp_dir/missing.txt
+  cat $g2p_tmp_dir/missing.txt | \
+    grep "^[a-z]*$"  > $g2p_tmp_dir/missing_onlywords.txt
+
+  steps/dict/apply_g2p_phonetisaurus.sh --nbest 1 $g2p_tmp_dir/missing_onlywords.txt exp/g2p exp/g2p/oov_lex || exit 1;
+  cp exp/g2p/oov_lex/lexicon.lex $g2p_tmp_dir/missing_lexicon.txt
+
+  extended_lexicon=$dict_dir/lexicon.txt
+  echo "Adding new pronunciations to get extended lexicon $extended_lexicon"
+  cat <(cut -f 1,3 $g2p_tmp_dir/missing_lexicon.txt) $lexicon | sort | uniq > $extended_lexicon
 fi
 
 # We'll do multiple iterations of pron/sil-prob estimation. So the structure of

@@ -3,18 +3,17 @@
 # _1b is as _1a, but with pitch feats, i-vector and dropout schedule added, referenced from wsj
 
 # basic info:
-# steps/info/chain_dir_info.pl exp/chain/tdnn_1b_all_sp/
-# exp/chain/tdnn_1b_all_sp/: num-iters=1446 nj=2..2 num-params=19.3M dim=43+100->4456 combine=-0.079->-0.075 (over 9) xent:train/valid[962,1445,final]=(-0.922,-0.795,-0.746/-0.960,-0.840,-0.785) logprob:train/valid[962,1445,final]=(-0.084,-0.072,-0.070/-0.085,-0.075,-0.071)
+# steps/info/chain_dir_info.pl exp/chain/tdnn_1f_nopitch_ivec_sp/exp/chain/tdnn_1f_nopitch_ivec_sp/: num-iters=578 nj=2..8 num-params=19.3M dim=43+100->4520 combine=-0.082->-0.081 (over 6) xent:train/valid[384,577,final]=(-0.863,-0.752,-0.740/-0.901,-0.791,-0.784) logprob:train/valid[384,577,final]=(-0.083,-0.076,-0.075/-0.084,-0.077,-0.076)
 
 # results:
-# local/chain/compare_wer.sh exp/chain/tdnn_1d_all_sp/
-# Model                tdnn_1d_all_sp
+# local/chain/compare_wer.sh exp/chain/tdnn_1f_nopitch_ivec_sp/
+# Model                tdnn_1f_nopitch_ivec_sp
 # Num. of params             19.3M
-# WER(%)                     8.84
-# Final train prob        -0.0696
-# Final valid prob        -0.0714
-# Final train prob (xent)   -0.7458
-# Final valid prob (xent)   -0.7854
+# WER(%)                     8.81
+# Final train prob        -0.0749
+# Final valid prob        -0.0756
+# Final train prob (xent)   -0.7401
+# Final valid prob (xent)   -0.7837
 
 set -e
 
@@ -68,9 +67,12 @@ if [ $stage -le 5 ]; then
   mfccdir=mfcc_hires
   for datadir in ${train_set} ${test_sets}; do
   	utils/copy_data_dir.sh data/${datadir} data/${datadir}_hires
-	  utils/data/perturb_data_dir_volume.sh data/${datadir}_hires || exit 1;
-	  steps/make_mfcc_pitch.sh --mfcc-config conf/mfcc_hires.conf --pitch-config conf/pitch.conf \
+    utils/data/perturb_data_dir_volume.sh data/${datadir}_hires || exit 1;
+	steps/make_mfcc_pitch.sh --mfcc-config conf/mfcc_hires.conf --pitch-config conf/pitch.conf \
       --nj $nj data/${datadir}_hires exp/make_mfcc/ ${mfccdir}
+    steps/compute_cmvn_stats.sh data/${datadir}_hires exp/make_mfcc ${mfccdir}
+    utils/data/limit_feature_dim.sh 0:39 data/${datadir}_hires data/${datadir}_hires_nopitch
+    steps/compute_cmvn_stats.sh data/${datadir}_hires_nopitch exp/make_mfcc ${mfccdir}
   done
 fi
 
@@ -81,14 +83,10 @@ if [ $stage -le 6 ]; then
   mkdir -p exp/chain/diag_ubm_${affix}
   temp_data_root=exp/chain/diag_ubm_${affix}
 
-  num_utts_total=$(wc -l < data/${train_set}_hires/utt2spk)
+  num_utts_total=$(wc -l < data/${train_set}_hires_nopitch/utt2spk)
   num_utts=$[$num_utts_total/4]
-  utils/data/subset_data_dir.sh data/${train_set}_hires \
+  utils/data/subset_data_dir.sh data/${train_set}_hires_nopitch \
     $num_utts ${temp_data_root}/${train_set}_subset
-
-  #echo "$0: get cmvn stats if not there for subset"
-  #[ -f ${temp_data_root}/${train_set}_subset/cmvn.scp ] || \
-    steps/compute_cmvn_stats.sh ${temp_data_root}/${train_set}_subset || exit 1;
 
   echo "$0: computing a PCA transform from the hires data."
   steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
@@ -108,13 +106,13 @@ if [ $stage -le 6 ]; then
 
   echo "$0: training the iVector extractor"
   steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj $nj \
-    data/${train_set}_hires exp/chain/diag_ubm_${affix} \
+    data/${train_set}_hires_nopitch exp/chain/diag_ubm_${affix} \
     exp/chain/extractor_${affix} || exit 1;
 
   for datadir in ${train_set} ${test_sets}; do
-    steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${datadir}_hires data/${datadir}_hires_max2
+    steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${datadir}_hires_nopitch data/${datadir}_hires_nopitch_max2
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj $nj \
-      data/${datadir}_hires_max2 exp/chain/extractor_${affix} exp/chain/ivectors_${datadir}_${affix} || exit 1;
+      data/${datadir}_hires_nopitch_max2 exp/chain/extractor_${affix} exp/chain/ivectors_${datadir}_${affix} || exit 1;
   done
 fi
 

@@ -23,6 +23,7 @@ stage=0
 
 nj=30
 train_set=train
+decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
 affix=_1b  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 e2echain_model_dir=exp/chain/e2e_cnn_1a
@@ -45,6 +46,7 @@ srand=0
 remove_egs=true
 lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
+if $decode_val; then maybe_val=val; else maybe_val= ; fi
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -237,15 +239,20 @@ fi
 
 if [ $stage -le 7 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
-  steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --extra-left-context $chunk_left_context \
-    --extra-right-context $chunk_right_context \
-    --extra-left-context-initial 0 \
-    --extra-right-context-final 0 \
-    --frames-per-chunk $frames_per_chunk \
-    --nj $nj --cmd "$cmd" \
-    $dir/graph data/test $dir/decode_test || exit 1;
+  for decode_set in test $maybe_val; do
+    steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
+      --extra-left-context $chunk_left_context \
+      --extra-right-context $chunk_right_context \
+      --extra-left-context-initial 0 \
+      --extra-right-context-final 0 \
+      --frames-per-chunk $frames_per_chunk \
+      --nj $nj --cmd "$cmd" \
+      $dir/graph data/$decode_set $dir/decode_$decode_set || exit 1;
 
-  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
-                                data/test $dir/decode_test{,_rescored} || exit 1
+    steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/$decode_set $dir/decode_${decode_set}{,_rescored} || exit 1
+  done
 fi
+
+echo "Done. Date: $(date). Results:"
+local/chain/compare_wer.sh $dir

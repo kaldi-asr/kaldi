@@ -401,7 +401,7 @@ class RnnlmExampleCreator {
                       TableWriter<KaldiObjectHolder<RnnlmExample> > *writer):
       config_(config), minibatch_sampler_(NULL),
       sampling_sequencer_(TaskSequencerConfig()),
-      writer_(writer),
+      writer_(writer), num_sequences_processed_(0),
       num_chunks_processed_(0), num_words_processed_(0),
       num_minibatches_written_(0) { Check(); }
 

@@ -11,6 +11,8 @@ writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
 writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_split_file=data/download/data_splits/madcat.dev.raw.lineid
 data=data/local/dev
+subset=false
+augment=false
 echo "$0 $@"
 
 . ./cmd.sh
@@ -35,7 +37,7 @@ done
 $cmd JOB=1:$nj $log_dir/extract_lines.JOB.log \
   local/create_line_image_from_page_image.py $download_dir1 $download_dir2 $download_dir3 \
   $log_dir/lines.JOB.scp $data/JOB $writing_condition1 $writing_condition2 $writing_condition3 \
-  || exit 1;
+  --subset $subset --augment $augment || exit 1;
 
 ## concatenate the .scp files together.
 for n in $(seq $nj); do

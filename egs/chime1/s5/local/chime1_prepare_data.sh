@@ -53,7 +53,7 @@ for x in "devel" "test"; do
     for sid in `seq 34`; do
       sid2=`printf "s%02d" $sid`
       ls -1 $wav_dir/*/s${sid}_*.wav \
-        | perl -ape "s/(.*)\/(.*)\/s.*_(.*).wav/${sid2}_\3_\2$\t\1\/\2\/s${sid}_\3.wav/;" \
+        | perl -ape "s/(.*)\/(.*)\/s.*_(.*).wav/${sid2}_\3_\2\t\1\/\2\/s${sid}_\3.wav/;" \
         | sort >> $scp 
     done
   fi
@@ -68,7 +68,7 @@ for x in $set_list; do
 
     # Create utt2spk files 
     # No speaker ID
-    perl -ape "s/(.*)\t.*/\1$\t\1/;" < "$scp" > "$data/$x/utt2spk"
+    perl -ape "s/(.*)\t.*/\1\t\1/;" < "$scp" > "$data/$x/utt2spk"
     # Use speaker ID
     # perl -ape "s/(s..)(.*)\\t.*/\1\2\t\1/;" < "$scp" > "$data/$x/utt2spk"
 

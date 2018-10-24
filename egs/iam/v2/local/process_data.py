@@ -67,7 +67,6 @@ with open(dataset_path) as f:
     xml_path = os.path.join(args.database_path, 'xml', xml_file + '.xml')
     img_num = line[-3:]
     doc = minidom.parse(xml_path)
-
     form_elements = doc.getElementsByTagName('form')[0]
     writer_id = form_elements.getAttribute('writer-id')
     outerfolder = form_elements.getAttribute('id')[0:3]

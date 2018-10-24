@@ -261,9 +261,13 @@ class XconfigLinearComponent(XconfigLayerBase):
 class XconfigCombineFeatureMapsLayer(XconfigLayerBase):
     """This class is for parsing lines like
       'combine-feature-maps-layer name=combine_features1 height=40 num-filters1=1 num-filters2=4'
-      It produces a PermuteComponent.  It expects its input to be two things
+      or
+      'combine-feature-maps-layer name=combine_features1 height=40 num-filters1=1 num-filters2=4 num-filters3=2'
+
+      It produces a PermuteComponent.  It expects its input to be two or three things
       appended together, where the first is of dimension height * num-filters1 and
-      the second is of dimension height * num-filters2; it interpolates the filters
+      the second is of dimension height * num-filters2 (and the third, if present is
+      of dimension height * num-filters2; it interpolates the filters
       so the output can be interpreted as a single feature map with the same height
       as the input and the sum of the num-filters.
 
@@ -278,21 +282,24 @@ class XconfigCombineFeatureMapsLayer(XconfigLayerBase):
         self.config = { 'input': '[-1]',
                         'num-filters1': -1,
                         'num-filters2': -1,
+                        'num-filters3': 0,
                         'height': -1 }
 
     def check_configs(self):
         input_dim = self.descriptors['input']['dim']
         if (self.config['num-filters1'] <= 0 or
             self.config['num-filters2'] <= 0 or
+            self.config['num-filters3'] < 0 or
             self.config['height'] <= 0):
             raise RuntimeError("invalid values of num-filters1, num-filters2 and/or height")
         f1 = self.config['num-filters1']
         f2 = self.config['num-filters2']
+        f3 = self.config['num-filters3']
         h = self.config['height']
-        if input_dim != (f1 + f2) * h:
-            raise RuntimeError("Expected input-dim={0} based on num-filters1={1}, num-filters2={2} "
-                               "and height={3}, but got input-dim={4}".format(
-                                   (f1 + f2) * h, f1, f2, h, input_dim))
+        if input_dim != (f1 + f2 + f3) * h:
+            raise RuntimeError("Expected input-dim={0} based on num-filters1={1}, num-filters2={2}, "
+                               "num-filters3={3} and height={4}, but got input-dim={5}".format(
+                                   (f1 + f2 + f3) * h, f1, f2, f3, h, input_dim))
 
     def output_name(self, auxiliary_output=None):
         assert auxiliary_output is None
@@ -321,15 +328,18 @@ class XconfigCombineFeatureMapsLayer(XconfigLayerBase):
         dim = self.descriptors['input']['dim']
         num_filters1 = self.config['num-filters1']
         num_filters2 = self.config['num-filters2']
+        num_filters3 = self.config['num-filters3']  # normally 0.
         height = self.config['height']
-        assert dim == (num_filters1 + num_filters2) * height
+        assert dim == (num_filters1 + num_filters2 + num_filters3) * height
 
         column_map = []
         for h in range(height):
             for f in range(num_filters1):
                 column_map.append(h * num_filters1 + f)
             for f in range(num_filters2):
-                column_map.append((height * num_filters1) + h * num_filters2 + f)
+                column_map.append(height * num_filters1 + h * num_filters2 + f)
+            for f in range(num_filters3):
+                column_map.append(height * (num_filters1 + num_filters2) + h * num_filters3 + f)
 
         configs = []
         line = ('component name={0} type=PermuteComponent column-map={1} '.format(
@@ -490,6 +500,80 @@ class XconfigPerElementScaleComponent(XconfigLayerBase):
 
         configs = []
         line = ('component name={0} type=NaturalGradientPerElementScaleComponent dim={1} {2} '
+                ''.format(self.name, dim, opts))
+        configs.append(line)
+        line = ('component-node name={0} component={0} input={1}'.format(
+            self.name, input_desc))
+        configs.append(line)
+        return configs
+
+class XconfigPerElementOffsetComponent(XconfigLayerBase):
+    """This class is for parsing lines like
+     'offset-component name=offset1 input=Append(-3,0,3)'
+    which will produce just a single component, of type PerElementOffsetComponent, with
+    output-dim 1024 in this case, and input-dim determined by the dimension of the input .
+
+    Parameters of the class, and their defaults:
+      input='[-1]'             [Descriptor giving the input of the layer.]
+
+    The following (shown with their effective defaults) are just passed through
+    to the component's config line.  (These defaults are mostly set in the
+    code).
+
+      max-change=0.75
+      l2-regularize=0.0
+      param-mean=0.0   # affects initialization
+      param-stddev=0.0  # affects initialization
+      learning-rate-factor=1.0
+    """
+    def __init__(self, first_token, key_to_value, prev_names=None):
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input': '[-1]',
+                       'l2-regularize': '',
+                       'max-change': 0.75,
+                       'param-mean': '',
+                       'param-stddev': '',
+                       'learning-rate-factor': '' }
+
+    def check_configs(self):
+        pass
+
+    def output_name(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        return self.name
+
+    def output_dim(self, auxiliary_output=None):
+        assert auxiliary_output is None
+        return self.descriptors['input']['dim']
+
+    def get_full_config(self):
+        ans = []
+        config_lines = self._generate_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in this layer
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    def _generate_config(self):
+        # by 'descriptor_final_string' we mean a string that can appear in
+        # config-files, i.e. it contains the 'final' names of nodes.
+        input_desc = self.descriptors['input']['final-string']
+        dim = self.descriptors['input']['dim']
+
+        opts = ''
+        for opt_name in ['learning-rate-factor', 'max-change', 'l2-regularize', 'param-mean',
+                         'param-stddev' ]:
+            value = self.config[opt_name]
+            if value != '':
+                opts += ' {0}={1}'.format(opt_name, value)
+
+        configs = []
+        line = ('component name={0} type=PerElementOffsetComponent dim={1} {2} '
                 ''.format(self.name, dim, opts))
         configs.append(line)
         line = ('component-node name={0} component={0} input={1}'.format(

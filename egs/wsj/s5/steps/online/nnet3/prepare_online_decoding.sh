@@ -74,6 +74,11 @@ if [ ! -z "$iedir" ]; then
   for f in final.{mat,ie,dubm} splice_opts global_cmvn.stats online_cmvn.conf; do
     [ ! -f $iedir/$f ] && echo "$0: no such file $iedir/$f" && exit 1;
   done
+  if $add_pitch; then
+    iedim=`matrix-dim $iedir/final.mat | awk '{print $1}'`
+    amdim=`nnet3-am-info $srcdir/${iter}.mdl | grep "input-dim:" | awk '{print $2}'`
+    [ $(($amdim-$iedim)) -eq 0 ] && echo "$0: remove pitch from the input of ivector extractor" && exit 1;
+  fi
 fi
 
 
