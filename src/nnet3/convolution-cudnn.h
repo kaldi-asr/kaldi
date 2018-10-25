@@ -122,6 +122,8 @@ public:
   // This constructor may be used prior to calling Read().
   ConvolutionComputation();
 
+  const ConvolutionComputationConfig &Config() const { return config_; }
+
   ~ConvolutionComputation();
 
   /*
@@ -136,11 +138,7 @@ public:
          filter_width (for filter parameters).
     and the order of letters is from highest to lowest stride, e.g in
 
-    NWHC, N would have the highest stride, and C a stride of 1.
-
-
-    explanation for those variable names in the documentation for this
-    class above.  Variables that come first have the higher stride.
+    In NWHC, N would have the highest stride, and C a stride of 1.
 
     Caution: for convenience, given the way nnet3 works, we flip the notion of
     height and width that CUDNN uses, so our height is CUDNN's width, and vice
@@ -148,9 +146,9 @@ public:
     those familiar with CUDNN get surprised at the order
 
       @param [in] input NWHC fully-packed tensor, with NumRows() == N * W
-      @param [in] params KWHC fully-packed tensor, with NumRows() == K.
+      @param [in] params KCWH fully-packed tensor, with NumRows() == K.
       @param [in] bias vector of length K
-      @param [out] output Pre-allocated NWHK fully-packed tensor, with N == NumRows()
+      @param [out] output Pre-allocated NWHK fully-packed tensor, with NumRows() == N * W.
    */
   void ConvolveForward(const CuMatrixBase<BaseFloat> &input,
                        const CuMatrixBase<BaseFloat> &params,
@@ -158,7 +156,7 @@ public:
                        CuMatrixBase<BaseFloat> *output) const;
 
   /**
-   *  @param [in] params KWHC fully-packed tensor, with NumRows() == K
+   *  @param [in] params KCWH fully-packed tensor, with NumRows() == K
    *  @param [in] output_deriv NWHK fully-packed tensor, with NumRows() == N * W
    *  @param [out] input_deriv Pre-allocated NWHC fully-packed tensor, with
    *                           NumRows() == N * W
@@ -172,8 +170,8 @@ public:
    *  @param [in] input NWHC fully-packed tensor, with NumRows() == N * W.
    *  @param [in] alpha
    *              params_deriv := alpha * gradient_computed + params_deriv
-   *  @param [in] params KWHC fully-packed tensor, with NumRows() == K
-   *  @param [out] params_deriv Pre-allocated KWHC fully-packed tensor,
+   *  @param [in] params KCWH fully-packed tensor, with NumRows() == K
+   *  @param [out] params_deriv Pre-allocated KCWH fully-packed tensor,
    *                             with NumRows() == K.
    */
   void ConvolveBackwardParams(const CuMatrixBase<BaseFloat> &output_deriv,
@@ -236,7 +234,7 @@ private:
 
 
   // This function, called only if we are not using the GPU, converts
-  // the params from KWHC format to WHKC format (which is more convenient
+  // the params from KCWH format to WHKC format (which is more convenient
   // when using the CPU).  params and params_rearranged must both be
   // packed (Stride() == NumCols()), params must have num-rows equal to K
   // (num_channels_out_), and params_rearranged must have num-rows equal

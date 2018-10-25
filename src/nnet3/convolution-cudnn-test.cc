@@ -65,6 +65,101 @@ void TestConvolutionComputationConfig() {
   }
 }
 
+
+void ConvolveForwardWithGpu(
+    const ConvolutionComputation &computation,
+    const MatrixBase<BaseFloat> &input,
+    const MatrixBase<BaseFloat> &params,
+    const VectorBase<BaseFloat> &bias,
+    MatrixBase<BaseFloat> *output) {
+  CuMatrix<BaseFloat> input_gpu(input.NumRows(), input.NumCols(),
+                                kUndefined, kStrideEqualNumCols);
+  input_gpu.CopyFromMat(input);
+  CuMatrix<BaseFloat> params_gpu(params.NumRows(), params.NumCols(),
+                                kUndefined, kStrideEqualNumCols);
+  params_gpu.CopyFromMat(params);
+  CuVector<BaseFloat> bias_gpu(bias);
+  CuMatrix<BaseFloat> output_gpu(output->NumRows(), output->NumCols(),
+                                 kSetZero, kStrideEqualNumCols);
+  computation.ConvolveForward(input_gpu, params_gpu, bias_gpu, &output_gpu);
+  output->CopyFromMat(output_gpu);
+}
+
+
+
+// Tests that the CPU version gives the expected results.  The output
+// has to be inspected by a human.
+void TestConvolutionComputationForward(
+    const ConvolutionComputation &computation,
+    bool use_gpu) {
+  const ConvolutionComputationConfig &c = computation.Config();
+
+  Matrix<BaseFloat> input(c.num_images * c.input_image_width,
+                          c.input_image_height * c.num_channels_in,
+                          kSetZero, kStrideEqualNumCols),
+      output(c.num_images * c.output_image_width,
+             c.output_image_height * c.num_channels_out,
+             kSetZero, kStrideEqualNumCols),
+      params(c.num_channels_out,
+             c.num_channels_in * c.filter_width * c.filter_height,
+             kSetZero, kStrideEqualNumCols);
+
+  // One parameter and one channel of input pixel will be nonzero-- for testing purposes.
+
+  int32 n = RandInt(0, c.num_images - 1),
+      input_w = RandInt(0, c.input_image_width - 1),
+      input_h = RandInt(0, c.input_image_height - 1),
+      input_c = RandInt(0, c.num_channels_in - 1);
+  input(n * c.input_image_width + input_w,
+        input_h * c.num_channels_in + input_c) = 2.0;
+
+  int32 output_c = RandInt(0, c.num_channels_out - 1),
+      filter_w = RandInt(0, c.filter_width - 1),
+      filter_h = RandInt(0, c.filter_height - 1);
+
+  params(output_c,
+         input_c * c.filter_width * c.filter_height +
+         filter_w * c.filter_height +
+         filter_h) = 3.0;
+
+  Vector<BaseFloat> bias(c.num_channels_out);
+
+  if (use_gpu) {
+    ConvolveForwardWithGpu(computation, input, params, bias, &output);
+  } else {
+    computation.ConvolveForward(input, params, bias,
+                                &output);
+  }
+
+  KALDI_LOG << "Have nonzero input for n=" << n
+            << ", w=" << input_w << ", h=" << input_h
+            << ", input_channel=" << input_c;
+  KALDI_LOG << "Have nonzero filter for w="
+            << filter_w << ", h=" << filter_h
+            << ", output_channel=" << output_c;
+  bool found_nonzero = false;
+  for (int32 n = 0; n < c.num_images; n++) {
+    for (int32 w = 0; w < c.output_image_width; w++) {
+      for (int32 h = 0; h < c.output_image_height; h++) {
+        for (int32 ch = 0; ch < c.num_channels_out; ch++) {
+          BaseFloat val = output(n * c.output_image_width + w,
+                                 h * c.num_channels_out + ch);
+          if (val != 0.0) {
+            found_nonzero = true;
+            KALDI_LOG << "Found nonzero value " << val << " for image n="
+                      << n << ", w=" << w << ", h=" << h
+                      << ", output_channel=" << ch;
+          }
+        }
+      }
+    }
+  }
+  if (!found_nonzero)
+    KALDI_WARN << "Found no nonzero value, sum is " << output.Sum();
+
+
+}
+
 void TestConvolutionComputation() {
   for (int32 i = 0; i < 100; i++) {
     ConvolutionComputationConfig config;
@@ -88,6 +183,14 @@ void TestConvolutionComputation() {
     std::ostringstream os2;
     computation2.Write(os2, binary);
     KALDI_ASSERT(os.str() == os2.str());
+    KALDI_LOG << "About to test without GPU.";
+    TestConvolutionComputationForward(computation2, false);
+#if HAVE_CUDA == 1
+    if (CuDevice::Instantiate().Enabled()) {
+      KALDI_LOG << "About to test with GPU";
+      TestConvolutionComputationForward(computation2, true);
+    }
+#endif
   }
 }
 

@@ -33,11 +33,9 @@ const BaseFloat ZERO(0.0);
 
 template<typename CudnnAlgoPerfT>
 void CheckCorrectness(CudnnAlgoPerfT perf_results, const char* function) {
-  if (perf_results.status != CUDNN_STATUS_SUCCESS) {
-    KALDI_WARN << function << " had an error: " <<
-      cudnnGetErrorString(perf_results.status) << ". Continuing with algo" <<
-      perf_results.algo << " but results may not be ideal.";
-  }
+  if (perf_results.status != CUDNN_STATUS_SUCCESS)
+    KALDI_ERR << function << " had an error: " <<
+        cudnnGetErrorString(perf_results.status);
 }
 }
 
@@ -181,6 +179,7 @@ void ConvolutionComputation::InitCudnn() {
   // relative to what the CUDNN interface specifies; this is because Kaldi's
   // notion of what is height vs. width is opposite to CUDNN's.  (There
   // are good reasons for this).
+  // We use cudnnSetTensorNdDescriptor because of bugs in cudnnSetTensor4dDescriptor.
   int in_dims[4] = {c.num_images, c.num_channels_in, c.input_image_width,
 		    c.input_image_height};
   int in_stride[4] = {c.num_channels_in * c.input_image_width * c.input_image_height,
@@ -202,12 +201,13 @@ void ConvolutionComputation::InitCudnn() {
   // Set dimensions of the filters (linear parameters).
   // Again: width and height are swapped.  Per the CUDNN documentation at
   // https://docs.nvidia.com/deeplearning/sdk/pdf/cuDNN-Developer-Guide.pdf for
-  // cudnnSetFilter4dDescriptor, setting CUDNN_TENSOR_NHWC as the layout
-  // corresponds to KSRC, meaning: num-channels-out, height, width, num-channels-in,
+  // cudnnSetFilter4dDescriptor, setting CUDNN_TENSOR_NCHW as the layout
+  // corresponds to KCRS, meaning: num-channels-out, num-channels-in, height, width,
   // where 'height' and 'width' are the filter height and width respectively (e.g. 3
   // and 3 for a 3x3 patch); and these are swapped w.r.t. Kaldi's notion of height and
   // width, so as far as Kaldi is concerned, the strides are, from largest to
-  // smallest: num-channels-out, width, height, num-channels-in.
+  // smallest: num-channels-out, width, height, num-channels-in: so as far
+  // as Kaldi is concerned the layout is KCWH (== KCSR, in their notation).
   CUDNN_SAFE_CALL(
       cudnnSetFilter4dDescriptor(params_desc_, CUDNN_DATA_BASEFLOAT,
                                  CUDNN_TENSOR_NCHW, c.num_channels_out,
@@ -397,13 +397,14 @@ ConvolveForward(const CuMatrixBase<BaseFloat> &input,
       input.Stride() == input.NumCols() &&
       params.NumRows() == c.num_channels_out &&
       params.NumCols() == c.num_channels_in * c.filter_height * c.filter_width &&
-      params.Stride() == params.NumCols() &&
+      params.Stride() == params.NumCols());
+  KALDI_ASSERT(
       bias.Dim() == c.num_channels_out &&
-      output->NumRows() == c.num_images * c.input_image_height &&
-      output->NumCols() == c.input_image_width * c.num_channels_out &&
+      output->NumRows() == c.num_images * c.output_image_width &&
+      output->NumCols() == c.output_image_height * c.num_channels_out &&
       output->Stride() == output->NumCols());
 
-#ifdef HAVE_CUDNN
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuVector<BaseFloat> temp_space(temp_space_required_forward_ /
                                    sizeof(BaseFloat), kUndefined);
@@ -448,17 +449,18 @@ ConvolveForward(const MatrixBase<BaseFloat> &input,
       input.Stride() == input.NumCols() &&
       params.NumRows() == c.num_channels_out &&
       params.NumCols() == c.num_channels_in * c.filter_height * c.filter_width &&
-      params.Stride() == params.NumCols() &&
+      params.Stride() == params.NumCols());
+  KALDI_ASSERT(
       bias.Dim() == c.num_channels_out &&
-      output->NumRows() == c.num_images * c.input_image_height &&
-      output->NumCols() == c.input_image_width * c.num_channels_out &&
+      output->NumRows() == c.num_images * c.output_image_width &&
+      output->NumCols() == c.output_image_height * c.num_channels_out &&
       output->Stride() == output->NumCols());
 
 
   {  // Deal with the bias.
     SubMatrix<BaseFloat> output_rearranged(
         output->Data(),
-        c.num_images * c.input_image_width * c.input_image_height,
+        c.num_images * c.output_image_width * c.output_image_height,
         c.num_channels_out, c.num_channels_out);
     output_rearranged.CopyRowsFromVec(bias);
   }
@@ -468,19 +470,28 @@ ConvolveForward(const MatrixBase<BaseFloat> &input,
                                       kUndefined, kStrideEqualNumCols);
   ConvertParams(params, &params_rearranged);
 
+  // The strides in 'input' and 'output' respectively from a certain pixel of one
+  // image to the same pixel in another image.
+  int32 input_image_stride =
+      c.input_image_width * c.num_channels_in * c.input_image_height,
+      output_image_stride =
+      c.output_image_width * c.num_channels_out * c.output_image_height;
+
   // We're using variable names w (as in width) for horizontal positions and h
   // (as in height) for vertical positions.  This is perhaps not ideal.
   for (int32 output_w = 0; output_w < c.output_image_width; output_w++) {
     for (int32 output_h = 0; output_h < c.output_image_height; output_h++) {
       for (int32 filter_h = 0; filter_h < c.filter_height; filter_h++) {
-        int32 filter_h_flipped = c.filter_height - 1 - filter_h;
+        //int32 filter_h_flipped = c.filter_height - 1 - filter_h;
+        int32 filter_h_flipped = filter_h;  // we don't flip.
         int32 input_h = output_h * c.filter_stride_vertical
             - c.zero_padding_vertical
             + filter_h * c.filter_dilation_vertical;
         if (input_h < 0 || input_h >= c.input_image_height)
           continue;
         for (int32 filter_w = 0; filter_w < c.filter_width; filter_w++) {
-          int32 filter_w_flipped = c.filter_width - 1 - filter_w;
+          // int32 filter_w_flipped = c.filter_width - 1 - filter_w;
+          int32 filter_w_flipped = filter_w;  // we don't flip.
           int32 input_w = output_w * c.filter_stride_horizontal
               - c.zero_padding_horizontal
               + filter_w * c.filter_dilation_horizontal;
@@ -493,17 +504,20 @@ ConvolveForward(const MatrixBase<BaseFloat> &input,
           SubMatrix<BaseFloat> this_params(params_data,
                                            c.num_channels_out,
                                            c.num_channels_in, c.num_channels_in);
-          const BaseFloat *input_data = input.Data() +
-              input_w * c.input_image_height * c.num_channels_in +
-              input_h * c.num_channels_in;
+          const BaseFloat *input_data =
+              input.RowData(input_w) + input_h * c.num_channels_in;
           SubMatrix<BaseFloat> this_input_pixel(input_data,
                                                 c.num_images,
                                                 c.num_channels_in,
-                                                c.num_channels_in);
-          SubMatrix<BaseFloat> this_output_pixel(input_data,
+                                                input_image_stride);
+
+
+          const BaseFloat *output_data =
+              output->RowData(output_w) + output_h * c.num_channels_out;
+          SubMatrix<BaseFloat> this_output_pixel(output_data,
                                                  c.num_images,
-                                                 c.num_channels_in,
-                                                 c.num_channels_in);
+                                                 c.num_channels_out,
+                                                 output_image_stride);
           this_output_pixel.AddMatMat(1.0, this_input_pixel, kNoTrans,
                                       this_params, kTrans, 1.0);
         }
@@ -516,7 +530,7 @@ void ConvolutionComputation::
 ConvolveBackwardData(const CuMatrixBase<BaseFloat> &params,
                      const CuMatrixBase<BaseFloat> &output_deriv,
                      CuMatrixBase<BaseFloat> *input_deriv) const {
-#ifdef HAVE_CUDNN
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuVector<BaseFloat> temp_space(temp_space_required_backward_data_ /
                                    sizeof(BaseFloat), kUndefined);
@@ -555,9 +569,9 @@ ConvolveBackwardParams(const CuMatrixBase<BaseFloat> &output_deriv,
                        const CuMatrixBase<BaseFloat> &input,
                        BaseFloat alpha,
                        CuMatrixBase<BaseFloat> *params_deriv) const {
-#ifdef HAVE_CUDNN
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    CuVector<BaseFloat> temp_space(temp_space_required_backward_params_ /
+    CuVector<BaseFloat> temp_space(temp_space_required_backward_filter_ /
                                    sizeof(BaseFloat), kUndefined);
     CUDNN_SAFE_CALL(cudnnConvolutionBackwardFilter(
         CuDevice::Instantiate().GetCudnnHandle(),
@@ -595,7 +609,7 @@ void ConvolutionComputation::
 ConvolveBackwardBias(const CuMatrixBase<BaseFloat> &output_deriv,
                      BaseFloat alpha,
                      CuVectorBase<BaseFloat> *bias_deriv) const {
-#ifdef HAVE_CUDNN
+#if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CUDNN_SAFE_CALL(cudnnConvolutionBackwardBias(
         CuDevice::Instantiate().GetCudnnHandle(),
@@ -627,32 +641,12 @@ void ConvolutionComputation::ConvertParams(
     const MatrixBase<BaseFloat> &params,
     MatrixBase<BaseFloat> *params_rearranged) const {
   const ConvolutionComputationConfig &c = config_;
-  KALDI_ASSERT(params.NumRows() == c.num_channels_out &&
-               params.Stride() == params.NumCols() &&
-               params_rearranged->NumRows() == c.filter_width * c.filter_height &&
-               params_rearranged->Stride() == params_rearranged->NumCols());
-
-  int32 num_rows_reinterpret =
-      c.num_channels_out * c.filter_width * c.filter_height,
-      num_cols_reinterpret = c.num_channels_in,
-      area = c.filter_width * c.filter_height;
-
-  // Reinterpret params as params_reinterpret which is of dimension KWH * C
-  SubMatrix<BaseFloat> params_reinterpret(
-      params.Data(),
-      num_rows_reinterpret, num_cols_reinterpret, num_cols_reinterpret);
-  SubMatrix<BaseFloat> params_rearranged_reinterpret(
-      params_rearranged->Data(),
-      num_rows_reinterpret, num_cols_reinterpret, num_cols_reinterpret);
-  for (int32 k = 0; k < c.num_channels_out; k++) {
-    for (int32 wh = 0; wh < area; wh++) {
-      int32 params_row = k * area + wh,
-          params_rearranged_row = wh * c.num_channels_out + k;
-      SubVector<BaseFloat> src(params_reinterpret, params_row),
-          dest(*params_rearranged, params_rearranged_row);
-      dest.CopyFromVec(src);
-    }
-  }
+  // Reinterpret params as params_reinterpret which is of dimension KC * WH (instead of  K * CWH).
+  SubMatrix<BaseFloat> params_reinterpret(params.Data(),
+                                          c.num_channels_out * c.num_channels_in,
+                                          c.filter_width * c.filter_height,
+                                          c.filter_width * c.filter_height);
+  params_rearranged->CopyFromMat(params_reinterpret, kTrans);
 }
 
 
