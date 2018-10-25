@@ -335,6 +335,11 @@ class CuMemoryAllocator {
   // this is only locked by the '*Locking' versions of the functions (necessary only
   // in multi-threaded applications).
   std::mutex mutex_;
+
+  // Keep track of the memory usage from the cache to track the maximum memory used by
+  //   the application
+  int max_memory_;
+  int current_memory_;
 };
 
 

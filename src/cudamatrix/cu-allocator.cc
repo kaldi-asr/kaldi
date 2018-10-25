@@ -223,6 +223,8 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
   block->allocated = true;
   block->t = t_;
   allocated_block_map_[block->begin] = block;
+  current_memory_+=(block->end-block->begin);
+  if (current_memory_ > max_memory) max_memory_ = current_memory_;
   return block->begin;
 }
 
@@ -359,7 +361,9 @@ void CuMemoryAllocator::PrintMemoryUsage() const {
             << tot_time_taken_ << "/" << malloc_time_taken_
             << ", synchronized the GPU " << num_synchronizations_
             << " times out of " << (t_/2) << " frees; "
-            << "device memory info: " << GetFreeGpuMemory(NULL, NULL);
+            << "device memory info: " << GetFreeGpuMemory(NULL, NULL)
+            << "maximum requested: " << max_memory_  
+            << "current requested: " << current_memory; 
 }
 
 // Note: we just initialize with the default options, but we can change it later
@@ -370,7 +374,9 @@ CuMemoryAllocator::CuMemoryAllocator():
     synchronize_gpu_t_(0),
     num_synchronizations_(0),
     tot_time_taken_(0.0),
-    malloc_time_taken_(0.0) {
+    malloc_time_taken_(0.0),
+    max_memory_(0),
+    current_memory_(0) {
   // Note: we don't allocate any memory regions at the start; we wait for the user
   // to call Malloc() or MallocPitch(), and then allocate one when needed.
 }
@@ -413,6 +419,7 @@ void CuMemoryAllocator::Free(void *ptr) {
               << ptr;
   }
   MemoryBlock *block = iter->second;
+  current_memory_-=(block->end-block->begin);
   allocated_block_map_.erase(iter);
   block->t = t_;
   block->thread_id = std::this_thread::get_id();
