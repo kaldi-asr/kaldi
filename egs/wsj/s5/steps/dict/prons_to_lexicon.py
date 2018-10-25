@@ -30,7 +30,7 @@ def GetArgs():
                                      "--filter-lexicon=exp/tri3_lex_0.4_work/phone_decode/filter_lexicon.txt \\"
                                      "exp/tri3_lex_0.4_work/phone_decode/prons.txt \\"
                                      "exp/tri3_lex_0.4_work/lexicon_phone_decoding.txt"
-                                     "See steps/dict/learn_lexicon.sh for examples in detail.")
+                                     "See steps/dict/learn_lexicon_greedy.sh for examples in detail.")
 
     parser.add_argument("--set-sum-to-one", type = str, default = False,
                         action = StrToBoolAction, choices = ["true", "false"],

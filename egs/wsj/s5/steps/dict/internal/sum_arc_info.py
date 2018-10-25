@@ -24,7 +24,7 @@ def GetArgs():
     parser = argparse.ArgumentParser(
         description = "Accumulate statistics from per arc lattice statitics"
         "for lexicon learning",
-        epilog = "See steps/dict/learn_lexicon.sh for example")
+        epilog = "See steps/dict/learn_lexicon_greedy.sh for example")
 
     parser.add_argument("--set-sum-to-one", type = str, default = True,
                         action = StrToBoolAction, choices = ["true", "false"],

@@ -2,7 +2,7 @@
 #
 # This script demonstrates a lexicon learning recipe, which aims to imrove
 # the pronounciation of abbreviated words in the TED-LIUM lexicon. It assumes
-# the model exp/tri3 already exists. Please see steps/dict/learn_lexicon.sh
+# the model exp/tri3 already exists. Please see steps/dict/learn_lexicon_bayesian.sh
 # for explanation of the options. 
 #
 # Copyright 2016  Xiaohui Zhang
@@ -78,7 +78,7 @@ fi
 
 # Learn a lexicon based on the acoustic training data and the reference lexicon.
 if [ $stage -le 1 ]; then
-  steps/dict/learn_lexicon.sh --lexicon-g2p "$data/lexicon_oov_g2p.txt" \
+  steps/dict/learn_lexicon_bayesian.sh --lexicon-g2p "$data/lexicon_oov_g2p.txt" \
     --min-prob $min_prob --variants-prob-mass $variants_prob_mass \
     --variants-prob-mass-ref $variants_prob_mass_ref  \
     --prior-counts-tot $prior_counts_tot --prior-mean $prior_mean \
