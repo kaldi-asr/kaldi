@@ -258,7 +258,6 @@ private:
   cudnnFilterDescriptor_t params_desc_;
   cudnnTensorDescriptor_t bias_desc_;
   cudnnConvolutionDescriptor_t conv_desc_;
-  cudnnActivationDescriptor_t activation_desc_;
 
   cudnnConvolutionFwdAlgo_t fwd_algo_;
   cudnnConvolutionBwdFilterAlgo_t bwd_filter_algo_;

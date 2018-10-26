@@ -173,7 +173,6 @@ void ConvolutionComputation::InitCudnn() {
   CUDNN_SAFE_CALL(cudnnCreateFilterDescriptor(&params_desc_));
   CUDNN_SAFE_CALL(cudnnCreateTensorDescriptor(&bias_desc_));
   CUDNN_SAFE_CALL(cudnnCreateConvolutionDescriptor(&conv_desc_));
-  CUDNN_SAFE_CALL(cudnnCreateActivationDescriptor(&activation_desc_));
 
   // Caution: in the following call, the 'height' and 'width' are swapped
   // relative to what the CUDNN interface specifies; this is because Kaldi's
@@ -181,13 +180,13 @@ void ConvolutionComputation::InitCudnn() {
   // are good reasons for this).
   // We use cudnnSetTensorNdDescriptor because of bugs in cudnnSetTensor4dDescriptor.
   int in_dims[4] = {c.num_images, c.num_channels_in, c.input_image_width,
-		    c.input_image_height};
+                    c.input_image_height};
   int in_stride[4] = {c.num_channels_in * c.input_image_width * c.input_image_height,
-		      c.input_image_width * c.input_image_height,
-		      c.input_image_height, 1};
+                      c.input_image_width * c.input_image_height,
+                      c.input_image_height, 1};
   CUDNN_SAFE_CALL(
       cudnnSetTensorNdDescriptor(input_desc_, CUDNN_DATA_BASEFLOAT, 4, in_dims,
-				 in_stride));
+                                 in_stride));
   // Again: width and height are swapped.
   CUDNN_SAFE_CALL(
       cudnnSetConvolution2dDescriptor(
@@ -232,35 +231,30 @@ void ConvolutionComputation::InitCudnn() {
   // These two member functions depend only on input_desc_,
   // conv_desc_, and params_desc_, so they are safe to call now.
   int out_dims[4] = {c.num_images, c.num_channels_out, c.output_image_width,
-		     c.output_image_height};
+                     c.output_image_height};
   int out_stride[4] = {c.num_channels_out * c.output_image_width * c.output_image_height,
-		       c.output_image_width * c.output_image_height,
-		       c.output_image_height, 1};
+                       c.output_image_width * c.output_image_height,
+                       c.output_image_height, 1};
   CUDNN_SAFE_CALL(
     cudnnSetTensorNdDescriptor(output_desc_, CUDNN_DATA_BASEFLOAT, 4, out_dims,
-			       out_stride));
+                               out_stride));
 
   // We pad the bias with leading dims of 1, since CUDNN's tensors appear to
   // need a dimension of at least 3.
-  int bias_dims[3] = {1, 1, c.num_channels_out};
-  int bias_stride[3] = {c.num_channels_out, c.num_channels_out, 1};
+  int bias_dims[4] = {1, c.num_channels_out, 1, 1};
+  int bias_stride[4] = {c.num_channels_out, 1, 1, 1};
   CUDNN_SAFE_CALL(
-      cudnnSetTensorNdDescriptor(bias_desc_, CUDNN_DATA_BASEFLOAT, 3,
+      cudnnSetTensorNdDescriptor(bias_desc_, CUDNN_DATA_BASEFLOAT, 4,
                                  bias_dims, bias_stride));
-
-  const double DONT_CARE = 0;
-  CUDNN_SAFE_CALL(
-      cudnnSetActivationDescriptor(activation_desc_, CUDNN_ACTIVATION_IDENTITY,
-                                   CUDNN_PROPAGATE_NAN, DONT_CARE));
 
   int32 requested_algo_count, returned_algo_count;
   CUDNN_SAFE_CALL(cudnnGetConvolutionForwardAlgorithmMaxCount(
-      CuDevice::Instantiate().GetCudnnHandle(), &requested_algo_count));
+      GetCudnnHandle(), &requested_algo_count));
 
   cudnnConvolutionFwdAlgoPerf_t *forward_results =
       new cudnnConvolutionFwdAlgoPerf_t[requested_algo_count];
   CUDNN_SAFE_CALL(cudnnFindConvolutionForwardAlgorithm(
-      CuDevice::Instantiate().GetCudnnHandle(),
+      GetCudnnHandle(),
       input_desc_,
       params_desc_,
       conv_desc_,
@@ -277,11 +271,11 @@ void ConvolutionComputation::InitCudnn() {
   delete [] forward_results;
 
   CUDNN_SAFE_CALL(cudnnGetConvolutionBackwardFilterAlgorithmMaxCount(
-      CuDevice::Instantiate().GetCudnnHandle(), &requested_algo_count));
+      GetCudnnHandle(), &requested_algo_count));
   cudnnConvolutionBwdFilterAlgoPerf_t *backward_filter_results =
       new cudnnConvolutionBwdFilterAlgoPerf_t[requested_algo_count];
   CUDNN_SAFE_CALL(cudnnFindConvolutionBackwardFilterAlgorithm(
-      CuDevice::Instantiate().GetCudnnHandle(),
+      GetCudnnHandle(),
       input_desc_,
       output_desc_,
       conv_desc_,
@@ -294,16 +288,16 @@ void ConvolutionComputation::InitCudnn() {
   const cudnnConvolutionBwdFilterAlgoPerf_t& best_backward_filter =
       backward_filter_results[0];
   CheckCorrectness(best_backward_filter,
-		   "cudnnFindConvolutionBackwardFilterAlgorithm");
+                   "cudnnFindConvolutionBackwardFilterAlgorithm");
   bwd_filter_algo_ = best_backward_filter.algo;
   delete [] backward_filter_results;
 
   CUDNN_SAFE_CALL(cudnnGetConvolutionBackwardDataAlgorithmMaxCount(
-      CuDevice::Instantiate().GetCudnnHandle(), &requested_algo_count));
+      GetCudnnHandle(), &requested_algo_count));
   cudnnConvolutionBwdDataAlgoPerf_t *backward_data_results =
       new cudnnConvolutionBwdDataAlgoPerf_t[requested_algo_count];
   CUDNN_SAFE_CALL(cudnnFindConvolutionBackwardDataAlgorithm(
-      CuDevice::Instantiate().GetCudnnHandle(),
+      GetCudnnHandle(),
       params_desc_,
       output_desc_,
       conv_desc_,
@@ -316,7 +310,7 @@ void ConvolutionComputation::InitCudnn() {
   const cudnnConvolutionBwdDataAlgoPerf_t& best_backward_data =
       backward_data_results[0];
   CheckCorrectness(best_backward_data,
-		   "cudnnFindConvolutionBackwardDataAlgorithm");
+                   "cudnnFindConvolutionBackwardDataAlgorithm");
   bwd_data_algo_ = best_backward_data.algo;
   delete [] backward_data_results;
 
@@ -327,7 +321,7 @@ void ConvolutionComputation::InitCudnn() {
 #if HAVE_CUDA == 1
 void ConvolutionComputation::ComputeTempSpaceSizes() {
   CUDNN_SAFE_CALL(cudnnGetConvolutionForwardWorkspaceSize(
-      CuDevice::Instantiate().GetCudnnHandle(),
+      GetCudnnHandle(),
       input_desc_,
       params_desc_,
       conv_desc_,
@@ -336,7 +330,7 @@ void ConvolutionComputation::ComputeTempSpaceSizes() {
       &temp_space_required_forward_));
 
   CUDNN_SAFE_CALL(cudnnGetConvolutionBackwardDataWorkspaceSize(
-      CuDevice::Instantiate().GetCudnnHandle(),
+      GetCudnnHandle(),
       params_desc_,
       output_desc_,
       conv_desc_,
@@ -345,7 +339,7 @@ void ConvolutionComputation::ComputeTempSpaceSizes() {
       &temp_space_required_backward_data_));
 
   CUDNN_SAFE_CALL(cudnnGetConvolutionBackwardFilterWorkspaceSize(
-      CuDevice::Instantiate().GetCudnnHandle(),
+      GetCudnnHandle(),
       input_desc_,
       output_desc_,
       conv_desc_,
@@ -362,7 +356,6 @@ void ConvolutionComputation::DestroyCudnn() {
   CUDNN_SAFE_CALL(cudnnDestroyFilterDescriptor(params_desc_));
   CUDNN_SAFE_CALL(cudnnDestroyTensorDescriptor(bias_desc_));
   CUDNN_SAFE_CALL(cudnnDestroyConvolutionDescriptor(conv_desc_));
-  CUDNN_SAFE_CALL(cudnnDestroyActivationDescriptor(activation_desc_));
 }
 #endif
 
@@ -408,8 +401,9 @@ ConvolveForward(const CuMatrixBase<BaseFloat> &input,
   if (CuDevice::Instantiate().Enabled()) {
     CuVector<BaseFloat> temp_space(temp_space_required_forward_ /
                                    sizeof(BaseFloat), kUndefined);
-    CUDNN_SAFE_CALL(cudnnConvolutionBiasActivationForward(
-        CuDevice::Instantiate().GetCudnnHandle(),
+
+    CUDNN_SAFE_CALL(cudnnConvolutionForward(
+        GetCudnnHandle(),
         &ONE,
         input_desc_,
         input.Data(),
@@ -421,12 +415,10 @@ ConvolveForward(const CuMatrixBase<BaseFloat> &input,
         temp_space.Dim() * sizeof(BaseFloat),
         &ZERO,
         output_desc_,
-        output->Data(),
-        bias_desc_,
-        bias.Data(),
-        activation_desc_,
-        output_desc_,
         output->Data()));
+    CUDNN_SAFE_CALL(cudnnAddTensor(GetCudnnHandle(),
+				   &ONE, bias_desc_, bias.Data(), &ONE,
+				   output_desc_, output->Data()));
   } else
 #endif
   {
@@ -535,7 +527,7 @@ ConvolveBackwardData(const CuMatrixBase<BaseFloat> &params,
     CuVector<BaseFloat> temp_space(temp_space_required_backward_data_ /
                                    sizeof(BaseFloat), kUndefined);
     CUDNN_SAFE_CALL(cudnnConvolutionBackwardData(
-        CuDevice::Instantiate().GetCudnnHandle(),
+        GetCudnnHandle(),
         &ONE,
         params_desc_,
         params.Data(),
@@ -574,7 +566,7 @@ ConvolveBackwardParams(const CuMatrixBase<BaseFloat> &output_deriv,
     CuVector<BaseFloat> temp_space(temp_space_required_backward_filter_ /
                                    sizeof(BaseFloat), kUndefined);
     CUDNN_SAFE_CALL(cudnnConvolutionBackwardFilter(
-        CuDevice::Instantiate().GetCudnnHandle(),
+        GetCudnnHandle(),
         &alpha,
         input_desc_,
         input.Data(),
@@ -612,7 +604,7 @@ ConvolveBackwardBias(const CuMatrixBase<BaseFloat> &output_deriv,
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CUDNN_SAFE_CALL(cudnnConvolutionBackwardBias(
-        CuDevice::Instantiate().GetCudnnHandle(),
+        GetCudnnHandle(),
         &alpha,
         output_desc_,
         output_deriv.Data(),
