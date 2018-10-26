@@ -239,8 +239,10 @@ void ConvolutionComputation::InitCudnn() {
     cudnnSetTensorNdDescriptor(output_desc_, CUDNN_DATA_BASEFLOAT, 4, out_dims,
                                out_stride));
 
-  // We pad the bias with leading dims of 1, since CUDNN's tensors appear to
-  // need a dimension of at least 3.
+  // Since the output tensor shape is NKHW, we need the bias to be
+  // four-dimensional and the length of each dimension of the bias
+  // equal to either one or the output tensor's corresponding
+  // length. Singleton dimensions are broadcasted.
   int bias_dims[4] = {1, c.num_channels_out, 1, 1};
   int bias_stride[4] = {c.num_channels_out, 1, 1, 1};
   CUDNN_SAFE_CALL(
