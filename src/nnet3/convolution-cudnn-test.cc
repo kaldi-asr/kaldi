@@ -81,7 +81,7 @@ void ConvolveForwardWithGpu(
   CuVector<BaseFloat> bias_gpu(bias);
   CuMatrix<BaseFloat> output_gpu(output->NumRows(), output->NumCols(),
                                  kSetZero, kStrideEqualNumCols);
-  computation.ConvolveForward(input_gpu, params_gpu, bias_gpu, &output_gpu);
+  computation.ConvolveForward(input_gpu, params_gpu, &bias_gpu, &output_gpu);
   output->CopyFromMat(output_gpu);
 }
 
@@ -127,7 +127,7 @@ void TestConvolutionComputationForward(
   if (use_gpu) {
     ConvolveForwardWithGpu(computation, input, params, bias, &output);
   } else {
-    computation.ConvolveForward(input, params, bias,
+    computation.ConvolveForward(input, params, &bias,
                                 &output);
   }
 

@@ -152,7 +152,7 @@ public:
    */
   void ConvolveForward(const CuMatrixBase<BaseFloat> &input,
                        const CuMatrixBase<BaseFloat> &params,
-                       const CuVectorBase<BaseFloat> &bias,
+                       const CuVectorBase<BaseFloat> *bias,
                        CuMatrixBase<BaseFloat> *output) const;
 
   /**
@@ -195,7 +195,7 @@ public:
   // compile for CUDA or we did but we are not using a GPU.
   void ConvolveForward(const MatrixBase<BaseFloat> &input,
                        const MatrixBase<BaseFloat> &params,
-                       const VectorBase<BaseFloat> &bias,
+                       const VectorBase<BaseFloat> *bias,
                        MatrixBase<BaseFloat> *output) const;
   void ConvolveBackwardData(const MatrixBase<BaseFloat> &params,
                             const MatrixBase<BaseFloat> &output_deriv,
@@ -258,7 +258,6 @@ private:
   cudnnFilterDescriptor_t params_desc_;
   cudnnTensorDescriptor_t bias_desc_;
   cudnnConvolutionDescriptor_t conv_desc_;
-  cudnnActivationDescriptor_t activation_desc_;
 
   cudnnConvolutionFwdAlgo_t fwd_algo_;
   cudnnConvolutionBwdFilterAlgo_t bwd_filter_algo_;
