@@ -382,7 +382,7 @@ void ConvolutionComputation::Read(std::istream &is, bool binary) {
 void ConvolutionComputation::
 ConvolveForward(const CuMatrixBase<BaseFloat> &input,
                 const CuMatrixBase<BaseFloat> &params,
-                const CuVectorBase<BaseFloat> &bias,
+                const CuVectorBase<BaseFloat> *bias,
                 CuMatrixBase<BaseFloat> *output) const {
   const ConvolutionComputationConfig &c = config_;
   // Check some dimensions.
@@ -394,7 +394,7 @@ ConvolveForward(const CuMatrixBase<BaseFloat> &input,
       params.NumCols() == c.num_channels_in * c.filter_height * c.filter_width &&
       params.Stride() == params.NumCols());
   KALDI_ASSERT(
-      bias.Dim() == c.num_channels_out &&
+      (bias == nullptr || bias->Dim() == c.num_channels_out) &&
       output->NumRows() == c.num_images * c.output_image_width &&
       output->NumCols() == c.output_image_height * c.num_channels_out &&
       output->Stride() == output->NumCols());
@@ -418,13 +418,15 @@ ConvolveForward(const CuMatrixBase<BaseFloat> &input,
         &ZERO,
         output_desc_,
         output->Data()));
-    CUDNN_SAFE_CALL(cudnnAddTensor(GetCudnnHandle(),
-				   &ONE, bias_desc_, bias.Data(), &ONE,
-				   output_desc_, output->Data()));
+    if (bias != nullptr) {
+      CUDNN_SAFE_CALL(cudnnAddTensor(GetCudnnHandle(),
+                                     &ONE, bias_desc_, bias->Data(), &ONE,
+                                     output_desc_, output->Data()));
+    }
   } else
 #endif
   {
-    ConvolveForward(input.Mat(), params.Mat(), bias.Vec(),
+    ConvolveForward(input.Mat(), params.Mat(), &(bias->Vec()),
                     &(output->Mat()));
   }
 }
@@ -433,7 +435,7 @@ ConvolveForward(const CuMatrixBase<BaseFloat> &input,
 void ConvolutionComputation::
 ConvolveForward(const MatrixBase<BaseFloat> &input,
                 const MatrixBase<BaseFloat> &params,
-                const VectorBase<BaseFloat> &bias,
+                const VectorBase<BaseFloat> *bias,
                 MatrixBase<BaseFloat> *output) const {
   const ConvolutionComputationConfig &c = config_;
   // Check some dimensions.
@@ -445,18 +447,18 @@ ConvolveForward(const MatrixBase<BaseFloat> &input,
       params.NumCols() == c.num_channels_in * c.filter_height * c.filter_width &&
       params.Stride() == params.NumCols());
   KALDI_ASSERT(
-      bias.Dim() == c.num_channels_out &&
+      (bias != nullptr || bias->Dim() == c.num_channels_out) &&
       output->NumRows() == c.num_images * c.output_image_width &&
       output->NumCols() == c.output_image_height * c.num_channels_out &&
       output->Stride() == output->NumCols());
 
 
-  {  // Deal with the bias.
+  if (bias != nullptr) {  // Deal with the bias.
     SubMatrix<BaseFloat> output_rearranged(
         output->Data(),
         c.num_images * c.output_image_width * c.output_image_height,
         c.num_channels_out, c.num_channels_out);
-    output_rearranged.CopyRowsFromVec(bias);
+    output_rearranged.CopyRowsFromVec(*bias);
   }
 
   Matrix<BaseFloat> params_rearranged(c.filter_width * c.filter_height,
@@ -603,6 +605,9 @@ void ConvolutionComputation::
 ConvolveBackwardBias(const CuMatrixBase<BaseFloat> &output_deriv,
                      BaseFloat alpha,
                      CuVectorBase<BaseFloat> *bias_deriv) const {
+  if (bias_deriv == nullptr) {
+    return;
+  }
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CUDNN_SAFE_CALL(cudnnConvolutionBackwardBias(
@@ -624,6 +629,9 @@ void ConvolutionComputation::
 ConvolveBackwardBias(const MatrixBase<BaseFloat> &output_deriv,
                      BaseFloat alpha,
                      VectorBase<BaseFloat> *bias_deriv) const {
+  if (bias_deriv == nullptr) {
+    return;
+  }
   // TODO.
 }
 
