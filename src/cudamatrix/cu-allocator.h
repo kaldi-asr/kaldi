@@ -338,8 +338,8 @@ class CuMemoryAllocator {
 
   // Keep track of the memory usage from the cache to track the maximum memory used by
   //   the application
-  int max_memory_;
-  int current_memory_;
+  int max_allocated_memory_;
+  int allocated_memory_;
 };
 
 
