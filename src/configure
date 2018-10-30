@@ -1344,6 +1344,8 @@ elif [ "`uname`" == "Linux" ]; then
     echo >> kaldi.mk
     if [[ "$TARGET_ARCH" == arm* ]]; then
       cat makefiles/linux_openblas_arm.mk >> kaldi.mk
+    elif [[ "$TARGET_ARCH" == aarch64* ]]; then
+      cat makefiles/linux_openblas_aarch64.mk >> kaldi.mk
     elif [[ "$TARGET_ARCH" == ppc64le ]]; then
       cat makefiles/linux_openblas_ppc64le.mk >> kaldi.mk
     else
