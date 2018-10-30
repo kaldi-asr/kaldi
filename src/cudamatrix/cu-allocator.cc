@@ -398,7 +398,7 @@ void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
 }
 
 void CuMemoryAllocator::Free(void *ptr) {
-  CuTimer tim;
+  Timer tim;
   if (!opts_.cache_memory) {
     CU_SAFE_CALL(cudaFree(ptr));
     tot_time_taken_ += tim.Elapsed();
@@ -585,6 +585,23 @@ void CuMemoryAllocator::SortSubregions() {
       largest_free_block_[i] = subregions_[i]->free_blocks.begin()->first;
   }
 }
+
+CuMemoryAllocator::~CuMemoryAllocator() {
+  // We mainly free these blocks of memory so that cuda-memcheck doesn't report
+  // spurious errors.
+  for (size_t i = 0; i < memory_regions_.size(); i++) {
+    // No need to check the return status here-- the program is exiting anyway.
+    cudaFree(memory_regions_[i].begin);
+  }
+  for (size_t i = 0; i < subregions_.size(); i++) {
+    SubRegion *subregion = subregions_[i];
+    for (auto iter = subregion->free_blocks.begin();
+         iter != subregion->free_blocks.end(); ++iter)
+      delete iter->second;
+    delete subregion;
+  }
+}
+
 
 CuMemoryAllocator g_cuda_allocator;
 

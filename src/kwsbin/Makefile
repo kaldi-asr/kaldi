@@ -17,7 +17,6 @@ TESTFILES =
 
 ADDLIBS = ../kws/kaldi-kws.a ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a \
           ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a 
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

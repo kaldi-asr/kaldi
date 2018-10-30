@@ -29,7 +29,7 @@ if [ $# != 6 ]; then
    echo "This version applies an RNNLM and mixes it with the LM scores"
    echo "previously in the lattices., controlled by the first parameter (rnnlm-weight)"
    echo ""
-   echo "Usage: utils/rnnlmrescore.sh <rnn-weight> <old-lang-dir> <rnn-dir> <data-dir> <input-decode-dir> <output-decode-dir>"
+   echo "Usage: $0 [options] <rnn-weight> <old-lang-dir> <rnn-dir> <data-dir> <input-decode-dir> <output-decode-dir>"
    echo "Main options:"
    echo "  --inv-acwt <inv-acwt>          # default 12.  e.g. --inv-acwt 17.  Equivalent to LM scale to use."
    echo "                                 # for N-best list generation... note, we'll score at different acwt's"

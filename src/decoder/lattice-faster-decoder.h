@@ -83,6 +83,7 @@ struct LatticeFasterDecoderConfig {
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
+                 && min_active <= max_active
                  && prune_interval > 0 && beam_delta > 0.0 && hash_ratio >= 1.0
                  && prune_scale > 0.0 && prune_scale < 1.0);
   }

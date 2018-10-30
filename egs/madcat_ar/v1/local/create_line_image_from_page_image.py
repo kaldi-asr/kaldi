@@ -21,22 +21,10 @@ import xml.dom.minidom as minidom
 import numpy as np
 from math import atan2, cos, sin, pi, degrees, sqrt
 from collections import namedtuple
-
+import random
 from scipy.spatial import ConvexHull
 from PIL import Image
 from scipy.misc import toimage
-import logging
-
-sys.path.insert(0, 'steps')
-logger = logging.getLogger('libs')
-logger.setLevel(logging.INFO)
-handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(pathname)s:%(lineno)s - "
-                              "%(funcName)s - %(levelname)s ] %(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
 parser = argparse.ArgumentParser(description="Creates line images from page image",
                                  epilog="E.g.  " + sys.argv[0] + "  data/LDC2012T15"
                                              " data/LDC2013T09 data/LDC2013T15 data/madcat.train.raw.lineid "
@@ -60,8 +48,12 @@ parser.add_argument('writing_condition3', type=str,
                     help='Path to the downloaded (and extracted) writing conditions file 3')
 parser.add_argument('--padding', type=int, default=400,
                     help='padding across horizontal/verticle direction')
+parser.add_argument('--pixel-scaling', type=int, default=30,
+                    help='padding across horizontal/verticle direction')
 parser.add_argument("--subset", type=lambda x: (str(x).lower()=='true'), default=False,
                    help="only processes subset of data based on writing condition")
+parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="performs image augmentation")
 args = parser.parse_args()
 
 """
@@ -194,21 +186,6 @@ def rectangle_corners(rectangle):
                             rectangle['rectangle_center'][1] + i2 * rectangle['length_orthogonal']))
 
     return rotate_points(rectangle['rectangle_center'], rectangle['unit_vector_angle'], corner_points)
-
-
-def get_orientation(origin, p1, p2):
-    """
-    Given origin and two points, return the orientation of the Point p1 with
-    regards to Point p2 using origin.
-    Returns
-    -------
-    integer: Negative if p1 is clockwise of p2.
-    """
-    difference = (
-        ((p2[0] - origin[0]) * (p1[1] - origin[1]))
-        - ((p1[0] - origin[0]) * (p2[1] - origin[1]))
-    )
-    return difference
 
 
 def minimum_bounding_box(points):
@@ -357,6 +334,36 @@ def update_minimum_bounding_box_input(bounding_box_input):
     return updated_minimum_bounding_box_input
 
 
+def dilate_polygon(points, amount_increase):
+    """ Increases size of polygon given as a list of tuples.
+        Assumes points in polygon are given in CCW
+    """
+    expanded_points = []
+    for index, point in enumerate(points):
+        prev_point = points[(index - 1) % len(points)]
+        next_point = points[(index + 1) % len(points)]
+        prev_edge = np.subtract(point, prev_point)
+        next_edge = np.subtract(next_point, point)
+
+        prev_normal = ((1 * prev_edge[1]), (-1 * prev_edge[0]))
+        prev_normal = np.divide(prev_normal, np.linalg.norm(prev_normal))
+        next_normal = ((1 * next_edge[1]), (-1 * next_edge[0]))
+        next_normal = np.divide(next_normal, np.linalg.norm(next_normal))
+
+        bisect = np.add(prev_normal, next_normal)
+        bisect = np.divide(bisect, np.linalg.norm(bisect))
+
+        cos_theta = np.dot(next_normal, bisect)
+        hyp = amount_increase / cos_theta
+
+        new_point = np.around(point + hyp * bisect)
+        new_point = new_point.astype(int)
+        new_point = new_point.tolist()
+        new_point = tuple(new_point)
+        expanded_points.append(new_point)
+    return expanded_points
+
+
 def set_line_image_data(image, line_id, image_file_name, image_fh):
     """ Given an image, saves a flipped line image. Line image file name
         is formed by appending the line id at the end page image name.
@@ -395,50 +402,83 @@ def get_line_images_from_page_image(image_file_name, madcat_file_path, image_fh)
                 word_coordinate = (int(word_node.getAttribute('x')), int(word_node.getAttribute('y')))
                 minimum_bounding_box_input.append(word_coordinate)
         updated_mbb_input = update_minimum_bounding_box_input(minimum_bounding_box_input)
-        bounding_box = minimum_bounding_box(updated_mbb_input)
+        points_ordered = [updated_mbb_input[index] for index in ConvexHull(updated_mbb_input).vertices]
+        if args.augment:
+            for i in range(0, 3):
+                additional_pixel = random.randint(1, args.pixel_scaling)
+                mar = dilate_polygon(points_ordered, (i-1)*args.pixel_scaling + additional_pixel + 1)
+                bounding_box = minimum_bounding_box(mar)
+                (x1, y1), (x2, y2), (x3, y3), (x4, y4) = bounding_box.corner_points
+                min_x, min_y = int(min(x1, x2, x3, x4)), int(min(y1, y2, y3, y4))
+                max_x, max_y = int(max(x1, x2, x3, x4)), int(max(y1, y2, y3, y4))
+                box = (min_x, min_y, max_x, max_y)
+                region_initial = im.crop(box)
+                rot_points = []
+                p1, p2 = (x1 - min_x, y1 - min_y), (x2 - min_x, y2 - min_y)
+                p3, p4 = (x3 - min_x, y3 - min_y), (x4 - min_x, y4 - min_y)
+                rot_points.append(p1)
+                rot_points.append(p2)
+                rot_points.append(p3)
+                rot_points.append(p4)
 
-        p1, p2, p3, p4 = bounding_box.corner_points
-        x1, y1 = p1
-        x2, y2 = p2
-        x3, y3 = p3
-        x4, y4 = p4
-        min_x = int(min(x1, x2, x3, x4))
-        min_y = int(min(y1, y2, y3, y4))
-        max_x = int(max(x1, x2, x3, x4))
-        max_y = int(max(y1, y2, y3, y4))
-        box = (min_x, min_y, max_x, max_y)
-        region_initial = im.crop(box)
-        rot_points = []
-        p1_new = (x1 - min_x, y1 - min_y)
-        p2_new = (x2 - min_x, y2 - min_y)
-        p3_new = (x3 - min_x, y3 - min_y)
-        p4_new = (x4 - min_x, y4 - min_y)
-        rot_points.append(p1_new)
-        rot_points.append(p2_new)
-        rot_points.append(p3_new)
-        rot_points.append(p4_new)
+                cropped_bounding_box = bounding_box_tuple(bounding_box.area,
+                        bounding_box.length_parallel,
+                        bounding_box.length_orthogonal,
+                        bounding_box.length_orthogonal,
+                        bounding_box.unit_vector,
+                        bounding_box.unit_vector_angle,
+                        set(rot_points)
+                    )
 
-        cropped_bounding_box = bounding_box_tuple(bounding_box.area,
-                bounding_box.length_parallel,
-                bounding_box.length_orthogonal,
-                bounding_box.length_orthogonal,
-                bounding_box.unit_vector,
-                bounding_box.unit_vector_angle,
-                set(rot_points)
-            )
+                rotation_angle_in_rad = get_smaller_angle(cropped_bounding_box)
+                img2 = region_initial.rotate(degrees(rotation_angle_in_rad), resample = Image.BICUBIC)
+                x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4 = rotated_points(
+                    cropped_bounding_box, get_center(region_initial))
 
-        rotation_angle_in_rad = get_smaller_angle(cropped_bounding_box)
-        img2 = region_initial.rotate(degrees(rotation_angle_in_rad), resample = Image.BICUBIC)
-        x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4 = rotated_points(
+                min_x = int(min(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
+                min_y = int(min(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
+                max_x = int(max(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
+                max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
+                box = (min_x, min_y, max_x, max_y)
+                region_final = img2.crop(box)
+                line_id = id + '_scale' + str(i)
+                set_line_image_data(region_final, line_id, image_file_name, image_fh)
+        else:
+            bounding_box = minimum_bounding_box(points_ordered)
+            (x1, y1), (x2, y2), (x3, y3), (x4, y4) = bounding_box.corner_points
+            min_x, min_y = int(min(x1, x2, x3, x4)), int(min(y1, y2, y3, y4))
+            max_x, max_y = int(max(x1, x2, x3, x4)), int(max(y1, y2, y3, y4))
+            box = (min_x, min_y, max_x, max_y)
+            region_initial = im.crop(box)
+            rot_points = []
+            p1, p2 = (x1 - min_x, y1 - min_y), (x2 - min_x, y2 - min_y)
+            p3, p4 = (x3 - min_x, y3 - min_y), (x4 - min_x, y4 - min_y)
+            rot_points.append(p1)
+            rot_points.append(p2)
+            rot_points.append(p3)
+            rot_points.append(p4)
+
+            cropped_bounding_box = bounding_box_tuple(bounding_box.area,
+                    bounding_box.length_parallel,
+                    bounding_box.length_orthogonal,
+                    bounding_box.length_orthogonal,
+                    bounding_box.unit_vector,
+                    bounding_box.unit_vector_angle,
+                    set(rot_points)
+                )
+
+            rotation_angle_in_rad = get_smaller_angle(cropped_bounding_box)
+            img2 = region_initial.rotate(degrees(rotation_angle_in_rad), resample = Image.BICUBIC)
+            x_dash_1, y_dash_1, x_dash_2, y_dash_2, x_dash_3, y_dash_3, x_dash_4, y_dash_4 = rotated_points(
                 cropped_bounding_box, get_center(region_initial))
 
-        min_x = int(min(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
-        min_y = int(min(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
-        max_x = int(max(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
-        max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
-        box = (min_x, min_y, max_x, max_y)
-        region_final = img2.crop(box)
-        set_line_image_data(region_final, id, image_file_name, image_fh)
+            min_x = int(min(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
+            min_y = int(min(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
+            max_x = int(max(x_dash_1, x_dash_2, x_dash_3, x_dash_4))
+            max_y = int(max(y_dash_1, y_dash_2, y_dash_3, y_dash_4))
+            box = (min_x, min_y, max_x, max_y)
+            region_final = img2.crop(box)
+            set_line_image_data(region_final, id, image_file_name, image_fh)
 
 
 def check_file_location(base_name, wc_dict1, wc_dict2, wc_dict3):
@@ -496,6 +536,8 @@ def check_writing_condition(wc_dict, base_name):
         writing_condition = wc_dict[base_name].strip()
         if writing_condition != 'IUC':
             return False
+        else:
+            return True
     else:
         return True
 

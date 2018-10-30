@@ -238,17 +238,20 @@ int32 TypeThreeUsage(const ParseOptions &po,
               << "tables, the intermediate arguments must not be tables.";
   }
 
-  bool add = true;
-  Matrix<BaseFloat> mat;
+  Matrix<BaseFloat> sum;
   for (int32 i = 1; i < po.NumArgs(); i++) {
-    bool binary_in;
-    Input ki(po.GetArg(i), &binary_in);
-    // this Read function will throw if there is a size mismatch.
-    mat.Read(ki.Stream(), binary_in, add);
+    Matrix<BaseFloat> this_mat;
+    ReadKaldiObject(po.GetArg(i), &this_mat);
+    if (sum.NumRows() < this_mat.NumRows() ||
+        sum.NumCols() < this_mat.NumCols())
+      sum.Resize(std::max(sum.NumRows(), this_mat.NumRows()),
+                 std::max(sum.NumCols(), this_mat.NumCols()),
+                 kCopyData);
+    sum.AddMat(1.0, this_mat);
   }
   if (average)
-    mat.Scale(1.0 / (po.NumArgs() - 1));
-  WriteKaldiObject(mat, po.GetArg(po.NumArgs()), binary);
+    sum.Scale(1.0 / (po.NumArgs() - 1));
+  WriteKaldiObject(sum, po.GetArg(po.NumArgs()), binary);
   KALDI_LOG << "Summed " << (po.NumArgs() - 1) << " matrices; "
             << "wrote sum to " << PrintableWxfilename(po.GetArg(po.NumArgs()));
   return 0;
@@ -335,4 +338,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

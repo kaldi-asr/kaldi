@@ -96,6 +96,10 @@
 # local/chain/multi_condition/tuning/run_tdnn_lstm_1a.sh --mic sdm1 --use-ihm-ali true --train-set train_cleaned --gmm tri3_cleaned 
 # cleanup + chain TDNN+LSTM model, SDM original + IHM reverberated data, alignments from ihm data.
 # *** best system ***
+# Old results:
 %WER 34.0 | 14455 94497 | 69.8 17.7 12.5 3.8 34.0 63.9 | 0.675 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
 %WER 37.5 | 13261 89982 | 65.9 19.3 14.7 3.5 37.5 66.2 | 0.642 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1i_sp_rvb_bi_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
 
+# New results after simplifying scripts to remove combining short segments etc.:
+%WER 34.6 | 14604 94498 | 69.6 18.8 11.6 4.2 34.6 64.4 | 0.652 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1a_sp_rvb_bi_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 37.6 | 13606 89636 | 66.1 21.0 12.9 3.7 37.6 65.1 | 0.613 | exp/sdm1/chain_cleaned_rvb/tdnn_lstm1a_sp_rvb_bi_ihmali/decode_eval/ascore_11/eval_hires_o4.ctm.filt.sys
