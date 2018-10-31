@@ -23,7 +23,7 @@
 # ./configure --use-cuda=no   # disable CUDA detection (will build cpu-only
 #                             # version of kaldi even on CUDA-enabled machine
 # ./configure --use-cuda --cudatk-dir=/usr/local/cuda/ --cuda-arch=-arch=sm_70
-#        # Use cuda in /usr/local/cuda and set the arch to -sm_70
+#        # Use cuda in /usr/local/cuda and set the arch to sm_70
 # ./configure --static --fst-root=/opt/cross/armv8hf \
 # --atlas-root=/opt/cross/armv8hf --host=armv8-rpi3-linux-gnueabihf
 #        # Cross compile for armv8hf, this assumes that you have openfst built
@@ -117,16 +117,16 @@ function rel2abs {
   fi
 }
 
-function read_dirname {
-  local dir_name=`expr "X$1" : '[^=]*=\(.*\)'`;
-  local retval=`rel2abs $dir_name`
-  [ -z $retval ] && echo "Bad option '$1': no such directory" && exit 1;
-  echo $retval
-}
-
 function read_value {
   local val=`expr "X$1" : '[^=]*=\(.*\)'`;
   echo $val
+}
+
+function read_dirname {
+  local dir_name=`read_value $1`
+  local retval=`rel2abs $dir_name`
+  [ -z $retval ] && echo "Bad option '$1': no such directory" && exit 1;
+  echo $retval
 }
 
 function is_set {
@@ -949,7 +949,7 @@ do
     mkl_threading=sequential;
     shift ;;
   --mkl-threading=*)
-    mkl_threading=`expr "X$1" : '[^=]*=\(.*\)'`;
+    mkl_threading=`read_value $1`;
     threaded_atlas=true;
     shift ;;
   --fst-root=*)
@@ -980,7 +980,7 @@ do
     OMPLIBDIR=`read_dirname $1`;
     shift ;;
   --mathlib=*)
-    MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`;
+    MATHLIB=`read_value $1`;
     shift ;;
   --cudatk-dir=*)
     CUDATKDIR=`read_dirname $1`;
@@ -989,13 +989,13 @@ do
     CUDA_ARCH=`read_value $1`;
     shift;;
   --fst-version=*)
-    OPENFST_VER=`expr "X$1" : '[^=]*=\(.*\)'`;
+    OPENFST_VER=`read_value $1`;
     shift;;
   --host=*)
     # The type of system where built programs and libraries will run.
     # It should be in the format cpu-vendor-os. If specified, this script
     # will infer the target architecture from the specified host triple.
-    HOST=`expr "X$1" : '[^=]*=\(.*\)'`;
+    HOST=`read_value $1`;
     shift ;;
   --android-incdir=*)
     android=true;
