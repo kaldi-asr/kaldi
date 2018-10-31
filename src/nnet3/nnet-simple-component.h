@@ -1091,9 +1091,23 @@ private:
 };
 
 
-/// FixedScaleComponent applies a fixed per-element scale; it's similar
-/// to the Rescale component in the nnet1 setup (and only needed for nnet1
-/// model conversion).
+/**
+   FixedScaleComponent applies a fixed per-element scale; it's similar
+   to the Rescale component in the nnet1 setup (and only needed for nnet1
+   model conversion).
+
+  Configuration values accepted by this component:
+       scales             A filename, e.g. scales=foo/bar/scales.vec.  The file should
+                          contain something readable as a Vector; the text form is like:
+                          [ 0.5 0.5 0.2 ]
+       dim                Only accepted if 'scales' is not set, the dimension of the
+                          scale.  This is not very useful any more: scales that are the same
+                          for each dimension can now be captured in Descriptors, e.g.
+                          Scale(2.0, some_component_node).
+       scale              If 'dim' is set, the value to which the scale should be
+                          set (will be a constant).  Otherwise it will be random (which is
+                          useful only for testing purposes).
+*/
 class FixedScaleComponent: public Component {
  public:
   FixedScaleComponent() { }

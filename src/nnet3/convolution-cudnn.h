@@ -147,7 +147,7 @@ public:
 
       @param [in] input NWHC fully-packed tensor, with NumRows() == N * W
       @param [in] params KCWH fully-packed tensor, with NumRows() == K.
-      @param [in] bias vector of length K
+      @param [in] pointer bias vector of length K (or NULL if we're not using a bias).
       @param [out] output Pre-allocated NWHK fully-packed tensor, with NumRows() == N * W.
    */
   void ConvolveForward(const CuMatrixBase<BaseFloat> &input,
