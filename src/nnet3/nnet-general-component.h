@@ -679,6 +679,8 @@ class ConstantComponent: public UpdatableComponent {
   virtual int32 NumParameters() const;
   virtual void Vectorize(VectorBase<BaseFloat> *params) const;
   virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  virtual void ConsolidateMemory();
  private:
 
   // the output value-- a vector.

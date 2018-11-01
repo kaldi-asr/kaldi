@@ -68,7 +68,7 @@ class DemoApp(object):
           self.asr.set_property("acoustic-scale", 0.0769)
         else:
           print >> sys.stderr, "Couldn't create the onlinegmmfasterdecoder element. "
-          if os.environ.has_key("GST_PLUGIN_PATH"):
+          if "GST_PLUGIN_PATH" in os.environ:
             print >> sys.stderr, "Have you compiled the Kaldi GStreamer plugin?"
           else:
             print >> sys.stderr, "You probably need to set the GST_PLUGIN_PATH envoronment variable"

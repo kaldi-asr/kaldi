@@ -9,6 +9,9 @@ import sys
 import math
 from collections import defaultdict
 
+import re
+tab_or_space = re.compile('[ \t]+')
+
 parser = argparse.ArgumentParser(description="This script turns the words into the sparse feature representation, "
                                              "using features from rnnlm/choose_features.py.",
                                  epilog="E.g. " + sys.argv[0] + " --unigram-probs=exp/rnnlm/unigram_probs.txt "
@@ -38,9 +41,9 @@ args = parser.parse_args()
 # return the vocab, which is a dict mapping the word to a integer id.
 def read_vocab(vocab_file):
     vocab = {}
-    with open(vocab_file, 'r', encoding="utf-8") as f:
+    with open(vocab_file, 'r', encoding="latin-1") as f:
         for line in f:
-            fields = line.split()
+            fields = re.split(tab_or_space, line)
             assert len(fields) == 2
             if fields[0] in vocab:
                 sys.exit(sys.argv[0] + ": duplicated word({0}) in vocab: {1}"
@@ -59,9 +62,9 @@ def read_vocab(vocab_file):
 # return a list of unigram_probs, indexed by word id
 def read_unigram_probs(unigram_probs_file):
     unigram_probs = []
-    with open(unigram_probs_file, 'r', encoding="utf-8") as f:
+    with open(unigram_probs_file, 'r', encoding="latin-1") as f:
         for line in f:
-            fields = line.split()
+            fields = re.split(tab_or_space, line)
             assert len(fields) == 2
             idx = int(fields[0])
             if idx >= len(unigram_probs):
@@ -100,9 +103,9 @@ def read_features(features_file):
     feats['min_ngram_order'] = 10000
     feats['max_ngram_order'] = -1
 
-    with open(features_file, 'r', encoding="utf-8") as f:
+    with open(features_file, 'r', encoding="latin-1") as f:
         for line in f:
-            fields = line.split()
+            fields = re.split(tab_or_space, line)
             assert(len(fields) in [3, 4, 5])
 
             feat_id = int(fields[0])

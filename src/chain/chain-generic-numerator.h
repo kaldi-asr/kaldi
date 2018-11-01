@@ -170,7 +170,7 @@ class GenericNumeratorComputation {
   BaseFloat GetTotalProb(const Matrix<BaseFloat> &alpha);
 
   // some checking that we can do if debug mode is activated, or on frame zero.
-  // Sets ok_ to false if a bad problem is detected.
+  // Returns false if a bad problem is detected.
   bool CheckValues(int32 seq,
                    const Matrix<BaseFloat> &probs,
                    const Matrix<BaseFloat> &alpha,
@@ -196,8 +196,7 @@ class GenericNumeratorComputation {
   Matrix<BaseFloat> final_probs_;  // indexed by seq, state
 
   // an offset subtracted from the logprobs of transitions out of the first
-  // state of each graph to help reduce numerical problems. Note the
-  // generic forward-backward computations cannot be done in log-space.
+  // state of each graph to help reduce numerical problems.
   Vector<BaseFloat> offsets_;
 };
 

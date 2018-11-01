@@ -79,7 +79,11 @@ if [ $stage -le 1 ]; then
   for name in sre callhome1 callhome2; do
     local/nnet3/xvector/prepare_feats.sh --nj 40 --cmd "$train_cmd" \
       data/$name data/${name}_cmn exp/${name}_cmn
-      utils/fix_data_dir.sh data/${name}_cmn
+    cp data/$name/vad.scp data/${name}_cmn/
+    if [ -f data/$name/segments ]; then
+      cp data/$name/segments data/${name}_cmn/
+    fi
+    utils/fix_data_dir.sh data/${name}_cmn
   done
 
   echo "0.01" > data/sre_cmn/frame_shift

@@ -4,7 +4,7 @@
 # call multi-splice.
 
 # without cleanup:
-# local/nnet3/run_tdnn.sh  --train-set train960 --gmm tri6b --nnet3-affix "" & 
+# local/nnet3/run_tdnn.sh  --train-set train960 --gmm tri6b --nnet3-affix "" &
 
 
 # At this script level we don't support not running on GPU, as it would be painfully slow.
@@ -15,7 +15,6 @@
 # (some of which are also used in this script directly).
 stage=0
 decode_nj=30
-min_seg_len=1.55
 train_set=train_960_cleaned
 gmm=tri6b_cleaned  # this is the source gmm-dir for the data-type of interest; it
                    # should have alignments for the specified training data.
@@ -42,7 +41,6 @@ EOF
 fi
 
 local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
                                   --gmm $gmm \
                                   --nnet3-affix "$nnet3_affix" || exit 1;
@@ -50,10 +48,10 @@ local/nnet3/run_ivector_common.sh --stage $stage \
 
 gmm_dir=exp/${gmm}
 graph_dir=$gmm_dir/graph_tgsmall
-ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
+ali_dir=exp/${gmm}_ali_${train_set}_sp
 dir=exp/nnet3${nnet3_affix}/tdnn${affix:+_$affix}_sp
-train_data_dir=data/${train_set}_sp_hires_comb
-train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires_comb
+train_data_dir=data/${train_set}_sp_hires
+train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
 
 for f in $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
@@ -127,4 +125,3 @@ if [ $stage -le 13 ]; then
 fi
 
 exit 0;
-

@@ -40,7 +40,8 @@ struct MfccOptions {
   MelBanksOptions mel_opts;
   int32 num_ceps;  // e.g. 13: num cepstral coeffs, counting zero.
   bool use_energy;  // use energy; else C0
-  BaseFloat energy_floor;
+  BaseFloat energy_floor;  // 0 by default; set to a value like 1.0 or 0.1 if
+                           // you disable dithering.
   bool raw_energy;  // If true, compute energy before preemphasis and windowing
   BaseFloat cepstral_lifter;  // Scaling factor on cepstra for HTK compatibility.
                               // if 0.0, no liftering is done.
@@ -53,7 +54,7 @@ struct MfccOptions {
                   // but for 8khz-sampled data, 15 may be better.
                   num_ceps(13),
                   use_energy(true),
-                  energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
+                  energy_floor(0.0),
                   raw_energy(true),
                   cepstral_lifter(22.0),
                   htk_compat(false) {}
@@ -66,7 +67,9 @@ struct MfccOptions {
     opts->Register("use-energy", &use_energy,
                    "Use energy (not C0) in MFCC computation");
     opts->Register("energy-floor", &energy_floor,
-                   "Floor on energy (absolute, not relative) in MFCC computation");
+                   "Floor on energy (absolute, not relative) in MFCC computation. "
+                   "Only makes a difference if --use-energy=true; only necessary if "
+                   "--dither=0.0.  Suggested values: 0.1 or 1.0");
     opts->Register("raw-energy", &raw_energy,
                    "If true, compute energy before preemphasis and windowing");
     opts->Register("cepstral-lifter", &cepstral_lifter,

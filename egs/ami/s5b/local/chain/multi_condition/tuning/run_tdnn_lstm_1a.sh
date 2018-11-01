@@ -19,7 +19,6 @@ set -e -o pipefail
 stage=0
 mic=ihm
 nj=30
-min_seg_len=1.55
 use_ihm_ali=false
 train_set=train_cleaned
 gmm=tri3_cleaned  # the gmm for the target data
@@ -27,7 +26,7 @@ ihm_gmm=tri3_cleaned  # the gmm for the IHM system (if --use-ihm-ali true).
 num_threads_ubm=32
 num_data_reps=1
 
-chunk_width=150
+chunk_width=160,140,110,80
 chunk_left_context=40
 chunk_right_context=0
 label_delay=5
@@ -35,13 +34,13 @@ label_delay=5
 # are just hardcoded at this level, in the commands below.
 train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tlstm_affix=1i  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
+tlstm_affix=1a  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
 
 
 # decode options
 extra_left_context=50
-frames_per_chunk=
+frames_per_chunk=160
 
 
 # End configuration section.
@@ -75,21 +74,19 @@ rvb_affix=_rvb
 
 if $use_ihm_ali; then
   gmm_dir=exp/ihm/${ihm_gmm}
-  ali_dir=exp/${mic}/${ihm_gmm}_ali_${train_set}_sp_comb_ihmdata
-  lores_train_data_dir=data/$mic/${train_set}_ihmdata_sp_comb
+  lores_train_data_dir=data/$mic/${train_set}_ihmdata_sp
   tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}_ihmdata
-  original_lat_dir=exp/$mic/chain${nnet3_affix}/${ihm_gmm}_${train_set}_sp_comb_lats_ihmdata
-  lat_dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/${ihm_gmm}_${train_set}_sp${rvb_affix}_comb_lats_ihmdata
+  original_lat_dir=exp/$mic/chain${nnet3_affix}/${ihm_gmm}_${train_set}_sp_lats_ihmdata
+  lat_dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/${ihm_gmm}_${train_set}_sp${rvb_affix}_lats_ihmdata
   dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/tdnn_lstm${tlstm_affix}_sp${rvb_affix}_bi_ihmali
   # note: the distinction between when we use the 'ihmdata' suffix versus
   # 'ihmali' is pretty arbitrary.
 else
   gmm_dir=exp/${mic}/$gmm
-  ali_dir=exp/${mic}/${gmm}_ali_${train_set}_sp_comb
-  lores_train_data_dir=data/$mic/${train_set}_sp_comb
+  lores_train_data_dir=data/$mic/${train_set}_sp
   tree_dir=exp/$mic/chain${nnet3_affix}/tree_bi${tree_affix}
-  original_lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
-  lat_dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/${gmm}_${train_set}_sp${rvb_affix}_comb_lats
+  original_lat_dir=exp/$mic/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
+  lat_dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/${gmm}_${train_set}_sp${rvb_affix}_lats
   dir=exp/$mic/chain${nnet3_affix}${rvb_affix}/tdnn_lstm${tlstm_affix}_sp${rvb_affix}_bi
 fi
 
@@ -97,9 +94,7 @@ fi
 local/nnet3/multi_condition/run_ivector_common.sh --stage $stage \
                                   --mic $mic \
                                   --nj $nj \
-                                  --min-seg-len $min_seg_len \
                                   --train-set $train_set \
-                                  --gmm $gmm \
                                   --num-threads-ubm $num_threads_ubm \
                                   --num-data-reps $num_data_reps \
                                   --nnet3-affix "$nnet3_affix"
@@ -109,13 +104,13 @@ local/nnet3/multi_condition/run_ivector_common.sh --stage $stage \
 local/nnet3/prepare_lores_feats.sh --stage $stage \
                                    --mic $mic \
                                    --nj $nj \
-                                   --min-seg-len $min_seg_len \
+                                   --min-seg-len "" \
                                    --use-ihm-ali $use_ihm_ali \
                                    --train-set $train_set
 
 
-train_data_dir=data/$mic/${train_set}_sp${rvb_affix}_hires_comb
-train_ivector_dir=exp/$mic/nnet3${nnet3_affix}${rvb_affix}/ivectors_${train_set}_sp${rvb_affix}_hires_comb
+train_data_dir=data/$mic/${train_set}_sp${rvb_affix}_hires
+train_ivector_dir=exp/$mic/nnet3${nnet3_affix}${rvb_affix}/ivectors_${train_set}_sp${rvb_affix}_hires
 final_lm=`cat data/local/lm/final_lm`
 LM=$final_lm.pr1-7
 
@@ -125,19 +120,6 @@ for f in $gmm_dir/final.mdl $lores_train_data_dir/feats.scp \
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-
-if [ $stage -le 11 ]; then
-  if [ -f $ali_dir/ali.1.gz ]; then
-    echo "$0: alignments in $ali_dir appear to already exist.  Please either remove them "
-    echo " ... or use a later --stage option."
-    exit 1
-  fi
-  echo "$0: aligning perturbed, short-segment-combined ${maybe_ihm}data"
-  steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \
-     ${lores_train_data_dir} data/lang $gmm_dir $ali_dir
-fi
-
-[ ! -f $ali_dir/ali.1.gz ] && echo  "$0: expected $ali_dir/ali.1.gz to exist" && exit 1
 
 if [ $stage -le 12 ]; then
   echo "$0: creating lang directory with one state per phone."
@@ -165,28 +147,42 @@ fi
 if [ $stage -le 13 ]; then
   # Get the alignments as lattices (gives the chain training more freedom).
   # use the same num-jobs as the alignments
-  steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" ${lores_train_data_dir} \
+  steps/align_fmllr_lats.sh --nj 100 --cmd "$train_cmd" \
+    --generate-ali-from-lats true ${lores_train_data_dir} \
     data/lang $gmm_dir $original_lat_dir
   rm $original_lat_dir/fsts.*.gz # save space
 
-  lat_dir_ihmdata=exp/ihm/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
+  lat_dir_ihmdata=exp/ihm/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
 
-  mkdir -p $lat_dir/temp/
-  mkdir -p $lat_dir/temp2/
-  lattice-copy "ark:gunzip -c $original_lat_dir/lat.*.gz |" ark,scp:$lat_dir/temp/lats.ark,$lat_dir/temp/lats.scp
-  lattice-copy "ark:gunzip -c $lat_dir_ihmdata/lat.*.gz |" ark,scp:$lat_dir/temp2/lats.ark,$lat_dir/temp2/lats.scp
+  original_lat_nj=$(cat $original_lat_dir/num_jobs)
+  ihm_lat_nj=$(cat $lat_dir_ihmdata/num_jobs)
 
-  # copy the lattices for the reverberated data
-  rm -f $lat_dir/temp/combined_lats.scp
-  touch $lat_dir/temp/combined_lats.scp
-  cat $lat_dir/temp/lats.scp >> $lat_dir/temp/combined_lats.scp
+  $train_cmd --max-jobs-run 10 JOB=1:$original_lat_nj $lat_dir/temp/log/copy_original_lats.JOB.log \
+    lattice-copy "ark:gunzip -c $original_lat_dir/lat.JOB.gz |" ark,scp:$lat_dir/temp/lats.JOB.ark,$lat_dir/temp/lats.JOB.scp
+
+  $train_cmd --max-jobs-run 10 JOB=1:$ihm_lat_nj $lat_dir/temp2/log/copy_ihm_lats.JOB.log \
+    lattice-copy "ark:gunzip -c $lat_dir_ihmdata/lat.JOB.gz |" ark,scp:$lat_dir/temp2/lats.JOB.ark,$lat_dir/temp2/lats.JOB.scp
+
+  for n in $(seq $original_lat_nj); do
+    cat $lat_dir/temp/lats.$n.scp
+  done > $lat_dir/temp/combined_lats.scp
+
   for i in `seq 1 $num_data_reps`; do
-    cat $lat_dir/temp2/lats.scp | sed -e "s/^/rev${i}_/" >> $lat_dir/temp/combined_lats.scp
-  done
+    for n in $(seq $ihm_lat_nj); do
+      cat $lat_dir/temp2/lats.$n.scp
+    done | sed -e "s/^/rev${i}_/"
+  done >> $lat_dir/temp/combined_lats.scp
+
   sort -u $lat_dir/temp/combined_lats.scp > $lat_dir/temp/combined_lats_sorted.scp
 
-  lattice-copy scp:$lat_dir/temp/combined_lats_sorted.scp "ark:|gzip -c >$lat_dir/lat.1.gz" || exit 1;
-  echo "1" > $lat_dir/num_jobs
+  utils/split_data.sh $train_data_dir $nj
+
+  $train_cmd --max-jobs-run 10 JOB=1:$nj $lat_dir/copy_combined_lats.JOB.log \
+    lattice-copy --include=$train_data_dir/split$nj/JOB/utt2spk \
+    scp:$lat_dir/temp/combined_lats_sorted.scp \
+    "ark:|gzip -c >$lat_dir/lat.JOB.gz" || exit 1;
+
+  echo $nj > $lat_dir/num_jobs
 
   # copy other files from original lattice dir
   for f in cmvn_opts final.mdl splice_opts tree; do
@@ -206,7 +202,7 @@ if [ $stage -le 14 ]; then
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
       --context-opts "--context-width=2 --central-position=1" \
       --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 4200 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
+      --cmd "$train_cmd" 4200 ${lores_train_data_dir} data/lang_chain $original_lat_dir $tree_dir
 fi
 
 xent_regularize=0.1
@@ -312,7 +308,6 @@ if [ $stage -le 18 ]; then
   rm $dir/.error 2>/dev/null || true
 
   [ -z $extra_left_context ] && extra_left_context=$chunk_left_context;
-  [ -z $frames_per_chunk ] && frames_per_chunk=$chunk_width;
 
   for decode_set in dev eval; do
       (

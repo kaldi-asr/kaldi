@@ -7,7 +7,7 @@
     <MKLDIR>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries\windows\mkl\</MKLDIR>
     <OPENBLASDIR>C:\Users\Yenda\Downloads\kaldi-svn\tools\OpenBLAS-v0.2.14-Win64-int32</OPENBLASDIR>
     <OPENFST>C:\Users\jtrmal\Documents\openfst\</OPENFST>
-    <OPENFSTLIB>C:\Users\jtrmal\Documents\openfst\build64\lib</OPENFSTLIB>
+    <OPENFSTLIB>C:\Users\jtrmal\Documents\openfst\build64</OPENFSTLIB>
     <!-- Do not modify anything after this line -->
   </PropertyGroup>
   <PropertyGroup />

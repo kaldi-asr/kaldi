@@ -88,80 +88,11 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   } else { // conventional training
     TrainInternal(chain_eg, *computation);
   }
-
-  num_minibatches_processed_++;
-}
-
-// This object exists to help avoid memory fragmentation: it allocates,
-// but does not use, the exact sizes of memory that are going to be needed
-// in ComputeChainObjfAndDeriv().
-class ChainTrainerMemoryHolder {
- public:
-  ChainTrainerMemoryHolder(const Nnet &nnet,
-                           int32 num_den_graph_states,
-                           const NnetChainExample &eg);
- private:
-  CuMatrix<BaseFloat> nnet_output_deriv_;
-  CuMatrix<BaseFloat> xent_output_deriv_;
-  CuMatrix<BaseFloat> beta_;
-  CuMatrix<BaseFloat> alpha_;
-
-};
-
-ChainTrainerMemoryHolder::ChainTrainerMemoryHolder(const Nnet &nnet,
-                                                   int32 den_graph_states,
-                                                   const NnetChainExample &eg) {
-
-  std::vector<NnetChainSupervision>::const_iterator iter = eg.outputs.begin(),
-      end = eg.outputs.end();
-
-  int32 max_rows = 0,
-      max_cols = 0;
-
-  size_t max_frames_per_sequence = 0,
-         max_sequence_size = 0,
-         max_alpha_matrix_size = 0;
-
-  for (; iter != end; ++iter) {
-    // there will normally be just one of these things; we'll normally loop once.
-    const NnetChainSupervision &sup = *iter;
-
-    int32 output_rows = sup.supervision.num_sequences * sup.supervision.frames_per_sequence;
-    int32 output_cols = nnet.OutputDim("output");
-
-    size_t curr_frames_per_sequence = output_rows / sup.supervision.num_sequences + 1;
-    size_t den_graph_size = den_graph_states + 1;
-    size_t curr_sequence_size = den_graph_size * sup.supervision.num_sequences;
-    size_t curr_alpha_matrix_size = curr_frames_per_sequence * curr_sequence_size;
-
-    if (curr_alpha_matrix_size > max_alpha_matrix_size) {
-      max_alpha_matrix_size = curr_alpha_matrix_size;
-      max_frames_per_sequence = curr_frames_per_sequence;
-      max_sequence_size = curr_sequence_size;
-    }
-
-    size_t matrix_size = output_rows * output_cols;
-    if (matrix_size > (max_rows * max_cols)) {
-      max_rows = output_rows;
-      max_cols = output_cols;
-    }
+  if (num_minibatches_processed_ == 0) {
+    ConsolidateMemory(nnet_);
+    ConsolidateMemory(delta_nnet_);
   }
-
-  // the sequence of resizes is in a specific order (bigger to smaller)
-  // so that the cudaMalloc won't trash the memory it has already
-  // alloc'd in the previous iterations
-  alpha_.Resize(max_frames_per_sequence,
-                max_sequence_size,
-                kUndefined);
-
-
-  nnet_output_deriv_.Resize(max_rows, max_cols, kUndefined);
-  // note: the same block of memory can be used for xent_output_deriv_ as is
-  // used for exp_nnet_output_transposed_ in chain-training.cc.
-  xent_output_deriv_.Resize(max_rows, max_cols,
-                            kUndefined, kStrideEqualNumCols);
-
-  beta_.Resize(2, max_sequence_size, kUndefined);
+  num_minibatches_processed_++;
 }
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
@@ -173,20 +104,10 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   NnetComputer computer(nnet_config.compute_config, computation,
                         nnet_, delta_nnet_);
 
-  // reserve the memory needed in ProcessOutputs (before memory gets fragmented
-  // by the call to computer.Run().
-  ChainTrainerMemoryHolder *memory_holder =
-      new ChainTrainerMemoryHolder(*nnet_, den_graph_.NumStates(), eg);
-
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.inputs);
   computer.Run();
 
-  // 'this->ProcessOutputs()' is going to need the same sizes as are stored in
-  // 'memory_holder'.
-  delete memory_holder;
-
-  // Probably could be merged in a single call PreallocateChainTrainerMemory(*nnet_, eg) ?
   this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 

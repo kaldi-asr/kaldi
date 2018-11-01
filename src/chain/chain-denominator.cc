@@ -47,6 +47,11 @@ DenominatorComputation::DenominatorComputation(
     tot_log_prob_(num_sequences_, kUndefined),
     log_correction_term_(num_sequences_, kUndefined),
     ok_(true) {
+  // We don't let leaky_hmm_coefficient be exactly zero (although that would
+  // make sense mathematically, corresponding to "turning off" the leaky HMM),
+  // because that would lead to underflow and eventually NaN's or inf's
+  // appearing in the computation, since we do this computation not in
+  // log-space.
   KALDI_ASSERT(opts_.leaky_hmm_coefficient > 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
   // make sure the alpha sums and beta sums are zeroed.
@@ -56,10 +61,11 @@ DenominatorComputation::DenominatorComputation(
                  num_sequences_).SetZero();
 
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
-  // the kStrideEqualNumCols argument means we'll allocate a contiguous block of
-  // memory for this; it is added to ensure that the same block of memory
-  // (cached in the allocator) can be used for xent_output_deriv when allocated
-  // from chain-training.cc.
+  // the kStrideEqualNumCols argument is so that we can share the same
+  // memory block with xent_output_deriv (see chain-training.cc, search for
+  // kStrideEqualNumCols).  This depends on how the allocator works, and
+  // actually might not happen, but anyway, the impact on speed would
+  // likely be un-measurably small.
   exp_nnet_output_transposed_.Resize(nnet_output.NumCols(),
                                      nnet_output.NumRows(),
                                      kUndefined, kStrideEqualNumCols);

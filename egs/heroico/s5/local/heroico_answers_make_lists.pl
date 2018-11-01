@@ -30,7 +30,7 @@ my $u = "$tmpdir/answers/utt2spk";
 my $t = "$tmpdir/answers/text";
 
 # initialize hash for prompts
-my %p = ();
+my %prompts = ();
 
 # store prompts in hash
 LINEA: while ( my $line = <> ) {
@@ -40,9 +40,27 @@ LINEA: while ( my $line = <> ) {
   my @dirs = split /\//, $directories;
   # get the speaker number
   my $s = $dirs[-1];
+  # pad the speaker number with zeroes
+  my $spk = "";
+  if ( $s < 10 ) {
+      $spk = '000' . $s;
+  } elsif ( $s < 100 ) {
+      $spk = '00' . $s;
+  } elsif ( $s < 1000 ) {
+      $spk = '0' . $s;
+  }
+  # pad the filename with zeroes
+  my $fn = "";
+  if ( $file < 10 ) {
+      $fn = '000' . $file;
+  } elsif ( $file < 100 ) {
+      $fn = '00' . $file;
+  } elsif ( $file < 1000 ) {
+      $fn = '0' . $file;
+  }
   # the utterance name
-  my $i = $s . '_' . 'a' . '_' . $file;
-  $p{$i} = $sent;
+  my $utt = $spk . '_' . $fn;
+  $prompts{$utt} = $sent;
 }
 
 open my $W, '<', $w or croak "problem with $w $!";
@@ -58,18 +76,36 @@ LINE: while ( my $line = <$W> ) {
   my @dirs = split /\//, $directories;
   my $r = basename $line, ".wav";
   my $s = $dirs[-1];
-  my $rid = $s . '_' . 'a' . '_' . $r;
-  if ( exists $p{$rid} ) {
-    print $T "$rid $p{$rid}\n";
-  } elsif ( defined $rid ) {
-    warn  "problem\t$rid";
+  my $spk = "";
+  # pad with zeroes
+  if ( $s < 10 ) {
+      $spk = '000' . $s;
+  } elsif ( $s < 100 ) {
+      $spk = '00' . $s;
+  } elsif ( $s < 1000 ) {
+      $spk = '0' . $s;
+  }
+  # pad the file name with zeroes
+  my $rec = "";
+  if ( $r < 10 ) {
+      $rec = '000' . $r;
+  } elsif ( $r < 100 ) {
+      $rec = '00' . $r;
+  } elsif ( $r < 1000 ) {
+      $rec = '0' . $r;
+  }
+  my $rec_id = $spk . '_' . $rec;
+  if ( exists $prompts{$rec_id} ) {
+    print $T "$rec_id $prompts{$rec_id}\n";
+  } elsif ( defined $rec_id ) {
+    warn  "warning: problem\t$rec_id";
     next LINE;
   } else {
     croak "$line";
   }
 
-  print $O "$rid sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
-  print $U "$rid ${s}_a\n";
+  print $O "$rec_id sox -r 22050 -e signed -b 16 $line -r 16000 -t wav - |\n";
+  print $U "$rec_id $spk\n";
 }
 close $T;
 close $O;

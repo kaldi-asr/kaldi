@@ -37,25 +37,36 @@ void ModifyNnetIvectorPeriod(int32 ivector_period,
     bool b = config_line.ParseLine(config_lines[i]);
     KALDI_ASSERT(b && "Could not parse config line.");
     if (config_line.FirstToken() == "component-node") {
+      // What we're trying to do here is: find a line like:
+      //  component-node name=foo component=foo input=Append(bar, ReplaceIndex(ivector, t, 0))
+      // we want to replace it with something like:
+      // component-node name=foo component=foo input=Append(bar, ReplaceIndex(ivector, t, 0))
+      // .. and we want this to also work if instead of 'ivector' it has something like
+      // Scale(0.5, ivector).  We assume that ReplaceIndex() expressions only occur in this
+      // type of context.
       std::string whole_line = config_lines[i];
       std::string to_search_for = "ReplaceIndex(";
       std::string::size_type to_search_for_size = to_search_for.size();
       std::string::size_type pos = whole_line.find(to_search_for);
       if (pos != std::string::npos) {
-        std::string::size_type comma_pos = whole_line.find(',', pos);
+        std::string::size_type comma_pos = whole_line.find(", t, 0)", pos);
         if (comma_pos != std::string::npos) {
           // if the line contained ReplaceIndex(ivector, t, 0),
           // descriptor_name would now be 'ivector'.
           std::string descriptor_name =
               whole_line.substr(pos + to_search_for_size,
                                 comma_pos - (pos + to_search_for_size));
-          std::string::size_type end_pos = whole_line.find(')', pos);
-          std::string::size_type expr_size = end_pos + 1 - pos;
+          // Note: 7, below, is the size of: ", t, 0)".
+          std::string::size_type end_pos = comma_pos + 7;
+          std::string::size_type expr_size = end_pos - pos;
           // e.g. expr_size would be strlen("ReplaceIndex(ivector, t, 0)").
           std::ostringstream to_replace_with;
           to_replace_with << "Round(" << descriptor_name << ", " << ivector_period << ")";
           whole_line.replace(pos, expr_size, to_replace_with.str());
           config_to_read << whole_line << "\n";
+        } else {
+          KALDI_ERR << "Could not process the ReplaceIndex expression in: "
+                    << whole_line;
         }
       }
     }

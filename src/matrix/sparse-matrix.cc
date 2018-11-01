@@ -691,6 +691,16 @@ void SparseMatrix<Real>::Scale(Real alpha) {
 }
 
 template<typename Real>
+SparseMatrix<Real>::SparseMatrix(const MatrixBase<Real> &mat) {
+  MatrixIndexT num_rows = mat.NumRows();
+  rows_.resize(num_rows);
+  for (int32 row = 0; row < num_rows; row++) {
+    SparseVector<Real> this_row(mat.Row(row));
+    rows_[row].Swap(&this_row);
+  }
+}
+
+template<typename Real>
 Real TraceMatSmat(const MatrixBase<Real> &A,
                   const SparseMatrix<Real> &B,
                   MatrixTransposeType trans) {
@@ -1198,6 +1208,20 @@ Real SparseVector<Real>::Max(int32 *index_out) const {
   return 0.0;
 }
 
+template <typename Real>
+SparseVector<Real>::SparseVector(const VectorBase<Real> &vec) {
+  MatrixIndexT dim = vec.Dim();
+  dim_ = dim;
+  if (dim == 0)
+    return;
+  const Real *ptr = vec.Data();
+  for (MatrixIndexT i = 0; i < dim; i++) {
+    Real val = ptr[i];
+    if (val != 0.0)
+      pairs_.push_back(std::pair<MatrixIndexT,Real>(i,val));
+  }
+}
+
 void GeneralMatrix::Swap(GeneralMatrix *other) {
   mat_.Swap(&(other->mat_));
   cmat_.Swap(&(other->cmat_));
@@ -1260,6 +1284,7 @@ void ExtractRowRangeWithPadding(
       KALDI_ERR << "Bad matrix type.";
   }
 }
+
 
 
 template class SparseVector<float>;

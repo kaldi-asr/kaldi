@@ -5,7 +5,7 @@
 //                2013  Hainan Xu
 //                2013  Xiaohui Zhang
 //           2013-2015  Guoguo Chen
-//           2016-2017  Shiyin Kang
+//           2016-2018  Shiyin Kang
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -70,11 +70,12 @@ void cudaF_add_diag_mat_mat_MNT(int Gr, int Bl, const float alpha,
 void cudaD_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const double alpha,
                                 const double* M, const int strid_M,
                                 const double* N, const MatrixDim dim_N,
-                                const double beta, double* v);
+                                const double beta, double* v,
+                                const int stride_v);
 void cudaF_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const float alpha,
                                 const float* M, const int strid_M,
                                 const float* N, const MatrixDim dim_N,
-                                const float beta, float* v);
+                                const float beta, float* v, const int stride_v);
 void cudaD_add_diag_packed(int Gr, int Bl, double* mat, double value, int dim);
 void cudaF_add_diag_packed(int Gr, int Bl, float* mat, float value, int dim);
 void cudaD_add_diag_vec_mat(dim3 Gr, dim3 Bl, double alpha, double *mat,
@@ -789,6 +790,10 @@ void cuda_uncompress_uint8(dim3 Gr, dim3 Bl, BaseFloat *dest,
                           MatrixDim dim, const uint8_t *src,
                           int src_stride, float scale);
 
+// Launches a kernel that does nothing, explicitly using the legacy default stream;
+// this will synchronize all CUDA streams (except for non-blocking streams) on the
+// device.
+void cuda_legacy_noop();
 
 
 } // extern "C"
