@@ -42,7 +42,6 @@ frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
 chunk_left_context=40
 chunk_right_context=0
 xent_regularize=0.025
-self_repair_scale=0.00001
 label_delay=5
 # decode options
 extra_left_context=50
