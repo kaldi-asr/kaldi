@@ -130,6 +130,7 @@ sub format_sys {
 }
 
 open(UTT2SPK,$ARGV[0]) or die "Could not open the utt2spk file $ARGV[0]";
+binmode(UTT2SPK, ":utf8");
 while(<UTT2SPK>) {
   chomp;
   my @F=split;
