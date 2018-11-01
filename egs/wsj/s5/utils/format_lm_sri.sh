@@ -48,8 +48,6 @@ else
   out_dir=$3
 fi
 
-mkdir -p $out_dir
-
 for f in $lm $lang_dir/words.txt; do
   if [ ! -f $f ]; then
     echo "$0: expected input file $f to exist."
