@@ -22,7 +22,7 @@
 #ifndef KALDI_CUDAMATRIX_CU_VALUE_H_
 #define KALDI_CUDAMATRIX_CU_VALUE_H_
 
-#include <cudamatrix/cu-device.h>
+#include "cudamatrix/cu-device.h"
 
 namespace kaldi {
 

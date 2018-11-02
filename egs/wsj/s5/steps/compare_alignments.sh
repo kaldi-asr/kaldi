@@ -14,7 +14,7 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 . ./utils/parse_options.sh
 
-if [ $# -ne 5 ] && [ $# -ne 6 ]; then
+if [ $# -ne 5 ] && [ $# -ne 7 ]; then
   cat <<EOF
   This script compares two directories containing data alignments, and
   creates statistics showing how much the phone and word alignments differ,
@@ -24,7 +24,8 @@ if [ $# -ne 5 ] && [ $# -ne 6 ]; then
   The word alignment stats may not be correctly obtained if the data-dirs are
   not the same.
 
-  Usage: $0 [options] <lang-directory> (<data-directory> | <data-directory1> <data-directory2>) <ali-dir1> <ali-dir2> <work-dir>
+  Usage: $0 [options] <lang-directory> <data-directory> <ali-dir1> <ali-dir2> <work-dir>
+    or:  $0 [options] <lang1> <lang2> <data1> <data2> <ali-dir1> <ali-dir2> <work-dir>
    e.g.: $0 data/lang data/train exp/tri2_ali exp/tri3_ali exp/compare_ali_2_3
 
   Options:
@@ -38,26 +39,35 @@ EOF
   exit 1
 fi
 
-lang=$1
-data1=$2
 if [ $# -eq 5 ]; then
+  lang1=$1
+  lang2=$1
+  data1=$2
   data2=$2
   ali_dir1=$3
   ali_dir2=$4
   dir=$5
 else
-  data2=$3
-  ali_dir1=$4
-  ali_dir2=$5
-  dir=$6
+  lang1=$1
+  lang2=$2
+  data1=$3
+  data2=$4
+  ali_dir1=$5
+  ali_dir2=$6
+  dir=$7
 fi
 
-for f in $lang/phones.txt $ali_dir1/ali.1.gz $ali_dir2/ali.2.gz; do
+for f in $lang1/phones.txt $lang2/phones.txt $data1/utt2spk $data2/utt2spk \
+         $ali_dir1/ali.1.gz $ali_dir2/ali.2.gz; do
   if [ ! -f $f ]; then
     echo "$0: expected file $f to exist"
     exit 1
   fi
 done
+
+# This will exit if the phone symbol id's are different, due to
+# `set -e` above.
+utils/lang/check_phones_compatible.sh $lang1/phones.txt $lang2/phones.txt
 
 nj1=$(cat $ali_dir1/num_jobs)
 nj2=$(cat $ali_dir2/num_jobs)
@@ -98,7 +108,7 @@ if [ $stage -le 3 ]; then
 
    (
      echo "# Format: <phone> <frame-count> <percent-correct>"
-     grep '^COR' $dir/phone_stats.all | sort -n -k4,4 | awk '{print $2, $3, $4}' | utils/int2sym.pl -f 1 $lang/phones.txt
+     grep '^COR' $dir/phone_stats.all | sort -n -k4,4 | awk '{print $2, $3, $4}' | utils/int2sym.pl -f 1 $lang1/phones.txt
    ) > $dir/phones_correct.txt
 
    (
@@ -109,19 +119,22 @@ if [ $stage -le 3 ]; then
      echo "#  phone1 or phone2, whichever is smaller; expressed as a percentage."
      echo "#<reverse-prob-wrong> is the same but for the reverse substitution, from"
      echo "#<phone2> to <phone1>; the comparison with <prob-wrong> the substitutions are)."
-     grep '^SUB' $dir/phone_stats.all | sort -nr -k2,2 | awk '{print $3,$4,$5,$6,$7}' | utils/int2sym.pl -f 1-2 $lang/phones.txt
+     grep '^SUB' $dir/phone_stats.all | sort -nr -k2,2 | awk '{print $3,$4,$5,$6,$7}' | utils/int2sym.pl -f 1-2 $lang1/phones.txt
    ) > $dir/phone_subs.txt
 fi
 
 if [ $stage -le 4 ]; then
   echo "$0: getting CTMs"
-  steps/get_train_ctm.sh --use-segments false --print-silence true --cmd "$cmd" --frame-shift 1.0 $data1 $lang $ali_dir1 $dir/ctm1
-  steps/get_train_ctm.sh --use-segments false --print-silence true --cmd "$cmd" --frame-shift 1.0 $data2 $lang $ali_dir2 $dir/ctm2
+  steps/get_train_ctm.sh --use-segments false --print-silence true --cmd "$cmd" --frame-shift 1.0 $data1 $lang1 $ali_dir1 $dir/ctm1
+  steps/get_train_ctm.sh --use-segments false --print-silence true --cmd "$cmd" --frame-shift 1.0 $data2 $lang2 $ali_dir2 $dir/ctm2
 fi
 
 if [ $stage -le 5 ]; then
+  oov=$(cat $lang1/oov.int)
+  # Note: below, we use $lang1 for both setups; this is by design as compare-int-vector
+  # assumes they use the same symbol table.
   for n in 1 2; do
-    cat $dir/ctm${n}/ctm | utils/sym2int.pl -f 5 $lang/words.txt | \
+    cat $dir/ctm${n}/ctm | utils/sym2int.pl --map-oov $oov -f 5 $lang1/words.txt | \
       awk 'BEGIN{utt_id="";} { if (utt_id != $1) { if (utt_id != "") printf("\n"); utt_id=$1; printf("%s ", utt_id); } t_start=int($3); t_end=t_start + int($4); word=$5; for (t=t_start; t<t_end; t++) printf("%s ", word); } END{printf("\n")}' | \
       copy-int-vector ark:- ark:- | gzip -c >$dir/words${n}.gz
   done
@@ -140,7 +153,7 @@ if [ $stage -le 6 ]; then
 
     paste <(awk '{for (n=2;n<NF;n++) print $n;}' <$dir/words_diff.vec) \
       <(awk '{for (n=2;n<NF;n++) print $n;}' <$dir/words_tot.vec) | \
-       awk '{ if($2 > 0) print $1*$1/$2, $1/$2, $1, $2, (NR-1)}' | utils/int2sym.pl -f 5 $lang/words.txt | \
+       awk '{ if($2 > 0) print $1*$1/$2, $1/$2, $1, $2, (NR-1)}' | utils/int2sym.pl -f 5 $lang1/words.txt | \
       sort -nr | awk '{print $2, $3, $4, $5;}'
   ) > $dir/word_stats.txt
 
@@ -190,7 +203,7 @@ if [ $stage -le 8 ]; then
       paste $dir/phones1.$suf $dir/phones2.$suf | perl -ane ' @A = split("\t", $_); @A1 = split(" ", $A[0]); @A2 = split(" ", $A[1]);
             $utt = shift @A1; shift @A2; print $utt, " ";
             for ($n = 0; $n < @A1 && $n < @A2; $n++) { $a1=$A1[$n]; $a2=$A2[$n];  if ($a1 eq $a2) { print "$a1 "; } else { print "$a1 0 $a2 "; }}
-            print "\n" ' | utils/int2sym.pl -f 3- $lang/phones.txt | sed 's: <eps> :/:g' | \
+            print "\n" ' | utils/int2sym.pl -f 3- $lang1/phones.txt | sed 's: <eps> :/:g' | \
         utils/apply_map.pl -f 2 $data1/text
     )  > $dir/compare_phones_${suf}.txt
   done
