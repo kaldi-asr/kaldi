@@ -25,9 +25,9 @@ outdir=$2
 
 [ ! -f $lexicondir/lexicon.txt ] && echo "Cannot find $lexicondir/lexicon.txt" && exit
 
-isuconv=`which uconv`
-if [ -z $isuconv ]; then
-  echo "uconv was not found. You must install the icu4c package."
+isiconv=$(which iconv)
+if [ -z $isiconv ]; then
+  echo "iconv was not found. You must install the icu4c package."
   exit 1;
 fi
 
@@ -42,10 +42,10 @@ if [ $stage -le 0 ]; then
     awk 'NR==FNR{a[$1] = 1; next} {s=$2;for(i=3;i<=NF;i++) s=s" "$i; if(!(s in a)) print $1" "s}' \
       $silence_phones $lexicon | \
       awk '{printf("%s\t",$1); for (i=2;i<NF;i++){printf("%s ",$i);} printf("%s\n",$NF);}' | \
-      uconv -f utf-8  -t utf-8 -x Any-NFC - | awk 'NF > 0'> $outdir/lexicon_tab_separated.txt
+      iconv -f UTF-8  -t UTF-8 | awk 'NF > 0'> $outdir/lexicon_tab_separated.txt
   else
     awk '{printf("%s\t",$1); for (i=2;i<NF;i++){printf("%s ",$i);} printf("%s\n",$NF);}' $lexicon | \
-      uconv -f utf-8  -t utf-8 -x Any-NFC - | awk 'NF > 0'> $outdir/lexicon_tab_separated.txt
+      iconv -f UTF-8  -t UTF-8 | awk 'NF > 0'> $outdir/lexicon_tab_separated.txt
   fi
 fi
 

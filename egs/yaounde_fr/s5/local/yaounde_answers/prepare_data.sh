@@ -20,7 +20,7 @@ tmpdir=data/local/tmp/yaounde_answers
 
 mkdir -p $tmpdir
 #get a list of the yaounde answers .wav files
-find $speech_datadir -type f -name "*.wav" > $tmpdir/wav_list.txt
+find $speech_datadir -type f -name "*.wav" | grep answers > $tmpdir/wav_list.txt
 #  make yaounde answers lists
 local/yaounde_answers/make_lists.pl $datadir
 utils/fix_data_dir.sh $tmpdir/lists

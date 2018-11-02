@@ -26,7 +26,7 @@ my ($d) = @ARGV;
 
 # Initialize variables
 my $tmpdir = "data/local/tmp/yaounde_answers";
-my $transcripts_file = "$d/transcripts/train/yaounde/answers/fn_text.txt";
+my $transcripts_file = "$d/transcripts/train/yaounde/fn_text.txt";
 # input wav file list
 my $w = "$tmpdir/wav_list.txt";
 # output temporary wav.scp file
@@ -47,11 +47,13 @@ system "mkdir -p $tmpdir/lists";
 open my $P, '<', $transcripts_file or croak "problem with $transcripts_file $!";
 # store transcripts in hash
 LINEA: while ( my $line = <$P> ) {
-  chomp $line;
+    chomp $line;
+    next LINEA if ( $line =~ /read/ );
   my ($utt_path,$sent) = split /\s/, $line, 2;
   my ($volume,$directories,$file) = File::Spec->splitpath( $utt_path );
   my $bn = basename $file, ".wav";
   my ($machine,$spk,$utt) = split /\-/, $bn, 3;
+  next LINEA if ( $utt =~ /\d\d\d\d/ );
   my $utt_id = 'yaounde-' . $spk . '-' . $utt;
   # dashes?
   $sent =~ s/(\w)(\p{dash_punctuation}+?)/$1 $2/g;
@@ -65,10 +67,12 @@ open my $UTTSPK, '+>', $utt_to_spk or croak "problem with $utt_to_spk $!";
 open my $TXT, '+>', $txt_out or croak "problem with $txt_out $!";
 
 LINE: while ( my $line = <$W> ) {
-  chomp $line;
+    chomp $line;
+    next LINE unless ( $line =~ /answers/ );
   my ($volume,$directories,$file) = File::Spec->splitpath( $line );
   my @dirs = split /\//, $directories;
-  my $mode = $dirs[4];
+    my $mode = $dirs[4];
+    next LINE unless ( $mode == 'answers' );
   my $base = basename $line, ".wav";
   my ($maquina,$spk,$utt) = split /\-/, $base, 3;
   my $utt_id = 'yaounde-' . $spk . '-' . $utt;

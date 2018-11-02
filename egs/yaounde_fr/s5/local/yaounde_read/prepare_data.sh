@@ -20,7 +20,7 @@ tmpdir=data/local/tmp/yaounde_read
 
 mkdir -p $tmpdir
 #get a list of the yaounde .wav files
-find $speech_datadir -type f -name "*.wav" > $tmpdir/wav_list.txt
+find $speech_datadir -type f -name "*.wav" | grep read > $tmpdir/wav_list.txt
 #  make yaounde read lists
 local/yaounde_read/make_lists.pl $datadir
 utils/fix_data_dir.sh $tmpdir/lists
