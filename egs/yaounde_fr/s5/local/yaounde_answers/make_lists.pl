@@ -26,7 +26,11 @@ my ($d) = @ARGV;
 
 # Initialize variables
 my $tmpdir = "data/local/tmp/yaounde_answers";
-my $transcripts_file = "$d/transcripts/train/yaounde/fn_text.txt";
+#my $transcripts_file = "$d/transcripts/train/yaounde/fn_text.txt";
+my $transcripts_file = "local/yaounde_answers/temporary_transcripts.txt";
+# In the future this file will  be changed to:
+#my $transcripts_file = "$d/transcripts/train/yaounde/read/transcripts.txt";
+
 # input wav file list
 my $w = "$tmpdir/wav_list.txt";
 # output temporary wav.scp file
