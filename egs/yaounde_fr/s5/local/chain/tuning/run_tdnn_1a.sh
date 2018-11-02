@@ -17,14 +17,6 @@
 # Num-params                 5270002
 
 
-#| model | dev tgsmall | test tgsmall | devtest tgsmall | dev tgmed | test tgmed | devtest tgmed | dev tglarge | test tglarge | devtest tglarge |
-#| mono | 54.58 | 25.67 | 7.86 | 76.18 | 69.64 | 52.09| | | |
-#| tri1 | 32.06 | 19.14 | 3.79 | 31.98 | 27.16 | 10.06      | 29.60 | 22.28 | 5.99 |
-#| tri2b | 33.02 | 19.01 | 3.85 | 33.26 | 26.36 | 9.91 | 31.48 | 21.27 | 5.53 |
-#| tri3b | 26.91 | 18.85 | 3.49 | 25.90 | 24.51 | 8.51 | 23.83 | 20.01 | 4.37 |
-#| chain tdnn-f | 24.02 | 17.20 | 1.96 | 22.30 | 33.66 | 16.17 | 20.14 | 18.69 | 3.33 | 
-#| chain tdnn-f online | 24.21 | 17.23 | 1.96 | 22.26 | 33.72 | 16.14 | 19.10 | 32.07 | 14.74 |
-
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
