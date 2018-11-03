@@ -46,14 +46,6 @@ text=(
 #)
 
 galeData=GALE
-#prepare the data
-#split train dev test 
-#prepare lexicon and LM 
-
-# You can run the script from here automatically, but it is recommended to run the data preparation,
-# and features extraction manually and and only once.
-# By copying and pasting into your shell.
-
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -117,7 +109,7 @@ if [ $stage -le 3 ]; then
   echo "$0: Preparing dictionary and lang..."
   echo "$0: Estimating a language model for decoding..."
 
-  # get all Arabic grapheme dictionaries and add silence and UNK
+  # get all Arabic grapheme dictionaries and add silence
   local/prepare_dict.sh  || exit 1;
 
   #prepare the langauge resources
@@ -130,16 +122,11 @@ fi
 
 if [ $stage -le 4 ]; then        
   # LM training
-  #local/prepare_lm.sh || exit 1;
   local/train_lm.sh || exit 1;
-  #local/gale_format_data.sh  || exit 1;
-  # G compilation, check LG composition
   utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
                      data/local/dict/lexicon.txt data/lang
-
-  #utils/format_lm.sh data/lang data/local/lm3.gz data/local/dict/lexicon.txt data/lang/
 fi
-exit
+
 # Here we start the AM
 if [ $stage -le 3 ]; then
   # Let's create a subset with 10k segments to make quick flat-start training:
@@ -195,26 +182,13 @@ if [ $stage -le 11 ]; then
   local/chain/run_tdnn.sh      #tdnn recipe:
 fi
 
-## nnet3 cross-entropy 
-#local/nnet3/run_tdnn.sh #tdnn recipe:
-#local/nnet3/run_lstm.sh --stage 12  #lstm recipe (we skip ivector training)
-#
-## chain lattice-free 
-#local/chain/run_tdnn.sh      #tdnn recipe:
-#local/chain/run_tdnn_lstm.sh #tdnn-lstm recipe:
-
-#if [ $stage -le 15 ]; then
-#  time=$(date +"%Y-%m-%d-%H-%M-%S")
-#
-#  #get detailed WER; reports, conversational and combined
-#  local/split_wer.sh $galeData > RESULTS.details.$USER.$time # to make sure you keep the results timed and owned
-#
-#  echo training succedded
-#fi
+if [ $stage -le 12 ]; then
+  local/rnnlm/run_tdnn_lstm_1e.sh      #rnnlm rescoring
+fi
+echo training succedded
 
 exit 0
 
 #TODO:
-#LM (4-gram and RNN) rescoring
 #combine lattices
 #dialect detection
