@@ -27,8 +27,8 @@ get_egs_stage=-10
 # training options
 srand=0
 remove_egs=true
-run_ivector_common=false
-run_chain_common=false
+run_ivector_common=true
+run_chain_common=true
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -46,7 +46,7 @@ where "nvcc" is installed.
 EOF
 fi
 
-if [ $stage -le 1 ] && $run_ivector_common; then
+if $run_ivector_common; then
   local/nnet3/run_ivector_common.sh \
     --stage $stage --nj $nj \
     --train-set $train_set --gmm $gmm \
@@ -79,7 +79,7 @@ done
 
 # Please take this as a reference on how to specify all the options of
 # local/chain/run_chain_common.sh
-if [ $stage -le 14 ] && $run_chain_common; then
+if $run_chain_common; then
   local/chain/run_chain_common.sh --stage $stage \
                                   --gmm-dir $gmm_dir \
                                   --ali-dir $ali_dir \
