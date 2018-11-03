@@ -1,5 +1,19 @@
 #!/bin/bash
 
+# ./local/chain/compare_wer.sh exp/chain/tdnn_1b/
+# System                      tdnn_1b
+# WER                             17.23
+# CER                              6.83
+# Final train prob              -0.0825
+# Final valid prob              -0.0987
+# Final train prob (xent)       -0.6611
+# Final valid prob (xent)       -0.7393
+
+# head exp/chain/tdnn_1b/decode_test_rnnlm_1e_2_0.40/scoring_kaldi/best_wer
+# WER 16.58 [ 11549 / 69668, 1290 ins, 2389 del, 7870 sub ] exp/chain/tdnn1c_swbd_sp/decode_test_rnnlm_1e_2_0.40/wer_10_0.5
+
+# exp/chain/tdnn_1b/: num-iters=441 nj=3..16 num-params=16.5M dim=40+100->1792 combine=-0.081->-0.081 (over 6) xent:train/valid[293,440,final]=(-0.937,-0.659,-0.661/-0.960,-0.739,-0.739) logprob:train/valid[293,440,final]=(-0.124,-0.083,-0.083/-0.127,-0.100,-0.099)
+
 set -e -o pipefail
 stage=0
 nj=30
@@ -11,7 +25,7 @@ num_threads_ubm=32
 nnet3_affix=       # affix for exp dirs, e.g. it was _cleaned in tedlium.
 
 # Options which are not passed through to run_ivector_common.sh
-affix=1c_swbd   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+affix=_1b   #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
 common_egs_dir=
 reporting_email=
 
