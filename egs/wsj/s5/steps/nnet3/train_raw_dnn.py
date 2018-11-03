@@ -101,7 +101,14 @@ def get_args():
                         help="Directory with features used for training "
                         "the neural network.")
     parser.add_argument("--targets-scp", type=str, required=False,
-                        help="Targets for training neural network.")
+                        help="""Targets for training neural network.
+                        This is a kaldi-format SCP file of target matrices.
+                        <utterance-id> <extended-filename-of-target-matrix>.
+                        The target matrix's column dim must match 
+                        the neural network output dim, and the
+                        row dim must match the number of output frames 
+                        i.e. after subsampling if "--frame-subsampling-factor" 
+                        option is passed to --egs.opts.""")
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and "
                         "all other files.")

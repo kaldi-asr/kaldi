@@ -48,7 +48,6 @@ decode_iter=final
 
 # training options
 xent_regularize=0.025
-self_repair_scale=0.00001
 label_delay=5
 
 chunk_left_context=40

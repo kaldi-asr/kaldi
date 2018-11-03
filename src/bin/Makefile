@@ -21,7 +21,8 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         post-to-pdf-post logprob-to-post prob-to-post copy-post \
         matrix-sum build-pfile-from-ali get-post-on-ali tree-info am-info \
         vector-sum matrix-sum-rows est-pca sum-lda-accs sum-mllt-accs \
-        transform-vec align-text matrix-dim post-to-smat compile-graph
+        transform-vec align-text matrix-dim post-to-smat compile-graph \
+        compare-int-vector
 
 
 OBJFILES =
@@ -30,7 +31,7 @@ ADDLIBS = ../decoder/kaldi-decoder.a ../lat/kaldi-lat.a ../lm/kaldi-lm.a \
           ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a 
+          ../base/kaldi-base.a
 
 
 TESTFILES =
