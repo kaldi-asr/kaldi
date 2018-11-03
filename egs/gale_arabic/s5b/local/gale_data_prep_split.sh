@@ -9,10 +9,9 @@ fi
 
 
 #data will data/local
-
 galeData=$(utils/make_absolute.sh $1)
 mkdir -p data/local
-dir=$(utils/make_absolute.sh data/local)
+dir=$(utils/make_absolute.sh data)
 
 
 grep -f local/test_list $galeData/all | grep -v -f local/bad_segments > $galeData/all.test
