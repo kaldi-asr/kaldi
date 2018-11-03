@@ -1,4 +1,7 @@
 #!/bin/bash
+
+# This script prepares the dictionary.
+
 set -e
 dir=data/local/dict
 . ./utils/parse_options.sh || exit 1;
