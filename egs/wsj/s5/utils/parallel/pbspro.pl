@@ -124,8 +124,9 @@ if ($switch =~ m/^--/) { # Config options
       croak "pbspro.pl: invalid job range $ARGV[0]";
     }
     if ($jobstart <= 0) {
-      die "run.pl: invalid job range $ARGV[0], start must be strictly positive (this is a GridEngine limitation).";
+      croak "run.pl: invalid job range $ARGV[0], start must be strictly positive (this is a GridEngine limitation).";
     }
+    warn "job info: $jobname\t$jobstart\t$jobend";
   } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
     $array_job = 1;
     $jobname = $1;
