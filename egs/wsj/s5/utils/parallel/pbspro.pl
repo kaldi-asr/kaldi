@@ -256,7 +256,7 @@ my $logfile = shift @ARGV;
 
 if ($array_job == 1 && $logfile !~ m/$jobname/
     && $jobend > $jobstart) {
-  print STDERR "pbs.pl: you are trying to run a parallel job but "
+  print STDERR "pbspro.pl: you are trying to run a parallel job but "
     . "you are putting the output into just one log file ($logfile)\n";
   exit(1);
 }
@@ -265,7 +265,7 @@ if ($array_job == 1 && $logfile !~ m/$jobname/
 # Work out the command; quote escaping is done here.
 # Note: the rules for escaping stuff are worked out pretty
 # arbitrarily, based on what we want it to do.  Some things that
-# we pass as arguments to pbs.pl, such as "|", we want to be
+# we pass as arguments to pbspro.pl, such as "|", we want to be
 # interpreted by bash, so we don't escape them.  Other things,
 # such as archive specifiers like 'ark:gunzip -c foo.gz|', we want
 # to be passed, in quotes, to the Kaldi program.  Our heuristic
@@ -368,7 +368,7 @@ if (!close(Q)) { # close was not successful... || die "Could not close script fi
 
 my $ret = system ($qsub_cmd);
 if ($ret != 0) {
-  print STDERR "pbs.pl: error submitting jobs to queue (return status was $ret)\n";
+  print STDERR "pbspro.pl: error submitting jobs to queue (return status was $ret)\n";
   print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
   print STDERR `tail $queue_logfile`;
   exit(1);
@@ -472,13 +472,13 @@ foreach my $f (@syncfiles) {
           # time elapsed between file modification and the start of this
           # program], then we assume the program really finished OK,
           # and maybe something is up with the file system.
-          print STDERR "**pbs.pl: syncfile $f was not created but job seems\n" .
+          print STDERR "**pbspro.pl: syncfile $f was not created but job seems\n" .
             "**to have finished OK.  Probably your file-system has problems.\n" .
             "**This is just a warning.\n";
           last;
         } else {
           chop $last_line;
-          print STDERR "pbs.pl: Error, unfinished job no " .
+          print STDERR "pbspro.pl: Error, unfinished job no " .
             "longer exists, log is in $logfile, last line is '$last_line', " .
             "syncfile is $f, return status of qstat was $ret\n" .
             "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
@@ -486,7 +486,7 @@ foreach my $f (@syncfiles) {
           exit(1);
         }
       } elsif ($ret != 0) {
-        print STDERR "pbs.pl: Warning: qstat command returned status $ret (qstat -t $pbs_job_id,$!)\n";
+        print STDERR "pbspro.pl: Warning: qstat command returned status $ret (qstat -t $pbs_job_id,$!)\n";
       }
     }
   }
@@ -545,14 +545,14 @@ if ($num_failed == 0) { exit(0); }
 else { # we failed.
   if (@logfiles == 1) {
     if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/$jobstart/g; }
-    print STDERR "pbs.pl: job failed with status $status, log is in $logfile\n";
+    print STDERR "pbspro.pl: job failed with status $status, log is in $logfile\n";
     if ($logfile =~ m/JOB/) {
-      print STDERR "pbs.pl: probably you forgot to put JOB=1:\$nj in your script.\n";
+      print STDERR "pbspro.pl: probably you forgot to put JOB=1:\$nj in your script.\n";
     }
   } else {
     if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/*/g; }
     my $numjobs = 1 + $jobend - $jobstart;
-    print STDERR "pbs.pl: $num_failed / $numjobs failed, log is in $logfile\n";
+    print STDERR "pbspro.pl: $num_failed / $numjobs failed, log is in $logfile\n";
   }
   exit(1);
 }
