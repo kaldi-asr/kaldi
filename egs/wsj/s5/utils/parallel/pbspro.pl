@@ -64,7 +64,7 @@ my %cli_options = ();
 
 my $jobname;
 my $jobstart;
-my $jobend;
+my $jobend = 40;
 
 my $array_job = 0;
 
