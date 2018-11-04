@@ -24,7 +24,7 @@ use Carp;
 # This version of pbs.pl uses the task array functionality
 # of PBS.  
 # The script now supports configuring the queue system using a config file
-# (default in conf/pbs.conf; but can be passed specified with --config option)
+# (default in conf/pbspro.conf; but can be passed specified with --config option)
 # and a set of command line options.
 # The current script handles:
 # 1) Normal configuration arguments
@@ -48,7 +48,7 @@ use Carp;
 # 5) Default behavior
 # If the config file that is passed using is not readable, then the script
 # behaves as if the queue has the following config file:
-# $ cat conf/pbs.conf
+# $ cat conf/pbspro.conf
 # # Default configuration
 # command qsub -v PATH -S /bin/bash -l arch=*64*
 # option mem=* -l mem_free=$0,ram_free=$0
@@ -64,7 +64,7 @@ my $qsub_opts = "";
 my $num_threads = 1;
 my $gpu = 0;
 
-my $config = "conf/pbs.conf";
+my $config = "conf/pbspro.conf";
 
 my %cli_options = ();
 
