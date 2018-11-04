@@ -131,7 +131,7 @@ if ($switch =~ m/^--/) { # Config options
     $array_job = 1;
     $jobname = $1;
     $jobstart = $2;
-    $jobend = $3;
+    #$jobend = $2;
     shift;
     warn "job info: $jobname\t$jobstart\t$jobend";
   } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
