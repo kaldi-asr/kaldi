@@ -133,6 +133,7 @@ if ($switch =~ m/^--/) { # Config options
     $jobstart = $2;
     $jobend = $2;
     shift;
+    warn "job info: $jobname\t$jobstart\t$jobend";
   } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
     print STDERR "pbspro.pl: Warning: suspicious first argument to pbspro.pl: $ARGV[0]\n";
   }
