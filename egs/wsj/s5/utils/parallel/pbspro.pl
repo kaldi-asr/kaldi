@@ -10,9 +10,10 @@ use warnings;
 use File::Basename;
 use Cwd;
 use Getopt::Long;
+use Carp;
 
 # This is a version of the queue.pl modified so that it works under PBS
-# The PBS is one of the several "almost compatible" queueing systems. The
+# The PBS PRO is one of the several "almost compatible" queueing systems. The
 # command switches and environment variables are different, so we are adding
 # a this script. An optimal solution might probably be to make the variable
 # names and the commands configurable, as similar problems can be expected
@@ -60,7 +61,6 @@ use Getopt::Long;
 # option gpu=* -l gpu=$0 -q g.q
 
 my $qsub_opts = "";
-my $sync = 0;
 my $num_threads = 1;
 my $gpu = 0;
 
@@ -84,8 +84,7 @@ sub print_usage() {
    "or: pbs.pl -q all.q\@qyz JOB=1:10 foo.JOB.log echo JOB \n" .
    " (which illustrates the mechanism to submit parallel jobs; note, you can use \n" .
    "  another string other than JOB)\n" .
-   "Note: if you pass the \"-sync y\" option to qsub, this script will take note\n" .
-   "and change its behavior.  Otherwise it uses qstat to work out when the job finished\n" .
+   " It uses qstat to work out when the job finished\n" .
    "Options:\n" .
    "  --config <config-file> (default: $config)\n" .
    "  --mem <mem-requirement> (e.g. --mem 2G, --mem 500M, \n" .
@@ -113,14 +112,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       if ($argument =~ m/^--/) {
         print STDERR "pbs.pl: Warning: suspicious argument '$argument' to $switch; starts with '-'\n";
       }
-      if ($switch eq "-sync" && $argument =~ m/^[yY]/) {
-        $sync = 1;
-        $qsub_opts .= "$switch $argument ";
-      } elsif ($switch eq "-pe") { # e.g. -pe smp 5
-        my $argument2 = shift @ARGV;
-        $qsub_opts .= "$switch $argument $argument2 ";
-        $num_threads = $argument2;
-      } elsif ($switch =~ m/^--/) { # Config options
+if ($switch =~ m/^--/) { # Config options
         # Convert CLI option to variable name
         # by removing '--' from the switch and replacing any
         # '-' with a '_'
@@ -390,137 +382,132 @@ if (!close(Q)) { # close was not successful... || die "Could not close script fi
 
 my $ret = system ($qsub_cmd);
 if ($ret != 0) {
-  if ($sync && $ret == 256) { # this is the exit status when a job failed (bad exit status)
-    if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/*/g; }
-    print STDERR "pbs.pl: job writing to $logfile failed\n";
-  } else {
-    print STDERR "pbs.pl: error submitting jobs to queue (return status was $ret)\n";
-    print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
-    print STDERR `tail $queue_logfile`;
-  }
+  print STDERR "pbs.pl: error submitting jobs to queue (return status was $ret)\n";
+  print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
+  print STDERR `tail $queue_logfile`;
   exit(1);
 }
 
 my $pbs_job_id;
-if (! $sync) { # We're not submitting with -sync y, so we
-  # need to wait for the jobs to finish.  We wait for the
-  # sync-files we "touched" in the script to exist.
-  my @syncfiles = ();
-  if (!defined $jobname) { # not an array job.
-    push @syncfiles, $syncfile;
-  } else {
-    for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
-      push @syncfiles, "$syncfile.$jobid";
-    }
-  }
-  # We will need the pbs_job_id, to check that job still exists
-  { # Get the PBS job-id from the log file in q/
-    open my $L, '<', $queue_logfile || die "Error opening log file $queue_logfile";
-    undef $pbs_job_id;
-    while (<$L>) {
-      if (/(\d+.+\.pbsserver)/) {
-        if (defined $pbs_job_id) {
-          die "Error: your job was submitted more than once (see $queue_logfile)";
-        } else {
-          $pbs_job_id = $1;
-        }
-      }
-    }
-    close $L;
-    if (!defined $pbs_job_id) {
-      die "Error: log file $queue_logfile does not specify the PBS job-id.";
-    }
-  }
-  my $check_pbs_job_ctr=1;
-  #
-  my $wait = 0.1;
-  my $counter = 0;
-  foreach my $f (@syncfiles) {
-    # wait for them to finish one by one.
-    while (! -f $f) {
-      sleep($wait);
-      $wait *= 1.2;
-      if ($wait > 3.0) {
-        $wait = 3.0; # never wait more than 3 seconds.
-        # the following (.kick) commands are basically workarounds for NFS bugs.
-        if (rand() < 0.25) { # don't do this every time...
-          if (rand() > 0.5) {
-            system("touch $qdir/.kick");
-          } else {
-            system("rm $qdir/.kick 2>/dev/null");
-          }
-        }
-        if ($counter++ % 10 == 0) {
-          # This seems to kick NFS in the teeth to cause it to refresh the
-          # directory.  I've seen cases where it would indefinitely fail to get
-          # updated, even though the file exists on the server.
-          # Only do this every 10 waits (every 30 seconds) though, or if there
-          # are many jobs waiting they can overwhelm the file server.
-          system("ls $qdir >/dev/null");
-        }
-      }
 
-      # Check that the job exists in PBS. Job can be killed if duration
-      # exceeds some hard limit, or in case of a machine shutdown.
-      if (($check_pbs_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on PBS.
-        if ( -f $f ) { next; }; #syncfile appeared: OK.
-        $ret = system("qstat -t $pbs_job_id >/dev/null 2>/dev/null");
-        # system(...) : To get the actual exit value, shift $ret right by eight bits.
-        if ($ret>>8 == 1) {     # Job does not seem to exist
-          # Don't consider immediately missing job as error, first wait some
-          # time to make sure it is not just delayed creation of the syncfile.
-
-          sleep(3);
-          # Sometimes NFS gets confused and thinks it's transmitted the directory
-          # but it hasn't, due to timestamp issues.  Changing something in the
-          # directory will usually fix that.
-          system("touch $qdir/.kick");
-          system("rm $qdir/.kick 2>/dev/null");
-          if ( -f $f ) { next; }   #syncfile appeared, ok
-          sleep(7);
-          system("touch $qdir/.kick");
-          sleep(1);
-          system("rm $qdir/.kick 2>/dev/null");
-          if ( -f $f ) {  next; }   #syncfile appeared, ok
-          sleep(60);
-          system("touch $qdir/.kick");
-          sleep(1);
-          system("rm $qdir/.kick 2>/dev/null");
-          if ( -f $f ) { next; }  #syncfile appeared, ok
-          $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
-          my $job_id = $1;
-          if (defined $jobname) {
-            $logfile =~ s/\$PBS_ARRAY_INDEX/$job_id/g;
-          }
-          my $last_line = `tail -n 1 $logfile`;
-          if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {
-            # if the last line of $logfile ended with "status 0" and
-            # $logfile is newer than this program [(-M $logfile) gives the
-            # time elapsed between file modification and the start of this
-            # program], then we assume the program really finished OK,
-            # and maybe something is up with the file system.
-            print STDERR "**pbs.pl: syncfile $f was not created but job seems\n" .
-              "**to have finished OK.  Probably your file-system has problems.\n" .
-              "**This is just a warning.\n";
-            last;
-          } else {
-            chop $last_line;
-            print STDERR "pbs.pl: Error, unfinished job no " .
-              "longer exists, log is in $logfile, last line is '$last_line', " .
-              "syncfile is $f, return status of qstat was $ret\n" .
-              "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
-              " b) Shutdown/Frozen machine? -> Run again!\n";
-            exit(1);
-          }
-        } elsif ($ret != 0) {
-          print STDERR "pbs.pl: Warning: qstat command returned status $ret (qstat -t $pbs_job_id,$!)\n";
-        }
-      }
-    }
+# need to wait for the jobs to finish.  We wait for the
+# sync-files we "touched" in the script to exist.
+my @syncfiles = ();
+if (!defined $jobname) { # not an array job.
+  push @syncfiles, $syncfile;
+} else {
+  for (my $jobid = $jobstart; $jobid <= $jobend; $jobid++) {
+    push @syncfiles, "$syncfile.$jobid";
   }
-  my $all_syncfiles = join(" ", @syncfiles);
-  system("rm $all_syncfiles 2>/dev/null");
 }
+# We will need the pbs_job_id, to check that job still exists
+{ # Get the PBS job-id from the log file in q/
+  open my $L, '<', $queue_logfile || die "Error opening log file $queue_logfile";
+  undef $pbs_job_id;
+  while (<$L>) {
+    if (/(\d+.+\.pbsserver)/) {
+      if (defined $pbs_job_id) {
+        die "Error: your job was submitted more than once (see $queue_logfile)";
+      } else {
+        $pbs_job_id = $1;
+      }
+    }
+  }
+  close $L;
+  if (!defined $pbs_job_id) {
+    die "Error: log file $queue_logfile does not specify the PBS job-id.";
+  }
+}
+my $check_pbs_job_ctr=1;
+#
+my $wait = 0.1;
+my $counter = 0;
+foreach my $f (@syncfiles) {
+  # wait for them to finish one by one.
+  while (! -f $f) {
+    sleep($wait);
+    $wait *= 1.2;
+    if ($wait > 3.0) {
+      $wait = 3.0; # never wait more than 3 seconds.
+      # the following (.kick) commands are basically workarounds for NFS bugs.
+      if (rand() < 0.25) { # don't do this every time...
+        if (rand() > 0.5) {
+          system("touch $qdir/.kick");
+        } else {
+          system("rm $qdir/.kick 2>/dev/null");
+        }
+      }
+      if ($counter++ % 10 == 0) {
+        # This seems to kick NFS in the teeth to cause it to refresh the
+        # directory.  I've seen cases where it would indefinitely fail to get
+        # updated, even though the file exists on the server.
+        # Only do this every 10 waits (every 30 seconds) though, or if there
+        # are many jobs waiting they can overwhelm the file server.
+        system("ls $qdir >/dev/null");
+      }
+    }
+
+    # Check that the job exists in PBS. Job can be killed if duration
+    # exceeds some hard limit, or in case of a machine shutdown.
+    if (($check_pbs_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on PBS.
+      if ( -f $f ) { next; }; #syncfile appeared: OK.
+      $ret = system("qstat -t $pbs_job_id >/dev/null 2>/dev/null");
+      # system(...) : To get the actual exit value, shift $ret right by eight bits.
+      if ($ret>>8 == 1) {     # Job does not seem to exist
+        # Don't consider immediately missing job as error, first wait some
+        # time to make sure it is not just delayed creation of the syncfile.
+
+        sleep(3);
+        # Sometimes NFS gets confused and thinks it's transmitted the directory
+        # but it hasn't, due to timestamp issues.  Changing something in the
+        # directory will usually fix that.
+        system("touch $qdir/.kick");
+        system("rm $qdir/.kick 2>/dev/null");
+        if ( -f $f ) { next; }   #syncfile appeared, ok
+        sleep(7);
+        system("touch $qdir/.kick");
+        sleep(1);
+        system("rm $qdir/.kick 2>/dev/null");
+        if ( -f $f ) {  next; }   #syncfile appeared, ok
+        sleep(60);
+        system("touch $qdir/.kick");
+        sleep(1);
+        system("rm $qdir/.kick 2>/dev/null");
+        if ( -f $f ) { next; }  #syncfile appeared, ok
+        $f =~ m/\.(\d+)$/ || die "Bad sync-file name $f";
+        my $job_id = $1;
+        if (defined $jobname) {
+          $logfile =~ s/\$PBS_ARRAY_INDEX/$job_id/g;
+        }
+        my $last_line = `tail -n 1 $logfile`;
+        if ($last_line =~ m/status 0$/ && (-M $logfile) < 0) {
+          # if the last line of $logfile ended with "status 0" and
+          # $logfile is newer than this program [(-M $logfile) gives the
+          # time elapsed between file modification and the start of this
+          # program], then we assume the program really finished OK,
+          # and maybe something is up with the file system.
+          print STDERR "**pbs.pl: syncfile $f was not created but job seems\n" .
+            "**to have finished OK.  Probably your file-system has problems.\n" .
+            "**This is just a warning.\n";
+          last;
+        } else {
+          chop $last_line;
+          print STDERR "pbs.pl: Error, unfinished job no " .
+            "longer exists, log is in $logfile, last line is '$last_line', " .
+            "syncfile is $f, return status of qstat was $ret\n" .
+            "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
+            " b) Shutdown/Frozen machine? -> Run again!\n";
+          exit(1);
+        }
+      } elsif ($ret != 0) {
+        print STDERR "pbs.pl: Warning: qstat command returned status $ret (qstat -t $pbs_job_id,$!)\n";
+      }
+    }
+  }
+}
+my $all_syncfiles = join(" ", @syncfiles);
+system("rm $all_syncfiles 2>/dev/null");
+
 
 # OK, at this point we are synced; we know the job is done.
 # But we don't know about its exit status.  We'll look at $logfile for this.
