@@ -259,8 +259,8 @@ my $logfile = shift @ARGV;
 if ($array_job == 1 && $logfile !~ m/$jobname/
     && $jobend > $jobstart) {
   warn "pbspro.pl: you are trying to run a parallel job but "
-    . "you are putting the output into just one log file ($logfile)\n";
-
+    . "you are putting the output into just one log file ($logfile)\n"
+    . "jobname: $jobname";
 }
 
 #
