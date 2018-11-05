@@ -249,7 +249,7 @@ for my $option (keys %cli_options) {
     $qsub_opts .= "$cli_config_options{$option} ";
   } else {
     if ($opened_config_file == 0) { $config = "default config file"; }
-    croak "pbspro.pl: Command line option $option not described in $config (or value '$value' not allowed)\n";
+    warn "pbspro.pl: Command line option $option not described in $config (or value '$value' not allowed)\n";
   }
 }
 
