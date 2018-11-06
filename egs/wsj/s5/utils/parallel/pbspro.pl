@@ -29,9 +29,9 @@ use Carp;
 # The current script handles:
 # 1) Normal configuration arguments
 # For e.g. a command line option of "--gpu 1" could be converted into the option
-# "-q g.q -l gpu=1" to qsub. How the CLI option is handled is determined by a
+# "-q debug -l ngpus=1" to qsub. How the CLI option is handled is determined by a
 # line in the config file like
-# gpu=* -q g.q -l gpu=$0
+# gpu=* -q debug -l ngpus=$0
 # $0 here in the line is replaced with the argument read from the CLI and the
 # resulting string is passed to qsub.
 # 2) Special arguments to options such as
@@ -50,10 +50,10 @@ use Carp;
 # behaves as if the queue has the following config file:
 # $ cat conf/pbspro.conf
 # # Default configuration
-# command qsub -v PATH -S /bin/bash -l arch=*64*
+# command qsub -v PATH -S /bin/bash  
 # default gpu=0
-# option gpu=0 -q all.q
-# option gpu=* -l gpu=$0 -q g.q
+# option ngpus=0 -q debug
+# option gpu=* -l ngpus=$0 -q debug
 
 my $qsub_opts = "";
 my $gpu = 0;
@@ -152,7 +152,7 @@ my $default_config_file = <<'EOF';
 command qsub -V -v PATH -S /bin/bash  
 default gpu=0
 option gpu=0
-option gpu=* -l ncpus=$0
+option gpu=* -l ngpus=$0
 EOF
 
 # Here the configuration options specified by the user on the command line
@@ -207,10 +207,10 @@ while(<CONFIG>) {
     }
   } elsif ($_ =~ m/^option ([^=]+)=(\S+)\s?(.*)$/) {
     # Config option that does not need replacement
-    # e.g. option gpu=0 -q all.q
+    # e.g. option gpu=0 -q debug
     my $option = $1;      # gpu
     my $value = $2;       # 0
-    my $arg = $3;         # -q all.q
+    my $arg = $3;         # -q debug
     if (exists $cli_options{$option}) {
       $cli_default_options{($option,$value)} = $arg;
     }
