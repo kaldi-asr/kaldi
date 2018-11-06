@@ -187,13 +187,13 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
 
   // search for a block that we don't have to synchronize on
   int max_iters = 20;
-  auto chosen_iter = iter;
+  auto search_iter = iter;
   for (int32 i = 0;
-       chosen_iter != subregion->free_blocks.end() && i < max_iters;
-       ++i, ++chosen_iter) {
-    if (chosen_iter->second->thread_id == std::this_thread::get_id() ||
-        chosen_iter->second->t <= synchronize_gpu_t_) {
-      iter = chosen_iter;
+       search_iter != subregion->free_blocks.end() && i < max_iters;
+       ++i, ++search_iter) {
+    if (search_iter->second->thread_id == std::this_thread::get_id() ||
+        search_iter->second->t <= synchronize_gpu_t_) {
+      iter = search_iter;
       break;
     }
   }
