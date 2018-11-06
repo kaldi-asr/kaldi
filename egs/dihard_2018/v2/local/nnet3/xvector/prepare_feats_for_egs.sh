@@ -47,7 +47,7 @@ featdir=$(utils/make_absolute.sh $dir)
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $featdir/storage ]; then
   utils/create_split_dir.pl \
-    /export/b{14,15,16,17}/$USER/kaldi-data/egs/voxceleb2/v2/xvector-$(date +'%m_%d_%H_%M')/xvector_feats/storage $featdir/storage
+    /export/b{14,15,16,17}/$USER/kaldi-data/egs/dihard_2018/v2/xvector-$(date +'%m_%d_%H_%M')/xvector_feats/storage $featdir/storage
 fi
 
 for n in $(seq $nj); do
