@@ -185,18 +185,17 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
   // region was sufficiently large.  We don't check this; if it segfaults, we'll
   // debug.
 
-  int max_iters=20;
-  int i=0;
-  //search for a block that we don't have to synchronize on
-  auto it = iter;
-  while (it != subregion->free_blocks.end() && i<max_iters) {
-     if (it->second->thread_id == std::this_thread::get_id() || it->second->t <= synchronize_gpu_t_) {
-       iter = it;
-       break;
-     } else {
-       it++;
-       i++;
-     }
+  // search for a block that we don't have to synchronize on
+  int max_iters = 20;
+  auto chosen_iter = iter;
+  for (int32 i = 0;
+       chosen_iter != subregion->free_blocks.end() && i < max_iters;
+       ++i, ++chosen_iter) {
+    if (chosen_iter->second->thread_id == std::this_thread::get_id() ||
+        chosen_iter->second->t <= synchronize_gpu_t_) {
+      iter = chosen_iter;
+      break;
+    }
   }
 
   MemoryBlock *block = iter->second;
