@@ -140,7 +140,8 @@ void CuArray<T>::CopyFromArray(const CuArrayBase<T> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
     CU_SAFE_CALL(cudaMemcpyAsync(this->data_, src.data_, this->dim_ * sizeof(T),
-                            cudaMemcpyDeviceToDevice, cudaStreamPerThread));
+                                 cudaMemcpyDeviceToDevice,
+                                 cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
@@ -158,8 +159,8 @@ void CuArrayBase<T>::CopyFromArray(const CuArrayBase<T> &src) {
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
     CU_SAFE_CALL(
-        cudaMemcpyAsync(this->data_, src.data_, dim_ * sizeof(T),
-                   cudaMemcpyDeviceToDevice, cudaStreamPerThread));
+      cudaMemcpyAsync(this->data_, src.data_, dim_ * sizeof(T),
+                      cudaMemcpyDeviceToDevice, cudaStreamPerThread));
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
