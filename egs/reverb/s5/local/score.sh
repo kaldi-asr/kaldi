@@ -63,6 +63,9 @@ mkdir -p $dir/scoring_kaldi
 if echo $data | grep -q "real"; then
   tasks="\
   near_room1 far_room1"
+elif echo $data | grep -q "cln"; then
+  tasks="\
+  cln_room"
 else
   tasks="\
   near_room1 far_room1 \
