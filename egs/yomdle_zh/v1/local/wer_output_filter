@@ -21,8 +21,8 @@ while (<>) {
     # Normalize dashes to regular hyphen
     $s =~ s/[\x{2010}\x{2011}\x{2012}\x{2013}\x{2014}\x{2015}]+/\x{002D}/g;
     # Normalize various parenthesis to regular parenthesis
-    $s =~ s/\x{UFF09}/\x{0029}/g;
-    $s =~ s/\x{UFF08}/\x{0028}/g;
+    $s =~ s/\x{FF09}/\x{0029}/g;
+    $s =~ s/\x{FF08}/\x{0028}/g;
     
     # Convert various presentation forms to base form
     $s =~ s/[\x{FED1}\x{FED3}\x{FED4}\x{FED2}]+/\x{0641}/g;

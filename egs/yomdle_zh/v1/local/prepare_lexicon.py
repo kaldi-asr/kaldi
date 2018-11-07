@@ -24,6 +24,7 @@ with open('download/cj5-cc.txt', 'r', encoding='utf-8') as f:
         line_vect = line.strip().split()
         if not line_vect[0].startswith('yyy') and not line_vect[0].startswith('z'):
             cj5_table[line_vect[1]] = "cj5_" + " cj5_".join(list(line_vect[0]))
+            lex[line_vect[1]] = "cj5_" + " cj5_".join(list(line_vect[0]))
 
 with open(text_path, 'r', encoding='utf-8') as f:
     for line in f:
