@@ -54,6 +54,12 @@ for nch in 1 2 8; do
 	    perl -se 'while (<>) { chomp; if (m/\/(\w{8})[^\/]+$/) { print $1, " ", $dir, $_, "\n"; } }' -- -dir=${reverb}/REVERB_WSJCAM0_${task}/data ${taskdir}/$x |\
 		sed -e "s/^\(...\)/\1_${x}_\1/"
 	done > ${dir}/${task}_simu_${nch}ch_wav.scp
+	if [ ${nch} == 1 ]; then
+	    for x in `ls ${taskdir} | grep SimData | grep _${task}_ | grep -e cln`; do
+	        perl -se 'while (<>) { chomp; if (m/\/(\w{8})[^\/]+$/) { print $1, " ", $dir, $_, "\n"; } }' -- -dir=${reverb}/REVERB_WSJCAM0_${task}/data ${taskdir}/$x |\
+	    	sed -e "s/^\(...\)/\1_${x}_\1/"
+	    done > ${dir}/${task}_cln_wav.scp
+        fi
     done
 
     task=tr
@@ -83,12 +89,24 @@ for nch in 1 2 8; do
 		sed -e "s/^\(...\)/\1_${x}_\1/"
 	done > ${dir}/${task}_simu_${nch}ch.trans1 || exit 1;
 	cat ${dir}/${task}_simu_${nch}ch.trans1 | local/normalize_transcript.pl ${noiseword} > ${dir}/${task}_simu_${nch}ch.txt || exit 1;
+	if [ ${nch} == 1 ]; then
+	    for x in `ls ${taskdir} | grep SimData | grep _${task}_ | grep -e cln`; do
+		perl -e 'while (<>) { chomp; if (m/\/(\w{8})[^\/]+$/) { print $1, "\n"; } }' ${taskdir}/$x |\
+		    perl local/find_transcripts_singledot.pl ${dir}/${task}.dot |\
+		    sed -e "s/^\(...\)/\1_${x}_\1/"
+	    done > ${dir}/${task}_cln.trans1 || exit 1;
+	    cat ${dir}/${task}_cln.trans1 | local/normalize_transcript.pl ${noiseword} > ${dir}/${task}_cln.txt || exit 1;
+        fi
     done
     
     # Make the utt2spk and spk2utt files.
     for task in tr dt et; do
 	cat ${dir}/${task}_simu_${nch}ch_wav.scp | awk '{print $1}' | awk -F '_' '{print $0 " " $1}' > ${dir}/${task}_simu_${nch}ch.utt2spk || exit 1;
 	cat ${dir}/${task}_simu_${nch}ch.utt2spk | ./utils/utt2spk_to_spk2utt.pl > ${dir}/${task}_simu_${nch}ch.spk2utt || exit 1;
+    done
+    for task in dt et; do
+	cat ${dir}/${task}_cln_wav.scp | awk '{print $1}' | awk -F '_' '{print $0 " " $1}' > ${dir}/${task}_cln.utt2spk || exit 1;
+	cat ${dir}/${task}_cln.utt2spk | ./utils/utt2spk_to_spk2utt.pl > ${dir}/${task}_cln.spk2utt || exit 1;
     done
 done
 
@@ -117,6 +135,14 @@ for nch in 1 2 8; do
 		sort ${dir}/${task}_simu_1ch.txt     > ${datadir}/text
 		sort ${dir}/${task}_simu_1ch.utt2spk > ${datadir}/utt2spk
 		sort ${dir}/${task}_simu_1ch.spk2utt > ${datadir}/spk2utt
+		./utils/fix_data_dir.sh ${datadir}
+            else
+		datadir=data/${task}_cln
+		mkdir -p ${datadir}
+		sort ${dir}/${task}_cln_wav.scp > ${datadir}/wav.scp
+		sort ${dir}/${task}_cln.txt     > ${datadir}/text
+		sort ${dir}/${task}_cln.utt2spk > ${datadir}/utt2spk
+		sort ${dir}/${task}_cln.spk2utt > ${datadir}/spk2utt
 		./utils/fix_data_dir.sh ${datadir}
 	    fi
 	fi
