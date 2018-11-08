@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# This script is called by local/make_dihard_2018_eval.sh, and it creates the necessary files for DIHARD 2018 evaluation directory.
+
 import sys, os
 
 def prepare_dihard_2018_eval(src_dir, data_dir):

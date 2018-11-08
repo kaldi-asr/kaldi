@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# This script is called by local/make_dihard_2018_dev.sh, and it creates the necessary files for DIHARD 2018 development directory.
+
 import sys, os
 
 def prepare_dihard_2018_dev(src_dir, data_dir):
