@@ -1,5 +1,9 @@
 ########################################
 GMM RESULTs:
+########################################
+
+No Front-End
+########################################
 exp/tri3/decode_dt_real_1ch
 %WER 34.59 [ 506 / 1463, 40 ins, 113 del, 353 sub ] exp/tri3/decode_dt_real_1ch/wer_15_0.5_far_room1
 %WER 30.26 [ 485 / 1603, 42 ins, 112 del, 331 sub ] exp/tri3/decode_dt_real_1ch/wer_17_0.0_near_room1
@@ -24,6 +28,8 @@ exp/tri3/decode_et_simu_1ch
 %WER 9.46 [ 589 / 6226, 54 ins, 116 del, 419 sub ] exp/tri3/decode_et_simu_1ch/wer_15_1.0_near_room2
 %WER 10.62 [ 623 / 5868, 81 ins, 105 del, 437 sub ] exp/tri3/decode_et_simu_1ch/wer_12_1.0_near_room3
 
+1ch - WPE
+########################################
 exp/tri3/decode_dt_real_1ch_wpe
 %WER 33.83 [ 495 / 1463, 42 ins, 97 del, 356 sub ] exp/tri3/decode_dt_real_1ch_wpe/wer_17_0.0_far_room1
 %WER 27.76 [ 445 / 1603, 34 ins, 110 del, 301 sub ] exp/tri3/decode_dt_real_1ch_wpe/wer_16_0.0_near_room1
@@ -48,54 +54,8 @@ exp/tri3/decode_et_simu_1ch_wpe
 %WER 8.54 [ 532 / 6226, 55 ins, 96 del, 381 sub ] exp/tri3/decode_et_simu_1ch_wpe/wer_17_0.5_near_room2
 %WER 10.07 [ 591 / 5868, 94 ins, 80 del, 417 sub ] exp/tri3/decode_et_simu_1ch_wpe/wer_12_0.5_near_room3
 
-exp/tri3/decode_dt_real_2ch_wpe
-%WER 31.51 [ 461 / 1463, 39 ins, 87 del, 335 sub ] exp/tri3/decode_dt_real_2ch_wpe/wer_17_0.0_far_room1
-%WER 26.51 [ 425 / 1603, 31 ins, 105 del, 289 sub ] exp/tri3/decode_dt_real_2ch_wpe/wer_17_0.0_near_room1
-
-exp/tri3/decode_dt_simu_2ch_wpe
-%WER 6.24 [ 254 / 4071, 51 ins, 34 del, 169 sub ] exp/tri3/decode_dt_simu_2ch_wpe/wer_13_0.0_far_room1
-%WER 14.32 [ 581 / 4058, 78 ins, 98 del, 405 sub ] exp/tri3/decode_dt_simu_2ch_wpe/wer_13_0.0_far_room2
-%WER 17.33 [ 701 / 4045, 87 ins, 154 del, 460 sub ] exp/tri3/decode_dt_simu_2ch_wpe/wer_14_1.0_far_room3
-%WER 5.75 [ 234 / 4071, 35 ins, 40 del, 159 sub ] exp/tri3/decode_dt_simu_2ch_wpe/wer_17_1.0_near_room1
-%WER 7.07 [ 287 / 4058, 40 ins, 41 del, 206 sub ] exp/tri3/decode_dt_simu_2ch_wpe/wer_13_1.0_near_room2
-%WER 7.54 [ 305 / 4045, 41 ins, 45 del, 219 sub ] exp/tri3/decode_dt_simu_2ch_wpe/wer_13_0.5_near_room3
-
-exp/tri3/decode_et_real_2ch_wpe
-%WER 26.81 [ 794 / 2962, 113 ins, 116 del, 565 sub ] exp/tri3/decode_et_real_2ch_wpe/wer_16_0.0_far_room1
-%WER 28.11 [ 880 / 3131, 80 ins, 189 del, 611 sub ] exp/tri3/decode_et_real_2ch_wpe/wer_17_1.0_near_room1
-
-exp/tri3/decode_et_simu_2ch_wpe
-%WER 7.03 [ 415 / 5907, 73 ins, 45 del, 297 sub ] exp/tri3/decode_et_simu_2ch_wpe/wer_16_0.5_far_room1
-%WER 14.63 [ 911 / 6226, 93 ins, 161 del, 657 sub ] exp/tri3/decode_et_simu_2ch_wpe/wer_15_0.5_far_room2
-%WER 18.58 [ 1090 / 5868, 128 ins, 213 del, 749 sub ] exp/tri3/decode_et_simu_2ch_wpe/wer_14_0.5_far_room3
-%WER 7.06 [ 417 / 5907, 68 ins, 47 del, 302 sub ] exp/tri3/decode_et_simu_2ch_wpe/wer_17_1.0_near_room1
-%WER 8.75 [ 545 / 6226, 77 ins, 64 del, 404 sub ] exp/tri3/decode_et_simu_2ch_wpe/wer_13_0.5_near_room2
-%WER 9.08 [ 533 / 5868, 86 ins, 82 del, 365 sub ] exp/tri3/decode_et_simu_2ch_wpe/wer_12_1.0_near_room3
-
-exp/tri3/decode_dt_real_8ch_wpe
-%WER 27.41 [ 401 / 1463, 44 ins, 71 del, 286 sub ] exp/tri3/decode_dt_real_8ch_wpe/wer_15_1.0_far_room1
-%WER 23.96 [ 384 / 1603, 42 ins, 83 del, 259 sub ] exp/tri3/decode_dt_real_8ch_wpe/wer_15_1.0_near_room1
-
-exp/tri3/decode_dt_simu_8ch_wpe
-%WER 6.31 [ 257 / 4071, 43 ins, 46 del, 168 sub ] exp/tri3/decode_dt_simu_8ch_wpe/wer_16_1.0_far_room1
-%WER 8.92 [ 362 / 4058, 63 ins, 56 del, 243 sub ] exp/tri3/decode_dt_simu_8ch_wpe/wer_12_1.0_far_room2
-%WER 9.67 [ 391 / 4045, 131 ins, 42 del, 218 sub ] exp/tri3/decode_dt_simu_8ch_wpe/wer_14_1.0_far_room3
-%WER 6.07 [ 247 / 4071, 39 ins, 39 del, 169 sub ] exp/tri3/decode_dt_simu_8ch_wpe/wer_16_1.0_near_room1
-%WER 7.22 [ 293 / 4058, 60 ins, 32 del, 201 sub ] exp/tri3/decode_dt_simu_8ch_wpe/wer_13_0.5_near_room2
-%WER 6.23 [ 252 / 4045, 54 ins, 25 del, 173 sub ] exp/tri3/decode_dt_simu_8ch_wpe/wer_14_0.0_near_room3
-
-exp/tri3/decode_et_real_8ch_wpe
-%WER 22.01 [ 652 / 2962, 118 ins, 87 del, 447 sub ] exp/tri3/decode_et_real_8ch_wpe/wer_17_0.5_far_room1
-%WER 23.95 [ 750 / 3131, 134 ins, 125 del, 491 sub ] exp/tri3/decode_et_real_8ch_wpe/wer_16_1.0_near_room1
-
-exp/tri3/decode_et_simu_8ch_wpe
-%WER 7.16 [ 423 / 5907, 89 ins, 44 del, 290 sub ] exp/tri3/decode_et_simu_8ch_wpe/wer_15_0.5_far_room1
-%WER 9.73 [ 606 / 6226, 87 ins, 90 del, 429 sub ] exp/tri3/decode_et_simu_8ch_wpe/wer_14_1.0_far_room2
-%WER 9.22 [ 541 / 5868, 105 ins, 77 del, 359 sub ] exp/tri3/decode_et_simu_8ch_wpe/wer_15_1.0_far_room3
-%WER 7.08 [ 418 / 5907, 70 ins, 45 del, 303 sub ] exp/tri3/decode_et_simu_8ch_wpe/wer_17_1.0_near_room1
-%WER 7.98 [ 497 / 6226, 61 ins, 80 del, 356 sub ] exp/tri3/decode_et_simu_8ch_wpe/wer_15_1.0_near_room2
-%WER 7.91 [ 464 / 5868, 83 ins, 67 del, 314 sub ] exp/tri3/decode_et_simu_8ch_wpe/wer_16_1.0_near_room3
-
+2ch - WPE+BeamformIt
+########################################
 exp/tri3/decode_dt_real_2ch_beamformit
 %WER 28.43 [ 416 / 1463, 32 ins, 82 del, 302 sub ] exp/tri3/decode_dt_real_2ch_beamformit/wer_17_1.0_far_room1
 %WER 23.46 [ 376 / 1603, 26 ins, 98 del, 252 sub ] exp/tri3/decode_dt_real_2ch_beamformit/wer_17_1.0_near_room1
@@ -120,6 +80,8 @@ exp/tri3/decode_et_simu_2ch_beamformit
 %WER 7.73 [ 481 / 6226, 52 ins, 81 del, 348 sub ] exp/tri3/decode_et_simu_2ch_beamformit/wer_17_1.0_near_room2
 %WER 8.64 [ 507 / 5868, 78 ins, 77 del, 352 sub ] exp/tri3/decode_et_simu_2ch_beamformit/wer_13_1.0_near_room3
 
+8ch - WPE+BeamformIt
+########################################
 exp/tri3/decode_dt_real_8ch_beamformit
 %WER 20.71 [ 303 / 1463, 41 ins, 43 del, 219 sub ] exp/tri3/decode_dt_real_8ch_beamformit/wer_14_1.0_far_room1
 %WER 17.28 [ 277 / 1603, 24 ins, 57 del, 196 sub ] exp/tri3/decode_dt_real_8ch_beamformit/wer_17_1.0_near_room1
@@ -144,107 +106,193 @@ exp/tri3/decode_et_simu_8ch_beamformit
 %WER 7.07 [ 440 / 6226, 78 ins, 66 del, 296 sub ] exp/tri3/decode_et_simu_8ch_beamformit/wer_17_1.0_near_room2
 %WER 7.00 [ 411 / 5868, 83 ins, 59 del, 269 sub ] exp/tri3/decode_et_simu_8ch_beamformit/wer_14_1.0_near_room3
 
-exp/tri3/decode_et_cln
-%WER 6.74 [ 1213 / 18001, 234 ins, 158 del, 821 sub ] exp/tri3/decode_et_cln/wer_15_1.0_cln_room
 ########################################
 TDNN RESULTs:
+########################################
+
 exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt*
+########################################
+
+No Front-End
+########################################
 %WER 20.44 [ 299 / 1463, 22 ins, 75 del, 202 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_10_0.5_far_room1
 %WER 18.59 [ 298 / 1603, 16 ins, 79 del, 203 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch/wer_13_0.0_near_room1
-%WER 17.91 [ 262 / 1463, 24 ins, 59 del, 179 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch_wpe/wer_8_0.5_far_room1
-%WER 16.16 [ 259 / 1603, 16 ins, 64 del, 179 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch_wpe/wer_11_0.0_near_room1
-%WER 16.13 [ 236 / 1463, 21 ins, 66 del, 149 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_2ch_beamformit/wer_10_1.0_far_room1
-%WER 11.92 [ 191 / 1603, 16 ins, 37 del, 138 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_2ch_beamformit/wer_12_0.0_near_room1
-%WER 18.25 [ 267 / 1463, 21 ins, 70 del, 176 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_2ch_wpe/wer_9_0.5_far_room1
-%WER 14.60 [ 234 / 1603, 14 ins, 51 del, 169 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_2ch_wpe/wer_10_0.0_near_room1
-%WER 12.24 [ 179 / 1463, 10 ins, 51 del, 118 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_8ch_beamformit/wer_11_1.0_far_room1
-%WER 9.61 [ 154 / 1603, 15 ins, 30 del, 109 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_8ch_beamformit/wer_11_0.0_near_room1
-%WER 16.20 [ 237 / 1463, 19 ins, 80 del, 138 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_8ch_wpe/wer_11_0.5_far_room1
-%WER 12.98 [ 208 / 1603, 20 ins, 54 del, 134 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_8ch_wpe/wer_10_0.0_near_room1
 %WER 3.19 [ 130 / 4071, 16 ins, 27 del, 87 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_7_0.5_far_room1
 %WER 7.29 [ 296 / 4058, 35 ins, 51 del, 210 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_7_0.5_far_room2
 %WER 7.17 [ 290 / 4045, 31 ins, 57 del, 202 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_9_0.0_far_room3
 %WER 3.00 [ 122 / 4071, 14 ins, 22 del, 86 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_9_0.0_near_room1
 %WER 3.43 [ 139 / 4058, 12 ins, 21 del, 106 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_7_1.0_near_room2
 %WER 3.86 [ 156 / 4045, 19 ins, 28 del, 109 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch/wer_7_0.0_near_room3
+
+1ch - WPE
+########################################
+%WER 17.91 [ 262 / 1463, 24 ins, 59 del, 179 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch_wpe/wer_8_0.5_far_room1
+%WER 16.16 [ 259 / 1603, 16 ins, 64 del, 179 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_1ch_wpe/wer_11_0.0_near_room1
 %WER 3.12 [ 127 / 4071, 20 ins, 19 del, 88 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch_wpe/wer_8_0.0_far_room1
 %WER 6.73 [ 273 / 4058, 33 ins, 46 del, 194 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch_wpe/wer_7_0.5_far_room2
 %WER 6.50 [ 263 / 4045, 34 ins, 47 del, 182 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch_wpe/wer_9_0.0_far_room3
 %WER 3.00 [ 122 / 4071, 15 ins, 13 del, 94 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch_wpe/wer_7_0.0_near_room1
 %WER 3.25 [ 132 / 4058, 21 ins, 15 del, 96 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch_wpe/wer_8_0.0_near_room2
 %WER 3.78 [ 153 / 4045, 23 ins, 24 del, 106 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_1ch_wpe/wer_7_0.0_near_room3
+
+2ch - WPE+BeamformIt
+########################################
+%WER 16.13 [ 236 / 1463, 21 ins, 66 del, 149 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_2ch_beamformit/wer_10_1.0_far_room1
+%WER 11.92 [ 191 / 1603, 16 ins, 37 del, 138 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_2ch_beamformit/wer_12_0.0_near_room1
 %WER 3.10 [ 126 / 4071, 22 ins, 18 del, 86 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_beamformit/wer_8_0.0_far_room1
 %WER 4.44 [ 180 / 4058, 16 ins, 36 del, 128 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_beamformit/wer_9_1.0_far_room2
 %WER 4.70 [ 190 / 4045, 30 ins, 26 del, 134 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_beamformit/wer_9_0.0_far_room3
 %WER 2.82 [ 115 / 4071, 12 ins, 18 del, 85 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_beamformit/wer_8_0.0_near_room1
 %WER 2.88 [ 117 / 4058, 8 ins, 26 del, 83 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_beamformit/wer_8_1.0_near_room2
 %WER 3.39 [ 137 / 4045, 25 ins, 20 del, 92 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_beamformit/wer_7_0.0_near_room3
-%WER 3.00 [ 122 / 4071, 19 ins, 17 del, 86 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_wpe/wer_8_0.0_far_room1
-%WER 5.40 [ 219 / 4058, 26 ins, 38 del, 155 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_wpe/wer_7_1.0_far_room2
-%WER 5.86 [ 237 / 4045, 22 ins, 44 del, 171 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_wpe/wer_9_0.5_far_room3
-%WER 2.97 [ 121 / 4071, 13 ins, 16 del, 92 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_wpe/wer_8_0.0_near_room1
-%WER 3.40 [ 138 / 4058, 20 ins, 20 del, 98 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_wpe/wer_8_0.0_near_room2
-%WER 3.76 [ 152 / 4045, 14 ins, 30 del, 108 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_2ch_wpe/wer_8_1.0_near_room3
+
+8ch - WPE+BeamformIt
+########################################
+%WER 12.24 [ 179 / 1463, 10 ins, 51 del, 118 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_8ch_beamformit/wer_11_1.0_far_room1
+%WER 9.61 [ 154 / 1603, 15 ins, 30 del, 109 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_real_8ch_beamformit/wer_11_0.0_near_room1
 %WER 3.00 [ 122 / 4071, 13 ins, 22 del, 87 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_beamformit/wer_7_0.5_far_room1
 %WER 3.03 [ 123 / 4058, 21 ins, 14 del, 88 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_beamformit/wer_7_0.0_far_room2
 %WER 2.94 [ 119 / 4045, 12 ins, 23 del, 84 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_beamformit/wer_8_1.0_far_room3
 %WER 2.95 [ 120 / 4071, 15 ins, 14 del, 91 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_beamformit/wer_7_0.0_near_room1
 %WER 2.64 [ 107 / 4058, 14 ins, 18 del, 75 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_beamformit/wer_8_0.0_near_room2
 %WER 2.84 [ 115 / 4045, 13 ins, 27 del, 75 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_beamformit/wer_9_1.0_near_room3
-%WER 2.92 [ 119 / 4071, 14 ins, 21 del, 84 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_wpe/wer_9_0.0_far_room1
-%WER 3.97 [ 161 / 4058, 14 ins, 38 del, 109 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_wpe/wer_8_1.0_far_room2
-%WER 3.44 [ 139 / 4045, 14 ins, 21 del, 104 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_wpe/wer_8_0.5_far_room3
-%WER 2.92 [ 119 / 4071, 13 ins, 18 del, 88 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_wpe/wer_9_0.0_near_room1
-%WER 3.30 [ 134 / 4058, 13 ins, 29 del, 92 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_wpe/wer_9_0.5_near_room2
-%WER 3.36 [ 136 / 4045, 15 ins, 27 del, 94 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_dt_simu_8ch_wpe/wer_9_0.5_near_room3
 
 exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et*
-%WER 3.55 [ 639 / 18001, 77 ins, 125 del, 437 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_cln/wer_9_1.0_cln_room
+########################################
+
+No Front-End
+########################################
 %WER 19.85 [ 588 / 2962, 52 ins, 114 del, 422 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_12_0.0_far_room1
 %WER 18.24 [ 571 / 3131, 39 ins, 159 del, 373 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch/wer_10_1.0_near_room1
-%WER 18.10 [ 536 / 2962, 38 ins, 116 del, 382 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch_wpe/wer_11_0.5_far_room1
-%WER 15.81 [ 495 / 3131, 61 ins, 96 del, 338 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch_wpe/wer_10_0.0_near_room1
-%WER 14.21 [ 421 / 2962, 54 ins, 51 del, 316 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_2ch_beamformit/wer_11_0.0_far_room1
-%WER 11.27 [ 353 / 3131, 39 ins, 80 del, 234 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_2ch_beamformit/wer_11_0.5_near_room1
-%WER 15.94 [ 472 / 2962, 44 ins, 101 del, 327 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_2ch_wpe/wer_11_0.5_far_room1
-%WER 14.53 [ 455 / 3131, 52 ins, 97 del, 306 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_2ch_wpe/wer_10_0.5_near_room1
-%WER 10.23 [ 303 / 2962, 41 ins, 44 del, 218 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_8ch_beamformit/wer_10_0.5_far_room1
-%WER 9.17 [ 287 / 3131, 35 ins, 61 del, 191 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_8ch_beamformit/wer_10_1.0_near_room1
-%WER 12.90 [ 382 / 2962, 30 ins, 77 del, 275 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_8ch_wpe/wer_10_1.0_far_room1
-%WER 11.75 [ 368 / 3131, 58 ins, 65 del, 245 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_8ch_wpe/wer_10_0.0_near_room1
 %WER 3.74 [ 221 / 5907, 24 ins, 41 del, 156 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_8_1.0_far_room1
 %WER 7.66 [ 477 / 6226, 43 ins, 100 del, 334 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_0.5_far_room2
 %WER 7.72 [ 453 / 5868, 33 ins, 114 del, 306 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_far_room3
 %WER 3.28 [ 194 / 5907, 20 ins, 38 del, 136 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_near_room1
 %WER 4.75 [ 296 / 6226, 27 ins, 66 del, 203 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_9_1.0_near_room2
 %WER 4.91 [ 288 / 5868, 31 ins, 56 del, 201 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch/wer_8_1.0_near_room3
+
+1ch - WPE
+########################################
+%WER 18.10 [ 536 / 2962, 38 ins, 116 del, 382 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch_wpe/wer_11_0.5_far_room1
+%WER 15.81 [ 495 / 3131, 61 ins, 96 del, 338 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_1ch_wpe/wer_10_0.0_near_room1
 %WER 3.69 [ 218 / 5907, 29 ins, 36 del, 153 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch_wpe/wer_8_0.5_far_room1
 %WER 7.04 [ 438 / 6226, 48 ins, 77 del, 313 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch_wpe/wer_7_0.5_far_room2
 %WER 7.17 [ 421 / 5868, 37 ins, 94 del, 290 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch_wpe/wer_8_1.0_far_room3
 %WER 3.22 [ 190 / 5907, 27 ins, 31 del, 132 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch_wpe/wer_10_0.0_near_room1
 %WER 4.72 [ 294 / 6226, 29 ins, 64 del, 201 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch_wpe/wer_9_1.0_near_room2
 %WER 4.87 [ 286 / 5868, 33 ins, 50 del, 203 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_1ch_wpe/wer_7_1.0_near_room3
+
+2ch - WPE+BeamformIt
+########################################
+%WER 14.21 [ 421 / 2962, 54 ins, 51 del, 316 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_2ch_beamformit/wer_11_0.0_far_room1
+%WER 11.27 [ 353 / 3131, 39 ins, 80 del, 234 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_2ch_beamformit/wer_11_0.5_near_room1
 %WER 3.28 [ 194 / 5907, 20 ins, 36 del, 138 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_beamformit/wer_9_1.0_far_room1
 %WER 5.22 [ 325 / 6226, 36 ins, 72 del, 217 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_beamformit/wer_9_1.0_far_room2
 %WER 6.00 [ 352 / 5868, 39 ins, 70 del, 243 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_beamformit/wer_9_1.0_far_room3
 %WER 3.20 [ 189 / 5907, 28 ins, 29 del, 132 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_beamformit/wer_10_0.0_near_room1
 %WER 4.18 [ 260 / 6226, 24 ins, 60 del, 176 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_beamformit/wer_9_1.0_near_room2
 %WER 4.26 [ 250 / 5868, 38 ins, 45 del, 167 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_beamformit/wer_8_0.5_near_room3
-%WER 3.39 [ 200 / 5907, 27 ins, 35 del, 138 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_wpe/wer_8_1.0_far_room1
-%WER 6.12 [ 381 / 6226, 28 ins, 94 del, 259 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_wpe/wer_11_1.0_far_room2
-%WER 6.58 [ 386 / 5868, 39 ins, 77 del, 270 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_wpe/wer_9_1.0_far_room3
-%WER 3.20 [ 189 / 5907, 29 ins, 30 del, 130 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_wpe/wer_10_0.0_near_room1
-%WER 4.53 [ 282 / 6226, 29 ins, 61 del, 192 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_wpe/wer_9_1.0_near_room2
-%WER 4.48 [ 263 / 5868, 26 ins, 49 del, 188 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_2ch_wpe/wer_9_1.0_near_room3
+
+8ch - WPE+BeamformIt
+########################################
+%WER 10.23 [ 303 / 2962, 41 ins, 44 del, 218 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_8ch_beamformit/wer_10_0.5_far_room1
+%WER 9.17 [ 287 / 3131, 35 ins, 61 del, 191 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_real_8ch_beamformit/wer_10_1.0_near_room1
 %WER 3.54 [ 209 / 5907, 27 ins, 36 del, 146 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_beamformit/wer_9_0.5_far_room1
 %WER 4.11 [ 256 / 6226, 29 ins, 51 del, 176 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_beamformit/wer_8_1.0_far_room2
 %WER 3.89 [ 228 / 5868, 28 ins, 43 del, 157 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_beamformit/wer_8_1.0_far_room3
 %WER 3.22 [ 190 / 5907, 24 ins, 29 del, 137 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_beamformit/wer_8_0.5_near_room1
 %WER 3.71 [ 231 / 6226, 24 ins, 55 del, 152 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_beamformit/wer_9_1.0_near_room2
 %WER 3.66 [ 215 / 5868, 22 ins, 46 del, 147 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_beamformit/wer_8_1.0_near_room3
-%WER 3.50 [ 207 / 5907, 19 ins, 42 del, 146 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_wpe/wer_9_1.0_far_room1
-%WER 5.08 [ 316 / 6226, 34 ins, 59 del, 223 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_wpe/wer_7_1.0_far_room2
-%WER 4.46 [ 262 / 5868, 33 ins, 48 del, 181 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_wpe/wer_10_0.5_far_room3
-%WER 3.35 [ 198 / 5907, 16 ins, 41 del, 141 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_wpe/wer_10_1.0_near_room1
-%WER 4.42 [ 275 / 6226, 27 ins, 56 del, 192 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_wpe/wer_8_1.0_near_room2
-%WER 3.92 [ 230 / 5868, 37 ins, 36 del, 157 sub ] exp/chain_tr_simu_8ch/tdnn1a_sp/decode_test_tg_5k_et_simu_8ch_wpe/wer_9_0.0_near_room3
+########################################
+
+########################################
+SE Scores - 8ch - WPE+BeamformIt
+########################################
+
+Data type   : SimData
+########################################
+
+==============================================
+           Cepstral distance in dB            
+----------------------------------------------
+            	      	  mean	      	median
+----------------------------------------------
+            	   org	   enh	   org	   enh
+----------------------------------------------
+  dt_far_room1	  2.65	  1.97	  2.36	  1.74	
+  dt_far_room2	  5.08	  4.66	  4.94	  4.30	
+  dt_far_room3	  4.82	  4.03	  4.60	  3.63	
+ dt_near_room1	  1.96	  1.67	  1.67	  1.37	
+ dt_near_room2	  4.58	  4.33	  4.30	  3.88	
+ dt_near_room3	  4.20	  3.71	  3.91	  3.26	
+----------------------------------------------
+       average	  3.88	  3.39	  3.63	  3.03
+==============================================
+
+
+==============================================
+            SRMR  (only mean used)            
+----------------------------------------------
+            	      	  mean	      	median
+----------------------------------------------
+            	   org	   enh	   org	   enh
+----------------------------------------------
+  dt_far_room1	  4.63	  4.91	     -	     -	
+  dt_far_room2	  2.94	  5.13	     -	     -	
+  dt_far_room3	  2.76	  4.87	     -	     -	
+ dt_near_room1	  4.37	  4.62	     -	     -	
+ dt_near_room2	  3.67	  4.39	     -	     -	
+ dt_near_room3	  3.66	  4.54	     -	     -	
+----------------------------------------------
+       average	  3.67	  4.74	     -	     -
+==============================================
+
+
+==============================================
+             Log likelihood ratio             
+----------------------------------------------
+            	      	  mean	      	median
+----------------------------------------------
+            	   org	   enh	   org	   enh
+----------------------------------------------
+  dt_far_room1	  0.38	  0.33	  0.35	  0.30	
+  dt_far_room2	  0.77	  0.56	  0.64	  0.43	
+  dt_far_room3	  0.85	  0.52	  0.77	  0.45	
+ dt_near_room1	  0.34	  0.34	  0.33	  0.32	
+ dt_near_room2	  0.51	  0.50	  0.43	  0.33	
+ dt_near_room3	  0.65	  0.50	  0.59	  0.43	
+----------------------------------------------
+       average	  0.58	  0.46	  0.52	  0.38
+==============================================
+
+
+==============================================
+    Frequency-weighted segmental SNR in dB    
+----------------------------------------------
+            	      	  mean	      	median
+----------------------------------------------
+            	   org	   enh	   org	   enh
+----------------------------------------------
+  dt_far_room1	  6.75	  8.99	  8.93	 11.06	
+  dt_far_room2	  0.53	  3.84	  0.37	  5.91	
+  dt_far_room3	  0.14	  3.76	  0.39	  6.57	
+ dt_near_room1	  8.10	  9.50	 10.47	 11.32	
+ dt_near_room2	  3.07	  5.10	  4.58	  8.12	
+ dt_near_room3	  2.32	  4.54	  4.41	  8.15	
+----------------------------------------------
+       average	  3.48	  5.96	  4.86	  8.52
+==============================================
+
+Data type   : RealData
+########################################
+
+==============================
+            SRMR
+------------------------------
+            	   org	   enh
+------------------------------
+  dt_far_room1	  3.51	  6.03	
+ dt_near_room1	  4.05	  6.68	
+------------------------------
+       average	  3.78	  6.36
+==============================
