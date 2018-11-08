@@ -311,9 +311,19 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
       const std::vector<std::pair<int32, BaseFloat> > &delta_weights);
 
  private:
-  // this function adds "weight" to the stats for frame "frame".
-  void UpdateStatsForFrame(int32 frame,
-                           BaseFloat weight);
+
+  // This accumulates i-vector stats for a set of frames, specified as pairs
+  // (t, weight).  The weights do not have to be positive.  (In the online
+  // silence-weighting that we do, negative weights can occur if we change our
+  // minds about the assignment of a frame as silence vs. non-silence).
+  void UpdateStatsForFrames(
+      const std::vector<std::pair<int32, BaseFloat> > &frame_weights);
+
+  // Returns a modified version of info_.min_post, which is opts_.min_post if
+  // weight is 1.0 or -1.0, but gets larger if fabs(weight) is small... but no
+  // larger than 0.99.  (This is an efficiency thing, to not bother processing
+  // very small counts).
+  BaseFloat GetMinPost(BaseFloat weight) const;
 
   // This is the original UpdateStatsUntilFrame that is called when there is
   // no data-weighting involved.
@@ -327,14 +337,16 @@ class OnlineIvectorFeature: public OnlineFeatureInterface {
 
   const OnlineIvectorExtractionInfo &info_;
 
-  // base_ is the base feature; it is not owned here.
-  OnlineFeatureInterface *base_;
-  // the following online-feature-extractor pointers are owned here:
-  OnlineSpliceFrames *splice_; // splice on top of raw features.
-  OnlineTransform *lda_;  // LDA on top of raw+splice features.
-  OnlineCmvn *cmvn_;
-  OnlineSpliceFrames *splice_normalized_; // splice on top of CMVN feats.
-  OnlineTransform *lda_normalized_;  // LDA on top of CMVN+splice
+  OnlineFeatureInterface *base_;  // The feature this is built on top of
+                                  // (e.g. MFCC); not owned here
+
+  OnlineFeatureInterface *lda_;  // LDA on top of raw+splice features.
+  OnlineCmvn *cmvn_;  // the CMVN that we give to the lda_normalized_.
+  OnlineFeatureInterface *lda_normalized_;  // LDA on top of CMVN+splice
+
+  // the following is the pointers to OnlineFeatureInterface objects that are
+  // owned here and which we need to delete.
+  std::vector<OnlineFeatureInterface*> to_delete_;
 
   /// the iVector estimation stats
   OnlineIvectorEstimationStats ivector_stats_;

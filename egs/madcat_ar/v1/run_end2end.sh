@@ -15,8 +15,10 @@ writing_condition1=/export/corpora/LDC/LDC2012T15/docs/writing_conditions.tab
 writing_condition2=/export/corpora/LDC/LDC2013T09/docs/writing_conditions.tab
 writing_condition3=/export/corpora/LDC/LDC2013T15/docs/writing_conditions.tab
 data_splits_dir=data/download/data_splits
+images_scp_dir=data/local
 overwrite=false
-
+subset=false
+augment=false
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
            ## This relates to the queue.
 . ./path.sh
@@ -37,20 +39,23 @@ if [ $stage -le 0 ]; then
   local/download_data.sh --data_splits $data_splits_dir --download_dir1 $download_dir1 \
                          --download_dir2 $download_dir2 --download_dir3 $download_dir3
 
-  for dataset in test train dev; do
-    data_split_file=$data_splits_dir/madcat.$dataset.raw.lineid
+  for set in test train dev; do
+    data_split_file=$data_splits_dir/madcat.$set.raw.lineid
     local/extract_lines.sh --nj $nj --cmd $cmd --data_split_file $data_split_file \
         --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
         --download_dir3 $download_dir3 --writing_condition1 $writing_condition1 \
         --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3 \
-        --data data/local/$dataset
+        --data data/local/$set --subset $subset --augment $augment || exit 1
   done
 
   echo "$0: Preparing data..."
-  local/prepare_data.sh --download_dir1 $download_dir1 --download_dir2 $download_dir2 \
-      --download_dir3 $download_dir3 --images_scp_dir data/local \
-      --data_splits_dir $data_splits_dir --writing_condition1 $writing_condition1 \
-      --writing_condition2 $writing_condition2 --writing_condition3 $writing_condition3
+  for set in dev train test; do
+    local/process_data.py $download_dir1 $download_dir2 $download_dir3 \
+      $data_splits_dir/madcat.$set.raw.lineid data/$set $images_scp_dir/$set/images.scp \
+      $writing_condition1 $writing_condition2 $writing_condition3 --augment $augment --subset $subset
+    image/fix_data_dir.sh data/${set}
+  done
+
 fi
 
 if [ $stage -le 1 ]; then
@@ -58,10 +63,10 @@ if [ $stage -le 1 ]; then
   image/get_image2num_frames.py data/train
   image/get_allowed_lengths.py --frame-subsampling-factor 4 10 data/train
 
-  for dataset in test train; do
-    echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $dataset. $(date)"
-    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$dataset
-    steps/compute_cmvn_stats.sh data/$dataset || exit 1;
+  for set in test train; do
+    echo "$0: Extracting features and calling compute_cmvn_stats for dataset:  $set. $(date)"
+    local/extract_features.sh --nj $nj --cmd $cmd --feat-dim 40 data/$set
+    steps/compute_cmvn_stats.sh data/$set || exit 1;
   done
   echo "$0: Fixing data directory for train dataset $(date)."
   utils/fix_data_dir.sh data/train
@@ -69,14 +74,14 @@ fi
 
 if [ $stage -le 2 ]; then
   echo "$0: Preparing BPE..."
-  cut -d' ' -f2- data/train/text | local/reverse.py | \
-    utils/lang/bpe/prepend_words.py --encoding 'utf-8' | \
+  cut -d' ' -f2- data/train/text | utils/lang/bpe/reverse.py | \
+    utils/lang/bpe/prepend_words.py | \
     utils/lang/bpe/learn_bpe.py -s 700 > data/local/bpe.txt
 
   for set in test train dev; do
     cut -d' ' -f1 data/$set/text > data/$set/ids
-    cut -d' ' -f2- data/$set/text | local/reverse.py | \
-      utils/lang/bpe/prepend_words.py --encoding 'utf-8' | \
+    cut -d' ' -f2- data/$set/text | utils/lang/bpe/reverse.py | \
+      utils/lang/bpe/prepend_words.py | \
       utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
       | sed 's/@@//g' > data/$set/bpe_text
 
@@ -95,8 +100,10 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: Estimating a language model for decoding..."
   local/train_lm.sh
-  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
-                     data/local/dict/lexicon.txt data/lang_test
+  utils/format_lm.sh data/lang data/local/local_lm/data/arpa/6gram_big.arpa.gz \
+                     data/local/dict/lexicon.txt data/lang
+  utils/build_const_arpa_lm.sh data/local/local_lm/data/arpa/6gram_unpruned.arpa.gz \
+                               data/lang data/lang_rescore_6g
 fi
 
 if [ $stage -le 4 ]; then

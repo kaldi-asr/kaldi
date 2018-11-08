@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <nnet3/decodable-online-looped.h>
+#include "nnet3/decodable-online-looped.h"
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
@@ -244,7 +244,7 @@ BaseFloat DecodableAmNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
   EnsureFrameIsComputed(subsampled_frame);
   return current_log_post_(
       subsampled_frame - current_log_post_subsampled_offset_,
-      trans_model_.TransitionIdToPdf(index));
+      trans_model_.TransitionIdToPdfFast(index));
 }
 
 
