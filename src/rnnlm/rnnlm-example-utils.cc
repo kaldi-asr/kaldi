@@ -290,7 +290,7 @@ static void ProcessRnnlmOutputNoSampling(
     row_sums.ApplyLog();
     BaseFloat ans = -VecVec(row_sums, minibatch.output_weights);
     *objf_den_exact =  ans;
-    if (fabs(ans) > 100) {
+    if (fabs(ans) > 1.0 * nnet_output.NumRows()) {
       KALDI_WARN << "Big den objf "  << ans;
     }
   }
