@@ -250,7 +250,7 @@ if [ $stage -le 12 ]; then
   # set using some reasonable thresholds for a well-calibrated system.
   for threshold in -0.5 -0.4 -0.3 -0.2 -0.1 -0.05 0 0.05 0.1 0.2 0.3 0.4 0.5; do
     diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
-      --threshold $threshold $nnet_dir/xvectors_dihard_2018_dev/plda_scores \
+      --threshold $threshold --channel 1 $nnet_dir/xvectors_dihard_2018_dev/plda_scores \
       $nnet_dir/xvectors_dihard_2018_dev/plda_scores_t$threshold
 
     md-eval.pl -r data/dihard_2018_dev/rttm \
@@ -268,14 +268,14 @@ if [ $stage -le 12 ]; then
   echo "$best_threshold" > $nnet_dir/tuning/dihard_2018_dev_best
 
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
-    --threshold $(cat $nnet_dir/tuning/dihard_2018_dev_best) \
+    --threshold $(cat $nnet_dir/tuning/dihard_2018_dev_best) --channel 1 \
     $nnet_dir/xvectors_dihard_2018_dev/plda_scores $nnet_dir/xvectors_dihard_2018_dev/plda_scores
 
   # Cluster DIHARD 2018 evaluation set using the best threshold found for the DIHARD 
   # 2018 development set. The DIHARD 2018 development set is used as the validation 
   # set to tune the parameters. 
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
-    --threshold $(cat $nnet_dir/tuning/dihard_2018_dev_best) \
+    --threshold $(cat $nnet_dir/tuning/dihard_2018_dev_best) --channel 1 \
     $nnet_dir/xvectors_dihard_2018_eval/plda_scores $nnet_dir/xvectors_dihard_2018_eval/plda_scores
 
   mkdir -p $nnet_dir/results
@@ -295,11 +295,10 @@ fi
 if [ $stage -le 13 ]; then
   # In this section, we show how to do the clustering if the number of speakers
   # (and therefore, the number of clusters) per recording is known in advance.
-  diarization/cluster.sh --cmd "$train_cmd --mem 4G" \
-    --reco2num-spk data/dihard_2018_eval/reco2num_spk \
+  diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
+    --reco2num-spk data/dihard_2018_eval/reco2num_spk --channel 1 \
     $nnet_dir/xvectors_dihard_2018_eval/plda_scores $nnet_dir/xvectors_dihard_2018_eval/plda_scores_num_spk
 
-  mkdir -p $nnet_dir/results
   md-eval.pl -r data/dihard_2018_eval/rttm \
     -s $nnet_dir/xvectors_dihard_2018_eval/plda_scores_num_spk/rttm 2> $nnet_dir/results/num_spk.log \
     > $nnet_dir/results/DER_num_spk.txt
