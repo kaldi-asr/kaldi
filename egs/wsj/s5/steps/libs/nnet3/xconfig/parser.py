@@ -74,7 +74,10 @@ config_to_layer = {
         'batchnorm-component': xlayers.XconfigBatchnormComponent,
         'no-op-component': xlayers.XconfigNoOpComponent,
         'linear-component': xlayers.XconfigLinearComponent,
-        'scale-component':  xlayers.XconfigPerElementScaleComponent
+        'affine-component': xlayers.XconfigAffineComponent,
+        'scale-component':  xlayers.XconfigPerElementScaleComponent,
+        'offset-component':  xlayers.XconfigPerElementOffsetComponent,
+        'combine-feature-maps-layer': xlayers.XconfigCombineFeatureMapsLayer
 }
 
 # Turn a config line and a list of previous layers into

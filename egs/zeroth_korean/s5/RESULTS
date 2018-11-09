@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# this RESULTS file was obtained by Wonkyum Lee in July 2018.
+
+for dir in exp/*; do
+  steps/info/gmm_dir_info.pl $dir
+  for x in $dir/decode*test*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+done
+exit 0
+
+# monophone, trained on the 2k shortest utterances
+exp/mono: nj=16 align prob=-99.85 over 2.66h [retry=0.8%, fail=0.3%] states=130 gauss=1004
+%WER 70.24 [ 6499 / 9253, 295 ins, 1399 del, 4805 sub ] exp/mono/decode_nosp_fglarge_test_clean/wer_8_0.5
+%WER 71.28 [ 6596 / 9253, 185 ins, 1721 del, 4690 sub ] exp/mono/decode_nosp_tglarge_test_clean/wer_9_1.0
+%WER 78.83 [ 7294 / 9253, 218 ins, 1752 del, 5324 sub ] exp/mono/decode_nosp_tgsmall_test_clean/wer_10_0.0
+
+# first triphone build, trained on 5k utterances
+exp/tri1: nj=16 align prob=-98.34 over 11.55h [retry=1.6%, fail=0.6%] states=1568 gauss=10030 tree-impr=4.07
+%WER 37.44 [ 3464 / 9253, 258 ins, 725 del, 2481 sub ] exp/tri1/decode_nosp_fglarge_test_clean/wer_15_0.5
+%WER 38.85 [ 3595 / 9253, 347 ins, 633 del, 2615 sub ] exp/tri1/decode_nosp_tglarge_test_clean/wer_15_0.0
+%WER 53.23 [ 4925 / 9253, 296 ins, 1060 del, 3569 sub ] exp/tri1/decode_nosp_tgsmall_test_clean/wer_15_0.0
+
+# tri2 is an LDA+MLLT systemm, trained on 10k utterances
+exp/tri2: nj=16 align prob=-49.63 over 23.00h [retry=1.7%, fail=0.8%] states=2000 gauss=15039 tree-impr=4.70 lda-sum=18.11 mllt:impr,logdet=0.99,1.39
+%WER 33.50 [ 3100 / 9253, 248 ins, 626 del, 2226 sub ] exp/tri2/decode_nosp_fglarge_test_clean/wer_16_0.5
+%WER 34.55 [ 3197 / 9253, 315 ins, 537 del, 2345 sub ] exp/tri2/decode_nosp_tglarge_test_clean/wer_16_0.0
+%WER 48.98 [ 4532 / 9253, 303 ins, 903 del, 3326 sub ] exp/tri2/decode_nosp_tgsmall_test_clean/wer_14_0.0
+
+# tri3 is an LDA+MLLT+SAT system, trained on entire clean training set
+exp/tri3: nj=16 align prob=-48.95 over 51.22h [retry=1.6%, fail=0.7%] states=3336 gauss=40065 fmllr-impr=2.72 over 19.18h tree-impr=7.23
+%WER 23.89 [ 2211 / 9253, 233 ins, 404 del, 1574 sub ] exp/tri3/decode_nosp_fglarge_test_clean/wer_15_0.0
+%WER 24.47 [ 2264 / 9253, 252 ins, 385 del, 1627 sub ] exp/tri3/decode_nosp_tglarge_test_clean/wer_13_0.0
+%WER 37.81 [ 3499 / 9253, 274 ins, 671 del, 2554 sub ] exp/tri3/decode_nosp_tgsmall_test_clean/wer_13_0.0
+%WER 49.00 [ 4534 / 9253, 302 ins, 874 del, 3358 sub ] exp/tri3/decode_nosp_tgsmall_test_clean.si/wer_14_0.0
+%WER 21.68 [ 2006 / 9253, 226 ins, 346 del, 1434 sub ] exp/tri3/decode_fglarge_test_clean/wer_15_0.0
+%WER 22.59 [ 2090 / 9253, 231 ins, 372 del, 1487 sub ] exp/tri3/decode_tglarge_test_clean/wer_15_0.0
+%WER 34.83 [ 3223 / 9253, 294 ins, 605 del, 2324 sub ] exp/tri3/decode_tgsmall_test_clean/wer_12_0.0
+%WER 45.28 [ 4190 / 9253, 270 ins, 880 del, 3040 sub ] exp/tri3/decode_tgsmall_test_clean.si/wer_15_0.0
+
+# tri4 is an LDA+MLLT+SAT system after estimating pronunciation probabilities
+# and word-and-pronunciation-dependent silence probabilities.
+exp/tri4: nj=16 align prob=-48.70 over 51.22h [retry=1.5%, fail=0.7%] states=3368 gauss=40039 fmllr-impr=0.23 over 42.91h tree-impr=7.87
+%WER 21.61 [ 2000 / 9253, 210 ins, 379 del, 1411 sub ] exp/tri4/decode_fglarge_test_clean/wer_14_0.5
+%WER 22.59 [ 2090 / 9253, 237 ins, 371 del, 1482 sub ] exp/tri4/decode_tglarge_test_clean/wer_15_0.0
+%WER 34.57 [ 3199 / 9253, 285 ins, 595 del, 2319 sub ] exp/tri4/decode_tgsmall_test_clean/wer_12_0.0
+%WER 45.82 [ 4240 / 9253, 270 ins, 833 del, 3137 sub ] exp/tri4/decode_tgsmall_test_clean.si/wer_13_0.0
+
+for dir in exp/chain/tdnn*_sp; do
+  steps/info/chain_dir_info.pl $dir
+  for x in ${dir}_online/decode*test*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+done
+exit 0
+
+# tdnn_1a is a kind of factorized TDNN, with skip connections.
+exp/chain/tdnn1b_sp: num-iters=174 nj=2..8 num-params=12.9M dim=40+100->3040 combine=-0.041->-0.041 (over 2) xent:train/valid[115,173,final]=(-1.14,-0.759,-0.751/-1.14,-0.788,-0.777) logprob:train/valid[115,173,final]=(-0.084,-0.047,-0.046/-0.080,-0.050,-0.048)
+%WER 10.55 [ 976 / 9253, 122 ins, 166 del, 688 sub ] exp/chain/tdnn1b_sp_online/decode_fglarge_test_clean/wer_13_1.0
+%WER 17.65 [ 1633 / 9253, 208 ins, 233 del, 1192 sub ] exp/chain/tdnn1b_sp_online/decode_tgsmall_test_clean/wer_10_0.0
+
+# This chain system has TDNN+Norm-OPGRU architecture. 
+exp/chain/tdnn_opgru1a_sp: num-iters=99 nj=2..12 num-params=38.0M dim=40+100->3040 combine=-0.045->-0.045 (over 1) xent:train/valid[65,98,final]=(-1.18,-0.663,-0.651/-1.21,-0.698,-0.684) logprob:train/valid[65,98,final]=(-0.079,-0.038,-0.037/-0.076,-0.040,-0.039)
+%WER 9.45 [ 874 / 9253, 109 ins, 159 del, 606 sub ] exp/chain/tdnn_opgru1a_sp_online/decode_fglarge_test_clean/wer_10_1.0
+%WER 15.22 [ 1408 / 9253, 175 ins, 196 del, 1037 sub ] exp/chain/tdnn_opgru1a_sp_online/decode_tgsmall_test_clean/wer_8_0.0
+

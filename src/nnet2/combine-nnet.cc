@@ -54,7 +54,7 @@ static int32 GetInitialModel(
   KALDI_ASSERT(!nnets.empty());
   BaseFloat tot_frames = validation_set.size();
   int32 best_n = -1;
-  BaseFloat best_objf;
+  BaseFloat best_objf = -std::numeric_limits<BaseFloat>::infinity();
   Vector<BaseFloat> objfs(nnets.size());
   for (int32 n = 0; n < num_nnets; n++) {
     BaseFloat objf = ComputeNnetObjf(nnets[n], validation_set,

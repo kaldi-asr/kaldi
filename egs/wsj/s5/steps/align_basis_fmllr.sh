@@ -20,6 +20,7 @@ cmd=run.pl
 use_graphs=false
 # Begin configuration.
 scale_opts="--transition-scale=1.0 --acoustic-scale=0.1 --self-loop-scale=0.1"
+basis_fmllr_opts="--fmllr-min-count=22  --num-iters=10 --size-scale=0.2 --step-size-iters=3"
 beam=10
 retry_beam=40
 boost_silence=1.5 # factor by which to boost silence during alignment.
@@ -32,8 +33,11 @@ echo "$0 $@"  # Print the command line for logging
 . parse_options.sh || exit 1;
 
 if [ $# != 4 ]; then
-   echo "usage: steps/align_fmllr.sh <data-dir> <lang-dir> <src-dir> <align-dir>"
-   echo "e.g.:  steps/align_fmllr.sh data/train data/lang exp/tri1 exp/tri1_ali"
+   echo "usage: steps/align_basis_fmllr.sh <data-dir> <lang-dir> <src-dir> <align-dir>"
+   echo "e.g.:  steps/align_basis_fmllr.sh data/train data/lang exp/tri4 exp/tri4_ali"
+   echo "Note: <src-dir> should ideally have been trained by steps/train_sat_basis.sh, or"
+   echo "if a non-SAT system (not recommended), the basis should have been computed"
+   echo "by steps/get_fmllr_basis.sh."
    echo "main options (for others, see top of script file)"
    echo "  --config <config-file>                           # config containing options"
    echo "  --nj <nj>                                        # number of parallel jobs"
@@ -57,8 +61,18 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
+
+for f in $srcdir/tree  $srcdir/final.mdl $srcdir/fmllr.basis \
+                       $data/feats.scp $lang/phones.txt; do
+  if [ ! -f $f ]; then
+    echo "$0: expected file $f to exist"
+    exit 1
+  fi
+done
+
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
 cp $lang/phones.txt $dir || exit 1;
+
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.occs $dir;
@@ -123,22 +137,20 @@ if [ $stage -le 2 ]; then
       ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
       weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
       gmm-post-to-gpost $alimdl "$sifeats" ark:- ark:- \| \
-      gmm-est-basis-fmllr-gpost --fmllr-min-count=22  --num-iters=10 \
-        --size-scale=0.2 --step-size-iters=3 \
-        --write-weights=ark:$dir/pre_wgt.JOB \
+      gmm-est-basis-fmllr-gpost $basis_fmllr_opts --spk2utt=ark:$sdata/JOB/spk2utt \
         $mdl $srcdir/fmllr.basis "$sifeats"  ark,s,cs:- \
         ark:$dir/trans.JOB || exit 1;
-#  else
-#    $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
-#      ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
-#      weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
-#      gmm-est-fmllr --fmllr-update-type=$fmllr_update_type \
-#      --spk2utt=ark:$sdata/JOB/spk2utt $mdl "$sifeats" \
-#      ark,s,cs:- ark:$dir/trans.JOB || exit 1;
+  else
+    $cmd JOB=1:$nj $dir/log/fmllr.JOB.log \
+      ali-to-post "ark:gunzip -c $dir/pre_ali.JOB.gz|" ark:- \| \
+      weight-silence-post 0.0 $silphonelist $alimdl ark:- ark:- \| \
+      gmm-est-basis-fmllr $basis_fmllr_opts --spk2utt=ark:$sdata/JOB/spk2utt \
+         $mdl $srcdir/fmllr.basis "$sifeats" \
+        ark,s,cs:- ark:$dir/trans.JOB || exit 1;
   fi
 fi
 
-feats="$sifeats transform-feats ark:$dir/trans.JOB ark:- ark:- |"
+feats="$sifeats transform-feats --utt2spk=ark:$sdata/JOB/utt2spk ark:$dir/trans.JOB ark:- ark:- |"
 
 if [ $stage -le 3 ]; then
   echo "$0: doing final alignment."

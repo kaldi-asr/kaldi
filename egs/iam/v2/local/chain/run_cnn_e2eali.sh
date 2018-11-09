@@ -1,1 +1,1 @@
-tuning/run_cnn_e2eali_1c.sh
+tuning/run_cnn_e2eali_1d.sh

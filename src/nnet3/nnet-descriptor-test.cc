@@ -205,6 +205,9 @@ void UnitTestGeneralDescriptorSpecial() {
   names.push_back("d");
   KALDI_ASSERT(NormalizeTextDescriptor(names, "a") == "a");
   KALDI_ASSERT(NormalizeTextDescriptor(names, "Scale(-1.0, a)") == "Scale(-1, a)");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Scale(-1.0, Scale(-2.0, a))") == "Scale(2, a)");
+  KALDI_ASSERT(NormalizeTextDescriptor(names, "Scale(2.0, Sum(Scale(2.0, a), b, c))") ==
+               "Sum(Scale(4, a), Sum(Scale(2, b), Scale(2, c)))");
   KALDI_ASSERT(NormalizeTextDescriptor(names, "Const(1.0, 512)") == "Const(1, 512)");
   KALDI_ASSERT(NormalizeTextDescriptor(names, "Sum(Const(1.0, 512), Scale(-1.0, a))") ==
                "Sum(Const(1, 512), Scale(-1, a))");

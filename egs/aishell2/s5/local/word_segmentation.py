@@ -19,6 +19,6 @@ trans_file=sys.argv[2]
 jieba.set_dictionary(vocab_file)
 for line in open(trans_file):
   key,trans = line.strip().split('\t',1)
-  words = jieba.cut(trans)
+  words = jieba.cut(trans, HMM=False) # turn off new word discovery (HMM-based)
   new_line = key + '\t' + " ".join(words)
   print(new_line)

@@ -56,7 +56,15 @@ acwt=0.3
 # e.g. --speech-in-sil-weight=0.0 --garbage-in-sil-weight=0.0 --sil-in-speech-weight=0.0 --garbage-in-speech-weight=0.3
 transform_probs_opts=""
 
+# Postprocessing options
 segment_padding=0.2   # Duration (in seconds) of padding added to segments 
+min_segment_dur=0   # Minimum duration (in seconds) required for a segment to be included
+                    # This is before any padding. Segments shorter than this duration will be removed.
+                    # This is an alternative to --min-speech-duration above.
+merge_consecutive_max_dur=0   # Merge consecutive segments as long as the merged segment is no longer than this many
+                              # seconds. The segments are only merged if their boundaries are touching.
+                              # This is after padding by --segment-padding seconds.
+                              # 0 means do not merge. Use 'inf' to not limit the duration.
 
 echo $* 
 
@@ -99,14 +107,14 @@ data_id=`basename $data_dir`
 sad_dir=${dir}/${sad_name}${affix}_${data_id}_whole${feat_affix}
 seg_dir=${dir}/${segmentation_name}${affix}_${data_id}_whole${feat_affix}
 
-test_data_dir=data/${data_id}${feat_affix}_hires
-
 if $convert_data_dir_to_whole; then
+  test_data_dir=data/${data_id}_whole${feat_affix}_hires
   if [ $stage -le 0 ]; then
     rm -r ${test_data_dir} || true
     utils/data/convert_data_dir_to_whole.sh $src_data_dir ${test_data_dir}
   fi
 else
+  test_data_dir=data/${data_id}${feat_affix}_hires
   if [ $stage -le 0 ]; then
     rm -r ${test_data_dir} || true
     utils/copy_data_dir.sh $src_data_dir $test_data_dir
@@ -170,7 +178,8 @@ fi
 ## Prepare FST we search to make speech/silence decisions.
 ###############################################################################
 
-frame_shift=$(utils/data/get_frame_shift.sh $test_data_dir)
+utils/data/get_utt2dur.sh --nj $nj --cmd "$cmd" $test_data_dir || exit 1
+frame_shift=$(utils/data/get_frame_shift.sh $test_data_dir) || exit 1
 
 graph_dir=${dir}/graph_${output_name}
 if [ $stage -le 5 ]; then
@@ -224,7 +233,8 @@ fi
 
 if [ $stage -le 7 ]; then
   steps/segmentation/post_process_sad_to_segments.sh \
-    --segment-padding $segment_padding \
+    --segment-padding $segment_padding --min-segment-dur $min_segment_dur \
+    --merge-consecutive-max-dur $merge_consecutive_max_dur \
     --cmd "$cmd" --frame-shift $(perl -e "print $frame_subsampling_factor * $frame_shift") \
     ${test_data_dir} ${seg_dir} ${seg_dir}
 fi

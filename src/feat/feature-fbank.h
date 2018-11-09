@@ -53,7 +53,7 @@ struct FbankOptions {
                  // this seems to be common for 16khz-sampled data,
                  // but for 8khz-sampled data, 15 may be better.
                  use_energy(false),
-                 energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
+                 energy_floor(0.0),
                  raw_energy(true),
                  htk_compat(false),
                  use_log_fbank(true),
@@ -65,7 +65,9 @@ struct FbankOptions {
     opts->Register("use-energy", &use_energy,
                    "Add an extra dimension with energy to the FBANK output.");
     opts->Register("energy-floor", &energy_floor,
-                   "Floor on energy (absolute, not relative) in FBANK computation");
+                   "Floor on energy (absolute, not relative) in FBANK computation. "
+                   "Only makes a difference if --use-energy=true; only necessary if "
+                   "--dither=0.0.  Suggested values: 0.1 or 1.0");
     opts->Register("raw-energy", &raw_energy,
                    "If true, compute energy before preemphasis and windowing");
     opts->Register("htk-compat", &htk_compat, "If true, put energy last.  "

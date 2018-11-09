@@ -18,6 +18,7 @@ treedir=              # if specified, the tree and model will be copied from the
                       # note that it may not be flat start anymore.
 type=mono             # can be either mono or biphone -- either way
                       # the resulting tree is full (i.e. it doesn't do any tying)
+ci_silence=false      # if true, silence phones will be treated as context independent
 
 scale_opts="--transition-scale=0.0 --self-loop-scale=0.0"
 # End configuration section.
@@ -63,12 +64,17 @@ if $shared_phones; then
   shared_phones_opt="--shared-phones=$lang/phones/sets.int"
 fi
 
+ciphonelist=`cat $lang/phones/context_indep.csl` || exit 1;
+if $ci_silence; then
+  ci_opt="--ci-phones=$ciphonelist"
+fi
+
 if [ $stage -le 0 ]; then
   if [ -z $treedir ]; then
     echo "$0: Initializing $type system."
     # feat dim does not matter here. Just set it to 10
     $cmd $dir/log/init_${type}_mdl_tree.log \
-         gmm-init-$type $shared_phones_opt $lang/topo 10 \
+         gmm-init-$type $ci_opt $shared_phones_opt $lang/topo 10 \
          $dir/0.mdl $dir/tree || exit 1;
   else
     echo "$0: Copied tree/mdl from $treedir." >$dir/log/init_mdl_tree.log
