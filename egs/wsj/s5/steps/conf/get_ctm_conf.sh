@@ -1,22 +1,18 @@
 #!/bin/bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
 
-# This script produces CTM files from a decoding directory that has lattices                                                                         
-# present. It does this for a range of language model weights; see also 
-# get_ctm_fast.sh which does it for just one LM weight and also supports
-# the word insertion penalty, and get_ctm_conf.sh which outputs CTM files
-# with confidence scores.
+# This script produces CTM files from a decoding directory that has lattices
+# present. This version gives you confidence scores. See also steps/get_ctm.sh
 
 
 # begin configuration section.
 cmd=run.pl
 stage=0
-frame_shift=0.01
 min_lmwt=5
 max_lmwt=20
 use_segments=true # if we have a segments file, use it to convert
                   # the segments to be relative to the original files.
-print_silence=false
+iter=final
 #end configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -33,12 +29,9 @@ if [ $# -ne 3 ]; then
   echo "                                    # to produce a ctm relative to the original audio"
   echo "                                    # files, with channel information (typically needed"
   echo "                                    # for NIST scoring)."
-  echo "    --frame-shift (default=0.01)    # specify this if your lattices have a frame-shift"
-  echo "                                    # not equal to 0.01 seconds"
   echo "e.g.:"
   echo "$0 data/train data/lang exp/tri4a/decode/"
-  echo "See also: steps/get_train_ctm.sh, steps/get_ctm_fast.sh, steps/get_ctm_conf.sh"
-
+  echo "See also: steps/get_ctm.sh, steps/get_ctm_conf_fast.sh"
   exit 1;
 fi
 
@@ -46,7 +39,7 @@ data=$1
 lang=$2 # Note: may be graph directory not lang directory, but has the necessary stuff copied.
 dir=$3
 
-model=$dir/../final.mdl # assume model one level up from decoding dir.
+model=$dir/../$iter.mdl # assume model one level up from decoding dir.
 
 
 for f in $lang/words.txt $model $dir/lat.1.gz; do
@@ -57,6 +50,15 @@ name=`basename $data`; # e.g. eval2000
 
 mkdir -p $dir/scoring/log
 
+if [ -f $dir/../frame_shift ]; then
+  frame_shift_opt="--frame-shift=$(cat $dir/../frame_shift)"
+  echo "$0: $dir/../frame_shift exists, using $frame_shift_opt"
+elif [ -f $dir/../frame_subsampling_factor ]; then
+  factor=$(cat $dir/../frame_subsampling_factor) || exit 1
+  frame_shift_opt="--frame-shift=0.0$factor"
+  echo "$0: $dir/../frame_subsampling_factor exists, using $frame_shift_opt"
+fi
+
 if [ $stage -le 0 ]; then
   if [ -f $data/segments ] && $use_segments; then
     f=$data/reco2file_and_channel
@@ -66,28 +68,26 @@ if [ $stage -le 0 ]; then
     filter_cmd=cat
   fi
 
-  nj=$(cat $dir/num_jobs)
-  lats=$(for n in $(seq $nj); do echo -n "$dir/lat.$n.gz "; done)
   if [ -f $lang/phones/word_boundary.int ]; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-      set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $lats|" ark:- \| \
+      mkdir -p $dir/score_LMWT/ '&&' \
+      lattice-prune --inv-acoustic-scale=LMWT --beam=5 "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt \| \
-      $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
-  elif [ -f $lang/phones/align_lexicon.int ]; then
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-      set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $lats|" ark:- \| \
-      lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      lattice-1best ark:- ark:- \| \
-      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
+      lattice-to-ctm-conf $frame_shift_opt --decode-mbr=true --inv-acoustic-scale=LMWT ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
   else
-    echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
-    exit 1;
+    if [ ! -f $lang/phones/align_lexicon.int ]; then
+      echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
+      exit 1;
+    fi
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
+      mkdir -p $dir/score_LMWT/ '&&' \
+      lattice-prune --inv-acoustic-scale=LMWT --beam=5 "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+      lattice-to-ctm-conf $frame_shift_opt --decode-mbr=true --inv-acoustic-scale=LMWT ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt \| \
+      $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
   fi
 fi
 
