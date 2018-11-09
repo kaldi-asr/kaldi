@@ -31,7 +31,7 @@ if [ $# -ne 3 ]; then
   echo "                                    # for NIST scoring)."
   echo "e.g.:"
   echo "$0 data/train data/lang exp/tri4a/decode/"
-  echo "See also: steps/get_ctm.sh"
+  echo "See also: steps/get_ctm.sh, steps/get_ctm_conf_fast.sh"
   exit 1;
 fi
 
