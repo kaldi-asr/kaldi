@@ -5,11 +5,12 @@
 #           2018  Music Technology Group, Universitat Pompeu Fabra.
 # Apache 2.0
 
-# This script produces CTM files from a decoding directory that has lattices
+# This script produces CTM files with confidence scores
+# from a decoding directory that has lattices
 # present. It does this for one LM weight and also supports 
 # the word insertion penalty.
-# This is similar to get_ctm.sh, but gets the CTM at the utterance-level.
-# It can be faster than steps/get_ctm.sh --use-segments false as it splits
+# This is similar to get_ctm_conf.sh, but gets the CTM at the utterance-level.
+# It can be faster than steps/get_ctm_conf.sh --use-segments false as it splits
 # the process across many jobs. 
 
 # begin configuration section.
@@ -62,18 +63,18 @@ echo $nj > $dir/num_jobs
 if [ -f $lang/phones/word_boundary.int ]; then
   $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
     set -o pipefail '&&' \
-    lattice-1best --lm-scale=$lmwt --word-ins-penalty=$wip "ark:gunzip -c $decode_dir/lat.JOB.gz|" ark:- \| \
+    lattice-add-penalty --word-ins-penalty=$wip "ark:gunzip -c $decode_dir/lat.JOB.gz|" ark:- \| \
+    lattice-prune --inv-acoustic-scale=$lmwt --beam=5 ark:- ark:- \| \
     lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-    nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
+    lattice-to-ctm-conf --frame-shift=$frame_shift --decode-mbr=true --inv-acoustic-scale=$lmwt ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt \
     '>' $dir/ctm.JOB || exit 1;
 elif [ -f $lang/phones/align_lexicon.int ]; then
-  $cmd JOB=1:$nj $dir/log/get_ctm.JOB.log \
     set -o pipefail '&&' \
-    lattice-1best --lm-scale=$lmwt --word-ins-penalty=$wip "ark:gunzip -c $decode_dir/lat.JOB.gz|" ark:- \| \
+    lattice-add-penalty --word-ins-penalty=$wip "ark:gunzip -c $decode_dir/lat.JOB.gz|" ark:- \| \
+    lattice-prune --inv-acoustic-scale=$lmwt --beam=5 ark:- ark:- \| \
     lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-    lattice-1best ark:- ark:- \| \
-    nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
+    lattice-to-ctm-conf --frame-shift=$frame_shift --decode-mbr=true --inv-acoustic-scale=$lmwt ark:- - \| \
     utils/int2sym.pl -f 5 $lang/words.txt \
     '>' $dir/ctm.JOB || exit 1;
 else
