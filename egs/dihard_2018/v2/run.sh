@@ -287,7 +287,7 @@ if [ $stage -le 12 ]; then
     > $nnet_dir/results/DER_threshold.txt
   der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
     $nnet_dir/results/DER_threshold.txt)
-  # Using the oracle number of speakers, DER: 26.47%
+  # Using supervised calibration, DER: 26.47%
   echo "Using supervised calibration, DER: $der%"
 fi
 

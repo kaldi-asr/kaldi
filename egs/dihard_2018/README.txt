@@ -7,6 +7,8 @@
  YouTube videos and “speech in the wild” (e.g., recordings in restaurants)
  See https://coml.lscp.ens.fr/dihard/index.html for details.
 
- The subdirectories "v2" and so on are different speaker diarization
- recipes. The example in v2 demonstrates DNN speaker embeddings, PLDA
- scoring and agglomerative hierarchical clustering.
+ The subdirectories "v1" and so on are different speaker diarization
+ recipes. The recipe in v1 demonstrates a standard approach using a
+ full-covariance GMM-UBM, i-vectors, PLDA scoring and agglomerative
+ hierarchical clustering. The example in v2 demonstrates DNN speaker 
+ embeddings, PLDA scoring and agglomerative hierarchical clustering.
