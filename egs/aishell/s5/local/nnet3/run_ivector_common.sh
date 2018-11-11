@@ -24,7 +24,7 @@ nnet3_affix=
 gmm_dir=exp/${gmm}
 ali_dir=exp/${gmm}_sp_ali
 
-for f in data/${train_set}_sp/feats.scp ${gmm_dir}/final.mdl; do
+for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
   if [ ! -f $f ]; then
     echo "$0: expected file $f to exist"
     exit 1
