@@ -116,15 +116,15 @@ fi
 
 if [ $stage -le 4 ]; then
   # Extract i-vectors for DIHARD 2018 development and evaluation set. 
-  # We set apply-cmn false and delta-order 0 because we already add 
+  # We set apply-cmn false and apply-deltas false because we already add
   # deltas and apply cmn in stage 1.
-  local/extract_ivectors.sh --cmd "$train_cmd --mem 20G" \
-    --nj 40 --window 1.5 --period 0.75 --apply-cmn false --delta-order 0 \
+  diarization/extract_ivectors.sh --cmd "$train_cmd --mem 20G" \
+    --nj 40 --window 1.5 --period 0.75 --apply-cmn false --apply-deltas false \
     --min-segment 0.5 $ivec_dir \
     data/dihard_2018_dev_cmn $ivec_dir/ivectors_dihard_2018_dev
 
-  local/extract_ivectors.sh --cmd "$train_cmd --mem 20G" \
-    --nj 40 --window 1.5 --period 0.75 --apply-cmn false --delta-order 0 \
+  diarization/extract_ivectors.sh --cmd "$train_cmd --mem 20G" \
+    --nj 40 --window 1.5 --period 0.75 --apply-cmn false --apply-deltas false \
     --min-segment 0.5 $ivec_dir \
     data/dihard_2018_eval_cmn $ivec_dir/ivectors_dihard_2018_eval
 
@@ -133,8 +133,8 @@ if [ $stage -le 4 ]; then
   # Extract i-vectors for the VoxCeleb, which is our PLDA training
   # data.  A long period is used here so that we don't compute too
   # many i-vectors for each recording.
-  local/extract_ivectors.sh --cmd "$train_cmd --mem 25G" \
-    --nj 40 --window 3.0 --period 10.0 --min-segment 1.5 --apply-cmn false --delta-order 0 \
+  diarization/extract_ivectors.sh --cmd "$train_cmd --mem 25G" \
+    --nj 40 --window 3.0 --period 10.0 --min-segment 1.5 --apply-cmn false --apply-deltas false \
     --hard-min true $ivec_dir \
     data/train_cmn_segmented_128k $ivec_dir/ivectors_train_segmented_128k
 fi
@@ -176,7 +176,7 @@ if [ $stage -le 7 ]; then
   # set using some reasonable thresholds for a well-calibrated system.
   for threshold in -0.5 -0.4 -0.3 -0.2 -0.1 -0.05 0 0.05 0.1 0.2 0.3 0.4 0.5; do
     diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
-      --threshold $threshold --channel 1 $ivec_dir/ivectors_dihard_2018_dev/plda_scores \
+      --threshold $threshold --rttm-channel 1 $ivec_dir/ivectors_dihard_2018_dev/plda_scores \
       $ivec_dir/ivectors_dihard_2018_dev/plda_scores_t$threshold
 
     md-eval.pl -r data/dihard_2018_dev/rttm \
@@ -194,14 +194,14 @@ if [ $stage -le 7 ]; then
   echo "$best_threshold" > $ivec_dir/tuning/dihard_2018_dev_best
 
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
-    --threshold $(cat $ivec_dir/tuning/dihard_2018_dev_best) --channel 1 \
+    --threshold $(cat $ivec_dir/tuning/dihard_2018_dev_best) --rttm-channel 1 \
     $ivec_dir/ivectors_dihard_2018_dev/plda_scores $ivec_dir/ivectors_dihard_2018_dev/plda_scores
 
   # Cluster DIHARD 2018 evaluation set using the best threshold found for the DIHARD 
   # 2018 development set. The DIHARD 2018 development set is used as the validation 
   # set to tune the parameters. 
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
-    --threshold $(cat $ivec_dir/tuning/dihard_2018_dev_best) --channel 1 \
+    --threshold $(cat $ivec_dir/tuning/dihard_2018_dev_best) --rttm-channel 1 \
     $ivec_dir/ivectors_dihard_2018_eval/plda_scores $ivec_dir/ivectors_dihard_2018_eval/plda_scores
 
   mkdir -p $ivec_dir/results
@@ -222,7 +222,7 @@ if [ $stage -le 8 ]; then
   # In this section, we show how to do the clustering if the number of speakers
   # (and therefore, the number of clusters) per recording is known in advance.
   diarization/cluster.sh --cmd "$train_cmd --mem 4G" --nj 20 \
-    --reco2num-spk data/dihard_2018_eval/reco2num_spk --channel 1 \
+    --reco2num-spk data/dihard_2018_eval/reco2num_spk --rttm-channel 1 \
     $ivec_dir/ivectors_dihard_2018_eval/plda_scores $ivec_dir/ivectors_dihard_2018_eval/plda_scores_num_spk
 
   md-eval.pl -r data/dihard_2018_eval/rttm \
