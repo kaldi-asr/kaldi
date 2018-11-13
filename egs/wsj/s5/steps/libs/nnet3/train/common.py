@@ -69,9 +69,12 @@ def get_multitask_egs_opts(egs_dir, egs_prefix="",
         '--output=ark:foo/egs/output.3.ark --weight=ark:foo/egs/weights.3.ark'
         i.e. egs_prefix is "" for train and
         "valid_diagnostic." for validation.
+
+        Caution: archive_index is usually an integer, but may be a string ("JOB")
+        in some cases.
     """
     multitask_egs_opts = ""
-    egs_suffix = ".{0}".format(archive_index) if archive_index > -1 else ""
+    egs_suffix = ".{0}".format(archive_index) if archive_index != -1 else ""
 
     if use_multitask_egs:
         output_file_name = ("{egs_dir}/{egs_prefix}output{egs_suffix}.ark"
