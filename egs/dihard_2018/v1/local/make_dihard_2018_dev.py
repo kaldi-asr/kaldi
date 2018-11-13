@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-# This script is called by local/make_dihard_2018_dev.sh, and it creates the necessary files for DIHARD 2018 development directory.
+# This script is called by local/make_dihard_2018_dev.sh, and it creates the
+# necessary files for DIHARD 2018 development directory.
 
 import sys, os
 
@@ -26,7 +27,8 @@ def prepare_dihard_2018_dev(src_dir, data_dir):
                     segments_fi.write(segments_str)
                     utt2spk_fi.write(utt2spk_str)
                     segment_id += 1
-                wav_str = "{} sox -t flac {}/data/flac/{}.flac -t wav -r 16k -b 16 - channels 1 |\n".format(utt, src_dir, utt)
+                wav_str = "{} sox -t flac {}/data/flac/{}.flac -t wav -r 16k "\
+                        "-b 16 - channels 1 |\n".format(utt, src_dir, utt)
                 wavscp_fi.write(wav_str)
                 with open("{}/data/rttm/{}.rttm".format(src_dir, utt), 'r') as fh:
                     rttm_str = fh.read()

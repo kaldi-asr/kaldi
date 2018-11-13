@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2015   David Snyder
+# Copyright 2018   Zili Huang
 # Apache 2.0.
 #
 # This script, called by ../run.sh, creates the DIHARD 2018 evaluation directory.
