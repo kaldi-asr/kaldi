@@ -180,6 +180,10 @@ class CuMemoryAllocator {
 
   void PrintMemoryUsage() const;
 
+  size_t GetAllocatedMemory() { return allocated_memory_;}
+
+  size_t GetMaxAllocatedMemory() { return max_allocated_memory_;}
+
   CuMemoryAllocator();
 
   // Allows you to set options: must be called before any Malloc function is
