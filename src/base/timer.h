@@ -68,24 +68,22 @@ class Timer {
   // be set when the object is created.
   explicit Timer(bool set_timer) { if (set_timer) Reset(); }
 
-  void Reset() { gettimeofday(&this->time_start_, &time_zone_); }
+  void Reset() { clock_gettime(CLOCK_THREAD_CPUTIME_ID, &this->time_start_); }
 
   /// Returns time in seconds.
   double Elapsed() const {
-    struct timeval time_end;
-    struct timezone time_zone;
-    gettimeofday(&time_end, &time_zone);
+    struct timespec time_end;
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &time_end);
     double t1, t2;
     t1 =  static_cast<double>(time_start_.tv_sec) +
-          static_cast<double>(time_start_.tv_usec)/(1000*1000);
+          static_cast<double>(time_start_.tv_nsec)/(1000*1000*1000);
     t2 =  static_cast<double>(time_end.tv_sec) +
-          static_cast<double>(time_end.tv_usec)/(1000*1000);
+          static_cast<double>(time_end.tv_nsec)/(1000*1000*1000);
     return t2-t1;
   }
 
  private:
-  struct timeval time_start_;
-  struct timezone time_zone_;
+  struct timespec time_start_;
 };
 
 class Profiler {
