@@ -164,6 +164,74 @@ inline void AssertSameDim(const MatrixBase<Real1> &mat1, const MatrixBase<Real2>
 }
 
 
+/*
+   This class allows you to compute the class of function described in
+    http://www.danielpovey.com/files/2018_svd_derivative.pdf
+   and to backprop through that computation.
+   Short summary: it allows you to apply some kind of scalar function
+   to the singular values of a matrix, reconstruct it, and then backprop
+   through that operation.
+
+   This class is quite general-purpose in the sense that you can
+   provide any scalar function; but in order to avoid things like
+   passing function-pointers around, we had give it a rather clunky
+   interface.  The way you are supposed to use it is as follows
+   (to give an example):
+
+      Matrix<BaseFloat> A(...);  // set it somehow.
+      SvdRescaler rescaler(A);
+      const VectorBase<BaseFloat> &lambda_in = A.InputSingularValues();
+      VectorBase<BaseFloat> &lambda_out = *(A.OutputSingularValues());
+      VectorBase<BaseFloat> &lambda_out_deriv = *(A.OutputSingularValues());
+      for (int32 i = 0; i < lambda_in.size(); i++) {
+        // compute the scalar function and its derivative for the singular
+        // values.
+        lambda_out(i) = some_func(lambda_in(i));
+        lambda_out_deriv(i) = some_func_deriv(lambda_in(i));
+      }
+      Matrix<BaseFloat> B(A.NumRows(), A.NumCols(), kUndefined);
+      rescaler.GetOutput(&B);
+      // Do something with B.
+      Matrix<BaseFloat> B_deriv(...);  // Get the derivative w.r.t. B
+                                       // somehow.
+      Matrix<BaseFloat> A_deriv(A.NumRows(), A.NumCols());  // Get the derivative w.r.t. A.
+
+
+ */
+class SvdRescaler {
+
+  // Constructor.  The parameter is the input matrix A.
+  SvdRescaler(const MatrixBase<BaseFloat> &A);
+
+  // Get the singular values of A, which will have been
+  // computed in the constructor
+  const VectorBase<BaseFloat> &InputSingularValues();
+  // Returns a pointer to a place that you can write the
+  // modified singular values f(lambda).
+  VectorBase<BaseFloat> *OutputSingularValues();
+  // Returns a pointer to a place that you can write the
+  // values of f'(lambda) (the function-derivative of f).
+  VectorBase<BaseFloat> *OutputSingularValuesDerivs();
+  // Outputs F(A) to 'output', which must have the correct size.
+  // It's OK if 'output' contains NaNs on entry.
+  // Before calling this, you must have set the values in
+  // 'OutputSingularValues()'.
+  void GetOutput(MatrixBase<BaseFloat> *output);
+
+  // Computes the derivative of some function g w.r.t. the input A,
+  // given that dg/d(output) is provided in 'output_deriv'.
+  // This derivative is *added* to 'input_deriv', so you need
+  // to zero 'input_deriv' or otherwise set it, beforehand.
+  void ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
+                         MatrixBase<BaseFloat> *input_deriv);
+
+ private:
+  // TODO.
+
+
+};
+
+
 /// @} end of "addtogroup matrix_funcs_misc"
 
 } // end namespace kaldi
