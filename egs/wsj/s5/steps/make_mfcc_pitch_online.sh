@@ -70,7 +70,7 @@ required="$scp $mfcc_config $online_pitch_config"
 
 for f in $required; do
   if [ ! -f $f ]; then
-    echo "make_mfcc_pitch.sh: no such file $f"
+    echo "$0: no such file $f"
     exit 1;
   fi
 done

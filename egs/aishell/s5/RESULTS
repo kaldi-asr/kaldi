@@ -6,3 +6,13 @@
 %WER 12.23 [ 12809 / 104765, 656 ins, 580 del, 11573 sub ] exp/tri5a/decode_test/cer_13_1.0
 %WER 8.45 [ 8849 / 104765, 312 ins, 538 del, 7999 sub ] exp/nnet3/tdnn_sp/decode_test/cer_13_1.0
 %WER 7.46 [ 7813 / 104765, 287 ins, 472 del, 7054 sub ] exp/chain/tdnn_1a_sp/decode_test/cer_10_1.0
+
+# nnet3 tdnn with online pitch, local/nnet3/tuning/tun_tdnn_2a.sh
+%WER 8.54 [ 8947 / 104765, 338 ins, 561 del, 8048 sub ] exp/nnet3/tdnn_sp/decode_test/cer_15_0.5
+%WER 8.64 [ 9054 / 104765, 343 ins, 534 del, 8177 sub ] exp/nnet3/tdnn_sp_online/decode_test/cer_15_0.5
+%WER 9.15 [ 9584 / 104765, 364 ins, 523 del, 8697 sub ] exp/nnet3/tdnn_sp_online/decode_test_per_utt/cer_15_0.5
+
+# chain with online pitch, local/chain/tuning/run_tdnn_2a.sh
+%WER 7.53 [ 7892 / 104765, 324 ins, 520 del, 7048 sub ] exp/chain/tdnn_2a_sp/decode_test/cer_11_0.5
+%WER 7.55 [ 7913 / 104765, 292 ins, 556 del, 7065 sub ] exp/chain/tdnn_2a_sp_online/decode_test/cer_11_1.0
+%WER 8.03 [ 8409 / 104765, 329 ins, 567 del, 7513 sub ] exp/chain/tdnn_2a_sp_online/decode_test_per_utt/cer_11_1.0
