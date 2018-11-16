@@ -1097,7 +1097,7 @@ else
   echo "DOUBLE_PRECISION = 0" >> kaldi.mk
 fi
 $use_cuda && echo "Checking cub library in $CUBROOT ..."
-if [[ $use_cuda && ! -f $CUBROOT/cub/cub.cuh ]]; then
+if [[ "$use_cuda" = true  && ! -f $CUBROOT/cub/cub.cuh ]]; then
   failure "Could not find file $CUBROOT/cub/cub.cuh:
   you may not have installed cub. See ../tools/INSTALL"
 else
