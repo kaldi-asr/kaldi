@@ -44,7 +44,7 @@ fi
 # Install the required packages and dependencies
 sudo apt-get update -qq > /dev/null 2>&1
 sudo apt-get upgrade --assume-yes -qq > /dev/null 2>&1
-sudo apt-get install --assume-yes build-essential git dphys-swapfile python python-scipy sox zip -qq > /dev/null 2>&1
+sudo apt-get install --assume-yes build-essential git dphys-swapfile python python-scipy sox swig zip -qq > /dev/null 2>&1
 
 # Install Postgresql only if required to
 # postgresql postgresql-contrib python3-psycopg2
@@ -78,6 +78,7 @@ _kaldi_build()
         exit 1
     fi
 
+    # Install IRSTLM
     extras/install_irstlm.sh &> $ASR_LOG/install_irstlm.log
     install_irstlm_status=$( grep "Installation of IRSTLM finished successfully" $ASR_LOG/install_irstlm.log )
 
@@ -86,6 +87,9 @@ _kaldi_build()
         echo -e "\e[34m\e[1m Install kaldi/tools/extras/install_irstlm.sh failed \e[0m"
         exit 1
     fi
+
+    # Install Sequitur
+    extras/install_sequitur.sh
 
     # Build the src directory
     cd $KALDI/src
