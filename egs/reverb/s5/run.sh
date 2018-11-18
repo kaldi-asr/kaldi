@@ -38,8 +38,9 @@ fi
 stage=0
 nch_se=8
 # flag for turing on computation of dereverberation measures
-# please make sure that you or your institution have the license to report PESQ before turning on the flag
-compute_se=false
+compute_se=true
+# please make sure that you or your institution have the license to report PESQ before turning on the below flag
+enable_pesq=false
 
 . utils/parse_options.sh
 # Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
@@ -61,7 +62,7 @@ fi
 
 #training set and test set
 train_set=tr_simu_8ch
-test_sets="dt_real_1ch dt_simu_1ch et_real_1ch et_simu_1ch dt_real_2ch_beamformit dt_simu_2ch_beamformit et_real_2ch_beamformit et_simu_2ch_beamformit dt_real_8ch_beamformit dt_simu_8ch_beamformit et_real_8ch_beamformit et_simu_8ch_beamformit dt_real_1ch_wpe dt_simu_1ch_wpe et_real_1ch_wpe et_simu_1ch_wpe dt_real_2ch_wpe dt_simu_2ch_wpe et_real_2ch_wpe et_simu_2ch_wpe dt_real_8ch_wpe dt_simu_8ch_wpe et_real_8ch_wpe et_simu_8ch_wpe dt_cln et_cln"
+test_sets="dt_real_8ch_beamformit dt_simu_8ch_beamformit et_real_8ch_beamformit et_simu_8ch_beamformit dt_real_1ch_wpe dt_simu_1ch_wpe et_real_1ch_wpe et_simu_1ch_wpe dt_cln et_cln"
 
 # The language models with which to decode (tg_5k or bg_5k)
 lm="tg_5k"
@@ -92,7 +93,7 @@ if [ $stage -le 3 ] && $compute_se; then
     # download and install speech enhancement evaluation tools
     local/download_se_eval_tool.sh
   fi
-  local/compute_se_scores.sh --nch $nch_se $reverb $wavdir $pesqdir
+  local/compute_se_scores.sh --nch $nch_se --enable_pesq $enable_pesq $reverb $wavdir $pesqdir
   cat exp/compute_se_${nch_se}ch/scores/score_SimData
   cat exp/compute_se_${nch_se}ch/scores/score_RealData
 fi
