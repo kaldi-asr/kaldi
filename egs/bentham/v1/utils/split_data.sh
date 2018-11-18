@@ -1,1 +1,0 @@
-../../iam/v2/utils/split_data.sh

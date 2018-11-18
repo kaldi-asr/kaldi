@@ -1,1 +1,0 @@
-../../iam/v2/utils/validate_lang.pl

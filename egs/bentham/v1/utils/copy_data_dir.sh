@@ -1,1 +1,0 @@
-../../iam/v2/utils/copy_data_dir.sh

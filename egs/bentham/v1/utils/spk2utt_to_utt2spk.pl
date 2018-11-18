@@ -1,1 +1,0 @@
-../../iam/v2/utils/spk2utt_to_utt2spk.pl

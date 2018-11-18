@@ -1,1 +1,0 @@
-../../iam/v2/utils/validate_dict_dir.pl

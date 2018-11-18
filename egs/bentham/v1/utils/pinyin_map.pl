@@ -1,1 +1,0 @@
-../../iam/v2/utils/pinyin_map.pl

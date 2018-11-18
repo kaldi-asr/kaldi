@@ -1,1 +1,0 @@
-../../iam/v2/utils/prepare_online_nnet_dist_build.sh
