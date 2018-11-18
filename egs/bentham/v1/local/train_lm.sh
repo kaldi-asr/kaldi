@@ -4,9 +4,10 @@
 #           2016  Johns Hopkins University (author: Daniel Povey)
 #           2017  Ashish Arora
 #           2017  Hossein Hadian
+#           2018  Desh Raj
 # Apache 2.0
 #
-# This script trains an LM on the LOB+Brown text data and IAM training transcriptions.
+# This script trains an LM on the Bentham text corpus and training transcriptions.
 # It is based on the example scripts distributed with PocoLM
 
 # It will check if pocolm is installed and if not will proceed with installation
@@ -20,7 +21,7 @@ echo "$0 $@"  # Print the command line for logging
 
 dir=data/local/local_lm
 lm_dir=${dir}/data
-
+bentham_text_dir=data/local/download/text/
 
 mkdir -p $dir
 . ./path.sh || exit 1; # for KALDI_ROOT
@@ -57,43 +58,36 @@ if [ $stage -le 0 ]; then
 
   rm ${dir}/data/text/* 2>/dev/null || true
 
-  # Using LOB and brown corpus.
-  cat data/local/lobcorpus/0167/download/LOB_COCOA/lob.txt | \
-    local/remove_test_utterances_from_lob.py data/test/text data/val/text \
-                                             > ${dir}/data/text/lob.txt
-  cat data/local/browncorpus/brown.txt > ${dir}/data/text/brown.txt
-  if [ -d "data/local/wellingtoncorpus" ]; then
-    cat data/local/wellingtoncorpus/Wellington_annotation_removed.txt > ${dir}/data/text/wellington.txt
-  fi
+  # Using Bentham text with last 5000 lines for dev
+
+  cat $bentham_text_dir/complete.txt | \
+    sed '/^\s*$/d' | \
+    utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+    | sed 's/@@//g' > ${dir}/bentham.txt
+  tail -n +5000 ${dir}/bentham.txt > ${dir}/data/text/bentham.txt
 
   # use the validation data as the dev set.
   # Note: the name 'dev' is treated specially by pocolm, it automatically
   # becomes the dev set.
-
-  cat data/val/text | cut -d " " -f 2-  > ${dir}/data/text/dev.txt
+  head -5000 ${dir}/bentham.txt > ${dir}/data/text/dev.txt
 
   # use the training data as an additional data source.
   # we can later fold the dev data into this.
-  cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/iam.txt
+  cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/hwr.txt
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
   # out interpolation weights.)
   # note, we can't put it in ${dir}/data/text/, because then pocolm would use
   # it as one of the data sources.
-  cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
+  cut -d " " -f 2-  < data/val/text  > ${dir}/data/real_dev_set.txt
 
-  # get the wordlist from IAM text
-  if [ -d "data/local/wellingtoncorpus" ]; then
-    cat ${dir}/data/text/{iam,lob,brown,wellington}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
-  else
-    echo "$0: Wellington Corpus not found. Proceeding without using that corpus."
-    cat ${dir}/data/text/{iam,lob,brown}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
-  fi
+  # get the wordlist from Bentham text
+  cat ${dir}/data/text/{bentham,hwr}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   head -n $vocab_size ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
 
-order=3
+order=6
 
 if [ $stage -le 1 ]; then
   # decide on the vocabulary.
@@ -102,7 +96,7 @@ if [ $stage -le 1 ]; then
   # Note: if you have more than one order, use a certain amount of words as the
   # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  min_counts='brown=2 lob=2 iam=1'
+  min_counts='bentham=1 hwr=1'
   wordlist=${dir}/data/wordlist
 
   lm_name="`basename ${wordlist}`_${order}"
@@ -110,10 +104,14 @@ if [ $stage -le 1 ]; then
     lm_name+="_`echo ${min_counts} | tr -s "[:blank:]" "_" | tr "=" "-"`"
   fi
   unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
+
   train_lm.py  --wordlist=${wordlist} --num-splits=10 --warm-start-ratio=20  \
                --limit-unk-history=true \
                ${bypass_metaparam_optim_opt} \
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
+
+  mkdir -p ${dir}/data/arpa
+  format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.arpa.gz
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
 fi

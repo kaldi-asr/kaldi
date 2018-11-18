@@ -1,32 +1,40 @@
 #!/bin/bash
-download_dir=$1
-mkdir -p $download_dir/{train,val,test}/{pages,lines,xml,text}
+# Copyright   2018   Desh Raj (Johns Hopkins University) 
 
-partition_dir=$download_dir/"gt/Partitions/"
-lines_dir=$download_dir/"gt/Images/Lines/"
-pages_dir=$download_dir/"images/Images/Pages/"
-xml_dir=$download_dir/"gt/PAGE/"
-text_dir=$download_dir/"gt/Transcriptions/" 
+""" This script reads the extracted Bentham database files and creates
+    the following files (for all the data subsets):
+    text, utt2spk, images.scp.
+"""
+
+download_dir=$1
+save_dir=$2
+mkdir -p $save_dir/{train,val,test}
+touch $save_dir/{train,val,test}/{text,images.scp,utt2spk,spk2utt}
+
+partition_dir=$download_dir"/gt/Partitions/"
+lines_dir=$download_dir"/gt/Images/Lines/"
+text_dir=$download_dir"/gt/Transcriptions/" 
 
 function split {
 	echo "Creating $1 split"
-	split_dir=$download_dir/$1
-	page_file=$partition_dir/$2
-	line_file=$partition_dir/$3
-	
-	while read -r line; do
-	    name="$line"
-	    mv $pages_dir/$name* $split_dir/pages/  
-	    mv $xml_dir/$name* $split_dir/xml/
-	done < "$page_file"
+	split_dir=$save_dir/$1
+	line_file=$partition_dir/$2
 
 	while read -r line; do
 	    name="$line"
-	    mv $lines_dir/$name* $split_dir/lines/
-	    mv $text_dir/$name* $split_dir/text/
+        spkid=${name:0:11}
+        echo -n $name" " | cat - $text_dir/$name* >> $split_dir/text
+        echo >> $split_dir/text
+        echo $name $lines_dir"/"$name".png" >> $split_dir/images.scp
+        echo $name $spkid >> $split_dir/utt2spk 
 	done < "$line_file"
+    
+    sed -i '/^\s*$/d' $split_dir/images.scp
+    sed -i '/^\s*$/d' $split_dir/text
+    sed -i '/^\s*$/d' $split_dir/utt2spk
+    utils/utt2spk_to_spk2utt.pl $split_dir/utt2spk > $split_dir/spk2utt
 }
 
-split train Train.lst TrainLines.lst
-split val Validation.lst ValidationLines.lst
-split test Test.lst TestLines.lst
+split train TrainLines.lst
+split val ValidationLines.lst
+split test TestLines.lst

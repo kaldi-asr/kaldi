@@ -1,10 +1,11 @@
 #!/bin/bash
+# Copyright    2018   Desh Raj
+# Apache 2.0
 
 ## Download all written works of Jeremy Bentham for the Bentham HWR task LM training
 
 baseurl='http://oll.libertyfund.org/titles/'
-savedir='/export/corpora5/handwriting_ocr/hwr1/Bentham-Text'
-#savedir='./bentham-text/'
+savedir=$1
 
 mkdir -p $savedir
 
@@ -23,8 +24,9 @@ counter=1
 for i in "${texts[@]}"
 do
     echo "Downloading $baseurl$i"
-    curl {$baseurl}{$i} | sed -e 's/<[^>]*>//g' > $savedir"bentham"$counter".txt"
+    curl -s -N {$baseurl}{$i} | sed -e 's/<[^>]*>//g' > $savedir"/bentham"$counter".txt"
     ((counter++))
 done
 
-cat $savedir"*.txt" > $savedir"bentham-all.txt"
+cat $savedir"/*.txt" > $savedir"/complete.txt"
+rm $savedir"/bentham*.txt"

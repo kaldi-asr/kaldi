@@ -1,0 +1,1 @@
+../../iam/v2/utils/rnnlm_compute_scores.sh

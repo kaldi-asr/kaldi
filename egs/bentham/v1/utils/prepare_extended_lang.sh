@@ -1,0 +1,1 @@
+../../iam/v2/utils/prepare_extended_lang.sh

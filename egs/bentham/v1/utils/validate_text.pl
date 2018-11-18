@@ -1,0 +1,1 @@
+../../iam/v2/utils/validate_text.pl
