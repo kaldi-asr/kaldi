@@ -215,9 +215,17 @@ class SvdRescaler {
   SvdRescaler(const MatrixBase<BaseFloat> &A,
               bool symmetric = false);
 
-  // Get the singular values of A, which will have been
-  // computed in the constructor
-  const VectorBase<BaseFloat> &InputSingularValues();
+  // Get the singular values of A, which will have been computed in the
+  // constructor.  The reason why this is not const is that there may be
+  // situations where you discover that the input matrix has some very small
+  // singular values, and you want to (say) floor them somehow and reconstruct,
+  // and have the derivatives be valid assuming you had given that 'repaired'
+  // matrix A as input.  Modifying the elements of this vector gives you
+  // a way to do that, although currently this class doesn't provide a way
+  // for you to access that 'fixed-up' A directly.
+  // We hope you know what you are doing if you modify these singular values.
+  VectorBase<BaseFloat> &InputSingularValues();
+
   // Returns a pointer to a place that you can write the
   // modified singular values f(lambda).
   VectorBase<BaseFloat> *OutputSingularValues();
