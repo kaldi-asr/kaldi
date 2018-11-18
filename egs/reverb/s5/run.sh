@@ -39,7 +39,7 @@ stage=0
 nch_se=8
 # flag for turing on computation of dereverberation measures
 # please make sure that you or your institution have the license to report PESQ before turning on the flag
-compute_se=false
+compute_se=true
 
 . utils/parse_options.sh
 # Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
@@ -100,7 +100,7 @@ fi
 if [ $stage -le 4 ]; then
   # Prepare wsjcam0 clean data and wsj0 language model.
   local/wsjcam0_data_prep.sh $wsjcam0 $wsj0
-
+  
   # Prepare merged BEEP/CMU dictionary.
   local/wsj_prepare_beep_dict.sh
 
@@ -109,16 +109,6 @@ if [ $stage -le 4 ]; then
 
   # Prepare directory structure for clean data. Apply some language model fixes.
   local/wsjcam0_format_data.sh
-  
-  local/train_lms_srilm.sh \
-    --train-text data/${train_set}/text --dev-text data/dt_simu_8ch/text \
-    --oov-symbol "<NOISE>" --words-file data/lang/words.txt \
-    data/ data/srilm
-  
-  LM=data/srilm/best_3gram.gz
-  # Compiles G for reverb 3-gram LM
-  utils/format_lm.sh \
-		data/lang $LM data/local/dict/lexicon.txt data/lang
 fi
 
 if [ $stage -le 5 ]; then

@@ -36,4 +36,5 @@ pushd local/REVERB_scores_source/REVERB-SPEENHA.Release04Oct/evaltools
 $cmd $expdir/compute_se_real.log matlab -nodisplay -nosplash -r "addpath('SRMRToolbox'); score_RealData('$reverb_data','$enhancement_directory_real');exit"
 $cmd $expdir/compute_se_sim.log matlab -nodisplay -nosplash -r "addpath('SRMRToolbox'); score_SimData('$reverb_data','$enhancement_directory_sim','$pesqdir');exit"
 popd
+rm -rf $expdir/scores
 mv local/REVERB_scores_source/REVERB-SPEENHA.Release04Oct/scores $expdir/
