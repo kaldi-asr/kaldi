@@ -200,8 +200,20 @@ inline void AssertSameDim(const MatrixBase<Real1> &mat1, const MatrixBase<Real2>
  */
 class SvdRescaler {
 
-  // Constructor.  The parameter is the input matrix A.
-  SvdRescaler(const MatrixBase<BaseFloat> &A);
+  /*
+    Constructor.
+    'A' is the input matrix.  See class-level documentation above for
+     more information.
+
+    If 'symmetric' is set to true, then the user is asserting that A is
+    symmetric, and that that symmetric structure needs to be preserved in the
+    output.  In this case, we use code for the symmetric eigenvalue problem to
+    do the decomposition instead of the SVD.  I.e. decompose A = P diag(s) P^T
+    instead of A = U diag(s) V^T, using SpMatrix::Eig().  You can view this as a
+    special case of SVD.
+  */
+  SvdRescaler(const MatrixBase<BaseFloat> &A,
+              bool symmetric = false);
 
   // Get the singular values of A, which will have been
   // computed in the constructor
@@ -230,6 +242,41 @@ class SvdRescaler {
 
 
 };
+
+
+class EigRescaler {
+  // Constructor.  The parameter is the input matrix A.
+  EigRescaler(const SpMatrix<BaseFloat> &A);
+
+  // Get the singular values of A, which will have been
+  // computed in the constructor
+  const VectorBase<BaseFloat> &InputSingularValues();
+  // Returns a pointer to a place that you can write the
+  // modified singular values f(lambda).
+  VectorBase<BaseFloat> *OutputSingularValues();
+  // Returns a pointer to a place that you can write the
+  // values of f'(lambda) (the function-derivative of f).
+  VectorBase<BaseFloat> *OutputSingularValuesDerivs();
+  // Outputs F(A) to 'output', which must have the correct size.
+  // It's OK if 'output' contains NaNs on entry.
+  // Before calling this, you must have set the values in
+  // 'OutputSingularValues()'.
+  void GetOutput(SpMatrix<BaseFloat> *output);
+
+  // Computes the derivative of some function g w.r.t. the input A,
+  // given that dg/d(output) is provided in 'output_deriv'.
+  // This derivative is *added* to 'input_deriv', so you need
+  // to zero 'input_deriv' or otherwise set it, beforehand.
+  void ComputeInputDeriv(const SpMatrix<BaseFloat> &output_deriv,
+                         SpMatrix<BaseFloat> *input_deriv);
+
+ private:
+  // TODO.
+
+
+};
+
+
 
 
 /// @} end of "addtogroup matrix_funcs_misc"
