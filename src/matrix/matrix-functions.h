@@ -220,8 +220,10 @@ class SvdRescaler {
   SvdRescaler();
 
   // An alternative to the constructor that takes args.  Should only be called
-  // directly after initializing the object with no args.
-  void Init(const MatrixBase<BaseFloat> &A,
+  // directly after initializing the object with no args.  Warning: this object
+  // keeps a reference to this matrix, so don't modify it during the lifetime
+  // of this object.
+  void Init(const MatrixBase<BaseFloat> *A,
             bool symmetric = false);
 
   // Get the singular values of A, which will have been computed in the
