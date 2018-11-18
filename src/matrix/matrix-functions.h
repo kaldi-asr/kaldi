@@ -240,9 +240,7 @@ class SvdRescaler {
   // Returns a pointer to a place that you can write the
   // modified singular values f(lambda).
   VectorBase<BaseFloat> *OutputSingularValues();
-  // Returns a pointer to a place that you can write the
-  // values of f'(lambda) (the function-derivative of f).
-  VectorBase<BaseFloat> *OutputSingularValuesDerivs();
+
   // Outputs F(A) to 'output', which must have the correct size.
   // It's OK if 'output' contains NaNs on entry.
   // Before calling this, you must have set the values in
