@@ -87,7 +87,6 @@ else
     save_dir_tr=[save_dir,'/data/mc_train/'];
 end
 mkdir([save_dir_tr]);
-%mkdir([save_dir,'/taskfiles/'])
 
 mic_idx=['A';'B';'C';'D';'E';'F';'G';'H'];
 prev_fname='dummy';
@@ -137,7 +136,6 @@ for nlist=1:1
 
         for ch=1:8
 	    outfilename = [save_dir_tr, fname, '_ch', num2str(ch), '.wav'];
-            %eval(['audiowrite(y(:,',num2str(ch),'),16000,''',save_dir_tr fname,'_ch',num2str(ch),'.wav'');']);
             eval(['audiowrite(outfilename, y(:,',num2str(ch),'), 16000);']);
         end
            
