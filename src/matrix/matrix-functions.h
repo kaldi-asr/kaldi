@@ -215,6 +215,15 @@ class SvdRescaler {
   SvdRescaler(const MatrixBase<BaseFloat> &A,
               bool symmetric = false);
 
+  // Constructor that takes no args.  In this case you are supposed to
+  // call Init()
+  SvdRescaler();
+
+  // An alternative to the constructor that takes args.  Should only be called
+  // directly after initializing the object with no args.
+  void Init(const MatrixBase<BaseFloat> &A,
+            bool symmetric = false);
+
   // Get the singular values of A, which will have been computed in the
   // constructor.  The reason why this is not const is that there may be
   // situations where you discover that the input matrix has some very small
