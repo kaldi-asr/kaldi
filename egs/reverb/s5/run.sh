@@ -39,7 +39,7 @@ stage=0
 nch_se=8
 # flag for turing on computation of dereverberation measures
 # please make sure that you or your institution have the license to report PESQ before turning on the flag
-compute_se=true
+compute_se=false
 
 . utils/parse_options.sh
 # Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
