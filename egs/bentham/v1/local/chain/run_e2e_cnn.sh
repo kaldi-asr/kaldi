@@ -1,1 +1,0 @@
-../../../iam/v2/local/chain/run_e2e_cnn.sh
