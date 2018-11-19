@@ -226,9 +226,9 @@ class SvdRescaler {
                          MatrixBase<BaseFloat> *input_deriv);
 
  private:
-  // TODO.
-
-
+  MatrixBase<BaseFloat> input_matrix_A_;
+  MatrixBase<BaseFloat> U_, Vt_;
+  VectorBase<BaseFloat> lambda_in_, lambda_out_, lambda_out_deriv_;
 };
 
 

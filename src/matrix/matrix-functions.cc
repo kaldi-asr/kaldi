@@ -769,5 +769,35 @@ void AddOuterProductPlusMinus<double>(double alpha,
                                       MatrixBase<double> *plus,
                                       MatrixBase<double> *minus);
 
+SvdRescaler::SvdRescaler(const matrixBase<BaseFloat> &A):
+    input_matrix_A_(A) {}
+
+const Vectorbase<BaseFloat> &SvdRescaler::InputSingularValues() {
+    int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
+          rc_min = std::min(rows, cols);
+    Vector<BaseFloat> s(rc_min); // singular value vector
+    Matrix<BaseFloat> U(rows, rc_min), Vt(rc_min, cols);
+    input_matrix_A_.DestructiveSvd(&s, &U, &Vt);
+    SortSvd(&s, &U, &Vt);
+    return s;
+}
+
+VectorBase<BaseFloat>* SvdRescaler::OutputSingularvalues() {
+    int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
+          rc_min = std::min(rows, cols);
+    Vector<BaseFloat> *s(rc_min);
+    return *s;
+}
+
+VectorBase<BaseFloat>* SvdRescaler::OutputSingularValuesDerivs() {
+    int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
+          rc_min = std::min(rows, cols);
+    Vector<BaseFloat> *s(rc_min);
+    return *s;
+}
+
+Void SvdRescaler::GetOutput(MatrixBase<BaseFloat> *output) {
+    
+}
 
 } // end namespace kaldi
