@@ -10,6 +10,25 @@
 # Train objf: -5.74 -5.51 -5.38 -5.29 -5.22 -5.16 -5.12 -5.08 -5.05 -5.02 -4.99 -4.97 -4.97 -4.93 -4.90 -4.87 -4.84 -4.82 -4.79 -4.77 -4.75 -4.73 -4.71 -4.69 -4.67
 # Dev objf:   -6.00 -5.61 -5.45 -5.36 -5.29 -5.24 -5.20 -5.18 -5.16 -5.13 -5.12 -5.11 -5.11 -5.09 -5.07 -5.06 -5.05 -5.04 -5.03 -5.03 -5.03 -5.03 -5.03 -5.03 -5.03 -5.03
 
+# WER summary on dev and test sets
+# System                      tdnn_1d_sp  +lattice_rescore  +nbest_rescore 
+# WER on dev(fglarge)              3.34         2.97            2.98
+# WER on dev(tglarge)              3.44         3.02            3.07
+# WER on dev_other(fglarge)        8.70         7.98            8.00
+# WER on dev_other(tglarge)        9.25         8.28            8.35
+# WER on test(fglarge)             3.77         3.41            3.40
+# WER on test(tglarge)             3.85         3.50            3.47
+# WER on test_other(fglarge)       8.91         8.22            8.21
+# WER on test_other(tglarge)       9.31         8.55            8.49
+
+# command to get the WERs above:
+# tdnn_1d_sp
+# for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge; do grep WER exp/chain_cleaned/tdnn_1d_sp/decode_${test}_${lm}/wer* | best_wer.sh; done; done
+# tdnn_1d_sp with lattice rescoring 
+# for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge; do grep WER exp/chain_cleaned/tdnn_1d_sp/decode_${test}_${lm}_rnnlm_1a_rescore/wer* | best_wer.sh; done; done
+# tdnn_1d_sp with nbest rescoring 
+# for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge; do grep WER exp/chain_cleaned/tdnn_1d_sp/decode_${test}_${lm}_rnnlm_1a_nbest_rescore/wer* | best_wer.sh; done; done
+
 # Begin configuration section.
 
 dir=exp/rnnlm_lstm_1a
@@ -106,7 +125,6 @@ if [ $stage -le 3 ]; then
                        --cmd "$train_cmd" $dir
 fi
 
-LM=fglarge 
 if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
 #  LM=tgsmall # if using the original 3-gram G.fst as old lm
@@ -115,29 +133,31 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
     pruned=_pruned
   fi
   for decode_set in test_clean test_other dev_clean dev_other; do
-    decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}
-
-    # Lattice rescoring
-    rnnlm/lmrescore$pruned.sh \
-      --cmd "$decode_cmd --mem 8G" \
-      --weight 0.4 --max-ngram-order $ngram_order \
-      data/lang_test_$LM $dir \
-      data/${decode_set}_hires ${decode_dir} \
-      exp/decode_${decode_set}_${LM}_${decode_dir_suffix}_rescore
+    for LM in fglarge tglarge; do 
+        decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}
+        # Lattice rescoring
+        rnnlm/lmrescore$pruned.sh \
+            --cmd "$decode_cmd --mem 8G" \
+            --weight 0.45 --max-ngram-order $ngram_order \
+            data/lang_test_$LM $dir \
+            data/${decode_set}_hires ${decode_dir} \
+            exp/chain_cleaned/tdnn_1d_sp/decode_${decode_set}_${LM}_${decode_dir_suffix}_rescore
+    done
   done
 fi
 
 if [ $stage -le 5 ] && $run_nbest_rescore; then
   echo "$0: Perform nbest-rescoring on $ac_model_dir"
   for decode_set in test_clean test_other dev_clean dev_other; do
-    decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}
-
-    # Nbest rescoring
-    rnnlm/lmrescore_nbest.sh \
-      --cmd "$decode_cmd --mem 8G" --N 20 \
-      0.4 data/lang_test_$LM $dir \
-      data/${decode_set}_hires ${decode_dir} \
-      exp/decode_${decode_set}_${LM}_${decode_dir_suffix}_nbest_rescore
+    for LM in fglarge tglarge; do 
+        decode_dir=${ac_model_dir}/decode_${decode_set}_${LM}
+        # Nbest rescoring
+        rnnlm/lmrescore_nbest.sh \
+            --cmd "$decode_cmd --mem 8G" --N 20 \
+            0.4 data/lang_test_$LM $dir \
+            data/${decode_set}_hires ${decode_dir} \
+            exp/chain_cleaned/tdnn_1d_sp/decode_${decode_set}_${LM}_${decode_dir_suffix}_nbest_rescore
+    done
   done
 fi
 
