@@ -199,7 +199,7 @@ inline void AssertSameDim(const MatrixBase<Real1> &mat1, const MatrixBase<Real2>
 
  */
 class SvdRescaler {
-
+ public:
   /*
     Constructor.
     'A' is the input matrix.  See class-level documentation above for
