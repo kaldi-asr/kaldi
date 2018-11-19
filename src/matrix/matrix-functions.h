@@ -241,6 +241,8 @@ class SvdRescaler {
   // modified singular values f(lambda).
   VectorBase<BaseFloat> *OutputSingularValues();
 
+  VectorBase<BaseFloat> *OutputSingularValuesDerivs();
+
   // Outputs F(A) to 'output', which must have the correct size.
   // It's OK if 'output' contains NaNs on entry.
   // Before calling this, you must have set the values in
@@ -255,9 +257,11 @@ class SvdRescaler {
                          MatrixBase<BaseFloat> *input_deriv);
 
  private:
-  // TODO.
-
-
+    MatrixBase<BaseFloat> *input_matrix_A_;
+    bool symmetric_;
+    MatrixBase<BaseFloat> U_, Vt_;
+    VectorBase<BaseFloat> lambda_in_;
+    VectorBase<BaseFloat> *lambda_out_, *lambda_out_deriv_;
 };
 
 
@@ -288,9 +292,7 @@ class EigRescaler {
                          SpMatrix<BaseFloat> *input_deriv);
 
  private:
-  MatrixBase<BaseFloat> input_matrix_A_;
-  MatrixBase<BaseFloat> U_, Vt_;
-  VectorBase<BaseFloat> lambda_in_, lambda_out_, lambda_out_deriv_;
+ //TODO
 };
 
 
