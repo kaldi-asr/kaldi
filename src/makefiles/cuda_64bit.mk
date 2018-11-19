@@ -12,4 +12,4 @@ CUDA_FLAGS = -Xcompiler "-fPIC -pthread -isystem $(OPENFSTINC)" --verbose --mach
 
 CXXFLAGS += -DHAVE_CUDA -I$(CUDATKDIR)/include
 CUDA_LDFLAGS += -L$(CUDATKDIR)/lib64 -Wl,-rpath,$(CUDATKDIR)/lib64
-CUDA_LDLIBS += -lcuda -lcublas -lcusparse -lcudart -lcurand -lnvToolsExt #LDLIBS : The libs are loaded later than static libs in implicit rule
+CUDA_LDLIBS += -lcublas -lcusparse -lcudart -lcurand -lnvToolsExt #LDLIBS : The libs are loaded later than static libs in implicit rule
