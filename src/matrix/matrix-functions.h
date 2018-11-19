@@ -200,18 +200,47 @@ inline void AssertSameDim(const MatrixBase<Real1> &mat1, const MatrixBase<Real2>
  */
 class SvdRescaler {
 
-  // Constructor.  The parameter is the input matrix A.
-  SvdRescaler(const MatrixBase<BaseFloat> &A);
+  /*
+    Constructor.
+    'A' is the input matrix.  See class-level documentation above for
+     more information.
 
-  // Get the singular values of A, which will have been
-  // computed in the constructor
-  const VectorBase<BaseFloat> &InputSingularValues();
+    If 'symmetric' is set to true, then the user is asserting that A is
+    symmetric, and that that symmetric structure needs to be preserved in the
+    output.  In this case, we use code for the symmetric eigenvalue problem to
+    do the decomposition instead of the SVD.  I.e. decompose A = P diag(s) P^T
+    instead of A = U diag(s) V^T, using SpMatrix::Eig().  You can view this as a
+    special case of SVD.
+  */
+  SvdRescaler(const MatrixBase<BaseFloat> &A,
+              bool symmetric = false);
+
+  // Constructor that takes no args.  In this case you are supposed to
+  // call Init()
+  SvdRescaler();
+
+  // An alternative to the constructor that takes args.  Should only be called
+  // directly after initializing the object with no args.  Warning: this object
+  // keeps a reference to this matrix, so don't modify it during the lifetime
+  // of this object.
+  void Init(const MatrixBase<BaseFloat> *A,
+            bool symmetric = false);
+
+  // Get the singular values of A, which will have been computed in the
+  // constructor.  The reason why this is not const is that there may be
+  // situations where you discover that the input matrix has some very small
+  // singular values, and you want to (say) floor them somehow and reconstruct,
+  // and have the derivatives be valid assuming you had given that 'repaired'
+  // matrix A as input.  Modifying the elements of this vector gives you
+  // a way to do that, although currently this class doesn't provide a way
+  // for you to access that 'fixed-up' A directly.
+  // We hope you know what you are doing if you modify these singular values.
+  VectorBase<BaseFloat> &InputSingularValues();
+
   // Returns a pointer to a place that you can write the
   // modified singular values f(lambda).
   VectorBase<BaseFloat> *OutputSingularValues();
-  // Returns a pointer to a place that you can write the
-  // values of f'(lambda) (the function-derivative of f).
-  VectorBase<BaseFloat> *OutputSingularValuesDerivs();
+
   // Outputs F(A) to 'output', which must have the correct size.
   // It's OK if 'output' contains NaNs on entry.
   // Before calling this, you must have set the values in
@@ -226,10 +255,45 @@ class SvdRescaler {
                          MatrixBase<BaseFloat> *input_deriv);
 
  private:
+  // TODO.
+
+
+};
+
+
+class EigRescaler {
+  // Constructor.  The parameter is the input matrix A.
+  EigRescaler(const SpMatrix<BaseFloat> &A);
+
+  // Get the singular values of A, which will have been
+  // computed in the constructor
+  const VectorBase<BaseFloat> &InputSingularValues();
+  // Returns a pointer to a place that you can write the
+  // modified singular values f(lambda).
+  VectorBase<BaseFloat> *OutputSingularValues();
+  // Returns a pointer to a place that you can write the
+  // values of f'(lambda) (the function-derivative of f).
+  VectorBase<BaseFloat> *OutputSingularValuesDerivs();
+  // Outputs F(A) to 'output', which must have the correct size.
+  // It's OK if 'output' contains NaNs on entry.
+  // Before calling this, you must have set the values in
+  // 'OutputSingularValues()'.
+  void GetOutput(SpMatrix<BaseFloat> *output);
+
+  // Computes the derivative of some function g w.r.t. the input A,
+  // given that dg/d(output) is provided in 'output_deriv'.
+  // This derivative is *added* to 'input_deriv', so you need
+  // to zero 'input_deriv' or otherwise set it, beforehand.
+  void ComputeInputDeriv(const SpMatrix<BaseFloat> &output_deriv,
+                         SpMatrix<BaseFloat> *input_deriv);
+
+ private:
   MatrixBase<BaseFloat> input_matrix_A_;
   MatrixBase<BaseFloat> U_, Vt_;
   VectorBase<BaseFloat> lambda_in_, lambda_out_, lambda_out_deriv_;
 };
+
+
 
 
 /// @} end of "addtogroup matrix_funcs_misc"
