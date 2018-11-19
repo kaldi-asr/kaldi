@@ -182,7 +182,7 @@ inline void AssertSameDim(const MatrixBase<Real1> &mat1, const MatrixBase<Real2>
       SvdRescaler rescaler(A);
       const VectorBase<BaseFloat> &lambda_in = A.InputSingularValues();
       VectorBase<BaseFloat> &lambda_out = *(A.OutputSingularValues());
-      VectorBase<BaseFloat> &lambda_out_deriv = *(A.OutputSingularValues());
+      VectorBase<BaseFloat> &lambda_out_deriv = *(A.OutputSingularValueDerivs());
       for (int32 i = 0; i < lambda_in.size(); i++) {
         // compute the scalar function and its derivative for the singular
         // values.
@@ -241,6 +241,10 @@ class SvdRescaler {
   // modified singular values f(lambda).
   VectorBase<BaseFloat> *OutputSingularValues();
 
+  // Returns a pointer to a place that you can write the
+  // values of f'(lambda) (the function-derivative of f).
+  VectorBase<BaseFloat> *OutputSingularValueDerivs();
+
   // Outputs F(A) to 'output', which must have the correct size.
   // It's OK if 'output' contains NaNs on entry.
   // Before calling this, you must have set the values in
@@ -253,39 +257,6 @@ class SvdRescaler {
   // to zero 'input_deriv' or otherwise set it, beforehand.
   void ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
                          MatrixBase<BaseFloat> *input_deriv);
-
- private:
-  // TODO.
-
-
-};
-
-
-class EigRescaler {
-  // Constructor.  The parameter is the input matrix A.
-  EigRescaler(const SpMatrix<BaseFloat> &A);
-
-  // Get the singular values of A, which will have been
-  // computed in the constructor
-  const VectorBase<BaseFloat> &InputSingularValues();
-  // Returns a pointer to a place that you can write the
-  // modified singular values f(lambda).
-  VectorBase<BaseFloat> *OutputSingularValues();
-  // Returns a pointer to a place that you can write the
-  // values of f'(lambda) (the function-derivative of f).
-  VectorBase<BaseFloat> *OutputSingularValuesDerivs();
-  // Outputs F(A) to 'output', which must have the correct size.
-  // It's OK if 'output' contains NaNs on entry.
-  // Before calling this, you must have set the values in
-  // 'OutputSingularValues()'.
-  void GetOutput(SpMatrix<BaseFloat> *output);
-
-  // Computes the derivative of some function g w.r.t. the input A,
-  // given that dg/d(output) is provided in 'output_deriv'.
-  // This derivative is *added* to 'input_deriv', so you need
-  // to zero 'input_deriv' or otherwise set it, beforehand.
-  void ComputeInputDeriv(const SpMatrix<BaseFloat> &output_deriv,
-                         SpMatrix<BaseFloat> *input_deriv);
 
  private:
   // TODO.
