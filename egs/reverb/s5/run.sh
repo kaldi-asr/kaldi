@@ -83,8 +83,8 @@ if [ ${stage} -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
-  local/run_wpe.sh
-  local/run_beamform.sh ${wavdir}/WPE/
+  local/run_wpe.sh --cmd "$train_cmd"
+  local/run_beamform.sh --cmd "$train_cmd" ${wavdir}/WPE/
 fi
 
 # Compute dereverberation scores
