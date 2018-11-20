@@ -49,8 +49,7 @@ void OfflineFeatureTpl<F>::ComputeFeatures(
                          new_sample_freq, &downsampled_wave);
       Compute(downsampled_wave, vtln_warp, output);
     } else
-      KALDI_ERR << "The waveform is allowed to get downsampled."
-                << "New sample Frequency " << new_sample_freq
+      KALDI_ERR << "New sample Frequency " << new_sample_freq
                 << " is larger than waveform original sampling frequency "
                 << sample_freq;
 
