@@ -50,18 +50,18 @@ if [ $stage -le 0 ]; then
 fi
 
 if [ $stage -le 1 ]; then
-  # Align lexicon stage. Lexicon is assumed to have first column tab separated
+  echo "Align lexicon stage. Lexicon is assumed to have first column tab separated"
   phonetisaurus-align --input=$outdir/lexicon_tab_separated.txt --ofile=${outdir}/aligned_lexicon.corpus || exit 1;
 fi
 
 if [ $stage -le 2 ]; then
-  # Convert aligned lexicon to arpa using srilm.
+  echo "Converting aligned lexicon to arpa using srilm."
   ngram-count -order 7 -kn-modify-counts-at-end -gt1min 0 -gt2min 0 \
     -gt3min 0 -gt4min 0 -gt5min 0 -gt6min 0 -gt7min 0 -ukndiscount \
     -text ${outdir}/aligned_lexicon.corpus -lm ${outdir}/aligned_lexicon.arpa
 fi
 
 if [ $stage -le 3 ]; then
-  # Convert the arpa file to FST.
+  echo "Converting the arpa file to FST."
   phonetisaurus-arpa2wfst --lm=${outdir}/aligned_lexicon.arpa --ofile=${outdir}/model.fst
 fi
