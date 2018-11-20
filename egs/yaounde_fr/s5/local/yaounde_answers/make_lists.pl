@@ -76,7 +76,7 @@ LINE: while ( my $line = <$W> ) {
   my ($volume,$directories,$file) = File::Spec->splitpath( $line );
   my @dirs = split /\//, $directories;
     my $mode = $dirs[4];
-    next LINE unless ( $mode == 'answers' );
+    next LINE unless ( $mode eq 'answers' );
   my $base = basename $line, ".wav";
   my ($maquina,$spk,$utt) = split /\-/, $base, 3;
   my $utt_id = 'yaounde-' . $spk . '-' . $utt;
