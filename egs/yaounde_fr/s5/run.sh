@@ -146,6 +146,13 @@ if [ $stage -le 14 ]; then
       nspk=$(wc -l < data/$x/spk2utt)
       steps/decode.sh  --cmd "$decode_cmd" --nj $nspk \
         exp/mono/graph_nosp_expanded_tgmed data/$x exp/mono/decode_nosp_expanded_tgmed_${x}
+
+      steps/lmrescore.sh --cmd "$decode_cmd" data/lang_nosp_expanded_test_{tgsmall,tgmed} \
+        data/$x exp/mono/decode_nosp_expanded_{tgsmall,tgmed}_$x
+
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" data/lang_nosp_expanded_test_{tgsmall,tglarge} \
+        data/$x exp/mono/decode_nosp_expanded_{tgsmall,tglarge}_$x
     done
   ) &
 fi
