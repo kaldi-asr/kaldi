@@ -213,7 +213,7 @@ class SvdRescaler {
     special case of SVD.
   */
   SvdRescaler(const MatrixBase<BaseFloat> &A,
-              bool symmetric = false);
+              bool symmetric = false): input_matrix_A_(A), symmetric_(symmetric) {}
 
   // Constructor that takes no args.  In this case you are supposed to
   // call Init()

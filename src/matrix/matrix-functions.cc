@@ -768,8 +768,8 @@ void AddOuterProductPlusMinus<double>(double alpha,
                                       const VectorBase<double> &b,
                                       MatrixBase<double> *plus,
                                       MatrixBase<double> *minus);
-
-SvdRescaler::SvdRescaler(const matrixBase<BaseFloat> &A, bool symmetric = false):
+/*
+SvdRescaler::SvdRescaler(const MatrixBase<BaseFloat> &A, bool symmetric = false):
     input_matrix_A_(A),
     symmetric_(symmetric) {
       int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
@@ -783,10 +783,20 @@ SvdRescaler::SvdRescaler(const matrixBase<BaseFloat> &A, bool symmetric = false)
       U_ = U;
       Vt_ = Vt;
     }
-
+*/
 void SvdRescaler::Init(const MatrixBase<BaseFloat> *A, bool symmetric = false) {
     *input_matrix_A_ = A;
     symmetric_ = symmetric;
+    int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
+            rc_min = std::min(rows, cols);
+    Vector<BaseFloat> s(rc_min); // singular value vector
+    Matrix<BaseFloat> U(rows, rc_min), Vt(rc_min, cols);
+    input_matrix_A_.DestructiveSvd(&s, &U, &Vt);
+    SortSvd(&s, &U, &Vt);
+    lambda_in_ = s;
+    *lambda_out_ = s;
+    U_ = U;
+    Vt_ = Vt;
 }
 
 Vectorbase<BaseFloat> &SvdRescaler::InputSingularValues() {
