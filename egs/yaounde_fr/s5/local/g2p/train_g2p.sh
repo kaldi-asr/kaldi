@@ -51,7 +51,7 @@ fi
 
 if [ $stage -le 1 ]; then
   echo "Align lexicon stage. Lexicon is assumed to have first column tab separated"
-  phonetisaurus-align --input=$outdir/lexicon_tab_separated.txt --ofile=${outdir}/aligned_lexicon.corpus || exit 1;
+  phonetisaurus-align --input=$outdir/lexicon_tab_separated.txt --ofile=${outdir}/aligned_lexicon.corpus || echo "problem";
 fi
 
 if [ $stage -le 2 ]; then
