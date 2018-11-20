@@ -15,12 +15,26 @@
 // WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
 // MERCHANTABLITY OR NON-INFRINGEMENT.
 // See the Apache 2 License for the specific language governing permissions and
-// limitations under the License.
+//1 limitations under the License.
 
 #include "transform/differentiable-fmllr.h"
 
 namespace kaldi {
 namespace differentiable_transform {
+
+
+
+// Test derivatives produced by the Estimator object.
+//
+void TestCoreFmllrEstimatorDerivs(
+    BaseFloat gamma,
+    const Matrix<BaseFloat> &G,
+    const Matrix<BaseFloat> &K,
+    const Matrix<BaseFloat> &A,
+    CoreFmllrEstimator *estimator) {
+  // TODO.
+
+}
 
 
 void UnitTestCoreFmllrEstimatorSimple() {
@@ -34,6 +48,8 @@ void UnitTestCoreFmllrEstimatorSimple() {
   CoreFmllrEstimator estimator(opts, gamma, G, K, &A);
   estimator.Forward();
   KALDI_LOG << "A is " << A;
+  KALDI_ASSERT(A.IsUnit(0.01));
+  TestCoreFmllrEstimatorDerivs(G, K, A, &estimator);
 }
 
 
