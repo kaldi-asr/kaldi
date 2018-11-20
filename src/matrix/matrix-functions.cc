@@ -768,10 +768,11 @@ void AddOuterProductPlusMinus<double>(double alpha,
                                       const VectorBase<double> &b,
                                       MatrixBase<double> *plus,
                                       MatrixBase<double> *minus);
-/*
-SvdRescaler::SvdRescaler(const MatrixBase<BaseFloat> &A, bool symmetric = false):
-    input_matrix_A_(A),
-    symmetric_(symmetric) {
+
+SvdRescaler::SvdRescaler(const MatrixBase<BaseFloat> &A,
+                         bool symmetric):
+                         input_matrix_A_(A),
+                         symmetric_(symmetric) {
       int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
             rc_min = std::min(rows, cols);
       Vector<BaseFloat> s(rc_min); // singular value vector
@@ -782,11 +783,15 @@ SvdRescaler::SvdRescaler(const MatrixBase<BaseFloat> &A, bool symmetric = false)
       *lambda_out_ = s;
       U_ = U;
       Vt_ = Vt;
+}
+
+void SvdRescaler::Init(const MatrixBase<BaseFloat> *A, bool symmetric) {
+    input_matrix_A_ = *A;
+    if (symmetric) {
+        symmetric_ = symmetric;
+    } else {
+        symmetric_ = false;
     }
-*/
-void SvdRescaler::Init(const MatrixBase<BaseFloat> *A, bool symmetric = false) {
-    *input_matrix_A_ = A;
-    symmetric_ = symmetric;
     int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
             rc_min = std::min(rows, cols);
     Vector<BaseFloat> s(rc_min); // singular value vector
@@ -799,7 +804,7 @@ void SvdRescaler::Init(const MatrixBase<BaseFloat> *A, bool symmetric = false) {
     Vt_ = Vt;
 }
 
-Vectorbase<BaseFloat> &SvdRescaler::InputSingularValues() {
+VectorBase<BaseFloat> &SvdRescaler::InputSingularValues() {
     return lambda_in_;
 }
 

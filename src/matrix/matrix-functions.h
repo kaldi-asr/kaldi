@@ -212,8 +212,7 @@ class SvdRescaler {
     instead of A = U diag(s) V^T, using SpMatrix::Eig().  You can view this as a
     special case of SVD.
   */
-  SvdRescaler(const MatrixBase<BaseFloat> &A,
-              bool symmetric = false): input_matrix_A_(A), symmetric_(symmetric) {}
+  SvdRescaler(const MatrixBase<BaseFloat> &A, bool symmetric);
 
   // Constructor that takes no args.  In this case you are supposed to
   // call Init()
@@ -223,8 +222,7 @@ class SvdRescaler {
   // directly after initializing the object with no args.  Warning: this object
   // keeps a reference to this matrix, so don't modify it during the lifetime
   // of this object.
-  void Init(const MatrixBase<BaseFloat> *A,
-            bool symmetric = false);
+  void Init(const MatrixBase<BaseFloat> *A, bool symmetric);
 
   // Get the singular values of A, which will have been computed in the
   // constructor.  The reason why this is not const is that there may be
@@ -260,9 +258,8 @@ class SvdRescaler {
   // on the same object.
   void ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
                          MatrixBase<BaseFloat> *input_deriv);
-
- private:
-    MatrixBase<BaseFloat> *input_matrix_A_;
+ protected:
+    Matrix<BaseFloat> input_matrix_A_;
     bool symmetric_;
     MatrixBase<BaseFloat> U_, Vt_;
     VectorBase<BaseFloat> lambda_in_;
