@@ -119,7 +119,10 @@ class CoreFmllrEstimator {
 
 
   /**
-     Does the backward pass.
+     Does the backward pass.  Note: it is permissible to call
+     Backward() any number of times, it does not have to be called
+     exactly once.
+
        @param [in] A_deriv  The derivative of the objective
            function (say, f) w.r.t. the output A (which was passed as a
            pointer to the constructor).

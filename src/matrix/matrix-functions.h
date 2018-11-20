@@ -255,6 +255,9 @@ class SvdRescaler {
   // given that dg/d(output) is provided in 'output_deriv'.
   // This derivative is *added* to 'input_deriv', so you need
   // to zero 'input_deriv' or otherwise set it, beforehand.
+  // It is acceptable to call ComputeInputDeriv (with possibly different
+  // values of 'output_deriv' and 'input_deriv' as many times as you want,
+  // on the same object.
   void ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
                          MatrixBase<BaseFloat> *input_deriv);
 
