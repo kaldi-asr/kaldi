@@ -296,7 +296,10 @@ if (! -d "$qdir") {
 }
 
 my $queue_array_opt = "";
-if ($array_job == 1) { # It's an array job.
+if ($array_job == 1) {
+  if ( $jobstart == 1 and $jobend == 1 ) {
+    $jobstart = 0;
+  }
   $queue_array_opt = "-J $jobstart-$jobend";
   $logfile =~ s/$jobname/\$PBS_ARRAY_INDEX/g; # This variable will get
   # replaced by qsub, in each job, with the job-id.
