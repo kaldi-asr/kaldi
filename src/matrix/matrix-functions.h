@@ -222,6 +222,7 @@ class SvdRescaler {
   // directly after initializing the object with no args.  Warning: this object
   // keeps a reference to this matrix, so don't modify it during the lifetime
   // of this object.
+  // This program assumes the input matrix (num_rows >= num_cols).
   void Init(const MatrixBase<BaseFloat> *A, bool symmetric);
 
   // Get the singular values of A, which will have been computed in the

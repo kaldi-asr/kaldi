@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation;  Go Vivace Inc.;  Jan Silovsky
 //                      Yanmin Qian;  Saarland University;  Johns Hopkins University (Author: Daniel Povey)
+//                      Gaofeng Cheng (Institute of Acoustics, Chinese Academy of Sciences)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -772,7 +773,8 @@ void AddOuterProductPlusMinus<double>(double alpha,
 SvdRescaler::SvdRescaler(const MatrixBase<BaseFloat> &A,
                          bool symmetric):
                          input_matrix_A_(A),
-                         symmetric_(symmetric) {
+                         symmetric_(symmetric) 
+      {
       int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
             rc_min = std::min(rows, cols);
       Vector<BaseFloat> s(rc_min); // singular value vector
@@ -786,14 +788,16 @@ SvdRescaler::SvdRescaler(const MatrixBase<BaseFloat> &A,
 }
 */
 void SvdRescaler::Init(const MatrixBase<BaseFloat> *A, bool symmetric) {
+    KALDI_ASSERT(A->NumRows() >= A->NumCols());
     input_matrix_A_ = *A;
     if (symmetric) {
         symmetric_ = symmetric;
     } else {
         symmetric_ = false;
     }
-    int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
-            rc_min = std::min(rows, cols);
+    int32 rows = input_matrix_A_.NumRows(),
+          cols = input_matrix_A_.NumCols(),
+          rc_min = cols;
     Vector<BaseFloat> s(rc_min); // singular value vector
     Matrix<BaseFloat> U(rows, rc_min), Vt(rc_min, cols);
     input_matrix_A_.DestructiveSvd(&s, &U, &Vt);
@@ -831,8 +835,7 @@ void SvdRescaler::ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
     KALDI_ASSERT(output_deriv.NumRows() == U_.NumRows() &&
                  output_deriv.NumCols() == Vt_.NumRows() &&
                  input_deriv->NumRows() == U_.NumRows() &&
-                 input_deriv->NumCols() == Vt_.NumRows() &&
-                 U_.NumCols() == Vt_.NumRows());
+                 input_deriv->NumCols() == Vt_.NumRows());
     // \bar{A}
     input_deriv->SetZero();
 
@@ -840,17 +843,23 @@ void SvdRescaler::ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
     Matrix<BaseFloat> intermediate_deriv(U_.NumCols(), Vt_.NumCols());
     intermediate_deriv.AddMatMatMat(1.0, U_, kTrans, output_deriv, kNoTrans,
                                     Vt_, kNoTrans, 0.0);
+
     // some intermediate variables
     // store the diriv of {f'(\lambda_{i})}\times{\bar\d_{i,i}}
+    // as diagonal_deriv_intermediate
     Vector<BaseFloat> diagonal_deriv_intermediate(U_.NumCols());
     diagonal_deriv_intermediate.SetZero();
     diagonal_deriv_intermediate.CopyDiagFromMat(intermediate_deriv);
     diagonal_deriv_intermediate.MulElements(*lambda_out_deriv_);
-    // store \lambda_{i} \times d_{i}
+
+    // store \lambda_{i} \times d_{j}
+    // as diagonal_deriv_intermediate2
     Matrix<BaseFloat> diagonal_deriv_intermediate2(U_.NumCols(), U_.NumCols());
     diagonal_deriv_intermediate2.SetZero();
     diagonal_deriv_intermediate2.AddVecVec(1.0, lambda_in_, *lambda_out_);
+
     // store \lambda_{i} \times \lambda_{i}
+    // as diagonal_deriv_intermediate3
     Vector<BaseFloat> diagonal_deriv_intermediate3(U_.NumCols());
     diagonal_deriv_intermediate3.SetZero();
     diagonal_deriv_intermediate3.AddVec2(1.0, lambda_in_);   
@@ -859,24 +868,25 @@ void SvdRescaler::ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
     {
         for(MatrixIndexT j = 0; j < Vt_.NumCols(); i++)
         {
-            // there may remain bugs!
             if ((lambda_in_(i) == 0.0) && (lambda_in_(j) == 0.0) && (i != j)) {
                 (*input_deriv)(i, j) = intermediate_deriv(i, j) * (*lambda_out_deriv_)(i);
-            } else if ((i != j) && (lambda_in_(i) - lambda_in_(j) > 0.0000001)) {
-                (*input_deriv)(i, j) = intermediate_deriv(i, j)
-                                     *(diagonal_deriv_intermediate2(i, i) - diagonal_deriv_intermediate2(j, j)) 
-                                     / (diagonal_deriv_intermediate3(i) - diagonal_deriv_intermediate3(j))
-                                     + intermediate_deriv(j, i)
-                                     *(diagonal_deriv_intermediate2(j, i) - diagonal_deriv_intermediate2(i, j)) 
-                                     / (diagonal_deriv_intermediate3(i) - diagonal_deriv_intermediate3(j));
-            } else if ((i != j) && (lambda_in_(i) - lambda_in_(j) < 0.0000001)) {
-                float  lambda_avg = (lambda_in_(i) + lambda_in_(j)) / 2.0;
-                (*input_deriv)(i, j) = intermediate_deriv(i, j)
-                                     * (lambda_avg * ((*lambda_out_deriv_)(i)) + (*lambda_out_)(i))
-                                     / (2.0 * lambda_avg)
-                                     + intermediate_deriv(j, i)
-                                     * (lambda_avg * ((*lambda_out_deriv_)(i)) - (*lambda_out_)(i))
-                                     / (2.0 * lambda_avg);
+            } else if (i != j) {
+                if (abs((lambda_in_(i) - lambda_in_(j)) / lambda_in_(j)) > 0.0000001) {
+                  (*input_deriv)(i, j) = intermediate_deriv(i, j)
+                                      *(diagonal_deriv_intermediate2(i, i) - diagonal_deriv_intermediate2(j, j)) 
+                                      / (diagonal_deriv_intermediate3(i) - diagonal_deriv_intermediate3(j))
+                                      + intermediate_deriv(j, i)
+                                      *(diagonal_deriv_intermediate2(j, i) - diagonal_deriv_intermediate2(i, j)) 
+                                      / (diagonal_deriv_intermediate3(i) - diagonal_deriv_intermediate3(j));
+                } else {
+                  float lambda_avg = (lambda_in_(i) + lambda_in_(j)) / 2.0;
+                  (*input_deriv)(i, j) = intermediate_deriv(i, j)
+                                      * (lambda_avg * ((*lambda_out_deriv_)(i)) + (*lambda_out_)(i))
+                                      / (2.0 * lambda_avg)
+                                      + intermediate_deriv(j, i)
+                                      * (lambda_avg * ((*lambda_out_deriv_)(i)) - (*lambda_out_)(i))
+                                      / (2.0 * lambda_avg);
+                }
             }
         }
     }
