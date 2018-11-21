@@ -76,8 +76,7 @@ Usage: pbspro.pl [options] [JOB=1:n] log-file command-line arguments...\n" .
 "or: pbspro.pl -q all.q\@xyz foo.log echo bar \| sed s/bar/baz/ \n" .
 " (which is an example of using a pipe; you can provide other escaped bash constructs)\n" .
 "or: pbspro.pl -q all.q\@qyz JOB=1:10 foo.JOB.log echo JOB \n" .
-" (which illustrates the mechanism to submit parallel jobs; note, you can use \n" .
-"  another string other than JOB)\n" .
+" (which illustrates the mechanism to submit parallel jobs;" .
 " It uses qstat to work out when the job finished\n" .
 "Options:\n" .
 "  --config <config-file> (default: $config)\n" .
@@ -112,6 +111,9 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
         $qsub_opts .= "$switch $argument ";
       }
     }
+  }
+  if ( $jobstart == 1 and $jobend == 1 ) {
+    $array_job = 0;
   }
   if ($ARGV[0] =~ m/^JOB=(\d+):(\d+)$/) { # e.g. JOB=1:20
     $array_job = 1;
@@ -297,9 +299,6 @@ if (! -d "$qdir") {
 
 my $queue_array_opt = "";
 if ($array_job == 1) {
-  if ( $jobstart == 1 and $jobend == 1 ) {
-    $jobstart = 0;
-  }
   $queue_array_opt = "-J $jobstart-$jobend";
   $logfile =~ s/$jobname/\$PBS_ARRAY_INDEX/g; # This variable will get
   # replaced by qsub, in each job, with the job-id.
