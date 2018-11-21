@@ -62,26 +62,26 @@ my $config = "conf/pbspro.conf";
 
 my %cli_options = ();
 
-my $jobname;
+my $jobname = 'JOB';
 my $jobstart;
-my $jobend = 8;
-
+my $jobend;
+my $job_stepping_factor = 1;
 my $array_job = 0;
 
 sub print_usage() {
-  print STDERR
-   "Usage: pbspro.pl [options] [JOB=1:n] log-file command-line arguments...\n" .
-   "e.g.: pbspro.pl foo.log echo baz\n" .
-   " (which will echo \"baz\", with stdout and stderr directed to foo.log)\n" .
-   "or: pbspro.pl -q all.q\@xyz foo.log echo bar \| sed s/bar/baz/ \n" .
-   " (which is an example of using a pipe; you can provide other escaped bash constructs)\n" .
-   "or: pbspro.pl -q all.q\@qyz JOB=1:10 foo.JOB.log echo JOB \n" .
-   " (which illustrates the mechanism to submit parallel jobs; note, you can use \n" .
-   "  another string other than JOB)\n" .
-   " It uses qstat to work out when the job finished\n" .
-   "Options:\n" .
-   "  --config <config-file> (default: $config)\n" .
-   "  --gpu <0|1> (default: $gpu)\n";
+  print STDERR "
+Usage: pbspro.pl [options] [JOB=1:n] log-file command-line arguments...\n" .
+"e.g.: pbspro.pl foo.log echo baz\n" .
+" (which will echo \"baz\", with stdout and stderr directed to foo.log)\n" .
+"or: pbspro.pl -q all.q\@xyz foo.log echo bar \| sed s/bar/baz/ \n" .
+" (which is an example of using a pipe; you can provide other escaped bash constructs)\n" .
+"or: pbspro.pl -q all.q\@qyz JOB=1:10 foo.JOB.log echo JOB \n" .
+" (which illustrates the mechanism to submit parallel jobs; note, you can use \n" .
+"  another string other than JOB)\n" .
+" It uses qstat to work out when the job finished\n" .
+"Options:\n" .
+"  --config <config-file> (default: $config)\n" .
+"  --gpu <0|1> (default: $gpu)\n";
   exit 1;
 }
 
@@ -94,7 +94,6 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
   # options to qsub.
   while (@ARGV >= 2 && $ARGV[0] =~ m:^-:) {
     my $switch = shift @ARGV;
-
     if ($switch eq "-V") {
       $qsub_opts .= "-V ";
     } else {
@@ -102,7 +101,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       if ($argument =~ m/^--/) {
         print STDERR "pbspro.pl: Warning: suspicious argument '$argument' to $switch; starts with '-'\n";
       }
-if ($switch =~ m/^--/) { # Config options
+      if ($switch =~ m/^--/) { # Config options
         # Convert CLI option to variable name
         # by removing '--' from the switch and replacing any
         # '-' with a '_'
@@ -114,28 +113,19 @@ if ($switch =~ m/^--/) { # Config options
       }
     }
   }
-  if ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+):(\d+)$/) { # e.g. JOB=1:20
+  if ($ARGV[0] =~ m/^JOB=(\d+):(\d+)$/) { # e.g. JOB=1:20
     $array_job = 1;
-    $jobname = $1;
-    $jobstart = $2;
-    $jobend = $3;
+    #$jobname = $1;
+    # I am fixing $jobname to be JOB
+    $jobstart = $1;
+    $jobend = $2;
     shift;
     if ($jobstart > $jobend) {
       croak "pbspro.pl: invalid job range $ARGV[0]";
     }
-    if ($jobstart <= 0) {
-      croak "run.pl: invalid job range $ARGV[0], start must be strictly positive (this is a GridEngine limitation).";
+    if ($jobstart < 0) {
+      croak "run.pl: invalid job range $ARGV[0], start must be strictly positive.";
     }
-    warn "job info: $jobname\t$jobstart\t$jobend";
-  } elsif ($ARGV[0] =~ m/^([\w_][\w\d_]*)+=(\d+)$/) { # e.g. JOB=1.
-    $array_job = 1;
-    $jobname = $1;
-    $jobstart = $2;
-    #$jobend = $2;
-    shift;
-    warn "job info: $jobname\t$jobstart\t$jobend";
-  } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
-    print STDERR "pbspro.pl: Warning: suspicious first argument to pbspro.pl: $ARGV[0]\n";
   }
 }
 
