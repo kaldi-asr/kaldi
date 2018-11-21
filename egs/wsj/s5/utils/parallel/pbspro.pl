@@ -327,36 +327,36 @@ system("rm $queue_logfile $syncfile 2>/dev/null");
 #
 # Write to the script file, and then close it.
 #
-open(Q, ">$queue_scriptfile") || die "Failed to write to $queue_scriptfile";
+open my $Q, '>', $queue_scriptfile or croak "Failed to write to $queue_scriptfile $!";
 
-print Q "#!/bin/bash\n";
-print Q "cd $cwd\n";
-print Q ". ./path.sh\n";
-print Q "( echo '#' Running on \`hostname\`\n";
-print Q "  echo '#' Started at \`date\`\n";
-print Q "  echo -n '# '; cat <<EOF\n";
-print Q "$cmd\n"; # this is a way of echoing the command into a comment in the log file,
-print Q "EOF\n"; # without having to escape things like "|" and quote characters.
-print Q ") >$logfile\n";
-print Q "time1=\`date +\"%s\"\`\n";
-print Q " ( $cmd ) 2>>$logfile >>$logfile\n";
-print Q "ret=\$?\n";
-print Q "time2=\`date +\"%s\"\`\n";
-print Q "echo '#' Accounting: time=\$((\$time2-\$time1)) >>$logfile\n";
-print Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
-print Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137;
+print $Q "#!/bin/bash\n";
+print $Q "cd $cwd\n";
+print $Q ". ./path.sh\n";
+print $Q "( echo '#' Running on \`hostname\`\n";
+print $Q "  echo '#' Started at \`date\`\n";
+print $Q "  echo -n '# '; cat <<EOF\n";
+print $Q "$cmd\n"; # this is a way of echoing the command into a comment in the log file,
+print $Q "EOF\n"; # without having to escape things like "|" and quote characters.
+print $Q ") >$logfile\n";
+print $Q "time1=\`date +\"%s\"\`\n";
+print $Q " ( $cmd ) 2>>$logfile >>$logfile\n";
+print $Q "ret=\$?\n";
+print $Q "time2=\`date +\"%s\"\`\n";
+print $Q "echo '#' Accounting: time=\$((\$time2-\$time1)) >>$logfile\n";
+print $Q "echo '#' Finished at \`date\` with status \$ret >>$logfile\n";
+print $Q "[ \$ret -eq 137 ] && exit 100;\n"; # If process was killed (e.g. oom) it will exit with status 137;
   # let the script return with status 100 which will put it to E state; more easily rerunnable.
 if ($array_job == 0) { # not an array job
-  print Q "touch $syncfile\n"; # so we know it's done.
+  print $Q "touch $syncfile\n"; # so we know it's done.
 } else {
-  print Q "touch $syncfile.\$PBS_ARRAY_INDEX\n"; # touch a bunch of sync-files.
+  print $Q "touch $syncfile.\$PBS_ARRAY_INDEX\n"; # touch a bunch of sync-files.
 }
-print Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
-print Q "## submitted with:\n";       # treats specially.
+print $Q "exit \$[\$ret ? 1 : 0]\n"; # avoid status 100 which grid-engine
+print $Q "## submitted with:\n";       # treats specially.
 $qsub_cmd .= "-o $queue_logfile $qsub_opts $queue_array_opt $queue_scriptfile >>$queue_logfile 2>&1";
-print Q "# $qsub_cmd\n";
-if (!close(Q)) { # close was not successful... || die "Could not close script file $shfile";
-  die "Failed to close the script file (full disk?)";
+print $Q "# $qsub_cmd\n";
+if (!close $Q) { # close was not successful... || croak "Could not close script file $shfile $!";
+  croak "Failed to close the script file (full disk?)";
 }
 
 my $ret = system ($qsub_cmd);
