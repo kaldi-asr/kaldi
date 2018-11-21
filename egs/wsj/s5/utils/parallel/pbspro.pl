@@ -63,7 +63,7 @@ my $config = "conf/pbspro.conf";
 my %cli_options = ();
 
 my $jobname = 'JOB';
-my $jobstart;
+my $jobstart = 0;
 my $jobend;
 my $job_stepping_factor = 1;
 my $array_job = 0;
@@ -112,7 +112,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
       }
     }
   }
-  if ( $jobstart == 1 and $jobend == 1 ) {
+  if ( $jobstart == 0 and $jobend == 1 ) {
     $array_job = 0;
   }
   if ($ARGV[0] =~ m/^JOB=(\d+):(\d+)$/) { # e.g. JOB=1:20
