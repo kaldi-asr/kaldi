@@ -259,12 +259,13 @@ class SvdRescaler {
   // on the same object.
   void ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
                          MatrixBase<BaseFloat> *input_deriv);
+
  protected:
     Matrix<BaseFloat> input_matrix_A_;
     bool symmetric_;
-    MatrixBase<BaseFloat> U_, Vt_;
-    VectorBase<BaseFloat> lambda_in_;
-    VectorBase<BaseFloat> *lambda_out_, *lambda_out_deriv_;
+    Matrix<BaseFloat> U_, Vt_;
+    Vector<BaseFloat> lambda_in_;
+    Vector<BaseFloat> *lambda_out_, *lambda_out_deriv_;
 };
 
 /// @} end of "addtogroup matrix_funcs_misc"

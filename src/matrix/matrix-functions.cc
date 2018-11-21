@@ -769,12 +769,11 @@ void AddOuterProductPlusMinus<double>(double alpha,
                                       const VectorBase<double> &b,
                                       MatrixBase<double> *plus,
                                       MatrixBase<double> *minus);
-/*
+
 SvdRescaler::SvdRescaler(const MatrixBase<BaseFloat> &A,
                          bool symmetric):
                          input_matrix_A_(A),
-                         symmetric_(symmetric) 
-      {
+                         symmetric_(symmetric) {
       int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
             rc_min = std::min(rows, cols);
       Vector<BaseFloat> s(rc_min); // singular value vector
@@ -786,7 +785,7 @@ SvdRescaler::SvdRescaler(const MatrixBase<BaseFloat> &A,
       U_ = U;
       Vt_ = Vt;
 }
-*/
+
 void SvdRescaler::Init(const MatrixBase<BaseFloat> *A, bool symmetric) {
     KALDI_ASSERT(A->NumRows() >= A->NumCols());
     input_matrix_A_ = *A;
