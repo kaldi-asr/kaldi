@@ -64,7 +64,7 @@ my %cli_options = ();
 
 my $jobname = 'JOB';
 my $jobstart = 0;
-my $jobend;
+my $jobend = 1;
 my $job_stepping_factor = 1;
 my $array_job = 0;
 
