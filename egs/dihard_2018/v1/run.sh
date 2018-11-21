@@ -44,7 +44,11 @@ if [ $stage -le 1 ]; then
   # Make MFCCs for each dataset
   for name in train dihard_2018_dev dihard_2018_eval; do
     steps/make_mfcc.sh --write-utt2num-frames true \
+<<<<<<< HEAD
       --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd --max-jobs-run 20" \
+=======
+      --mfcc-config conf/mfcc.conf --nj 40 --cmd "$train_cmd" \
+>>>>>>> f89709c4f0b2da7dda76461f5f5a3ddc25ed4eaf
       data/${name} exp/make_mfcc $mfccdir
     utils/fix_data_dir.sh data/${name}
   done
