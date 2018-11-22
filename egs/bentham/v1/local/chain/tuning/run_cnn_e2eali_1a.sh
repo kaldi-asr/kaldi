@@ -1,20 +1,25 @@
 #!/bin/bash
 
-# e2eali_1a is the same as chainali_1c but uses the e2e chain model to get the
-# lattice alignments and to build a tree
-
-# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a exp/chain/cnn_chainali_1c exp/chain/cnn_e2eali_1a
-# System                      e2e_cnn_1a cnn_chainali_1c cnn_e2eali_1a
-# WER                             13.87     12.72     12.70
-# CER                              6.54      5.99      5.75
-# Final train prob              -0.0371   -0.0291   -0.0557
-# Final valid prob              -0.0636   -0.0359   -0.0770
-# Final train prob (xent)                 -0.9781   -0.8847
-# Final valid prob (xent)                 -1.1544   -1.0370
-# Parameters                      9.13M     3.96M     3.95M
+# e2eali_1d is the same as e2eali_1c but has more CNN layers, different filter size
+# smaller lm-opts, minibatch, frams-per-iter, less epochs and more initial/finaljobs.
+# local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/ exp/chain/cnn_e2eali_1a
+# System                      e2e_cnn_1a cnn_e2eali_1a
+# WER                             13.72      8.14
+# WER (rescored)                  13.40      8.00
+# CER                              6.56      2.82
+# CER (rescored)                   6.33      2.73
+# WER val                         13.51      8.19
+# WER (rescored) val              13.38      7.97
+# CER val                          6.40      2.93
+# CER (rescored) val               6.29      2.90
+# Final train prob               0.1037   -0.0613
+# Final valid prob               0.0720   -0.0988
+# Final train prob (xent)                 -0.3706
+# Final valid prob (xent)                 -0.4669
+# Parameters                     11.54M     4.29M
 
 # steps/info/chain_dir_info.pl exp/chain/cnn_e2eali_1a
-# exp/chain/cnn_e2eali_1a: num-iters=21 nj=2..4 num-params=4.0M dim=40->360 combine=-0.056->-0.056 (over 1) xent:train/valid[13,20,final]=(-1.47,-0.978,-0.918/-1.54,-1.10,-1.06) logprob:train/valid[13,20,final]=(-0.106,-0.065,-0.056/-0.113,-0.086,-0.079)
+# exp/chain/cnn_e2eali_1a: num-iters=20 nj=3..5 num-params=4.3M dim=40->336 combine=-0.066->-0.066 (over 1) xent:train/valid[12,19,final]=(-0.822,-0.437,-0.371/-0.859,-0.514,-0.467) logprob:train/valid[12,19,final]=(-0.188,-0.078,-0.061/-0.204,-0.114,-0.099)
 
 set -e -o pipefail
 
@@ -24,8 +29,8 @@ nj=30
 train_set=train
 decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1a
+affix=_1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+e2echain_model_dir=exp/chain/e2e_cnn_1b
 common_egs_dir=
 reporting_email=
 
@@ -39,13 +44,14 @@ num_leaves=500
 # we don't need extra left/right context for TDNN systems.
 chunk_left_context=0
 chunk_right_context=0
-tdnn_dim=450
+tdnn_dim=550
 # training options
 srand=0
 remove_egs=true
 lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
 if $decode_val; then maybe_val=val; else maybe_val= ; fi
+dropout_schedule='0,0@0.20,0.2@0.50,0'
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -136,9 +142,9 @@ if [ $stage -le 4 ]; then
 
   num_targets=$(tree-info $tree_dir/tree | grep num-pdfs | awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
-  cnn_opts="l2-regularize=0.075"
-  tdnn_opts="l2-regularize=0.075"
-  output_opts="l2-regularize=0.1"
+  cnn_opts="l2-regularize=0.03 dropout-proportion=0.0"
+  tdnn_opts="l2-regularize=0.03"
+  output_opts="l2-regularize=0.04"
   common1="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
   common2="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
   common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
@@ -146,16 +152,15 @@ if [ $stage -le 4 ]; then
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
 
-  conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
-  conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn6 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
-  conv-relu-batchnorm-layer name=cnn7 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
-  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $tdnn_opts
-  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
-  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
+  conv-relu-batchnorm-dropout-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
+  conv-relu-batchnorm-dropout-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
+  conv-relu-batchnorm-dropout-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
+  conv-relu-batchnorm-dropout-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
+  conv-relu-batchnorm-dropout-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common3 height-subsample-out=2
+  conv-relu-batchnorm-dropout-layer name=cnn6 height-in=10 height-out=10 time-offsets=-4,0,4 $common3
+  relu-batchnorm-dropout-layer name=tdnn1 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
+  relu-batchnorm-dropout-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
+  relu-batchnorm-dropout-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts dropout-proportion=0.0
 
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $tdnn_opts
@@ -189,22 +194,23 @@ if [ $stage -le 5 ]; then
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
     --chain.l2-regularize=0.00005 \
-    --chain.apply-deriv-weights=false \
-    --chain.lm-opts="--num-extra-lm-states=500" \
+    --chain.apply-deriv-weights=true \
+    --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --chain.frame-subsampling-factor=$frame_subsampling_factor \
     --chain.alignment-subsampling-factor=1 \
     --chain.left-tolerance 3 \
     --chain.right-tolerance 3 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=4 \
-    --trainer.frames-per-iter=1000000 \
-    --trainer.optimization.num-jobs-initial=2 \
-    --trainer.optimization.num-jobs-final=4 \
+    --trainer.num-epochs=5 \
+    --trainer.frames-per-iter=1500000 \
+    --trainer.optimization.num-jobs-initial=3 \
+    --trainer.optimization.num-jobs-final=5 \
+    --trainer.dropout-schedule $dropout_schedule \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
     --trainer.optimization.shrink-value=1.0 \
-    --trainer.num-chunk-per-minibatch=64,32 \
+    --trainer.num-chunk-per-minibatch=32,16 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
@@ -212,7 +218,7 @@ if [ $stage -le 5 ]; then
     --egs.chunk-left-context-initial=0 \
     --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
-    --egs.opts="--frames-overlap-per-eg 0" \
+    --egs.opts="--frames-overlap-per-eg 0 --constrained false" \
     --cleanup.remove-egs=$remove_egs \
     --use-gpu=true \
     --reporting.email="$reporting_email" \
@@ -251,6 +257,7 @@ if [ $stage -le 7 ]; then
                                 data/$decode_set $dir/decode_${decode_set}{,_rescored} || exit 1
   done
 fi
+
 
 echo "Done. Date: $(date). Results:"
 local/chain/compare_wer.sh $dir

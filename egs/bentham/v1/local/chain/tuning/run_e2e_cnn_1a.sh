@@ -3,45 +3,40 @@
 
 # This script does end2end chain training (i.e. from scratch)
 # ./local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/
-# System                      e2e_cnn_1a
-# WER                             11.24
-# WER (rescored)                  10.80
-# CER                              5.32
-# CER (rescored)                   5.24
-# Final train prob               0.0568
-# Final valid prob               0.0381
+# System                      e2e_cnn_1b
+# WER                             13.72
+# WER (rescored)                  13.40
+# CER                              6.56
+# CER (rescored)                   6.33
+# WER val                         13.51
+# WER (rescored) val              13.38
+# CER val                          6.40
+# CER (rescored) val               6.29
+# Final train prob               0.1037
+# Final valid prob               0.0720
 # Final train prob (xent)
 # Final valid prob (xent)
-# Parameters                      9.13M
-
+# Parameters                     11.54M
 # steps/info/chain_dir_info.pl exp/chain/e2e_cnn_1a
-# exp/chain/e2e_cnn_1a: num-iters=42 nj=2..4 num-params=9.1M dim=40->12640 combine=0.049->0.049 (over 1) logprob:train/valid[27,41,final]=(0.035,0.055,0.057/0.016,0.037,0.038)
-
-
+# exp/chain/e2e_cnn_1a: num-iters=26 nj=2..4 num-params=11.5M dim=40->17112 combine=0.054->0.054 (over 1) logprob:train/valid[16,25,final]=(0.078,0.102,0.104/0.051,0.069,0.072)
 set -e
 
 # configs for 'chain'
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1a
+affix=1b
 nj=30
 
 # training options
 tdnn_dim=450
-num_epochs=4
-num_jobs_initial=2
-num_jobs_final=4
 minibatch_size=150=100,64/300=50,32/600=25,16/1200=16,8
 common_egs_dir=
-l2_regularize=0.00005
-frames_per_iter=1000000
-cmvn_opts="--norm-means=true --norm-vars=true"
 train_set=train
 decode_val=true
 lang_decode=data/lang
 lang_rescore=data/lang_rescore_6g
-
+if $decode_val; then maybe_val=val; else maybe_val= ; fi
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -90,26 +85,20 @@ fi
 if [ $stage -le 2 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
   num_targets=$(tree-info $treedir/tree | grep num-pdfs | awk '{print $2}')
-
-  cnn_opts="l2-regularize=0.075"
-  tdnn_opts="l2-regularize=0.075"
-  output_opts="l2-regularize=0.1"
-  common1="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=36"
-  common2="$cnn_opts required-time-offsets= height-offsets=-2,-1,0,1,2 num-filters-out=70"
-  common3="$cnn_opts required-time-offsets= height-offsets=-1,0,1 num-filters-out=70"
+  common1="height-offsets=-2,-1,0,1,2 num-filters-out=36"
+  common2="height-offsets=-2,-1,0,1,2 num-filters-out=70"
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=40 name=input
+
   conv-relu-batchnorm-layer name=cnn1 height-in=40 height-out=40 time-offsets=-3,-2,-1,0,1,2,3 $common1
   conv-relu-batchnorm-layer name=cnn2 height-in=40 height-out=20 time-offsets=-2,-1,0,1,2 $common1 height-subsample-out=2
   conv-relu-batchnorm-layer name=cnn3 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=20 time-offsets=-4,-2,0,2,4 $common2
-  conv-relu-batchnorm-layer name=cnn5 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
-  conv-relu-batchnorm-layer name=cnn6 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
-  conv-relu-batchnorm-layer name=cnn7 height-in=10 height-out=10 time-offsets=-1,0,1 $common3
-  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim $tdnn_opts
-  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
-  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim $tdnn_opts
+  conv-relu-batchnorm-layer name=cnn4 height-in=20 height-out=10 time-offsets=-4,-2,0,2,4 $common2 height-subsample-out=2
+  relu-batchnorm-layer name=tdnn1 input=Append(-4,-2,0,2,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn2 input=Append(-4,0,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn3 input=Append(-4,0,4) dim=$tdnn_dim
+  relu-batchnorm-layer name=tdnn4 input=Append(-4,0,4) dim=$tdnn_dim
   ## adding the layers for chain branch
   relu-batchnorm-layer name=prefinal-chain dim=$tdnn_dim target-rms=0.5 $output_opts
   output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5 $output_opts
@@ -124,9 +113,9 @@ if [ $stage -le 3 ]; then
 
   steps/nnet3/chain/e2e/train_e2e.py --stage $train_stage \
     --cmd "$cmd" \
-    --feat.cmvn-opts "$cmvn_opts" \
+    --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize $l2_regularize \
+    --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
@@ -134,11 +123,11 @@ if [ $stage -le 3 ]; then
     --chain.frame-subsampling-factor 4 \
     --chain.alignment-subsampling-factor 4 \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter $frames_per_iter \
-    --trainer.num-epochs $num_epochs \
+    --trainer.frames-per-iter 1000000 \
+    --trainer.num-epochs 4 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
+    --trainer.optimization.num-jobs-initial 2 \
+    --trainer.optimization.num-jobs-final 4 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
