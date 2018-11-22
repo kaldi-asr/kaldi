@@ -1,1 +1,0 @@
-../../../yomdle_tamil/v1/local/prepare_lexicon.sh

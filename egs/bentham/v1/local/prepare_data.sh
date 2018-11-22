@@ -48,8 +48,14 @@ if [ -d $text_corpus_dir ]; then
   echo "$0: Not downloading Bentham text corpus as it is already there."
 else
   local/download_bentham_text.sh $text_corpus_dir
+fi
+
+# Copy extra Bentham text to local
+if [ -d $bentham_text ]; then
+  echo "$0: Not copying as local Bentham already present."
+else
   mkdir -p $bentham_text
-  cp -r $text_corpus_dir $bentham_text
+  cp $text_corpus_dir/Bentham-Text/* $bentham_text
   echo "$0: Done copying extra Bentham text to local."
 fi
 

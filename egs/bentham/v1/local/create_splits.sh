@@ -1,10 +1,9 @@
 #!/bin/bash
 # Copyright   2018   Desh Raj (Johns Hopkins University) 
 
-""" This script reads the extracted Bentham database files and creates
-    the following files (for all the data subsets):
-    text, utt2spk, images.scp.
-"""
+# This script reads the extracted Bentham database files and creates
+#    the following files (for all the data subsets):
+#    text, utt2spk, images.scp.
 
 download_dir=$1
 save_dir=$2

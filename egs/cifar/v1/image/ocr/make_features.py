@@ -88,10 +88,16 @@ def horizontal_pad(im, allowed_lengths = None):
         left_padding = int(padding // 2)
         right_padding = padding - left_padding
     dim_y = im.shape[0] # height
-    im_pad = np.concatenate((255 * np.ones((dim_y, left_padding, args.num_channels),
-                                           dtype=int), im), axis=1)
-    im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding, args.num_channels),
-                                                    dtype=int)), axis=1)
+    if args.num_channels == 4:
+        im_pad = np.concatenate((255 * np.ones((dim_y, left_padding),
+                                               dtype=int), im), axis=1)
+        im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding),
+                                                        dtype=int)), axis=1)
+    else:
+        im_pad = np.concatenate((255 * np.ones((dim_y, left_padding, args.num_channels),
+                                               dtype=int), im), axis=1)
+        im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding, args.num_channels),
+                                                        dtype=int)), axis=1)
     return im_pad1
 
 def get_scaled_image_aug(im, mode='normal'):
@@ -169,7 +175,10 @@ with open(data_list_path) as f:
         line_vect = line.split(' ')
         image_id = line_vect[0]
         image_path = line_vect[1]
-        im = misc.imread(image_path)
+        if args.num_channels == 4:
+            im = misc.imread(image_path, mode='L')
+        else:
+            im = misc.imread(image_path)
         if args.fliplr:
             im = np.fliplr(im)
         if args.augment_type == 'no_aug' or 'random_shift':
@@ -184,7 +193,7 @@ with open(data_list_path) as f:
             im = vertical_shift(im, 'normal')
         elif args.augment_type == 'random_shift':
             im = vertical_shift(im, 'notmid')
-        if args.num_channels == 1:
+        if args.num_channels == 1 or args.num_channels == 4:
             data = np.transpose(im, (1, 0))
         elif args.num_channels == 3:
             H = im.shape[0]
