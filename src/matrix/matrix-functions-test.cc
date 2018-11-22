@@ -21,6 +21,7 @@
 #include "matrix/matrix-functions.h"
 #include "matrix/kaldi-vector.h"
 #include "matrix/kaldi-matrix.h"
+#include "matrix/sp-matrix.h"
 
 namespace kaldi {
 
@@ -31,9 +32,10 @@ void SvdRescalerTestIdentity() {
   if (RandInt(0, 1) == 0)
     mat.SetRandn();
   // else zero.
+  bool symmetric = false;
 
   SvdRescaler sc;
-  sc.Init(&mat, false);
+  sc.Init(&mat, symmetric);
 
   BaseFloat *lambda = sc.InputSingularValues(),
       *f_lambda= sc.OutputSingularValues(),
@@ -58,6 +60,7 @@ void SvdRescalerTestPowerDiag() {
   // and the matrix is diagonal.
   int32 dim = 10;
   BaseFloat power = 0.25 * RandInt(0, 4);
+  bool symmetric = (RandInt(0, 1) == 0);
   Matrix<BaseFloat> mat(dim, dim);
   for (int32 i = 0; i < dim; i++) {
     mat(i, i) = 0.25 * RandInt(0, 10);
@@ -68,7 +71,7 @@ void SvdRescalerTestPowerDiag() {
   }
 
   SvdRescaler sc;
-  sc.Init(&mat, false);
+  sc.Init(&mat, symmetric);
 
   BaseFloat *lambda = sc.InputSingularValues(),
       *f_lambda= sc.OutputSingularValues(),
@@ -95,12 +98,87 @@ void SvdRescalerTestPowerDiag() {
 }
 
 
+void SvdRescalerTestExp() {
+  // this tests the case where f() is the exponential function, and the matrix
+  // is an arbitrary matrix.
+  int32 dim = 10;
+  //bool symmetric = (RandInt(0, 1) == 0);
+  bool symmetric = false;
+  BaseFloat exp_scale = 0.2 * RandInt(0, 5);
+
+  Matrix<BaseFloat> mat(dim, dim);
+
+  if (symmetric) {
+    SpMatrix<BaseFloat> s(dim);
+    s.SetRandn();
+    mat.CopyFromSp(s);
+  } else {
+    mat.SetRandn();
+  }
+
+  KALDI_LOG << "Matrix sum is " << mat.Sum();
+
+  SvdRescaler sc;
+  sc.Init(&mat, symmetric);
+  BaseFloat *lambda = sc.InputSingularValues(),
+      *f_lambda= sc.OutputSingularValues(),
+      *fprime_lambda = sc.OutputSingularValueDerivs();
+  for (int32 i = 0; i < dim; i++) {
+    f_lambda[i] = exp(exp_scale * lambda[i]);
+    fprime_lambda[i] = exp_scale * exp(exp_scale * lambda[i]);
+  }
+  Matrix<BaseFloat> output(dim, dim, kUndefined);
+  sc.GetOutput(&output);
+  Matrix<BaseFloat> output_deriv(dim, dim, kUndefined),
+      input_deriv(dim, dim);
+  output_deriv.SetRandn();
+  sc.ComputeInputDeriv(output_deriv, &input_deriv);
+
+
+  // use random directions to test the accuracy of the derivatives.
+  int32 n = 4;
+  Vector<BaseFloat> expected_change(n), actual_change(n);
+  BaseFloat epsilon = 0.001;
+  for (int32 k = 0; k < n; k++) {
+    Matrix<BaseFloat> delta(dim, dim);
+    if (symmetric) {
+      SpMatrix<BaseFloat> s(dim);
+      s.SetRandn();
+      delta.CopyFromSp(s);
+    } else {
+      delta.SetRandn();
+    }
+    delta.Scale(epsilon);
+    expected_change(k) = TraceMatMat(delta, input_deriv, kTrans);
+    delta.AddMat(1.0, mat);
+    SvdRescaler sc2(&delta, symmetric);
+    BaseFloat *lambda = sc2.InputSingularValues(),
+        *f_lambda= sc2.OutputSingularValues(),
+        *fprime_lambda = sc2.OutputSingularValueDerivs();
+    for (int32 i = 0; i < dim; i++) {
+      f_lambda[i] = exp(exp_scale * lambda[i]);
+      fprime_lambda[i] = exp_scale * exp(exp_scale * lambda[i]);
+    }
+    Matrix<BaseFloat> output_perturbed(dim, dim);
+    sc2.GetOutput(&output_perturbed);
+    actual_change(k) = TraceMatMat(output_deriv, output_perturbed, kTrans) -
+        TraceMatMat(output_deriv, output, kTrans);
+  }
+  KALDI_LOG << "Matrix sum is " << mat.Sum();
+  KALDI_LOG << "Predicted " << expected_change
+            << " vs. actual " << actual_change;
+  AssertEqual(expected_change, actual_change, 0.01);
+}
+
+
+
 } // namespace kaldi
 
 int main() {
   for (int32 i = 0; i < 10; i++) {
     kaldi::SvdRescalerTestIdentity();
     kaldi::SvdRescalerTestPowerDiag();
+    kaldi::SvdRescalerTestExp();
   }
   std::cout << "Test OK.\n";
 }

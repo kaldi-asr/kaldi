@@ -825,7 +825,10 @@ void SvdRescaler::ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
 
   // \bar{D} in the writeup; see class declaration.
   Matrix<BaseFloat> bar_d(dim, dim);
-  bar_d.AddMatMatMat(1.0, U_, kTrans, output_deriv, kNoTrans, Vt_, kTrans, 0.0);
+  if (!symmetric_)
+    bar_d.AddMatMatMat(1.0, U_, kTrans, output_deriv, kNoTrans, Vt_, kTrans, 0.0);
+  else
+    bar_d.AddMatMatMat(1.0, U_, kTrans, output_deriv, kNoTrans, U_, kNoTrans, 0.0);
 
   Matrix<BaseFloat> bar_lambda(dim, dim);
 
@@ -870,13 +873,12 @@ void SvdRescaler::ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
       bar_lambda(i, j) = bar_lambda_ij;
     }
   }
-  if (!symmetric_) {
+  if (!symmetric_)
     input_deriv->AddMatMatMat(1.0, U_, kNoTrans, bar_lambda, kNoTrans,
                               Vt_, kNoTrans, 0.0);
-  } else {
+  else
     input_deriv->AddMatMatMat(1.0, U_, kNoTrans, bar_lambda, kNoTrans,
                               U_, kTrans, 0.0);
-  }
 }
 
 } // end namespace kaldi
