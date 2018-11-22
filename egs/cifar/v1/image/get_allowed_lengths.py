@@ -117,7 +117,7 @@ def find_allowed_durations(start_len, end_len, args):
                           (length // args.frame_subsampling_factor))
             allowed_lengths.append(length)
             fp.write("{}\n".format(int(length)))
-            length *= args.factor
+            length = max(length * args.factor, length + args.frame_subsampling_factor)
     return allowed_lengths
 
 
