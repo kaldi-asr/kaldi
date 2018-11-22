@@ -842,9 +842,12 @@ void SvdRescaler::ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
       double lambda_j = lambda[j], lambda2_j = lambda_j * lambda_j,
           d_j = f_lambda[j], bar_d_ij = bar_d(i, j),
           bar_d_ji = bar_d(j, i), bar_lambda_ij;
-      // if lambda_i and lambda_j are not (relatively) too close in value (which
-      // implies that at least one them is nonzero)..
-      if (std::abs(lambda_i - lambda_j) > 1.0e-03 * std::abs(lambda_i)) {
+
+      if (i == j) {
+        bar_lambda_ij = bar_d_ij * f_lambda_deriv[i];
+      } else if (std::abs(lambda_i - lambda_j) > 1.0e-03 * std::abs(lambda_i)) {
+        // if lambda_i and lambda_j are not (relatively) too close in value (which
+        // implies that at least one them is nonzero)..
         bar_lambda_ij = bar_d_ij * ((lambda_i * d_i - lambda_j * d_j) /
                                        (lambda2_i - lambda2_j)) +
             bar_d_ji * ((lambda_j * d_i - lambda_i * d_j) /

@@ -59,8 +59,13 @@ void SvdRescalerTestPowerDiag() {
   int32 dim = 10;
   BaseFloat power = 0.25 * RandInt(0, 4);
   Matrix<BaseFloat> mat(dim, dim);
-  for (int32 i = 0; i < dim; i++)
+  for (int32 i = 0; i < dim; i++) {
     mat(i, i) = 0.25 * RandInt(0, 10);
+    // if power < 1.0, we can't allow zero diagonal
+    // elements, or the derivatives would be undefined.
+    if (power < 1.0 && mat(i, i) == 0.0)
+      mat(i, i) = 0.333;
+  }
 
   SvdRescaler sc;
   sc.Init(&mat, false);
