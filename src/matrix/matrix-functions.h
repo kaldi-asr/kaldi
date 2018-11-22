@@ -169,8 +169,8 @@ inline void AssertSameDim(const MatrixBase<Real1> &mat1, const MatrixBase<Real2>
     http://www.danielpovey.com/files/2018_svd_derivative.pdf
    and to backprop through that computation.
    Short summary: it allows you to apply some kind of scalar function
-   to the singular values of a matrix, reconstruct it, and then backprop
-   through that operation.
+   to the singular values of a square matrix, reconstruct it, and then
+   backprop through that operation.
 
    This class is quite general-purpose in the sense that you can
    provide any scalar function; but in order to avoid things like
@@ -212,21 +212,24 @@ class SvdRescaler {
     instead of A = U diag(s) V^T, using SpMatrix::Eig().  You can view this as a
     special case of SVD.
   */
-  SvdRescaler(const MatrixBase<BaseFloat> &A, bool symmetric);
+  SvdRescaler(const MatrixBase<BaseFloat> *A, bool symmetric) {
+    Init(A, symmetric);
+  }
 
   // Constructor that takes no args.  In this case you are supposed to
   // call Init()
-  SvdRescaler();
+  SvdRescaler() { }
 
   // An alternative to the constructor that takes args.  Should only be called
   // directly after initializing the object with no args.  Warning: this object
   // keeps a reference to this matrix, so don't modify it during the lifetime
   // of this object.
-  // This program assumes the input matrix (num_rows >= num_cols).
+  // A is required to be square.
   void Init(const MatrixBase<BaseFloat> *A, bool symmetric);
 
-  // Get the singular values of A, which will have been computed in the
-  // constructor.  The reason why this is not const is that there may be
+  // Return a pointer to the the singular values of A, which will have been
+  // computed in the constructor.
+  // The reason why this is not const is that there may be
   // situations where you discover that the input matrix has some very small
   // singular values, and you want to (say) floor them somehow and reconstruct,
   // and have the derivatives be valid assuming you had given that 'repaired'
@@ -234,15 +237,15 @@ class SvdRescaler {
   // a way to do that, although currently this class doesn't provide a way
   // for you to access that 'fixed-up' A directly.
   // We hope you know what you are doing if you modify these singular values.
-  VectorBase<BaseFloat> &InputSingularValues();
+  BaseFloat *InputSingularValues();
 
   // Returns a pointer to a place that you can write the
   // modified singular values f(lambda).
-  VectorBase<BaseFloat> *OutputSingularValues();
+  BaseFloat *OutputSingularValues();
 
   // Returns a pointer to a place that you can write the
   // values of f'(lambda) (the function-derivative of f).
-  VectorBase<BaseFloat> *OutputSingularValueDerivs();
+  BaseFloat *OutputSingularValueDerivs();
 
   // Outputs F(A) to 'output', which must have the correct size.
   // It's OK if 'output' contains NaNs on entry.
@@ -258,14 +261,27 @@ class SvdRescaler {
   // values of 'output_deriv' and 'input_deriv' as many times as you want,
   // on the same object.
   void ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
-                         MatrixBase<BaseFloat> *input_deriv);
+                         MatrixBase<BaseFloat> *input_deriv) const;
 
  protected:
-    Matrix<BaseFloat> input_matrix_A_;
-    bool symmetric_;
-    Matrix<BaseFloat> U_, Vt_;
-    Vector<BaseFloat> lambda_in_;
-    Vector<BaseFloat> *lambda_out_, *lambda_out_deriv_;
+  // the input matrix A.  Owned by the user but will not be changed by them
+  // during the lifetime of this object.
+  const MatrixBase<BaseFloat> *A_;
+  bool symmetric_;
+  // U_ is present regardless of whether symmetric_ is true.  It is the
+  // left part of the decomposition A = U diag(s) V^T.
+  Matrix<BaseFloat> U_;
+  // Vt_ is only present if symmetric_ is false.  Otherwise, we
+  // assume that Vt_ equals U_.
+  Matrix<BaseFloat> Vt_;
+
+  // a matrix containing three rows, and num-cols equal to the num-rows of the
+  // symmetric matrix A_.
+  //    row 0 is 'lambda_in' (the input singular values; or the input eigenvalues,
+  //                          in the symmetric case).
+  //    row 1 is 'lambda_out' (the input singular values, i.e. f(lambda)),
+  //    row 2 is 'lambda_out_deriv' (the function-derivative f'(lambda)).
+  Matrix<BaseFloat> lambdas_;
 };
 
 /// @} end of "addtogroup matrix_funcs_misc"

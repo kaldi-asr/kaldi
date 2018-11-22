@@ -23,46 +23,42 @@
 #include "matrix/kaldi-matrix.h"
 
 namespace kaldi {
-void SvdRescalerTestInit() {
-    int32 rows = 10, cols = 10;
-    Matrix<BaseFloat> mat(rows, cols);
+
+void SvdRescalerTestIdentity() {
+  // this tests the case where f() is the identity function.
+  int32 dim = 10;
+  Matrix<BaseFloat> mat(dim, dim);
+  if (RandInt(0, 1) == 0)
     mat.SetRandn();
-    SvdRescaler sc;
-    sc.Init(&mat, false);
+  // else zero.
 
-    VectorBase<BaseFloat> &vec1 = sc.InputSingularValues();
-    VectorBase<BaseFloat> &vec2 = *sc.OutputSingularValues(),
-                          &vec3 = *sc.OutputSingularValueDerivs();
+  SvdRescaler sc;
+  sc.Init(&mat, false);
 
-    KALDI_ASSERT(vec1.Dim() == vec2.Dim() &&
-                 vec2.Dim() == vec3.Dim() &&
-                 vec1.Max() == vec2.Max() &&
-                 vec2.Max() == vec3.Max() &&
-                 vec1.Min() == vec2.Min() &&
-                 vec2.Min() == vec3.Min());
+  BaseFloat *lambda = sc.InputSingularValues(),
+      *f_lambda= sc.OutputSingularValues(),
+      *fprime_lambda = sc.OutputSingularValueDerivs();
+  for (int32 i = 0; i < dim; i++) {
+    f_lambda[i] = lambda[i];
+    fprime_lambda[i] = 1.0;
+  }
+  Matrix<BaseFloat> output(dim, dim, kUndefined);
+  sc.GetOutput(&output);
+  AssertEqual(mat, output, 0.001);
+  Matrix<BaseFloat> output_deriv(dim, dim, kUndefined),
+      input_deriv(dim, dim);
+  output_deriv.SetRandn();
+  sc.ComputeInputDeriv(output_deriv, &input_deriv);
+  KALDI_LOG << output_deriv << input_deriv;
+  AssertEqual(output_deriv, input_deriv);
 }
 
-void SvdRescalerTestWrite() {
-    int32 rows = 10, cols = 10;
-    Matrix<BaseFloat> mat(rows, cols);
-    mat.SetRandn();
-    SvdRescaler sc;
-    sc.Init(&mat, false);
 
-    VectorBase<BaseFloat> &vec1 = sc.InputSingularValues();
-    VectorBase<BaseFloat> &vec2 = *sc.OutputSingularValues(),
-                          &vec3 = *sc.OutputSingularValueDerivs();
-
-    for(int32 i = 0; i < rows; i++)
-    {
-        KALDI_ASSERT((vec1)(i) == (vec2)(i));
-    }
-}
 } // namespace kaldi
 
 int main() {
-
-  kaldi::SvdRescalerTestInit();
-  kaldi::SvdRescalerTestWrite();
+  for (int32 i = 0; i < 10; i++) {
+    kaldi::SvdRescalerTestIdentity();
+  }
   std::cout << "Test OK.\n";
 }

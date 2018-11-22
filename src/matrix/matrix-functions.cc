@@ -770,126 +770,110 @@ void AddOuterProductPlusMinus<double>(double alpha,
                                       MatrixBase<double> *plus,
                                       MatrixBase<double> *minus);
 
-SvdRescaler::SvdRescaler(const MatrixBase<BaseFloat> &A,
-                         bool symmetric):
-                         input_matrix_A_(A),
-                         symmetric_(symmetric) {
-      int32 rows = input_matrix_A_.NumRows(), cols = input_matrix_A_.NumCols(),
-            rc_min = std::min(rows, cols);
-      Vector<BaseFloat> s(rc_min); // singular value vector
-      Matrix<BaseFloat> U(rows, rc_min), Vt(rc_min, cols);
-      input_matrix_A_.DestructiveSvd(&s, &U, &Vt);
-      SortSvd(&s, &U, &Vt);
-      lambda_in_ = s;
-      *lambda_out_ = s;
-      U_ = U;
-      Vt_ = Vt;
-}
-
 void SvdRescaler::Init(const MatrixBase<BaseFloat> *A, bool symmetric) {
-    KALDI_ASSERT(A->NumRows() >= A->NumCols());
-    input_matrix_A_ = *A;
-    if (symmetric) {
-        symmetric_ = symmetric;
-    } else {
-        symmetric_ = false;
-    }
-    int32 rows = input_matrix_A_.NumRows(),
-          cols = input_matrix_A_.NumCols(),
-          rc_min = cols;
-    Vector<BaseFloat> s(rc_min); // singular value vector
-    Matrix<BaseFloat> U(rows, rc_min), Vt(rc_min, cols);
-    input_matrix_A_.DestructiveSvd(&s, &U, &Vt);
-    SortSvd(&s, &U, &Vt);
-    lambda_in_.CopyFromVec(s);
-    lambda_out_->CopyFromVec(s);
-    lambda_out_deriv_->CopyFromVec(s);
-    U_.CopyFromMat(U);
-    Vt_.CopyFromMat(Vt);
+  KALDI_ASSERT(A->NumRows() == A->NumCols());
+  A_ = A;
+  symmetric_ = symmetric;
+  int32 dim = A->NumRows();
+  lambdas_.Resize(3, dim, kUndefined);
+  U_.Resize(dim, dim, kUndefined);
+  SubVector<BaseFloat> lambda(lambdas_, 0);
+  if (symmetric) {
+    // the following constructor will check that A is actually symmetric.
+    SpMatrix<BaseFloat> A_sym(*A_, kTakeMeanAndCheck);
+    A_sym.Eig(&lambda, &U_);
+  } else {
+    Vt_.Resize(dim, dim, kUndefined);
+    A_->Svd(&lambda, &U_, &Vt_);
+  }
 }
 
-VectorBase<BaseFloat> &SvdRescaler::InputSingularValues() {
-    return lambda_in_;
+BaseFloat *SvdRescaler::InputSingularValues() {
+  return lambdas_.RowData(0);
 }
 
-VectorBase<BaseFloat> *SvdRescaler::OutputSingularValues() {
-    return lambda_out_;
+BaseFloat *SvdRescaler::OutputSingularValues() {
+  return lambdas_.RowData(1);
 }
 
-VectorBase<BaseFloat> *SvdRescaler::OutputSingularValueDerivs() {
-    return lambda_out_deriv_;
+BaseFloat *SvdRescaler::OutputSingularValueDerivs() {
+  return lambdas_.RowData(2);
 }
 
 void SvdRescaler::GetOutput(MatrixBase<BaseFloat> *output) {
-    KALDI_ASSERT(output->NumRows() == input_matrix_A_.NumRows() &&
-                 output->NumCols() == input_matrix_A_.NumCols());
-    Matrix<BaseFloat> U_tmpt(U_);
-    U_tmpt.MulColsVec(*lambda_out_);
-    U_tmpt.AddMatMat(1.0, U_tmpt, kNoTrans, Vt_, kNoTrans, 0.0);
-    output->CopyFromMat(U_tmpt);
+  int32 dim = A_->NumRows();
+  SubVector<BaseFloat> f_lambda(lambdas_, 1);  // f(lambda) in the writeup.
+  if (symmetric_) {
+    SpMatrix<BaseFloat> S(dim);
+    S.AddMat2Vec(1.0, U_, kNoTrans, f_lambda, 0.0);
+    output->CopyFromSp(S);
+  } else {
+    Matrix<BaseFloat> U_tmp(U_);
+    U_tmp.MulColsVec(f_lambda);
+    output->SetZero();
+    output->AddMatMat(1.0, U_tmp, kNoTrans, Vt_, kNoTrans, 0.0);
+  }
 }
 
 void SvdRescaler::ComputeInputDeriv(const MatrixBase<BaseFloat> &output_deriv,
-                                    MatrixBase<BaseFloat> *input_deriv) {
-    KALDI_ASSERT(output_deriv.NumRows() == U_.NumRows() &&
-                 output_deriv.NumCols() == Vt_.NumRows() &&
-                 input_deriv->NumRows() == U_.NumRows() &&
-                 input_deriv->NumCols() == Vt_.NumRows());
-    // \bar{A}
-    input_deriv->SetZero();
+                                    MatrixBase<BaseFloat> *input_deriv) const {
+  int32 dim = A_->NumRows();
+  KALDI_ASSERT(output_deriv.NumRows() == dim && output_deriv.NumCols() == dim &&
+               input_deriv->NumRows() == dim && input_deriv->NumCols() == dim);
+  // input_deriv is \bar{A} in the writeup.
+  input_deriv->SetZero();
 
-    // \bar{D}
-    Matrix<BaseFloat> intermediate_deriv(U_.NumCols(), Vt_.NumCols());
-    intermediate_deriv.AddMatMatMat(1.0, U_, kTrans, output_deriv, kNoTrans,
-                                    Vt_, kNoTrans, 0.0);
+  // \bar{D} in the writeup; see class declaration.
+  Matrix<BaseFloat> bar_d(dim, dim);
+  bar_d.AddMatMatMat(1.0, U_, kTrans, output_deriv, kNoTrans, Vt_, kTrans, 0.0);
 
-    // some intermediate variables
-    // store the diriv of {f'(\lambda_{i})}\times{\bar\d_{i,i}}
-    // as diagonal_deriv_intermediate
-    Vector<BaseFloat> diagonal_deriv_intermediate(U_.NumCols());
-    diagonal_deriv_intermediate.SetZero();
-    diagonal_deriv_intermediate.CopyDiagFromMat(intermediate_deriv);
-    diagonal_deriv_intermediate.MulElements(*lambda_out_deriv_);
+  Matrix<BaseFloat> bar_lambda(dim, dim);
 
-    // store \lambda_{i} \times d_{j}
-    // as diagonal_deriv_intermediate2
-    Matrix<BaseFloat> diagonal_deriv_intermediate2(U_.NumCols(), U_.NumCols());
-    diagonal_deriv_intermediate2.SetZero();
-    diagonal_deriv_intermediate2.AddVecVec(1.0, lambda_in_, *lambda_out_);
+  const BaseFloat *lambda = lambdas_.RowData(0),  // elements \lambda_i
+      *f_lambda = lambdas_.RowData(1),  // elements f(\lambda_i)
+      *f_lambda_deriv = lambdas_.RowData(2);  // elements f'(lambda_i)
 
-    // store \lambda_{i} \times \lambda_{i}
-    // as diagonal_deriv_intermediate3
-    Vector<BaseFloat> diagonal_deriv_intermediate3(U_.NumCols());
-    diagonal_deriv_intermediate3.SetZero();
-    diagonal_deriv_intermediate3.AddVec2(1.0, lambda_in_);   
-    
-    for(MatrixIndexT i = 0; i < U_.NumCols(); i++)
-    {
-        for(MatrixIndexT j = 0; j < Vt_.NumCols(); i++)
-        {
-            if ((lambda_in_(i) == 0.0) && (lambda_in_(j) == 0.0) && (i != j)) {
-                (*input_deriv)(i, j) = intermediate_deriv(i, j) * (*lambda_out_deriv_)(i);
-            } else if (i != j) {
-                if (abs((lambda_in_(i) - lambda_in_(j)) / lambda_in_(j)) > 0.0000001) {
-                  (*input_deriv)(i, j) = intermediate_deriv(i, j)
-                                      *(diagonal_deriv_intermediate2(i, i) - diagonal_deriv_intermediate2(j, j)) 
-                                      / (diagonal_deriv_intermediate3(i) - diagonal_deriv_intermediate3(j))
-                                      + intermediate_deriv(j, i)
-                                      *(diagonal_deriv_intermediate2(j, i) - diagonal_deriv_intermediate2(i, j)) 
-                                      / (diagonal_deriv_intermediate3(i) - diagonal_deriv_intermediate3(j));
-                } else {
-                  float lambda_avg = (lambda_in_(i) + lambda_in_(j)) / 2.0;
-                  (*input_deriv)(i, j) = intermediate_deriv(i, j)
-                                      * (lambda_avg * ((*lambda_out_deriv_)(i)) + (*lambda_out_)(i))
-                                      / (2.0 * lambda_avg)
-                                      + intermediate_deriv(j, i)
-                                      * (lambda_avg * ((*lambda_out_deriv_)(i)) - (*lambda_out_)(i))
-                                      / (2.0 * lambda_avg);
-                }
-            }
-        }
+  // we use doubles in the computations below, to avoid underflow if any floating
+  // point values were extremely close to zero (e.g., denormal)
+  for(int32 i = 0; i < dim; i++) {
+    double lambda_i = lambda[i], lambda2_i = lambda_i * lambda_i,
+        d_i = f_lambda[i];
+    for(int32 j = 0; j < dim; j++) {
+      double lambda_j = lambda[j], lambda2_j = lambda_j * lambda_j,
+          d_j = f_lambda[j], bar_d_ij = bar_d(i, j),
+          bar_d_ji = bar_d(j, i), bar_lambda_ij;
+      // if lambda_i and lambda_j are not (relatively) too close in value (which
+      // implies that at least one them is nonzero)..
+      if (std::abs(lambda_i - lambda_j) > 1.0e-03 * std::abs(lambda_i)) {
+        bar_lambda_ij = bar_d_ij * ((lambda_i * d_i - lambda_j * d_j) /
+                                       (lambda2_i - lambda2_j)) +
+            bar_d_ji * ((lambda_j * d_i - lambda_i * d_j) /
+                           (lambda2_i - lambda2_j));
+      } else if (lambda_i != 0) {
+        // If we reached here, it implies they are both nonzero, but extremely
+        // close in value.
+        // lambda is the average of the two lambdas.
+        // Assume f'(lambda) is the average of the two derivatives.
+        double lambda = 0.5 * (lambda_i + lambda_j),
+            f_prime_lambda = 0.5 * (f_lambda_deriv[i] + f_lambda_deriv[j]),
+            d = 0.5 * (d_i + d_j);
+        bar_lambda_ij = bar_d_ij * ((lambda * f_prime_lambda + d) / (2.0 * lambda)) +
+            bar_d_ji * ((lambda * f_prime_lambda - d) / (2.0 * lambda));
+      } else {
+        // both zero.
+        KALDI_ASSERT(lambda_i == 0 && lambda_j == 0);
+        bar_lambda_ij = bar_d_ij * f_lambda_deriv[i];
+      }
+      bar_lambda(i, j) = bar_lambda_ij;
     }
-    input_deriv->CopyDiagFromVec(diagonal_deriv_intermediate);
-    input_deriv->AddMatMatMat(1.0, U_, kNoTrans, *input_deriv, kNoTrans, Vt_, kTrans, 0.0);
+  }
+  if (!symmetric_) {
+    input_deriv->AddMatMatMat(1.0, U_, kNoTrans, bar_lambda, kNoTrans,
+                              Vt_, kNoTrans, 0.0);
+  } else {
+    input_deriv->AddMatMatMat(1.0, U_, kNoTrans, bar_lambda, kNoTrans,
+                              U_, kTrans, 0.0);
+  }
 }
+
 } // end namespace kaldi
