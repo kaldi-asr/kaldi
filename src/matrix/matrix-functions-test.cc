@@ -53,12 +53,49 @@ void SvdRescalerTestIdentity() {
   AssertEqual(output_deriv, input_deriv);
 }
 
+void SvdRescalerTestPowerDiag() {
+  // this tests the case where f() is a power function with random exponent,
+  // and the matrix is diagonal.
+  int32 dim = 10;
+  BaseFloat power = 0.25 * RandInt(0, 4);
+  Matrix<BaseFloat> mat(dim, dim);
+  for (int32 i = 0; i < dim; i++)
+    mat(i, i) = 0.25 * RandInt(0, 10);
+
+  SvdRescaler sc;
+  sc.Init(&mat, false);
+
+  BaseFloat *lambda = sc.InputSingularValues(),
+      *f_lambda= sc.OutputSingularValues(),
+      *fprime_lambda = sc.OutputSingularValueDerivs();
+  for (int32 i = 0; i < dim; i++) {
+    f_lambda[i] = pow(lambda[i], power);
+    fprime_lambda[i] = power * pow(lambda[i], power - 1.0);
+  }
+  Matrix<BaseFloat> output(dim, dim, kUndefined);
+  sc.GetOutput(&output);
+  KALDI_ASSERT(mat.IsDiagonal(0.001));
+  Matrix<BaseFloat> output_deriv(dim, dim, kUndefined),
+      input_deriv(dim, dim);
+  output_deriv.SetRandn();
+  sc.ComputeInputDeriv(output_deriv, &input_deriv);
+
+  for (int32 i = 0; i < dim; i++) {
+    BaseFloat oderiv = output_deriv(i, i),
+        ideriv = input_deriv(i, i),
+        x = mat(i, i),
+        df = power * pow(x, power - 1.0);
+    AssertEqual(ideriv, oderiv * df);
+  }
+}
+
 
 } // namespace kaldi
 
 int main() {
   for (int32 i = 0; i < 10; i++) {
     kaldi::SvdRescalerTestIdentity();
+    kaldi::SvdRescalerTestPowerDiag();
   }
   std::cout << "Test OK.\n";
 }
