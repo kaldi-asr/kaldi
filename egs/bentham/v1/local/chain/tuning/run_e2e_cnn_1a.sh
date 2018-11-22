@@ -25,7 +25,7 @@ set -e
 stage=0
 train_stage=-10
 get_egs_stage=-10
-affix=1b
+affix=1a
 nj=30
 
 # training options

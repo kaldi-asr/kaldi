@@ -4,6 +4,7 @@
 #                2017  Ashish Arora
 #                2017  Yiwen Shao
 #                2018  Hossein Hadian
+#                2018  Desh Raj
 
 """ This script converts images to Kaldi-format feature matrices. The input to
     this script is the path to a data directory, e.g. "data/train". This script
@@ -88,7 +89,7 @@ def horizontal_pad(im, allowed_lengths = None):
         left_padding = int(padding // 2)
         right_padding = padding - left_padding
     dim_y = im.shape[0] # height
-    if args.num_channels == 4:
+    if args.num_channels in [1,4]:
         im_pad = np.concatenate((255 * np.ones((dim_y, left_padding),
                                                dtype=int), im), axis=1)
         im_pad1 = np.concatenate((im_pad, 255 * np.ones((dim_y, right_padding),
@@ -193,7 +194,7 @@ with open(data_list_path) as f:
             im = vertical_shift(im, 'normal')
         elif args.augment_type == 'random_shift':
             im = vertical_shift(im, 'notmid')
-        if args.num_channels == 1 or args.num_channels == 4:
+        if args.num_channels in [1,4]:
             data = np.transpose(im, (1, 0))
         elif args.num_channels == 3:
             H = im.shape[0]

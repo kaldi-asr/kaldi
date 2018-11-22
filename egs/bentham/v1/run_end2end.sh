@@ -112,7 +112,7 @@ if [ $stage -le 6 ]; then
   steps/nnet3/align.sh --nj 50 --cmd "$cmd" \
                        --use-gpu false \
                        --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0 --acoustic-scale=1.0' \
-                       data/train data/lang exp/chain/e2e_cnn_1b exp/chain/e2e_ali_train
+                       data/train data/lang exp/chain/e2e_cnn_1a exp/chain/e2e_ali_train
 fi
 
 if [ $stage -le 7 ]; then

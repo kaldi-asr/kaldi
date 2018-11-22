@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# e2eali_1d is the same as e2eali_1c but has more CNN layers, different filter size
-# smaller lm-opts, minibatch, frams-per-iter, less epochs and more initial/finaljobs.
 # local/chain/compare_wer.sh exp/chain/e2e_cnn_1a/ exp/chain/cnn_e2eali_1a
 # System                      e2e_cnn_1a cnn_e2eali_1a
 # WER                             13.72      8.14
@@ -29,8 +27,8 @@ nj=30
 train_set=train
 decode_val=true
 nnet3_affix=    # affix for exp dirs, e.g. it was _cleaned in tedlium.
-affix=_1d  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
-e2echain_model_dir=exp/chain/e2e_cnn_1b
+affix=_1a  #affix for TDNN+LSTM directory e.g. "1a" or "1b", in case we change the configuration.
+e2echain_model_dir=exp/chain/e2e_cnn_1a
 common_egs_dir=
 reporting_email=
 
