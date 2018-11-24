@@ -381,8 +381,7 @@ class LatticeFasterDecoderTpl {
   // If Token == StdToken, the 'backpointer' argument has no purpose (and will
   // hopefully be optimized out).
   inline Token *FindOrAddToken(StateId state, int32 frame_plus_one,
-                               BaseFloat tot_cost, Token *backpointer,
-                               bool *changed);
+                               BaseFloat tot_cost, Token *backpointer);
 
   // prunes outgoing links for all tokens in active_toks_[frame]
   // it's called by PruneActiveTokens
