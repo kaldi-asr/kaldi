@@ -28,7 +28,7 @@ train_set=train
 test_sets="devtest dev test unsup"
 gmm=tri3b
 nnet3_affix=
-
+larger_lms=1
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 affix=1a   # affix for the TDNN directory name
@@ -61,7 +61,7 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1
+  cat <<EOF
 This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
@@ -236,13 +236,15 @@ if [ $stage -le 15 ]; then
   utils/mkgraph.sh \
     --self-loop-scale 1.0 data/lang_test_tgsmall \
     $tree_dir $tree_dir/graph_tgsmall || exit 1;
+fi
 
+if [[ $stage -le 16 && $larger_lms -eq 0 ]]; then
   utils/mkgraph.sh \
     --self-loop-scale 1.0 data/lang_test_tgmed \
     $tree_dir $tree_dir/graph_tgmed || exit 1;
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 17 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
 
@@ -255,6 +257,18 @@ if [ $stage -le 16 ]; then
         --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
         $tree_dir/graph_tgsmall data/${data}_hires ${dir}/decode_tgsmall_${data} || exit 1
+      ) || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
+if $test_online_decoding && [[ $stage -le 18 && $larger_lms -eq 0 ]]; then
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+  rm $dir/.error 2>/dev/null || true
+  for data in $test_sets; do
+    (
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
       steps/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --frames-per-chunk $frames_per_chunk \
@@ -274,7 +288,7 @@ fi
 # TDNN systems it would give exactly the same results as the
 # normal decoding.
 
-if $test_online_decoding && [ $stage -le 17 ]; then
+if $test_online_decoding && [ $stage -le 19 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
@@ -292,6 +306,18 @@ if $test_online_decoding && [ $stage -le 17 ]; then
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $nspk --cmd "$decode_cmd" \
         $tree_dir/graph_tgsmall data/${data} ${dir}_online/decode_tgsmall_${data} || exit 1
+    ) || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
+if $test_online_decoding && [[ $stage -le 20 && $larger_lms -eq 0 ]]; then
+      frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+  rm $dir/.error 2>/dev/null || true
+  for data in $test_sets; do
+    (
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
       steps/online/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $nspk --cmd "$decode_cmd" \
@@ -307,6 +333,5 @@ if $test_online_decoding && [ $stage -le 17 ]; then
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
-
 
 exit 0;
