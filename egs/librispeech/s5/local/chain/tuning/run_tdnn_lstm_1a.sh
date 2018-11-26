@@ -1,8 +1,12 @@
 #!/bin/bash
 # this is the tdnn-lstmp based on the run_tdnn_lstm_1n.sh under Switchboard.
-# local/chain/compare_wer_rnnlm.sh exp/chain_cleaned/tdnn_lstm1n_rnnlm_sp/
 
-# System                      tdnn_lstm1n_rnnlm_sp
+# training acoustic model and decoding:
+#     local/chain/tuning/run_tdnn_lstm_1a.sh
+# rnn-lm rescoring:
+#     local/rnnlm/tuning/run_tdnn_lstm_1a.sh --ac-model-dir exp/chain_cleaned/tdnn_lstm1a_sp/
+
+# System                      tdnn_lstm1a_sp
 # WER on dev(fglarge_lat_rnnlm)        3.04
 # WER on dev(fglarge_nbe_rnnlm)      3.06
 # WER on dev(fglarge)              3.44
@@ -24,7 +28,7 @@
 # Final train prob (xent)       -0.7874
 # Final valid prob (xent)       -0.8150
 # Num-parameters               27790288
-# exp/chain_cleaned/tdnn_lstm1n_sp/: num-iters=1303 nj=3..16 num-params=27.8M dim=40+100->6056 combine=-0.041->-0.040 (over 9) xent:train/valid[867,1302,final]=(-1.15,-0.782,-0.787/-1.18,-0.810,-0.815) logprob:train/valid[867,1302,final]=(-0.063,-0.047,-0.045/-0.062,-0.049,-0.048)
+# exp/chain_cleaned/tdnn_lstm1a_sp/: num-iters=1303 nj=3..16 num-params=27.8M dim=40+100->6056 combine=-0.041->-0.040 (over 9) xent:train/valid[867,1302,final]=(-1.15,-0.782,-0.787/-1.18,-0.810,-0.815) logprob:train/valid[867,1302,final]=(-0.063,-0.047,-0.045/-0.062,-0.049,-0.048)
 
 set -e
 
@@ -33,13 +37,11 @@ stage=12
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true
-affix=1n
+affix=1a
 decode_iter=
-decode_dir_affix=
 decode_nj=50
-if [ -e data/rt03 ]; then maybe_rt03=rt03; else maybe_rt03= ; fi
 
-# training options
+# LSTM training options
 frames_per_chunk=140,100,160
 frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
 chunk_left_context=40
@@ -83,7 +85,7 @@ gmm=tri6b_cleaned
 dir=exp/chain${nnet3_affix}/tdnn_lstm${affix}${suffix}
 train_set=train_960_cleaned
 ali_dir=exp/${gmm}_ali_${train_set}_sp_comb
-treedir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
+tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 train_data_dir=data/${train_set}_sp_hires_comb
 lores_train_data_dir=data/${train_set}_sp_comb
@@ -93,7 +95,7 @@ lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_comb_lats
 if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
-  num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
+  num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
   opts="l2-regularize=0.002"
@@ -177,7 +179,7 @@ if [ $stage -le 13 ]; then
     --egs.dir "$common_egs_dir" \
     --cleanup.remove-egs $remove_egs \
     --feat-dir $train_data_dir \
-    --tree-dir $treedir \
+    --tree-dir $tree_dir \
     --lat-dir $lat_dir \
     --dir $dir  || exit 1;
 fi
