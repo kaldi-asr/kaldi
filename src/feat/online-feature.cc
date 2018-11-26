@@ -541,6 +541,7 @@ void OnlineCacheFeature::GetFrames(
   }
   if (non_cached_frames.empty())
     return;
+  SortAndUniq(&non_cached_frames);
   int32 num_non_cached_frames = non_cached_frames.size(),
       dim = this->Dim();
   Matrix<BaseFloat> non_cached_feats(num_non_cached_frames, dim,
