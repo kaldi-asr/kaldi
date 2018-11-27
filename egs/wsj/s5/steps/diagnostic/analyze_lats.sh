@@ -50,7 +50,7 @@ $cmd JOB=1:$num_jobs $dir/log/lattice_best_path.JOB.log \
 
 $cmd JOB=1:$num_jobs $dir/log/get_lattice_stats.JOB.log \
   ali-to-phones --write-lengths=true "$model" "ark:gunzip -c $dir/ali_tmp.JOB.gz|" ark,t:- \| \
-  perl -ne 'chomp;s/(\w+)\s//;@a=split /\s;\s/, $_;$count{"begin ".$a[$0]."\n"}++;
+  perl -ne 'chomp;s/^\S+\s*//;@a=split /\s;\s/, $_;$count{"begin ".$a[$0]."\n"}++;
   if(@a>1){$count{"end ".$a[-1]."\n"}++;}for($i=0;$i<@a;$i++){$count{"all ".$a[$i]."\n"}++;}
   END{for $k (sort keys %count){print "$count{$k} $k"}}' \| \
   gzip -c '>' $dir/phone_stats.JOB.gz || exit 1
