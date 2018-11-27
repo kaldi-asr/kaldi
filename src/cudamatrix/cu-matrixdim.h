@@ -26,12 +26,12 @@
 /*
  * Typedefs needed for ANSI-C interface of CUDA wrappers
  */
+#include <stdint.h>
 #ifdef _MSC_VER
   typedef unsigned __int32 uint32_cuda;
   typedef __int32          int32_cuda;
   typedef __int32          MatrixIndexT_cuda; // you'd have to change this if you changed MatrixIndexT from int32.
 #else
-  #include <stdint.h>
   typedef uint32_t         uint32_cuda;
   typedef int32_t          int32_cuda;
   typedef int32_t          MatrixIndexT_cuda; // you'd have to change this if you changed MatrixIndexT from int32.
