@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Copyright 2018 Tilde
+# License: Apache 2.0
+
 import sys
 
 import argparse
@@ -8,11 +11,13 @@ import re
 
 script_name = sys.argv[0]
 
-# TODO decent description
 parser = argparse.ArgumentParser(description="Removes models from past training iterations of "
-                                             "RNNLM. Several strategies for picking which iterations "
-                                             "to keep are available.",
-                                 epilog="E.g. " + script_name + " exp/rnnlm_a",
+                                             "RNNLM. Can use either 'keep_latest' (default) or "
+                                             "'keep_best' cleanup strategy, where former keeps "
+                                             "the models that are freshest, while latter keeps "
+                                             "the models with best training objective score on "
+                                             "dev set.",
+                                 epilog="E.g. " + script_name + " exp/rnnlm_a --keep_best",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
 parser.add_argument("rnnlm_dir",
@@ -36,7 +41,7 @@ args = parser.parse_args()
 
 # validate arguments
 if args.keep_latest and args.keep_best:
-    sys.exit(script_name + ": can only use either 'keep_latest' or 'keep_best', but not both")
+    sys.exit(script_name + ": can only use one of 'keep_latest' or 'keep_best', but not both")
 elif not args.keep_latest and not args.keep_best:
     sys.exit(script_name + ": no cleanup strategy specified: use 'keep_latest' or 'keep_best'")
 
@@ -149,12 +154,10 @@ def keep_best(iteration_dict):
                 remove_model_files_for_iter(iteration_dict[iter])
 
 
-# grab all the iterations mapped to their word_embedding and .raw files
+# grab all the iterations mapped to their model files, objf score and compute_prob status
 iterations = get_iteration_files(args.rnnlm_dir)
-# print(iterations)  # FIXME remove
 # apply chosen cleanup strategy
 if args.keep_latest:
     keep_latest(iterations)
 else:
     keep_best(iterations)
-# print(get_iteration_files(args.rnnlm_dir))  # FIXME remove
