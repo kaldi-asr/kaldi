@@ -180,6 +180,12 @@ class CuMemoryAllocator {
 
   void PrintMemoryUsage() const;
 
+  // returns the current memory allocated within the cache
+  size_t GetAllocatedMemory() { return allocated_memory_; }
+
+  //  returns the maximum memory used within the cache during current execution
+  size_t GetMaxAllocatedMemory() { return max_allocated_memory_; }
+
   CuMemoryAllocator();
 
   // Allows you to set options: must be called before any Malloc function is
