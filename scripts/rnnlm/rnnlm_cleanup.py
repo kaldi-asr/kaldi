@@ -64,15 +64,17 @@ class IterationInfo:
 
 
 def get_compute_prob_info(exp_dir, iter):
+    # we want to know 2 things: objf and whether compute prob is done
+    objf = -2000
+    compute_prob_done = False
     # roughly based on code in get_best_model.py
     log_file = "{0}/log/compute_prob.{1}.log".format(exp_dir, iter)
     try:
         f = open(log_file, "r", encoding="latin-1")
     except:
-        sys.exit(script_name + ": could not open log-file " + log_file)
-    # we now want 2 things: objf and whether compute prob is done
-    objf = -2000
-    compute_prob_done = False
+        print(script_name + ": warning: compute_prob log not found for iteration " + str(iter) + ". Skipping",
+              file=sys.stderr)
+        return objf, compute_prob_done
     for line in f:
         objf_m = re.search('Overall objf .* (\S+)$', str(line))
         if objf_m is not None:
@@ -89,6 +91,7 @@ def get_compute_prob_info(exp_dir, iter):
 
 
 def get_iteration_files(exp_dir):
+    # TODO handle the case where there are several files per iteration...
     iterations = dict()
     for f in os.listdir(exp_dir):
         joined_f = os.path.join(exp_dir, f)
