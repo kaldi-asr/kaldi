@@ -189,7 +189,12 @@ BaseFloat OnlineIvectorFeature::GetMinPost(BaseFloat weight) const {
 }
 
 void OnlineIvectorFeature::UpdateStatsForFrames(
-    const std::vector<std::pair<int32, BaseFloat> > &frame_weights) {
+    const std::vector<std::pair<int32, BaseFloat> > &frame_weights_in) {
+
+  std::vector<std::pair<int32, BaseFloat> > frame_weights(frame_weights_in);
+  // Remove duplicates of frames.
+  MergePairVectorSumming(&frame_weights);
+
   int32 num_frames = static_cast<int32>(frame_weights.size());
   int32 feat_dim = lda_normalized_->Dim();
   Matrix<BaseFloat> feats(num_frames, feat_dim, kUndefined),
