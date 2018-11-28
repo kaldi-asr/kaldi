@@ -23,7 +23,7 @@ datadir=African_Accented_French
 lex='https://sourceforge.net/projects/cmusphinx/files/Acoustic and Language Models/French/fr.dict/download'
 
 # set to 1 for only small lms and 0 to include larger lms
-larger_lms=1
+larger_lms=0
 # We train a large lm on subtitles.
 subs_src="http://opus.nlpl.eu/download.php?f=OpenSubtitles2018/mono/OpenSubtitles2018.fr.gz"
 
@@ -102,7 +102,7 @@ if [[ $stage -le 10 && $larger_lms -eq 0 ]]; then
 fi
 
 if [ $stage -le 11 ]; then
-  for f in devtest dev train test unsup; do
+  for f in devtest dev train test; do
     echo "Extracting acoustic features for $f."
     steps/make_mfcc.sh --cmd "$train_cmd" --nj 4 data/$f exp/make_mfcc/$f mfcc
     utils/fix_data_dir.sh data/$f
@@ -120,8 +120,7 @@ if [ $stage -le 12 ]; then
   steps/train_mono.sh  --cmd "$train_cmd" --nj 4 data/train_500short \
     data/lang_nosp_expanded exp/mono
 fi
-#./steps/info/gmm_dir_info.pl exp/mono
-#exp/mono: nj=4 align prob=-89.62 over 0.25h [retry=1.4%, fail=0.2%] states=115 gauss=990
+
 
 if [ $stage -le 13 ]; then
   echo "$0: monophone evaluation"
@@ -133,7 +132,7 @@ if [ $stage -le 13 ]; then
     echo "Testing monophones."
     for x in devtest dev test; do
       nspk=$(wc -l < data/$x/spk2utt)
-      steps/decode.sh  --cmd "$decode_cmd" --nj 4 \
+      steps/decode.sh  --cmd "$decode_cmd" --nj $nspk \
         exp/mono/graph_nosp_expanded_tgsmall data/$x exp/mono/decode_nosp_expanded_tgsmall_${x}
     done
   ) &
@@ -149,7 +148,7 @@ if [[ $stage -le 14 && $larger_lms -eq 0 ]]; then
     echo "Testing monophones with larger lm."
     for x in devtest dev test; do
       nspk=$(wc -l < data/$x/spk2utt)
-      steps/decode.sh  --cmd "$decode_cmd" --nj 4 \
+      steps/decode.sh  --cmd "$decode_cmd" --nj $nspk \
         exp/mono/graph_nosp_expanded_tgmed data/$x exp/mono/decode_nosp_expanded_tgmed_${x}
 
       steps/lmrescore.sh --cmd "$decode_cmd" data/lang_nosp_expanded_test_{tgsmall,tgmed} \
@@ -176,8 +175,6 @@ if [ $stage -le 16 ]; then
     1000 7500 \
     data/train data/lang_nosp_expanded exp/mono_ali exp/tri1
 fi
-#./steps/info/gmm_dir_info.pl exp/tri1
-exp/tri1: nj=4 align prob=-87.54 over 3.10h [retry=1.9%, fail=0.1%] states=744 gauss=7520 tree-impr=3.36
 
 wait
 
@@ -191,8 +188,9 @@ if [ $stage -le 17 ]; then
     for x in devtest dev test; do
       echo "$0: Decoding test data with tri1 an tgsmall dmodels on $x."
       nspk=$(wc -l < data/$x/spk2utt)
-      steps/decode.sh --cmd "$decode_cmd" --nj 4 exp/tri1/graph_nosp_expanded_tgsmall \
-        data/$x exp/tri1/decode_nosp_expanded_tgsmall_${x}
+      steps/decode.sh --cmd "$decode_cmd" --nj $nspk \
+        exp/tri1/graph_nosp_expanded_tgsmall data/$x \
+        exp/tri1/decode_nosp_expanded_tgsmall_${x}
     done
   ) &
 fi
@@ -207,8 +205,9 @@ if [[ $stage -le 18 && $larger_lms -eq 0 ]]; then
     for x in devtest dev test; do
       echo "$0: Decoding test data with tri1 tgmed an tglarge dmodels on $x."
       nspk=$(wc -l < data/$x/spk2utt)
-      steps/decode.sh --cmd "$decode_cmd" --nj 4 exp/tri1/graph_nosp_expanded_tgmed \
-        data/$x exp/tri1/decode_nosp_expanded_tgmed_${x}
+      steps/decode.sh --cmd "$decode_cmd" --nj $nspk \
+        exp/tri1/graph_nosp_expanded_tgmed data/$x \
+        exp/tri1/decode_nosp_expanded_tgmed_${x}
 
       steps/lmrescore.sh --cmd "$decode_cmd" data/lang_nosp_expanded_test_{tgsmall,tgmed} \
         data/$x exp/tri1/decode_nosp_expanded_{tgsmall,tgmed}_$x
@@ -232,8 +231,6 @@ if [ $stage -le 20 ]; then
     1000 7500 \
     data/train data/lang_nosp_expanded exp/tri1_ali exp/tri3b
 fi
-#./steps/info/gmm_dir_info.pl exp/tri3b
-#exp/tri3b: nj=4 align prob=-89.91 over 3.11h [retry=1.0%, fail=0.0%] states=776 gauss=7511 fmllr-impr=7.62 over 1.95h tree-impr=4.14
 
 wait
 
@@ -245,23 +242,25 @@ if [ $stage -le 21 ]; then
     for x in devtest dev test; do
       echo "$0: Decoding $x with sat and tgsmall models."
       nspk=$(wc -l < data/$x/spk2utt)
-      steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 4 \
+      steps/decode_fmllr.sh --cmd "$decode_cmd" --nj $nspk \
         exp/tri3b/graph_nosp_expanded_tgsmall data/$x \
         exp/tri3b/decode_nosp_expanded_tgsmall_${x}
     done
   ) &
 fi
 
+wait
+
 if [[ $stage -le 22 && $larger_lms -eq 0 ]]; then
   (
-    for x in devtest dev dev test unsup; do
+    for x in devtest dev dev test; do
       echo "$0: Decoding with larger lm and SAT models on $x."
       steps/lmrescore.sh --cmd "$decode_cmd" \
         data/lang_nosp_expanded_test_{tgsmall,tgmed} data/$x \
         exp/tri3b/decode_nosp_expanded_{tgsmall,tgmed}_$x
       steps/lmrescore_const_arpa.sh \
         --cmd "$decode_cmd" data/lang_nosp_expanded_test_{tgsmall,tglarge} \
-        data/$x exp/tri3b/decode_nosp_{expanded_tgsmall,tglarge}_$x
+        data/$x exp/tri3b/decode_nosp_expanded_{tgsmall,tglarge}_$x
     done
   )&
 fi
@@ -310,7 +309,7 @@ if [ $stage -le 30 ]; then
   (
     utils/mkgraph.sh data/lang_test_tgsmall \
       exp/tri3b exp/tri3b/graph_tgsmall
-    for x in dev devtest test unsup; do
+    for x in dev devtest test; do
       echo "$0: Testing the tri3b system with the silprobs and pron-probs on $x."
       steps/decode_fmllr.sh --nj 4 --cmd "$decode_cmd" \
         exp/tri3b/graph_tgsmall data/$x \
@@ -321,7 +320,7 @@ fi
 
 if [[ $stage -le 31 && $larger_lms -eq 0 ]]; then
   (
-    for x in dev devtest test unsup; do
+    for x in dev devtest test; do
       echo "Decoding with larger lms,  tri3b models and expanded lexicon. on $x"
       steps/lmrescore.sh --cmd "$decode_cmd" data/lang_test_{tgsmall,tgmed} \
         data/$x exp/tri3b/decode_{tgsmall,tgmed}_$x
