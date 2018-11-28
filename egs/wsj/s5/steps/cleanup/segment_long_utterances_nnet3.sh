@@ -43,6 +43,10 @@ beam=15.0
 lattice_beam=1.0
 lmwt=10
 
+acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
+post_decode_acwt=1.0  # can be used in 'chain' systems to scale acoustics by 10 so the
+                      # regular scoring script works.
+
 # Contexts must ideally match training
 extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
 extra_right_context=0  
@@ -53,7 +57,7 @@ frames_per_chunk=150
 # i-vector options
 extractor=    # i-Vector extractor. If provided, will extract i-vectors. 
               # Required if the network was trained with i-vector extractor. 
-use_vad=   # Use energy-based VAD for i-vector extraction
+use_vad=false # Use energy-based VAD for i-vector extraction
 
 # TF-IDF similarity search options
 max_words=1000
@@ -263,6 +267,7 @@ if [ $stage -le 5 ]; then
   echo "$0: Decoding with biased language models..."
 
   steps/cleanup/decode_segmentation_nnet3.sh \
+    --acwt $acwt --post-decode-acwt $post_decode_acwt \
     --beam $beam --lattice-beam $lattice_beam --nj $nj --cmd "$cmd --mem 4G" \
     --skip-scoring true --allow-partial false \
     --extra-left-context $extra_left_context \
@@ -276,7 +281,7 @@ fi
 
 frame_shift_opt=
 if [ -f $srcdir/frame_subsampling_factor ]; then
-  frame_shift_opt="--frame-shift=0.0$(cat $srcdir/frame_subsampling_factor)"
+  frame_shift_opt="--frame-shift 0.0$(cat $srcdir/frame_subsampling_factor)"
 fi
 
 if [ $stage -le 6 ]; then
