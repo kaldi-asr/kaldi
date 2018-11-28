@@ -22,6 +22,7 @@
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/lattice-functions.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -44,6 +45,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0, lm_scale = 1.0;
     bool random = false;
+    bool weighted_random = false;
     int32 srand_seed = 0;
     int32 n = 1;
 
@@ -53,6 +55,9 @@ int main(int argc, char *argv[]) {
     po.Register("random", &random,
                 "If true, generate n random paths instead of n-best paths"
                 "In this case, all costs in generated paths will be zero.");
+    po.Register("weighted-random", &weighted_random,
+                "If true, generate n paths by sampling the paths based on the "
+                "probability of the paths");
     po.Register("srand", &srand_seed, "Seed for random number generator "
                 "(only relevant if --random=true)");
 
@@ -91,15 +96,19 @@ int main(int argc, char *argv[]) {
       std::vector<Lattice> nbest_lats;
       {
         Lattice nbest_lat;
-        if (!random) {
+        if (!random && !weighted_random) {
           fst::ShortestPath(lat, &nbest_lat, n);
+          fst::ConvertNbestToVector(nbest_lat, &nbest_lats);
+        } else if (weighted_random) {
+          TopSortLatticeIfNeeded(&lat);
+          SampleFromLattice(lat, &nbest_lats, n);
         } else {
           fst::UniformArcSelector<LatticeArc> uniform_selector;
           fst::RandGenOptions<fst::UniformArcSelector<LatticeArc> > opts(uniform_selector);
           opts.npath = n;
           fst::RandGen(lat, &nbest_lat, opts);
+          fst::ConvertNbestToVector(nbest_lat, &nbest_lats);
         }
-        fst::ConvertNbestToVector(nbest_lat, &nbest_lats);
       }
 
       if (nbest_lats.empty()) {
