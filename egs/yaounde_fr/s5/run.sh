@@ -318,6 +318,8 @@ if [ $stage -le 30 ]; then
   )&
 fi
 
+wait
+
 if [[ $stage -le 31 && $larger_lms -eq 0 ]]; then
   (
     for x in dev devtest test; do
