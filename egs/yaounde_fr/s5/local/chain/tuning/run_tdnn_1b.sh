@@ -1,18 +1,25 @@
 #!/bin/bash
 
 # a re-tuned model based on resnet-style TDNN-F layers with bypass connections.
-# 1a and 1b differ in bottlenec dimension: 128 versus 96
+# 1b is as 1a except for bottleneck dimension: 64 versus 96
 
-# ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp
+# ./local/chain/compare_wer.sh ./exp/chain/tdnn1a_sp ./exp/chain/tdnn1b_sp
 # System                tdnn1a_sp tdnn1b_sp
-#WER dev (tgsmall)      31.04     28.92
-#WER dev (tgmed)      43.39     40.47
-#WER dev (tglarge)      31.67     28.16
-# Final train prob        -0.0656   -0.0652
-# Final valid prob        -0.0965   -0.0981
-# Final train prob (xent)   -2.4403   -2.4519
-# Final valid prob (xent)   -2.5703   -2.6094
-# Num-params                 4893266   4893266
+#WER dev (tgsmall)      30.91     30.10
+#WER dev (tgmed)      41.78     41.03
+#WER dev (tglarge)      31.22     30.71
+# Final train prob        -0.0464   -0.0523
+# Final valid prob        -0.0739   -0.0761
+# Final train prob (xent)   -1.5447   -1.6248
+# Final valid prob (xent)   -1.7440   -1.8102
+# Num-params                 4781712   3651216
+
+# ./local/chain/compare_wer.sh --online exp/chain/tdnn1a_sp
+
+#steps/info/chain_dir_info.pl exp/chain/tdnn1b_sp
+#exp/chain/tdnn1b_sp: num-iters=120 nj=1..1 num-params=3.7M dim=40+100->1224 combine=-0.066->-0.052 (over 5) xent:train/valid[79,119,final]=(-2.16,-6.51,-1.62/-2.27,-6.90,-1.81) logprob:train/valid[79,119,final]=(-0.109,-1.15,-0.052/-0.107,-1.22,-0.076)
+
+# Notice lower WERs and smaller model by over 1 million parameters.
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -22,10 +29,10 @@ set -euo pipefail
 stage=0
 decode_nj=10
 train_set=train
-test_sets="devtest dev test unsup"
+test_sets="devtest dev test"
 gmm=tri3b
 nnet3_affix=
-
+larger_lms=0
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 affix=1b
@@ -33,7 +40,7 @@ tree_affix=
 train_stage=-10
 get_egs_stage=-10
 decode_iter=
-
+interior_dim=64
 # training options
 # training chunk-options
 chunk_width=140,100,160
@@ -58,7 +65,7 @@ echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh
 
 if ! cuda-compiled; then
-  cat <<EOF && exit 1
+  cat <<EOF
 This script is intended to be used with GPUs but you have not compiled Kaldi with CUDA
 If you want to use GPUs (and have them), go to src/, and configure and make on a machine
 where "nvcc" is installed.
@@ -163,18 +170,18 @@ if [ $stage -le 13 ]; then
 
   # the first splicing is moved before the lda layer, so no splicing here
   relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=768
-  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
-  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=0
-  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
-  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
-  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
-  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
-  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
-  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
-  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
-  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=768 bottleneck-dim=$interior_dim time-stride=3
   linear-component name=prefinal-l dim=192 $linear_opts
 
   ## adding the layers for chain branch
@@ -233,13 +240,15 @@ if [ $stage -le 15 ]; then
   utils/mkgraph.sh \
     --self-loop-scale 1.0 data/lang_test_tgsmall \
     $tree_dir $tree_dir/graph_tgsmall || exit 1;
+fi
 
+if [[ $stage -le 16 && $larger_lms -eq 0 ]]; then
   utils/mkgraph.sh \
     --self-loop-scale 1.0 data/lang_test_tgmed \
     $tree_dir $tree_dir/graph_tgmed || exit 1;
 fi
 
-if [ $stage -le 16 ]; then
+if [ $stage -le 17 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   rm $dir/.error 2>/dev/null || true
 
@@ -252,6 +261,18 @@ if [ $stage -le 16 ]; then
         --nj $nspk --cmd "$decode_cmd"  --num-threads 4 \
         --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_${data}_hires \
         $tree_dir/graph_tgsmall data/${data}_hires ${dir}/decode_tgsmall_${data} || exit 1
+      ) || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
+if $test_online_decoding && [[ $stage -le 18 && $larger_lms -eq 0 ]]; then
+  frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+  rm $dir/.error 2>/dev/null || true
+  for data in $test_sets; do
+    (
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
       steps/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --frames-per-chunk $frames_per_chunk \
@@ -271,7 +292,7 @@ fi
 # TDNN systems it would give exactly the same results as the
 # normal decoding.
 
-if $test_online_decoding && [ $stage -le 17 ]; then
+if $test_online_decoding && [ $stage -le 19 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
@@ -289,6 +310,18 @@ if $test_online_decoding && [ $stage -le 17 ]; then
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $nspk --cmd "$decode_cmd" \
         $tree_dir/graph_tgsmall data/${data} ${dir}_online/decode_tgsmall_${data} || exit 1
+    ) || touch $dir/.error &
+  done
+  wait
+  [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+fi
+
+if $test_online_decoding && [[ $stage -le 20 && $larger_lms -eq 0 ]]; then
+      frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
+  rm $dir/.error 2>/dev/null || true
+  for data in $test_sets; do
+    (
+      nspk=$(wc -l <data/${data}_hires/spk2utt)
       steps/online/nnet3/decode.sh \
         --acwt 1.0 --post-decode-acwt 10.0 \
         --nj $nspk --cmd "$decode_cmd" \
@@ -304,6 +337,5 @@ if $test_online_decoding && [ $stage -le 17 ]; then
   wait
   [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 fi
-
 
 exit 0;
