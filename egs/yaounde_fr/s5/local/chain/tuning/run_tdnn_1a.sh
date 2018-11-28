@@ -28,7 +28,7 @@ train_set=train
 test_sets="devtest dev test"
 gmm=tri3b
 nnet3_affix=
-larger_lms=1
+larger_lms=0
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
 affix=1a   # affix for the TDNN directory name
