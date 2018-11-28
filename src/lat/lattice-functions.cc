@@ -1795,11 +1795,11 @@ void SampleFromLattice(const Lattice &lat,
         double prob = Exp(final_like - beta[s]);
         cum_prob += prob;
 
-        KALDI_ASSERT(cum_prob > r);
-
-        this_nbest.SetFinal(out_state, f);
-        reached_final = true;
-        break;
+        if (cum_prob > r) {
+          this_nbest.SetFinal(out_state, f);
+          reached_final = true;
+          break;
+        }
       }
 
       bool sampled_arc = false;
@@ -1822,7 +1822,7 @@ void SampleFromLattice(const Lattice &lat,
 
       if (!sampled_arc) {
         KALDI_ERR << "Could not sample an arc from state " << s << " at time "
-                  << state_times[s];
+                  << state_times[s] << "; Something wrong with the lattice.";
       }
     }
 
