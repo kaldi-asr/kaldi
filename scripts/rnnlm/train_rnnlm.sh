@@ -227,16 +227,16 @@ while [ $x -lt $num_iters ]; do
           nnet3-average $src_models $dir/$[x+1].raw '&&' \
           matrix-sum --average=true $src_matrices $dir/${embedding_type}_embedding.$[x+1].mat
       fi
+      # optionally, perform cleanup after training
+      if [ "$cleanup" = true ] ; then
+        python3 rnnlm/rnnlm_cleanup.py $dir --$cleanup_strategy --iters_to_keep $cleanup_keep_iters
+      fi
     )
-
     # the error message below is not that informative, but $cmd will
     # have printed a more specific one.
     [ -f $dir/.error ] && echo "$0: error with diagnostics on iteration $x of training" && exit 1;
   fi
-  # optionally, perform cleanup
-  if [ "$cleanup" = true ] ; then
-    python3 rnnlm_cleanup.py $dir --$cleanup_strategy --iters_to_keep $cleanup_keep_iters
-  fi
+
   x=$[x+1]
   num_splits_processed=$[num_splits_processed+this_num_jobs]
 done
