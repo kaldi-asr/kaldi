@@ -8,6 +8,7 @@ import sys
 import argparse
 import os
 import re
+import glob
 
 script_name = sys.argv[0]
 
@@ -47,34 +48,33 @@ elif not args.keep_latest and not args.keep_best:
 
 
 class IterationInfo:
-    def __init__(self, word_embedding_file, raw_file, objf, compute_prob_done):
-        self.word_embedding_file = word_embedding_file
-        self.raw_file = raw_file
+    def __init__(self, model_files, objf, compute_prob_done):
+        self.model_files = model_files
         self.objf = objf
         self.compute_prob_done = compute_prob_done
 
     def __str__(self):
-        return "{word_embedding: %s, raw: %s, compute_prob: %s, objf: %2.3f}" % (self.word_embedding_file,
-                                                                                 self.raw_file,
-                                                                                 self.compute_prob_done,
-                                                                                 self.objf)
+        return "{model_files: %s, compute_prob: %s, objf: %2.3f}" % (self.model_files,
+                                                                     self.compute_prob_done,
+                                                                     self.objf)
 
     def __repr__(self):
         return self.__str__()
 
 
-def get_compute_prob_info(exp_dir, iter):
-    # we want to know 2 things: objf and whether compute prob is done
+def get_compute_prob_info(log_file):
+    # we want to know 3 things: iteration number, objf and whether compute prob is done
+    iteration = int(log_file.split(".")[-2])
     objf = -2000
     compute_prob_done = False
     # roughly based on code in get_best_model.py
-    log_file = "{0}/log/compute_prob.{1}.log".format(exp_dir, iter)
     try:
         f = open(log_file, "r", encoding="latin-1")
     except:
-        print(script_name + ": warning: compute_prob log not found for iteration " + str(iter) + ". Skipping",
+        print(script_name + ": warning: compute_prob log not found for iteration " +
+              str(iter) + ". Skipping",
               file=sys.stderr)
-        return objf, compute_prob_done
+        return iteration, objf, compute_prob_done
     for line in f:
         objf_m = re.search('Overall objf .* (\S+)$', str(line))
         if objf_m is not None:
@@ -87,38 +87,33 @@ def get_compute_prob_info(exp_dir, iter):
             compute_prob_done = True
     if objf == -2000:
         print(script_name + ": warning: could not parse objective function from " + log_file, file=sys.stderr)
-    return objf, compute_prob_done
+    return iteration, objf, compute_prob_done
 
 
 def get_iteration_files(exp_dir):
-    # TODO handle the case where there are several files per iteration...
     iterations = dict()
-    for f in os.listdir(exp_dir):
-        joined_f = os.path.join(exp_dir, f)
-        if os.path.isfile(joined_f) and (f.startswith("word_embedding") or f.endswith(".raw")):
-            split = f.split(".")
-            ext = split[-1]
-            iter = int(split[-2])
-            objf, compute_prob_done = get_compute_prob_info(exp_dir, iter)
-            if iter in iterations:
-                iter_info = iterations[iter]
-                if ext == "raw":
-                    iter_info.raw_file = joined_f
-                else:
-                    iter_info.word_embedding_file = joined_f
-                iter_info.objf = objf
-                iter_info.compute_prob_done = compute_prob_done
-            else:
-                if ext == "raw":
-                    iterations[iter] = IterationInfo(None, joined_f, objf, compute_prob_done)
-                else:
-                    iterations[iter] = IterationInfo(joined_f, None, objf, compute_prob_done)
+    compute_prob_logs = glob.glob(exp_dir + "/log/compute_prob.[0-9]*.log")
+    for log in compute_prob_logs:
+        iteration, objf, compute_prob_done = get_compute_prob_info(log)
+        if compute_prob_done:
+            # this iteration can be safely considered for cleanup
+            # gather all model files belonging to it
+            model_files = []
+            # when there are multiple jobs per iteration, there can be several model files
+            # we need to potentially clean them all up without mixing them up
+            model_files.extend(glob.glob("{0}/word_embedding.{1}.mat".format(exp_dir, iteration)))
+            model_files.extend(glob.glob("{0}/word_embedding.{1}.[0-9]*.mat".format(exp_dir, iteration)))
+            model_files.extend(glob.glob("{0}/{1}.raw".format(exp_dir, iteration)))
+            model_files.extend(glob.glob("{0}/{1}.[0-9]*.raw".format(exp_dir, iteration)))
+            # compute_prob logs outlive model files, only consider iterations that do still have model files
+            if len(model_files) > 0:
+                iterations[iteration] = IterationInfo(model_files, objf, compute_prob_done)
     return iterations
 
 
 def remove_model_files_for_iter(iter_info):
-    os.remove(iter_info.word_embedding_file)
-    os.remove(iter_info.raw_file)
+    for f in iter_info.model_files:
+        os.remove(f)
 
 
 def keep_latest(iteration_dict):
@@ -126,12 +121,10 @@ def keep_latest(iteration_dict):
     kept = 0
     iterations_in_reverse_order = reversed(sorted(iteration_dict))
     for iter in iterations_in_reverse_order:
-        # check if compute prob is done for this iteration, if not, leave it for future cleanups...
-        if iteration_dict[iter].compute_prob_done:
-            if kept < max_to_keep:
-                kept += 1
-            else:
-                remove_model_files_for_iter(iteration_dict[iter])
+        if kept < max_to_keep:
+            kept += 1
+        else:
+            remove_model_files_for_iter(iteration_dict[iter])
 
 
 def keep_best(iteration_dict):
@@ -141,10 +134,6 @@ def keep_best(iteration_dict):
         objf = iter_info.objf
         if objf == -2000:
             print(script_name + ": warning: objf unavailable for iter " + str(iter), file=sys.stderr)
-            continue
-        if not iter_info.compute_prob_done:
-            # if compute_prob is not done, yet, we leave it for future cleanups
-            print(script_name + ": warning: compute_prob not done yet for iter " + str(iter), file=sys.stderr)
             continue
         # add potential best, sort by objf, trim to iters_to_keep size
         best.append((iter, objf))
