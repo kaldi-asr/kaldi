@@ -55,7 +55,7 @@ frames_per_chunk=
 
 # End configuration section.
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

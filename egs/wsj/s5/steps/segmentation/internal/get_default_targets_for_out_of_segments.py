@@ -163,7 +163,7 @@ def run(args):
                 "".format(num_reco=num_reco, num_utt=num_utt,
                           num_utt_err=num_utt_err))
 
-    if num_utt == 0 or num_utt_err > num_utt / 2 or num_reco == 0:
+    if num_utt == 0 or num_utt_err > num_utt // 2 or num_reco == 0:
         raise RuntimeError
 
 

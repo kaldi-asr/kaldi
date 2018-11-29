@@ -411,7 +411,7 @@ class LstmProjected : public MultistreamComponent {
       CuSubMatrix<BaseFloat> y_c(YC.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_h(YH.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_m(YM.RowRange(t*S, S));
-      CuSubMatrix<BaseFloat> y_r(YR.RowRange(t*S, S));
+       CuSubMatrix<BaseFloat> y_r(YR.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_gifo(YGIFO.RowRange(t*S, S));
 
       // r(t-1) -> g, i, f, o
@@ -514,10 +514,10 @@ class LstmProjected : public MultistreamComponent {
       CuSubMatrix<BaseFloat> y_i(YI.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_f(YF.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_o(YO.RowRange(t*S, S));
-      CuSubMatrix<BaseFloat> y_c(YC.RowRange(t*S, S));
+      // CuSubMatrix<BaseFloat> y_c(YC.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> y_h(YH.RowRange(t*S, S));
-      CuSubMatrix<BaseFloat> y_m(YM.RowRange(t*S, S));
-      CuSubMatrix<BaseFloat> y_r(YR.RowRange(t*S, S));
+      // CuSubMatrix<BaseFloat> y_m(YM.RowRange(t*S, S));
+      // CuSubMatrix<BaseFloat> y_r(YR.RowRange(t*S, S));
 
       CuSubMatrix<BaseFloat> d_all(backpropagate_buf_.RowRange(t*S, S));
       CuSubMatrix<BaseFloat> d_g(DG.RowRange(t*S, S));
@@ -655,21 +655,21 @@ class LstmProjected : public MultistreamComponent {
               const CuMatrixBase<BaseFloat> &diff) {
 
     // apply the gradient clipping,
-    if (clip_gradient_ > 0.0) {
-      w_gifo_x_corr_.ApplyFloor(-clip_gradient_);
-      w_gifo_x_corr_.ApplyCeiling(clip_gradient_);
-      w_gifo_r_corr_.ApplyFloor(-clip_gradient_);
-      w_gifo_r_corr_.ApplyCeiling(clip_gradient_);
-      bias_corr_.ApplyFloor(-clip_gradient_);
-      bias_corr_.ApplyCeiling(clip_gradient_);
-      w_r_m_corr_.ApplyFloor(-clip_gradient_);
-      w_r_m_corr_.ApplyCeiling(clip_gradient_);
-      peephole_i_c_corr_.ApplyFloor(-clip_gradient_);
-      peephole_i_c_corr_.ApplyCeiling(clip_gradient_);
-      peephole_f_c_corr_.ApplyFloor(-clip_gradient_);
-      peephole_f_c_corr_.ApplyCeiling(clip_gradient_);
-      peephole_o_c_corr_.ApplyFloor(-clip_gradient_);
-      peephole_o_c_corr_.ApplyCeiling(clip_gradient_);
+    if (grad_clip_ > 0.0) {
+      w_gifo_x_corr_.ApplyFloor(-grad_clip_);
+      w_gifo_x_corr_.ApplyCeiling(grad_clip_);
+      w_gifo_r_corr_.ApplyFloor(-grad_clip_);
+      w_gifo_r_corr_.ApplyCeiling(grad_clip_);
+      bias_corr_.ApplyFloor(-grad_clip_);
+      bias_corr_.ApplyCeiling(grad_clip_);
+      w_r_m_corr_.ApplyFloor(-grad_clip_);
+      w_r_m_corr_.ApplyCeiling(grad_clip_);
+      peephole_i_c_corr_.ApplyFloor(-grad_clip_);
+      peephole_i_c_corr_.ApplyCeiling(grad_clip_);
+      peephole_f_c_corr_.ApplyFloor(-grad_clip_);
+      peephole_f_c_corr_.ApplyCeiling(grad_clip_);
+      peephole_o_c_corr_.ApplyFloor(-grad_clip_);
+      peephole_o_c_corr_.ApplyCeiling(grad_clip_);
     }
 
     const BaseFloat lr  = opts_.learn_rate;
@@ -697,9 +697,6 @@ class LstmProjected : public MultistreamComponent {
 
   // buffer for transfering state across batches,
   CuMatrix<BaseFloat> prev_nnet_state_;
-
-  // gradient-clipping value,
-  BaseFloat clip_gradient_;
 
   // feed-forward connections: from x to [g, i, f, o]
   CuMatrix<BaseFloat> w_gifo_x_;

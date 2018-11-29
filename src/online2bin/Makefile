@@ -11,7 +11,7 @@ BINFILES = online2-wav-gmm-latgen-faster apply-cmvn-online \
      online2-wav-nnet2-latgen-faster ivector-extract-online2 \
      online2-wav-dump-features ivector-randomize \
      online2-wav-nnet2-am-compute  online2-wav-nnet2-latgen-threaded \
-     online2-wav-nnet3-latgen-faster
+     online2-wav-nnet3-latgen-faster online2-wav-nnet3-latgen-grammar
 
 OBJFILES =
 
@@ -23,6 +23,5 @@ ADDLIBS = ../online2/kaldi-online2.a ../ivector/kaldi-ivector.a \
           ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../feat/kaldi-feat.a ../transform/kaldi-transform.a \
           ../gmm/kaldi-gmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a 
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 include ../makefiles/default_rules.mk

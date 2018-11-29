@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 # Copyright 2016  Allen Guo
+#           2017  Xiaohui Zhang
 # Apache License 2.0
 
 # This script normalizes the given "text" (transcript) file. The normalized result
@@ -14,6 +15,7 @@ def normalize(utt):
              .replace('[uh]', 'uh') \
              .replace('[um]', 'um') \
              .replace('<noise>', '[noise]') \
+             .replace('<spoken_noise>', '[vocalized-noise]') \
              .replace('.period', 'period') \
              .replace('.dot', 'dot') \
              .replace('-hyphen', 'hyphen') \

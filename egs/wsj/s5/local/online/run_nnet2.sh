@@ -11,7 +11,7 @@
 # earlier stages.
 # local/online/run_nnet2.sh --stage 8 --dir exp/nnet2_online/nnet_ms_a_partial --exit-train-stage 15
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=0
@@ -19,7 +19,7 @@ train_stage=-10
 use_gpu=true
 dir=exp/nnet2_online/nnet_ms_a
 exit_train_stage=-100
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

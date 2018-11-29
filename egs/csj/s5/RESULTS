@@ -1,134 +1,232 @@
-## These are results using the third edition of CSJ.
-for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ;\
- for x in exp/{tri,dnn}*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; done
+#!/bin/bash
 
-## Results of using training set that contains "academic" and "other" speech data (default).
-## If you want to use "simulated public speaking" and "dialog" data, you should check the following script [local/csj_data_prep.sh line 44].
+# This RESULTS file was obtained in Dec 4th 2017 in JHU. To see results from
+# the scripts local/nnet3/ and local/chain/, look at the top of those files.
+# Here, we just update the results of "chain nnet3" models under different data
+# prepare modes. So the results of "nnet1" and "nnet3 tdnn" are a little bit 
+# out-of-date.
+
+
+##### These experiments use default <number_mode> in run.sh "local/csj_data_prep.sh data/csj-data"
+#i.e. Using "Academic lecture" and "other" data
+ 
+for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in exp/{tri,dnn}*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; for x in exp/chain*/tdnn*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; done > RESULTS.ricky
+exit 0
 
 === evaluation set 1 ===
-%WER 22.31 [ 5807 / 26028, 385 ins, 1644 del, 3778 sub ] exp/tri1/decode_eval1_csj/wer_15_0.0
-%WER 21.14 [ 5503 / 26028, 448 ins, 1438 del, 3617 sub ] exp/tri2/decode_eval1_csj/wer_13_0.0
-%WER 17.05 [ 4438 / 26028, 464 ins, 1031 del, 2943 sub ] exp/tri3/decode_eval1_csj/wer_17_0.0
-%WER 18.27 [ 4756 / 26028, 418 ins, 1197 del, 3141 sub ] exp/tri3/decode_eval1_csj_nosp/wer_16_0.0
-%WER 14.86 [ 3869 / 26028, 430 ins, 875 del, 2564 sub ] exp/tri4/decode_eval1_csj/wer_18_0.0
-%WER 17.15 [ 4464 / 26028, 494 ins, 973 del, 2997 sub ] exp/tri4/decode_eval1_csj.si/wer_18_0.0
-%WER 14.11 [ 3672 / 26028, 415 ins, 826 del, 2431 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it4_csj/wer_16_0.0
-%WER 13.62 [ 3546 / 26028, 417 ins, 760 del, 2369 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it5_csj/wer_15_0.0
-%WER 13.40 [ 3487 / 26028, 366 ins, 800 del, 2321 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it6_csj/wer_13_0.5
-%WER 13.37 [ 3480 / 26028, 289 ins, 907 del, 2284 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it7_csj/wer_13_1.0
-%WER 13.35 [ 3476 / 26028, 387 ins, 789 del, 2300 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it8_csj/wer_13_0.5
-%WER 14.01 [ 3646 / 26028, 396 ins, 826 del, 2424 sub ] exp/tri4_mmi_b0.1/decode_eval1_1.mdl_csj/wer_17_0.0
-%WER 13.70 [ 3567 / 26028, 315 ins, 896 del, 2356 sub ] exp/tri4_mmi_b0.1/decode_eval1_2.mdl_csj/wer_15_0.5
-%WER 13.60 [ 3540 / 26028, 331 ins, 878 del, 2331 sub ] exp/tri4_mmi_b0.1/decode_eval1_3.mdl_csj/wer_15_0.5
-%WER 13.55 [ 3526 / 26028, 355 ins, 837 del, 2334 sub ] exp/tri4_mmi_b0.1/decode_eval1_4.mdl_csj/wer_14_0.5
-%WER 11.71 [ 3047 / 26028, 288 ins, 771 del, 1988 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval1_csj/wer_15_0.0
-%WER 11.07 [ 2880 / 26028, 340 ins, 619 del, 1921 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval1_csj/wer_12_0.5
-%WER 11.03 [ 2871 / 26028, 335 ins, 638 del, 1898 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval1_csj/wer_14_0.5
+%WER 22.04 [ 5736 / 26028, 473 ins, 1471 del, 3792 sub ] exp/tri1/decode_eval1_csj/wer_12_0.0
+%WER 21.05 [ 5479 / 26028, 439 ins, 1459 del, 3581 sub ] exp/tri2/decode_eval1_csj/wer_14_0.0
+%WER 16.96 [ 4414 / 26028, 472 ins, 1008 del, 2934 sub ] exp/tri3/decode_eval1_csj/wer_16_0.0
+%WER 18.30 [ 4763 / 26028, 411 ins, 1205 del, 3147 sub ] exp/tri3/decode_eval1_csj_nosp/wer_16_0.0
+%WER 14.90 [ 3879 / 26028, 457 ins, 876 del, 2546 sub ] exp/tri4/decode_eval1_csj/wer_17_0.0
+%WER 17.14 [ 4460 / 26028, 516 ins, 971 del, 2973 sub ] exp/tri4/decode_eval1_csj.si/wer_17_0.0
+%WER 14.09 [ 3668 / 26028, 429 ins, 807 del, 2432 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it4_csj/wer_16_0.0
+%WER 13.67 [ 3559 / 26028, 395 ins, 799 del, 2365 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it5_csj/wer_17_0.0
+%WER 13.39 [ 3486 / 26028, 353 ins, 831 del, 2302 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it6_csj/wer_14_0.5
+%WER 13.35 [ 3476 / 26028, 343 ins, 848 del, 2285 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it7_csj/wer_15_0.5
+%WER 13.31 [ 3465 / 26028, 368 ins, 815 del, 2282 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it8_csj/wer_14_0.5
+%WER 14.04 [ 3654 / 26028, 417 ins, 819 del, 2418 sub ] exp/tri4_mmi_b0.1/decode_eval1_1.mdl_csj/wer_16_0.0
+%WER 13.77 [ 3585 / 26028, 408 ins, 801 del, 2376 sub ] exp/tri4_mmi_b0.1/decode_eval1_2.mdl_csj/wer_16_0.0
+%WER 13.64 [ 3550 / 26028, 356 ins, 858 del, 2336 sub ] exp/tri4_mmi_b0.1/decode_eval1_3.mdl_csj/wer_14_0.5
+%WER 13.52 [ 3519 / 26028, 342 ins, 878 del, 2299 sub ] exp/tri4_mmi_b0.1/decode_eval1_4.mdl_csj/wer_15_0.5
+%WER 10.30 [ 2680 / 26028, 288 ins, 538 del, 1854 sub ] exp/chain/tdnn1a/decode_eval1/wer_12_0.0
+%WER 10.30 [ 2681 / 26028, 292 ins, 538 del, 1851 sub ] exp/chain/tdnn1a_online/decode_eval1/wer_12_0.0
 === evaluation set 2 ===
-%WER 18.69 [ 4983 / 26661, 523 ins, 954 del, 3506 sub ] exp/tri1/decode_eval2_csj/wer_13_0.0
-%WER 17.38 [ 4635 / 26661, 516 ins, 892 del, 3227 sub ] exp/tri2/decode_eval2_csj/wer_13_0.0
-%WER 14.36 [ 3829 / 26661, 409 ins, 764 del, 2656 sub ] exp/tri3/decode_eval2_csj/wer_16_0.5
-%WER 15.10 [ 4027 / 26661, 474 ins, 739 del, 2814 sub ] exp/tri3/decode_eval2_csj_nosp/wer_16_0.0
-%WER 12.42 [ 3312 / 26661, 419 ins, 564 del, 2329 sub ] exp/tri4/decode_eval2_csj/wer_15_0.5
-%WER 17.68 [ 4713 / 26661, 667 ins, 721 del, 3325 sub ] exp/tri4/decode_eval2_csj.si/wer_15_0.5
-%WER 11.42 [ 3044 / 26661, 373 ins, 532 del, 2139 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it4_csj/wer_14_0.5
-%WER 11.01 [ 2936 / 26661, 365 ins, 495 del, 2076 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it5_csj/wer_13_0.5
-%WER 11.01 [ 2936 / 26661, 328 ins, 537 del, 2071 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it6_csj/wer_12_1.0
-%WER 10.91 [ 2908 / 26661, 334 ins, 525 del, 2049 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it7_csj/wer_12_1.0
-%WER 10.89 [ 2903 / 26661, 306 ins, 553 del, 2044 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it8_csj/wer_13_1.0
-%WER 11.33 [ 3021 / 26661, 357 ins, 549 del, 2115 sub ] exp/tri4_mmi_b0.1/decode_eval2_1.mdl_csj/wer_14_0.5
-%WER 11.13 [ 2967 / 26661, 344 ins, 534 del, 2089 sub ] exp/tri4_mmi_b0.1/decode_eval2_2.mdl_csj/wer_14_0.5
-%WER 11.04 [ 2944 / 26661, 370 ins, 500 del, 2074 sub ] exp/tri4_mmi_b0.1/decode_eval2_3.mdl_csj/wer_13_0.5
-%WER 11.05 [ 2947 / 26661, 332 ins, 538 del, 2077 sub ] exp/tri4_mmi_b0.1/decode_eval2_4.mdl_csj/wer_12_1.0
-%WER 9.10 [ 2425 / 26661, 269 ins, 413 del, 1743 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval2_csj/wer_11_0.0
-%WER 8.94 [ 2383 / 26661, 289 ins, 406 del, 1688 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval2_csj/wer_11_1.0
-%WER 8.90 [ 2374 / 26661, 288 ins, 391 del, 1695 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval2_csj/wer_11_1.0
+%WER 18.68 [ 4980 / 26661, 540 ins, 998 del, 3442 sub ] exp/tri1/decode_eval2_csj/wer_13_0.0
+%WER 17.62 [ 4697 / 26661, 555 ins, 837 del, 3305 sub ] exp/tri2/decode_eval2_csj/wer_12_0.0
+%WER 14.46 [ 3856 / 26661, 535 ins, 630 del, 2691 sub ] exp/tri3/decode_eval2_csj/wer_15_0.0
+%WER 15.31 [ 4082 / 26661, 498 ins, 743 del, 2841 sub ] exp/tri3/decode_eval2_csj_nosp/wer_15_0.0
+%WER 12.43 [ 3315 / 26661, 410 ins, 592 del, 2313 sub ] exp/tri4/decode_eval2_csj/wer_16_0.5
+%WER 17.38 [ 4633 / 26661, 716 ins, 650 del, 3267 sub ] exp/tri4/decode_eval2_csj.si/wer_17_0.0
+%WER 11.41 [ 3041 / 26661, 324 ins, 595 del, 2122 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it4_csj/wer_17_0.5
+%WER 11.14 [ 2969 / 26661, 332 ins, 538 del, 2099 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it5_csj/wer_15_0.5
+%WER 11.09 [ 2958 / 26661, 322 ins, 545 del, 2091 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it6_csj/wer_12_1.0
+%WER 11.06 [ 2949 / 26661, 363 ins, 512 del, 2074 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it7_csj/wer_14_0.5
+%WER 11.02 [ 2937 / 26661, 286 ins, 580 del, 2071 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it8_csj/wer_14_1.0
+%WER 11.32 [ 3018 / 26661, 313 ins, 592 del, 2113 sub ] exp/tri4_mmi_b0.1/decode_eval2_1.mdl_csj/wer_17_0.5
+%WER 11.13 [ 2968 / 26661, 329 ins, 542 del, 2097 sub ] exp/tri4_mmi_b0.1/decode_eval2_2.mdl_csj/wer_15_0.5
+%WER 11.04 [ 2944 / 26661, 279 ins, 592 del, 2073 sub ] exp/tri4_mmi_b0.1/decode_eval2_3.mdl_csj/wer_14_1.0
+%WER 11.08 [ 2955 / 26661, 301 ins, 567 del, 2087 sub ] exp/tri4_mmi_b0.1/decode_eval2_4.mdl_csj/wer_13_1.0
+%WER 8.59 [ 2291 / 26661, 190 ins, 442 del, 1659 sub ] exp/chain/tdnn1a/decode_eval2/wer_13_0.5
+%WER 8.56 [ 2282 / 26661, 213 ins, 375 del, 1694 sub ] exp/chain/tdnn1a_online/decode_eval2/wer_11_0.5
 === evaluation set 3 ===
-%WER 23.72 [ 4078 / 17189, 506 ins, 829 del, 2743 sub ] exp/tri1/decode_eval3_csj/wer_14_0.0
-%WER 22.77 [ 3914 / 17189, 506 ins, 786 del, 2622 sub ] exp/tri2/decode_eval3_csj/wer_14_0.0
-%WER 18.63 [ 3202 / 17189, 392 ins, 636 del, 2174 sub ] exp/tri3/decode_eval3_csj/wer_17_0.5
-%WER 19.83 [ 3409 / 17189, 439 ins, 675 del, 2295 sub ] exp/tri3/decode_eval3_csj_nosp/wer_19_0.0
-%WER 15.86 [ 2727 / 17189, 405 ins, 480 del, 1842 sub ] exp/tri4/decode_eval3_csj/wer_17_0.5
-%WER 20.46 [ 3517 / 17189, 512 ins, 590 del, 2415 sub ] exp/tri4/decode_eval3_csj.si/wer_17_0.5
-%WER 15.07 [ 2591 / 17189, 309 ins, 524 del, 1758 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it4_csj/wer_17_1.0
-%WER 14.77 [ 2538 / 17189, 344 ins, 467 del, 1727 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it5_csj/wer_17_0.5
-%WER 14.64 [ 2517 / 17189, 332 ins, 496 del, 1689 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it6_csj/wer_14_1.0
-%WER 14.70 [ 2526 / 17189, 292 ins, 546 del, 1688 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it7_csj/wer_17_1.0
-%WER 14.75 [ 2536 / 17189, 397 ins, 428 del, 1711 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it8_csj/wer_15_0.5
-%WER 15.32 [ 2634 / 17189, 361 ins, 509 del, 1764 sub ] exp/tri4_mmi_b0.1/decode_eval3_1.mdl_csj/wer_19_0.5
-%WER 14.90 [ 2562 / 17189, 321 ins, 525 del, 1716 sub ] exp/tri4_mmi_b0.1/decode_eval3_2.mdl_csj/wer_15_1.0
-%WER 14.88 [ 2558 / 17189, 297 ins, 557 del, 1704 sub ] exp/tri4_mmi_b0.1/decode_eval3_3.mdl_csj/wer_17_1.0
-%WER 14.93 [ 2567 / 17189, 338 ins, 507 del, 1722 sub ] exp/tri4_mmi_b0.1/decode_eval3_4.mdl_csj/wer_14_1.0
-%WER 12.66 [ 2176 / 17189, 273 ins, 431 del, 1472 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval3_csj/wer_15_0.5
-%WER 12.27 [ 2109 / 17189, 276 ins, 397 del, 1436 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval3_csj/wer_15_1.0
-%WER 11.82 [ 2031 / 17189, 319 ins, 317 del, 1395 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval3_csj/wer_15_0.5
+%WER 23.73 [ 4079 / 17189, 465 ins, 867 del, 2747 sub ] exp/tri1/decode_eval3_csj/wer_15_0.0
+%WER 23.08 [ 3968 / 17189, 518 ins, 772 del, 2678 sub ] exp/tri2/decode_eval3_csj/wer_14_0.0
+%WER 18.59 [ 3196 / 17189, 403 ins, 639 del, 2154 sub ] exp/tri3/decode_eval3_csj/wer_17_0.5
+%WER 20.00 [ 3438 / 17189, 488 ins, 642 del, 2308 sub ] exp/tri3/decode_eval3_csj_nosp/wer_16_0.0
+%WER 15.99 [ 2749 / 17189, 342 ins, 550 del, 1857 sub ] exp/tri4/decode_eval3_csj/wer_17_1.0
+%WER 20.45 [ 3515 / 17189, 448 ins, 671 del, 2396 sub ] exp/tri4/decode_eval3_csj.si/wer_17_1.0
+%WER 15.06 [ 2589 / 17189, 307 ins, 516 del, 1766 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it4_csj/wer_16_1.0
+%WER 14.75 [ 2536 / 17189, 341 ins, 478 del, 1717 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it5_csj/wer_17_0.5
+%WER 14.54 [ 2499 / 17189, 300 ins, 502 del, 1697 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it6_csj/wer_15_1.0
+%WER 14.58 [ 2507 / 17189, 310 ins, 499 del, 1698 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it7_csj/wer_15_1.0
+%WER 14.58 [ 2507 / 17189, 333 ins, 479 del, 1695 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it8_csj/wer_14_1.0
+%WER 15.09 [ 2593 / 17189, 301 ins, 532 del, 1760 sub ] exp/tri4_mmi_b0.1/decode_eval3_1.mdl_csj/wer_16_1.0
+%WER 14.84 [ 2551 / 17189, 352 ins, 475 del, 1724 sub ] exp/tri4_mmi_b0.1/decode_eval3_2.mdl_csj/wer_17_0.5
+%WER 14.75 [ 2535 / 17189, 296 ins, 522 del, 1717 sub ] exp/tri4_mmi_b0.1/decode_eval3_3.mdl_csj/wer_16_1.0
+%WER 14.93 [ 2566 / 17189, 306 ins, 550 del, 1710 sub ] exp/tri4_mmi_b0.1/decode_eval3_4.mdl_csj/wer_17_1.0
+%WER 9.90 [ 1701 / 17189, 241 ins, 265 del, 1195 sub ] exp/chain/tdnn1a/decode_eval3/wer_13_0.0
+%WER 9.90 [ 1702 / 17189, 242 ins, 265 del, 1195 sub ] exp/chain/tdnn1a_online/decode_eval3/wer_13_0.0
 
-# nnet3 TDNN
+# nnet1 DNN
+=== evaluation set 1 ===
+%WER 11.69 [ 3042 / 26028, 325 ins, 711 del, 2006 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval1_csj/wer_13_0.0
+%WER 11.10 [ 2890 / 26028, 300 ins, 678 del, 1912 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval1_csj/wer_15_0.5
+%WER 10.96 [ 2853 / 26028, 319 ins, 642 del, 1892 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval1_csj/wer_15_0.5
+=== evaluation set 2 ===
+%WER 8.95 [ 2387 / 26661, 249 ins, 419 del, 1719 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval2_csj/wer_13_0.0
+%WER 8.83 [ 2353 / 26661, 296 ins, 376 del, 1681 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval2_csj/wer_11_1.0
+%WER 8.78 [ 2340 / 26661, 262 ins, 407 del, 1671 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval2_csj/wer_13_1.0
+=== evaluation set 3 ===
+%WER 12.47 [ 2144 / 17189, 311 ins, 355 del, 1478 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval3_csj/wer_15_0.0
+%WER 11.97 [ 2058 / 17189, 281 ins, 341 del, 1436 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval3_csj/wer_14_1.0
+%WER 11.65 [ 2002 / 17189, 284 ins, 318 del, 1400 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval3_csj/wer_14_1.0
+
+# nnet3 TDNN  (former tdnn results)
 %WER 11.34 [ 2952 / 26028, 286 ins, 750 del, 1916 sub ] exp/nnet3/nnet_tdnn/decode_eval1_csj/wer_12_0.5
 %WER 9.07 [ 2417 / 26661, 276 ins, 414 del, 1727 sub ] exp/nnet3/nnet_tdnn/decode_eval2_csj/wer_12_0.0
 %WER 11.46 [ 1970 / 17189, 233 ins, 400 del, 1337 sub ] exp/nnet3/nnet_tdnn/decode_eval3_csj/wer_14_0.5
 
 
-## Results of using training data that contain all types of speech data except for dialog type.
-=== evaluation set 1 ===
-%WER 22.39 [ 5827 / 26028, 421 ins, 1616 del, 3790 sub ] exp/tri1/decode_eval1_csj/wer_14_0.0
-%WER 21.15 [ 5504 / 26028, 479 ins, 1390 del, 3635 sub ] exp/tri2/decode_eval1_csj/wer_12_0.0
-%WER 17.48 [ 4549 / 26028, 467 ins, 1078 del, 3004 sub ] exp/tri3/decode_eval1_csj/wer_16_0.0
-%WER 18.86 [ 4908 / 26028, 445 ins, 1238 del, 3225 sub ] exp/tri3/decode_eval1_csj_nosp/wer_14_0.0
-%WER 15.58 [ 4054 / 26028, 450 ins, 932 del, 2672 sub ] exp/tri4/decode_eval1_csj/wer_17_0.0
-%WER 19.36 [ 5040 / 26028, 612 ins, 1037 del, 3391 sub ] exp/tri4/decode_eval1_csj.si/wer_17_0.0
-%WER 14.90 [ 3879 / 26028, 437 ins, 879 del, 2563 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it4_csj/wer_15_0.0
-%WER 14.14 [ 3681 / 26028, 364 ins, 856 del, 2461 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it5_csj/wer_17_0.0
-%WER 13.97 [ 3635 / 26028, 434 ins, 766 del, 2435 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it6_csj/wer_13_0.0
-%WER 13.86 [ 3607 / 26028, 446 ins, 728 del, 2433 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it7_csj/wer_13_0.0
-%WER 13.85 [ 3605 / 26028, 418 ins, 776 del, 2411 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it8_csj/wer_11_0.5
-%WER 14.58 [ 3796 / 26028, 380 ins, 919 del, 2497 sub ] exp/tri4_mmi_b0.1/decode_eval1_1.mdl_csj/wer_17_0.0
-%WER 14.28 [ 3717 / 26028, 334 ins, 934 del, 2449 sub ] exp/tri4_mmi_b0.1/decode_eval1_2.mdl_csj/wer_14_0.5
-%WER 14.03 [ 3651 / 26028, 412 ins, 819 del, 2420 sub ] exp/tri4_mmi_b0.1/decode_eval1_3.mdl_csj/wer_15_0.0
-%WER 13.82 [ 3597 / 26028, 365 ins, 835 del, 2397 sub ] exp/tri4_mmi_b0.1/decode_eval1_4.mdl_csj/wer_13_0.5
-%WER 11.53 [ 3002 / 26028, 314 ins, 696 del, 1992 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval1_csj/wer_12_0.0
-%WER 10.83 [ 2819 / 26028, 265 ins, 666 del, 1888 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval1_csj/wer_14_1.0
-%WER 10.56 [ 2749 / 26028, 328 ins, 563 del, 1858 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval1_csj/wer_14_0.5
-=== evaluation set 2 ===
-%WER 18.74 [ 4996 / 26661, 533 ins, 985 del, 3478 sub ] exp/tri1/decode_eval2_csj/wer_13_0.0
-%WER 17.66 [ 4708 / 26661, 562 ins, 843 del, 3303 sub ] exp/tri2/decode_eval2_csj/wer_12_0.0
-%WER 14.49 [ 3862 / 26661, 454 ins, 713 del, 2695 sub ] exp/tri3/decode_eval2_csj/wer_13_0.5
-%WER 15.32 [ 4085 / 26661, 484 ins, 746 del, 2855 sub ] exp/tri3/decode_eval2_csj_nosp/wer_14_0.0
-%WER 12.18 [ 3247 / 26661, 406 ins, 605 del, 2236 sub ] exp/tri4/decode_eval2_csj/wer_18_0.0
-%WER 18.23 [ 4861 / 26661, 790 ins, 651 del, 3420 sub ] exp/tri4/decode_eval2_csj.si/wer_16_0.0
-%WER 11.53 [ 3074 / 26661, 337 ins, 614 del, 2123 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it4_csj/wer_14_0.5
-%WER 11.05 [ 2945 / 26661, 279 ins, 620 del, 2046 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it5_csj/wer_12_1.0
-%WER 10.93 [ 2913 / 26661, 368 ins, 511 del, 2034 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it6_csj/wer_11_0.5
-%WER 10.86 [ 2895 / 26661, 297 ins, 565 del, 2033 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it7_csj/wer_11_1.0
-%WER 10.84 [ 2891 / 26661, 306 ins, 554 del, 2031 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it8_csj/wer_11_1.0
-%WER 11.32 [ 3019 / 26661, 292 ins, 632 del, 2095 sub ] exp/tri4_mmi_b0.1/decode_eval2_1.mdl_csj/wer_15_0.5
-%WER 11.01 [ 2935 / 26661, 298 ins, 582 del, 2055 sub ] exp/tri4_mmi_b0.1/decode_eval2_2.mdl_csj/wer_13_0.5
-%WER 10.83 [ 2887 / 26661, 318 ins, 542 del, 2027 sub ] exp/tri4_mmi_b0.1/decode_eval2_3.mdl_csj/wer_12_0.5
-%WER 10.90 [ 2907 / 26661, 267 ins, 603 del, 2037 sub ] exp/tri4_mmi_b0.1/decode_eval2_4.mdl_csj/wer_12_1.0
-%WER 8.80 [ 2345 / 26661, 273 ins, 405 del, 1667 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval2_csj/wer_11_0.0
-%WER 8.63 [ 2302 / 26661, 289 ins, 372 del, 1641 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval2_csj/wer_11_1.0
-%WER 8.42 [ 2244 / 26661, 293 ins, 335 del, 1616 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval2_csj/wer_11_1.0
-=== evaluation set 3 ===
-%WER 23.65 [ 4066 / 17189, 467 ins, 889 del, 2710 sub ] exp/tri1/decode_eval3_csj/wer_15_0.0
-%WER 22.76 [ 3912 / 17189, 503 ins, 826 del, 2583 sub ] exp/tri2/decode_eval3_csj/wer_15_0.0
-%WER 16.92 [ 2909 / 17189, 373 ins, 590 del, 1946 sub ] exp/tri3/decode_eval3_csj/wer_15_0.5
-%WER 17.84 [ 3067 / 17189, 413 ins, 583 del, 2071 sub ] exp/tri3/decode_eval3_csj_nosp/wer_14_0.0
-%WER 14.26 [ 2452 / 17189, 327 ins, 445 del, 1680 sub ] exp/tri4/decode_eval3_csj/wer_17_0.5
-%WER 19.95 [ 3429 / 17189, 551 ins, 519 del, 2359 sub ] exp/tri4/decode_eval3_csj.si/wer_15_0.5
-%WER 13.68 [ 2352 / 17189, 325 ins, 404 del, 1623 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it4_csj/wer_15_0.5
-%WER 12.92 [ 2220 / 17189, 247 ins, 452 del, 1521 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it5_csj/wer_14_1.0
-%WER 12.86 [ 2210 / 17189, 253 ins, 466 del, 1491 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it6_csj/wer_15_1.0
-%WER 12.80 [ 2200 / 17189, 337 ins, 360 del, 1503 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it7_csj/wer_13_0.5
-%WER 12.90 [ 2217 / 17189, 347 ins, 363 del, 1507 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it8_csj/wer_13_0.5
-%WER 13.12 [ 2256 / 17189, 288 ins, 434 del, 1534 sub ] exp/tri4_mmi_b0.1/decode_eval3_1.mdl_csj/wer_16_0.5
-%WER 12.93 [ 2222 / 17189, 306 ins, 402 del, 1514 sub ] exp/tri4_mmi_b0.1/decode_eval3_2.mdl_csj/wer_14_0.5
-%WER 12.86 [ 2211 / 17189, 338 ins, 378 del, 1495 sub ] exp/tri4_mmi_b0.1/decode_eval3_3.mdl_csj/wer_13_0.5
-%WER 12.98 [ 2231 / 17189, 331 ins, 380 del, 1520 sub ] exp/tri4_mmi_b0.1/decode_eval3_4.mdl_csj/wer_13_0.5
-%WER 9.97 [ 1713 / 17189, 239 ins, 281 del, 1193 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval3_csj/wer_14_0.0
-%WER 9.65 [ 1658 / 17189, 237 ins, 271 del, 1150 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval3_csj/wer_14_1.0
-%WER 9.29 [ 1597 / 17189, 236 ins, 249 del, 1112 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval3_csj/wer_14_1.0
 
-# nnet3 TDNN
+##### These experiments use <number_mode> 2 in run.sh "local/csj_data_prep.sh data/csj-data 2"
+#i.e. Using All data except for "dialog" data
+
+for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in exp/{tri,dnn}*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; for x in exp/chain*/tdnn*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; done > RESULTS.ricky
+
+=== evaluation set 1 ===
+%WER 22.44 [ 5840 / 26028, 416 ins, 1598 del, 3826 sub ] exp/tri1/decode_eval1_csj/wer_14_0.0
+%WER 21.22 [ 5523 / 26028, 430 ins, 1456 del, 3637 sub ] exp/tri2/decode_eval1_csj/wer_14_0.0
+%WER 17.37 [ 4521 / 26028, 450 ins, 1079 del, 2992 sub ] exp/tri3/decode_eval1_csj/wer_16_0.0
+%WER 18.83 [ 4901 / 26028, 378 ins, 1316 del, 3207 sub ] exp/tri3/decode_eval1_csj_nosp/wer_17_0.0
+%WER 15.15 [ 3942 / 26028, 420 ins, 929 del, 2593 sub ] exp/tri4/decode_eval1_csj/wer_17_0.0
+%WER 18.76 [ 4883 / 26028, 610 ins, 1016 del, 3257 sub ] exp/tri4/decode_eval1_csj.si/wer_16_0.0
+%WER 14.38 [ 3742 / 26028, 319 ins, 978 del, 2445 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it4_csj/wer_15_0.5
+%WER 13.79 [ 3589 / 26028, 361 ins, 856 del, 2372 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it5_csj/wer_16_0.0
+%WER 13.65 [ 3553 / 26028, 329 ins, 902 del, 2322 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it6_csj/wer_14_0.5
+%WER 13.62 [ 3546 / 26028, 363 ins, 843 del, 2340 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it7_csj/wer_13_0.5
+%WER 13.66 [ 3556 / 26028, 408 ins, 801 del, 2347 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it8_csj/wer_12_0.5
+%WER 14.32 [ 3727 / 26028, 364 ins, 884 del, 2479 sub ] exp/tri4_mmi_b0.1/decode_eval1_1.mdl_csj/wer_16_0.0
+%WER 14.15 [ 3683 / 26028, 383 ins, 869 del, 2431 sub ] exp/tri4_mmi_b0.1/decode_eval1_2.mdl_csj/wer_16_0.0
+%WER 13.94 [ 3629 / 26028, 394 ins, 841 del, 2394 sub ] exp/tri4_mmi_b0.1/decode_eval1_3.mdl_csj/wer_16_0.0
+%WER 13.89 [ 3614 / 26028, 432 ins, 787 del, 2395 sub ] exp/tri4_mmi_b0.1/decode_eval1_4.mdl_csj/wer_14_0.0
+%WER 10.07 [ 2620 / 26028, 274 ins, 497 del, 1849 sub ] exp/chain/tdnn1a/decode_eval1/wer_12_0.0
+%WER 10.01 [ 2606 / 26028, 255 ins, 524 del, 1827 sub ] exp/chain/tdnn1a_online/decode_eval1/wer_13_0.0
+=== evaluation set 2 ===
+%WER 18.49 [ 4930 / 26661, 507 ins, 1001 del, 3422 sub ] exp/tri1/decode_eval2_csj/wer_13_0.0
+%WER 17.79 [ 4744 / 26661, 586 ins, 821 del, 3337 sub ] exp/tri2/decode_eval2_csj/wer_11_0.0
+%WER 14.29 [ 3810 / 26661, 488 ins, 629 del, 2693 sub ] exp/tri3/decode_eval2_csj/wer_14_0.0
+%WER 15.28 [ 4075 / 26661, 474 ins, 726 del, 2875 sub ] exp/tri3/decode_eval2_csj_nosp/wer_13_0.0
+%WER 12.09 [ 3222 / 26661, 418 ins, 559 del, 2245 sub ] exp/tri4/decode_eval2_csj/wer_13_0.5
+%WER 17.93 [ 4781 / 26661, 662 ins, 724 del, 3395 sub ] exp/tri4/decode_eval2_csj.si/wer_14_0.5
+%WER 11.35 [ 3027 / 26661, 338 ins, 546 del, 2143 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it4_csj/wer_13_0.5
+%WER 11.04 [ 2944 / 26661, 332 ins, 540 del, 2072 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it5_csj/wer_13_0.5
+%WER 10.86 [ 2896 / 26661, 302 ins, 531 del, 2063 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it6_csj/wer_11_1.0
+%WER 10.86 [ 2895 / 26661, 313 ins, 535 del, 2047 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it7_csj/wer_11_1.0
+%WER 10.91 [ 2910 / 26661, 294 ins, 545 del, 2071 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it8_csj/wer_12_1.0
+%WER 11.19 [ 2983 / 26661, 380 ins, 489 del, 2114 sub ] exp/tri4_mmi_b0.1/decode_eval2_1.mdl_csj/wer_14_0.0
+%WER 11.11 [ 2963 / 26661, 327 ins, 542 del, 2094 sub ] exp/tri4_mmi_b0.1/decode_eval2_2.mdl_csj/wer_13_0.5
+%WER 10.97 [ 2924 / 26661, 297 ins, 542 del, 2085 sub ] exp/tri4_mmi_b0.1/decode_eval2_3.mdl_csj/wer_11_1.0
+%WER 10.88 [ 2902 / 26661, 299 ins, 525 del, 2078 sub ] exp/tri4_mmi_b0.1/decode_eval2_4.mdl_csj/wer_11_1.0
+%WER 8.38 [ 2234 / 26661, 200 ins, 382 del, 1652 sub ] exp/chain/tdnn1a/decode_eval2/wer_12_0.5
+%WER 8.33 [ 2222 / 26661, 230 ins, 352 del, 1640 sub ] exp/chain/tdnn1a_online/decode_eval2/wer_13_0.0
+=== evaluation set 3 ===
+%WER 24.27 [ 4171 / 17189, 427 ins, 978 del, 2766 sub ] exp/tri1/decode_eval3_csj/wer_13_0.5
+%WER 23.01 [ 3955 / 17189, 521 ins, 785 del, 2649 sub ] exp/tri2/decode_eval3_csj/wer_14_0.0
+%WER 16.70 [ 2871 / 17189, 352 ins, 601 del, 1918 sub ] exp/tri3/decode_eval3_csj/wer_15_0.5
+%WER 17.68 [ 3039 / 17189, 385 ins, 617 del, 2037 sub ] exp/tri3/decode_eval3_csj_nosp/wer_16_0.0
+%WER 14.11 [ 2425 / 17189, 342 ins, 425 del, 1658 sub ] exp/tri4/decode_eval3_csj/wer_16_0.5
+%WER 19.46 [ 3345 / 17189, 523 ins, 521 del, 2301 sub ] exp/tri4/decode_eval3_csj.si/wer_15_0.5
+%WER 13.54 [ 2328 / 17189, 326 ins, 395 del, 1607 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it4_csj/wer_15_0.5
+%WER 12.94 [ 2224 / 17189, 291 ins, 420 del, 1513 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it5_csj/wer_12_1.0
+%WER 12.62 [ 2170 / 17189, 295 ins, 387 del, 1488 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it6_csj/wer_11_1.0
+%WER 12.61 [ 2167 / 17189, 300 ins, 388 del, 1479 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it7_csj/wer_12_1.0
+%WER 12.58 [ 2163 / 17189, 302 ins, 384 del, 1477 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it8_csj/wer_12_1.0
+%WER 13.13 [ 2257 / 17189, 315 ins, 406 del, 1536 sub ] exp/tri4_mmi_b0.1/decode_eval3_1.mdl_csj/wer_15_0.5
+%WER 12.91 [ 2219 / 17189, 320 ins, 390 del, 1509 sub ] exp/tri4_mmi_b0.1/decode_eval3_2.mdl_csj/wer_14_0.5
+%WER 12.80 [ 2201 / 17189, 288 ins, 406 del, 1507 sub ] exp/tri4_mmi_b0.1/decode_eval3_3.mdl_csj/wer_12_1.0
+%WER 12.79 [ 2198 / 17189, 359 ins, 343 del, 1496 sub ] exp/tri4_mmi_b0.1/decode_eval3_4.mdl_csj/wer_12_0.5
+%WER 7.94 [ 1365 / 17189, 133 ins, 251 del, 981 sub ] exp/chain/tdnn1a/decode_eval3/wer_11_1.0
+%WER 7.89 [ 1356 / 17189, 173 ins, 211 del, 972 sub ] exp/chain/tdnn1a_online/decode_eval3/wer_11_0.5
+
+# nnet3 TDNN (former tdnn results)
 %WER 11.15 [ 2901 / 26028, 297 ins, 697 del, 1907 sub ] exp/nnet3/nnet_tdnn/decode_eval1_csj/wer_15_0.0
 %WER 8.47 [ 2259 / 26661, 289 ins, 381 del, 1589 sub ] exp/nnet3/nnet_tdnn/decode_eval2_csj/wer_12_0.0
 %WER 9.21 [ 1583 / 17189, 240 ins, 258 del, 1085 sub ] exp/nnet3/nnet_tdnn/decode_eval3_csj/wer_12_0.0
+
+
+
+##### These experiments use <number_mode> 3 in run.sh "local/csj_data_prep.sh data/csj-data 3"
+#i.e. Using All data
+
+for eval_num in `seq 3`; do echo "=== evaluation set $eval_num ===" ; for x in exp/{tri,dnn}*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; for x in exp/chain*/tdnn*/decode_eval${eval_num}*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done ; done > RESULTS.ricky_exp
+
+=== evaluation set 1 ===
+%WER 22.44 [ 5841 / 26028, 416 ins, 1598 del, 3827 sub ] exp/tri1/decode_eval1_csj/wer_14_0.0
+%WER 21.19 [ 5516 / 26028, 454 ins, 1398 del, 3664 sub ] exp/tri2/decode_eval1_csj/wer_13_0.0
+%WER 17.39 [ 4527 / 26028, 446 ins, 1106 del, 2975 sub ] exp/tri3/decode_eval1_csj/wer_17_0.0
+%WER 18.73 [ 4874 / 26028, 414 ins, 1236 del, 3224 sub ] exp/tri3/decode_eval1_csj_nosp/wer_15_0.0
+%WER 15.08 [ 3926 / 26028, 405 ins, 923 del, 2598 sub ] exp/tri4/decode_eval1_csj/wer_17_0.0
+%WER 18.49 [ 4813 / 26028, 604 ins, 985 del, 3224 sub ] exp/tri4/decode_eval1_csj.si/wer_14_0.0
+%WER 14.47 [ 3766 / 26028, 395 ins, 856 del, 2515 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it4_csj/wer_15_0.0
+%WER 14.01 [ 3646 / 26028, 397 ins, 806 del, 2443 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it5_csj/wer_14_0.0
+%WER 13.89 [ 3615 / 26028, 423 ins, 787 del, 2405 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it6_csj/wer_14_0.0
+%WER 13.61 [ 3543 / 26028, 329 ins, 876 del, 2338 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it7_csj/wer_14_0.5
+%WER 13.60 [ 3539 / 26028, 390 ins, 802 del, 2347 sub ] exp/tri4_fmmi_b0.1/decode_eval1_it8_csj/wer_12_0.5
+%WER 14.29 [ 3720 / 26028, 379 ins, 878 del, 2463 sub ] exp/tri4_mmi_b0.1/decode_eval1_1.mdl_csj/wer_16_0.0
+%WER 14.06 [ 3660 / 26028, 375 ins, 862 del, 2423 sub ] exp/tri4_mmi_b0.1/decode_eval1_2.mdl_csj/wer_16_0.0
+%WER 14.03 [ 3651 / 26028, 421 ins, 800 del, 2430 sub ] exp/tri4_mmi_b0.1/decode_eval1_3.mdl_csj/wer_14_0.0
+%WER 13.89 [ 3616 / 26028, 453 ins, 754 del, 2409 sub ] exp/tri4_mmi_b0.1/decode_eval1_4.mdl_csj/wer_13_0.0
+%WER 10.10 [ 2630 / 26028, 261 ins, 515 del, 1854 sub ] exp/chain/tdnn1a/decode_eval1/wer_12_0.0
+%WER 10.11 [ 2632 / 26028, 243 ins, 546 del, 1843 sub ] exp/chain/tdnn1a_online/decode_eval1/wer_13_0.0
+=== evaluation set 2 ===
+%WER 18.49 [ 4929 / 26661, 506 ins, 1001 del, 3422 sub ] exp/tri1/decode_eval2_csj/wer_13_0.0
+%WER 17.46 [ 4656 / 26661, 522 ins, 894 del, 3240 sub ] exp/tri2/decode_eval2_csj/wer_13_0.0
+%WER 14.45 [ 3853 / 26661, 508 ins, 641 del, 2704 sub ] exp/tri3/decode_eval2_csj/wer_14_0.0
+%WER 15.20 [ 4053 / 26661, 441 ins, 793 del, 2819 sub ] exp/tri3/decode_eval2_csj_nosp/wer_15_0.0
+%WER 12.22 [ 3259 / 26661, 365 ins, 655 del, 2239 sub ] exp/tri4/decode_eval2_csj/wer_17_0.5
+%WER 17.49 [ 4663 / 26661, 610 ins, 742 del, 3311 sub ] exp/tri4/decode_eval2_csj.si/wer_14_0.5
+%WER 11.45 [ 3054 / 26661, 422 ins, 503 del, 2129 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it4_csj/wer_14_0.0
+%WER 10.93 [ 2914 / 26661, 327 ins, 543 del, 2044 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it5_csj/wer_13_0.5
+%WER 10.72 [ 2858 / 26661, 270 ins, 584 del, 2004 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it6_csj/wer_12_1.0
+%WER 10.79 [ 2877 / 26661, 353 ins, 492 del, 2032 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it7_csj/wer_12_0.5
+%WER 10.75 [ 2867 / 26661, 282 ins, 570 del, 2015 sub ] exp/tri4_fmmi_b0.1/decode_eval2_it8_csj/wer_12_1.0
+%WER 11.14 [ 2969 / 26661, 321 ins, 574 del, 2074 sub ] exp/tri4_mmi_b0.1/decode_eval2_1.mdl_csj/wer_14_0.5
+%WER 10.92 [ 2912 / 26661, 338 ins, 523 del, 2051 sub ] exp/tri4_mmi_b0.1/decode_eval2_2.mdl_csj/wer_12_0.5
+%WER 10.83 [ 2888 / 26661, 326 ins, 512 del, 2050 sub ] exp/tri4_mmi_b0.1/decode_eval2_3.mdl_csj/wer_12_0.5
+%WER 10.79 [ 2878 / 26661, 333 ins, 497 del, 2048 sub ] exp/tri4_mmi_b0.1/decode_eval2_4.mdl_csj/wer_12_0.5
+%WER 8.08 [ 2153 / 26661, 214 ins, 340 del, 1599 sub ] exp/chain/tdnn1a/decode_eval2/wer_11_0.5
+%WER 8.06 [ 2149 / 26661, 216 ins, 334 del, 1599 sub ] exp/chain/tdnn1a_online/decode_eval2/wer_11_0.5
+=== evaluation set 3 ===
+%WER 24.27 [ 4171 / 17189, 427 ins, 976 del, 2768 sub ] exp/tri1/decode_eval3_csj/wer_13_0.5
+%WER 22.90 [ 3937 / 17189, 535 ins, 726 del, 2676 sub ] exp/tri2/decode_eval3_csj/wer_13_0.0
+%WER 16.52 [ 2840 / 17189, 325 ins, 608 del, 1907 sub ] exp/tri3/decode_eval3_csj/wer_16_0.5
+%WER 17.42 [ 2994 / 17189, 410 ins, 571 del, 2013 sub ] exp/tri3/decode_eval3_csj_nosp/wer_14_0.0
+%WER 14.20 [ 2441 / 17189, 389 ins, 388 del, 1664 sub ] exp/tri4/decode_eval3_csj/wer_17_0.0
+%WER 19.01 [ 3268 / 17189, 514 ins, 496 del, 2258 sub ] exp/tri4/decode_eval3_csj.si/wer_14_0.5
+%WER 13.59 [ 2336 / 17189, 335 ins, 398 del, 1603 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it4_csj/wer_15_0.5
+%WER 12.99 [ 2233 / 17189, 272 ins, 436 del, 1525 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it5_csj/wer_13_1.0
+%WER 12.80 [ 2201 / 17189, 361 ins, 323 del, 1517 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it6_csj/wer_11_0.5
+%WER 12.75 [ 2192 / 17189, 335 ins, 364 del, 1493 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it7_csj/wer_13_0.5
+%WER 12.79 [ 2198 / 17189, 321 ins, 389 del, 1488 sub ] exp/tri4_fmmi_b0.1/decode_eval3_it8_csj/wer_14_0.5
+%WER 13.24 [ 2275 / 17189, 301 ins, 427 del, 1547 sub ] exp/tri4_mmi_b0.1/decode_eval3_1.mdl_csj/wer_16_0.5
+%WER 12.97 [ 2230 / 17189, 308 ins, 419 del, 1503 sub ] exp/tri4_mmi_b0.1/decode_eval3_2.mdl_csj/wer_15_0.5
+%WER 12.97 [ 2229 / 17189, 354 ins, 358 del, 1517 sub ] exp/tri4_mmi_b0.1/decode_eval3_3.mdl_csj/wer_12_0.5
+%WER 12.97 [ 2230 / 17189, 348 ins, 360 del, 1522 sub ] exp/tri4_mmi_b0.1/decode_eval3_4.mdl_csj/wer_12_0.5
+%WER 7.78 [ 1338 / 17189, 171 ins, 200 del, 967 sub ] exp/chain/tdnn1a/decode_eval3/wer_11_0.5
+%WER 7.84 [ 1347 / 17189, 156 ins, 215 del, 976 sub ] exp/chain/tdnn1a_online/decode_eval3/wer_10_1.0
+
+# nnet1 DNN
+=== evaluation set 1 ===
+%WER 11.64 [ 3030 / 26028, 325 ins, 703 del, 2002 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval1_csj/wer_12_0.0
+%WER 10.76 [ 2800 / 26028, 276 ins, 644 del, 1880 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval1_csj/wer_12_1.0
+%WER 10.66 [ 2774 / 26028, 290 ins, 643 del, 1841 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval1_csj/wer_13_1.0
+=== evaluation set 2 ===
+%WER 8.77 [ 2338 / 26661, 246 ins, 425 del, 1667 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval2_csj/wer_12_0.0
+%WER 8.60 [ 2293 / 26661, 239 ins, 447 del, 1607 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval2_csj/wer_14_1.0
+%WER 8.46 [ 2255 / 26661, 289 ins, 354 del, 1612 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval2_csj/wer_11_1.0
+=== evaluation set 3 ===
+%WER 9.92 [ 1705 / 17189, 254 ins, 264 del, 1187 sub ] exp/dnn5b_pretrain-dbn_dnn/decode_eval3_csj/wer_11_0.0
+%WER 9.41 [ 1618 / 17189, 226 ins, 269 del, 1123 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr/decode_eval3_csj/wer_14_1.0
+%WER 9.12 [ 1568 / 17189, 264 ins, 217 del, 1087 sub ] exp/dnn5b_pretrain-dbn_dnn_smbr_i1lats/decode_eval3_csj/wer_13_0.5
+

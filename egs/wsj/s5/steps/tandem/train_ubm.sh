@@ -76,11 +76,11 @@ normft2=`cat $alidir/normft2 2>/dev/null`
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
-  delta) 
-  	echo "$0: feature type is $feat_type"
-  	;;
-  lda) 
-	  echo "$0: feature type is $feat_type"
+  delta)
+    echo "$0: feature type is $feat_type"
+    ;;
+  lda)
+    echo "$0: feature type is $feat_type"
     cp $alidir/{lda,final}.mat $dir/ || exit 1;
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
@@ -96,7 +96,7 @@ elif [ "$feat_type" == "lda" ]; then
   feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 fi
 
-# set up feature stream 2;  this are usually bottleneck or posterior features, 
+# set up feature stream 2;  this are usually bottleneck or posterior features,
 # which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
 
@@ -156,7 +156,7 @@ while [ $x -lt $num_iters ]; do
     fgmm-global-acc-stats $weights_opt --gselect=ark,s,cs:- $dir/$x.ubm "$feats" \
     $dir/$x.JOB.acc || exit 1;
   lowcount_opt="--remove-low-count-gaussians=false"
-  [ $[$x+1] -eq $num_iters ] && lowcount_opt=   # Only remove low-count Gaussians 
+  [ $[$x+1] -eq $num_iters ] && lowcount_opt=   # Only remove low-count Gaussians
   # on last iter-- we can't do it earlier, or the Gaussian-selection info would
   # be mismatched.
   $cmd $dir/log/update.$x.log \

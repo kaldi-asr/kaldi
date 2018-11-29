@@ -38,13 +38,19 @@ struct HTransducerConfig {
   /// Note this doesn't apply to self-loops; GetHTransducer() does
   /// not include self-loops.
   BaseFloat transition_scale;
+  int32 nonterm_phones_offset;
 
   HTransducerConfig():
-      transition_scale(1.0) { }
+      transition_scale(1.0),
+      nonterm_phones_offset(-1) { }
 
   void Register (OptionsItf *opts) {
     opts->Register("transition-scale", &transition_scale,
                    "Scale of transition probs (relative to LM)");
+    opts->Register("nonterm-phones-offset", &nonterm_phones_offset,
+                   "The integer id of #nonterm_bos in phones.txt, if present. "
+                   "Only needs to be set if you are doing grammar decoding, "
+                   "see doc/grammar.dox.");
   }
 };
 
@@ -58,16 +64,19 @@ struct HmmCacheHash {
 };
 
 /// HmmCacheType is a map from (central-phone, sequence of pdf-ids) to FST, used
-/// as cache in GetHmmAsFst, as an optimization.
+/// as cache in GetHmmAsFsa, as an optimization.
 typedef unordered_map<std::pair<int32, std::vector<int32> >,
                       fst::VectorFst<fst::StdArc>*,
                       HmmCacheHash> HmmCacheType;
 
 
 /// Called by GetHTransducer() and probably will not need to be called directly;
-/// it creates the FST corresponding to the phone.  Does not include self-loops;
-/// you have to call AddSelfLoops() for that.  Result owned by caller.
-/// Returns an acceptor (i.e. ilabels, olabels identical) with transition-ids
+/// it creates and returns the FST corresponding to the phone.  It's actually an
+/// acceptor (ilabels equal to olabels), which is why this is called "Fsa" not
+/// "Fst".  This acceptor does not include self-loops; you have to call
+/// AddSelfLoops() for that.  (We do that at a later graph compilation phase,
+/// for efficiency).  The labels on the FSA correspond to transition-ids.
+///
 /// as the symbols.
 /// For documentation in context, see \ref hmm_graph_get_hmm_as_fst
 ///   @param context_window  A vector representing the phonetic context; see
@@ -81,8 +90,7 @@ typedef unordered_map<std::pair<int32, std::vector<int32> >,
 ///       if it finds that the object it needs is already there, it will
 ///       just return a pointer value from "cache"-- not that this means
 ///       you have to be careful not to delete things twice.
-
-fst::VectorFst<fst::StdArc> *GetHmmAsFst(
+fst::VectorFst<fst::StdArc> *GetHmmAsFsa(
     std::vector<int32> context_window,
     const ContextDependencyInterface &ctx_dep,
     const TransitionModel &trans_model,
@@ -94,7 +102,7 @@ fst::VectorFst<fst::StdArc> *GetHmmAsFst(
 /// currently.  Creates the acceptor FST with self-loops, and with fewer
 /// options.
 fst::VectorFst<fst::StdArc>*
-GetHmmAsFstSimple(std::vector<int32> context_window,
+GetHmmAsFsaSimple(std::vector<int32> context_window,
                   const ContextDependencyInterface &ctx_dep,
                   const TransitionModel &trans_model,
                   BaseFloat prob_scale);
@@ -116,11 +124,11 @@ GetHmmAsFstSimple(std::vector<int32> context_window,
   * input of the transducer
   */
 fst::VectorFst<fst::StdArc>*
-GetHTransducer (const std::vector<std::vector<int32> > &ilabel_info,
-                const ContextDependencyInterface &ctx_dep,
-                const TransitionModel &trans_model,
-                const HTransducerConfig &config,
-                std::vector<int32> *disambig_syms_left);
+GetHTransducer(const std::vector<std::vector<int32> > &ilabel_info,
+               const ContextDependencyInterface &ctx_dep,
+               const TransitionModel &trans_model,
+               const HTransducerConfig &config,
+               std::vector<int32> *disambig_syms_left);
 
 /**
   * GetIlabelMapping produces a mapping that's similar to HTK's logical-to-physical
@@ -138,10 +146,10 @@ GetHTransducer (const std::vector<std::vector<int32> > &ilabel_info,
   *       create a vector ilabel_info_new such that
   *       ilabel_info_new[i] == ilabel_info_old[old2new_map[i]]
   */
-void GetIlabelMapping (const std::vector<std::vector<int32> > &ilabel_info_old,
-                       const ContextDependencyInterface &ctx_dep,
-                       const TransitionModel &trans_model,
-                       std::vector<int32> *old2new_map);
+void GetIlabelMapping(const std::vector<std::vector<int32> > &ilabel_info_old,
+                      const ContextDependencyInterface &ctx_dep,
+                      const TransitionModel &trans_model,
+                      std::vector<int32> *old2new_map);
 
 
 
@@ -152,18 +160,33 @@ void GetIlabelMapping (const std::vector<std::vector<int32> > &ilabel_info_old,
   * was created in such a way that it was stochastic).  Note that the
   * disambig_syms will be empty in some recipes (e.g.  if you already removed
   * the disambiguation symbols).
+  * This function will treat numbers over 10000000 (kNontermBigNumber) the
+  * same as disambiguation symbols, assuming they are special symbols for
+  * grammar decoding.
+  *
   * @param trans_model [in] Transition model
   * @param disambig_syms [in] Sorted, uniq list of disambiguation symbols, required
   *       if the graph contains disambiguation symbols but only needed for sanity checks.
   * @param self_loop_scale [in] Transition-probability scale for self-loops; c.f.
   *                    \ref hmm_scale
   * @param reorder [in] If true, reorders the transitions (see \ref hmm_reorder).
+  *                     You'll normally want this to be true.
+  * @param check_no_self_loops [in]  If true, it will check that there are no
+  *                      self-loops in the original graph; you'll normally want
+  *                      this to be true.  If false, it will allow them, and
+  *                      will add self-loops after the original self-loop
+  *                      transitions, assuming reorder==true... this happens to
+  *                      be what we want when converting normal to unconstrained
+  *                      chain examples.  WARNING: this was added in 2018;
+  *                      if you get a compilation error, add this as 'true',
+  *                      which emulates the behavior of older code.
   * @param  fst [in, out] The FST to be modified.
   */
 void AddSelfLoops(const TransitionModel &trans_model,
                   const std::vector<int32> &disambig_syms,  // used as a check only.
                   BaseFloat self_loop_scale,
-                  bool reorder,  // true->dan-style, false->lukas-style.
+                  bool reorder,
+                  bool check_no_self_loops,
                   fst::VectorFst<fst::StdArc> *fst);
 
 /**

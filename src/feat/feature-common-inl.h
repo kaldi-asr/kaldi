@@ -49,26 +49,11 @@ void OfflineFeatureTpl<F>::ComputeFeatures(
                          new_sample_freq, &downsampled_wave);
       Compute(downsampled_wave, vtln_warp, output);
     } else
-      KALDI_ERR << "The waveform is allowed to get downsampled."
-                << "New sample Frequency " << new_sample_freq
+      KALDI_ERR << "New sample Frequency " << new_sample_freq
                 << " is larger than waveform original sampling frequency "
                 << sample_freq;
 
   }
-}
-
-template <class F>
-void OfflineFeatureTpl<F>::ComputeFeatures(
-    const VectorBase<BaseFloat> &wave,
-    BaseFloat sample_freq,
-    BaseFloat vtln_warp,
-    Matrix<BaseFloat> *output) const {
-  OfflineFeatureTpl<F> temp(*this);
-  // This const version of ComputeFeatures() is a wrapper that
-  // calls the non-const ComputeFeatures() on a temporary object
-  // that is a copy of *this.  It is not as efficient because of the
-  // overhead of copying *this.
-  temp.ComputeFeatures(wave, vtln_warp, output);
 }
 
 template <class F>

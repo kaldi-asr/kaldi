@@ -11,7 +11,14 @@ errcho() { echo "$@" 1>&2; }
 
 errcho "****() Installing IRSTLM"
 
-if [ ! -x ./irstlm ] ; then
+if [ ! -d ./extras ]; then
+  errcho "****** You are trying to install IRSTLM from the wrong directory.  You should"
+  errcho "****** go to tools/ and type extras/install_irstlm.sh."
+  exit 1
+fi
+
+
+if [ ! -d ./irstlm ] ; then
   svn=`which git`
   if [ $? != 0 ]  ; then
     errcho "****() You need to have git installed"
@@ -28,6 +35,7 @@ else
   echo "****() Assuming IRSTLM is already installed. Please delete"
   echo "****() the directory ./irstlm if you need us to download"
   echo "****() the sources again."
+  exit 0
 fi
 
 (

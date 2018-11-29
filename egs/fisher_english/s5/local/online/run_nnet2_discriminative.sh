@@ -2,14 +2,14 @@
 
 # This is to be run after run_nnet2.sh
 
-. cmd.sh
+. ./cmd.sh
 
 use_preconditioning=true
 
 stage=1
 train_stage=-10
 use_gpu=true
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

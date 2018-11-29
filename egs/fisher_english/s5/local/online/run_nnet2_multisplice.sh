@@ -1,13 +1,13 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=1
 train_stage=-10
 use_gpu=true
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

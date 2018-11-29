@@ -70,7 +70,7 @@ for x in train dev test; do
   find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.WAV' \
     | grep -f $tmpdir/${x}_spk > ${x}_sph.flist
 
-  sed -e 's:.*/\(.*\)/\(.*\).WAV$:\1_\2:i' ${x}_sph.flist \
+  sed -e 's:.*/\(.*\)/\(.*\).WAV$:\1_\2:' ${x}_sph.flist \
     > $tmpdir/${x}_sph.uttids
   paste $tmpdir/${x}_sph.uttids ${x}_sph.flist \
     | sort -k1,1 > ${x}_sph.scp
@@ -82,11 +82,11 @@ for x in train dev test; do
   # ID followed by the transcript.
   find $*/{$train_dir,$test_dir} -not \( -iname 'SA*' \) -iname '*.PHN' \
     | grep -f $tmpdir/${x}_spk > $tmpdir/${x}_phn.flist
-  sed -e 's:.*/\(.*\)/\(.*\).PHN$:\1_\2:i' $tmpdir/${x}_phn.flist \
+  sed -e 's:.*/\(.*\)/\(.*\).PHN$:\1_\2:' $tmpdir/${x}_phn.flist \
     > $tmpdir/${x}_phn.uttids
   while read line; do
     [ -f $line ] || error_exit "Cannot find transcription file '$line'";
-    cut -f3 -d' ' "$line" | tr '\n' ' ' | sed -e 's: *$:\n:'
+    cut -f3 -d' ' "$line" | tr '\n' ' ' | perl -ape 's: *$:\n:;'
   done < $tmpdir/${x}_phn.flist > $tmpdir/${x}_phn.trans
   paste $tmpdir/${x}_phn.uttids $tmpdir/${x}_phn.trans \
     | sort -k1,1 > ${x}.trans
@@ -113,7 +113,7 @@ for x in train dev test; do
      print ";; LABEL \"F\" \"Female\" \"Female speakers\"";
      print ";; LABEL \"M\" \"Male\" \"Male speakers\"";
    }
-   { wav=$1; spk=gensub(/_.*/,"",1,wav); $1=""; ref=$0;
+   { wav=$1; spk=wav; sub(/_.*/,"",spk); $1=""; ref=$0;
      gender=(substr(spk,0,1) == "f" ? "F" : "M");
      printf("%s 1 %s 0.0 %f <O,%s> %s\n", wav, spk, durH[wav], gender, ref);
    }

@@ -5,7 +5,7 @@
 # You'll notice that we splice over successively larger windows as we go deeper
 # into the network.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=7
@@ -14,7 +14,7 @@ use_gpu=true
 dir=exp/nnet2_online/nnet_ms_a
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

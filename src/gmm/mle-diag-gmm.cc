@@ -343,7 +343,7 @@ void MleDiagGmmUpdate(const MleDiagGmmOptions &config,
         if (config.variance_floor_vector.Dim() != 0) {
           floored = var.ApplyFloor(config.variance_floor_vector);
         } else {
-          floored = var.ApplyFloor(config.min_variance);
+          var.ApplyFloor(config.min_variance, &floored);
         }
         if (floored != 0) {
           elements_floored += floored;

@@ -4,86 +4,27 @@
 #It is not assumed that you will run it as a script, even though you can try :)
 
 ./run-1-main.sh
-./run-2a-nnet-ensemble-gpu.sh
-./run-2b-bnf.sh --semisupervised false --ali-dir exp/tri5_ali/
-./run-3b-bnf-sgmm.sh --semisupervised false
-./run-3b-bnf-nnet.sh --semisupervised false
 
 ##Training of the automatic segmenter
 ./run-2-segmentation.sh
 
 ##Decoding the automatic segmentation of dev2h subset. dev2h.pem would mean decoding
-##the dev2h subset using the officialy provided segmentation. 
+##the dev2h subset using the officialy provided segmentation.
 ##Also possible to run dev10h.pem, dev10h.uem, dev10h.seg and so on...
-./run-4-anydecode.sh --dir dev2h.seg
-./run-4b-anydecode-bnf.sh --dir dev2h.seg --semisupervised false --extra-kws true
-
-##Decoding of the unsupervivsed data
-./run-4-anydecode.sh --dir unsup.seg --skip-kws true --skip-stt true
-./run-4b-anydecode-bnf.sh --dir unsup.seg --skip-kws true --skip-stt true --semisupervised false  
-
-##Get the one-best path and the weights for frame-weighting of posteriors
-./local/best_path_weights.sh --cmd "$train_cmd" data/unsup.seg/  data/lang \
-  exp/tri6b_nnet/decode_unsup.seg/ \
-  exp/sgmm5_mmi_b0.1/decode_fmllr_unsup.seg_it1/ \
-  exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_unsup.seg_it1 \
-  exp_bnf/tri7_nnet/decode_unsup.seg \
-  exp_bnf_semisup/best_path_weights/unsup.seg
-
-##Semisupervised bottleneck system training (initial setup)
-./run-2b-bnf.sh --semisupervised true --ali-model exp/tri6b_nnet/ \
-    --weights-dir exp/best_path_weights/unsup.seg/decode_unsup.seg/
-
-##Semisup training, SGMM+bMMI on the top of the BN features
-./run-3b-bnf-sgmm.sh --semisupervised true
-##Semisup training, pNorm DNN  on the top of the BN features
-./run-3b-bnf-nnet.sh --semisupervised true
-
-##And decoding again. We decode the unsup.seg again to do the second run of the
-##semisupervised training
-./run-4b-anydecode-bnf.sh --dir dev2h.seg --semisupervised true --extra-kws true
-./run-4b-anydecode-bnf.sh --dir unsup.seg --skip-kws true --skip-stt true --semisupervised true
-
-##One-best output and frame weights for the second run of the semisup training
-./local/best_path_weights.sh --cmd "$train_cmd" data/unsup.seg/  data/lang \
-  exp_bnf_semisup/sgmm7_mmi_b0.1/decode_fmllr_unsup.seg_it1 \
-  exp_bnf_semisup/tri7_nnet/decode_unsup.seg \
-  exp/tri6b_nnet/decode_unsup.seg/ \
-  exp/sgmm5_mmi_b0.1/decode_fmllr_unsup.seg_it1/ \
-  exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_unsup.seg_it1 \
-  exp_bnf/tri7_nnet/decode_unsup.seg \
-  exp_bnf_semisup2/best_path_weights/unsup.seg
-
-##Second run of the semisup training
-./run-2b-bnf.sh --unsup-string "_semisup2" --semisupervised true --ali-model exp/tri6b_nnet/ \
-    --weights-dir exp_bnf_semisup2/best_path_weights/unsup.seg/decode_fmllr_unsup.seg_it1/
-
-./run-3b-bnf-sgmm.sh --semisupervised true --unsup_string "_semisup2"
-./run-3b-bnf-nnet.sh --semisupervised true --unsup_string "_semisup2"
-
-##Decode again to see if we got an improvement
-./run-4b-anydecode-bnf.sh --dir dev2h.seg --semisupervised true --unsup_string "_semisup2" --extra-kws true
-
+./run-4-anydecode.sh --dir dev10h.pem
 
 ##Decoding of the dev10h (all systems, all stages)
-./run-4-anydecode.sh --dir dev10h.seg --extra-kws true 
-./run-4b-anydecode-bnf.sh --dir dev10h.seg --semisupervised false --extra-kws true
-./run-4b-anydecode-bnf.sh --dir dev10h.seg --semisupervised true --extra-kws true
-./run-4b-anydecode-bnf.sh --dir dev10h.seg --semisupervised true --extra-kws true --unsup_string "_semisup2"
+./run-4-anydecode.sh --dir dev10h.seg --extra-kws true
 
 ##Decoding of the shadow.seg (combination of dev10h.seg and eval.seg)
 ##We did this for eval run as a kind of "sanity check" -- we check the shadow.seg/dev10h.seg subset
 ##performance vs the standalone dev10h.seg performance to catch (hopefully) possible problems
-./run-4-anydecode.sh --dir shadow.seg --extra-kws true 
-./run-4b-anydecode-bnf.sh --dir shadow.seg --semisupervised false --extra-kws true
-./run-4b-anydecode-bnf.sh --dir shadow.seg --semisupervised true --extra-kws true
-./run-4b-anydecode-bnf.sh --dir shadow.seg --semisupervised true --extra-kws true --unsup_string "_semisup2"
-
+./run-4-anydecode.sh --dir shadow.seg --extra-kws true
 
 
 #This prepares for separation/split of the shadow dataset into the devset, which we can evaluate
 # and the eval set, which we will submit
-#Note: we do this only once, for ./data, as we do not really need anything else 
+#Note: we do this only once, for ./data, as we do not really need anything else
 #just the file lists...
 #NB: there was a oversight in one of the scripts that was causing thectm files contain
 #BN: incorrect channel info (A instead of 1)
@@ -106,7 +47,7 @@
 #The following commands will actually do two things
 #a) looking at the performance of the dataset --master <dataset> they will figure out the correct LMW
 #b) symlink the appropriate evaluation result file under the correct EXPID into the ./release directory
-#Warning: it's a lot of files so it's easy to get confused! 
+#Warning: it's a lot of files so it's easy to get confused!
 ./local/nist_eval/make_release.sh --dryrun false --dir exp/sgmm5_mmi_b0.1 --data data/shadow.seg --master dev10h.seg lang.conf ./release
 ./local/nist_eval/make_release.sh --dryrun false --dir exp/tri6b_nnet --data data/shadow.seg --master dev10h.seg lang.conf ./release
 ./local/nist_eval/make_release.sh --dryrun false --dir exp_bnf/sgmm7_mmi_b0.1 --data data/shadow.seg --master dev10h.seg lang.conf ./release

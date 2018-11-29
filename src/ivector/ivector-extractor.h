@@ -323,9 +323,16 @@ class OnlineIvectorEstimationStats {
   OnlineIvectorEstimationStats(const OnlineIvectorEstimationStats &other);
 
 
+  // Accumulate stats for one frame.
   void AccStats(const IvectorExtractor &extractor,
                 const VectorBase<BaseFloat> &feature,
                 const std::vector<std::pair<int32, BaseFloat> > &gauss_post);
+
+  // Accumulate stats for a sequence (or collection) of frames.
+  void AccStats(const IvectorExtractor &extractor,
+                const MatrixBase<BaseFloat> &features,
+                const std::vector<std::vector<std::pair<int32, BaseFloat> > > &gauss_post);
+
 
   int32 IvectorDim() const { return linear_term_.Dim(); }
 

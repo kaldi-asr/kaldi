@@ -105,7 +105,7 @@ if ! $skip_kws ; then
 
   for extraid in `cat $data_dir/extra_kws_tasks | grep -v oov` ; do
     if [ ! -f $decode_dir/.done.kwset.$extraid ] ; then
-      local/search/search.sh --cmd "$decode_cmd"  --extraid ${extraid} \
+      local/search/search.sh --cmd "$cmd"  --extraid ${extraid} \
         --max-states ${max_states} --min-lmwt ${min_lmwt} --max-lmwt ${max_lmwt} \
         --indices-dir $decode_dir/kws_indices --skip-scoring $skip_scoring \
         $lang_dir $data_dir $decode_dir

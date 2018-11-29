@@ -3,7 +3,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #                 Korbinian Riedhammer
 
-# This script does decoding with an SGMM system, with speaker vectors. 
+# This script does decoding with an SGMM system, with speaker vectors.
 # If the SGMM system was
 # built on top of fMLLR transforms from a conventional system, you should
 # provide the --transform-dir option.
@@ -18,14 +18,14 @@ beam=13.0
 gselect=15  # Number of Gaussian-selection indices for SGMMs.  [Note:
             # the first_pass_gselect variable is used for the 1st pass of
             # decoding and can be tighter.
-first_pass_gselect=3 # Use a smaller number of Gaussian-selection indices in 
+first_pass_gselect=3 # Use a smaller number of Gaussian-selection indices in
             # the 1st pass of decoding (lattice generation).
 max_active=7000
 
-#WARNING: This option is renamed lattice_beam (it was renamed to follow the naming 
+#WARNING: This option is renamed lattice_beam (it was renamed to follow the naming
 #         in the other scripts
 lattice_beam=6.0 # Beam we use in lattice generation.
-vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for 
+vecs_beam=4.0 # Beam we use to prune lattices while getting posteriors for
     # speaker-vector computation.  Can be quite tight (actually we could
     # probably just do best-path.
 use_fmllr=false
@@ -84,12 +84,12 @@ normft2=`cat $srcdir/normft2 2>/dev/null`
 if [ -f $srcdir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 
 case $feat_type in
-  delta) 
-  	echo "$0: feature type is $feat_type"
-  	;;
-  lda) 
-  	echo "$0: feature type is $feat_type"
-    cp $srcdir/{lda,final}.mat $dir/   
+  delta)
+    echo "$0: feature type is $feat_type"
+    ;;
+  lda)
+    echo "$0: feature type is $feat_type"
+    cp $srcdir/{lda,final}.mat $dir/
     ;;
   *) echo "$0: invalid feature type $feat_type" && exit 1;
 esac
@@ -104,7 +104,7 @@ elif [ "$feat_type" == "lda" ]; then
   feats1="$feats1 splice-feats $splice_opts ark:- ark:- | transform-feats $dir/lda.mat ark:- ark:- |"
 fi
 
-# set up feature stream 2;  this are usually bottleneck or posterior features, 
+# set up feature stream 2;  this are usually bottleneck or posterior features,
 # which may be normalized if desired
 feats2="scp:$sdata2/JOB/feats.scp"
 
@@ -159,7 +159,7 @@ fi
 # Estimate speaker vectors (1st pass).  Prune before determinizing
 # because determinization can take a while on un-pruned lattices.
 # Note: the sgmm2-post-to-gpost stage is necessary because we have
-# a separate alignment-model and final model, otherwise we'd skip it 
+# a separate alignment-model and final model, otherwise we'd skip it
 # and use sgmm2-est-spkvecs.
 if [ $stage -le 3 ]; then
   $cmd JOB=1:$nj $dir/log/vecs_pass1.JOB.log \
@@ -210,7 +210,7 @@ if $use_fmllr; then
        --fmllr-iters=$fmllr_iters --fmllr-min-count=$fmllr_min_count \
       $srcdir/final.fmllr_mdl "$feats" ark,s,cs:- "ark:$dir/trans.JOB" || exit 1;
   fi
-  feats="$feats transform-feats --utt2spk=ark:$sdata1/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"  
+  feats="$feats transform-feats --utt2spk=ark:$sdata1/JOB/utt2spk ark,s,cs:$dir/trans.JOB ark:- ark:- |"
 fi
 
 # Now rescore the state-level lattices with the adapted features and the

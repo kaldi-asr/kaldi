@@ -172,6 +172,29 @@ void UnitTestSparseMatrixAddToMat() {
 }
 
 template <typename Real>
+void UnitTestSparseMatrixConstructor() {
+  int32 num_rows = RandInt(1, 10),
+      num_cols = RandInt(0, 10);
+  if (num_cols == 0)
+    num_rows = 0;
+
+  Matrix<Real> mat(num_rows, num_cols);
+
+  for (int32 r = 0; r < num_rows; r++) {
+    for (int32 c = 0; c < num_cols; c++) {
+      if (RandInt(0, 5) == 0)
+        mat(r, c) = RandGauss();
+    }
+  }
+  SparseMatrix<Real> smat(mat);
+
+  Matrix<Real> mat2(num_rows, num_cols);
+  mat2.SetRandn();
+  smat.CopyToMat(&mat2);
+  AssertEqual(mat, mat2);
+}
+
+template <typename Real>
 void UnitTestSparseMatrixTraceMatSmat() {
   for (int32 i = 0; i < 10; i++) {
     MatrixIndexT row = 10 + Rand() % 40;
@@ -203,6 +226,91 @@ void UnitTestSparseMatrixTraceMatSmat() {
 }
 
 template <typename Real>
+void UnitTestMatrixAddMatSmat() {
+
+  for (int32 t = 0; t < 4; t++) {
+    MatrixIndexT m = RandInt(10, 20), n = RandInt(10, 20), o = RandInt(10, 20);
+    MatrixTransposeType Btrans = (RandInt(0, 1) == 0 ? kTrans : kNoTrans);
+
+    // we are effectively comparing trace(A B C) computed as
+    // trace((A B) C) vs. trace ((C A) B)
+
+    BaseFloat alpha = 0.333, beta = 1.764;
+
+
+    Matrix<Real> A(m, n);
+    A.SetRandn();
+    SparseMatrix<Real> B(Btrans  == kNoTrans ? n : o,
+                         Btrans == kNoTrans ? o : n);
+    B.SetRandn(0.5);
+
+    Matrix<Real> AB(m, o);
+    AB.SetRandn();  // this random extra part is used in testing the 'beta'.
+
+    Matrix<Real> C(o, m);
+    C.SetRandn();
+
+    Matrix<Real> CA(o, n);
+    CA.AddMatMat(1.0, C, kNoTrans, A, kNoTrans, 0.0);
+    Real trace_abc_alpha = TraceMatSmat(CA, B, Btrans);
+
+    Real trace_abc_beta = TraceMatMat(AB, C, kNoTrans);
+
+    AB.AddMatSmat(alpha, A, B, Btrans, beta);
+
+    // next line is in case I made certain mistakes like setting matrix to
+    // random.
+    KALDI_ASSERT(trace_abc_alpha != 0.0 && trace_abc_beta != 0.0);
+    Real result1 = TraceMatMat(AB, C, kNoTrans),
+        result2 = alpha * trace_abc_alpha  + beta * trace_abc_beta;
+    AssertEqual(result1, result2, 0.01);
+  }
+}
+
+
+template <typename Real>
+void UnitTestMatrixAddSmatMat() {
+
+  for (int32 t = 0; t < 4; t++) {
+    MatrixIndexT m = RandInt(10, 20), n = RandInt(10, 20), o = RandInt(10, 20);
+    MatrixTransposeType Btrans = (RandInt(0, 1) == 0 ? kTrans : kNoTrans);
+
+    // we are effectively comparing trace(A B C) computed as
+    // trace((A B) C) vs. trace ((C A) B)
+
+    BaseFloat alpha = 0.333, beta = 1.764;
+
+    Matrix<Real> A(m, n);
+    A.SetRandn();
+    SparseMatrix<Real> B(Btrans  == kNoTrans ? n : o,
+                         Btrans == kNoTrans ? o : n);
+    B.SetRandn(0.5);
+
+    Matrix<Real> C(o, m);
+    C.SetRandn();
+
+    Matrix<Real> BC(n, m);
+    BC.SetRandn();  // this random extra part is used in testing the 'beta'.
+
+    Matrix<Real> CA(o, n);
+    CA.AddMatMat(1.0, C, kNoTrans, A, kNoTrans, 0.0);
+    Real trace_abc_alpha = TraceMatSmat(CA, B, Btrans);
+
+    Real trace_abc_beta = TraceMatMat(A, BC, kNoTrans);
+
+    BC.AddSmatMat(alpha, B, Btrans, C, beta);
+
+    // next line is in case I made certain mistakes like setting matrix to
+    // random.
+    KALDI_ASSERT(trace_abc_alpha != 0.0 && trace_abc_beta != 0.0);
+    Real result1 = TraceMatMat(A, BC, kNoTrans),
+        result2 = alpha * trace_abc_alpha  + beta * trace_abc_beta;
+    AssertEqual(result1, result2, 0.01);
+  }
+}
+
+
+template <typename Real>
 void SparseMatrixUnitTest() {
   // SparseVector
   UnitTestSparseVectorSum<Real>();
@@ -215,6 +323,13 @@ void SparseMatrixUnitTest() {
   UnitTestSparseMatrixFrobeniusNorm<Real>();
   UnitTestSparseMatrixAddToMat<Real>();
   UnitTestSparseMatrixTraceMatSmat<Real>();
+  for (int32 i = 0; i < 30; i++)
+    UnitTestSparseMatrixConstructor<Real>();
+
+
+  // Matrix functions involving sparse matrices.
+  UnitTestMatrixAddMatSmat<Real>();
+  UnitTestMatrixAddSmatMat<Real>();
 }
 
 }  // namespace kaldi

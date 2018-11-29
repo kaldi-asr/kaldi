@@ -1,5 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2016  Tom Ko
+#           2018  David Snyder
 # Apache 2.0
 # script to generate reverberated data
 
@@ -20,7 +21,7 @@ def GetArgs():
                                                  "--random-seed 1 data/train data/train_rvb",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument("--rir-set-parameters", type=str, action='append', required = True, dest = "rir_set_para_array", 
+    parser.add_argument("--rir-set-parameters", type=str, action='append', required = True, dest = "rir_set_para_array",
                         help="Specifies the parameters of an RIR set. "
                         "Supports the specification of  mixture_weight and rir_list_file_name. The mixture weight is optional. "
                         "The default mixture weight is the probability mass remaining after adding the mixture weights "
@@ -104,7 +105,7 @@ def CheckArgs(args):
 
     if args.isotropic_noise_addition_probability < 0 or args.isotropic_noise_addition_probability > 1:
         raise Exception("--isotropic-noise-addition-probability must be between 0 and 1")
-    
+
     if args.rir_smoothing_weight < 0 or args.rir_smoothing_weight > 1:
         raise Exception("--rir-smoothing-weight must be between 0 and 1")
 
@@ -113,7 +114,7 @@ def CheckArgs(args):
 
     if args.max_noises_per_minute < 0:
         raise Exception("--max-noises-per-minute cannot be negative")
-    
+
     if args.source_sampling_rate is not None and args.source_sampling_rate <= 0:
         raise Exception("--source-sampling-rate cannot be non-positive")
 
@@ -133,7 +134,7 @@ class list_cyclic_iterator:
 
 
 # This functions picks an item from the collection according to the associated probability distribution.
-# The probability estimate of each item in the collection is stored in the "probability" field of 
+# The probability estimate of each item in the collection is stored in the "probability" field of
 # the particular item. x : a collection (list or dictionary) where the values contain a field called probability
 def PickItemWithProbability(x):
    if isinstance(x, dict):
@@ -155,7 +156,6 @@ def PickItemWithProbability(x):
 def ParseFileToDict(file, assert2fields = False, value_processor = None):
     if value_processor is None:
         value_processor = lambda x: x[0]
-
     dict = {}
     for line in open(file, 'r'):
         parts = line.split()
@@ -168,14 +168,13 @@ def ParseFileToDict(file, assert2fields = False, value_processor = None):
 # This function creates a file and write the content of a dictionary into it
 def WriteDictToFile(dict, file_name):
     file = open(file_name, 'w')
-    keys = dict.keys()
-    keys.sort()
+    keys = sorted(dict.keys())
     for key in keys:
         value = dict[key]
         if type(value) in [list, tuple] :
             if type(value) is tuple:
                 value = list(value)
-            value.sort()
+            value = sorted(value)
             value = ' '.join(str(value))
         file.write('{0} {1}\n'.format(key, value))
     file.close()
@@ -186,8 +185,7 @@ def CreateCorruptedUtt2uniq(input_dir, output_dir, num_replicas, include_origina
     corrupted_utt2uniq = {}
     # Parse the utt2spk to get the utterance id
     utt2spk = ParseFileToDict(input_dir + "/utt2spk", value_processor = lambda x: " ".join(x))
-    keys = utt2spk.keys()
-    keys.sort()
+    keys = sorted(utt2spk.keys())
     if include_original:
         start_index = 0
     else:
@@ -236,7 +234,7 @@ def AddPointSourceNoise(noise_addition_descriptor,  # descriptor to store the in
 
 
 # This function randomly decides whether to reverberate, and sample a RIR if it does
-# It also decides whether to add the appropriate noises 
+# It also decides whether to add the appropriate noises
 # This function return the string of options to the binary wav-reverberate
 def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                               pointsource_noise_list, # the point source noise list
@@ -291,8 +289,8 @@ def GenerateReverberationOpts(room_dict,  # the room dictionary, please refer to
     assert len(noise_addition_descriptor['noise_io']) == len(noise_addition_descriptor['snrs'])
     if len(noise_addition_descriptor['noise_io']) > 0:
         reverberate_opts += "--additive-signals='{0}' ".format(','.join(noise_addition_descriptor['noise_io']))
-        reverberate_opts += "--start-times='{0}' ".format(','.join(map(lambda x:str(x), noise_addition_descriptor['start_times'])))
-        reverberate_opts += "--snrs='{0}' ".format(','.join(map(lambda x:str(x), noise_addition_descriptor['snrs'])))
+        reverberate_opts += "--start-times='{0}' ".format(','.join([str(x) for x in noise_addition_descriptor['start_times']]))
+        reverberate_opts += "--snrs='{0}' ".format(','.join([str(x) for x in noise_addition_descriptor['snrs']]))
 
     return reverberate_opts
 
@@ -306,15 +304,15 @@ def GetNewId(id, prefix=None, copy=0):
         new_id = id
 
     return new_id
-    
+
 
 # This is the main function to generate pipeline command for the corruption
 # The generic command of wav-reverberate will be like:
-# wav-reverberate --duration=t --impulse-response=rir.wav 
+# wav-reverberate --duration=t --impulse-response=rir.wav
 # --additive-signals='noise1.wav,noise2.wav' --snrs='snr1,snr2' --start-times='s1,s2' input.wav output.wav
 def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kaldi-IO strings of the speech recordings
                                durations, # a dictionary whose values are the duration (in sec) of the speech recordings
-                               output_dir, # output directory to write the corrupted wav.scp 
+                               output_dir, # output directory to write the corrupted wav.scp
                                room_dict,  # the room dictionary, please refer to MakeRoomDict() for the format
                                pointsource_noise_list, # the point source noise list
                                iso_noise_dict, # the isotropic noise dictionary
@@ -332,8 +330,7 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
     foreground_snrs = list_cyclic_iterator(foreground_snr_array)
     background_snrs = list_cyclic_iterator(background_snr_array)
     corrupted_wav_scp = {}
-    keys = wav_scp.keys()
-    keys.sort()
+    keys = sorted(wav_scp.keys())
     if include_original:
         start_index = 0
     else:
@@ -358,11 +355,11 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
                                                          pointsource_noise_addition_probability, # Probability of adding point-source noises
                                                          speech_dur,  # duration of the recording
                                                          max_noises_recording  # Maximum number of point-source noises that can be added
-                                                         )       
+                                                         )
 
             # prefix using index 0 is reserved for original data e.g. rvb0_swb0035 corresponds to the swb0035 recording in original data
             if reverberate_opts == "" or i == 0:
-                wav_corrupted_pipe = "{0}".format(wav_original_pipe) 
+                wav_corrupted_pipe = "{0}".format(wav_original_pipe)
             else:
                 wav_corrupted_pipe = "{0} wav-reverberate --shift-output={1} {2} - - |".format(wav_original_pipe, shift_output, reverberate_opts)
 
@@ -374,13 +371,13 @@ def GenerateReverberatedWavScp(wav_scp,  # a dictionary whose values are the Kal
 
 # This function replicate the entries in files like segments, utt2spk, text
 def AddPrefixToFields(input_file, output_file, num_replicas, include_original, prefix, field = [0]):
-    list = map(lambda x: x.strip(), open(input_file))
+    list = [x.strip() for x in open(input_file)]
     f = open(output_file, "w")
     if include_original:
         start_index = 0
     else:
         start_index = 1
-    
+
     for i in range(start_index, num_replicas+1):
         for line in list:
             if len(line) > 0 and line[0] != ';':
@@ -410,24 +407,18 @@ def CreateReverberatedCopy(input_dir,
                            pointsource_noise_addition_probability, # Probability of adding point-source noises
                            max_noises_per_minute  # maximum number of point-source noises that can be added to a recording according to its duration
                            ):
-    
+
     wav_scp = ParseFileToDict(input_dir + "/wav.scp", value_processor = lambda x: " ".join(x))
     if not os.path.isfile(input_dir + "/reco2dur"):
         print("Getting the duration of the recordings...");
-        read_entire_file="false"
-        for value in wav_scp.values():
-            # we will add more checks for sox commands which modify the header as we come across these cases in our data
-            if "sox" in value and "speed" in value:
-                read_entire_file="true"
-                break
-        data_lib.RunKaldiCommand("wav-to-duration --read-entire-file={1} scp:{0}/wav.scp ark,t:{0}/reco2dur".format(input_dir, read_entire_file))
+        data_lib.RunKaldiCommand("utils/data/get_reco2dur.sh {}".format(input_dir))
     durations = ParseFileToDict(input_dir + "/reco2dur", value_processor = lambda x: float(x[0]))
-    foreground_snr_array = map(lambda x: float(x), foreground_snr_string.split(':'))
-    background_snr_array = map(lambda x: float(x), background_snr_string.split(':'))
+    foreground_snr_array = [float(x) for x in foreground_snr_string.split(':')]
+    background_snr_array = [float(x) for x in background_snr_string.split(':')]
 
     GenerateReverberatedWavScp(wav_scp, durations, output_dir, room_dict, pointsource_noise_list, iso_noise_dict,
-               foreground_snr_array, background_snr_array, num_replicas, include_original, prefix, 
-               speech_rvb_probability, shift_output, isotropic_noise_addition_probability, 
+               foreground_snr_array, background_snr_array, num_replicas, include_original, prefix,
+               speech_rvb_probability, shift_output, isotropic_noise_addition_probability,
                pointsource_noise_addition_probability, max_noises_per_minute)
 
     AddPrefixToFields(input_dir + "/utt2spk", output_dir + "/utt2spk", num_replicas, include_original, prefix, field = [0,1])
@@ -447,16 +438,16 @@ def CreateReverberatedCopy(input_dir,
     if os.path.isfile(input_dir + "/reco2file_and_channel"):
         AddPrefixToFields(input_dir + "/reco2file_and_channel", output_dir + "/reco2file_and_channel", num_replicas, include_original, prefix, field = [0,1])
 
-    data_lib.RunKaldiCommand("utils/validate_data_dir.sh --no-feats {output_dir}"
+    data_lib.RunKaldiCommand("utils/validate_data_dir.sh --no-feats --no-text {output_dir}"
                     .format(output_dir = output_dir))
 
 
 # This function smooths the probability distribution in the list
-def SmoothProbabilityDistribution(list, smoothing_weight=0.0, target_sum=1.0):
-    if len(list) > 0:
+def SmoothProbabilityDistribution(set_list, smoothing_weight=0.0, target_sum=1.0):
+    if len(list(set_list)) > 0:
       num_unspecified = 0
       accumulated_prob = 0
-      for item in list:
+      for item in set_list:
           if item.probability is None:
               num_unspecified += 1
           else:
@@ -470,7 +461,7 @@ def SmoothProbabilityDistribution(list, smoothing_weight=0.0, target_sum=1.0):
           warnings.warn("The sum of probabilities specified by user is larger than or equal to 1. "
                         "The items without probabilities specified will be given zero to their probabilities.")
 
-      for item in list:
+      for item in set_list:
           if item.probability is None:
               item.probability = uniform_probability
           else:
@@ -478,11 +469,11 @@ def SmoothProbabilityDistribution(list, smoothing_weight=0.0, target_sum=1.0):
               item.probability = (1 - smoothing_weight) * item.probability + smoothing_weight * uniform_probability
 
       # Normalize the probability
-      sum_p = sum(item.probability for item in list)
-      for item in list:
+      sum_p = sum(item.probability for item in set_list)
+      for item in set_list:
           item.probability = item.probability / sum_p * target_sum
 
-    return list
+    return set_list
 
 
 # This function parse the array of rir set parameter strings.
@@ -507,7 +498,7 @@ def ParseSetParameterStrings(set_para_array):
     return SmoothProbabilityDistribution(set_list)
 
 
-# This function creates the RIR list 
+# This function creates the RIR list
 # Each rir object in the list contains the following attributes:
 # rir_id, room_id, receiver_position_id, source_position_id, rt60, drr, probability
 # Please refer to the help messages in the parser for the meaning of these attributes
@@ -521,14 +512,14 @@ def ParseRirList(rir_set_para_array, smoothing_weight, sampling_rate = None):
     rir_parser.add_argument('--drr', type=float, default=None, help='Direct-to-reverberant-ratio of the impulse response.')
     rir_parser.add_argument('--cte', type=float, default=None, help='Early-to-late index of the impulse response.')
     rir_parser.add_argument('--probability', type=float, default=None, help='probability of the impulse response.')
-    rir_parser.add_argument('rir_rspecifier', type=str, help="""rir rspecifier, it can be either a filename or a piped command. 
+    rir_parser.add_argument('rir_rspecifier', type=str, help="""rir rspecifier, it can be either a filename or a piped command.
                             E.g. data/impulses/Room001-00001.wav or "sox data/impulses/Room001-00001.wav -t wav - |" """)
 
     set_list = ParseSetParameterStrings(rir_set_para_array)
 
     rir_list = []
     for rir_set in set_list:
-        current_rir_list = map(lambda x: rir_parser.parse_args(shlex.split(x.strip())),open(rir_set.filename))
+        current_rir_list = [rir_parser.parse_args(shlex.split(x.strip())) for x in open(rir_set.filename)]
         for rir in current_rir_list:
             if sampling_rate is not None:
                 # check if the rspecifier is a pipe or not
@@ -569,7 +560,7 @@ def MakeRoomDict(rir_list):
     return room_dict
 
 
-# This function creates the point-source noise list 
+# This function creates the point-source noise list
 # and the isotropic noise dictionary from the noise information file
 # The isotropic noise dictionary is indexed by the room
 # and its value is the corrresponding isotropic noise list
@@ -593,10 +584,10 @@ def ParseNoiseList(noise_set_para_array, smoothing_weight, sampling_rate = None)
     pointsource_noise_list = []
     iso_noise_dict = {}
     for noise_set in set_list:
-        current_noise_list = map(lambda x: noise_parser.parse_args(shlex.split(x.strip())),open(noise_set.filename))
+        current_noise_list = [noise_parser.parse_args(shlex.split(x.strip())) for x in open(noise_set.filename)]
         current_pointsource_noise_list = []
         for noise in current_noise_list:
-            if sampling_rate is not None:                
+            if sampling_rate is not None:
                 # check if the rspecifier is a pipe or not
                 if len(noise.noise_rspecifier.split()) == 1:
                     noise.noise_rspecifier = "sox {0} -r {1} -t wav - |".format(noise.noise_rspecifier, sampling_rate)
@@ -615,11 +606,11 @@ def ParseNoiseList(noise_set_para_array, smoothing_weight, sampling_rate = None)
 
         pointsource_noise_list += SmoothProbabilityDistribution(current_pointsource_noise_list, smoothing_weight, noise_set.probability)
 
-    # ensure the point-source noise probabilities sum to 1 
+    # ensure the point-source noise probabilities sum to 1
     pointsource_noise_list = SmoothProbabilityDistribution(pointsource_noise_list, smoothing_weight, 1.0)
     if len(pointsource_noise_list) > 0:
         assert almost_equal(sum(noise.probability for noise in pointsource_noise_list), 1.0)
-    
+
     # ensure the isotropic noise source probabilities for a given room sum to 1
     for key in iso_noise_dict.keys():
         iso_noise_dict[key] = SmoothProbabilityDistribution(iso_noise_dict[key])

@@ -93,7 +93,7 @@ shift;shift;shift;shift;
 # Remaining args will be supplied to decoding script.
 extra_args=$* 
 
-[ -f path.sh ] && . path.sh
+[ -f path.sh ] && . ./path.sh
 
 for file in $script $scp $data/utt2spk; do
   if [ ! -f "$file" ]; then

@@ -5,7 +5,7 @@
 
 # To be run from one directory above this script.
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 [ $# != 0 ] && echo "Usage: local/swbd1_data_prep.sh" && exit 1;
@@ -19,6 +19,7 @@ srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 [ ! -f "$srcdict" ] && echo "$0: No such file $srcdict" && exit 1;
 
 cp $srcdict $dir/lexicon0.txt || exit 1;
+chmod +r $dir/lexicon0.txt  # fix a strange permission in the source.
 patch <local/dict.patch $dir/lexicon0.txt || exit 1;
 
 #(2a) Dictionary preparation:

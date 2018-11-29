@@ -222,6 +222,9 @@ effect is to produce no extra command line options. We previously had it
 configured with a line: <tt>"option gpu=0 -q all.q"</tt>, so there was a time when the line
 <tt>"default gpu=0"</tt> used to make a difference.
 
+(Note: most of the time if you are configuring GridEngine yourself you will want a queue.conf
+that is the same as the one above missing the "-q g.q" option).
+
 The mapping from what the config-file specifies to what appears on the command-line
 of qsub sometimes has to be tweaked slightly in the perl code: for instance, we made it
 so that the <tt>--max-jobs-run</tt> option is ignored for non-array jobs.
@@ -486,6 +489,13 @@ ram_free            ram_free    MEMORY      <=    YES         JOB        1G     
  do have special meanings.  The string <tt>JOB</tt> in the <tt>consumable</tt> entry for
  <tt>ram_free</tt> means that the <tt>ram_free</tt> resource is specified per job rather than
  per thread; this is more convenient for Kaldi scripts.
+
+ We are not saying anything here about the queue "g.q" which is required for GPUs
+ in the default queue.pl behavior.  That was introduced at Hopkins in order to avoid
+ the situation where GPUs are blocked because all CPU slots are used.  It's really not
+ necessary in general; the easiest way to get things working without it is to create a file
+ <tt>conf/queue.conf</tt> that's the same as the default one (search above) except
+ without the "-q g.q" option.
 
  Next you have to have to add the parallel environment called <tt>smp</tt> to GridEngine.
  This is a kind of tradition in GridEngine setups, but it's not built-in.  It's a

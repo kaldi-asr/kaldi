@@ -4,7 +4,7 @@
 # with pitch.
 # This hasn't been tested yet.
 
-. cmd.sh
+. ./cmd.sh
 
 
 stage=7
@@ -13,7 +13,7 @@ use_gpu=true
 dir=exp/nnet2_onlinep/nnet_ms_a
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

@@ -35,8 +35,6 @@ for f in $data/text $lang/words.txt $dir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: expecting file $f to exist" && exit 1;
 done
 
-name=`basename $data`; # e.g. eval2000
-
 mkdir -p $dir/scoring/log
 
 
@@ -49,8 +47,9 @@ function filter_text {
 
 for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
   $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.${wip}.log \
+    lattice-add-penalty --word-ins-penalty=$wip "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
     lattice-best-path --lm-scale=LMWT --word-symbol-table=$lang/words.txt \
-    "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.${wip}.tra || exit 1;
+      ark:- ark,t:$dir/scoring/LMWT.${wip}.tra || exit 1;
 done
 
 for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do

@@ -1076,7 +1076,8 @@ bool BuildConstArpaLm(const ArpaParseOptions& options,
                       const std::string& const_arpa_wxfilename) {
   ConstArpaLmBuilder lm_builder(options);
   KALDI_LOG << "Reading " << arpa_rxfilename;
-  ReadKaldiObject(arpa_rxfilename, &lm_builder);
+  Input ki(arpa_rxfilename);
+  lm_builder.Read(ki.Stream());
   WriteKaldiObject(lm_builder, const_arpa_wxfilename, true);
   return true;
 }

@@ -264,8 +264,10 @@ has the same effect as calling that the normal OpenFst RemoveEps() and Determini
 
  \section lattices_generation Lattice generation
 
-Currently, the only decoder that generates lattices is the class
-LatticeSimpleDecoder, defined in decoder/lattice-simple-decoder.h, and invoked by gmm-latgen-simple.cc.
+Command-line decoding programs that have 'latgen' in their names generate lattices.
+Currently most of these use LatticeFasterDecoder.  For purposes of exposition we will
+focus instead on LatticeSimpleDecoder, whose operation is simpler.
+This is defined in decoder/lattice-simple-decoder.h, and invoked by gmm-latgen-simple.cc.
 As the name suggests, LatticeSimpleDecoder is a lattice-generating decoder that is modified from SimpleDecoder.
 SimpleDecoder is a straightforwardly implemented Viterbi beam search algorithm with only a single
 tunable parameter: the pruning beam (see \ref decoders_simple).  LatticeSimpleDecoder has
@@ -474,7 +476,10 @@ programs.
 \verbatim
  lattice-lmrescore --lm-scale=1.0 ark:nolm.lats G_new.fst ark:out.lats
 \endverbatim
-Note that there are other ways to do this; see
+Note: the above examples are slightly simplified; actually you would have
+to "project" the G.fst FST's on the output to remove disambiguation symbols
+using `fstproject` with `--project_output=true`, see steps/lmrescore.sh for examples.
+Also there are other ways to do this; see
 the documentation for lattice-compose below.
 What the program \ref lattice-lmrescore.cc "lattice-lmrescore" does is this...
 actually, we will first first describe the simple version that is not exactly what

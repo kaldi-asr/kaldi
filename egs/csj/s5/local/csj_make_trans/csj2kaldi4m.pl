@@ -245,6 +245,11 @@ while (<IN>) {
     $morph =~ s/\/\//\//g;
     $morph =~ s/\/\//\//g;
     $morph =~ s/\/$//g;
+    # Replace Zenkaku-Space to Zenkaku-Underscore
+    # Input: っしゃっ+動詞/ラ行五段/連用形/促音便　省略 r a q sh a q
+    # ->
+    # Output: っしゃっ+動詞/ラ行五段/連用形/促音便＿省略 r a q sh a q
+    $morph =~ s/　/＿/g;
 
     unless( $word =~ /skip_word/){
 	if ($word && $pos){

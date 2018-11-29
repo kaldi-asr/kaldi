@@ -4,8 +4,8 @@
 # Recipe for CallHome Egyptian Arabic
 # Made to integrate KALDI with JOSHUA for end-to-end ASR and SMT
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 mfccdir=`pwd`/mfcc
 set -e
 

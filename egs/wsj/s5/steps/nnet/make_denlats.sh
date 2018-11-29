@@ -155,7 +155,7 @@ if [ $sub_split -eq 1 ]; then
   for n in `seq $nj`; do
     [ ! -d $dir/lat$n ] && mkdir $dir/lat$n;
     cat $sdata/$n/feats.scp | \
-    awk -v dir=$dir -v n=$n '{ utt=$1; utt_noslash=gensub("/","_","g",utt);
+    awk -v dir=$dir -v n=$n '{ utt=$1; utt_noslash=utt; gsub("/","_",utt_noslash);
                                printf("%s | gzip -c >%s/lat%d/%s.gz\n", utt, dir, n, utt_noslash); }'
   done >$dir/lat.store_separately_as_gz.scp
   # Generate the lattices
@@ -186,7 +186,7 @@ else
       for k in `seq $sub_split`; do
         [ ! -d $dir/lat$n/$k ] && mkdir -p $dir/lat$n/$k;
         cat $sdata2/$k/feats.scp | \
-        awk -v dir=$dir -v n=$n -v k=$k '{ utt=$1; utt_noslash=gensub("/","_","g",utt);
+        awk -v dir=$dir -v n=$n -v k=$k '{ utt=$1; utt_noslash=utt; gsub("/","_",utt_noslash);
                                            printf("%s | gzip -c >%s/lat%d/%d/%s.gz\n", utt, dir, n, k, utt_noslash); }'
       done >$dir/lat.${n}.store_separately_as_gz.scp
       # Generate lattices

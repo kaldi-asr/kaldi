@@ -41,7 +41,7 @@ rm -f "$scp"
 for sid in `seq 34`; do
   sid2=`printf "s%02d" $sid`
   ls -1 $wav_train/id$sid/*.wav \
-    | sed "s/\(.*\)\/\(.*\).wav/${sid2}_\2\t\1\/\2.wav/" \
+    | perl -ape "s/(.*)\/(.*).wav/${sid2}_\2\t\1\/\2.wav/;" \
     | sort >> $scp
 done
 for x in "devel" "test"; do
@@ -53,7 +53,7 @@ for x in "devel" "test"; do
     for sid in `seq 34`; do
       sid2=`printf "s%02d" $sid`
       ls -1 $wav_dir/*/s${sid}_*.wav \
-        | sed "s/\(.*\)\/\(.*\)\/s.*_\(.*\).wav/${sid2}_\3_\2\t\1\/\2\/s${sid}_\3.wav/" \
+        | perl -ape "s/(.*)\/(.*)\/s.*_(.*).wav/${sid2}_\3_\2\t\1\/\2\/s${sid}_\3.wav/;" \
         | sort >> $scp 
     done
   fi
@@ -68,9 +68,9 @@ for x in $set_list; do
 
     # Create utt2spk files 
     # No speaker ID
-    sed 's/\(.*\)\t.*/\1\t\1/' < "$scp" > "$data/$x/utt2spk"
+    perl -ape "s/(.*)\t.*/\1\t\1/;" < "$scp" > "$data/$x/utt2spk"
     # Use speaker ID
-    #sed "s/\(s..\)\(.*\)\t.*/\1\2\t\1/" < "$scp" > "$data/$x/utt2spk"
+    # perl -ape "s/(s..)(.*)\\t.*/\1\2\t\1/;" < "$scp" > "$data/$x/utt2spk"
 
     # Create spk2utt files
     cat "$data/$x/utt2spk" | $utils/utt2spk_to_spk2utt.pl > "$data/$x/spk2utt" || exit 1;

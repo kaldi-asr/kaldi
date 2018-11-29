@@ -2,6 +2,8 @@
 
 // Copyright  2015  Johns Hopkins University (author: Daniel Povey)
 //            2015  Guoguo Chen
+//            2017  Shiyin Kang
+
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -95,6 +97,9 @@ class SparseVector {
   SparseVector(MatrixIndexT dim,
                const std::vector<std::pair<MatrixIndexT, Real> > &pairs);
 
+  // constructor from a VectorBase that keeps only the nonzero elements of 'vec'.
+  explicit SparseVector(const VectorBase<Real> &vec);
+
   /// Resizes to this dimension.  resize_type == kUndefined
   /// behaves the same as kSetZero.
   void Resize(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero);
@@ -133,6 +138,12 @@ class SparseMatrix {
 
   Real FrobeniusNorm() const;
 
+
+  /// This constructor creates a SparseMatrix that just contains the nonzero
+  /// elements of 'mat'.
+  explicit SparseMatrix(const MatrixBase<Real> &mat);
+
+  /// Copy to matrix.  It must already have the correct size.
   template <class OtherReal>
   void CopyToMat(MatrixBase<OtherReal> *other,
                  MatrixTransposeType t = kNoTrans) const;
@@ -141,10 +152,10 @@ class SparseMatrix {
   /// object.
   void CopyElementsToVec(VectorBase<Real> *other) const;
 
-  /// Copies data from another sparse matrix. We will add the transpose option
-  /// later when it is necessary.
-  template <class OtherReal>
-  void CopyFromSmat(const SparseMatrix<OtherReal> &other);
+  /// Copies data from another sparse matrix.
+  template<class OtherReal>
+  void CopyFromSmat(const SparseMatrix<OtherReal> &other,
+                    MatrixTransposeType trans = kNoTrans);
 
   /// Does *other = *other + alpha * *this.
   void AddToMat(BaseFloat alpha, MatrixBase<Real> *other,
@@ -152,7 +163,10 @@ class SparseMatrix {
 
   SparseMatrix<Real> &operator = (const SparseMatrix<Real> &other);
 
-  SparseMatrix(const SparseMatrix<Real> &other) { *this = other; }
+  SparseMatrix(const SparseMatrix<Real> &other, MatrixTransposeType trans =
+                   kNoTrans) {
+    this->CopyFromSmat(other, trans);
+  }
 
   void Swap(SparseMatrix<Real> *other);
 
@@ -184,6 +198,14 @@ class SparseMatrix {
   /// Sets row r to "vec"; makes sure it has the correct dimension.
   void SetRow(int32 r, const SparseVector<Real> &vec);
 
+  /// Select a subset of the rows of a SparseMatrix.
+  /// Sets *this to only the rows of 'smat_other' that are listed
+  /// in 'row_indexes'.
+  /// 'row_indexes' must satisfy 0 <= row_indexes[i] < smat_other.NumRows().
+  void SelectRows(const std::vector<int32> &row_indexes,
+                  const SparseMatrix<Real> &smat_other);
+
+
   /// Sets *this to all the rows of *inputs appended together; this
   /// function is destructive of the inputs.  Requires, obviously,
   /// that the inputs all have the same dimension (although some may be
@@ -193,6 +215,33 @@ class SparseMatrix {
   SparseMatrix() { }
 
   SparseMatrix(int32 num_rows, int32 num_cols) { Resize(num_rows, num_cols); }
+
+  /// Constructor from an array of indexes.
+  /// If trans == kNoTrans, construct a sparse matrix
+  /// with num-rows == indexes.Dim() and num-cols = 'dim'.
+  /// 'indexes' is expected to contain elements in the
+  /// range [0, dim - 1].  Each row 'i' of *this after
+  /// calling the constructor will contain  a single
+  /// element at column-index indexes[i] with value 1.0.
+  ///
+  /// If trans == kTrans, the result will be the transpose
+  /// of the sparse matrix described above.
+  SparseMatrix(const std::vector<int32> &indexes, int32 dim,
+               MatrixTransposeType trans = kNoTrans);
+
+  /// Constructor from an array of indexes and an array of
+  /// weights; requires indexes.Dim() == weights.Dim().
+  /// If trans == kNoTrans, construct a sparse matrix
+  /// with num-rows == indexes.Dim() and num-cols = 'dim'.
+  /// 'indexes' is expected to contain elements in the
+  /// range [0, dim - 1].  Each row 'i' of *this after
+  /// calling the constructor will contain a single
+  /// element at column-index indexes[i] with value weights[i].
+  /// If trans == kTrans, the result will be the transpose
+  /// of the sparse matrix described above.
+  SparseMatrix(const std::vector<int32> &indexes,
+               const VectorBase<Real> &weights, int32 dim,
+               MatrixTransposeType trans = kNoTrans);
 
   /// Resizes the matrix; analogous to Matrix::Resize().  resize_type ==
   /// kUndefined behaves the same as kSetZero.

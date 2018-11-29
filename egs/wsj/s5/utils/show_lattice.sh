@@ -14,7 +14,7 @@ if [ $# != 3 ]; then
    exit 1;
 fi
 
-. path.sh
+. ./path.sh
 
 uttid=$1
 lat=$2

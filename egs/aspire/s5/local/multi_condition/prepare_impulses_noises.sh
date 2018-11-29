@@ -22,8 +22,8 @@ log_dir=log # directory to store the log files
 RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
 db_string="'aalto' 'air' 'rwcp' 'rvb2014' 'c4dm' 'varechoic' 'mardy' 'openair'" # RIR dbs to be used in the experiment
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 . utils/parse_options.sh
 
 echo $*

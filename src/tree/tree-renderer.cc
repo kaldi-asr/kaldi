@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include <tree/tree-renderer.h>
+#include "tree/tree-renderer.h"
 
 namespace kaldi {
 const int32 TreeRenderer::kEdgeWidth = 1;

@@ -71,7 +71,9 @@ struct FrameExtractionOptions {
                    "Coefficient for use in signal preemphasis");
     opts->Register("remove-dc-offset", &remove_dc_offset,
                    "Subtract mean from waveform on each frame");
-    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither)");
+    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither). "
+                   "If you turn this off, you should set the --energy-floor "
+                   "option, e.g. to 1.0 or 0.1");
     opts->Register("window-type", &window_type, "Type of window "
                    "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\""
                    "|\"blackmann\")");
@@ -86,7 +88,7 @@ struct FrameExtractionOptions {
                    "frame-length.  If false, the number of frames depends only on the "
                    "frame-shift, and we reflect the data at the ends.");
     opts->Register("allow-downsample", &allow_downsample,
-                   "If true, allow the input waveform to have a higher frequency than"
+                   "If true, allow the input waveform to have a higher frequency than "
                    "the specified --sample-frequency (and we'll downsample).");
   }
   int32 WindowShift() const {
@@ -116,7 +118,7 @@ struct FeatureWindowFunction {
    file with the given number of samples in it (assumed to have the same
    sampling rate as specified in 'opts').
 
-      @param [in] wave_length  The number of samples in the wave file.
+      @param [in] num_samples  The number of samples in the wave file.
       @param [in] opts     The frame-extraction options class
 
       @param [in] flush   True if we are asserting that this number of samples is
@@ -200,15 +202,6 @@ void ExtractWindow(int64 sample_offset,
                    const FeatureWindowFunction &window_function,
                    Vector<BaseFloat> *window,
                    BaseFloat *log_energy_pre_window = NULL);
-
-
-// ExtractWaveformRemainder is useful if the waveform is coming in segments.
-// It extracts the bit of the waveform at the end of this block that you
-// would have to append the next bit of waveform to, if you wanted to have
-// the same effect as everything being in one big block.
-void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
-                              const FrameExtractionOptions &opts,
-                              Vector<BaseFloat> *wave_remainder);
 
 
 /// @} End of "addtogroup feat"

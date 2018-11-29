@@ -4,7 +4,7 @@
 
 parallel_opts="--gpu 1" 
 
-. cmd.sh
+. ./cmd.sh
 
 dir=exp/nnet4e_gpu
 (  steps/nnet2/train_pnorm_ensemble.sh  --num-epochs 20 \

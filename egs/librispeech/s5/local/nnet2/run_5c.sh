@@ -9,7 +9,7 @@ use_gpu=true
 train_set="train-clean-100"
 test_sets="dev-clean dev-other"
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
 

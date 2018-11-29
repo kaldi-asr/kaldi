@@ -69,6 +69,29 @@ static void UnitTestCuMathRandomize() {
   }
 }
 
+template<typename Real>
+static void UnitTestEnsureNonzero() {
+  int32 M = 100 + Rand() % 200, N = 100 + Rand() % 200;
+  Real epsilon = 0.1;
+  CuMatrix<Real> x(M, N);
+  x.SetRandn();
+  CuMatrix<Real> y(M, N, kUndefined);
+  cu::EnsureNonzero(x, epsilon, &y);
+  Matrix<Real> x_cpu(x);
+  Matrix<Real> y_cpu(y);
+  for (int32 i = 0; i < 30; i++) {
+    int32 r = RandInt(0, M-1), c = RandInt(0, N-1);
+    Real src = x_cpu(r, c), dest = y_cpu(r, c);
+    if (src <= -epsilon || src >= epsilon) {
+      KALDI_ASSERT(src == dest);
+    } else if (src >= 0) {
+      KALDI_ASSERT(dest == epsilon);
+    } else {
+      KALDI_ASSERT(dest == -epsilon);
+    }
+  }
+}
+
 
 template<typename Real>
 static void UnitTestCuMathCopy() {
@@ -634,6 +657,7 @@ template<typename Real> void CudaMathUnitTest() {
   UnitTestCuMathSplice<Real>();
   UnitTestCuMathCopy<Real>();
   UnitTestLstmNonlinearity();
+  UnitTestEnsureNonzero<Real>();
   UnitTestBackpropLstmNonlinearity<Real>();
   UnitTestCuMathNormalizePerRow<Real>();
   UnitTestCuDiffNormalizePerRow<Real>();

@@ -1,8 +1,8 @@
 #!/bin/bash
 
-. cmd.sh
+. ./cmd.sh
 
-. path.sh
+. ./path.sh
 
 
 ###

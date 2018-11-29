@@ -17,10 +17,11 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare -I$(TENSORFLOW)/bazel-tensorflow/external/protobuf/src \
                  -I$(TENSORFLOW)/bazel-genfiles -I$(TENSORFLOW) \
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/eigen \
+                 -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/nsync/public \
                  -I$(TENSORFLOW)/tensorflow/contrib/makefile/downloads/protobuf/src
 include ../kaldi.mk
 
-BINFILES = lattice-lmrescore-tf-rnnlm
+BINFILES = lattice-lmrescore-tf-rnnlm lattice-lmrescore-tf-rnnlm-pruned
 
 OBJFILES =
 
@@ -28,11 +29,11 @@ TESTFILES =
 
 ADDLIBS = ../lat/kaldi-lat.a ../lm/kaldi-lm.a ../fstext/kaldi-fstext.a \
           ../hmm/kaldi-hmm.a ../tree/kaldi-tree.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a ../tfrnnlm/kaldi-tensorflow-rnnlm.a
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a \
+          ../tfrnnlm/kaldi-tensorflow-rnnlm.a 
 
 LDLIBS +=  -lz -ldl -fPIC -lrt
-LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc
+LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc -ltensorflow_framework
 
 LDFLAGS += -Wl,-rpath=$(shell pwd)/../../tools/tensorflow/bazel-bin/tensorflow/
 

@@ -37,15 +37,12 @@ print("<TopologyEntry>")
 print("<ForPhones>")
 print(" ".join([str(x) for x in all_phones]))
 print("</ForPhones>")
-# The next two lines may look like a bug, but they are as intended.  State 0 has
-# no self-loop, it happens exactly once.  And it can go either to state 1 (with
-# a self-loop) or to state 2, so we can have zero or more instances of state 1
-# following state 0.
 # We make the transition-probs 0.5 so they normalize, to keep the code happy.
 # In fact, we always set the transition probability scale to 0.0 in the 'chain'
 # code, so they are never used.
+# Note: the <ForwardPdfClass> will actually happen on the incoming arc because
+# we always build the graph with "reorder=true".
 print("<State> 0 <ForwardPdfClass> 0 <SelfLoopPdfClass> 1 <Transition> 0 0.5 <Transition> 1 0.5 </State>")
 print("<State> 1 </State>")
 print("</TopologyEntry>")
 print("</Topology>")
-

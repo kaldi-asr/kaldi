@@ -74,10 +74,24 @@ if [ $stage -le 2 ] ; then
     #--   ${data}/kwset_${set} ${lang} ${data}/${set}_oov_kws/tmp/L1.lex  \
     #--   ${data}/${set}_oov_kws/tmp/L1.lex ${data}/kwset_${set}/tmp.3
 
-    local/search/compile_proxy_keywords.sh --cmd "$decode_cmd" --filter "OOV=1&&Characters>4"\
-      --beam 5 --nbest 100 --nj 64  --confusion-matrix exp/conf_matrix/confusions.txt  \
-      ${data}/kwset_${set} ${lang} data/local/dict.phn/lexiconp.txt exp/g2p \
-      ${data}/kwset_${set}/tmp.4
+    if [ -d data/local/extend ]; then
+      echo "Detected extended lexicon system..."
+      local/search/compile_proxy_keywords.sh \
+        --cmd "$decode_cmd" --nj 64 --filter "OOV=1&&Characters>4" \
+        --beam $extlex_proxy_beam --nbest $extlex_proxy_nbest \
+        --phone-beam $extlex_proxy_phone_beam --phone-nbest $extlex_proxy_phone_nbest\
+        --confusion-matrix exp/conf_matrix/confusions.txt  \
+        ${data}/kwset_${set} ${lang} data/local/dict.phn/lexiconp.txt exp/g2p \
+        ${data}/kwset_${set}/tmp.4
+    else
+      local/search/compile_proxy_keywords.sh \
+        --cmd "$decode_cmd" --nj 64 --filter "OOV=1&&Characters>4" \
+        --beam $proxy_beam --nbest $proxy_nbest \
+        --phone-beam $proxy_phone_beam --phone-nbest $proxy_phone_nbest\
+        --confusion-matrix exp/conf_matrix/confusions.txt  \
+        ${data}/kwset_${set} ${lang} data/local/dict.phn/lexiconp.txt exp/g2p \
+        ${data}/kwset_${set}/tmp.4
+    fi
 
     # and finally, replace the categories by the word-level categories
     cp data/${dir}/kwset_${set}/categories $data/kwset_${set}/categories

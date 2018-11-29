@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-. path.sh
+. ./path.sh
 
 #First get the list of unique words from our text file
 if [ $# -lt 1 ]; then

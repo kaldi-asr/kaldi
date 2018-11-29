@@ -137,6 +137,9 @@ sub get_combine_info {
       if (m/Combining nnets, objective function changed from (\S+) to (\S+)/) {
         close(F);
         return sprintf(" combine=%.3f->%.3f", $1, $2);
+      } elsif (m/Combining (\S+) nnets, objective function changed from (\S+) to (\S+)/) {
+        close(F);
+        return sprintf(" combine=%.3f->%.3f (over %d)", $2, $3, $1);
       }
     }
   }
@@ -201,6 +204,9 @@ sub get_logprob_and_accuracy_info {
         if (m/Overall log-probability for 'output' is (\S+) \+ (\S+)/) {
           $iter_to_train_logprob{$iter} = $1;
           $iter_to_train_penalty{$iter} = $2;
+        } elsif (m/Overall log-probability for 'output' is (\S+)/) {
+          $iter_to_train_logprob{$iter} = $1;
+          $iter_to_train_penalty{$iter} = 0.0;
         } elsif (m/Overall log-probability for 'output-xent' is (\S+) per frame/) {
           $iter_to_train_xent{$iter} = $1;
         }
@@ -210,6 +216,9 @@ sub get_logprob_and_accuracy_info {
         if (m/Overall log-probability for 'output' is (\S+) \+ (\S+)/) {
           $iter_to_valid_logprob{$iter} = $1;
           $iter_to_valid_penalty{$iter} = $2;
+        } elsif (m/Overall log-probability for 'output' is (\S+)/) {
+          $iter_to_valid_logprob{$iter} = $1;
+          $iter_to_valid_penalty{$iter} = 0.0;
         } elsif (m/Overall log-probability for 'output-xent' is (\S+) per frame/) {
           $iter_to_valid_xent{$iter} = $1;
         }

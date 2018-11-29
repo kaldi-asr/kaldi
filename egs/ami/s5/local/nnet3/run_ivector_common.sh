@@ -10,7 +10,7 @@ nj=10
 use_ihm_ali=false
 use_sat_alignments=true
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

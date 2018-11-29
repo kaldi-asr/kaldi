@@ -20,7 +20,7 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 #      num-filters-out=64 height-offsets=-1,0,1 time-offsets=-1,0,1 \
 #      required-time-offsets=0
 #  or (with NormalizeLayer instead of batch-norm, and with subsampling on the height axis):
-#  conv-normalize-layer name=conv3 height-in=40 height-out=20 \
+#  conv-renorm-layer name=conv3 height-in=40 height-out=20 \
 #      height-subsample-out=2 num-filters-out=128 height-offsets=-1,0,1 \
 #       time-offsets=-1,0,1 required-time-offsets=0
 #
@@ -108,11 +108,14 @@ from libs.nnet3.xconfig.basic_layers import XconfigLayerBase
 #  rank-in, rank-out    (int)
 #  num-minibatches-history (float)
 #  alpha-in, alpha-out (float)
+# the following is also passed into the convolution components, if specified:
+#  l2-regularize (float)
 
 class XconfigConvLayer(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
         for operation in first_token.split('-')[:-1]:
-            assert operation in ['conv', 'renorm', 'batchnorm', 'relu', 'dropout']
+            assert operation in ['conv', 'renorm', 'batchnorm', 'relu',
+                                 'noconv', 'dropout', 'so']
         XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
 
     def set_default_configs(self):
@@ -126,13 +129,14 @@ class XconfigConvLayer(XconfigLayerBase):
                        'required-time-offsets':'',
                        'target-rms':1.0,
                        'self-repair-scale': 2.0e-05,
+                       'self-repair-lower-threshold': 0.05,
                        # the following are not really inspected by this level of
                        # code, just passed through (but not if left at '').
                        'param-stddev':'', 'bias-stddev':'',
                        'max-change': 0.75, 'learning-rate-factor':'',
                        'use-natural-gradient':'',
                        'rank-in':'', 'rank-out':'', 'num-minibatches-history':'',
-                       'alpha-in':'', 'alpha-out':'',
+                       'alpha-in':'', 'alpha-out':'', 'l2-regularize':'',
                        'dropout-proportion': 0.5}
 
     def set_derived_configs(self):
@@ -184,13 +188,17 @@ class XconfigConvLayer(XconfigLayerBase):
         height_offsets = self.config['height-offsets']
         time_offsets = self.config['time-offsets']
         required_time_offsets = self.config['required-time-offsets']
-        if not self.check_offsets_var(height_offsets):
-            raise RuntimeError("height-offsets={0} is not valid".format(height_offsets))
-        if not self.check_offsets_var(time_offsets):
-            raise RuntimeError("time-offsets={0} is not valid".format(time_offsets))
-        if required_time_offsets != "" and not self.check_offsets_var(required_time_offsets):
-            raise RuntimeError("required-time-offsets={0} is not valid".format(
-                required_time_offsets))
+
+        if not 'noconv' in self.layer_type.split('-'):
+            # only check height-offsets, time-offsets and required-time-offsets if there
+            # is actually a convolution in this layer.
+            if not self.check_offsets_var(height_offsets):
+                raise RuntimeError("height-offsets={0} is not valid".format(height_offsets))
+            if not self.check_offsets_var(time_offsets):
+                raise RuntimeError("time-offsets={0} is not valid".format(time_offsets))
+            if required_time_offsets != "" and not self.check_offsets_var(required_time_offsets):
+                raise RuntimeError("required-time-offsets={0} is not valid".format(
+                    required_time_offsets))
 
         if height_out * height_subsample_out < \
            height_in - len(height_offsets.split(',')):
@@ -209,10 +217,11 @@ class XconfigConvLayer(XconfigLayerBase):
         assert auxiliary_output is None
         # note: the [:-1] is to remove the '-layer'.
         operations = self.layer_type.split('-')[:-1]
+        if operations[-1] == 'noconv':
+            operations = operations[:-1]
         assert len(operations) >= 1
         last_operation = operations[-1]
-        assert last_operation in ['relu', 'conv',
-                                  'renorm', 'batchnorm', 'dropout']
+        assert last_operation in ['relu', 'conv', 'renorm', 'batchnorm', 'dropout', 'so']
         # we'll return something like 'layer1.batchnorm'.
         return '{0}.{1}'.format(self.name, last_operation)
 
@@ -222,7 +231,7 @@ class XconfigConvLayer(XconfigLayerBase):
 
     def get_full_config(self):
         ans = []
-        config_lines = self.generate_cnn_config()
+        config_lines = self._generate_cnn_config()
 
         for line in config_lines:
             for config_name in ['ref', 'final']:
@@ -232,7 +241,7 @@ class XconfigConvLayer(XconfigLayerBase):
         return ans
 
     # convenience function to generate the CNN config
-    def generate_cnn_config(self):
+    def _generate_cnn_config(self):
         configs = []
 
         name = self.name
@@ -244,6 +253,8 @@ class XconfigConvLayer(XconfigLayerBase):
 
         # note: the [:-1] is to remove the '-layer'.
         operations = self.layer_type.split('-')[:-1]
+        if operations[-1] == 'noconv':
+            operations = operations[:-1]
         # e.g.:
         # operations = [ 'conv', 'relu', 'batchnorm' ]
         # or:
@@ -258,7 +269,7 @@ class XconfigConvLayer(XconfigLayerBase):
                         'alpha-in', 'alpha-out', 'num-filters-in', 'num-filters-out',
                         'height-in','height-out', 'height-subsample-out',
                         'height-offsets', 'time-offsets', 'required-time-offsets',
-                        'learning-rate-factor']:
+                        'learning-rate-factor', 'l2-regularize' ]:
                     value = self.config[opt_name]
                     if value != '':
                         a.append('{0}={1}'.format(opt_name, value))
@@ -286,9 +297,11 @@ class XconfigConvLayer(XconfigLayerBase):
                                'input={1}'.format(name, cur_descriptor))
             elif operation == 'relu':
                 configs.append('component name={0}.relu type=RectifiedLinearComponent '
-                           'dim={1} self-repair-scale={2}'.format(
-                               name, cur_num_filters * cur_height,
-                               self.config['self-repair-scale']))
+                               'dim={1} block-dim={2} self-repair-scale={3} '
+                               'self-repair-lower-threshold={4}'.format(
+                                   name, cur_num_filters * cur_height, cur_num_filters,
+                                   self.config['self-repair-scale'],
+                                   self.config['self-repair-lower-threshold']))
                 configs.append('component-node name={0}.relu component={0}.relu '
                                'input={1}'.format(name, cur_descriptor))
             elif operation == 'dropout':
@@ -297,6 +310,12 @@ class XconfigConvLayer(XconfigLayerBase):
                                name, cur_num_filters * cur_height,
                                self.config['dropout-proportion']))
                 configs.append('component-node name={0}.dropout component={0}.dropout '
+                               'input={1}'.format(name, cur_descriptor))
+            elif operation == 'so':
+                configs.append('component name={0}.so type=ScaleAndOffsetComponent '
+                           'dim={1} block-dim={2}'.format(
+                               name, cur_num_filters * cur_height, cur_num_filters))
+                configs.append('component-node name={0}.so component={0}.so '
                                'input={1}'.format(name, cur_descriptor))
             else:
                 raise RuntimeError("Un-handled operation type: " + operation)
@@ -310,11 +329,11 @@ class XconfigConvLayer(XconfigLayerBase):
 #
 # res-block name=res1 num-filters=64 height=32 time-period=1
 #
-# It implements a residual block as in ResNets, but with some small differences
-# that make it a little more general-- basically, instead of adding the input to
-# the output, we put a convolutional layer in there but initialize it to the
-# unit matrix and if you want you can give it a relatively small (or even zero)
-# learning rate and max-change.  And there is batch-norm in that path also.
+# It implements a residual block as in ResNets, with pre-activation, and with
+# some small differences-- basically, instead of adding the input to the output,
+# we put a convolutional layer in there but initialize it to the unit matrix and
+# if you want you can give it a relatively small (or even zero) learning rate
+# and max-change.  And there is batch-norm in that path also.
 #
 # The number of filters is the same on the input and output; it is actually
 # redundant to write it in the config file, because given that we know the
@@ -347,6 +366,11 @@ class XconfigConvLayer(XconfigLayerBase):
 #                 after subsampling again we'd have time-period=4.  Because of
 #                 the way nnet3 works, subsampling on the time axis is an
 #                 implicit, not explicit, operation.
+# height-period=1  This will almost always be left at the default (1).  It is
+#                 analogous to time-period, but because the height, unlike the
+#                 time, is explicitly subsampled, in normal topologies this should
+#                 be left at 1.
+#
 # bypass-source=noop
 #                       The output of this component is Sum(convolution, x), and
 #                       this option controls what 'x' is.  There are 3 options
@@ -384,6 +408,9 @@ class XconfigConvLayer(XconfigLayerBase):
 #  rank-in, rank-out    (int)
 #  num-minibatches-history (float)
 #  alpha-in, alpha-out (float)
+# the following is also passed into the convolution components, if specified:
+#  l2-regularize (float)
+#
 
 class XconfigResBlock(XconfigLayerBase):
     def __init__(self, first_token, key_to_value, prev_names = None):
@@ -396,7 +423,11 @@ class XconfigResBlock(XconfigLayerBase):
                        'num-filters':-1,
                        'num-bottleneck-filters':-1,
                        'time-period':1,
+                       'height-period':1,
                        'self-repair-scale': 2.0e-05,
+                       'self-repair-lower-threshold1': 0.05,
+                       'self-repair-lower-threshold2': 0.05,
+                       'self-repair-lower-threshold3': 0.05,
                        'max-change': 0.75,
                        'allow-zero-padding': True,
                        'bypass-source' : 'noop',
@@ -406,7 +437,7 @@ class XconfigResBlock(XconfigLayerBase):
                        'use-natural-gradient':'',
                        'rank-in':'', 'rank-out':'',
                        'num-minibatches-history':'',
-                       'alpha-in':'', 'alpha-out':''}
+                       'alpha-in':'', 'alpha-out':'', 'l2-regularize':'' }
 
     def set_derived_configs(self):
         # set 'num-filters' or check it..
@@ -466,9 +497,9 @@ class XconfigResBlock(XconfigLayerBase):
         ans = []
         b = self.config['num-bottleneck-filters']
         if b <= 0:
-            config_lines = self.generate_normal_resblock_config()
+            config_lines = self._generate_normal_resblock_config()
         else:
-            config_lines = self.generate_bottleneck_resblock_config()
+            config_lines = self._generate_bottleneck_resblock_config()
 
         for line in config_lines:
             for config_name in ['ref', 'final']:
@@ -477,8 +508,8 @@ class XconfigResBlock(XconfigLayerBase):
                 ans.append((config_name, line))
         return ans
 
-    # generate_normal_resblock_config is a convenience function to generate the
-    # res-block config (the non-bottleck version).
+    # _generate_normal_resblock_config is a convenience function to generate the
+    # res-block config (the non-bottleneck version).
     #
     # The main path inside the res-block in the non-bottleneck case is as
     # follows:
@@ -500,7 +531,7 @@ class XconfigResBlock(XconfigLayerBase):
     # to cache the output sum via a NoOpComponent)-- because due to how nnet3
     # works, if we didn't do this, redundant summing operations would take
     # place.
-    def generate_normal_resblock_config(self):
+    def _generate_normal_resblock_config(self):
         configs = []
 
         name = self.name
@@ -509,6 +540,7 @@ class XconfigResBlock(XconfigLayerBase):
         height = self.config['height']
         input_descriptor = self.descriptors['input']['final-string']
         allow_zero_padding = self.config['allow-zero-padding']
+        height_period = self.config['height-period']
         time_period = self.config['time-period']
 
         # input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2
@@ -516,9 +548,11 @@ class XconfigResBlock(XconfigLayerBase):
         for n in [1, 2]:
             # the ReLU
             configs.append('component name={0}.relu{1} type=RectifiedLinearComponent '
-                           'dim={2} self-repair-scale={3}'.format(
-                               name, n, num_filters * height,
-                               self.config['self-repair-scale']))
+                           'dim={2} block-dim={3} self-repair-scale={4} '
+                           'self-repair-lower-threshold={5}'.format(
+                               name, n, num_filters * height, num_filters,
+                               self.config['self-repair-scale'],
+                               self.config['self-repair-lower-threshold{0}'.format(n)]))
             configs.append('component-node name={0}.relu{1} component={0}.relu{1} '
                            'input={2}'.format(name, n, cur_descriptor))
 
@@ -539,13 +573,14 @@ class XconfigResBlock(XconfigLayerBase):
             for opt_name in [
                     'param-stddev', 'bias-stddev', 'use-natural-gradient',
                     'max-change', 'rank-in', 'rank-out', 'num-minibatches-history',
-                    'alpha-in', 'alpha-out' ]:
+                    'alpha-in', 'alpha-out', 'l2-regularize' ]:
                 value = self.config[opt_name]
                 if value != '':
                         a.append('{0}={1}'.format(opt_name, value))
-            conv_opts = ('height-in={h} height-out={h} height-offsets=-1,0,1 time-offsets=-{p},0,{p} '
+            conv_opts = ('height-in={h} height-out={h} height-offsets=-{hp},0,{hp} '
+                         'time-offsets=-{p},0,{p} '
                          'num-filters-in={f} num-filters-out={f} {r} {o}'.format(
-                             h=height, p=time_period, f=num_filters,
+                             h=height, hp=height_period, p=time_period, f=num_filters,
                              r=('required-time-offsets=0' if allow_zero_padding else ''),
                              o=' '.join(a)))
 
@@ -571,7 +606,7 @@ class XconfigResBlock(XconfigLayerBase):
 
 
 
-    # generate_bottleneck_resblock_config is a convenience function to generate the
+    # _generate_bottleneck_resblock_config is a convenience function to generate the
     # res-block config (this is the bottleneck version, where there is
     # a 3x3 kernel with a smaller number of filters than at the input and output,
     # sandwiched between two 1x1 kernels.
@@ -590,7 +625,7 @@ class XconfigResBlock(XconfigLayerBase):
     # option ('noop') and to cache the output sum via a NoOpComponent)-- because
     # due to how nnet3 works, if we didn't do this, redundant summing operations
     # would take place.
-    def generate_bottleneck_resblock_config(self):
+    def _generate_bottleneck_resblock_config(self):
         configs = []
 
         name = self.name
@@ -600,6 +635,7 @@ class XconfigResBlock(XconfigLayerBase):
         height = self.config['height']
         input_descriptor = self.descriptors['input']['final-string']
         allow_zero_padding = self.config['allow-zero-padding']
+        height_period = self.config['height-period']
         time_period = self.config['time-period']
 
         # input -> relu1 -> batchnorm1 -> conv1 -> relu2 -> batchnorm2 -> conv2
@@ -609,9 +645,11 @@ class XconfigResBlock(XconfigLayerBase):
         for n in [1, 2, 3]:
             # the ReLU
             configs.append('component name={0}.relu{1} type=RectifiedLinearComponent '
-                           'dim={2} self-repair-scale={3}'.format(
-                               name, n, cur_num_filters * height,
-                               self.config['self-repair-scale']))
+                           'dim={2} block-dim={3} self-repair-scale={4} '
+                           'self-repair-lower-threshold={5}'.format(
+                               name, n, cur_num_filters * height, cur_num_filters,
+                               self.config['self-repair-scale'],
+                               self.config['self-repair-lower-threshold{0}'.format(n)]))
             configs.append('component-node name={0}.relu{1} component={0}.relu{1} '
                            'input={2}'.format(name, n, cur_descriptor))
 
@@ -632,21 +670,18 @@ class XconfigResBlock(XconfigLayerBase):
             for opt_name in [
                     'param-stddev', 'bias-stddev', 'use-natural-gradient',
                     'max-change', 'rank-in', 'rank-out', 'num-minibatches-history',
-                    'alpha-in', 'alpha-out' ]:
+                    'alpha-in', 'alpha-out', 'l2-regularize' ]:
                 value = self.config[opt_name]
                 if value != '':
                         a.append('{0}={1}'.format(opt_name, value))
 
-            height_offsets = ('-1,0,1' if n == 2 else '0')
+            height_offsets = ('-{hp},0,{hp}'.format(hp=height_period) if n == 2 else '0')
             time_offsets = ('-{t},0,{t}'.format(t=time_period) if n == 2 else '0')
-            num_filters_in = cur_num_filters
-            num_filters_out = (num_filters if n == 3 else num_bottleneck_filters)
-            cur_num_filters = num_filters_out
-
+            next_num_filters = (num_filters if n == 3 else num_bottleneck_filters)
             conv_opts = ('height-in={h} height-out={h} height-offsets={ho} time-offsets={to} '
                          'num-filters-in={fi} num-filters-out={fo} {r} {o}'.format(
                              h=height, ho=height_offsets, to=time_offsets,
-                             fi=num_filters_in, fo=num_filters_out,
+                             fi=cur_num_filters, fo=next_num_filters,
                              r=('required-time-offsets=0' if allow_zero_padding else ''),
                              o=' '.join(a)))
 
@@ -655,7 +690,7 @@ class XconfigResBlock(XconfigLayerBase):
             configs.append('component-node name={0}.conv{1} component={0}.conv{1} '
                            'input={2}'.format(name, n, cur_descriptor))
             cur_descriptor = '{0}.conv{1}'.format(name, n)
-
+            cur_num_filters = next_num_filters
 
 
         if self.config['bypass-source'] == 'noop':
@@ -668,6 +703,436 @@ class XconfigResBlock(XconfigLayerBase):
 
         # Note: the function 'output_name' is responsible for returning the
         # descriptor corresponding to the output of the network.
+        return configs
+
+
+# This class is for lines like the following:
+#
+# res2-block name=res1 num-filters=64 height=32 time-period=1
+#
+# It is a residual block with post-activations, which does not support
+# downsampling (strided convolution) or changing the number of filters;
+# for that, see res2-downsample-block.
+# It's a pretty standard res-block, more standard than "res-block" (XconfigResBlock).
+#
+# The number of filters is the same on the input and output; it is actually
+# redundant to write it in the config file, because given that we know the
+# height, we can work it out from the dimension of the input (as dimension =
+# height * num-filters).  But we allow it to be specified anyway, for clarity.
+#
+
+# Here are the most important configuration values, with defaults shown if
+# defaults exist:
+#
+# input='[-1]'    Descriptor giving the input of the layer.
+# height          The input and output height of the image, e.g. 40.  Note: the width
+#                 is associated with the time dimension and is dealt with
+#                 implicitly, so it's not specified here.
+# num-filters     The number of filters on the input and output, e.g. 64.
+#                 It does not have to be specified; if it is not specified,
+#                 we work it out from the input dimension.
+# num-bottleneck-filters   If specified then this will be a 'bottleneck'
+#                 ResBlock, in which there is a 1x1 convolution from
+#                 num-filters->num-bottleneck-filters, a 3x3 convolution
+#                 from num-bottleneck-filters->num-bottleneck-filters, and
+#                 a 1x1 convolution from num-bottleneck-filters->num-filters.
+# time-period=1   Think of this as the stride in the time dimension.  At the
+#                 input of the network will always have time-period=1; then
+#                 after subsampling once in time we'd have time-period=2; then
+#                 after subsampling again we'd have time-period=4.  Because of
+#                 the way nnet3 works, subsampling on the time axis is an
+#                 implicit, not explicit, operation.
+# allow-zero-padding=true By default this will allow zero-padding in the time
+#                       dimension, meaning that you don't need extra frames at
+#                       the input to compute the output.  There may be ASR
+#                       applications where you want to pad in the time dimension
+#                       with repeats of the first or last frame (as we do for
+#                       TDNNs), where it would be appropriate to write
+#                       allow-zero-padding=false.  Note: the way we have
+#                       set it up, it does zero-padding on the height axis
+#                       regardless
+#
+# Less important config variables:
+#  self-repair-scale=2.0e-05  This affects the ReLu's.  It is a scale on the
+#                            'self-repair' mechanism that nudges the inputs to the
+#                            ReLUs into the appropriate range in cases where
+#                            the unit is active either too little of the time
+#                            (<10%) or too much of the time (>90%).
+#  max-change=0.75           Max-parameter-change constant (per minibatch)
+#                            used for convolutional components.
+#
+#
+# The following natural-gradient-related configuration variables are passed in
+# to the convolution components, if specified:
+#  use-natural-gradient (bool)
+#  rank-in, rank-out    (int)
+#  num-minibatches-history (float)
+#  alpha-in, alpha-out (float)
+# the following is also passed into the convolution components, if specified:
+#  l2-regularize (float)
+
+class XconfigRes2Block(XconfigLayerBase):
+    def __init__(self, first_token, key_to_value, prev_names = None):
+        assert first_token == 'res2-block'
+        XconfigLayerBase.__init__(self, first_token, key_to_value, prev_names)
+
+    def set_default_configs(self):
+        self.config = {'input':'[-1]',
+                       'height':-1,  # sets height-in and height-out
+                       'height-in':-1,
+                       'height-out':-1,
+                       'num-filters':-1, # interpreted as num-filters-out.
+                       'num-bottleneck-filters':-1,
+                       'time-period':1,
+                       'self-repair-scale': 2.0e-05,
+                       'self-repair-lower-threshold1': 0.05,
+                       'self-repair-lower-threshold2': 0.05,
+                       'self-repair-lower-threshold3': 0.05,
+                       'max-change': 0.75,
+                       'allow-zero-padding': True,
+                       # the following are not really inspected by this level of
+                       # code, just passed through (but not if left at '').
+                       'param-stddev':'', 'bias-stddev':'',
+                       'use-natural-gradient':'',
+                       'rank-in':'', 'rank-out':'',
+                       'num-minibatches-history':'',
+                       'alpha-in':'', 'alpha-out':'',
+                       'l2-regularize':'' }
+
+    def set_derived_configs(self):
+        input_dim = self.descriptors['input']['dim']
+
+        if not ((self.config['height'] > 0  and self.config['height-in'] == -1 and
+                 self.config['height-out'] == -1) or
+                (self.config['height-out'] > 0 and self.config['height-in'] > 0)):
+            raise RuntimeError("You must specify height, or height-in and height-out, for res2-block.")
+
+        if not (self.config['height-in'] > 0 and self.config['height-out'] > 0):
+            height = self.config['height']
+            if not height > 0:
+                raise RuntimeError("You must specify either height, or height-in and height-out, for "
+                                   "res2-block.")
+            self.config['height-in'] = height
+            self.config['height-out'] = height
+
+        height_in = self.config['height-in']
+        if input_dim % height_in != 0:
+            raise RuntimeError("Specified input image height {0} does not "
+                                   "divide the input dim {1}".format(
+                                       height_in, input_dim))
+            self.config['num-filters'] = input_dim / height
+
+    def check_configs(self):
+        if self.config['num-filters'] == -1:
+            raise RuntimeError("You must specify num-filters for res2-block.")
+
+    def auxiliary_outputs(self):
+        return []
+
+    def output_name(self, auxiliary_output = None):
+        b = self.config['num-bottleneck-filters']
+        return ('{0}.relu2' if b <= 0 else '{0}.relu3').format(self.name)
+
+    def output_dim(self, auxiliary_output = None):
+        assert auxiliary_output is None
+        return self.config['height-out'] * self.config['num-filters']
+
+    def get_full_config(self):
+        ans = []
+        b = self.config['num-bottleneck-filters']
+        if b <= 0:
+            config_lines = self._generate_normal_resblock_config()
+        else:
+            config_lines = self._generate_bottleneck_resblock_config()
+
+        for line in config_lines:
+            for config_name in ['ref', 'final']:
+                # we do not support user specified matrices in CNN initialization
+                # so 'ref' and 'final' configs are the same.
+                ans.append((config_name, line))
+        return ans
+
+    # _generate_normal_resblock_config is a convenience function to generate the
+    # res-block config (the non-bottleneck version).
+    #
+    # The main path inside the res-block in the non-bottleneck case is as
+    # follows:
+    #
+    # input -> conv1 -> batchnorm1 -> scaleoffset1 -> relu1 -> conv2 -> batchnorm2 -> scaleoffset2 -> relu2
+    #
+    # where the 'scaleoffsetN' are ScaleAndOffsetComponent, which conventionally would be
+    # considered part of the BatchNorm.
+    #
+    # The relu2 actually sees the sum of the input and  'scaleoffset2'-- which gives us the bypass
+    # connection.
+    def _generate_normal_resblock_config(self):
+        configs = []
+        name = self.name
+        assert self.config['num-bottleneck-filters'] == -1
+        input_dim = self.descriptors['input']['dim']
+        height_in = self.config['height-in']
+        height_out = self.config['height-out']
+        time_period_out = self.config['time-period']
+        if not input_dim % height_in == 0:
+            raise RuntimeError("input-dim {0} does not divide height-in {1}".format(
+                input_dim, height_in))
+        num_filters_in = input_dim / height_in
+        num_filters_out = self.config['num-filters']
+
+        if height_out != height_in:
+            if height_out < height_in / 2 - 1 or height_out > height_in /  2 + 1:
+                raise RuntimeError("Expected height-out to be about half height-in, or the same: "
+                                   "height-in={0} height-out={1}".format(height_in, height_out))
+            if not time_period_out % 2 == 0:
+                raise RuntimeError("Expected time-period to be a multiple of 2 if you are subsampling "
+                                   "on height.")
+            time_period_in = time_period_out / 2
+            height_subsample = 2
+        else:
+            time_period_in = time_period_out
+            height_subsample = 1
+
+
+        cur_time_period = time_period_in
+        cur_num_filters = num_filters_in
+        cur_height = height_in
+
+        input_descriptor = self.descriptors['input']['final-string']
+        allow_zero_padding = self.config['allow-zero-padding']
+        if height_subsample == 1 and num_filters_in == num_filters_out:
+            bypass_descriptor = input_descriptor
+        else:
+            bypass_descriptor = '{0}.conv_bypass'.format(name)
+
+        cur_descriptor = input_descriptor
+
+        # get miscellaneous convolution options passed in from the xconfig line
+        a = []
+        for opt_name in [
+                'param-stddev', 'bias-stddev', 'use-natural-gradient',
+                'max-change', 'rank-in', 'rank-out', 'num-minibatches-history',
+                'alpha-in', 'alpha-out', 'l2-regularize' ]:
+            value = self.config[opt_name]
+            if value != '':
+                a.append('{0}={1}'.format(opt_name, value))
+        misc_conv_opts = ' '.join(a)
+
+        for n in [1, 2]:
+            # the convolution.
+            conv_opts = ('height-in={hi} height-out={ho} height-offsets=-1,0,1 '
+                         'height-subsample-out={hs} '
+                         'time-offsets=-{p},0,{p} '
+                         'num-filters-in={fi} num-filters-out={fo} {r} {o}'.format(
+                             hi=cur_height, ho=height_out,
+                             p=cur_time_period,
+                             hs=(height_subsample if n == 1 else 1),
+                             fi=cur_num_filters,
+                             fo=num_filters_out,
+                             r=('required-time-offsets=0' if allow_zero_padding else ''),
+                             o=misc_conv_opts))
+
+            configs.append('component name={0}.conv{1} type=TimeHeightConvolutionComponent '
+                           '{2}'.format(name, n, conv_opts))
+            configs.append('component-node name={0}.conv{1} component={0}.conv{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+            cur_descriptor = '{0}.conv{1}'.format(name, n)
+
+            cur_num_filters = num_filters_out
+            cur_height = height_out
+            cur_time_period = time_period_out
+
+            # the batch-norm
+            configs.append('component name={0}.batchnorm{1}  type=BatchNormComponent dim={2} '
+                               'block-dim={3}'.format(
+                                   name, n, cur_num_filters * cur_height,
+                                   cur_num_filters))
+            configs.append('component-node name={0}.batchnorm{1} component={0}.batchnorm{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+            cur_descriptor = '{0}.batchnorm{1}'.format(name, n)
+
+            # the scale-and-offset
+            configs.append('component name={0}.scaleoffset{1}  type=ScaleAndOffsetComponent dim={2} '
+                               'block-dim={3}'.format(
+                                   name, n, cur_num_filters * cur_height,
+                                   cur_num_filters))
+            configs.append('component-node name={0}.scaleoffset{1} component={0}.scaleoffset{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+            cur_descriptor = '{0}.scaleoffset{1}'.format(name, n)
+
+
+            if n == 2:
+                # the bypass connection
+                cur_descriptor = 'Sum({0}, {1})'.format(cur_descriptor, bypass_descriptor)
+
+
+            # the ReLU
+            configs.append('component name={0}.relu{1} type=RectifiedLinearComponent '
+                           'dim={2} block-dim={3} self-repair-scale={4} '
+                           'self-repair-lower-threshold={5}'.format(
+                               name, n, cur_num_filters * cur_height, cur_num_filters,
+                               self.config['self-repair-scale'],
+                               self.config['self-repair-lower-threshold{0}'.format(n)]))
+            configs.append('component-node name={0}.relu{1} component={0}.relu{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+
+            cur_descriptor = '{0}.relu{1}'.format(name, n)
+
+        if bypass_descriptor != input_descriptor:
+            # We need to add the 1x1 bypass convolution because we're either doing height
+            # subsampling or changing the number of filters.
+            conv_opts = ('height-in={hi} height-out={ho} height-offsets=0 '
+                         'time-offsets=0 height-subsample-out={hs} '
+                         'num-filters-in={fi} num-filters-out={fo} {o}'.format(
+                             hi=height_in, ho=height_out, hs=height_subsample,
+                             fi=num_filters_in, fo=num_filters_out, o=misc_conv_opts))
+            configs.append('component name={0}.conv_bypass type=TimeHeightConvolutionComponent '
+                           '{1}'.format(name, conv_opts))
+            configs.append('component-node name={0}.conv_bypass component={0}.conv_bypass '
+                           'input={1}'.format(name, input_descriptor))
+
+
+
+        # Note: the function 'output_name' is responsible for returning the
+        # descriptor corresponding to the output of the network, which in
+        # this case would be '{0}.relu2'.format(name).
+        return configs
+
+
+    # _generate_bottleneck_resblock_config is a convenience function to generate the
+    # res-block config (this is the bottleneck version, where there is
+    # a 3x3 kernel with a smaller number of filters than at the input and output,
+    # sandwiched between two 1x1 kernels.
+    #
+    # The main path inside the res-block in the bottleneck case is as follows:
+    #
+    # input -> conv1 -> batchnorm1 -> scaleoffset1 -> relu1 ->
+    #          conv2 -> batchnorm2 -> scaleoffset2 -> relu2 ->
+    #          conv3 -> batchnorm3 -> scaleoffset3 -> relu3
+    #
+    #  but the relu3 takes as its input the sum of 'input' and 'scaleoffset3'.
+    #
+    def _generate_bottleneck_resblock_config(self):
+        configs = []
+
+        name = self.name
+        num_bottleneck_filters = self.config['num-bottleneck-filters']
+        assert num_bottleneck_filters > 0
+        input_dim = self.descriptors['input']['dim']
+        height_in = self.config['height-in']
+        height_out = self.config['height-out']
+        input_descriptor = self.descriptors['input']['final-string']
+        allow_zero_padding = self.config['allow-zero-padding']
+        time_period_out = self.config['time-period']
+        if not input_dim % height_in == 0:
+            raise RuntimeError("input-dim={0} does not divide height-in={1}".format(
+                input_dim, height_in))
+        num_filters_in = input_dim / height_in
+        num_filters_out = self.config['num-filters']
+
+        if height_out != height_in:
+            if height_out < height_in / 2 - 1 or height_out > height_in /  2 + 1:
+                raise RuntimeError("Expected height-out to be about half height-in, or the same: "
+                                   "height-in={0} height-out={1}".format(height_in, height_out))
+            height_subsample = 2
+        else:
+            height_subsample = 1
+
+        cur_descriptor = input_descriptor
+        cur_num_filters = num_filters_in
+        cur_height = height_in
+        if height_subsample == 1 and num_filters_in == num_filters_out:
+            bypass_descriptor = input_descriptor
+        else:
+            bypass_descriptor = '{0}.conv_bypass'.format(name)
+
+        # get miscellaneous convolution options passed in from the xconfig line
+        a = []
+        for opt_name in [
+                'param-stddev', 'bias-stddev', 'use-natural-gradient',
+                'max-change', 'rank-in', 'rank-out', 'num-minibatches-history',
+                'alpha-in', 'alpha-out', 'l2-regularize' ]:
+            value = self.config[opt_name]
+            if value != '':
+                a.append('{0}={1}'.format(opt_name, value))
+        misc_conv_opts = ' '.join(a)
+
+
+        for n in [1, 2, 3]:
+            # the convolution.
+            height_offsets = ('-1,0,1' if n == 2 else '0')
+            this_height_subsample = height_subsample if n == 1 else 1
+            time_offsets = ('-{t},0,{t}'.format(t=time_period_out) if n == 2 else '0')
+            next_num_filters = (num_filters_out if n == 3 else num_bottleneck_filters)
+
+            conv_opts = ('height-in={h_in} height-out={h_out} height-offsets={ho} time-offsets={to} '
+                         'num-filters-in={fi} num-filters-out={fo} height-subsample-out={hs} '
+                         '{r} {o}'.format(
+                             h_in=cur_height, h_out=height_out,
+                             to=time_offsets, ho=height_offsets,
+                             hs=this_height_subsample,
+                             fi=cur_num_filters, fo=next_num_filters,
+                             r=('required-time-offsets=0' if allow_zero_padding else ''),
+                             o=misc_conv_opts))
+
+            configs.append('component name={0}.conv{1} type=TimeHeightConvolutionComponent '
+                           '{2}'.format(name, n, conv_opts))
+            configs.append('component-node name={0}.conv{1} component={0}.conv{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+
+            cur_num_filters = next_num_filters
+            cur_height = height_out
+            cur_descriptor = '{0}.conv{1}'.format(name, n)
+
+            # the batch-norm
+            configs.append('component name={0}.batchnorm{1}  type=BatchNormComponent dim={2} '
+                               'block-dim={3}'.format(
+                                   name, n, cur_num_filters * cur_height,
+                                   cur_num_filters))
+            configs.append('component-node name={0}.batchnorm{1} component={0}.batchnorm{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+            cur_descriptor = '{0}.batchnorm{1}'.format(name, n)
+
+            # the scale and offset
+            configs.append('component name={0}.scaleoffset{1}  type=ScaleAndOffsetComponent dim={2} '
+                               'block-dim={3}'.format(
+                                   name, n, cur_num_filters * cur_height,
+                                   cur_num_filters))
+            configs.append('component-node name={0}.scaleoffset{1} component={0}.scaleoffset{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+            cur_descriptor = '{0}.scaleoffset{1}'.format(name, n)
+
+            if n == 3:
+                # the bypass connection
+                cur_descriptor = 'Sum({0}, {1})'.format(cur_descriptor, bypass_descriptor)
+
+            # the ReLU
+            configs.append('component name={0}.relu{1} type=RectifiedLinearComponent '
+                           'dim={2} block-dim={3} self-repair-scale={4} '
+                           'self-repair-lower-threshold={5}'.format(
+                               name, n, cur_num_filters * cur_height, cur_num_filters,
+                               self.config['self-repair-scale'],
+                               self.config['self-repair-lower-threshold{0}'.format(n)]))
+            configs.append('component-node name={0}.relu{1} component={0}.relu{1} '
+                           'input={2}'.format(name, n, cur_descriptor))
+
+            cur_descriptor = '{0}.relu{1}'.format(name, n)
+
+        if bypass_descriptor != input_descriptor:
+            # We need to add the 1x1 bypass convolution because we're either doing height
+            # subsampling or changing the number of filters.
+            conv_opts = ('height-in={hi} height-out={ho} height-offsets=0 '
+                         'time-offsets=0 height-subsample-out={hs} '
+                         'num-filters-in={fi} num-filters-out={fo} {o}'.format(
+                             hi=height_in, ho=height_out, hs=height_subsample,
+                             fi=num_filters_in, fo=num_filters_out, o=misc_conv_opts))
+            configs.append('component name={0}.conv_bypass type=TimeHeightConvolutionComponent '
+                           '{1}'.format(name, conv_opts))
+            configs.append('component-node name={0}.conv_bypass component={0}.conv_bypass '
+                           'input={1}'.format(name, input_descriptor))
+
+        # Note: the function 'output_name' is responsible for returning the
+        # descriptor corresponding to the output of the network, which
+        # in this case will be '{0}.relu3'.format(name).
         return configs
 
 
@@ -715,13 +1180,13 @@ class ChannelAverageLayer(XconfigLayerBase):
 
     def get_full_config(self):
         ans = []
-        config_lines = self.generate_channel_average_config()
+        config_lines = self._generate_channel_average_config()
         for line in config_lines:
             for config_name in ['ref', 'final']:
                 ans.append((config_name, line))
         return ans
 
-    def generate_channel_average_config(self):
+    def _generate_channel_average_config(self):
         configs = []
         name = self.name
         input_dim = self.descriptors['input']['dim']

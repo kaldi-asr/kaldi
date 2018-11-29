@@ -41,7 +41,13 @@ int main(int argc, char *argv[]) {
         "e.g.\n"
         "nnet3-chain-normalize-egs dir/normalization.fst ark:train_in.cegs ark:train_out.cegs\n";
 
+    BaseFloat normalization_fst_scale = 1.0;
+    
     ParseOptions po(usage);
+    po.Register("normalization-fst-scale", &normalization_fst_scale, 
+                "Scale the weights from the "
+                "'normalization' FST before applying them to the examples. "
+                "(Useful for semi-supervised training)");
 
     po.Read(argc, argv);
 
@@ -56,6 +62,12 @@ int main(int argc, char *argv[]) {
 
     fst::StdVectorFst normalization_fst;
     ReadFstKaldi(normalization_fst_rxfilename, &normalization_fst);
+
+    if (normalization_fst_scale < 0.0)
+      KALDI_ERR << "Invalid scale on normalization FST; must be >= 0.0";
+
+    if (normalization_fst_scale != 1.0)
+      ApplyProbabilityScale(normalization_fst_scale, &normalization_fst);
 
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
     NnetChainExampleWriter example_writer(examples_wspecifier);
@@ -87,5 +99,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

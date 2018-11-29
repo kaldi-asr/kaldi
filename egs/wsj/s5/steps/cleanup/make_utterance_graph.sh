@@ -62,9 +62,9 @@ if [ $ngram_order -gt 1 ]; then
   ngram_count=`which ngram-count` || true
   if [ -z $ngram_count ]; then
     if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-      sdir=`pwd`/../../../tools/srilm/bin/i686-m64
+      sdir=$KALDI_ROOT/tools/srilm/bin/i686-m64
     else
-      sdir=`pwd`/../../../tools/srilm/bin/i686
+      sdir=$KALDI_ROOT/tools/srilm/bin/i686
     fi
     if [ -f $sdir/ngram-count ]; then
       echo Using SRILM tools from $sdir

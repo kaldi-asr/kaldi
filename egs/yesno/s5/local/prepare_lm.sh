@@ -1,6 +1,6 @@
 #!/bin/bash
 
-. path.sh
+. ./path.sh
 
 echo Preparing language models for test
 

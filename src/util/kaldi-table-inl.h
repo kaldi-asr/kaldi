@@ -60,7 +60,7 @@ template<class Holder> class SequentialTableReaderImplBase {
   // Done() returned false.  It throws if the value could not be read.  [However
   // if you use the ,p modifier it will never throw, unless you call it at the
   // wrong time, i.e. unless there is a code error.]
-  virtual const T &Value() = 0;
+  virtual T &Value() = 0;
   virtual void FreeCurrent() = 0;
   // move to the next object.  This won't throw unless called wrongly (e.g. on
   // non-open archive.]
@@ -159,7 +159,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     return key_;
   }
 
-  const T &Value() {
+  T &Value() {
     if (!EnsureObjectLoaded())
       KALDI_ERR << "Failed to load object from "
                 << PrintableRxfilename(data_rxfilename_)
@@ -612,7 +612,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
     return key_;
   }
 
-  const T &Value() {
+  T &Value() {
     switch (state_) {
       case kHaveObject:
         break;  // only valid case.
@@ -776,7 +776,7 @@ class SequentialTableReaderBackgroundImpl:
       KALDI_ERR << "Calling Key() at the wrong time.";
     return key_;
   }
-  virtual const T &Value() {
+  virtual T &Value() {
     if (key_.empty())
       KALDI_ERR << "Calling Value() at the wrong time.";
     return holder_.Value();
@@ -930,7 +930,7 @@ void SequentialTableReader<Holder>::FreeCurrent() {
 
 
 template<class Holder>
-const typename SequentialTableReader<Holder>::T &
+typename SequentialTableReader<Holder>::T &
 SequentialTableReader<Holder>::Value() {
   CheckImpl();
   return impl_->Value();  // This may throw (if EnsureObjectLoaded() returned false you

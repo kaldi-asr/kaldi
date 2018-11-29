@@ -33,8 +33,8 @@ unk="<unk>"
 
 if [ $stage -le 0 ]; then
   # Eval dataset preparation
-  
-  # prepare_data.sh does not really care about the order or number of the 
+
+  # prepare_data.sh does not really care about the order or number of the
   # corpus directories
   local/prepare_data.sh \
     $eval_data/HUB4_1997NE/doc/h4ne97sp.sgm \
@@ -74,7 +74,7 @@ fi
 
 if [ $stage -le 4 ]; then
   # Training set features
-	steps/make_mfcc.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_mfcc_pitch/train mfcc
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj $train_nj data/train exp/make_mfcc_pitch/train mfcc
   utils/fix_data_dir.sh data/train
   steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train mfcc
   utils/fix_data_dir.sh data/train
@@ -82,7 +82,7 @@ fi
 
 if [ $stage -le 4 ]; then
   # Eval dataset features
-	steps/make_mfcc.sh --cmd "$decode_cmd" --nj 16  data/eval exp/make_mfcc_pitch/eval mfcc
+  steps/make_mfcc.sh --cmd "$decode_cmd" --nj 16  data/eval exp/make_mfcc_pitch/eval mfcc
   utils/fix_data_dir.sh data/eval
   steps/compute_cmvn_stats.sh data/eval exp/make_mfcc/eval mfcc
   utils/fix_data_dir.sh data/eval

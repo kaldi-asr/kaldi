@@ -36,6 +36,7 @@ inline CuSubMatrix<Real>::CuSubMatrix(const CuMatrixBase<Real> &mat,
     // initializer, so nothing to do.
   } else {
     KALDI_ASSERT(row_offset >= 0 && col_offset >= 0 &&
+                 num_rows >= 0 && num_cols >= 0 &&
                  row_offset + num_rows <= mat.num_rows_ &&
                  col_offset + num_cols <= mat.num_cols_);
     this->data_ = mat.data_ + static_cast<size_t>(col_offset) +
@@ -68,5 +69,3 @@ inline CuSubMatrix<Real>::CuSubMatrix(const Real *data,
 } // namespace kaldi
 
 #endif
-
-

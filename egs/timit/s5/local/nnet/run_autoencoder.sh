@@ -1,7 +1,7 @@
 #!/bin/bash
 
-. path.sh
-. cmd.sh
+. ./path.sh
+. ./cmd.sh
 
 # Train,
 dir=exp/autoencoder

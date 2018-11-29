@@ -9,7 +9,7 @@ feature_type=mfcc
 add_pitch=false
 mfcc_config=conf/mfcc.conf # you can override any of these you need to override.
 plp_config=conf/plp.conf
-fbank_config=conf/fbank.conf 
+fbank_config=conf/fbank.conf
 # online_pitch_config is the config file for both pitch extraction and
 # post-processing; we combine them into one because during training this
 # is given to the program compute-and-process-kaldi-pitch-feats.
@@ -74,6 +74,11 @@ if [ ! -z "$iedir" ]; then
   for f in final.{mat,ie,dubm} splice_opts global_cmvn.stats online_cmvn.conf; do
     [ ! -f $iedir/$f ] && echo "$0: no such file $iedir/$f" && exit 1;
   done
+  if $add_pitch; then
+    iedim=`matrix-dim $iedir/final.mat | awk '{print $1}'`
+    amdim=`nnet3-am-info $srcdir/${iter}.mdl | grep "input-dim:" | awk '{print $2}'`
+    [ $(($amdim-$iedim)) -eq 0 ] && echo "$0: remove pitch from the input of ivector extractor" && exit 1;
+  fi
 fi
 
 
@@ -88,7 +93,7 @@ cp $lang/phones.txt $dir || exit 1;
 cp $srcdir/${iter}.mdl $dir/final.mdl || exit 1;
 cp $srcdir/tree $dir/ || exit 1;
 if [ -f $srcdir/frame_subsampling_factor ]; then
-	cp $srcdir/frame_subsampling_factor $dir/
+  cp $srcdir/frame_subsampling_factor $dir/
 fi
 
 if [ ! -z "$iedir" ]; then

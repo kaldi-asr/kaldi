@@ -16,7 +16,7 @@ oracleDir=$latticeDir/oracle
 echo $latticeDir
 echo $oracleDir
 
-. path.sh
+. ./path.sh
 
 if [ ! -f $textFile -o ! -f $symTable -o ! -d $latticeDir ]; then
     echo "Required files not found"

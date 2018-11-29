@@ -2,8 +2,8 @@
 
 # It's best to run the commands in this one by one.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 mfccdir=`pwd`/mfcc
 set -e
 
@@ -73,19 +73,19 @@ utils/subset_data_dir.sh --speakers data/train 100000 data/train_100k
 # The next commands are not necessary for the scripts to run, but increase 
 # efficiency of data access by putting the mfcc's of the subset 
 # in a contiguous place in a file.
-( . path.sh; 
+( . ./path.sh; 
   # make sure mfccdir is defined as above..
   cp data/train_10k_nodup/feats.scp{,.bak} 
   copy-feats scp:data/train_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_fish_10k_nodup.ark,$mfccdir/kaldi_fish_10k_nodup.scp \
   && cp $mfccdir/kaldi_fish_10k_nodup.scp data/train_10k_nodup/feats.scp
 )
-( . path.sh; 
+( . ./path.sh; 
   # make sure mfccdir is defined as above..
   cp data/train_30k/feats.scp{,.bak} 
   copy-feats scp:data/train_30k/feats.scp  ark,scp:$mfccdir/kaldi_fish_30k.ark,$mfccdir/kaldi_fish_30k.scp \
   && cp $mfccdir/kaldi_fish_30k.scp data/train_30k/feats.scp
 )
-( . path.sh; 
+( . ./path.sh; 
   # make sure mfccdir is defined as above..
   cp data/train_100k/feats.scp{,.bak} 
   copy-feats scp:data/train_100k/feats.scp  ark,scp:$mfccdir/kaldi_fish_100k.ark,$mfccdir/kaldi_fish_100k.scp \
@@ -181,3 +181,32 @@ steps/train_sat.sh  --cmd "$train_cmd" \
 # # local/run_nnet2.sh
 #
 
+# This prepares lang directory with UNK modeled by a phone LM
+# local/run_unk_model.sh
+
+# These are semi-supervised training recipes using 50 hrs and 100 hrs 
+# of supervised data respectively with 250 hrs of unsupervised data.
+# run_50k.sh uses i-vector extractor trained on 300 hrs of combined data, 
+# while run_100.sh uses i-vector extractor trained on 100 hrs of supervised data.
+# run_50k.sh uses 4-gram LM trained on 1250 hrs transcripts, 
+# while run_100k.sh uses 3-gram LM trained on 100 hrs transcripts.
+
+# local/fisher_train_lms_pocolm.sh 
+# local/fisher_create_test_lang.sh --arpa-lm data/local/pocolm/data/arpa/4gram_small.arpa.gz --dir data/lang_test_poco
+# utils/build_const_arpa_lm.sh data/local/pocolm/data/arpa/4gram_big.arpa.gz data/lang_test_poco data/lang_test_poco_big
+
+# for lang_dir in data/lang_test_poco; do
+#   rm -r ${lang_dir}_unk ${lang_dir}_unk_big 2>/dev/null || true
+#   cp -rT data/lang_unk ${lang_dir}_unk
+#   cp ${lang_dir}/G.fst ${lang_dir}_unk/G.fst
+#   cp -rT data/lang_unk ${lang_dir}_unk_big
+#   cp ${lang_dir}_big/G.carpa ${lang_dir}_unk_big/G.carpa; 
+# done
+
+# Create supervised and unsupervised data subsets
+# utils/subset_data_dir.sh --speakers data/train 100000 data/train_sup
+# utils/subset_data_dir.sh --spk-list <(utils/filter_scp.pl --exclude data/train_sup/spk2utt data/train/spk2utt) data/train data/train_unsup100k
+# utils/subset_data_dir.sh --speakers data/train_unsup100k 250000 data/train_unsup100k_250k
+
+# local/semisup/run_50k.sh
+# local/semisup/run_100k.sh 

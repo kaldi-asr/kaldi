@@ -7,8 +7,8 @@
 # transcripts are already clean enough.
 
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 
