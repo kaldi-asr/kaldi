@@ -2,7 +2,7 @@
 
 # a re-tuned model based on resnet-style TDNN-F layers with bypass connections.
 # 1e is as 1d except for number of epochs: 10 versus 20
-john@6051i:~/mi_kaldi/egs/yaounde_fr/s5$ ./local/chain/compare_wer.sh exp/chain/tdnn1{a,b,c,d,e}_sp
+
 # ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp exp/chain/tdnn1c_sp exp/chain/tdnn1d_sp exp/chain/tdnn1e_sp
 # System                tdnn1a_sp tdnn1b_sp tdnn1c_sp tdnn1d_sp tdnn1e_sp
 #WER dev (tgsmall)      30.91     30.83     30.94     30.29     28.20
