@@ -174,9 +174,8 @@ class Segmentation(object):
                     self.segments.append(
                         [float(i - prev_length) * frame_shift,
                          float(i) * frame_shift, prev_label])
-
+                    self.stats.initial_duration += (prev_length * frame_shift)
                 prev_label = process_label(text_label)
-                self.stats.initial_duration += (prev_length * frame_shift)
                 prev_length = 0
             elif prev_label is None:
                 prev_label = process_label(text_label)
