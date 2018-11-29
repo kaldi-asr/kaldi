@@ -468,6 +468,20 @@ void FmllrEstimator::AdaptFeaturesBackward(
     MatrixBase<BaseFloat> *feats_deriv) {
   KALDI_ASSERT(SameDim(feats, adapted_feats_deriv) &&
                SameDim(feats, *feats_deriv));
+  int32 rows_per_chunk = 100;
+  if (feats.NumRows() > rows_per_chunk) {
+    // Break it up into 100-frame chunks and recurse.  This will reduce roundoff
+    // error due to the way we work with temporaries.
+    for (int32 offset = 0; offset < feats.NumRows(); offset += rows_per_chunk) {
+      int32 n = std::min<int32>(rows_per_chunk, feats.NumRows() - offset);
+      SubMatrix<BaseFloat> feats_deriv_part = feats_deriv->RowRange(offset, n);
+      AdaptFeaturesBackward(feats.RowRange(offset, n),
+                            adapted_feats_deriv.RowRange(offset, n),
+                            &feats_deriv_part);
+    }
+    return;
+  }
+
   // in the writeup: \bar{x}_t <-- A^T \bar{y}_t.
   // In this implementation, x_t corresponds to a
   // row vector in feats and feats_deriv, so everything is
@@ -513,9 +527,9 @@ void FmllrEstimator::EstimateBackward() {
   estimator_ = NULL;
   KALDI_ASSERT(G_bar_.IsSymmetric());
 
-  // \bar{n} = - (\bar{A}^T b + 2\bar{G} n + \bar{K}^T m)
+  // \bar{n} = - (A^T \bar{b} + 2\bar{G} n + \bar{K}^T m)
   n_bar_.Resize(dim);
-  n_bar_.AddMatVec(-1.0, A_bar_, kTrans, b_, 0.0);
+  n_bar_.AddMatVec(-1.0, A_, kTrans, b_bar_, 0.0);
   n_bar_.AddMatVec(-2.0 * gamma_hat_tot_, G_bar_, kNoTrans, n_, 1.0);
   n_bar_.AddMatVec(-1.0 * gamma_hat_tot_, K_bar_, kTrans, m_, 1.0);
 
@@ -553,8 +567,12 @@ void FmllrEstimator::AccStatsBackward(
     const Posterior &post,
     MatrixBase<BaseFloat> *feats_deriv) {
   KALDI_ASSERT(static_cast<int32>(post.size() == feats.NumRows()));
-  int32 T = feats.NumRows(), num_classes = mu_.NumRows();
-  Vector<double> s_bar_temp(num_classes);
+  int32 T = feats.NumRows(), num_classes = mu_.NumRows(),
+      dim = mu_.NumCols();
+
+  // Use temporaries for s_bar_ and mu_bar_ to reduce roundoff error.
+  Vector<BaseFloat> s_bar(num_classes);
+  Matrix<BaseFloat> mu_bar(num_classes, dim);
   for (int32 t = 0; t < T; t++) {
     auto iter = post[t].begin(), end = post[t].end();
     SubVector<BaseFloat> x_t(feats, t),
@@ -564,7 +582,7 @@ void FmllrEstimator::AccStatsBackward(
       int32 i = iter->first;
       BaseFloat gamma_ti = iter->second,
           gamma_hat_ti = gamma_ti / s_(i);
-      SubVector<BaseFloat> mu_bar_i(mu_bar_, i);
+      SubVector<BaseFloat> mu_bar_i(mu_bar, i);
       // \bar{\mu}_i += \hat{\gamma}_{t,i} \bar{K} x_t.
       mu_bar_i.AddMatVec(gamma_hat_ti, K_bar_, kNoTrans, x_t, 1.0);
       gamma_hat_t += gamma_hat_ti;
@@ -587,10 +605,18 @@ void FmllrEstimator::AccStatsBackward(
       double gamma_hat_bar_ti = VecMatVec(mu_i, K_bar_, x_t) +
           double(gamma_hat_bar_(i)) + double(gamma_hat_bar_t);
       // \bar{s}_i += \frac{-1}{s_i^2} \gamma_{t,i} \bar{\hat{\gamma}}_{t,i}
-      s_bar_temp(i) -= 1.0 / (s_(i) * s_(i)) * gamma_ti * gamma_hat_bar_ti;
+      s_bar(i) -= 1.0 / (s_(i) * s_(i)) * gamma_ti * gamma_hat_bar_ti;
+    }
+    if (t == T - 1 || (t > 0 && t % 200 == 0)) {
+      s_bar_.AddVec(1.0, s_bar);
+      mu_bar_.AddMat(1.0, mu_bar);
+      if (t < T - 1) {
+        s_bar.SetZero();
+        mu_bar.SetZero();
+      }
     }
   }
-  s_bar_.AddVec(1.0, s_bar_temp);
+
 }
 
 BaseFloat FmllrEstimator::ForwardCombined(

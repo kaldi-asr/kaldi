@@ -503,7 +503,7 @@ class FmllrEstimator {
   BaseFloat Estimate();
 
   /// Returns the total count of the posteriors accumulated so far.
-  BaseFloat TotalCount();
+  BaseFloat TotalCount() { return gamma_.Sum(); }
 
   /// Return the linear parameter matrix.  Adapted features are
   /// y_t = A x_t  +  b.  You won't necessarily need to
@@ -553,11 +553,12 @@ class FmllrEstimator {
 
 
   // Returns the derivative w.r.t. the class means 'mu' that were supplied to the
-  // constructor.  Must not be called until EstimateBackward() has been called.
+  // constructor.  Must not be called until EstimateBackward() and
+  // AccStatsBackward() have been called.
   const MatrixBase<BaseFloat> &GetMeanDeriv() const { return mu_bar_; }
   // Returns the derivative w.r.t. the variance factors 's' that were supplied
-  // to the constructor.  Must not be called until EstimateBackward() has been
-  // called.
+  // to the constructor.  Must not be called until EstimateBackward() and
+  // AccStatsBackward() have been called.
   const VectorBase<BaseFloat> &GetVarDeriv() const { return s_bar_; }
 
   /**
@@ -733,6 +734,98 @@ class FmllrEstimator {
   //                 + \frac{\hat{\gamma}_t}{\hat{\gamma}} \bar{n}
   // There is no variable for this; it's a temporary.
 
+};
+
+
+/* MeanOnlyTransformEstimator is like a highly simplified version of
+   FmllrEstimator, where the transform is just y_t = x_t + b.
+   There are class means but the variances are assumed to be all
+   unit.  (This is equivalent to assuming that they are all identical
+   with an arbitrary value; the value doesn't actually affect the
+   learned offset so we assume they are unit).
+
+   The equations involved are like an extremly simplified version
+   of what we do in class FmllrEstimator, with m as a weighted
+   average of the means and n as a weighted average of the input
+   features.  The weights come from the posterior information you
+   supply.
+
+   This object has a similar interface to class FmllrEstimator.
+
+ */
+class MeanOnlyTransformEstimator {
+
+  /**
+     Constructor.
+     @param [in] mu     Class means, probably as output by class
+                        GaussianEstimator.  This class maintains a
+                        reference to this object, so you should ensure
+                        that it exists for the lifetime of this object.
+                        You can ignore the variances from class
+                        GaussianEstimator; they are not used.
+  */
+  MeanOnlyTransformEstimator(const MatrixBase<BaseFloat> &mu);
+
+  /**
+     Accumulate statistics to estimate the fMLLR transform.
+       @param [in] feats  The feature matrix.  A row of it would be called
+                       x_t in the writeup in
+                       http://www.danielpovey.com/files/2018_differentiable_fmllr.pdf.
+       @param [in] post  The posteriors.  post.size() must equal feats.NumRows().
+                       Each element of post is a list of pairs (i, p) where
+                       i is the class label and p is the soft-count.
+   */
+  void AccStats(const MatrixBase<BaseFloat> &feats,
+                const Posterior &post);
+
+  /**
+     Estimate the parameter (the offset b).  Returns the
+     objective-function improvement compared with b = 0, divided by the
+     total count as returned by TotalCount().
+  */
+  BaseFloat Estimate();
+
+  BaseFloat TotalCount();
+
+  /// Return the bias term b.
+  const VectorBase<BaseFloat> &GetOffset() { return b_; }
+
+  /// Computes the adapted features y_t = x_t + b.
+  /// feats (x) and adapted_feats (y) must have the same dimension.  Must
+  /// only be called after Estimate() has been called.
+  /// 'adapted_feats' may contain NaN's on entry.
+  void AdaptFeatures(const MatrixBase<BaseFloat> &feats,
+                     MatrixBase<BaseFloat> *adapted_feats) const;
+
+
+  /**
+     This is the backward pass corresponding to the function AdaptFeatures().
+     It propagates back only part of the derivative-- not including the part
+     that's due to how the transform changes when the features change.  It
+     also accumulates within this class instance the derivative w.r.t.
+     b.  You are expected to later call EstimateBackward() and
+     AccStatsBackward() to propagate the part of the derivative that comes from
+     the effect on the transform, back to the input features.
+
+     See also AccStatsBackward().
+        @param [in]   feats    The features (x) that were the original input to
+                               AdaptFeatures().
+        @param [in]   adapted_feats_deriv  The derivative \bar{y} w.r.t. the output (y)
+                               that was the result of calling AdaptFeatures().  Must
+                               have the same size as feat.
+        @param [in,out] feats_deriv   The derivative w.r.t. 'feats'; this function
+                               *adds* to it.
+   */
+  void AdaptFeaturesBackward(const MatrixBase<BaseFloat> &feats,
+                             const MatrixBase<BaseFloat> &adapted_feats_deriv,
+                             MatrixBase<BaseFloat> *feats_deriv);
+
+  void EstimateBackward();
+  // TODO: finish this.
+
+ private:
+
+  Vector<BaseFloat> b_;
 };
 
 

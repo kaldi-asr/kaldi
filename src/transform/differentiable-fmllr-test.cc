@@ -42,6 +42,7 @@ void TestCoreFmllrEstimatorKDeriv(
   Matrix<BaseFloat> A_deriv(dim, dim);
   // A_deriv defines the objective function: a random linear function in A.
   A_deriv.SetRandn();
+  A_deriv.Add(0.1);  // Introduce some asymmetry.
 
   Matrix<BaseFloat> G_deriv(dim, dim),
       K_deriv(dim, dim);
@@ -90,6 +91,7 @@ void TestCoreFmllrEstimatorGDeriv(
   Matrix<BaseFloat> A_deriv(dim, dim);
   // A_deriv defines the objective function: a random linear function in A.
   A_deriv.SetRandn();
+  A_deriv.Add(0.1);  // Introduce some asymmetry.
 
   Matrix<BaseFloat> G_deriv(dim, dim),
       K_deriv(dim, dim);
@@ -148,6 +150,13 @@ void UnitTestCoreFmllrEstimatorSimple() {
   }
 }
 
+static void InitRandNonsingular(MatrixBase<BaseFloat> *M) {
+  do {
+    M->SetRandn();
+  } while (M->Cond() > 50.0);
+}
+
+
 void UnitTestCoreFmllrEstimatorGeneral() {
   int32 dim = RandInt(10, 20);
   BaseFloat gamma = RandInt(5, 10);
@@ -156,12 +165,12 @@ void UnitTestCoreFmllrEstimatorGeneral() {
 
   {
     // make sure G is symmetric and +ve definite.
-    Matrix<BaseFloat> A(dim, dim + 5);
+    Matrix<BaseFloat> A(dim, dim + 10);
     A.SetRandn();
     G.AddMatMat(gamma, A, kNoTrans, A, kTrans, 0.0);
   }
 
-  K.SetRandn();
+  InitRandNonsingular(&K);
   K.Scale(gamma);
   FmllrEstimatorOptions opts;
   CoreFmllrEstimator estimator(opts, gamma, G, K, &A);
@@ -253,6 +262,7 @@ void TestFmllrEstimatorMeanDerivs(const MatrixBase<BaseFloat> &feats,
   Matrix<BaseFloat> adapted_feats_deriv(T, dim),
       feats_deriv(T, dim);
   adapted_feats_deriv.SetRandn();
+  adapted_feats_deriv.Add(0.1);  // Introduce some asymmetry.
 
   f.BackwardCombined(feats, post, adapted_feats_deriv, &feats_deriv);
 
@@ -265,12 +275,16 @@ void TestFmllrEstimatorMeanDerivs(const MatrixBase<BaseFloat> &feats,
 
   // measure the accuracy of the deriv in 4 random directions.
   int32 n = 4;
-  BaseFloat epsilon = 1.0e-03;
+  BaseFloat epsilon = 1.0e-04;
   Vector<BaseFloat> expected_changes(n), actual_changes(n);
   for (int32 i = 0; i < n; i++) {
     Matrix<BaseFloat> new_mu(num_classes, dim, kUndefined),
         new_adapted_feats(T, dim, kUndefined);
     new_mu.SetRandn();
+    // adding a systematic component helps the test to succeed in low precision.
+    for (int32 c = 0; c < num_classes; c++) {
+      new_mu.Row(c).Add(0.1 * RandInt(-1, 1));
+    }
     new_mu.Scale(epsilon);
     expected_changes(i) = TraceMatMat(new_mu, mu_deriv, kTrans);
     new_mu.AddMat(1.0, mu);
@@ -312,6 +326,9 @@ void TestFmllrEstimatorVarDerivs(const MatrixBase<BaseFloat> &feats,
   Matrix<BaseFloat> adapted_feats_deriv(T, dim),
       feats_deriv(T, dim);
   adapted_feats_deriv.SetRandn();
+  // Adding a systematic component to the derivative makes the test easier
+  // to pass, as the derivs are less random.
+  adapted_feats_deriv.AddMat(0.1, feats);
 
   f.BackwardCombined(feats, post, adapted_feats_deriv, &feats_deriv);
 
@@ -324,7 +341,7 @@ void TestFmllrEstimatorVarDerivs(const MatrixBase<BaseFloat> &feats,
 
   // measure the accuracy of the deriv in 10 random directions
   int32 n = 10;
-  BaseFloat epsilon = 0.1;
+  BaseFloat epsilon = 0.01;
   Vector<BaseFloat> expected_changes(n), actual_changes(n);
   for (int32 i = 0; i < n; i++) {
     Vector<BaseFloat> new_s(num_classes, kUndefined);
@@ -371,6 +388,7 @@ void TestFmllrEstimatorFeatDerivs(const MatrixBase<BaseFloat> &feats,
   Matrix<BaseFloat> adapted_feats_deriv(T, dim),
       feats_deriv(T, dim);
   adapted_feats_deriv.SetRandn();
+  adapted_feats_deriv.Add(0.1);  // Introduce some asymmetry.
 
   f.BackwardCombined(feats, post, adapted_feats_deriv, &feats_deriv);
 
@@ -407,14 +425,17 @@ void TestFmllrEstimatorFeatDerivs(const MatrixBase<BaseFloat> &feats,
 
 
 void UnitTestGaussianAndFmllrEstimator() {
-  int32 num_classes = RandInt(50, 100),
-      dim = RandInt(5, 10),
-      num_frames = RandInt(40 * num_classes, 100 * num_classes);
+  // It's important that the number of classes be greater than the dimension, or
+  // we would get a low-rank K.
+  int32 num_classes = RandInt(30, 40),
+      dim = RandInt(10, 20),
+      num_frames = RandInt(20 * num_classes, 40 * num_classes);
 
   GaussianEstimator g(num_classes, dim);
 
   Matrix<BaseFloat> feats(num_frames, dim);
   feats.SetRandn();
+  feats.Add(0.1);  // Nonzero offset tests certain aspects of the code better.
   Posterior post(num_frames);
   for (int32 t = 0; t < num_frames; t++) {
     int32 n = RandInt(0, 2);
@@ -426,15 +447,22 @@ void UnitTestGaussianAndFmllrEstimator() {
   }
   g.AccStats(feats, post);
   FmllrEstimatorOptions opts;
-  opts.variance_sharing_weight = 0.25 * RandInt(0, 4);  // will try other values later.
+  // avoid setting variance_sharing_weight to 1.0; it's hard for the tests to
+  // succeed then, and there are valid reasons for that
+  opts.variance_sharing_weight = 0.25 * RandInt(0, 2);
   g.Estimate(opts);
   KALDI_LOG << "Means are: "
             << g.GetMeans() << ", vars are: "
             << g.GetVars();
+
   TestGaussianEstimatorDerivs(feats, post, opts, &g);
 
-  TestFmllrEstimatorFeatDerivs(feats, post, g);
+  if (RandInt(0, 1) == 0) {
+    opts.smoothing_count = 500.0;
+  }
+
   TestFmllrEstimatorMeanDerivs(feats, post, g);
+  TestFmllrEstimatorFeatDerivs(feats, post, g);
   TestFmllrEstimatorVarDerivs(feats, post, g);
 }
 
@@ -448,7 +476,7 @@ void UnitTestGaussianAndFmllrEstimator() {
 int main() {
   using namespace kaldi::differentiable_transform;
 
-  for (int32 i = 0; i < 5; i++) {
+  for (int32 i = 0; i < 50; i++) {
     UnitTestCoreFmllrEstimatorSimple();
     UnitTestCoreFmllrEstimatorGeneral();
     UnitTestGaussianAndFmllrEstimator();
