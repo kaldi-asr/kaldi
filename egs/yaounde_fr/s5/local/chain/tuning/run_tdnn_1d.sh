@@ -3,23 +3,18 @@
 # a re-tuned model based on resnet-style TDNN-F layers with bypass connections.
 # 1d is as 1b except for layer dimension: 
 
-# ./local/chain/compare_wer.sh ./exp/chain/tdnn1a_sp ./exp/chain/tdnn1b_sp
-# System                tdnn1a_sp tdnn1b_sp
-#WER dev (tgsmall)      30.91     30.10
-#WER dev (tgmed)      41.78     41.03
-#WER dev (tglarge)      31.22     30.71
-# Final train prob        -0.0464   -0.0523
-# Final valid prob        -0.0739   -0.0761
-# Final train prob (xent)   -1.5447   -1.6248
-# Final valid prob (xent)   -1.7440   -1.8102
-# Num-params                 4781712   3651216
+./local/chain/compare_wer.sh exp/chain/tdnn1{a,b,c,d}_sp
+# ./local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp exp/chain/tdnn1c_sp exp/chain/tdnn1d_sp
+# System                tdnn1a_sp tdnn1b_sp tdnn1c_sp tdnn1d_sp
+#WER dev (tgsmall)      30.91     30.83     30.94     30.28
+#WER dev (tgmed)      41.78     43.98     45.77     42.46
+#WER dev (tglarge)      31.22     31.09     31.38     30.92
+# Final train prob        -0.0464   -0.0450   -0.0637   -0.0485
+# Final valid prob        -0.0739   -0.0771   -0.0792   -0.0746
+# Final train prob (xent)   -1.5447   -1.5399   -2.8872   -1.5664
+# Final valid prob (xent)   -1.7440   -1.7523   -2.9847   -1.7588
+# Num-params                 4781712   3651216   3651216   3166080
 
-# ./local/chain/compare_wer.sh --online exp/chain/tdnn1a_sp
-
-#steps/info/chain_dir_info.pl exp/chain/tdnn1b_sp
-#exp/chain/tdnn1b_sp: num-iters=120 nj=1..1 num-params=3.7M dim=40+100->1224 combine=-0.066->-0.052 (over 5) xent:train/valid[79,119,final]=(-2.16,-6.51,-1.62/-2.27,-6.90,-1.81) logprob:train/valid[79,119,final]=(-0.109,-1.15,-0.052/-0.107,-1.22,-0.076)
-
-# Notice lower WERs and smaller model by over 1 million parameters.
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
