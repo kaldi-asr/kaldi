@@ -95,6 +95,9 @@ def get_iteration_files(exp_dir):
     compute_prob_logs = glob.glob(exp_dir + "/log/compute_prob.[0-9]*.log")
     for log in compute_prob_logs:
         iteration, objf, compute_prob_done = get_compute_prob_info(log)
+        if iteration == 0:
+            # iteration 0 is special, never consider it for cleanup
+            continue
         if compute_prob_done:
             # this iteration can be safely considered for cleanup
             # gather all model files belonging to it
