@@ -28,7 +28,7 @@ json_dir=${chime5_corpus}/transcriptions
 audio_dir=${chime5_corpus}/audio
 
 # training and test data
-train_set=train_worn_u100k
+train_set=train_worn_u400k
 test_sets="dev_worn dev_${enhancement}_ref eval_${enhancement}_ref"
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
@@ -99,8 +99,8 @@ if [ $stage -le 5 ]; then
   # randomly extract first 100k utterances from all mics
   # if you want to include more training data, you can increase the number of array mic utterances
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u04 data/train_u05 data/train_u06
-  utils/subset_data_dir.sh data/train_uall 100000 data/train_u100k
-  utils/combine_data.sh data/${train_set} data/train_worn data/train_u100k
+  utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
+  utils/combine_data.sh data/${train_set} data/train_worn data/train_u400k
 
   # only use left channel for worn mic recognition
   # you can use both left and right channels for training
@@ -191,6 +191,32 @@ if [ $stage -le 12 ]; then
   wait
 fi
 
+#if [ $stage -le 13 ]; then
+#  steps/get_prons.sh --cmd "$train_cmd" data/train data/lang_nosp exp/tri2
+#  utils/dict_dir_add_pronprobs.sh --max-normalize true \
+#    data/local/dict_nosp exp/tri2/pron_counts_nowb.txt \
+#    exp/tri2/sil_counts_nowb.txt \
+#    exp/tri2/pron_bigram_counts_nowb.txt data/local/dict
+#fi
+#
+#if [ $stage -le 14 ]; then
+#  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
+#  cp -rT data/lang data/lang_rescore
+#  cp data/lang_nosp/G.fst data/lang/
+#  cp data/lang_nosp_rescore/G.carpa data/lang_rescore/
+#
+#  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
+#
+#  for dset in dev test; do
+#    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
+#      exp/tri2/graph data/${dset} exp/tri2/decode_${dset}
+#    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
+#       data/${dset} exp/tri2/decode_${dset} exp/tri2/decode_${dset}_rescore
+#  done
+#fi
+
+
+
 if [ $stage -le 14 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
@@ -216,11 +242,35 @@ if [ $stage -le 16 ]; then
 fi
 
 if [ $stage -le 17 ]; then
-  # chain TDNN
-  local/chain/run_tdnn.sh --nj ${nj} --train-set ${train_set}_cleaned --test-sets "$test_sets" --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned
+  rm -r data/train_worn_cleaned 2>/dev/null || true
+  utils/copy_data_dir.sh data/${train_set}_clean data/train_worn_cleaned
+
+  awk '{print $1}' data/train_worn/wav.scp > data/train_worn_cleaned/recos.tmp
+  utils/filter_scp.pl data/train_worn_cleaned/recos.tmp \
+    data/${train_set}_cleaned/wav.scp > data/train_worn_cleaned/wav.scp
+
+  utils/fix_data_dir.sh data/train_worn_cleaned
+  
+  rm -r data/train_u400k_cleaned 2>/dev/null || true
+  utils/copy_data_dir.sh data/${train_set}_clean data/train_u400k_cleaned
+
+  utils/filter_scp.pl --exclude data/train_worn_cleaned/recos.tmp \
+    data/${train_set}_cleaned/wav.scp > data/train_u400k_cleaned/wav.scp
+
+  utils/fix_data_dir.sh data/train_u400k_cleaned
 fi
 
 if [ $stage -le 18 ]; then
+  # chain TDNN
+  local/chain/multi_condition/run_tdnn.sh --nj ${nj} \
+    --train-set-clean train_worn_cleaned \
+    --train-set-noisy train_u400k_cleaned \
+    --combined-train-set ${train_set}_cleaned \
+    --test-sets "$test_sets" \
+    --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
+fi
+
+if [ $stage -le 19 ]; then
   # final scoring to get the official challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
