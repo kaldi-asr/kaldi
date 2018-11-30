@@ -54,8 +54,7 @@ for i in range(1, num_iters):
                     this_logfile, line, str(e)))
     # verify this iteration still has model files present
     if len(glob.glob("{0}/word_embedding.{1}.mat".format(args.rnnlm_dir, i))) == 0:
-        print(sys.argv[0] + ": warning: no model files found for iteration {0}. Skipping.".format(i),
-              file=sys.stderr)
+        # this iteration has log files, but model files have been cleaned up, skip it
         continue
     if this_objf == -1000:
         print(sys.argv[0] + ": warning: could not parse objective function from {0}".format(
