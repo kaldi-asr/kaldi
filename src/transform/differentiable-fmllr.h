@@ -628,30 +628,29 @@ class FmllrEstimator {
   // Before Estimate() is called, it won't contain the 2nd term, only the first.
   Matrix<BaseFloat> G_;
 
-  // This contains
-  // K = (\sum_{t,i} \hat{\gamma}_{t,i} \mu_i x_t^T) - \hat{\gamma} m n^T
-  // Before Estimate() is called, it won't contain the 2nd term, only the first.
-  Matrix<BaseFloat> K_;
-
-  // After Estimate() is called, this will be the quantity:
-  //   n = \frac{1}{\hat{\gamma}} \sum_t \hat{\gamma}_t x_t.
-  // Before Estimate() is called, this won't include the factor
-  // 1/\hat{\gamma}, so it will be just \sum_t \hat{\gamma}_t x_t.
-  Vector<BaseFloat> n_;
+  // This is of dimension num_classes by dim (same as mu_).  It contains
+  // the weighted sums of the input data, for each class:
+  //        z_i = \sum_t \gamma_{t,i} x_i.
+  Matrix<BaseFloat> z_;
 
 
   /////////// Quantities that are computed when Estimate() is called  ////////
 
-  // gamma_hat_ is the same as gamma_, but divided by the class-specific variance
-  // factor s_i.  In the writeup it's \hat{\gamma}_i.
-  Vector<BaseFloat> gamma_hat_;
-  // gamma_hat_tot_ is gamma_hat_.Sum().  In the writeup it's \hat{\gamma}.
+  // gamma_hat_tot_ is the total of gamma_(i) / s_(i), i.e.
+  //   \hat{\gamma} = \sum_i gamma_i / s_i.
   BaseFloat gamma_hat_tot_;
 
+  // After Estimate() is called, this will be the quantity:
+  //   n = \frac{1}{\hat{\gamma}} \sum_i (1/s_i) z_i
+  Vector<BaseFloat> n_;
 
   // The weighted-average of the means:
-  // m = \frac{1}{\hat{\gamma}} \sum_i \hat{\gamma}_i \mu_i
+  // m = \frac{1}{\hat{\gamma}} \sum_i (\gamma_i/s_i) \mu_i
   Vector<BaseFloat> m_;
+
+  // This contains
+  // K = (\sum_i (1/s_i) \mu_i z_i^T) - \hat{\gamma} m n^T
+  Matrix<BaseFloat> K_;
 
   // The parameter matrix
   Matrix<BaseFloat> A_;
@@ -683,56 +682,50 @@ class FmllrEstimator {
   Matrix<BaseFloat> K_bar_;
 
   // The derivative w.r.t. n:
-  // \bar{n} = -\bar{A}^T b - 2\hat{\gamma} \bar{G} n - \hat{\gamma} \bar{K}^T m
+  // \bar{n} = -A^T \bar{b} - 2\hat{\gamma} \bar{G} n - \hat{\gamma} \bar{K}^T m
   Vector<BaseFloat> n_bar_;
 
   // The derivative w.r.t. m:
   // \bar{m} = \bar{b} - \hat{\gamma} \bar{K} n
   Vector<BaseFloat> m_bar_;
 
+  // The derivative w.r.t the z_i quantities.  The i'th row is:
+  //  \bar{z}_i =  (1/s_i) \bar{K}^T \mu_i  +  1/(s_i \hat{\gamma}) \bar{n}
+  Matrix<BaseFloat> z_bar_;
+
   // gamma_hat_tot_bar_ is \bar{\hat{\gamma}} in the writeup;
   // it's:
   // \bar{\hat{\gamma}} = - n^T \bar{G} n - m^t \bar{K} n
   //                      - \frac{1}{\hat{\gamma}} (n^T \bar{n} + m^T \bar{m})
   BaseFloat gamma_hat_tot_bar_;
-  // gamma_hat_bar_ contains the quantities that we write as
-  // \bar{\hat{\gamma}}_i in the writeup.  It's:
-  // \bar{\hat{\gamma}}_i = \bar{\hat{\gamma}} + \frac{1}{\hat{\gamma}} \mu_i^T \bar{m}
-  Vector<BaseFloat> gamma_hat_bar_;
 
-  // Kt_bar_mu_ has the same dimension as mu_; the i'th row contains the
-  //  quantity \bar{K}^T \mu_i.  This is cached here to avoid a matrix multiplication
-  // during the backward pass.
-  Matrix<BaseFloat> Kt_bar_mu_;
-
+  // The i'th row contains the derivative w.r.t mu_i.
+  // This is:
+  // \bar{\mu}_i = (1/s_i) \bar{K} z_i + (\gamma_i / (s_i \hat{\gamma})) \bar{m}
+  Matrix<BaseFloat> mu_bar_;
 
   //////////// Quantities that are written to in AccStatsBackward() ///////////
 
-  // The i'th row contains the derivative w.r.t mu_i.
-  // In Estimate(), this is set to:
-  // \bar{\mu}_i = \frac{\hat{\gamma}_i}{\hat{\gamma}} \bar{m}
-  // and in AccStatsBackward(), we do:
-  // \bar{\mu}_i += \sum_t \hat{\gamma}_{t,i} \bar{K} x_t.
-  Matrix<BaseFloat> mu_bar_;
-
-  /// s_bar_(i) contains the derivative w.r.t the variance factor s_i,
-  /// which we write in the writeup as \bar{s}_i.
-  /// It equals: \bar{s}_i = \frac{-1}{s_i^2} \sum_t \gamma_{t,i} \bar{\hat{\gamma}}_{t,i}
-  /// \bar{\hat{\gamma}}_{t,i}, computed as a temporary, equals:
-  ///   \bar{hat{\gamma}}_{t,i} = \mu_i^T \bar{K} x_t + \bar{\hat{\gamma}}_i + \bar{\hat{\gamma}}_t
-  /// where
-  ///  \bar{\hat{\gamma}}_t = x_t^T \bar{G} x_t  + \frac{1}{\hat{\gamma}} x_t^T \bar{n}
+  // s_bar_(i) contains the derivative w.r.t the variance factor s_i,
+  // which we write in the writeup as \bar{s}_i.
+  // It is:
+  //    \bar{s}_i  =  -(1 / s_i^2) * (
+  //          \mu_i^T \bar{K} z_i  +  (1 / \hat{\gamma}) \z_i^T \bar{n}
+  //       + (\gamma_i / \hat{\gamma}) \mu_i^T \bar{m}  + \gamma_i \bar{\hat{\gamma}}
+  //       + \sum_t  \gamma_{t,i} \bar{\hat{\gamma}}_t )
+  // where
+  //  \bar{\hat{\gamma}}_t = x_t^T \bar{G} x_t  .
+  // Note: we add all but the first terms during Estimate(), and only the one
+  // with \sum_t in it in AccStatsBackward.
   Vector<BaseFloat> s_bar_;
-
 
   // There is another quantity that's updated by AccStatsBackward(), which is
   // \bar{x}_t, the derivative w.r.t. x_t.  AccStatsBackward() does not include
   // the term \bar{x}_t = A^T \bar{y}_t.  But it does include the rest of the
   // terms, doing:
   // \bar{x}_t  +=  2 \hat{\gamma}_t \bar{G} x_t
-  //                 + \sum_i \hat{\gamma}_{t,i} \bar{K}^T \mu_i
-  //                 + \frac{\hat{\gamma}_t}{\hat{\gamma}} \bar{n}
-  // There is no variable for this; it's a temporary.
+  //                 + \sum_i \gamma_{t,i} \bar{z}_i
+  // There is no member variable for this; it's a temporary.
 
 };
 
