@@ -28,9 +28,8 @@ TESTFILES =
 
 LIBNAME = kaldi-tensorflow-rnnlm
 
-ADDLIBS = ../lm/kaldi-lm.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a \
-
+ADDLIBS = ../lm/kaldi-lm.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+          ../base/kaldi-base.a 
 LDLIBS +=  -lz -ldl -fPIC -lrt
 LDLIBS += -L$(TENSORFLOW)/bazel-bin/tensorflow -ltensorflow_cc -ltensorflow_framework
 

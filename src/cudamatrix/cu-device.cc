@@ -102,7 +102,7 @@ void CuDevice::Initialize() {
     if (!multi_threaded_) {
       multi_threaded_ = true;
       KALDI_WARN << "For multi-threaded code that might use GPU, you should call "
-          "CuDevice()::Instantiate().AllowMultithreading() at the start of "
+          "CuDevice::Instantiate().AllowMultithreading() at the start of "
           "the program.";
     }
     device_id_copy_ = device_id_;

@@ -18,7 +18,7 @@ if ! $(python -c "import distutils.sysconfig" &> /dev/null); then
     echo "Proceeding with installation." >&2
 else
   # get include path for this python version
-  INCLUDE_PY=$(python -c "from distutils import sysconfig as s; print s.get_config_vars()['INCLUDEPY']")
+  INCLUDE_PY=$(python -c "from distutils import sysconfig as s; print(s.get_python_inc())")
   if [ ! -f "${INCLUDE_PY}/Python.h" ]; then
       echo "$0 : ERROR: python-devel/python-dev not installed" >&2
       if which yum >&/dev/null; then

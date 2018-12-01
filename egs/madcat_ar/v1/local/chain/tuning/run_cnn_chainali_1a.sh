@@ -18,18 +18,15 @@ lats_affix=
 # chain options
 train_stage=-10
 xent_regularize=0.1
-frame_subsampling_factor=4
 # training chunk-options
 chunk_width=340,300,200,100
 num_leaves=500
-# we don't need extra left/right context for TDNN systems.
-chunk_left_context=0
-chunk_right_context=0
 tdnn_dim=450
 # training options
 srand=0
 remove_egs=false
-lang_test=lang_test
+lang_decode=data/lang
+lang_rescore=data/lang_rescore_6g
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -170,13 +167,13 @@ if [ $stage -le 5 ]; then
     --chain.leaky-hmm-coefficient=0.1 \
     --chain.l2-regularize=0.00005 \
     --chain.apply-deriv-weights=false \
-    --chain.lm-opts="--num-extra-lm-states=500" \
-    --chain.frame-subsampling-factor=$frame_subsampling_factor \
+    --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
+    --chain.frame-subsampling-factor=4 \
     --chain.alignment-subsampling-factor=1 \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=4 \
-    --trainer.frames-per-iter=1000000 \
+    --trainer.frames-per-iter=2000000 \
     --trainer.optimization.num-jobs-initial=3 \
     --trainer.optimization.num-jobs-final=16 \
     --trainer.optimization.initial-effective-lrate=0.001 \
@@ -185,10 +182,6 @@ if [ $stage -le 5 ]; then
     --trainer.num-chunk-per-minibatch=64,32 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
-    --egs.chunk-left-context=$chunk_left_context \
-    --egs.chunk-right-context=$chunk_right_context \
-    --egs.chunk-left-context-initial=0 \
-    --egs.chunk-right-context-final=0 \
     --egs.dir="$common_egs_dir" \
     --egs.opts="--frames-overlap-per-eg 0" \
     --cleanup.remove-egs=$remove_egs \
@@ -209,18 +202,20 @@ if [ $stage -le 6 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/$lang_test \
+    --self-loop-scale 1.0 $lang_decode \
     $dir $dir/graph || exit 1;
 fi
 
 if [ $stage -le 7 ]; then
   frames_per_chunk=$(echo $chunk_width | cut -d, -f1)
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
-    --extra-left-context $chunk_left_context \
-    --extra-right-context $chunk_right_context \
-    --extra-left-context-initial 0 \
-    --extra-right-context-final 0 \
     --frames-per-chunk $frames_per_chunk \
     --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
+
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/test $dir/decode_test{,_rescored} || exit 1
 fi
+
+echo "Done. Date: $(date). Results:"
+local/chain/compare_wer.sh $dir

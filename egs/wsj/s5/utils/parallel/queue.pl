@@ -176,7 +176,7 @@ option num_threads=1  # Do not add anything to qsub_opts
 option max_jobs_run=* -tc $0
 default gpu=0
 option gpu=0
-option gpu=* -l gpu=$0 -q g.q
+option gpu=* -l gpu=$0 -q '*.q'
 EOF
 
 # Here the configuration options specified by the user on the command line

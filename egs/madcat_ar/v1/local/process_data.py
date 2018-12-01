@@ -42,6 +42,8 @@ parser.add_argument('writing_condition2', type=str,
                     help='Path to the downloaded (and extracted) writing conditions file 2')
 parser.add_argument('writing_condition3', type=str,
                     help='Path to the downloaded (and extracted) writing conditions file 3')
+parser.add_argument("--augment", type=lambda x: (str(x).lower()=='true'), default=False,
+                   help="performs image augmentation")
 parser.add_argument("--subset", type=lambda x: (str(x).lower()=='true'), default=False,
                    help="only processes subset of data based on writing condition")
 args = parser.parse_args()
@@ -103,6 +105,8 @@ def check_writing_condition(wc_dict):
         writing_condition = wc_dict[base_name].strip()
         if writing_condition != 'IUC':
             return False
+        else:
+            return True
     else:
         return True
 
@@ -184,14 +188,30 @@ with open(args.data_splits) as f:
             writer_id = writer[0].getAttribute('id')
             text_line_word_dict = read_text(madcat_xml_path)
             base_name = os.path.basename(image_file_path).split('.tif')[0]
-            for lineID in sorted(text_line_word_dict):
-                updated_base_name = base_name + '_' + str(lineID).zfill(4) +'.png'
-                location = image_loc_dict[updated_base_name]
-                image_file_path = os.path.join(location, updated_base_name)
-                line = text_line_word_dict[lineID]
-                text = ' '.join(line)
-                utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_name + '_' + str(lineID).zfill(4)
-                text_fh.write(utt_id + ' ' + text + '\n')
-                utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
-                image_fh.write(utt_id + ' ' + image_file_path + '\n')
-                image_num += 1
+            for line_id in sorted(text_line_word_dict):
+                if args.augment:
+                    key = (line_id + '.')[:-1]
+                    for i in range(0, 3):
+                        location_id = '_' + line_id + '_scale' + str(i)
+                        line_image_file_name = base_name + location_id + '.png'
+                        location = image_loc_dict[line_image_file_name]
+                        image_file_path = os.path.join(location, line_image_file_name)
+                        line = text_line_word_dict[key]
+                        text = ' '.join(line)
+                        base_line_image_file_name = line_image_file_name.split('.png')[0]
+                        utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_line_image_file_name
+                        text_fh.write(utt_id + ' ' + text + '\n')
+                        utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
+                        image_fh.write(utt_id + ' ' + image_file_path + '\n')
+                        image_num += 1
+                else:
+                    updated_base_name = base_name + '_' + str(line_id).zfill(4) +'.png'
+                    location = image_loc_dict[updated_base_name]
+                    image_file_path = os.path.join(location, updated_base_name)
+                    line = text_line_word_dict[line_id]
+                    text = ' '.join(line)
+                    utt_id = writer_id + '_' + str(image_num).zfill(6) + '_' + base_name + '_' + str(line_id).zfill(4)
+                    text_fh.write(utt_id + ' ' + text + '\n')
+                    utt2spk_fh.write(utt_id + ' ' + writer_id + '\n')
+                    image_fh.write(utt_id + ' ' + image_file_path + '\n')
+                    image_num += 1
