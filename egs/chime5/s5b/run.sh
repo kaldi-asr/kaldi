@@ -243,7 +243,7 @@ fi
 
 if [ $stage -le 17 ]; then
   rm -r data/train_worn_cleaned 2>/dev/null || true
-  utils/copy_data_dir.sh data/${train_set}_clean data/train_worn_cleaned
+  utils/copy_data_dir.sh data/${train_set}_cleaned data/train_worn_cleaned
 
   awk '{print $1}' data/train_worn/wav.scp > data/train_worn_cleaned/recos.tmp
   utils/filter_scp.pl data/train_worn_cleaned/recos.tmp \
@@ -252,7 +252,7 @@ if [ $stage -le 17 ]; then
   utils/fix_data_dir.sh data/train_worn_cleaned
   
   rm -r data/train_u400k_cleaned 2>/dev/null || true
-  utils/copy_data_dir.sh data/${train_set}_clean data/train_u400k_cleaned
+  utils/copy_data_dir.sh data/${train_set}_cleaned data/train_u400k_cleaned
 
   utils/filter_scp.pl --exclude data/train_worn_cleaned/recos.tmp \
     data/${train_set}_cleaned/wav.scp > data/train_u400k_cleaned/wav.scp

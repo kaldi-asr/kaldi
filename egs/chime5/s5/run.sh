@@ -191,32 +191,6 @@ if [ $stage -le 12 ]; then
   wait
 fi
 
-#if [ $stage -le 13 ]; then
-#  steps/get_prons.sh --cmd "$train_cmd" data/train data/lang_nosp exp/tri2
-#  utils/dict_dir_add_pronprobs.sh --max-normalize true \
-#    data/local/dict_nosp exp/tri2/pron_counts_nowb.txt \
-#    exp/tri2/sil_counts_nowb.txt \
-#    exp/tri2/pron_bigram_counts_nowb.txt data/local/dict
-#fi
-#
-#if [ $stage -le 14 ]; then
-#  utils/prepare_lang.sh data/local/dict "<unk>" data/local/lang data/lang
-#  cp -rT data/lang data/lang_rescore
-#  cp data/lang_nosp/G.fst data/lang/
-#  cp data/lang_nosp_rescore/G.carpa data/lang_rescore/
-#
-#  utils/mkgraph.sh data/lang exp/tri2 exp/tri2/graph
-#
-#  for dset in dev test; do
-#    steps/decode.sh --nj $decode_nj --cmd "$decode_cmd"  --num-threads 4 \
-#      exp/tri2/graph data/${dset} exp/tri2/decode_${dset}
-#    steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
-#       data/${dset} exp/tri2/decode_${dset} exp/tri2/decode_${dset}_rescore
-#  done
-#fi
-
-
-
 if [ $stage -le 14 ]; then
   steps/align_si.sh --nj $nj --cmd "$train_cmd" \
 		    data/${train_set} data/lang exp/tri2 exp/tri2_ali
