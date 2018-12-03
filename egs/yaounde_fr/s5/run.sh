@@ -172,13 +172,19 @@ if [ $stage -le 16 ]; then
   steps/train_deltas.sh \
     --cmd "$train_cmd" \
     --boost-silence 1.25 \
-    1000 7500 \
+    750 7700 \
     data/train data/lang_nosp_expanded exp/mono_ali exp/tri1
+fi
+
+if [ $stage -le 17 ]; then
+  # align with triphones
+  steps/align_si.sh  --cmd "$train_cmd" --nj 4 data/train data/lang_nosp_expanded \
+    exp/tri1 exp/tri1_ali
 fi
 
 wait
 
-if [ $stage -le 17 ]; then
+if [ $stage -le 18 ]; then
   echo "$0: testing cd gmm hmm models"
   (
     # make decoding graphs for tri1
@@ -195,7 +201,7 @@ if [ $stage -le 17 ]; then
   ) &
 fi
 
-if [[ $stage -le 18 && $larger_lms -eq 0 ]]; then
+if [[ $stage -le 19 && $larger_lms -eq 0 ]]; then
     echo "$0: testing with cd gmm hmm tgmed and tglarge models"
   (
     # make decoding graphs for tri1
@@ -219,23 +225,24 @@ if [[ $stage -le 18 && $larger_lms -eq 0 ]]; then
   ) &
 fi
 
-if [ $stage -le 19 ]; then
-  # align with triphones
-  steps/align_si.sh  --cmd "$train_cmd" --nj 4 data/train data/lang_nosp_expanded \
-    exp/tri1 exp/tri1_ali
-fi
-
 if [ $stage -le 20 ]; then
   echo "$0: Starting (lda_mllt) triphone training in exp/tri2b"
   steps/train_lda_mllt.sh \
     --cmd "$train_cmd" --splice-opts "--left-context=3 --right-context=3" \
-    1000 7500 \
+    700 7500 \
     data/train data/lang_nosp_expanded exp/tri1_ali exp/tri2b
+fi
+
+if [ $stage -le 21 ]; then
+  echo "$0: aligning with lda and mllt adapted triphones"
+  steps/align_si.sh  --nj 4 \
+    --cmd "$train_cmd" \
+    --use-graphs true data/train data/lang_nosp_expanded exp/tri2b exp/tri2b_ali
 fi
 
 wait
 
-if [ $stage -le 21 ]; then
+if [ $stage -le 22 ]; then
   (
     echo "$0: Making decoding FSTs for tri2b models."
     utils/mkgraph.sh data/lang_nosp_expanded_test_tgsmall exp/tri2b \
@@ -249,7 +256,7 @@ if [ $stage -le 21 ]; then
   ) &
 fi
 
-if [[ $stage -le 22 && $larger_lms -eq 0 ]]; then
+if [[ $stage -le 23 && $larger_lms -eq 0 ]]; then
   (
     for x in devtest dev dev test; do
       echo "$0: Decoding $x with larger LMS and tri2b models."
@@ -263,13 +270,6 @@ if [[ $stage -le 22 && $larger_lms -eq 0 ]]; then
         data/$x exp/tri2b/decode_nosp_expanded_{tgsmall,tglarge}_$x
     done
   )&
-fi
-
-if [ $stage -le 23 ]; then
-  echo "$0: aligning with lda and mllt adapted triphones"
-  steps/align_si.sh  --nj 10 \
-    --cmd "$train_cmd" \
-    --use-graphs true data/train data/lang_nosp_expanded exp/tri2b exp/tri2b_ali
 fi
 
 if [ $stage -le 24 ]; then
@@ -296,9 +296,15 @@ if [ $stage -le 25 ]; then
   ) &
 fi
 
+if [ $stage -le 26 ]; then
+  echo "$0: Starting exp/tri3b_ali"
+  steps/align_fmllr.sh --cmd "$train_cmd" --nj 4 data/train data/lang_nosp_expanded \
+    exp/tri3b exp/tri3b_ali
+fi
+
 wait
 
-if [[ $stage -le 26 && $larger_lms -eq 0 ]]; then
+if [[ $stage -le 27 && $larger_lms -eq 0 ]]; then
   (
     for x in devtest dev dev test; do
       echo "$0: Decoding with larger lm and SAT models on $x."
@@ -310,12 +316,6 @@ if [[ $stage -le 26 && $larger_lms -eq 0 ]]; then
         data/$x exp/tri3b/decode_nosp_expanded_{tgsmall,tglarge}_$x
     done
   )&
-fi
-
-if [ $stage -le 27 ]; then
-  echo "$0: Starting exp/tri3b_ali"
-  steps/align_fmllr.sh --cmd "$train_cmd" --nj 4 data/train data/lang_nosp_expanded \
-    exp/tri3b exp/tri3b_ali
 fi
 
 if [ $stage -le 28 ]; then
