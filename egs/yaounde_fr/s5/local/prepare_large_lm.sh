@@ -8,7 +8,7 @@ set -e
 . ./path.sh
 . $KALDI_ROOT/tools/env.sh
 stage=0
-nsegs=1000000;  # limit the number of training segments
+nsegs=70000000;  # limit the number of training segments
 
 . ./utils/parse_options.sh
 
@@ -45,8 +45,13 @@ if ! command ngram-count >/dev/null; then
   fi
 fi
 
+ngram-count -order 3 -interpolate -unk -map-unk "<UNK>" \
+  -limit-vocab -text data/local/lm/train_large.txt \
+  -lm data/local/lm/tglarge.arpa || exit 1;
 
 ngram-count -order 3 -interpolate -unk -map-unk "<UNK>" \
-    -limit-vocab -text data/local/lm/train_large.txt -lm data/local/lm/tglarge.arpa || exit 1;
+  -limit-vocab -text data/local/lm/train_large.txt \
+   -prune 0.0000001 -lm data/local/lm/tglarge.pruned.arpa || exit 1;
 
 gzip -f data/local/lm/tglarge.arpa
+gzip -f data/local/lm/tglarge.pruned.arpa

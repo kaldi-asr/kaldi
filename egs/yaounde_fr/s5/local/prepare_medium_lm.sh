@@ -47,6 +47,11 @@ fi
 
 
 ngram-count -order 3 -interpolate -unk -map-unk "<UNK>" \
-    -limit-vocab -text data/local/lm/train_medium.txt -lm data/local/lm/tgmed.arpa || exit 1;
+  -limit-vocab -text data/local/lm/train_medium.txt -lm data/local/lm/tgmed.arpa || exit 1;
+
+ngram-count -order 3 -interpolate -unk -map-unk "<UNK>" \
+  -limit-vocab -text data/local/lm/train_medium.txt \
+  -prune 0.0000001 -lm data/local/lm/tgmed.pruned.arpa || exit 1;
 
 gzip -f data/local/lm/tgmed.arpa
+gzip -f data/local/lm/tgmed.pruned.arpa

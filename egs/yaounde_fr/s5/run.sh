@@ -79,8 +79,12 @@ if [ $stage -le 8 ]; then
   local/prepare_small_lm.sh  $tmpdir/lm/train.txt
   echo "$0: Making small G.fst."
   mkdir -p data/lang_nosp_expanded_test_tgsmall
+  mkdir -p data/lang_nosp_expanded_test_pruned_tgsmall
   utils/format_lm.sh data/lang_nosp_expanded data/local/lm/tgsmall.arpa.gz \
     data/local/dict_nosp_expanded/lexicon.txt data/lang_nosp_expanded_test_tgsmall
+
+  utils/format_lm.sh data/lang_nosp_expanded data/local/lm/tgsmall.pruned.arpa.gz \
+    data/local/dict_nosp_expanded/lexicon.txt data/lang_nosp_expanded_test_pruned_tgsmall
 fi
 
 if [[ $stage -le 9 && $larger_lms -eq 0 ]]; then
@@ -94,11 +98,19 @@ fi
 if [[ $stage -le 10 && $larger_lms -eq 0 ]]; then
   echo "$0: Prepare medium size lang directory."
   mkdir -p data/lang_nosp_expanded_test_tgmed
+  mkdir -p data/lang_nosp_expanded_test_pruned_tgmed
   utils/format_lm.sh data/lang_nosp_expanded data/local/lm/tgmed.arpa.gz \
     data/local/dict_nosp_expanded/lexicon.txt data/lang_nosp_expanded_test_tgmed
-  # Create ConstArpaLm format language model for full 3-gram and 4-gram LMs
+
+  utils/format_lm.sh data/lang_nosp_expanded data/local/lm/tgmed.pruned.arpa.gz \
+    data/local/dict_nosp_expanded/lexicon.txt data/lang_nosp_expanded_test_pruned_tgmed
+
+  echo "$0: Creating ConstArpaLm format language model for full 3-gram."
   utils/build_const_arpa_lm.sh data/local/lm/tglarge.arpa.gz \
     data/lang_nosp_expanded data/lang_nosp_expanded_test_tglarge
+
+  utils/build_const_arpa_lm.sh data/local/lm/tglarge.pruned.arpa.gz \
+    data/lang_nosp_expanded data/lang_nosp_expanded_test_pruned_tglarge
 fi
 
 if [ $stage -le 11 ]; then
@@ -125,15 +137,23 @@ fi
 if [ $stage -le 13 ]; then
   echo "$0: monophone evaluation"
   (
-    # make decoding graph for monophones
+    echo "$0: making decoding graph for monophones with small lm."
     utils/mkgraph.sh data/lang_nosp_expanded_test_tgsmall exp/mono \
       exp/mono/graph_nosp_expanded_tgsmall
 
-    echo "Testing monophones."
+    utils/mkgraph.sh data/lang_nosp_expanded_test_pruned_tgsmall exp/mono \
+      exp/mono/graph_nosp_expanded_pruned_tgsmall
+
     for x in devtest dev test; do
+      echo "Testing monophones with small lm on $x."
       nspk=$(wc -l < data/$x/spk2utt)
       steps/decode.sh  --cmd "$decode_cmd" --nj $nspk \
         exp/mono/graph_nosp_expanded_tgsmall data/$x exp/mono/decode_nosp_expanded_tgsmall_${x}
+
+      steps/decode.sh  --cmd "$decode_cmd" --nj $nspk \
+        exp/mono/graph_nosp_expanded_pruned_tgsmall data/$x \
+        exp/mono/decode_nosp_expanded_pruned_tgsmall_${x}
+
     done
   ) &
 fi
@@ -145,11 +165,17 @@ if [[ $stage -le 14 && $larger_lms -eq 0 ]]; then
     utils/mkgraph.sh data/lang_nosp_expanded_test_tgmed exp/mono \
       exp/mono/graph_nosp_expanded_tgmed
 
-    echo "Testing monophones with larger lm."
+    utils/mkgraph.sh data/lang_nosp_expanded_test_pruned_tgmed exp/mono \
+      exp/mono/graph_nosp_expanded_pruned_tgmed
+
     for x in devtest dev test; do
+      echo "Testing monophones with larger lm on $x."
       nspk=$(wc -l < data/$x/spk2utt)
       steps/decode.sh  --cmd "$decode_cmd" --nj $nspk \
         exp/mono/graph_nosp_expanded_tgmed data/$x exp/mono/decode_nosp_expanded_tgmed_${x}
+
+      steps/decode.sh  --cmd "$decode_cmd" --nj $nspk \
+        exp/mono/graph_nosp_expanded_pruned_tgmed data/$x exp/mono/decode_nosp_expanded_pruned_tgmed_${x}
 
       steps/lmrescore.sh --cmd "$decode_cmd" data/lang_nosp_expanded_test_{tgsmall,tgmed} \
         data/$x exp/mono/decode_nosp_expanded_{tgsmall,tgmed}_$x
@@ -157,10 +183,19 @@ if [[ $stage -le 14 && $larger_lms -eq 0 ]]; then
       steps/lmrescore_const_arpa.sh \
         --cmd "$decode_cmd" data/lang_nosp_expanded_test_{tgsmall,tglarge} \
         data/$x exp/mono/decode_nosp_expanded_{tgsmall,tglarge}_$x
+
+      steps/lmrescore.sh --cmd "$decode_cmd" \
+        data/lang_nosp_expanded_test_pruned_{tgsmall,tgmed} \
+        data/$x exp/mono/decode_nosp_expanded_pruned_{tgsmall,tgmed}_$x
+
+      steps/lmrescore_const_arpa.sh \
+        --cmd "$decode_cmd" \
+        data/lang_nosp_expanded_test_pruned_{tgsmall,tglarge} \
+        data/$x exp/mono/decode_nosp_expanded_pruned_{tgsmall,tglarge}_$x
     done
   ) &
 fi
-
+exit
 if [ $stage -le 15 ]; then
   echo "$0: aligning with monophones"
   steps/align_si.sh  --cmd "$train_cmd" --nj 4 data/train data/lang_nosp_expanded \
