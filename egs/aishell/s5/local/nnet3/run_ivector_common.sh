@@ -32,7 +32,7 @@ for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
 done
 
 online_affix=
-if [ online ]; then
+if [ $online = true ]; then
   online_affix=_online
 fi
 

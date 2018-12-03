@@ -4,31 +4,36 @@
 
 # This is based on TDNN_LSTM_1b, but using the NormOPGRU to replace the LSTMP,
 # and adding chunk-{left,right}-context-initial=0
+# For the details of OPGRU structure, please check the paper
+# "Output-Gate Projected Gated Recurrent Unit for Speech Recognition"
+# by Gaofeng Cheng et al,
+# http://www.danielpovey.com/files/2018_interspeech_opgru.pdf
+
 # Different from the vanilla OPGRU, Norm-OPGRU adds batchnorm in its output (forward direction)
 # and renorm in its recurrence. Experiments show that the TDNN-NormOPGRU could achieve similar
 # results than TDNN-LSTMP and BLSTMP in both large or small data sets (80 ~ 2300 Hrs).
 
 # ./local/chain/compare_wer_general.sh --looped tdnn_lstm_1e_sp tdnn_opgru_1a_sp
 # System                tdnn_lstm_1e_sp tdnn_opgru_1a_sp
-# WER on train_dev(tg)      12.81     12.39
-#           [looped:]       12.93     12.32
-# WER on train_dev(fg)      11.92     11.39
-#           [looped:]       12.07     11.35
+# WER on train_dev(tg)      12.81     12.31
+#           [looped:]       12.93     12.26
+# WER on train_dev(fg)      11.92     11.60
+#           [looped:]       12.07     11.65
 # WER on eval2000(tg)        15.6      15.1
 #           [looped:]        16.0      15.1
-# WER on eval2000(fg)        14.1      13.6
+# WER on eval2000(fg)        14.1      13.5
 #           [looped:]        14.5      13.5
-# Final train prob         -0.065    -0.066
-# Final valid prob         -0.087    -0.085
-# Final train prob (xent)        -0.918    -0.889
-# Final valid prob (xent)       -1.0309   -0.9837
+# Final train prob         -0.065    -0.068
+# Final valid prob         -0.087    -0.091
+# Final train prob (xent)        -0.918    -0.879
+# Final valid prob (xent)       -1.0309   -0.9667
 
 
 
 set -e
 
 # configs for 'chain'
-stage=12
+stage=0
 train_stage=-10
 get_egs_stage=-10
 speed_perturb=true

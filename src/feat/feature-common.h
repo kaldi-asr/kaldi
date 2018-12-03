@@ -152,16 +152,6 @@ class OfflineFeatureTpl {
                        BaseFloat sample_freq,
                        BaseFloat vtln_warp,
                        Matrix<BaseFloat> *output);
-  /**
-     This const version of ComputeFeatures() is a wrapper that
-     calls the non-const ComputeFeatures() on a temporary object
-     that is a copy of *this.  It is not as efficient because of the
-     overhead of copying *this.
-  */
-  void ComputeFeatures(const VectorBase<BaseFloat> &wave,
-                       BaseFloat sample_freq,
-                       BaseFloat vtln_warp,
-                       Matrix<BaseFloat> *output) const;
 
   int32 Dim() const { return computer_.Dim(); }
 
