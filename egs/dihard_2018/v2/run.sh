@@ -98,7 +98,7 @@ if [ $stage -le 2 ]; then
 
   # Make a reverberated version of the training data.  Note that we don't add any
   # additive noise here.
-  python steps/data/reverberate_data_dir.py \
+  steps/data/reverberate_data_dir.py \
     "${rvb_opts[@]}" \
     --speech-rvb-probability 1 \
     --pointsource-noise-addition-probability 0 \
@@ -123,11 +123,11 @@ if [ $stage -le 2 ]; then
   done
 
   # Augment with musan_noise
-  python steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train data/train_noise
+  steps/data/augment_data_dir.py --utt-suffix "noise" --fg-interval 1 --fg-snrs "15:10:5:0" --fg-noise-dir "data/musan_noise" data/train data/train_noise
   # Augment with musan_music
-  python steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train data/train_music
+  steps/data/augment_data_dir.py --utt-suffix "music" --bg-snrs "15:10:8:5" --num-bg-noises "1" --bg-noise-dir "data/musan_music" data/train data/train_music
   # Augment with musan_speech
-  python steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train data/train_babble
+  steps/data/augment_data_dir.py --utt-suffix "babble" --bg-snrs "20:17:15:13" --num-bg-noises "3:4:5:6:7" --bg-noise-dir "data/musan_speech" data/train data/train_babble
 
   # Combine reverb, noise, music, and babble into one directory.
   utils/combine_data.sh data/train_aug data/train_reverb data/train_noise data/train_music data/train_babble
@@ -185,7 +185,7 @@ if [ $stage -le 5 ]; then
 fi
 
 # Stages 6 through 8 are handled in run_xvector.sh, a TDNN embedding extractor is trained.
-local/nnet3/xvector/run_xvector.sh --stage $stage \
+local/nnet3/xvector/run_xvector.sh --stage $stage --train-stage -1 \
   --data data/train_combined_no_sil --nnet-dir $nnet_dir \
   --egs-dir $nnet_dir/egs
 
