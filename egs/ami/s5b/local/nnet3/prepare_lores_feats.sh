@@ -13,6 +13,7 @@ set -e -o pipefail
 
 stage=0
 mic=ihm
+nj=30
 min_seg_len=1.55  # min length in seconds... we do this because chain training
                   # will discard segments shorter than 1.5 seconds.  Must remain in
                   # sync with the same option given to run_ivector_common.sh.
