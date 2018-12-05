@@ -38,6 +38,7 @@ train_stage=-10
 tree_affix=  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
 tlstm_affix=1g  #affix for TDNN-LSTM directory, e.g. "a" or "b", in case we change the configuration.
 common_egs_dir=  # you can set this to use previously dumped egs.
+nj_gpu=12 # used to decide total jobs while running train.py. change if running out of GPU memory 
 
 
 # decode options
@@ -247,7 +248,7 @@ if [ $stage -le 16 ]; then
     --trainer.num-epochs 4 \
     --trainer.optimization.shrink-value 0.99 \
     --trainer.optimization.num-jobs-initial 2 \
-    --trainer.optimization.num-jobs-final 12 \
+    --trainer.optimization.num-jobs-final $nj_gpu \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.max-param-change 2.0 \
