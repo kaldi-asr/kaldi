@@ -106,6 +106,8 @@ def get_iteration_files(exp_dir):
             # we need to potentially clean them all up without mixing them up
             model_files.extend(glob.glob("{0}/word_embedding.{1}.mat".format(exp_dir, iteration)))
             model_files.extend(glob.glob("{0}/word_embedding.{1}.[0-9]*.mat".format(exp_dir, iteration)))
+            model_files.extend(glob.glob("{0}/feat_embedding.{1}.mat".format(exp_dir, iteration)))
+            model_files.extend(glob.glob("{0}/feat_embedding.{1}.[0-9]*.mat".format(exp_dir, iteration)))
             model_files.extend(glob.glob("{0}/{1}.raw".format(exp_dir, iteration)))
             model_files.extend(glob.glob("{0}/{1}.[0-9]*.raw".format(exp_dir, iteration)))
             # compute_prob logs outlive model files, only consider iterations that do still have model files

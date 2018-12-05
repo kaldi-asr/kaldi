@@ -53,7 +53,7 @@ for i in range(1, num_iters):
                 sys.exit(sys.argv[0] + ": line in file {0} could not be parsed: {1}, error is: {2}".format(
                     this_logfile, line, str(e)))
     # verify this iteration still has model files present
-    if len(glob.glob("{0}/word_embedding.{1}.mat".format(args.rnnlm_dir, i))) == 0:
+    if len(glob.glob("{0}/{1}.raw".format(args.rnnlm_dir, i))) == 0:
         # this iteration has log files, but model files have been cleaned up, skip it
         continue
     if this_objf == -1000:
