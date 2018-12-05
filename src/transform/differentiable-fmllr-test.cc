@@ -203,12 +203,13 @@ void TestGaussianEstimatorDerivs(const MatrixBase<BaseFloat> &feats,
   } else {
     KALDI_LOG << "Testing var derivs.";
     var_derivs.SetRandn();
+    var_derivs.Add(0.2);  // Nonzero mean makes the test easier to pass
   }
   g->SetOutputDerivs(mean_derivs, var_derivs);
   Matrix<BaseFloat> feats_deriv(feats.NumRows(), feats.NumCols());
-  g->Backward(feats, post, &feats_deriv);
+  g->AccStatsBackward(feats, post, &feats_deriv);
 
-  BaseFloat epsilon = 1.0e-03;
+  BaseFloat epsilon = 1.0e-04;
 
   for (int32 i = 0; i < n; i++) {
     Matrix<BaseFloat> new_feats(feats.NumRows(),
@@ -405,6 +406,8 @@ void TestFmllrEstimatorFeatDerivs(const MatrixBase<BaseFloat> &feats,
     Matrix<BaseFloat> new_feats(T, dim, kUndefined),
         new_adapted_feats(T, dim, kUndefined);
     new_feats.SetRandn();
+    new_feats.Add(RandGauss());  // will help to test whether the indirect
+                                 // part of the derivative is accurate.
     new_feats.Scale(epsilon);
     expected_changes(i) = TraceMatMat(new_feats, feats_deriv, kTrans);
     new_feats.AddMat(1.0, feats);
@@ -424,7 +427,122 @@ void TestFmllrEstimatorFeatDerivs(const MatrixBase<BaseFloat> &feats,
 }
 
 
-void UnitTestGaussianAndFmllrEstimator() {
+void TestMeanOnlyTransformEstimatorMeanDerivs(
+    const MatrixBase<BaseFloat> &feats,
+    const Posterior &post,
+    const GaussianEstimator &g) {
+  const MatrixBase<BaseFloat> &mu(g.GetMeans());
+
+  int32 T = feats.NumRows(), dim = feats.NumCols(),
+      num_classes = mu.NumRows();
+
+  MeanOnlyTransformEstimator m(mu);
+
+  Matrix<BaseFloat> adapted_feats(T, dim, kUndefined);
+  m.ForwardCombined(feats, post, &adapted_feats);
+
+  // adapted_feats_deriv is the deriv of a random objective function
+  // w.r.t the output (adapted) features.
+  Matrix<BaseFloat> adapted_feats_deriv(T, dim),
+      feats_deriv(T, dim);
+  adapted_feats_deriv.SetRandn();
+  adapted_feats_deriv.Add(0.1);  // Introduce some asymmetry.
+
+  m.BackwardCombined(feats, post, adapted_feats_deriv, &feats_deriv);
+
+  KALDI_LOG << "2-norm of adapted_feats_deriv is "
+            << adapted_feats_deriv.FrobeniusNorm()
+            << ", of feats_deriv is "
+            << feats_deriv.FrobeniusNorm();
+
+  const MatrixBase<BaseFloat> &mu_deriv = m.GetMeanDeriv();
+
+  // measure the accuracy of the deriv in 4 random directions.
+  int32 n = 4;
+  BaseFloat epsilon = 1.0e-03;
+  Vector<BaseFloat> expected_changes(n), actual_changes(n);
+  for (int32 i = 0; i < n; i++) {
+    Matrix<BaseFloat> new_mu(num_classes, dim, kUndefined),
+        new_adapted_feats(T, dim, kUndefined);
+    new_mu.SetRandn();
+    // adding a systematic component helps the test to succeed in low precision.
+    for (int32 c = 0; c < num_classes; c++) {
+      new_mu.Row(c).Add(0.1 * RandInt(-1, 1));
+    }
+    new_mu.Scale(epsilon);
+    expected_changes(i) = TraceMatMat(new_mu, mu_deriv, kTrans);
+    new_mu.AddMat(1.0, mu);
+    MeanOnlyTransformEstimator m2(new_mu);
+    m2.ForwardCombined(feats, post, &new_adapted_feats);
+    actual_changes(i) =
+        TraceMatMat(new_adapted_feats, adapted_feats_deriv, kTrans) -
+        TraceMatMat(adapted_feats, adapted_feats_deriv, kTrans);
+  }
+  KALDI_LOG << "Expected changes are " << expected_changes
+            << " vs. actual " << actual_changes;
+  if (!expected_changes.ApproxEqual(actual_changes, 0.1)) {
+    KALDI_ERR << "Expected and actual changes differ too much: "
+              << expected_changes << " vs. "
+               << actual_changes;
+  }
+}
+
+
+void TestMeanOnlyTransformEstimatorFeatDerivs(
+    const MatrixBase<BaseFloat> &feats,
+    const Posterior &post,
+    const GaussianEstimator &g) {
+  int32 T = feats.NumRows(), dim = feats.NumCols();
+  const MatrixBase<BaseFloat> &mu(g.GetMeans());
+
+
+  MeanOnlyTransformEstimator m(mu);
+
+  Matrix<BaseFloat> adapted_feats(T, dim, kUndefined);
+  m.ForwardCombined(feats, post, &adapted_feats);
+
+  // adapted_feats_deriv is the deriv of a random objective function
+  // w.r.t the output (adapted) features.
+  Matrix<BaseFloat> adapted_feats_deriv(T, dim),
+      feats_deriv(T, dim);
+  adapted_feats_deriv.SetRandn();
+  adapted_feats_deriv.Add(0.1);  // Introduce some asymmetry.
+
+  m.BackwardCombined(feats, post, adapted_feats_deriv, &feats_deriv);
+
+  KALDI_LOG << "2-norm of adapted_feats_deriv is "
+            << adapted_feats_deriv.FrobeniusNorm()
+            << ", of feats_deriv is "
+            << feats_deriv.FrobeniusNorm();
+
+  // measure the accuracy of the deriv in 4 random directions.
+  int32 n = 4;
+  BaseFloat epsilon = 1.0e-03;
+  Vector<BaseFloat> expected_changes(n), actual_changes(n);
+  for (int32 i = 0; i < n; i++) {
+    Matrix<BaseFloat> new_feats(T, dim, kUndefined),
+        new_adapted_feats(T, dim, kUndefined);
+    new_feats.SetRandn();
+    new_feats.Scale(epsilon);
+    expected_changes(i) = TraceMatMat(new_feats, feats_deriv, kTrans);
+    new_feats.AddMat(1.0, feats);
+    MeanOnlyTransformEstimator m2(mu);
+    m2.ForwardCombined(new_feats, post, &new_adapted_feats);
+    actual_changes(i) =
+        TraceMatMat(new_adapted_feats, adapted_feats_deriv, kTrans) -
+        TraceMatMat(adapted_feats, adapted_feats_deriv, kTrans);
+  }
+  KALDI_LOG << "Expected changes are " << expected_changes
+            << " vs. actual " << actual_changes;
+  if (!expected_changes.ApproxEqual(actual_changes, 0.1)) {
+    KALDI_ERR << "Expected and actual changes differ too much: "
+              << expected_changes << " vs. "
+               << actual_changes;
+  }
+}
+
+
+void UnitTestGaussianAndEstimators() {
   // It's important that the number of classes be greater than the dimension, or
   // we would get a low-rank K.
   int32 num_classes = RandInt(30, 40),
@@ -435,7 +553,7 @@ void UnitTestGaussianAndFmllrEstimator() {
 
   Matrix<BaseFloat> feats(num_frames, dim);
   feats.SetRandn();
-  feats.Add(0.1);  // Nonzero offset tests certain aspects of the code better.
+  feats.Add(0.2);  // Nonzero offset tests certain aspects of the code better.
   Posterior post(num_frames);
   for (int32 t = 0; t < num_frames; t++) {
     int32 n = RandInt(0, 2);
@@ -461,9 +579,20 @@ void UnitTestGaussianAndFmllrEstimator() {
     opts.smoothing_count = 500.0;
   }
 
-  TestFmllrEstimatorMeanDerivs(feats, post, g);
-  TestFmllrEstimatorFeatDerivs(feats, post, g);
-  TestFmllrEstimatorVarDerivs(feats, post, g);
+  {  // test FmllrEstimator
+    TestFmllrEstimatorMeanDerivs(feats, post, g);
+    TestFmllrEstimatorFeatDerivs(feats, post, g);
+    TestFmllrEstimatorVarDerivs(feats, post, g);
+  }
+
+  {  // test MeanOnlyTransformEstimator.
+    TestMeanOnlyTransformEstimatorMeanDerivs(feats, post, g);
+    TestMeanOnlyTransformEstimatorFeatDerivs(feats, post, g);
+  }
+
+
+
+
 }
 
 
@@ -479,7 +608,7 @@ int main() {
   for (int32 i = 0; i < 50; i++) {
     UnitTestCoreFmllrEstimatorSimple();
     UnitTestCoreFmllrEstimatorGeneral();
-    UnitTestGaussianAndFmllrEstimator();
+    UnitTestGaussianAndEstimators();
   }
   std::cout << "Test OK.\n";
 }

@@ -255,6 +255,18 @@ class CoreFmllrEstimator {
    lead to excessive roundoff if you had a large amount of data.  We'll later on
    create a separate mechanism for accumulating stats over all the data, given
    the full tree.
+
+   The normal usage pattern would be:
+      - Construct the object.
+      - Call AccStats() for each sequence.
+      - Call Estimate()
+      - Call GetMeans() and GetVars() to obtain the means and vars, and do
+        something with them, e.g. compute some kind of objective, from which
+        you would obtain derivatives w.r.t. those means and vars.
+      - Call SetOutputDerivs() to tell this class what those derivatives w.r.t.
+        the means and vars are.
+      - Call AccStatsBackward() for each sequence to propagate the derivatives
+        back to the features that were used to estimate the means and vars.
  */
 class GaussianEstimator {
  public:
@@ -322,9 +334,9 @@ class GaussianEstimator {
   //                          This function will *add to* feats_deriv,
   //                          so it must have a well-defined value on
   //                          entry.
-  void Backward(const MatrixBase<BaseFloat> &feats,
-                const Posterior &post,
-                const MatrixBase<BaseFloat> *feats_deriv);
+  void AccStatsBackward(const MatrixBase<BaseFloat> &feats,
+                        const Posterior &post,
+                        const MatrixBase<BaseFloat> *feats_deriv);
  private:
   /*
     Notes on implementation of GaussianEstimator.
@@ -354,12 +366,12 @@ class GaussianEstimator {
 
      We write \bar{foo} for a derivative of the objective function w.r.t. foo.
      We are provided by the user with with \bar{\mu}_i and \bar{s}_i, when they
-     call SetOutputDerivs().  We first compute
-     \bar{m}_i and \bar{v}_i (the derivs w.r.t. the raw statistics) as follows:
-       \bar{m}_i =  0 if \gamma_i is 0, otherwise:
+     call SetOutputDerivs(); and we aim to compute \bar{m}_i and \bar{v}_i, which
+     are the derivs w.r.t. the raw statistics.  This is done as follows:
+       \bar{m}_i = 0 if \gamma_i is 0, otherwise:
                      \frac{\bar{\mu}_i}{\gamma_i} - (\frac{2\bar{s}_i m_i}{\gamma_i^2}
                                                      if s_i > variance_floor, else 0)
-                 =  or 0 if \gamma_i is 0, otherwise:
+                 = or 0 if \gamma_i is 0, otherwise:
                      \frac{\bar{\mu}_i}{\gamma_i} - (\frac{2\bar{s}_i \mu_i}{\gamma_i}
                                                      if s_i > variance_floor, else 0)
        \bar{v}_i = 0 if \gamma_i is 0 or s_i equals variance_floor, otherwise:
@@ -745,9 +757,42 @@ class FmllrEstimator {
 
    This object has a similar interface to class FmllrEstimator.
 
+   This class would normally be used as follows:
+     - Construct an instance of the class (probably for a particular speaker on
+       a particular minibatch).
+
+   Then, either:
+
+     - Call AccStats() one or more times.
+     - Call Estimate().
+     - Call AdaptFeatures() one or more times to get the output features.
+        - Do something with those output features that (if you are training)
+          gives you some kind of objective-function derivative w.r.t. those
+         features.  Then if you are training, do what's below:
+     - Call AdaptFeaturesBackward() one or more times to get part of the
+       derivative w.r.t. the input features.  Note: the calls to AdaptFeatures()
+       and AdaptFeaturesBackward() may be interleaved, since the call to
+       AdaptFeatures() does not modify the object.
+     - Call EstimateBackward()
+     - Call AccStatsBackward() one or more times to get the part of the
+       derivative w.r.t. the input features that comes from the effect
+       on the transform itself.
+     - Make use of the calls GetMeanDeriv() and GetVarDeriv() to
+       account for the effect of the features on the class means and
+       variances (these will be passed to class GaussianEstimator,
+       and eventually to the features).
+
+   Or: if there is only one training sequence, you can use the
+o   simplified interface:  after calling the constructor,
+
+      - call ForwardCombined()
+      - call BackwardCombined()
+      - Make use of the call GetMeanDeriv() to account for the effect of the
+        features on the class means and variances, with the help of class
+        GaussianEstimator.
  */
 class MeanOnlyTransformEstimator {
-
+ public:
   /**
      Constructor.
      @param [in] mu     Class means, probably as output by class
@@ -772,16 +817,15 @@ class MeanOnlyTransformEstimator {
                 const Posterior &post);
 
   /**
-     Estimate the parameter (the offset b).  Returns the
-     objective-function improvement compared with b = 0, divided by the
-     total count as returned by TotalCount().
+     Estimate the parameter (the offset b).  Requires the total count to be
+     nonzero.
   */
-  BaseFloat Estimate();
+  void Estimate();
 
-  BaseFloat TotalCount();
+  BaseFloat TotalCount() { return gamma_.Sum(); }
 
   /// Return the bias term b.
-  const VectorBase<BaseFloat> &GetOffset() { return b_; }
+  const VectorBase<BaseFloat> &GetOffset() { return offset_; }
 
   /// Computes the adapted features y_t = x_t + b.
   /// feats (x) and adapted_feats (y) must have the same dimension.  Must
@@ -794,13 +838,11 @@ class MeanOnlyTransformEstimator {
   /**
      This is the backward pass corresponding to the function AdaptFeatures().
      It propagates back only part of the derivative-- not including the part
-     that's due to how the transform changes when the features change.  It
-     also accumulates within this class instance the derivative w.r.t.
-     b.  You are expected to later call EstimateBackward() and
-     AccStatsBackward() to propagate the part of the derivative that comes from
-     the effect on the transform, back to the input features.
-
+     that's due to how the offset changes when the features change.  It
+     also accumulates within this class instance the derivative w.r.t. the
+     offset.
      See also AccStatsBackward().
+
         @param [in]   feats    The features (x) that were the original input to
                                AdaptFeatures().
         @param [in]   adapted_feats_deriv  The derivative \bar{y} w.r.t. the output (y)
@@ -813,12 +855,79 @@ class MeanOnlyTransformEstimator {
                              const MatrixBase<BaseFloat> &adapted_feats_deriv,
                              MatrixBase<BaseFloat> *feats_deriv);
 
+  /**
+     Backward pass corresponding to Estimate().  Should be called after
+     you've called AdaptFeatures() on all utterances.  Computes the
+     derivatives w.r.t. the mean.  */
   void EstimateBackward();
-  // TODO: finish this.
+
+  /**
+     Returns the derivative w.r.t. the class means 'mu' that were supplied to
+     the constructor.  Must not be called until EstimateBackward() has been
+     called.  */
+  const MatrixBase<BaseFloat> &GetMeanDeriv() const { return mu_bar_; }
+
+  /**
+     This is the backward pass corresponding to AccStats().  You call this after
+     calling EstimateBackward().  It computes the part of the derivative w.r.t.
+     'feats' that comes from the effect on the transform parameters.  You will
+     normally have previously called AdaptFeaturesBackward() on these same
+     features.
+       @param [in] feats  The features as given to AccStats()
+       @param [in,out] feats_deriv   This function *adds* to feats_deriv.
+                          It adds the terms in \bar{x}_t that arise from
+                          the derivative w.r.t. the offset b.
+   */
+  void AccStatsBackward(const MatrixBase<BaseFloat> &feats,
+                        const Posterior &post,
+                        MatrixBase<BaseFloat> *feats_deriv);
+
+
+  /**
+     Combines AccStats(), Estimate() and AdaptFeatures() in one call;
+     for use when there is only one sequence.
+        @param [in] feats  The features we're estimating the fMLLR parameters from
+        @param [in] post   The posteriors corresponding to 'feats
+        @param [out] adapted_feats   A matrix the same size as 'feats', to which
+                           the adapted features will be written.  May contain
+                           NaNs at entry.
+   */
+  void ForwardCombined(const MatrixBase<BaseFloat> &feats,
+                       const Posterior &post,
+                       MatrixBase<BaseFloat> *adapted_feats);
+  /**
+     Combines AdaptFeaturesBackward(), EstimateBackward(), and
+     AccStatsBackward(); for use when there is only one sequence.
+     Note: 'feats_deriv' is *added* to so must be defined at entry.
+  */
+  void BackwardCombined(const MatrixBase<BaseFloat> &feats,
+                        const Posterior &post,
+                        const MatrixBase<BaseFloat> &adapted_feats_deriv,
+                        MatrixBase<BaseFloat> *feats_deriv);
 
  private:
+  // The means, one row per class.  A reference to an object owned elsewhere.
+  const MatrixBase<BaseFloat> &mu_;
 
-  Vector<BaseFloat> b_;
+  // The counts per class
+  Vector<double> gamma_;
+  // The total of the input features, weighted by total posterior.
+  Vector<double> input_sum_;
+
+  // The offset.
+  Vector<BaseFloat> offset_;
+
+  // The total of the derivative w.r.t. the output.
+  Vector<double> output_deriv_sum_;
+
+  // The derivative w.r.t. each row of the input features-- i.e. the part of the
+  // derivative that comes from the effect via the offset.  This equals
+  //  (-1 / total-count) * output_deriv_sum_.
+  Vector<BaseFloat> x_deriv_;
+
+  // The derivative w.r.t. mu:
+  //    (1/gamma_tot) gamma_ . output_deriv_sum_^T.
+  Matrix<BaseFloat> mu_bar_;
 };
 
 

@@ -202,7 +202,8 @@ GaussianEstimator::GaussianEstimator(int32 num_classes, int32 feature_dim):
 void GaussianEstimator::AccStats(const MatrixBase<BaseFloat> &feats,
                                  const Posterior &post) {
   KALDI_ASSERT(static_cast<int32>(post.size()) == feats.NumRows());
-  int32 T = feats.NumRows();
+  int32 T = feats.NumRows(),
+      num_classes = m_.NumRows();
   auto iter = post.begin();
   for (int32 t = 0; t < T; t++,++iter) {
     SubVector<BaseFloat> feat(feats, t);
@@ -211,6 +212,8 @@ void GaussianEstimator::AccStats(const MatrixBase<BaseFloat> &feats,
         end2 = this_post.end();
     for (; iter2 != end2; ++iter2) {
       int32 i = iter2->first;
+      KALDI_ASSERT(i >= 0 && i < num_classes &&
+                   "Posteriors and adaptation model mismatch");
       BaseFloat p = iter2->second;
       gamma_(i) += p;
       SubVector<BaseFloat> this_m(m_, i);
@@ -299,9 +302,10 @@ int32 GaussianEstimator::Dim() const {
   return std::max(m_.NumCols(), mu_.NumCols());
 }
 
-void GaussianEstimator::Backward(const MatrixBase<BaseFloat> &feats,
-                                 const Posterior &post,
-                                 const MatrixBase<BaseFloat> *feats_deriv) {
+void GaussianEstimator::AccStatsBackward(
+    const MatrixBase<BaseFloat> &feats,
+    const Posterior &post,
+    const MatrixBase<BaseFloat> *feats_deriv) {
   // The equation we're implementing is:
   // \bar{x}_t = \sum_i \gamma_{t,i} (\bar{m}_i + 2\bar{v}_i x_t)
   // See the comment in the header:
@@ -357,6 +361,8 @@ void FmllrEstimator::AccStats(const MatrixBase<BaseFloat> &feats,
     BaseFloat this_gamma_hat_t = 0.0;
     for (; iter != end; ++iter) {
       int32 i = iter->first;
+      KALDI_ASSERT(i >= 0 && i < num_classes &&
+                   "Posteriors and adaptation model mismatch");
       BaseFloat gamma_ti = iter->second,
           gamma_hat_ti = gamma_ti / s_(i);
       SubVector<BaseFloat> z_i(z_, i);
@@ -482,7 +488,8 @@ void FmllrEstimator::AdaptFeaturesBackward(
     const MatrixBase<BaseFloat> &adapted_feats_deriv,
     MatrixBase<BaseFloat> *feats_deriv) {
   KALDI_ASSERT(SameDim(feats, adapted_feats_deriv) &&
-               SameDim(feats, *feats_deriv));
+               SameDim(feats, *feats_deriv) &&
+               G_bar_.NumRows() == 0);
   int32 rows_per_chunk = 100;
   if (feats.NumRows() > rows_per_chunk) {
     // Break it up into 100-frame chunks and recurse.  This will reduce roundoff
@@ -672,6 +679,125 @@ void FmllrEstimator::BackwardCombined(
 FmllrEstimator::~FmllrEstimator() {
   delete estimator_;  // in case Estimate() was never called.
 }
+
+
+MeanOnlyTransformEstimator::MeanOnlyTransformEstimator(
+    const MatrixBase<BaseFloat> &mu): mu_(mu) {
+  int32 num_classes = mu_.NumRows(),
+      dim = mu_.NumCols();
+  gamma_.Resize(num_classes);
+  input_sum_.Resize(dim);
+}
+
+void MeanOnlyTransformEstimator::AccStats(const MatrixBase<BaseFloat> &feats,
+                                          const Posterior &post) {
+  int32 T = feats.NumRows(),
+      num_classes = mu_.NumRows();
+  KALDI_ASSERT(static_cast<int32>(post.size()) == T);
+
+  for (int32 t = 0; t < T; t++) {
+    BaseFloat gamma_t = 0.0;  // Total weight for this frame.
+    auto iter = post[t].begin(), end = post[t].end();
+    for (; iter != end; ++iter) {
+      int32 i = iter->first;
+      KALDI_ASSERT(i >= 0 && i < num_classes &&
+                   "Posteriors and adaptation model mismatch");
+      BaseFloat gamma_ti = iter->second;
+      gamma_t += gamma_ti;
+      gamma_(i) += gamma_ti;
+    }
+    SubVector<BaseFloat> feat(feats, t);
+    KALDI_ASSERT(gamma_t >= 0);
+    input_sum_.AddVec(gamma_t, feat);
+  }
+}
+
+
+void MeanOnlyTransformEstimator::Estimate() {
+  double tot_gamma = gamma_.Sum();
+  int32 dim = mu_.NumCols();
+  if (tot_gamma <= 0.0)
+    KALDI_ERR << "You cannot call Estimate() if total count is zero.";
+  Vector<BaseFloat> gamma_float(gamma_);
+  Vector<BaseFloat> expected_mean(dim);
+  expected_mean.AddMatVec(1.0 / tot_gamma, mu_, kTrans, gamma_float, 0.0);
+  // basically: offset_ = expected_mean - observed_mean,
+  // where observed_mean = input_sum_ / tot_gamma.
+  offset_ = expected_mean;
+  offset_.AddVec(-1.0 / tot_gamma, input_sum_);
+  output_deriv_sum_.Resize(dim);
+}
+
+void MeanOnlyTransformEstimator::AdaptFeatures(
+    const MatrixBase<BaseFloat> &feats,
+    MatrixBase<BaseFloat> *adapted_feats) const {
+  adapted_feats->CopyRowsFromVec(offset_);
+  adapted_feats->AddMat(1.0, feats);
+}
+
+void MeanOnlyTransformEstimator::AdaptFeaturesBackward(
+    const MatrixBase<BaseFloat> &feats,
+    const MatrixBase<BaseFloat> &adapted_feats_deriv,
+    MatrixBase<BaseFloat> *feats_deriv) {
+  int32 dim = mu_.NumCols();
+  Vector<BaseFloat> output_deriv_sum(dim);
+  output_deriv_sum.AddRowSumMat(1.0, adapted_feats_deriv);
+  output_deriv_sum_.AddVec(1.0, output_deriv_sum);
+  feats_deriv->AddMat(1.0, adapted_feats_deriv);
+}
+
+void MeanOnlyTransformEstimator::EstimateBackward() {
+  int32 num_classes = mu_.NumRows(), dim = mu_.NumCols();
+  mu_bar_.Resize(num_classes, dim);
+  Vector<BaseFloat> gamma(gamma_),
+      output_deriv_sum(output_deriv_sum_);
+  BaseFloat gamma_tot = gamma_.Sum();
+  KALDI_ASSERT(gamma_tot > 0.0);
+  mu_bar_.AddVecVec(1.0 / gamma_tot, gamma, output_deriv_sum);
+
+  x_deriv_ = output_deriv_sum;
+  x_deriv_.Scale(-1.0 / gamma_tot);
+}
+
+
+void MeanOnlyTransformEstimator::AccStatsBackward(
+    const MatrixBase<BaseFloat> &feats,
+    const Posterior &post,
+    MatrixBase<BaseFloat> *feats_deriv) {
+
+  int32 T = feats.NumRows();
+  // tot_weight will be the total weight of the posteriors in 'post'
+  // for each frame.
+  Vector<BaseFloat> tot_weight(T, kUndefined);
+  for (int32 t = 0; t < T; t++) {
+    BaseFloat gamma_t = 0.0;  // Total weight for this frame.
+    auto iter = post[t].begin(), end = post[t].end();
+    for (; iter != end; ++iter)
+      gamma_t += iter->second;
+    tot_weight(t) = gamma_t;
+  }
+  feats_deriv->AddVecVec(1.0, tot_weight, x_deriv_);
+}
+
+void MeanOnlyTransformEstimator::ForwardCombined(
+    const MatrixBase<BaseFloat> &feats,
+    const Posterior &post,
+    MatrixBase<BaseFloat> *adapted_feats) {
+  AccStats(feats, post);
+  Estimate();
+  AdaptFeatures(feats, adapted_feats);
+}
+
+void MeanOnlyTransformEstimator::BackwardCombined(
+    const MatrixBase<BaseFloat> &feats,
+    const Posterior &post,
+    const MatrixBase<BaseFloat> &adapted_feats_deriv,
+    MatrixBase<BaseFloat> *feats_deriv) {
+  AdaptFeaturesBackward(feats, adapted_feats_deriv, feats_deriv);
+  EstimateBackward();
+  AccStatsBackward(feats, post, feats_deriv);
+}
+
 
 }  // namespace differentiable_transform
 }  // namespace kaldi
