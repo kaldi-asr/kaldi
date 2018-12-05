@@ -56,7 +56,8 @@ class SpeakerStatsItf {
    down to the bottom neural net.  The reason this is non-trivial (i.e. why it's
    not just a matrix multiplication) is that the value of the transform itself
    depends on the features, and also on the speaker-independent statistics for
-   each class (i.e. the mean and variance), which also depends on the features.
+   each class (i.e. the mean and variance), which also depend on the features
+   sicne we estimate them from the same minibatch.
    You can view this as an extension of things like BatchNorm, except the
    interface is more complicated because there is a dependence on the per-frame
    class labels.
@@ -65,21 +66,22 @@ class SpeakerStatsItf {
    minimal tree, with hundreds instead of thousands of states.  Part of the
    reason for using a smaller number of states is that, to make the thing
    properly differentiable during training, we need to use a small enough number
-   of states that we can obtain a reasonable estimate for the mean and variance
-   of a Gaussian for each one in training time.   Anyway, see
+   of states that we can obtain a reasonable estimate for the mean and (spherical)
+   variance of a Gaussian for each one in training time.   Anyway, as you can see in
    http://isl.anthropomatik.kit.edu/pdf/Nguyen2017.pdf, it's generally better
-   for this kind of thing to use "simple target models" for adaptation.
+   for this kind of thing to use "simple target models" for adaptation rather than
+   very complex models.
 
    Note: for training utterances we'll generally get the class labels used for
    adatpation in a supervised manner, either by aligning a previous system like
-   a GMM system, or from the (soft) posteriors of the the numerator graphs.  In
-   test time, we'll usually be getting these class labels from some kind of
-   unsupervised process.
+   a GMM system, or-- more likely-- from the (soft) posteriors of the the
+   numerator graphs.  In test time, we'll usually be getting these class labels
+   from some kind of unsupervised process.
 
    Because we tend to train neural nets on fairly small fixed-size chunks
    (e.g. 1.5 seconds), and transforms like fMLLR don't tend to work very well
    until you have about 5 seconds of data, we will usually be arranging those
-   chunks into groups where all members of the group comes from the same
+   chunks into groups where all members of the group come from the same
    speaker.
  */
 class DifferentiableTransform {
@@ -120,7 +122,8 @@ class DifferentiableTransform {
               per speaker.  Caution: the order of both the input and
               output features, and the posteriors, does not consist of blocks,
               one per sequence, but rather blocks, one per time frame, so the
-              sequences are intercalated.
+              sequences are intercalated.  This is the default order;
+              see operator < of nnet3::Index.
      @param [in] num_chunks   The number of individual sequences
               (e.g., chunks of speech) represented in 'input'.
               input.NumRows() will equal num_sequences times the number
@@ -138,11 +141,13 @@ class DifferentiableTransform {
              There is no assumption that the posteriors sum to one;
              this allows you to do things like silence weighting.
      @param [out] output  The adapted output.  This matrix should have the
-            same dimensions as 'input'.
+             same dimensions as 'input'.  It does not have to be free of
+             NaNs when you call this function.
      @return  This function returns either NULL or an object of type
-             DifferentiableTransformItf*, which is expected to be given
+             DifferentiableTransformItf*, which is expected to later be given
              to the function TrainingBackward().  It will store
-             any information that will be needed in the backprop phase.
+             any information that needs to be remembered for the backward
+             phase.
    */
   virtual MinibatchInfoItf* TrainingForward(
       const CuMatrixBase<BaseFloat> &input,
@@ -163,8 +168,8 @@ class DifferentiableTransform {
                        See TrainingForward() for information
                        about these arguments; they should be the same
                        values.
-     @param [in] minibatch_info  The object returned by the corresponding
-                      call to TrainingForward().  The caller
+     @param [in] minibatch_info  The pointer returned by the corresponding
+                      call to TrainingForward() (may be NULL).  The caller
                       will likely want to delete that object after
                       calling this function
      @param [in,out] input_deriv  The derivative at the input, i.e.
@@ -184,7 +189,7 @@ class DifferentiableTransform {
       int32 num_chunks,
       int32 num_spk,
       const Posterior &posteriors,
-      const MinibatchInfoItf &minibatch_info,
+      const MinibatchInfoItf *minibatch_info,
       CuMatrixBase<BaseFloat> *input_deriv) const = 0;
 
 
@@ -217,9 +222,12 @@ class DifferentiableTransform {
       int32 num_spk,
       const Posterior &posteriors) = 0;
 
-  // To be called after repeated alls to Accumulate(), does any estimation that
+  // To be called after repeated calls to Accumulate(), does any estimation that
   // is required in training time (normally per-speaker means and possibly
   // variances.
+  //      @param [in] final_iter  An iteration number in the range
+  //               [0, NumFinalIterations()].  In many cases there will
+  //               be only one iteration so this will just be zero.
   virtual void Estimate(int32 final_iter) = 0;
 
   // Returns an object representing sufficient statistics for estimating a
