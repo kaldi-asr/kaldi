@@ -1,4 +1,4 @@
-// transform/differentiable-transform.h
+// adapt/differentiable-transform.h
 
 // Copyright      2018  Johns Hopkins University (author: Daniel Povey)
 

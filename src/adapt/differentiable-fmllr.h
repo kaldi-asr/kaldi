@@ -1,4 +1,4 @@
-// transform/differentiable-fmllr.h
+// adapt/differentiable-fmllr.h
 
 // Copyright      2018  Johns Hopkins University (author: Daniel Povey)
 

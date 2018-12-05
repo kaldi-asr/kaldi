@@ -1,4 +1,4 @@
-// transform/differentiable-fmllr-test.cc
+// adapt/differentiable-fmllr-test.cc
 
 // Copyright 2018  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "transform/differentiable-fmllr.h"
+#include "adapt/differentiable-fmllr.h"
 #include "matrix/sp-matrix.h"
 
 namespace kaldi {

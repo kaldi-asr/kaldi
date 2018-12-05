@@ -1,4 +1,4 @@
-// transform/differentiable-fmllr.cc
+// adapt/differentiable-fmllr.cc
 
 // Copyright     2018  Johns Hopkins University
 
@@ -17,7 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "transform/differentiable-fmllr.h"
+#include "adapt/differentiable-fmllr.h"
 #include "matrix/matrix-functions.h"
 
 namespace kaldi {
