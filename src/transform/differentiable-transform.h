@@ -87,9 +87,8 @@ class SpeakerStatsItf {
 class DifferentiableTransform {
  public:
 
-  /// Return the dimension of the input and output features.
+  /// Return the dimension of the features this operates on.
   virtual int32 Dim() const = 0;
-
 
   /// Return the number of classes in the model used for adaptation.  These
   /// will probably correspond to the leaves of a small tree, so they would
@@ -169,9 +168,10 @@ class DifferentiableTransform {
                        about these arguments; they should be the same
                        values.
      @param [in] minibatch_info  The pointer returned by the corresponding
-                      call to TrainingForward() (may be NULL).  The caller
-                      will likely want to delete that object after
-                      calling this function
+                      call to TrainingForward() (may be NULL).  This function
+                      takes possession of the pointer.  If for some reason the
+                      backward pass was not done, the caller will likely
+                      want to delete it themselves.
      @param [in,out] input_deriv  The derivative at the input, i.e.
                       dF/d(input), where F is the function we are
                       evaluating.  Must have the same dimension as
@@ -189,7 +189,7 @@ class DifferentiableTransform {
       int32 num_chunks,
       int32 num_spk,
       const Posterior &posteriors,
-      const MinibatchInfoItf *minibatch_info,
+      MinibatchInfoItf *minibatch_info,
       CuMatrixBase<BaseFloat> *input_deriv) const = 0;
 
 
@@ -289,7 +289,7 @@ class NoOpTransform: public DifferentiableTransform {
  public:
 
   int32 Dim() const override { return dim_; }
-  int32 NumClasses() const override { return num_classes_; }
+
   MinibatchInfoItf* TrainingForward(
       const CuMatrixBase<BaseFloat> &input,
       int32 num_chunks,
@@ -305,8 +305,9 @@ class NoOpTransform: public DifferentiableTransform {
       int32 num_chunks,
       int32 num_spk,
       const Posterior &posteriors,
-      const MinibatchInfoItf &minibatch_info,
+      const MinibatchInfoItf *minibatch_info,
       CuMatrixBase<BaseFloat> *input_deriv) const override {
+    KALDI_ASSERT(minibatch_info == NULL);
     input_deriv->AddMat(1.0, output_deriv);
   }
 
@@ -320,13 +321,13 @@ class NoOpTransform: public DifferentiableTransform {
       const Posterior &posteriors) override { }
 
 
-
   SpeakerStatsItf *GetEmptySpeakerStats() override { return NULL; }
 
   void TestingAccumulate(
       const MatrixBase<BaseFloat> &input,
       const Posterior &posteriors,
       SpeakerStatsItf *speaker_stats) const override { }
+
   void TestingForward(
       const MatrixBase<BaseFloat> &input,
       const SpeakerStatsItf &speaker_stats,
@@ -337,7 +338,8 @@ class NoOpTransform: public DifferentiableTransform {
   void Estimate(int32 final_iter) override { }
 
   NoOpTransform(const NoOpTransform &other):
-      dim_(other.dim_), num_classes_(other.num_classes_) { }
+      DifferentiableTransform(other),
+      dim_(other.dim_) { }
 
   DifferentiableTransform* Copy() const override {
     return new NoOpTransform(*this);
@@ -349,7 +351,6 @@ class NoOpTransform: public DifferentiableTransform {
 
  private:
   int32 dim_;
-  int32 num_classes_;
 };
 
 
@@ -357,6 +358,8 @@ class NoOpTransform: public DifferentiableTransform {
    This is a version of the transform class that does a sequence of other
    transforms, specified by other instances of the DifferentiableTransform
    interface.
+
+   TODO: finish this.
  */
 class SequenceTransform: public DifferentiableTransform {
  public:
@@ -418,8 +421,9 @@ class SequenceTransform: public DifferentiableTransform {
 
 
 /**
-   This is a version of the transform class that consists of a number of
-   other transforms, appended dimension-wise-- e.g. this could be used to
+   This is a version of the transform class that consists of a number of other
+   transforms, appended dimension-wise, so its feature dimension is the sum of
+   the dimensions of the constituent transforms-- e.g. this could be used to
    implement block-diagonal fMLLR, or a structure where some dimensions are
    adapted and some are not.
  */
@@ -441,7 +445,7 @@ class AppendTransform: public DifferentiableTransform {
       int32 num_chunks,
       int32 num_spk,
       const Posterior &posteriors,
-      const MinibatchInfoItf &minibatch_info,
+      MinibatchInfoItf *minibatch_info,
       CuMatrixBase<BaseFloat> *input_deriv) const override;
 
   virtual int32 NumFinalIterations();
@@ -477,12 +481,11 @@ class AppendTransform: public DifferentiableTransform {
 
 
 /**
-   This is a version of the transform class that appends over sub-ranges
-   of dimensions, so that, for instance, you can implement a block-diagonal
-   transform or a setup where some dimensions are transformed and some are
-   not.
+   This is a version of the transform class that implements fMLLR (with
+   spherical variances, to make the update equations non-iterative); see
+   differentiable-fmllr.h.
 */
-class AppendTransform: public DifferentiableTransform {
+class FmllrTransform: public DifferentiableTransform {
   int32 Dim() const override;
   int32 NumClasses() const override;
   MinibatchInfoItf* TrainingForward(
@@ -519,7 +522,10 @@ class AppendTransform: public DifferentiableTransform {
 
   void Read(std::istream &is, bool binary) override;
  private:
-  std::vector<DifferentiableTransform*> transforms_;
+  int32 dim_;
+
+  // TODO: class means and variances for when the model has been trained.
+
 };
 
 
