@@ -5,21 +5,21 @@
 
 # This script trains LMs on the librispeech 960 hours training data.
 
-# rnnlm/train_rnnlm.sh: best iteration (out of 26) was 21, linking it to final iteration.
-# rnnlm/train_rnnlm.sh: train/dev perplexity was 118.4 / 152.6.
-# Train objf: -5.74 -5.51 -5.38 -5.29 -5.22 -5.16 -5.12 -5.08 -5.05 -5.02 -4.99 -4.97 -4.97 -4.93 -4.90 -4.87 -4.84 -4.82 -4.79 -4.77 -4.75 -4.73 -4.71 -4.69 -4.67
-# Dev objf:   -6.00 -5.61 -5.45 -5.36 -5.29 -5.24 -5.20 -5.18 -5.16 -5.13 -5.12 -5.11 -5.11 -5.09 -5.07 -5.06 -5.05 -5.04 -5.03 -5.03 -5.03 -5.03 -5.03 -5.03 -5.03 -5.03
+# rnnlm/train_rnnlm.sh: best iteration (out of 143) was 142, linking it to final iteration.
+# rnnlm/train_rnnlm.sh: train/dev perplexity was 109.2 / 110.7.
+# Train objf: -5.74 -5.54 -5.44 -5.37 -5.32 -5.28 -5.25 -5.23 -5.20 -5.18 -5.15 -5.14 -5.12 -5.10 -5.09 -5.08 -5.07 -5.05 -5.04 -5.04 -5.03 -5.02 -5.01 -5.00 -4.99 -4.99 -4.98 -4.97 -4.96 -4.96 -4.95 -4.95 -4.94 -4.93 -4.93 -4.92 -4.92 -4.92 -4.91 -4.90 -4.90 -4.89 -4.89 -4.89 -4.88 -4.88 -4.87 -4.87 -4.87 -4.86 -4.86 -4.86 -4.85 -4.85 -4.84 -4.84 -4.84 -4.84 -4.84 -4.83 -4.83 -4.83 -4.82 -4.82 -4.82 -4.82 -4.81 -4.81 -4.81 -4.81 -4.80 -4.80 -4.80 -4.79 -4.79 -4.79 -4.79 -4.78 -4.79 -4.78 -4.78 -4.78 -4.78 -4.77 -4.77 -4.77 -4.77 -4.77 -4.76 -4.76 -4.76 -4.76 -4.76 -4.75 -4.75 -4.75 -4.75 -4.75 -4.74 -4.74 -4.74 -4.74 -4.74 -4.74 -4.73 -4.74 -4.74 -4.73 -4.73 -4.73 -4.73 -4.73 -4.72 -4.73 -4.73 -4.73 -4.72 -4.72 -4.72 -4.72 -4.72 -4.72 -4.72 -4.72 -4.71 -4.71 -4.71 -4.71 -4.71 -4.70 -4.70 -4.70 -4.70 -4.70 -4.69 -4.69 -4.69 -4.69 -4.69 -4.69 -4.68 -4.68
+# Dev objf:   -5.99 -5.65 -5.53 -5.44 -5.38 -5.34 -5.30 -5.27 -5.22 -5.20 -5.18 -5.16 -5.14 -5.12 -5.11 -5.10 -5.09 -5.08 -5.07 -5.05 -5.04 -5.04 -5.03 -5.01 -5.00 -4.99 -4.99 -4.98 -4.97 -4.97 0.00 -4.96 -4.95 -4.95 -4.94 -4.93 -4.93 -4.92 -4.92 -4.91 -4.91 -4.90 -4.90 -4.89 -4.89 -4.89 -4.88 -4.88 -4.88 -4.87 -4.87 -4.87 -4.86 -4.86 -4.85 -4.85 -4.87 -4.84 -4.84 -4.84 -4.83 -4.91 -4.83 -4.83 -4.83 -4.82 -4.82 -4.82 -4.82 -4.81 -4.81 -4.81 -4.80 -4.80 -4.80 -4.80 -4.80 -4.79 -4.79 -4.79 -4.79 -4.79 -4.79 -4.78 -4.78 -4.79 -4.78 -4.77 -4.77 -4.77 -4.77 -4.77 -4.77 -4.77 -4.76 -4.76 -4.76 -4.76 -4.76 -4.75 -4.75 -4.75 -4.75 -4.75 -4.75 -4.75 -4.75 -4.75 -4.75 -4.75 -4.75 -4.74 -4.74 -4.74 -4.74 -4.74 -4.74 -4.74 -4.73 -4.74 -4.73 -4.73 -4.73 -4.73 -4.73 -4.73 -4.72 -4.72 -4.72 -4.72 -4.72 -4.72 -4.72 -4.72 -4.71 -4.71 -4.71 -4.71 -4.71 -4.71 -4.71 -4.71
 
 # WER summary on dev and test sets
 # System                      tdnn_1d_sp  +lattice_rescore  +nbest_rescore 
-# WER on dev(fglarge)              3.34         2.97            2.98
-# WER on dev(tglarge)              3.44         3.02            3.07
-# WER on dev_other(fglarge)        8.70         7.98            8.00
-# WER on dev_other(tglarge)        9.25         8.28            8.35
-# WER on test(fglarge)             3.77         3.41            3.40
-# WER on test(tglarge)             3.85         3.50            3.47
-# WER on test_other(fglarge)       8.91         8.22            8.21
-# WER on test_other(tglarge)       9.31         8.55            8.49
+# WER on dev(fglarge)              3.34         2.71            2.62
+# WER on dev(tglarge)              3.44         2.75            2.66
+# WER on dev_other(fglarge)        8.70         7.37            7.55
+# WER on dev_other(tglarge)        9.25         7.56            7.73
+# WER on test(fglarge)             3.77         3.12            3.06
+# WER on test(tglarge)             3.85         3.18            3.11
+# WER on test_other(fglarge)       8.91         7.63            7.68
+# WER on test_other(tglarge)       9.31         7.83            7.95
 
 # command to get the WERs above:
 # tdnn_1d_sp
@@ -37,7 +37,7 @@ lstm_rpd=256
 lstm_nrpd=256
 stage=-10
 train_stage=-10
-epochs=20
+epochs=4
 
 # variables for lattice rescoring
 run_lat_rescore=true
@@ -54,23 +54,25 @@ pruned_rescore=true
 . ./cmd.sh
 . ./utils/parse_options.sh
 
-# test of 960 hours training transcriptions
-text=data/train_960/text
+text=data/local/lm/librispeech-lm-norm.txt.gz
 lexicon=data/lang_nosp/words.txt
-text_dir=data/rnnlm/text_960_1a
+text_dir=data/rnnlm/text
 mkdir -p $dir/config
 set -e
 
-for f in $text $lexicon; do
+for f in $lexicon; do
   [ ! -f $f ] && \
     echo "$0: expected file $f to exist; search for run.sh in run.sh" && exit 1
 done
 
 if [ $stage -le 0 ]; then
   mkdir -p $text_dir
+  if [ ! -f $text ]; then
+    wget http://www.openslr.org/resources/11/librispeech-lm-norm.txt.gz -P data/local/lm 
+  fi
   echo -n >$text_dir/dev.txt
-  # hold out one in every 50 lines as dev data.
-  cat $text | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/librispeech.txt
+  # hold out one in every 2000 lines as dev data.
+  gunzip -c $text | cut -d ' ' -f2- | awk -v text_dir=$text_dir '{if(NR%2000 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/librispeech.txt
 fi
 
 if [ $stage -le 1 ]; then
@@ -119,7 +121,7 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  rnnlm/train_rnnlm.sh --num-jobs-final 2 \
+  rnnlm/train_rnnlm.sh --num-jobs-final 8 \
                        --stage $train_stage \
                        --num-epochs $epochs \
                        --cmd "$train_cmd" $dir
