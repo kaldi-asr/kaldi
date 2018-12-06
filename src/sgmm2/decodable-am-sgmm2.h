@@ -59,15 +59,15 @@ class DecodableAmSgmm2 : public DecodableInterface {
       sgmm_cache_(sgmm.NumGroups(), sgmm.NumPdfs()), delete_vars_(true) {
     KALDI_ASSERT(gselect->size() == static_cast<size_t>(feats->NumRows()));
   }
-  
+
   // Note, frames are numbered from zero, but transition indices are 1-based!
   // This is for compatibility with OpenFST.
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
-    return LogLikelihoodForPdf(frame, trans_model_.TransitionIdToPdf(tid));
+    return LogLikelihoodForPdf(frame, trans_model_.TransitionIdToPdfFast(tid));
   }
   int32 NumFramesReady() const { return feature_matrix_->NumRows(); }
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
-  
+
   virtual bool IsLastFrame(int32 frame) const {
     KALDI_ASSERT(frame < NumFramesReady());
     return (frame == NumFramesReady() - 1);
@@ -81,17 +81,17 @@ class DecodableAmSgmm2 : public DecodableInterface {
   Sgmm2PerSpkDerivedVars *spk_;
   const TransitionModel &trans_model_;  ///< for tid to pdf mapping
   const Matrix<BaseFloat> *feature_matrix_;
-  const std::vector<std::vector<int32> > *gselect_; 
-  
+  const std::vector<std::vector<int32> > *gselect_;
+
   BaseFloat log_prune_;
-  
+
   int32 cur_frame_;
   Sgmm2PerFrameDerivedVars per_frame_vars_;
   Sgmm2LikelihoodCache sgmm_cache_;
 
   bool delete_vars_; // If true, we will delete feature_matrix_, gselect_, and
   // spk_ in the destructor.
-  
+
  private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmSgmm2);
 };
@@ -121,10 +121,10 @@ class DecodableAmSgmm2Scaled : public DecodableAmSgmm2 {
       : DecodableAmSgmm2(sgmm, tm, feats, gselect, spk, log_prune),
         scale_(scale) {}
 
-  
+
   // Note, frames are numbered from zero but transition-ids from one.
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
-    return LogLikelihoodForPdf(frame, trans_model_.TransitionIdToPdf(tid))
+    return LogLikelihoodForPdf(frame, trans_model_.TransitionIdToPdfFast(tid))
             * scale_;
   }
  private:

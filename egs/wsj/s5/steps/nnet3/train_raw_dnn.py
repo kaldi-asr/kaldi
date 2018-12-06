@@ -101,7 +101,14 @@ def get_args():
                         help="Directory with features used for training "
                         "the neural network.")
     parser.add_argument("--targets-scp", type=str, required=False,
-                        help="Targets for training neural network.")
+                        help="""Targets for training neural network.
+                        This is a kaldi-format SCP file of target matrices.
+                        <utterance-id> <extended-filename-of-target-matrix>.
+                        The target matrix's column dim must match 
+                        the neural network output dim, and the
+                        row dim must match the number of output frames 
+                        i.e. after subsampling if "--frame-subsampling-factor" 
+                        option is passed to --egs.opts.""")
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and "
                         "all other files.")
@@ -314,7 +321,7 @@ def train(args, run_opts):
     num_archives_expanded = num_archives * args.frames_per_eg
     num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
-    num_iters = ((num_archives_to_process * 2)
+    num_iters = int((num_archives_to_process * 2)
                  / (args.num_jobs_initial + args.num_jobs_final))
 
     # If do_final_combination is True, compute the set of models_to_combine.

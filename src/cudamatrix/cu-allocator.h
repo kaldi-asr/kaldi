@@ -54,7 +54,7 @@ struct CuAllocatorOptions {
   bool cache_memory;
 
   // The proportion of the device's memory that the CuAllocator allocates to
-  // start with; by default this is 0.8, although if you want to share the
+  // start with; by default this is 0.5, although if you want to share the
   // device (not recommended!) you should set this lower.
   BaseFloat memory_proportion;
 
@@ -180,12 +180,20 @@ class CuMemoryAllocator {
 
   void PrintMemoryUsage() const;
 
+  // returns the current memory allocated within the cache
+  size_t GetAllocatedMemory() { return allocated_memory_; }
+
+  //  returns the maximum memory used within the cache during current execution
+  size_t GetMaxAllocatedMemory() { return max_allocated_memory_; }
+
   CuMemoryAllocator();
 
   // Allows you to set options: must be called before any Malloc function is
   // called on this class.  It's done this way so the options can be changed
   // by the user (c.f. RegisterCuAllocatorOptions()) before the options are read.
   void SetOptions(const CuAllocatorOptions &opts) { opts_ = opts; }
+
+  ~CuMemoryAllocator();
 
  private:
 
@@ -333,6 +341,11 @@ class CuMemoryAllocator {
   // this is only locked by the '*Locking' versions of the functions (necessary only
   // in multi-threaded applications).
   std::mutex mutex_;
+
+  // Keep track of the memory usage from the cache to track the maximum memory used by
+  //   the application
+  size_t max_allocated_memory_;
+  size_t allocated_memory_;
 };
 
 

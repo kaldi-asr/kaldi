@@ -35,7 +35,6 @@ decode_nj=50
 
 # training options
 xent_regularize=0.01
-self_repair_scale=0.00001
 label_delay=5
 
 chunk_left_context=40

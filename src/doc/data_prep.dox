@@ -811,7 +811,7 @@ state transducers.  (Note that language models would be represented as finite st
 acceptors, or FSAs, which can be considered as a special case of finite state transducers).
 
 The script <DFN>utils/format_lm.sh</DFN> deals with converting the ARPA-format language
-models into an OpenFst format. Here is the usage messages of that script: 
+models into an OpenFst format. Here is the usage messages of that script:
 \verbatim
 Usage: utils/format_lm.sh <lang_dir> <arpa-LM> <lexicon> <out_dir>
 E.g.: utils/format_lm.sh data/lang data/local/lm/foo.kn.gz data/local/dict/lexicon.txt data/lang_test
@@ -837,5 +837,53 @@ Usage: utils/format_lm_sri.sh [options] <lang-dir> <arpa-LM> <out-dir>
 E.g.: utils/format_lm_sri.sh data/lang data/local/lm/foo.kn.gz data/lang_test
 Converts ARPA-format language models to FSTs. Change the LM vocabulary using SRILM.
 \endverbatim
+
+
+\section data_prep_unknown Note on unknown words
+
+This is an explanation of how Kaldi deals with unknown words (words not in the
+vocabulary); we are putting it on the "data preparation" page for lack of a more obvious
+location.
+
+In many setups, <DFN>\<unk\></DFN> or something similar will be present in the
+LM as long as the data that you used to train the LM had words that were not
+in the vocabulary you used to train the LM,
+because language modeling toolkits tend to map those all to a
+single special world, usually called <DFN>\<unk\></DFN> or
+<DFN>\<UNK\></DFN>.  You can look at the arpa file to figure out what it's called; it
+will usually be one of those two.
+
+
+During training, if there are words in the <DFN>text</DFN> file in your data
+directory that are not in the <DFN>words.txt</DFN> in the lang directory that
+you are using, Kaldi will map them to a special word that's specified in the
+lang directory in the file <DFN>data/lang/oov.txt</DFN>; it will usually be
+either <DFN>\<unk\></DFN>, <DFN>\<UNK\></DFN> or maybe
+<DFN>\<SPOKEN_NOISE\></DFN>.  This word will have been chosen by the user
+(i.e., you), and supplied to <DFN>prepare_lang.sh</DFN> as a command-line argument.
+If this word has nonzero probability in the language model (which you can test
+by looking at the arpa file), then it will be possible for Kaldi to recognize
+this word in test time.  This will often be the case if you call this word
+<DFN>\<unk\></DFN>, because as we mentioned above, language modeling toolkits
+will often use this spelling for ``unknown word'' (which is a special word that
+all out-of-vocabulary words get mapped to).  Decoding output will always be limited to the
+intersection of the words in the language model with the words in the lexicon.txt (or whatever file format you supplied the
+lexicon in, e.g. lexicop.txt); these words will all be present in the <DFN>words.txt</DFN>
+in your <DFN>lang</DFN> directory.
+So if Kaldi's "unknown word" doesn't match the LM's "unknown word", you will
+simply never decode this word.  In any
+case, even when allowed to be decoded, this word typically won't be output very
+often and in practice it doesn't tend to have much impact on WERs.
+
+Of course a single phone isn't a very good, or accurate, model of OOV words.  In
+some Kaldi setups we have example scripts with names
+<DFN>local/run_unk_model.sh</DFN>: e.g., see the file
+<DFN>tedlium/s5_r2/local/run_unk_model.sh</DFN>.  These scripts replace the unk
+phone with a phone-level LM on phones.  They make it possible to get access to
+the sequence of phones in a hypothesized unknown word.  Note: unknown words
+should be considered an "advanced topic" in speech recognition and we discourage
+beginners from looking into this topic too closely.
+
+
 
 */

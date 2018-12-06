@@ -27,16 +27,12 @@ affix=1a
 
 # training options
 tdnn_dim=450
-num_epochs=2
-num_jobs_initial=6
-num_jobs_final=16
 minibatch_size=150=128,64/300=128,64/600=64,32/1200=32,16
 common_egs_dir=
-l2_regularize=0.00005
-frames_per_iter=2000000
-cmvn_opts="--norm-means=true --norm-vars=true"
+cmvn_opts="--norm-means=false --norm-vars=false"
 train_set=train
-lang_test=lang_test
+lang_decode=data/lang
+lang_rescore=data/lang_rescore_6g
 
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
@@ -118,7 +114,7 @@ if [ $stage -le 3 ]; then
     --cmd "$cmd" \
     --feat.cmvn-opts "$cmvn_opts" \
     --chain.leaky-hmm-coefficient 0.1 \
-    --chain.l2-regularize $l2_regularize \
+    --chain.l2-regularize 0.00005 \
     --chain.apply-deriv-weights false \
     --egs.dir "$common_egs_dir" \
     --egs.stage $get_egs_stage \
@@ -128,11 +124,11 @@ if [ $stage -le 3 ]; then
     --chain.lm-opts="--ngram-order=2 --no-prune-ngram-order=1 --num-extra-lm-states=1000" \
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.num-chunk-per-minibatch $minibatch_size \
-    --trainer.frames-per-iter $frames_per_iter \
-    --trainer.num-epochs $num_epochs \
+    --trainer.frames-per-iter 2000000 \
+    --trainer.num-epochs 2 \
     --trainer.optimization.momentum 0 \
-    --trainer.optimization.num-jobs-initial $num_jobs_initial \
-    --trainer.optimization.num-jobs-final $num_jobs_final \
+    --trainer.optimization.num-jobs-initial 6 \
+    --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.001 \
     --trainer.optimization.final-effective-lrate 0.0001 \
     --trainer.optimization.shrink-value 1.0 \
@@ -152,7 +148,7 @@ if [ $stage -le 4 ]; then
   # as long as phones.txt was compatible.
 
   utils/mkgraph.sh \
-    --self-loop-scale 1.0 data/$lang_test \
+    --self-loop-scale 1.0 $lang_decode \
     $dir $dir/graph || exit 1;
 fi
 
@@ -161,6 +157,9 @@ if [ $stage -le 5 ]; then
   steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
     --nj $nj --cmd "$cmd" \
     $dir/graph data/test $dir/decode_test || exit 1;
+
+  steps/lmrescore_const_arpa.sh --cmd "$cmd" $lang_decode $lang_rescore \
+                                data/test $dir/decode_test{,_rescored} || exit 1
 fi
 
 echo "Done. Date: $(date). Results:"

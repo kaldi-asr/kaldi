@@ -4,6 +4,7 @@
 import argparse
 import os
 import sys
+import re
 
 def get_args():
     parser = argparse.ArgumentParser(description="""This script augments a words.txt
@@ -35,11 +36,12 @@ def read_words_txt(filename):
     # with utf-8 encoding as well as other encodings such as gbk, as long as the
     # spaces are also spaces in ascii (which we check).  It is basically how we
     # emulate the behavior of python before python3.
+    whitespace = re.compile("[ \t]+")
     with open(filename, 'r', encoding='latin-1') as f:
-        lines = [line.strip() for line in f]
+        lines = [line.strip(" \t\r\n") for line in f]
         highest_numbered_symbol = 0
         for line in lines:
-            s = line.split()
+            s = whitespace.split(line)
             try:
                 i = int(s[1])
                 if i > highest_numbered_symbol:
@@ -58,9 +60,9 @@ def read_nonterminals(filename):
        it has the expected format and has no duplicates, and returns the nonterminal
        symbols as a list of strings, e.g.
        ['#nonterm:contact_list', '#nonterm:phone_number', ... ]. """
-    ans = [line.strip() for line in open(filename, 'r', encoding='latin-1')]
+    ans = [line.strip(" \t\r\n") for line in open(filename, 'r', encoding='latin-1')]
     if len(ans) == 0:
-        raise RuntimeError("The file {0} contains no nonterminals symbols.".format(filename))
+        raise RuntimeError("The file {0} contains no nonterminal symbols.".format(filename))
     for nonterm in ans:
         if nonterm[:9] != '#nonterm:':
             raise RuntimeError("In file '{0}', expected nonterminal symbols to start with '#nonterm:', found '{1}'"

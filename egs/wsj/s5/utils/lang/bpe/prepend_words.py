@@ -4,11 +4,13 @@
 # the beginning of the words for finding the initial-space of every word
 # after decoding.
 
-import sys, io
+import sys
+import io
+import re
 
+whitespace = re.compile("[ \t]+")
 infile = io.TextIOWrapper(sys.stdin.buffer, encoding='latin-1')
 output = io.TextIOWrapper(sys.stdout.buffer, encoding='latin-1')
 for line in infile:
-    output.write(' '.join([ "|"+word for word in line.split()]) + '\n')
-
-
+    words = whitespace.split(line.strip(" \t\r\n"))
+    output.write(' '.join([ "|"+word for word in words]) + '\n')

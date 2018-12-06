@@ -48,8 +48,6 @@ else
   out_dir=$3
 fi
 
-mkdir -p $out_dir
-
 for f in $lm $lang_dir/words.txt; do
   if [ ! -f $f ]; then
     echo "$0: expected input file $f to exist."
@@ -73,7 +71,6 @@ trap 'rm -rf "$tmpdir"' EXIT
 mkdir -p $out_dir
 cp -r $lang_dir/* $out_dir || exit 1;
 
-lm_base=$(basename $lm '.gz')
 awk '{print $1}' $out_dir/words.txt > $tmpdir/voc || exit 1;
 
 # Change the LM vocabulary to be the intersection of the current LM vocabulary

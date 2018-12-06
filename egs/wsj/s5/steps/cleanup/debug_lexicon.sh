@@ -116,21 +116,21 @@ if [ $stage -le 8 ]; then
 
   export LC_ALL=C
 
-  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt | sort > $dir/phone_mapped.ctm
+  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt > $dir/phone_mapped.ctm
 
   cat $dir/word.ctm  | awk '{printf("%s-%s %010.0f START %s\n", $1, $2, 1000*$3, $5); printf("%s-%s %010.0f END %s\n", $1, $2, 1000*($3+$4), $5);}' | \
     sort > $dir/word_processed.ctm
 
   # filter out those utteraces which only appea in phone_processed.ctm but not in word_processed.ctm
   cat $dir/phone_mapped.ctm | awk '{printf("%s-%s %010.0f PHONE %s\n", $1, $2, 1000*($3+(0.5*$4)), $5);}' | \
-    awk 'NR==FNR{a[$1] = 1; next} {if($1 in a) print $0}' $dir/word_processed.ctm - \
-    > $dir/phone_processed.ctm
+    awk 'NR==FNR{a[$1] = 1; next} {if($1 in a) print $0}' $dir/word_processed.ctm - | \
+    sort > $dir/phone_processed.ctm
 
   # merge-sort both ctm's
   sort -m $dir/word_processed.ctm $dir/phone_processed.ctm > $dir/combined.ctm
 fi
 
-  # after merge-sort of the two ctm's, we add <eps> to cover "deserted" phones due to precision limits, and then merge all consecutive <eps>'s.
+# after merge-sort of the two ctm's, we add <eps> to cover "deserted" phones due to precision limits, and then merge all consecutive <eps>'s.
 if [ $stage -le 9 ]; then
   awk '{print $1, $3, $4}' $dir/combined.ctm | \
      perl -e ' while (<>) { chop; @A = split(" ", $_); ($utt, $a,$b) = @A;

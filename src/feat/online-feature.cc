@@ -143,7 +143,9 @@ void OnlineCmvnState::Read(std::istream &is, bool binary) {
 OnlineCmvn::OnlineCmvn(const OnlineCmvnOptions &opts,
                        const OnlineCmvnState &cmvn_state,
                        OnlineFeatureInterface *src):
-    opts_(opts), src_(src) {
+    opts_(opts), temp_stats_(2, src->Dim() + 1),
+    temp_feats_(src->Dim()), temp_feats_dbl_(src->Dim()),
+    src_(src) {
   SetState(cmvn_state);
   if (!SplitStringToIntegers(opts.skip_dims, ":", false, &skip_dims_))
     KALDI_ERR << "Bad --skip-dims option (should be colon-separated list of "
@@ -151,7 +153,10 @@ OnlineCmvn::OnlineCmvn(const OnlineCmvnOptions &opts,
 }
 
 OnlineCmvn::OnlineCmvn(const OnlineCmvnOptions &opts,
-                       OnlineFeatureInterface *src): opts_(opts), src_(src) {
+                       OnlineFeatureInterface *src):
+    opts_(opts), temp_stats_(2, src->Dim() + 1),
+    temp_feats_(src->Dim()), temp_feats_dbl_(src->Dim()),
+    src_(src) {
   if (!SplitStringToIntegers(opts.skip_dims, ":", false, &skip_dims_))
     KALDI_ERR << "Bad --skip-dims option (should be colon-separated list of "
               <<  "integers)";
@@ -160,7 +165,7 @@ OnlineCmvn::OnlineCmvn(const OnlineCmvnOptions &opts,
 
 void OnlineCmvn::GetMostRecentCachedFrame(int32 frame,
                                           int32 *cached_frame,
-                                          Matrix<double> *stats) {
+                                          MatrixBase<double> *stats) {
   KALDI_ASSERT(frame >= 0);
   InitRingBufferIfNeeded();
   // look for a cached frame on a previous frame as close as possible in time
@@ -174,7 +179,7 @@ void OnlineCmvn::GetMostRecentCachedFrame(int32 frame,
     int32 index = t % opts_.ring_buffer_size;
     if (cached_stats_ring_[index].first == t) {
       *cached_frame = t;
-      *stats = cached_stats_ring_[index].second;
+      stats->CopyFromMat(cached_stats_ring_[index].second);
       return;
     }
   }
@@ -182,7 +187,7 @@ void OnlineCmvn::GetMostRecentCachedFrame(int32 frame,
   if (n >= cached_stats_modulo_.size()) {
     if (cached_stats_modulo_.size() == 0) {
       *cached_frame = -1;
-      stats->Resize(2, this->Dim() + 1);
+      stats->SetZero();
       return;
     } else {
       n = static_cast<int32>(cached_stats_modulo_.size() - 1);
@@ -190,7 +195,7 @@ void OnlineCmvn::GetMostRecentCachedFrame(int32 frame,
   }
   *cached_frame = n * opts_.modulus;
   KALDI_ASSERT(cached_stats_modulo_[n] != NULL);
-  *stats = *(cached_stats_modulo_[n]);
+  stats->CopyFromMat(*(cached_stats_modulo_[n]));
 }
 
 // Initialize ring buffer for caching stats.
@@ -202,7 +207,7 @@ void OnlineCmvn::InitRingBufferIfNeeded() {
   }
 }
 
-void OnlineCmvn::CacheFrame(int32 frame, const Matrix<double> &stats) {
+void OnlineCmvn::CacheFrame(int32 frame, const MatrixBase<double> &stats) {
   KALDI_ASSERT(frame >= 0);
   if (frame % opts_.modulus == 0) {  // store in cached_stats_modulo_.
     int32 n = frame / opts_.modulus;
@@ -239,18 +244,18 @@ void OnlineCmvn::ComputeStatsForFrame(int32 frame,
   KALDI_ASSERT(frame >= 0 && frame < src_->NumFramesReady());
 
   int32 dim = this->Dim(), cur_frame;
-  Matrix<double> stats(2, dim + 1);
-  GetMostRecentCachedFrame(frame, &cur_frame, &stats);
+  GetMostRecentCachedFrame(frame, &cur_frame, stats_out);
 
-  Vector<BaseFloat> feats(dim);
-  Vector<double> feats_dbl(dim);
+  Vector<BaseFloat> &feats(temp_feats_);
+  Vector<double> &feats_dbl(temp_feats_dbl_);
   while (cur_frame < frame) {
     cur_frame++;
     src_->GetFrame(cur_frame, &feats);
     feats_dbl.CopyFromVec(feats);
-    stats.Row(0).Range(0, dim).AddVec(1.0, feats_dbl);
-    stats.Row(1).Range(0, dim).AddVec2(1.0, feats_dbl);
-    stats(0, dim) += 1.0;
+    stats_out->Row(0).Range(0, dim).AddVec(1.0, feats_dbl);
+    if (opts_.normalize_variance)
+      stats_out->Row(1).Range(0, dim).AddVec2(1.0, feats_dbl);
+    (*stats_out)(0, dim) += 1.0;
     // it's a sliding buffer; a frame at the back may be
     // leaving the buffer so we have to subtract that.
     int32 prev_frame = cur_frame - opts_.cmn_window;
@@ -258,13 +263,13 @@ void OnlineCmvn::ComputeStatsForFrame(int32 frame,
       // we need to subtract frame prev_f from the stats.
       src_->GetFrame(prev_frame, &feats);
       feats_dbl.CopyFromVec(feats);
-      stats.Row(0).Range(0, dim).AddVec(-1.0, feats_dbl);
-      stats.Row(1).Range(0, dim).AddVec2(-1.0, feats_dbl);
-      stats(0, dim) -= 1.0;
+      stats_out->Row(0).Range(0, dim).AddVec(-1.0, feats_dbl);
+      if (opts_.normalize_variance)
+        stats_out->Row(1).Range(0, dim).AddVec2(-1.0, feats_dbl);
+      (*stats_out)(0, dim) -= 1.0;
     }
-    CacheFrame(cur_frame, stats);
+    CacheFrame(cur_frame, (*stats_out));
   }
-  stats_out->CopyFromMat(stats);
 }
 
 
@@ -273,6 +278,16 @@ void OnlineCmvn::SmoothOnlineCmvnStats(const MatrixBase<double> &speaker_stats,
                                        const MatrixBase<double> &global_stats,
                                        const OnlineCmvnOptions &opts,
                                        MatrixBase<double> *stats) {
+  if (speaker_stats.NumRows() == 2 && !opts.normalize_variance) {
+    // this is just for efficiency: don't operate on the variance if it's not
+    // needed.
+    int32 cols = speaker_stats.NumCols();  // dim + 1
+    SubMatrix<double> stats_temp(*stats, 0, 1, 0, cols);
+    SmoothOnlineCmvnStats(speaker_stats.RowRange(0, 1),
+                          global_stats.RowRange(0, 1),
+                          opts, &stats_temp);
+    return;
+  }
   int32 dim = stats->NumCols() - 1;
   double cur_count = (*stats)(0, dim);
   // If count exceeded cmn_window it would be an error in how "window_stats"
@@ -311,7 +326,8 @@ void OnlineCmvn::GetFrame(int32 frame,
   src_->GetFrame(frame, feat);
   KALDI_ASSERT(feat->Dim() == this->Dim());
   int32 dim = feat->Dim();
-  Matrix<double> stats(2, dim + 1);
+  Matrix<double> &stats(temp_stats_);
+  stats.Resize(2, dim + 1, kUndefined);  // Will do nothing if size was correct.
   if (frozen_state_.NumRows() != 0) {  // the CMVN state has been frozen.
     stats.CopyFromMat(frozen_state_);
   } else {
@@ -329,14 +345,13 @@ void OnlineCmvn::GetFrame(int32 frame,
 
   // call the function ApplyCmvn declared in ../transform/cmvn.h, which
   // requires a matrix.
-  Matrix<BaseFloat> feat_mat(1, dim);
-  feat_mat.Row(0).CopyFromVec(*feat);
+  // 1 row; num-cols == dim; stride  == dim.
+  SubMatrix<BaseFloat> feat_mat(feat->Data(), 1, dim, dim);
   // the function ApplyCmvn takes a matrix, so form a one-row matrix to give it.
   if (opts_.normalize_mean)
     ApplyCmvn(stats, opts_.normalize_variance, &feat_mat);
   else
     KALDI_ASSERT(!opts_.normalize_variance);
-  feat->CopyFromVec(feat_mat.Row(0));
 }
 
 void OnlineCmvn::Freeze(int32 cur_frame) {
@@ -430,6 +445,17 @@ void OnlineTransform::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   feat->AddMatVec(1.0, linear_term_, kNoTrans, input_feat, 1.0);
 }
 
+void OnlineTransform::GetFrames(
+    const std::vector<int32> &frames, MatrixBase<BaseFloat> *feats) {
+  KALDI_ASSERT(static_cast<int32>(frames.size()) == feats->NumRows());
+  int32 num_frames = feats->NumRows(),
+      input_dim = linear_term_.NumCols();
+  Matrix<BaseFloat> input_feats(num_frames, input_dim, kUndefined);
+  src_->GetFrames(frames, &input_feats);
+  feats->CopyRowsFromVec(offset_);
+  feats->AddMatMat(1.0, input_feats, kNoTrans, linear_term_, kTrans, 1.0);
+}
+
 
 int32 OnlineDeltaFeature::Dim() const {
   int32 src_dim = src_->Dim();
@@ -493,12 +519,54 @@ void OnlineCacheFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {
   }
 }
 
+void OnlineCacheFeature::GetFrames(
+    const std::vector<int32> &frames, MatrixBase<BaseFloat> *feats) {
+  int32 num_frames = frames.size();
+  // non_cached_frames will be the subset of 't' values in 'frames' which were
+  // not previously cached, which we therefore need to get from src_.
+  std::vector<int32> non_cached_frames;
+  // 'non_cached_indexes' stores the indexes 'i' into 'frames' corresponding to
+  // the corresponding frames in 'non_cached_frames'.
+  std::vector<int32> non_cached_indexes;
+  non_cached_frames.reserve(frames.size());
+  non_cached_indexes.reserve(frames.size());
+  for (int32 i = 0; i < num_frames; i++) {
+    int32 t = frames[i];
+    if (static_cast<size_t>(t) < cache_.size() && cache_[t] != NULL) {
+      feats->Row(i).CopyFromVec(*(cache_[t]));
+    } else {
+      non_cached_frames.push_back(t);
+      non_cached_indexes.push_back(i);
+    }
+  }
+  if (non_cached_frames.empty())
+    return;
+  int32 num_non_cached_frames = non_cached_frames.size(),
+      dim = this->Dim();
+  Matrix<BaseFloat> non_cached_feats(num_non_cached_frames, dim,
+                                     kUndefined);
+  src_->GetFrames(non_cached_frames, &non_cached_feats);
+  for (int32 i = 0; i < num_non_cached_frames; i++) {
+    int32 t = non_cached_frames[i];
+    if (static_cast<size_t>(t) < cache_.size() && cache_[t] != NULL) {
+      // We can reach this point due to repeat indexes in 'non_cached_frames'.
+      feats->Row(non_cached_indexes[i]).CopyFromVec(*(cache_[t]));
+    } else {
+      SubVector<BaseFloat> this_feat(non_cached_feats, i);
+      feats->Row(non_cached_indexes[i]).CopyFromVec(this_feat);
+      if (static_cast<size_t>(t) >= cache_.size())
+        cache_.resize(t + 1, NULL);
+      cache_[t] = new Vector<BaseFloat>(this_feat);
+    }
+  }
+}
+
+
 void OnlineCacheFeature::ClearCache() {
   for (size_t i = 0; i < cache_.size(); i++)
     delete cache_[i];
   cache_.resize(0);
 }
-
 
 
 void OnlineAppendFeature::GetFrame(int32 frame, VectorBase<BaseFloat> *feat) {

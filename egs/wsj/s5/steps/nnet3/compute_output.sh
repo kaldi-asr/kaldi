@@ -54,7 +54,7 @@ fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print
 
 model=$srcdir/$iter.raw
 if [ ! -f $srcdir/$iter.raw ]; then
-  echo "$0: WARNING: no such file $srcdir/$iter.raw. Trying $srcdir/$iter.mdl instead." && exit 1
+  echo "$0: WARNING: no such file $srcdir/$iter.raw. Trying $srcdir/$iter.mdl instead."
   model=$srcdir/$iter.mdl
 fi
 
@@ -104,12 +104,15 @@ gpu_queue_opt=
 
 if $use_gpu; then
   gpu_queue_opt="--gpu 1"
+  suffix="-batch"
   gpu_opt="--use-gpu=yes"
+else
+  gpu_opt="--use-gpu=no"
 fi
 
 if [ $stage -le 2 ]; then
   $cmd $gpu_queue_opt JOB=1:$nj $dir/log/compute_output.JOB.log \
-    nnet3-compute $gpu_opt $ivector_opts $frame_subsampling_opt \
+    nnet3-compute$suffix $gpu_opt $ivector_opts $frame_subsampling_opt \
      --frames-per-chunk=$frames_per_chunk \
      --extra-left-context=$extra_left_context \
      --extra-right-context=$extra_right_context \
