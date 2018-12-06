@@ -30,7 +30,7 @@ print "$nonsil_phones\n";
 print "</ForPhones>\n";
 for ($state = 0; $state < $num_nonsil_states; $state++) {
   $statep1 = $state+1;
-  print "<State> $state <PdfClass> $state <Transition> $state 0.75 <Transition> $statep1 0.25 </State>\n";
+  print "<State> $state <ForwardPdfClass> @{[2*$state]} <SelfLoopPdfClass> @{[2*$state+1]} <Transition> $state 0.5 <Transition> $statep1 0.5 </State>\n";
 }
 print "<State> $num_nonsil_states </State>\n"; # non-emitting final state.
 print "</TopologyEntry>\n";
@@ -43,7 +43,7 @@ if ($num_sil_states > 1) {
   print "<ForPhones>\n";
   print "$sil_phones\n";
   print "</ForPhones>\n";
-  print "<State> 0 <PdfClass> 0 ";
+  print "<State> 0 <PdfClass> <ForwardPdfClass> 0 <SelfLoopPdfClass> 1 ";
   for ($nextstate = 0; $nextstate < $num_sil_states-1; $nextstate++) { # Transitions to all but last
     # emitting state.
     print "<Transition> $nextstate $transp ";
@@ -51,7 +51,7 @@ if ($num_sil_states > 1) {
   print "</State>\n";
   for ($state = 1; $state < $num_sil_states-1; $state++) { # the central states all have transitions to
     # themselves and to the last emitting state.
-    print "<State> $state <PdfClass> $state ";
+    print "<State> $state <ForwardPdfClass> @{[2*$state]} <SelfLoopPdfClass> @{[2*$state+1]} ";
     for ($nextstate = 1; $nextstate < $num_sil_states; $nextstate++) {
       print "<Transition> $nextstate $transp ";
     }
@@ -59,7 +59,7 @@ if ($num_sil_states > 1) {
   }
   # Final emitting state (non-skippable).
   $state = $num_sil_states-1;
-  print "<State> $state <PdfClass> $state <Transition> $state 0.75 <Transition> $num_sil_states 0.25 </State>\n";
+  print "<State> $state <ForwardPdfClass> @{[2*$state]} <SelfLoopPdfClass> @{[2*$state+1]} <Transition> $state 0.5 <Transition> $num_sil_states 0.5 </State>\n";
   # Final nonemitting state:
   print "<State> $num_sil_states </State>\n";
   print "</TopologyEntry>\n";
@@ -68,9 +68,9 @@ if ($num_sil_states > 1) {
   print "<ForPhones>\n";
   print "$sil_phones\n";
   print "</ForPhones>\n";
-  print "<State> 0 <PdfClass> 0 ";
-  print "<Transition> 0 0.75 ";
-  print "<Transition> 1 0.25 ";
+  print "<State> 0 <ForwardPdfClass> 0 <SelfLoopPdfClass> 1 ";
+  print "<Transition> 0 0.5 ";
+  print "<Transition> 1 0.5 ";
   print "</State>\n";
   print "<State> $num_sil_states </State>\n"; # non-emitting final state.
   print "</TopologyEntry>\n";

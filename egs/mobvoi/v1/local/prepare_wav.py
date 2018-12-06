@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2018 Johns Hopkins University (author: Yiming Wang)
 # Apache 2.0
@@ -46,7 +46,7 @@ def main():
     for wav_path in glob.glob(search_path, recursive=True):
         _, basename = os.path.split(wav_path)
         utt_id = os.path.splitext(basename)[0]
-        extended_wav_path = "sox " + os.path.abspath(wav_path) + " -r 8000 -c 1 -b 16 -t wav - downsample|"
+        extended_wav_path = "sox " + os.path.abspath(wav_path) + " -t wav - |"
         if not utt_id in wav_files:
             wav_files[utt_id] = extended_wav_path
     for utt_id in train_set:
