@@ -1,10 +1,20 @@
 #!/bin/bash
 
-## This is taken from mini_librispeech, but the proportional-shrink value was
-# tuned for this corpus (hub4-spanish)
+## This is taken from mini_librispeech.
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
-# exp/chain/tdnn1a_sp: num-iters=102 nj=2..5 num-params=7.0M dim=40+100->2334 combine=-0.082->-0.075 xent:train/valid[67,101,final]=(-1.43,-1.22,-1.19/-1.53,-1.44,-1.42) logprob:train/valid[67,101,final]=(-0.107,-0.076,-0.073/-0.137,-0.132,-0.129)
+# local/chain/compare_wer.sh --online exp/chain/tdnn1a_sp exp/chain/cnn_tdnn1a_sp
+# System                 tdnn1a_sp cnn_tdnn1a_sp
+#WER test                    14.19         13.47
+#             [online:]      14.26         13.57
+# Final train prob         -0.0707       -0.0911
+# Final valid prob         -0.1225       -0.1145
+# Final train prob (xent)  -1.1117       -1.3038
+# Final valid prob (xent)  -1.3199       -1.3374
+# Num-params               6945216       4471200
+
+# steps/info/chain_dir_info.pl exp/chain/cnn_tdnn1a_sp
+# exp/chain/cnn_tdnn1a_sp: num-iters=102 nj=2..5 num-params=4.5M dim=40+100->2272 combine=-0.101->-0.097 (over 5) xent:train/valid[67,101,final]=(-1.46,-1.31,-1.30/-1.47,-1.34,-1.34) logprob:train/valid[67,101,final]=(-0.112,-0.097,-0.091/-0.129,-0.121,-0.114)
+
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
@@ -28,6 +38,7 @@ decode_iter=
 # training options
 # training chunk-options
 chunk_width=140,100,160
+dropout_schedule='0,0@0.20,0.3@0.50,0'
 # we don't need extra left/right context for TDNN systems.
 chunk_left_context=0
 chunk_right_context=0
@@ -73,7 +84,7 @@ ali_dir=exp/${gmm}_ali_${train_set}_sp
 tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
 lang=data/lang_chain
 lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
-dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
+dir=exp/chain${nnet3_affix}/cnn_tdnn${affix}_sp
 train_data_dir=data/${train_set}_sp_hires
 lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
@@ -138,39 +149,59 @@ if [ $stage -le 13 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
+  cnn_opts="l2-regularize=0.03"
+  ivector_affine_opts="l2-regularize=0.03"
+  tdnn_opts="l2-regularize=0.03 dropout-proportion=0.0 dropout-per-dim-continuous=true"
+  tdnnf_first_opts="l2-regularize=0.03 dropout-proportion=0.0 bypass-scale=0.0"
+  tdnnf_opts="l2-regularize=0.03 dropout-proportion=0.0 bypass-scale=0.66"
+  linear_opts="l2-regularize=0.03 orthonormal-constraint=-1.0"
+  prefinal_opts="l2-regularize=0.03"
+  output_opts="l2-regularize=0.015"
+
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
   input dim=40 name=input
 
-  # please note that it is important to have input layer with the name=input
-  # as the layer immediately preceding the fixed-affine-layer to enable
-  # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  # this takes the MFCCs and generates filterbank coefficients.  The MFCCs
+  # are more compressible so we prefer to dump the MFCCs to disk rather
+  # than filterbanks.
+  idct-layer name=idct input=input dim=40 cepstral-lifter=22 affine-transform-file=$dir/configs/idct.mat
 
-  # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=512
-  relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  relu-renorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
-  relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn6 dim=512 input=Append(-6,-3,0)
+  linear-component name=ivector-linear $ivector_affine_opts dim=200 input=ReplaceIndex(ivector, t, 0)
+  batchnorm-component name=ivector-batchnorm target-rms=0.025
+
+  batchnorm-component name=idct-batchnorm input=idct
+  combine-feature-maps-layer name=combine_inputs input=Append(idct-batchnorm, ivector-batchnorm) num-filters1=1 num-filters2=5 height=40
+
+  conv-relu-batchnorm-layer name=cnn1 $cnn_opts height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=48 learning-rate-factor=0.333 max-change=0.25
+  conv-relu-batchnorm-layer name=cnn2 $cnn_opts height-in=40 height-out=40 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=48
+  conv-relu-batchnorm-layer name=cnn3 $cnn_opts height-in=40 height-out=20 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=64
+  conv-relu-batchnorm-layer name=cnn4 $cnn_opts height-in=20 height-out=20 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=64
+  conv-relu-batchnorm-layer name=cnn5 $cnn_opts height-in=20 height-out=10 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=64
+  conv-relu-batchnorm-layer name=cnn6 $cnn_opts height-in=10 height-out=5 height-subsample-out=2 time-offsets=-1,0,1 height-offsets=-1,0,1 num-filters-out=128
+
+  # the first TDNN-F layer has no bypass (since dims don't match), and a larger bottleneck so the
+  # information bottleneck doesn't become a problem.  (we use time-stride=0 so no splicing, to
+  # limit the num-parameters).
+  tdnnf-layer name=tdnnf7 $tdnnf_first_opts dim=768 bottleneck-dim=192 time-stride=0
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf14 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf15 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  linear-component name=prefinal-l dim=192 $linear_opts
 
   ## adding the layers for chain branch
-  relu-renorm-layer name=prefinal-chain dim=512 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
   # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' models... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
-  relu-renorm-layer name=prefinal-xent input=tdnn6 dim=512 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -188,9 +219,11 @@ if [ $stage -le 14 ]; then
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.00005 \
+    --chain.l2-regularize=0.0 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=10 \
@@ -199,8 +232,6 @@ if [ $stage -le 14 ]; then
     --trainer.optimization.num-jobs-final=5 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
-    --trainer.optimization.shrink-value=1.0 \
-    --trainer.optimization.proportional-shrink=60.0 \
     --trainer.num-chunk-per-minibatch=256,128,64 \
     --trainer.optimization.momentum=0.0 \
     --egs.chunk-width=$chunk_width \
@@ -238,7 +269,7 @@ if [ $stage -le 16 ]; then
     $dir/graph data/eval_hires $dir/decode_test || exit 1
 fi
 
-if [ $stage -le 17 ]; then
+if $test_online_decoding && [ $stage -le 17 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \

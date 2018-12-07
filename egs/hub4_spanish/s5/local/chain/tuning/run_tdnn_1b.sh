@@ -1,10 +1,20 @@
 #!/bin/bash
 
-## This is taken from mini_librispeech, but the proportional-shrink value was
-# tuned for this corpus (hub4-spanish)
+## This is taken from mini_librispeech
 
-# steps/info/chain_dir_info.pl exp/chain/tdnn1a_sp
-# exp/chain/tdnn1a_sp: num-iters=102 nj=2..5 num-params=7.0M dim=40+100->2334 combine=-0.082->-0.075 xent:train/valid[67,101,final]=(-1.43,-1.22,-1.19/-1.53,-1.44,-1.42) logprob:train/valid[67,101,final]=(-0.107,-0.076,-0.073/-0.137,-0.132,-0.129)
+# local/chain/compare_wer.sh exp/chain/tdnn1a_sp exp/chain/tdnn1b_sp
+# System                 tdnn1a_sp tdnn1b_sp
+#WER test                    14.19     13.89
+#             [online:]      14.26     14.02
+# Final train prob         -0.0707   -0.0941
+# Final valid prob         -0.1225   -0.1165
+# Final train prob (xent)  -1.1117   -1.3456
+# Final valid prob (xent)  -1.3199   -1.3938
+# Num-params               6945216   5186240
+
+# steps/info/chain_dir_info.pl exp/chain/tdnn1b_sp
+# exp/chain/tdnn1b_sp: num-iters=102 nj=2..5 num-params=5.2M dim=40+100->2272 combine=-0.105->-0.100 (over 6) xent:train/valid[67,101,final]=(-1.54,-1.34,-1.35/-1.56,-1.39,-1.39) logprob:train/valid[67,101,final]=(-0.116,-0.099,-0.094/-0.135,-0.123,-0.116)
+
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
 
@@ -19,7 +29,7 @@ nnet3_affix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
-affix=1a   # affix for the TDNN directory name
+affix=1b   # affix for the TDNN directory name
 tree_affix=
 train_stage=-10
 get_egs_stage=-10
@@ -28,6 +38,7 @@ decode_iter=
 # training options
 # training chunk-options
 chunk_width=140,100,160
+dropout_schedule='0,0@0.20,0.3@0.50,0'
 # we don't need extra left/right context for TDNN systems.
 chunk_left_context=0
 chunk_right_context=0
@@ -138,6 +149,12 @@ if [ $stage -le 13 ]; then
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
   learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
 
+  tdnn_opts="l2-regularize=0.03 dropout-proportion=0.0 dropout-per-dim-continuous=true"
+  tdnnf_opts="l2-regularize=0.03 dropout-proportion=0.0 bypass-scale=0.66"
+  linear_opts="l2-regularize=0.03 orthonormal-constraint=-1.0"
+  prefinal_opts="l2-regularize=0.03"
+  output_opts="l2-regularize=0.015"
+
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig
   input dim=100 name=ivector
@@ -146,31 +163,31 @@ if [ $stage -le 13 ]; then
   # please note that it is important to have input layer with the name=input
   # as the layer immediately preceding the fixed-affine-layer to enable
   # the use of short notation for the descriptor
-  fixed-affine-layer name=lda input=Append(-2,-1,0,1,2,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
+  fixed-affine-layer name=lda input=Append(-1,0,1,ReplaceIndex(ivector, t, 0)) affine-transform-file=$dir/configs/lda.mat
 
   # the first splicing is moved before the lda layer, so no splicing here
-  relu-renorm-layer name=tdnn1 dim=512
-  relu-renorm-layer name=tdnn2 dim=512 input=Append(-1,0,1)
-  relu-renorm-layer name=tdnn3 dim=512 input=Append(-1,0,1)
-  relu-renorm-layer name=tdnn4 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn5 dim=512 input=Append(-3,0,3)
-  relu-renorm-layer name=tdnn6 dim=512 input=Append(-6,-3,0)
+  relu-batchnorm-dropout-layer name=tdnn1 $tdnn_opts dim=768
+  tdnnf-layer name=tdnnf2 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf3 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf4 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=1
+  tdnnf-layer name=tdnnf5 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=0
+  tdnnf-layer name=tdnnf6 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf7 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf8 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf9 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf10 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf11 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf12 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  tdnnf-layer name=tdnnf13 $tdnnf_opts dim=768 bottleneck-dim=96 time-stride=3
+  linear-component name=prefinal-l dim=192 $linear_opts
 
   ## adding the layers for chain branch
-  relu-renorm-layer name=prefinal-chain dim=512 target-rms=0.5
-  output-layer name=output include-log-softmax=false dim=$num_targets max-change=1.5
+  prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
+  output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
 
   # adding the layers for xent branch
-  # This block prints the configs for a separate output that will be
-  # trained with a cross-entropy objective in the 'chain' models... this
-  # has the effect of regularizing the hidden parts of the model.  we use
-  # 0.5 / args.xent_regularize as the learning rate factor- the factor of
-  # 0.5 / args.xent_regularize is suitable as it means the xent
-  # final-layer learns at a rate independent of the regularization
-  # constant; and the 0.5 was tuned so as to make the relative progress
-  # similar in the xent and regular final layers.
-  relu-renorm-layer name=prefinal-xent input=tdnn6 dim=512 target-rms=0.5
-  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor max-change=1.5
+  prefinal-layer name=prefinal-xent input=prefinal-l $prefinal_opts small-dim=192 big-dim=768
+  output-layer name=output-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
 fi
@@ -188,9 +205,11 @@ if [ $stage -le 14 ]; then
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
     --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.00005 \
+    --chain.l2-regularize=0.0 \
     --chain.apply-deriv-weights=false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
+    --trainer.dropout-schedule $dropout_schedule \
+    --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=10 \
@@ -199,10 +218,8 @@ if [ $stage -le 14 ]; then
     --trainer.optimization.num-jobs-final=5 \
     --trainer.optimization.initial-effective-lrate=0.001 \
     --trainer.optimization.final-effective-lrate=0.0001 \
-    --trainer.optimization.shrink-value=1.0 \
-    --trainer.optimization.proportional-shrink=60.0 \
     --trainer.num-chunk-per-minibatch=256,128,64 \
-    --trainer.optimization.momentum=0.0 \
+    --egs.cmd="run.pl --max-jobs-run 12" \
     --egs.chunk-width=$chunk_width \
     --egs.chunk-left-context=$chunk_left_context \
     --egs.chunk-right-context=$chunk_right_context \
