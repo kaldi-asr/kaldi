@@ -34,7 +34,6 @@ chunk_width=150
 chunk_left_context=40
 chunk_right_context=0
 xent_regularize=0.025
-self_repair_scale=0.00001
 label_delay=5
 dropout_schedule='0,0@0.20,0.3@0.50,0'
 # decode options
