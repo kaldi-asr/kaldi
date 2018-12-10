@@ -1,0 +1,101 @@
+// adapt/differentiable-transform-itf.cc
+
+// Copyright     2018  Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//  http://www.apache.org/licenses/LICENSE-2.0
+//
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+#include "adapt/differentiable-transform-itf.h"
+#include "adapt/generic-transform.h"
+
+namespace kaldi {
+namespace differentiable_transform {
+
+
+// static
+DifferentiableTransform* DifferentiableTransform::ReadNew(
+    std::istream &is, bool binary) {
+
+  std::string token;
+  ReadToken(is, binary, &token); // e.g. "<NoOpTransform>"
+  token.erase(0, 1); // erase "<".
+  token.erase(token.length()-1); // erase ">".
+  DifferentiableTransform *ans = NewTransformOfType(token);
+  if (!ans)
+    KALDI_ERR << "Unknown DifferentialbeTransform type " << token
+              << " (maybe you should recompile?)";
+  ans->Read(is, binary);
+  return ans;
+}
+
+// static
+DifferentiableTransform* DifferentiableTransform::NewTransformOfType(
+    const std::string &type) {
+  if (type == "NoOpTransform") {
+    return new NoOpTransform();
+  } else {
+    // Calling code will throw an error.
+    return NULL;
+  }
+}
+
+
+void DifferentiableTransform::TestingForwardBatch(
+    const CuMatrixBase<BaseFloat> &input,
+    int32 num_chunks,
+    int32 num_spk,
+    const Posterior &posteriors,
+    CuMatrixBase<BaseFloat> *output) {
+  int32 dim = input.NumCols(),
+      num_frames = input.NumRows(),
+      chunks_per_spk = num_chunks / num_spk,
+      frames_per_chunk = num_frames / num_chunks;
+
+  // Just copy to CPU for now.
+  Matrix<BaseFloat> input_cpu(input);
+  Matrix<BaseFloat> output_cpu(num_frames, dim, kUndefined);
+
+  for (int32 s = 0; s < num_spk; s++) {
+    SpeakerStatsItf *stats = this->GetEmptySpeakerStats();
+    for (int32 chunk = s * chunks_per_spk;
+         chunk < (s + 1) * chunks_per_spk; chunk++) {
+      SubMatrix<BaseFloat> this_input(input_cpu.RowData(chunk),
+                                      frames_per_chunk, dim,
+                                      input_cpu.Stride() * num_chunks);
+      SubPosterior this_posteriors(posteriors,
+                                   chunk, // offset
+                                   frames_per_chunk, // num_frames
+                                   num_chunks);  // stride
+      this->TestingAccumulate(this_input, this_posteriors, stats);
+    }
+    stats->Estimate();
+    for (int32 chunk = s * chunks_per_spk;
+         chunk < (s + 1) * chunks_per_spk; chunk++) {
+      SubMatrix<BaseFloat> this_input(input_cpu.RowData(chunk),
+                                      frames_per_chunk, dim,
+                                      input_cpu.Stride() * num_chunks),
+          this_output(output_cpu.RowData(chunk),
+                      frames_per_chunk, dim,
+                      output_cpu.Stride() * num_chunks);
+      this->TestingForward(this_input, *stats, &this_output);
+    }
+    delete stats;
+  }
+  output->CopyFromMat(output_cpu);
+}
+
+
+}  // namespace differentiable_transform
+}  // namespace kaldi

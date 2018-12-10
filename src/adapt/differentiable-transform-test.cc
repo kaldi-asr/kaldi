@@ -1,4 +1,4 @@
-// adapt/differentiable-fmllr-test.cc
+// adapt/differentiable-transform-test.cc
 
 // Copyright 2018  Johns Hopkins University (author: Daniel Povey)
 
@@ -17,11 +17,57 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "adapt/differentiable-fmllr.h"
+#include "adapt/differentiable-transform.h"
 #include "matrix/sp-matrix.h"
 
 namespace kaldi {
 namespace differentiable_transform {
+
+// This function writes a random configuration file of dimension
+// 'dim' (or a random dimension if dim == -1) to 'os'.
+void WriteRandomConfigOfDim(std::ostream &os, int32 dim) {
+  // nonrandom_dim is a randomly chosen dimension if dim == -1,
+  // else it's dim.
+  int32 actual_dim = (dim == -1 ? RandInt(10, 20) : dim);
+  int32 i, num_transforms = RandInt(1, 3);
+
+  while (true) {
+    // we loop here in case we hit a case we don't want to handle.
+    // We give more cases to the non-recursive transforms to ensure
+    // the expected size of the config file is finite.
+    switch(RandInt(0, 7)) {
+      case 0: case 1:
+        os << "NoOpTransform dim=" << actual_dim << "\n";
+        return;
+      case 2: case 3:
+        os << "FmllrTransform dim=" << actual_dim << "\n";
+        return;
+      case 4: case 5:
+        os << "MeanOnlyTransform dim=" << actual_dim << "\n";
+        return;
+      case 6:
+        if (dim != -1)  // complicated to ensure a given dim for AppendTransform.
+          continue;
+        os << "AppendTransform num-transforms=" << num_transforms << "\n";
+        for (i = 0; i < num_transforms; i++)
+          WriteRandomConfigOfDim(os, -1);
+        return;
+      case 7:
+        os << "SequenceTransform num-transforms=" << num_transforms << "\n";
+        for (i = 0; i < num_transforms; i++)
+          WriteRandomConfigOfDim(os, actual_dim);
+        return;
+    }
+  }
+
+}
+
+// This function writes a random configuration file to 'os'.
+void WriteRandomConfigFile(std::ostream &os) {
+  WriteRandomConfigOfDim(std::ostream &os, -1);
+}
+
+
 
 
 

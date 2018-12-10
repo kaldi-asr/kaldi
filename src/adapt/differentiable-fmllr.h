@@ -18,8 +18,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_TRANSFORM_DIFFERENTIABLE_TRANSFORM_H_
-#define KALDI_TRANSFORM_DIFFERENTIABLE_TRANSFORM_H_
+#ifndef KALDI_TRANSFORM_DIFFERENTIABLE_FMLLR_H_
+#define KALDI_TRANSFORM_DIFFERENTIABLE_FMLLR_H_
 
 #include <vector>
 
@@ -30,8 +30,6 @@
 #include "matrix/matrix-functions.h"
 
 namespace kaldi {
-
-
 namespace differentiable_transform {
 
 
@@ -44,6 +42,7 @@ namespace differentiable_transform {
 // http://www.danielpovey.com/files/2018_differentiable_fmllr.pdf.
 // The notation we are using corresponds to the notation used in
 // the "Summary" section of that document.
+
 
 
 
@@ -86,11 +85,11 @@ struct FmllrEstimatorOptions {
   // when the amount of data is small.
   BaseFloat smoothing_count;
 
-  // A factor that says how large the assumed between-class covariance matrix is
-  // relative to the within-class covariance matrix.  Should be >= 0.  A smaller
-  // value will mean that the smoothing penalizes rotations of the space less;
-  // with zero, the smoothing only constrains the singular values of A, not
-  // its direction.
+  // A factor that says how large the assumed between-class covariance matrix
+  // is, relative to the within-class covariance matrix.  Should be >= 0.  In
+  // the limit as it approaches zero, the smoothing will only penalize scaling
+  // of the space, but not rotations.  This is likely not a good thing, so a
+  // value greater than zero will probably be desired.
   BaseFloat smoothing_between_class_factor;
 
   FmllrEstimatorOptions():
@@ -108,6 +107,13 @@ struct FmllrEstimatorOptions {
                  variance_sharing_weight >= 0.0 &&
                  variance_sharing_weight <= 1.0);
   }
+
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
+
+  // This will set any options in this class that it can find in 'config_line'.
+  void ReadFromConfig(ConfigLine *config_line);
+
 };
 
 
@@ -283,11 +289,11 @@ class GaussianEstimator {
   //
   //   @param [in] feats   The input features, of dimension
   //                       num-frames by feature-dimension
-  //   @param [in] post    The posteriors, which is a
+  //   @param [in] post    The posteriors, which can be thought of as a
   //                       vector<vector<pair<int32,BaseFloat> > >.
   //                       Its size() must equal feats.NumRows().
   void AccStats(const MatrixBase<BaseFloat> &feats,
-                const Posterior &post);
+                const SubPosterior &post);
 
   // You call this once after calling AccStats() one or more times.
   // It estimates the model means and variances.
@@ -297,7 +303,7 @@ class GaussianEstimator {
 
   // Returns true if Estimate() has previously been called, i.e. if
   // the means and variances have been computed.
-  bool IsEstimated();
+  bool IsEstimated() const;
 
   // Returns the means, in a matrix of dimension num_classes by dim.  Must not
   // be called if ! IsEstimated().
@@ -309,20 +315,19 @@ class GaussianEstimator {
   // this vector.
   const VectorBase<BaseFloat> &GetVars() const { return t_; }
 
-  // You call this to set the derivatives df/dmeans and df/dvars--
-  // the derivatives of the objective function f w.r.t. those quantities.
-  // Doing this allows you to backprop through the estimation of the
-  // means and variances, back to the features.
-  // This must only be called after previously calling Estimate().
-  // This function writes to v_bar_ and m_bar_.
-  void SetOutputDerivs(const MatrixBase<BaseFloat> &mean_derivs,
-                       const VectorBase<BaseFloat> &var_derivs);
+  // You call this to add something the derivatives df/dmeans and df/dvars-- the
+  // derivatives of the objective function f w.r.t. those quantities.  You might
+  // call this once or several times.  Doing this allows you to backprop through
+  // the estimation of the means and variances, back to the features.  This must
+  // only be called after previously calling Estimate().  This function writes
+  // to v_bar_ and m_bar_.
+  void AddToOutputDerivs(const MatrixBase<BaseFloat> &mean_derivs,
+                         const VectorBase<BaseFloat> &var_derivs);
 
 
-  // This function, which must only be called after SetOutputDerivs() has
-  // been called, propagates the derivative back to the features.  For
-  // purposes of this backpropagation, the posteriors are treated as
-  // constants.
+  // This function, which must only be called after AddToOutputDerivs() has been
+  // called at least once, propagates the derivative back to the features.  For
+  // purposes of this backpropagation, the posteriors are treated as constants.
   //      @param [in] feats   The features, which must be the same
   //                          as you provided to one of the calls to
   //                          AccStats().  dimension is num-frames by
@@ -335,8 +340,15 @@ class GaussianEstimator {
   //                          so it must have a well-defined value on
   //                          entry.
   void AccStatsBackward(const MatrixBase<BaseFloat> &feats,
-                        const Posterior &post,
+                        const SubPosterior &post,
                         const MatrixBase<BaseFloat> *feats_deriv);
+
+
+  // Note: the Write() and Read() functions are only designed to write the means
+  // mu_ and the smoothed variances t_.  We'll later modify them to (maybe
+  // conditionally) write other things if needed.
+  void Write(std::ostream &os, bool binary) const;
+  void Read(std::istream &is, bool binary);
  private:
   /*
     Notes on implementation of GaussianEstimator.
@@ -504,15 +516,21 @@ class FmllrEstimator {
                        i is the class label and p is the soft-count.
    */
   void AccStats(const MatrixBase<BaseFloat> &feats,
-                const Posterior &post);
+                const SubPosterior &post);
 
 
   /**
      Estimate the fMLLR transform parameters A and b.  Returns the
      objective-function improvement compared with A = I, b = 0, divided by the
      total count as returned by TotalCount().
+
+     You are allowed to call this multiple times (e.g. call AccStats(), call
+     Estimate(), call AccStats(), call Estimate() again).
   */
   BaseFloat Estimate();
+
+  // Return true if Estimate() has previously been called.
+  bool IsEstimated() const;
 
   /// Returns the total count of the posteriors accumulated so far.
   BaseFloat TotalCount() { return gamma_.Sum(); }
@@ -588,7 +606,7 @@ class FmllrEstimator {
                           previously been added by AdaptFeaturesBackward().
    */
   void AccStatsBackward(const MatrixBase<BaseFloat> &feats,
-                        const Posterior &post,
+                        const SubPosterior &post,
                         MatrixBase<BaseFloat> *feats_deriv);
 
   /**
@@ -602,7 +620,7 @@ class FmllrEstimator {
                            NaNs at entry.
    */
   BaseFloat ForwardCombined(const MatrixBase<BaseFloat> &feats,
-                            const Posterior &post,
+                            const SubPosterior &post,
                             MatrixBase<BaseFloat> *adapted_feats);
   /**
      Combines AdaptFeaturesBackward(), EstimateBackward(), and
@@ -610,7 +628,7 @@ class FmllrEstimator {
      Note: 'feats_deriv' is *added* to so must be defined at entry.
   */
   void BackwardCombined(const MatrixBase<BaseFloat> &feats,
-                        const Posterior &post,
+                        const SubPosterior &post,
                         const MatrixBase<BaseFloat> &adapted_feats_deriv,
                         MatrixBase<BaseFloat> *feats_deriv);
 
@@ -635,10 +653,9 @@ class FmllrEstimator {
   //   \gamma_i = \sum_t gamma_{t,i}
   Vector<BaseFloat> gamma_;
 
-  // This contains
-  //   G = (\sum_t \hat{\gamma}_t x_t x_t^T ) - \hat{\gamma} n n^T.
-  // Before Estimate() is called, it won't contain the 2nd term, only the first.
-  Matrix<BaseFloat> G_;
+  // This contains one term in G_, namely:
+  //   (\sum_t \hat{\gamma}_t x_t x_t^T )
+  Matrix<BaseFloat> raw_G_;
 
   // This is of dimension num_classes by dim (same as mu_).  It contains
   // the weighted sums of the input data, for each class:
@@ -647,6 +664,14 @@ class FmllrEstimator {
 
 
   /////////// Quantities that are computed when Estimate() is called  ////////
+
+
+  // This contains
+  //   G = (\sum_t \hat{\gamma}_t x_t x_t^T ) - \hat{\gamma} n n^T.
+  // It is computed as raw_G_ - \hat{\gamma} n n^T.
+  // We use two separate variables to make it easier to call Estimate()
+  // more than once without things getting confused.
+  Matrix<BaseFloat> G_;
 
   // gamma_hat_tot_ is the total of gamma_(i) / s_(i), i.e.
   //   \hat{\gamma} = \sum_i gamma_i / s_i.
@@ -814,13 +839,17 @@ class MeanOnlyTransformEstimator {
                        i is the class label and p is the soft-count.
    */
   void AccStats(const MatrixBase<BaseFloat> &feats,
-                const Posterior &post);
+                const SubPosterior &post);
 
   /**
-     Estimate the parameter (the offset b).  Requires the total count to be
-     nonzero.
+     Estimate the parameter (the offset).  Requires the total count to be
+     nonzero.  You are allowed to call this multiple times (e.g. call
+     AccStats(), call Estimate(), call AccStats(), call Estimate() again).
   */
   void Estimate();
+
+  // Returns true if Estimate() has previously been called.
+  bool IsEstimated() const;
 
   BaseFloat TotalCount() { return gamma_.Sum(); }
 
@@ -879,7 +908,7 @@ class MeanOnlyTransformEstimator {
                           the derivative w.r.t. the offset b.
    */
   void AccStatsBackward(const MatrixBase<BaseFloat> &feats,
-                        const Posterior &post,
+                        const SubPosterior &post,
                         MatrixBase<BaseFloat> *feats_deriv);
 
 
@@ -893,7 +922,7 @@ class MeanOnlyTransformEstimator {
                            NaNs at entry.
    */
   void ForwardCombined(const MatrixBase<BaseFloat> &feats,
-                       const Posterior &post,
+                       const SubPosterior &post,
                        MatrixBase<BaseFloat> *adapted_feats);
   /**
      Combines AdaptFeaturesBackward(), EstimateBackward(), and
@@ -901,7 +930,7 @@ class MeanOnlyTransformEstimator {
      Note: 'feats_deriv' is *added* to so must be defined at entry.
   */
   void BackwardCombined(const MatrixBase<BaseFloat> &feats,
-                        const Posterior &post,
+                        const SubPosterior &post,
                         const MatrixBase<BaseFloat> &adapted_feats_deriv,
                         MatrixBase<BaseFloat> *feats_deriv);
 
@@ -934,4 +963,4 @@ class MeanOnlyTransformEstimator {
 } // namespace differentiable_transform
 } // namespace kaldi
 
-#endif  // KALDI_TRANSFORM_DIFFERENTIABLE_TRANSFORM_H_
+#endif  // KALDI_TRANSFORM_DIFFERENTIABLE_FMLLR_H_

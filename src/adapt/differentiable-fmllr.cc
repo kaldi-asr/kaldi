@@ -1,6 +1,6 @@
 // adapt/differentiable-fmllr.cc
 
-// Copyright     2018  Johns Hopkins University
+// Copyright     2018  Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -22,6 +22,48 @@
 
 namespace kaldi {
 namespace differentiable_transform {
+
+
+void FmllrEstimatorOptions::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<FmllrEstimatorOptions>");
+  WriteToken(os, binary, "<SVFloor>");
+  WriteBasicType(os, binary, singular_value_relative_floor);
+  WriteToken(os, binary, "<VarFloor>");
+  WriteBasicType(os, binary, variance_floor);
+  WriteToken(os, binary, "<VarShareWeight>");
+  WriteBasicType(os, binary, variance_sharing_weight);
+  WriteToken(os, binary, "<SmoothingCount>");
+  WriteBasicType(os, binary, smoothing_count);
+  WriteToken(os, binary, "<SmoothingFactor>");
+  WriteBasicType(os, binary, smoothing_between_class_factor);
+  WriteToken(os, binary, "</FmllrEstimatorOptions>");
+}
+
+void FmllrEstimatorOptions::Read(std::istream &is, bool binary) {
+  ExpectToken(is, binary, "<FmllrEstimatorOptions>");
+  ExpectToken(is, binary, "<SVFloor>");
+  ReadBasicType(is, binary, &singular_value_relative_floor);
+  ExpectToken(is, binary, "<VarFloor>");
+  ReadBasicType(is, binary, &variance_floor);
+  ExpectToken(is, binary, "<VarShareWeight>");
+  ReadBasicType(is, binary, &variance_sharing_weight);
+  ExpectToken(is, binary, "<SmoothingCount>");
+  ReadBasicType(is, binary, &smoothing_count);
+  ExpectToken(is, binary, "<SmoothingFactor>");
+  ReadBasicType(is, binary, &smoothing_between_class_factor);
+  ExpectToken(is, binary, "</FmllrEstimatorOptions>");
+}
+
+void FmllrEstimatorOptions::ReadFromConfig(ConfigLine *config_line) {
+  config_line->GetValue("singular-value-relative-floor",
+                        &singular_value_relative_floor);
+  config_line->GetValue("variance-floor", &variance_floor);
+  config_line->GetValue("variance-sharing-weight", &variance_sharing_weight);
+  config_line->GetValue("smoothing-count", &smoothing_count);
+  config_line->GetValue("smoothing-between-class-factor",
+                        &smoothing_between_class_factor);
+}
+
 
 CoreFmllrEstimator::CoreFmllrEstimator(
     const FmllrEstimatorOptions &opts,
@@ -200,14 +242,13 @@ GaussianEstimator::GaussianEstimator(int32 num_classes, int32 feature_dim):
 }
 
 void GaussianEstimator::AccStats(const MatrixBase<BaseFloat> &feats,
-                                 const Posterior &post) {
+                                 const SubPosterior &post) {
   KALDI_ASSERT(static_cast<int32>(post.size()) == feats.NumRows());
   int32 T = feats.NumRows(),
       num_classes = m_.NumRows();
-  auto iter = post.begin();
-  for (int32 t = 0; t < T; t++,++iter) {
+  for (int32 t = 0; t < T; t++) {
     SubVector<BaseFloat> feat(feats, t);
-    const std::vector<std::pair<int32, BaseFloat> > this_post = *iter;
+    const std::vector<std::pair<int32, BaseFloat> > &this_post = post[t];
     auto iter2 = this_post.begin(),
         end2 = this_post.end();
     for (; iter2 != end2; ++iter2) {
@@ -264,7 +305,7 @@ void GaussianEstimator::Estimate(const FmllrEstimatorOptions &opts) {
   v_.Resize(0);
 }
 
-void GaussianEstimator::SetOutputDerivs(
+void GaussianEstimator::AddToOutputDerivs(
     const MatrixBase<BaseFloat> &mean_derivs,
     const VectorBase<BaseFloat> &var_derivs) {
   KALDI_ASSERT(SameDim(mean_derivs, mu_) &&
@@ -275,8 +316,11 @@ void GaussianEstimator::SetOutputDerivs(
       variance_floor = variance_floor_,
       gamma = gamma_.Sum();
   KALDI_ASSERT(gamma > 0.0);
-  m_bar_.Resize(num_classes, dim);
-  v_bar_.Resize(num_classes, kUndefined);
+  if (m_bar_.NumRows() == 0) {
+    // This is the first time this function was called.
+    m_bar_.Resize(num_classes, dim);
+    v_bar_.Resize(num_classes);
+  }
 
   const VectorBase<BaseFloat> &t_bar(var_derivs);
   const MatrixBase<BaseFloat> &mu_bar(mean_derivs);
@@ -284,14 +328,12 @@ void GaussianEstimator::SetOutputDerivs(
   for (int32 i = 0; i < num_classes; i++) {
     SubVector<BaseFloat> m_bar_i(m_bar_, i);
     BaseFloat gamma_i = gamma_(i);
-    if (gamma_i == 0.0 || s_(i) == variance_floor) {
-      v_bar_(i) = 0.0;
-    } else {
-      BaseFloat s_bar_i = (BaseFloat(1.0) - f) * t_bar(i) + s_bar * gamma_i / gamma;
-      v_bar_(i) = s_bar_i / gamma_i;
-      m_bar_i.AddVec(-2.0 * s_bar_i / gamma_i, mu_.Row(i));
-    }
     if (gamma_i != 0.0) {
+      if (s_(i) != variance_floor) {
+        BaseFloat s_bar_i = (BaseFloat(1.0) - f) * t_bar(i) + s_bar * gamma_i / gamma;
+        v_bar_(i) += s_bar_i / gamma_i;
+        m_bar_i.AddVec(-2.0 * s_bar_i / gamma_i, mu_.Row(i));
+      }
       m_bar_i.AddVec(1.0 / gamma_i, mu_bar.Row(i));
     }
   }
@@ -304,7 +346,7 @@ int32 GaussianEstimator::Dim() const {
 
 void GaussianEstimator::AccStatsBackward(
     const MatrixBase<BaseFloat> &feats,
-    const Posterior &post,
+    const SubPosterior &post,
     const MatrixBase<BaseFloat> *feats_deriv) {
   // The equation we're implementing is:
   // \bar{x}_t = \sum_i \gamma_{t,i} (\bar{m}_i + 2\bar{v}_i x_t)
@@ -313,11 +355,10 @@ void GaussianEstimator::AccStatsBackward(
   int32 T = feats.NumRows();
   KALDI_ASSERT(static_cast<BaseFloat>(post.size() == T) &&
                SameDim(feats, *feats_deriv));
-  auto iter = post.begin();
-  for (int32 t = 0; t < T; t++,iter++) {
+  for (int32 t = 0; t < T; t++) {
     SubVector<BaseFloat> feat(feats, t),
         feat_deriv(*feats_deriv, t);
-    const std::vector<std::pair<int32, BaseFloat> > this_post = *iter;
+    const std::vector<std::pair<int32, BaseFloat> > &this_post = post[t];
     auto iter2 = this_post.begin(),
         end2 = this_post.end();
     for (; iter2 != end2; ++iter2) {
@@ -330,6 +371,23 @@ void GaussianEstimator::AccStatsBackward(
   }
 }
 
+void GaussianEstimator::Write(std::ostream &os, bool binary) const {
+  WriteToken(os, binary, "<GaussianEstimator>");
+  WriteToken(os, binary, "<Mu>");
+  mu_.Write(os, binary);
+  WriteToken(os, binary, "<t>");
+  t_.Write(os, binary);
+  WriteToken(os, binary, "</GaussianEstimator>");
+}
+
+void GaussianEstimator::Read(std::istream &is, bool binary) {
+  ExpectOneOrTwoTokens(is, binary, "<GaussianEstimator>", "<Mu>");
+  mu_.Read(is, binary);
+  ExpectToken(is, binary, "<t>");
+  t_.Read(is, binary);
+  ExpectToken(is, binary, "</GaussianEstimator>");
+}
+
 
 FmllrEstimator::FmllrEstimator(const FmllrEstimatorOptions &opts,
                                const MatrixBase<BaseFloat> &mu,
@@ -339,12 +397,12 @@ FmllrEstimator::FmllrEstimator(const FmllrEstimatorOptions &opts,
   opts_.Check();
 
   gamma_.Resize(num_classes);
-  G_.Resize(dim, dim);
+  raw_G_.Resize(dim, dim);
   z_.Resize(num_classes, dim);
 }
 
 void FmllrEstimator::AccStats(const MatrixBase<BaseFloat> &feats,
-                              const Posterior &post) {
+                              const SubPosterior &post) {
   KALDI_ASSERT(static_cast<int32>(post.size() == feats.NumRows()));
   int32 num_classes = mu_.NumRows(),
       dim = mu_.NumCols(),
@@ -382,19 +440,12 @@ void FmllrEstimator::AccStats(const MatrixBase<BaseFloat> &feats,
     SubVector<BaseFloat> gamma_hat_t_part(gamma_hat_t, offset, n_frames);
     // the 0.0 value for beta means we don't double-count stats.
     G.AddMat2Vec(1.0, feats_part, kTrans, gamma_hat_t_part, 0.0);
-    G_.AddSp(1.0, G);
+    raw_G_.AddSp(1.0, G);
   }
 }
 
 
 BaseFloat FmllrEstimator::Estimate() {
-  // If at some point you need to create a version of Estimate() that can be
-  // called multiple times (e.g. for online applications), it will likely be
-  // easiest to create a 'const' version of Estimate() that outputs A and b via
-  // pointers.  This one modifies the G_ and K_ quantities, which is what makes
-  // it tricky to do correctly if called twice.
-  if (A_.NumRows() != 0)
-    KALDI_ERR << "You cannot call Estimate() twice.";
   int32 dim = mu_.NumCols();
   BaseFloat gamma_tot = gamma_.Sum();
   KALDI_ASSERT(gamma_tot > 0.0 &&
@@ -426,8 +477,9 @@ BaseFloat FmllrEstimator::Estimate() {
     K_.AddVecVec(-gamma_hat_tot_, m_, n_);
   }
 
-  // In AccStats(), we did G := \sum_t \hat{\gamma}_t x_t x_t^T.
-  // Now we do: G  -= \hat{\gamma} n n^T
+  // In AccStats(), we did raw_G := \sum_t \hat{\gamma}_t x_t x_t^T.
+  // Now we do: G  = raw_G - \hat{\gamma} n n^T
+  G_ = raw_G_;
   G_.AddVecVec(-gamma_hat_tot_, n_, n_);
   KALDI_ASSERT(G_.IsSymmetric(0.0001));
 
@@ -471,7 +523,9 @@ BaseFloat FmllrEstimator::Estimate() {
   return A_impr + b_impr;
 }
 
-
+bool FmllrEstimator::IsEstimated() const {
+  return A_.NumRows() != 0;
+}
 
 void FmllrEstimator::AdaptFeatures(const MatrixBase<BaseFloat> &feats,
                                    MatrixBase<BaseFloat> *adapted_feats) const {
@@ -615,7 +669,7 @@ void FmllrEstimator::EstimateBackward() {
 
 void FmllrEstimator::AccStatsBackward(
     const MatrixBase<BaseFloat> &feats,
-    const Posterior &post,
+    const SubPosterior &post,
     MatrixBase<BaseFloat> *feats_deriv) {
   KALDI_ASSERT(static_cast<int32>(post.size() == feats.NumRows()));
   int32 T = feats.NumRows(), num_classes = mu_.NumRows();
@@ -658,7 +712,7 @@ void FmllrEstimator::AccStatsBackward(
 
 BaseFloat FmllrEstimator::ForwardCombined(
     const MatrixBase<BaseFloat> &feats,
-    const Posterior &post,
+    const SubPosterior &post,
     MatrixBase<BaseFloat> *adapted_feats) {
   AccStats(feats, post);
   BaseFloat ans = Estimate();
@@ -668,7 +722,7 @@ BaseFloat FmllrEstimator::ForwardCombined(
 
 void FmllrEstimator::BackwardCombined(
     const MatrixBase<BaseFloat> &feats,
-    const Posterior &post,
+    const SubPosterior &post,
     const MatrixBase<BaseFloat> &adapted_feats_deriv,
     MatrixBase<BaseFloat> *feats_deriv) {
   AdaptFeaturesBackward(feats, adapted_feats_deriv, feats_deriv);
@@ -690,7 +744,7 @@ MeanOnlyTransformEstimator::MeanOnlyTransformEstimator(
 }
 
 void MeanOnlyTransformEstimator::AccStats(const MatrixBase<BaseFloat> &feats,
-                                          const Posterior &post) {
+                                          const SubPosterior &post) {
   int32 T = feats.NumRows(),
       num_classes = mu_.NumRows();
   KALDI_ASSERT(static_cast<int32>(post.size()) == T);
@@ -728,6 +782,10 @@ void MeanOnlyTransformEstimator::Estimate() {
   output_deriv_sum_.Resize(dim);
 }
 
+bool MeanOnlyTransformEstimator::IsEstimated() const {
+  return offset_.Dim() != 0;
+}
+
 void MeanOnlyTransformEstimator::AdaptFeatures(
     const MatrixBase<BaseFloat> &feats,
     MatrixBase<BaseFloat> *adapted_feats) const {
@@ -762,7 +820,7 @@ void MeanOnlyTransformEstimator::EstimateBackward() {
 
 void MeanOnlyTransformEstimator::AccStatsBackward(
     const MatrixBase<BaseFloat> &feats,
-    const Posterior &post,
+    const SubPosterior &post,
     MatrixBase<BaseFloat> *feats_deriv) {
 
   int32 T = feats.NumRows();
@@ -781,7 +839,7 @@ void MeanOnlyTransformEstimator::AccStatsBackward(
 
 void MeanOnlyTransformEstimator::ForwardCombined(
     const MatrixBase<BaseFloat> &feats,
-    const Posterior &post,
+    const SubPosterior &post,
     MatrixBase<BaseFloat> *adapted_feats) {
   AccStats(feats, post);
   Estimate();
@@ -790,7 +848,7 @@ void MeanOnlyTransformEstimator::ForwardCombined(
 
 void MeanOnlyTransformEstimator::BackwardCombined(
     const MatrixBase<BaseFloat> &feats,
-    const Posterior &post,
+    const SubPosterior &post,
     const MatrixBase<BaseFloat> &adapted_feats_deriv,
     MatrixBase<BaseFloat> *feats_deriv) {
   AdaptFeaturesBackward(feats, adapted_feats_deriv, feats_deriv);
