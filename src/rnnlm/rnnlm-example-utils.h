@@ -79,6 +79,11 @@ namespace rnnlm {
 void RenumberRnnlmExample(RnnlmExample *minibatch,
                           std::vector<int32> *active_words);
 
+// Renumber indices to take into account two different emb matrices used
+void SetSplitInputVecs(RnnlmExample *minibatch,
+                          int32 cutoff_large, int32 cutoff_med);
+
+void SetMaskVectors(std::vector<int32>* active_words, RnnlmExample* minibatch, int32 cutoff_large, int32 cutoff_med);
 
 /**  This function takes a NnetExample (which should already have been
      frame-selected, if desired, and merged into a minibatch) and produces a
@@ -88,6 +93,12 @@ void RenumberRnnlmExample(RnnlmExample *minibatch,
      derivatives w.r.t. all outputs.
 */
 void GetRnnlmComputationRequest(const RnnlmExample &minibatch,
+                                bool need_model_derivative,
+                                bool need_input_derivative,
+                                bool store_component_stats,
+                                nnet3::ComputationRequest *computation_request);
+
+void GetRnnlmComputationRequestAdapt(const RnnlmExample &minibatch,
                                 bool need_model_derivative,
                                 bool need_input_derivative,
                                 bool store_component_stats,
@@ -108,6 +119,10 @@ struct RnnlmExampleDerived {
   CuArray<int32> cu_output_words;  // CUDA copy of minibatch.output_words,
                                    // only used in the sampling case.
 
+  CuArray<int32> cu_input_words_large;
+  CuArray<int32> cu_input_words_med;
+  CuArray<int32> cu_input_words_small;
+
   // cu_sampled_words is a CUDA copy of minibatch.sampled_words; it's only used
   // in the sampling case (in the no-sampling case, minibatch.sampled_words
   // would be empty anyway).
@@ -127,6 +142,9 @@ struct RnnlmExampleDerived {
   // (minibatch.input_words[i],i).
   CuSparseMatrix<BaseFloat> input_words_smat;
 
+  CuMatrix<BaseFloat> isword_large;
+  CuMatrix<BaseFloat> isword_med;
+  CuMatrix<BaseFloat> isword_small;
 
   // Shallow swap; calls Swap() on all elements.
   void Swap(RnnlmExampleDerived *other);
@@ -148,6 +166,9 @@ void GetRnnlmExampleDerived(const RnnlmExample &minibatch,
                             bool need_embedding_deriv,
                             RnnlmExampleDerived *derived);
 
+void GetRnnlmExampleDerivedAdapt(const RnnlmExample &minibatch,
+                            bool need_embedding_deriv,
+                            RnnlmExampleDerived *derived);
 /**
    Configuration class relating to the objective function used for RNNLM
    training, more specifically for use by the function ProcessRnnlmOutputs().
@@ -274,8 +295,43 @@ void ProcessRnnlmOutput(
     BaseFloat *objf_den,
     BaseFloat *objf_den_exact);
 
+void ProcessRnnlmOutputAdaptTrain(
+    const RnnlmObjectiveOptions &objective_opts,
+    const RnnlmExample &minibatch,
+    const RnnlmExampleDerived &derived,
+    const CuMatrixBase<BaseFloat> &word_embedding_large,
+    const CuMatrixBase<BaseFloat> &word_embedding_med,
+    const CuMatrixBase<BaseFloat> &word_embedding_small,
+    const CuMatrixBase<BaseFloat> &nnet_output_large,
+    const CuMatrixBase<BaseFloat> &nnet_output_med,
+    const CuMatrixBase<BaseFloat> &nnet_output_small,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv_large,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv_med,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv_small,
+    CuMatrixBase<BaseFloat> *nnet_output_deriv_large,
+    CuMatrixBase<BaseFloat> *nnet_output_deriv_med,
+    CuMatrixBase<BaseFloat> *nnet_output_deriv_small,
+    BaseFloat *weight,
+    BaseFloat *objf_num,
+    BaseFloat *objf_den,
+    BaseFloat *objf_den_exact);
 
-
+void ProcessRnnlmOutputAdaptInfer(
+    const RnnlmObjectiveOptions &objective_config,
+    const RnnlmExample &minibatch,
+    const RnnlmExampleDerived &derived,
+    const CuMatrixBase<BaseFloat> &word_embedding_large,
+    const CuMatrixBase<BaseFloat> &word_embedding_med,
+    const CuMatrixBase<BaseFloat> &word_embedding_small,
+    const CuMatrixBase<BaseFloat> &nnet_output_large,
+    const CuMatrixBase<BaseFloat> &nnet_output_med,
+    const CuMatrixBase<BaseFloat> &nnet_output_small,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv,
+    CuMatrixBase<BaseFloat> *nnet_output_deriv,
+    BaseFloat *weight,
+    BaseFloat *objf_num,
+    BaseFloat *objf_den,
+    BaseFloat *objf_den_exact);
 
 } // namespace rnnlm
 } // namespace kaldi

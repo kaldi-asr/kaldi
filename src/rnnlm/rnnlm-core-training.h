@@ -242,7 +242,109 @@ class RnnlmCoreTrainer {
 };
 
 
+class RnnlmCoreTrainerAdapt {
+ public:
+  /** Constructor.
+       @param [in] config  Structure that holds configuration options
+       @param [in,out] nnet   The neural network that is to be trained.
+                              Will be modified each time you call Train().
+   */
+  RnnlmCoreTrainerAdapt(const RnnlmCoreTrainerOptions &config,
+                   const RnnlmObjectiveOptions &objective_config,
+                   nnet3::Nnet *nnet);
 
+  /* Train on one minibatch.
+       @param [in] minibatch  The RNNLM minibatch to train on, containing
+                            a number of parallel word sequences.  It will not
+                            necessarily contain words with the 'original'
+                            numbering, it will in most circumstances contain
+                            just the ones we used; see RenumberRnnlmMinibatch().
+       @param [in] derived   Derived quantities of the minibatch, pre-computed by
+                            calling GetRnnlmExampleDerived() with suitable arguments.
+       @param [in] word_embedding  The matrix giving the embedding of words, of
+                            dimension minibatch.vocab_size by the embedding dimension.
+                            The numbering of the words does not have to be the 'real'
+                            numbering of words, it can consist of words renumbered
+                            by RenumberRnnlmMinibatch(); it just has to be
+                            consistent with the word-ids present in 'minibatch'.
+       @param [out] word_embedding_deriv  If supplied, the derivative of the
+                            objective function w.r.t. the word embedding will be
+                            *added* to this location; it must have the same
+                            dimension as 'word_embedding'.
+   */
+  void Train(const RnnlmExample &minibatch,
+             const RnnlmExampleDerived &derived,
+             const CuMatrixBase<BaseFloat> &word_embedding_large,
+             const CuMatrixBase<BaseFloat> &word_embedding_med,
+             const CuMatrixBase<BaseFloat> &word_embedding_small,
+             CuMatrixBase<BaseFloat> *word_embedding_deriv_large = NULL,
+             CuMatrixBase<BaseFloat> *word_embedding_deriv_med = NULL,
+             CuMatrixBase<BaseFloat> *word_embedding_deriv_small = NULL);
+
+  // Prints out the final stats.
+  void PrintTotalStats() const;
+
+  // Prints out the max-change stats (if nonzero): the percentage of time that
+  // per-component max-change and global max-change were enforced.
+  void PrintMaxChangeStats() const;
+
+
+  // Calls ConsolidateMemory() on nnet_ and delta_nnet_.
+  void ConsolidateMemory();
+
+  ~RnnlmCoreTrainerAdapt();
+ private:
+
+  void ProvideInput(const RnnlmExample &minibatch,
+                    const RnnlmExampleDerived &derived,
+                    const CuMatrixBase<BaseFloat> &word_embedding_large,
+                    const CuMatrixBase<BaseFloat> &word_embedding_med,
+                    const CuMatrixBase<BaseFloat> &word_embedding_small,
+                    nnet3::NnetComputer *computer);
+
+  /** Process the output of the neural net and record the objective function
+      in objf_info_.
+   @param [in] is_backstitch_step1  If true update stats otherwise not.
+   @param [in] minibatch  The minibatch for which we're proessing the output.
+   @param [in] derived  Derived quantities from the minibatch.
+   @param [in] word_embedding  The word embedding, with the same numbering as
+                      used in the minibatch (may be subsampled at this point).
+   @param [out] word_embedding_deriv  If non-NULL, the part of the derivative
+                      w.r.t. the word-embedding that arises from the output
+                      computation will be *added* to here.
+  */
+  void ProcessOutput(bool is_backstitch_step1,
+                     const RnnlmExample &minibatch,
+                     const RnnlmExampleDerived &derived,
+                     const CuMatrixBase<BaseFloat> &word_embedding_large,
+                     const CuMatrixBase<BaseFloat> &word_embedding_med,
+                     const CuMatrixBase<BaseFloat> &word_embedding_small,
+                     nnet3::NnetComputer *computer,
+                     CuMatrixBase<BaseFloat> *word_embedding_deriv_large = NULL,
+                     CuMatrixBase<BaseFloat> *word_embedding_deriv_med = NULL,
+                     CuMatrixBase<BaseFloat> *word_embedding_deriv_small = NULL);
+
+  // Applies per-component max-change and global max-change to all updatable
+  // components in *delta_nnet_, and use *delta_nnet_ to update parameters
+  // in *nnet_.
+  void UpdateParamsWithMaxChange();
+
+  const RnnlmCoreTrainerOptions config_;
+  const RnnlmObjectiveOptions objective_config_;
+  nnet3::Nnet *nnet_;
+  nnet3::Nnet *delta_nnet_;  // nnet representing parameter-change for this
+                             // minibatch (or, when using momentum, its moving
+                             // weighted average).
+  nnet3::CachingOptimizingCompiler compiler_;
+
+  int32 num_minibatches_processed_;
+
+  // stats for max-change.
+  std::vector<int32> num_max_change_per_component_applied_;
+  int32 num_max_change_global_applied_;
+
+  ObjectiveTracker objf_info_;
+};
 
 
 

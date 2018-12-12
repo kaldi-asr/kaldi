@@ -75,11 +75,26 @@ class RnnlmCoreComputer {
                     BaseFloat *weight = NULL,
                     CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
 
+  BaseFloat ComputeAdapt(const RnnlmExample &minibatch,
+                    const RnnlmExampleDerived &derived,
+                    const CuMatrixBase<BaseFloat> &word_embedding_large,
+                    const CuMatrixBase<BaseFloat> &word_embedding_med,
+                    const CuMatrixBase<BaseFloat> &word_embedding_small,
+                    BaseFloat *weight = NULL,
+                    CuMatrixBase<BaseFloat> *word_embedding_deriv = NULL);
+
  private:
 
   void ProvideInput(const RnnlmExample &minibatch,
                     const RnnlmExampleDerived &derived,
                     const CuMatrixBase<BaseFloat> &word_embedding,
+                    nnet3::NnetComputer *computer);
+
+  void ProvideInput(const RnnlmExample &minibatch,
+                    const RnnlmExampleDerived &derived,
+                    const CuMatrixBase<BaseFloat> &word_embedding_large,
+                    const CuMatrixBase<BaseFloat> &word_embedding_med,
+                    const CuMatrixBase<BaseFloat> &word_embedding_small,
                     nnet3::NnetComputer *computer);
 
   /** Process the output of the neural net and compute the objective function;
@@ -101,6 +116,15 @@ class RnnlmCoreComputer {
   BaseFloat ProcessOutput(const RnnlmExample &minibatch,
                           const RnnlmExampleDerived &derived,
                           const CuMatrixBase<BaseFloat> &word_embedding,
+                          nnet3::NnetComputer *computer,
+                          CuMatrixBase<BaseFloat> *word_embedding_deriv,
+                          BaseFloat *weight);
+
+  BaseFloat ProcessOutput(const RnnlmExample &minibatch,
+                          const RnnlmExampleDerived &derived,
+                          const CuMatrixBase<BaseFloat> &word_embedding_large,
+                          const CuMatrixBase<BaseFloat> &word_embedding_med,
+                          const CuMatrixBase<BaseFloat> &word_embedding_small,
                           nnet3::NnetComputer *computer,
                           CuMatrixBase<BaseFloat> *word_embedding_deriv,
                           BaseFloat *weight);

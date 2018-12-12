@@ -60,6 +60,7 @@ bool IsSimpleNnet(const Nnet &nnet) {
     return false;
   // if there was just one input, then it was named
   // "input" and everything checks out.
+  return true;
   if (NumInputNodes(nnet) == 1)
     return true;
   // Otherwise, there should be input node with name "input" and one
@@ -103,6 +104,10 @@ static bool ComputeSimpleNnetContextForShift(
   output.name = "output";
   IoSpecification ivector;  // we might or might not use this.
   ivector.name = "ivector";
+  IoSpecification inputsmall;  // we might or might not use this.
+  inputsmall.name = "inputsmall";
+  IoSpecification inputmed;  // we might or might not use this.
+  inputmed.name = "inputmed";
 
   int32 n = rand() % 10;
   // in the IoSpecification for now we we will request all the same indexes at
@@ -110,6 +115,8 @@ static bool ComputeSimpleNnetContextForShift(
   for (int32 t = input_start; t < input_end; t++) {
     input.indexes.push_back(Index(n, t));
     output.indexes.push_back(Index(n, t));
+    inputsmall.indexes.push_back(Index(n, t));
+    inputmed.indexes.push_back(Index(n, t));
   }
 
   // most networks will just require the ivector at time t = 0,
@@ -126,6 +133,10 @@ static bool ComputeSimpleNnetContextForShift(
   request.outputs.push_back(output);
   if (nnet.GetNodeIndex("ivector") != -1)
     request.inputs.push_back(ivector);
+  if (nnet.GetNodeIndex("inputsmall") != -1)
+    request.inputs.push_back(inputsmall);
+  if (nnet.GetNodeIndex("inputmed") != -1)
+    request.inputs.push_back(inputmed);
   std::vector<std::vector<bool> > computable;
   EvaluateComputationRequest(nnet, request, &computable);
 

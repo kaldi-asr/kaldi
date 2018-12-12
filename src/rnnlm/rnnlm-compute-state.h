@@ -51,6 +51,14 @@ struct RnnlmComputeStateComputationOptions {
       brk_index(-1)
       { }
 
+  RnnlmComputeStateComputationOptions(int32 bos_idx, int32 eos_index, int32 brk_index):
+      debug_computation(false),
+      normalize_probs(false),
+      bos_index(bos_idx),
+      eos_index(eos_index),
+      brk_index(brk_index)
+      { }
+
   void Register(OptionsItf *opts) {
     opts->Register("debug-computation", &debug_computation, "If true, turn on "
                    "debug for the actual computation (very verbose!)");
@@ -97,8 +105,8 @@ class RnnlmComputeStateInfo  {
 
 /*
   This class handles the neural net computation; it's mostly accessed
-  via other wrapper classes. 
- 
+  via other wrapper classes.
+
   Each time this class takes a new word and advance the NNET computation by
   one step, and works out log-prob of words to be used in lattice rescoring. */
 
@@ -141,6 +149,74 @@ class RnnlmComputeState {
   // This pointer is not owned by this class.
   const CuMatrixBase<BaseFloat> *predicted_word_embedding_;
 };
+
+class RnnlmComputeStateInfoAdapt  {
+ public:
+  RnnlmComputeStateInfoAdapt(
+      const RnnlmComputeStateComputationOptions &opts,
+      const kaldi::nnet3::Nnet &rnnlm,
+      const CuMatrix<BaseFloat> &word_embedding_mat_large,
+      const CuMatrix<BaseFloat> &word_embedding_mat_med,
+      const CuMatrix<BaseFloat> &word_embedding_mat_small,
+      const int32 cutofflarge,
+      const int32 cutoffmed);
+
+  const RnnlmComputeStateComputationOptions &opts;
+  const kaldi::nnet3::Nnet &rnnlm;
+  const CuMatrix<BaseFloat> &word_embedding_mat_large;
+  const CuMatrix<BaseFloat> &word_embedding_mat_med;
+  const CuMatrix<BaseFloat> &word_embedding_mat_small;
+  const int32 cutoff_large;
+  const int32 cutoff_med;
+
+  // The compiled, 'looped' computation.
+  nnet3::NnetComputation computation;
+};
+
+class RnnlmComputeStateAdapt {
+ public:
+  /// We compile the computation and generate the state after the BOS history.
+  RnnlmComputeStateAdapt(const RnnlmComputeStateAdaptInfo &info, int32 bos_index);
+
+  RnnlmComputeStateAdapt(const RnnlmComputeStateAdapt &other);
+
+  /// Generate another state by passing the next-word.
+  /// The pointer is owned by the caller.
+  RnnlmComputeStateAdapt* GetSuccessorState(int32 next_word) const;
+
+  /// Return the log-prob that the model predicts for the provided word-index,
+  /// given the previous history determined by the sequence of calls to AddWord()
+  /// (implicitly starting with the BOS symbol).
+  BaseFloat LogProbOfWord(int32 word_index) const;
+
+  // This function computes logprobs of all words and set it to output Matrix
+  // Note: (*output)(0, 0) corresponds to <eps> symbol and it should NEVER be
+  // used in any computation by the caller. To avoid causing unexpected issues,
+  // we here set it to a very small number
+  void GetLogProbOfWords(CuMatrixBase<BaseFloat>* output) const;
+  /// Advance the state of the RNNLM by appending this word to the word sequence.
+  void AddWord(int32 word_index);
+
+  int32 total_emb_size_;
+ private:
+  /// This function does the computation for the next chunk.
+  void AdvanceChunk();
+
+  const RnnlmComputeStateAdaptInfo &info_;
+  nnet3::NnetComputer computer_;
+  int32 previous_word_;
+
+  // This is the log of the sum of the exp'ed values in the output.
+  // Only used if config_.normalize_probs is set to be true.
+  BaseFloat normalization_factor_;
+
+  // This points to the matrix returned by GetOutput() on the Nnet object.
+  // This pointer is not owned by this class.
+  const CuMatrixBase<BaseFloat> *predicted_word_embedding_large_;
+  const CuMatrixBase<BaseFloat> *predicted_word_embedding_med_;
+  const CuMatrixBase<BaseFloat> *predicted_word_embedding_small_;
+};
+
 
 
 } // namespace rnnlm

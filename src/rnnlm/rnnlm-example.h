@@ -111,6 +111,13 @@ struct RnnlmExample {
   // sampling).
   CuVector<BaseFloat> sample_inv_probs;
 
+  std::vector<int32> input_words_large;
+  std::vector<int32> input_words_med;
+  std::vector<int32> input_words_small;
+  Matrix<BaseFloat> isword_large;
+  Matrix<BaseFloat> isword_med;
+  Matrix<BaseFloat> isword_small;
+
   RnnlmExample(): vocab_size(0), num_chunks(0), chunk_length(0),
                   sample_group_size(1), num_samples(0) { }
 

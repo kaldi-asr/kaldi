@@ -277,6 +277,7 @@ void RnnlmCoreTrainer::ProvideInput(
     const CuMatrixBase<BaseFloat> &word_embedding,
     nnet3::NnetComputer *computer) {
   int32 embedding_dim = word_embedding.NumCols();
+
   CuMatrix<BaseFloat> input_embeddings(derived.cu_input_words.Dim(),
                                        embedding_dim,
                                        kUndefined);
@@ -356,6 +357,208 @@ RnnlmCoreTrainer::~RnnlmCoreTrainer() {
 
 
 
+
+RnnlmCoreTrainerAdapt::RnnlmCoreTrainerAdapt(const RnnlmCoreTrainerOptions &config,
+                                   const RnnlmObjectiveOptions &objective_config,
+                                   nnet3::Nnet *nnet):
+    config_(config),
+    objective_config_(objective_config),
+    nnet_(nnet),
+    compiler_(*nnet),  // for now we don't make available other options
+    num_minibatches_processed_(0),
+    objf_info_(10) {
+  ZeroComponentStats(nnet);
+  KALDI_ASSERT(config.momentum >= 0.0 &&
+               config.max_param_change >= 0.0);
+  delta_nnet_ = nnet_->Copy();
+  ScaleNnet(0.0, delta_nnet_);
+  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
+  num_max_change_per_component_applied_.resize(num_updatable, 0);
+  num_max_change_global_applied_ = 0;
+}
+
+void RnnlmCoreTrainerAdapt::Train(
+    const RnnlmExample &minibatch,
+    const RnnlmExampleDerived &derived,
+    const CuMatrixBase<BaseFloat> &word_embedding_large,
+    const CuMatrixBase<BaseFloat> &word_embedding_med,
+    const CuMatrixBase<BaseFloat> &word_embedding_small,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv_large,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv_med,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv_small) {
+  using namespace nnet3;
+
+  bool need_model_derivative = true;
+  bool need_input_derivative = true;
+  bool store_component_stats = true;
+
+  ComputationRequest request;
+  GetRnnlmComputationRequestAdapt(minibatch, need_model_derivative,
+                             need_input_derivative,
+                             store_component_stats,
+                             &request);
+
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
+
+  NnetComputeOptions compute_opts;
+
+  NnetComputer computer(compute_opts, *computation,
+                        *nnet_, delta_nnet_);
+
+  ProvideInput(minibatch, derived, word_embedding_large, word_embedding_med, word_embedding_small, &computer);
+
+  computer.Run();  // This is the forward pass.
+
+  bool is_backstitch_step1 = true;
+  ProcessOutput(is_backstitch_step1, minibatch, derived, word_embedding_large, word_embedding_med, word_embedding_small,
+                &computer, word_embedding_deriv_large, word_embedding_deriv_med, word_embedding_deriv_small);
+
+  computer.Run();  // This is the backward pass.
+
+  CuMatrix<BaseFloat> input_deriv_large;
+  computer.GetOutputDestructive("input", &input_deriv_large);
+  word_embedding_deriv_large->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
+                                   input_deriv_large, 1.0);
+
+  CuMatrix<BaseFloat> input_deriv_med;
+  computer.GetOutputDestructive("inputmed", &input_deriv_med);
+  word_embedding_deriv_med->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
+                                   input_deriv_med, 1.0);
+
+  CuMatrix<BaseFloat> input_deriv_small;
+  computer.GetOutputDestructive("inputsmall", &input_deriv_small);
+  word_embedding_deriv_small->AddSmatMat(1.0, derived.input_words_smat, kNoTrans,
+                                   input_deriv_small, 1.0);
+
+  // If relevant, add in the part of the gradient that comes from L2
+  // regularization.
+  ApplyL2Regularization(*nnet_,
+                        minibatch.num_chunks * config_.l2_regularize_factor,
+                        delta_nnet_);
+
+  bool success = UpdateNnetWithMaxChange(*delta_nnet_, config_.max_param_change,
+      1.0, 1.0 - config_.momentum, nnet_,
+      &num_max_change_per_component_applied_, &num_max_change_global_applied_);
+  if (success) ScaleNnet(config_.momentum, delta_nnet_);
+  else ScaleNnet(0.0, delta_nnet_);
+
+  num_minibatches_processed_++;
+}
+
+void RnnlmCoreTrainerAdapt::ProvideInput(
+    const RnnlmExample &minibatch,
+    const RnnlmExampleDerived &derived,
+    const CuMatrixBase<BaseFloat> &word_embedding_large,
+    const CuMatrixBase<BaseFloat> &word_embedding_med,
+    const CuMatrixBase<BaseFloat> &word_embedding_small,
+    nnet3::NnetComputer *computer) {
+  int32 embedding_dim = word_embedding_large.NumCols();
+
+  CuMatrix<BaseFloat> input_embeddings_large(derived.cu_input_words.Dim(),
+                                       embedding_dim,
+                                       kUndefined);
+  CuMatrix<BaseFloat> input_embeddings_med(derived.cu_input_words.Dim(),
+                                       word_embedding_med.NumCols(),
+                                       kUndefined);
+  CuMatrix<BaseFloat> input_embeddings_small(derived.cu_input_words.Dim(),
+                                       word_embedding_small.NumCols(),
+                                       kUndefined);
+
+
+  input_embeddings_large.CopyRows(word_embedding_large,
+                                  derived.cu_input_words);
+  input_embeddings_med.CopyRows(word_embedding_med,
+                                  derived.cu_input_words);
+  input_embeddings_small.CopyRows(word_embedding_small,
+                                  derived.cu_input_words);
+
+  computer->AcceptInput("input", &input_embeddings_large);
+  computer->AcceptInput("inputmed", &input_embeddings_med);
+  computer->AcceptInput("inputsmall", &input_embeddings_small);
+}
+
+
+void RnnlmCoreTrainerAdapt::PrintMaxChangeStats() const {
+  using namespace nnet3;
+  KALDI_ASSERT(delta_nnet_ != NULL);
+  int32 i = 0;
+  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
+    Component *comp = delta_nnet_->GetComponent(c);
+    if (comp->Properties() & kUpdatableComponent) {
+      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
+      if (uc == NULL)
+        KALDI_ERR << "Updatable component does not inherit from class "
+                  << "UpdatableComponent; change this code.";
+      if (num_max_change_per_component_applied_[i] > 0)
+        KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
+                  << ", per-component max-change was enforced "
+                  << ((100.0 * num_max_change_per_component_applied_[i]) /
+                      num_minibatches_processed_)
+                  << "\% of the time.";
+      i++;
+    }
+  }
+  if (num_max_change_global_applied_ > 0)
+    KALDI_LOG << "The global max-change was enforced "
+              << (100.0 * num_max_change_global_applied_) /
+                 (num_minibatches_processed_ *
+                 (config_.backstitch_training_scale == 0.0 ? 1.0 :
+                 1.0 + 1.0 / config_.backstitch_training_interval))
+              << "\% of the time.";
+}
+
+void RnnlmCoreTrainerAdapt::ProcessOutput(
+    bool is_backstitch_step1,
+    const RnnlmExample &minibatch,
+    const RnnlmExampleDerived &derived,
+    const CuMatrixBase<BaseFloat> &word_embedding_large,
+    const CuMatrixBase<BaseFloat> &word_embedding_med,
+    const CuMatrixBase<BaseFloat> &word_embedding_small,
+    nnet3::NnetComputer *computer,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv_large,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv_med,
+    CuMatrixBase<BaseFloat> *word_embedding_deriv_small) {
+  // 'output' is the output of the neural network.  The row-index
+  // combines the time (with higher stride) and the member 'n'
+  // of the minibatch (with stride 1); the number of columns is
+  // the word-embedding dimension.
+  CuMatrix<BaseFloat> output_large;
+  CuMatrix<BaseFloat> output_deriv_large;
+  computer->GetOutputDestructive("output", &output_large);
+  output_deriv_large.Resize(output_large.NumRows(), output_large.NumCols());
+  CuMatrix<BaseFloat> output_med;
+  CuMatrix<BaseFloat> output_deriv_med;
+  computer->GetOutputDestructive("outputmed", &output_med);
+  output_deriv_med.Resize(output_med.NumRows(), output_med.NumCols());
+  CuMatrix<BaseFloat> output_small;
+  CuMatrix<BaseFloat> output_deriv_small;
+  computer->GetOutputDestructive("outputsmall", &output_small);
+  output_deriv_small.Resize(output_small.NumRows(), output_small.NumCols());
+
+  BaseFloat weight, objf_num, objf_den, objf_den_exact;
+  ProcessRnnlmOutputAdaptTrain(objective_config_,
+                     minibatch, derived, word_embedding_large, word_embedding_med, word_embedding_small,
+                     output_large, output_med, output_small, word_embedding_deriv_large, word_embedding_deriv_med, word_embedding_deriv_small,
+                     &output_deriv_large, &output_deriv_med, &output_deriv_small,
+                     &weight, &objf_num, &objf_den,
+                     NULL);
+  if (is_backstitch_step1)
+    objf_info_.AddStats(weight, objf_num, objf_den, objf_den_exact);
+  computer->AcceptInput("output", &output_deriv_large);
+  computer->AcceptInput("outputmed", &output_deriv_med);
+  computer->AcceptInput("outputsmall", &output_deriv_small);
+}
+
+void RnnlmCoreTrainerAdapt::ConsolidateMemory() {
+  kaldi::nnet3::ConsolidateMemory(nnet_);
+  kaldi::nnet3::ConsolidateMemory(delta_nnet_);
+}
+
+RnnlmCoreTrainerAdapt::~RnnlmCoreTrainerAdapt() {
+  PrintMaxChangeStats();
+  // Note: the objective-function stats are printed out in the destructor of the
+  // ObjectiveTracker object.
+}
 
 
 }  // namespace rnnlm

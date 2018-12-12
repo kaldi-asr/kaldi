@@ -16,6 +16,10 @@ unigram_factor=100.0     # Option used when pruning the LM used for sampling.
                          # You can increase this, e.g. to 200 or 400, if the LM used
                          # for sampling is too big, causing rnnlm-get-egs to
                          # take up too many CPUs worth of compute.
+adaptive=false
+largeembsize=10000
+medembsize=50000
+smallembsize=80000
 
 . utils/parse_options.sh
 
@@ -145,10 +149,13 @@ if [ $stage -le 6 ]; then
       $feat_dim $embedding_dim > $dir/feat_embedding.0.mat
 
     [ -f $dir/word_embedding.0.mat ] && rm $dir/word_embedding.0.mat
+  elif $adaptive; then
+    rnnlm/initialize_matrix.pl --first-column 1.0 $largeembsize 512 > $dir/word_embedding_large.0.mat
+    rnnlm/initialize_matrix.pl --first-column 1.0 $medembsize 128 > $dir/word_embedding_med.0.mat
+    rnnlm/initialize_matrix.pl --first-column 1.0 $smallembsize 64 > $dir/word_embedding_small.0.mat
   else
     vocab_size=$(tail -n 1 $dir/config/words.txt | awk '{print $NF + 1}')
     rnnlm/initialize_matrix.pl --first-column 1.0 $vocab_size $embedding_dim > $dir/word_embedding.0.mat
-
     [ -f $dir/feat_embedding.0.mat ] && rm $dir/feat_embedding.0.mat
   fi
 fi

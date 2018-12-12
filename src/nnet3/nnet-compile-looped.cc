@@ -160,6 +160,52 @@ static void CreateComputationRequestInternal(
   }
 }
 
+static void CreateComputationRequestInternalAdapt(
+    int32 begin_input_t, int32 end_input_t,
+    int32 begin_output_t, int32 end_output_t,
+    int32 num_sequences,
+    int32 frame_subsampling_factor,
+    const std::set<int32> &ivector_times,
+    ComputationRequest *request) {
+  request->inputs.reserve(3);
+  request->inputs.clear();
+  request->inputs.resize(3);
+  request->inputs[0].name = "input";
+  request->inputs[0].has_deriv = false;
+  request->inputs[1].name = "inputmed";
+  request->inputs[1].has_deriv = false;
+  request->inputs[2].name = "inputsmall";
+  request->inputs[2].has_deriv = false;
+  request->outputs.clear();
+  request->outputs.resize(3);
+  request->outputs[0].name = "output";
+  request->outputs[0].has_deriv = false;
+  request->outputs[1].name = "outputmed";
+  request->outputs[1].has_deriv = false;
+  request->outputs[2].name = "outputsmall";
+  request->outputs[2].has_deriv = false;
+
+  // in the computation request the 'n' indexes (the sequence/utterance indexes)
+  // have the larger stride than 't', although this is opposite to the way it's
+  // done inside the computation.  This is for user convenience where it may be
+  // easier to deal with submatrixes per sequence.
+  for (int32 n = 0; n < num_sequences; n++) {
+    int32 x = 0;
+    for (int32 t = begin_input_t; t < end_input_t; t++) {
+      request->inputs[0].indexes.push_back(Index(n, t, x));
+      request->inputs[1].indexes.push_back(Index(n, t, x));
+      request->inputs[2].indexes.push_back(Index(n, t, x));
+    }
+    for (int32 t = begin_output_t;
+         t < end_output_t;
+         t += frame_subsampling_factor) {
+      request->outputs[0].indexes.push_back(Index(n, t, x));
+      request->outputs[1].indexes.push_back(Index(n, t, x));
+      request->outputs[2].indexes.push_back(Index(n, t, x));
+    }
+  }
+}
+
 
 void CreateLoopedComputationRequest(const Nnet &nnet,
                                     int32 chunk_size,
@@ -172,6 +218,7 @@ void CreateLoopedComputationRequest(const Nnet &nnet,
                                     ComputationRequest *request2,
                                     ComputationRequest *request3) {
   bool has_ivector = (nnet.InputDim("ivector") > 0);
+  bool has_inputsmall = (nnet.InputDim("inputsmall") > 0);
   KALDI_ASSERT(chunk_size % frame_subsampling_factor == 0 &&
                chunk_size % nnet.Modulus() == 0 &&
                chunk_size % ivector_period == 0);
@@ -206,28 +253,49 @@ void CreateLoopedComputationRequest(const Nnet &nnet,
         ivector_times3.insert(ivector_t);
     }
   }
+  if (!has_inputsmall) {
+    CreateComputationRequestInternal(
+        chunk1_input_begin_t, chunk1_input_end_t,
+        0, chunk_size,
+        num_sequences, frame_subsampling_factor,
+        ivector_times1,
+        request1);
 
-  CreateComputationRequestInternal(
-      chunk1_input_begin_t, chunk1_input_end_t,
-      0, chunk_size,
-      num_sequences, frame_subsampling_factor,
-      ivector_times1,
-      request1);
+    CreateComputationRequestInternal(
+        chunk2_input_begin_t, chunk2_input_end_t,
+        chunk_size, chunk_size * 2,
+        num_sequences, frame_subsampling_factor,
+        ivector_times2,
+        request2);
 
-  CreateComputationRequestInternal(
-      chunk2_input_begin_t, chunk2_input_end_t,
-      chunk_size, chunk_size * 2,
-      num_sequences, frame_subsampling_factor,
-      ivector_times2,
-      request2);
+    CreateComputationRequestInternal(
+        chunk3_input_begin_t, chunk3_input_end_t,
+        chunk_size * 2, chunk_size * 3,
+        num_sequences, frame_subsampling_factor,
+        ivector_times3,
+        request3);
+  } else {
+    CreateComputationRequestInternalAdapt(
+        chunk1_input_begin_t, chunk1_input_end_t,
+        0, chunk_size,
+        num_sequences, frame_subsampling_factor,
+        ivector_times1,
+        request1);
 
-  CreateComputationRequestInternal(
-      chunk3_input_begin_t, chunk3_input_end_t,
-      chunk_size * 2, chunk_size * 3,
-      num_sequences, frame_subsampling_factor,
-      ivector_times3,
-      request3);
+    CreateComputationRequestInternalAdapt(
+        chunk2_input_begin_t, chunk2_input_end_t,
+        chunk_size, chunk_size * 2,
+        num_sequences, frame_subsampling_factor,
+        ivector_times2,
+        request2);
 
+    CreateComputationRequestInternalAdapt(
+        chunk3_input_begin_t, chunk3_input_end_t,
+        chunk_size * 2, chunk_size * 3,
+        num_sequences, frame_subsampling_factor,
+        ivector_times3,
+        request3);
+  }
 }
 
 
