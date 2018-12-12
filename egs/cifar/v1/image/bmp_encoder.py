@@ -2,6 +2,7 @@
 
 # Copyright 2017 Yiwen Shao
 # Apache 2.0
+from builtins import range
 import sys
 import struct
 

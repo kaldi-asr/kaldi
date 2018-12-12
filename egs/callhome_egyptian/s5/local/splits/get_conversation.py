@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
+from builtins import str
 import os
 import re
 
@@ -37,14 +39,14 @@ for root, _, files in os.walk(transdir):
         evaltest[pathComponents[12]] = numberOfConversations
         testConv = testConv + numberOfConversations
 
-print "==============Train==============="
-print train
-print "Total Conversations in train = " + str(trainConv)
-print "==============Dev==============="
-print devtest
-print "Total Conversations in dev = " + str(devConv)
-print "==============Test==============="
-print evaltest
-print "Total Conversations in test = " + str(testConv)
-print "================================="
-print "Total Conversations in Corpus = " + str(trainConv + devConv + testConv)
+print("==============Train===============")
+print(train)
+print("Total Conversations in train = " + str(trainConv))
+print("==============Dev===============")
+print(devtest)
+print("Total Conversations in dev = " + str(devConv))
+print("==============Test===============")
+print(evaltest)
+print("Total Conversations in test = " + str(testConv))
+print("=================================")
+print("Total Conversations in Corpus = " + str(trainConv + devConv + testConv))

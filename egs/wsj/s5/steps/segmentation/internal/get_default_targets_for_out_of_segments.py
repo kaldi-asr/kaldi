@@ -14,7 +14,9 @@ the out-of-segment regions are assumed as silence. But depending, on
 the application and data, this could be [ 0 0 0 ] or [ 0 0 1 ] or
 something with fractional weights.
 """
+from __future__ import division
 
+from past.utils import old_div
 import argparse
 import logging
 import numpy as np
@@ -131,7 +133,7 @@ def run(args):
             and np.shape(default_targets)[1] == 3)
 
     with common_lib.smart_open(args.out_targets_ark, 'w') as f:
-        for reco, utts in reco2utt.iteritems():
+        for reco, utts in reco2utt.items():
             reco_mat = np.repeat(default_targets, reco2num_frames[reco],
                                  axis=0)
             utts.sort(key=lambda x: segments[x][1])   # sort on start time
@@ -141,8 +143,8 @@ def run(args):
                     continue
                 segment = segments[utt]
 
-                start_frame = int(segment[1] / args.frame_shift)
-                end_frame = int(segment[2] / args.frame_shift)
+                start_frame = int(old_div(segment[1], args.frame_shift))
+                end_frame = int(old_div(segment[2], args.frame_shift))
                 num_frames = end_frame - start_frame
 
                 if end_frame > reco2num_frames[reco]:

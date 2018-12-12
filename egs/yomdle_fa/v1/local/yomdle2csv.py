@@ -18,7 +18,10 @@ CSV Format Example
 ID,name,col1,row1,col2,row2,col3,row3,col4,row4,confidence,truth,pgrot,bbrot,qual,script,lang
 0,chinese_scanned_books_0001_0.png,99,41,99,14,754,14,754,41,100,凡我的邻人说是好的，有一大部分在我灵魂中却,0,0.0,0,,zh-cn
 """
+from __future__ import print_function
 
+from builtins import str
+from builtins import object
 import logging
 import os
 import sys
@@ -55,7 +58,7 @@ def npbox2string(npar):
 # cv2.minAreaRect() returns a Box2D structure which contains following detals - ( center (x,y), (width, height), angle of rotation )
 # Get 4 corners of the rectangle using cv2.boxPoints()
 
-class GEDI2CSV():
+class GEDI2CSV(object):
 
     """ Initialize the extractor"""
     def __init__(self, logger, args):

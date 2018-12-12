@@ -7,6 +7,7 @@
 or NA New Text Supplement Corpus (LDC98T30)."""
 
 from __future__ import print_function
+from builtins import str
 import argparse
 import gzip
 import logging
@@ -85,7 +86,7 @@ def process_file_lines(lines, out_file_handle):
                 continue
             for para in art.find_all('p'):
                 assert para.name == 'p'
-                text = ' '.join([unicode(x).strip() for x in para.contents])
+                text = ' '.join([str(x).strip() for x in para.contents])
                 normalized_text = normalize_text(text)
                 out_file_handle.write("{0}\n".format(
                     normalized_text.encode('ascii')))

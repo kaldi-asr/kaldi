@@ -7,6 +7,9 @@
 # This script is specific to my partitions and needs to be made more general
 # or modified
 
+from __future__ import print_function
+from builtins import str
+from builtins import range
 import subprocess
 import os
 
@@ -58,8 +61,8 @@ def get_best_wer(decode_dir):
     return best_iteration, best_wer
 
 for decode_dir in decode_directories[:6]:
-    print decode_dir
-    print get_best_wer(decode_dir)
+    print(decode_dir)
+    print(get_best_wer(decode_dir))
 
 # Separate processing for bMMI stuff
 best_wer = 100.0
@@ -73,8 +76,8 @@ for decode_dir in decode_directories[6:10]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -87,8 +90,8 @@ for decode_dir in decode_directories[10:14]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -101,8 +104,8 @@ for decode_dir in decode_directories[14:18]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -115,8 +118,8 @@ for decode_dir in decode_directories[18:22]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -129,8 +132,8 @@ for decode_dir in decode_directories[22:26]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -143,5 +146,5 @@ for decode_dir in decode_directories[26:]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))

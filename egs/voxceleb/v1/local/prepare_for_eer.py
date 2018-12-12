@@ -7,6 +7,7 @@
 #
 # Given a trials and scores file, this script
 # prepares input for the binary compute-eer.
+from __future__ import print_function
 import sys
 trials = open(sys.argv[1], 'r').readlines()
 scores = open(sys.argv[2], 'r').readlines()
@@ -16,4 +17,4 @@ for line in trials:
   spkrutt2target[spkr+utt]=target
 for line in scores:
   spkr, utt, score = line.strip().split()
-  print(score, spkrutt2target[spkr+utt])
+  print((score, spkrutt2target[spkr+utt]))

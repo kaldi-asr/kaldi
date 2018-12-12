@@ -12,6 +12,8 @@ e.g.: align_ctm_ref.py --hyp-format=CTM --ref=data/train/text --hyp=foo/ctm
 """
 
 from __future__ import print_function
+from builtins import str
+from builtins import range
 import argparse
 import logging
 import sys

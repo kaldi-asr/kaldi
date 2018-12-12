@@ -5,6 +5,9 @@
 # Apache 2.0
 
 from __future__ import print_function
+from builtins import zip
+from builtins import str
+from builtins import range
 import sys, operator, argparse
 
 # Modify the CTM to include for each token the information from Levenshtein

@@ -6,6 +6,7 @@
 # convert acronyms in swbd transcript to fisher convention
 # accoring to first two columns in the input acronyms mapping
 
+from builtins import range
 import argparse,re
 __author__ = 'Minhua Wu'
  
@@ -49,7 +50,7 @@ for line in fin_trans:
                   
     # Second pass mapping (not mapping 'i' and 'I')
     for i in range(len(items)):
-        if items[i] in dict_acronym_noi.keys():
+        if items[i] in list(dict_acronym_noi.keys()):
             items[i] = dict_acronym_noi[items[i]]
     sentence = ' '.join(items[1:])
     fout_trans.write(items[0]+ ' ' +sentence.lower() +'\n')

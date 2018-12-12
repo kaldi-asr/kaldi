@@ -9,6 +9,8 @@
 #
 # This file is meant to be invoked by make_bn.sh.
 
+from __future__ import print_function
+from builtins import str
 import sys, re, os
 
 def is_speech(line):
@@ -37,7 +39,7 @@ def extract_speech(line):
   m = re.search('(?<=E_time=)\d+.\d+', line)
   end = float(m.group(0))
   if start > end:
-    print "Skipping annotation where end time is before start time:", line
+    print("Skipping annotation where end time is before start time:", line)
   return start, end
 
 def extract_other_type2(line):
@@ -46,7 +48,7 @@ def extract_other_type2(line):
   m = re.search('(?<=E_time=)\d+.\d+', line)
   end = float(m.group(0))
   if start > end:
-    print "Skipping annotation where end time is before start time:", line
+    print("Skipping annotation where end time is before start time:", line)
   return start, end
 
 def extract_music(line):
@@ -60,7 +62,7 @@ def extract_music(line):
   elif level == "O":
     is_on = False
   else:
-    print "Encountered bad token on line:", line
+    print("Encountered bad token on line:", line)
     sys.exit()
   return time, is_on
 
@@ -75,7 +77,7 @@ def extract_other_type1(line):
   elif level == "O":
     is_on = False
   else:
-    print "Encountered bad token on line:", line
+    print("Encountered bad token on line:", line)
     sys.exit()
   return time, is_on
 

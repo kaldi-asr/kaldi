@@ -5,6 +5,12 @@
 # Apache 2.0
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import next
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import argparse
 import copy
 import logging
@@ -285,7 +291,7 @@ def compute_segment_cores(split_lines_of_utt):
                 line_is_in_segment_core[i] = True
 
     # extend each proto-segment backwards as far as we can:
-    for i in reversed(range(0, num_lines - 1)):
+    for i in reversed(list(range(0, num_lines - 1))):
         if line_is_in_segment_core[i + 1] and not line_is_in_segment_core[i]:
             edit_type = split_lines_of_utt[i][7]
             if (not is_tainted(split_lines_of_utt[i])
@@ -332,15 +338,15 @@ class SegmentStats(object):
 
     def bad_proportion(self):
         assert self.total_length > 0
-        proportion = float(self.silence_length + self.tainted_nonsilence_length
-                           + self.incorrect_words_length) / self.total_length
+        proportion = old_div(float(self.silence_length + self.tainted_nonsilence_length
+                           + self.incorrect_words_length), self.total_length)
         if proportion > 1.00005:
             raise RuntimeError("Error in segment stats {0}".format(self))
         return proportion
 
     def incorrect_proportion(self):
         assert self.total_length > 0
-        proportion = float(self.incorrect_words_length) / self.total_length
+        proportion = old_div(float(self.incorrect_words_length), self.total_length)
         if proportion > 1.00005:
             raise RuntimeError("Error in segment stats {0}".format(self))
         return proportion
@@ -816,7 +822,7 @@ class Segment(object):
                   and this_duration > max_edge_non_scored_length):
                 truncated_duration = max_edge_non_scored_length
             if truncated_duration is not None:
-                keep_proportion = truncated_duration / this_duration
+                keep_proportion = old_div(truncated_duration, this_duration)
                 if b:
                     self.start_keep_proportion = keep_proportion
                 else:
@@ -869,8 +875,7 @@ class Segment(object):
         #        a * (length_with_truncation - length_with_relaxed_boundaries)
         # -> a = (length_cutoff - length_with_relaxed_boundaries)
         #        / (length_with_truncation - length_with_relaxed_boundaries)
-        a = ((length_cutoff - length_with_relaxed_boundaries)
-             / (length_with_truncation - length_with_relaxed_boundaries))
+        a = (old_div((length_cutoff - length_with_relaxed_boundaries), (length_with_truncation - length_with_relaxed_boundaries)))
         if a < 0.0 or a > 1.0:
             # TODO(vimal): Should this be an error?
             _global_logger.warn("bad 'a' value = %.4f", a)
@@ -1019,7 +1024,7 @@ class Segment(object):
         if is_tainted(last_split_line):
             last_duration = float(last_split_line[3])
             junk_duration += last_duration * self.end_keep_proportion
-        return junk_duration / self.length()
+        return old_div(junk_duration, self.length())
 
     def get_junk_duration(self):
         """Returns duration of junk"""
@@ -1756,7 +1761,7 @@ def time_to_string(time, frame_length):
     """ Gives time in string form as an exact multiple of the frame-length,
     e.g. 0.01 (after rounding).
     """
-    n = round(time / frame_length)
+    n = round(old_div(time, frame_length))
     assert n >= 0
     # The next function call will remove trailing zeros while printing it, so
     # that e.g. 0.01 will be printed as 0.01 and not 0.0099999999999999.  It
@@ -1873,7 +1878,7 @@ class WordStats(object):
         # We'll reverse sort on badness^3 * total_count = pair[1]^3 /
         # pair[0]^2.
         for key, pair in sorted(
-                self.word_count_pair.items(),
+                list(self.word_count_pair.items()),
                 key=lambda item: (item[1][1] ** 3) * 1.0 / (item[1][0] ** 2),
                 reverse=True):
             badness = pair[1] * 1.0 / pair[0]

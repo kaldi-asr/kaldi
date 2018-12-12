@@ -2,6 +2,7 @@
 # Copyright 2014  Johns Hopkins University (Authors: Vijayaditya Peddinti).  Apache 2.0.
 # script to read rir files from air database
 
+from builtins import str
 import sys, numpy as np, argparse, scipy.signal as signal, os.path, glob, scipy.io, scipy.io.wavfile
 
 def read_raw(input_filename, precision = np.float32):

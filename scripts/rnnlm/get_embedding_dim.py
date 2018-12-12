@@ -3,6 +3,8 @@
 # Copyright  2017  Johns Hopkins University (author: Daniel Povey)
 # License: Apache 2.0.
 
+from __future__ import print_function
+from builtins import str
 import os
 import argparse
 import subprocess

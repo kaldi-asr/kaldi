@@ -3,6 +3,8 @@
 # Copyright 2017  Vimal Manohar
 # Apache 2.0
 
+from __future__ import division
+from past.utils import old_div
 import argparse
 import sys
 sys.path.insert(0, 'steps')
@@ -56,16 +58,16 @@ def run(args):
                                "".format(priors))
 
     priors_sum = sum(priors[0])
-    sil_prior = priors[0][0] / priors_sum
-    speech_prior = priors[0][1] / priors_sum
-    garbage_prior = priors[0][2] / priors_sum
+    sil_prior = old_div(priors[0][0], priors_sum)
+    speech_prior = old_div(priors[0][1], priors_sum)
+    garbage_prior = old_div(priors[0][2], priors_sum)
 
-    transform_mat = [[args.sil_scale / sil_prior,
-                      args.speech_in_sil_weight / speech_prior,
-                      args.garbage_in_sil_weight / garbage_prior],
-                     [args.sil_in_speech_weight / sil_prior,
-                      1.0 / speech_prior,
-                      args.garbage_in_speech_weight / garbage_prior]]
+    transform_mat = [[old_div(args.sil_scale, sil_prior),
+                      old_div(args.speech_in_sil_weight, speech_prior),
+                      old_div(args.garbage_in_sil_weight, garbage_prior)],
+                     [old_div(args.sil_in_speech_weight, sil_prior),
+                      old_div(1.0, speech_prior),
+                      old_div(args.garbage_in_speech_weight, garbage_prior)]]
 
     common_lib.write_matrix_ascii(sys.stdout, transform_mat)
 

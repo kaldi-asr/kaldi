@@ -7,6 +7,8 @@
 See _self_test() for examples of how the functions work.
 """
 
+from builtins import next
+from builtins import range
 import logging
 
 logger = logging.getLogger(__name__)

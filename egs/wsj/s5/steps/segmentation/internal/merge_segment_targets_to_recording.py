@@ -9,7 +9,10 @@ segments into targets matrix for whole recording. The frames that are not
 in any of the segments are assigned the default targets vector, specified by
 the option --default-targets or [ 0 0 0 ] if unspecified.
 """
+from __future__ import division
 
+from builtins import range
+from past.utils import old_div
 import argparse
 import logging
 import numpy as np
@@ -158,7 +161,7 @@ def run(args):
     num_reco = 0
 
     with common_lib.smart_open(args.out_targets_ark, 'w') as fh:
-        for reco, utts in reco2utt.iteritems():
+        for reco, utts in reco2utt.items():
             # Read a recording and the list of its utterances from the
             # reco2utt dictionary
             reco_mat = np.repeat(default_targets, reco2num_frames[reco],
@@ -193,8 +196,8 @@ def run(args):
                             'stderr = {stderr}'.format(cmd=cmd, status=-p.returncode,
                                                        stderr=stderr))
 
-                start_frame = int(segment[1] / args.frame_shift + 0.5)
-                end_frame = int(segment[2] / args.frame_shift + 0.5)
+                start_frame = int(old_div(segment[1], args.frame_shift) + 0.5)
+                end_frame = int(old_div(segment[2], args.frame_shift) + 0.5)
                 num_frames = end_frame - start_frame
 
                 if num_frames <= 0:
@@ -243,7 +246,7 @@ def run(args):
                     # triangular window with a weight of 1 at the start/end of
                     # overlap and 0 at the end/start of the segment
                     for n in range(0, end_frame_accounted - start_frame):
-                        w = float(n) / float(end_frame_accounted - start_frame)
+                        w = old_div(float(n), float(end_frame_accounted - start_frame))
                         reco_mat[n + start_frame, :] = (
                             reco_mat[n + start_frame, :] * (1.0 - w)
                             + mat[n, :] * w)

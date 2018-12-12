@@ -4,6 +4,11 @@
 # Apache 2.0.
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import sys
 import argparse
 import math
@@ -44,7 +49,7 @@ if args.verbose >= 1:
     print(' '.join(sys.argv), file = sys.stderr)
 
 
-class HistoryState:
+class HistoryState(object):
     def __init__(self):
         # note: neither backoff_prob nor the floats
         # in word_to_prob are in log space.
@@ -56,7 +61,7 @@ class HistoryState:
         self.word_to_prob = dict()
 
 
-class ArpaModel:
+class ArpaModel(object):
     def __init__(self):
         # self.orders is indexed by history-length [i.e. 0 for unigram,
         # 1 for bigram and so on], and is then a dict indexed
@@ -225,7 +230,7 @@ class ArpaModel:
         # we don't iterate over bigram histories because we covered them all above;
         # that's why we start 'n' from 2 below instead of from 0.
         for n in range(2, len(self.orders)):
-            for hist in self.orders[n].keys():
+            for hist in list(self.orders[n].keys()):
                 # note: hist is a tuple of strings.
                 assert not hist in hist_to_state
                 hist_to_state[hist] = len(state_to_hist)
@@ -289,7 +294,7 @@ class ArpaModel:
                 normalization_stats[hist_len][1] += \
                   sum([ self.GetProb(hist, word) for word in bigram_map[most_recent_word]])
 
-                for word, prob in hist_state.word_to_prob.items():
+                for word, prob in list(hist_state.word_to_prob.items()):
                     cost = -math.log(prob)
                     if word in bigram_map[most_recent_word]:
                         num_ngrams_allowed += 1
@@ -325,7 +330,7 @@ class ArpaModel:
         if args.verbose >= 1:
             for hist_len in range(1, len(self.orders)):
                 num_states = normalization_stats[hist_len][0]
-                avg_prob_sum = normalization_stats[hist_len][1] / num_states if num_states > 0 else 0.0
+                avg_prob_sum = old_div(normalization_stats[hist_len][1], num_states) if num_states > 0 else 0.0
                 print("{0}: for {1}-gram states, over {2} states the average sum of "
                       "probs was {3} (would be 1.0 if properly normalized).".format(
                           sys.argv[0], hist_len + 1, num_states, avg_prob_sum),

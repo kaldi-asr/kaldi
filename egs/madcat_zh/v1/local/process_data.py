@@ -12,6 +12,7 @@
       images.scp file: 000_a01-000u-00 data/local/lines/a01/a01-000u/a01-000u-00.png
 """
 
+from builtins import str
 import argparse
 import os
 import sys

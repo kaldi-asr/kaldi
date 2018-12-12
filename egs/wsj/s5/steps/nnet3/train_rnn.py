@@ -8,6 +8,10 @@
 """
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import argparse
 import logging
 import os
@@ -369,8 +373,7 @@ def train(args, run_opts):
     # avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
     num_archives_to_process = int(args.num_epochs * num_archives)
     num_archives_processed = 0
-    num_iters = ((num_archives_to_process * 2)
-                 / (args.num_jobs_initial + args.num_jobs_final))
+    num_iters = (old_div((num_archives_to_process * 2), (args.num_jobs_initial + args.num_jobs_final)))
 
     # If do_final_combination is True, compute the set of models_to_combine.
     # Otherwise, models_to_combine will be none.
@@ -446,7 +449,7 @@ def train(args, run_opts):
                 learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
-                    float(num_archives_processed) / num_archives_to_process,
+                    old_div(float(num_archives_processed), num_archives_to_process),
                     iter),
                 train_opts=' '.join(args.train_opts),
                 shrinkage_value=shrinkage_value,

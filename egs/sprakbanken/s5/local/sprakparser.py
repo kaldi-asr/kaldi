@@ -22,11 +22,14 @@ Created on Jan 18, 2013
 
 
 '''
+from __future__ import print_function
 
+from builtins import str
+from builtins import object
 import codecs
 import os
 
-class Session:
+class Session(object):
     
     delimit = ">-<"
         

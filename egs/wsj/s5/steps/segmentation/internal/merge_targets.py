@@ -17,6 +17,9 @@ option.
 """
 
 from __future__ import print_function
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import argparse
 import logging
 import numpy as np
@@ -77,7 +80,7 @@ def get_args():
     if args.weights != "":
         args.weights = [float(x) for x in args.weights.split(",")]
         weights_sum = sum(args.weights)
-        args.weights = [x / weights_sum for x in args.weights]
+        args.weights = [old_div(x, weights_sum) for x in args.weights]
     else:
         args.weights = None
 
@@ -110,7 +113,7 @@ def should_remove_frame(row, dim):
                                      # source[2] = [ 0 0 0 ]
     """
     assert len(row) % dim == 0
-    num_sources = len(row) / dim
+    num_sources = old_div(len(row), dim)
 
     max_idx = np.argmax(row)
     max_val = row[max_idx]

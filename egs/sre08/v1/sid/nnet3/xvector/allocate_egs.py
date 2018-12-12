@@ -65,6 +65,11 @@
 
 # We're using python 3.x style print but want it to work in python 2.x.
 from __future__ import print_function
+from __future__ import division
+from builtins import map
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import re, os, argparse, sys, math, warnings, random
 
 def get_args():
@@ -166,7 +171,7 @@ def get_labels(utt2int_filename):
             spk2utt[spk] = [utt]
         else:
             spk2utt[spk].append(utt)
-    spks = spk2utt.keys()
+    spks = list(spk2utt.keys())
     f.close()
     return spks, spk2utt, utt2spk
     # Done utt2int
@@ -196,9 +201,9 @@ def deterministic_chunk_length(archive_id, num_archives, min_frames_per_chunk, m
   elif num_archives == 1:
     return int(max_frames_per_chunk);
   else:
-    return int(math.pow(float(max_frames_per_chunk) /
-                     min_frames_per_chunk, float(archive_id) /
-                     (num_archives-1)) * min_frames_per_chunk + 0.5)
+    return int(math.pow(old_div(float(max_frames_per_chunk),
+                     min_frames_per_chunk), old_div(float(archive_id),
+                     (num_archives-1))) * min_frames_per_chunk + 0.5)
 
 
 
@@ -247,7 +252,7 @@ def main():
             length = deterministic_chunk_length(archive_index, args.num_archives, args.min_frames_per_chunk, args.max_frames_per_chunk);
         print("{0} {1}".format(archive_index + 1, length), file=info_f)
         archive_chunk_lengths.append(length)
-        this_num_egs = int((args.frames_per_iter / length) + 1)
+        this_num_egs = int((old_div(args.frames_per_iter, length)) + 1)
         this_egs = [ ] # A 2-tuple of the form (utt-id, start-frame)
         spkrs = args.num_repeats * list(spk2utt.keys())
         random.shuffle(spkrs)

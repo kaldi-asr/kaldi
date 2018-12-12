@@ -11,7 +11,11 @@
 
     eg. local/make_features.py data/train --feat-dim 40
 """
+from __future__ import division
 
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import argparse
 import os
 import sys
@@ -43,7 +47,7 @@ def write_kaldi_matrix(file_handle, matrix, key):
         if num_cols != len(matrix[row_index]):
             raise Exception("All the rows of a matrix are expected to "
                             "have the same length")
-        file_handle.write(" ".join(map(lambda x: str(x), matrix[row_index])))
+        file_handle.write(" ".join([str(x) for x in matrix[row_index]]))
         if row_index != num_rows - 1:
             file_handle.write("\n")
     file_handle.write(" ]\n")
@@ -58,7 +62,7 @@ def get_scaled_image(im):
         sx = im.shape[1]
         sy = im.shape[0]
 
-    scale = (1.0 * scale_size) / sy
+    scale = old_div((1.0 * scale_size), sy)
     nx = int(scale_size)
     ny = int(scale * sx)
     im = misc.imresize(im, (nx, ny))

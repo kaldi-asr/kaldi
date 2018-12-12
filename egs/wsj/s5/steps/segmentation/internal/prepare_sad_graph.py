@@ -10,6 +10,9 @@ can be file or "-" for stdout.
 """
 
 from __future__ import print_function
+from __future__ import division
+from builtins import range
+from past.utils import old_div
 import argparse
 import logging
 import math
@@ -68,11 +71,11 @@ def get_args():
                         help="Output graph")
     args = parser.parse_args()
 
-    args.min_states_silence = int(args.min_silence_duration / args.frame_shift
+    args.min_states_silence = int(old_div(args.min_silence_duration, args.frame_shift)
                                   + 0.5)
-    args.min_states_speech = int(args.min_speech_duration / args.frame_shift
+    args.min_states_speech = int(old_div(args.min_speech_duration, args.frame_shift)
                                  + 0.5)
-    args.max_states_speech = int(args.max_speech_duration / args.frame_shift
+    args.max_states_speech = int(old_div(args.max_speech_duration, args.frame_shift)
                                  + 0.5)
 
     return args

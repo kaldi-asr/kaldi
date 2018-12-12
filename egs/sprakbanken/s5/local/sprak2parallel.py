@@ -16,6 +16,7 @@
 # limitations under the License.
 '''
 
+from builtins import str
 import subprocess                                                                                                     
 import sys                                                                                                            
 import codecs                                                                                                         

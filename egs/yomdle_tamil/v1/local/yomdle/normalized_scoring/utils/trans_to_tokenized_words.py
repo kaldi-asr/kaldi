@@ -6,7 +6,10 @@
         " They have come ! " he said reverently , gripping his
     Eg. trans_to_tokenized_words.py <input-file> <output-file>
 """
+from __future__ import print_function
 
+from builtins import chr
+from builtins import range
 import unicodedata
 import sys
 from snor import SnorIter

@@ -9,6 +9,7 @@
 # utt2spk - matches the image id's with the speaker/writer names
 # images.scp - matches the image is's with the actual image file
 
+from builtins import str
 import argparse
 import os
 import random

@@ -6,7 +6,11 @@
 
 """ This script prepares the training and test data for CIFAR-10 or CIFAR-100.
 """
+from __future__ import division
 
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import argparse
 import os
 import sys
@@ -37,7 +41,7 @@ def load_cifar10_data_batch(datafile):
         for i in range(num_images_in_batch):
             label = ord(fh.read(1))
             bin_img = fh.read(C * H * W)
-            img = [[[ord(byte) / 255.0 for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
+            img = [[[old_div(ord(byte), 255.0) for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
                   for row in range(H)] for channel in range(C)]
             labels += [label]
             data += [img]
@@ -52,7 +56,7 @@ def load_cifar100_data_batch(datafile, num_images_in_batch):
             coarse_label = ord(fh.read(1))
             fine_label = ord(fh.read(1))
             bin_img = fh.read(C * H * W)
-            img = [[[ord(byte) / 255.0 for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
+            img = [[[old_div(ord(byte), 255.0) for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
                   for row in range(H)] for channel in range(C)]
             fine_labels += [fine_label]
             coarse_labels += [coarse_label]
@@ -80,7 +84,7 @@ def write_kaldi_matrix(file_handle, matrix, key):
         if num_cols != len(matrix[row_index]):
             raise Exception("All the rows of a matrix are expected to "
                             "have the same length")
-        file_handle.write(" ".join(map(lambda x: str(x), matrix[row_index])))
+        file_handle.write(" ".join([str(x) for x in matrix[row_index]]))
         if row_index != num_rows - 1:
             file_handle.write("\n")
     file_handle.write(" ]\n")

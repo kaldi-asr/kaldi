@@ -10,6 +10,13 @@ commonly used in many kaldi python scripts.
 """
 
 from __future__ import print_function
+from __future__ import division
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from past.utils import old_div
+from builtins import object
 import argparse
 import logging
 import math
@@ -19,7 +26,7 @@ import sys
 import threading
 
 try:
-    import thread as thread_module
+    import _thread as thread_module
 except:
     import _thread as thread_module
 
@@ -316,7 +323,7 @@ def read_kaldi_matrix(matrix_file):
     'matrix_file' and stores it as a list of rows, where each row is a list.
     """
     try:
-        lines = map(lambda x: x.split(), open(matrix_file).readlines())
+        lines = [x.split() for x in open(matrix_file).readlines()]
         first_field = lines[0][0]
         last_field = lines[-1][-1]
         lines[0] = lines[0][1:]
@@ -326,7 +333,7 @@ def read_kaldi_matrix(matrix_file):
                 "Kaldi matrix file has incorrect format, "
                 "only text format matrix files can be read by this script")
         for i in range(len(lines)):
-            lines[i] = map(lambda x: int(float(x)), lines[i])
+            lines[i] = [int(float(x)) for x in lines[i]]
         return lines
     except IOError:
         raise Exception("Error while reading the kaldi matrix file "
@@ -348,7 +355,7 @@ def write_kaldi_matrix(output_file, matrix):
             if num_cols != len(matrix[row_index]):
                 raise Exception("All the rows of a matrix are expected to "
                                 "have the same length")
-            f.write(" ".join(map(lambda x: str(x), matrix[row_index])))
+            f.write(" ".join([str(x) for x in matrix[row_index]]))
             if row_index != num_rows - 1:
                 f.write("\n")
         f.write(" ]")
@@ -494,11 +501,11 @@ def compute_lifter_coeffs(lifter, dim):
 def compute_idct_matrix(K, N, cepstral_lifter=0):
     matrix = [[0] * K for i in range(N)]
     # normalizer for X_0
-    normalizer = math.sqrt(1.0 / float(N))
+    normalizer = math.sqrt(old_div(1.0, float(N)))
     for j in range(0, N):
         matrix[j][0] = normalizer
     # normalizer for other elements
-    normalizer = math.sqrt(2.0 / float(N))
+    normalizer = math.sqrt(old_div(2.0, float(N)))
     for k in range(1, K):
         for n in range(0, N):
             matrix[n][
@@ -508,7 +515,7 @@ def compute_idct_matrix(K, N, cepstral_lifter=0):
         lifter_coeffs = compute_lifter_coeffs(cepstral_lifter, K)
         for k in range(0, K):
             for n in range(0, N):
-                matrix[n][k] = matrix[n][k] / lifter_coeffs[k]
+                matrix[n][k] = old_div(matrix[n][k], lifter_coeffs[k])
 
     return matrix
 

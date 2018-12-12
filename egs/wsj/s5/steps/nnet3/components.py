@@ -2,6 +2,7 @@
 # Note: this file is part of some nnet3 config-creation tools that are now deprecated.
 
 from __future__ import print_function
+from builtins import str
 import os
 import argparse
 import sys
@@ -84,7 +85,7 @@ def AddBlockAffineLayer(config_lines, name, input, output_dim, num_blocks):
 def AddPermuteLayer(config_lines, name, input, column_map):
     components = config_lines['components']
     component_nodes = config_lines['component-nodes']
-    permute_indexes = ",".join(map(lambda x: str(x), column_map))
+    permute_indexes = ",".join([str(x) for x in column_map])
     components.append('component name={0}_permute type=PermuteComponent column-map={1}'.format(name, permute_indexes))
     component_nodes.append('component-node name={0}_permute component={0}_permute input={1}'.format(name, input['descriptor']))
 

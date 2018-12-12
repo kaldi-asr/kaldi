@@ -25,6 +25,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from builtins import zip
+from builtins import range
+from builtins import object
 import sys
 
 import inspect
@@ -218,7 +221,7 @@ class RnnlmModel(object):
                                       config.max_grad_norm)
     optimizer = tf.train.GradientDescentOptimizer(self._lr)
     self._train_op = optimizer.apply_gradients(
-        zip(grads, tvars),
+        list(zip(grads, tvars)),
         global_step=tf.contrib.framework.get_or_create_global_step())
 
     self._new_lr = tf.placeholder(

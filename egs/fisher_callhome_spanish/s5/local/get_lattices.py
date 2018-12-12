@@ -5,6 +5,8 @@
 # The list of files in the conversations for which 1 best output has to be extracted
 # words.txt
 
+from __future__ import print_function
+from builtins import str
 import os
 import sys
 import subprocess
@@ -76,7 +78,7 @@ for item in fileList:
                 # Concatenate lattices
                 mergedTranslation = latticeConcatenate(mergedTranslation, tmp)
 
-        print mergedTranslation
+        print(mergedTranslation)
         if mergedTranslation != "":
 
             # Sanjeev's Recipe : Remove epsilons and topo sort
@@ -95,7 +97,7 @@ for item in fileList:
             # file so it can be checked later
             proc = subprocess.Popen("/export/a04/gkumar/moses/mosesdecoder/checkplf < " + finalPLFFile + " 2>&1 | awk 'FNR == 2 {print}'", stdout=subprocess.PIPE, shell=True)
             line = proc.stdout.readline()
-            print line + " " + str(lineNo)
+            print(line + " " + str(lineNo))
             if line.strip() != "PLF format appears to be correct.":
                 os.system("cp " + finalFST + " " + invalidplfdir + "/" + timeInfo[0])
                 invalidPLF.write(invalidplfdir + "/" + timeInfo[0] + "\n")

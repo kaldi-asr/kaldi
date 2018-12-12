@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+from builtins import str
+from builtins import range
 import re
 import os
 import argparse
@@ -56,7 +58,7 @@ if __name__ == "__main__":
         if (loss[max_index] - loss[i]) <= args.difference_threshold:
             accepted_models.append(i+1)
 
-    model_list = " ".join(map(lambda x: str(x), accepted_models))
+    model_list = " ".join([str(x) for x in accepted_models])
     print(model_list)
 
     if len(accepted_models) != args.num_models:

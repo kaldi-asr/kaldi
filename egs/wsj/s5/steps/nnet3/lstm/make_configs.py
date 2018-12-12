@@ -3,6 +3,8 @@
 # This script is deprecated, please use ../xconfig_to_configs.py
 
 from __future__ import print_function
+from builtins import str
+from builtins import range
 import os
 import argparse
 import sys
@@ -181,7 +183,7 @@ def ParseSpliceString(splice_indexes, label_delay=None):
     splice_array = []
     try:
         for i in range(len(split1)):
-            indexes = map(lambda x: int(x), split1[i].strip().split(","))
+            indexes = [int(x) for x in split1[i].strip().split(",")]
             print(indexes)
             if len(indexes) < 1:
                 raise ValueError("invalid --splice-indexes argument, too-short element: "
@@ -214,7 +216,7 @@ def ParseLstmDelayString(lstm_delay):
     lstm_delay_array = []
     try:
         for i in range(len(split1)):
-            indexes = map(lambda x: int(x), split1[i].strip().lstrip('[').rstrip(']').strip().split(","))
+            indexes = [int(x) for x in split1[i].strip().lstrip('[').rstrip(']').strip().split(",")]
             if len(indexes) < 1:
                 raise ValueError("invalid --lstm-delay argument, too-short element: "
                                 + lstm_delay)
@@ -317,7 +319,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
     # printing out the configs
     # init.config used to train lda-mllt train
-    for key in config_files.keys():
+    for key in list(config_files.keys()):
         PrintConfig(key, config_files[key])
 
 

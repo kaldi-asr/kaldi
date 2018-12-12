@@ -3,6 +3,9 @@
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
+from __future__ import division
+from builtins import map
+from past.utils import old_div
 import sys, math
 
 from optparse import OptionParser
@@ -82,7 +85,7 @@ if o.lattice_depth:
   depths = dict()
   for l in open(o.lattice_depth):
     utt,d = l.split(' ',1)
-    depths[utt] = map(int,d.split())
+    depths[utt] = list(map(int,d.split()))
 
 # Load the 'word_categories' mapping for categorical input features derived from 'lang/words.txt',
 wrd_to_cat = [ l.split() for l in open(word_categories_file) ]
@@ -111,7 +114,7 @@ with open(o.conf_feats,'w') as f:
     # Optionally add average-depth of lattice at the word position,
     if o.lattice_depth != '':
       depth_slice = depths[utt][int(round(100.0*float(beg))):int(round(100.0*(float(beg)+float(dur))))]
-      log_avg_depth = math.log(float(sum(depth_slice))/len(depth_slice))
+      log_avg_depth = math.log(old_div(float(sum(depth_slice)),len(depth_slice)))
       feats += [ log_avg_depth ]
 
     # Store the input features, 

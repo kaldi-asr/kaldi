@@ -13,7 +13,10 @@ taking every n'th element.
 Thus, this script is similar to the binary 'subsample-feats' except that
 it subsamples by averaging.
 """
+from __future__ import division
 
+from builtins import range
+from past.utils import old_div
 import argparse
 import logging
 import numpy as np
@@ -72,15 +75,14 @@ def run(args):
     for key, mat in common_lib.read_mat_ark(args.targets_in_ark):
         mat = np.matrix(mat)
         if args.subsampling_factor > 0:
-            num_indexes = ((mat.shape[0] + args.subsampling_factor - 1)
-                            / args.subsampling_factor)
+            num_indexes = (old_div((mat.shape[0] + args.subsampling_factor - 1), args.subsampling_factor))
 
         out_mat = np.zeros([num_indexes, mat.shape[1]])
         i = 0
-        for k in range(int(args.subsampling_factor / 2.0),
+        for k in range(int(old_div(args.subsampling_factor, 2.0)),
                        mat.shape[0], args.subsampling_factor):
-            st = int(k - float(args.subsampling_factor) / 2.0)
-            end = int(k + float(args.subsampling_factor) / 2.0)
+            st = int(k - old_div(float(args.subsampling_factor), 2.0))
+            end = int(k + old_div(float(args.subsampling_factor), 2.0))
 
             if st < 0:
                 st = 0
@@ -88,12 +90,12 @@ def run(args):
                 end = mat.shape[0]
 
             try:
-                out_mat[i, :] = np.sum(mat[st:end, :], axis=0) / float(end - st)
+                out_mat[i, :] = old_div(np.sum(mat[st:end, :], axis=0), float(end - st))
             except IndexError:
                 logger.error("mat.shape = {0}, st = {1}, end = {2}"
                              "".format(mat.shape, st, end))
                 raise
-            assert i == k / args.subsampling_factor
+            assert i == old_div(k, args.subsampling_factor)
             i += 1
 
         common_lib.write_matrix_ascii(args.targets_out_ark, out_mat, key=key)

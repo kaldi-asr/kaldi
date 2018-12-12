@@ -11,6 +11,7 @@ The posterior probabilities of the phones of each of the classes are
 summed up to get the target matrix values.
 """
 
+from builtins import range
 import argparse
 import logging
 import sys

@@ -6,6 +6,8 @@
 
 from __future__ import division
 from __future__ import print_function
+from builtins import str
+from builtins import range
 import traceback
 import datetime
 import logging
@@ -322,7 +324,7 @@ def parse_progress_logs_for_param_diff(exp_dir, pattern):
         groups = mat_obj.groups()
         iteration = groups[0]
         differences = parse_difference_string(groups[1])
-        component_names = component_names.union(differences.keys())
+        component_names = component_names.union(list(differences.keys()))
         progress_per_iter[int(iteration)] = differences
 
     component_names = list(component_names)
@@ -381,9 +383,9 @@ def get_train_times(exp_dir):
             except KeyError:
                 train_times[int(groups[0])] = {}
                 train_times[int(groups[0])][int(groups[1])] = float(groups[2])
-    iters = train_times.keys()
+    iters = list(train_times.keys())
     for iter in iters:
-        values = train_times[iter].values()
+        values = list(train_times[iter].values())
         train_times[iter] = max(values)
     return train_times
 
@@ -435,14 +437,14 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
         raise KaldiLogParseException("Could not find any lines with {k} in "
                 " {l}".format(k=key, l=valid_prob_files))
 
-    iters = list(set(valid_objf.keys()).intersection(train_objf.keys()))
+    iters = list(set(valid_objf.keys()).intersection(list(train_objf.keys())))
     if not iters:
         raise KaldiLogParseException("Could not any common iterations with"
                 " key {k} in both {tl} and {vl}".format(
                     k=key, tl=train_prob_files, vl=valid_prob_files))
     iters.sort()
-    return list(map(lambda x: (int(x), float(train_objf[x]),
-                               float(valid_objf[x])), iters))
+    return list([(int(x), float(train_objf[x]),
+                               float(valid_objf[x])) for x in iters])
 
 def parse_rnnlm_prob_logs(exp_dir, key='objf'):
     train_prob_files = "%s/log/train.*.*.log" % (exp_dir)
@@ -498,14 +500,14 @@ def parse_rnnlm_prob_logs(exp_dir, key='objf'):
         raise KaldiLogParseException("Could not find any lines with {k} in "
                 " {l}".format(k=key, l=valid_prob_files))
 
-    iters = list(set(valid_objf.keys()).intersection(train_objf.keys()))
+    iters = list(set(valid_objf.keys()).intersection(list(train_objf.keys())))
     if not iters:
         raise KaldiLogParseException("Could not any common iterations with"
                 " key {k} in both {tl} and {vl}".format(
                     k=key, tl=train_prob_files, vl=valid_prob_files))
     iters.sort()
-    return map(lambda x: (int(x), float(train_objf[x]),
-                          float(valid_objf[x])), iters)
+    return [(int(x), float(train_objf[x]),
+                          float(valid_objf[x])) for x in iters]
 
 
 
@@ -536,7 +538,7 @@ def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
             continue
 
     total_time = 0
-    for iter in times.keys():
+    for iter in list(times.keys()):
         total_time += times[iter]
     report.append("Total training time is {0}\n".format(
                     str(datetime.timedelta(seconds=total_time))))

@@ -7,6 +7,8 @@
 """ This module has the implementations of different LSTM layers.
 """
 from __future__ import print_function
+from __future__ import division
+from past.utils import old_div
 import math
 import re
 import sys
@@ -125,7 +127,7 @@ class XconfigLstmLayer(XconfigLayerBase):
         decay_time = self.config['decay-time']
         # we expect decay_time to be either -1, or large, like 10 or 50.
         recurrence_scale = (1.0 if decay_time < 0 else
-                            1.0 - (abs(delay) / decay_time))
+                            1.0 - (old_div(abs(delay), decay_time)))
         assert recurrence_scale > 0   # or user may have set decay-time much
                                       # too small.
         bptrunc_str = ("clipping-threshold={0}"
@@ -320,7 +322,7 @@ class XconfigLstmpLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
@@ -406,7 +408,7 @@ class XconfigLstmpLayer(XconfigLayerBase):
         decay_time = self.config['decay-time']
         # we expect decay_time to be either -1, or large, like 10 or 50.
         recurrence_scale = (1.0 if decay_time < 0 else
-                            1.0 - (abs(delay) / decay_time))
+                            1.0 - (old_div(abs(delay), decay_time)))
         assert recurrence_scale > 0   # or user may have set decay-time much
                                       # too small.
         bptrunc_str = ("clipping-threshold={0}"
@@ -688,7 +690,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         decay_time = self.config['decay-time']
         # we expect decay_time to be either -1, or large, like 10 or 50.
         recurrence_scale = (1.0 if decay_time < 0 else
-                            1.0 - (abs(delay) / decay_time))
+                            1.0 - (old_div(abs(delay), decay_time)))
         assert recurrence_scale > 0   # or user may have set decay-time much
                                       # too small.
         bptrunc_str = ("clipping-threshold={0}"
@@ -875,7 +877,7 @@ class XconfigLstmbLayer(XconfigLayerBase):
         decay_time = self.config['decay-time']
         # we expect decay_time to be either -1, or large, like 10 or 50.
         recurrence_scale = (1.0 if decay_time < 0 else
-                            1.0 - (abs(delay) / decay_time))
+                            1.0 - (old_div(abs(delay), decay_time)))
         assert recurrence_scale > 0   # or user may have set decay-time much
                                       # too small.
         bptrunc_str = ("clipping-threshold={0}"
@@ -1021,7 +1023,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
@@ -1098,7 +1100,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         decay_time = self.config['decay-time']
         # we expect decay_time to be either -1, or large, like 10 or 50.
         recurrence_scale = (1.0 if decay_time < 0 else
-                            1.0 - (abs(delay) / decay_time))
+                            1.0 - (old_div(abs(delay), decay_time)))
         assert recurrence_scale > 0   # or user may have set decay-time much
                                       # too small.
         bptrunc_str = ("clipping-threshold={0}"

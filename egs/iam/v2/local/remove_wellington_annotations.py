@@ -17,7 +17,7 @@ for line in sys.stdin:
     line_fixed = pattern.sub("", line)
     dict=OrderedDict([("*+$","$"), ("*+","£"), ("*-","-"), ("*/","*"), ("*{","{"), ("*}","}"),
         ("**\"","\""), ("*\"","\""), ("**'","'"), ("*'","'"), ("*@","°")])
-    pattern = re.compile("|".join(re.escape(key) for key in dict.keys()));
+    pattern = re.compile("|".join(re.escape(key) for key in list(dict.keys())));
     line_fixed = pattern.sub(lambda x: dict[x.group()], line_fixed)
     
     line_fixed = prev2_line + "\n" + prev_line + "\n" + line_fixed

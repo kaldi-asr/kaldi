@@ -8,6 +8,9 @@
 # It is designed to be somewhat simpler and more flexible for augmenting with
 # additive noise.
 from __future__ import print_function
+from builtins import str
+from builtins import map
+from builtins import range
 import sys, random, argparse, os, imp
 sys.path.append("steps/data/")
 from reverberate_data_dir import ParseFileToDict
@@ -123,7 +126,7 @@ def CopyFileIfExists(utt_suffix, filename, input_dir, output_dir):
             value_processor = lambda x: " ".join(x))
         if len(utt_suffix) > 0:
             new_dict = {}
-            for key in dict.keys():
+            for key in list(dict.keys()):
                 new_dict[key + "-" + utt_suffix] = dict[key]
             dict = new_dict
         WriteDictToFile(dict, output_dir + "/" + filename)

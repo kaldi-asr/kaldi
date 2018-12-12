@@ -3,6 +3,9 @@
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
+from __future__ import print_function
+from builtins import zip
+from builtins import range
 import sys,operator
 
 # Append Levenshtein alignment of 'hypothesis' and 'reference' into 'CTM':
@@ -15,7 +18,7 @@ import sys,operator
 #  'U' = unknown (not part of scored segment)
 
 if len(sys.argv) != 4:
-  print 'Usage: %s eval-in ctm-in ctm-eval-out' % __file__
+  print('Usage: %s eval-in ctm-in ctm-eval-out' % __file__)
   sys.exit(1)
 dummy, eval_in, ctm_in, ctm_eval_out = sys.argv
 
@@ -54,7 +57,7 @@ with open(ctm_in) as f:
 
 # Build the 'ctm' with 'eval' column added,
 ctm_eval = []
-for utt,ctm_part in ctm.iteritems():
+for utt,ctm_part in ctm.items():
   ctm_part.sort(key = operator.itemgetter(2)) # Sort by 'beg' time,
   try:
     # merging 'tuples' by '+', the record has format:
@@ -69,7 +72,7 @@ for utt,ctm_part in ctm.iteritems():
     # append,
     ctm_eval.extend(merged)
   except KeyError:
-    print 'Missing key', utt, 'in the word-evaluation stats from scoring'
+    print('Missing key', utt, 'in the word-evaluation stats from scoring')
 
 # Sort again,
 ctm_eval.sort(key = operator.itemgetter(0,1,2))

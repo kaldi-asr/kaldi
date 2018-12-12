@@ -7,6 +7,7 @@
 #
 # This file is meant to be invoked by make_bn.sh.
 
+from builtins import str
 import os, sys
 wav_dir = sys.argv[1]
 out_dir = sys.argv[2]

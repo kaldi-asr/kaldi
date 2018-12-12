@@ -10,6 +10,8 @@
 # - corrects likely wrong normalizations (e.g. Sun -> Sunday)
 # - splits the sentences into separate lines
 
+from builtins import str
+from builtins import range
 import sys, argparse
 import re
 
@@ -66,7 +68,7 @@ if __name__ == '__main__':
                 n_tokens += 1
                 start_scan = 4
                 current_line.append('SUN')
-            for i in xrange(start_scan, len(opl_tokens)):
+            for i in range(start_scan, len(opl_tokens)):
                 m = re.match("^[A-Z]+\'?[A-Z\']*$", opl_tokens[i])
                 if m is not None:
                     n_tokens += 1

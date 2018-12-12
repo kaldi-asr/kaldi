@@ -4,6 +4,11 @@
 # Apache 2.0.
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import sys
 import argparse
 import math
@@ -47,7 +52,7 @@ if args.verbose >= 1:
 
 
 
-class NgramCounts:
+class NgramCounts(object):
     ## A note on data-structure.
     ## Firstly, all words are represented as integers.
     ## We store n-gram counts as an array, indexed by (history-length == n-gram order minus one)
@@ -125,7 +130,7 @@ class NgramCounts:
     def GetHistToTotalCount(self):
         ans = defaultdict(float)
         for n in range(2, self.ngram_order):
-            for hist, word_to_count in self.counts[n].items():
+            for hist, word_to_count in list(self.counts[n].items()):
                 total_count = sum(word_to_count.values())
                 while len(hist) >= 2:
                     ans[hist] += total_count
@@ -139,15 +144,15 @@ class NgramCounts:
     # LM-states that would back off to 'this' lm-state, in the total.
     def CompletelyDiscountLowCountStates(self, min_count):
         hist_to_total_count = self.GetHistToTotalCount()
-        for n in reversed(range(2, self.ngram_order)):
+        for n in reversed(list(range(2, self.ngram_order))):
             this_order_counts = self.counts[n]
-            for hist in this_order_counts.keys():
+            for hist in list(this_order_counts.keys()):
                 if hist_to_total_count[hist] < min_count:
                     # we need to completely back off this count.
                     word_to_count = this_order_counts[hist]
                     del this_order_counts[hist] # delete the key from the dict.
                     backoff_hist = hist[1:]  # this will be a tuple not a list.
-                    for word, count in word_to_count.items():
+                    for word, count in list(word_to_count.items()):
                         self.AddCount(backoff_hist, word, count)
 
 
@@ -156,9 +161,9 @@ class NgramCounts:
     # with interpolation).
     def ApplyBackoff(self, D):
         assert D > 0.0 and D < 1.0
-        for n in reversed(range(1, self.ngram_order)):
+        for n in reversed(list(range(1, self.ngram_order))):
             this_order_counts = self.counts[n]
-            for hist, word_to_count in this_order_counts.items():
+            for hist, word_to_count in list(this_order_counts.items()):
                 backoff_hist = hist[1:]
                 backoff_word_to_count = self.counts[n-1][backoff_hist]
                 this_discount_total = 0.0
@@ -180,12 +185,12 @@ class NgramCounts:
         total = 0.0
         total_excluding_backoff = 0.0
         for this_order_counts in self.counts:
-            for hist, word_to_count in this_order_counts.items():
+            for hist, word_to_count in list(this_order_counts.items()):
                 this_total_count = sum(word_to_count.values())
                 print(str(hist) + ': total={0} '.format(this_total_count),
                       end='', file=sys.stderr)
                 print(' '.join(['{0} -> {1} '.format(word, count)
-                                for word, count in word_to_count.items() ]),
+                                for word, count in list(word_to_count.items()) ]),
                       file = sys.stderr)
                 total += this_total_count
                 total_excluding_backoff += this_total_count
@@ -224,7 +229,7 @@ class NgramCounts:
         # history to the total-count for that state.
         total_count_map = dict()
         for n in range(0, self.ngram_order):
-            for hist, word_to_count in self.counts[n].items():
+            for hist, word_to_count in list(self.counts[n].items()):
                 total_count_map[hist] = sum(word_to_count.values())
         return total_count_map
 
@@ -234,7 +239,7 @@ class NgramCounts:
         hist_to_state = dict()
         fst_state_counter = 0
         for n in range(0, self.ngram_order):
-            for hist in self.counts[n].keys():
+            for hist in list(self.counts[n].keys()):
                 hist_to_state[hist] = fst_state_counter
                 fst_state_counter += 1
         return hist_to_state
@@ -242,10 +247,10 @@ class NgramCounts:
     def GetProb(self, hist, word, total_count_map):
         total_count = total_count_map[hist]
         word_to_count = self.counts[len(hist)][hist]
-        prob = word_to_count[word] / total_count
+        prob = old_div(word_to_count[word], total_count)
         if len(hist) > 0 and word != self.backoff_symbol:
             prob_in_backoff = self.GetProb(hist[1:], word, total_count_map)
-            backoff_prob = word_to_count[self.backoff_symbol] / total_count
+            backoff_prob = old_div(word_to_count[self.backoff_symbol], total_count)
             prob += backoff_prob * prob_in_backoff
         return prob
 
@@ -262,15 +267,15 @@ class NgramCounts:
         hist_to_state = self.GetHistToStateMap()
         total_count_map = self.GetTotalCountMap()
 
-        for n in [ 1, 0 ] + range(2, self.ngram_order):
+        for n in [ 1, 0 ] + list(range(2, self.ngram_order)):
             this_order_counts = self.counts[n]
             # For order 1, make sure the keys are sorted.
-            keys = this_order_counts.keys() if n != 1 else sorted(this_order_counts.keys())
+            keys = list(this_order_counts.keys()) if n != 1 else sorted(this_order_counts.keys())
             for hist in keys:
                 word_to_count = this_order_counts[hist]
                 this_fst_state = hist_to_state[hist]
 
-                for word in word_to_count.keys():
+                for word in list(word_to_count.keys()):
                     # work out this_cost.  Costs in OpenFst are negative logs.
                     this_cost = -math.log(self.GetProb(hist, word, total_count_map))
 

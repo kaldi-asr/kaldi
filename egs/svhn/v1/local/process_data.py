@@ -6,7 +6,11 @@
 
 """ This script prepares the training and test data for SVHN.
 """
+from __future__ import division
 
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import argparse
 import os
 import sys
@@ -32,7 +36,7 @@ W = 32  # num_cols
 
 def load_svhn_data(matlab_file):
     matlab_data = sio.loadmat(matlab_file)
-    data = matlab_data['X'].astype(float) / 255.0  # H*W*C*NUM_IMAGES
+    data = old_div(matlab_data['X'].astype(float), 255.0)  # H*W*C*NUM_IMAGES
     labels = matlab_data['y']  # NUM_IMAGES*1
     return data, labels
 
@@ -48,7 +52,7 @@ def write_kaldi_matrix(file_handle, matrix, key):
         if num_cols != len(matrix[row_index]):
             raise Exception("All the rows of a matrix are expected to "
                             "have the same length")
-        file_handle.write(" ".join(map(lambda x: str(x), matrix[row_index])))
+        file_handle.write(" ".join([str(x) for x in matrix[row_index]]))
         if row_index != num_rows - 1:
             file_handle.write("\n")
     file_handle.write(" ]\n")

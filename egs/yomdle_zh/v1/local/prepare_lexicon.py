@@ -3,6 +3,7 @@
 # Copyright  2018  Ashish Arora
 #                  Chun-Chieh Chang
 
+from builtins import range
 import argparse
 import os
 

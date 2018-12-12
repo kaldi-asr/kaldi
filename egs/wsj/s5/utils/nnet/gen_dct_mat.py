@@ -20,6 +20,11 @@
 # and takes into account that data-layout is along frequency axis, 
 # while DCT is done along temporal axis.
 
+from __future__ import division
+from __future__ import print_function
+from builtins import str
+from builtins import range
+from past.utils import old_div
 from math import *
 import sys
 
@@ -49,19 +54,19 @@ M_SQRT2 = 1.4142135623730950488016887
 
 
 #generate sparse DCT matrix
-print '['
+print('[')
 for k in range(dct_basis):
     for m in range(dim):
         for n in range(timeContext):
           if(n==0): 
-              print m*'0 ',
+              print(m*'0 ', end=' ')
           else: 
-              print (dim-1)*'0 ',
-          print str(sqrt(2.0/timeContext)*cos(M_PI/timeContext*k*(n+0.5))),
+              print((dim-1)*'0 ', end=' ')
+          print(str(sqrt(old_div(2.0,timeContext))*cos(M_PI/timeContext*k*(n+0.5))), end=' ')
           if(n==timeContext-1):
-              print (dim-m-1)*'0 ',
-        print
-    print 
+              print((dim-m-1)*'0 ', end=' ')
+        print()
+    print() 
 
-print ']'
+print(']')
 

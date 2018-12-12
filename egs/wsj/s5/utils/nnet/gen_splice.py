@@ -18,6 +18,8 @@
 # ./gen_splice.py
 # generates <splice> Component
 
+from __future__ import print_function
+from builtins import range
 from math import *
 import sys
 
@@ -40,12 +42,12 @@ splice_step=int(options.splice_step)
 
 dim_out=(2*splice+1)*dim_in
 
-print '<splice>', dim_out, dim_in
-print '[',
+print('<splice>', dim_out, dim_in)
+print('[', end=' ')
 
-splice_vec = range(-splice*splice_step, splice*splice_step+1, splice_step)
+splice_vec = list(range(-splice*splice_step, splice*splice_step+1, splice_step))
 for idx in range(len(splice_vec)):
-    print splice_vec[idx],
+    print(splice_vec[idx], end=' ')
 
-print ']'
+print(']')
 

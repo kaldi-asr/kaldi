@@ -3,6 +3,7 @@
 # Copyright 2017 Johns Hopkins University (Shinji Watanabe)
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
+from builtins import str
 import json
 import argparse
 import logging
@@ -51,7 +52,7 @@ if __name__ == '__main__':
                 mictype = args.mictype.upper() # convert from u01 to U01
 
             # add location tag for scoring (only for dev and eval sets)
-            if 'location' in x.keys():
+            if 'location' in list(x.keys()):
                 location = x['location'].upper()
             else:
                 location = 'NOLOCATION'

@@ -13,6 +13,7 @@
 # 3) Segments the original file into utterances and puts a special token at the
 #    end of each sentence, to make possible to recover them after NSW normalization
 
+from builtins import zip
 import argparse
 import codecs, unicodedata
 import re
@@ -30,7 +31,7 @@ def parse_args():
     return parser.parse_args()
 
 # http://rosettacode.org/wiki/Roman_numerals/Decode#Python
-_rdecode = dict(zip('XVI', (10, 5, 1)))
+_rdecode = dict(list(zip('XVI', (10, 5, 1))))
 def decode(roman):
     result = 0
     for r, r1 in zip(roman, roman[1:]):

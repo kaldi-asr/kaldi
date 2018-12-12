@@ -8,6 +8,8 @@
 """ This module has the implementations of different GRU layers.
 """
 from __future__ import print_function
+from __future__ import division
+from past.utils import old_div
 import math
 import re
 import sys
@@ -216,7 +218,7 @@ class XconfigPgruLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
@@ -421,7 +423,7 @@ class XconfigNormPgruLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
@@ -650,7 +652,7 @@ class XconfigOpgruLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
@@ -856,7 +858,7 @@ class XconfigNormOpgruLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
@@ -1250,7 +1252,7 @@ class XconfigFastPgruLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
@@ -1463,7 +1465,7 @@ class XconfigFastNormPgruLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
@@ -1706,7 +1708,7 @@ class XconfigFastOpgruLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \
@@ -1922,7 +1924,7 @@ class XconfigFastNormOpgruLayer(XconfigLayerBase):
 
     def set_derived_configs(self):
         if self.config['recurrent-projection-dim'] <= 0:
-            self.config['recurrent-projection-dim'] = self.config['cell-dim'] / 4
+            self.config['recurrent-projection-dim'] = old_div(self.config['cell-dim'], 4)
 
         if self.config['non-recurrent-projection-dim'] <= 0:
             self.config['non-recurrent-projection-dim'] = \

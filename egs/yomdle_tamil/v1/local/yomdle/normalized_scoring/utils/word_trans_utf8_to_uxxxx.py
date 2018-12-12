@@ -3,7 +3,9 @@
 """ This script converts characters from utf-8 format to hexadecimal format.
     Eg. word_trans_utf8_to_uxxxx.py <input-file> <output-file>
 """
+from __future__ import print_function
 
+from builtins import hex
 import sys
 from snor import SnorIter
 

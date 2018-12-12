@@ -4,6 +4,7 @@
     utterance ids and will score with the remailing utterance ids.
     Eg. filter_ids.py <ids-to-filter> <input-trans> <output-trans>
 """
+from __future__ import print_function
 
 import unicodedata
 import sys

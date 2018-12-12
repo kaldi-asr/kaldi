@@ -4,6 +4,8 @@
 
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
+from builtins import str
+from builtins import range
 import re, os, argparse, sys, math, warnings
 
 

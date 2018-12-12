@@ -5,6 +5,11 @@
 # Apache 2.0
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import range
+from builtins import object
+from past.utils import old_div
 import sys, operator, argparse, os
 from collections import defaultdict
 
@@ -148,7 +153,7 @@ def ComputeSegmentCores(split_lines_of_utt):
                 line_is_in_segment_core[i] = True
 
     # extend each proto-segment backwards as far as we can:
-    for i in reversed(range(0, num_lines - 1)):
+    for i in reversed(list(range(0, num_lines - 1))):
         if line_is_in_segment_core[i+1] and not line_is_in_segment_core[i]:
             edit_type = split_lines_of_utt[i][7]
             if not IsTainted(split_lines_of_utt[i]) and \
@@ -171,7 +176,7 @@ def ComputeSegmentCores(split_lines_of_utt):
 
     return segment_ranges
 
-class Segment:
+class Segment(object):
     def __init__(self, split_lines_of_utt, start_index, end_index, debug_str = None):
         self.split_lines_of_utt = split_lines_of_utt
         # start_index is the index of the first line that appears in this
@@ -313,7 +318,7 @@ class Segment:
                  this_duration > args.max_edge_non_scored_length:
                 truncated_duration = args.max_edge_non_scored_length
             if truncated_duration != None:
-                keep_proportion = truncated_duration / this_duration
+                keep_proportion = old_div(truncated_duration, this_duration)
                 if b:
                     self.start_keep_proportion = keep_proportion
                 else:
@@ -357,8 +362,8 @@ class Segment:
         # -> length_cutoff - length_with_relaxed_boundaries =
         #        a * (length_with_truncation - length_with_relaxed_boundaries)
         # -> a = (length_cutoff - length_with_relaxed_boundaries) / (length_with_truncation - length_with_relaxed_boundaries)
-        a = (length_cutoff - length_with_relaxed_boundaries) / \
-            (length_with_truncation - length_with_relaxed_boundaries)
+        a = old_div((length_cutoff - length_with_relaxed_boundaries), \
+            (length_with_truncation - length_with_relaxed_boundaries))
         if a < 0.0 or a > 1.0:
             print("segment_ctm_edits.py: bad 'a' value = {0}".format(a), file = sys.stderr)
             return
@@ -512,7 +517,7 @@ class Segment:
         if IsTainted(last_split_line):
             last_duration = float(last_split_line[3])
             junk_duration += last_duration * self.end_keep_proportion
-        return junk_duration / self.Length()
+        return old_div(junk_duration, self.Length())
 
     # This function will remove something from the beginning of the
     # segment if it's possible to cleanly lop off a bit that contains
@@ -551,7 +556,7 @@ class Segment:
         if candidate_start_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = candidate_start_time - self.StartTime()
-        if begin_junk_duration / candidate_removed_piece_duration < args.max_junk_proportion:
+        if old_div(begin_junk_duration, candidate_removed_piece_duration) < args.max_junk_proportion:
             return  # Nothing to do as the candidate piece to remove has too
                     # little junk.
         # OK, remove the piece.
@@ -575,7 +580,7 @@ class Segment:
         candidate_end_index = None
         # the following iterates over all lines internal to the utterance
         # (starting from the end).
-        for i in reversed(range(self.start_index + 1, self.end_index - 1)):
+        for i in reversed(list(range(self.start_index + 1, self.end_index - 1))):
             this_split_line = self.split_lines_of_utt[i]
             this_edit_type = this_split_line[7]
             this_ref_word = this_split_line[6]
@@ -593,7 +598,7 @@ class Segment:
         if candidate_end_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = self.EndTime() - candidate_end_time
-        if end_junk_duration / candidate_removed_piece_duration < args.max_junk_proportion:
+        if old_div(end_junk_duration, candidate_removed_piece_duration) < args.max_junk_proportion:
             return  # Nothing to do as the candidate piece to remove has too
                     # little junk.
         # OK, remove the piece.
@@ -796,7 +801,7 @@ def FloatToString(f):
 # Gives time in string form as an exact multiple of the frame-length, e.g. 0.01
 # (after rounding).
 def TimeToString(time, frame_length):
-    n = round(time / frame_length)
+    n = round(old_div(time, frame_length))
     assert n >= 0
     # The next function call will remove trailing zeros while printing it, so
     # that e.g. 0.01 will be printed as 0.01 and not 0.0099999999999999.  It
@@ -903,7 +908,7 @@ def PrintWordStats(word_stats_out):
     # words.  Define badness = pair[1] / pair[0], and total_count = pair[0],
     # where 'pair' is a value of word_count_pair.  We'll reverse sort on
     # badness^3 * total_count = pair[1]^3 / pair[0]^2.
-    for key, pair in sorted(word_count_pair.items(),
+    for key, pair in sorted(list(word_count_pair.items()),
                       key = lambda item: (item[1][1] ** 3) * 1.0 / (item[1][0] ** 2),
                       reverse = True):
         badness = pair[1] * 1.0 / pair[0]

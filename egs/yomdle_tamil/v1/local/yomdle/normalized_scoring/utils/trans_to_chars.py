@@ -4,6 +4,7 @@
     It also converts space between words into "<sp> "
     Eg. trans_to_chars.py <input-file> <output-file>
 """
+from __future__ import print_function
 
 import unicodedata
 import sys

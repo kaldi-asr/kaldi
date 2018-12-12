@@ -4,6 +4,7 @@
 # This script checks the ctm for missing recordings and places a dummy id.
 # This is necessary for compliance with sclite scoring scripts
 
+from builtins import str
 import argparse, sys
 
 def fill_ctm(input_ctm_file, output_ctm_file, recording_names):
@@ -45,7 +46,7 @@ if __name__ == "__main__":
   params = parser.parse_args()
 
   try:
-    file_names = map(lambda x: x.strip(), open("{0}".format(params.recording_name_file)).readlines())
+    file_names = [x.strip() for x in open("{0}".format(params.recording_name_file)).readlines()]
   except IOError:
     raise Exception("Expected to find {0}".format(params.recording_name_file))
 

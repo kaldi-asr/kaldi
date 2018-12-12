@@ -15,7 +15,10 @@
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License. #
 from __future__ import unicode_literals
+from __future__ import print_function
 
+from builtins import str
+from builtins import object
 import pyaudio
 from kaldi.decoders import PyOnlineLatgenRecogniser
 from kaldi.utils import wst2dict, lattice_to_nbest
@@ -29,7 +32,7 @@ import wave
 CHANNELS, RATE, FORMAT = 1, 16000, pyaudio.paInt16
 
 
-class LiveDemo:
+class LiveDemo(object):
 
     def __init__(self, audio_batch_size, wst, dec_args):
         self.batch_size = audio_batch_size
@@ -127,7 +130,7 @@ class LiveDemo:
 if __name__ == '__main__':
     audio_batch_size, wst_path = int(sys.argv[1]), sys.argv[2]
     argv = sys.argv[3:]
-    print >> sys.stderr, 'Python args: %s' % str(sys.argv)
+    print('Python args: %s' % str(sys.argv), file=sys.stderr)
 
     wst = wst2dict(wst_path)
     demo = LiveDemo(audio_batch_size, wst, argv)

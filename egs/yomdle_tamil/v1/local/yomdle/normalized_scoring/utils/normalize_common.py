@@ -5,6 +5,7 @@
     width left/right-paren to regular left/right paren.
     Eg. normalize_common.py <input-file> <output-file>
 """
+from __future__ import print_function
 import sys
 from snor import SnorIter
 

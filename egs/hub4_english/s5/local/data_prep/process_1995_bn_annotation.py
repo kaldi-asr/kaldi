@@ -8,6 +8,8 @@ utt2spk, segments and text files.
 """
 
 from __future__ import print_function
+from builtins import str
+from builtins import object
 import argparse
 import os
 import logging
@@ -230,7 +232,7 @@ def run(args):
                         start_time = story_end_time
                     segments = process_story_content(
                         args, reco_id,
-                        ' '.join([unicode(x) for x in s.children]),
+                        ' '.join([str(x) for x in s.children]),
                         start_time=story_begin_time, end_time=story_end_time)
                     write_segments(segments, args)
                 elif (s.name is not None and s.name != "language"
@@ -240,9 +242,9 @@ def run(args):
                         "or <language> or <sung>; got {0}".format(s))
                 elif s.name == "language" or s.name == "sung":
                     non_story_contents.append(
-                        ' '.join([unicode(x) for x in s.children]))
+                        ' '.join([str(x) for x in s.children]))
                 else:
-                    non_story_contents.append(unicode(s))
+                    non_story_contents.append(str(s))
             except RuntimeError:
                 raise
             except Exception:

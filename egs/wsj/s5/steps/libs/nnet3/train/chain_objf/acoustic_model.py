@@ -7,7 +7,14 @@
 """ This is a module with methods which will be used by scripts for training of
 deep neural network acoustic model with chain objective.
 """
+from __future__ import division
+from __future__ import print_function
 
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import logging
 import math
 import os
@@ -218,7 +225,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         momentum=momentum, max_param_change=max_param_change,
                         backstitch_training_scale=backstitch_training_scale,
                         backstitch_training_interval=backstitch_training_interval,
-                        l2_regularize_factor=1.0/num_jobs,
+                        l2_regularize_factor=old_div(1.0,num_jobs),
                         raw_model=raw_model_string,
                         egs_dir=egs_dir, archive_index=archive_index,
                         buf_size=shuffle_buffer_size,
@@ -299,7 +306,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         # keep the update stable.
         cur_num_chunk_per_minibatch_str = common_train_lib.halve_minibatch_size_str(
             num_chunk_per_minibatch_str)
-        cur_max_param_change = float(max_param_change) / math.sqrt(2)
+        cur_max_param_change = old_div(float(max_param_change), math.sqrt(2))
 
     raw_model_string = raw_model_string + dropout_edit_string
     train_new_models(dir=dir, iter=iter, srand=srand, num_jobs=num_jobs,
@@ -413,8 +420,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
-    lda_stat_files = list(map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
-                              range(1, num_lda_jobs + 1)))
+    lda_stat_files = list(['{0}/{1}.lda_stats'.format(dir, x) for x in range(1, num_lda_jobs + 1)])
 
     common_lib.execute_command(
         """{command} {dir}/log/sum_transform_stats.log \

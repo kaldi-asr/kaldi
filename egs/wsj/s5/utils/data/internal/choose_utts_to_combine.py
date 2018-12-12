@@ -5,6 +5,8 @@
 # Apache 2.0
 
 from __future__ import print_function
+from builtins import str
+from builtins import range
 import argparse
 from random import randint
 import sys
@@ -89,7 +91,7 @@ def CombineList(min_duration, durations):
     # for each utterance-index i, group_start[i] gives us the
     # start-index of the group of utterances of which it's currently
     # a member.
-    group_start = range(num_utts)
+    group_start = list(range(num_utts))
     # if utterance-index i currently corresponds to the start of a group
     # of utterances, then group_durations[i] is the total duration of
     # that utterance-group, otherwise undefined.

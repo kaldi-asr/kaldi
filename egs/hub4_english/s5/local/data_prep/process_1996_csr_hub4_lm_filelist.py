@@ -6,6 +6,7 @@
 """Prepare CSR-IV 1996 Language model text corpus (LDC98T31)."""
 
 from __future__ import print_function
+from builtins import str
 import argparse
 import gzip
 import logging
@@ -83,7 +84,7 @@ def process_file_lines(lines, out_file_handle):
                 for x in para.contents:
                     try:
                         if x.name is None:
-                            normalized_text = normalize_text(unicode(x))
+                            normalized_text = normalize_text(str(x))
                             if len(normalized_text) == 0:
                                 continue
                             out_file_handle.write("{0}\n".format(

@@ -11,6 +11,10 @@
 # https://www.nist.gov/sites/default/files/documents/2016/10/07/sre16_eval_plan_v1.3.pdf
 # for more details about the metric.
 from __future__ import print_function
+from __future__ import division
+from builtins import zip
+from builtins import range
+from past.utils import old_div
 from operator import itemgetter
 import sys, argparse, os
 
@@ -56,9 +60,9 @@ def ComputeErrorRates(scores, labels):
       # Sort the scores from smallest to largest, and also get the corresponding
       # indexes of the sorted scores.  We will treat the sorted scores as the
       # thresholds at which the the error-rates are evaluated.
-      sorted_indexes, thresholds = zip(*sorted(
+      sorted_indexes, thresholds = list(zip(*sorted(
           [(index, threshold) for index, threshold in enumerate(scores)],
-          key=itemgetter(1)))
+          key=itemgetter(1))))
       sorted_labels = []
       labels = [labels[i] for i in sorted_indexes]
       fnrs = []
@@ -80,12 +84,12 @@ def ComputeErrorRates(scores, labels):
 
       # Now divide by the total number of false negative errors to
       # obtain the false positive rates across all thresholds
-      fnrs = [x / float(fnrs_norm) for x in fnrs]
+      fnrs = [old_div(x, float(fnrs_norm)) for x in fnrs]
 
       # Divide by the total number of corret positives to get the
       # true positive rate.  Subtract these quantities from 1 to
       # get the false positive rates.
-      fprs = [1 - x / float(fprs_norm) for x in fprs]
+      fprs = [1 - old_div(x, float(fprs_norm)) for x in fprs]
       return fnrs, fprs, thresholds
 
 # Computes the minimum of the detection cost function.  The comments refer to
@@ -102,7 +106,7 @@ def ComputeMinDcf(fnrs, fprs, thresholds, p_target, c_miss, c_fa):
             min_c_det_threshold = thresholds[i]
     # See Equations (3) and (4).  Now we normalize the cost.
     c_def = min(c_miss * p_target, c_fa * (1 - p_target))
-    min_dcf = min_c_det / c_def
+    min_dcf = old_div(min_c_det, c_def)
     return min_dcf, min_c_det_threshold
 
 def main():

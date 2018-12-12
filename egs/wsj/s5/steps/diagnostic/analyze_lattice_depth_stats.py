@@ -5,6 +5,9 @@
 # Apache 2.0.
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from past.utils import old_div
 import argparse
 import sys, os
 from collections import defaultdict
@@ -120,12 +123,12 @@ def GetMean(depth_to_count):
     this_total_frames = sum(depth_to_count.values())
     if this_total_frames == 0:
         return 0.0
-    this_total_depth = sum([ float(l * c) for l,c in depth_to_count.items() ])
-    return this_total_depth / this_total_frames
+    this_total_depth = sum([ float(l * c) for l,c in list(depth_to_count.items()) ])
+    return old_div(this_total_depth, this_total_frames)
 
 
 print("The total amount of data analyzed assuming 100 frames per second "
-      "is {0} hours".format("%.1f" % (total_frames / 360000.0)))
+      "is {0} hours".format("%.1f" % (old_div(total_frames, 360000.0))))
 
 # the next block prints lines like (to give some examples):
 # Nonsilence phones as a group account for 74.4% of phone occurrences, with lattice depth (10,50,90-percentile)=(1,2,7) and mean=3.1
@@ -135,7 +138,7 @@ print("The total amount of data analyzed assuming 100 frames per second "
 
 
 # sort the phones in decreasing order of count.
-for phone,depths in sorted(phone_depth_counts.items(), key = lambda x : -sum(x[1].values())):
+for phone,depths in sorted(list(phone_depth_counts.items()), key = lambda x : -sum(x[1].values())):
 
     frequency_percentage = sum(depths.values()) * 100.0 / total_frames
     if frequency_percentage < args.frequency_cutoff_percentage:

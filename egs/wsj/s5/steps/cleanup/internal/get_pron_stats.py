@@ -4,6 +4,8 @@
 # Apache 2.0.
 
 from __future__ import print_function
+from __future__ import division
+from past.utils import old_div
 import argparse
 import sys
 import warnings
@@ -181,7 +183,7 @@ def GetStatsFromCtmProns(silphones, optional_silence, non_scored_words, ctm_pron
         # If the prons is not a set, the current word must be <eps> or an non_scored_word,
         # where we just left the nonsil_right part as prons.
         if isinstance(prons, set) and len(prons) > 0:
-            count = 1.0 / float(len(prons))
+            count = old_div(1.0, float(len(prons)))
             for pron in prons:
                 phones = pron.strip().split()
                 # post-processing: remove all begining/trailing silence phones.
@@ -211,7 +213,7 @@ def GetStatsFromCtmProns(silphones, optional_silence, non_scored_words, ctm_pron
     return stats
 
 def WriteStats(stats, file_handle):            
-    for word_pron, count in stats.iteritems():
+    for word_pron, count in stats.items():
         print('{0} {1} {2}'.format(count, word_pron[0], word_pron[1]), file=file_handle)
     file_handle.close()
 

@@ -9,6 +9,10 @@
 # the number of states for other characters.
 
 from __future__ import print_function
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import argparse
 import string
 
@@ -68,7 +72,7 @@ print("<ForPhones>")
 print(" ".join([str(x) for x in silence_phones]))
 print("</ForPhones>")
 if(args.num_sil_states > 1):
-    transp = 1.0 / (args.num_sil_states - 1)
+    transp = old_div(1.0, (args.num_sil_states - 1))
     
     state_str = "<State> 0 <PdfClass> 0 "
     for x in range(0, (args.num_sil_states - 1)):

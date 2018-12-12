@@ -4,13 +4,17 @@
 # creates a segments file in the provided data directory
 # into uniform segments with specified window and overlap
 
+from __future__ import division
+from builtins import str
+from builtins import range
+from past.utils import old_div
 import imp, sys, argparse, os, math, subprocess
 
 min_segment_length = 10 # in seconds
 def segment(total_length, window_length, overlap = 0):
   increment = window_length - overlap
-  num_windows = int(math.ceil(float(total_length)/increment))
-  segments = map(lambda x: (x * increment, min( total_length, (x * increment) + window_length)), range(0, num_windows))
+  num_windows = int(math.ceil(old_div(float(total_length),increment)))
+  segments = [(x * increment, min( total_length, (x * increment) + window_length)) for x in range(0, num_windows)]
   if segments[-1][1] - segments[-1][0] < min_segment_length:
     segments[-2] = (segments[-2][0], segments[-1][1])
     segments.pop()

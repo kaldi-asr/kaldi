@@ -12,6 +12,7 @@ and '2' for speech frames.
 """
 
 from __future__ import print_function
+from builtins import object
 import argparse
 import logging
 import sys
