@@ -2,7 +2,7 @@ all:
 
 include ../kaldi.mk
 
-TESTFILES = differentiable-fmllr-test
+TESTFILES = differentiable-fmllr-test differentiable-transform-test
 
 OBJFILES = differentiable-fmllr.o differentiable-transform-itf.o \
            generic-transform.o differentiable-transform.o

@@ -278,6 +278,8 @@ class GaussianEstimator {
  public:
   GaussianEstimator(int32 num_classes, int32 feature_dim);
 
+  GaussianEstimator(const GaussianEstimator &other) = default;
+
   int32 NumClasses() const { return gamma_.Dim(); }
 
   int32 Dim() const;
@@ -370,24 +372,23 @@ class GaussianEstimator {
      The estimation procedure is:
         \mu_i = \frac{m_i}{\gamma_i}, or 0 if \gamma_i is 0.
           s_i = variance_floor if \gamma_i = 0, else:
-                max(variance_floor, v_i/\gamma_i - \mu_i^T \mu_i)
-         and another form more convenient for backprop:
+                max(variance_floor, (v_i/\gamma_i - \mu_i^T \mu_i) / dim)
+         where dim is the feature dimension; and another form more convenient for backprop:
               = variance_floor if \gamma_i = 0, else:
-                max(variance_floor, v_i/\gamma_i - m_i^T m_i / \gamma_i^2)
-
+                max(variance_floor, v_i/(dim * \gamma_i) - m_i^T m_i / (dim * \gamma_i^2))
 
      We write \bar{foo} for a derivative of the objective function w.r.t. foo.
      We are provided by the user with with \bar{\mu}_i and \bar{s}_i, when they
      call SetOutputDerivs(); and we aim to compute \bar{m}_i and \bar{v}_i, which
      are the derivs w.r.t. the raw statistics.  This is done as follows:
        \bar{m}_i = 0 if \gamma_i is 0, otherwise:
-                     \frac{\bar{\mu}_i}{\gamma_i} - (\frac{2\bar{s}_i m_i}{\gamma_i^2}
+                     \frac{\bar{\mu}_i}{\gamma_i} - (\frac{2\bar{s}_i m_i}{dim \gamma_i^2}
                                                      if s_i > variance_floor, else 0)
                  = or 0 if \gamma_i is 0, otherwise:
-                     \frac{\bar{\mu}_i}{\gamma_i} - (\frac{2\bar{s}_i \mu_i}{\gamma_i}
+                     \frac{\bar{\mu}_i}{\gamma_i} - (\frac{2\bar{s}_i \mu_i}{dim \gamma_i}
                                                      if s_i > variance_floor, else 0)
        \bar{v}_i = 0 if \gamma_i is 0 or s_i equals variance_floor, otherwise:
-                     \frac{\bar{s}_i}{\gamma_i}
+                     \frac{\bar{s}_i}{dim * \gamma_i}
        \bar{x}_t = \sum_i \gamma_{t,i} (\bar{m}_i + 2\bar{v}_i x_t)
 
 

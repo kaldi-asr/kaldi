@@ -18,8 +18,8 @@
 // limitations under the License.
 
 
-#ifndef KALDI_TRANSFORM_DIFFERENTIABLE_TRANSFORM_H_
-#define KALDI_TRANSFORM_DIFFERENTIABLE_TRANSFORM_H_
+#ifndef KALDI_TRANSFORM_GENERIC_TRANSFORM_H_
+#define KALDI_TRANSFORM_GENERIC_TRANSFORM_H_
 
 #include <vector>
 #include "base/kaldi-common.h"
@@ -312,4 +312,4 @@ class AppendMinibatchInfo: public MinibatchInfoItf {
 } // namespace differentiable_transform
 } // namespace kaldi
 
-#endif  // KALDI_TRANSFORM_DIFFERENTIABLE_TRANSFORM_H_
+#endif  // KALDI_TRANSFORM_GENERIC_TRANSFORM_H_

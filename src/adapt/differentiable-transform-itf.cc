@@ -19,6 +19,7 @@
 
 #include "adapt/differentiable-transform-itf.h"
 #include "adapt/generic-transform.h"
+#include "adapt/differentiable-transform.h"
 
 namespace kaldi {
 namespace differentiable_transform {
@@ -43,8 +44,24 @@ DifferentiableTransform* DifferentiableTransform::ReadNew(
 // static
 DifferentiableTransform* DifferentiableTransform::NewTransformOfType(
     const std::string &type) {
+  if (type.size() > 2 && type[type.size() - 1] == '>') {
+    std::string new_type(type);
+    if (new_type[0] == '<')
+      new_type.erase(0, 1);  // erase "<"
+    new_type.erase(new_type.size() - 1);  // erase ">".
+    return NewTransformOfType(new_type);
+  }
+
   if (type == "NoOpTransform") {
     return new NoOpTransform();
+  } else if (type == "FmllrTransform") {
+    return new FmllrTransform();
+  } else if (type == "MeanOnlyTransform") {
+    return new MeanOnlyTransform();
+  } else if (type == "SequenceTransform") {
+    return new SequenceTransform();
+  } else if (type == "AppendTransform") {
+    return new AppendTransform();
   } else {
     // Calling code will throw an error.
     return NULL;
@@ -96,6 +113,28 @@ void DifferentiableTransform::TestingForwardBatch(
   output->CopyFromMat(output_cpu);
 }
 
+// static
+DifferentiableTransform* DifferentiableTransform::ReadFromConfig(
+    std::istream &is, int32 num_classes) {
+  std::vector<std::string> lines;
+  ReadConfigLines(is, &lines);
+  std::vector<ConfigLine> config_lines;
+  ParseConfigLines(lines, &config_lines);
+  if (config_lines.empty())
+    KALDI_ERR << "Config file is empty.";
+  std::string transform_type = config_lines[0].FirstToken();
+  DifferentiableTransform *transform = NewTransformOfType(transform_type);
+  if (transform == NULL)
+    KALDI_ERR << "Parsing config file, could not find transform of type "
+              << transform_type;
+  int32 pos = transform->InitFromConfig(0, &config_lines);
+  if (pos != static_cast<int32>(config_lines.size()))
+    KALDI_ERR << "Found junk at end of config file, starting with line "
+              << pos << ": " << config_lines[pos].WholeLine();
+  KALDI_ASSERT(num_classes > 0);
+  transform->SetNumClasses(num_classes);
+  return transform;
+}
 
 }  // namespace differentiable_transform
 }  // namespace kaldi

@@ -342,7 +342,7 @@ void TestFmllrEstimatorVarDerivs(const MatrixBase<BaseFloat> &feats,
 
   // measure the accuracy of the deriv in 10 random directions
   int32 n = 10;
-  BaseFloat epsilon = 0.01;
+  BaseFloat epsilon = 0.001;
   Vector<BaseFloat> expected_changes(n), actual_changes(n);
   for (int32 i = 0; i < n; i++) {
     Vector<BaseFloat> new_s(num_classes, kUndefined);
@@ -367,6 +367,30 @@ void TestFmllrEstimatorVarDerivs(const MatrixBase<BaseFloat> &feats,
 }
 
 
+void TestFmllrEstimatorSequence(const MatrixBase<BaseFloat> &feats,
+                                const Posterior &post,
+                                const GaussianEstimator &g) {
+  // Do two fMLLR's in a row and see if the change in objf decreases.
+
+  int32 T = feats.NumRows(), dim = feats.NumCols();
+  const MatrixBase<BaseFloat> &mu(g.GetMeans());
+  const VectorBase<BaseFloat> &s(g.GetVars());
+  FmllrEstimatorOptions opts;
+
+  FmllrEstimator f(opts, mu, s);
+
+  Matrix<BaseFloat> adapted_feats(T, dim, kUndefined);
+  BaseFloat objf_impr = f.ForwardCombined(feats, post, &adapted_feats);
+  KALDI_LOG << "Forward objf-impr per frame (first time) is "
+            << objf_impr;
+
+
+  Matrix<BaseFloat> adapted_feats2(T, dim, kUndefined);
+  FmllrEstimator f2(opts, mu, s);
+  BaseFloat objf_impr2 = f.ForwardCombined(adapted_feats, post, &adapted_feats2);
+  KALDI_LOG << "Forward objf-impr per frame (second time) is "
+            << objf_impr2;
+}
 
 void TestFmllrEstimatorFeatDerivs(const MatrixBase<BaseFloat> &feats,
                                   const Posterior &post,
@@ -580,6 +604,7 @@ void UnitTestGaussianAndEstimators() {
   }
 
   {  // test FmllrEstimator
+    TestFmllrEstimatorSequence(feats, post, g);
     TestFmllrEstimatorMeanDerivs(feats, post, g);
     TestFmllrEstimatorFeatDerivs(feats, post, g);
     TestFmllrEstimatorVarDerivs(feats, post, g);

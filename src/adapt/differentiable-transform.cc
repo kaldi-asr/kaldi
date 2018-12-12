@@ -42,7 +42,7 @@ int32 FmllrTransform::InitFromConfig(
     std::vector<ConfigLine> *config_lines) {
   KALDI_ASSERT(cur_pos < int32(config_lines->size()));
   ConfigLine *line = &((*config_lines)[cur_pos]);
-  KALDI_ASSERT(line->FirstToken() == "FmllrTransform");
+  KALDI_ASSERT(line->FirstToken() == Type());
 
   if (!line->GetValue("dim", &dim_) || dim_ <= 0)
     KALDI_ERR << "Dimension 'dim' must be specified for FmllrTransform, config "
@@ -53,6 +53,17 @@ int32 FmllrTransform::InitFromConfig(
               << line->UnusedValues() << "', in line: "
               << line->WholeLine();
   return cur_pos + 1;
+}
+
+
+FmllrTransform::FmllrTransform(const FmllrTransform &other):
+    DifferentiableTransform(other),
+    dim_(other.dim_), fmllr_opts_(other.fmllr_opts_),
+    target_model_(other.target_model_ == NULL ? NULL :
+                  new GaussianEstimator(*other.target_model_)) { }
+
+DifferentiableTransform *FmllrTransform::Copy() const {
+  return new FmllrTransform(*this);
 }
 
 void FmllrTransform::Write(std::ostream &os, bool binary) const {
@@ -136,8 +147,10 @@ MinibatchInfoItf* FmllrTransform::TrainingForward(
     ans->estimators[speaker]->AccStats(this_input, this_posteriors);
   }
   BaseFloat objf_impr = 0.0;
-  for (int32 s = 0; s < num_spk; s++)
-    objf_impr += ans->estimators[s]->Estimate() / num_spk;
+  for (int32 s = 0; s < num_spk; s++) {
+    BaseFloat this_impr = ans->estimators[s]->Estimate();
+    objf_impr += this_impr / num_spk;
+  }
   // objf_impr is now the average objective-function improvement per frame.
   // We will later find a better way to display this.
   KALDI_LOG << "Objective function improvement per frame is "
@@ -240,6 +253,13 @@ void FmllrTransform::Accumulate(
   target_model_->AccStats(input_cpu, posteriors);
 }
 
+
+void FmllrTransform::Estimate(int32 final_iter) {
+  KALDI_ASSERT(final_iter == 0 && target_model_ != NULL);
+  target_model_->Estimate(fmllr_opts_);
+}
+
+
 SpeakerStatsItf *FmllrTransform::GetEmptySpeakerStats() const {
   KALDI_ASSERT(target_model_ != NULL &&
                target_model_->GetMeans().NumRows() != 0 &&
@@ -277,7 +297,6 @@ FmllrTransform::~FmllrTransform() {
 }
 
 
-
 MeanOnlyTransformMinibatchInfo::MeanOnlyTransformMinibatchInfo(
     int32 num_classes, int32 dim, int32 num_speakers):
     target_model(num_classes, dim),
@@ -294,7 +313,7 @@ int32 MeanOnlyTransform::InitFromConfig(
     std::vector<ConfigLine> *config_lines) {
   KALDI_ASSERT(cur_pos < int32(config_lines->size()));
   ConfigLine *line = &((*config_lines)[cur_pos]);
-  KALDI_ASSERT(line->FirstToken() == "MeanOnlyTransform");
+  KALDI_ASSERT(line->FirstToken() == Type());
 
   if (!line->GetValue("dim", &dim_) || dim_ <= 0)
     KALDI_ERR << "Dimension 'dim' must be specified for MeanOnlyTransform, config "
@@ -305,6 +324,11 @@ int32 MeanOnlyTransform::InitFromConfig(
               << line->WholeLine();
   return cur_pos + 1;
 }
+
+MeanOnlyTransform::MeanOnlyTransform(const MeanOnlyTransform &other):
+    DifferentiableTransform(other),
+    dim_(other.dim_), target_model_(other.target_model_ == NULL ? NULL :
+                                    new GaussianEstimator(*other.target_model_)) { }
 
 void MeanOnlyTransform::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, "<MeanOnlyTransform>");
@@ -402,6 +426,11 @@ MinibatchInfoItf* MeanOnlyTransform::TrainingForward(
   return ans;
 }
 
+
+DifferentiableTransform *MeanOnlyTransform::Copy() const {
+  return new MeanOnlyTransform(*this);
+}
+
 void MeanOnlyTransform::TrainingBackward(
     const CuMatrixBase<BaseFloat> &input,
     const CuMatrixBase<BaseFloat> &output_deriv,
@@ -488,6 +517,16 @@ void MeanOnlyTransform::Accumulate(
   Matrix<BaseFloat> input_cpu(input);
   target_model_->AccStats(input_cpu, posteriors);
 }
+
+void MeanOnlyTransform::Estimate(int32 final_iter) {
+  KALDI_ASSERT(final_iter == 0 && target_model_ != NULL);
+  // The options only affect the estimates of the variance, which we don't use
+  // here, so we use the default options.
+  FmllrEstimatorOptions default_opts;
+  target_model_->Estimate(default_opts);
+}
+
+
 
 SpeakerStatsItf *MeanOnlyTransform::GetEmptySpeakerStats() const {
   KALDI_ASSERT(target_model_ != NULL &&

@@ -42,7 +42,7 @@ class SpeakerStatsItf {
  public:
   // Does any estimation that is required-- you call this after accumulating
   // stats and before calling TestingForward().
-  virtual void Estimate();
+  virtual void Estimate() = 0;
 
   virtual ~SpeakerStatsItf() { }
 };
@@ -326,17 +326,23 @@ class DifferentiableTransform {
                        config_lines->size(), it means we're done.
    */
   virtual int32 InitFromConfig(int32 cur_pos,
-                               std::vector<ConfigLine> *config_lines);
+                               std::vector<ConfigLine> *config_lines) = 0;
 
   // Returns a new transform of the given type e.g. "NoOpTransform"
-  // or NULL if no such component type exists.
+  // or NULL if no such component type exists.  If angle brackets are
+  // present, e.g. "<FmllrTransform>", this function will detect and
+  // remove them.
   static DifferentiableTransform *NewTransformOfType(const std::string &type);
 
   // Reads a differentiable transform from a config file (this function parses
   // the file and reads a single DifferentiableTransform object from it).  Note:
   // since DifferentiableTransform objects can contain others, the file may
-  // contain many lines.
-  static DifferentiableTransform *ReadFromConfig(std::istream &is);
+  // contain many lines.  Throws exception if it did not succeed-- including
+  // if the config file had junk at the end that was not parsed.
+  static DifferentiableTransform *ReadFromConfig(std::istream &is,
+                                                 int32 num_classes);
+
+
 
   // Write transform to stream
   virtual void Write(std::ostream &os, bool binary) const = 0;
@@ -351,14 +357,15 @@ class DifferentiableTransform {
   // beforehand.
   static DifferentiableTransform* ReadNew(std::istream &is, bool binary);
 
+  DifferentiableTransform(): num_classes_(-1) { }
+
+  DifferentiableTransform(const DifferentiableTransform &other):
+      num_classes_(other.num_classes_) { }
+
   virtual ~DifferentiableTransform() { }
  protected:
   int32 num_classes_;
 };
-
-// Attempts to read a transform
-DifferentiableTransform *ReadTransformAtPosition(
-    int32 pos, std::vector<ConfigLine> *config_lines);
 
 
 } // namespace differentiable_transform

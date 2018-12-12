@@ -81,9 +81,9 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
 // static
 Component* Component::ReadNew(std::istream &is, bool binary) {
   std::string token;
-  ReadToken(is, binary, &token); // e.g. "<SigmoidComponent>".
-  token.erase(0, 1); // erase "<".
-  token.erase(token.length()-1); // erase ">".
+  ReadToken(is, binary, &token);  // e.g. "<SigmoidComponent>".
+  token.erase(0, 1);  // erase "<".
+  token.erase(token.length() - 1);  // erase ">".
   Component *ans = NewComponentOfType(token);
   if (!ans)
     KALDI_ERR << "Unknown component type " << token;

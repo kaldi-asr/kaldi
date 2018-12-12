@@ -48,7 +48,7 @@ namespace differentiable_transform {
    interface functions and their parameters.
 */
 class FmllrTransform: public DifferentiableTransform {
-
+ public:
   int32 InitFromConfig(int32 cur_pos,
                        std::vector<ConfigLine> *config_lines) override;
 
@@ -97,6 +97,8 @@ class FmllrTransform: public DifferentiableTransform {
   FmllrTransform(const FmllrTransform &other);
 
   FmllrTransform(): target_model_(NULL) { }
+
+  std::string Type() const override { return "FmllrTransform"; }
 
   DifferentiableTransform* Copy() const override;
 
@@ -156,8 +158,7 @@ class FmllrSpeakerStats: public SpeakerStatsItf {
    This is like a mean-only fMLLR with fixed (say, unit) covariance model.
  */
 class MeanOnlyTransform: public DifferentiableTransform {
-
-
+ public:
   /*
     Example config line:
 
@@ -211,6 +212,8 @@ class MeanOnlyTransform: public DifferentiableTransform {
   MeanOnlyTransform(const MeanOnlyTransform &other);
 
   MeanOnlyTransform(): target_model_(NULL) { }
+
+  std::string Type() const override { return "MeanOnlyTransform"; }
 
   DifferentiableTransform* Copy() const override;
 

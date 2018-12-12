@@ -272,7 +272,7 @@ void GaussianEstimator::Estimate(const FmllrEstimatorOptions &opts) {
                variance_sharing_weight_ <= 1.0);
   KALDI_ASSERT(mu_.NumRows() == 0 &&
                "You cannot call Estimate() twice.");
-  int32 num_classes = m_.NumRows();
+  int32 num_classes = m_.NumRows(), dim = m_.NumCols();
 
   mu_ = m_;
   s_.Resize(num_classes, kUndefined);
@@ -287,7 +287,7 @@ void GaussianEstimator::Estimate(const FmllrEstimatorOptions &opts) {
       // We already copied m_ to mu_.
       mu_i.Scale(1.0 / gamma_i);
       s_(i) = std::max<BaseFloat>(variance_floor_,
-                                  v_(i) / gamma_i - VecVec(mu_i, mu_i));
+                                  v_(i) / (gamma_i * dim) - VecVec(mu_i, mu_i) / dim);
     }
   }
 
@@ -331,8 +331,8 @@ void GaussianEstimator::AddToOutputDerivs(
     if (gamma_i != 0.0) {
       if (s_(i) != variance_floor) {
         BaseFloat s_bar_i = (BaseFloat(1.0) - f) * t_bar(i) + s_bar * gamma_i / gamma;
-        v_bar_(i) += s_bar_i / gamma_i;
-        m_bar_i.AddVec(-2.0 * s_bar_i / gamma_i, mu_.Row(i));
+        v_bar_(i) += s_bar_i / (gamma_i * dim);
+        m_bar_i.AddVec(-2.0 * s_bar_i / (gamma_i * dim), mu_.Row(i));
       }
       m_bar_i.AddVec(1.0 / gamma_i, mu_bar.Row(i));
     }
