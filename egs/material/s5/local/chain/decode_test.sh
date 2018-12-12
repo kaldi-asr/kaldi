@@ -109,7 +109,7 @@ if [ $stage -le 3 ]; then
   done
 fi
 wait
-[ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
+# [ -f $dir/.error ] && echo "$0: there was a problem while decoding" && exit 1
 
 if [ $stage -le 4 ]; then
   # re-segement data based on 1st-pass decoding

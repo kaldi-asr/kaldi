@@ -169,10 +169,32 @@ if [ $stage -le 12 ]; then
   if [ "$number_mapping" != "" ]; then
     echo Number mapping file Found. Converting numbers...
     cat $bitext | awk -F"\t" '{print $2;}' | local/normalize_numbers.py $number_mapping > $srctext_bitext
-    cat $mono | local/normalize_numbers.py $number_mapping > $srctext_mono
+    if [[ $mono == *.gz ]]; then 
+      gzip -cd $mono | local/normalize_numbers.py $number_mapping > $srctext_mono
+    else
+      cat $mono | local/normalize_numbers.py $number_mapping > $srctext_mono
+    fi
+    if [ "$mono2" != "" ]; then
+      if [[ $mono2 == *.gz ]]; then 
+        gzip -cd $mono2 | local/normalize_numbers.py $number_mapping >> $srctext_mono
+      else
+        cat $mono2 | local/normalize_numbers.py $number_mapping >> $srctext_mono
+      fi
+    fi
   else
     cat $bitext | awk -F"\t" '{print $2;}' > $srctext_bitext
-    cat $mono > $srctext_mono
+    if [[ $mono == *.gz ]]; then
+      gzip -cd $mono > $srctext_mono
+    else
+      cat $mono > $srctext_mono
+    fi
+    if [ "$mono2" != "" ]; then
+      if [[ $mono2 == *.gz ]]; then 
+        gzip -cd $mono2 >> $srctext_mono
+      else
+        cat $mono2 >> $srctext_mono
+      fi
+    fi
   fi
 
   local/preprocess_external_text.sh --language $language \
@@ -182,10 +204,21 @@ if [ $stage -le 12 ]; then
     --srctext-bitext ${srctext_mono} ${srctext_mono}.txt
 
   # Combine two sources of text
-  awk '{print $1}' < $bitext > ${srctext_bitext}.header
+  cat $bitext | awk '{print $1}' > ${srctext_bitext}.header
   paste ${srctext_bitext}.header ${srctext_bitext}.txt > ${srctext_bitext}.processed
 
-  awk '{printf("mono-%d\n",NR)}' < $mono > ${srctext_mono}.header
+  if [[ $mono == *.gz ]]; then
+    gzip -cd $mono | awk '{printf("mono-%d\n",NR)}' > ${srctext_mono}.header
+  else
+    cat $mono | awk '{printf("mono-%d\n",NR)}' > ${srctext_mono}.header
+  fi
+  if [ "$mono2" != "" ]; then
+    if [[ $mono2 == *.gz ]]; then 
+      gzip -cd $mono2 | awk '{printf("mono-%d\n",NR)}' >> ${srctext_mono}.header
+    else
+      cat $mono2 | awk '{printf("mono-%d\n",NR)}' >> ${srctext_mono}.header
+    fi
+  fi
   paste ${srctext_mono}.header ${srctext_mono}.txt > ${srctext_mono}.processed
 fi
 
@@ -250,21 +283,18 @@ if [ $stage -le 17 ]; then
   cat data/analysis1/text | awk '{for(i=2;i<=NF;i++) printf("%s ", $i); print""}' \
     | grep . | shuf | head -n 2000 > $lmdir/dev_text || echo done
 
-  ln -sf ${srctext_bitext}.processed $lmdir/bitext
-  ln -sf ${srctext_mono}.processed $lmdir/mono
-
   local/train_lms_srilm.sh --oov-symbol "<unk>" --words-file ${lang_root}_nosp/words.txt \
-    --train-text $lmdir/bitext --dev-text $lmdir/dev_text \
+    --train-text ${srctext_bitext}.processed --dev-text $lmdir/dev_text \
     data $lmdir/bitext
 
   local/train_lms_srilm.sh --oov-symbol "<unk>" --words-file ${lang_root}_nosp/words.txt \
-    --train-text $lmdir/mono --dev-text $lmdir/dev_text \
+    --train-text ${srctext_mono}.processed --dev-text $lmdir/dev_text \
     data $lmdir/mono
 fi
 
 if [ $stage -le 18 ]; then
-  ngram -order 4 -lm data/lm/lm.gz -mix-lm data/lm_combined/bitext/lm.gz \
-    -mix-lm2 data/lm_combined/mono/lm.gz -lambda 0.3 -mix-lambda2 0.4 \
+  ngram -order 4 -lm data/lm/lm.gz -mix-lm $lmdir/bitext/lm.gz \
+    -mix-lm2 $lmdir/mono/lm.gz -lambda 0.3 -mix-lambda2 0.4 \
     -write-lm $lmdir/lm.gz
 
   utils/format_lm.sh ${lang_root}_nosp $lmdir/lm.gz \
@@ -288,6 +318,6 @@ fi
 
 # After run.sh is finished, run the followings:
 # ./local/chain/run_tdnn.sh
-# ./local/chain/decode_test.sh --language <swahili|tagalog>
+# ./local/chain/decode_test.sh --language <swahili|tagalog|somali>
 # ./local/rnnlm/run_tdnn_lstm.sh
 exit 0;

@@ -35,6 +35,19 @@ if [ $stage -le 1 ]; then
 fi
 
 if [ $stage -le 2 ]; then
+  # extract n-best lists from archive.* files
+  if [[ ${decode_dir} == *_rescore_nbest ]]; then
+    hyp_filtering_cmd="cat"
+    [ -x local/wer_output_filter ] && hyp_filtering_cmd="local/wer_output_filter"
+    [ -x local/wer_hyp_filter ] && hyp_filtering_cmd="local/wer_hyp_filter"
+    mkdir -p ${decode_dir}/output_nbest
+    for f in ${decode_dir}/archives.*; do
+      docid=$(head -1 $f/words_text | awk '{print $1}' | cut -f1,2 -d'-')
+      $hyp_filtering_cmd $f/words_text  > \
+        ${decode_dir}/output_nbest/$docid".n.txt" || exit 1;
+    done
+  fi
+
   # compute WER              
   local/score_stm.sh --min-lmwt 10 --max-lmwt 10 --word-ins-penalty 0.0 \
     --cmd "$decode_cmd" data/${data}_hires $graph_dir ${decode_dir}

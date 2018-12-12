@@ -19,7 +19,7 @@ with open(sys.argv[1]) as s_f:
 # TODO: Will not handle numbers which have a comma in them
 for line in sys.stdin:
   words = line.strip().split()
-  for i in xrange(len(words)):
+  for i in range(len(words)):
     if words[i].isdigit() and int(words[i]) in num_trans:
       words[i] = num_trans[int(words[i])]
 
