@@ -1,6 +1,6 @@
 // rnnlm/rnnlm-lattice-rescoring.h
 //
-// Copyright 2017 Johns Hopkins University (author: Daniel Povey) 
+// Copyright 2017 Johns Hopkins University (author: Daniel Povey)
 //           2017 Yiming Wang
 //           2017 Hainan Xu
 //
@@ -73,6 +73,49 @@ class KaldiRnnlmDeterministicFst
   // Mapping from state-id to RNNLM states.
   // The pointers are owned in this class
   std::vector<RnnlmComputeState*> state_to_rnnlm_state_;
+
+};
+
+class KaldiRnnlmDeterministicFstAdapt
+    : public fst::DeterministicOnDemandFst<fst::StdArc> {
+ public:
+  typedef fst::StdArc::Weight Weight;
+  typedef fst::StdArc::StateId StateId;
+  typedef fst::StdArc::Label Label;
+
+  // Does not take ownership.
+  KaldiRnnlmDeterministicFstAdapt(int32 max_ngram_order,
+      const RnnlmComputeStateInfoAdapt &info);
+  ~KaldiRnnlmDeterministicFstAdapt();
+
+  void Clear();
+
+  // We cannot use "const" because the pure virtual function in the interface is
+  // not const.
+  virtual StateId Start() { return start_state_; }
+
+  // We cannot use "const" because the pure virtual function in the interface is
+  // not const.
+  virtual Weight Final(StateId s);
+
+  virtual bool GetArc(StateId s, Label ilabel, fst::StdArc* oarc);
+
+ private:
+  typedef unordered_map
+      <std::vector<Label>, StateId, VectorHasher<Label> > MapType;
+  StateId start_state_;
+  int32 max_ngram_order_;
+  int32 bos_index_;
+  int32 eos_index_;
+
+  MapType wseq_to_state_;
+
+  // Mapping from state-id to history sequence>
+  std::vector<std::vector<Label> > state_to_wseq_;
+
+  // Mapping from state-id to RNNLM states.
+  // The pointers are owned in this class
+  std::vector<RnnlmComputeStateAdapt*> state_to_rnnlm_state_;
 
 };
 
