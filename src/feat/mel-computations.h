@@ -48,6 +48,8 @@ struct MelBanksOptions {
   BaseFloat vtln_low;  // vtln lower cutoff of warping function.
   BaseFloat vtln_high;  // vtln upper cutoff of warping function: if negative, added
                         // to the Nyquist frequency to get the cutoff.
+  bool modified;       // If true, use 'modified' MFCC, which uses a breakpoint of
+                       // 900 instead of 700.
   bool debug_mel;
   // htk_mode is a "hidden" config, it does not show up on command line.
   // Enables more exact compatibibility with HTK, for testing purposes.  Affects
@@ -55,7 +57,7 @@ struct MelBanksOptions {
   bool htk_mode;
   explicit MelBanksOptions(int num_bins = 25)
       : num_bins(num_bins), low_freq(20), high_freq(0), vtln_low(100),
-        vtln_high(-500), debug_mel(false), htk_mode(false) {}
+        vtln_high(-500), modified(false), debug_mel(false), htk_mode(false) {}
 
   void Register(OptionsItf *opts) {
     opts->Register("num-mel-bins", &num_bins,
@@ -69,6 +71,8 @@ struct MelBanksOptions {
     opts->Register("vtln-high", &vtln_high,
                    "High inflection point in piecewise linear VTLN warping function"
                    " (if negative, offset from high-mel-freq");
+    opts->Register("modified", &modified,
+                   "Modified MFCCs, based on paper XXXX.  TODO: document this.");
     opts->Register("debug-mel", &debug_mel,
                    "Print out debugging information for mel bin computation");
   }
@@ -77,30 +81,6 @@ struct MelBanksOptions {
 
 class MelBanks {
  public:
-
-  static inline BaseFloat InverseMelScale(BaseFloat mel_freq) {
-    return 700.0f * (expf (mel_freq / 1127.0f) - 1.0f);
-  }
-
-  static inline BaseFloat MelScale(BaseFloat freq) {
-    return 1127.0f * logf (1.0f + freq / 700.0f);
-  }
-
-  static BaseFloat VtlnWarpFreq(BaseFloat vtln_low_cutoff,
-                                BaseFloat vtln_high_cutoff,  // discontinuities in warp func
-                                BaseFloat low_freq,
-                                BaseFloat high_freq,  // upper+lower frequency cutoffs in
-                                // the mel computation
-                                BaseFloat vtln_warp_factor,
-                                BaseFloat freq);
-
-  static BaseFloat VtlnWarpMelFreq(BaseFloat vtln_low_cutoff,
-                                   BaseFloat vtln_high_cutoff,
-                                   BaseFloat low_freq,
-                                   BaseFloat high_freq,
-                                   BaseFloat vtln_warp_factor,
-                                   BaseFloat mel_freq);
-
 
   MelBanks(const MelBanksOptions &opts,
            const FrameExtractionOptions &frame_opts,
@@ -116,18 +96,74 @@ class MelBanks {
   // returns vector of central freq of each bin; needed by plp code.
   const Vector<BaseFloat> &GetCenterFreqs() const { return center_freqs_; }
 
-  // Copy constructor
-  MelBanks(const MelBanks &other);
+  // Use the default copy constructor
  private:
+
+  // This function checks that the provided options make sense, and also sets
+  // configuration variables like breakpoint_ in this class.
+  void SetConfigs(const MelBanksOptions &opts,
+                  const FrameExtractionOptions &frame_opts,
+                  BaseFloat vtln_warp_factor);
+
+  // We use simplified formulas for the mel and inverse mel scale, since for
+  // this application, the multiplicative factor doesn't matter.  Note:
+  // breakpoint_ is 700 for normal mel, or 900 for modified.
+  inline BaseFloat InverseMelScale(BaseFloat mel_freq) {
+    return 3500.0 * (expf((mel_freq - breakpoint_) / 3500.0) - 1.0);
+  }
+
+  inline BaseFloat MelScale(BaseFloat freq) {
+    return log (breakpoint_ + 3500.0 * log (1.0 + freq / 3500.0));
+  }
+
+  BaseFloat VtlnWarpFreq(BaseFloat vtln_warp_factor, BaseFloat freq);
+
+
+  BaseFloat VtlnWarpMelFreq(BaseFloat vtln_warp_factor, BaseFloat mel_freq);
+
+  // This sets up the 'bins_' member, for the regular (not modified)
+  // computation.  It assumes center_freqs_ is already set up.
+  // 'htk_mode' is expected to be a copy of opts.htk_mode as given to the
+  // constructor.
+  void ComputeBins(bool htk_mode);
+
+  // This sets up the 'bins_' member, for the modified computaion
+  // with cosine-shaped bins that are more tightly
+  // computation.  It assumes center_freqs_ is already set up.
+  // 'htk_mode' is expected to be a copy of opts.htk_mode as given to the
+  // constructor.
+  void ComputeModifiedBins();
+
   // Disallow assignment
   MelBanks &operator = (const MelBanks &other);
 
-  // center frequencies of bins, numbered from 0 ... num_bins-1.
-  // Needed by GetCenterFreqs().
+
+  // The following few variables are derived from the configuration
+  // options passed in; they are used in converting to and from Mel frequencies,
+  // and for other purposes.
+  BaseFloat breakpoint_;  // The breakpoint in the mel scale: 700 normally;
+                          // 900 if opts.modified is true.
+  BaseFloat low_freq_;  // opts.low_freq
+  BaseFloat high_freq_;  // The same as opts.high_freq if it's >= 0, or
+                         // otherwise the Nyquist plus opts.high_freq.
+  BaseFloat vtln_low_;  // opts.vtln_low; the lower cutoff for VTLN.
+  BaseFloat vtln_high_;  // opts.vtln_high; the upper cutoff for VTLN.
+
+  int32 num_fft_bins_;  // The number of FFT frequency bins (actually, excluding
+                        // the one at the Nyquist).  Equal to half the padded
+                        // window length.
+  BaseFloat fft_bin_width_;  // The frequency separation between successive
+                             // FFT bins: equal nyquist / num_fft_bins_.
+
+
+  // center frequencies of bins (in Hz), numbered from 0 ... num_bins-1.  Needed
+  // by GetCenterFreqs().
   Vector<BaseFloat> center_freqs_;
 
-  // the "bins_" vector is a vector, one for each bin, of a pair:
-  // (the first nonzero fft-bin), (the vector of weights).
+  // the "bins_" vector is a vector, one for each mel bin, of a pair: (the
+  // first nonzero fft-bin), (the vector of weights).  The pair of (int32,
+  // Vector) is provided for efficiency, to avoid having a larger vector with
+  // many zero entries.
   std::vector<std::pair<int32, Vector<BaseFloat> > > bins_;
 
   bool debug_;
