@@ -68,6 +68,12 @@ class SubPosterior {
       data_(num_frames_ == 0 ? NULL : &(post[offset])) {
     KALDI_ASSERT(stride > 0 && post.size() > offset + (num_frames-1) * stride);
   }
+  SubPosterior(const SubPosterior &post, size_t offset,
+               size_t num_frames, size_t stride = 1):
+      num_frames_(num_frames), stride_(stride * post.stride_),
+      data_(num_frames_ == 0 ? NULL : post.data_ + (offset * post.stride_)) {
+    KALDI_ASSERT(offset + num_frames * (stride - 1) < post.num_frames_);
+  }
   size_t size() const { return num_frames_; }
   const std::vector<std::pair<int32, BaseFloat> > &operator[] (size_t i) const {
     KALDI_PARANOID_ASSERT(i < num_frames_);
