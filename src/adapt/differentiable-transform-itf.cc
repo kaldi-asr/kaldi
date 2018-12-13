@@ -74,7 +74,7 @@ void DifferentiableTransform::TestingForwardBatch(
     int32 num_chunks,
     int32 num_spk,
     const Posterior &posteriors,
-    CuMatrixBase<BaseFloat> *output) {
+    CuMatrixBase<BaseFloat> *output) const {
   int32 dim = input.NumCols(),
       num_frames = input.NumRows(),
       chunks_per_spk = num_chunks / num_spk,

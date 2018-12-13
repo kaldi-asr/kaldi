@@ -41,8 +41,9 @@ class MinibatchInfoItf {
 class SpeakerStatsItf {
  public:
   // Does any estimation that is required-- you call this after accumulating
-  // stats and before calling TestingForward().
-  virtual void Estimate() = 0;
+  // stats and before calling TestingForward().  You'll normally want to
+  // override this, unless your object requires no estimation.
+  virtual void Estimate() { }
 
   virtual ~SpeakerStatsItf() { }
 };
@@ -300,7 +301,7 @@ class DifferentiableTransform {
       int32 num_chunks,
       int32 num_spk,
       const Posterior &posteriors,
-      CuMatrixBase<BaseFloat> *output);
+      CuMatrixBase<BaseFloat> *output) const;
 
   // Copies transform (deep copy).
   virtual DifferentiableTransform* Copy() const = 0;

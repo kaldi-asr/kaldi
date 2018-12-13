@@ -155,7 +155,6 @@ void TestTraining(DifferentiableTransform *transform) {
   transform->TrainingBackward(input_feats, output_deriv, num_chunks,
                               num_spk, post, info, &input_deriv);
 
-
   int32 n = 5;
   Vector<BaseFloat> expected_changes(n), observed_changes(n);
   BaseFloat epsilon = 1.0e-03;
@@ -176,6 +175,33 @@ void TestTraining(DifferentiableTransform *transform) {
   KALDI_LOG << "Expected changes: " << expected_changes
             << ", observed changes: " << observed_changes;
   KALDI_ASSERT(expected_changes.ApproxEqual(observed_changes, 0.15));
+
+  {
+    // Test that if we do Accumulate() and Estimate() on the same data we
+    // trained on, and then TestingForwardBatch(), we get the same answer
+    // as during training.  Note: this may not be true for all examples
+    // including SequenceTransform, due to how we treat the last of the
+    // transforms specially.
+
+    int32 num_final_iters = transform->NumFinalIterations();
+    for (int32 i = 0; i < num_final_iters; i++) {
+      transform->Accumulate(i, input_feats, num_chunks, num_spk, post);
+      transform->Estimate(i);
+    }
+    CuMatrix<BaseFloat> output_feats2(output_feats.NumRows(),
+                                      output_feats.NumCols(), kUndefined);
+    transform->TestingForwardBatch(input_feats, num_chunks, num_spk, post,
+                                   &output_feats2);
+    output_feats2.AddMat(-1.0, output_feats);
+    BaseFloat rel_diff = (output_feats2.FrobeniusNorm() /
+                          output_feats.FrobeniusNorm());
+    KALDI_LOG << "Difference in features train vs. test (relative) is "
+              << rel_diff;
+    if (rel_diff > 0.001) {
+      KALDI_WARN << "Make sure this config would not be equivalent train "
+          "vs. test (see config printed above).";
+    }
+  }
 }
 
 
@@ -235,9 +261,10 @@ void UnitTestIo() {
 int main() {
   using namespace kaldi::differentiable_transform;
 
-  UnitTestReadFromConfig();
-  UnitTestIo();
-  UnitTestTraining();
-
+  for (int32 i = 0; i < 3; i++) {
+    UnitTestReadFromConfig();
+    UnitTestIo();
+    UnitTestTraining();
+  }
   std::cout << "Test OK.\n";
 }

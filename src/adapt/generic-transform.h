@@ -79,7 +79,9 @@ class NoOpTransform: public DifferentiableTransform {
       const Posterior &posteriors) override { }
 
 
-  SpeakerStatsItf *GetEmptySpeakerStats() const override { return NULL; }
+  SpeakerStatsItf *GetEmptySpeakerStats() const override {
+    return new SpeakerStatsItf();
+  }
 
   void TestingAccumulate(
       const MatrixBase<BaseFloat> &input,
