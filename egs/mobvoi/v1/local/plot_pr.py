@@ -69,34 +69,30 @@ def main():
                 FNR.append(float(m.group(4)))
                 FP_per_hour.append(float(m.group(5)))
 
-        sorted_index = sorted(range(len(FP_per_hour)),key=FP_per_hour.__getitem__)
-        #precision = [precision[i] for i in sorted_index]
-        #recall = [recall[i] for i in sorted_index]
+        sorted_index = sorted(range(len(recall)),key=recall.__getitem__)
+        precision = [precision[i] for i in sorted_index]
+        recall = [recall[i] for i in sorted_index]
         FPR = [FPR[i] * 100 for i in sorted_index]
         FNR = [FNR[i] * 100 for i in sorted_index]
-        FP_per_hour = [float(FP_per_hour[i]) for i in sorted_index]
+        FP_per_hour = [FP_per_hour[i] for i in sorted_index]
 
         color_val = g_plot_colors[index]
-        #pr_plot_handle, = plt.plot(recall, precision, color=color_val,
-        #    linestyle="-", label="{}".format(os.path.dirname(path))
-        #)
-        #pr_plots.append(pr_plot_handle)
-        roc_plot_handle, = plt.plot(FP_per_hour, FNR, color=color_val,
-            linestyle="--", label="{}".format(os.path.dirname(path))
+        pr_plot_handle, = plt.plot(recall, precision, color=color_val,
+            linestyle="-", label="{}".format(os.path.dirname(path))
         )
-        roc_plots.append(roc_plot_handle)
+        pr_plots.append(pr_plot_handle)
 
-    plt.xlabel('False Alarms per hour')
-    plt.ylabel('False Rejects (%)')
+    plt.xlabel('Precision')
+    plt.ylabel('Recall')
     lgd = plt.legend(handles=pr_plots, loc='lower center',
             bbox_to_anchor=(0.5, -0.2 + len(args.comparison_path) * -0.1),
             ncol=1, borderaxespad=0.)
     plt.grid(True)
-    fig.suptitle("ROC curve")
-    figfile_name = os.path.join(savedir, 'roc.pdf')
+    fig.suptitle("PR curve")
+    figfile_name = os.path.join(savedir, 'pr.pdf')
     plt.savefig(figfile_name, bbox_extra_artists=(lgd,), bbox_inches='tight')
 
-    print("Saved ROC curves as " + figfile_name)
+    print("Saved PR curves as " + figfile_name)
 
 if __name__ == "__main__":
     main()

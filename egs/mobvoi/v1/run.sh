@@ -106,7 +106,6 @@ if [ $stage -le 8 ]; then
 
   steps/align_si.sh  --nj 50 --cmd "$train_cmd" --use-graphs true \
     data/train data/lang exp/mono2 exp/mono2_ali
-  exit 0
 fi
 
 trainset=train
@@ -153,8 +152,8 @@ if [ $stage -le 11 ]; then
 fi
 
 if [ $stage -le 12 ]; then
-  echo "$0: Calling the end-to-end chain recipe..."
-  local/chain/run_e2e_tdnn_1a.sh
+  echo "$0: Calling the chain recipe..."
+  local/chain/run_tdnn_1a.sh
 fi
 
 

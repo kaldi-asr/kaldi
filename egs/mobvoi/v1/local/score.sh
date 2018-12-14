@@ -12,8 +12,8 @@ stage=0
 decode_mbr=false
 stats=true
 beam=6
-word_ins_penalty=0.0,0.5,1.0
-min_lmwt=7
+word_ins_penalty=0.0,0.5,1.0,1.5,2.0
+min_lmwt=1
 max_lmwt=17
 wake_word="嗨小问"
 iter=final
@@ -44,6 +44,10 @@ for f in $symtab $dir/lat.1.gz $data/text; do
   [ ! -f $f ] && echo "score.sh: no such file $f" && exit 1;
 done
 
+
+utils/data/get_utt2dur.sh $data
+dur=`awk '{a+=$2} END{print a}' $data/utt2dur`
+echo "total duration (in seconds) of $data: $dur"
 
 ref_filtering_cmd="cat"
 [ -x local/wer_output_filter ] && ref_filtering_cmd="local/wer_output_filter"
@@ -95,8 +99,8 @@ if [ $stage -le 0 ]; then
       for lmwt in `seq $min_lmwt $max_lmwt`; do
         export LC_ALL=en_US.UTF-8
         cat $dir/scoring_kaldi/penalty_$wip/$lmwt.txt | \
-        local/compute_metrics.py $dir/scoring_kaldi/test_filt.txt - --wake-word $wake_word > \
-        $dir/scoring_kaldi/penalty_$wip/log/metrics.$lmwt.log
+        local/compute_metrics.py $dir/scoring_kaldi/test_filt.txt - --wake-word $wake_word \
+        --duration $dur > $dir/scoring_kaldi/penalty_$wip/log/metrics.$lmwt.log
       done
       export LC_ALL=
   done

@@ -24,6 +24,7 @@ def main():
                         help='path to the hypothesis')
     parser.add_argument('--wake-word', type=str, dest='wake_word', default='嗨小问',
                         help='wake word')
+    parser.add_argument('--duration', type=float, dest='duration', default=0.0)
     args = parser.parse_args()
 
     f = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8') if args.ref == "-" else codecs.open(args.ref, 'r', encoding='utf-8')
@@ -58,8 +59,10 @@ def main():
     precision = TP / (TP + FP) if TP + FP > 0 else 0.0
     recall = TP / (TP + FN) if TP + FN > 0 else 0.0
     false_positive_rate = FP / (FP + TN) if FP + TN > 0 else 0.0
+    false_negative_rate = FN / (FN + TP) if FN + TP > 0 else 0.0
+    false_alarms_per_hour = FP / (args.duration / 3600) if args.duration > 0.0 else 0.0
 
-    print("precision: %.3f  recall: %.3f  FPR: %.3f  total: %d" % (precision, recall, false_positive_rate, TP+TN+FP+FN))
+    print("precision: %.3f  recall: %.3f  FPR: %.3f  FNR: %.3f  FP per hour: %.3f  total: %d" % (precision, recall, false_positive_rate, false_negative_rate, false_alarms_per_hour, TP+TN+FP+FN))
 
 if __name__ == "__main__":
     main()
