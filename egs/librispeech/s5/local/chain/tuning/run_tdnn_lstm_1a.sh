@@ -3,24 +3,13 @@
 
 # training acoustic model and decoding:
 #     local/chain/tuning/run_tdnn_lstm_1a.sh
-# rnn-lm rescoring:
-#     local/rnnlm/tuning/run_tdnn_lstm_1a.sh --ac-model-dir exp/chain_cleaned/tdnn_lstm1a_sp/
-
 # System                      tdnn_lstm1a_sp
-# WER on dev(fglarge_lat_rnnlm)        3.04
-# WER on dev(fglarge_nbe_rnnlm)      3.06
 # WER on dev(fglarge)              3.44
 # WER on dev(tglarge)              3.55
-# WER on dev_other(fglarge_lat_rnnlm)      7.85
-# WER on dev_other(fglarge_nbe_rnnlm)      7.87
 # WER on dev_other(fglarge)        8.63
 # WER on dev_other(tglarge)        9.09
-# WER on test(fglarge_lat_rnnlm)       3.41
-# WER on test(fglarge_nbe_rnnlm)      3.44
 # WER on test(fglarge)             3.78
 # WER on test(tglarge)             3.94
-# WER on test_other(fglarge_lat_rnnlm)      8.10
-# WER on test_other(fglarge_nbe_rnnlm)      8.11
 # WER on test_other(fglarge)       8.83
 # WER on test_other(tglarge)       9.09
 # Final train prob              -0.0452

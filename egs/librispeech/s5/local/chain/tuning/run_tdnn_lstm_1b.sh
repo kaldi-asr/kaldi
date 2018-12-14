@@ -1,7 +1,9 @@
 #!/bin/bash
-# based on tdnn_lstm_1a, but with larger model size
+# this is the tdnn-lstmp based on the run_tdnn_lstm_1a.sh under Librispeech but with larger model size.
 
-# local/chain/compare_wer.sh exp/chain_cleaned/tdnn_lstm1a_sp exp/chain_cleaned/tdnn_lstm1b_sp/
+# training acoustic model and decoding:
+#     local/chain/tuning/run_tdnn_lstm_1b.sh
+# local/chain/compare_wer.sh exp/chain_cleaned/tdnn_lstm1a_sp exp/chain_cleaned/tdnn_lstm1b_sp
 # System                      tdnn_lstm1a_sp tdnn_lstm1b_sp
 # WER on dev(fglarge)              3.44      3.36
 # WER on dev(tglarge)              3.55      3.48
@@ -24,6 +26,31 @@
 # Final train prob (xent)       -0.7874   -0.7488
 # Final valid prob (xent)       -0.8150   -0.7757
 # Num-parameters               27790288  45245520
+
+# rnn-lm rescoring:
+#     local/rnnlm/tuning/run_tdnn_lstm_1a.sh --ac-model-dir exp/chain_cleaned/tdnn_lstm1b_sp/
+# System                      tdnn_lstm_large1n_sp
+# WER on dev(fglarge_nbe_rnnlm)      2.73
+# WER on dev(fglarge_lat_rnnlm)        2.83
+# WER on dev(fglarge)              3.36
+# WER on dev(tglarge)              3.48
+# WER on dev_other(fglarge_nbe_rnnlm)      7.20
+# WER on dev_other(fglarge_lat_rnnlm)      7.23
+# WER on dev_other(fglarge)        8.43
+# WER on dev_other(tglarge)        8.94
+# WER on test(fglarge_nbe_rnnlm)      3.10
+# WER on test(fglarge_lat_rnnlm)       3.22
+# WER on test(fglarge)             3.83
+# WER on test(tglarge)             3.93
+# WER on test_other(fglarge_nbe_rnnlm)      7.54
+# WER on test_other(fglarge_lat_rnnlm)      7.65
+# WER on test_other(fglarge)       8.69
+# WER on test_other(tglarge)       9.10
+# Final train prob              -0.0417
+# Final valid prob              -0.0459
+# Final train prob (xent)       -0.7488
+# Final valid prob (xent)       -0.7757
+# Num-parameters               45245520
 
 
 
