@@ -23,7 +23,7 @@ def GetArgs():
                                      "a learned lexicon for words out of the ref. vocab (learned_lexicon_oov),"
                                      "and a lexicon_edits file containing suggested modifications of prons, for"
                                      "words within the ref. vocab (ref_lexicon_edits).",
-                                     epilog = "See steps/dict/learn_lexicon.sh for example.")
+                                     epilog = "See steps/dict/learn_lexicon_bayesian.sh for example.")
     parser.add_argument("--prior-mean", type = str, default = "0,0,0",
                         help = "Mean of priors (summing up to 1) assigned to three exclusive n"
                         "pronunciatio sources: reference lexicon, g2p, and phonetic decoding. We "

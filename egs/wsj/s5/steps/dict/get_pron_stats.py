@@ -10,15 +10,16 @@ import argparse
 import sys
 
 def GetArgs():
-    parser = argparse.ArgumentParser(description = "Accumulate statistics from lattice-alignment outputs for lexicon"
-                                     "learning. The inputs are a file containing arc level information from lattice-align-words,"
-                                     "and a map which maps word-position-dependent phones to word-position-independent phones"
-                                     "(output from steps/cleanup/debug_lexicon.txt). The output contains accumulated soft-counts"
-                                     "of pronunciations",
-                                     epilog = "cat exp/tri3_lex_0.4_work/lats/arc_info_sym.*.txt \\|"
-                                              "  steps/dict/get_pron_stats.py - exp/tri3_lex_0.4_work/phone_decode/phone_map.txt \\"
-                                              "  exp/tri3_lex_0.4_work/lats/pron_stats.txt"
-                                              "See steps/dict/learn_lexicon.sh for examples in detail.")
+    parser = argparse.ArgumentParser(
+        description = "Accumulate statistics from lattice-alignment outputs for lexicon"
+        "learning. The inputs are a file containing arc level information from lattice-align-words,"
+        "and a map which maps word-position-dependent phones to word-position-independent phones"
+        "(output from steps/cleanup/debug_lexicon.txt). The output contains accumulated soft-counts"
+        "of pronunciations",
+        epilog = "cat exp/tri3_lex_0.4_work/lats/arc_info_sym.*.txt \\|"
+        "  steps/dict/get_pron_stats.py - exp/tri3_lex_0.4_work/phone_decode/phone_map.txt \\"
+        "  exp/tri3_lex_0.4_work/lats/pron_stats.txt"
+        "See steps/dict/learn_lexicon_greedy.sh for examples in detail.")
 
     parser.add_argument("arc_info_file", metavar = "<arc-info-file>", type = str,
                         help = "Input file containing per arc statistics; "
