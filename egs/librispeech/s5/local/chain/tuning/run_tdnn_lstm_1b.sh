@@ -28,8 +28,8 @@
 # Num-parameters               27790288  45245520
 
 # rnn-lm rescoring:
-#     local/rnnlm/tuning/run_tdnn_lstm_1a.sh --ac-model-dir exp/chain_cleaned/tdnn_lstm1b_sp/
-# System                      tdnn_lstm_large1n_sp
+#     local/rnnlm/tuning/run_tdnn_lstm_1a.sh --ac-model-dir exp/chain_cleaned/tdnn_lstm_1b_sp/
+# System                      tdnn_lstm_lb_sp
 # WER on dev(fglarge_nbe_rnnlm)      2.73
 # WER on dev(fglarge_lat_rnnlm)        2.83
 # WER on dev(fglarge)              3.36
