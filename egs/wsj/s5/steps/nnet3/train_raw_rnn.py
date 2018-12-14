@@ -509,7 +509,8 @@ def train(args, run_opts):
                 run_opts=run_opts, chunk_width=args.chunk_width,
                 get_raw_nnet_from_am=False,
                 compute_per_dim_accuracy=args.compute_per_dim_accuracy,
-                max_objective_evaluations=args.max_objective_evaluations)
+                max_objective_evaluations=args.max_objective_evaluations,
+                use_multitask_egs=use_multitask_egs)
         else:
             common_lib.force_symlink("{0}.raw".format(num_iters),
                                      "{0}/final.raw".format(args.dir))
