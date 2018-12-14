@@ -40,7 +40,7 @@
 
 stage=0
 # Begin configuration section.  
-cmd=queue.pl
+cmd=run.pl
 nj=
 stage=0
 oov_symbol=

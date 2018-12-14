@@ -28,7 +28,7 @@
 
 
 # Begin configuration section.  
-cmd=queue.pl
+cmd=run.pl
 nj=4
 stage=0
 
