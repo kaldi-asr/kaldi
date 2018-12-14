@@ -53,7 +53,7 @@ class Timer {
  private:
   LARGE_INTEGER time_start_;
 };
-}
+
 
 #else
 #include <sys/time.h>
@@ -88,6 +88,8 @@ class Timer {
   struct timezone time_zone_;
 };
 
+#endif
+
 class Profiler {
  public:
   // Caution: the 'const char' should always be a string constant; for speed,
@@ -108,8 +110,6 @@ class Profiler {
 
 
 }  // namespace kaldi
-
-#endif
 
 
 #endif  // KALDI_BASE_TIMER_H_

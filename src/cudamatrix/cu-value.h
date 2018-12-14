@@ -22,7 +22,7 @@
 #ifndef KALDI_CUDAMATRIX_CU_VALUE_H_
 #define KALDI_CUDAMATRIX_CU_VALUE_H_
 
-#include <cudamatrix/cu-device.h>
+#include "cudamatrix/cu-device.h"
 
 namespace kaldi {
 
@@ -39,7 +39,9 @@ class CuValue {
   inline CuValue operator = (const CuValue<Real> &other) {
 #if HAVE_CUDA == 1
     if (CuDevice::Instantiate().Enabled()) {
-      CU_SAFE_CALL(cudaMemcpy(data_, other.data_, sizeof(Real), cudaMemcpyDeviceToDevice));
+      CU_SAFE_CALL(
+        cudaMemcpyAsync(data_, other.data_, sizeof(Real), 
+                        cudaMemcpyDeviceToDevice, cudaStreamPerThread));
       return *this;
     } else
 #endif

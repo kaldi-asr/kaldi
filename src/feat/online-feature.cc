@@ -547,12 +547,17 @@ void OnlineCacheFeature::GetFrames(
                                      kUndefined);
   src_->GetFrames(non_cached_frames, &non_cached_feats);
   for (int32 i = 0; i < num_non_cached_frames; i++) {
-    SubVector<BaseFloat> this_feat(non_cached_feats, i);
-    feats->Row(non_cached_indexes[i]).CopyFromVec(this_feat);
     int32 t = non_cached_frames[i];
-    if (static_cast<size_t>(t) >= cache_.size())
-      cache_.resize(t + 1, NULL);
-    cache_[t] = new Vector<BaseFloat>(this_feat);
+    if (static_cast<size_t>(t) < cache_.size() && cache_[t] != NULL) {
+      // We can reach this point due to repeat indexes in 'non_cached_frames'.
+      feats->Row(non_cached_indexes[i]).CopyFromVec(*(cache_[t]));
+    } else {
+      SubVector<BaseFloat> this_feat(non_cached_feats, i);
+      feats->Row(non_cached_indexes[i]).CopyFromVec(this_feat);
+      if (static_cast<size_t>(t) >= cache_.size())
+        cache_.resize(t + 1, NULL);
+      cache_[t] = new Vector<BaseFloat>(this_feat);
+    }
   }
 }
 
