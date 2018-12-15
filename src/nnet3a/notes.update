@@ -1,0 +1,219 @@
+
+
+Plans for binaries.
+
+  nnet3-adapt --init|--copy|--adapt
+
+
+
+  steps/chaina/init_chain_dir.sh
+     make den.fst, normalization.fst,
+     bottom.config, top.config,
+     bottom.raw, top.raw
+
+init.config, init.raw, 0.trans_mdl,
+     final.config (but not 0.raw yet, might need egs first).
+
+
+
+
+nnet3-get-egs?
+   ...  Make sure the length info and left/right context of each eg is included in the id?
+    - when we merge,
+
+  steps/chaina/get_raw_egs.sh
+
+ -- need to decide utts-per-spk-max in validation data?  do it in process_egs.
+
+
+ ... takes options like --utts-per-spk-max --num-utts-subset --frames-per-job
+     (prev. frames-per-iter), --chunks-per-group (e.g. 4)
+
+  steps/chaina/process_egs.sh [options] <input-egs-dir>  <output-egs-dir>
+
+   [shouldn't need any info not already in raw_egs dir, I hope.  We'll later have a
+    multilingual version of this script].
+
+  steps/chaina/process_egs.sh [options] <input-egs-dir>  <output-egs-dir>
+
+
+========
+  Monolingual case (training):
+
+   README.txt
+   bottom.raw   default.ada  default.mdl default.den
+   info  -> mfcc.config??  Or other config?
+    info.txt?
+       frame_subsampling_factor1
+       frame_subsampling_factor2
+       frame_subsampling_factor
+.. we'll need to pass in chain opts such as:
+
+[for chain objective]
+  --leaky-hmm-coefficient
+[for the neural nets]:
+  --max-param-change-{bottom,top}
+  --print-interval
+  --l2-regularize-factor (use same one).
+  --train-bottom-nnet {true,false}
+
+====
+ - Merging egs: will already have merged into speaker groups in prepare_egs.
+ - Output names?  output  -->  output-xent.
+ - Input names?  Just input.  (May add ivector later but I hope not to have to).
+ - Could modify nnet3-merge-egs to parse the keys and get weights and output
+   names (to keep the output names distinct and to incorporate the weights).
+
+ -- Initially, in nnet3*get-egs, we'll dump with:
+
+    utterance-id-{num_frames}-{left_context}-{right_context}
+
+ We'll use that info, together with the speaker-id and utt2uniq information, to
+ merge chunks together into groups (preferably by utterance; if not, by speaker)
+ in process_egs.sh (the merging will be done in python).
+
+ process_egs.sh will dump these as archives *and* scp files, but they will now
+ be in groups of 4.  The network name will be added as the last-but-one field
+ in the key; we'll set it to 'default' by default, but it may be changed in
+ merge_egs.sh.  The last field will be a weight to be incorporated just before
+ the final merge (by nnet3-chain-merge-egs with the --interpret-keys option).
+ So the keys at the input to the final merge will be of the form
+
+
+ info/chunks_per_spk
+
+ We may also have a combine_egs.sh script which can combine egs from multiple
+ sources (assuming they have the same chunks_per_spk), and can assign them
+ to different language names if needed.
+
+====
+
+ Merging already-merged chain egs
+
+ This is something that I am going to need for the new adaptation framework I am
+ working on.  Currently in nnet-example-utils.cc and nnet-chain-example.cc, the
+ example-merging code does not support merging already-merged egs (search for already-merged).
+ This is something that I'm going to need to be supported at least in NnetChainExample, and
+ this would also need to be supported, I think, in the NnetExample merging code, since
+ I think the chain example merging code supports that code.  If it would be helpful in
+ implementation, you may assume that all the egs to be merged have the same number
+ of 'n' values (e.g. it might be 4; it's the number of chunks per speaker that we use
+ for adaptation).
+
+ After the examples have been merged I'd like a variable as follows to be set in
+ the NnetChainSupervision object:
+```
+ // This will be 1 in normal cases, but in the 'chaina' code (chain training
+ // with adaptation) it will be set to the number of chunks per speaker in
+ // this minibatch.  For example if it's 4, then we are asserting that
+ // sequences n=0 through 3 all come from the same speaker, n=4 through 7
+ // all come from the same speaker, and so on.
+ int32 chunks_per_spk;
+```
+Please make sure this is 1 by default (e.g. in the constructor), that the
+on-disk format stays the same when it's 1 (e.g. only write it if it's not 1) to
+minimize code-version compatibility headaches; and only set it to
+a value other than 1 when merging chain supervision objects that were
+already merged (you can check that the sizes of the things being merged match).
+We may later introduce such a variable in the NnetSupervision object, but
+it's not needed just yet.
+
+This PR can go to my svd_draft branch in my personal repo, as it's part of
+that project.
+====
+
+Interpreting keys when merging nnet and chain examples
+
+This is a change that will need to be made to nnet3-chain-merge-egs binary to support
+the new adaptation framework.  @hhadian, again, please get to this when you can but
+it is not urgent at all.  If someone else feels like they want to do it that's OK
+with me too as long as you don't just sit on it without making progress, but please
+have @hhadian check the code.
+In ExampleMergingConfig, please add a new boolean config value, default false, registered
+as follows:
+
+    po->Register("interpret-keys", &interpret_keys, "If true, require the keys "
+                "on the example to end in something of the form -xxxxxx-yyy "
+                "where xxxxxx is a string with only letters, numbers and _, "
+                "which will be interpreted as a language-name (e.g. \"default\","
+                "\"english\", \"french\"), and yyy is a floating point weight "
+                "e.g. 1.0, to be applied to the example.  If the weight is not "
+                "1.0, then any NnetIo objects with names matching \"output\" and any chain "
+                "supervision objects will have their weights multiplied by this "
+                "weight.  In addition, the merging will keep distinct language-names "
+                "distinct, and will ensure that the output keys end in -xxxxxx "
+                "where xxxxxx is the language-name.  This is intended to support "
+                "the \"chaina\" adaptation framework.")
+
+and please make any implementation changes required to support it.  When
+weighting chain supervision objects, just multiply the 'weight' field in the
+ChainSupervision object.  I think when weighting NnetIo objects you can just
+scale the GeneralMatrix, although I'm not sure if there is a generic way to do
+that.  (This probably only really makes sense with sparse supervision intended
+to represent posterior probabilities in xent setups).  Do this before merging; I
+believe the chain merging code already checks for weight equality but you'll
+have to also make sure it checks for network-name equality and encodes the
+network name in the output key.  I believe the output keys are currently not
+really inspected so back compatibility won't be important.  Also please make
+sure there is a convenience function that makes it easy to extract the "xxxxxx"
+network-name suffix from a chain example key; this will be needed in the
+training code.
+
+
+
+
+====
+
+
+  info needed
+        ?den.fst?
+
+  frame_subsampling_factor1
+  frame_subsampling_factor2
+  frame_subsampling_factor = their product.
+
+
+  separately: different den.fst's?  one den.fst?
+====
+  Multilingual case (training):
+
+   bottom.raw  english.ada english.mdl   <-- output vs.  output_libri, output_wsj.  No, will be too complicated (?)
+                                              ... just support one name.
+               spanish.ada spanish.mdl
+
+0.ada  top.mdl
+
+
+when randomizing
+
+we'll merge in a controlled way, e.g. nnet3-merge-egs --fixed
+===
+
+  --bottom-subsampling-factor is the subsampling in the bottom
+    model (the feature extractor).  frame-subsampling-factor
+    divided by this is the amount of subsampling in the top
+    model.  In the training code we'll work this out from
+    the 't' values in the chain supervision object, and
+    the top network will actually run at the reduced frame
+    rate.
+  --top-network-is-recurrent is true if the top network is
+    recurrent and therefore we need to keep as much extra
+    context as possible in the features.
+
+How to work out the computations:
+
+   We get the number of n values and the first and last 't' values in the input;
+   check they are contiguous.
+
+   We get the number of 't' values in the output (the chain supervision) and
+   their spacing; this is interpreted as the frame-subsampling-factor, which is
+   not passed directly to nnet3-chaina-train.
+
+   We are given the --bottom-subsampling-factor and (boolean)
+   top_network_is_recurrent.
+
+   We work out the left-context and right-context of the bottom and
+   top networks.  We first use this on the top network to work out, at the
+   top-network frame rate, the 't' values needed at the input
+   (e.g. frames -10 through 159 assuming the chunk size is 150 and
+   the network takes +-10 frames of context).
