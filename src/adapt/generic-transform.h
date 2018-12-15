@@ -57,7 +57,7 @@ class NoOpTransform: public DifferentiableTransform {
     output->CopyFromMat(input);
     return NULL;
   }
-  virtual void TrainingBackward(
+  void TrainingBackward(
       const CuMatrixBase<BaseFloat> &input,
       const CuMatrixBase<BaseFloat> &output_deriv,
       int32 num_chunks,
@@ -69,7 +69,7 @@ class NoOpTransform: public DifferentiableTransform {
     input_deriv->AddMat(1.0, output_deriv);
   }
 
-  virtual int32 NumFinalIterations() { return 0; }
+  int32 NumFinalIterations() override { return 0; }
 
   void Accumulate(
       int32 final_iter,
@@ -151,7 +151,7 @@ class SequenceTransform: public DifferentiableTransform {
       int32 num_spk,
       const Posterior &posteriors,
       CuMatrixBase<BaseFloat> *output) const override;
-  virtual void TrainingBackward(
+  void TrainingBackward(
       const CuMatrixBase<BaseFloat> &input,
       const CuMatrixBase<BaseFloat> &output_deriv,
       int32 num_chunks,
@@ -249,7 +249,7 @@ class AppendTransform: public DifferentiableTransform {
       int32 num_spk,
       const Posterior &posteriors,
       CuMatrixBase<BaseFloat> *output) const override;
-  virtual void TrainingBackward(
+  void TrainingBackward(
       const CuMatrixBase<BaseFloat> &input,
       const CuMatrixBase<BaseFloat> &output_deriv,
       int32 num_chunks,
@@ -274,7 +274,7 @@ class AppendTransform: public DifferentiableTransform {
       const SubPosterior &posteriors,
       SpeakerStatsItf *speaker_stats) const override;
 
-  virtual void TestingForward(
+  void TestingForward(
       const MatrixBase<BaseFloat> &input,
       const SpeakerStatsItf &speaker_stats,
       MatrixBase<BaseFloat> *output) const override;
