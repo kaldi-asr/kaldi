@@ -60,7 +60,10 @@ struct NnetChainSupervision {
   std::vector<Index> indexes;
 
 
-  /// The supervision object, containing the FST.
+  /// The supervision object, containing the FST; its members are
+  /// weight, num_sequences, frames_per_sequence, label_dim, fst,
+  /// e2e_fsts (for e2e examples only); alignment_pdfs (which is required
+  /// only for nnet3-chain-acc-lda-stats).
   chain::Supervision supervision;
 
   /// This is a vector of per-frame weights, required to be between 0 and 1,
@@ -270,7 +273,7 @@ class ChainExampleMerger {
                         std::vector<NnetChainExample*>,
                         NnetChainExampleStructureHasher,
                         NnetChainExampleStructureCompare> MapType;
-MapType eg_to_egs_;
+  MapType eg_to_egs_;
 };
 
 
