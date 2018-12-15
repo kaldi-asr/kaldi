@@ -62,20 +62,16 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() < 4 || po.NumArgs() > 6) {
+    if (po.NumArgs() < 3 || po.NumArgs() > 5) {
       po.PrintUsage();
       exit(1);
     }
 
-    std::string model_in_filename = po.GetArg(1),
-        fst_in_str = po.GetArg(2),
-        feature_rspecifier = po.GetArg(3),
-        lattice_wspecifier = po.GetArg(4),
-        words_wspecifier = po.GetOptArg(5),
-        alignment_wspecifier = po.GetOptArg(6);
-
-    TransitionModel trans_model;
-    ReadKaldiObject(model_in_filename, &trans_model);
+    std::string fst_in_str = po.GetArg(1),
+        feature_rspecifier = po.GetArg(2),
+        lattice_wspecifier = po.GetArg(3),
+        words_wspecifier = po.GetOptArg(4),
+        alignment_wspecifier = po.GetOptArg(5);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;
@@ -122,11 +118,10 @@ int main(int argc, char *argv[]) {
 
           LatticeFasterDecoder *decoder = new LatticeFasterDecoder(*decode_fst,
                                                                    config);
-          DecodableMatrixScaledMapped *decodable =
-              new DecodableMatrixScaledMapped(trans_model, acoustic_scale, loglikes);
+          DecodableMatrixScaled *decodable = new DecodableMatrixScaled(loglikes, acoustic_scale); 
           DecodeUtteranceLatticeFasterClass *task =
               new DecodeUtteranceLatticeFasterClass(
-                  decoder, decodable, trans_model, word_syms, utt,
+                  decoder, decodable, word_syms, utt,
                   acoustic_scale, determinize, allow_partial, &alignment_writer,
                   &words_writer, &compact_lattice_writer, &lattice_writer,
                   &tot_like, &frame_count, &num_success, &num_fail, NULL);
@@ -158,11 +153,10 @@ int main(int argc, char *argv[]) {
           new fst::VectorFst<StdArc>(fst_reader.Value());
         LatticeFasterDecoder *decoder =
           new LatticeFasterDecoder(config, fst);
-        DecodableMatrixScaledMapped *decodable = new
-            DecodableMatrixScaledMapped(trans_model, acoustic_scale, loglikes);
+        DecodableMatrixScaled *decodable = new DecodableMatrixScaled(loglikes, acoustic_scale);
         DecodeUtteranceLatticeFasterClass *task =
             new DecodeUtteranceLatticeFasterClass(
-                decoder, decodable, trans_model, word_syms, utt, acoustic_scale,
+                decoder, decodable, word_syms, utt, acoustic_scale,
                 determinize, allow_partial, &alignment_writer, &words_writer,
                 &compact_lattice_writer, &lattice_writer, &tot_like,
                 &frame_count, &num_success, &num_fail, NULL);
