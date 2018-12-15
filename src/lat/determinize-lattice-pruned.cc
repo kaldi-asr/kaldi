@@ -1506,6 +1506,18 @@ bool DeterminizeLatticePhonePrunedWrapper(
   return ans;
 }
 
+bool DeterminizeLatticePrunedWrapper(
+    const ExpandedFst<ArcTpl<Weight> > *ifst,
+    double beam,
+    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > >*ofst,
+    DeterminizeLatticePrunedOptions opts) {
+  bool ans = true;
+  ans = DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
+      ifst, beam, ofst, opts);
+  Connect(ofst);
+  return ans;
+}
+
 // Instantiate the templates for the types we might need.
 // Note: there are actually four templates, each of which
 // we instantiate for a single type.

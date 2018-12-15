@@ -32,7 +32,6 @@ namespace kaldi {
 DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     LatticeFasterDecoder *decoder,
     DecodableInterface *decodable,
-    const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     BaseFloat acoustic_scale,
@@ -47,7 +46,7 @@ DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     int32 *num_done, // on success (including partial decode), increments this.
     int32 *num_err,  // on failure, increments this.
     int32 *num_partial):  // If partial decode (final-state not reached), increments this.
-    decoder_(decoder), decodable_(decodable), trans_model_(&trans_model),
+    decoder_(decoder), decodable_(decodable), 
     word_syms_(word_syms), utt_(utt), acoustic_scale_(acoustic_scale),
     determinize_(determinize), allow_partial_(allow_partial),
     alignments_writer_(alignments_writer),
@@ -93,8 +92,7 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
   fst::Connect(lat_);
   if (determinize_) {
     clat_ = new CompactLattice;
-    if (!DeterminizeLatticePhonePrunedWrapper(
-            *trans_model_,
+    if (!DeterminizeLatticePrunedWrapper(
             lat_,
             decoder_->GetOptions().lattice_beam,
             clat_,
@@ -201,7 +199,6 @@ template <typename FST>
 bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoderTpl<FST> &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -268,8 +265,7 @@ bool DecodeUtteranceLatticeFaster(
   fst::Connect(&lat);
   if (determinize) {
     CompactLattice clat;
-    if (!DeterminizeLatticePhonePrunedWrapper(
-            trans_model,
+    if (!DeterminizeLatticePrunedWrapper(
             &lat,
             decoder.GetOptions().lattice_beam,
             &clat,
@@ -299,7 +295,6 @@ bool DecodeUtteranceLatticeFaster(
 template bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoderTpl<fst::Fst<fst::StdArc> > &decoder,
     DecodableInterface &decodable,
-    const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -314,7 +309,6 @@ template bool DecodeUtteranceLatticeFaster(
 template bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoderTpl<fst::GrammarFst> &decoder,
     DecodableInterface &decodable,
-    const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -331,7 +325,6 @@ template bool DecodeUtteranceLatticeFaster(
 bool DecodeUtteranceLatticeSimple(
     LatticeSimpleDecoder &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -392,13 +385,11 @@ bool DecodeUtteranceLatticeSimple(
 
   // Get lattice, and do determinization if requested.
   Lattice lat;
-  if (!decoder.GetRawLattice(&lat))
     KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
   fst::Connect(&lat);
   if (determinize) {
     CompactLattice clat;
-    if (!DeterminizeLatticePhonePrunedWrapper(
-            trans_model,
+    if (!DeterminizeLatticePrunedWrapper(
             &lat,
             decoder.GetOptions().lattice_beam,
             &clat,
