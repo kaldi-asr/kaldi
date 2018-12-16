@@ -142,7 +142,7 @@ class MelBanks {
   // options passed in; they are used in converting to and from Mel frequencies,
   // and for other purposes.
   BaseFloat breakpoint_;  // The breakpoint in the mel scale: 700 normally;
-                          // 900 if opts.modified is true.
+                          // 500 if opts.modified is true.
   BaseFloat low_freq_;  // opts.low_freq
   BaseFloat high_freq_;  // The same as opts.high_freq if it's >= 0, or
                          // otherwise the Nyquist plus opts.high_freq.
