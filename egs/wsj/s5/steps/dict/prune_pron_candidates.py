@@ -16,7 +16,7 @@ def GetArgs():
                                      "(For words in the reference lexicon, N = # pron variants given by the reference"
                                      "lexicon; For oov words, N = avg. # pron variants per word in the reference lexicon)."
                                      "r is a user-specified constant, like 2.",
-                                     epilog = "See steps/dict/learn_lexicon.sh for example")
+                                     epilog = "See steps/dict/learn_lexicon_greedy.sh for example")
 
     parser.add_argument("--r", type = float, default = "2.0",
                         help = "a user-specified ratio parameter which determines how many"
