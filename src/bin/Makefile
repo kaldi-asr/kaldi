@@ -16,7 +16,7 @@ BINFILES = align-equal align-equal-compiled acc-tree-stats \
         phones-to-prons prons-to-wordali copy-gselect copy-tree scale-post \
         post-to-weights sum-tree-stats weight-post post-to-tacc copy-matrix \
         copy-vector copy-int-vector sum-post sum-matrices draw-tree \
-        align-mapped align-compiled-mapped latgen-faster-mapped latgen-faster-mapped-parallel \
+        align-mapped align-compiled-mapped latgen-faster-mapped-parallel \
         hmm-info analyze-counts post-to-phone-post \
         post-to-pdf-post logprob-to-post prob-to-post copy-post \
         matrix-sum build-pfile-from-ali get-post-on-ali tree-info am-info \

@@ -253,19 +253,14 @@ void DeterminizeLatticeDeletePhones(
 */
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     double prune,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
     DeterminizeLatticePhonePrunedOptions opts
       = DeterminizeLatticePhonePrunedOptions());
 
-/** "Destructive" version of DeterminizeLatticePhonePruned() where the input
-    lattice might be changed. 
-*/
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
     MutableFst<ArcTpl<Weight> > *ifst,
     double prune,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -282,7 +277,6 @@ bool DeterminizeLatticePhonePruned(
     code.
 */
 bool DeterminizeLatticePhonePrunedWrapper(
-    const kaldi::TransitionModel &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst,

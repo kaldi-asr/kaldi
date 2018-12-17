@@ -1411,7 +1411,6 @@ bool DeterminizeLatticePhonePrunedFirstPass(
 // lattice might be modified.
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
     MutableFst<ArcTpl<Weight> > *ifst,
     double beam,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -1433,7 +1432,7 @@ bool DeterminizeLatticePhonePruned(
   DeterminizeLatticePrunedOptions det_opts;
   det_opts.delta = opts.delta;
   det_opts.max_mem = opts.max_mem;
-
+  /**
   // If --phone-determinize is true, do the determinization on phone + word
   // lattices.
   if (opts.phone_determinize) {
@@ -1449,7 +1448,7 @@ bool DeterminizeLatticePhonePruned(
       return ans;
     }
   }
-
+  */
   // If --word-determinize is true, do the determinization on word lattices.
   if (opts.word_determinize) {
     KALDI_VLOG(3) << "Doing second pass of determinization on word lattices.";
@@ -1472,18 +1471,16 @@ bool DeterminizeLatticePhonePruned(
 // will be kept as unchanged.
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     double beam,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
     DeterminizeLatticePhonePrunedOptions opts) {
   VectorFst<ArcTpl<Weight> > temp_fst(ifst);
-  return DeterminizeLatticePhonePruned(trans_model, &temp_fst,
+  return DeterminizeLatticePhonePruned(&temp_fst,
                                        beam, ofst, opts);
 }
 
 bool DeterminizeLatticePhonePrunedWrapper(
-    const kaldi::TransitionModel &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double beam,
     MutableFst<kaldi::CompactLatticeArc> *ofst,
@@ -1501,18 +1498,6 @@ bool DeterminizeLatticePhonePrunedWrapper(
   ILabelCompare<kaldi::LatticeArc> ilabel_comp;
   ArcSort(ifst, ilabel_comp);
   ans = DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
-      trans_model, ifst, beam, ofst, opts);
-  Connect(ofst);
-  return ans;
-}
-
-bool DeterminizeLatticePrunedWrapper(
-    const ExpandedFst<ArcTpl<Weight> > *ifst,
-    double beam,
-    MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > >*ofst,
-    DeterminizeLatticePrunedOptions opts) {
-  bool ans = true;
-  ans = DeterminizeLatticePruned<kaldi::LatticeWeight, kaldi::int32>(
       ifst, beam, ofst, opts);
   Connect(ofst);
   return ans;
@@ -1537,7 +1522,6 @@ bool DeterminizeLatticePruned<kaldi::LatticeWeight>(
 
 template
 bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
-    const kaldi::TransitionModel &trans_model,
     const ExpandedFst<kaldi::LatticeArc> &ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst,
@@ -1545,7 +1529,6 @@ bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
 
 template
 bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
-    const kaldi::TransitionModel &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst,

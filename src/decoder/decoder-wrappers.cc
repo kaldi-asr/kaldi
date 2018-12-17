@@ -92,7 +92,7 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
   fst::Connect(lat_);
   if (determinize_) {
     clat_ = new CompactLattice;
-    if (!DeterminizeLatticePrunedWrapper(
+    if (!DeterminizeLatticePhonePrunedWrapper(
             lat_,
             decoder_->GetOptions().lattice_beam,
             clat_,
@@ -265,7 +265,7 @@ bool DecodeUtteranceLatticeFaster(
   fst::Connect(&lat);
   if (determinize) {
     CompactLattice clat;
-    if (!DeterminizeLatticePrunedWrapper(
+    if (!DeterminizeLatticePhonePrunedWrapper(
             &lat,
             decoder.GetOptions().lattice_beam,
             &clat,
@@ -389,7 +389,7 @@ bool DecodeUtteranceLatticeSimple(
   fst::Connect(&lat);
   if (determinize) {
     CompactLattice clat;
-    if (!DeterminizeLatticePrunedWrapper(
+    if (!DeterminizeLatticePhonePrunedWrapper(
             &lat,
             decoder.GetOptions().lattice_beam,
             &clat,

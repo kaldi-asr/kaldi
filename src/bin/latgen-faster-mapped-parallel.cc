@@ -41,8 +41,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Generate lattices, reading log-likelihoods as matrices, using multiple decoding threads\n"
-        " (model is needed only for the integer mappings in its transition-model)\n"
-        "Usage: latgen-faster-mapped-parallel [options] trans-model-in (fst-in|fsts-rspecifier) loglikes-rspecifier"
+        "Usage: latgen-faster-mapped-parallel [options] (fst-in|fsts-rspecifier) loglikes-rspecifier"
         " lattice-wspecifier [ words-wspecifier [alignments-wspecifier] ]\n";
     ParseOptions po(usage);
     Timer timer;
@@ -118,7 +117,7 @@ int main(int argc, char *argv[]) {
 
           LatticeFasterDecoder *decoder = new LatticeFasterDecoder(*decode_fst,
                                                                    config);
-          DecodableMatrixScaled *decodable = new DecodableMatrixScaled(loglikes, acoustic_scale); 
+          DecodableMatrixScaled *decodable = new DecodableMatrixScaled(*loglikes, acoustic_scale); 
           DecodeUtteranceLatticeFasterClass *task =
               new DecodeUtteranceLatticeFasterClass(
                   decoder, decodable, word_syms, utt,
@@ -153,7 +152,7 @@ int main(int argc, char *argv[]) {
           new fst::VectorFst<StdArc>(fst_reader.Value());
         LatticeFasterDecoder *decoder =
           new LatticeFasterDecoder(config, fst);
-        DecodableMatrixScaled *decodable = new DecodableMatrixScaled(loglikes, acoustic_scale);
+        DecodableMatrixScaled *decodable = new DecodableMatrixScaled(*loglikes, acoustic_scale);
         DecodeUtteranceLatticeFasterClass *task =
             new DecodeUtteranceLatticeFasterClass(
                 decoder, decodable, word_syms, utt, acoustic_scale,
