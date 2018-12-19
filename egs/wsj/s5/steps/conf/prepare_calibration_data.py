@@ -4,8 +4,6 @@
 # Apache 2.0
 
 from __future__ import division
-from builtins import map
-from past.utils import old_div
 import sys, math
 
 from optparse import OptionParser
@@ -114,7 +112,7 @@ with open(o.conf_feats,'w') as f:
     # Optionally add average-depth of lattice at the word position,
     if o.lattice_depth != '':
       depth_slice = depths[utt][int(round(100.0*float(beg))):int(round(100.0*(float(beg)+float(dur))))]
-      log_avg_depth = math.log(old_div(float(sum(depth_slice)),len(depth_slice)))
+      log_avg_depth = math.log(float(sum(depth_slice)),len(depth_slice))
       feats += [ log_avg_depth ]
 
     # Store the input features, 

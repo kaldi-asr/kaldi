@@ -4,10 +4,6 @@
 # Apache 2.0
 
 from __future__ import division
-from builtins import str
-from builtins import range
-from builtins import object
-from past.utils import old_div
 import os, glob, argparse, sys, re, time
 from argparse import ArgumentParser
 
@@ -24,7 +20,7 @@ global_analysis_final = None
 
 def mean(l):
   if len(l) > 0:
-    return old_div(float(sum(l)), len(l))
+    return (float(sum(l))/len(l))
   return 0
 
 # Analysis class
@@ -279,8 +275,8 @@ def read_rttm_file(rttm_file, temp_dir, frame_shift):
     i = len(this_file)
     category = splits[6]
     word = splits[5]
-    start_time = int(old_div(float(splits[3]),frame_shift) + 0.5)
-    duration = int(old_div(float(splits[4]),frame_shift) + 0.5)
+    start_time = int((float(splits[3])/frame_shift) + 0.5)
+    duration = int((float(splits[4])/frame_shift) + 0.5)
     if i < start_time:
       this_file.extend(["0"]*(start_time - i))
     if type1 == "NON-LEX":
@@ -356,9 +352,9 @@ class JointResegmenter(object):
 
     self.frame_shift = options.frame_shift
     # Convert length in seconds to frames
-    self.max_frames = int(old_div(options.max_segment_length, options.frame_shift))
-    self.hard_max_frames = int(old_div(options.hard_max_segment_length, options.frame_shift))
-    self.min_inter_utt_nonspeech_length = int(old_div(options.min_inter_utt_silence_length, options.frame_shift))
+    self.max_frames = int(options.max_segment_length/options.frame_shift)
+    self.hard_max_frames = int(options.hard_max_segment_length/options.frame_shift)
+    self.min_inter_utt_nonspeech_length = int(options.min_inter_utt_silence_length/options.frame_shift)
     if ( options.remove_noise_only_segments == "false" ):
       self.remove_noise_segments = False
     elif ( options.remove_noise_only_segments == "true" ):
@@ -545,7 +541,7 @@ class JointResegmenter(object):
     # Set the number of non-speech frames to be added depending on the
     # silence proportion. The target number of frames in the segments
     # is computed as below:
-    target_segment_frames = int(old_div(num_speech_frames, (1.0 - self.options.silence_proportion)))
+    target_segment_frames = int(num_speech_frames/(1.0 - self.options.silence_proportion))
 
     # The number of frames currently in the segments
     num_segment_frames = num_speech_frames
@@ -604,7 +600,7 @@ class JointResegmenter(object):
       if not changed:   # avoid an infinite loop. if no changes, then break.
         break
     if num_segment_frames < target_segment_frames:
-      proportion = old_div(float(num_segment_frames - num_speech_frames), num_segment_frames)
+      proportion = float(num_segment_frames - num_speech_frames)/num_segment_frames
       sys.stderr.write("%s: Warning: for recording %s, only got a proportion %f of non-speech frames, versus target %f\n" % (sys.argv[0], self.file_id, proportion, self.options.silence_proportion))
 
     ###########################################################################
@@ -868,7 +864,7 @@ class JointResegmenter(object):
           # Count the number of times long segments are split
           self.stats.split_segments += 1
 
-          num_pieces = int((old_div(float(segment_length), self.hard_max_frames)) + 0.99999)
+          num_pieces = int((float(segment_length)/self.hard_max_frames) + 0.99999)
           sys.stderr.write("%s: Warning: for recording %s, " \
               % (sys.argv[0], self.file_id) \
               + "splitting segment of length %f seconds into %d pieces " \
@@ -1122,7 +1118,7 @@ class JointResegmenter(object):
     # End for loop over all segments
 
     a = Analysis(self.file_id, None, title)
-    for st, info in list(D.items()):
+    for st, info in D.items():
       en = info[0]
 
       if info[1] > 0 and info[2] == 0 and info[3] == 0:
@@ -1295,22 +1291,22 @@ def main():
       dest='hard_max_segment_length', default=15.0, \
       help="Hard maximum on the segment length above which the segment " \
       + "will be broken even if in the middle of speech (default: %(default)s)")
-  parser.add_argument('--first-separator', type=str, \
+  parser.add_argument('--first-separator', \
       dest='first_separator', default="-", \
       help="Separator between recording-id and start-time (default: %(default)s)")
-  parser.add_argument('--second-separator', type=str, \
+  parser.add_argument('--second-separator', \
       dest='second_separator', default="-", \
       help="Separator between start-time and end-time (default: %(default)s)")
-  parser.add_argument('--remove-noise-only-segments', type=str, \
+  parser.add_argument('--remove-noise-only-segments', \
       dest='remove_noise_only_segments', default="true", choices=("true", "false"), \
       help="Remove segments that have only noise. (default: %(default)s)")
   parser.add_argument('--min-inter-utt-silence-length', type=float, \
       dest='min_inter_utt_silence_length', default=1.0, \
       help="Minimum silence that must exist between two separate utterances (default: %(default)s)");
-  parser.add_argument('--channel1-file', type=str, \
+  parser.add_argument('--channel1-file', \
       dest='channel1_file', default="inLine", \
       help="String that matches with the channel 1 file (default: %(default)s)")
-  parser.add_argument('--channel2-file', type=str, \
+  parser.add_argument('--channel2-file', \
       dest='channel2_file', default="outLine", \
       help="String that matches with the channel 2 file (default: %(default)s)")
   parser.add_argument('--isolated-resegmentation', \
@@ -1393,7 +1389,7 @@ def main():
 
   speech_cap = None
   if options.speech_cap_length != None:
-    speech_cap = int( old_div(options.speech_cap_length, options.frame_shift) )
+    speech_cap = int(options.speech_cap_length/options.frame_shift)
   # End if
 
   for f in pred_files:
@@ -1459,7 +1455,7 @@ def main():
         f2 = f3
       # End if
 
-      if (len(A1) - len(A2)) > old_div(options.max_length_diff, options.frame_shift):
+      if (len(A1) - len(A2)) > int(options.max_length_diff/options.frame_shift):
         sys.stderr.write( \
             "%s: Warning: Lengths of %s and %s differ by more than %f. " \
             % (sys.argv[0], f1,f2, options.max_length_diff) \

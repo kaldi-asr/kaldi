@@ -8,9 +8,6 @@
 # It is designed to be somewhat simpler and more flexible for augmenting with
 # additive noise.
 from __future__ import print_function
-from builtins import str
-from builtins import map
-from builtins import range
 import sys, random, argparse, os, imp
 sys.path.append("steps/data/")
 from reverberate_data_dir import ParseFileToDict
@@ -106,8 +103,8 @@ def AugmentWav(utt, wav, dur, fg_snr_opts, bg_snr_opts, fg_noise_utts, \
             tot_noise_dur += noise_dur + interval
             noises.append(noise)
 
-    start_times_str = "--start-times='" + ",".join(list(map(str,start_times))) + "'"
-    snrs_str = "--snrs='" + ",".join(list(map(str,snrs))) + "'"
+    start_times_str = "--start-times='" + ",".join([str(i) for i in start_times]) + "'"
+    snrs_str = "--snrs='" + ",".join([str(i) for i in snrs]) + "'"
     noises_str = "--additive-signals='" + ",".join(noises).strip() + "'"
 
     # If the wav is just a file
@@ -126,18 +123,18 @@ def CopyFileIfExists(utt_suffix, filename, input_dir, output_dir):
             value_processor = lambda x: " ".join(x))
         if len(utt_suffix) > 0:
             new_dict = {}
-            for key in list(dict.keys()):
+            for key in dict.keys():
                 new_dict[key + "-" + utt_suffix] = dict[key]
             dict = new_dict
         WriteDictToFile(dict, output_dir + "/" + filename)
 
 def main():
     args = GetArgs()
-    fg_snrs = list(map(int, args.fg_snr_str.split(":")))
-    bg_snrs = list(map(int, args.bg_snr_str.split(":")))
+    fg_snrs = [int(i) for i in args.fg_snr_str.split(":")]
+    bg_snrs = [int(i) for i in args.bg_snr_str.split(":")]
     input_dir = args.input_dir
     output_dir = args.output_dir
-    num_bg_noises = list(map(int, args.num_bg_noises.split(":")))
+    num_bg_noises = [int(i) for i in args.num_bg_noises.split(":")]
     reco2dur = ParseFileToDict(input_dir + "/reco2dur",
         value_processor = lambda x: float(x[0]))
     wav_scp_file = open(input_dir + "/wav.scp", 'r').readlines()

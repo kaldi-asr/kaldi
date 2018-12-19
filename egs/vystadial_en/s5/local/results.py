@@ -16,11 +16,6 @@
 # limitations under the License. #
 from __future__ import division
 from __future__ import print_function
-from builtins import str
-from builtins import zip
-from builtins import range
-from past.utils import old_div
-from builtins import object
 import argparse
 import glob
 import sys
@@ -122,7 +117,7 @@ def createSmallTable(r):
             mins = None
         else:
             mins = min(s)  # returns tuple if s is list of tuples
-        mean_r = old_div(sum(r), float(len(r)))
+        mean_r = float(sum(r)) / len(r)
         d.append([k, mean_r, minw, mins])
     t = Table(d, ['exp', 'RT coef', 'WER', 'SER'])
     return t

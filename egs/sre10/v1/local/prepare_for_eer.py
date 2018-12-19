@@ -13,4 +13,4 @@ for line in trials:
   spkrutt2target[spkr+utt]=target
 for line in scores:
   spkr, utt, score = line.strip().split()
-  print(score, spkrutt2target[spkr+utt])
+  print("{} {}".format(score, spkrutt2target[spkr+utt]))

@@ -107,9 +107,6 @@
 
 from __future__ import print_function
 from __future__ import division
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import codecs
 import argparse
 import unicodedata
@@ -343,8 +340,8 @@ def encode(unicode_transcription, tag_percentage, log=False):
     graph2int = {v: k for k, v in enumerate(set(graph_list))}
     int2graph = {v: k for k, v in list(graph2int.items())}
     graph_list_int = [graph2int[g] for g in graph_list]
-    bin_edges = list(range(0, len(list(int2graph.keys())) + 1))
-    graph_counts = old_div(np.histogram(graph_list_int, bins=bin_edges)[0], float(len(graph_list_int)))
+    bin_edges = range(0, len(int2graph.keys()) + 1)
+    graph_counts = int(np.histogram(graph_list_int, bins=bin_edges)[0]/float(len(graph_list_int)))
     # Set count threshold to frequency that tags the bottom 10% of graphemes
     bottom_idx = int(np.floor(tag_percentage * len(graph_counts)))
     count_thresh = sorted(graph_counts)[bottom_idx]
@@ -376,7 +373,7 @@ def encode(unicode_transcription, tag_percentage, log=False):
         for graph in w:
             # Case 1: Check that the grapheme has a unicode description type
             # ---------------------------------------------------------------
-            if("CHAR_TYPE" not in [k.strip() for k in list(graph.keys())]):
+            if("CHAR_TYPE" not in [k.strip() for k in graph.keys()]):
                 if(graph["SYMBOL"] == "."):        
                     try:
                         graph["MAP0"] = "\t"
@@ -427,13 +424,13 @@ def encode(unicode_transcription, tag_percentage, log=False):
                     graph_dict = parsed_graph.groupdict()
           
                     # Get consonant if it exists
-                    if("CONSONANT" in list(graph_dict.keys()) and
+                    if("CONSONANT" in graph_dict.keys() and
                             graph_dict["CONSONANT"]):
                         graph["MAP0"] = graph_dict["CONSONANT"].lower()
                         word_transcription += graph["MAP0"] + " "
           
                     # Get vowel if it exists
-                    if("VOWEL" in list(graph_dict.keys()) and graph_dict["VOWEL"]):
+                    if("VOWEL" in graph_dict.keys() and graph_dict["VOWEL"]):
                         graph["MAP1"] = graph_dict["VOWEL"].lower() + "\t"
                         word_transcription += graph["MAP1"]
 
@@ -575,11 +572,11 @@ def write_table(table, outfile):
         # Write values if present
         for t in table_sorted:
             for h in header_names[:-1]:
-                if(h in list(t.keys()) and t[h]):
+                if(h in t.keys() and t[h]):
                     fo.write("%s\t" % t[h])
                 else:
                     fo.write("''\t")
-            if(header_names[-1] in list(t.keys()) and t[header_names[-1]]):
+            if(header_names[-1] in t.keys() and t[header_names[-1]]):
                 fo.write("%s\n" % t[header_names[-1]])
             else:
                 fo.write("''\n")
@@ -633,9 +630,9 @@ def write_lexicon(baseforms, encoded_transcription, outfile, sil_lex=None,
         for idx, w in enumerate(baseforms):
             # This is really just for BABEL in case <hes> is written as a word
             if(w[0].lower() == "<hes>"):
-                f.write("%s\t<hes>\n" % (str(w[0])))
+                f.write("%s\t<hes>\n" % (w[0]))
             else:
-                f.write("%s\t%s\n" % (str(w[0]),
+                f.write("%s\t%s\n" % (w[0],
                                       encoded_transcription[idx]))
 
 if __name__ == "__main__":

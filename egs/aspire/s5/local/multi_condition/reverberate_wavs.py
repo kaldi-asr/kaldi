@@ -1,9 +1,7 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright 2014  Johns Hopkins University (Authors: Vijayaditya Peddinti).  Apache 2.0.
 #           2015  Tom Ko
 # script to generate multicondition training data / dev data / test data
-from builtins import range
-from builtins import object
 import argparse, glob, math, os, random, scipy.io.wavfile, sys
 
 class list_cyclic_iterator(object):
@@ -17,6 +15,8 @@ class list_cyclic_iterator(object):
     item = self.list[self.list_index]
     self.list_index = (self.list_index + 1) % len(self.list)
     return item
+
+  next = __next__  # for Python 2
 
 def return_nonempty_lines(lines):
   new_lines = []

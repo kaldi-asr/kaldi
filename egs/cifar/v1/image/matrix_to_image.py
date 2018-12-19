@@ -28,9 +28,6 @@ copy-feats --binary=false $(grep $imgid data/train/feats.scp | cut -d' ' -f2) - 
 """
 from __future__ import division
 
-from builtins import map
-from builtins import range
-from past.utils import old_div
 import argparse
 import sys
 from bmp_encoder import *
@@ -63,7 +60,7 @@ while True:
         num_cols = len(line)  # initialize
     if len(line) != num_cols:
         raise Exception("All rows should be of the same length")
-    line = list(map(float, line))  # string to float
+    line = [float(i) for i in line]  # string to float
     if max(line) > 1:
         raise Excetion("Element value in the matrix should be normalized and no larger than 1")
     line = [int(x * 255) for x in line]  # float to integer ranging from 0 to 255
@@ -74,7 +71,7 @@ if args.color == 3:
     if num_cols % 3 != 0:
         raise Exception("Number of columns should be a multiple of 3 in the color mode")
     width = num_rows
-    height = old_div(num_cols, 3)
+    height = int(num_cols/3)
     # reform the image matrix
     image_array = [[0 for i in range(width * 3)] for j in range(height)]
     for i in range(height):

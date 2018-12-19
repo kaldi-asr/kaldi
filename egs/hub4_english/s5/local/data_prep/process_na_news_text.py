@@ -7,7 +7,6 @@
 or NA New Text Supplement Corpus (LDC98T30)."""
 
 from __future__ import print_function
-from builtins import str
 import argparse
 import gzip
 import logging
@@ -39,10 +38,10 @@ def get_args():
     parser = argparse.ArgumentParser("Prepare NA News Text corpus (LDC95T21).")
     parser.add_argument("--verbose", type=int, choices=[0, 1, 2, 3], default=0,
                         help="Use larger verbosity for more verbose logging.")
-    parser.add_argument("file_list", type=str,
+    parser.add_argument("file_list",
                         help="List of compressed source files for NA News Text. "
                         "e.g: /export/corpora/LDC/LDC95T21/na_news_1/latwp/1994")
-    parser.add_argument("out_file", type=str,
+    parser.add_argument("out_file",
                         help="Output file to write to.")
 
     args = parser.parse_args()

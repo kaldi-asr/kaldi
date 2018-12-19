@@ -5,7 +5,6 @@
 # Merges unique words from Spanish Fisher, Gigaword and the LDC spanish lexicon
 
 from __future__ import print_function
-from builtins import str
 import sys
 import json
 import codecs
@@ -26,8 +25,7 @@ for line in fisher:
     merged_lexicon.append(line.strip())
 fisher.close()
 
-print("After adding the fisher data, the lexicon contains " \
-      + str(len(merged_lexicon)) + " entries.")
+print("After adding the fisher data, the lexicon contains {} entries".format(len(merged_lexicon)))
 
 # Now add data from the LDC lexicon
 ldc = codecs.open(uw_LDC, encoding='iso-8859-1')
@@ -36,8 +34,7 @@ for line in ldc:
     if entries[0].lower() not in merged_lexicon:
         merged_lexicon.append(entries[0].lower())
 
-print("After adding the LDC data, the lexicon contains " \
-      + str(len(merged_lexicon)) + " entries.")
+print("After adding the LDC data, the lexicon contains {} entries".format(len(merged_lexicon)))
 
 # Finally add the gigaword data
 gigaword = json.load(open(uw_gigaword))
@@ -51,8 +48,7 @@ for item in gigaword:
     if item[0].lower() not in merged_lexicon:
         merged_lexicon.append(item[0].lower())
 
-print("After adding the Gigaword data, the lexicon contains " \
-      + str(len(merged_lexicon)) + " entries.")
+print("After adding the Gigaword data, the lexicon contains {} entries".format(len(merged_lexicon)))
 
 # Now write the uniquewords to a file
 lf = codecs.open(tmpdir + '/uniquewords64k', encoding='utf-8', mode='w+')

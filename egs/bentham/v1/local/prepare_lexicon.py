@@ -9,7 +9,6 @@
 # This script prepares lexicon for BPE. It gets the set of all words that occur in data/train/text.
 # Since this lexicon is based on BPE, it replaces '|' with silence.
 
-from builtins import range
 import argparse
 import os
 

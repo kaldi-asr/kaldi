@@ -8,8 +8,6 @@
 # or modified
 
 from __future__ import print_function
-from builtins import str
-from builtins import range
 import subprocess
 import os
 
@@ -49,8 +47,8 @@ def get_best_wer(decode_dir):
     best_iteration = 0
     best_wer = 100.0
     for i in range(16):
-        if os.path.isfile(decode_dir + "/wer_" + str(i)):
-            result = subprocess.check_output("tail -n 3 " + decode_dir + "/wer_" + str(i), shell=True)
+        if os.path.isfile("{}/wer_{}".format(decode_dir, i)):
+            result = subprocess.check_output("tail -n 3 {}/wer_{}".format(decode_dir, i), shell=True)
             wer_string = result.split("\n")[0]
             wer_details = wer_string.split(' ')
             # Get max WER

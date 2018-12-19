@@ -8,9 +8,6 @@
 """
 from __future__ import division
 
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import argparse
 import os
 import sys
@@ -18,13 +15,13 @@ import sys
 parser = argparse.ArgumentParser(description="""Converts train/test data of
                                                 CIFAR-10 or CIFAR-100 to
                                                 Kaldi feature format""")
-parser.add_argument('database', type=str,
+parser.add_argument('database',
                     default='data/dl/cifar-10-batches-bin',
                     help='path to downloaded cifar data (binary version)')
-parser.add_argument('dir', type=str, help='output dir')
-parser.add_argument('--cifar-version', type=str, default='CIFAR-10', choices=['CIFAR-10', 'CIFAR-100'])
-parser.add_argument('--dataset', type=str, default='train', choices=['train', 'test'])
-parser.add_argument('--out-ark', type=str, default='-', help='where to write output feature data')
+parser.add_argument('dir', help='output dir')
+parser.add_argument('--cifar-version', default='CIFAR-10', choices=['CIFAR-10', 'CIFAR-100'])
+parser.add_argument('--dataset', default='train', choices=['train', 'test'])
+parser.add_argument('--out-ark', default='-', help='where to write output feature data')
 
 args = parser.parse_args()
 
@@ -41,7 +38,7 @@ def load_cifar10_data_batch(datafile):
         for i in range(num_images_in_batch):
             label = ord(fh.read(1))
             bin_img = fh.read(C * H * W)
-            img = [[[old_div(ord(byte), 255.0) for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
+            img = [[[int(ord(byte)/255.0) for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
                   for row in range(H)] for channel in range(C)]
             labels += [label]
             data += [img]
@@ -56,7 +53,7 @@ def load_cifar100_data_batch(datafile, num_images_in_batch):
             coarse_label = ord(fh.read(1))
             fine_label = ord(fh.read(1))
             bin_img = fh.read(C * H * W)
-            img = [[[old_div(ord(byte), 255.0) for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
+            img = [[[int(ord(byte)/255.0) for byte in bin_img[channel*H*W+row*W:channel*H*W+(row+1)*W]]
                   for row in range(H)] for channel in range(C)]
             fine_labels += [fine_label]
             coarse_labels += [coarse_label]

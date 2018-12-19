@@ -9,7 +9,6 @@
 # input: test utt2spk
 # output: enroll utt2spk, eval utt2spk
 
-from builtins import range
 import sys,random
 
 dictutt = {}

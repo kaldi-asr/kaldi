@@ -84,7 +84,7 @@ def main():
     spk2utt_map.setdefault(file_id, [])
     spk2utt_map[file_id].append(utt_id)
 
-  for spk, utts in list(spk2utt_map.items()):
+  for spk, utts in spk2utt_map.items():
     try:
       spk_dat.write("{SEGS %s} {ADC %s} {CONV %s.wav} {CHANNEL 1} {DUR }\n" % (' '.join(utts), reco2file_map[spk], spk))
     except KeyError as e:

@@ -78,7 +78,6 @@ foo1-2 doc1,0,0.2 doc2,1,1 doc3,0.2,0
 """
 
 from __future__ import print_function
-from builtins import range
 import argparse
 import logging
 

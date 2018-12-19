@@ -5,15 +5,12 @@
 # into uniform segments with specified window and overlap
 
 from __future__ import division
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import imp, sys, argparse, os, math, subprocess
 
 min_segment_length = 10 # in seconds
 def segment(total_length, window_length, overlap = 0):
   increment = window_length - overlap
-  num_windows = int(math.ceil(old_div(float(total_length),increment)))
+  num_windows = int(math.ceil(float(total_length)/increment))
   segments = [(x * increment, min( total_length, (x * increment) + window_length)) for x in range(0, num_windows)]
   if segments[-1][1] - segments[-1][0] < min_segment_length:
     segments[-2] = (segments[-2][0], segments[-1][1])
@@ -57,7 +54,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('--window-length', type = float, default = 30.0, help = 'length of the window used to cut the segment')
   parser.add_argument('--overlap', type = float, default = 5.0, help = 'overlap of neighboring windows')
-  parser.add_argument('data_dir', type=str, help='directory such as data/train')
+  parser.add_argument('data_dir', help='directory such as data/train')
 
   params = parser.parse_args()
 

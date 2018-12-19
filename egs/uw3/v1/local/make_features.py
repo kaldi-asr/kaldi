@@ -13,9 +13,6 @@
 """
 from __future__ import division
 
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import argparse
 import os
 import sys
@@ -28,8 +25,8 @@ signal(SIGPIPE,SIG_DFL)
 
 parser = argparse.ArgumentParser(description="""Converts images (in 'dir'/images.scp) to features and
                                                 writes them to standard output in text format.""")
-parser.add_argument('dir', type=str, help='data directory (should contain images.scp)')
-parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file.')
+parser.add_argument('dir', help='data directory (should contain images.scp)')
+parser.add_argument('--out-ark', default='-', help='where to write the output feature file.')
 parser.add_argument('--feat-dim', type=int, default=40,
                     help='size to scale the height of all images (i.e. the dimension of the resulting features)')
 parser.add_argument('--pad', type=bool, default=False, help='pad the left and right of the images with 10 white pixels.')
@@ -62,7 +59,7 @@ def get_scaled_image(im):
         sx = im.shape[1]
         sy = im.shape[0]
 
-    scale = old_div((1.0 * scale_size), sy)
+    scale = float(1.0 * scale_size) / sy
     nx = int(scale_size)
     ny = int(scale * sx)
     im = misc.imresize(im, (nx, ny))

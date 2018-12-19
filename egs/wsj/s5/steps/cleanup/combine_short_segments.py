@@ -4,7 +4,6 @@
 # Apache 2.0
 
 from __future__ import print_function
-from builtins import range
 import argparse
 import sys
 import os
@@ -77,7 +76,7 @@ def ParseFileToDict(file, assert2fields = False, value_processor = None):
 
 def WriteDictToFile(dict, file_name):
     file = open(file_name, 'w')
-    keys = list(dict.keys())
+    keys = dict.keys()
     keys.sort()
     for key in keys:
         value = dict[key]
@@ -176,7 +175,7 @@ def GetCombinedUttIndexRange(utt_index, utts, utt_durs, minimum_duration):
 def WriteCombinedDirFiles(output_dir, utt2spk, spk2utt, text, feat, utt2dur, utt2uniq):
     out_dir_file = lambda file_name: '{0}/{1}'.format(output_dir, file_name)
     total_combined_utt_list = []
-    for speaker in list(spk2utt.keys()):
+    for speaker in spk2utt.keys():
         utts = spk2utt[speaker]
         for utt in utts:
             if type(utt) is tuple:
@@ -246,7 +245,7 @@ def CombineSegments(input_dir, output_dir, minimum_duration):
 
     # copy the duration dictionary so that we can modify it
     utt_durs = copy.deepcopy(utt2dur)
-    speakers = list(spk2utt.keys())
+    speakers = spk2utt.keys()
     speakers.sort()
     for speaker in speakers:
 

@@ -5,7 +5,6 @@
 
 from __future__ import print_function
 from __future__ import division
-from past.utils import old_div
 import argparse
 import sys
 import warnings
@@ -183,7 +182,7 @@ def GetStatsFromCtmProns(silphones, optional_silence, non_scored_words, ctm_pron
         # If the prons is not a set, the current word must be <eps> or an non_scored_word,
         # where we just left the nonsil_right part as prons.
         if isinstance(prons, set) and len(prons) > 0:
-            count = old_div(1.0, float(len(prons)))
+            count = 1.0 / float(len(prons))
             for pron in prons:
                 phones = pron.strip().split()
                 # post-processing: remove all begining/trailing silence phones.

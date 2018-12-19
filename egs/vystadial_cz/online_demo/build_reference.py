@@ -3,7 +3,6 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
-from builtins import zip
 import glob
 import sys
 import os

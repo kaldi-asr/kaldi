@@ -3,7 +3,6 @@
 # Copyright 2017 Johns Hopkins University (Shinji Watanabe)
 #  Apache 2.0  (http://www.apache.org/licenses/LICENSE-2.0)
 
-from builtins import str
 import json
 import argparse
 import logging
@@ -26,8 +25,8 @@ def hms_to_seconds(hms):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('json', type=str, help='JSON transcription file')
-    parser.add_argument('--mictype', type=str,
+    parser.add_argument('json', help='JSON transcription file')
+    parser.add_argument('--mictype',
                         choices=['ref', 'worn', 'u01', 'u02', 'u03', 'u04', 'u05', 'u06'],
                         help='Type of microphones')
     args = parser.parse_args()
@@ -52,7 +51,7 @@ if __name__ == '__main__':
                 mictype = args.mictype.upper() # convert from u01 to U01
 
             # add location tag for scoring (only for dev and eval sets)
-            if 'location' in list(x.keys()):
+            if 'location' in x.keys():
                 location = x['location'].upper()
             else:
                 location = 'NOLOCATION'

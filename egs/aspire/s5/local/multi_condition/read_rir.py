@@ -2,7 +2,6 @@
 # Copyright 2014  Johns Hopkins University (Authors: Vijayaditya Peddinti).  Apache 2.0.
 # script to read rir files from air database
 
-from builtins import str
 import sys, numpy as np, argparse, scipy.signal as signal, os.path, glob, scipy.io, scipy.io.wavfile
 
 def read_raw(input_filename, precision = np.float32):
@@ -30,9 +29,9 @@ if __name__ == "__main__":
   #sys.stderr.write(" ".join(sys.argv)+"\n")
   parser = argparse.ArgumentParser(usage())
   parser.add_argument('--output-sampling-rate', type = int, default = 8000,  help = 'sampling rate of the output')
-  parser.add_argument('type', type = str, default = None,  help = 'database type', choices = ['air'])
-  parser.add_argument('input', type = str, default = None,  help = 'directory containing the multi-channel data for a particular recording, or file name or file-regex-pattern')
-  parser.add_argument('output_filename', type = str, default = None,  help = 'output filename (if "-" then output is written to output pipe)')
+  parser.add_argument('type', default = None,  help = 'database type', choices = ['air'])
+  parser.add_argument('input', default = None,  help = 'directory containing the multi-channel data for a particular recording, or file name or file-regex-pattern')
+  parser.add_argument('output_filename', default = None,  help = 'output filename (if "-" then output is written to output pipe)')
   params = parser.parse_args()
 
   if params.output_filename == "-":

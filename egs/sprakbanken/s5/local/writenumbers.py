@@ -191,7 +191,7 @@ def writeOutSplits(s):
          "/": 'SKRÅSTREG',
          "-": 'STREG'
          }
-    splitchar = list(d.keys())
+    splitchar = d.keys()
     
     if len(s) == 3:
         if s[2].isnumeric():

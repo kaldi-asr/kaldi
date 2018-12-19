@@ -4,7 +4,6 @@
 # This script checks the ctm for missing recordings and places a dummy id.
 # This is necessary for compliance with sclite scoring scripts
 
-from builtins import str
 import argparse, sys
 
 def fill_ctm(input_ctm_file, output_ctm_file, recording_names):
@@ -39,9 +38,9 @@ if __name__ == "__main__":
 
   sys.stderr.write(str(" ".join(sys.argv)))
   parser = argparse.ArgumentParser(usage)
-  parser.add_argument('input_ctm_file', type=str, help='ctm file for the recordings')
-  parser.add_argument('output_ctm_file', type=str, help='ctm file for the recordings')
-  parser.add_argument('recording_name_file', type=str, help='file with names of the recordings')
+  parser.add_argument('input_ctm_file', help='ctm file for the recordings')
+  parser.add_argument('output_ctm_file', help='ctm file for the recordings')
+  parser.add_argument('recording_name_file', help='file with names of the recordings')
 
   params = parser.parse_args()
 

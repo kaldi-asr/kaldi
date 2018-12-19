@@ -8,9 +8,6 @@
 """
 from __future__ import division
 
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import argparse
 import os
 import sys
@@ -20,11 +17,11 @@ import numpy as np
 parser = argparse.ArgumentParser(description="""Converts train/test data of
                                                 SVHN (Street View House Numbers)
                                                 dataset to Kaldi feature format""")
-parser.add_argument('matlab_file', type=str,
+parser.add_argument('matlab_file',
                     help='path to SVHN matlab data file (cropped version)')
-parser.add_argument('dir', type=str,
+parser.add_argument('dir',
                     help='output dir')
-parser.add_argument('--out-ark', type=str,
+parser.add_argument('--out-ark',
                     default='-', help='where to write output feature data')
 
 args = parser.parse_args()
@@ -36,7 +33,7 @@ W = 32  # num_cols
 
 def load_svhn_data(matlab_file):
     matlab_data = sio.loadmat(matlab_file)
-    data = old_div(matlab_data['X'].astype(float), 255.0)  # H*W*C*NUM_IMAGES
+    data = matlab_data['X'].astype(float) / 255.0  # H*W*C*NUM_IMAGES
     labels = matlab_data['y']  # NUM_IMAGES*1
     return data, labels
 
@@ -84,7 +81,7 @@ for i in range(num_images):
     lbl = labels[i, 0]
     if lbl == 10:
         lbl = 0
-    labels_fh.write(key + ' ' + str(lbl) + '\n')
+    labels_fh.write("{} {}\n".format(key, lbl))
     img = data[i]
     write_kaldi_matrix(out_fh, img, key)
     img_id += 1

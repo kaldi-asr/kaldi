@@ -5,7 +5,6 @@
 # This file is meant to be invoked by make_musan.sh.
 
 from __future__ import print_function
-from builtins import str
 import os, sys
 
 def process_music_annotations(path):
@@ -45,9 +44,9 @@ def prepare_music(root_dir, use_vocals):
         utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
       num_good_files += 1
     else:
-      print(("Missing file", utt))
+      print("Missing file: {}".format(utt))
       num_bad_files += 1
-  print(("In music directory, processed", num_good_files, "files;", num_bad_files, "had missing wav data"))
+  print("In music directory, processed {} files: {} had missing wav data".format(num_good_files, num_bad_files)
   return utt2spk_str, utt2wav_str
 
 def prepare_speech(root_dir):
@@ -71,9 +70,9 @@ def prepare_speech(root_dir):
       utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
       num_good_files += 1
     else:
-      print(("Missing file", utt))
+      print("Missing file: {}".format(utt))
       num_bad_files += 1
-  print(("In speech directory, processed", num_good_files, "files;", num_bad_files, "had missing wav data"))
+  print("In speech directory, processed {} files: {} had missing wav data".format(num_good_files, num_bad_files)
   return utt2spk_str, utt2wav_str
 
 def prepare_noise(root_dir):
@@ -97,9 +96,9 @@ def prepare_noise(root_dir):
       utt2wav_str = utt2wav_str + utt + " sox -t wav " + utt2wav[utt] + " -r 8k -t wav - |\n"
       num_good_files += 1
     else:
-      print(("Missing file", utt))
+      print("Missing file: {}".format(utt))
       num_bad_files += 1
-  print(("In noise directory, processed", num_good_files, "files;", num_bad_files, "had missing wav data"))
+  print("In noise directory, processed {} files: {} had missing wav data".format(num_good_files, num_bad_files)
   return utt2spk_str, utt2wav_str
 
 def main():

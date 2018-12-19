@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from builtins import str
 import os
 import re
 
@@ -41,12 +40,12 @@ for root, _, files in os.walk(transdir):
 
 print("==============Train===============")
 print(train)
-print("Total Conversations in train = " + str(trainConv))
+print("Total Conversations in train = {}".format(trainConv))
 print("==============Dev===============")
 print(devtest)
-print("Total Conversations in dev = " + str(devConv))
+print("Total Conversations in dev = {}".format(devConv))
 print("==============Test===============")
 print(evaltest)
-print("Total Conversations in test = " + str(testConv))
+print("Total Conversations in test = {}".format(testConv))
 print("=================================")
-print("Total Conversations in Corpus = " + str(trainConv + devConv + testConv))
+print("Total Conversations in Corpus = {}".format(trainConv + devConv + testConv))

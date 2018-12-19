@@ -5,7 +5,6 @@
 # Apache 2.0
 
 from __future__ import print_function
-from builtins import range
 import argparse
 import logging
 import sys

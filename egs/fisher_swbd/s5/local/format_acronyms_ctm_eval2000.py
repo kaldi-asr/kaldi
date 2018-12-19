@@ -11,7 +11,6 @@
 # en_4156 B 414.74 0.17 a
 
 from __future__ import division
-from past.utils import old_div
 import argparse,re
 __author__ = 'Minhua Wu'
  
@@ -29,7 +28,7 @@ for line in fin:
     if items[4].find(".") != -1:
         letters = items[4].split("._")
         acronym_period = round(float(items[3]), 2)
-        letter_slot = round(old_div(acronym_period, len(letters)), 2)
+        letter_slot = round(int(acronym_period/len(letters)), 2)
         time_start = round(float(items[2]), 2)
         for l in letters[:-1]:
             time = " %.2f %.2f " % (time_start, letter_slot)

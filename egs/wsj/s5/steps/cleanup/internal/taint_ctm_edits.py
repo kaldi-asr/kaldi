@@ -5,7 +5,6 @@
 # Apache 2.0
 
 from __future__ import print_function
-from builtins import range
 import sys, operator, argparse, os
 from collections import defaultdict
 

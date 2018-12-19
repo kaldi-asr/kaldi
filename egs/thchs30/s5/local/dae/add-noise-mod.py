@@ -4,8 +4,6 @@
 
 from __future__ import print_function
 from __future__ import division
-from builtins import range
-from past.utils import old_div
 import optparse
 import random
 import bisect
@@ -24,7 +22,7 @@ except:
   print("Cython possibly not installed, using standard python code. The process might be slow", file=sys.stderr)
 
   def energy(mat):
-    return old_div(float(sum([x * x for x in mat])), len(mat))
+    return float(sum([x * x for x in mat])) / len(mat)
 
   def mix(mat, noise, pos, scale):
     ret = []
@@ -44,7 +42,7 @@ except:
 
 def dirichlet(params):
     samples = [random.gammavariate(x, 1) if x > 0 else 0. for x in params]
-    samples = [old_div(x, sum(samples)) for x in samples]
+    samples = [(float(x) / sum(samples)) for x in samples]
     for x in range(1, len(samples)):
         samples[x] += samples[x - 1]
     return bisect.bisect_left(samples, random.random())
@@ -128,7 +126,7 @@ def main():
         mat = wave_mat(wav)
         signal = energy(mat)
         logging.debug('signal energy: %f', signal)
-        noise = old_div(signal, (10 ** (old_div(noise_level, 10.))))
+        noise = float(signal) / (10 ** (float(noise_level) / 10))
         logging.debug('noise energy: %f', noise)
         type = dirichlet(params)
         logging.debug('selected type: %d', type)
@@ -143,7 +141,7 @@ def main():
                 noise_energies[type] = energy(n[p::]+n[0:len(n)-p:])
             else:
                 noise_energies[type] = energy(n[p:p+len(mat):])
-            scale = math.sqrt(old_div(noise, noise_energies[type]))
+            scale = math.sqrt(float(noise) / noise_energies[type])
             logging.debug('noise scale: %f', scale)
             pos, result = mix(mat, n, p, scale)
             noises[type] = (pos, n)

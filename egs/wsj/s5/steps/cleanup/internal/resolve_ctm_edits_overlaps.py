@@ -16,8 +16,6 @@ in the two overlapping segments, and chooses the better one.
 
 from __future__ import print_function
 from __future__ import division
-from builtins import next
-from past.utils import old_div
 import argparse
 import collections
 import logging
@@ -138,7 +136,7 @@ def wer(ctm_edit_lines):
         return float('inf')
     if num_words == 0 and num_incorrect_words == 0:
         return 0
-    return (old_div(float(num_incorrect_words), num_words), -num_words)
+    return (float(num_incorrect_words) / num_words, -num_words)
 
 
 def choose_best_ctm_lines(first_lines, second_lines,
@@ -231,7 +229,7 @@ def resolve_overlaps(ctm_edits, segments):
             try:
                 cur_utt_end_index = next(
                     (i for i, line in enumerate(ctm_edits_for_cur_utt)
-                     if line[2] + old_div(line[3], 2.0) > window_length - overlap))
+                     if line[2] + line[3] / 2.0)> window_length - overlap))
             except StopIteration:
                 cur_utt_end_index = len(ctm_edits_for_cur_utt)
 
@@ -242,7 +240,7 @@ def resolve_overlaps(ctm_edits, segments):
             try:
                 next_utt_start_index = next(
                     (i for i, line in enumerate(ctm_edits_for_next_utt)
-                     if line[2] + old_div(line[3], 2.0) > overlap))
+                     if line[2] + line[3] / 2.0 > overlap))
             except StopIteration:
                 next_utt_start_index = 0
 

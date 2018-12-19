@@ -12,10 +12,6 @@
 """
 from __future__ import division
 
-
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import argparse
 import os
 import sys
@@ -28,8 +24,8 @@ from signal import signal, SIGPIPE, SIG_DFL
 signal(SIGPIPE,SIG_DFL)
 
 parser = argparse.ArgumentParser(description="""Generates and saves the feature vectors""")
-parser.add_argument('dir', type=str, help='directory of images.scp and is also output directory')
-parser.add_argument('--out-ark', type=str, default='-', help='where to write the output feature file')
+parser.add_argument('dir', help='directory of images.scp and is also output directory')
+parser.add_argument('--out-ark', default='-', help='where to write the output feature file')
 parser.add_argument('--feat-dim', type=int, default=40, help='size to scale the height of all images')
 parser.add_argument('--padding', type=int, default=5, help='size to scale the height of all images')
 args = parser.parse_args()
@@ -55,7 +51,7 @@ def get_scaled_image(im):
     scale_size = args.feat_dim
     sx = im.shape[1]
     sy = im.shape[0]
-    scale = old_div((1.0 * scale_size), sy)
+    scale = int((1.0 * scale_size)/ sy)
     nx = int(scale_size)
     ny = int(scale * sx)
     im = misc.imresize(im, (nx, ny))

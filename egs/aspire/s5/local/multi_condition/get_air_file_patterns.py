@@ -4,7 +4,6 @@
 # script to generate the file_patterns of the AIR database
 # see load_air.m file in AIR db to understand the naming convention
 from __future__ import print_function
-from builtins import range
 import sys, glob, re, os.path
 
 air_dir = sys.argv[1]

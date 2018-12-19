@@ -24,8 +24,6 @@ Created on Jan 18, 2013
 '''
 from __future__ import print_function
 
-from builtins import str
-from builtins import object
 import codecs
 import os
 
@@ -154,7 +152,7 @@ class Session(object):
                 pass
             
     def create_filename(self, uid, file_ending):
-        return self.filestem+ "." +self.speaker_id+ "." +str(uid)+ "." +file_ending
+        return "{}.{}.{}.{}".format(self.filestem, self.speaker_id, uid, file_ending)
         
     def wavpath(self, topfolder):
         prefix, suffix = topfolder.rsplit('/data/', 1)

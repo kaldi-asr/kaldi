@@ -6,10 +6,6 @@
 
 from __future__ import print_function
 from __future__ import division
-from builtins import str
-from builtins import range
-from builtins import object
-from past.utils import old_div
 import sys, operator, argparse, os
 from collections import defaultdict
 
@@ -318,7 +314,7 @@ class Segment(object):
                  this_duration > args.max_edge_non_scored_length:
                 truncated_duration = args.max_edge_non_scored_length
             if truncated_duration != None:
-                keep_proportion = old_div(truncated_duration, this_duration)
+                keep_proportion = float(truncated_duration) / this_duration
                 if b:
                     self.start_keep_proportion = keep_proportion
                 else:
@@ -362,8 +358,8 @@ class Segment(object):
         # -> length_cutoff - length_with_relaxed_boundaries =
         #        a * (length_with_truncation - length_with_relaxed_boundaries)
         # -> a = (length_cutoff - length_with_relaxed_boundaries) / (length_with_truncation - length_with_relaxed_boundaries)
-        a = old_div((length_cutoff - length_with_relaxed_boundaries), \
-            (length_with_truncation - length_with_relaxed_boundaries))
+        a = float(length_cutoff - length_with_relaxed_boundaries) / \
+            (length_with_truncation - length_with_relaxed_boundaries)
         if a < 0.0 or a > 1.0:
             print("segment_ctm_edits.py: bad 'a' value = {0}".format(a), file = sys.stderr)
             return
@@ -517,7 +513,7 @@ class Segment(object):
         if IsTainted(last_split_line):
             last_duration = float(last_split_line[3])
             junk_duration += last_duration * self.end_keep_proportion
-        return old_div(junk_duration, self.Length())
+        return float(junk_duration) / self.Length()
 
     # This function will remove something from the beginning of the
     # segment if it's possible to cleanly lop off a bit that contains
@@ -556,7 +552,7 @@ class Segment(object):
         if candidate_start_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = candidate_start_time - self.StartTime()
-        if old_div(begin_junk_duration, candidate_removed_piece_duration) < args.max_junk_proportion:
+        if float(begin_junk_duration) / candidate_removed_piece_duration < args.max_junk_proportion:
             return  # Nothing to do as the candidate piece to remove has too
                     # little junk.
         # OK, remove the piece.
@@ -598,7 +594,7 @@ class Segment(object):
         if candidate_end_index is None:
             return  # Nothing to do as there is no place to split.
         candidate_removed_piece_duration = self.EndTime() - candidate_end_time
-        if old_div(end_junk_duration, candidate_removed_piece_duration) < args.max_junk_proportion:
+        if float(end_junk_duration) / candidate_removed_piece_duration < args.max_junk_proportion:
             return  # Nothing to do as the candidate piece to remove has too
                     # little junk.
         # OK, remove the piece.
@@ -801,7 +797,7 @@ def FloatToString(f):
 # Gives time in string form as an exact multiple of the frame-length, e.g. 0.01
 # (after rounding).
 def TimeToString(time, frame_length):
-    n = round(old_div(time, frame_length))
+    n = round(float(time) / frame_length)
     assert n >= 0
     # The next function call will remove trailing zeros while printing it, so
     # that e.g. 0.01 will be printed as 0.01 and not 0.0099999999999999.  It
@@ -812,7 +808,7 @@ def TimeToString(time, frame_length):
 
 def WriteSegmentsForUtterance(text_output_handle, segments_output_handle,
                               old_utterance_name, segments):
-    num_digits = len(str(len(segments)))
+    num_digits = len('{}'.format(len(segments)))
     for n in range(len(segments)):
         segment = segments[n]
         # split utterances will be named foo-bar-1 foo-bar-2, etc.
@@ -845,24 +841,24 @@ def PrintDebugInfoForUtterance(ctm_edits_out_handle,
     info_to_print = []
     for n in range(len(segments_for_utterance)):
         segment = segments_for_utterance[n]
-        start_string = 'start-segment-' + str(n+1) + '[' + segment.DebugInfo() + ']'
+        start_string = 'start-segment-{0}[{1}]'.format(n+1, segment.DebugInfo())
         info_to_print.append( (segment.StartTime(), start_string) )
-        end_string = 'end-segment-' + str(n+1)
+        end_string = 'end-segment-{}'.format(n+1)
         info_to_print.append( (segment.EndTime(), end_string) )
     # for segments that were deleted we print info like start-deleted-segment-1, and
     # otherwise similar info to segments that were retained.
     for n in range(len(deleted_segments_for_utterance)):
         segment = deleted_segments_for_utterance[n]
-        start_string = 'start-deleted-segment-' + str(n+1) + '[' + segment.DebugInfo() + ']'
+        start_string = 'start-deleted-segment-{0}[{1}]'.format(n+1, segment.DebugInfo())
         info_to_print.append( (segment.StartTime(), start_string) )
-        end_string = 'end-deleted-segment-' + str(n+1)
+        end_string = 'end-deleted-segment-{}'.format(n+1)
         info_to_print.append( (segment.EndTime(), end_string) )
 
     info_to_print = sorted(info_to_print)
 
     for i in range(len(split_lines_of_cur_utterance)):
         split_line=split_lines_of_cur_utterance[i]
-        split_line[0] += '[' + str(i) + ']'  # add an index like [0], [1], to
+        split_line[0] += '[{}]'.format(i)    # add an index like [0], [1], to
                                              # the utterance-id so we can easily
                                              # look up segment indexes.
         start_time = float(split_line[2])

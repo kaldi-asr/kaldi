@@ -3,7 +3,6 @@
 # This script is called by local/make_dihard_2018_dev.sh, and it creates the
 # necessary files for DIHARD 2018 development directory.
 
-from builtins import str
 import sys, os
 
 def prepare_dihard_2018_dev(src_dir, data_dir):

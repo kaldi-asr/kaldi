@@ -28,7 +28,6 @@
 #
 
 from __future__ import print_function
-from builtins import range
 import sys, getopt, codecs, os, re
 
 # Declare a dictionary with Buckwalter's ASCII symbols as the keys, and
@@ -110,10 +109,10 @@ reverse = 0      # When equal to 1, perform reverse transliteration, i.e.,
 # A function to print to screen the usage details of this script.
 
 def usage():
-	print("Usage:", sys.argv[0], "-i INFILE -o OUTFILE [-g CHARS -c RANGE -d CHAR")
+	print("Usage: {} -i INFILE -o OUTFILE [-g CHARS -c RANGE -d CHAR".format(sys.argv[0]))
 	print("       -r -e INPUT_ENCODING, -E OUTPUT ENCODING]")
-	print("      ", sys.argv[0], "-l")
-	print("      ", sys.argv[0], "-h")
+	print("      {} -l".format(sys.argv[0]))
+	print("      {} -h".format(sys.argv[0]))
 	print("")
 	print("  -i INFILE, --input=INFILE:")
 	print("    Path to text file to be transliterated to Unicode.")

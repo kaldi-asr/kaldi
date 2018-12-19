@@ -8,8 +8,6 @@ utt2spk, segments and text files.
 """
 
 from __future__ import print_function
-from builtins import str
-from builtins import object
 import argparse
 import os
 import logging
@@ -33,9 +31,9 @@ def get_args():
 
     parser = argparse.ArgumentParser("Process 1995 CSR-IV HUB4 transcripts")
 
-    parser.add_argument("--noise-word", type=str, default="<NOISE>",
+    parser.add_argument("--noise-word", default="<NOISE>",
                         help="Word to add in-place of noise words")
-    parser.add_argument("--spoken-noise-word", type=str,
+    parser.add_argument("--spoken-noise-word",
                         default="<SPOKEN_NOISE>",
                         help="Word to add in-place of speaker noise words")
     parser.add_argument("in_file", type=argparse.FileType('r'),

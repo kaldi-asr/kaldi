@@ -17,8 +17,6 @@
 from __future__ import unicode_literals
 from __future__ import print_function
 
-from builtins import str
-from builtins import object
 import pyaudio
 from kaldi.decoders import PyOnlineLatgenRecogniser
 from kaldi.utils import wst2dict, lattice_to_nbest

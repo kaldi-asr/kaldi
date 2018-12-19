@@ -3,7 +3,6 @@
 # Apache 2.0
 # Works with both python2 and python3
 
-from builtins import range
 import numpy as np
 import soundfile as sf
 import time

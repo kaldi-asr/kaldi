@@ -7,9 +7,6 @@ for Term-frequency and Inverse-document-frequency values.
 
 from __future__ import print_function
 from __future__ import division
-from builtins import range
-from builtins import object
-from past.utils import old_div
 import logging
 import math
 import re
@@ -51,11 +48,11 @@ class IDFStats(object):
         if weighting_scheme == "unary":
             return 1
         if weighting_scheme == "log":
-            return math.log(old_div(float(self.num_docs), (1.0 + n_t)))
+            return math.log(float(self.num_docs) / (1.0 + n_t))
         if weighting_scheme == "log-smoothed":
-            return math.log(1.0 + old_div(float(self.num_docs), (1.0 + n_t)))
+            return math.log(1.0 + float(self.num_docs) / (1.0 + n_t))
         if weighting_scheme == "probabilitic":
-            return math.log(old_div((self.num_docs - n_t - 1), (1.0 + n_t)))
+            return math.log((self.num_docs - n_t - 1) / (1.0 + n_t))
 
     def accumulate(self, term):
         """Adds one count to the number of docs containing the term "term".
