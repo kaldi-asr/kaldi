@@ -9,9 +9,6 @@
 from __future__ import division
 from __future__ import print_function
 
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import argparse
 import logging
 import os
@@ -522,7 +519,7 @@ def train(args, run_opts):
                 learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
-                    old_div(float(num_archives_processed), num_archives_to_process),
+                    float(num_archives_processed) / num_archives_to_process,
                     iter),
                 train_opts=' '.join(args.train_opts),
                 shrinkage_value=shrinkage_value,

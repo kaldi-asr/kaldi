@@ -7,9 +7,6 @@
 # can be modified in the configuration section below.
 
 from __future__ import print_function
-from builtins import str
-from builtins import next
-from builtins import object
 import argparse, os, tempfile, logging, sys, shutil, fileinput, re
 from collections import defaultdict, namedtuple
 import numpy as np

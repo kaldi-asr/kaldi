@@ -7,10 +7,6 @@
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 from __future__ import division
-from builtins import str
-from builtins import range
-from past.utils import old_div
-from builtins import object
 import argparse, shlex, glob, math, os, random, sys, warnings, copy, imp, ast
 
 data_lib = imp.load_source('dml', 'steps/data/data_dir_manipulation_lib.py')
@@ -137,6 +133,7 @@ class list_cyclic_iterator(object):
     self.list_index = (self.list_index + 1) % len(self.list)
     return item
 
+  next = __next__  # for Python 2
 
 # This functions picks an item from the collection according to the associated probability distribution.
 # The probability estimate of each item in the collection is stored in the "probability" field of
@@ -461,7 +458,7 @@ def SmoothProbabilityDistribution(set_list, smoothing_weight=0.0, target_sum=1.0
       # Compute the probability for the items without specifying their probability
       uniform_probability = 0
       if num_unspecified > 0 and accumulated_prob < 1:
-          uniform_probability = old_div((1 - accumulated_prob), float(num_unspecified))
+          uniform_probability = (1 - accumulated_prob) / float(num_unspecified)
       elif num_unspecified > 0 and accumulate_prob >= 1:
           warnings.warn("The sum of probabilities specified by user is larger than or equal to 1. "
                         "The items without probabilities specified will be given zero to their probabilities.")
@@ -557,10 +554,10 @@ def MakeRoomDict(rir_list):
         room_dict[rir.room_id].rir_list.append(rir)
 
     # the probability of the room is the sum of probabilities of its RIR
-    for key in list(room_dict.keys()):
+    for key in room_dict.keys():
         room_dict[key].probability = sum(rir.probability for rir in room_dict[key].rir_list)
 
-    assert almost_equal(sum(room_dict[key].probability for key in list(room_dict.keys())), 1.0)
+    assert almost_equal(sum(room_dict[key].probability for key in room_dict.keys()), 1.0)
 
     return room_dict
 
@@ -617,7 +614,7 @@ def ParseNoiseList(noise_set_para_array, smoothing_weight, sampling_rate = None)
         assert almost_equal(sum(noise.probability for noise in pointsource_noise_list), 1.0)
 
     # ensure the isotropic noise source probabilities for a given room sum to 1
-    for key in list(iso_noise_dict.keys()):
+    for key in iso_noise_dict.keys():
         iso_noise_dict[key] = SmoothProbabilityDistribution(iso_noise_dict[key])
         assert almost_equal(sum(noise.probability for noise in iso_noise_dict[key]), 1.0)
 
@@ -634,7 +631,7 @@ def Main():
     if args.noise_set_para_array is not None:
         pointsource_noise_list, iso_noise_dict = ParseNoiseList(args.noise_set_para_array, args.noise_smoothing_weight, args.source_sampling_rate)
         print("Number of point-source noises is {0}".format(len(pointsource_noise_list)))
-        print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in list(iso_noise_dict.keys()))))
+        print("Number of isotropic noises is {0}".format(sum(len(iso_noise_dict[key]) for key in iso_noise_dict.keys())))
     room_dict = MakeRoomDict(rir_list)
 
     if args.include_original_data == "true":

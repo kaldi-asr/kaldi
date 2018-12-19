@@ -7,9 +7,6 @@
 
 from __future__ import print_function
 from __future__ import division
-from builtins import str
-from builtins import range
-from builtins import object
 import re
 import sys
 
@@ -598,7 +595,7 @@ def parse_config_line(orig_config_line):
 
     rest_of_line = ' '.join(fields)
     # rest of the line can be of the form 'a=1 b=" x=1 y=2 " c=Append( i1, i2)'
-    positions = list([x.start() for x in re.finditer('"', rest_of_line)])
+    positions = [x.start() for x in re.finditer('"', rest_of_line)]
     if not len(positions) % 2 == 0:
         raise RuntimeError("Double-quotes should occur in pairs")
 

@@ -8,7 +8,6 @@
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 from __future__ import division
-from past.utils import old_div
 import sys
 import re
 import argparse
@@ -103,7 +102,7 @@ def Main():
     total_time = sum(command_times.values())
     sorted_commands = sorted(list(command_times.items()), key = lambda x: x[1], reverse = True)
     for item in sorted_commands:
-        print("{c} : time {t} : fraction {f}".format(c=item[0], t=item[1], f=old_div(item[1], total_time)))
+        print("{c} : time {t} : fraction {f}".format(c=item[0], t=item[1], f=float(item[1]) / total_time))
 
 
 if __name__ == "__main__":

@@ -5,9 +5,6 @@
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 from __future__ import division
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import os
 import argparse
 import shlex
@@ -396,7 +393,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
         raise Exception("num-hidden-layers has to be greater than 1 if relu-dim-init and relu-dim-final is different.")
     else:
         # computes relu-dim for each hidden layer. They increase geometrically across layers
-        factor = pow(old_div(float(nonlin_output_dim_final), nonlin_output_dim_init), old_div(1.0, (num_hidden_layers - 1))) if num_hidden_layers > 1 else 1
+        factor = pow(float(nonlin_output_dim_final) / nonlin_output_dim_init, 1.0 / (num_hidden_layers - 1)) if num_hidden_layers > 1 else 1
         nonlin_output_dims = [int(round(nonlin_output_dim_init * pow(factor, i))) for i in range(0, num_hidden_layers)]
         assert(nonlin_output_dims[-1] >= nonlin_output_dim_final - 1 and nonlin_output_dims[-1] <= nonlin_output_dim_final + 1) # due to rounding error
         nonlin_output_dims[-1] = nonlin_output_dim_final # It ensures that the dim of the last hidden layer is exactly the same as what is specified
@@ -470,7 +467,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
             nodes.AddFinalLayer(config_lines, prev_layer_output_xent, num_targets,
                                 ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
-                                    old_div(0.5, xent_regularize)),
+                                    0.5 / xent_regularize),
                                 max_change_per_component = max_change_per_component_final,
                                 use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                 prior_scale_file = prior_scale_file,
@@ -508,7 +505,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
             if xent_regularize != 0.0:
                 nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
                                     ng_affine_options = " param-stddev=0 bias-stddev=0 learning-rate-factor={0} ".format(
-                                          old_div(0.5, xent_regularize)),
+                                          0.5 / xent_regularize),
                                     max_change_per_component = max_change_per_component_final,
                                     use_presoftmax_prior_scale = use_presoftmax_prior_scale,
                                     prior_scale_file = prior_scale_file,
@@ -523,10 +520,10 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
-    print('model_left_context=' + str(left_context), file=f)
-    print('model_right_context=' + str(right_context), file=f)
-    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
-    print('num_targets=' + str(num_targets), file=f)
+    print('model_left_context={}'.format(left_context), file=f)
+    print('model_right_context={}'.format(right_context), file=f)
+    print('num_hidden_layers={}'.format(num_hidden_layers), file=f)
+    print('num_targets={}'.format(num_targets), file=f)
     print('add_lda=' + ('true' if add_lda else 'false'), file=f)
     print('include_log_softmax=' + ('true' if include_log_softmax else 'false'), file=f)
     print('objective_type=' + objective_type, file=f)
@@ -534,7 +531,7 @@ def MakeConfigs(config_dir, splice_indexes_string,
 
     # printing out the configs
     # init.config used to train lda-mllt train
-    for key in list(config_files.keys()):
+    for key in config_files.keys():
         PrintConfig(key, config_files[key])
 
 def Main():

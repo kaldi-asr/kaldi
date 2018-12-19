@@ -5,10 +5,6 @@
 # Apache 2.0.
 
 from __future__ import division
-from builtins import str
-from builtins import range
-from past.utils import old_div
-from builtins import object
 import argparse
 import errno
 import logging
@@ -388,13 +384,13 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
 
     for dir in dirs:
         stats_per_component_per_iter = stats_per_dir[dir]
-        component_names = list(stats_per_component_per_iter.keys())
+        component_names = stats_per_component_per_iter.keys()
         stat_tables_per_component = {}
         for component_name in component_names:
             comp_data = stats_per_component_per_iter[component_name]
             comp_type = comp_data['type']
             comp_stats = comp_data['stats']
-            iters = list(comp_stats.keys())
+            iters = comp_stats.keys()
             iters.sort()
             iter_stats = []
             for iter in iters:
@@ -405,7 +401,7 @@ def generate_nonlin_stats_plots(exp_dir, output_dir, plot, comparison_dir=None,
         with_oderiv = 1
     main_stat_tables = stat_tables_per_component_per_dir[exp_dir]
 
-    for component_name in list(main_stat_tables.keys()):
+    for component_name in main_stat_tables.keys():
         # this is the main experiment directory
         with open("{dir}/nonlinstats_{comp_name}.log".format(
                     dir=output_dir, comp_name=component_name), "w") as f:
@@ -640,12 +636,12 @@ def generate_parameter_diff_plots(exp_dir, output_dir, plot,
                     except KeyError:
                         total_missing_iterations += 1
                         iter_data.append("NA")
-                if (old_div(total_missing_iterations,len(component_names)) > 20
+                if (float(total_missing_iterations)/len(component_names) > 20
                         and not gave_user_warning):
                     logger.warning("There are more than {0} missing "
                                    "iterations per component. "
                                    "Something might be wrong.".format(
-                                       old_div(total_missing_iterations, len(component_names))))
+                                       float(total_missing_iterations)/ len(component_names)))
                     gave_user_warning = True
 
                 f.write(" ".join(iter_data)+"\n")

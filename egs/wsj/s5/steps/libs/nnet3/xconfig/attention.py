@@ -7,7 +7,6 @@
 
 from __future__ import print_function
 from __future__ import division
-from past.utils import old_div
 import math
 import re
 import sys
@@ -76,7 +75,7 @@ class XconfigAttentionLayer(XconfigLayerBase):
                 raise RuntimeError("{0} has invalid value {1}"
                                    .format(conf, self.config[conf]))
         if self.config['key-scale'] == 0.0:
-            self.config['key-scale'] = old_div(1.0, math.sqrt(self.config['key-dim']))
+            self.config['key-scale'] = 1.0 / math.sqrt(self.config['key-dim'])
 
     def output_name(self, auxiliary_output=None):
         # at a later stage we might want to expose even the pre-nonlinearity

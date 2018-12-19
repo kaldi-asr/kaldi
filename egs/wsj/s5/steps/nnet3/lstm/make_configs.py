@@ -3,8 +3,6 @@
 # This script is deprecated, please use ../xconfig_to_configs.py
 
 from __future__ import print_function
-from builtins import str
-from builtins import range
 import os
 import argparse
 import sys
@@ -221,7 +219,7 @@ def ParseLstmDelayString(lstm_delay):
                 raise ValueError("invalid --lstm-delay argument, too-short element: "
                                 + lstm_delay)
             elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
-                raise ValueError('Warning: ' + str(indexes) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
+                raise ValueError('Warning: {} is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.'.format(indexes))
             if len(indexes) == 2 and indexes[0] > 0: # always a negative delay followed by a postive delay
                 indexes[0], indexes[1] = indexes[1], indexes[0]
             lstm_delay_array.append(indexes)
@@ -319,7 +317,7 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
     # printing out the configs
     # init.config used to train lda-mllt train
-    for key in list(config_files.keys()):
+    for key in config_files.keys():
         PrintConfig(key, config_files[key])
 
 
@@ -337,9 +335,9 @@ def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layer
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
-    print('model_left_context=' + str(left_context), file=f)
-    print('model_right_context=' + str(right_context), file=f)
-    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+    print('model_left_context={}'.format(left_context), file=f)
+    print('model_right_context={}'.format(right_context), file=f)
+    print('num_hidden_layers={}'.format(num_hidden_layers), file=f)
     # print('initial_right_context=' + str(splice_array[0][-1]), file=f)
     f.close()
 

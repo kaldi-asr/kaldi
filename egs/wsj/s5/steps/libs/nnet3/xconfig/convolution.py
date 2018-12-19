@@ -8,8 +8,6 @@
 """
 from __future__ import print_function
 from __future__ import division
-from builtins import range
-from past.utils import old_div
 import math
 import re
 import sys
@@ -151,7 +149,7 @@ class XconfigConvLayer(XconfigLayerBase):
         if input_dim % height_in != 0:
             raise RuntimeError("Input dimension {0} is not a multiple of height-in={1}".format(
                 input_dim, height_in))
-        self.config['num-filters-in'] = old_div(input_dim, height_in)
+        self.config['num-filters-in'] = input_dim / height_in
 
 
     # Check whether 'str' is a sorted, unique, nonempty list of integers, like -1,0,1.,
@@ -453,7 +451,7 @@ class XconfigResBlock(XconfigLayerBase):
                 raise RuntimeError("Specified image height {0} does not "
                                    "divide the input dim {1}".format(
                                        height, input_dim))
-            self.config['num-filters'] = old_div(input_dim, height)
+            self.config['num-filters'] = input_dim / height
         elif input_dim != cur_num_filters * height:
             raise RuntimeError("Expected the input-dim to equal "
                                "height={0} * num-filters={1} = {2}, but "
@@ -823,7 +821,7 @@ class XconfigRes2Block(XconfigLayerBase):
             raise RuntimeError("Specified input image height {0} does not "
                                    "divide the input dim {1}".format(
                                        height_in, input_dim))
-            self.config['num-filters'] = old_div(input_dim, height)
+            self.config['num-filters'] = input_dim / height
 
     def check_configs(self):
         if self.config['num-filters'] == -1:
@@ -879,17 +877,17 @@ class XconfigRes2Block(XconfigLayerBase):
         if not input_dim % height_in == 0:
             raise RuntimeError("input-dim {0} does not divide height-in {1}".format(
                 input_dim, height_in))
-        num_filters_in = old_div(input_dim, height_in)
+        num_filters_in = input_dim / height_in
         num_filters_out = self.config['num-filters']
 
         if height_out != height_in:
-            if height_out < old_div(height_in, 2) - 1 or height_out > old_div(height_in,  2) + 1:
+            if height_out < height_in / 2 - 1 or height_out > height_in / 2 + 1:
                 raise RuntimeError("Expected height-out to be about half height-in, or the same: "
                                    "height-in={0} height-out={1}".format(height_in, height_out))
             if not time_period_out % 2 == 0:
                 raise RuntimeError("Expected time-period to be a multiple of 2 if you are subsampling "
                                    "on height.")
-            time_period_in = old_div(time_period_out, 2)
+            time_period_in = time_period_out / 2
             height_subsample = 2
         else:
             time_period_in = time_period_out
@@ -1029,11 +1027,11 @@ class XconfigRes2Block(XconfigLayerBase):
         if not input_dim % height_in == 0:
             raise RuntimeError("input-dim={0} does not divide height-in={1}".format(
                 input_dim, height_in))
-        num_filters_in = old_div(input_dim, height_in)
+        num_filters_in = input_dim / height_in
         num_filters_out = self.config['num-filters']
 
         if height_out != height_in:
-            if height_out < old_div(height_in, 2) - 1 or height_out > old_div(height_in,  2) + 1:
+            if height_out < height_in / 2 - 1 or height_out > height_in / 2 + 1:
                 raise RuntimeError("Expected height-out to be about half height-in, or the same: "
                                    "height-in={0} height-out={1}".format(height_in, height_out))
             height_subsample = 2

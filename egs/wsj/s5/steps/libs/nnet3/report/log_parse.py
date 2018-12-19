@@ -6,8 +6,6 @@
 
 from __future__ import division
 from __future__ import print_function
-from builtins import str
-from builtins import range
 import traceback
 import datetime
 import logging
@@ -383,9 +381,9 @@ def get_train_times(exp_dir):
             except KeyError:
                 train_times[int(groups[0])] = {}
                 train_times[int(groups[0])][int(groups[1])] = float(groups[2])
-    iters = list(train_times.keys())
+    iters = train_times.keys()
     for iter in iters:
-        values = list(train_times[iter].values())
+        values = train_times[iter].values()
         train_times[iter] = max(values)
     return train_times
 
@@ -538,7 +536,7 @@ def generate_acc_logprob_report(exp_dir, key="accuracy", output="output"):
             continue
 
     total_time = 0
-    for iter in list(times.keys()):
+    for iter in times.keys():
         total_time += times[iter]
     report.append("Total training time is {0}\n".format(
                     str(datetime.timedelta(seconds=total_time))))

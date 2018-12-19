@@ -8,12 +8,7 @@
 """ This script does flat-start chain training and is based on
     steps/nnet3/chain/train.py.
 """
-from __future__ import division
-from __future__ import print_function
 
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import argparse
 import logging
 import os
@@ -323,11 +318,11 @@ def train(args, run_opts):
                     {dir}/init.raw""".format(command=run_opts.command,
                                              dir=args.dir))
 
-    egs_left_context = left_context + old_div(args.frame_subsampling_factor, 2)
-    egs_right_context = right_context + old_div(args.frame_subsampling_factor, 2)
-    egs_left_context_initial = (left_context_initial + old_div(args.frame_subsampling_factor, 2) if
+    egs_left_context = left_context + args.frame_subsampling_factor / 2
+    egs_right_context = right_context + args.frame_subsampling_factor / 2
+    egs_left_context_initial = (left_context_initial + args.frame_subsampling_factor / 2 if
                                 left_context_initial >= 0 else -1)
-    egs_right_context_final = (right_context_final + old_div(args.frame_subsampling_factor, 2) if
+    egs_right_context_final = (right_context_final + args.frame_subsampling_factor / 2 if
                                right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
@@ -401,7 +396,8 @@ def train(args, run_opts):
     # avg_num_jobs=(num_jobs_initial+num_jobs_final)/2.
     num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
-    num_iters = (old_div((num_archives_to_process * 2), (args.num_jobs_initial + args.num_jobs_final)))
+    num_iters = ((num_archives_to_process * 2)
+                 / (args.num_jobs_initial + args.num_jobs_final))
 
     models_to_combine = common_train_lib.get_model_combine_iters(
         num_iters, args.num_epochs,
@@ -473,7 +469,7 @@ def train(args, run_opts):
                 learning_rate=lrate,
                 dropout_edit_string=common_train_lib.get_dropout_edit_string(
                     args.dropout_schedule,
-                    old_div(float(num_archives_processed), num_archives_to_process),
+                    float(num_archives_processed) / num_archives_to_process,
                     iter),
                 shrinkage_value=shrinkage_value,
                 num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,

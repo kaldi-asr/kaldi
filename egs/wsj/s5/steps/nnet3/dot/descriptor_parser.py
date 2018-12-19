@@ -2,7 +2,6 @@
 
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
-from builtins import range
 import pprint
 import re
 import sys

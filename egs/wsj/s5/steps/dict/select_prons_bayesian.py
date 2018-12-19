@@ -5,8 +5,6 @@
 
 from __future__ import print_function
 from __future__ import division
-from builtins import range
-from past.utils import old_div
 from collections import defaultdict
 import argparse
 import sys
@@ -197,7 +195,7 @@ def ComputePriorCounts(args, counts, ref_lexicon, g2p_lexicon, phonetic_decoding
             prior_mean[2] = 0
         prior_mean_sum = sum(prior_mean)
         try:
-            prior_mean = [old_div(t, prior_mean_sum) for t in prior_mean] 
+            prior_mean = [float(t) / prior_mean_sum for t in prior_mean] 
         except ZeroDivisionError:
             print('WARNING: word {} appears in train_counts but not in any lexicon.'.format(word), file=sys.stderr)
         prior_counts[word] = [t * args.prior_counts_tot for t in prior_mean] 
@@ -212,17 +210,17 @@ def ComputePosteriors(args, stats, ref_lexicon, g2p_lexicon, phonetic_decoding_l
     for word, prons in ref_lexicon.items():
         for pron in prons:
             # c is the augmented soft count (observed count + prior count)
-            c = old_div(prior_counts[word][0], len(ref_lexicon[word])) + stats.get((word, pron), 0)
+            c = float(prior_counts[word][0]) / len(ref_lexicon[word]) + stats.get((word, pron), 0)
             posteriors[word].append((pron, c))
 
     for word, prons in g2p_lexicon.items():
         for pron in prons:
-            c = old_div(prior_counts[word][1], len(g2p_lexicon[word])) + stats.get((word, pron), 0)
+            c = float(prior_counts[word][1]) / len(g2p_lexicon[word]) + stats.get((word, pron), 0)
             posteriors[word].append((pron, c))
 
     for word, prons in phonetic_decoding_lexicon.items():
         for pron in prons:
-            c = old_div(prior_counts[word][2], len(phonetic_decoding_lexicon[word])) + stats.get((word, pron), 0)
+            c = float(prior_counts[word][2]) / len(phonetic_decoding_lexicon[word]) + stats.get((word, pron), 0)
             posteriors[word].append((pron, c))
 
     num_prons_from_ref = sum(len(ref_lexicon[i]) for i in ref_lexicon)
@@ -245,7 +243,7 @@ def ComputePosteriors(args, stats, ref_lexicon, g2p_lexicon, phonetic_decoding_l
     for word, entry in posteriors.items():
         new_entry = []
         for pron, count in entry:      
-            post = old_div(count, count_sum[word])
+            post = float(count) / count_sum[word]
             new_entry.append((pron, post))
             source = 'R'
             if word in g2p_lexicon and pron in g2p_lexicon[word]:

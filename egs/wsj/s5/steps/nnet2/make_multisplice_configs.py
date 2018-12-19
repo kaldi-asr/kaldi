@@ -6,9 +6,6 @@
 
 from __future__ import division
 from __future__ import print_function
-from builtins import str
-from builtins import range
-from past.utils import old_div
 import re, argparse, sys, math, warnings
 
 # returns the set of frame indices required to perform the convolution
@@ -76,7 +73,7 @@ def create_config_files(output_dir, params):
     Number of hidden layers {0}, is less than the number of context specifications provided.
     Splicing is supported only until layer {1}.""".format(params.num_hidden_layers, params.num_hidden_layers - 1, params.splice_indexes))
 
-  stddev=old_div(1.0,math.sqrt(pnorm_input_dim))
+  stddev=1.0/math.sqrt(pnorm_input_dim)
   try :
     nnet_config = ["SpliceComponent input-dim={0} context={1} const-component-dim={2}".format(params.total_input_dim, contexts[0], params.ivector_dim),
     "FixedAffineComponent matrix={0}".format(params.lda_mat),

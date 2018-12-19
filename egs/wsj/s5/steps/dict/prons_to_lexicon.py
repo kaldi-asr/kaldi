@@ -7,7 +7,6 @@
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
 from __future__ import division
-from past.utils import old_div
 import argparse
 import sys
 
@@ -121,7 +120,7 @@ def ConvertWordCountsToProbs(args, lexicon, word_count):
     for entry, count in lexicon.items():
         word = entry[0]
         phones = entry[1]
-        prob = old_div(float(count), float(word_count[word]))
+        prob = float(count) / float(word_count[word])
         if word in word_probs:
             word_probs[word].append((phones, prob))
         else:
@@ -145,9 +144,9 @@ def NormalizeLexicon(lexicon, set_max_to_one = True,
 
     for entry, prob in lexicon.items():
         if set_max_to_one:
-            prob = old_div(prob, word_probs[entry[0]][1])
+            prob = float(prob) / word_probs[entry[0]][1]
         elif set_sum_to_one:
-            prob = old_div(prob, word_probs[entry[0]][0])
+            prob = float(prob) / word_probs[entry[0]][0]
         if prob < min_prob:
             prob = 0
         lexicon[entry] = prob

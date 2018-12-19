@@ -8,8 +8,6 @@
 
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
-from builtins import str
-from builtins import range
 import re
 import os
 import argparse
@@ -191,7 +189,7 @@ def ProcessSumDescriptor(segment, parent_node_name, affix, edge_attributes = Non
         sub_segment = segment['sub_segments'][i]
         part_name = "{0}{1}{2}".format(desc_name, sub_segment['name'], i)
         names.append("<{0}> part {1}".format(GetDotNodeName(part_name)['node'], i))
-        dot_graph += DescriptorSegmentToDot(sub_segment, "{0}:{1}".format(desc_name, part_name), desc_name+"_"+str(i))
+        dot_graph += DescriptorSegmentToDot(sub_segment, "{0}:{1}".format(desc_name, part_name), "{0}_{1}".format(desc_name, i))
 
     # link the sum node parts to corresponding segments
     part_index = len(segment['sub_segments'])
@@ -332,7 +330,7 @@ def Nnet3ComponentToDot(component_config, component_attributes = None):
     attr_string = ''
     try:
         attributes = node_attributes[component_config['type']]
-        for key in list(attributes.keys()):
+        for key in attributes.keys():
             attr_string += ' {0}={1} '.format(key, attributes[key])
     except KeyError:
         pass
@@ -405,7 +403,7 @@ def ParseConfigLines(lines, node_prefixes = None, component_attributes = None ):
 
     # process the config lines
     grouped_configs = GroupConfigs(configs, node_prefixes)
-    for group in list(grouped_configs.keys()):
+    for group in grouped_configs.keys():
         configs = grouped_configs[group]
         if not configs:
             continue

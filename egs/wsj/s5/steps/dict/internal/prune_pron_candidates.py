@@ -5,7 +5,6 @@
 
 from __future__ import print_function
 from __future__ import division
-from past.utils import old_div
 from collections import defaultdict
 import argparse
 import sys
@@ -89,7 +88,7 @@ def PruneProns(args, stats, ref_lexicon):
     for word, prons in ref_lexicon.items():
         num_words_ref += 1
         num_prons_ref += len(prons)
-    avg_variants_counts_ref = math.ceil(old_div(float(num_prons_ref), float(num_words_ref)))
+    avg_variants_counts_ref = math.ceil(float(num_prons_ref) / float(num_words_ref))
 
     for word, entry in stats.items():
         if word in ref_lexicon:

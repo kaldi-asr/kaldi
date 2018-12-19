@@ -7,7 +7,6 @@
 
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
-from builtins import str
 import argparse
 import os
 import sys
@@ -116,7 +115,7 @@ def write_expanded_xconfig_files(config_dir, all_layers):
           '# See also ./xconfig.expanded.2\n', file=xconfig_file_out)
 
     for layer in all_layers:
-        print(str(layer), file=xconfig_file_out)
+        print('{}'.format(layer), file=xconfig_file_out)
     xconfig_file_out.close()
 
     try:
@@ -136,7 +135,7 @@ def write_expanded_xconfig_files(config_dir, all_layers):
 
     for layer in all_layers:
         layer.normalize_descriptors()
-        print(str(layer), file=xconfig_file_out)
+        print('{}'.format(layer), file=xconfig_file_out)
     xconfig_file_out.close()
 
 
@@ -202,7 +201,7 @@ def write_config_files(config_dir, all_layers):
     except OSError:
         pass
 
-    for basename, lines in list(config_basename_to_lines.items()):
+    for basename, lines in config_basename_to_lines.items():
         # check the lines num start with 'output-node':
         num_output_node_lines = sum( [ 1 if line.startswith('output-node' ) else 0
                                        for line in lines ] )

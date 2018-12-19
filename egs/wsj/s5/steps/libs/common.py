@@ -13,10 +13,6 @@ from __future__ import print_function
 from __future__ import division
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
-from builtins import range
-from past.utils import old_div
-from builtins import object
 import argparse
 import logging
 import math
@@ -501,11 +497,11 @@ def compute_lifter_coeffs(lifter, dim):
 def compute_idct_matrix(K, N, cepstral_lifter=0):
     matrix = [[0] * K for i in range(N)]
     # normalizer for X_0
-    normalizer = math.sqrt(old_div(1.0, float(N)))
+    normalizer = math.sqrt(1.0 / float(N))
     for j in range(0, N):
         matrix[j][0] = normalizer
     # normalizer for other elements
-    normalizer = math.sqrt(old_div(2.0, float(N)))
+    normalizer = math.sqrt(2.0 / float(N))
     for k in range(1, K):
         for n in range(0, N):
             matrix[n][
@@ -515,7 +511,7 @@ def compute_idct_matrix(K, N, cepstral_lifter=0):
         lifter_coeffs = compute_lifter_coeffs(cepstral_lifter, K)
         for k in range(0, K):
             for n in range(0, N):
-                matrix[n][k] = old_div(matrix[n][k], lifter_coeffs[k])
+                matrix[n][k] = float(matrix[n][k]) / lifter_coeffs[k]
 
     return matrix
 

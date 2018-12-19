@@ -16,7 +16,6 @@ something with fractional weights.
 """
 from __future__ import division
 
-from past.utils import old_div
 import argparse
 import logging
 import numpy as np
@@ -143,8 +142,8 @@ def run(args):
                     continue
                 segment = segments[utt]
 
-                start_frame = int(old_div(segment[1], args.frame_shift))
-                end_frame = int(old_div(segment[2], args.frame_shift))
+                start_frame = int(segment[1] / args.frame_shift)
+                end_frame = int(segment[2] / args.frame_shift)
                 num_frames = end_frame - start_frame
 
                 if end_frame > reco2num_frames[reco]:
