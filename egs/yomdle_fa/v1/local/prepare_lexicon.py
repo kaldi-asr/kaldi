@@ -2,7 +2,6 @@
 
 # Copyright  2018  Ashish Arora
 
-from builtins import range
 import argparse
 import os
 

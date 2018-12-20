@@ -20,8 +20,6 @@ ID,name,col1,row1,col2,row2,col3,row3,col4,row4,confidence,truth,pgrot,bbrot,qua
 """
 from __future__ import print_function
 
-from builtins import str
-from builtins import object
 import logging
 import os
 import sys

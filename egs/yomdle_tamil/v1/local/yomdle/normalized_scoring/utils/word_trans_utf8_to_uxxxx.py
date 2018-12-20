@@ -5,7 +5,6 @@
 """
 from __future__ import print_function
 
-from builtins import hex
 import sys
 from snor import SnorIter
 

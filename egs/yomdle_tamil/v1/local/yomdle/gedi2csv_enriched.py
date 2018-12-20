@@ -5,8 +5,6 @@ Convert GEDI-type bounding boxes to CSV format
 '''
 from __future__ import print_function
 
-from builtins import str
-from builtins import object
 import logging
 import os
 import sys

@@ -85,9 +85,6 @@ same line, but it is far from perfect (in either direction).
 """
 from __future__ import division
 
-from builtins import range
-from past.utils import old_div
-from builtins import object
 import codecs
 import getopt
 import math  # for log
@@ -660,7 +657,7 @@ class _FunctionState(object):
     trigger = base_trigger * 2**_VerboseLevel()
 
     if self.lines_in_function > trigger:
-      error_level = int(math.log(old_div(self.lines_in_function, base_trigger), 2))
+      error_level = int(math.log(float(self.lines_in_function) / base_trigger, 2))
       # 50 => 0, 100 => 1, 200 => 2, 400 => 3, 800 => 4, 1600 => 5, ...
       if error_level > 5:
         error_level = 5
@@ -2913,7 +2910,7 @@ def CheckForIncludeWhatYouUse(filename, clean_lines, include_state, error,
 
   # include_state is modified during iteration, so we iterate over a copy of
   # the keys.
-  for header in list(include_state.keys()):  #NOLINT
+  for header in include_state.keys():  #NOLINT
     (same_module, common_path) = FilesBelongToSameModule(abs_filename, header)
     fullpath = common_path + header
     if same_module and UpdateIncludeState(fullpath, include_state, io):

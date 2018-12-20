@@ -22,7 +22,7 @@ for line in infile:
     text = line.strip()
     skip_text = False
     for phone in text:
-        if phone not in list(phone_dict.keys()):
+        if phone not in phone_dict.keys():
             skip_text = True
             break
     if not skip_text:

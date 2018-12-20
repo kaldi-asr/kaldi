@@ -5,8 +5,6 @@
 # and uses the python package https://pypi.org/project/PyICU_BiDi/
 # The code leaves right to left text alone and reverses left to right text.
 
-from builtins import chr
-from builtins import range
 import icu_bidi
 import io
 import sys
