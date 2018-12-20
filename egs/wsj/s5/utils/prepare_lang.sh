@@ -108,6 +108,11 @@ srcdir=$1
 oov_word=$2
 tmpdir=$3
 dir=$4
+
+
+if [ -d $dir/phones ]; then
+  rm -r $dir/phones
+fi
 mkdir -p $dir $tmpdir $dir/phones
 
 silprob=false
@@ -213,11 +218,6 @@ else
   paste -d' ' $tmpdir/phones $tmpdir/phones > $tmpdir/phone_map.txt
 fi
 
-if [ -d $dir/phones ]; then
-  rm -r $dir/phones
-fi
-
-mkdir -p $dir/phones  # various sets of phones...
 
 # Sets of phones for use in clustering, and making monophone systems.
 
