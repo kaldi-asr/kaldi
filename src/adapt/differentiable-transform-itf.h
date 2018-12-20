@@ -49,6 +49,7 @@ class SpeakerStatsItf {
 };
 
 
+
 /**
    This class is for speaker-dependent feature-space transformations --
    principally various varieties of fMLLR, including mean-only, diagonal and
@@ -166,8 +167,8 @@ class DifferentiableTransform {
               of time frames.
      @param [in] num_spk  The number of speakers.  Must be greater than one, and
              must divide num_chunks.  The number of chunks per speaker
-             (num_chunks / num_spk) must be the same for all speakers, and the
-             chunks for a speaker must be consecutive.
+             must be the same for all speakers (it will equal num_chunks / num_spk),
+             and the chunks for a speaker must be consecutively numbered.
      @param [in] posteriors  (note: this is a vector of vector of
              pair<int32,BaseFloat>).  This provides, in 'soft-count'
              form, the class supervision information that is used for the
@@ -205,7 +206,7 @@ class DifferentiableTransform {
                        values.
      @param [in] minibatch_info  The pointer returned by the corresponding
                       call to TrainingForward() (may be NULL).  This function
-                      takes possession of the pointer.  If for some reason the
+                      takes ownership of the pointer.  If for some reason the
                       backward pass was not done, the caller will likely
                       want to delete it themselves.
      @param [in,out] input_deriv  The derivative at the input, i.e.

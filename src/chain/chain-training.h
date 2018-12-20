@@ -99,7 +99,7 @@ struct ChainTrainingOptions {
                            example; you'll want to divide it by 'tot_weight' before
                            displaying it.
    @param [out] l2_term  The l2 regularization term in the objective function, if
-                           the --l2-regularize option is used.  To be added to 'o
+                         the --l2-regularize option is used (else will be set to 0.0).
    @param [out] weight     The weight to normalize the objective function by;
                            equals supervision.weight * supervision.num_sequences *
                            supervision.frames_per_sequence.
@@ -115,6 +115,10 @@ struct ChainTrainingOptions {
                            peak memory use).  xent_output_deriv will be used in
                            the cross-entropy regularization code; it is also
                            used in computing the cross-entropy objective value.
+   @param [out] numerator_post  If non-NULL, then the posterior from the numerator
+                           forward-backward will be written here (note: it won't be
+                           scaled by the supervision weight).  This is intended for
+                           use in the adaptation framework used in "chaina" training.
 */
 void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               const DenominatorGraph &den_graph,
@@ -124,7 +128,8 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *l2_term,
                               BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv,
-                              CuMatrix<BaseFloat> *xent_output_deriv = NULL);
+                              CuMatrix<BaseFloat> *xent_output_deriv = NULL,
+                              Posterior *numerator_post = NULL);
 
 
 

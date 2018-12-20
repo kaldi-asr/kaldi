@@ -1,10 +1,15 @@
 
 
+-- Extend nnet3-copy-egs, to supply at least a minimum context in input features by
+    duplicating frames as needed.   E.g.
+       --extend-left-context=12 --extend-right-context=10
+
+=============
 Plans for binaries.
 
   nnet3-adapt --init|--copy|--adapt
 
-
+================
 
   steps/chaina/init_chain_dir.sh
      make den.fst, normalization.fst,
@@ -15,10 +20,10 @@ init.config, init.raw, 0.trans_mdl,
      final.config (but not 0.raw yet, might need egs first).
 
 
-
+============
 
 nnet3-get-egs?
-   ...  Make sure the length info and left/right context of each eg is included in the id?
+  ...  Make sure the length info and left/right context of each eg is included in the id?
     - when we merge,
 
   steps/chaina/get_raw_egs.sh
@@ -58,6 +63,27 @@ nnet3-get-egs?
   --train-bottom-nnet {true,false}
 
 ====
+  nnet3-copy-egs: maybe introduce an option to extend context?
+
+===
+
+prepare_egs.sh...
+  - merging into speaker groups.  done by python script.  Originally we'll dump with:
+
+      utterance-id-{num_frames_out}-{frame_subsampling_factor}-{left_context}-{right_context}
+
+  - so the number of input frames would be
+      ((num_frames_out - 1) * frame_subsampling_factor) + 1 + left_context + right_context
+
+
+      utterance-id-{num_frames_out}-{frame_subsampling_factor}-{left_context}-{right_context}
+
+===
+
+    BUT, we don't want to do this on minibatches
+
+
+====
  - Merging egs: will already have merged into speaker groups in prepare_egs.
  - Output names?  output  -->  output-xent.
  - Input names?  Just input.  (May add ivector later but I hope not to have to).
@@ -73,11 +99,24 @@ nnet3-get-egs?
  in process_egs.sh (the merging will be done in python).
 
  process_egs.sh will dump these as archives *and* scp files, but they will now
- be in groups of 4.  The network name will be added as the last-but-one field
- in the key; we'll set it to 'default' by default, but it may be changed in
- merge_egs.sh.  The last field will be a weight to be incorporated just before
- the final merge (by nnet3-chain-merge-egs with the --interpret-keys option).
- So the keys at the input to the final merge will be of the form
+ be in groups of chunks_per_spk (e.g. 4).  The language name will be added as the
+ last-but-two field in the key; we'll set it to 'default' by default, but it may
+ be changed in merge_egs.sh.  The last two fields will be (1) a weight to be incorporated
+ just before the final merge (by nnet3-chain-merge-egs with the --interpret-keys
+ option), and (2) a weight to propagate back to the bottom network (if you want a
+ particular language to have less of an effect on the bottom network).
+
+ So the keys at the input to the final merge will be of the form:
+      {language-name}-{egs-weight}-{bottom-nnet-weight}
+
+ And the keys at the output of the final merge would be of the form:
+      {language-name}-{bottom-nnet-weight}-0-0
+ The 'egs-weight' (which becomes weight in the chain supervision objects,
+ which is a scale on the objective function) will already have been set
+ in the ChainSupervision object.
+ The 0 and 0 becom
+
+
 
 
  info/chunks_per_spk
@@ -196,7 +235,7 @@ we'll merge in a controlled way, e.g. nnet3-merge-egs --fixed
     the 't' values in the chain supervision object, and
     the top network will actually run at the reduced frame
     rate.
-  --top-network-is-recurrent is true if the top network is
+  --keep-embedding-context is true if the top network is
     recurrent and therefore we need to keep as much extra
     context as possible in the features.
 

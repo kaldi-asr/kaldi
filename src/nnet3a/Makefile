@@ -8,7 +8,7 @@ include ../kaldi.mk
 
 TESTFILES =
 
-OBJFILES =
+OBJFILES = nnet-chaina-training.o
 
 LIBNAME = kaldi-nnet3a
 

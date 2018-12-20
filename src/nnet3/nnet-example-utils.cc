@@ -140,7 +140,7 @@ static void MergeIo(const std::vector<NnetExample> &src,
         // we could easily support merging already-merged egs, but I don't see a
         // need for it right now.
         KALDI_ASSERT(output_iter[i].n == 0 &&
-                     "Merging already-merged egs?  Not currentlysupported.");
+                     "Merging already-merged egs?  Not currently supported.");
         output_iter[i].n = n;
       }
       this_offset += this_size;  // note: this_offset is a reference.
@@ -556,7 +556,7 @@ bool UtteranceSplitter::LengthsMatch(const std::string &utt,
                                      int32 length_tolerance) const {
   int32 sf = config_.frame_subsampling_factor,
       expected_supervision_length = (utterance_length + sf - 1) / sf;
-  if (std::abs(supervision_length - expected_supervision_length) 
+  if (std::abs(supervision_length - expected_supervision_length)
       <= length_tolerance) {
     return true;
   } else {

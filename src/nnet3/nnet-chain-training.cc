@@ -111,8 +111,8 @@ void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
   this->ProcessOutputs(false, eg, &computer);
   computer.Run();
 
-  // If relevant, add in the part of the gradient that comes from L2
-  // regularization.
+  // If relevant, add in the part of the gradient that comes from
+  // parameter-level L2 regularization.
   ApplyL2Regularization(*nnet_,
                         GetNumNvalues(eg.inputs, false) *
                         nnet_config.l2_regularize_factor,
