@@ -5,8 +5,6 @@
 # Apache 2.0
 
 from __future__ import print_function
-from builtins import str
-from builtins import range
 import argparse
 from random import randint
 import sys
@@ -329,7 +327,7 @@ while True:
 utt_groups = GetUtteranceGroups(args.min_duration, spk2utt, utt2dur)
 
 # set utt_group names to an array like [ 'utt1', 'utt2-comb2', 'utt4', ... ]
-utt_group_names = [ group[0] if len(group)==1 else group[0] + "-comb" + str(len(group))
+utt_group_names = [ group[0] if len(group)==1 else "{0}-comb{1}".format(group[0], len(group))
                     for group in utt_groups ]
 
 

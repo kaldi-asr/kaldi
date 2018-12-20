@@ -18,8 +18,6 @@ and the first 2.5s of the second utterance i.e. from 25s to 27.s is truncated.
 
 from __future__ import print_function
 from __future__ import division
-from builtins import next
-from past.utils import old_div
 import argparse
 import collections
 import logging
@@ -215,8 +213,8 @@ def resolve_overlaps(ctms, segments):
             try:
                 index = next(
                     (i for i, line in enumerate(ctm_for_cur_utt)
-                     if (line[2] + old_div(line[3], 2.0)
-                         > window_length - old_div(overlap, 2.0))))
+                     if (line[2] + line[3] / 2.0
+                         > window_length - overlap / 2.0)))
             except StopIteration:
                 # It is possible for such a word to not exist, e.g the last
                 # word in the CTM is longer than overlap length and starts
@@ -234,7 +232,7 @@ def resolve_overlaps(ctms, segments):
             try:
                 index = next(
                     (i for i, line in enumerate(ctm_for_next_utt)
-                     if line[2] + old_div(line[3], 2.0) > old_div(overlap, 2.0)))
+                    if line[2] + line[3] / 2.0 > overlap / 2.0))
             except StopIteration:
                 # This can happen if there is no word hypothesized after
                 # half the overlap region.

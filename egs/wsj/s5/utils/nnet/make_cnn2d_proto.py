@@ -19,8 +19,6 @@
 
 from __future__ import division
 from __future__ import print_function
-from builtins import range
-from past.utils import old_div
 import math, random, sys, warnings
 from optparse import OptionParser
 
@@ -143,8 +141,8 @@ assert( (o.cnn1_fmap_y_len - o.cnn1_filt_y_len) % o.cnn1_filt_y_step == 0 )
 assert( (o.cnn1_fmap_x_len - o.cnn1_filt_x_len) % o.cnn1_filt_x_step == 0 )
 
 # subsample1
-cnn1_out_fmap_y_len=((1 + old_div((o.cnn1_fmap_y_len - o.cnn1_filt_y_len), o.cnn1_filt_y_step)))
-cnn1_out_fmap_x_len=((1 + old_div((o.cnn1_fmap_x_len - o.cnn1_filt_x_len), o.cnn1_filt_x_step)))
+cnn1_out_fmap_y_len=(1 + (o.cnn1_fmap_y_len - o.cnn1_filt_y_len) / o.cnn1_filt_y_step)
+cnn1_out_fmap_x_len=(1 + (o.cnn1_fmap_x_len - o.cnn1_filt_x_len) / o.cnn1_filt_x_step)
 
 # fix filt_len and filt_step
 def fix_filt_step(inp_len, filt_len, filt_step):
@@ -176,24 +174,24 @@ print("<NnetProto>")
 # Convolutional part of network
 '''1st CNN layer'''
 cnn1_input_dim=feat_raw_dim * (o.delta_order+1) * (o.splice*2+1)
-cnn1_out_fmap_x_len=((1 + old_div((o.cnn1_fmap_x_len - o.cnn1_filt_x_len), o.cnn1_filt_x_step)))
-cnn1_out_fmap_y_len=((1 + old_div((o.cnn1_fmap_y_len - o.cnn1_filt_y_len), o.cnn1_filt_y_step)))
+cnn1_out_fmap_x_len=(1 + (o.cnn1_fmap_x_len - o.cnn1_filt_x_len) / o.cnn1_filt_x_step)
+cnn1_out_fmap_y_len=(1 + (o.cnn1_fmap_y_len - o.cnn1_filt_y_len) / o.cnn1_filt_y_step)
 cnn1_output_dim=o.cnn1_num_filters * cnn1_out_fmap_x_len * cnn1_out_fmap_y_len
 
 '''1st Pooling layer'''
 pool1_input_dim=cnn1_output_dim
 pool1_fmap_x_len=cnn1_out_fmap_x_len
-pool1_out_fmap_x_len=((1 + old_div((pool1_fmap_x_len - o.pool1_x_len), o.pool1_x_step)))
+pool1_out_fmap_x_len=(1 + (pool1_fmap_x_len - o.pool1_x_len) / o.pool1_x_step)
 pool1_fmap_y_len=cnn1_out_fmap_y_len
-pool1_out_fmap_y_len=((1 + old_div((pool1_fmap_y_len - o.pool1_y_len), o.pool1_y_step)))
+pool1_out_fmap_y_len=(1 + (pool1_fmap_y_len - o.pool1_y_len) / o.pool1_y_step)
 pool1_output_dim=o.cnn1_num_filters*pool1_out_fmap_x_len*pool1_out_fmap_y_len
 
 '''2nd CNN layer'''
 cnn2_input_dim=pool1_output_dim
 cnn2_fmap_x_len=pool1_out_fmap_x_len
-cnn2_out_fmap_x_len=((1 + old_div((cnn2_fmap_x_len - o.cnn2_filt_x_len), o.cnn2_filt_x_step)))
+cnn2_out_fmap_x_len=(1 + (cnn2_fmap_x_len - o.cnn2_filt_x_len) / o.cnn2_filt_x_step)
 cnn2_fmap_y_len=pool1_out_fmap_y_len
-cnn2_out_fmap_y_len=((1 + old_div((cnn2_fmap_y_len - o.cnn2_filt_y_len), o.cnn2_filt_y_step)))
+cnn2_out_fmap_y_len=(1 + (cnn2_fmap_y_len - o.cnn2_filt_y_len) / o.cnn2_filt_y_step)
 cnn2_output_dim=o.cnn2_num_filters * cnn2_out_fmap_x_len * cnn2_out_fmap_y_len
 
 

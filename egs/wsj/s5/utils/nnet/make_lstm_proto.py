@@ -18,8 +18,6 @@
 # Generated Nnet prototype, to be initialized by 'nnet-initialize'.
 
 from __future__ import print_function
-from builtins import map
-from builtins import range
 import sys
 
 ###
@@ -55,7 +53,7 @@ if len(args) != 2 :
   parser.print_help()
   sys.exit(1)
 
-(feat_dim, num_leaves) = list(map(int,args));
+(feat_dim, num_leaves) = [int(i) for i in args];
 
 # Original prototype from Jiayu,
 #<NnetProto>

@@ -20,14 +20,17 @@
 
 from __future__ import division
 from __future__ import print_function
-from builtins import str
-from builtins import range
-from past.utils import old_div
 from math import *
 import sys
 
 
 from optparse import OptionParser
+
+def print_on_same_line(text):
+    if (sys.version_info > (3,0)):
+        print(text, end=' ')
+    else:
+        print text,
 
 parser = OptionParser()
 parser.add_option('--fea-dim', dest='dim', help='feature dimension')
@@ -51,10 +54,10 @@ print('[')
 for row in range(dim_mat):
     for col in range(dim_mat):
         if col!=row:
-            print('0', end=' ')
+            print_on_same_line('0')
         else:
-            i=int(old_div(row,dim))
-            print(str(0.54 - 0.46*cos(old_div((M_2PI * i), (timeContext-1)))), end=' ')
+            i=int(row/dim)
+            print_on_same_line(str(0.54 - 0.46*cos(old_div((M_2PI * i), (timeContext-1)))))
     print()
 
 print(']')

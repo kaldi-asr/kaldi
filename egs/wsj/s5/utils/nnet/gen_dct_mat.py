@@ -22,14 +22,17 @@
 
 from __future__ import division
 from __future__ import print_function
-from builtins import str
-from builtins import range
-from past.utils import old_div
 from math import *
 import sys
 
 
 from optparse import OptionParser
+
+def print_on_same_line(text):
+    if (sys.version_info > (3,0)):
+        print(text, end=' ')
+    else:
+        print text,
 
 parser = OptionParser()
 parser.add_option('--fea-dim', dest='dim', help='feature dimension')
@@ -58,13 +61,13 @@ print('[')
 for k in range(dct_basis):
     for m in range(dim):
         for n in range(timeContext):
-          if(n==0): 
-              print(m*'0 ', end=' ')
-          else: 
-              print((dim-1)*'0 ', end=' ')
-          print(str(sqrt(old_div(2.0,timeContext))*cos(M_PI/timeContext*k*(n+0.5))), end=' ')
+          if(n==0):
+              print_on_same_line(m*'0 ')
+          else:
+              print_on_same_line((dim-1)*'0 ')
+          print_on_same_line(str(sqrt(old_div(2.0,timeContext))*cos(M_PI/timeContext*k*(n+0.5))))
           if(n==timeContext-1):
-              print((dim-m-1)*'0 ', end=' ')
+              print_on_same_line((dim-m-1)*'0 ')
         print()
     print() 
 

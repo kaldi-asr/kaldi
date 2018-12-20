@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
-from builtins import range
 import sys
 import argparse
 from collections import defaultdict
@@ -65,7 +64,7 @@ while True:
 
 num_times_fixed = 0
 
-for recording, utt_indexes in list(recording_to_utt_indexes.items()):
+for recording, utt_indexes in recording_to_utt_indexes.items():
     # this_entries is a list of lists, sorted on mid-time.
     # Notice: because lists are objects, when we change 'this_entries'
     # we change the underlying entries.

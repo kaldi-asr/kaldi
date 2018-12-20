@@ -9,8 +9,6 @@
 """
 from __future__ import division
 
-from past.utils import old_div
-from builtins import object
 import argparse
 import os
 import sys
@@ -116,7 +114,7 @@ def read_kaldi_datadir(dir):
         else:
             num_fail += 1
 
-    if old_div(float(len(utterances)), len(wav_scp)) < 0.5:
+    if float(len(utterances)) / len(wav_scp) < 0.5:
         logger.info("More than half your data is problematic. Try "
                     "fixing using fix_data_dir.sh.")
         sys.exit(1)
@@ -228,12 +226,12 @@ def find_allowed_durations(start_dur, end_dur, args):
     with open(os.path.join(args.dir, 'allowed_durs.txt'), 'w', encoding='latin-1') as durs_fp, \
            open(os.path.join(args.dir, 'allowed_lengths.txt'), 'w', encoding='latin-1') as lengths_fp:
         while d < end_dur:
-            length = old_div(int(d * 1000 - args.frame_length), args.frame_shift) + 1
+            length = int(d * 1000 - args.frame_length) / args.frame_shift + 1
             if length % args.frame_subsampling_factor != 0:
                 length = (args.frame_subsampling_factor *
                               (length // args.frame_subsampling_factor))
-                d = old_div((args.frame_shift * (length - 1.0)
-                     + args.frame_length + old_div(args.frame_shift, 2)), 1000.0)
+                d = (args.frame_shift * (length - 1.0)
+                     + args.frame_length + args.frame_shift / 2) / 1000.0
             allowed_durations.append(d)
             durs_fp.write("{}\n".format(d))
             lengths_fp.write("{}\n".format(int(length)))
@@ -269,8 +267,8 @@ def perturb_utterances(utterances, allowed_durations, args):
 
         if i > 0 and args.speed_perturb:  # we have a smaller allowed duration
             allowed_dur = allowed_durations[i - 1]
-            speed = old_div(u.dur, allowed_dur)
-            if max(speed, old_div(1.0,speed)) > args.factor:  # this could happen for very short/long utterances
+            speed = u.dur / allowed_dur
+            if max(speed, 1.0/speed) > args.factor:  # this could happen for very short/long utterances
                 continue
             u1 = copy.deepcopy(u)
             u1.id = 'pv1-' + u.id
@@ -312,7 +310,7 @@ def perturb_utterances(utterances, allowed_durations, args):
 
 def main():
     args = get_args()
-    args.factor = 1.0 + old_div(args.factor, 100.0)
+    args.factor = 1.0 + args.factor / 100.0
 
     if not os.path.exists(args.dir):
         os.makedirs(args.dir)
@@ -324,8 +322,8 @@ def main():
                 "Coverage rate: {}%".format(start_dur, end_dur,
                                       100.0 - args.coverage_factor * 2))
     logger.info("There will be {} unique allowed lengths "
-                "for the utterances.".format(int(old_div(math.log(old_div(end_dur, start_dur)),
-                                                 math.log(args.factor)))))
+                "for the utterances.".format(int(math.log(end_dur / start_dur)/
+                                                 math.log(args.factor))))
 
     allowed_durations = find_allowed_durations(start_dur, end_dur, args)
 

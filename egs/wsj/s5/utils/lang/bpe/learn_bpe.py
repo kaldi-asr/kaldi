@@ -16,8 +16,6 @@ from __future__ import unicode_literals
 from __future__ import division
 from __future__ import print_function
 
-from builtins import range
-from past.utils import old_div
 import sys
 import codecs
 import re
@@ -161,9 +159,9 @@ def replace_pair(pair, vocab, indices):
     changes = []
     pattern = re.compile(r'(?<!\S)' + re.escape(first + ' ' + second) + r'(?!\S)')
     if sys.version_info < (3, 0):
-        iterator = iter(indices[pair].items())
+        iterator = indices[pair].iteritems()
     else:
-        iterator = list(indices[pair].items())
+        iterator = indices[pair].items()
     for j, freq in iterator:
         if freq < 1:
             continue
@@ -208,7 +206,7 @@ def main(infile, outfile, num_symbols, min_frequency=2, verbose=False, is_dict=F
     stats, indices = get_pair_statistics(sorted_vocab)
     big_stats = copy.deepcopy(stats)
     # threshold is inspired by Zipfian assumption, but should only affect speed
-    threshold = old_div(max(stats.values()), 10)
+    threshold = max(stats.values()) / 10
     for i in range(num_symbols):
         if stats:
             most_frequent = max(stats, key=lambda x: (stats[x], x))

@@ -14,7 +14,6 @@ Proceedings of the 54th Annual Meeting of the Association for Computational Ling
 
 from __future__ import unicode_literals, division
 
-from builtins import object
 import sys
 import codecs
 import io
@@ -50,7 +49,7 @@ class BPE(object):
         # some hacking to deal with duplicates (only consider first instance)
         self.bpe_codes = dict([(code,i) for (i,code) in reversed(list(enumerate(self.bpe_codes)))])
 
-        self.bpe_codes_reverse = dict([(pair[0] + pair[1], pair) for pair,i in list(self.bpe_codes.items())])
+        self.bpe_codes_reverse = dict([(pair[0] + pair[1], pair) for pair,i in self.bpe_codes.items()])
 
         self.separator = separator
 

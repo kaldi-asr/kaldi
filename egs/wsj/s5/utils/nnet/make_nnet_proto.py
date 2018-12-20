@@ -19,9 +19,6 @@
 
 from __future__ import division
 from __future__ import print_function
-from builtins import map
-from builtins import range
-from past.utils import old_div
 import math, random, sys, re
 
 ###
@@ -92,7 +89,7 @@ o.activation_opts = o.activation_opts.replace("_"," ")
 o.affine_opts = o.affine_opts.replace("_"," ")
 o.dropout_opts = o.dropout_opts.replace("_"," ")
 
-(feat_dim, num_leaves, num_hid_layers, num_hid_neurons) = list(map(int,args));
+(feat_dim, num_leaves, num_hid_layers, num_hid_neurons) = [int(i) for i in args];
 ### End parse options
 
 
@@ -108,7 +105,7 @@ if o.block_softmax_dims:
 def Glorot(dim1, dim2):
   if o.with_glorot:
     # 35.0 = magic number, gives ~1.0 in inner layers for hid-dim 1024dim,
-    return 35.0 * math.sqrt(old_div(2.0,(dim1+dim2)));
+    return 35.0 * math.sqrt(2.0/(dim1+dim2));
   else:
     return 1.0
 
@@ -178,7 +175,7 @@ assert(num_hid_layers > 0)
 print("<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> %f <BiasRange> %f <ParamStddev> %f <MaxNorm> %f %s" % \
       (feat_dim, num_hid_neurons, o.hid_bias_mean, o.hid_bias_range, \
        (o.param_stddev_factor * Glorot(feat_dim, num_hid_neurons) * \
-        (math.sqrt(old_div(1.0,12.0)) if o.smaller_input_weights else 1.0)), o.max_norm, o.affine_opts))
+        (math.sqrt(1.0/12.0) if o.smaller_input_weights else 1.0)), o.max_norm, o.affine_opts))
       # Note.: compensating dynamic range mismatch between input features and Sigmoid-hidden layers,
       # i.e. mapping the std-dev of N(0,1) (input features) to std-dev of U[0,1] (sigmoid-outputs).
       # This is done by multiplying with stddev(U[0,1]) = sqrt(1/12).

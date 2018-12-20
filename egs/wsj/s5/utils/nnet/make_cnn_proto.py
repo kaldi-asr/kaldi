@@ -19,8 +19,6 @@
 
 from __future__ import division
 from __future__ import print_function
-from builtins import range
-from past.utils import old_div
 import math, random, sys
 from optparse import OptionParser
 
@@ -95,12 +93,12 @@ assert(o.pool_type == 'Max' or o.pool_type == 'Average')
 print("<NnetProto>")
 
 # Convolutional part of network
-num_patch1 = 1 + old_div((feat_raw_dim - o.patch_dim1), o.patch_step1)
-num_pool = 1 + old_div((num_patch1 - o.pool_size), o.pool_step)
+num_patch1 = 1 + (feat_raw_dim - o.patch_dim1) / o.patch_step1
+num_pool = 1 + (num_patch1 - o.pool_size) / o.pool_step
 patch_dim2 = o.patch_dim2
 patch_step2 = o.patch_step1
 patch_stride2 = num_pool # same as layer1 outputs 
-num_patch2 = 1 + old_div((num_pool - patch_dim2), patch_step2)
+num_patch2 = 1 + (num_pool - patch_dim2) / patch_step2
 
 inputdim_of_cnn = feat_dim
 outputdim_of_cnn = o.num_filters2*num_patch2
