@@ -1,6 +1,7 @@
 
 
--- Extend nnet3-copy-egs, to supply at least a minimum context in input features by
+
+-- Extend nnet3-chain-copy-egs, to supply at least a minimum context in input features by
     duplicating frames as needed.   E.g.
        --extend-left-context=12 --extend-right-context=10
 

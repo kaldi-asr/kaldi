@@ -30,22 +30,18 @@ NnetChainaTopTrainer::NnetChainaTopTrainer(
     const NnetChainaTrainingOptions &config,
     const fst::StdVectorFst &den_fst,
     const differentiable_transform::DifferentiableTransform &transform,
-    CachingOptimizingCompiler *compiler,
     Nnet *nnet):
     lang_name_(lang_name),
     opts_(config),
     den_graph_(den_fst, nnet->OutputDim("output")),
     transform_(transform),
-    compiler_(compiler),
+    compiler_(*nnet, opts_.nnet_config.optimize_config,
+              opts_.nnet_config.compiler_config),
     nnet_(nnet),
     delta_nnet_(nnet->Copy()),
     num_minibatches_processed_(0),
-    num_max_change_global_applied_si_(0),
-    num_max_change_global_applied_(0) {
-
-  const int32 num_updatable = NumUpdatableComponents(*delta_nnet_);
-  num_max_change_per_component_applied_.resize(num_updatable, 0);
-  num_max_change_per_component_applied_si_.resize(num_updatable, 0);
+    max_change_stats_si_(*nnet),
+    max_change_stats_(*nnet) {
 
   if (opts_.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
@@ -122,7 +118,7 @@ std::shared_ptr<const NnetComputation> NnetChainaTopTrainer::GetComputation(
   request.outputs[1].has_deriv = true;
   request.outputs[1].name = (s.adapted ? "output-xent" : "output-xent-si");
   request.outputs[1].indexes = request.outputs[0].indexes;
-  std::shared_ptr<const NnetComputation> computation = compiler_->Compile(
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(
       request);
   computation_map_[s] = computation;
   return computation;
@@ -223,9 +219,7 @@ bool NnetChainaTopTrainer::TrainUnadapted(
       nnet_config.max_param_change,
       opts_.unadapted_deriv_scale,
       1.0 - nnet_config.momentum,  // normally momentum is 0.0.
-      nnet_,
-      &num_max_change_per_component_applied_si_,
-      &num_max_change_global_applied_si_);
+      nnet_, &max_change_stats_si_);
 
   // Un-freeze the natural gradient.
   FreezeNaturalGradient(false, delta_nnet_);
@@ -315,25 +309,16 @@ bool NnetChainaTopTrainer::TrainAdapted(
     input_deriv->AddMat(1.0, computer.GetOutput("input"));
   }
 
-  // Updates the parameters of nnet.  Since the derivatives will all be scaled
-  // with "unadapted_deriv_scale" it makes sense to apply that same factor to
-  // the max-change, to keep the max-change in proportion with how much we
-  // expect the net to change (so smaller max-change values don't lead to more
-  // emphasize on the unadapted model's derivatives)
+  // Update the parameters of nnet.
   bool success = UpdateNnetWithMaxChange(
       *delta_nnet_,
       nnet_config.max_param_change,
-      opts_.unadapted_deriv_scale,
+      1.0,
       1.0 - nnet_config.momentum,  // normally momentum is 0.0.
-      nnet_,
-      &num_max_change_per_component_applied_si_,
-      &num_max_change_global_applied_si_);
+      nnet_, &max_change_stats_);
 
   // Scale down the batchnorm stats (keeps them fresh... this affects what
-  // happens when we use the model with batchnorm test-mode set).
-  // Note: we don't do this for the unadapted pass, it would be redundant
-  // (although of course doing it only once changes the interpretation
-  // of the scale slightly).
+  // happens when, later on, we use the model with batchnorm test-mode set).
   ScaleBatchnormStats(nnet_config.batchnorm_stats_scale, nnet_);
 
   // The following will only do something if we have a LinearComponent
@@ -417,6 +402,26 @@ bool NnetChainaTopTrainer::Train(const CuMatrixBase<BaseFloat> &input,
 }
 
 
+bool NnetChainaTopTrainer::PrintTotalStats() const {
+  bool ans = false;
+  if (output_si_objf_.PrintTotalStats(lang_name_ + ":output-si"))
+    ans = true;
+  if (output_objf_.PrintTotalStats(lang_name_ + ":output"))
+    ans = true;
+  if (output_si_xent_objf_.PrintTotalStats(lang_name_ + ":output-si-xent"))
+    ans = true;
+  if (output_xent_objf_.PrintTotalStats(lang_name_ + ":output-xent"))
+    ans = true;
+  KALDI_LOG << "Speaker-independent max-change stats for language "
+            << lang_name_ << ":";
+  max_change_stats_si_.Print(*nnet_);
+  KALDI_LOG << "Speaker-dependent max-change stats for language "
+            << lang_name_ << ":";
+  max_change_stats_.Print(*nnet_);
+  return ans;
+}
+
+
 NnetComputer* NnetChainaBottomTrainer::Forward(
     int32 num_sequences,
     int32 first_input_t,
@@ -431,14 +436,17 @@ NnetComputer* NnetChainaBottomTrainer::Forward(
                          frames_per_sequence_in,
                          frames_per_sequence_out,
                          first_input_t, first_output_t);
+  // Note: this will be cached in the unordered_map owned by this class, so we
+  // don't have to worry about it being deleted before we're done with the
+  // NnetComputer object.
   std::shared_ptr<const NnetComputation> computation = GetComputation(s);
 
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   NnetComputer *computer = new NnetComputer(nnet_config.compute_config,
-                                            computation, nnet_, delta_nnet_);
-  computer.AcceptInput("input", input);
-  computer.Run();
-  computer.GetOutputDestructive("output", output);
+                                            *computation, nnet_, delta_nnet_);
+  computer->AcceptInput("input", input);
+  computer->Run();
+  computer->GetOutputDestructive("output", output);
   return computer;
 }
 
@@ -448,22 +456,56 @@ void NnetChainaBottomTrainer::Backward(NnetComputer *computer,
   computer->AcceptInput("output", output_deriv);
   computer->Run();
 
-  // TODO.
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
 
-  // Updates the parameters of nnet.  Since the derivatives will all be scaled
-  // with "unadapted_deriv_scale" it makes sense to apply that same factor to
-  // the max-change, to keep the max-change in proportion with how much we
-  // expect the net to change (so smaller max-change values don't lead to more
-  // emphasize on the unadapted model's derivatives)
+  // we may later provide a way to set a different max-change for the bottom
+  // nnet than on the top nnet.
   bool success = UpdateNnetWithMaxChange(
       *delta_nnet_,
       nnet_config.max_param_change,
-      opts_.unadapted_deriv_scale,
+      1.0,
       1.0 - nnet_config.momentum,  // normally momentum is 0.0.
       nnet_,
-      &num_max_change_per_component_applied_si_,
-      &num_max_change_global_applied_si_);
+      &max_change_stats_);
 
+  // Scale down the batchnorm stats (keeps them fresh... this affects what
+  // happens when, later on, we use the model with batchnorm test-mode set).
+  ScaleBatchnormStats(nnet_config.batchnorm_stats_scale, nnet_);
+
+  // The following will only do something if we have a LinearComponent
+  // or AffineComponent with orthonormal-constraint set to a nonzero value.
+  ConstrainOrthonormal(nnet_);
+
+  if (!success)
+    ScaleNnet(nnet_config.momentum, delta_nnet_);
+  else
+    ScaleNnet(0.0, delta_nnet_);
+
+  num_minibatches_processed_++;
+}
+
+
+NnetChainaBottomTrainer::NnetChainaBottomTrainer(
+    const NnetChainaTrainingOptions &opts,
+    Nnet *nnet):
+    opts_(opts),
+    nnet_(nnet),
+    delta_nnet_(nnet->Copy()),
+    compiler_(*nnet, opts_.nnet_config.optimize_config,
+              opts_.nnet_config.compiler_config),
+    max_change_stats_(*nnet) {
+  if (opts_.nnet_config.zero_component_stats)
+    ZeroComponentStats(nnet);
+  ScaleNnet(0.0, delta_nnet_);
+  if (opts_.nnet_config.read_cache != "") {
+    // It would be complicated to implement, as there are various top nnets
+    // and they would all try to read and write the same cache files.
+    // To implement this, the best way would be to
+    KALDI_WARN << "The read-cache options are not currently supported.";
+  }
+  KALDI_ASSERT(opts_.nnet_config.momentum >= 0.0 &&
+               opts_.nnet_config.max_param_change >= 0.0 &&
+               opts_.bottom_subsampling_factor >= 1);
 }
 
 std::shared_ptr<const NnetComputation> NnetChainaBottomTrainer::GetComputation(
@@ -480,15 +522,16 @@ std::shared_ptr<const NnetComputation> NnetChainaBottomTrainer::GetComputation(
       first_output_t = s.first_output_t;
 
   ComputationRequest request;
-  request.need_model_derivative = train_bottom_model_;
+  request.need_model_derivative = opts_.train_bottom_nnet;
   request.store_component_stats = true;
   request.inputs.resize(1);
   request.inputs[0].name = "input";
   request.inputs[0].indexes.resize(frames_per_sequence_in * num_sequences);
   // The inputs are in the order: all frames of sequence 0; then all frames of
-  // sequence 1; and so on.  This is done
+  // sequence 1; and so on.  This is how the example-merging code does it, since
+  // it's more convenient when dealing with compressed matrices and the like.
   auto iter = request.inputs[0].indexes.begin();
-  for (int32 n = n < num_sequences; n++) {
+  for (int32 n = 0; n < num_sequences; n++) {
     for (int32 t = first_input_t;
          t < first_input_t + frames_per_sequence_in; ++t,++iter) {
       iter->n = n;
@@ -499,14 +542,14 @@ std::shared_ptr<const NnetComputation> NnetChainaBottomTrainer::GetComputation(
   // the second frame of all sequences; and so on.
   request.outputs.resize(1);
   request.outputs[0].name = "output";
-  request.outputs[1].has_deriv = train_bottom_model_;
+  request.outputs[1].has_deriv = opts_.train_bottom_nnet;
   request.outputs[0].indexes.resize(frames_per_sequence_out * num_sequences);
-  int32 t_stride_out = bottom_subsampling_factor_;
+  int32 t_stride_out = opts_.bottom_subsampling_factor;
   iter = request.outputs[0].indexes.begin();
   for (int32 t = first_output_t;
        t < first_output_t  +  frames_per_sequence_out * t_stride_out;
        t += t_stride_out) {
-    for (int32 n = n < num_sequences; ++n,++iter) {
+    for (int32 n = 0; n < num_sequences; ++n,++iter) {
       iter->n = n;
       iter->t = t;
     }
@@ -518,58 +561,33 @@ std::shared_ptr<const NnetComputation> NnetChainaBottomTrainer::GetComputation(
 }
 
 
-bool NnetChainTrainer::PrintTotalStats() const {
-  unordered_map<std::string, ObjectiveFunctionInfo, StringHasher>::const_iterator
-      iter = objf_info_.begin(),
-      end = objf_info_.end();
+bool NnetChainaTrainer::PrintTotalStats() const {
+  bottom_trainer_.PrintTotalStats();
   bool ans = false;
-  for (; iter != end; ++iter) {
-    const std::string &name = iter->first;
-    const ObjectiveFunctionInfo &info = iter->second;
-    ans = info.PrintTotalStats(name) || ans;
-  }
-  PrintMaxChangeStats();
+  for (auto iter = top_trainers_.begin(); iter != top_trainers_.end();
+       ++iter)
+    if (iter->second->PrintTotalStats())
+      ans = true;
   return ans;
 }
 
-void NnetChainTrainer::PrintMaxChangeStats() const {
-  KALDI_ASSERT(delta_nnet_ != NULL);
-  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
-  int32 i = 0;
-  for (int32 c = 0; c < delta_nnet_->NumComponents(); c++) {
-    Component *comp = delta_nnet_->GetComponent(c);
-    if (comp->Properties() & kUpdatableComponent) {
-      UpdatableComponent *uc = dynamic_cast<UpdatableComponent*>(comp);
-      if (uc == NULL)
-        KALDI_ERR << "Updatable component does not inherit from class "
-                  << "UpdatableComponent; change this code.";
-      if (num_max_change_per_component_applied_[i] > 0)
-        KALDI_LOG << "For " << delta_nnet_->GetComponentName(c)
-                  << ", per-component max-change was enforced "
-                  << (100.0 * num_max_change_per_component_applied_[i]) /
-                     (num_minibatches_processed_ *
-                     (nnet_config.backstitch_training_scale == 0.0 ? 1.0 :
-                     1.0 + 1.0 / nnet_config.backstitch_training_interval))
-                  << " \% of the time.";
-      i++;
-    }
-  }
-  if (num_max_change_global_applied_ > 0)
-    KALDI_LOG << "The global max-change was enforced "
-              << (100.0 * num_max_change_global_applied_) /
-                 (num_minibatches_processed_ *
-                 (nnet_config.backstitch_training_scale == 0.0 ? 1.0 :
-                 1.0 + 1.0 / nnet_config.backstitch_training_interval))
-              << " \% of the time.";
+NnetChainaTrainer::NnetChainaTrainer(
+    const NnetChainaTrainingOptions &config,
+    NnetChainaModels *models):
+    opts_(config),
+    models_(models),
+    bottom_trainer_(opts_, models->GetBottomNnet()) {
 }
 
-NnetChainTrainer::~NnetChainTrainer() {
-  if (opts_.nnet_config.write_cache != "") {
-    Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
-    compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
-    KALDI_LOG << "Wrote computation cache to " << opts_.nnet_config.write_cache;
-  }
-  delete delta_nnet_;
+
+void NnetChainaTrainer::Train(const NnetChainExample &eg) {
+  // TODO.  work out structure, etc.
+}
+
+NnetChainaTrainer::~NnetChainaTrainer() {
+  for (auto iter = top_trainers_.begin(); iter != top_trainers_.end();
+       ++iter)
+    delete iter->second;
 }
 
 

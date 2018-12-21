@@ -135,7 +135,7 @@ NnetBatchComputer::GetHighestPriorityComputation(
     int32 *minibatch_size_out,
     std::vector<NnetInferenceTask*> *tasks) {
   tasks->clear();
-  std::unique_lock<std::mutex>(mutex_);
+  std::unique_lock<std::mutex> lock(mutex_);
   MapType::iterator iter = tasks_.begin(), end = tasks_.end(),
       best_iter = tasks_.end();
   double highest_priority = -std::numeric_limits<double>::infinity();

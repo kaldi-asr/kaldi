@@ -250,8 +250,6 @@ class NnetChainaTopTrainer {
       @param [in] den_fst   The denominator FST for this language
       @param [in] transform  The transform object which will be used to produce adapted
                              features after the first pass of training.
-      @param [in] compiler   A pointer to the compiler we are to use (we make it
-                             owned externally for easier caching).
       @param [in,out]  nnet   The neural net we are training.  Expected to have outputs
                              called "output-si" (speaker-independent output), "output",
                              "output-si-xent", "output-xent", and an input called
@@ -261,7 +259,6 @@ class NnetChainaTopTrainer {
                        const NnetChainaTrainingOptions &config,
                        const fst::StdVectorFst &den_fst,
                        const differentiable_transform::DifferentiableTransform &transform,
-                       CachingOptimizingCompiler *compiler,
                        Nnet *nnet);
 
   /**  Train on one minibatch.
@@ -312,10 +309,6 @@ class NnetChainaTopTrainer {
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
-
-  // Prints out the max-change stats (if nonzero): the percentage of time that
-  // per-component max-change and global max-change were enforced.
-  void PrintMaxChangeStats() const;
 
   ~NnetChainaTopTrainer();
  private:
@@ -492,19 +485,12 @@ class NnetChainaTopTrainer {
   const NnetChainaTrainingOptions &opts_;
   chain::DenominatorGraph den_graph_;
   const differentiable_transform::DifferentiableTransform &transform_;
-  // This is a pointer to a compiler owned outside this class (we had to
-  // implement it like this to enable computation caching to work with a single
-  // option).
-  CachingOptimizingCompiler *compiler_;
+  CachingOptimizingCompiler compiler_;
 
 
   Nnet *nnet_;
-  Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
-                      // 0.0.  nnet representing accumulated parameter-change
-                      // (we'd call this gradient_nnet_, but due to
-                      // natural-gradient update, it's better to consider it as
-                      // a delta-parameter nnet.
-
+  Nnet *delta_nnet_;  // stores the change to the parameters on each training
+                      // iteration.
 
   // These objects keep track of the objective-function values for the 4
   // outputs.  We have the regular output (sequence objective) and the 'xent'
@@ -521,11 +507,9 @@ class NnetChainaTopTrainer {
   int32 num_minibatches_processed_;
 
   // stats for max-change (for speaker-independent model).
-  std::vector<int32> num_max_change_per_component_applied_si_;
-  int32 num_max_change_global_applied_si_;
-  // stats for max-change (for speaker-dependent model).
-  std::vector<int32> num_max_change_per_component_applied_;
-  int32 num_max_change_global_applied_;
+  MaxChangeStats max_change_stats_si_;
+  // stats for max-change (for speaker-adapted model).
+  MaxChangeStats max_change_stats_;
 };
 
 
@@ -538,23 +522,14 @@ class NnetChainaBottomTrainer {
  public:
   /**
      Constructor.
-      @param [in] nnet_config   Options class
-      @param [in] train_bottom_model   True if we are training the 'bottom' model
-                            (otherwise this class just does the computation without
-                            any backprop).
-      @param [in] bottom_subsampling_factor   The factor by which we subsample
-                            frames at the output of the 'bottom' nnet.  E.g. if
-                            this is 3, then the output frames in each sequence
-                            would be numbered t=0, t=3, and so on.
+      @param [in] opts    Options class.  This class maintains a reference to it,
+                          so don't delete it.
       @param [in,out]  nnet   The neural net we are training.  Expected (for now)
                             to have an input called 'input' (corresponding to
                             the original input features and an output called
                             'output' (corresponding to the embeddings).
    */
-  NnetChainaBottomTrainer(const NnetTrainerOptions &nnet_config,
-                          int32 bottom_subsampling_factor,
-                          bool train_bottom_model,
-                          CachingOptimizingCompiler *compiler,
+  NnetChainaBottomTrainer(const NnetChainaTrainingOptions &opts,
                           Nnet *nnet);
 
   /**  Train on one minibatch.
@@ -612,9 +587,6 @@ class NnetChainaBottomTrainer {
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
 
-  // Prints out the max-change stats (if nonzero): the percentage of time that
-  // per-component max-change and global max-change were enforced.
-  void PrintMaxChangeStats() const;
 
   ~NnetChainaBottomTrainer();
  private:
@@ -706,69 +678,19 @@ class NnetChainaBottomTrainer {
                         int32 top_subsampling_factor,
                         Posterior *post_at_input);
 
-  /**
-     Does the adapted pass of training.
-         @param [in] input   The adapted input features.
-         @param [in] computation  The adapted version of the
-                     computation (this one uses the outputs
-                     "output" and "output-xent" instead of
-                     "output-si" and "output-si-xent".
-         @param [in] supervision  The chain supervision
-                     object, containing information derived
-                     from the numerator lattices.
-         @param [in,out] input_deriv  If non-NULL, the
-                     feature derivative w.r.t. the [speaker-adapted] input
-                     features will be *added* to this location.
-   */
-  void TrainAdapted(const CuMatrixBase<BaseFloat> &input,
-                    const NnetComputation &computation,
-                    const chain::Supervision &supervision,
-                    const VectorBase<BaseFloat> &deriv_weights,
-                    CuMatrixBase<BaseFloat> *input_deriv);
-
-
-  void ProcessOutputs(const NnetChainExample &eg,
-                      NnetComputer *computer);
-
-  std::string lang_name_;
-
   const NnetChainaTrainingOptions opts_;
-  bool train_top_model_;
-  chain::DenominatorGraph den_graph_;
-  const differentiable_transform::DifferentiableTransform &transform_;
 
   Nnet *nnet_;
-  Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
-                      // 0.0.  nnet representing accumulated parameter-change
-                      // (we'd call this gradient_nnet_, but due to
-                      // natural-gradient update, it's better to consider it as
-                      // a delta-parameter nnet.
+  Nnet *delta_nnet_;  // stores the change to the parameters on each training
+                      // iteration.
 
-  // This is a pointer to a compiler owned outside this class (we had to
-  // implement it like this to enable computation caching to work with a single
-  // option).
-  CachingOptimizingCompiler *compiler_;
+  CachingOptimizingCompiler compiler_;
 
-  // These objects keep track of the objective-function values for the 4
-  // outputs.  We have the regular output (sequence objective) and the 'xent'
-  // output for cross-entropy regularization, and there are speaker independent
-  // (si) versions of those outputs also.
-  ObjectiveFunctionInfo output_si_objf_;
-  ObjectiveFunctionInfo output_si_xent_objf_;
-  ObjectiveFunctionInfo output_objf_;
-  ObjectiveFunctionInfo output_xent_objf_;
-
-  // Number of minibatches processed.  Note: we actually train the nnet twice
-  // per minibatch, because there are the speaker-independent and
-  // speaker-dependent passes.
+  // Number of minibatches processed.
   int32 num_minibatches_processed_;
 
-  // stats for max-change (for speaker-independent model).
-  std::vector<int32> num_max_change_per_component_applied_si_;
-  int32 num_max_change_global_applied_si_;
-  // stats for max-change (for speaker-dependent model).
-  std::vector<int32> num_max_change_per_component_applied_;
-  int32 num_max_change_global_applied_;
+  // stats for max-change
+  MaxChangeStats max_change_stats_;
 };
 
 
@@ -801,15 +723,14 @@ class NnetChainaTrainer {
   ~NnetChainaTrainer();
  private:
 
+  void FindEgStructure
+
 
   const NnetChainaTrainingOptions &opts_;
+  // pointer to object owned outside this class.
   NnetChainaModels *models_;
-  // This 'compiler' object is shared by bottom_trainer and the objects
-  // stores in top_trainers_.  Storing it here is helpful to simplify writing and
-  // reading of computation caches.
-  CachingOptimizingCompiler compiler_;
 
-  NnetChainaBottomTrainer *bottom_trainer_;
+  NnetChainaBottomTrainer bottom_trainer_;
   // map from language name (e.g. "default", "english", "french") to
   // the object that trains the corresponding 'top' nnet.
   std::unordered_map<std::string, NnetChainaTopTrainer*,
