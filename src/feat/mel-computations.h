@@ -72,7 +72,12 @@ struct MelBanksOptions {
                    "High inflection point in piecewise linear VTLN warping function"
                    " (if negative, offset from high-mel-freq");
     opts->Register("modified", &modified,
-                   "Modified MFCCs, based on paper XXXX.  TODO: document this.");
+                   "Modified MFCCs, based on paper 'An alternative to MFCCs for ASR' "
+                   "(in progess for publication). This uses a cosine-type "
+                   "filters with a modified mel scale for ceneter frequency "
+                   "with more resolution around 1st and 2nd formant frequencies."
+                   "The new bandwidth is computed as a combination of linear bandwidth "
+                   "and the bandwidth computed based on filter overlap.");
     opts->Register("debug-mel", &debug_mel,
                    "Print out debugging information for mel bin computation");
   }
@@ -96,6 +101,11 @@ class MelBanks {
   // returns vector of central freq of each bin; needed by plp code.
   const Vector<BaseFloat> &GetCenterFreqs() const { return center_freqs_; }
 
+  BaseFloat VtlnWarpFreq(BaseFloat vtln_warp_factor, BaseFloat freq);
+
+
+  BaseFloat VtlnWarpMelFreq(BaseFloat vtln_warp_factor, BaseFloat mel_freq);
+
   // Use the default copy constructor
  private:
 
@@ -109,17 +119,18 @@ class MelBanks {
   // this application, the multiplicative factor doesn't matter.  Note:
   // breakpoint_ is 700 for normal mel, or 900 for modified.
   inline BaseFloat InverseMelScale(BaseFloat mel_freq) {
-    return 3500.0 * (expf((mel_freq - breakpoint_) / 3500.0) - 1.0);
+    if (sec_breakpoint_ > 0.0)
+      return 3500.0 * (expf((expf(mel_freq) - breakpoint_) / 3500.0) - 1.0);
+    else
+      return breakpoint_ * (expf(mel_freq) - 1.0);
   }
 
   inline BaseFloat MelScale(BaseFloat freq) {
-    return log (breakpoint_ + 3500.0 * log (1.0 + freq / 3500.0));
+    if (sec_breakpoint_ > 0.0)
+      return log (breakpoint_ + 3500.0 * log (1.0 + freq / 3500.0));
+    else
+      return log(1.0 + freq / breakpoint_);
   }
-
-  BaseFloat VtlnWarpFreq(BaseFloat vtln_warp_factor, BaseFloat freq);
-
-
-  BaseFloat VtlnWarpMelFreq(BaseFloat vtln_warp_factor, BaseFloat mel_freq);
 
   // This sets up the 'bins_' member, for the regular (not modified)
   // computation.  It assumes center_freqs_ is already set up.
@@ -143,6 +154,13 @@ class MelBanks {
   // and for other purposes.
   BaseFloat breakpoint_;  // The breakpoint in the mel scale: 700 normally;
                           // 500 if opts.modified is true.
+  BaseFloat sec_breakpoint_; // The second breakpoint used in the modified
+                             // mel scale;
+                             // The range is [1500,3500]Hz and it corresponds to
+                             // second breakpoint in the mel scale mainly and
+                             // results in higher center frequency concentration
+                             // around this frequency
+                             // (e.g. avg. freq for second formant)
   BaseFloat low_freq_;  // opts.low_freq
   BaseFloat high_freq_;  // The same as opts.high_freq if it's >= 0, or
                          // otherwise the Nyquist plus opts.high_freq.

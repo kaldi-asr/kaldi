@@ -92,7 +92,7 @@ void MelBanks::ComputeBins(bool htk_mode) {
         if (mel <= center_mel)
           weight = (mel - left_mel) / (center_mel - left_mel);
         else
-         weight = (right_mel-mel) / (right_mel - center_mel);
+         weight = (right_mel - mel) / (right_mel - center_mel);
         this_bin(i) = weight;
         if (first_index == -1)
           first_index = i;
@@ -290,6 +290,7 @@ void MelBanks::SetConfigs(const MelBanksOptions &opts,
               << nyquist;
 
   breakpoint_ = (opts.modified ? 500.0 : 700.0);
+  sec_breakpoint_ = (opts.modified ? 3500 : -1);
   vtln_low_ = opts.vtln_low;
   if (opts.vtln_high > 0.0)
     vtln_high_ = opts.vtln_high;
