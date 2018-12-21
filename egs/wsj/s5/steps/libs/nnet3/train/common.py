@@ -581,8 +581,11 @@ def get_model_combine_iters(num_iters, num_epochs,
     # But if this value is > max_models_combine, then the models
     # are subsampled to get these many models to combine.
 
-    num_iters_combine_initial = min(approx_iters_per_epoch_final/2 + 1,
-                                    num_iters/2)
+    # Cast to integer for Python 3 compatibility.
+    # As approx_iters_per_epoch_final can be float,
+    # floor division operator (//) is not enough
+    num_iters_combine_initial = int(
+        min(approx_iters_per_epoch_final/2 + 1, num_iters/2))
 
     if num_iters_combine_initial > max_models_combine:
         subsample_model_factor = int(
