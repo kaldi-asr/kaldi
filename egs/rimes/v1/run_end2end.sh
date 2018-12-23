@@ -1,5 +1,9 @@
 #!/bin/bash
-# Copyright 2017    Hossein Hadian
+
+# Copyright 2018    Hossein Hadian
+#                   Ashish Arora
+#                   Jonathan Chang
+# Apache 2.0
 
 set -e
 stage=0
