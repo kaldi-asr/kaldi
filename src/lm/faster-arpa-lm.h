@@ -438,7 +438,6 @@ class FasterArpaLmDeterministicFst
     // At this point, we should have created the state.
     int32 lm_state_idx;
     float logprob = GetNgramLogprob(s, lm_.EosSymbol(), &lm_state_idx);
-    if (logprob <= Weight::Zero().Value()) logprob =  Weight::Zero().Value();
     return Weight(-logprob);
   }
 

@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
     Timer timer;
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
-    int32 symbol_size = 0;
+    int32 symbol_size = 0, init_mode=0;
     LatticeBiglmFasterDecoderConfig config;
     config.Register(&po);
 
@@ -182,6 +182,7 @@ int main(int argc, char *argv[]) {
 
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
+    po.Register("init-mode", &init_mode, "TODO.");
     
     po.Read(argc, argv);
 
@@ -231,7 +232,7 @@ int main(int argc, char *argv[]) {
       }
     }
     // multiple compose
-    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&clm_vec.back(), 1e9);
+    fst::CacheDeterministicOnDemandFst<StdArc> cache_dfst(&clm_vec.back(), 1e9, init_mode==0);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;

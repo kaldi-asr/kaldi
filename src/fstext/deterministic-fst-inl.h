@@ -223,11 +223,9 @@ template<class Arc>
  PreinitDeterministicOnDemandFst<Arc>::PreinitDeterministicOnDemandFst(
     DeterministicOnDemandFst<Arc> *fst,
     StateId num_cached_arcs, int32 init_mode, Fst<Arc>* pat_fst): fst_(fst),
-                              num_cached_arcs_(num_cached_arcs),
-                              cached_arcs_(num_cached_arcs), num_cached_arcs_used_(0) {
+                              num_cached_arcs_(num_cached_arcs), num_cached_arcs_used_(0) {
   KALDI_ASSERT(num_cached_arcs > 0);
-  for (StateId i = 0; i < num_cached_arcs; i++)
-    cached_arcs_[i].first = kNoStateId; // Invalidate all elements of the cache.
+  cached_arcs_.reserve(num_cached_arcs_);
 
   if (init_mode == 1) {
 #define MAX_LEV 20
@@ -269,21 +267,14 @@ template<class Arc>
 template<class Arc>
 bool  PreinitDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
                                                 Arc *oarc) {
-  // Note: we don't cache anything in case a requested arc does not exist.
-  // In the uses that we imagine this will be put to, essentially all the
-  // requested arcs will exist.  This only affects efficiency.
   KALDI_ASSERT(s >= 0 && ilabel != 0);
-  size_t index = this->GetIndex(s, ilabel);
-  if (cached_arcs_[index].first == s &&
-      cached_arcs_[index].second.ilabel == ilabel) {
-    *oarc = cached_arcs_[index].second;
-    return true;
-  } else {
+  index_type idx(s, ilabel);
+  auto ret = cached_arcs_.find(idx);
+  if (ret == cached_arcs_.end()) {
     Arc arc;
     if (fst_->GetArc(s, ilabel, &arc)) {
-      if (cached_arcs_[index].first == kNoStateId) {
-        cached_arcs_[index].first = s;
-        cached_arcs_[index].second = arc;
+      if (num_cached_arcs_used_<num_cached_arcs_) {
+        cached_arcs_[idx]=arc; 
         num_cached_arcs_used_++;
       }
       *oarc = arc;
@@ -291,6 +282,9 @@ bool  PreinitDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
     } else {
       return false;
     }
+  } else {
+    *oarc = ret->second;
+    return true;
   }
 }
 
@@ -311,9 +305,9 @@ inline size_t CacheDeterministicOnDemandFst<Arc>::GetIndex(
 template<class Arc>
 CacheDeterministicOnDemandFst<Arc>::CacheDeterministicOnDemandFst(
     DeterministicOnDemandFst<Arc> *fst,
-    StateId num_cached_arcs): fst_(fst),
+    StateId num_cached_arcs, bool overwrite): fst_(fst),
                               num_cached_arcs_(num_cached_arcs),
-                              cached_arcs_(num_cached_arcs) {
+                              cached_arcs_(num_cached_arcs), overwrite_(overwrite) {
   KALDI_ASSERT(num_cached_arcs > 0);
   for (StateId i = 0; i < num_cached_arcs; i++)
     cached_arcs_[i].first = kNoStateId; // Invalidate all elements of the cache.
@@ -334,8 +328,10 @@ bool CacheDeterministicOnDemandFst<Arc>::GetArc(StateId s, Label ilabel,
   } else {
     Arc arc;
     if (fst_->GetArc(s, ilabel, &arc)) {
-      cached_arcs_[index].first = s;
-      cached_arcs_[index].second = arc;
+      if (overwrite_ || cached_arcs_[index].first == kNoStateId) {
+        cached_arcs_[index].first = s;
+        cached_arcs_[index].second = arc;
+      }
       *oarc = arc;
       return true;
     } else {

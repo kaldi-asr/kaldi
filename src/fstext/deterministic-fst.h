@@ -232,6 +232,7 @@ class PreinitDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
   typedef typename Arc::StateId StateId;
   typedef typename Arc::Weight Weight;
   typedef typename Arc::Label Label;
+  typedef std::pair<StateId, StateId> index_type;
 
   /// We don't take ownership of this pointer.  The argument is "really" const.
   PreinitDeterministicOnDemandFst(DeterministicOnDemandFst<Arc> *fst,
@@ -250,7 +251,7 @@ class PreinitDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
 
   DeterministicOnDemandFst<Arc> *fst_;
   StateId num_cached_arcs_;
-  std::vector<std::pair<StateId, Arc> > cached_arcs_;
+  std::unordered_map<index_type, Arc, kaldi::PairHasher<StateId>> cached_arcs_;
   StateId num_cached_arcs_used_;
 };
 
@@ -264,7 +265,7 @@ class CacheDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
 
   /// We don't take ownership of this pointer.  The argument is "really" const.
   CacheDeterministicOnDemandFst(DeterministicOnDemandFst<Arc> *fst,
-                                StateId num_cached_arcs = 100000);
+                                StateId num_cached_arcs = 100000, bool overwrite = true);
 
   virtual StateId Start() { return fst_->Start(); }
 
@@ -280,6 +281,7 @@ class CacheDeterministicOnDemandFst: public DeterministicOnDemandFst<Arc> {
   DeterministicOnDemandFst<Arc> *fst_;
   StateId num_cached_arcs_;
   std::vector<std::pair<StateId, Arc> > cached_arcs_;
+  bool overwrite_;
 };
 
 
